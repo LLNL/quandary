@@ -1,0 +1,79 @@
+\documentclass{article}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\begin{document}
+
+\title{Notes on a general form for the Quantum optimal control Hamiltonian}
+
+\maketitle
+
+\begin{abstract}
+  Notes on the form of Hamiltonian and rules for constructing the general matrix form of H.  Some additional comments on notation.
+\end{abstract}
+
+A fairly general form of the system Hamiltonian we are interested in looks like this:
+$$
+H0 = \sum_i \omega_i a_i^\dagger a_i -\chi_{ii} a_i^\dagger a_i^\dagger a_i a_i -  \sum_{ i\ne j} \chi_{ij}  a_i^\dagger a_i a_j^\dagger  a_j 
+$$
+
+where $a_i$ are ``annihilation operators'' that are operating on a subspace of the full hilbert space (In a way I'll expand on below)
+$a | n \rangle = \sqrt{n} |n-1\rangle$ 
+
+
+\begin{equation}
+  a = \begin{bmatrix}
+    0 & 1 & 0 & 0 & \dotsm & 0 & 0\\
+    0 & 0 & \sqrt{2} & 0 & \dotsm & 0 & 0\\
+    0 & 0 & 0 & \sqrt{3} & \dotsm & 0 & 0\\
+    \vdots & \vdots & \vdots & \vdots & \ddots & \vdots & \vdots \\z
+    0 & 0 & 0 & 0 & \dotsm & 0 & \sqrt{n_a-1} \\
+    0 & 0 & 0 & 0 & \dotsm & 0 & 0
+    \end{bmatrix}.
+\end{equation}
+$a$ is a matrix of size $n_a \times n_a$. $|n\rangle$ is a column vector where only the $n$th entry is nonzero
+$$
+\begin{pmatrix} 0 \\ 0 \\ \vdots \\ 1 \\ \vdots \\ 0\end{pmatrix}
+$$
+
+More detail on this flaky notation
+
+$$
+\langle A | B \rangle \doteq A_1^* B_1 + A_2^* B_2 + \cdots + A_N^* B_N =
+\begin{pmatrix} A_1^* & A_2^* & \cdots & A_N^* \end{pmatrix}
+\begin{pmatrix} B_1 \\ B_2 \\ \vdots \\ B_N \end{pmatrix}
+$$
+
+$$
+|\phi \rangle \, \langle \psi | \doteq 
+\begin{pmatrix} \phi_1 \\ \phi_2 \\ \vdots \\ \phi_N \end{pmatrix}
+\begin{pmatrix} \psi_1^* & \psi_2^* & \cdots & \psi_N^* \end{pmatrix}
+= \begin{pmatrix}
+\phi_1 \psi_1^* & \phi_1 \psi_2^* & \cdots & \phi_1 \psi_N^* \\
+\phi_2 \psi_1^* & \phi_2 \psi_2^* & \cdots & \phi_2 \psi_N^* \\
+\vdots & \vdots & \ddots & \vdots \\
+\phi_N \psi_1^* & \phi_N \psi_2^* & \cdots & \phi_N \psi_N^* \end{pmatrix}
+$$
+
+The full Hamiltonian is built up from tensor products of $a$ and $a^\dagger$ operators acting on tensored subspaces.  For example, in the case of qubits, each a acts on a two level subsystem. 
+\begin{equation*}a = \left(\begin{array}{*{11}c}0.0 & 1.0\\0.0 & 0.0\\\end{array}\right)\end{equation*}
+the full  Hamiltonian matrix $H$ for a two qubit system would then be made up of products of opperators
+$a_0 = a \otimes I_2$ and $a_1 = I_2 \otimes a$ that look like
+\begin{equation*}a \otimes I_2 = \left(\begin{array}{*{11}c}0.0 & 0.0 & 1.0 & 0.0\\0.0 & 0.0 & 0.0 & 1.0\\0.0 & 0.0 & 0.0 & 0.0\\0.0 & 0.0 & 0.0 & 0.0\\\end{array}\right)\end{equation*}
+
+\begin{equation*}I_2 \otimes a = \left(\begin{array}{*{11}c}0.0 & 1.0 & 0.0 & 0.0\\0.0 & 0.0 & 0.0 & 0.0\\0.0 & 0.0 & 0.0 & 1.0\\0.0 & 0.0 & 0.0 & 0.0\\\end{array}\right)\end{equation*}
+
+So the full Hamiltonian for a two qubit system would look like 
+
+$$
+\begin{array}{ll}
+H = & \omega_0 (a \otimes I_2)^{\dagger} (a \otimes I_2) + \omega_1 (I_2 \otimes a)^{\dagger} (I_2 \otimes a)  +\\
+& \chi_{00} (a \otimes I_2)^{\dagger} (a \otimes I_2)^{\dagger} (a \otimes I_2) (a \otimes I_2) +\\
+& \chi_{11}  (I_2 \otimes a)^{\dagger} (I_2 \otimes a)^{\dagger} (I_2 \otimes a) (I_2 \otimes a) +\\
+& \chi_{01}  (a \otimes I_2)^{\dagger} (a \otimes I_2) (I_2 \otimes a)^{\dagger} (I_2 \otimes a) 
+\end{array}\
+$$
+
+
+
+
+\end{document}

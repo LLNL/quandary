@@ -1,0 +1,146 @@
+\documentclass{beamer}
+\usepackage{amsmath, graphicx, listings, color, caption}
+
+%% \setlength{\topmargin}{0 mm}
+%% \setlength{\oddsidemargin}{5 mm}
+%% \setlength{\evensidemargin}{5 mm}
+%% \setlength{\textwidth}{150 mm}
+%% \setlength{\textheight}{210 mm}
+
+\title{The adjoint state method}
+\subtitle{Method of Lagrange multipliers}
+\author{N. Anders Petersson}
+\institute{Lawrence Livermore National Laboratory\footnote{LLNL-PRES-abcdef;
+This work was performed under the auspices of the U.S. Department of
+Energy by Lawrence Livermore National Laboratory under Contract DE-AC52-07NA27344. Lawrence Livermore National Security, LLC.}}
+\date{\today}
+
+\begin{document}
+\lstset{language=[03]Fortran}
+% to show file name, caption on bottom, framed.
+% How to change the caption label further?
+\lstset{
+  caption=\lstname, captionpos=t, frame=single, basicstyle=\ttfamily\scriptsize,
+  columns=fullflexible, keywordstyle=\color{blue},
+  commentstyle=\color{red}, stringstyle=\color{gray},
+  showspaces=false,
+  showstringspaces=false, breaklines=true
+}
+\renewcommand\lstlistingname{File}
+\renewcommand{\thelstlisting}{}
+%%%%%%%%%%%%%%%
+\frame{\titlepage}
+
+%%%%%%%%%%%%%%%
+\begin{frame}{The control problem}
+  Consider the system of ODEs (the state equation),
+  \begin{equation}\label{eq:ode}
+  \dot{\Psi} + A(\alpha)\Psi =0,\quad
+  t\in[0,T], \quad \Psi(0) = \Psi_0,\quad A^* = -A,
+  \end{equation}
+  where $\Psi\in {\mathbb C}^D$, $A\in {\mathbb C}^{D\times D}$. Let
+  \[
+  A(\alpha) := i\left(H_0 + f(\alpha)H_c\right),\quad H_0=H_0^*, \quad H_c = H_c^*,
+  \]
+  where $f(\alpha)\in \mathbb{R}$ is a control function that depends on the real parameters $\alpha_k$,
+  $k=1,2,\ldots,M$.
+
+  We consider minimizing a real-valued cost function
+  \[
+  J(\alpha) := g(\Psi(\alpha))
+  \]
+  under the constraint that $\Psi = \Psi(\alpha)$ satisfies \eqref{eq:ode}. E.g.,
+  \[
+  g(\Psi) = \int_0^T w(\tau) |\Psi(\tau) - d(\tau)|^2\, d\tau, \quad w(\tau)\geq 0.
+  \]
+\end{frame}
+
+%%%%%%%%%%%%%%%
+\begin{frame}{The Lagrange multiplier method}
+  Define a scalar product for functions $u$ and $v$ in ${\mathbb C}^D \times [0,T]$,
+  \[
+  (u,v) = \int_0^T \langle u(\tau), v(\tau)\rangle_2\, d\tau,\quad \langle u, v\rangle_2 =
+  \sum_{j=1}^D \bar{u}_j v_j.
+  \]
+  Let $\tilde{\Psi}(t)$ and $\tilde{\lambda}(t)$ be in ${\mathbb C}^D\times [0,T]$ (independent of
+  $\alpha$).  Define the Lagrangian
+  \[
+    {\cal L}(\tilde{\Psi},\tilde{\lambda},\alpha) := g(\tilde{\Psi})
+    - (\tilde{\lambda}, \dot{\tilde{\Psi}} + A(\alpha)\tilde{\Psi}).
+  \]
+  The function $\Psi$ minimizes $g(\tilde{\Psi})$ under the constraint \eqref{eq:ode} if
+  $(\Psi,\lambda)$ is a saddle point of the Lagrangian ${\cal L}$,
+  \[
+  \frac{\partial {\cal L}}{\partial \tilde{\lambda}}(\Psi,\lambda,\alpha) = 0,\quad \frac{\partial {\cal L}}{\partial
+    \tilde{\Psi}}(\Psi,\lambda,\alpha) = 0.
+  \]
+\end{frame}
+
+%%%%%%%%%%%%%%%
+\begin{frame}{The adjoint state equation}
+The relation $\partial{\cal L}/\partial \tilde{\lambda} = 0$ gives the state equation
+\eqref{eq:ode} for $\Psi(t)$. To expose how $\cal L$ depends on $\tilde{\Psi}$, we first integrate by parts,
+\[
+(\tilde{\lambda}, \dot{\tilde{\Psi}} + A(\alpha)\tilde{\Psi}) = \left.\langle
+\tilde{\lambda}(\tau),\tilde{\Psi}(\tau)\rangle \right |_0^T +
+(-\dot{\tilde{\lambda}}+A^*\tilde{\lambda}, \tilde{\Psi}). 
+\]
+Thus,
+\[
+  {\cal L}(\tilde{\Psi},\tilde{\lambda},\alpha) := g(\tilde{\Psi})
+  - \left.\langle \tilde{\lambda}(\tau),\tilde{\Psi}(\tau)\rangle \right |_0^T
+  - (-\dot{\tilde{\lambda}} +A^*\tilde{\lambda}, \tilde{\Psi}).
+\]
+and $\partial{\cal L}/\partial \tilde{\Psi} = 0$ gives the adjoint state equation
+\begin{equation}\label{eq:adjoint}
+ -\dot{\lambda} + A^*\lambda = \frac{\partial g}{\partial \Psi} ,\quad T\geq t\geq 0, \quad \lambda(T)=0,
+\end{equation}
+which is solved backwards in time.
+\end{frame}
+
+%%%%%%%%%%%%%%%
+\begin{frame}{The gradient of the cost function}
+  If $\tilde{\Psi} = \Psi(\alpha)$, it satisfies the state equation \eqref{eq:ode}, and
+  \[
+    {\cal L}(\tilde{\Psi},\tilde{\lambda},\alpha) =
+    g(\Psi(\alpha)) := J(\alpha).
+  \]
+Because $\partial {\cal L}/\partial \tilde{\Psi}=0$ for $\tilde{\Psi}=\Psi(\alpha)$
+\[
+\frac{\partial J}{\partial \alpha_k} = \frac{\partial {\cal L}}{\partial \tilde{\Psi}}
+\frac{\partial{\Psi}}{\partial \alpha_k} + \frac{\partial {\cal L}}{\partial \alpha_k} = \frac{\partial
+  {\cal L}}{\partial \alpha_k}. 
+\]
+and
+\[
+\frac{\partial{\cal L}}{\partial \alpha_k} = - (\lambda,\frac{\partial A}{\partial \alpha_k}\Psi). 
+\]
+Because the state equation is skew-symmetric, it is reversible in time, and the gradient of $J$
+follow by backwards accumulation in time.
+\end{frame}
+
+%%%%%%%%%%%%%%%
+\begin{frame}{Direct calculation of the gradient}
+A direct calculation of the gradient requires ${\partial \Psi}/{\partial \alpha_k}$.
+%% \[
+%% \frac{\partial J}{\partial \alpha_k} = \frac{\partial g}{\partial \Psi}\frac{\partial \Psi}{\partial \alpha_k}.
+%% \]
+In our example above, $J(\alpha) = g(\Psi(\alpha))$ with
+\[
+g(\Psi) = \int_0^T w(\tau) |\Psi(\tau) - d(\tau)|^2\, d\tau, \quad w(\tau)\geq 0,
+\]
+and
+\[
+\frac{\partial J}{\partial \alpha_k} = 2 \int_0^T w(\tau) |\Psi(\tau) - d(\tau)| \frac{\partial
+  \Psi}{\partial \alpha_k}(\tau)\, d\tau
+\]
+Differentiating the state equation \eqref{eq:ode} wrt $\alpha_k$ gives
+\[
+  \frac{\partial \dot{\Psi}}{\partial \alpha_k} + A(\alpha)\frac{\partial \Psi}{\partial \alpha_k} =
+  - \frac{\partial A(\alpha)}{\partial \alpha} \Psi,\quad \frac{\partial \Psi}{\partial \alpha_k}(0)=0.
+\]
+\end{frame}
+Hence, one state equation must be solved for each component of the gradient.
+
+\end{document}
+

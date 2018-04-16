@@ -1,0 +1,131 @@
+\documentclass{article}
+\usepackage{amsmath, amsthm, amsfonts, graphicx, color, caption}
+
+\setlength{\topmargin}{0 mm}
+\setlength{\oddsidemargin}{5 mm}
+\setlength{\evensidemargin}{5 mm}
+\setlength{\textwidth}{150 mm}
+\setlength{\textheight}{210 mm}
+
+\newtheorem{lemma}{Lemma}
+\begin{document}
+
+\title{The adjoint state method without a Lagrangian}
+\author{N. Anders Petersson}
+\date{\today}
+\maketitle
+
+%%%%%%%%%%%%%%%
+Consider the system of ODEs (the state equation),
+\begin{equation}\label{eq:ode}
+  \dot{\Psi} + A(\alpha)\Psi =0,\quad
+  t\in[0,T], \quad \Psi(0) = \Psi_0,\quad A^* = -A,
+\end{equation}
+where $\Psi\in {\mathbb C}^D$, $A\in {\mathbb C}^{D\times D}$. Let
+\[
+A(\alpha) := i\left(H_0 + f(\alpha)H_c\right),\quad H_0=H_0^*, \quad H_c = H_c^*,
+\]
+where $f(\alpha)\in \mathbb{R}$ is a control function that depends
+on the parameter vector $\alpha\in{\mathbb R}^M$, with components $\alpha_k$,
+$k=1,2,\ldots,M$.
+
+We consider the minimization problem
+\[
+\min_\alpha J(\alpha) := g(\Psi(\alpha)),
+\]
+under the constraint that $\Psi=\Psi(\alpha)$ is a solution of \eqref{eq:ode}
+corresponding to the parameter $\alpha$.  Here, $g(\Psi)$ is a
+functional of $\Psi$. To demonstrate the technique, let the functional
+satisfy
+\begin{equation}\label{eq:func}
+  g(\Psi) = \int_0^T |\Psi(\tau) - d(\tau)|^2\, d\tau.
+\end{equation}
+The function $d(t)$ is given, e.g. from measurments.
+
+We define a scalar product for functions $u$ and $v$ in ${\mathbb C}^D \times [0,T]$,
+\[
+(u,v) = \int_0^T \langle u(\tau), v(\tau)\rangle_2\, d\tau,\quad \langle u, v\rangle_2 =
+\sum_{j=1}^D \bar{u}_j v_j.
+\]
+The functional \eqref{eq:func} can then be written
+\[
+g(\Psi(\alpha)) = (\Psi(\alpha) - d, \Psi(\alpha) - d)
+\]
+Note that $d(t)$ is independent of $\alpha$. Each component of the gradient of the cost function satisfies
+\begin{equation}\label{eq:grad}
+  \frac{\partial J}{\partial \alpha_k} =
+%
+  \left(\frac{\partial\Psi}{\partial \alpha_k}, \Psi-d \right) +
+  \left(\Psi-d, \frac{\partial\Psi}{\partial \alpha_k} \right) \\
+  %
+  = 2\, {\rm Re} \left(
+\frac{\partial\Psi}{\partial \alpha_k}, \Psi-d \right)
+\end{equation}
+By differentiating the state equation \eqref{eq:ode} with respect to
+$\alpha_k$ and introducing the function $\Phi = \partial \Psi/\partial \alpha_k$
+\begin{equation}\label{eq:state}
+\dot{\Phi} +
+A(\alpha) \Phi = f(t),\quad
+t\in[0,T], \quad \Psi(0) = 0,
+\end{equation}
+where $f(t) = - \partial A(\alpha)/\partial \alpha_k\,\Psi(\alpha)$.
+Thus, $\Phi$ satisfies a state equation with the forcing function
+$f$. Inserted into \eqref{eq:grad},
+\begin{equation}\label{eq:grad-formula}
+\frac{\partial J}{\partial \alpha_k} = 2\, {\rm Re} \left( \Phi, \Psi-d \right)
+\end{equation}
+ 
+Consider the adjoint state equation,
+\begin{equation}\label{eq:adjoint}
+  -\dot{\lambda} + A^* \lambda = h(t),\quad T\geq t \geq 0,\quad \lambda(T)=0,
+\end{equation}
+where the functions $\lambda(t)$ and $h(t)$ are in ${\mathbb
+  C}^D$. Note that the adjoint equation is solved backwards in time
+from the terminal condition $\lambda(T)=0$.
+%
+\begin{lemma}[Adjoint relation]\label{lem:ad}
+  Let $\Psi(t)$ be the solution of the state equation \eqref{eq:state} with forcing function $f(t)$
+  and let $\lambda(t)$ be the solution of the adjoint state equation \eqref{eq:adjoint} with forcing
+  function $h(t)$. The solutions and forcing functions satisfy the adjoint relation
+  \begin{equation}\label{adjoint-rel}
+    (f, \lambda) = (\Phi, h).
+  \end{equation}
+\end{lemma}
+%
+\paragraph{Proof:}
+From \eqref{eq:state}, $f=\dot{\Phi} + A(\alpha) \Phi$, which we insert into the left hand side of
+\eqref{adjoint-rel}. By integration by parts in time,
+\[
+( \dot{\Phi} + A \Phi, \lambda ) = \left.\langle \Phi(\tau)\lambda(\tau)
+\rangle\right|_{0}^T - ( \Phi , \dot{\lambda} ) +  ( \Phi, A^* \lambda ) = (\Phi, - \dot{\lambda} +
+A^* \lambda).
+\]
+The boundary term is zero because $\Phi(0)=0$ and $\lambda(T)=0$. From \eqref{eq:adjoint}, $h =
+-\dot{\lambda} + A^* \lambda$, which proves the lemma. $\square$
+
+The adjoint relation can be used to calculate the gradient of the cost function
+\eqref{eq:grad-formula}. The function $\Phi(t)$ satisfies \eqref{eq:state} with forcing $f(t) = -
+\partial A(\alpha)/\partial \alpha_k\,\Psi(t)$. By taking the forcing in the adjoint equation
+\eqref{eq:adjoint} to be $h(t) = \Psi(t)- d(t)$, it becomes
+\begin{equation}\label{our-adjoint}
+-\dot{\lambda} + A^* \lambda = \Psi(t)- d(t),\quad T\geq t \geq 0,\quad \lambda(T)=0.
+\end{equation}
+Lemma~\ref{lem:ad} gives
+\[
+\frac{\partial J}{\partial \alpha_k} = 2\, {\rm Re} \left( \Phi, h \right) = 2\, {\rm Re} \left( f,
+\lambda \right) = -2\, {\rm Re} \left( \frac{\partial A(\alpha)}{\partial \alpha_k} \Psi, \lambda \right).
+\]
+The advantage of using the adjoint relation is that all components of the gradient can be calculated
+from $\Psi(t)$ and $\lambda(t)$, i.e., by solving one state equation and one adjoint state
+equation. If, in contrast, the original formula \eqref{eq:grad-formula} is used it is necessary to
+solve $M+1$ state equations to obtain all components of the gradient.
+
+For the quantum control problem we need to consider more general cost functionals, such as
+\[
+g_2(\Psi) = \int_0^T w(\tau) \sum_{j=1}^D \left( |\Psi_j(\tau)|^2 - |d_j(\tau)|^2 \right)^2\,
+d\tau,\quad w(t) \geq 0,
+\]
+Here, $w(t)$ is a weight function that could be increasing in time or localized near $t=T$.
+
+\end{document}
+
