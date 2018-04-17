@@ -15,7 +15,7 @@
 % cost: sum(cfunc): cost functional of the response
 % usave: Time histories of the 4 components of the wave function for the 4 initial data
 %
-function [cfunc, ca1, uasave] = control(a1, verbose, cfl)
+function [cost, dcda_adj, ursave] = control(a1, verbose, cfl)
   
   if nargin < 1
     a1 = 1.0;
@@ -30,6 +30,8 @@ function [cfunc, ca1, uasave] = control(a1, verbose, cfl)
   end
 
   N = 4; # vector dimension
+
+  D = 1; # parameter dimension
   
   d0 = 0;
   d1 = 24.64579437;
@@ -56,8 +58,9 @@ function [cfunc, ca1, uasave] = control(a1, verbose, cfl)
    0, 0, 0, 1];
 
   cfunc = zeros(N,1);
-  beta = zeros(1,N);
-  ca1 = 0;
+  beta = zeros(N,1);
+  cu_sp = zeros(N,1);
+  ca1 = zeros(N,1);
   vect = zeros(N,1);
 				# Final time T
   T = 20;
@@ -67,24 +70,21 @@ function [cfunc, ca1, uasave] = control(a1, verbose, cfl)
   printf("Final time = %e, number of time steps = %d, max eigenvalue = %e, cfl = %e, time step = %e\n", ...
 	 T, nsteps, maxeig, cfl, dt);
 
+		# evaluate the polynomials at the discrete time levels
+  td = linspace(0,T,nsteps+1)'; # column vector
+  pad = zeros(D, nsteps+1);
+  pad(1,:) = (10*(td./T).^3 - 15*(td./T).^4 + 6*(td./T).^5); # first polynomial
+  
 				# initial data and allocation of solution vectors
-#  u = [0;1;0;0];
   u = U0;
   
 # Taylor expansion to t = -dt ( assumes H0 is indep of t)
   t = 0;
-# TODO:
-# try increasing the smoothness of poly
-  ## poly = a1*(3*(t/T)^2 - 2*(t/T)^3);
-  ## dpoly = a1*(6*t/T^2 - 6*t^2/T^3); # = 0 for t=0; makes no difference
 # 5th order
   poly = a1*(10*(t/T)^3 - 15*(t/T)^4 + 6*(t/T)^5);
-  dpoly = a1/T*(30*(t/T)^2 - 60*(t/T)^3 + 30*(t/T)^4); # = 0 for t=0; makes no difference
 
   um = u - dt * I*H0*u + 0.5*dt^2 * (-H0*H0*u);
-	 # adding another term in the expansion generates more wiggles
-  d2poly = a1*(6/T^2 - 12*t/T^3); 
-#  um = u - dt * I*H0*u + 0.5*dt^2 * (-H0*H0*u) - dt^3/6 * I*(-H0*H0*H0*u + d2poly*H1*u)
+# adding another term in the expansion generates more wiggles
 
   up = zeros(N,N);
   v1 = zeros(N,1);
@@ -93,9 +93,9 @@ function [cfunc, ca1, uasave] = control(a1, verbose, cfl)
   delta = zeros(N,1);
 
 # solve for du/da (satisfies homogeneous initial conditions)
-  uap  = zeros(N,1);
-  ua    = zeros(N,1);
-  uam = zeros(N,1);
+  uap  = zeros(N,N);
+  ua    = zeros(N,N);
+  uam = zeros(N,N);
   ## v1 = zeros(N,1);
   ## v2 = zeros(N,1);
 
@@ -103,8 +103,8 @@ function [cfunc, ca1, uasave] = control(a1, verbose, cfl)
   if (verbose)
     usave = zeros(N,N,nsteps+1);
     usave(:,:,1) = u;
-    uasave = zeros(4,nsteps+1);
-    uasave(:,1) = ua;
+    uasave = zeros(N,N,nsteps+1);
+    uasave(:,:,1) = ua;
   end
 
   t=0;
@@ -118,12 +118,13 @@ function [cfunc, ca1, uasave] = control(a1, verbose, cfl)
   printf("Time step = %d, time = %e, energy = %e\n", step, t, energy/4);
 # cost function doesn't get a contribution from the initial data because the weight is zero
   for step=1:nsteps
-#    poly = a1*(3*(t/T)^2 - 2*(t/T)^3);
-    poly = a1*(10*(t/T)^3 - 15*(t/T)^4 + 6*(t/T)^5);
+#    poly = a1*(10*(t/T)^3 - 15*(t/T)^4 + 6*(t/T)^5);
+    poly = a1*pad(1,step);
     up = um + 2*dt*I*(H0*u + poly*H1*u);
 # sensitivity
-    pa = (10*(t/T)^3 - 15*(t/T)^4 + 6*(t/T)^5);
-    uap = uam + 2*dt*I*(H0*ua + poly*H1*ua + pa*H1*u(:,1)); # currently 1 component
+#    pa = (10*(t/T)^3 - 15*(t/T)^4 + 6*(t/T)^5);
+    pa = pad(1,step);
+    uap = uam + 2*dt*I*(H0*ua + poly*H1*ua + pa*H1*u); 
 
 # cycle variables
     um = u;
@@ -132,27 +133,23 @@ function [cfunc, ca1, uasave] = control(a1, verbose, cfl)
     ua = uap;
     if (verbose)
       usave(:,:,step+1) = u;
-      uasave(:,step+1) = ua;
+      uasave(:,:,step+1) = ua;
     end
     t = t+dt;
 
     # accumulate cost function
     wgh = (10*(t/T)^3 - 15*(t/T)^4 + 6*(t/T)^5);
-    ## for c=1:N
-    ##   delta = (abs(u(:,c)).^2 - Utarget(:,c).^2 ).^2;
-    ##   beta(c) = dt*wgh*sum(delta);
-    ## end
     for c=1:N
-      delta = u(:,c) - Utarget(:,c);
-      beta(c) = dt*wgh* dot(delta,delta);
+      delta = (abs(u(:,c)).^2 - Utarget(:,c).^2 ).^2;
+      beta(c) = dt*wgh*sum(delta);
     end
-    cfunc = cfunc + beta'; 
-# sensitivity (component 1)
-    delta = u(:,1) - Utarget(:,1);
-#    cvect = wgh* u(:,1).*( abs(u(:,1)).^2 - Utarget(:,1).^2 );
-#    cu_sp = conj(cvect)' * ua;
-    cu_sp = dot(delta, ua);
-    ca1 = ca1 + 2*dt*wgh*real(cu_sp);
+    cfunc = cfunc + beta; 
+# sensitivity
+    for c=1:N
+      cvect = wgh* u(:,c).*( abs(u(:,c)).^2 - Utarget(:,c).^2 );
+      cu_sp(c) = 4*dt*real(dot(cvect, ua(:,c)));
+    end
+    ca1 = ca1 + cu_sp;
 # evaluate energy
     if (mod(step,1000)==0 || step==nsteps)
       energy = 0;
@@ -166,7 +163,8 @@ function [cfunc, ca1, uasave] = control(a1, verbose, cfl)
   end # time stepping loop
 
   # subtract out 1/2 of last contribution for 2nd order accuracy
-  cfunc = cfunc - 0.5*beta'; 
+  cfunc = cfunc - 0.5*beta; 
+  ca1 = ca1 - 0.5*cu_sp; 
 
 				# plot results
   if (verbose)
@@ -175,7 +173,99 @@ function [cfunc, ca1, uasave] = control(a1, verbose, cfl)
 
 				# total cost function
   cost = sum(cfunc);
-  printf("Parameter a1=%e, Cost function components: [%e, %e, %e, %e]\n", ...
-	 a1, cfunc(1), cfunc(2), cfunc(3), cfunc(4));
-  printf("dc1/da1 = %e\n", ca1);
+  dcda = sum(ca1);
+  printf("Forward calculations:\n");
+  printf("Parameter a1=%e, Total cost function c = %e, dc/da1 = %e\n", a1, cost, dcda);
+  printf("Cost function components: [%e, %e, %e, %e]\n", ...
+	 cfunc(1), cfunc(2), cfunc(3), cfunc(4));
+  printf("dc/da1 components = [%e, %e, %e, %e]\n", ca1(1), ca1(2), ca1(3), ca1(4));
+
+# now compute the derivative of the cost function by solving the forwards problem
+# backwards together with the adjoint problem
+# Terminal conditions are up = psi(T) and u = psi(T-dt): Bot are given by the above solution of the forwards problem
+
+# homogeneous terminal conditions for the adjoint wave function
+  lap   = zeros(N,N);
+# forcing for adjoint eqn at t=T
+  adf = zeros(N,N);
+  # forcing for the adjoint equation depends on u=psi(t)
+  t = T;
+  wgh = (10*(t/T)^3 - 15*(t/T)^4 + 6*(t/T)^5);
+  for c=1:N
+    adf(:,c) = 4*wgh* u(:,c).*( abs(u(:,c)).^2 - Utarget(:,c).^2 );
+  end
+# improve compatibility of terminal conditions. Is this correct?
+#  poly = a1*(10*(t/T)^3 - 15*(t/T)^4 + 6*(t/T)^5);
+#  la = +dt*adf - 0.5*dt^2 * I*(H0*adf + poly*H1*adf);
+  la = dt*adf;
+#  la = zeros(N,N);
+  
+# cycle local arrays to get ready for reverse time stepping  
+  up = u;
+  u = um;
+
+  ca1_adj = zeros(N,1);
+
+  if (verbose)
+    ursave = zeros(N,N,nsteps+1);
+    ursave(:,:,nsteps+1) = lap;
+    ursave(:,:,nsteps) = la;
+  end
+  
+  t=T-dt;
+# sensitivity (no contribution from t=T because lambda(T)=0
+#  pa = (10*(t/T)^3 - 15*(t/T)^4 + 6*(t/T)^5); 
+  pa = pad(1,nsteps); # T - dt
+  amat_psi = I * pa * H1 * u; 
+
+  for c=1:N
+    cu_sp(c) = dt*real(dot(amat_psi(:,c), la(:,c)));
+  end
+
+  ca1_adj = ca1_adj + cu_sp;
+  
+# backwards time stepping  
+  for step=nsteps-1:-1:1
+#    poly = a1*(10*(t/T)^3 - 15*(t/T)^4 + 6*(t/T)^5);
+    poly = a1*pad(1,step+1);
+    um = up - 2*dt*I*(H0*u + poly*H1*u);
+# forcing for the adjoint equation depends on u=psi(t)
+    wgh = (10*(t/T)^3 - 15*(t/T)^4 + 6*(t/T)^5);
+    for c=1:N
+      adf(:,c) = 4*wgh* u(:,c).*( abs(u(:,c)).^2 - Utarget(:,c).^2 );
+    end
+# evolve the adjoint eqn
+    lam = lap - 2*dt*I*(H0*la + poly*H1*la) + 2*dt*adf;
+    
+# cycle variables
+    up = u;
+    u = um;
+    lap = la;
+    la = lam;
+
+    if (verbose)
+      ursave(:,:,step) = la;
+    end
+    t = t-dt;
+
+# sensitivity
+#    pa = (10*(t/T)^3 - 15*(t/T)^4 + 6*(t/T)^5);
+    pa = pad(1,step);
+    amat_psi = I * pa * H1 * u; 
+
+    for c=1:N
+      cu_sp(c) = dt*real(dot(amat_psi(:,c), la(:,c)));
+    end
+
+    ca1_adj = ca1_adj + cu_sp;
+    
+  end # backwards time stepping loop
+
+  ca1_adj = ca1_adj - 0.5*cu_sp; 
+  dcda_adj = sum(ca1_adj);
+  
+  printf("Adjoint calculation:\n");
+  printf("Parameter a1=%e, Total cost function c = %e, dc/da1 = %e\n", a1, cost, dcda_adj);
+  printf("dc/da1 components = [%e, %e, %e, %e]\n", ca1_adj(1), ca1_adj(2), ca1_adj(3), ca1_adj(4));
+  
 end
