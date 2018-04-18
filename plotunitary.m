@@ -37,8 +37,9 @@ function usave = plotunitary(us, verbose)
 # one figure for the response of each basis vector
   for q=1:N2
     figure(q);
-    plot(t, abs(us(1,q,:)), t, abs(us(2,q,:)), t, abs(us(3,q,:)), t, abs(us(4,q,:)));
-    legend("u0", "u1", "u2", "u3");
+    h=plot(t, abs(us(1,q,:)), t, abs(us(2,q,:)), t, abs(us(3,q,:)), t, abs(us(4,q,:)));
+    set(h,"linewidth",2);
+    legend("u0", "u1", "u2", "u3", "location", "north");
     tstr = sprintf("Resonse to initial data e%1d", q-1);
     title(tstr);
     xlabel("Time");

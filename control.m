@@ -36,9 +36,13 @@ function [cost, dcda_adj, ptot] = control(a1, verbose, cfl)
   
 # coefficients in H0
   d0 = 0;
-  d1 = 24.64579437;
-  d2 = 47.88054868;
-  d3 = 69.70426293;
+  d1 = 0;
+  d2 = -sqrt(2);
+  d3 = -4.23312017;
+  ## d0 = 0;
+  ## d1 = 24.64579437;
+  ## d2 = 47.88054868;
+  ## d3 = 69.70426293;
 
   H0 = diag([d0, d1, d2, d3]);
 
@@ -91,14 +95,23 @@ function [cost, dcda_adj, ptot] = control(a1, verbose, cfl)
 #  pad(:, 1) = (10*(td./T).^3 - 15*(td./T).^4 + 6*(td./T).^5); # first polynomial
 # sum up all polynomial components
   ptot = pad*a1;
-  
+
+# form the weight function
+  tp = 0.5*T;
+  t0 = T;
+  tau = (td - t0)/tp;
+  mask = (tau >= -0.5 & tau <= 0.5);
+  wghf = 64*mask.*(0.5 + tau).^3 .* (0.5 - tau).^3;
+# old weight function
+#  wghf = (10*(td/T).^3 - 15*(td/T).^4 + 6*(td/T).^5);
+
 				# initial data and allocation of solution vectors
   u = U0;
   
 # Taylor expansion to t = -dt ( assumes H0 is indep of t)
   t = 0;
 
-  um = u - dt * I*H0*u + 0.5*dt^2 * (-H0*H0*u);
+  um = u - dt * I*(H0+ptot(1)*H1)*u + 0.5*dt^2 * (-(H0+ptot(1)*H1)*(H0+ptot(1)*H1)*u);
 # adding another term in the expansion generates more wiggles
 
   up = zeros(N,N);
@@ -151,15 +164,15 @@ function [cost, dcda_adj, ptot] = control(a1, verbose, cfl)
     t = t+dt;
 
     # accumulate cost function
-    wgh = (10*(t/T)^3 - 15*(t/T)^4 + 6*(t/T)^5);
+#    wgh = (10*(t/T)^3 - 15*(t/T)^4 + 6*(t/T)^5);
     for c=1:N
       delta = (abs(u(:,c)).^2 - Utarget(:,c).^2 ).^2;
-      beta(c) = dt*wgh*sum(delta);
+      beta(c) = dt*wghf(step+1)*sum(delta);
     end
     cfunc = cfunc + beta; 
 # sensitivity
     for c=1:N
-      cvect = wgh* u(:,c).*( abs(u(:,c)).^2 - Utarget(:,c).^2 );
+      cvect = wghf(step+1)* u(:,c).*( abs(u(:,c)).^2 - Utarget(:,c).^2 );
       cu_sp(c) = 4*dt*real(dot(cvect, ua(:,c)));
     end
     ca1 = ca1 + cu_sp;
@@ -183,8 +196,9 @@ function [cost, dcda_adj, ptot] = control(a1, verbose, cfl)
   if (verbose)
     plotunitary(usave);
     figure(5);
-    plot(td,ptot);
-    title("Time function p(t)");
+    plot(td, ptot, td, wghf);
+    legend("Forcing", "Weight", "location", "east")
+    title("Forcing and weight functions");
   end
 
 				# total cost function
@@ -208,9 +222,9 @@ function [cost, dcda_adj, ptot] = control(a1, verbose, cfl)
   adf = zeros(N,N);
   # forcing for the adjoint equation depends on u=psi(t)
   t = T;
-  wgh = (10*(t/T)^3 - 15*(t/T)^4 + 6*(t/T)^5);
+#  wgh = (10*(t/T)^3 - 15*(t/T)^4 + 6*(t/T)^5);
   for c=1:N
-    adf(:,c) = 4*wgh* u(:,c).*( abs(u(:,c)).^2 - Utarget(:,c).^2 );
+    adf(:,c) = 4*wghf(nsteps+1)* u(:,c).*( abs(u(:,c)).^2 - Utarget(:,c).^2 );
   end
 # improve compatibility of terminal conditions. Is this correct?
   la = dt*adf;
@@ -249,7 +263,7 @@ function [cost, dcda_adj, ptot] = control(a1, verbose, cfl)
 # forcing for the adjoint equation depends on u=psi(t)
     wgh = (10*(t/T)^3 - 15*(t/T)^4 + 6*(t/T)^5);
     for c=1:N
-      adf(:,c) = 4*wgh* u(:,c).*( abs(u(:,c)).^2 - Utarget(:,c).^2 );
+      adf(:,c) = 4*wghf(step+1)* u(:,c).*( abs(u(:,c)).^2 - Utarget(:,c).^2 );
     end
 # evolve the adjoint eqn
     lam = lap - 2*dt*I*(H0*la + pval*H1*la) + 2*dt*adf;
