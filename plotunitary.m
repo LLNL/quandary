@@ -8,10 +8,14 @@
 %
 % INPUT:
 %
-function usave = plotunitary(us)
+function usave = plotunitary(us, verbose)
   if nargin < 1
     printf("ERROR: no solution provided\n");
     return;
+  end
+
+  if nargin < 2
+    verbose=0;
   end
 
   T=20;
@@ -19,7 +23,9 @@ function usave = plotunitary(us)
   
   N1 = length(us(:,1,1));
   N2 = length(us(1,:,1));
-  printf("Data has dimensions %d x %d x %d\n", N1, N2, nsteps);
+  if verbose==1
+    printf("Data has dimensions %d x %d x %d\n", N1, N2, nsteps);
+  end
 
   if (N1 != N2)
     printf("ERROR: N1=%d and N2=%d must be equal!\n");

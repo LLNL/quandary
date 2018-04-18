@@ -4,7 +4,7 @@
 %
 % USAGE:
 % 
-% [cost, usave] = control(a1, verbose, cfl)
+% [cost, dcda] = control(a1, verbose, cfl)
 %
 % INPUT:
 % a1: amplitude of control function #1 (default = 1.0)
@@ -13,9 +13,10 @@
 %
 % OUTPUT:
 % cost: sum(cfunc): cost functional of the response
+% dcda: derivative of cost function wrt each parameter in a1
 % usave: Time histories of the 4 components of the wave function for the 4 initial data
 %
-function [cost, dcda_adj, ursave] = control(a1, verbose, cfl)
+function [cost, dcda_adj, ptot] = control(a1, verbose, cfl)
   
   if nargin < 1
     a1 = 1.0;
@@ -46,13 +47,20 @@ function [cost, dcda_adj, ursave] = control(a1, verbose, cfl)
 # first evaluate the polynomials on a coarse grid
   pad0 = timefunc(D, 100);
   ptot0 = pad0*a1;
-  pmax=max(abs(ptot0));
+  pmax=max(ptot0);
+  pmin=min(ptot0);
 
 # estimate largest eigenvalue
   H=H0+pmax*H1;
   lambda = eig(H);
-  maxeig = norm(lambda,"inf");
+  maxeig1 = norm(lambda,"inf");
 
+  H=H0+pmin*H1;
+  lambda = eig(H);
+  maxeig2 = norm(lambda,"inf");
+
+  maxeig = max(maxeig1, maxeig2);
+  
 # the basis for the initial data as a matrix
   U0=diag([1, 1, 1, 1]);
 
@@ -125,12 +133,10 @@ function [cost, dcda_adj, ursave] = control(a1, verbose, cfl)
   printf("Time step = %d, time = %e, energy = %e\n", step, t, energy/4);
 # cost function doesn't get a contribution from the initial data because the weight is zero
   for step=1:nsteps
-#    pval = a1*(10*(t/T)^3 - 15*(t/T)^4 + 6*(t/T)^5);
     pval = ptot(step);
     up = um + 2*dt*I*(H0*u + pval*H1*u);
-# sensitivity
-#    pa = (10*(t/T)^3 - 15*(t/T)^4 + 6*(t/T)^5);
-    pa = pad(step, 1);
+# sensitivity wrt parameter D
+    pa = pad(step, D);
     uap = uam + 2*dt*I*(H0*ua + pval*H1*ua + pa*H1*u); 
 
 # cycle variables
@@ -176,17 +182,21 @@ function [cost, dcda_adj, ursave] = control(a1, verbose, cfl)
 				# plot results
   if (verbose)
     plotunitary(usave);
+    figure(5);
+    plot(td,ptot);
+    title("Time function p(t)");
   end
 
 				# total cost function
   cost = sum(cfunc);
   dcda = sum(ca1);
-  printf("Forward calculation: Parameter:\n");
-  a1
-  printf("Total cost function c = %e, dc/da1 = %e\n", cost, dcda);
-  printf("Cost function components: [%e, %e, %e, %e]\n", ...
-	 cfunc(1), cfunc(2), cfunc(3), cfunc(4));
-  printf("dc/da1 components = [%e, %e, %e, %e]\n", ca1(1), ca1(2), ca1(3), ca1(4));
+  printf("Forward calculation: Parameter a1 =[ %e", a1(1));
+  for q=2:D
+    printf(", %e", a1(q));
+  end
+  printf(" ]\n");
+  printf("Total cost function c = %e, sum[%e, %e, %e, %e]\n", cost, cfunc(1), cfunc(2), cfunc(3), cfunc(4));
+  printf("dcda(%d) = %e, sum[%e, %e, %e, %e]\n", D, dcda, ca1(1), ca1(2), ca1(3), ca1(4));
 
 # now compute the derivative of the cost function by solving the forwards problem
 # backwards together with the adjoint problem
@@ -210,25 +220,26 @@ function [cost, dcda_adj, ursave] = control(a1, verbose, cfl)
   up = u;
   u = um;
 
-  ca1_adj = zeros(N,1);
+  ca1_adj = zeros(N,D);
+  apla_sp = zeros(N,D);
 
-  if (verbose)
-    ursave = zeros(N,N,nsteps+1);
-    ursave(:,:,nsteps+1) = lap;
-    ursave(:,:,nsteps) = la;
-  end
+  ## if (verbose)
+  ##   ursave = zeros(N,N,nsteps+1);
+  ##   ursave(:,:,nsteps+1) = lap;
+  ##   ursave(:,:,nsteps) = la;
+  ## end
   
   t=T-dt;
 # sensitivity (no contribution from t=T because lambda(T)=0
-#  pa = (10*(t/T)^3 - 15*(t/T)^4 + 6*(t/T)^5); 
-  pa = pad(nsteps, 1); # T - dt
-  amat_psi = I * pa * H1 * u; 
+  for q=1:D
+    pa = pad(nsteps, q); # T - dt
+    amat_psi = I * pa * H1 * u; 
 
-  for c=1:N
-    cu_sp(c) = dt*real(dot(amat_psi(:,c), la(:,c)));
-  end
-
-  ca1_adj = ca1_adj + cu_sp;
+    for c=1:N
+      apla_sp(c,q) = dt*real(dot(amat_psi(:,c), la(:,c)));
+    end
+  end #for
+  ca1_adj = ca1_adj + apla_sp;
   
 # backwards time stepping  
   for step=nsteps-1:-1:1
@@ -249,28 +260,30 @@ function [cost, dcda_adj, ursave] = control(a1, verbose, cfl)
     lap = la;
     la = lam;
 
-    if (verbose)
-      ursave(:,:,step) = la;
-    end
+    ## if (verbose)
+    ##   ursave(:,:,step) = la;
+    ## end
     t = t-dt;
 
 # sensitivity
-#    pa = (10*(t/T)^3 - 15*(t/T)^4 + 6*(t/T)^5);
-    pa = pad(step, 1);
-    amat_psi = I * pa * H1 * u; 
+    for q=1:D
+      pa = pad(step, q);
+      amat_psi = I * pa * H1 * u; 
 
-    for c=1:N
-      cu_sp(c) = dt*real(dot(amat_psi(:,c), la(:,c)));
-    end
-
-    ca1_adj = ca1_adj + cu_sp;
+      for c=1:N
+	apla_sp(c,q) = dt*real(dot(amat_psi(:,c), la(:,c)));
+      end
+    end #for
+    ca1_adj = ca1_adj + apla_sp;
     
   end # backwards time stepping loop
 
-  ca1_adj = ca1_adj - 0.5*cu_sp; 
-  dcda_adj = sum(ca1_adj);
+  ca1_adj = ca1_adj - 0.5*apla_sp; 
+  dcda_adj = sum(ca1_adj,1);
   
   printf("Adjoint calculation:\n");
-  printf("dc/da1 components = [%e, %e, %e, %e]\n", ca1_adj(1), ca1_adj(2), ca1_adj(3), ca1_adj(4));
-  
+  for q=1:D
+    printf("dcda(%d) = %e, sum[%e, %e, %e, %e]\n", q, dcda_adj(q), ca1_adj(1,q), ca1_adj(2,q), ca1_adj(3,q), ca1_adj(4,q));
+  end
+
 end
