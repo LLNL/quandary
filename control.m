@@ -37,7 +37,7 @@ function [cost, dcda_adj, ptot] = control(a1, verbose, cfl)
 # coefficients in H0
   d0 = 0;
   d1 = 0;
-  d2 = -sqrt(2);
+  d2 = -1.41104006;
   d3 = -4.23312017;
   ## d0 = 0;
   ## d1 = 24.64579437;
@@ -46,7 +46,10 @@ function [cost, dcda_adj, ptot] = control(a1, verbose, cfl)
 
   H0 = diag([d0, d1, d2, d3]);
 
-  H1 = [0, 1, 0, 0; 1, 0, sqrt(2), 0; 0, sqrt(2), 0, sqrt(3); 0, 0, sqrt(3), 0];
+  H1 = [0, 1, 0, 0;
+	1, 0, sqrt(2), 0;
+	0, sqrt(2), 0, sqrt(3);
+	0, 0, sqrt(3), 0];
 
 # first evaluate the polynomials on a coarse grid
   pad0 = timefunc(D, 100);
@@ -195,10 +198,18 @@ function [cost, dcda_adj, ptot] = control(a1, verbose, cfl)
 				# plot results
   if (verbose)
     plotunitary(usave);
+    
     figure(5);
-    plot(td, ptot, td, wghf);
-    legend("Forcing", "Weight", "location", "east")
-    title("Forcing and weight functions");
+    subplot(2,1,1);
+    h=plot(td, ptot);
+    set(h,"linewidth",2);
+    title("Forcing function");
+
+    subplot(2,1,2);
+    h = plot(td, wghf);
+    set(h,"linewidth",2);
+    title("Weight function");
+
   end
 
 				# total cost function
