@@ -17,6 +17,8 @@
 % usave: Time histories of the 4 components of the wave function for the 4 initial data
 %
 function [cost, dcda_adj, ptot] = control(a1, verbose, cfl)
+
+  abs_or_real=0; # plot the abs of the solution (1 for real)
   
   if nargin < 1
     a1 = 1.0;
@@ -35,36 +37,67 @@ function [cost, dcda_adj, ptot] = control(a1, verbose, cfl)
   D = length(a1); # parameter dimension
   
 # coefficients in H0
-  d0 = 0;
-  d1 = 0;
-  d2 = -1.41104006;
-  d3 = -4.23312017;
   ## d0 = 0;
-  ## d1 = 24.64579437;
-  ## d2 = 47.88054868;
-  ## d3 = 69.70426293;
+  ## d1 = 0;
+  ## d2 = -1.41104006;
+  ## d3 = -4.23312017;
+  d0 = 0;
+  d1 = 24.64579437;
+  d2 = 47.88054868;
+  d3 = 69.70426293;
 
-  H0 = diag([d0, d1, d2, d3]);
+				# transformation matrix
+  r0 = 0;
+  r1 = 0;
+  r2 = 0;
+  r3 = 0;
+  ## r0 = 0;
+  ## r1 = d1;
+  ## r2 = d2;
+  ## r3 = d3;
+  
+  R = diag([r0, r1, r2, r3]);
+  
+  H0 = diag([d0, d1, d2, d3]) - R;
 
   H1 = [0, 1, 0, 0;
 	1, 0, sqrt(2), 0;
 	0, sqrt(2), 0, sqrt(3);
 	0, 0, sqrt(3), 0];
 
+# final time
+  T = 20;
 # first evaluate the polynomials on a coarse grid
   pad0 = timefunc(D, 100);
   ptot0 = pad0*a1;
-  pmax=max(ptot0);
-  pmin=min(ptot0);
+  [pmax imax] = max(ptot0);
+  [pmin imin] = min(ptot0);
 
 # estimate largest eigenvalue
-  H=H0+pmax*H1;
+  t = (imax-1)/100 * T;
+  Hc = diag([exp(-I*r0*t), exp(-I*r1*t), exp(-I*r2*t), exp(-I*r3*t)]) * H1 * ...
+       diag([exp(I*r0*t), exp(I*r1*t), exp(I*r2*t), exp(I*r3*t)]);
+
+  H=H0+pmax*Hc;
   lambda = eig(H);
   maxeig1 = norm(lambda,"inf");
+  if (verbose)
+    printf("(t, pmax, maxeig) = (%e, %e, %e)\n", t, pmax, maxeig1);
+  end
 
-  H=H0+pmin*H1;
+  t = (imin-1)/100 * T;
+  Hc = diag([exp(-I*r0*t), exp(-I*r1*t), exp(-I*r2*t), exp(-I*r3*t)]) * H1 * ...
+       diag([exp(I*r0*t), exp(I*r1*t), exp(I*r2*t), exp(I*r3*t)]);
+
+  H=H0+pmin*Hc;
   lambda = eig(H);
   maxeig2 = norm(lambda,"inf");
+  if (verbose)
+    printf("(t, pmin, maxeig) = (%e, %e, %e)\n", t, pmin, maxeig2);
+  end
+
+# tmp
+#  return
 
   maxeig = max(maxeig1, maxeig2);
   
@@ -72,11 +105,7 @@ function [cost, dcda_adj, ptot] = control(a1, verbose, cfl)
   U0=diag([1, 1, 1, 1]);
 
 				# Target state at t=20
-  Utarget = ...
-  [0, 1, 0, 0; ...
-   1, 0, 0, 0; ...
-   0, 0, 1, 0; ...
-   0, 0, 0, 1];
+  Utarget = [0, 1, 0, 0;    1, 0, 0, 0;   0, 0, 1, 0;  0, 0, 0, 1];
 
   cfunc = zeros(N,1);
   beta = zeros(N,1);
@@ -84,7 +113,6 @@ function [cost, dcda_adj, ptot] = control(a1, verbose, cfl)
   ca1 = zeros(N,1);
   vect = zeros(N,1);
 				# Final time T
-  T = 20;
   dt = cfl/maxeig; # largest eigenvalue of H0 = d3, H0+poly*H1 estimated by maxeig
   nsteps = ceil(T/dt);
   dt = T/nsteps;
@@ -112,9 +140,12 @@ function [cost, dcda_adj, ptot] = control(a1, verbose, cfl)
   u = U0;
   
 # Taylor expansion to t = -dt ( assumes H0 is indep of t)
-  t = 0;
 
-  um = u - dt * I*(H0+ptot(1)*H1)*u + 0.5*dt^2 * (-(H0+ptot(1)*H1)*(H0+ptot(1)*H1)*u);
+# the Hc term doesn't make any difference because ptot(1)=0
+  Hc = diag([exp(-I*r0*t), exp(-I*r1*t), exp(-I*r2*t), exp(-I*r3*t)]) * H1 * ...
+       diag([exp(I*r0*t), exp(I*r1*t), exp(I*r2*t), exp(I*r3*t)]);
+
+  um = u - dt * I*(H0)*u + 0.5*dt^2 * (-(H0)*(H0)*u);
 # adding another term in the expansion generates more wiggles
 
   up = zeros(N,N);
@@ -150,10 +181,12 @@ function [cost, dcda_adj, ptot] = control(a1, verbose, cfl)
 # cost function doesn't get a contribution from the initial data because the weight is zero
   for step=1:nsteps
     pval = ptot(step);
-    up = um + 2*dt*I*(H0*u + pval*H1*u);
+    Hc = diag([exp(-I*r0*t), exp(-I*r1*t), exp(-I*r2*t), exp(-I*r3*t)]) * H1 * ...
+	 diag([exp(I*r0*t), exp(I*r1*t), exp(I*r2*t), exp(I*r3*t)]);
+    up = um + 2*dt*I*(H0*u + pval*Hc*u);
 # sensitivity wrt parameter D
     pa = pad(step, D);
-    uap = uam + 2*dt*I*(H0*ua + pval*H1*ua + pa*H1*u); 
+    uap = uam + 2*dt*I*(H0*ua + pval*Hc*ua + pa*Hc*u); 
 
 # cycle variables
     um = u;
@@ -197,7 +230,7 @@ function [cost, dcda_adj, ptot] = control(a1, verbose, cfl)
 
 				# plot results
   if (verbose)
-    plotunitary(usave);
+    plotunitary(usave, abs_or_real);
     
     figure(5);
     subplot(2,1,1);
@@ -233,13 +266,11 @@ function [cost, dcda_adj, ptot] = control(a1, verbose, cfl)
   adf = zeros(N,N);
   # forcing for the adjoint equation depends on u=psi(t)
   t = T;
-#  wgh = (10*(t/T)^3 - 15*(t/T)^4 + 6*(t/T)^5);
   for c=1:N
     adf(:,c) = 4*wghf(nsteps+1)* u(:,c).*( abs(u(:,c)).^2 - Utarget(:,c).^2 );
   end
 # improve compatibility of terminal conditions. Is this correct?
   la = dt*adf;
-#  la = zeros(N,N);
   
 # cycle local arrays to get ready for reverse time stepping  
   up = u;
@@ -255,10 +286,13 @@ function [cost, dcda_adj, ptot] = control(a1, verbose, cfl)
   ## end
   
   t=T-dt;
+  Hc = diag([exp(-I*r0*t), exp(-I*r1*t), exp(-I*r2*t), exp(-I*r3*t)]) * H1 * ...
+       diag([exp(I*r0*t), exp(I*r1*t), exp(I*r2*t), exp(I*r3*t)]);
+
 # sensitivity (no contribution from t=T because lambda(T)=0
   for q=1:D
     pa = pad(nsteps, q); # T - dt
-    amat_psi = I * pa * H1 * u; 
+    amat_psi = I * pa * Hc * u; 
 
     for c=1:N
       apla_sp(c,q) = dt*real(dot(amat_psi(:,c), la(:,c)));
@@ -268,16 +302,15 @@ function [cost, dcda_adj, ptot] = control(a1, verbose, cfl)
   
 # backwards time stepping  
   for step=nsteps-1:-1:1
-#    pval = a1*(10*(t/T)^3 - 15*(t/T)^4 + 6*(t/T)^5);
     pval = ptot(step+1);
-    um = up - 2*dt*I*(H0*u + pval*H1*u);
+    um = up - 2*dt*I*(H0*u + pval*Hc*u); # Hc(T-dt) computed above for the first step
 # forcing for the adjoint equation depends on u=psi(t)
     wgh = (10*(t/T)^3 - 15*(t/T)^4 + 6*(t/T)^5);
     for c=1:N
       adf(:,c) = 4*wghf(step+1)* u(:,c).*( abs(u(:,c)).^2 - Utarget(:,c).^2 );
     end
 # evolve the adjoint eqn
-    lam = lap - 2*dt*I*(H0*la + pval*H1*la) + 2*dt*adf;
+    lam = lap - 2*dt*I*(H0*la + pval*Hc*la) + 2*dt*adf;
     
 # cycle variables
     up = u;
@@ -290,10 +323,14 @@ function [cost, dcda_adj, ptot] = control(a1, verbose, cfl)
     ## end
     t = t-dt;
 
-# sensitivity
+# update Hc
+    Hc = diag([exp(-I*r0*t), exp(-I*r1*t), exp(-I*r2*t), exp(-I*r3*t)]) * H1 * ...
+	 diag([exp(I*r0*t), exp(I*r1*t), exp(I*r2*t), exp(I*r3*t)]);
+
+# sensitivity:
     for q=1:D
       pa = pad(step, q);
-      amat_psi = I * pa * H1 * u; 
+      amat_psi = I * pa * Hc * u; 
 
       for c=1:N
 	apla_sp(c,q) = dt*real(dot(amat_psi(:,c), la(:,c)));

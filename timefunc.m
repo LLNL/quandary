@@ -16,6 +16,8 @@
 % pd: 1-D array of P(td, a1)
 %
 function  [pad, td] = timefunc(D, nsteps, verbose)
+
+  d1 = 24.64579437;
   
   if nargin < 1
     D=1;
@@ -60,7 +62,8 @@ function  [pad, td] = timefunc(D, nsteps, verbose)
     end
     tau = (td - t0)/tp;
     mask = (tau >= -0.5 & tau <= 0.5);
-    pad(:,q) = 64*mask.*(0.5 + tau).^3 .* (0.5 - tau).^3;
+#    pad(:,q) = 64*mask.*(0.5 + tau).^3 .* (0.5 - tau).^3;
+    pad(:,q) = 64*mask.*(0.5 + tau).^3 .* (0.5 - tau).^3 .*cos(d1*td);
   end # for
 
 end
