@@ -37,7 +37,7 @@ function  [pad, td] = timefunc(D, nsteps, verbose)
   end
   
 # Final time T
-  T = 20;
+  T = 15;
   td = linspace(0, T, nsteps+1)'; # column vector
   dt = td(2)-td(1);
   if (verbose==1)

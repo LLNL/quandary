@@ -8,17 +8,20 @@
 %
 % INPUT:
 %
-function usave = plotunitary(us, mode)
+function usave = plotunitary(us, T, mode)
   if nargin < 1
     printf("ERROR: no solution provided\n");
     return;
   end
 
   if nargin < 2
+    T=15;
+  end
+
+  if nargin < 3
     mode=0; # abs
   end
 
-  T=20;
   nsteps = length(us(1,1,:));
   
   N1 = length(us(:,1,1));
