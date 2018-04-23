@@ -20,6 +20,8 @@ function [cost, dcda_adj, ptot] = control(a1, verbose, cfl)
 
   abs_or_real=0; # plot the abs of the solution (1 for real)
   
+  wcoeff = 0.01; # for response to e2 and e3
+  
   if nargin < 1
     a1 = 1.0;
   end
@@ -120,7 +122,7 @@ function [cost, dcda_adj, ptot] = control(a1, verbose, cfl)
 	 T, nsteps, maxeig, cfl, dt);
 
 		# evaluate the polynomials at the discrete time levels
-  td = linspace(0,T,nsteps+1)'; # column vector
+  td = linspace(0,T,nsteps+1)'; # transpose to get a column vector
 # evaluate all polynomials on the grid
   pad = timefunc(D, nsteps);
 #  pad(:, 1) = (10*(td./T).^3 - 15*(td./T).^4 + 6*(td./T).^5); # first polynomial
@@ -128,13 +130,19 @@ function [cost, dcda_adj, ptot] = control(a1, verbose, cfl)
   ptot = pad*a1;
 
 # form the weight function
-  tp = 0.5*T;
+  tp = 0.125*T;
   t0 = T;
   tau = (td - t0)/tp;
   mask = (tau >= -0.5 & tau <= 0.5);
-  wghf = 64*mask.*(0.5 + tau).^3 .* (0.5 - tau).^3;
-# old weight function
-#  wghf = (10*(td/T).^3 - 15*(td/T).^4 + 6*(td/T).^5);
+# for response to e0 and e1
+  wghf1 = 64*mask.*(0.5 + tau).^3 .* (0.5 - tau).^3;
+
+# different weight functions for different components
+  wghf = zeros(nsteps+1,N);
+  wghf(:,1) = wghf1;
+  wghf(:,2) = wghf1;
+  wghf(:,3) = (1-wconst)*wghf1+wconst;
+  wghf(:,4) = (1-wconst)*wghf1+wconst;
 
 				# initial data and allocation of solution vectors
   u = U0;
@@ -203,12 +211,12 @@ function [cost, dcda_adj, ptot] = control(a1, verbose, cfl)
 #    wgh = (10*(t/T)^3 - 15*(t/T)^4 + 6*(t/T)^5);
     for c=1:N
       delta = (abs(u(:,c)).^2 - Utarget(:,c).^2 ).^2;
-      beta(c) = dt*wghf(step+1)*sum(delta);
+      beta(c) = dt*wghf(step+1,c)*sum(delta);
     end
     cfunc = cfunc + beta; 
 # sensitivity
     for c=1:N
-      cvect = wghf(step+1)* u(:,c).*( abs(u(:,c)).^2 - Utarget(:,c).^2 );
+      cvect = wghf(step+1,c)* u(:,c).*( abs(u(:,c)).^2 - Utarget(:,c).^2 );
       cu_sp(c) = 4*dt*real(dot(cvect, ua(:,c)));
     end
     ca1 = ca1 + cu_sp;
@@ -239,9 +247,10 @@ function [cost, dcda_adj, ptot] = control(a1, verbose, cfl)
     title("Forcing function");
 
     subplot(2,1,2);
-    h = plot(td, wghf);
+    h = plot(td, wghf(:,1), td, wghf(:,3));
     set(h,"linewidth",2);
     title("Weight function");
+    legend("e0 & e1", "e2 & e3","location","north");
 
   end
 
@@ -267,7 +276,7 @@ function [cost, dcda_adj, ptot] = control(a1, verbose, cfl)
   # forcing for the adjoint equation depends on u=psi(t)
   t = T;
   for c=1:N
-    adf(:,c) = 4*wghf(nsteps+1)* u(:,c).*( abs(u(:,c)).^2 - Utarget(:,c).^2 );
+    adf(:,c) = 4*wghf(nsteps+1,c)* u(:,c).*( abs(u(:,c)).^2 - Utarget(:,c).^2 );
   end
 # improve compatibility of terminal conditions. Is this correct?
   la = dt*adf;
@@ -307,7 +316,7 @@ function [cost, dcda_adj, ptot] = control(a1, verbose, cfl)
 # forcing for the adjoint equation depends on u=psi(t)
     wgh = (10*(t/T)^3 - 15*(t/T)^4 + 6*(t/T)^5);
     for c=1:N
-      adf(:,c) = 4*wghf(step+1)* u(:,c).*( abs(u(:,c)).^2 - Utarget(:,c).^2 );
+      adf(:,c) = 4*wghf(step+1,c)* u(:,c).*( abs(u(:,c)).^2 - Utarget(:,c).^2 );
     end
 # evolve the adjoint eqn
     lam = lap - 2*dt*I*(H0*la + pval*Hc*la) + 2*dt*adf;

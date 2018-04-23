@@ -37,13 +37,14 @@ function usave = plotunitary(us, mode)
     figure(q);
     if (mode==1)
       h=plot(t, real(us(1,q,:)), t, real(us(2,q,:)), t, real(us(3,q,:)), t, real(us(4,q,:)));
+      legend("Re(u0)", "Re(u1)", "Re(u2)", "Re(u3)", "location", "east");
     else
-      h=plot(t, abs(us(1,q,:)), t, abs(us(2,q,:)), t, abs(us(3,q,:)), t, abs(us(4,q,:)));
+      h=plot(t, abs(us(1,q,:)).^2, t, abs(us(2,q,:)).^2, t, abs(us(3,q,:)).^2, t, abs(us(4,q,:)).^2);
+      legend("|u0|^2", "|u1|^2", "|u2|^2", "|u3|^2", "location", "east");
     end
     axis tight;
     set(h,"linewidth",2);
-    legend("u0", "u1", "u2", "u3", "location", "north");
-    tstr = sprintf("Resonse to initial data e%1d", q-1);
+    tstr = sprintf("Response to initial data e%1d", q-1);
     title(tstr);
     xlabel("Time");
   end

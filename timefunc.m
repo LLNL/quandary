@@ -31,8 +31,8 @@ function  [pad, td] = timefunc(D, nsteps, verbose)
     verbose = 0;
   end
 
-  if D>12
-    printf("The number of parameters D= %d exceeds 12 (not currently implemented)\n");
+  if D>26
+    printf("The number of parameters D= %d exceeds 26 (not currently implemented)\n");
     return;
   end
   
@@ -59,11 +59,15 @@ function  [pad, td] = timefunc(D, nsteps, verbose)
     elseif (q > 4 & q <= 11)
       tp = 0.25*T;
       t0 = 0.125*(q-4)*T;
+    elseif (q > 11 & q <= 26)
+      tp = 0.125*T;
+      t0 = 0.0625*(q-11)*T;
     end
     tau = (td - t0)/tp;
     mask = (tau >= -0.5 & tau <= 0.5);
 #    pad(:,q) = 64*mask.*(0.5 + tau).^3 .* (0.5 - tau).^3;
     pad(:,q) = 64*mask.*(0.5 + tau).^3 .* (0.5 - tau).^3 .*cos(d1*td);
+#    pad(:,q) = 64*mask.*(0.5 + tau).^3 .* (0.5 - tau).^3 .*sin(d1*td);
   end # for
 
 end
