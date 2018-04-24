@@ -205,17 +205,27 @@ function [cost ufinal] = objective(a1, verbose)
     figure(5);
     subplot(2,1,1);
     h=plot(td, ptot);
-    axis tight;
+    pmin = min(ptot);
+    pmax = max(ptot);
+    pdelta=pmax-pmin;
+    axis([0,T,pmin-0.1*pdelta,pmax+0.1*pdelta]);
     set(h,"linewidth",2);
     title("Forcing function");
 
     subplot(2,1,2);
-    h = plot(td, wghf(:,1), td, wghf(:,3));
-    axis tight;
-    set(h,"linewidth",2);
-    title("Weight function");
-    legend("e0 & e1", "e2 & e3","location","north");
-
+#    h = plot(td, wghf(:,1), td, wghf(:,3));
+#    axis tight;
+#    set(h,"linewidth",2);
+#    title("Weight function");
+#    legend("e0 & e1", "e2 & e3","location","north");
+    h = plot( [1:D/2], a1(1:2:end), "b*",  [1:D/2], a1(2:2:end), "r*");
+    set(h,"markersize",10);
+    amin = min(a1);
+    amax= max(a1);
+    adelta=amax-amin;
+    axis([0.5 D/2+0.5, amin-0.1*adelta, amax+0.1*adelta]);
+    legend("cos", "sin", "location", "east");
+    title("Parameters");
   end
 
 				# total cost function

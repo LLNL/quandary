@@ -43,7 +43,7 @@ function usave = plotunitary(us, T, mode)
       legend("Re(u0)", "Re(u1)", "Re(u2)", "Re(u3)", "location", "east");
     else
       h=plot(t, abs(us(1,q,:)).^2, t, abs(us(2,q,:)).^2, t, abs(us(3,q,:)).^2, t, abs(us(4,q,:)).^2);
-      legend("|u0|^2", "|u1|^2", "|u2|^2", "|u3|^2", "location", "east");
+      legend("|u_0|^2", "|u_1|^2", "|u_2|^2", "|u_3|^2", "location", "east");
     end
     axis tight;
     set(h,"linewidth",2);

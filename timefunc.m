@@ -20,7 +20,7 @@ function  [pad, td] = timefunc(D, nsteps, verbose)
   d1 = 24.64579437;
   
   if nargin < 1
-    D=1;
+    D=2;
   end
 
   if nargin < 2
@@ -31,8 +31,8 @@ function  [pad, td] = timefunc(D, nsteps, verbose)
     verbose = 0;
   end
 
-  if D>26
-    printf("The number of parameters D= %d exceeds 26 (not currently implemented)\n");
+  if D>26*2
+    printf("The number of parameters D= %d exceeds 52 (not currently implemented)\n");
     return;
   end
   
@@ -48,8 +48,7 @@ function  [pad, td] = timefunc(D, nsteps, verbose)
 
 # evaluate the polynomials at the discrete time levels
   pad = zeros(nsteps+1, D);
-#  pad(:, 1) = (10*(td./T).^3 - 15*(td./T).^4 + 6*(td./T).^5); # first polynomial
-  for q=1:D
+  for q=1:D/2
     if (q==1)
       tp = T;
       t0 = 0.5*T;
@@ -66,8 +65,8 @@ function  [pad, td] = timefunc(D, nsteps, verbose)
     tau = (td - t0)/tp;
     mask = (tau >= -0.5 & tau <= 0.5);
 #    pad(:,q) = 64*mask.*(0.5 + tau).^3 .* (0.5 - tau).^3;
-    pad(:,q) = 64*mask.*(0.5 + tau).^3 .* (0.5 - tau).^3 .*cos(d1*td);
-#    pad(:,q) = 64*mask.*(0.5 + tau).^3 .* (0.5 - tau).^3 .*sin(d1*td);
+    pad(:,2*q-1) = 64*mask.*(0.5 + tau).^3 .* (0.5 - tau).^3 .*cos(d1*td);
+    pad(:,2*q)    = 64*mask.*(0.5 + tau).^3 .* (0.5 - tau).^3 .*sin(d1*td);
   end # for
 
 end
