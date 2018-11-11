@@ -24,6 +24,6 @@ function [phi a0] = setup(verbose)
 
   phi=cell(2,1);
   phi{1} = @objective;
-  phi{2} = @gradient;
+  phi{2} = @gradient0;
   
 end

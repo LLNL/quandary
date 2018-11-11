@@ -1,10 +1,10 @@
 %-*-octave-*--
 %
-% gradient: compute the gradient of the objective function from quantum control theory
+% gradient0: compute the gradient of the objective function from quantum control theory
 %
 % USAGE:
 % 
-% [dcda] = gradient(a1)
+% [dcda] = gradient0(a1)
 %
 % INPUT:
 % a1: amplitude of control function #1 (default = 1.0)
@@ -13,7 +13,7 @@
 % cost: sum(cfunc): cost functional of the response
 % dcda: derivative of cost function wrt each parameter in a1
 %
-function [dcda_adj] = gradient(a1, verbose)
+function [dcda_adj] = gradient0(a1, verbose)
 
   abs_or_real=0; # plot the abs of the solution (1 for real)
 
