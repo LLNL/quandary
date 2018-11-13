@@ -14,12 +14,18 @@
 % u: solution vector at every time step
 %
 function [uTime] = hamsim(H, bvec, verbose, cfl)
-  filterTime = 1;
+  filterTime = 0;
+  firstOrder = 1;
+  leapFrog = 0;
+  magnus = 1;
   abs_or_real=0; # plot the abs of the solution (1 for real)
 
-  if nargin < 1
-    H = [4.5,-5.5; -5.5, 4.5];
-  end
+  U=[-1, -1; -1, 1]/sqrt(2);
+  Lambda=[-1 , 0; 0, 10];
+
+  H = U*Lambda*U';
+
+  H2 = H*H;
 
   if nargin < 2
     bvec = [2;1];
@@ -30,7 +36,7 @@ function [uTime] = hamsim(H, bvec, verbose, cfl)
   end
   
   if nargin < 4
-    cfl = 0.25;
+    cfl = 1;
   end
 
   [n1 n2] = size(H);
@@ -79,10 +85,11 @@ function [uTime] = hamsim(H, bvec, verbose, cfl)
 # initial data 
   uTime(:,1) = bvec;
   
-# 2nd order Taylor expansion to t = +dt
+# 3rd order Taylor expansion to t = +dt
+#  uTime(:,2) = bvec + dt * I * H *bvec - 0.5*dt^2 * (H2*bvec) ;
 
-  uTime(:,2) = bvec + dt * I * H *bvec - 0.5*dt^2 * (H*H*bvec) ;
-#  uTime(:,2) = bvec + dt * I * H *bvec - 0.5*dt^2 * (H*H*bvec) - I*(dt^3)/6 * H*H*H*bvec ;
+# 4th order Taylor expansion to t = +dt
+  uTime(:,2) = bvec + dt * I * H *bvec - 0.5*dt^2 * (H*H*bvec) - I*(dt^3)/6 * H*H*H*bvec ;
 # adding another term in the expansion generates more wiggles
 
 # for computing the energy
@@ -100,30 +107,102 @@ function [uTime] = hamsim(H, bvec, verbose, cfl)
     printf("Time step = %d, time = %e, energy = %e\n", step, t, energy);
   end # if verbose
 
-# time stepping loop, harmonic oscillator
+# time stepping loop, harmonic oscillator, 1st order formulation
 
-  for step=2:nsteps-1
-    uTime(:,step+1) = uTime(:,step-1) + 2*dt*I*(H*uTime(:,step));
+  if (firstOrder)
+    if (leapFrog)
+      for step=2:nsteps-1
+	uTime(:,step+1) = uTime(:,step-1) + 2*dt*I*(H*uTime(:,step));
 
-    t = t+dt;
+	t = t+dt;
+				# evaluate energy
+	if (verbose)
+	  if (mod(step,1000)==0 || step==nsteps-1)
+	    v1 = uTime(:,step+1) + uTime(:,step);
+	    v2 = uTime(:,step+1) - uTime(:,step);
+	    energy = 0.25*(norm(v1)^2 - norm(v2)^2);
 
-# evaluate energy
-    if (verbose)
-      if (mod(step,1000)==0 || step==nsteps-1)
-	v1 = uTime(:,step+1) + uTime(:,step);
-	v2 = uTime(:,step+1) - uTime(:,step);
-	energy = 0.25*(norm(v1)^2 - norm(v2)^2);
-
-	printf("Time step = %d, time = %e, energy = %e\n", step, t, energy);
+	    printf("Time step = %d, time = %e, energy = %e\n", step, t, energy);
+	  end
+	end # if verbose
+      end # time stepping loop
+    elseif (magnus)
+       expH = zeros(Nrow,Nrow);
+      for row=1:Nrow
+	expH(row,row) = exp(I*dt*Lambda(row,row));
       end
-    end # if verbose
-  end # time stepping loop
+      expH
+      for step=1:nsteps-1
+	uTime(:,step+1) = U*expH*U' * uTime(:,step);
 
+	t = t+dt;
+				# evaluate energy
+	if (verbose)
+	  if (mod(step,1000)==0 || step==nsteps-1)
+	    v1 = uTime(:,step+1) + uTime(:,step);
+	    v2 = uTime(:,step+1) - uTime(:,step);
+	    energy = 0.25*(norm(v1)^2 - norm(v2)^2);
+
+	    printf("Time step = %d, time = %e, energy = %e\n", step, t, energy);
+	  end
+	end # if verbose
+      end # time stepping loop
+    else
+				# RK-4
+      k1 = zeros(Nrow,1);
+      k2 = zeros(Nrow,1);
+      k3 = zeros(Nrow,1);
+      k4 = zeros(Nrow,1);
+      for step=1:nsteps-1
+	
+	k1 = I*H*uTime(:,step);
+	k2 = k1 + 0.5*dt*I*H*k1;
+	k3 = k1 + 0.5*dt*I*H*k2;
+	k4 = k1 + dt*I*H*k3;
+
+	uTime(:,step+1) = uTime(:,step) + dt/6 * (k1 + 2*k2 + 2*k3 + k4);
+	
+	t = t+dt;
+				# evaluate energy
+	if (verbose)
+	  if (mod(step,1000)==0 || step==nsteps-1)
+	    v1 = uTime(:,step+1) + uTime(:,step);
+	    v2 = uTime(:,step+1) - uTime(:,step);
+	    energy = 0.25*(norm(v1)^2 - norm(v2)^2);
+
+	    printf("Time step = %d, time = %e, energy = %e\n", step, t, energy);
+	  end
+	end # if verbose
+      end # time stepping loop
+    end # RK-4
+  else
+# second order formulation
+    dt2 = dt*dt;
+    for step=2:nsteps-1
+      uTime(:,step+1) = 2*uTime(:,step) - uTime(:,step-1) - dt2*H2*uTime(:,step);
+
+      t = t+dt;
+				# evaluate energy
+      if (verbose)
+	if (mod(step,1000)==0 || step==nsteps-1)
+	  v1 = uTime(:,step+1) + uTime(:,step);
+	  v2 = uTime(:,step+1) - uTime(:,step);
+	  energy = 0.25*(norm(v1)^2 - norm(v2)^2);
+
+	  printf("Time step = %d, time = %e, energy = %e\n", step, t, energy);
+	end
+      end # if verbose
+    end # time stepping loop
+  end
+  
   Tperiod = Tfinal+dt;
   df = 1/Tperiod;
   Nf = nsteps;
   td = dt*[0:nsteps-1];
 
+#  legend("u0", "u1","location","northeast");
+
+  
 # Filter the numerical solution to get rid of small high wavenumber oscillations
 % optionally filter
   if (filterTime)
@@ -135,18 +214,17 @@ function [uTime] = hamsim(H, bvec, verbose, cfl)
     end
 
     figure(3);
-    h = plot(td, uTime(1,:),'b', td, uFilt(1,:),'r--');
+    h = plot(td, uFilt(1,:),'b', td, uFilt(2,:),'r--');
     set(h,"linewidth",2);
-    title("Time domain");
-    legend("leap-frog", "Filtered");
-    uTime = uFilt;
+    title("Filtered Time domain");
+#    uTime = uFilt;
   end
   
 
 	     # Window the time response before Fourier transforming it
-#  wind = ones(1,nsteps);
+  wind = ones(1,nsteps);
 #  wind = sin(pi*td/Tperiod);
-  wind = exp(-( (td-0.5*Tperiod)/(0.5*Tperiod/4) ).^2);
+#  wind = exp(-( (td-0.5*Tperiod)/(0.5*Tperiod/4) ).^2);
   uWind = zeros(Nrow, nsteps);
   for (k=1:Nrow)
     uWind(k,:) = uTime(k,:).*wind;
@@ -163,10 +241,9 @@ function [uTime] = hamsim(H, bvec, verbose, cfl)
   
   if (verbose)
     figure(1);
-    h = plot(td,wind,'k',td, uWind(1,:),'b', td, uWind(2,:),'r--');
+    h = plot(td, wind, 'k', td, uWind(1,:),'b', td, uWind(2,:),'r--');
     set(h,"linewidth",2);
-    title("Time domain");
-    legend("window","u0", "u1","location","northeast");
+    title("Windowed, time domain");
 
     figure(2);
     h = semilogy( om, uAvg, 'm+');
@@ -174,7 +251,7 @@ function [uTime] = hamsim(H, bvec, verbose, cfl)
     set(h,"linewidth",2);
     set(h,"markersize",3);
     legend("SumSq(uOmega)");
-    title("Frequency domain");
+    title("Windowed, frequency domain");
     
   end
 
