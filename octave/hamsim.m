@@ -14,7 +14,6 @@
 % u: solution vector at every time step
 %
 function [uTime] = hamsim(H, bvec, verbose, cfl)
-  filterTime = 0;
   firstOrder = 1;
   leapFrog = 0;
   magnus = 1;
@@ -131,12 +130,13 @@ function [uTime] = hamsim(H, bvec, verbose, cfl)
       end # time stepping loop
     elseif (magnus)
        expH = zeros(Nrow,Nrow);
-      for row=1:Nrow
-	expH(row,row) = exp(I*dt*Lambda(row,row));
-      end
-#      expH
+      ## for row=1:Nrow
+      ## 	expH(row,row) = exp(I*dt*Lambda(row,row));
+      ## end
+      expH = expm(I*dt*H);
       for step=1:nsteps-1
-	uTime(:,step+1) = U*expH*U' * uTime(:,step);
+#	uTime(:,step+1) = U*expH*U' * uTime(:,step);
+	uTime(:,step+1) = expH * uTime(:,step);
 
 	t = t+dt;
 				# evaluate energy
@@ -208,25 +208,6 @@ function [uTime] = hamsim(H, bvec, verbose, cfl)
 
 #  legend("u0", "u1","location","northeast");
 
-  
-# Filter the numerical solution to get rid of small high wavenumber oscillations
-% optionally filter
-  if (filterTime)
-    fc = 0.5*Nf;
-    [b a]=mybutter2(2*dt*fc);
-    uFilt = zeros(Nrow,nsteps);
-    for k=1:Nrow
-      uFilt(k,:)= myfiltfilt(b,a,uTime(k,:));
-    end
-
-    figure(3);
-    h = plot(td, uFilt(1,:),'b', td, uFilt(2,:),'r-');
-    set(h,"linewidth",1.5);
-    title("Filtered Time domain");
-#    uTime = uFilt;
-  end
-  
-
 	     # Window the time response before Fourier transforming it
 #  wind = ones(1,nsteps);
   wind = sin(pi*td/Tperiod);
@@ -256,7 +237,16 @@ function [uTime] = hamsim(H, bvec, verbose, cfl)
 
   for q=1:numMaxPnts
     printf("Max at q=%d, freq(q)=%e\n", maxPnts(q), om(maxPnts(q)));
-    printf("uOmega: "); uOmega(:,maxPnts(q))
+    amp = uOmega(:,maxPnts(q));
+				# try to normalize the vector
+# scale vector by first element
+    fact = amp(1);
+    amp = amp/fact;
+    nrm = norm(amp);
+    printf("Scaled and normalized uOmega: ");
+    amp = amp./(nrm)
+#    printf("uOmega: "); amp
+    printf("U' uOmega: "); U' * amp
   end
 
 				# try to reconstruct the time function
