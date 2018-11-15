@@ -1,0 +1,77 @@
+\documentclass{beamer}
+\usepackage{amsmath, graphicx, listings, color}
+
+%% \setlength{\topmargin}{0 mm}
+%% \setlength{\oddsidemargin}{5 mm}
+%% \setlength{\evensidemargin}{5 mm}
+%% \setlength{\textwidth}{150 mm}
+%% \setlength{\textheight}{210 mm}
+
+\include{bmacros}
+\title{The adjoint method and the trace objective function}
+\author{N. Anders Petersson}
+\institute{Lawrence Livermore National Laboratory\footnote{LLNL-PRES-abcdef;
+This work was performed under the auspices of the U.S. Department of
+Energy by Lawrence Livermore National Laboratory under Contract DE-AC52-07NA27344. Lawrence Livermore National Security, LLC.}}
+\date{\today}
+
+\begin{document}
+
+\lstset{
+  caption=\lstname, captionpos=t, frame=single, basicstyle=\ttfamily\scriptsize,
+  columns=fullflexible, keywordstyle=\color{blue},
+  commentstyle=\color{red}, stringstyle=\color{gray},
+  showspaces=false,
+  showstringspaces=false, breaklines=true
+}
+\renewcommand\lstlistingname{File}
+\renewcommand{\thelstlisting}{}
+%%%%%%%%%%%%%%%
+\frame{\titlepage}
+
+%%%%%%%%%%%%%%%
+\begin{frame}{The objective functional}
+ Desired target gate after time $T$,
+ \[
+ \Psib^t(T):=\left[ \db_0, \db_1,\ldots, \db_{D-1}\right]=: G_t,\ G_t^* G_t=I.
+ \]
+ Time-dependent weight function ($0\leq w(t) \leq 1$, $w(T)=1$),
+ \[
+ G_t(t) = w(t)G_t = w(t)\left[ \db_0, \db_1,\ldots, \db_{D-1}\right]
+ \]
+ The control parameters $\alphab$ give the state
+  \[
+  \Psib^\alpha(t) = \left[ \Psi^\alpha_0(t), \Psi^\alpha_1(t),\ldots, \Psi^\alpha_{D-1}(t)\right] = G_\alpha(t).
+  \]
+  The distance between $G_\alpha(t)$ and $G_t(t)$, in weighted trace norm
+  \[
+  g_2(\Psib^\alpha) =  \int_0^T \left(
+  1 - \frac{1}{D^2} S(\tau)\bar{S}(\tau)\right) \, d\tau,
+  \]
+  where,
+  \[
+  S(\tau) = \left( \sum_{j=0}^{D-1}\langle \Psi^\alpha_j(\tau), w(\tau)\db_j\rangle \right)
+  \]
+\end{frame}
+
+\begin{frame}{The gradient}
+  \begin{multline*}
+  \frac{\p g_2}{\p \alpha_k} = -\frac{2}{D^2} {\rm Re}\int_0^T
+  \frac{\p \bar{S}}{\p \alpha_k}(\tau) S(\tau) \, d\tau \\
+  =
+  %
+  -\frac{2}{D^2} {\rm Re}\int_0^T \sum_{j=0}^{D-1} \left\langle
+  w(\tau)\db_j,\frac{\Psi^\alpha_j}{\partial \alpha_k}(\tau)\right\rangle S(\tau)\, d\tau\\
+  %
+  =
+  -\frac{2}{D^2} {\rm Re} \sum_{j=0}^{D-1}  \int_0^T \left\langle
+  w(\tau)\bar{S}(\tau)\db_j,\frac{\Psi^\alpha_j}{\partial \alpha_k}(\tau)\right\rangle \, d\tau\\
+  \end{multline*}
+\end{frame}
+
+\begin{frame}{The adjoint relation}
+Bla
+\end{frame}
+
+\end{document}
+
