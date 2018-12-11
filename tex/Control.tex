@@ -109,15 +109,20 @@ Energy by Lawrence Livermore National Laboratory under Contract DE-AC52-07NA2734
   \]
   This operation can be described in matrix notation as
   \[
-  \vb = P \ub,\quad
-  P = \begin{pmatrix}
+  \vb = G \ub,\quad
+  %
+%  \vb = \begin{pmatrix}
+%    v_{00}\\ v_{01} \\ v_{10} \\ v_{11}
+%    \end{pmatrix}
+  %
+  G = \begin{pmatrix}
     0 & 1 & 0 & 0\\
     1 & 0 & 0 & 0\\
     0 & 0 & 1 & 0\\
     0 & 0 & 0 & 1
     \end{pmatrix}
   \]
-  Note that $P$ is unitary.
+  Note that $G$ is unitary.
 \end{frame}
 
 
@@ -138,7 +143,7 @@ Energy by Lawrence Livermore National Laboratory under Contract DE-AC52-07NA2734
   \dot{\Psi}_k = i(H_0 + p(t)H_c)\Psi_k,\quad
   t\in[0,T], \quad \Psi_k(0) = \eb_k,
   \]
-  for $k=1,2,3,4$, where $\Psi_k \in {\mathbb C}^4$ and 
+  for $k=0,1,2,3$, where $\eb_k$ is the $k^{th}$ unit vector, $\Psi_k \in {\mathbb C}^4$, and 
   \[
   H_0=\mbox{diag$(0, \omega_1, \omega_2, \omega_3)$},\quad
   H_c=\begin{pmatrix}
@@ -148,41 +153,42 @@ Energy by Lawrence Livermore National Laboratory under Contract DE-AC52-07NA2734
   0 & 0 & \sqrt{3}& 0
   \end{pmatrix}
   \]
-  The formal (unitary) solution operator is
+  The (unitary) solution operator is formally
   \[
-  \Psi_k(T) = U \eb_k,\quad
+  U = \exp\left(i \int_0^T\left(H_0 + p(\tau)H_c\right)\,d\tau\right),\quad
 %
-  U = e^{iH_0T} e^{i\int_0^T p(\tau)\,d\tau\, H_c}
+  \Psi_k(T) = U\, \eb_k.
   \]
-  Challenge: Determine the control function $p(t)$ such that $U=P$.
+  Challenge: Determine the control function $p(t)$ such that $U=G$.
 \end{frame}
 
 %%%%%%%%%%%%%%%%%%%%%%
 \begin{frame}{Optimization problem}
-  Expand the control function in a basis $p_k$,
+  Expand the control function in a basis $p_q(t)$,
   \[
-  p(t) = \sum_{k=1}^M \alpha_k p_k(t)
+  p(t) = \sum_{q=1}^M \alpha_q p_q(t)
   \]
-  Let $\db_k=P\eb_k$ be the target state.
+  Let $\db_k=G\eb_k$ be the target state.
 
   Minimize the functional
   \[
-  g(\Psi) = \sum_{k=1}^4 \int_0^T w_k(\tau) \left( |\Psi_k(\tau)|^2 -
-  |\db_k|^2\right)^2\, d\tau,\quad w_k(T) = 1,
+  g(\Psi) = \sum_{k=0}^3 \int_0^T w_k(\tau) \left( |\Psi_k(\tau)|^2 -
+  |\db_k|^2\right)^2\, d\tau,
   \]
   under the constraint that $\Psi_k$ satisfies the above ODE.
 \end{frame}
 
 %%%%%%%%%%%%%%%%%%%%%%
-\begin{frame}{Designing the control function}
+\begin{frame}{Designing the control and weight functions}
   The basis functions (induce resonance),
   \begin{align*}
     p_{2q-1}(t) = \cos(\omega_1 t) f_q(t),\\
     p_{2q}(t) = \sin(\omega_1 t) f_q(t).
   \end{align*}
-  The first 4 functions $f_q(t)$:
+  The first 4 functions $f_q(t)$ and the weight functions $w_k(t)$:
   \begin{figure}
-    \includegraphics[width=0.5\linewidth]{btf.pdf}
+    \includegraphics[width=0.45\linewidth]{basicTimeFunctions.pdf}\hspace{5mm}
+    \includegraphics[width=0.45\linewidth]{weight.pdf}
   \end{figure}
 \end{frame}
 
@@ -191,16 +197,41 @@ Energy by Lawrence Livermore National Laboratory under Contract DE-AC52-07NA2734
   \begin{itemize}
     \item Discretize the ODE by Leap-Frog (2nd order accurate, energy
       stable)
-    \item Evaluate cost function $g(\Psi)$ by solving the ODE for 4 initial conditions
+    \item Evaluate cost functional $g(\Psi)$ by solving the ODE for 4 initial conditions
     \item Evaluate gradient $\nabla_\alpha g$ by solving the ODE
-      forwards, backwards, together with the adjoint ODE
+      forwards and then backwards, together with the adjoint ODE
     \item Start with 1 parameter and do a line search for optima: $\alpha_{10}$
     \item For 2 parameters, start from $(\alpha_{10},0)$ and call {\bf
-      sqp} (sequential quadratic programming) in octave. New optima: $(\alpha{11},\alpha{21}$.
-    \item Add polynomials on next level, do an 8 parameter
-      optimization starting from previous $\alpha$.
+      sqp} (sequential quadratic programming) in octave. New optima: $(\alpha{11},\alpha{21})$.
+    \item Add next level polynomials, repeat optimization starting
+      from previous optima.
     \item Keep adding polynomials until cost function is sufficiently small.      
   \end{itemize}
 \end{frame}
+
+%%%%%%%%%%%%%%%%%%%%%%
+\begin{frame}{Control function with 4 polynomials}
+  \begin{figure}
+    \includegraphics[width=0.45\linewidth]{forcing.pdf}
+  \end{figure}
+  Resulting numerical ``solution operator''
+  \[\tiny
+  \widetilde{U} \approx \begin{pmatrix}
+4.12_{-2} + 2.31_{-2}i  & -4.20_{-1} + 9.03_{-1}i  & 2.14_{-2} -
+1.61_{-2}i  & -5.96_{-6} + 9.45_{-5}i\\
+%
+   5.73_{-1} + 8.18_{-1}i &  3.76_{-2} - 3.10_{-2}i &  5.38_{-2} -
+   1.70_{-2}i  & -5.78_{-4} + 2.95_{-4}i\\
+   %
+  -5.38_{-2} - 2.28_{-2}i &  5.00_{-3} - 2.38_{-2}i &  6.49_{-1} -
+  7.58_{-1}i  & -8.88_{-3} + 1.33_{-2}i \\
+  %
+   1.63_{-4} - 2.35_{-4}i  & 3.41_{-4} + 1.27_{-4}i &  8.42_{-3} +
+   1.40_{-2}i  &  6.16_{-1} + 7.87_{-1}i
+  \end{pmatrix}
+  \]
+  Only approximately unitary (time-integration errors).
+\end{frame}
+
 \end{document}
 

@@ -27,7 +27,8 @@ function [xvec] = hamsim(H, bvec, verbose, cfl)
   Lambda=[1 , 0; 0, 2];
 
   # final time
-  Tper = 100*2*pi;
+  Tper = 10*2*pi;
+#  Tper = 100*2*pi;
 
   H = U*Lambda*U';
 
@@ -195,14 +196,22 @@ function [xvec] = hamsim(H, bvec, verbose, cfl)
   printf("Exact solution:");
   xsol = H\bvec
 
+  figure(1);
+  h = plot(td, real(uWind(1,:)),'b', ...
+  	   td, real(uWind(2,:)),'r-');
+  set(h,"linewidth",1.5);
+  set(h,"markersize",3);
+  title("Real part of v, time domain");
+  xlabel("Time [s]");
+  legend("v^1","v^2");
   figure(3);
   h = semilogy( om, uAvg, 'm-');
     
   set(h,"linewidth",1.5);
   set(h,"markersize",3);
-  legend("SumSq(uOmega)");
+  legend("SumSq(vHat)");
   title("Fourier magnitude");
-  xlabel("Angular frequency");
+  xlabel("Angular frequency [rad/s]");
   
 				# try to reconstruct the time function
   ## uRec=zeros(Nrow, nsteps);

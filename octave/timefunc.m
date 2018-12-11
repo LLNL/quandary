@@ -13,7 +13,7 @@
 % OUTPUT:
 %
 % td: 1-D array of time values
-% pd: 1-D array of P(td, a1)
+% pad: 2-D array of P(nsteps+1, D)
 %
 function  [pad, td] = timefunc(D, nsteps, verbose)
 

@@ -53,7 +53,7 @@ where the function $d(t)$ is given. We want to find
 We define a scalar product for functions $u$ and $v$ in ${\mathbb C}^D \times [0,T]$,
 \[
 (u,v) = \int_0^T \langle u(\tau), v(\tau)\rangle\, d\tau,\quad \langle u, v\rangle =
-\sum_{j=1}^D \bar{u}_j v_j.
+\sum_{j=0}^{D-1} \bar{u}_j v_j.
 \]
 The functional \eqref{eq_func-simple} can then be written
 \[
@@ -225,16 +225,31 @@ c_3 = \sum_{j=0}^{D-1} |(G_\alpha - G_t)\eb_j|^2 = \sum_{j=0}^{D-1} \left| \Psi_
 \]
 We can generalize the $c_3$ functional to be
 \begin{equation}
-g_3(\Psib^\alpha) =  \sum_{j=0}^{D-1} \int_0^T w(\tau) \left| \Psi_j^\alpha(\tau) - \Psi_j^t(\tau)
-\right|^2\, d\tau,\quad w(t) \geq 0. 
+g_3(\Psib^\alpha) =  \sum_{j=0}^{D-1} \int_0^T w(\tau) \left| \Psi_j^\alpha(\tau) - d_j(\tau)
+\right|^2\, d\tau,\quad w(t) \geq 0,\quad d_j(t)=\Psi_j^t(t).
 \end{equation}
 Here, $w(t)$ is a weight function with $w(0)=0$, $w(T)=1$. It is monotonically increasing in time
-and localized near $t=T$. By defining $d_j(t)=\Psi_j^t(t)$, we see that this functional is a
+and localized near $t=T$. We note that this functional is a
 vectorized version of the simple functional \eqref{eq_func-simple}. The gradient of $g_3$ with
 respect to all components of $\alpha$ can therefore be calculated by solving one state and one
 adjoint wave equation for each $j$.
 
-The objective functionals that was implemented last spring is
+We can rewrite the $c_2$ functional \eqref{eq_trace-squared} using the same technique,
+\[
+c_2 = 1 - \frac{1}{D^2} \left( \sum_{j=0}^{D-1}\langle \Psi^\alpha_j(T), d_j(T)\rangle \right) \left(
+\sum_{j=0}^{D-1}\overline{\langle \Psi^\alpha_j(T), d_j(T)\rangle} \right),
+\]
+which can be generalized into
+\begin{equation}
+  g_2(\Psib^\alpha) =  \int_0^T w(\tau) \left(
+   1 - \frac{1}{D^2} \left( \sum_{j=0}^{D-1}\langle \Psi^\alpha_j(\tau), d_j(\tau)\rangle \right) \left(
+\sum_{j=0}^{D-1}\overline{\langle \Psi^\alpha_j(\tau), d_j(\tau)\rangle} \right)
+  \right)
+%  \left| \Psi_j^\alpha(\tau) - d_j(\tau)\right|^2
+  \, d\tau,
+\end{equation}
+
+The objective functional that was implemented last spring is
 \[
 g_4(\Psib^\alpha) := \sum_{j=0}^{D-1} \int_0^T w(\tau)  \left( |\Psi^\alpha_j(\tau)|^2 - |d_j(\tau)|^2 \right)^2\,
 d\tau,\quad w(t) \geq 0,
@@ -244,7 +259,7 @@ It does not consider the relative phases of $\Psi_j$ and would probably not be v
 \begin{remark}
 In many cases the absolute phase of the gate matrix is irrelevant. This means that the
 objective functional should be invariant to transformations $G_t \to \exp(i\beta) G_t$, for any real
-phase angle $\beta$.
+phase angle $\beta$. Of the functionals discussed above, only $g_2$ and $c_1$ satisfy that criteria.
 \end{remark}
 
 
