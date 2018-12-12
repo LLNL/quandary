@@ -4,7 +4,7 @@
 %
 % USAGE:
 % 
-% [pd, td] = timefunc(D, nsteps, verbose)
+% [pd, td] = basictimefunc(D, nsteps, verbose)
 %
 % INPUT:
 % D:  number of time functions
@@ -12,13 +12,11 @@
 %
 % OUTPUT:
 %
-% td: 1-D array of time values
-% pd: 1-D array of P(td, a1)
+% td(1:nsteps+1): 1-D array of time values
+% pd(1:nsteps+1, 1:D): 2-D array of P(td, a1)
 %
 function  [pad, td] = basictimefunc(D, nsteps, verbose)
 
-  d1 = 24.64579437;
-  
   if nargin < 1
     D=2;
   end
@@ -66,6 +64,7 @@ function  [pad, td] = basictimefunc(D, nsteps, verbose)
     tau = (td - t0)/tp;
     mask = (tau >= -0.5 & tau <= 0.5);
     pad(:,q) = 64*mask.*(0.5 + tau).^3 .* (0.5 - tau).^3;
+#  d1 = 24.64579437;
 #    pad(:,2*q-1) = 64*mask.*(0.5 + tau).^3 .* (0.5 - tau).^3 .*cos(d1*td);
 #    pad(:,2*q)    = 64*mask.*(0.5 + tau).^3 .* (0.5 - tau).^3 .*sin(d1*td);
   end # for

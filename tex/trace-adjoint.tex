@@ -30,48 +30,87 @@ Energy by Lawrence Livermore National Laboratory under Contract DE-AC52-07NA2734
 \frame{\titlepage}
 
 %%%%%%%%%%%%%%%
+\begin{frame}{The state equation}
+  The state equation for $\Psi_j^\alpha\in {\mathbb C}^{N}$ is
+  \[
+  \dot{\Psi}_j^\alpha + i H(t,\alpha)\Psi_j^\alpha = 0,\quad 0\leq t\leq T,\quad
+  \Psi_j^\alpha(0) = \eb_j,
+  \]
+  where the Hamiltonian matrix is $H(t,\alphab) = H_0 + p(t,\alphab)H_1 = H^*$.
+
+  The real-valued function $p(t,\alphab)$ depends on the parameters
+  \[
+  \alphab = [\alpha_0,\alpha_1,\ldots, \alpha_{D-1}]^T.
+  \]
+  The quantity $\Phi_{jk}^\alpha = \p \Psi_j^\alpha / \p \alpha_k$ satisfies
+  \[
+  \dot{\Phi}_{jk}^\alpha + iH(t,\alphab)\Phi_{jk}^\alpha = -i\frac{\p H(t,\alphab)}{\p
+    \alpha_k} \Psi_j^\alpha,\quad  \Phi_{jk}^\alpha(0) = 0,
+  \]
+  for $0\leq t\leq T$.
+\end{frame}
+
 \begin{frame}{The objective functional}
  Desired target gate after time $T$,
  \[
  \Psib^t(T):=\left[ \db_0, \db_1,\ldots, \db_{D-1}\right]=: G_t,\ G_t^* G_t=I.
  \]
- Time-dependent weight function ($0\leq w(t) \leq 1$, $w(T)=1$),
+ The control parameters $\alphab$ result in the state
  \[
- G_t(t) = w(t)G_t = w(t)\left[ \db_0, \db_1,\ldots, \db_{D-1}\right]
+ \Psib^\alpha(t) = \left[ \Psi^\alpha_0(t), \Psi^\alpha_1(t),\ldots, \Psi^\alpha_{D-1}(t)\right] = G_\alpha(t).
  \]
- The control parameters $\alphab$ give the state
-  \[
-  \Psib^\alpha(t) = \left[ \Psi^\alpha_0(t), \Psi^\alpha_1(t),\ldots, \Psi^\alpha_{D-1}(t)\right] = G_\alpha(t).
-  \]
-  The distance between $G_\alpha(t)$ and $G_t(t)$, in weighted trace norm
-  \[
-  g_2(\Psib^\alpha) =  \int_0^T \left(
-  1 - \frac{1}{D^2} S(\tau)\bar{S}(\tau)\right) \, d\tau,
-  \]
-  where,
-  \[
-  S(\tau) = \left( \sum_{j=0}^{D-1}\langle \Psi^\alpha_j(\tau), w(\tau)\db_j\rangle \right)
-  \]
+ The distance between $G_\alpha(t)$ and $G_t$, in weighted trace norm, with a weight function $0\leq w(t) \leq 1$, $w(0)=0$, $w(T)=1$,
+ \[
+ g_2(\Psib^\alpha) =  \int_0^T w(\tau) \left(
+ 1 - \frac{1}{D^2} S(\tau)\bar{S}(\tau)\right) \, d\tau,
+ \]
+where the gate fidelity is measured by projection
+ \[
+ S(\tau) =  \sum_{j=0}^{D-1}\langle \Psi^\alpha_j(\tau), \db_j\rangle.
+ \]
 \end{frame}
 
-\begin{frame}{The gradient}
+\begin{frame}{The gradient of the objective functional}
   \begin{multline*}
-  \frac{\p g_2}{\p \alpha_k} = -\frac{2}{D^2} {\rm Re}\int_0^T
+  \frac{\p g_2}{\p \alpha_k} = -\frac{2}{D^2} {\rm Re\!}\int_0^T w(\tau)
   \frac{\p \bar{S}}{\p \alpha_k}(\tau) S(\tau) \, d\tau \\
   =
   %
-  -\frac{2}{D^2} {\rm Re}\int_0^T \sum_{j=0}^{D-1} \left\langle
-  w(\tau)\db_j,\frac{\Psi^\alpha_j}{\partial \alpha_k}(\tau)\right\rangle S(\tau)\, d\tau\\
+  -\frac{2}{D^2} {\rm Re\!}\int_0^T w(\tau) \sum_{j=0}^{D-1}
+  %
+  \left\langle \db_j,\frac{\Psi^\alpha_j}{\partial \alpha_k}(\tau)\right\rangle S(\tau)\, d\tau\\
   %
   =
-  -\frac{2}{D^2} {\rm Re} \sum_{j=0}^{D-1}  \int_0^T \left\langle
-  w(\tau)\bar{S}(\tau)\db_j,\frac{\Psi^\alpha_j}{\partial \alpha_k}(\tau)\right\rangle \, d\tau\\
+  -\frac{2}{D^2} {\rm Re\!} \sum_{j=0}^{D-1}  \int_0^T  w(\tau) \left\langle
+  \bar{S}(\tau)\db_j,\frac{\Psi^\alpha_j}{\partial \alpha_k}(\tau)\right\rangle \, d\tau\\
+  %
+  =
+  -\frac{2}{D^2} {\rm Re\!} \sum_{j=0}^{D-1}  \int_0^T  w(\tau) \left\langle
+  \bar{S}(\tau)\db_j,\Phi_{jk}^\alpha(\tau)\right\rangle \, d\tau  
   \end{multline*}
+  where $\Phi_{jk}^\alpha = \p \Psi_j^\alpha / \p \alpha_k$.
 \end{frame}
 
 \begin{frame}{The adjoint relation}
-Bla
+ Let $\Phi = \p \Psi_j^\alpha / \p \alpha_k$. It satisfies the state equation
+ \[
+ \dot{\Phi} + i H(t,\alphab) \Phi = \fb(t), \quad \Phi(0) = 0.
+  \]
+  The adjoint equation is
+  \[
+  - \dot{\lambdab} - i H(t,\alphab) \lambdab = \hb(t),\quad \lambda(T) = 0.
+  \]
+  Note that the adjoint equation satisfies terminal conditions and is solved backwards in time,
+  $T\geq t \geq 0$.
+
+  The solution of the state equation, $\Phi$, with forcing function $\fb$ is related to the solution
+  of the adjoint equation, $\lambdab$, with forcing function $\hb$, through the adjoint relation,
+  \[
+  \int_0^T \langle \fb(\tau), \lambdab(\tau) \rangle\, d\tau =
+  \int_0^T \langle \Phi(\tau), \hb(\tau) \rangle\, d\tau.
+  \]
 \end{frame}
+
 
 \end{document}
 

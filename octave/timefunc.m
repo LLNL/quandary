@@ -7,13 +7,13 @@
 % [pd, td] = timefunc(D, nsteps, verbose)
 %
 % INPUT:
-% D:  number of time functions
+% D:  number of time functions (Must be EVEN >= 2)
 % nsteps: number of time steps (0,1,2,...,nsteps) (optional, default nsteps = 100)
 %
 % OUTPUT:
 %
-% td: 1-D array of time values
-% pad: 2-D array of P(nsteps+1, D)
+% td(1:nsteps+1): 1-D array of time values
+% pad(1:nsteps+1, 1:D): 2-D array of P(nsteps+1, D)
 %
 function  [pad, td] = timefunc(D, nsteps, verbose)
 
@@ -21,6 +21,11 @@ function  [pad, td] = timefunc(D, nsteps, verbose)
   
   if nargin < 1
     D=2;
+  end
+
+  if (mod(D,2) == 1)
+    printf("D=%d, is ODD\n", D);
+    return;
   end
 
   if nargin < 2
