@@ -36,11 +36,12 @@ Energy by Lawrence Livermore National Laboratory under Contract DE-AC52-07NA2734
   \dot{\Psi}_j^\alpha + i H(t,\alpha)\Psi_j^\alpha = 0,\quad 0\leq t\leq T,\quad
   \Psi_j^\alpha(0) = \eb_j,
   \]
-  where the Hamiltonian matrix is $H(t,\alphab) = H_0 + p(t,\alphab)H_1 = H^*$.
+  where the Hamiltonian matrix is $H(t,\alphab) = H_0 + p(t,\alphab)H_1 = H^*$ and $\eb_j$ is the
+  $j^{th}$ unit base vector.
 
-  The real-valued function $p(t,\alphab)$ depends on the parameters
+  The real-valued function $p(t,\alphab)$ depends on the control parameters
   \[
-  \alphab = [\alpha_0,\alpha_1,\ldots, \alpha_{D-1}]^T.
+  \alphab = [\alpha_1,\alpha_2,\ldots, \alpha_{D}]^T.
   \]
   The quantity $\Phi_{jk}^\alpha = \p \Psi_j^\alpha / \p \alpha_k$ satisfies
   \[
@@ -53,62 +54,86 @@ Energy by Lawrence Livermore National Laboratory under Contract DE-AC52-07NA2734
 \begin{frame}{The objective functional}
  Desired target gate after time $T$,
  \[
- \Psib^t(T):=\left[ \db_0, \db_1,\ldots, \db_{D-1}\right]=: G_t,\ G_t^* G_t=I.
+ \Psib^t(T):=\left[ \db_1, \db_2,\ldots, \db_{N}\right]=: G_t,\ G_t^* G_t=I.
  \]
  The control parameters $\alphab$ result in the state
  \[
- \Psib^\alpha(t) = \left[ \Psi^\alpha_0(t), \Psi^\alpha_1(t),\ldots, \Psi^\alpha_{D-1}(t)\right] = G_\alpha(t).
+ \Psib^\alpha(t) = \left[ \Psi^\alpha_1(t), \Psi^\alpha_2(t),\ldots, \Psi^\alpha_{N}(t)\right] = G_\alpha(t).
  \]
- The distance between $G_\alpha(t)$ and $G_t$, in weighted trace norm, with a weight function $0\leq w(t) \leq 1$, $w(0)=0$, $w(T)=1$,
+ The distance between $G_\alpha(t)$ and $G_t$, in a weighted norm, with a weight function $0\leq w(t) \leq 1$, $w(0)=0$, $w(T)=1$,
  \[
  g_2(\Psib^\alpha) =  \int_0^T w(\tau) \left(
- 1 - \frac{1}{D^2} S(\tau)\bar{S}(\tau)\right) \, d\tau,
+ 1 - \frac{1}{N^2} S(\tau)\bar{S}(\tau)\right) \, d\tau.
  \]
-where the gate fidelity is measured by projection
+The gate fidelity is measured using the Frobenius matrix scalar product,
  \[
- S(\tau) =  \sum_{j=0}^{D-1}\langle \Psi^\alpha_j(\tau), \db_j\rangle.
+ S(\tau) =  \sum_{j=1}^{N}\langle \Psi^\alpha_j(\tau), \db_j\rangle.
  \]
 \end{frame}
 
 \begin{frame}{The gradient of the objective functional}
   \begin{multline*}
-  \frac{\p g_2}{\p \alpha_k} = -\frac{2}{D^2} {\rm Re\!}\int_0^T w(\tau)
-  \frac{\p \bar{S}}{\p \alpha_k}(\tau) S(\tau) \, d\tau \\
+  \frac{\p g_2}{\p \alpha_k} = -\frac{2}{N^2} {\rm Re\!}\int_0^T w(\tau)
+  \frac{\p S(\tau)}{\p \alpha_k} \bar{S}(\tau) \, d\tau \\
   =
   %
-  -\frac{2}{D^2} {\rm Re\!}\int_0^T w(\tau) \sum_{j=0}^{D-1}
+  -\frac{2}{N^2} {\rm Re\!}\int_0^T w(\tau) \sum_{j=1}^{N}
   %
-  \left\langle \db_j,\frac{\Psi^\alpha_j}{\partial \alpha_k}(\tau)\right\rangle S(\tau)\, d\tau\\
-  %
-  =
-  -\frac{2}{D^2} {\rm Re\!} \sum_{j=0}^{D-1}  \int_0^T  w(\tau) \left\langle
-  \bar{S}(\tau)\db_j,\frac{\Psi^\alpha_j}{\partial \alpha_k}(\tau)\right\rangle \, d\tau\\
+  \left\langle \frac{\partial \Psi^\alpha_j (\tau)}{\partial \alpha_k}, \db_j \right\rangle \bar{S}(\tau)\, d\tau\\
   %
   =
-  -\frac{2}{D^2} {\rm Re\!} \sum_{j=0}^{D-1}  \int_0^T  w(\tau) \left\langle
-  \bar{S}(\tau)\db_j,\Phi_{jk}^\alpha(\tau)\right\rangle \, d\tau  
+  -\frac{2}{N^2} {\rm Re\!} \sum_{j=1}^{N}  \int_0^T  w(\tau) \left\langle
+  \frac{\partial \Psi^\alpha_j(\tau) }{\partial \alpha_k}, \bar{S}(\tau)\db_j \right\rangle \, d\tau\\
+  %
+  =
+  -\frac{2}{N^2} {\rm Re\!} \sum_{j=1}^{N}  \int_0^T  \left\langle
+  \Phi_{jk}(\tau),  w(\tau) \bar{S}(\tau) \db_j \right\rangle \, d\tau  
   \end{multline*}
-  where $\Phi_{jk}^\alpha = \p \Psi_j^\alpha / \p \alpha_k$.
+  where $\Phi_{jk} = \p \Psi_j^\alpha / \p \alpha_k$ and $k=1,2,\ldots,D$.
 \end{frame}
 
-\begin{frame}{The adjoint relation}
- Let $\Phi = \p \Psi_j^\alpha / \p \alpha_k$. It satisfies the state equation
+\begin{frame}{The state and adjoint equations}
+ Let $\Phi_{jk} = \p \Psi_j^\alpha / \p \alpha_k$. It satisfies the state equation
  \[
- \dot{\Phi} + i H(t,\alphab) \Phi = \fb(t), \quad \Phi(0) = 0.
+ \dot{\Phi}_{jk} + i H \Phi_{jk} = \fb_{jk}(t), \quad \Phi_{jk}(0) = 0,
   \]
-  The adjoint equation is
+  where $\fb_{jk}(t) = -i(\partial H / \partial \alpha_k) \Psi_j^{\alpha}$. The adjoint equation is
   \[
-  - \dot{\lambdab} - i H(t,\alphab) \lambdab = \hb(t),\quad \lambda(T) = 0.
+  - \dot{\lambdab_j} - i H \lambdab_j = \hb_j(t),\quad \lambdab_j(T) = 0.
+  \]
+  where we choose
+  \[
+  \hb_j(t) = w(t) \bar{S}(t) \db_j,\quad j=1,2,\ldots,N.
   \]
   Note that the adjoint equation satisfies terminal conditions and is solved backwards in time,
   $T\geq t \geq 0$.
 
-  The solution of the state equation, $\Phi$, with forcing function $\fb$ is related to the solution
-  of the adjoint equation, $\lambdab$, with forcing function $\hb$, through the adjoint relation,
-  \[
-  \int_0^T \langle \fb(\tau), \lambdab(\tau) \rangle\, d\tau =
-  \int_0^T \langle \Phi(\tau), \hb(\tau) \rangle\, d\tau.
-  \]
+\end{frame}
+
+\begin{frame}{The adjoint relation}
+By integration by parts in time and using the initial and terminal conditions, it is straighforward
+to derive the adjoint relation,
+\[
+\int_0^T \langle \Phi_{jk}(\tau), \hb_j(\tau) \rangle\, d\tau =
+\int_0^T \langle \fb_{jk}(\tau), \lambdab_j(\tau) \rangle\, d\tau.
+\]
+By combining the above results,
+\begin{multline*}
+  \frac{\p g_2}{\p \alpha_k} 
+  %
+  = -\frac{2}{N^2} {\rm Re\!} \sum_{j=1}^{N}  \int_0^T  \left\langle
+  \Phi_{jk}(\tau),  \hb_j(\tau) \right\rangle \, d\tau  \\
+  %
+  %% = -\frac{2}{N^2} {\rm Re\!} \sum_{j=1}^{N}  \int_0^T  \left\langle
+  %% \fb_{jk}(\tau), \lambdab_j(\tau) \right\rangle \, d\tau\\
+  %
+  = +\frac{2}{N^2} {\rm Re\!} \sum_{j=1}^{N}  \int_0^T  \left\langle
+  i\left(\frac{\partial H}{\partial \alpha_k}\right) \Psi_j^{\alpha}(\tau), \lambdab_j(\tau) \right\rangle \, d\tau.
+\end{multline*}
+Without adjoint: solve $N$ state equations for $\Psi_j^\alpha$ and $N D$ state equations for $\Phi_{jk}$.
+
+With adjoint: solve $N$ state equations for $\Psi_j^\alpha$ and $N$ adjoint equations for $\lambdab_j$. 
+
 \end{frame}
 
 
