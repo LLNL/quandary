@@ -23,11 +23,6 @@ function  [pad, td] = timefunc(D, nsteps, verbose)
     D=2;
   end
 
-  if (mod(D,2) == 1)
-    printf("D=%d, is ODD\n", D);
-    return;
-  end
-
   if nargin < 2
     nsteps=100;
   end
@@ -53,7 +48,10 @@ function  [pad, td] = timefunc(D, nsteps, verbose)
 
 # evaluate the polynomials at the discrete time levels
   pad = zeros(nsteps+1, D);
-  for q=1:D/2
+
+  for p=1:D
+    q = floor((p-1)/2) + 1;
+#    printf("p=%d, q=%d\n", p, q);
     if (q==1)
       tp = T;
       t0 = 0.5*T;
@@ -69,9 +67,14 @@ function  [pad, td] = timefunc(D, nsteps, verbose)
     end
     tau = (td - t0)/tp;
     mask = (tau >= -0.5 & tau <= 0.5);
-#    pad(:,q) = 64*mask.*(0.5 + tau).^3 .* (0.5 - tau).^3;
-    pad(:,2*q-1) = 64*mask.*(0.5 + tau).^3 .* (0.5 - tau).^3 .*cos(d1*td);
-    pad(:,2*q)    = 64*mask.*(0.5 + tau).^3 .* (0.5 - tau).^3 .*sin(d1*td);
+
+    if (mod(p,2) == 1)
+#      printf("Assigning p=%d, 2*q-1=%d\n", p, 2*q-1);
+      pad(:,2*q-1) = 64*mask.*(0.5 + tau).^3 .* (0.5 - tau).^3 .*cos(d1*td);
+    else
+#      printf("Assigning p=%d, 2*q=%d\n", p, 2*q);
+      pad(:,2*q)    = 64*mask.*(0.5 + tau).^3 .* (0.5 - tau).^3 .*sin(d1*td);
+    end
   end # for
 
 end

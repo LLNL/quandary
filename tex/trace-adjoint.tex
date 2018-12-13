@@ -130,9 +130,11 @@ By combining the above results,
   = +\frac{2}{N^2} {\rm Re\!} \sum_{j=1}^{N}  \int_0^T  \left\langle
   i\left(\frac{\partial H}{\partial \alpha_k}\right) \Psi_j^{\alpha}(\tau), \lambdab_j(\tau) \right\rangle \, d\tau.
 \end{multline*}
-Without adjoint: solve $N$ state equations for $\Psi_j^\alpha$ and $N D$ state equations for $\Phi_{jk}$.
+Without adjoint: solve $N$ state equations for $\Psi_j^\alpha$ and $N D$ state equations for
+$\Phi_{jk}$; total solves: $=(D+1)N$
 
-With adjoint: solve $N$ state equations for $\Psi_j^\alpha$ and $N$ adjoint equations for $\lambdab_j$. 
+With adjoint: solve $N$ state equations for $\Psi_j^\alpha$ and $N$ adjoint equations for
+$\lambdab_j$; ; total solves: $=2N$
 
 \end{frame}
 

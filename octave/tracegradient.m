@@ -13,7 +13,7 @@
 % cost: trace norm of gate infidelity cost functional
 % ufinal: state vector at t=T
 %
-function [cost uFinal] = traceobjfunc(a1, verbose)
+function [cost uFinal] = tracegradient(a1, verbose)
 
   abs_or_real=0; # plot the magnitude (abs) of real part of the solution (1 for real)
 
@@ -115,9 +115,6 @@ function [cost uFinal] = traceobjfunc(a1, verbose)
   mask = (tau >= -0.5 & tau <= 0.5);
   wghf1 = 64*mask.*(0.5 + tau).^3 .* (0.5 - tau).^3;
 
-# different weight functions for different components
-  wconst = 0.01; # for response to e2 and e3
-  
 # the basis for the initial data as a matrix
   U0=diag([1, 1, 1, 1]);
 
@@ -150,6 +147,8 @@ function [cost uFinal] = traceobjfunc(a1, verbose)
     t = t+dt;
 
 				# accumulate cost = integral ( 1 - Tr( uSol' * w(t) * uTarget ) )
+#    wTime = wghf(step+1,:)'; # transpose makes wTime a column vector
+#    uTargetWeight = uTarget * wTime;
     fidelity = trace(ctranspose(uSol) * uTarget)/N;
     cost = cost + dt*wghf1(step+1)*( 1 - abs(fidelity)^2 );
 
