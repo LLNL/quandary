@@ -1,0 +1,253 @@
+\documentclass[11pt]{article}
+\usepackage{amsfonts,amsmath,amssymb,amsthm,graphicx}
+\usepackage{multirow}
+\usepackage{booktabs}
+\usepackage[caption=false]{subfig} 
+\usepackage{color}
+\usepackage{ifthen}
+
+\setlength{\topmargin}{0 mm}
+\setlength{\oddsidemargin}{5 mm}
+\setlength{\evensidemargin}{5 mm}
+\setlength{\textwidth}{150 mm}
+\setlength{\textheight}{210 mm}
+
+\include{macros}
+
+\begin{document}
+
+%% \title{Notes on Schroedinger's equation}
+
+%% \author{N. Anders Petersson\thanks{Center for Applied
+%%     Scientific Computing, Lawrence Livermore National Laboratory, L-561, PO Box 808, Livermore CA
+%%     94551. }}
+
+%% \date{\today}
+
+%% \maketitle
+\section{Change of variables}
+Consider the scaled Schr\"odinger equation
+\begin{equation}\label{eq_shrodinger}
+\frac{\p \psi}{\p t} = -i H(t) \psi,\quad \psi(0) = \psi_0,\quad H(t) = H_0 + f(t)a + \bar{f}(t)a^\dag.
+\end{equation}
+Here, $H_0$ is the system Hamiltonian matrix. The lowering and raising matrices are denoted $a$ and
+$a^\dag$, respectively. These matrices satisfy
+\begin{equation}\label{eq_matrices}
+H_0=\begin{bmatrix}
+\omega_0 & & &\\
+& \omega_1 &&\\
+& & \omega_2 &\\
+& & & \ddots
+\end{bmatrix},\quad
+%
+a = \begin{bmatrix}
+0 & 1 & & &\\
+ & 0 & \sqrt{2} & &\\
+&  & 0 & \sqrt{3} &\\
+& &  & 0 & \ddots
+\end{bmatrix}
+\end{equation}
+
+%% \subsection{A simple example}
+%% We make the change of variables
+%% \[
+%% \psi(t) = e^{-i\omega_0 t} u(t).
+%% \]
+%% We have
+%% \begin{align*}
+%%   \dot{\psi} &= -i\omega_0 e^{-i\omega_0 t} u + e^{-i\omega_0 t} \dot{u},\\
+%%   H \psi &= e^{-i\omega_0 t} H u.
+%% \end{align*}
+%% Therefore,
+%% \[
+%% \dot{\psi} = -i\omega_0 e^{-i\omega_0 t} u + e^{-i\omega_0 t} \dot{u} = -ie^{-i\omega_0 t} H u,
+%% \]
+%% and
+%% \[
+%% e^{-i\omega_0 t} \dot{u} = i\omega_0 e^{-i\omega_0 t} u  -ie^{-i\omega_0 t} H u.
+%% \]
+%% The factor $e^{-i\omega_0 t}$ cancels and we get
+%% \[
+%% \dot{u} = -i\left(H - \omega_0 I\right)u =: -i\left(H_0 - \omega_0 I + f(t)a + \bar{f}(t)a^\dag \right)u.
+%% \]
+%% Thus, only the diagonal part of the Hamiltonian matrix is modified by the change of variables.
+
+\subsection{Unitary transformations}
+Consider the unitary tranformation
+\[
+\psi(t) = U^{\dag}(t)v(t),\quad U^\dag U = I.
+\]
+We have
+\begin{align*}
+\dot{\psi} &= \dot{U}^\dag v + U^\dag \dot{v},\\
+H\psi &= H U^\dag v
+\end{align*}
+Thus, \eqref{eq_shrodinger} gives
+\[
+\dot{U}^\dag v + U^\dag \dot{v} = -i H U^\dag v,
+\]
+After reorganizing the terms,
+\[
+\dot{v} = -i U H U^\dag v + \dot{U} U^\dag = -i\left( UHU^\dag + i \dot{U} U^\dag \right) v,
+\]
+because $U \dot{U}^\dag = - \dot{U} U^\dag$. Thus, the transformed problem becomes
+\[
+\dot{v} = -i \tilde{H}(t) v,\quad \tilde{H} = UHU^\dag + i \dot{U} U^\dag.
+\]
+
+%% \subsection{Rotating frame (one frequency)}
+
+%% Consider the unitary transformation,
+%% \[
+%% U(t) = \exp(i\omega_k t E_k),\quad E_k = \eb_k \eb_k^T,
+%% \]
+%% where $\eb_k$ is the $k^{th}$ unit basis vector. For example, if $k=1$,
+%% \[
+%% i\omega_1 t E_1 = \begin{bmatrix}
+%%   0 & & & \\
+%%   & i\omega_1 t & & \\
+%%   & & 0 & \\
+%%   & & & \ddots
+%% \end{bmatrix},\quad
+%% U(t) = \exp(i\omega_1 t E_1) = \begin{bmatrix}
+%%   1 & & & \\
+%%   & e^{i\omega_1 t} & & \\
+%%   & & 1 & \\
+%%   & & & \ddots
+%% \end{bmatrix}
+%% \]
+%% Thus,
+%% \[
+%% \dot{U}(t) = i\omega_1 \begin{bmatrix}
+%%   0 & & & \\
+%%   & e^{i\omega_1 t} & & \\
+%%   & & 0 & \\
+%%   & & & \ddots
+%% \end{bmatrix},\quad
+%% i\dot{U} U^\dag =  i^2 \omega_1 \begin{bmatrix}
+%%   0 & & & \\
+%%   & 1 & & \\
+%%   & & 0 & \\
+%%   & & & \ddots
+%% \end{bmatrix}
+%% \]
+%% Because $H_0$ and $U$ are diagonal, $U^\dag H_0 U = H_0 U^\dag U = H_0$. Thus,
+%% \[
+%% U^\dag H_0 U + i\dot{U} U^\dag = \begin{bmatrix}
+%% \omega_0 & & &\\
+%% & 0 &&\\
+%% & & \omega_2 &\\
+%% & & & \ddots
+%% \end{bmatrix},
+%% \]
+%% and
+%% \begin{multline*}
+%% U^\dag a U =
+%% \begin{bmatrix}
+%%   1 & & & \\
+%%   & e^{-i\omega_1 t} & & \\
+%%   & & 1 & \\
+%%   & & & \ddots
+%% \end{bmatrix}
+%% \begin{bmatrix}
+%% 0 & 1 & & &\\
+%%  & 0 & \sqrt{2} & &\\
+%% &  & 0 & \sqrt{3} &\\
+%% & &  & 0 & \ddots
+%% \end{bmatrix}
+%% \begin{bmatrix}
+%%   1 & & & \\
+%%   & e^{i\omega_1 t} & & \\
+%%   & & 1 & \\
+%%   & & & \ddots
+%% \end{bmatrix} = \\
+%% %
+%% \begin{bmatrix}
+%% 0 & e^{i\omega_1 t} & & &\\
+%%  & 0 & \sqrt{2} e^{-i\omega_1 t} & &\\
+%% &  & 0 & \sqrt{3} &\\
+%% & &  & 0 & \ddots
+%% \end{bmatrix}
+%% \end{multline*}
+
+\subsection{Rotating frame (?)}
+
+We can construct a unitary transformation based
+on the time-independent diagonal matrix $H_0$ in \eqref{eq_matrices},
+\[
+U(t) = \exp(i H_0 t)=
+\begin{bmatrix}
+e^{i\omega_0t} & & &\\
+& e^{i\omega_1 t} &&\\
+& & e^{i\omega_2 t} &\\
+& & & \ddots
+\end{bmatrix}
+\]
+We have $\dot{U}(t) = i H_0 \exp(i H_0 t)$, which gives
+\[
+\dot{U}U^\dag =  i H_0 \exp(i H_0 t) \exp(- i H_0 t) = i H_0.
+\]
+Because $U$ and $H_0$ are both diagonal, $UH_0U^\dag = H_0$. As a result,
+\[
+\tilde{H} = U H U^\dag + i \dot{U}U^\dag = f(t) UaU^\dag + \bar{f}(t) Ua^\dag U^\dag.
+\]
+The lowering operator transforms according to
+\begin{multline*}
+UaU^\dag =
+\begin{bmatrix}
+  e^{-i\omega_0t} & & & \\
+  & e^{-i\omega_1 t} & & \\
+  & &  e^{-i\omega_2 t} & \\
+  & & & \ddots
+\end{bmatrix}
+\begin{bmatrix}
+0 & 1 & & &\\
+ & 0 & \sqrt{2} & &\\
+&  & 0 & \sqrt{3} &\\
+& &  & \ddots & \ddots
+\end{bmatrix}
+\begin{bmatrix}
+  e^{i\omega_0t} & & & \\
+  & e^{i\omega_1 t} & & \\
+  & &  e^{i\omega_2 t} & \\
+  & & & \ddots
+\end{bmatrix} = \\
+%
+\begin{bmatrix}
+0 & e^{i(\omega_1 - \omega_0)t} & & &\\
+ & 0 & \sqrt{2} e^{i(\omega_2 -\omega_1) t}& &\\
+&  & 0 & \sqrt{3} e^{i(\omega_3 -\omega_2)t}  &\\
+& &  & \ddots & \ddots
+\end{bmatrix}
+%
+\end{multline*}
+The transformed equation becomes $\dot{v} = -i\tilde{H}(t)v$, where
+\[
+\tilde{H}(t) = \begin{bmatrix}
+0 & f(t) e^{i(\omega_1 - \omega_0)t} & & &\\
+\bar{f}(t) e^{-i(\omega_1 - \omega_0)t} & 0 & f(t) \sqrt{2} e^{i(\omega_2 -\omega_1) t}& &\\
+& \bar{f}(t) \sqrt{2} e^{-i(\omega_2 -\omega_1) t} & 0 & f(t) \sqrt{3} e^{i(\omega_3 -\omega_2)t}
+&\\
+\\
+& & \ddots & \ddots & \ddots
+\end{bmatrix}v.
+\]
+The structure of the transformed Hamiltonian provides insight into how to induce resonance in the
+system. For example, by taking $f(t)=\Omega e^{-i(\omega_1 - \omega_0)t}$, the Hamiltonian matrix becomes
+\[
+\tilde{H}(t) = \begin{bmatrix}
+0 & \Omega & & &\\
+\bar{\Omega} & 0 & f(t) \sqrt{2} e^{i(\omega_2 -\omega_1) t}& &\\
+& \bar{f}(t) \sqrt{2} e^{-i(\omega_2 -\omega_1) t} & 0 & f(t) \sqrt{3} e^{i(\omega_3 -\omega_2)t}
+&\\
+\\
+& & \ddots & \ddots & \ddots
+\end{bmatrix}v.
+\]
+The dynamics of the system will be dominated by an oscillation between the ground state and the
+first excited state, with frequency $\Omega$.
+
+
+
+
+\end{document}
