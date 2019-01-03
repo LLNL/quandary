@@ -31,8 +31,8 @@ Consider the scaled Schr\"odinger equation
 \dot{\psi} = -i H(t) \psi,\quad \psi(0) = \psi_0,\quad H(t) = H_s + f(t)a + \bar{f}(t)a^\dag.
 \end{equation}
 Here, $\psi \in\mathbb{C}^N$ and $H_s = H_s^\dag$ is the system Hamiltonian matrix, which we assume to
-be real-valued, Hermitian, and independent of time. The lowering and raising matrices are denoted
-$a$ and $a^\dag$, respectively. These real-valued matrices satisfy
+be  Hermitian, real-valued, and independent of time. The lowering and raising matrices are denoted
+$a$ and $a^\dag$, respectively. These matrices satisfy
 \begin{equation}\label{eq_matrices}
 %
 a = \begin{bmatrix}
@@ -105,20 +105,88 @@ In a similar way,
 \nabla_v \kappa = S^T u + K v = -S u + Kv.
 \]
 Therefore, \eqref{eq_real-shrodinger} has the Hamiltonian structure
-\begin{align}
-  \dot{u} &= -\nabla_v \kappa(u,v,t),\\
-  \dot{v} &= \nabla_u \kappa(u,v,t).
-\end{align}
+\begin{equation}\label{eq_hamiltonian-form}
+  \begin{bmatrix}
+    \dot{u} \\   \dot{v}
+  \end{bmatrix} =
+  \begin{bmatrix}
+    -\nabla_v \kappa(u,v,t)\\
+    \nabla_u \kappa(u,v,t)
+  \end{bmatrix}
+\end{equation}
 Because $v^TS^Tu = u^TSv$, the Hamiltonian function \eqref{eq_hamiltonian} can be written
 \[
 \kappa(u,v,t) = \frac{1}{2} \begin{bmatrix} u \\ v \end{bmatrix}^T
 %
 \begin{bmatrix}
-  K & S \\ S^T & K
+  K(t) & S(t) \\ S^T(t) & K(t)
 \end{bmatrix}
 \begin{bmatrix} u \\ v \end{bmatrix}.
 \]
-We conclude that the Hamiltonian function is non-separable. 
+We conclude that the Hamiltonian function is non-separable due to the skew-symmetric term
+$S(t) =f_i(t) ( a- a^\dag)$ in the original Hamiltonian matrix.
+
+\paragraph{$\rho$-reversibility}
+Let $\rho$ be the linear invertible transformation
+\[
+\rho(u,v) = (u, -v).
+\]
+and denote $y=(u,v)$. The differential equation $\dot{y}=f(y)$ and the vector field $f(y)$ are
+called $\rho$-reversible if
+\[
+\rho(f(y)) = -f(\rho(y)).
+\]
+Ignoring the time-dependence in the system \eqref{eq_hamiltonian-form}, we have
+\[
+f(y) =   \left( -\nabla_v \kappa(u,v), \nabla_u \kappa(u,v) \right) = ( S u - Kv, S v + K u ).
+\]
+Thus,
+\[
+f(\rho(y)) = \left( -\nabla_v \kappa(u,-v), \nabla_u \kappa(u,-v) \right) = ( S u + Kv, -S v + K u ),
+\]
+and
+\[
+\rho(f(y)) =  ( S u - Kv, -S v - K u ).
+\]
+We conclude that the system \eqref{eq_hamiltonian-form} is {\em not} $\rho$-reversible due to the
+terms $Su$ and $Sv$.
+
+\paragraph{Autonomous Hamiltonian form}
+A standard approach for transforming a non-autonomous Hamiltonian system into autonomous form is as
+follows. We first introduce the scalar variable $e(t)$, the trivial equation $\dot{t}=1$, and augment the
+system \eqref{eq_hamiltonian-form} by the equations
+\begin{align*}
+  \dot{e} &= -\kappa_t(u,v,t),\\
+  \dot{t} &= 1.
+\end{align*}
+Next, we define the augmented dependent variables $\tilde{u} = (u, e)$, $\tilde{v}=(v, t)$, and
+the extended Hamiltonian function
+\[
+\tilde{\kappa}(\tilde{u},\tilde{v}) = \kappa(u,v,t) + e(t).
+\]
+We note that
+\begin{align*}
+  \nabla_{\tilde{v}} \tilde{\kappa} &= (\nabla_v \kappa, \kappa_t),\\
+  \nabla_{\tilde{u}} \tilde{\kappa} &= (\nabla_u \kappa, 1).
+\end{align*}
+Therefore, the augmented variables satisfy
+\[
+\begin{bmatrix}
+  \dot{\tilde{u}} \\
+  \dot{\tilde{v}}
+\end{bmatrix} =
+%
+\begin{bmatrix}
+  (\dot{u}, \dot{e}) \\
+  (\dot{v}, \dot{t})
+\end{bmatrix} =
+%
+\begin{bmatrix}
+  -\nabla_{\tilde{v}} \tilde{\kappa}(\tilde{u}, \tilde{v})\\
+  \nabla_{\tilde{u}} \tilde{\kappa}(\tilde{u}, \tilde{v})
+\end{bmatrix},
+\]
+which is an autonomous Hamiltonian system.  
 
 
 \end{document}
