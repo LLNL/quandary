@@ -1,0 +1,124 @@
+\documentclass[11pt]{article}
+\usepackage{amsfonts,amsmath,amssymb,amsthm,graphicx}
+\usepackage{multirow}
+\usepackage{booktabs}
+\usepackage[caption=false]{subfig} 
+\usepackage{color}
+\usepackage{ifthen}
+
+\setlength{\topmargin}{0 mm}
+\setlength{\oddsidemargin}{5 mm}
+\setlength{\evensidemargin}{5 mm}
+\setlength{\textwidth}{150 mm}
+\setlength{\textheight}{210 mm}
+
+\include{macros}
+
+\begin{document}
+
+%% \title{Notes on Schroedinger's equation}
+
+%% \author{N. Anders Petersson\thanks{Center for Applied
+%%     Scientific Computing, Lawrence Livermore National Laboratory, L-561, PO Box 808, Livermore CA
+%%     94551. }}
+
+%% \date{\today}
+
+%% \maketitle
+\section{Hamiltonian structure}
+Consider the scaled Schr\"odinger equation
+\begin{equation}\label{eq_shrodinger}
+\dot{\psi} = -i H(t) \psi,\quad \psi(0) = \psi_0,\quad H(t) = H_s + f(t)a + \bar{f}(t)a^\dag.
+\end{equation}
+Here, $\psi \in\mathbb{C}^N$ and $H_s = H_s^\dag$ is the system Hamiltonian matrix, which we assume to
+be real-valued, Hermitian, and independent of time. The lowering and raising matrices are denoted
+$a$ and $a^\dag$, respectively. These real-valued matrices satisfy
+\begin{equation}\label{eq_matrices}
+%
+a = \begin{bmatrix}
+0 & 1 & & & &\\
+ & 0 & \sqrt{2} & & &\\
+&  & 0 & \sqrt{3} & &\\
+& &  & 0 & \sqrt{4} & \\
+& &  &  & \ddots & \ddots\\
+\end{bmatrix},\quad
+%
+a^\dag = \begin{bmatrix}
+0 &  & & &\\
+1 & 0 & & &\\
+&  \sqrt{2} & 0 &  &\\
+& &  \sqrt{3} & 0 & \\
+& &  & \ddots & \ddots
+\end{bmatrix}
+\end{equation}
+The time-dependent control terms in \eqref{eq_shrodinger} can be written
+\[
+f(t)a + \bar{f}(t)a^\dag =
+% (f_r(t) + i f_i(t)) a + (f_r(t) - i f_i(t)) a^\dag
+f_r(t) (a + a^\dag) + i f_i(t) ( a- a^\dag),\quad f_r = \re f,\quad f_i=\im f,
+\]
+where $i=\sqrt{-1}$ is the imaginary unit. We conclude that the control terms are Hermitian and
+$H(t) = H^\dag(t)$.
+
+To utilize efficient numerical ODE solvers it is desirable to derive a real-valued equivalent of
+\eqref{eq_shrodinger}. Let the functions $u(t)$ and $v(t) \in \mathbb{R} \to \mathbb{R}^N$ be
+defined by
+\[
+\psi(t) = u(t) - iv(t)
+\]
+and decompose the total Hamiltonian matrix into $H(t) = K(t) + i S(t)$, where the real-valued
+matrices $K$ and $S$ hold the symmeric and skew-symmetric parts of $H$: $K^\dag = K$ and $S^\dag =
+-S$. We have,
+\begin{align*}
+H\psi &= (K+iS)(u - iv) = (Ku + Sv) + i(Su - Kv),\\
+-iH\psi &= -i(Ku + Sv) + (Su - Kv).
+\end{align*}
+Therefore, a real-valued equivalent of the system \eqref{eq_shrodinger} is
+\begin{equation}\label{eq_real-shrodinger}
+  \begin{bmatrix} \dot{u}\\ \dot{v} \end{bmatrix} =
+%
+  \begin{bmatrix}
+    S & -K \\ K & S
+  \end{bmatrix}     
+  %
+  \begin{bmatrix} u\\ v \end{bmatrix} .
+\end{equation}
+
+We define the time-dependent Hamiltonian function to be
+\begin{equation}\label{eq_hamiltonian}
+\kappa(u,v,t) = u^T S(t) v + \frac{1}{2} u^T K(t) u + \frac{1}{2} v^T K(t) v.
+\end{equation}
+We have
+\[
+\frac{\p\kappa}{\p u_q} =
+%
+\frac{\p}{\p u_q} \sum_{j,k} \left( u_j S_{j,k} v_k + 0.5 u_j K_{j,k} u_k \right) =
+%
+\sum_{k} \left( S_{q,k} v_k + 0.5 K_{q,k} u_k \right) + 0.5 \sum_{j} u_j K_{j,q}.
+\]
+Because $K^T = K$,
+\[
+\nabla_u \kappa = S v + K u.
+\]
+In a similar way,
+\[
+\nabla_v \kappa = S^T u + K v = -S u + Kv.
+\]
+Therefore, \eqref{eq_real-shrodinger} has the Hamiltonian structure
+\begin{align}
+  \dot{u} &= -\nabla_v \kappa(u,v,t),\\
+  \dot{v} &= \nabla_u \kappa(u,v,t).
+\end{align}
+Because $v^TS^Tu = u^TSv$, the Hamiltonian function \eqref{eq_hamiltonian} can be written
+\[
+\kappa(u,v,t) = \frac{1}{2} \begin{bmatrix} u \\ v \end{bmatrix}^T
+%
+\begin{bmatrix}
+  K & S \\ S^T & K
+\end{bmatrix}
+\begin{bmatrix} u \\ v \end{bmatrix}.
+\]
+We conclude that the Hamiltonian function is non-separable. 
+
+
+\end{document}
