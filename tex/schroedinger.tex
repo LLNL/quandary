@@ -1,0 +1,104 @@
+\documentclass[11pt]{article}
+\usepackage{amsfonts,amsmath,amssymb,amsthm,graphicx}
+\usepackage{multirow}
+\usepackage{booktabs}
+\usepackage[caption=false]{subfig} 
+\usepackage{color}
+\usepackage{ifthen}
+
+\setlength{\topmargin}{0 mm}
+\setlength{\oddsidemargin}{5 mm}
+\setlength{\evensidemargin}{5 mm}
+\setlength{\textwidth}{150 mm}
+\setlength{\textheight}{210 mm}
+
+\include{macros}
+
+\begin{document}
+
+\title{Notes on Schroedinger's equation}
+
+\author{N. Anders Petersson\thanks{Center for Applied
+    Scientific Computing, Lawrence Livermore National Laboratory, L-561, PO Box 808, Livermore CA
+    94551. }}
+
+\date{\today}
+
+\maketitle
+
+\section{Harmonic oscillators in 1-D}
+ Consider the 1-D Schr\"odinger equation governing the wave function $\Psi(x,t)$,
+\begin{equation}\label{eq_shrodinger-time}
+i\hbar\frac{\p \Psi}{\p t} = -\frac{\hbar^2}{2 m} \frac{\p^2}{\p x^2} \Psi + V(x) \Psi,\quad t\geq
+0,\quad \| \Psi \| < \infty
+\end{equation}
+subject to appropriate initial conditions. Here, $V(x)$ is a potential function. For a harmonic
+oscillator, the potential function satisfies
+\[
+V(x) = \frac{1}{2}m\omega^2 x^2.
+\]
+We can solve \eqref{eq_shrodinger-time} using separation of variables. We make the ansatz
+\[
+\Psi(x,t) = \phi(t) \psi(x),
+\]
+which we insert into \eqref{eq_shrodinger-time}. In the standard way, we obtain
+\[
+E:= \frac{i\hbar \phi'}{\phi} = \frac{1}{\psi} \left(-\frac{\hbar^2}{2m} \frac{\p^2\psi}{\p x^2} +
+\frac{1}{2} m \omega^2 x^2 \psi \right).
+\]
+Because $\phi=\phi(t)$ and $\psi=\psi(x)$, the coefficient $E$ must be constant for all $x$ and
+$t$. This observation leads to the eigenvalue problem
+\begin{equation}\label{eq_eigen-problem}
+E\psi = -\frac{\hbar^2}{2m} \frac{\p^2\psi}{\p x^2} + \frac{1}{2} m \omega^2 x^2 \psi := H\psi.
+\end{equation}
+Here $E$ is the eigenvalue, $\psi$ is the eigenfunction, and $H$ is called the Hamiltonian
+operator. The right hand side can be factored according to
+\[
+H\psi = \frac{\hbar\omega}{2}
+%
+\left(\sqrt{\frac{m\omega}{\hbar}} x - \frac{\hbar}{\sqrt{m\omega}} \frac{\p}{\p x} \right)
+%
+\left(\sqrt{\frac{m \omega}{\hbar}} x + \frac{\hbar}{\sqrt{m\omega}} \frac{\p}{\p x} \right) \psi +
+%
+\frac{\hbar \omega}{2} \psi.
+\]
+We can therefore write the Hamiltonian as
+\begin{equation}\label{eq_ladder}
+H\psi = \hbar\omega\left( a^\dag a + \frac{1}{2} \right)\psi,
+\end{equation}
+where we have introduced the lowering operator $a$,
+\begin{equation}
+  a = \frac{1}{\sqrt{2}} \left(\frac{x}{x_0} + x_0 \frac{\p}{\p x} \right),\quad x_0 = \sqrt{\frac{\hbar}{m\omega}},
+\end{equation}
+and its adjoint, the raising operator $a^\dag$,
+\begin{equation}
+  a^\dag= \frac{1}{\sqrt{2}} \left(\frac{x}{x_0} - x_0 \frac{\p}{\p x} \right).
+\end{equation}
+
+The factorization of the Hamiltonian operator allows the eigenvalues and eigenfunctions to be
+computed in a very elegant way. The fundamental eigenfunction corresponds to the ground state and is
+denoted $\psi_0(x)$. It satisfies
+\[
+a \psi_0 = 0.
+\]
+This equation is solved by the normalized Gaussian function
+\[
+\psi_0(x) = \frac{e^{-x^2/(2 x_0^2)}}{\pi^{1/4} x_0^{1/2}},\quad \int_{-\infty}^\infty |\psi_0|^2 \,
+dx = 1.
+\]
+The corresponding eigenvalue follows from \eqref{eq_ladder},
+\[
+H\psi_0 = \hbar\omega\left( a^\dag a + \frac{1}{2} \right)\psi_0 = \frac{\hbar\omega}{2}
+\psi_0,\quad E_0 = \frac{\hbar\omega}{2}.
+\]
+
+The higher eigenfunctions satisfy a recursion formula. Assume we know the eigenfunction $\psi_n(x)$
+with eigenvalue $E_n$.
+
+
+
+
+\bibliographystyle{plain}
+\bibliography{references}
+
+\end{document}
