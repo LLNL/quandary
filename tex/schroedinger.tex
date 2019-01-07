@@ -26,7 +26,7 @@
 
 \maketitle
 
-\section{Harmonic oscillators in 1-D}
+\section{Eigenfunctions of Schr\"{o}dinger's equation}
  Consider the 1-D Schr\"odinger equation governing the wave function $\Psi(x,t)$,
 \begin{equation}\label{eq_shrodinger-time}
 i\hbar\frac{\p \Psi}{\p t} = -\frac{\hbar^2}{2 m} \frac{\p^2}{\p x^2} \Psi + V(x) \Psi,\quad t\geq
@@ -51,7 +51,7 @@ $t$. This observation leads to the eigenvalue problem
 \begin{equation}\label{eq_eigen-problem}
 E\psi = -\frac{\hbar^2}{2m} \frac{\p^2\psi}{\p x^2} + \frac{1}{2} m \omega^2 x^2 \psi := H\psi.
 \end{equation}
-Here $E$ is the eigenvalue, $\psi$ is the eigenfunction, and $H$ is called the Hamiltonian
+Here, $E$ is the eigenvalue, $\psi$ is the eigenfunction, and $H$ is called the Hamiltonian
 operator. The right hand side can be factored according to
 \[
 H\psi = \frac{\hbar\omega}{2}
@@ -62,7 +62,7 @@ H\psi = \frac{\hbar\omega}{2}
 %
 \frac{\hbar \omega}{2} \psi.
 \]
-We can therefore write the Hamiltonian as
+We can therefore factor the Hamiltonian operator as
 \begin{equation}\label{eq_ladder}
 H\psi = \hbar\omega\left( a^\dag a + \frac{1}{2} \right)\psi,
 \end{equation}
@@ -92,9 +92,128 @@ H\psi_0 = \hbar\omega\left( a^\dag a + \frac{1}{2} \right)\psi_0 = \frac{\hbar\o
 \psi_0,\quad E_0 = \frac{\hbar\omega}{2}.
 \]
 
-The higher eigenfunctions satisfy a recursion formula. Assume we know the eigenfunction $\psi_n(x)$
-with eigenvalue $E_n$.
+To derive the higher eigenfunctions, we start by studying the commutator
+\begin{equation}\label{eq_a-commut}
+[a,a^\dag] = a a^\dag - a^\dag a = \ldots = 1.
+\end{equation}
+Therefore,
+\[
+  [Ha^\dag] = Ha^\dag - a^\dag H = \hbar\omega(a^\dag a a^\dag - a^\dag a^\dag a) =
+%
+  \hbar\omega a^\dag[a,a^\dag] =   \hbar\omega a^\dag.
+\]
+We conclude that
+\begin{equation}\label{eq_comm-rel}
+H a^\dag = a^\dag H +  \hbar\omega a^\dag.
+\end{equation}
 
+Assume we know the normalized eigenfunction $\psi_n(x)$ with eigenvalue $E_n$. From
+\eqref{eq_comm-rel},
+\[
+H a^\dag\psi_n = a^\dag H \psi_n +  \hbar\omega a^\dag \psi_n = (E_n + \hbar\omega) a^\dag \psi_n.
+\]
+We conclude that the next normalized eigenfunction is $\psi_{n+1} = \beta^{-1} a^\dag \psi_n$, with
+eigenvalue $E_{n+1} = E_n + \hbar\omega$. The normalization factor $\beta$ will be determined below.
+Because $\psi_0$ has eigenvalue $E_0 = \hbar\omega/2$,
+\begin{align*}
+  E_1 &= E_0 + \hbar\omega = \hbar\omega\left( 1+\frac{1}{2} \right),\\
+  E_2 &= E_1 + \hbar\omega = E_0 + 2\hbar\omega = \left( 2 + \frac{1}{2} \right),\\
+  &\vdots\\
+  E_n &= \hbar\omega\left( n + \frac{1}{2} \right),\quad n=0,1,2,\ldots.
+\end{align*}
+From the definition of the eigenvalue problem \eqref{eq_eigen-problem} and the factorization
+\eqref{eq_ladder},
+\[
+\hbar\omega\left( a^\dag a + \frac{1}{2} \right)\psi_n = E_n \psi_n = \hbar\omega\left( n +
+\frac{1}{2} \right)\psi_n. 
+\]
+We define the number operator by
+\begin{equation}\label{eq_numer-op}
+N = a^\dag a.
+\end{equation}
+By combining the above relations,
+\[
+N\psi_n = n \psi_n,\quad n=0,1,2,\ldots
+\]
+
+To normalize the eigenfunction $\psi_{n+1}(x) = \beta^{-1} a^\dag \psi_n$ we start by defining $u(x) =
+a^\dag\psi_n(x)$. Its norm is defined by
+\[
+\| u \|^2 = \langle u, u \rangle = \int_{-\infty}^\infty \bar{u}(x) u(x)\, dx.
+\]
+From the definition of the adjoint of an operator,
+\[
+\langle a^\dag\psi_n, a^\dag\psi_n\rangle = \langle \psi_n, a a^\dag \psi_n \rangle
+\]
+From \eqref{eq_a-commut} and \eqref{eq_numer-op}, $a a^\dag = N + 1$. Therefore,
+\[
+\langle a^\dag\psi_n, a^\dag\psi_n\rangle = \langle \psi_n, (N+1)\psi_n \rangle = (n+1) \| \psi_n \|^2.
+\]
+Because $\| \psi_n \|=1$, the next normalized eigenfunction becomes
+\begin{equation}\label{eq_eigenfunction-recursive}
+\psi_{n+1}(x) = \frac{1}{\sqrt{n+1}} a^\dag\psi_n(x),\quad n=0,1,2,\ldots.
+\end{equation}
+This relation can also be written
+\[
+\sqrt{n+1}\, \psi_{n+1} = a^\dag \psi_n(x).
+\]
+By applying the lowering operator $a$ to the above equation,
+\[
+\sqrt{n+1} a\psi_{n+1} = a a^\dag \psi_n = (N+1) \psi_n = (n+1) \psi_n.
+\]
+Thus,
+\[
+\psi_{n+1} = \sqrt{n+1} \psi_n,\quad \psi_n = \sqrt{n} \psi_{n-1}.
+\]
+
+By applying \eqref{eq_eigenfunction-recursive} recursively,
+\[
+\psi_{n}(x) = \frac{1}{\sqrt{n}}\,
+(a^\dag)^n\psi_0(x),\quad n=1,2,3,\ldots. 
+\]
+The eigenfunctions can be expressed in terms of the $n^{th}$ order Hermite polynomials,
+\[
+\kappa_n(x) = (-1)^n e^{x^2} \frac{d^n}{dx^n} e^{-x^2}.
+\]
+By using Rodrigues formulae,
+\begin{equation}\label{eq_eigenfunc-hermite}
+\psi_n(x) = \frac{1}{\pi^{1/4} x_0^{n+1/2} \sqrt{2^n n!}} \kappa_n(x/x_0) e^{-x^2/(2 x_0^2)},\quad
+x_0=\sqrt{\frac{\hbar}{m\omega}}.
+\end{equation}
+
+
+We summarize the most important relations in the following lemma.
+\begin{lemma}
+The eigenvalue problem for the 1-D Schr\"odinger equation is stated in \eqref{eq_eigen-problem},
+which also defines the Hamiltonian operator $H$. This operator can be factored into
+\[
+H = \hbar\omega \left( a^\dag a + \frac{1}{2} \right),
+\]
+where
+\[
+a = \frac{1}{\sqrt{2}}\left( \frac{x}{x_0} + x_0 \frac{\p}{\p x}\right),\quad
+%
+a^\dag = \frac{1}{\sqrt{2}}\left( \frac{x}{x_0} - x_0 \frac{\p}{\p x}\right),\quad
+x_0=\sqrt{\frac{\hbar}{m\omega}}.
+\]
+The smallest eigenvalue of $H$ and the corresponding normalized eigenfunction are
+\[
+E_0 = \frac{1}{2}\hbar\omega,\quad \psi_0(x) = \frac{e^{-x^2/(2 x_0^2)}}{\pi^{1/4} x_0^{1/2}}.
+\]
+The higher eigenvalues satisfy
+\[
+E_n = \hbar\omega\left(n + \frac{1}{2}\right),
+\]
+and the eigenfunctions are given by \eqref{eq_eigenfunc-hermite}. The number operator $N$ is defined
+by
+\[
+N = a^\dag a.
+\]
+It has the same eigenfunctions as $H$ and satisfies the equation
+\[
+N\psi_n = n \psi_n,\quad n=0,1,2,\ldots
+\]
+\end{lemma}
 
 
 
