@@ -126,67 +126,73 @@ Because $v^TS^Tu = u^TSv$, the Hamiltonian function \eqref{eq_hamiltonian} can b
 We conclude that the Hamiltonian function is non-separable due to the skew-symmetric term
 $S(t) =f_i(t) ( a- a^\dag)$ in the original Hamiltonian matrix.
 
-\paragraph{$\rho$-reversibility}
+\paragraph{Autonomous Hamiltonian form}
+A standard approach for transforming a non-autonomous Hamiltonian system into autonomous form is as
+follows. We first introduce the scalar dependent variables $e(t)$ and $\tau(t)$ and augment the
+system \eqref{eq_hamiltonian-form} by the equations
+\begin{align*}
+  \dot{e} &= -\kappa_t(u,v,t),\\
+  \dot{\tau} &= 1,\quad \tau(0)=0.
+\end{align*}
+The second equation has the solution $\tau(t) = t$. Thus we can write
+$\kappa(u,v,t) = \kappa(u,v,\tau)$.
+Next, we define the augmented dependent variables
+\[
+p = (u, e),\quad q=(v, \tau),
+\]
+and the extended Hamiltonian function
+\[
+\tilde{\kappa}(p,q) = \kappa(u,v,\tau) + e.
+\]
+We note that
+\begin{align*}
+  \nabla_{q} \tilde{\kappa} &= (\nabla_v \kappa, \kappa_\tau),\\
+  \nabla_{p} \tilde{\kappa} &= (\nabla_u \kappa, 1).
+\end{align*}
+Therefore, the augmented variables satisfy
+\[
+\begin{bmatrix}
+  \dot{p} \\
+  \dot{q}
+\end{bmatrix} =
+%
+\begin{bmatrix}
+  (\dot{u}, \dot{e}) \\
+  (\dot{v}, \dot{\tau})
+\end{bmatrix} =
+%
+\begin{bmatrix}
+  -\nabla_{q} \tilde{\kappa}(p, q)\\
+  \nabla_{p} \tilde{\kappa}(p, q)
+\end{bmatrix},
+\]
+which is an autonomous Hamiltonian system.  
+
+\paragraph{$\rho$-reversibility UPDATE!}
 Let $\rho$ be the linear invertible transformation
 \[
-\rho(u,v) = (u, -v).
+\rho(p,q) = (p, -q).
 \]
-and denote $y=(u,v)$. The differential equation $\dot{y}=f(y)$ and the vector field $f(y)$ are
+and denote $y=(p,q)$. The differential equation $\dot{y}=f(y)$ and the vector field $f(y)$ are
 called $\rho$-reversible if
 \[
 \rho(f(y)) = -f(\rho(y)).
 \]
 Ignoring the time-dependence in the system \eqref{eq_hamiltonian-form}, we have
 \[
-f(y) =   \left( -\nabla_v \kappa(u,v), \nabla_u \kappa(u,v) \right) = ( S u - Kv, S v + K u ).
+f(y) =   \left( -\nabla_q \kappa(p,q), \nabla_p \kappa(p,q) \right) = ( S u - Kv, S v + K p ).
 \]
 Thus,
 \[
-f(\rho(y)) = \left( -\nabla_v \kappa(u,-v), \nabla_u \kappa(u,-v) \right) = ( S u + Kv, -S v + K u ),
+f(\rho(y)) = \left( -\nabla_v \kappa(p,-q), \nabla_p \kappa(p,-q) \right) = ( S u + Kv, -S v + K u ),
 \]
 and
-\[
-\rho(f(y)) =  ( S u - Kv, -S v - K u ).
-\]
-We conclude that the system \eqref{eq_hamiltonian-form} is {\em not} $\rho$-reversible due to the
-terms $Su$ and $Sv$.
+%% \[
+%% \rho(f(y)) =  ( S p - Kv, -S v - K p ).
+%% \]
+%We conclude that the system \eqref{eq_hamiltonian-form} is {\em not} $\rho$-reversible due to the
+%terms $Su$ and $Sv$.
 
-\paragraph{Autonomous Hamiltonian form}
-A standard approach for transforming a non-autonomous Hamiltonian system into autonomous form is as
-follows. We first introduce the scalar variable $e(t)$, the trivial equation $\dot{t}=1$, and augment the
-system \eqref{eq_hamiltonian-form} by the equations
-\begin{align*}
-  \dot{e} &= -\kappa_t(u,v,t),\\
-  \dot{t} &= 1.
-\end{align*}
-Next, we define the augmented dependent variables $\tilde{u} = (u, e)$, $\tilde{v}=(v, t)$, and
-the extended Hamiltonian function
-\[
-\tilde{\kappa}(\tilde{u},\tilde{v}) = \kappa(u,v,t) + e(t).
-\]
-We note that
-\begin{align*}
-  \nabla_{\tilde{v}} \tilde{\kappa} &= (\nabla_v \kappa, \kappa_t),\\
-  \nabla_{\tilde{u}} \tilde{\kappa} &= (\nabla_u \kappa, 1).
-\end{align*}
-Therefore, the augmented variables satisfy
-\[
-\begin{bmatrix}
-  \dot{\tilde{u}} \\
-  \dot{\tilde{v}}
-\end{bmatrix} =
-%
-\begin{bmatrix}
-  (\dot{u}, \dot{e}) \\
-  (\dot{v}, \dot{t})
-\end{bmatrix} =
-%
-\begin{bmatrix}
-  -\nabla_{\tilde{v}} \tilde{\kappa}(\tilde{u}, \tilde{v})\\
-  \nabla_{\tilde{u}} \tilde{\kappa}(\tilde{u}, \tilde{v})
-\end{bmatrix},
-\]
-which is an autonomous Hamiltonian system.  
 
 
 \end{document}
