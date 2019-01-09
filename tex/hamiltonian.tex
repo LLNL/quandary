@@ -78,7 +78,7 @@ Therefore, a real-valued equivalent of the system \eqref{eq_shrodinger} is
   \begin{bmatrix} \dot{u}\\ \dot{v} \end{bmatrix} =
 %
   \begin{bmatrix}
-    S & -K \\ K & S
+    S(t) & -K(t) \\ K(t) & S(t)
   \end{bmatrix}     
   %
   \begin{bmatrix} u\\ v \end{bmatrix} .
@@ -112,86 +112,192 @@ Therefore, \eqref{eq_real-shrodinger} has the Hamiltonian structure
   \begin{bmatrix}
     -\nabla_v \kappa(u,v,t)\\
     \nabla_u \kappa(u,v,t)
+  \end{bmatrix} =
+%
+  \begin{bmatrix}
+    Su - Kv \\
+    Ku + Sv
   \end{bmatrix}
 \end{equation}
 Because $v^TS^Tu = u^TSv$, the Hamiltonian function \eqref{eq_hamiltonian} can be written
-\[
+\begin{equation}\label{eq_hamiltonian-time}
 \kappa(u,v,t) = \frac{1}{2} \begin{bmatrix} u \\ v \end{bmatrix}^T
 %
 \begin{bmatrix}
   K(t) & S(t) \\ S^T(t) & K(t)
 \end{bmatrix}
 \begin{bmatrix} u \\ v \end{bmatrix}.
-\]
+\end{equation}
 We conclude that the Hamiltonian function is non-separable due to the skew-symmetric term
 $S(t) =f_i(t) ( a- a^\dag)$ in the original Hamiltonian matrix.
 
-\paragraph{Autonomous Hamiltonian form}
+\subsection{Autonomous Hamiltonian form}
 A standard approach for transforming a non-autonomous Hamiltonian system into autonomous form is as
-follows. We first introduce the scalar dependent variables $e(t)$ and $\tau(t)$ and augment the
-system \eqref{eq_hamiltonian-form} by the equations
-\begin{align*}
-  \dot{e} &= -\kappa_t(u,v,t),\\
-  \dot{\tau} &= 1,\quad \tau(0)=0.
-\end{align*}
-The second equation has the solution $\tau(t) = t$. Thus we can write
-$\kappa(u,v,t) = \kappa(u,v,\tau)$.
-Next, we define the augmented dependent variables
+follows. First introduce the scalar dependent variable $\tau(t)=t$ which satisfies the trivial equation
+\begin{equation}
+  \dot{\tau} = 1 ,\quad \tau(0)=0.
+\end{equation}
+Hence, $\kappa(u,v,t) = \kappa(u,v,\tau)$. Then introduce a scalar variable $e(t)$ and let it satisfy
+\begin{equation}\label{eq_e-variable}
+  \dot{e} = -\kappa_t(u,v,t),\quad e(0) = -\kappa(u_0, v_0, 0).
+\end{equation}
+where $u_0 = u(0)$ and $v_0 = v(0)$ are the initial data for \eqref{eq_hamiltonian-form}. Next,
+define the generalized momentum and position variables
 \[
-p = (u, e),\quad q=(v, \tau),
+p = \begin{bmatrix} u\\ e
+\end{bmatrix},\quad
+q = \begin{bmatrix} v\\ \tau
+\end{bmatrix},
 \]
-and the extended Hamiltonian function
+and define the extended Hamiltonian function by
 \[
 \tilde{\kappa}(p,q) = \kappa(u,v,\tau) + e.
 \]
 We note that
-\begin{align*}
-  \nabla_{q} \tilde{\kappa} &= (\nabla_v \kappa, \kappa_\tau),\\
-  \nabla_{p} \tilde{\kappa} &= (\nabla_u \kappa, 1).
-\end{align*}
-Therefore, the augmented variables satisfy
 \[
+\nabla_{q} \tilde{\kappa} =
+\begin{bmatrix}
+  \nabla_v \kappa\\
+  \kappa_\tau
+\end{bmatrix},\quad
+%
+\nabla_{p} \tilde{\kappa} =
+\begin{bmatrix}
+  \nabla_u \kappa\\
+  1
+\end{bmatrix}.
+\]
+From \eqref{eq_hamiltonian-form}-\eqref{eq_e-variable}, the generalized variables satisfy the differential equation
+\begin{equation}\label{eq_auto-hamiltonian}
 \begin{bmatrix}
   \dot{p} \\
   \dot{q}
 \end{bmatrix} =
 %
 \begin{bmatrix}
-  (\dot{u}, \dot{e}) \\
-  (\dot{v}, \dot{\tau})
+  \dot{u} \\
+  \dot{e} \\
+  \dot{v} \\
+  \dot{\tau}
 \end{bmatrix} =
 %
 \begin{bmatrix}
-  -\nabla_{q} \tilde{\kappa}(p, q)\\
-  \nabla_{p} \tilde{\kappa}(p, q)
+  -\nabla_v \kappa(u,v,\tau)\\
+  -\kappa_\tau(u,v,\tau)\\
+  \nabla_u \kappa(u,v,\tau)\\
+  1
+\end{bmatrix} =
+%
+\begin{bmatrix}
+  -\nabla_q \tilde{\kappa}(p,q)\\
+  \nabla_p \kappa(p,q)
 \end{bmatrix},
-\]
-which is an autonomous Hamiltonian system.  
+\end{equation}
+which is an autonomous Hamiltonian system. By setting $t=\tau$ in \eqref{eq_hamiltonian-time} and
+differentiating,
+\begin{equation}\label{eq_hamiltonian-time-der}
+\kappa_\tau(u,v,\tau) = \frac{1}{2}
+\left(
+  u^T K'(\tau)u + u^TS'(\tau)v +  v^T S'^T(\tau)u +  v^T K'(\tau)v
+\right).
+\end{equation}
 
-\paragraph{$\rho$-reversibility UPDATE!}
-Let $\rho$ be the linear invertible transformation
+
+\subsection{$\rho$-reversibility}
+Let $\rho(y)$ be the linear invertible transformation
 \[
-\rho(p,q) = (p, -q).
+\rho(y) =
+\begin{bmatrix}
+  I & 0 \\
+  0 & -I
+\end{bmatrix}
+\begin{bmatrix}
+  p\\
+  q
+\end{bmatrix}=
+\begin{bmatrix}
+  p\\
+  -q
+\end{bmatrix},\quad
+y = \begin{bmatrix}
+  p \\q
+\end{bmatrix}.
 \]
-and denote $y=(p,q)$. The differential equation $\dot{y}=f(y)$ and the vector field $f(y)$ are
+We write the autonomous Hamiltonian system \eqref{eq_auto-hamiltonian} as
+\[
+\dot{y} = f(y),\quad
+%
+f(y) = \begin{bmatrix}
+  -\tilde{\kappa}_q \\
+  \tilde{\kappa}_p
+\end{bmatrix}.
+\]
+The differential equation $\dot{y}=f(y)$ and the vector field $f(y)$ are
 called $\rho$-reversible if
-\[
+\begin{equation}\label{eq_rho-reverse}
 \rho(f(y)) = -f(\rho(y)).
-\]
-Ignoring the time-dependence in the system \eqref{eq_hamiltonian-form}, we have
+\end{equation}
+We have $\rho(y) = (u, e, -v, -\tau)^T$, so the components of the vector field $f(y)$ and $f(\rho(y))$ are
 \[
-f(y) =   \left( -\nabla_q \kappa(p,q), \nabla_p \kappa(p,q) \right) = ( S u - Kv, S v + K p ).
+f(y) =
+\begin{bmatrix} S(\tau) u - K(\tau)v\\
+  -\kappa_\tau(u,v,\tau)\\
+  K(\tau) u + S(\tau) v\\
+  1
+\end{bmatrix},\quad
+%
+f(\rho(y)) = 
+\begin{bmatrix}
+  S(-\tau) u + K(-\tau)v\\
+  -\kappa_\tau(u,-v,-\tau)\\
+  K(-\tau) u - S(-\tau) v\\
+  1
+\end{bmatrix}.
 \]
-Thus,
+We also have
 \[
-f(\rho(y)) = \left( -\nabla_v \kappa(p,-q), \nabla_p \kappa(p,-q) \right) = ( S u + Kv, -S v + K u ),
+\rho(f(y)) =
+\begin{bmatrix}
+  S(\tau) u - K(\tau)v\\
+  -\kappa_\tau(u,v,\tau)\\
+  -K(\tau) u - S(\tau) v\\
+  -1
+\end{bmatrix}.
 \]
-and
-%% \[
-%% \rho(f(y)) =  ( S p - Kv, -S v - K p ).
-%% \]
-%We conclude that the system \eqref{eq_hamiltonian-form} is {\em not} $\rho$-reversible due to the
-%terms $Su$ and $Sv$.
+Thus the conditions for $\rho$-reversibility \eqref{eq_rho-reverse} are satisfied if
+\begin{align}
+S(\tau) u - K(\tau)v &= -S(-\tau) u - K(-\tau)v,\\
+%
+-K(\tau) u - S(\tau) v &= -K(-\tau) u + S(-\tau) v,\\
+-\kappa_\tau(u,v,\tau) &= \kappa_\tau(u,-v,-\tau).\label{eq_rho-cond3}
+\end{align}
+The first two conditions are satified if the following symmetry conditions are fulfilled:
+\begin{equation}\label{eq_sym-cond}
+S(-\tau) = - S(\tau),\quad K(-\tau) = K(\tau).
+\end{equation}
+From \eqref{eq_hamiltonian-time-der},
+\[
+\kappa_\tau(u,-v,-\tau) =
+\frac{1}{2}
+\left(
+  u^T K'(-\tau)u - u^TS'(-\tau)v -  v^T S'^T(-\tau)u +  v^T K'(-\tau)v
+\right).
+\]
+The third condition for $\rho$-reversibility, \eqref{eq_rho-cond3}, is thus satisfied if
+\[
+K'(-\tau) = -K'(\tau),\quad S'(-\tau) = S'(\tau),
+\]
+which is a consequence of the symmetry conditions \eqref{eq_sym-cond}.
+
+We summarize our result in the following lemma.
+\begin{lemma}
+  The autonomous Hamiltonian system \eqref{eq_auto-hamiltonian} is $\rho$-reversible if and only if
+  the symmetry conditions \eqref{eq_sym-cond} are satisfied.
+\end{lemma}
+
+
+  
+
 
 
 
