@@ -7,13 +7,13 @@
 % [pd, td] = timefunc(D, nsteps, verbose)
 %
 % INPUT:
-% D:  number of time functions (Must be EVEN >= 2)
-% nsteps: number of time steps (0,1,2,...,nsteps) (optional, default nsteps = 100)
+% D:  number of time functions (Must be positive)
+% nsteps: number of time steps (1,2,...,nsteps) (optional, default nsteps = 100)
 %
 % OUTPUT:
 %
-% td(1:nsteps+1): 1-D array of time values
-% pad(1:nsteps+1, 1:D): 2-D array of P(nsteps+1, D)
+% td(1:nsteps): 1-D array of midpoint time values
+% pad(1:nsteps, 1:D): 2-D array of polynomials evaluated at the midpoint time levels
 %
 function  [pad, td] = timefunc(D, nsteps, verbose)
 
@@ -38,8 +38,8 @@ function  [pad, td] = timefunc(D, nsteps, verbose)
   
 # Final time T
   T = 15;
-  td = linspace(0, T, nsteps+1)'; # column vector
-  dt = td(2)-td(1);
+  dt = T/(nsteps+1);;
+  td = linspace(0.5*dt, T-0.5*dt, nsteps)'; # column vector
   if (verbose==1)
     printf("Final time = %e, number of time steps = %d, time step = %e\n", ...
 	   T, nsteps, dt);
@@ -47,7 +47,7 @@ function  [pad, td] = timefunc(D, nsteps, verbose)
   end
 
 # evaluate the polynomials at the discrete time levels
-  pad = zeros(nsteps+1, D);
+  pad = zeros(nsteps, D);
 
   for p=1:D
     q = floor((p-1)/2) + 1;

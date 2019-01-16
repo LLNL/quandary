@@ -28,25 +28,36 @@
 \section{Change of variables}
 Consider the scaled Schr\"odinger equation
 \begin{equation}\label{eq_shrodinger}
-\frac{\p \psi}{\p t} = -i H(t) \psi,\quad \psi(0) = \psi_0,\quad H(t) = H_0 + f(t)a + \bar{f}(t)a^\dag.
+\dot{\psi} = -i H(t) \psi,\quad \psi(0) = \psi_0,\quad H(t) = H_s + f(t)a + \bar{f}(t)a^\dag.
 \end{equation}
-Here, $H_0$ is the system Hamiltonian matrix. The lowering and raising matrices are denoted $a$ and
-$a^\dag$, respectively. These matrices satisfy
+Here, $H_s = H_s^\dag$ is the system Hamiltonian matrix, which we assume to be Hermitian and
+independent of time. The lowering and raising matrices are denoted $a$ and $a^\dag$,
+respectively. These matrices satisfy
 \begin{equation}\label{eq_matrices}
-H_0=\begin{bmatrix}
-\omega_0 & & &\\
-& \omega_1 &&\\
-& & \omega_2 &\\
-& & & \ddots
-\end{bmatrix},\quad
 %
 a = \begin{bmatrix}
-0 & 1 & & &\\
- & 0 & \sqrt{2} & &\\
-&  & 0 & \sqrt{3} &\\
-& &  & 0 & \ddots
+0 & 1 & & & &\\
+ & 0 & \sqrt{2} & & &\\
+&  & 0 & \sqrt{3} & &\\
+& &  & 0 & \sqrt{4} & \\
+& &  &  & \ddots & \ddots\\
+\end{bmatrix},\quad
+%
+a^\dag = \begin{bmatrix}
+0 &  & & &\\
+1 & 0 & & &\\
+&  \sqrt{2} & 0 &  &\\
+& &  \sqrt{3} & 0 & \\
+& &  & \ddots & \ddots
 \end{bmatrix}
 \end{equation}
+Because $H_s$ is Hermitian, it has real eigenvalues and can always be diagonalized by a unitary
+matrix $V$. By the change of variables, $u(t)=V \psi(t)$, Schr\"odinger's equation
+\eqref{eq_shrodinger} becomes
+\[
+\dot{u} = -i VH(t)V^\dag u,\quad VH(t)V^\dag = H_0 + f(t)\tilde{a} + \bar{f}(t)\tilde{a}^\dag,
+\]
+where $\tilde{a}=V a V^\dag$.
 
 %% \subsection{A simple example}
 %% We make the change of variables
@@ -72,7 +83,7 @@ a = \begin{bmatrix}
 %% \]
 %% Thus, only the diagonal part of the Hamiltonian matrix is modified by the change of variables.
 
-\subsection{Unitary transformations}
+\subsection{Time-dependent unitary transformations}
 Consider the unitary tranformation
 \[
 \psi(t) = U^{\dag}(t)v(t),\quad U^\dag U = I.
@@ -170,11 +181,37 @@ because $U \dot{U}^\dag = - \dot{U} U^\dag$. Thus, the transformed problem becom
 %% \end{bmatrix}
 %% \end{multline*}
 
-\subsection{Rotating frame (?)}
+\subsection{Rotating frame (interaction picture)}
 
 We can construct a unitary transformation based
-on the time-independent diagonal matrix $H_0$ in \eqref{eq_matrices},
+on the time-independent matrix $H_s$ in \eqref{eq_matrices},
 \[
+U(t) = \exp(i H_s t).
+\]
+We have $\dot{U}(t) = i H_s \exp(i H_s t)$, which gives
+\[
+\dot{U}U^\dag =  i H_s \exp(i H_s t) \exp(- i H_s t) = i H_s.
+\]
+From the definition of the matrix exponential,
+\[
+\exp(i H_s t) = I + it H_s + \frac{1}{2} (it)^2 H_s^2 + \frac{1}{6} (it)^3 H_s^3 + \ldots.
+\]
+Thus it is clear that $U=\exp(i H_s t)$ commutes with $H_s$ and $UH_sU^\dag = H_s$. As a result, the
+constant (time-independent) part of the transformed Hamiltonian cancels,
+\[
+\tilde{H}(t) = U H U^\dag + i \dot{U}U^\dag = f(t) UaU^\dag + \bar{f}(t) Ua^\dag U^\dag.
+\]
+
+\subsection{Diagonal $H_s$}
+When $H_s=H_0$ is real and diagonal,
+\[
+H_0=\begin{bmatrix}
+\omega_0 & & &\\
+& \omega_1 &&\\
+& & \omega_2 &\\
+& & & \ddots
+\end{bmatrix},\quad
+%
 U(t) = \exp(i H_0 t)=
 \begin{bmatrix}
 e^{i\omega_0t} & & &\\
@@ -182,14 +219,6 @@ e^{i\omega_0t} & & &\\
 & & e^{i\omega_2 t} &\\
 & & & \ddots
 \end{bmatrix}
-\]
-We have $\dot{U}(t) = i H_0 \exp(i H_0 t)$, which gives
-\[
-\dot{U}U^\dag =  i H_0 \exp(i H_0 t) \exp(- i H_0 t) = i H_0.
-\]
-Because $U$ and $H_0$ are both diagonal, $UH_0U^\dag = H_0$. As a result,
-\[
-\tilde{H} = U H U^\dag + i \dot{U}U^\dag = f(t) UaU^\dag + \bar{f}(t) Ua^\dag U^\dag.
 \]
 The lowering operator transforms according to
 \begin{multline*}
@@ -232,8 +261,10 @@ The transformed equation becomes $\dot{v} = -i\tilde{H}(t)v$, where
 & & \ddots & \ddots & \ddots
 \end{bmatrix}.
 \]
+
 The structure of the transformed Hamiltonian provides insight into how to induce resonance in the
-system. For example, by taking $f(t)=\Omega e^{-i(\omega_1 - \omega_0)t}$, the Hamiltonian matrix becomes
+system. For example, by taking $f(t)=\Omega e^{-i(\omega_1 - \omega_0)t}$, the Hamiltonian matrix
+becomes
 \[
 \tilde{H}(t) = \begin{bmatrix}
 0 & \Omega & & &\\
