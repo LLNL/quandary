@@ -13,7 +13,7 @@
 % OUTPUT:
 % err: error in solution
 %
-function [err] = small(cfl, separable)
+function [err] = small(cfl, separable, order, stages)
 
   ploterr=1; # Plot the error (1) or the solution (0)?
 
@@ -24,6 +24,15 @@ function [err] = small(cfl, separable)
   if nargin < 2
     separable=1;
   end
+
+  if nargin < 3
+    order=4;
+  end
+
+  if nargin < 4
+    stages=-1;
+  end
+  
 
   verbose = 1;
 
@@ -85,11 +94,6 @@ function [err] = small(cfl, separable)
   ur = U0;
   vi = zeros(N, 1);
 
-				# RK stage variables
-  k1 = zeros(N,1);
-  k2 = zeros(N,1);
-  ell1 = zeros(N,1);
-  ell2 = zeros(N,1);
 
 				# testing octave syntax
   ## t=0.5
@@ -115,41 +119,49 @@ function [err] = small(cfl, separable)
     usavei(:,1) = -vi;
   end
 
+			
+  if (order == 2)	# 2nd order basic verlet
+    stages = 1;
+    gamma(1) = 1;
+  elseif (order == 4) # 4th order Composition of Stromer-Verlet methods
+    order = 4;
+    stages=3;
+    gamma = zeros(stages,1);
+    gamma(1) = gamma(3) = 1/(2 - 2^(1/3));
+    gamma(2) = -2^(1/3)*gamma(1);
+  elseif (order == 6) # Yoshida (1990) 6th order, 7 stage method
+    if (stages==7)
+      gamma = zeros(stages,1);
+      gamma(2) = gamma(6) = 0.23557321335935813368479318;
+      gamma(1) = gamma(7) = 0.78451361047755726381949763;
+      gamma(3) = gamma(5) = -1.17767998417887100694641568;
+      gamma(4) = 1.31518632068391121888424973;
+    else # Kahan + Li 6th order, 9 stage method
+      stages=9;
+      gamma = zeros(stages,1);
+      gamma(1)= gamma(9)= 0.39216144400731413927925056;
+      gamma(2)= gamma(8)= 0.33259913678935943859974864;
+      gamma(3)= gamma(7)= -0.70624617255763935980996482;
+      gamma(4)= gamma(6)= 0.08221359629355080023149045;
+      gamma(5)= 0.79854399093482996339895035;
+    end
+  end
   t=0;
   step=0;
   for step=1:nsteps
     # evaluate time functions
     if (separable)
-      tf_0 = 0.5*(sin(0.5*omega*(t)))^2;
       tf_1o2=0.5*(sin(0.5*omega*(t+0.5*dt)))^2;
-      tf_1 =0.5*(sin(0.5*omega*(t+dt)))^2;
     else
-      tf_0 = 0.25*(1-sin(omega*(t)));
       tf_1o2 = 0.25*(1-sin(omega*(t+0.5*dt)));
-      tf_1 = 0.25*(1-sin(omega*(t+dt)));
     end      
 
 				# 2nd order Magnus integrator
     uSol = expm(-I*dt*tf_1o2*(K1+I*S1)) * uSol;
 
-		    # Partitioned 2nd order RK method (Stromer-Verlet)
-# solving for ell1 
-    rhs = tf_0*(K1*ur + S1*vi);
-    ell1 = linsolve( Ident-0.5*dt*tf_0*S1, rhs );
-    k1 = tf_1o2 * (S1*ur - K1*(vi+0.5*dt*ell1) );
-    rhs = tf_1o2* (S1*(ur+0.5*dt*k1) - K1*(vi+0.5*dt*ell1) );
-    k2 = linsolve( Ident-0.5*dt*tf_1o2*S1, rhs );
-    ell2 = tf_1* ( K1*(ur+0.5*dt*(k1+k2)) + S1*(vi+0.5*dt*ell1) );
-
-#S1=0 -> fully explicit
-    ## ell1 = tf_0*K1*ur;
-    ## k1 = - tf_1o2*K1*(vi+0.5*dt*ell1);
-    ## k2 = - tf_1o2*K1*(vi+0.5*dt*ell1);
-    ## ell2 = tf_1*K1*(ur+0.5*dt*(k1+k2));
-    
-    ur = ur + 0.5*dt*(k1 + k2);
-    vi = vi + 0.5*dt*(ell1 + ell2);
-    t = t+dt;
+    for q=1:stages
+      [ur, vi, t] = stromer_verlet(ur, vi, t, gamma(q)*dt, omega, K1, S1, Ident, separable); # t, ur, vr are updated
+    end
 
 				# evaluate energy
     if (verbose)
@@ -183,52 +195,35 @@ function [err] = small(cfl, separable)
     
 				# plot solution or error?
     if (ploterr)
-				# component 1
+				# component 1&2
       figure(1);
-      c=1;
-      h=plot(tplot, real(usave(c,:)-cg), "b", tplot, usaver(c,:)-real(cg), "r",...
-	    tplot, imag(usave(c,:)-cg), "b--", tplot, usavei(c,:)-imag(cg), "r--");
-      tstr = sprintf("Error, component %d\n", c);
+      h=plot(tplot,  usaver(1,:)-real(cg), "r", tplot, usavei(1,:)-imag(cg), "r--", tplot, usaver(2,:)-real(ce), "m", tplot, usavei(2,:)-imag(ce), "m--");
+      set(gca,"fontsize",16);
+      set(h,"linewidth",2);
+      tstr = sprintf("Error, test %d, order = %d, stages = %d\n", 2-separable, order, stages );
       title(tstr);
-      legend("Re(Magnus)-err",  "Re(Verlet)-err", "Im(Magnus)-err",  "Im(Verlet)-err", "location", "north");
-      axis tight
-
-				# component 2
-      c=2;
-      figure(2);
-      h=plot(tplot, real(usave(c,:)-ce), "m", tplot, usaver(c,:)-real(ce), "c",...
-	    tplot, imag(usave(c,:)-ce), "m--", tplot, usavei(c,:)-imag(ce), "c--");
-      tstr = sprintf("Error component %d\n", c);
-      title(tstr);
-#    legend( "Analytical", "Im(Magnus)", "Verlet", "location", "north");
-      legend( "Re(Magnus)-err", "Re(Verlet)-err", "Im(Magnus)-err", "Im(Verlet)-err", "location", "north");
+      legend( "Re(err-1)", "Im(err-1)", "Re(err-2)", "Im(err-2)", "location", "south");
       axis tight
 
     else
-				# plot solution
-				# component 1, real & imag parts
+				# plot analytical solution
+				# component 1&2, real & imag parts
       figure(1);
       c=1;
-      h=plot(tplot, real(cg), "k", tplot, real(usave(c,:)), "b", tplot, usaver(c,:), "r",...
-	     tplot, imag(cg), "k--", tplot, imag(usave(c,:)), "b--", tplot, usavei(c,:), "r--");
-#      h=plot(tplot, cg, "k");
-      tstr = sprintf("Component %d\n", c);
+      h=plot(tplot, real(cg), "k", tplot, imag(cg), "k--", tplot, real(ce), "r", tplot, imag(ce), "r--");
+      set(gca,"fontsize",16);
+      set(h,"linewidth",2);
+      if (separable)
+	tstr = sprintf("Separable Hamiltonian");
+      else
+	tstr = sprintf("Non-separable Hamiltonian");
+      end
       title(tstr);
-      legend("Re(Analytical)", "Re(Magnus)",  "Re(Verlet)", ...
-	     "Im(Analytical)", "Im(Magnus)",  "Im(Verlet)", "location", "north");
+      legend("Re(Comp 1)", "Im(Comp 1)", "Re(Comp 2)", "Im(Comp 2)", "location", "north");
       axis tight
+      xlabel("Time")
+      ylabel("a.u.");
 
-				# component 2, real & imag parts
-      c=2;
-      figure(2);
-      h=plot(tplot, real(ce), "k", tplot, real(usave(c,:)), "m", tplot, usaver(c,:), "c",...
-	     tplot, imag(ce), "k--", tplot, imag(usave(c,:)), "m--", tplot, usavei(c,:), "c--");
-#      h=plot(tplot, ce, "k");
-      tstr = sprintf("Component %d\n", c);
-      title(tstr);
-      legend( "Re(Analytical)", "Re(Magnus)", "Re(Verlet)", ...
-	      "Im(Analytical)", "Im(Magnus)", "Im(Verlet)", "location", "north");
-      axis tight
     end      
   end
 
