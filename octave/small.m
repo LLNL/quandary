@@ -4,11 +4,13 @@
 %
 % USAGE:
 % 
-% [] = small(cfl, separable)
+% [] = small(cfl, separable, order, stages)
 %
 % INPUT:
 % cfl: dt = maxeig/cfl
 % separable: 1: Separable Hamiltonian, 0: Non-separable Hamiltonian (default is 1)
+% order: order of accuracy, may be 2, 4, or 6.
+% stages: only used for order = 6, in which case it is 7 or 9 (default)
 %
 % OUTPUT:
 % err: error in solution
