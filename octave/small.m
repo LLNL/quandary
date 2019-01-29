@@ -19,7 +19,7 @@
 %
 function [err] = small(cfl, testcase, order, stages)
 
-  ploterr=1; # Plot the error (1) or the solution (0)?
+  ploterr=0; # Plot the error (1) or the solution (0)?
 
   if nargin < 1
     cfl=0.1;
@@ -244,6 +244,8 @@ function [err] = small(cfl, testcase, order, stages)
 	tstr = sprintf("Separable Hamiltonian (testcase=1)");
       elseif (testcase==0)
 	tstr = sprintf("Non-separable Hamiltonian (testcase=0)");
+      elseif (testcase==2)
+	tstr = sprintf("Polynomial time function (testcase=2)");
       end
       title(tstr);
       legend("Re(Comp 1)", "Im(Comp 1)", "Re(Comp 2)", "Im(Comp 2)", "location", "north");
