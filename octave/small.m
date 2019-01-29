@@ -19,7 +19,7 @@
 %
 function [err] = small(cfl, testcase, order, stages)
 
-  ploterr=0; # Plot the error (1) or the solution (0)?
+  ploterr=1; # Plot the error (1) or the solution (0)?
 
   if nargin < 1
     cfl=0.1;
@@ -47,15 +47,12 @@ function [err] = small(cfl, testcase, order, stages)
   ##   return;
   ## end
   
-  if (testcase==1)
+  if (testcase==1 || testcase==2)
     K1 = [0, 1; 1, 0];
     S1 = [0, 0; 0, 0];
-  elseif (testcase==0)
+  elseif (testcase==0 || testcase==3)
     K1 = [0, 0; 0, 0];
     S1 = [0, 1; -1, 0];
-  elseif (testcase==2) # twilight
-    K1 = [0, 1; 1, 0];
-    S1 = [0, 0; 0, 0];
   end
 
 				# final time
@@ -168,6 +165,10 @@ function [err] = small(cfl, testcase, order, stages)
     tfunc   = @tfunc2;
     uforce = @uforce2;
     vforce = @vforce2;
+  elseif (testcase==3)
+    tfunc   = @tfunc3;
+    uforce = @uforce3;
+    vforce = @vforce3;
   else
     printf("ERROR: unknown testcase = %d\n", testcase);
     return;
@@ -202,7 +203,7 @@ function [err] = small(cfl, testcase, order, stages)
 				# difference at final time
     Nplot = length(usave(1,:));
     tplot = linspace(0,T,Nplot);
-    if (testcase==1)
+    if (testcase==1 || testcase==2 || testcase==3)
       phi = 0.25*(tplot - 1/omega*sin(omega*tplot));
       cg = cos(phi);
       ce = -I*sin(phi);
@@ -210,10 +211,6 @@ function [err] = small(cfl, testcase, order, stages)
       phi = 0.25*( tplot + 1/omega*(cos(omega*tplot) - 1) );
       cg = cos(phi);
       ce = -sin(phi);
-    elseif (testcase==2)
-      phi = 0.25*(tplot - 1/omega*sin(omega*tplot));
-      cg = cos(phi);
-      ce = -I*sin(phi);
     end
 
     cg_err = sqrt( (usaver(1,Nplot)-real(cg(Nplot)))^2 + (usavei(1,Nplot)-imag(cg(Nplot)))^2 );
@@ -245,7 +242,9 @@ function [err] = small(cfl, testcase, order, stages)
       elseif (testcase==0)
 	tstr = sprintf("Non-separable Hamiltonian (testcase=0)");
       elseif (testcase==2)
-	tstr = sprintf("Polynomial time function (testcase=2)");
+	tstr = sprintf("Polynomial time function, separable (testcase=2)");
+      elseif (testcase==3)
+	tstr = sprintf("Polynomial time function, non-separable (testcase=3)");
       end
       title(tstr);
       legend("Re(Comp 1)", "Im(Comp 1)", "Re(Comp 2)", "Im(Comp 2)", "location", "north");

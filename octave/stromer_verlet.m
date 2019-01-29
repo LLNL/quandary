@@ -13,7 +13,8 @@ function [unew, vnew, tnew]=stromer_verlet(ur, vi, tfunc, t, dt, omega, K1, S1, 
   ell2 = zeros(N,1);
 
 # forcing functions
-  fu_1o2 = uforce(t+0.5*dt,omega);
+#  fu_1o2 = uforce(t+0.5*dt,omega);
+  fu_1o2 = 0.5*( uforce(t,omega) + uforce(t+dt,omega) );
   fv_0 = vforce(t,omega);
   fv_1 = vforce(t+dt,omega);
 
