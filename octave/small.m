@@ -1,6 +1,6 @@
 %-*-octave-*--
 %
-% traceobjfunc: solve a model problem from quantum control theory
+% small: integrate  Schroedinger's equation for a small model with exact solution
 %
 % USAGE:
 % 
@@ -8,14 +8,16 @@
 %
 % INPUT:
 % cfl: dt = maxeig/cfl
-% separable: 1: Separable Hamiltonian, 0: Non-separable Hamiltonian (default is 1)
+% testcase: Exact solutions:
+%               1: Separable Hamiltonian, 0: Non-separable Hamiltonian (default is 1)
+%               2: Twilight forcing
 % order: order of accuracy, may be 2, 4, or 6.
 % stages: only used for order = 6, in which case it is 7 or 9 (default)
 %
 % OUTPUT:
 % err: error in solution
 %
-function [err] = small(cfl, separable, order, stages)
+function [err] = small(cfl, testcase, order, stages)
 
   ploterr=1; # Plot the error (1) or the solution (0)?
 
@@ -24,7 +26,7 @@ function [err] = small(cfl, separable, order, stages)
   end
 
   if nargin < 2
-    separable=1;
+    testcase=1;
   end
 
   if nargin < 3
@@ -45,12 +47,15 @@ function [err] = small(cfl, separable, order, stages)
   ##   return;
   ## end
   
-  if (separable)
+  if (testcase==1)
     K1 = [0, 1; 1, 0];
     S1 = [0, 0; 0, 0];
-  else
+  elseif (testcase==0)
     K1 = [0, 0; 0, 0];
     S1 = [0, 1; -1, 0];
+  elseif (testcase==2) # twilight
+    K1 = [0, 1; 1, 0];
+    S1 = [0, 0; 0, 0];
   end
 
 				# final time
@@ -61,7 +66,7 @@ function [err] = small(cfl, separable, order, stages)
 
 
   if (verbose)
-    printf("Final time = %e, CFL = %e\n", T, cfl);
+    printf("Testcase = %d, Final time = %e, CFL = %e\n", testcase, T, cfl);
   end
 
   lambda = eig(K1+I*S1);
@@ -150,19 +155,35 @@ function [err] = small(cfl, separable, order, stages)
   end
   t=0;
   step=0;
+
+  if (testcase==1)
+    tfunc   = @tfunc1;
+    uforce = @uforce1;
+    vforce = @vforce1;
+  elseif (testcase==0)
+    tfunc   = @tfunc0;
+    uforce = @uforce0;
+    vforce = @vforce0;
+  elseif (testcase==2)
+    tfunc   = @tfunc2;
+    uforce = @uforce2;
+    vforce = @vforce2;
+  else
+    printf("ERROR: unknown testcase = %d\n", testcase);
+    return;
+  end
+
+  separable = (norm(S1) < 1e-15);
+  printf("Separable = %d\n", separable);
+  
   for step=1:nsteps
-    # evaluate time functions
-    if (separable)
-      tf_1o2=0.5*(sin(0.5*omega*(t+0.5*dt)))^2;
-    else
-      tf_1o2 = 0.25*(1-sin(omega*(t+0.5*dt)));
-    end      
+    tf_1o2 = tfunc(t+0.5*dt,omega);
 
 				# 2nd order Magnus integrator
     uSol = expm(-I*dt*tf_1o2*(K1+I*S1)) * uSol;
 
     for q=1:stages
-      [ur, vi, t] = stromer_verlet(ur, vi, t, gamma(q)*dt, omega, K1, S1, Ident, separable); # t, ur, vr are updated
+      [ur, vi, t] = stromer_verlet(ur, vi, tfunc, t, gamma(q)*dt, omega, K1, S1, Ident, separable, uforce, vforce); # t, ur, vr are updated
     end
 
 				# evaluate energy
@@ -181,14 +202,18 @@ function [err] = small(cfl, separable, order, stages)
 				# difference at final time
     Nplot = length(usave(1,:));
     tplot = linspace(0,T,Nplot);
-    if (separable)
+    if (testcase==1)
       phi = 0.25*(tplot - 1/omega*sin(omega*tplot));
       cg = cos(phi);
       ce = -I*sin(phi);
-    else
+    elseif (testcase==0)
       phi = 0.25*( tplot + 1/omega*(cos(omega*tplot) - 1) );
       cg = cos(phi);
       ce = -sin(phi);
+    elseif (testcase==2)
+      phi = 0.25*(tplot - 1/omega*sin(omega*tplot));
+      cg = cos(phi);
+      ce = -I*sin(phi);
     end
 
     cg_err = sqrt( (usaver(1,Nplot)-real(cg(Nplot)))^2 + (usavei(1,Nplot)-imag(cg(Nplot)))^2 );
@@ -202,7 +227,7 @@ function [err] = small(cfl, separable, order, stages)
       h=plot(tplot,  usaver(1,:)-real(cg), "r", tplot, usavei(1,:)-imag(cg), "r--", tplot, usaver(2,:)-real(ce), "m", tplot, usavei(2,:)-imag(ce), "m--");
       set(gca,"fontsize",16);
       set(h,"linewidth",2);
-      tstr = sprintf("Error, test %d, order = %d, stages = %d\n", 2-separable, order, stages );
+      tstr = sprintf("Error, test %d, order = %d, stages = %d\n", testcase, order, stages );
       title(tstr);
       legend( "Re(err-1)", "Im(err-1)", "Re(err-2)", "Im(err-2)", "location", "south");
       axis tight
@@ -215,10 +240,10 @@ function [err] = small(cfl, separable, order, stages)
       h=plot(tplot, real(cg), "k", tplot, imag(cg), "k--", tplot, real(ce), "r", tplot, imag(ce), "r--");
       set(gca,"fontsize",16);
       set(h,"linewidth",2);
-      if (separable)
-	tstr = sprintf("Separable Hamiltonian");
-      else
-	tstr = sprintf("Non-separable Hamiltonian");
+      if (testcase==1)
+	tstr = sprintf("Separable Hamiltonian (testcase=1)");
+      elseif (testcase==0)
+	tstr = sprintf("Non-separable Hamiltonian (testcase=0)");
       end
       title(tstr);
       legend("Re(Comp 1)", "Im(Comp 1)", "Re(Comp 2)", "Im(Comp 2)", "location", "north");
