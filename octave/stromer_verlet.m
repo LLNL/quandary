@@ -5,7 +5,7 @@ function [unew, vnew, tnew]=stromer_verlet(ur, vi, tfunc, t, dt, omega, K1, S1, 
   tf_1o2 = tfunc(t+0.5*dt,omega);
   tf_1 = tfunc(t+dt,omega);
 
-  N = length(ur);
+  N = size(ur,1);
   				# RK stage variables
   kay1 = zeros(N,1);
   kay2 = zeros(N,1);

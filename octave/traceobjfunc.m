@@ -15,6 +15,10 @@
 %
 function [cost uFinal] = traceobjfunc(a1, verbose)
 
+  order = 6;
+  if (order == 6)
+    stages = 9;
+  end
   abs_or_real=1; # plot the magnitude (abs) of real part of the solution (1 for real)
 
   if nargin < 1
@@ -44,7 +48,7 @@ function [cost uFinal] = traceobjfunc(a1, verbose)
 
   H0 = diag([d0, d1, d2, d3]);
 
-  H1 = [0, 1, 0, 0;
+  K1 = [0, 1, 0, 0;
   	1, 0, sqrt(2), 0;
   	0, sqrt(2), 0, sqrt(3);
   	0, 0, sqrt(3), 0];
@@ -54,6 +58,7 @@ function [cost uFinal] = traceobjfunc(a1, verbose)
   	0, -sqrt(2), 0, sqrt(3);
   	0, 0, -sqrt(3), 0];
 
+#  S1 = zeros(N,N);
 # final time
   T = 15;
 
@@ -70,7 +75,7 @@ function [cost uFinal] = traceobjfunc(a1, verbose)
 # estimate largest eigenvalue
   t = (imax-1)/100 * T;
 
-  H=H0+pmax*H1;
+  H=H0+pmax*K1;
   lambda = eig(H);
   maxeig1 = norm(lambda,"inf");
   if (verbose)
@@ -79,7 +84,7 @@ function [cost uFinal] = traceobjfunc(a1, verbose)
 
   t = (imin-1)/100 * T;
 
-  H=H0+pmin*H1;
+  H=H0+pmin*K1;
   lambda = eig(H);
   maxeig2 = norm(lambda,"inf");
   if (verbose)
@@ -98,7 +103,7 @@ function [cost uFinal] = traceobjfunc(a1, verbose)
   vect = zeros(N,1);
 
 		   # Final time T
-  dt = cfl/maxeig; # largest eigenvalue of H0 = d3, H0+poly*H1 estimated by maxeig
+  dt = cfl/maxeig; # largest eigenvalue of H0 = d3, H0+poly*K1 estimated by maxeig
   nsteps = ceil(T/dt);
   dt = T/nsteps;
   if (verbose)
@@ -142,17 +147,49 @@ function [cost uFinal] = traceobjfunc(a1, verbose)
   vi = zeros(N, N);
 
 # RK stage variables
-  k1 = zeros(N,N);
-  k2 = zeros(N,N);
-  l1 = zeros(N,N);
-  l2 = zeros(N,N);
+  kay1 = zeros(N,N);
+  kay2 = zeros(N,N);
+  ell1 = zeros(N,N);
+  ell2 = zeros(N,N);
 
+# zero forcing
+  fv_0 = zeros(N,N);
+  fv_1 = zeros(N,N);
+  fu_1o2 = zeros(N,N);
+
+  if (order == 2)	# 2nd order basic verlet
+    stages = 1;
+    gamma(1) = 1;
+  elseif (order == 4) # 4th order Composition of Stromer-Verlet methods
+    order = 4;
+    stages=3;
+    gamma = zeros(stages,1);
+    gamma(1) = gamma(3) = 1/(2 - 2^(1/3));
+    gamma(2) = -2^(1/3)*gamma(1);
+  elseif (order == 6) # Yoshida (1990) 6th order, 7 stage method
+    if (stages==7)
+      gamma = zeros(stages,1);
+      gamma(2) = gamma(6) = 0.23557321335935813368479318;
+      gamma(1) = gamma(7) = 0.78451361047755726381949763;
+      gamma(3) = gamma(5) = -1.17767998417887100694641568;
+      gamma(4) = 1.31518632068391121888424973;
+    else # Kahan + Li 6th order, 9 stage method
+      stages=9;
+      gamma = zeros(stages,1);
+      gamma(1)= gamma(9)= 0.39216144400731413927925056;
+      gamma(2)= gamma(8)= 0.33259913678935943859974864;
+      gamma(3)= gamma(7)= -0.70624617255763935980996482;
+      gamma(4)= gamma(6)= 0.08221359629355080023149045;
+      gamma(5)= 0.79854399093482996339895035;
+    end
+  end
+  
 # testing octave syntax
-  step=1;
-  S = qtot(step).*S1; # skew-symmetric part
-  rhs = H*ur + S*vi;
-  l1 = linsolve( Ident-0.5*dt*S, rhs ); # - 0.5*dt*S);
-  printf("Size(Ident)= (%d, %d), size(rhs)=(%d,%d), size(l1)=(%d,%d)\n", size(Ident), size(rhs), size(l1));
+  ## step=1;
+  ## S = qtot(step).*S1; # skew-symmetric part
+  ## rhs = H*ur + S*vi;
+  ## l1 = linsolve( Ident-0.5*dt*S, rhs ); # - 0.5*dt*S);
+  ## printf("Size(Ident)= (%d, %d), size(rhs)=(%d,%d), size(l1)=(%d,%d)\n", size(Ident), size(rhs), size(l1));#
 # end test
 
   v1 = zeros(N,1);
@@ -170,26 +207,43 @@ function [cost uFinal] = traceobjfunc(a1, verbose)
     usavei(:,:,1) = -vi;
   end
 
+# handles to time and forcing functions
+  tfunc = @tf1;
+  uforce = @uzero;
+  vforce = @vzero;  
+  
+  separable = (norm(S1) < 1e-15);
+  printf("Separable = %d\n", separable);
+
   t=0;
+  tm=0;
   step=0;
   for step=1:nsteps
-    H = H0 + ptot(step).*H1; # symmetric part
-    S = qtot(step).*S1; # skew-symmetric part
+# 2nd order Magnus integrator
+    H = H0 + tf1(tm+0.5*dt, a1).*(K1 + I*S1); # symmetric + skew-symmtric 
     expH = expm(-I*dt*H);
 
     uSol = expH * uSol;
 
-		    # Partitioned 2nd order RK method (Stromer-Verlet)
-    rhs = H*ur + S*vi;
-    l1 = linsolve( Ident-0.5*dt*S, rhs );
-    k1 = S*ur - H*(vi+0.5*dt*l1);
-    rhs = S*(ur+0.5*dt*k1) - H*(vi+0.5*dt*l1);
-    k2 = linsolve( Ident-0.5*dt*S, rhs );
-    l2 = H*(ur+0.5*dt*(k1+k2)) + S*(vi+0.5*dt*l1);
+    for q=1:stages
+      [ur, vi, t] = stromer_verlet_mat(ur, vi, tfunc, t, gamma(q)*dt, a1, H0, K1, S1, Ident, separable, uforce, vforce); # t, ur, vr are updated
+    end
 
-    ur = ur + 0.5*dt*(k1 + k2);
-    vi = vi + 0.5*dt*(l1 + l2);
-    t = t+dt;
+				# Evaluate time function
+    ## tf_0 = tfunc(t, a1);
+    ## tf_1o2 = tfunc(t+0.5*dt, a1);
+    ## tf_1 = tfunc(t+dt, a1);
+    
+    ## 		    # Partitioned 2nd order RK method (Stromer-Verlet)
+    ## ell1 = (H0+tf_0*K1)*ur + fv_0;
+    ## kay1 = - (H0 + tf_1o2*K1)*(vi+0.5*dt*ell1) + fu_1o2;
+    ## kay2 = kay1;
+    ## ell2 = (H0+tf_1*K1)*(ur+0.5*dt*(kay1+kay2)) + fv_1;
+
+    ## ur = ur + 0.5*dt*(kay1 + kay2);
+    ## vi = vi + 0.5*dt*(ell1 + ell2);
+
+    tm = tm+dt; # for Magnus integrator
 
 				# accumulate cost = integral ( 1 - Tr( uSol' * w(t) * uTarget ) )
     fidelity = trace(ctranspose(uSol) * uTarget)/N;
