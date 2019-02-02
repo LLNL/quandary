@@ -4,36 +4,43 @@
 %
 % USAGE:
 % 
-% [cost, ufinal] = traceobjfunc(a1, verbose)
+% [cost, ufinal] = traceobjfunc(pcof, verbose, order)
 %
 % INPUT:
-% a1(D,1): amplitudes of the control functions as a D x 1 column vector, D=size(a1,1)
+% pcof(D,1): amplitudes of the control functions as a D x 1 column vector, D=size(pcof,1)
+% verbose: 0: quite mode, 1: verbose
+% order: order of accuracy: 2, 4, or 6.
 %
 % OUTPUT:
 % cost: trace norm of gate infidelity cost functional
 % ufinal: state vector at t=T
 %
-function [cost uFinal] = traceobjfunc(a1, verbose)
+function [cost uFinal] = traceobjfunc(pcof, verbose, order)
 
-  order = 6;
-  if (order == 6)
-    stages = 9;
-  end
   abs_or_real=1; # plot the magnitude (abs) of real part of the solution (1 for real)
 
   if nargin < 1
-    a1 = 1.0;
+    pcof(1) = 1.0;
+    pcof(2) = 0.0;
   end
 
   if nargin < 2
     verbose=0;
   end
 
+  if nargin < 3
+    order = 4;
+  end
+
+  if (order == 6)
+    stages = 9;
+  end
+  
   cfl = 0.1;
 
   N = 4; # vector dimension
 
-  D = size(a1,1); # parameter dimension
+  D = size(pcof,1); # parameter dimension
 
   ## if (mod(D,2) == 1)
   ##   printf("ERROR: D=%d, is ODD\n", D);
@@ -46,8 +53,25 @@ function [cost uFinal] = traceobjfunc(a1, verbose)
   d2 = 47.88054868;
   d3 = 69.70426293;
 
-  H0 = diag([d0, d1, d2, d3]);
+  lab_frame = 0;
+  if (lab_frame)
+# lab frame
+    H0 = diag([d0, d1, d2, d3]);
+    d_omega = [0, 0, 0, 0];
+  else
+# rotating frame
+    H0 = diag([0, 0, 0, 0]);
+    d_omega = [d1-d0, d2-d1, d3-d2, 0];
+  end
 
+				# lowering op
+  amat = [0, 1, 0, 0;
+  	0, 0, sqrt(2), 0;
+  	0, 0, 0, sqrt(3);
+  	0, 0, 0, 0];
+# raising op
+  adag = amat';
+  
   K1 = [0, 1, 0, 0;
   	1, 0, sqrt(2), 0;
   	0, sqrt(2), 0, sqrt(3);
@@ -63,19 +87,23 @@ function [cost uFinal] = traceobjfunc(a1, verbose)
   T = 15;
 
   if (verbose)
-    printf("Vector dim (N) = %d, Param dim (D) = %d, a1(1) = %e, Final time = %e, CFL = %e\n", N, D, a1(1), T, cfl);
+    printf("Vector dim (N) = %d, Param dim (D) = %d, pcof(1) = %e, Final time = %e, CFL = %e\n", N, D, pcof(1), T, cfl);
   end
 
 		     # first evaluate the polynomials on a coarse grid
   pad0 = timefunc(D, 100);
-  ptot0 = pad0*a1;
+  ptot0 = pad0*pcof;
   [pmax imax] = max(ptot0); # assumes ptot is real-valued
   [pmin imin] = min(ptot0);
 
 # estimate largest eigenvalue
   t = (imax-1)/100 * T;
 
-  H=H0+pmax*K1;
+  if (lab_frame)
+    H=H0+pmax*(amat+adag);
+  else
+    H=H0+50*pmax*(amat+adag); # 50 is arbitrary
+  end    
   lambda = eig(H);
   maxeig1 = norm(lambda,"inf");
   if (verbose)
@@ -84,7 +112,11 @@ function [cost uFinal] = traceobjfunc(a1, verbose)
 
   t = (imin-1)/100 * T;
 
-  H=H0+pmin*K1;
+  if (lab_frame)
+    H=H0+pmin*(amat+adag);
+  else
+    H=H0+50*pmin*(amat+adag);
+  end
   lambda = eig(H);
   maxeig2 = norm(lambda,"inf");
   if (verbose)
@@ -115,10 +147,8 @@ function [cost uFinal] = traceobjfunc(a1, verbose)
 # evaluate all polynomials on the midpoint grid
   [pad, td] = timefunc(D, nsteps);
   qad = pad; # tmp
-  b1 = 0.*a1;
 # sum up all polynomial components
-  ptot = pad*a1;
-  qtot = qad*b1; # tmp
+  ptot = pad*pcof;
 
 # form the weight function
   tp = 0.125*T;
@@ -208,40 +238,40 @@ function [cost uFinal] = traceobjfunc(a1, verbose)
   end
 
 # handles to time and forcing functions
-  tfunc = @tf1;
+  rfunc = @rf1;
+  ifunc = @if1;
   uforce = @uzero;
   vforce = @vzero;  
   
   separable = (norm(S1) < 1e-15);
-  printf("Separable = %d\n", separable);
+  printf("Separable = %d, order of accuracy = %d\n", separable, order);
 
   t=0;
   tm=0;
   step=0;
   for step=1:nsteps
 # 2nd order Magnus integrator
-    H = H0 + tf1(tm+0.5*dt, a1).*(K1 + I*S1); # symmetric + skew-symmtric 
+#    dmat = expm(-I*diag(d_omega.*(tm+0.5*dt)));
+#    dmat = diag([ exp(-I*d_omega(1)*(tm+0.5*dt)), exp(-I*d_omega(2)*(tm+0.5*dt)), exp(-I*d_omega(3)*(tm+0.5*dt)), exp(-I*d_omega(4)*(tm+0.5*dt)) ]);
+    dmat_r_1o2 = diag([ cos(d_omega(1)*(tm+0.5*dt)), cos(d_omega(2)*(tm+0.5*dt)), cos(d_omega(3)*(tm+0.5*dt)), cos(d_omega(4)*(tm+0.5*dt)) ]);
+    dmat_i_1o2 = diag([ -sin(d_omega(1)*(tm+0.5*dt)), -sin(d_omega(2)*(tm+0.5*dt)), -sin(d_omega(3)*(tm+0.5*dt)), -sin(d_omega(4)*(tm+0.5*dt)) ]);
+
+				# symmetric part
+    K_1o2 =  rfunc(tm+0.5*dt, pcof).*(dmat_r_1o2 * amat +  amat' * dmat_r_1o2') - ifunc(tm+0.5*dt, pcof).*(dmat_i_1o2 * amat + amat' * dmat_i_1o2');
+				# skew-symmetric part
+    S_1o2 =  ifunc(tm+0.5*dt, pcof).*(dmat_r_1o2 * amat - amat' * dmat_r_1o2') + rfunc(tm+0.5*dt, pcof).*(dmat_i_1o2 * amat - amat' * dmat_i_1o2');
+			       
+    ## H = H0 + (rfunc(tm+0.5*dt, pcof) + I*ifunc(tm+0.5*dt, pcof)).*(da_mat_r + I*da_mat_i) + ...
+    ## 	(rfunc(tm+0.5*dt, pcof) - I*ifunc(tm+0.5*dt, pcof)).*(da_mat_r' - I*da_mat_i'); # symmetric + skew-symmtric 
+
+    H = H0 + K_1o2 + I*S_1o2; # symmetric + skew-symmtric 
     expH = expm(-I*dt*H);
 
     uSol = expH * uSol;
 
     for q=1:stages
-      [ur, vi, t] = stromer_verlet_mat(ur, vi, tfunc, t, gamma(q)*dt, a1, H0, K1, S1, Ident, separable, uforce, vforce); # t, ur, vr are updated
+      [ur, vi, t] = stromer_verlet_mat(ur, vi, rfunc, ifunc, t, gamma(q)*dt, pcof, H0, amat, adag, Ident, d_omega, uforce, vforce); # t, ur, vr are updated
     end
-
-				# Evaluate time function
-    ## tf_0 = tfunc(t, a1);
-    ## tf_1o2 = tfunc(t+0.5*dt, a1);
-    ## tf_1 = tfunc(t+dt, a1);
-    
-    ## 		    # Partitioned 2nd order RK method (Stromer-Verlet)
-    ## ell1 = (H0+tf_0*K1)*ur + fv_0;
-    ## kay1 = - (H0 + tf_1o2*K1)*(vi+0.5*dt*ell1) + fu_1o2;
-    ## kay2 = kay1;
-    ## ell2 = (H0+tf_1*K1)*(ur+0.5*dt*(kay1+kay2)) + fv_1;
-
-    ## ur = ur + 0.5*dt*(kay1 + kay2);
-    ## vi = vi + 0.5*dt*(ell1 + ell2);
 
     tm = tm+dt; # for Magnus integrator
 
@@ -293,22 +323,47 @@ function [cost uFinal] = traceobjfunc(a1, verbose)
     tplot = linspace(0,T,Nplot);
     c=3;
     q=3;
+
+#    if (lab_frame)
 				# real part
-    figure(1);
-    h=plot(tplot, real(usave(c,q,:))- usaver(c,q,:));
-    tstr = sprintf("Difference, component %d\n", c);
-    title(tstr);
-    legend("Re(Magnus - Verlet)", "location", "east");
-    axis tight
+      figure(1);
+      h=plot(tplot, real(usave(c,q,:)), "r", tplot, usaver(c,q,:), "b");
+      tstr = sprintf("Real part, component %d\n", c);
+      title(tstr);
+      legend("Re(Magnus)", "Re(Verlet)", "location", "east");
+      axis tight
+
+      figure(2);
+      h=plot(tplot, real(usave(c,q,:))- usaver(c,q,:));
+      tstr = sprintf("Difference, component %d\n", c);
+      title(tstr);
+      legend("Re(Magnus - Verlet)", "location", "east");
+      axis tight
 
 				# imaginary part
-    figure(2);
-    h=plot( tplot, imag(usave(c,q,:))- usavei(c,q,:));
-    tstr = sprintf("Difference, component %d\n", c);
-    title(tstr);
-    legend( "Im(Magnus-Verlet)", "location", "east");
-    axis tight
+      figure(3);
+      h=plot( tplot, imag(usave(c,q,:))- usavei(c,q,:));
+      tstr = sprintf("Difference, component %d\n", c);
+      title(tstr);
+      legend( "Im(Magnus-Verlet)", "location", "east");
+      axis tight
 
+      figure(4);
+      h=plot( tplot, imag(usave(c,q,:)), "r", tplot, usavei(c,q,:), "b");
+      tstr = sprintf("Imaginary part, component %d\n", c);
+      title(tstr);
+      legend( "Im(Magnus)", "Im(Verlet)", "location", "east");
+      axis tight
+#    else
+      # rotating frame
+      figure(6);
+      h=plot(tplot, real(usave(c,q,:)), "r", tplot, imag(usave(c,q,:)), "b");
+      tstr = sprintf("Magnus integrator, component %d\n", c);
+      title(tstr);
+      legend("Re(Magnus)", "Im(Magnus)", "location", "east");
+      axis tight
+#    end
+    
 #    plotunitary(usaver, T, abs_or_real);
 #    plotunitary(usave, T, abs_or_real);
     
@@ -329,10 +384,10 @@ function [cost uFinal] = traceobjfunc(a1, verbose)
     set(h,"linewidth",2);
     title("Weight function");
 #    legend("e0 & e1", "e2 & e3","location","north");
-    ## h = plot( [1:D/2], a1(1:2:end), "b*",  [1:D/2], a1(2:2:end), "r*");
+    ## h = plot( [1:D/2], pcof(1:2:end), "b*",  [1:D/2], pcof(2:2:end), "r*");
     ## set(h,"markersize",10);
-    ## amin = min(a1);
-    ## amax= max(a1);
+    ## amin = min(pcof);
+    ## amax= max(pcof);
     ## adelta=amax-amin;
     ## axis([0.5 D/2+0.5, amin-0.1*adelta, amax+0.1*adelta]);
     ## legend("cos", "sin", "location", "east");
@@ -344,9 +399,9 @@ function [cost uFinal] = traceobjfunc(a1, verbose)
   finalCost = 1 - abs(finalFidelity);
 
   if (verbose)
-    printf("Forward calculation: Parameter a1 =[ %e", a1(1));
+    printf("Forward calculation: Parameter pcof =[ %e", pcof(1));
     for q=2:D
-      printf(", %e", a1(q));
+      printf(", %e", pcof(q));
     end
     printf(" ]\n");
 				# check if uFinal is unitary

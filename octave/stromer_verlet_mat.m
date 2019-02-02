@@ -1,10 +1,6 @@
 %-*-octave-*--
 # Partitioned 2nd order RK method (Stromer-Verlet)
-function [unew, vnew, tnew]=stromer_verlet_mat(ur, vi, tfunc, t, dt, omega, H0, K1, S1, Ident, separable, uforce, vforce)
-  tf_0 = tfunc(t,omega);
-  tf_1o2 = tfunc(t+0.5*dt,omega);
-  tf_1 = tfunc(t+dt,omega);
-
+function [unew, vnew, tnew]=stromer_verlet_mat(ur, vi, rfunc, ifunc, t, dt, pcof, H0, amat, adag, Ident, d_omega, uforce, vforce)
   N = size(ur,1);
   				# RK stage variables
   kay1 = zeros(N,N);
@@ -13,25 +9,57 @@ function [unew, vnew, tnew]=stromer_verlet_mat(ur, vi, tfunc, t, dt, omega, H0, 
   ell2 = zeros(N,N);
 
 # forcing functions
-#  fu_1o2 = uforce(t+0.5*dt,omega);
-  fu_1o2 = 0.5*( uforce(t,omega) + uforce(t+dt,omega) );
-  fv_0 = vforce(t,omega);
-  fv_1 = vforce(t+dt,omega);
+#  fu_1o2 = uforce(t+0.5*dt,pcof);
+  fu_1o2 = 0.5*( uforce(t,pcof) + uforce(t+dt,pcof) );
+  fv_0 = vforce(t,pcof);
+  fv_1 = vforce(t+dt,pcof);
 
-				#S1=0 -> fully explicit
-  if (separable)
-    ell1 = (H0 + tf_0*K1)*ur + fv_0;
-    kay1 = - (H0 + tf_1o2*K1)*(vi+0.5*dt*ell1) + fu_1o2;
-    kay2 = kay1;
-    ell2 = (H0+tf_1*K1)*(ur+0.5*dt*(kay1+kay2)) + fv_1;
-  else 
-    rhs = (H0 + tf_0*K1)*ur + tf_0*S1*vi + fv_0;
-    ell1 = linsolve( Ident-0.5*dt*tf_0*S1, rhs );
-    kay1 =  tf_1o2 *S1*ur - (H0 + tf_1o2 *K1)*(vi+0.5*dt*ell1) + fu_1o2;
-    rhs = tf_1o2* S1*(ur+0.5*dt*kay1) - (H0 + tf_1o2* K1)*(vi+0.5*dt*ell1) + fu_1o2;
-    kay2 = linsolve( Ident-0.5*dt*tf_1o2*S1, rhs );
-    ell2 = ( H0 + tf_1* K1)*(ur+0.5*dt*(kay1+kay2)) + tf_1* S1*(vi+0.5*dt*ell1) + fv_1;
-  end
+	     # Evaluate sym and skew_sym matrices at the 3 time levels (lab frame)
+  rf_0 = rfunc(t,pcof);
+  rf_1o2 = rfunc(t+0.5*dt,pcof);
+  rf_1 = rfunc(t+dt,pcof);
+
+  if_0 = ifunc(t,pcof);
+  if_1o2 = ifunc(t+0.5*dt,pcof);
+  if_1 = ifunc(t+dt,pcof);
+  
+  ## 				# symmetric part
+  ## K_0 = rf_0*(amat+adag);
+  ## K_1o2 = rf_1o2*(amat+adag);
+  ## K_1 = rf_1*(amat+adag);
+  ## 				# skew-symmetric part
+  ## S_0 = if_0*(amat-adag);
+  ## S_1o2 = if_1o2*(amat-adag);
+  ## S_1 = if_1*(amat-adag);
+
+  # rotating frame
+  dmat_r_0 = diag([ cos(d_omega(1)*(t)), cos(d_omega(2)*(t)), cos(d_omega(3)*(t)), cos(d_omega(4)*(t)) ]);
+  dmat_i_0 = diag([ -sin(d_omega(1)*(t)), -sin(d_omega(2)*(t)), -sin(d_omega(3)*(t)), -sin(d_omega(4)*(t)) ]);
+
+  dmat_r_1o2 = diag([ cos(d_omega(1)*(t+0.5*dt)), cos(d_omega(2)*(t+0.5*dt)), cos(d_omega(3)*(t+0.5*dt)), cos(d_omega(4)*(t+0.5*dt)) ]);
+  dmat_i_1o2 = diag([ -sin(d_omega(1)*(t+0.5*dt)), -sin(d_omega(2)*(t+0.5*dt)), -sin(d_omega(3)*(t+0.5*dt)), -sin(d_omega(4)*(t+0.5*dt)) ]);
+
+  dmat_r_1 = diag([ cos(d_omega(1)*(t+dt)), cos(d_omega(2)*(t+dt)), cos(d_omega(3)*(t+dt)), cos(d_omega(4)*(t+dt)) ]);
+  dmat_i_1 = diag([ -sin(d_omega(1)*(t+dt)), -sin(d_omega(2)*(t+dt)), -sin(d_omega(3)*(t+dt)), -sin(d_omega(4)*(t+dt)) ]);
+
+
+				# symmetric part
+  K_0 =  rf_0.*(dmat_r_0 * amat +  amat' * dmat_r_0') - if_0.*(dmat_i_0 * amat + amat' * dmat_i_0');
+  K_1o2 =  rf_1o2.*(dmat_r_1o2 * amat +  amat' * dmat_r_1o2') - if_1o2.*(dmat_i_1o2 * amat + amat' * dmat_i_1o2');
+  K_1 =  rf_1.*(dmat_r_1 * amat +  amat' * dmat_r_1') - if_1.*(dmat_i_1 * amat + amat' * dmat_i_1');
+				# skew-symmetric part
+  S_0 =  if_0.*(dmat_r_0 * amat - amat' * dmat_r_0') + rf_0.*(dmat_i_0 * amat - amat' * dmat_i_0');
+  S_1o2 =  if_1o2.*(dmat_r_1o2 * amat - amat' * dmat_r_1o2') + rf_1o2.*(dmat_i_1o2 * amat - amat' * dmat_i_1o2');
+  S_1 =  if_1.*(dmat_r_1 * amat - amat' * dmat_r_1') + rf_1.*(dmat_i_1 * amat - amat' * dmat_i_1');
+
+				#S1=0 -> fully explicit (never happens)
+  rhs = (H0 + K_0)*ur + S_0*vi + fv_0;
+  ell1 = linsolve( Ident-0.5*dt*S_0, rhs );
+  kay1 =  S_1o2*ur - (H0 + K_1o2)*(vi+0.5*dt*ell1) + fu_1o2;
+  rhs = S_1o2*(ur+0.5*dt*kay1) - (H0 + K_1o2)*(vi+0.5*dt*ell1) + fu_1o2;
+  kay2 = linsolve( Ident-0.5*dt*S_1o2, rhs );
+  ell2 = ( H0 + K_1)*(ur+0.5*dt*(kay1+kay2)) + S_1*(vi+0.5*dt*ell1) + fv_1;
+
 				# update
   unew = ur + 0.5*dt*(kay1 + kay2);
   vnew = vi + 0.5*dt*(ell1 + ell2);
