@@ -17,7 +17,7 @@
 %
 function [objf uFinal] = traceobjfunc(pcof, verbose, order)
 
-  abs_or_real=0; # plot the magnitude (abs) of real part of the solution (1 for real)
+  abs_or_real=1; # plot the magnitude (abs) of real part of the solution (1 for real)
 
   if nargin < 1
     pcof(1) = 1.0;
@@ -36,7 +36,7 @@ function [objf uFinal] = traceobjfunc(pcof, verbose, order)
     stages = 9;
   end
   
-  cfl = 0.00625;
+  cfl = 0.1;
 
   N = 4; # vector dimension
 
@@ -91,29 +91,19 @@ function [objf uFinal] = traceobjfunc(pcof, verbose, order)
   end
 
   if (lab_frame) # max eigenvalue determined by H0 + max(control terms)
-		     # first evaluate the polynomials on a coarse grid
-    pad0 = timefunc(D, 100);
-    ptot0 = pad0*pcof;
-    [pmax imax] = max(ptot0); # assumes ptot is real-valued
-    [pmin imin] = min(ptot0);
-
+    H=H0+pcof(1)*(amat+adag)+I*pcof(2)*(amat-adag);
 				# estimate largest eigenvalue
-    t = (imax-1)/100 * T;
-
-    H=H0+pmax*(amat+adag);
     lambda = eig(H);
     maxeig1 = norm(lambda,"inf");
     if (verbose)
-      printf("(t, pmax, maxeig) = (%e, %e, %e)\n", t, pmax, maxeig1);
+      printf("maxeig1 = %e\n", maxeig1);
     end
 
-    t = (imin-1)/100 * T;
-
-    H=H0+pmin*(amat+adag);
+    H=H0-pcof(1)*(amat+adag)-I*pcof(2)*(amat-adag);
     lambda = eig(H);
     maxeig2 = norm(lambda,"inf");
     if (verbose)
-      printf("(t, pmin, maxeig) = (%e, %e, %e)\n", t, pmin, maxeig2);
+      printf("maxeig2 = %e\n", maxeig2);
     end
     maxeig = max(maxeig1, maxeig2);
   else
@@ -130,20 +120,6 @@ function [objf uFinal] = traceobjfunc(pcof, verbose, order)
 	   T, nsteps, maxeig, cfl, dt);
   end
 
-# evaluate the polynomials at the discrete time levels
-# evaluate all polynomials on the midpoint grid
-  [pad, td] = timefunc(D, nsteps);
-  qad = pad; # tmp
-# sum up all polynomial components
-  ptot = pad*pcof;
-
-# form the weight function
-  tp = 0.125*T;
-  t0 = T;
-  tau = (td - t0)/tp;
-  mask = (tau >= -0.5 & tau <= 0.5);
-  wghf1 = 64*mask.*(0.5 + tau).^3 .* (0.5 - tau).^3;
-
 # different weight functions for different components
   wconst = 0.01; # for response to e2 and e3
   
@@ -159,6 +135,9 @@ function [objf uFinal] = traceobjfunc(pcof, verbose, order)
 	
   if (lab_frame)
     vTarget = uTarget;
+# uTarget is real
+    vTarget_r = uTarget;
+    vTarget_i = zeros(4,4);
   else  # target in rotating frame
     RotMat = diag([ exp(I*d0*T), exp(I*d1*T), exp(I*d2*T), exp(I*d3*T) ]);
     vTarget = RotMat*uTarget;
@@ -254,7 +233,6 @@ function [objf uFinal] = traceobjfunc(pcof, verbose, order)
   for step=1:nsteps
 # 2nd order Magnus integrator
 #    dmat = expm(-I*diag(d_omega.*(tm+0.5*dt)));
-#    dmat = diag([ exp(-I*d_omega(1)*(tm+0.5*dt)), exp(-I*d_omega(2)*(tm+0.5*dt)), exp(-I*d_omega(3)*(tm+0.5*dt)), exp(-I*d_omega(4)*(tm+0.5*dt)) ]);
     dmat_r_1o2 = diag([ cos(d_omega(1)*(tm+0.5*dt)), cos(d_omega(2)*(tm+0.5*dt)), cos(d_omega(3)*(tm+0.5*dt)), cos(d_omega(4)*(tm+0.5*dt)) ]);
     dmat_i_1o2 = diag([ -sin(d_omega(1)*(tm+0.5*dt)), -sin(d_omega(2)*(tm+0.5*dt)), -sin(d_omega(3)*(tm+0.5*dt)), -sin(d_omega(4)*(tm+0.5*dt)) ]);
 
@@ -268,48 +246,42 @@ function [objf uFinal] = traceobjfunc(pcof, verbose, order)
 
     H = H0 + K_1o2 + I*S_1o2; # symmetric + skew-symmtric 
     expH = expm(-I*dt*H);
-
     uSol = expH * uSol;
+    tm = tm+dt; # updating time for Magnus integrator
 
+# accumulate objf = integral w(t) * ( 1 - |Tr( uSol' * vTarget )/N|^2 )
+    fidelity = trace(ctranspose(uSol) * vTarget)/N;
+    objf = objf + dt*weightf(tm)*( 1 - abs(fidelity)^2 );
+
+# Stromer-Verlet
     for q=1:stages
+      ur0=ur;
+      vi0=vi;
+      t0=t;
       [ur, vi, t] = stromer_verlet_mat(ur, vi, rfunc, ifunc, t, gamma(q)*dt, pcof, H0, amat, adag, Ident, d_omega, uforce, vforce); # t, ur, vr are updated
+# real arithmetic for Verlet
+# accumulate objf = integral w(t) * ( 1 - |Tr( uSol' * vTarget )/N|^2 )
+      ua = 0.5*(ur+ur0);
+      va = 0.5*(vi+vi0);
+      fidelity2 = (trace(ua' * vTarget_r - va' * vTarget_i)/N)^2 + (trace(ua' * vTarget_i + va' * vTarget_r)/N)^2;
+      ta = 0.5*(t0+t);
+      objf_v = objf_v + gamma(q)*dt*weightf(ta)*( 1 - fidelity2 );
     end
 
-    tm = tm+dt; # for Magnus integrator
-
-				# accumulate objf = integral w(t) * ( 1 - |Tr( uSol' * vTarget )/N|^2 )
-    fidelity = trace(ctranspose(uSol) * vTarget)/N;
-    objf = objf + dt*wghf1(step)*( 1 - abs(fidelity)^2 );
-				# real arithmetic for Verlet
-    fidelity2 = (trace(ur' * vTarget_r - vi' * vTarget_i)/N)^2 + (trace(ur' * vTarget_i + vi' * vTarget_r)/N)^2;
-    objf_v = objf_v + dt*wghf1(step)*( 1 - fidelity2 );
-
-				# evaluate energy
+# save solutions from both methods to evaluate differences
     if (verbose)
       usave(:,:,step+1) = uSol;
       usaver(:,:,step+1) = ur;
       usavei(:,:,step+1) = -vi;
       
-#      printf("Time = %e, |fidelity| = %e, weight = %e\n", t, abs(fidelity), wghf1(step));
-
-      ## if (mod(step,1000)==0 || step==nsteps-1)
-      ## 	v1 = uTime(:,step+1) + uTime(:,step);
-      ## 	v2 = uTime(:,step+1) - uTime(:,step);
-      ## 	energy = 0.25*(norm(v1)^2 - norm(v2)^2);
-      ## 	energy = uTime(:,step+1)'*H*uTime(:,step+1);
-	
-      ## 	printf("Time step = %d, time = %e, energy = %e\n", step, t, energy);
-      ## end
     end # if verbose
   end # for (time stepping loop)
 
 # correct integration of objective function from last time-step
   fidelity = trace(ctranspose(uSol) * vTarget)/N;
-  objf = objf - 0.5*dt*wghf1(step)*( 1 - abs(fidelity)^2 );
-				# real arithmetic for Verlet
-  fidelity2 = (trace(ur' * vTarget_r - vi' * vTarget_i)/N)^2 + (trace(ur' * vTarget_i + vi' * vTarget_r)/N)^2;
-  objf_v = objf_v - 0.5* dt*wghf1(step)*( 1 - fidelity2 );
+  objf = objf - 0.5*dt*weightf(T)*( 1 - abs(fidelity)^2 );
 
+# no correction needed for the Verlet scheme (objf_v)
   
   if (lab_frame)
     uFinal = uSol;
@@ -329,10 +301,11 @@ function [objf uFinal] = traceobjfunc(pcof, verbose, order)
   if (verbose)
 				# difference at final time
     Nplot = length(usave(1,1,:));
-    printf("Difference Verlet-Magnus: Initial data   Component  abs(real)  abs(imag)\n");
+    printf("Difference Verlet-Magnus:\n");
+    printf("Initial-data  Component     abs(real)       abs(imag)\n");
     for q=1:N
       for c=1:N
-	printf("  %16d  %8d  %15.8e %15.8e\n", q, c, abs(usaver(c,q,Nplot) - real(usave(c,q,Nplot))),  abs(usavei(c,q,Nplot) - imag(usave(c,q,Nplot))) );
+	printf("  %8d  %8d  %15.8e %15.8e\n", q, c, abs(usaver(c,q,Nplot) - real(usave(c,q,Nplot))),  abs(usavei(c,q,Nplot) - imag(usave(c,q,Nplot))) );
       end
     end
 				# unitary?
@@ -383,9 +356,15 @@ function [objf uFinal] = traceobjfunc(pcof, verbose, order)
 #    plotunitary(usaver, T, abs_or_real);
     plotunitary(usave, T, abs_or_real);
     
+		# evaluate the polynomials at the discrete time levels
+		# evaluate all polynomials on the midpoint grid
+    td = linspace(0, T, nsteps+1);
+    p_r = rfunc(td,pcof);
+    p_i = ifunc(td,pcof);
     figure(5);
     subplot(2,1,1);
-    h=plot(td, ptot);
+    h=plot(td, p_r,"b", td, p_i, "r");
+    legend("Real",  "Imag");
     axis("tight");
     ## pmin = min(ptot);
     ## pmax = max(ptot);
@@ -395,6 +374,7 @@ function [objf uFinal] = traceobjfunc(pcof, verbose, order)
     title("Forcing function");
 
     subplot(2,1,2);
+    wghf1 = weightf(td);
     h = plot(td, wghf1, "m");
     axis tight;
     set(h,"linewidth",2);
