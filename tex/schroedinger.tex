@@ -43,15 +43,15 @@ We can solve \eqref{eq_shrodinger-time} using separation of variables. We make t
 \]
 which we insert into \eqref{eq_shrodinger-time}. In the standard way, we obtain
 \begin{equation} \label{eq_const-ratio}
-E:= \frac{i\hbar \phi'}{\phi} = \frac{1}{\psi} \left(-\frac{\hbar^2}{2m} \frac{\p^2\psi}{\p x^2} +
+e:= \frac{i\hbar \phi'}{\phi} = \frac{1}{\psi} \left(-\frac{\hbar^2}{2m} \frac{\p^2\psi}{\p x^2} +
 \frac{1}{2} m \omega^2 x^2 \psi \right).
 \end{equation}
-Because $\phi=\phi(t)$ and $\psi=\psi(x)$, the coefficient $E$ must be constant for all $x$ and
+Because $\phi=\phi(t)$ and $\psi=\psi(x)$, the coefficient $e$ must be constant for all $x$ and
 $t$. This observation leads to the eigenvalue problem
 \begin{equation}\label{eq_eigen-problem}
-E\psi = -\frac{\hbar^2}{2m} \frac{\p^2\psi}{\p x^2} + \frac{1}{2} m \omega^2 x^2 \psi := \hat{H}\psi.
+e\psi = -\frac{\hbar^2}{2m} \frac{\p^2\psi}{\p x^2} + \frac{1}{2} m \omega^2 x^2 \psi := \hat{H}\psi.
 \end{equation}
-Here, $E$ is the eigenvalue, $\psi$ is the eigenfunction, and $\hat{H}$ is called the Hamiltonian
+Here, $e$ is the eigenvalue, $\psi$ is the eigenfunction, and $\hat{H}$ is called the Hamiltonian
 operator. The right hand side can be factored according to
 \[
 \hat{H}\psi = \frac{\hbar\omega}{2}
@@ -62,7 +62,7 @@ operator. The right hand side can be factored according to
 %
 \frac{\hbar \omega}{2} \psi.
 \]
-We can therefore factor the Hamiltonian operator as
+Thus, the Hamiltonian operator can written as
 \begin{equation}\label{eq_ladder}
 \hat{H}\psi = \hbar\omega\left( a^\dag a + \frac{1}{2} I\right)\psi,
 \end{equation}
@@ -89,7 +89,7 @@ dx = 1.
 The corresponding eigenvalue follows from \eqref{eq_ladder},
 \[
 \hat{H}\psi_0 = \hbar\omega\left( a^\dag a + \frac{1}{2}I \right)\psi_0 = \frac{\hbar\omega}{2}
-\psi_0,\quad E_0 = \frac{\hbar\omega}{2}.
+\psi_0,\quad e_0 = \frac{\hbar\omega}{2}.
 \]
 
 To derive the higher eigenfunctions, we start by studying the commutator
@@ -107,26 +107,26 @@ We conclude that
 \hat{H} a^\dag = a^\dag \hat{H} +  \hbar\omega a^\dag.
 \end{equation}
 
-Assume we know the normalized eigenfunction $\psi_n(x)$ with eigenvalue $E_n$. From
+Assume we know the normalized eigenfunction $\psi_n(x)$ with eigenvalue $e_n$. From
 \eqref{eq_comm-rel},
 \[
-\hat{H} a^\dag\psi_n = a^\dag \hat{H} \psi_n + \hbar\omega a^\dag \psi_n = (E_n + \hbar\omega)
+\hat{H} a^\dag\psi_n = a^\dag \hat{H} \psi_n + \hbar\omega a^\dag \psi_n = (e_n + \hbar\omega)
 a^\dag \psi_n.
 \]
 We conclude that $a^\dag\psi_n$ is an (unnormalized) eigenfunction with
-eigenvalue $E_{n+1} = E_n + \hbar\omega$. We write the normalized eigenfunction as
+eigenvalue $e_{n+1} = e_n + \hbar\omega$. We write the normalized eigenfunction as
 $\psi_{n+1} = \beta^{-1} a^\dag \psi_n$, where the normalization factor $\beta$ will be determined below.
-Because $\psi_0$ has eigenvalue $E_0 = \hbar\omega/2$,
+Because $\psi_0$ has eigenvalue $e_0 = \hbar\omega/2$,
 \begin{align*}
-  E_1 &= E_0 + \hbar\omega = \hbar\omega\left( 1+\frac{1}{2} \right),\\
-  E_2 &= E_1 + \hbar\omega = E_0 + 2\hbar\omega = \left( 2 + \frac{1}{2} \right),\\
+  e_1 &= e_0 + \hbar\omega = \hbar\omega\left( 1+\frac{1}{2} \right),\\
+  e_2 &= e_1 + \hbar\omega = e_0 + 2\hbar\omega = \left( 2 + \frac{1}{2} \right),\\
   &\vdots\\
-  E_n &= \hbar\omega\left( n + \frac{1}{2} \right),\quad n=0,1,2,\ldots.
+  e_n &= \hbar\omega\left( n + \frac{1}{2} \right),\quad n=0,1,2,\ldots.
 \end{align*}
 From the definition of the eigenvalue problem \eqref{eq_eigen-problem} and the factorization
 \eqref{eq_ladder},
 \[
-\hbar\omega\left( a^\dag a + \frac{1}{2}I \right)\psi_n = E_n \psi_n = \hbar\omega\left( n +
+\hbar\omega\left( a^\dag a + \frac{1}{2}I \right)\psi_n = e_n \psi_n = \hbar\omega\left( n +
 \frac{1}{2} \right)\psi_n. 
 \]
 We define the number operator by
@@ -170,7 +170,7 @@ a \psi_n = \sqrt{n} \psi_{n-1}.
 
 By applying \eqref{eq_eigenfunction-recursive} recursively,
 \[
-\psi_{n}(x) = \frac{1}{\sqrt{n}}\,
+\psi_{n}(x) = \frac{1}{\sqrt{n!}}\,
 (a^\dag)^n\psi_0(x),\quad n=1,2,3,\ldots. 
 \]
 The eigenfunctions can be expressed in terms of the $n^{th}$ order Hermite polynomials,
@@ -187,10 +187,10 @@ We summarize the most important relations in the following lemma.
 \begin{lemma}
   The eigenvalue problem for the 1-D Schr\"odinger equation is
   \[
-  E\psi = \frac{\hbar\omega}{2}\left( - x_0^2 \frac{\p^2\psi}{\p x^2} + \frac{x^2}{x_0^2}
+  e\psi = \frac{\hbar\omega}{2}\left( - x_0^2 \frac{\p^2\psi}{\p x^2} + \frac{x^2}{x_0^2}
   \psi\right) := \hat{H}\psi.
   \]
-  Here, $x_0$ is a real constant, $E$ is the eigenvalue, $\psi$ is the eigenfunction, and $\hat{H}$
+  Here, $x_0$ and $\omega$ are real constants, $e$ is the eigenvalue, $\psi$ is the eigenfunction, and $\hat{H}$
   is called the Hamiltonian operator. It can be factored into
   \[
   \hat{H} = \hbar\omega \left( a^\dag a + \frac{1}{2} \right),
@@ -204,11 +204,11 @@ We summarize the most important relations in the following lemma.
   \]
   The smallest eigenvalue of $H$ and the corresponding normalized eigenfunction are
   \[
-  E_0 = \frac{1}{2}\hbar\omega,\quad \psi_0(x) = \frac{e^{-x^2/(2 x_0^2)}}{\pi^{1/4} x_0^{1/2}}.
+  e_0 = \frac{1}{2}\hbar\omega,\quad \psi_0(x) = \frac{e^{-x^2/(2 x_0^2)}}{\pi^{1/4} x_0^{1/2}}.
   \]
   The higher eigenvalues satisfy
   \[
-  E_n = \hbar\omega\left(n + \frac{1}{2}\right),
+  e_n = \hbar\omega\left(n + \frac{1}{2}\right),
   \]
   and the eigenfunctions are given by \eqref{eq_eigenfunc-hermite}. The normalized eigenfunctions
   satisfy the recursive relations
@@ -218,9 +218,9 @@ We summarize the most important relations in the following lemma.
 \end{lemma}
 
 From \eqref{eq_const-ratio}, the time dependence corresponding to the eigenfunction $\psi_n(x)$ with
-eigenvalue $E_n$ satisfies 
+eigenvalue $e_n$ satisfies 
 \[
-i\hbar \phi'_n = E_n \phi = \hbar\omega(n+1/2) \phi,
+i\hbar \phi'_n = e_n \phi = \hbar\omega(n+1/2) \phi,
 \]
 which is solved by
 \[

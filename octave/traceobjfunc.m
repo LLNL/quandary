@@ -4,7 +4,7 @@
 %
 % USAGE:
 % 
-% [cost, ufinal] = traceobjfunc(pcof, verbose, order)
+% [objF, uFinal] = traceobjfunc(pcof, verbose, order)
 %
 % INPUT:
 % pcof(D,1): amplitudes of the control functions as a D x 1 column vector, D=size(pcof,1)
@@ -12,12 +12,12 @@
 % order: order of accuracy: 2, 4, or 6.
 %
 % OUTPUT:
-% cost: trace norm of gate infidelity cost functional
-% ufinal: state vector at t=T
+% objF: trace norm of gate infidelity cost functional
+% uFinal: state vector at t=T
 %
-function [cost uFinal] = traceobjfunc(pcof, verbose, order)
+function [objf uFinal] = traceobjfunc(pcof, verbose, order)
 
-  abs_or_real=1; # plot the magnitude (abs) of real part of the solution (1 for real)
+  abs_or_real=0; # plot the magnitude (abs) of real part of the solution (1 for real)
 
   if nargin < 1
     pcof(1) = 1.0;
@@ -36,7 +36,7 @@ function [cost uFinal] = traceobjfunc(pcof, verbose, order)
     stages = 9;
   end
   
-  cfl = 0.1;
+  cfl = 0.00625;
 
   N = 4; # vector dimension
 
@@ -90,49 +90,36 @@ function [cost uFinal] = traceobjfunc(pcof, verbose, order)
     printf("Vector dim (N) = %d, Param dim (D) = %d, pcof(1) = %e, Final time = %e, CFL = %e\n", N, D, pcof(1), T, cfl);
   end
 
+  if (lab_frame) # max eigenvalue determined by H0 + max(control terms)
 		     # first evaluate the polynomials on a coarse grid
-  pad0 = timefunc(D, 100);
-  ptot0 = pad0*pcof;
-  [pmax imax] = max(ptot0); # assumes ptot is real-valued
-  [pmin imin] = min(ptot0);
+    pad0 = timefunc(D, 100);
+    ptot0 = pad0*pcof;
+    [pmax imax] = max(ptot0); # assumes ptot is real-valued
+    [pmin imin] = min(ptot0);
 
-# estimate largest eigenvalue
-  t = (imax-1)/100 * T;
+				# estimate largest eigenvalue
+    t = (imax-1)/100 * T;
 
-  if (lab_frame)
     H=H0+pmax*(amat+adag);
-  else
-    H=H0+50*pmax*(amat+adag); # 50 is arbitrary
-  end    
-  lambda = eig(H);
-  maxeig1 = norm(lambda,"inf");
-  if (verbose)
-    printf("(t, pmax, maxeig) = (%e, %e, %e)\n", t, pmax, maxeig1);
-  end
+    lambda = eig(H);
+    maxeig1 = norm(lambda,"inf");
+    if (verbose)
+      printf("(t, pmax, maxeig) = (%e, %e, %e)\n", t, pmax, maxeig1);
+    end
 
-  t = (imin-1)/100 * T;
+    t = (imin-1)/100 * T;
 
-  if (lab_frame)
     H=H0+pmin*(amat+adag);
+    lambda = eig(H);
+    maxeig2 = norm(lambda,"inf");
+    if (verbose)
+      printf("(t, pmin, maxeig) = (%e, %e, %e)\n", t, pmin, maxeig2);
+    end
+    maxeig = max(maxeig1, maxeig2);
   else
-    H=H0+50*pmin*(amat+adag);
+# rotating frame: time step essentially determined by time scale of forcing
+    maxeig = max(abs(d_omega))/(2*pi);
   end
-  lambda = eig(H);
-  maxeig2 = norm(lambda,"inf");
-  if (verbose)
-    printf("(t, pmin, maxeig) = (%e, %e, %e)\n", t, pmin, maxeig2);
-  end
-
-# tmp
-#  return
-
-  maxeig = max(maxeig1, maxeig2);
-  
-  cfunc = zeros(N,1);
-  beta = zeros(N,1);
-  cu_sp = zeros(N,1);
-  ca1 = zeros(N,1);
-  vect = zeros(N,1);
 
 		   # Final time T
   dt = cfl/maxeig; # largest eigenvalue of H0 = d3, H0+poly*K1 estimated by maxeig
@@ -164,11 +151,24 @@ function [cost uFinal] = traceobjfunc(pcof, verbose, order)
   Ident=diag([1, 1, 1, 1]);
   U0 = Ident;
 
-# Target state at t=T
+# Target state at t=T (always real)
   uTarget = [0, 1, 0, 0;
 	     1, 0, 0, 0;
 	     0, 0, 1, 0;
 	     0, 0, 0, 1];
+	
+  if (lab_frame)
+    vTarget = uTarget;
+  else  # target in rotating frame
+    RotMat = diag([ exp(I*d0*T), exp(I*d1*T), exp(I*d2*T), exp(I*d3*T) ]);
+    vTarget = RotMat*uTarget;
+				# real arithmetic for Verlet
+    RotMat_r = diag([ cos(d0*T), cos(d1*T), cos(d2*T), cos(d3*T) ]);
+    RotMat_i = diag([ sin(d0*T), sin(d1*T), sin(d2*T), sin(d3*T) ]);
+# uTarget is real
+    vTarget_r = RotMat_r*uTarget;
+    vTarget_i = RotMat_i*uTarget;
+  end
 
 # initial data and allocation of solution vectors
   uSol = U0;
@@ -224,8 +224,6 @@ function [cost uFinal] = traceobjfunc(pcof, verbose, order)
 
   v1 = zeros(N,1);
   v2 = zeros(N,1);
-# for computing the cost function
-  cost = 0;
 
 			     # time stepping loop, harmonic oscillator
   if (verbose)
@@ -245,6 +243,10 @@ function [cost uFinal] = traceobjfunc(pcof, verbose, order)
   
   separable = (norm(S1) < 1e-15);
   printf("Separable = %d, order of accuracy = %d\n", separable, order);
+
+# for computing the objf function
+  objf = 0;
+  objf_v = 0;
 
   t=0;
   tm=0;
@@ -275,9 +277,12 @@ function [cost uFinal] = traceobjfunc(pcof, verbose, order)
 
     tm = tm+dt; # for Magnus integrator
 
-				# accumulate cost = integral ( 1 - Tr( uSol' * w(t) * uTarget ) )
-    fidelity = trace(ctranspose(uSol) * uTarget)/N;
-    cost = cost + dt*wghf1(step)*( 1 - abs(fidelity)^2 );
+				# accumulate objf = integral w(t) * ( 1 - |Tr( uSol' * vTarget )/N|^2 )
+    fidelity = trace(ctranspose(uSol) * vTarget)/N;
+    objf = objf + dt*wghf1(step)*( 1 - abs(fidelity)^2 );
+				# real arithmetic for Verlet
+    fidelity2 = (trace(ur' * vTarget_r - vi' * vTarget_i)/N)^2 + (trace(ur' * vTarget_i + vi' * vTarget_r)/N)^2;
+    objf_v = objf_v + dt*wghf1(step)*( 1 - fidelity2 );
 
 				# evaluate energy
     if (verbose)
@@ -298,13 +303,33 @@ function [cost uFinal] = traceobjfunc(pcof, verbose, order)
     end # if verbose
   end # for (time stepping loop)
 
-  uFinal = uSol;
+# correct integration of objective function from last time-step
+  fidelity = trace(ctranspose(uSol) * vTarget)/N;
+  objf = objf - 0.5*dt*wghf1(step)*( 1 - abs(fidelity)^2 );
+				# real arithmetic for Verlet
+  fidelity2 = (trace(ur' * vTarget_r - vi' * vTarget_i)/N)^2 + (trace(ur' * vTarget_i + vi' * vTarget_r)/N)^2;
+  objf_v = objf_v - 0.5* dt*wghf1(step)*( 1 - fidelity2 );
+
+  
+  if (lab_frame)
+    uFinal = uSol;
+    uFinal_r = ur;
+    uFinal_i = -vi;
+  else
+    RotMat = diag([ exp(I*d0*T), exp(I*d1*T), exp(I*d2*T), exp(I*d3*T) ]);
+    uFinal = RotMat' * uSol;
+# verlet needs real arithmetic
+    RotMat_r = diag([ cos(d0*T), cos(d1*T), cos(d2*T), cos(d3*T) ]);
+    RotMat_i = diag([ sin(d0*T), sin(d1*T), sin(d2*T), sin(d3*T) ]);
+    uFinal_r = RotMat_r' *ur - RotMat_i' * vi;
+    uFinal_i = -RotMat_r' * vi - RotMat_i * ur;
+  end
 
 				# plot results
   if (verbose)
 				# difference at final time
     Nplot = length(usave(1,1,:));
-    printf("CFL=%g, Initial data   Component  abs(real)  abs(imag)\n", cfl);
+    printf("Difference Verlet-Magnus: Initial data   Component  abs(real)  abs(imag)\n");
     for q=1:N
       for c=1:N
 	printf("  %16d  %8d  %15.8e %15.8e\n", q, c, abs(usaver(c,q,Nplot) - real(usave(c,q,Nplot))),  abs(usavei(c,q,Nplot) - imag(usave(c,q,Nplot))) );
@@ -326,57 +351,48 @@ function [cost uFinal] = traceobjfunc(pcof, verbose, order)
 
 #    if (lab_frame)
 				# real part
-      figure(1);
-      h=plot(tplot, real(usave(c,q,:)), "r", tplot, usaver(c,q,:), "b");
-      tstr = sprintf("Real part, component %d\n", c);
-      title(tstr);
-      legend("Re(Magnus)", "Re(Verlet)", "location", "east");
-      axis tight
+      ## figure(1);
+      ## h=plot(tplot, real(usave(c,q,:)), "r", tplot, usaver(c,q,:), "b");
+      ## tstr = sprintf("Real part, component %d\n", c);
+      ## title(tstr);
+      ## legend("Re(Magnus)", "Re(Verlet)", "location", "east");
+      ## axis tight
 
-      figure(2);
-      h=plot(tplot, real(usave(c,q,:))- usaver(c,q,:));
-      tstr = sprintf("Difference, component %d\n", c);
-      title(tstr);
-      legend("Re(Magnus - Verlet)", "location", "east");
-      axis tight
+      ## figure(2);
+      ## h=plot(tplot, real(usave(c,q,:))- usaver(c,q,:));
+      ## tstr = sprintf("Difference, component %d\n", c);
+      ## title(tstr);
+      ## legend("Re(Magnus - Verlet)", "location", "east");
+      ## axis tight
 
-				# imaginary part
-      figure(3);
-      h=plot( tplot, imag(usave(c,q,:))- usavei(c,q,:));
-      tstr = sprintf("Difference, component %d\n", c);
-      title(tstr);
-      legend( "Im(Magnus-Verlet)", "location", "east");
-      axis tight
+      ## 				# imaginary part
+      ## figure(3);
+      ## h=plot( tplot, imag(usave(c,q,:))- usavei(c,q,:));
+      ## tstr = sprintf("Difference, component %d\n", c);
+      ## title(tstr);
+      ## legend( "Im(Magnus-Verlet)", "location", "east");
+      ## axis tight
 
-      figure(4);
-      h=plot( tplot, imag(usave(c,q,:)), "r", tplot, usavei(c,q,:), "b");
-      tstr = sprintf("Imaginary part, component %d\n", c);
-      title(tstr);
-      legend( "Im(Magnus)", "Im(Verlet)", "location", "east");
-      axis tight
-#    else
-      # rotating frame
-      figure(6);
-      h=plot(tplot, real(usave(c,q,:)), "r", tplot, imag(usave(c,q,:)), "b");
-      tstr = sprintf("Magnus integrator, component %d\n", c);
-      title(tstr);
-      legend("Re(Magnus)", "Im(Magnus)", "location", "east");
-      axis tight
-#    end
+      ## figure(4);
+      ## h=plot( tplot, imag(usave(c,q,:)), "r", tplot, usavei(c,q,:), "b");
+      ## tstr = sprintf("Imaginary part, component %d\n", c);
+      ## title(tstr);
+      ## legend( "Im(Magnus)", "Im(Verlet)", "location", "east");
+      ## axis tight
     
 #    plotunitary(usaver, T, abs_or_real);
-#    plotunitary(usave, T, abs_or_real);
+    plotunitary(usave, T, abs_or_real);
     
-   figure(5);
-   subplot(2,1,1);
-   h=plot(td, ptot);
-   axis("tight");
+    figure(5);
+    subplot(2,1,1);
+    h=plot(td, ptot);
+    axis("tight");
     ## pmin = min(ptot);
     ## pmax = max(ptot);
     ## pdelta=pmax-pmin;
     ## axis([0,T,pmin-0.1*pdelta,pmax+0.1*pdelta]);
-   set(h,"linewidth",2);
-   title("Forcing function");
+    set(h,"linewidth",2);
+    title("Forcing function");
 
     subplot(2,1,2);
     h = plot(td, wghf1, "m");
@@ -394,9 +410,36 @@ function [cost uFinal] = traceobjfunc(pcof, verbose, order)
     ## title("Parameters");
   end
 
-				# total cost function at final time
-  finalFidelity = trace(ctranspose(uFinal) * uTarget)/N;
-  finalCost = 1 - abs(finalFidelity);
+				# output final solution and target
+  printf("uTarget:  id1          id2           id3           id4\n");
+  for k=1:N
+    printf("k=%d: ", k);
+    for j=1:N
+      printf(" %13.6e", uTarget(j,k));
+    end
+    printf("\n");
+  end
+
+  printf("uSol-Ma:  id1          id2           id3           id4\n");
+  for k=1:N
+    printf("k=%d: ", k);
+    for j=1:N
+      printf(" %13.6e", abs(uSol(j,k)));
+    end
+    printf("\n");
+  end
+  
+  printf("uSol-Ve:  id1          id2           id3           id4\n");
+  for k=1:N
+    printf("k=%d: ", k);
+    for j=1:N
+      printf(" %13.6e", abs(uFinal_r(j,k) + I*uFinal_i(j,k))  );
+    end
+    printf("\n");
+  end
+  
+				# total objf function at final time
+  final_Infidelity = 1 - abs(trace(ctranspose(uFinal) * uTarget)/N);
 
   if (verbose)
     printf("Forward calculation: Parameter pcof =[ %e", pcof(1));
@@ -406,7 +449,7 @@ function [cost uFinal] = traceobjfunc(pcof, verbose, order)
     printf(" ]\n");
 				# check if uFinal is unitary
     utest = ctranspose(uFinal) * uFinal - U0;
-    printf("Final unitary infidelity = %e, Final |gate fidelity| = %e, and |trace| gate infidelity = %e\n", norm(utest), abs(finalFidelity), finalCost);
-    printf("Integrated trace^2 infidelity = %e\n", cost);
+    printf("Final unitary infidelity = %e, Final |trace| gate infidelity = %e\n", norm(utest), final_Infidelity);
+    printf("Nsteps=%d, Integrated |trace|^2 infidelity: Magnus = %e,  Verlet = %e\n", nsteps, objf, objf_v);
   end # if verbose
 end

@@ -30,9 +30,9 @@ Consider the scaled Schr\"odinger equation
 \begin{equation}\label{eq_shrodinger}
 \dot{\psi} = -i H(t) \psi,\quad \psi(0) = \psi_0,\quad H(t) = H_s + f(t)a + \bar{f}(t)a^\dag.
 \end{equation}
-Here, $H_s = H_s^\dag$ is the system Hamiltonian matrix, which we assume to be Hermitian and
+Here, $f(t)$ is a scalar complex-valued control function. $H_s = H_s^\dag$ is the system Hamiltonian matrix, which we assume to be real, Hermitian and
 independent of time. The lowering and raising matrices are denoted $a$ and $a^\dag$,
-respectively. These matrices satisfy
+respectively. These real matrices satisfy
 \begin{equation}\label{eq_matrices}
 %
 a = \begin{bmatrix}
@@ -51,8 +51,18 @@ a^\dag = \begin{bmatrix}
 & &  & \ddots & \ddots
 \end{bmatrix}
 \end{equation}
+We can decompose the control function into its real and imaginary parts,
+\[
+f(t) = f_r(t) + i f_i(t),
+\]
+and write the Hamiltonian matrix in \eqref{eq_shrodinger} as
+\[
+H(t) = H_s + f_r(t)\left( a+ a^\dag\right) + i f_i(t)\left( a - a^\dag\right) =: H_s + K(t) + i S(t).
+\]
+Here, $K$ and $S$ are real-valued matrices with $K^\dag = K$ and $S^\dag = -S$.
+
 Because $H_s$ is Hermitian, it has real eigenvalues and can always be diagonalized by a unitary
-matrix $V$. By the change of variables, $u(t)=V \psi(t)$, Schr\"odinger's equation
+matrix $V$. By the change of variables, $u(t)=V \psi(t)$, where $V$ is independent of time, Schr\"odinger's equation
 \eqref{eq_shrodinger} becomes
 \[
 \dot{u} = -i VH(t)V^\dag u,\quad VH(t)V^\dag = H_0 + f(t)\tilde{a} + \bar{f}(t)\tilde{a}^\dag,
@@ -97,11 +107,11 @@ Thus, \eqref{eq_shrodinger} gives
 \[
 \dot{U}^\dag v + U^\dag \dot{v} = -i H U^\dag v,
 \]
-After reorganizing the terms,
+By using the identity $U \dot{U}^\dag = - \dot{U} U^\dag$ and reorganizing the terms,
 \[
-\dot{v} = -i U H U^\dag v + \dot{U} U^\dag = -i\left( UHU^\dag + i \dot{U} U^\dag \right) v,
+\dot{v} = -i U H U^\dag v + \dot{U} U^\dag = -i\left( UHU^\dag + i \dot{U} U^\dag \right) v.
 \]
-because $U \dot{U}^\dag = - \dot{U} U^\dag$. Thus, the transformed problem becomes
+Thus, the transformed problem becomes
 \[
 \dot{v} = -i \tilde{H}(t) v,\quad \tilde{H} = UHU^\dag + i \dot{U} U^\dag.
 \]
@@ -206,17 +216,17 @@ constant (time-independent) part of the transformed Hamiltonian cancels,
 When $H_s=H_0$ is real and diagonal,
 \[
 H_0=\begin{bmatrix}
-\omega_0 & & &\\
-& \omega_1 &&\\
-& & \omega_2 &\\
+\omega_1 & & &\\
+& \omega_2 &&\\
+& & \omega_3 &\\
 & & & \ddots
 \end{bmatrix},\quad
 %
 U(t) = \exp(i H_0 t)=
 \begin{bmatrix}
-e^{i\omega_0t} & & &\\
-& e^{i\omega_1 t} &&\\
-& & e^{i\omega_2 t} &\\
+e^{i\omega_1 t} & & &\\
+& e^{i\omega_2 t} &&\\
+& & e^{i\omega_3 t} &\\
 & & & \ddots
 \end{bmatrix}
 \]
@@ -224,9 +234,9 @@ The lowering operator transforms according to
 \begin{multline*}
 UaU^\dag =
 \begin{bmatrix}
-  e^{-i\omega_0t} & & & \\
-  & e^{-i\omega_1 t} & & \\
-  & &  e^{-i\omega_2 t} & \\
+  e^{i\omega_1 t} & & & \\
+  & e^{i\omega_2 t} & & \\
+  & &  e^{i\omega_3 t} & \\
   & & & \ddots
 \end{bmatrix}
 \begin{bmatrix}
@@ -236,46 +246,53 @@ UaU^\dag =
 & &  & \ddots & \ddots
 \end{bmatrix}
 \begin{bmatrix}
-  e^{i\omega_0t} & & & \\
-  & e^{i\omega_1 t} & & \\
-  & &  e^{i\omega_2 t} & \\
+  e^{-i\omega_1 t} & & & \\
+  & e^{-i\omega_2 t} & & \\
+  & &  e^{-i\omega_3 t} & \\
   & & & \ddots
 \end{bmatrix} = \\
 %
 \begin{bmatrix}
-0 & e^{i(\omega_1 - \omega_0)t} & & &\\
- & 0 & \sqrt{2} e^{i(\omega_2 -\omega_1) t}& &\\
-&  & 0 & \sqrt{3} e^{i(\omega_3 -\omega_2)t}  &\\
+0 & e^{-i\Delta\omega_1 t} & & &\\
+ & 0 & \sqrt{2} e^{-i\Delta\omega_2 t}& &\\
+&  & 0 & \sqrt{3} e^{-i\Delta\omega_3 t}  &\\
 & &  & \ddots & \ddots
-\end{bmatrix}
+\end{bmatrix},\quad \Delta\omega_k = \omega_{k+1} - \omega_k.
 %
 \end{multline*}
-The transformed equation becomes $\dot{v} = -i\tilde{H}(t)v$, where
+It is convenient to introduce the diagonal matrix
 \[
-\tilde{H}(t) = \begin{bmatrix}
-0 & f(t) e^{i(\omega_1 - \omega_0)t} & & &\\
-\bar{f}(t) e^{-i(\omega_1 - \omega_0)t} & 0 & f(t) \sqrt{2} e^{i(\omega_2 -\omega_1) t}& &\\
-& \bar{f}(t) \sqrt{2} e^{-i(\omega_2 -\omega_1) t} & 0 & f(t) \sqrt{3} e^{i(\omega_3 -\omega_2)t}
-&\\
-\\
-& & \ddots & \ddots & \ddots
-\end{bmatrix}.
+D(t) = \begin{bmatrix}
+ e^{-i\Delta\omega_1 t} & & &\\
+  & \sqrt{2} e^{-i\Delta\omega_2 t}& &\\
+&  & \sqrt{3} e^{-i\Delta\omega_3 t}  &\\
+&  &   & \ddots
+\end{bmatrix},\quad \Delta\omega_N = 0.
 \]
+Then,
+\[
+UaU^\dag = D a,\quad Ua^\dag U^\dag = a^\dag D^\dag.
+\]
+Note that the value of $\Delta\omega_N$ is arbitrary because it is not needed to evaluate $D a$.
+The transformed problem corresponding to \eqref{eq_shrodinger} becomes 
+\begin{equation}
+  \dot{v} = -i\left( f(t) D(t) a + a^\dag \bar{f}(t) D^\dag(t) \right)v,\quad v(0) = U(0)\psi_0 = \psi_0.
+\end{equation}
 
 The structure of the transformed Hamiltonian provides insight into how to induce resonance in the
-system. For example, by taking $f(t)=\Omega e^{-i(\omega_1 - \omega_0)t}$, the Hamiltonian matrix
+system. For example, by taking $f(t)=\Omega e^{\Delta \omega_1 t}$, the Hamiltonian matrix
 becomes
 \[
 \tilde{H}(t) = \begin{bmatrix}
 0 & \Omega & & &\\
-\bar{\Omega} & 0 & f(t) \sqrt{2} e^{i(\omega_2 -\omega_1) t}& &\\
-& \bar{f}(t) \sqrt{2} e^{-i(\omega_2 -\omega_1) t} & 0 & f(t) \sqrt{3} e^{i(\omega_3 -\omega_2)t}
+\bar{\Omega} & 0 & f(t) \sqrt{2} e^{-i\Delta \omega_2 t}& &\\
+& \bar{f}(t) \sqrt{2} e^{i\Delta \omega_2 t} & 0 & f(t) \sqrt{3} e^{-i\Delta \omega_3 t}
 &\\
 \\
 & & \ddots & \ddots & \ddots
 \end{bmatrix}.
 \]
-The dynamics of the system will be dominated by an oscillation between the ground state and the
+In this case, the dynamics of the system will be dominated by an oscillation between the ground state and the
 first excited state, with frequency $\Omega$.
 
 

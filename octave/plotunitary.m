@@ -1,6 +1,6 @@
 %-*-octave-*--
 %
-% plotunitary: plot traces of the solution of the schroedinger equaiton
+% plotunitary: plot traces of the solution of the schroedinger equation
 %
 % USAGE:
 % 
@@ -42,8 +42,8 @@ function usave = plotunitary(us, T, mode)
       h=plot(t, real(us(1,q,:)), t, real(us(2,q,:)), t, real(us(3,q,:)), t, real(us(4,q,:)));
       legend("Re(u1)", "Re(u2)", "Re(u3)", "Re(u4)", "location", "east");
     else
-      h=plot(t, abs(us(1,q,:)).^2, t, abs(us(2,q,:)).^2, t, abs(us(3,q,:)).^2, t, abs(us(4,q,:)).^2);
-      legend("|u_1|^2", "|u_2|^2", "|u_3|^2", "|u_4|^2", "location", "east");
+      h=plot(t, abs(us(1,q,:)), t, abs(us(2,q,:)), t, abs(us(3,q,:)), t, abs(us(4,q,:)));
+      legend("|u_1|", "|u_2|", "|u_3|", "|u_4|", "location", "east");
     end
     axis tight;
     set(h,"linewidth",2);

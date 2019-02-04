@@ -1,16 +1,16 @@
 %-*-octave-*--
 %
-% USAGE:  f = rf1(t, acof)
+% USAGE:  f = rf1(t, pcof)
 %
 % INPUT:
 % t: time (real scalar)
-% acof: coefficient
+% pcof: coefficient
 %
 % OUTPUT:
 %
 % f: real part of time function at time t
 %
-function  [f] = rf1(t, acof)
+function  [f] = rf1(t, pcof)
 
 # Final time T
   T = 15;
@@ -23,6 +23,6 @@ function  [f] = rf1(t, acof)
   tau = (t - t0)/tp;
   mask = (tau >= -0.5 & tau <= 0.5);
 
-  f = acof(1) * 64*mask.*(0.5 + tau).^3 .* (0.5 - tau).^3 .*cos(d1*t);
+  f = pcof(1) * 64*mask.*(0.5 + tau).^3 .* (0.5 - tau).^3 .*cos(d1*t);
 
 end
