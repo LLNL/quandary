@@ -102,6 +102,7 @@ function [objf_v, uFinal_r, uFinal_i] = traceobjf1(pcof, order, verbose)
 # different weight functions for different components
   wconst = 0.01; # for response to e2 and e3
   
+  zeroMat = zeros(N,N);
 # the basis for the initial data as a matrix
   Ident=diag([1, 1, 1, 1]);
   U0 = Ident;
@@ -178,8 +179,6 @@ function [objf_v, uFinal_r, uFinal_i] = traceobjf1(pcof, order, verbose)
 # handles to time and forcing functions
   rfunc = @rf1;
   ifunc = @if1;
-  uforce = @uzero;
-  vforce = @vzero;  
   
   separable = 0;
 
@@ -195,7 +194,8 @@ function [objf_v, uFinal_r, uFinal_i] = traceobjf1(pcof, order, verbose)
     infidelity_0 = weightf(t)*(1-trace_fid_real(ur, vi, vTarget_r, vTarget_i, lab_frame, t, omega));
 
     for q=1:stages
-      [ur, vi, t] = stromer_verlet_mat(ur, vi, rfunc, ifunc, t, gamma(q)*dt, pcof, H0, amat, adag, Ident, d_omega, uforce, vforce); # t, ur, vr are updated
+# the following call updates ( t, ur, vr)
+      [ur, vi, t] = stromer_verlet_mat2(ur, vi, rfunc, ifunc, t, gamma(q)*dt, pcof, H0, amat, Ident, d_omega, zeroMat, zeroMat, zeroMat, zeroMat); 
 # real arithmetic for Verlet
 # accumulate objf = integral w(t) * ( 1 - |Tr( uSol' * vTarget )/N|^2 )
       infidelity = weightf(t)*(1-trace_fid_real(ur, vi, vTarget_r, vTarget_i, lab_frame, t, omega));
