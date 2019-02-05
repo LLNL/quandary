@@ -41,27 +41,23 @@ function [objf uFinal] = traceobjfunc(pcof, verbose, order)
   N = 4; # vector dimension
 
   D = size(pcof,1); # parameter dimension
-
-  ## if (mod(D,2) == 1)
-  ##   printf("ERROR: D=%d, is ODD\n", D);
-  ##   return;
-  ## end
   
 # coefficients in H0
-  d0 = 0;
-  d1 = 24.64579437;
-  d2 = 47.88054868;
-  d3 = 69.70426293;
+  omega = zeros(1,4);
+  omega(1) = 0;
+  omega(2) = 24.64579437;
+  omega(3) = 47.88054868;
+  omega(4) = 69.70426293;
 
   lab_frame = 0;
   if (lab_frame)
 # lab frame
-    H0 = diag([d0, d1, d2, d3]);
+    H0 = diag([omega(1), omega(2), omega(3), omega(4)]);
     d_omega = [0, 0, 0, 0];
   else
 # rotating frame
     H0 = diag([0, 0, 0, 0]);
-    d_omega = [d1-d0, d2-d1, d3-d2, 0];
+    d_omega = [omega(2)-omega(1), omega(3)-omega(2), omega(4)-omega(3), 0];
   end
 
 				# lowering op
@@ -112,7 +108,7 @@ function [objf uFinal] = traceobjfunc(pcof, verbose, order)
   end
 
 		   # Final time T
-  dt = cfl/maxeig; # largest eigenvalue of H0 = d3, H0+poly*K1 estimated by maxeig
+  dt = cfl/maxeig; # largest eigenvalue of H0 = omega(4), H0+poly*K1 estimated by maxeig
   nsteps = ceil(T/dt);
   dt = T/nsteps;
   if (verbose)
@@ -132,22 +128,15 @@ function [objf uFinal] = traceobjfunc(pcof, verbose, order)
 	     1, 0, 0, 0;
 	     0, 0, 1, 0;
 	     0, 0, 0, 1];
-	
-  if (lab_frame)
-    vTarget = uTarget;
-# uTarget is real
-    vTarget_r = uTarget;
-    vTarget_i = zeros(4,4);
-  else  # target in rotating frame
-    RotMat = diag([ exp(I*d0*T), exp(I*d1*T), exp(I*d2*T), exp(I*d3*T) ]);
-    vTarget = RotMat*uTarget;
+  
+  RotMat = diag([ exp(I*omega(1)*T), exp(I*omega(2)*T), exp(I*omega(3)*T), exp(I*omega(4)*T) ]);
+  vTarget = RotMat*uTarget;
 				# real arithmetic for Verlet
-    RotMat_r = diag([ cos(d0*T), cos(d1*T), cos(d2*T), cos(d3*T) ]);
-    RotMat_i = diag([ sin(d0*T), sin(d1*T), sin(d2*T), sin(d3*T) ]);
+  RotMat_r = diag([ cos(omega(1)*T), cos(omega(2)*T), cos(omega(3)*T), cos(omega(4)*T) ]);
+  RotMat_i = diag([ sin(omega(1)*T), sin(omega(2)*T), sin(omega(3)*T), sin(omega(4)*T) ]);
 # uTarget is real
-    vTarget_r = RotMat_r*uTarget;
-    vTarget_i = RotMat_i*uTarget;
-  end
+  vTarget_r = RotMat_r*uTarget;
+  vTarget_i = RotMat_i*uTarget;
 
 # initial data and allocation of solution vectors
   uSol = U0;
@@ -249,23 +238,20 @@ function [objf uFinal] = traceobjfunc(pcof, verbose, order)
     uSol = expH * uSol;
     tm = tm+dt; # updating time for Magnus integrator
 
-# accumulate objf = integral w(t) * ( 1 - |Tr( uSol' * vTarget )/N|^2 )
-    fidelity = trace(ctranspose(uSol) * vTarget)/N;
-    objf = objf + dt*weightf(tm)*( 1 - abs(fidelity)^2 );
+# accumulate objf = integral w(t) * ( 1 - | Tr( vSol' * vTarget )/N |^2 )
+    infidelity = weightf(tm)*(1 - trace_fid_cmplx(uSol, vTarget, lab_frame, tm, omega));
+    objf = objf + dt*infidelity;
 
 # Stromer-Verlet
+    infidelity_0 = weightf(t)*(1-trace_fid_real(ur, vi, vTarget_r, vTarget_i, lab_frame, t, omega));
+
     for q=1:stages
-      ur0=ur;
-      vi0=vi;
-      t0=t;
       [ur, vi, t] = stromer_verlet_mat(ur, vi, rfunc, ifunc, t, gamma(q)*dt, pcof, H0, amat, adag, Ident, d_omega, uforce, vforce); # t, ur, vr are updated
 # real arithmetic for Verlet
 # accumulate objf = integral w(t) * ( 1 - |Tr( uSol' * vTarget )/N|^2 )
-      ua = 0.5*(ur+ur0);
-      va = 0.5*(vi+vi0);
-      fidelity2 = (trace(ua' * vTarget_r - va' * vTarget_i)/N)^2 + (trace(ua' * vTarget_i + va' * vTarget_r)/N)^2;
-      ta = 0.5*(t0+t);
-      objf_v = objf_v + gamma(q)*dt*weightf(ta)*( 1 - fidelity2 );
+      infidelity = weightf(t)*(1-trace_fid_real(ur, vi, vTarget_r, vTarget_i, lab_frame, t, omega));
+      objf_v = objf_v + gamma(q)*dt* 0.5* (infidelity_0 + infidelity);
+      infidelity_0 = infidelity;	# save previous values for next stage
     end
 
 # save solutions from both methods to evaluate differences
@@ -277,9 +263,9 @@ function [objf uFinal] = traceobjfunc(pcof, verbose, order)
     end # if verbose
   end # for (time stepping loop)
 
-# correct integration of objective function from last time-step
-  fidelity = trace(ctranspose(uSol) * vTarget)/N;
-  objf = objf - 0.5*dt*weightf(T)*( 1 - abs(fidelity)^2 );
+# correct Magnus integration of objective function from last time-step
+  infidelity = weightf(tm)*(1 - trace_fid_cmplx(uSol, vTarget, lab_frame, tm, omega));
+  objf = objf - 0.5*dt*infidelity;
 
 # no correction needed for the Verlet scheme (objf_v)
   
@@ -288,11 +274,11 @@ function [objf uFinal] = traceobjfunc(pcof, verbose, order)
     uFinal_r = ur;
     uFinal_i = -vi;
   else
-    RotMat = diag([ exp(I*d0*T), exp(I*d1*T), exp(I*d2*T), exp(I*d3*T) ]);
+    RotMat = diag([ exp(I*omega(1)*T), exp(I*omega(2)*T), exp(I*omega(3)*T), exp(I*omega(4)*T) ]);
     uFinal = RotMat' * uSol;
 # verlet needs real arithmetic
-    RotMat_r = diag([ cos(d0*T), cos(d1*T), cos(d2*T), cos(d3*T) ]);
-    RotMat_i = diag([ sin(d0*T), sin(d1*T), sin(d2*T), sin(d3*T) ]);
+    RotMat_r = diag([ cos(omega(1)*T), cos(omega(2)*T), cos(omega(3)*T), cos(omega(4)*T) ]);
+    RotMat_i = diag([ sin(omega(1)*T), sin(omega(2)*T), sin(omega(3)*T), sin(omega(4)*T) ]);
     uFinal_r = RotMat_r' *ur - RotMat_i' * vi;
     uFinal_i = -RotMat_r' * vi - RotMat_i * ur;
   end
@@ -429,7 +415,7 @@ function [objf uFinal] = traceobjfunc(pcof, verbose, order)
     printf(" ]\n");
 				# check if uFinal is unitary
     utest = ctranspose(uFinal) * uFinal - U0;
-    printf("Final unitary infidelity = %e, Final |trace| gate infidelity = %e\n", norm(utest), final_Infidelity);
+    printf("LabFrame = %d, Final unitary infidelity = %e, Final |trace| gate infidelity = %e\n", lab_frame, norm(utest), final_Infidelity);
     printf("Nsteps=%d, Integrated |trace|^2 infidelity: Magnus = %e,  Verlet = %e\n", nsteps, objf, objf_v);
   end # if verbose
 end
