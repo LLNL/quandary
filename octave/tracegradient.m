@@ -208,51 +208,40 @@ function [dfdp, dfdp_fd] = tracegradient(pcof0, kpar, dp, order, verbose)
   objf_alpha1 = 0;
 
   t=0;
-  tm=0;
   step=0;
-			     # time stepping loop
+			     # Forward time stepping loop
   for step=1:nsteps
 
 # Stromer-Verlet
-    s_cmplx_0 = trace2_fid_cmplx(v_r, v_i, vTarget_r, vTarget_i, lab_frame, t, omega);
-    s_alpha_0 = trace2_fid_cmplx(w_r, w_i, vTarget_r, vTarget_i, lab_frame, t, omega);
+    s_cmplx_0 = trace2_fid_cmplx(v_r, -v_i, vTarget_r, vTarget_i, lab_frame, t, omega);
+    s_alpha_0 = trace2_fid_cmplx(w_r, -w_i, vTarget_r, vTarget_i, lab_frame, t, omega);
 
-       # forcing for evolving W (d psi/d alpha1) in the rotating frame
-    dmat_r = diag([ cos(d_omega(1)*(t)), cos(d_omega(2)*(t)), cos(d_omega(3)*(t)), cos(d_omega(4)*(t)) ]);
-    dmat_i = diag([ -sin(d_omega(1)*(t)), -sin(d_omega(2)*(t)), -sin(d_omega(3)*(t)), -sin(d_omega(4)*(t)) ]);
+# forcing for evolving W (d psi/d alpha1) in the rotating frame
+    [da_r, da_i] = get_da_mat(t, amat, d_omega);
     rf_alpha = rfunc_a1(t,pcof);
     if_alpha = ifunc_a1(t,pcof);
-
-    K1 =  rf_alpha.*(dmat_r * amat +  amat' * dmat_r') - if_alpha.*(dmat_i * amat + amat' * dmat_i');
-    S1 =  if_alpha.*(dmat_r * amat - amat' * dmat_r') + rf_alpha.*(dmat_i * amat - amat' * dmat_i');
-
-    gr_0 = S1 * v_r -  K1 * v_i;
-    gi_0 = K1 * v_r + S1 * v_i;
-    
+    gr_0 = rf_alpha.*( (da_i -  da_i') * v_r  - (da_r + da_r') * v_i ) + if_alpha.*(  (da_i + da_i') * v_i + (da_r  -  da_r') * v_r );
+    gi_0 = rf_alpha.*( (da_r + da_r') * v_r + (da_i -  da_i') * v_i ) + if_alpha.*( -(da_i + da_i') * v_r + (da_r  -  da_r') * v_i );
     for q=1:stages
       t0=t;
       v_r0 = v_r;
       v_i0 = v_i;
 # the following call updates ( t, v_r, v_i)
       [v_r, v_i, t] = stromer_verlet_mat2(v_r, v_i, rfunc, ifunc, t, gamma(q)*dt, pcof, H0, amat, Ident, d_omega, zeroMat, zeroMat, zeroMat, zeroMat); 
-				# real arithmetic for Verlet
-      s_cmplx_1 = trace2_fid_cmplx(v_r, v_i, vTarget_r, vTarget_i, lab_frame, t, omega);
+# real arithmetic for Verlet
+      s_cmplx_1 = trace2_fid_cmplx(v_r, -v_i, vTarget_r, vTarget_i, lab_frame, t, omega);
 
 # forcing for evolving W (d psi/d alpha1) in the rotating frame
-      dmat_r = diag([ cos(d_omega(1)*(t)), cos(d_omega(2)*(t)), cos(d_omega(3)*(t)), cos(d_omega(4)*(t)) ]);
-      dmat_i = diag([ -sin(d_omega(1)*(t)), -sin(d_omega(2)*(t)), -sin(d_omega(3)*(t)), -sin(d_omega(4)*(t)) ]);
+      [da_r, da_i] = get_da_mat(t, amat, d_omega);
       rf_alpha = rfunc_a1(t,pcof);
       if_alpha = ifunc_a1(t,pcof);
 
-      K1 =  rf_alpha.*(dmat_r * amat +  amat' * dmat_r') - if_alpha.*(dmat_i * amat + amat' * dmat_i');
-      S1 =  if_alpha.*(dmat_r * amat - amat' * dmat_r') + rf_alpha.*(dmat_i * amat - amat' * dmat_i');
-
-      gr_1 = S1 * v_r -  K1 * v_i;
-      gi_1 = K1 * v_r + S1 * v_i;
+      gr_1 = rf_alpha.*( (da_i -  da_i') * v_r  - (da_r + da_r') * v_i ) + if_alpha.*(  (da_i + da_i') * v_i + (da_r  -  da_r') * v_r );
+      gi_1 = rf_alpha.*( (da_r + da_r') * v_r + (da_i -  da_i') * v_i ) + if_alpha.*( -(da_i + da_i') * v_r + (da_r  -  da_r') * v_i );
 # evolve ( w_r, w_i)
       [w_r, w_i] = stromer_verlet_mat2(w_r, w_i, rfunc, ifunc, t0, gamma(q)*dt, pcof, H0, amat, Ident, d_omega, gr_0, gr_1, gi_0, gi_1); 
 
-      s_alpha_1 = trace2_fid_cmplx(w_r, w_i, vTarget_r, vTarget_i, lab_frame, t, omega);
+      s_alpha_1 = trace2_fid_cmplx(w_r, -w_i, vTarget_r, vTarget_i, lab_frame, t, omega);
       
 # accumulate integrated sensitivity
       objf_alpha1 = objf_alpha1 - gamma(q)*dt* 0.5* 2.0 * real( weightf(t0) * conj(s_cmplx_0) * s_alpha_0 +  weightf(t) * conj(s_cmplx_1) * s_alpha_1);
@@ -274,12 +263,96 @@ function [dfdp, dfdp_fd] = tracegradient(pcof0, kpar, dp, order, verbose)
 
   dfdp = objf_alpha1;
 
+# evaluate final solution in the lab frame
 # verlet needs real arithmetic
   RotMat_r = diag([ cos(omega(1)*T), cos(omega(2)*T), cos(omega(3)*T), cos(omega(4)*T) ]);
   RotMat_i = diag([ sin(omega(1)*T), sin(omega(2)*T), sin(omega(3)*T), sin(omega(4)*T) ]);
   uFinal_r = RotMat_r' * v_r - RotMat_i' * v_i;
   uFinal_i = -RotMat_r' * v_i - RotMat_i * v_r;
 
+# reverse time step the state variable (and the adjoint wave equation)
+  # initial condition for the state variable (psi) from above (vr, vi)
+  t=T;
+  dt = -dt;
+  adiff_max = 0;
+  grad_objf_adj = 0;
+  
+# terminal conditions for the adjoint state
+  lambda_r = zeroMat;
+  lambda_i = zeroMat;
+  
+# reverse time stepping loop
+  for step=nsteps-1:-1:0
+
+# Stromer-Verlet
+    s_cmplx_0 = trace2_fid_cmplx(v_r, -v_i, vTarget_r, vTarget_i, lab_frame, t, omega);
+    sr_0 = real(s_cmplx_0);
+    si_0 = imag(s_cmplx_0);
+#    hmat_0 = - weightf(t) * (sr_0 - I*si_0) * (vTarget_r + I * vTarget_i);
+    hr_0 =  -weightf(t) * (sr_0 * vTarget_r + si_0 *vTarget_i);
+    hi_0 =  weightf(t) * (sr_0 * vTarget_i - si_0 *vTarget_r);
+
+# forcing for evolving W (d psi/d alpha1) in the rotating frame
+    [da_r, da_i] = get_da_mat(t, amat, d_omega);
+    rf_alpha = rfunc_a1(t,pcof);
+    if_alpha = ifunc_a1(t,pcof);
+    gr_0 = rf_alpha.*( (da_i -  da_i') * v_r  - (da_r + da_r') * v_i ) + if_alpha.*(  (da_i + da_i') * v_i + (da_r  -  da_r') * v_r );
+    gi_0 = rf_alpha.*( (da_r + da_r') * v_r + (da_i -  da_i') * v_i ) + if_alpha.*( -(da_i + da_i') * v_r + (da_r  -  da_r') * v_i );
+      
+    tr_adj_0 = trace2_fid_cmplx(gr_0, -gi_0, lambda_r, -lambda_i, lab_frame, t, omega);
+# loop over the stages
+    for q=1:stages
+      t0=t;
+      v_r0 = v_r;
+      v_i0 = v_i;
+# the following call updates ( t, v_r, v_i)
+      [v_r, v_i, t] = stromer_verlet_mat2(v_r, v_i, rfunc, ifunc, t, gamma(q)*dt, pcof, H0, amat, Ident, d_omega, zeroMat, zeroMat, zeroMat, zeroMat); 
+# real arithmetic for Verlet
+      s_cmplx_1 = trace2_fid_cmplx(v_r, -v_i, vTarget_r, vTarget_i, lab_frame, t, omega);
+      sr_1 = real(s_cmplx_1);
+      si_1 = imag(s_cmplx_1);
+				# forcing for the adjoint equation
+      hr_1 =  -weightf(t) * (sr_1 * vTarget_r + si_1 *vTarget_i);
+      hi_1 =  weightf(t) * (sr_1 * vTarget_i - si_1 *vTarget_r);
+
+# evolve lambda_r, lambda_i
+      [lambda_r, lambda_i] = stromer_verlet_mat2(lambda_r, lambda_i, rfunc, ifunc, t0, gamma(q)*dt, pcof, H0, amat, Ident, d_omega, hr_0, hr_1, hi_0, hi_1); 
+
+# forcing for evolving W (d psi/d alpha1) in the rotating frame
+      [da_r, da_i] = get_da_mat(t, amat, d_omega);
+      rf_alpha = rfunc_a1(t,pcof);
+      if_alpha = ifunc_a1(t,pcof);
+      gr_1 = rf_alpha.*( (da_i -  da_i') * v_r  - (da_r + da_r') * v_i ) + if_alpha.*(  (da_i + da_i') * v_i + (da_r  -  da_r') * v_r );
+      gi_1 = rf_alpha.*( (da_r + da_r') * v_r + (da_i -  da_i') * v_i ) + if_alpha.*( -(da_i + da_i') * v_r + (da_r  -  da_r') * v_i );
+      
+      tr_adj_1 = trace2_fid_cmplx(gr_1, -gi_1, lambda_r, -lambda_i, lab_frame, t, omega);
+
+		 # accumulate the gradient of the objective functional
+      grad_objf_adj = grad_objf_adj + gamma(q)*dt* 0.5* 2.0 * real( tr_adj_0 +  tr_adj_1); # dt is negative
+      
+				# save previous values for next stage
+      s_cmplx_0 = s_cmplx_1;
+      tr_adj_0 = tr_adj_1;
+      hr_0 = hr_1;
+      hi_0 = hi_1;
+    end
+
+# evaluate differences with forward time-stepping
+    if (verbose)
+      rdiff = norm(usaver(:,:,step+1) - v_r);
+      idiff = norm(usavei(:,:,step+1) + v_i);
+      adiff = sqrt(rdiff^2 + idiff^2);
+      if (adiff> adiff_max)
+	adiff_max = adiff;
+      end
+    end # if verbose
+
+  end # for (reverse time stepping loop)
+
+  if verbose
+    printf("Max diff forward - reverse time stepping: %e\n", adiff_max);
+  end
+  
 				# plot results
   if (verbose)
 				# difference at final time
@@ -349,6 +422,6 @@ function [dfdp, dfdp_fd] = tracegradient(pcof0, kpar, dp, order, verbose)
 				# check if uFinal is unitary
     utest = uFinal_r' * uFinal_r + uFinal_i' * uFinal_i - U0;
     printf("LabFrame = %d, Final unitary infidelity = %e, Final | trace | gate infidelity = %e\n", lab_frame, norm(utest), final_Infidelity);
-    printf("Nsteps=%d, gradient of objective function = %e\n", nsteps, objf_alpha1);
+    printf("Nsteps=%d, gradient of objective function = %e, adjoint gradient = %e\n", nsteps, objf_alpha1, grad_objf_adj);
   end # if verbose
 end

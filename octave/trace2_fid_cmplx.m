@@ -22,11 +22,11 @@ function  [fid_cmplx] = trace2_fid_cmplx(vr, vi, vTarget_r, vTarget_i, lab_frame
 				# verlet needs real arithmetic
     RotMat_c = diag([ cos(omega(1)*t), cos(omega(2)*t), cos(omega(3)*t), cos(omega(4)*t) ]);
     RotMat_s = diag([ sin(omega(1)*t), sin(omega(2)*t), sin(omega(3)*t), sin(omega(4)*t) ]);
-    ua = RotMat_c * vr + RotMat_s * vi; # vr = + Re(u), vi = - Im(u)
-    va = RotMat_s * vr - RotMat_c * vi;
+    ua = RotMat_c * vr - RotMat_s * vi; # vr = + Re(u), vi = + Im(u)
+    va = RotMat_s * vr + RotMat_c * vi;
   else
     ua = vr;
-    va = -vi;
+    va = vi;
   end
   fid_cmplx = trace(ua' * vTarget_r + va' * vTarget_i)/N + I*trace(ua' * vTarget_i - va' * vTarget_r)/N;
 
