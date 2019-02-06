@@ -1,43 +1,48 @@
 %-*-octave-*--
 %
-% tracegradient: solve a model problem from quantum control theory
+% % tracegradient: compute the gradient of the trace norm gate infidelity objective functional
 %
 % USAGE:
 % 
-% [objF, uFinal] = tracegradient(pcof, dp, order, verbose)
+% [dfdp, dfdp_fd] = tracegradient(pcof0, kpar, dp, order, verbose)
 %
 % INPUT:
 % pcof(D,1): amplitudes of the control functions as a D x 1 column vector, D=size(pcof,1)
+% kpar: component of the gradient (1 <= kpar <= D)
 % verbose: 0: quite mode, 1: verbose
 % order: order of accuracy: 2, 4, or 6.
 %
 % OUTPUT:
-% objF: trace norm of gate infidelity cost functional
-% uFinal_r: Real part of state vector at t=T
-% uFinal_i: Imaginary part of state vector at t=T
+% dpdf: gradient of trace norm gate infidelity objective functionsl
+% dpdf_fd: finite difference approximation by evaluating the objective functional for nearby parameters
 %
-function [dfdp, dfdp_fd] = tracegradient(pcof0, dp, order, verbose)
+function [dfdp, dfdp_fd] = tracegradient(pcof0, kpar, dp, order, verbose)
 
   if nargin < 1
     pcof0 = [0.2; 0.1];
   end
 
   if nargin < 2
-    dp = 1e-6;
+    kpar = 1;
   end
 
   if nargin < 3
+    dp = 1e-6;
+  end
+
+  if nargin < 4
     order = 2;
   end
 
-  if (nargin<4)
+  if nargin<5
     verbose=0;
   end
 
 # first approximate the gradient by FD
   f0 = traceobjf1(pcof0, order);
 
-  pcof1 = pcof0 + [dp; 0]; # perturb coefficient  number 1
+  pcof1 = pcof0;
+  pcof1(kpar) = pcof1(kpar) + dp;
 
   f1 = traceobjf1(pcof1, order);
 
@@ -170,6 +175,9 @@ function [dfdp, dfdp_fd] = tracegradient(pcof0, dp, order, verbose)
       gamma(4)= gamma(6)= 0.08221359629355080023149045;
       gamma(5)= 0.79854399093482996339895035;
     end
+  else
+    printf("ERROR: order = %d is not yet implemented\n");
+    return;
   end
   
   if (verbose)
@@ -183,8 +191,16 @@ function [dfdp, dfdp_fd] = tracegradient(pcof0, dp, order, verbose)
   rfunc = @rf1;
   ifunc = @if1;
 
-  rfunc_a1 = @rf1alpha1;
-  ifunc_a1 = @if1alpha1;
+  if (kpar == 1)
+    rfunc_a1 = @rf1alpha1;
+    ifunc_a1 = @if1alpha1;
+  elseif (kpar == 2)
+    rfunc_a1 = @rf1alpha2;
+    ifunc_a1 = @if1alpha2;
+  else
+    printf("ERROR: kpar = %d is not yet implemented\n", kpar);
+    return;
+  end
   
   separable = 0;
 
