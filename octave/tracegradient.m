@@ -14,7 +14,6 @@
 %
 % OUTPUT:
 % grad_objf_adj: gradient of trace norm objective functional computed with an adjoint technique
-% dpdf_fd: finite difference approximation by evaluating the objective functional for nearby parameters
 %
 function [ grad_objf_adj ] = tracegradient(pcof0, kpar, dp, order, verbose)
 
@@ -38,11 +37,21 @@ function [ grad_objf_adj ] = tracegradient(pcof0, kpar, dp, order, verbose)
     verbose=0;
   end
 
-  if (verbose)
-    test_adjoint=1;
-  else
-    test_adjoint=0;
+  test_adjoint=0;
+
+  if test_adjoint
+    if (kpar == 1)
+      rfunc_a1 = @rf1alpha1;
+      ifunc_a1 = @if1alpha1;
+    elseif (kpar == 2)
+      rfunc_a1 = @rf1alpha2;
+      ifunc_a1 = @if1alpha2;
+    else
+      printf("ERROR: kpar = %d is not yet implemented\n", kpar);
+      return;
+    end
   end
+
 
   if (verbose)
 				# first approximate the gradient by FD
@@ -85,6 +94,23 @@ function [ grad_objf_adj ] = tracegradient(pcof0, kpar, dp, order, verbose)
 
   D = size(pcof,1); # parameter dimension
   
+# handles to time functions
+  if (D==2)
+    rfunc = @rf1;
+    ifunc = @if1;
+# gradient of control functions
+    rf_grad = @rf1grad;
+    if_grad = @if1grad;
+  elseif (D==8)
+    rfunc = @rf8;
+    ifunc = @if8;
+    rf_grad = @rf8grad;
+    if_grad = @if8grad;
+  else
+    printf("ERROR: number of parameters D=%d is not implemented\n", D);
+    return;
+  end
+
 # coefficients in H0
   omega = zeros(1,4);
   omega(1) = 0;
@@ -105,7 +131,7 @@ function [ grad_objf_adj ] = tracegradient(pcof0, kpar, dp, order, verbose)
 # raising op is the transpose of amat
   
 # final time
-  T = 15;
+  global T;
 
   if (verbose)
     printf("Vector dim (N) = %d, Param dim (D) = %d, pcof(1) = %e, Final time = %e, CFL = %e\n", N, D, pcof(1), T, cfl);
@@ -192,21 +218,6 @@ function [ grad_objf_adj ] = tracegradient(pcof0, kpar, dp, order, verbose)
     usaver(:,:,1) = v_r;
     usavei(:,:,1) = -v_i;
   end
-
-# handles to time functions
-  rfunc = @rf1;
-  ifunc = @if1;
-
-  if (kpar == 1)
-    rfunc_a1 = @rf1alpha1;
-    ifunc_a1 = @if1alpha1;
-  elseif (kpar == 2)
-    rfunc_a1 = @rf1alpha2;
-    ifunc_a1 = @if1alpha2;
-  else
-    printf("ERROR: kpar = %d is not yet implemented\n", kpar);
-    return;
-  end
   
   separable = 0;
 
@@ -288,10 +299,6 @@ function [ grad_objf_adj ] = tracegradient(pcof0, kpar, dp, order, verbose)
   dt = -dt;
   adiff_max = 0;
   grad_objf_adj = zeros(D,1);
-
-# gradient of control functions
-  rf_grad = @rf1grad;
-  if_grad = @if1grad;
   
 # terminal conditions for the adjoint state
   lambda_r = zeroMat;
@@ -444,7 +451,7 @@ function [ grad_objf_adj ] = tracegradient(pcof0, kpar, dp, order, verbose)
 				# check if uFinal is unitary
     utest = uFinal_r' * uFinal_r + uFinal_i' * uFinal_i - U0;
     printf("LabFrame = %d, Final unitary infidelity = %e, Final | trace | gate infidelity = %e\n", lab_frame, norm(utest), final_Infidelity);
-    printf("Nsteps=%d, kpar = %d, gradient of objective function = %e\n", nsteps, kpar, objf_alpha1)
+    printf("Nsteps=%d, kpar = %d, fd-gradient of objective function = %e\n", nsteps, kpar, dfdp_fd)
     printf("Adjoint gradient components: ");
     for q=1:D
       printf(" %e ", grad_objf_adj(q) );

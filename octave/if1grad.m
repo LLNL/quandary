@@ -15,7 +15,7 @@ function  [f] = if1grad(t, pcof)
   f =zeros(D, 1);
   
 # Final time T
-  T = 15;
+  global T;
 # Frequency
   d1 = 24.64579437;
   

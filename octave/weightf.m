@@ -12,7 +12,7 @@
 function  [w] = weightf(t, pcof)
 
 # Final time T
-  T = 15;
+  global T;
 
 # period
   tp = 0.125*T;

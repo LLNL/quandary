@@ -80,7 +80,7 @@ function [objf uFinal] = traceobjfunc(pcof, verbose, order)
 
 #  S1 = zeros(N,N);
 # final time
-  T = 15;
+  global T;
 
   if (verbose)
     printf("Vector dim (N) = %d, Param dim (D) = %d, pcof(1) = %e, Final time = %e, CFL = %e\n", N, D, pcof(1), T, cfl);

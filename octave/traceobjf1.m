@@ -18,7 +18,7 @@
 %
 function [objf_v, uFinal_r, uFinal_i] = traceobjf1(pcof, order, verbose)
 
-  abs_or_real=1; # plot the magnitude (abs) of real part of the solution (1 for real)
+  abs_or_real=0; # plot the magnitude (abs) of real part of the solution (1 for real)
 
   if nargin < 1
     pcof(1) = 1.0;
@@ -42,6 +42,19 @@ function [objf_v, uFinal_r, uFinal_i] = traceobjf1(pcof, order, verbose)
   N = 4; # vector dimension
 
   D = size(pcof,1); # parameter dimension
+
+# handles to time and forcing functions
+  if (D==2)
+    rfunc = @rf1;
+    ifunc = @if1;
+  elseif (D==8)
+    rfunc = @rf8;
+    ifunc = @if8;
+  else
+    printf("ERROR: number of parameters D=%d is not implemented\n", D);
+    return;
+  end
+  
   
 # coefficients in H0
   omega = zeros(1,4);
@@ -79,9 +92,8 @@ function [objf_v, uFinal_r, uFinal_i] = traceobjf1(pcof, order, verbose)
   	0, -sqrt(2), 0, sqrt(3);
   	0, 0, -sqrt(3), 0];
 
-#  S1 = zeros(N,N);
 # final time
-  T = 15;
+  global T;
 
   if (verbose)
     printf("Vector dim (N) = %d, Param dim (D) = %d, pcof(1) = %e, Final time = %e, CFL = %e\n", N, D, pcof(1), T, cfl);
@@ -176,10 +188,6 @@ function [objf_v, uFinal_r, uFinal_i] = traceobjf1(pcof, order, verbose)
     usavei(:,:,1) = -vi;
   end
 
-# handles to time and forcing functions
-  rfunc = @rf1;
-  ifunc = @if1;
-  
   separable = 0;
 
 # for computing the objf function

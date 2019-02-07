@@ -19,8 +19,10 @@ function [x0, phi] = tr_setup(verbose)
     verbose=0;
   end
 
-# solution to the 8-parameter control problem
-  x0 = [ 0.53; 0];
+# initial guess for the 8-parameter control problem
+  x0 = zeros(8,1);
+  x0(1) = 0.26548;
+  x0(2) = 0.26548;
 
   phi=cell(2,1);
   phi{1} = @traceobjf1;

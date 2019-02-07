@@ -13,7 +13,7 @@
 function  [f] = rf1alpha1(t, pcof)
 
 # Final time T
-  T = 15;
+  global T;
 # Frequency
   d1 = 24.64579437;
   

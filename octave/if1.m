@@ -14,7 +14,7 @@ function  [f] = if1(t, pcof)
   D = size(pcof,1);
   f = 0;
 # Final time T
-  T = 15;
+  global T;
 # Frequency
   d1 = 24.64579437;
   
