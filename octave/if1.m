@@ -11,7 +11,8 @@
 % f: imaginary part of time function at time t
 %
 function  [f] = if1(t, pcof)
-
+  D = size(pcof,1);
+  f = 0;
 # Final time T
   T = 15;
 # Frequency
@@ -23,6 +24,8 @@ function  [f] = if1(t, pcof)
   tau = (t - t0)/tp;
   mask = (tau >= -0.5 & tau <= 0.5);
 
-  f = pcof(2) * 64*mask.*(0.5 + tau).^3 .* (0.5 - tau).^3 .*sin(d1*t);
-
+  if (D>=2)
+    f = pcof(2) * 64*mask.*(0.5 + tau).^3 .* (0.5 - tau).^3 .*sin(d1*t);
+  end
+  
 end

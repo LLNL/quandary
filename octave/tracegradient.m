@@ -13,10 +13,10 @@
 % order: order of accuracy: 2, 4, or 6.
 %
 % OUTPUT:
-% dpdf: gradient of trace norm gate infidelity objective functionsl
+% grad_objf_adj: gradient of trace norm objective functional computed with an adjoint technique
 % dpdf_fd: finite difference approximation by evaluating the objective functional for nearby parameters
 %
-function [dfdp, dfdp_fd] = tracegradient(pcof0, kpar, dp, order, verbose)
+function [ grad_objf_adj ] = tracegradient(pcof0, kpar, dp, order, verbose)
 
   if nargin < 1
     pcof0 = [0.2; 0.1];
@@ -38,18 +38,24 @@ function [dfdp, dfdp_fd] = tracegradient(pcof0, kpar, dp, order, verbose)
     verbose=0;
   end
 
-# first approximate the gradient by FD
-  f0 = traceobjf1(pcof0, order);
-
-  pcof1 = pcof0;
-  pcof1(kpar) = pcof1(kpar) + dp;
-
-  f1 = traceobjf1(pcof1, order);
-
-# divided difference approximation
-  dfdp_fd = (f1-f0)/dp;
+  if (verbose)
+    test_adjoint=1;
+  else
+    test_adjoint=0;
+  end
 
   if (verbose)
+				# first approximate the gradient by FD
+    f0 = traceobjf1(pcof0, order);
+
+    pcof1 = pcof0;
+    pcof1(kpar) = pcof1(kpar) + dp;
+
+    f1 = traceobjf1(pcof1, order);
+
+				# divided difference approximation
+    dfdp_fd = (f1-f0)/dp;
+
     printf("pcof0: ")
     for q=1:length(pcof0)
       printf(" %e", pcof0(q));
@@ -213,47 +219,53 @@ function [dfdp, dfdp_fd] = tracegradient(pcof0, kpar, dp, order, verbose)
   for step=1:nsteps
 
 # Stromer-Verlet
-    s_cmplx_0 = trace2_fid_cmplx(v_r, -v_i, vTarget_r, vTarget_i, lab_frame, t, omega);
-    s_alpha_0 = trace2_fid_cmplx(w_r, -w_i, vTarget_r, vTarget_i, lab_frame, t, omega);
+    if (test_adjoint)
+      s_cmplx_0 = trace2_fid_cmplx(v_r, -v_i, vTarget_r, vTarget_i, t, omega);
+      s_alpha_0 = trace2_fid_cmplx(w_r, -w_i, vTarget_r, vTarget_i, t, omega);
 
 # forcing for evolving W (d psi/d alpha1) in the rotating frame
-    [da_r, da_i] = get_da_mat(t, amat, d_omega);
-    rf_alpha = rfunc_a1(t,pcof);
-    if_alpha = ifunc_a1(t,pcof);
-    gr_0 = rf_alpha.*( (da_i -  da_i') * v_r  - (da_r + da_r') * v_i ) + if_alpha.*(  (da_i + da_i') * v_i + (da_r  -  da_r') * v_r );
-    gi_0 = rf_alpha.*( (da_r + da_r') * v_r + (da_i -  da_i') * v_i ) + if_alpha.*( -(da_i + da_i') * v_r + (da_r  -  da_r') * v_i );
+      [da_r, da_i] = get_da_mat(t, amat, d_omega);
+      rf_alpha = rfunc_a1(t,pcof);
+      if_alpha = ifunc_a1(t,pcof);
+      gr_0 = rf_alpha.*( (da_i -  da_i') * v_r  - (da_r + da_r') * v_i ) + if_alpha.*(  (da_i + da_i') * v_i + (da_r  -  da_r') * v_r );
+      gi_0 = rf_alpha.*( (da_r + da_r') * v_r + (da_i -  da_i') * v_i ) + if_alpha.*( -(da_i + da_i') * v_r + (da_r  -  da_r') * v_i );
+    end # test_adjoint
+    
     for q=1:stages
       t0=t;
       v_r0 = v_r;
       v_i0 = v_i;
 # the following call updates ( t, v_r, v_i)
       [v_r, v_i, t] = stromer_verlet_mat2(v_r, v_i, rfunc, ifunc, t, gamma(q)*dt, pcof, H0, amat, Ident, d_omega, zeroMat, zeroMat, zeroMat, zeroMat); 
+
+      if (test_adjoint)
 # real arithmetic for Verlet
-      s_cmplx_1 = trace2_fid_cmplx(v_r, -v_i, vTarget_r, vTarget_i, lab_frame, t, omega);
+	s_cmplx_1 = trace2_fid_cmplx(v_r, -v_i, vTarget_r, vTarget_i, t, omega);
 
 # forcing for evolving W (d psi/d alpha1) in the rotating frame
-      [da_r, da_i] = get_da_mat(t, amat, d_omega);
-      rf_alpha = rfunc_a1(t,pcof);
-      if_alpha = ifunc_a1(t,pcof);
+	[da_r, da_i] = get_da_mat(t, amat, d_omega);
+	rf_alpha = rfunc_a1(t,pcof);
+	if_alpha = ifunc_a1(t,pcof);
 
-      gr_1 = rf_alpha.*( (da_i -  da_i') * v_r  - (da_r + da_r') * v_i ) + if_alpha.*(  (da_i + da_i') * v_i + (da_r  -  da_r') * v_r );
-      gi_1 = rf_alpha.*( (da_r + da_r') * v_r + (da_i -  da_i') * v_i ) + if_alpha.*( -(da_i + da_i') * v_r + (da_r  -  da_r') * v_i );
+	gr_1 = rf_alpha.*( (da_i -  da_i') * v_r  - (da_r + da_r') * v_i ) + if_alpha.*(  (da_i + da_i') * v_i + (da_r  -  da_r') * v_r );
+	gi_1 = rf_alpha.*( (da_r + da_r') * v_r + (da_i -  da_i') * v_i ) + if_alpha.*( -(da_i + da_i') * v_r + (da_r  -  da_r') * v_i );
 # evolve ( w_r, w_i)
-      [w_r, w_i] = stromer_verlet_mat2(w_r, w_i, rfunc, ifunc, t0, gamma(q)*dt, pcof, H0, amat, Ident, d_omega, gr_0, gr_1, gi_0, gi_1); 
+	[w_r, w_i] = stromer_verlet_mat2(w_r, w_i, rfunc, ifunc, t0, gamma(q)*dt, pcof, H0, amat, Ident, d_omega, gr_0, gr_1, gi_0, gi_1); 
 
-      s_alpha_1 = trace2_fid_cmplx(w_r, -w_i, vTarget_r, vTarget_i, lab_frame, t, omega);
+	s_alpha_1 = trace2_fid_cmplx(w_r, -w_i, vTarget_r, vTarget_i, t, omega);
       
 # accumulate integrated sensitivity
-      objf_alpha1 = objf_alpha1 - gamma(q)*dt* 0.5* 2.0 * real( weightf(t0) * conj(s_cmplx_0) * s_alpha_0 +  weightf(t) * conj(s_cmplx_1) * s_alpha_1);
+	objf_alpha1 = objf_alpha1 - gamma(q)*dt* 0.5* 2.0 * real( weightf(t0) * conj(s_cmplx_0) * s_alpha_0 +  weightf(t) * conj(s_cmplx_1) * s_alpha_1);
 
 # save previous values for next stage
-      s_cmplx_0 = s_cmplx_1;
-      s_alpha_0 = s_alpha_1;
-      gr_0 = gr_1;
-      gi_0 = gi_1;
+	s_cmplx_0 = s_cmplx_1;
+	s_alpha_0 = s_alpha_1;
+	gr_0 = gr_1;
+	gi_0 = gi_1;
+      end  #test_adjoint
     end
 
-# save solutions from both methods to evaluate differences
+# save the solution from the forwards time stepping for plotting and checking the time-reversed calculation
     if (verbose)
       usaver(:,:,step+1) = v_r;
       usavei(:,:,step+1) = -v_i;
@@ -270,12 +282,16 @@ function [dfdp, dfdp_fd] = tracegradient(pcof0, kpar, dp, order, verbose)
   uFinal_r = RotMat_r' * v_r - RotMat_i' * v_i;
   uFinal_i = -RotMat_r' * v_i - RotMat_i * v_r;
 
-# reverse time step the state variable (and the adjoint wave equation)
-  # initial condition for the state variable (psi) from above (vr, vi)
+# reverse time step the state variable and the adjoint wave equation
+  # initial condition for the state variable (psi) from final solution (vr, vi)
   t=T;
   dt = -dt;
   adiff_max = 0;
-  grad_objf_adj = 0;
+  grad_objf_adj = zeros(D,1);
+
+# gradient of control functions
+  rf_grad = @rf1grad;
+  if_grad = @if1grad;
   
 # terminal conditions for the adjoint state
   lambda_r = zeroMat;
@@ -285,7 +301,7 @@ function [dfdp, dfdp_fd] = tracegradient(pcof0, kpar, dp, order, verbose)
   for step=nsteps-1:-1:0
 
 # Stromer-Verlet
-    s_cmplx_0 = trace2_fid_cmplx(v_r, -v_i, vTarget_r, vTarget_i, lab_frame, t, omega);
+    s_cmplx_0 = trace2_fid_cmplx(v_r, -v_i, vTarget_r, vTarget_i, t, omega);
     sr_0 = real(s_cmplx_0);
     si_0 = imag(s_cmplx_0);
 #    hmat_0 = - weightf(t) * (sr_0 - I*si_0) * (vTarget_r + I * vTarget_i);
@@ -294,12 +310,16 @@ function [dfdp, dfdp_fd] = tracegradient(pcof0, kpar, dp, order, verbose)
 
 # forcing for evolving W (d psi/d alpha1) in the rotating frame
     [da_r, da_i] = get_da_mat(t, amat, d_omega);
-    rf_alpha = rfunc_a1(t,pcof);
-    if_alpha = ifunc_a1(t,pcof);
-    gr_0 = rf_alpha.*( (da_i -  da_i') * v_r  - (da_r + da_r') * v_i ) + if_alpha.*(  (da_i + da_i') * v_i + (da_r  -  da_r') * v_r );
-    gi_0 = rf_alpha.*( (da_r + da_r') * v_r + (da_i -  da_i') * v_i ) + if_alpha.*( -(da_i + da_i') * v_r + (da_r  -  da_r') * v_i );
-      
-    tr_adj_0 = trace2_fid_cmplx(gr_0, -gi_0, lambda_r, -lambda_i, lab_frame, t, omega);
+
+# separate out contributions from rf_grad and if_grad (which determine the component of the gradient)
+      dar_r = ( (da_i -  da_i') * v_r  - (da_r + da_r') * v_i );
+      dar_i = ( (da_r + da_r') * v_r + (da_i -  da_i') * v_i );
+      dai_r = (  (da_i + da_i') * v_i + (da_r  -  da_r') * v_r );
+      dai_i = ( -(da_i + da_i') * v_r + (da_r  -  da_r') * v_i );
+      tr_adj_rf = trace2_fid_real(dar_r, dar_i, lambda_r, lambda_i, t, omega);
+      tr_adj_if = trace2_fid_real(dai_r,  dai_i, lambda_r, lambda_i, t, omega);
+      tr_adj_0 = rf_grad(t, pcof) * tr_adj_rf + if_grad(t, pcof) * tr_adj_if;
+
 # loop over the stages
     for q=1:stages
       t0=t;
@@ -308,7 +328,7 @@ function [dfdp, dfdp_fd] = tracegradient(pcof0, kpar, dp, order, verbose)
 # the following call updates ( t, v_r, v_i)
       [v_r, v_i, t] = stromer_verlet_mat2(v_r, v_i, rfunc, ifunc, t, gamma(q)*dt, pcof, H0, amat, Ident, d_omega, zeroMat, zeroMat, zeroMat, zeroMat); 
 # real arithmetic for Verlet
-      s_cmplx_1 = trace2_fid_cmplx(v_r, -v_i, vTarget_r, vTarget_i, lab_frame, t, omega);
+      s_cmplx_1 = trace2_fid_cmplx(v_r, -v_i, vTarget_r, vTarget_i, t, omega);
       sr_1 = real(s_cmplx_1);
       si_1 = imag(s_cmplx_1);
 				# forcing for the adjoint equation
@@ -320,15 +340,17 @@ function [dfdp, dfdp_fd] = tracegradient(pcof0, kpar, dp, order, verbose)
 
 # forcing for evolving W (d psi/d alpha1) in the rotating frame
       [da_r, da_i] = get_da_mat(t, amat, d_omega);
-      rf_alpha = rfunc_a1(t,pcof);
-      if_alpha = ifunc_a1(t,pcof);
-      gr_1 = rf_alpha.*( (da_i -  da_i') * v_r  - (da_r + da_r') * v_i ) + if_alpha.*(  (da_i + da_i') * v_i + (da_r  -  da_r') * v_r );
-      gi_1 = rf_alpha.*( (da_r + da_r') * v_r + (da_i -  da_i') * v_i ) + if_alpha.*( -(da_i + da_i') * v_r + (da_r  -  da_r') * v_i );
-      
-      tr_adj_1 = trace2_fid_cmplx(gr_1, -gi_1, lambda_r, -lambda_i, lab_frame, t, omega);
 
+# separate out contributions from rf_grad and if_grad (which determine the component of the gradient)
+      dar_r = ( (da_i -  da_i') * v_r  - (da_r + da_r') * v_i );
+      dar_i = ( (da_r + da_r') * v_r + (da_i -  da_i') * v_i );
+      dai_r = (  (da_i + da_i') * v_i + (da_r  -  da_r') * v_r );
+      dai_i = ( -(da_i + da_i') * v_r + (da_r  -  da_r') * v_i );
+      tr_adj_rf = trace2_fid_real(dar_r, dar_i, lambda_r, lambda_i, t, omega);
+      tr_adj_if = trace2_fid_real(dai_r,  dai_i, lambda_r, lambda_i, t, omega);
+      tr_adj_1 = rf_grad(t, pcof) * tr_adj_rf + if_grad(t, pcof) * tr_adj_if;
 		 # accumulate the gradient of the objective functional
-      grad_objf_adj = grad_objf_adj + gamma(q)*dt* 0.5* 2.0 * real( tr_adj_0 +  tr_adj_1); # dt is negative
+      grad_objf_adj = grad_objf_adj + gamma(q)*dt* 0.5* 2.0 * ( tr_adj_0 +  tr_adj_1); # dt is negative
       
 				# save previous values for next stage
       s_cmplx_0 = s_cmplx_1;
@@ -422,6 +444,11 @@ function [dfdp, dfdp_fd] = tracegradient(pcof0, kpar, dp, order, verbose)
 				# check if uFinal is unitary
     utest = uFinal_r' * uFinal_r + uFinal_i' * uFinal_i - U0;
     printf("LabFrame = %d, Final unitary infidelity = %e, Final | trace | gate infidelity = %e\n", lab_frame, norm(utest), final_Infidelity);
-    printf("Nsteps=%d, gradient of objective function = %e, adjoint gradient = %e\n", nsteps, objf_alpha1, grad_objf_adj);
+    printf("Nsteps=%d, kpar = %d, gradient of objective function = %e\n", nsteps, kpar, objf_alpha1)
+    printf("Adjoint gradient components: ");
+    for q=1:D
+      printf(" %e ", grad_objf_adj(q) );
+    end
+    printf("\n");
   end # if verbose
 end

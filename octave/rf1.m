@@ -11,6 +11,8 @@
 % f: real part of time function at time t
 %
 function  [f] = rf1(t, pcof)
+  D = size(pcof,1);
+  f = 0;
 
 # Final time T
   T = 15;
@@ -23,6 +25,7 @@ function  [f] = rf1(t, pcof)
   tau = (t - t0)/tp;
   mask = (tau >= -0.5 & tau <= 0.5);
 
+  # assume pcof has at least one element
   f = pcof(1) * 64*mask.*(0.5 + tau).^3 .* (0.5 - tau).^3 .*cos(d1*t);
 
 end

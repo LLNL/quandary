@@ -271,21 +271,23 @@ function [objf_v, uFinal_r, uFinal_i] = traceobjf1(pcof, order, verbose)
     for k=1:N
       printf("k=%d: ", k);
       for j=1:N
-	printf(" %13.6e", abs(uFinal_r(j,k) + I*uFinal_i(j,k))  );
+	printf(" (%13.6e, %13.6e)", uFinal_r(j,k), uFinal_i(j,k) );
       end
       printf("\n");
     end
 				# total objf function at final time
-    final_Infidelity = 1 - abs(trace(uFinal_r' * uTarget)/N); # uTarget is real
+    final_fidelity = abs( trace((uFinal_r' - I*uFinal_i') * uTarget)/N ); # uTarget is real
 
     printf("Forward calculation: Parameter pcof =[ %e", pcof(1));
-    for q=2:D
-      printf(", %e", pcof(q));
+    if (D>=2)
+      for q=2:D
+	printf(", %e", pcof(q));
+      end
     end
     printf(" ]\n");
 				# check if uFinal is unitary
     utest = uFinal_r' * uFinal_r + uFinal_i' * uFinal_i - U0;
-    printf("LabFrame = %d, Final unitary infidelity = %e, Final | trace | gate infidelity = %e\n", lab_frame, norm(utest), final_Infidelity);
+    printf("LabFrame = %d, Final unitary infidelity = %e, Final | trace | gate fidelity = %e\n", lab_frame, norm(utest), final_fidelity);
     printf("Nsteps=%d, Integrated |trace|^2 infidelity:  Verlet = %e\n", nsteps, objf_v);
   end # if verbose
 end
