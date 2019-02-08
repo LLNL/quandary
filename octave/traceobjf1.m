@@ -263,6 +263,7 @@ function [objf_v, uFinal_r, uFinal_i] = traceobjf1(pcof, order, verbose)
     p_r = rfunc(td,pcof);
     p_i = ifunc(td,pcof);
     figure(5);
+    clf;
 #    subplot(2,1,1);
     h=plot(td, p_r,"b-");
     legend("Real");
