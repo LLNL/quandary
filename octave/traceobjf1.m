@@ -53,6 +53,12 @@ function [objf_v, uFinal_r, uFinal_i] = traceobjf1(pcof, order, verbose)
   elseif (D==8)
     rfunc = @rf8;
     ifunc = @if8;
+  elseif (D==12)
+    rfunc = @rf12;
+    ifunc = @if12;
+  elseif (D==18)
+    rfunc = @rf18;
+    ifunc = @if18;
   elseif (D==24)
     rfunc = @rf24;
     ifunc = @if24;
@@ -258,8 +264,10 @@ function [objf_v, uFinal_r, uFinal_i] = traceobjf1(pcof, order, verbose)
     p_i = ifunc(td,pcof);
     figure(5);
 #    subplot(2,1,1);
-    h=plot(td, p_r,"b", td, p_i, "r");
-    legend("Real",  "Imag");
+    h=plot(td, p_r,"b-");
+    legend("Real");
+#    h=plot(td, p_r,"b-", td, p_i, "r-");
+#    legend("Real",  "Imag");
     axis("tight");
     set(h,"linewidth",2);
     title("Control function");

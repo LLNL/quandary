@@ -80,7 +80,7 @@ function [ grad_objf_adj ] = tracegradient(pcof0, kpar, dp, order, verbose)
   end
 
 # Next solve the ODE for psi and phi = d psi/d alpha
-  abs_or_real=1; # plot the magnitude (abs) of real part of the solution (1 for real)
+  abs_or_real=0; # plot the magnitude (abs) of real part of the solution (1 for real)
 
   pcof = pcof0;
 
@@ -111,6 +111,16 @@ function [ grad_objf_adj ] = tracegradient(pcof0, kpar, dp, order, verbose)
     ifunc = @if8;
     rf_grad = @rf8grad;
     if_grad = @if8grad;
+  elseif (D==12)
+    rfunc = @rf12;
+    ifunc = @if12;
+    rf_grad = @rf12grad;
+    if_grad = @if12grad;
+  elseif (D==18)
+    rfunc = @rf18;
+    ifunc = @if18;
+    rf_grad = @rf18grad;
+    if_grad = @if18grad;
   elseif (D==24)
     rfunc = @rf24;
     ifunc = @if24;
@@ -419,8 +429,10 @@ function [ grad_objf_adj ] = tracegradient(pcof0, kpar, dp, order, verbose)
     p_i = ifunc(td,pcof);
     figure(5);
     subplot(2,1,1);
-    h=plot(td, p_r,"b", td, p_i, "r");
-    legend("Real",  "Imag");
+    h=plot(td, p_r,"b-");
+    legend("Real");
+    ## h=plot(td, p_r,"b", td, p_i, "r");
+    ## legend("Real",  "Imag");
     axis("tight");
     set(h,"linewidth",2);
     title("Forcing function");
