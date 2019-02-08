@@ -47,9 +47,15 @@ function [objf_v, uFinal_r, uFinal_i] = traceobjf1(pcof, order, verbose)
   if (D==2)
     rfunc = @rf1;
     ifunc = @if1;
+  elseif (D==6)
+    rfunc = @rf6;
+    ifunc = @if6;
   elseif (D==8)
     rfunc = @rf8;
     ifunc = @if8;
+  elseif (D==24)
+    rfunc = @rf24;
+    ifunc = @if24;
   else
     printf("ERROR: number of parameters D=%d is not implemented\n", D);
     return;
@@ -243,7 +249,7 @@ function [objf_v, uFinal_r, uFinal_i] = traceobjf1(pcof, order, verbose)
     c=3;
     q=3;
     
-    plotunitary(usaver, T, abs_or_real);
+    plotunitary(usaver+I*usavei, T, abs_or_real);
     
 		# evaluate the polynomials at the discrete time levels
 		# evaluate all polynomials on the midpoint grid
@@ -251,19 +257,19 @@ function [objf_v, uFinal_r, uFinal_i] = traceobjf1(pcof, order, verbose)
     p_r = rfunc(td,pcof);
     p_i = ifunc(td,pcof);
     figure(5);
-    subplot(2,1,1);
+#    subplot(2,1,1);
     h=plot(td, p_r,"b", td, p_i, "r");
     legend("Real",  "Imag");
     axis("tight");
     set(h,"linewidth",2);
-    title("Forcing function");
+    title("Control function");
 
-    subplot(2,1,2);
-    wghf1 = weightf(td);
-    h = plot(td, wghf1, "m");
-    axis tight;
-    set(h,"linewidth",2);
-    title("Weight function");
+    ## subplot(2,1,2);
+    ## wghf1 = weightf(td);
+    ## h = plot(td, wghf1, "m");
+    ## axis tight;
+    ## set(h,"linewidth",2);
+    ## title("Weight function");
 
 				# output final solution and target
     printf("uTarget:  id1          id2           id3           id4\n");
@@ -275,7 +281,7 @@ function [objf_v, uFinal_r, uFinal_i] = traceobjf1(pcof, order, verbose)
       printf("\n");
     end
 
-    printf("uSol-Ve:  id1          id2           id3           id4\n");
+    printf("uFinal:  id1          id2           id3           id4\n");
     for k=1:N
       printf("k=%d: ", k);
       for j=1:N
@@ -283,8 +289,20 @@ function [objf_v, uFinal_r, uFinal_i] = traceobjf1(pcof, order, verbose)
       end
       printf("\n");
     end
+
+    uFinal_uTarget = conj(uFinal_r + I*uFinal_i) * uTarget;
+    printf("conj(uF)*uTarget:  id1          id2           id3           id4\n");
+    for k=1:N
+      printf("k=%d: ", k);
+      for j=1:N
+	printf(" (%13.6e, %13.6e)", real(uFinal_uTarget(j,k)), imag(uFinal_uTarget(j,k)) );
+      end
+      printf("\n");
+    end
+
+    
 				# total objf function at final time
-    final_fidelity = abs( trace((uFinal_r' - I*uFinal_i') * uTarget)/N ); # uTarget is real
+    final_fidelity = abs( trace(uFinal_uTarget)/N ); # uTarget is real
 
     printf("Forward calculation: Parameter pcof =[ %e", pcof(1));
     if (D>=2)

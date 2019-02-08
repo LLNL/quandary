@@ -44,18 +44,15 @@ function  [f] = rf8(t, pcof)
 # period T/2 wavelets, centered at (0.25, 0.5, 0.75)*T
   tp = 0.5*T;
 
-  q = 2;
-  tc = 0.25*(q-1)*T;
+  tc = 0.25*T;
   tau = (t - tc)/tp;
   f = f + pcof(3) * 64*(tau >= -0.5 & tau <= 0.5).*(0.5 + tau).^3 .* (0.5 - tau).^3;
 
-  q = 3;
-  tc = 0.25*(q-1)*T;
+  tc = 0.5*T;
   tau = (t - tc)/tp;
   f = f + pcof(5) * 64*(tau >= -0.5 & tau <= 0.5).*(0.5 + tau).^3 .* (0.5 - tau).^3;
 
-  q = 4;
-  tc = 0.25*(q-1)*T;
+  tc = 0.75*T;
   tau = (t - tc)/tp;
   f = f + pcof(7) * 64*(tau >= -0.5 & tau <= 0.5).*(0.5 + tau).^3 .* (0.5 - tau).^3;
 

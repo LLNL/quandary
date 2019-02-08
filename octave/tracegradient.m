@@ -101,11 +101,21 @@ function [ grad_objf_adj ] = tracegradient(pcof0, kpar, dp, order, verbose)
 # gradient of control functions
     rf_grad = @rf1grad;
     if_grad = @if1grad;
+  elseif (D==6)
+    rfunc = @rf6;
+    ifunc = @if6;
+    rf_grad = @rf6grad;
+    if_grad = @if6grad;
   elseif (D==8)
     rfunc = @rf8;
     ifunc = @if8;
     rf_grad = @rf8grad;
     if_grad = @if8grad;
+  elseif (D==24)
+    rfunc = @rf24;
+    ifunc = @if24;
+    rf_grad = @rf24grad;
+    if_grad = @if24grad;
   else
     printf("ERROR: number of parameters D=%d is not implemented\n", D);
     return;
@@ -400,7 +410,7 @@ function [ grad_objf_adj ] = tracegradient(pcof0, kpar, dp, order, verbose)
     c=3;
     q=3;
     
-    plotunitary(usaver, T, abs_or_real);
+    plotunitary(usaver+I*usavei, T, abs_or_real);
     
 		# evaluate the polynomials at the discrete time levels
 		# evaluate all polynomials on the midpoint grid
