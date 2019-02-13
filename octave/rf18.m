@@ -21,12 +21,11 @@ function  [f] = rf18(t, pcof)
 
 # Final time T
   global T;
-# Frequency
+# Frequencies
+  omega = [ 0, 25.798, 50.216, 73.252, 94.908, 115.182];
+
 # coefficients in H0
-  d_omega = zeros(1,3);
-  d_omega(1) = 24.64579437;
-  d_omega(2) = 47.88054868 - 24.64579437;
-  d_omega(3) = 69.70426293 - 47.88054868;
+  d_omega(1:5) = omega(2:6) - omega(1:5);
 
   # base wavelet
   tp = T;

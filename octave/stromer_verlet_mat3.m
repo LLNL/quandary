@@ -1,27 +1,28 @@
 %-*-octave-*--
 # Partitioned 2nd order RK method (Stromer-Verlet)
-function [unew, vnew, tnew]=stromer_verlet_mat3(ur, vi, rfunc, ifunc, t, dt, pcof, H0, amat, Ident, d_omega, fu_0, fu_1, fv_0, fv_1)
-  N = size(ur,1);
+function [unew, vnew, tnew]=stromer_verlet_mat3(ur, vi, rfunc, ifunc, t, dt, param, H0, amat, Ident, d_omega, fu_0, fu_1, fv_0, fv_1)
+  Ntot = size(ur,1);
+  N = size(ur,2);
   				# RK stage variables
-  kay1 = zeros(N,N);
-  kay2 = zeros(N,N);
-  ell1 = zeros(N,N);
-  ell2 = zeros(N,N);
+  kay1 = zeros(Ntot,N);
+  kay2 = zeros(Ntot,N);
+  ell1 = zeros(Ntot,N);
+  ell2 = zeros(Ntot,N);
 
 # forcing functions
-#  fu_1o2 = 0.5*( uforce(t,pcof) + uforce(t+dt,pcof) );
+#  fu_1o2 = 0.5*( uforce(t,param) + uforce(t+dt,param) );
   fu_1o2 = 0.5*( fu_0 + fu_1);
-#  fv_0 = vforce(t,pcof);
-#  fv_1 = vforce(t+dt,pcof);
+#  fv_0 = vforce(t,param);
+#  fv_1 = vforce(t+dt,param);
 
 	     # Evaluate sym and skew_sym matrices at the 3 time levels (lab frame)
-  rf_0 = rfunc(t,pcof);
-  rf_1o2 = rfunc(t+0.5*dt,pcof);
-  rf_1 = rfunc(t+dt,pcof);
+  rf_0 = rfunc(t,param);
+  rf_1o2 = rfunc(t+0.5*dt,param);
+  rf_1 = rfunc(t+dt,param);
 
-  if_0 = ifunc(t,pcof);
-  if_1o2 = ifunc(t+0.5*dt,pcof);
-  if_1 = ifunc(t+dt,pcof);
+  if_0 = ifunc(t,param);
+  if_1o2 = ifunc(t+0.5*dt,param);
+  if_1 = ifunc(t+dt,param);
   
   # rotating frame
   dmat_r_0 = diag([ cos(d_omega*(t)) ]);

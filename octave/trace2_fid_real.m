@@ -17,7 +17,7 @@
 %
 function  [fid_real] = trace2_fid_real(vr, vi, vTarget_r, vTarget_i, t, omega)
 
-  N = size(vTarget_r,1);
+  N = size(vTarget_r,2);
 
   fid_real = trace(vr' * vTarget_r + vi' * vTarget_i)/N;
 

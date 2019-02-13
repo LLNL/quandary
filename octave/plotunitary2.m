@@ -38,11 +38,21 @@ function usave = plotunitary2(us, T, mode)
   for q=1:N
     figure(q);
     if (mode==1) # real part
-      h=plot(t, real(us(1,q,:)), t, real(us(2,q,:)), t, real(us(3,q,:)), t, real(us(4,q,:)), t, real(us(5,q,:)), t, real(us(6,q,:)));
-      legend("Re(u1)", "Re(u2)", "Re(u3)", "Re(u4)", "Re(u5)", "Re(u6)", "location", "east");
+      if Ntot == 6
+	h=plot(t, real(us(1,q,:)), t, real(us(2,q,:)), t, real(us(3,q,:)), t, real(us(4,q,:)), t, real(us(5,q,:)), t, real(us(6,q,:)));
+	legend("Re(u1)", "Re(u2)", "Re(u3)", "Re(u4)", "Re(u5)", "Re(u6)", "location", "east");
+      elseif Ntot == 4
+	h=plot(t, real(us(1,q,:)), t, real(us(2,q,:)), t, real(us(3,q,:)), t, real(us(4,q,:)) );
+	legend("Re(u1)", "Re(u2)", "Re(u3)", "Re(u4)", "location", "east");
+      end
     else #abs
-      h=plot(t, abs(us(1,q,:)), t, abs(us(2,q,:)), t, abs(us(3,q,:)), t, abs(us(4,q,:)), t, abs(us(5,q,:)), t, abs(us(6,q,:)));
-      legend("|u_1|", "|u_2|", "|u_3|", "|u_4|", "|u_5|", "|u_6|", "location", "east");
+      if Ntot == 6
+	h=plot(t, abs(us(1,q,:)), t, abs(us(2,q,:)), t, abs(us(3,q,:)), t, abs(us(4,q,:)), t, abs(us(5,q,:)), t, abs(us(6,q,:)));
+	legend("|u_1|", "|u_2|", "|u_3|", "|u_4|", "|u_5|", "|u_6|", "location", "east");
+      elseif Ntot == 4
+	h=plot(t, abs(us(1,q,:)), t, abs(us(2,q,:)), t, abs(us(3,q,:)), t, abs(us(4,q,:)) );
+	legend("|u_1|", "|u_2|", "|u_3|", "|u_4|", "location", "east");
+      end
     end
     axis tight;
     set(h,"linewidth",2);

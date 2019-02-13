@@ -150,6 +150,9 @@ function [objf_v uFinal] = traceobjfunc(pcof, order, verbose)
 
 # Target state at t=T (always real), only applies to the first N components of the wave functions
   uTarget = Ident(1:Ntot,1:N);
+# CNOT gate by swapping the last and second last column
+  uTarget(:,N-1) = Ident(:,N);
+  uTarget(:,N) = Ident(:,N-1);
   
   RotMat = diag([ exp(I*omega*T) ]); # Is this syntax correct?
   vTarget = RotMat*uTarget;
@@ -208,10 +211,6 @@ function [objf_v uFinal] = traceobjfunc(pcof, order, verbose)
 # for computing the objf function
   objf = 0;
   objf_v = 0;
-
-				#
-				# UPDATED TO THIS POINT
-				#
 
 # time stepping loop, harmonic oscillator
   t=0;
@@ -381,7 +380,7 @@ function [objf_v uFinal] = traceobjfunc(pcof, order, verbose)
 				# output final solution and target
     printf("uTarget:  id1          id2           id3           id4\n");
     for k=1:Ntot
-      printf("k=%d: ", k);
+      printf("row=%d: ", k);
       for j=1:N
 	printf(" %13.6e", uTarget(k,j));
       end
@@ -390,7 +389,7 @@ function [objf_v uFinal] = traceobjfunc(pcof, order, verbose)
 
     printf("uFinal-Ma:  id1          id2           id3           id4\n");
     for k=1:Ntot
-      printf("k=%d: ", k);
+      printf("row=%d: ", k);
       for j=1:N
 	printf(" %13.6e", abs(uSol(k,j)));
       end
@@ -413,11 +412,11 @@ function [objf_v uFinal] = traceobjfunc(pcof, order, verbose)
     ## size(uTarget)
 
     uFinal_uTarget = (uFinal_r + I*uFinal_i)' * uTarget;
-    printf("uF' * uTarget:  id1          id2           id3           id4\n");
+    printf("uF' * uTarget:  col1          col2           col3           col4\n");
     for k=1:N
-      printf("k=%d: ", k);
+      printf("row=%d: ", k);
       for j=1:N
-	printf(" (%13.6e, %13.6e)", real(uFinal_uTarget(j,k)), imag(uFinal_uTarget(j,k)) );
+	printf(" (%13.6e, %13.6e)", real(uFinal_uTarget(k,j)), imag(uFinal_uTarget(k,j)) );
       end
       printf("\n");
     end
@@ -425,10 +424,12 @@ function [objf_v uFinal] = traceobjfunc(pcof, order, verbose)
     final_fidelity = abs( trace(uFinal_uTarget)/N ); # uTarget is real
 
     printf("Forward calculation: Parameter pcof =[ %e", pcof(1));
-    for q=2:D
-      printf(", %e", pcof(q));
+    if (D>=2)
+      for q=2:D
+	printf(", %e", pcof(q));
+      end
+      printf(" ]\n");
     end
-    printf(" ]\n");
 				# check if uFinal is unitary
     utest = ctranspose(uFinal) * uFinal - diag(ones(1,N));
     printf("LabFrame = %d, order = %d, Final unitary infidelity = %e, Final |trace| gate fidelity = %e\n", lab_frame, order, norm(utest), final_fidelity);
