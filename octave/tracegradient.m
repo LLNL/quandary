@@ -133,10 +133,14 @@ function [ grad_objf_adj ] = tracegradient(pcof0, kpar, dp, order, verbose)
 
 # coefficients in H0
   omega = zeros(1,4);
+  ## omega(1) = 0;
+  ## omega(2) = 24.64579437;
+  ## omega(3) = 47.88054868;
+  ## omega(4) = 69.70426293;
   omega(1) = 0;
-  omega(2) = 24.64579437;
-  omega(3) = 47.88054868;
-  omega(4) = 69.70426293;
+  omega(2) = 25.798;
+  omega(3) = 50.216;
+  omega(4) = 73.252;
 
   lab_frame = 0;
 # rotating frame
@@ -179,10 +183,10 @@ function [ grad_objf_adj ] = tracegradient(pcof0, kpar, dp, order, verbose)
   W0 = zeroMat; # initial condition for the phi (d psi/ d alpha1)
 
 # Target state at t=T (always real)
-  uTarget = [0, 1, 0, 0;
-	     1, 0, 0, 0;
-	     0, 0, 1, 0;
-	     0, 0, 0, 1];
+  uTarget = [1, 0, 0, 0;
+	     0, 1, 0, 0;
+	     0, 0, 0, 1;
+	     0, 0, 1, 0];
   
   RotMat = diag([ exp(I*omega(1)*T), exp(I*omega(2)*T), exp(I*omega(3)*T), exp(I*omega(4)*T) ]);
   vTarget = RotMat*uTarget;

@@ -29,7 +29,7 @@ function usave = plotunitary(us, T, mode)
 #    printf("Data has dimensions %d x %d x %d\n", N1, N2, nsteps);
 
   if (N1 != N2)
-    printf("ERROR: N1=%d and N2=%d must be equal!\n");
+    printf("ERROR: N1=%d and N2=%d must be equal!\n", N1, N2);
     return;
   end
 
