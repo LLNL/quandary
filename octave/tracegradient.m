@@ -18,6 +18,8 @@
 function [ grad_objf_adj ] = tracegradient(pcof0, kpar, dp, order, verbose)
 
   test_adjoint=1;
+  abs_or_real=0; # plot the magnitude (abs) of real part of the solution (1 for real)
+  xi = 0.1; # coefficient for penalizing forbidden states
 
   if nargin < 1
     pcof0 = [0.2; 0.1];
@@ -66,7 +68,6 @@ function [ grad_objf_adj ] = tracegradient(pcof0, kpar, dp, order, verbose)
   end
 
 # Next solve the ODE for psi and phi = d psi/d alpha
-  abs_or_real=0; # plot the magnitude (abs) of real part of the solution (1 for real)
 
   pcof = pcof0;
 
@@ -262,6 +263,7 @@ function [ grad_objf_adj ] = tracegradient(pcof0, kpar, dp, order, verbose)
     if (test_adjoint)
       s_cmplx_0 = trace2_fid_cmplx(v_r, -v_i, vTarget_r, vTarget_i, t, omega);
       s_alpha_0 = trace2_fid_cmplx(w_r, -w_i, vTarget_r, vTarget_i, t, omega);
+      forb_alpha_0 = xi/T*sc_real(v_r, v_i, w_r, w_i, Nguard);
 
 # forcing for evolving W (d psi/d alpha1) in the rotating frame
       [da_r, da_i] = get_da_mat(t, amat, d_omega);
@@ -295,15 +297,16 @@ function [ grad_objf_adj ] = tracegradient(pcof0, kpar, dp, order, verbose)
 	gi_1 = rf_alpha.*( (da_r + da_r') * v_r + (da_i -  da_i') * v_i ) + if_alpha.*( -(da_i + da_i') * v_r + (da_r  -  da_r') * v_i );
 # evolve ( w_r, w_i)
 	[w_r, w_i] = stromer_verlet_mat3(w_r, w_i, rfunc, ifunc, t0, gamma(q)*dt, param, H0, amat, Ident, d_omega, gr_0, gr_1, gi_0, gi_1); 
-
 	s_alpha_1 = trace2_fid_cmplx(w_r, -w_i, vTarget_r, vTarget_i, t, omega);
+	forb_alpha_1 = xi/T*sc_real(v_r, v_i, w_r, w_i, Nguard);
       
 # accumulate integrated sensitivity
-	objf_alpha1 = objf_alpha1 - gamma(q)*dt* 0.5* 2.0 * real( weightf(t0) * conj(s_cmplx_0) * s_alpha_0 +  weightf(t) * conj(s_cmplx_1) * s_alpha_1);
+	objf_alpha1 = objf_alpha1 - gamma(q)*dt* 0.5* 2.0 * real( weightf(t0) * conj(s_cmplx_0) * s_alpha_0 +  weightf(t) * conj(s_cmplx_1) * s_alpha_1) +  gamma(q)*dt* 0.5* 2.0 * (forb_alpha_0 + forb_alpha_1);
 
 # save previous values for next stage
 	s_cmplx_0 = s_cmplx_1;
 	s_alpha_0 = s_alpha_1;
+	forb_alpha_0 = forb_alpha_1;
 	gr_0 = gr_1;
 	gi_0 = gi_1;
       end  #test_adjoint
@@ -347,7 +350,9 @@ function [ grad_objf_adj ] = tracegradient(pcof0, kpar, dp, order, verbose)
 #    hmat_0 = - weightf(t) * (sr_0 - I*si_0) * (vTarget_r + I * vTarget_i);
     hr_0 =  -weightf(t) * (sr_0 * vTarget_r + si_0 *vTarget_i);
     hi_0 =  weightf(t) * (sr_0 * vTarget_i - si_0 *vTarget_r);
-
+# forcing for guard states
+    hr_0(N+1:N+Nguard,:) = xi/T*v_r(N+1:N+Nguard,:);
+    hi_0(N+1:N+Nguard,:) = xi/T*v_i(N+1:N+Nguard,:);
 # forcing for evolving W (d psi/d alpha1) in the rotating frame
     [da_r, da_i] = get_da_mat(t, amat, d_omega);
 
@@ -356,8 +361,8 @@ function [ grad_objf_adj ] = tracegradient(pcof0, kpar, dp, order, verbose)
     dar_i = ( (da_r + da_r') * v_r + (da_i -  da_i') * v_i );
     dai_r = (  (da_i + da_i') * v_i + (da_r  -  da_r') * v_r );
     dai_i = ( -(da_i + da_i') * v_r + (da_r  -  da_r') * v_i );
-    tr_adj_rf = trace2_fid_real(dar_r, dar_i, lambda_r, lambda_i, t, omega);
-    tr_adj_if = trace2_fid_real(dai_r,  dai_i, lambda_r, lambda_i, t, omega);
+    tr_adj_rf = trace2_fid_real(dar_r, dar_i, lambda_r, lambda_i);
+    tr_adj_if = trace2_fid_real(dai_r,  dai_i, lambda_r, lambda_i);
     tr_adj_0 = rf_grad(t, param) * tr_adj_rf + if_grad(t, param) * tr_adj_if;
 
 # loop over the stages
@@ -374,6 +379,9 @@ function [ grad_objf_adj ] = tracegradient(pcof0, kpar, dp, order, verbose)
 				# forcing for the adjoint equation
       hr_1 =  -weightf(t) * (sr_1 * vTarget_r + si_1 *vTarget_i);
       hi_1 =  weightf(t) * (sr_1 * vTarget_i - si_1 *vTarget_r);
+# forcing for guard states (note that the last Nguard rows of vTarget = 0)
+      hr_1(N+1:N+Nguard,:) = xi/T*v_r(N+1:N+Nguard,:);
+      hi_1(N+1:N+Nguard,:) = xi/T*v_i(N+1:N+Nguard,:);
 
 # evolve lambda_r, lambda_i
       [lambda_r, lambda_i] = stromer_verlet_mat3(lambda_r, lambda_i, rfunc, ifunc, t0, gamma(q)*dt, param, H0, amat, Ident, d_omega, hr_0, hr_1, hi_0, hi_1); 
@@ -386,8 +394,8 @@ function [ grad_objf_adj ] = tracegradient(pcof0, kpar, dp, order, verbose)
       dar_i = ( (da_r + da_r') * v_r + (da_i -  da_i') * v_i );
       dai_r = (  (da_i + da_i') * v_i + (da_r  -  da_r') * v_r );
       dai_i = ( -(da_i + da_i') * v_r + (da_r  -  da_r') * v_i );
-      tr_adj_rf = trace2_fid_real(dar_r, dar_i, lambda_r, lambda_i, t, omega);
-      tr_adj_if = trace2_fid_real(dai_r,  dai_i, lambda_r, lambda_i, t, omega);
+      tr_adj_rf = trace2_fid_real(dar_r, dar_i, lambda_r, lambda_i);
+      tr_adj_if = trace2_fid_real(dai_r,  dai_i, lambda_r, lambda_i);
       tr_adj_1 = rf_grad(t, param) * tr_adj_rf + if_grad(t, param) * tr_adj_if;
 		 # accumulate the gradient of the objective functional
       grad_objf_adj = grad_objf_adj + gamma(q)*dt* 0.5* 2.0 * ( tr_adj_0 +  tr_adj_1); # dt is negative
@@ -500,7 +508,7 @@ function [ grad_objf_adj ] = tracegradient(pcof0, kpar, dp, order, verbose)
     utest = uFinal_r' * uFinal_r + uFinal_i' * uFinal_i - diag(ones(1,N));
     printf("LabFrame = %d, Final unitary infidelity = %e, Final | trace | gate fidelity = %e\n", lab_frame, norm(utest), final_fidelity);
     printf("Nsteps=%d, kpar = %d, fd-gradient of objective function = %e\n", nsteps, kpar, dfdp_fd)
-    if (test_adjoint) printf("Forward integration for gradient of objective function = %e\n", dfdp);
+    if (test_adjoint) printf("Forward integration of gradient of objective function = %e\n", dfdp);
     printf("Adjoint gradient components: ");
     for q=1:D
       printf(" %e ", grad_objf_adj(q) );

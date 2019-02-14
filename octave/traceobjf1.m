@@ -222,7 +222,7 @@ function [objf_v, uFinal_r, uFinal_i] = traceobjf1(pcof, order, verbose)
 
 # Stromer-Verlet
     infidelity_0 = weightf(t)*(1-trace_fid_real(ur, vi, vTarget_r, vTarget_i, lab_frame, t, omega));
-    forbidden_0 = xi*norm2_guard(ur, vi, Nguard);
+    forbidden_0 = xi/T*norm2_guard(ur, vi, Nguard);
 
     for q=1:stages
 # the following call updates ( t, ur, vr)
@@ -230,9 +230,10 @@ function [objf_v, uFinal_r, uFinal_i] = traceobjf1(pcof, order, verbose)
 # real arithmetic for Verlet
 # accumulate objf = integral w(t) * ( 1 - |Tr( uSol' * vTarget )/N|^2 )
       infidelity = weightf(t)*(1-trace_fid_real(ur, vi, vTarget_r, vTarget_i, lab_frame, t, omega));
-      forbidden = xi*norm2_guard(ur, vi, Nguard);
+      forbidden = xi/T*norm2_guard(ur, vi, Nguard);
       objf_v = objf_v + gamma(q)*dt* 0.5* (infidelity_0 + infidelity + forbidden_0 + forbidden);
       infidelity_0 = infidelity;	# save previous values for next stage
+      forbidden_0 = forbidden;
     end
 
 # save solutions from both methods to evaluate differences
