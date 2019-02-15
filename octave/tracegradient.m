@@ -19,7 +19,7 @@ function [ grad_objf_adj ] = tracegradient(pcof0, kpar, dp, order, verbose)
 
   test_adjoint=1;
   abs_or_real=0; # plot the magnitude (abs) of real part of the solution (1 for real)
-  xi = 0.1; # coefficient for penalizing forbidden states
+  global xi; # coefficient for penalizing forbidden states
 
   if nargin < 1
     pcof0 = [0.2; 0.1];
@@ -94,16 +94,11 @@ function [ grad_objf_adj ] = tracegradient(pcof0, kpar, dp, order, verbose)
     ifunc = @if5;
     rf_grad = @rf5grad;
     if_grad = @if5grad;
-  elseif (D==12)
-    rfunc = @rf12;
-    ifunc = @if12;
-    rf_grad = @rf12grad;
-    if_grad = @if12grad;
-  elseif (D==18)
-    rfunc = @rf18;
-    ifunc = @if18;
-    rf_grad = @rf18grad;
-    if_grad = @if18grad;
+  elseif (D==16)
+    rfunc = @rf16;
+    ifunc = @if16;
+    rf_grad = @rf16grad;
+    if_grad = @if16grad;
   else
     printf("ERROR: number of parameters D=%d is not implemented\n", D);
     return;
@@ -348,8 +343,8 @@ function [ grad_objf_adj ] = tracegradient(pcof0, kpar, dp, order, verbose)
     sr_0 = real(s_cmplx_0);
     si_0 = imag(s_cmplx_0);
 #    hmat_0 = - weightf(t) * (sr_0 - I*si_0) * (vTarget_r + I * vTarget_i);
-    hr_0 =  -weightf(t) * (sr_0 * vTarget_r + si_0 *vTarget_i);
-    hi_0 =  weightf(t) * (sr_0 * vTarget_i - si_0 *vTarget_r);
+    hr_0 =  -weightf(t)/N * (sr_0 * vTarget_r + si_0 *vTarget_i);
+    hi_0 =  weightf(t)/N * (sr_0 * vTarget_i - si_0 *vTarget_r);
 # forcing for guard states
     hr_0(N+1:N+Nguard,:) = xi/T*v_r(N+1:N+Nguard,:);
     hi_0(N+1:N+Nguard,:) = xi/T*v_i(N+1:N+Nguard,:);
@@ -377,8 +372,8 @@ function [ grad_objf_adj ] = tracegradient(pcof0, kpar, dp, order, verbose)
       sr_1 = real(s_cmplx_1);
       si_1 = imag(s_cmplx_1);
 				# forcing for the adjoint equation
-      hr_1 =  -weightf(t) * (sr_1 * vTarget_r + si_1 *vTarget_i);
-      hi_1 =  weightf(t) * (sr_1 * vTarget_i - si_1 *vTarget_r);
+      hr_1 =  -weightf(t)/N * (sr_1 * vTarget_r + si_1 *vTarget_i);
+      hi_1 =  weightf(t)/N * (sr_1 * vTarget_i - si_1 *vTarget_r);
 # forcing for guard states (note that the last Nguard rows of vTarget = 0)
       hr_1(N+1:N+Nguard,:) = xi/T*v_r(N+1:N+Nguard,:);
       hi_1(N+1:N+Nguard,:) = xi/T*v_i(N+1:N+Nguard,:);
@@ -506,7 +501,7 @@ function [ grad_objf_adj ] = tracegradient(pcof0, kpar, dp, order, verbose)
     printf(" ]\n");
 				# check if uFinal is unitary
     utest = uFinal_r' * uFinal_r + uFinal_i' * uFinal_i - diag(ones(1,N));
-    printf("LabFrame = %d, Final unitary infidelity = %e, Final | trace | gate fidelity = %e\n", lab_frame, norm(utest), final_fidelity);
+    printf("xi = %e, Final unitary infidelity = %e, Final | trace | gate fidelity = %e\n", xi, norm(utest), final_fidelity);
     printf("Nsteps=%d, kpar = %d, fd-gradient of objective function = %e\n", nsteps, kpar, dfdp_fd)
     if (test_adjoint) printf("Forward integration of gradient of objective function = %e\n", dfdp);
     printf("Adjoint gradient components: ");

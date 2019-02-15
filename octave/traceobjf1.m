@@ -19,7 +19,7 @@
 function [objf_v, uFinal_r, uFinal_i] = traceobjf1(pcof, order, verbose)
 
   abs_or_real=0; # plot the magnitude (abs) of real part of the solution (1 for real)
-  xi = 0.1; # coefficient for penalizing forbidden states
+  global xi; # coefficient for penalizing forbidden states (assigned in tr_setup)
 
   if nargin < 1
     pcof(1) = 1.0;
@@ -53,12 +53,9 @@ function [objf_v, uFinal_r, uFinal_i] = traceobjf1(pcof, order, verbose)
   elseif (D==5)
     rfunc = @rf5;
     ifunc = @if5;
-  elseif (D==12)
-    rfunc = @rf12;
-    ifunc = @if12;
-  elseif (D==18)
-    rfunc = @rf18;
-    ifunc = @if18;
+  elseif (D==16)
+    rfunc = @rf16;
+    ifunc = @if16;
   else
     printf("ERROR: number of parameters D=%d is not implemented\n", D);
     return;
@@ -334,7 +331,7 @@ function [objf_v, uFinal_r, uFinal_i] = traceobjf1(pcof, order, verbose)
     printf(" ]\n");
 				# check if uFinal is unitary
     utest = uFinal_r' * uFinal_r + uFinal_i' * uFinal_i - diag(ones(1,N));
-    printf("LabFrame = %d, Final unitary infidelity = %e, Final | trace | gate fidelity = %e\n", lab_frame, norm(utest), final_fidelity);
+    printf("xi = %e, Final unitary infidelity = %e, Final | trace | gate fidelity = %e\n", xi, norm(utest), final_fidelity);
     printf("Nsteps=%d, Integrated |trace|^2 infidelity:  Verlet = %e\n", nsteps, objf_v);
   end # if verbose
 end
