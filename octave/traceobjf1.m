@@ -18,8 +18,11 @@
 %
 function [objf_v, uFinal_r, uFinal_i] = traceobjf1(pcof, order, verbose)
 
+  N = 4; # vector dimension
+  Nguard = 2; # number of extra levels
+  T=20;# final time
+  xi=1/N; # coefficient for penalizing forbidden states
   abs_or_real=0; # plot the magnitude (abs) of real part of the solution (1 for real)
-  global xi; # coefficient for penalizing forbidden states (assigned in tr_setup)
 
   if nargin < 1
     pcof(1) = 1.0;
@@ -40,8 +43,6 @@ function [objf_v, uFinal_r, uFinal_i] = traceobjf1(pcof, order, verbose)
   
   cfl = 0.05;
 
-  N = 4; # vector dimension
-  Nguard = 2;
   Ntot = N+Nguard;
 
   D = size(pcof,1); # parameter dimension
@@ -50,12 +51,35 @@ function [objf_v, uFinal_r, uFinal_i] = traceobjf1(pcof, order, verbose)
   if (D==4)
     rfunc = @rf4;
     ifunc = @if4;
+    efunc = @ef16;
   elseif (D==5)
     rfunc = @rf5;
     ifunc = @if5;
+    efunc = @ef5;
+  elseif (D==15)
+    rfunc = @rf15;
+    ifunc = @if15;
+    efunc = @ef15;
   elseif (D==16)
     rfunc = @rf16;
     ifunc = @if16;
+    efunc = @ef16;
+  elseif (D==20)
+    rfunc = @rf20;
+    ifunc = @if20;
+    efunc = @ef20;
+  elseif (D==24)
+    rfunc = @rf24;
+    ifunc = @if24;
+    efunc = @ef24;
+  elseif (D==25)
+    rfunc = @rf25;
+    ifunc = @if25;
+    efunc = @ef25;
+  elseif (D==30)
+    rfunc = @rf30;
+    ifunc = @if30;
+    efunc = @ef30;
   else
     printf("ERROR: number of parameters D=%d is not implemented\n", D);
     return;
@@ -68,7 +92,7 @@ function [objf_v, uFinal_r, uFinal_i] = traceobjf1(pcof, order, verbose)
   omega(2) = 25.798;
   omega(3) = 50.216;
   omega(4) = 73.252;
-  if Nguard == 2
+  if Ntot == 6
     omega(5) = 94.908;
     omega(6) = 115.182;
   end
@@ -84,7 +108,6 @@ function [objf_v, uFinal_r, uFinal_i] = traceobjf1(pcof, order, verbose)
   d_omega(1:Ntot-1) = omega(2:Ntot) - omega(1:Ntot-1);
 ##  end
 
-  global T;
 				# for struct for passing parameters to the time function
   param = struct("pcof", pcof, "T", T, "d_omega", d_omega);
 
@@ -109,9 +132,6 @@ function [objf_v, uFinal_r, uFinal_i] = traceobjf1(pcof, order, verbose)
 # raising op
   adag = amat';
   
-# final time
-  global T;
-
   if (verbose)
     printf("Vector dim (Ntot) = %d, Guard levels (Nguard) = %d, Param dim (D) = %d, pcof(1) = %e, CFL = %e\n",
 	   Ntot, Nguard, D, param.pcof(1), cfl);
@@ -121,7 +141,7 @@ function [objf_v, uFinal_r, uFinal_i] = traceobjf1(pcof, order, verbose)
   maxeig1 = max(abs(d_omega))/(2*pi);
 
 # estimate max eigenvalue
-  pcofmax = sum(abs(pcof));
+  pcofmax = max(abs(pcof));
   K_1 =  pcofmax.*( amat +  amat');
   lambda = eig(K_1);
   maxeig2 = norm(lambda,"inf");
@@ -151,8 +171,8 @@ function [objf_v, uFinal_r, uFinal_i] = traceobjf1(pcof, order, verbose)
 # Target state at t=T (always real)
   uTarget = Ident(1:Ntot,1:N);
   # CNOT gate by swapping the last and second last column
-  uTarget(:,N-1) = Ident(:,N);
-  uTarget(:,N) = Ident(:,N-1);
+  uTarget(:,3) = Ident(:,4);
+  uTarget(:,4) = Ident(:,3);
 
   RotMat = diag([ exp(I*omega*T) ]); # Is this syntax correct?
 
@@ -218,16 +238,16 @@ function [objf_v, uFinal_r, uFinal_i] = traceobjf1(pcof, order, verbose)
   for step=1:nsteps
 
 # Stromer-Verlet
-    infidelity_0 = weightf(t)*(1-trace_fid_real(ur, vi, vTarget_r, vTarget_i, lab_frame, t, omega));
-    forbidden_0 = xi/T*norm2_guard(ur, vi, Nguard);
+    infidelity_0 = weightf(t,T)*(1-trace_fid_real(ur, vi, vTarget_r, vTarget_i, lab_frame, t, omega));
+    forbidden_0 = xi*penalf(t,T)*norm2_guard(ur, vi, Nguard);
 
     for q=1:stages
 # the following call updates ( t, ur, vr)
       [ur, vi, t] = stromer_verlet_mat3(ur, vi, rfunc, ifunc, t, gamma(q)*dt, param, H0, amat, Ident, d_omega, zeroMat, zeroMat, zeroMat, zeroMat); 
 # real arithmetic for Verlet
 # accumulate objf = integral w(t) * ( 1 - |Tr( uSol' * vTarget )/N|^2 )
-      infidelity = weightf(t)*(1-trace_fid_real(ur, vi, vTarget_r, vTarget_i, lab_frame, t, omega));
-      forbidden = xi/T*norm2_guard(ur, vi, Nguard);
+      infidelity = weightf(t,T)*(1-trace_fid_real(ur, vi, vTarget_r, vTarget_i, lab_frame, t, omega));
+      forbidden = xi*penalf(t,T)*norm2_guard(ur, vi, Nguard);
       objf_v = objf_v + gamma(q)*dt* 0.5* (infidelity_0 + infidelity + forbidden_0 + forbidden);
       infidelity_0 = infidelity;	# save previous values for next stage
       forbidden_0 = forbidden;
@@ -271,9 +291,9 @@ function [objf_v, uFinal_r, uFinal_i] = traceobjf1(pcof, order, verbose)
     td = linspace(0, T, nsteps+1);
     p_r = rfunc(td,param);
     p_i = ifunc(td,param);
-    figure(5);
+    figure(N+1);
     clf;
-#    subplot(2,1,1);
+    subplot(3,1,1);
     h=plot(td, p_r,"b-");
     legend("Real");
 #    h=plot(td, p_r,"b-", td, p_i, "r-");
@@ -282,13 +302,30 @@ function [objf_v, uFinal_r, uFinal_i] = traceobjf1(pcof, order, verbose)
     set(h,"linewidth",2);
     title("Control function");
 
-    ## subplot(2,1,2);
-    ## wghf1 = weightf(td);
-    ## h = plot(td, wghf1, "m");
-    ## axis tight;
-    ## set(h,"linewidth",2);
-    ## title("Weight function");
+    subplot(3,1,2);
+    envelope = efunc(td, param);
+    h = plot(td, envelope, "-");
+    axis tight;
+    set(h,"linewidth",2);
+    Nfreq=size(envelope,1);
+    if (Nfreq==4)
+      legend("do_1", "do_2", "do_3", "do_4")
+    elseif (Nfreq==5)
+      legend("do_1", "do_2", "do_3", "do_4", "do_5", "location", "northwest")
+    else
+      printf("Warning; plotting of envelope function not implemented for Nfreq=%d\n", Nfreq);
+    end
+    title("Envelope functions");
 
+    subplot(3,1,3);
+    wghf1 = weightf(td,T);
+    penal1 = penalf(td,T);
+    h = plot(td, wghf1, "m", td, penal1, "k--");
+    axis tight;
+    set(h,"linewidth",2);
+    legend("Gate", "Forbidden");
+    title("Weight functions");
+    
 				# output final solution and target
     printf("uTarget:  id1          id2           id3           id4\n");
     for k=1:Ntot
@@ -332,6 +369,10 @@ function [objf_v, uFinal_r, uFinal_i] = traceobjf1(pcof, order, verbose)
 				# check if uFinal is unitary
     utest = uFinal_r' * uFinal_r + uFinal_i' * uFinal_i - diag(ones(1,N));
     printf("xi = %e, Final unitary infidelity = %e, Final | trace | gate fidelity = %e\n", xi, norm(utest), final_fidelity);
-    printf("Nsteps=%d, Integrated |trace|^2 infidelity:  Verlet = %e\n", nsteps, objf_v);
+    printf("Nsteps=%d, Integrated |trace|^2 infidelity = %e\n", nsteps, objf_v);
+				# final solution
+    infidelity = weightf(T,T)*(1-trace_fid_real(ur, vi, vTarget_r, vTarget_i, lab_frame, T, omega));
+    forbidden = xi*penalf(T,T)*norm2_guard(ur, vi, Nguard);
+    printf("Last time step: trace2 infidelity = %e, norm2 of guard levels = %e\n", infidelity, forbidden);
   end # if verbose
 end

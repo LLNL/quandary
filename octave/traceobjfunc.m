@@ -17,6 +17,7 @@
 %
 function [objf_v uFinal] = traceobjfunc(pcof, order, verbose)
 
+  T=20;# final time
   abs_or_real=0; # plot the magnitude (abs) of real part of the solution (1 for real)
 
   if nargin < 1
@@ -103,9 +104,6 @@ function [objf_v uFinal] = traceobjfunc(pcof, order, verbose)
 # raising op
   adag = amat';
   
-# final time
-  global T;
-
   if (verbose)
     printf("Vector dim (Ntot) = %d, Guard levels (Nguard) = %d, Param dim (D) = %d, pcof(1) = %e, CFL = %e\n",
 	   Ntot, Nguard, D, pcof(1), cfl);

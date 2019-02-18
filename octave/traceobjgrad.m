@@ -4,7 +4,7 @@
 %
 % USAGE:
 % 
-% [grad_objf_adj] = tracegradient(pcof0, kpar, dp, order, verbose)
+% [objf, grad_objf_adj] = traceobjgrad(pcof0, kpar, dp, order, verbose)
 %
 % INPUT:
 % pcof(D,1): amplitudes of the control functions as a D x 1 column vector, D=size(pcof,1)
@@ -13,16 +13,17 @@
 % order: order of accuracy: 2, 4, or 6.
 %
 % OUTPUT:
-% grad_objf_adj: gradient of trace norm objective functional computed with an adjoint technique
+% objf: objective function
+% grad_objf_adj: gradient of the objective function computed with an adjoint technique
 %
-function [ grad_objf_adj ] = tracegradient(pcof0, kpar, dp, order, verbose)
+function [objf_v grad_objf_adj ] = traceobjgrad(pcof0, kpar, dp, order, verbose)
 
   N = 4; # vector dimension
-  Nguard = 2; # number of extra levels
+  Nguard = 2;  # number of extra levels
   T=20;# final time
-  xi=1/N; # coefficient for penalizing forbidden states
-  test_adjoint=1;
+  test_adjoint=0;
   abs_or_real=0; # plot the magnitude (abs) of real part of the solution (1 for real)
+  xi=1/N; # coefficient for penalizing forbidden states
 
   if nargin < 1
     pcof0 = [0.2; 0.1];
@@ -44,6 +45,23 @@ function [ grad_objf_adj ] = tracegradient(pcof0, kpar, dp, order, verbose)
     verbose=0;
   end
 
+# setup
+# for computing the objective function
+  objf_v = 0;
+
+  pcof = pcof0;
+
+  if (order == 6)
+    stages = 9;
+  end
+  
+  cfl = 0.05;
+
+  Ntot = N+Nguard;
+
+  D = size(pcof,1); # parameter dimension
+  grad_objf_adj = zeros(D,1);
+  
   if (verbose)
 				# first approximate the gradient by FD
     f0 = traceobjf1(pcof0, order);
@@ -68,21 +86,7 @@ function [ grad_objf_adj ] = tracegradient(pcof0, kpar, dp, order, verbose)
     printf("\n");
     printf("dp1 = %e, f1 = %e, f0 = %e\n", dp, f1, f0);
     printf("(f1-f0)/dp = %e\n", dfdp_fd);
-  end
-
-# Next solve the ODE for psi and phi = d psi/d alpha
-
-  pcof = pcof0;
-
-  if (order == 6)
-    stages = 9;
-  end
-  
-  cfl = 0.05;
-
-  Ntot = N+Nguard;
-
-  D = size(pcof,1); # parameter dimension
+  end  
   
 # handles to time functions and  gradient of control functions
   if (D==4)
@@ -109,9 +113,9 @@ function [ grad_objf_adj ] = tracegradient(pcof0, kpar, dp, order, verbose)
   elseif (D==20)
     rfunc = @rf20;
     ifunc = @if20;
+    efunc = @ef20;
     rf_grad = @rf20grad;
     if_grad = @if20grad;
-    efunc = @ef20;
   elseif (D==24)
     rfunc = @rf24;
     ifunc = @if24;
@@ -282,7 +286,6 @@ function [ grad_objf_adj ] = tracegradient(pcof0, kpar, dp, order, verbose)
 			     # Forward time stepping loop
   for step=1:nsteps
 
-# Stromer-Verlet
     if (test_adjoint)
       s_cmplx_0 = trace2_fid_cmplx(v_r, -v_i, vTarget_r, vTarget_i, t, omega);
       s_alpha_0 = trace2_fid_cmplx(w_r, -w_i, vTarget_r, vTarget_i, t, omega);
@@ -297,7 +300,12 @@ function [ grad_objf_adj ] = tracegradient(pcof0, kpar, dp, order, verbose)
       gr_0 = rf_alpha.*( (da_i -  da_i') * v_r  - (da_r + da_r') * v_i ) + if_alpha.*(  (da_i + da_i') * v_i + (da_r  -  da_r') * v_r );
       gi_0 = rf_alpha.*( (da_r + da_r') * v_r + (da_i -  da_i') * v_i ) + if_alpha.*( -(da_i + da_i') * v_r + (da_r  -  da_r') * v_i );
     end # test_adjoint
+
+# for the objective function
+    infidelity_0 = weightf(t,T)*(1-trace_fid_real(v_r, v_i, vTarget_r, vTarget_i, lab_frame, t, omega));
+    forbidden_0 = xi*penalf(t,T)*norm2_guard(v_r, v_i, Nguard);
     
+# Stromer-Verlet
     for q=1:stages
       t0=t;
       v_r0 = v_r;
@@ -305,6 +313,14 @@ function [ grad_objf_adj ] = tracegradient(pcof0, kpar, dp, order, verbose)
 # the following call updates ( t, v_r, v_i)
       [v_r, v_i, t] = stromer_verlet_mat3(v_r, v_i, rfunc, ifunc, t, gamma(q)*dt, param, H0, amat, Ident, d_omega, zeroMat, zeroMat, zeroMat, zeroMat); 
 
+# accumulate objf = integral w(t) * ( 1 - |Tr( uSol' * vTarget )/N|^2 )
+      infidelity = weightf(t,T)*(1-trace_fid_real(v_r, v_i, vTarget_r, vTarget_i, lab_frame, t, omega));
+      forbidden = xi*penalf(t,T)*norm2_guard(v_r, v_i, Nguard);
+      objf_v = objf_v + gamma(q)*dt* 0.5* (infidelity_0 + infidelity + forbidden_0 + forbidden);
+# save previous values for next stage
+      infidelity_0 = infidelity;	
+      forbidden_0 = forbidden;
+      
       if (test_adjoint)
 # real arithmetic for Verlet
 	s_cmplx_1 = trace2_fid_cmplx(v_r, -v_i, vTarget_r, vTarget_i, t, omega);
@@ -357,7 +373,6 @@ function [ grad_objf_adj ] = tracegradient(pcof0, kpar, dp, order, verbose)
   t=T;
   dt = -dt;
   adiff_max = 0;
-  grad_objf_adj = zeros(D,1);
   
 # terminal conditions for the adjoint state
   lambda_r = zeroMat;
@@ -483,6 +498,7 @@ function [ grad_objf_adj ] = tracegradient(pcof0, kpar, dp, order, verbose)
     title("Control function");
 
     subplot(3,1,2);
+#    envelope = efunc(td, param);
     envelope = efunc(td, param);
     h = plot(td, envelope, "-");
     axis tight;
@@ -546,7 +562,7 @@ function [ grad_objf_adj ] = tracegradient(pcof0, kpar, dp, order, verbose)
     printf(" ]\n");
 				# check if uFinal is unitary
     utest = uFinal_r' * uFinal_r + uFinal_i' * uFinal_i - diag(ones(1,N));
-    printf("xi = %e, Final unitary infidelity = %e, Final | trace | gate fidelity = %e\n", xi, norm(utest), final_fidelity);
+    printf("xi = %e, objf = %e, Final unitary infidelity = %e, Final | trace | gate fidelity = %e\n", xi, objf_v, norm(utest), final_fidelity);
     printf("Nsteps=%d, kpar = %d, fd-gradient of objective function = %e\n", nsteps, kpar, dfdp_fd)
     if (test_adjoint) printf("Forward integration of gradient of objective function = %e\n", dfdp);
     printf("Adjoint gradient components: ");
