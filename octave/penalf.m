@@ -14,12 +14,12 @@ function  [w] = penalf(t, T)
 
 				# overall amplitude
 # constant part
-#  alpha = 1e-3/T;
-  alpha = 0;
+  const = 1.0/T;
+  alpha = 1;
 # period
 #  tp = T/50;
   tp = T/10;
-  xi = 4/tp; # scale factor
+  xi = 4/tp; # scale factor for wavelet (integral over half is tp/4)
 
 # center time
   tc = T;
@@ -27,5 +27,5 @@ function  [w] = penalf(t, T)
   mask = (tau >= -0.5 & tau <= 0.5);
 
 # weigh the constant and wavelet parts such that max w = xi
-  w = xi*(alpha + (1-alpha)* 64*mask.*(0.5 + tau).^3 .* (0.5 - tau).^3);
+  w = alpha * const + (1-alpha)*xi* 64*mask.*(0.5 + tau).^3 .* (0.5 - tau).^3;
 end

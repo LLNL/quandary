@@ -19,8 +19,8 @@
 function [objf_v grad_objf_adj ] = traceobjgrad(pcof0, kpar, dp, order, verbose)
 
   N = 4; # vector dimension
-  Nguard = 2;  # number of extra levels
-  T=20;# final time
+  Nguard = 3;  # number of extra levels
+  T=30;# final time
   test_adjoint=0;
   abs_or_real=0; # plot the magnitude (abs) of real part of the solution (1 for real)
   xi=1/N; # coefficient for penalizing forbidden states
@@ -94,11 +94,13 @@ function [objf_v grad_objf_adj ] = traceobjgrad(pcof0, kpar, dp, order, verbose)
     ifunc = @if4;
     rf_grad = @rf4grad;
     if_grad = @if4grad;
+    efunc = @ef16;
   elseif (D==5)
     rfunc = @rf5;
     ifunc = @if5;
     rf_grad = @rf5grad;
     if_grad = @if5grad;
+    efunc = @ef5;
   elseif (D==15)
     rfunc = @rf15;
     ifunc = @if15;
@@ -110,6 +112,7 @@ function [objf_v grad_objf_adj ] = traceobjgrad(pcof0, kpar, dp, order, verbose)
     ifunc = @if16;
     rf_grad = @rf16grad;
     if_grad = @if16grad;
+    efunc = @ef16;
   elseif (D==20)
     rfunc = @rf20;
     ifunc = @if20;
@@ -166,6 +169,14 @@ function [objf_v grad_objf_adj ] = traceobjgrad(pcof0, kpar, dp, order, verbose)
   	    0, 0, 0, 0, sqrt(4), 0;
   	    0, 0, 0, 0, 0, sqrt(5);
   	    0, 0, 0, 0, 0, 0];
+  elseif (Ntot==7)
+    amat = [0, 1, 0, 0, 0, 0, 0;
+  	    0, 0, sqrt(2), 0, 0, 0, 0;
+  	    0, 0, 0, sqrt(3), 0, 0, 0;
+  	    0, 0, 0, 0, sqrt(4), 0, 0;
+  	    0, 0, 0, 0, 0, sqrt(5), 0;
+  	    0, 0, 0, 0, 0, 0, sqrt(6);
+  	    0, 0, 0, 0, 0, 0, 0];
   elseif (Ntot==4)
     amat = [0, 1, 0, 0;
   	    0, 0, sqrt(2), 0;
@@ -389,8 +400,11 @@ function [objf_v grad_objf_adj ] = traceobjgrad(pcof0, kpar, dp, order, verbose)
     hr_0 =  -weightf(t,T)/N * (sr_0 * vTarget_r + si_0 *vTarget_i);
     hi_0 =  weightf(t,T)/N * (sr_0 * vTarget_i - si_0 *vTarget_r);
 # forcing for guard states
-    hr_0(N+1:N+Nguard,:) = xi*penalf(t,T)*v_r(N+1:N+Nguard,:);
-    hi_0(N+1:N+Nguard,:) = xi*penalf(t,T)*v_i(N+1:N+Nguard,:);
+#    hr_0(N+1:N+Nguard,:) = xi*penalf(t,T)*v_r(N+1:N+Nguard,:);
+#    hi_0(N+1:N+Nguard,:) = xi*penalf(t,T)*v_i(N+1:N+Nguard,:);
+# only force the last guard level towards zero
+    hr_0(Ntot,:) = xi*penalf(t,T)*v_r(Ntot,:);
+    hi_0(Ntot,:) = xi*penalf(t,T)*v_i(Ntot,:);
 # forcing for evolving W (d psi/d alpha1) in the rotating frame
     [da_r, da_i] = get_da_mat(t, amat, d_omega);
 
@@ -418,8 +432,11 @@ function [objf_v grad_objf_adj ] = traceobjgrad(pcof0, kpar, dp, order, verbose)
       hr_1 =  -weightf(t,T)/N * (sr_1 * vTarget_r + si_1 *vTarget_i);
       hi_1 =  weightf(t,T)/N * (sr_1 * vTarget_i - si_1 *vTarget_r);
 # forcing for guard states (note that the last Nguard rows of vTarget = 0)
-      hr_1(N+1:N+Nguard,:) = xi*penalf(t,T)*v_r(N+1:N+Nguard,:);
-      hi_1(N+1:N+Nguard,:) = xi*penalf(t,T)*v_i(N+1:N+Nguard,:);
+#      hr_1(N+1:N+Nguard,:) = xi*penalf(t,T)*v_r(N+1:N+Nguard,:);
+#      hi_1(N+1:N+Nguard,:) = xi*penalf(t,T)*v_i(N+1:N+Nguard,:);
+# only force the last guard level towards zero
+      hr_1(Ntot,:) = xi*penalf(t,T)*v_r(Ntot,:);
+      hi_1(Ntot,:) = xi*penalf(t,T)*v_i(Ntot,:);
 
 # evolve lambda_r, lambda_i
       [lambda_r, lambda_i] = stromer_verlet_mat3(lambda_r, lambda_i, rfunc, ifunc, t0, gamma(q)*dt, param, H0, amat, Ident, d_omega, hr_0, hr_1, hi_0, hi_1); 

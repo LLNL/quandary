@@ -19,8 +19,8 @@
 function [objf_v, uFinal_r, uFinal_i] = traceobjf1(pcof, order, verbose)
 
   N = 4; # vector dimension
-  Nguard = 2; # number of extra levels
-  T=20;# final time
+  Nguard = 3; # number of extra levels
+  T=30;# final time
   xi=1/N; # coefficient for penalizing forbidden states
   abs_or_real=0; # plot the magnitude (abs) of real part of the solution (1 for real)
 
@@ -119,6 +119,14 @@ function [objf_v, uFinal_r, uFinal_i] = traceobjf1(pcof, order, verbose)
   	    0, 0, 0, 0, sqrt(4), 0;
   	    0, 0, 0, 0, 0, sqrt(5);
   	    0, 0, 0, 0, 0, 0];
+  elseif (Ntot==7)
+    amat = [0, 1, 0, 0, 0, 0, 0;
+  	    0, 0, sqrt(2), 0, 0, 0, 0;
+  	    0, 0, 0, sqrt(3), 0, 0, 0;
+  	    0, 0, 0, 0, sqrt(4), 0, 0;
+  	    0, 0, 0, 0, 0, sqrt(5), 0;
+  	    0, 0, 0, 0, 0, 0, sqrt(6);
+  	    0, 0, 0, 0, 0, 0, 0];
   elseif (Ntot==4)
     amat = [0, 1, 0, 0;
   	    0, 0, sqrt(2), 0;
@@ -374,5 +382,11 @@ function [objf_v, uFinal_r, uFinal_i] = traceobjf1(pcof, order, verbose)
     infidelity = weightf(T,T)*(1-trace_fid_real(ur, vi, vTarget_r, vTarget_i, lab_frame, T, omega));
     forbidden = xi*penalf(T,T)*norm2_guard(ur, vi, Nguard);
     printf("Last time step: trace2 infidelity = %e, norm2 of guard levels = %e\n", infidelity, forbidden);
+				# check guard states
+# first sum over the time index, then sum over the columns (1:N)
+    abs_sum2 = sum(sumsq(usaver, 3) + sumsq(usavei, 3), 2 )/Nplot/N;
+    for q=N+1:N+Nguard
+      printf("L2-norm of guard(level=%d) = %e\n", q, sqrt(abs_sum2(q)) );
+    end
   end # if verbose
 end

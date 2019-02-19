@@ -1,6 +1,6 @@
 %-*-octave-*--
 %
-% USAGE:  f = norm2_guard(ur, vi, Nguard)
+% USAGE:  f = norm2_guard(vr, vi, Nguard)
 %
 % INPUT:
 % vr: vr = Re(uSol): real-valued solution matrix (Ntot x N)
@@ -17,9 +17,14 @@ function  [f] = norm2_guard(vr, vi, Nguard)
 
   f=0;
   if (Nguard>0)
-    rguard = vr(N+1:N+Nguard,:);
-    iguard = vi(N+1:N+Nguard,:);
-    f = sum(sumsq(rguard,2)) + sum(sumsq(iguard,2));
+    ## rguard = vr(N+1:N+Nguard,:); 
+    ## iguard = vi(N+1:N+Nguard,:);
+    ## f = sum(sumsq(rguard,2)) + sum(sumsq(iguard,2));
+				# only consider the last guard level
+    rguard = vr(Ntot,:); 
+    iguard = vi(Ntot,:);
+    f = sum(sumsq(rguard)) + sum(sumsq(iguard));
+    
   end
 
 end
