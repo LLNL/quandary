@@ -19,11 +19,16 @@ function  [f] = rf20(t, param)
   end
   f = 0;
 
-  # base wavelet
+  # period T wavelets, centered at (0, 0.5, 1)*T
   tp = param.T;
-  tc = 0.5*param.T;
-  tau = (t - tc)/tp;
-  envelope = 64*(tau >= -0.5 & tau <= 0.5) .* (0.5 + tau).^3 .* (0.5 - tau).^3;
+
+# center t=0
+  tc = 0*param.T;
+
+  xi = (t - tc)/tp;
+  envelope = (xi >= -0.5 & xi <= -1/6) .* (9/8 + 4.5*xi + 4.5*xi.^2);
+  envelope = envelope + (xi > -1/6 & xi <= 1/6) .* (0.75 - 9*xi.^2);
+  envelope = envelope + (xi >  1/6 & xi <= 0.5) .* (9/8 - 4.5*xi + 4.5*xi.^2);
 # from state 1 (ground) to state 2
   f = f + param.pcof(1) * envelope .*cos(param.d_omega(1)*t);
 # state 2 to 3
@@ -35,12 +40,14 @@ function  [f] = rf20(t, param)
 # state 5 to 6
   f = f + param.pcof(5) * envelope .*cos(param.d_omega(5)*t);
 
-# period T/2 wavelets, centered at (0.25, 0.5, 0.75)*T
-  tp = 0.5*param.T;
-
-  tc = 0.25*param.T;
-  tau = (t - tc)/tp;
-  envelope = 64*(tau >= -0.5 & tau <= 0.5).*(0.5 + tau).^3 .* (0.5 - tau).^3;
+  tc = 1.0/3.0*param.T;
+  ## tau = (t - tc)/tp;
+  ## envelope = 64*(tau >= -0.5 & tau <= 0.5).*(0.5 + tau).^3 .* (0.5 - tau).^3;
+  xi = (t - tc)/tp;
+  envelope = 0;
+  envelope = (xi >= -0.5 & xi <= -1/6) .* (9/8 + 4.5*xi + 4.5*xi.^2);
+  envelope = envelope + (xi > -1/6 & xi <= 1/6) .* (0.75 - 9*xi.^2);
+  envelope = envelope + (xi >  1/6 & xi <= 0.5) .* (9/8 - 4.5*xi + 4.5*xi.^2);
 # from state 1 (ground) to state 2
   f = f + param.pcof(6) * envelope .*cos(param.d_omega(1)*t);
 # state 2 to 3
@@ -52,10 +59,13 @@ function  [f] = rf20(t, param)
 # state 5 to 6
   f = f + param.pcof(10) * envelope .*cos(param.d_omega(5)*t);
 
-
-  tc = 0.5*param.T;
-  tau = (t - tc)/tp;
-  envelope = 64*(tau >= -0.5 & tau <= 0.5).*(0.5 + tau).^3 .* (0.5 - tau).^3;
+  tc = 2.0/3.0*param.T;
+  ## tau = (t - tc)/tp;
+  ## envelope = 64*(tau >= -0.5 & tau <= 0.5).*(0.5 + tau).^3 .* (0.5 - tau).^3;
+  xi = (t - tc)/tp;
+  envelope = (xi >= -0.5 & xi <= -1/6) .* (9/8 + 4.5*xi + 4.5*xi.^2);
+  envelope = envelope + (xi > -1/6 & xi <= 1/6) .* (0.75 - 9*xi.^2);
+  envelope = envelope + (xi >  1/6 & xi <= 0.5) .* (9/8 - 4.5*xi + 4.5*xi.^2);
 # from state 1 (ground) to state 2
   f = f + param.pcof(11) * envelope .*cos(param.d_omega(1)*t);
 # state 2 to 3
@@ -67,9 +77,13 @@ function  [f] = rf20(t, param)
 # state 5 to 6
   f = f + param.pcof(15) * envelope .*cos(param.d_omega(5)*t);
 
-  tc = 0.75*param.T;
-  tau = (t - tc)/tp;
-  envelope = 64*(tau >= -0.5 & tau <= 0.5).*(0.5 + tau).^3 .* (0.5 - tau).^3;
+  tc = 1.0*param.T;
+  ## tau = (t - tc)/tp;
+  ## envelope = 64*(tau >= -0.5 & tau <= 0.5).*(0.5 + tau).^3 .* (0.5 - tau).^3;
+  xi = (t - tc)/tp;
+  envelope = (xi >= -0.5 & xi <= -1/6) .* (9/8 + 4.5*xi + 4.5*xi.^2);
+  envelope = envelope + (xi > -1/6 & xi <= 1/6) .* (0.75 - 9*xi.^2);
+  envelope = envelope + (xi >  1/6 & xi <= 0.5) .* (9/8 - 4.5*xi + 4.5*xi.^2);
 # from state 1 (ground) to state 2
   f = f + param.pcof(16) * envelope .*cos(param.d_omega(1)*t);
 # state 2 to 3

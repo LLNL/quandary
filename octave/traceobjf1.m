@@ -20,12 +20,15 @@ function [objf_v, uFinal_r, uFinal_i] = traceobjf1(pcof, order, verbose)
 
   N = 4; # vector dimension
   Nguard = 3; # number of extra levels
-  T=30;# final time
-  xi=1/N; # coefficient for penalizing forbidden states
+  T=120;# final time
+  xi=0/N; # coefficient for penalizing forbidden states
   abs_or_real=0; # plot the magnitude (abs) of real part of the solution (1 for real)
+  par_1 = 0.09; # max value of parameters
+  par_0 = -par_1;
+  eps = 1e-9;
 
   if nargin < 1
-    pcof(1) = 1.0;
+    pcof(1) = 0.0;
     pcof(2) = 0.0;
   end
 
@@ -40,13 +43,24 @@ function [objf_v, uFinal_r, uFinal_i] = traceobjf1(pcof, order, verbose)
   if (order == 6)
     stages = 9;
   end
-  
+
   cfl = 0.05;
 
   Ntot = N+Nguard;
 
   D = size(pcof,1); # parameter dimension
 
+	 # verify that each element of pcof is in the prescribed range
+  for q=1:D
+    if (pcof(q) > par_1-eps)
+      pcof(q) = par_1-eps;
+    end
+    if (pcof(q) < par_0+eps)
+      pcof(q) = par_0+eps;
+    end
+  end
+  
+  
 # handles to time and forcing functions
   if (D==4)
     rfunc = @rf4;
@@ -89,13 +103,20 @@ function [objf_v, uFinal_r, uFinal_i] = traceobjf1(pcof, order, verbose)
 # coefficients in H0
   omega = zeros(1,Ntot);
   omega(1) = 0;
-  omega(2) = 25.798;
-  omega(3) = 50.216;
-  omega(4) = 73.252;
-  if Ntot == 6
-    omega(5) = 94.908;
-    omega(6) = 115.182;
+  omega(2) = 4.106;
+  omega(3) = 7.992;
+  omega(4) = 11.659;
+  if Ntot >= 6
+    omega(5) = 15.105;
+    omega(6) = 18.332;
   end
+  if Ntot >= 7
+    omega(7) = 21.339;
+  end
+  if Ntot > 7
+    printf("ERROR: Not enough frequencies are known for Ntot=%d\n", Ntot);
+  end
+  
   lab_frame = 0;
 ##   if (lab_frame)
 ## # lab frame
@@ -275,8 +296,13 @@ function [objf_v, uFinal_r, uFinal_i] = traceobjf1(pcof, order, verbose)
   uFinal_r = RotMat_r' *ur - RotMat_i' * vi;
   uFinal_i = -RotMat_r' * vi - RotMat_i * ur;
 
+			       # Inequality constraints on parameters:
+  ineq_penalty =  eval_ineq_pen(pcof, par_0, par_1);
+  objf_v = objf_v + ineq_penalty;
+  
 				# plot results
   if (verbose)
+    printf("Inequality penalty = %e\n", ineq_penalty);
 				# difference at final time
     Nplot = nsteps + 1;
 				# unitary?
@@ -374,6 +400,7 @@ function [objf_v, uFinal_r, uFinal_i] = traceobjf1(pcof, order, verbose)
       end
     end
     printf(" ]\n");
+
 				# check if uFinal is unitary
     utest = uFinal_r' * uFinal_r + uFinal_i' * uFinal_i - diag(ones(1,N));
     printf("xi = %e, Final unitary infidelity = %e, Final | trace | gate fidelity = %e\n", xi, norm(utest), final_fidelity);
@@ -388,5 +415,25 @@ function [objf_v, uFinal_r, uFinal_i] = traceobjf1(pcof, order, verbose)
     for q=N+1:N+Nguard
       printf("L2-norm of guard(level=%d) = %e\n", q, sqrt(abs_sum2(q)) );
     end
+
+# FFT on the control function
+    td = linspace(dt, T, nsteps);
+    ctrl = rfunc(td,param);
+
+    df = 1/T;
+    Nf = nsteps;
+    freq=[ -(ceil((Nf-1)/2):-1:1), 0, (1:floor((Nf-1)/2)) ] * df; # In Hz
+    om = 2*pi*freq; % angular frequency in rad/sec
+
+    fctrl = fftshift(fft(ifftshift(ctrl)));
+    fctrl = fctrl/Nf;
+
+    figure(N+2);
+    semilogy(om, abs(fctrl), "r-");
+    axis([0, 50, 1e-8, max(abs(fctrl))]);
+    npar = length(pcof);
+    tstr = sprintf("FFT(drive), 5 freq, %d envelope fcns", npar/5);
+    title(tstr);
+    xlabel("Omega [rad/s]");
   end # if verbose
 end

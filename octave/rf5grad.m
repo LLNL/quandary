@@ -22,8 +22,12 @@ function  [f] = rf5grad(t, param)
   # base wavelet
   tp = param.T;
   tc = 0.5*param.T;
-  tau = (t - tc)/tp;
-  envelope = 64*(tau >= -0.5 & tau <= 0.5) .* (0.5 + tau).^3 .* (0.5 - tau).^3;
+  ## tau = (t - tc)/tp;
+  ## envelope = 64*(tau >= -0.5 & tau <= 0.5) .* (0.5 + tau).^3 .* (0.5 - tau).^3;
+  xi = (t - tc)/tp;
+  envelope = (xi >= -0.5 & xi <= -1/6) .* (9/8 + 4.5*xi + 4.5*xi.^2);
+  envelope = envelope + (xi > -1/6 & xi <= 1/6) .* (0.75 - 9*xi.^2);
+  envelope = envelope + (xi >  1/6 & xi <= 0.5) .* (9/8 - 4.5*xi + 4.5*xi.^2);
 # from state 1 (ground) to state 2
   f(1) = envelope .*cos(param.d_omega(1)*t);
 # state 2 to 3

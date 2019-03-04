@@ -19,13 +19,16 @@ function [ grad_objf_adj ] = tracegradient(pcof0, kpar, dp, order, verbose)
 
   N = 4; # vector dimension
   Nguard = 3; # number of extra levels
-  T=30;# final time
-  xi=1/N; # coefficient for penalizing forbidden states
+  T=120;# final time
+  xi=0/N; # coefficient for penalizing forbidden states
   test_adjoint=1;
   abs_or_real=0; # plot the magnitude (abs) of real part of the solution (1 for real)
+  par_1 = 0.09; # max value of parameters
+  par_0 = -par_1;
+  eps = 1e-9;
 
   if nargin < 1
-    pcof0 = [0.2; 0.1];
+    pcof0 = [0; 0];
   end
 
   if nargin < 2
@@ -44,11 +47,33 @@ function [ grad_objf_adj ] = tracegradient(pcof0, kpar, dp, order, verbose)
     verbose=0;
   end
 
+  if (order == 6)
+    stages = 9;
+  end
+  
+  cfl = 0.05;
+
+  Ntot = N+Nguard;
+
+  pcof = pcof0;
+
+  D = size(pcof,1); # parameter dimension
+  
+	 # verify that each element of pcof is in the prescribed range
+  for q=1:D
+    if (pcof(q) > par_1-eps)
+      pcof(q) = par_1-eps;
+    end
+    if (pcof(q) < par_0+eps)
+      pcof(q) = par_0+eps;
+    end
+  end
+
   if (verbose)
 				# first approximate the gradient by FD
-    f0 = traceobjf1(pcof0, order);
+    f0 = traceobjf1(pcof, order);
 
-    pcof1 = pcof0;
+    pcof1 = pcof;
     pcof1(kpar) = pcof1(kpar) + dp;
 
     f1 = traceobjf1(pcof1, order);
@@ -56,9 +81,9 @@ function [ grad_objf_adj ] = tracegradient(pcof0, kpar, dp, order, verbose)
 				# divided difference approximation
     dfdp_fd = (f1-f0)/dp;
 
-    printf("pcof0: ")
-    for q=1:length(pcof0)
-      printf(" %e", pcof0(q));
+    printf("pcof: ")
+    for q=1:length(pcof)
+      printf(" %e", pcof(q));
     end
     printf("\n");
     printf("pcof1: ")
@@ -70,21 +95,7 @@ function [ grad_objf_adj ] = tracegradient(pcof0, kpar, dp, order, verbose)
     printf("(f1-f0)/dp = %e\n", dfdp_fd);
   end
 
-# Next solve the ODE for psi and phi = d psi/d alpha
-
-  pcof = pcof0;
-
-  if (order == 6)
-    stages = 9;
-  end
-  
-  cfl = 0.05;
-
-  Ntot = N+Nguard;
-
-  D = size(pcof,1); # parameter dimension
-  
-# handles to time functions and  gradient of control functions
+	# handles to time functions and  gradient of control functions
   if (D==4)
     rfunc = @rf4;
     ifunc = @if4;
@@ -138,16 +149,20 @@ function [ grad_objf_adj ] = tracegradient(pcof0, kpar, dp, order, verbose)
   end
 
 # coefficients in H0
-  omega = zeros(1,Ntot);
   omega(1) = 0;
-  omega(2) = 25.798;
-  omega(3) = 50.216;
-  omega(4) = 73.252;
-  if Ntot == 6
-    omega(5) = 94.908;
-    omega(6) = 115.182;
+  omega(2) = 4.106;
+  omega(3) = 7.992;
+  omega(4) = 11.659;
+  if Ntot >= 6
+    omega(5) = 15.105;
+    omega(6) = 18.332;
   end
-
+  if Ntot >= 7
+    omega(7) = 21.339;
+  end
+  if Ntot > 7
+    printf("ERROR: Not enough frequencies are known for Ntot=%d\n", Ntot);
+  end
   lab_frame = 0;
 # rotating frame
   H0 = zeros(Ntot,Ntot);
@@ -459,12 +474,18 @@ function [ grad_objf_adj ] = tracegradient(pcof0, kpar, dp, order, verbose)
 
   end # for (reverse time stepping loop)
 
-  if verbose
-    printf("Max diff forward - reverse time stepping: %e\n", adiff_max);
+			       # Inequality constraints on parameters:
+# gradients
+  ineq_pen_grad = eval_ineq_grad(pcof, par_0, par_1);
+  for k=1:D
+    grad_objf_adj(k) = grad_objf_adj(k) + ineq_pen_grad(k);
   end
+
+  dfdp = dfdp + ineq_pen_grad(kpar);
   
 				# plot results
   if (verbose)
+    printf("Max diff forward - reverse time stepping: %e\n", adiff_max);
 				# difference at final time
     Nplot = nsteps + 1;
 				# unitary?
@@ -552,7 +573,6 @@ function [ grad_objf_adj ] = tracegradient(pcof0, kpar, dp, order, verbose)
       printf("\n");
     end
 
-    
 				# total objf function at final time
     final_fidelity = abs( trace(uFinal_uTarget)/N ); # uTarget is real
 
