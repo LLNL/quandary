@@ -20,10 +20,10 @@ function [objf_v grad_objf_adj ] = traceobjgrad(pcof0, kpar, dp, order, verbose)
 
   N = 4; # vector dimension
   Nguard = 3;  # number of extra levels
-  T=120;# final time
+  T=150;# final time
   test_adjoint=0;
   abs_or_real=0; # plot the magnitude (abs) of real part of the solution (1 for real)
-  xi=0/N; # coefficient for penalizing forbidden states
+  xi=1.0/Nguard; # coefficient for penalizing forbidden states
   par_1 = 0.09; # max value of parameters
   par_0 = -par_1;
   eps = 1e-9;
@@ -89,12 +89,12 @@ function [objf_v grad_objf_adj ] = traceobjgrad(pcof0, kpar, dp, order, verbose)
     dfdp_fd = (f1-f0)/dp;
 
     printf("pcof: ")
-    for q=1:length(pcof)
+    for q=1:min(10,D)
       printf(" %e", pcof(q));
     end
     printf("\n");
     printf("pcof1: ")
-    for q=1:length(pcof1)
+    for q=1:min(10,D)
       printf(" %e", pcof1(q));
     end
     printf("\n");
@@ -103,6 +103,7 @@ function [objf_v grad_objf_adj ] = traceobjgrad(pcof0, kpar, dp, order, verbose)
   end  
   
 # handles to time functions and  gradient of control functions
+  nurbs_control = 0;
   if (D==4)
     rfunc = @rf4;
     ifunc = @if4;
@@ -133,26 +134,16 @@ function [objf_v grad_objf_adj ] = traceobjgrad(pcof0, kpar, dp, order, verbose)
     efunc = @ef20;
     rf_grad = @rf20grad;
     if_grad = @if20grad;
-  elseif (D==24)
-    rfunc = @rf24;
-    ifunc = @if24;
-    rf_grad = @rf24grad;
-    if_grad = @if24grad;
-  elseif (D==25)
-    rfunc = @rf25;
-    ifunc = @if25;
-    efunc = @ef25;
-    rf_grad = @rf25grad;
-    if_grad = @if25grad;
-  elseif (D==30)
-    rfunc = @rf30;
-    ifunc = @if30;
-    efunc = @ef30;
-    rf_grad = @rf30grad;
-    if_grad = @if30grad;
   else
-    printf("ERROR: number of parameters D=%d is not implemented\n", D);
-    return;
+    if (verbose)
+      printf("Assuming a Nurbs parameterization with %d nurbs wavelets\n", D);
+    end
+    nurbs_control = 1;
+    rfunc = @nurb2;
+    ifunc = @zero_func;
+    efunc = @nurb2;
+    rf_grad = @grad_nurb2;
+    if_grad = @zero_grad;
   end
 
 # coefficients in H0
@@ -173,13 +164,32 @@ function [objf_v grad_objf_adj ] = traceobjgrad(pcof0, kpar, dp, order, verbose)
   end
 
   lab_frame = 0;
-# rotating frame
+# interaction frame
   H0 = zeros(Ntot,Ntot);
   d_omega = zeros(1, Ntot);
   d_omega(1:Ntot-1) = omega(2:Ntot) - omega(1:Ntot-1);
 
-				# for struct for passing parameters to the time function
-  param = struct("pcof", pcof, "T", T, "d_omega", d_omega);
+		 # struct for passing parameters to the time functions
+  if (nurbs_control)
+    N_nurbs = D;
+    N_knots = N_nurbs+1;
+    dt_knot = T/(N_nurbs-2);
+    width = 3*dt_knot;
+    t_center = dt_knot*([1:N_nurbs] - 1.5);
+    t_knot = dt_knot*( [1:N_knots] - 2 );
+    
+ # param: struct for passing parameters to the time function
+ # T is a real positive scalar
+ # N_nurbs: number of nurbs ( positive integer ) 
+ # N_knots: number of knots (N_nurbs+3)
+ # t_center: Center time for each nurb (1 x N_nurbs) array of real
+ # t_knot: Time corresponding to each knot (1 x N_knots) array of real
+ # dt_knot: Spacing in t_knot array
+ # pcof: Nurbs coefficients (N_nurbs x 1) array of real
+    param = struct("T", T, "N_nurbs", N_nurbs, "t_knot", t_knot, "dt_knot", dt_knot, "t_center", t_center, "pcof", pcof);
+  else
+    param = struct("pcof", pcof, "T", T, "d_omega", d_omega);
+  end
 
 # lowering op
   if (Ntot==6)
@@ -420,11 +430,11 @@ function [objf_v grad_objf_adj ] = traceobjgrad(pcof0, kpar, dp, order, verbose)
     hr_0 =  -weightf(t,T)/N * (sr_0 * vTarget_r + si_0 *vTarget_i);
     hi_0 =  weightf(t,T)/N * (sr_0 * vTarget_i - si_0 *vTarget_r);
 # forcing for guard states
-#    hr_0(N+1:N+Nguard,:) = xi*penalf(t,T)*v_r(N+1:N+Nguard,:);
-#    hi_0(N+1:N+Nguard,:) = xi*penalf(t,T)*v_i(N+1:N+Nguard,:);
+   hr_0(N+1:N+Nguard,:) = xi*penalf(t,T)*v_r(N+1:N+Nguard,:);
+   hi_0(N+1:N+Nguard,:) = xi*penalf(t,T)*v_i(N+1:N+Nguard,:);
 # only force the last guard level towards zero
-    hr_0(Ntot,:) = xi*penalf(t,T)*v_r(Ntot,:);
-    hi_0(Ntot,:) = xi*penalf(t,T)*v_i(Ntot,:);
+#    hr_0(Ntot,:) = xi*penalf(t,T)*v_r(Ntot,:);
+#    hi_0(Ntot,:) = xi*penalf(t,T)*v_i(Ntot,:);
 # forcing for evolving W (d psi/d alpha1) in the rotating frame
     [da_r, da_i] = get_da_mat(t, amat, d_omega);
 
@@ -452,11 +462,11 @@ function [objf_v grad_objf_adj ] = traceobjgrad(pcof0, kpar, dp, order, verbose)
       hr_1 =  -weightf(t,T)/N * (sr_1 * vTarget_r + si_1 *vTarget_i);
       hi_1 =  weightf(t,T)/N * (sr_1 * vTarget_i - si_1 *vTarget_r);
 # forcing for guard states (note that the last Nguard rows of vTarget = 0)
-#      hr_1(N+1:N+Nguard,:) = xi*penalf(t,T)*v_r(N+1:N+Nguard,:);
-#      hi_1(N+1:N+Nguard,:) = xi*penalf(t,T)*v_i(N+1:N+Nguard,:);
+      hr_1(N+1:N+Nguard,:) = xi*penalf(t,T)*v_r(N+1:N+Nguard,:);
+      hi_1(N+1:N+Nguard,:) = xi*penalf(t,T)*v_i(N+1:N+Nguard,:);
 # only force the last guard level towards zero
-      hr_1(Ntot,:) = xi*penalf(t,T)*v_r(Ntot,:);
-      hi_1(Ntot,:) = xi*penalf(t,T)*v_i(Ntot,:);
+#      hr_1(Ntot,:) = xi*penalf(t,T)*v_r(Ntot,:);
+#      hi_1(Ntot,:) = xi*penalf(t,T)*v_i(Ntot,:);
 
 # evolve lambda_r, lambda_i
       [lambda_r, lambda_i] = stromer_verlet_mat3(lambda_r, lambda_i, rfunc, ifunc, t0, gamma(q)*dt, param, H0, amat, Ident, d_omega, hr_0, hr_1, hi_0, hi_1); 
@@ -606,7 +616,7 @@ function [objf_v grad_objf_adj ] = traceobjgrad(pcof0, kpar, dp, order, verbose)
     final_fidelity = abs( trace(uFinal_uTarget)/N ); # uTarget is real
 
     printf("Forward calculation: Parameter pcof =[ %e", param.pcof(1));
-    for q=2:D
+    for q=2:min(10,D)
       printf(", %e", param.pcof(q));
     end
     printf(" ]\n");
@@ -616,7 +626,7 @@ function [objf_v grad_objf_adj ] = traceobjgrad(pcof0, kpar, dp, order, verbose)
     printf("Nsteps=%d, kpar = %d, fd-gradient of objective function = %e\n", nsteps, kpar, dfdp_fd)
     if (test_adjoint) printf("Forward integration of gradient of objective function = %e\n", dfdp);
     printf("Adjoint gradient components: ");
-    for q=1:D
+    for q=1:min(10,D)
       printf(" %e ", grad_objf_adj(q) );
     end
     printf("\n");

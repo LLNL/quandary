@@ -26,12 +26,12 @@ function  [f] = sc_real(vr, vi, wr, wi, Nguard)
 # unit weights    
     f = trace(vrguard*wrguard') +  trace(viguard*wiguard');
 # only consider the last guard level
-    vrguard = vr(Ntot,:);
-    viguard = vi(Ntot,:);
-    wrguard = wr(Ntot,:);
-    wiguard = wi(Ntot,:);
-# unit weights    
-    f = vrguard*wrguard' +  viguard*wiguard';
+##     vrguard = vr(Ntot,:);
+##     viguard = vi(Ntot,:);
+##     wrguard = wr(Ntot,:);
+##     wiguard = wi(Ntot,:);
+## # unit weights    
+##     f = vrguard*wrguard' +  viguard*wiguard';
 
   end
 

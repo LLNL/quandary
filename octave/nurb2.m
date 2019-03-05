@@ -10,12 +10,9 @@ function  [f] = nurb2(t, param)
 	# figure out where 't' is located in the knot array
   width = 3*dt_knot;
 
-  k = max(3,ceil(t/dt_knot + 2)); # t_knot(k-1) < t <= t_knot(k), but t=0 needs to give k=3
+  k = max(3,ceil(t/dt_knot) + 2); # t_knot(k-1) < t <= t_knot(k), but t=0 needs to give k=3
+  k = min(k, param.N_nurbs); # protect agains roundoff that sometimes makes t/dt > N_nurbs-2
 
-  ## if (t < 0 || t > param.T)
-  ##   continue;
-  ## end
-  
 				# 1st segment of nurb k-1
   tc = param.t_center(k);
   tau = (t - tc)/width;

@@ -15,7 +15,7 @@ function  [w] = penalf(t, T)
 				# overall amplitude
 # constant part
   const = 1.0/T;
-  alpha = 1;
+  alpha = 0;
 # period
 #  tp = T/50;
   tp = T/10;

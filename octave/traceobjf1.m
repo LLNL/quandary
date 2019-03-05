@@ -20,8 +20,8 @@ function [objf_v, uFinal_r, uFinal_i] = traceobjf1(pcof, order, verbose)
 
   N = 4; # vector dimension
   Nguard = 3; # number of extra levels
-  T=120;# final time
-  xi=0/N; # coefficient for penalizing forbidden states
+  T=150;# final time
+  xi=1.0/Nguard; # coefficient for penalizing forbidden states
   abs_or_real=0; # plot the magnitude (abs) of real part of the solution (1 for real)
   par_1 = 0.09; # max value of parameters
   par_0 = -par_1;
@@ -62,6 +62,7 @@ function [objf_v, uFinal_r, uFinal_i] = traceobjf1(pcof, order, verbose)
   
   
 # handles to time and forcing functions
+  nurbs_control = 0;
   if (D==4)
     rfunc = @rf4;
     ifunc = @if4;
@@ -82,21 +83,14 @@ function [objf_v, uFinal_r, uFinal_i] = traceobjf1(pcof, order, verbose)
     rfunc = @rf20;
     ifunc = @if20;
     efunc = @ef20;
-  elseif (D==24)
-    rfunc = @rf24;
-    ifunc = @if24;
-    efunc = @ef24;
-  elseif (D==25)
-    rfunc = @rf25;
-    ifunc = @if25;
-    efunc = @ef25;
-  elseif (D==30)
-    rfunc = @rf30;
-    ifunc = @if30;
-    efunc = @ef30;
   else
-    printf("ERROR: number of parameters D=%d is not implemented\n", D);
-    return;
+    if (verbose)
+      printf("Assuming a Nurbs parameterization with %d nurbs wavelets\n", D);
+    end
+    nurbs_control = 1;
+    rfunc = @nurb2;
+    ifunc = @zero_func;
+    efunc = @nurb2;
   end
   
   
@@ -130,8 +124,35 @@ function [objf_v, uFinal_r, uFinal_i] = traceobjf1(pcof, order, verbose)
 ##  end
 
 				# for struct for passing parameters to the time function
-  param = struct("pcof", pcof, "T", T, "d_omega", d_omega);
+  if (nurbs_control)
+    N_nurbs = D;
+    N_knots = N_nurbs+1;
+    dt_knot = T/(N_nurbs-2);
+    width = 3*dt_knot;
+    t_center = dt_knot*([1:N_nurbs] - 1.5);
+    t_knot = dt_knot*( [1:N_knots] - 2 );
 
+    ## for q=1:2:N_nurbs
+    ##   pcof(q) = -1;
+    ## end
+    ## pcof = 2*rand(N_nurbs,1) - 1;
+    ## pcof(1:2) = 0;
+    ## pcof(N_nurbs) = 0;
+    ## pcof(N_nurbs - 1) = 0;
+    
+ # param: struct for passing parameters to the time function
+ # T is a real positive scalar
+ # N_nurbs: number of nurbs ( positive integer ) 
+ # N_knots: number of knots (N_nurbs+3)
+ # t_center: Center time for each nurb (1 x N_nurbs) array of real
+ # t_knot: Time corresponding to each knot (1 x N_knots) array of real
+ # dt_knot: Spacing in t_knot array
+ # pcof: Nurbs coefficients (N_nurbs x 1) array of real
+    param = struct("T", T, "N_nurbs", N_nurbs, "t_knot", t_knot, "dt_knot", dt_knot, "t_center", t_center, "pcof", pcof);
+  else
+    param = struct("pcof", pcof, "T", T, "d_omega", d_omega);
+  end
+  
 				# lowering op
   if (Ntot==6)
     amat = [0, 1, 0, 0, 0, 0;
@@ -395,9 +416,12 @@ function [objf_v, uFinal_r, uFinal_i] = traceobjf1(pcof, order, verbose)
 
     printf("Forward calculation: Parameter pcof =[ %e", param.pcof(1));
     if (D>=2)
-      for q=2:D
+      for q=2:min(10,D)
 	printf(", %e", param.pcof(q));
       end
+    end
+    if (D > 10)
+      printf(" (truncated to 10 elements) ");
     end
     printf(" ]\n");
 
@@ -429,10 +453,10 @@ function [objf_v, uFinal_r, uFinal_i] = traceobjf1(pcof, order, verbose)
     fctrl = fctrl/Nf;
 
     figure(N+2);
-    semilogy(om, abs(fctrl), "r-");
-    axis([0, 50, 1e-8, max(abs(fctrl))]);
+    semilogy(om, abs(fctrl) + 1e-18, "r+");  # 1e-18 is to avoid warning messages
+    axis([0, 10, 1e-5, max(abs(fctrl))]);
     npar = length(pcof);
-    tstr = sprintf("FFT(drive), 5 freq, %d envelope fcns", npar/5);
+    tstr = sprintf("FFT(drive), %d B-spline wavelets", D);
     title(tstr);
     xlabel("Omega [rad/s]");
   end # if verbose
