@@ -295,10 +295,73 @@ We summarize our result in the following lemma.
   the symmetry conditions \eqref{eq_sym-cond} are satisfied.
 \end{lemma}
 
+\section{Time integration}
+We consider integrating \eqref{eq_real-shrodinger} with a time-dependent forcing,
+\begin{equation}\label{eq_s-v-forcing}
+  \begin{bmatrix} \dot{u}\\ \dot{v} \end{bmatrix} =
+%
+  \begin{bmatrix}
+    S(t) & -K(t) \\ K(t) & S(t)
+  \end{bmatrix}     
+  %
+  \begin{bmatrix} u\\ v \end{bmatrix}
+  %
+  + \begin{bmatrix} F_u(t) \\ F_v(t) \end{bmatrix}.
+\end{equation}
+Here, $u\in \mathbb{R}^N$ and $v\in \mathbb{R}^N$; $K=K^T$ and $S=-S^T$ are real-valued $N\times N$
+matrices.  To solve \eqref{eq_s-v-forcing} numerically, we discretize time on a grid with $t_n = n
+\delta_t$, $n=0,1,2,,\ldots$. Here, the time step ($\delta_t$) is constant, but this assumption can
+be relaxed. We denote the numerical solution $u^n\approx u(t_n)$ and $v^n\approx v(t_n)$.  In
+general, $S(t)\ne0$ and the Hamiltonian matrix is non-seperable. Givent $(u^n, v^n)$, the second order accurate
+Stromer-Verlet method evolves the solution by
+\begin{align*}
+  \left(I - \frac{\delta_t}{2} S^{n}\right) \ell_1 &= K^n u^n + S^n v^n + F_v^n,\\
+%
+  v^{n+1/2} &= v^n + \frac{\delta_t}{2}\ell_1,\\
+  %
+  \kappa_1 &= S^{n+1/2} u^n - K^{n+1/2} v^{n+1/2} +
+  F_u^{n+1/2},\\
+%
+  \left(I - \frac{\delta_t}{2} S^{n+1/2}\right) \kappa_2 &= S^{n+1/2}\left( u^n + \frac{\delta_t}{2}
+  \kappa_1 \right) - K^{n+1/2}  v^{n+1/2} + F_u^{n+1/2},\\
+  %
+  u^{n+1} &= u^n + \frac{\delta_t}{2}\left( \kappa_1 + \kappa_2 \right),\\
+%
+  \ell_2 &= K^{n+1} u^{n+1} + S^{n+1}  v^{n+1/2} + F_v^{n+1},\\
+  %
+  v^{n+1} &= v^n + \frac{\delta_t}{2}\left( \ell_1 + \ell_2 \right).
+\end{align*}
+If $v^n$ is not needed, we can re-organize the scheme to instead start from $(u^n, v^{n-1/2})$,
+\begin{align*}
+  \widetilde{\ell}_2 &= K^{n} u^{n} + S^{n} v^{n-1/2} + F_v^{n},\\
+  %
+  \left(I - \frac{\delta_t}{2} S^{n}\right) \ell_1 &= K^n u^n + S^n \left( v^{n-1/2} +
+  \frac{\delta_t}{2} \widetilde{\ell}_2 \right) + F_v^n,\\
+  %
+%  v^{n} &= v^{n-1/2} + \frac{\delta_t}{2} \ell_2^{n-1},\\
+%
+  %
+  v^{n+1/2} &= v^{n-1/2} + \frac{\delta_t}{2}\left( \widetilde{\ell}_2 + \ell_1\right),\\
+  %
+  \kappa_1 &= S^{n+1/2} u^n - K^{n+1/2} v^{n+1/2} +
+  F_u^{n+1/2},\\
+%
+  \left(I - \frac{\delta_t}{2} S^{n+1/2}\right) \kappa_2 &= S^{n+1/2}\left( u^n + \frac{\delta_t}{2}
+  \kappa_1 \right) - K^{n+1/2}  v^{n+1/2} + F_u^{n+1/2},\\
+  %
+  u^{n+1} &= u^n + \frac{\delta_t}{2}\left( \kappa_1 + \kappa_2 \right),\\
+%
+\end{align*}
+We note that the scheme becomes explicit when $S(t)=0$. In this case the scheme simplifies
+significantly because $\widetilde{\ell}_2 = \ell_1$ and $\kappa_1 = \kappa_2$.
 
-  
+The above Stromer-Verlet scheme is second order accurate, symplectic and time reversible. By using a
+compositional technique where each time-step is decomposed into several sub-steps, the order of
+accuracy can be raised. Fourth order accuracy can be obtained with three sub-steps, sixth order with
+seven or nine sub-steps, and eight order requires at least fifteen sub-steps, see Harirer et
+al.~\cite{HairerLubichWanner-06} for further details.
 
-
-
+\bibliographystyle{plain}
+\bibliography{quantum}
 
 \end{document}
