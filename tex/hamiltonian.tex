@@ -312,8 +312,8 @@ Here, $u\in \mathbb{R}^N$ and $v\in \mathbb{R}^N$; $K=K^T$ and $S=-S^T$ are real
 matrices.  To solve \eqref{eq_s-v-forcing} numerically, we discretize time on a grid with $t_n = n
 \delta_t$, $n=0,1,2,,\ldots$. Here, the time step ($\delta_t$) is constant, but this assumption can
 be relaxed. We denote the numerical solution $u^n\approx u(t_n)$ and $v^n\approx v(t_n)$.  In
-general, $S(t)\ne0$ and the Hamiltonian matrix is non-seperable. Givent $(u^n, v^n)$, the second order accurate
-Stromer-Verlet method evolves the solution by
+general, $S(t)\ne0$ and the Hamiltonian system is non-separable. Givent $(u^n, v^n)$, the 
+Stromer-Verlet scheme evolves the solution by
 \begin{align*}
   \left(I - \frac{\delta_t}{2} S^{n}\right) \ell_1 &= K^n u^n + S^n v^n + F_v^n,\\
 %
