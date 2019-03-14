@@ -4,17 +4,12 @@
 %
 % USAGE:
 % 
-% [objF, uFinal] = traceobjf1(pcof, order, verbose)
+% nurbstest(N_spline)
 %
 % INPUT:
-% pcof(D,1): amplitudes of the control functions as a D x 1 column vector, D=size(pcof,1)
-% verbose: 0: quite mode, 1: verbose
-% order: order of accuracy: 2, 4, or 6.
-%
+% N_spline: number of splines >=3
+
 % OUTPUT:
-% objF: trace norm of gate infidelity cost functional
-% uFinal_r: Real part of state vector at t=T
-% uFinal_i: Imaginary part of state vector at t=T
 %
 function nurbstest(N_nurbs)
 

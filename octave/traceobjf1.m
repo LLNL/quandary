@@ -16,7 +16,7 @@
 % uFinal_r: Real part of state vector at t=T
 % uFinal_i: Imaginary part of state vector at t=T
 %
-function [objf_v, uFinal_r, uFinal_i] = traceobjf1(pcof, order, verbose)
+function [objf_v] = traceobjf1(pcof, order, verbose)
 
   N = 4; # vector dimension
   Nguard = 3; # number of extra levels
@@ -441,8 +441,8 @@ function [objf_v, uFinal_r, uFinal_i] = traceobjf1(pcof, order, verbose)
     end
 
 # FFT on the control function
-    td = linspace(dt, T, nsteps);
-    ctrl = rfunc(td,param);
+    tdf = linspace(dt, T, nsteps);
+    ctrl = rfunc(tdf,param);
 
     df = 1/T;
     Nf = nsteps;
@@ -454,7 +454,7 @@ function [objf_v, uFinal_r, uFinal_i] = traceobjf1(pcof, order, verbose)
 
     figure(N+2);
     semilogy(om, abs(fctrl) + 1e-18, "r+");  # 1e-18 is to avoid warning messages
-    axis([0, 10, 1e-5, max(abs(fctrl))]);
+    axis([0, 20, 1e-5, max(abs(fctrl))]);
     npar = length(pcof);
     tstr = sprintf("FFT(drive), %d B-spline wavelets", D);
     title(tstr);
