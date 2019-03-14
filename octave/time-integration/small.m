@@ -4,13 +4,15 @@
 %
 % USAGE:
 % 
-% [] = small(cfl, separable, order, stages)
+% [] = small(cfl, testcase, order, stages)
 %
 % INPUT:
 % cfl: dt = maxeig/cfl
-% testcase: Exact solutions:
-%               1: Separable Hamiltonian, 0: Non-separable Hamiltonian (default is 1)
-%               2: Twilight forcing
+% testcase:  (default is 1) (all cases have an exact solution): 
+%               0: Non-separable Hamiltonian
+%               1: Separable Hamiltonian, 
+%               2: Polynomial time function, separable Hamitonian;
+%               3: Polynomial time function, non-separable Hamitonian;
 % order: order of accuracy, may be 2, 4, or 6.
 % stages: only used for order = 6, in which case it is 7 or 9 (default)
 %
@@ -213,9 +215,19 @@ function [err] = small(cfl, testcase, order, stages)
       ce = -sin(phi);
     end
 
+    ## printf("Final solution:\n");
+    ## printf("Exact : Re(cg)=%e  Im(cg)=%e\n", real(usave(1,Nplot)), imag(usave(1,Nplot)));
+    ## printf("Magnus: Re(cg)=%e  Im(cg)=%e\n", real(cg(Nplot)), imag(cg(Nplot)));
+    ## printf("Exact : Re(ce)=%e  Im(ce)=%e\n", real(usave(2,Nplot)), imag(usave(2,Nplot)));
+    ## printf("Magnus: Re(ce)=%e  Im(ce)=%e\n", real(ce(Nplot)), imag(ce(Nplot)));
+    m_cg_err = abs(usave(1,Nplot) - cg(Nplot));
+    m_ce_err = abs(usave(2,Nplot) - ce(Nplot));
     cg_err = sqrt( (usaver(1,Nplot)-real(cg(Nplot)))^2 + (usavei(1,Nplot)-imag(cg(Nplot)))^2 );
     ce_err = sqrt( (usaver(2,Nplot)-real(ce(Nplot)))^2 + (usavei(2,Nplot)-imag(ce(Nplot)))^2 );
-    printf("CFL=%g,  cg-err=%e  ce-err=%e\n", cfl, cg_err, ce_err );
+    printf("CFL=%g Solution errors:\n  Verlet: cg-err=%e  ce-err=%e\n", cfl, cg_err, ce_err );
+    if (testcase==0 || testcase==1)
+      printf("  Magnus: cg-err=%e  ce-err=%e\n", m_cg_err, m_ce_err );
+    end
     
 				# plot solution or error?
     if (ploterr)
