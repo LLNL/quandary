@@ -21,7 +21,7 @@ function [objf_v grad_objf_adj ] = traceobjgrad(pcof0, kpar, dp, order, verbose)
   N = 4; # vector dimension
   Nguard = 3;  # number of extra levels
   T=150;# final time
-  test_adjoint=0;
+  test_adjoint=1;
   abs_or_real=0; # plot the magnitude (abs) of real part of the solution (1 for real)
   xi=1.0/Nguard; # coefficient for penalizing forbidden states
   par_1 = 0.09; # max value of parameters
@@ -624,7 +624,7 @@ function [objf_v grad_objf_adj ] = traceobjgrad(pcof0, kpar, dp, order, verbose)
     utest = uFinal_r' * uFinal_r + uFinal_i' * uFinal_i - diag(ones(1,N));
     printf("xi = %e, objf = %e, Final unitary infidelity = %e, Final | trace | gate fidelity = %e\n", xi, objf_v, norm(utest), final_fidelity);
     printf("Nsteps=%d, kpar = %d, fd-gradient of objective function = %e\n", nsteps, kpar, dfdp_fd)
-    if (test_adjoint) printf("Forward integration of gradient of objective function = %e\n", dfdp);
+    if (test_adjoint) printf("Forward integration of gradient of objective function = %e, ineqpengrad = %e\n", dfdp, ineq_pen_grad(kpar));
     printf("Adjoint gradient components: ");
     for q=1:min(10,D)
       printf(" %e ", grad_objf_adj(q) );
