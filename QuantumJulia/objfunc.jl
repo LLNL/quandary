@@ -195,7 +195,7 @@ function traceobjgrad(pcof0 = [0; 0; 0],  params = parameters(4, 3, 150, 1, 0.09
        gi1 = rfalpha'.*( (dar .+  dar')*ur .+ (dai .- dai')*vi) .+ ifalpha'.*( -(dai .+ dai')*ur .+ (dar .-  dar')*vi)
 
       # Evolve (wr wi)
-       temp, wr, wi = timestep.step(timestepperforward, t, wr, wi, dt*gamma[q], gi0, 0.5*(gr1 + gr0), gi1) 
+       temp, wr, wi = timestep.step(timestepperforward, t0, wr, wi, dt*gamma[q], gi0, 0.5*(gr1 + gr0), gi1) 
 
        salpha1 = tracefidcomplex(wr, -wi, vtargetr, vtargeti, labframe, t, omega)
        forbalpha1 =  xi*penalf(t,T)*screal(ur, vi, wr, wi, Nguard)   
@@ -284,7 +284,7 @@ function traceobjgrad(pcof0 = [0; 0; 0],  params = parameters(4, 3, 150, 1, 0.09
 
 
           # evolve lambdar, lambdai
-          temp, lambdar, lambdai = timestep.step(timestepperbackward, t, lambdar, lambdai, dt*gamma[q], hi0, 0.5*(hr0 + hr1), hi1)
+          temp, lambdar, lambdai = timestep.step(timestepperbackward, t0, lambdar, lambdai, dt*gamma[q], hi0, 0.5*(hr0 + hr1), hi1)
 
           dar = rotmatr(t)*amat
           dai = rotmati(t)*amat
