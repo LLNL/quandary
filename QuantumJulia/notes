@@ -1,0 +1,44 @@
+Packages used:
+
+TODO for speed:
+Make a package :)
+Unit tests?
+Define types more?
+Sparse?
+Have I overused modules?
+IS there a tool to determine if functions and variables are unused?
+
+Write some kind of unit-test?
+
+
+Spline :
+Does gradient have to take vectors?
+do we use collect in the right ways.
+Todo, make order input to spline
+
+Time :
+
+For speed it might be faster to have one function generating both K and S but tis will be way more ugly :(
+
+
+Why does it not work as expected with the timefuncs?
+Fix sub function defs
+In the time stepper some stuff are computed several times, could be bad
+Define types in struct
+inline step- function
+do not compute stuff several times
+Sparse matrices?
+Check how time integrators are implemented in the ODE-package
+
+
+
+Is the K(t) = f(t)*K0 to slow???
+
+Traceobjgrad:
+MAKE A STRUCT FOR PRROBLEM PARAMS!!! Or how should it be done, it all appears very complicated
+Weightf and penaltyf and omega should be an input parameters
+Sumsq is probably wrong
+Remove verbose?
+
+
+
