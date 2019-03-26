@@ -116,13 +116,13 @@ function traceobjgrad(pcof0 = [0; 0; 0],  params = parameters(4, 3, 150, 1, 0.09
   vtargeti = roti*utarget
  
   #real and imagianary part of initial condition
-  ur = U0
+  vr = U0
   vi = zeromat
 
   if verbose
   	usaver = zeros(Ntot,N,nsteps+1)
    	usavei = zeros(Ntot,N,nsteps+1)
-   	usaver[:,:,1] = ur
+   	usaver[:,:,1] = vr
    	usavei[:,:,1] = -vi
   end
     #for computing objfalpha1
@@ -140,18 +140,18 @@ function traceobjgrad(pcof0 = [0; 0; 0],  params = parameters(4, 3, 150, 1, 0.09
   wr = zeromat
   wi = zeromat
 
-  objfalpha1 = 0
+  objf_alpha1 = 0
 
     # Forward time stepping loop
   for step in 1:nsteps
     #for the objective function
-    infidelity0 = weightf(t, T)*(1-tracefidreal(ur, vi, vtargetr, vtargeti, labframe, rotmati(t),rotmatr(t)))
-    forbidden0 = xi*penalf(t, T)*normguard(ur, vi, Nguard)
+    infidelity0 = weightf(t, T)*(1-tracefidreal(vr, vi, vtargetr, vtargeti, labframe, t, omega))
+    forbidden0 = xi*penalf(t, T)*normguard(vr, vi, Nguard)
 
     if retadjoint
-      scomplex0 = tracefidcomplex(ur, -vi, vtargetr, vtargeti, labframe, t, omega)
+      scomplex0 = tracefidcomplex(vr, -vi, vtargetr, vtargeti, labframe, t, omega)
       salpha0 = tracefidcomplex(wr, -wi, vtargetr, vtargeti, labframe, t, omega)
-      forbalpha0 = xi*penalf(t,T)*screal(ur, vi, wr, wi, Nguard)
+      forbalpha0 = xi*penalf(t,T)*screal(vr, vi, wr, wi, Nguard)
 
       rgrad = rfgrad(t)
       igrad = ifgrad(t)
@@ -161,29 +161,29 @@ function traceobjgrad(pcof0 = [0; 0; 0],  params = parameters(4, 3, 150, 1, 0.09
       rfalpha = rgrad[kpar]
       ifalpha = igrad[kpar]
 
-      gr0 = rfalpha.*( (dai .-  dai')*ur .- (dar .+ dar')*vi) .+ ifalpha.*(  (dai .+ dai')*vi .+ (dar .-  dar')*ur) #should it really be ifalpha' and ralpha' here?? Different n anders code ..
-      gi0 = rfalpha.*( (dar .+  dar')*ur .+ (dai .- dai')*vi) .+ ifalpha.*( -(dai .+ dai')*ur .+ (dar .-  dar')*vi)
+      gr0 = rfalpha.*( (dai .-  dai')*vr .- (dar .+ dar')*vi) .+ ifalpha.*(  (dai .+ dai')*vi .+ (dar .-  dar')*vr) #should it really be ifalpha' and ralpha' here?? Different n anders code ..
+      gi0 = rfalpha.*( (dar .+  dar')*vr .+ (dai .- dai')*vi) .+ ifalpha.*( -(dai .+ dai')*vr .+ (dar .-  dar')*vi)
     end
 
     # Stromer-Verlet
     for q in 1:stages
       if retadjoint
        t0=t
-       ur0 = ur
+       vr0 = vr
        vi0 = vi
       end
        
-    	t, ur, vi = timestep.step(timestepperforward, t, ur, vi, dt*gamma[q])
+    	t, vr, vi = timestep.step(timestepperforward, t, vr, vi, dt*gamma[q])
 
-    	infidelity = weightf(t, T)*(1-tracefidreal(ur, vi, vtargetr, vtargeti, labframe,t, omega))
-    	forbidden = xi*penalf(t, T)*normguard(ur, vi, Nguard)
+    	infidelity = weightf(t, T)*(1-tracefidreal(vr, vi, vtargetr, vtargeti, labframe,t, omega))
+    	forbidden = xi*penalf(t, T)*normguard(vr, vi, Nguard)
     	objfv = objfv + gamma[q]*dt*0.5*(infidelity0 + infidelity + forbidden0 + forbidden)
      	infidelity0 = infidelity
     	forbidden0 = forbidden		
 
       if retadjoint	
       # Forcing evolving w
-       scomplex1 = tracefidcomplex(ur, -vi, vtargetr, vtargeti, labframe, t, omega)
+       scomplex1 = tracefidcomplex(vr, -vi, vtargetr, vtargeti, labframe, t, omega)
        dar = rotmatr(t)*amat
        dai = rotmati(t)*amat
        rgrad = rfgrad(t)
@@ -191,15 +191,17 @@ function traceobjgrad(pcof0 = [0; 0; 0],  params = parameters(4, 3, 150, 1, 0.09
        rfalpha = rgrad[kpar] #Will this return the same va
        ifalpha = igrad[kpar]
 
-       gr1 = rfalpha'.*( (dai .-  dai')*ur .- (dar .+ dar')*vi) .+ ifalpha'.*(  (dai .+ dai')*vi .+ (dar .-  dar')*ur) #should it really be ifalpha' and ralpha' here?? Different n anders code ..
-       gi1 = rfalpha'.*( (dar .+  dar')*ur .+ (dai .- dai')*vi) .+ ifalpha'.*( -(dai .+ dai')*ur .+ (dar .-  dar')*vi)
+       gr1 = rfalpha'.*( (dai .-  dai')*vr .- (dar .+ dar')*vi) .+ ifalpha'.*(  (dai .+ dai')*vi .+ (dar .-  dar')*vr) #should it really be ifalpha' and ralpha' here?? Different n anders code ..
+       gi1 = rfalpha'.*( (dar .+  dar')*vr .+ (dai .- dai')*vi) .+ ifalpha'.*( -(dai .+ dai')*vr .+ (dar .-  dar')*vi)
 
       # Evolve (wr wi)
        temp, wr, wi = timestep.step(timestepperforward, t0, wr, wi, dt*gamma[q], gi0, 0.5*(gr1 + gr0), gi1) 
 
        salpha1 = tracefidcomplex(wr, -wi, vtargetr, vtargeti, labframe, t, omega)
-       forbalpha1 =  xi*penalf(t,T)*screal(ur, vi, wr, wi, Nguard)   
-       objalpha1 = objfalpha1 - gamma[q]*dt*0.5*2.0*real(weightf(t0,T)*conj(scomplex0)*salpha0 + weightf(t,T)*conj(scomplex1)*salpha1) + gamma[q]*dt*0.5*2.0*(forbalpha0 + forbalpha1) 
+       forbalpha1 =  xi*penalf(t,T)*screal(vr, vi, wr, wi, Nguard)   
+       objf_alpha1 = objf_alpha1 - gamma[q]*dt*0.5*2.0*real(weightf(t0,T)*conj(scomplex0)*salpha0 +
+          weightf(t,T)*conj(scomplex1)*salpha1) + gamma[q]*dt*0.5*2.0*(forbalpha0 + forbalpha1)
+#       @show(step, scomplex0, salpha0, scomplex1, salpha1, forbalpha0 , forbalpha1, weightf(t0,T), weightf(t,T))
      
        # save previous values for next stage
        scomplex0 = scomplex1
@@ -211,20 +213,21 @@ function traceobjgrad(pcof0 = [0; 0; 0],  params = parameters(4, 3, 150, 1, 0.09
     end # Stromer-Verlet
     
     if verbose
-      usaver[:,:, step + 1] = ur
-      usavei[:,:, step + 1] = vi
+      usaver[:,:, step + 1] = vr
+      usavei[:,:, step + 1] = -vi
     end
 
   end #forward time steppingloop
 
-	ufinalr = rotr'*ur - roti'*vi #should both these matrices me transposed?
-	ufinali = -rotr'*vi - roti'*ur 
+	ufinalr = rotr'*vr - roti'*vi #should both these matrices be transposed?
+	ufinali = -rotr'*vi - roti'*vr 
 	ineqpenalty = evalineqpen(pcof, par0, par1);
 	objfv = objfv .+ ineqpenalty
 
 
   if retadjoint
-    dfdp = objfalpha1
+     println("objf_alpha1 = ", objf_alpha1)
+    dfdp = objf_alpha1
     gradobjfadj = zeros(D,1);
     t = T
     dt = -dt
@@ -238,13 +241,13 @@ function traceobjgrad(pcof0 = [0; 0; 0],  params = parameters(4, 3, 150, 1, 0.09
     
     #Backward time stepping loop
     for step in nsteps-1:-1:0
-      scomplex0 = tracefidcomplex(ur, -vi, vtargetr, vtargeti, labframe, t, omega)
+      scomplex0 = tracefidcomplex(vr, -vi, vtargetr, vtargeti, labframe, t, omega)
       sr0 = real(scomplex0)
       si0 = imag(scomplex0)
 
       hr0 = -weightf(t,T)/N*(sr0*vtargetr + si0*vtargeti)
       hi0 =  weightf(t,T)/N*(sr0*vtargeti - si0*vtargetr)
-      hr0[N+1:N+Nguard,:] = xi*penalf(t,T)*ur[N+1:N+Nguard,:]
+      hr0[N+1:N+Nguard,:] = xi*penalf(t,T)*vr[N+1:N+Nguard,:]
       hi0[N+1:N+Nguard,:] = xi*penalf(t,T)*vi[N+1:N+Nguard,:]
 
       # forcing for evolving W (d psi/d alpha1) in the rotating frame
@@ -254,10 +257,10 @@ function traceobjgrad(pcof0 = [0; 0; 0],  params = parameters(4, 3, 150, 1, 0.09
       igrad = ifgrad(t)
 
       # separate out contributions from rfgrad and ifgrad (which determine the component of the gradient)
-      darr = ( (dai .- dai')*ur .- (dar .+ dar')*vi)
-      dari = ( (dar .+ dar')*ur .+ (dai .- dai')*vi)
-      dair = ( (dai .+ dai')*vi .+ (dar .- dar')*ur)
-      daii = (-(dai .+ dai')*ur .+ (dar .- dar')*vi)
+      darr = ( (dai .- dai')*vr .- (dar .+ dar')*vi)
+      dari = ( (dar .+ dar')*vr .+ (dai .- dai')*vi)
+      dair = ( (dai .+ dai')*vi .+ (dar .- dar')*vr)
+      daii = (-(dai .+ dai')*vr .+ (dar .- dar')*vi)
       tr_adjrf = tracefidreal(darr, dari, lambdar, lambdai)
       tr_adjif = tracefidreal(dair, daii, lambdar, lambdai)
       tr_adj0  = rfgrad(t)* tr_adjrf + ifgrad(t)* tr_adjif
@@ -265,21 +268,21 @@ function traceobjgrad(pcof0 = [0; 0; 0],  params = parameters(4, 3, 150, 1, 0.09
         #loop over stages
         for q in 1:stages
           t0 = t
-          ur0 = ur
+          vr0 = vr
           vi0 = vi
 
-          timestep.step(timestepperforward, t, ur, vi, dt*gamma[q])
+          timestep.step(timestepperforward, t, vr, vi, dt*gamma[q])
 
-          # evolve ur, vi
-          t, ur, vi = timestep.step(timestepperbackward, t, ur, vi, dt*gamma[q])
+          # evolve vr, vi
+          t, vr, vi = timestep.step(timestepperbackward, t, vr, vi, dt*gamma[q])
 
-          scomplex1 = tracefidcomplex(ur, -vi, vtargetr, vtargeti, labframe, t, omega)
+          scomplex1 = tracefidcomplex(vr, -vi, vtargetr, vtargeti, labframe, t, omega)
           sr1 = real(scomplex1)
           si1 = imag(scomplex1)
 
           hr1 = -weightf(t,T)/N*(sr1*vtargetr + si1*vtargeti)
           hi1 =  weightf(t,T)/N*(sr1*vtargeti - si1*vtargetr)
-          hr1[N+1:N+Nguard,:] = xi*penalf(t,T)*ur[N+1:N+Nguard,:]
+          hr1[N+1:N+Nguard,:] = xi*penalf(t,T)*vr[N+1:N+Nguard,:]
           hi1[N+1:N+Nguard,:] = xi*penalf(t,T)*vi[N+1:N+Nguard,:]
 
 
@@ -291,10 +294,10 @@ function traceobjgrad(pcof0 = [0; 0; 0],  params = parameters(4, 3, 150, 1, 0.09
           rgrad = rfgrad(t)
           igrad = ifgrad(t)
           
-          darr = ( (dai .- dai')*ur .- (dar .+ dar')*vi)
-          dari = ( (dar .+ dar')*ur .+ (dai .- dai')*vi)
-          dair = ( (dai .+ dai')*vi .+ (dar .- dar')*ur)
-          daii = (-(dai .+ dai')*ur .+ (dar .- dar')*vi)
+          darr = ( (dai .- dai')*vr .- (dar .+ dar')*vi)
+          dari = ( (dar .+ dar')*vr .+ (dai .- dai')*vi)
+          dair = ( (dai .+ dai')*vi .+ (dar .- dar')*vr)
+          daii = (-(dai .+ dai')*vr .+ (dar .- dar')*vi)
           tr_adjrf = tracefidreal(darr, dari, lambdar, lambdai)
           tr_adjif = tracefidreal(dair, daii, lambdar, lambdai)
           tr_adj1  = rfgrad(t)*tr_adjrf + ifgrad(t)*tr_adjif
@@ -318,12 +321,11 @@ function traceobjgrad(pcof0 = [0; 0; 0],  params = parameters(4, 3, 150, 1, 0.09
     gradobjfadj[k] = gradobjfadj[k] + ineqpengrad[k]
   end
 
-  dfdp = dfdp + ineqpengrad[kpar]
-
-
-
 	if verbose
 		println("Inequality penalty: ", ineqpenalty)
+		dfdp = dfdp + ineqpengrad[kpar]
+		println("Forward integration of gradient of objective function = ", dfdp, " ineqpengrad = ", ineqpengrad[kpar])
+		
 		nplot = 1 + nsteps
 		println(" Column   Vnrm")
 		for q in 1:N
