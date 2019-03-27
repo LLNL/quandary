@@ -70,12 +70,12 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
     	# control functions
   nurbscontrol = 1
   rfunc(t::Float64) = bsplines.bspline2(t,splineparams)
-  ifunc(t::Float64) = 0
+  ifunc(t::Float64) = 0.0
   efunc(t::Float64) = bsplines.bspline2(t,splineparams)
 
   if retadjoint
-    rfgrad(t::Float64) = bsplines.gradbspline2(t,splineparams)
-    ifgrad(t::Float64) = zeros(length(pcof))
+    @inline rfgrad(t::Float64) = bsplines.gradbspline2(t,splineparams)
+    @inline ifgrad(t::Float64) = zeros(length(pcof))
   end
 
   	# parameters for time integrator
@@ -132,8 +132,8 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
   objfv = 0.0
     
     # Time-dependent matrices for Stromer-Verlet 
-  K(t::Float64) = H0 + rfunc(t).*(rotmatr(t)*amat + adag*rotmatr(t)') - ifunc(t).*(rotmati(t)*amat + adag*rotmati(t)')
-  S(t::Float64) = 		  ifunc(t).*(rotmatr(t)*amat - adag*rotmatr(t)') + rfunc(t).*(rotmati(t)*amat - adag*rotmati(t)')
+  @inline K(t::Float64) = H0 + rfunc(t).*(rotmatr(t)*amat + adag*rotmatr(t)') - ifunc(t).*(rotmati(t)*amat + adag*rotmati(t)')
+  @inline S(t::Float64) = 		  ifunc(t).*(rotmatr(t)*amat - adag*rotmatr(t)') + rfunc(t).*(rotmati(t)*amat - adag*rotmati(t)')
 
   timestepperforward = timestep.stormerverlet(K,S,Ident)
 
@@ -312,6 +312,7 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
     end 
  
     ineqpengrad = evalineqgrad(pcof, par0, par1)
+
   
     for k in 1:D
       gradobjfadj[k] = gradobjfadj[k] + ineqpengrad[k]
@@ -445,15 +446,18 @@ function tracefidreal(ur::Array{Float64,2}, vi::Array{Float64,2}, vtargetr::Arra
 end
 
 function tracefidreal(frcr::Array{Float64,2}, frci::Array{Float64,2}, lambdar::Array{Float64,2}, lambdai::Array{Float64,2})
+  fidreal = 0.0
   fidreal = tr(frcr' * lambdar + frci' * lambdai);
 end
 
 function tracefidcomplex(ur::Array{Float64,2}, vi::Array{Float64,2}, vtargetr::Array{Float64,2}, vtargeti::Array{Float64,2}, labframe::Bool, t::Float64, omega::Array{Float64,1})
   N = size(vtargetr,2)
+  fidreal = 0.0
   fid_cmplx = tr(ur' * vtargetr .+ vi' * vtargeti)/N + 1im*tr(ur' * vtargeti .- vi' * vtargetr)/N;
 end
 
 function  penalf(t::Float64, T::Float64)
+  w = 0.0
   constant = 1.0/T
   alpha = 0
  # period
@@ -472,7 +476,7 @@ function normguard(vr::Array{Float64,2}, vi::Array{Float64,2}, Nguard::Int64)
   Ntot =size(vr,1)
   N = size(vr,2)
 
-  f = 0
+  f = 0.0
   if Nguard > 0
     rguard = vr[N+1:N+Nguard,:] 
     iguard = vi[N+1:N+Nguard,:]

@@ -84,9 +84,10 @@ function timesteptest( cfl = 0.1, testcase = 1, order = 2, plotcomp = "err")
 	vsave = -v
 	tsave = t
 	start = time()
+	#nsteps = 1
 	for ii in 1:nsteps
 	   for jj in 1:stages 
-	   	 @inbounds 	 t, u, v =  timestep.step(timestepper,t,u,v,dt*gamma[jj],uforce,vforce)
+	 @inbounds 	 t, u, v =  timestep.step(timestepper,t,u,v,dt*gamma[jj],uforce,vforce)
 	   end
 	   usave = [usave u]
 	   vsave = [vsave -v]

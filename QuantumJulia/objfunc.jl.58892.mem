@@ -1,0 +1,552 @@
+        0 module objfunc
+        - 
+        - include("bsplines.jl")
+        - include("timestep.jl")
+        - 
+        - using LinearAlgebra
+        - using Plots
+        - 
+        - struct parameters
+        - 	N ::Int64		# vector dimension
+        - 	Nguard ::Int64 	# number of extra levels
+        - 	T::Float64		# final time
+        - 	testadjoint::Bool #should this really be in param?
+        - 	maxpar::Float64
+        - 	cfl::Float64
+        - 	utarget
+        - 
+        - 
+        - 	function parameters(N, Nguard,T, testadjoint, maxpar,cfl)	
+        - 	  Ntot = N + Nguard 
+        - 	  Ident = Matrix{Float64}(I, Ntot, Ntot)  
+        -  	  utarget = Ident[1:Ntot,1:N]
+        -       utarget[:,3] = Ident[:,4]
+        -       utarget[:,4] = Ident[:,3]	
+        - 
+        - 	  new(N, Nguard, T, testadjoint, maxpar, cfl, utarget)
+        - 	end
+        - 
+        - 	function parameters(N, Nguard,T, testadjoint, maxpar,cfl, utarget)		
+        - 	  new(N, Nguard, T, testadjoint, maxpar, cfl, utarget)
+        - 	end
+        - 	#multiple dispatch with extra struct for H0 = 0 ?
+        - end
+        - 
+        - function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parameters = parameters(4, 3, 150, 1, 0.09, 0.05), order::Int64 =2, verbose::Bool = false, retadjoint::Bool = true)
+      160 	N = params.N   	
+        0 	Nguard = params.Nguard 	
+        0 	T = params.T
+        - 	testadjoint = params.testadjoint
+        - 	labframe = false
+        0 	utarget = params.utarget
+        0 	cfl = params.cfl
+        -   
+        -  # Parameters used for the gradient
+        -  kpar = 1
+        - 
+        - 	eps = 1e-9
+        0 	xi = 1.0/Nguard  	# coef for penalizing forbidden states
+        - 
+        0 	Ntot = N + Nguard
+        0 	pcof = pcof0
+        0 	D = size(pcof,1)
+        - 
+        - 	# Make sure that each element of pcof is in the prescribed range
+       32 	pcof, par1, par0 = boundcof(pcof, D, params.maxpar, eps)
+        - 
+        - 	
+        0 	if verbose
+     1264     	println("Vector dim Ntot =", Ntot , ", Guard levels Nguard = ", Nguard , ", Param dim D = ", D , ", pcof(1) = ", pcof[1], ", CFL = ", cfl)
+        -   end
+        -  
+        -   # sub-matricesfor the Hamiltonian
+        0   H0 ,amat, adag, omega, domega = rotframematrices(Ntot)
+      304   zeromat = zeros(Ntot,N) 
+        -   
+        -   # patameters for tbsplines
+       32   dtknot = T/(D - 2)
+      800   splineparams = bsplines.splineparams(T, D, D+1, dtknot.*(collect(1:D) .- 1.5), dtknot.*(collect(1:D+1) .- 2), dtknot, pcof)
+        - 
+        -     	# control functions
+        -   nurbscontrol = 1
+   389072   rfunc(t::Float64) = bsplines.bspline2(t,splineparams)
+        0   ifunc(t::Float64) = 0
+     8144   efunc(t::Float64) = bsplines.bspline2(t,splineparams)
+        - 
+        0   if retadjoint
+        0     @inline rfgrad(t::Float64) = bsplines.gradbspline2(t,splineparams)
+        0     @inline ifgrad(t::Float64) = zeros(length(pcof))
+        -   end
+        - 
+        -   	# parameters for time integrator
+      160   pcofmax = maximum(abs.(pcof))
+      592   K1 =  pcofmax.*( amat .+  adag)
+        0   lamb = eigvals(K1)
+       16   maxeig2 = maximum(lamb)
+      272   maxeig1 = maximum(abs.(domega))./(2*pi)
+        - 
+        0   if verbose
+     1232 		 println("max(d_omega) = ", maximum(abs.(domega)), ", maxeig1 = ", maxeig1,", pcofmax =" ,pcofmax ,", maxeig2 = ", maxeig2)
+        -   end
+        - 
+       32   maxeig = 0.5(maxeig1 + maxeig2)
+       32   dt = cfl/maxeig
+       48   nsteps = ceil(Int64,T/dt)
+       32   dt = T/nsteps
+        - 
+      176   gamma, stages = timestep.getgamma(order)
+        - 
+        0   if verbose
+      560    	println("Final time: ", T, ", number of time steps: " , nsteps , ", time step: " , dt )
+        -   end
+        - 
+        -     # the basis for the initial data as a matrix
+        0   Ident = Matrix{Float64}(I, Ntot, Ntot)
+      304   U0 = Ident[1:Ntot,1:N]
+        -   W0 = zeromat
+        - 
+        -   # Split utarget for sormer verlet
+ 18125840   rotmatr(t::Float64) = Diagonal(cos.(domega*t))
+ 25553936   rotmati(t::Float64) = Diagonal(-sin.(domega*t))
+        - 
+      304   rotr = Diagonal(cos.(omega*T))
+      304   roti = Diagonal(sin.(omega*T))
+        -  
+        0   vtargetr = rotr*utarget
+        0   vtargeti = roti*utarget
+        -  
+        -   #real and imagianary part of initial condition
+        -   vr = U0
+        -   vi = zeromat
+        - 
+        0   if verbose
+   222560   	usaver = zeros(Ntot,N,nsteps+1)
+   222560    	usavei = zeros(Ntot,N,nsteps+1)
+        0    	usaver[:,:,1] = vr
+      304    	usavei[:,:,1] = -vi
+        -   end
+        -     #for computing objfalpha1
+        - 
+        0   t = 0.0
+        -   step = 0
+        -   objfv = 0.0
+        -     
+        -     # Time-dependent matrices for Stromer-Verlet 
+ 36950080   @inline K(t::Float64) = H0 + rfunc(t).*(rotmatr(t)*amat + adag*rotmatr(t)') - ifunc(t).*(rotmati(t)*amat + adag*rotmati(t)')
+ 31045696   @inline S(t::Float64) = 		  ifunc(t).*(rotmatr(t)*amat - adag*rotmatr(t)') + rfunc(t).*(rotmati(t)*amat - adag*rotmati(t)')
+        - 
+       32   timestepperforward = timestep.stormerverlet(K,S,Ident)
+        - 
+        -   wr = zeromat
+        -   wi = zeromat
+        - 
+        -   objf_alpha1 = 0.0
+        - 
+        - 
+        -     # Forward time stepping loop
+    15456   for step in 1:nsteps
+        -     #for the objective function
+        0     infidelity0 = weightf(t, T)*(1-tracefidreal(vr, vi, vtargetr, vtargeti, labframe, t, omega))
+        0     forbidden0 = xi*penalf(t, T)*normguard(vr, vi, Nguard)
+        - 
+        0     if retadjoint
+   301568       scomplex0 = tracefidcomplex(vr, -vi, vtargetr, vtargeti, labframe, t, omega)
+   301568       salpha0 = tracefidcomplex(wr, -wi, vtargetr, vtargeti, labframe, t, omega)
+        0       forbalpha0 = xi*penalf(t,T)*screal(vr, vi, wr, wi, Nguard)
+        - 
+   111104       rgrad = rfgrad(t)
+   111104       igrad = ifgrad(t)
+        - 
+        0       dar = rotmatr(t)*amat
+        0       dai = rotmati(t)*amat #adag?
+        0       rfalpha = rgrad[kpar]
+    15872       ifalpha = igrad[kpar]
+        - 
+  2714112       gr0 = rfalpha.*( (dai .-  dai')*vr .- (dar .+ dar')*vi) .+ ifalpha.*(  (dai .+ dai')*vi .+ (dar .-  dar')*vr) #should it really be ifalpha' and ralpha' here?? Different n anders code ..
+  3206144       gi0 = rfalpha.*( (dar .+  dar')*vr .+ (dai .- dai')*vi) .+ ifalpha.*( -(dai .+ dai')*vr .+ (dar .-  dar')*vi)
+        -     end
+        - 
+        -     # Stromer-Verlet
+        0     for q in 1:stages
+        0       if retadjoint
+        -        t0=t
+        -        vr0 = vr
+        -        vi0 = vi
+        -       end
+        -        
+    31744     	@inbounds t, vr, vi = timestep.step(timestepperforward, t, vr, vi, dt*gamma[q])
+        - 
+        0     	infidelity = weightf(t, T)*(1-tracefidreal(vr, vi, vtargetr, vtargeti, labframe,t, omega))
+        0     	forbidden = xi*penalf(t, T)*normguard(vr, vi, Nguard)
+    47616     	objfv = objfv + gamma[q]*dt*0.5*(infidelity0 + infidelity + forbidden0 + forbidden)
+        -      	infidelity0 = infidelity
+        -     	forbidden0 = forbidden		
+        - 
+        0       if retadjoint	
+        -       # Forcing evolving w
+   301568        scomplex1 = tracefidcomplex(vr, -vi, vtargetr, vtargeti, labframe, t, omega)
+        0        dar = rotmatr(t)*amat
+        0        dai = rotmati(t)*amat
+   111104        rgrad = rfgrad(t)
+   111104        igrad = ifgrad(t)
+        0        rfalpha = rgrad[kpar] #Will this return the same va
+    15872        ifalpha = igrad[kpar]
+        - 
+  2729984        gr1 = rfalpha'.*( (dai .-  dai')*vr .- (dar .+ dar')*vi) .+ ifalpha'.*(  (dai .+ dai')*vi .+ (dar .-  dar')*vr) #should it really be ifalpha' and ralpha' here?? Different n anders code ..
+  3222016        gi1 = rfalpha'.*( (dar .+  dar')*vr .+ (dai .- dai')*vi) .+ ifalpha'.*( -(dai .+ dai')*vr .+ (dar .-  dar')*vi)
+        - 
+   619008        @inbounds temp, wr, wi = timestep.step(timestepperforward, t0, wr, wi, dt*gamma[q], gi0, 0.5*(gr1 + gr0), gi1) 
+        - 
+   301568        salpha1 = tracefidcomplex(wr, -wi, vtargetr, vtargeti, labframe, t, omega)
+        0        forbalpha1 =  xi*penalf(t,T)*screal(vr, vi, wr, wi, Nguard)   
+    95232        objf_alpha1 = objf_alpha1 - gamma[q]*dt*0.5*2.0*real(weightf(t0,T)*conj(scomplex0)*salpha0 +
+        -           weightf(t,T)*conj(scomplex1)*salpha1) + gamma[q]*dt*0.5*2.0*(forbalpha0 + forbalpha1)
+        - #       @show(step, scomplex0, salpha0, scomplex1, salpha1, forbalpha0 , forbalpha1, weightf(t0,T), weightf(t,T))
+        -      
+        -        # save previous values for next stage
+        -        scomplex0 = scomplex1
+        -        salpha0 = salpha1
+        -        forbalpha0 = forbalpha1
+        -        gr0 = gr1
+        0        gi0 = gi1
+        -       end  # retadjoint
+        -     end # Stromer-Verlet
+        -     
+        0     if verbose
+   498400       usaver[:,:, step + 1] = vr
+   831680       usavei[:,:, step + 1] = -vi
+        -     end
+        - 
+        -   end #forward time steppingloop
+        - 
+      336 	ufinalr = rotr'*vr - roti'*vi #should both these matrices be transposed?
+      480 	ufinali = -rotr'*vi - roti'*vr 
+        0 	ineqpenalty = evalineqpen(pcof, par0, par1);
+      144 	objfv = objfv .+ ineqpenalty
+        - 
+        - 
+        0   if retadjoint
+      576      println("objf_alpha1 = ", objf_alpha1)
+        -     dfdp = objf_alpha1
+      112     gradobjfadj = zeros(D,1);
+        -     t = T
+       16     dt = -dt
+        -     adiffmax = 0
+        -   
+        -     # terminal conditions for the adjoint state
+        -     lambdar = zeromat
+        -     lambdai = zeromat
+        - 
+        -     timestepperbackward = timestepperforward
+        -     
+        -     #Backward time stepping loop
+    15440     for step in nsteps-1:-1:0
+   301568       scomplex0 = tracefidcomplex(vr, -vi, vtargetr, vtargeti, labframe, t, omega)
+        0       sr0 = real(scomplex0)
+        0       si0 = imag(scomplex0)
+        - 
+  1253888       hr0 = -weightf(t,T)/N*(sr0*vtargetr + si0*vtargeti)
+  1253888       hi0 =  weightf(t,T)/N*(sr0*vtargeti - si0*vtargetr)
+   619008       hr0[N+1:N+Nguard,:] = xi*penalf(t,T)*vr[N+1:N+Nguard,:]
+   619008       hi0[N+1:N+Nguard,:] = xi*penalf(t,T)*vi[N+1:N+Nguard,:]
+        - 
+        -       # forcing for evolving W (d psi/d alpha1) in the rotating frame
+        0       dar = rotmatr(t)*amat
+        0       dai = rotmati(t)*amat
+   111104       rgrad = rfgrad(t)
+   111104       igrad = ifgrad(t)
+        - 
+        -       # separate out contributions from rfgrad and ifgrad (which determine the component of the gradient)
+  1428480       darr = ( (dai .- dai')*vr .- (dar .+ dar')*vi)
+  1428480       dari = ( (dar .+ dar')*vr .+ (dai .- dai')*vi)
+  1428480       dair = ( (dai .+ dai')*vi .+ (dar .- dar')*vr)
+  1920512       daii = (-(dai .+ dai')*vr .+ (dar .- dar')*vi)
+        0       tr_adjrf = tracefidreal(darr, dari, lambdar, lambdai)
+        0       tr_adjif = tracefidreal(dair, daii, lambdar, lambdai)
+   571392       tr_adj0  = rfgrad(t)* tr_adjrf + ifgrad(t)* tr_adjif
+        - 
+        -         #loop over stages
+        0         for q in 1:stages
+        -           t0 = t
+        -           vr0 = vr
+        -           vi0 = vi
+        - 
+        -           # evolve vr, vi
+    31744           @inbounds t, vr, vi = timestep.step(timestepperbackward, t, vr, vi, dt*gamma[q])
+        - 
+   301568           scomplex1 = tracefidcomplex(vr, -vi, vtargetr, vtargeti, labframe, t, omega)
+        0           sr1 = real(scomplex1)
+        0           si1 = imag(scomplex1)
+        - 
+  1253888           hr1 = -weightf(t,T)/N*(sr1*vtargetr + si1*vtargeti)
+  1253888           hi1 =  weightf(t,T)/N*(sr1*vtargeti - si1*vtargetr)
+   619008           hr1[N+1:N+Nguard,:] = xi*penalf(t,T)*vr[N+1:N+Nguard,:]
+   619008           hi1[N+1:N+Nguard,:] = xi*penalf(t,T)*vi[N+1:N+Nguard,:]
+        - 
+        - 
+        -           # evolve lambdar, lambdai
+   619008           @inbounds temp, lambdar, lambdai = timestep.step(timestepperbackward, t0, lambdar, lambdai, dt*gamma[q], hi0, 0.5*(hr0 + hr1), hi1)
+        - 
+        0           dar = rotmatr(t)*amat
+        0           dai = rotmati(t)*amat
+   111104           rgrad = rfgrad(t)
+   111104           igrad = ifgrad(t)
+        -           
+  1428480           darr = ( (dai .- dai')*vr .- (dar .+ dar')*vi)
+  1428480           dari = ( (dar .+ dar')*vr .+ (dai .- dai')*vi)
+  1428480           dair = ( (dai .+ dai')*vi .+ (dar .- dar')*vr)
+  1920512           daii = (-(dai .+ dai')*vr .+ (dar .- dar')*vi)
+        0           tr_adjrf = tracefidreal(darr, dari, lambdar, lambdai)
+        0           tr_adjif = tracefidreal(dair, daii, lambdar, lambdai)
+   571392           tr_adj1  = rfgrad(t)*tr_adjrf + ifgrad(t)*tr_adjif
+        - 
+        -           # accumulate the gradient of the objective functional
+   333312           gradobjfadj = gradobjfadj + gamma[q]*dt*0.5*2.0*(tr_adj0 +  tr_adj1) # dt is negative
+        - 
+        -           # save for next stage
+        -           scomplex0 = scomplex1
+        -           tr_adj0 = tr_adj1
+        -           hr0 = hr1
+    31712           hi0 = hi1
+        -         end 
+        -     end 
+        -  
+        0     ineqpengrad = evalineqgrad(pcof, par0, par1)
+        - 
+        -   
+       64     for k in 1:D
+      288       gradobjfadj[k] = gradobjfadj[k] + ineqpengrad[k]
+        -     end
+        -   end
+        - 
+        0 	if verbose
+      512 		println("Inequality penalty: ", ineqpenalty)
+       32 		dfdp = dfdp + ineqpengrad[kpar]
+      432 		println("Forward integration of gradient of objective function = ", dfdp, " ineqpengrad = ", ineqpengrad[kpar])
+        - 		
+       16 		nplot = 1 + nsteps
+      112 		println(" Column   Vnrm")
+        0 		for q in 1:N
+     9152 	 		Vnrm = usaver[:,q,nplot]' * usaver[:,q,nplot] + usavei[:,q,nplot]' * usavei[:,q,nplot]
+       64 	 		Vnrm = sqrt(Vnrm)
+     1616 	 		println(q, " | ", Vnrm)
+        - 		end
+        - 
+      144 		tplot = range(0, stop = T, length = nplot)
+        - 		c = 3 #what is this?
+        - 		q = 3
+        - 
+   889920 		plt1 = plotunitary(usaver + 1im*usavei,T)
+        - 
+        - 		# Evaluate polynomials at the discrete time levels
+        - 		# Evaluate all polynomials on the midpoint grid
+     8288 		td = collect(range(0, stop = T, length = nsteps +1))
+        - 
+     8208 		f1 = plot(td, rfunc.(collect(td)), lab = "Real", title = "Control function", linewidth = 2)
+     8208 		f2 = plot(td, efunc.(collect(td)), title = "Envelope function", linewidth = 2)
+     8224 		f3 = plot(td, weightf.(td,T), lab = "Gate", title = "Weight functions", linewidth = 2)
+       96 		plot!(td, penalf.(td,T), lab = "Forbidden", linewidth = 2)
+        - 
+        0 		plt2 = plot(f1,f2,f3, layout = (3,1))    
+        - 	end
+        - 
+        -   # perhaps not the most pretty construction
+        0 	if verbose
+        0      if retadjoint
+       48       return plt1, plt2, objfv, gradobjfadj
+        -      end
+        0     return plt1, plt2, objfv   
+        -   end
+        -  
+        0  if retadjoint
+        0   return objfv, gradobjfadj
+        -  end
+        - 
+        0  return objfv
+        - end
+        - 
+        - 
+        - # returns omega
+        - function omegafun(N::Int64)
+      144 	omega = zeros(N)
+        0   	omega[1] = 0
+        0   	omega[2] = 4.106
+        0   	omega[3] = 7.992
+        0   	omega[4] = 11.659
+        0   	if N >= 6
+        0   	  omega[5] = 15.105
+        0   	  omega[6] = 18.332
+        -   	end
+        0   	if N >= 7
+        0   	  omega[7] = 21.339
+        -   	end
+        0   	if N > 7
+        0   	  error("not enough frequencies known")
+        -   	end
+        - 
+        0   	return omega
+        - end
+        - 
+        - # bound pcof to allowed amplitude
+        - function boundcof(pcof::Array{Float64,1}, D::Int64, maxpar::Float64, eps::Float64)
+        - 	par1 = maxpar
+        - 	par0 = -maxpar
+        - 
+        - 	for q in 1:D
+        -   	  if pcof[q] > par1-eps
+        -   	    pcof[q] = par1-eps
+        -   	  end
+        -   	  if pcof[q] < par0+eps
+        -   	    pcof[q] = par0+eps
+        -   	  end
+        -   	end
+        - 	return pcof, par1, par0
+        - end
+        - 
+        - # Matrices for te hamiltonian in rotation frame
+        - function rotframematrices(Ntot::Int64)
+        0     omega = omegafun(Ntot)
+      496 	H0 = zeros(Ntot,Ntot)
+      432   	amat = Array(Bidiagonal(zeros(Ntot),sqrt.(collect(1:Ntot-1)),:U))
+       16   	adag = transpose(amat)
+      144   	domega = zeros(Ntot)
+      384   	domega[1:Ntot-1] = omega[2:Ntot] .- omega[1:Ntot-1]
+        - 
+       48 	return H0, amat, adag, omega, domega
+        - end
+        - 
+        - 
+        - function weightf(t::Float64, T::Float64)
+        - # period
+        -   tp = T/10
+        -   xi = 4/tp # scale factor
+        -   
+        - # center time
+        -   tc = T
+        -   tau = (t - tc)/tp
+        -   mask = (tau >= -0.5) & (tau <= 0.5)
+        -   w = xi*64*mask.*(0.5 + tau).^3 .* (0.5 - tau).^3
+        - end
+        - 
+        - function tracefidreal(ur::Array{Float64,2}, vi::Array{Float64,2}, vtargetr::Array{Float64,2}, vtargeti::Array{Float64,2}, labframe::Bool,t::Float64,omega::Array{Float64,1})
+        0   N = size(vtargetr,2)
+        - 
+        0   if labframe
+        0   	rotmatc = Diagonal(cos.(omega*t))
+        0   	rotmats = Diagonal(sin.(omega*t))
+        0     ua = rotmatc * ur + rotmats * vi # ur = + Re(u), vi = - Im(u)
+        0     va = rotmats * ur - rotmatc * vi
+        -   else
+        -     ua = ur
+   603136     va = -vi
+        -   end
+        -  
+  2476032   fidelity = (tr(ua' * vtargetr + va' * vtargeti)/N)^2 + (tr(ua' * vtargeti - va' * vtargetr)/N)^2
+        - 
+        - end
+        - 
+        - function tracefidreal(frcr::Array{Float64,2}, frci::Array{Float64,2}, lambdar::Array{Float64,2}, lambdai::Array{Float64,2})
+  2476032   fidreal = tr(frcr' * lambdar + frci' * lambdai);
+        - end
+        - 
+        - function tracefidcomplex(ur::Array{Float64,2}, vi::Array{Float64,2}, vtargetr::Array{Float64,2}, vtargeti::Array{Float64,2}, labframe::Bool, t::Float64, omega::Array{Float64,1})
+        0   N = size(vtargetr,2)
+  7428096   fid_cmplx = tr(ur' * vtargetr .+ vi' * vtargeti)/N + 1im*tr(ur' * vtargeti .- vi' * vtargetr)/N;
+        - end
+        - 
+        - function  penalf(t::Float64, T::Float64)
+     8128   constant = 1.0/T
+        -   alpha = 0
+        -  # period
+        0   tp = T/10
+        0   xi = 4/tp # scale factor for wavelet (integral over half is tp/4)
+        -   # center time
+        -   tc = T
+        0   tau = (t - tc)/tp
+        0   mask = (tau >= -0.5) & (tau <= 0.5)
+        - 
+        - # weigh the constant and wavelet parts such that max w = xi
+        0   w = alpha * constant + (1-alpha)*xi* 64*mask.*(0.5 + tau).^3 .* (0.5 - tau).^3;
+        - end
+        - 
+        - function normguard(vr::Array{Float64,2}, vi::Array{Float64,2}, Nguard::Int64)
+        0   Ntot =size(vr,1)
+        0   N = size(vr,2)
+        - 
+        -   f = 0
+        0   if Nguard > 0
+   349184     rguard = vr[N+1:N+Nguard,:] 
+   349184     iguard = vi[N+1:N+Nguard,:]
+  2031616     f = sum(sum(rguard.^2, dims = 2)) + sum(sum(iguard.^2, dims = 2)) # Is this really a good substitute for sumsq? is it even right?
+        -   end
+        - 
+        - end
+        - 
+        - function evalineqpen(pcof::Array{Float64,1}, par_0::Float64, par_1::Float64)
+        0   D = size(pcof,1)
+        0   N = size(pcof,2)
+        -   scalef = 0.1
+       96   penalty = zeros(1,N);
+        0   dp2 = par_1 - par_0
+        -   
+        0   for k in 1:D
+     3072     penalty[1,:] = penalty[1,:] .- ( log.((pcof[k,:] .- par_0)/dp2) .+ log.((par_1 .- pcof[k,:])/dp2))
+        -   end
+      192   penalty = scalef .* (penalty/D .- 2*log(2))
+        - end
+        - 
+        - function plotunitary(us, T)
+    16064   nsteps = length(us[1,1,:])  
+      192   Ntot = length(us[:,1,1])
+      144   N =  length(us[1,:,1])
+        - 
+        0   if Ntot != N
+      768     println("INFO plotunitary: Ntot= ", Ntot, " and N = ", N ," are not equal")
+        -   end
+        0   t = range(0, stop = T, length = nsteps)
+        - 
+        - # one figure for the response of each basis vector
+      112   plotarray = Array{Plots.Plot}(undef, N) #empty array for separate plots
+        - 
+        0   for ii in 1:N
+     1280   		titlestr = string("Response to initial data #", ii)
+      256         h = plot(title = titlestr, size = (1000, 1000))
+        0   		for jj in 1:Ntot
+     8064   			labstr = string("State ", jj)
+   679168 			plot!(t, abs.(us[jj,ii,:]), lab = labstr, linewidth = 4, xlabel = "Time")
+        - 		end
+        0 		plotarray[ii] = h
+        -   end
+        0   plt = plot(plotarray..., layout = N)
+        0   return plt
+        - end
+        - 
+        - function evalineqgrad(pcof::Array{Float64,1}, par0::Float64, par1::Float64)
+        0   D = size(pcof,1)
+        0   N = size(pcof,2)
+        -   scalef = 0.1
+      112   pengrad = zeros(D,N)
+        0   for k in 1:D
+     1920     pengrad[k,:] = scalef*(1.0./(par1 .- pcof[k,:]) .- 1.0./(pcof[k,:] .- par0))/D
+        -   end
+        0  return pengrad
+        - end
+        - 
+        - function screal(vr::Array{Float64,2}, vi::Array{Float64,2}, wr::Array{Float64,2}, wi::Array{Float64,2}, Nguard::Int64)
+        0   Ntot =size(vr,1)
+        0   N = size(vr,2)
+        - 
+        -   f=0;
+        0   if  Nguard > 0 # should give the last guard much higher weight!
+   349184     vrguard = vr[N+1:N+Nguard,:]
+   349184     viguard = vi[N+1:N+Nguard,:]
+   349184     wrguard = wr[N+1:N+Nguard,:]
+   349184     wiguard = wi[N+1:N+Nguard,:]   
+   634880     f = tr(vrguard*wrguard') +  tr(viguard*wiguard')
+        -   end
+        - 
+        - end
+        - 
+        - 
+        - end
+        - 
