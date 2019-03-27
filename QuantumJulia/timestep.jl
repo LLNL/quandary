@@ -37,14 +37,21 @@ end
 	K = stepper.K
 	In = stepper.In
 
-    rhs = (K(t)*u .+  S(t)*v .+ vforce0)
-	l1 = (In .-  0.5*h.*S(t))\rhs
-	kappa1 = S(t + 0.5*h)*u .- K(t + 0.5*h)*(v .+ 0.5*h.*l1) .+ uforce05
-	rhs = S(t .+ 0.5*h)*(u .+ 0.5*h*kappa1) .- K(t .+ 0.5*h)*(v .+ 0.5*h.*l1) .+ uforce05
-	kappa2 = (In .- (0.5*h).*S(t + 0.5*h))\rhs
+	Kt  = K(t)
+	St  = S(t)
+
+	Kt05h = K(t +0.5*h)
+	St05h = S(t + 0.5*h)
+
+    rhs = (Kt*u .+  St*v .+ vforce0)
+	l1 = (In .-  0.5*h.*St)\rhs
+	kappa1 = St05h*u .- Kt05h*(v .+ 0.5*h.*l1) .+ uforce05
+	v05 = (v .+ 0.5*h.*l1)
+	rhs = St05h*(u .+ 0.5*h*kappa1) .- Kt05h*v05 .+ uforce05
+	kappa2 = (In .- (0.5*h).*St05h)\rhs
 
 	u = u .+ (0.5*h).*(kappa1 .+ kappa2)
-	l2 = K(t +h)*u .+ S(t + h)*(v .+ 0.5*h.*l1) .+ vforce1
+	l2 = K(t +h)*u .+ S(t + h)*v05 .+ vforce1
 
 	v = v .+ 0.5*h.*(l1 .+ l2)
 	t = t + h
