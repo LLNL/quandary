@@ -1,20 +1,25 @@
 module bsplines
 
 struct splineparams #todo specify tyes?
-	T
-    Nspline
-    Nknots
-    tcenter
-    tknot
-    dtknot
-    pcof
+	T::Float64
+    Nspline::Int64
+    Nknots::Int64
+    tcenter::Array{Float64,1}
+    tknot::Array{Float64,1}
+    dtknot::Float64
+    pcof::Array{Float64,1}
 end	
 
 #TODO: Add a constructor here??
 
 
 # bspline2: Evaluate quadratic bspline function
-function bspline2(t,param::splineparams)
+
+function bspline2(t::Float64,param::splineparams)
+	bspline2([t],param)
+end
+
+function bspline2(t::Array{Float64,1},param::splineparams)
 	f = zeros(length(t))
 
 	dtknot = param.dtknot

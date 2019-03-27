@@ -8,7 +8,7 @@ function  bsplinetest(Nspline::Int64)
 		error("Input has to be larger than 3") # TODO: Should be possible to use something like "assert" instead of if
 	end
 	
-	T = 120 #Final time
+	T = 120.0#Final time
 	dt  = 1/20
 	Nsteps = ceil(Int64,T/dt)
 	dt = T/Nsteps

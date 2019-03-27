@@ -9,10 +9,10 @@ using Plots
 struct parameters
 	N ::Int64		# vector dimension
 	Nguard ::Int64 	# number of extra levels
-	T 		# final time
-	testadjoint #should this really be in param?
-	maxpar
-	cfl
+	T::Float64		# final time
+	testadjoint::Bool #should this really be in param?
+	maxpar::Float64
+	cfl::Float64
 	utarget
 
 
@@ -32,7 +32,7 @@ struct parameters
 	#multiple dispatch with extra struct for H0 = 0 ?
 end
 
-function traceobjgrad(pcof0 = [0; 0; 0],  params = parameters(4, 3, 150, 1, 0.09, 0.05), order =2, verbose = false, retadjoint = true)
+function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parameters = parameters(4, 3, 150, 1, 0.09, 0.05), order::Int64 =2, verbose::Bool = false, retadjoint::Bool = true)
 	N = params.N   	
 	Nguard = params.Nguard 	
 	T = params.T
@@ -310,13 +310,12 @@ function traceobjgrad(pcof0 = [0; 0; 0],  params = parameters(4, 3, 150, 1, 0.09
           hi0 = hi1
         end 
     end 
-  end
-
-  ineqpengrad = evalineqgrad(pcof, par0, par1)
-
-
-  for k in 1:D
-    gradobjfadj[k] = gradobjfadj[k] + ineqpengrad[k]
+ 
+    ineqpengrad = evalineqgrad(pcof, par0, par1)
+  
+    for k in 1:D
+      gradobjfadj[k] = gradobjfadj[k] + ineqpengrad[k]
+    end
   end
 
 	if verbose
