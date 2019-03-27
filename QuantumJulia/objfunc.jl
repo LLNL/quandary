@@ -366,7 +366,7 @@ end
 
 
 # returns omega
-function omegafun(N)
+function omegafun(N::Int64)
 	omega = zeros(N)
   	omega[1] = 0
   	omega[2] = 4.106
@@ -387,7 +387,7 @@ function omegafun(N)
 end
 
 # bound pcof to allowed amplitude
-function boundcof(pcof, D, maxpar, eps)
+function boundcof(pcof::Array{Float64,1}, D::Int64, maxpar::Float64, eps::Float64)
 	par1 = maxpar
 	par0 = -maxpar
 
@@ -403,7 +403,7 @@ function boundcof(pcof, D, maxpar, eps)
 end
 
 # Matrices for te hamiltonian in rotation frame
-function rotframematrices(Ntot)
+function rotframematrices(Ntot::Int64)
     omega = omegafun(Ntot)
 	H0 = zeros(Ntot,Ntot)
   	amat = Array(Bidiagonal(zeros(Ntot),sqrt.(collect(1:Ntot-1)),:U))
@@ -415,7 +415,7 @@ function rotframematrices(Ntot)
 end
 
 
-function weightf(t, T)
+function weightf(t::Float64, T::Float64)
 # period
   tp = T/10
   xi = 4/tp # scale factor
@@ -427,7 +427,7 @@ function weightf(t, T)
   w = xi*64*mask.*(0.5 + tau).^3 .* (0.5 - tau).^3
 end
 
-function tracefidreal(ur, vi, vtargetr, vtargeti, labframe,t,omega)
+function tracefidreal(ur::Array{Float64,2}, vi::Array{Float64,2}, vtargetr::Array{Float64,2}, vtargeti::Array{Float64,2}, labframe::Bool,t::Float64,omega::Array{Float64,1})
   N = size(vtargetr,2)
 
   if labframe
@@ -444,16 +444,16 @@ function tracefidreal(ur, vi, vtargetr, vtargeti, labframe,t,omega)
 
 end
 
-function tracefidreal(frcr, frci, lambdar, lambdai)
+function tracefidreal(frcr::Array{Float64,2}, frci::Array{Float64,2}, lambdar::Array{Float64,2}, lambdai::Array{Float64,2})
   fidreal = tr(frcr' * lambdar + frci' * lambdai);
 end
 
-function tracefidcomplex(ur, vi, vtargetr, vtargeti, labframe, t, omega)
+function tracefidcomplex(ur::Array{Float64,2}, vi::Array{Float64,2}, vtargetr::Array{Float64,2}, vtargeti::Array{Float64,2}, labframe::Bool, t::Float64, omega::Array{Float64,1})
   N = size(vtargetr,2)
   fid_cmplx = tr(ur' * vtargetr .+ vi' * vtargeti)/N + 1im*tr(ur' * vtargeti .- vi' * vtargetr)/N;
 end
 
-function  penalf(t, T)
+function  penalf(t::Float64, T::Float64)
   constant = 1.0/T
   alpha = 0
  # period
@@ -468,7 +468,7 @@ function  penalf(t, T)
   w = alpha * constant + (1-alpha)*xi* 64*mask.*(0.5 + tau).^3 .* (0.5 - tau).^3;
 end
 
-function normguard(vr, vi, Nguard)
+function normguard(vr::Array{Float64,2}, vi::Array{Float64,2}, Nguard::Int64)
   Ntot =size(vr,1)
   N = size(vr,2)
 
@@ -481,7 +481,7 @@ function normguard(vr, vi, Nguard)
 
 end
 
-function evalineqpen(pcof, par_0, par_1)
+function evalineqpen(pcof::Array{Float64,1}, par_0::Float64, par_1::Float64)
   D = size(pcof,1)
   N = size(pcof,2)
   scalef = 0.1
@@ -520,7 +520,7 @@ function plotunitary(us, T)
   return plt
 end
 
-function evalineqgrad(pcof, par0, par1)
+function evalineqgrad(pcof::Array{Float64,1}, par0::Float64, par1::Float64)
   D = size(pcof,1)
   N = size(pcof,2)
   scalef = 0.1
@@ -531,7 +531,7 @@ function evalineqgrad(pcof, par0, par1)
  return pengrad
 end
 
-function screal(vr, vi, wr, wi, Nguard)
+function screal(vr::Array{Float64,2}, vi::Array{Float64,2}, wr::Array{Float64,2}, wi::Array{Float64,2}, Nguard::Int64)
   Ntot =size(vr,1)
   N = size(vr,2)
 

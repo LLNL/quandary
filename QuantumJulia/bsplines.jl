@@ -46,7 +46,7 @@ function bspline2(t::Array{Float64,1},param::splineparams)
 end
 
 # gradbspline2: Evaluate gradient with respect to pcof of quadratic bspline
-function gradbspline2(t,param::splineparams)
+function gradbspline2(t::Float64,param::splineparams)
 	g = zeros(param.Nspline)
 	dtknot = param.dtknot
 	tknot = param.tknot
