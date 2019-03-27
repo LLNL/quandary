@@ -69,9 +69,6 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
 
     	# control functions
   nurbscontrol = 1
-  rfunc(t::Float64) = bsplines.bspline2(t,splineparams)
-  ifunc(t::Float64) = 0.0
-  efunc(t::Float64) = bsplines.bspline2(t,splineparams)
 
   if retadjoint
     @inline rfgrad(t::Float64) = bsplines.gradbspline2(t,splineparams)
@@ -105,10 +102,6 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
   U0 = Ident[1:Ntot,1:N]
   W0 = zeromat
 
-  # Split utarget for sormer verlet
-  rotmatr(t::Float64) = Diagonal(cos.(domega*t))
-  rotmati(t::Float64) = Diagonal(-sin.(domega*t))
-
   rotr = Diagonal(cos.(omega*T))
   roti = Diagonal(sin.(omega*T))
  
@@ -130,12 +123,10 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
   t = 0.0
   step = 0
   objfv = 0.0
-    
-    # Time-dependent matrices for Stromer-Verlet 
-  @inline K(t::Float64) = H0 + rfunc(t).*(rotmatr(t)*amat + adag*rotmatr(t)') - ifunc(t).*(rotmati(t)*amat + adag*rotmati(t)')
-  @inline S(t::Float64) = 		  ifunc(t).*(rotmatr(t)*amat - adag*rotmatr(t)') + rfunc(t).*(rotmati(t)*amat - adag*rotmati(t)')
 
-  timestepperforward = timestep.stormerverlet(K,S,Ident)
+  Kstep(t::Float64) = K(t,amat,adag,domega,splineparams,H0)
+  Sstep(t::Float64) = S(t,amat,adag,domega,splineparams)   
+  timestepperforward = timestep.stormerverlet(Kstep,Sstep,Ident)
 
   wr = zeromat
   wi = zeromat
@@ -157,8 +148,8 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
       rgrad = rfgrad(t)
       igrad = ifgrad(t)
 
-      dar = rotmatr(t)*amat
-      dai = rotmati(t)*amat #adag?
+      dar = rotmatr(t,domega)*amat
+      dai = rotmati(t,domega)*amat #adag?
       rfalpha = rgrad[kpar]
       ifalpha = igrad[kpar]
 
@@ -185,8 +176,8 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
       if retadjoint	
       # Forcing evolving w
        scomplex1 = tracefidcomplex(vr, -vi, vtargetr, vtargeti, labframe, t, omega)
-       dar = rotmatr(t)*amat
-       dai = rotmati(t)*amat
+       dar = rotmatr(t,domega)*amat
+       dai = rotmati(t,domega)*amat
        rgrad = rfgrad(t)
        igrad = ifgrad(t)
        rfalpha = rgrad[kpar] #Will this return the same va
@@ -251,8 +242,8 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
       hi0[N+1:N+Nguard,:] = xi*penalf(t,T)*vi[N+1:N+Nguard,:]
 
       # forcing for evolving W (d psi/d alpha1) in the rotating frame
-      dar = rotmatr(t)*amat
-      dai = rotmati(t)*amat
+      dar = rotmatr(t,domega)*amat
+      dai = rotmati(t,domega)*amat
       rgrad = rfgrad(t)
       igrad = ifgrad(t)
 
@@ -287,8 +278,8 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
           # evolve lambdar, lambdai
           @inbounds temp, lambdar, lambdai = timestep.step(timestepperbackward, t0, lambdar, lambdai, dt*gamma[q], hi0, 0.5*(hr0 + hr1), hi1)
 
-          dar = rotmatr(t)*amat
-          dai = rotmati(t)*amat
+          dar = rotmatr(t,domega)*amat
+          dai = rotmati(t,domega)*amat
           rgrad = rfgrad(t)
           igrad = ifgrad(t)
           
@@ -342,8 +333,8 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
 		# Evaluate all polynomials on the midpoint grid
 		td = collect(range(0, stop = T, length = nsteps +1))
 
-		f1 = plot(td, rfunc.(collect(td)), lab = "Real", title = "Control function", linewidth = 2)
-		f2 = plot(td, efunc.(collect(td)), title = "Envelope function", linewidth = 2)
+		f1 = plot(td, rfunc.(collect(td,splineparams)), lab = "Real", title = "Control function", linewidth = 2)
+		f2 = plot(td, efunc.(collect(td,splineparams)), title = "Envelope function", linewidth = 2)
 		f3 = plot(td, weightf.(td,T), lab = "Gate", title = "Weight functions", linewidth = 2)
 		plot!(td, penalf.(td,T), lab = "Forbidden", linewidth = 2)
 
@@ -408,7 +399,7 @@ function rotframematrices(Ntot::Int64)
     omega = omegafun(Ntot)
 	H0 = zeros(Ntot,Ntot)
   	amat = Array(Bidiagonal(zeros(Ntot),sqrt.(collect(1:Ntot-1)),:U))
-  	adag = transpose(amat)
+  	adag = Array(transpose(amat))
   	domega = zeros(Ntot)
   	domega[1:Ntot-1] = omega[2:Ntot] .- omega[1:Ntot-1]
 
@@ -548,6 +539,46 @@ function screal(vr::Array{Float64,2}, vi::Array{Float64,2}, wr::Array{Float64,2}
     f = tr(vrguard*wrguard') +  tr(viguard*wiguard')
   end
 
+end
+
+@inline function K(t::Float64,amat::Array{Float64,2},adag::Array{Float64,2},domega::Array{Float64,1},splineparams::bsplines.splineparams,H0::Array{Float64,2})
+ K = zeros(size(amat)) # To preallocate K, is this nessesary?
+ rr = rotmatr(t,domega)
+ ri = rotmati(t,domega)
+ K = H0 + rfunc(t,splineparams).*(rr*amat + adag*rr') - ifunc(t,splineparams).*(ri*amat + adag*ri)
+end
+
+@inline function S(t::Float64,amat::Array{Float64,2},adag::Array{Float64,2},domega::Array{Float64,1},splineparams::bsplines.splineparams)
+  S  = zeros(size(amat))
+  rr = rotmatr(t,domega)
+  ri = rotmati(t,domega)
+  S  = ifunc(t,splineparams).*(rr*amat - adag*rr') + rfunc(t,splineparams).*(ri*amat - adag*ri')
+end
+
+@inline function rfunc(t::Float64,splineparams::bsplines.splineparams)
+  ret = 0.0
+  ret =  bsplines.bspline2(t,splineparams)
+end
+
+@inline function efunc(t::Float64,splineparams::bsplines.splineparams)
+  ret = 0.0
+  ret = bsplines.bspline2(t,splineparams::bsplines.splineparams)
+end
+
+@inline function ifunc(t::Float64,splineparams::bsplines.splineparams)
+  ret = 0.0
+end
+
+@inline function rotmatr(t::Float64,domega::Array{Float64,1})
+  N = length(domega)
+  rotmatr =zeros(N,N)
+  rotmatr = Diagonal(cos.(domega*t))
+end
+
+@inline function rotmati(t::Float64,domega::Array{Float64,1})
+  N = length(domega)
+  rotmatr =zeros(N,N)
+  rotmatr = Diagonal(-sin.(domega*t))
 end
 
 

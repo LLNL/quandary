@@ -40,6 +40,7 @@ function  bsplinetest(Nspline::Int64)
 
 
 	param = bsplines.splineparams(T, Nspline,Nknots,tcenter,tknot,dtknot,pcof)
+	@show(typeof(param))
 	
 	td = collect(range(0,length = Nsteps, stop = T )) #TODO: Should we colect this or not?
 
