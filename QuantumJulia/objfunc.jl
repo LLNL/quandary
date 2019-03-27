@@ -69,13 +69,13 @@ function traceobjgrad(pcof0 = [0; 0; 0],  params = parameters(4, 3, 150, 1, 0.09
 
     	# control functions
   nurbscontrol = 1
-  rfunc(t) = bsplines.bspline2(t,splineparams)
-  ifunc(t) = 0
-  efunc(t) = bsplines.bspline2(t,splineparams)
+  rfunc(t::Float64) = bsplines.bspline2(t,splineparams)
+  ifunc(t::Float64) = 0
+  efunc(t::Float64) = bsplines.bspline2(t,splineparams)
 
   if retadjoint
-    rfgrad(t) = bsplines.gradbspline2(t,splineparams)
-    ifgrad(t) = zeros(length(pcof))
+    rfgrad(t::Float64) = bsplines.gradbspline2(t,splineparams)
+    ifgrad(t::Float64) = zeros(length(pcof))
   end
 
   	# parameters for time integrator
@@ -106,8 +106,8 @@ function traceobjgrad(pcof0 = [0; 0; 0],  params = parameters(4, 3, 150, 1, 0.09
   W0 = zeromat
 
   # Split utarget for sormer verlet
-  rotmatr(t) = Diagonal(cos.(domega*t))
-  rotmati(t) = Diagonal(-sin.(domega*t))
+  rotmatr(t::Float64) = Diagonal(cos.(domega*t))
+  rotmati(t::Float64) = Diagonal(-sin.(domega*t))
 
   rotr = Diagonal(cos.(omega*T))
   roti = Diagonal(sin.(omega*T))
@@ -132,8 +132,8 @@ function traceobjgrad(pcof0 = [0; 0; 0],  params = parameters(4, 3, 150, 1, 0.09
   objfv = 0.0
     
     # Time-dependent matrices for Stromer-Verlet 
-  K(t) = H0 + rfunc(t).*(rotmatr(t)*amat + adag*rotmatr(t)') - ifunc(t).*(rotmati(t)*amat + adag*rotmati(t)')
-  S(t) = 		  ifunc(t).*(rotmatr(t)*amat - adag*rotmatr(t)') + rfunc(t).*(rotmati(t)*amat - adag*rotmati(t)')
+  K(t::Float64) = H0 + rfunc(t).*(rotmatr(t)*amat + adag*rotmatr(t)') - ifunc(t).*(rotmati(t)*amat + adag*rotmati(t)')
+  S(t::Float64) = 		  ifunc(t).*(rotmatr(t)*amat - adag*rotmatr(t)') + rfunc(t).*(rotmati(t)*amat - adag*rotmati(t)')
 
   timestepperforward = timestep.stormerverlet(K,S,Ident)
 
@@ -174,7 +174,7 @@ function traceobjgrad(pcof0 = [0; 0; 0],  params = parameters(4, 3, 150, 1, 0.09
        vi0 = vi
       end
        
-    	t, vr, vi = timestep.step(timestepperforward, t, vr, vi, dt*gamma[q])
+    	@inbounds t, vr, vi = timestep.step(timestepperforward, t, vr, vi, dt*gamma[q])
 
     	infidelity = weightf(t, T)*(1-tracefidreal(vr, vi, vtargetr, vtargeti, labframe,t, omega))
     	forbidden = xi*penalf(t, T)*normguard(vr, vi, Nguard)
@@ -195,8 +195,7 @@ function traceobjgrad(pcof0 = [0; 0; 0],  params = parameters(4, 3, 150, 1, 0.09
        gr1 = rfalpha'.*( (dai .-  dai')*vr .- (dar .+ dar')*vi) .+ ifalpha'.*(  (dai .+ dai')*vi .+ (dar .-  dar')*vr) #should it really be ifalpha' and ralpha' here?? Different n anders code ..
        gi1 = rfalpha'.*( (dar .+  dar')*vr .+ (dai .- dai')*vi) .+ ifalpha'.*( -(dai .+ dai')*vr .+ (dar .-  dar')*vi)
 
-      # Evolve (wr wi)
-       temp, wr, wi = timestep.step(timestepperforward, t0, wr, wi, dt*gamma[q], gi0, 0.5*(gr1 + gr0), gi1) 
+       @inbounds temp, wr, wi = timestep.step(timestepperforward, t0, wr, wi, dt*gamma[q], gi0, 0.5*(gr1 + gr0), gi1) 
 
        salpha1 = tracefidcomplex(wr, -wi, vtargetr, vtargeti, labframe, t, omega)
        forbalpha1 =  xi*penalf(t,T)*screal(vr, vi, wr, wi, Nguard)   
@@ -272,10 +271,8 @@ function traceobjgrad(pcof0 = [0; 0; 0],  params = parameters(4, 3, 150, 1, 0.09
           vr0 = vr
           vi0 = vi
 
-          timestep.step(timestepperforward, t, vr, vi, dt*gamma[q])
-
           # evolve vr, vi
-          t, vr, vi = timestep.step(timestepperbackward, t, vr, vi, dt*gamma[q])
+          @inbounds t, vr, vi = timestep.step(timestepperbackward, t, vr, vi, dt*gamma[q])
 
           scomplex1 = tracefidcomplex(vr, -vi, vtargetr, vtargeti, labframe, t, omega)
           sr1 = real(scomplex1)
@@ -288,7 +285,7 @@ function traceobjgrad(pcof0 = [0; 0; 0],  params = parameters(4, 3, 150, 1, 0.09
 
 
           # evolve lambdar, lambdai
-          temp, lambdar, lambdai = timestep.step(timestepperbackward, t0, lambdar, lambdai, dt*gamma[q], hi0, 0.5*(hr0 + hr1), hi1)
+          @inbounds temp, lambdar, lambdai = timestep.step(timestepperbackward, t0, lambdar, lambdai, dt*gamma[q], hi0, 0.5*(hr0 + hr1), hi1)
 
           dar = rotmatr(t)*amat
           dai = rotmati(t)*amat
@@ -345,8 +342,8 @@ function traceobjgrad(pcof0 = [0; 0; 0],  params = parameters(4, 3, 150, 1, 0.09
 		# Evaluate all polynomials on the midpoint grid
 		td = collect(range(0, stop = T, length = nsteps +1))
 
-		f1 = plot(td, rfunc(td), lab = "Real", title = "Control function", linewidth = 2)
-		f2 = plot(td, efunc(td), title = "Envelope function", linewidth = 2)
+		f1 = plot(td, rfunc.(collect(td)), lab = "Real", title = "Control function", linewidth = 2)
+		f2 = plot(td, efunc.(collect(td)), title = "Envelope function", linewidth = 2)
 		f3 = plot(td, weightf.(td,T), lab = "Gate", title = "Weight functions", linewidth = 2)
 		plot!(td, penalf.(td,T), lab = "Forbidden", linewidth = 2)
 

@@ -34,45 +34,45 @@ function timesteptest( cfl = 0.1, testcase = 1, order = 2, plotcomp = "err")
 	# timefunctions and forcing	
 	if testcase == 1
 		timefunc1(t) = 0.5*(sin(0.5*omega*(t)))^2;
-		uforce1(t) = [0.0; 0.0]
-		vforce1(t) = [0.0; 0.0]
+		uforce1(t::Float64) = [0.0; 0.0]
+		vforce1(t::Float64) = [0.0; 0.0]
 
 		timefunc =timefunc1
 		uforce = uforce1
 		vforce = vforce1
 
 	elseif testcase == 0
-		timefunc0(t) = 0.25*(1-sin(omega*t))
-		uforce0(t) = [0.0; 0.0]
-		vforce0(t) = [0.0; 0.0]
+		timefunc0(t::Float64) = 0.25*(1-sin(omega*t))
+		uforce0(t::Float64) = [0.0; 0.0]
+		vforce0(t::Float64) = [0.0; 0.0]
 
 		timefunc =timefunc0
 		uforce = uforce0
 		vforce = vforce0
 	elseif testcase == 2
-		timefunc2(t) = 4/T^2 *t*(T-t)
-		phi12(t) = 0.25*(t - sin(omega*t)/omega)
-		phidot2(t) = 0.5*(sin(0.5*omega*(t)))^2
-		uforce2(t) = [(timefunc2(t) - phidot2(t))*sin(phi12(t)); 0.0]
-		vforce2(t) = [0.0; -(timefunc2(t) - phidot2(t)) * cos(phi12(t))]
+		timefunc2(t::Float64) = 4/T^2 *t*(T-t)
+		phi12(t::Float64) = 0.25*(t - sin(omega*t)/omega)
+		phidot2(t::Float64) = 0.5*(sin(0.5*omega*(t)))^2
+		uforce2(t::Float64) = [(timefunc2(t) - phidot2(t))*sin(phi12(t)); 0.0]
+		vforce2(t::Float64) = [0.0; -(timefunc2(t) - phidot2(t)) * cos(phi12(t))]
 
 		timefunc =timefunc2
 		uforce = uforce2
 		vforce = vforce2
 	elseif testcase == 3
-		timefunc3(t) =  4/T^2 *t*(T-t)
-		phi13(t) = 0.25*(t - sin(omega*t)/omega)
-		phidot3(t) = 0.5*(sin(0.5*omega*(t)))^2
-		uforce3(t) = [-phidot3(t)*sin(phi13(t)); timefunc(t)*cos(phi13(t))]
-	 	vforce3(t) = [-timefunc(t)*sin(phi13(t)); phidot3(t)*cos(phi13(t))]
+		timefunc3(t::Float64) =  4/T^2 *t*(T-t)
+		phi13(t::Float64) = 0.25*(t - sin(omega*t)/omega)
+		phidot3(t::Float64) = 0.5*(sin(0.5*omega*(t)))^2
+		uforce3(t::Float64) = [-phidot3(t)*sin(phi13(t)); timefunc(t)*cos(phi13(t))]
+	 	vforce3(t::Float64) = [-timefunc(t)*sin(phi13(t)); phidot3(t)*cos(phi13(t))]
 
 	 	timefunc =timefunc3
 		uforce = uforce3
 		vforce = vforce3
 	end	
 	
-	K(t) = timefunc(t)*K0
-	S(t) = timefunc(t)*S0
+	K(t::Float64) = timefunc(t)*K0
+	S(t::Float64) = timefunc(t)*S0
 
 
 	#Create time stepper
@@ -83,11 +83,10 @@ function timesteptest( cfl = 0.1, testcase = 1, order = 2, plotcomp = "err")
     usave = u
 	vsave = -v
 	tsave = t
-	nsteps =1 
 	start = time()
 	for ii in 1:nsteps
 	   for jj in 1:stages 
-	   		t, u, v = timestep.step(timestepper,t,u,v,dt*gamma[jj],uforce,vforce)
+	   	 @inbounds 	 t, u, v =  timestep.step(timestepper,t,u,v,dt*gamma[jj],uforce,vforce)
 	   end
 	   usave = [usave u]
 	   vsave = [vsave -v]

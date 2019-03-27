@@ -26,12 +26,12 @@ function exampleobjfunc()
 
 	order = 2
 
-        verbose=true
+        verbose= false
 
 	if verbose
   	    pl1, pl2, objv, grad = objfunc.traceobjgrad(pcof,params,order, true, verbose)
 	else
-	    objv, grad = objfunc.traceobjgrad(pcof, params, order, true, verbose)
+	    objv, grad = objfunc.traceobjgrad(pcof, params, order, verbose, true)
 	end
 	
 	println("objv: ", objv)
