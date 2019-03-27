@@ -13,13 +13,17 @@ function exampleobjfunc()
 	#utarget[:,2] = Ident[:,1]
 	
 	cfl = 0.05
-	T = 150
+
+	T = 150.0
+
 	testadjoint = 0
 	maxpar =0.09
 	
 	params = objfunc.parameters(N,Nguard,T,testadjoint,maxpar,cfl, utarget)
 	#pcof = rand(4)
-	pcof = [1e-3, -1e-3, 2e-3]
+
+	pcof = [1e-3, 2e-3, -1e-3,-1e-3]
+
 	order = 2
 
         verbose=true
