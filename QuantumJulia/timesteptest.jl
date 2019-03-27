@@ -27,15 +27,15 @@ function timesteptest( cfl = 0.1, testcase = 1, order = 2, plotcomp = "err")
 	dt = T/nsteps
 	
 	# Initial conditions
-	u = [1; 0]
-	v = [0; 0]
-	t = 0
+	u = [1.0; 0.0]
+	v = [0.0; 0.0]
+	t = 0.0
 	
 	# timefunctions and forcing	
 	if testcase == 1
 		timefunc1(t) = 0.5*(sin(0.5*omega*(t)))^2;
-		uforce1(t) = [0; 0]
-		vforce1(t) = [0; 0]
+		uforce1(t) = [0.0; 0.0]
+		vforce1(t) = [0.0; 0.0]
 
 		timefunc =timefunc1
 		uforce = uforce1
@@ -43,8 +43,8 @@ function timesteptest( cfl = 0.1, testcase = 1, order = 2, plotcomp = "err")
 
 	elseif testcase == 0
 		timefunc0(t) = 0.25*(1-sin(omega*t))
-		uforce0(t) = [0; 0]
-		vforce0(t) = [0; 0]
+		uforce0(t) = [0.0; 0.0]
+		vforce0(t) = [0.0; 0.0]
 
 		timefunc =timefunc0
 		uforce = uforce0
@@ -53,8 +53,8 @@ function timesteptest( cfl = 0.1, testcase = 1, order = 2, plotcomp = "err")
 		timefunc2(t) = 4/T^2 *t*(T-t)
 		phi12(t) = 0.25*(t - sin(omega*t)/omega)
 		phidot2(t) = 0.5*(sin(0.5*omega*(t)))^2
-		uforce2(t) = [(timefunc2(t) - phidot2(t))*sin(phi12(t)); 0]
-		vforce2(t) = [0; -(timefunc2(t) - phidot2(t)) * cos(phi12(t))]
+		uforce2(t) = [(timefunc2(t) - phidot2(t))*sin(phi12(t)); 0.0]
+		vforce2(t) = [0.0; -(timefunc2(t) - phidot2(t)) * cos(phi12(t))]
 
 		timefunc =timefunc2
 		uforce = uforce2
@@ -83,7 +83,7 @@ function timesteptest( cfl = 0.1, testcase = 1, order = 2, plotcomp = "err")
     usave = u
 	vsave = -v
 	tsave = t
-	
+	nsteps =1 
 	start = time()
 	for ii in 1:nsteps
 	   for jj in 1:stages 

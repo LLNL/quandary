@@ -127,9 +127,9 @@ function traceobjgrad(pcof0 = [0; 0; 0],  params = parameters(4, 3, 150, 1, 0.09
   end
     #for computing objfalpha1
 
-  t = 0
+  t = 0.0
   step = 0
-  objfv = 0
+  objfv = 0.0
     
     # Time-dependent matrices for Stromer-Verlet 
   K(t) = H0 + rfunc(t).*(rotmatr(t)*amat + adag*rotmatr(t)') - ifunc(t).*(rotmati(t)*amat + adag*rotmati(t)')
@@ -140,7 +140,7 @@ function traceobjgrad(pcof0 = [0; 0; 0],  params = parameters(4, 3, 150, 1, 0.09
   wr = zeromat
   wi = zeromat
 
-  objfalpha1 = 0
+  objfalpha1 = 0.0
 
     # Forward time stepping loop
   for step in 1:nsteps

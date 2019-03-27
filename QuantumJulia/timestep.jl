@@ -6,10 +6,11 @@ struct stormerverlet
 end
 
 # Force function
-function step(stepper::stormerverlet, t, u, v, h, uforce, vforce)
+function step(stepper::stormerverlet, t::Float64, u::Array{Float64,N}, v::Array{Float64,N}, h::Float64, uforce, vforce) where N
 	vforce0 = vforce(t)
 	#uforce05 = uforce(t + 0.5*h)
 	uforce05 = 0.5*(uforce(t) + uforce(t + h))
+
 	vforce1 = vforce(t + h)
 
     t,u,v = step(stepper, t, u, v, h, vforce0, uforce05, vforce1)
@@ -18,10 +19,12 @@ function step(stepper::stormerverlet, t, u, v, h, uforce, vforce)
 end
 
 # wWthout forcing
-function step(stepper::stormerverlet, t, u, v, h)
-	vforce0 = 0
-	uforce05 = 0
-	vforce1 = 0
+function step(stepper::stormerverlet, t::Float64, u::Array{Float64,N}, v::Array{Float64,N}, h::Float64) where N
+	Ntot = size(u,1)
+	vforce0 = zeros(Ntot) 
+	uforce05 = zeros(Ntot)
+	vforce1 = zeros(Ntot)
+
 
     t,u,v = step(stepper, t, u, v, h, vforce0, uforce05, vforce1)
 	
@@ -29,7 +32,7 @@ function step(stepper::stormerverlet, t, u, v, h)
 end
 
 # Forcing as array 
-function step(stepper::stormerverlet, t, u, v, h, vforce0, uforce05, vforce1)
+function step(stepper::stormerverlet, t::Float64, u::Array{Float64,N}, v::Array{Float64,N}, h::Float64, vforce0::Array{Float64,2}, uforce05, vforce1) where N
 	S = stepper.S
 	K = stepper.K
 	In = stepper.In
