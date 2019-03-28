@@ -1,4 +1,4 @@
-function timesteptest( cfl = 0.1, testcase = 1, order = 2, plotcomp = "err")
+function timesteptest( cfl = 0.1, testcase = 1, order = 2, plotcomp = "err",test = false)
 
 	N = 2 # vector dimension	
 	IN = Matrix{Float64}(I, N, N)
@@ -127,7 +127,8 @@ function timesteptest( cfl = 0.1, testcase = 1, order = 2, plotcomp = "err")
     	plot!(tsave',usave[2,:] ,label = "Re(2)")	
     	plot!(tsave',vsave[2,:] ,label = "Im(2)" )
     end
-
-
+if test
+	return t,u,v
+end
 	
 end

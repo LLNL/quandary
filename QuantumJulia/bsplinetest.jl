@@ -3,13 +3,16 @@
 # INPUT:
 # Nspline: number of splines >=3
 
-function  bsplinetest(Nspline::Int64)
+function  bsplinetest(Nspline::Int64,test = false)
 	if Nspline < 3
 		error("Input has to be larger than 3") # TODO: Should be possible to use something like "assert" instead of if
 	end
 	
 	T = 120.0#Final time
 	dt  = 1/20
+	if test
+		dt = 40
+    end
 	Nsteps = ceil(Int64,T/dt)
 	dt = T/Nsteps
 
@@ -58,10 +61,10 @@ function  bsplinetest(Nspline::Int64)
 
   	#plot(om,abs.(fctrl).+1e-18, yaxis=:log,line=(:dot, 4))
     
-    t = [12.34];
+    t = 12.34
 	g = bsplines.gradbspline2(t,param)
 
-	k = max.(3, ceil.(Int64,t./dtknot .+ 2)) ;
+	k = max.(3, ceil.(Int64,t./dtknot .+ 2)) 
     dp = 1e-5;
 	f0 = bsplines.bspline2(t,param)
 	q = k.-2
@@ -71,5 +74,9 @@ function  bsplinetest(Nspline::Int64)
 
 	println("g(", t, ") =", g[q], " and  (f1 - f0)/dp = ", (f1-f0)/dp)
 	plot(td, ctrl, legend = false, xaxis = "Time [s]")
+
+	if test
+		return ctrl, g
+	end
 
 end
