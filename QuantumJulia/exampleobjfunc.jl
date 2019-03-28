@@ -24,7 +24,7 @@ function exampleobjfunc()
 
 	pcof = [1e-3, 2e-3, -2e-3]
 
-	 m = readdlm("bspline-200.dat")
+	 m = readdlm("bspline-200-t150.dat")
 	pcof = Array{Float64,1}(m[6:end,1])
 	 order = 2
 

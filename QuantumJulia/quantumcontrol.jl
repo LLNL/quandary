@@ -2,6 +2,7 @@
 using LinearAlgebra
 using Plots
 using FFTW
+using DelimitedFiles
 
 include("timestep.jl")
 include("bsplines.jl")
