@@ -22,11 +22,13 @@ function exampleobjfunc()
 	params = objfunc.parameters(N,Nguard,T,testadjoint,maxpar,cfl, utarget)
 	#pcof = rand(4)
 
-	pcof = [1e-3, 2e-3, -1e-3,-1e-3]
+	pcof = [1e-3, 2e-3, -2e-3]
 
-	order = 2
+	 m = readdlm("bspline-200.dat")
+	pcof = Array{Float64,1}(m[6:end,1])
+	 order = 2
 
-        verbose= false
+    verbose= true
 
 	if verbose
   	    pl1, pl2, objv, grad = objfunc.traceobjgrad(pcof,params,order, verbose,true)
