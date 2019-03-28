@@ -192,7 +192,6 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
        forbalpha1 =  xi*penalf(t,T)*screal(vr, vi, wr, wi, Nguard)   
        objf_alpha1 = objf_alpha1 - gamma[q]*dt*0.5*2.0*real(weightf(t0,T)*conj(scomplex0)*salpha0 +
           weightf(t,T)*conj(scomplex1)*salpha1) + gamma[q]*dt*0.5*2.0*(forbalpha0 + forbalpha1)
-#       @show(step, scomplex0, salpha0, scomplex1, salpha1, forbalpha0 , forbalpha1, weightf(t0,T), weightf(t,T))
      
        # save previous values for next stage
        scomplex0 = scomplex1
@@ -217,7 +216,6 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
 
 
   if retadjoint
-     println("objf_alpha1 = ", objf_alpha1)
     dfdp = objf_alpha1
     gradobjfadj = zeros(D,1);
     t = T
