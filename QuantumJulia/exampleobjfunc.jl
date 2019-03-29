@@ -14,7 +14,7 @@ function exampleobjfunc()
 	
 	cfl = 0.05
 
-	T = 150.0
+	T = 150
 
 	testadjoint = 0
 	maxpar =0.09
@@ -28,7 +28,7 @@ function exampleobjfunc()
 	pcof = Array{Float64,1}(m[6:end,1])
 	 order = 2
 
-    verbose= true
+    verbose= false
 
 	if verbose
   	    pl1, pl2, objv, grad = objfunc.traceobjgrad(pcof,params,order, verbose,true)
@@ -37,7 +37,7 @@ function exampleobjfunc()
 	end
 	
 	println("objv: ", objv)
-	println("objgrad: ", grad)
+	#println("objgrad: ", grad)
 	
 	if verbose
 	  pl1

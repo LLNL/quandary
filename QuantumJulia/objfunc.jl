@@ -132,7 +132,7 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
 
 
   # Preallocate
-  K0 = S0 =K50= S05 =K1 =S1 = dar =dai = zeros(Ntot,Ntot)
+  tmp1=tmp2=tmp3=tmp4=K0 = S0 =K05= S05 =K1 =S1 = dar =dai = zeros(Ntot,Ntot)
   gr1 =gi1 = hr1 = hi1 = darr = dari = dair = daii = zeromat
 
     # Forward time stepping loop
@@ -166,12 +166,19 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
        vi0 = vi
       end
      
-      K0 = K(t, amat, adag, domega, splineparams, H0)
-      S0 = S(t, amat, adag, domega, splineparams)   
-      K05 = K(t + 0.5*dt*gamma[q], amat, adag, domega, splineparams, H0)
-      S05 = S(t + 0.5*dt*gamma[q], amat, adag, domega, splineparams) 
-      K1 = K(t +dt*gamma[q], amat, adag, domega, splineparams, H0)
-      S1 = S(t + dt*gamma[q], amat, adag, domega, splineparams) 
+      # K!(K0, t, amat, adag, domega, splineparams, H0,tmp1,tmp2,tmp3)
+      # S!(S0, t, amat, adag, domega, splineparams,tmp1,tmp2,tmp3)   
+      #K!(K05, t + 0.5*dt*gamma[q], amat, adag, domega, splineparams, H0,tmp1,tmp2,tmp3)
+      #S!(S05,t + 0.5*dt*gamma[q], amat, adag, domega, splineparams,tmp1,tmp2,tmp3) 
+      #K!(K1, t +dt*gamma[q], amat, adag, domega, splineparams, H0,tmp1,tmp2,tmp3)
+      #S!(S1, t + dt*gamma[q], amat, adag, domega, splineparams,tmp1,tmp2,tmp3) 
+
+      K0 = K(K0,t, amat, adag, domega, splineparams, H0)
+      S0 = S(S0,t, amat, adag, domega, splineparams)   
+      K05 = K(K05,t + 0.5*dt*gamma[q], amat, adag, domega, splineparams, H0)
+      S05 = S(S05,t + 0.5*dt*gamma[q], amat, adag, domega, splineparams) 
+      K1 = K(K1,t + dt*gamma[q], amat, adag, domega, splineparams, H0)
+      S1 = S(S1,t + dt*gamma[q], amat, adag, domega, splineparams) 
 
        
       @inbounds t, vr, vi = timestep.step(t, vr, vi, dt*gamma[q], K0, S0, K05, S05, K1, S1, Ident)
@@ -269,12 +276,20 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
           vi0 = vi
 
           # evolve vr, vi
-          K0 = K(t, amat, adag, domega, splineparams, H0)
-          S0 = S(t, amat, adag, domega, splineparams)   
-          K05 = K(t + 0.5*dt*gamma[q], amat, adag, domega, splineparams, H0)
-          S05 = S(t + 0.5*dt*gamma[q], amat, adag, domega, splineparams) 
-          K1 = K(t + dt*gamma[q], amat, adag, domega, splineparams, H0)
-          S1 = S(t + dt*gamma[q], amat, adag, domega, splineparams) 
+          #K!(K0,t, amat, adag, domega, splineparams, H0,tmp1,tmp2,tmp3)
+          #S!(S0,t, amat, adag, domega, splineparams,tmp1,tmp2,tmp3)   
+          # K!(K05,t + 0.5*dt*gamma[q], amat, adag, domega, splineparams, H0,tmp1,tmp2,tmp3)
+          #S!(S05,t + 0.5*dt*gamma[q], amat, adag, domega, splineparams,tmp1,tmp2,tmp3) 
+          #K!(K1,t + dt*gamma[q], amat, adag, domega, splineparams, H0,tmp1,tmp2,tmp3)
+          #S!(S1,t + dt*gamma[q], amat, adag, domega, splineparams,tmp1,tmp2,tmp3) 
+
+          K0 = K(K0,t, amat, adag, domega, splineparams, H0)
+          S0 = S(S0,t, amat, adag, domega, splineparams)   
+          K05 = K(K05,t + 0.5*dt*gamma[q], amat, adag, domega, splineparams, H0)
+          S05 = S(S05,t + 0.5*dt*gamma[q], amat, adag, domega, splineparams) 
+          K1 = K(K1,t + dt*gamma[q], amat, adag, domega, splineparams, H0)
+          S1 = S(S1,t + dt*gamma[q], amat, adag, domega, splineparams) 
+
 
           # evolve vr, vi
           @inbounds t, vr, vi = timestep.step(t, vr, vi, dt*gamma[q], K0, S0, K05, S05, K1, S1, Ident)
@@ -397,7 +412,7 @@ function omegafun(N::Int64)
 end
 
 # bound pcof to allowed amplitude
-function boundcof(pcof::Array{Float64,1}, D::Int64, maxpar::Float64, eps::Float64)
+@inline function boundcof(pcof::Array{Float64,1}, D::Int64, maxpar::Float64, eps::Float64)
 	par1 = maxpar
 	par0 = -maxpar
 
@@ -413,7 +428,7 @@ function boundcof(pcof::Array{Float64,1}, D::Int64, maxpar::Float64, eps::Float6
 end
 
 # Matrices for te hamiltonian in rotation frame
-function rotframematrices(Ntot::Int64)
+@inline function rotframematrices(Ntot::Int64)
     omega = omegafun(Ntot)
 	H0 = zeros(Ntot,Ntot)
   	amat = Array(Bidiagonal(zeros(Ntot),sqrt.(collect(1:Ntot-1)),:U))
@@ -425,7 +440,7 @@ function rotframematrices(Ntot::Int64)
 end
 
 
-function weightf(t::Float64, T::Float64)
+@inline function weightf(t::Float64, T::Float64)
 # period
   tp = T/10
   xi = 4/tp # scale factor
@@ -437,7 +452,7 @@ function weightf(t::Float64, T::Float64)
   w = xi*64*mask.*(0.5 + tau).^3 .* (0.5 - tau).^3
 end
 
-function tracefidreal(ur::Array{Float64,2}, vi::Array{Float64,2}, vtargetr::Array{Float64,2}, vtargeti::Array{Float64,2}, labframe::Bool,t::Float64,omega::Array{Float64,1})
+@inline function tracefidreal(ur::Array{Float64,2}, vi::Array{Float64,2}, vtargetr::Array{Float64,2}, vtargeti::Array{Float64,2}, labframe::Bool,t::Float64,omega::Array{Float64,1})
   N = size(vtargetr,2)
 
   if labframe
@@ -454,18 +469,18 @@ function tracefidreal(ur::Array{Float64,2}, vi::Array{Float64,2}, vtargetr::Arra
 
 end
 
-function tracefidreal(frcr::Array{Float64,2}, frci::Array{Float64,2}, lambdar::Array{Float64,2}, lambdai::Array{Float64,2})
+@inline function tracefidreal(frcr::Array{Float64,2}, frci::Array{Float64,2}, lambdar::Array{Float64,2}, lambdai::Array{Float64,2})
   fidreal = 0.0
   fidreal = tr(frcr' * lambdar + frci' * lambdai);
 end
 
-function tracefidcomplex(ur::Array{Float64,2}, vi::Array{Float64,2}, vtargetr::Array{Float64,2}, vtargeti::Array{Float64,2}, labframe::Bool, t::Float64, omega::Array{Float64,1})
+@inline function tracefidcomplex(ur::Array{Float64,2}, vi::Array{Float64,2}, vtargetr::Array{Float64,2}, vtargeti::Array{Float64,2}, labframe::Bool, t::Float64, omega::Array{Float64,1})
   N = size(vtargetr,2)
   fidreal = 0.0
   fid_cmplx = tr(ur' * vtargetr .+ vi' * vtargeti)/N + 1im*tr(ur' * vtargeti .- vi' * vtargetr)/N;
 end
 
-function  penalf(t::Float64, T::Float64)
+@inline function  penalf(t::Float64, T::Float64)
   w = 0.0
   constant = 1.0/T
   alpha = 0
@@ -481,7 +496,7 @@ function  penalf(t::Float64, T::Float64)
   w = alpha * constant + (1-alpha)*xi* 64*mask.*(0.5 + tau).^3 .* (0.5 - tau).^3;
 end
 
-function normguard(vr::Array{Float64,2}, vi::Array{Float64,2}, Nguard::Int64)
+@inline function normguard(vr::Array{Float64,2}, vi::Array{Float64,2}, Nguard::Int64)
   Ntot =size(vr,1)
   N = size(vr,2)
 
@@ -494,7 +509,7 @@ function normguard(vr::Array{Float64,2}, vi::Array{Float64,2}, Nguard::Int64)
 
 end
 
-function evalineqpen(pcof::Array{Float64,1}, par_0::Float64, par_1::Float64)
+@inline function evalineqpen(pcof::Array{Float64,1}, par_0::Float64, par_1::Float64)
   D = size(pcof,1)
   N = size(pcof,2)
   scalef = 0.1
@@ -533,7 +548,7 @@ function plotunitary(us, T)
   return plt
 end
 
-function evalineqgrad(pcof::Array{Float64,1}, par0::Float64, par1::Float64)
+@inline function evalineqgrad(pcof::Array{Float64,1}, par0::Float64, par1::Float64)
   D = size(pcof,1)
   N = size(pcof,2)
   scalef = 0.1
@@ -559,28 +574,91 @@ function screal(vr::Array{Float64,2}, vi::Array{Float64,2}, wr::Array{Float64,2}
 
 end
 
-@inline function K(t::Float64,amat::Array{Float64,2},adag::Array{Float64,2},domega::Array{Float64,1},splineparams::bsplines.splineparams,H0::Array{Float64,2})
- K = zeros(size(amat)) # To preallocate K, is this nessesary?
- rr = rotmatr(t,domega)
- ri = rotmati(t,domega)
+@inline function K(K::Array{Float64,2},t::Float64,amat::Array{Float64,2},adag::Array{Float64,2},domega::Array{Float64,1},splineparams::bsplines.splineparams,H0::Array{Float64,2})
+ rr = rotmatr(t,domega) 
+ ri = rotmati(t,domega) 
  K = H0 + rfunc(t,splineparams).*(rr*amat + adag*rr') - ifunc(t,splineparams).*(ri*amat + adag*ri)
 end
 
-@inline function S(t::Float64,amat::Array{Float64,2},adag::Array{Float64,2},domega::Array{Float64,1},splineparams::bsplines.splineparams)
-  S  = zeros(size(amat))
+@inline function S(S::Array{Float64,2},t::Float64,amat::Array{Float64,2},adag::Array{Float64,2},domega::Array{Float64,1},splineparams::bsplines.splineparams)
   rr = rotmatr(t,domega)
   ri = rotmati(t,domega)
   S  = ifunc(t,splineparams).*(rr*amat - adag*rr') + rfunc(t,splineparams).*(ri*amat - adag*ri')
 end
 
+
+#@inline function K!(K::Array{Float64,2},t::Float64,amat::Array{Float64,2},adag::Array{Float64,2},domega::Array{Float64,1},splineparams::bsplines.splineparams,H0::Array{Float64,2},tmp1::Array{Float64,2},tmp2::Array{Float64,2},tmp3::Array{Float64,2})
+# rr = tmp1
+# ri = tmp1
+# rr = rotmatr(t,domega)
+# ri = rotmati(t,domega)
+# tmp4 = 0.0
+# a = 0.0
+# b = 0.0
+# c = 0.0
+# d = 0.0
+# e = 0.0
+# f = 0.0
+#
+# # (rr*amat + adag*rr')
+# mul!(tmp1,rr,amat) 
+# #mul!(temp1,rr,amat) 
+# mul!(tmp2,adag,transpose(rr))
+# 
+# for  I in eachindex(tmp1)
+#  tmp3[I] = tmp1[I] + tmp2[I]
+# end
+# 
+#  mul!(tmp1,ri,amat)
+#  mul!(tmp2,adag,ri)
+#  for  I in eachindex(tmp1)
+#    tmp4 = tmp1[I] + tmp2[I]
+#    a = ifunc(t,splineparams)*tmp4
+#    f = rfunc(t,splineparams)
+#    e = tmp3[I]
+#    b = e*f
+#    c = H0[I]
+#    d = a+b
+#    K[I] = c+d
+#  end
+#end
+#
+#@inline function S!(S::Array{Float64,2},t::Float64,amat::Array{Float64,2},adag::Array{Float64,2},domega::Array{Float64,1},splineparams::bsplines.splineparams,tmp1::Array{Float64,2},tmp2::Array{Float64,2},tmp3::Array{Float64,2})
+#  rr = tmp1
+#  ri = tmp1
+#  rr = rotmatr(t,domega)
+#  ri = rotmati(t,domega)
+#  tmp4 = 0.0
+#
+#  mul!(tmp1,rr,amat)
+#  mul!(tmp2,adag,transpose(rr))
+#  
+#  @inbounds for  I in eachindex(tmp1)
+#    tmp3[I] = tmp1[I] - tmp2[I]
+#  end
+#
+#  mul!(tmp1,ri,amat)
+#  mul!(tmp2,adag,transpose(ri))
+#  
+#  @inbounds for  I in eachindex(tmp1)
+#    tmp4 = tmp1[I] - tmp2[I]  
+#    S[I]  = ifunc(t,splineparams)*tmp3[I] + rfunc(t,splineparams)*tmp4
+#  end
+#end
+
+
 @inline function rfunc(t::Float64,splineparams::bsplines.splineparams)
   ret = 0.0
-  ret =  bsplines.bspline2(t,splineparams)
+  res =  bsplines.bspline2(t,splineparams)
+  ret = res[1]
+
+  return ret
 end
 
 @inline function efunc(t::Float64,splineparams::bsplines.splineparams)
-  ret = 0.0
+  ret = [0.0]
   ret = bsplines.bspline2(t,splineparams::bsplines.splineparams)
+  ret[1]
 end
 
 @inline function ifunc(t::Float64,splineparams::bsplines.splineparams)
