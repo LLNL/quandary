@@ -144,7 +144,7 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
     if retadjoint
       scomplex0 = tracefidcomplex(vr, -vi, vtargetr, vtargeti, labframe, t, omega)
       salpha0 = tracefidcomplex(wr, -wi, vtargetr, vtargeti, labframe, t, omega)
-      forbalpha0 = xi*penalf(t,T)*screal(vr, vi, wr, wi, Nguard)
+      forbalpha0 = xi*penalf(t,T)*screal(vr, vi, wr, wi, Nguard,zeromat)
 
       rgrad = rfgrad(t)
       igrad = ifgrad(t)
@@ -166,12 +166,12 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
        vi0 = vi
       end
      
-      # K!(K0, t, amat, adag, domega, splineparams, H0,tmp1,tmp2,tmp3)
-      # S!(S0, t, amat, adag, domega, splineparams,tmp1,tmp2,tmp3)   
-      #K!(K05, t + 0.5*dt*gamma[q], amat, adag, domega, splineparams, H0,tmp1,tmp2,tmp3)
-      #S!(S05,t + 0.5*dt*gamma[q], amat, adag, domega, splineparams,tmp1,tmp2,tmp3) 
-      #K!(K1, t +dt*gamma[q], amat, adag, domega, splineparams, H0,tmp1,tmp2,tmp3)
-      #S!(S1, t + dt*gamma[q], amat, adag, domega, splineparams,tmp1,tmp2,tmp3) 
+     #  K!(K0, t, amat, adag, domega, splineparams, H0,tmp1,tmp2,tmp3)
+     #  S!(S0, t, amat, adag, domega, splineparams,tmp1,tmp2,tmp3)   
+     # K!(K05, t + 0.5*dt*gamma[q], amat, adag, domega, splineparams, H0,tmp1,tmp2,tmp3)
+     # S!(S05,t + 0.5*dt*gamma[q], amat, adag, domega, splineparams,tmp1,tmp2,tmp3) 
+     # K!(K1, t +dt*gamma[q], amat, adag, domega, splineparams, H0,tmp1,tmp2,tmp3)
+     # S!(S1, t + dt*gamma[q], amat, adag, domega, splineparams,tmp1,tmp2,tmp3) 
 
       K0 = K(K0,t, amat, adag, domega, splineparams, H0)
       S0 = S(S0,t, amat, adag, domega, splineparams)   
@@ -205,7 +205,7 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
        @inbounds temp, wr, wi = timestep.step(t0, wr, wi, dt*gamma[q], gi0, 0.5*(gr1 + gr0), gi1, K0, S0, K05, S05, K1, S1, Ident) 
 
        salpha1 = tracefidcomplex(wr, -wi, vtargetr, vtargeti, labframe, t, omega)
-       forbalpha1 =  xi*penalf(t,T)*screal(vr, vi, wr, wi, Nguard)   
+       forbalpha1 =  xi*penalf(t,T)*screal(vr, vi, wr, wi, Nguard,zeromat)   
        objf_alpha1 = objf_alpha1 - gamma[q]*dt*0.5*2.0*real(weightf(t0,T)*conj(scomplex0)*salpha0 +
           weightf(t,T)*conj(scomplex1)*salpha1) + gamma[q]*dt*0.5*2.0*(forbalpha0 + forbalpha1)
      
@@ -276,20 +276,20 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
           vi0 = vi
 
           # evolve vr, vi
-          #K!(K0,t, amat, adag, domega, splineparams, H0,tmp1,tmp2,tmp3)
-          #S!(S0,t, amat, adag, domega, splineparams,tmp1,tmp2,tmp3)   
-          # K!(K05,t + 0.5*dt*gamma[q], amat, adag, domega, splineparams, H0,tmp1,tmp2,tmp3)
-          #S!(S05,t + 0.5*dt*gamma[q], amat, adag, domega, splineparams,tmp1,tmp2,tmp3) 
-          #K!(K1,t + dt*gamma[q], amat, adag, domega, splineparams, H0,tmp1,tmp2,tmp3)
-          #S!(S1,t + dt*gamma[q], amat, adag, domega, splineparams,tmp1,tmp2,tmp3) 
+         # K!(K0,t, amat, adag, domega, splineparams, H0,tmp1,tmp2,tmp3)
+         # S!(S0,t, amat, adag, domega, splineparams,tmp1,tmp2,tmp3)   
+         #  K!(K05,t + 0.5*dt*gamma[q], amat, adag, domega, splineparams, H0,tmp1,tmp2,tmp3)
+         # S!(S05,t + 0.5*dt*gamma[q], amat, adag, domega, splineparams,tmp1,tmp2,tmp3) 
+         # K!(K1,t + dt*gamma[q], amat, adag, domega, splineparams, H0,tmp1,tmp2,tmp3)
+         # S!(S1,t + dt*gamma[q], amat, adag, domega, splineparams,tmp1,tmp2,tmp3) 
 
           K0 = K(K0,t, amat, adag, domega, splineparams, H0)
           S0 = S(S0,t, amat, adag, domega, splineparams)   
           K05 = K(K05,t + 0.5*dt*gamma[q], amat, adag, domega, splineparams, H0)
           S05 = S(S05,t + 0.5*dt*gamma[q], amat, adag, domega, splineparams) 
           K1 = K(K1,t + dt*gamma[q], amat, adag, domega, splineparams, H0)
-          S1 = S(S1,t + dt*gamma[q], amat, adag, domega, splineparams) 
-
+          S1 = S(S1,t + dt*gamma[q], amat, adag, domega, splineparams) #
+#
 
           # evolve vr, vi
           @inbounds t, vr, vi = timestep.step(t, vr, vi, dt*gamma[q], K0, S0, K05, S05, K1, S1, Ident)
@@ -430,7 +430,7 @@ end
 # Matrices for te hamiltonian in rotation frame
 @inline function rotframematrices(Ntot::Int64)
     omega = omegafun(Ntot)
-	H0 = zeros(Ntot,Ntot)
+	  H0 = zeros(Ntot,Ntot)
   	amat = Array(Bidiagonal(zeros(Ntot),sqrt.(collect(1:Ntot-1)),:U))
   	adag = Array(transpose(amat))
   	domega = zeros(Ntot)
@@ -559,7 +559,7 @@ end
  return pengrad
 end
 
-function screal(vr::Array{Float64,2}, vi::Array{Float64,2}, wr::Array{Float64,2}, wi::Array{Float64,2}, Nguard::Int64)
+function screal(vr::Array{Float64,2}, vi::Array{Float64,2}, wr::Array{Float64,2}, wi::Array{Float64,2}, Nguard::Int64,vrguard::Array{Float64,2})
   Ntot =size(vr,1)
   N = size(vr,2)
 
@@ -587,78 +587,64 @@ end
 end
 
 
-#@inline function K!(K::Array{Float64,2},t::Float64,amat::Array{Float64,2},adag::Array{Float64,2},domega::Array{Float64,1},splineparams::bsplines.splineparams,H0::Array{Float64,2},tmp1::Array{Float64,2},tmp2::Array{Float64,2},tmp3::Array{Float64,2})
-# rr = tmp1
-# ri = tmp1
-# rr = rotmatr(t,domega)
-# ri = rotmati(t,domega)
-# tmp4 = 0.0
-# a = 0.0
-# b = 0.0
-# c = 0.0
-# d = 0.0
-# e = 0.0
-# f = 0.0
-#
-# # (rr*amat + adag*rr')
-# mul!(tmp1,rr,amat) 
-# #mul!(temp1,rr,amat) 
-# mul!(tmp2,adag,transpose(rr))
-# 
-# for  I in eachindex(tmp1)
-#  tmp3[I] = tmp1[I] + tmp2[I]
-# end
-# 
-#  mul!(tmp1,ri,amat)
-#  mul!(tmp2,adag,ri)
-#  for  I in eachindex(tmp1)
-#    tmp4 = tmp1[I] + tmp2[I]
-#    a = ifunc(t,splineparams)*tmp4
-#    f = rfunc(t,splineparams)
-#    e = tmp3[I]
-#    b = e*f
-#    c = H0[I]
-#    d = a+b
-#    K[I] = c+d
-#  end
-#end
-#
-#@inline function S!(S::Array{Float64,2},t::Float64,amat::Array{Float64,2},adag::Array{Float64,2},domega::Array{Float64,1},splineparams::bsplines.splineparams,tmp1::Array{Float64,2},tmp2::Array{Float64,2},tmp3::Array{Float64,2})
-#  rr = tmp1
-#  ri = tmp1
-#  rr = rotmatr(t,domega)
-#  ri = rotmati(t,domega)
-#  tmp4 = 0.0
-#
-#  mul!(tmp1,rr,amat)
-#  mul!(tmp2,adag,transpose(rr))
-#  
-#  @inbounds for  I in eachindex(tmp1)
-#    tmp3[I] = tmp1[I] - tmp2[I]
-#  end
-#
-#  mul!(tmp1,ri,amat)
-#  mul!(tmp2,adag,transpose(ri))
-#  
-#  @inbounds for  I in eachindex(tmp1)
-#    tmp4 = tmp1[I] - tmp2[I]  
-#    S[I]  = ifunc(t,splineparams)*tmp3[I] + rfunc(t,splineparams)*tmp4
-#  end
-#end
+function K!(K::Array{Float64,2},t::Float64,amat::Array{Float64,2},adag::Array{Float64,2},domega::Array{Float64,1},splineparams::bsplines.splineparams,H0::Array{Float64,2},tmp1::Array{Float64,2},tmp2::Array{Float64,2},tmp3::Array{Float64,2})
+ rr = tmp1
+ ri = tmp1
+ rr = rotmatr(t,domega)
+ ri = rotmati(t,domega)
+ # (rr*amat)
+ mul!(tmp1,rr,amat) 
+ #adag*rr'
+ mul!(tmp2,adag,transpose(rr))
+ 
+ @inbounds for  I in eachindex(tmp1)
+  # (rr*amat + adag*rr')
+  tmp3[I] = tmp1[I] + tmp2[I]
+ end
+ 
+  #ri*amat 
+  mul!(tmp1,ri,amat)
+  # adag*ri
+  mul!(tmp2,adag,ri)
+  @inbounds for  I in eachindex(tmp1)
+   # (ri*amat + adag*ri)
+    tmp4 = tmp1[I] + tmp2[I]
+    K[I] = H0[I] + rfunc(t,splineparams)*tmp3[I] - ifunc(t,splineparams)*tmp4
+  end
+end
+
+function S!(S::Array{Float64,2},t::Float64,amat::Array{Float64,2},adag::Array{Float64,2},domega::Array{Float64,1},splineparams::bsplines.splineparams,tmp1::Array{Float64,2},tmp2::Array{Float64,2},tmp3::Array{Float64,2})
+  rr = tmp1
+  ri = tmp1
+  rr = rotmatr(t,domega)
+  ri = rotmati(t,domega)
+  tmp4 = 0.0
+
+  mul!(tmp1,rr,amat)
+  mul!(tmp2,adag,transpose(rr))
+  
+  @inbounds for  I in eachindex(tmp1)
+    tmp3[I] = tmp1[I] - tmp2[I]
+  end
+
+  mul!(tmp1,ri,amat)
+  mul!(tmp2,adag,transpose(ri))
+  
+  @inbounds for  I in eachindex(tmp1)
+    tmp4 = tmp1[I] - tmp2[I]  
+    S[I]  = ifunc(t,splineparams)*tmp3[I] + rfunc(t,splineparams)*tmp4
+  end
+end
 
 
 @inline function rfunc(t::Float64,splineparams::bsplines.splineparams)
-  ret = 0.0
-  res =  bsplines.bspline2(t,splineparams)
-  ret = res[1]
-
-  return ret
+ ret = 0.0
+ ret = bsplines.bspline2(t,splineparams)
 end
 
 @inline function efunc(t::Float64,splineparams::bsplines.splineparams)
-  ret = [0.0]
+  ret = 0.0
   ret = bsplines.bspline2(t,splineparams::bsplines.splineparams)
-  ret[1]
 end
 
 @inline function ifunc(t::Float64,splineparams::bsplines.splineparams)

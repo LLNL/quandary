@@ -50,7 +50,7 @@ order = 2
 
 verbose= false
 objv, grad  = objfunc.traceobjgrad(pcof, params, order, verbose, true)
-
+@show(objv)
 
 @assert objv ≈ [0.6871073710795883]
 @assert grad ≈ [0.043358677834784934,  0.05192466792999445,  -0.016074398822782755]

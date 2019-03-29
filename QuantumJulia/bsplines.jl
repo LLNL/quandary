@@ -15,8 +15,30 @@ end
 
 # bspline2: Evaluate quadratic bspline function
 
-function bspline2(t::Float64,param::splineparams)
-	bspline2([t],param)
+@inline function bspline2(t::Float64,param::splineparams)
+  	f = 0.0
+
+	dtknot = param.dtknot
+	tknot = param.tknot
+	width = 3*dtknot
+
+	k = max.(3, ceil.(Int64,t./dtknot + 2)) # Unsure if this line does what it is supposed to
+	k = min.(k, param.Nspline)
+
+	# 1st segment of nurb k
+	tc = param.tcenter[k]
+	tau = (t .- tc)./width
+	f = f + param.pcof[k] * (9/8 .+ 4.5*tau + 4.5*tau^2) # test to remove square for extra speed
+
+	# 2nd segment of nurb k-1
+	tc = param.tcenter[k-1]
+	tau = (t - tc)./width
+	f = f .+ param.pcof[k.-1] .* (0.75 - 9 *tau^2)
+
+	# 3rd segment of nurb k-2
+	tc = param.tcenter[k.-2]
+	tau = (t .- tc)./width
+	f = f + param.pcof[k.-2] * (9/8 - 4.5*tau + 4.5*tau.^2)
 end
 
 @inline function bspline2(t::Array{Float64,1},param::splineparams)
