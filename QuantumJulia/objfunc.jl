@@ -490,6 +490,8 @@ function normguard(vr::Array{Float64,2}, vi::Array{Float64,2}, Nguard::Int64)
     rguard = vr[N+1:N+Nguard,:] 
     iguard = vi[N+1:N+Nguard,:]
     f = sum(sum(rguard.^2, dims = 2)) + sum(sum(iguard.^2, dims = 2)) # Is this really a good substitute for sumsq? is it even right?
+  else
+    f = 0
   end
 
 end
@@ -555,6 +557,8 @@ function screal(vr::Array{Float64,2}, vi::Array{Float64,2}, wr::Array{Float64,2}
     wrguard = wr[N+1:N+Nguard,:]
     wiguard = wi[N+1:N+Nguard,:]   
     f = tr(vrguard*wrguard') +  tr(viguard*wiguard')
+  else
+    f = 0
   end
 
 end
