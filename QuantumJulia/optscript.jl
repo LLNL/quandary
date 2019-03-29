@@ -1,14 +1,20 @@
 
 using Optim
 	N = 4
+
+	#N = 2
 	
 	Nguard = 3
 	Ntot = N + Nguard
 	
 	Ident = Matrix{Float64}(I, Ntot, Ntot)   
 	utarget = Ident[1:Ntot,1:N]
+
 	utarget[:,3] = Ident[:,4]
 	utarget[:,4] = Ident[:,3]
+
+#	utarget[:,1] = Ident[:,2]
+# 	utarget[:,2] = Ident[:,1]
 
 	cfl = 0.05
 
@@ -21,8 +27,7 @@ using Optim
 	
 
 	pcof0  = zeros(200)
-	pcof0[5] = 0.05
-    pcof0[6] = -0.05
+	pcof0 = (rand(200) .- 0.5).*maxpar*0.1
 	order = 2
 
     function f(pcof)
@@ -43,7 +48,10 @@ using Optim
 
    gopt!(G,pcof) = g!(G,pcof,params,order)
 
-   pcof = Optim.minimizer(optimize(f, gopt!, pcof0, BFGS()))
+   res = optimize(f, gopt!, pcof0, LBFGS(),Optim.Options(show_trace =true))
+
+   @time pcof = Optim.minimizer(res)
+   display(res)
 
    pl1, pl2, objv, grad = objfunc.traceobjgrad(pcof,params,order, true,true)
 
