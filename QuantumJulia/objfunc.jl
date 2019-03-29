@@ -45,7 +45,7 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
  kpar = 1
 
 	eps = 1e-9
-	xi = 1.0/Nguard  	# coef for penalizing forbidden states
+	xi = 1.0/max(1,Nguard)  	# coef for penalizing forbidden states
 
 	Ntot = N + Nguard
 	pcof = pcof0
@@ -313,21 +313,25 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
           tr_adj0 = tr_adj1
           hr0 = hr1
           hi0 = hi1
-        end 
-    end 
+        end #for
+    end # for step
  
     ineqpengrad = evalineqgrad(pcof, par0, par1)
-
   
     for k in 1:D
       gradobjfadj[k] = gradobjfadj[k] + ineqpengrad[k]
     end
-  end
+
+    if verbose
+      dfdp = dfdp + ineqpengrad[kpar]
+      println("Forward integration of gradient of objective function = ", dfdp, " ineqpengrad = ", ineqpengrad[kpar])
+    end
+
+  end # if retadjoint
 
 	if verbose
 		println("Inequality penalty: ", ineqpenalty)
-		dfdp = dfdp + ineqpengrad[kpar]
-		println("Forward integration of gradient of objective function = ", dfdp, " ineqpengrad = ", ineqpengrad[kpar])
+                println("Objective functional objfv: ", objfv)
 		
 		nplot = 1 + nsteps
 		println(" Column   Vnrm")
@@ -357,21 +361,19 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
 		plot!(td, penalf.(td,T), lab = "Forbidden", linewidth = 2)
 
 		plt2 = plot(f1,f2,f3, layout = (3,1))    
-	end
+	end #if verbose
 
-  # perhaps not the most pretty construction
-	if verbose
-     if retadjoint
-      return plt1, plt2, objfv, gradobjfadj
-     end
-    return plt1, plt2, objfv   
-  end
- 
- if retadjoint
+# return to calling routine
+if verbose && retadjoint
+   return plt1, plt2, objfv, gradobjfadj
+elseif verbose
+  return plt1, plt2, objfv   
+elseif retadjoint
   return objfv, gradobjfadj
- end
+else
+  return objfv
+end #if
 
- return objfv
 end
 
 
