@@ -124,15 +124,16 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
   step = 0
   objfv = 0.0
 
-  Kstep(t::Float64) = K(t,amat,adag,domega,splineparams,H0)
-  Sstep(t::Float64) = S(t,amat,adag,domega,splineparams)   
-  timestepperforward = timestep.stormerverlet(Kstep,Sstep,Ident)
 
   wr = zeromat
   wi = zeromat
 
   objf_alpha1 = 0.0
 
+
+  # Preallocate
+  K0 = S0 =K50= S05 =K1 =S1 = dar =dai = zeros(Ntot,Ntot)
+  gr1 =gi1 = hr1 = hi1 = darr = dari = dair = daii = zeromat
 
     # Forward time stepping loop
   for step in 1:nsteps
@@ -164,8 +165,16 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
        vr0 = vr
        vi0 = vi
       end
+     
+      K0 = K(t, amat, adag, domega, splineparams, H0)
+      S0 = S(t, amat, adag, domega, splineparams)   
+      K05 = K(t + 0.5*dt*gamma[q], amat, adag, domega, splineparams, H0)
+      S05 = S(t + 0.5*dt*gamma[q], amat, adag, domega, splineparams) 
+      K1 = K(t +dt*gamma[q], amat, adag, domega, splineparams, H0)
+      S1 = S(t + dt*gamma[q], amat, adag, domega, splineparams) 
+
        
-    	@inbounds t, vr, vi = timestep.step(timestepperforward, t, vr, vi, dt*gamma[q])
+      @inbounds t, vr, vi = timestep.step(t, vr, vi, dt*gamma[q], K0, S0, K05, S05, K1, S1, Ident)
 
     	infidelity = weightf(t, T)*(1-tracefidreal(vr, vi, vtargetr, vtargeti, labframe,t, omega))
     	forbidden = xi*penalf(t, T)*normguard(vr, vi, Nguard)
@@ -186,7 +195,7 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
        gr1 = rfalpha'.*( (dai .-  dai')*vr .- (dar .+ dar')*vi) .+ ifalpha'.*(  (dai .+ dai')*vi .+ (dar .-  dar')*vr) #should it really be ifalpha' and ralpha' here?? Different n anders code ..
        gi1 = rfalpha'.*( (dar .+  dar')*vr .+ (dai .- dai')*vi) .+ ifalpha'.*( -(dai .+ dai')*vr .+ (dar .-  dar')*vi)
 
-       @inbounds temp, wr, wi = timestep.step(timestepperforward, t0, wr, wi, dt*gamma[q], gi0, 0.5*(gr1 + gr0), gi1) 
+       @inbounds temp, wr, wi = timestep.step(t0, wr, wi, dt*gamma[q], gi0, 0.5*(gr1 + gr0), gi1, K0, S0, K05, S05, K1, S1, Ident) 
 
        salpha1 = tracefidcomplex(wr, -wi, vtargetr, vtargeti, labframe, t, omega)
        forbalpha1 =  xi*penalf(t,T)*screal(vr, vi, wr, wi, Nguard)   
@@ -226,7 +235,6 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
     lambdar = zeromat
     lambdai = zeromat
 
-    timestepperbackward = timestepperforward
     
     #Backward time stepping loop
     for step in nsteps-1:-1:0
@@ -261,7 +269,15 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
           vi0 = vi
 
           # evolve vr, vi
-          @inbounds t, vr, vi = timestep.step(timestepperbackward, t, vr, vi, dt*gamma[q])
+          K0 = K(t, amat, adag, domega, splineparams, H0)
+          S0 = S(t, amat, adag, domega, splineparams)   
+          K05 = K(t + 0.5*dt*gamma[q], amat, adag, domega, splineparams, H0)
+          S05 = S(t + 0.5*dt*gamma[q], amat, adag, domega, splineparams) 
+          K1 = K(t + dt*gamma[q], amat, adag, domega, splineparams, H0)
+          S1 = S(t + dt*gamma[q], amat, adag, domega, splineparams) 
+
+          # evolve vr, vi
+          @inbounds t, vr, vi = timestep.step(t, vr, vi, dt*gamma[q], K0, S0, K05, S05, K1, S1, Ident)
 
           scomplex1 = tracefidcomplex(vr, -vi, vtargetr, vtargeti, labframe, t, omega)
           sr1 = real(scomplex1)
@@ -274,7 +290,7 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
 
 
           # evolve lambdar, lambdai
-          @inbounds temp, lambdar, lambdai = timestep.step(timestepperbackward, t0, lambdar, lambdai, dt*gamma[q], hi0, 0.5*(hr0 + hr1), hi1)
+          @inbounds temp, lambdar, lambdai = timestep.step(t0, lambdar, lambdai, dt*gamma[q], hi0, 0.5*(hr0 + hr1), hi1, K0, S0, K05, S05, K1, S1, Ident)
 
           dar = rotmatr(t,domega)*amat
           dai = rotmati(t,domega)*amat

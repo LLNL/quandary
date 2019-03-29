@@ -59,6 +59,41 @@ end
 	return t, u, v
 end
 
+@inline function step(t::Float64, u::Array{Float64,N}, v::Array{Float64,N}, h::Float64,
+ vforce0::Array{Float64,N}, uforce05::Array{Float64,N}, vforce1::Array{Float64,N},
+  K0::Array{Float64,N},S0::Array{Float64,N},K05::Array{Float64,N},S05::Array{Float64,N}, K1::Array{Float64,N},S1::Array{Float64,N},In::Array{Float64,N}) where N
+    rhs = (K0*u .+  S0*v .+ vforce0)
+	l1 = (In .-  0.5*h.*S0)\rhs
+	kappa1 = S05*u .- K05*(v .+ 0.5*h.*l1) .+ uforce05
+	v05 = (v .+ 0.5*h.*l1)
+	rhs = S05*(u .+ 0.5*h*kappa1) .- K05*v05 .+ uforce05
+	kappa2 = (In .- (0.5*h).*S05)\rhs
+
+	u = u .+ (0.5*h).*(kappa1 .+ kappa2)
+	l2 = K1*u .+ S1*v05 .+ vforce1
+
+	v = v .+ 0.5*h.*(l1 .+ l2)
+	t = t + h
+
+	return t, u, v
+end
+
+@inline function step(t::Float64, u::Array{Float64,N}, v::Array{Float64,N}, h::Float64,
+  K0::Array{Float64,N},S0::Array{Float64,N},K05::Array{Float64,N},S05::Array{Float64,N}, K1::Array{Float64,N},S1::Array{Float64,N},In::Array{Float64,N}) where N
+    rhs = (K0*u .+  S0*v)
+	l1 = (In .-  0.5*h.*S0)\rhs
+	kappa1 = S05*u .- K05*(v .+ 0.5*h.*l1) 
+	v05 = (v .+ 0.5*h.*l1)
+	rhs = S05*(u .+ 0.5*h*kappa1) .- K05*v05 
+	kappa2 = (In .- (0.5*h).*S05)\rhs
+
+	u = u .+ (0.5*h).*(kappa1 .+ kappa2)
+	l2 = K1*u .+ S1*v05 
+
+	v = v .+ 0.5*h.*(l1 .+ l2)
+	t = t + h
+	return t, u, v
+end
 
 function stepseparable(stepper::stormerverlet,u,v,t,h)
   if S(stepper.t) != 0
