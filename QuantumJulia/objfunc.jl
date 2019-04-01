@@ -132,7 +132,7 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
 
 
   # Preallocate
-  tmp1=tmp2=tmp3=tmp4=K0 = S0 =K05= S05 =K1 =S1 = dar =dai = zeros(Ntot,Ntot)
+  Ktmp = Stmp = tmp1 = tmp2 = tmp3 = tmp4 = K0 = S0 =K05= S05 =K1 =S1 = dar =dai = zeros(Ntot,Ntot)
   gr1 =gi1 = hr1 = hi1 = darr = dari = dair = daii = zeromat
 
     # Forward time stepping loop
@@ -165,20 +165,30 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
        vr0 = vr
        vi0 = vi
       end
-     
-     #  K!(K0, t, amat, adag, domega, splineparams, H0,tmp1,tmp2,tmp3)
-     #  S!(S0, t, amat, adag, domega, splineparams,tmp1,tmp2,tmp3)   
-     # K!(K05, t + 0.5*dt*gamma[q], amat, adag, domega, splineparams, H0,tmp1,tmp2,tmp3)
-     # S!(S05,t + 0.5*dt*gamma[q], amat, adag, domega, splineparams,tmp1,tmp2,tmp3) 
-     # K!(K1, t +dt*gamma[q], amat, adag, domega, splineparams, H0,tmp1,tmp2,tmp3)
-     # S!(S1, t + dt*gamma[q], amat, adag, domega, splineparams,tmp1,tmp2,tmp3) 
 
-      K0 = K(K0,t, amat, adag, domega, splineparams, H0)
-      S0 = S(S0,t, amat, adag, domega, splineparams)   
-      K05 = K(K05,t + 0.5*dt*gamma[q], amat, adag, domega, splineparams, H0)
-      S05 = S(S05,t + 0.5*dt*gamma[q], amat, adag, domega, splineparams) 
-      K1 = K(K1,t + dt*gamma[q], amat, adag, domega, splineparams, H0)
-      S1 = S(S1,t + dt*gamma[q], amat, adag, domega, splineparams) 
+
+     #K2 = K(K0,t, amat, adag, domega, splineparams, H0)
+     
+     K!(Ktmp, t, amat, adag, domega, splineparams, H0, tmp1, tmp2, tmp3) 
+     K0 = copy(Ktmp) 
+     S!(Stmp, t, amat, adag, domega, splineparams,tmp1, tmp2, tmp3)   
+     S0 = copy(Stmp)
+     K!(Ktmp, t + 0.5*dt*gamma[q], amat, adag, domega, splineparams, H0,tmp1,tmp2,tmp3)
+     K05 = copy(Ktmp)  
+     S!(Stmp,t + 0.5*dt*gamma[q], amat, adag, domega, splineparams,tmp1,tmp2,tmp3) 
+     S05 = copy(Stmp)
+     K!(Ktmp, t +dt*gamma[q], amat, adag, domega, splineparams, H0,tmp1,tmp2,tmp3)
+     K1 = copy(Ktmp)
+     S!(Stmp, t + dt*gamma[q], amat, adag, domega, splineparams,tmp1,tmp2,tmp3) 
+     S1 = copy(Stmp)
+
+     # K0 = K(K0,t, amat, adag, domega, splineparams, H0)
+     # display(K0)
+     # S0 = S(S0,t, amat, adag, domega, splineparams)   
+     # K05 = K(K05,t + 0.5*dt*gamma[q], amat, adag, domega, splineparams, H0)
+     # S05 = S(S05,t + 0.5*dt*gamma[q], amat, adag, domega, splineparams) 
+      #K1 = K(K1,t + dt*gamma[q], amat, adag, domega, splineparams, H0)
+     # S1 = S(S1,t + dt*gamma[q], amat, adag, domega, splineparams) 
 
        
       @inbounds t, vr, vi = timestep.step(t, vr, vi, dt*gamma[q], K0, S0, K05, S05, K1, S1, Ident)
@@ -274,21 +284,26 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
           t0 = t
           vr0 = vr
           vi0 = vi
-
-          # evolve vr, vi
-         # K!(K0,t, amat, adag, domega, splineparams, H0,tmp1,tmp2,tmp3)
-         # S!(S0,t, amat, adag, domega, splineparams,tmp1,tmp2,tmp3)   
-         #  K!(K05,t + 0.5*dt*gamma[q], amat, adag, domega, splineparams, H0,tmp1,tmp2,tmp3)
-         # S!(S05,t + 0.5*dt*gamma[q], amat, adag, domega, splineparams,tmp1,tmp2,tmp3) 
-         # K!(K1,t + dt*gamma[q], amat, adag, domega, splineparams, H0,tmp1,tmp2,tmp3)
-         # S!(S1,t + dt*gamma[q], amat, adag, domega, splineparams,tmp1,tmp2,tmp3) 
-
-          K0 = K(K0,t, amat, adag, domega, splineparams, H0)
-          S0 = S(S0,t, amat, adag, domega, splineparams)   
-          K05 = K(K05,t + 0.5*dt*gamma[q], amat, adag, domega, splineparams, H0)
-          S05 = S(S05,t + 0.5*dt*gamma[q], amat, adag, domega, splineparams) 
-          K1 = K(K1,t + dt*gamma[q], amat, adag, domega, splineparams, H0)
-          S1 = S(S1,t + dt*gamma[q], amat, adag, domega, splineparams) #
+      
+          K!(Ktmp, t, amat, adag, domega, splineparams, H0, tmp1, tmp2, tmp3) 
+          K0 = copy(Ktmp) 
+          S!(Stmp, t, amat, adag, domega, splineparams,tmp1, tmp2, tmp3)   
+          S0 = copy(Stmp)
+          K!(Ktmp, t + 0.5*dt*gamma[q], amat, adag, domega, splineparams, H0,tmp1,tmp2,tmp3)
+          K05 = copy(Ktmp)  
+          S!(Stmp,t + 0.5*dt*gamma[q], amat, adag, domega, splineparams,tmp1,tmp2,tmp3) 
+          S05 = copy(Stmp)
+          K!(Ktmp, t +dt*gamma[q], amat, adag, domega, splineparams, H0,tmp1,tmp2,tmp3)
+          K1 = copy(Ktmp)
+          S!(Stmp, t + dt*gamma[q], amat, adag, domega, splineparams,tmp1,tmp2,tmp3) 
+          S1 = copy(Stmp)
+          
+         # K0 = K(K0,t, amat, adag, domega, splineparams, H0)
+         # S0 = S(S0,t, amat, adag, domega, splineparams)   
+         # K05 = K(K05,t + 0.5*dt*gamma[q], amat, adag, domega, splineparams, H0)
+         # S05 = S(S05,t + 0.5*dt*gamma[q], amat, adag, domega, splineparams) 
+         # K1 = K(K1,t + dt*gamma[q], amat, adag, domega, splineparams, H0)
+         # S1 = S(S1,t + dt*gamma[q], amat, adag, domega, splineparams) #
 #
 
           # evolve vr, vi
@@ -587,47 +602,61 @@ end
 end
 
 
-function K!(K::Array{Float64,2},t::Float64,amat::Array{Float64,2},adag::Array{Float64,2},domega::Array{Float64,1},splineparams::bsplines.splineparams,H0::Array{Float64,2},tmp1::Array{Float64,2},tmp2::Array{Float64,2},tmp3::Array{Float64,2})
+@inline function K!(K::Array{Float64,2},t::Float64,amat::Array{Float64,2},adag::Array{Float64,2},domega::Array{Float64,1},splineparams::bsplines.splineparams,H0::Array{Float64,2},tmp1::Array{Float64,2},tmp2::Array{Float64,2},tmp3::Array{Float64,2})
  rr = tmp1
- ri = tmp1
+ rrt = tmp2
+ ri = tmp3
  rr = rotmatr(t,domega)
+ rrt = rr'
  ri = rotmati(t,domega)
+
  # (rr*amat)
+ tmp1 = similar(amat)
  mul!(tmp1,rr,amat) 
- #adag*rr'
- mul!(tmp2,adag,transpose(rr))
- 
- @inbounds for  I in eachindex(tmp1)
-  # (rr*amat + adag*rr')
-  tmp3[I] = tmp1[I] + tmp2[I]
- end
- 
+ tmp2 = similar(tmp1)
+ mul!(tmp2,adag,rrt)
+ tmp2 = adag*rrt
+@inbounds for  I in eachindex(tmp1)
+    # (rr*amat + adag*rr')
+    tmp3[I] = tmp1[I] + tmp2[I]
+  end
   #ri*amat 
+  tmp1 = similar(amat)
   mul!(tmp1,ri,amat)
   # adag*ri
+  tmp2 = similar(tmp1)
   mul!(tmp2,adag,ri)
+
+  rfeval = rfunc(t,splineparams)
+  ifeval = ifunc(t,splineparams)
+  
   @inbounds for  I in eachindex(tmp1)
    # (ri*amat + adag*ri)
     tmp4 = tmp1[I] + tmp2[I]
-    K[I] = H0[I] + rfunc(t,splineparams)*tmp3[I] - ifunc(t,splineparams)*tmp4
+    K[I] = H0[I] + rfeval*tmp3[I] - ifeval*tmp4
   end
+
 end
 
-function S!(S::Array{Float64,2},t::Float64,amat::Array{Float64,2},adag::Array{Float64,2},domega::Array{Float64,1},splineparams::bsplines.splineparams,tmp1::Array{Float64,2},tmp2::Array{Float64,2},tmp3::Array{Float64,2})
+@inline function S!(S::Array{Float64,2},t::Float64,amat::Array{Float64,2},adag::Array{Float64,2},domega::Array{Float64,1},splineparams::bsplines.splineparams,tmp1::Array{Float64,2},tmp2::Array{Float64,2},tmp3::Array{Float64,2})
   rr = tmp1
   ri = tmp1
   rr = rotmatr(t,domega)
   ri = rotmati(t,domega)
   tmp4 = 0.0
 
+  tmp1 = similar(amat)
   mul!(tmp1,rr,amat)
+  tmp2 = similar(tmp1)
   mul!(tmp2,adag,transpose(rr))
   
   @inbounds for  I in eachindex(tmp1)
     tmp3[I] = tmp1[I] - tmp2[I]
   end
-
+  
+  tmp1 = similar(amat)
   mul!(tmp1,ri,amat)
+  tmp2 = similar(tmp1)
   mul!(tmp2,adag,transpose(ri))
   
   @inbounds for  I in eachindex(tmp1)
