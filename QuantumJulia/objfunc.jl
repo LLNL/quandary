@@ -606,7 +606,7 @@ end
 end
 
 
-function K!(K::Array{Float64,2},t::Float64,amat::Array{Float64,2},adag::Array{Float64,2},domega::Array{Float64,1},splineparams::bsplines.splineparams,H0::Array{Float64,2},tmp1::Array{Float64,2},tmp2::Array{Float64,2},tmp3::Array{Float64,2})
+@inline function K!(K::Array{Float64,2},t::Float64,amat::Array{Float64,2},adag::Array{Float64,2},domega::Array{Float64,1},splineparams::bsplines.splineparams,H0::Array{Float64,2},tmp1::Array{Float64,2},tmp2::Array{Float64,2},tmp3::Array{Float64,2})
  rr = tmp1
  rrt = tmp2
  ri = tmp3
@@ -641,7 +641,7 @@ function K!(K::Array{Float64,2},t::Float64,amat::Array{Float64,2},adag::Array{Fl
 
 end
 
-function S!(S::Array{Float64,2},t::Float64,amat::Array{Float64,2},adag::Array{Float64,2},domega::Array{Float64,1},splineparams::bsplines.splineparams,tmp1::Array{Float64,2},tmp2::Array{Float64,2},tmp3::Array{Float64,2})
+@inline function S!(S::Array{Float64,2},t::Float64,amat::Array{Float64,2},adag::Array{Float64,2},domega::Array{Float64,1},splineparams::bsplines.splineparams,tmp1::Array{Float64,2},tmp2::Array{Float64,2},tmp3::Array{Float64,2})
   rr = tmp1
   ri = tmp1
   rr = rotmatr(t,domega)
