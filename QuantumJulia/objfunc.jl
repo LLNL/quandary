@@ -161,8 +161,7 @@ daii = zeromat
     infidelity0 = weightf(t, T)*(1-tracefidreal(vr, vi, vtargetr, vtargeti, labframe, t, omega))
     forbidden0 = xi*penalf(t, T)*normguard(vr, vi, Nguard)
 
-    rr = Diagonal(cos.(domega*t))
-    ri = Diagonal(-sin.(domega*t))
+    rotmatrices!(t,domega,rr,ri)
 
     if retadjoint
       scomplex0 = tracefidcomplex(vr, -vi, vtargetr, vtargeti, labframe, t, omega)
@@ -189,12 +188,13 @@ daii = zeromat
        vr0 = vr
        vi0 = vi
       end
-
-      ri = Diagonal(-sin.(domega*t))
       # Update K and S
       KS(K0, S0, t, amat, adag, domega, splineparams, H0, tmp1, tmp2, tmp3, rr,ri)
+      rotmatrices!(t + 0.5*dt*gamma[q],domega,rr,ri)
       KS(K05, S05, t + 0.5*dt*gamma[q], amat, adag, domega, splineparams, H0, tmp1, tmp2, tmp3,rr,ri)
+      rotmatrices!(t + dt*gamma[q],domega,rr,ri)
       KS(K1, S1, t + dt*gamma[q], amat, adag, domega, splineparams, H0, tmp1, tmp2, tmp3, rr,ri)
+      rotmatrices!(t,domega,rr,ri)
        
       @inbounds t, vr, vi = timestep.step(t, vr, vi, dt*gamma[q], K0, S0, K05, S05, K1, S1, Ident)
 
@@ -203,9 +203,6 @@ daii = zeromat
     	objfv = objfv + gamma[q]*dt*0.5*(infidelity0 + infidelity + forbidden0 + forbidden)
      	infidelity0 = infidelity
     	forbidden0 = forbidden		
-
-      rr = Diagonal(cos.(domega*t))
-      ri = Diagonal(-sin.(domega*t))
 
       if retadjoint	
       # Forcing evolving w
@@ -225,7 +222,7 @@ daii = zeromat
        salpha1 = tracefidcomplex(wr, -wi, vtargetr, vtargeti, labframe, t, omega)
        forbalpha1 =  xi*penalf(t,T)*screal(vr, vi, wr, wi, Nguard,zeromat)   
        objf_alpha1 = objf_alpha1 - gamma[q]*dt*0.5*2.0*real(weightf(t0,T)*conj(scomplex0)*salpha0 +
-          weightf(t,T)*conj(scomplex1)*salpha1) + gamma[q]*dt*0.5*2.0*(forbalpha0 + forbalpha1)
+       weightf(t,T)*conj(scomplex1)*salpha1) + gamma[q]*dt*0.5*2.0*(forbalpha0 + forbalpha1)
      
        # save previous values for next stage
        scomplex0 = scomplex1
@@ -273,8 +270,7 @@ daii = zeromat
       hi0[N+1:N+Nguard,:] = xi*penalf(t,T)*vi[N+1:N+Nguard,:]
 
       # forcing for evolving W (d psi/d alpha1) in the rotating frame
-      rr = Diagonal(cos.(domega*t))
-      ri = Diagonal(-sin.(domega*t))
+      rotmatrices!(t,domega,rr,ri)
 
       dar = rr*amat
       dai = ri*amat
@@ -290,8 +286,6 @@ daii = zeromat
       tr_adjif = tracefidreal(dair, daii, lambdar, lambdai)
       tr_adj0  = rfgrad(t)* tr_adjrf + ifgrad(t)* tr_adjif
 
-      
-
         #loop over stages
         for q in 1:stages
           t0 = t
@@ -299,9 +293,12 @@ daii = zeromat
           vi0 = vi
     
           # update K and S\         
-          KS(K0, S0, t , amat, adag, domega, splineparams, H0, tmp1, tmp2, tmp3, rr,ri)
-          KS(K05, S05, t + 0.5*dt*gamma[q], amat, adag, domega, splineparams, H0, tmp1, tmp2, tmp3, rr,ri)
+          KS(K0, S0, t, amat, adag, domega, splineparams, H0, tmp1, tmp2, tmp3, rr,ri)
+          rotmatrices!(t + 0.5*dt*gamma[q],domega,rr,ri)
+          KS(K05, S05, t + 0.5*dt*gamma[q], amat, adag, domega, splineparams, H0, tmp1, tmp2, tmp3,rr,ri)
+          rotmatrices!(t + dt*gamma[q],domega,rr,ri)
           KS(K1, S1, t + dt*gamma[q], amat, adag, domega, splineparams, H0, tmp1, tmp2, tmp3, rr,ri)
+          rotmatrices!(t,domega,rr,ri)
 
           # evolve vr, vi
           @inbounds t, vr, vi = timestep.step(t, vr, vi, dt*gamma[q], K0, S0, K05, S05, K1, S1, Ident)
@@ -318,9 +315,8 @@ daii = zeromat
 
           # evolve lambdar, lambdai
           @inbounds temp, lambdar, lambdai = timestep.step(t0, lambdar, lambdai, dt*gamma[q], hi0, 0.5*(hr0 + hr1), hi1, K0, S0, K05, S05, K1, S1, Ident)
-          
-          rr = Diagonal(cos.(domega*t))
-          ri = Diagonal(-sin.(domega*t))
+
+          rotmatrices!(t,domega,rr,ri)
 
           dar = rr*amat
           dai = ri*amat
@@ -589,9 +585,7 @@ function screal(vr::Array{Float64,2}, vi::Array{Float64,2}, wr::Array{Float64,2}
 
 end
 
-@inline function KS(K::Array{Float64,2},S::Array{Float64,2},t::Float64,amat::Array{Float64,2},adag::Array{Float64,2},domega::Array{Float64,1},splineparams::bsplines.splineparams,H0::Array{Float64,2},tmp1::Array{Float64,2},tmp2::Array{Float64,2},tmp3::Array{Float64,2},rr::Diagonal{Float64,Array{Float64,1}},ri::Diagonal{Float64,Array{Float64,1}})
-  rr = Diagonal(cos.(domega*t))
-  ri = Diagonal(-sin.(domega*t))
+function KS(K::Array{Float64,2},S::Array{Float64,2},t::Float64,amat::Array{Float64,2},adag::Array{Float64,2},domega::Array{Float64,1},splineparams::bsplines.splineparams,H0::Array{Float64,2},tmp1::Array{Float64,2},tmp2::Array{Float64,2},tmp3::Array{Float64,2},rr::Diagonal{Float64,Array{Float64,1}},ri::Diagonal{Float64,Array{Float64,1}})
   rrt = rr'
   rfeval = rfunc(t,splineparams)
   ifeval = ifunc(t,splineparams)
@@ -644,6 +638,11 @@ end
 
 @inline function ifunc(t::Float64,splineparams::bsplines.splineparams)
   ret = 0.0
+end
+
+function rotmatrices!(t::Float64, domega::Array{Float64,1},rr::Diagonal{Float64,Array{Float64,1}},ri::Diagonal{Float64,Array{Float64,1}})
+  rr[:] = Diagonal(cos.(domega*t))
+  ri[:] = Diagonal(-sin.(domega*t))
 end
 
 end
