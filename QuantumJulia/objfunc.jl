@@ -146,6 +146,8 @@ tmp2 = zeros(Ntot,Ntot)
 tmp3 = zeros(Ntot,Ntot)
 rr = zeros(Ntot,Ntot)
 ri = zeros(Ntot,Ntot)
+gr0 = zeromat
+gi0 = zeromat
 gr1 = zeromat
 gi1 = zeromat
 hr1 = zeromat
@@ -154,6 +156,10 @@ darr = zeromat
 dari = zeromat
 dair = zeromat
 daii = zeromat
+hr0 = zeromat
+hi0 = zeromat
+hr1 = zeromat
+hi1 = zeromat
 
     # Forward time stepping loop
   for step in 1:nsteps
@@ -179,8 +185,7 @@ daii = zeromat
       rfalpha = rgrad[kpar]
       ifalpha = igrad[kpar]
 
-      gr0 = rfalpha.*( (dai .-  dai')*vr .- (dar .+ dar')*vi) .+ ifalpha.*(  (dai .+ dai')*vi .+ (dar .-  dar')*vr) #should it really be ifalpha' and ralpha' here?? Different n anders code ..
-      gi0 = rfalpha.*( (dar .+  dar')*vr .+ (dai .- dai')*vi) .+ ifalpha.*( -(dai .+ dai')*vr .+ (dar .-  dar')*vi)
+       gr0, gi0 = grupdate(gr0,gi0,dai, dar, vr, vi, rfalpha, ifalpha)
     end
 
     
@@ -217,8 +222,7 @@ daii = zeromat
        rfalpha = rgrad[kpar] #Will this return the same va
        ifalpha = igrad[kpar]
 
-       gr1 = rfalpha'.*( (dai .-  dai')*vr .- (dar .+ dar')*vi) .+ ifalpha'.*(  (dai .+ dai')*vi .+ (dar .-  dar')*vr) #should it really be ifalpha' and ralpha' here?? Different n anders code ..
-       gi1 = rfalpha'.*( (dar .+  dar')*vr .+ (dai .- dai')*vi) .+ ifalpha'.*( -(dai .+ dai')*vr .+ (dar .-  dar')*vi)
+       gr1, gi1 = grupdate(gr1 ,gi1, dai, dar, vr, vi, rfalpha, ifalpha)
 
        @inbounds temp, wr, wi = timestep.step(t0, wr, wi, dt*gamma[q], gi0, 0.5*(gr1 + gr0), gi1, K0, S0, K05, S05, K1, S1, Ident) 
 
@@ -652,4 +656,9 @@ function rotmatrices!(t::Float64, domega::Array{Float64,1},rr::Array{Float64,2},
  end
 end
 
+function grupdate(gr0::Array{Float64,2}, gi0::Array{Float64,2}, dai::Array{Float64,2}, dar::Array{Float64,2}, vr::Array{Float64,2}, vi::Array{Float64,2},rfalpha::Float64,ifalpha::Float64)
+   gr0 = rfalpha.*( (dai .-  dai')*vr .- (dar .+ dar')*vi) .+ ifalpha.*(  (dai .+ dai')*vi .+ (dar .-  dar')*vr) #should it really be ifalpha' and ralpha' here?? Different n anders code ..
+   gi0 = rfalpha.*( (dar .+  dar')*vr .+ (dai .- dai')*vi) .+ ifalpha.*( -(dai .+ dai')*vr .+ (dar .-  dar')*vi)
+   return gr0, gi0
+end
 end
