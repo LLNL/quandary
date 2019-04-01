@@ -144,8 +144,8 @@ dai = zeros(Ntot,Ntot)
 tmp1 = zeros(Ntot,Ntot)
 tmp2 = zeros(Ntot,Ntot)
 tmp3 = zeros(Ntot,Ntot)
-rr = Diagonal(zeros(Ntot))
-ri = Diagonal(zeros(Ntot))
+rr = zeros(Ntot,Ntot)
+ri = zeros(Ntot,Ntot)
 gr1 = zeromat
 gi1 = zeromat
 hr1 = zeromat
@@ -585,7 +585,7 @@ function screal(vr::Array{Float64,2}, vi::Array{Float64,2}, wr::Array{Float64,2}
 
 end
 
-function KS(K::Array{Float64,2},S::Array{Float64,2},t::Float64,amat::Array{Float64,2},adag::Array{Float64,2},domega::Array{Float64,1},splineparams::bsplines.splineparams,H0::Array{Float64,2},tmp1::Array{Float64,2},tmp2::Array{Float64,2},tmp3::Array{Float64,2},rr::Diagonal{Float64,Array{Float64,1}},ri::Diagonal{Float64,Array{Float64,1}})
+function KS(K::Array{Float64,2},S::Array{Float64,2},t::Float64,amat::Array{Float64,2},adag::Array{Float64,2},domega::Array{Float64,1},splineparams::bsplines.splineparams,H0::Array{Float64,2},tmp1::Array{Float64,2},tmp2::Array{Float64,2},tmp3::Array{Float64,2},rr::Array{Float64,2},ri::Array{Float64,2})
   rrt = rr'
   rfeval = rfunc(t,splineparams)
   ifeval = ifunc(t,splineparams)
@@ -640,9 +640,11 @@ end
   ret = 0.0
 end
 
-function rotmatrices!(t::Float64, domega::Array{Float64,1},rr::Diagonal{Float64,Array{Float64,1}},ri::Diagonal{Float64,Array{Float64,1}})
-  rr[:] = Diagonal(cos.(domega*t))
-  ri[:] = Diagonal(-sin.(domega*t))
+function rotmatrices!(t::Float64, domega::Array{Float64,1},rr::Array{Float64,2},ri::Array{Float64,2})
+ for I in 1:length(domega)
+  rr[I,I] = cos(domega[I]*t)
+  ri[I,I] = -sin(domega[I]*t)
+ end
 end
 
 end
