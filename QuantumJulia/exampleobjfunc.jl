@@ -14,7 +14,7 @@ function exampleobjfunc()
 	
 	cfl = 0.05
 
-	T = 0150
+	T = 150
 
 	testadjoint = 0
 	maxpar =0.09

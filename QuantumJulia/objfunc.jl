@@ -132,14 +132,37 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
 
 
   # Preallocate
-Ktmp = Stmp = tmp1 = tmp2 = tmp3 = tmp4 = tmp5= K0 = S0 =K05= S05 =K1 =S1 = dar =dai = zeros(Ntot,Ntot)
-  gr1 =gi1 = hr1 = hi1 = darr = dari = dair = daii = zeromat
+K0= zeros(Ntot,Ntot)
+S0= zeros(Ntot,Ntot)
+tmp5= zeros(Ntot,Ntot)
+K05= zeros(Ntot,Ntot)
+S05 = zeros(Ntot,Ntot)
+K1 = zeros(Ntot,Ntot)
+S1 = zeros(Ntot,Ntot)
+dar = zeros(Ntot,Ntot)
+dai = zeros(Ntot,Ntot)
+tmp1 = zeros(Ntot,Ntot)
+tmp2 = zeros(Ntot,Ntot)
+tmp3 = zeros(Ntot,Ntot)
+tmp4 = Diagonal(zeros(Ntot))
+tmp5 = Diagonal(zeros(Ntot))
+gr1 = zeromat
+gi1 = zeromat
+hr1 = zeromat
+hi1 = zeromat
+darr = zeromat
+dari = zeromat
+dair = zeromat
+daii = zeromat
 
     # Forward time stepping loop
   for step in 1:nsteps
     #for the objective function
     infidelity0 = weightf(t, T)*(1-tracefidreal(vr, vi, vtargetr, vtargeti, labframe, t, omega))
     forbidden0 = xi*penalf(t, T)*normguard(vr, vi, Nguard)
+
+    rr = Diagonal(cos.(domega*t))
+    ri = Diagonal(-sin.(domega*t))
 
     if retadjoint
       scomplex0 = tracefidcomplex(vr, -vi, vtargetr, vtargeti, labframe, t, omega)
@@ -149,8 +172,8 @@ Ktmp = Stmp = tmp1 = tmp2 = tmp3 = tmp4 = tmp5= K0 = S0 =K05= S05 =K1 =S1 = dar 
       rgrad = rfgrad(t)
       igrad = ifgrad(t)
 
-      dar = rotmatr(t,domega)*amat
-      dai = rotmati(t,domega)*amat #adag?
+      dar = rr*amat
+      dai = ri*amat #adag?
       rfalpha = rgrad[kpar]
       ifalpha = igrad[kpar]
 
@@ -158,6 +181,7 @@ Ktmp = Stmp = tmp1 = tmp2 = tmp3 = tmp4 = tmp5= K0 = S0 =K05= S05 =K1 =S1 = dar 
       gi0 = rfalpha.*( (dar .+  dar')*vr .+ (dai .- dai')*vi) .+ ifalpha.*( -(dai .+ dai')*vr .+ (dar .-  dar')*vi)
     end
 
+    
     # Stromer-Verlet
     for q in 1:stages
       if retadjoint
@@ -165,31 +189,11 @@ Ktmp = Stmp = tmp1 = tmp2 = tmp3 = tmp4 = tmp5= K0 = S0 =K05= S05 =K1 =S1 = dar 
        vr0 = vr
        vi0 = vi
       end
-
-
-     #K2 = K(K0,t, amat, adag, domega, splineparams, H0)
-     
-     K!(Ktmp, t, amat, adag, domega, splineparams, H0, tmp1, tmp2, tmp3) 
-     K0 = copy(Ktmp) 
-     S!(Stmp, t, amat, adag, domega, splineparams,tmp1, tmp2, tmp3)   
-     S0 = copy(Stmp)
-     K!(Ktmp, t + 0.5*dt*gamma[q], amat, adag, domega, splineparams, H0,tmp1,tmp2,tmp3)
-     K05 = copy(Ktmp)  
-     S!(Stmp,t + 0.5*dt*gamma[q], amat, adag, domega, splineparams,tmp1,tmp2,tmp3) 
-     S05 = copy(Stmp)
-     K!(Ktmp, t +dt*gamma[q], amat, adag, domega, splineparams, H0,tmp1,tmp2,tmp3)
-     K1 = copy(Ktmp)
-     S!(Stmp, t + dt*gamma[q], amat, adag, domega, splineparams,tmp1,tmp2,tmp3) 
-     S1 = copy(Stmp)
-
-     # K0 = K(K0,t, amat, adag, domega, splineparams, H0)
-     # display(K0)
-     # S0 = S(S0,t, amat, adag, domega, splineparams)   
-     # K05 = K(K05,t + 0.5*dt*gamma[q], amat, adag, domega, splineparams, H0)
-     # S05 = S(S05,t + 0.5*dt*gamma[q], amat, adag, domega, splineparams) 
-      #K1 = K(K1,t + dt*gamma[q], amat, adag, domega, splineparams, H0)
-     # S1 = S(S1,t + dt*gamma[q], amat, adag, domega, splineparams) 
-
+    
+      # Update K and S
+      KS(K0, S0, t, amat, adag, domega, splineparams, H0, tmp1, tmp2, tmp3, rr,ri)
+      KS(K05, S05, t + 0.5*dt*gamma[q], amat, adag, domega, splineparams, H0, tmp1, tmp2, tmp3,rr,ri)
+      KS(K1, S1, t + dt*gamma[q], amat, adag, domega, splineparams, H0, tmp1, tmp2, tmp3, rr,ri)
        
       @inbounds t, vr, vi = timestep.step(t, vr, vi, dt*gamma[q], K0, S0, K05, S05, K1, S1, Ident)
 
@@ -199,11 +203,14 @@ Ktmp = Stmp = tmp1 = tmp2 = tmp3 = tmp4 = tmp5= K0 = S0 =K05= S05 =K1 =S1 = dar 
      	infidelity0 = infidelity
     	forbidden0 = forbidden		
 
+      rr = Diagonal(cos.(domega*t))
+      ri = Diagonal(-sin.(domega*t))
+
       if retadjoint	
       # Forcing evolving w
        scomplex1 = tracefidcomplex(vr, -vi, vtargetr, vtargeti, labframe, t, omega)
-       dar = rotmatr(t,domega)*amat
-       dai = rotmati(t,domega)*amat
+       dar = rr*amat
+       dai = ri*amat
        rgrad = rfgrad(t)
        igrad = ifgrad(t)
        rfalpha = rgrad[kpar] #Will this return the same va
@@ -265,8 +272,11 @@ Ktmp = Stmp = tmp1 = tmp2 = tmp3 = tmp4 = tmp5= K0 = S0 =K05= S05 =K1 =S1 = dar 
       hi0[N+1:N+Nguard,:] = xi*penalf(t,T)*vi[N+1:N+Nguard,:]
 
       # forcing for evolving W (d psi/d alpha1) in the rotating frame
-      dar = rotmatr(t,domega)*amat
-      dai = rotmati(t,domega)*amat
+      rr = Diagonal(cos.(domega*t))
+      ri = Diagonal(-sin.(domega*t))
+
+      dar = rr*amat
+      dai = ri*amat
       rgrad = rfgrad(t)
       igrad = ifgrad(t)
 
@@ -279,36 +289,19 @@ Ktmp = Stmp = tmp1 = tmp2 = tmp3 = tmp4 = tmp5= K0 = S0 =K05= S05 =K1 =S1 = dar 
       tr_adjif = tracefidreal(dair, daii, lambdar, lambdai)
       tr_adj0  = rfgrad(t)* tr_adjrf + ifgrad(t)* tr_adjif
 
+      
+
         #loop over stages
         for q in 1:stages
           t0 = t
           vr0 = vr
           vi0 = vi
-      
-          K!(Ktmp, t, amat, adag, domega, splineparams, H0, tmp1, tmp2, tmp3) 
-          K0 = copy(Ktmp) 
-          S!(Stmp, t, amat, adag, domega, splineparams,tmp1, tmp2, tmp3)   
-          S0 = copy(Stmp)
-          K!(Ktmp, t + 0.5*dt*gamma[q], amat, adag, domega, splineparams, H0,tmp1,tmp2,tmp3)
-          K05 = copy(Ktmp)  
-          S!(Stmp,t + 0.5*dt*gamma[q], amat, adag, domega, splineparams,tmp1,tmp2,tmp3) 
-          S05 = copy(Stmp)
-          K!(Ktmp, t +dt*gamma[q], amat, adag, domega, splineparams, H0,tmp1,tmp2,tmp3)
-          K1 = copy(Ktmp)
-          S!(Stmp, t + dt*gamma[q], amat, adag, domega, splineparams,tmp1,tmp2,tmp3) 
-          S1 = copy(Stmp) 
-        #K0,S0 = KS(Ktmp, Stmp, t + dt*gamma[q], amat, adag, domega, splineparams, H0, tmp1, tmp2, tmp3,tmp5)
-        #K05,S05 = KS(Ktmp, Stmp, t + 0.5*dt*gamma[q], amat, adag, domega, splineparams, H0, tmp1, tmp2, tmp3,tmp5)
-        #K1,S1 = KS(Ktmp, Stmp, t + dt*gamma[q], amat, adag, domega, splineparams, H0, tmp1, tmp2, tmp3,tmp5)
-
-
-         # K0 = K(K0,t, amat, adag, domega, splineparams, H0)
-         # S0 = S(S0,t, amat, adag, domega, splineparams)   
-         # K05 = K(K05,t + 0.5*dt*gamma[q], amat, adag, domega, splineparams, H0)
-         # S05 = S(S05,t + 0.5*dt*gamma[q], amat, adag, domega, splineparams) 
-         # K1 = K(K1,t + dt*gamma[q], amat, adag, domega, splineparams, H0)
-         # S1 = S(S1,t + dt*gamma[q], amat, adag, domega, splineparams) #
-#
+    
+          # update K and S\
+          
+          KS(K0, S0, t , amat, adag, domega, splineparams, H0, tmp1, tmp2, tmp3, rr,ri)
+          KS(K05, S05, t + 0.5*dt*gamma[q], amat, adag, domega, splineparams, H0, tmp1, tmp2, tmp3, rr,ri)
+          KS(K1, S1, t + dt*gamma[q], amat, adag, domega, splineparams, H0, tmp1, tmp2, tmp3, rr,ri)
 
           # evolve vr, vi
           @inbounds t, vr, vi = timestep.step(t, vr, vi, dt*gamma[q], K0, S0, K05, S05, K1, S1, Ident)
@@ -325,9 +318,12 @@ Ktmp = Stmp = tmp1 = tmp2 = tmp3 = tmp4 = tmp5= K0 = S0 =K05= S05 =K1 =S1 = dar 
 
           # evolve lambdar, lambdai
           @inbounds temp, lambdar, lambdai = timestep.step(t0, lambdar, lambdai, dt*gamma[q], hi0, 0.5*(hr0 + hr1), hi1, K0, S0, K05, S05, K1, S1, Ident)
+          
+          rr = Diagonal(cos.(domega*t))
+          ri = Diagonal(-sin.(domega*t))
 
-          dar = rotmatr(t,domega)*amat
-          dai = rotmati(t,domega)*amat
+          dar = rr*amat
+          dai = ri*amat
           rgrad = rfgrad(t)
           igrad = ifgrad(t)
           
@@ -606,126 +602,49 @@ end
 end
 
 
-@inline function K!(K::Array{Float64,2},t::Float64,amat::Array{Float64,2},adag::Array{Float64,2},domega::Array{Float64,1},splineparams::bsplines.splineparams,H0::Array{Float64,2},tmp1::Array{Float64,2},tmp2::Array{Float64,2},tmp3::Array{Float64,2})
- rr = tmp1
- rrt = tmp2
- ri = tmp3
- rr = rotmatr(t,domega)
+function KS(K::Array{Float64,2},S::Array{Float64,2},t::Float64,amat::Array{Float64,2},adag::Array{Float64,2},domega::Array{Float64,1},splineparams::bsplines.splineparams,H0::Array{Float64,2},tmp1::Array{Float64,2},tmp2::Array{Float64,2},tmp3::Array{Float64,2},rr::Diagonal{Float64,Array{Float64,1}},ri::Diagonal{Float64,Array{Float64,1}})
  rrt = rr'
- ri = rotmati(t,domega)
-
- # (rr*amat)
- tmp1 =copy(amat)
- mul!(tmp1,rr,amat) 
- tmp2 = copy(tmp1)
- mul!(tmp2,adag,rrt)
- tmp2 = adag*rrt
- for  I in eachindex(tmp1)
-    # (rr*amat + adag*rr')
-   @inbounds tmp3[I] = tmp1[I] + tmp2[I]
-  end
-  #ri*amat 
-  tmp1 = copy(amat)
-  mul!(tmp1,ri,amat)
-  # adag*ri
-  tmp2 = copy(tmp1)
-  mul!(tmp2,adag,ri)
-
-  rfeval = rfunc(t,splineparams)
-  ifeval = ifunc(t,splineparams)
-  for  I in eachindex(tmp1)
-   # (ri*amat + adag*ri)
-    @inbounds   tmp4 = tmp1[I] + tmp2[I]
-    @inbounds  K[I] = H0[I] + rfeval*tmp3[I] - ifeval*tmp4
-  end
-
-end
-
-@inline function S!(S::Array{Float64,2},t::Float64,amat::Array{Float64,2},adag::Array{Float64,2},domega::Array{Float64,1},splineparams::bsplines.splineparams,tmp1::Array{Float64,2},tmp2::Array{Float64,2},tmp3::Array{Float64,2})
-  rr = tmp1
-  ri = tmp1
-  rr = rotmatr(t,domega)
-  ri = rotmati(t,domega)
-  tmp4 = 0.0
-
-  tmp1 = copy(amat)
-  mul!(tmp1,rr,amat)
-  tmp2 = copy(tmp1)
-  mul!(tmp2,adag,transpose(rr))
-  
-  for  I in eachindex(tmp1)
-   @inbounds tmp3[I] = tmp1[I] - tmp2[I]
-  end
-  
-  tmp1 = copy(amat)
-  mul!(tmp1,ri,amat)
-  tmp2 = copy(tmp1)
-  mul!(tmp2,adag,transpose(ri))
-  
-  for  I in eachindex(tmp1)
-  @inbounds tmp4 = tmp1[I] - tmp2[I]  
-  @inbounds  S[I]  = ifunc(t,splineparams)*tmp3[I] + rfunc(t,splineparams)*tmp4
-  end
-end
-
-function KS(K::Array{Float64,2},S::Array{Float64,2},t::Float64,amat::Array{Float64,2},adag::Array{Float64,2},domega::Array{Float64,1},splineparams::bsplines.splineparams,H0::Array{Float64,2},tmp1::Array{Float64,2},tmp2::Array{Float64,2},tmp3::Array{Float64,2},Kt::Array{Float64,2})
- rr = tmp1
- rrt = tmp2
- ri = tmp3
- rr = rotmatr(t,domega)
- rrt = rr'
- ri = rotmati(t,domega)
  rfeval = rfunc(t,splineparams)
  ifeval = ifunc(t,splineparams)
  tmp4 = 0.0
 
 #K
   # (rr*amat)
- tmp1 =copy(amat)
  mul!(tmp1,rr,amat) 
- tmp2 = copy(tmp1)
  mul!(tmp2,adag,rrt)
- tmp2 = adag*rrt
  for  I in eachindex(tmp1)
     # (rr*amat + adag*rr')
    @inbounds tmp3[I] = tmp1[I] + tmp2[I]
   end
   #ri*amat 
-  tmp1 = copy(amat)
   mul!(tmp1,ri,amat)
   # adag*ri
-  tmp2 = copy(tmp1)
   mul!(tmp2,adag,ri)
   for  I in eachindex(tmp1)
    # (ri*amat + adag*ri)
     @inbounds   tmp4 = tmp1[I] + tmp2[I]
-    @inbounds  Kt[I] = H0[I] + rfeval*tmp3[I] - ifeval*tmp4
+    @inbounds  K[I] = H0[I] + rfeval*tmp3[I] - ifeval*tmp4
   end
 
-  K = copy(Kt)
 #S
-   tmp1 = copy(amat)
   mul!(tmp1,rr,amat)
-  tmp2 = copy(tmp1)
   mul!(tmp2,adag,transpose(rr))
   
   for  I in eachindex(tmp1)
    @inbounds tmp3[I] = tmp1[I] - tmp2[I]
   end
   
-  tmp1 = copy(amat)
-  mul!(tmp1,ri,amat)
-  tmp2 = copy(tmp1)
-  mul!(tmp2,adag,transpose(ri))
 
-  tmp3 = copy(tmp3)
-  tmp4 = copy(tmp4)
+  mul!(tmp1,ri,amat)
+  mul!(tmp2,adag,transpose(ri))
   
   for  I in eachindex(tmp1)
   @inbounds tmp4 = tmp1[I] - tmp2[I]  
   @inbounds  S[I]  = ifunc(t,splineparams)*tmp3[I] + rfunc(t,splineparams)*tmp4
   end
-  return K, S
+
+  K[:] = H0 + rfunc(t,splineparams).*(rr*amat + adag*rr') - ifunc(t,splineparams).*(ri*amat + adag*ri)
+  S[:]  = ifunc(t,splineparams).*(rr*amat - adag*rr') + rfunc(t,splineparams).*(ri*amat - adag*ri')
 
 end
 
@@ -744,17 +663,13 @@ end
   ret = 0.0
 end
 
-@inline function rotmatr(t::Float64,domega::Array{Float64,1})
-  N = length(domega)
-  rotmatr =zeros(N,N)
-  rotmatr = Diagonal(cos.(domega*t))
-end
+#@inline function rotmatr(rotmatr::Array{Float64,2},t::Float64,domega::Array{Float64,1})
+#  rotmatr = Diagonal(cos.(domega*t))
+#end
 
-@inline function rotmati(t::Float64,domega::Array{Float64,1})
-  N = length(domega)
-  rotmatr =zeros(N,N)
-  rotmatr = Diagonal(-sin.(domega*t))
-end
+#@inline function rotmati(rotmati::Array{Float64,2},t::Float64,domega::Array{Float64,1})
+#  rotmati = Diagonal(-sin.(domega*t))
+#end
 
 
 end
