@@ -171,8 +171,11 @@ daii = zeromat
       rgrad = rfgrad(t)
       igrad = ifgrad(t)
 
-      dar = rr*amat
-      dai = ri*amat #adag?
+      #dar = rr*amat
+      #dai = ri*amat #adag?
+      mul!(dar,rr,amat)
+      mul!(dai,ri,amat)
+
       rfalpha = rgrad[kpar]
       ifalpha = igrad[kpar]
 
@@ -207,8 +210,8 @@ daii = zeromat
       if retadjoint	
       # Forcing evolving w
        scomplex1 = tracefidcomplex(vr, -vi, vtargetr, vtargeti, labframe, t, omega)
-       dar = rr*amat
-       dai = ri*amat
+       mul!(dar,rr,amat)
+       mul!(dai,ri,amat)
        rgrad = rfgrad(t)
        igrad = ifgrad(t)
        rfalpha = rgrad[kpar] #Will this return the same va
@@ -272,8 +275,8 @@ daii = zeromat
       # forcing for evolving W (d psi/d alpha1) in the rotating frame
       rotmatrices!(t,domega,rr,ri)
 
-      dar = rr*amat
-      dai = ri*amat
+      mul!(dar,rr,amat)
+      mul!(dai,ri,amat)
       rgrad = rfgrad(t)
       igrad = ifgrad(t)
 
@@ -318,8 +321,8 @@ daii = zeromat
 
           rotmatrices!(t,domega,rr,ri)
 
-          dar = rr*amat
-          dai = ri*amat
+          mul!(dar,rr,amat)
+          mul!(dai,ri,amat)
           rgrad = rfgrad(t)
           igrad = ifgrad(t)
           
@@ -465,12 +468,14 @@ end
 
 @inline function tracefidreal(ur::Array{Float64,2}, vi::Array{Float64,2}, vtargetr::Array{Float64,2}, vtargeti::Array{Float64,2}, labframe::Bool,t::Float64,omega::Array{Float64,1})
   N = size(vtargetr,2)
-
   if labframe
-  	rotmatc = Diagonal(cos.(omega*t))
-  	rotmats = Diagonal(sin.(omega*t))
-    ua = rotmatc * ur + rotmats * vi # ur = + Re(u), vi = - Im(u)
-    va = rotmats * ur - rotmatc * vi
+    for I in 1:N
+  	 rotmatc = cos(omega[I]*t)
+  	 rotmats = sin(omega[I]*t)
+    
+     ua[I] = rotmatc * ur[I] + rotmats * vi[I] # ur = + Re(u), vi = - Im(u)
+     va[I] = rotmats * ur[I] - rotmatc * vi[I]
+    end
   else
     ua = ur
     va = -vi
