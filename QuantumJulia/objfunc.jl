@@ -144,8 +144,8 @@ dai = zeros(Ntot,Ntot)
 tmp1 = zeros(Ntot,Ntot)
 tmp2 = zeros(Ntot,Ntot)
 tmp3 = zeros(Ntot,Ntot)
-tmp4 = Diagonal(zeros(Ntot))
-tmp5 = Diagonal(zeros(Ntot))
+rr = Diagonal(zeros(Ntot))
+ri = Diagonal(zeros(Ntot))
 gr1 = zeromat
 gi1 = zeromat
 hr1 = zeromat
@@ -189,7 +189,8 @@ daii = zeromat
        vr0 = vr
        vi0 = vi
       end
-    
+
+      ri = Diagonal(-sin.(domega*t))
       # Update K and S
       KS(K0, S0, t, amat, adag, domega, splineparams, H0, tmp1, tmp2, tmp3, rr,ri)
       KS(K05, S05, t + 0.5*dt*gamma[q], amat, adag, domega, splineparams, H0, tmp1, tmp2, tmp3,rr,ri)
@@ -297,8 +298,7 @@ daii = zeromat
           vr0 = vr
           vi0 = vi
     
-          # update K and S\
-          
+          # update K and S\         
           KS(K0, S0, t , amat, adag, domega, splineparams, H0, tmp1, tmp2, tmp3, rr,ri)
           KS(K05, S05, t + 0.5*dt*gamma[q], amat, adag, domega, splineparams, H0, tmp1, tmp2, tmp3, rr,ri)
           KS(K1, S1, t + dt*gamma[q], amat, adag, domega, splineparams, H0, tmp1, tmp2, tmp3, rr,ri)
@@ -589,63 +589,46 @@ function screal(vr::Array{Float64,2}, vi::Array{Float64,2}, wr::Array{Float64,2}
 
 end
 
-@inline function K(K::Array{Float64,2},t::Float64,amat::Array{Float64,2},adag::Array{Float64,2},domega::Array{Float64,1},splineparams::bsplines.splineparams,H0::Array{Float64,2})
- rr = rotmatr(t,domega) 
- ri = rotmati(t,domega) 
- K = H0 + rfunc(t,splineparams).*(rr*amat + adag*rr') - ifunc(t,splineparams).*(ri*amat + adag*ri)
-end
-
-@inline function S(S::Array{Float64,2},t::Float64,amat::Array{Float64,2},adag::Array{Float64,2},domega::Array{Float64,1},splineparams::bsplines.splineparams)
-  rr = rotmatr(t,domega)
-  ri = rotmati(t,domega)
-  S  = ifunc(t,splineparams).*(rr*amat - adag*rr') + rfunc(t,splineparams).*(ri*amat - adag*ri')
-end
-
-
-function KS(K::Array{Float64,2},S::Array{Float64,2},t::Float64,amat::Array{Float64,2},adag::Array{Float64,2},domega::Array{Float64,1},splineparams::bsplines.splineparams,H0::Array{Float64,2},tmp1::Array{Float64,2},tmp2::Array{Float64,2},tmp3::Array{Float64,2},rr::Diagonal{Float64,Array{Float64,1}},ri::Diagonal{Float64,Array{Float64,1}})
- rrt = rr'
- rfeval = rfunc(t,splineparams)
- ifeval = ifunc(t,splineparams)
- tmp4 = 0.0
-
-#K
+@inline function KS(K::Array{Float64,2},S::Array{Float64,2},t::Float64,amat::Array{Float64,2},adag::Array{Float64,2},domega::Array{Float64,1},splineparams::bsplines.splineparams,H0::Array{Float64,2},tmp1::Array{Float64,2},tmp2::Array{Float64,2},tmp3::Array{Float64,2},rr::Diagonal{Float64,Array{Float64,1}},ri::Diagonal{Float64,Array{Float64,1}})
+  rr = Diagonal(cos.(domega*t))
+  ri = Diagonal(-sin.(domega*t))
+  rrt = rr'
+  rfeval = rfunc(t,splineparams)
+  ifeval = ifunc(t,splineparams)
+  tmp4 = 0.0
+ 
   # (rr*amat)
- mul!(tmp1,rr,amat) 
- mul!(tmp2,adag,rrt)
- for  I in eachindex(tmp1)
+  mul!(tmp1,rr,amat) 
+  mul!(tmp2,adag,rrt)
+  for  I in eachindex(tmp1)
     # (rr*amat + adag*rr')
    @inbounds tmp3[I] = tmp1[I] + tmp2[I]
   end
-  #ri*amat 
+   #ri*amat 
   mul!(tmp1,ri,amat)
-  # adag*ri
+   # adag*ri
   mul!(tmp2,adag,ri)
   for  I in eachindex(tmp1)
    # (ri*amat + adag*ri)
     @inbounds   tmp4 = tmp1[I] + tmp2[I]
     @inbounds  K[I] = H0[I] + rfeval*tmp3[I] - ifeval*tmp4
   end
-
-#S
+  
+  # S
   mul!(tmp1,rr,amat)
   mul!(tmp2,adag,transpose(rr))
-  
+     
   for  I in eachindex(tmp1)
    @inbounds tmp3[I] = tmp1[I] - tmp2[I]
   end
   
-
   mul!(tmp1,ri,amat)
   mul!(tmp2,adag,transpose(ri))
-  
+   
   for  I in eachindex(tmp1)
-  @inbounds tmp4 = tmp1[I] - tmp2[I]  
-  @inbounds  S[I]  = ifunc(t,splineparams)*tmp3[I] + rfunc(t,splineparams)*tmp4
+   @inbounds tmp4 = tmp1[I] - tmp2[I]  
+   @inbounds  S[I]  = ifunc(t,splineparams)*tmp3[I] + rfunc(t,splineparams)*tmp4
   end
-
-  K[:] = H0 + rfunc(t,splineparams).*(rr*amat + adag*rr') - ifunc(t,splineparams).*(ri*amat + adag*ri)
-  S[:]  = ifunc(t,splineparams).*(rr*amat - adag*rr') + rfunc(t,splineparams).*(ri*amat - adag*ri')
-
 end
 
 
@@ -662,14 +645,5 @@ end
 @inline function ifunc(t::Float64,splineparams::bsplines.splineparams)
   ret = 0.0
 end
-
-#@inline function rotmatr(rotmatr::Array{Float64,2},t::Float64,domega::Array{Float64,1})
-#  rotmatr = Diagonal(cos.(domega*t))
-#end
-
-#@inline function rotmati(rotmati::Array{Float64,2},t::Float64,domega::Array{Float64,1})
-#  rotmati = Diagonal(-sin.(domega*t))
-#end
-
 
 end
