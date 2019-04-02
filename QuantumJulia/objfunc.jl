@@ -451,7 +451,7 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
 		f1 = plot(td, vcat(rplot.(collect(td))...), lab = "Real", title = "Control function", linewidth = 2)
 		f2 = plot(td, vcat(eplot.(collect(td))...), title = "Envelope function", linewidth = 2)
 		if weight == 1
-			f3 = plot(td, weightf1.(td,T), lab = "Gate", title = "Weight functions", linewidth = 2)
+			f3 = plot(td, weightf1.(td,T), lab = "Gate", title = "Weight functions ", linewidth = 2)
 			plot!(td, penalf1.(td,T), lab = "Forbidden", linewidth = 2)
 			plt2 = plot(f1, f2, f3, layout = (3,1))    
 		elseif weight == 2 
