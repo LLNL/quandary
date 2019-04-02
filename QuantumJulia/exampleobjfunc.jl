@@ -1,7 +1,7 @@
 function exampleobjfunc()
 	N = 4
 	#3
-	Nguard = 3
+	Nguard = 0
 	Ntot = N + Nguard
 	
 	Ident = Matrix{Float64}(I, Ntot, Ntot)   
@@ -26,18 +26,20 @@ function exampleobjfunc()
 
 	 m = readdlm("bspline-200-t150.dat")
 	pcof = Array{Float64,1}(m[6:end,1])
+	pcof  = zeros(250)
 	 order = 2
 
-    verbose= false
+    verbose = true
+    weights = 2
 
 	if verbose
-  	    pl1, pl2, objv, grad = objfunc.traceobjgrad(pcof,params,order, verbose,true)
+  	    pl1, pl2, objv, grad = objfunc.traceobjgrad(pcof, params, order, verbose, true, weights)
 	else
-	    objv, grad  = objfunc.traceobjgrad(pcof, params, order, verbose, true)
+	    objv, grad  = objfunc.traceobjgrad(pcof, params, order, verbose, true, weights)
 	end
 	
 	println("objv: ", objv)
-	#println("objgrad: ", grad)
+	println("objgrad: ", grad)
 	
 	if verbose
 	  pl1
@@ -73,12 +75,12 @@ function example_noguard()
 #	 m = readdlm("bspline-200-t150.dat")
 #	pcof = Array{Float64,1}(m[6:end,1])
 
-	pcof  = zeros(10)
+	pcof  = zeros(250)
 
 order = 2
 
-    verbose= true
-    adjoint=false
+    verbose= false
+    adjoint= true
     
 	if verbose && adjoint
   	    pl1, pl2, objv, grad = objfunc.traceobjgrad(pcof,params,order, verbose, adjoint)
