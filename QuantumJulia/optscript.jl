@@ -57,7 +57,7 @@ using Optim
    pl1, pl2, objv, grad = objfunc.traceobjgrad(pcof,params,order, true, true, weight)
 
    println("Objfunc = ", objv)
-   pl1
+   pl2
 
 
 	

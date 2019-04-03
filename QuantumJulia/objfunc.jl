@@ -168,16 +168,6 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
     if weight == 1
    	  infidelity0 = weightf1(t, T)*(1-tracefidreal(vr, vi, vtargetr, vtargeti, labframe, t, omega))
       forbidden0 = xi*penalf1(t, T)*normguard(vr, vi, Nguard)
-    elseif weight == 2
-   	    if t >= (T - eps)
-		  infidelity0 = (1-tracefidreal(vr, vi, vtargetr, vtargeti, labframe, t, omega))
-      	  forbidden0 =  0 #xi*penalf1(t, T)*normguard(vr, vi, Nguard)
-		else
-		   infidelity0 = 0
-		   forbidden0 =  0 
-		end	
-    else 
-     error("Option for weight function not valid")
     end
 
     rotmatrices!(t,domega,rr,ri)
@@ -221,19 +211,11 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
 
       if weight == 1
       	infidelity = weightf1(t, T)*(1-tracefidreal(vr, vi, vtargetr, vtargeti, labframe,t, omega))
-      	forbidden = xi*penalf1(t, T)*normguard(vr, vi, Nguard)
-      elseif weight == 2
-		if t >= (T - eps)
-		  infidelity = (1-tracefidreal(vr, vi, vtargetr, vtargeti, labframe,t, omega))
-      	  forbidden =  0 #xi*penalf1(t, T)*normguard(vr, vi, Nguard)
-		else
-		   infidelity = 0
-		   forbidden =  0 
-		end		
-      end 
-      objfv = objfv + gamma[q]*dt*0.5*(infidelity0 + infidelity + forbidden0 + forbidden)
-      infidelity0 = infidelity
-      forbidden0 = forbidden		
+      	forbidden = xi*penalf1(t, T)*normguard(vr, vi, Nguard)	
+      	objfv = objfv + gamma[q]*dt*0.5*(infidelity0 + infidelity + forbidden0 + forbidden)
+        infidelity0 = infidelity
+        forbidden0 = forbidden
+      end 		
 
       if retadjoint	    
       	# Forcing evolving w
@@ -260,15 +242,14 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
 	     gr0 = gr1
       	 gi0 = gi1
       	elseif weight == 2
-      	 # Add penalty for Guard levels here
-      	 #
-      	 #
-      	 #
-      	 #
-      	 #
+
       	end
       end  # retadjoint
     end # Stromer-Verlet
+
+    if weight == 2
+     objfv = (1-tracefidreal(vr, vi, vtargetr, vtargeti, labframe,t, omega))
+    end
     
     if verbose
       usaver[:,:, step + 1] = vr
@@ -311,18 +292,6 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
       	hi0 =  weightf1(t,T)/N*(sr0*vtargeti - si0*vtargetr)
       	hr0[N+1:N+Nguard,:] = xi*penalf1(t,T)*vr[N+1:N+Nguard,:]
       	hi0[N+1:N+Nguard,:] = xi*penalf1(t,T)*vi[N+1:N+Nguard,:]
-      elseif weight == 2
-      	if t > (T - eps)
-      	  hr0 = -(sr0*vtargetr + si0*vtargeti)/N
-      	  hi0 =  (sr0*vtargeti - si0*vtargetr)/N
-      	else
-      	  hr0 = zeromat
-      	  hi0 = zeromat
-      	  # Add penalty for guard levels 
-      	  #
-      	  #
-      	  #
-      	end
       end
       # forcing for evolving W (d psi/d alpha1) in the rotating frame
       rotmatrices!(t,domega,rr,ri)
@@ -367,22 +336,12 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
           	hi1 =  weightf1(t,T)/N*(sr1*vtargeti - si1*vtargetr)
           	hr1[N+1:N+Nguard,:] = xi*penalf1(t,T)*vr[N+1:N+Nguard,:]
           	hi1[N+1:N+Nguard,:] = xi*penalf1(t,T)*vi[N+1:N+Nguard,:]
+            # evolve lambdar, lambdai
+            @inbounds temp, lambdar, lambdai = timestep.step(t0, lambdar, lambdai, dt*gamma[q], hi0, 0.5*(hr0 + hr1), hi1, K0, S0, K05, S05, K1, S1, Ident)
           elseif weight == 2
-            if t >= (T - eps)
-      	  		hr0 = -(sr0*vtargetr + si0*vtargeti)/N
-      	  		hi0 =  (sr0*vtargeti - si0*vtargetr)/N
-      		else
-      	  		hr0 = zeromat
-      		    hi0 = zeromat
-      		    # Add penalty for guard levels 
-      		    #
-      		    #
-      		    #
-      		 end
+            # evolve lambdar, lambdai
+          	@inbounds temp, lambdar, lambdai = timestep.step(t0, lambdar, lambdai, dt*gamma[q], K0, S0, K05, S05, K1, S1, Ident)
           end
-
-          # evolve lambdar, lambdai
-          @inbounds temp, lambdar, lambdai = timestep.step(t0, lambdar, lambdai, dt*gamma[q], hi0, 0.5*(hr0 + hr1), hi1, K0, S0, K05, S05, K1, S1, Ident)
 
           rotmatrices!(t,domega,rr,ri)
 
@@ -451,7 +410,7 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
 		f1 = plot(td, vcat(rplot.(collect(td))...), lab = "Real", title = "Control function", linewidth = 2)
 		f2 = plot(td, vcat(eplot.(collect(td))...), title = "Envelope function", linewidth = 2)
 		if weight == 1
-			f3 = plot(td, weightf1.(td,T), lab = "Gate", title = "Weight functions ", linewidth = 2)
+			f3 = plot(td, weightf1.(td,T), lab = "Gate", title = "Weight functions", linewidth = 2)
 			plot!(td, penalf1.(td,T), lab = "Forbidden", linewidth = 2)
 			plt2 = plot(f1, f2, f3, layout = (3,1))    
 		elseif weight == 2 
