@@ -114,7 +114,7 @@ function testgrad()
 	utarget[:,4] = Ident[:,3]
 
 	
-	cfl = 0.01
+	cfl = 0.05
 	T = 150
 	testadjoint = 0
 	maxpar =0.09
@@ -123,14 +123,14 @@ function testgrad()
 
 	pcof1 = [1e-3, 2e-3, -2e-3]
 	order = 2
-	eps = 1e-4
+	eps = 1e-9
 	pcof2 = pcof1
 
-    verbose = false
+    verbose = true
     weights = 2
 
     objv1, grad1  = objfunc.traceobjgrad(pcof1, params, order, verbose, true, weights)
-    @show(grad1)
+#    @show(grad1)
     pcof2[1] = pcof1[1] + eps
     objv2, grad2  = objfunc.traceobjgrad(pcof2, params, order, verbose, true, weights)
 
