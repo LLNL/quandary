@@ -147,20 +147,23 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
   tmp3 = zeros(Ntot,Ntot)
   rr = zeros(Ntot,Ntot)
   ri = zeros(Ntot,Ntot)
+
+
   gr0 = zeromat
   gi0 = zeromat
   gr1 = zeromat
   gi1 = zeromat
-  hr1 = zeromat
-  hi1 = zeromat
-  darr = zeromat
-  dari = zeromat
-  dair = zeromat
-  daii = zeromat
   hr0 = zeromat
   hi0 = zeromat
   hr1 = zeromat
   hi1 = zeromat
+
+
+  darr = zeromat
+  dari = zeromat
+  dair = zeromat
+  daii = zeromat
+ 
 
     # Forward time stepping loop
   for step in 1:nsteps
@@ -173,6 +176,7 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
     rotmatrices!(t,domega,rr,ri)
 
     if retadjoint
+    if weight ==1
       scomplex0 = tracefidcomplex(vr, -vi, vtargetr, vtargeti, labframe, t, omega)
       salpha0 = tracefidcomplex(wr, -wi, vtargetr, vtargeti, labframe, t, omega)
       forbalpha0 = xi*penalf1(t,T)*screal(vr, vi, wr, wi, Nguard,zeromat)
@@ -187,8 +191,8 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
 
       rfalpha = rgrad[kpar]
       ifalpha = igrad[kpar]
-
-       gr0, gi0 = grupdate(gr0,gi0,dai, dar, vr, vi, rfalpha, ifalpha)
+      gr0, gi0 = grupdate(gr0,gi0,dai, dar, vr, vi, rfalpha, ifalpha)
+    end
     end
 
     
@@ -218,38 +222,37 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
       end 		
 
       if retadjoint	    
-      	# Forcing evolving w
-      	if weight == 1
+      	
       	 scomplex1 = tracefidcomplex(vr, -vi, vtargetr, vtargeti, labframe, t, omega)
+      	 rotmatrices!(t,domega,rr,ri)
       	 mul!(dar,rr,amat)
       	 mul!(dai,ri,amat)
       	 rgrad = rfgrad(t)
       	 igrad = ifgrad(t)
       	 rfalpha = rgrad[kpar] #Will this return the same va
       	 ifalpha = igrad[kpar]
-	
 	     gr1, gi1 = grupdate(gr1 ,gi1, dai, dar, vr, vi, rfalpha, ifalpha)
+
 	     @inbounds temp, wr, wi = timestep.step(t0, wr, wi, dt*gamma[q], gi0, 0.5*(gr1 + gr0), gi1, K0, S0, K05, S05, K1, S1, Ident) 
-	     salpha1 = tracefidcomplex(wr, -wi, vtargetr, vtargeti, labframe, t, omega)
-	     forbalpha1 =  xi*penalf1(t,T)*screal(vr, vi, wr, wi, Nguard,zeromat)   
-	     objf_alpha1 = objf_alpha1 - gamma[q]*dt*0.5*2.0*real(weightf1(t0,T)*conj(scomplex0)*salpha0 +
-	     weightf1(t,T)*conj(scomplex1)*salpha1) + gamma[q]*dt*0.5*2.0*(forbalpha0 + forbalpha1)
+
+	     # Forcing evolving w
+	     if weight == 1
+	     	salpha1 = tracefidcomplex(wr, -wi, vtargetr, vtargeti, labframe, t, omega)
+	     	forbalpha1 =  xi*penalf1(t,T)*screal(vr, vi, wr, wi, Nguard,zeromat)   
+	     	objf_alpha1 = objf_alpha1 - gamma[q]*dt*0.5*2.0*real(weightf1(t0,T)*conj(scomplex0)*salpha0 +
+	     	weightf1(t,T)*conj(scomplex1)*salpha1) + gamma[q]*dt*0.5*2.0*(forbalpha0 + forbalpha1)
+	        scomplex0 = scomplex1
+	        salpha0 = salpha1
+	        forbalpha0 = forbalpha1
+      	 end
 	     	
 	     # save previous values for next stage
-	     scomplex0 = scomplex1
-	     salpha0 = salpha1
-	     forbalpha0 = forbalpha1
+
 	     gr0 = gr1
       	 gi0 = gi1
-      	elseif weight == 2
-
-      	end
       end  # retadjoint
     end # Stromer-Verlet
 
-    if weight == 2
-     objfv = (1-tracefidreal(vr, vi, vtargetr, vtargeti, labframe,t, omega))
-    end
     
     if verbose
       usaver[:,:, step + 1] = vr
@@ -258,6 +261,12 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
 
   end #forward time steppingloop
 
+  if weight == 2
+     objfv = (1-tracefidreal(vr, vi, vtargetr, vtargeti, labframe,t, omega))
+     salpha1 = tracefidcomplex(wr, -wi, vtargetr, vtargeti, labframe, t, omega)
+     scomplex1 = tracefidcomplex(vr, -vi, vtargetr, vtargeti, labframe, t, omega)
+     objf_alpha1 = -real(2*conj(scomplex1)*salpha1)
+   end
 	ufinalr = rotr'*vr - roti'*vi #should both these matrices be transposed?
 	ufinali = -rotr'*vi - roti'*vr 
 	ineqpenalty = evalineqpen(pcof, par0, par1);
@@ -364,8 +373,10 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
           # save for next stage
           scomplex0 = scomplex1
           tr_adj0 = tr_adj1
-          hr0 = hr1
-          hi0 = hi1
+          if weight == 1
+          	hr0 = hr1
+          	hi0 = hi1
+          end
         end #for
     end # for step
  
@@ -374,7 +385,9 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
     for k in 1:D
       gradobjfadj[k] = gradobjfadj[k] + ineqpengrad[k]
     end
-
+     
+    dfdp = dfdp + ineqpengrad[kpar]
+    @show(dfdp) 
     if verbose
       dfdp = dfdp + ineqpengrad[kpar]
       println("Forward integration of gradient of objective function = ", dfdp, " ineqpengrad = ", ineqpengrad[kpar])
@@ -404,8 +417,8 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
 		# Evaluate all polynomials on the midpoint grid
 		td = collect(range(0, stop = T, length = nsteps +1))
 
-    rplot(t) = rfunc(t,splineparams)
-    eplot(t) = efunc(t,splineparams)
+	    rplot(t) = rfunc(t,splineparams)
+   		eplot(t) = efunc(t,splineparams)
 
 		f1 = plot(td, vcat(rplot.(collect(td))...), lab = "Real", title = "Control function", linewidth = 2)
 		f2 = plot(td, vcat(eplot.(collect(td))...), title = "Envelope function", linewidth = 2)

@@ -22,11 +22,11 @@ function exampleobjfunc()
 	params = objfunc.parameters(N,Nguard,T,testadjoint,maxpar,cfl, utarget)
 	#pcof = rand(4)
 
-	pcof = [1e-3, 2e-3, -2e-3]
+	pcof = [0.0, 0.0, 0.0]
 
-	 m = readdlm("bspline-200-t150.dat")
-	pcof = Array{Float64,1}(m[6:end,1])
-	pcof  = zeros(250)
+	# m = readdlm("bspline-200-t150.dat")
+	#pcof = Array{Float64,1}(m[6:end,1])
+	#pcof  = zeros(250)
 	order = 2
 
     verbose = true
@@ -114,21 +114,20 @@ function testgrad()
 	utarget[:,4] = Ident[:,3]
 
 	
-	cfl = 0.01
-	T = 150
+	cfl = 0.05
+	T = 10
 	testadjoint = 0
 	maxpar =0.09
 	
 	params = objfunc.parameters(N,Nguard,T,testadjoint,maxpar,cfl, utarget)
 
-	pcof1 = [1e-3, 2e-3, -2e-3]
+	pcof1 = [0.0, 0.0, 0.0]
 	order = 2
-	eps = 1e-4
+	eps = 1e-5
 	pcof2 = pcof1
 
     verbose = false
     weights = 2
-
     objv1, grad1  = objfunc.traceobjgrad(pcof1, params, order, verbose, true, weights)
     @show(grad1)
     pcof2[1] = pcof1[1] + eps
