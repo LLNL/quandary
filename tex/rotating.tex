@@ -27,7 +27,7 @@
 %% \maketitle
 \section{Change of variables}
 Consider the scaled Schr\"odinger equation
-\begin{equation}\label{eq_shrodinger}
+\begin{equation}\label{eq_schrodinger}
 \dot{\psi} = -i H(t) \psi,\quad \psi(0) = \psi_0,\quad H(t) = H_s + f(t)a + \bar{f}(t)a^\dag.
 \end{equation}
 Here, $f(t)$ is a scalar complex-valued control function. $H_s = H_s^\dag$ is the system Hamiltonian matrix, which we assume to be real, Hermitian and
@@ -55,43 +55,20 @@ We can decompose the control function into its real and imaginary parts,
 \[
 f(t) = f_r(t) + i f_i(t),
 \]
-and write the Hamiltonian matrix in \eqref{eq_shrodinger} as
+and write the Hamiltonian matrix in \eqref{eq_schrodinger} as
 \[
 H(t) = H_s + f_r(t)\left( a+ a^\dag\right) + i f_i(t)\left( a - a^\dag\right) =: H_s + K(t) + i S(t).
 \]
 Here, $K$ and $S$ are real-valued matrices with $K^\dag = K$ and $S^\dag = -S$.
 
+\subsection{Time-independent change of variables}
 Because $H_s$ is Hermitian, it has real eigenvalues and can always be diagonalized by a unitary
 matrix $V$. By the change of variables, $u(t)=V \psi(t)$, where $V$ is independent of time, Schr\"odinger's equation
-\eqref{eq_shrodinger} becomes
+\eqref{eq_schrodinger} becomes
 \[
 \dot{u} = -i VH(t)V^\dag u,\quad VH(t)V^\dag = H_0 + f(t)\tilde{a} + \bar{f}(t)\tilde{a}^\dag,
 \]
-where $\tilde{a}=V a V^\dag$.
-
-%% \subsection{A simple example}
-%% We make the change of variables
-%% \[
-%% \psi(t) = e^{-i\omega_0 t} u(t).
-%% \]
-%% We have
-%% \begin{align*}
-%%   \dot{\psi} &= -i\omega_0 e^{-i\omega_0 t} u + e^{-i\omega_0 t} \dot{u},\\
-%%   H \psi &= e^{-i\omega_0 t} H u.
-%% \end{align*}
-%% Therefore,
-%% \[
-%% \dot{\psi} = -i\omega_0 e^{-i\omega_0 t} u + e^{-i\omega_0 t} \dot{u} = -ie^{-i\omega_0 t} H u,
-%% \]
-%% and
-%% \[
-%% e^{-i\omega_0 t} \dot{u} = i\omega_0 e^{-i\omega_0 t} u  -ie^{-i\omega_0 t} H u.
-%% \]
-%% The factor $e^{-i\omega_0 t}$ cancels and we get
-%% \[
-%% \dot{u} = -i\left(H - \omega_0 I\right)u =: -i\left(H_0 - \omega_0 I + f(t)a + \bar{f}(t)a^\dag \right)u.
-%% \]
-%% Thus, only the diagonal part of the Hamiltonian matrix is modified by the change of variables.
+where $\tilde{a}=V a V^\dag$ and $H_0$ is a real diagonal matrix.
 
 \subsection{Time-dependent unitary transformations}
 Consider the unitary tranformation
@@ -103,7 +80,7 @@ We have
 \dot{\psi} &= \dot{U}^\dag v + U^\dag \dot{v},\\
 H\psi &= H U^\dag v
 \end{align*}
-Thus, \eqref{eq_shrodinger} gives
+Thus, \eqref{eq_schrodinger} gives
 \[
 \dot{U}^\dag v + U^\dag \dot{v} = -i H U^\dag v,
 \]
@@ -112,89 +89,14 @@ By using the identity $U \dot{U}^\dag = - \dot{U} U^\dag$ and reorganizing the t
 \dot{v} = -i U H U^\dag v + \dot{U} U^\dag = -i\left( UHU^\dag + i \dot{U} U^\dag \right) v.
 \]
 Thus, the transformed problem becomes
-\[
+\begin{equation}\label{eq_timedep_trans}
 \dot{v} = -i \tilde{H}(t) v,\quad \tilde{H} = UHU^\dag + i \dot{U} U^\dag.
-\]
+\end{equation}
 
-%% \subsection{Rotating frame (one frequency)}
+\subsection{The interaction picture}
 
-%% Consider the unitary transformation,
-%% \[
-%% U(t) = \exp(i\omega_k t E_k),\quad E_k = \eb_k \eb_k^T,
-%% \]
-%% where $\eb_k$ is the $k^{th}$ unit basis vector. For example, if $k=1$,
-%% \[
-%% i\omega_1 t E_1 = \begin{bmatrix}
-%%   0 & & & \\
-%%   & i\omega_1 t & & \\
-%%   & & 0 & \\
-%%   & & & \ddots
-%% \end{bmatrix},\quad
-%% U(t) = \exp(i\omega_1 t E_1) = \begin{bmatrix}
-%%   1 & & & \\
-%%   & e^{i\omega_1 t} & & \\
-%%   & & 1 & \\
-%%   & & & \ddots
-%% \end{bmatrix}
-%% \]
-%% Thus,
-%% \[
-%% \dot{U}(t) = i\omega_1 \begin{bmatrix}
-%%   0 & & & \\
-%%   & e^{i\omega_1 t} & & \\
-%%   & & 0 & \\
-%%   & & & \ddots
-%% \end{bmatrix},\quad
-%% i\dot{U} U^\dag =  i^2 \omega_1 \begin{bmatrix}
-%%   0 & & & \\
-%%   & 1 & & \\
-%%   & & 0 & \\
-%%   & & & \ddots
-%% \end{bmatrix}
-%% \]
-%% Because $H_0$ and $U$ are diagonal, $U^\dag H_0 U = H_0 U^\dag U = H_0$. Thus,
-%% \[
-%% U^\dag H_0 U + i\dot{U} U^\dag = \begin{bmatrix}
-%% \omega_0 & & &\\
-%% & 0 &&\\
-%% & & \omega_2 &\\
-%% & & & \ddots
-%% \end{bmatrix},
-%% \]
-%% and
-%% \begin{multline*}
-%% U^\dag a U =
-%% \begin{bmatrix}
-%%   1 & & & \\
-%%   & e^{-i\omega_1 t} & & \\
-%%   & & 1 & \\
-%%   & & & \ddots
-%% \end{bmatrix}
-%% \begin{bmatrix}
-%% 0 & 1 & & &\\
-%%  & 0 & \sqrt{2} & &\\
-%% &  & 0 & \sqrt{3} &\\
-%% & &  & 0 & \ddots
-%% \end{bmatrix}
-%% \begin{bmatrix}
-%%   1 & & & \\
-%%   & e^{i\omega_1 t} & & \\
-%%   & & 1 & \\
-%%   & & & \ddots
-%% \end{bmatrix} = \\
-%% %
-%% \begin{bmatrix}
-%% 0 & e^{i\omega_1 t} & & &\\
-%%  & 0 & \sqrt{2} e^{-i\omega_1 t} & &\\
-%% &  & 0 & \sqrt{3} &\\
-%% & &  & 0 & \ddots
-%% \end{bmatrix}
-%% \end{multline*}
-
-\subsection{Rotating frame (interaction picture)}
-
-We can construct a unitary transformation based
-on the time-independent matrix $H_s$ in \eqref{eq_matrices},
+We can construct a unitary transformation based on the time-independent system Hamiltonian $H_s$ in
+\eqref{eq_matrices},
 \[
 U(t) = \exp(i H_s t).
 \]
@@ -207,12 +109,13 @@ From the definition of the matrix exponential,
 \exp(i H_s t) = I + it H_s + \frac{1}{2} (it)^2 H_s^2 + \frac{1}{6} (it)^3 H_s^3 + \ldots.
 \]
 Thus it is clear that $U=\exp(i H_s t)$ commutes with $H_s$ and $UH_sU^\dag = H_s$. As a result, the
-constant (time-independent) part of the transformed Hamiltonian cancels,
-\[
-\tilde{H}(t) = U H U^\dag + i \dot{U}U^\dag = f(t) UaU^\dag + \bar{f}(t) Ua^\dag U^\dag.
-\]
+constant (time-independent) part of the transformed Hamiltonian cancels. From
+\eqref{eq_timedep_trans}, the transformed problem becomes
+\begin{equation}\label{eq_interaction}
+  \dot{v} = -i \tilde{H}(t) v,\quad  \tilde{H}(t) = f(t) UaU^\dag + \bar{f}(t) Ua^\dag U^\dag.
+\end{equation}
+This formulation of Schr\"odinger's equation is known as the interaction picture.
 
-\subsection{Diagonal $H_s$}
 When $H_s=H_0$ is real and diagonal,
 \[
 H_0=\begin{bmatrix}
@@ -257,10 +160,10 @@ UaU^\dag =
  & 0 & \sqrt{2} e^{-i\Delta\omega_2 t}& &\\
 &  & 0 & \sqrt{3} e^{-i\Delta\omega_3 t}  &\\
 & &  & \ddots & \ddots
-\end{bmatrix},\quad \Delta\omega_k = \omega_{k+1} - \omega_k.
+\end{bmatrix} =: D(t)a,
 %
 \end{multline*}
-It is convenient to introduce the diagonal matrix
+where $\Delta\omega_k = \omega_{k+1} - \omega_k$ and $D(t)$ is the diagonal matrix
 \[
 D(t) = \begin{bmatrix}
  e^{-i\Delta\omega_1 t} & & &\\
@@ -274,12 +177,12 @@ Then,
 UaU^\dag = D a,\quad Ua^\dag U^\dag = a^\dag D^\dag.
 \]
 Note that the value of $\Delta\omega_N$ is arbitrary because it is not needed to evaluate $D a$.
-The transformed problem corresponding to \eqref{eq_shrodinger} becomes 
+Thus, when the system Hamiltonian is diagonal, the transformed problem corresponding to \eqref{eq_interaction} becomes 
 \begin{equation}
-  \dot{v} = -i\left( f(t) D(t) a + a^\dag \bar{f}(t) D^\dag(t) \right)v,\quad v(0) = U(0)\psi_0 = \psi_0.
+  \dot{v} = -i\widetilde{H}(t) v,\quad \widetilde{H}(t) = f(t) D(t) a + \bar{f}(t) a^\dag D^\dag(t).
 \end{equation}
 
-The structure of the transformed Hamiltonian provides insight into how to induce resonance in the
+The structure of the transformed Hamiltonian indicates how resonance can be induced in the
 system. For example, by taking $f(t)=\Omega e^{\Delta \omega_1 t}$, the Hamiltonian matrix
 becomes
 \[
@@ -295,6 +198,84 @@ becomes
 In this case, the dynamics of the system will be dominated by an oscillation between the ground state and the
 first excited state, with frequency $\Omega$.
 
+\subsection{Rotating frame of reference}
+
+In some applications, the Hamiltonian matrix has the structure
+\begin{equation}\label{eq_orig_hamiltonian}
+H(t) = \omega_a a^\dag a - \frac{\xi_a}{2} a^\dag a^\dag a a + f(t) a + \bar{f}(t) a^\dag.
+\end{equation}
+Here, $a^\dag a = \hat{N}=\mbox{diag$(0,1,2,\ldots)$}$ is called the number operator. We also have
+$a a^\dag = \hat{N}+I$, which gives
+\[
+a^\dag a^\dag a a = a^\dag (a a^\dag - I) a = \hat{N}^2 - \hat{N} =
+%
+\begin{bmatrix}
+  0 & & & & \\
+  & 0 & & & \\
+  && 2 && \\
+  &&& 6 & \\
+  &&&& \ddots
+\end{bmatrix}.
+\]
+
+In the first part of the system Hamiltonian, $\omega_a \hat{N}$, the difference between consequtive
+elements is constant. This structure suggests the time-depenedent unitary transformation
+\[
+v(t) = R(t)\psi(t),\quad R(t) = \exp(i\omega_a \hat{N} t),\quad \dot{R}R^\dag = i\omega_a \hat{N}.
+\]
+Both $\hat{N}$ and $\hat{N}^2$ commute with $R(t)$. From \eqref{eq_timedep_trans}, the transformed
+Hamiltonian matrix becomes
+\begin{equation}\label{eq_rot_hamiltonian}
+\widetilde{H}(t) = -\frac{\xi_a}{2} \left(\hat{N}^2 - \hat{N}\right) + f(t) R a R^\dag + \bar{f}(t) R a^\dag R^\dag.
+\end{equation}
+We have
+\begin{multline*}
+  R a R^\dag =\\
+  %
+\begin{bmatrix}
+  1 & & & \\
+  & e^{i\omega_a t} & & \\
+  & &  e^{2i\omega_a t} & \\
+  & & & \ddots
+\end{bmatrix}
+\begin{bmatrix}
+0 & 1 & & &\\
+ & 0 & \sqrt{2} & &\\
+&  & 0 & \sqrt{3} &\\
+& &  & \ddots & \ddots
+\end{bmatrix}
+\begin{bmatrix}
+  1 & & & \\
+  & e^{-i\omega_a t} & & \\
+  & &  e^{-2i\omega_a t} & \\
+  & & & \ddots
+\end{bmatrix} = \\
+%
+\begin{bmatrix}
+0 & e^{-i\omega_a t} & & &\\
+ & 0 & \sqrt{2} e^{-i\omega_a t}& &\\
+&  & 0 & \sqrt{3} e^{-i\omega_a t}  &\\
+& &  & \ddots & \ddots
+\end{bmatrix} =: e^{-i\omega_a t} a.
+%
+\end{multline*}
+Taking the conjugate transpose gives $R a^\dag R = e^{i\omega_a t} a^\dag$. It is convenient to absorb the factor
+$e^{-i\omega_a t}$ into $f(t)$ by defining,
+\[
+g(t) = e^{-i\omega_a t} f(t).
+\]
+The transformed Hamiltonian matrix \eqref{eq_rot_hamiltonian} then takes the simplified form
+\[
+\widetilde{H}(t) = -\frac{\xi_a}{2} \left(\hat{N}^2 - \hat{N}\right) + g(t) a + \bar{g}(t) a^\dag.
+\]
+Consider solving the truncated Schr\"odinger equation \eqref{eq_schrodinger} numerically. Compared
+to use the original formulation where the Hamiltonian matrix has the form X, the transformed
+equations can be solved more efficiently if
+\[
+\omega_a \hat{N} \gg 0.5\xi_a (\hat{N}^2 - \hat{N}).
+\]
+This condition holds in applications where $\omega_a \gg \xi_a$ and the Schr\"odinger system is truncated after a moderate
+number of equations,
 
 
 
