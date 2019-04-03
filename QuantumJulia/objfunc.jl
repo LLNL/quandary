@@ -32,37 +32,38 @@ struct parameters
 	#multiple dispatch with extra struct for H0 = 0 ?
 end
 
-function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parameters = parameters(4, 3, 150, 1, 0.09, 0.05), order::Int64 =2, verbose::Bool = false, retadjoint::Bool = true)
-	N = params.N   	
-	Nguard = params.Nguard 	
-	T = params.T
-	testadjoint = params.testadjoint
-	labframe = false
-	utarget = params.utarget
-	cfl = params.cfl
+function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parameters = parameters(4, 3, 150, 1, 0.09, 0.05), order::Int64 =2, verbose::Bool = false, retadjoint::Bool = true, weight = 1)  
+       N = params.N    
+       Nguard = params.Nguard  
+       T = params.T
+       testadjoint = params.testadjoint
+       labframe = false
+       utarget = params.utarget
+       cfl = params.cfl
   
  # Parameters used for the gradient
- kpar = 1
+       kpar = 1
 
-	eps = 1e-9
-	xi = 1.0/max(1,Nguard)  	# coef for penalizing forbidden states
+       eps = 1e-9
+       xi = 1.0/max(1,Nguard)          # coef for penalizing forbidden states
 
-	Ntot = N + Nguard
-	pcof = pcof0
-	D = size(pcof,1)
+       Ntot = N + Nguard
+       pcof = pcof0
+       D = size(pcof,1)
 
-	# Make sure that each element of pcof is in the prescribed range
-	pcof, par1, par0 = boundcof(pcof, D, params.maxpar, eps)
+       # Make sure that each element of pcof is in the prescribed range
+       pcof, par1, par0 = boundcof(pcof, D, params.maxpar, eps)
 
-	
-	if verbose
-    	println("Vector dim Ntot =", Ntot , ", Guard levels Nguard = ", Nguard , ", Param dim D = ", D , ", pcof(1) = ", pcof[1], ", CFL = ", cfl)
-  end
+       
+    if verbose
+       println("Vector dim Ntot =", Ntot , ", Guard levels Nguard = ", Nguard , ", Param dim D = ", D , ", pcof(1) = ", pcof[1], ", CFL = ", cfl)
+ 	end
  
   # sub-matricesfor the Hamiltonian
   H0 ,amat, adag, omega, domega = rotframematrices(Ntot)
   zeromat = zeros(Ntot,N) 
-  
+
+
   # patameters for tbsplines
   dtknot = T/(D - 2)
   splineparams = bsplines.splineparams(T, D, D+1, dtknot.*(collect(1:D) .- 1.5), dtknot.*(collect(1:D+1) .- 2), dtknot, pcof)
@@ -132,47 +133,59 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
 
 
   # Preallocate
-K0= zeros(Ntot,Ntot)
-S0= zeros(Ntot,Ntot)
-tmp5= zeros(Ntot,Ntot)
-K05= zeros(Ntot,Ntot)
-S05 = zeros(Ntot,Ntot)
-K1 = zeros(Ntot,Ntot)
-S1 = zeros(Ntot,Ntot)
-dar = zeros(Ntot,Ntot)
-dai = zeros(Ntot,Ntot)
-tmp1 = zeros(Ntot,Ntot)
-tmp2 = zeros(Ntot,Ntot)
-tmp3 = zeros(Ntot,Ntot)
-rr = zeros(Ntot,Ntot)
-ri = zeros(Ntot,Ntot)
-gr0 = zeromat
-gi0 = zeromat
-gr1 = zeromat
-gi1 = zeromat
-hr1 = zeromat
-hi1 = zeromat
-darr = zeromat
-dari = zeromat
-dair = zeromat
-daii = zeromat
-hr0 = zeromat
-hi0 = zeromat
-hr1 = zeromat
-hi1 = zeromat
+  K0= zeros(Ntot,Ntot)
+  S0= zeros(Ntot,Ntot)
+  tmp5= zeros(Ntot,Ntot)
+  K05= zeros(Ntot,Ntot)
+  S05 = zeros(Ntot,Ntot)
+  K1 = zeros(Ntot,Ntot)
+  S1 = zeros(Ntot,Ntot)
+  dar = zeros(Ntot,Ntot)
+  dai = zeros(Ntot,Ntot)
+  tmp1 = zeros(Ntot,Ntot)
+  tmp2 = zeros(Ntot,Ntot)
+  tmp3 = zeros(Ntot,Ntot)
+  rr = zeros(Ntot,Ntot)
+  ri = zeros(Ntot,Ntot)
+  gr0 = zeromat
+  gi0 = zeromat
+  gr1 = zeromat
+  gi1 = zeromat
+  hr1 = zeromat
+  hi1 = zeromat
+  darr = zeromat
+  dari = zeromat
+  dair = zeromat
+  daii = zeromat
+  hr0 = zeromat
+  hi0 = zeromat
+  hr1 = zeromat
+  hi1 = zeromat
 
     # Forward time stepping loop
   for step in 1:nsteps
     #for the objective function
-    infidelity0 = weightf(t, T)*(1-tracefidreal(vr, vi, vtargetr, vtargeti, labframe, t, omega))
-    forbidden0 = xi*penalf(t, T)*normguard(vr, vi, Nguard)
+    if weight == 1
+   	  infidelity0 = weightf1(t, T)*(1-tracefidreal(vr, vi, vtargetr, vtargeti, labframe, t, omega))
+      forbidden0 = xi*penalf1(t, T)*normguard(vr, vi, Nguard)
+    elseif weight == 2
+   	    if t >= (T - eps)
+		  infidelity0 = (1-tracefidreal(vr, vi, vtargetr, vtargeti, labframe, t, omega))
+      	  forbidden0 =  0 #xi*penalf1(t, T)*normguard(vr, vi, Nguard)
+		else
+		   infidelity0 = 0
+		   forbidden0 =  0 
+		end	
+    else 
+     error("Option for weight function not valid")
+    end
 
     rotmatrices!(t,domega,rr,ri)
 
     if retadjoint
       scomplex0 = tracefidcomplex(vr, -vi, vtargetr, vtargeti, labframe, t, omega)
       salpha0 = tracefidcomplex(wr, -wi, vtargetr, vtargeti, labframe, t, omega)
-      forbalpha0 = xi*penalf(t,T)*screal(vr, vi, wr, wi, Nguard,zeromat)
+      forbalpha0 = xi*penalf1(t,T)*screal(vr, vi, wr, wi, Nguard,zeromat)
 
       rgrad = rfgrad(t)
       igrad = ifgrad(t)
@@ -206,37 +219,54 @@ hi1 = zeromat
        
       @inbounds t, vr, vi = timestep.step(t, vr, vi, dt*gamma[q], K0, S0, K05, S05, K1, S1, Ident)
 
-    	infidelity = weightf(t, T)*(1-tracefidreal(vr, vi, vtargetr, vtargeti, labframe,t, omega))
-    	forbidden = xi*penalf(t, T)*normguard(vr, vi, Nguard)
-    	objfv = objfv + gamma[q]*dt*0.5*(infidelity0 + infidelity + forbidden0 + forbidden)
-     	infidelity0 = infidelity
-    	forbidden0 = forbidden		
+      if weight == 1
+      	infidelity = weightf1(t, T)*(1-tracefidreal(vr, vi, vtargetr, vtargeti, labframe,t, omega))
+      	forbidden = xi*penalf1(t, T)*normguard(vr, vi, Nguard)
+      elseif weight == 2
+		if t >= (T - eps)
+		  infidelity = (1-tracefidreal(vr, vi, vtargetr, vtargeti, labframe,t, omega))
+      	  forbidden =  0 #xi*penalf1(t, T)*normguard(vr, vi, Nguard)
+		else
+		   infidelity = 0
+		   forbidden =  0 
+		end		
+      end 
+      objfv = objfv + gamma[q]*dt*0.5*(infidelity0 + infidelity + forbidden0 + forbidden)
+      infidelity0 = infidelity
+      forbidden0 = forbidden		
 
-      if retadjoint	
-      # Forcing evolving w
-       scomplex1 = tracefidcomplex(vr, -vi, vtargetr, vtargeti, labframe, t, omega)
-       mul!(dar,rr,amat)
-       mul!(dai,ri,amat)
-       rgrad = rfgrad(t)
-       igrad = ifgrad(t)
-       rfalpha = rgrad[kpar] #Will this return the same va
-       ifalpha = igrad[kpar]
-
-       gr1, gi1 = grupdate(gr1 ,gi1, dai, dar, vr, vi, rfalpha, ifalpha)
-
-       @inbounds temp, wr, wi = timestep.step(t0, wr, wi, dt*gamma[q], gi0, 0.5*(gr1 + gr0), gi1, K0, S0, K05, S05, K1, S1, Ident) 
-
-       salpha1 = tracefidcomplex(wr, -wi, vtargetr, vtargeti, labframe, t, omega)
-       forbalpha1 =  xi*penalf(t,T)*screal(vr, vi, wr, wi, Nguard,zeromat)   
-       objf_alpha1 = objf_alpha1 - gamma[q]*dt*0.5*2.0*real(weightf(t0,T)*conj(scomplex0)*salpha0 +
-       weightf(t,T)*conj(scomplex1)*salpha1) + gamma[q]*dt*0.5*2.0*(forbalpha0 + forbalpha1)
-     
-       # save previous values for next stage
-       scomplex0 = scomplex1
-       salpha0 = salpha1
-       forbalpha0 = forbalpha1
-       gr0 = gr1
-       gi0 = gi1
+      if retadjoint	    
+      	# Forcing evolving w
+      	if weight == 1
+      	 scomplex1 = tracefidcomplex(vr, -vi, vtargetr, vtargeti, labframe, t, omega)
+      	 mul!(dar,rr,amat)
+      	 mul!(dai,ri,amat)
+      	 rgrad = rfgrad(t)
+      	 igrad = ifgrad(t)
+      	 rfalpha = rgrad[kpar] #Will this return the same va
+      	 ifalpha = igrad[kpar]
+	
+	     gr1, gi1 = grupdate(gr1 ,gi1, dai, dar, vr, vi, rfalpha, ifalpha)
+	     @inbounds temp, wr, wi = timestep.step(t0, wr, wi, dt*gamma[q], gi0, 0.5*(gr1 + gr0), gi1, K0, S0, K05, S05, K1, S1, Ident) 
+	     salpha1 = tracefidcomplex(wr, -wi, vtargetr, vtargeti, labframe, t, omega)
+	     forbalpha1 =  xi*penalf1(t,T)*screal(vr, vi, wr, wi, Nguard,zeromat)   
+	     objf_alpha1 = objf_alpha1 - gamma[q]*dt*0.5*2.0*real(weightf1(t0,T)*conj(scomplex0)*salpha0 +
+	     weightf1(t,T)*conj(scomplex1)*salpha1) + gamma[q]*dt*0.5*2.0*(forbalpha0 + forbalpha1)
+	     	
+	     # save previous values for next stage
+	     scomplex0 = scomplex1
+	     salpha0 = salpha1
+	     forbalpha0 = forbalpha1
+	     gr0 = gr1
+      	 gi0 = gi1
+      	elseif weight == 2
+      	 # Add penalty for Guard levels here
+      	 #
+      	 #
+      	 #
+      	 #
+      	 #
+      	end
       end  # retadjoint
     end # Stromer-Verlet
     
@@ -261,8 +291,13 @@ hi1 = zeromat
     adiffmax = 0
   
     # terminal conditions for the adjoint state
-    lambdar = zeromat
-    lambdai = zeromat
+    if weight == 1
+    	lambdar = zeromat
+    	lambdai = zeromat
+    elseif weight == 2
+    	lambdar = vtargetr 
+    	lambdai = vtargeti
+    end
 
     
     #Backward time stepping loop
@@ -271,11 +306,24 @@ hi1 = zeromat
       sr0 = real(scomplex0)
       si0 = imag(scomplex0)
 
-      hr0 = -weightf(t,T)/N*(sr0*vtargetr + si0*vtargeti)
-      hi0 =  weightf(t,T)/N*(sr0*vtargeti - si0*vtargetr)
-      hr0[N+1:N+Nguard,:] = xi*penalf(t,T)*vr[N+1:N+Nguard,:]
-      hi0[N+1:N+Nguard,:] = xi*penalf(t,T)*vi[N+1:N+Nguard,:]
-
+      if weight == 1
+      	hr0 = -weightf1(t,T)/N*(sr0*vtargetr + si0*vtargeti)
+      	hi0 =  weightf1(t,T)/N*(sr0*vtargeti - si0*vtargetr)
+      	hr0[N+1:N+Nguard,:] = xi*penalf1(t,T)*vr[N+1:N+Nguard,:]
+      	hi0[N+1:N+Nguard,:] = xi*penalf1(t,T)*vi[N+1:N+Nguard,:]
+      elseif weight == 2
+      	if t > (T - eps)
+      	  hr0 = -(sr0*vtargetr + si0*vtargeti)/N
+      	  hi0 =  (sr0*vtargeti - si0*vtargetr)/N
+      	else
+      	  hr0 = zeromat
+      	  hi0 = zeromat
+      	  # Add penalty for guard levels 
+      	  #
+      	  #
+      	  #
+      	end
+      end
       # forcing for evolving W (d psi/d alpha1) in the rotating frame
       rotmatrices!(t,domega,rr,ri)
 
@@ -314,11 +362,24 @@ hi1 = zeromat
           sr1 = real(scomplex1)
           si1 = imag(scomplex1)
 
-          hr1 = -weightf(t,T)/N*(sr1*vtargetr + si1*vtargeti)
-          hi1 =  weightf(t,T)/N*(sr1*vtargeti - si1*vtargetr)
-          hr1[N+1:N+Nguard,:] = xi*penalf(t,T)*vr[N+1:N+Nguard,:]
-          hi1[N+1:N+Nguard,:] = xi*penalf(t,T)*vi[N+1:N+Nguard,:]
-
+          if weight == 1
+          	hr1 = -weightf1(t,T)/N*(sr1*vtargetr + si1*vtargeti)
+          	hi1 =  weightf1(t,T)/N*(sr1*vtargeti - si1*vtargetr)
+          	hr1[N+1:N+Nguard,:] = xi*penalf1(t,T)*vr[N+1:N+Nguard,:]
+          	hi1[N+1:N+Nguard,:] = xi*penalf1(t,T)*vi[N+1:N+Nguard,:]
+          elseif weight == 2
+            if t >= (T - eps)
+      	  		hr0 = -(sr0*vtargetr + si0*vtargeti)/N
+      	  		hi0 =  (sr0*vtargeti - si0*vtargetr)/N
+      		else
+      	  		hr0 = zeromat
+      		    hi0 = zeromat
+      		    # Add penalty for guard levels 
+      		    #
+      		    #
+      		    #
+      		 end
+          end
 
           # evolve lambdar, lambdai
           @inbounds temp, lambdar, lambdai = timestep.step(t0, lambdar, lambdai, dt*gamma[q], hi0, 0.5*(hr0 + hr1), hi1, K0, S0, K05, S05, K1, S1, Ident)
@@ -389,11 +450,13 @@ hi1 = zeromat
 
 		f1 = plot(td, vcat(rplot.(collect(td))...), lab = "Real", title = "Control function", linewidth = 2)
 		f2 = plot(td, vcat(eplot.(collect(td))...), title = "Envelope function", linewidth = 2)
-		f3 = plot(td, weightf.(td,T), lab = "Gate", title = "Weight functions", linewidth = 2)
-
-		plot!(td, penalf.(td,T), lab = "Forbidden", linewidth = 2)
-
-		plt2 = plot(f1,f2,f3, layout = (3,1))    
+		if weight == 1
+			f3 = plot(td, weightf1.(td,T), lab = "Gate", title = "Weight functions ", linewidth = 2)
+			plot!(td, penalf1.(td,T), lab = "Forbidden", linewidth = 2)
+			plt2 = plot(f1, f2, f3, layout = (3,1))    
+		elseif weight == 2 
+			plt2 = plot(f1, f2, layout = (2,1))    
+	    end
 	end #if verbose
 
 # return to calling routine
@@ -450,7 +513,7 @@ end
 # Matrices for te hamiltonian in rotation frame
 @inline function rotframematrices(Ntot::Int64)
     omega = omegafun(Ntot)
-	  H0 = zeros(Ntot,Ntot)
+	H0 = zeros(Ntot,Ntot)
   	amat = Array(Bidiagonal(zeros(Ntot),sqrt.(collect(1:Ntot-1)),:U))
   	adag = Array(transpose(amat))
   	domega = zeros(Ntot)
@@ -460,7 +523,7 @@ end
 end
 
 
-@inline function weightf(t::Float64, T::Float64)
+@inline function weightf1(t::Float64, T::Float64)
 # period
   tp = T/10
   xi = 4/tp # scale factor
@@ -502,7 +565,7 @@ end
   fid_cmplx = tr(ur' * vtargetr .+ vi' * vtargeti)/N + 1im*tr(ur' * vtargeti .- vi' * vtargetr)/N;
 end
 
-@inline function  penalf(t::Float64, T::Float64)
+@inline function  penalf1(t::Float64, T::Float64)
   w = 0.0
   constant = 1.0/T
   alpha = 0

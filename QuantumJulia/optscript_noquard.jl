@@ -26,19 +26,20 @@ using Optim
 	params = objfunc.parameters(N,Nguard,T,testadjoint,maxpar,cfl, utarget)
 	
 
-	pcof0  = zeros(200)
+	pcof0  = zeros(1000)
 #	pcof0 = (rand(200) .- 0.5).*maxpar*0.1
 	order = 2
+	weight = 2
 
     function f(pcof)
     #@show(pcof)
-     f =objfunc.traceobjgrad(pcof,params,order,false,false)
-    # @show(f)
+     f = objfunc.traceobjgrad(pcof, params, order, false, false, weight)
+     #@show(f)
      return f[1]
      end
 
     function g!(G,pcof,params,order)
-    	objf, Gtemp = objfunc.traceobjgrad(pcof,params,order,false, true)
+    	objf, Gtemp = objfunc.traceobjgrad(pcof, params, order, false, true, weight)
     	
     	Gtemp = vcat(Gtemp...) 
     	for i in 1:length(Gtemp)
