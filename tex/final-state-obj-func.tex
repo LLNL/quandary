@@ -1,0 +1,134 @@
+\documentclass[11pt]{article}
+\usepackage{amsfonts,amsmath,amssymb,amsthm,graphicx}
+\usepackage{multirow}
+\usepackage{booktabs}
+\usepackage[caption=false]{subfig} 
+\usepackage{color}
+\usepackage{ifthen}
+
+\setlength{\topmargin}{0 mm}
+\setlength{\oddsidemargin}{5 mm}
+\setlength{\evensidemargin}{5 mm}
+\setlength{\textwidth}{150 mm}
+\setlength{\textheight}{210 mm}
+
+\include{macros}
+
+\begin{document}
+
+\title{The final gate objective functional}
+\author{N. Anders Petersson\thanks{Center for Applied
+     Scientific Computing, Lawrence Livermore National Laboratory, L-561, PO Box 808, Livermore CA
+     94551. }}
+
+\date{\today}
+
+\maketitle
+\section{Introduction}
+
+Let the wave functions $\psib_j(t,\alphab)\in [0, T]\times \mathbb{R}^D \to \mathbb C^N$ be governed by the Schr\"odinger equation,
+\begin{equation}\label{eq_schrodinger}
+\dot{\psib}_j + iH(t,\alphab)\psib_j=0,\quad 0\leq t\leq T, \quad \psib_j(0)=\eb_j,\quad j=1,2,\ldots,N,
+\end{equation}
+Here, $\eb_j$ is the $j^{th}$ canonical unit vector (zero, except element number $j$ which is
+one). The Hamiltonian matrix satisfies
+\[
+H(t,\alphab) = H_0 + p(t,\alphab)H_c,\quad H(t,\alphab) = H^\dag(t,\alphab),
+\]
+where $p(t,\alphab)$ is a scalar function of time that depends on the parameter vector
+$\alphab=[\alpha_1,\alpha_2,\ldots,\alpha_D]^T\in \mathbb R^D$. We introduce
+\[
+\phib_{jk}(t,\alphab) = \frac{\p \psib_j (t,\alphab)}{\p \alpha_k},\quad k=1,2,\ldots,D.
+\]
+By differentiating \eqref{eq_schrodinger} with respect to $\alpha_k$,
+\begin{align}
+\dot{\phib}_{jk} + iH(t,\alphab)\phib_{jk}&=\fb_{jk}(t,\alphab),\quad 0\leq t\leq T, \quad
+\phib_{jk}(0)=0,\label{eq_pert_schrodinger}\\
+%
+\fb_{jk}(t,\alphab) &= -i \frac{\p p(t,\alphab)}{\p \alpha_k} H_c \psib_j(t,\alphab).\label{eq_pert_force}
+\end{align}
+
+Let $U_g = [\db_1, \db_2, \ldots, \db_N]\in \mathbb{C}^{N\times N}$, represent the target unitary
+matrix ($U_g^{-1} = U_g^\dag$) and collect the wave functions for the different initial data in the
+unitary matrix $U = U(T,\alpha) \in \mathbb C^{N\times N}$, where
+\[
+U = \left[ \psib_1, \psib_2, \ldots, \psib_N \right],\quad U^\dag = U^{-1}.
+\]
+An objective functional that measures the infidelity in the final unitary is given by
+\begin{equation}\label{eq_objf}
+g(U(T,\alphab)) = 1 - \frac{1}{N^2} \left| S(\alphab) \right|^2,\quad S(\alphab) = \left\langle U(T,\alphab), U_g \right\rangle_F.
+\end{equation}
+We define the Fr\"obenius matrix scalar product between square complex-valued matrices $A$ and $B$ by
+\begin{equation}\label{eq_frobenius}
+\left\langle A, B\right\rangle_F = \mbox{tr$\left( A^\dag B\right)$} = \sum_{j=1}^N \langle \ab_j, \bb_j\rangle_2,
+\end{equation}
+where $A=[\ab_1, \ab_2, \ldots, \ab_N]$ and  $B=[\bb_1, \bb_2, \ldots, \bb_N]$. By differentiating
+\eqref{eq_objf} with respect to $\alpha_k$,
+\begin{equation}\label{eq_obj-grad}
+\frac{\p g}{\p \alpha_k} = - \frac{2}{N^2} {\rm Re}\! \left(\frac{\p S}{\p \alpha_k} \overline{S} \right).
+\end{equation}
+From \eqref{eq_objf} and \eqref{eq_frobenius},
+\begin{equation} \label{eq_s-derivative}
+  S(\alphab) = \sum_{j=1}^N \left\langle \psib_j(T,\alphab), \db_j \right\rangle_2,\quad
+  %
+  \frac{\p S(\alphab)}{\p \alpha_k} = \sum_{j=1}^N \left\langle \phib_{jk}(T,\alphab), \db_j \right\rangle_2.
+\end{equation}
+
+\section{The adjoint state equation}
+Define the adjoint state equation according to
+\begin{equation}\label{eq_adjoint}
+-\dot{\lambdab}_j - iH(t,\alphab)\lambdab_j=\gb_j(t),\quad T\geq t\geq 0, \quad \lambdab_j(T)=\db_j,\quad j=1,2,\ldots,N.
+\end{equation}
+Note that the adjoint equation is solved backwards in time and is subject to a terminal condition
+given by the $j^{th}$ column of the target unitary, $U_g$. The forcing function $\gb_j(t)$ will be
+determined below.
+
+The solutions of the state equation \eqref{eq_pert_schrodinger} and the adjoint state equation
+\eqref{eq_adjoint} are related. To establish this relation, let's consider
+\begin{multline}
+  I:= \int_0^T \langle \phib_{jk}, \gb_j \rangle_2\, d\tau =  \int_0^T \langle \phib_{jk},
+  -\dot{\lambdab}_j - iH(t,\alphab)\lambdab_j \rangle_2\, d\tau \\
+  %
+  =  -\int_0^T \langle  \phib_{jk},
+  \dot{\lambdab}_{j} \rangle_2\, d\tau +  \int_0^T \langle iH(t,\alphab) \phib_{jk},\lambdab_j \rangle_2\, d\tau.
+\end{multline}
+By integration by parts,
+\begin{multline*}
+\int_0^T \langle  \phib_{jk}, \dot{\lambdab}_{j} \rangle_2\, d\tau =
+%
+\left[ \langle \phib_{jk}, \lambdab_j \rangle_2 \right]_0^T - \int_0^T \langle  \dot{\phib}_{jk},
+\lambdab_{j} \rangle_2\, d\tau\\
+%
+= \langle \phib_{jk}(T), \db_j \rangle_2  - \int_0^T \langle  \dot{\phib}_{jk}, \lambdab_{j} \rangle_2\, d\tau,
+\end{multline*}
+because $\phib_{jk}(0)=0$ and $\lambdab_j(T) = \db_j$. Thus,
+\begin{multline*}
+I = -\langle \phib_{jk}(T), \db_j \rangle_2 + \int_0^T \langle \dot{\phib}_{jk} + iH(t,\alphab)
+\phib_{jk},\lambdab_j \rangle_2\, d\tau\\
+%
+= -\langle \phib_{jk}(T), \db_j \rangle_2 + \int_0^T \langle \fb_{jk},\lambdab_j \rangle_2\, d\tau.
+\end{multline*}
+By choosing $\gb_{j}(t)=0$, we get $I=0$. Therefore,
+\begin{equation}\label{eq_adjoint-rel}
+ \langle \phib_{jk}(T), \db_j \rangle_2 = \int_0^T \langle \fb_{jk},\lambdab_j \rangle_2\, d\tau.
+\end{equation}
+Inserting \eqref{eq_adjoint-rel} into \eqref{eq_s-derivative} finally gives
+\begin{equation}\label{eq_sensitivity}
+\frac{\p S(\alphab)}{\p \alpha_k} =
+\sum_{j=1}^N \int_0^T  \langle \fb_{jk},\lambdab_j \rangle_2\,d\tau =
+%
+\int_0^T \sum_{j=1}^N \langle \fb_{jk},\lambdab_j \rangle_2\,d\tau,
+\end{equation}
+where $\fb_{jk}(t)$ is given by \eqref{eq_pert_force}.  Similar to before, we can compute all
+components of the gradient of the objective function \eqref{eq_obj-grad}. We start by solving the
+Schr\"odinger equation forwards in time to obtain the terminal state $\psib_j(T)=:\wb_j$ for $j=1,2,\ldots,N$. The time stepping
+is then reversed to integrate \eqref{eq_schrodinger} backwards in time,
+\begin{equation}
+\dot{\psib}_j + iH(t,\alphab)\psib_j=0,\quad T\geq t\geq 0, \quad \psib_j(T)=\wb_j,\quad j=1,2,\ldots,N.
+\end{equation}
+The adjoint wave equation \eqref{eq_adjoint}  (with $\gb_j=0$) is simulataneously solved backwards in time to
+calculate $\lambdab_j(t)$. At each time step, \eqref{eq_pert_force} is evaluated to calculate $\fb_{jk}(t)$ and combined with
+$\lambdab_j(t)$, accumulate the integral \eqref{eq_sensitivity} to compute the gradient of the
+objective functional.
+
+\end{document}
