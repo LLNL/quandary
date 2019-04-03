@@ -267,6 +267,7 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
      scomplex1 = tracefidcomplex(vr, -vi, vtargetr, vtargeti, labframe, t, omega)
      objf_alpha1 = -real(2*conj(scomplex1)*salpha1)
    end
+
 	ufinalr = rotr'*vr - roti'*vi #should both these matrices be transposed?
 	ufinali = -rotr'*vi - roti'*vr 
 	ineqpenalty = evalineqpen(pcof, par0, par1);

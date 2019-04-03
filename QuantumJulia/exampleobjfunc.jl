@@ -123,7 +123,7 @@ function testgrad()
 
 	pcof1 = [0.0, 0.0, 0.0]
 	order = 2
-	eps = 1e-5
+	eps = 1e-9
 	pcof2 = pcof1
 
     verbose = false
