@@ -56,7 +56,7 @@ U = \left[ \psib_1, \psib_2, \ldots, \psib_N \right],\quad U^\dag = U^{-1}.
 \]
 An objective functional that measures the infidelity in the final unitary is given by
 \begin{equation}\label{eq_objf}
-g(U(T,\alphab)) = 1 - \frac{1}{N^2} \left| S(\alphab) \right|^2,\quad S(\alphab) = \left\langle U(T,\alphab), U_g \right\rangle_F.
+g_1(U(T,\alphab)) = 1 - \frac{1}{N^2} \left| S_T(\alphab) \right|^2,\quad S_T(\alphab) = \left\langle U(T,\alphab), U_g \right\rangle_F.
 \end{equation}
 We define the Fr\"obenius matrix scalar product between square complex-valued matrices $A$ and $B$ by
 \begin{equation}\label{eq_frobenius}
@@ -65,23 +65,29 @@ We define the Fr\"obenius matrix scalar product between square complex-valued ma
 where $A=[\ab_1, \ab_2, \ldots, \ab_N]$ and  $B=[\bb_1, \bb_2, \ldots, \bb_N]$. By differentiating
 \eqref{eq_objf} with respect to $\alpha_k$,
 \begin{equation}\label{eq_obj-grad}
-\frac{\p g}{\p \alpha_k} = - \frac{2}{N^2} {\rm Re}\! \left(\frac{\p S}{\p \alpha_k} \overline{S} \right).
+\frac{\p g_1}{\p \alpha_k} = - \frac{2}{N^2} {\rm Re}\! \left(\frac{\p S_T}{\p \alpha_k} \overline{S}_T \right).
 \end{equation}
 From \eqref{eq_objf} and \eqref{eq_frobenius},
 \begin{equation} \label{eq_s-derivative}
-  S(\alphab) = \sum_{j=1}^N \left\langle \psib_j(T,\alphab), \db_j \right\rangle_2,\quad
+  S_T(\alphab) = \sum_{j=1}^N \left\langle \psib_j(T,\alphab), \db_j \right\rangle_2,\quad
   %
-  \frac{\p S(\alphab)}{\p \alpha_k} = \sum_{j=1}^N \left\langle \phib_{jk}(T,\alphab), \db_j \right\rangle_2.
+  \frac{\p S_T(\alphab)}{\p \alpha_k} = \sum_{j=1}^N \left\langle \phib_{jk}(T,\alphab), \db_j \right\rangle_2.
+\end{equation}
+Inserting \eqref{eq_s-derivative} into \eqref{eq_obj-grad} results in
+\begin{equation}\label{eq_obj-grad-exp}
+  \frac{\p g_1}{\p \alpha_k} = - \frac{2}{N^2} {\rm Re}\! \left(\sum_{j=1}^N \left\langle
+  \phib_{jk}(T,\alphab), \db_j \right\rangle_2 \overline{S}_T \right)
+  %
+  = - \frac{2}{N^2} {\rm Re}\! \sum_{j=1}^N \left\langle \phib_{jk}(T,\alphab), \overline{S}_T \db_j \right\rangle_2.  
 \end{equation}
 
 \section{The adjoint state equation}
 Define the adjoint state equation according to
 \begin{equation}\label{eq_adjoint}
--\dot{\lambdab}_j - iH(t,\alphab)\lambdab_j=\gb_j(t),\quad T\geq t\geq 0, \quad \lambdab_j(T)=\db_j,\quad j=1,2,\ldots,N.
+-\dot{\lambdab}_j - iH(t,\alphab)\lambdab_j=\gb_j(t),\quad T\geq t\geq 0, \quad \lambdab_j(T)=\qb_j,\quad j=1,2,\ldots,N.
 \end{equation}
 Note that the adjoint equation is solved backwards in time and is subject to a terminal condition
-given by the $j^{th}$ column of the target unitary, $U_g$. The forcing function $\gb_j(t)$ will be
-determined below.
+The forcing function $\gb_j(t)$ and the terminal condition vector $\qb_j$ will be determined below.
 
 The solutions of the state equation \eqref{eq_pert_schrodinger} and the adjoint state equation
 \eqref{eq_adjoint} are related. To establish this relation, let's consider
@@ -99,30 +105,32 @@ By integration by parts,
 \left[ \langle \phib_{jk}, \lambdab_j \rangle_2 \right]_0^T - \int_0^T \langle  \dot{\phib}_{jk},
 \lambdab_{j} \rangle_2\, d\tau\\
 %
-= \langle \phib_{jk}(T), \db_j \rangle_2  - \int_0^T \langle  \dot{\phib}_{jk}, \lambdab_{j} \rangle_2\, d\tau,
+= \langle \phib_{jk}(T), \qb_j \rangle_2  - \int_0^T \langle  \dot{\phib}_{jk}, \lambdab_{j} \rangle_2\, d\tau,
 \end{multline*}
-because $\phib_{jk}(0)=0$ and $\lambdab_j(T) = \db_j$. Thus,
+because $\phib_{jk}(0)=0$ and $\lambdab_j(T) = \qb_j$. Thus,
 \begin{multline*}
-I = -\langle \phib_{jk}(T), \db_j \rangle_2 + \int_0^T \langle \dot{\phib}_{jk} + iH(t,\alphab)
+I = -\langle \phib_{jk}(T), \qb_j \rangle_2 + \int_0^T \langle \dot{\phib}_{jk} + iH(t,\alphab)
 \phib_{jk},\lambdab_j \rangle_2\, d\tau\\
 %
-= -\langle \phib_{jk}(T), \db_j \rangle_2 + \int_0^T \langle \fb_{jk},\lambdab_j \rangle_2\, d\tau.
+= -\langle \phib_{jk}(T), \qb_j \rangle_2 + \int_0^T \langle \fb_{jk},\lambdab_j \rangle_2\, d\tau.
 \end{multline*}
-By choosing $\gb_{j}(t)=0$, we get $I=0$. Therefore,
+Therefore,
 \begin{equation}\label{eq_adjoint-rel}
- \langle \phib_{jk}(T), \db_j \rangle_2 = \int_0^T \langle \fb_{jk},\lambdab_j \rangle_2\, d\tau.
+ \langle \phib_{jk}(T), \qb_j \rangle_2 + \int_0^T \langle \psib_{jk},\gb_j\rangle_2\, d\tau = \int_0^T \langle \fb_{jk},\lambdab_j \rangle_2\, d\tau.
 \end{equation}
-Inserting \eqref{eq_adjoint-rel} into \eqref{eq_s-derivative} finally gives
+where $\fb_{jk}(t)$ is given by \eqref{eq_pert_force}.
+
+To evaluate \eqref{eq_obj-grad-exp}, we set $\qb_j = -\overline{S}_T \db_j/N^2$ and $\gb_j(t)=0$. Then,
 \begin{equation}\label{eq_sensitivity}
-\frac{\p S(\alphab)}{\p \alpha_k} =
-\sum_{j=1}^N \int_0^T  \langle \fb_{jk},\lambdab_j \rangle_2\,d\tau =
-%
-\int_0^T \sum_{j=1}^N \langle \fb_{jk},\lambdab_j \rangle_2\,d\tau,
+  \frac{\p g_1}{\p \alpha_k} =  2 {\rm Re}\! \sum_{j=1}^N \left\langle \phib_{jk}(T,\alphab),
+  \qb_j\right\rangle_2 =
+  %
+  \int_0^T \sum_{j=1}^N \langle \fb_{jk},\lambdab_j \rangle_2\, d\tau.
 \end{equation}
-where $\fb_{jk}(t)$ is given by \eqref{eq_pert_force}.  Similar to before, we can compute all
-components of the gradient of the objective function \eqref{eq_obj-grad}. We start by solving the
-Schr\"odinger equation forwards in time to obtain the terminal state $\psib_j(T)=:\wb_j$ for $j=1,2,\ldots,N$. The time stepping
-is then reversed to integrate \eqref{eq_schrodinger} backwards in time,
+Similar to before, the cost of computing all components of the gradient of the objective function is
+almost independent of the number of components. We start by solving the Schr\"odinger equation
+forwards in time to obtain the terminal state $\psib_j(T)=:\wb_j$ for $j=1,2,\ldots,N$. The time
+stepping is then reversed to integrate \eqref{eq_schrodinger} backwards in time,
 \begin{equation}
 \dot{\psib}_j + iH(t,\alphab)\psib_j=0,\quad T\geq t\geq 0, \quad \psib_j(T)=\wb_j,\quad j=1,2,\ldots,N.
 \end{equation}
