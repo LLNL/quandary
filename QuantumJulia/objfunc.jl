@@ -221,7 +221,7 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
         forbidden0 = forbidden
       end 		
 
-      if retadjoint	    
+      if retadjoint && verbose 
       	
       	 scomplex1 = tracefidcomplex(vr, -vi, vtargetr, vtargeti, labframe, t, omega)
       	 mul!(dar,rr,amat)
