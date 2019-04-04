@@ -51,9 +51,9 @@ By differentiating \eqref{eq_schrodinger} with respect to $\alpha_k$,
 Let $U_g = [\db_1, \db_2, \ldots, \db_N]\in \mathbb{C}^{N\times N}$, represent the target unitary
 matrix ($U_g^{-1} = U_g^\dag$) and collect the wave functions for the different initial data in the
 unitary matrix $U = U(T,\alpha) \in \mathbb C^{N\times N}$, where
-\[
+\begin{equation}\label{eq_u-def}
 U = \left[ \psib_1, \psib_2, \ldots, \psib_N \right],\quad U^\dag = U^{-1}.
-\]
+\end{equation}
 An objective functional that measures the infidelity in the final unitary is given by
 \begin{equation}\label{eq_objf}
 g_1(U(T,\alphab)) = 1 - \frac{1}{N^2} \left| S_T(\alphab) \right|^2,\quad S_T(\alphab) = \left\langle U(T,\alphab), U_g \right\rangle_F.
@@ -78,7 +78,7 @@ Inserting \eqref{eq_s-derivative} into \eqref{eq_obj-grad} results in
   \frac{\p g_1}{\p \alpha_k} = - \frac{2}{N^2} {\rm Re}\! \left(\sum_{j=1}^N \left\langle
   \phib_{jk}(T,\alphab), \db_j \right\rangle_2 \overline{S}_T \right)
   %
-  = - \frac{2}{N^2} {\rm Re}\! \sum_{j=1}^N \left\langle \phib_{jk}(T,\alphab), \overline{S}_T \db_j \right\rangle_2.  
+  = - 2\, {\rm Re}\! \sum_{j=1}^N \left\langle \phib_{jk}(T,\alphab), \frac{\overline{S}_T}{N^2} \db_j \right\rangle_2.  
 \end{equation}
 
 \section{The adjoint state equation}
@@ -138,5 +138,75 @@ The adjoint wave equation \eqref{eq_adjoint}  (with $\gb_j=0$) is simulataneousl
 calculate $\lambdab_j(t)$. At each time step, \eqref{eq_pert_force} is evaluated to calculate $\fb_{jk}(t)$ and combined with
 $\lambdab_j(t)$, accumulate the integral \eqref{eq_sensitivity} to compute the gradient of the
 objective functional.
+
+\section{Discouraging population of higher energy states}
+
+The actual Hamiltonian system is in general infinite-dimensional. To make the dimensionality of the system
+finite we introduce an additional term in the objective functional to discourage population of
+highly energetic states. Let $N_g\geq 0$ denote the number of guard states and expand the wave
+function such that $\psib_j(t,\alphab)\in [0, T]\times \mathbb{R}^D \to \mathbb{C}^{N_t}$, where
+$N_{t} = N + N_g$. The Schr\"odinger equation \eqref{eq_schrodinger} still governs the evolution of
+$\psib_j(t,\alphab)$, but now also models the evolution of the guard states. As a result the
+Hamiltonian matrix $H$ is now of size $N_t\times N_t$. The forcing function $\fb_{jk}(t,\alphab)$
+is now a vector with $N_t$ elements. The matrices $U(t,\alphab)$ and $U_g$ are now represented by
+rectangular matrices with $N_t$ rows and $N$
+columns,
+\[
+U = [ \psib_1, \psib_2, \ldots, \psib_N ],\quad 
+U_g = \begin{bmatrix}
+\db_1 & \db_2 & \ldots & \db_N \\
+\boldsymbol{0} & \boldsymbol{0} & \ldots & \boldsymbol{0}
+  \end{bmatrix}.
+\]
+Here, the zero vector $\boldsymbol{0} \in \mathbb{R}^{N_g}$. Thus, the definition of the objective
+function $g_1$ in \eqref{eq_objf} still holds. Furthermore, only the first $N$ elements of $\psib_j$
+and $\phib_{jk}$ matter because the last $N_g$ rows of $U_g$ are identically zero. To accomodate for
+the guard levels, the terminal condition for the adjoint wave equation \eqref{eq_adjoint} becomes
+\begin{equation}\label{eq_adjoint-tc}
+\lambdab_j(T) = -\frac{\overline{S}_T}{N^2} \begin{bmatrix}
+  \db_j \\
+  \boldsymbol{0}
+  \end{bmatrix}.
+\end{equation}
+
+To measure the population of the guard levels we define the functional
+\begin{equation}
+  g_2(U(\alphab)) =\int_0^T \sum_{j=1}^N \left\langle \psib_j(\tau,\alphab), W\psib_j(\tau,\alphab)
+  \right\rangle_2\, d\tau,
+\end{equation}
+where $W$ is a real diagonal matrix with zero entries in the first $N$ rows and columns,
+\[
+W = \begin{bmatrix}
+  0 &&&&& \\
+  & \ddots &&&& \\
+  && 0 &&& \\
+  &&& w_1 && \\
+  &&&& \ddots & \\
+  &&&&& w_{N_g}
+\end{bmatrix},\quad 0 < w_1 \leq w_2 \leq \ldots \leq w_{N_g}.
+\]
+The gradient of $g_2$ satisfies
+\[
+\frac{\partial g_2}{\partial \alpha_k} = 2\,{\rm Re}\! \sum_{j=1}^N  \int_0^T \left\langle \phib_{jk}(\tau,\alphab), W\psib_j(\tau,\alphab)
+\right\rangle_2\, d\tau.
+\]
+The gradient of the combined objective functional
+\[
+g(\alphab) = g_1(\alphab) + g_2(\alphab),
+\]
+therefore satisfies
+\[
+\frac{\partial g}{\partial \alpha_k} = 2 {\rm Re}\! \sum_{j=1}^N \left(
+%
+-\left\langle\phib_{jk}(T,\alphab), \frac{\overline{S}_T}{N^2} \db_j \right\rangle_2 +
+%
+\int_0^T \left\langle \phib_{jk}(\tau,\alphab), W\psib_j(\tau,\alphab)\right\rangle_2\, d\tau \right).
+\]
+We can compute the gradient using the previous approach by solving the adjoint equation
+\eqref{eq_adjoint} with terminal condition \eqref{eq_adjoint-tc} and forcing function
+\[
+\gb_j = W \psib_j.
+\]
+  
 
 \end{document}
