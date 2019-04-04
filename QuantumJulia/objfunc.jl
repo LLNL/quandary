@@ -50,6 +50,7 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
 
   if penaltyweight == 1
     xi = 1.0/max(1,Nguard)          # coef for penalizing forbidden states
+  elseif penaltyweight == 2  
   end
   # Make sure that each element of pcof is in the prescribed range
   pcof, par1, par0 = boundcof(pcof, D, params.maxpar, eps)
@@ -542,6 +543,45 @@ end
 
   # weigh the constant and wavelet parts such that max w = xi
   w = alpha * constant + (1-alpha)*xi* 64*mask.*(0.5 + tau).^3 .* (0.5 - tau).^3;
+end
+
+function penalf2(vr::Array{Float64,2},  Nguard::Int64)
+  f = 0.0
+  if Nguard > 0
+    N = size(vr,2)
+    guard = vr[N+1:N+Nguard,:] 
+
+    for i in Nguard:1
+      w = w(i,Nguard)
+      for j in Nguard:1
+        f = f + w*guard[i,j]
+      end
+    end
+ else
+    f = 0.0
+ end
+end
+
+function penalf2(vr::Array{Float64,2}, vi::Array{Float64,2}, Nguard::Int64)
+  N = size(vr,2)
+  f = zeros(Nguard,N)
+  if Nguard > 0
+    rguard = vr[N+1:N+Nguard,:] 
+    iguard = vi[N+1:N+Nguard,:]
+  
+    for i in Nguard:1
+      w = w(i,Nguard)
+      for j in Nguard:1
+        f = w*(rguard[i,j]^2 + iguard[i,j]^2)
+      end
+    end
+ else
+    f = 0.0
+ end
+end
+
+function w(i::Int64, Nguard::Int64)
+   w = i/Nguard
 end
 
 @inline function normguard(vr::Array{Float64,2}, vi::Array{Float64,2}, Nguard::Int64)
