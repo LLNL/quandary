@@ -125,7 +125,7 @@ To evaluate \eqref{eq_obj-grad-exp}, we set $\qb_j = -\overline{S}_T \db_j/N^2$ 
   \frac{\p g_1}{\p \alpha_k} =  2 {\rm Re}\! \sum_{j=1}^N \left\langle \phib_{jk}(T,\alphab),
   \qb_j\right\rangle_2 =
   %
-  \int_0^T \sum_{j=1}^N \langle \fb_{jk},\lambdab_j \rangle_2\, d\tau.
+  2 {\rm Re}\! \sum_{j=1}^N \int_0^T \langle \fb_{jk},\lambdab_j \rangle_2\, d\tau.
 \end{equation}
 Similar to before, the cost of computing all components of the gradient of the objective function is
 almost independent of the number of components. We start by solving the Schr\"odinger equation
