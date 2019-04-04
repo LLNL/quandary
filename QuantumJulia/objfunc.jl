@@ -265,6 +265,8 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
      objfv = (1-tracefidreal(vr, vi, vtargetr, vtargeti, labframe,t, omega))
      salpha1 = tracefidcomplex(wr, -wi, vtargetr, vtargeti, labframe, t, omega)
      scomplex1 = tracefidcomplex(vr, -vi, vtargetr, vtargeti, labframe, t, omega)
+     @show(scomplex1)
+     @show(salpha1)
      objf_alpha1 = -real(2*conj(scomplex1)*salpha1)
    end
 
@@ -288,6 +290,7 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
     elseif weight == 2
     	lambdar = vtargetr 
     	lambdai = vtargeti
+    	dS_dalpha0  
     end
 
     
@@ -316,8 +319,8 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
       dari = ( (dar .+ dar')*vr .+ (dai .- dai')*vi)
       dair = ( (dai .+ dai')*vi .+ (dar .- dar')*vr)
       daii = (-(dai .+ dai')*vr .+ (dar .- dar')*vi)
-      tr_adjrf = tracefidreal(darr, dari, lambdar, lambdai)
-      tr_adjif = tracefidreal(dair, daii, lambdar, lambdai)
+      tr_adjrf = tracefidrealback(darr, dari, lambdar, lambdai)
+      tr_adjif = tracefidrealback(dair, daii, lambdar, lambdai)
       tr_adj0  = rfgrad(t)* tr_adjrf + ifgrad(t)* tr_adjif
 
         #loop over stages
@@ -332,7 +335,6 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
           KS(K05, S05, t + 0.5*dt*gamma[q], amat, adag, domega, splineparams, H0, tmp1, tmp2, tmp3,rr,ri)
           rotmatrices!(t + dt*gamma[q],domega,rr,ri)
           KS(K1, S1, t + dt*gamma[q], amat, adag, domega, splineparams, H0, tmp1, tmp2, tmp3, rr,ri)
-          rotmatrices!(t,domega,rr,ri)
 
           # evolve vr, vi
           @inbounds t, vr, vi = timestep.step(t, vr, vi, dt*gamma[q], K0, S0, K05, S05, K1, S1, Ident)
@@ -348,39 +350,46 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
           	hi1[N+1:N+Nguard,:] = xi*penalf1(t,T)*vi[N+1:N+Nguard,:]
             # evolve lambdar, lambdai
             @inbounds temp, lambdar, lambdai = timestep.step(t0, lambdar, lambdai, dt*gamma[q], hi0, 0.5*(hr0 + hr1), hi1, K0, S0, K05, S05, K1, S1, Ident)
-          elseif weight == 2
-            # evolve lambdar, lambdai
-          	@inbounds temp, lambdar, lambdai = timestep.step(t0, lambdar, lambdai, dt*gamma[q], K0, S0, K05, S05, K1, S1, Ident)
-          end
-
-          rotmatrices!(t,domega,rr,ri)
-
-          mul!(dar,rr,amat)
-          mul!(dai,ri,amat)
-          rgrad = rfgrad(t)
-          igrad = ifgrad(t)
+        
+          	rotmatrices!(t,domega,rr,ri)
+            mul!(dar,rr,amat)
+  	        mul!(dai,ri,amat)
+            rgrad = rfgrad(t)
+      	    igrad = ifgrad(t)
           
-          darr = ( (dai .- dai')*vr .- (dar .+ dar')*vi)
-          dari = ( (dar .+ dar')*vr .+ (dai .- dai')*vi)
-          dair = ( (dai .+ dai')*vi .+ (dar .- dar')*vr)
-          daii = (-(dai .+ dai')*vr .+ (dar .- dar')*vi)
-          tr_adjrf = tracefidreal(darr, dari, lambdar, lambdai)
-          tr_adjif = tracefidreal(dair, daii, lambdar, lambdai)
-          tr_adj1  = rfgrad(t)*tr_adjrf + ifgrad(t)*tr_adjif
-
-          # accumulate the gradient of the objective functional
-          gradobjfadj = gradobjfadj + gamma[q]*dt*0.5*2.0*(tr_adj0 +  tr_adj1) # dt is negative
-
-          # save for next stage
-          scomplex0 = scomplex1
-          tr_adj0 = tr_adj1
-          if weight == 1
+            darr = ( (dai .- dai')*vr .- (dar .+ dar')*vi)
+          	dari = ( (dar .+ dar')*vr .+ (dai .- dai')*vi)
+          	dair = ( (dai .+ dai')*vi .+ (dar .- dar')*vr)
+          	daii = (-(dai .+ dai')*vr .+ (dar .- dar')*vi)
+          	tr_adjrf = tracefidrealback(darr, dari, lambdar, lambdai)
+          	tr_adjif = tracefidrealback(dair, daii, lambdar, lambdai)
+          	tr_adj1  = rfgrad(t)*tr_adjrf + ifgrad(t)*tr_adjif
+            # accumulate the gradient of the objective functional
+            gradobjfadj = gradobjfadj + gamma[q]*dt*0.5*2.0*(tr_adj0 +  tr_adj1) # dt is negative
+            # save for next stage
+            scomplex0 = scomplex1
+            tr_adj0 = tr_adj1
           	hr0 = hr1
           	hi0 = hi1
+          elseif weight ==2
+             @inbounds temp, lambdar, lambdai = timestep.step(t0, lambdar, lambdai, dt*gamma[q], hi0, 0.5*(hr0 + hr1), hi1, K0, S0, K05, S05, K1, S1, Ident)
+             
+             #make sure all of this is otated correclty
+             freal = #compute real part of f
+             fcomplex = # complex pat of f
+             l2flambda1 = #innner product that is to beintegrated
+
+             ds_dalpha = ds_dalpha + gamma[q]*dt*0.5*2.0*(l2lambda0 +l2lamnda1) #integral
+
           end
         end #for
     end # for step
  
+    if weight == 2
+       S = l2 psiT*D 
+       gradobjfadj = 
+    end
+
     ineqpengrad = evalineqgrad(pcof, par0, par1)
   
     for k in 1:D
@@ -527,15 +536,15 @@ end
 
 end
 
-@inline function tracefidreal(frcr::Array{Float64,2}, frci::Array{Float64,2}, lambdar::Array{Float64,2}, lambdai::Array{Float64,2})
+@inline function tracefidrealback(frcr::Array{Float64,2}, frci::Array{Float64,2}, lambdar::Array{Float64,2}, lambdai::Array{Float64,2})
   fidreal = 0.0
-  fidreal = tr(frcr' * lambdar + frci' * lambdai);
+  fidreal = tr(frcr' * lambdar + frci' * lambdai)
 end
 
 @inline function tracefidcomplex(ur::Array{Float64,2}, vi::Array{Float64,2}, vtargetr::Array{Float64,2}, vtargeti::Array{Float64,2}, labframe::Bool, t::Float64, omega::Array{Float64,1})
   N = size(vtargetr,2)
   fidreal = 0.0
-  fid_cmplx = tr(ur' * vtargetr .+ vi' * vtargeti)/N + 1im*tr(ur' * vtargeti .- vi' * vtargetr)/N;
+  fid_cmplx = tr(ur' * vtargetr .+ vi' * vtargeti)/N + 1im*tr(ur' * vtargeti .- vi' * vtargetr)/N
 end
 
 @inline function  penalf1(t::Float64, T::Float64)
