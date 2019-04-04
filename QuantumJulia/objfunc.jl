@@ -430,7 +430,7 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
 
 		f3 = plot(td, penalf1.(td,T), lab = "Forbidden", title = "Weight functions", linewidth = 2)
     if weight == 1
-		 plot!(td, weight1.(td,T), lab = "Gate", linewidth = 2)
+		 plot!(td, weightf1.(td,T), lab = "Gate", linewidth = 2)
 		end
     plt2 = plot(f1, f2, f3, layout = (3,1))    
 
