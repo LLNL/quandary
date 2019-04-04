@@ -115,7 +115,7 @@ function testgrad()
 
 	
 	cfl = 0.05
-	T = 10
+	T = 150
 	testadjoint = 0
 	maxpar =0.09
 	

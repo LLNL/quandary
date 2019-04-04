@@ -209,8 +209,7 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
       KS(K05, S05, t + 0.5*dt*gamma[q], amat, adag, domega, splineparams, H0, tmp1, tmp2, tmp3,rr,ri)
       rotmatrices!(t + dt*gamma[q],domega,rr,ri)
       KS(K1, S1, t + dt*gamma[q], amat, adag, domega, splineparams, H0, tmp1, tmp2, tmp3, rr,ri)
-      rotmatrices!(t,domega,rr,ri)
-       
+ 
       @inbounds t, vr, vi = timestep.step(t, vr, vi, dt*gamma[q], K0, S0, K05, S05, K1, S1, Ident)
 
       if weight == 1
@@ -224,7 +223,6 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
       if retadjoint	    
       	
       	 scomplex1 = tracefidcomplex(vr, -vi, vtargetr, vtargeti, labframe, t, omega)
-      	 rotmatrices!(t,domega,rr,ri)
       	 mul!(dar,rr,amat)
       	 mul!(dai,ri,amat)
       	 rgrad = rfgrad(t)
@@ -286,8 +284,11 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
     	lambdar = zeromat
     	lambdai = zeromat
     elseif weight == 2
-    	lambdar = vtargetr 
-    	lambdai = vtargeti
+      scomplex0 = tracefidcomplex(vr, -vi, vtargetr, vtargeti, labframe, t, omega)
+      sr0 = real(scomplex0)
+      si0 = imag(scomplex0)
+    	lambdar = real(conj(scomplex0)*(vtargetr+im*vtargeti))/N 
+    	lambdai = -imag(conj(scomplex0)*(vtargetr+im*vtargeti))/N
     end
 
     
@@ -388,7 +389,6 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
     end
      
     dfdp = dfdp + ineqpengrad[kpar]
-    @show(dfdp) 
     if verbose
       dfdp = dfdp + ineqpengrad[kpar]
       println("Forward integration of gradient of objective function = ", dfdp, " ineqpengrad = ", ineqpengrad[kpar])
