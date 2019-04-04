@@ -176,10 +176,11 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
     rotmatrices!(t,domega,rr,ri)
 
     if retadjoint
+    forbalpha0 = xi*penalf1(t,T)*screal(vr, vi, wr, wi, Nguard,zeromat)
+
     if weight ==1
       scomplex0 = tracefidcomplex(vr, -vi, vtargetr, vtargeti, labframe, t, omega)
       salpha0 = tracefidcomplex(wr, -wi, vtargetr, vtargeti, labframe, t, omega)
-      forbalpha0 = xi*penalf1(t,T)*screal(vr, vi, wr, wi, Nguard,zeromat)
 
       rgrad = rfgrad(t)
       igrad = ifgrad(t)
@@ -231,23 +232,26 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
       	 ifalpha = igrad[kpar]
 	     gr1, gi1 = grupdate(gr1 ,gi1, dai, dar, vr, vi, rfalpha, ifalpha)
 
-	     @inbounds temp, wr, wi = timestep.step(t0, wr, wi, dt*gamma[q], gi0, 0.5*(gr1 + gr0), gi1, K0, S0, K05, S05, K1, S1, Ident) 
+	    @inbounds temp, wr, wi = timestep.step(t0, wr, wi, dt*gamma[q], gi0, 0.5*(gr1 + gr0), gi1, K0, S0, K05, S05, K1, S1, Ident) 
 
 	     # Forcing evolving w
-	     if weight == 1
-	     	salpha1 = tracefidcomplex(wr, -wi, vtargetr, vtargeti, labframe, t, omega)
-	     	forbalpha1 =  xi*penalf1(t,T)*screal(vr, vi, wr, wi, Nguard,zeromat)   
+      forbalpha1 =  xi*penalf1(t,T)*screal(vr, vi, wr, wi, Nguard,zeromat)
+
+	    if weight == 1
+	     	salpha1 = tracefidcomplex(wr, -wi, vtargetr, vtargeti, labframe, t, omega) 
 	     	objf_alpha1 = objf_alpha1 - gamma[q]*dt*0.5*2.0*real(weightf1(t0,T)*conj(scomplex0)*salpha0 +
 	     	weightf1(t,T)*conj(scomplex1)*salpha1) + gamma[q]*dt*0.5*2.0*(forbalpha0 + forbalpha1)
-	        scomplex0 = scomplex1
-	        salpha0 = salpha1
-	        forbalpha0 = forbalpha1
-      	 end
+	      scomplex0 = scomplex1
+	      salpha0 = salpha1
+      elseif weight ==2
+        objf_alpha1 = objf_alpha1 + gamma[q]*dt*0.5*2.0*(forbalpha0 + forbalpha1)
+      end
+       
+      forbalpha0 = forbalpha1  
 	     	
-	     # save previous values for next stage
-
-	     gr0 = gr1
-      	 gi0 = gi1
+	    # save previous values for next stage
+	    gr0 = gr1
+      gi0 = gi1
       end  # retadjoint
     end # Stromer-Verlet
 
@@ -263,7 +267,7 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
      objfv = (1-tracefidreal(vr, vi, vtargetr, vtargeti, labframe,t, omega))
      salpha1 = tracefidcomplex(wr, -wi, vtargetr, vtargeti, labframe, t, omega)
      scomplex1 = tracefidcomplex(vr, -vi, vtargetr, vtargeti, labframe, t, omega)
-     objf_alpha1 = -real(2*conj(scomplex1)*salpha1)
+     objf_alpha1 = objf_alpha1 - real(2*conj(scomplex1)*salpha1)
    end
 
 	ufinalr = rotr'*vr - roti'*vi #should both these matrices be transposed?
@@ -301,9 +305,10 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
       if weight == 1
       	hr0 = -weightf1(t,T)/N*(sr0*vtargetr + si0*vtargeti)
       	hi0 =  weightf1(t,T)/N*(sr0*vtargeti - si0*vtargetr)
-      	hr0[N+1:N+Nguard,:] = xi*penalf1(t,T)*vr[N+1:N+Nguard,:]
-      	hi0[N+1:N+Nguard,:] = xi*penalf1(t,T)*vi[N+1:N+Nguard,:]
       end
+
+      hr0[N+1:N+Nguard,:] = xi*penalf1(t,T)*vr[N+1:N+Nguard,:]
+      hi0[N+1:N+Nguard,:] = xi*penalf1(t,T)*vi[N+1:N+Nguard,:]
       # forcing for evolving W (d psi/d alpha1) in the rotating frame
       rotmatrices!(t,domega,rr,ri)
 
@@ -345,14 +350,13 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
           if weight == 1
           	hr1 = -weightf1(t,T)/N*(sr1*vtargetr + si1*vtargeti)
           	hi1 =  weightf1(t,T)/N*(sr1*vtargeti - si1*vtargetr)
-          	hr1[N+1:N+Nguard,:] = xi*penalf1(t,T)*vr[N+1:N+Nguard,:]
-          	hi1[N+1:N+Nguard,:] = xi*penalf1(t,T)*vi[N+1:N+Nguard,:]
-            # evolve lambdar, lambdai
-            @inbounds temp, lambdar, lambdai = timestep.step(t0, lambdar, lambdai, dt*gamma[q], hi0, 0.5*(hr0 + hr1), hi1, K0, S0, K05, S05, K1, S1, Ident)
-          elseif weight == 2
-            # evolve lambdar, lambdai
-          	@inbounds temp, lambdar, lambdai = timestep.step(t0, lambdar, lambdai, dt*gamma[q], K0, S0, K05, S05, K1, S1, Ident)
           end
+          
+          hr1[N+1:N+Nguard,:] = xi*penalf1(t,T)*vr[N+1:N+Nguard,:]
+          hi1[N+1:N+Nguard,:] = xi*penalf1(t,T)*vi[N+1:N+Nguard,:]
+          # evolve lambdar, lambdai
+          @inbounds temp, lambdar, lambdai = timestep.step(t0, lambdar, lambdai, dt*gamma[q], hi0, 0.5*(hr0 + hr1), hi1, K0, S0, K05, S05, K1, S1, Ident)
+   
 
           rotmatrices!(t,domega,rr,ri)
 
@@ -375,10 +379,10 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
           # save for next stage
           scomplex0 = scomplex1
           tr_adj0 = tr_adj1
-          if weight == 1
-          	hr0 = hr1
-          	hi0 = hi1
-          end
+
+          hr0 = hr1
+          hi0 = hi1
+
         end #for
     end # for step
  
@@ -423,13 +427,13 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
 
 		f1 = plot(td, vcat(rplot.(collect(td))...), lab = "Real", title = "Control function", linewidth = 2)
 		f2 = plot(td, vcat(eplot.(collect(td))...), title = "Envelope function", linewidth = 2)
-		if weight == 1
-			f3 = plot(td, weightf1.(td,T), lab = "Gate", title = "Weight functions", linewidth = 2)
-			plot!(td, penalf1.(td,T), lab = "Forbidden", linewidth = 2)
-			plt2 = plot(f1, f2, f3, layout = (3,1))    
-		elseif weight == 2 
-			plt2 = plot(f1, f2, layout = (2,1))    
-	    end
+
+		f3 = plot(td, penalf1.(td,T), lab = "Forbidden", title = "Weight functions", linewidth = 2)
+    if weight == 1
+		 plot!(td, weight1.(td,T), lab = "Gate", linewidth = 2)
+		end
+    plt2 = plot(f1, f2, f3, layout = (3,1))    
+
 	end #if verbose
 
 # return to calling routine
