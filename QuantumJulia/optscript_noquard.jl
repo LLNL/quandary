@@ -25,7 +25,8 @@ using Optim
 	
 	params = objfunc.parameters(N,Nguard,T,testadjoint,maxpar,cfl, utarget)
 	
-
+   
+	pcof0  = zeros(351)
 	pcof0  = zeros(250)
 #	pcof0 = (rand(200) .- 0.5).*maxpar*0.1
 	order = 2

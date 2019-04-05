@@ -1,18 +1,18 @@
 
 using Optim
-	N = 4
-	#N = 2
+	#N = 4
+	N = 2
 	
-	Nguard = 3
+	Nguard = 5
 
 	Ntot = N + Nguard
 	
 	Ident = Matrix{Float64}(I, Ntot, Ntot)   
 	utarget = Ident[1:Ntot,1:N]
-
-	utarget[:,3] = Ident[:,4]
-	utarget[:,4] = Ident[:,3]
-
+  
+    H = 1/sqrt(2).*[1 1;  1 -1]
+    utarget[1:2,1:2] = H*utarget[1:2,1:2]
+	
 	cfl = 0.05
 
 	T = 150.0
@@ -23,7 +23,7 @@ using Optim
 	params = objfunc.parameters(N,Nguard,T,testadjoint,maxpar,cfl, utarget)
 	
 
-	pcof0  = zeros(351) 
+	pcof0  = zeros(501) 
 	#pcof0 = (rand(250) .- 0.5).*maxpar*0.1
 	order = 2
 	weight = 2
