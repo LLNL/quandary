@@ -48,10 +48,17 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
   pcof = pcof0
   D = size(pcof,1)
 
+
+  if weight == 1
+   xif = 1.0
+  elseif weight == 2
+   xif = 0
+  end 
+
   if penaltyweight == 1
-    xi = 1.0/max(1,Nguard)          # coef for penalizing forbidden states
+    xi = xif/max(1,Nguard)          # coef for penalizing forbidden states
   elseif penaltyweight == 2  
-    xi = 1.0/max(1,Nguard)   
+    xi = xif/max(1,Nguard)   
   end
   # Make sure that each element of pcof is in the prescribed range
   pcof, par1, par0 = boundcof(pcof, D, params.maxpar, eps)
@@ -139,7 +146,6 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
   tmp3 = zeros(Ntot,Ntot)
   rr = zeros(Ntot,Ntot)
   ri = zeros(Ntot,Ntot)
-
 
   gr0 = zeromat
   gi0 = zeromat
@@ -256,8 +262,7 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
 
 	    if weight == 1
 	     	salpha1 = tracefidcomplex(wr, -wi, vtargetr, vtargeti, labframe, t, omega) 
-	     	objf_alpha1 = objf_alpha1 - gamma[q]*dt*0.5*2.0*real(weightf1(t0,T)*conj(scomplex0)*salpha0 +
-	     	weightf1(t,T)*conj(scomplex1)*salpha1) + gamma[q]*dt*0.5*2.0*(forbalpha0 + forbalpha1)
+	     	objf_alpha1 = objf_alpha1 - gamma[q]*dt*0.5*2.0*real(weightf1(t0,T)*conj(scomplex0)*salpha0 + weightf1(t,T)*conj(scomplex1)*salpha1) + gamma[q]*dt*0.5*2.0*(forbalpha0 + forbalpha1)
 	      scomplex0 = scomplex1
 	      salpha0 = salpha1
       elseif weight ==2
@@ -309,8 +314,9 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
       scomplex0 = tracefidcomplex(vr, -vi, vtargetr, vtargeti, labframe, t, omega)
       sr0 = real(scomplex0)
       si0 = imag(scomplex0)
-    	lambdar = real(conj(scomplex0)*(vtargetr+im*vtargeti))/N 
-    	lambdai = -imag(conj(scomplex0)*(vtargetr+im*vtargeti))/N
+
+      lambdar = real(conj(scomplex0)*(vtargetr + im*vtargeti))/N 
+      lambdai = -imag(conj(scomplex0)*(vtargetr + im*vtargeti))/N
     end
     
     #Backward time stepping loop
@@ -371,7 +377,7 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
         if weight == 1
         	hr1 = -weightf1(t,T)/N*(sr1*vtargetr + si1*vtargeti)
         	hi1 =  weightf1(t,T)/N*(sr1*vtargeti - si1*vtargetr)
-        end
+        end  
         
         if penaltyweight == 1
           hr1[N+1:N+Nguard,:] = xi*penalf1(t,T)*vr[N+1:N+Nguard,:]
@@ -583,7 +589,7 @@ function penalf2(vr::Array{Float64,2}, vi::Array{Float64,2},  Nguard::Int64)
 
     for i in 1:Nguard
       w = wf(i,Nguard)
-      for j in 1:Nguard
+      for j in 1:N
         f = f + w*(rguard[i,j]^2 + iguard[i,j]^2)
       end
     end
@@ -601,7 +607,7 @@ function penalf2(v::Array{Float64,2}, Nguard::Int64)
   
     for i in 1:Nguard
       w = wf(i,Nguard)
-      for j in 1:Nguard
+      for j in 1:N
         f[i,j] =  w*guard[i,j]
       end
     end
