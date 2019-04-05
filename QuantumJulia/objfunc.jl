@@ -7,7 +7,7 @@ using LinearAlgebra
 using Plots
 
 struct parameters
-	N ::Int64		# vector dimension
+	N::Int64		# vector dimension
 	Nguard ::Int64 	# number of extra levels
 	T::Float64		# final time
 	testadjoint::Bool #should this really be in param?
@@ -52,7 +52,7 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
   if weight == 1
    xif = 1.0
   elseif weight == 2
-   xif = 0.1
+   xif = 1/T
   end 
 
   if penaltyweight == 1
@@ -185,7 +185,7 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
        if penaltyweight == 1
         forbalpha0 = xi*penalf1(t,T)*screal(vr, vi, wr, wi, Nguard,zeromat)
        else
-        error("Penalty function for forward gradient missing") 
+        forbalpha0 = xi*penalf2(vr, vi, wr, wi, Nguard) 
        end
       end
 
@@ -257,7 +257,7 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
       if penaltyweight == 1
         forbalpha1 =  xi*penalf1(t,T)*screal(vr, vi, wr, wi, Nguard,zeromat)
       elseif penaltyweight == 2
-        error("Forcing for forward gradient not implemented for this penalty yet")
+        forbalpha1 = xi*penalf2(vr, vi, wr, wi, Nguard)
       end
 
 	    if weight == 1
@@ -611,12 +611,35 @@ function penalf2(v::Array{Float64,2}, Nguard::Int64)
         f[i,j] =  w*guard[i,j]
       end
     end
+
  end
  return f
 end
 
+function penalf2(vr::Array{Float64,2}, vi::Array{Float64,2}, wr::Array{Float64,2}, wi::Array{Float64,2}, Nguard::Int64)
+  Ntot =size(vr,1)
+  N = size(vr,2)
+
+  f = 0.0
+  if  Nguard > 0 # should give the last guard much higher weight!
+    vrguard = vr[N+1:N+Nguard,:]
+    viguard = vi[N+1:N+Nguard,:]
+    wrguard = wr[N+1:N+Nguard,:]
+    wiguard = wi[N+1:N+Nguard,:]   
+     for i in 1:Nguard
+      w = wf(i,Nguard)
+      for j in 1:N
+        f = f + w*(vrguard[i,j]*wrguard[i,j] + viguard[i,j]*wiguard[i,j])
+      end
+    end
+  else
+    f = 0.0
+  end
+  return f
+end
+
 function wf(i, Nguard)
-   w = sqrt((i)/Nguard)
+   w = sqrt((i-1)/Nguard)
 end
 
 @inline function normguard(vr::Array{Float64,2}, vi::Array{Float64,2}, Nguard::Int64)
