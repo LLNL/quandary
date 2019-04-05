@@ -4,6 +4,7 @@ using Optim
 	#N = 2
 	
 	Nguard = 3
+
 	Ntot = N + Nguard
 	
 	Ident = Matrix{Float64}(I, Ntot, Ntot)   
@@ -22,10 +23,10 @@ using Optim
 	params = objfunc.parameters(N,Nguard,T,testadjoint,maxpar,cfl, utarget)
 	
 
-	#pcof0  = zeros(250)
-	pcof0 = (rand(250) .- 0.5).*maxpar*0.1
+	pcof0  = zeros(351) 
+	#pcof0 = (rand(250) .- 0.5).*maxpar*0.1
 	order = 2
-	weight = 1
+	weight = 2
 	penaltyweight = 2
 
     function f(pcof)

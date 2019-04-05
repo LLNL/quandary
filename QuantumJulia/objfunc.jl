@@ -52,7 +52,7 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
   if weight == 1
    xif = 1.0
   elseif weight == 2
-   xif = 0
+   xif = 0.1
   end 
 
   if penaltyweight == 1
@@ -616,7 +616,7 @@ function penalf2(v::Array{Float64,2}, Nguard::Int64)
 end
 
 function wf(i, Nguard)
-   w = i/Nguard
+   w = sqrt((i)/Nguard)
 end
 
 @inline function normguard(vr::Array{Float64,2}, vi::Array{Float64,2}, Nguard::Int64)
