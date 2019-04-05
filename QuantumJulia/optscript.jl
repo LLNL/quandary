@@ -1,7 +1,6 @@
 
 using Optim
 	N = 4
-
 	#N = 2
 	
 	Nguard = 3
@@ -13,9 +12,6 @@ using Optim
 	utarget[:,3] = Ident[:,4]
 	utarget[:,4] = Ident[:,3]
 
-#	utarget[:,1] = Ident[:,2]
-# 	utarget[:,2] = Ident[:,1]
-
 	cfl = 0.05
 
 	T = 150.0
@@ -26,20 +22,21 @@ using Optim
 	params = objfunc.parameters(N,Nguard,T,testadjoint,maxpar,cfl, utarget)
 	
 
-	pcof0  = zeros(250)
+	#pcof0  = zeros(250)
 	pcof0 = (rand(250) .- 0.5).*maxpar*0.1
 	order = 2
-	weight =2
+	weight = 1
+	penaltyweight = 2
 
     function f(pcof)
     #@show(pcof)
-     f =objfunc.traceobjgrad(pcof,params,order,false,false,weight)
+     f =objfunc.traceobjgrad(pcof,params,order,false,false,weight,penaltyweight )
     # @show(f)
      return f[1]
      end
 
     function g!(G,pcof,params,order)
-    	objf, Gtemp = objfunc.traceobjgrad(pcof,params,order,false, true, weight)
+    	objf, Gtemp = objfunc.traceobjgrad(pcof,params,order,false, true, weight, penaltyweight )
     	
     	Gtemp = vcat(Gtemp...) 
     	for i in 1:length(Gtemp)

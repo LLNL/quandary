@@ -328,8 +328,8 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
         hr0[N+1:N+Nguard,:] = xi*penalf1(t,T)*vr[N+1:N+Nguard,:]
         hi0[N+1:N+Nguard,:] = xi*penalf1(t,T)*vi[N+1:N+Nguard,:]
       elseif penaltyweight == 2
-        hr0[N+1:N+Nguard,:] = xi*penalf2(vr,Nguard)
-        hi0[N+1:N+Nguard,:] = xi*penalf2(vi,Nguard)
+        hr0[N+1:N+Nguard,:] = xi.*penalf2(vr, Nguard)
+        hi0[N+1:N+Nguard,:] = xi.*penalf2(vi, Nguard)
       end
      
       # forcing for evolving W (d psi/d alpha1) in the rotating frame
@@ -574,42 +574,42 @@ end
   w = alpha * constant + (1-alpha)*xi* 64*mask.*(0.5 + tau).^3 .* (0.5 - tau).^3;
 end
 
-function penalf2(vr::Array{Float64,2},  Nguard::Int64)
+function penalf2(vr::Array{Float64,2}, vi::Array{Float64,2},  Nguard::Int64)
   f = 0.0
   if Nguard > 0
     N = size(vr,2)
-    guard = vr[N+1:N+Nguard,:] 
-
-    for i in Nguard:1
-      w = w(i,Nguard)
-      for j in Nguard:1
-        f = f + w*guard[i,j]
-      end
-    end
- else
-    f = 0.0
- end
-end
-
-function penalf2(vr::Array{Float64,2}, vi::Array{Float64,2}, Nguard::Int64)
-  N = size(vr,2)
-  f = zeros(Nguard,N)
-  if Nguard > 0
     rguard = vr[N+1:N+Nguard,:] 
     iguard = vi[N+1:N+Nguard,:]
-  
-    for i in Nguard:1
-      w = w(i,Nguard)
-      for j in Nguard:1
-        f = w*(rguard[i,j]^2 + iguard[i,j]^2)
+
+    for i in 1:Nguard
+      w = wf(i,Nguard)
+      for j in 1:Nguard
+        f = f + w*(rguard[i,j]^2 + iguard[i,j]^2)
       end
     end
  else
     f = 0.0
  end
+ return f
 end
 
-function w(i::Int64, Nguard::Int64)
+function penalf2(v::Array{Float64,2}, Nguard::Int64)
+  N = size(v, 2)
+  f = zeros(Nguard, N)
+  if Nguard > 0
+    guard = v[N+1:N+Nguard,:] 
+  
+    for i in 1:Nguard
+      w = wf(i,Nguard)
+      for j in 1:Nguard
+        f[i,j] =  w*guard[i,j]
+      end
+    end
+ end
+ return f
+end
+
+function wf(i, Nguard)
    w = i/Nguard
 end
 
