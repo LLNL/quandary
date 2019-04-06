@@ -52,7 +52,7 @@ using Optim
    @time pcof = Optim.minimizer(res)
    display(res)
 
-   pl1, pl2, objv, grad = objfunc.traceobjgrad(pcof,params,order, true, true, weight)
+   objv, grad, pl1, pl2 = objfunc.traceobjgrad(pcof,params,order, true, true, weight)
 
    println("Objfunc = ", objv)
    pl1
