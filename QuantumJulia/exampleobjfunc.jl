@@ -132,8 +132,8 @@ function testgrad()
 
     verbose = true
     weights = 2 # final gate fidelity
-    penaltyweight = 1 # time-dependent penalty coefficient, same weight for all guard levels
-#    penaltyweight = 2 # constant penalty coefficient, coefficient depends on guard level
+#    penaltyweight = 1 # time-dependent penalty coefficient, same weight for all guard levels
+    penaltyweight = 2 # constant penalty coefficient, coefficient depends on guard level
     
     objv1, grad1  = objfunc.traceobjgrad(pcof1, params, order, verbose, true, weights, penaltyweight)
 #    @show(grad1)
@@ -142,8 +142,8 @@ function testgrad()
 
     @show(objv1)
     @show(objv2)
-    @show(grad1)
-    @show(grad2)
+    @show(grad1[1:10])
+    @show(grad2[1:10])
     
     println("Gradient: ", grad1[1], " Approximated by Finite-Differences: ", (objv2-objv1)/eps)
 

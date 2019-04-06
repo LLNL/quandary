@@ -71,7 +71,10 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
   H0 ,amat, adag, omega, domega = rotframematrices(Ntot)
   zeromat = zeros(Ntot,N) 
 
-  # patameters for tbsplines
+# coefficients for penaty style #2 (wmat is a Diagonal matrix)
+  wmat = wparfunc(Ntot)
+
+  # parameters for tbsplines
   dtknot = T/(D - 2)
   splineparams = bsplines.splineparams(T, D, D+1, dtknot.*(collect(1:D) .- 1.5), dtknot.*(collect(1:D+1) .- 2), dtknot, pcof)
 
@@ -169,13 +172,13 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
   for step in 1:nsteps
     #for the objective function
     if weight == 1
-   	  infidelity0 = weightf1(t, T)*(1-tracefidreal(vr, vi, vtargetr, vtargeti, labframe, t, omega))
+      infidelity0 = weightf1(t, T)*(1-tracefidreal(vr, vi, vtargetr, vtargeti, labframe, t, omega))
     end
 
     if penaltyweight == 1
       forbidden0 = xi*penalf1(t, T)*normguard(vr, vi, Nguard)
     elseif penaltyweight == 2
-      forbidden0 = xi*penalf2(vr, vi, Nguard)  
+      forbidden0 = xi*penalf2a(vr, vi, wmat)  
     end
 
     rotmatrices!(t,domega,rr,ri)
@@ -183,11 +186,9 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
     if retadjoint
       if verbose
        if penaltyweight == 1
-        forbalpha0 = xi*penalf1(t,T)*screal(vr, vi, wr, wi, Nguard,zeromat)
+         forbalpha0 = xi*penalf1(t,T)*screal(vr, vi, wr, wi, Nguard,zeromat)
        else
-# NOTE: this code needs updating
-        forbalpha0 = xi*penalf1(t,T)*screal(vr, vi, wr, wi, Nguard,zeromat)
-#        error("Penalty function for forward gradient missing") 
+        forbalpha0 = xi*penalf2grad(vr, vi, wr, wi, wmat)
        end
       end
 
@@ -229,7 +230,7 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
       if penaltyweight == 1
         forbidden = xi*penalf1(t, T)*normguard(vr, vi, Nguard)  
       elseif  penaltyweight == 2
-        forbidden = xi*penalf2(vr, vi, Nguard)
+        forbidden = xi*penalf2a(vr, vi, wmat)  
       end
 
       if weight == 1
@@ -288,43 +289,31 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
       if penaltyweight == 1
         forbalpha1 =  xi*penalf1(t,T)*screal(vr, vi, wr, wi, Nguard,zeromat)
       elseif penaltyweight == 2
-# NOTE: this code needs updating
-        forbalpha1 =  xi*penalf1(t,T)*screal(vr, vi, wr, wi, Nguard,zeromat)
+        forbalpha1 = xi*penalf2grad(vr, vi, wr, wi, wmat)
 # error("Forcing for forward gradient not implemented for this penalty yet")
       end
 
-	    if weight == 1
-	     	salpha1 = tracefidcomplex(wr, -wi, vtargetr, vtargeti, labframe, t, omega) 
-	     	objf_alpha1 = objf_alpha1 - gamma[q]*dt*0.5*2.0*real(weightf1(t0,T)*conj(scomplex0)*salpha0 + weightf1(t,T)*conj(scomplex1)*salpha1) + gamma[q]*dt*0.5*2.0*(forbalpha0 + forbalpha1)
-	      scomplex0 = scomplex1
-	      salpha0 = salpha1
+      if weight == 1
+        salpha1 = tracefidcomplex(wr, -wi, vtargetr, vtargeti, labframe, t, omega) 
+	objf_alpha1 = objf_alpha1 - gamma[q]*dt*0.5*2.0*real(weightf1(t0,T)*conj(scomplex0)*salpha0 + weightf1(t,T)*conj(scomplex1)*salpha1) + gamma[q]*dt*0.5*2.0*(forbalpha0 + forbalpha1)
+	scomplex0 = scomplex1
+	salpha0 = salpha1
       elseif weight ==2
         objf_alpha1 = objf_alpha1 + gamma[q]*dt*0.5*2.0*(forbalpha0 + forbalpha1)
       end
        
       # save previous values for next stage 
       forbalpha0 = forbalpha1  	    
-	    gr0 = gr1
+      gr0 = gr1
       gi0 = gi1
-      end  # retadjoint
-    end # Stromer-Verlet
+    end  # retadjoint
+  end # Stromer-Verlet
     
     if verbose
       usaver[:,:, step + 1] = vr
       usavei[:,:, step + 1] = -vi
     end
   end #forward time steppingloop
-
-  if weight == 2
-#     objfv = (1-tracefidreal(vr, vi, vtargetr, vtargeti, labframe,t, omega))
-#   end
-    
-  
-#   ufinalr = rotr'*vr - roti'*vi #should both these matrices be transposed?
-#   ufinali = -rotr'*vi - roti'*vr 
-#   ineqpenalty = evalineqpen(pcof, par0, par1);
-#   objfv = objfv .+ ineqpenalty
-
 
 #   if retadjoint
 #     if weight == 2
@@ -335,6 +324,7 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
 #     end
 #     dfdp = objf_alpha1
 
+  if weight == 2
     objfv = objfv + (1-tracefidreal(vr, vi, vtargetr, vtargeti, labframe,t, omega))
     if retadjoint && verbose
       salpha1 = tracefidcomplex(wr, -wi, vtargetr, vtargeti, labframe, t, omega)
@@ -343,11 +333,10 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
     end  
   end
 
-	ufinalr = rotr'*vr - roti'*vi #should both these matrices be transposed?
-	ufinali = -rotr'*vi - roti'*vr 
-	ineqpenalty = evalineqpen(pcof, par0, par1);
-	objfv = objfv .+ ineqpenalty
-
+  ufinalr = rotr'*vr - roti'*vi #should both these matrices be transposed?
+  ufinali = -rotr'*vi - roti'*vr 
+  ineqpenalty = evalineqpen(pcof, par0, par1);
+  objfv = objfv .+ ineqpenalty
 
   if retadjoint
     if verbose
@@ -386,8 +375,8 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
         hr0[N+1:N+Nguard,:] = xi*penalf1(t,T)*vr[N+1:N+Nguard,:]
         hi0[N+1:N+Nguard,:] = xi*penalf1(t,T)*vi[N+1:N+Nguard,:]
       elseif penaltyweight == 2
-        hr0[N+1:N+Nguard,:] = xi.*penalf2(vr, Nguard)
-        hi0[N+1:N+Nguard,:] = xi.*penalf2(vi, Nguard)
+        hr0 = xi.*penalf2adj(vr, wmat)
+        hi0 = xi.*penalf2adj(vi, wmat)
       end
      
       # forcing for evolving W (d psi/d alpha1) in the rotating frame
@@ -406,7 +395,7 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
       tr_adjif = tracefidreal(dair, daii, lambdar, lambdai)
       tr_adj0  = rfgrad(t)* tr_adjrf + ifgrad(t)* tr_adjif
 
-        #loop over stages
+      #loop over stages
       for q in 1:stages
         t0 = t
         vr0 = vr
@@ -435,8 +424,8 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
           hr1[N+1:N+Nguard,:] = xi*penalf1(t,T)*vr[N+1:N+Nguard,:]
           hi1[N+1:N+Nguard,:] = xi*penalf1(t,T)*vi[N+1:N+Nguard,:]
         else
-          hr1[N+1:N+Nguard,:] = xi*penalf2(vr,Nguard)
-          hi1[N+1:N+Nguard,:] = xi*penalf2(vi,Nguard)
+          hr1 = xi.*penalf2adj(vr, wmat)
+          hi1 = xi.*penalf2adj(vi, wmat)
         end  
         # evolve lambdar, lambdai
         @inbounds temp, lambdar, lambdai = timestep.step(t0, lambdar, lambdai, dt*gamma[q], hi0, 0.5*(hr0 + hr1), hi1, K0, S0, K05, S05, K1, S1, Ident)
@@ -462,29 +451,25 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
         tr_adj0 = tr_adj1
         hr0 = hr1
         hi0 = hi1
-        end #for
-    end # for step
+      end #for stages
+    end # for step (backward time stepping loop)
  
-    ineqpengrad = evalineqgrad(pcof, par0, par1)
+   ineqpengrad = evalineqgrad(pcof, par0, par1)
   
     for k in 1:D
       gradobjfadj[k] = gradobjfadj[k] + ineqpengrad[k]
     end
      
-    if verbose
-      dfdp = dfdp + ineqpengrad[kpar]
-      if penaltyweight != 2 # not yet implemented
-        println("Forward integration of gradient of objective function = ", dfdp, " ineqpengrad = ", ineqpengrad[kpar])
-      end
-        
-    end
   end # if retadjoint
 
-	if verbose
-		println("Inequality penalty: ", ineqpenalty)
+  if verbose
+    println("Inequality penalty: ", ineqpenalty)
     println("Objective functional objfv: ", objfv)
 		
-		nplot = 1 + nsteps
+    dfdp = dfdp + ineqpengrad[kpar]
+    println("Forward integration of gradient of objective function = ", dfdp, " ineqpengrad = ", ineqpengrad[kpar])
+
+    nplot = 1 + nsteps
 		println(" Column   Vnrm")
 		for q in 1:N
 	 		Vnrm = usaver[:,q,nplot]' * usaver[:,q,nplot] + usavei[:,q,nplot]' * usavei[:,q,nplot]
@@ -528,6 +513,18 @@ else
 end #if
 end
 
+# returns wpar
+function wparfunc(N::Int64)
+  w = zeros(N)
+  w[5] = 0.01
+  w[6] = 0.1
+  w[7] = 1.0
+  if N > 7
+    error("not enough coefficients known")
+  end
+  wpar = Diagonal(w)
+  return wpar
+end
 
 # returns omega
 function omegafun(N::Int64)
@@ -654,6 +651,22 @@ function penalf2(vr::Array{Float64,2}, vi::Array{Float64,2},  Nguard::Int64)
  return f
 end
 
+# anders version
+function penalf2a(vr::Array{Float64,N}, vi::Array{Float64,N},  wmat::Diagonal{Float64,Array{Float64,1}}) where N
+f = tr( vr' * wmat * vr + vi' * wmat * vi);
+return f
+end
+
+function penalf2adj(vr::Array{Float64,N}, wmat::Diagonal{Float64,Array{Float64,1}}) where N
+f = wmat * vr;
+return f
+end
+
+function penalf2grad(vr::Array{Float64,N}, vi::Array{Float64,N}, wr::Array{Float64,N}, wi::Array{Float64,N},  wmat::Diagonal{Float64,Array{Float64,1}}) where N
+f = tr( wr' * wmat * vr ) + tr( wi' * wmat * vi);
+return f
+end
+
 function penalf2(v::Array{Float64,2}, Nguard::Int64)
   N = size(v, 2)
   f = zeros(Nguard, N)
@@ -691,9 +704,9 @@ end
 @inline function evalineqpen(pcof::Array{Float64,1}, par_0::Float64, par_1::Float64)
   D = size(pcof,1)
   N = size(pcof,2)
-#  scalef = 0.1
+  scalef = 0.1
 # testing
-  scalef = 0
+#  scalef = 0
   penalty = zeros(1,N);
   dp2 = par_1 - par_0
   
@@ -732,9 +745,9 @@ end
 @inline function evalineqgrad(pcof::Array{Float64,1}, par0::Float64, par1::Float64)
   D = size(pcof,1)
   N = size(pcof,2)
-#  scalef = 0.1
+  scalef = 0.1
 # testing
-  scalef = 0
+#  scalef = 0
   pengrad = zeros(D,N)
   for k in 1:D
     pengrad[k,:] = scalef*(1.0./(par1 .- pcof[k,:]) .- 1.0./(pcof[k,:] .- par0))/D
