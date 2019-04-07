@@ -23,7 +23,8 @@ using Optim
 	params = objfunc.parameters(N,Nguard,T,testadjoint,maxpar,cfl, utarget)
 	
 
-	pcof0  = zeros(351) 
+#	pcof0  = zeros(351) 
+	pcof0  = zeros(250) 
 	#pcof0 = (rand(250) .- 0.5).*maxpar*0.1
 	order = 2
 	weight = 2
@@ -52,7 +53,7 @@ using Optim
    @time pcof = Optim.minimizer(res)
    display(res)
 
-   objv, grad, pl1, pl2 = objfunc.traceobjgrad(pcof,params,order, true, true, weight)
+   objv, grad, pl1, pl2 = objfunc.traceobjgrad(pcof,params,order, true, true, weight, penaltyweight)
 
    println("Objfunc = ", objv)
    pl1

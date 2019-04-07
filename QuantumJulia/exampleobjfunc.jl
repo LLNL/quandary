@@ -128,6 +128,7 @@ function testgrad()
 
 	order = 2
 	eps = 1e-9
+	kpar = 2 # needs to have the same value in traceobjgrad()
 	pcof2 = pcof1
 
     verbose = true
@@ -135,9 +136,9 @@ function testgrad()
 #    penaltyweight = 1 # time-dependent penalty coefficient, same weight for all guard levels
     penaltyweight = 2 # constant penalty coefficient, coefficient depends on guard level
     
-    objv1, grad1  = objfunc.traceobjgrad(pcof1, params, order, verbose, true, weights, penaltyweight)
+    objv1, grad1, pl1, pl2  = objfunc.traceobjgrad(pcof1, params, order, verbose, true, weights, penaltyweight)
 #    @show(grad1)
-    pcof2[1] = pcof1[1] + eps
+    pcof2[kpar] = pcof1[kpar] + eps
     objv2, grad2  = objfunc.traceobjgrad(pcof2, params, order, verbose, true, weights, penaltyweight)
 
     @show(objv1)
@@ -145,6 +146,9 @@ function testgrad()
     @show(grad1[1:10])
     @show(grad2[1:10])
     
-    println("Gradient: ", grad1[1], " Approximated by Finite-Differences: ", (objv2-objv1)/eps)
+    println("Component kpar = ", kpar, " Gradient: ", grad1[kpar], " Approximated by Finite-Differences: ", (objv2-objv1)/eps)
 
+    if verbose
+       pl2
+   end
 end
