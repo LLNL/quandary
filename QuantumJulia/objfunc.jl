@@ -15,20 +15,23 @@ struct parameters
 	maxpar::Float64
 	cfl::Float64
 	utarget
+        samplerate::Int64 # plotting sample rate per ns
 
 
 	function parameters(N, Nguard,T, testadjoint, maxpar,cfl)	
 	  Ntot = N + Nguard 
 	  Ident = Matrix{Float64}(I, Ntot, Ntot)  
+# CNOT gate assumes N=4
  	  utarget = Ident[1:Ntot,1:N]
-      utarget[:,3] = Ident[:,4]
-      utarget[:,4] = Ident[:,3]	
-
-	  new(N, Nguard, T, testadjoint, maxpar, cfl, utarget)
+          utarget[:,3] = Ident[:,4]
+          utarget[:,4] = Ident[:,3]	
+          samplerate = 32
+	  new(N, Nguard, T, testadjoint, maxpar, cfl, utarget, samplerate)
 	end
 
 	function parameters(N, Nguard,T, testadjoint, maxpar,cfl, utarget)		
-	  new(N, Nguard, T, testadjoint, maxpar, cfl, utarget)
+          samplerate = 32
+	  new(N, Nguard, T, testadjoint, maxpar, cfl, utarget, samplerate)
 	end
 	#multiple dispatch with extra struct for H0 = 0 ?
 end
@@ -41,6 +44,7 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
   labframe = false
   utarget = params.utarget
   cfl = params.cfl
+  samplerate = params.samplerate
   
   tinv = 1.0/T
  # Parameters used for the gradient
@@ -49,7 +53,6 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
   Ntot = N + Nguard
   pcof = pcof0
   D = size(pcof,1)
-
 
   if weight == 1
    xif = 1.0
@@ -66,7 +69,8 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
   pcof, par1, par0 = boundcof(pcof, D, params.maxpar, eps)
       
   if verbose
-    println("Vector dim Ntot =", Ntot , ", Guard levels Nguard = ", Nguard , ", Param dim D = ", D , ", pcof(1) = ", pcof[1], ", CFL = ", cfl, " penaltystyle = ", penaltyweight)
+    @show(utarget)
+    println("Vector dim Ntot =", Ntot , ", Guard levels Nguard = ", Nguard , ", Param dim D = ", D , ", pcof(1) = ", pcof[1], ", CFL = ", cfl, " penaltystyle = ", penaltyweight, " samplerate = ", samplerate)
   end
  
   # sub-matricesfor the Hamiltonian
@@ -118,8 +122,8 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
   rotr = Diagonal(cos.(omega*T))
   roti = Diagonal(sin.(omega*T))
  
-  vtargetr = rotr*utarget
-  vtargeti = roti*utarget
+  vtargetr = real((rotr + 1im*roti)*utarget)
+  vtargeti = imag((rotr + 1im*roti)*utarget)
  
   #real and imagianary part of initial condition
   vr = U0
@@ -440,10 +444,10 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
     dfdp = dfdp + ineqpengrad[kpar]
     println("Forward integration of gradient of objective function = ", dfdp, " ineqpengrad = ", ineqpengrad[kpar])
 
-    nplot = 1 + nsteps
+    nlast = 1 + nsteps
     println(" Column   Vnrm")
     for q in 1:N
-      Vnrm = usaver[:,q,nplot]' * usaver[:,q,nplot] + usavei[:,q,nplot]' * usavei[:,q,nplot]
+      Vnrm = usaver[:,q,nlast]' * usaver[:,q,nlast] + usavei[:,q,nlast]' * usavei[:,q,nlast]
       Vnrm = sqrt(Vnrm)
       println(q, " | ", Vnrm)
     end
@@ -472,13 +476,13 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
     end
 
     # make plots
-    tplot = range(0, stop = T, length = nplot)
-
     plt1 = plotunitary(usaver + 1im*usavei,T)
 
-    # Evaluate polynomials at the discrete time levels
-    # Evaluate all polynomials on the midpoint grid
-    td = collect(range(0, stop = T, length = nsteps +1))
+    # Evaluate control function at the discrete time levels
+    nplot = round(Int64, T*samplerate)
+    td = collect(range(1.0/samplerate, stop = T, length = nplot))
+    #    @show(td[1])
+    #    @show(nplot)
 
     rplot(t) = rfunc(t,splineparams)
     labdrive = rplot.(collect(td))
@@ -528,10 +532,16 @@ function omegafun(N::Int64)
 	omega = zeros(N)
   omega[1] = 0
   omega[2] = 4.106
-  omega[3] = 7.992
-  omega[4] = 11.659
-  if N >= 6
+  if N >= 3
+    omega[3] = 7.992
+  end
+  if N >= 4
+    omega[4] = 11.659
+  end
+  if N >= 5
     omega[5] = 15.105
+  end
+  if N >= 6
     omega[6] = 18.332
   end
   if N >= 7
@@ -562,13 +572,13 @@ end
 # Matrices for te hamiltonian in rotation frame
 @inline function rotframematrices(Ntot::Int64)
   omega = omegafun(Ntot)
-	H0 = zeros(Ntot,Ntot)
+  H0 = zeros(Ntot,Ntot)
   amat = Array(Bidiagonal(zeros(Ntot),sqrt.(collect(1:Ntot-1)),:U))
   adag = Array(transpose(amat))
   domega = zeros(Ntot)
   domega[1:Ntot-1] = omega[2:Ntot] .- omega[1:Ntot-1]
 
-	return H0, amat, adag, omega, domega
+  return H0, amat, adag, omega, domega
 end
 
 
@@ -731,11 +741,11 @@ function plotunitary(us, T)
     h = plot(title = titlestr, size = (1000, 1000))
     for jj in 1:Ntot
       labstr = string("State ", jj)
-      plot!(t, abs.(us[jj,ii,:]), lab = labstr, linewidth = 2, xlabel = "Time")
+      plot!(t, abs.(us[jj,ii,:]), lab = labstr, legend=:left, linewidth = 2, xlabel = "Time")
      end
      plotarray[ii] = h
   end
-  plt = plot(plotarray..., layout = N)
+  plt = plot(plotarray..., layout = (N,1))
   return plt
 end
 
