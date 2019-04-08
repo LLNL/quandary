@@ -503,7 +503,7 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
 
 # return to calling routine
 if verbose && retadjoint
-   return objfv, gradobjfadj, plt1, plt2
+   return objfv, gradobjfadj, plt1, plt2, td, labdrive
 elseif verbose
   return objfv, plt1, plt2
 elseif retadjoint
@@ -531,15 +531,15 @@ end
 function omegafun(N::Int64)
 	omega = zeros(N)
   omega[1] = 0
-  omega[2] = 4.106
+  omega[2] = 4.10336
   if N >= 3
-    omega[3] = 7.992
+    omega[3] = 7.98692
   end
   if N >= 4
-    omega[4] = 11.659
+    omega[4] = 11.65068
   end
   if N >= 5
-    omega[5] = 15.105
+    omega[5] = 15.09464
   end
   if N >= 6
     omega[6] = 18.332
