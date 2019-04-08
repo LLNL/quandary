@@ -503,7 +503,7 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
 
 # return to calling routine
 if verbose && retadjoint
-   return objfv, gradobjfadj, plt1, plt2
+   return objfv, gradobjfadj, plt1, plt2, td, labdrive
 elseif verbose
   return objfv, plt1, plt2
 elseif retadjoint
