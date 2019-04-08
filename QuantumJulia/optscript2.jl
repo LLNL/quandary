@@ -9,6 +9,7 @@ using Optim
         utarget = zeros(ComplexF64,Ntot,N)
 
 	# pi/2 y-rot gate
+
  #       utarget[1,1] = 1/sqrt(2)
  #       utarget[1,2] = -1/sqrt(2)
  #       utarget[2,1] = 1/sqrt(2)
@@ -17,11 +18,11 @@ using Optim
 
 	# pi/2 x-rot gate
 
-       utarget[1,1] = 1.0/sqrt(2)
-        utarget[1,2] = -1im*1.0/sqrt(2)
-        utarget[2,1] = -1im*1.0/sqrt(2)
-        utarget[2,2] = 1.0/sqrt(2)
-        filename =   "control_xrot_200_formate.dat"
+      utarget[1,1] = 1.0/sqrt(2)
+      utarget[1,2] = -1im*1.0/sqrt(2)
+      utarget[2,1] = -1im*1.0/sqrt(2)
+      utarget[2,2] = 1.0/sqrt(2)
+      filename =   "control_xrot_200.dat"
 
 	cfl = 0.0125
 
