@@ -1,21 +1,32 @@
 
 using Optim
-	N = 4
-	#N = 2
+	N = 2
 	
 	Nguard = 3
 
 	Ntot = N + Nguard
 	
-	Ident = Matrix{Float64}(I, Ntot, Ntot)   
-	utarget = Ident[1:Ntot,1:N]
+        utarget = zeros(ComplexF64,Ntot,N)
 
-	utarget[:,3] = Ident[:,4]
-	utarget[:,4] = Ident[:,3]
+	# pi/2 y-rot gate
 
-	cfl = 0.05
+ #       utarget[1,1] = 1/sqrt(2)
+ #       utarget[1,2] = -1/sqrt(2)
+ #       utarget[2,1] = 1/sqrt(2)
+ #       utarget[2,2] = 1/sqrt(2)
+ #       filename =   "control_yrot_200.dat"
 
-	T = 150.0
+	# pi/2 x-rot gate
+
+      utarget[1,1] = 1.0/sqrt(2)
+      utarget[1,2] = -1im*1.0/sqrt(2)
+      utarget[2,1] = -1im*1.0/sqrt(2)
+      utarget[2,2] = 1.0/sqrt(2)
+      filename =   "control_xrot_200.dat"
+
+	cfl = 0.0125
+
+	T = 100.0
 
 	testadjoint = 0
 	maxpar =0.09
@@ -24,7 +35,7 @@ using Optim
 	
 
 #	pcof0  = zeros(351) 
-	pcof0  = zeros(250) 
+	pcof0  = zeros(200) 
 	#pcof0 = (rand(250) .- 0.5).*maxpar*0.1
 	order = 2
 	weight = 2
@@ -53,10 +64,23 @@ using Optim
    @time pcof = Optim.minimizer(res)
    display(res)
 
-   objv, grad, pl1, pl2 = objfunc.traceobjgrad(pcof,params,order, true, true, weight, penaltyweight)
+   objv, grad, pl1, pl2, td, labdrive = objfunc.traceobjgrad(pcof,params,order, true, true, weight, penaltyweight)
 
    println("Objfunc = ", objv)
    pl1
+
+plot(td,labdrive)
+
+# save to file
+using DelimitedFiles
+Base.show(io::IO, f::Float64) = @printf(io, "%.e", f)
+smallnumber = 1e-17
+savevec = zeros(320000) .+ smallnumber
+@show(length(labdrive))
+savevec[1:length(labdrive)] = labdrive
+
+
+writedlm(filename,savevec)
 
 
 	
