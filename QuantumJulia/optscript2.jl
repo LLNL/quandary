@@ -21,7 +21,7 @@ using Optim
         # utarget[2,1] = -1im*1.0/sqrt(2)
         # utarget[2,2] = 1.0/sqrt(2)
 
-	cfl = 0.0125
+	cfl = 0.05
 
 	T = 100.0
 
