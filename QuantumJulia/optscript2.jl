@@ -9,17 +9,19 @@ using Optim
         utarget = zeros(ComplexF64,Ntot,N)
 
 	# pi/2 y-rot gate
-        utarget[1,1] = 1/sqrt(2)
-        utarget[1,2] = -1/sqrt(2)
-        utarget[2,1] = 1/sqrt(2)
-        utarget[2,2] = 1/sqrt(2)
+ #       utarget[1,1] = 1/sqrt(2)
+ #       utarget[1,2] = -1/sqrt(2)
+ #       utarget[2,1] = 1/sqrt(2)
+ #       utarget[2,2] = 1/sqrt(2)
+ #       filename =   "control_yrot_200.dat"
 
 	# pi/2 x-rot gate
 
-        # utarget[1,1] = 1.0/sqrt(2)
-        # utarget[1,2] = -1im*1.0/sqrt(2)
-        # utarget[2,1] = -1im*1.0/sqrt(2)
-        # utarget[2,2] = 1.0/sqrt(2)
+       utarget[1,1] = 1.0/sqrt(2)
+        utarget[1,2] = -1im*1.0/sqrt(2)
+        utarget[2,1] = -1im*1.0/sqrt(2)
+        utarget[2,2] = 1.0/sqrt(2)
+        filename =   "control_xrot_200_formate.dat"
 
 	cfl = 0.0125
 
@@ -61,10 +63,23 @@ using Optim
    @time pcof = Optim.minimizer(res)
    display(res)
 
-   objv, grad, pl1, pl2 = objfunc.traceobjgrad(pcof,params,order, true, true, weight, penaltyweight)
+   objv, grad, pl1, pl2, td, labdrive = objfunc.traceobjgrad(pcof,params,order, true, true, weight, penaltyweight)
 
    println("Objfunc = ", objv)
    pl1
+
+plot(td,labdrive)
+
+# save to file
+using DelimitedFiles
+Base.show(io::IO, f::Float64) = @printf(io, "%.e", f)
+smallnumber = 1e-17
+savevec = zeros(320000) .+ smallnumber
+@show(length(labdrive))
+savevec[1:length(labdrive)] = labdrive
+
+
+writedlm(filename,savevec)
 
 
 	

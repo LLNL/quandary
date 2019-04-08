@@ -49,7 +49,9 @@ pcof = [1e-3, 2e-3, -2e-3]
 order = 2
 
 verbose= false
-objv, grad  = objfunc.traceobjgrad(pcof, params, order, verbose, true)
+weightf = 1
+penaltyweight = 1
+objv, grad  = objfunc.traceobjgrad(pcof, params, order, verbose, true, weightf, penaltyweight)
 @show(objv)
 
 @assert objv ≈ [0.6871073710795883]
