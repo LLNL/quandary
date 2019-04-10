@@ -180,9 +180,15 @@ function testgrad2()
 	params = objfunc.parameters(N,Nguard,T,testadjoint,maxpar,cfl, utarget)
 
 #	pcof1 = [0.0, 0.0, 0.0]
-	m = readdlm("bspline-200-t150.dat")
-	pcof1 = Array{Float64,1}(m[6:end,1])
 
+#	m = readdlm("bsline-file.dat")
+#	pcof1 = Array{Float64,1}(m[6:end,1])
+
+	pcfile = "pcof.dat"
+	println("Reading B-spline coefficients from file '", pcfile, "'")
+	m = readdlm(pcfile)
+	pcof1 = Array{Float64,1}(m[1:end,1])
+        
 	order = 2
 	eps = 1e-9
 	kpar = 2 # needs to have the same value in traceobjgrad()
@@ -206,6 +212,6 @@ function testgrad2()
     println("Component kpar = ", kpar, " Gradient: ", grad1[kpar], " Approximated by Finite-Differences: ", (objv2-objv1)/eps)
 
     if verbose
-       pl2
+       pl1
    end
 end

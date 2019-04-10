@@ -36,7 +36,7 @@ struct parameters
 	#multiple dispatch with extra struct for H0 = 0 ?
 end
 
-function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parameters = parameters(4, 3, 150, 1, 0.09, 0.05), order::Int64 =2, verbose::Bool = false, retadjoint::Bool = true, weight = 2, penaltyweight = 2)  
+function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parameters = parameters(4, 3, 150, 1, 0.09, 0.05), order::Int64 =2, verbose::Bool = false, retadjoint::Bool = true, weight::Int64 = 2, penaltyweight::Int64 = 2)  
   N = params.N    
   Nguard = params.Nguard  
   T = params.T
@@ -529,27 +529,13 @@ end
 
 # returns omega
 function omegafun(N::Int64)
-	omega = zeros(N)
-  omega[1] = 0
-  omega[2] = 4.10336
-  if N >= 3
-    omega[3] = 7.98692
-  end
-  if N >= 4
-    omega[4] = 11.65068
-  end
-  if N >= 5
-    omega[5] = 15.09464
-  end
-  if N >= 6
-    omega[6] = 18.332
-  end
-  if N >= 7
-    omega[7] = 21.339
-  end
+# The Alice oscillator
+  freq0 = [0.0, 4.10336, 7.98692, 11.65068, 15.09464, 18.332, 21.339]
   if N > 7
     error("not enough frequencies known")
   end
+  omega = zeros(N)
+  omega = freq0[1:N]
   return omega
 end
 
