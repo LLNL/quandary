@@ -6,6 +6,7 @@ include("timestep.jl")
 using LinearAlgebra
 using Plots
 using Printf
+using LaTeXStrings
 
 struct parameters
 	N::Int64		# vector dimension
@@ -488,7 +489,7 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
     eplotr = cos.(domega[1]*collect(td)) .* labdrive
     eploti = sin.(domega[1]*collect(td)) .* labdrive
 
-    f1 = plot(td, labdrive, lab="", title = "Control function, Lab frame", linewidth = 2)
+    f1 = plot(td, labdrive, lab="", title = "Control function, Lab frame", xlabel = "Time [ns]", ylabel="Amplitude", linewidth = 2)
     f2 = plot(td, eplotr, lab="", title = "Rotating frame, Real part", linewidth = 2)
     f3 = plot(td, eploti, lab="", title = "Rotating frame, Imag part", linewidth = 2)
     # if weight == 1
@@ -759,17 +760,22 @@ function plotunitary(us, T)
   plotarray = Array{Plots.Plot}(undef, N) #empty array for separate plots
 
   for ii in 1:N
-    titlestr = string("Response to initial data #", ii)
-    h = plot(title = titlestr, size = (1000, 1000))
-    for jj in 1:Ntot
-      labstr = string("State ", jj)
-      plot!(t, abs.(us[jj,ii,:]), lab = labstr, legend=:left, linewidth = 2, xlabel = "Time")
-     end
-     plotarray[ii] = h
+      titlestr = string("Response to initial data ", ii)
+        h = plot(title = titlestr, size = (1000, 1000))
+      for jj in 1:Ntot
+        labstr = string("State ", jj)
+        if ii == 2
+         plot!(t, abs.(us[jj,ii,:]), lab = labstr, linewidth = 4, xlabel = "Time [ns]", ylabel = L"\mathrm{ | \psi_i | }")
+        else
+         plot!(t, abs.(us[jj,ii,:]), leg = false, linewidth = 4, xlabel = "Time [ns]" , ylabel = L"\mathrm{ | \psi_i | }")
+        end
+    end
+    plotarray[ii] = h
   end
-  plt = plot(plotarray..., layout = (N,1))
+  plt = plot(plotarray..., layout = N)
   return plt
 end
+
 
 @inline function evalineqgrad(pcof::Array{Float64,1}, par0::Float64, par1::Float64)
   D = size(pcof,1)

@@ -29,12 +29,12 @@ function exampleobjfunc()
 	#pcof  = zeros(250)
 	order = 2
 
-    verbose = false
+    verbose = true
     weights = 2
     penalty = 2
 
 	if verbose
-  	    pl1, pl2, objv, grad = objfunc.traceobjgrad(pcof, params, order, verbose, true, weights, penalty)
+  	    objv, grad,  pl1, pl2 = objfunc.traceobjgrad(pcof, params, order, verbose, true, weights, penalty)
 	else
 	    objv, grad  = objfunc.traceobjgrad(pcof, params, order, verbose, true, weights, penalty)
 	end
@@ -80,11 +80,12 @@ function example_noguard()
 
 order = 2
 
-    verbose= false
+    verbose= true
     adjoint= true
     
 	if verbose && adjoint
-  	    pl1, pl2, objv, grad = objfunc.traceobjgrad(pcof,params,order, verbose, adjoint)
+  	     objv, grad, pl1, pl2 = objfunc.traceobjgrad(pcof,params,order, verbose, adjoint)
+
        elseif verbose  
   	    pl1, pl2, objv = objfunc.traceobjgrad(pcof,params,order, verbose, adjoint)
 	elseif adjoint

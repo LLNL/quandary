@@ -27,20 +27,21 @@ using Optim
 	
    
 	pcof0  = zeros(351)
-	pcof0  = zeros(250)
-#	pcof0 = (rand(200) .- 0.5).*maxpar*0.1
+	#pcof0  = zeros(251)
+	#pcof0 = (rand(251) .- 0.5).*maxpar*0.1
 	order = 2
 	weight = 2
+	penalty = 2
 
     function f(pcof)
     #@show(pcof)
-     f = objfunc.traceobjgrad(pcof, params, order, false, false, weight)
+     f = objfunc.traceobjgrad(pcof, params, order, false, false, weight,penalty)
      #@show(f)
      return f[1]
      end
 
     function g!(G,pcof,params,order)
-    	objf, Gtemp = objfunc.traceobjgrad(pcof, params, order, false, true, weight)
+    	objf, Gtemp = objfunc.traceobjgrad(pcof, params, order, false, true, weight, penalty)
     	
     	Gtemp = vcat(Gtemp...) 
     	for i in 1:length(Gtemp)
@@ -55,7 +56,7 @@ using Optim
    @time pcof = Optim.minimizer(res)
    display(res)
 
-   pl1, pl2, objv, grad = objfunc.traceobjgrad(pcof,params,order, true,true,weight)
+   objv, grad, pl1, pl2  = objfunc.traceobjgrad(pcof,params,order, true,true,weight, penalty)
 
    println("Objfunc = ", objv)
    pl1
