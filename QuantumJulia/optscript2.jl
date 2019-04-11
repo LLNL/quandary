@@ -2,7 +2,7 @@
 using Optim
   N = 2
 
-  Nguard = 3
+  Nguard = 0
 
   Ntot = N + Nguard
 	
@@ -23,8 +23,7 @@ using Optim
   #  utarget[2,2] = 1.0/sqrt(2)
   #  filename =   "control_xrot_200_formate.dat"
 
-  cfl = 0.05
-
+  cfl = 0.01
   T = 100.0
 
   testadjoint = 0
@@ -34,7 +33,7 @@ using Optim
 	
 
   #	pcof0  = zeros(351) 
-  pcof0  = zeros(200) 
+  pcof0  = zeros(1200) 
   #pcof0 = (rand(250) .- 0.5).*maxpar*0.1
   order = 2
   weight = 2

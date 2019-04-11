@@ -34,9 +34,9 @@ function exampleobjfunc()
     penalty = 2
 
 	if verbose
-  	    pl1, pl2, objv, grad = objfunc.traceobjgrad(pcof, params, order, verbose, true, weights, penalty)
+   	  objv, grad, pl1, pl2 = objfunc.traceobjgrad(pcof, params, order, verbose, true, weights, penalty)
 	else
-	    objv, grad  = objfunc.traceobjgrad(pcof, params, order, verbose, true, weights, penalty)
+	  objv, grad  = objfunc.traceobjgrad(pcof, params, order, verbose, true, weights, penalty)
 	end
 	
 	println("objv: ", objv)
@@ -63,7 +63,7 @@ function example_noguard()
 	
 	cfl = 0.05
 
-	T = 150.0
+	T = 10.0
 
 	testadjoint = 0
 	maxpar =0.09
@@ -71,26 +71,26 @@ function example_noguard()
 	params = objfunc.parameters(N,Nguard,T,testadjoint,maxpar,cfl, utarget)
 	#pcof = rand(4)
 
-#	pcof = [1e-3, 2e-3, -2e-3]
+	pcof = [1e-3, 2e-3, -2e-3]
 
 #	 m = readdlm("bspline-200-t150.dat")
 #	pcof = Array{Float64,1}(m[6:end,1])
 
-	pcof  = zeros(250)
+#	pcof  = zeros(250)
 
 order = 2
 
-    verbose= false
-    adjoint= true
+    verbose= true
+    adjoint= false
     
 	if verbose && adjoint
-  	    pl1, pl2, objv, grad = objfunc.traceobjgrad(pcof,params,order, verbose, adjoint)
-       elseif verbose  
-  	    pl1, pl2, objv = objfunc.traceobjgrad(pcof,params,order, verbose, adjoint)
+  	  objv, grad, pl1, pl2 = objfunc.traceobjgrad(pcof,params,order, verbose, adjoint)
+        elseif verbose  
+  	  objv, pl1, pl2 = objfunc.traceobjgrad(pcof,params,order, verbose, adjoint)
 	elseif adjoint
-	    objv, grad  = objfunc.traceobjgrad(pcof, params, order, verbose, adjoint)
-	else
-	    objv  = objfunc.traceobjgrad(pcof, params, order, verbose, adjoint)
+  	  objv, grad  = objfunc.traceobjgrad(pcof, params, order, verbose, adjoint)
+        else
+	  objv  = objfunc.traceobjgrad(pcof, params, order, verbose, adjoint)
 	end
 	
 	println("objv: ", objv)
@@ -99,7 +99,7 @@ order = 2
 	end
 	
 	if verbose
-	  pl1
+	  pl2
 	end
 end
 
@@ -155,7 +155,7 @@ end
 
 function testgrad2()
 	N = 2
-	Nguard = 3
+	Nguard = 0
 	Ntot = N + Nguard
 	
 	# pi/2 y-rot gate

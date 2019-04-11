@@ -1,6 +1,6 @@
 module bsplines
 
-struct splineparams #todo specify tyes?
+struct splineparams #todo specify types?
 	T::Float64
     Nspline::Int64
     Nknots::Int64
@@ -8,6 +8,7 @@ struct splineparams #todo specify tyes?
     tknot::Array{Float64,1}
     dtknot::Float64
     pcof::Array{Float64,1}
+    dom1::Float64 # frequency difference ground to first
 end	
 
 #TODO: Add a constructor here??

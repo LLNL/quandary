@@ -75,6 +75,7 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
  
   # sub-matricesfor the Hamiltonian
   H0 ,amat, adag, omega, domega = rotframematrices(Ntot)
+  deltaom1 = omega[2] - omega[1] # pull this frequency out of the control function
   zeromat = zeros(Ntot,N) 
 
 # coefficients for penaty style #2 (wmat is a Diagonal matrix)
@@ -85,7 +86,7 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
 
   # parameters for tbsplines
   dtknot = T/(D - 2)
-  splineparams = bsplines.splineparams(T, D, D+1, dtknot.*(collect(1:D) .- 1.5), dtknot.*(collect(1:D+1) .- 2), dtknot, pcof)
+  splineparams = bsplines.splineparams(T, D, D+1, dtknot.*(collect(1:D) .- 1.5), dtknot.*(collect(1:D+1) .- 2), dtknot, pcof, deltaom1)
 
   if retadjoint
     @inline rfgrad(t::Float64) = bsplines.gradbspline2(t,splineparams)
@@ -441,9 +442,11 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
     println("Inequality penalty: ", ineqpenalty)
     println("Objective functional objfv: ", objfv)
 		
-    dfdp = dfdp + ineqpengrad[kpar]
-    println("Forward integration of gradient of objective function = ", dfdp, " ineqpengrad = ", ineqpengrad[kpar])
-
+    if retadjoint
+      dfdp = dfdp + ineqpengrad[kpar]
+      println("Forward integration of gradient of objective function = ", dfdp, " ineqpengrad = ", ineqpengrad[kpar])
+    end
+    
     nlast = 1 + nsteps
     println(" Column   Vnrm")
     for q in 1:N
@@ -485,13 +488,14 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
     #    @show(nplot)
 
     rplot(t) = rfunc(t,splineparams)
-    labdrive = rplot.(collect(td))
-    eplotr = cos.(domega[1]*collect(td)) .* labdrive
-    eploti = sin.(domega[1]*collect(td)) .* labdrive
+    iplot(t) = ifunc(t,splineparams)
+    labdrive = rplot.(collect(td)) .* cos.(deltaom1*collect(td)) - iplot.(collect(td)) .* sin.(deltaom1*collect(td))
+#    eplotr = cos.(domega[1]*collect(td)) .* labdrive
+#    eploti = sin.(domega[1]*collect(td)) .* labdrive
 
     f1 = plot(td, labdrive, lab="", title = "Control function, Lab frame", linewidth = 2)
-    f2 = plot(td, eplotr, lab="", title = "Rotating frame, Real part", linewidth = 2)
-    f3 = plot(td, eploti, lab="", title = "Rotating frame, Imag part", linewidth = 2)
+#    f2 = plot(td, eplotr, lab="", title = "Rotating frame, Real part", linewidth = 2)
+#    f3 = plot(td, eploti, lab="", title = "Rotating frame, Imag part", linewidth = 2)
     # if weight == 1
     #   plot!(td, weightf1.(td,T), lab = "Gate", linewidth = 2)
     # end
@@ -530,7 +534,7 @@ end
 # returns omega
 function omegafun(N::Int64)
 # The Alice oscillator
-  freq0 = [0.0, 4.10336, 7.98692, 11.65068, 15.09464, 18.332, 21.339]
+  freq0 = 2*pi*[0.0, 4.10336, 7.98692, 11.65068, 15.09464, 18.332, 21.339]
   if N > 7
     error("not enough frequencies known")
   end
@@ -561,8 +565,9 @@ end
   H0 = zeros(Ntot,Ntot)
   amat = Array(Bidiagonal(zeros(Ntot),sqrt.(collect(1:Ntot-1)),:U))
   adag = Array(transpose(amat))
+  dom1 = omega[2]-omega[1] # Take out of control function
   domega = zeros(Ntot)
-  domega[1:Ntot-1] = omega[2:Ntot] .- omega[1:Ntot-1]
+  domega[1:Ntot-1] = omega[2:Ntot] .- omega[1:Ntot-1] .- dom1
 
   return H0, amat, adag, omega, domega
 end
@@ -810,7 +815,7 @@ end
 
 @inline function rfunc(t::Float64,splineparams::bsplines.splineparams)
  ret = 0.0
- ret = bsplines.bspline2(t,splineparams)
+ ret = bsplines.bspline2(t,splineparams) .* cos(splineparams.dom1*t) # Absorbing highly oscillating component
 end
 
 @inline function efunc(t::Float64,splineparams::bsplines.splineparams)
@@ -820,6 +825,7 @@ end
 
 @inline function ifunc(t::Float64,splineparams::bsplines.splineparams)
   ret = 0.0
+  ret = - bsplines.bspline2(t,splineparams) .* sin(splineparams.dom1*t) # Absorbing highly oscillating component
 end
 
 function rotmatrices!(t::Float64, domega::Array{Float64,1},rr::Array{Float64,2},ri::Array{Float64,2})

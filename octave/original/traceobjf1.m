@@ -62,28 +62,28 @@ function [objf_v] = traceobjf1(pcof, order, verbose)
   
   
 # handles to time and forcing functions
-  nurbs_control = 0;
-  if (D==4)
-    rfunc = @rf4;
-    ifunc = @if4;
-    efunc = @ef16;
-  elseif (D==5)
-    rfunc = @rf5;
-    ifunc = @if5;
-    efunc = @ef5;
-  elseif (D==15)
-    rfunc = @rf15;
-    ifunc = @if15;
-    efunc = @ef15;
-  elseif (D==16)
-    rfunc = @rf16;
-    ifunc = @if16;
-    efunc = @ef16;
-  elseif (D==20)
-    rfunc = @rf20;
-    ifunc = @if20;
-    efunc = @ef20;
-  else
+  ## nurbs_control = 0;
+  ## if (D==4)
+  ##   rfunc = @rf4;
+  ##   ifunc = @if4;
+  ##   efunc = @ef16;
+  ## elseif (D==5)
+  ##   rfunc = @rf5;
+  ##   ifunc = @if5;
+  ##   efunc = @ef5;
+  ## elseif (D==15)
+  ##   rfunc = @rf15;
+  ##   ifunc = @if15;
+  ##   efunc = @ef15;
+  ## elseif (D==16)
+  ##   rfunc = @rf16;
+  ##   ifunc = @if16;
+  ##   efunc = @ef16;
+  ## elseif (D==20)
+  ##   rfunc = @rf20;
+  ##   ifunc = @if20;
+  ##   efunc = @ef20;
+  ## else
     if (verbose)
       printf("Assuming a Nurbs parameterization with %d nurbs wavelets\n", D);
     end
@@ -91,7 +91,7 @@ function [objf_v] = traceobjf1(pcof, order, verbose)
     rfunc = @nurb2;
     ifunc = @zero_func;
     efunc = @nurb2;
-  end
+    ##  end
   
   
 # coefficients in H0
