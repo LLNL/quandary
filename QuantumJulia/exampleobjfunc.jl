@@ -215,3 +215,66 @@ function testgrad2()
        pl1
    end
 end
+
+function testfunc2()
+  N = 2
+  Nguard = 0
+  Ntot = N + Nguard
+	
+  # pi/2 y-rot gate
+  utarget = zeros(Ntot,N)
+  utarget[1,1] = 1/sqrt(2)
+  utarget[1,2] = -1/sqrt(2)
+  utarget[2,1] = 1/sqrt(2)
+  utarget[2,2] = 1/sqrt(2)
+
+  # CNOT gate
+  # Ident = Matrix{Float64}(I, Ntot, Ntot)   
+  # utarget = Ident[1:Ntot,1:N]
+  # utarget[:,3] = Ident[:,4]
+  # utarget[:,4] = Ident[:,3]
+
+  cfl = 0.05
+  T = 100
+  evaladjoint = false
+  maxpar =0.09
+
+  # frequencies (in GHz, will be multiplied by 2*pi to get angular frequencies in the Hamiltonian matrix)
+  fa = 4.10336
+  xia = 2* 0.1099
+  
+  params = objfunc.parameters(N,Nguard,T,maxpar,cfl, utarget, fa, xia, 32) 
+
+  bsum=1.0
+  absomega = bsum*0.25*pi/T
+  pcof1 = absomega*[0.0, 0.0, 0.0, #real
+           1.0, 1.0, 1.0] # imag
+  println("Constant control amplitude: ", absomega)
+  
+  #	m = readdlm("bsline-file.dat")
+  #	pcof1 = Array{Float64,1}(m[6:end,1])
+
+  #  pcfile = "pcof.dat"
+  #  println("Reading B-spline coefficients from file '", pcfile, "'")
+  #  m = readdlm(pcfile)
+  #  pcof1 = Array{Float64,1}(m[1:end,1])
+        
+  order = 2
+  eps = 1e-9
+  kpar = 2 # needs to have the same value in traceobjgrad()
+  pcof2 = pcof1
+
+  verbose = true
+  weights = 2 # final gate fidelity
+  #    penaltyweight = 1 # time-dependent penalty coefficient, same weight for all guard levels
+  penaltyweight = 2 # constant penalty coefficient, coefficient depends on guard level
+    
+  objv1, pl1, pl2  = objfunc.traceobjgrad(pcof1, params, order, verbose, evaladjoint, weights, penaltyweight)
+
+  @show(objv1)
+
+  if verbose
+    pl2
+  end
+end
+

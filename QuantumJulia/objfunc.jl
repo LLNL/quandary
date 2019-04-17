@@ -11,48 +11,46 @@ struct parameters
 	N ::Int64		# vector dimension
 	Nguard ::Int64 	# number of extra levels
 	T::Float64		# final time
-	testadjoint::Bool #should this really be in param?
 	maxpar::Float64
 	cfl::Float64
-	utarget
+	utarget # type Array{Cmplx64,2} ?
+        fa:: Float64 # in GHz
+        xia:: Float64 # in GHz
         samplerate::Int64 # plotting sample rate per ns
 
 
-	function parameters(N, Nguard,T, testadjoint, maxpar,cfl)	
-	  Ntot = N + Nguard 
-	  Ident = Matrix{Float64}(I, Ntot, Ntot)  
-# CNOT gate assumes N=4
- 	  utarget = Ident[1:Ntot,1:N]
-          utarget[:,3] = Ident[:,4]
-          utarget[:,4] = Ident[:,3]	
+	function parameters(N, Nguard,T, maxpar,cfl, utarget, fa, xia)		
           samplerate = 32
-	  new(N, Nguard, T, testadjoint, maxpar, cfl, utarget, samplerate)
+	  new(N, Nguard, T, maxpar, cfl, utarget, samplerate)
 	end
 
-	function parameters(N, Nguard,T, testadjoint, maxpar,cfl, utarget)		
-          samplerate = 32
-	  new(N, Nguard, T, testadjoint, maxpar, cfl, utarget, samplerate)
+	function parameters(N, Nguard,T, maxpar,cfl, utarget, fa, xia, samplerate)		
+	  new(N, Nguard, T, maxpar, cfl, utarget, fa, xia, samplerate)
 	end
 	#multiple dispatch with extra struct for H0 = 0 ?
 end
 
-function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parameters = parameters(4, 3, 150, 1, 0.09, 0.05), order::Int64 =2, verbose::Bool = false, retadjoint::Bool = true, weight::Int64 = 2, penaltyweight::Int64 = 2)  
+function traceobjgrad(pcof0::Array{Float64,1},  params::parameters, order::Int64 =2, verbose::Bool = false, evaladjoint::Bool = true, weight::Int64 = 2, penaltyweight::Int64 = 2)  
   N = params.N    
   Nguard = params.Nguard  
   T = params.T
-  testadjoint = params.testadjoint
   labframe = false
   utarget = params.utarget
   cfl = params.cfl
   samplerate = params.samplerate
+
+  Ntot = N + Nguard
+  pcof = pcof0
+  Psize = size(pcof,1) #must provide separate coefficients for the real and imaginary parts of the control fcn
+  if Psize%2 != 0 || Psize < 6
+    error("pcof must have an even number of elements >= 6, not ", Psize)
+  end
+  D = div(Psize, 2) # first D elements are the real coefficients; the second D elements are the imaginary ones  
   
   tinv = 1.0/T
  # Parameters used for the gradient
   kpar = 2
   eps = 1e-9
-  Ntot = N + Nguard
-  pcof = pcof0
-  D = size(pcof,1)
 
   if weight == 1
    xif = 1.0
@@ -62,8 +60,6 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
 
   if penaltyweight == 1
     xi = xif/max(1,Nguard)          # coef for penalizing forbidden states
-  # elseif penaltyweight == 2  
-  #   xi = xif/max(1,Nguard)   
   end
   # Make sure that each element of pcof is in the prescribed range
   pcof, par1, par0 = boundcof(pcof, D, params.maxpar, eps)
@@ -74,8 +70,11 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
   end
  
   # sub-matricesfor the Hamiltonian
-  H0 ,amat, adag, omega, domega = rotframematrices(Ntot)
-  deltaom1 = omega[2] - omega[1] # pull this frequency out of the control function
+  H0 , omega, amat, adag, number = setupmatrices(params.fa, params.xia, Ntot)
+  @show(H0)
+  @show(omega)
+  @show(number)
+
   zeromat = zeros(Ntot,N) 
 
 # coefficients for penaty style #2 (wmat is a Diagonal matrix)
@@ -86,9 +85,9 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
 
   # parameters for tbsplines
   dtknot = T/(D - 2)
-  splineparams = bsplines.splineparams(T, D, D+1, dtknot.*(collect(1:D) .- 1.5), dtknot.*(collect(1:D+1) .- 2), dtknot, pcof, deltaom1)
+  splineparams = bsplines.splineparams(T, D, D+1, dtknot.*(collect(1:D) .- 1.5), dtknot.*(collect(1:D+1) .- 2), dtknot, pcof)
 
-  if retadjoint
+  if evaladjoint
     @inline rfgrad(t::Float64) = bsplines.gradbspline2(t,splineparams)
     @inline ifgrad(t::Float64) = zeros(length(pcof))
   end
@@ -98,10 +97,10 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
   K1 =  pcofmax.*( amat .+  adag)
   lamb = eigvals(K1)
   maxeig2 = maximum(lamb)
-  maxeig1 = maximum(abs.(domega))./(2*pi)
+  maxeig1 = maximum(abs.(H0))./(2*pi)
 
   if verbose
-    println("max(d_omega) = ", maximum(abs.(domega)), ", maxeig1 = ", maxeig1,", pcofmax =" ,pcofmax ,", maxeig2 = ", maxeig2)
+    println("maxeig1 = ", maxeig1,", pcofmax =" ,pcofmax ,", maxeig2 = ", maxeig2)
   end
 
   maxeig = 0.5(maxeig1 + maxeig2)
@@ -137,7 +136,7 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
    	usavei[:,:,1] = -vi
 
     #to compute gradient with forward method
-    if retadjoint
+    if evaladjoint
       wr = zeromat
       wi = zeromat
       objf_alpha1 = 0.0
@@ -191,9 +190,9 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
       forbidden0 = tinv*penalf2a(vr, vi, wmat)  
     end
 
-    rotmatrices!(t,domega,rr,ri)
+#    rotmatrices!(t,domega,rr,ri)
 
-    if retadjoint
+    if evaladjoint
       if verbose
        if penaltyweight == 1
          forbalpha0 = xi*penalf1(t,T)*screal(vr, vi, wr, wi, Nguard,zeromat)
@@ -212,8 +211,8 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
         rgrad = rfgrad(t)
         igrad = ifgrad(t)
 
-        mul!(dar,rr,amat)
-        mul!(dai,ri,amat)
+#        mul!(dar,rr,amat)
+#        mul!(dai,ri,amat)
 
         rfalpha = rgrad[kpar]
         ifalpha = igrad[kpar]
@@ -223,17 +222,17 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
 
     # Stromer-Verlet
     for q in 1:stages
-      if retadjoint && verbose
+      if evaladjoint && verbose
        t0=t
        vr0 = vr
        vi0 = vi
       end
       # Update K and S
-      KS!(K0, S0, t, amat, adag, domega, splineparams, H0, tmp1, tmp2, tmp3, rr,ri)
-      rotmatrices!(t + 0.5*dt*gamma[q],domega,rr,ri)
-      KS!(K05, S05, t + 0.5*dt*gamma[q], amat, adag, domega, splineparams, H0, tmp1, tmp2, tmp3,rr,ri)
-      rotmatrices!(t + dt*gamma[q],domega,rr,ri)
-      KS!(K1, S1, t + dt*gamma[q], amat, adag, domega, splineparams, H0, tmp1, tmp2, tmp3, rr,ri)
+      KS!(K0, S0, t, amat, adag, splineparams, H0) #, tmp1, tmp2, tmp3, rr,ri)
+#      rotmatrices!(t + 0.5*dt*gamma[q],domega,rr,ri)
+      KS!(K05, S05, t + 0.5*dt*gamma[q], amat, adag, splineparams, H0) #, tmp1, tmp2, tmp3,rr,ri)
+#      rotmatrices!(t + dt*gamma[q],domega,rr,ri)
+      KS!(K1, S1, t + dt*gamma[q], amat, adag, splineparams, H0) #, tmp1, tmp2, tmp3, rr,ri)
 
       @inbounds t, vr, vi = timestep.step(t, vr, vi, dt*gamma[q], K0, S0, K05, S05, K1, S1, Ident)
 
@@ -254,10 +253,10 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
       forbidden0 = forbidden
 
       # compute component of the gradient for verification of adjoint method
-      if retadjoint && verbose       	
+      if evaladjoint && verbose       	
       	 scomplex1 = tracefidcomplex(vr, -vi, vtargetr, vtargeti, labframe, t, omega)
-      	 mul!(dar,rr,amat)
-      	 mul!(dai,ri,amat)
+#      	 mul!(dar,rr,amat)
+#      	 mul!(dai,ri,amat)
       	 rgrad = rfgrad(t)
       	 igrad = ifgrad(t)
       	 rfalpha = rgrad[kpar] #Will this return the same va
@@ -287,7 +286,7 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
       forbalpha0 = forbalpha1  	    
       gr0 = gr1
       gi0 = gi1
-    end  # retadjoint
+    end  # evaladjoint
   end # Stromer-Verlet
     
     if verbose
@@ -298,7 +297,7 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
 
   if weight == 2
     objfv = objfv + (1-tracefidreal(vr, vi, vtargetr, vtargeti, labframe,t, omega))
-    if retadjoint && verbose
+    if evaladjoint && verbose
       salpha1 = tracefidcomplex(wr, -wi, vtargetr, vtargeti, labframe, t, omega)
       scomplex1 = tracefidcomplex(vr, -vi, vtargetr, vtargeti, labframe, t, omega)
       objf_alpha1 = objf_alpha1 - real(2*conj(scomplex1)*salpha1)
@@ -313,7 +312,7 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
   ineqpenalty = evalineqpen(pcof, par0, par1);
   objfv = objfv .+ ineqpenalty
 
-  if retadjoint
+  if evaladjoint
     if verbose
       dfdp = objf_alpha1
     end  
@@ -355,13 +354,14 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
       end
      
       # forcing for evolving W (d psi/d alpha1) in the rotating frame
-      rotmatrices!(t,domega,rr,ri)
-      mul!(dar,rr,amat)
-      mul!(dai,ri,amat)
+#      rotmatrices!(t,domega,rr,ri)
+      # mul!(dar,rr,amat)
+      # mul!(dai,ri,amat)
       rgrad = rfgrad(t)
       igrad = ifgrad(t)
 
       # separate out contributions from rfgrad and ifgrad (which determine the component of the gradient)
+# UPDATE 
       darr = ( (dai .- dai')*vr .- (dar .+ dar')*vi)
       dari = ( (dar .+ dar')*vr .+ (dai .- dai')*vi)
       dair = ( (dai .+ dai')*vi .+ (dar .- dar')*vr)
@@ -377,11 +377,11 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
         vi0 = vi
           
         # update K and S\         
-        KS!(K0, S0, t, amat, adag, domega, splineparams, H0, tmp1, tmp2, tmp3, rr,ri)
-        rotmatrices!(t + 0.5*dt*gamma[q],domega,rr,ri)
-        KS!(K05, S05, t + 0.5*dt*gamma[q], amat, adag, domega, splineparams, H0, tmp1, tmp2, tmp3,rr,ri)
-        rotmatrices!(t + dt*gamma[q],domega,rr,ri)
-        KS!(K1, S1, t + dt*gamma[q], amat, adag, domega, splineparams, H0, tmp1, tmp2, tmp3, rr,ri)
+        KS!(K0, S0, t, amat, adag, splineparams, H0) #, tmp1, tmp2, tmp3, rr,ri)
+#        rotmatrices!(t + 0.5*dt*gamma[q],domega,rr,ri)
+        KS!(K05, S05, t + 0.5*dt*gamma[q], amat, adag, splineparams, H0) #, tmp1, tmp2, tmp3,rr,ri)
+#        rotmatrices!(t + dt*gamma[q],domega,rr,ri)
+        KS!(K1, S1, t + dt*gamma[q], amat, adag, splineparams, H0); #, tmp1, tmp2, tmp3, rr,ri)
           
         # evolve vr, vi
         @inbounds t, vr, vi = timestep.step(t, vr, vi, dt*gamma[q], K0, S0, K05, S05, K1, S1, Ident)
@@ -406,11 +406,12 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
         # evolve lambdar, lambdai
         @inbounds temp, lambdar, lambdai = timestep.step(t0, lambdar, lambdai, dt*gamma[q], hi0, 0.5*(hr0 + hr1), hi1, K0, S0, K05, S05, K1, S1, Ident)
 
-        mul!(dar,rr,amat)
-        mul!(dai,ri,amat)
+#        mul!(dar,rr,amat)
+#        mul!(dai,ri,amat)
         rgrad = rfgrad(t)
         igrad = ifgrad(t)
           
+# UPDATE
         darr = ( (dai .- dai')*vr .- (dar .+ dar')*vi)
         dari = ( (dar .+ dar')*vr .+ (dai .- dai')*vi)
         dair = ( (dai .+ dai')*vi .+ (dar .- dar')*vr)
@@ -436,13 +437,13 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
       gradobjfadj[k] = gradobjfadj[k] + ineqpengrad[k]
     end
      
-  end # if retadjoint
+  end # if evaladjoint
 
   if verbose
     println("Inequality penalty: ", ineqpenalty)
     println("Objective functional objfv: ", objfv)
 		
-    if retadjoint
+    if evaladjoint
       dfdp = dfdp + ineqpengrad[kpar]
       println("Forward integration of gradient of objective function = ", dfdp, " ineqpengrad = ", ineqpengrad[kpar])
     end
@@ -489,28 +490,30 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
 
     rplot(t) = rfunc(t,splineparams)
     iplot(t) = ifunc(t,splineparams)
-    labdrive = rplot.(collect(td)) .* cos.(deltaom1*collect(td)) - iplot.(collect(td)) .* sin.(deltaom1*collect(td))
-#    eplotr = cos.(domega[1]*collect(td)) .* labdrive
-#    eploti = sin.(domega[1]*collect(td)) .* labdrive
+    rotdriver = rplot.(td)
+    rotdrivei = iplot.(td)
+    oma = 2*pi*params.fa
 
-    f1 = plot(td, labdrive, lab="", title = "Control function, Lab frame", linewidth = 2)
-#    f2 = plot(td, eplotr, lab="", title = "Rotating frame, Real part", linewidth = 2)
-#    f3 = plot(td, eploti, lab="", title = "Rotating frame, Imag part", linewidth = 2)
+    labdrive = rotdriver .* cos.(oma.*td) - rotdrivei .* sin.(oma.*td)
+    
+    f1 = plot(td, rotdriver, lab="", title = "Real part, Rotating frame", linewidth = 2)
+    f2 = plot(td, rotdrivei, lab="", title = "Imag part Rotating frame", linewidth = 2)
+    f3 = plot(td, labdrive, lab="", title = "Lab frame", linewidth = 2)
     # if weight == 1
     #   plot!(td, weightf1.(td,T), lab = "Gate", linewidth = 2)
     # end
 
-#    plt2 = plot(f1, f2, f3, layout = (3,1))        
-    plt2 = plot(f1)        
+    plt2 = plot(f1, f2, f3, layout = (3,1))        
+#    plt2 = plot(f1, f2, layout = (2,1))        
 
   end #if verbose
 
 # return to calling routine
-if verbose && retadjoint
+if verbose && evaladjoint
    return objfv, gradobjfadj, plt1, plt2, td, labdrive
 elseif verbose
   return objfv, plt1, plt2
-elseif retadjoint
+elseif evaladjoint
   return objfv, gradobjfadj
 else
   return objfv
@@ -529,6 +532,30 @@ function wmatsetup(Ntot::Int64, Ng::Int64)
   end # if
   wmat = coeff * Diagonal(w)
   return wmat
+end
+
+# Matrices for the Hamiltonian in rotation frame
+@inline function setupmatrices(fa::Float64, xia:: Float64, Ntot::Int64)
+  omega = omegafun(Ntot)
+  amat = Array(Bidiagonal(zeros(Ntot),sqrt.(collect(1:Ntot-1)),:U))
+  adag = Array(transpose(amat))
+  number = Diagonal(collect(0:Ntot-1))
+  H0 = -pi*xia* (number*number - number)
+  omega = 2*pi*fa*Array(collect(0:Ntot-1))
+  return H0, omega, amat, adag, number
+end
+
+# Matrices for the Hamiltonian in rotation frame
+@inline function rotframematrices(Ntot::Int64)
+  omega = omegafun(Ntot)
+  H0 = zeros(Ntot,Ntot)
+  amat = Array(Bidiagonal(zeros(Ntot),sqrt.(collect(1:Ntot-1)),:U))
+  adag = Array(transpose(amat))
+  dom1 = omega[2]-omega[1] # Take out of control function
+  domega = zeros(Ntot)
+  domega[1:Ntot-1] = omega[2:Ntot] .- omega[1:Ntot-1] .- dom1
+
+  return H0, amat, adag, omega, domega
 end
 
 # returns omega
@@ -558,20 +585,6 @@ end
   	end
 	return pcof, par1, par0
 end
-
-# Matrices for te hamiltonian in rotation frame
-@inline function rotframematrices(Ntot::Int64)
-  omega = omegafun(Ntot)
-  H0 = zeros(Ntot,Ntot)
-  amat = Array(Bidiagonal(zeros(Ntot),sqrt.(collect(1:Ntot-1)),:U))
-  adag = Array(transpose(amat))
-  dom1 = omega[2]-omega[1] # Take out of control function
-  domega = zeros(Ntot)
-  domega[1:Ntot-1] = omega[2:Ntot] .- omega[1:Ntot-1] .- dom1
-
-  return H0, amat, adag, omega, domega
-end
-
 
 @inline function weightf1(t::Float64, T::Float64)
   # period
@@ -728,7 +741,7 @@ function plotunitary(us, T)
   plotarray = Array{Plots.Plot}(undef, N) #empty array for separate plots
 
   for ii in 1:N
-    titlestr = string("Response to initial data #", ii)
+    titlestr = string("Abs(state) for initial data #", ii)
     h = plot(title = titlestr, size = (1000, 1000))
     for jj in 1:Ntot
       labstr = string("State ", jj)
@@ -770,6 +783,7 @@ function screal(vr::Array{Float64,2}, vi::Array{Float64,2}, wr::Array{Float64,2}
 
 end
 
+# old version with domega, rr, ri and tmpX arrays
 function KS!(K::Array{Float64,2},S::Array{Float64,2},t::Float64,amat::Array{Float64,2},adag::Array{Float64,2},
             domega::Array{Float64,1},splineparams::bsplines.splineparams,H0::Array{Float64,2},tmp1::Array{Float64,2},
             tmp2::Array{Float64,2},tmp3::Array{Float64,2},rr::Array{Float64,2},ri::Array{Float64,2})
@@ -812,20 +826,37 @@ function KS!(K::Array{Float64,2},S::Array{Float64,2},t::Float64,amat::Array{Floa
   end
 end
 
+# updated version, without domega, rr, ri, tmp1, tmp2, tmp3
+function KS!(K::Array{Float64,2}, S::Array{Float64,2}, t::Float64, amat::Array{Float64,2}, adag::Array{Float64,2},
+             splineparams::bsplines.splineparams, H0::Diagonal{Float64,Array{Float64,1}})
+
+  rfeval = rfunc(t,splineparams)
+  ifeval = ifunc(t,splineparams)
+ 
+  for  I in eachindex(amat)
+    @inbounds  K[I] = H0[I] + rfeval*(amat[I] + adag[I])
+  end
+  
+  # S
+  for  I in eachindex(amat)
+   @inbounds  S[I]  = ifeval*( amat[I] - adag[I])
+  end
+end
+
 
 @inline function rfunc(t::Float64,splineparams::bsplines.splineparams)
  ret = 0.0
- ret = bsplines.bspline2(t,splineparams) .* cos(splineparams.dom1*t) # Absorbing highly oscillating component
+ ret = bsplines.bspline2r(t,splineparams)  # real part
 end
 
 @inline function efunc(t::Float64,splineparams::bsplines.splineparams)
   ret = 0.0
-  ret = bsplines.bspline2(t,splineparams::bsplines.splineparams)
+  ret = bsplines.bspline2r(t,splineparams::bsplines.splineparams) #real part for now. Perhaps magnitude is better?
 end
 
 @inline function ifunc(t::Float64,splineparams::bsplines.splineparams)
   ret = 0.0
-  ret = - bsplines.bspline2(t,splineparams) .* sin(splineparams.dom1*t) # Absorbing highly oscillating component
+  ret = - bsplines.bspline2i(t,splineparams) # imaginary part
 end
 
 function rotmatrices!(t::Float64, domega::Array{Float64,1},rr::Array{Float64,2},ri::Array{Float64,2})
