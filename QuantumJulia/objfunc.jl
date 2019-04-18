@@ -65,14 +65,20 @@ function traceobjgrad(pcof0::Array{Float64,1},  params::parameters, order::Int64
   pcof, par1, par0 = boundcof(pcof, D, params.maxpar, eps)
       
   if verbose
-    @show(utarget)
+    println("Target (lab frame) unitary:");
+    for q in 1:N
+      for c in 1:N
+        @printf("%11.4e %+11.4eim ", real(utarget[q,c]), imag(utarget[q,c]))
+      end
+      @printf("\n")
+    end
     println("Vector dim Ntot =", Ntot , ", Guard levels Nguard = ", Nguard , ", Param dim D = ", D , ", pcof(1) = ", pcof[1], ", CFL = ", cfl, " penaltystyle = ", penaltyweight, " samplerate = ", samplerate)
   end
  
   # sub-matricesfor the Hamiltonian
   H0 , omega, amat, adag, number = setupmatrices(params.fa, params.xia, Ntot)
   @show(H0)
-  @show(omega)
+  @show(omega) # omega = 2*pi*fa*[0,1,2,...,Ntot-1]: 
   @show(number)
 
   zeromat = zeros(Ntot,N) 
@@ -86,11 +92,6 @@ function traceobjgrad(pcof0::Array{Float64,1},  params::parameters, order::Int64
   # parameters for tbsplines
   dtknot = T/(D - 2)
   splineparams = bsplines.splineparams(T, D, D+1, dtknot.*(collect(1:D) .- 1.5), dtknot.*(collect(1:D+1) .- 2), dtknot, pcof)
-
-  if evaladjoint
-    @inline rfgrad(t::Float64) = bsplines.gradbspline2(t,splineparams)
-    @inline ifgrad(t::Float64) = zeros(length(pcof))
-  end
 
   # parameters for time integrator
   pcofmax = maximum(abs.(pcof))
@@ -124,7 +125,17 @@ function traceobjgrad(pcof0::Array{Float64,1},  params::parameters, order::Int64
  
   vtargetr = real((rotr + 1im*roti)*utarget)
   vtargeti = imag((rotr + 1im*roti)*utarget)
- 
+
+  if verbose
+    println("Target (rot frame) unitary:");
+    for q in 1:N
+      for c in 1:N
+        @printf("%11.4e %+11.4eim ", vtargetr[q,c], vtargeti[q,c])
+      end
+      @printf("\n")
+    end
+  end
+  
   #real and imagianary part of initial condition
   vr = U0
   vi = zeromat
@@ -208,8 +219,8 @@ function traceobjgrad(pcof0::Array{Float64,1},  params::parameters, order::Int64
           salpha0 = tracefidcomplex(wr, -wi, vtargetr, vtargeti, labframe, t, omega)
         end
 
-        rgrad = rfgrad(t)
-        igrad = ifgrad(t)
+        rgrad = rfgrad(t, splineparams)
+        igrad = ifgrad(t, splineparams)
 
 #        mul!(dar,rr,amat)
 #        mul!(dai,ri,amat)
@@ -257,8 +268,8 @@ function traceobjgrad(pcof0::Array{Float64,1},  params::parameters, order::Int64
       	 scomplex1 = tracefidcomplex(vr, -vi, vtargetr, vtargeti, labframe, t, omega)
 #      	 mul!(dar,rr,amat)
 #      	 mul!(dai,ri,amat)
-      	 rgrad = rfgrad(t)
-      	 igrad = ifgrad(t)
+      	 rgrad = rfgrad(t, splineparams)
+      	 igrad = ifgrad(t, splineparams)
       	 rfalpha = rgrad[kpar] #Will this return the same va
       	 ifalpha = igrad[kpar]
 	     gr1, gi1 = grupdate(gr1 ,gi1, dai, dar, vr, vi, rfalpha, ifalpha)
@@ -354,11 +365,9 @@ function traceobjgrad(pcof0::Array{Float64,1},  params::parameters, order::Int64
       end
      
       # forcing for evolving W (d psi/d alpha1) in the rotating frame
-#      rotmatrices!(t,domega,rr,ri)
+      #      rotmatrices!(t,domega,rr,ri)
       # mul!(dar,rr,amat)
       # mul!(dai,ri,amat)
-      rgrad = rfgrad(t)
-      igrad = ifgrad(t)
 
       # separate out contributions from rfgrad and ifgrad (which determine the component of the gradient)
 # UPDATE 
@@ -368,7 +377,7 @@ function traceobjgrad(pcof0::Array{Float64,1},  params::parameters, order::Int64
       daii = (-(dai .+ dai')*vr .+ (dar .- dar')*vi)
       tr_adjrf = tracefidreal(darr, dari, lambdar, lambdai)
       tr_adjif = tracefidreal(dair, daii, lambdar, lambdai)
-      tr_adj0  = rfgrad(t)* tr_adjrf + ifgrad(t)* tr_adjif
+      tr_adj0  = rfgrad(t, splineparams)* tr_adjrf + ifgrad(t, splineparams)* tr_adjif
 
       #loop over stages
       for q in 1:stages
@@ -408,8 +417,6 @@ function traceobjgrad(pcof0::Array{Float64,1},  params::parameters, order::Int64
 
 #        mul!(dar,rr,amat)
 #        mul!(dai,ri,amat)
-        rgrad = rfgrad(t)
-        igrad = ifgrad(t)
           
 # UPDATE
         darr = ( (dai .- dai')*vr .- (dar .+ dar')*vi)
@@ -418,7 +425,7 @@ function traceobjgrad(pcof0::Array{Float64,1},  params::parameters, order::Int64
         daii = (-(dai .+ dai')*vr .+ (dar .- dar')*vi)
         tr_adjrf = tracefidreal(darr, dari, lambdar, lambdai)
         tr_adjif = tracefidreal(dair, daii, lambdar, lambdai)
-        tr_adj1  = rfgrad(t)*tr_adjrf + ifgrad(t)*tr_adjif
+        tr_adj1  = rfgrad(t, splineparams)*tr_adjrf + ifgrad(t, splineparams)*tr_adjif
 
         # accumulate the gradient of the objective functional
         gradobjfadj = gradobjfadj + gamma[q]*dt*0.5*2.0*(tr_adj0 +  tr_adj1) # dt is negative
@@ -457,7 +464,15 @@ function traceobjgrad(pcof0::Array{Float64,1},  params::parameters, order::Int64
     end
 
 # output final unitary
-    println("Final unitary:");
+    println("Final (rot frame) unitary:");
+    for q in 1:N
+      for c in 1:N
+        @printf("%11.4e %+11.4eim ", vfinalr[q,c], vfinali[q,c])
+      end
+      @printf("\n")
+    end
+
+    println("Final (lab frame) unitary:");
     for q in 1:N
       for c in 1:N
         @printf("%11.4e %+11.4eim ", ufinalr[q,c], ufinali[q,c])
@@ -516,7 +531,7 @@ function traceobjgrad(pcof0::Array{Float64,1},  params::parameters, order::Int64
 
 # return to calling routine
 if verbose && evaladjoint
-   return objfv, gradobjfadj, plt1, plt2, td, labdrive
+   return objfv, gradobjfadj, td, labdrive, plt1, plt2
 elseif verbose
   println("Returning from traceobjgrad with objfv, td, labdrive, plt1, plt2")
   return objfv, td, labdrive, plt1, plt2
@@ -543,7 +558,6 @@ end
 
 # Matrices for the Hamiltonian in rotation frame
 @inline function setupmatrices(fa::Float64, xia:: Float64, Ntot::Int64)
-  omega = omegafun(Ntot)
   amat = Array(Bidiagonal(zeros(Ntot),sqrt.(collect(1:Ntot-1)),:U))
   adag = Array(transpose(amat))
   number = Diagonal(collect(0:Ntot-1))
@@ -553,29 +567,29 @@ end
 end
 
 # Matrices for the Hamiltonian in rotation frame
-@inline function rotframematrices(Ntot::Int64)
-  omega = omegafun(Ntot)
-  H0 = zeros(Ntot,Ntot)
-  amat = Array(Bidiagonal(zeros(Ntot),sqrt.(collect(1:Ntot-1)),:U))
-  adag = Array(transpose(amat))
-  dom1 = omega[2]-omega[1] # Take out of control function
-  domega = zeros(Ntot)
-  domega[1:Ntot-1] = omega[2:Ntot] .- omega[1:Ntot-1] .- dom1
+# @inline function rotframematrices(Ntot::Int64)
+#   omega = omegafun(Ntot)
+#   H0 = zeros(Ntot,Ntot)
+#   amat = Array(Bidiagonal(zeros(Ntot),sqrt.(collect(1:Ntot-1)),:U))
+#   adag = Array(transpose(amat))
+#   dom1 = omega[2]-omega[1] # Take out of control function
+#   domega = zeros(Ntot)
+#   domega[1:Ntot-1] = omega[2:Ntot] .- omega[1:Ntot-1] .- dom1
 
-  return H0, amat, adag, omega, domega
-end
+#   return H0, amat, adag, omega, domega
+# end
 
-# returns omega
-function omegafun(N::Int64)
-# The Alice oscillator
-  freq0 = 2*pi*[0.0, 4.10336, 7.98692, 11.65068, 15.09464, 18.332, 21.339]
-  if N > 7
-    error("not enough frequencies known")
-  end
-  omega = zeros(N)
-  omega = freq0[1:N]
-  return omega
-end
+# # returns omega
+# function omegafun(N::Int64)
+# # The Alice oscillator
+#   freq0 = 2*pi*[0.0, 4.10336, 7.98692, 11.65068, 15.09464, 18.332, 21.339]
+#   if N > 7
+#     error("not enough frequencies known")
+#   end
+#   omega = zeros(N)
+#   omega = freq0[1:N]
+#   return omega
+# end
 
 # bound pcof to allowed amplitude
 @inline function boundcof(pcof::Array{Float64,1}, D::Int64, maxpar::Float64, eps::Float64)
@@ -863,6 +877,9 @@ end
 @inline function ifunc(t::Float64,splineparams::bsplines.splineparams)
   ret = bsplines.bspline2i(t,splineparams) # imaginary part
 end
+
+@inline rfgrad(t::Float64, splineparams::bsplines.splineparams) = bsplines.gradbspline2r(t, splineparams)
+@inline ifgrad(t::Float64, splineparams::bsplines.splineparams) = bsplines.gradbspline2i(t, splineparams)
 
 function rotmatrices!(t::Float64, domega::Array{Float64,1},rr::Array{Float64,2},ri::Array{Float64,2})
  for I in 1:length(domega)
