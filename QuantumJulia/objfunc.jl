@@ -484,27 +484,33 @@ function traceobjgrad(pcof0::Array{Float64,1},  params::parameters, order::Int64
 
     # Evaluate control function at the discrete time levels
     nplot = round(Int64, T*samplerate)
-    td = collect(range(1.0/samplerate, stop = T, length = nplot))
-    #    @show(td[1])
-    #    @show(nplot)
+    @show(nplot)
+    dt = 1.0/samplerate
+    td = range(0, stop = T, length = nplot+1)
+    @show(td[nplot])
 
     rplot(t) = rfunc(t,splineparams)
     iplot(t) = ifunc(t,splineparams)
     rotdriver = rplot.(td)
     rotdrivei = iplot.(td)
-    oma = 2*pi*params.fa
-
-    labdrive = rotdriver .* cos.(oma.*td) - rotdrivei .* sin.(oma.*td)
     
-    f1 = plot(td, rotdriver, lab="", title = "Real part, Rotating frame", linewidth = 2)
-    f2 = plot(td, rotdrivei, lab="", title = "Imag part Rotating frame", linewidth = 2)
-    f3 = plot(td, labdrive, lab="", title = "Lab frame", linewidth = 2)
+    oma = 2*pi*params.fa
+    labdrive = 2*rotdriver .* cos.(oma*td) - 2*rotdrivei .* sin.(oma*td)
+    
+    # first plot
+    f1 = plot(td, rotdriver, lab="Real part", linewidth = 2, title = "Rotating frame", size = (1000, 500), xlabel="Time [ns]")
+    # add in the imaginary part
+    plot!(td, rotdrivei, lab="Imag part", linewidth = 2)
+
+    # second plot
+    f2 = plot(td[1:64], labdrive[1:64], lab="", linewidth = 2, title = "Lab frame", size = (1000, 500), xlabel="Time [ns]")
+
     # if weight == 1
     #   plot!(td, weightf1.(td,T), lab = "Gate", linewidth = 2)
     # end
 
-    plt2 = plot(f1, f2, f3, layout = (3,1))        
-#    plt2 = plot(f1, f2, layout = (2,1))        
+    #    plt2 = plot(f1, f2, f3, layout = (3,1))        
+    plt2 = plot(f1, f2, layout = (2,1))        
 
   end #if verbose
 
@@ -512,7 +518,8 @@ function traceobjgrad(pcof0::Array{Float64,1},  params::parameters, order::Int64
 if verbose && evaladjoint
    return objfv, gradobjfadj, plt1, plt2, td, labdrive
 elseif verbose
-  return objfv, plt1, plt2
+  println("Returning from traceobjgrad with objfv, td, labdrive, plt1, plt2")
+  return objfv, td, labdrive, plt1, plt2
 elseif evaladjoint
   return objfv, gradobjfadj
 else
@@ -850,13 +857,11 @@ end
 end
 
 @inline function efunc(t::Float64,splineparams::bsplines.splineparams)
-  ret = 0.0
   ret = bsplines.bspline2r(t,splineparams::bsplines.splineparams) #real part for now. Perhaps magnitude is better?
 end
 
 @inline function ifunc(t::Float64,splineparams::bsplines.splineparams)
-  ret = 0.0
-  ret = - bsplines.bspline2i(t,splineparams) # imaginary part
+  ret = bsplines.bspline2i(t,splineparams) # imaginary part
 end
 
 function rotmatrices!(t::Float64, domega::Array{Float64,1},rr::Array{Float64,2},ri::Array{Float64,2})

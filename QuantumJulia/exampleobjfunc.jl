@@ -236,19 +236,18 @@ function testfunc2()
 
   cfl = 0.05
   T = 100
-  evaladjoint = false
   maxpar =0.09
 
   # frequencies (in GHz, will be multiplied by 2*pi to get angular frequencies in the Hamiltonian matrix)
   fa = 4.10336
   xia = 2* 0.1099
-  
-  params = objfunc.parameters(N,Nguard,T,maxpar,cfl, utarget, fa, xia, 32) 
+  samplerate = 64
+  params = objfunc.parameters(N,Nguard,T,maxpar,cfl, utarget, fa, xia, samplerate) 
 
-  bsum=1.0
-  absomega = bsum*0.25*pi/T
+  absomega = 0.25*pi/T
+#  absomega = .0157/2.0 # conversion factor between lab and rotating frame
   pcof1 = absomega*[0.0, 0.0, 0.0, #real
-           1.0, 1.0, 1.0] # imag
+           -1.0, -1.0, -1.0] # imag
   println("Constant control amplitude: ", absomega)
   
   #	m = readdlm("bsline-file.dat")
@@ -264,17 +263,38 @@ function testfunc2()
   kpar = 2 # needs to have the same value in traceobjgrad()
   pcof2 = pcof1
 
+  evaladjoint = false
   verbose = true
   weights = 2 # final gate fidelity
   #    penaltyweight = 1 # time-dependent penalty coefficient, same weight for all guard levels
   penaltyweight = 2 # constant penalty coefficient, coefficient depends on guard level
     
-  objv1, pl1, pl2  = objfunc.traceobjgrad(pcof1, params, order, verbose, evaladjoint, weights, penaltyweight)
+# assumes evaladjoint=false
+  objv1, td, labdrive, pl1, pl2 = objfunc.traceobjgrad(pcof1, params, order, verbose, evaladjoint, weights, penaltyweight)
 
   @show(objv1)
 
   if verbose
-    pl2
+    println("Plotting...")
+    display(pl2)
   end
+
+  # save to file for quantum device (assumes samplerate=32)
+  smallnumber = 1e-17
+  savevec = zeros(320000) .+ smallnumber
+  @show(length(labdrive))
+  savevec[1:length(labdrive)] = labdrive
+
+  filename = "control_quantum.dat"
+  println("Saving sampled control function for experiment on file '", filename, "'");
+  writedlm(filename,savevec)
+
+  # save to file for mesolve in qutip
+  @show(length(labdrive))
+
+  filename = "control_qutip.dat"
+  println("Saving sampled control function for qutip on file '", filename, "'");
+  writedlm(filename, labdrive)
+
 end
 

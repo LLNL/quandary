@@ -1,0 +1,26 @@
+Start the julia interpreter from the command line:
+> julia
+Activate the precompiled modules in the current directory
+julia> ]
+pkg> activate .
+pkg> <Backspace>
+
+Load the routines defined in quantumcontrol.jl
+julia> include("quantumcontrol.jl")
+
+You can run the functions in exampleobjfunc.jl to test the code.
+To integrate the Schroedinger eqn in time,
+julia> testfunc2()
+
+To also compute the gradient wrt the control parameters,
+julia> testgrad2()
+
+A script for optimizing the parameter coefficients is executed by the command
+julia> include("optscript2.jl")
+
+If you edit the .jl files, you need to reload the routines defined in quantumcontrol.jl
+julia> include("quantumcontrol.jl")
+
+NOTE: the routine traceobjgrad() is in the file objfunc.jl
+
+

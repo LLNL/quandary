@@ -1,3 +1,7 @@
+using LinearAlgebra
+using Plots
+include("timestep.jl")
+
 function timesteptest( cfl = 0.1, testcase = 1, order = 2, plotcomp = "err",test = false)
 
 	N = 2 # vector dimension	
