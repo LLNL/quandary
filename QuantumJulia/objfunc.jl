@@ -17,15 +17,22 @@ struct parameters
         fa:: Float64 # in GHz
         xia:: Float64 # in GHz
         samplerate::Int64 # plotting sample rate per ns
+        kpar::Int64 # element of gradient to test
 
 
 	function parameters(N, Nguard,T, maxpar,cfl, utarget, fa, xia)		
           samplerate = 32
-	  new(N, Nguard, T, maxpar, cfl, utarget, samplerate)
+          kpar = 1
+	  new(N, Nguard, T, maxpar, cfl, utarget, samplerate, kpar)
 	end
 
 	function parameters(N, Nguard,T, maxpar,cfl, utarget, fa, xia, samplerate)		
-	  new(N, Nguard, T, maxpar, cfl, utarget, fa, xia, samplerate)
+          kpar = 1
+	  new(N, Nguard, T, maxpar, cfl, utarget, fa, xia, samplerate, kpar)
+	end
+
+	function parameters(N, Nguard,T, maxpar,cfl, utarget, fa, xia, samplerate, kpar)
+	  new(N, Nguard, T, maxpar, cfl, utarget, fa, xia, samplerate, kpar)
 	end
 	#multiple dispatch with extra struct for H0 = 0 ?
 end
@@ -49,8 +56,7 @@ function traceobjgrad(pcof0::Array{Float64,1},  params::parameters, order::Int64
   
   tinv = 1.0/T
  # Parameters used for the gradient
-  kpar = 2
-  eps = 1e-9
+  kpar = params.kpar
 
   if weight == 1
    xif = 1.0
@@ -62,6 +68,7 @@ function traceobjgrad(pcof0::Array{Float64,1},  params::parameters, order::Int64
     xi = xif/max(1,Nguard)          # coef for penalizing forbidden states
   end
   # Make sure that each element of pcof is in the prescribed range
+  eps = 1e-9
   pcof, par1, par0 = boundcof(pcof, D, params.maxpar, eps)
       
   if verbose
@@ -191,19 +198,19 @@ function traceobjgrad(pcof0::Array{Float64,1},  params::parameters, order::Int64
   # Forward time stepping loop
   for step in 1:nsteps
     #to evaluate the objective function
-    if weight == 1
-      infidelity0 = weightf1(t, T)*(1-tracefidreal(vr, vi, vtargetr, vtargeti, labframe, t, omega))
-    end
+    # if weight == 1
+    #   infidelity0 = weightf1(t, T)*(1-tracefidreal(vr, vi, vtargetr, vtargeti, labframe, t, omega))
+    # end
 
-    if penaltyweight == 1
-      forbidden0 = xi*penalf1(t, T)*normguard(vr, vi, Nguard)
-    elseif penaltyweight == 2
-      forbidden0 = tinv*penalf2a(vr, vi, wmat)  
-    end
+    # if penaltyweight == 1
+    #   forbidden0 = xi*penalf1(t, T)*normguard(vr, vi, Nguard)
+    # elseif penaltyweight == 2
+    forbidden0 = tinv*penalf2a(vr, vi, wmat)  
+    #    end
 
     if evaladjoint && verbose
-      scomplex0 = tracefidcomplex(vr, -vi, vtargetr, vtargeti, labframe, t, omega) # only needed if weight==1
-      salpha0 = tracefidcomplex(wr, -wi, vtargetr, vtargeti, labframe, t, omega)
+      # scomplex0 = tracefidcomplex(vr, -vi, vtargetr, vtargeti, labframe, t, omega) # only needed if weight==1
+      # salpha0 = tracefidcomplex(wr, -wi, vtargetr, vtargeti, labframe, t, omega)
 
       rgrad = rfgrad(t, splineparams)
       igrad = ifgrad(t, splineparams)
@@ -212,12 +219,11 @@ function traceobjgrad(pcof0::Array{Float64,1},  params::parameters, order::Int64
       gr0, gi0 = fgradforce(amat, adag, vr, vi, rfalpha, ifalpha) # compute the forcing for (wr, wi)
 
       # Forcing evolving w
-      if penaltyweight == 1
-        forbalpha0 =  xi*penalf1(t,T)*screal(vr, vi, wr, wi, Nguard,zeromat)
-      elseif penaltyweight == 2
-        forbalpha0 = tinv*penalf2grad(vr, vi, wr, wi, wmat)
-        # error("Forcing for forward gradient not implemented for this penalty yet")
-      end # end if penaltyweight = 1/2
+      # if penaltyweight == 1
+      #   forbalpha0 =  xi*penalf1(t,T)*screal(vr, vi, wr, wi, Nguard,zeromat)
+      # elseif penaltyweight == 2
+      forbalpha0 = tinv*penalf2grad(vr, vi, wr, wi, wmat)
+      # end # end if penaltyweight = 1/2
       
     end # end if evaladjoint && verbose
 
@@ -236,20 +242,24 @@ function traceobjgrad(pcof0::Array{Float64,1},  params::parameters, order::Int64
 
       @inbounds t, vr, vi = timestep.step(t, vr, vi, dt*gamma[q], K0, S0, K05, S05, K1, S1, Ident)
 
-      if penaltyweight == 1
-        forbidden = xi*penalf1(t, T)*normguard(vr, vi, Nguard)  
-      elseif penaltyweight == 2
-        forbidden = tinv*penalf2a(vr, vi, wmat)  
-      end
+      # if penaltyweight == 1
+      #   forbidden = xi*penalf1(t, T)*normguard(vr, vi, Nguard)  
+      # elseif penaltyweight == 2
+
+      forbidden = tinv*penalf2a(vr, vi, wmat)  
+
+      # end
 
 # add in penalty terms for the forbidden states
-      if weight == 1
-      	infidelity = weightf1(t, T)*(1-tracefidreal(vr, vi, vtargetr, vtargeti, labframe,t, omega))
-      	objfv = objfv + gamma[q]*dt*0.5*(infidelity0 + infidelity + forbidden0 + forbidden)
-        infidelity0 = infidelity
-      elseif weight == 2
-        objfv = objfv + gamma[q]*dt*0.5*(forbidden0 + forbidden)
-      end 		
+      # if weight == 1
+      # 	infidelity = weightf1(t, T)*(1-tracefidreal(vr, vi, vtargetr, vtargeti, labframe,t, omega))
+      # 	objfv = objfv + gamma[q]*dt*0.5*(infidelity0 + infidelity + forbidden0 + forbidden)
+      #   infidelity0 = infidelity
+      # elseif weight == 2
+
+      objfv = objfv + gamma[q]*dt*0.5*(forbidden0 + forbidden)
+
+      # end 		
 
       forbidden0 = forbidden
 
@@ -263,23 +273,25 @@ function traceobjgrad(pcof0::Array{Float64,1},  params::parameters, order::Int64
 
 	 @inbounds temp, wr, wi = timestep.step(t0, wr, wi, dt*gamma[q], gi0, 0.5*(gr1 + gr0), gi1, K0, S0, K05, S05, K1, S1, Ident) 
 
-	 # Forcing evolving w
-         if penaltyweight == 1
-           forbalpha1 =  xi*penalf1(t,T)*screal(vr, vi, wr, wi, Nguard,zeromat)
-         elseif penaltyweight == 2
-           forbalpha1 = tinv*penalf2grad(vr, vi, wr, wi, wmat)
-           # error("Forcing for forward gradient not implemented for this penalty yet")
-         end # end if penaltyweight = 1/2
+         # if penaltyweight == 1
+         #   forbalpha1 =  xi*penalf1(t,T)*screal(vr, vi, wr, wi, Nguard,zeromat)
+         # elseif penaltyweight == 2
+         
+         forbalpha1 = tinv*penalf2grad(vr, vi, wr, wi, wmat)
 
-         if weight == 1
-      	   scomplex1 = tracefidcomplex(vr, -vi, vtargetr, vtargeti, labframe, t, omega)
-           salpha1 = tracefidcomplex(wr, -wi, vtargetr, vtargeti, labframe, t, omega) 
-	   objf_alpha1 = objf_alpha1 - gamma[q]*dt*0.5*2.0*real(weightf1(t0,T)*conj(scomplex0)*salpha0 + weightf1(t,T)*conj(scomplex1)*salpha1) + gamma[q]*dt*0.5*2.0*(forbalpha0 + forbalpha1)
-	   scomplex0 = scomplex1
-	   salpha0 = salpha1
-         elseif weight ==2
-           objf_alpha1 = objf_alpha1 + gamma[q]*dt*0.5*2.0*(forbalpha0 + forbalpha1)
-         end
+         # end # end if penaltyweight = 1/2
+
+         # if weight == 1
+      	 #   scomplex1 = tracefidcomplex(vr, -vi, vtargetr, vtargeti, labframe, t, omega)
+         #   salpha1 = tracefidcomplex(wr, -wi, vtargetr, vtargeti, labframe, t, omega) 
+	 #   objf_alpha1 = objf_alpha1 - gamma[q]*dt*0.5*2.0*real(weightf1(t0,T)*conj(scomplex0)*salpha0 + weightf1(t,T)*conj(scomplex1)*salpha1) + gamma[q]*dt*0.5*2.0*(forbalpha0 + forbalpha1)
+	 #   scomplex0 = scomplex1
+	 #   salpha0 = salpha1
+         # elseif weight ==2
+
+         objf_alpha1 = objf_alpha1 + gamma[q]*dt*0.5*2.0*(forbalpha0 + forbalpha1)
+
+         # end
        
          # save previous values for next stage 
          forbalpha0 = forbalpha1  	    
@@ -294,19 +306,19 @@ function traceobjgrad(pcof0::Array{Float64,1},  params::parameters, order::Int64
     end
   end #forward time steppingloop
 
-  if weight == 2
-    objfv = objfv + (1-tracefidreal(vr, vi, vtargetr, vtargeti, labframe,t, omega))
-    if evaladjoint && verbose
-      salpha1 = tracefidcomplex(wr, -wi, vtargetr, vtargeti, labframe, t, omega)
-      scomplex1 = tracefidcomplex(vr, -vi, vtargetr, vtargeti, labframe, t, omega)
-      objf_alpha1 = objf_alpha1 - real(2*conj(scomplex1)*salpha1)
-    end  
-  end
+  #if weight == 2
+  objfv = objfv + (1-tracefidreal(vr, vi, vtargetr, vtargeti, labframe,t, omega))
+  if evaladjoint && verbose
+    salpha1 = tracefidcomplex(wr, -wi, vtargetr, vtargeti, labframe, t, omega)
+    scomplex1 = tracefidcomplex(vr, -vi, vtargetr, vtargeti, labframe, t, omega)
+    objf_alpha1 = objf_alpha1 - real(2*conj(scomplex1)*salpha1)
+  end  
+  #  end
 
   vfinalr = vr
   vfinali = -vi
 
-  ufinalr = rotr'*vr - roti'*vi #should both these matrices be transposed?
+  ufinalr = rotr'*vr - roti'*vi 
   ufinali = -rotr'*vi - roti'*vr 
   ineqpenalty = evalineqpen(pcof, par0, par1);
   objfv = objfv .+ ineqpenalty
@@ -316,22 +328,22 @@ function traceobjgrad(pcof0::Array{Float64,1},  params::parameters, order::Int64
       dfdp = objf_alpha1
     end  
 
-    gradobjfadj = zeros(D,1);
+    gradobjfadj = zeros(2*D,1);
     t = T
     dt = -dt
  
     # terminal conditions for the adjoint state
-    if weight == 1
-    	lambdar = zeromat
-    	lambdai = zeromat
-    elseif weight == 2
-      scomplex0 = tracefidcomplex(vr, -vi, vtargetr, vtargeti, labframe, t, omega)
-      sr0 = real(scomplex0)
-      si0 = imag(scomplex0)
+    # if weight == 1
+    # 	lambdar = zeromat
+    # 	lambdai = zeromat
+    # elseif weight == 2
+    scomplex0 = tracefidcomplex(vr, -vi, vtargetr, vtargeti, labframe, t, omega)
+    sr0 = real(scomplex0)
+    si0 = imag(scomplex0)
 
-      lambdar = real(conj(scomplex0)*(vtargetr + im*vtargeti))/N 
-      lambdai = -imag(conj(scomplex0)*(vtargetr + im*vtargeti))/N
-    end
+    lambdar = real(conj(scomplex0)*(vtargetr + im*vtargeti))/N 
+    lambdai = -imag(conj(scomplex0)*(vtargetr + im*vtargeti))/N
+    # end
     
     #Backward time stepping loop
     for step in nsteps-1:-1:0
@@ -339,25 +351,22 @@ function traceobjgrad(pcof0::Array{Float64,1},  params::parameters, order::Int64
       sr0 = real(scomplex0)
       si0 = imag(scomplex0)
 
-      if weight == 1
-      	hr0 = -weightf1(t,T)/N*(sr0*vtargetr + si0*vtargeti)
-      	hi0 =  weightf1(t,T)/N*(sr0*vtargeti - si0*vtargetr)
-      end
+      # if weight == 1
+      # 	hr0 = -weightf1(t,T)/N*(sr0*vtargetr + si0*vtargeti)
+      # 	hi0 =  weightf1(t,T)/N*(sr0*vtargeti - si0*vtargetr)
+      # end
       
-      if penaltyweight == 1
-        hr0[N+1:N+Nguard,:] = xi*penalf1(t,T)*vr[N+1:N+Nguard,:]
-        hi0[N+1:N+Nguard,:] = xi*penalf1(t,T)*vi[N+1:N+Nguard,:]
-      elseif penaltyweight == 2
-        hr0 = tinv.*penalf2adj(vr, wmat)
-        hi0 = tinv.*penalf2adj(vi, wmat)
-      end
-     
-      # forcing for evolving W (d psi/d alpha1) in the rotating frame
-      #      rotmatrices!(t,domega,rr,ri)
-      # mul!(dar,rr,amat)
-      # mul!(dai,ri,amat)
+      # if penaltyweight == 1
+      #   hr0[N+1:N+Nguard,:] = xi*penalf1(t,T)*vr[N+1:N+Nguard,:]
+      #   hi0[N+1:N+Nguard,:] = xi*penalf1(t,T)*vi[N+1:N+Nguard,:]
+      # elseif penaltyweight == 2
 
+      hr0 = tinv.*penalf2adj(vr, wmat)
+      hi0 = tinv.*penalf2adj(vi, wmat)
+      # end
+     
       # separate out contributions from rfgrad and ifgrad (which determine the component of the gradient)
+#	 gr1, gi1 = fgradforce(amat, adag, vr, vi, rfalpha, ifalpha) # compute the forcing for (wr, wi)
 # UPDATE 
       darr = ( (dai .- dai')*vr .- (dar .+ dar')*vi)
       dari = ( (dar .+ dar')*vr .+ (dai .- dai')*vi)
@@ -440,7 +449,7 @@ function traceobjgrad(pcof0::Array{Float64,1},  params::parameters, order::Int64
 		
     if evaladjoint
       dfdp = dfdp + ineqpengrad[kpar]
-      println("Forward integration of gradient of objective function = ", dfdp, " ineqpengrad = ", ineqpengrad[kpar])
+      println("Forward integration of gradient[kpar=", kpar, "] of objective function = ", dfdp, " ineqpengrad = ", ineqpengrad[kpar])
     end
     
     nlast = 1 + nsteps
@@ -867,6 +876,7 @@ end
 end
 
 @inline rfgrad(t::Float64, splineparams::bsplines.splineparams) = bsplines.gradbspline2r(t, splineparams)
+
 @inline ifgrad(t::Float64, splineparams::bsplines.splineparams) = bsplines.gradbspline2i(t, splineparams)
 
 function rotmatrices!(t::Float64, domega::Array{Float64,1},rr::Array{Float64,2},ri::Array{Float64,2})

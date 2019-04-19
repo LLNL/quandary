@@ -124,7 +124,7 @@ end
 
 # gradbspline2r: Real part. gradient with respect to pcof of quadratic bspline
 @inline function gradbspline2r(t::Float64,param::splineparams)
-  g = zeros(param.Nspline)
+  g = zeros(2*param.Nspline) # real and imag parts
   dtknot = param.dtknot
   tknot = param.tknot
   width = 3*dtknot 
@@ -151,7 +151,7 @@ end
 
 # gradbspline2i: Imaginary part. gradient with respect to pcof of quadratic bspline (identical to the real part)
 @inline function gradbspline2i(t::Float64,param::splineparams)
-  g = zeros(param.Nspline)
+  g = zeros(2*param.Nspline) # real and imag parts
   dtknot = param.dtknot
   tknot = param.tknot
   width = 3*dtknot 
@@ -163,17 +163,17 @@ end
   #1st segment of nurb k
   tc = param.tcenter[k]
   tau = (t .- tc)./width
-  g[k] = (9/8 .+ 4.5.*tau .+ 4.5.*tau.^2);
+  g[k .+ D] = (9/8 .+ 4.5.*tau .+ 4.5.*tau.^2);
 
   #2nd segment of nurb k-1
   tc = param.tcenter[k.-1]
   tau = (t .- tc)./width
-  g[k.-1] = (0.75 .- 9 .*tau.^2) #g + g=... ?
+  g[k.-1 .+ D] = (0.75 .- 9 .*tau.^2) 
 
   # 3rd segment og nurb k-2
   tc = param.tcenter[k.-2]
   tau = (t .- tc)./width
-  g[k.-2] = (9/8 .- 4.5.*tau .+ 4.5.*tau.^2);
+  g[k.-2 .+ D] = (9/8 .- 4.5.*tau .+ 4.5.*tau.^2);
   return g
 end
 

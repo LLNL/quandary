@@ -158,7 +158,7 @@ function testgrad2(pcof0::Array{Float64,1} = [0.,0.,0.,1.,1.,1.])
   Nguard = 0
   Ntot = N + Nguard
 
-  cfl = 0.05
+  cfl = 0.01
   T = 100
   maxpar =0.09
 
@@ -184,8 +184,9 @@ function testgrad2(pcof0::Array{Float64,1} = [0.,0.,0.,1.,1.,1.])
 
   rotmat = [1 0; 0 exp(1im*2*pi*fa*T)]
   utarget = rotmat' * vtarget # add a matching quotation for emacs'
+  kpar = 5 # needs to have the same value in traceobjgrad()
   
-  params = objfunc.parameters(N,Nguard,T,maxpar,cfl, utarget, fa, xia, samplerate) 
+  params = objfunc.parameters(N,Nguard,T,maxpar,cfl, utarget, fa, xia, samplerate, kpar) 
 
   absomega = 0.25*pi/T
 # scale the input coefficients
@@ -202,7 +203,6 @@ function testgrad2(pcof0::Array{Float64,1} = [0.,0.,0.,1.,1.,1.])
         
   order = 2
   eps = 1e-9
-  kpar = 2 # needs to have the same value in traceobjgrad()
   pcof2 = pcof1
 
   verbose = true
