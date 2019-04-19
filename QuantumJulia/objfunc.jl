@@ -83,7 +83,7 @@ function traceobjgrad(pcof0::Array{Float64,1},  params::parameters, order::Int64
 
   zeromat = zeros(Ntot,N) 
 
-# coefficients for penaty style #2 (wmat is a Diagonal matrix)
+# coefficients for penalty style #2 (wmat is a Diagonal matrix)
   wmat = wmatsetup(Ntot, Nguard)
   if verbose && Nguard>0
     @show(wmat[N+1:Ntot, N+1:Ntot])
@@ -141,10 +141,10 @@ function traceobjgrad(pcof0::Array{Float64,1},  params::parameters, order::Int64
   vi = zeromat
 
   if verbose
-  	usaver = zeros(Ntot,N,nsteps+1)
-   	usavei = zeros(Ntot,N,nsteps+1)
-   	usaver[:,:,1] = vr
-   	usavei[:,:,1] = -vi
+    usaver = zeros(Ntot,N,nsteps+1)
+    usavei = zeros(Ntot,N,nsteps+1)
+    usaver[:,:,1] = vr
+    usavei[:,:,1] = -vi
 
     #to compute gradient with forward method
     if evaladjoint
@@ -190,7 +190,7 @@ function traceobjgrad(pcof0::Array{Float64,1},  params::parameters, order::Int64
 
   # Forward time stepping loop
   for step in 1:nsteps
-    #for the objective function
+    #to evaluate the objective function
     if weight == 1
       infidelity0 = weightf1(t, T)*(1-tracefidreal(vr, vi, vtargetr, vtargeti, labframe, t, omega))
     end
@@ -201,49 +201,38 @@ function traceobjgrad(pcof0::Array{Float64,1},  params::parameters, order::Int64
       forbidden0 = tinv*penalf2a(vr, vi, wmat)  
     end
 
-#    rotmatrices!(t,domega,rr,ri)
+    if evaladjoint && verbose
+      scomplex0 = tracefidcomplex(vr, -vi, vtargetr, vtargeti, labframe, t, omega) # only needed if weight==1
+      salpha0 = tracefidcomplex(wr, -wi, vtargetr, vtargeti, labframe, t, omega)
 
-    if evaladjoint
-      if verbose
-       if penaltyweight == 1
-         forbalpha0 = xi*penalf1(t,T)*screal(vr, vi, wr, wi, Nguard,zeromat)
-       else
+      rgrad = rfgrad(t, splineparams)
+      igrad = ifgrad(t, splineparams)
+      rfalpha = rgrad[kpar]
+      ifalpha = igrad[kpar]
+      gr0, gi0 = fgradforce(amat, adag, vr, vi, rfalpha, ifalpha) # compute the forcing for (wr, wi)
+
+      # Forcing evolving w
+      if penaltyweight == 1
+        forbalpha0 =  xi*penalf1(t,T)*screal(vr, vi, wr, wi, Nguard,zeromat)
+      elseif penaltyweight == 2
         forbalpha0 = tinv*penalf2grad(vr, vi, wr, wi, wmat)
-       end
-      end
-
-      if weight ==1
-        scomplex0 = tracefidcomplex(vr, -vi, vtargetr, vtargeti, labframe, t, omega)
-
-        if verbose
-          salpha0 = tracefidcomplex(wr, -wi, vtargetr, vtargeti, labframe, t, omega)
-        end
-
-        rgrad = rfgrad(t, splineparams)
-        igrad = ifgrad(t, splineparams)
-
-#        mul!(dar,rr,amat)
-#        mul!(dai,ri,amat)
-
-        rfalpha = rgrad[kpar]
-        ifalpha = igrad[kpar]
-        gr0, gi0 = grupdate(gr0,gi0,dai, dar, vr, vi, rfalpha, ifalpha)
-      end
-    end
+        # error("Forcing for forward gradient not implemented for this penalty yet")
+      end # end if penaltyweight = 1/2
+      
+    end # end if evaladjoint && verbose
 
     # Stromer-Verlet
     for q in 1:stages
       if evaladjoint && verbose
-       t0=t
-       vr0 = vr
-       vi0 = vi
+        t0=t
+        vr0 = vr
+        vi0 = vi
       end
-      # Update K and S
-      KS!(K0, S0, t, amat, adag, splineparams, H0) #, tmp1, tmp2, tmp3, rr,ri)
-#      rotmatrices!(t + 0.5*dt*gamma[q],domega,rr,ri)
-      KS!(K05, S05, t + 0.5*dt*gamma[q], amat, adag, splineparams, H0) #, tmp1, tmp2, tmp3,rr,ri)
-#      rotmatrices!(t + dt*gamma[q],domega,rr,ri)
-      KS!(K1, S1, t + dt*gamma[q], amat, adag, splineparams, H0) #, tmp1, tmp2, tmp3, rr,ri)
+      
+      # Update K and S matrices
+      KS!(K0, S0, t, amat, adag, splineparams, H0) 
+      KS!(K05, S05, t + 0.5*dt*gamma[q], amat, adag, splineparams, H0) 
+      KS!(K1, S1, t + dt*gamma[q], amat, adag, splineparams, H0) 
 
       @inbounds t, vr, vi = timestep.step(t, vr, vi, dt*gamma[q], K0, S0, K05, S05, K1, S1, Ident)
 
@@ -253,6 +242,7 @@ function traceobjgrad(pcof0::Array{Float64,1},  params::parameters, order::Int64
         forbidden = tinv*penalf2a(vr, vi, wmat)  
       end
 
+# add in penalty terms for the forbidden states
       if weight == 1
       	infidelity = weightf1(t, T)*(1-tracefidreal(vr, vi, vtargetr, vtargeti, labframe,t, omega))
       	objfv = objfv + gamma[q]*dt*0.5*(infidelity0 + infidelity + forbidden0 + forbidden)
@@ -264,41 +254,39 @@ function traceobjgrad(pcof0::Array{Float64,1},  params::parameters, order::Int64
       forbidden0 = forbidden
 
       # compute component of the gradient for verification of adjoint method
-      if evaladjoint && verbose       	
-      	 scomplex1 = tracefidcomplex(vr, -vi, vtargetr, vtargeti, labframe, t, omega)
-#      	 mul!(dar,rr,amat)
-#      	 mul!(dai,ri,amat)
+      if evaladjoint && verbose
       	 rgrad = rfgrad(t, splineparams)
       	 igrad = ifgrad(t, splineparams)
-      	 rfalpha = rgrad[kpar] #Will this return the same va
+      	 rfalpha = rgrad[kpar] # element kpar of the gradient of the control fcn
       	 ifalpha = igrad[kpar]
-	     gr1, gi1 = grupdate(gr1 ,gi1, dai, dar, vr, vi, rfalpha, ifalpha)
+	 gr1, gi1 = fgradforce(amat, adag, vr, vi, rfalpha, ifalpha) # compute the forcing for (wr, wi)
 
-	    @inbounds temp, wr, wi = timestep.step(t0, wr, wi, dt*gamma[q], gi0, 0.5*(gr1 + gr0), gi1, K0, S0, K05, S05, K1, S1, Ident) 
+	 @inbounds temp, wr, wi = timestep.step(t0, wr, wi, dt*gamma[q], gi0, 0.5*(gr1 + gr0), gi1, K0, S0, K05, S05, K1, S1, Ident) 
 
-	    # Forcing evolving w
-      if penaltyweight == 1
-        forbalpha1 =  xi*penalf1(t,T)*screal(vr, vi, wr, wi, Nguard,zeromat)
-      elseif penaltyweight == 2
-        forbalpha1 = tinv*penalf2grad(vr, vi, wr, wi, wmat)
-# error("Forcing for forward gradient not implemented for this penalty yet")
-      end
+	 # Forcing evolving w
+         if penaltyweight == 1
+           forbalpha1 =  xi*penalf1(t,T)*screal(vr, vi, wr, wi, Nguard,zeromat)
+         elseif penaltyweight == 2
+           forbalpha1 = tinv*penalf2grad(vr, vi, wr, wi, wmat)
+           # error("Forcing for forward gradient not implemented for this penalty yet")
+         end # end if penaltyweight = 1/2
 
-      if weight == 1
-        salpha1 = tracefidcomplex(wr, -wi, vtargetr, vtargeti, labframe, t, omega) 
-	objf_alpha1 = objf_alpha1 - gamma[q]*dt*0.5*2.0*real(weightf1(t0,T)*conj(scomplex0)*salpha0 + weightf1(t,T)*conj(scomplex1)*salpha1) + gamma[q]*dt*0.5*2.0*(forbalpha0 + forbalpha1)
-	scomplex0 = scomplex1
-	salpha0 = salpha1
-      elseif weight ==2
-        objf_alpha1 = objf_alpha1 + gamma[q]*dt*0.5*2.0*(forbalpha0 + forbalpha1)
-      end
+         if weight == 1
+      	   scomplex1 = tracefidcomplex(vr, -vi, vtargetr, vtargeti, labframe, t, omega)
+           salpha1 = tracefidcomplex(wr, -wi, vtargetr, vtargeti, labframe, t, omega) 
+	   objf_alpha1 = objf_alpha1 - gamma[q]*dt*0.5*2.0*real(weightf1(t0,T)*conj(scomplex0)*salpha0 + weightf1(t,T)*conj(scomplex1)*salpha1) + gamma[q]*dt*0.5*2.0*(forbalpha0 + forbalpha1)
+	   scomplex0 = scomplex1
+	   salpha0 = salpha1
+         elseif weight ==2
+           objf_alpha1 = objf_alpha1 + gamma[q]*dt*0.5*2.0*(forbalpha0 + forbalpha1)
+         end
        
-      # save previous values for next stage 
-      forbalpha0 = forbalpha1  	    
-      gr0 = gr1
-      gi0 = gi1
-    end  # evaladjoint
-  end # Stromer-Verlet
+         # save previous values for next stage 
+         forbalpha0 = forbalpha1  	    
+         gr0 = gr1
+         gi0 = gi1
+     end  # evaladjoint && verbose
+   end # Stromer-Verlet
     
     if verbose
       usaver[:,:, step + 1] = vr
@@ -805,47 +793,47 @@ function screal(vr::Array{Float64,2}, vi::Array{Float64,2}, wr::Array{Float64,2}
 end
 
 # old version with domega, rr, ri and tmpX arrays
-function KS!(K::Array{Float64,2},S::Array{Float64,2},t::Float64,amat::Array{Float64,2},adag::Array{Float64,2},
-            domega::Array{Float64,1},splineparams::bsplines.splineparams,H0::Array{Float64,2},tmp1::Array{Float64,2},
-            tmp2::Array{Float64,2},tmp3::Array{Float64,2},rr::Array{Float64,2},ri::Array{Float64,2})
-  rrt = transpose(rr)
-  rfeval = rfunc(t,splineparams)
-  ifeval = ifunc(t,splineparams)
-  tmp4 = 0.0
+# function KS!(K::Array{Float64,2},S::Array{Float64,2},t::Float64,amat::Array{Float64,2},adag::Array{Float64,2},
+#             domega::Array{Float64,1},splineparams::bsplines.splineparams,H0::Array{Float64,2},tmp1::Array{Float64,2},
+#             tmp2::Array{Float64,2},tmp3::Array{Float64,2},rr::Array{Float64,2},ri::Array{Float64,2})
+#   rrt = transpose(rr)
+#   rfeval = rfunc(t,splineparams)
+#   ifeval = ifunc(t,splineparams)
+#   tmp4 = 0.0
  
-  # (rr*amat)
-  mul!(tmp1,rr,amat) 
-  mul!(tmp2,adag,rrt)
-  for  I in eachindex(tmp1)
-    # (rr*amat + adag*rr')
-   @inbounds tmp3[I] = tmp1[I] + tmp2[I]
-  end
-   #ri*amat 
-  mul!(tmp1,ri,amat)
-   # adag*ri
-  mul!(tmp2,adag,ri)
-  for  I in eachindex(tmp1)
-   # (ri*amat + adag*ri)
-    @inbounds   tmp4 = tmp1[I] + tmp2[I]
-    @inbounds  K[I] = H0[I] + rfeval*tmp3[I] - ifeval*tmp4
-  end
+#   # (rr*amat)
+#   mul!(tmp1,rr,amat) 
+#   mul!(tmp2,adag,rrt)
+#   for  I in eachindex(tmp1)
+#     # (rr*amat + adag*rr')
+#    @inbounds tmp3[I] = tmp1[I] + tmp2[I]
+#   end
+#    #ri*amat 
+#   mul!(tmp1,ri,amat)
+#    # adag*ri
+#   mul!(tmp2,adag,ri)
+#   for  I in eachindex(tmp1)
+#    # (ri*amat + adag*ri)
+#     @inbounds   tmp4 = tmp1[I] + tmp2[I]
+#     @inbounds  K[I] = H0[I] + rfeval*tmp3[I] - ifeval*tmp4
+#   end
   
-  # S
-  mul!(tmp1,rr,amat)
-  mul!(tmp2,adag,transpose(rr))
+#   # S
+#   mul!(tmp1,rr,amat)
+#   mul!(tmp2,adag,transpose(rr))
      
-  for  I in eachindex(tmp1)
-   @inbounds tmp3[I] = tmp1[I] - tmp2[I]
-  end
+#   for  I in eachindex(tmp1)
+#    @inbounds tmp3[I] = tmp1[I] - tmp2[I]
+#   end
   
-  mul!(tmp1,ri,amat)
-  mul!(tmp2,adag,transpose(ri))
+#   mul!(tmp1,ri,amat)
+#   mul!(tmp2,adag,transpose(ri))
    
-  for  I in eachindex(tmp1)
-   @inbounds tmp4 = tmp1[I] - tmp2[I]  
-   @inbounds  S[I]  = ifunc(t,splineparams)*tmp3[I] + rfunc(t,splineparams)*tmp4
-  end
-end
+#   for  I in eachindex(tmp1)
+#    @inbounds tmp4 = tmp1[I] - tmp2[I]  
+#    @inbounds  S[I]  = ifunc(t,splineparams)*tmp3[I] + rfunc(t,splineparams)*tmp4
+#   end
+# end
 
 # updated version, without domega, rr, ri, tmp1, tmp2, tmp3
 function KS!(K::Array{Float64,2}, S::Array{Float64,2}, t::Float64, amat::Array{Float64,2}, adag::Array{Float64,2},
@@ -888,9 +876,21 @@ function rotmatrices!(t::Float64, domega::Array{Float64,1},rr::Array{Float64,2},
  end
 end
 
+# old routine for computing the forcing for the forward gradient
 function grupdate(gr0::Array{Float64,2}, gi0::Array{Float64,2}, dai::Array{Float64,2}, dar::Array{Float64,2}, vr::Array{Float64,2}, vi::Array{Float64,2},rfalpha::Float64,ifalpha::Float64)
-   gr0 = rfalpha.*( (dai .-  dai')*vr .- (dar .+ dar')*vi) .+ ifalpha.*(  (dai .+ dai')*vi .+ (dar .-  dar')*vr) #should it really be ifalpha' and ralpha' here?? Different n anders code ..
-   gi0 = rfalpha.*( (dar .+  dar')*vr .+ (dai .- dai')*vi) .+ ifalpha.*( -(dai .+ dai')*vr .+ (dar .-  dar')*vi)
-   return gr0, gi0
+  gr0 = rfalpha.*( (dai .-  dai')*vr .- (dar .+ dar')*vi) .+ ifalpha.*(  (dai .+ dai')*vi .+ (dar .-  dar')*vr) #should it really be ifalpha' and ralpha' here?? Different n anders code ..
+  gi0 = rfalpha.*( (dar .+  dar')*vr .+ (dai .- dai')*vi) .+ ifalpha.*( -(dai .+ dai')*vr .+ (dar .-  dar')*vi)
+  return gr0, gi0
 end
+
+# new routine for computing the forcing for the forward gradient
+function fgradforce(amat::Array{Float64,2}, adag::Array{Float64,2}, vr::Array{Float64,2}, vi::Array{Float64,2}, gralpha::Float64, gialpha::Float64)
+
+  fr = gialpha.* (amat .-  adag)*vr  .- gralpha.* (amat .+ adag)*vi
+  fi = gralpha.* (amat .+ adag)*vr .+ gialpha.* (amat .-  adag)*vi
+  return fr, fi
+end
+
+
+
 end

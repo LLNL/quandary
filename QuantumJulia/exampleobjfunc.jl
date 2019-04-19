@@ -153,7 +153,7 @@ function testgrad()
    end
 end
 
-function testgrad2(pcof0::Array{Float64,1})
+function testgrad2(pcof0::Array{Float64,1} = [0.,0.,0.,1.,1.,1.])
   N = 2
   Nguard = 0
   Ntot = N + Nguard
@@ -171,16 +171,16 @@ function testgrad2(pcof0::Array{Float64,1})
   vtarget = zeros(ComplexF64,Ntot,N)
 
   # -pi/2 y-rot gate pcof0=[0,0,0,1,1,1]
-  # vtarget[1,1] = 1/sqrt(2)
-  # vtarget[1,2] = 1/sqrt(2)
-  # vtarget[2,1] = -1/sqrt(2)
-  # vtarget[2,2] = 1/sqrt(2)
+  vtarget[1,1] = 1/sqrt(2)
+  vtarget[1,2] = 1/sqrt(2)
+  vtarget[2,1] = -1/sqrt(2)
+  vtarget[2,2] = 1/sqrt(2)
 
   # pi/2 x-rot gate: pcof0=[1,1,1,0,0,0]
-  vtarget[1,1] = 1/sqrt(2)
-  vtarget[1,2] = -1im/sqrt(2)
-  vtarget[2,1] = -1im/sqrt(2)
-  vtarget[2,2] = 1/sqrt(2)
+  # vtarget[1,1] = 1/sqrt(2)
+  # vtarget[1,2] = -1im/sqrt(2)
+  # vtarget[2,1] = -1im/sqrt(2)
+  # vtarget[2,2] = 1/sqrt(2)
 
   rotmat = [1 0; 0 exp(1im*2*pi*fa*T)]
   utarget = rotmat' * vtarget # add a matching quotation for emacs'
@@ -225,7 +225,7 @@ function testgrad2(pcof0::Array{Float64,1})
   return pl1, pl2
 end
 
-function testfunc2(pcof0::Array{Float64,1})
+function testfunc2(pcof0::Array{Float64,1} = [0.,0.,0.,1.,1.,1.])
   N = 2
   Nguard = 0
   Ntot = N + Nguard
