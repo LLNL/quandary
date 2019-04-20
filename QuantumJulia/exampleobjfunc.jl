@@ -153,7 +153,7 @@ function testgrad()
    end
 end
 
-function testgrad2(pcof0::Array{Float64,1} = [0.,0.,0.,1.,1.,1.])
+function testgrad2(pcof0::Array{Float64,1} = [0.,0.,0.,1.,1.,1.],   verbose::Bool = true)
   N = 2
   Nguard = 0
   Ntot = N + Nguard
@@ -205,27 +205,34 @@ function testgrad2(pcof0::Array{Float64,1} = [0.,0.,0.,1.,1.,1.])
   eps = 1e-9
   pcof2 = pcof1
 
-  verbose = true
   weights = 2 # final gate fidelity
   penaltyweight = 2 # constant penalty coefficient, coefficient depends on guard level
     
-  objv1, grad1, td, labdrive, pl1, pl2  = objfunc.traceobjgrad(pcof1, params, order, verbose, true, weights, penaltyweight)
-  #    @show(grad1)
+  if verbose
+    objv1, grad1, td, labdrive, pl1, pl2  = objfunc.traceobjgrad(pcof1, params, order, verbose, true, weights, penaltyweight)
+  else
+    objv1, grad1  = objfunc.traceobjgrad(pcof1, params, order, verbose, true, weights, penaltyweight)
+  end
+  
   pcof2[kpar] = pcof1[kpar] + eps
+  #only compute objective function
   objv2  = objfunc.traceobjgrad(pcof2, params, order, false, false, weights, penaltyweight) # just evaluate the objective fcn
 
   @show(objv1)
   @show(objv2)
-  nmax = min(10,length(grad1))
-  @show(nmax)
-  @show(grad1[1:nmax])
+  npar = min(10,length(grad1))
+  @show(grad1[1:npar])
     
-  println("Component kpar = ", kpar, " Gradient: ", grad1[kpar], " Approximated by Finite-Differences: ", (objv2-objv1)/eps)
+  println("Component kpar = ", kpar, " Adjoint gradient: ", grad1[kpar], " Approximated by Finite-Differences: ", (objv2-objv1)/eps)
 
-  return pl1, pl2
-end
+  if verbose
+    return pl1, pl2
+  else
+    return
+  end
+end # end function
 
-function testfunc2(pcof0::Array{Float64,1} = [0.,0.,0.,1.,1.,1.])
+function testfunc2(pcof0::Array{Float64,1} = [0.,0.,0.,1.,1.,1.], verbose::Bool = true)
   N = 2
   Nguard = 0
   Ntot = N + Nguard
@@ -277,30 +284,36 @@ function testfunc2(pcof0::Array{Float64,1} = [0.,0.,0.,1.,1.,1.])
   kpar = 2 # needs to have the same value in traceobjgrad()
   pcof2 = pcof1
 
-  verbose = true
   weights = 2 # final gate fidelity
   penaltyweight = 2 # constant penalty coefficient, coefficient depends on guard level
     
-# retun fields for evaladjoiont=false
-  objv1, td, labdrive, pl1, pl2 = objfunc.traceobjgrad(pcof1, params, order, verbose, false, weights, penaltyweight)
-
+  # retun fields for evaladjoiont=false
+  if verbose
+    objv1, td, labdrive, pl1, pl2 = objfunc.traceobjgrad(pcof1, params, order, verbose, false, weights, penaltyweight)
+  else
+    objv1 = objfunc.traceobjgrad(pcof1, params, order, verbose, false, weights, penaltyweight)
+  end
   @show(objv1)
 
-  # save to file for quantum device (assumes samplerate=32)
-  smallnumber = 1e-17
-  savevec = zeros(320000) .+ smallnumber
-  @show(length(labdrive))
-  savevec[1:length(labdrive)] = labdrive
+  if verbose
+    # save to file for quantum device (assumes samplerate=32)
+    smallnumber = 1e-17
+    savevec = zeros(320000) .+ smallnumber
+    @show(length(labdrive))
+    savevec[1:length(labdrive)] = labdrive
 
-  filename = "control_quantum.dat"
-  println("Saving sampled control function for experiment on file '", filename, "'");
-  writedlm(filename,savevec)
+    filename = "control_quantum.dat"
+    println("Saving sampled control function for experiment on file '", filename, "'");
+    writedlm(filename,savevec)
 
-  # save to file for mesolve in qutip
-  filename = "control_qutip.dat"
-  println("Saving sampled control function for qutip on file '", filename, "'");
-  writedlm(filename, labdrive)
+    # save to file for mesolve in qutip
+    filename = "control_qutip.dat"
+    println("Saving sampled control function for qutip on file '", filename, "'");
+    writedlm(filename, labdrive)
 
-  return pl1, pl2
+    return pl1, pl2
+  else
+    return
+  end
 end
 

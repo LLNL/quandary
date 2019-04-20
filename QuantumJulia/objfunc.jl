@@ -39,7 +39,7 @@ function traceobjgrad(pcof0::Array{Float64,1},  params::parameters, order::Int64
   N = params.N    
   Nguard = params.Nguard  
   T = params.T
-  labframe = false
+  labframe = false # could simplify some calls by assuming labframe=false
   utarget = params.utarget
   cfl = params.cfl
   samplerate = params.samplerate
@@ -82,9 +82,11 @@ function traceobjgrad(pcof0::Array{Float64,1},  params::parameters, order::Int64
  
   # sub-matricesfor the Hamiltonian
   H0 , omega, amat, adag, number = setupmatrices(params.fa, params.xia, Ntot)
-  @show(H0)
-  @show(omega) # omega = 2*pi*fa*[0,1,2,...,Ntot-1]: 
-  @show(number)
+  if verbose
+    @show(H0)
+    @show(omega) # omega = 2*pi*fa*[0,1,2,...,Ntot-1]: 
+    @show(number)
+  end
 
   zeromat = zeros(Ntot,N) 
 
@@ -335,7 +337,10 @@ function traceobjgrad(pcof0::Array{Float64,1},  params::parameters, order::Int64
     # 	lambdar = zeromat
     # 	lambdai = zeromat
     # elseif weight == 2
+
     scomplex0 = tracefidcomplex(vr, -vi, vtargetr, vtargeti, labframe, t, omega)
+
+    # sr0 and si0 are never used?
     sr0 = real(scomplex0)
     si0 = imag(scomplex0)
 
@@ -345,11 +350,11 @@ function traceobjgrad(pcof0::Array{Float64,1},  params::parameters, order::Int64
     
     #Backward time stepping loop
     for step in nsteps-1:-1:0
-      scomplex0 = tracefidcomplex(vr, -vi, vtargetr, vtargeti, labframe, t, omega)
-      sr0 = real(scomplex0)
-      si0 = imag(scomplex0)
 
       # if weight == 1
+      # scomplex0 = tracefidcomplex(vr, -vi, vtargetr, vtargeti, labframe, t, omega)
+      # sr0 = real(scomplex0)
+      # si0 = imag(scomplex0)
       # 	hr0 = -weightf1(t,T)/N*(sr0*vtargetr + si0*vtargeti)
       # 	hi0 =  weightf1(t,T)/N*(sr0*vtargeti - si0*vtargetr)
       # end
@@ -364,14 +369,17 @@ function traceobjgrad(pcof0::Array{Float64,1},  params::parameters, order::Int64
       # end
      
       # separate out contributions from rfgrad and ifgrad (which determine the component of the gradient)
-#	 gr1, gi1 = fgradforce(amat, adag, vr, vi, rfalpha, ifalpha) # compute the forcing for (wr, wi)
-# UPDATE 
-      darr = ( (dai .- dai')*vr .- (dar .+ dar')*vi)
-      dari = ( (dar .+ dar')*vr .+ (dai .- dai')*vi)
-      dair = ( (dai .+ dai')*vi .+ (dar .- dar')*vr)
-      daii = (-(dai .+ dai')*vr .+ (dar .- dar')*vi)
-      tr_adjrf = tracefidreal(darr, dari, lambdar, lambdai)
+
+      # first 2 factors (darr and dari) have the rfgrad factor
+      darr = -(amat + adag)*vi
+      dari = (amat + adag)*vr # negative imaginary part
+      tr_adjrf = tracefidreal(darr, dari, lambdar, lambdai) # note that lambdai = negative imag part
+      
+      # second factors (dair and daii) are multiplied by the ifgrad factor
+      dair = (amat - adag)*vr
+      daii = (amat - adag)*vi # negative imaginary part
       tr_adjif = tracefidreal(dair, daii, lambdar, lambdai)
+
       tr_adj0  = rfgrad(t, splineparams)* tr_adjrf + ifgrad(t, splineparams)* tr_adjif
 
       #loop over stages
@@ -390,11 +398,10 @@ function traceobjgrad(pcof0::Array{Float64,1},  params::parameters, order::Int64
         # evolve vr, vi
         @inbounds t, vr, vi = timestep.step(t, vr, vi, dt*gamma[q], K0, S0, K05, S05, K1, S1, Ident)
 
-        scomplex1 = tracefidcomplex(vr, -vi, vtargetr, vtargeti, labframe, t, omega)
-        sr1 = real(scomplex1)
-        si1 = imag(scomplex1)
-
         # if weight == 1
+        # scomplex1 = tracefidcomplex(vr, -vi, vtargetr, vtargeti, labframe, t, omega)
+        # sr1 = real(scomplex1)
+        # si1 = imag(scomplex1)
         # 	hr1 = -weightf1(t,T)/N*(sr1*vtargetr + si1*vtargeti)
         # 	hi1 =  weightf1(t,T)/N*(sr1*vtargeti - si1*vtargetr)
         # end  
@@ -411,20 +418,22 @@ function traceobjgrad(pcof0::Array{Float64,1},  params::parameters, order::Int64
         # evolve lambdar, lambdai
         @inbounds temp, lambdar, lambdai = timestep.step(t0, lambdar, lambdai, dt*gamma[q], hi0, 0.5*(hr0 + hr1), hi1, K0, S0, K05, S05, K1, S1, Ident)
 
-# UPDATE
-        darr = ( (dai .- dai')*vr .- (dar .+ dar')*vi)
-        dari = ( (dar .+ dar')*vr .+ (dai .- dai')*vi)
-        dair = ( (dai .+ dai')*vi .+ (dar .- dar')*vr)
-        daii = (-(dai .+ dai')*vr .+ (dar .- dar')*vi)
-        tr_adjrf = tracefidreal(darr, dari, lambdar, lambdai)
+        # first 2 factors (darr and dari) have the rfgrad factor
+        darr = -(amat + adag)*vi
+        dari = (amat + adag)*vr # negative imaginary part
+        tr_adjrf = tracefidreal(darr, dari, lambdar, lambdai) # note that lambdai = negative imag part
+      
+        # second factors (dair and daii) are multiplied by the ifgrad factor
+        dair = (amat - adag)*vr
+        daii = (amat - adag)*vi # negative imaginary part
         tr_adjif = tracefidreal(dair, daii, lambdar, lambdai)
+
         tr_adj1  = rfgrad(t, splineparams)*tr_adjrf + ifgrad(t, splineparams)*tr_adjif
 
         # accumulate the gradient of the objective functional
         gradobjfadj = gradobjfadj + gamma[q]*dt*0.5*2.0*(tr_adj0 +  tr_adj1) # dt is negative
 
         # save for next stage
-        scomplex0 = scomplex1
         tr_adj0 = tr_adj1
         hr0 = hr1
         hi0 = hi1
@@ -444,8 +453,9 @@ function traceobjgrad(pcof0::Array{Float64,1},  params::parameters, order::Int64
     println("Objective functional objfv: ", objfv)
 		
     if evaladjoint
+      println("Forward integration of gradient[kpar=", kpar, "] of  primary objective function = ", dfdp, " ineqpengrad[kpar] = ", ineqpengrad[kpar])
       dfdp = dfdp + ineqpengrad[kpar]
-      println("Forward integration of gradient[kpar=", kpar, "] of objective function = ", dfdp, " ineqpengrad[kpar] = ", ineqpengrad[kpar])
+      println("Forward integration of gradient[kpar=", kpar, "] of  combined objective function = ", dfdp)
     end
     
     nlast = 1 + nsteps
@@ -770,7 +780,6 @@ end
 
 @inline function evalineqgrad(pcof::Array{Float64,1}, par0::Float64, par1::Float64)
   Npar = size(pcof,1)
-  @show(size(pcof,1))
   
   scalef = 1.0
 # testing
