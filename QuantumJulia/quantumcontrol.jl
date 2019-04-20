@@ -12,5 +12,5 @@ include("bsplines.jl")
 include("timesteptest.jl")
 include("bsplinetest.jl")
 include("objfunc.jl")
-include("exampleobjfunc.jl")
+include("testobjfunc.jl")
 

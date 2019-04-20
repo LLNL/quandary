@@ -53,6 +53,7 @@ function traceobjgrad(pcof0::Array{Float64,1},  params::parameters, order::Int64
   D = div(Psize, 2) # first D elements are the real coefficients; the second D elements are the imaginary ones  
   
   tinv = 1.0/T
+  scalef = 0.1 # weight factor for box benalty
  # Parameters used for the gradient
   kpar = params.kpar
 
@@ -320,8 +321,8 @@ function traceobjgrad(pcof0::Array{Float64,1},  params::parameters, order::Int64
 
   ufinalr = rotr'*vr - roti'*vi 
   ufinali = -rotr'*vi - roti'*vr 
-  ineqpenalty = evalineqpen(pcof, par0, par1);
-  objfv = objfv .+ ineqpenalty
+  boxpenalty = boxpen(pcof, par0, par1, scalef);
+  objfv = objfv .+ boxpenalty
 
   if evaladjoint
     if verbose
@@ -440,21 +441,21 @@ function traceobjgrad(pcof0::Array{Float64,1},  params::parameters, order::Int64
       end #for stages
     end # for step (backward time stepping loop)
  
-   ineqpengrad = evalineqgrad(pcof, par0, par1)
+   boxpenaltygrad = boxgrad(pcof, par0, par1, scalef)
    
     for k in 1:2*D
-      gradobjfadj[k] = gradobjfadj[k] + ineqpengrad[k]
+      gradobjfadj[k] = gradobjfadj[k] + boxpenaltygrad[k]
     end
      
   end # if evaladjoint
 
   if verbose
-    println("Inequality penalty: ", ineqpenalty)
+    println("Inequality penalty: ", boxpenalty)
     println("Objective functional objfv: ", objfv)
 		
     if evaladjoint
-      println("Forward integration of gradient[kpar=", kpar, "] of  primary objective function = ", dfdp, " ineqpengrad[kpar] = ", ineqpengrad[kpar])
-      dfdp = dfdp + ineqpengrad[kpar]
+      println("Forward integration of gradient[kpar=", kpar, "] of  primary objective function = ", dfdp, " boxpenaltygrad[kpar] = ", boxpenaltygrad[kpar])
+      dfdp = dfdp + boxpenaltygrad[kpar]
       println("Forward integration of gradient[kpar=", kpar, "] of  combined objective function = ", dfdp)
     end
     
@@ -534,10 +535,10 @@ function traceobjgrad(pcof0::Array{Float64,1},  params::parameters, order::Int64
 
 # return to calling routine
 if verbose && evaladjoint
-   return objfv, gradobjfadj, td, labdrive, plt1, plt2
+   return objfv, gradobjfadj, plt1, plt2, td, labdrive
 elseif verbose
   println("Returning from traceobjgrad with objfv, td, labdrive, plt1, plt2")
-  return objfv, td, labdrive, plt1, plt2
+  return objfv, plt1, plt2, td, labdrive
 elseif evaladjoint
   return objfv, gradobjfadj
 else
@@ -735,14 +736,18 @@ function plotunitary(us, T)
 
   for ii in 1:N
     titlestr = string("Abs(state) for initial data #", ii)
-    h = plot(title = titlestr, size = (1000, 1000))
+    h = plot(title = titlestr)
     for jj in 1:Ntot
       labstr = string("State ", jj)
-      plot!(t, abs.(us[jj,ii,:]), lab = labstr, legend=:left, linewidth = 2, xlabel = "Time")
+      plot!(t, abs.(us[jj,ii,:]), lab = labstr, legend=:left, linewidth = 2, xlabel = "Time", size=(750, 500))
      end
      plotarray[ii] = h
   end
-  plt = plot(plotarray..., layout = (N,1))
+  if N <= 2
+    plt = plot(plotarray..., layout = (N,1))
+  else
+    plt = plot(plotarray..., layout = N)
+  end
   return plt
 end
 
@@ -762,33 +767,21 @@ end
 	return pcof, par1, par0
 end
 
-@inline function evalineqpen(pcof::Array{Float64,1}, par_0::Float64, par_1::Float64)
+@inline function boxpen(pcof::Array{Float64,1}, par_0::Float64, par_1::Float64, scalef::Float64)
   Npar = size(pcof,1)
-  scalef = 1.0
-# testing
-#  scalef = 0
+
   penalty = 0.0;
   dp2 = par_1 - par_0
   
-  # for k in 1:Npar
-  #   penalty = penalty - ( log((pcof[k] - par_0)/dp2) + log((par_1 - pcof[k])/dp2))
-  # end
   penalty = -sum( log.( (pcof .- par_0)./dp2 ) + log.( (par_1 .- pcof)./dp2 ) )
   penalty = scalef .* (penalty/Npar .- 2*log(2)) # why subtract off 2*log(2)?
   return penalty
 end
 
-@inline function evalineqgrad(pcof::Array{Float64,1}, par0::Float64, par1::Float64)
+@inline function boxgrad(pcof::Array{Float64,1}, par0::Float64, par1::Float64, scalef::Float64)
   Npar = size(pcof,1)
   
-  scalef = 1.0
-# testing
-# scalef = 0
   pengrad = zeros(Npar)
-
-  # for k in 1:Npar
-  #   pengrad[k] = scalef*(1.0./(par1 .- pcof[k]) .- 1.0./(pcof[k] .- par0))/Npar
-  # end
 
   pengrad = scalef .*(1.0./(par1 .- pcof) .- 1.0./(pcof .- par0)) ./ Npar
   return pengrad
