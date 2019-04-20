@@ -8,33 +8,31 @@ using Plots
 using Printf
 
 struct parameters
-	N ::Int64		# vector dimension
-	Nguard ::Int64 	# number of extra levels
-	T::Float64		# final time
-	maxpar::Float64
-	cfl::Float64
-	utarget # type Array{Cmplx64,2} ?
-        fa:: Float64 # in GHz
-        xia:: Float64 # in GHz
-        samplerate::Int64 # plotting sample rate per ns
-        kpar::Int64 # element of gradient to test
+  N ::Int64		# vector dimension
+  Nguard ::Int64 	# number of extra levels
+  T::Float64		# final time
+  maxpar::Float64
+  cfl::Float64
+  utarget # type Array{Cmplx64,2} ?
+  fa:: Float64 # in GHz
+  xia:: Float64 # in GHz
+  samplerate::Int64 # plotting sample rate per ns
+  kpar::Int64 # element of gradient to test
 
+  function parameters(N, Nguard,T, maxpar,cfl, utarget, fa, xia)		
+    samplerate = 32
+    kpar = 1
+    new(N, Nguard, T, maxpar, cfl, utarget, samplerate, kpar)
+  end
 
-	function parameters(N, Nguard,T, maxpar,cfl, utarget, fa, xia)		
-          samplerate = 32
-          kpar = 1
-	  new(N, Nguard, T, maxpar, cfl, utarget, samplerate, kpar)
-	end
+  function parameters(N, Nguard,T, maxpar,cfl, utarget, fa, xia, samplerate)		
+    kpar = 1
+    new(N, Nguard, T, maxpar, cfl, utarget, fa, xia, samplerate, kpar)
+  end
 
-	function parameters(N, Nguard,T, maxpar,cfl, utarget, fa, xia, samplerate)		
-          kpar = 1
-	  new(N, Nguard, T, maxpar, cfl, utarget, fa, xia, samplerate, kpar)
-	end
-
-	function parameters(N, Nguard,T, maxpar,cfl, utarget, fa, xia, samplerate, kpar)
-	  new(N, Nguard, T, maxpar, cfl, utarget, fa, xia, samplerate, kpar)
-	end
-	#multiple dispatch with extra struct for H0 = 0 ?
+  function parameters(N, Nguard,T, maxpar,cfl, utarget, fa, xia, samplerate, kpar)
+    new(N, Nguard, T, maxpar, cfl, utarget, fa, xia, samplerate, kpar)
+  end
 end
 
 function traceobjgrad(pcof0::Array{Float64,1},  params::parameters, order::Int64 =2, verbose::Bool = false, evaladjoint::Bool = true, weight::Int64 = 2, penaltyweight::Int64 = 2)  
@@ -69,7 +67,7 @@ function traceobjgrad(pcof0::Array{Float64,1},  params::parameters, order::Int64
   end
   # Make sure that each element of pcof is in the prescribed range
   eps = 1e-9
-  pcof, par1, par0 = boundcof(pcof, D, params.maxpar, eps)
+  pcof, par1, par0 = boundcof(pcof, 2*D, params.maxpar, eps)
       
   if verbose
     println("Target (lab frame) unitary:");
@@ -79,7 +77,7 @@ function traceobjgrad(pcof0::Array{Float64,1},  params::parameters, order::Int64
       end
       @printf("\n")
     end
-    println("Vector dim Ntot =", Ntot , ", Guard levels Nguard = ", Nguard , ", Param dim D = ", D , ", pcof(1) = ", pcof[1], ", CFL = ", cfl, " penaltystyle = ", penaltyweight, " samplerate = ", samplerate)
+    println("Vector dim Ntot =", Ntot , ", Guard levels Nguard = ", Nguard , ", Param dim 2*D = ", 2*D , ", pcof(1) = ", pcof[1], ", CFL = ", cfl, " penaltystyle = ", penaltyweight, " samplerate = ", samplerate)
   end
  
   # sub-matricesfor the Hamiltonian
@@ -307,7 +305,7 @@ function traceobjgrad(pcof0::Array{Float64,1},  params::parameters, order::Int64
   end #forward time steppingloop
 
   #if weight == 2
-  objfv = objfv + (1-tracefidreal(vr, vi, vtargetr, vtargeti, labframe,t, omega))
+  objfv = objfv + (1-tracefidabs2(vr, vi, vtargetr, vtargeti, labframe,t, omega)) # this computes | tr(V.dag * Vtarget) |^2
   if evaladjoint && verbose
     salpha1 = tracefidcomplex(wr, -wi, vtargetr, vtargeti, labframe, t, omega)
     scomplex1 = tracefidcomplex(vr, -vi, vtargetr, vtargeti, labframe, t, omega)
@@ -396,25 +394,23 @@ function traceobjgrad(pcof0::Array{Float64,1},  params::parameters, order::Int64
         sr1 = real(scomplex1)
         si1 = imag(scomplex1)
 
-        if weight == 1
-        	hr1 = -weightf1(t,T)/N*(sr1*vtargetr + si1*vtargeti)
-        	hi1 =  weightf1(t,T)/N*(sr1*vtargeti - si1*vtargetr)
-        end  
+        # if weight == 1
+        # 	hr1 = -weightf1(t,T)/N*(sr1*vtargetr + si1*vtargeti)
+        # 	hi1 =  weightf1(t,T)/N*(sr1*vtargeti - si1*vtargetr)
+        # end  
         
-        if penaltyweight == 1
-          hr1[N+1:N+Nguard,:] = xi*penalf1(t,T)*vr[N+1:N+Nguard,:]
-          hi1[N+1:N+Nguard,:] = xi*penalf1(t,T)*vi[N+1:N+Nguard,:]
-        else
-# needs modification if combined with the weight==1 case above
-          hr1 = tinv.*penalf2adj(vr, wmat)
-          hi1 = tinv.*penalf2adj(vi, wmat)
-        end  
+        # if penaltyweight == 1
+        #   hr1[N+1:N+Nguard,:] = xi*penalf1(t,T)*vr[N+1:N+Nguard,:]
+        #   hi1[N+1:N+Nguard,:] = xi*penalf1(t,T)*vi[N+1:N+Nguard,:]
+        # else
+        # needs modification if combined with the weight==1 case above
+        hr1 = tinv.*penalf2adj(vr, wmat)
+        hi1 = tinv.*penalf2adj(vi, wmat)
+        # end  
+
         # evolve lambdar, lambdai
         @inbounds temp, lambdar, lambdai = timestep.step(t0, lambdar, lambdai, dt*gamma[q], hi0, 0.5*(hr0 + hr1), hi1, K0, S0, K05, S05, K1, S1, Ident)
 
-#        mul!(dar,rr,amat)
-#        mul!(dai,ri,amat)
-          
 # UPDATE
         darr = ( (dai .- dai')*vr .- (dar .+ dar')*vi)
         dari = ( (dar .+ dar')*vr .+ (dai .- dai')*vi)
@@ -436,8 +432,8 @@ function traceobjgrad(pcof0::Array{Float64,1},  params::parameters, order::Int64
     end # for step (backward time stepping loop)
  
    ineqpengrad = evalineqgrad(pcof, par0, par1)
-  
-    for k in 1:D
+   
+    for k in 1:2*D
       gradobjfadj[k] = gradobjfadj[k] + ineqpengrad[k]
     end
      
@@ -449,7 +445,7 @@ function traceobjgrad(pcof0::Array{Float64,1},  params::parameters, order::Int64
 		
     if evaladjoint
       dfdp = dfdp + ineqpengrad[kpar]
-      println("Forward integration of gradient[kpar=", kpar, "] of objective function = ", dfdp, " ineqpengrad = ", ineqpengrad[kpar])
+      println("Forward integration of gradient[kpar=", kpar, "] of objective function = ", dfdp, " ineqpengrad[kpar] = ", ineqpengrad[kpar])
     end
     
     nlast = 1 + nsteps
@@ -588,22 +584,6 @@ end
 #   return omega
 # end
 
-# bound pcof to allowed amplitude
-@inline function boundcof(pcof::Array{Float64,1}, D::Int64, maxpar::Float64, eps::Float64)
-	par1 = maxpar
-	par0 = -maxpar
-
-	for q in 1:D
-  	  if pcof[q] > par1-eps
-  	    pcof[q] = par1-eps
-  	  end
-  	  if pcof[q] < par0+eps
-  	    pcof[q] = par0+eps
-  	  end
-  	end
-	return pcof, par1, par0
-end
-
 @inline function weightf1(t::Float64, T::Float64)
   # period
   tp = T/10
@@ -616,7 +596,7 @@ end
   w = xi*64*mask.*(0.5 + tau).^3 .* (0.5 - tau).^3
 end
 
-@inline function tracefidreal(ur::Array{Float64,2}, vi::Array{Float64,2}, vtargetr::Array{Float64,2}, vtargeti::Array{Float64,2}, labframe::Bool,t::Float64,omega::Array{Float64,1})
+@inline function tracefidabs2(ur::Array{Float64,2}, vi::Array{Float64,2}, vtargetr::Array{Float64,2}, vtargeti::Array{Float64,2}, labframe::Bool,t::Float64,omega::Array{Float64,1})
   N = size(vtargetr,2)
   if labframe
     for I in 1:N
@@ -630,7 +610,7 @@ end
     ua = ur
     va = -vi
   end
- 
+# NOTE: this routine computes | tr((ua+i va).dag * (vtr + i vtr)) | ^2 
   fidelity = (tr(ua' * vtargetr + va' * vtargeti)/N)^2 + (tr(ua' * vtargeti - va' * vtargetr)/N)^2
 end
 
@@ -730,21 +710,6 @@ end
   end
 end
 
-@inline function evalineqpen(pcof::Array{Float64,1}, par_0::Float64, par_1::Float64)
-  D = size(pcof,1)
-  N = size(pcof,2)
-  scalef = 0.1
-# testing
-#  scalef = 0
-  penalty = zeros(1,N);
-  dp2 = par_1 - par_0
-  
-  for k in 1:D
-    penalty[1,:] = penalty[1,:] .- ( log.((pcof[k,:] .- par_0)/dp2) .+ log.((par_1 .- pcof[k,:])/dp2))
-  end
-  penalty = scalef .* (penalty/D .- 2*log(2))
-end
-
 function plotunitary(us, T)
   nsteps = length(us[1,1,:])  
   Ntot = length(us[:,1,1])
@@ -771,17 +736,53 @@ function plotunitary(us, T)
   return plt
 end
 
-@inline function evalineqgrad(pcof::Array{Float64,1}, par0::Float64, par1::Float64)
-  D = size(pcof,1)
-  N = size(pcof,2)
-  scalef = 0.1
+# bound pcof to allowed amplitude
+@inline function boundcof(pcof::Array{Float64,1}, Npar::Int64, maxpar::Float64, eps::Float64)
+	par1 = maxpar
+	par0 = -maxpar
+
+	for q in 1:Npar
+  	  if pcof[q] > par1-eps
+  	    pcof[q] = par1-eps
+  	  end
+  	  if pcof[q] < par0+eps
+  	    pcof[q] = par0+eps
+  	  end
+  	end
+	return pcof, par1, par0
+end
+
+@inline function evalineqpen(pcof::Array{Float64,1}, par_0::Float64, par_1::Float64)
+  Npar = size(pcof,1)
+  scalef = 1.0
 # testing
 #  scalef = 0
-  pengrad = zeros(D,N)
-  for k in 1:D
-    pengrad[k,:] = scalef*(1.0./(par1 .- pcof[k,:]) .- 1.0./(pcof[k,:] .- par0))/D
-  end
- return pengrad
+  penalty = 0.0;
+  dp2 = par_1 - par_0
+  
+  # for k in 1:Npar
+  #   penalty = penalty - ( log((pcof[k] - par_0)/dp2) + log((par_1 - pcof[k])/dp2))
+  # end
+  penalty = -sum( log.( (pcof .- par_0)./dp2 ) + log.( (par_1 .- pcof)./dp2 ) )
+  penalty = scalef .* (penalty/Npar .- 2*log(2)) # why subtract off 2*log(2)?
+  return penalty
+end
+
+@inline function evalineqgrad(pcof::Array{Float64,1}, par0::Float64, par1::Float64)
+  Npar = size(pcof,1)
+  @show(size(pcof,1))
+  
+  scalef = 1.0
+# testing
+# scalef = 0
+  pengrad = zeros(Npar)
+
+  # for k in 1:Npar
+  #   pengrad[k] = scalef*(1.0./(par1 .- pcof[k]) .- 1.0./(pcof[k] .- par0))/Npar
+  # end
+
+  pengrad = scalef .*(1.0./(par1 .- pcof) .- 1.0./(pcof .- par0)) ./ Npar
+  return pengrad
 end
 
 function screal(vr::Array{Float64,2}, vi::Array{Float64,2}, wr::Array{Float64,2}, wi::Array{Float64,2}, Nguard::Int64,vrguard::Array{Float64,2})
@@ -893,7 +894,7 @@ function grupdate(gr0::Array{Float64,2}, gi0::Array{Float64,2}, dai::Array{Float
   return gr0, gi0
 end
 
-# new routine for computing the forcing for the forward gradient
+# new routine for computing the forcing for one component of the forward gradient
 function fgradforce(amat::Array{Float64,2}, adag::Array{Float64,2}, vr::Array{Float64,2}, vi::Array{Float64,2}, gralpha::Float64, gialpha::Float64)
 
   fr = gialpha.* (amat .-  adag)*vr  .- gralpha.* (amat .+ adag)*vi
@@ -903,4 +904,4 @@ end
 
 
 
-end
+end #module
