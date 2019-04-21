@@ -1,40 +1,44 @@
 
 using Optim
   N = 2
-
   Nguard = 0
-
   Ntot = N + Nguard
 	
-  utarget = zeros(ComplexF64,Ntot,N)
-
-  # pi/2 y-rot gate
-  utarget[1,1] = 1/sqrt(2)
-  utarget[1,2] = -1/sqrt(2)
-  utarget[2,1] = 1/sqrt(2)
-  utarget[2,2] = 1/sqrt(2)
-  filename =   "control_yrot_200_formate.dat"
-
-  # pi/2 x-rot gate
-  
-  # utarget[1,1] = 1.0/sqrt(2)
-  #  utarget[1,2] = -1im*1.0/sqrt(2)
-  #  utarget[2,1] = -1im*1.0/sqrt(2)
-  #  utarget[2,2] = 1.0/sqrt(2)
-  #  filename =   "control_xrot_200_formate.dat"
-
   cfl = 0.01
-  T = 100.0
-
-  testadjoint = 0
+  T = 100
   maxpar =0.09
+
+  # frequencies (in GHz, will be multiplied by 2*pi to get angular frequencies in the Hamiltonian matrix)
+  fa = 4.10336
+  xia = 2* 0.1099
+  samplerate = 64
 	
-  params = objfunc.parameters(N,Nguard,T,testadjoint,maxpar,cfl, utarget)
-	
+# specify target gate in the rotating frame
+  vtarget = zeros(ComplexF64,Ntot,N)
+
+  # -pi/2 y-rot gate pcof0=[0,0,0,1,1,1]
+  vtarget[1,1] = 1/sqrt(2)
+  vtarget[1,2] = 1/sqrt(2)
+  vtarget[2,1] = -1/sqrt(2)
+  vtarget[2,2] = 1/sqrt(2)
+
+  # pi/2 x-rot gate: pcof0=[1,1,1,0,0,0]
+  # vtarget[1,1] = 1/sqrt(2)
+  # vtarget[1,2] = -1im/sqrt(2)
+  # vtarget[2,1] = -1im/sqrt(2)
+  # vtarget[2,2] = 1/sqrt(2)
+
+  rotmat = [1 0; 0 exp(1im*2*pi*fa*T)]
+  utarget = rotmat' * vtarget # add a matching quotation for emacs'
+
+  kpar = 5 # test this component of the gradient
+  
+  params = objfunc.parameters(N,Nguard,T,maxpar,cfl, utarget, fa, xia, samplerate, kpar) 
 
   #	pcof0  = zeros(351) 
-  pcof0  = zeros(1200) 
   #pcof0 = (rand(250) .- 0.5).*maxpar*0.1
+  pcof0  = zeros(6) 
+
   order = 2
   weight = 2
   penaltyweight = 2
@@ -65,9 +69,6 @@ using Optim
   objv, grad, pl1, pl2, td, labdrive = objfunc.traceobjgrad(pcof,params,order, true, true, weight, penaltyweight)
 
   println("Objfunc = ", objv)
-  pl1
-
-  #plot(td,labdrive)
 
   # save to file
   using DelimitedFiles
@@ -77,8 +78,14 @@ using Optim
   @show(length(labdrive))
   savevec[1:length(labdrive)] = labdrive
 
+  filename = "control_quantum.dat"
   println("Saving sampled control function on file '", filename, "'");
   writedlm(filename,savevec)
+
+  # save to file for mesolve in qutip
+  filename = "control_qutip.dat"
+  println("Saving sampled control function for qutip on file '", filename, "'");
+  writedlm(filename, labdrive)
 
   #save the b-spline coeffs
   bsname = "pcof.dat"

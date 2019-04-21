@@ -53,7 +53,7 @@ function traceobjgrad(pcof0::Array{Float64,1},  params::parameters, order::Int64
   D = div(Psize, 2) # first D elements are the real coefficients; the second D elements are the imaginary ones  
   
   tinv = 1.0/T
-  scalef = 0.1 # weight factor for box benalty
+  scalef = 0.5 # weight factor for box benalty
  # Parameters used for the gradient
   kpar = params.kpar
 
@@ -67,7 +67,7 @@ function traceobjgrad(pcof0::Array{Float64,1},  params::parameters, order::Int64
     xi = xif/max(1,Nguard)          # coef for penalizing forbidden states
   end
   # Make sure that each element of pcof is in the prescribed range
-  eps = 1e-9
+  eps = 1e-6
   pcof, par1, par0 = boundcof(pcof, 2*D, params.maxpar, eps)
       
   if verbose
@@ -103,6 +103,7 @@ function traceobjgrad(pcof0::Array{Float64,1},  params::parameters, order::Int64
 
   # parameters for time integrator
   pcofmax = maximum(abs.(pcof))
+  pcofmax = max(pcofmax, 0.01*params.maxpar)
   K1 =  pcofmax.*( amat .+  adag)
   lamb = eigvals(K1)
   maxeig2 = maximum(lamb)
@@ -503,10 +504,10 @@ function traceobjgrad(pcof0::Array{Float64,1},  params::parameters, order::Int64
 
     # Evaluate control function at the discrete time levels
     nplot = round(Int64, T*samplerate)
-    @show(nplot)
+    #@show(nplot)
     dt = 1.0/samplerate
-    td = range(0, stop = T, length = nplot+1)
-    @show(td[nplot])
+    td = range(0, stop = T, length = nplot+1) # td[1]=0, td[nplot+1]=T, td[1] = 1/samplerate
+    #@show(td[nplot])
 
     rplot(t) = rfunc(t,splineparams)
     iplot(t) = ifunc(t,splineparams)

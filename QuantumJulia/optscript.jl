@@ -1,62 +1,71 @@
 
 using Optim
-	N = 4
-	#N = 2
+  N = 4
+  Nguard = 3
+  Ntot = N + Nguard
 	
-	Nguard = 3
+  Ident = Matrix{Float64}(I, Ntot, Ntot)   
+  utarget = Ident[1:Ntot,1:N]
 
-	Ntot = N + Nguard
+  utarget[:,3] = Ident[:,4]
+  utarget[:,4] = Ident[:,3]
+
+  cfl = 0.025 # how small does the time step need to be?
+  T = 100.0
+  maxpar =0.09 # there is a factor 2 in the conversion to the lab frame
+
+  # frequencies (in GHz, will be multiplied by 2*pi to get angular frequencies in the Hamiltonian matrix)
+  fa = 4.10336
+  xia = 2* 0.1099
+  samplerate = 64
 	
-	Ident = Matrix{Float64}(I, Ntot, Ntot)   
-	utarget = Ident[1:Ntot,1:N]
+  kpar = 96 # test this component of the gradient
+  
+  params = objfunc.parameters(N,Nguard,T,maxpar,cfl, utarget, fa, xia, samplerate, kpar) 
 
-	utarget[:,3] = Ident[:,4]
-	utarget[:,4] = Ident[:,3]
+  pcof0  = 0.01*maxpar*rand(300) # initial guess must be even (real + imag parts)
+  #pcof0  = zeros(250) # this initial guess runs into trouble with the box constraints
 
-	cfl = 0.05
+  order = 2
+  weight = 2
+  penaltyweight = 2
 
-	T = 150.0
-
-	testadjoint = 0
-	maxpar =0.09
-	
-	params = objfunc.parameters(N,Nguard,T,testadjoint,maxpar,cfl, utarget)
-	
-
-#	pcof0  = zeros(351) 
-	pcof0  = zeros(250) 
-	#pcof0 = (rand(250) .- 0.5).*maxpar*0.1
-	order = 2
-	weight = 2
-	penaltyweight = 2
-
-    function f(pcof)
+  function f(pcof)
     #@show(pcof)
-     f =objfunc.traceobjgrad(pcof,params,order,false,false,weight,penaltyweight )
+    f =objfunc.traceobjgrad(pcof,params,order,false,false,weight,penaltyweight )
     # @show(f)
-     return f[1]
-     end
+    return f[1]
+  end
 
-    function g!(G,pcof,params,order)
-    	objf, Gtemp = objfunc.traceobjgrad(pcof,params,order,false, true, weight, penaltyweight )
+  function g!(G,pcof,params,order)
+    objf, Gtemp = objfunc.traceobjgrad(pcof,params,order,false, true, weight, penaltyweight )
     	
-    	Gtemp = vcat(Gtemp...) 
-    	for i in 1:length(Gtemp)
-    	  G[i] = Gtemp[i]
-    	end
+    Gtemp = vcat(Gtemp...) 
+    for i in 1:length(Gtemp)
+      G[i] = Gtemp[i]
     end
+  end
 
-   gopt!(G,pcof) = g!(G,pcof,params,order)
+  gopt!(G,pcof) = g!(G,pcof,params,order)
 
-   res = optimize(f, gopt!, pcof0, LBFGS(),Optim.Options(show_trace =true))
+  res = optimize(f, gopt!, pcof0, LBFGS(), Optim.Options(show_trace =true, iterations=60))
 
-   @time pcof = Optim.minimizer(res)
-   display(res)
+  @time pcof = Optim.minimizer(res)
+  display(res)
 
-   objv, grad, pl1, pl2 = objfunc.traceobjgrad(pcof,params,order, true, true, weight, penaltyweight)
+  objv, grad, pl1, pl2, td, labdrive = objfunc.traceobjgrad(pcof,params,order, true, true, weight, penaltyweight)
 
-   println("Objfunc = ", objv)
-   pl1
+  println("Objfunc = ", objv)
+
+  # save to file for mesolve in qutip
+  filename = "control_qutip.dat"
+  println("Saving sampled control function for qutip on file '", filename, "'");
+  writedlm(filename, labdrive)
+
+  #save the b-spline coeffs
+  bsname = "pcof.dat"
+  println("Saving B-spline coefficients on file '", bsname, "'");
+  writedlm(bsname, pcof)
 
 
 	
