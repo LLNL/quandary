@@ -71,31 +71,24 @@ function traceobjgrad(pcof0::Array{Float64,1},  params::parameters, order::Int64
   pcof, par1, par0 = boundcof(pcof, 2*D, params.maxpar, eps)
       
   if verbose
-    println("Target (lab frame) unitary:");
-    for q in 1:N
-      for c in 1:N
-        @printf("%11.4e %+11.4eim ", real(utarget[q,c]), imag(utarget[q,c]))
-      end
-      @printf("\n")
-    end
-    println("Vector dim Ntot =", Ntot , ", Guard levels Nguard = ", Nguard , ", Param dim 2*D = ", 2*D , ", pcof(1) = ", pcof[1], ", CFL = ", cfl, " penaltystyle = ", penaltyweight, " samplerate = ", samplerate)
+    println("Vector dim Ntot =", Ntot , ", Guard levels Nguard = ", Nguard , ", Param dim 2*D = ", 2*D , ", CFL = ", cfl, " samplerate = ", samplerate)
   end
  
   # sub-matricesfor the Hamiltonian
   H0 , omega, amat, adag, number = setupmatrices(params.fa, params.xia, Ntot)
-  if verbose
-    @show(H0)
-    @show(omega) # omega = 2*pi*fa*[0,1,2,...,Ntot-1]: 
-    @show(number)
-  end
+  # if verbose
+  #   @show(H0)
+  #   @show(omega) # omega = 2*pi*fa*[0,1,2,...,Ntot-1]: 
+  #   @show(number)
+  # end
 
   zeromat = zeros(Ntot,N) 
 
 # coefficients for penalty style #2 (wmat is a Diagonal matrix)
   wmat = wmatsetup(Ntot, Nguard)
-  if verbose && Nguard>0
-    @show(wmat[N+1:Ntot, N+1:Ntot])
-  end
+  # if verbose && Nguard>0
+  #   @show(wmat[N+1:Ntot, N+1:Ntot])
+  # end
 
   # parameters for tbsplines
   dtknot = T/(D - 2)
@@ -109,9 +102,9 @@ function traceobjgrad(pcof0::Array{Float64,1},  params::parameters, order::Int64
   maxeig2 = maximum(lamb)
   maxeig1 = maximum(abs.(H0))./(2*pi)
 
-  if verbose
-    println("maxeig1 = ", maxeig1,", pcofmax =" ,pcofmax ,", maxeig2 = ", maxeig2)
-  end
+  # if verbose
+  #   println("maxeig1 = ", maxeig1,", pcofmax =" ,pcofmax ,", maxeig2 = ", maxeig2)
+  # end
 
   maxeig = 0.5(maxeig1 + maxeig2)
   dt = cfl/maxeig
@@ -135,15 +128,15 @@ function traceobjgrad(pcof0::Array{Float64,1},  params::parameters, order::Int64
   vtargetr = real((rotr + 1im*roti)*utarget)
   vtargeti = imag((rotr + 1im*roti)*utarget)
 
-  if verbose
-    println("Target (rot frame) unitary:");
-    for q in 1:N
-      for c in 1:N
-        @printf("%11.4e %+11.4eim ", vtargetr[q,c], vtargeti[q,c])
-      end
-      @printf("\n")
-    end
-  end
+  # if verbose
+  #   println("Target (rot frame) unitary:");
+  #   for q in 1:N
+  #     for c in 1:N
+  #       @printf("%11.4e %+11.4eim ", vtargetr[q,c], vtargeti[q,c])
+  #     end
+  #     @printf("\n")
+  #   end
+  # end
   
   #real and imagianary part of initial condition
   vr = U0
@@ -309,11 +302,14 @@ function traceobjgrad(pcof0::Array{Float64,1},  params::parameters, order::Int64
   end #forward time steppingloop
 
   #if weight == 2
-  objfv = objfv + (1-tracefidabs2(vr, vi, vtargetr, vtargeti, labframe,t, omega)) # this computes | tr(V.dag * Vtarget) |^2
+  primaryobjf = (1-tracefidabs2(vr, vi, vtargetr, vtargeti, labframe,t, omega)) # this computes | tr(V.dag * Vtarget) |^2
+  objfv = objfv + primaryobjf
+
   if evaladjoint && verbose
     salpha1 = tracefidcomplex(wr, -wi, vtargetr, vtargeti, labframe, t, omega)
     scomplex1 = tracefidcomplex(vr, -vi, vtargetr, vtargeti, labframe, t, omega)
-    objf_alpha1 = objf_alpha1 - real(2*conj(scomplex1)*salpha1)
+    primaryobjgrad = - real(2*conj(scomplex1)*salpha1)
+    objf_alpha1 = objf_alpha1 + primaryobjgrad
   end  
   #  end
 
@@ -451,16 +447,17 @@ function traceobjgrad(pcof0::Array{Float64,1},  params::parameters, order::Int64
   end # if evaladjoint
 
   if verbose
-    println("Inequality penalty: ", boxpenalty)
-    println("Objective functional objfv: ", objfv)
+    println("Total objective func: ", objfv)
+    println("Primary objective func: ", primaryobjf, " Box inequality penalty: ", boxpenalty, " Guard state penalty: ", objfv-primaryobjf - boxpenalty)
 		
     if evaladjoint
-      println("Forward integration of gradient[kpar=", kpar, "] of  primary objective function = ", dfdp, " boxpenaltygrad[kpar] = ", boxpenaltygrad[kpar])
       dfdp = dfdp + boxpenaltygrad[kpar]
-      println("Forward integration of gradient[kpar=", kpar, "] of  combined objective function = ", dfdp)
+      println("Forward integration of total gradient[kpar=", kpar, "]: ", dfdp);
+      println("Primary grad = ", primaryobjgrad, " Box penalty grad = ", boxpenaltygrad[kpar], " Guard state grad = ", dfdp - boxpenaltygrad[kpar] - primaryobjgrad )
     end
     
     nlast = 1 + nsteps
+    println("Unitary test:")
     println(" Column   Vnrm")
     for q in 1:N
       Vnrm = usaver[:,q,nlast]' * usaver[:,q,nlast] + usavei[:,q,nlast]' * usavei[:,q,nlast]
@@ -469,34 +466,47 @@ function traceobjgrad(pcof0::Array{Float64,1},  params::parameters, order::Int64
     end
 
 # output final unitary
-    println("Final (rot frame) unitary:");
-    for q in 1:N
-      for c in 1:N
-        @printf("%11.4e %+11.4eim ", vfinalr[q,c], vfinali[q,c])
-      end
-      @printf("\n")
-    end
+    # println("Final (rot frame) unitary:");
+    # for q in 1:N
+    #   for c in 1:N
+    #     @printf("%11.4e %+11.4eim ", vfinalr[q,c], vfinali[q,c])
+    #   end
+    #   @printf("\n")
+    # end
 
-    println("Final (lab frame) unitary:");
-    for q in 1:N
-      for c in 1:N
-        @printf("%11.4e %+11.4eim ", ufinalr[q,c], ufinali[q,c])
-      end
-      @printf("\n")
-    end
-
-# output primary objective function (infidelity at final time)
-    fidelityrot = abs(tracefidcomplex(vfinalr, vfinali, vtargetr, vtargeti, labframe, t, omega))
-    println("Final trace fidelity = ", fidelityrot);
+    # println("Target (lab frame) unitary:");
+    # for q in 1:N
+    #   for c in 1:N
+    #     @printf("%11.4e %+11.4eim ", real(utarget[q,c]), imag(utarget[q,c]))
+    #   end
+    #   @printf("\n")
+    # end
     
-# Also output L2 norm of last energy level
-    normlastguard = zeros(N)
-    for q in 1:N
-      normlastguard[q] = sqrt( (usaver[Ntot,q,:]' * usaver[Ntot,q,:] + usavei[Ntot,q,:]' * usavei[Ntot,q,:])/nsteps );
-    end
-    # print the results
-    for q in 1:N
-      println("Initial data # ", q, " L2 norm last guard level = ", normlastguard[q]) 
+    # println("Final (lab frame) unitary:");
+    # for q in 1:N
+    #   for c in 1:N
+    #     @printf("%11.4e %+11.4eim ", ufinalr[q,c], ufinali[q,c])
+    #   end
+    #   @printf("\n")
+    # end
+
+    # output primary objective function (infidelity at final time)
+    fidelityrot = abs(tracefidcomplex(vfinalr, vfinali, vtargetr, vtargeti, labframe, t, omega))
+    println("Final trace infidelity = ", 1.0 - fidelityrot, " trace fidelity = ", fidelityrot);
+    
+    # Also output L2 norm of last energy level
+    if Ntot>N
+      normlastguard = zeros(N)
+      for q in 1:N
+        normlastguard[q] = sqrt( (usaver[Ntot,q,:]' * usaver[Ntot,q,:] + usavei[Ntot,q,:]' * usavei[Ntot,q,:])/nsteps );
+      end
+      # print the results
+      # for q in 1:N
+      #   println("Initial data # ", q, " L2 norm last guard level = ", normlastguard[q]) 
+      # end
+      println("L2 norm last guard level (max) = ", maximum(normlastguard))
+    else
+      println("No guard levels in this simulation");
     end
 
     # make plots
@@ -727,9 +737,9 @@ function plotunitary(us, T)
   Ntot = length(us[:,1,1])
   N =  length(us[1,:,1])
 
-  if Ntot != N
-    println("INFO plotunitary: Ntot= ", Ntot, " and N = ", N ," are not equal")
-  end
+  # if Ntot != N
+  #   println("INFO plotunitary: Ntot= ", Ntot, " and N = ", N ," are not equal")
+  # end
   t = range(0, stop = T, length = nsteps)
 
 # one figure for the response of each basis vector

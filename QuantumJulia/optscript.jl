@@ -1,7 +1,7 @@
 
 using Optim
   N = 4
-  Nguard = 3
+  Nguard = 2
   Ntot = N + Nguard
 	
   Ident = Matrix{Float64}(I, Ntot, Ntot)   
@@ -23,8 +23,8 @@ using Optim
   
   params = objfunc.parameters(N,Nguard,T,maxpar,cfl, utarget, fa, xia, samplerate, kpar) 
 
-  pcof0  = 0.01*maxpar*rand(300) # initial guess must be even (real + imag parts)
-  #pcof0  = zeros(250) # this initial guess runs into trouble with the box constraints
+  pcof0  = 0.01*maxpar*rand(250) # initial guess must be even (real + imag parts)
+  #pcof0  = zeros(250) # this initial guess converges ok, but gives a different solution
 
   order = 2
   weight = 2
@@ -55,7 +55,7 @@ using Optim
 
   objv, grad, pl1, pl2, td, labdrive = objfunc.traceobjgrad(pcof,params,order, true, true, weight, penaltyweight)
 
-  println("Objfunc = ", objv)
+  # println("Objfunc = ", objv)
 
   # save to file for mesolve in qutip
   filename = "control_qutip.dat"
