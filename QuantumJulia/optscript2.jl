@@ -10,22 +10,23 @@ using Optim
 
   # frequencies (in GHz, will be multiplied by 2*pi to get angular frequencies in the Hamiltonian matrix)
   fa = 4.10336
+  fa = 4.103208
   xia = 2* 0.1099
   samplerate = 32
 
   bsname = "pcof.dat"
-  filename = "yrotr_320000.dat"
-  qfilename = "yrotr_32_qutip.dat"
+  filename = "yrot_320000.dat"
+  qfilename = "yrot_32_qutip.dat"
   
 # specify target gate in the rotating frame (FOR TESTING AGAINST ANALYTICAL SOL)
   utarget = zeros(ComplexF64,Ntot,N)
   vtarget = zeros(ComplexF64,Ntot,N)
 
-  # -pi/2 y-rot gate pcof0=[0,0,0,1,1,1]
-  vtarget[1,1] = 1/sqrt(2)
-  vtarget[1,2] = 1/sqrt(2)
-  vtarget[2,1] = -1/sqrt(2)
-  vtarget[2,2] = 1/sqrt(2)
+  # # pi/2 y-rot gate pcof0=[0,0,0,1,1,1]
+  # vtarget[1,1] = 1/sqrt(2)
+  # vtarget[1,2] = -1/sqrt(2)
+  # vtarget[2,1] = 1/sqrt(2)
+  # vtarget[2,2] = 1/sqrt(2)
 
   # pi/2 x-rot gate: pcof0=[1,1,1,0,0,0]
   # vtarget[1,1] = 1/sqrt(2)
@@ -33,14 +34,14 @@ using Optim
   # vtarget[2,1] = -1im/sqrt(2)
   # vtarget[2,2] = 1/sqrt(2)
 
-  rotmat = [1 0; 0 exp(1im*2*pi*fa*T)]
-  utarget[1:2,1:2] = rotmat' * vtarget[1:2,1:2] # add a matching quotation for emacs'
+  # rotmat = [1 0; 0 exp(1im*2*pi*fa*T)]
+  # utarget[1:2,1:2] = rotmat' * vtarget[1:2,1:2] # add a matching quotation for emacs'
 
-    # -pi/2 y-rot gate pcof0=[0,0,0,1,1,1]
-  # utarget[1,1] = 1/sqrt(2)
-  # utarget[1,2] = 1/sqrt(2)
-  # utarget[2,1] = -1/sqrt(2)
-  # utarget[2,2] = 1/sqrt(2)
+  # pi/2 y-rot gate pcof0=[0,0,0,1,1,1]
+  utarget[1,1] = 1/sqrt(2)
+  utarget[1,2] = -1/sqrt(2)
+  utarget[2,1] = 1/sqrt(2)
+  utarget[2,2] = 1/sqrt(2)
 
   # pi/2 x-rot gate: pcof0=[1,1,1,0,0,0]
   # utarget[1,1] = 1/sqrt(2)
@@ -48,13 +49,12 @@ using Optim
   # utarget[2,1] = -1im/sqrt(2)
   # utarget[2,2] = 1/sqrt(2)
 
-
   kpar = 5 # test this component of the gradient
   
   params = objfunc.parameters(N,Nguard,T,maxpar,cfl, utarget, fa, xia, samplerate, kpar) 
 
-  pcof0  = zeros(6) 
-  #	pcof0  = zeros(351) 
+  #  pcof0  = zeros(6) 
+  pcof0  = zeros(30) 
   #pcof0 = maxpar*0.01 * rand(30) 
 
   order = 2
