@@ -183,7 +183,7 @@ Thus, when the system Hamiltonian is diagonal, the transformed problem correspon
 \end{equation}
 
 The structure of the transformed Hamiltonian indicates how resonance can be induced in the
-system. For example, by taking $f(t)=\Omega e^{\Delta \omega_1 t}$, the Hamiltonian matrix
+system. For example, by taking $f(t)=\Omega e^{i\Delta \omega_1 t}$, the Hamiltonian matrix
 becomes
 \[
 \tilde{H}(t) = \begin{bmatrix}
@@ -195,88 +195,34 @@ becomes
 & & \ddots & \ddots & \ddots
 \end{bmatrix}.
 \]
-In this case, the dynamics of the system will be dominated by an oscillation between the ground state and the
-first excited state, with frequency $\Omega$.
-
-\subsection{Rotating frame of reference}
-
-In some applications, the Hamiltonian matrix has the structure
-\begin{equation}\label{eq_orig_hamiltonian}
-H(t) = \omega_a a^\dag a - \frac{\xi_a}{2} a^\dag a^\dag a a + f(t) a + \bar{f}(t) a^\dag.
-\end{equation}
-Here, $a^\dag a = \hat{N}=\mbox{diag$(0,1,2,\ldots)$}$ is called the number operator. We also have
-$a a^\dag = \hat{N}+I$, which gives
+In this case, the dynamics of the system will be dominated by an oscillation between the ground
+state and the first excited state, with frequency $\Omega$. One shortcoming this approach is that
+the function $f(t)=\Omega e^{i\Delta \omega_1 t}$ is complex-valued. To be realized in the laboratory
+it must however be real-valued. We can instead use the ansatz
+\begin{multline*}
+  f(t) = \alpha \cos(\Delta \omega_1 t) + \beta \sin(\Delta \omega_1 t)\\
+  = \frac{\alpha}{2} \left( \exp(i \omega_1 t) + \exp(-i \omega_1 t)\right) - \frac{\beta i}{2}
+  \left( \exp(i \omega_1 t) - \exp(-i \omega_1 t)\right)\\
+  %
+  = \exp(i \omega_1 t) \left( \frac{\alpha}{2}  - \frac{\beta i}{2} \right)  +
+  %
+  \exp(-i \omega_1 t)\left( \frac{\alpha}{2} + \frac{\beta i}{2} \right)
+\end{multline*}
+We may write the matrix $D(t)$ as
 \[
-a^\dag a^\dag a a = a^\dag (a a^\dag - I) a = \hat{N}^2 - \hat{N} =
+D(t) = \exp(-i\Delta\omega_1 t) \widetilde{D}(t),\quad
 %
-\begin{bmatrix}
-  0 & & & & \\
-  & 0 & & & \\
-  && 2 && \\
-  &&& 6 & \\
-  &&&& \ddots
+\widetilde{D}(t) = \begin{bmatrix}
+ 1 & & &\\
+  & \sqrt{2} e^{i(\Delta\omega_1- \Delta\omega_2) t}& &\\
+&  & \sqrt{3} e^{i(\Delta\omega_1 - \Delta\omega_3) t}  &\\
+&  &   & \ddots
 \end{bmatrix}.
 \]
-
-In the first part of the system Hamiltonian, $\omega_a \hat{N}$, the difference between consequtive
-elements is constant. This structure suggests the time-depenedent unitary transformation
+Thus,
 \[
-v(t) = R(t)\psi(t),\quad R(t) = \exp(i\omega_a \hat{N} t),\quad \dot{R}R^\dag = i\omega_a \hat{N}.
+f(t) D(t) = \left( \frac{\alpha}{2}  - \frac{\beta i}{2} \right) \widetilde{D}(t) + \exp(-2i \omega_1 t)\left( \frac{\alpha}{2} + \frac{\beta i}{2} \right).
 \]
-Both $\hat{N}$ and $\hat{N}^2$ commute with $R(t)$. From \eqref{eq_timedep_trans}, the transformed
-Hamiltonian matrix becomes
-\begin{equation}\label{eq_rot_hamiltonian}
-\widetilde{H}(t) = -\frac{\xi_a}{2} \left(\hat{N}^2 - \hat{N}\right) + f(t) R a R^\dag + \bar{f}(t) R a^\dag R^\dag.
-\end{equation}
-We have
-\begin{multline*}
-  R a R^\dag =\\
-  %
-\begin{bmatrix}
-  1 & & & \\
-  & e^{i\omega_a t} & & \\
-  & &  e^{2i\omega_a t} & \\
-  & & & \ddots
-\end{bmatrix}
-\begin{bmatrix}
-0 & 1 & & &\\
- & 0 & \sqrt{2} & &\\
-&  & 0 & \sqrt{3} &\\
-& &  & \ddots & \ddots
-\end{bmatrix}
-\begin{bmatrix}
-  1 & & & \\
-  & e^{-i\omega_a t} & & \\
-  & &  e^{-2i\omega_a t} & \\
-  & & & \ddots
-\end{bmatrix} = \\
-%
-\begin{bmatrix}
-0 & e^{-i\omega_a t} & & &\\
- & 0 & \sqrt{2} e^{-i\omega_a t}& &\\
-&  & 0 & \sqrt{3} e^{-i\omega_a t}  &\\
-& &  & \ddots & \ddots
-\end{bmatrix} =: e^{-i\omega_a t} a.
-%
-\end{multline*}
-Taking the conjugate transpose gives $R a^\dag R = e^{i\omega_a t} a^\dag$. It is convenient to absorb the factor
-$e^{-i\omega_a t}$ into $f(t)$ by defining,
-\[
-g(t) = e^{-i\omega_a t} f(t).
-\]
-The transformed Hamiltonian matrix \eqref{eq_rot_hamiltonian} then takes the simplified form
-\[
-\widetilde{H}(t) = -\frac{\xi_a}{2} \left(\hat{N}^2 - \hat{N}\right) + g(t) a + \bar{g}(t) a^\dag.
-\]
-Consider solving the truncated Schr\"odinger equation \eqref{eq_schrodinger} numerically. Compared
-to use the original formulation where the Hamiltonian matrix has the form X, the transformed
-equations can be solved more efficiently if
-\[
-\omega_a \hat{N} \gg 0.5\xi_a (\hat{N}^2 - \hat{N}).
-\]
-This condition holds in applications where $\omega_a \gg \xi_a$ and the Schr\"odinger system is truncated after a moderate
-number of equations,
-
 
 
 \end{document}

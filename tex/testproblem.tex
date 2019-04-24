@@ -25,14 +25,20 @@
 %% \date{\today}
 
 %% \maketitle
+\section{Analytical solutions}
 \paragraph{Test problem 1.}
-Consider the Schr\"odinger equation in a rotating frame of reference,
+Consider the Schr\"odinger equations,
 \begin{equation}\label{eq_shrodinger}
 \dot{\psi} = -i H(t) \psi,\quad \psi(0) = \psi_0,\quad H(t) = f(t) (a +a^\dag),
 \end{equation}
 where
 \[
-f(t) = \frac{1}{4}\left(1 - \cos(\omega t)\right).
+f(t) = \frac{1}{4}\left(1 - \cos(\omega t)\right),\quad a+ a^\dag
+=
+\begin{bmatrix}
+  0 & 1\\
+  1 & 0
+\end{bmatrix}.
 \]
 It has the analytical solution
 \[
@@ -41,21 +47,29 @@ It has the analytical solution
   -i\sin(\phi(t))
   \end{bmatrix},\quad \phi(t) = \frac{1}{4}\left( t - \frac{1}{\omega}\sin(\omega t)\right).
 \]
-With the initial condition $\psi_0=[1, 0]^T$, and $\omega=2\pi$, the solution is given in Figure \ref{fig_2}.
-  \begin{figure}
-    \begin{center}
-    \includegraphics[width=0.45\linewidth]{sep-test.png}
-    \includegraphics[width=0.45\linewidth]{nonsep-test.png}
-    \caption{Analytical solutions of test problem \#1 (left) and \#2 (right). Note that the imaginary part is zero for both
-      components of $\psi$ in the right figure.}\label{fig_2}
-    \end{center}
-  \end{figure}
+% With the initial condition $\psi_0=[1, 0]^T$, and $\omega=2\pi$, the solution is given in Figure \ref{fig_2}.
+  %% \begin{figure}
+  %%   \begin{center}
+  %%   \includegraphics[width=0.45\linewidth]{sep-test.png}
+  %%   \includegraphics[width=0.45\linewidth]{nonsep-test.png}
+  %%   \caption{Analytical solutions of test problem \#1 (left) and \#2 (right). Note that the imaginary part is zero for both
+  %%     components of $\psi$ in the right figure.}\label{fig_2}
+  %%   \end{center}
+  %% \end{figure}
 
 \paragraph{Test problem 2.}
 By changing the Hamiltonian matrix to
 \begin{equation}\
 H(t) = i g(t) (a - a^\dag),\quad g(t) = \frac{1}{4}\left(1 - \sin(\omega t)\right),
 \end{equation}
+where
+\[
+a- a^\dag =
+\begin{bmatrix}
+  0  & 1\\
+  -1 & 0
+\end{bmatrix},
+\]
 the solution of the Schr\"odinger equation becomes
 \[
 \psi(t) = \begin{bmatrix}
@@ -64,6 +78,18 @@ the solution of the Schr\"odinger equation becomes
   \end{bmatrix},\quad \theta(t) = \frac{1}{4}\left( t + \frac{1}{\omega}(\cos(\omega t) - 1)\right).
 \]
 Note that both components of $\psi(t)$ are real in this case.
-With the initial condition $\psi_0=[1, 0]^T$, and $\omega=2\pi$, the solution is given in Figure~\ref{fig_2}.
-  
+% With the initial condition $\psi_0=[1, 0]^T$, and $\omega=2\pi$, the solution is given in Figure~\ref{fig_2}.
+
+\subsection{Real-valued formulation}
+
+We can decompose the control function into its real and imaginary parts,
+\[
+h(t) = f(t) + i g(t),
+\]
+and write the Hamiltonian matrix as
+\[
+H(t) =: K(t) + i S(t).
+\]
+Here, $K$ and $S$ are real-valued matrices with $K^\dag = K$ and $S^\dag = -S$.
+
 \end{document}
