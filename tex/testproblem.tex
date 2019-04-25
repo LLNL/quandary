@@ -26,14 +26,15 @@
 
 %% \maketitle
 \section{Analytical solutions}
-\paragraph{Test problem 1.}
 Consider the Schr\"odinger equations,
 \begin{equation}\label{eq_shrodinger}
-\dot{\psi} = -i H(t) \psi,\quad \psi(0) = \psi_0,\quad H(t) = f(t) (a +a^\dag),
+\dot{\psi} = -i H(t) \psi,\quad t\geq 0,\quad \psi(0) = \psi_0,
 \end{equation}
-where
+where $\psi(t)\in {\mathbb C}^N$ and $H\in {\mathbb C}^{N\times N}$ is a Hermitian matrix.
+\paragraph{Test problem 1.}
+Consider the $2\times 2$ case with
 \[
-f(t) = \frac{1}{4}\left(1 - \cos(\omega t)\right),\quad a+ a^\dag
+f(t) = \frac{1}{4}\left(1 - \cos(\omega t)\right),\quad H(t) = f(t) (a +a^\dag),\quad a+ a^\dag
 =
 \begin{bmatrix}
   0 & 1\\
@@ -80,16 +81,91 @@ the solution of the Schr\"odinger equation becomes
 Note that both components of $\psi(t)$ are real in this case.
 % With the initial condition $\psi_0=[1, 0]^T$, and $\omega=2\pi$, the solution is given in Figure~\ref{fig_2}.
 
-\subsection{Real-valued formulation}
+\section{Real-valued formulation}
 
-We can decompose the control function into its real and imaginary parts,
+To utilize efficient numerical software it is desirable to derive a real-valued equivalent of
+\eqref{eq_shrodinger}. A fairly general form of the Hamiltonian matrix is
 \[
-h(t) = f(t) + i g(t),
+H(t) = H_d + f(t)(a+a^\dag) + i g(t)(a-a^\dag).
 \]
-and write the Hamiltonian matrix as
+Let the real-valued functions $u(t)$ and $v(t)$ hold the real and negative imaginary parts of $\psi(t)$,
 \[
-H(t) =: K(t) + i S(t).
+\psi(t) = u(t) - iv(t)
 \]
-Here, $K$ and $S$ are real-valued matrices with $K^\dag = K$ and $S^\dag = -S$.
+and decompose the total Hamiltonian matrix into $H(t) = K(t) + i S(t)$, where the real-valued
+matrices $K$ and $S$ hold the symmeric and skew-symmetric parts of $H$: $K^\dag = K$ and $S^\dag =
+-S$. We have,
+\begin{align*}
+H\psi &= (K+iS)(u - iv) = (Ku + Sv) + i(Su - Kv),\\
+-iH\psi &= -i(Ku + Sv) + (Su - Kv).
+\end{align*}
+Therefore, a real-valued equivalent of the system \eqref{eq_shrodinger} is
+\begin{equation}\label{eq_real-shrodinger}
+  \begin{bmatrix} \dot{u}\\ \dot{v} \end{bmatrix} =
+%
+  \begin{bmatrix}
+    S(t) & -K(t) \\ K(t) & S(t)
+  \end{bmatrix}     
+  %
+  \begin{bmatrix} u\\ v \end{bmatrix} .
+\end{equation}
+This is a Hamiltonian system where the time-dependent Hamiltonian function is
+\begin{equation}\label{eq_hamiltonian}
+\kappa(u,v,t) = u^T S(t) v + \frac{1}{2} u^T K(t) u + \frac{1}{2} v^T K(t) v.
+\end{equation}
+In general, the Hamiltonian function is non-separable due to the skew-symmetric term
+$S(t) =g(t) ( a- a^\dag)$ in the Hamiltonian matrix.
+
+\subsection{Time integration}
+We consider integrating \eqref{eq_real-shrodinger} with a time-dependent forcing,
+\begin{equation}\label{eq_s-v-forcing}
+  \begin{bmatrix} \dot{u}\\ \dot{v} \end{bmatrix} =
+%
+  \begin{bmatrix}
+    S(t) & -K(t) \\ K(t) & S(t)
+  \end{bmatrix}     
+  %
+  \begin{bmatrix} u\\ v \end{bmatrix}
+  %
+  + \begin{bmatrix} F_u(t) \\ F_v(t) \end{bmatrix}.
+\end{equation}
+Here, $u\in \mathbb{R}^N$ and $v\in \mathbb{R}^N$; $K=K^T$ and $S=-S^T$ are real-valued $N\times N$
+matrices.  To solve \eqref{eq_s-v-forcing} numerically, we discretize time on a grid with $t_n = n
+\delta_t$, $n=0,1,2,,\ldots$. Here, the time step ($\delta_t$) is constant, but this assumption can
+be relaxed. We denote the numerical solution $u^n\approx u(t_n)$ and $v^n\approx v(t_n)$.  In
+general, $S(t)\ne0$ and the Hamiltonian system is non-separable. Givent $(u^n, v^n)$, the 
+Stromer-Verlet scheme evolves the solution by
+\begin{align*}
+  \left(I - \frac{\delta_t}{2} S^{n}\right) \ell_1 &= K^n u^n + S^n v^n + F_v^n,\\
+%
+  v^{n+1/2} &= v^n + \frac{\delta_t}{2}\ell_1,\\
+  %
+  \kappa_1 &= S^{n+1/2} u^n - K^{n+1/2} v^{n+1/2} +
+  F_u^{n+1/2},\\
+%
+  \left(I - \frac{\delta_t}{2} S^{n+1/2}\right) \kappa_2 &= S^{n+1/2}\left( u^n + \frac{\delta_t}{2}
+  \kappa_1 \right) - K^{n+1/2}  v^{n+1/2} + F_u^{n+1/2},\\
+  %
+  u^{n+1} &= u^n + \frac{\delta_t}{2}\left( \kappa_1 + \kappa_2 \right),\\
+%
+  \ell_2 &= K^{n+1} u^{n+1} + S^{n+1}  v^{n+1/2} + F_v^{n+1},\\
+  %
+  v^{n+1} &= v^n + \frac{\delta_t}{2}\left( \ell_1 + \ell_2 \right).
+\end{align*}
+In practice, the forcing function may not be available at the half-step. We can then use
+\[
+F_u^{n+1/2} \approx \frac{1}{2}\left( F_u^{n} + F_u^{n+1}\right).
+\]
+We note that the scheme becomes explicit when $S(t)=0$. 
+
+The Stromer-Verlet scheme is second order accurate, symplectic and time reversible. It is possible
+to write it as a combination of the trapezoidal and midpoint rules. By using a
+compositional technique where each time-step is decomposed into several sub-steps, the order of
+accuracy can be raised. Fourth order accuracy can be obtained with three sub-steps, sixth order with
+seven or nine sub-steps, and eight order requires at least fifteen sub-steps, see Harirer et
+al.~\cite{HairerLubichWanner-06} for further details.
+
+\bibliographystyle{plain}
+\bibliography{quantum}
 
 \end{document}
