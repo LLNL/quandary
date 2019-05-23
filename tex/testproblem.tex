@@ -159,11 +159,11 @@ F_u^{n+1/2} \approx \frac{1}{2}\left( F_u^{n} + F_u^{n+1}\right).
 We note that the scheme becomes explicit when $S(t)=0$. 
 
 The Stromer-Verlet scheme is second order accurate, symplectic and time reversible. It is possible
-to write it as a combination of the trapezoidal and midpoint rules. By using a
-compositional technique where each time-step is decomposed into several sub-steps, the order of
-accuracy can be raised. Fourth order accuracy can be obtained with three sub-steps, sixth order with
-seven or nine sub-steps, and eight order requires at least fifteen sub-steps, see Harirer et
-al.~\cite{HairerLubichWanner-06} for further details.
+to write it as a partitioned Runge-Kutta method that combines the trapezoidal and midpoint
+rules. The order of accuracy can be raised by using a compositional (Suzuki-Trotter) technique where
+each time-step is decomposed into several sub-steps. Fourth order accuracy can be obtained with
+three sub-steps, sixth order with seven or nine sub-steps, and eight order requires at least fifteen
+sub-steps, see Harirer et al.~\cite{HairerLubichWanner-06} for further details.
 
 \bibliographystyle{plain}
 \bibliography{quantum}

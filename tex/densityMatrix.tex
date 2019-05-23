@@ -1,0 +1,220 @@
+\documentclass[11pt]{article}
+\usepackage{amsfonts,amsmath,amssymb,amsthm,graphicx}
+\usepackage{multirow}
+\usepackage{booktabs}
+\usepackage[caption=false]{subfig} 
+\usepackage{color}
+\usepackage{ifthen}
+
+\setlength{\topmargin}{0 mm}
+\setlength{\oddsidemargin}{5 mm}
+\setlength{\evensidemargin}{5 mm}
+\setlength{\textwidth}{150 mm}
+\setlength{\textheight}{210 mm}
+
+\include{macros}
+
+\begin{document}
+
+%\title{The Lindblad master equation}
+
+%% \author{N. Anders Petersson\thanks{Center for Applied
+%%     Scientific Computing, Lawrence Livermore National Laboratory, L-561, PO Box 808, Livermore CA
+%%     94551. }}
+
+%% \date{\today}
+
+%% \maketitle
+\section{Ensambles of quantum states}
+
+This note closely follows the presentation in Section 2.4.2 of Nielsen and
+Chuang~\cite{Nielsen-Chuang}.  The probablity density operator (or matrix) is used to characterize
+quantum systems whose state is not completely known. Suppose a quantum system is in one of a number
+of states $\psi_i\in{\mathbb C}^N$ with respective probablility $p_i$, for $i\in[1,N]$. We call
+$\{p_i, \psi_i\}$ an ensamble of pure states. The density matrix for the quantum system is defined
+by the $N\times N$ complex matrix
+\[
+\rho = \sum_{i=1}^N p_i \psi_i \psi_i^\dag,\quad p_i \geq 0.
+\]
+From the definition follows immediately that the density matrix is symmetric (self-adjoint),
+\[
+\rho^\dag = \sum_{i=1}^N p_i \psi_i \psi_i^\dag = \rho.
+\]
+
+Consider the evolution of a closed quantum system that is described by the unitary operator $U$. Let
+the system initially be in the state $\psi_i$, with probablitity $p_i$, corresponding to the density
+matrix $\rho(0)$. After the evolution (at time $T$) the system will then be in the state $U\psi_i$
+with probability $p_i$. Thus, the evolution of the density matrix is described by
+\[
+\rho(T) = \sum_{i=1}^N p_i U \psi_i \psi_i^\dag U^\dag =  U \rho(0) U^\dag.
+\]
+
+A quantum system whose state is known exactly is said to be in a pure state. Let the state be
+represented by the vector $\psi\in C^N$. Because the system is in this state with certainty
+(probability 1), the density operator equals rank-1 matrix
+\[
+\rho = \psi \psi^\dag \in {\mathbb C}^{N\times N}.
+\]
+If the state of the quantum system is {\em not} known exactly, the density operator is in
+a mixed state. The quantum system is then in a mixture of the different pure states in the ensamble for $\rho$.
+
+\begin{definition}
+  Consider a quantum system that is in a pure or a mixed state. Let $\psi_i\in{\mathbb C}^N$ be the
+  state vector for the $i^{th}$ state and let the quantum system be in this state with probability
+  $p_i\geq 0$, for $i\in[1,N]$. Also assume $\sum_{i=1}^N p_i = 1$. The Hermitian $N\times N$ probability density matrix
+  for the quantum system is defined by
+  \[
+  \rho = \sum_{i=1}^N p_i \psi_i \psi_i^\dag,\quad p_i \geq 0,\quad \rho^\dag = \rho,\quad \mbox{tr$(\rho)$} = 1.
+  \]
+  Conversely, $\rho\in{\mathbb C}^{N\times N}$ is the probability density matrix associated with an ensamble of
+  quantum states, if and only if:
+  \[
+  \rho^\dag = \rho,\quad \mbox{tr$(\rho)$} = 1,\quad
+  \phi^\dag \rho \phi \geq 0,\quad \mbox{for all $\phi\in {\mathbb C}^N$}.
+  \]
+\end{definition}
+%
+A simple criteria for determining whether a state is pure or mixed is:
+\[
+\begin{cases} \mbox{tr$(\rho^2)= 1$},&\mbox{pure state}\\  \mbox{tr$(\rho^2)< 1$},&\mbox{mixed state} \end{cases}
+\]
+It is easy to see that the statement is true for a pure state, because then the quantum system is
+described by the state vector $\psi$ with certainty. The corresponding density matrix becomes
+\[
+\rho = \psi \psi^\dag,\quad \Rightarrow \quad \rho^2 = \psi \psi^\dag \psi \psi^\dag = \psi \psi^\dag = \rho,
+\]
+because $\psi^\dag \psi = |\psi|^2 = 1$. Thus, $\mbox{tr$(\rho^2)$} = \mbox{tr$(\rho)= 1$}$.
+
+\paragraph{Freedom of ensambles.} In this example, it is shown that two different ensambles of
+quantum states can result in the same density matrix. Let $\eb_k$ be the $k$th unit vector, i.e.,
+$\eb_0=[1,0,0,\ldots,0]^\dag$, $\eb_1=[0,1,0,\ldots,0]^\dag$, etc., and consider a quantum system
+with the density matrix
+\[
+\rho = \frac{3}{4}\eb_0 \eb_0^\dag + \frac{1}{4}\eb_1 \eb_1^\dag.
+\]
+Clearly,  this density matrix arises if the quantum system is in the state $\eb_0$ with
+probability $3/4$ and in state $\eb_1$ with probability $1/4$. Now define the states
+\begin{align}
+  \ab &= \sqrt{\frac{3}{4}} \eb_0 +  \sqrt{\frac{1}{4}} \eb_1, \\
+  \bb &= \sqrt{\frac{3}{4}} \eb_0 -  \sqrt{\frac{1}{4}} \eb_1,
+\end{align}
+and let the quantum system be in the state $\ab$ with probability $1/2$ and in the state
+$\bb$ with probability $1/2$. Then the corresponding density matrix becomes
+\[
+\rho = \frac{1}{2}\ab\ab^\dag + \frac{1}{2}\bb\bb^\dag =
+%
+\frac{1}{2}
+\begin{bmatrix}
+  \frac{3}{4} & \frac{\sqrt{3}}{4} \\
+  \frac{\sqrt{3}}{4} & \frac{1}{4}
+  \end{bmatrix} +
+%
+\frac{1}{2}\begin{bmatrix}
+  \frac{3}{4} & -\frac{\sqrt{3}}{4} \\
+  -\frac{\sqrt{3}}{4} & \frac{1}{4}
+  \end{bmatrix} =
+%
+\begin{bmatrix}
+  \frac{3}{4} & 0 \\
+  0 & \frac{1}{4}
+  \end{bmatrix}.
+\]
+Thus, two different ensambles of quantum states can result in the same density matrix! In general,
+the eigenvectors and eigenvalues of a density matrix only indicate one of many possible ensambles
+that result in the same density matrix. It is possible to further characterize the freedom of
+ensambles that result in the same density operator, see~\cite{Nielsen-Chuang}.
+
+
+\section{The Lindblad master equation}
+
+Interactions with the environment in a quantum system can be modeled
+by considering the evolution of the Hermitian density matrix,
+\[
+\rho =
+\begin{bmatrix}
+\rho_{11} & \rho_{12} & \ldots & \rho_{1N} \\
+\rho_{21} & \rho_{22} & \ldots & \rho_{2N} \\
+\vdots    & \vdots    &           & \vdots \\
+\rho_{N1} & \rho_{N2} & \ldots & \rho_{NN}
+\end{bmatrix}
+%
+= \rho^\dag.
+\]
+For a closed quantum system, the density matrix evolves according to
+\begin{equation}\label{eq_LvN}
+\dot{\rho} = -i\left(H\rho - \rho H\right),\quad t\geq 0, \quad
+\rho(0) = \rho_0,\quad \mbox{tr$(\rho_0)$} = 1,\quad \rho_0^\dag = \rho_0.
+\end{equation}
+Here, $H = H(t)$ is the Hamiltonian matrix, $H\in{\mathbb C}^{N\times N}$ and $H^\dag = H$. Thus,
+the expression on the right hand side satisfies
+\[
+\left( -i\left(H\rho - \rho H\right) \right)^\dag = +i \left( \rho^\dag H^\dag - H^\dag \rho^\dag
+\right)
+%
+= +i \left( \rho H - H \rho \right),
+\]
+because both $H$ and $\rho$ are Hermitian. We conclude that the right hand side of \eqref{eq_LvN} is
+anti-Hermitian (skew-symmetric). The evolution of the density matrix is therefore characterized by undamped wave
+propagation.
+
+The above equation is called the Liouville-von Neumann (LvN) equation and is a special case of the
+Lindblad master equation,
+\begin{equation}\label{eq_Lindblad}
+\dot{\rho} = -i\left(H\rho - \rho H\right) + \sum_j \gamma_j\left( {\cal L}_j \rho {\cal L}_j^\dag -
+\frac{1}{2}\left( {\cal L}_j^\dag{\cal L}_j\rho + \rho{\cal L}_j^\dag{\cal L}_j \right) \right),
+\end{equation}
+where $\gamma_j$ are constants and ${\cal L}_j$ are collapse operators. One example of a collapse
+operator is ${\cal L}_j = a$, which lowers the energy level. It is called a jump operator. Another
+example is ${\cal L}_j = a^\dag a$. It is called a de-phasing operator. From the grouping of the
+collapse operators in \eqref{eq_Lindblad}, we immediately see that each term in the sum on the right
+hand side is Hermitian,
+\begin{multline*}
+\left( {\cal L}_j \rho {\cal L}_j^\dag -
+\frac{1}{2}\left( {\cal L}_j^\dag{\cal L}_j\rho + \rho{\cal L}_j^\dag{\cal L}_j \right) \right)^\dag
+=
+%
+ {\cal L}_j \rho^\dag {\cal L}_j^\dag -
+ \frac{1}{2}\left( \rho^\dag{\cal L}_j^\dag{\cal L}_j + {\cal L}_j^\dag{\cal L}_j\rho^\dag \right) \\
+ %
+= {\cal L}_j \rho {\cal L}_j^\dag - \frac{1}{2}\left( {\cal L}_j^\dag{\cal L}_j\rho + \rho{\cal L}_j^\dag{\cal L}_j \right),
+\end{multline*}
+because $\rho^\dag = \rho$. Thus, the collapse operators act as damping or source terms in the
+evolution of the density matrix.
+
+\subsection{Vectorizing the density matrix}
+
+The right hand sides of the LvN  \eqref{eq_LvN} and Lindblad equations \eqref{eq_Lindblad} involve the dependent variable $\rho$
+written in matrix form. To use standard solvers for systems of ordinary differential equations, we
+vectorize $\rho$ by stacking its columns in one longer column vector and use Kronecker products to
+reformulate the equations. For the LvN equation, we get
+\[
+\mbox{vec$(\rho)$} =
+\begin{bmatrix}
+  \rho_{11}\\
+  \vdots \\
+  \rho_{N1} \\
+%  \rho_{12} \\
+%  \vdots \\
+%  \rho_{N2} \\
+  \vdots\\
+  \vdots\\
+  \rho_{1N} \\
+  \vdots \\
+  \rho_{NN}
+\end{bmatrix},\quad
+%
+\frac{d}{dt}\mbox{vec$(\rho)$} = -i\left( I_N\otimes H - H^T \otimes I_N \right)\mbox{vec$(\rho)$}.
+\]
+Note that $H$ is transposed in the second term on the right hand side (without complex conjugation).
+\begin{itemize}
+  \item Show that the matrix is always skew-symmetric and that the solution is oscillatory in nature.
+  \item Present the density matrix formulation for the previous $2\time 2$ test problems for
+    Schrodinger's equation.
+  \item Note that the two test problems have identical density matrices at certain times.
+\end{itemize}
+
+\bibliographystyle{plain}
+\bibliography{quantum}
+
+
+\end{document}
