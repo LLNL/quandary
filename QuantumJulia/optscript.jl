@@ -30,11 +30,11 @@ using Optim
   weight = 2
   penaltyweight = 2
 
-  function f(pcof)
+  function f1(pcof)
     #@show(pcof)
-    f =objfunc.traceobjgrad(pcof,params,order,false,false,weight,penaltyweight )
-    # @show(f)
-    return f[1]
+    f1 =objfunc.traceobjgrad(pcof,params,order,false,false,weight,penaltyweight )
+    # @show(f1)
+    return f1[1]
   end
 
   function g!(G,pcof,params,order)
@@ -48,7 +48,7 @@ using Optim
 
   gopt!(G,pcof) = g!(G,pcof,params,order)
 
-  res = optimize(f, gopt!, pcof0, LBFGS(), Optim.Options(show_trace =true, iterations=60))
+  res = optimize(f1, gopt!, pcof0, LBFGS(), Optim.Options(show_trace =true, iterations=60))
 
   @time pcof = Optim.minimizer(res)
   display(res)

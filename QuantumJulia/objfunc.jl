@@ -533,7 +533,8 @@ function traceobjgrad(pcof0::Array{Float64,1},  params::parameters, order::Int64
     plot!(td, rotdrivei, lab="Imag part", linewidth = 2)
 
     # second plot
-    f2 = plot(td[1:64], labdrive[1:64], lab="", linewidth = 2, title = "Lab frame", size = (1000, 500), xlabel="Time [ns]")
+#    f2 = plot(td[1:64], labdrive[1:64], lab="", linewidth = 2, title = "Lab frame", size = (1000, 500), xlabel="Time [ns]")
+    f2 = plot(td, labdrive, lab="", linewidth = 2, title = "Lab frame", size = (1000, 500), xlabel="Time [ns]")
 
     # if weight == 1
     #   plot!(td, weightf1.(td,T), lab = "Gate", linewidth = 2)
