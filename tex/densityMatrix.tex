@@ -183,10 +183,11 @@ evolution of the density matrix.
 
 \subsection{Vectorizing the density matrix}
 
-The right hand sides of the LvN  \eqref{eq_LvN} and Lindblad equations \eqref{eq_Lindblad} involve the dependent variable $\rho$
-written in matrix form. To use standard solvers for systems of ordinary differential equations, we
-vectorize $\rho$ by stacking its columns in one longer column vector and use Kronecker products to
-reformulate the equations. For the LvN equation, we get
+The right hand sides of the LvN \eqref{eq_LvN} and Lindblad equations \eqref{eq_Lindblad} involve
+the dependent variable $\rho$ in matrix form. To utilize the sparse structure of the
+Hamiltonian matrix and use standard solvers for systems of ordinary differential equations, we
+reorder $\rho$ by stacking its columns into one column vector with $N^2$ elements and use Kronecker
+products to reformulate the equations. For the LvN equation, we get
 \[
 \mbox{vec$(\rho)$} =
 \begin{bmatrix}
@@ -205,13 +206,71 @@ reformulate the equations. For the LvN equation, we get
 %
 \frac{d}{dt}\mbox{vec$(\rho)$} = -i\left( I_N\otimes H - H^T \otimes I_N \right)\mbox{vec$(\rho)$}.
 \]
-Note that $H$ is transposed in the second term on the right hand side (without complex conjugation).
-\begin{itemize}
-  \item Show that the matrix is always skew-symmetric and that the solution is oscillatory in nature.
-  \item Present the density matrix formulation for the previous $2\time 2$ test problems for
-    Schrodinger's equation.
-  \item Note that the two test problems have identical density matrices at certain times.
-\end{itemize}
+Here, $I_N$ denotes the $N\times N$ identity matrix. Note that $H$ is transposed in the second term
+on the right hand side (without complex conjugation).
+
+\subsection{Test problem 1}
+
+Consider the LvN equation \eqref{eq_LvN} when the  Hamiltonian matrix and the initial data for the density matrix are
+\[
+H(t) = f(t)\begin{bmatrix} 0 & 1 \\ 1 & 0 \end{bmatrix},\quad
+%
+f(t) = \frac{1}{4}\left( 1 - \cos(\omega t) \right),\quad
+%
+\rho_0 = \begin{bmatrix} 1 & 0 \\ 0 & 0 \end{bmatrix}
+\]
+After vectorizing the problem, we get the system
+\begin{equation}\label{eq_LvN-vec}
+\frac{d}{dt}\mbox{vec$(\rho)$} = -i f(t)\begin{bmatrix}
+  0 & 1 & -1 & 0 \\
+  1 & 0 & 0 & -1 \\
+ -1 & 0 & 0 &  1 \\
+  0 & -1 & 1 & 0 
+  \end{bmatrix}\mbox{vec$(\rho)$}
+\end{equation}
+Note that the matrix on the right hand side is skew-symmetric. Thus all eigenvalues are purely
+imaginary and the solution is oscillatory in time. An exact solution can be constructed from the
+Schrodinger equation with the same Hamiltonian matrix. It is solved by the state vector
+\[
+\Psi(t) = \begin{bmatrix}
+\cos(\phi(t)) \\ -i \sin(\phi(t))
+  \end{bmatrix},\quad \phi(t) = \frac{1}{4}\left( t - \frac{1}{\omega}\sin(\omega t) \right)
+\]
+The solution of \eqref{eq_LvN-vec} follows as the corresponding density matrix,
+\[
+\rho(t) = \Psi(t) \Psi^\dag(t) = \begin{bmatrix}
+  \cos^2(\phi(t)) & i \cos(\phi(t)) \sin(\phi(t)) \\
+  -i \cos(\phi(t)) \sin(\phi(t)) & \sin^2(\phi(t))
+  \end{bmatrix}
+\]
+To further utilize existing libraries for ordinary differential equations, we further re-formulate
+the problem in terms of real variables and matrices,
+\[
+\mbox{vec$(\rho)$} = \ub + i \vb, \quad  -i\left( I_N\otimes H(t) - H^T(t) \otimes I_N \right) =:
+A(t) + i B(t).
+\]
+This leads to the equivalent system,
+\[
+\frac{d}{dt}\begin{bmatrix} \ub \\ \vb \end{bmatrix} =
+%
+\begin{bmatrix}
+  A(t) & -B(t) \\ B(t) & A(t)
+\end{bmatrix}
+\begin{bmatrix} \ub \\ \vb \end{bmatrix}
+\]
+Because the system \eqref{eq_LvN} is skew-symmetric, $(A + i B)^\dag = - (A + i B)$. Thus $A^T=-A$ and $B^T =
+B$. Thus the real-valued formulation is also skew-symmetric (as expected). Since $\rho$ is
+Hermitian, not all off-diagonal elements are unique,
+\[
+\rho_{jk} = \bar{\rho}_{kj},\quad \Rightarrow\quad u_{jk} = u_{kj},\quad v_{jk} = - v_{kj}.
+\]
+Thus only the lower triangular part of the density matrix needs to be stored. Furthermore, $v_{jj}=0$.
+%\begin{itemize}
+%  \item Show that the matrix is always skew-symmetric and that the solution is oscillatory in nature.
+%  \item Present the density matrix formulation for the previous $2\time 2$ test problems for
+%    Schrodinger's equation.
+%  \item Note that the two test problems have identical density matrices at certain times.
+%\end{itemize}
 
 \bibliographystyle{plain}
 \bibliography{quantum}
