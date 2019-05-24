@@ -154,8 +154,8 @@ the expression on the right hand side satisfies
 = +i \left( \rho H - H \rho \right),
 \]
 because both $H$ and $\rho$ are Hermitian. We conclude that the right hand side of \eqref{eq_LvN} is
-anti-Hermitian (skew-symmetric). The evolution of the density matrix is therefore characterized by undamped wave
-propagation.
+anti-Hermitian (skew-symmetric). The evolution of the density matrix is therefore oscillatory in
+time.
 
 The above equation is called the Liouville-von Neumann (LvN) equation and is a special case of the
 Lindblad master equation,
@@ -188,7 +188,10 @@ the dependent variable $\rho$ in matrix form. To utilize the sparse structure of
 Hamiltonian matrix and use standard solvers for systems of ordinary differential equations, we
 reorder $\rho$ by stacking its columns into one column vector with $N^2$ elements and use Kronecker
 products to reformulate the equations. For the LvN equation, we get
-\[
+\begin{equation}\label{eq_LvN-vec}
+%
+\frac{d}{dt}\mbox{vec$(\rho)$} = -i\left( I_N\otimes H - H^T \otimes I_N \right)\mbox{vec$(\rho)$},\quad
+%
 \mbox{vec$(\rho)$} =
 \begin{bmatrix}
   \rho_{11}\\
@@ -202,12 +205,22 @@ products to reformulate the equations. For the LvN equation, we get
   \rho_{1N} \\
   \vdots \\
   \rho_{NN}
-\end{bmatrix},\quad
-%
-\frac{d}{dt}\mbox{vec$(\rho)$} = -i\left( I_N\otimes H - H^T \otimes I_N \right)\mbox{vec$(\rho)$}.
-\]
+\end{bmatrix}.
+\end{equation}
 Here, $I_N$ denotes the $N\times N$ identity matrix. Note that $H$ is transposed in the second term
-on the right hand side (without complex conjugation).
+on the right hand side (without complex conjugation). Because $H$ is Hermitian, the terms in the
+matrix on the right hand side satisfy
+\[
+( I_N\otimes H )^\dag = I_N \otimes H^\dag = I_N \otimes H,\quad
+%
+(H^T \otimes I_N)^\dag = \bar{H} \otimes I_N = \bar{H}^\dag \otimes I_N = H^T \otimes I_N.
+\]
+Because of the factor $i$ in front of the matrix in \eqref{eq_LvN-vec}, it satisfies
+\[
+\left( -i\left( I_N\otimes H - H^T \otimes I_N \right) \right)^\dag = +i\left( I_N\otimes H - H^T \otimes I_N \right).
+\]
+This verifies that the skew-symmetric property of the LvN equation was retained after $\rho$ was
+reordered into a column vector.
 
 \subsection{Test problem 1}
 
@@ -220,7 +233,7 @@ f(t) = \frac{1}{4}\left( 1 - \cos(\omega t) \right),\quad
 \rho_0 = \begin{bmatrix} 1 & 0 \\ 0 & 0 \end{bmatrix}
 \]
 After vectorizing the problem, we get the system
-\begin{equation}\label{eq_LvN-vec}
+\begin{equation}\label{eq_LvN-test1}
 \frac{d}{dt}\mbox{vec$(\rho)$} = -i f(t)\begin{bmatrix}
   0 & 1 & -1 & 0 \\
   1 & 0 & 0 & -1 \\
@@ -236,7 +249,7 @@ Schrodinger equation with the same Hamiltonian matrix. It is solved by the state
 \cos(\phi(t)) \\ -i \sin(\phi(t))
   \end{bmatrix},\quad \phi(t) = \frac{1}{4}\left( t - \frac{1}{\omega}\sin(\omega t) \right)
 \]
-The solution of \eqref{eq_LvN-vec} follows as the corresponding density matrix,
+The solution of \eqref{eq_LvN-test1} follows as the corresponding density matrix,
 \[
 \rho(t) = \Psi(t) \Psi^\dag(t) = \begin{bmatrix}
   \cos^2(\phi(t)) & i \cos(\phi(t)) \sin(\phi(t)) \\
@@ -244,7 +257,7 @@ The solution of \eqref{eq_LvN-vec} follows as the corresponding density matrix,
   \end{bmatrix}
 \]
 To further utilize existing libraries for ordinary differential equations, we further re-formulate
-the problem in terms of real variables and matrices,
+the problem in terms of real-valued vectors and matrices,
 \[
 \mbox{vec$(\rho)$} = \ub + i \vb, \quad  -i\left( I_N\otimes H(t) - H^T(t) \otimes I_N \right) =:
 A(t) + i B(t).
@@ -258,13 +271,15 @@ This leads to the equivalent system,
 \end{bmatrix}
 \begin{bmatrix} \ub \\ \vb \end{bmatrix}
 \]
-Because the system \eqref{eq_LvN} is skew-symmetric, $(A + i B)^\dag = - (A + i B)$. Thus $A^T=-A$ and $B^T =
-B$. Thus the real-valued formulation is also skew-symmetric (as expected). Since $\rho$ is
+Because the system \eqref{eq_LvN-vec} is skew-symmetric, $(A + i B)^\dag = - (A + i B)$. Thus, $A^T=-A$ and $B^T =
+B$. As expected, the real-valued formulation is also skew-symmetric. Since $\rho$ is
 Hermitian, not all off-diagonal elements are unique,
 \[
 \rho_{jk} = \bar{\rho}_{kj},\quad \Rightarrow\quad u_{jk} = u_{kj},\quad v_{jk} = - v_{kj}.
 \]
-Thus only the lower triangular part of the density matrix needs to be stored. Furthermore, $v_{jj}=0$.
+Hence, only the lower triangular part of the density matrix needs to be stored for the real part of
+$\rho$. Further savings can be realized for the imaginary part of $\rho$, because it is zero
+along the diagonal, $v_{jj}=0$.
 %\begin{itemize}
 %  \item Show that the matrix is always skew-symmetric and that the solution is oscillatory in nature.
 %  \item Present the density matrix formulation for the previous $2\time 2$ test problems for
