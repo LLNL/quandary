@@ -120,16 +120,18 @@ function timesteptest( cfl = 0.1, testcase = 1, order = 2, plotcomp = "err",test
 
     if plotcomp == "err"
     	titlestr = string("Err, test ", testcase)
-    	plot(tsave',usave[1,:] .- real(cg)',label = "Re(err-1)", title = titlestr)
+    	ple = plot(tsave',usave[1,:] .- real(cg)',label = "Re(err-1)", title = titlestr)
     	plot!(tsave',vsave[1,:] .- imag.(cg)',label = "Im(err-1)")
     	plot!(tsave',usave[2,:].- real.(ce)',label = "Re(err-2)")	
     	plot!(tsave',vsave[2,:] .- imag.(ce)',label = "Im(err-2)" )
+        display(ple)
     elseif plotcomp == "sol"
     	titlestr = string("Sol, test ", testcase)
-    	plot(tsave',usave[1,:] ,label = "Re(1)", title = titlestr)
+    	pls = plot(tsave',usave[1,:] ,label = "Re(1)", title = titlestr)
    	    plot!(tsave',vsave[1,:],label = "Im(1)")
     	plot!(tsave',usave[2,:] ,label = "Re(2)")	
     	plot!(tsave',vsave[2,:] ,label = "Im(2)" )
+        display(pls)
     end
 if test
 	return t,u,v
