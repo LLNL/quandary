@@ -1,0 +1,218 @@
+\documentclass[11pt]{article}
+\usepackage{amsfonts,amsmath,amssymb,amsthm,graphicx}
+\usepackage{multirow}
+\usepackage{booktabs}
+\usepackage[caption=false]{subfig} 
+\usepackage{color}
+\usepackage{ifthen}
+
+\setlength{\topmargin}{0 mm}
+\setlength{\oddsidemargin}{5 mm}
+\setlength{\evensidemargin}{5 mm}
+\setlength{\textwidth}{150 mm}
+\setlength{\textheight}{210 mm}
+
+\include{macros}
+
+\begin{document}
+
+%% \title{Notes on Schroedinger's equation}
+
+%% \author{N. Anders Petersson\thanks{Center for Applied
+%%     Scientific Computing, Lawrence Livermore National Laboratory, L-561, PO Box 808, Livermore CA
+%%     94551. }}
+
+%% \date{\today}
+
+%% \maketitle
+\section{The Schr\"odinger equation}
+Consider the Schr\"odinger equation written as a system of ordinary differential equations (ODE),
+\begin{equation}\label{eq_shrodinger}
+\dot{\psi} = -i H(t) \psi,\quad t\geq 0,\quad \psi(0) = \psi_0,
+\end{equation}
+where $\psi(t)\in {\mathbb C}^N$ and $H\in {\mathbb C}^{N\times N}$ is a Hermitian matrix.
+
+To utilize efficient numerical software it is desirable to derive a real-valued equivalent of
+\eqref{eq_shrodinger}. Let the real-valued functions $u(t)$ and $v(t)$ hold the real and negative
+imaginary parts of $\psi(t)$,
+\[
+\psi(t) = u(t) - iv(t)
+\]
+and decompose the total Hamiltonian matrix into $H(t) = K(t) + i S(t)$, where the real-valued
+matrices $K$ and $S$ hold the symmeric and skew-symmetric parts of $H$: $K^T = K$ and $S^T =
+-S$. We have,
+\begin{align*}
+H\psi &= (K+iS)(u - iv) = (Ku + Sv) + i(Su - Kv),\\
+-iH\psi &= -i(Ku + Sv) + (Su - Kv).
+\end{align*}
+Therefore, a real-valued equivalent of the system \eqref{eq_shrodinger} is
+\begin{equation}\label{eq_real-shrodinger}
+  \begin{bmatrix} \dot{u}\\ \dot{v} \end{bmatrix} =
+%
+  \begin{bmatrix}
+    S(t) & -K(t) \\ K(t) & S(t)
+  \end{bmatrix}     
+  %
+  \begin{bmatrix} u\\ v \end{bmatrix} .
+\end{equation}
+This is a Hamiltonian system where the time-dependent Hamiltonian function is
+\begin{equation}\label{eq_hamiltonian}
+\kappa(u,v,t) = u^T S(t) v + \frac{1}{2} u^T K(t) u + \frac{1}{2} v^T K(t) v.
+\end{equation}
+In general, the Hamiltonian function is non-separable due to the term $u^TS(t) v$.
+
+\subsection{Time integration}
+We consider integrating \eqref{eq_real-shrodinger} with a time-dependent forcing,
+\begin{equation}\label{eq_s-v-forcing}
+  \begin{bmatrix} \dot{u}\\ \dot{v} \end{bmatrix} =
+%
+  \begin{bmatrix}
+    S(t) & -K(t) \\ K(t) & S(t)
+  \end{bmatrix}     
+  %
+  \begin{bmatrix} u\\ v \end{bmatrix}
+  %
+ % + \begin{bmatrix} F^u(t) \\ F^v(t) \end{bmatrix}
+  %
+  =:
+%
+  \begin{bmatrix}
+    f(u,v,t)\\
+    g(u,v,t)
+  \end{bmatrix},\quad
+  %
+  \begin{bmatrix}
+    u(0)\\
+    v(0)
+  \end{bmatrix}
+  =
+    \begin{bmatrix}
+    u0\\
+    v0
+  \end{bmatrix},
+%
+\end{equation}
+for $0 \leq t \leq T$. Here, $u\in \mathbb{R}^N$ and $v\in \mathbb{R}^N$; $K=K^T$ and $S=-S^T$ are real-valued $N\times N$
+matrices.  To solve \eqref{eq_s-v-forcing} numerically, we discretize time on a grid with
+$t_n = nh$, $n=0,1,2,\ldots$, where $h>0$ is the time step, which we assume to be constant (our approach
+generalizes to variable time steps). We denote the numerical solution $u_n\approx u(t_n)$ and $v_n\approx v(t_n)$.  The
+Stromer-Verlet scheme is a symplectic, time-reversible, second order accurate scheme that can be written as a
+partitioned Runge-Kutta (PRK) scheme. It combines the trapezoidal and the implicit midpoint rules,
+\begin{alignat}{3}
+  u_0 &= u0,\quad & v_0 = v0,\\
+  %
+  u_{n+1} &= u_n + h \sum_{i=1}^2 b_i \kappa_i,\quad
+  &v_{n+1} = v_n + h \sum_{i=1}^2 \hat{b}_i \ell_i,\label{eq_uv-update}\\
+  %
+  \kappa_i &= f(U_{n,i}, V_{n,i}, t_n + c_i h),\quad
+  &\ell_i = g(U_{n,i}, V_{n,i}, t_n + \hat{c}_i h),\\
+  %
+  U_{n,i} &= u_n + h \sum_{j=1}^2 a_{ij} \kappa_j,\quad
+  &V_{n,i} = v_n + h \sum_{j=1}^2 \hat{a}_{ij} \ell_j,\label{eq_stage-values}
+\end{alignat}
+for $i=1,2$. The coefficients for the trapezoidal rule are
+\begin{align}
+  a_{11} &= a_{12} = 0,\quad a_{21} = a_{22} = \frac{1}{2},\\
+  b_{1} &= b_2 = \frac{1}{2},\quad  c_1 = 0,\quad c_2=1,
+\end{align}
+and for the implicit mid-point rule,
+\begin{align}
+  \hat{a}_{11} &= \hat{a}_{21} = \frac{1}{2},\quad \hat{a}_{12} = \hat{a}_{22} = 0,\\
+  \hat{b}_{1} &= \hat{b}_2 = \frac{1}{2},\quad  \hat{c}_1 = \hat{c}_2=\frac{1}{2}.
+\end{align}
+Note that $b_i = \hat{b}_i$. In the following we will only use $b_i$.
+
+For the system \eqref{eq_s-v-forcing}, the slopes are
+\begin{align}
+\kappa_1 &= S_nU_{n,1} - K_nV_{n,1} ,\label{eq_kappa1}\\
+\kappa_2 &= S_{n+1}U_{n,2} - K_{n+1}V_{n,2},\\
+\ell_1 &= K_{n+1/2} U_{n,1} + S_{n+1/2} V_{n,1},\\
+\ell_2 &= K_{n+1/2} U_{n,2} + S_{n+1/2} V_{n,2},\label{eq_ell2}
+\end{align}
+where $S_n = S(t_{n})$, $S_{n+1/2} = S(t_n + 0.5 h)$, etc. We can express the PRK scheme in terms of
+the stage values $U_{n,i}$ and $V_{n,i}$ by substituting \eqref{eq_kappa1}-\eqref{eq_ell2} into \eqref{eq_uv-update},
+\begin{align}
+  u_0 &= u0,\quad v_0 = v0,\label{eq_initial-cond}\\
+  u_{n+1} &= u_n + \frac{h}{2}\left(S_nU_{n,1} - K_nV_{n,1} + S_{n+1}U_{n,2} - K_{n+1}V_{n,2}
+  \right),\label{eq_u-update}\\
+  %
+  v_{n+1} &= v_n + \frac{h}{2}\left(K_{n+1/2} \left(U_{n,1} + U_{n,2}\right) + S_{n+1/2}\left(
+  V_{n,1} +  V_{n,2}\right) \right),\label{eq_v-update}
+\end{align}
+and into \eqref{eq_stage-values},
+\begin{align} 
+  U_{n,1} &= u_n,\label{eq_U1}\\
+  U_{n,2} &= u_n + \frac{h}{2}\left(S_nU_{n,1} - K_nV_{n,1} + S_{n+1}U_{n,2} -
+  K_{n+1}V_{n,2} \right),\\
+  V_{n,1} &= v_n + \frac{h}{2}\left(  K_{n+1/2} U_{n,1} + S_{n+1/2} V_{n,1} \right),\\
+  V_{n,2} &= v_n + \frac{h}{2}\left(  K_{n+1/2} U_{n,1} + S_{n+1/2} V_{n,1} \right).\label{eq_V2}
+\end{align}
+Note that $V_{n,1} = V_{n,2}$, but $\ell_1 \ne \ell_2$. Because $S(t)\ne0$, the Hamiltonian system
+is non-separable and the Str\"omer-Verlet scheme becomes partially implicit. We remark that the order
+of accuracy can be raised by using a compositional (Suzuki-Trotter) technique where each time-step
+is decomposed into several sub-steps. Fourth order accuracy can be obtained with three sub-steps and
+sixth order accuracy with seven or nine sub-steps. Eight order requires at least fifteen sub-steps, see
+Hairer et al.~\cite{HairerLubichWanner-06} for further details.
+
+\section{Calculating the gradient of an objective function}
+
+Consider the case where the matrices $K$ and $S$ in \eqref{eq_s-v-forcing} depend on a parameter
+vector $\alpha \in {\mathbb R}^D$,
+\[
+K = K(t,\alpha),\quad S = S(t,\alpha).
+\]
+For a given parameter vector $\alpha$, we are interested in numerically evaluating the continuous objective function,
+\[
+{\cal J}(u(\alpha), v(\alpha)) = \int_{0}^T \left( \langle u(t),W u(t) \rangle +  \langle v(t),W v(t) \rangle\right)\, dt,
+\]
+where $W$ is a real $N\times N$ matrix and $(u,v)$ satisfies the ODE \eqref{eq_s-v-forcing}. Here, $(u,v)$ implicitly depend on $\alpha$
+through the matrices $K$ and $S$.
+
+We can calculate a numerical approximation of the solution to the ODE \eqref{eq_s-v-forcing} by
+using the above Stromer-Verlet scheme. A second order accurate approximation of the continuous
+objective function is given by
+\begin{equation}\label{eq_discrete_obj}
+  {\cal J}_h(U(\alpha), V(\alpha)) = h \sum_{n=0}^{N_t-1} \sum_{i=1}^2 b_i \left( \langle U_{n,1}, W U_{n,i}\rangle +
+  %
+  \langle V_{n,1}, W V_{n,i}\rangle \right),
+\end{equation}
+which we call the discrete objective function. Here, $(U_{n,i}, V_{n,i})$ are the stage values
+\eqref{eq_U1}-\eqref{eq_V2} and $N_t$ is the number of time steps such that $T=h N_t$.
+The discrete objective function is straight forward to evaluate during the time-stepping of the
+Stromer-Verlet scheme.
+
+\subsection{The Lagrangian of the discretized problem}
+To minimize ${\cal J}_h$ using a gradient-based approach such as BFGS we need to evaluate the gradient
+$d {\cal J}_h/ d\alpha_q$, for $q=1,2,\ldots,D$. To ensure proper convergence of BFGS it is important that the
+gradient of ${\cal J}_h$ is calculated very accurately, i.e., without introducing additional truncation errors. We
+adopt a discretize-before-optimize (DBO) approach based on minimizing a discrete Lagrangian. We start by
+introducing the Lagrange multipliers $(\mu_n,\nu_n)$ and $(M_{n,j}, N_{n,j})$ and consider the discrete Lagrangian,
+\begin{equation}
+{\cal L}_h(u,v,U,V, \mu,\nu,M,N,\alpha) = {\cal J}_h(U,V) - \langle u_0 - u0, \mu_0\rangle - \langle
+v_0 - v0, \nu_0\rangle - \sum_{k=1}^6 T_k,
+\end{equation}
+where,
+\begin{align}
+T_1 &= \sum_{n=0}^{N_T-1} \left\langle u_{n+1} - u_n - \frac{h}{2}\left(S_nU_{n,1} - K_nV_{n,1} + S_{n+1}U_{n,2} - K_{n+1}V_{n,2}
+  \right), \mu_{n+1} \right\rangle,\\
+T_2 &= \sum_{n=0}^{N_T-1} \left\langle v_{n+1} - v_n - \frac{h}{2}\left(K_{n+1/2} \left(U_{n,1} + U_{n,2}\right) + S_{n+1/2}\left(
+  V_{n,1} +  V_{n,2}\right) \right), \nu_{n+1} \right\rangle,\\
+T_3 &= \sum_{n=0}^{N_T-1} \left\langle U_{n,1} - u_n, M_{n,1} \right\rangle,\\
+T_4 &= \sum_{n=0}^{N_T-1} \left\langle U_{n,2} - u_n - \frac{h}{2}\left(S_nU_{n,1} - K_nV_{n,1} + S_{n+1}U_{n,2} -
+  K_{n+1}V_{n,2} \right), M_{n,2} \right\rangle,\\
+T_5 &= \sum_{n=0}^{N_T-1} \left\langle V_{n,1} - v_n - \frac{h}{2}\left(  K_{n+1/2} U_{n,1} + S_{n+1/2} V_{n,1} \right), N_{n,1} \right\rangle,\\
+T_6 &= \sum_{n=0}^{N_T-1} \left\langle V_{n,2} - v_n - \frac{h}{2}\left(  K_{n+1/2} U_{n,1} + S_{n+1/2} V_{n,1} \right), N_{n,2} \right\rangle.
+\end{align}
+The basic idea of the Lagrangian approach is to consider the variables $(u,v,U,V, \mu,\nu,M,N)$ as being independent of
+$\alpha$; only the matrices $K_p$ and $S_q$ depend explicitly on $\alpha$. In the particular case
+when $(u^*,v^*)$, with
+corresponding stage values $(U^*,V^*)$, is a solution of the Stromer-Verlet scheme
+\eqref{eq_initial-cond}-\eqref{eq_V2} for a given parameter vector $\alpha$,
+\[
+  {\cal L}_h(u^*,v^*,U^*,V^*, \mu,\nu,M,N,\alpha) = {\cal J}_h(U^*,V^*).
+\]
+
+\bibliographystyle{plain}
+\bibliography{quantum}
+
+\end{document}
