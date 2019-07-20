@@ -203,10 +203,9 @@ T_4 &= \sum_{n=0}^{N_T-1} \left\langle U_{n,2} - u_n - \frac{h}{2}\left(S_nU_{n,
 T_5 &= \sum_{n=0}^{N_T-1} \left\langle V_{n,1} - v_n - \frac{h}{2}\left(  K_{n+1/2} U_{n,1} + S_{n+1/2} V_{n,1} \right), N_{n,1} \right\rangle,\\
 T_6 &= \sum_{n=0}^{N_T-1} \left\langle V_{n,2} - v_n - \frac{h}{2}\left(  K_{n+1/2} U_{n,1} + S_{n+1/2} V_{n,1} \right), N_{n,2} \right\rangle.
 \end{align}
-The basic idea of the discrete Lagrangian approach is to consider the variables $(u,v,U,V, \mu,\nu,M,N)$ as being independent of
-$\alpha$; only the matrices $K_p$ and $S_q$ depend explicitly on $\alpha$. In the particular case
-when $(u^*,v^*)$, with
-corresponding stage values $(U^*,V^*)$, is a solution of the Stromer-Verlet scheme
+In the discrete Lagrangian, only the matrices $K_p$ and $S_q$ depend explicitly on $\alpha$. The
+variables $(u,v,U,V, \mu,\nu,M,N)$ are considered to be independent of $\alpha$ and each
+other. However, in the particular case when $(u^*,v^*,U^*,V^*)$ satisfies the Stromer-Verlet scheme
 \eqref{eq_initial-cond}-\eqref{eq_V2} for a given parameter vector $\alpha$,
 \[
 {\cal L}_h(u^*,v^*,U^*,V^*, \mu,\nu,M,N,\alpha) = {\cal J}_h(U^*,V^*).
@@ -223,10 +222,43 @@ The discrete Lagrangian has a saddle point when
   \frac{\p{\cal L}_h}{\p U_{n,j}} =
   \frac{\p{\cal L}_h}{\p V_{n,j}} &= 0,\label{eq_backward}
 \end{align}
-for $n=0,1,\ldots,N_T$ and $j=1,2$. The first set of conditions result in the Stromer-Verlet
-scheme. The second set of conditions result in a time-stepping scheme for solving the adjoint ODE, governing
-$(\mu_n, \lambda_n)$, with stage values $(M_{n,j}, N_{n,j})$. The adjoint time-stepping scheme will
-be derived below. Given a solution that satisfies \eqref{eq_forward} and \eqref{eq_backward}, we can
+for $n=0,1,\ldots,N_T$ and $j=1,2$. The set of conditions in \eqref{eq_forward} result in the
+Stromer-Verlet scheme \eqref{eq_initial-cond} -\eqref{eq_V2}, for evolving $(u_n, v_n)$ forwards in
+time. The set of conditions in \eqref{eq_backward} result in a backwards time-stepping scheme
+for evolving $(\mu_n, \lambda_n)$, with stage values $(M_{n,j}, N_{n,j})$, backwards in time. After a
+somewhat tedious calculation we arrive at the scheme,
+\begin{align}
+  \mu_{N_T} &= 0,\quad \mu_n = \mu_{n+1} - \frac{h}{2} \left(\tilde{\kappa}_1 +
+  \tilde{\kappa}_2\right),\quad n=N_T -1, \ldots 0,\\
+  %
+  \nu_{N_T} &= 0,\quad \nu_{n} = \nu_{n+1} - \frac{h}{2} \left( \tilde{\ell}_1 + \tilde{\ell}_2 \right),\quad n=N_T -1, \ldots 0,
+  %
+\end{align}
+where the slopes are
+\begin{align}
+\tilde\kappa_1 &= S_n^T X_{n,1} + K_{n+1/2}^T Y_{n,1} + \frac{\p {\cal J}_h}{\p U_{n,1}} ,\\
+\tilde\kappa_2 &= S_{n+1}^T X_{n,2} + K_{n+1/2}^T Y_{n,2}  + \frac{\p {\cal J}_h}{\p U_{n,2}},\\
+\tilde\ell_1 &= -K_{n}^T X_{n,1} + S_{n+1/2}^T Y_{n,1}  + \frac{\p {\cal J}_h}{\p V_{n,1}},\\
+\tilde\ell_2 &= -K_{n+1}^T X_{n,2} + S_{n+1/2}^T Y_{n,2}  + \frac{\p {\cal J}_h}{\p V_{n,2}},
+\end{align}
+and the stage variables are
+\begin{alignat}{3}
+  X_{n,1} &= \mu_{n+1} + \frac{h}{2} \tilde{\kappa}_{2},\quad
+  &Y_{n,1} = \nu_{n+1} +\frac{h}{2} \left( \tilde{\ell}_1 + \tilde{\ell}_2 \right),\\
+  %
+  X_{n,2} & = \mu_{n+1} + \frac{h}{2} \tilde{\kappa}_{2},\quad
+  &Y_{n,2} = \nu_{n+1}.
+\end{alignat}
+Note that $X_{n,1}=X_{n,2} =: X_n$. The stage variables are related to $(M_{n,j}, N_{n,j})$ through
+\begin{align}
+  M_{n,2} &= X_{n} - \mu_{n+1},\\
+  N_{n,1} + N_{n,2} &= Y_{n,1} - \nu_{n+1},\\
+  \nu_{n+1} &= Y_{n,2}.
+\end{align}
+
+\subsection{Computing the gradient using the adjoint}
+
+Given a solution that satisfies \eqref{eq_forward} and \eqref{eq_backward}, we can
 compute the gradient of ${\cal J}_h$,
 \[
 \frac{d{\cal J}_h}{d\alpha_q} = ...
