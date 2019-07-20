@@ -161,30 +161,32 @@ vector $\alpha \in {\mathbb R}^D$,
 \[
 K = K(t,\alpha),\quad S = S(t,\alpha).
 \]
-For a given parameter vector $\alpha$, we are interested in the continuous objective function,
+We are interested in the continuous objective function,
 \[
-{\cal J}(u(\alpha), v(\alpha)) = \int_{0}^T \left( \langle u(t),W u(t) \rangle +  \langle v(t),W v(t) \rangle\right)\, dt,
+{\cal G}(\alpha) := {\cal J}(u, v) = \int_{0}^T \left( \langle u(t),W u(t) \rangle +  \langle v(t),W v(t) \rangle\right)\, dt,
 \]
-where $W$ is a real $N\times N$ matrix and $(u,v)$ satisfies the ODE \eqref{eq_s-v-forcing}. Thus, $(u,v)$ implicitly depend on $\alpha$
-through the matrices $K(t,\alpha)$ and $S(t,\alpha)$.
+where $W$ is a real $N\times N$ matrix and $(u,v)$ satisfies the ODE \eqref{eq_s-v-forcing} for a
+given parameter vector $\alpha$. Thus, $(u,v)$ implicitly depend on $\alpha$ through the matrices
+$K(t,\alpha)$ and $S(t,\alpha)$.
 
 We can calculate a numerical approximation of the solution of \eqref{eq_s-v-forcing} by
 using the above Stromer-Verlet scheme. A second order accurate approximation of the continuous
 objective function is given by
 \begin{equation}\label{eq_discrete_obj}
-  {\cal J}_h(U(\alpha), V(\alpha)) = h \sum_{n=0}^{N_t-1} \sum_{i=1}^2 b_i \left( \langle U_{n,1}, W U_{n,i}\rangle +
+{\cal G}_h(\alpha) :=  {\cal J}_h(U, V) = h \sum_{n=0}^{N_t-1} \sum_{i=1}^2 b_i \left( \langle U_{n,1}, W U_{n,i}\rangle +
   %
   \langle V_{n,1}, W V_{n,i}\rangle \right),
 \end{equation}
-which we call the discrete objective function. Here, $(U_{n,i}, V_{n,i})$ are the stage values
-\eqref{eq_U1}-\eqref{eq_V2} and $N_t$ is the number of time steps such that $T=h N_t$.
-The discrete objective function is straight forward to evaluate during the time-stepping of the
+which we call the discrete objective function. Similar to the continuous case, the stage variables
+$(U_{n,i}, V_{n,i})$ correspond to numerically solving the ODE \eqref{eq_s-v-forcing} using the
+Stromer-Verlet scheme, for a given parameter vector $\alpha$. Here, $N_t$ is the number of time steps such that $T=h N_t$.
+We note that the discrete objective function \eqref{eq_discrete_obj} is straight forward to evaluate during the time-stepping of the
 Stromer-Verlet scheme.
 
 \subsection{The Lagrangian of the discretized problem}
-To minimize ${\cal J}_h$ using a gradient-based approach such as BFGS we need to evaluate the gradient
-$d {\cal J}_h/ d\alpha_q$, for $q=1,2,\ldots,D$. To ensure proper convergence of BFGS it is important that the
-gradient of ${\cal J}_h$ is calculated very accurately, i.e., without introducing additional truncation errors. We
+To minimize ${\cal G}_h$ using a gradient-based approach such as BFGS we need to evaluate the gradient
+$d {\cal G}_h/ d\alpha_q$, for $q=1,2,\ldots,D$. To ensure proper convergence of BFGS it is important that the
+gradient is calculated very accurately, i.e., without introducing additional truncation errors. We
 adopt a discretize-before-optimize (DBO) approach based on minimizing a discrete Lagrangian. We start by
 introducing the Lagrange multipliers $(\mu_n,\nu_n)$ and $(M_{n,j}, N_{n,j})$ and consider the discrete Lagrangian,
 \begin{equation}
@@ -193,23 +195,26 @@ v_0 - v0, \nu_0\rangle - \sum_{k=1}^6 T_k,
 \end{equation}
 where,
 \begin{align}
-T_1 &= \sum_{n=0}^{N_T-1} \left\langle u_{n+1} - u_n - \frac{h}{2}\left(S_nU_{n,1} - K_nV_{n,1} + S_{n+1}U_{n,2} - K_{n+1}V_{n,2}
+T_1 &= \sum_{n=0}^{N_t-1} \left\langle u_{n+1} - u_n - \frac{h}{2}\left(S_nU_{n,1} - K_nV_{n,1} + S_{n+1}U_{n,2} - K_{n+1}V_{n,2}
   \right), \mu_{n+1} \right\rangle,\\
-T_2 &= \sum_{n=0}^{N_T-1} \left\langle v_{n+1} - v_n - \frac{h}{2}\left(K_{n+1/2} \left(U_{n,1} + U_{n,2}\right) + S_{n+1/2}\left(
+T_2 &= \sum_{n=0}^{N_t-1} \left\langle v_{n+1} - v_n - \frac{h}{2}\left(K_{n+1/2} \left(U_{n,1} + U_{n,2}\right) + S_{n+1/2}\left(
   V_{n,1} +  V_{n,2}\right) \right), \nu_{n+1} \right\rangle,\\
-T_3 &= \sum_{n=0}^{N_T-1} \left\langle U_{n,1} - u_n, M_{n,1} \right\rangle,\\
-T_4 &= \sum_{n=0}^{N_T-1} \left\langle U_{n,2} - u_n - \frac{h}{2}\left(S_nU_{n,1} - K_nV_{n,1} + S_{n+1}U_{n,2} -
+T_3 &= \sum_{n=0}^{N_t-1} \left\langle U_{n,1} - u_n, M_{n,1} \right\rangle,\\
+T_4 &= \sum_{n=0}^{N_t-1} \left\langle U_{n,2} - u_n - \frac{h}{2}\left(S_nU_{n,1} - K_nV_{n,1} + S_{n+1}U_{n,2} -
   K_{n+1}V_{n,2} \right), M_{n,2} \right\rangle,\\
-T_5 &= \sum_{n=0}^{N_T-1} \left\langle V_{n,1} - v_n - \frac{h}{2}\left(  K_{n+1/2} U_{n,1} + S_{n+1/2} V_{n,1} \right), N_{n,1} \right\rangle,\\
-T_6 &= \sum_{n=0}^{N_T-1} \left\langle V_{n,2} - v_n - \frac{h}{2}\left(  K_{n+1/2} U_{n,1} + S_{n+1/2} V_{n,1} \right), N_{n,2} \right\rangle.
+T_5 &= \sum_{n=0}^{N_t-1} \left\langle V_{n,1} - v_n - \frac{h}{2}\left(  K_{n+1/2} U_{n,1} + S_{n+1/2} V_{n,1} \right), N_{n,1} \right\rangle,\\
+T_6 &= \sum_{n=0}^{N_t-1} \left\langle V_{n,2} - v_n - \frac{h}{2}\left(  K_{n+1/2} U_{n,1} + S_{n+1/2} V_{n,1} \right), N_{n,2} \right\rangle.
 \end{align}
 In the discrete Lagrangian, only the matrices $K_p$ and $S_q$ depend explicitly on $\alpha$. The
 variables $(u,v,U,V, \mu,\nu,M,N)$ are considered to be independent of $\alpha$ and each
-other. However, in the particular case when $(u^*,v^*,U^*,V^*)$ satisfies the Stromer-Verlet scheme
+other.
+
+In the particular case when $(u^*,v^*,U^*,V^*)$ satisfies the Stromer-Verlet scheme
 \eqref{eq_initial-cond}-\eqref{eq_V2} for a given parameter vector $\alpha$,
 \[
-{\cal L}_h(u^*,v^*,U^*,V^*, \mu,\nu,M,N,\alpha) = {\cal J}_h(U^*,V^*).
+{\cal L}_h(u^*,v^*,U^*,V^*, \mu,\nu,M,N,\alpha) = {\cal G}_h(\alpha),
 \]
+because $T_k=0$ for $k\in[1,6]$ and the initial conditions are satisfied by $(u^*_0, v^*_0)$.
 
 The discrete Lagrangian has a saddle point when
 \begin{align}
@@ -222,34 +227,35 @@ The discrete Lagrangian has a saddle point when
   \frac{\p{\cal L}_h}{\p U_{n,j}} =
   \frac{\p{\cal L}_h}{\p V_{n,j}} &= 0,\label{eq_backward}
 \end{align}
-for $n=0,1,\ldots,N_T$ and $j=1,2$. The set of conditions in \eqref{eq_forward} result in the
+for $n=0,1,\ldots,N_t$ and $j=1,2$. The set of conditions in \eqref{eq_forward} result in the
 Stromer-Verlet scheme \eqref{eq_initial-cond} -\eqref{eq_V2}, for evolving $(u_n, v_n)$ forwards in
 time. The set of conditions in \eqref{eq_backward} result in a backwards time-stepping scheme
-for evolving $(\mu_n, \lambda_n)$, with stage values $(M_{n,j}, N_{n,j})$, backwards in time. After a
-somewhat tedious calculation we arrive at the scheme,
+for evolving the adjoint variables $(\mu_n, \lambda_n)$ backwards in time. After a
+somewhat tedious calculation we arrive at the adjoint scheme,
 \begin{align}
-  \mu_{N_T} &= 0,\quad \mu_n = \mu_{n+1} - \frac{h}{2} \left(\tilde{\kappa}_1 +
-  \tilde{\kappa}_2\right),\quad n=N_T -1, \ldots 0,\\
+  \mu_{N_t} &= 0,\quad \mu_n = \mu_{n+1} - \frac{h}{2} \left(\tilde\kappa_{n,1} +
+  \tilde\kappa_{n,2}\right),\quad n=N_t -1, N_t - 2, \ldots 0,\\
   %
-  \nu_{N_T} &= 0,\quad \nu_{n} = \nu_{n+1} - \frac{h}{2} \left( \tilde{\ell}_1 + \tilde{\ell}_2 \right),\quad n=N_T -1, \ldots 0,
+  \nu_{N_t} &= 0,\quad \nu_{n} = \nu_{n+1} - \frac{h}{2} \left( \tilde\ell_{n,1} + \tilde\ell_{n,2} \right),\quad n=N_t -1, N_t -2, \ldots 0,
   %
 \end{align}
 where the slopes are
 \begin{align}
-\tilde\kappa_1 &= S_n^T X_{n,1} + K_{n+1/2}^T Y_{n,1} + \frac{\p {\cal J}_h}{\p U_{n,1}} ,\\
-\tilde\kappa_2 &= S_{n+1}^T X_{n,2} + K_{n+1/2}^T Y_{n,2}  + \frac{\p {\cal J}_h}{\p U_{n,2}},\\
-\tilde\ell_1 &= -K_{n}^T X_{n,1} + S_{n+1/2}^T Y_{n,1}  + \frac{\p {\cal J}_h}{\p V_{n,1}},\\
-\tilde\ell_2 &= -K_{n+1}^T X_{n,2} + S_{n+1/2}^T Y_{n,2}  + \frac{\p {\cal J}_h}{\p V_{n,2}},
+\tilde\kappa_{n,1} &= -S_n X_{n,1} + K_{n+1/2} Y_{n,1} + \frac{\p {\cal J}_h}{\p U_{n,1}} ,\\
+\tilde\kappa_{n,2} &= -S_{n+1} X_{n,2} + K_{n+1/2} Y_{n,2}  + \frac{\p {\cal J}_h}{\p U_{n,2}},\\
+\tilde\ell_{n,1} &= -K_{n} X_{n,1} - S_{n+1/2} Y_{n,1}  + \frac{\p {\cal J}_h}{\p V_{n,1}},\\
+\tilde\ell_{n,2} &= -K_{n+1} X_{n,2} - S_{n+1/2} Y_{n,2}  + \frac{\p {\cal J}_h}{\p V_{n,2}},
 \end{align}
-and the stage variables are
+because $S^T = -S$ and $K^T = K$. The stage variables satisfy,
 \begin{alignat}{3}
-  X_{n,1} &= \mu_{n+1} + \frac{h}{2} \tilde{\kappa}_{2},\quad
-  &Y_{n,1} = \nu_{n+1} +\frac{h}{2} \left( \tilde{\ell}_1 + \tilde{\ell}_2 \right),\\
+  X_{n,1} &= \mu_{n+1} + \frac{h}{2} \tilde\kappa_{n,2},\quad
+  &Y_{n,1} = \nu_{n+1} +\frac{h}{2} \left( \tilde\ell_{n,1} + \tilde\ell_{n,2} \right),\\
   %
-  X_{n,2} & = \mu_{n+1} + \frac{h}{2} \tilde{\kappa}_{2},\quad
+  X_{n,2} & = \mu_{n+1} + \frac{h}{2} \tilde\kappa_{n,2},\quad
   &Y_{n,2} = \nu_{n+1}.
 \end{alignat}
-Note that $X_{n,1}=X_{n,2} =: X_n$. The stage variables are related to $(M_{n,j}, N_{n,j})$ through
+Note that $X_{n,1}=X_{n,2} =: X_n$. In the derivation of the adjoint time-stepping scheme, we used
+the variable substitutions,
 \begin{align}
   M_{n,2} &= X_{n} - \mu_{n+1},\\
   N_{n,1} + N_{n,2} &= Y_{n,1} - \nu_{n+1},\\
@@ -258,11 +264,15 @@ Note that $X_{n,1}=X_{n,2} =: X_n$. The stage variables are related to $(M_{n,j}
 
 \subsection{Computing the gradient using the adjoint}
 
-Given a solution that satisfies \eqref{eq_forward} and \eqref{eq_backward}, we can
-compute the gradient of ${\cal J}_h$,
+Given a solution that satisfies the conditions of \eqref{eq_forward} and \eqref{eq_backward}, the
+gradient of ${\cal G}_h(\alpha)$ satisfies
 \[
-\frac{d{\cal J}_h}{d\alpha_q} = ...
+\frac{d{\cal G}_h}{d\alpha_q} = \frac{\p{\cal L}_h}{\p \alpha_q},\quad q=1,2,\ldots,D.
 \]
+The right hand side only gets a contribution from the terms in $T_k$ that involve the matrices $K$
+and $S$. Thus, ...
+
+
 
 \bibliographystyle{plain}
 \bibliography{quantum}
