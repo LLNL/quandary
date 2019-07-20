@@ -238,7 +238,7 @@ for evolving the adjoint variables $(\mu_n, \lambda_n)$ backwards in time. After
 somewhat tedious calculation we arrive at the adjoint scheme,
 \begin{align}
   \mu_{N_t} &= 0,\quad \mu_n = \mu_{n+1} - \frac{h}{2} \left(\tilde\kappa_{n,1} +
-  \tilde\kappa_{n,2}\right),\quad n=N_t -1, N_t - 2, \ldots 0,\\
+  \tilde\kappa_{n,2}\right),\quad n=N_t -1, N_t - 2, \ldots 0,\label{eq_mu}\\
   %
   \nu_{N_t} &= 0,\quad \nu_{n} = \nu_{n+1} - \frac{h}{2} \left( \tilde\ell_{n,1} + \tilde\ell_{n,2} \right),\quad n=N_t -1, N_t -2, \ldots 0,
   %
@@ -256,7 +256,7 @@ because $S^T = -S$ and $K^T = K$. The stage variables satisfy,
   &X_{n,2} & = \mu_{n+1} + \frac{h}{2} \tilde\kappa_{n,2},\\
   %
   Y_{n,1} &= \nu_{n+1} +\frac{h}{2} \left( \tilde\ell_{n,1} + \tilde\ell_{n,2} \right),\quad
-  &Y_{n,2} &= \nu_{n+1}.
+  &Y_{n,2} &= \nu_{n+1}.\label{eq_Y2}
 \end{alignat}
 Note that $X_{n,1}=X_{n,2} =: X_n$.
 
@@ -315,10 +315,22 @@ In a similar way,
   %
   - \frac{h}{2} \sum_{n=0}^{N_t-1} \left\langle K'_{n+1/2} U_{n,2} + S'_{n+1/2} V_{n,2},Y_{n,2} \right\rangle
 \end{multline}
-where we used the relation \eqref{eq_NY2} in the last term.
-
-
-
+where we used the relation \eqref{eq_NY2} in the last term. We can further simplify the expressions
+by recognizing that $V_{n,1}=V_{n,2} =: V_n$. By collecting the terms,
+\begin{multline}\label{eq_L-grad}
+  \frac{\p{\cal L}_h}{\p \alpha_q} = - \sum_{k=1}^6 \frac{\p T_k}{\p \alpha_q} = 
+%
+  \frac{h}{2} \sum_{n=0}^{N_t-1} \left\langle S'_nU_{n,1} + S'_{n+1}U_{n,2} - (K'_n + K'_{n+1}) V_{n}, X_{n}
+  \right\rangle\, + \\
+  %
+  \frac{h}{2} \sum_{n=0}^{N_t-1} \left( \left\langle K'_{n+1/2} U_{n,1} + S'_{n+1/2} V_{n},
+  Y_{n,1}\right\rangle +  \left\langle K'_{n+1/2} U_{n,2} + S'_{n+1/2} V_{n},Y_{n,2} \right\rangle \right).
+\end{multline}
+We can avoid storing the time-history of $(U_{n,j}, V_n)$ by using the time-reversibility of the
+Stromer-Verlet scheme. However, in order to do so, we must first calculate the terminal condition
+$(u_{N_t},v_{N_t})$ by evolving \eqref{eq_initial-cond}-\eqref{eq_V2} forwards in time. The
+time-stepping can then be reversed and the gradient of the Lagrangian \eqref{eq_L-grad} can be
+accumulated by simultaneously time-stepping the adjoint system \eqref{eq_mu}-\eqref{eq_Y2}.
 
 \bibliographystyle{plain}
 \bibliography{quantum}
