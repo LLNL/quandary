@@ -1,3 +1,4 @@
+#-*-python-*-
 module objfunc
 
 include("bsplines.jl")
@@ -90,7 +91,7 @@ function traceobjgrad(pcof0::Array{Float64,1},  params::parameters, order::Int64
   #   @show(wmat[N+1:Ntot, N+1:Ntot])
   # end
 
-  # parameters for tbsplines
+  # parameters for B-splines
   dtknot = T/(D - 2)
   splineparams = bsplines.splineparams(T, D, D+1, dtknot.*(collect(1:D) .- 1.5), dtknot.*(collect(1:D+1) .- 2), dtknot, pcof)
 
@@ -258,7 +259,7 @@ function traceobjgrad(pcof0::Array{Float64,1},  params::parameters, order::Int64
 
       forbidden0 = forbidden
 
-      # compute component of the gradient for verification of adjoint method
+      # compute one component of the gradient for verification of the adjoint method
       if evaladjoint && verbose
       	 rgrad = rfgrad(t, splineparams)
       	 igrad = ifgrad(t, splineparams)

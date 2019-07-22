@@ -36,10 +36,11 @@ by the $N\times N$ complex matrix
 \[
 \rho = \sum_{i=1}^N p_i \psi_i \psi_i^\dag,\quad p_i \geq 0.
 \]
-From the definition follows immediately that the density matrix is symmetric (self-adjoint),
+From the definition follows immediately that the density matrix is Hermitian (self-adjoint),
 \[
-\rho^\dag = \sum_{i=1}^N p_i \psi_i \psi_i^\dag = \rho.
+\rho^\dag = \sum_{i=1}^N p_i \psi_i \psi_i^\dag = \rho,
 \]
+because the probabilities $p_i$ are real non-negative numbers.
 
 Consider the evolution of a closed quantum system that is described by the unitary operator $U$. Let
 the system initially be in the state $\psi_i$, with probablitity $p_i$, corresponding to the density
@@ -50,14 +51,18 @@ with probability $p_i$. Thus, the evolution of the density matrix is described b
 \]
 
 A quantum system whose state is known exactly is said to be in a pure state. Let the state be
-represented by the vector $\psi\in C^N$. Because the system is in this state with certainty
-(probability 1), the density operator equals rank-1 matrix
+represented by the unit vector $\psi\in C^N$. Because the system is in this state with certainty
+(probability 1), the density matrix is represented by the rank-1 matrix
 \[
 \rho = \psi \psi^\dag \in {\mathbb C}^{N\times N}.
 \]
-If the state of the quantum system is {\em not} known exactly, the density operator is in
-a mixed state. The quantum system is then in a mixture of the different pure states in the ensamble for $\rho$.
+In this case, the density matrix is a projection,
+\[
+\rho^2 = \psi \psi^\dag \psi\psi^\dag = \psi\psi^\dag = \rho.
+\]
 
+If the state of the quantum system is {\em not} known exactly, the density operator is in a mixed state, meaning that it
+is in an ensamble of pure states that result in a density matrix that is not a projection.
 \begin{definition}
   Consider a quantum system that is in a pure or a mixed state. Let $\psi_i\in{\mathbb C}^N$ be the
   state vector for the $i^{th}$ state and let the quantum system be in this state with probability
@@ -256,7 +261,7 @@ The solution of \eqref{eq_LvN-test1} follows as the corresponding density matrix
   -i \cos(\phi(t)) \sin(\phi(t)) & \sin^2(\phi(t))
   \end{bmatrix}
 \]
-To further utilize existing libraries for ordinary differential equations, we further re-formulate
+To further utilize standard routines for solving ordinary differential equations, we further re-formulate
 the problem in terms of real-valued vectors and matrices,
 \[
 \mbox{vec$(\rho)$} = \ub + i \vb, \quad  -i\left( I_N\otimes H(t) - H^T(t) \otimes I_N \right) =:
