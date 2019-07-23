@@ -85,6 +85,11 @@ int main(int argc,char **argv)
   ierr = MatCreateSeqAIJ(PETSC_COMM_SELF,N*2,N*2,0,NULL,&M);CHKERRQ(ierr);
   ierr = MatSetFromOptions(M);CHKERRQ(ierr);
   ierr = MatSetUp(M);CHKERRQ(ierr);
+  ierr = MatAssemblyBegin(M,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
+  ierr = MatAssemblyEnd(M,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
+  /* ensure that the Jacobian matrix has diagonal entries since that is required by TS */
+  ierr = MatShift(M,(PetscReal)1);CHKERRQ(ierr);
+  ierr = MatShift(M,(PetscReal)-1);CHKERRQ(ierr);
 
   ierr = TSSetRHSFunction(ts,NULL,TSComputeRHSFunctionLinear,&appctx);CHKERRQ(ierr);
   ierr = TSSetRHSJacobian(ts,M,M,RHSJacobian,&appctx);CHKERRQ(ierr);
@@ -524,7 +529,7 @@ PetscErrorCode SetUpMatrices(AppCtx *appctx)
   i = 3;
   j = 11;
   v[0] = 1;
-  ierr = MatSetValues(appctx.aPadTKI,1,&i,1,&j,v,INSERT_VALUES);CHKERRQ(ierr);
+  ierr = MatSetValues(appctx->aPadTKI,1,&i,1,&j,v,INSERT_VALUES);CHKERRQ(ierr);
   i = 4;
   j = 12;
   v[0] = 1;
@@ -626,10 +631,14 @@ PetscErrorCode SetUpMatrices(AppCtx *appctx)
   ierr = MatCreateSeqAIJ(PETSC_COMM_SELF,appctx->N,appctx->N,0,NULL,&appctx->A);CHKERRQ(ierr);
   ierr = MatSetFromOptions(appctx->A);CHKERRQ(ierr);
   ierr = MatSetUp(appctx->A);CHKERRQ(ierr);
+  ierr = MatAssemblyBegin(appctx->A,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
+  ierr = MatAssemblyEnd(appctx->A,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
 
   ierr = MatCreateSeqAIJ(PETSC_COMM_SELF,appctx->N,appctx->N,0,NULL,&appctx->B);CHKERRQ(ierr);
   ierr = MatSetFromOptions(appctx->B);CHKERRQ(ierr);
   ierr = MatSetUp(appctx->B);CHKERRQ(ierr);
+  ierr = MatAssemblyBegin(appctx->B,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
+  ierr = MatAssemblyEnd(appctx->B,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
 
   return 0;
 }
