@@ -136,19 +136,19 @@ be relaxed. We denote the numerical solution $u^n\approx u(t_n)$ and $v^n\approx
 general, $S(t)\ne0$ and the Hamiltonian system is non-separable. Givent $(u^n, v^n)$, the 
 Stromer-Verlet scheme evolves the solution by
 \begin{align*}
-  \left(I - \frac{\delta_t}{2} S^{n}\right) \ell_1 &= K^n u^n + S^n v^n + F_v^n,\\
+  \left(I - \frac{\delta_t}{2} S^{n+1/2}\right) \ell_1 &= K^{n+1/2} u^n + S^{n+1/2} v^n + F_v^{n+1/2},\\
 %
   v^{n+1/2} &= v^n + \frac{\delta_t}{2}\ell_1,\\
   %
-  \kappa_1 &= S^{n+1/2} u^n - K^{n+1/2} v^{n+1/2} +
-  F_u^{n+1/2},\\
+  \kappa_1 &= S^{n} u^n - K^{n} v^{n+1/2} +
+  F_u^{n},\\
 %
-  \left(I - \frac{\delta_t}{2} S^{n+1/2}\right) \kappa_2 &= S^{n+1/2}\left( u^n + \frac{\delta_t}{2}
-  \kappa_1 \right) - K^{n+1/2}  v^{n+1/2} + F_u^{n+1/2},\\
+  \left(I - \frac{\delta_t}{2} S^{n+1}\right) \kappa_2 &= S^{n+1}\left( u^n + \frac{\delta_t}{2}
+  \kappa_1 \right) - K^{n+1}  v^{n+1/2} + F_u^{n+1},\\
   %
   u^{n+1} &= u^n + \frac{\delta_t}{2}\left( \kappa_1 + \kappa_2 \right),\\
 %
-  \ell_2 &= K^{n+1} u^{n+1} + S^{n+1}  v^{n+1/2} + F_v^{n+1},\\
+  \ell_2 &= K^{n+1/2} u^{n+1} + S^{n+1/2}  v^{n+1/2} + F_v^{n+1/2},\\
   %
   v^{n+1} &= v^n + \frac{\delta_t}{2}\left( \ell_1 + \ell_2 \right).
 \end{align*}
