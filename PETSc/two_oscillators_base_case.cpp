@@ -124,13 +124,11 @@ int main(int argc,char **argv)
   */
   FILE *file;
   file = fopen("output1.txt", "w");
-  PetscReal t, s_norm, e_norm;
+  PetscReal t, x_norm, s_norm, e_norm;
 
-  time_steps_max = 2;
   for(PetscInt step = 1; step <= time_steps_max; step++) {
 
     TSGetTime(ts, &t);
-    printf("Time step: %d, %f\n", step, t);
 
     TSSetPreStep(ts, NULL);
 
@@ -141,21 +139,14 @@ int main(int argc,char **argv)
     ierr = ExactSolution(t,appctx.s,&appctx);CHKERRQ(ierr);
 
     // Compare exact to Petsc solution
-    const PetscScalar *x_ptr, *s_ptr;
-    ierr = VecGetArrayRead(x, &x_ptr); CHKERRQ(ierr);
-    ierr = VecGetArrayRead(appctx.s, &s_ptr); CHKERRQ(ierr);
-    double x0 = (double)PetscRealPart(x_ptr[0]);
-    double s0 = (double)PetscRealPart(s_ptr[0]);
-    ierr = VecRestoreArrayRead(x,&x_ptr);CHKERRQ(ierr);
-    ierr = VecRestoreArrayRead(appctx.s,&s_ptr);CHKERRQ(ierr);
-
-    ierr = VecWAXPY(e,-1.0,x,appctx.s);CHKERRQ(ierr);
+    ierr = VecNorm(x,NORM_2,&x_norm);CHKERRQ(ierr);
     ierr = VecNorm(appctx.s,NORM_2,&s_norm);CHKERRQ(ierr);
+    ierr = VecWAXPY(e,-1.0,x,appctx.s);CHKERRQ(ierr);
     ierr = VecScale(e,(1 / s_norm));
     ierr = VecNorm(e,NORM_2,&e_norm);CHKERRQ(ierr);
 
-    fprintf(file,"%3d  %1.14e  %1.14e  %1.14e  %1.14e\n",step,(double)t, x0, s0,(double)e_norm);
-    printf("%3d  %1.14e  %1.14e  %1.14e  %1.14e\n",step,(double)t, x0, s0,(double)e_norm);
+    fprintf(file,"%3d  %1.14e  %1.14e  %1.14e  %1.14e\n",step,(double)t, x_norm, s_norm,(double)e_norm);
+    printf("%3d  %1.14e  %1.14e  %1.14e  %1.14e\n",step,(double)t, x_norm, s_norm,(double)e_norm);
   }
   fclose(file);
 
@@ -304,17 +295,12 @@ PetscErrorCode RHSJacobian(TS ts,PetscReal t,Vec u,Mat M,Mat P,void *ctx)
 
   f = F(t, appctx);
   g = G(t, appctx);
-  printf("time = %f, f = %f, g = %f\n", t, f, g);
 
   ierr = MatAXPY(appctx->A,g,appctx->IKbMbd,DIFFERENT_NONZERO_PATTERN);CHKERRQ(ierr);
   ierr = MatAXPY(appctx->A,-1*g,appctx->bMbdTKI,DIFFERENT_NONZERO_PATTERN);CHKERRQ(ierr);
 
   ierr = MatAXPY(appctx->B,f,appctx->aPadTKI,DIFFERENT_NONZERO_PATTERN);CHKERRQ(ierr);
   ierr = MatAXPY(appctx->B,-1*f,appctx->IKaPad,DIFFERENT_NONZERO_PATTERN);CHKERRQ(ierr);
-printf("\nA\n");
-  MatView(appctx->A,PETSC_VIEWER_STDOUT_WORLD);
-  printf("\nB\n");
-  MatView(appctx->B,PETSC_VIEWER_STDOUT_WORLD);
 
   MatGetValues(appctx->A, appctx->N, idx, appctx->N, idx, q1);
   MatSetValues(M, appctx->N, idx, appctx->N, idx, q1, INSERT_VALUES);
@@ -330,9 +316,6 @@ printf("\nA\n");
 
   ierr = MatAssemblyBegin(M,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
   ierr = MatAssemblyEnd(M,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
-  printf("\nM\n");
-  MatView(M,PETSC_VIEWER_STDOUT_WORLD);
-
 
   return 0;
 }
@@ -415,7 +398,6 @@ PetscErrorCode SetUpMatrices(AppCtx *appctx)
 
   ierr = MatAssemblyBegin(appctx->IKbMbd,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
   ierr = MatAssemblyEnd(appctx->IKbMbd,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
-  MatView(appctx->IKbMbd,PETSC_VIEWER_STDOUT_WORLD);
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -490,7 +472,6 @@ PetscErrorCode SetUpMatrices(AppCtx *appctx)
 
   ierr = MatAssemblyBegin(appctx->bMbdTKI,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
   ierr = MatAssemblyEnd(appctx->bMbdTKI,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
-  MatView(appctx->bMbdTKI,PETSC_VIEWER_STDOUT_WORLD);
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -565,7 +546,6 @@ PetscErrorCode SetUpMatrices(AppCtx *appctx)
 
   ierr = MatAssemblyBegin(appctx->aPadTKI,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
   ierr = MatAssemblyEnd(appctx->aPadTKI,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
-  MatView(appctx->aPadTKI,PETSC_VIEWER_STDOUT_WORLD);
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -640,7 +620,6 @@ PetscErrorCode SetUpMatrices(AppCtx *appctx)
 
   ierr = MatAssemblyBegin(appctx->IKaPad,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
   ierr = MatAssemblyEnd(appctx->IKaPad,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
-  MatView(appctx->IKaPad,PETSC_VIEWER_STDOUT_WORLD);
 
 //////////////////////////////////////////////////////////////////////////////
 
