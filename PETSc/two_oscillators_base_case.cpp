@@ -81,8 +81,6 @@ int main(int argc,char **argv)
 //
 
   SetUpMatrices(&appctx);
-
-  printf("\nSTART mallo M\n");
   ierr = MatCreate(PETSC_COMM_SELF,&M);CHKERRQ(ierr);
   ierr = MatSetSizes(M, PETSC_DECIDE, PETSC_DECIDE, N*2,N*2);CHKERRQ(ierr);
   ierr = MatSetFromOptions(M);CHKERRQ(ierr);
@@ -90,9 +88,6 @@ int main(int argc,char **argv)
 
   ierr = MatAssemblyBegin(M,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
   ierr = MatAssemblyEnd(M,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
-
-  MatView(M, PETSC_VIEWER_STDOUT_WORLD);
-  printf("\nEND malloc M\n");
 
   ierr = TSSetRHSFunction(ts,NULL,TSComputeRHSFunctionLinear,&appctx);CHKERRQ(ierr);
   ierr = TSSetRHSJacobian(ts,M,M,RHSJacobian,&appctx);CHKERRQ(ierr);
@@ -131,7 +126,7 @@ int main(int argc,char **argv)
   file = fopen("output1.txt", "w");
   PetscReal t, s_norm, e_norm;
 
-    time_steps_max = 2;
+  time_steps_max = 2;
   for(PetscInt step = 1; step <= time_steps_max; step++) {
 
     TSGetTime(ts, &t);
@@ -142,10 +137,10 @@ int main(int argc,char **argv)
     // Do the time step
     TSStep(ts);
 
-    // Get exact solution 
+    // Get exact solution
     ierr = ExactSolution(t,appctx.s,&appctx);CHKERRQ(ierr);
 
-    // Compare exact to Petsc solution 
+    // Compare exact to Petsc solution
     const PetscScalar *x_ptr, *s_ptr;
     ierr = VecGetArrayRead(x, &x_ptr); CHKERRQ(ierr);
     ierr = VecGetArrayRead(appctx.s, &s_ptr); CHKERRQ(ierr);
@@ -232,45 +227,45 @@ PetscErrorCode ExactSolution(PetscReal t,Vec s,AppCtx *appctx)
      Simply write the solution directly into the array locations.
      Alternatively, we culd use VecSetValues() or VecSetValuesLocal().
   */
-  PetscScalar phi = (1/4) * (t - (1/appctx->w)*PetscSinScalar(appctx->w*t));
-  PetscScalar theta = (1/4) * (t + (1/appctx->w)*PetscCosScalar(appctx->w*t) - 1);
-  PetscScalar cos2phi = PetscCosScalar(phi) * PetscCosScalar(phi);
-  PetscScalar cos2theta = PetscCosScalar(theta) * PetscCosScalar(theta);
-  PetscScalar sin2phi = PetscSinScalar(phi) * PetscSinScalar(phi);
-  PetscScalar sin2theta = PetscSinScalar(theta) * PetscSinScalar(theta);
+  PetscScalar phi = (1./4.) * (t - (1./appctx->w)*PetscSinScalar(appctx->w*t));
+  PetscScalar theta = (1./4.) * (t + (1./appctx->w)*PetscCosScalar(appctx->w*t) - 1.);
+  PetscScalar cosphi = PetscCosScalar(phi);
+  PetscScalar costheta = PetscCosScalar(theta);
+  PetscScalar sinphi = PetscSinScalar(phi);
+  PetscScalar sintheta = PetscSinScalar(theta);
 
-  s_localptr[0] = cos2phi * cos2theta;
-  s_localptr[1] = 0;
-  s_localptr[2] = 0;
-  s_localptr[3] = 0;
-  s_localptr[4] = 0;
-  s_localptr[5] = cos2phi * sin2theta;
-  s_localptr[6] = 0;
-  s_localptr[7] = 0;
-  s_localptr[8] = 0;
-  s_localptr[9] = 0;
-  s_localptr[10] = sin2phi * cos2theta;
-  s_localptr[11] = 0;
-  s_localptr[12] = 0;
-  s_localptr[13] = 0;
-  s_localptr[14] = 0;
-  s_localptr[15] = sin2phi * sin2theta;
-  s_localptr[16] = 0;
-  s_localptr[17] = 0;
-  s_localptr[18] = 0;
-  s_localptr[19] = 0;
-  s_localptr[20] = 0;
-  s_localptr[21] = 0;
-  s_localptr[22] = 0;
-  s_localptr[23] = 0;
-  s_localptr[24] = 0;
-  s_localptr[25] = 0;
-  s_localptr[26] = 0;
-  s_localptr[27] = 0;
-  s_localptr[28] = 0;
-  s_localptr[29] = 0;
-  s_localptr[30] = 0;
-  s_localptr[31] = 0;
+  s_localptr[0] = cosphi*costheta*cosphi*costheta;
+  s_localptr[1] = -1.*cosphi*sintheta*cosphi*costheta;
+  s_localptr[2] = 0.;
+  s_localptr[3] = 0.;
+  s_localptr[4] = -1.*cosphi*costheta*cosphi*sintheta;
+  s_localptr[5] = cosphi*sintheta*cosphi*sintheta;
+  s_localptr[6] = 0.;
+  s_localptr[7] = 0.;
+  s_localptr[8] = 0.;
+  s_localptr[9] = 0.;
+  s_localptr[10] = sinphi*costheta*sinphi*costheta;
+  s_localptr[11] = -1.*sinphi*sintheta*sinphi*costheta;
+  s_localptr[12] = 0.;
+  s_localptr[13] = 0.;
+  s_localptr[14] = -1.*sinphi*costheta*sinphi*sintheta;
+  s_localptr[15] = sinphi*sintheta*sinphi*sintheta;
+  s_localptr[16] = 0.;
+  s_localptr[17] = 0.;
+  s_localptr[18] = -1.*sinphi*costheta*cosphi*costheta;
+  s_localptr[19] = sinphi*sintheta*cosphi*costheta;
+  s_localptr[20] = 0.;
+  s_localptr[21] = 0.;
+  s_localptr[22] = sinphi*costheta*cosphi*sintheta;
+  s_localptr[23] = -1.*sinphi*sintheta*cosphi*sintheta;
+  s_localptr[24] = cosphi*costheta*sinphi*costheta;
+  s_localptr[25] = -1.*cosphi*sintheta*sinphi*costheta;
+  s_localptr[26] = 0.;
+  s_localptr[27] = 0.;
+  s_localptr[28] = -1.*cosphi*costheta*sinphi*sintheta;
+  s_localptr[29] = cosphi*sintheta*sinphi*sintheta;
+  s_localptr[30] = 0.;
+  s_localptr[31] = 0.;
 
 
 
@@ -285,14 +280,13 @@ PetscErrorCode ExactSolution(PetscReal t,Vec s,AppCtx *appctx)
 PetscScalar F(PetscReal t,AppCtx *appctx)
 {
   PetscScalar f = (1./4.) * (1. - PetscCosScalar(appctx->w*t));
-  printf("inside F(w=%f,t=%f) = %f\n", appctx->w, t, f);
-
   return f;
 }
 
 PetscScalar G(PetscReal t,AppCtx *appctx)
 {
-  return (1/4) * (1 - PetscSinScalar(appctx->w*t));
+  PetscScalar g = (1./4.) * (1. - PetscSinScalar(appctx->w*t));
+  return g;
 }
 
 PetscErrorCode RHSJacobian(TS ts,PetscReal t,Vec u,Mat M,Mat P,void *ctx)
@@ -317,8 +311,9 @@ PetscErrorCode RHSJacobian(TS ts,PetscReal t,Vec u,Mat M,Mat P,void *ctx)
 
   ierr = MatAXPY(appctx->B,f,appctx->aPadTKI,DIFFERENT_NONZERO_PATTERN);CHKERRQ(ierr);
   ierr = MatAXPY(appctx->B,-1*f,appctx->IKaPad,DIFFERENT_NONZERO_PATTERN);CHKERRQ(ierr);
-
+printf("\nA\n");
   MatView(appctx->A,PETSC_VIEWER_STDOUT_WORLD);
+  printf("\nB\n");
   MatView(appctx->B,PETSC_VIEWER_STDOUT_WORLD);
 
   MatGetValues(appctx->A, appctx->N, idx, appctx->N, idx, q1);
@@ -335,6 +330,8 @@ PetscErrorCode RHSJacobian(TS ts,PetscReal t,Vec u,Mat M,Mat P,void *ctx)
 
   ierr = MatAssemblyBegin(M,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
   ierr = MatAssemblyEnd(M,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
+  printf("\nM\n");
+  MatView(M,PETSC_VIEWER_STDOUT_WORLD);
 
 
   return 0;
