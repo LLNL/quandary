@@ -1,4 +1,5 @@
 module timestep
+
 struct stormerverlet 
 	K::Function
 	S::Function
@@ -43,7 +44,27 @@ end
 	Kt05h = K(t +0.5*h)
 	St05h = S(t + 0.5*h)
 
-    rhs = (Kt*u .+  St*v .+ vforce0)
+        # testing
+	Sth  = S(t+h)
+	Kth  = K(t+h)
+
+# Need vforce05, uforce0 and uforce1 for this to workn
+ 	# rhs = (Kt05h*u .+  St05h*v .+ vforce05)
+	# l1 = (In .-  0.5*h.*St05h)\rhs
+	# v05 = (v .+ 0.5*h.*l1)
+	# kappa1 = St*u .- Kt*v05 .+ uforce0
+	# rhs = Sth*(u .+ 0.5*h*kappa1) .- Kth*v05 .+ uforce1
+	# kappa2 = (In .- (0.5*h).*Sth)\rhs
+
+	# u = u .+ (0.5*h).*(kappa1 .+ kappa2)
+	# l2 = Kt05h*u .+ St05h*v05 .+ vforce05
+
+	# v = v .+ 0.5*h.*(l1 .+ l2)
+	# t = t + h
+        # end test
+
+        # original
+ 	rhs = (Kt*u .+  St*v .+ vforce0)
 	l1 = (In .-  0.5*h.*St)\rhs
 	kappa1 = St05h*u .- Kt05h*(v .+ 0.5*h.*l1) .+ uforce05
 	v05 = (v .+ 0.5*h.*l1)

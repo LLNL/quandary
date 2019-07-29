@@ -116,17 +116,20 @@ I = -\langle \phib_{jk}(T), \qb_j \rangle_2 + \int_0^T \langle \dot{\phib}_{jk} 
 \end{multline*}
 Therefore,
 \begin{equation}\label{eq_adjoint-rel}
- \langle \phib_{jk}(T), \qb_j \rangle_2 + \int_0^T \langle \psib_{jk},\gb_j\rangle_2\, d\tau = \int_0^T \langle \fb_{jk},\lambdab_j \rangle_2\, d\tau.
+ \langle \phib_{jk}(T), \qb_j \rangle_2 + \int_0^T \langle \phib_{jk},\gb_j\rangle_2\, d\tau = \int_0^T \langle \fb_{jk},\lambdab_j \rangle_2\, d\tau.
 \end{equation}
 where $\fb_{jk}(t)$ is given by \eqref{eq_pert_force}.
 
 To evaluate \eqref{eq_obj-grad-exp}, we set $\qb_j = -\overline{S}_T \db_j/N^2$ and $\gb_j(t)=0$. Then,
-\begin{equation}\label{eq_sensitivity}
-  \frac{\p g_1}{\p \alpha_k} =  2 {\rm Re}\! \sum_{j=1}^N \left\langle \phib_{jk}(T,\alphab),
-  \qb_j\right\rangle_2 =
+\begin{multline}\label{eq_sensitivity}
+  \frac{\p g_1}{\p \alpha_k} =
+  -2 {\rm Re}\! \sum_{j=1}^N \left\langle \phib_{jk}(T,\alphab),
+  \frac{\overline{S}_T \db_j}{N^2}\right\rangle_2 \\
+%
+  = 2 {\rm Re}\! \sum_{j=1}^N \left\langle \phib_{jk}(T,\alphab),  \qb_j\right\rangle_2 =
   %
   2 {\rm Re}\! \sum_{j=1}^N \int_0^T \langle \fb_{jk},\lambdab_j \rangle_2\, d\tau.
-\end{equation}
+\end{multline}
 Similar to before, the cost of computing all components of the gradient of the objective function is
 almost independent of the number of components. We start by solving the Schr\"odinger equation
 forwards in time to obtain the terminal state $\psib_j(T)=:\wb_j$ for $j=1,2,\ldots,N$. The time

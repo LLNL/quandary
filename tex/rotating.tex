@@ -16,23 +16,25 @@
 
 \begin{document}
 
-%% \title{Notes on Schroedinger's equation}
+\title{The quantum control problem in a rotating frame of reference}
 
-%% \author{N. Anders Petersson\thanks{Center for Applied
-%%     Scientific Computing, Lawrence Livermore National Laboratory, L-561, PO Box 808, Livermore CA
-%%     94551. }}
+\author{N. Anders Petersson\thanks{Center for Applied
+    Scientific Computing, Lawrence Livermore National Laboratory, L-561, PO Box 808, Livermore CA
+    94551. }}
 
-%% \date{\today}
+\date{\today}
 
-%% \maketitle
-\section{Change of variables}
-Consider the scaled Schr\"odinger equation
+\maketitle
+
+\section{The Schr\"odinger equations}
+Consider the Schr\"odinger equation in a laboratory frame of reference,
 \begin{equation}\label{eq_schrodinger}
-\dot{\psi} = -i H(t) \psi,\quad \psi(0) = \psi_0,\quad H(t) = H_s + f(t)a + \bar{f}(t)a^\dag.
+\dot{\psi} = -i H(t) \psi,\quad 0\leq t \leq T,\quad \psi(0) = \psi_0,\quad H(t) = H_s + f(t)(a + a^\dag).
 \end{equation}
-Here, $f(t)$ is a scalar complex-valued control function. $H_s = H_s^\dag$ is the system Hamiltonian matrix, which we assume to be real, Hermitian and
-independent of time. The lowering and raising matrices are denoted $a$ and $a^\dag$,
-respectively. These real matrices satisfy
+Here, $\psi(t) \in [0,T]\to {\mathbb C}^N$ is the wave function, $f(t)\in [0,T]\to {\mathbb R}$ is
+the control function and $H_s = H_s^\dag$ is the $N\times N$ system Hamiltonian matrix, which we
+assume to be real and independent of time. The lowering and raising matrices are denoted $a$ and
+$a^\dag$, respectively. These real matrices satisfy
 \begin{equation}\label{eq_matrices}
 %
 a = \begin{bmatrix}
@@ -51,164 +53,20 @@ a^\dag = \begin{bmatrix}
 & &  & \ddots & \ddots
 \end{bmatrix}
 \end{equation}
-We can decompose the control function into its real and imaginary parts,
-\[
-f(t) = f_r(t) + i f_i(t),
-\]
-and write the Hamiltonian matrix in \eqref{eq_schrodinger} as
-\[
-H(t) = H_s + f_r(t)\left( a+ a^\dag\right) + i f_i(t)\left( a - a^\dag\right) =: H_s + K(t) + i S(t).
-\]
-Here, $K$ and $S$ are real-valued matrices with $K^\dag = K$ and $S^\dag = -S$.
 
-\subsection{Time-independent change of variables}
-Because $H_s$ is Hermitian, it has real eigenvalues and can always be diagonalized by a unitary
-matrix $V$. By the change of variables, $u(t)=V \psi(t)$, where $V$ is independent of time, Schr\"odinger's equation
-\eqref{eq_schrodinger} becomes
-\[
-\dot{u} = -i VH(t)V^\dag u,\quad VH(t)V^\dag = H_0 + f(t)\tilde{a} + \bar{f}(t)\tilde{a}^\dag,
-\]
-where $\tilde{a}=V a V^\dag$ and $H_0$ is a real diagonal matrix.
-
-\subsection{Time-dependent unitary transformations}
-Consider the unitary tranformation
-\[
-\psi(t) = U^{\dag}(t)v(t),\quad U^\dag U = I.
-\]
-We have
-\begin{align*}
-\dot{\psi} &= \dot{U}^\dag v + U^\dag \dot{v},\\
-H\psi &= H U^\dag v
-\end{align*}
-Thus, \eqref{eq_schrodinger} gives
-\[
-\dot{U}^\dag v + U^\dag \dot{v} = -i H U^\dag v,
-\]
-By using the identity $U \dot{U}^\dag = - \dot{U} U^\dag$ and reorganizing the terms,
-\[
-\dot{v} = -i U H U^\dag v + \dot{U} U^\dag = -i\left( UHU^\dag + i \dot{U} U^\dag \right) v.
-\]
-Thus, the transformed problem becomes
-\begin{equation}\label{eq_timedep_trans}
-\dot{v} = -i \tilde{H}(t) v,\quad \tilde{H} = UHU^\dag + i \dot{U} U^\dag.
-\end{equation}
-
-\subsection{The interaction picture}
-
-We can construct a unitary transformation based on the time-independent system Hamiltonian $H_s$ in
-\eqref{eq_matrices},
-\[
-U(t) = \exp(i H_s t).
-\]
-We have $\dot{U}(t) = i H_s \exp(i H_s t)$, which gives
-\[
-\dot{U}U^\dag =  i H_s \exp(i H_s t) \exp(- i H_s t) = i H_s.
-\]
-From the definition of the matrix exponential,
-\[
-\exp(i H_s t) = I + it H_s + \frac{1}{2} (it)^2 H_s^2 + \frac{1}{6} (it)^3 H_s^3 + \ldots.
-\]
-Thus it is clear that $U=\exp(i H_s t)$ commutes with $H_s$ and $UH_sU^\dag = H_s$. As a result, the
-constant (time-independent) part of the transformed Hamiltonian cancels. From
-\eqref{eq_timedep_trans}, the transformed problem becomes
-\begin{equation}\label{eq_interaction}
-  \dot{v} = -i \tilde{H}(t) v,\quad  \tilde{H}(t) = f(t) UaU^\dag + \bar{f}(t) Ua^\dag U^\dag.
-\end{equation}
-This formulation of Schr\"odinger's equation is known as the interaction picture.
-
-When $H_s=H_0$ is real and diagonal,
-\[
-H_0=\begin{bmatrix}
-\omega_1 & & &\\
-& \omega_2 &&\\
-& & \omega_3 &\\
-& & & \ddots
-\end{bmatrix},\quad
-%
-U(t) = \exp(i H_0 t)=
-\begin{bmatrix}
-e^{i\omega_1 t} & & &\\
-& e^{i\omega_2 t} &&\\
-& & e^{i\omega_3 t} &\\
-& & & \ddots
-\end{bmatrix}
-\]
-The lowering operator transforms according to
-\begin{multline*}
-UaU^\dag =
-\begin{bmatrix}
-  e^{i\omega_1 t} & & & \\
-  & e^{i\omega_2 t} & & \\
-  & &  e^{i\omega_3 t} & \\
-  & & & \ddots
-\end{bmatrix}
-\begin{bmatrix}
-0 & 1 & & &\\
- & 0 & \sqrt{2} & &\\
-&  & 0 & \sqrt{3} &\\
-& &  & \ddots & \ddots
-\end{bmatrix}
-\begin{bmatrix}
-  e^{-i\omega_1 t} & & & \\
-  & e^{-i\omega_2 t} & & \\
-  & &  e^{-i\omega_3 t} & \\
-  & & & \ddots
-\end{bmatrix} = \\
-%
-\begin{bmatrix}
-0 & e^{-i\Delta\omega_1 t} & & &\\
- & 0 & \sqrt{2} e^{-i\Delta\omega_2 t}& &\\
-&  & 0 & \sqrt{3} e^{-i\Delta\omega_3 t}  &\\
-& &  & \ddots & \ddots
-\end{bmatrix} =: D(t)a,
-%
-\end{multline*}
-where $\Delta\omega_k = \omega_{k+1} - \omega_k$ and $D(t)$ is the diagonal matrix
-\[
-D(t) = \begin{bmatrix}
- e^{-i\Delta\omega_1 t} & & &\\
-  & \sqrt{2} e^{-i\Delta\omega_2 t}& &\\
-&  & \sqrt{3} e^{-i\Delta\omega_3 t}  &\\
-&  &   & \ddots
-\end{bmatrix},\quad \Delta\omega_N = 0.
-\]
-Then,
-\[
-UaU^\dag = D a,\quad Ua^\dag U^\dag = a^\dag D^\dag.
-\]
-Note that the value of $\Delta\omega_N$ is arbitrary because it is not needed to evaluate $D a$.
-Thus, when the system Hamiltonian is diagonal, the transformed problem corresponding to \eqref{eq_interaction} becomes 
-\begin{equation}
-  \dot{v} = -i\widetilde{H}(t) v,\quad \widetilde{H}(t) = f(t) D(t) a + \bar{f}(t) a^\dag D^\dag(t).
-\end{equation}
-
-The structure of the transformed Hamiltonian indicates how resonance can be induced in the
-system. For example, by taking $f(t)=\Omega e^{\Delta \omega_1 t}$, the Hamiltonian matrix
-becomes
-\[
-\tilde{H}(t) = \begin{bmatrix}
-0 & \Omega & & &\\
-\bar{\Omega} & 0 & f(t) \sqrt{2} e^{-i\Delta \omega_2 t}& &\\
-& \bar{f}(t) \sqrt{2} e^{i\Delta \omega_2 t} & 0 & f(t) \sqrt{3} e^{-i\Delta \omega_3 t}
-&\\
-\\
-& & \ddots & \ddots & \ddots
+The basic model for the system Hamiltonian of a quantum oscillator is
+\begin{equation}\label{eq_quantum-osc}
+  H_s = \omega_a a^\dag a - \pi \xi_a a^\dag a^\dag a a,\quad a^\dag a =: N = \begin{bmatrix}
+  0 & & & & \\
+  & 1 & & & \\
+  && 2 && \\
+  &&& 3 & \\
+  &&&& \ddots
 \end{bmatrix}.
-\]
-In this case, the dynamics of the system will be dominated by an oscillation between the ground state and the
-first excited state, with frequency $\Omega$.
-
-\subsection{Rotating frame of reference}
-
-In some applications, the Hamiltonian matrix has the structure
-\begin{equation}\label{eq_orig_hamiltonian}
-H(t) = \omega_a a^\dag a - \frac{\xi_a}{2} a^\dag a^\dag a a + f(t) a + \bar{f}(t) a^\dag.
 \end{equation}
-Here, $a^\dag a = \hat{N}=\mbox{diag$(0,1,2,\ldots)$}$ is called the number operator. We also have
-$a a^\dag = \hat{N}+I$, which gives
+Here, $N$ is called the number operator. Clearly, $aa^\dag = a^\dag a + I$, so
 \[
-a^\dag a^\dag a a = a^\dag (a a^\dag - I) a = \hat{N}^2 - \hat{N} =
-%
+a^\dag a^\dag a a = a^\dag ( a a^\dag - I) a = N^2 - N =
 \begin{bmatrix}
   0 & & & & \\
   & 0 & & & \\
@@ -217,16 +75,45 @@ a^\dag a^\dag a a = a^\dag (a a^\dag - I) a = \hat{N}^2 - \hat{N} =
   &&&& \ddots
 \end{bmatrix}.
 \]
+We conclude that $H_s$ is a diagonal matrix. Note that the units of $\omega_a$ is [rad/s].
 
-In the first part of the system Hamiltonian, $\omega_a \hat{N}$, the difference between consequtive
-elements is constant. This structure suggests the time-depenedent unitary transformation
+\subsection{Time-dependent unitary transformations}
+Consider the unitary tranformation
 \[
-v(t) = R(t)\psi(t),\quad R(t) = \exp(i\omega_a \hat{N} t),\quad \dot{R}R^\dag = i\omega_a \hat{N}.
+\psi(t) = R^{\dag}(t)v(t),\quad R^\dag R = I.
 \]
-Both $\hat{N}$ and $\hat{N}^2$ commute with $R(t)$. From \eqref{eq_timedep_trans}, the transformed
-Hamiltonian matrix becomes
+We have
+\begin{align*}
+\dot{\psi} &= \dot{R}^\dag v + R^\dag \dot{v},\\
+H\psi &= H R^\dag v
+\end{align*}
+Thus, \eqref{eq_schrodinger} gives
+\[
+\dot{R}^\dag v + R^\dag \dot{v} = -i H R^\dag v,
+\]
+By using the identity $R \dot{R}^\dag = - \dot{R} R^\dag$ and reorganizing the terms,
+\[
+\dot{v} = -i R H R^\dag v + \dot{R} R^\dag v = -i\left( RHR^\dag + i \dot{R} R^\dag \right) v.
+\]
+Thus, the transformed problem becomes
+\begin{equation}\label{eq_timedep_trans}
+\dot{v} = -i \tilde{H}(t) v,\quad \tilde{H}(t) = R(t)H(t)R(t)^\dag + i \dot{R}(t) R(t)^\dag.
+\end{equation}
+
+\subsection{Rotating frame of reference}
+
+In the first term on the right hand side of \eqref{eq_quantum-osc}, the difference between
+consequtive diagonal elements is constant. This structure suggests the unitary
+transformation
+\[
+R(t) = \exp(i\omega_a N t),\quad \dot{R}R^\dag = i\omega_a N.
+\]
+Both $N$ and $N^2$ commute with $R(t)$. From \eqref{eq_timedep_trans}, the first term in the system
+Hamiltonian \eqref{eq_quantum-osc} cancels and the transformed Hamiltonian becomes
 \begin{equation}\label{eq_rot_hamiltonian}
-\widetilde{H}(t) = -\frac{\xi_a}{2} \left(\hat{N}^2 - \hat{N}\right) + f(t) R a R^\dag + \bar{f}(t) R a^\dag R^\dag.
+  \widetilde{H}(t) = -\pi\xi_a \left(N^2 - N\right) +
+%
+  f(t) \left( R a R^\dag + R a^\dag R^\dag \right).
 \end{equation}
 We have
 \begin{multline*}
@@ -259,23 +146,202 @@ We have
 \end{bmatrix} =: e^{-i\omega_a t} a.
 %
 \end{multline*}
-Taking the conjugate transpose gives $R a^\dag R = e^{i\omega_a t} a^\dag$. It is convenient to absorb the factor
-$e^{-i\omega_a t}$ into $f(t)$ by defining,
+Taking the conjugate transpose gives $R a^\dag R = e^{i\omega_a t} a^\dag$. Thus,
+\eqref{eq_rot_hamiltonian} becomes
+\begin{equation}\label{eq_trans-hamiltonian}
+\widetilde{H}(t) = -\pi\xi_a \left(N^2 - N\right) +
+  f(t) \left( e^{-i\omega_a t} a + e^{i\omega_a t} a^\dag \right).
+\end{equation}
+
+We would like to absorb the highly oscillatory factors $\exp(\pm i\omega_a t)$ into
+$f(t)$. Because the control function $f(t)$ is real-valued, this can only be done in an
+approximate fashion. We make the ansatz,
+\begin{multline}
+  f(t) = 2g_1(t) \cos(\omega_a t) - 2g_2(t) \sin(\omega_a t) = \\
+  %
+  \left(g_1 + i g_2\right)\exp(i\omega_a t) + \left( g_1 - i g_2 \right)
+  \exp(-i\omega_a t),
+\end{multline}
+where $g_1(t)$ and $g_2(t)$ are real-valued function. Thus,
+\begin{align}
+f(t)\exp(-i\omega_a t) &= \left(g_1 + ig_2\right) +  \left(g_1 - ig_2\right)
+\exp(-2i\omega_a t),\\
+%
+f(t)\exp(i\omega_a t) &= \left(g_1 + i g_2\right)\exp(2i\omega_a t) +  \left(g_1 - ig_2\right).
+\end{align}
+The transformed Hamiltonian \eqref{eq_trans-hamiltonian} becomes
+\begin{align*}
+\widetilde{H}(t) &= -\pi\xi_a \left(N^2 - N\right) \\
+&\quad +\left(g_1 + i g_2\right) a +  \left(g_1 - i g_2\right) \exp(-2i\omega_a t) a +
+%
+\left(g_1 + i g_2\right)\exp(2i\omega_a t) a^\dag +  \left(g_1 - i g_2\right) a^\dag \\
+%
+&= -\pi\xi_a \left(N^2 - N\right) + g_1\left( a + a^\dag \right) + i g_2 \left( a - a^\dag \right)
+\\
+&\quad +
+\left(g_1 - ig_2\right) \exp(-2i\omega_a t) a  + \left(g_1 + ig_2\right)\exp(2i\omega_a t) a^\dag.
+\end{align*}
+The rotating frame approximation follows by ignoring the terms that oscillate with twice the
+frequency, $\exp(\pm 2i\omega_a t)$, resulting in the system
+\begin{align}
+\dot{v} &= - \widetilde{H}_r(t) v,\quad v(0) = R(0) \psi_0 = \psi_0,\\
+%
+\widetilde{H}_r(t) &=  H_d + g_1(t)\left( a + a^\dag \right) + i g_2(t) \left( a - a^\dag
+\right),\quad H_d = -\pi\xi_a \left(N^2 - N\right).
+\end{align}
+Here, $H_d$ is called the drift Hamiltonian. When $\xi_a \ll \omega_a$, the solutions of this system
+varies on a significantly longer time scale than \eqref{eq_schrodinger}.
+
+After the control functions $g_1(t)$ and $g_2(t)$ have been determined, the corresponding control
+function in the laboratory frame becomes
+\begin{equation}\label{eq_control_lab}
+f(t) = 2g_1(t) \cos(\omega_a t) - 2g_2(t) \sin(\omega_a t).
+\end{equation}
+
+\section{Analytical solutions}
+
+The $2\times 2$ Schr\"odinger system in the rotating frame with constant control functions $g_1=
+\Omega_r$ and $g_2=\Omega_i$ satisfies
+\begin{equation}\label{eq_2-by-2}
+\dot{v} = -i \widetilde{H} v,\quad \widetilde{H} = \Omega_r(a + a^\dag) + i \Omega_i(a-a^\dag) =
+%
+\begin{bmatrix}
+  0 & \Omega \\
+  \bar{\Omega} & 0
+\end{bmatrix},\quad \Omega = \Omega_r + i\Omega_i.
+\end{equation}
+The complex matrix $\widetilde{H}$ can be diagonalized by the unitary matrix $X$,
 \[
-g(t) = e^{-i\omega_a t} f(t).
+X =
+\frac{1}{\sqrt{2}}
+\begin{bmatrix}
+  1 & -\Omega/|\Omega| \\
+  %
+  \bar{\Omega}/|\Omega| & 1
+\end{bmatrix},\quad
+X^\dag \widetilde{H} X = \begin{bmatrix}
+  |\Omega| & 0 \\
+  0 & |\Omega|
+\end{bmatrix}.
 \]
-The transformed Hamiltonian matrix \eqref{eq_rot_hamiltonian} then takes the simplified form
+By the variable transformation
 \[
-\widetilde{H}(t) = -\frac{\xi_a}{2} \left(\hat{N}^2 - \hat{N}\right) + g(t) a + \bar{g}(t) a^\dag.
+\widetilde{v} = X^\dag v,
 \]
-Consider solving the truncated Schr\"odinger equation \eqref{eq_schrodinger} numerically. Compared
-to use the original formulation where the Hamiltonian matrix has the form X, the transformed
-equations can be solved more efficiently if
+the system \eqref{eq_2-by-2} becomes and is solved by
 \[
-\omega_a \hat{N} \gg 0.5\xi_a (\hat{N}^2 - \hat{N}).
+\dot{\widetilde{v}} = -i
+\begin{bmatrix}
+  |\Omega| & 0 \\
+  0 & |\Omega|
+\end{bmatrix} \widetilde{v},\quad
+%
+\widetilde{v}(t) = \begin{bmatrix}
+\alpha \exp(-i |\Omega| t) \\
+\beta \exp(i |\Omega| t)
+\end{bmatrix},
 \]
-This condition holds in applications where $\omega_a \gg \xi_a$ and the Schr\"odinger system is truncated after a moderate
-number of equations,
+where $\alpha$ and $\beta$ are constants. Transforming back to the original variables, $v = X
+\widetilde{v}(t)$, gives
+\[
+v(t) = X \widetilde{v} = \frac{1}{\sqrt{2}}
+\begin{bmatrix}
+  \alpha \exp(-i |\Omega| t) - \frac{\Omega}{|\Omega|} \beta \exp(i |\Omega| t) \\
+  \frac{\bar{\Omega}}{|\Omega|} \alpha \exp(-i |\Omega| t) + \beta \exp(i |\Omega| t)
+\end{bmatrix}
+\]
+To form a basis for all initial data, we first consider
+\[
+v^{I}(0) : =
+%
+\frac{1}{\sqrt{2}}
+\begin{bmatrix}
+  \alpha_1 - \frac{\Omega}{|\Omega|} \beta_1 \\
+  \frac{\bar{\Omega}}{|\Omega|} \alpha_1 + \beta_1
+\end{bmatrix} = \begin{bmatrix} 1 \\ 0 \end{bmatrix},
+%
+\quad
+\begin{bmatrix}
+\alpha_1\\ \beta_1
+\end{bmatrix}=
+\frac{1}{\sqrt{2}}
+\begin{bmatrix}
+1 \\ -\frac{\bar{\Omega}}{|\Omega|}
+\end{bmatrix}.
+\]
+The second initial data is
+\[
+v^{II}(0) : =
+%
+\frac{1}{\sqrt{2}}
+\begin{bmatrix}
+  \alpha_2 - \frac{\Omega}{|\Omega|} \beta_2 \\
+  \frac{\bar{\Omega}}{|\Omega|} \alpha_2 + \beta_2
+\end{bmatrix} = \begin{bmatrix} 0 \\ 1 \end{bmatrix},
+%
+\quad
+\begin{bmatrix}
+\alpha_2\\ \beta_2
+\end{bmatrix}=
+\frac{1}{\sqrt{2}}
+\begin{bmatrix}
+\frac{\Omega}{|\Omega|} \\ 1
+\end{bmatrix}.
+\]
+
+After some algebra, the two fundamental solutions can be written,
+\[
+v^{I}(t) =
+\begin{bmatrix}
+  \cos(|\Omega| t)\\
+  -i\frac{\bar{\Omega}}{|\Omega|} \sin(|\Omega t)
+\end{bmatrix},\quad
+%
+v^{II}(t) =
+\begin{bmatrix}
+  -i\frac{\Omega}{|\Omega|} \sin(|\Omega t)\\
+  \cos(|\Omega| t) 
+\end{bmatrix}.
+\]
+Thus, the evolution from the canonical basis is
+\[
+V(t) =
+\begin{bmatrix}
+  \cos(|\Omega| t) &  -i\frac{\Omega}{|\Omega|} \sin(|\Omega t)\\
+  -i\frac{\bar{\Omega}}{|\Omega|} \sin(|\Omega t) &  \cos(|\Omega| t) 
+\end{bmatrix}.
+\]
+It is instructive to set 
+\begin{equation}\label{eq_omega-phase}
+\Omega: = \Omega_r + i \Omega_i = |\Omega|(\cos(\theta) + i\sin(\theta)).
+%\frac{\Omega}{|\Omega|} = \cos(\theta) + i \sin(\theta),\quad
+%\frac{\bar{\Omega}}{|\Omega|} = \cos(\theta) - i \sin(\theta),
+\end{equation}
+and
+\[
+V(t) =
+\begin{bmatrix}
+  \cos(|\Omega| t) &  (\sin(\theta) -i\cos(\theta) ) \sin(|\Omega t)\\
+  -(\sin(\theta) + i\cos(\theta)) \sin(|\Omega t) &  \cos(|\Omega| t) 
+\end{bmatrix}.
+\]
+
+The control function in the laboratory frame follows by inserting $g_1=\Omega_r$ and $g_2=\Omega_i$
+in \eqref{eq_control_lab},
+\begin{equation}
+  f(t) = 2\Omega_r \cos(\omega_a t) - 2\Omega_i \sin(\omega_a t)
+  %= 2|\Omega|\left( \cos(\theta)
+  %\cos(\omega_a t) - \sin(\theta) \sin(\omega_a t) \right) \\
+  %
+  = 2|\Omega| \cos(\omega_a t + \theta).
+\end{equation}
+In this case, the amplitude of the control function equals the angular frequency of $V(t)$. Hence,
+the period of the oscillation is
+\[
+T = \frac{2\pi}{|\Omega|}.
+\]
+The phase of $V(t)$ is controlled by the phase of the control function, $\theta$.
+
 
 
 

@@ -233,12 +233,12 @@ function [err] = small(cfl, testcase, order, stages)
     if (ploterr)
 				# component 1&2
       figure(1);
-      h=plot(tplot,  usaver(1,:)-real(cg), "r", tplot, usavei(1,:)-imag(cg), "r--", tplot, usaver(2,:)-real(ce), "m", tplot, usavei(2,:)-imag(ce), "m--");
+      h=plot(tplot,  usaver(1,:)-real(cg), "b", tplot, usavei(1,:)-imag(cg), "r", tplot, usaver(2,:)-real(ce), "g", tplot, usavei(2,:)-imag(ce), "m");
       set(gca,"fontsize",16);
-      set(h,"linewidth",2);
+#      set(h,"linewidth",2);
       tstr = sprintf("Error, test %d, order = %d, stages = %d\n", testcase, order, stages );
       title(tstr);
-      legend( "Re(err-1)", "Im(err-1)", "Re(err-2)", "Im(err-2)", "location", "south");
+      legend( "Re(err-1)", "Im(err-1)", "Re(err-2)", "Im(err-2)", "location", "northeast");
       axis tight
 
     else
