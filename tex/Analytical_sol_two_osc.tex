@@ -1,0 +1,123 @@
+\documentclass[11pt]{article}
+\usepackage{amsfonts,amsmath,amssymb,amsthm,graphicx}
+\usepackage{multirow}
+\usepackage{booktabs}
+\usepackage[caption=false]{subfig}
+\usepackage{color}
+\usepackage{ifthen}
+
+\setlength{\topmargin}{0 mm}
+\setlength{\oddsidemargin}{5 mm}
+\setlength{\evensidemargin}{5 mm}
+\setlength{\textwidth}{150 mm}
+\setlength{\textheight}{210 mm}
+
+\include{macros}
+
+\begin{document}
+
+%% \title{Analytical Solution of two oscillator problem}
+
+%% \author{N. Anders Petersson\thanks{Center for Applied
+%%     Scientific Computing, Lawrence Livermore National Laboratory, L-561, PO Box 808, Livermore CA
+%%     94551. }}
+
+%% \date{\today}
+
+%% \maketitle
+\section{An analytical solution for two oscillator problem}
+We wish to construct an analytical solution for a decoupled two-oscillator system.  We start by finding two separate solutions to one-oscillator systems and then use them to construct the solution to the two-oscillator case.  Consider the Schro\"odinger equation
+\begin{equation}\label{eq_schrodinger}
+\dot{\psi} = -i H(t) \psi,\quad \psi(0) = \psi_0.
+\end{equation}
+\textbf{Solution 1}: Suppose the Hamiltonian is given by
+\begin{equation}
+    H(t)=H_1(t) = f(t)(a+a^\dag), \quad a+a^\dag =
+    \begin{bmatrix}
+        0 & 1\\
+        1 & 0
+    \end{bmatrix}, \quad f(t) = \frac{1}{4}(1-\cos(\omega t))
+\end{equation}
+An analytical solution is given by
+\begin{equation}
+    \psi_1(t) = \begin{bmatrix}
+                    \cos(\phi(t))\\
+                    -i\sin(\phi(t))]
+                \end{bmatrix}, \quad \quad \phi(t) = \frac{1}{4}(t-\frac{1}{\omega}\sin(\omega t))
+\end{equation}
+\textbf{Check:}
+\begin{align}
+    \dot{\psi_1} &= \frac{1}{4}(1-\cos(\omega t)) \begin{bmatrix} -\sin(\phi)\\
+                                    -i\cos(\phi)) \end{bmatrix}\\
+    -iH_1\psi_1 &= \frac{-i}{4}(1-\cos(\omega t))\begin{bmatrix} 0 & 1\\ 1 & 0 \end{bmatrix}
+                                            \begin{bmatrix} \cos(\phi) \\ -i\sin(\phi) \end{bmatrix} =
+                                            \frac{1}{4}(1-\cos(\omega t)) \begin{bmatrix} -\sin(\phi)\\
+                                            -i\cos(\phi) \end{bmatrix}
+\end{align}
+\textbf{Solution 2}: Suppose the Hamiltonian is given by
+\begin{equation}
+    H(t)=H_2(t) = ig(t)(a-a^\dag), \quad a-a^\dag =
+    \begin{bmatrix}
+        0 & 1\\
+        -1 & 0
+    \end{bmatrix}, \quad g(t) = \frac{1}{4}(1-\sin(\omega t))
+\end{equation}
+An analytical solution is given by
+\begin{equation}
+    \psi_2(t) = \begin{bmatrix}
+                    \cos(\theta(t))\\
+                    -\sin(\theta(t))]
+                \end{bmatrix}, \quad \quad \theta(t) = \frac{1}{4}(t+\frac{1}{\omega}\cos(\omega t)-1)
+\end{equation}
+\textbf{Check:}
+\begin{align}
+    \dot{\psi_2} &= \frac{1}{4}(1-\sin(\omega t)) \begin{bmatrix} -\sin(\theta)\\
+                                    -cos(\theta)) \end{bmatrix}\\
+    -iH_2\psi_1 &= \frac{1}{4}(1-\sin(\omega t))\begin{bmatrix} 0 & 1\\ -1 & 0 \end{bmatrix}
+                                            \begin{bmatrix} \cos(\theta) \\ -\sin(\theta) \end{bmatrix} =
+                                            \frac{1}{4}(1-\sin(\omega t)) \begin{bmatrix} -\sin(\theta)\\
+                                            -\cos(\theta) \end{bmatrix}
+\end{align}
+\textbf{Constructing the two-oscillator solution:}
+We now show that the solutions 1 and 2 can be used to solve eq \eqref{eq_schrodinger} for the two-oscillator system given that $\psi = \psi_1 \otimes \psi_2$ and the Hamiltonian is described as $H(t) = H_1(t)\otimes I_2 + I_2 \otimes H_2(t)$ where $I_2$ is the $2\times2$ identity matrix.
+\begin{equation}\label{psidot}
+    \dot{\psi} = \dot{\psi_1}\otimes \psi_2 + \psi_1 \otimes \dot{\psi_2} = -i(H_1\psi_1\otimes \psi_2
+                    + \psi_1\otimes H_2\psi_2)
+\end{equation}
+\begin{align}
+    H_1\psi_1 \otimes \psi_2 = f(t)\begin{bmatrix} -i\sin(\phi)\\ \cos(\phi) \end{bmatrix} \otimes
+                                   \begin{bmatrix} \cos(\theta)\\ -\sin(\theta) \end{bmatrix} =
+                               f(t)\begin{bmatrix} -i\sin(\phi)\cos(\theta)\\ i\sin(\phi)\sin(\theta)\\
+                                                   \cos(\phi)\cos(\theta)\\ -\cos(\phi)\sin(\theta)\end{bmatrix}\\
+    \psi_1 \otimes H_2\psi_2 = g(t)\begin{bmatrix} \cos(\phi)\\ -i\sin(\phi) \end{bmatrix} \otimes
+                                    \begin{bmatrix}-i\sin(\theta)\\ -i\cos(\theta) \end{bmatrix} =
+                                -g(t)\begin{bmatrix} i\cos(\phi)\sin(\theta)\\ i\cos(\phi)\cos(\theta)\\
+                                                    \sin(\phi)\sin(\theta)\\\sin(\phi)\cos(\theta)\end{bmatrix}
+\end{align}
+where we have substituted solutions 1 and 2 in the second equality of \eqref{psidot}.  Now looking at the right hand side:
+\begin{equation}
+    -iH\psi = -i\begin{bmatrix} 0 & ig(t) & f(t) & 0\\
+                                 -ig(t) & 0 & 0 & f(t)\\
+                                f(t) & 0 & 0 & ig(t)\\
+                                0 & f(t) & -ig(t) & 0\end{bmatrix}
+                \begin{bmatrix} \cos(\phi)\cos(\theta)\\
+                                -\cos(\phi)\sin(\theta)\\
+                                -i\sin(\phi)\cos(\theta)\\
+                                i\sin(\phi)\sin(\theta)\end{bmatrix}
+\end{equation}
+it holds that $-i(H_1\psi_1\otimes \psi_2 + \psi_1\otimes H_2\psi_2) = -i(H_1\otimes I_2 + I_2 \otimes H_2)(\psi_1 \otimes \psi_2)$ and therefore $\dot{\psi} = -iH\psi$.\\\\
+\textbf{Density Matrix:}
+From here we can construct the corresponding density matrix
+\begin{align}
+    \rho(t) &= \psi(t)\psi^\dag(t), \quad \psi^\dag = \begin{bmatrix} \cos(\phi)\cos(\theta)\\-\cos(\phi)\sin(\theta)\\i\sin(\phi)\cos(\theta)\\-i\sin(\phi)\sin(\theta) \end{bmatrix}\\
+    \rho(t) &= \begin{bmatrix}
+                \cos^2(\phi)\cos^2(\theta) & & & \\
+                & \cos^2(\phi)\sin^2(\theta) & & \\
+                & & \sin^2(\phi)\cos^2(\theta) & \\
+                & & & \sin^2(\phi)\sin^2(\theta)
+            \end{bmatrix}
+\end{align}
+
+
+
+\end{document}
