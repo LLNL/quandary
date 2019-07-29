@@ -54,7 +54,7 @@ function traceobjgrad(pcof0::Array{Float64,1},  params::parameters, order::Int64
   D = div(Psize, 2) # first D elements are the real coefficients; the second D elements are the imaginary ones  
   
   tinv = 1.0/T
-  scalef = 0.5 # weight factor for box benalty
+  scalef = 0.5 # weight factor for the box penalty term
  # Parameters used for the gradient
   kpar = params.kpar
 
