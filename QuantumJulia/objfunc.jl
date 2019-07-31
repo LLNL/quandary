@@ -1,3 +1,4 @@
+#-*-python-*-
 module objfunc
 
 include("bsplines.jl")
@@ -9,51 +10,54 @@ using Printf
 using LaTeXStrings
 
 struct parameters
-	N::Int64		# vector dimension
-	Nguard ::Int64 	# number of extra levels
-	T::Float64		# final time
-	testadjoint::Bool #should this really be in param?
-	maxpar::Float64
-	cfl::Float64
-	utarget
-        samplerate::Int64 # plotting sample rate per ns
+  N ::Int64		# vector dimension
+  Nguard ::Int64 	# number of extra levels
+  T::Float64		# final time
+  maxpar::Float64
+  cfl::Float64
+  utarget # type Array{Cmplx64,2} ?
+  fa:: Float64 # in GHz
+  xia:: Float64 # in GHz
+  samplerate::Int64 # plotting sample rate per ns
+  kpar::Int64 # element of gradient to test
 
+  function parameters(N, Nguard,T, maxpar,cfl, utarget, fa, xia)		
+    samplerate = 32
+    kpar = 1
+    new(N, Nguard, T, maxpar, cfl, utarget, samplerate, kpar)
+  end
 
-	function parameters(N, Nguard,T, testadjoint, maxpar,cfl)	
-	  Ntot = N + Nguard 
-	  Ident = Matrix{Float64}(I, Ntot, Ntot)  
-# CNOT gate assumes N=4
- 	  utarget = Ident[1:Ntot,1:N]
-          utarget[:,3] = Ident[:,4]
-          utarget[:,4] = Ident[:,3]	
-          samplerate = 32
-	  new(N, Nguard, T, testadjoint, maxpar, cfl, utarget, samplerate)
-	end
+  function parameters(N, Nguard,T, maxpar,cfl, utarget, fa, xia, samplerate)		
+    kpar = 1
+    new(N, Nguard, T, maxpar, cfl, utarget, fa, xia, samplerate, kpar)
+  end
 
-	function parameters(N, Nguard,T, testadjoint, maxpar,cfl, utarget)		
-          samplerate = 32
-	  new(N, Nguard, T, testadjoint, maxpar, cfl, utarget, samplerate)
-	end
-	#multiple dispatch with extra struct for H0 = 0 ?
+  function parameters(N, Nguard,T, maxpar,cfl, utarget, fa, xia, samplerate, kpar)
+    new(N, Nguard, T, maxpar, cfl, utarget, fa, xia, samplerate, kpar)
+  end
 end
 
-function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parameters = parameters(4, 3, 150, 1, 0.09, 0.05), order::Int64 =2, verbose::Bool = false, retadjoint::Bool = true, weight = 2, penaltyweight = 2)  
+function traceobjgrad(pcof0::Array{Float64,1},  params::parameters, order::Int64 =2, verbose::Bool = false, evaladjoint::Bool = true, weight::Int64 = 2, penaltyweight::Int64 = 2)  
   N = params.N    
   Nguard = params.Nguard  
   T = params.T
-  testadjoint = params.testadjoint
-  labframe = false
+  labframe = false # could simplify some calls by assuming labframe=false
   utarget = params.utarget
   cfl = params.cfl
   samplerate = params.samplerate
-  
-  tinv = 1.0/T
- # Parameters used for the gradient
-  kpar = 2
-  eps = 1e-9
+
   Ntot = N + Nguard
   pcof = pcof0
-  D = size(pcof,1)
+  Psize = size(pcof,1) #must provide separate coefficients for the real and imaginary parts of the control fcn
+  if Psize%2 != 0 || Psize < 6
+    error("pcof must have an even number of elements >= 6, not ", Psize)
+  end
+  D = div(Psize, 2) # first D elements are the real coefficients; the second D elements are the imaginary ones  
+  
+  tinv = 1.0/T
+  scalef = 0.5 # weight factor for the box penalty term
+ # Parameters used for the gradient
+  kpar = params.kpar
 
   if weight == 1
    xif = 1.0
@@ -63,46 +67,46 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
 
   if penaltyweight == 1
     xi = xif/max(1,Nguard)          # coef for penalizing forbidden states
-  # elseif penaltyweight == 2  
-  #   xi = xif/max(1,Nguard)   
   end
   # Make sure that each element of pcof is in the prescribed range
-  pcof, par1, par0 = boundcof(pcof, D, params.maxpar, eps)
+  eps = 1e-6
+  pcof, par1, par0 = boundcof(pcof, 2*D, params.maxpar, eps)
       
   if verbose
-    @show(utarget)
-    println("Vector dim Ntot =", Ntot , ", Guard levels Nguard = ", Nguard , ", Param dim D = ", D , ", pcof(1) = ", pcof[1], ", CFL = ", cfl, " penaltystyle = ", penaltyweight, " samplerate = ", samplerate)
+    println("Vector dim Ntot =", Ntot , ", Guard levels Nguard = ", Nguard , ", Param dim 2*D = ", 2*D , ", CFL = ", cfl, " samplerate = ", samplerate)
   end
  
   # sub-matricesfor the Hamiltonian
-  H0 ,amat, adag, omega, domega = rotframematrices(Ntot)
+  H0 , omega, amat, adag, number = setupmatrices(params.fa, params.xia, Ntot)
+  # if verbose
+  #   @show(H0)
+  #   @show(omega) # omega = 2*pi*fa*[0,1,2,...,Ntot-1]: 
+  #   @show(number)
+  # end
+
   zeromat = zeros(Ntot,N) 
 
-# coefficients for penaty style #2 (wmat is a Diagonal matrix)
+# coefficients for penalty style #2 (wmat is a Diagonal matrix)
   wmat = wmatsetup(Ntot, Nguard)
-  if verbose && Nguard>0
-    @show(wmat[N+1:Ntot, N+1:Ntot])
-  end
+  # if verbose && Nguard>0
+  #   @show(wmat[N+1:Ntot, N+1:Ntot])
+  # end
 
-  # parameters for tbsplines
+  # parameters for B-splines
   dtknot = T/(D - 2)
   splineparams = bsplines.splineparams(T, D, D+1, dtknot.*(collect(1:D) .- 1.5), dtknot.*(collect(1:D+1) .- 2), dtknot, pcof)
 
-  if retadjoint
-    @inline rfgrad(t::Float64) = bsplines.gradbspline2(t,splineparams)
-    @inline ifgrad(t::Float64) = zeros(length(pcof))
-  end
-
   # parameters for time integrator
   pcofmax = maximum(abs.(pcof))
+  pcofmax = max(pcofmax, 0.01*params.maxpar)
   K1 =  pcofmax.*( amat .+  adag)
   lamb = eigvals(K1)
   maxeig2 = maximum(lamb)
-  maxeig1 = maximum(abs.(domega))./(2*pi)
+  maxeig1 = maximum(abs.(H0))./(2*pi)
 
-  if verbose
-    println("max(d_omega) = ", maximum(abs.(domega)), ", maxeig1 = ", maxeig1,", pcofmax =" ,pcofmax ,", maxeig2 = ", maxeig2)
-  end
+  # if verbose
+  #   println("maxeig1 = ", maxeig1,", pcofmax =" ,pcofmax ,", maxeig2 = ", maxeig2)
+  # end
 
   maxeig = 0.5(maxeig1 + maxeig2)
   dt = cfl/maxeig
@@ -125,19 +129,29 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
  
   vtargetr = real((rotr + 1im*roti)*utarget)
   vtargeti = imag((rotr + 1im*roti)*utarget)
- 
+
+  # if verbose
+  #   println("Target (rot frame) unitary:");
+  #   for q in 1:N
+  #     for c in 1:N
+  #       @printf("%11.4e %+11.4eim ", vtargetr[q,c], vtargeti[q,c])
+  #     end
+  #     @printf("\n")
+  #   end
+  # end
+  
   #real and imagianary part of initial condition
   vr = U0
   vi = zeromat
 
   if verbose
-  	usaver = zeros(Ntot,N,nsteps+1)
-   	usavei = zeros(Ntot,N,nsteps+1)
-   	usaver[:,:,1] = vr
-   	usavei[:,:,1] = -vi
+    usaver = zeros(Ntot,N,nsteps+1)
+    usavei = zeros(Ntot,N,nsteps+1)
+    usaver[:,:,1] = vr
+    usavei[:,:,1] = -vi
 
     #to compute gradient with forward method
-    if retadjoint
+    if evaladjoint
       wr = zeromat
       wi = zeromat
       objf_alpha1 = 0.0
@@ -180,114 +194,108 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
 
   # Forward time stepping loop
   for step in 1:nsteps
-    #for the objective function
-    if weight == 1
-      infidelity0 = weightf1(t, T)*(1-tracefidreal(vr, vi, vtargetr, vtargeti, labframe, t, omega))
-    end
+    #to evaluate the objective function
+    # if weight == 1
+    #   infidelity0 = weightf1(t, T)*(1-tracefidreal(vr, vi, vtargetr, vtargeti, labframe, t, omega))
+    # end
 
-    if penaltyweight == 1
-      forbidden0 = xi*penalf1(t, T)*normguard(vr, vi, Nguard)
-    elseif penaltyweight == 2
-      forbidden0 = tinv*penalf2a(vr, vi, wmat)  
-    end
+    # if penaltyweight == 1
+    #   forbidden0 = xi*penalf1(t, T)*normguard(vr, vi, Nguard)
+    # elseif penaltyweight == 2
+    forbidden0 = tinv*penalf2a(vr, vi, wmat)  
+    #    end
 
-    rotmatrices!(t,domega,rr,ri)
+    if evaladjoint && verbose
+      # scomplex0 = tracefidcomplex(vr, -vi, vtargetr, vtargeti, labframe, t, omega) # only needed if weight==1
+      # salpha0 = tracefidcomplex(wr, -wi, vtargetr, vtargeti, labframe, t, omega)
 
-    if retadjoint
-      if verbose
-       if penaltyweight == 1
-         forbalpha0 = xi*penalf1(t,T)*screal(vr, vi, wr, wi, Nguard,zeromat)
-       else
-        forbalpha0 = tinv*penalf2grad(vr, vi, wr, wi, wmat)
-       end
-      end
+      rgrad = rfgrad(t, splineparams)
+      igrad = ifgrad(t, splineparams)
+      rfalpha = rgrad[kpar]
+      ifalpha = igrad[kpar]
+      gr0, gi0 = fgradforce(amat, adag, vr, vi, rfalpha, ifalpha) # compute the forcing for (wr, wi)
 
-      if weight ==1
-        scomplex0 = tracefidcomplex(vr, -vi, vtargetr, vtargeti, labframe, t, omega)
-
-        if verbose
-          salpha0 = tracefidcomplex(wr, -wi, vtargetr, vtargeti, labframe, t, omega)
-        end
-
-        rgrad = rfgrad(t)
-        igrad = ifgrad(t)
-
-        mul!(dar,rr,amat)
-        mul!(dai,ri,amat)
-
-        rfalpha = rgrad[kpar]
-        ifalpha = igrad[kpar]
-        gr0, gi0 = grupdate(gr0,gi0,dai, dar, vr, vi, rfalpha, ifalpha)
-      end
-    end
+      # Forcing evolving w
+      # if penaltyweight == 1
+      #   forbalpha0 =  xi*penalf1(t,T)*screal(vr, vi, wr, wi, Nguard,zeromat)
+      # elseif penaltyweight == 2
+      forbalpha0 = tinv*penalf2grad(vr, vi, wr, wi, wmat)
+      # end # end if penaltyweight = 1/2
+      
+    end # end if evaladjoint && verbose
 
     # Stromer-Verlet
     for q in 1:stages
-      if retadjoint && verbose
-       t0=t
-       vr0 = vr
-       vi0 = vi
+      if evaladjoint && verbose
+        t0=t
+        vr0 = vr
+        vi0 = vi
       end
-      # Update K and S
-      KS!(K0, S0, t, amat, adag, domega, splineparams, H0, tmp1, tmp2, tmp3, rr,ri)
-      rotmatrices!(t + 0.5*dt*gamma[q],domega,rr,ri)
-      KS!(K05, S05, t + 0.5*dt*gamma[q], amat, adag, domega, splineparams, H0, tmp1, tmp2, tmp3,rr,ri)
-      rotmatrices!(t + dt*gamma[q],domega,rr,ri)
-      KS!(K1, S1, t + dt*gamma[q], amat, adag, domega, splineparams, H0, tmp1, tmp2, tmp3, rr,ri)
+      
+      # Update K and S matrices
+      KS!(K0, S0, t, amat, adag, splineparams, H0) 
+      KS!(K05, S05, t + 0.5*dt*gamma[q], amat, adag, splineparams, H0) 
+      KS!(K1, S1, t + dt*gamma[q], amat, adag, splineparams, H0) 
 
       @inbounds t, vr, vi = timestep.step(t, vr, vi, dt*gamma[q], K0, S0, K05, S05, K1, S1, Ident)
 
-      if penaltyweight == 1
-        forbidden = xi*penalf1(t, T)*normguard(vr, vi, Nguard)  
-      elseif penaltyweight == 2
-        forbidden = tinv*penalf2a(vr, vi, wmat)  
-      end
+      # if penaltyweight == 1
+      #   forbidden = xi*penalf1(t, T)*normguard(vr, vi, Nguard)  
+      # elseif penaltyweight == 2
 
-      if weight == 1
-      	infidelity = weightf1(t, T)*(1-tracefidreal(vr, vi, vtargetr, vtargeti, labframe,t, omega))
-      	objfv = objfv + gamma[q]*dt*0.5*(infidelity0 + infidelity + forbidden0 + forbidden)
-        infidelity0 = infidelity
-      elseif weight == 2
-        objfv = objfv + gamma[q]*dt*0.5*(forbidden0 + forbidden)
-      end 		
+      forbidden = tinv*penalf2a(vr, vi, wmat)  
+
+      # end
+
+# add in penalty terms for the forbidden states
+      # if weight == 1
+      # 	infidelity = weightf1(t, T)*(1-tracefidreal(vr, vi, vtargetr, vtargeti, labframe,t, omega))
+      # 	objfv = objfv + gamma[q]*dt*0.5*(infidelity0 + infidelity + forbidden0 + forbidden)
+      #   infidelity0 = infidelity
+      # elseif weight == 2
+
+      objfv = objfv + gamma[q]*dt*0.5*(forbidden0 + forbidden)
+
+      # end 		
 
       forbidden0 = forbidden
 
-      # compute component of the gradient for verification of adjoint method
-      if retadjoint && verbose       	
-      	 scomplex1 = tracefidcomplex(vr, -vi, vtargetr, vtargeti, labframe, t, omega)
-      	 mul!(dar,rr,amat)
-      	 mul!(dai,ri,amat)
-      	 rgrad = rfgrad(t)
-      	 igrad = ifgrad(t)
-      	 rfalpha = rgrad[kpar] #Will this return the same va
+      # compute one component of the gradient for verification of the adjoint method
+      if evaladjoint && verbose
+      	 rgrad = rfgrad(t, splineparams)
+      	 igrad = ifgrad(t, splineparams)
+      	 rfalpha = rgrad[kpar] # element kpar of the gradient of the control fcn
       	 ifalpha = igrad[kpar]
-	     gr1, gi1 = grupdate(gr1 ,gi1, dai, dar, vr, vi, rfalpha, ifalpha)
+	 gr1, gi1 = fgradforce(amat, adag, vr, vi, rfalpha, ifalpha) # compute the forcing for (wr, wi)
 
-	    @inbounds temp, wr, wi = timestep.step(t0, wr, wi, dt*gamma[q], gi0, 0.5*(gr1 + gr0), gi1, K0, S0, K05, S05, K1, S1, Ident) 
+	 @inbounds temp, wr, wi = timestep.step(t0, wr, wi, dt*gamma[q], gi0, 0.5*(gr1 + gr0), gi1, K0, S0, K05, S05, K1, S1, Ident) 
 
-	    # Forcing evolving w
-      if penaltyweight == 1
-        forbalpha1 =  xi*penalf1(t,T)*screal(vr, vi, wr, wi, Nguard,zeromat)
-      elseif penaltyweight == 2
-        forbalpha1 = tinv*penalf2grad(vr, vi, wr, wi, wmat)
-      end
+         # if penaltyweight == 1
+         #   forbalpha1 =  xi*penalf1(t,T)*screal(vr, vi, wr, wi, Nguard,zeromat)
+         # elseif penaltyweight == 2
+         
+         forbalpha1 = tinv*penalf2grad(vr, vi, wr, wi, wmat)
 
-      if weight == 1
-        salpha1 = tracefidcomplex(wr, -wi, vtargetr, vtargeti, labframe, t, omega) 
-	objf_alpha1 = objf_alpha1 - gamma[q]*dt*0.5*2.0*real(weightf1(t0,T)*conj(scomplex0)*salpha0 + weightf1(t,T)*conj(scomplex1)*salpha1) + gamma[q]*dt*0.5*2.0*(forbalpha0 + forbalpha1)
-	scomplex0 = scomplex1
-	salpha0 = salpha1
-      elseif weight ==2
-        objf_alpha1 = objf_alpha1 + gamma[q]*dt*0.5*2.0*(forbalpha0 + forbalpha1)
-      end
+         # end # end if penaltyweight = 1/2
+
+         # if weight == 1
+      	 #   scomplex1 = tracefidcomplex(vr, -vi, vtargetr, vtargeti, labframe, t, omega)
+         #   salpha1 = tracefidcomplex(wr, -wi, vtargetr, vtargeti, labframe, t, omega) 
+	 #   objf_alpha1 = objf_alpha1 - gamma[q]*dt*0.5*2.0*real(weightf1(t0,T)*conj(scomplex0)*salpha0 + weightf1(t,T)*conj(scomplex1)*salpha1) + gamma[q]*dt*0.5*2.0*(forbalpha0 + forbalpha1)
+	 #   scomplex0 = scomplex1
+	 #   salpha0 = salpha1
+         # elseif weight ==2
+
+         objf_alpha1 = objf_alpha1 + gamma[q]*dt*0.5*2.0*(forbalpha0 + forbalpha1)
+
+         # end
        
-      # save previous values for next stage 
-      forbalpha0 = forbalpha1  	    
-      gr0 = gr1
-      gi0 = gi1
-    end  # retadjoint
-  end # Stromer-Verlet
+         # save previous values for next stage 
+         forbalpha0 = forbalpha1  	    
+         gr0 = gr1
+         gi0 = gi1
+     end  # evaladjoint && verbose
+   end # Stromer-Verlet
     
     if verbose
       usaver[:,:, step + 1] = vr
@@ -295,79 +303,84 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
     end
   end #forward time steppingloop
 
-  if weight == 2
-    objfv = objfv + (1-tracefidreal(vr, vi, vtargetr, vtargeti, labframe,t, omega))
-    if retadjoint && verbose
-      salpha1 = tracefidcomplex(wr, -wi, vtargetr, vtargeti, labframe, t, omega)
-      scomplex1 = tracefidcomplex(vr, -vi, vtargetr, vtargeti, labframe, t, omega)
-      objf_alpha1 = objf_alpha1 - real(2*conj(scomplex1)*salpha1)
-    end  
-  end
+  #if weight == 2
+  primaryobjf = (1-tracefidabs2(vr, vi, vtargetr, vtargeti, labframe,t, omega)) # this computes | tr(V.dag * Vtarget) |^2
+  objfv = objfv + primaryobjf
+
+  if evaladjoint && verbose
+    salpha1 = tracefidcomplex(wr, -wi, vtargetr, vtargeti, labframe, t, omega)
+    scomplex1 = tracefidcomplex(vr, -vi, vtargetr, vtargeti, labframe, t, omega)
+    primaryobjgrad = - real(2*conj(scomplex1)*salpha1)
+    objf_alpha1 = objf_alpha1 + primaryobjgrad
+  end  
+  #  end
 
   vfinalr = vr
   vfinali = -vi
 
-  ufinalr = rotr'*vr - roti'*vi #should both these matrices be transposed?
+  ufinalr = rotr'*vr - roti'*vi 
   ufinali = -rotr'*vi - roti'*vr 
-  ineqpenalty = evalineqpen(pcof, par0, par1);
-  objfv = objfv .+ ineqpenalty
+  boxpenalty = boxpen(pcof, par0, par1, scalef);
+  objfv = objfv .+ boxpenalty
 
-  if retadjoint
+  if evaladjoint
     if verbose
       dfdp = objf_alpha1
     end  
 
-    gradobjfadj = zeros(D,1);
+    gradobjfadj = zeros(2*D,1);
     t = T
     dt = -dt
  
     # terminal conditions for the adjoint state
-    if weight == 1
-    	lambdar = zeromat
-    	lambdai = zeromat
-    elseif weight == 2
-      scomplex0 = tracefidcomplex(vr, -vi, vtargetr, vtargeti, labframe, t, omega)
-      sr0 = real(scomplex0)
-      si0 = imag(scomplex0)
+    # if weight == 1
+    # 	lambdar = zeromat
+    # 	lambdai = zeromat
+    # elseif weight == 2
 
-      lambdar = real(conj(scomplex0)*(vtargetr + im*vtargeti))/N 
-      lambdai = -imag(conj(scomplex0)*(vtargetr + im*vtargeti))/N
-    end
+    scomplex0 = tracefidcomplex(vr, -vi, vtargetr, vtargeti, labframe, t, omega)
+
+    # sr0 and si0 are never used?
+    sr0 = real(scomplex0)
+    si0 = imag(scomplex0)
+
+    lambdar = real(conj(scomplex0)*(vtargetr + im*vtargeti))/N 
+    lambdai = -imag(conj(scomplex0)*(vtargetr + im*vtargeti))/N
+    # end
     
     #Backward time stepping loop
     for step in nsteps-1:-1:0
-      scomplex0 = tracefidcomplex(vr, -vi, vtargetr, vtargeti, labframe, t, omega)
-      sr0 = real(scomplex0)
-      si0 = imag(scomplex0)
 
-      if weight == 1
-      	hr0 = -weightf1(t,T)/N*(sr0*vtargetr + si0*vtargeti)
-      	hi0 =  weightf1(t,T)/N*(sr0*vtargeti - si0*vtargetr)
-      end
+      # if weight == 1
+      # scomplex0 = tracefidcomplex(vr, -vi, vtargetr, vtargeti, labframe, t, omega)
+      # sr0 = real(scomplex0)
+      # si0 = imag(scomplex0)
+      # 	hr0 = -weightf1(t,T)/N*(sr0*vtargetr + si0*vtargeti)
+      # 	hi0 =  weightf1(t,T)/N*(sr0*vtargeti - si0*vtargetr)
+      # end
       
-      if penaltyweight == 1
-        hr0[N+1:N+Nguard,:] = xi*penalf1(t,T)*vr[N+1:N+Nguard,:]
-        hi0[N+1:N+Nguard,:] = xi*penalf1(t,T)*vi[N+1:N+Nguard,:]
-      elseif penaltyweight == 2
-        hr0 = tinv.*penalf2adj(vr, wmat)
-        hi0 = tinv.*penalf2adj(vi, wmat)
-      end
-     
-      # forcing for evolving W (d psi/d alpha1) in the rotating frame
-      rotmatrices!(t,domega,rr,ri)
-      mul!(dar,rr,amat)
-      mul!(dai,ri,amat)
-      rgrad = rfgrad(t)
-      igrad = ifgrad(t)
+      # if penaltyweight == 1
+      #   hr0[N+1:N+Nguard,:] = xi*penalf1(t,T)*vr[N+1:N+Nguard,:]
+      #   hi0[N+1:N+Nguard,:] = xi*penalf1(t,T)*vi[N+1:N+Nguard,:]
+      # elseif penaltyweight == 2
 
+      hr0 = tinv.*penalf2adj(vr, wmat)
+      hi0 = tinv.*penalf2adj(vi, wmat)
+      # end
+     
       # separate out contributions from rfgrad and ifgrad (which determine the component of the gradient)
-      darr = ( (dai .- dai')*vr .- (dar .+ dar')*vi)
-      dari = ( (dar .+ dar')*vr .+ (dai .- dai')*vi)
-      dair = ( (dai .+ dai')*vi .+ (dar .- dar')*vr)
-      daii = (-(dai .+ dai')*vr .+ (dar .- dar')*vi)
-      tr_adjrf = tracefidreal(darr, dari, lambdar, lambdai)
+
+      # first 2 factors (darr and dari) have the rfgrad factor
+      darr = -(amat + adag)*vi
+      dari = (amat + adag)*vr # negative imaginary part
+      tr_adjrf = tracefidreal(darr, dari, lambdar, lambdai) # note that lambdai = negative imag part
+      
+      # second factors (dair and daii) are multiplied by the ifgrad factor
+      dair = (amat - adag)*vr
+      daii = (amat - adag)*vi # negative imaginary part
       tr_adjif = tracefidreal(dair, daii, lambdar, lambdai)
-      tr_adj0  = rfgrad(t)* tr_adjrf + ifgrad(t)* tr_adjif
+
+      tr_adj0  = rfgrad(t, splineparams)* tr_adjrf + ifgrad(t, splineparams)* tr_adjif
 
       #loop over stages
       for q in 1:stages
@@ -376,75 +389,77 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
         vi0 = vi
           
         # update K and S\         
-        KS!(K0, S0, t, amat, adag, domega, splineparams, H0, tmp1, tmp2, tmp3, rr,ri)
-        rotmatrices!(t + 0.5*dt*gamma[q],domega,rr,ri)
-        KS!(K05, S05, t + 0.5*dt*gamma[q], amat, adag, domega, splineparams, H0, tmp1, tmp2, tmp3,rr,ri)
-        rotmatrices!(t + dt*gamma[q],domega,rr,ri)
-        KS!(K1, S1, t + dt*gamma[q], amat, adag, domega, splineparams, H0, tmp1, tmp2, tmp3, rr,ri)
+        KS!(K0, S0, t, amat, adag, splineparams, H0) #, tmp1, tmp2, tmp3, rr,ri)
+#        rotmatrices!(t + 0.5*dt*gamma[q],domega,rr,ri)
+        KS!(K05, S05, t + 0.5*dt*gamma[q], amat, adag, splineparams, H0) #, tmp1, tmp2, tmp3,rr,ri)
+#        rotmatrices!(t + dt*gamma[q],domega,rr,ri)
+        KS!(K1, S1, t + dt*gamma[q], amat, adag, splineparams, H0); #, tmp1, tmp2, tmp3, rr,ri)
           
         # evolve vr, vi
         @inbounds t, vr, vi = timestep.step(t, vr, vi, dt*gamma[q], K0, S0, K05, S05, K1, S1, Ident)
 
-        scomplex1 = tracefidcomplex(vr, -vi, vtargetr, vtargeti, labframe, t, omega)
-        sr1 = real(scomplex1)
-        si1 = imag(scomplex1)
-
-        if weight == 1
-        	hr1 = -weightf1(t,T)/N*(sr1*vtargetr + si1*vtargeti)
-        	hi1 =  weightf1(t,T)/N*(sr1*vtargeti - si1*vtargetr)
-        end  
+        # if weight == 1
+        # scomplex1 = tracefidcomplex(vr, -vi, vtargetr, vtargeti, labframe, t, omega)
+        # sr1 = real(scomplex1)
+        # si1 = imag(scomplex1)
+        # 	hr1 = -weightf1(t,T)/N*(sr1*vtargetr + si1*vtargeti)
+        # 	hi1 =  weightf1(t,T)/N*(sr1*vtargeti - si1*vtargetr)
+        # end  
         
-        if penaltyweight == 1
-          hr1[N+1:N+Nguard,:] = xi*penalf1(t,T)*vr[N+1:N+Nguard,:]
-          hi1[N+1:N+Nguard,:] = xi*penalf1(t,T)*vi[N+1:N+Nguard,:]
-        else
-# needs modification if combined with the weight==1 case above
-          hr1 = tinv.*penalf2adj(vr, wmat)
-          hi1 = tinv.*penalf2adj(vi, wmat)
-        end  
+        # if penaltyweight == 1
+        #   hr1[N+1:N+Nguard,:] = xi*penalf1(t,T)*vr[N+1:N+Nguard,:]
+        #   hi1[N+1:N+Nguard,:] = xi*penalf1(t,T)*vi[N+1:N+Nguard,:]
+        # else
+        # needs modification if combined with the weight==1 case above
+        hr1 = tinv.*penalf2adj(vr, wmat)
+        hi1 = tinv.*penalf2adj(vi, wmat)
+        # end  
+
         # evolve lambdar, lambdai
         @inbounds temp, lambdar, lambdai = timestep.step(t0, lambdar, lambdai, dt*gamma[q], hi0, 0.5*(hr0 + hr1), hi1, K0, S0, K05, S05, K1, S1, Ident)
 
-        mul!(dar,rr,amat)
-        mul!(dai,ri,amat)
-        rgrad = rfgrad(t)
-        igrad = ifgrad(t)
-          
-        darr = ( (dai .- dai')*vr .- (dar .+ dar')*vi)
-        dari = ( (dar .+ dar')*vr .+ (dai .- dai')*vi)
-        dair = ( (dai .+ dai')*vi .+ (dar .- dar')*vr)
-        daii = (-(dai .+ dai')*vr .+ (dar .- dar')*vi)
-        tr_adjrf = tracefidreal(darr, dari, lambdar, lambdai)
+        # first 2 factors (darr and dari) have the rfgrad factor
+        darr = -(amat + adag)*vi
+        dari = (amat + adag)*vr # negative imaginary part
+        tr_adjrf = tracefidreal(darr, dari, lambdar, lambdai) # note that lambdai = negative imag part
+      
+        # second factors (dair and daii) are multiplied by the ifgrad factor
+        dair = (amat - adag)*vr
+        daii = (amat - adag)*vi # negative imaginary part
         tr_adjif = tracefidreal(dair, daii, lambdar, lambdai)
-        tr_adj1  = rfgrad(t)*tr_adjrf + ifgrad(t)*tr_adjif
+
+        tr_adj1  = rfgrad(t, splineparams)*tr_adjrf + ifgrad(t, splineparams)*tr_adjif
 
         # accumulate the gradient of the objective functional
         gradobjfadj = gradobjfadj + gamma[q]*dt*0.5*2.0*(tr_adj0 +  tr_adj1) # dt is negative
 
         # save for next stage
-        scomplex0 = scomplex1
         tr_adj0 = tr_adj1
         hr0 = hr1
         hi0 = hi1
       end #for stages
     end # for step (backward time stepping loop)
  
-   ineqpengrad = evalineqgrad(pcof, par0, par1)
-  
-    for k in 1:D
-      gradobjfadj[k] = gradobjfadj[k] + ineqpengrad[k]
+   boxpenaltygrad = boxgrad(pcof, par0, par1, scalef)
+   
+    for k in 1:2*D
+      gradobjfadj[k] = gradobjfadj[k] + boxpenaltygrad[k]
     end
      
-  end # if retadjoint
+  end # if evaladjoint
 
   if verbose
-    println("Inequality penalty: ", ineqpenalty)
-    println("Objective functional objfv: ", objfv)
+    println("Total objective func: ", objfv)
+    println("Primary objective func: ", primaryobjf, " Box inequality penalty: ", boxpenalty, " Guard state penalty: ", objfv-primaryobjf - boxpenalty)
 		
-    dfdp = dfdp + ineqpengrad[kpar]
-    println("Forward integration of gradient of objective function = ", dfdp, " ineqpengrad = ", ineqpengrad[kpar])
-
+    if evaladjoint
+      dfdp = dfdp + boxpenaltygrad[kpar]
+      println("Forward integration of total gradient[kpar=", kpar, "]: ", dfdp);
+      println("Primary grad = ", primaryobjgrad, " Box penalty grad = ", boxpenaltygrad[kpar], " Guard state grad = ", dfdp - boxpenaltygrad[kpar] - primaryobjgrad )
+    end
+    
     nlast = 1 + nsteps
+    println("Unitary test:")
     println(" Column   Vnrm")
     for q in 1:N
       Vnrm = usaver[:,q,nlast]' * usaver[:,q,nlast] + usavei[:,q,nlast]' * usavei[:,q,nlast]
@@ -453,26 +468,47 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
     end
 
 # output final unitary
-    println("Final unitary:");
-    for q in 1:N
-      for c in 1:N
-        @printf("%11.4e %+11.4eim ", ufinalr[q,c], ufinali[q,c])
-      end
-      @printf("\n")
-    end
+    # println("Final (rot frame) unitary:");
+    # for q in 1:N
+    #   for c in 1:N
+    #     @printf("%11.4e %+11.4eim ", vfinalr[q,c], vfinali[q,c])
+    #   end
+    #   @printf("\n")
+    # end
 
-# output primary objective function (infidelity at final time)
-    fidelityrot = abs(tracefidcomplex(vfinalr, vfinali, vtargetr, vtargeti, labframe, t, omega))
-    println("Final trace fidelity = ", fidelityrot);
+    # println("Target (lab frame) unitary:");
+    # for q in 1:N
+    #   for c in 1:N
+    #     @printf("%11.4e %+11.4eim ", real(utarget[q,c]), imag(utarget[q,c]))
+    #   end
+    #   @printf("\n")
+    # end
     
-# Also output L2 norm of last energy level
-    normlastguard = zeros(N)
-    for q in 1:N
-      normlastguard[q] = sqrt( (usaver[Ntot,q,:]' * usaver[Ntot,q,:] + usavei[Ntot,q,:]' * usavei[Ntot,q,:])/nsteps );
-    end
-    # print the results
-    for q in 1:N
-      println("Initial data # ", q, " L2 norm last guard level = ", normlastguard[q]) 
+    # println("Final (lab frame) unitary:");
+    # for q in 1:N
+    #   for c in 1:N
+    #     @printf("%11.4e %+11.4eim ", ufinalr[q,c], ufinali[q,c])
+    #   end
+    #   @printf("\n")
+    # end
+
+    # output primary objective function (infidelity at final time)
+    fidelityrot = abs(tracefidcomplex(vfinalr, vfinali, vtargetr, vtargeti, labframe, t, omega))
+    println("Final trace infidelity = ", 1.0 - fidelityrot, " trace fidelity = ", fidelityrot);
+    
+    # Also output L2 norm of last energy level
+    if Ntot>N
+      normlastguard = zeros(N)
+      for q in 1:N
+        normlastguard[q] = sqrt( (usaver[Ntot,q,:]' * usaver[Ntot,q,:] + usavei[Ntot,q,:]' * usavei[Ntot,q,:])/nsteps );
+      end
+      # print the results
+      # for q in 1:N
+      #   println("Initial data # ", q, " L2 norm last guard level = ", normlastguard[q]) 
+      # end
+      println("L2 norm last guard level (max) = ", maximum(normlastguard))
+    else
+      println("No guard levels in this simulation");
     end
 
     # make plots
@@ -480,33 +516,44 @@ function traceobjgrad(pcof0::Array{Float64,1} = [0.0; 0.0; 0.0],  params::parame
 
     # Evaluate control function at the discrete time levels
     nplot = round(Int64, T*samplerate)
-    td = collect(range(1.0/samplerate, stop = T, length = nplot))
-    #    @show(td[1])
-    #    @show(nplot)
+    #@show(nplot)
+    dt = 1.0/samplerate
+    td = range(0, stop = T, length = nplot+1) # td[1]=0, td[nplot+1]=T, td[1] = 1/samplerate
+    #@show(td[nplot])
 
     rplot(t) = rfunc(t,splineparams)
-    labdrive = rplot.(collect(td))
-    eplotr = cos.(domega[1]*collect(td)) .* labdrive
-    eploti = sin.(domega[1]*collect(td)) .* labdrive
+    iplot(t) = ifunc(t,splineparams)
+    rotdriver = rplot.(td)
+    rotdrivei = iplot.(td)
+    
+    oma = 2*pi*params.fa
+    labdrive = 2*rotdriver .* cos.(oma*td) - 2*rotdrivei .* sin.(oma*td)
+    
+    # first plot
+    f1 = plot(td, rotdriver, lab="Real part", linewidth = 2, title = "Rotating frame", size = (1000, 500), xlabel="Time [ns]")
+    # add in the imaginary part
+    plot!(td, rotdrivei, lab="Imag part", linewidth = 2)
 
-    f1 = plot(td, labdrive, lab="", title = "Control function, Lab frame", xlabel = "Time [ns]", ylabel="Amplitude", linewidth = 2)
-    f2 = plot(td, eplotr, lab="", title = "Rotating frame, Real part", linewidth = 2)
-    f3 = plot(td, eploti, lab="", title = "Rotating frame, Imag part", linewidth = 2)
+    # second plot
+#    f2 = plot(td[1:64], labdrive[1:64], lab="", linewidth = 2, title = "Lab frame", size = (1000, 500), xlabel="Time [ns]")
+    f2 = plot(td, labdrive, lab="", linewidth = 2, title = "Lab frame", size = (1000, 500), xlabel="Time [ns]")
+
     # if weight == 1
     #   plot!(td, weightf1.(td,T), lab = "Gate", linewidth = 2)
     # end
 
-#    plt2 = plot(f1, f2, f3, layout = (3,1))        
-    plt2 = plot(f1)        
+    #    plt2 = plot(f1, f2, f3, layout = (3,1))        
+    plt2 = plot(f1, f2, layout = (2,1))        
 
   end #if verbose
 
 # return to calling routine
-if verbose && retadjoint
+if verbose && evaladjoint
    return objfv, gradobjfadj, plt1, plt2, td, labdrive
 elseif verbose
-  return objfv, plt1, plt2
-elseif retadjoint
+  println("Returning from traceobjgrad with objfv, td, labdrive, plt1, plt2")
+  return objfv, plt1, plt2, td, labdrive
+elseif evaladjoint
   return objfv, gradobjfadj
 else
   return objfv
@@ -527,60 +574,40 @@ function wmatsetup(Ntot::Int64, Ng::Int64)
   return wmat
 end
 
-# returns omega
-function omegafun(N::Int64)
-	omega = zeros(N)
-  omega[1] = 0
-  omega[2] = 4.10336
-  if N >= 3
-    omega[3] = 7.98692
-  end
-  if N >= 4
-    omega[4] = 11.65068
-  end
-  if N >= 5
-    omega[5] = 15.09464
-  end
-  if N >= 6
-    omega[6] = 18.332
-  end
-  if N >= 7
-    omega[7] = 21.339
-  end
-  if N > 7
-    error("not enough frequencies known")
-  end
-  return omega
-end
-
-# bound pcof to allowed amplitude
-@inline function boundcof(pcof::Array{Float64,1}, D::Int64, maxpar::Float64, eps::Float64)
-	par1 = maxpar
-	par0 = -maxpar
-
-	for q in 1:D
-  	  if pcof[q] > par1-eps
-  	    pcof[q] = par1-eps
-  	  end
-  	  if pcof[q] < par0+eps
-  	    pcof[q] = par0+eps
-  	  end
-  	end
-	return pcof, par1, par0
-end
-
-# Matrices for te hamiltonian in rotation frame
-@inline function rotframematrices(Ntot::Int64)
-  omega = omegafun(Ntot)
-  H0 = zeros(Ntot,Ntot)
+# Matrices for the Hamiltonian in rotation frame
+@inline function setupmatrices(fa::Float64, xia:: Float64, Ntot::Int64)
   amat = Array(Bidiagonal(zeros(Ntot),sqrt.(collect(1:Ntot-1)),:U))
   adag = Array(transpose(amat))
-  domega = zeros(Ntot)
-  domega[1:Ntot-1] = omega[2:Ntot] .- omega[1:Ntot-1]
-
-  return H0, amat, adag, omega, domega
+  number = Diagonal(collect(0:Ntot-1))
+  H0 = -pi*xia* (number*number - number)
+  omega = 2*pi*fa*Array(collect(0:Ntot-1))
+  return H0, omega, amat, adag, number
 end
 
+# Matrices for the Hamiltonian in rotation frame
+# @inline function rotframematrices(Ntot::Int64)
+#   omega = omegafun(Ntot)
+#   H0 = zeros(Ntot,Ntot)
+#   amat = Array(Bidiagonal(zeros(Ntot),sqrt.(collect(1:Ntot-1)),:U))
+#   adag = Array(transpose(amat))
+#   dom1 = omega[2]-omega[1] # Take out of control function
+#   domega = zeros(Ntot)
+#   domega[1:Ntot-1] = omega[2:Ntot] .- omega[1:Ntot-1] .- dom1
+
+#   return H0, amat, adag, omega, domega
+# end
+
+# # returns omega
+# function omegafun(N::Int64)
+# # The Alice oscillator
+#   freq0 = 2*pi*[0.0, 4.10336, 7.98692, 11.65068, 15.09464, 18.332, 21.339]
+#   if N > 7
+#     error("not enough frequencies known")
+#   end
+#   omega = zeros(N)
+#   omega = freq0[1:N]
+#   return omega
+# end
 
 @inline function weightf1(t::Float64, T::Float64)
   # period
@@ -594,7 +621,7 @@ end
   w = xi*64*mask.*(0.5 + tau).^3 .* (0.5 - tau).^3
 end
 
-@inline function tracefidreal(ur::Array{Float64,2}, vi::Array{Float64,2}, vtargetr::Array{Float64,2}, vtargeti::Array{Float64,2}, labframe::Bool,t::Float64,omega::Array{Float64,1})
+@inline function tracefidabs2(ur::Array{Float64,2}, vi::Array{Float64,2}, vtargetr::Array{Float64,2}, vtargeti::Array{Float64,2}, labframe::Bool,t::Float64,omega::Array{Float64,1})
   N = size(vtargetr,2)
   if labframe
     for I in 1:N
@@ -608,7 +635,7 @@ end
     ua = ur
     va = -vi
   end
- 
+# NOTE: this routine computes | tr((ua+i va).dag * (vtr + i vtr)) | ^2 
   fidelity = (tr(ua' * vtargetr + va' * vtargeti)/N)^2 + (tr(ua' * vtargeti - va' * vtargetr)/N)^2
 end
 
@@ -731,63 +758,70 @@ end
   end
 end
 
-@inline function evalineqpen(pcof::Array{Float64,1}, par_0::Float64, par_1::Float64)
-  D = size(pcof,1)
-  N = size(pcof,2)
-  scalef = 0.1
-# testing
-#  scalef = 0
-  penalty = zeros(1,N);
-  dp2 = par_1 - par_0
-  
-  for k in 1:D
-    penalty[1,:] = penalty[1,:] .- ( log.((pcof[k,:] .- par_0)/dp2) .+ log.((par_1 .- pcof[k,:])/dp2))
-  end
-  penalty = scalef .* (penalty/D .- 2*log(2))
-end
-
 function plotunitary(us, T)
   nsteps = length(us[1,1,:])  
   Ntot = length(us[:,1,1])
   N =  length(us[1,:,1])
 
-  if Ntot != N
-    println("INFO plotunitary: Ntot= ", Ntot, " and N = ", N ," are not equal")
-  end
+  # if Ntot != N
+  #   println("INFO plotunitary: Ntot= ", Ntot, " and N = ", N ," are not equal")
+  # end
   t = range(0, stop = T, length = nsteps)
 
 # one figure for the response of each basis vector
   plotarray = Array{Plots.Plot}(undef, N) #empty array for separate plots
 
   for ii in 1:N
-      titlestr = string("Response to initial data ", ii)
-        h = plot(title = titlestr, size = (1000, 1000))
-      for jj in 1:Ntot
-        labstr = string("State ", jj)
-        if ii == 2
-         plot!(t, abs.(us[jj,ii,:]), lab = labstr, linewidth = 4, xlabel = "Time [ns]", ylabel = L"\mathrm{ | \psi_i | }")
-        else
-         plot!(t, abs.(us[jj,ii,:]), leg = false, linewidth = 4, xlabel = "Time [ns]" , ylabel = L"\mathrm{ | \psi_i | }")
-        end
-    end
-    plotarray[ii] = h
+    titlestr = string("Abs(state) for initial data #", ii)
+    h = plot(title = titlestr)
+    for jj in 1:Ntot
+      labstr = string("State ", jj)
+      plot!(t, abs.(us[jj,ii,:]), lab = labstr, legend=:left, linewidth = 2, xlabel = "Time", size=(750, 500))
+     end
+     plotarray[ii] = h
   end
-  plt = plot(plotarray..., layout = N)
+  if N <= 2
+    plt = plot(plotarray..., layout = (N,1))
+  else
+    plt = plot(plotarray..., layout = N)
+  end
   return plt
 end
 
+# bound pcof to allowed amplitude
+@inline function boundcof(pcof::Array{Float64,1}, Npar::Int64, maxpar::Float64, eps::Float64)
+	par1 = maxpar
+	par0 = -maxpar
 
-@inline function evalineqgrad(pcof::Array{Float64,1}, par0::Float64, par1::Float64)
-  D = size(pcof,1)
-  N = size(pcof,2)
-  scalef = 0.1
-# testing
-#  scalef = 0
-  pengrad = zeros(D,N)
-  for k in 1:D
-    pengrad[k,:] = scalef*(1.0./(par1 .- pcof[k,:]) .- 1.0./(pcof[k,:] .- par0))/D
-  end
- return pengrad
+	for q in 1:Npar
+  	  if pcof[q] > par1-eps
+  	    pcof[q] = par1-eps
+  	  end
+  	  if pcof[q] < par0+eps
+  	    pcof[q] = par0+eps
+  	  end
+  	end
+	return pcof, par1, par0
+end
+
+@inline function boxpen(pcof::Array{Float64,1}, par_0::Float64, par_1::Float64, scalef::Float64)
+  Npar = size(pcof,1)
+
+  penalty = 0.0;
+  dp2 = par_1 - par_0
+  
+  penalty = -sum( log.( (pcof .- par_0)./dp2 ) + log.( (par_1 .- pcof)./dp2 ) )
+  penalty = scalef .* (penalty/Npar .- 2*log(2)) # why subtract off 2*log(2)?
+  return penalty
+end
+
+@inline function boxgrad(pcof::Array{Float64,1}, par0::Float64, par1::Float64, scalef::Float64)
+  Npar = size(pcof,1)
+  
+  pengrad = zeros(Npar)
+
+  pengrad = scalef .*(1.0./(par1 .- pcof) .- 1.0./(pcof .- par0)) ./ Npar
+  return pengrad
 end
 
 function screal(vr::Array{Float64,2}, vi::Array{Float64,2}, wr::Array{Float64,2}, wi::Array{Float64,2}, Nguard::Int64,vrguard::Array{Float64,2})
@@ -807,62 +841,83 @@ function screal(vr::Array{Float64,2}, vi::Array{Float64,2}, wr::Array{Float64,2}
 
 end
 
-function KS!(K::Array{Float64,2},S::Array{Float64,2},t::Float64,amat::Array{Float64,2},adag::Array{Float64,2},
-            domega::Array{Float64,1},splineparams::bsplines.splineparams,H0::Array{Float64,2},tmp1::Array{Float64,2},
-            tmp2::Array{Float64,2},tmp3::Array{Float64,2},rr::Array{Float64,2},ri::Array{Float64,2})
-  rrt = transpose(rr)
+# old version with domega, rr, ri and tmpX arrays
+# function KS!(K::Array{Float64,2},S::Array{Float64,2},t::Float64,amat::Array{Float64,2},adag::Array{Float64,2},
+#             domega::Array{Float64,1},splineparams::bsplines.splineparams,H0::Array{Float64,2},tmp1::Array{Float64,2},
+#             tmp2::Array{Float64,2},tmp3::Array{Float64,2},rr::Array{Float64,2},ri::Array{Float64,2})
+#   rrt = transpose(rr)
+#   rfeval = rfunc(t,splineparams)
+#   ifeval = ifunc(t,splineparams)
+#   tmp4 = 0.0
+ 
+#   # (rr*amat)
+#   mul!(tmp1,rr,amat) 
+#   mul!(tmp2,adag,rrt)
+#   for  I in eachindex(tmp1)
+#     # (rr*amat + adag*rr')
+#    @inbounds tmp3[I] = tmp1[I] + tmp2[I]
+#   end
+#    #ri*amat 
+#   mul!(tmp1,ri,amat)
+#    # adag*ri
+#   mul!(tmp2,adag,ri)
+#   for  I in eachindex(tmp1)
+#    # (ri*amat + adag*ri)
+#     @inbounds   tmp4 = tmp1[I] + tmp2[I]
+#     @inbounds  K[I] = H0[I] + rfeval*tmp3[I] - ifeval*tmp4
+#   end
+  
+#   # S
+#   mul!(tmp1,rr,amat)
+#   mul!(tmp2,adag,transpose(rr))
+     
+#   for  I in eachindex(tmp1)
+#    @inbounds tmp3[I] = tmp1[I] - tmp2[I]
+#   end
+  
+#   mul!(tmp1,ri,amat)
+#   mul!(tmp2,adag,transpose(ri))
+   
+#   for  I in eachindex(tmp1)
+#    @inbounds tmp4 = tmp1[I] - tmp2[I]  
+#    @inbounds  S[I]  = ifunc(t,splineparams)*tmp3[I] + rfunc(t,splineparams)*tmp4
+#   end
+# end
+
+# updated version, without domega, rr, ri, tmp1, tmp2, tmp3
+function KS!(K::Array{Float64,2}, S::Array{Float64,2}, t::Float64, amat::Array{Float64,2}, adag::Array{Float64,2},
+             splineparams::bsplines.splineparams, H0::Diagonal{Float64,Array{Float64,1}})
+
   rfeval = rfunc(t,splineparams)
   ifeval = ifunc(t,splineparams)
-  tmp4 = 0.0
  
-  # (rr*amat)
-  mul!(tmp1,rr,amat) 
-  mul!(tmp2,adag,rrt)
-  for  I in eachindex(tmp1)
-    # (rr*amat + adag*rr')
-   @inbounds tmp3[I] = tmp1[I] + tmp2[I]
-  end
-   #ri*amat 
-  mul!(tmp1,ri,amat)
-   # adag*ri
-  mul!(tmp2,adag,ri)
-  for  I in eachindex(tmp1)
-   # (ri*amat + adag*ri)
-    @inbounds   tmp4 = tmp1[I] + tmp2[I]
-    @inbounds  K[I] = H0[I] + rfeval*tmp3[I] - ifeval*tmp4
+  for  I in eachindex(amat)
+    @inbounds  K[I] = H0[I] + rfeval*(amat[I] + adag[I])
   end
   
   # S
-  mul!(tmp1,rr,amat)
-  mul!(tmp2,adag,transpose(rr))
-     
-  for  I in eachindex(tmp1)
-   @inbounds tmp3[I] = tmp1[I] - tmp2[I]
-  end
-  
-  mul!(tmp1,ri,amat)
-  mul!(tmp2,adag,transpose(ri))
-   
-  for  I in eachindex(tmp1)
-   @inbounds tmp4 = tmp1[I] - tmp2[I]  
-   @inbounds  S[I]  = ifunc(t,splineparams)*tmp3[I] + rfunc(t,splineparams)*tmp4
+  for  I in eachindex(amat)
+   @inbounds  S[I]  = ifeval*( amat[I] - adag[I])
   end
 end
 
 
 @inline function rfunc(t::Float64,splineparams::bsplines.splineparams)
  ret = 0.0
- ret = bsplines.bspline2(t,splineparams)
+ ret = bsplines.bspline2r(t,splineparams)  # real part
 end
 
 @inline function efunc(t::Float64,splineparams::bsplines.splineparams)
-  ret = 0.0
-  ret = bsplines.bspline2(t,splineparams::bsplines.splineparams)
+  ret = bsplines.bspline2r(t,splineparams::bsplines.splineparams) #real part for now. Perhaps magnitude is better?
 end
 
 @inline function ifunc(t::Float64,splineparams::bsplines.splineparams)
-  ret = 0.0
+  ret = bsplines.bspline2i(t,splineparams) # imaginary part
 end
+
+@inline rfgrad(t::Float64, splineparams::bsplines.splineparams) = bsplines.gradbspline2r(t, splineparams)
+
+@inline ifgrad(t::Float64, splineparams::bsplines.splineparams) = bsplines.gradbspline2i(t, splineparams)
 
 function rotmatrices!(t::Float64, domega::Array{Float64,1},rr::Array{Float64,2},ri::Array{Float64,2})
  for I in 1:length(domega)
@@ -871,9 +926,21 @@ function rotmatrices!(t::Float64, domega::Array{Float64,1},rr::Array{Float64,2},
  end
 end
 
+# old routine for computing the forcing for the forward gradient
 function grupdate(gr0::Array{Float64,2}, gi0::Array{Float64,2}, dai::Array{Float64,2}, dar::Array{Float64,2}, vr::Array{Float64,2}, vi::Array{Float64,2},rfalpha::Float64,ifalpha::Float64)
-   gr0 = rfalpha.*( (dai .-  dai')*vr .- (dar .+ dar')*vi) .+ ifalpha.*(  (dai .+ dai')*vi .+ (dar .-  dar')*vr) #should it really be ifalpha' and ralpha' here?? Different n anders code ..
-   gi0 = rfalpha.*( (dar .+  dar')*vr .+ (dai .- dai')*vi) .+ ifalpha.*( -(dai .+ dai')*vr .+ (dar .-  dar')*vi)
-   return gr0, gi0
+  gr0 = rfalpha.*( (dai .-  dai')*vr .- (dar .+ dar')*vi) .+ ifalpha.*(  (dai .+ dai')*vi .+ (dar .-  dar')*vr) #should it really be ifalpha' and ralpha' here?? Different n anders code ..
+  gi0 = rfalpha.*( (dar .+  dar')*vr .+ (dai .- dai')*vi) .+ ifalpha.*( -(dai .+ dai')*vr .+ (dar .-  dar')*vi)
+  return gr0, gi0
 end
+
+# new routine for computing the forcing for one component of the forward gradient
+function fgradforce(amat::Array{Float64,2}, adag::Array{Float64,2}, vr::Array{Float64,2}, vi::Array{Float64,2}, gralpha::Float64, gialpha::Float64)
+
+  fr = gialpha.* (amat .-  adag)*vr  .- gralpha.* (amat .+ adag)*vi
+  fi = gralpha.* (amat .+ adag)*vr .+ gialpha.* (amat .-  adag)*vi
+  return fr, fi
 end
+
+
+
+end #module

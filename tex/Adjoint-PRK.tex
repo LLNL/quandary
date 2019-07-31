@@ -1,0 +1,351 @@
+\documentclass[11pt]{article}
+\usepackage{amsfonts,amsmath,amssymb,amsthm,graphicx}
+\usepackage{multirow}
+\usepackage{booktabs}
+\usepackage[caption=false]{subfig} 
+\usepackage{color}
+\usepackage{ifthen}
+
+\setlength{\topmargin}{0 mm}
+\setlength{\oddsidemargin}{5 mm}
+\setlength{\evensidemargin}{5 mm}
+\setlength{\textwidth}{150 mm}
+\setlength{\textheight}{210 mm}
+
+\include{macros}
+
+\begin{document}
+
+%% \title{Notes on Schroedinger's equation}
+
+%% \author{N. Anders Petersson\thanks{Center for Applied
+%%     Scientific Computing, Lawrence Livermore National Laboratory, L-561, PO Box 808, Livermore CA
+%%     94551. }}
+
+%% \date{\today}
+
+%% \maketitle
+\section{The Schr\"odinger equation}
+Consider the Schr\"odinger equation written as a system of ordinary differential equations (ODE),
+\begin{equation}\label{eq_shrodinger}
+\dot{\psi} = -i H(t) \psi,\quad t\geq 0,\quad \psi(0) = \psi_0,
+\end{equation}
+where $\psi(t)\in {\mathbb C}^N$ and $H\in {\mathbb C}^{N\times N}$ is a Hermitian matrix.
+
+To utilize efficient numerical software it is desirable to derive a real-valued equivalent of
+\eqref{eq_shrodinger}. Let the real-valued functions $u(t)$ and $v(t)$ hold the real and negative
+imaginary parts of $\psi(t)$,
+\[
+\psi(t) = u(t) - iv(t)
+\]
+and decompose the total Hamiltonian matrix into $H(t) = K(t) + i S(t)$, where the real-valued
+matrices $K$ and $S$ hold the symmeric and skew-symmetric parts of $H$: $K^T = K$ and $S^T =
+-S$. We have,
+\begin{align*}
+H\psi &= (K+iS)(u - iv) = (Ku + Sv) + i(Su - Kv),\\
+-iH\psi &= -i(Ku + Sv) + (Su - Kv).
+\end{align*}
+Therefore, a real-valued equivalent of the system \eqref{eq_shrodinger} is
+\begin{equation}\label{eq_real-shrodinger}
+  \begin{bmatrix} \dot{u}\\ \dot{v} \end{bmatrix} =
+%
+  \begin{bmatrix}
+    S(t) & -K(t) \\ K(t) & S(t)
+  \end{bmatrix}     
+  %
+  \begin{bmatrix} u\\ v \end{bmatrix} .
+\end{equation}
+This is a Hamiltonian system where the time-dependent Hamiltonian function is
+\begin{equation}\label{eq_hamiltonian}
+{\cal H}(u,v,t) = u^T S(t) v + \frac{1}{2} u^T K(t) u + \frac{1}{2} v^T K(t) v.
+\end{equation}
+In general, the Hamiltonian function is non-separable due to the term $u^TS(t) v$.
+
+\subsection{Time integration}
+We consider integrating \eqref{eq_real-shrodinger} with a time-dependent forcing,
+\begin{equation}\label{eq_s-v-forcing}
+  \begin{bmatrix} \dot{u}\\ \dot{v} \end{bmatrix} =
+%
+  \begin{bmatrix}
+    S(t) & -K(t) \\ K(t) & S(t)
+  \end{bmatrix}     
+  %
+  \begin{bmatrix} u\\ v \end{bmatrix}
+  %
+ % + \begin{bmatrix} F^u(t) \\ F^v(t) \end{bmatrix}
+  %
+  =:
+%
+  \begin{bmatrix}
+    f(u,v,t)\\
+    g(u,v,t)
+  \end{bmatrix},\quad
+  %
+  \begin{bmatrix}
+    u(0)\\
+    v(0)
+  \end{bmatrix}
+  =
+    \begin{bmatrix}
+    u0\\
+    v0
+  \end{bmatrix},
+%
+\end{equation}
+for $0 \leq t \leq T$. Here, $u\in \mathbb{R}^N$ and $v\in \mathbb{R}^N$; $K=K^T$ and $S=-S^T$ are
+real-valued $N\times N$ matrices.  To solve \eqref{eq_s-v-forcing} numerically, we discretize time
+on a grid with $t_n = nh$, $n=0,1,2,\ldots$, where $h>0$ is the time step, which we assume to be
+constant (the scheme easily generalizes to variable time step sizes). We denote the numerical solution
+$u_n\approx u(t_n)$ and $v_n\approx v(t_n)$.  The Stromer-Verlet scheme is a symplectic,
+time-reversible, second order accurate scheme that can be written as a partitioned Runge-Kutta (PRK)
+scheme. It combines the trapezoidal and the implicit midpoint rules,
+\begin{alignat}{3}
+  u_0 &= u0,\quad &
+  v_0 &= v0,\\
+  %
+  u_{n+1} &= u_n + h \sum_{i=1}^2 b_i \kappa_{n,i},\quad &
+  v_{n+1} &= v_n + h \sum_{i=1}^2 \hat{b}_i \ell_{n,i},\label{eq_uv-update}\\
+  %
+  \kappa_{n,i} &= f(U_{n,i}, V_{n,i}, t_n + c_i h),\quad &
+  \ell_{n,i} &= g(U_{n,i}, V_{n,i}, t_n + \hat{c}_i h),\\
+  %
+  U_{n,i} &= u_n + h \sum_{j=1}^2 a_{ij} \kappa_j,\quad &
+  V_{n,i} &= v_n + h \sum_{j=1}^2 \hat{a}_{ij} \ell_j,\label{eq_stage-values}
+\end{alignat}
+The coefficients for the trapezoidal rule are
+\begin{align}
+  a_{11} &= a_{12} = 0,\quad a_{21} = a_{22} = \frac{1}{2},\\
+  b_{1} &= b_2 = \frac{1}{2},\quad  c_1 = 0,\quad c_2=1,
+\end{align}
+and for the implicit mid-point rule,
+\begin{align}
+  \hat{a}_{11} &= \hat{a}_{21} = \frac{1}{2},\quad \hat{a}_{12} = \hat{a}_{22} = 0,\\
+  \hat{b}_{1} &= \hat{b}_2 = \frac{1}{2},\quad  \hat{c}_1 = \hat{c}_2=\frac{1}{2}.
+\end{align}
+Note that $b_i = \hat{b}_i$. In the following we will only use $b_i$.
+
+For the system \eqref{eq_s-v-forcing}, the slopes are
+\begin{align}
+\kappa_{n,1} &= S_nU_{n,1} - K_nV_{n,1} ,\label{eq_kappa1}\\
+\kappa_{n,2} &= S_{n+1}U_{n,2} - K_{n+1}V_{n,2},\\
+\ell_{n,1} &= K_{n+1/2} U_{n,1} + S_{n+1/2} V_{n,1},\\
+\ell_{n,2} &= K_{n+1/2} U_{n,2} + S_{n+1/2} V_{n,2},\label{eq_ell2}
+\end{align}
+where $S_n = S(t_{n})$, $S_{n+1/2} = S(t_n + 0.5 h)$, etc. We can express the PRK scheme in terms of
+the stage values $U_{n,i}$ and $V_{n,i}$ by substituting \eqref{eq_kappa1}-\eqref{eq_ell2} into \eqref{eq_uv-update},
+\begin{align}
+  u_0 &= u0,\quad v_0 = v0,\label{eq_initial-cond}\\
+  u_{n+1} &= u_n + \frac{h}{2}\left(S_nU_{n,1} - K_nV_{n,1} + S_{n+1}U_{n,2} - K_{n+1}V_{n,2}
+  \right),\label{eq_u-update}\\
+  %
+  v_{n+1} &= v_n + \frac{h}{2}\left(K_{n+1/2} \left(U_{n,1} + U_{n,2}\right) + S_{n+1/2}\left(
+  V_{n,1} +  V_{n,2}\right) \right),\label{eq_v-update}
+\end{align}
+and into \eqref{eq_stage-values},
+\begin{align} 
+  U_{n,1} &= u_n,\label{eq_U1}\\
+  U_{n,2} &= u_n + \frac{h}{2}\left(S_nU_{n,1} - K_nV_{n,1} + S_{n+1}U_{n,2} -
+  K_{n+1}V_{n,2} \right),\\
+  V_{n,1} &= v_n + \frac{h}{2}\left(  K_{n+1/2} U_{n,1} + S_{n+1/2} V_{n,1} \right),\\
+  V_{n,2} &= v_n + \frac{h}{2}\left(  K_{n+1/2} U_{n,1} + S_{n+1/2} V_{n,1} \right).\label{eq_V2}
+\end{align}
+Note that $V_{n,1} = V_{n,2}$, but $\ell_1 \ne \ell_2$. Because $S(t)\ne0$, the Hamiltonian system
+is non-separable and the Str\"omer-Verlet scheme becomes partially implicit. We remark that the order
+of accuracy can be raised by using a compositional (Suzuki-Trotter) technique where each time-step
+is decomposed into several sub-steps. Fourth order accuracy can be obtained with three sub-steps and
+sixth order accuracy with seven or nine sub-steps. Eight order requires at least fifteen sub-steps, see
+Hairer et al.~\cite{HairerLubichWanner-06} for further details.
+
+\section{Calculating the gradient of an objective function}
+
+Consider the case where the matrices $K$ and $S$ in \eqref{eq_s-v-forcing} depend on a parameter
+vector $\alpha \in {\mathbb R}^D$,
+\[
+K = K(t,\alpha),\quad S = S(t,\alpha).
+\]
+We are interested in numerically approximating the continuous objective function,
+\[
+{\cal G}(\alpha) := {\cal J}(u, v) =\frac{1}{2}(u(T)-uT)^2 + \frac{1}{2}(v(T)-vT)^2 + \int_{0}^T \left( \langle u(t),W u(t) \rangle +  \langle v(t),W v(t) \rangle\right)\, dt,
+\]
+and its gradient with respect to $\alpha$. Here, $(uT, vT)$ represent the target (goal) state for $(u(T),v(T))$,
+$W$ is a real positive semi-definite $N\times N$ matrix and $(u,v)$ satisfies the ODE \eqref{eq_s-v-forcing} for a
+given parameter vector $\alpha$. Thus, $(u,v)$ implicitly depend on $\alpha$ through the matrices
+$K(t,\alpha)$ and $S(t,\alpha)$.
+
+We can calculate a numerical approximation of the solution of \eqref{eq_s-v-forcing} by
+using the above Stromer-Verlet scheme. In particular, let $(u^\alpha_n, v^\alpha_n, U^\alpha_{n,j}, V^\alpha_{n,j})$ be the solution of
+the Stromer-Verlet scheme for a given parameter vector $\alpha$. A second order accurate approximation of the continuous
+objective function is given by the discrete objective function
+\begin{multline}\label{eq_discrete_obj}
+  {\cal G}_h(\alpha) :=  {\cal J}_h(U^\alpha, V^\alpha) 
+  %
+  = \frac{1}{2}(u^\alpha_{N_t} - uT)^2 + \frac{1}{2}(v^\alpha_{N_t} - vT)^2 +  \\
+  %
+  \frac{h}{2} \sum_{n=0}^{N_t-1}
+  %
+  \left( \langle U^\alpha_{n,1}, W U^\alpha_{n,1}\rangle +  \langle U^\alpha_{n,2}, W U^\alpha_{n,2}\rangle\, + 
+  \langle V^\alpha_{n,1}, W V^\alpha_{n,1}\rangle + \langle V^\alpha_{n,2}, W V^\alpha_{n,2}\rangle
+%
+\right),
+\end{multline}
+Here, $N_t$ is the number of time steps such that
+$T=h N_t$.  We note that the discrete objective function \eqref{eq_discrete_obj} can be evaluated by
+accumulation during the time-stepping of the Stromer-Verlet scheme.
+
+\subsection{The Lagrangian of the discretized problem}
+To minimize ${\cal G}_h$ using a gradient-based approach such as BFGS we need to evaluate the gradient
+$d {\cal G}_h/ d\alpha_q$, for $q=1,2,\ldots,D$. To ensure proper convergence of BFGS it is important that the
+gradient is calculated very accurately, i.e., without introducing additional truncation errors. We
+adopt a discretize-before-optimize (DBO) approach based on minimizing a discrete Lagrangian. We start by
+introducing the Lagrange multipliers $(\mu_n,\nu_n)$ and $(M_{n,j}, N_{n,j})$ and consider the discrete Lagrangian,
+\begin{equation}\label{eq_disc-Lagrangian}
+{\cal L}_h(u,v,U,V, \mu,\nu,M,N,\alpha) = {\cal J}_h(U,V) - \langle u_0 - u0, \mu_0\rangle - \langle
+v_0 - v0, \nu_0\rangle - \sum_{k=1}^6 T_k,
+\end{equation}
+where,
+\begin{align}
+T_1 &= \sum_{n=0}^{N_t-1} \left\langle u_{n+1} - u_n - \frac{h}{2}\left(S_nU_{n,1} - K_nV_{n,1} + S_{n+1}U_{n,2} - K_{n+1}V_{n,2}
+  \right), \mu_{n+1} \right\rangle,\\
+T_2 &= \sum_{n=0}^{N_t-1} \left\langle v_{n+1} - v_n - \frac{h}{2}\left(K_{n+1/2} \left(U_{n,1} + U_{n,2}\right) + S_{n+1/2}\left(
+  V_{n,1} +  V_{n,2}\right) \right), \nu_{n+1} \right\rangle,\\
+T_3 &= \sum_{n=0}^{N_t-1} \left\langle U_{n,1} - u_n, M_{n,1} \right\rangle,\\
+T_4 &= \sum_{n=0}^{N_t-1} \left\langle U_{n,2} - u_n - \frac{h}{2}\left(S_nU_{n,1} - K_nV_{n,1} + S_{n+1}U_{n,2} -
+  K_{n+1}V_{n,2} \right), M_{n,2} \right\rangle,\\
+T_5 &= \sum_{n=0}^{N_t-1} \left\langle V_{n,1} - v_n - \frac{h}{2}\left(  K_{n+1/2} U_{n,1} + S_{n+1/2} V_{n,1} \right), N_{n,1} \right\rangle,\\
+T_6 &= \sum_{n=0}^{N_t-1} \left\langle V_{n,2} - v_n - \frac{h}{2}\left(  K_{n+1/2} U_{n,1} + S_{n+1/2} V_{n,1} \right), N_{n,2} \right\rangle.
+\end{align}
+In the discrete Lagrangian, only the matrices $K$ and $S$ depend explicitly on $\alpha$. The
+variables $(u,v,U,V, \mu,\nu,M,N)$ are considered to be independent of $\alpha$ and each
+other.
+
+In the particular case when $(u^\alpha,v^\alpha,U^\alpha,V^\alpha)$ satisfies the Stromer-Verlet scheme
+\eqref{eq_initial-cond}-\eqref{eq_V2} for a given parameter vector $\alpha$,
+\[
+{\cal L}_h(u^\alpha,v^\alpha,U^\alpha,V^\alpha, \mu,\nu,M,N,\alpha) = {\cal J}_h(U^\alpha, V^\alpha) = {\cal G}_h(\alpha),
+\]
+because $T_k=0$ for $k\in[1,6]$ and the initial conditions are satisfied by $(u^\alpha_0, v^\alpha_0)$.
+
+The discrete Lagrangian has a saddle point when
+\begin{align}
+  \frac{\p{\cal L}_h}{\p \mu_n} =
+  \frac{\p{\cal L}_h}{\p \nu_n} =
+  \frac{\p{\cal L}_h}{\p M_{n,j}} =
+  \frac{\p{\cal L}_h}{\p N_{n,j}} &= 0,\label{eq_forward}\\
+  \frac{\p{\cal L}_h}{\p u_n} =
+  \frac{\p{\cal L}_h}{\p v_n} =
+  \frac{\p{\cal L}_h}{\p U_{n,j}} =
+  \frac{\p{\cal L}_h}{\p V_{n,j}} &= 0,\label{eq_backward}
+\end{align}
+for $n=0,1,\ldots,N_t$ and $j=1,2$. The set of conditions in \eqref{eq_forward} result in the
+Stromer-Verlet scheme \eqref{eq_initial-cond} -\eqref{eq_V2}, for evolving $(u_n, v_n)$ forwards in
+time. The set of conditions in \eqref{eq_backward} result in a backwards time-stepping scheme
+for evolving the adjoint variables $(\mu_n, \lambda_n)$ backwards in time, as is made precise in the
+following lemma.
+%
+\begin{lemma} Let ${\cal L}_h$ be the discrete Lagrangian defined by \eqref{eq_disc-Lagrangian}. The set of
+  saddle-point conditions \eqref{eq_backward} are satisfied if the Lagrange multipliers $(\mu_n,
+  \nu_n, M_{n,i}, N_{n,i})$ are calculated according to the reversed time stepping scheme,
+\begin{align}
+  \mu_{N_t} &= u_{N_t} - uT,\quad \mu_n = \mu_{n+1} - \frac{h}{2} \left(\tilde\kappa_{n,1} +
+  \tilde\kappa_{n,2}\right),\quad n=N_t -1, N_t - 2, \ldots 0,\label{eq_mu}\\
+  %
+  \nu_{N_t} &= v_{N_t} - vT,\quad \nu_{n} = \nu_{n+1} - \frac{h}{2} \left( \tilde\ell_{n,1} + \tilde\ell_{n,2} \right),\quad n=N_t -1, N_t -2, \ldots 0,
+  %
+\end{align}
+where the slopes are
+\begin{align}
+\tilde\kappa_{n,1} &= -S_n X_{n,1} + K_{n+1/2} Y_{n,1} + \frac{\p {\cal J}_h}{\p U_{n,1}} ,\\
+\tilde\kappa_{n,2} &= -S_{n+1} X_{n,2} + K_{n+1/2} Y_{n,2}  + \frac{\p {\cal J}_h}{\p U_{n,2}},\\
+\tilde\ell_{n,1} &= -K_{n} X_{n,1} - S_{n+1/2} Y_{n,1}  + \frac{\p {\cal J}_h}{\p V_{n,1}},\\
+\tilde\ell_{n,2} &= -K_{n+1} X_{n,2} - S_{n+1/2} Y_{n,2}  + \frac{\p {\cal J}_h}{\p V_{n,2}},
+\end{align}
+because $S^T = -S$ and $K^T = K$. The stage variables satisfy,
+\begin{alignat}{3}
+  X_{n,1} &= \mu_{n+1} + \frac{h}{2} \tilde\kappa_{n,2},\quad
+  &X_{n,2} & = \mu_{n+1} + \frac{h}{2} \tilde\kappa_{n,2},\\
+  %
+  Y_{n,1} &= \nu_{n+1} +\frac{h}{2} \left( \tilde\ell_{n,1} + \tilde\ell_{n,2} \right),\quad
+  &Y_{n,2} &= \nu_{n+1}.\label{eq_Y2}
+\end{alignat}
+Note that $X_{n,1}=X_{n,2} =: X_n$. Furthermore, the Lagrange multipliers are related to the stage variables through
+\begin{align}
+  M_{n,2} &= X_{n} - \mu_{n+1},\label{eq_MX}\\
+  N_{n,1} + N_{n,2} &= Y_{n,1} - \nu_{n+1},\label{eq_NY1}\\
+  \nu_{n+1} &= Y_{n,2}.\label{eq_NY2}
+\end{align}
+\end{lemma}
+\begin{proof}
+Follows after a somewhat tedious but straightforward calculation.
+\end{proof}
+
+\subsection{Computing the gradient using the adjoint stage variables}
+
+Given a solution that satisfies the conditions of \eqref{eq_forward} and \eqref{eq_backward}, the
+gradient of ${\cal G}_h(\alpha)$ satisfies
+\[
+\frac{d{\cal G}_h}{d\alpha_q} = \frac{\p{\cal L}_h}{\p \alpha_q},\quad q=1,2,\ldots,D.
+\]
+The gradient of ${\cal L}_h$ with respect to $\alpha$ only gets a contribution from the terms in $T_k$ that involve the matrices $K$
+and $S$. Let $S' = \p S/\p \alpha_q$ and $K' = \p K/\p \alpha_q$. We have,
+\begin{align}
+\frac{\p T_1}{\p \alpha_q} &=  - \frac{h}{2} \sum_{n=0}^{N_t-1} \left\langle S'_nU_{n,1} -
+K'_nV_{n,1} + S'_{n+1}U_{n,2} - K'_{n+1}V_{n,2}, \mu_{n+1} \right\rangle,\\ 
+\frac{\p T_2}{\p \alpha_q} &= - \frac{h}{2} \sum_{n=0}^{N_t-1} \left\langle K'_{n+1/2} \left(U_{n,1} + U_{n,2}\right) + S'_{n+1/2}\left(
+  V_{n,1} +  V_{n,2}\right), \nu_{n+1} \right\rangle,\\
+\frac{\p T_3}{\p \alpha_q} &= 0,\\
+\frac{\p T_4}{\p \alpha_q} &= - \frac{h}{2} \sum_{n=0}^{N_t-1} \left\langle S'_nU_{n,1} - K'_nV_{n,1} + S'_{n+1}U_{n,2} -
+  K'_{n+1}V_{n,2} , M_{n,2} \right\rangle,\\
+\frac{\p T_5}{\p \alpha_q} &= - \frac{h}{2} \sum_{n=0}^{N_t-1} \left\langle   K'_{n+1/2} U_{n,1} + S'_{n+1/2} V_{n,1}, N_{n,1} \right\rangle,\\
+\frac{\p T_6}{\p \alpha_q} &= - \frac{h}{2} \sum_{n=0}^{N_t-1} \left\langle   K'_{n+1/2} U_{n,1} + S'_{n+1/2} V_{n,1}, N_{n,2} \right\rangle.
+\end{align}
+We note that
+\begin{equation}
+  \frac{\p (T_5+T_6)}{\p \alpha_q} =
+  %
+  - \frac{h}{2} \sum_{n=0}^{N_t-1} \left\langle K'_{n+1/2} U_{n,1} + S'_{n+1/2} V_{n,1} , N_{n,1} + N_{2,n} \right\rangle.
+\end{equation}
+From the relations \eqref{eq_MX}-\eqref{eq_NY1},
+\begin{align}
+\frac{\p T_4}{\p \alpha_q} &= - \frac{h}{2} \sum_{n=0}^{N_t-1} \left\langle S'_nU_{n,1} - K'_nV_{n,1} + S'_{n+1}U_{n,2} -
+K'_{n+1}V_{n,2}, X_{n} - \mu_{n+1} \right\rangle,\\
+%
+  \frac{\p (T_5 + T_6)}{\p \alpha_q} &=
+  %
+  - \frac{h}{2} \sum_{n=0}^{N_t-1} \left\langle  K'_{n+1/2} U_{n,1} + S'_{n+1/2} V_{n,1}, Y_{n,1} - \nu_{n+1} \right\rangle.
+\end{align}
+Thus,
+\begin{equation}
+  \frac{\p (T_1 + T_4)}{\p \alpha_q} = - \frac{h}{2} \sum_{n=0}^{N_t-1} \left\langle S'_nU_{n,1} - K'_nV_{n,1} + S'_{n+1}U_{n,2} -
+  K'_{n+1}V_{n,2}, X_{n} \right\rangle.
+\end{equation}
+In a similar way,
+\begin{multline}
+  %
+  \frac{\p (T_2 + T_5 + T_6)}{\p \alpha_q} = - \frac{h}{2} \sum_{n=0}^{N_t-1} \left\langle
+  K'_{n+1/2} U_{n,1} + S'_{n+1/2} V_{n,1}, Y_{n,1}\right\rangle + \\ 
+  %
+  - \frac{h}{2} \sum_{n=0}^{N_t-1} \left\langle K'_{n+1/2} U_{n,2} + S'_{n+1/2} V_{n,2},Y_{n,2} \right\rangle,
+\end{multline}
+where we used the relation \eqref{eq_NY2} in the last term. We can further simplify the expressions
+by recognizing that $V_{n,1}=V_{n,2} =: V_n$. By collecting the terms,
+\begin{multline}\label{eq_L-grad}
+  \frac{\p{\cal L}_h}{\p \alpha_q} = - \sum_{k=1}^6 \frac{\p T_k}{\p \alpha_q} = 
+%
+  \frac{h}{2} \sum_{n=0}^{N_t-1} \left\langle S'_nU_{n,1} + S'_{n+1}U_{n,2} - (K'_n + K'_{n+1}) V_{n}, X_{n}
+  \right\rangle\, + \\
+  %
+  \frac{h}{2} \sum_{n=0}^{N_t-1} \left( \left\langle K'_{n+1/2} U_{n,1} + S'_{n+1/2} V_{n},
+  Y_{n,1}\right\rangle +  \left\langle K'_{n+1/2} U_{n,2} + S'_{n+1/2} V_{n},Y_{n,2} \right\rangle \right).
+\end{multline}
+
+We can avoid storing the time-history of $(U_{n,j}, V_n)$ by using the time-reversibility of the
+Stromer-Verlet scheme. However, in order to do so, we must first calculate the terminal condition
+$(u_{N_t},v_{N_t})$ by evolving \eqref{eq_initial-cond}-\eqref{eq_V2} forwards in time. The
+time-stepping can then be reversed and the gradient of the Lagrangian \eqref{eq_L-grad} can be
+accumulated by simultaneously time-stepping the adjoint system \eqref{eq_mu}-\eqref{eq_Y2} backwards
+in time.
+
+\bibliographystyle{plain}
+\bibliography{quantum}
+
+\end{document}
