@@ -1,0 +1,73 @@
+\documentclass[12pt]{article}
+\usepackage{amssymb}
+\usepackage{amsthm}
+\usepackage{amsmath}
+\usepackage{dsfont}
+
+\begin{document}
+\begin{center}
+    \Large Construction of general 2-oscillator Hamiltonian
+\end{center}
+
+
+Consider $2$ oscillators system with $n$ levels. Let $\rho(t)\in \mathds{C}^{n^2 \times n^2}$ denote the density matrix. The Hamiltonian $H(t) \in \mathds{C}^{n^2\times n^2}$ is given by
+\begin{align}
+  H(t) = H_s &+ f_1(t)(a+a^{\dagger}) + f_2(t)(b+b^{\dagger}) \notag\\
+         &+ i\left(g_1(t)(a-a^{\dagger}) + g_2(t)(b-b^{\dagger})\right)
+\end{align}
+and $a = a_1 \otimes I_n, b = I_n \otimes a_1$ and $a_1 \in \mathds{R}^{n\times n}$ is the lowering operator
+\begin{align*}
+    a_1 = \begin{bmatrix}
+            0 &  1 & & & &\\
+              &  0  & \sqrt 2 & & & \\
+              &  &    \ddots & \ddots& & \\
+              & & & & 0 & \sqrt{n-1} \\
+              & & & &  & 0
+          \end{bmatrix} \quad \in \mathds{R}^{n\times n}
+\end{align*}
+
+We solve the Liouville-van-Neumann equation
+\begin{align*}
+    \dot \rho &= -i\left(H(t)\rho - \rho H(t)\right)  \hspace{17ex} \in \mathds{C}^{n^2 \times n^2}\\
+    \Leftrightarrow \quad \text{vec} \dot  {\rho} &= \underbrace{-i\left( I_N \otimes H(t) - H(t)^T \otimes I_N \right)}_{=:A(t) + iB(t)} \text{vec} {\rho} \quad \in \mathds{C}^{ n^4}
+\end{align*}
+where $\text{vec} \rho(t) \in \mathds{C}^{n^4}$ denotes the vectorized density matrix.
+% The initial condition $\rho_0$ such that $tr(\rho_0)=1$ and $\rho_0^{\dagger} = \rho_0$. 
+Splitting the vectorized density into real and imaginary part $\text{vec} \rho =: u + i v$ we solve the following system for $u,v \in\mathds{R}^{n^4}$:
+\begin{align}
+  \begin{bmatrix}
+    \dot u \\ \dot v
+  \end{bmatrix} = 
+  \begin{bmatrix}
+      A(t) & -B(t) \\
+      B(t) & A(t) 
+  \end{bmatrix}
+  \begin{bmatrix}
+     u \\  v
+  \end{bmatrix}
+\end{align}
+The real and imaginary part of the system matrix are given by
+\begin{align*}
+    A(t) &= g_1(t)\left( I_{n^2} \otimes (a-a^{\dagger}) - (a-a^{\dagger})^T \otimes I_{n^2}\right) \\
+         &+ g_2(t) \left( I_{n^2} \otimes (b-b^{\dagger}) - (b-b^{\dagger})^T \otimes I_{n^2}\right) \\
+    B(t) &= - I_N \otimes H_s + H_s^T\otimes I_N \\
+         &+ f_1(t) \left( - I_{n^2} \otimes (a+a^{\dagger}) + (a+a^{\dagger})^T \otimes I_{n^2}\right)\\
+         &+ f_2(t) \left( -I_{n^2} \otimes (b+b^{\dagger}) + (b+b^{\dagger})^T \otimes I_{n^2}\right).
+\end{align*}
+Note that $A^{\dagger} = -A$ and $B^{\dagger} = B$ with $A,B \in \mathds{R}^{n^4\times n^4}$.
+
+In order to construct $A$ and $B$, we define the building matrices
+\begin{align*}
+    C^+(k,m) &:= I_k \otimes (a_1 + a_1^{\dagger}) \otimes I_m \quad \in \, \mathds{R}^{nkm \times nkm} \\
+    C^-(k,m) &:= I_k \otimes (a_1 - a_1^{\dagger}) \otimes I_m \quad \in \, \mathds{R}^{nkm \times nkm}
+\end{align*}
+for given $k,m\in\mathds{N}$. $k$ is the number of repetitions of the blocks $(a_1+a_1^{\dagger})\otimes I_m\in \mathds{R}^{nm}$. $m$ is the number of repetitions of each $1, \sqrt 2, \dots,$ entry within the blocks. Note that $a_1 \pm a_1^{\dagger} = C^{\pm}(1,1) \in \mathds{R}^{n\times n}$. 
+
+Implementing a function that takes $k,m$ as input and returns $C^{\pm}(k,m)$, we can constructe $A(t)$ and $B(t)$ from 
+\begin{align*}
+    A(t)  &= g_1(t) \left( C^-(n^2, n) - C^-(1,n^3)^T  \right) + g_2(t) \left( C^-(n^3, 1) - C^-(n,n^2)^T \right) \\
+    B(t) &= f_1(t) \left( C^+(1,n^3)^T - C^+(n^2,n) \right)  + f_2(t) \left( C^+(n,n^2)^T - C^+(n^3,1) \right) \\
+         &- I_N \otimes H_s + H_s^T\otimes I_N
+\end{align*}
+
+\end{document}
