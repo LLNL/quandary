@@ -320,11 +320,18 @@ PetscErrorCode RHSJacobian(TS ts,PetscReal t,Vec u,Mat M,Mat P,void *ctx)
   f = F(t, appctx);
   g = G(t, appctx);
 
+
+  /* TODO: There is a BUG here! For time-constant F and G , the A and B matrices should be constant for all time step. But they are now. Seems like you overwrite some of the matrices which are needed for the next time step.  */
+  f = 2.0;
+  g = 3.0;
   ierr = MatAXPY(appctx->A,g,appctx->IKbMbd,DIFFERENT_NONZERO_PATTERN);CHKERRQ(ierr);
   ierr = MatAXPY(appctx->A,-1*g,appctx->bMbdTKI,DIFFERENT_NONZERO_PATTERN);CHKERRQ(ierr);
 
   ierr = MatAXPY(appctx->B,f,appctx->aPadTKI,DIFFERENT_NONZERO_PATTERN);CHKERRQ(ierr);
   ierr = MatAXPY(appctx->B,-1*f,appctx->IKaPad,DIFFERENT_NONZERO_PATTERN);CHKERRQ(ierr);
+
+  MatView(appctx->A, PETSC_VIEWER_STDOUT_SELF);
+  MatView(appctx->B, PETSC_VIEWER_STDOUT_SELF);
 
   MatGetValues(appctx->A, appctx->N, idx, appctx->N, idx, q1);
   MatSetValues(M, appctx->N, idx, appctx->N, idx, q1, INSERT_VALUES);
@@ -334,12 +341,17 @@ PetscErrorCode RHSJacobian(TS ts,PetscReal t,Vec u,Mat M,Mat P,void *ctx)
   MatSetValues(M, appctx->N, idxN, appctx->N, idx, q3, INSERT_VALUES);
   for(int i = 0; i < appctx->N * appctx->N; i++)
   {
-    q2[i] = -1 * q3[i];
+    q2[i] = -1.0 * q3[i];
   }
   MatSetValues(M, appctx->N, idx, appctx->N, idxN, q2, INSERT_VALUES);
 
   ierr = MatAssemblyBegin(M,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
   ierr = MatAssemblyEnd(M,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
+
+  /* TODO: Are you sure that M is still a sparse matrix? MatView displays also the zero entries... */
+
+  // MatView(M, PETSC_VIEWER_STDOUT_SELF);
+
 
   return 0;
 }
