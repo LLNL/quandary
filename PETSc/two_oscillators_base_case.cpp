@@ -135,9 +135,11 @@ int main(int argc,char **argv)
   // VecView(x, PETSC_VIEWER_STDOUT_WORLD);
 
   /* Prepare output */
-  FILE *outfile;
-  outfile = fopen("output1.txt", "w");
-  fprintf(outfile, "# istep  time    ||x||                 ||analytic||           rel. error\n");
+  FILE *logfile, *sfile, *xfile;
+  logfile = fopen("out_log.dat", "w");
+  sfile = fopen("out_analytic.dat", "w");
+  xfile = fopen("out_x.dat", "w");
+  fprintf(logfile, "# istep  time    ||x||                 ||analytic||           rel. error\n");
   printf("# istep  time    ||x||                 ||analytic||           rel. error\n");
 
 
@@ -159,13 +161,28 @@ int main(int argc,char **argv)
 
     /* Output */
     ierr = VecNorm(x,NORM_2,&x_norm);CHKERRQ(ierr);
-    fprintf(outfile,"%3d  %1.5f  %1.14e  %1.14e  %1.14e\n",istep,(double)t, x_norm, s_norm,(double)e_norm);
+    fprintf(logfile,"%3d  %1.5f  %1.14e  %1.14e  %1.14e\n",istep,(double)t, x_norm, s_norm,(double)e_norm);
     printf("%3d  %1.5f  %1.14e  %1.14e  %1.14e\n",istep,(double)t, x_norm, s_norm,(double)e_norm);
+
+    /* Write numeric and analytic solution to files */
+    const PetscScalar *x_ptr, *s_ptr;
+    VecGetArrayRead(x, &x_ptr);
+    VecGetArrayRead(appctx.s, &s_ptr);
+    for (int i = 0; i < 2*N; i++) 
+    {
+      fprintf(xfile, "%1.14e  ", x_ptr[i]);
+      fprintf(sfile, "%1.14e  ", s_ptr[i]);
+    }
+    fprintf(xfile, "\n");
+    fprintf(sfile, "\n");
+
   }
 
 
   /* Clean up */
-  fclose(outfile);
+  fclose(logfile);
+  fclose(sfile);
+  fclose(xfile);
   ierr = TSDestroy(&ts);CHKERRQ(ierr);
   ierr = MatDestroy(&M);CHKERRQ(ierr);
   ierr = MatDestroy(&appctx.A);CHKERRQ(ierr);
