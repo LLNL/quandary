@@ -48,7 +48,7 @@ int main(int argc,char **argv)
   TS             ts;           // timestepping context 
   PetscReal      w;            // Oscillator frequency
 
-  PetscReal t, x_norm, s_norm, e_norm;
+  PetscReal t, s_norm, e_norm;
 
   PetscErrorCode ierr;
   PetscMPIInt    mpisize;
@@ -153,21 +153,21 @@ int main(int argc,char **argv)
     TSGetTime(ts, &t);
     ierr = ExactSolution(t,appctx.s,&appctx);CHKERRQ(ierr);
 
-    /* Compute the relative error */
-    ierr = VecWAXPY(e,-1.0,x,appctx.s);CHKERRQ(ierr);
-    ierr = VecNorm(e,NORM_2,&e_norm);CHKERRQ(ierr);
-    ierr = VecNorm(appctx.s,NORM_2,&s_norm);CHKERRQ(ierr);
+    /* Compute the relative error (max-norm) */
+    ierr = VecWAXPY(e,-1.0,x, appctx.s);CHKERRQ(ierr);
+    ierr = VecNorm(e, NORM_INFINITY,&e_norm);CHKERRQ(ierr);
+    ierr = VecNorm(appctx.s, NORM_INFINITY,&s_norm);CHKERRQ(ierr);
     e_norm = e_norm / s_norm;
 
     /* Output */
-    ierr = VecNorm(x,NORM_2,&x_norm);CHKERRQ(ierr);
-    fprintf(logfile,"%3d  %1.5f  %1.14e  %1.14e  %1.14e\n",istep,(double)t, x_norm, s_norm,(double)e_norm);
-    printf("%3d  %1.5f  %1.14e  %1.14e  %1.14e\n",istep,(double)t, x_norm, s_norm,(double)e_norm);
-
-    /* Write numeric and analytic solution to files */
     const PetscScalar *x_ptr, *s_ptr;
     VecGetArrayRead(x, &x_ptr);
     VecGetArrayRead(appctx.s, &s_ptr);
+
+    fprintf(logfile,"%5d  %1.5f  %1.14e \n",istep,(double)t, (double)e_norm);
+    printf("%5d  %1.5f  %1.14e  %1.14e  %1.14e\n",istep,(double)t, x_ptr[1], s_ptr[1], (double)e_norm);
+
+    /* Write numeric and analytic solution to files */
     for (int i = 0; i < 2*N; i++) 
     {
       fprintf(xfile, "%1.14e  ", x_ptr[i]);
