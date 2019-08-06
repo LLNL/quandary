@@ -1,11 +1,10 @@
 
-static char help[] ="Solves a simple time-dependent linear PDE (the heat equation).\n\
-Input parameters include:\n\
-  -m <points>, where <points> = number of grid points\n\
-  -time_dependent_rhs : Treat the problem as having a time-dependent right-hand side\n\
-  -use_ifunc          : Use IFunction/IJacobian interface\n\
-  -debug              : Activate debugging printouts\n\
-  -nox                : Deactivate x-window graphics\n\n";
+static char help[] ="Solves the Liouville-von-Neumann equations, two oscillators.\n\
+Input parameters:\n\
+  -nlevels <int>      : Set the number of levels (default: 2) \n\
+  -noscillators <int> : Set the number of oscillators (default: 2) \n\
+  -ntime <int>        : Set the number of time steps \n\
+  -dt <double>        : Set the time step size \n\n";
 
 #include <petscts.h>
 
@@ -33,30 +32,62 @@ extern PetscErrorCode RHSJacobian(TS,PetscReal,Vec,Mat,Mat,void*);
 
 int main(int argc,char **argv)
 {
-  PetscInt       n = 4; //state space dimension
-  PetscInt       N = n*n; //dimension of vectors and scalars
-  AppCtx         appctx;                 /* user-defined application context */
-  TS             ts;                     /* timestepping context */
-  Vec            x, e;                      /* approximate solution vector */
-  Mat            M;
-  PetscReal      time_total_max = 100.0; /* default max total time */
-  PetscInt       time_steps_max = 100;   /* default max timesteps */
+  PetscInt       nlevels;      // Number of system levels (currently 2)
+  PetscInt       noscillators; // Number of oscillators (currently 2)
+  PetscInt       ntime;        // Number of time steps
+  PetscReal      dt;           // Time step size
+  PetscReal      total_time;   // Total end time T
+  PetscInt       n;            // State space dimension (nlevels^noscillators)
+  PetscInt       N;            // Dimension of vectorized system
+  Vec            x;            // Solution vector
+  Vec            e;            // Error to analytical solution
+  Mat            M;            // ??
+  AppCtx         appctx;       // Application context 
+  TS             ts;           // timestepping context 
+
   PetscErrorCode ierr;
-  PetscMPIInt    size;
-  PetscReal      dt;
+  PetscMPIInt    mpisize;
 
-  /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-     Initialize program and set problem parameters
-     - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+  /* Initialize Petsc */
   ierr = PetscInitialize(&argc,&argv,(char*)0,help);if (ierr) return ierr;
-  ierr = MPI_Comm_size(PETSC_COMM_WORLD,&size);CHKERRQ(ierr);
-  if (size != 1) SETERRQ(PETSC_COMM_SELF,1,"This is a uniprocessor example only!");
+  ierr = MPI_Comm_size(PETSC_COMM_WORLD,&mpisize);CHKERRQ(ierr);
+  if (mpisize != 1) SETERRQ(PETSC_COMM_SELF,1,"This is a uniprocessor example only!");
 
+  /* Set default constants */
+  nlevels      = 2;
+  noscillators = 2;
+  ntime        = 100;
+  dt           = 0.01;
+
+  /* Parse command line arguments to overwrite default constants */
+  PetscOptionsGetInt(NULL,NULL,"-nlevels",&nlevels,NULL);
+  PetscOptionsGetInt(NULL,NULL,"-noscillators",&nlevels,NULL);
+  PetscOptionsGetInt(NULL,NULL,"-ntime",&ntime,NULL);
+  PetscOptionsGetReal(NULL,NULL,"-dt",&dt,NULL);
+
+  /* Sanity check */
+  if (noscillators != 2 || nlevels != 2)
+  {
+    printf("\nERROR: Current only 2 levels and 2 oscillators are supported.\n You chose %d levels, %d oscillators.\n\n", nlevels, noscillators);
+    exit(0);
+  }
+ 
+  /* Initialize parameters */
+  n          = (PetscInt) pow(nlevels,noscillators); 
+  N          = n * n;
+  total_time = ntime * dt;
+
+  printf("System with %d noscillators %d nlevels. \n", noscillators, nlevels);
+  printf("Time horizon:   [0,%f]\n", total_time);
+  printf("Number of time steps: %d\n", ntime);
+  printf("Time step size: %f\n", dt );
+
+
+  /* Initialize the App */
   appctx.n = n;
   appctx.N = N;
   appctx.w = 1;
 
-  ierr = PetscPrintf(PETSC_COMM_SELF,"Solving a linear TS problem on 1 processor\n");CHKERRQ(ierr);
 
   /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
      Create vector data structures
@@ -95,7 +126,6 @@ int main(int argc,char **argv)
   /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
      Set solution vector and initial timestep
      - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
-  dt   = 0.1;
   ierr = TSSetTimeStep(ts,dt);CHKERRQ(ierr);
   ierr = TSSetSolution(ts,x);CHKERRQ(ierr);
 
@@ -108,8 +138,8 @@ int main(int argc,char **argv)
           -ts_max_steps <maxsteps> -ts_max_time <maxtime>
      to override the defaults set by TSSetMaxSteps()/TSSetMaxTime().
      - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
-  ierr = TSSetMaxSteps(ts,time_steps_max);CHKERRQ(ierr);
-  ierr = TSSetMaxTime(ts,time_total_max);CHKERRQ(ierr);
+  ierr = TSSetMaxSteps(ts,ntime);CHKERRQ(ierr);
+  ierr = TSSetMaxTime(ts,total_time);CHKERRQ(ierr);
   ierr = TSSetExactFinalTime(ts,TS_EXACTFINALTIME_STEPOVER);CHKERRQ(ierr);
   ierr = TSSetFromOptions(ts);CHKERRQ(ierr);
 
@@ -126,7 +156,7 @@ int main(int argc,char **argv)
   file = fopen("output1.txt", "w");
   PetscReal t, x_norm, s_norm, e_norm;
 
-  for(PetscInt step = 1; step <= time_steps_max; step++) {
+  for(PetscInt step = 1; step <= ntime; step++) {
 
     TSGetTime(ts, &t);
 
