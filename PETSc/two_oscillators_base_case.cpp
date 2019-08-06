@@ -4,30 +4,32 @@ Input parameters:\n\
   -nlevels <int>      : Set the number of levels (default: 2) \n\
   -noscillators <int> : Set the number of oscillators (default: 2) \n\
   -ntime <int>        : Set the number of time steps \n\
-  -dt <double>        : Set the time step size \n\n";
+  -dt <double>        : Set the time step size \n\
+  -w  <double>        : Set the oscillator frequency\n\n";
 
 #include <petscts.h>
 
-/*
-   User-defined application context - contains data needed by the
-   application-provided call-back routines.
-*/
-typedef struct {
-  Vec         s;          /* global exact solution vector */
-  PetscInt    n, N;
-  Mat         IKbMbd, bMbdTKI, aPadTKI, IKaPad, A, B;
-  PetscReal   w;
-} AppCtx;
 
 /*
-   User-defined routines
+   Application context contains data needed to perform a time step.
 */
+typedef struct {
+  Vec         s;       /* global exact solution vector */
+  PetscInt    n;       /* State space dimension */
+  PetscInt    N;       /* Dimension of vectorized system */
+  Mat         IKbMbd, bMbdTKI, aPadTKI, IKaPad, A, B;
+  PetscReal   w;       /* Oscillator frequencies */
+} AppCtx;
+
+
+/*  Declare external routines */
 extern PetscErrorCode SetUpMatrices(AppCtx*);
 extern PetscErrorCode InitialConditions(Vec,AppCtx*);
 extern PetscErrorCode ExactSolution(PetscReal,Vec,AppCtx*);
 extern PetscScalar F(PetscReal,AppCtx*);
 extern PetscScalar G(PetscReal,AppCtx*);
 extern PetscErrorCode RHSJacobian(TS,PetscReal,Vec,Mat,Mat,void*);
+
 
 
 int main(int argc,char **argv)
@@ -44,6 +46,9 @@ int main(int argc,char **argv)
   Mat            M;            // ??
   AppCtx         appctx;       // Application context 
   TS             ts;           // timestepping context 
+  PetscReal      w;            // Oscillator frequency
+
+  PetscReal t, x_norm, s_norm, e_norm;
 
   PetscErrorCode ierr;
   PetscMPIInt    mpisize;
@@ -58,6 +63,7 @@ int main(int argc,char **argv)
   noscillators = 2;
   ntime        = 100;
   dt           = 0.01;
+  w            = 1.0;
 
   /* Parse command line arguments to overwrite default constants */
   PetscOptionsGetInt(NULL,NULL,"-nlevels",&nlevels,NULL);
@@ -83,107 +89,83 @@ int main(int argc,char **argv)
   printf("Time step size: %f\n", dt );
 
 
-  /* Initialize the App */
+  /* Initialize the App coefficients */
   appctx.n = n;
   appctx.N = N;
-  appctx.w = 1;
+  appctx.w = w;
 
 
-  /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-     Create vector data structures
-     - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
   /*
-     Create vector data structures for approximate and exact solutions
+     Create vectors for approximate (x) and exact (s) solution, and error (e)
   */
   ierr = VecCreateSeq(PETSC_COMM_SELF,2*N,&x);CHKERRQ(ierr);
   ierr = VecDuplicate(x,&appctx.s);CHKERRQ(ierr);
   ierr = VecDuplicate(x,&e);CHKERRQ(ierr);
 
-  /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-     Create timestepping solver context
-     - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+  /* Create Petsc's timestepping context */
   ierr = TSCreate(PETSC_COMM_SELF,&ts);CHKERRQ(ierr);
   ierr = TSSetProblemType(ts,TS_LINEAR);CHKERRQ(ierr);
 
-  /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-     Create matrix data structure; set matrix evaluation routine.
-     - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
-//
-
+  /* Set up the system Hamiltonian matrices */
   SetUpMatrices(&appctx);
+
+  /* Set up M (What is M?) */
   ierr = MatCreate(PETSC_COMM_SELF,&M);CHKERRQ(ierr);
   ierr = MatSetSizes(M, PETSC_DECIDE, PETSC_DECIDE, N*2,N*2);CHKERRQ(ierr);
   ierr = MatSetFromOptions(M);CHKERRQ(ierr);
   ierr = MatSetUp(M);CHKERRQ(ierr);
-
   ierr = MatAssemblyBegin(M,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
   ierr = MatAssemblyEnd(M,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
 
+  /* Prepare Petsc's Time-stepper */
   ierr = TSSetRHSFunction(ts,NULL,TSComputeRHSFunctionLinear,&appctx);CHKERRQ(ierr);
   ierr = TSSetRHSJacobian(ts,M,M,RHSJacobian,&appctx);CHKERRQ(ierr);
-
-  /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-     Set solution vector and initial timestep
-     - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
-  ierr = TSSetTimeStep(ts,dt);CHKERRQ(ierr);
   ierr = TSSetSolution(ts,x);CHKERRQ(ierr);
 
-  /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-     Customize timestepping solver:
-       - Set the solution method to be the Backward Euler method.
-       - Set timestepping duration info
-     Then set runtime options, which can override these defaults.
-     For example,
-          -ts_max_steps <maxsteps> -ts_max_time <maxtime>
-     to override the defaults set by TSSetMaxSteps()/TSSetMaxTime().
-     - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+  /* Set Time-stepping options */
+  ierr = TSSetTimeStep(ts,dt);CHKERRQ(ierr);
   ierr = TSSetMaxSteps(ts,ntime);CHKERRQ(ierr);
   ierr = TSSetMaxTime(ts,total_time);CHKERRQ(ierr);
   ierr = TSSetExactFinalTime(ts,TS_EXACTFINALTIME_STEPOVER);CHKERRQ(ierr);
   ierr = TSSetFromOptions(ts);CHKERRQ(ierr);
 
-  /*
-     Evaluate initial conditions
-  */
+  /* Set the initial conditions */
   ierr = InitialConditions(x,&appctx);CHKERRQ(ierr);
-  VecView(x, PETSC_VIEWER_STDOUT_WORLD);
+  // VecView(x, PETSC_VIEWER_STDOUT_WORLD);
 
-  /*
-     Run the timestepping solver
-  */
-  FILE *file;
-  file = fopen("output1.txt", "w");
-  PetscReal t, x_norm, s_norm, e_norm;
+  /* Prepare output */
+  FILE *outfile;
+  outfile = fopen("output1.txt", "w");
+  fprintf(outfile, "# istep  time    ||x||                 ||analytic||           rel. error\n");
+  printf("# istep  time    ||x||                 ||analytic||           rel. error\n");
 
-  for(PetscInt step = 1; step <= ntime; step++) {
 
-    TSGetTime(ts, &t);
+  /* Run the timestepping loop */
+  for(PetscInt istep = 1; istep <= ntime; istep++) {
 
-    TSSetPreStep(ts, NULL);
-
-    // Do the time step
+    /* Step forward one time step */
     TSStep(ts);
 
-    // Get exact solution
+    /* Get the exact solution at current time step */
+    TSGetTime(ts, &t);
     ierr = ExactSolution(t,appctx.s,&appctx);CHKERRQ(ierr);
 
-    // Compare exact to Petsc solution
-    ierr = VecNorm(x,NORM_2,&x_norm);CHKERRQ(ierr);
-    ierr = VecNorm(appctx.s,NORM_2,&s_norm);CHKERRQ(ierr);
+    /* Compute the relative error */
     ierr = VecWAXPY(e,-1.0,x,appctx.s);CHKERRQ(ierr);
-    ierr = VecScale(e,(1 / s_norm));
     ierr = VecNorm(e,NORM_2,&e_norm);CHKERRQ(ierr);
+    ierr = VecNorm(appctx.s,NORM_2,&s_norm);CHKERRQ(ierr);
+    e_norm = e_norm / s_norm;
 
-    fprintf(file,"%3d  %1.14e  %1.14e  %1.14e  %1.14e\n",step,(double)t, x_norm, s_norm,(double)e_norm);
-    printf("%3d  %1.14e  %1.14e  %1.14e  %1.14e\n",step,(double)t, x_norm, s_norm,(double)e_norm);
+    /* Output */
+    ierr = VecNorm(x,NORM_2,&x_norm);CHKERRQ(ierr);
+    fprintf(outfile,"%3d  %1.5f  %1.14e  %1.14e  %1.14e\n",istep,(double)t, x_norm, s_norm,(double)e_norm);
+    printf("%3d  %1.5f  %1.14e  %1.14e  %1.14e\n",istep,(double)t, x_norm, s_norm,(double)e_norm);
   }
-  fclose(file);
 
-  /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-     Free work space.  All PETSc objects should be destroyed when they
-     are no longer needed.
-     - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+
+  /* Clean up */
+  fclose(outfile);
   ierr = TSDestroy(&ts);CHKERRQ(ierr);
   ierr = MatDestroy(&M);CHKERRQ(ierr);
   ierr = MatDestroy(&appctx.A);CHKERRQ(ierr);
@@ -196,58 +178,45 @@ int main(int argc,char **argv)
   ierr = VecDestroy(&appctx.s);CHKERRQ(ierr);
   ierr = VecDestroy(&e);CHKERRQ(ierr);
 
-  /*
-     Always call PetscFinalize() before exiting a program.  This routine
-       - finalizes the PETSc libraries as well as MPI
-       - provides summary and diagnostic information if certain runtime
-         options are chosen (e.g., -log_view).
-  */
+  /* Finallize Petsc */
   ierr = PetscFinalize();
   return ierr;
 }
-/* --------------------------------------------------------------------- */
+
+
 /*
-   InitialConditions - Computes the solution at the initial time.
-
-   Input Parameter:
-   u - uninitialized solution vector (global)
-   appctx - user-defined application context
-
-   Output Parameter:
-   u - vector with solution at initial time (global)
-*/
+ *  Set the initial condition at time t_0
+ *  Input:
+ *     u - uninitialized solution vector (global)
+ *     appctx - application context
+ *  Output Parameter:
+ *     u - vector with solution at initial time (global)
+ */
 PetscErrorCode InitialConditions(Vec x,AppCtx *appctx)
 {
-  PetscErrorCode ierr;
-  ierr = ExactSolution(0,x,appctx);
+  ExactSolution(0,x,appctx);
   return 0;
 }
-/* --------------------------------------------------------------------- */
+
 /*
-   ExactSolution - Computes the exact solution at a given time.
-
-   Input Parameters:
-   t - current time
-   solution - vector in which exact solution will be computed
-   appctx - user-defined application context
-
-   Output Parameter:
-   solution - vector with the newly computed exact solution
-*/
+ *   Compute the exact solution at a given time.
+ *   Input:
+ *      t - current time
+ *      s - vector in which exact solution will be computed
+ *      appctx - application context
+ *   Output:
+ *      s - vector with the newly computed exact solution
+ */
 PetscErrorCode ExactSolution(PetscReal t,Vec s,AppCtx *appctx)
 {
   PetscScalar    *s_localptr;
   PetscErrorCode ierr;
 
-  /*
-     Get a pointer to vector data.
-  */
+  /* Get a pointer to vector data. */
   ierr = VecGetArray(s,&s_localptr);CHKERRQ(ierr);
 
-  /*
-     Simply write the solution directly into the array locations.
-     Alternatively, we culd use VecSetValues() or VecSetValuesLocal().
-  */
+  /* Write the solution into the array locations. 
+   *  Alternatively, we could use VecSetValues() or VecSetValuesLocal(). */
   PetscScalar phi = (1./4.) * (t - (1./appctx->w)*PetscSinScalar(appctx->w*t));
   PetscScalar theta = (1./4.) * (t + (1./appctx->w)*PetscCosScalar(appctx->w*t) - 1.);
   PetscScalar cosphi = PetscCosScalar(phi);
@@ -288,28 +257,34 @@ PetscErrorCode ExactSolution(PetscReal t,Vec s,AppCtx *appctx)
   s_localptr[30] = 0.;
   s_localptr[31] = 0.;
 
-
-
-  /*
-     Restore vector
-  */
+  /* Restore solution vector */
   ierr = VecRestoreArray(s,&s_localptr);CHKERRQ(ierr);
   return 0;
 }
-/* --------------------------------------------------------------------- */
 
+
+/*
+ * Oscillator 1 (real part)
+ */
 PetscScalar F(PetscReal t,AppCtx *appctx)
 {
   PetscScalar f = (1./4.) * (1. - PetscCosScalar(appctx->w*t));
   return f;
 }
 
+/* 
+ * Oscillator 2 (imaginary part) 
+ */
 PetscScalar G(PetscReal t,AppCtx *appctx)
 {
   PetscScalar g = (1./4.) * (1. - PetscSinScalar(appctx->w*t));
   return g;
 }
 
+/*
+ * Evaluate the right-hand side Matrix (real, vectorized Hamiltonian system matrix)
+ * TODO: Add comments inside this routine!
+ */
 PetscErrorCode RHSJacobian(TS ts,PetscReal t,Vec u,Mat M,Mat P,void *ctx)
 {
   AppCtx         *appctx = (AppCtx*)ctx;
@@ -349,8 +324,14 @@ PetscErrorCode RHSJacobian(TS ts,PetscReal t,Vec u,Mat M,Mat P,void *ctx)
 
   return 0;
 }
-/* --------------------------------------------------------------------- */
 
+
+
+
+/* 
+ * Set up the system Hamiltonian matrices 
+ * TODO: Add comments in this routine!
+ */
 PetscErrorCode SetUpMatrices(AppCtx *appctx)
 {
   PetscInt       i, j;
