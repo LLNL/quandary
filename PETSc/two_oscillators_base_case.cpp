@@ -241,6 +241,7 @@ PetscErrorCode ExactSolution(PetscReal t,Vec s,AppCtx *appctx)
   PetscScalar sinphi = PetscSinScalar(phi);
   PetscScalar sintheta = PetscSinScalar(theta);
 
+  /* Real part */
   s_localptr[0] = cosphi*costheta*cosphi*costheta;
   s_localptr[1] = -1.*cosphi*sintheta*cosphi*costheta;
   s_localptr[2] = 0.;
@@ -257,20 +258,21 @@ PetscErrorCode ExactSolution(PetscReal t,Vec s,AppCtx *appctx)
   s_localptr[13] = 0.;
   s_localptr[14] = -1.*sinphi*costheta*sinphi*sintheta;
   s_localptr[15] = sinphi*sintheta*sinphi*sintheta;
+  /* Imaginary part */
   s_localptr[16] = 0.;
   s_localptr[17] = 0.;
-  s_localptr[18] = -1.*sinphi*costheta*cosphi*costheta;
-  s_localptr[19] = sinphi*sintheta*cosphi*costheta;
+  s_localptr[18] = sinphi*costheta*cosphi*costheta;
+  s_localptr[19] = -1. * sinphi*sintheta*cosphi*costheta;
   s_localptr[20] = 0.;
   s_localptr[21] = 0.;
-  s_localptr[22] = sinphi*costheta*cosphi*sintheta;
-  s_localptr[23] = -1.*sinphi*sintheta*cosphi*sintheta;
-  s_localptr[24] = cosphi*costheta*sinphi*costheta;
-  s_localptr[25] = -1.*cosphi*sintheta*sinphi*costheta;
+  s_localptr[22] = -1. * sinphi*costheta*cosphi*sintheta;
+  s_localptr[23] = sinphi*sintheta*cosphi*sintheta;
+  s_localptr[24] = -1. * cosphi*costheta*sinphi*costheta;
+  s_localptr[25] = cosphi*sintheta*sinphi*costheta;
   s_localptr[26] = 0.;
   s_localptr[27] = 0.;
-  s_localptr[28] = -1.*cosphi*costheta*sinphi*sintheta;
-  s_localptr[29] = cosphi*sintheta*sinphi*sintheta;
+  s_localptr[28] = cosphi*costheta*sinphi*sintheta;
+  s_localptr[29] = -1. * cosphi*sintheta*sinphi*sintheta;
   s_localptr[30] = 0.;
   s_localptr[31] = 0.;
 
