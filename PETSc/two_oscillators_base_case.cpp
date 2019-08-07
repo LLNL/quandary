@@ -137,10 +137,10 @@ int main(int argc,char **argv)
   /* Prepare output */
   FILE *logfile, *sfile, *xfile;
   logfile = fopen("out_log.dat", "w");
-  sfile = fopen("out_analytic.dat", "w");
+  sfile = fopen("out_exact.dat", "w");
   xfile = fopen("out_x.dat", "w");
-  fprintf(logfile, "# istep  time    ||x||                 ||analytic||           rel. error\n");
-  printf("# istep  time    ||x||                 ||analytic||           rel. error\n");
+  fprintf(logfile, "# istep  time    x[1]                 exact[1]           rel. error\n");
+  printf("# istep  time    x[1]                 exact[1]           rel. error\n");
 
 
   /* Run the timestepping loop */
@@ -164,7 +164,8 @@ int main(int argc,char **argv)
     VecGetArrayRead(x, &x_ptr);
     VecGetArrayRead(appctx.s, &s_ptr);
 
-    fprintf(logfile,"%5d  %1.5f  %1.14e \n",istep,(double)t, (double)e_norm);
+
+    fprintf(logfile, "%5d  %1.5f  %1.14e  %1.14e  %1.14e\n",istep,(double)t, x_ptr[1], s_ptr[1], (double)e_norm);
     printf("%5d  %1.5f  %1.14e  %1.14e  %1.14e\n",istep,(double)t, x_ptr[1], s_ptr[1], (double)e_norm);
 
     /* Write numeric and analytic solution to files */
@@ -330,8 +331,8 @@ PetscErrorCode RHSJacobian(TS ts,PetscReal t,Vec u,Mat M,Mat P,void *ctx)
   ierr = MatAXPY(appctx->B,f,appctx->aPadTKI,DIFFERENT_NONZERO_PATTERN);CHKERRQ(ierr);
   ierr = MatAXPY(appctx->B,-1*f,appctx->IKaPad,DIFFERENT_NONZERO_PATTERN);CHKERRQ(ierr);
 
-  MatView(appctx->A, PETSC_VIEWER_STDOUT_SELF);
-  MatView(appctx->B, PETSC_VIEWER_STDOUT_SELF);
+  // MatView(appctx->A, PETSC_VIEWER_STDOUT_SELF);
+  // MatView(appctx->B, PETSC_VIEWER_STDOUT_SELF);
 
   MatGetValues(appctx->A, appctx->N, idx, appctx->N, idx, q1);
   MatSetValues(M, appctx->N, idx, appctx->N, idx, q1, INSERT_VALUES);
