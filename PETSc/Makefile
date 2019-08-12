@@ -16,7 +16,7 @@ CFLAGS  =
 .PHONY: all cleanup
 
 # Put all files that are to be compiled here (no ending)
-ALL_PROGS = ex-01 ex-02 base dttest matrix_free two_oscillators_base_case
+ALL_PROGS = ex-01 ex-02 base dttest matrix_free two_oscillators
 
 # Type 'make all' to compile and link all examples in $ALL_PROGs
 all: $(ALL_PROGS)
@@ -40,7 +40,7 @@ dttest: dttest.o
 matrix_free: matrix_free.o
 	$(CC) -L${LDPATH} -o $@ $^ $(LDFLAGS)
 
-two_oscillators_base_case: two_oscillators_base_case.o
+two_oscillators: two_oscillators.o
 	$(CC) -L${LDPATH} -o $@ $^ $(LDFLAGS)
 
 
