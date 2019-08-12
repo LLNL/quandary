@@ -1,8 +1,8 @@
 
 static char help[] ="Solves the Liouville-von-Neumann equations, two oscillators.\n\
 Input parameters:\n\
-  -nlevels <int>      : Set the number of levels (default: 2) \n\
-  -noscillators <int> : Set the number of oscillators (default: 2) \n\
+  -nlvl <int>      : Set the number of levels (default: 2) \n\
+  -nosci <int> : Set the number of oscillators (default: 2) \n\
   -ntime <int>        : Set the number of time steps \n\
   -dt <double>        : Set the time step size \n\
   -w  <double>        : Set the oscillator frequency\n\n";
@@ -15,8 +15,7 @@ Input parameters:\n\
 */
 typedef struct {
   Vec         s;       /* global exact solution vector */
-  PetscInt    n;       /* State space dimension */
-  PetscInt    N;       /* Dimension of vectorized system */
+  PetscInt    nvec;    /* Dimension of vectorized system */
   Mat         IKbMbd, bMbdTKI, aPadTKI, IKaPad, A, B;
   PetscReal   w;       /* Oscillator frequencies */
 } AppCtx;
@@ -34,18 +33,19 @@ extern PetscErrorCode RHSJacobian(TS,PetscReal,Vec,Mat,Mat,void*);
 
 int main(int argc,char **argv)
 {
-  PetscInt       nlevels;      // Number of system levels (currently 2)
-  PetscInt       noscillators; // Number of oscillators (currently 2)
+  PetscInt       nlvl;         // Number of levels for each oscillator (currently 2)
+  PetscInt       nosci;        // Number of oscillators (currently 2)
+  PetscInt       nsys;         // Dimension of system state space (nlvl^nosci)
+  PetscInt       nvec;         // Dimension of vectorized system (nsys^2)
+  PetscInt       nreal;        // Dimension of real-valued system (2*nvec)
   PetscInt       ntime;        // Number of time steps
   PetscReal      dt;           // Time step size
   PetscReal      total_time;   // Total end time T
-  PetscInt       n;            // State space dimension (nlevels^noscillators)
-  PetscInt       N;            // Dimension of vectorized system
   Vec            x;            // Solution vector
   Vec            e;            // Error to analytical solution
-  Mat            M;            // ??
-  AppCtx         appctx;       // Application context 
-  TS             ts;           // timestepping context 
+  Mat            M;            // System Matrix for real-valued system
+  AppCtx         appctx;       // Application context
+  TS             ts;           // Timestepping context
   PetscReal      w;            // Oscillator frequency
 
   PetscReal t, s_norm, e_norm;
@@ -59,46 +59,46 @@ int main(int argc,char **argv)
   if (mpisize != 1) SETERRQ(PETSC_COMM_SELF,1,"This is a uniprocessor example only!");
 
   /* Set default constants */
-  nlevels      = 2;
-  noscillators = 2;
-  ntime        = 100;
-  dt           = 0.01;
-  w            = 1.0;
+  nlvl = 2;
+  nosci = 2;
+  ntime = 1000;
+  dt = 0.0001;
+  w = 1.0;
 
   /* Parse command line arguments to overwrite default constants */
-  PetscOptionsGetInt(NULL,NULL,"-nlevels",&nlevels,NULL);
-  PetscOptionsGetInt(NULL,NULL,"-noscillators",&nlevels,NULL);
+  PetscOptionsGetInt(NULL,NULL,"-nlvl",&nlvl,NULL);
+  PetscOptionsGetInt(NULL,NULL,"-nosci",&nlvl,NULL);
   PetscOptionsGetInt(NULL,NULL,"-ntime",&ntime,NULL);
   PetscOptionsGetReal(NULL,NULL,"-dt",&dt,NULL);
 
   /* Sanity check */
-  if (noscillators != 2 || nlevels != 2)
+  if (nosci != 2 || nlvl != 2)
   {
-    printf("\nERROR: Current only 2 levels and 2 oscillators are supported.\n You chose %d levels, %d oscillators.\n\n", nlevels, noscillators);
+    printf("\nERROR: Current only 2 levels and 2 oscillators are supported.\n You chose %d levels, %d oscillators.\n\n", nlvl, nosci);
     exit(0);
   }
- 
+
   /* Initialize parameters */
-  n          = (PetscInt) pow(nlevels,noscillators); 
-  N          = n * n;
+  nsys = (PetscInt) pow(nlvl,nosci);
+  nvec = (PetscInt) pow(nsys,2);
+  nreal = 2 * nvec;
   total_time = ntime * dt;
 
-  printf("System with %d noscillators %d nlevels. \n", noscillators, nlevels);
+  printf("System with %d oscillators, %d levels. \n", nosci, nlvl);
   printf("Time horizon:   [0,%f]\n", total_time);
   printf("Number of time steps: %d\n", ntime);
   printf("Time step size: %f\n", dt );
 
 
   /* Initialize the App coefficients */
-  appctx.n = n;
-  appctx.N = N;
+  appctx.nvec = nvec;
   appctx.w = w;
 
 
   /*
      Create vectors for approximate (x) and exact (s) solution, and error (e)
   */
-  ierr = VecCreateSeq(PETSC_COMM_SELF,2*N,&x);CHKERRQ(ierr);
+  ierr = VecCreateSeq(PETSC_COMM_SELF,nreal,&x);CHKERRQ(ierr);
   ierr = VecDuplicate(x,&appctx.s);CHKERRQ(ierr);
   ierr = VecDuplicate(x,&e);CHKERRQ(ierr);
 
@@ -110,9 +110,9 @@ int main(int argc,char **argv)
   /* Set up the system Hamiltonian matrices */
   SetUpMatrices(&appctx);
 
-  /* Set up M (What is M?) */
+  /* Allocate system matrix */
   ierr = MatCreate(PETSC_COMM_SELF,&M);CHKERRQ(ierr);
-  ierr = MatSetSizes(M, PETSC_DECIDE, PETSC_DECIDE, N*2,N*2);CHKERRQ(ierr);
+  ierr = MatSetSizes(M, PETSC_DECIDE, PETSC_DECIDE,nreal,nreal);CHKERRQ(ierr);
   ierr = MatSetFromOptions(M);CHKERRQ(ierr);
   ierr = MatSetUp(M);CHKERRQ(ierr);
   ierr = MatAssemblyBegin(M,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
@@ -144,7 +144,7 @@ int main(int argc,char **argv)
 
 
   /* Run the timestepping loop */
-  for(PetscInt istep = 1; istep <= ntime; istep++) {
+  for(PetscInt istep = 0; istep <= ntime; istep++) {
 
     /* Step forward one time step */
     TSStep(ts);
@@ -169,7 +169,7 @@ int main(int argc,char **argv)
     printf("%5d  %1.5f  %1.14e  %1.14e  %1.14e\n",istep,(double)t, x_ptr[1], s_ptr[1], (double)e_norm);
 
     /* Write numeric and analytic solution to files */
-    for (int i = 0; i < 2*N; i++) 
+    for (int i = 0; i < nreal; i++)
     {
       fprintf(xfile, "%1.14e  ", x_ptr[i]);
       fprintf(sfile, "%1.14e  ", s_ptr[i]);
@@ -233,7 +233,7 @@ PetscErrorCode ExactSolution(PetscReal t,Vec s,AppCtx *appctx)
   /* Get a pointer to vector data. */
   ierr = VecGetArray(s,&s_localptr);CHKERRQ(ierr);
 
-  /* Write the solution into the array locations. 
+  /* Write the solution into the array locations.
    *  Alternatively, we could use VecSetValues() or VecSetValuesLocal(). */
   PetscScalar phi = (1./4.) * (t - (1./appctx->w)*PetscSinScalar(appctx->w*t));
   PetscScalar theta = (1./4.) * (t + (1./appctx->w)*PetscCosScalar(appctx->w*t) - 1.);
@@ -292,8 +292,8 @@ PetscScalar F(PetscReal t,AppCtx *appctx)
   return f;
 }
 
-/* 
- * Oscillator 2 (imaginary part) 
+/*
+ * Oscillator 2 (imaginary part)
  */
 PetscScalar G(PetscReal t,AppCtx *appctx)
 {
@@ -308,44 +308,60 @@ PetscScalar G(PetscReal t,AppCtx *appctx)
 PetscErrorCode RHSJacobian(TS ts,PetscReal t,Vec u,Mat M,Mat P,void *ctx)
 {
   AppCtx         *appctx = (AppCtx*)ctx;
-  PetscScalar f, g, q1[(appctx->N * appctx->N)], q2[(appctx->N * appctx->N)], q3[(appctx->N * appctx->N)];
-  PetscInt idx[appctx->N], idxN[appctx->N];
+  PetscInt        nvec = appctx->nvec;
+  PetscScalar f, g, b1[(nvec * nvec)], b2[(nvec * nvec)], b3[(nvec * nvec)];
+  PetscInt idx[nvec], idxn[nvec];
   PetscErrorCode ierr;
 
-  for(int i = 0; i < appctx->N; i++)
+/* Setup indices */
+  for(int i = 0; i < nvec; i++)
   {
     idx[i] = i;
-    idxN[i] = i + appctx->N;
+    idxn[i] = i + nvec;
   }
 
+  /* Compute f and g */
   f = F(t, appctx);
   g = G(t, appctx);
 
 
   /* TODO: There is a BUG here! For time-constant F and G , the A and B matrices should be constant for all time step. But they are now. Seems like you overwrite some of the matrices which are needed for the next time step.  */
-  f = 2.0;
-  g = 3.0;
+  /* Reinitialze and compute A */
+  ierr = MatZeroEntries(appctx->A);CHKERRQ(ierr);
   ierr = MatAXPY(appctx->A,g,appctx->IKbMbd,DIFFERENT_NONZERO_PATTERN);CHKERRQ(ierr);
   ierr = MatAXPY(appctx->A,-1*g,appctx->bMbdTKI,DIFFERENT_NONZERO_PATTERN);CHKERRQ(ierr);
 
+  /* Reinitialze and compute B */
+  ierr = MatZeroEntries(appctx->B);CHKERRQ(ierr);
   ierr = MatAXPY(appctx->B,f,appctx->aPadTKI,DIFFERENT_NONZERO_PATTERN);CHKERRQ(ierr);
   ierr = MatAXPY(appctx->B,-1*f,appctx->IKaPad,DIFFERENT_NONZERO_PATTERN);CHKERRQ(ierr);
 
-  // MatView(appctx->A, PETSC_VIEWER_STDOUT_SELF);
-  // MatView(appctx->B, PETSC_VIEWER_STDOUT_SELF);
+  //MatView(appctx->A, PETSC_VIEWER_STDOUT_SELF);
+  //MatView(appctx->B, PETSC_VIEWER_STDOUT_SELF);
 
-  MatGetValues(appctx->A, appctx->N, idx, appctx->N, idx, q1);
-  MatSetValues(M, appctx->N, idx, appctx->N, idx, q1, INSERT_VALUES);
-  MatSetValues(M, appctx->N, idxN, appctx->N, idxN, q1, INSERT_VALUES);
+  /* Get values of A */
+  MatGetValues(appctx->A, nvec, idx, nvec, idx, b1);
 
-  MatGetValues(appctx->B, appctx->N, idx, appctx->N, idx, q3);
-  MatSetValues(M, appctx->N, idxN, appctx->N, idx, q3, INSERT_VALUES);
-  for(int i = 0; i < appctx->N * appctx->N; i++)
+  /* Set M(0, 0) = A */
+  MatSetValues(M, nvec, idx, nvec, idx, b1, INSERT_VALUES);
+
+  /* Set M(1, 1) = A */
+  MatSetValues(M, nvec, idxn, nvec, idxn, b1, INSERT_VALUES);
+
+  /* Get values of B */
+  MatGetValues(appctx->B, nvec, idx, nvec, idx, b3);
+
+  /* Set M(1, 0) = B */
+  MatSetValues(M, nvec, idxn, nvec, idx, b3, INSERT_VALUES);
+
+  /* Set M(0, 1) = -B */
+  for(int i = 0; i < nvec * nvec; i++)
   {
-    q2[i] = -1.0 * q3[i];
+    b2[i] = -1.0 * b3[i];
   }
-  MatSetValues(M, appctx->N, idx, appctx->N, idxN, q2, INSERT_VALUES);
+  MatSetValues(M, nvec, idx, nvec, idxn, b2, INSERT_VALUES);
 
+  /* Assemble M */
   ierr = MatAssemblyBegin(M,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
   ierr = MatAssemblyEnd(M,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
 
@@ -360,17 +376,19 @@ PetscErrorCode RHSJacobian(TS ts,PetscReal t,Vec u,Mat M,Mat P,void *ctx)
 
 
 
-/* 
- * Set up the system Hamiltonian matrices 
+/*
+ * Set up the system Hamiltonian matrices
  * TODO: Add comments in this routine!
  */
 PetscErrorCode SetUpMatrices(AppCtx *appctx)
 {
+  PetscInt       nvec = appctx->nvec;
   PetscInt       i, j;
   PetscScalar    v[1];
   PetscErrorCode ierr;
 
-  ierr = MatCreateSeqAIJ(PETSC_COMM_SELF,appctx->N,appctx->N,1,NULL,&appctx->IKbMbd);CHKERRQ(ierr);
+  /* Set up IKbMbd */
+  ierr = MatCreateSeqAIJ(PETSC_COMM_SELF,nvec,nvec,1,NULL,&appctx->IKbMbd);CHKERRQ(ierr);
   ierr = MatSetFromOptions(appctx->IKbMbd);CHKERRQ(ierr);
   ierr = MatSetUp(appctx->IKbMbd);CHKERRQ(ierr);
 
@@ -444,7 +462,8 @@ PetscErrorCode SetUpMatrices(AppCtx *appctx)
 
 ///////////////////////////////////////////////////////////////////////////////
 
-  ierr = MatCreateSeqAIJ(PETSC_COMM_SELF,appctx->N,appctx->N,1,NULL,&appctx->bMbdTKI);CHKERRQ(ierr);
+  /* Set up bMbdTKI */
+  ierr = MatCreateSeqAIJ(PETSC_COMM_SELF,nvec,nvec,1,NULL,&appctx->bMbdTKI);CHKERRQ(ierr);
   ierr = MatSetFromOptions(appctx->bMbdTKI);CHKERRQ(ierr);
   ierr = MatSetUp(appctx->bMbdTKI);CHKERRQ(ierr);
 
@@ -518,7 +537,8 @@ PetscErrorCode SetUpMatrices(AppCtx *appctx)
 
 ///////////////////////////////////////////////////////////////////////////////
 
-  ierr = MatCreateSeqAIJ(PETSC_COMM_SELF,appctx->N,appctx->N,1,NULL,&appctx->aPadTKI);CHKERRQ(ierr);
+  /* Set up aPadTKI */
+  ierr = MatCreateSeqAIJ(PETSC_COMM_SELF,nvec,nvec,1,NULL,&appctx->aPadTKI);CHKERRQ(ierr);
   ierr = MatSetFromOptions(appctx->aPadTKI);CHKERRQ(ierr);
   ierr = MatSetUp(appctx->aPadTKI);CHKERRQ(ierr);
 
@@ -592,7 +612,8 @@ PetscErrorCode SetUpMatrices(AppCtx *appctx)
 
 ////////////////////////////////////////////////////////////////////////////////
 
-  ierr = MatCreateSeqAIJ(PETSC_COMM_SELF,appctx->N,appctx->N,1,NULL,&appctx->IKaPad);CHKERRQ(ierr);
+  /* Set up IKaPad */
+  ierr = MatCreateSeqAIJ(PETSC_COMM_SELF,nvec,nvec,1,NULL,&appctx->IKaPad);CHKERRQ(ierr);
   ierr = MatSetFromOptions(appctx->IKaPad);CHKERRQ(ierr);
   ierr = MatSetUp(appctx->IKaPad);CHKERRQ(ierr);
 
@@ -666,13 +687,15 @@ PetscErrorCode SetUpMatrices(AppCtx *appctx)
 
 //////////////////////////////////////////////////////////////////////////////
 
-  ierr = MatCreateSeqAIJ(PETSC_COMM_SELF,appctx->N,appctx->N,0,NULL,&appctx->A);CHKERRQ(ierr);
+  /* Set up A */
+  ierr = MatCreateSeqAIJ(PETSC_COMM_SELF,nvec,nvec,0,NULL,&appctx->A);CHKERRQ(ierr);
   ierr = MatSetFromOptions(appctx->A);CHKERRQ(ierr);
   ierr = MatSetUp(appctx->A);CHKERRQ(ierr);
   ierr = MatAssemblyBegin(appctx->A,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
   ierr = MatAssemblyEnd(appctx->A,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
 
-  ierr = MatCreateSeqAIJ(PETSC_COMM_SELF,appctx->N,appctx->N,0,NULL,&appctx->B);CHKERRQ(ierr);
+  /* Set up B */
+  ierr = MatCreateSeqAIJ(PETSC_COMM_SELF,nvec,nvec,0,NULL,&appctx->B);CHKERRQ(ierr);
   ierr = MatSetFromOptions(appctx->B);CHKERRQ(ierr);
   ierr = MatSetUp(appctx->B);CHKERRQ(ierr);
   ierr = MatAssemblyBegin(appctx->B,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
