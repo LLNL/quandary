@@ -14,6 +14,18 @@
 
 \include{macros}
 
+
+\newenvironment{changemargin}[2]{%
+\begin{list}{}{%
+\setlength{\topsep}{0pt}%
+\setlength{\leftmargin}{#1}%
+\setlength{\rightmargin}{#2}%
+\setlength{\listparindent}{\parindent}%
+\setlength{\itemindent}{\parindent}%
+\setlength{\parsep}{\parskip}%
+}%
+\item[]}{\end{list}}
+
 \begin{document}
 
 %% \title{Analytical Solution of two oscillator problem}
@@ -118,8 +130,8 @@ From here we can construct the corresponding density matrix
     i\sin(\phi)\sin(\theta)
   \end{bmatrix}
 \end{equation}
-\begin{multline}
-  \rho(t) =
+\begin{align*}
+  \rho(t) &=
   \begin{bmatrix}
     \cos(\phi)\cos(\theta)\\
     -\cos(\phi)\sin(\theta)\\
@@ -133,15 +145,25 @@ From here we can construct the corresponding density matrix
     i\sin(\phi)\cos(\theta),
     -i\sin(\phi)\sin(\theta)
   \right] \\
-  %
-  =
+  &=
   \begin{bmatrix}
     \cos^2(\phi)\cos^2(\theta) & * & * & * \\
     * & \cos^2(\phi)\sin^2(\theta) & * & * \\
     * & * & \sin^2(\phi)\cos^2(\theta) & * \\
     * & * & * & \sin^2(\phi)\sin^2(\theta)
   \end{bmatrix}
-\end{multline}
+\end{align*}
+
+\begin{changemargin}{-5cm}{-5cm}
+\begin{align}
+  =\begin{bmatrix}
+    \cos^2(\phi)\cos^2(\theta) & -\cos^2(\phi)\cos(\theta)\sin(\theta) &  i \cos(\phi)\cos^2(\theta)\sin(\phi) & -i \cos(\phi)\cos(\theta)\sin(\phi)\sin(\theta) \\
+    -\cos^2(\phi)\cos(\theta)\sin(\theta) & \cos^2(\phi)\sin^2(\theta) & -i \cos(\phi)\cos(\theta)\sin(\phi)\sin(\theta) & i\cos(\phi)\sin(\theta^2)\sin(\phi) \\
+    -i\sin(\phi)\cos^2(\theta)\cos(\phi) & i\cos(\phi)\cos(\theta)\sin(\phi)\sin(\theta)  & \sin^2(\phi)\cos^2(\theta) & -\sin^2(\phi)\cos(\theta)\sin(\theta) \\
+    i \cos(\phi)\cos(\theta)\sin(\phi)\sin(\theta) & -i \sin(\phi)\sin^2(\theta)\cos(\phi) & -\sin^2(\phi)\sin(\theta)\cos(\theta) & \sin^2(\phi)\sin^2(\theta)
+  \end{bmatrix}
+\end{align}
+\end{changemargin}
 
 
 
