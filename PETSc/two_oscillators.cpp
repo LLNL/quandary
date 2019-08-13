@@ -135,10 +135,12 @@ int main(int argc,char **argv)
   // VecView(x, PETSC_VIEWER_STDOUT_WORLD);
 
   /* Prepare output */
-  FILE *logfile, *sfile, *xfile;
+  FILE *logfile, *sufile, *svfile, *ufile, *vfile;
   logfile = fopen("out_log.dat", "w");
-  sfile = fopen("out_exact.dat", "w");
-  xfile = fopen("out_x.dat", "w");
+  sufile = fopen("out_u_exact.dat", "w");
+  svfile = fopen("out_v_exact.dat", "w");
+  ufile = fopen("out_u.dat", "w");
+  vfile = fopen("out_v.dat", "w");
   fprintf(logfile, "# istep  time    x[1]                 exact[1]           rel. error\n");
   printf("# istep  time    x[1]                 exact[1]           rel. error\n");
 
@@ -171,19 +173,32 @@ int main(int argc,char **argv)
     /* Write numeric and analytic solution to files */
     for (int i = 0; i < nreal; i++)
     {
-      fprintf(xfile, "%1.14e  ", x_ptr[i]);
-      fprintf(sfile, "%1.14e  ", s_ptr[i]);
+      if (i < nvec) // real part
+      {
+        fprintf(ufile, "%1.14e  ", x_ptr[i]);  
+        fprintf(sufile, "%1.14e  ", s_ptr[i]);
+      }  
+      else  // imaginary part
+      {
+        fprintf(vfile, "%1.14e  ", x_ptr[i]); 
+        fprintf(svfile, "%1.14e  ", s_ptr[i]);
+      }
+      
     }
-    fprintf(xfile, "\n");
-    fprintf(sfile, "\n");
+    fprintf(ufile, "\n");
+    fprintf(vfile, "\n");
+    fprintf(sufile, "\n");
+    fprintf(svfile, "\n");
 
   }
 
 
   /* Clean up */
   fclose(logfile);
-  fclose(sfile);
-  fclose(xfile);
+  fclose(sufile);
+  fclose(svfile);
+  fclose(ufile);
+  fclose(vfile);
   ierr = TSDestroy(&ts);CHKERRQ(ierr);
   ierr = MatDestroy(&M);CHKERRQ(ierr);
   ierr = MatDestroy(&appctx.A);CHKERRQ(ierr);
@@ -241,6 +256,7 @@ PetscErrorCode ExactSolution(PetscReal t,Vec s,AppCtx *appctx)
   PetscScalar costheta = PetscCosScalar(theta);
   PetscScalar sinphi = PetscSinScalar(phi);
   PetscScalar sintheta = PetscSinScalar(theta);
+  
 
   /* Real part */
   s_localptr[0] = cosphi*costheta*cosphi*costheta;
@@ -262,18 +278,18 @@ PetscErrorCode ExactSolution(PetscReal t,Vec s,AppCtx *appctx)
   /* Imaginary part */
   s_localptr[16] = 0.;
   s_localptr[17] = 0.;
-  s_localptr[18] = sinphi*costheta*cosphi*costheta;
-  s_localptr[19] = -1. * sinphi*sintheta*cosphi*costheta;
+  s_localptr[18] = - sinphi*costheta*cosphi*costheta;
+  s_localptr[19] = sinphi*sintheta*cosphi*costheta;
   s_localptr[20] = 0.;
   s_localptr[21] = 0.;
-  s_localptr[22] = -1. * sinphi*costheta*cosphi*sintheta;
-  s_localptr[23] = sinphi*sintheta*cosphi*sintheta;
-  s_localptr[24] = -1. * cosphi*costheta*sinphi*costheta;
-  s_localptr[25] = cosphi*sintheta*sinphi*costheta;
+  s_localptr[22] = sinphi*costheta*cosphi*sintheta;
+  s_localptr[23] = - sinphi*sintheta*cosphi*sintheta;
+  s_localptr[24] = cosphi*costheta*sinphi*costheta;
+  s_localptr[25] = - cosphi*sintheta*sinphi*costheta;
   s_localptr[26] = 0.;
   s_localptr[27] = 0.;
-  s_localptr[28] = cosphi*costheta*sinphi*sintheta;
-  s_localptr[29] = -1. * cosphi*sintheta*sinphi*sintheta;
+  s_localptr[28] = - cosphi*costheta*sinphi*sintheta;
+  s_localptr[29] = cosphi*sintheta*sinphi*sintheta;
   s_localptr[30] = 0.;
   s_localptr[31] = 0.;
 
