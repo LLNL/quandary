@@ -8,6 +8,7 @@ Input parameters:\n\
   -w  <double>        : Set the oscillator frequency\n\n";
 
 #include <petscts.h>
+#include "braid.h"
 
 
 /*

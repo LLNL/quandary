@@ -7,11 +7,14 @@ include ${PETSC_DIR}/lib/petsc/conf/rules
 include ${PETSC_DIR}/lib/petsc/conf/test
 
 # location of petsc library
-LDPATH  = ${PETSC_DIR}/lib
+LDPATH  = ${PETSC_DIR}/${PETSC_ARCH}/lib
+
+# Set Braid location 
+BRAID_DIR = ${HOME}/Numerics/xbraid
 
 # Set flags
-LDFLAGS = -lpetsc -lm
-CFLAGS  =
+LDFLAGS = -lpetsc -lm ${BRAID_DIR}/braid/libbraid.a
+CPPFLAGS= -I${BRAID_DIR}/braid
 
 .PHONY: all cleanup
 
@@ -41,7 +44,7 @@ matrix_free: matrix_free.o
 	$(CC) -L${LDPATH} -o $@ $^ $(LDFLAGS)
 
 two_oscillators: two_oscillators.o
-	$(CC) -L${LDPATH} -o $@ $^ $(LDFLAGS)
+	$(CC) $(CPPFLAGS) -L${LDPATH} -o $@ $^ $(LDFLAGS)
 
 
 # use 'make cleanup' to remove object files and executable
