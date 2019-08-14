@@ -49,6 +49,7 @@ int main(int argc,char **argv)
   PetscReal      w;            // Oscillator frequency
 
   PetscReal t, s_norm, e_norm;
+  const PetscScalar *x_ptr, *s_ptr;
 
   PetscErrorCode ierr;
   PetscMPIInt    mpisize;
@@ -85,7 +86,7 @@ int main(int argc,char **argv)
   total_time = ntime * dt;
 
   printf("System with %d oscillators, %d levels. \n", nosci, nlvl);
-  printf("Time horizon:   [0,%f]\n", total_time);
+  printf("Time horizon:   [0,%.1f]\n", total_time);
   printf("Number of time steps: %d\n", ntime);
   printf("Time step size: %f\n", dt );
 
@@ -162,7 +163,6 @@ int main(int argc,char **argv)
     e_norm = e_norm / s_norm;
 
     /* Output */
-    const PetscScalar *x_ptr, *s_ptr;
     VecGetArrayRead(x, &x_ptr);
     VecGetArrayRead(appctx.s, &s_ptr);
 
@@ -192,6 +192,51 @@ int main(int argc,char **argv)
 
   }
 
+
+
+#if 1
+/* 
+ * Testing time stepper convergence (dt-test) 
+ */
+
+  total_time = 10.0;
+  printf("\n\n Running time-stepping convergence test... \n\n");
+  printf(" Time horizon: [0, %.1f]\n\n", total_time);
+
+  /* Decrease time step size */
+  printf("   ntime      dt    error\n");
+  for (int ntime = 10; ntime <= 1e+5; ntime = ntime * 10)
+  {
+    dt = total_time / ntime;
+
+    /* Reset the time stepper */
+    ierr = InitialConditions(x,&appctx);CHKERRQ(ierr);  
+    TSSetTime(ts, 0.0); 
+    TSSetTimeStep(ts,dt);
+    TSSetMaxSteps(ts,ntime);
+
+    /* Run time-stepping loop */
+    for(PetscInt istep = 0; istep <= ntime; istep++) 
+    {
+      TSStep(ts);
+      TSGetTime(ts, &t);
+      VecGetArrayRead(x, &x_ptr);
+      // printf("%5d  %1.5f  %1.14e \n",istep,(double)t, x_ptr[1]);
+    }
+    /* Compute the relative error at last time step (max-norm) */
+    TSGetTime(ts, &t);
+    ExactSolution(t,appctx.s,&appctx);CHKERRQ(ierr);
+    VecWAXPY(e,-1.0,x, appctx.s);CHKERRQ(ierr);
+    VecNorm(e, NORM_INFINITY,&e_norm);CHKERRQ(ierr);
+    VecNorm(appctx.s, NORM_INFINITY,&s_norm);CHKERRQ(ierr);
+    e_norm = e_norm / s_norm;
+
+    /* Print error norm */
+    printf("%8d   %1.e   %1.14e\n", ntime, dt, e_norm);
+
+  }
+
+#endif
 
   /* Clean up */
   fclose(logfile);
