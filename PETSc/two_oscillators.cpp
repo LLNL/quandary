@@ -107,8 +107,7 @@ int main(int argc,char **argv)
   ierr = TSCreate(PETSC_COMM_SELF,&ts);CHKERRQ(ierr);
   ierr = TSSetProblemType(ts,TS_LINEAR);CHKERRQ(ierr);
 
-
-  /* Set up the system Hamiltonian matrices */
+  /* Allocate and initialize matrices for evaluating system Hamiltonian */
   SetUpMatrices(&appctx);
 
   /* Allocate system matrix */
@@ -368,15 +367,21 @@ PetscScalar G(PetscReal t,AppCtx *appctx)
 }
 
 /*
- * Evaluate the right-hand side Matrix (real, vectorized Hamiltonian system matrix)
- * TODO: Add comments inside this routine!
+ * Evaluate the right-hand side system Matrix (real, vectorized Hamiltonian system matrix)
+ * In: ts - time stepper
+ *      t - current time
+ *      u - solution vector x(t) 
+ *      M - right hand side system Matrix
+ *      P - ??
+ *    ctx - Application context 
  */
 PetscErrorCode RHSJacobian(TS ts,PetscReal t,Vec u,Mat M,Mat P,void *ctx)
 {
   AppCtx         *appctx = (AppCtx*)ctx;
   PetscInt        nvec = appctx->nvec;
-  PetscScalar f, g, b1[(nvec * nvec)], b2[(nvec * nvec)], b3[(nvec * nvec)];
-  PetscInt idx[nvec], idxn[nvec];
+  PetscScalar f, g;
+  PetscScalar a[(nvec * nvec)],  b[(nvec * nvec)]; 
+  PetscInt idx[nvec], idxn[nvec];  
   PetscErrorCode ierr;
 
 /* Setup indices */
@@ -386,55 +391,52 @@ PetscErrorCode RHSJacobian(TS ts,PetscReal t,Vec u,Mat M,Mat P,void *ctx)
     idxn[i] = i + nvec;
   }
 
-  /* Compute f and g */
+  /* Compute time-dependent control functions */
   f = F(t, appctx);
   g = G(t, appctx);
 
 
-  /* TODO: There is a BUG here! For time-constant F and G , the A and B matrices should be constant for all time step. But they are now. Seems like you overwrite some of the matrices which are needed for the next time step.  */
-  /* Reinitialze and compute A */
+  /* Set up real part of system matrix (A) */
   ierr = MatZeroEntries(appctx->A);CHKERRQ(ierr);
   ierr = MatAXPY(appctx->A,g,appctx->IKbMbd,DIFFERENT_NONZERO_PATTERN);CHKERRQ(ierr);
-  ierr = MatAXPY(appctx->A,-1*g,appctx->bMbdTKI,DIFFERENT_NONZERO_PATTERN);CHKERRQ(ierr);
+  ierr = MatAXPY(appctx->A,-1.*g,appctx->bMbdTKI,DIFFERENT_NONZERO_PATTERN);CHKERRQ(ierr);
 
-  /* Reinitialze and compute B */
+  /* Set up imaginary part of system matrix (B) */
   ierr = MatZeroEntries(appctx->B);CHKERRQ(ierr);
   ierr = MatAXPY(appctx->B,f,appctx->aPadTKI,DIFFERENT_NONZERO_PATTERN);CHKERRQ(ierr);
-  ierr = MatAXPY(appctx->B,-1*f,appctx->IKaPad,DIFFERENT_NONZERO_PATTERN);CHKERRQ(ierr);
+  ierr = MatAXPY(appctx->B,-1.*f,appctx->IKaPad,DIFFERENT_NONZERO_PATTERN);CHKERRQ(ierr);
 
   //MatView(appctx->A, PETSC_VIEWER_STDOUT_SELF);
   //MatView(appctx->B, PETSC_VIEWER_STDOUT_SELF);
 
   /* Get values of A */
-  MatGetValues(appctx->A, nvec, idx, nvec, idx, b1);
+  MatGetValues(appctx->A, nvec, idx, nvec, idx, a);
 
-  /* Set M(0, 0) = A */
-  MatSetValues(M, nvec, idx, nvec, idx, b1, INSERT_VALUES);
-
+  /* M(0, 0) = A */
+  MatSetValues(M, nvec, idx, nvec, idx, a , INSERT_VALUES);
   /* Set M(1, 1) = A */
-  MatSetValues(M, nvec, idxn, nvec, idxn, b1, INSERT_VALUES);
+  MatSetValues(M, nvec, idxn, nvec, idxn, a , INSERT_VALUES);
 
   /* Get values of B */
-  MatGetValues(appctx->B, nvec, idx, nvec, idx, b3);
+  MatGetValues(appctx->B, nvec, idx, nvec, idx, b);
 
   /* Set M(1, 0) = B */
-  MatSetValues(M, nvec, idxn, nvec, idx, b3, INSERT_VALUES);
-
+  MatSetValues(M, nvec, idxn, nvec, idx, b, INSERT_VALUES);
   /* Set M(0, 1) = -B */
   for(int i = 0; i < nvec * nvec; i++)
   {
-    b2[i] = -1.0 * b3[i];
+    b[i] = -1.0 * b[i];
   }
-  MatSetValues(M, nvec, idx, nvec, idxn, b2, INSERT_VALUES);
+  MatSetValues(M, nvec, idx, nvec, idxn, b, INSERT_VALUES);
 
-  /* Assemble M */
+  /* Assemble the system matrix */
   ierr = MatAssemblyBegin(M,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
   ierr = MatAssemblyEnd(M,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
 
-  /* TODO: Are you sure that M is still a sparse matrix? MatView displays also the zero entries... */
+  /* TODO: Store M in sparse matrix format! */
+  /* Do we really need to store A and B explicitely? They are only used here, so maybe we can assemble M from g,f,IKbMDb, bMbdTKI, aPadTKI, IKaPad directly... */
 
   // MatView(M, PETSC_VIEWER_STDOUT_SELF);
-
 
   return 0;
 }
@@ -443,8 +445,7 @@ PetscErrorCode RHSJacobian(TS ts,PetscReal t,Vec u,Mat M,Mat P,void *ctx)
 
 
 /*
- * Set up the system Hamiltonian matrices
- * TODO: Add comments in this routine!
+ * Initialize fixed matrices for assembling system Hamiltonian
  */
 PetscErrorCode SetUpMatrices(AppCtx *appctx)
 {
@@ -753,14 +754,14 @@ PetscErrorCode SetUpMatrices(AppCtx *appctx)
 
 //////////////////////////////////////////////////////////////////////////////
 
-  /* Set up A */
+  /* Allocate A */
   ierr = MatCreateSeqAIJ(PETSC_COMM_SELF,nvec,nvec,0,NULL,&appctx->A);CHKERRQ(ierr);
   ierr = MatSetFromOptions(appctx->A);CHKERRQ(ierr);
   ierr = MatSetUp(appctx->A);CHKERRQ(ierr);
   ierr = MatAssemblyBegin(appctx->A,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
   ierr = MatAssemblyEnd(appctx->A,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
 
-  /* Set up B */
+  /* Allocate B */
   ierr = MatCreateSeqAIJ(PETSC_COMM_SELF,nvec,nvec,0,NULL,&appctx->B);CHKERRQ(ierr);
   ierr = MatSetFromOptions(appctx->B);CHKERRQ(ierr);
   ierr = MatSetUp(appctx->B);CHKERRQ(ierr);
