@@ -171,8 +171,13 @@ int main(int argc,char **argv)
     printf("%5d  %1.5f  %1.14e  %1.14e  %1.14e\n",istep,(double)t, x_ptr[1], s_ptr[1], (double)e_norm);
 
     /* Write numeric and analytic solution to files */
+    fprintf(ufile,  "%.2f  ", (double) t);
+    fprintf(vfile,  "%.2f  ", (double) t);
+    fprintf(sufile, "%.2f  ", (double) t);
+    fprintf(svfile, "%.2f  ", (double) t);
     for (int i = 0; i < nreal; i++)
     {
+
       if (i < nvec) // real part
       {
         fprintf(ufile, "%1.14e  ", x_ptr[i]);  
@@ -194,7 +199,7 @@ int main(int argc,char **argv)
 
 
 
-#if 1
+#if 0
 /* 
  * Testing time stepper convergence (dt-test) 
  */
