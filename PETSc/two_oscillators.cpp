@@ -1,5 +1,5 @@
+#include "braid_test.h"
 #include "braid_wrapper.c"
-
 
 
 int main(int argc,char **argv)
@@ -12,17 +12,14 @@ int main(int argc,char **argv)
   PetscInt       ntime;        // Number of time steps
   PetscReal      dt;           // Time step size
   PetscReal      total_time;   // Total end time T
-  Vec            x;            // Solution vector
-  Vec            e;            // Error to analytical solution
-  Mat            M;            // System Matrix for real-valued system
-  AppCtx         appctx;       // Application context
+  Mat            M;            // System matrix for real-valued system
   TS             ts;           // Timestepping context
   PetscReal      w;            // Oscillator frequency
+  braid_Core     braid_core;         // Core for XBraid simulation
+  XB_App        *braid_app;          // XBraid's application context
+  TS_App        *petsc_app;       // Petsc's application context
 
-
-  PetscReal t, s_norm, e_norm;
-  const PetscScalar *x_ptr, *s_ptr;
-
+  FILE *sufile, *svfile, *ufile, *vfile;
   PetscErrorCode ierr;
   PetscMPIInt    mpisize;
 
@@ -51,38 +48,24 @@ int main(int argc,char **argv)
     exit(0);
   }
 
-  /* Initialize parameters */
+  /* Initialize simulation parameters */
   nsys = (PetscInt) pow(nlvl,nosci);
   nvec = (PetscInt) pow(nsys,2);
   nreal = 2 * nvec;
   total_time = ntime * dt;
-
   printf("System with %d oscillators, %d levels. \n", nosci, nlvl);
   printf("Time horizon:   [0,%.1f]\n", total_time);
   printf("Number of time steps: %d\n", ntime);
   printf("Time step size: %f\n", dt );
 
+  /* Open output files */
+  sufile = fopen("out_u_exact.dat", "w");
+  svfile = fopen("out_v_exact.dat", "w");
+  ufile = fopen("out_u.dat", "w");
+  vfile = fopen("out_v.dat", "w");
 
-  /* Initialize the App coefficients */
-  appctx.nvec = nvec;
-  appctx.w = w;
 
-
-  /*
-     Create vectors for approximate (x) and exact (s) solution, and error (e)
-  */
-  ierr = VecCreateSeq(PETSC_COMM_SELF,nreal,&x);CHKERRQ(ierr);
-  ierr = VecDuplicate(x,&appctx.s);CHKERRQ(ierr);
-  ierr = VecDuplicate(x,&e);CHKERRQ(ierr);
-
-  /* Create Petsc's timestepping context */
-  ierr = TSCreate(PETSC_COMM_SELF,&ts);CHKERRQ(ierr);
-  ierr = TSSetProblemType(ts,TS_LINEAR);CHKERRQ(ierr);
-
-  /* Allocate and initialize matrices for evaluating system Hamiltonian */
-  SetUpMatrices(&appctx);
-
-  /* Allocate system matrix */
+  /* Allocate right hand side matrix */
   ierr = MatCreate(PETSC_COMM_SELF,&M);CHKERRQ(ierr);
   ierr = MatSetSizes(M, PETSC_DECIDE, PETSC_DECIDE,nreal,nreal);CHKERRQ(ierr);
   ierr = MatSetFromOptions(M);CHKERRQ(ierr);
@@ -90,83 +73,52 @@ int main(int argc,char **argv)
   ierr = MatAssemblyBegin(M,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
   ierr = MatAssemblyEnd(M,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
 
-  /* Prepare Petsc's Time-stepper */
-  ierr = TSSetRHSFunction(ts,NULL,TSComputeRHSFunctionLinear,&appctx);CHKERRQ(ierr);
-  ierr = TSSetRHSJacobian(ts,M,M,RHSJacobian,&appctx);CHKERRQ(ierr);
-  ierr = TSSetSolution(ts,x);CHKERRQ(ierr);
+  /* Initialize Petsc's application context */
+  petsc_app = (TS_App*) malloc(sizeof(TS_App));
+  petsc_app->nvec = nvec;
+  petsc_app->w = w;
+  SetUpMatrices(petsc_app);
 
-  /* Set Time-stepping options */
+  /* Allocate and initialize Petsc's Time-stepper */
+  ierr = TSCreate(PETSC_COMM_SELF,&ts);CHKERRQ(ierr);
+  ierr = TSSetProblemType(ts,TS_LINEAR);CHKERRQ(ierr);
+  ierr = TSSetRHSFunction(ts,NULL,TSComputeRHSFunctionLinear,petsc_app);CHKERRQ(ierr);
+  ierr = TSSetRHSJacobian(ts,M,M,RHSJacobian,petsc_app);CHKERRQ(ierr);
   ierr = TSSetTimeStep(ts,dt);CHKERRQ(ierr);
   ierr = TSSetMaxSteps(ts,ntime);CHKERRQ(ierr);
   ierr = TSSetMaxTime(ts,total_time);CHKERRQ(ierr);
   ierr = TSSetExactFinalTime(ts,TS_EXACTFINALTIME_STEPOVER);CHKERRQ(ierr);
   ierr = TSSetFromOptions(ts);CHKERRQ(ierr);
 
-  /* Set the initial conditions */
-  ierr = InitialConditions(x,&appctx);CHKERRQ(ierr);
-  // VecView(x, PETSC_VIEWER_STDOUT_WORLD);
+  /* Set up XBraid's applications structure */
+  braid_app = (XB_App*) malloc(sizeof(XB_App));
+  braid_app->petsc_app = petsc_app;
+  braid_app->ts     = ts;
+  braid_app->ufile  = ufile;
+  braid_app->vfile  = vfile;
+  braid_app->sufile = sufile;
+  braid_app->svfile = svfile;
 
-  /* Prepare output */
-  FILE *logfile, *sufile, *svfile, *ufile, *vfile;
-  logfile = fopen("out_log.dat", "w");
-  sufile = fopen("out_u_exact.dat", "w");
-  svfile = fopen("out_v_exact.dat", "w");
-  ufile = fopen("out_u.dat", "w");
-  vfile = fopen("out_v.dat", "w");
-  fprintf(logfile, "# istep  time    x[1]                 exact[1]           rel. error\n");
-  printf("# istep  time    x[1]                 exact[1]           rel. error\n");
-
-
-  /* Run the timestepping loop */
-  for(PetscInt istep = 0; istep <= ntime; istep++) {
-
-    /* Step forward one time step */
-    TSStep(ts);
-
-    /* Get the exact solution at current time step */
-    TSGetTime(ts, &t);
-    ierr = ExactSolution(t,appctx.s,&appctx);CHKERRQ(ierr);
-
-    /* Compute the relative error (max-norm) */
-    ierr = VecWAXPY(e,-1.0,x, appctx.s);CHKERRQ(ierr);
-    ierr = VecNorm(e, NORM_INFINITY,&e_norm);CHKERRQ(ierr);
-    ierr = VecNorm(appctx.s, NORM_INFINITY,&s_norm);CHKERRQ(ierr);
-    e_norm = e_norm / s_norm;
-
-    /* Output */
-    VecGetArrayRead(x, &x_ptr);
-    VecGetArrayRead(appctx.s, &s_ptr);
-
-
-    fprintf(logfile, "%5d  %1.5f  %1.14e  %1.14e  %1.14e\n",istep,(double)t, x_ptr[1], s_ptr[1], (double)e_norm);
-    printf("%5d  %1.5f  %1.14e  %1.14e  %1.14e\n",istep,(double)t, x_ptr[1], s_ptr[1], (double)e_norm);
-
-    /* Write numeric and analytic solution to files */
-    fprintf(ufile,  "%.2f  ", (double) t);
-    fprintf(vfile,  "%.2f  ", (double) t);
-    fprintf(sufile, "%.2f  ", (double) t);
-    fprintf(svfile, "%.2f  ", (double) t);
-    for (int i = 0; i < nreal; i++)
-    {
-
-      if (i < nvec) // real part
-      {
-        fprintf(ufile, "%1.14e  ", x_ptr[i]);  
-        fprintf(sufile, "%1.14e  ", s_ptr[i]);
-      }  
-      else  // imaginary part
-      {
-        fprintf(vfile, "%1.14e  ", x_ptr[i]); 
-        fprintf(svfile, "%1.14e  ", s_ptr[i]);
-      }
-      
-    }
-    fprintf(ufile, "\n");
-    fprintf(vfile, "\n");
-    fprintf(sufile, "\n");
-    fprintf(svfile, "\n");
-
+  /* Initialize Braid */
+  braid_Init(MPI_COMM_WORLD, MPI_COMM_WORLD, 0.0, total_time, ntime, braid_app, my_Step, my_Init, my_Clone, my_Free, my_Sum, my_SpatialNorm, my_Access, my_BufSize, my_BufPack, my_BufUnpack, &braid_core);
+  
+  /* Set Braid options */
+  braid_SetPrintLevel( braid_core, 2);
+  braid_SetAccessLevel( braid_core, 1);
+  braid_SetMaxLevels(braid_core, 1);
+  braid_SetNRelax(braid_core, -1, 1);
+  braid_SetAbsTol(braid_core, 1e-6);
+  braid_SetCFactor(braid_core, -1, 2);
+  braid_SetMaxIter(braid_core, 10);
+  braid_SetSeqSoln(braid_core, 0);
+  int fmg = 0;
+  if (fmg)
+  {
+     braid_SetFMG(braid_core);
   }
+ 
+  /* Run braid */
+  braid_Drive(braid_core);
 
 
 
@@ -186,7 +138,7 @@ int main(int argc,char **argv)
     dt = total_time / ntime;
 
     /* Reset the time stepper */
-    ierr = InitialConditions(x,&appctx);CHKERRQ(ierr);  
+    ierr = InitialConditions(x,&petsc_app);CHKERRQ(ierr);  
     TSSetTime(ts, 0.0); 
     TSSetTimeStep(ts,dt);
     TSSetMaxSteps(ts,ntime);
@@ -201,10 +153,10 @@ int main(int argc,char **argv)
     }
     /* Compute the relative error at last time step (max-norm) */
     TSGetTime(ts, &t);
-    ExactSolution(t,appctx.s,&appctx);CHKERRQ(ierr);
-    VecWAXPY(e,-1.0,x, appctx.s);CHKERRQ(ierr);
+    ExactSolution(t,petsc_app.s,&petsc_app);CHKERRQ(ierr);
+    VecWAXPY(e,-1.0,x, petsc_app.s);CHKERRQ(ierr);
     VecNorm(e, NORM_INFINITY,&e_norm);CHKERRQ(ierr);
-    VecNorm(appctx.s, NORM_INFINITY,&s_norm);CHKERRQ(ierr);
+    VecNorm(petsc_app.s, NORM_INFINITY,&s_norm);CHKERRQ(ierr);
     e_norm = e_norm / s_norm;
 
     /* Print error norm */
@@ -215,25 +167,27 @@ int main(int argc,char **argv)
 #endif
 
   /* Clean up */
-  fclose(logfile);
   fclose(sufile);
   fclose(svfile);
   fclose(ufile);
   fclose(vfile);
-  ierr = TSDestroy(&ts);CHKERRQ(ierr);
-  ierr = MatDestroy(&M);CHKERRQ(ierr);
-  ierr = MatDestroy(&appctx.A);CHKERRQ(ierr);
-  ierr = MatDestroy(&appctx.B);CHKERRQ(ierr);
-  ierr = MatDestroy(&appctx.IKbMbd);CHKERRQ(ierr);
-  ierr = MatDestroy(&appctx.bMbdTKI);CHKERRQ(ierr);
-  ierr = MatDestroy(&appctx.aPadTKI);CHKERRQ(ierr);
-  ierr = MatDestroy(&appctx.IKaPad);CHKERRQ(ierr);
-  ierr = VecDestroy(&x);CHKERRQ(ierr);
-  ierr = VecDestroy(&appctx.s);CHKERRQ(ierr);
-  ierr = VecDestroy(&e);CHKERRQ(ierr);
+  TSDestroy(&ts);CHKERRQ(ierr);
+  MatDestroy(&M);CHKERRQ(ierr);
+  MatDestroy(&petsc_app->A);CHKERRQ(ierr);
+  MatDestroy(&petsc_app->B);CHKERRQ(ierr);
+  MatDestroy(&petsc_app->IKbMbd);CHKERRQ(ierr);
+  MatDestroy(&petsc_app->bMbdTKI);CHKERRQ(ierr);
+  MatDestroy(&petsc_app->aPadTKI);CHKERRQ(ierr);
+  MatDestroy(&petsc_app->IKaPad);CHKERRQ(ierr);
+  free(petsc_app);
+
+  /* Cleanup XBraid */
+  braid_Destroy(braid_core);
+  free(braid_app);
 
   /* Finallize Petsc */
   ierr = PetscFinalize();
+
   return ierr;
 }
 
