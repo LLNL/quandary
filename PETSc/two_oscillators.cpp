@@ -126,6 +126,15 @@ int main(int argc,char **argv)
 /* 
  * Testing time stepper convergence (dt-test) 
  */
+  Vec x;      // numerical solution
+  Vec exact;  // exact solution
+  Vec error;  // error  
+  double t;
+  double error_norm, exact_norm;
+
+  VecCreateSeq(PETSC_COMM_SELF,nreal,&x);
+  VecCreateSeq(PETSC_COMM_SELF,nreal,&exact);
+  VecCreateSeq(PETSC_COMM_SELF,nreal,&error);
 
   total_time = 10.0;
   printf("\n\n Running time-stepping convergence test... \n\n");
@@ -138,31 +147,34 @@ int main(int argc,char **argv)
     dt = total_time / ntime;
 
     /* Reset the time stepper */
-    ierr = InitialConditions(x,&petsc_app);CHKERRQ(ierr);  
+    InitialConditions(x,petsc_app);
     TSSetTime(ts, 0.0); 
     TSSetTimeStep(ts,dt);
     TSSetMaxSteps(ts,ntime);
+    TSSetSolution(ts, x);
 
     /* Run time-stepping loop */
     for(PetscInt istep = 0; istep <= ntime; istep++) 
     {
       TSStep(ts);
-      TSGetTime(ts, &t);
-      VecGetArrayRead(x, &x_ptr);
-      // printf("%5d  %1.5f  %1.14e \n",istep,(double)t, x_ptr[1]);
     }
+
     /* Compute the relative error at last time step (max-norm) */
     TSGetTime(ts, &t);
-    ExactSolution(t,petsc_app.s,&petsc_app);CHKERRQ(ierr);
-    VecWAXPY(e,-1.0,x, petsc_app.s);CHKERRQ(ierr);
-    VecNorm(e, NORM_INFINITY,&e_norm);CHKERRQ(ierr);
-    VecNorm(petsc_app.s, NORM_INFINITY,&s_norm);CHKERRQ(ierr);
-    e_norm = e_norm / s_norm;
+    ExactSolution(t,exact,petsc_app);
+    VecWAXPY(error,-1.0,x, exact);
+    VecNorm(error, NORM_INFINITY,&error_norm);
+    VecNorm(exact, NORM_INFINITY,&exact_norm);
+    error_norm = error_norm / exact_norm;
 
     /* Print error norm */
-    printf("%8d   %1.e   %1.14e\n", ntime, dt, e_norm);
+    printf("%8d   %1.e   %1.14e\n", ntime, dt, error_norm);
 
   }
+
+  VecDestroy(&x);
+  VecDestroy(&exact);
+  VecDestroy(&error);
 
 #endif
 
