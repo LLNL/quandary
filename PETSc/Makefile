@@ -1,5 +1,5 @@
 # Set location of PETSC
-PETSC_DIR = /usr/tce/packages/petsc/petsc-3.8.3-mvapich2-2.2-gcc-4.8-redhat
+#PETSC_DIR = /usr/tce/packages/petsc/petsc-3.8.3-mvapich2-2.2-gcc-4.8-redhat
 
 # Include some petsc libs, these might change depending on the example you run
 include ${PETSC_DIR}/lib/petsc/conf/variables
@@ -13,8 +13,10 @@ LDPATH  = ${PETSC_DIR}/${PETSC_ARCH}/lib
 BRAID_DIR = ${HOME}/Numerics/xbraid
 
 # Set flags
-LDFLAGS = -lpetsc -lm ${BRAID_DIR}/braid/libbraid.a
-CPPFLAGS= -I${BRAID_DIR}/braid
+LDFLAGS = -lpetsc -lm -lstdc++ ${BRAID_DIR}/braid/libbraid.a
+CPPFLAGS= -I${BRAID_DIR}/braid 
+
+CC=mpiCC
 
 .PHONY: all cleanup
 
