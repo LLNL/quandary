@@ -2,6 +2,16 @@
 #include "braid_wrapper.c"
 
 
+static char help[] ="Solves the Liouville-von-Neumann equations, two oscillators.\n\
+Input parameters:\n\
+  -nlvl <int>      : Set the number of levels (default: 2) \n\
+  -ntime <int>        : Set the number of time steps \n\
+  -dt <double>        : Set the time step size \n\
+  -cf <int>           : Set XBraid's coarsening factor (default: 5) \n\
+  -ml <int>           : Set XBraid's max levels (default: 5)\n\
+  -mi <int>           : Set XBraid's max number of iterations (default: 50)\n\n";
+
+
 int main(int argc,char **argv)
 {
   PetscInt       nlvl;         // Number of levels for each oscillator (currently 2)
@@ -15,17 +25,23 @@ int main(int argc,char **argv)
   Mat            M;            // System matrix for real-valued system
   TS             ts;           // Timestepping context
   PetscReal      w;            // Oscillator frequency
-  braid_Core     braid_core;         // Core for XBraid simulation
-  XB_App        *braid_app;          // XBraid's application context
-  TS_App        *petsc_app;       // Petsc's application context
+  TS_App        *petsc_app;    // Petsc's application context
+  braid_Core     braid_core;   // Core for XBraid simulation
+  XB_App        *braid_app;    // XBraid's application context
+  PetscInt       cfactor;      // XBraid's coarsening factor
+  PetscInt       maxlevels;    // XBraid's maximum number of levels
+  PetscInt       maxiter;      // XBraid's maximum number of iterations
+
 
   FILE *sufile, *svfile, *ufile, *vfile;
+  char filename[255];
   PetscErrorCode ierr;
-  PetscMPIInt    mpisize;
+  PetscMPIInt    mpisize, mpirank;
 
   /* Initialize Petsc */
   ierr = PetscInitialize(&argc,&argv,(char*)0,help);if (ierr) return ierr;
   ierr = MPI_Comm_size(PETSC_COMM_WORLD,&mpisize);CHKERRQ(ierr);
+  ierr = MPI_Comm_rank(PETSC_COMM_WORLD,&mpirank);CHKERRQ(ierr);
 
   /* Set default constants */
   nlvl = 2;
@@ -33,12 +49,17 @@ int main(int argc,char **argv)
   ntime = 1000;
   dt = 0.0001;
   w = 1.0;
+  cfactor = 5;
+  maxlevels = 5;
+  maxiter = 50;
 
   /* Parse command line arguments to overwrite default constants */
   PetscOptionsGetInt(NULL,NULL,"-nlvl",&nlvl,NULL);
-  PetscOptionsGetInt(NULL,NULL,"-nosci",&nlvl,NULL);
   PetscOptionsGetInt(NULL,NULL,"-ntime",&ntime,NULL);
   PetscOptionsGetReal(NULL,NULL,"-dt",&dt,NULL);
+  PetscOptionsGetInt(NULL,NULL,"-cf",&cfactor,NULL);
+  PetscOptionsGetInt(NULL,NULL,"-ml",&maxlevels,NULL);
+  PetscOptionsGetInt(NULL,NULL,"-mi",&maxiter,NULL);
 
   /* Sanity check */
   if (nosci != 2 || nlvl != 2)
@@ -52,17 +73,22 @@ int main(int argc,char **argv)
   nvec = (PetscInt) pow(nsys,2);
   nreal = 2 * nvec;
   total_time = ntime * dt;
-  printf("System with %d oscillators, %d levels. \n", nosci, nlvl);
-  printf("Time horizon:   [0,%.1f]\n", total_time);
-  printf("Number of time steps: %d\n", ntime);
-  printf("Time step size: %f\n", dt );
+
+
+  /* Screen output */
+  if (mpirank == 0)
+  {
+    printf("System with %d oscillators, %d levels. \n", nosci, nlvl);
+    printf("Time horizon:   [0,%.1f]\n", total_time);
+    printf("Number of time steps: %d\n", ntime);
+    printf("Time step size: %f\n", dt );
+  }
 
   /* Open output files */
-  sufile = fopen("out_u_exact.dat", "w");
-  svfile = fopen("out_v_exact.dat", "w");
-  ufile = fopen("out_u.dat", "w");
-  vfile = fopen("out_v.dat", "w");
-
+  sprintf(filename, "out_u_exact.%04d.dat", mpirank); sufile = fopen(filename, "w");
+  sprintf(filename, "out_v_exact.%04d.dat", mpirank); svfile = fopen(filename, "w");
+  sprintf(filename, "out_u.%04d.dat", mpirank);       ufile = fopen(filename, "w");
+  sprintf(filename, "out_v.%04d.dat", mpirank);       vfile = fopen(filename, "w");
 
   /* Allocate right hand side matrix */
   ierr = MatCreate(PETSC_COMM_SELF,&M);CHKERRQ(ierr);
@@ -106,17 +132,14 @@ int main(int argc,char **argv)
   /* Set Braid options */
   braid_SetPrintLevel( braid_core, 2);
   braid_SetAccessLevel( braid_core, 1);
-  braid_SetMaxLevels(braid_core, 2);
+  braid_SetMaxLevels(braid_core, maxlevels);
   braid_SetNRelax(braid_core, -1, 1);
   braid_SetAbsTol(braid_core, 1e-6);
-  braid_SetCFactor(braid_core, -1, 2);
-  braid_SetMaxIter(braid_core, 10);
+  braid_SetCFactor(braid_core, -1, cfactor);
+  braid_SetMaxIter(braid_core, maxiter);
+  braid_SetSkip(braid_core, 0);
   braid_SetSeqSoln(braid_core, 0);
-  int fmg = 0;
-  if (fmg)
-  {
-     braid_SetFMG(braid_core);
-  }
+  
  
   /* Run braid */
   braid_Drive(braid_core);

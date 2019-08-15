@@ -1,32 +1,12 @@
 #include <petscts.h>
-
-static char help[] ="Solves the Liouville-von-Neumann equations, two oscillators.\n\
-Input parameters:\n\
-  -nlvl <int>      : Set the number of levels (default: 2) \n\
-  -nosci <int> : Set the number of oscillators (default: 2) \n\
-  -ntime <int>        : Set the number of time steps \n\
-  -dt <double>        : Set the time step size \n\
-  -w  <double>        : Set the oscillator frequency\n\n";
-
 /*
-   Application context contains data needed to perform a time step.
+   Petsc's application context containing data needed to perform a time step.
 */
 typedef struct {
   PetscInt    nvec;    /* Dimension of vectorized system */
   Mat         IKbMbd, bMbdTKI, aPadTKI, IKaPad, A, B;
   PetscReal   w;       /* Oscillator frequencies */
 } TS_App;
-
-
-// /*  Declare external routines */
-// extern PetscErrorCode SetUpMatrices(AppCtx*);
-// extern PetscErrorCode InitialConditions(Vec,AppCtx*);
-// extern PetscErrorCode ExactSolution(PetscReal,Vec,AppCtx*);
-// extern PetscScalar F(PetscReal,AppCtx*);
-// extern PetscScalar G(PetscReal,AppCtx*);
-// extern PetscErrorCode RHSJacobian(TS,PetscReal,Vec,Mat,Mat,void*);
-
-
 
 
 /*
