@@ -119,8 +119,20 @@ int my_Sum(braid_App    app,
        double       beta,
        braid_Vector y)
 {
+    const PetscScalar *x_ptr;
+    PetscScalar *y_ptr;
 
-    VecAXPBY(y->x, alpha, beta, x->x);
+    VecGetArrayRead(x->x, &x_ptr);
+    VecGetArray(y->x, &y_ptr);
+
+    for (int i = 0; i< 2 * app->petsc_app->nvec; i++)
+    {
+        y_ptr[i] = alpha * x_ptr[i] + beta * y_ptr[i];
+    }
+
+    VecRestoreArray(y->x, &y_ptr);
+
+    // VecAXPBY(y->x, alpha, beta, x->x);
 
     return 0;
 }

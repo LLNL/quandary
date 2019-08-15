@@ -26,7 +26,6 @@ int main(int argc,char **argv)
   /* Initialize Petsc */
   ierr = PetscInitialize(&argc,&argv,(char*)0,help);if (ierr) return ierr;
   ierr = MPI_Comm_size(PETSC_COMM_WORLD,&mpisize);CHKERRQ(ierr);
-  if (mpisize != 1) SETERRQ(PETSC_COMM_SELF,1,"This is a uniprocessor example only!");
 
   /* Set default constants */
   nlvl = 2;
@@ -105,7 +104,7 @@ int main(int argc,char **argv)
   /* Set Braid options */
   braid_SetPrintLevel( braid_core, 2);
   braid_SetAccessLevel( braid_core, 1);
-  braid_SetMaxLevels(braid_core, 1);
+  braid_SetMaxLevels(braid_core, 2);
   braid_SetNRelax(braid_core, -1, 1);
   braid_SetAbsTol(braid_core, 1e-6);
   braid_SetCFactor(braid_core, -1, 2);
