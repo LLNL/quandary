@@ -81,6 +81,8 @@ int main(int argc,char **argv)
   /* Allocate and initialize Petsc's Time-stepper */
   ierr = TSCreate(PETSC_COMM_SELF,&ts);CHKERRQ(ierr);
   ierr = TSSetProblemType(ts,TS_LINEAR);CHKERRQ(ierr);
+  ierr = TSSetType(ts, TSTHETA); CHKERRQ(ierr);
+  ierr = TSThetaSetTheta(ts, 0.5); CHKERRQ(ierr);   // midpoint rule
   ierr = TSSetRHSFunction(ts,NULL,TSComputeRHSFunctionLinear,petsc_app);CHKERRQ(ierr);
   ierr = TSSetRHSJacobian(ts,M,M,RHSJacobian,petsc_app);CHKERRQ(ierr);
   ierr = TSSetTimeStep(ts,dt);CHKERRQ(ierr);
