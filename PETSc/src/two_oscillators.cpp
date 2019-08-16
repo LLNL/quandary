@@ -1,6 +1,6 @@
 #include "two_oscillators.hpp"
 
-PetscErrorCode ExactSolution(PetscReal t,Vec s,TS_App*petsc_app)
+PetscErrorCode ExactSolution(PetscReal t,Vec s, PetscReal freq)
 {
   PetscScalar    *s_localptr;
   PetscErrorCode ierr;
@@ -10,8 +10,8 @@ PetscErrorCode ExactSolution(PetscReal t,Vec s,TS_App*petsc_app)
 
   /* Write the solution into the array locations.
    *  Alternatively, we could use VecSetValues() or VecSetValuesLocal(). */
-  PetscScalar phi = (1./4.) * (t - (1./petsc_app->w)*PetscSinScalar(petsc_app->w*t));
-  PetscScalar theta = (1./4.) * (t + (1./petsc_app->w)*PetscCosScalar(petsc_app->w*t) - 1.);
+  PetscScalar phi = (1./4.) * (t - (1./ freq)*PetscSinScalar(freq*t));
+  PetscScalar theta = (1./4.) * (t + (1./freq)*PetscCosScalar(freq*t) - 1.);
   PetscScalar cosphi = PetscCosScalar(phi);
   PetscScalar costheta = PetscCosScalar(theta);
   PetscScalar sinphi = PetscSinScalar(phi);
@@ -61,21 +61,21 @@ PetscErrorCode ExactSolution(PetscReal t,Vec s,TS_App*petsc_app)
 
 PetscErrorCode InitialConditions(Vec x,TS_App *petsc_app)
 {
-  ExactSolution(0,x,petsc_app);
+  ExactSolution(0,x,petsc_app->w);
   return 0;
 }
 
 
-PetscScalar F(PetscReal t,TS_App *petsc_app)
+PetscScalar F(PetscReal t, PetscReal freq)
 {
-  PetscScalar f = (1./4.) * (1. - PetscCosScalar(petsc_app->w*t));
+  PetscScalar f = (1./4.) * (1. - PetscCosScalar(freq * t));
   return f;
 }
 
 
-PetscScalar G(PetscReal t,TS_App *petsc_app)
+PetscScalar G(PetscReal t,PetscReal freq)
 {
-  PetscScalar g = (1./4.) * (1. - PetscSinScalar(petsc_app->w*t));
+  PetscScalar g = (1./4.) * (1. - PetscSinScalar(freq * t));
   return g;
 }
 
@@ -97,8 +97,8 @@ PetscErrorCode RHSJacobian(TS ts,PetscReal t,Vec u,Mat M,Mat P,void *ctx)
   }
 
   /* Compute time-dependent control functions */
-  f = F(t, petsc_app);
-  g = G(t, petsc_app);
+  f = F(t, petsc_app->w);
+  g = G(t, petsc_app->w);
 
 
   /* Set up real part of system matrix (A) */

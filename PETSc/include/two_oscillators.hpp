@@ -17,11 +17,11 @@ typedef struct {
  *   Input:
  *      t - current time
  *      s - vector in which exact solution will be computed
- *      TS_App - application context
+ *      freq - Oscillator frequency
  *   Output:
  *      s - vector with the newly computed exact solution
  */
-PetscErrorCode ExactSolution(PetscReal t,Vec s,TS_App*petsc_app);
+PetscErrorCode ExactSolution(PetscReal t,Vec s, PetscReal freq);
 
 
 /*

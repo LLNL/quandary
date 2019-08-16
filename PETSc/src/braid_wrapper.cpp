@@ -130,7 +130,7 @@ int my_Access(braid_App       app,
 
     /* Get exact solution */
     VecDuplicate(u->x,&exact);
-    ExactSolution(t,exact,app->petsc_app);
+    ExactSolution(t,exact,app->petsc_app->w);
 
     /* Compute relative error norm */
     VecDuplicate(u->x,&error);
