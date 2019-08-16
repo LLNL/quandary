@@ -143,7 +143,7 @@ int my_Access(braid_App       app,
     const PetscScalar *x_ptr, *exact_ptr;
     VecGetArrayRead(u->x, &x_ptr);
     VecGetArrayRead(exact, &exact_ptr);
-    // printf("%5d  %1.5f  %1.14e  %1.14e  %1.14e \n",istep,(double)t, x_ptr[1], exact_ptr[1], err_norm);
+    printf("%5d  %1.5f  %1.14e  %1.14e  %1.14e \n",istep,(double)t, x_ptr[1], exact_ptr[1], err_norm);
 
     /* Write numeric and analytic solution to files */
     fprintf(app->ufile,  "%.2f  ", t);

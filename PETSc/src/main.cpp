@@ -49,7 +49,7 @@ int main(int argc,char **argv)
   nlvl = 2;
   nosci = 2;
   ntime = 1000;
-  dt = 0.0001;
+  dt = 0.01;
   w = 1.0;
   cfactor = 5;
   maxlevels = 5;
