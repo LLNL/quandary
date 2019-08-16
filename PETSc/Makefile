@@ -1,55 +1,54 @@
 # Set location of PETSC
 #PETSC_DIR = /usr/tce/packages/petsc/petsc-3.8.3-mvapich2-2.2-gcc-4.8-redhat
 
+# Set Braid location 
+BRAID_DIR = ${HOME}/Numerics/xbraid
+
+# Some braid vars
+BRAID_INC_DIR = $(BRAID_DIR)/braid
+BRAID_LIB_FILE = $(BRAID_DIR)/braid/libbraid.a
+
+
 # Include some petsc libs, these might change depending on the example you run
 include ${PETSC_DIR}/lib/petsc/conf/variables
 include ${PETSC_DIR}/lib/petsc/conf/rules
 include ${PETSC_DIR}/lib/petsc/conf/test
+#
+# Set direction of source and header files, and build direction
+SRC_DIR   = src
+INC_DIR   = include
+BUILD_DIR = build
 
-# location of petsc library
+# list all source and object files
+SRC_FILES  = $(wildcard $(SRC_DIR)/*.cpp)
+SRC_FILES += $(wildcard $(SRC_DIR)/*/*.cpp)
+OBJ_FILES  = $(patsubst $(SRC_DIR)/%.cpp,$(BUILD_DIR)/%.o,$(SRC_FILES))
+
+# set include directory
+INC = -I$(INC_DIR) -I$(BRAID_INC_DIR) -I${PETSC_DIR}/include -I${PETSC_DIR}/${PETSC_ARCH}/include
+
+# Set Library paths and flags
 LDPATH  = ${PETSC_DIR}/${PETSC_ARCH}/lib
+LDFLAGS = -lpetsc -lm ${BRAID_LIB_FILE}
 
-# Set Braid location 
-BRAID_DIR = ${HOME}/Numerics/xbraid
+# Rule for linking main
+main: $(OBJ_FILES)
+	$(CC) -o $@ $(OBJ_FILES) $(LDFLAGS) -L$(LDPATH)
 
-# Set flags
-LDFLAGS = -lpetsc -lm -lstdc++ ${BRAID_DIR}/braid/libbraid.a
-CPPFLAGS= -I${BRAID_DIR}/braid 
+# Rule for building all src files
+$(BUILD_DIR)/%.o : $(SRC_DIR)/%.cpp
+	@mkdir -p $(@D)
+	$(CC) -c $< -o $@ $(INC)
+	@$(CC) -MM $< -MP -MT $@ -MF $(@:.o=.d) $(INC)
 
-CC=mpiCC
 
 .PHONY: all cleanup
 
-# Put all files that are to be compiled here (no ending)
-ALL_PROGS = ex-01 ex-02 base dttest matrix_free two_oscillators
-
-# Type 'make all' to compile and link all examples in $ALL_PROGs
-all: $(ALL_PROGS)
-
-# Type'make ex-01' to compile and link only ex-01.c
-ex-01: ex-01.o
-	$(CC) -L${LDPATH} -o $@ $^ $(LDFLAGS)
-
-# Type'make ex-01' to compile and link only ex-01.c
-ex-02: ex-02.o
-		$(CC) -L${LDPATH} -o $@ $^ $(LDFLAGS)
-
-# Type'make ex-02' to compile and link only ex-02.c
-base: base.o
-	$(CC) -L${LDPATH} -o $@ $^ $(LDFLAGS)
-
-# Type'make ex-02' to compile and link only ex-02.c
-dttest: dttest.o
-	$(CC) -L${LDPATH} -o $@ $^ $(LDFLAGS)
-
-matrix_free: matrix_free.o
-	$(CC) -L${LDPATH} -o $@ $^ $(LDFLAGS)
-
-two_oscillators: two_oscillators.o
-	$(CC) $(CPPFLAGS) -L${LDPATH} -o $@ $^ $(LDFLAGS)
-
-
 # use 'make cleanup' to remove object files and executable
 cleanup:
-	rm -f $(ALL_PROGS)
-	rm -f *.o
+	rm -fr $(BUILD_DIR) 
+	rm -f  main 
+
+
+# include the dependency files
+-include $(OBJ_FILES:.o=.d)

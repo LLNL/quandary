@@ -1,25 +1,4 @@
-#include "two_oscillators_lib.cpp"
-#include "braid.h"
-
-
-/* Define the solution at one time step */
-typedef struct _braid_Vector_struct {
-    Vec x;    
-} my_Vector;
-
-
-/* Define the braid application structure */
-typedef struct _braid_App_struct
-{
-    TS_App* petsc_app;   // Petsc application struct
-    TS      ts;       // Petsc Time-stepper struct
-    FILE *ufile;
-    FILE *vfile;
-    FILE *sufile;
-    FILE *svfile;
-} XB_App;
-
-
+#include "braid_wrapper.hpp"
 
 
 int my_Step(braid_App    app,
@@ -46,7 +25,6 @@ int my_Step(braid_App    app,
 
 
 
-/* Allocate and initialize a braid vector */
 int my_Init(braid_App     app,
         double        t,
         braid_Vector *u_ptr)
@@ -94,7 +72,6 @@ int my_Clone(braid_App     app,
 
 
 
-/* Free a braid vector */
 int my_Free(braid_App    app,
         braid_Vector u)
 {
@@ -222,7 +199,6 @@ int my_BufSize(braid_App           app,
 }
 
 
-/* Pack a braid vector into a buffer */
 int my_BufPack(braid_App       app,
            braid_Vector        u,
            void                *buffer,

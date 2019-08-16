@@ -1,23 +1,5 @@
-#include <petscts.h>
-/*
-   Petsc's application context containing data needed to perform a time step.
-*/
-typedef struct {
-  PetscInt    nvec;    /* Dimension of vectorized system */
-  Mat         IKbMbd, bMbdTKI, aPadTKI, IKaPad, A, B;
-  PetscReal   w;       /* Oscillator frequencies */
-} TS_App;
+#include "two_oscillators.hpp"
 
-
-/*
- *   Compute the exact solution at a given time.
- *   Input:
- *      t - current time
- *      s - vector in which exact solution will be computed
- *      TS_App - application context
- *   Output:
- *      s - vector with the newly computed exact solution
- */
 PetscErrorCode ExactSolution(PetscReal t,Vec s,TS_App*petsc_app)
 {
   PetscScalar    *s_localptr;
@@ -76,46 +58,28 @@ PetscErrorCode ExactSolution(PetscReal t,Vec s,TS_App*petsc_app)
   return 0;
 }
 
-/*
- *  Set the initial condition at time t_0
- *  Input:
- *     u - uninitialized solution vector (global)
- *     TS_App - application context
- *  Output Parameter:
- *     u - vector with solution at initial time (global)
- */
+
 PetscErrorCode InitialConditions(Vec x,TS_App *petsc_app)
 {
   ExactSolution(0,x,petsc_app);
   return 0;
 }
-/*
- * Oscillator 1 (real part)
- */
+
+
 PetscScalar F(PetscReal t,TS_App *petsc_app)
 {
   PetscScalar f = (1./4.) * (1. - PetscCosScalar(petsc_app->w*t));
   return f;
 }
 
-/*
- * Oscillator 2 (imaginary part)
- */
+
 PetscScalar G(PetscReal t,TS_App *petsc_app)
 {
   PetscScalar g = (1./4.) * (1. - PetscSinScalar(petsc_app->w*t));
   return g;
 }
 
-/*
- * Evaluate the right-hand side system Matrix (real, vectorized Hamiltonian system matrix)
- * In: ts - time stepper
- *      t - current time
- *      u - solution vector x(t) 
- *      M - right hand side system Matrix
- *      P - ??
- *    ctx - Application context 
- */
+
 PetscErrorCode RHSJacobian(TS ts,PetscReal t,Vec u,Mat M,Mat P,void *ctx)
 {
   TS_App   *petsc_app = (TS_App*)ctx;
@@ -185,9 +149,6 @@ PetscErrorCode RHSJacobian(TS ts,PetscReal t,Vec u,Mat M,Mat P,void *ctx)
 
 
 
-/*
- * Initialize fixed matrices for assembling system Hamiltonian
- */
 PetscErrorCode SetUpMatrices(TS_App *petsc_app)
 {
   PetscInt       nvec = petsc_app->nvec;
