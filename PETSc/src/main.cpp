@@ -6,12 +6,13 @@
 
 static char help[] ="Solves the Liouville-von-Neumann equations, two oscillators.\n\
 Input parameters:\n\
-  -nlvl <int>      : Set the number of levels (default: 2) \n\
-  -ntime <int>        : Set the number of time steps \n\
-  -dt <double>        : Set the time step size \n\
-  -cf <int>           : Set XBraid's coarsening factor (default: 5) \n\
-  -ml <int>           : Set XBraid's max levels (default: 5)\n\
-  -mi <int>           : Set XBraid's max number of iterations (default: 50)\n\n";
+  -nlvl <int>      : Set the number of levels     (default: 2) \n\
+  -w  <double>     : Set Oscillator frequency     (default: 10) \n\
+  -ntime <int>     : Set the number of time steps (default: 1000) \n\
+  -dt <double>     : Set the time step size       (default: 0.01)\n\
+  -cf <int>        : Set XBraid's coarsening factor        (default: 5) \n\
+  -ml <int>        : Set XBraid's max levels               (default: 5)\n\
+  -mi <int>        : Set XBraid's max number of iterations (default: 50)\n\n";
 
 
 int main(int argc,char **argv)
@@ -50,13 +51,14 @@ int main(int argc,char **argv)
   nosci = 2;
   ntime = 1000;
   dt = 0.01;
-  w = 1.0;
+  w = 10.0;
   cfactor = 5;
   maxlevels = 5;
   maxiter = 50;
 
   /* Parse command line arguments to overwrite default constants */
   PetscOptionsGetInt(NULL,NULL,"-nlvl",&nlvl,NULL);
+  PetscOptionsGetReal(NULL,NULL,"-w",&w,NULL);
   PetscOptionsGetInt(NULL,NULL,"-ntime",&ntime,NULL);
   PetscOptionsGetReal(NULL,NULL,"-dt",&dt,NULL);
   PetscOptionsGetInt(NULL,NULL,"-cf",&cfactor,NULL);
@@ -123,6 +125,7 @@ int main(int argc,char **argv)
   braid_app = (XB_App*) malloc(sizeof(XB_App));
   braid_app->petsc_app = petsc_app;
   braid_app->ts     = ts;
+  braid_app->ntime  = ntime;
   braid_app->ufile  = ufile;
   braid_app->vfile  = vfile;
   braid_app->sufile = sufile;
@@ -187,7 +190,7 @@ int main(int argc,char **argv)
 
     /* Compute the relative error at last time step (max-norm) */
     TSGetTime(ts, &t);
-    ExactSolution(t,exact,petsc_app);
+    ExactSolution(t,exact,petsc_app->w);
     VecWAXPY(error,-1.0,x, exact);
     VecNorm(error, NORM_INFINITY,&error_norm);
     VecNorm(exact, NORM_INFINITY,&exact_norm);

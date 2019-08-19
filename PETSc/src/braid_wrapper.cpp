@@ -139,11 +139,15 @@ int my_Access(braid_App       app,
     VecNorm(exact, NORM_2,&exact_norm);
     err_norm = err_norm / exact_norm;
 
-    /* Screen Output of error norm */
     const PetscScalar *x_ptr, *exact_ptr;
     VecGetArrayRead(u->x, &x_ptr);
     VecGetArrayRead(exact, &exact_ptr);
-    printf("%5d  %1.5f  %1.14e  %1.14e  %1.14e \n",istep,(double)t, x_ptr[1], exact_ptr[1], err_norm);
+
+    /* Screen Output of error norm */
+    if (istep == app->ntime){
+        printf("Last step: ");
+        printf("%5d  %1.5f  x[1] = %1.14e  exact[1] = %1.14e  err = %1.14e \n",istep,(double)t, x_ptr[1], exact_ptr[1], err_norm);
+    } 
 
     /* Write numeric and analytic solution to files */
     fprintf(app->ufile,  "%.2f  ", t);

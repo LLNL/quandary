@@ -15,6 +15,7 @@ typedef struct _braid_App_struct
 {
     TS_App* petsc_app;   // Petsc application struct
     TS      ts;       // Petsc Time-stepper struct
+    int     ntime;    // number of time steps
     FILE *ufile;
     FILE *vfile;
     FILE *sufile;
