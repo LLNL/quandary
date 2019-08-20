@@ -99,6 +99,7 @@ int main(int argc,char **argv)
   /* Allocate right hand side matrix */
   ierr = MatCreate(PETSC_COMM_SELF,&M);CHKERRQ(ierr);
   ierr = MatSetSizes(M, PETSC_DECIDE, PETSC_DECIDE,nreal,nreal);CHKERRQ(ierr);
+  ierr = MatSetOptionsPrefix(M, "system");
   ierr = MatSetFromOptions(M);CHKERRQ(ierr);
   ierr = MatSetUp(M);CHKERRQ(ierr);
   ierr = MatAssemblyBegin(M,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);

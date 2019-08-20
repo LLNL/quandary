@@ -82,19 +82,19 @@ PetscScalar G(PetscReal t,PetscReal freq)
 
 PetscErrorCode RHSJacobian(TS ts,PetscReal t,Vec u,Mat M,Mat P,void *ctx)
 {
-  TS_App   *petsc_app = (TS_App*)ctx;
-  PetscInt        nvec = petsc_app->nvec;
+  TS_App *petsc_app = (TS_App*)ctx;
+  PetscInt nvec = petsc_app->nvec;
   PetscScalar f, g;
-  PetscScalar a[(nvec * nvec)],  b[(nvec * nvec)]; 
-  PetscInt idx[nvec], idxn[nvec];  
   PetscErrorCode ierr;
+  PetscInt ncol;
+  const PetscInt *col_idx;
+  const PetscScalar *vals;
+  PetscScalar *negvals;
+  PetscInt *col_idx_shift;
 
-/* Setup indices */
-  for(int i = 0; i < nvec; i++)
-  {
-    idx[i] = i;
-    idxn[i] = i + nvec;
-  }
+  /* Allocate tmp vectors */
+  ierr = PetscMalloc1(nvec, &col_idx_shift);CHKERRQ(ierr);
+  ierr = PetscMalloc1(nvec, &negvals);CHKERRQ(ierr);
 
   /* Compute time-dependent control functions */
   f = F(t, petsc_app->w);
@@ -111,37 +111,52 @@ PetscErrorCode RHSJacobian(TS ts,PetscReal t,Vec u,Mat M,Mat P,void *ctx)
   ierr = MatAXPY(petsc_app->B,f,petsc_app->aPadTKI,DIFFERENT_NONZERO_PATTERN);CHKERRQ(ierr);
   ierr = MatAXPY(petsc_app->B,-1.*f,petsc_app->IKaPad,DIFFERENT_NONZERO_PATTERN);CHKERRQ(ierr);
 
-  //MatView(petsc_app->A, PETSC_VIEWER_STDOUT_SELF);
-  //MatView(petsc_app->B, PETSC_VIEWER_STDOUT_SELF);
+  // MatView(petsc_app->A, PETSC_VIEWER_STDOUT_SELF);
+  // MatView(petsc_app->B, PETSC_VIEWER_STDOUT_SELF);
 
-  /* Get values of A */
-  MatGetValues(petsc_app->A, nvec, idx, nvec, idx, a);
+  /* Set up Jacobian M 
+   * M(0, 0) =  A    M(0,1) = B
+   * M(0, 1) = -B    M(1,1) = A
+   */
+  for (int irow = 0; irow < nvec; irow++) {
+    PetscInt irow_shift = irow + nvec;
 
-  /* M(0, 0) = A */
-  MatSetValues(M, nvec, idx, nvec, idx, a , INSERT_VALUES);
-  /* Set M(1, 1) = A */
-  MatSetValues(M, nvec, idxn, nvec, idxn, a , INSERT_VALUES);
+    /* Get row in A */
+    ierr = MatGetRow(petsc_app->A, irow, &ncol, &col_idx, &vals);CHKERRQ(ierr);
+    for (int icol = 0; icol < ncol; icol++)
+    {
+      col_idx_shift[icol] = col_idx[icol] + nvec;
+    }
+    // Set A in M: M(0,0) = A  M(1,1) = A
+    ierr = MatSetValues(M,1,&irow,ncol,col_idx,vals,INSERT_VALUES);CHKERRQ(ierr);
+    ierr = MatSetValues(M,1,&irow_shift,ncol,col_idx_shift,vals,INSERT_VALUES);CHKERRQ(ierr);
+    ierr = MatRestoreRow(petsc_app->A,irow,&ncol,&col_idx,&vals);CHKERRQ(ierr);
 
-  /* Get values of B */
-  MatGetValues(petsc_app->B, nvec, idx, nvec, idx, b);
-
-  /* Set M(1, 0) = B */
-  MatSetValues(M, nvec, idxn, nvec, idx, b, INSERT_VALUES);
-  /* Set M(0, 1) = -B */
-  for(int i = 0; i < nvec * nvec; i++)
-  {
-    b[i] = -1.0 * b[i];
+    /* Get row in B */
+    ierr = MatGetRow(petsc_app->B, irow, &ncol, &col_idx, &vals);CHKERRQ(ierr);
+    for (int icol = 0; icol < ncol; icol++)
+    {
+      col_idx_shift[icol] = col_idx[icol] + nvec;
+      negvals[icol] = -vals[icol];
+    }
+    // Set B in M: M(1,0) = B, M(0,1) = -B
+    ierr = MatSetValues(M,1,&irow,ncol,col_idx_shift,negvals,INSERT_VALUES);CHKERRQ(ierr);
+    ierr = MatSetValues(M,1,&irow_shift,ncol,col_idx,vals,INSERT_VALUES);CHKERRQ(ierr);
+    ierr = MatRestoreRow(petsc_app->B,irow,&ncol,&col_idx,&vals);CHKERRQ(ierr);
   }
-  MatSetValues(M, nvec, idx, nvec, idxn, b, INSERT_VALUES);
 
-  /* Assemble the system matrix */
+  /* Assemble M */
   ierr = MatAssemblyBegin(M,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
   ierr = MatAssemblyEnd(M,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
-
-  /* TODO: Store M in sparse matrix format! */
-  /* Do we really need to store A and B explicitely? They are only used here, so maybe we can assemble M from g,f,IKbMDb, bMbdTKI, aPadTKI, IKaPad directly... */
-
   // MatView(M, PETSC_VIEWER_STDOUT_SELF);
+
+  /* Cleanup */
+  ierr = PetscFree(col_idx_shift);
+  ierr = PetscFree(negvals);
+
+
+  /* TODO: Do we really need to store A and B explicitely? They are only used here, so maybe we can assemble M from g,f,IKbMDb, bMbdTKI, aPadTKI, IKaPad directly... */
+
 
   return 0;
 }
@@ -460,8 +475,15 @@ PetscErrorCode SetUpMatrices(TS_App *petsc_app)
   ierr = MatCreateSeqAIJ(PETSC_COMM_SELF,nvec,nvec,0,NULL,&petsc_app->A);CHKERRQ(ierr);
   ierr = MatSetFromOptions(petsc_app->A);CHKERRQ(ierr);
   ierr = MatSetUp(petsc_app->A);CHKERRQ(ierr);
+  ierr = MatSetOption(petsc_app->A, MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);CHKERRQ(ierr);
+  for (int irow = 0; irow < nvec; irow++)
+  {
+    ierr = MatSetValue(petsc_app->A, irow, irow, 0.0, INSERT_VALUES);CHKERRQ(ierr);
+  }
   ierr = MatAssemblyBegin(petsc_app->A,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
   ierr = MatAssemblyEnd(petsc_app->A,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
+
+  // MatView(petsc_app->A, PETSC_VIEWER_STDOUT_SELF);
 
   /* Allocate B */
   ierr = MatCreateSeqAIJ(PETSC_COMM_SELF,nvec,nvec,0,NULL,&petsc_app->B);CHKERRQ(ierr);
