@@ -149,7 +149,30 @@ int main(int argc,char **argv)
   /* Run braid */
   braid_Drive(braid_core);
 
+  /* Get and print convergence history */
+  int niter;
+  braid_GetNumIter(braid_core, &niter);
+  double* norms = (double*) malloc(niter*sizeof(double));
+  braid_GetRNorms(braid_core, &niter, norms);
 
+  if (mpirank == 0)
+  {
+    FILE* braidlog;
+    braidlog = fopen("braid.out.log", "w");
+    fprintf(braidlog,"# ntime %d\n", (int) ntime);
+    fprintf(braidlog,"# dt %f\n", (double) dt);
+    fprintf(braidlog,"# cf %d\n", (int) cfactor);
+    fprintf(braidlog,"# ml %d\n", (int) maxlevels);
+    for (int i=0; i<niter; i++)
+    {
+      fprintf(braidlog, "%d  %1.14e\n", i, norms[i]);
+    }
+    printf("\n\n\n");
+    printf("\n wall time\n")
+  }
+  
+
+  free(norms);
 
 #if 0
 /* 
