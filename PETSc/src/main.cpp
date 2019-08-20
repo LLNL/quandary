@@ -40,6 +40,8 @@ int main(int argc,char **argv)
   char filename[255];
   PetscErrorCode ierr;
   PetscMPIInt    mpisize, mpirank;
+  double StartTime, StopTime;
+  double UsedTime = 0.0;
 
   /* Initialize Petsc */
   ierr = PetscInitialize(&argc,&argv,(char*)0,help);if (ierr) return ierr;
@@ -144,10 +146,23 @@ int main(int argc,char **argv)
   braid_SetMaxIter(braid_core, maxiter);
   braid_SetSkip(braid_core, 0);
   braid_SetSeqSoln(braid_core, 0);
-  
- 
+
+
+
+
+   /* Measure wall time */
+  StartTime = MPI_Wtime();
+  StopTime = 0.0;
+  UsedTime = 0.0;
+
   /* Run braid */
   braid_Drive(braid_core);
+
+
+  /* Stop timer */
+  StopTime = MPI_Wtime();
+  UsedTime = StopTime - StartTime;
+
 
   /* Get and print convergence history */
   int niter;
@@ -167,8 +182,8 @@ int main(int argc,char **argv)
     {
       fprintf(braidlog, "%d  %1.14e\n", i, norms[i]);
     }
-    printf("\n\n\n");
-    printf("\n wall time\n")
+    fprintf(braidlog, "\n\n\n");
+    fprintf(braidlog, "\n wall time\n %f", UsedTime);
   }
   
 
