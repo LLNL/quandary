@@ -59,26 +59,72 @@ PetscErrorCode ExactSolution(PetscReal t,Vec s, PetscReal freq)
 }
 
 
-PetscErrorCode InitialConditions(Vec x,TS_App *petsc_app)
+PetscErrorCode InitialConditions(Vec x, PetscReal freq)
 {
-  ExactSolution(0,x,petsc_app->w);
+  ExactSolution(0,x,freq);
   return 0;
 }
 
 
-PetscScalar F(PetscReal t, PetscReal freq)
+PetscScalar F1(PetscReal t, TS_App *petsc_app)
+{
+  /* Get pointer to the beginning of the F1-coefficients in the coeffs vector */
+  int istart = 0;
+  double* coeff_startptr = &petsc_app->spline_coeffs[istart];
+
+  /* Return spline evaluation at time t */
+  double val = petsc_app->spline->evaluate(t, coeff_startptr);;
+  return val;
+}
+
+
+PetscScalar G1(PetscReal t,TS_App *petsc_app)
+{
+  /* Get pointer to the beginning of the G1-coefficients in the coeffs vector */
+  int istart = petsc_app->nvec;
+  double* coeff_startptr = &petsc_app->spline_coeffs[istart];
+
+  /* Return spline evaluation at time t */
+  double val = petsc_app->spline->evaluate(t, coeff_startptr);;
+  return val;
+}
+
+
+PetscScalar F1_analytic(PetscReal t, PetscReal freq)
 {
   PetscScalar f = (1./4.) * (1. - PetscCosScalar(freq * t));
   return f;
 }
 
 
-PetscScalar G(PetscReal t,PetscReal freq)
+PetscScalar G2_analytic(PetscReal t,PetscReal freq)
 {
   PetscScalar g = (1./4.) * (1. - PetscSinScalar(freq * t));
   return g;
 }
 
+PetscScalar F2(PetscReal t, TS_App *petsc_app)
+{
+  /* Get pointer to the beginning of the F2-coefficients in the coeffs vector */
+  int istart = 2 * petsc_app->nvec;
+  double* coeff_startptr = &petsc_app->spline_coeffs[istart];
+
+  /* Return spline evaluation at time t */
+  double val = petsc_app->spline->evaluate(t, coeff_startptr);;
+  return val;
+}
+
+
+PetscScalar G2(PetscReal t,TS_App *petsc_app)
+{
+  /* Get pointer to the beginning of the G2-coefficients in the coeffs vector */
+  int istart = 3 * petsc_app->nvec;
+  double* coeff_startptr = &petsc_app->spline_coeffs[istart];
+
+  /* Return spline evaluation at time t */
+  double val = petsc_app->spline->evaluate(t, coeff_startptr);;
+  return val;
+}
 
 PetscErrorCode RHSJacobian(TS ts,PetscReal t,Vec u,Mat M,Mat P,void *ctx)
 {
@@ -97,8 +143,8 @@ PetscErrorCode RHSJacobian(TS ts,PetscReal t,Vec u,Mat M,Mat P,void *ctx)
   ierr = PetscMalloc1(nvec, &negvals);CHKERRQ(ierr);
 
   /* Compute time-dependent control functions */
-  f = F(t, petsc_app->w);
-  g = G(t, petsc_app->w);
+  f = F1(t, petsc_app);
+  g = G2(t, petsc_app);
 
 
   /* Set up real part of system matrix (A) */

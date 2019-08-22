@@ -7,12 +7,12 @@
 static char help[] ="Solves the Liouville-von-Neumann equations, two oscillators.\n\
 Input parameters:\n\
   -nlvl <int>      : Set the number of levels     (default: 2) \n\
-  -w  <double>     : Set Oscillator frequency     (default: 10) \n\
   -ntime <int>     : Set the number of time steps (default: 1000) \n\
   -dt <double>     : Set the time step size       (default: 0.01)\n\
-  -cf <int>        : Set XBraid's coarsening factor        (default: 5) \n\
-  -ml <int>        : Set XBraid's max levels               (default: 5)\n\
-  -mi <int>        : Set XBraid's max number of iterations (default: 50)\n\n";
+  -nspline <int>   : Set the number of spline basis functions (default: 100) \n\
+  -cf <int>        : Set XBraid's coarsening factor           (default: 5) \n\
+  -ml <int>        : Set XBraid's max levels                  (default: 5)\n\
+  -mi <int>        : Set XBraid's max number of iterations    (default: 50)\n\n";
 
 
 int main(int argc,char **argv)
@@ -27,13 +27,15 @@ int main(int argc,char **argv)
   PetscReal      total_time;   // Total end time T
   Mat            M;            // System matrix for real-valued system
   TS             ts;           // Timestepping context
-  PetscReal      w;            // Oscillator frequency
   TS_App        *petsc_app;    // Petsc's application context
   braid_Core     braid_core;   // Core for XBraid simulation
   XB_App        *braid_app;    // XBraid's application context
   PetscInt       cfactor;      // XBraid's coarsening factor
   PetscInt       maxlevels;    // XBraid's maximum number of levels
   PetscInt       maxiter;      // XBraid's maximum number of iterations
+  Bspline       *spline;       // BSpline for oscillator discretization
+  PetscInt       nspline;      // Number of spline basis functions
+  PetscReal*     design;       // Optimization vars: Oscillator spline coeffs
 
 
   FILE *sufile, *svfile, *ufile, *vfile;
@@ -53,16 +55,16 @@ int main(int argc,char **argv)
   nosci = 2;
   ntime = 1000;
   dt = 0.01;
-  w = 10.0;
+  nspline = 100;
   cfactor = 5;
   maxlevels = 5;
   maxiter = 50;
 
   /* Parse command line arguments to overwrite default constants */
   PetscOptionsGetInt(NULL,NULL,"-nlvl",&nlvl,NULL);
-  PetscOptionsGetReal(NULL,NULL,"-w",&w,NULL);
   PetscOptionsGetInt(NULL,NULL,"-ntime",&ntime,NULL);
   PetscOptionsGetReal(NULL,NULL,"-dt",&dt,NULL);
+  PetscOptionsGetInt(NULL,NULL,"-nspline",&nspline,NULL);
   PetscOptionsGetInt(NULL,NULL,"-cf",&cfactor,NULL);
   PetscOptionsGetInt(NULL,NULL,"-ml",&maxlevels,NULL);
   PetscOptionsGetInt(NULL,NULL,"-mi",&maxiter,NULL);
@@ -79,7 +81,15 @@ int main(int argc,char **argv)
   nvec = (PetscInt) pow(nsys,2);
   nreal = 2 * nvec;
   total_time = ntime * dt;
+  spline = new Bspline(nspline, total_time);
 
+  /* Initialize Optimization */
+  int ndesign = 2 * nlvl * nspline;
+  design = new PetscReal[ndesign]; 
+  for (int i=0; i<ndesign; i++){
+    // design[i] = pow(-1., i+1); //alternate 1 and -1
+    design[i] = 0.0; 
+  }
 
   /* Screen output */
   if (mpirank == 0)
@@ -108,7 +118,8 @@ int main(int argc,char **argv)
   /* Initialize Petsc's application context */
   petsc_app = (TS_App*) malloc(sizeof(TS_App));
   petsc_app->nvec = nvec;
-  petsc_app->w = w;
+  petsc_app->spline = spline;
+  petsc_app->spline_coeffs = design;
   SetUpMatrices(petsc_app);
 
   /* Allocate and initialize Petsc's Time-stepper */
@@ -259,7 +270,11 @@ int main(int argc,char **argv)
   MatDestroy(&petsc_app->bMbdTKI);CHKERRQ(ierr);
   MatDestroy(&petsc_app->aPadTKI);CHKERRQ(ierr);
   MatDestroy(&petsc_app->IKaPad);CHKERRQ(ierr);
+  delete spline;
   free(petsc_app);
+
+  /* Cleanup optimization */
+  delete [] design;
 
   /* Cleanup XBraid */
   braid_Destroy(braid_core);

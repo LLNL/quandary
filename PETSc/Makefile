@@ -31,6 +31,8 @@ INC = -I$(INC_DIR) -I$(BRAID_INC_DIR) -I${PETSC_DIR}/include -I${PETSC_DIR}/${PE
 LDPATH  = ${PETSC_DIR}/${PETSC_ARCH}/lib
 LDFLAGS = -lpetsc -lm ${BRAID_LIB_FILE}
 
+CC=mpicxx
+
 # Rule for linking main
 main: $(OBJ_FILES)
 	$(CC) -o $@ $(OBJ_FILES) $(LDFLAGS) -L$(LDPATH)

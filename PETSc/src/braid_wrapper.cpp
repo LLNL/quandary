@@ -41,7 +41,8 @@ int my_Init(braid_App     app,
     /* Set initial condition at t=0.0 */
     // if (t == 0.0)
     {
-        InitialConditions(u->x, app->petsc_app);
+        double freq = 10.0;
+        InitialConditions(u->x, freq);
     }
 
     /* Set the return pointer */
@@ -118,9 +119,9 @@ int my_Access(braid_App       app,
 {
     int istep;
     double t;
-    double err_norm, exact_norm;
-    Vec error;
-    Vec exact;
+    // double err_norm, exact_norm;
+    // Vec error;
+    // Vec exact;
 
     /* Get time information */
     braid_AccessStatusGetTIndex(astatus, &istep);
@@ -128,55 +129,59 @@ int my_Access(braid_App       app,
 
     if (t == 0.0) return 0;
 
-    /* Get exact solution */
-    VecDuplicate(u->x,&exact);
-    ExactSolution(t,exact,app->petsc_app->w);
+    // /* Get exact solution */
+    // VecDuplicate(u->x,&exact);
+    // ExactSolution(t,exact,app->petsc_app->w);
 
-    /* Compute relative error norm */
-    VecDuplicate(u->x,&error);
-    VecWAXPY(error,-1.0,u->x, exact);
-    VecNorm(error, NORM_2,&err_norm);
-    VecNorm(exact, NORM_2,&exact_norm);
-    err_norm = err_norm / exact_norm;
+    // /* Compute relative error norm */
+    // VecDuplicate(u->x,&error);
+    // VecWAXPY(error,-1.0,u->x, exact);
+    // VecNorm(error, NORM_2,&err_norm);
+    // VecNorm(exact, NORM_2,&exact_norm);
+    // err_norm = err_norm / exact_norm;
 
-    const PetscScalar *x_ptr, *exact_ptr;
+    // const PetscScalar *x_ptr, *exact_ptr;
+    // VecGetArrayRead(u->x, &x_ptr);
+    // VecGetArrayRead(exact, &exact_ptr);
+
+    // /* Screen Output of error norm */
+    // if (istep == app->ntime){
+    //     printf("Last step: ");
+    //     printf("%5d  %1.5f  x[1] = %1.14e  exact[1] = %1.14e  err = %1.14e \n",istep,(double)t, x_ptr[1], exact_ptr[1], err_norm);
+    // } 
+
+    /* Get access to Petsc's vector */
+    const PetscScalar *x_ptr;
     VecGetArrayRead(u->x, &x_ptr);
-    VecGetArrayRead(exact, &exact_ptr);
 
-    /* Screen Output of error norm */
-    if (istep == app->ntime){
-        printf("Last step: ");
-        printf("%5d  %1.5f  x[1] = %1.14e  exact[1] = %1.14e  err = %1.14e \n",istep,(double)t, x_ptr[1], exact_ptr[1], err_norm);
-    } 
-
-    /* Write numeric and analytic solution to files */
+    /* Write solution to files */
     fprintf(app->ufile,  "%.2f  ", t);
     fprintf(app->vfile,  "%.2f  ", t);
-    fprintf(app->sufile, "%.2f  ", t);
-    fprintf(app->svfile, "%.2f  ", t);
+    // fprintf(app->sufile, "%.2f  ", t);
+    // fprintf(app->svfile, "%.2f  ", t);
     for (int i = 0; i < 2*app->petsc_app->nvec; i++)
     {
 
       if (i < app->petsc_app->nvec) // real part
       {
         fprintf(app->ufile, "%1.14e  ", x_ptr[i]);  
-        fprintf(app->sufile, "%1.14e  ", exact_ptr[i]);
+        // fprintf(app->sufile, "%1.14e  ", exact_ptr[i]);
       }  
       else  // imaginary part
       {
         fprintf(app->vfile, "%1.14e  ", x_ptr[i]); 
-        fprintf(app->svfile, "%1.14e  ", exact_ptr[i]);
+        // fprintf(app->svfile, "%1.14e  ", exact_ptr[i]);
       }
       
     }
     fprintf(app->ufile, "\n");
     fprintf(app->vfile, "\n");
-    fprintf(app->sufile, "\n");
-    fprintf(app->svfile, "\n");
+    // fprintf(app->sufile, "\n");
+    // fprintf(app->svfile, "\n");
 
 
-    VecDestroy(&error);
-    VecDestroy(&exact);
+    // VecDestroy(&error);
+    // VecDestroy(&exact);
 
     return 0;
 }

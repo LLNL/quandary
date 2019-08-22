@@ -1,4 +1,5 @@
 #include <petscts.h>
+#include "bspline.hpp"
 #pragma once
 
 
@@ -8,44 +9,43 @@
 typedef struct {
   PetscInt    nvec;    /* Dimension of vectorized system */
   Mat         IKbMbd, bMbdTKI, aPadTKI, IKaPad, A, B;
-  PetscReal   w;       /* Oscillator frequencies */
+  Bspline*    spline;  /* Spline basis functions for oscillator evaluation */
+  PetscReal*  spline_coeffs;  /* Spline coefficients (optimization vars) */
 } TS_App;
 
 
-/*
- *   Compute the exact solution at a given time.
- *   Input:
- *      t - current time
- *      s - vector in which exact solution will be computed
- *      freq - Oscillator frequency
- *   Output:
- *      s - vector with the newly computed exact solution
+/* 
+ * Compute the analytic solution for the 2-oscillator, 2-levels test case.
  */
 PetscErrorCode ExactSolution(PetscReal t,Vec s, PetscReal freq);
 
 
 /*
- *  Set the initial condition at time t_0
- *  Input:
- *     u - uninitialized solution vector (global)
- *     TS_App - application context
- *  Output Parameter:
- *     u - vector with solution at initial time (global)
+ *  Set the initial condition at time t_0 to the analytic solution 
+ *  of the 2-level, 2-oscillator case.
  */
-PetscErrorCode InitialConditions(Vec x,TS_App *petsc_app);
+PetscErrorCode InitialConditions(Vec x,PetscReal freq);
 
 
 /*
- * Oscillator 1 (real part)
+ * Oscillator 1: Evaluate real and imaginary part
  */
-PetscScalar F(PetscReal t,TS_App *petsc_app);
-
+PetscScalar F1(PetscReal t,TS_App *petsc_app);  // real 
+PetscScalar G1(PetscReal t,TS_App *petsc_app);  // imaginary
 
 /*
- * Oscillator 2 (imaginary part)
+ * Oscillator 2: Evaluate real and imaginary part 
  */
-PetscScalar G(PetscReal t,TS_App *petsc_app);
+PetscScalar F2(PetscReal t,TS_App *petsc_app); // real
+PetscScalar G2(PetscReal t,TS_App *petsc_app); // imaginary
 
+
+/* Real part for Oscillator 1 of analytic solution */
+PetscScalar F1(PetscReal t,PetscReal freq);
+
+
+/* Imaginary part for Oscillator 2 of analytic solution */
+PetscScalar G2(PetscReal t,PetscReal freq);
 
 /*
  * Evaluate the right-hand side system Matrix (real, vectorized Hamiltonian system matrix)
