@@ -14,13 +14,13 @@ Vector::Vector(){
 
 Vector::Vector(int dim_){
   dim = dim_;
-  data = new double(dim);
+  data = new double[dim];
   this->Fill(0.0);
 }
 
 Vector::Vector(int dim_, double fill_){
   dim = dim_;
-  data = new double(dim);
+  data = new double[dim];
   this->Fill(fill_);
 }
 
