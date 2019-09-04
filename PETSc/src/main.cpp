@@ -73,9 +73,9 @@ int main(int argc,char **argv)
   PetscOptionsGetInt(NULL,NULL,"-mi",&maxiter,NULL);
 
   /* Sanity check */
-  if (nosci != 2 || nlvl != 2)
+  if (nlvl != 2)
   {
-    printf("\nERROR: Current only 2 levels and 2 oscillators are supported.\n You chose %d levels, %d oscillators.\n\n", nlvl, nosci);
+    printf("\nERROR: Current only 2 oscillators are supported.\n You chose %d oscillators.\n\n", nlvl, nosci);
     exit(0);
   }
 
@@ -85,6 +85,15 @@ int main(int argc,char **argv)
   nreal = 2 * nvec;
   total_time = ntime * dt;
   spline = new Bspline(nspline, total_time);
+
+  /* Initialize the oscillator control functions */
+  Oscillator** oscil_vec = new Oscillator*[nosci];
+  for (int i = 0; i < nosci; i++){
+    oscil_vec[i] = new SplineOscillator(nspline, total_time);
+  }
+
+  /* Initialize the Hamiltonian */
+  Hamiltonian* hamiltonian = new TwoOscilHam(nlvl, oscil_vec);
 
   /* Initialize Optimization */
   int ndesign = 2 * nlvl * nspline;
@@ -270,6 +279,15 @@ int main(int argc,char **argv)
   MatDestroy(&petsc_app->B2);
   delete spline;
   free(petsc_app);
+
+  /* Clean up Oscillator */
+  for (int i=0; i<nosci; i++){
+    delete oscil_vec[i];
+  }
+  delete [] oscil_vec;
+
+  /* Clean up Hamiltonian */
+  delete hamiltonian;
 
   /* Cleanup optimization */
   delete [] design;
