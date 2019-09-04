@@ -2,6 +2,7 @@
 #include "two_oscillators.hpp"
 #include "braid.h"
 #include "braid_test.h"
+#include "bspline.hpp"
 
 
 static char help[] ="Solves the Liouville-von-Neumann equations, two oscillators.\n\
@@ -38,7 +39,7 @@ int main(int argc,char **argv)
   PetscReal*     design;       // Optimization vars: Oscillator spline coeffs
 
 
-  FILE *sufile, *svfile, *ufile, *vfile;
+  FILE *ufile, *vfile;
   char filename[255];
   PetscErrorCode ierr;
   PetscMPIInt    mpisize, mpirank;
@@ -87,8 +88,8 @@ int main(int argc,char **argv)
   int ndesign = 2 * nlvl * nspline;
   design = new PetscReal[ndesign]; 
   for (int i=0; i<ndesign; i++){
-    // design[i] = pow(-1., i+1); //alternate 1 and -1
-    design[i] = 0.0; 
+    design[i] = pow(-1., i+1); //alternate 1 and -1
+    // design[i] = 0.0; 
   }
 
   /* Screen output */
@@ -101,8 +102,6 @@ int main(int argc,char **argv)
   }
 
   /* Open output files */
-  sprintf(filename, "out_u_exact.%04d.dat", mpirank); sufile = fopen(filename, "w");
-  sprintf(filename, "out_v_exact.%04d.dat", mpirank); svfile = fopen(filename, "w");
   sprintf(filename, "out_u.%04d.dat", mpirank);       ufile = fopen(filename, "w");
   sprintf(filename, "out_v.%04d.dat", mpirank);       vfile = fopen(filename, "w");
 
@@ -142,8 +141,6 @@ int main(int argc,char **argv)
   braid_app->ntime  = ntime;
   braid_app->ufile  = ufile;
   braid_app->vfile  = vfile;
-  braid_app->sufile = sufile;
-  braid_app->svfile = svfile;
 
   /* Initialize Braid */
   braid_Init(MPI_COMM_WORLD, MPI_COMM_WORLD, 0.0, total_time, ntime, braid_app, my_Step, my_Init, my_Clone, my_Free, my_Sum, my_SpatialNorm, my_Access, my_BufSize, my_BufPack, my_BufUnpack, &braid_core);
@@ -258,8 +255,6 @@ int main(int argc,char **argv)
 #endif
 
   /* Clean up */
-  fclose(sufile);
-  fclose(svfile);
   fclose(ufile);
   fclose(vfile);
   TSDestroy(&ts);CHKERRQ(ierr);

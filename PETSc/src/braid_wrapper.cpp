@@ -157,27 +157,21 @@ int my_Access(braid_App       app,
     /* Write solution to files */
     fprintf(app->ufile,  "%.2f  ", t);
     fprintf(app->vfile,  "%.2f  ", t);
-    // fprintf(app->sufile, "%.2f  ", t);
-    // fprintf(app->svfile, "%.2f  ", t);
     for (int i = 0; i < 2*app->petsc_app->nvec; i++)
     {
 
       if (i < app->petsc_app->nvec) // real part
       {
         fprintf(app->ufile, "%1.14e  ", x_ptr[i]);  
-        // fprintf(app->sufile, "%1.14e  ", exact_ptr[i]);
       }  
       else  // imaginary part
       {
         fprintf(app->vfile, "%1.14e  ", x_ptr[i]); 
-        // fprintf(app->svfile, "%1.14e  ", exact_ptr[i]);
       }
       
     }
     fprintf(app->ufile, "\n");
     fprintf(app->vfile, "\n");
-    // fprintf(app->sufile, "\n");
-    // fprintf(app->svfile, "\n");
 
 
     // VecDestroy(&error);

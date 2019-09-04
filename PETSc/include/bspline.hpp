@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <math.h>
+#pragma once
 
 /* 
  * Implements quadratic Bspline a la Anders Peterson
@@ -25,4 +26,5 @@ class Bspline{
          * (only the first nspline elements in coeff will be used!)
          */
         double evaluate(double t, double* coeff);
+
 };

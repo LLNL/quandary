@@ -18,8 +18,6 @@ typedef struct _braid_App_struct
     int     ntime;    // number of time steps
     FILE *ufile;
     FILE *vfile;
-    FILE *sufile;
-    FILE *svfile;
 } XB_App;
 
 
