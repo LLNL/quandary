@@ -7,10 +7,11 @@
    Petsc's application context containing data needed to perform a time step.
 */
 typedef struct {
-  PetscInt    nvec;    /* Dimension of vectorized system */
-  Mat         IKbMbd, bMbdTKI, aPadTKI, IKaPad, A, B;
-  Mat         A1, A2, B1, B2;
-  Bspline*    spline;  /* Spline basis functions for oscillator evaluation */
+  PetscInt    nvec;           /* Dimension of vectorized system */
+  PetscInt    nlevels;        /* number of levels */
+  Mat         A, B;           /* Real and imaginary part of Hamiltonian */
+  Mat         A1, A2, B1, B2; /* Constant matrices for constructing A and B */
+  Bspline*    spline;         /* Spline basis functions for oscillator evaluation */
   PetscReal*  spline_coeffs;  /* Spline coefficients (optimization vars) */
 } TS_App;
 

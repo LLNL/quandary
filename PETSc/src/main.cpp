@@ -117,6 +117,7 @@ int main(int argc,char **argv)
   /* Initialize Petsc's application context */
   petsc_app = (TS_App*) malloc(sizeof(TS_App));
   petsc_app->nvec = nvec;
+  petsc_app->nlevels = nlvl;
   petsc_app->spline = spline;
   petsc_app->spline_coeffs = design;
   SetUpMatrices(petsc_app);
@@ -261,10 +262,10 @@ int main(int argc,char **argv)
   MatDestroy(&M);CHKERRQ(ierr);
   MatDestroy(&petsc_app->A);CHKERRQ(ierr);
   MatDestroy(&petsc_app->B);CHKERRQ(ierr);
-  MatDestroy(&petsc_app->IKbMbd);CHKERRQ(ierr);
-  MatDestroy(&petsc_app->bMbdTKI);CHKERRQ(ierr);
-  MatDestroy(&petsc_app->aPadTKI);CHKERRQ(ierr);
-  MatDestroy(&petsc_app->IKaPad);CHKERRQ(ierr);
+  MatDestroy(&petsc_app->A1);
+  MatDestroy(&petsc_app->A2);
+  MatDestroy(&petsc_app->B1);
+  MatDestroy(&petsc_app->B2);
   delete spline;
   free(petsc_app);
 

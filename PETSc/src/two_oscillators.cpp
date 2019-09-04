@@ -130,7 +130,7 @@ PetscErrorCode RHSJacobian(TS ts,PetscReal t,Vec u,Mat M,Mat P,void *ctx)
 {
   TS_App *petsc_app = (TS_App*)ctx;
   PetscInt nvec = petsc_app->nvec;
-  PetscScalar f, g;
+  PetscScalar f1, f2, g1, g2;
   PetscErrorCode ierr;
   PetscInt ncol;
   const PetscInt *col_idx;
@@ -143,28 +143,20 @@ PetscErrorCode RHSJacobian(TS ts,PetscReal t,Vec u,Mat M,Mat P,void *ctx)
   ierr = PetscMalloc1(nvec, &negvals);CHKERRQ(ierr);
 
   /* Compute time-dependent control functions */
-  f = F1(t, petsc_app);
-  g = G2(t, petsc_app);
+  f1 = F1(t, petsc_app);
+  f2 = F2(t, petsc_app);
+  g1 = G1(t, petsc_app);
+  g2 = G2(t, petsc_app);
 
-
-  // /* Set up real part of system matrix (A) */
-  // ierr = MatZeroEntries(petsc_app->A);CHKERRQ(ierr);
-  // ierr = MatAXPY(petsc_app->A,g,petsc_app->IKbMbd,DIFFERENT_NONZERO_PATTERN);CHKERRQ(ierr);
-  // ierr = MatAXPY(petsc_app->A,-1.*g,petsc_app->bMbdTKI,DIFFERENT_NONZERO_PATTERN);CHKERRQ(ierr);
-
- /* Set up real part of system matrix (A) */
+  /* Sum up real part of system matrix A = g1*A1 + g2*A2  */
   ierr = MatZeroEntries(petsc_app->A);CHKERRQ(ierr);
-  ierr = MatAXPY(petsc_app->A,g,petsc_app->A2,DIFFERENT_NONZERO_PATTERN);CHKERRQ(ierr);
+  // ierr = MatAXPY(petsc_app->A,g1,petsc_app->A1,DIFFERENT_NONZERO_PATTERN);CHKERRQ(ierr);
+  ierr = MatAXPY(petsc_app->A,g2,petsc_app->A2,DIFFERENT_NONZERO_PATTERN);CHKERRQ(ierr);
 
-
-
-  /* Set up imaginary part of system matrix (B) */
+  /* Sum up imaginary part of system matrix B = f1*B1 + f2*B2 + H_const  */
   ierr = MatZeroEntries(petsc_app->B);CHKERRQ(ierr);
-  ierr = MatAXPY(petsc_app->B,f,petsc_app->aPadTKI,DIFFERENT_NONZERO_PATTERN);CHKERRQ(ierr);
-  ierr = MatAXPY(petsc_app->B,-1.*f,petsc_app->IKaPad,DIFFERENT_NONZERO_PATTERN);CHKERRQ(ierr);
-
-  // MatView(petsc_app->A, PETSC_VIEWER_STDOUT_SELF);
-  // MatView(petsc_app->B, PETSC_VIEWER_STDOUT_SELF);
+  ierr = MatAXPY(petsc_app->B,f1,petsc_app->B1,DIFFERENT_NONZERO_PATTERN); CHKERRQ(ierr);
+  // ierr = MatAXPY(petsc_app->B,f2,petsc_app->B2,DIFFERENT_NONZERO_PATTERN);CHKERRQ(ierr);
 
   /* Set up Jacobian M 
    * M(0, 0) =  A    M(0,1) = B
@@ -219,329 +211,62 @@ PetscErrorCode RHSJacobian(TS ts,PetscReal t,Vec u,Mat M,Mat P,void *ctx)
 PetscErrorCode SetUpMatrices(TS_App *petsc_app)
 {
   PetscInt       nvec = petsc_app->nvec;
+  PetscInt       nlevels = petsc_app->nlevels;
   PetscInt       i, j;
   PetscScalar    v[1];
   PetscErrorCode ierr;
-
-
-  /* Set up A2 */
-  int nlevels = 2;
-  Mat tmp1, tmp2;
-  ierr = MatCreateSeqAIJ(PETSC_COMM_SELF,nvec,nvec,1,NULL,&tmp1);CHKERRQ(ierr);
-  ierr = MatSetFromOptions(tmp1);CHKERRQ(ierr);
-  ierr = MatSetUp(tmp1);CHKERRQ(ierr);
-  ierr = BuildingBlock(tmp1, nlevels, -1,nlevels, (int) pow(nlevels, 2));
-  ierr = MatTranspose(tmp1, MAT_INPLACE_MATRIX, &tmp1);
-
+  Mat tmp;
+  /* Create building matrices matrices */
+  ierr = MatCreateSeqAIJ(PETSC_COMM_SELF,nvec,nvec,1,NULL,&petsc_app->A1);CHKERRQ(ierr);
   ierr = MatCreateSeqAIJ(PETSC_COMM_SELF,nvec,nvec,1,NULL,&petsc_app->A2);CHKERRQ(ierr);
+  ierr = MatCreateSeqAIJ(PETSC_COMM_SELF,nvec,nvec,1,NULL,&petsc_app->B1);CHKERRQ(ierr);
+  ierr = MatCreateSeqAIJ(PETSC_COMM_SELF,nvec,nvec,1,NULL,&petsc_app->B2);CHKERRQ(ierr);
+  /* Set Petsc Prefix for mat viewing */
+  ierr = MatSetOptionsPrefix(petsc_app->A1, "A1");
   ierr = MatSetOptionsPrefix(petsc_app->A2, "A2");
-  ierr = MatSetUp(petsc_app->A2);CHKERRQ(ierr);
-  ierr = BuildingBlock(petsc_app->A2, nlevels, -1, (int)pow(nlevels, 3), 1);
-  ierr = MatAXPY(petsc_app->A2, -1., tmp1, DIFFERENT_NONZERO_PATTERN);
+  ierr = MatSetOptionsPrefix(petsc_app->B1, "B1");
+  ierr = MatSetOptionsPrefix(petsc_app->B2, "B2");
 
+  /* --- Set up A1 = C^{-}(n^2, n) - C^-(1,n^3)^T --- */
+  ierr = MatCreateSeqAIJ(PETSC_COMM_SELF,nvec,nvec,1,NULL,&tmp);CHKERRQ(ierr);
+  ierr = BuildingBlock(tmp, nlevels, -1, 1, (int) pow(nlevels, 3));
+  ierr = MatTranspose(tmp, MAT_INPLACE_MATRIX, &tmp);
+  ierr = BuildingBlock(petsc_app->A1, nlevels, -1, (int)pow(nlevels, 2), nlevels);
+  ierr = MatAXPY(petsc_app->A1, -1., tmp, DIFFERENT_NONZERO_PATTERN);
+  ierr = MatAssemblyBegin(petsc_app->A1, MAT_FINAL_ASSEMBLY); CHKERRQ(ierr);
+  ierr = MatAssemblyEnd(petsc_app->A1, MAT_FINAL_ASSEMBLY); CHKERRQ(ierr);
+  ierr = MatDestroy(&tmp);
+
+  /* --- Set up A2 = C^{-}(n^3,1) - C^{-}(n,n^2)^T --- */
+  ierr = MatCreateSeqAIJ(PETSC_COMM_SELF,nvec,nvec,1,NULL,&tmp);CHKERRQ(ierr);
+  ierr = BuildingBlock(tmp, nlevels, -1,nlevels, (int) pow(nlevels, 2));
+  ierr = MatTranspose(tmp, MAT_INPLACE_MATRIX, &tmp);
+  ierr = BuildingBlock(petsc_app->A2, nlevels, -1, (int)pow(nlevels, 3), 1);
+  ierr = MatAXPY(petsc_app->A2, -1., tmp, DIFFERENT_NONZERO_PATTERN);
   ierr = MatAssemblyBegin(petsc_app->A2, MAT_FINAL_ASSEMBLY); CHKERRQ(ierr);
   ierr = MatAssemblyEnd(petsc_app->A2, MAT_FINAL_ASSEMBLY); CHKERRQ(ierr);
+  ierr = MatDestroy(&tmp);
+  
+  /* --- Set up B1 = C^+(1,n^3)^T - C^+(n^2, n) --- */
+  ierr = MatCreateSeqAIJ(PETSC_COMM_SELF,nvec,nvec,1,NULL,&tmp);CHKERRQ(ierr);
+  ierr = BuildingBlock(tmp, nlevels, 1, (int) pow(nlevels, 2), nlevels);
+  ierr = BuildingBlock(petsc_app->B1, nlevels, 1, 1, (int)pow(nlevels, 3));
+  ierr = MatTranspose(petsc_app->B1, MAT_INPLACE_MATRIX, &petsc_app->B1);
+  ierr = MatAXPY(petsc_app->B1, -1., tmp, DIFFERENT_NONZERO_PATTERN);
+  ierr = MatAssemblyBegin(petsc_app->B1, MAT_FINAL_ASSEMBLY); CHKERRQ(ierr);
+  ierr = MatAssemblyEnd(petsc_app->B1, MAT_FINAL_ASSEMBLY); CHKERRQ(ierr);
+  ierr = MatDestroy(&tmp);
 
+  /* --- Set up B2 = C^+(n,n^2)^T - C^+(n^3, 1) --- */
+  ierr = MatCreateSeqAIJ(PETSC_COMM_SELF,nvec,nvec,1,NULL,&tmp);CHKERRQ(ierr);
+  ierr = BuildingBlock(tmp, nlevels, 1, nlevels, (int) pow(nlevels, 2));
+  ierr = BuildingBlock(petsc_app->B2, nlevels, 1, nlevels, (int)pow(nlevels, 2));
+  ierr = MatTranspose(petsc_app->B2, MAT_INPLACE_MATRIX, &petsc_app->B2);
+  ierr = MatAXPY(petsc_app->B2, -1., tmp, DIFFERENT_NONZERO_PATTERN);
+  ierr = MatAssemblyBegin(petsc_app->B2, MAT_FINAL_ASSEMBLY); CHKERRQ(ierr);
+  ierr = MatAssemblyEnd(petsc_app->B2, MAT_FINAL_ASSEMBLY); CHKERRQ(ierr);
+  ierr = MatDestroy(&tmp);
 
-  /* Set up IKbMbd */
-  ierr = MatCreateSeqAIJ(PETSC_COMM_SELF,nvec,nvec,1,NULL,&petsc_app->IKbMbd);CHKERRQ(ierr);
-  ierr = MatSetFromOptions(petsc_app->IKbMbd);CHKERRQ(ierr);
-  ierr = MatSetUp(petsc_app->IKbMbd);CHKERRQ(ierr);
-
-  i = 1;
-  j = 0;
-  v[0] = -1;
-  ierr = MatSetValues(petsc_app->IKbMbd,1,&i,1,&j,v,INSERT_VALUES);CHKERRQ(ierr);
-  i = 0;
-  j = 1;
-  v[0] = 1;
-  ierr = MatSetValues(petsc_app->IKbMbd,1,&i,1,&j,v,INSERT_VALUES);CHKERRQ(ierr);
-  i = 3;
-  j = 2;
-  v[0] = -1;
-  ierr = MatSetValues(petsc_app->IKbMbd,1,&i,1,&j,v,INSERT_VALUES);CHKERRQ(ierr);
-  i = 2;
-  j = 3;
-  v[0] = 1;
-  ierr = MatSetValues(petsc_app->IKbMbd,1,&i,1,&j,v,INSERT_VALUES);CHKERRQ(ierr);
-  i = 5;
-  j = 4;
-  v[0] = -1;
-  ierr = MatSetValues(petsc_app->IKbMbd,1,&i,1,&j,v,INSERT_VALUES);CHKERRQ(ierr);
-  i = 4;
-  j = 5;
-  v[0] = 1;
-  ierr = MatSetValues(petsc_app->IKbMbd,1,&i,1,&j,v,INSERT_VALUES);CHKERRQ(ierr);
-  i = 7;
-  j = 6;
-  v[0] = -1;
-  ierr = MatSetValues(petsc_app->IKbMbd,1,&i,1,&j,v,INSERT_VALUES);CHKERRQ(ierr);
-  i = 6;
-  j = 7;
-  v[0] = 1;
-  ierr = MatSetValues(petsc_app->IKbMbd,1,&i,1,&j,v,INSERT_VALUES);CHKERRQ(ierr);
-  i = 9;
-  j = 8;
-  v[0] = -1;
-  ierr = MatSetValues(petsc_app->IKbMbd,1,&i,1,&j,v,INSERT_VALUES);CHKERRQ(ierr);
-  i = 8;
-  j = 9;
-  v[0] = 1;
-  ierr = MatSetValues(petsc_app->IKbMbd,1,&i,1,&j,v,INSERT_VALUES);CHKERRQ(ierr);
-  i = 11;
-  j = 10;
-  v[0] = -1;
-  ierr = MatSetValues(petsc_app->IKbMbd,1,&i,1,&j,v,INSERT_VALUES);CHKERRQ(ierr);
-  i = 10;
-  j = 11;
-  v[0] = 1;
-  ierr = MatSetValues(petsc_app->IKbMbd,1,&i,1,&j,v,INSERT_VALUES);CHKERRQ(ierr);
-  i = 13;
-  j = 12;
-  v[0] = -1;
-  ierr = MatSetValues(petsc_app->IKbMbd,1,&i,1,&j,v,INSERT_VALUES);CHKERRQ(ierr);
-  i = 12;
-  j = 13;
-  v[0] = 1;
-  ierr = MatSetValues(petsc_app->IKbMbd,1,&i,1,&j,v,INSERT_VALUES);CHKERRQ(ierr);
-  i = 15;
-  j = 14;
-  v[0] = -1;
-  ierr = MatSetValues(petsc_app->IKbMbd,1,&i,1,&j,v,INSERT_VALUES);CHKERRQ(ierr);
-  i = 14;
-  j = 15;
-  v[0] = 1;
-  ierr = MatSetValues(petsc_app->IKbMbd,1,&i,1,&j,v,INSERT_VALUES);CHKERRQ(ierr);
-
-  ierr = MatAssemblyBegin(petsc_app->IKbMbd,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
-  ierr = MatAssemblyEnd(petsc_app->IKbMbd,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
-
-///////////////////////////////////////////////////////////////////////////////
-
-  /* Set up bMbdTKI */
-  ierr = MatCreateSeqAIJ(PETSC_COMM_SELF,nvec,nvec,1,NULL,&petsc_app->bMbdTKI);CHKERRQ(ierr);
-  ierr = MatSetFromOptions(petsc_app->bMbdTKI);CHKERRQ(ierr);
-  ierr = MatSetUp(petsc_app->bMbdTKI);CHKERRQ(ierr);
-
-  i = 4;
-  j = 0;
-  v[0] = 1;
-  ierr = MatSetValues(petsc_app->bMbdTKI,1,&i,1,&j,v,INSERT_VALUES);CHKERRQ(ierr);
-  i = 5;
-  j = 1;
-  v[0] = 1;
-  ierr = MatSetValues(petsc_app->bMbdTKI,1,&i,1,&j,v,INSERT_VALUES);CHKERRQ(ierr);
-  i = 6;
-  j = 2;
-  v[0] = 1;
-  ierr = MatSetValues(petsc_app->bMbdTKI,1,&i,1,&j,v,INSERT_VALUES);CHKERRQ(ierr);
-  i = 7;
-  j = 3;
-  v[0] = 1;
-  ierr = MatSetValues(petsc_app->bMbdTKI,1,&i,1,&j,v,INSERT_VALUES);CHKERRQ(ierr);
-  i = 0;
-  j = 4;
-  v[0] = -1;
-  ierr = MatSetValues(petsc_app->bMbdTKI,1,&i,1,&j,v,INSERT_VALUES);CHKERRQ(ierr);
-  i = 1;
-  j = 5;
-  v[0] = -1;
-  ierr = MatSetValues(petsc_app->bMbdTKI,1,&i,1,&j,v,INSERT_VALUES);CHKERRQ(ierr);
-  i = 2;
-  j = 6;
-  v[0] = -1;
-  ierr = MatSetValues(petsc_app->bMbdTKI,1,&i,1,&j,v,INSERT_VALUES);CHKERRQ(ierr);
-  i = 3;
-  j = 7;
-  v[0] = -1;
-  ierr = MatSetValues(petsc_app->bMbdTKI,1,&i,1,&j,v,INSERT_VALUES);CHKERRQ(ierr);
-  i = 12;
-  j = 8;
-  v[0] = 1;
-  ierr = MatSetValues(petsc_app->bMbdTKI,1,&i,1,&j,v,INSERT_VALUES);CHKERRQ(ierr);
-  i = 13;
-  j = 9;
-  v[0] = 1;
-  ierr = MatSetValues(petsc_app->bMbdTKI,1,&i,1,&j,v,INSERT_VALUES);CHKERRQ(ierr);
-  i = 14;
-  j = 10;
-  v[0] = 1;
-  ierr = MatSetValues(petsc_app->bMbdTKI,1,&i,1,&j,v,INSERT_VALUES);CHKERRQ(ierr);
-  i = 15;
-  j = 11;
-  v[0] = 1;
-  ierr = MatSetValues(petsc_app->bMbdTKI,1,&i,1,&j,v,INSERT_VALUES);CHKERRQ(ierr);
-  i = 8;
-  j = 12;
-  v[0] = -1;
-  ierr = MatSetValues(petsc_app->bMbdTKI,1,&i,1,&j,v,INSERT_VALUES);CHKERRQ(ierr);
-  i = 9;
-  j = 13;
-  v[0] = -1;
-  ierr = MatSetValues(petsc_app->bMbdTKI,1,&i,1,&j,v,INSERT_VALUES);CHKERRQ(ierr);
-  i = 10;
-  j = 14;
-  v[0] = -1;
-  ierr = MatSetValues(petsc_app->bMbdTKI,1,&i,1,&j,v,INSERT_VALUES);CHKERRQ(ierr);
-  i = 11;
-  j = 15;
-  v[0] = -1;
-  ierr = MatSetValues(petsc_app->bMbdTKI,1,&i,1,&j,v,INSERT_VALUES);CHKERRQ(ierr);
-
-  ierr = MatAssemblyBegin(petsc_app->bMbdTKI,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
-  ierr = MatAssemblyEnd(petsc_app->bMbdTKI,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
-
-///////////////////////////////////////////////////////////////////////////////
-
-  /* Set up aPadTKI */
-  ierr = MatCreateSeqAIJ(PETSC_COMM_SELF,nvec,nvec,1,NULL,&petsc_app->aPadTKI);CHKERRQ(ierr);
-  ierr = MatSetFromOptions(petsc_app->aPadTKI);CHKERRQ(ierr);
-  ierr = MatSetUp(petsc_app->aPadTKI);CHKERRQ(ierr);
-
-  i = 8;
-  j = 0;
-  v[0] = 1;
-  ierr = MatSetValues(petsc_app->aPadTKI,1,&i,1,&j,v,INSERT_VALUES);CHKERRQ(ierr);
-  i = 9;
-  j = 1;
-  v[0] = 1;
-  ierr = MatSetValues(petsc_app->aPadTKI,1,&i,1,&j,v,INSERT_VALUES);CHKERRQ(ierr);
-  i = 10;
-  j = 2;
-  v[0] = 1;
-  ierr = MatSetValues(petsc_app->aPadTKI,1,&i,1,&j,v,INSERT_VALUES);CHKERRQ(ierr);
-  i = 11;
-  j = 3;
-  v[0] = 1;
-  ierr = MatSetValues(petsc_app->aPadTKI,1,&i,1,&j,v,INSERT_VALUES);CHKERRQ(ierr);
-  i = 12;
-  j = 4;
-  v[0] = 1;
-  ierr = MatSetValues(petsc_app->aPadTKI,1,&i,1,&j,v,INSERT_VALUES);CHKERRQ(ierr);
-  i = 13;
-  j = 5;
-  v[0] = 1;
-  ierr = MatSetValues(petsc_app->aPadTKI,1,&i,1,&j,v,INSERT_VALUES);CHKERRQ(ierr);
-  i = 14;
-  j = 6;
-  v[0] = 1;
-  ierr = MatSetValues(petsc_app->aPadTKI,1,&i,1,&j,v,INSERT_VALUES);CHKERRQ(ierr);
-  i = 15;
-  j = 7;
-  v[0] = 1;
-  ierr = MatSetValues(petsc_app->aPadTKI,1,&i,1,&j,v,INSERT_VALUES);CHKERRQ(ierr);
-  i = 0;
-  j = 8;
-  v[0] = 1;
-  ierr = MatSetValues(petsc_app->aPadTKI,1,&i,1,&j,v,INSERT_VALUES);CHKERRQ(ierr);
-  i = 1;
-  j = 9;
-  v[0] = 1;
-  ierr = MatSetValues(petsc_app->aPadTKI,1,&i,1,&j,v,INSERT_VALUES);CHKERRQ(ierr);
-  i = 2;
-  j = 10;
-  v[0] = 1;
-  ierr = MatSetValues(petsc_app->aPadTKI,1,&i,1,&j,v,INSERT_VALUES);CHKERRQ(ierr);
-  i = 3;
-  j = 11;
-  v[0] = 1;
-  ierr = MatSetValues(petsc_app->aPadTKI,1,&i,1,&j,v,INSERT_VALUES);CHKERRQ(ierr);
-  i = 4;
-  j = 12;
-  v[0] = 1;
-  ierr = MatSetValues(petsc_app->aPadTKI,1,&i,1,&j,v,INSERT_VALUES);CHKERRQ(ierr);
-  i = 5;
-  j = 13;
-  v[0] = 1;
-  ierr = MatSetValues(petsc_app->aPadTKI,1,&i,1,&j,v,INSERT_VALUES);CHKERRQ(ierr);
-  i = 6;
-  j = 14;
-  v[0] = 1;
-  ierr = MatSetValues(petsc_app->aPadTKI,1,&i,1,&j,v,INSERT_VALUES);CHKERRQ(ierr);
-  i = 7;
-  j = 15;
-  v[0] = 1;
-  ierr = MatSetValues(petsc_app->aPadTKI,1,&i,1,&j,v,INSERT_VALUES);CHKERRQ(ierr);
-
-  ierr = MatAssemblyBegin(petsc_app->aPadTKI,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
-  ierr = MatAssemblyEnd(petsc_app->aPadTKI,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
-
-////////////////////////////////////////////////////////////////////////////////
-
-  /* Set up IKaPad */
-  ierr = MatCreateSeqAIJ(PETSC_COMM_SELF,nvec,nvec,1,NULL,&petsc_app->IKaPad);CHKERRQ(ierr);
-  ierr = MatSetFromOptions(petsc_app->IKaPad);CHKERRQ(ierr);
-  ierr = MatSetUp(petsc_app->IKaPad);CHKERRQ(ierr);
-
-  i = 2;
-  j = 0;
-  v[0] = 1;
-  ierr = MatSetValues(petsc_app->IKaPad,1,&i,1,&j,v,INSERT_VALUES);CHKERRQ(ierr);
-  i = 3;
-  j = 1;
-  v[0] = 1;
-  ierr = MatSetValues(petsc_app->IKaPad,1,&i,1,&j,v,INSERT_VALUES);CHKERRQ(ierr);
-  i = 0;
-  j = 2;
-  v[0] = 1;
-  ierr = MatSetValues(petsc_app->IKaPad,1,&i,1,&j,v,INSERT_VALUES);CHKERRQ(ierr);
-  i = 1;
-  j = 3;
-  v[0] = 1;
-  ierr = MatSetValues(petsc_app->IKaPad,1,&i,1,&j,v,INSERT_VALUES);CHKERRQ(ierr);
-  i = 6;
-  j = 4;
-  v[0] = 1;
-  ierr = MatSetValues(petsc_app->IKaPad,1,&i,1,&j,v,INSERT_VALUES);CHKERRQ(ierr);
-  i = 7;
-  j = 5;
-  v[0] = 1;
-  ierr = MatSetValues(petsc_app->IKaPad,1,&i,1,&j,v,INSERT_VALUES);CHKERRQ(ierr);
-  i = 4;
-  j = 6;
-  v[0] = 1;
-  ierr = MatSetValues(petsc_app->IKaPad,1,&i,1,&j,v,INSERT_VALUES);CHKERRQ(ierr);
-  i = 5;
-  j = 7;
-  v[0] = 1;
-  ierr = MatSetValues(petsc_app->IKaPad,1,&i,1,&j,v,INSERT_VALUES);CHKERRQ(ierr);
-  i = 10;
-  j = 8;
-  v[0] = 1;
-  ierr = MatSetValues(petsc_app->IKaPad,1,&i,1,&j,v,INSERT_VALUES);CHKERRQ(ierr);
-  i = 11;
-  j = 9;
-  v[0] = 1;
-  ierr = MatSetValues(petsc_app->IKaPad,1,&i,1,&j,v,INSERT_VALUES);CHKERRQ(ierr);
-  i = 8;
-  j = 10;
-  v[0] = 1;
-  ierr = MatSetValues(petsc_app->IKaPad,1,&i,1,&j,v,INSERT_VALUES);CHKERRQ(ierr);
-  i = 9;
-  j = 11;
-  v[0] = 1;
-  ierr = MatSetValues(petsc_app->IKaPad,1,&i,1,&j,v,INSERT_VALUES);CHKERRQ(ierr);
-  i = 14;
-  j = 12;
-  v[0] = 1;
-  ierr = MatSetValues(petsc_app->IKaPad,1,&i,1,&j,v,INSERT_VALUES);CHKERRQ(ierr);
-  i = 15;
-  j = 13;
-  v[0] = 1;
-  ierr = MatSetValues(petsc_app->IKaPad,1,&i,1,&j,v,INSERT_VALUES);CHKERRQ(ierr);
-  i = 12;
-  j = 14;
-  v[0] = 1;
-  ierr = MatSetValues(petsc_app->IKaPad,1,&i,1,&j,v,INSERT_VALUES);CHKERRQ(ierr);
-  i = 13;
-  j = 15;
-  v[0] = 1;
-  ierr = MatSetValues(petsc_app->IKaPad,1,&i,1,&j,v,INSERT_VALUES);CHKERRQ(ierr);
-
-  ierr = MatAssemblyBegin(petsc_app->IKaPad,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
-  ierr = MatAssemblyEnd(petsc_app->IKaPad,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
-
-//////////////////////////////////////////////////////////////////////////////
 
   /* Allocate A */
   ierr = MatCreateSeqAIJ(PETSC_COMM_SELF,nvec,nvec,0,NULL,&petsc_app->A);CHKERRQ(ierr);
@@ -555,7 +280,6 @@ PetscErrorCode SetUpMatrices(TS_App *petsc_app)
   ierr = MatAssemblyBegin(petsc_app->A,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
   ierr = MatAssemblyEnd(petsc_app->A,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
 
-  // MatView(petsc_app->A, PETSC_VIEWER_STDOUT_SELF);
 
   /* Allocate B */
   ierr = MatCreateSeqAIJ(PETSC_COMM_SELF,nvec,nvec,0,NULL,&petsc_app->B);CHKERRQ(ierr);
