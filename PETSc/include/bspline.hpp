@@ -8,7 +8,7 @@
  * where dtknot = T/(nsplines -2) is the time knot vector spacing.
  */
 class Bspline{
-    int nsplines;     // number of splines basis functions
+    int nbasis;     // number of basis functions
 
     double dtknot;    // spacing of time knot vector    
     double width;     // support of each spline basis function (d*dtknot)
@@ -16,7 +16,7 @@ class Bspline{
 
     public:
         /* Constructor */
-        Bspline(int NSplines, double T);
+        Bspline(int NBasis, double T);
 
         /* Destructor */
         ~Bspline();
