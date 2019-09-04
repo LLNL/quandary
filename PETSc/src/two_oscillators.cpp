@@ -69,7 +69,7 @@ PetscErrorCode InitialConditions(Vec x, PetscReal freq)
 PetscScalar F1(PetscReal t, TS_App *petsc_app)
 {
   /* Get pointer to the beginning of the F1-coefficients in the coeffs vector */
-  int istart = 0;
+  int istart = 0 * petsc_app->nvec;
   double* coeff_startptr = &petsc_app->spline_coeffs[istart];
 
   /* Return spline evaluation at time t */
@@ -81,7 +81,7 @@ PetscScalar F1(PetscReal t, TS_App *petsc_app)
 PetscScalar G1(PetscReal t,TS_App *petsc_app)
 {
   /* Get pointer to the beginning of the G1-coefficients in the coeffs vector */
-  int istart = petsc_app->nvec;
+  int istart = 1 * petsc_app->nvec;
   double* coeff_startptr = &petsc_app->spline_coeffs[istart];
 
   /* Return spline evaluation at time t */
@@ -110,7 +110,7 @@ PetscScalar F2(PetscReal t, TS_App *petsc_app)
   double* coeff_startptr = &petsc_app->spline_coeffs[istart];
 
   /* Return spline evaluation at time t */
-  double val = petsc_app->spline->evaluate(t, coeff_startptr);;
+  double val = petsc_app->spline->evaluate(t, coeff_startptr);
   return val;
 }
 
@@ -122,7 +122,7 @@ PetscScalar G2(PetscReal t,TS_App *petsc_app)
   double* coeff_startptr = &petsc_app->spline_coeffs[istart];
 
   /* Return spline evaluation at time t */
-  double val = petsc_app->spline->evaluate(t, coeff_startptr);;
+  double val = petsc_app->spline->evaluate(t, coeff_startptr);
   return val;
 }
 
@@ -147,10 +147,16 @@ PetscErrorCode RHSJacobian(TS ts,PetscReal t,Vec u,Mat M,Mat P,void *ctx)
   g = G2(t, petsc_app);
 
 
-  /* Set up real part of system matrix (A) */
+  // /* Set up real part of system matrix (A) */
+  // ierr = MatZeroEntries(petsc_app->A);CHKERRQ(ierr);
+  // ierr = MatAXPY(petsc_app->A,g,petsc_app->IKbMbd,DIFFERENT_NONZERO_PATTERN);CHKERRQ(ierr);
+  // ierr = MatAXPY(petsc_app->A,-1.*g,petsc_app->bMbdTKI,DIFFERENT_NONZERO_PATTERN);CHKERRQ(ierr);
+
+ /* Set up real part of system matrix (A) */
   ierr = MatZeroEntries(petsc_app->A);CHKERRQ(ierr);
-  ierr = MatAXPY(petsc_app->A,g,petsc_app->IKbMbd,DIFFERENT_NONZERO_PATTERN);CHKERRQ(ierr);
-  ierr = MatAXPY(petsc_app->A,-1.*g,petsc_app->bMbdTKI,DIFFERENT_NONZERO_PATTERN);CHKERRQ(ierr);
+  ierr = MatAXPY(petsc_app->A,g,petsc_app->A2,DIFFERENT_NONZERO_PATTERN);CHKERRQ(ierr);
+
+
 
   /* Set up imaginary part of system matrix (B) */
   ierr = MatZeroEntries(petsc_app->B);CHKERRQ(ierr);
@@ -216,6 +222,26 @@ PetscErrorCode SetUpMatrices(TS_App *petsc_app)
   PetscInt       i, j;
   PetscScalar    v[1];
   PetscErrorCode ierr;
+
+
+  /* Set up A2 */
+  int nlevels = 2;
+  Mat tmp1, tmp2;
+  ierr = MatCreateSeqAIJ(PETSC_COMM_SELF,nvec,nvec,1,NULL,&tmp1);CHKERRQ(ierr);
+  ierr = MatSetFromOptions(tmp1);CHKERRQ(ierr);
+  ierr = MatSetUp(tmp1);CHKERRQ(ierr);
+  ierr = BuildingBlock(tmp1, nlevels, -1,nlevels, (int) pow(nlevels, 2));
+  ierr = MatTranspose(tmp1, MAT_INPLACE_MATRIX, &tmp1);
+
+  ierr = MatCreateSeqAIJ(PETSC_COMM_SELF,nvec,nvec,1,NULL,&petsc_app->A2);CHKERRQ(ierr);
+  ierr = MatSetOptionsPrefix(petsc_app->A2, "A2");
+  ierr = MatSetUp(petsc_app->A2);CHKERRQ(ierr);
+  ierr = BuildingBlock(petsc_app->A2, nlevels, -1, (int)pow(nlevels, 3), 1);
+  ierr = MatAXPY(petsc_app->A2, -1., tmp1, DIFFERENT_NONZERO_PATTERN);
+
+  ierr = MatAssemblyBegin(petsc_app->A2, MAT_FINAL_ASSEMBLY); CHKERRQ(ierr);
+  ierr = MatAssemblyEnd(petsc_app->A2, MAT_FINAL_ASSEMBLY); CHKERRQ(ierr);
+
 
   /* Set up IKbMbd */
   ierr = MatCreateSeqAIJ(PETSC_COMM_SELF,nvec,nvec,1,NULL,&petsc_app->IKbMbd);CHKERRQ(ierr);
@@ -542,3 +568,32 @@ PetscErrorCode SetUpMatrices(TS_App *petsc_app)
 }
 
 
+PetscErrorCode BuildingBlock(Mat C, PetscInt n, PetscInt sign, PetscInt k, PetscInt m) {
+  int i, j;
+  int ierr;
+  double val;
+
+  // iterate over the blocks
+  for(int x = 0; x < k; x++) {
+    // iterate over the unique entrys within each block
+    for(int y = 0; y < n-1; y++) {
+      // iterate over the repetitions of each entry
+      for(int z = 0; z < m; z++) {
+        // Position of upper element
+        i = x*n*m + y*m + z;
+        j = i + m;
+        // Value of upper elements
+        val = sqrt((double)(y+1));
+        ierr = MatSetValues(C,1,&i,1,&j,&val,INSERT_VALUES);CHKERRQ(ierr);
+        // Lower element
+        val = sign * val;
+        ierr = MatSetValues(C,1,&j,1,&i,&val,INSERT_VALUES);CHKERRQ(ierr);
+      }
+    }
+  }
+
+  ierr = MatAssemblyBegin(C,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
+  ierr = MatAssemblyEnd(C,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
+
+  return 0;
+}

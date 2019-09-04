@@ -9,6 +9,7 @@
 typedef struct {
   PetscInt    nvec;    /* Dimension of vectorized system */
   Mat         IKbMbd, bMbdTKI, aPadTKI, IKaPad, A, B;
+  Mat         A1, A2, B1, B2;
   Bspline*    spline;  /* Spline basis functions for oscillator evaluation */
   PetscReal*  spline_coeffs;  /* Spline coefficients (optimization vars) */
 } TS_App;
@@ -63,3 +64,17 @@ PetscErrorCode RHSJacobian(TS ts,PetscReal t,Vec u,Mat M,Mat P,void *ctx);
  * Initialize fixed matrices for assembling system Hamiltonian
  */
 PetscErrorCode SetUpMatrices(TS_App *petsc_app);
+
+
+/*
+ *   Compute the matrix C = I_k * (a_1 +- a_1^dg) * I_m
+ *   Input:
+ *      C - the matrix, which has already been created
+ *      n - the number of levels
+        s - the sign, +1 => (a_1 + a_1^dg), -1 => (a_1 - a_1^dg)
+        k - the number of repetitions of the blocks
+        m - the number of repetitions of each entry within the blocks
+ *   Output:
+ *      C - the assembled matrix with all values inserted
+ */
+PetscErrorCode BuildingBlock(Mat C, PetscInt n, PetscInt s, PetscInt k, PetscInt m);
