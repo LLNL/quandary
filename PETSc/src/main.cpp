@@ -5,6 +5,7 @@
 #include "bspline.hpp"
 #include "vector.hpp"
 #include "oscillator.hpp"
+#include "hamiltonian.hpp"
 
 static char help[] ="Solves the Liouville-von-Neumann equations, two oscillators.\n\
 Input parameters:\n\
