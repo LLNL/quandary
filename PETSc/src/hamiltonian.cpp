@@ -19,6 +19,7 @@ Hamiltonian::~Hamiltonian(){
 }
 
 int Hamiltonian::initialize(int nlevels_, int noscillators_, Oscillator** oscil_vec_){
+  int ierr;
 
   /* Set dimensions */
   dim = (int) pow(nlevels_, noscillators_*2); // n^osc : pure states, (n^osc)^2 : Density matrix
@@ -27,7 +28,6 @@ int Hamiltonian::initialize(int nlevels_, int noscillators_, Oscillator** oscil_
   /* Set oscillator vector */
   oscil_vec = oscil_vec_;
 
-  int ierr;
   /* Allocate Re */
   ierr = MatCreateSeqAIJ(PETSC_COMM_SELF,dim,dim,0,NULL,&Re);CHKERRQ(ierr);
   ierr = MatSetFromOptions(Re);CHKERRQ(ierr);

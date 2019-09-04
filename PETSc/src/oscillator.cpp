@@ -19,6 +19,12 @@ SplineOscillator::SplineOscillator(int nbasis_, double Tfinal_){
   basisfunctions = new Bspline(nbasis_, Tfinal_);
   param_Re = new Vector(nbasis_, 0.0);
   param_Im = new Vector(nbasis_, 0.0);
+
+  /* Set some initial parameters */
+  for (int i=0; i<nbasis; i++){
+    (*param_Re)(i) = pow(-1., i+1); //alternate 1 and -1
+    (*param_Im)(i) = pow(-1., i+1); //alternate 1 and -1
+  }
 }
 
 SplineOscillator::~SplineOscillator(){
