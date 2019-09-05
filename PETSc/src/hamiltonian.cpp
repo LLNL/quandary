@@ -121,7 +121,7 @@ TwoOscilHam::TwoOscilHam(int nlevels_, Oscillator** oscil_vec_){
   int ierr;
 
   /* Initialize Hamiltonian */
-  Hamiltonian::initialize(nlevels_, 2, oscil_vec);
+  Hamiltonian::initialize(nlevels_, 2, oscil_vec_);
 
   /* Initialize building blocks */
   this->initialize();
