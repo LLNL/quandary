@@ -23,6 +23,8 @@ class Hamiltonian{
 
     /* Apply the Hamiltonian operator */
     virtual int apply(double t);
+    /* Access the Hamiltonian */
+    Mat getH();
 };
 
 /*

@@ -117,6 +117,10 @@ int Hamiltonian::apply(double t){
   return 0;
 }
 
+Mat Hamiltonian::getH(){
+  return H;
+}
+
 TwoOscilHam::TwoOscilHam(int nlevels_, Oscillator** oscil_vec_){
   int ierr;
 
