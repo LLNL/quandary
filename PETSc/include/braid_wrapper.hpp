@@ -1,4 +1,4 @@
-#include "two_oscillators.hpp"
+#include "hamiltonian.hpp"
 #include "braid.h"
 
 #pragma once

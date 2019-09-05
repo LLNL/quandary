@@ -54,3 +54,28 @@ class TwoOscilHam : public Hamiltonian {
     virtual int apply(double t);
  
 };
+
+
+
+
+/* 
+ * Compute the analytic solution for the 2-oscillator, 2-levels test case.
+ */
+PetscErrorCode ExactSolution(PetscReal t,Vec s, PetscReal freq);
+
+
+/*
+ *  Set the initial condition at time t_0 to the analytic solution 
+ *  of the 2-level, 2-oscillator case.
+ */
+PetscErrorCode InitialConditions(Vec x,PetscReal freq);
+
+
+
+/* Real part for Oscillator 1 of analytic solution */
+PetscScalar F1(PetscReal t,PetscReal freq);
+
+
+/* Imaginary part for Oscillator 2 of analytic solution */
+PetscScalar G2(PetscReal t,PetscReal freq);
+

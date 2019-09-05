@@ -1,5 +1,5 @@
 #include "braid_wrapper.hpp"
-#include "two_oscillators.hpp"
+#include "timestepper.hpp"
 #include "braid.h"
 #include "braid_test.h"
 #include "bspline.hpp"
@@ -22,13 +22,9 @@ int main(int argc,char **argv)
 {
   PetscInt       nlvl;         // Number of levels for each oscillator (currently 2)
   PetscInt       nosci;        // Number of oscillators (currently 2)
-  PetscInt       nsys;         // Dimension of system state space (nlvl^nosci)
-  PetscInt       nvec;         // Dimension of vectorized system (nsys^2)
-  PetscInt       nreal;        // Dimension of real-valued system (2*nvec)
   PetscInt       ntime;        // Number of time steps
   PetscReal      dt;           // Time step size
   PetscReal      total_time;   // Total end time T
-  Mat            M;            // System matrix for real-valued system
   TS             ts;           // Timestepping context
   braid_Core     braid_core;   // Core for XBraid simulation
   XB_App        *braid_app;    // XBraid's application context
@@ -76,10 +72,7 @@ int main(int argc,char **argv)
     exit(0);
   }
 
-  /* Initialize simulation parameters */
-  nsys = (PetscInt) pow(nlvl,nosci);
-  nvec = (PetscInt) pow(nsys,2);
-  nreal = 2 * nvec;
+  /* Initialize time horizon */
   total_time = ntime * dt;
 
   /* Initialize the oscillator control functions */
@@ -105,19 +98,7 @@ int main(int argc,char **argv)
   sprintf(filename, "out_v.%04d.dat", mpirank);       vfile = fopen(filename, "w");
 
   /* Allocate and initialize Petsc's Time-stepper */
-  ierr = TSCreate(PETSC_COMM_SELF,&ts);CHKERRQ(ierr);
-  ierr = TSSetProblemType(ts,TS_LINEAR);CHKERRQ(ierr);
-  ierr = TSSetType(ts, TSTHETA); CHKERRQ(ierr);
-  ierr = TSThetaSetTheta(ts, 0.5); CHKERRQ(ierr);   // midpoint rule
-
-  ierr = TSSetRHSFunction(ts,NULL,TSComputeRHSFunctionLinear,hamiltonian);CHKERRQ(ierr);
-  ierr = TSSetRHSJacobian(ts,hamiltonian->getH(),hamiltonian->getH(),RHSJacobian,hamiltonian);CHKERRQ(ierr);
-
-  ierr = TSSetTimeStep(ts,dt);CHKERRQ(ierr);
-  ierr = TSSetMaxSteps(ts,ntime);CHKERRQ(ierr);
-  ierr = TSSetMaxTime(ts,total_time);CHKERRQ(ierr);
-  ierr = TSSetExactFinalTime(ts,TS_EXACTFINALTIME_STEPOVER);CHKERRQ(ierr);
-  ierr = TSSetFromOptions(ts);CHKERRQ(ierr);
+  BuildTimeStepper(&ts, hamiltonian, ntime, dt, total_time);
 
   /* Set up XBraid's applications structure */
   braid_app = (XB_App*) malloc(sizeof(XB_App));
