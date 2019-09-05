@@ -138,8 +138,12 @@ int main(int argc,char **argv)
   ierr = TSSetProblemType(ts,TS_LINEAR);CHKERRQ(ierr);
   ierr = TSSetType(ts, TSTHETA); CHKERRQ(ierr);
   ierr = TSThetaSetTheta(ts, 0.5); CHKERRQ(ierr);   // midpoint rule
-  ierr = TSSetRHSFunction(ts,NULL,TSComputeRHSFunctionLinear,petsc_app);CHKERRQ(ierr);
-  ierr = TSSetRHSJacobian(ts,M,M,RHSJacobian,petsc_app);CHKERRQ(ierr);
+
+  // ierr = TSSetRHSFunction(ts,NULL,TSComputeRHSFunctionLinear,petsc_app);CHKERRQ(ierr);
+  // ierr = TSSetRHSJacobian(ts,M,M,RHSJacobian,petsc_app);CHKERRQ(ierr);
+  ierr = TSSetRHSFunction(ts,NULL,TSComputeRHSFunctionLinear,hamiltonian);CHKERRQ(ierr);
+  ierr = TSSetRHSJacobian(ts,hamiltonian->getH(),hamiltonian->getH(),RHSJacobian,hamiltonian);CHKERRQ(ierr);
+
   ierr = TSSetTimeStep(ts,dt);CHKERRQ(ierr);
   ierr = TSSetMaxSteps(ts,ntime);CHKERRQ(ierr);
   ierr = TSSetMaxTime(ts,total_time);CHKERRQ(ierr);

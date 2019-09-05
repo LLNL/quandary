@@ -1,5 +1,6 @@
 #include <petscts.h>
 #include "bspline.hpp"
+#include "hamiltonian.hpp"
 #pragma once
 
 

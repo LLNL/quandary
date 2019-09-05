@@ -126,85 +126,99 @@ PetscScalar G2(PetscReal t,TS_App *petsc_app)
   return val;
 }
 
-PetscErrorCode RHSJacobian(TS ts,PetscReal t,Vec u,Mat M,Mat P,void *ctx)
-{
-  TS_App *petsc_app = (TS_App*)ctx;
-  PetscInt nvec = petsc_app->nvec;
-  PetscScalar f1, f2, g1, g2;
-  PetscErrorCode ierr;
-  PetscInt ncol;
-  const PetscInt *col_idx;
-  const PetscScalar *vals;
-  PetscScalar *negvals;
-  PetscInt *col_idx_shift;
+// PetscErrorCode RHSJacobian(TS ts,PetscReal t,Vec u,Mat M,Mat P,void *ctx)
+// {
+//   TS_App *petsc_app = (TS_App*)ctx;
+//   PetscInt nvec = petsc_app->nvec;
+//   PetscScalar f1, f2, g1, g2;
+//   PetscErrorCode ierr;
+//   PetscInt ncol;
+//   const PetscInt *col_idx;
+//   const PetscScalar *vals;
+//   PetscScalar *negvals;
+//   PetscInt *col_idx_shift;
 
-  /* Allocate tmp vectors */
-  ierr = PetscMalloc1(nvec, &col_idx_shift);CHKERRQ(ierr);
-  ierr = PetscMalloc1(nvec, &negvals);CHKERRQ(ierr);
+//   /* Allocate tmp vectors */
+//   ierr = PetscMalloc1(nvec, &col_idx_shift);CHKERRQ(ierr);
+//   ierr = PetscMalloc1(nvec, &negvals);CHKERRQ(ierr);
 
-  /* Compute time-dependent control functions */
-  f1 = F1(t, petsc_app);
-  f2 = F2(t, petsc_app);
-  g1 = G1(t, petsc_app);
-  g2 = G2(t, petsc_app);
+//   /* Compute time-dependent control functions */
+//   f1 = F1(t, petsc_app);
+//   f2 = F2(t, petsc_app);
+//   g1 = G1(t, petsc_app);
+//   g2 = G2(t, petsc_app);
 
-  /* Sum up real part of system matrix A = g1*A1 + g2*A2  */
-  ierr = MatZeroEntries(petsc_app->A);CHKERRQ(ierr);
-  // ierr = MatAXPY(petsc_app->A,g1,petsc_app->A1,DIFFERENT_NONZERO_PATTERN);CHKERRQ(ierr);
-  ierr = MatAXPY(petsc_app->A,g2,petsc_app->A2,DIFFERENT_NONZERO_PATTERN);CHKERRQ(ierr);
+//   /* Sum up real part of system matrix A = g1*A1 + g2*A2  */
+//   ierr = MatZeroEntries(petsc_app->A);CHKERRQ(ierr);
+//   // ierr = MatAXPY(petsc_app->A,g1,petsc_app->A1,DIFFERENT_NONZERO_PATTERN);CHKERRQ(ierr);
+//   ierr = MatAXPY(petsc_app->A,g2,petsc_app->A2,DIFFERENT_NONZERO_PATTERN);CHKERRQ(ierr);
 
-  /* Sum up imaginary part of system matrix B = f1*B1 + f2*B2 + H_const  */
-  ierr = MatZeroEntries(petsc_app->B);CHKERRQ(ierr);
-  ierr = MatAXPY(petsc_app->B,f1,petsc_app->B1,DIFFERENT_NONZERO_PATTERN); CHKERRQ(ierr);
-  // ierr = MatAXPY(petsc_app->B,f2,petsc_app->B2,DIFFERENT_NONZERO_PATTERN);CHKERRQ(ierr);
+//   /* Sum up imaginary part of system matrix B = f1*B1 + f2*B2 + H_const  */
+//   ierr = MatZeroEntries(petsc_app->B);CHKERRQ(ierr);
+//   ierr = MatAXPY(petsc_app->B,f1,petsc_app->B1,DIFFERENT_NONZERO_PATTERN); CHKERRQ(ierr);
+//   // ierr = MatAXPY(petsc_app->B,f2,petsc_app->B2,DIFFERENT_NONZERO_PATTERN);CHKERRQ(ierr);
 
-  /* Set up Jacobian M 
-   * M(0, 0) =  A    M(0,1) = B
-   * M(0, 1) = -B    M(1,1) = A
-   */
-  for (int irow = 0; irow < nvec; irow++) {
-    PetscInt irow_shift = irow + nvec;
+//   /* Set up Jacobian M 
+//    * M(0, 0) =  A    M(0,1) = B
+//    * M(0, 1) = -B    M(1,1) = A
+//    */
+//   for (int irow = 0; irow < nvec; irow++) {
+//     PetscInt irow_shift = irow + nvec;
 
-    /* Get row in A */
-    ierr = MatGetRow(petsc_app->A, irow, &ncol, &col_idx, &vals);CHKERRQ(ierr);
-    for (int icol = 0; icol < ncol; icol++)
-    {
-      col_idx_shift[icol] = col_idx[icol] + nvec;
-    }
-    // Set A in M: M(0,0) = A  M(1,1) = A
-    ierr = MatSetValues(M,1,&irow,ncol,col_idx,vals,INSERT_VALUES);CHKERRQ(ierr);
-    ierr = MatSetValues(M,1,&irow_shift,ncol,col_idx_shift,vals,INSERT_VALUES);CHKERRQ(ierr);
-    ierr = MatRestoreRow(petsc_app->A,irow,&ncol,&col_idx,&vals);CHKERRQ(ierr);
+//     /* Get row in A */
+//     ierr = MatGetRow(petsc_app->A, irow, &ncol, &col_idx, &vals);CHKERRQ(ierr);
+//     for (int icol = 0; icol < ncol; icol++)
+//     {
+//       col_idx_shift[icol] = col_idx[icol] + nvec;
+//     }
+//     // Set A in M: M(0,0) = A  M(1,1) = A
+//     ierr = MatSetValues(M,1,&irow,ncol,col_idx,vals,INSERT_VALUES);CHKERRQ(ierr);
+//     ierr = MatSetValues(M,1,&irow_shift,ncol,col_idx_shift,vals,INSERT_VALUES);CHKERRQ(ierr);
+//     ierr = MatRestoreRow(petsc_app->A,irow,&ncol,&col_idx,&vals);CHKERRQ(ierr);
 
-    /* Get row in B */
-    ierr = MatGetRow(petsc_app->B, irow, &ncol, &col_idx, &vals);CHKERRQ(ierr);
-    for (int icol = 0; icol < ncol; icol++)
-    {
-      col_idx_shift[icol] = col_idx[icol] + nvec;
-      negvals[icol] = -vals[icol];
-    }
-    // Set B in M: M(1,0) = B, M(0,1) = -B
-    ierr = MatSetValues(M,1,&irow,ncol,col_idx_shift,negvals,INSERT_VALUES);CHKERRQ(ierr);
-    ierr = MatSetValues(M,1,&irow_shift,ncol,col_idx,vals,INSERT_VALUES);CHKERRQ(ierr);
-    ierr = MatRestoreRow(petsc_app->B,irow,&ncol,&col_idx,&vals);CHKERRQ(ierr);
-  }
+//     /* Get row in B */
+//     ierr = MatGetRow(petsc_app->B, irow, &ncol, &col_idx, &vals);CHKERRQ(ierr);
+//     for (int icol = 0; icol < ncol; icol++)
+//     {
+//       col_idx_shift[icol] = col_idx[icol] + nvec;
+//       negvals[icol] = -vals[icol];
+//     }
+//     // Set B in M: M(1,0) = B, M(0,1) = -B
+//     ierr = MatSetValues(M,1,&irow,ncol,col_idx_shift,negvals,INSERT_VALUES);CHKERRQ(ierr);
+//     ierr = MatSetValues(M,1,&irow_shift,ncol,col_idx,vals,INSERT_VALUES);CHKERRQ(ierr);
+//     ierr = MatRestoreRow(petsc_app->B,irow,&ncol,&col_idx,&vals);CHKERRQ(ierr);
+//   }
 
-  /* Assemble M */
-  ierr = MatAssemblyBegin(M,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
-  ierr = MatAssemblyEnd(M,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
-  // MatView(M, PETSC_VIEWER_STDOUT_SELF);
+//   /* Assemble M */
+//   ierr = MatAssemblyBegin(M,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
+//   ierr = MatAssemblyEnd(M,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
+//   // MatView(M, PETSC_VIEWER_STDOUT_SELF);
 
-  /* Cleanup */
-  ierr = PetscFree(col_idx_shift);
-  ierr = PetscFree(negvals);
+//   /* Cleanup */
+//   ierr = PetscFree(col_idx_shift);
+//   ierr = PetscFree(negvals);
 
 
-  /* TODO: Do we really need to store A and B explicitely? They are only used here, so maybe we can assemble M from g,f,IKbMDb, bMbdTKI, aPadTKI, IKaPad directly... */
+//   /* TODO: Do we really need to store A and B explicitely? They are only used here, so maybe we can assemble M from g,f,IKbMDb, bMbdTKI, aPadTKI, IKaPad directly... */
 
+
+//   return 0;
+// }
+
+
+
+PetscErrorCode RHSJacobian(TS ts,PetscReal t,Vec u,Mat M,Mat P,void *ctx){
+  /* Cast ctx to Hamiltonian */
+  Hamiltonian *hamiltonian = (Hamiltonian*) ctx;
+
+  /* Applying the Hamiltonian will set the matrix H */
+  hamiltonian->apply(t);
+
+  /* Set output */
+  M = hamiltonian->getH();
 
   return 0;
 }
-
 
 
 
