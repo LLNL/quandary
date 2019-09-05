@@ -14,7 +14,7 @@ Hamiltonian::~Hamiltonian(){
   if (dim > 0){
     MatDestroy(&Re);
     MatDestroy(&Im);
-    MatDestroy(&H);
+    MatDestroy(&M);
   }
 }
 
@@ -52,13 +52,13 @@ int Hamiltonian::initialize(int nlevels_, int noscillators_, Oscillator** oscil_
   ierr = MatAssemblyEnd(Im,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
 
   /* Allocate H, dimension: 2*dim x 2*dim for the real-valued system */
-  ierr = MatCreate(PETSC_COMM_SELF,&H);CHKERRQ(ierr);
-  ierr = MatSetSizes(H, PETSC_DECIDE, PETSC_DECIDE,2*dim,2*dim);CHKERRQ(ierr);
-  ierr = MatSetOptionsPrefix(H, "system");
-  ierr = MatSetFromOptions(H);CHKERRQ(ierr);
-  ierr = MatSetUp(H);CHKERRQ(ierr);
-  ierr = MatAssemblyBegin(H,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
-  ierr = MatAssemblyEnd(H,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
+  ierr = MatCreate(PETSC_COMM_SELF,&M);CHKERRQ(ierr);
+  ierr = MatSetSizes(M, PETSC_DECIDE, PETSC_DECIDE,2*dim,2*dim);CHKERRQ(ierr);
+  ierr = MatSetOptionsPrefix(M, "system");
+  ierr = MatSetFromOptions(M);CHKERRQ(ierr);
+  ierr = MatSetUp(M);CHKERRQ(ierr);
+  ierr = MatAssemblyBegin(M,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
+  ierr = MatAssemblyEnd(M,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
 
 
   return 0;
@@ -78,8 +78,8 @@ int Hamiltonian::apply(double t){
   ierr = PetscMalloc1(dim, &negvals);CHKERRQ(ierr);
 
   /* Set up Jacobian M 
-   * H(0, 0) =  Re    H(0,1) = Im
-   * H(0, 1) = -Im    H(1,1) = Re
+   * M(0, 0) =  Re    M(0,1) = Im
+   * M(0, 1) = -Im    M(1,1) = Re
    */
   for (int irow = 0; irow < dim; irow++) {
     PetscInt irow_shift = irow + dim;
@@ -90,9 +90,9 @@ int Hamiltonian::apply(double t){
     {
       col_idx_shift[icol] = col_idx[icol] + dim;
     }
-    // Set A in H: H(0,0) = Re  H(1,1) = Re
-    ierr = MatSetValues(H,1,&irow,ncol,col_idx,vals,INSERT_VALUES);CHKERRQ(ierr);
-    ierr = MatSetValues(H,1,&irow_shift,ncol,col_idx_shift,vals,INSERT_VALUES);CHKERRQ(ierr);
+    // Set A in M: M(0,0) = Re  M(1,1) = Re
+    ierr = MatSetValues(M,1,&irow,ncol,col_idx,vals,INSERT_VALUES);CHKERRQ(ierr);
+    ierr = MatSetValues(M,1,&irow_shift,ncol,col_idx_shift,vals,INSERT_VALUES);CHKERRQ(ierr);
     ierr = MatRestoreRow(Re,irow,&ncol,&col_idx,&vals);CHKERRQ(ierr);
 
     /* Get row in Im */
@@ -102,15 +102,15 @@ int Hamiltonian::apply(double t){
       col_idx_shift[icol] = col_idx[icol] + dim;
       negvals[icol] = -vals[icol];
     }
-    // Set Im in H: H(1,0) = Im, H(0,1) = -Im
-    ierr = MatSetValues(H,1,&irow,ncol,col_idx_shift,negvals,INSERT_VALUES);CHKERRQ(ierr);
-    ierr = MatSetValues(H,1,&irow_shift,ncol,col_idx,vals,INSERT_VALUES);CHKERRQ(ierr);
+    // Set Im in M: M(1,0) = Im, M(0,1) = -Im
+    ierr = MatSetValues(M,1,&irow,ncol,col_idx_shift,negvals,INSERT_VALUES);CHKERRQ(ierr);
+    ierr = MatSetValues(M,1,&irow_shift,ncol,col_idx,vals,INSERT_VALUES);CHKERRQ(ierr);
     ierr = MatRestoreRow(Im,irow,&ncol,&col_idx,&vals);CHKERRQ(ierr);
   }
 
   /* Assemble M */
-  ierr = MatAssemblyBegin(H,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
-  ierr = MatAssemblyEnd(H,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
+  ierr = MatAssemblyBegin(M,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
+  ierr = MatAssemblyEnd(M,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
   // MatView(M, PETSC_VIEWER_STDOUT_SELF);
 
   /* Cleanup */
@@ -120,8 +120,8 @@ int Hamiltonian::apply(double t){
   return 0;
 }
 
-Mat Hamiltonian::getH(){
-  return H;
+Mat Hamiltonian::getM(){
+  return M;
 }
 
 TwoOscilHam::TwoOscilHam(int nlevels_, Oscillator** oscil_vec_){
@@ -141,6 +141,7 @@ TwoOscilHam::~TwoOscilHam() {
   MatDestroy(&B1);
   MatDestroy(&B2);
   MatDestroy(&Hd);
+  MatDestroy(&M);
 
 }
 
@@ -248,7 +249,7 @@ int TwoOscilHam::apply(double t){
   oscil_vec[0]->getControl(t, &control_Re(0), &control_Im(0));
   oscil_vec[1]->getControl(t, &control_Re(1), &control_Im(1));
 
-  /* Sum up real part of hamiltonian operator Re = Im1*A1 + Im2*A2 */ 
+  /* Sum up real part of hamiltonian operator Re = controlIm1*A1 + controlIm2*A2 */ 
   ierr = MatZeroEntries(Re);CHKERRQ(ierr);
   // ierr = MatAXPY(Re,control_Im(0),A1,DIFFERENT_NONZERO_PATTERN);CHKERRQ(ierr);
   ierr = MatAXPY(Re,control_Im(1),A2,DIFFERENT_NONZERO_PATTERN);CHKERRQ(ierr);
@@ -258,6 +259,7 @@ int TwoOscilHam::apply(double t){
   ierr = MatAXPY(Im,control_Re(0),B1,DIFFERENT_NONZERO_PATTERN); CHKERRQ(ierr);
   // ierr = MatAXPY(B,control_Re(1),B2,DIFFERENT_NONZERO_PATTERN);CHKERRQ(ierr);
 
+  /* Set M from Re and Im */
   Hamiltonian::apply(t);
 
   return 0;

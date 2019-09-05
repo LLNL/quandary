@@ -13,7 +13,7 @@ class Hamiltonian{
     Oscillator** oscil_vec;  // Vector storing pointers to the oscillators
 
     Mat Re, Im;             // Real and imaginary part of Hamiltonian operator
-    Mat H;                  // Realvalued, vectorized Hamiltonian operator
+    Mat M;                  // Realvalued, vectorized Hamiltonian operator vec(-i(Hq-qH))
 
   public:
     Hamiltonian();
@@ -22,13 +22,16 @@ class Hamiltonian{
     /* Return dimension of vectorized system */
     int getDim();
 
-    /* Sets the variables and allocates Re, Im, H */
+    /* Sets the variables and allocates Re, Im, M */
     virtual int initialize(int nlevels_, int noscillators_, Oscillator** oscil_vec_);
 
-    /* Apply the Hamiltonian operator */
+    /* 
+     * Builds up the Hamiltonian operator vectorized M = vec(-i(Hq-qH)), for given Re, Im
+     */
     virtual int apply(double t);
+
     /* Access the Hamiltonian */
-    Mat getH();
+    Mat getM();
 };
 
 /*
@@ -56,7 +59,13 @@ class TwoOscilHam : public Hamiltonian {
 };
 
 
+/* 
+ * Ander's testcase with analytic solution 
+ */
+class AnalyticHam : public Hamiltonian {
 
+
+};
 
 /* 
  * Compute the analytic solution for the 2-oscillator, 2-levels test case.
