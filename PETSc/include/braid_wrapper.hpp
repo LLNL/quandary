@@ -13,9 +13,9 @@ typedef struct _braid_Vector_struct {
 /* Define the braid application structure */
 typedef struct _braid_App_struct
 {
-    TS_App* petsc_app;   // Petsc application struct
     TS      ts;       // Petsc Time-stepper struct
     int     ntime;    // number of time steps
+    Hamiltonian *hamiltonian; 
     FILE *ufile;
     FILE *vfile;
 } XB_App;

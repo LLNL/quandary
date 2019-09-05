@@ -30,7 +30,7 @@ int my_Init(braid_App     app,
         braid_Vector *u_ptr)
 {
 
-    int nreal = 2 * app->petsc_app->nvec;
+    int nreal = 2 * app->hamiltonian->getDim();
 
     /* Allocate a new braid vector */
     my_Vector* u = (my_Vector*) malloc(sizeof(my_Vector));
@@ -99,7 +99,7 @@ int my_Sum(braid_App    app,
     VecGetArrayRead(x->x, &x_ptr);
     VecGetArray(y->x, &y_ptr);
 
-    for (int i = 0; i< 2 * app->petsc_app->nvec; i++)
+    for (int i = 0; i< 2 * app->hamiltonian->getDim(); i++)
     {
         y_ptr[i] = alpha * x_ptr[i] + beta * y_ptr[i];
     }
@@ -157,10 +157,10 @@ int my_Access(braid_App       app,
     /* Write solution to files */
     fprintf(app->ufile,  "%.2f  ", t);
     fprintf(app->vfile,  "%.2f  ", t);
-    for (int i = 0; i < 2*app->petsc_app->nvec; i++)
+    for (int i = 0; i < 2*app->hamiltonian->getDim(); i++)
     {
 
-      if (i < app->petsc_app->nvec) // real part
+      if (i < app->hamiltonian->getDim()) // real part
       {
         fprintf(app->ufile, "%1.14e  ", x_ptr[i]);  
       }  
@@ -197,7 +197,7 @@ int my_BufSize(braid_App           app,
                braid_BufferStatus  bstatus)
 {
 
-    *size_ptr = 2 * app->petsc_app->nvec * sizeof(double);
+    *size_ptr = 2 * app->hamiltonian->getDim() * sizeof(double);
     return 0;
 }
 
@@ -216,12 +216,12 @@ int my_BufPack(braid_App       app,
 
     /* Copy the values into the buffer */
     dbuffer[0] = 0.0;
-    for (int i=0; i < 2*app->petsc_app->nvec; i++)
+    for (int i=0; i < 2*app->hamiltonian->getDim(); i++)
     {
         dbuffer[i] = x_ptr[i];
     }
 
-    int size = 2 * app->petsc_app->nvec * sizeof(double);
+    int size = 2 * app->hamiltonian->getDim() * sizeof(double);
     braid_BufferStatusSetSize(bstatus, size);
 
     return 0;
@@ -245,7 +245,7 @@ int my_BufUnpack(braid_App        app,
     VecGetArray(u->x, &x_ptr);
 
     /* Copy buffer into the vector */
-    for (int i=0; i < 2* app->petsc_app->nvec; i++)
+    for (int i=0; i < 2* app->hamiltonian->getDim(); i++)
     {
         x_ptr[i] = dbuffer[i];
     }

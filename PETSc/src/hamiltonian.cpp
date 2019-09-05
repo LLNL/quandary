@@ -18,6 +18,9 @@ Hamiltonian::~Hamiltonian(){
   }
 }
 
+
+int Hamiltonian::getDim(){ return dim; }
+
 int Hamiltonian::initialize(int nlevels_, int noscillators_, Oscillator** oscil_vec_){
   int ierr;
 
@@ -48,7 +51,7 @@ int Hamiltonian::initialize(int nlevels_, int noscillators_, Oscillator** oscil_
   ierr = MatAssemblyBegin(Im,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
   ierr = MatAssemblyEnd(Im,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
 
-  /* Allocate H */
+  /* Allocate H, dimension: 2*dim x 2*dim for the real-valued system */
   ierr = MatCreate(PETSC_COMM_SELF,&H);CHKERRQ(ierr);
   ierr = MatSetSizes(H, PETSC_DECIDE, PETSC_DECIDE,2*dim,2*dim);CHKERRQ(ierr);
   ierr = MatSetOptionsPrefix(H, "system");

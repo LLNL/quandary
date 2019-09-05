@@ -30,18 +30,6 @@ PetscErrorCode ExactSolution(PetscReal t,Vec s, PetscReal freq);
 PetscErrorCode InitialConditions(Vec x,PetscReal freq);
 
 
-/*
- * Oscillator 1: Evaluate real and imaginary part
- */
-PetscScalar F1(PetscReal t,TS_App *petsc_app);  // real 
-PetscScalar G1(PetscReal t,TS_App *petsc_app);  // imaginary
-
-/*
- * Oscillator 2: Evaluate real and imaginary part 
- */
-PetscScalar F2(PetscReal t,TS_App *petsc_app); // real
-PetscScalar G2(PetscReal t,TS_App *petsc_app); // imaginary
-
 
 /* Real part for Oscillator 1 of analytic solution */
 PetscScalar F1(PetscReal t,PetscReal freq);
@@ -57,26 +45,6 @@ PetscScalar G2(PetscReal t,PetscReal freq);
  *      u - solution vector x(t) 
  *      M - right hand side system Matrix
  *      P - ??
- *    ctx - Application context 
+ *    ctx - Hamiltonian system 
  */
 PetscErrorCode RHSJacobian(TS ts,PetscReal t,Vec u,Mat M,Mat P,void *ctx);
-
-
-/*
- * Initialize fixed matrices for assembling system Hamiltonian
- */
-PetscErrorCode SetUpMatrices(TS_App *petsc_app);
-
-
-/*
- *   Compute the matrix C = I_k * (a_1 +- a_1^dg) * I_m
- *   Input:
- *      C - the matrix, which has already been created
- *      n - the number of levels
-        s - the sign, +1 => (a_1 + a_1^dg), -1 => (a_1 - a_1^dg)
-        k - the number of repetitions of the blocks
-        m - the number of repetitions of each entry within the blocks
- *   Output:
- *      C - the assembled matrix with all values inserted
- */
-PetscErrorCode BuildingBlock(Mat C, PetscInt n, PetscInt s, PetscInt k, PetscInt m);

@@ -19,6 +19,10 @@ class Hamiltonian{
     Hamiltonian();
     ~Hamiltonian();
 
+    /* Return dimension of vectorized system */
+    int getDim();
+
+    /* Sets the variables and allocates Re, Im, H */
     virtual int initialize(int nlevels_, int noscillators_, Oscillator** oscil_vec_);
 
     /* Apply the Hamiltonian operator */

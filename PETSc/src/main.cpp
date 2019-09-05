@@ -30,15 +30,12 @@ int main(int argc,char **argv)
   PetscReal      total_time;   // Total end time T
   Mat            M;            // System matrix for real-valued system
   TS             ts;           // Timestepping context
-  TS_App        *petsc_app;    // Petsc's application context
   braid_Core     braid_core;   // Core for XBraid simulation
   XB_App        *braid_app;    // XBraid's application context
   PetscInt       cfactor;      // XBraid's coarsening factor
   PetscInt       maxlevels;    // XBraid's maximum number of levels
   PetscInt       maxiter;      // XBraid's maximum number of iterations
-  Bspline       *spline;       // BSpline for oscillator discretization
   PetscInt       nspline;      // Number of spline basis functions
-  PetscReal*     design;       // Optimization vars: Oscillator spline coeffs
 
 
   FILE *ufile, *vfile;
@@ -84,7 +81,6 @@ int main(int argc,char **argv)
   nvec = (PetscInt) pow(nsys,2);
   nreal = 2 * nvec;
   total_time = ntime * dt;
-  spline = new Bspline(nspline, total_time);
 
   /* Initialize the oscillator control functions */
   Oscillator** oscil_vec = new Oscillator*[nosci];
@@ -94,14 +90,6 @@ int main(int argc,char **argv)
 
   /* Initialize the Hamiltonian */
   Hamiltonian* hamiltonian = new TwoOscilHam(nlvl, oscil_vec);
-
-  /* Initialize Optimization */
-  int ndesign = 2 * nlvl * nspline;
-  design = new PetscReal[ndesign]; 
-  for (int i=0; i<ndesign; i++){
-    design[i] = pow(-1., i+1); //alternate 1 and -1
-    // design[i] = 0.0; 
-  }
 
   /* Screen output */
   if (mpirank == 0)
@@ -116,31 +104,12 @@ int main(int argc,char **argv)
   sprintf(filename, "out_u.%04d.dat", mpirank);       ufile = fopen(filename, "w");
   sprintf(filename, "out_v.%04d.dat", mpirank);       vfile = fopen(filename, "w");
 
-  /* Allocate right hand side matrix */
-  ierr = MatCreate(PETSC_COMM_SELF,&M);CHKERRQ(ierr);
-  ierr = MatSetSizes(M, PETSC_DECIDE, PETSC_DECIDE,nreal,nreal);CHKERRQ(ierr);
-  ierr = MatSetOptionsPrefix(M, "system");
-  ierr = MatSetFromOptions(M);CHKERRQ(ierr);
-  ierr = MatSetUp(M);CHKERRQ(ierr);
-  ierr = MatAssemblyBegin(M,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
-  ierr = MatAssemblyEnd(M,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
-
-  /* Initialize Petsc's application context */
-  petsc_app = (TS_App*) malloc(sizeof(TS_App));
-  petsc_app->nvec = nvec;
-  petsc_app->nlevels = nlvl;
-  petsc_app->spline = spline;
-  petsc_app->spline_coeffs = design;
-  SetUpMatrices(petsc_app);
-
   /* Allocate and initialize Petsc's Time-stepper */
   ierr = TSCreate(PETSC_COMM_SELF,&ts);CHKERRQ(ierr);
   ierr = TSSetProblemType(ts,TS_LINEAR);CHKERRQ(ierr);
   ierr = TSSetType(ts, TSTHETA); CHKERRQ(ierr);
   ierr = TSThetaSetTheta(ts, 0.5); CHKERRQ(ierr);   // midpoint rule
 
-  // ierr = TSSetRHSFunction(ts,NULL,TSComputeRHSFunctionLinear,petsc_app);CHKERRQ(ierr);
-  // ierr = TSSetRHSJacobian(ts,M,M,RHSJacobian,petsc_app);CHKERRQ(ierr);
   ierr = TSSetRHSFunction(ts,NULL,TSComputeRHSFunctionLinear,hamiltonian);CHKERRQ(ierr);
   ierr = TSSetRHSJacobian(ts,hamiltonian->getH(),hamiltonian->getH(),RHSJacobian,hamiltonian);CHKERRQ(ierr);
 
@@ -152,8 +121,8 @@ int main(int argc,char **argv)
 
   /* Set up XBraid's applications structure */
   braid_app = (XB_App*) malloc(sizeof(XB_App));
-  braid_app->petsc_app = petsc_app;
   braid_app->ts     = ts;
+  braid_app->hamiltonian = hamiltonian;
   braid_app->ntime  = ntime;
   braid_app->ufile  = ufile;
   braid_app->vfile  = vfile;
@@ -274,15 +243,6 @@ int main(int argc,char **argv)
   fclose(ufile);
   fclose(vfile);
   TSDestroy(&ts);CHKERRQ(ierr);
-  MatDestroy(&M);CHKERRQ(ierr);
-  MatDestroy(&petsc_app->A);CHKERRQ(ierr);
-  MatDestroy(&petsc_app->B);CHKERRQ(ierr);
-  MatDestroy(&petsc_app->A1);
-  MatDestroy(&petsc_app->A2);
-  MatDestroy(&petsc_app->B1);
-  MatDestroy(&petsc_app->B2);
-  delete spline;
-  free(petsc_app);
 
   /* Clean up Oscillator */
   for (int i=0; i<nosci; i++){
@@ -292,9 +252,6 @@ int main(int argc,char **argv)
 
   /* Clean up Hamiltonian */
   delete hamiltonian;
-
-  /* Cleanup optimization */
-  delete [] design;
 
   /* Cleanup XBraid */
   braid_Destroy(braid_core);
