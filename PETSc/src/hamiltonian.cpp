@@ -10,18 +10,8 @@ Hamiltonian::Hamiltonian(){
   Im = NULL;
 }
 
-Hamiltonian::~Hamiltonian(){
-  if (dim > 0){
-    MatDestroy(&Re);
-    MatDestroy(&Im);
-    MatDestroy(&M);
-  }
-}
 
-
-int Hamiltonian::getDim(){ return dim; }
-
-int Hamiltonian::initialize(int nlevels_, int noscillators_, Oscillator** oscil_vec_){
+Hamiltonian::Hamiltonian(int nlevels_, int noscillators_, Oscillator** oscil_vec_){
   int ierr;
 
   /* Set dimensions */
@@ -32,37 +22,48 @@ int Hamiltonian::initialize(int nlevels_, int noscillators_, Oscillator** oscil_
   oscil_vec = oscil_vec_;
 
   /* Allocate Re */
-  ierr = MatCreateSeqAIJ(PETSC_COMM_SELF,dim,dim,0,NULL,&Re);CHKERRQ(ierr);
-  ierr = MatSetFromOptions(Re);CHKERRQ(ierr);
-  ierr = MatSetUp(Re);CHKERRQ(ierr);
-  ierr = MatSetOption(Re, MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);CHKERRQ(ierr);
+  MatCreateSeqAIJ(PETSC_COMM_SELF,dim,dim,0,NULL,&Re);
+  MatSetFromOptions(Re);
+  MatSetUp(Re);
+  MatSetOption(Re, MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);
   for (int irow = 0; irow < dim; irow++)
   {
-    ierr = MatSetValue(Re, irow, irow, 0.0, INSERT_VALUES);CHKERRQ(ierr);
+    MatSetValue(Re, irow, irow, 0.0, INSERT_VALUES);
   }
-  ierr = MatAssemblyBegin(Re,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
-  ierr = MatAssemblyEnd(Re,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
+  MatAssemblyBegin(Re,MAT_FINAL_ASSEMBLY);
+  MatAssemblyEnd(Re,MAT_FINAL_ASSEMBLY);
 
 
   /* Allocate Im */
-  ierr = MatCreateSeqAIJ(PETSC_COMM_SELF,dim,dim,0,NULL,&Im);CHKERRQ(ierr);
-  ierr = MatSetFromOptions(Im);CHKERRQ(ierr);
-  ierr = MatSetUp(Im);CHKERRQ(ierr);
-  ierr = MatAssemblyBegin(Im,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
-  ierr = MatAssemblyEnd(Im,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
+  MatCreateSeqAIJ(PETSC_COMM_SELF,dim,dim,0,NULL,&Im);
+  MatSetFromOptions(Im);
+  MatSetUp(Im);
+  MatAssemblyBegin(Im,MAT_FINAL_ASSEMBLY);
+  MatAssemblyEnd(Im,MAT_FINAL_ASSEMBLY);
 
   /* Allocate H, dimension: 2*dim x 2*dim for the real-valued system */
-  ierr = MatCreate(PETSC_COMM_SELF,&M);CHKERRQ(ierr);
-  ierr = MatSetSizes(M, PETSC_DECIDE, PETSC_DECIDE,2*dim,2*dim);CHKERRQ(ierr);
-  ierr = MatSetOptionsPrefix(M, "system");
-  ierr = MatSetFromOptions(M);CHKERRQ(ierr);
-  ierr = MatSetUp(M);CHKERRQ(ierr);
-  ierr = MatAssemblyBegin(M,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
-  ierr = MatAssemblyEnd(M,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
+  MatCreate(PETSC_COMM_SELF,&M);
+  MatSetSizes(M, PETSC_DECIDE, PETSC_DECIDE,2*dim,2*dim);
+  MatSetOptionsPrefix(M, "system");
+  MatSetFromOptions(M);
+  MatSetUp(M);
+  MatAssemblyBegin(M,MAT_FINAL_ASSEMBLY);
+  MatAssemblyEnd(M,MAT_FINAL_ASSEMBLY);
 
 
-  return 0;
 }
+
+
+Hamiltonian::~Hamiltonian(){
+  if (dim > 0){
+    MatDestroy(&Re);
+    MatDestroy(&Im);
+    MatDestroy(&M);
+  }
+}
+
+
+int Hamiltonian::getDim(){ return dim; }
 
 
 int Hamiltonian::apply(double t){
@@ -124,15 +125,69 @@ Mat Hamiltonian::getM(){
   return M;
 }
 
-TwoOscilHam::TwoOscilHam(int nlevels_, Oscillator** oscil_vec_){
-  int ierr;
+TwoOscilHam::TwoOscilHam(int nlevels_, Oscillator** oscil_vec_)
+                :  Hamiltonian(nlevels_, 2, oscil_vec_){
+  Mat tmp;
 
-  /* Initialize Hamiltonian */
-  Hamiltonian::initialize(nlevels_, 2, oscil_vec_);
+  /* Create building blocks */
+  MatCreateSeqAIJ(PETSC_COMM_SELF,dim,dim,1,NULL,&A1);
+  MatCreateSeqAIJ(PETSC_COMM_SELF,dim,dim,1,NULL,&A2);
+  MatCreateSeqAIJ(PETSC_COMM_SELF,dim,dim,1,NULL,&B1);
+  MatCreateSeqAIJ(PETSC_COMM_SELF,dim,dim,1,NULL,&B2);
+  MatCreateSeqAIJ(PETSC_COMM_SELF,dim,dim,1,NULL,&Hd);
 
-  /* Initialize building blocks */
-  this->initialize();
+  /* --- Set up A1 = C^{-}(n^2, n) - C^-(1,n^3)^T --- */
+  MatCreateSeqAIJ(PETSC_COMM_SELF,dim,dim,1,NULL,&tmp);
+  BuildingBlock(tmp, -1, 1, (int) pow(nlevels, 3));
+  MatTranspose(tmp, MAT_INPLACE_MATRIX, &tmp);
+  BuildingBlock(A1, -1, (int)pow(nlevels, 2), nlevels);
+  MatAXPY(A1, -1., tmp, DIFFERENT_NONZERO_PATTERN);
+  MatDestroy(&tmp);
+
+  /* --- Set up A2 = C^{-}(n^3,1) - C^{-}(n,n^2)^T --- */
+  MatCreateSeqAIJ(PETSC_COMM_SELF,dim,dim,1,NULL,&tmp);
+  BuildingBlock(tmp, -1,nlevels, (int) pow(nlevels, 2));
+  MatTranspose(tmp, MAT_INPLACE_MATRIX, &tmp);
+  BuildingBlock(A2, -1, (int)pow(nlevels, 3), 1);
+  MatAXPY(A2, -1., tmp, DIFFERENT_NONZERO_PATTERN);
+  MatDestroy(&tmp);
+  
+  /* --- Set up B1 = C^+(1,n^3)^T - C^+(n^2, n) --- */
+  MatCreateSeqAIJ(PETSC_COMM_SELF,dim,dim,1,NULL,&tmp);
+  BuildingBlock(tmp, 1, (int) pow(nlevels, 2), nlevels);
+  BuildingBlock(B1, 1, 1, (int)pow(nlevels, 3));
+  MatTranspose(B1, MAT_INPLACE_MATRIX, &B1);
+  MatAXPY(B1, -1., tmp, DIFFERENT_NONZERO_PATTERN);
+  MatDestroy(&tmp);
+
+  /* --- Set up B2 = C^+(n,n^2)^T - C^+(n^3, 1) --- */
+  MatCreateSeqAIJ(PETSC_COMM_SELF,dim,dim,1,NULL,&tmp);
+  BuildingBlock(tmp, 1, nlevels, (int) pow(nlevels, 2));
+  BuildingBlock(B2, 1, nlevels, (int)pow(nlevels, 2));
+  MatTranspose(B2, MAT_INPLACE_MATRIX, &B2);
+  MatAXPY(B2, -1., tmp, DIFFERENT_NONZERO_PATTERN);
+  MatDestroy(&tmp);
+
+  /* --- Set up Hd --- */
+  MatCreateSeqAIJ(PETSC_COMM_SELF,dim,dim,1,NULL,&Hd);
+  MatZeroEntries(Hd);
+  // TODO: Set Hd!
+
+  /* Assemble the matrices */
+  MatAssemblyBegin(A1, MAT_FINAL_ASSEMBLY);
+  MatAssemblyEnd(A1, MAT_FINAL_ASSEMBLY);
+  MatAssemblyBegin(A2, MAT_FINAL_ASSEMBLY);
+  MatAssemblyEnd(A2, MAT_FINAL_ASSEMBLY);
+  MatAssemblyBegin(B1, MAT_FINAL_ASSEMBLY);
+  MatAssemblyEnd(B1, MAT_FINAL_ASSEMBLY);
+  MatAssemblyBegin(B2, MAT_FINAL_ASSEMBLY);
+  MatAssemblyEnd(B2, MAT_FINAL_ASSEMBLY);
+  MatAssemblyBegin(Hd, MAT_FINAL_ASSEMBLY);
+  MatAssemblyEnd(Hd, MAT_FINAL_ASSEMBLY);
+
 }
+
+
 
 TwoOscilHam::~TwoOscilHam() {
 
@@ -145,68 +200,7 @@ TwoOscilHam::~TwoOscilHam() {
 
 }
 
-int TwoOscilHam::initialize(){
-  int ierr;
-  Mat tmp;
 
-  /* Create building blocks */
-  ierr = MatCreateSeqAIJ(PETSC_COMM_SELF,dim,dim,1,NULL,&A1);CHKERRQ(ierr);
-  ierr = MatCreateSeqAIJ(PETSC_COMM_SELF,dim,dim,1,NULL,&A2);CHKERRQ(ierr);
-  ierr = MatCreateSeqAIJ(PETSC_COMM_SELF,dim,dim,1,NULL,&B1);CHKERRQ(ierr);
-  ierr = MatCreateSeqAIJ(PETSC_COMM_SELF,dim,dim,1,NULL,&B2);CHKERRQ(ierr);
-  ierr = MatCreateSeqAIJ(PETSC_COMM_SELF,dim,dim,1,NULL,&Hd);CHKERRQ(ierr);
-
-  /* --- Set up A1 = C^{-}(n^2, n) - C^-(1,n^3)^T --- */
-  ierr = MatCreateSeqAIJ(PETSC_COMM_SELF,dim,dim,1,NULL,&tmp);CHKERRQ(ierr);
-  ierr = BuildingBlock(tmp, -1, 1, (int) pow(nlevels, 3));
-  ierr = MatTranspose(tmp, MAT_INPLACE_MATRIX, &tmp);
-  ierr = BuildingBlock(A1, -1, (int)pow(nlevels, 2), nlevels);
-  ierr = MatAXPY(A1, -1., tmp, DIFFERENT_NONZERO_PATTERN);
-  ierr = MatDestroy(&tmp);
-
-  /* --- Set up A2 = C^{-}(n^3,1) - C^{-}(n,n^2)^T --- */
-  ierr = MatCreateSeqAIJ(PETSC_COMM_SELF,dim,dim,1,NULL,&tmp);CHKERRQ(ierr);
-  ierr = BuildingBlock(tmp, -1,nlevels, (int) pow(nlevels, 2));
-  ierr = MatTranspose(tmp, MAT_INPLACE_MATRIX, &tmp);
-  ierr = BuildingBlock(A2, -1, (int)pow(nlevels, 3), 1);
-  ierr = MatAXPY(A2, -1., tmp, DIFFERENT_NONZERO_PATTERN);
-  ierr = MatDestroy(&tmp);
-  
-  /* --- Set up B1 = C^+(1,n^3)^T - C^+(n^2, n) --- */
-  ierr = MatCreateSeqAIJ(PETSC_COMM_SELF,dim,dim,1,NULL,&tmp);CHKERRQ(ierr);
-  ierr = BuildingBlock(tmp, 1, (int) pow(nlevels, 2), nlevels);
-  ierr = BuildingBlock(B1, 1, 1, (int)pow(nlevels, 3));
-  ierr = MatTranspose(B1, MAT_INPLACE_MATRIX, &B1);
-  ierr = MatAXPY(B1, -1., tmp, DIFFERENT_NONZERO_PATTERN);
-  ierr = MatDestroy(&tmp);
-
-  /* --- Set up B2 = C^+(n,n^2)^T - C^+(n^3, 1) --- */
-  ierr = MatCreateSeqAIJ(PETSC_COMM_SELF,dim,dim,1,NULL,&tmp);CHKERRQ(ierr);
-  ierr = BuildingBlock(tmp, 1, nlevels, (int) pow(nlevels, 2));
-  ierr = BuildingBlock(B2, 1, nlevels, (int)pow(nlevels, 2));
-  ierr = MatTranspose(B2, MAT_INPLACE_MATRIX, &B2);
-  ierr = MatAXPY(B2, -1., tmp, DIFFERENT_NONZERO_PATTERN);
-  ierr = MatDestroy(&tmp);
-
-  /* --- Set up Hd --- */
-  ierr = MatCreateSeqAIJ(PETSC_COMM_SELF,dim,dim,1,NULL,&Hd);CHKERRQ(ierr);
-  ierr = MatZeroEntries(Hd);
-  // TODO: Set Hd!
-
-  /* Assemble the matrices */
-  ierr = MatAssemblyBegin(A1, MAT_FINAL_ASSEMBLY); CHKERRQ(ierr);
-  ierr = MatAssemblyEnd(A1, MAT_FINAL_ASSEMBLY); CHKERRQ(ierr);
-  ierr = MatAssemblyBegin(A2, MAT_FINAL_ASSEMBLY); CHKERRQ(ierr);
-  ierr = MatAssemblyEnd(A2, MAT_FINAL_ASSEMBLY); CHKERRQ(ierr);
-  ierr = MatAssemblyBegin(B1, MAT_FINAL_ASSEMBLY); CHKERRQ(ierr);
-  ierr = MatAssemblyEnd(B1, MAT_FINAL_ASSEMBLY); CHKERRQ(ierr);
-  ierr = MatAssemblyBegin(B2, MAT_FINAL_ASSEMBLY); CHKERRQ(ierr);
-  ierr = MatAssemblyEnd(B2, MAT_FINAL_ASSEMBLY); CHKERRQ(ierr);
-  ierr = MatAssemblyBegin(Hd, MAT_FINAL_ASSEMBLY); CHKERRQ(ierr);
-  ierr = MatAssemblyEnd(Hd, MAT_FINAL_ASSEMBLY); CHKERRQ(ierr);
-
-  return ierr;
-}
 
 
 int TwoOscilHam::BuildingBlock(Mat C, int sign, int k, int m){
@@ -265,6 +259,10 @@ int TwoOscilHam::apply(double t){
   return 0;
 }
 
+
+// AnalyticHam::AnalyticHam(Oscillator** oscil_vec){
+
+// }
 
 
 PetscErrorCode ExactSolution(PetscReal t,Vec s, PetscReal freq)

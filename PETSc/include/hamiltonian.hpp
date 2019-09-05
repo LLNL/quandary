@@ -16,17 +16,17 @@ class Hamiltonian{
     Mat M;                  // Realvalued, vectorized Hamiltonian operator vec(-i(Hq-qH))
 
   public:
+    /* Default constructor sets zero */
     Hamiltonian();
+    /* This constructor sets the variables and allocates Re, Im and M */
+    Hamiltonian(int nlevels_, int noscillators_, Oscillator** oscil_vec_);
     ~Hamiltonian();
 
     /* Return dimension of vectorized system */
     int getDim();
 
-    /* Sets the variables and allocates Re, Im, M */
-    virtual int initialize(int nlevels_, int noscillators_, Oscillator** oscil_vec_);
-
     /* 
-     * Builds up the Hamiltonian operator vectorized M = vec(-i(Hq-qH)), for given Re, Im
+     * Builds up the Hamiltonian operator vectorized M = vec(-i(Hq-qH)), from Re, Im
      */
     virtual int apply(double t);
 
@@ -46,9 +46,6 @@ class TwoOscilHam : public Hamiltonian {
   public:
     TwoOscilHam(int nlevels_, Oscillator** oscil_vec_); 
     ~TwoOscilHam(); 
-
-    /* Set up the building block matrices */ 
-    int initialize();
 
     /* Helper function for constructing building blocks */
     int BuildingBlock(Mat C, int sign, int k, int m);
