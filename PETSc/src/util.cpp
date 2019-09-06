@@ -1,6 +1,6 @@
 #include "util.hpp"
 
-PetscErrorCode Ikron(Mat A, int dimI, Mat *Out){
+PetscErrorCode Ikron(Mat A, int dimI, Mat *Out, InsertMode insert_mode){
 
     int ierr;
     int ncols;
@@ -11,15 +11,8 @@ PetscErrorCode Ikron(Mat A, int dimI, Mat *Out){
     int dimOut;
     int nonzeroOut;
     int rowID;
-    MatInfo Ainfo;
 
     MatGetSize(A, &dimA, NULL);
-    MatGetInfo(A, MAT_LOCAL, &Ainfo);
-
-    dimOut = dimA*dimI;
-    nonzeroOut = Ainfo.nz_allocated * dimI;
-    MatCreateSeqAIJ(PETSC_COMM_SELF, dimOut, dimOut, nonzeroOut, NULL, Out);
-    MatSetUp(*Out);
 
     ierr = PetscMalloc1(dimA, &shiftcols); CHKERRQ(ierr);
 
@@ -30,10 +23,10 @@ PetscErrorCode Ikron(Mat A, int dimI, Mat *Out){
         for (int j=0; j<dimA; j++){
             MatGetRow(A, j, &ncols, &cols, &Avals);
             rowID = i*dimA + j;
-            for (int k=0; k<dimA; k++){
+            for (int k=0; k<ncols; k++){
                 shiftcols[k] = cols[k] + i*dimA;
             }
-            MatSetValues(*Out, 1, &rowID, dimA, shiftcols, Avals, INSERT_VALUES);
+            MatSetValues(*Out, 1, &rowID, ncols, shiftcols, Avals, insert_mode);
             MatRestoreRow(A, j, &ncols, &cols, &Avals);
         }
 
@@ -45,7 +38,7 @@ PetscErrorCode Ikron(Mat A, int dimI, Mat *Out){
     return 0;
 }
 
-PetscErrorCode kronI(Mat A, int dimI, Mat *Out){
+PetscErrorCode kronI(Mat A, int dimI, Mat *Out, InsertMode insert_mode){
     
     int ierr;
     int dimA;
@@ -58,14 +51,7 @@ PetscErrorCode kronI(Mat A, int dimI, Mat *Out){
     int nonzeroOut;
     int ncols;
     MatInfo Ainfo;
-
     MatGetSize(A, &dimA, NULL);
-    MatGetInfo(A, MAT_LOCAL, &Ainfo);
-
-    dimOut = dimA*dimI;
-    nonzeroOut = Ainfo.nz_allocated * dimI;
-    MatCreateSeqAIJ(PETSC_COMM_SELF, dimOut, dimOut, nonzeroOut, NULL, Out);
-    MatSetUp(*Out);
 
     ierr = PetscMalloc1(dimA, &cols); CHKERRQ(ierr);
     ierr = PetscMalloc1(dimA, &Avals);
@@ -81,10 +67,10 @@ PetscErrorCode kronI(Mat A, int dimI, Mat *Out){
             // dimI rows. global row indices: i, i+dimI
             for (int k=0; k<dimI; k++) {
                rowid = i*dimI + k;
-               colid = (j)*dimI + k;
+               colid = cols[j]*dimI + k;
                insertval = Avals[j];
-               MatSetValues(*Out, 1, &rowid, 1, &colid, &insertval, INSERT_VALUES);
-               //printf("Setting %d,%d %f\n", rowid, colid, insertval);
+               MatSetValues(*Out, 1, &rowid, 1, &colid, &insertval, insert_mode);
+              //  printf("Setting %d,%d %f\n", rowid, colid, insertval);
             }
         }
         MatRestoreRow(A, i, &ncols, &cols, &Avals);
