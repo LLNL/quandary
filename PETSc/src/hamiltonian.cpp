@@ -127,14 +127,17 @@ Mat Hamiltonian::getM(){
 
 TwoOscilHam::TwoOscilHam(int nlevels_, Oscillator** oscil_vec_)
                 :  Hamiltonian(nlevels_, 2, oscil_vec_){
+  xi1 = 1.0;
+  xi2 = 1.0;
+  xi12 = 1.0;
+
   Mat tmp;
 
-  /* Create building blocks */
+  /* Create constant matrices */
   MatCreateSeqAIJ(PETSC_COMM_SELF,dim,dim,1,NULL,&A1);
   MatCreateSeqAIJ(PETSC_COMM_SELF,dim,dim,1,NULL,&A2);
   MatCreateSeqAIJ(PETSC_COMM_SELF,dim,dim,1,NULL,&B1);
   MatCreateSeqAIJ(PETSC_COMM_SELF,dim,dim,1,NULL,&B2);
-  MatCreateSeqAIJ(PETSC_COMM_SELF,dim,dim,1,NULL,&Hd);
 
   /* --- Set up A1 = C^{-}(n^2, n) - C^-(1,n^3)^T --- */
   MatCreateSeqAIJ(PETSC_COMM_SELF,dim,dim,1,NULL,&tmp);
@@ -169,9 +172,43 @@ TwoOscilHam::TwoOscilHam(int nlevels_, Oscillator** oscil_vec_)
   MatDestroy(&tmp);
 
   /* --- Set up Hd --- */
-  MatCreateSeqAIJ(PETSC_COMM_SELF,dim,dim,1,NULL,&Hd);
-  MatZeroEntries(Hd);
-  // TODO: Set Hd!
+  // tmp = Hs, Hd = -In\kron Hs + Hs^T\kron In
+  Vec diag;
+  VecCreate(PETSC_COMM_WORLD, &diag);
+  VecSetSizes(diag, PETSC_DECIDE, nlevels*nlevels);
+  VecSetFromOptions(diag);
+  for (int i=1; i<nlevels; i++){  // first block is always empty
+    for (int j=0; j<nlevels; j++){
+      int rowid = i * nlevels + j;
+      double val = 0.0;
+      val += - xi1 / 2. * i*(i-1);
+      val += - xi2 / 2. * j*(j-1);
+      val += - xi12 * i*j;
+      VecSetValue(diag, rowid, val, INSERT_VALUES);
+    }
+  }
+  VecAssemblyBegin(diag);
+  VecAssemblyEnd(diag);
+  // VecView(diag, PETSC_VIEWER_STDOUT_WORLD);
+
+  /* Create diagonal Hs */
+  MatCreateSeqAIJ(PETSC_COMM_SELF, nlevels*nlevels, nlevels*nlevels, nlevels*nlevels, NULL, &tmp);
+  MatSetUp(tmp);
+  MatDiagonalSet(tmp, diag, INSERT_VALUES);
+  MatAssemblyBegin(tmp, MAT_FINAL_ASSEMBLY);
+  MatAssemblyEnd(tmp, MAT_FINAL_ASSEMBLY);
+  // MatView(tmp, PETSC_VIEWER_STDOUT_WORLD);
+
+  MatCreateSeqAIJ(PETSC_COMM_SELF,dim,dim,dim,NULL,&Hd); // only diagonal is nonzero
+  MatSetUp(Hd);
+  kronI(tmp, nlevels*nlevels, &Hd, INSERT_VALUES);  // Hd = tmp \kron I
+  MatScale(tmp, -1.0); 
+  Ikron(tmp, nlevels*nlevels, &Hd, ADD_VALUES);  // Hd += -I \kron tmp
+  MatDestroy(&tmp);
+
+  MatAssemblyBegin(Hd, MAT_FINAL_ASSEMBLY);
+  MatAssemblyEnd(Hd, MAT_FINAL_ASSEMBLY);
+  // MatView(Hd, PETSC_VIEWER_STDOUT_WORLD);
 
   /* Assemble the matrices */
   MatAssemblyBegin(A1, MAT_FINAL_ASSEMBLY);
@@ -182,8 +219,6 @@ TwoOscilHam::TwoOscilHam(int nlevels_, Oscillator** oscil_vec_)
   MatAssemblyEnd(B1, MAT_FINAL_ASSEMBLY);
   MatAssemblyBegin(B2, MAT_FINAL_ASSEMBLY);
   MatAssemblyEnd(B2, MAT_FINAL_ASSEMBLY);
-  MatAssemblyBegin(Hd, MAT_FINAL_ASSEMBLY);
-  MatAssemblyEnd(Hd, MAT_FINAL_ASSEMBLY);
 
 }
 
@@ -245,13 +280,14 @@ int TwoOscilHam::apply(double t){
 
   /* Sum up real part of hamiltonian operator Re = controlIm1*A1 + controlIm2*A2 */ 
   ierr = MatZeroEntries(Re);CHKERRQ(ierr);
-  // ierr = MatAXPY(Re,control_Im(0),A1,DIFFERENT_NONZERO_PATTERN);CHKERRQ(ierr);
+  ierr = MatAXPY(Re,control_Im(0),A1,DIFFERENT_NONZERO_PATTERN);CHKERRQ(ierr);
   ierr = MatAXPY(Re,control_Im(1),A2,DIFFERENT_NONZERO_PATTERN);CHKERRQ(ierr);
 
   /* Sum up imaginary part of system matrix B = f1*B1 + f2*B2 + H_const  */
   ierr = MatZeroEntries(Im);CHKERRQ(ierr);
   ierr = MatAXPY(Im,control_Re(0),B1,DIFFERENT_NONZERO_PATTERN); CHKERRQ(ierr);
-  // ierr = MatAXPY(B,control_Re(1),B2,DIFFERENT_NONZERO_PATTERN);CHKERRQ(ierr);
+  ierr = MatAXPY(Im,control_Re(1),B2,DIFFERENT_NONZERO_PATTERN);CHKERRQ(ierr);
+  ierr = MatAXPY(Im, 1.0, Hd, DIFFERENT_NONZERO_PATTERN); CHKERRQ(ierr);
 
   /* Set M from Re and Im */
   Hamiltonian::apply(t);
@@ -344,5 +380,3 @@ PetscScalar G2_analytic(PetscReal t,PetscReal freq)
   PetscScalar g = (1./4.) * (1. - PetscSinScalar(freq * t));
   return g;
 }
-
-

@@ -1,4 +1,5 @@
 #include "oscillator.hpp"
+#include "util.hpp"
 #include <petscts.h>
 #pragma once
 
@@ -42,6 +43,8 @@ class TwoOscilHam : public Hamiltonian {
   Mat A1, A2;  // Building blocks for real part of Hamiltonian
   Mat B1, B2;  // Building blocks for imaginary part of Hamiltonian
   Mat Hd;      // Constant part of Hamiltonian matrix ("drift Hamiltonian")
+
+  double xi1, xi2, xi12;
 
   public:
     TwoOscilHam(int nlevels_, Oscillator** oscil_vec_); 
