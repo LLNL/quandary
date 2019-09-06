@@ -44,10 +44,10 @@ class TwoOscilHam : public Hamiltonian {
   Mat B1, B2;  // Building blocks for imaginary part of Hamiltonian
   Mat Hd;      // Constant part of Hamiltonian matrix ("drift Hamiltonian")
 
-  double xi1, xi2, xi12;
+  double* xi;   // xi = xi1, xi2, xi12
 
   public:
-    TwoOscilHam(int nlevels_, Oscillator** oscil_vec_); 
+    TwoOscilHam(int nlevels_, double* xi, Oscillator** oscil_vec_); 
     ~TwoOscilHam(); 
 
     /* Helper function for constructing building blocks */

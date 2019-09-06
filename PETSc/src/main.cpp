@@ -83,7 +83,11 @@ int main(int argc,char **argv)
   // oscil_vec[0]->dumpControl(total_time, dt, "initcontrol.dat");
 
   /* Initialize the Hamiltonian */
-  Hamiltonian* hamiltonian = new TwoOscilHam(nlvl, oscil_vec);
+  double* xi = new double[nlvl*nlvl];
+  xi[0] =  2.*0.1099;
+  xi[1] =  2.*0.1126;
+  xi[2] =  0.1;
+  Hamiltonian* hamiltonian = new TwoOscilHam(nlvl, xi, oscil_vec);
 
   /* Screen output */
   if (mpirank == 0)

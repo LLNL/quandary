@@ -125,13 +125,9 @@ Mat Hamiltonian::getM(){
   return M;
 }
 
-TwoOscilHam::TwoOscilHam(int nlevels_, Oscillator** oscil_vec_)
+TwoOscilHam::TwoOscilHam(int nlevels_, double* xi_, Oscillator** oscil_vec_)
                 :  Hamiltonian(nlevels_, 2, oscil_vec_){
-  xi1 = 1.0;
-  xi2 = 1.0;
-  xi12 = 1.0;
-
-  Mat tmp;
+  xi = xi_;
 
   /* Create constant matrices */
   MatCreateSeqAIJ(PETSC_COMM_SELF,dim,dim,1,NULL,&A1);
@@ -139,6 +135,7 @@ TwoOscilHam::TwoOscilHam(int nlevels_, Oscillator** oscil_vec_)
   MatCreateSeqAIJ(PETSC_COMM_SELF,dim,dim,1,NULL,&B1);
   MatCreateSeqAIJ(PETSC_COMM_SELF,dim,dim,1,NULL,&B2);
 
+  Mat tmp;
   /* --- Set up A1 = C^{-}(n^2, n) - C^-(1,n^3)^T --- */
   MatCreateSeqAIJ(PETSC_COMM_SELF,dim,dim,1,NULL,&tmp);
   BuildingBlock(tmp, -1, 1, (int) pow(nlevels, 3));
@@ -181,9 +178,9 @@ TwoOscilHam::TwoOscilHam(int nlevels_, Oscillator** oscil_vec_)
     for (int j=0; j<nlevels; j++){
       int rowid = i * nlevels + j;
       double val = 0.0;
-      val += - xi1 / 2. * i*(i-1);
-      val += - xi2 / 2. * j*(j-1);
-      val += - xi12 * i*j;
+      val += - xi[0] / 2. * i*(i-1);
+      val += - xi[1] / 2. * j*(j-1);
+      val += - xi[2] * i*j;
       VecSetValue(diag, rowid, val, INSERT_VALUES);
     }
   }
