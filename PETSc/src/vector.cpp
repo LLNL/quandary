@@ -130,7 +130,10 @@ MultiVector::MultiVector() : Vector() {
   dimy = 0;
 }
 
-MultiVector::MultiVector(int dimx_, int dimy_, double fill_) : Vector(dimx_*dimy_, fill_) {}
+MultiVector::MultiVector(int dimx_, int dimy_, double fill_) : Vector(dimx_*dimy_, fill_) {
+  dimx = dimx_;
+  dimy = dimy_;
+}
 
 MultiVector::~MultiVector(){}
 
