@@ -80,6 +80,7 @@ int main(int argc,char **argv)
   for (int i = 0; i < nosci; i++){
     oscil_vec[i] = new SplineOscillator(nspline, total_time);
   }
+  // oscil_vec[0]->dumpControl(total_time, dt, "initcontrol.dat");
 
   /* Initialize the Hamiltonian */
   Hamiltonian* hamiltonian = new TwoOscilHam(nlvl, oscil_vec);

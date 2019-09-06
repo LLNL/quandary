@@ -3,6 +3,35 @@
 Oscillator::Oscillator(){}
 Oscillator::~Oscillator(){}
 
+int Oscillator::dumpControl(double tfinal, double dt){
+
+  this->dumpControl(tfinal, dt, std::cout);
+    return 0;
+}
+
+
+void Oscillator::dumpControl(double tfinal, double dt, std::ostream &output){
+
+  int N = tfinal / dt;
+  MultiVector controlout(N, 3, 0.0);
+
+  /* Evaluate control at all time steps */
+  for (int i=0; i < N; i++){
+    double t = (double) i * dt;
+    controlout(i,0) = i*dt;
+    getControl(t,  &controlout(i,1), &controlout(i,2));
+  }
+  controlout.dump(output);
+}
+
+void Oscillator::dumpControl(double tfinal, double dt, std::string filename){
+  ofstream file;
+  file.open(filename.c_str());
+  file << setprecision(20);
+  this->dumpControl(tfinal, dt, file);
+  file << endl;
+  file.close();
+}
 
 SplineOscillator::SplineOscillator() {
   nbasis = 0;
@@ -37,31 +66,16 @@ SplineOscillator::~SplineOscillator(){
 
 int SplineOscillator::getControl(double t, double* Re_ptr, double* Im_ptr){
 
-  /* Evaluate the spline at time t */
-  *Re_ptr = basisfunctions->evaluate(t, param_Re->GetData());
-  *Im_ptr = basisfunctions->evaluate(t, param_Im->GetData());
-
-  return 0;
-}
-
-
-int SplineOscillator::dumpControl(){
-  // Vector controlRe(100, 0.0);
-  // Vector controlIm(100, 0.0);
-  MultiVector controlout(100, 3, 0.0);
-
-  /* Discretize time in [0, Tfinal] */
-  int N = 100;
-  double dt = Tfinal/(double)N;
-
-  /* Evaluate control at all time steps */
-  for (int i=0; i < N; i++){
-    double t = (double) i * dt;
-    controlout(i,0) = i*dt;
-    getControl(t,  &controlout(i,1), &controlout(i,2));
+  if ( t > Tfinal ){
+    printf("WARNING: accessing spline outside of [0,T]. Returning 0.0\n");
+    *Re_ptr = 0.0;
+    *Im_ptr = 0.0;
+  } else {
+    /* Evaluate the spline at time t */
+    *Re_ptr = basisfunctions->evaluate(t, param_Re->GetData());
+    *Im_ptr = basisfunctions->evaluate(t, param_Im->GetData());
   }
-  controlout.dump();
-  controlout.dump();
 
   return 0;
 }
+

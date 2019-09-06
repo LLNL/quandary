@@ -1,7 +1,11 @@
 #include <stdio.h>
 #include "vector.hpp"
 #include "bspline.hpp"
+#include <fstream>
+#include <iomanip>
 #pragma once
+
+using namespace std;
 
 /*
  * Abstract base class for oscillators
@@ -16,7 +20,9 @@ class Oscillator {
     virtual int getControl(double t, double* Re_ptr, double* Im_ptr) = 0;
 
     /* Print Control */
-    virtual int dumpControl() = 0;
+    virtual int dumpControl(double tfinal, double dt);
+    virtual void dumpControl(double tfinal, double dt, std::ostream &output);
+    virtual void dumpControl(double tfinal, double dt, std::string filename);
 };
 
 
@@ -37,5 +43,4 @@ class SplineOscillator : public Oscillator {
 
     virtual int getControl(double t, double* Re_ptr, double* Im_ptr);
 
-    virtual int dumpControl();
 };

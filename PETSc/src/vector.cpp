@@ -105,8 +105,10 @@ void Vector::dump() const
 void Vector::dump(ostream &output) const
 {
   output << data[0];
-  for (int i = 1; i < dim; i++)
+  for (int i = 1; i < dim; i++){
     output << " " << data[i];
+  }
+  output << endl;
 }
 
 void Vector::dump(string filename) const
@@ -145,4 +147,29 @@ double MultiVector::operator()(int i, int j) const {
 
 double &MultiVector::operator()(int i, int j) {
   return data[i*dimy + j];
+}
+
+void MultiVector::dump() const
+{
+  this->dump(cout);
+}
+
+void MultiVector::dump(ostream &output) const
+{
+  for (int i = 0; i < dimx; i++){
+    for (int j = 0; j < dimy; j++){
+      output << " " << data[i*dimy + j];
+    }
+    output << endl;
+  }
+}
+
+void MultiVector::dump(string filename) const
+{
+  ofstream file;
+  file.open(filename.c_str());
+  file << setprecision(20);
+  this->dump(file);
+  file << endl;
+  file.close();
 }

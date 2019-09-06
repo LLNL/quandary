@@ -39,9 +39,9 @@ class Vector {
     double *GetData() const { return data; };
 
     /* Output routines */
-    void dump() const;
-    void dump(std::ostream &output) const;
-    void dump(std::string filename) const;
+    virtual void dump() const;
+    virtual void dump(std::ostream &output) const;
+    virtual void dump(std::string filename) const;
 };
 
 std::ostream &operator<<(std::ostream &output, const Vector &vec);
@@ -63,4 +63,9 @@ class MultiVector : public Vector{
     /* Access */
     double operator()(int i, int j) const;
     double &operator()(int i, int j);
+
+    /* Output routines */
+    virtual void dump() const;
+    virtual void dump(std::ostream &output) const;
+    virtual void dump(std::string filename) const;
 };
