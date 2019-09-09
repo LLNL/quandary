@@ -192,20 +192,30 @@ int main(int argc,char **argv)
 
   free(norms);
 
-#if 0
-/* 
- * Testing time stepper convergence (dt-test) 
- */
+#if 1
+  /* 
+   * Testing time stepper convergence (dt-test) 
+   */  
+  if (analytic != 1){
+    printf("\n WARNING: DT-test works for analytic test case only. Run with \"-analytic 1\" if you want to test the time-stepper convergence. \n");
+    return 0;
+  }
+
   Vec x;      // numerical solution
   Vec exact;  // exact solution
   Vec error;  // error  
   double t;
   double error_norm, exact_norm;
 
+  int nreal = 2*hamiltonian->getDim();
   VecCreateSeq(PETSC_COMM_SELF,nreal,&x);
   VecCreateSeq(PETSC_COMM_SELF,nreal,&exact);
   VecCreateSeq(PETSC_COMM_SELF,nreal,&error);
 
+  /* Destroy old time stepper */
+  TSDestroy(&ts);
+
+  /* Set time horizon */
   total_time = 10.0;
   printf("\n\n Running time-stepping convergence test... \n\n");
   printf(" Time horizon: [0, %.1f]\n\n", total_time);
@@ -216,12 +226,12 @@ int main(int argc,char **argv)
   {
     dt = total_time / ntime;
 
-    /* Reset the time stepper */
-    InitialConditions(x,petsc_app);
-    TSSetTime(ts, 0.0); 
-    TSSetTimeStep(ts,dt);
-    TSSetMaxSteps(ts,ntime);
+    /* Create and set up the time stepper */
+    BuildTimeStepper(&ts, hamiltonian, ntime, dt, total_time);
     TSSetSolution(ts, x);
+
+    // /* Set the initial condition */
+    hamiltonian->initialCondition(x);
 
     /* Run time-stepping loop */
     for(PetscInt istep = 0; istep <= ntime; istep++) 
@@ -231,7 +241,7 @@ int main(int argc,char **argv)
 
     /* Compute the relative error at last time step (max-norm) */
     TSGetTime(ts, &t);
-    ExactSolution(t,exact,petsc_app->w);
+    hamiltonian->ExactSolution(t,exact);
     VecWAXPY(error,-1.0,x, exact);
     VecNorm(error, NORM_INFINITY,&error_norm);
     VecNorm(exact, NORM_INFINITY,&exact_norm);
@@ -251,7 +261,7 @@ int main(int argc,char **argv)
   /* Clean up */
   fclose(ufile);
   fclose(vfile);
-  TSDestroy(&ts);CHKERRQ(ierr);
+  TSDestroy(&ts);
 
   /* Clean up Oscillator */
   for (int i=0; i<nosci; i++){
