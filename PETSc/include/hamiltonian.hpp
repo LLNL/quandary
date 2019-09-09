@@ -27,9 +27,21 @@ class Hamiltonian{
     int getDim();
 
     /* 
-     * Builds up the Hamiltonian operator vectorized M = vec(-i(Hq-qH)), from Re, Im
+     * Evaluate the exact solution at time t.
+     * Inheriting classes should store exact solution in x and return true.  
+     * Return false, if exact solution is not available.
+     */
+    virtual bool ExactSolution(double t, Vec x);
+
+    /* 
+     * Builds up the Hamiltonian operator vectorized M = vec(-i(Hq-qH)), from Re, Im. 
      */
     virtual int apply(double t);
+
+    /* 
+     * Set x to the initial condition 
+     */
+    virtual int initialCondition(Vec x) = 0;
 
     /* Access the Hamiltonian */
     Mat getM();
@@ -54,9 +66,12 @@ class TwoOscilHam : public Hamiltonian {
     /* Helper function for constructing building blocks */
     int BuildingBlock(Mat C, int sign, int k, int m);
 
-    /* Apply the Hamiltonian operator */
+    /* Set the initial condition (zero so far...) */
+    int initialCondition(Vec x);
+
+    /* Evaluate Re and Im of the Hamiltonian, and calls the base-class apply routine to set up M. */
     virtual int apply(double t);
- 
+
 };
 
 
@@ -69,6 +84,11 @@ class AnalyticHam : public TwoOscilHam {
     AnalyticHam(double* xi_, Oscillator** oscil_vec_);
     ~AnalyticHam();
 
+    /* Evaluate the exact solution at time t. */
+    virtual bool ExactSolution(double t, Vec x);
+
+    /* Set the initial condition (exact(0)) */
+    int initialCondition(Vec x);
 };
 
 /* Real part for Oscillator 1 of analytic solution */
@@ -76,17 +96,4 @@ PetscScalar F1_analytic(PetscReal t,PetscReal freq);
 
 /* Imaginary part for Oscillator 2 of analytic solution */
 PetscScalar G2_analytic(PetscReal t,PetscReal freq);
-
-/* 
- * Compute the analytic solution for the 2-oscillator, 2-levels test case.
- */
-PetscErrorCode ExactSolution(PetscReal t,Vec s, PetscReal freq);
-
-/*
- *  Set the initial condition at time t_0 to the analytic solution 
- *  of the 2-level, 2-oscillator case.
- */
-PetscErrorCode InitialConditions(Vec x,PetscReal freq);
-
-
 

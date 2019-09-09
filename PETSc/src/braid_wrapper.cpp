@@ -20,6 +20,7 @@ int my_Step(braid_App    app,
     /* Take a step */
     TSStep(app->ts);
 
+
     return 0;
 }
 
@@ -42,7 +43,7 @@ int my_Init(braid_App     app,
     // if (t == 0.0)
     {
         double freq = 10.0;
-        InitialConditions(u->x, freq);
+        app->hamiltonian->initialCondition(u->x);
     }
 
     /* Set the return pointer */
@@ -119,36 +120,15 @@ int my_Access(braid_App       app,
 {
     int istep;
     double t;
-    // double err_norm, exact_norm;
-    // Vec error;
-    // Vec exact;
+    double err_norm, exact_norm;
+    Vec err;
+    Vec exact;
 
     /* Get time information */
     braid_AccessStatusGetTIndex(astatus, &istep);
     braid_AccessStatusGetT(astatus, &t);
 
     if (t == 0.0) return 0;
-
-    // /* Get exact solution */
-    // VecDuplicate(u->x,&exact);
-    // ExactSolution(t,exact,app->petsc_app->w);
-
-    // /* Compute relative error norm */
-    // VecDuplicate(u->x,&error);
-    // VecWAXPY(error,-1.0,u->x, exact);
-    // VecNorm(error, NORM_2,&err_norm);
-    // VecNorm(exact, NORM_2,&exact_norm);
-    // err_norm = err_norm / exact_norm;
-
-    // const PetscScalar *x_ptr, *exact_ptr;
-    // VecGetArrayRead(u->x, &x_ptr);
-    // VecGetArrayRead(exact, &exact_ptr);
-
-    // /* Screen Output of error norm */
-    // if (istep == app->ntime){
-    //     printf("Last step: ");
-    //     printf("%5d  %1.5f  x[1] = %1.14e  exact[1] = %1.14e  err = %1.14e \n",istep,(double)t, x_ptr[1], exact_ptr[1], err_norm);
-    // } 
 
     /* Get access to Petsc's vector */
     const PetscScalar *x_ptr;
@@ -174,8 +154,30 @@ int my_Access(braid_App       app,
     fprintf(app->vfile, "\n");
 
 
-    // VecDestroy(&error);
-    // VecDestroy(&exact);
+    /* If set, compare to the exact solution */
+    VecDuplicate(u->x,&exact);
+    if (app->hamiltonian->ExactSolution(t, exact) ) {  
+
+      /* Compute relative error norm */
+      VecDuplicate(u->x,&err);
+      VecWAXPY(err,-1.0,u->x, exact);
+      VecNorm(err, NORM_2,&err_norm);
+      VecNorm(exact, NORM_2,&exact_norm);
+      err_norm = err_norm / exact_norm;
+
+      /* Print error */
+      const PetscScalar *exact_ptr;
+      VecGetArrayRead(exact, &exact_ptr);
+      if (istep == app->ntime){
+          printf("Last step: ");
+          printf("%5d  %1.5f  x[1] = %1.14e  exact[1] = %1.14e  err = %1.14e \n",istep,(double)t, x_ptr[1], exact_ptr[1], err_norm);
+      } 
+
+      VecDestroy(&err);
+    }
+
+
+    VecDestroy(&exact);
 
     return 0;
 }

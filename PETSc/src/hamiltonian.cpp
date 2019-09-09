@@ -65,6 +65,7 @@ Hamiltonian::~Hamiltonian(){
 
 int Hamiltonian::getDim(){ return dim; }
 
+bool Hamiltonian::ExactSolution(double t, Vec x) { return false; }
 
 int Hamiltonian::apply(double t){
   int ierr;
@@ -302,10 +303,13 @@ int TwoOscilHam::apply(double t){
 }
 
 
-AnalyticHam::AnalyticHam(double* xi_, Oscillator** oscil_vec_) : TwoOscilHam(2, xi_, oscil_vec_) {
+int TwoOscilHam::initialCondition(Vec x) {
+  VecZeroEntries(x); // set zero for now. TODO: Set initial condition
 
+  return 0;
 }
 
+AnalyticHam::AnalyticHam(double* xi_, Oscillator** oscil_vec_) : TwoOscilHam(2, xi_, oscil_vec_) {}
 
 
 PetscScalar F1_analytic(PetscReal t, PetscReal freq)
@@ -323,13 +327,13 @@ PetscScalar G2_analytic(PetscReal t,PetscReal freq)
 
 
 
-PetscErrorCode ExactSolution(PetscReal t,Vec s, PetscReal freq)
+bool AnalyticHam::ExactSolution(PetscReal t,Vec s)
 {
+  PetscScalar freq = 1.0;
   PetscScalar    *s_localptr;
-  PetscErrorCode ierr;
 
   /* Get a pointer to vector data. */
-  ierr = VecGetArray(s,&s_localptr);CHKERRQ(ierr);
+  VecGetArray(s,&s_localptr);;
 
   /* Write the solution into the array locations.
    *  Alternatively, we could use VecSetValues() or VecSetValuesLocal(). */
@@ -341,7 +345,7 @@ PetscErrorCode ExactSolution(PetscReal t,Vec s, PetscReal freq)
   PetscScalar sintheta = PetscSinScalar(theta);
   
 
-  /* Real part */
+  // /* Real part */
   s_localptr[0] = cosphi*costheta*cosphi*costheta;
   s_localptr[1] = -1.*cosphi*sintheta*cosphi*costheta;
   s_localptr[2] = 0.;
@@ -376,15 +380,16 @@ PetscErrorCode ExactSolution(PetscReal t,Vec s, PetscReal freq)
   s_localptr[30] = 0.;
   s_localptr[31] = 0.;
 
-  /* Restore solution vector */
-  ierr = VecRestoreArray(s,&s_localptr);CHKERRQ(ierr);
-  return 0;
+  // /* Restore solution vector */
+  VecRestoreArray(s,&s_localptr);
+
+  return true;
 }
 
 
-PetscErrorCode InitialConditions(Vec x, PetscReal freq)
+PetscErrorCode AnalyticHam::initialCondition(Vec x)
 {
-  ExactSolution(0,x,freq);
+  ExactSolution(0,x);
   return 0;
 }
 
