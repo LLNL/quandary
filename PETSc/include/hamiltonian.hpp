@@ -47,6 +47,7 @@ class TwoOscilHam : public Hamiltonian {
   double* xi;   // xi = xi1, xi2, xi12
 
   public:
+    TwoOscilHam();
     TwoOscilHam(int nlevels_, double* xi, Oscillator** oscil_vec_); 
     ~TwoOscilHam(); 
 
@@ -62,16 +63,24 @@ class TwoOscilHam : public Hamiltonian {
 /* 
  * Ander's testcase with analytic solution 
  */
-class AnalyticHam : public Hamiltonian {
-
+class AnalyticHam : public TwoOscilHam {
+  
+  public:
+    AnalyticHam(double* xi_, Oscillator** oscil_vec_);
+    ~AnalyticHam();
 
 };
+
+/* Real part for Oscillator 1 of analytic solution */
+PetscScalar F1_analytic(PetscReal t,PetscReal freq);
+
+/* Imaginary part for Oscillator 2 of analytic solution */
+PetscScalar G2_analytic(PetscReal t,PetscReal freq);
 
 /* 
  * Compute the analytic solution for the 2-oscillator, 2-levels test case.
  */
 PetscErrorCode ExactSolution(PetscReal t,Vec s, PetscReal freq);
-
 
 /*
  *  Set the initial condition at time t_0 to the analytic solution 
@@ -80,11 +89,4 @@ PetscErrorCode ExactSolution(PetscReal t,Vec s, PetscReal freq);
 PetscErrorCode InitialConditions(Vec x,PetscReal freq);
 
 
-
-/* Real part for Oscillator 1 of analytic solution */
-PetscScalar F1(PetscReal t,PetscReal freq);
-
-
-/* Imaginary part for Oscillator 2 of analytic solution */
-PetscScalar G2(PetscReal t,PetscReal freq);
 

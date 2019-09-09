@@ -79,3 +79,30 @@ int SplineOscillator::getControl(double t, double* Re_ptr, double* Im_ptr){
   return 0;
 }
 
+
+FunctionOscillator::FunctionOscillator() {
+  F = NULL;
+  G = NULL;
+}
+
+FunctionOscillator::FunctionOscillator( double (*F_)(double, double), double (*G_)(double, double)){
+  F = F_;
+  G = G_;
+}
+
+FunctionOscillator::~FunctionOscillator(){}
+
+int FunctionOscillator::getControl(double t, double* Re_ptr, double* Im_ptr){
+
+  double Re = 0.0;
+  double Im = 0.0;
+
+  /* Evaluate F and G, if set */
+  if (F != NULL) Re = (*F)(t, 1.0);
+  if (G != NULL) Im = (*G)(t, 1.0);
+
+  *Re_ptr = Re;
+  *Im_ptr = Im;
+
+  return 0;
+}

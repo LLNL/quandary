@@ -41,6 +41,22 @@ class SplineOscillator : public Oscillator {
     SplineOscillator(int nbasis, double Tfinal_);
     ~SplineOscillator();
 
+    /* Evaluates the real and imaginare spline functions at time t, using current spline parameters */
     virtual int getControl(double t, double* Re_ptr, double* Im_ptr);
 
+};
+
+
+class FunctionOscillator : public Oscillator {
+
+  double (*F)(double t, double freq);  // function pointer to Re(control function)
+  double (*G)(double t, double freq);  // function pointer to Im(control function)
+
+  public:
+    FunctionOscillator();
+    FunctionOscillator( double (*F_)(double, double), double (*G_)(double, double) );
+    ~FunctionOscillator();
+
+    /* Evaluates the control functions at time t */
+    virtual int getControl(double t, double* Re_ptr, double* Im_ptr);
 };

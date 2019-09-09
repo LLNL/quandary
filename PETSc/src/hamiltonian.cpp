@@ -125,6 +125,15 @@ Mat Hamiltonian::getM(){
   return M;
 }
 
+TwoOscilHam::TwoOscilHam(){
+  A1 = NULL;
+  A2 = NULL;
+  B1 = NULL;
+  B2 = NULL;
+  Hd = NULL;
+  xi = NULL;
+}
+
 TwoOscilHam::TwoOscilHam(int nlevels_, double* xi_, Oscillator** oscil_vec_)
                 :  Hamiltonian(nlevels_, 2, oscil_vec_){
   xi = xi_;
@@ -293,9 +302,25 @@ int TwoOscilHam::apply(double t){
 }
 
 
-// AnalyticHam::AnalyticHam(Oscillator** oscil_vec){
+AnalyticHam::AnalyticHam(double* xi_, Oscillator** oscil_vec_) : TwoOscilHam(2, xi_, oscil_vec_) {
 
-// }
+}
+
+
+
+PetscScalar F1_analytic(PetscReal t, PetscReal freq)
+{
+  PetscScalar f = (1./4.) * (1. - PetscCosScalar(freq * t));
+  return f;
+}
+
+
+PetscScalar G2_analytic(PetscReal t,PetscReal freq)
+{
+  PetscScalar g = (1./4.) * (1. - PetscSinScalar(freq * t));
+  return g;
+}
+
 
 
 PetscErrorCode ExactSolution(PetscReal t,Vec s, PetscReal freq)
@@ -364,16 +389,3 @@ PetscErrorCode InitialConditions(Vec x, PetscReal freq)
 }
 
 
-
-PetscScalar F1_analytic(PetscReal t, PetscReal freq)
-{
-  PetscScalar f = (1./4.) * (1. - PetscCosScalar(freq * t));
-  return f;
-}
-
-
-PetscScalar G2_analytic(PetscReal t,PetscReal freq)
-{
-  PetscScalar g = (1./4.) * (1. - PetscSinScalar(freq * t));
-  return g;
-}

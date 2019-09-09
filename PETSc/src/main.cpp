@@ -15,7 +15,8 @@ Input parameters:\n\
   -nspline <int>   : Set the number of spline basis functions (default: 100) \n\
   -cf <int>        : Set XBraid's coarsening factor           (default: 5) \n\
   -ml <int>        : Set XBraid's max levels                  (default: 5)\n\
-  -mi <int>        : Set XBraid's max number of iterations    (default: 50)\n\n";
+  -mi <int>        : Set XBraid's max number of iterations    (default: 50)\n\n\
+  -analytic <0 or 1> : If 1: runs analytic testcase (2-level, 2-oscillator, pure state) (default: 0) \n\n";
 
 
 int main(int argc,char **argv)
@@ -32,6 +33,8 @@ int main(int argc,char **argv)
   PetscInt       maxlevels;    // XBraid's maximum number of levels
   PetscInt       maxiter;      // XBraid's maximum number of iterations
   PetscInt       nspline;      // Number of spline basis functions
+  PetscInt       analytic;     // If 1: runs analytic test case
+  Hamiltonian*   hamiltonian;  // Hamiltonian system
 
 
   FILE *ufile, *vfile;
@@ -55,6 +58,7 @@ int main(int argc,char **argv)
   cfactor = 5;
   maxlevels = 5;
   maxiter = 50;
+  analytic = 0;
 
   /* Parse command line arguments to overwrite default constants */
   PetscOptionsGetInt(NULL,NULL,"-nlvl",&nlvl,NULL);
@@ -64,9 +68,10 @@ int main(int argc,char **argv)
   PetscOptionsGetInt(NULL,NULL,"-cf",&cfactor,NULL);
   PetscOptionsGetInt(NULL,NULL,"-ml",&maxlevels,NULL);
   PetscOptionsGetInt(NULL,NULL,"-mi",&maxiter,NULL);
+  PetscOptionsGetInt(NULL,NULL,"-analytic",&analytic,NULL);
 
   /* Sanity check */
-  if (nlvl != 2)
+  if (nosci != 2)
   {
     printf("\nERROR: Current only 2 oscillators are supported.\n You chose %d oscillators.\n\n", nlvl, nosci);
     exit(0);
@@ -75,21 +80,37 @@ int main(int argc,char **argv)
   /* Initialize time horizon */
   total_time = ntime * dt;
 
-  /* Initialize the oscillator control functions */
+  /* Initialize the Hamiltonian */
   Oscillator** oscil_vec = new Oscillator*[nosci];
-  for (int i = 0; i < nosci; i++){
-    oscil_vec[i] = new SplineOscillator(nspline, total_time);
+  if (analytic == 1) {
+    oscil_vec[0] = new FunctionOscillator(&F1_analytic, NULL );
+    oscil_vec[1] = new FunctionOscillator(NULL, &G2_analytic);
+  } else {
+    for (int i = 0; i < nosci; i++){
+      oscil_vec[i] = new SplineOscillator(nspline, total_time);
+    }
+    // oscil_vec[0]->dumpControl(total_time, dt, "initcontrol.dat");
   }
-  // oscil_vec[0]->dumpControl(total_time, dt, "initcontrol.dat");
 
-  /* xi = [xi_1, xi_2, xi_12] */
+
+  /* Set frequencies for drift hamiltonian Hd xi = [xi_1, xi_2, xi_12] */
   double* xi = new double[nlvl*nlvl];
-  xi[0] =  2. * (2.*M_PI*0.1099);  // from Anders
-  xi[1] =  2. * (2.*M_PI*0.1126);  // from Anders
-  xi[2] =  0.1;                    // from Anders, might be too big!
+  if (analytic == 1) {  // no drift Hamiltonian in analytic case
+    xi[0] = 0.0;
+    xi[1] = 0.0;
+    xi[2] = 0.0;
+  } else {
+    xi[0] =  2. * (2.*M_PI*0.1099);  // from Anders
+    xi[1] =  2. * (2.*M_PI*0.1126);  // from Anders
+    xi[2] =  0.1;                    // from Anders, might be too big!
+  }
 
   /* Initialize the Hamiltonian  */
-  Hamiltonian* hamiltonian = new TwoOscilHam(nlvl, xi, oscil_vec);
+  if (analytic == 1) {
+    hamiltonian = new AnalyticHam(xi, oscil_vec);
+  } else {
+    hamiltonian = new TwoOscilHam(nlvl, xi, oscil_vec);
+  }
 
   /* Screen output */
   if (mpirank == 0)
