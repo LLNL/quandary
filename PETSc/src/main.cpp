@@ -82,11 +82,13 @@ int main(int argc,char **argv)
   }
   // oscil_vec[0]->dumpControl(total_time, dt, "initcontrol.dat");
 
-  /* Initialize the Hamiltonian */
+  /* xi = [xi_1, xi_2, xi_12] */
   double* xi = new double[nlvl*nlvl];
-  xi[0] =  2.*0.1099;
-  xi[1] =  2.*0.1126;
-  xi[2] =  0.1;
+  xi[0] =  2. * (2.*M_PI*0.1099);  // from Anders
+  xi[1] =  2. * (2.*M_PI*0.1126);  // from Anders
+  xi[2] =  0.1;                    // from Anders, might be too big!
+
+  /* Initialize the Hamiltonian  */
   Hamiltonian* hamiltonian = new TwoOscilHam(nlvl, xi, oscil_vec);
 
   /* Screen output */
@@ -235,6 +237,8 @@ int main(int argc,char **argv)
     delete oscil_vec[i];
   }
   delete [] oscil_vec;
+
+  delete [] xi;
 
   /* Clean up Hamiltonian */
   delete hamiltonian;
