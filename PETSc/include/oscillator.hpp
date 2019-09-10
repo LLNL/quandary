@@ -19,13 +19,13 @@ class Oscillator {
     /* Evaluates real and imaginary control function at time t */
     virtual int getControl(double t, double* Re_ptr, double* Im_ptr) = 0;
 
-    /* Get control parameters */
+    /* Return pointers to the control parameters */
     virtual int getParams(double* paramsRe, double* paramsIm) = 0;
 
     /* Update control parameters x <- x + stepsize*direction */
     virtual int updateParams(double stepsize, double* directionRe, double* directionIm) = 0;
 
-    /* Print Control */
+    /* Print the control functions for each t \in [0,tfinal] */
     virtual int dumpControl(double tfinal, double dt);
     virtual void dumpControl(double tfinal, double dt, std::ostream &output);
     virtual void dumpControl(double tfinal, double dt, std::string filename);

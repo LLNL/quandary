@@ -7,7 +7,7 @@
 #include "oscillator.hpp" 
 #include "hamiltonian.hpp"
 
-#define FD_TEST 0
+#define FD_TEST 1
 #define DT_TEST 0
 
 static char help[] ="Solves the Liouville-von-Neumann equations, two oscillators.\n\
