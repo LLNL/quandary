@@ -34,12 +34,12 @@ class Hamiltonian{
     virtual bool ExactSolution(double t, Vec x);
 
     /* 
-     * Uses Re and Im to build the Hamiltonian operator vectorized M = vec(-i(Hq-qH)). 
+     * Uses Re and Im to build the vectorized Hamiltonian operator M = vec(-i(Hq-qH)). 
      * M(0, 0) =  Re    M(0,1) = -Im
      * M(1, 0) =  Im    M(1,1) = Re
-     * Both Re and Im should be set up in the inherited 'apply' routines. 
+     * Both Re and Im should be set up in the inherited 'buildRHS' routines. 
      */
-    virtual int apply(double t);
+    virtual int buildRHS(double t);
 
     /* 
      * Set x to the initial condition 
@@ -72,8 +72,8 @@ class TwoOscilHam : public Hamiltonian {
     /* Set the initial condition (zero so far...) */
     int initialCondition(Vec x);
 
-    /* Evaluate Re and Im of the Hamiltonian. Then calls the base-class apply routine to set up M. */
-    virtual int apply(double t);
+    /* Evaluate Re and Im of the Hamiltonian. Then calls the base-class buildRHS routine to set up M. */
+    virtual int buildRHS(double t);
 
 };
 
