@@ -80,8 +80,8 @@ int Hamiltonian::apply(double t){
   ierr = PetscMalloc1(dim, &negvals);CHKERRQ(ierr);
 
   /* Set up Jacobian M 
-   * M(0, 0) =  Re    M(0,1) = Im
-   * M(0, 1) = -Im    M(1,1) = Re
+   * M(0, 0) =  Re    M(0,1) = -Im
+   * M(1, 0) =  Im    M(1,1) = Re
    */
   for (int irow = 0; irow < dim; irow++) {
     PetscInt irow_shift = irow + dim;
