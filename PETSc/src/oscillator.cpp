@@ -87,6 +87,21 @@ int SplineOscillator::getParams(double* paramsRe, double* paramsIm) {
   return 0;
 }
 
+
+int SplineOscillator::updateParams(double stepsize, double* directionRe, double* directionIm){
+
+  /* Get pointers to the parameter's data */
+  double* ReData = param_Re->GetData();  
+  double* ImData = param_Im->GetData();  
+
+  for (int i=0; i<param_Re->GetDim(); i++) {
+    ReData[i] += stepsize * directionRe[i];
+    ImData[i] += stepsize * directionIm[i];
+  }
+
+  return 0;
+}
+
 FunctionOscillator::FunctionOscillator() {
   F = NULL;
   G = NULL;
@@ -122,6 +137,14 @@ int FunctionOscillator::getControl(double t, double* Re_ptr, double* Im_ptr){
 int FunctionOscillator::getParams(double* paramsRe, double* paramsIm) {
   *paramsRe = omegaF;
   *paramsIm = omegaG;
+
+  return 0;
+}
+
+int FunctionOscillator::updateParams(double stepsize, double* directionRe, double* directionIm) {
+
+  if (F != NULL) omegaF += stepsize * (*directionRe);
+  if (G != NULL) omegaG += stepsize * (*directionIm);
 
   return 0;
 }

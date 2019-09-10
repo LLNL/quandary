@@ -19,8 +19,11 @@ class Oscillator {
     /* Evaluates real and imaginary control function at time t */
     virtual int getControl(double t, double* Re_ptr, double* Im_ptr) = 0;
 
-    /* Get the optimization parameters */
+    /* Get control parameters */
     virtual int getParams(double* paramsRe, double* paramsIm) = 0;
+
+    /* Update control parameters x <- x + stepsize*direction */
+    virtual int updateParams(double stepsize, double* directionRe, double* directionIm) = 0;
 
     /* Print Control */
     virtual int dumpControl(double tfinal, double dt);
@@ -49,6 +52,10 @@ class SplineOscillator : public Oscillator {
 
     /* Returns pointers to the real and imaginary control parameters */
     virtual int getParams(double* paramsRe, double* paramsIm);
+
+    /* Update control parameters x <- x + stepsize*direction */
+    virtual int updateParams(double stepsize, double* directionRe, double* directionIm);
+
 };
 
 
@@ -69,4 +76,8 @@ class FunctionOscillator : public Oscillator {
 
     /* Returns pointers to the real and imaginary control frequencies */
     virtual int getParams(double* paramsRe, double* paramsIm);
+
+    /* Update control parameters x <- x + stepsize*direction */
+    virtual int updateParams(double stepsize, double* directionRe, double* directionIm);
+
 };
