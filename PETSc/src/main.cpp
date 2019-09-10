@@ -7,6 +7,8 @@
 #include "oscillator.hpp"
 #include "hamiltonian.hpp"
 
+#define DT_TEST 1
+
 static char help[] ="Solves the Liouville-von-Neumann equations, two oscillators.\n\
 Input parameters:\n\
   -nlvl <int>      : Set the number of levels     (default: 2) \n\
@@ -194,7 +196,7 @@ int main(int argc,char **argv)
 
   free(norms);
 
-#if 1
+#if DT_TEST
   /* 
    * Testing time stepper convergence (dt-test) 
    */  
