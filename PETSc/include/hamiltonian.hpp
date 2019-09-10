@@ -14,7 +14,7 @@ class Hamiltonian{
     Oscillator** oscil_vec;  // Vector storing pointers to the oscillators
 
     Mat Re, Im;             // Real and imaginary part of Hamiltonian operator
-    Mat M;                  // Realvalued, vectorized Hamiltonian operator vec(-i(Hq-qH))
+    Mat RHS;                // Realvalued, vectorized Hamiltonian operator vec(-i(Hq-qH))
 
   public:
     /* Default constructor sets zero */
@@ -34,12 +34,12 @@ class Hamiltonian{
     virtual bool ExactSolution(double t, Vec x);
 
     /* 
-     * Uses Re and Im to build the Hamiltonian operator vectorized M = vec(-i(Hq-qH)). 
+     * Uses Re and Im to build the vectorized Hamiltonian operator M = vec(-i(Hq-qH)). 
      * M(0, 0) =  Re    M(0,1) = -Im
      * M(1, 0) =  Im    M(1,1) = Re
-     * Both Re and Im should be set up in the inherited 'apply' routines. 
+     * Both Re and Im should be set up in the inherited 'assembleRHS' routines. 
      */
-    virtual int apply(double t);
+    virtual int assembleRHS(double t);
 
     /* 
      * Set x to the initial condition 
@@ -47,7 +47,7 @@ class Hamiltonian{
     virtual int initialCondition(Vec x) = 0;
 
     /* Access the Hamiltonian */
-    Mat getM();
+    Mat getRHS();
 };
 
 /*
@@ -72,8 +72,8 @@ class TwoOscilHam : public Hamiltonian {
     /* Set the initial condition (zero so far...) */
     int initialCondition(Vec x);
 
-    /* Evaluate Re and Im of the Hamiltonian. Then calls the base-class apply routine to set up M. */
-    virtual int apply(double t);
+    /* Evaluate Re and Im of the Hamiltonian. Then calls the base-class assembleRHS routine to set up M. */
+    virtual int assembleRHS(double t);
 
 };
 
