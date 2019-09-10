@@ -98,3 +98,24 @@ int my_BufPack(braid_App app, braid_Vector u, void *buffer, braid_BufferStatus b
  * Unpack a braid vector from a buffer
  */
 int my_BufUnpack(braid_App app, void *buffer, braid_Vector *u_ptr, braid_BufferStatus status);
+
+
+/*
+ * Evaluate the objective function at time t 
+ */
+int my_ObjectiveT(braid_App app, braid_Vector u, braid_ObjectiveStatus ostatus, double *objectiveT_ptr);
+
+/*
+ * Derivative of the objectiveT function 
+ */
+int my_ObjectiveT_diff(braid_App app, braid_Vector u, braid_Vector u_bar, braid_Real F_bar, braid_ObjectiveStatus ostatus);
+
+/*
+ * Derivative of my_Step
+ */
+int my_Step_diff(braid_App app, braid_Vector ustop, braid_Vector u, braid_Vector ustop_bar, braid_Vector u_bar, braid_StepStatus status);
+
+/*
+ * Set the gradient to zero
+ */
+int my_ResetGradient(braid_App app);

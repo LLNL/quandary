@@ -261,3 +261,66 @@ int my_BufUnpack(braid_App        app,
     return 0;
 }
 
+
+
+/*
+ * Evaluate the objective function at time t 
+ */
+int my_ObjectiveT(braid_App app, braid_Vector u, braid_ObjectiveStatus ostatus, double *objectiveT_ptr){
+  double objective = 0.0;
+  
+  /* Get current time index */
+  int tindex;
+  double t;
+  braid_ObjectiveStatusGetTIndex(ostatus, &tindex);
+  braid_ObjectiveStatusGetT(ostatus, &t);
+
+  /* Evaluate objective at final time */
+  if (tindex == app->ntime){
+    app->hamiltonian->evalObjective(t, u->x, objectiveT_ptr);
+  }
+
+  *objectiveT_ptr = objective;
+  return 0;
+}
+
+/*
+ * Derivative of the objectiveT function 
+ */
+int my_ObjectiveT_diff(braid_App app, braid_Vector u, braid_Vector u_bar, braid_Real F_bar, braid_ObjectiveStatus ostatus) {
+  double ddu = 0.0;
+  PetscScalar *x_ptr;
+
+  /* Get current time index */
+  int tindex;
+  braid_ObjectiveStatusGetTIndex(ostatus, &tindex);
+
+  /* TODO: Partial derivative wrt u times F_bar */
+  if (tindex == app->ntime){
+    ddu = 200 * F_bar;
+  }
+  
+  /* Set the derivative wrt u*/
+  VecGetArray(u->x, &x_ptr);
+  x_ptr[1] = ddu;
+  VecRestoreArray(u->x, &x_ptr);
+
+  return 0;
+}
+
+/*
+ * Derivative of my_Step
+ */
+int my_Step_diff(braid_App app, braid_Vector ustop, braid_Vector u, braid_Vector ustop_bar, braid_Vector u_bar, braid_StepStatus status) {
+
+  return 0;
+}
+
+/*
+ * Set the gradient to zero
+ */
+int my_ResetGradient(braid_App app) {
+// TODO:
+
+  return 0;
+}
