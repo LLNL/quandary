@@ -37,9 +37,9 @@ class Hamiltonian{
      * Uses Re and Im to build the vectorized Hamiltonian operator M = vec(-i(Hq-qH)). 
      * M(0, 0) =  Re    M(0,1) = -Im
      * M(1, 0) =  Im    M(1,1) = Re
-     * Both Re and Im should be set up in the inherited 'assembleRHS' routines. 
+     * Both Re and Im should be set up in the inherited 'assemble_RHS' routines. 
      */
-    virtual int assembleRHS(double t);
+    virtual int assemble_RHS(double t);
 
     /* 
      * Set x to the initial condition 
@@ -78,7 +78,7 @@ class TwoOscilHam : public Hamiltonian {
     int initialCondition(Vec x);
 
     /* Evaluates Re and Im of the Hamiltonian. Then calls the base-class assembleRHS routine to set up M. */
-    virtual int assembleRHS(double t);
+    virtual int assemble_RHS(double t);
 
 };
 

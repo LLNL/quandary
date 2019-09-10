@@ -7,7 +7,7 @@ PetscErrorCode RHSJacobian(TS ts,PetscReal t,Vec u,Mat M,Mat P,void *ctx){
   Hamiltonian *hamiltonian = (Hamiltonian*) ctx;
 
   /* Assembling the Hamiltonian will set the matrix RHS from Re, Im */
-  hamiltonian->assembleRHS(t);
+  hamiltonian->assemble_RHS(t);
 
   /* Set the hamiltonian system matrix */
   M = hamiltonian->getRHS();
