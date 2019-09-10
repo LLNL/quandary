@@ -14,6 +14,11 @@
  */
 PetscErrorCode RHSJacobian(TS ts,PetscReal t,Vec u,Mat M,Mat P,void *ctx);
 
+
+
+/* Dervative of RHS wrt control parameters */
+PetscErrorCode RHSJacobianP(TS ts, PetscReal t, Vec y, Mat A, void *ctx);
+
 /*
  * Create Petsc's time stepper 
  */

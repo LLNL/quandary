@@ -4,8 +4,11 @@
 #include "braid_test.h"
 #include "bspline.hpp"
 #include "vector.hpp"
-#include "oscillator.hpp"
+#include "oscillator.hpp" 
 #include "hamiltonian.hpp"
+
+#define FD_TEST 0
+#define DT_TEST 0
 
 static char help[] ="Solves the Liouville-von-Neumann equations, two oscillators.\n\
 Input parameters:\n\
@@ -194,7 +197,106 @@ int main(int argc,char **argv)
 
   free(norms);
 
-#if 1
+#if FD_TEST
+  printf("\n\n Running finite-differences test...\n\n");
+  if (analytic != 1){
+    printf("\n WARNING: FD-test works for analytic test case only. Run with \"-analytic 1\" if you want to test test derivatives with finite-differences. \n");
+    return 0;
+  }
+
+
+  Vec x;
+  double Tfinal;
+  double objective_ref, gradient_ref;
+  double objective_perturb;
+  double finite_differences;
+  // double err;
+
+  double EPS = 1e-5;
+
+
+  int nreal = 2*hamiltonian->getDim();
+
+  /* Set initial condition */
+  VecCreateSeq(PETSC_COMM_SELF,nreal,&x);
+  hamiltonian->initialCondition(x);
+
+  /* Build a new time-stepper */
+  TSDestroy(&ts);
+  BuildTimeStepper(&ts, hamiltonian, ntime, dt, total_time);
+  TSSetSolution(ts, x);
+
+  /* Get unperturbed objective function */
+  for(PetscInt istep = 0; istep <= ntime; istep++) {
+    TSStep(ts);
+  }
+  TSGetTime(ts, &Tfinal);
+  hamiltonian->evalObjective(Tfinal, x, &objective_ref);
+
+
+  /* TODO: Perturb the design */
+  double dirRe = 1.0; 
+  double dirIm = 0.0; 
+  oscil_vec[0]->updateParams(EPS, &dirRe, &dirIm);
+
+
+  /* Evaluate perturbed objective function  AND STORE TRAJECTORY FOR ADJOINT */
+  TSSetTime(ts, 0.0);
+  TSSetSaveTrajectory(ts);
+  hamiltonian->initialCondition(x);
+  TSSetSolution(ts, x);
+  for(PetscInt istep = 0; istep <= ntime; istep++) {
+    TSStep(ts);
+  }
+  TSGetTime(ts, &Tfinal);
+  hamiltonian->evalObjective(Tfinal, x, &objective_perturb);
+
+  Mat dHdp;
+ /* Allocate dHdp (derivative of RHS wrt controls) */
+  ierr = MatCreate(PETSC_COMM_SELF,&dHdp);CHKERRQ(ierr);
+  ierr = MatSetSizes(dHdp, PETSC_DECIDE, PETSC_DECIDE,nreal,2);CHKERRQ(ierr);
+  ierr = MatSetFromOptions(dHdp);CHKERRQ(ierr);
+  ierr = MatSetUp(dHdp);CHKERRQ(ierr);
+  ierr = MatAssemblyBegin(dHdp,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
+  ierr = MatAssemblyEnd(dHdp,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
+
+  Vec mu[1];      // dfdp
+  Vec lambda[1];  // dfdy
+  PetscScalar *x_ptr;
+  MatCreateVecs(hamiltonian->getM(), &lambda[0], NULL);
+  MatCreateVecs(dHdp, &mu[0], NULL);
+  VecZeroEntries(mu[0]);
+  VecZeroEntries(lambda[0]);
+  ierr = VecGetArray(lambda[0], &x_ptr);
+  x_ptr[1] = 200.0;
+  ierr = VecRestoreArray(lambda[0], &x_ptr);
+  TSSetCostGradients(ts, 1, lambda, mu);
+
+  TSSetRHSJacobianP(ts,dHdp, RHSJacobianP, hamiltonian);
+
+  /* Run adjoint backwards in time */
+  for (int k=ntime; k>0; k--)
+  {
+    TSAdjointStep(ts);
+  }
+
+  
+  /* Evaluate finite difference */
+  /* Compute finite differences and relative error */
+   finite_differences = (objective_perturb - objective_ref) / EPS;
+  //  err = (gradient_ref - finite_differences) / finite_differences;
+
+   /* Output */
+   printf("Objectives: %1.14e %1.14e\n", objective_ref, objective_perturb);
+   printf("Finite Differences: %1.14e\n", finite_differences);
+  //  printf(" Relative gradient error: %1.6f\n\n", err);
+
+
+
+  VecDestroy(&x);
+#endif
+
+#if DT_TEST
   /* 
    * Testing time stepper convergence (dt-test) 
    */  

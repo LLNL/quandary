@@ -15,6 +15,13 @@ PetscErrorCode RHSJacobian(TS ts,PetscReal t,Vec u,Mat M,Mat P,void *ctx){
   return 0;
 }
 
+PetscErrorCode RHSJacobianP(TS ts, PetscReal t, Vec y, Mat A, void *ctx){
+
+  /* TODO Compute derivative of RHS wrt control parameters */
+  MatZeroEntries(A);
+
+  return 0;
+}
 
 
 PetscErrorCode BuildTimeStepper(TS* ts, Hamiltonian* hamiltonian, PetscInt NSteps, PetscReal Dt, PetscReal Tfinal){
