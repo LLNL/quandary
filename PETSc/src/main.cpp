@@ -199,36 +199,65 @@ int main(int argc,char **argv)
 
 #if FD_TEST
   printf("\n\n Running finite-differences test...\n\n");
-  if (analytic != 1){
-    printf("\n WARNING: FD-test works for analytic test case only. Run with \"-analytic 1\" if you want to test test derivatives with finite-differences. \n");
-    return 0;
-  }
-
+  
   double EPS = 1e-8;
-  double dirF[1], dirG[1];
 
   double t = 0.3;
   double f, g;
-  double dfdw, dgdw;
   double f_pert, g_pert;
+
+  int nparam = oscil_vec[0]->getNParam();
+  double *dirRe = new double[nparam];
+  double *dirIm = new double[nparam];
+  for (int iparam = 0; iparam<nparam; iparam++){
+    dirRe[iparam] = 0.0;
+    dirIm[iparam] = 0.0;
+  }
+
+  /* Init derivative */
+  Vector *dfdw = new Vector(nparam, 0.0);
+  Vector *dgdw = new Vector(nparam, 0.0);
 
   for (int i=0; i<nosci; i++)
   {
     printf("FD for oscillator %d:\n", i);
-    oscil_vec[i]->evalControl(t, &f, &g);
-    oscil_vec[i]->evalDerivative(t, &dfdw, &dgdw);
+    // oscil_vec[i]->dumpControl(total_time, dt);
 
-    dirF[0] = 1.0;
-    dirG[0] = 1.0;
-    oscil_vec[i]->updateParams(EPS, dirF, dirG);
-    oscil_vec[i]->evalControl(t, &f_pert, &g_pert);
+    for (int iparam = 0; iparam < nparam; iparam++)
+    {
+      printf("  param %d:\n", iparam);
 
-    double f_fd = (f_pert - f) / EPS;
-    double g_fd = (g_pert - g) / EPS;
-    double f_err = (dfdw - f_fd) / f_fd;
-    double g_err = (dgdw - g_fd) / g_fd;
-    printf("  f_pert %1.12e, f %1.12e, f_fd %1.12e, dfdw %1.12e, f_err %1.12e\n", f_pert, f, f_fd, dfdw,  f_err);
-    printf("  g_pert %1.12e, g %1.12e, g_fd %1.12e, dgdw %1.12e, g_err %1.12e\n", g_pert, g, g_fd, dgdw,  g_err);
+      /* Reset gradient */
+      dfdw->Fill(0.0);
+      dgdw->Fill(0.0);
+
+      /* Eval original objectives and gradient */
+      oscil_vec[i]->evalControl(t, &f, &g);
+      oscil_vec[i]->evalDerivative(t, dfdw->GetData(), dgdw->GetData());
+
+      /* Eval perturbed objectives */
+      dirRe[iparam] = 1.0;
+      dirIm[iparam] = 1.0;
+      oscil_vec[i]->updateParams(EPS, dirRe, dirIm);
+      oscil_vec[i]->evalControl(t, &f_pert, &g_pert);
+
+      /* Eval FD and error */
+      double f_fd = (f_pert - f) / EPS;
+      double g_fd = (g_pert - g) / EPS;
+      double f_err = 0.0;
+      double g_err = 0.0;
+      if (f_fd != 0.0) f_err = (dfdw->GetData()[iparam] - f_fd) / f_fd;
+      if (g_fd != 0.0) g_err = (dgdw->GetData()[iparam] - g_fd) / g_fd;
+      printf("    f_pert %1.12e, f %1.12e, f_fd %1.12e, dfdw %1.12e, f_err %2.4f\%\n", f_pert, f, f_fd, dfdw->GetData()[iparam],  f_err*100.0);
+      printf("    g_pert %1.12e, g %1.12e, g_fd %1.12e, dgdw %1.12e, g_err %2.4f\%\n", g_pert, g, g_fd, dgdw->GetData()[iparam],  g_err*100.0);
+
+      /* Restore parameter */
+      oscil_vec[i]->updateParams(-EPS, dirRe, dirIm);
+      dirRe[iparam] = 0.0;
+      dirIm[iparam] = 0.0;
+
+    }
+
   }
   exit(1);
 
@@ -262,9 +291,9 @@ int main(int argc,char **argv)
 
 
   /* TODO: Perturb the design */
-  double dirRe = 1.0; 
-  double dirIm = 0.0; 
-  oscil_vec[0]->updateParams(EPS, &dirRe, &dirIm);
+  // double dirRe = 1.0; 
+  // double dirIm = 0.0; 
+  oscil_vec[0]->updateParams(EPS, dirRe, dirIm);
 
 
   /* Evaluate perturbed objective function  AND STORE TRAJECTORY FOR ADJOINT */

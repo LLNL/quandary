@@ -1,7 +1,11 @@
 #include "oscillator.hpp"
 
-Oscillator::Oscillator(){}
+Oscillator::Oscillator(){
+  nparam = 0.0;
+}
 Oscillator::~Oscillator(){}
+
+int Oscillator::getNParam() { return nparam; }
 
 int Oscillator::dumpControl(double tfinal, double dt){
 
@@ -34,7 +38,6 @@ void Oscillator::dumpControl(double tfinal, double dt, std::string filename){
 }
 
 SplineOscillator::SplineOscillator() {
-  nbasis = 0;
   Tfinal = 0;
   basisfunctions = NULL;
   param_Re = NULL;
@@ -44,20 +47,20 @@ SplineOscillator::SplineOscillator() {
 
 SplineOscillator::SplineOscillator(int nbasis_, double Tfinal_){
   Tfinal = Tfinal_;
-  nbasis = nbasis_;
-  basisfunctions = new Bspline(nbasis_, Tfinal_);
-  param_Re = new Vector(nbasis_, 0.0);
-  param_Im = new Vector(nbasis_, 0.0);
+  nparam = nbasis_;  // nparam for Re and nparam for Im ! 
+  basisfunctions = new Bspline(nparam, Tfinal_);
+  param_Re = new Vector(nparam, 0.0);
+  param_Im = new Vector(nparam, 0.0);
 
   /* Set some initial parameters */
-  for (int i=0; i<nbasis; i++){
+  for (int i=0; i<nparam; i++){
     (*param_Re)(i) = pow(-1., i+1); //alternate 1 and -1
     (*param_Im)(i) = pow(-1., i+1); //alternate 1 and -1
   }
 }
 
 SplineOscillator::~SplineOscillator(){
-  if (nbasis > 0){
+  if (nparam > 0){
     delete basisfunctions;
     delete param_Re;
     delete param_Im;
@@ -89,11 +92,10 @@ int SplineOscillator::getParams(double* paramsRe, double* paramsIm) {
 
 
 int SplineOscillator::evalDerivative(double t, double* dRedp, double* dImdp) {
-  int nparams = param_Re->GetDim();
 
   if ( t > Tfinal ){
     printf("WARNING: accessing spline derivative outside of [0,T]. Returning 0.0\n");
-    for (int i = 0; i < nparams; i++) {
+    for (int i = 0; i < nparam; i++) {
       dRedp[i] = 0.0;
       dRedp[i] = 0.0;
     }
@@ -143,6 +145,7 @@ FunctionOscillator::FunctionOscillator(
   dGdp = dGdp_;
   omegaF = omegaF_;
   omegaG = omegaG_;
+  nparam = 1;  // one for F (Re) one for G (Im)
 }
 
 FunctionOscillator::~FunctionOscillator(){}

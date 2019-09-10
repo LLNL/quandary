@@ -11,6 +11,8 @@ using namespace std;
  * Abstract base class for oscillators
  */
 class Oscillator {
+  protected:
+    int nparam;  // Number of control parameters 
 
   public:
     Oscillator();
@@ -21,6 +23,9 @@ class Oscillator {
 
     /* Return pointers to the control parameters */
     virtual int getParams(double* paramsRe, double* paramsIm) = 0;
+
+    /* Return the number of control parameters */
+    int getNParam();
 
     /* Update control parameters x <- x + stepsize*direction */
     virtual int updateParams(double stepsize, double* directionRe, double* directionIm) = 0;
@@ -40,14 +45,13 @@ class Oscillator {
  */
 class SplineOscillator : public Oscillator {
     double Tfinal;               // final time
-    int nbasis;               // Dimension of control discretization
     Bspline *basisfunctions;  // Bspline basis function for control discretization 
     Vector* param_Re;          // parameters of real part of the control
     Vector* param_Im;          // parameters of imaginary part of the control
 
   public:
     SplineOscillator();
-    SplineOscillator(int nbasis, double Tfinal_);
+    SplineOscillator(int nbasis_, double Tfinal_);
     ~SplineOscillator();
 
     /* Evaluates the real and imaginare spline functions at time t, using current spline parameters */
