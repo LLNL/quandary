@@ -83,8 +83,10 @@ int main(int argc,char **argv)
   /* Initialize the Hamiltonian */
   Oscillator** oscil_vec = new Oscillator*[nosci];
   if (analytic == 1) {
-    oscil_vec[0] = new FunctionOscillator(&F1_analytic, NULL );
-    oscil_vec[1] = new FunctionOscillator(NULL, &G2_analytic);
+    double omegaF1 = 1.0;
+    double omegaG2 = 1.0;
+    oscil_vec[0] = new FunctionOscillator(omegaF1, &F1_analytic, 0.0, NULL );
+    oscil_vec[1] = new FunctionOscillator(0.0, NULL, omegaG2, &G2_analytic);
   } else {
     for (int i = 0; i < nosci; i++){
       oscil_vec[i] = new SplineOscillator(nspline, total_time);

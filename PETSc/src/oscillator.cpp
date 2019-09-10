@@ -79,15 +79,26 @@ int SplineOscillator::getControl(double t, double* Re_ptr, double* Im_ptr){
   return 0;
 }
 
+int SplineOscillator::getParams(double* paramsRe, double* paramsIm) {
+
+  paramsRe = param_Re->GetData();
+  paramsIm = param_Im->GetData();
+
+  return 0;
+}
 
 FunctionOscillator::FunctionOscillator() {
   F = NULL;
   G = NULL;
+  omegaF = 0.0;
+  omegaG = 0.0;
 }
 
-FunctionOscillator::FunctionOscillator( double (*F_)(double, double), double (*G_)(double, double)){
+FunctionOscillator::FunctionOscillator( double omegaF_, double (*F_)(double, double), double omegaG_, double (*G_)(double, double)){
   F = F_;
   G = G_;
+  omegaF = omegaF_;
+  omegaG = omegaG_;
 }
 
 FunctionOscillator::~FunctionOscillator(){}
@@ -98,11 +109,19 @@ int FunctionOscillator::getControl(double t, double* Re_ptr, double* Im_ptr){
   double Im = 0.0;
 
   /* Evaluate F and G, if set */
-  if (F != NULL) Re = (*F)(t, 1.0);
-  if (G != NULL) Im = (*G)(t, 1.0);
+  if (F != NULL) Re = (*F)(t, omegaF);
+  if (G != NULL) Im = (*G)(t, omegaG);
 
   *Re_ptr = Re;
   *Im_ptr = Im;
+
+  return 0;
+}
+
+
+int FunctionOscillator::getParams(double* paramsRe, double* paramsIm) {
+  *paramsRe = omegaF;
+  *paramsIm = omegaG;
 
   return 0;
 }

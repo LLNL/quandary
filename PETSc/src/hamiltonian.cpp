@@ -329,7 +329,15 @@ PetscScalar G2_analytic(PetscReal t,PetscReal freq)
 
 bool AnalyticHam::ExactSolution(PetscReal t,Vec s)
 {
-  PetscScalar freq = 1.0;
+  double f1, f2, g1, g2;
+  oscil_vec[0]->getParams(&f1, &g1);
+  oscil_vec[1]->getParams(&f2, &g2);
+
+  if (fabs(f1) < 1e-12 || fabs(g2) < 1e-12){
+    printf("\n ERROR: Can't use 0.0 for FunctionOscillatorFrequency!\n");
+    exit(1);
+  }
+
   PetscScalar    *s_localptr;
 
   /* Get a pointer to vector data. */
@@ -337,8 +345,8 @@ bool AnalyticHam::ExactSolution(PetscReal t,Vec s)
 
   /* Write the solution into the array locations.
    *  Alternatively, we could use VecSetValues() or VecSetValuesLocal(). */
-  PetscScalar phi = (1./4.) * (t - (1./ freq)*PetscSinScalar(freq*t));
-  PetscScalar theta = (1./4.) * (t + (1./freq)*PetscCosScalar(freq*t) - 1.);
+  PetscScalar phi = (1./4.) * (t - (1./ f1)*PetscSinScalar(f1*t));
+  PetscScalar theta = (1./4.) * (t + (1./ g2)*PetscCosScalar(g2*t) - 1.);
   PetscScalar cosphi = PetscCosScalar(phi);
   PetscScalar costheta = PetscCosScalar(theta);
   PetscScalar sinphi = PetscSinScalar(phi);
