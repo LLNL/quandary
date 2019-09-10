@@ -27,4 +27,9 @@ class Bspline{
          */
         double evaluate(double t, double* coeff);
 
+        /*
+         * Evaluates the derivative at time t, multiplied with fbar.
+         * This updates the vector coeff_diff, which should have same size as coeff (nbasis).
+         */
+        void derivative(double t, double* coeff, double fbar, double* coeff_diff);
 };

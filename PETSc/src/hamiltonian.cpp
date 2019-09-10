@@ -294,8 +294,8 @@ int TwoOscilHam::apply(double t){
   Vector control_Im(2);
 
   /* Compute time-dependent control functions */
-  oscil_vec[0]->getControl(t, &control_Re(0), &control_Im(0));
-  oscil_vec[1]->getControl(t, &control_Re(1), &control_Im(1));
+  oscil_vec[0]->evalControl(t, &control_Re(0), &control_Im(0));
+  oscil_vec[1]->evalControl(t, &control_Re(1), &control_Im(1));
 
   /* Sum up real part of hamiltonian operator Re = controlIm1*A1 + controlIm2*A2 */ 
   ierr = MatZeroEntries(Re);CHKERRQ(ierr);
@@ -330,13 +330,22 @@ PetscScalar F1_analytic(PetscReal t, PetscReal freq)
   return f;
 }
 
-
 PetscScalar G2_analytic(PetscReal t,PetscReal freq)
 {
   PetscScalar g = (1./4.) * (1. - PetscSinScalar(freq * t));
   return g;
 }
 
+
+PetscScalar dF1_analytic(PetscReal t,PetscReal freq, PetscReal Fbar) {
+  PetscScalar dFdp = 1./4. * PetscSinScalar(freq * t) * t * Fbar;
+  return dFdp;
+}
+
+PetscScalar dG2_analytic(PetscReal t,PetscReal freq, PetscReal Gbar) {
+  PetscScalar dGdp = - 1./4. * PetscCosScalar(freq * t) * t * Gbar;
+  return dGdp;
+}
 
 
 bool AnalyticHam::ExactSolution(PetscReal t,Vec s)

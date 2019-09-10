@@ -105,3 +105,9 @@ PetscScalar F1_analytic(PetscReal t,PetscReal freq);
 /* Imaginary part for Oscillator 2 of analytic solution */
 PetscScalar G2_analytic(PetscReal t,PetscReal freq);
 
+
+/* Derivative freq_diff = dF1/dfreq * Fbar */
+PetscScalar dF1_analytic(PetscReal t,PetscReal freq, PetscReal Fbar);
+
+/* Derivative freq_diff = dG2/dfreq * Gbar */
+PetscScalar dG2_analytic(PetscReal t,PetscReal freq, PetscReal Gbar);

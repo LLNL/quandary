@@ -17,13 +17,16 @@ class Oscillator {
     virtual ~Oscillator();
 
     /* Evaluates real and imaginary control function at time t */
-    virtual int getControl(double t, double* Re_ptr, double* Im_ptr) = 0;
+    virtual int evalControl(double t, double* Re_ptr, double* Im_ptr) = 0;
 
     /* Return pointers to the control parameters */
     virtual int getParams(double* paramsRe, double* paramsIm) = 0;
 
     /* Update control parameters x <- x + stepsize*direction */
     virtual int updateParams(double stepsize, double* directionRe, double* directionIm) = 0;
+
+    /* Compute derivatives of the Re and Im control function wrt the parameters */
+    virtual int evalDerivative(double t, double* dRedp, double* dImdp) = 0;
 
     /* Print the control functions for each t \in [0,tfinal] */
     virtual int dumpControl(double tfinal, double dt);
@@ -48,10 +51,13 @@ class SplineOscillator : public Oscillator {
     ~SplineOscillator();
 
     /* Evaluates the real and imaginare spline functions at time t, using current spline parameters */
-    virtual int getControl(double t, double* Re_ptr, double* Im_ptr);
+    virtual int evalControl(double t, double* Re_ptr, double* Im_ptr);
 
     /* Returns pointers to the real and imaginary control parameters */
     virtual int getParams(double* paramsRe, double* paramsIm);
+
+    /* Compute derivatives of the Re and Im control function wrt param_Re, param_Im */
+    virtual int evalDerivative(double t, double* dRedp, double* dImdp);
 
     /* Update control parameters x <- x + stepsize*direction */
     virtual int updateParams(double stepsize, double* directionRe, double* directionIm);
@@ -66,16 +72,27 @@ class FunctionOscillator : public Oscillator {
   double omegaF;    // Optim parameter: Frequency for (*F)
   double omegaG;    // Optim parameter: Frequency for (*G)
 
+  double (*dFdp)(double t, double freq, double Fbar); // function ptr to derivative of F
+  double (*dGdp)(double t, double freq, double Gbar); // function ptr to derivative of G
+
   public:
     FunctionOscillator();
-    FunctionOscillator( double omegaF_, double (*F_)(double, double), double omegaG_, double (*G_)(double, double) );
+    FunctionOscillator( double omegaF_, 
+                        double (*F_)(double, double), 
+                        double (*dFdp) (double, double, double), 
+                        double omegaG_, 
+                        double (*G_)(double, double), 
+                        double (*dGdp) (double, double, double) );
     ~FunctionOscillator();
 
     /* Evaluates the control functions at time t */
-    virtual int getControl(double t, double* Re_ptr, double* Im_ptr);
+    virtual int evalControl(double t, double* Re_ptr, double* Im_ptr);
 
     /* Returns pointers to the real and imaginary control frequencies */
     virtual int getParams(double* paramsRe, double* paramsIm);
+
+    /* Compute derivatives of the Re and Im control function wrt omegaF, omegaG */
+    virtual int evalDerivative(double t, double* dRedp, double* dImdp);
 
     /* Update control parameters x <- x + stepsize*direction */
     virtual int updateParams(double stepsize, double* directionRe, double* directionIm);

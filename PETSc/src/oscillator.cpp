@@ -19,7 +19,7 @@ void Oscillator::dumpControl(double tfinal, double dt, std::ostream &output){
   for (int i=0; i < N; i++){
     double t = (double) i * dt;
     controlout(i,0) = i*dt;
-    getControl(t,  &controlout(i,1), &controlout(i,2));
+    evalControl(t,  &controlout(i,1), &controlout(i,2));
   }
   controlout.dump(output);
 }
@@ -64,7 +64,7 @@ SplineOscillator::~SplineOscillator(){
   }
 }
 
-int SplineOscillator::getControl(double t, double* Re_ptr, double* Im_ptr){
+int SplineOscillator::evalControl(double t, double* Re_ptr, double* Im_ptr){
 
   if ( t > Tfinal ){
     printf("WARNING: accessing spline outside of [0,T]. Returning 0.0\n");
@@ -88,6 +88,25 @@ int SplineOscillator::getParams(double* paramsRe, double* paramsIm) {
 }
 
 
+int SplineOscillator::evalDerivative(double t, double* dRedp, double* dImdp) {
+  int nparams = param_Re->GetDim();
+
+  if ( t > Tfinal ){
+    printf("WARNING: accessing spline derivative outside of [0,T]. Returning 0.0\n");
+    for (int i = 0; i < nparams; i++) {
+      dRedp[i] = 0.0;
+      dRedp[i] = 0.0;
+    }
+  } else {
+      double Rebar = 1.0;
+      double Imbar = 1.0;
+      basisfunctions->derivative(t, param_Re->GetData(), Rebar, dRedp);
+      basisfunctions->derivative(t, param_Im->GetData(), Imbar, dImdp);
+  }
+
+  return 0;
+}
+
 int SplineOscillator::updateParams(double stepsize, double* directionRe, double* directionIm){
 
   /* Get pointers to the parameter's data */
@@ -105,20 +124,30 @@ int SplineOscillator::updateParams(double stepsize, double* directionRe, double*
 FunctionOscillator::FunctionOscillator() {
   F = NULL;
   G = NULL;
+  dFdp = NULL;
+  dGdp = NULL;
   omegaF = 0.0;
   omegaG = 0.0;
 }
 
-FunctionOscillator::FunctionOscillator( double omegaF_, double (*F_)(double, double), double omegaG_, double (*G_)(double, double)){
+FunctionOscillator::FunctionOscillator( 
+        double omegaF_, 
+        double (*F_)(double, double), 
+        double (*dFdp_) (double, double, double), 
+        double omegaG_, 
+        double (*G_)(double, double), 
+        double (*dGdp_) (double, double, double) ) {
   F = F_;
   G = G_;
+  dFdp = dFdp_;
+  dGdp = dGdp_;
   omegaF = omegaF_;
   omegaG = omegaG_;
 }
 
 FunctionOscillator::~FunctionOscillator(){}
 
-int FunctionOscillator::getControl(double t, double* Re_ptr, double* Im_ptr){
+int FunctionOscillator::evalControl(double t, double* Re_ptr, double* Im_ptr){
 
   double Re = 0.0;
   double Im = 0.0;
@@ -134,6 +163,19 @@ int FunctionOscillator::getControl(double t, double* Re_ptr, double* Im_ptr){
 }
 
 
+int FunctionOscillator::evalDerivative(double t, double* dRedp, double* dImdp) {
+
+  double Fbar = 1.0;
+  double Gbar = 1.0;
+  /* Evaluate derivative functions */
+  if (F != NULL) *dRedp = (*dFdp)(t, omegaF, Fbar);
+  else  *dRedp = 0.0;
+  if (G != NULL) *dImdp = (*dGdp)(t, omegaG, Gbar);
+  else *dImdp = 0.0;
+
+  return 0;
+}
+
 int FunctionOscillator::getParams(double* paramsRe, double* paramsIm) {
   *paramsRe = omegaF;
   *paramsIm = omegaG;
@@ -143,8 +185,8 @@ int FunctionOscillator::getParams(double* paramsRe, double* paramsIm) {
 
 int FunctionOscillator::updateParams(double stepsize, double* directionRe, double* directionIm) {
 
-  if (F != NULL) omegaF += stepsize * (*directionRe);
-  if (G != NULL) omegaG += stepsize * (*directionIm);
+  if (F != NULL) omegaF += stepsize * (directionRe[0]);
+  if (G != NULL) omegaG += stepsize * (directionIm[0]);
 
   return 0;
 }

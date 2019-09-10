@@ -88,8 +88,8 @@ int main(int argc,char **argv)
   if (analytic == 1) {
     double omegaF1 = 1.0;
     double omegaG2 = 1.0;
-    oscil_vec[0] = new FunctionOscillator(omegaF1, &F1_analytic, 0.0, NULL );
-    oscil_vec[1] = new FunctionOscillator(0.0, NULL, omegaG2, &G2_analytic);
+    oscil_vec[0] = new FunctionOscillator(omegaF1, &F1_analytic, &dF1_analytic, 0.0, NULL, NULL );
+    oscil_vec[1] = new FunctionOscillator(0.0, NULL, NULL, omegaG2, &G2_analytic, &dG2_analytic);
   } else {
     for (int i = 0; i < nosci; i++){
       oscil_vec[i] = new SplineOscillator(nspline, total_time);
@@ -204,6 +204,34 @@ int main(int argc,char **argv)
     return 0;
   }
 
+  double EPS = 1e-8;
+  double dirF[1], dirG[1];
+
+  double t = 0.3;
+  double f, g;
+  double dfdw, dgdw;
+  double f_pert, g_pert;
+
+  for (int i=0; i<nosci; i++)
+  {
+    printf("FD for oscillator %d:\n", i);
+    oscil_vec[i]->evalControl(t, &f, &g);
+    oscil_vec[i]->evalDerivative(t, &dfdw, &dgdw);
+
+    dirF[0] = 1.0;
+    dirG[0] = 1.0;
+    oscil_vec[i]->updateParams(EPS, dirF, dirG);
+    oscil_vec[i]->evalControl(t, &f_pert, &g_pert);
+
+    double f_fd = (f_pert - f) / EPS;
+    double g_fd = (g_pert - g) / EPS;
+    double f_err = (dfdw - f_fd) / f_fd;
+    double g_err = (dgdw - g_fd) / g_fd;
+    printf("  f_pert %1.12e, f %1.12e, f_fd %1.12e, dfdw %1.12e, f_err %1.12e\n", f_pert, f, f_fd, dfdw,  f_err);
+    printf("  g_pert %1.12e, g %1.12e, g_fd %1.12e, dgdw %1.12e, g_err %1.12e\n", g_pert, g, g_fd, dgdw,  g_err);
+  }
+  exit(1);
+
 
   Vec x;
   double Tfinal;
@@ -212,7 +240,6 @@ int main(int argc,char **argv)
   double finite_differences;
   // double err;
 
-  double EPS = 1e-5;
 
 
   int nreal = 2*hamiltonian->getDim();
