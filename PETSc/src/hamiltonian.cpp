@@ -42,13 +42,13 @@ Hamiltonian::Hamiltonian(int nlevels_, int noscillators_, Oscillator** oscil_vec
   MatAssemblyEnd(Im,MAT_FINAL_ASSEMBLY);
 
   /* Allocate H, dimension: 2*dim x 2*dim for the real-valued system */
-  MatCreate(PETSC_COMM_SELF,&M);
-  MatSetSizes(M, PETSC_DECIDE, PETSC_DECIDE,2*dim,2*dim);
-  MatSetOptionsPrefix(M, "system");
-  MatSetFromOptions(M);
-  MatSetUp(M);
-  MatAssemblyBegin(M,MAT_FINAL_ASSEMBLY);
-  MatAssemblyEnd(M,MAT_FINAL_ASSEMBLY);
+  MatCreate(PETSC_COMM_SELF,&RHS);
+  MatSetSizes(RHS, PETSC_DECIDE, PETSC_DECIDE,2*dim,2*dim);
+  MatSetOptionsPrefix(RHS, "system");
+  MatSetFromOptions(RHS);
+  MatSetUp(RHS);
+  MatAssemblyBegin(RHS,MAT_FINAL_ASSEMBLY);
+  MatAssemblyEnd(RHS,MAT_FINAL_ASSEMBLY);
 
 
 }
@@ -58,7 +58,7 @@ Hamiltonian::~Hamiltonian(){
   if (dim > 0){
     MatDestroy(&Re);
     MatDestroy(&Im);
-    MatDestroy(&M);
+    MatDestroy(&RHS);
   }
 }
 
@@ -67,7 +67,7 @@ int Hamiltonian::getDim(){ return dim; }
 
 bool Hamiltonian::ExactSolution(double t, Vec x) { return false; }
 
-int Hamiltonian::buildRHS(double t){
+int Hamiltonian::assembleRHS(double t){
   int ierr;
   int ncol;
   const PetscInt *col_idx;
@@ -79,7 +79,7 @@ int Hamiltonian::buildRHS(double t){
   ierr = PetscMalloc1(dim, &col_idx_shift);CHKERRQ(ierr);
   ierr = PetscMalloc1(dim, &negvals);CHKERRQ(ierr);
 
-  /* Set up Jacobian M 
+  /* Set up Jacobian M (=RHS)
    * M(0, 0) =  Re    M(0,1) = -Im
    * M(1, 0) =  Im    M(1,1) = Re
    */
@@ -93,8 +93,8 @@ int Hamiltonian::buildRHS(double t){
       col_idx_shift[icol] = col_idx[icol] + dim;
     }
     // Set A in M: M(0,0) = Re  M(1,1) = Re
-    ierr = MatSetValues(M,1,&irow,ncol,col_idx,vals,INSERT_VALUES);CHKERRQ(ierr);
-    ierr = MatSetValues(M,1,&irow_shift,ncol,col_idx_shift,vals,INSERT_VALUES);CHKERRQ(ierr);
+    ierr = MatSetValues(RHS,1,&irow,ncol,col_idx,vals,INSERT_VALUES);CHKERRQ(ierr);
+    ierr = MatSetValues(RHS,1,&irow_shift,ncol,col_idx_shift,vals,INSERT_VALUES);CHKERRQ(ierr);
     ierr = MatRestoreRow(Re,irow,&ncol,&col_idx,&vals);CHKERRQ(ierr);
 
     /* Get row in Im */
@@ -105,15 +105,15 @@ int Hamiltonian::buildRHS(double t){
       negvals[icol] = -vals[icol];
     }
     // Set Im in M: M(1,0) = Im, M(0,1) = -Im
-    ierr = MatSetValues(M,1,&irow,ncol,col_idx_shift,negvals,INSERT_VALUES);CHKERRQ(ierr);
-    ierr = MatSetValues(M,1,&irow_shift,ncol,col_idx,vals,INSERT_VALUES);CHKERRQ(ierr);
+    ierr = MatSetValues(RHS,1,&irow,ncol,col_idx_shift,negvals,INSERT_VALUES);CHKERRQ(ierr);
+    ierr = MatSetValues(RHS,1,&irow_shift,ncol,col_idx,vals,INSERT_VALUES);CHKERRQ(ierr);
     ierr = MatRestoreRow(Im,irow,&ncol,&col_idx,&vals);CHKERRQ(ierr);
   }
 
   /* Assemble M */
-  ierr = MatAssemblyBegin(M,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
-  ierr = MatAssemblyEnd(M,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
-  // MatView(M, PETSC_VIEWER_STDOUT_SELF);
+  ierr = MatAssemblyBegin(RHS,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
+  ierr = MatAssemblyEnd(RHS,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
+  // MatView(RHS, PETSC_VIEWER_STDOUT_SELF);
 
   /* Cleanup */
   ierr = PetscFree(col_idx_shift);
@@ -122,8 +122,8 @@ int Hamiltonian::buildRHS(double t){
   return 0;
 }
 
-Mat Hamiltonian::getM(){
-  return M;
+Mat Hamiltonian::getRHS(){
+  return RHS;
 }
 
 
@@ -250,7 +250,6 @@ TwoOscilHam::~TwoOscilHam() {
   MatDestroy(&B1);
   MatDestroy(&B2);
   MatDestroy(&Hd);
-  MatDestroy(&M);
 
 }
 
@@ -288,7 +287,7 @@ int TwoOscilHam::BuildingBlock(Mat C, int sign, int k, int m){
 }
 
 
-int TwoOscilHam::buildRHS(double t){
+int TwoOscilHam::assembleRHS(double t){
   int ierr;
   Vector control_Re(2);
   Vector control_Im(2);
@@ -308,8 +307,8 @@ int TwoOscilHam::buildRHS(double t){
   ierr = MatAXPY(Im,control_Re(1),B2,DIFFERENT_NONZERO_PATTERN);CHKERRQ(ierr);
   ierr = MatAXPY(Im, 1.0, Hd, DIFFERENT_NONZERO_PATTERN); CHKERRQ(ierr);
 
-  /* Set M from Re and Im */
-  Hamiltonian::buildRHS(t);
+  /* Set RHS from Re and Im */
+  Hamiltonian::assembleRHS(t);
 
   return 0;
 }

@@ -319,7 +319,7 @@ int main(int argc,char **argv)
   Vec mu[1];      // dfdp
   Vec lambda[1];  // dfdy
   PetscScalar *x_ptr;
-  MatCreateVecs(hamiltonian->getM(), &lambda[0], NULL);
+  MatCreateVecs(hamiltonian->getRHS(), &lambda[0], NULL);
   MatCreateVecs(dHdp, &mu[0], NULL);
   VecZeroEntries(mu[0]);
   VecZeroEntries(lambda[0]);
