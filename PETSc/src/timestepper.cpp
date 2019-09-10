@@ -6,8 +6,8 @@ PetscErrorCode RHSJacobian(TS ts,PetscReal t,Vec u,Mat M,Mat P,void *ctx){
   /* Cast ctx to Hamiltonian pointer */
   Hamiltonian *hamiltonian = (Hamiltonian*) ctx;
 
-  /* assembleRHSing the Hamiltonian will set the matrix H */
-  hamiltonian->assembleRHS(t);
+  /* assemble_RHSing the Hamiltonian will set the matrix H */
+  hamiltonian->assemble_RHS(t);
 
   /* Get the hamiltonian system matrix H*/
   M = hamiltonian->getRHS();

@@ -67,7 +67,7 @@ int Hamiltonian::getDim(){ return dim; }
 
 bool Hamiltonian::ExactSolution(double t, Vec x) { return false; }
 
-int Hamiltonian::assembleRHS(double t){
+int Hamiltonian::assemble_RHS(double t){
   int ierr;
   int ncol;
   const PetscInt *col_idx;
@@ -275,7 +275,7 @@ int TwoOscilHam::BuildingBlock(Mat C, int sign, int k, int m){
 }
 
 
-int TwoOscilHam::assembleRHS(double t){
+int TwoOscilHam::assemble_RHS(double t){
   int ierr;
   Vector control_Re(2);
   Vector control_Im(2);
@@ -296,7 +296,7 @@ int TwoOscilHam::assembleRHS(double t){
   ierr = MatAXPY(Im, 1.0, Hd, DIFFERENT_NONZERO_PATTERN); CHKERRQ(ierr);
 
   /* Set RHS from Re and Im */
-  Hamiltonian::assembleRHS(t);
+  Hamiltonian::assemble_RHS(t);
 
   return 0;
 }
