@@ -45,6 +45,11 @@ class Hamiltonian{
 
     /* Access the Hamiltonian */
     Mat getM();
+
+    /* 
+     * Evaluate the objective function at time t and current solution x
+     */
+    virtual int evalObjective(double t, Vec x, double *objective_ptr);
 };
 
 /*

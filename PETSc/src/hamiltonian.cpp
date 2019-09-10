@@ -126,6 +126,18 @@ Mat Hamiltonian::getM(){
   return M;
 }
 
+
+
+int Hamiltonian::evalObjective(double t, Vec x, double *objective_ptr) {
+  
+  const PetscScalar *x_ptr;
+  VecGetArrayRead(x, &x_ptr);
+
+  *objective_ptr = 200 * x_ptr[1]; // TODO: Evaluate objective 
+
+  return 0;
+}
+
 TwoOscilHam::TwoOscilHam(){
   A1 = NULL;
   A2 = NULL;
