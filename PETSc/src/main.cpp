@@ -164,7 +164,10 @@ int main(int argc,char **argv)
   braid_SetSeqSoln(braid_core, 0);
 
 
-
+   /* Measure wall time */
+  StartTime = MPI_Wtime();
+  StopTime = 0.0;
+  UsedTime = 0.0;
 
 
 //////////////////////////////////////////
@@ -188,9 +191,7 @@ int main(int argc,char **argv)
 
   /* --- Finally run forward --- */
   ierr = TSPreSolve(ts); CHKERRQ(ierr);
-  for(PetscInt istep = 0; istep < ntime; istep++) {
-    ierr = TSStepMod(ts); CHKERRQ(ierr);
-  }
+  braid_Drive(braid_core);
   TSPostSolve(ts);
   /* -------------------------- */
 
@@ -229,14 +230,9 @@ int main(int argc,char **argv)
 
 //////////////////////////////////////////
 
-
-   /* Measure wall time */
-  StartTime = MPI_Wtime();
-  StopTime = 0.0;
-  UsedTime = 0.0;
-
   /* Run braid */
   // braid_Drive(braid_core);
+
 
   /* Get objective function */
   double obj;

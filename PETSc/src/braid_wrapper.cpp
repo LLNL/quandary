@@ -8,18 +8,19 @@ int my_Step(braid_App    app,
         braid_StepStatus status)
 {
     double tstart, tstop;
+    int tindex;
 
     /* Grab current time from XBraid and pass it to Petsc time-stepper */
     braid_StepStatusGetTstartTstop(status, &tstart, &tstop);
+    braid_StepStatusGetTIndex(status, &tindex);
     TSSetTime(app->ts, tstart);
     TSSetTimeStep(app->ts, tstop - tstart);
 
     /* Pass the curent state to the Petsc time-stepper */
     TSSetSolution(app->ts, u->x);
 
-    /* Take a step */
-    TSStep(app->ts);
-
+    /* Take a step forward */
+    TSStepMod(app->ts);
 
     return 0;
 }
