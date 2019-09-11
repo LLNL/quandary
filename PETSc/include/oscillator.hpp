@@ -47,8 +47,8 @@ class Oscillator {
 class SplineOscillator : public Oscillator {
     double Tfinal;               // final time
     Bspline *basisfunctions;  // Bspline basis function for control discretization 
-    Vector* param_Re;          // parameters of real part of the control
-    Vector* param_Im;          // parameters of imaginary part of the control
+    double* param_Re;          // parameters of real part of the control
+    double* param_Im;          // parameters of imaginary part of the control
 
   public:
     SplineOscillator();
@@ -74,8 +74,8 @@ class FunctionOscillator : public Oscillator {
 
   double (*F)(double t, double freq);  // function pointer to Re(control function)
   double (*G)(double t, double freq);  // function pointer to Im(control function)
-  double omegaF;    // Optim parameter: Frequency for (*F)
-  double omegaG;    // Optim parameter: Frequency for (*G)
+  double* param_Re;    // Optim parameter: Frequency for (*F)
+  double* param_Im;    // Optim parameter: Frequency for (*G)
 
   double (*dFdp)(double t, double freq, double Fbar); // function ptr to derivative of F
   double (*dGdp)(double t, double freq, double Gbar); // function ptr to derivative of G
