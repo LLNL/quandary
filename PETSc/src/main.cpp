@@ -20,6 +20,7 @@ Input parameters:\n\
   -cf <int>        : Set XBraid's coarsening factor           (default: 5) \n\
   -ml <int>        : Set XBraid's max levels                  (default: 5)\n\
   -mi <int>        : Set XBraid's max number of iterations    (default: 50)\n\n\
+  -monitor         : Prints out additional information on the time stepper\n\n\
   -analytic        : Runs analytic testcase (2-level, 2-oscillator, pure state) \n\n";
 
 
@@ -39,6 +40,7 @@ int main(int argc,char **argv)
   PetscInt       nspline;      // Number of spline basis functions
   Hamiltonian*   hamiltonian;  // Hamiltonian system
   PetscBool      analytic;     // If true: runs analytic test case
+  PetscBool      monitor;      // If true: Print out additional time-stepper information
 
 
   FILE *ufile, *vfile;
@@ -63,6 +65,7 @@ int main(int argc,char **argv)
   maxlevels = 5;
   maxiter = 50;
   analytic = PETSC_FALSE;
+  monitor = PETSC_FALSE;
 
   /* Parse command line arguments to overwrite default constants */
   PetscOptionsGetInt(NULL,NULL,"-nlvl",&nlvl,NULL);
@@ -73,6 +76,7 @@ int main(int argc,char **argv)
   PetscOptionsGetInt(NULL,NULL,"-ml",&maxlevels,NULL);
   PetscOptionsGetInt(NULL,NULL,"-mi",&maxiter,NULL);
   PetscOptionsGetBool(NULL,NULL,"-analytic",&analytic,NULL);
+  PetscOptionsGetBool(NULL,NULL,"-monitor",&monitor,NULL);
 
   /* Sanity check */
   if (nosci != 2)
@@ -132,7 +136,7 @@ int main(int argc,char **argv)
   sprintf(filename, "out_v.%04d.dat", mpirank);       vfile = fopen(filename, "w");
 
   /* Allocate and initialize Petsc's Time-stepper */
-  BuildTimeStepper(&ts, hamiltonian, ntime, dt, total_time);
+  BuildTimeStepper(&ts, hamiltonian, ntime, dt, total_time, monitor);
 
   /* Set up XBraid's applications structure */
   braid_app = (XB_App*) malloc(sizeof(XB_App));
@@ -212,7 +216,7 @@ double EPS = 1e-8;
 
   /* Build a new time-stepper */
   TSDestroy(&ts);
-  BuildTimeStepper(&ts, hamiltonian, ntime, dt, total_time);
+  BuildTimeStepper(&ts, hamiltonian, ntime, dt, total_time, monitor);
   TSSetSolution(ts, x);
 
   /* Solve forward while storing trajectory */
@@ -275,7 +279,7 @@ double EPS = 1e-8;
 
         /* Run the time stepper */
         TSDestroy(&ts);
-        BuildTimeStepper(&ts, hamiltonian, ntime, dt, total_time);
+        BuildTimeStepper(&ts, hamiltonian, ntime, dt, total_time, monitor);
         hamiltonian->initialCondition(x);
         // // for(PetscInt istep = 0; istep < ntime; istep++) {
         // //   ierr = TSStep(ts); CHKERRQ(ierr);
@@ -303,7 +307,7 @@ double EPS = 1e-8;
 
         /* Run the time stepper */
         TSDestroy(&ts);
-        BuildTimeStepper(&ts, hamiltonian, ntime, dt, total_time);
+        BuildTimeStepper(&ts, hamiltonian, ntime, dt, total_time, monitor);
         hamiltonian->initialCondition(x);
         // for(PetscInt istep = 0; istep < ntime; istep++) {
         //   ierr = TSStep(ts);CHKERRQ(ierr);
@@ -440,7 +444,7 @@ double EPS = 1e-8;
     dt = total_time / ntime;
 
     /* Create and set up the time stepper */
-    BuildTimeStepper(&ts, hamiltonian, ntime, dt, total_time);
+    BuildTimeStepper(&ts, hamiltonian, ntime, dt, total_time, monitor);
     TSSetSolution(ts, x);
 
     // /* Set the initial condition */

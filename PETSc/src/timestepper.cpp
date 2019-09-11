@@ -30,7 +30,7 @@ PetscErrorCode RHSJacobianP(TS ts, PetscReal t, Vec y, Mat A, void *ctx){
 }
 
 
-PetscErrorCode BuildTimeStepper(TS* ts, Hamiltonian* hamiltonian, PetscInt NSteps, PetscReal Dt, PetscReal Tfinal){
+PetscErrorCode BuildTimeStepper(TS* ts, Hamiltonian* hamiltonian, PetscInt NSteps, PetscReal Dt, PetscReal Tfinal, bool monitor){
   int ierr;
 
   ierr = TSCreate(PETSC_COMM_SELF,ts);CHKERRQ(ierr);
@@ -43,8 +43,26 @@ PetscErrorCode BuildTimeStepper(TS* ts, Hamiltonian* hamiltonian, PetscInt NStep
   ierr = TSSetMaxSteps(*ts,NSteps);CHKERRQ(ierr);
   ierr = TSSetMaxTime(*ts,Tfinal);CHKERRQ(ierr);
   ierr = TSSetExactFinalTime(*ts,TS_EXACTFINALTIME_STEPOVER);CHKERRQ(ierr);
+  if (monitor) {
+    ierr = TSMonitorSet(*ts, Monitor, NULL, NULL); CHKERRQ(ierr);
+  }
   ierr = TSSetFromOptions(*ts);CHKERRQ(ierr);
 
   return 0;
 }
 
+
+
+PetscErrorCode Monitor(TS ts,PetscInt step,PetscReal t,Vec x,void *ctx) {
+  PetscErrorCode ierr;
+  PetscFunctionBeginUser;
+
+  const PetscScalar *x_ptr;
+  double tprev;
+  ierr = TSGetPrevTime(ts, &tprev); CHKERRQ(ierr);
+  ierr = VecGetArrayRead(x, &x_ptr);
+  printf("Step %d: %f -> %f, x[1]=%1.14e\n", step, tprev, t, x_ptr[1]);
+  ierr = VecRestoreArrayRead(x, &x_ptr);
+
+  PetscFunctionReturn(0);
+}
