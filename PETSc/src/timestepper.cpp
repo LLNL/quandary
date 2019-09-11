@@ -47,7 +47,7 @@ PetscErrorCode TSInit(TS ts, Hamiltonian* hamiltonian, PetscInt NSteps, PetscRea
   }
   ierr = TSSetFromOptions(ts);CHKERRQ(ierr);
 
-  return 0;
+  return ierr;
 }
 
 
@@ -64,4 +64,45 @@ PetscErrorCode Monitor(TS ts,PetscInt step,PetscReal t,Vec x,void *ctx) {
   ierr = VecRestoreArrayRead(x, &x_ptr);
 
   PetscFunctionReturn(0);
+}
+
+
+PetscErrorCode TSPrepare(TS ts){
+  int ierr; 
+
+  ierr = TSSetUp(ts); CHKERRQ(ierr);
+  ierr = TSTrajectorySetUp(ts->trajectory,ts);CHKERRQ(ierr);
+  /* reset time step and iteration counters */
+  if (!ts->steps) {
+    ts->ksp_its           = 0;
+    ts->snes_its          = 0;
+    ts->num_snes_failures = 0;
+    ts->reject            = 0;
+    ts->steprestart       = PETSC_TRUE;
+    ts->steprollback      = PETSC_FALSE;
+  }
+  ts->reason = TS_CONVERGED_ITERATING;
+  if (ts->steps >= ts->max_steps) ts->reason = TS_CONVERGED_ITS;
+  else if (ts->ptime >= ts->max_time) ts->reason = TS_CONVERGED_TIME;
+
+  if (!ts->steps) {
+    ierr = TSTrajectorySet(ts->trajectory,ts,ts->steps,ts->ptime,ts->vec_sol);CHKERRQ(ierr);
+  }
+
+  return ierr;
+}
+
+
+PetscErrorCode TSStepMod(TS ts){
+  int ierr; 
+
+    ierr = TSMonitor(ts,ts->steps,ts->ptime,ts->vec_sol);CHKERRQ(ierr);
+    ierr = TSPreStep(ts);CHKERRQ(ierr);
+    ierr = TSStep(ts);CHKERRQ(ierr);
+
+    ierr = TSPostEvaluate(ts);CHKERRQ(ierr);
+
+    ierr = TSTrajectorySet(ts->trajectory,ts,ts->steps,ts->ptime,ts->vec_sol);CHKERRQ(ierr);
+    ierr = TSPostStep(ts);CHKERRQ(ierr);
+  return ierr;
 }

@@ -166,13 +166,71 @@ int main(int argc,char **argv)
 
 
 
+
+//////////////////////////////////////////
+  /* Set initial condition */
+  Vec x;
+  MatCreateVecs(hamiltonian->getRHS(), &x, NULL);
+
+  /* Build a new time-stepper */
+  TSDestroy(&ts);
+  ierr = TSCreate(PETSC_COMM_SELF,&ts);CHKERRQ(ierr);
+  ierr = TSInit(ts, hamiltonian, ntime, dt, total_time, monitor);CHKERRQ(ierr);
+
+  /* Tell Petsc to save the forward trajectory */
+  ierr = TSSetSaveTrajectory(ts);CHKERRQ(ierr);
+
+
+  /* Set initial condition in Petsc */
+  hamiltonian->initialCondition(x);
+  ierr = TSSetSolution(ts, x); CHKERRQ(ierr);
+
+  /* Prepare the ts object for the next run */
+  ierr = TSPrepare(ts); CHKERRQ(ierr);
+
+  /* Run */
+  for(PetscInt istep = 0; istep < ntime; istep++) {
+    ierr = TSStepMod(ts); CHKERRQ(ierr);
+  }
+  ts->solvetime = ts->ptime;
+
+  /* Get solution */
+  VecCopy(ts->vec_sol, x); CHKERRQ(ierr);
+
+  /* Get objective */
+  double Tfinal;
+  double objective_ref;
+  TSGetSolveTime(ts, &Tfinal);
+  hamiltonian->evalObjective(Tfinal, x, &objective_ref);
+
+  /* Set up adjoint variables and initial condition */
+  Vec lambda[1];  // dfdy
+  Vec mu[1];      // dfdp
+  MatCreateVecs(hamiltonian->getRHS(), &lambda[0], NULL);  // passend zu y (RHS * lambda)
+  MatCreateVecs(hamiltonian->getdRHSdp(), &mu[0], NULL);   // passend zu p (dHdp * mu)
+  hamiltonian->evalObjective_diff(Tfinal, x, &lambda[0], &mu[0]);
+
+  /* Set the derivatives for TS */
+  ierr = TSSetCostGradients(ts, 1, lambda, mu); CHKERRQ(ierr);
+  ierr = TSSetRHSJacobianP(ts,hamiltonian->getdRHSdp(), RHSJacobianP, hamiltonian); CHKERRQ(ierr);
+
+
+  ierr = TSAdjointSolve(ts);CHKERRQ(ierr);
+
+  /* Get the results */
+  printf("Petsc TSAdjoint gradient:\n");
+  VecView(mu[0], PETSC_VIEWER_STDOUT_WORLD);
+
+//////////////////////////////////////////
+
+
    /* Measure wall time */
   StartTime = MPI_Wtime();
   StopTime = 0.0;
   UsedTime = 0.0;
 
   /* Run braid */
-  braid_Drive(braid_core);
+  // braid_Drive(braid_core);
 
   /* Get objective function */
   double obj;
@@ -216,7 +274,7 @@ int main(int argc,char **argv)
 #if FD_TEST_TS
 
   /* Set initial condition */
-  Vec x;
+  // Vec x;
   MatCreateVecs(hamiltonian->getRHS(), &x, NULL);
   hamiltonian->initialCondition(x);
 
@@ -251,11 +309,7 @@ int main(int argc,char **argv)
   ierr = TSSetCostGradients(ts, 1, lambda, mu); CHKERRQ(ierr);
   ierr = TSSetRHSJacobianP(ts,hamiltonian->getdRHSdp(), RHSJacobianP, hamiltonian); CHKERRQ(ierr);
 
-  /* Run adjoint backwards in time */
-  // for (int istep=ntime; istep>0; istep--)
-  // {
-  //   ierr = TSAdjointStep(ts);CHKERRQ(ierr);
-  // }
+
   ierr = TSAdjointSolve(ts);CHKERRQ(ierr);
 
   /* Get the results */

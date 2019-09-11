@@ -1,3 +1,4 @@
+#include <petsc/private/tsimpl.h>        /*I "petscts.h"  I*/
 #include <petscts.h>
 #include "hamiltonian.hpp"
 #pragma once
@@ -30,3 +31,7 @@ PetscErrorCode TSInit(TS ts, Hamiltonian* hamiltonian, int NSteps, double Dt, do
 PetscErrorCode Monitor(TS ts,PetscInt step,PetscReal t,Vec X,void *ctx);
 
 
+
+
+PetscErrorCode TSPrepare(TS ts);
+PetscErrorCode TSStepMod(TS ts);
