@@ -230,15 +230,10 @@ double EPS = 1e-8;
 
   /* Set up adjoint variables and initial condition */
   Vec lambda[1];  // dfdy
-  PetscScalar *x_ptr;
+  Vec mu[1];      // dfdp
   MatCreateVecs(hamiltonian->getRHS(), &lambda[0], NULL);  // passend zu y (RHS * lambda)
-  VecZeroEntries(lambda[0]);
-  VecGetArray(lambda[0], &x_ptr);
-  x_ptr[1] = 200.0; // Derivative of objective function TODO: Implement!
-  VecRestoreArray(lambda[0], &x_ptr);
-  Vec mu[1];
   MatCreateVecs(hamiltonian->getdRHSdp(), &mu[0], NULL);   // passend zu p (dHdp * mu)
-  VecZeroEntries(mu[0]);
+  hamiltonian->evalObjective_diff(Tfinal, x, &lambda[0], &mu[0]);
 
   /* Set the derivatives for TS */
   ierr = TSSetCostGradients(ts, 1, lambda, mu); CHKERRQ(ierr);
@@ -291,6 +286,7 @@ double EPS = 1e-8;
 
         /* Eval FD and error */
         fd = (objective_pert - objective_ref) / EPS;
+        PetscScalar *x_ptr;
         VecGetArray(mu[0], &x_ptr);
         err = (x_ptr[i*nosci + iparam] - fd) / fd;
         printf("     Re %f: obj_pert %1.12e, obj %1.12e, fd %1.12e, mu %1.12e, err %1.12e\n", Tfinal, objective_pert, objective_ref, fd, x_ptr[i*nosci+iparam], err);
