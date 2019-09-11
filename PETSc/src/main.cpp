@@ -8,7 +8,7 @@
 #include "hamiltonian.hpp"
 
 #define FD_TEST_SPLINE 0
-#define FD_TEST_TS 0
+#define FD_TEST_TS 1
 #define DT_TEST 0
 
 static char help[] ="Solves the Liouville-von-Neumann equations, two oscillators.\n\
@@ -201,188 +201,59 @@ int main(int argc,char **argv)
 
 
 
-  double mytime = 1.4;
 
-  Vec xin;
-  double* xin_ptr, *x_ptr;
-  Vec findiff;
-  Vec y, y_perturb;
-  MatCreateVecs(hamiltonian->getRHS(), &xin, NULL);
-  MatCreateVecs(hamiltonian->getRHS(), &y, NULL);
-  MatCreateVecs(hamiltonian->getRHS(), &y_perturb, NULL);
-  MatCreateVecs(hamiltonian->getRHS(), &findiff, NULL);
-
-
-  double wf, wg;
-  for (int i=0; i<2; i++){
-    oscil_vec[i]->getParams(&wf, &wg);
-    printf("Oscil %d: %1.12e %1.12e\n", i, wf, wg);
-  }
-
-
-  TSDestroy(&ts);
-  BuildTimeStepper(&ts, hamiltonian, ntime, dt, total_time);
-  // hamiltonian->ExactSolution(mytime, xin);
-  VecSet(xin, 0.1);
-  TSSetSolution(ts, xin);
-  TSSetSaveTrajectory(ts);
-  // for (int istep = 0; istep < ntime; istep++)
-  // {
-  //   TSStep(ts);
-  // }
-  TSSolve(ts, xin);
-  VecGetArray(xin, &xin_ptr);
-  double obj = xin_ptr[1]*200.0;
-  VecRestoreArray(xin, &xin_ptr);
-
- /* Set up adjoint variables and initial condition */
-  Vec lambda[1];  // dfdy
-  MatCreateVecs(hamiltonian->getRHS(), &lambda[0], NULL);  // passend zu y (RHS * lambda)
-  VecZeroEntries(lambda[0]);
-  VecGetArray(lambda[0], &x_ptr); 
-  x_ptr[1] = 200.0;
-  VecRestoreArray(lambda[0], &x_ptr); 
-
-  Vec mu[1];      // dfdp
-  MatCreateVecs(hamiltonian->getdRHSdp(), &mu[0], NULL);   // passend zu p (dHdp * mu)
-  VecZeroEntries(mu[0]);
-  ierr = TSSetCostGradients(ts, 1, lambda, mu);CHKERRQ(ierr);
-
-  ierr = TSSetRHSJacobianP(ts,hamiltonian->getdRHSdp(), RHSJacobianP, hamiltonian); CHKERRQ(ierr);
-
-  ierr = TSAdjointSolve(ts); CHKERRQ(ierr); 
-  // for (int istep = ntime; istep >0; istep--){
-  //   TSSetTime(ts, (istep-1)*dt);
-    // TSAdjointStep(ts);
-  // }
-
-  // VecView(lambda[0], PETSC_VIEWER_STDOUT_WORLD);
-  printf("\n mu = \n");
-  VecView(mu[0], PETSC_VIEWER_STDOUT_WORLD);
-
-
-  // /* Get J(w) */
-  // hamiltonian->assemble_RHS(mytime);
-  // MatMult(hamiltonian->getRHS(), xin, y);
-  // Vec xcopy;
-  // VecDuplicate(xin, &xcopy);
-  // VecCopy(xin, xcopy);
-
-
-  /* Get dJ(w)/dw */
-  // hamiltonian->assemble_dRHSdp(mytime, xin);
-      
-  /* Perturb */
-  int l = 1;
-  printf("\n PERTURB %d:\n", l);
-  double epsilon = 1e-8;
-  double dirF, dirG;
-  dirF = 0.0; int iparam = 1;
-  dirG = 1.0; 
-  oscil_vec[l]->updateParams(epsilon, &dirF, &dirG);
-  for (int i=0; i<2; i++){
-     oscil_vec[i]->getParams(&wf, &wg);
-     printf("Oscil %d: %1.12e %1.12e\n", i, wf, wg);
-  }
-
-
-  TSDestroy(&ts);
-  BuildTimeStepper(&ts, hamiltonian, ntime, dt, total_time);
-  VecSet(xin, 0.1);
-  TSSolve(ts, xin);
-  VecGetArray(xin, &xin_ptr);
-  double objp = xin_ptr[1]*200.0;
-  VecRestoreArray(xin, &xin_ptr);
-
-  double mydiff = (objp - obj) / epsilon;
-  VecGetArray(mu[0], &x_ptr);
-  double relerr = (x_ptr[l*nosci+iparam] - mydiff ) / mydiff;
-  printf("\n objp %1.12e obj %1.12e fd %1.12e\n", objp, obj, mydiff);
-  printf(" mu %1.12e, fd %1.12e, relerr %1.12e\n", x_ptr[l*nosci+iparam], mydiff, relerr);
-  VecRestoreArray(mu[0], &x_ptr);
-
-
-  // /* Get J(w+dw) */
-  // hamiltonian->assemble_RHS(mytime);
-  // MatMult(hamiltonian->getRHS(), xcopy, y_perturb);
-  // // VecView(y, PETSC_VIEWER_STDOUT_WORLD);
-  // // VecView(y_perturb, PETSC_VIEWER_STDOUT_WORLD);
-
-  // /* Get finite differences */
-  // VecWAXPY(findiff, -1.0, y, y_perturb);
-  // VecScale(findiff, 1./epsilon);
-  // VecView(findiff, PETSC_VIEWER_STDOUT_WORLD);
-  // MatView(hamiltonian->getdRHSdp(), PETSC_VIEWER_STDOUT_WORLD);
-
-  // exit(1);
-
-
-
-
-double EPS = 1e-6;
+double EPS = 1e-8;
 #if FD_TEST_TS
 
-  Vec x;
-  double Tfinal;
-  double objective_ref, gradient_ref;
-  double objective_pert;
-  // double err;
-
-  int nreal = 2*hamiltonian->getDim();
-  int ndesign = 2*oscil_vec[0]->getNParam() * nosci;  // for Re and Im parameters
-
   /* Set initial condition */
-  VecCreateSeq(PETSC_COMM_SELF,nreal,&x);
+  Vec x;
+  MatCreateVecs(hamiltonian->getRHS(), &x, NULL);
   hamiltonian->initialCondition(x);
 
   /* Build a new time-stepper */
   TSDestroy(&ts);
   BuildTimeStepper(&ts, hamiltonian, ntime, dt, total_time);
-  ierr = TSSetSolution(ts, x);CHKERRQ(ierr);
+  TSSetSolution(ts, x);
 
   /* Solve forward while storing trajectory */
-  ierr = TSSetSaveTrajectory(ts);CHKERRQ(ierr);
-  double mytime1, mytime2;
+  TSSetSaveTrajectory(ts);
   // for(PetscInt istep = 0; istep < ntime; istep++) {
-  //   ierr = TSGetTime(ts, &mytime1);CHKERRQ(ierr);
   //   ierr = TSStep(ts); CHKERRQ(ierr);
-  //   ierr = TSGetTime(ts, &mytime2);CHKERRQ(ierr);
-  //   printf("Forward step %d: %f -> %f\n", istep, mytime1, mytime2);
   // }
   TSSolve(ts, x);
 
-  ierr = TSGetSolveTime(ts, &Tfinal);CHKERRQ(ierr);
+  /* Get original objective */
+  double Tfinal;
+  double objective_ref;
+  TSGetSolveTime(ts, &Tfinal);
   hamiltonian->evalObjective(Tfinal, x, &objective_ref);
 
   /* Set up adjoint variables and initial condition */
-  Vec mu[1];      // dfdp
   Vec lambda[1];  // dfdy
   PetscScalar *x_ptr;
   MatCreateVecs(hamiltonian->getRHS(), &lambda[0], NULL);  // passend zu y (RHS * lambda)
+  VecZeroEntries(lambda[0]);
+  VecGetArray(lambda[0], &x_ptr);
+  x_ptr[1] = 200.0; // Derivative of objective function TODO: Implement!
+  VecRestoreArray(lambda[0], &x_ptr);
+  Vec mu[1];
   MatCreateVecs(hamiltonian->getdRHSdp(), &mu[0], NULL);   // passend zu p (dHdp * mu)
   VecZeroEntries(mu[0]);
-  VecZeroEntries(lambda[0]);
-  VecSetValue(lambda[0], 1, 200.0, INSERT_VALUES);
-  ierr = TSSetCostGradients(ts, 1, lambda, mu);CHKERRQ(ierr);
 
+  /* Set the derivatives for TS */
+  ierr = TSSetCostGradients(ts, 1, lambda, mu); CHKERRQ(ierr);
   ierr = TSSetRHSJacobianP(ts,hamiltonian->getdRHSdp(), RHSJacobianP, hamiltonian); CHKERRQ(ierr);
 
   /* Run adjoint backwards in time */
   // for (int istep=ntime; istep>0; istep--)
   // {
-  //   ierr = TSSetTime(ts, (istep)*dt); CHKERRQ(ierr);
-  //   ierr = TSGetTime(ts, &mytime1);CHKERRQ(ierr);
   //   ierr = TSAdjointStep(ts);CHKERRQ(ierr);
-  //   ierr = TSGetTime(ts, &mytime2);CHKERRQ(ierr);
-  //   printf("Adjoint step %d: %f -> %f\n", istep, mytime1, mytime2);
   // }
-  TSAdjointSolve(ts);
+  ierr = TSAdjointSolve(ts);CHKERRQ(ierr);
 
   /* Get the results */
   printf("Petsc TSAdjoint gradient:\n");
   VecView(mu[0], PETSC_VIEWER_STDOUT_WORLD);
-  const PetscScalar *mu_ptr;
-  VecGetArrayRead(mu[0], &mu_ptr);
 
   /* Perturb controls */
   int nparam = oscil_vec[0]->getNParam();
@@ -394,44 +265,43 @@ double EPS = 1e-6;
   }
 
 
-  /* FD gradient */
+  /* Finite Differences */
   double fd, err;
-  // for (int i=0; i<nosci; i++){
-  {
-  int i=1;
-
+  double objective_pert;
+  for (int i=0; i<nosci; i++){
     printf("Oscillator %d\n", i);
+
     for (int iparam=0; iparam<nparam; iparam++){
+        printf("  param %d: \n", iparam);
 
-        // /* Perturb Re*/
-        // printf("  param %d: Re\n", iparam);
-        // dirRe[iparam] = 1.0;
-        // oscil_vec[i]->updateParams(EPS, dirRe, dirIm);
+        /* Perturb Re*/
+        dirRe[iparam] = 1.0;
+        oscil_vec[i]->updateParams(EPS, dirRe, dirIm);
 
-        // /* Run the time stepper */
-        // TSDestroy(&ts);
-        // BuildTimeStepper(&ts, hamiltonian, ntime, dt, total_time);
-        // hamiltonian->initialCondition(x);
+        /* Run the time stepper */
+        TSDestroy(&ts);
+        BuildTimeStepper(&ts, hamiltonian, ntime, dt, total_time);
+        hamiltonian->initialCondition(x);
         // // for(PetscInt istep = 0; istep < ntime; istep++) {
         // //   ierr = TSStep(ts); CHKERRQ(ierr);
         // // }
-        // TSSolve(ts, x);
-        // ierr = TSGetSolveTime(ts, &Tfinal);CHKERRQ(ierr);
-        // hamiltonian->evalObjective(Tfinal, x, &objective_pert);
+        TSSolve(ts, x);
+        ierr = TSGetSolveTime(ts, &Tfinal);CHKERRQ(ierr);
+        hamiltonian->evalObjective(Tfinal, x, &objective_pert);
 
-        // /* Eval FD and error */
-        // fd = (objective_pert - objective_ref) / EPS;
-        // err = 0.0;
-        // if (fd != 0.0) err = (mu_ptr[i*nosci + iparam] - fd) / fd;
-        // printf("     %f obj_pert %1.12e, obj %1.12e, fd %1.12e, mu %1.12e, err %2.4f\%\n", Tfinal, objective_pert, objective_ref, fd, mu_ptr[i*nosci+iparam], err*100.0);
+        /* Eval FD and error */
+        fd = (objective_pert - objective_ref) / EPS;
+        VecGetArray(mu[0], &x_ptr);
+        err = (x_ptr[i*nosci + iparam] - fd) / fd;
+        printf("     Re %f: obj_pert %1.12e, obj %1.12e, fd %1.12e, mu %1.12e, err %1.12e\n", Tfinal, objective_pert, objective_ref, fd, x_ptr[i*nosci+iparam], err);
+        VecRestoreArray(mu[0], &x_ptr);
 
         // /* Restore parameter */
-        // oscil_vec[i]->updateParams(-EPS, dirRe, dirIm);
-        // dirRe[iparam] = 0.0;
+        oscil_vec[i]->updateParams(-EPS, dirRe, dirIm);
+        dirRe[iparam] = 0.0;
 
 
-        // /* Perturb Im*/
-        printf("  param %d: Im\n", iparam);
+        /* Perturb Im*/
         dirIm[iparam] = 1.0;
         oscil_vec[i]->updateParams(EPS, dirRe, dirIm);
 
@@ -448,14 +318,14 @@ double EPS = 1e-6;
 
         /* Eval FD and error */
         fd = (objective_pert - objective_ref) / EPS;
-        err = 0.0;
-        if (fd != 0.0) err = (mu_ptr[i*nosci + iparam +1] - fd) / fd;
-        printf("    %f obj_pert %1.12e, obj %1.12e, fd %1.12e, mu %1.12e, err %2.4f\%\n", Tfinal, objective_pert, objective_ref, fd, mu_ptr[i*nosci+iparam + 1], err*100.0);
+        VecGetArray(mu[0], &x_ptr);
+        err = (x_ptr[i*nosci + iparam +1] - fd) / fd;
+        printf("     Im %f: obj_pert %1.12e, obj %1.12e, fd %1.12e, mu %1.12e, err %1.12e\n", Tfinal, objective_pert, objective_ref, fd, x_ptr[i*nosci+iparam + 1], err);
+        VecRestoreArray(mu[0], &x_ptr);
 
         /* Restore parameter */
         oscil_vec[i]->updateParams(-EPS, dirRe, dirIm);
         dirIm[iparam] = 0.0;
-
     }
   }
 
