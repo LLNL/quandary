@@ -15,6 +15,7 @@ class Hamiltonian{
 
     Mat Re, Im;             // Real and imaginary part of Hamiltonian operator
     Mat RHS;                // Realvalued, vectorized Hamiltonian operator vec(-i(Hq-qH))
+    Mat dRHSdp;             // Derivative of RHS(x) wrt control parameters
 
   public:
     /* Default constructor sets zero */
@@ -42,12 +43,22 @@ class Hamiltonian{
     virtual int assemble_RHS(double t);
 
     /* 
+     * Assemble the derivative of RHS(x) wrt the controls.
+     * dimensions: dRHSdp \in \R^{2*dim \times 2*nparam}
+     * dRHSdp =   du+/dparamRe   du+/dparamIm
+     *            dv+/dparamRe   dv+/dparamIm
+     * where [u+ v+] = RHS(u,v)
+     */
+    virtual int assemble_dRHSdp(double t, Vec x);
+
+    /* 
      * Set x to the initial condition 
      */
     virtual int initialCondition(Vec x) = 0;
 
-    /* Access the Hamiltonian */
+    /* Access the Hamiltonian and derivative matrix */
     Mat getRHS();
+    Mat getdRHSdp();
     
     /* 
      * Evaluate the objective function at time t and current solution x
@@ -79,6 +90,11 @@ class TwoOscilHam : public Hamiltonian {
 
     /* Evaluates Re and Im of the Hamiltonian. Then calls the base-class assembleRHS routine to set up M. */
     virtual int assemble_RHS(double t);
+
+    /* 
+     * Assemble the derivative of RHS(x) wrt the controls.
+     */
+    virtual int assemble_dRHSdp(double t, Vec x);
 
 };
 

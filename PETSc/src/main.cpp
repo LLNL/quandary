@@ -7,7 +7,8 @@
 #include "oscillator.hpp" 
 #include "hamiltonian.hpp"
 
-#define FD_TEST 1
+#define FD_TEST_SPLINE 0
+#define FD_TEST_TS 1
 #define DT_TEST 0
 
 static char help[] ="Solves the Liouville-von-Neumann equations, two oscillators.\n\
@@ -197,10 +198,155 @@ int main(int argc,char **argv)
 
   free(norms);
 
-#if FD_TEST
+
+double EPS = 1e-6;
+#if FD_TEST_TS
+
+  Vec x;
+  double Tfinal;
+  double objective_ref, gradient_ref;
+  double objective_pert;
+  // double err;
+
+  int nreal = 2*hamiltonian->getDim();
+  int ndesign = 2*oscil_vec[0]->getNParam() * nosci;  // for Re and Im parameters
+
+  /* Set initial condition */
+  VecCreateSeq(PETSC_COMM_SELF,nreal,&x);
+  hamiltonian->initialCondition(x);
+
+  /* Build a new time-stepper */
+  TSDestroy(&ts);
+  BuildTimeStepper(&ts, hamiltonian, ntime, dt, total_time);
+  TSSetSolution(ts, x);
+
+  /* Solve forward while storing trajectory */
+  TSSetSaveTrajectory(ts);
+  double mytime;
+  for(PetscInt istep = 0; istep < ntime; istep++) {
+    TSGetTime(ts, &mytime);
+    printf("Forward step: %d %f\n", istep, mytime);
+    TSStep(ts);
+  }
+  // TSSolve(ts, x);
+  TSGetTime(ts, &Tfinal);
+  hamiltonian->evalObjective(Tfinal, x, &objective_ref);
+
+  /* Set up adjoint variables and initial condition */
+  Vec mu[1];      // dfdp
+  Vec lambda[1];  // dfdy
+  PetscScalar *x_ptr;
+  MatCreateVecs(hamiltonian->getRHS(), &lambda[0], NULL);  // passend zu y (RHS * lambda)
+  MatCreateVecs(hamiltonian->getdRHSdp(), &mu[0], NULL);   // passend zu p (dHdp * mu)
+  VecZeroEntries(mu[0]);
+  VecZeroEntries(lambda[0]);
+  VecSetValue(lambda[0], 1, 200.0, INSERT_VALUES);
+  TSSetCostGradients(ts, 1, lambda, mu);
+
+  TSSetRHSJacobianP(ts,hamiltonian->getdRHSdp(), RHSJacobianP, hamiltonian);
+
+  /* Run adjoint backwards in time */
+  for (int istep=ntime-1; istep>=0; istep--)
+  {
+    TSSetTime(ts, (istep)*dt);
+    TSGetTime(ts, &mytime);
+    printf("Adjoint step: %d %f\n", istep, mytime);
+    TSAdjointStep(ts);
+  }
+  // TSAdjointSolve(ts);
+
+  /* Get the results */
+  printf("Petsc TSAdjoint gradient:\n");
+  VecView(mu[0], PETSC_VIEWER_STDOUT_WORLD);
+  const PetscScalar *mu_ptr;
+  VecGetArrayRead(mu[0], &mu_ptr);
+
+  /* Perturb controls */
+  int nparam = oscil_vec[0]->getNParam();
+  double *dirRe = new double[nparam];
+  double *dirIm = new double[nparam];
+  for (int iparam = 0; iparam<nparam; iparam++){
+    dirRe[iparam] = 0.0;
+    dirIm[iparam] = 0.0;
+  }
+
+
+  /* FD gradient */
+  double fd, err;
+  for (int i=0; i<nosci; i++){
+    printf("Oscillator %d\n", i);
+    for (int iparam=0; iparam<nparam; iparam++){
+
+        /* Perturb Re*/
+        printf("  param %d: Re\n", iparam);
+        dirRe[iparam] = 1.0;
+        oscil_vec[i]->updateParams(EPS, dirRe, dirIm);
+
+        /* Run the time stepper */
+        TSSetTime(ts, 0.0);
+        hamiltonian->initialCondition(x);
+        for(PetscInt istep = 0; istep < ntime; istep++) {
+          TSStep(ts);
+        }
+        TSGetTime(ts, &Tfinal);
+        hamiltonian->evalObjective(Tfinal, x, &objective_pert);
+
+        /* Eval FD and error */
+        fd = (objective_pert - objective_ref) / EPS;
+        err = 0.0;
+        if (fd != 0.0) err = (mu_ptr[i*nosci + iparam] - fd) / fd;
+        printf("    obj_pert %1.12e, obj %1.12e, fd %1.12e, mu %1.12e, err %2.4f\%\n", objective_pert, objective_ref, fd, mu_ptr[i*nosci+iparam], err*100.0);
+
+        /* Restore parameter */
+        oscil_vec[i]->updateParams(-EPS, dirRe, dirIm);
+        dirRe[iparam] = 0.0;
+
+
+        /* Perturb Im*/
+        printf("  param %d: Im\n", iparam);
+        dirIm[iparam] = 1.0;
+        oscil_vec[i]->updateParams(EPS, dirRe, dirIm);
+
+        /* Run the time stepper */
+        TSSetTime(ts, 0.0);
+        hamiltonian->initialCondition(x);
+        for(PetscInt istep = 0; istep < ntime; istep++) {
+          TSStep(ts);
+        }
+        TSGetTime(ts, &Tfinal);
+        hamiltonian->evalObjective(Tfinal, x, &objective_pert);
+
+        /* Eval FD and error */
+        fd = (objective_pert - objective_ref) / EPS;
+        err = 0.0;
+        if (fd != 0.0) err = (mu_ptr[i*nosci + iparam +1] - fd) / fd;
+        printf("    obj_pert %1.12e, obj %1.12e, fd %1.12e, mu %1.12e, err %2.4f\%\n", objective_pert, objective_ref, fd, mu_ptr[i*nosci+iparam + 1], err*100.0);
+
+        /* Restore parameter */
+        oscil_vec[i]->updateParams(-EPS, dirRe, dirIm);
+        dirIm[iparam] = 0.0;
+
+    }
+  }
+
+  /* Evaluate finite difference */
+  /* Compute finite differences and relative error */
+  //  finite_differences = (objective_perturb - objective_ref) / EPS;
+  //  err = (gradient_ref - finite_differences) / finite_differences;
+
+   /* Output */
+  //  printf("Objectives: %1.14e %1.14e\n", objective_ref, objective_perturb);
+  //  printf("Finite Differences: %1.14e\n", finite_differences);
+  //  printf(" Relative gradient error: %1.6f\n\n", err);
+
+
+
+  VecDestroy(&x);
+#endif
+
+#if FD_TEST_SPLINE
   printf("\n\n Running finite-differences test...\n\n");
   
-  double EPS = 1e-8;
 
   double t = 0.3;
   double f, g;
@@ -259,98 +405,9 @@ int main(int argc,char **argv)
     }
 
   }
-  exit(1);
-
-
-  Vec x;
-  double Tfinal;
-  double objective_ref, gradient_ref;
-  double objective_perturb;
-  double finite_differences;
-  // double err;
-
-
-
-  int nreal = 2*hamiltonian->getDim();
-
-  /* Set initial condition */
-  VecCreateSeq(PETSC_COMM_SELF,nreal,&x);
-  hamiltonian->initialCondition(x);
-
-  /* Build a new time-stepper */
-  TSDestroy(&ts);
-  BuildTimeStepper(&ts, hamiltonian, ntime, dt, total_time);
-  TSSetSolution(ts, x);
-
-  /* Get unperturbed objective function */
-  for(PetscInt istep = 0; istep <= ntime; istep++) {
-    TSStep(ts);
-  }
-  TSGetTime(ts, &Tfinal);
-  hamiltonian->evalObjective(Tfinal, x, &objective_ref);
-
-
-  /* TODO: Perturb the design */
-  // double dirRe = 1.0; 
-  // double dirIm = 0.0; 
-  oscil_vec[0]->updateParams(EPS, dirRe, dirIm);
-
-
-  /* Evaluate perturbed objective function  AND STORE TRAJECTORY FOR ADJOINT */
-  TSSetTime(ts, 0.0);
-  TSSetSaveTrajectory(ts);
-  hamiltonian->initialCondition(x);
-  TSSetSolution(ts, x);
-  for(PetscInt istep = 0; istep <= ntime; istep++) {
-    TSStep(ts);
-  }
-  TSGetTime(ts, &Tfinal);
-  hamiltonian->evalObjective(Tfinal, x, &objective_perturb);
-
-  Mat dHdp;
- /* Allocate dHdp (derivative of RHS wrt controls) */
-  ierr = MatCreate(PETSC_COMM_SELF,&dHdp);CHKERRQ(ierr);
-  ierr = MatSetSizes(dHdp, PETSC_DECIDE, PETSC_DECIDE,nreal,2);CHKERRQ(ierr);
-  ierr = MatSetFromOptions(dHdp);CHKERRQ(ierr);
-  ierr = MatSetUp(dHdp);CHKERRQ(ierr);
-  ierr = MatAssemblyBegin(dHdp,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
-  ierr = MatAssemblyEnd(dHdp,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
-
-  Vec mu[1];      // dfdp
-  Vec lambda[1];  // dfdy
-  PetscScalar *x_ptr;
-  MatCreateVecs(hamiltonian->getRHS(), &lambda[0], NULL);
-  MatCreateVecs(dHdp, &mu[0], NULL);
-  VecZeroEntries(mu[0]);
-  VecZeroEntries(lambda[0]);
-  ierr = VecGetArray(lambda[0], &x_ptr);
-  x_ptr[1] = 200.0;
-  ierr = VecRestoreArray(lambda[0], &x_ptr);
-  TSSetCostGradients(ts, 1, lambda, mu);
-
-  TSSetRHSJacobianP(ts,dHdp, RHSJacobianP, hamiltonian);
-
-  /* Run adjoint backwards in time */
-  for (int k=ntime; k>0; k--)
-  {
-    TSAdjointStep(ts);
-  }
-
-  
-  /* Evaluate finite difference */
-  /* Compute finite differences and relative error */
-   finite_differences = (objective_perturb - objective_ref) / EPS;
-  //  err = (gradient_ref - finite_differences) / finite_differences;
-
-   /* Output */
-   printf("Objectives: %1.14e %1.14e\n", objective_ref, objective_perturb);
-   printf("Finite Differences: %1.14e\n", finite_differences);
-  //  printf(" Relative gradient error: %1.6f\n\n", err);
-
-
-
-  VecDestroy(&x);
 #endif
+
+
 
 #if DT_TEST
   /* 

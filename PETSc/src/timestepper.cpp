@@ -17,8 +17,14 @@ PetscErrorCode RHSJacobian(TS ts,PetscReal t,Vec u,Mat M,Mat P,void *ctx){
 
 PetscErrorCode RHSJacobianP(TS ts, PetscReal t, Vec y, Mat A, void *ctx){
 
-  /* TODO Compute derivative of RHS wrt control parameters */
-  MatZeroEntries(A);
+  /* Cast ctx to Hamiltonian pointer */
+  Hamiltonian *hamiltonian = (Hamiltonian*) ctx;
+
+  /* Assembling the derivative of RHS with respect to the control parameters */
+  hamiltonian->assemble_dRHSdp(t, y);
+
+  /* Set the derivative */
+  A = hamiltonian->getdRHSdp();
 
   return 0;
 }

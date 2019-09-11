@@ -8,9 +8,8 @@ Oscillator::~Oscillator(){}
 int Oscillator::getNParam() { return nparam; }
 
 int Oscillator::dumpControl(double tfinal, double dt){
-
   this->dumpControl(tfinal, dt, std::cout);
-    return 0;
+  return 0;
 }
 
 
@@ -70,7 +69,7 @@ SplineOscillator::~SplineOscillator(){
 int SplineOscillator::evalControl(double t, double* Re_ptr, double* Im_ptr){
 
   if ( t > Tfinal ){
-    printf("WARNING: accessing spline outside of [0,T]. Returning 0.0\n");
+    printf("WARNING: accessing spline outside of [0,T] at %f. Returning 0.0\n", t);
     *Re_ptr = 0.0;
     *Im_ptr = 0.0;
   } else {
@@ -180,8 +179,8 @@ int FunctionOscillator::evalDerivative(double t, double* dRedp, double* dImdp) {
 }
 
 int FunctionOscillator::getParams(double* paramsRe, double* paramsIm) {
-  *paramsRe = omegaF;
-  *paramsIm = omegaG;
+  paramsRe[0] = omegaF;
+  paramsIm[0] = omegaG;
 
   return 0;
 }
@@ -190,6 +189,7 @@ int FunctionOscillator::updateParams(double stepsize, double* directionRe, doubl
 
   if (F != NULL) omegaF += stepsize * (directionRe[0]);
   if (G != NULL) omegaG += stepsize * (directionIm[0]);
+  printf("f=%1.8f, g=%1.8f\n", omegaF, omegaG);
 
   return 0;
 }

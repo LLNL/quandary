@@ -37,6 +37,7 @@ class Oscillator {
     virtual int dumpControl(double tfinal, double dt);
     virtual void dumpControl(double tfinal, double dt, std::ostream &output);
     virtual void dumpControl(double tfinal, double dt, std::string filename);
+
 };
 
 

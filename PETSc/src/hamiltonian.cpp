@@ -8,6 +8,9 @@ Hamiltonian::Hamiltonian(){
   oscil_vec = NULL;
   Re = NULL;
   Im = NULL;
+  RHS = NULL;
+  dRHSdp = NULL;
+
 }
 
 
@@ -41,7 +44,7 @@ Hamiltonian::Hamiltonian(int nlevels_, int noscillators_, Oscillator** oscil_vec
   MatAssemblyBegin(Im,MAT_FINAL_ASSEMBLY);
   MatAssemblyEnd(Im,MAT_FINAL_ASSEMBLY);
 
-  /* Allocate H, dimension: 2*dim x 2*dim for the real-valued system */
+  /* Allocate RHS, dimension: 2*dim x 2*dim for the real-valued system */
   MatCreate(PETSC_COMM_SELF,&RHS);
   MatSetSizes(RHS, PETSC_DECIDE, PETSC_DECIDE,2*dim,2*dim);
   MatSetOptionsPrefix(RHS, "system");
@@ -50,7 +53,14 @@ Hamiltonian::Hamiltonian(int nlevels_, int noscillators_, Oscillator** oscil_vec
   MatAssemblyBegin(RHS,MAT_FINAL_ASSEMBLY);
   MatAssemblyEnd(RHS,MAT_FINAL_ASSEMBLY);
 
-
+  /* Allocate dRHSdp, dimension: 2*dim x 2*nparam*noscil */
+  int nparam = oscil_vec[0]->getNParam();
+  MatCreate(PETSC_COMM_SELF,&dRHSdp);
+  MatSetSizes(dRHSdp, PETSC_DECIDE, PETSC_DECIDE,2*dim,2*nparam*noscillators);
+  MatSetFromOptions(dRHSdp);
+  MatSetUp(dRHSdp);
+  MatAssemblyBegin(dRHSdp,MAT_FINAL_ASSEMBLY);
+  MatAssemblyEnd(dRHSdp,MAT_FINAL_ASSEMBLY);
 }
 
 
@@ -59,6 +69,7 @@ Hamiltonian::~Hamiltonian(){
     MatDestroy(&Re);
     MatDestroy(&Im);
     MatDestroy(&RHS);
+    MatDestroy(&dRHSdp);
   }
 }
 
@@ -122,10 +133,14 @@ int Hamiltonian::assemble_RHS(double t){
   return 0;
 }
 
-Mat Hamiltonian::getRHS(){
-  return RHS;
+
+int Hamiltonian::assemble_dRHSdp(double t, Vec x) {
+  
+  return 0;
 }
 
+Mat Hamiltonian::getRHS() { return RHS; }
+Mat Hamiltonian::getdRHSdp() { return dRHSdp; }
 
 
 int Hamiltonian::evalObjective(double t, Vec x, double *objective_ptr) {
@@ -309,6 +324,105 @@ int TwoOscilHam::assemble_RHS(double t){
 
   /* Set RHS from Re and Im */
   Hamiltonian::assemble_RHS(t);
+
+  return 0;
+}
+
+
+int TwoOscilHam::assemble_dRHSdp(double t, Vec x) {
+
+  Vec u, v;
+  IS isu, isv;
+  ISCreateStride(PETSC_COMM_WORLD, dim, 0, 1, &isu);
+  ISCreateStride(PETSC_COMM_WORLD, dim, dim, 1, &isv);
+
+  /* Get u and v from x = [u v] */
+  VecGetSubVector(x, isu, &u);
+  VecGetSubVector(x, isv, &v);
+
+  Vec M;
+  VecDuplicate(u, &M);
+
+  const double *col_ptr;
+  int colid;
+  int nparam = oscil_vec[0]->getNParam();
+  double *dFdp = new double[nparam];
+  double *dGdp = new double[nparam];
+  int* rowid = new int[dim];
+  int* rowid_shift = new int[dim];
+  for (int i=0; i<dim;i++) {
+    rowid[i] = i;
+    rowid_shift[i] = i + dim;
+  }
+
+
+  /* Reset dRHSdp) */
+  MatZeroEntries(dRHSdp);
+
+  Mat *Bi_ptr = NULL;
+  Mat *Ai_ptr = NULL;
+
+  /* Loop over oscillators */
+  for (int i= 0; i < noscillators; i++){
+
+    /* Evaluate the derivative of the control functions wrt control parameters */
+    for (int i=0; i<nparam; i++){
+      dFdp[i] = 0.0;
+      dGdp[i] = 0.0;
+    }
+    oscil_vec[i]->evalDerivative(t, dFdp, dGdp);
+
+    /* Set the constant blocks matrices */
+    if (i== 0) {
+      Ai_ptr = &A1;
+      Bi_ptr = &B1;
+    } else {
+      Ai_ptr = &A2;
+      Bi_ptr = &B2;
+    }
+   
+    /* Loop over control parameters */
+    for (int iparam=0; iparam < nparam; iparam++) {
+
+      /* Derivative wrt paramRe */
+      colid = i * noscillators +  iparam;
+      MatMult(*Bi_ptr, v, M); 
+      VecScale(M, -dFdp[iparam]);
+      VecGetArrayRead(M, &col_ptr);
+      MatSetValues(dRHSdp, dim, rowid, 1, &colid, col_ptr, INSERT_VALUES);
+
+      MatMult(*Bi_ptr, u, M); 
+      VecScale(M, dFdp[iparam]);
+      VecGetArrayRead(M, &col_ptr);
+      MatSetValues(dRHSdp, dim, rowid_shift, 1, &colid, col_ptr, INSERT_VALUES);
+
+      /* wrt paramIm */
+      colid = i*noscillators + iparam + nparam;
+      MatMult(*Ai_ptr, u, M); 
+      VecScale(M, dGdp[iparam]);
+      VecGetArrayRead(M, &col_ptr);
+      MatSetValues(dRHSdp, dim, rowid, 1, &colid, col_ptr, INSERT_VALUES);
+
+      MatMult(*Ai_ptr, v, M); 
+      VecScale(M, dGdp[iparam]);
+      VecGetArrayRead(M, &col_ptr);
+      MatSetValues(dRHSdp, dim, rowid_shift, 1, &colid, col_ptr, INSERT_VALUES);
+    }
+  }
+
+  MatAssemblyBegin(dRHSdp, MAT_FINAL_ASSEMBLY);
+  MatAssemblyEnd(dRHSdp, MAT_FINAL_ASSEMBLY);
+  // MatView(dRHSdp, PETSC_VIEWER_STDOUT_WORLD);
+
+  delete [] dFdp;
+  delete [] dGdp;
+  delete [] rowid;
+  delete [] rowid_shift;
+  VecDestroy(&M);
+
+  /* Restore y */
+  VecRestoreSubVector(x, isu, &u);
+  VecRestoreSubVector(x, isv, &v);
 
   return 0;
 }
