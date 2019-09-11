@@ -401,7 +401,7 @@ int TwoOscilHam::assemble_dRHSdp(double t, Vec x) {
     for (int iparam=0; iparam < nparam; iparam++) {
 
       /* Derivative wrt paramRe */
-      colid = i * noscillators +  iparam;
+      colid = i*2*nparam +  iparam;
       MatMult(*Bi_ptr, v, M); 
       VecScale(M, -dFdp[iparam]);
       VecGetArrayRead(M, &col_ptr);
@@ -413,7 +413,7 @@ int TwoOscilHam::assemble_dRHSdp(double t, Vec x) {
       MatSetValues(dRHSdp, dim, rowid_shift, 1, &colid, col_ptr, INSERT_VALUES);
 
       /* wrt paramIm */
-      colid = i*noscillators + iparam + nparam;
+      colid = i*2*nparam + nparam + iparam;
       MatMult(*Ai_ptr, u, M); 
       VecScale(M, dGdp[iparam]);
       VecGetArrayRead(M, &col_ptr);
@@ -446,6 +446,7 @@ int TwoOscilHam::assemble_dRHSdp(double t, Vec x) {
 
 int TwoOscilHam::initialCondition(Vec x) {
   VecZeroEntries(x); // set zero for now. TODO: Set initial condition
+  VecSet(x, 0.1);
 
   return 0;
 }

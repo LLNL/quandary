@@ -42,7 +42,6 @@ int my_Init(braid_App     app,
     /* Set initial condition at t=0.0 */
     // if (t == 0.0)
     {
-        double freq = 10.0;
         app->hamiltonian->initialCondition(u->x);
     }
 

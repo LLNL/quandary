@@ -3,13 +3,15 @@
 #include "braid.h"
 #include "braid_test.h"
 #include "bspline.hpp"
-#include "vector.hpp"
 #include "oscillator.hpp" 
 #include "hamiltonian.hpp"
 
+#define EPS 1e-5
+
 #define FD_TEST_SPLINE 0
-#define FD_TEST_TS 1
+#define FD_TEST_TS 0
 #define DT_TEST 0
+
 
 static char help[] ="Solves the Liouville-von-Neumann equations, two oscillators.\n\
 Input parameters:\n\
@@ -171,6 +173,10 @@ int main(int argc,char **argv)
   /* Run braid */
   braid_Drive(braid_core);
 
+  /* Get objective function */
+  double obj;
+  braid_GetObjective(braid_core, &obj);
+  printf("Objective: %1.12e\n", obj);
 
   /* Stop timer */
   StopTime = MPI_Wtime();
@@ -206,7 +212,6 @@ int main(int argc,char **argv)
 
 
 
-double EPS = 1e-8;
 #if FD_TEST_TS
 
   /* Set initial condition */
@@ -265,7 +270,7 @@ double EPS = 1e-8;
 
 
   /* Finite Differences */
-  double fd, err;
+  double fd, grad, err;
   double objective_pert;
   for (int i=0; i<nosci; i++){
     printf("Oscillator %d\n", i);
@@ -289,12 +294,13 @@ double EPS = 1e-8;
         hamiltonian->evalObjective(Tfinal, x, &objective_pert);
 
         /* Eval FD and error */
-        fd = (objective_pert - objective_ref) / EPS;
         PetscScalar *x_ptr;
         VecGetArray(mu[0], &x_ptr);
-        err = (x_ptr[i*nosci + iparam] - fd) / fd;
-        printf("     Re %f: obj_pert %1.12e, obj %1.12e, fd %1.12e, mu %1.12e, err %1.12e\n", Tfinal, objective_pert, objective_ref, fd, x_ptr[i*nosci+iparam], err);
+        grad = x_ptr[i*2*nparam + iparam];
         VecRestoreArray(mu[0], &x_ptr);
+        fd = (objective_pert - objective_ref) / EPS;
+        err = ( grad - fd) / fd;
+        printf("     Re %f: obj_pert %1.14e, obj %1.14e, fd %1.14e, mu %1.14e, err %1.14e\n", Tfinal, objective_pert, objective_ref, fd, grad, err);
 
         // /* Restore parameter */
         oscil_vec[i]->updateParams(-EPS, dirRe, dirIm);
@@ -319,9 +325,10 @@ double EPS = 1e-8;
         /* Eval FD and error */
         fd = (objective_pert - objective_ref) / EPS;
         VecGetArray(mu[0], &x_ptr);
-        err = (x_ptr[i*nosci + iparam +1] - fd) / fd;
-        printf("     Im %f: obj_pert %1.12e, obj %1.12e, fd %1.12e, mu %1.12e, err %1.12e\n", Tfinal, objective_pert, objective_ref, fd, x_ptr[i*nosci+iparam + 1], err);
+        grad = x_ptr[i*2*nparam + iparam + nparam];
         VecRestoreArray(mu[0], &x_ptr);
+        err = ( grad - fd) / fd;
+        printf("     Im %f: obj_pert %1.14e, obj %1.14e, fd %1.14e, mu %1.14e, err %1.12e\n", Tfinal, objective_pert, objective_ref, fd, grad, err);
 
         /* Restore parameter */
         oscil_vec[i]->updateParams(-EPS, dirRe, dirIm);
