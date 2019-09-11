@@ -531,7 +531,14 @@ bool AnalyticHam::ExactSolution(PetscReal t,Vec s)
 
 PetscErrorCode AnalyticHam::initialCondition(Vec x)
 {
-  ExactSolution(0,x);
+  // ExactSolution(0,x);
+  // VecView(x, PETSC_VIEWER_STDOUT_WORLD);
+
+  VecZeroEntries(x);
+  PetscScalar *x_ptr;
+  VecGetArray(x, &x_ptr);
+  x_ptr[0] = 1.0;
+  VecRestoreArray(x, &x_ptr);
   return 0;
 }
 
