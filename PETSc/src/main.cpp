@@ -185,14 +185,14 @@ int main(int argc,char **argv)
   hamiltonian->initialCondition(x);
   ierr = TSSetSolution(ts, x); CHKERRQ(ierr);
 
-  /* Prepare the ts object for the next run */
-  ierr = TSPrepare(ts); CHKERRQ(ierr);
 
-  /* Run */
+  /* --- Finally run forward --- */
+  ierr = TSPreSolve(ts); CHKERRQ(ierr);
   for(PetscInt istep = 0; istep < ntime; istep++) {
     ierr = TSStepMod(ts); CHKERRQ(ierr);
   }
-  ts->solvetime = ts->ptime;
+  TSPostSolve(ts);
+  /* -------------------------- */
 
   /* Get solution */
   VecCopy(ts->vec_sol, x); CHKERRQ(ierr);
@@ -214,8 +214,14 @@ int main(int argc,char **argv)
   ierr = TSSetCostGradients(ts, 1, lambda, mu); CHKERRQ(ierr);
   ierr = TSSetRHSJacobianP(ts,hamiltonian->getdRHSdp(), RHSJacobianP, hamiltonian); CHKERRQ(ierr);
 
+  /* -------- Finally run adjoint ------ */
+  ierr = TSAdjointPreSolve(ts); CHKERRQ(ierr);
+  for (int istep = ntime; istep>0; istep--){
+    ierr = TSAdjointStepMod(ts); CHKERRQ(ierr);
+  }
+  ierr = TSAdjointPostSolve(ts);CHKERRQ(ierr);
+  /* -------------------------- */
 
-  ierr = TSAdjointSolve(ts);CHKERRQ(ierr);
 
   /* Get the results */
   printf("Petsc TSAdjoint gradient:\n");

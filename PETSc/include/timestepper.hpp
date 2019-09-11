@@ -33,5 +33,23 @@ PetscErrorCode Monitor(TS ts,PetscInt step,PetscReal t,Vec X,void *ctx);
 
 
 
-PetscErrorCode TSPrepare(TS ts);
+/*
+ * Routines for splitting Petsc's TSSolve() into individual time steps.
+ * TSPreSolve needs to be called BEFORE the time step loop.
+ * TSPostSolve needs to be called AFTER the time step loop.
+ * A call to TSSetSolution(ts,x) is required before these routines!
+ */
+PetscErrorCode TSPreSolve(TS ts);
 PetscErrorCode TSStepMod(TS ts);
+PetscErrorCode TSPostSolve(TS ts);
+
+
+/*
+ * Routines for splitting Petsc's TSAdjointSolve() into individual time steps.
+ * TSAdjointPreSolve needs to be called BEFORE the time step loop.
+ * TSAdjointPostSolve needs to be called AFTER the time step loop.
+ * To run adjoint steps, a call to TSSetSaveTrajectory(ts) is required before the primal run!
+ */
+PetscErrorCode TSAdjointPreSolve(TS ts);
+PetscErrorCode TSAdjointStepMod(TS ts);
+PetscErrorCode TSAdjointPostSolve(TS ts);

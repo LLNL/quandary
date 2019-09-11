@@ -67,7 +67,7 @@ PetscErrorCode Monitor(TS ts,PetscInt step,PetscReal t,Vec x,void *ctx) {
 }
 
 
-PetscErrorCode TSPrepare(TS ts){
+PetscErrorCode TSPreSolve(TS ts){
   int ierr; 
 
   ierr = TSSetUp(ts); CHKERRQ(ierr);
@@ -96,13 +96,62 @@ PetscErrorCode TSPrepare(TS ts){
 PetscErrorCode TSStepMod(TS ts){
   int ierr; 
 
-    ierr = TSMonitor(ts,ts->steps,ts->ptime,ts->vec_sol);CHKERRQ(ierr);
-    ierr = TSPreStep(ts);CHKERRQ(ierr);
-    ierr = TSStep(ts);CHKERRQ(ierr);
+  ierr = TSMonitor(ts,ts->steps,ts->ptime,ts->vec_sol);CHKERRQ(ierr);
+  ierr = TSPreStep(ts);CHKERRQ(ierr);
+  ierr = TSStep(ts);CHKERRQ(ierr);
 
-    ierr = TSPostEvaluate(ts);CHKERRQ(ierr);
+  ierr = TSPostEvaluate(ts);CHKERRQ(ierr);
 
-    ierr = TSTrajectorySet(ts->trajectory,ts,ts->steps,ts->ptime,ts->vec_sol);CHKERRQ(ierr);
-    ierr = TSPostStep(ts);CHKERRQ(ierr);
+  ierr = TSTrajectorySet(ts->trajectory,ts,ts->steps,ts->ptime,ts->vec_sol);CHKERRQ(ierr);
+  ierr = TSPostStep(ts);CHKERRQ(ierr);
+  return ierr;
+}
+
+PetscErrorCode TSPostSolve(TS ts){
+  int ierr;
+  ts->solvetime = ts->ptime;
+  return ierr;
+}
+
+PetscErrorCode TSAdjointPreSolve(TS ts){
+  int ierr;
+
+  /* reset time step and iteration counters */
+  ts->adjoint_steps     = 0;
+  ts->ksp_its           = 0;
+  ts->snes_its          = 0;
+  ts->num_snes_failures = 0;
+  ts->reject            = 0;
+  ts->reason            = TS_CONVERGED_ITERATING;
+
+  if (!ts->adjoint_max_steps) ts->adjoint_max_steps = ts->steps;
+  if (ts->adjoint_steps >= ts->adjoint_max_steps) ts->reason = TS_CONVERGED_ITS;
+
+
+  return ierr;
+}
+
+
+PetscErrorCode TSAdjointStepMod(TS ts) {
+  int ierr;
+  ierr = TSTrajectoryGet(ts->trajectory,ts,ts->steps,&ts->ptime);CHKERRQ(ierr);
+  ierr = TSAdjointMonitor(ts,ts->steps,ts->ptime,ts->vec_sol,ts->numcost,ts->vecs_sensi,ts->vecs_sensip);CHKERRQ(ierr);
+  ierr = TSAdjointStep(ts);CHKERRQ(ierr);
+  if (ts->vec_costintegral && !ts->costintegralfwd) {
+    ierr = TSAdjointCostIntegral(ts);CHKERRQ(ierr);
+  }
+
+  return ierr;
+}
+
+PetscErrorCode TSAdjointPostSolve(TS ts){
+  int ierr; 
+  ierr = TSTrajectoryGet(ts->trajectory,ts,ts->steps,&ts->ptime);CHKERRQ(ierr);
+  ierr = TSAdjointMonitor(ts,ts->steps,ts->ptime,ts->vec_sol,ts->numcost,ts->vecs_sensi,ts->vecs_sensip);CHKERRQ(ierr);
+  ts->solvetime = ts->ptime;
+  ierr = TSTrajectoryViewFromOptions(ts->trajectory,NULL,"-ts_trajectory_view");CHKERRQ(ierr);
+  ierr = VecViewFromOptions(ts->vecs_sensi[0],(PetscObject) ts, "-ts_adjoint_view_solution");CHKERRQ(ierr);
+  ts->adjoint_max_steps = 0;
+
   return ierr;
 }
