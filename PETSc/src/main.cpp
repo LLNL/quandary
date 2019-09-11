@@ -138,7 +138,8 @@ int main(int argc,char **argv)
   sprintf(filename, "out_v.%04d.dat", mpirank);       vfile = fopen(filename, "w");
 
   /* Allocate and initialize Petsc's Time-stepper */
-  BuildTimeStepper(&ts, hamiltonian, ntime, dt, total_time, monitor);
+  TSCreate(PETSC_COMM_SELF,&ts);CHKERRQ(ierr);
+  TSInit(ts, hamiltonian, ntime, dt, total_time, monitor);
 
   /* Set up XBraid's applications structure */
   braid_app = (XB_App*) malloc(sizeof(XB_App));
@@ -221,7 +222,9 @@ int main(int argc,char **argv)
 
   /* Build a new time-stepper */
   TSDestroy(&ts);
-  BuildTimeStepper(&ts, hamiltonian, ntime, dt, total_time, monitor);
+  TSCreate(PETSC_COMM_SELF,&ts);CHKERRQ(ierr);
+  TSInit(ts, hamiltonian, ntime, dt, total_time, monitor);
+
   TSSetSolution(ts, x);
 
   /* Solve forward while storing trajectory */
@@ -284,7 +287,9 @@ int main(int argc,char **argv)
 
         /* Run the time stepper */
         TSDestroy(&ts);
-        BuildTimeStepper(&ts, hamiltonian, ntime, dt, total_time, monitor);
+        TSCreate(PETSC_COMM_SELF,&ts);CHKERRQ(ierr);
+        TSInit(ts, hamiltonian, ntime, dt, total_time, monitor);
+
         hamiltonian->initialCondition(x);
         // // for(PetscInt istep = 0; istep < ntime; istep++) {
         // //   ierr = TSStep(ts); CHKERRQ(ierr);
@@ -313,7 +318,8 @@ int main(int argc,char **argv)
 
         /* Run the time stepper */
         TSDestroy(&ts);
-        BuildTimeStepper(&ts, hamiltonian, ntime, dt, total_time, monitor);
+        TSCreate(PETSC_COMM_SELF,&ts);CHKERRQ(ierr);
+        TSInit(ts, hamiltonian, ntime, dt, total_time, monitor);
         hamiltonian->initialCondition(x);
         // for(PetscInt istep = 0; istep < ntime; istep++) {
         //   ierr = TSStep(ts);CHKERRQ(ierr);
@@ -451,7 +457,8 @@ int main(int argc,char **argv)
     dt = total_time / ntime;
 
     /* Create and set up the time stepper */
-    BuildTimeStepper(&ts, hamiltonian, ntime, dt, total_time, monitor);
+    TSCreate(PETSC_COMM_SELF,&ts);CHKERRQ(ierr);
+    TSInit(ts, hamiltonian, ntime, dt, total_time, monitor);
     TSSetSolution(ts, x);
 
     // /* Set the initial condition */

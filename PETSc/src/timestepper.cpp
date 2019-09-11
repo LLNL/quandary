@@ -30,23 +30,22 @@ PetscErrorCode RHSJacobianP(TS ts, PetscReal t, Vec y, Mat A, void *ctx){
 }
 
 
-PetscErrorCode BuildTimeStepper(TS* ts, Hamiltonian* hamiltonian, PetscInt NSteps, PetscReal Dt, PetscReal Tfinal, bool monitor){
+PetscErrorCode TSInit(TS ts, Hamiltonian* hamiltonian, PetscInt NSteps, PetscReal Dt, PetscReal Tfinal, bool monitor){
   int ierr;
 
-  ierr = TSCreate(PETSC_COMM_SELF,ts);CHKERRQ(ierr);
-  ierr = TSSetProblemType(*ts,TS_LINEAR);CHKERRQ(ierr);
-  ierr = TSSetType(*ts, TSTHETA); CHKERRQ(ierr);
-  ierr = TSThetaSetTheta(*ts, 0.5); CHKERRQ(ierr);   // midpoint rule
-  ierr = TSSetRHSFunction(*ts,NULL,TSComputeRHSFunctionLinear,hamiltonian);CHKERRQ(ierr);
-  ierr = TSSetRHSJacobian(*ts,hamiltonian->getRHS(),hamiltonian->getRHS(),RHSJacobian,hamiltonian);CHKERRQ(ierr);
-  ierr = TSSetTimeStep(*ts,Dt);CHKERRQ(ierr);
-  ierr = TSSetMaxSteps(*ts,NSteps);CHKERRQ(ierr);
-  ierr = TSSetMaxTime(*ts,Tfinal);CHKERRQ(ierr);
-  ierr = TSSetExactFinalTime(*ts,TS_EXACTFINALTIME_STEPOVER);CHKERRQ(ierr);
+  ierr = TSSetProblemType(ts,TS_LINEAR);CHKERRQ(ierr);
+  ierr = TSSetType(ts, TSTHETA); CHKERRQ(ierr);
+  ierr = TSThetaSetTheta(ts, 0.5); CHKERRQ(ierr);   // midpoint rule
+  ierr = TSSetRHSFunction(ts,NULL,TSComputeRHSFunctionLinear,hamiltonian);CHKERRQ(ierr);
+  ierr = TSSetRHSJacobian(ts,hamiltonian->getRHS(),hamiltonian->getRHS(),RHSJacobian,hamiltonian);CHKERRQ(ierr);
+  ierr = TSSetTimeStep(ts,Dt);CHKERRQ(ierr);
+  ierr = TSSetMaxSteps(ts,NSteps);CHKERRQ(ierr);
+  ierr = TSSetMaxTime(ts,Tfinal);CHKERRQ(ierr);
+  ierr = TSSetExactFinalTime(ts,TS_EXACTFINALTIME_STEPOVER);CHKERRQ(ierr);
   if (monitor) {
-    ierr = TSMonitorSet(*ts, Monitor, NULL, NULL); CHKERRQ(ierr);
+    ierr = TSMonitorSet(ts, Monitor, NULL, NULL); CHKERRQ(ierr);
   }
-  ierr = TSSetFromOptions(*ts);CHKERRQ(ierr);
+  ierr = TSSetFromOptions(ts);CHKERRQ(ierr);
 
   return 0;
 }
