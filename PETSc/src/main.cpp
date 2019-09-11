@@ -20,7 +20,7 @@ Input parameters:\n\
   -cf <int>        : Set XBraid's coarsening factor           (default: 5) \n\
   -ml <int>        : Set XBraid's max levels                  (default: 5)\n\
   -mi <int>        : Set XBraid's max number of iterations    (default: 50)\n\n\
-  -analytic <0 or 1> : If 1: runs analytic testcase (2-level, 2-oscillator, pure state) (default: 0) \n\n";
+  -analytic        : Runs analytic testcase (2-level, 2-oscillator, pure state) \n\n";
 
 
 int main(int argc,char **argv)
@@ -37,8 +37,8 @@ int main(int argc,char **argv)
   PetscInt       maxlevels;    // XBraid's maximum number of levels
   PetscInt       maxiter;      // XBraid's maximum number of iterations
   PetscInt       nspline;      // Number of spline basis functions
-  PetscInt       analytic;     // If 1: runs analytic test case
   Hamiltonian*   hamiltonian;  // Hamiltonian system
+  PetscBool      analytic;     // If true: runs analytic test case
 
 
   FILE *ufile, *vfile;
@@ -62,7 +62,7 @@ int main(int argc,char **argv)
   cfactor = 5;
   maxlevels = 5;
   maxiter = 50;
-  analytic = 0;
+  analytic = PETSC_FALSE;
 
   /* Parse command line arguments to overwrite default constants */
   PetscOptionsGetInt(NULL,NULL,"-nlvl",&nlvl,NULL);
@@ -72,7 +72,7 @@ int main(int argc,char **argv)
   PetscOptionsGetInt(NULL,NULL,"-cf",&cfactor,NULL);
   PetscOptionsGetInt(NULL,NULL,"-ml",&maxlevels,NULL);
   PetscOptionsGetInt(NULL,NULL,"-mi",&maxiter,NULL);
-  PetscOptionsGetInt(NULL,NULL,"-analytic",&analytic,NULL);
+  PetscOptionsGetBool(NULL,NULL,"-analytic",&analytic,NULL);
 
   /* Sanity check */
   if (nosci != 2)
@@ -86,7 +86,7 @@ int main(int argc,char **argv)
 
   /* Initialize the Hamiltonian */
   Oscillator** oscil_vec = new Oscillator*[nosci];
-  if (analytic == 1) {
+  if (analytic) {
     double omegaF1 = 1.0;
     double omegaG2 = 1.0;
     oscil_vec[0] = new FunctionOscillator(omegaF1, &F1_analytic, &dF1_analytic, 0.0, NULL, NULL );
@@ -101,7 +101,7 @@ int main(int argc,char **argv)
 
   /* Set frequencies for drift hamiltonian Hd xi = [xi_1, xi_2, xi_12] */
   double* xi = new double[nlvl*nlvl];
-  if (analytic == 1) {  // no drift Hamiltonian in analytic case
+  if (analytic) {  // no drift Hamiltonian in analytic case
     xi[0] = 0.0;
     xi[1] = 0.0;
     xi[2] = 0.0;
@@ -112,7 +112,7 @@ int main(int argc,char **argv)
   }
 
   /* Initialize the Hamiltonian  */
-  if (analytic == 1) {
+  if (analytic) {
     hamiltonian = new AnalyticHam(xi, oscil_vec);
   } else {
     hamiltonian = new TwoOscilHam(nlvl, xi, oscil_vec);
@@ -409,8 +409,8 @@ double EPS = 1e-8;
   /* 
    * Testing time stepper convergence (dt-test) 
    */  
-  if (analytic != 1){
-    printf("\n WARNING: DT-test works for analytic test case only. Run with \"-analytic 1\" if you want to test the time-stepper convergence. \n");
+  if (analytic){
+    printf("\n WARNING: DT-test works for analytic test case only. Run with \"-analytic \" if you want to test the time-stepper convergence. \n");
     return 0;
   }
 
