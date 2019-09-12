@@ -131,7 +131,6 @@ int main(int argc,char **argv)
   /* Create solution vector x */
   MatCreateVecs(hamiltonian->getRHS(), &x, NULL);
 
-
   /* Initialize reduced gradient and adjoints */
   MatCreateVecs(hamiltonian->getRHS(), &lambda[0], NULL);  // passend zu y (RHS * lambda)
   MatCreateVecs(hamiltonian->getdRHSdp(), &mu[0], NULL);   // passend zu p (dHdp * mu)
@@ -151,7 +150,7 @@ int main(int argc,char **argv)
 
   /* Allocate and initialize Petsc's Time-stepper */
   TSCreate(PETSC_COMM_SELF,&ts);CHKERRQ(ierr);
-  TSInit(ts, hamiltonian, ntime, dt, total_time, x, monitor);
+  TSInit(ts, hamiltonian, ntime, dt, total_time, x, lambda, mu, monitor);
 
   /* Set up XBraid's applications structure */
   braid_app = (XB_App*) malloc(sizeof(XB_App));
@@ -225,11 +224,6 @@ int main(int argc,char **argv)
   double objective_ref;
   TSGetSolveTime(ts, &Tfinal);
   hamiltonian->evalObjective(Tfinal, x, &objective_ref);
-
-
-  /* Set the derivatives for TS */
-  ierr = TSSetCostGradients(ts, 1, lambda, mu); CHKERRQ(ierr);
-  ierr = TSSetRHSJacobianP(ts,hamiltonian->getdRHSdp(), RHSJacobianP, hamiltonian); CHKERRQ(ierr);
 
 
   /* -------- Finally run adjoint ------ */
@@ -318,7 +312,7 @@ int main(int argc,char **argv)
   /* Build a new time-stepper */
   TSDestroy(&ts);
   TSCreate(PETSC_COMM_SELF,&ts);CHKERRQ(ierr);
-  TSInit(ts, hamiltonian, ntime, dt, total_time, x, monitor);
+  TSInit(ts, hamiltonian, ntime, dt, total_time, x, lambda, mu, monitor);
 
   TSSetSolution(ts, x);
 
@@ -379,7 +373,7 @@ int main(int argc,char **argv)
         /* Run the time stepper */
         TSDestroy(&ts);
         TSCreate(PETSC_COMM_SELF,&ts);CHKERRQ(ierr);
-        TSInit(ts, hamiltonian, ntime, dt, total_time,x,  monitor);
+        TSInit(ts, hamiltonian, ntime, dt, total_time, x, lambda, mu, monitor);
 
         hamiltonian->initialCondition(x);
         // // for(PetscInt istep = 0; istep < ntime; istep++) {
@@ -410,7 +404,7 @@ int main(int argc,char **argv)
         /* Run the time stepper */
         TSDestroy(&ts);
         TSCreate(PETSC_COMM_SELF,&ts);CHKERRQ(ierr);
-        TSInit(ts, hamiltonian, ntime, dt, total_time, x, monitor);
+        TSInit(ts, hamiltonian, ntime, dt, total_time, x, lambda, mu, monitor);
         hamiltonian->initialCondition(x);
         // for(PetscInt istep = 0; istep < ntime; istep++) {
         //   ierr = TSStep(ts);CHKERRQ(ierr);
@@ -549,7 +543,7 @@ int main(int argc,char **argv)
 
     /* Create and set up the time stepper */
     TSCreate(PETSC_COMM_SELF,&ts);CHKERRQ(ierr);
-    TSInit(ts, hamiltonian, ntime, dt, total_time, x, monitor);
+    TSInit(ts, hamiltonian, ntime, dt, total_time, x, lambda, mu, monitor);
     TSSetSolution(ts, x);
 
     // /* Set the initial condition */

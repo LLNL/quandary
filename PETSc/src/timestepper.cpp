@@ -30,7 +30,7 @@ PetscErrorCode RHSJacobianP(TS ts, PetscReal t, Vec y, Mat A, void *ctx){
 }
 
 
-PetscErrorCode TSInit(TS ts, Hamiltonian* hamiltonian, PetscInt NSteps, PetscReal Dt, PetscReal Tfinal, Vec x, bool monitor){
+PetscErrorCode TSInit(TS ts, Hamiltonian* hamiltonian, PetscInt NSteps, PetscReal Dt, PetscReal Tfinal, Vec x, Vec *lambda, Vec *mu, bool monitor){
   int ierr;
 
   ierr = TSSetProblemType(ts,TS_LINEAR);CHKERRQ(ierr);
@@ -48,6 +48,11 @@ PetscErrorCode TSInit(TS ts, Hamiltonian* hamiltonian, PetscInt NSteps, PetscRea
   }
   ierr = TSSetFromOptions(ts);CHKERRQ(ierr);
   ierr = TSSetSolution(ts, x); CHKERRQ(ierr);
+
+  /* Set the derivatives for TS */
+  ierr = TSSetCostGradients(ts, 1, lambda, mu); CHKERRQ(ierr);
+  ierr = TSSetRHSJacobianP(ts,hamiltonian->getdRHSdp(), RHSJacobianP, hamiltonian); CHKERRQ(ierr);
+
 
   return ierr;
 }
