@@ -43,8 +43,10 @@ int main(int argc,char **argv)
   Hamiltonian*   hamiltonian;  // Hamiltonian system
   PetscBool      analytic;     // If true: runs analytic test case
   PetscBool      monitor;      // If true: Print out additional time-stepper information
-  Vec lambda[1];  // dfdy
-  Vec mu[1];      // dfdp
+  Vec            lambda[1];  // dfdy
+  Vec            mu[1];      // dfdp
+  Vec            x;          // solution vector
+  bool           tj_save;    // Determines wether trajectory should be stored in primal run
 
 
   FILE *ufile, *vfile;
@@ -126,6 +128,10 @@ int main(int argc,char **argv)
     hamiltonian = new TwoOscilHam(nlvl, xi, oscil_vec);
   }
 
+  /* Create solution vector x */
+  MatCreateVecs(hamiltonian->getRHS(), &x, NULL);
+
+
   /* Initialize reduced gradient and adjoints */
   MatCreateVecs(hamiltonian->getRHS(), &lambda[0], NULL);  // passend zu y (RHS * lambda)
   MatCreateVecs(hamiltonian->getdRHSdp(), &mu[0], NULL);   // passend zu p (dHdp * mu)
@@ -145,7 +151,7 @@ int main(int argc,char **argv)
 
   /* Allocate and initialize Petsc's Time-stepper */
   TSCreate(PETSC_COMM_SELF,&ts);CHKERRQ(ierr);
-  TSInit(ts, hamiltonian, ntime, dt, total_time, monitor);
+  TSInit(ts, hamiltonian, ntime, dt, total_time, x, monitor);
 
   /* Set up XBraid's applications structure */
   braid_app = (XB_App*) malloc(sizeof(XB_App));
@@ -179,27 +185,13 @@ int main(int argc,char **argv)
 
 
 //////////////////////////////////////////
-  /* Set initial condition */
-  Vec x;
-  MatCreateVecs(hamiltonian->getRHS(), &x, NULL);
-
-  /* Build a new time-stepper */
-  TSDestroy(&ts);
-  ierr = TSCreate(PETSC_COMM_SELF,&ts);CHKERRQ(ierr);
-  ierr = TSInit(ts, hamiltonian, ntime, dt, total_time, monitor);CHKERRQ(ierr);
 
   /* Tell Petsc to save the forward trajectory */
   ierr = TSSetSaveTrajectory(ts);CHKERRQ(ierr);
 
-
-  /* Set initial condition in Petsc */
-  hamiltonian->initialCondition(x);
-  ierr = TSSetSolution(ts, x); CHKERRQ(ierr);
-
-
-  /* --- Finally run forward --- */
   printf("-> Solving primal...\n");
   ierr = TSPreSolve(ts, true); CHKERRQ(ierr);
+  hamiltonian->initialCondition(x);
   // braid_Drive(braid_core);
   for (int i=0; i<ntime; i++) {
     TSStepMod(ts, true);
@@ -323,7 +315,7 @@ int main(int argc,char **argv)
   /* Build a new time-stepper */
   TSDestroy(&ts);
   TSCreate(PETSC_COMM_SELF,&ts);CHKERRQ(ierr);
-  TSInit(ts, hamiltonian, ntime, dt, total_time, monitor);
+  TSInit(ts, hamiltonian, ntime, dt, total_time, x, monitor);
 
   TSSetSolution(ts, x);
 
@@ -384,7 +376,7 @@ int main(int argc,char **argv)
         /* Run the time stepper */
         TSDestroy(&ts);
         TSCreate(PETSC_COMM_SELF,&ts);CHKERRQ(ierr);
-        TSInit(ts, hamiltonian, ntime, dt, total_time, monitor);
+        TSInit(ts, hamiltonian, ntime, dt, total_time,x,  monitor);
 
         hamiltonian->initialCondition(x);
         // // for(PetscInt istep = 0; istep < ntime; istep++) {
@@ -415,7 +407,7 @@ int main(int argc,char **argv)
         /* Run the time stepper */
         TSDestroy(&ts);
         TSCreate(PETSC_COMM_SELF,&ts);CHKERRQ(ierr);
-        TSInit(ts, hamiltonian, ntime, dt, total_time, monitor);
+        TSInit(ts, hamiltonian, ntime, dt, total_time, x, monitor);
         hamiltonian->initialCondition(x);
         // for(PetscInt istep = 0; istep < ntime; istep++) {
         //   ierr = TSStep(ts);CHKERRQ(ierr);
@@ -554,7 +546,7 @@ int main(int argc,char **argv)
 
     /* Create and set up the time stepper */
     TSCreate(PETSC_COMM_SELF,&ts);CHKERRQ(ierr);
-    TSInit(ts, hamiltonian, ntime, dt, total_time, monitor);
+    TSInit(ts, hamiltonian, ntime, dt, total_time, x, monitor);
     TSSetSolution(ts, x);
 
     // /* Set the initial condition */

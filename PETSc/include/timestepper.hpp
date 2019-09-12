@@ -23,7 +23,7 @@ PetscErrorCode RHSJacobianP(TS ts, PetscReal t, Vec y, Mat A, void *ctx);
 /*
  * Create Petsc's time stepper 
  */
-PetscErrorCode TSInit(TS ts, Hamiltonian* hamiltonian, int NSteps, double Dt, double Tfinal, bool monitor);
+PetscErrorCode TSInit(TS ts, Hamiltonian* hamiltonian, int NSteps, double Dt, double Tfinal, Vec x, bool monitor);
 
 /*
  * Monitor the time stepper 
