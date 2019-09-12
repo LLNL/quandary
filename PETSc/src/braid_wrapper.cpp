@@ -15,6 +15,7 @@ int my_Step(braid_App    app,
     braid_StepStatusGetTIndex(status, &tindex);
     TSSetTime(app->ts, tstart);
     TSSetTimeStep(app->ts, tstop - tstart);
+    printf("Braid %d %f->%f    ", tindex, tstart, tstop);
 
     /* Pass the curent state to the Petsc time-stepper */
     TSSetSolution(app->ts, u->x);

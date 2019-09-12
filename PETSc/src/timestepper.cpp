@@ -116,6 +116,7 @@ PetscErrorCode TSPreSolve(TS ts, bool tj_store){
   if (!ts->steps && tj_store) {
     ierr = TSTrajectorySet(ts->trajectory,ts,ts->steps,ts->ptime,ts->vec_sol);CHKERRQ(ierr);
   }
+  ierr = TSMonitor(ts,ts->steps,ts->ptime,ts->vec_sol);CHKERRQ(ierr);
 
   return ierr;
 }
@@ -124,7 +125,6 @@ PetscErrorCode TSPreSolve(TS ts, bool tj_store){
 PetscErrorCode TSStepMod(TS ts, bool tj_store){
   int ierr; 
 
-  ierr = TSMonitor(ts,ts->steps,ts->ptime,ts->vec_sol);CHKERRQ(ierr);
   ierr = TSPreStep(ts);CHKERRQ(ierr);
   ierr = TSStep(ts);CHKERRQ(ierr);
 
@@ -132,6 +132,8 @@ PetscErrorCode TSStepMod(TS ts, bool tj_store){
 
   if (tj_store) ierr = TSTrajectorySet(ts->trajectory,ts,ts->steps,ts->ptime,ts->vec_sol);CHKERRQ(ierr);
   ierr = TSPostStep(ts);CHKERRQ(ierr);
+
+  ierr = TSMonitor(ts,ts->steps,ts->ptime,ts->vec_sol);CHKERRQ(ierr);
   return ierr;
 }
 
@@ -164,11 +166,11 @@ PetscErrorCode TSAdjointPreSolve(TS ts){
 PetscErrorCode TSAdjointStepMod(TS ts) {
   int ierr;
   ierr = TSTrajectoryGet(ts->trajectory,ts,ts->steps,&ts->ptime);CHKERRQ(ierr);
-  ierr = TSAdjointMonitor(ts,ts->steps,ts->ptime,ts->vec_sol,ts->numcost,ts->vecs_sensi,ts->vecs_sensip);CHKERRQ(ierr);
   ierr = TSAdjointStep(ts);CHKERRQ(ierr);
   if (ts->vec_costintegral && !ts->costintegralfwd) {
     ierr = TSAdjointCostIntegral(ts);CHKERRQ(ierr);
   }
+  ierr = TSAdjointMonitor(ts,ts->steps,ts->ptime,ts->vec_sol,ts->numcost,ts->vecs_sensi,ts->vecs_sensip);CHKERRQ(ierr);
 
   return ierr;
 }

@@ -193,27 +193,27 @@ int main(int argc,char **argv)
   tj_save = true;
   ierr = TSPreSolve(ts, tj_save); CHKERRQ(ierr);
   hamiltonian->initialCondition(x);
-  // braid_Drive(braid_core);
-  for (int i=0; i<ntime; i++) {
-    TSStepMod(ts, tj_save);
-  }
+  braid_Drive(braid_core);
+  // for (int i=0; i<ntime; i++) {
+  //   TSStepMod(ts, tj_save);
+  // }
   TSPostSolve(ts);
   /* -------------------------- */
 
-  /* --- Run forward again, without saving trajectory --- */
-  printf("-> Do some steps inbetween...\n");
-  TSSetTime(ts, 0.0);
-  TSSetStepNumber(ts, 0);
-  ts->ptime_prev = 0.0;
-  tj_save = false;
-  hamiltonian->initialCondition(x);
-  ierr = TSPreSolve(ts, tj_save); CHKERRQ(ierr);
-  // braid_Drive(braid_core);
-  for (int i=0; i<3; i++) {
-    TSStepMod(ts, tj_save);
-  }
-  TSPostSolve(ts);
-  /* -------------------------- */
+  // /* --- Run forward again, without saving trajectory --- */
+  // printf("-> Do some steps inbetween...\n");
+  // TSSetTime(ts, 0.0);
+  // TSSetStepNumber(ts, 0);
+  // ts->ptime_prev = 0.0;
+  // tj_save = false;
+  // hamiltonian->initialCondition(x);
+  // ierr = TSPreSolve(ts, tj_save); CHKERRQ(ierr);
+  // // braid_Drive(braid_core);
+  // for (int i=0; i<3; i++) {
+  //   TSStepMod(ts, tj_save);
+  // }
+  // TSPostSolve(ts);
+  // /* -------------------------- */
 
 
   /* Get solution */
@@ -240,16 +240,16 @@ int main(int argc,char **argv)
   VecView(mu[0], PETSC_VIEWER_STDOUT_WORLD);
   /* -------------------------- */
 
-  /* -------- Run adjoint again? ------ */
-  printf("-> Solving adjoint again...\n");
-  hamiltonian->evalObjective_diff(Tfinal, x, &lambda[0], &mu[0]);
-  ierr = TSAdjointPreSolve(ts); CHKERRQ(ierr);
-  TSSetStepNumber(ts, ntime);
-  for (int istep = ntime; istep>0; istep--){
-    ierr = TSAdjointStepMod(ts); CHKERRQ(ierr);
-  }
-  ierr = TSAdjointPostSolve(ts);CHKERRQ(ierr);
-  /* -------------------------- */
+  // /* -------- Run adjoint again? ------ */
+  // printf("-> Solving adjoint again...\n");
+  // hamiltonian->evalObjective_diff(Tfinal, x, &lambda[0], &mu[0]);
+  // ierr = TSAdjointPreSolve(ts); CHKERRQ(ierr);
+  // TSSetStepNumber(ts, ntime);
+  // for (int istep = ntime; istep>0; istep--){
+  //   ierr = TSAdjointStepMod(ts); CHKERRQ(ierr);
+  // }
+  // ierr = TSAdjointPostSolve(ts);CHKERRQ(ierr);
+  // /* -------------------------- */
 
 
 
