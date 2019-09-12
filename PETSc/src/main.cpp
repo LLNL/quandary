@@ -198,8 +198,12 @@ int main(int argc,char **argv)
 
 
   /* --- Finally run forward --- */
+  printf("-> Solving primal...\n");
   ierr = TSPreSolve(ts); CHKERRQ(ierr);
-  braid_Drive(braid_core);
+  // braid_Drive(braid_core);
+  for (int i=0; i<ntime; i++) {
+    TSStepMod(ts);
+  }
   TSPostSolve(ts);
   /* -------------------------- */
 
@@ -220,12 +224,28 @@ int main(int argc,char **argv)
   ierr = TSSetRHSJacobianP(ts,hamiltonian->getdRHSdp(), RHSJacobianP, hamiltonian); CHKERRQ(ierr);
 
   /* -------- Finally run adjoint ------ */
+  printf("-> Solving adjoint... \n");
+  ierr = TSAdjointPreSolve(ts); CHKERRQ(ierr);
+  for (int istep = ntime; istep>0; istep--){
+    ierr = TSAdjointStepMod(ts); CHKERRQ(ierr);
+  }
+  ierr = TSAdjointPostSolve(ts);CHKERRQ(ierr);
+  /* Get the results */
+  printf("Petsc TSAdjoint gradient:\n");
+  VecView(mu[0], PETSC_VIEWER_STDOUT_WORLD);
+  /* -------------------------- */
+
+  /* -------- Run adjoint again? ------ */
+  printf("-> Solving adjoint again...\n");
+  TSSetStepNumber(ts, ntime);
+  hamiltonian->evalObjective_diff(Tfinal, x, &lambda[0], &mu[0]);
   ierr = TSAdjointPreSolve(ts); CHKERRQ(ierr);
   for (int istep = ntime; istep>0; istep--){
     ierr = TSAdjointStepMod(ts); CHKERRQ(ierr);
   }
   ierr = TSAdjointPostSolve(ts);CHKERRQ(ierr);
   /* -------------------------- */
+
 
 
   /* Get the results */
