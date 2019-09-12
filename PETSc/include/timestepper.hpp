@@ -28,9 +28,8 @@ PetscErrorCode TSInit(TS ts, Hamiltonian* hamiltonian, int NSteps, double Dt, do
 /*
  * Monitor the time stepper 
  */
-PetscErrorCode Monitor(TS ts,PetscInt step,PetscReal t,Vec X,void *ctx);
-
-
+PetscErrorCode Monitor(TS ts,PetscInt step,PetscReal t,Vec x,void *ctx);
+PetscErrorCode AdjointMonitor(TS ts,PetscInt step,PetscReal t,Vec x, PetscInt numcost, Vec* lambda, Vec* mu, void *ctx);
 
 
 /*

@@ -44,6 +44,7 @@ PetscErrorCode TSInit(TS ts, Hamiltonian* hamiltonian, PetscInt NSteps, PetscRea
   ierr = TSSetExactFinalTime(ts,TS_EXACTFINALTIME_STEPOVER);CHKERRQ(ierr);
   if (monitor) {
     ierr = TSMonitorSet(ts, Monitor, NULL, NULL); CHKERRQ(ierr);
+    ierr = TSAdjointMonitorSet(ts, AdjointMonitor, NULL, NULL); CHKERRQ(ierr);
   }
   ierr = TSSetFromOptions(ts);CHKERRQ(ierr);
 
@@ -66,8 +67,28 @@ PetscErrorCode Monitor(TS ts,PetscInt step,PetscReal t,Vec x,void *ctx) {
   PetscFunctionReturn(0);
 }
 
+PetscErrorCode AdjointMonitor(TS ts,PetscInt step,PetscReal t,Vec x, PetscInt numcost, Vec* lambda, Vec* mu, void *ctx) {
+  PetscErrorCode ierr;
 
-PetscErrorCode TSPreSolve(TS ts){
+  const PetscScalar *x_ptr;
+  const PetscScalar *lambda_ptr;
+  const PetscScalar *mu_ptr;
+  double tprev;
+  ierr = TSGetPrevTime(ts, &tprev); CHKERRQ(ierr);
+  ierr = VecGetArrayRead(x, &x_ptr);
+  ierr = VecGetArrayRead(lambda[0], &lambda_ptr);
+  ierr = VecGetArrayRead(mu[0], &mu_ptr);
+  ierr = VecGetArrayRead(x, &x_ptr);
+  printf("AdjointStep %d: %f -> %f, x[1]=%1.14e, lambda[0]=%1.14e, mu[0]=%1.14e\n", step, tprev, t, x_ptr[1], lambda_ptr[0], mu_ptr[0] );
+  ierr = VecRestoreArrayRead(x, &x_ptr);
+  ierr = VecRestoreArrayRead(lambda[0], &lambda_ptr);
+  ierr = VecRestoreArrayRead(mu[0], &mu_ptr);
+
+  PetscFunctionReturn(0);
+}
+
+
+
   int ierr; 
 
   ierr = TSSetUp(ts); CHKERRQ(ierr);
