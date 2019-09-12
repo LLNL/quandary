@@ -43,6 +43,8 @@ int main(int argc,char **argv)
   Hamiltonian*   hamiltonian;  // Hamiltonian system
   PetscBool      analytic;     // If true: runs analytic test case
   PetscBool      monitor;      // If true: Print out additional time-stepper information
+  Vec lambda[1];  // dfdy
+  Vec mu[1];      // dfdp
 
 
   FILE *ufile, *vfile;
@@ -124,6 +126,10 @@ int main(int argc,char **argv)
     hamiltonian = new TwoOscilHam(nlvl, xi, oscil_vec);
   }
 
+  /* Initialize reduced gradient and adjoints */
+  MatCreateVecs(hamiltonian->getRHS(), &lambda[0], NULL);  // passend zu y (RHS * lambda)
+  MatCreateVecs(hamiltonian->getdRHSdp(), &mu[0], NULL);   // passend zu p (dHdp * mu)
+
   /* Screen output */
   if (mpirank == 0)
   {
@@ -146,6 +152,8 @@ int main(int argc,char **argv)
   braid_app->ts     = ts;
   braid_app->hamiltonian = hamiltonian;
   braid_app->ntime  = ntime;
+  braid_app->lambda = lambda[0];
+  braid_app->lambda = mu[0];
   braid_app->ufile  = ufile;
   braid_app->vfile  = vfile;
 
@@ -205,10 +213,6 @@ int main(int argc,char **argv)
   hamiltonian->evalObjective(Tfinal, x, &objective_ref);
 
   /* Set up adjoint variables and initial condition */
-  Vec lambda[1];  // dfdy
-  Vec mu[1];      // dfdp
-  MatCreateVecs(hamiltonian->getRHS(), &lambda[0], NULL);  // passend zu y (RHS * lambda)
-  MatCreateVecs(hamiltonian->getdRHSdp(), &mu[0], NULL);   // passend zu p (dHdp * mu)
   hamiltonian->evalObjective_diff(Tfinal, x, &lambda[0], &mu[0]);
 
   /* Set the derivatives for TS */

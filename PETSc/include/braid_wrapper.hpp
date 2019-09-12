@@ -17,6 +17,8 @@ typedef struct _braid_App_struct
     TS      ts;       // Petsc Time-stepper struct
     int     ntime;    // number of time steps
     Hamiltonian *hamiltonian; 
+    Vec   lambda;
+    Vec   mu;
     FILE *ufile;
     FILE *vfile;
 } XB_App;

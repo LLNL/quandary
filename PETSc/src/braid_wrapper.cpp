@@ -293,10 +293,14 @@ int my_ObjectiveT_diff(braid_App app, braid_Vector u, braid_Vector u_bar, braid_
 
   /* Get current time index */
   int tindex;
+  double t;
   braid_ObjectiveStatusGetTIndex(ostatus, &tindex);
+  braid_ObjectiveStatusGetT(ostatus, &t);
 
-  /* TODO: Partial derivative wrt u times F_bar */
+  /* Partial derivative wrt u times F_bar */
   if (tindex == app->ntime){
+    // TODO:
+    app->hamiltonian->evalObjective_diff(t, u->x, &app->lambda, &app->mu);
     ddu = 200 * F_bar;
   }
   
