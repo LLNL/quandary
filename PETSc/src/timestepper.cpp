@@ -89,6 +89,7 @@ PetscErrorCode AdjointMonitor(TS ts,PetscInt step,PetscReal t,Vec x, PetscInt nu
 
 
 
+PetscErrorCode TSPreSolve(TS ts, bool tj_store){
   int ierr; 
 
   ierr = TSSetUp(ts); CHKERRQ(ierr);
@@ -106,7 +107,7 @@ PetscErrorCode AdjointMonitor(TS ts,PetscInt step,PetscReal t,Vec x, PetscInt nu
   if (ts->steps >= ts->max_steps) ts->reason = TS_CONVERGED_ITS;
   else if (ts->ptime >= ts->max_time) ts->reason = TS_CONVERGED_TIME;
 
-  if (!ts->steps) {
+  if (!ts->steps && tj_store) {
     ierr = TSTrajectorySet(ts->trajectory,ts,ts->steps,ts->ptime,ts->vec_sol);CHKERRQ(ierr);
   }
 
@@ -114,7 +115,7 @@ PetscErrorCode AdjointMonitor(TS ts,PetscInt step,PetscReal t,Vec x, PetscInt nu
 }
 
 
-PetscErrorCode TSStepMod(TS ts){
+PetscErrorCode TSStepMod(TS ts, bool tj_store){
   int ierr; 
 
   ierr = TSMonitor(ts,ts->steps,ts->ptime,ts->vec_sol);CHKERRQ(ierr);
@@ -123,7 +124,7 @@ PetscErrorCode TSStepMod(TS ts){
 
   ierr = TSPostEvaluate(ts);CHKERRQ(ierr);
 
-  ierr = TSTrajectorySet(ts->trajectory,ts,ts->steps,ts->ptime,ts->vec_sol);CHKERRQ(ierr);
+  if (tj_store) ierr = TSTrajectorySet(ts->trajectory,ts,ts->steps,ts->ptime,ts->vec_sol);CHKERRQ(ierr);
   ierr = TSPostStep(ts);CHKERRQ(ierr);
   return ierr;
 }
@@ -133,6 +134,7 @@ PetscErrorCode TSPostSolve(TS ts){
   ts->solvetime = ts->ptime;
   return ierr;
 }
+
 
 PetscErrorCode TSAdjointPreSolve(TS ts){
   int ierr;

@@ -37,9 +37,10 @@ PetscErrorCode AdjointMonitor(TS ts,PetscInt step,PetscReal t,Vec x, PetscInt nu
  * TSPreSolve needs to be called BEFORE the time step loop.
  * TSPostSolve needs to be called AFTER the time step loop.
  * A call to TSSetSolution(ts,x) is required before these routines!
+ * Bool tj_store determines, if the trajectory at that step should be saved, or not. 
  */
-PetscErrorCode TSPreSolve(TS ts);
-PetscErrorCode TSStepMod(TS ts);
+PetscErrorCode TSPreSolve(TS ts, bool tj_store);
+PetscErrorCode TSStepMod(TS ts, bool tj_store);
 PetscErrorCode TSPostSolve(TS ts);
 
 

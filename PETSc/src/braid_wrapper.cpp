@@ -20,7 +20,7 @@ int my_Step(braid_App    app,
     TSSetSolution(app->ts, u->x);
 
     /* Take a step forward */
-    TSStepMod(app->ts);
+    TSStepMod(app->ts, true);
 
     return 0;
 }
