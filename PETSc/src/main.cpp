@@ -189,26 +189,29 @@ int main(int argc,char **argv)
   /* Tell Petsc to save the forward trajectory */
   ierr = TSSetSaveTrajectory(ts);CHKERRQ(ierr);
 
+  /* --- Finally run forward while solving trajectory --- */
   printf("-> Solving primal...\n");
-  ierr = TSPreSolve(ts, true); CHKERRQ(ierr);
+  tj_save = true;
+  ierr = TSPreSolve(ts, tj_save); CHKERRQ(ierr);
   hamiltonian->initialCondition(x);
   // braid_Drive(braid_core);
   for (int i=0; i<ntime; i++) {
-    TSStepMod(ts, true);
+    TSStepMod(ts, tj_save);
   }
   TSPostSolve(ts);
   /* -------------------------- */
 
-  /* --- Run forward again --- */
+  /* --- Run forward again, without saving trajectory --- */
   printf("-> Do some steps inbetween...\n");
   TSSetTime(ts, 0.0);
   TSSetStepNumber(ts, 0);
   ts->ptime_prev = 0.0;
+  tj_save = false;
   hamiltonian->initialCondition(x);
-  ierr = TSPreSolve(ts, false); CHKERRQ(ierr);
+  ierr = TSPreSolve(ts, tj_save); CHKERRQ(ierr);
   // braid_Drive(braid_core);
   for (int i=0; i<3; i++) {
-    TSStepMod(ts, false);
+    TSStepMod(ts, tj_save);
   }
   TSPostSolve(ts);
   /* -------------------------- */
