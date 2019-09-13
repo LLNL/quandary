@@ -59,10 +59,20 @@ int main(int argc,char **argv)
   double StartTime, StopTime;
   double UsedTime = 0.0;
 
+
+   /* Initialize MPI */
+   MPI_Init(&argc, &argv);
+   MPI_Comm_rank(MPI_COMM_WORLD, &mpirank);
+   MPI_Comm_size(MPI_COMM_WORLD, &mpisize);
+
+  MPI_Comm comm = MPI_COMM_WORLD;
+  MPI_Comm comm_braid, comm_petsc;
+  braid_SplitCommworld(&comm, 1, &comm_petsc, &comm_braid);
+  PETSC_COMM_WORLD = comm_petsc;
+
+
   /* Initialize Petsc */
   ierr = PetscInitialize(&argc,&argv,(char*)0,help);if (ierr) return ierr;
-  ierr = MPI_Comm_size(PETSC_COMM_WORLD,&mpisize);CHKERRQ(ierr);
-  ierr = MPI_Comm_rank(PETSC_COMM_WORLD,&mpirank);CHKERRQ(ierr);
 
   /* Set default constants */
   nlvl = 2;
@@ -163,9 +173,11 @@ int main(int argc,char **argv)
   braid_app->mu     = *mu;
   braid_app->ufile  = ufile;
   braid_app->vfile  = vfile;
+  braid_app->comm_braid = comm_braid;
+  braid_app->comm_petsc = comm_petsc;
 
   /* Initialize Braid */
-  braid_Init(MPI_COMM_WORLD, MPI_COMM_WORLD, 0.0, total_time, ntime, braid_app, my_Step, my_Init, my_Clone, my_Free, my_Sum, my_SpatialNorm, my_Access, my_BufSize, my_BufPack, my_BufUnpack, &braid_core);
+  braid_Init(comm, comm_braid, 0.0, total_time, ntime, braid_app, my_Step, my_Init, my_Clone, my_Free, my_Sum, my_SpatialNorm, my_Access, my_BufSize, my_BufPack, my_BufUnpack, &braid_core);
   
   /* Set Braid options */
   braid_SetPrintLevel( braid_core, 2);
@@ -550,9 +562,9 @@ int main(int argc,char **argv)
   double error_norm, exact_norm;
 
   int nreal = 2*hamiltonian->getDim();
-  VecCreateSeq(PETSC_COMM_SELF,nreal,&x);
-  VecCreateSeq(PETSC_COMM_SELF,nreal,&exact);
-  VecCreateSeq(PETSC_COMM_SELF,nreal,&error);
+  VecCreateSeq(PETSC_COMM_WORLD,nreal,&x);
+  VecCreateSeq(PETSC_COMM_WORLD,nreal,&exact);
+  VecCreateSeq(PETSC_COMM_WORLD,nreal,&error);
 
   /* Destroy old time stepper */
   TSDestroy(&ts);

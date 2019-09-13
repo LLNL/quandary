@@ -39,7 +39,7 @@ int my_Init(braid_App     app,
     my_Vector* u = (my_Vector*) malloc(sizeof(my_Vector));
 
     /* Allocate the Petsc Vector */
-    VecCreateSeq(PETSC_COMM_SELF,nreal,&(u->x));
+    VecCreateSeq(app->comm_petsc,nreal,&(u->x));
 
     /* Set initial condition at t=0.0 */
     // if (t == 0.0)

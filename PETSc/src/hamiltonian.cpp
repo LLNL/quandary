@@ -25,7 +25,7 @@ Hamiltonian::Hamiltonian(int nlevels_, int noscillators_, Oscillator** oscil_vec
   oscil_vec = oscil_vec_;
 
   /* Allocate Re */
-  MatCreateSeqAIJ(PETSC_COMM_SELF,dim,dim,0,NULL,&Re);
+  MatCreateSeqAIJ(PETSC_COMM_WORLD,dim,dim,0,NULL,&Re);
   MatSetFromOptions(Re);
   MatSetUp(Re);
   MatSetOption(Re, MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);
@@ -38,14 +38,14 @@ Hamiltonian::Hamiltonian(int nlevels_, int noscillators_, Oscillator** oscil_vec
 
 
   /* Allocate Im */
-  MatCreateSeqAIJ(PETSC_COMM_SELF,dim,dim,0,NULL,&Im);
+  MatCreateSeqAIJ(PETSC_COMM_WORLD,dim,dim,0,NULL,&Im);
   MatSetFromOptions(Im);
   MatSetUp(Im);
   MatAssemblyBegin(Im,MAT_FINAL_ASSEMBLY);
   MatAssemblyEnd(Im,MAT_FINAL_ASSEMBLY);
 
   /* Allocate RHS, dimension: 2*dim x 2*dim for the real-valued system */
-  MatCreate(PETSC_COMM_SELF,&RHS);
+  MatCreate(PETSC_COMM_WORLD,&RHS);
   MatSetSizes(RHS, PETSC_DECIDE, PETSC_DECIDE,2*dim,2*dim);
   MatSetOptionsPrefix(RHS, "system");
   MatSetFromOptions(RHS);
@@ -55,7 +55,7 @@ Hamiltonian::Hamiltonian(int nlevels_, int noscillators_, Oscillator** oscil_vec
 
   /* Allocate dRHSdp, dimension: 2*dim x 2*nparam*noscil */
   int nparam = oscil_vec[0]->getNParam();
-  MatCreate(PETSC_COMM_SELF,&dRHSdp);
+  MatCreate(PETSC_COMM_WORLD,&dRHSdp);
   MatSetSizes(dRHSdp, PETSC_DECIDE, PETSC_DECIDE,2*dim,2*nparam*noscillators);
   MatSetFromOptions(dRHSdp);
   MatSetUp(dRHSdp);
@@ -183,14 +183,14 @@ TwoOscilHam::TwoOscilHam(int nlevels_, double* xi_, Oscillator** oscil_vec_)
   xi = xi_;
 
   /* Create constant matrices */
-  MatCreateSeqAIJ(PETSC_COMM_SELF,dim,dim,1,NULL,&A1);
-  MatCreateSeqAIJ(PETSC_COMM_SELF,dim,dim,1,NULL,&A2);
-  MatCreateSeqAIJ(PETSC_COMM_SELF,dim,dim,1,NULL,&B1);
-  MatCreateSeqAIJ(PETSC_COMM_SELF,dim,dim,1,NULL,&B2);
+  MatCreateSeqAIJ(PETSC_COMM_WORLD,dim,dim,1,NULL,&A1);
+  MatCreateSeqAIJ(PETSC_COMM_WORLD,dim,dim,1,NULL,&A2);
+  MatCreateSeqAIJ(PETSC_COMM_WORLD,dim,dim,1,NULL,&B1);
+  MatCreateSeqAIJ(PETSC_COMM_WORLD,dim,dim,1,NULL,&B2);
 
   Mat tmp;
   /* --- Set up A1 = C^{-}(n^2, n) - C^-(1,n^3)^T --- */
-  MatCreateSeqAIJ(PETSC_COMM_SELF,dim,dim,1,NULL,&tmp);
+  MatCreateSeqAIJ(PETSC_COMM_WORLD,dim,dim,1,NULL,&tmp);
   BuildingBlock(tmp, -1, 1, (int) pow(nlevels, 3));
   MatTranspose(tmp, MAT_INPLACE_MATRIX, &tmp);
   BuildingBlock(A1, -1, (int)pow(nlevels, 2), nlevels);
@@ -198,7 +198,7 @@ TwoOscilHam::TwoOscilHam(int nlevels_, double* xi_, Oscillator** oscil_vec_)
   MatDestroy(&tmp);
 
   /* --- Set up A2 = C^{-}(n^3,1) - C^{-}(n,n^2)^T --- */
-  MatCreateSeqAIJ(PETSC_COMM_SELF,dim,dim,1,NULL,&tmp);
+  MatCreateSeqAIJ(PETSC_COMM_WORLD,dim,dim,1,NULL,&tmp);
   BuildingBlock(tmp, -1,nlevels, (int) pow(nlevels, 2));
   MatTranspose(tmp, MAT_INPLACE_MATRIX, &tmp);
   BuildingBlock(A2, -1, (int)pow(nlevels, 3), 1);
@@ -206,7 +206,7 @@ TwoOscilHam::TwoOscilHam(int nlevels_, double* xi_, Oscillator** oscil_vec_)
   MatDestroy(&tmp);
   
   /* --- Set up B1 = C^+(1,n^3)^T - C^+(n^2, n) --- */
-  MatCreateSeqAIJ(PETSC_COMM_SELF,dim,dim,1,NULL,&tmp);
+  MatCreateSeqAIJ(PETSC_COMM_WORLD,dim,dim,1,NULL,&tmp);
   BuildingBlock(tmp, 1, (int) pow(nlevels, 2), nlevels);
   BuildingBlock(B1, 1, 1, (int)pow(nlevels, 3));
   MatTranspose(B1, MAT_INPLACE_MATRIX, &B1);
@@ -214,7 +214,7 @@ TwoOscilHam::TwoOscilHam(int nlevels_, double* xi_, Oscillator** oscil_vec_)
   MatDestroy(&tmp);
 
   /* --- Set up B2 = C^+(n,n^2)^T - C^+(n^3, 1) --- */
-  MatCreateSeqAIJ(PETSC_COMM_SELF,dim,dim,1,NULL,&tmp);
+  MatCreateSeqAIJ(PETSC_COMM_WORLD,dim,dim,1,NULL,&tmp);
   BuildingBlock(tmp, 1, nlevels, (int) pow(nlevels, 2));
   BuildingBlock(B2, 1, nlevels, (int)pow(nlevels, 2));
   MatTranspose(B2, MAT_INPLACE_MATRIX, &B2);
@@ -242,14 +242,14 @@ TwoOscilHam::TwoOscilHam(int nlevels_, double* xi_, Oscillator** oscil_vec_)
   // VecView(diag, PETSC_VIEWER_STDOUT_WORLD);
 
   /* Create diagonal Hs */
-  MatCreateSeqAIJ(PETSC_COMM_SELF, nlevels*nlevels, nlevels*nlevels, nlevels*nlevels, NULL, &tmp);
+  MatCreateSeqAIJ(PETSC_COMM_WORLD, nlevels*nlevels, nlevels*nlevels, nlevels*nlevels, NULL, &tmp);
   MatSetUp(tmp);
   MatDiagonalSet(tmp, diag, INSERT_VALUES);
   MatAssemblyBegin(tmp, MAT_FINAL_ASSEMBLY);
   MatAssemblyEnd(tmp, MAT_FINAL_ASSEMBLY);
   // MatView(tmp, PETSC_VIEWER_STDOUT_WORLD);
 
-  MatCreateSeqAIJ(PETSC_COMM_SELF,dim,dim,dim,NULL,&Hd); // only diagonal is nonzero
+  MatCreateSeqAIJ(PETSC_COMM_WORLD,dim,dim,dim,NULL,&Hd); // only diagonal is nonzero
   MatSetUp(Hd);
   kronI(tmp, nlevels*nlevels, &Hd, INSERT_VALUES);  // Hd = tmp \kron I
   MatScale(tmp, -1.0); 
