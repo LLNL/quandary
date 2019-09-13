@@ -178,6 +178,7 @@ int main(int argc,char **argv)
 
   /* Initialize Braid */
   braid_Init(comm, comm_braid, 0.0, total_time, ntime, braid_app, my_Step, my_Init, my_Clone, my_Free, my_Sum, my_SpatialNorm, my_Access, my_BufSize, my_BufPack, my_BufUnpack, &braid_core);
+  braid_InitAdjoint(my_ObjectiveT, my_ObjectiveT_diff, my_Step_diff, my_ResetGradient, &braid_core);
   
   /* Set Braid options */
   braid_SetPrintLevel( braid_core, 2);
@@ -201,22 +202,23 @@ int main(int argc,char **argv)
   Vec x5;
   VecDuplicate(x, &x5);
 
+  tj_save = true;
+
   /* Tell Petsc to save the forward trajectory */
-  // ierr = TSSetSaveTrajectory(ts);CHKERRQ(ierr);
+  if (tj_save) ierr = TSSetSaveTrajectory(ts);CHKERRQ(ierr);
 
   /* --- Finally run forward while solving trajectory --- */
   printf("-> Solving primal... \n");
-  tj_save = false;
   ierr = TSPreSolve(ts, tj_save); CHKERRQ(ierr);
   hamiltonian->initialCondition(x);
-  braid_Drive(braid_core);
-  // for (int i=0; i<ntime; i++) {
-  //   TSStepMod(ts, tj_save);
-  //   if (i == 5) {
-  //     TSGetSolution(ts, &x);
-  //     VecCopy(x, x5);
-  //   }
-  // }
+  // braid_Drive(braid_core);
+  for (int i=0; i<ntime; i++) {
+    TSStepMod(ts, tj_save);
+    if (i == 5) {
+      TSGetSolution(ts, &x);
+      VecCopy(x, x5);
+    }
+  }
   TSPostSolve(ts);
   /* -------------------------- */
 
@@ -237,7 +239,7 @@ int main(int argc,char **argv)
 
 
   int numcost;
-  TSGetCostGradients(ts, &numcost, &lambda, &mu);
+  // TSGetCostGradients(ts, &numcost, &lambda, &mu);
   /* Get solution */
   ierr = TSGetSolution(ts, &x); CHKERRQ(ierr);
   // VecView(x, PETSC_VIEWER_STDOUT_WORLD);
@@ -249,30 +251,30 @@ int main(int argc,char **argv)
   hamiltonian->evalObjective(Tfinal, x, &objective_ref);
 
 
-  // Vec lambda5, mu5;
-  // MatCreateVecs(hamiltonian->getRHS(), &lambda5, NULL);  // passend zu y (RHS * lambda)
-  // MatCreateVecs(hamiltonian->getdRHSdp(), &mu5, NULL);   // passend zu p (dHdp * mu)
+  Vec lambda5, mu5;
+  MatCreateVecs(hamiltonian->getRHS(), &lambda5, NULL);  // passend zu y (RHS * lambda)
+  MatCreateVecs(hamiltonian->getdRHSdp(), &mu5, NULL);   // passend zu p (dHdp * mu)
 
-  // /* -------- Finally run adjoint ------ */
-  // printf("-> Solving adjoint... \n");
-  // hamiltonian->evalObjective_diff(Tfinal, x, lambda, mu);
-  // TSAdjointPreSolve(ts); 
-  // TSSetStepNumber(ts, ntime);
-  // int storeID = 5;
-  // for (int istep = ntime; istep>0; istep--){
-  //   ierr = TSAdjointStepMod(ts); CHKERRQ(ierr);
-  //   if (istep == storeID) { // store solution, adjoint and gradient
-  //     TSGetCostGradients(ts, &numcost, &lambda, &mu);
-  //     TSGetSolution(ts, &x);
-  //     VecCopy(x, x5);
-  //     VecCopy(*lambda, lambda5);
-  //     VecCopy(*mu, mu5);
-  //   }
-  // }
-  // ierr = TSAdjointPostSolve(ts);CHKERRQ(ierr);
-  // /* Get the results */
-  // printf("Petsc TSAdjoint gradient:\n");
-  // VecView(mu[0], PETSC_VIEWER_STDOUT_WORLD);
+  /* -------- Finally run adjoint ------ */
+  printf("-> Solving adjoint... \n");
+  hamiltonian->evalObjective_diff(Tfinal, x, lambda, mu);
+  TSAdjointPreSolve(ts); 
+  TSSetStepNumber(ts, ntime);
+  int storeID = 5;
+  for (int istep = ntime; istep>0; istep--){
+    ierr = TSAdjointStepMod(ts, tj_save); CHKERRQ(ierr);
+    if (istep == storeID) { // store solution, adjoint and gradient
+      TSGetCostGradients(ts, &numcost, &lambda, &mu);
+      TSGetSolution(ts, &x);
+      VecCopy(x, x5);
+      VecCopy(*lambda, lambda5);
+      VecCopy(*mu, mu5);
+    }
+  }
+  ierr = TSAdjointPostSolve(ts, tj_save);CHKERRQ(ierr);
+  /* Get the results */
+  printf("Petsc TSAdjoint gradient:\n");
+  VecView(mu[0], PETSC_VIEWER_STDOUT_WORLD);
   // /* -------------------------- */
 
   // /* -------- Run adjoint again? ------ */

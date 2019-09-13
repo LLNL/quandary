@@ -123,6 +123,7 @@ PetscErrorCode TSStepMod(TS ts, bool tj_store){
   int ierr; 
 
   ierr = TSPreStep(ts);CHKERRQ(ierr);
+  ierr = TSMonitor(ts,ts->steps,ts->ptime,ts->vec_sol);CHKERRQ(ierr);
   ierr = TSStep(ts);CHKERRQ(ierr);
   ierr = TSPostEvaluate(ts);CHKERRQ(ierr);
   if (tj_store) ierr = TSTrajectorySet(ts->trajectory,ts,ts->steps,ts->ptime,ts->vec_sol);CHKERRQ(ierr);
@@ -158,9 +159,11 @@ PetscErrorCode TSAdjointPreSolve(TS ts){
 }
 
 
-PetscErrorCode TSAdjointStepMod(TS ts) {
+PetscErrorCode TSAdjointStepMod(TS ts, bool tj_save) {
   int ierr;
-  // ierr = TSTrajectoryGet(ts->trajectory,ts,ts->steps,&ts->ptime);CHKERRQ(ierr);
+  if (tj_save) ierr = TSTrajectoryGet(ts->trajectory,ts,ts->steps,&ts->ptime);CHKERRQ(ierr);
+
+  ierr = TSAdjointMonitor(ts,ts->steps,ts->ptime,ts->vec_sol,ts->numcost,ts->vecs_sensi,ts->vecs_sensip);CHKERRQ(ierr);
   ierr = TSAdjointStep(ts);CHKERRQ(ierr);
   if (ts->vec_costintegral && !ts->costintegralfwd) {
     ierr = TSAdjointCostIntegral(ts);CHKERRQ(ierr);
@@ -170,12 +173,12 @@ PetscErrorCode TSAdjointStepMod(TS ts) {
   return ierr;
 }
 
-PetscErrorCode TSAdjointPostSolve(TS ts){
+PetscErrorCode TSAdjointPostSolve(TS ts, bool tj_save){
   int ierr; 
-  // ierr = TSTrajectoryGet(ts->trajectory,ts,ts->steps,&ts->ptime);CHKERRQ(ierr);
-  // ierr = TSAdjointMonitor(ts,ts->steps,ts->ptime,ts->vec_sol,ts->numcost,ts->vecs_sensi,ts->vecs_sensip);CHKERRQ(ierr);
+  if (tj_save) ierr = TSTrajectoryGet(ts->trajectory,ts,ts->steps,&ts->ptime);CHKERRQ(ierr);
+  ierr = TSAdjointMonitor(ts,ts->steps,ts->ptime,ts->vec_sol,ts->numcost,ts->vecs_sensi,ts->vecs_sensip);CHKERRQ(ierr);
   ts->solvetime = ts->ptime;
-  // ierr = TSTrajectoryViewFromOptions(ts->trajectory,NULL,"-ts_trajectory_view");CHKERRQ(ierr);
+  if (tj_save) ierr = TSTrajectoryViewFromOptions(ts->trajectory,NULL,"-ts_trajectory_view");CHKERRQ(ierr);
   ierr = VecViewFromOptions(ts->vecs_sensi[0],(PetscObject) ts, "-ts_adjoint_view_solution");CHKERRQ(ierr);
   ts->adjoint_max_steps = 0;
 
@@ -183,16 +186,18 @@ PetscErrorCode TSAdjointPostSolve(TS ts){
 }
 
 
-PetscErrorCode  TSSetAdjointSolution(TS ts,Vec u)
+PetscErrorCode  TSSetAdjointSolution(TS ts,Vec lambda, Vec mu)
 {
   PetscErrorCode ierr;
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ts,TS_CLASSID,1);
-  PetscValidHeaderSpecific(u,VEC_CLASSID,2);
+  PetscValidHeaderSpecific(lambda,VEC_CLASSID,3);
 
-  ierr = PetscObjectReference((PetscObject)u);CHKERRQ(ierr);
-  ierr = VecDestroy(&ts->vecs_sensi[0]);CHKERRQ(ierr);
-  ts->vecs_sensi[0] = u;
+  ierr = PetscObjectReference((PetscObject)lambda);CHKERRQ(ierr);
+  if (ts->vecs_sensi[0]) ierr = VecDestroy(&ts->vecs_sensi[0]);CHKERRQ(ierr);
+  ts->vecs_sensi[0] = lambda;
+  // ierr = VecDestroy(&ts->vecs_sensip[0]);CHKERRQ(ierr);
+  ts->vecs_sensip[0] = mu;
 
   PetscFunctionReturn(0);
 }

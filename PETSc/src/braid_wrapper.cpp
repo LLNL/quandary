@@ -223,6 +223,7 @@ int my_BufPack(braid_App       app,
     {
         dbuffer[i] = x_ptr[i];
     }
+    VecRestoreArrayRead(u->x, &x_ptr);
 
     int size = 2 * app->hamiltonian->getDim() * sizeof(double);
     braid_BufferStatusSetSize(bstatus, size);
@@ -321,15 +322,21 @@ int my_Step_diff(braid_App app, braid_Vector ustop, braid_Vector u, braid_Vector
     TSSetTimeStep(app->ts, tstop - tstart);
     printf("BraidAdj %d %f->%f    ", tindex, tstart, tstop);
 
-    // /* Pass the curent state to the Petsc time-stepper */
-    // TODO: ts->vecs_sensi = ubar->x, ts->vecs_sensip = app->mu (by reference? Copy? see TSSetSolution...)
+    // /* Pass current state to PETSC */
+    // TSSetSolution(app->ts, u->x);
+    
+    // PetscScalar* x_ptr;
+    // VecGetArray(u->x, &x_ptr);
+    // printf("x[1]=%1.12e ", x_ptr[1]);
+    // VecRestoreArray(u->x, &x_ptr);
+
+    // /* Pass current adjoint state to Petsc */
     // TSSetAdjointSolution(app->ts, u_bar->x, app->mu);  
 
-    // /* Take an adjoint step */
-    // TSSetSetpNumber(ts, tindex);
+    // // /* Take an adjoint step */
+    // TSSetStepNumber(app->ts, tindex+1);
+    // TSSetTime(app->ts, tstart);
     // TSAdjointStepMod(app->ts);
-
-    // Pass adjoint back to braid and store gradient mu? or by reference, see above! 
 
 
   return 0;

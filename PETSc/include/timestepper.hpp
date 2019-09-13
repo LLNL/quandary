@@ -52,13 +52,13 @@ PetscErrorCode TSPostSolve(TS ts);
  * To run adjoint steps, a call to TSSetSaveTrajectory(ts) is required before the primal run!
  */
 PetscErrorCode TSAdjointPreSolve(TS ts);
-PetscErrorCode TSAdjointStepMod(TS ts);
-PetscErrorCode TSAdjointPostSolve(TS ts);
+PetscErrorCode TSAdjointStepMod(TS ts, bool tj_store);
+PetscErrorCode TSAdjointPostSolve(TS ts, bool tj_store);
 
 
 
 /* 
- * This sets u to the ts->vec_sensi[0] variable, which hopefully is PETSC's adjoint variable. 
+ * This sets u to the ts->vec_sensi[0] and ts->vec_sensip[0], which hopefully is PETSC's adjoint variable and reduced gradient
  * This routine closely follows what is done in TSSetSolution. 
  */
-PetscErrorCode  TSSetAdjointSolution(TS ts,Vec u);
+PetscErrorCode  TSSetAdjointSolution(TS ts,Vec lambda, Vec mu);
