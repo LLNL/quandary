@@ -64,10 +64,8 @@ PetscErrorCode Monitor(TS ts,PetscInt step,PetscReal t,Vec x,void *ctx) {
   PetscFunctionBeginUser;
 
   const PetscScalar *x_ptr;
-  double tprev;
-  ierr = TSGetPrevTime(ts, &tprev); CHKERRQ(ierr);
   ierr = VecGetArrayRead(x, &x_ptr);
-  printf("Step %d: %f -> %f, x[1]=%1.14e\n", step, tprev, t, x_ptr[1]);
+  printf("Step %d: ->%f, x[1]=%1.14e\n", step, t, x_ptr[1]);
   ierr = VecRestoreArrayRead(x, &x_ptr);
 
   PetscFunctionReturn(0);
@@ -79,13 +77,11 @@ PetscErrorCode AdjointMonitor(TS ts,PetscInt step,PetscReal t,Vec x, PetscInt nu
   const PetscScalar *x_ptr;
   const PetscScalar *lambda_ptr;
   const PetscScalar *mu_ptr;
-  double tprev;
-  ierr = TSGetPrevTime(ts, &tprev); CHKERRQ(ierr);
   ierr = VecGetArrayRead(x, &x_ptr);
   ierr = VecGetArrayRead(lambda[0], &lambda_ptr);
   ierr = VecGetArrayRead(mu[0], &mu_ptr);
   ierr = VecGetArrayRead(x, &x_ptr);
-  printf("AdjointStep %d: %f -> %f, x[1]=%1.14e, lambda[0]=%1.14e, mu[0]=%1.14e\n", step, tprev, t, x_ptr[1], lambda_ptr[0], mu_ptr[0] );
+  printf("AdjointStep %d: %f->  x[1]=%1.14e, lambda[0]=%1.14e, mu[0]=%1.14e\n", step, t, x_ptr[1], lambda_ptr[0], mu_ptr[0] );
   ierr = VecRestoreArrayRead(x, &x_ptr);
   ierr = VecRestoreArrayRead(lambda[0], &lambda_ptr);
   ierr = VecRestoreArrayRead(mu[0], &mu_ptr);
@@ -116,7 +112,7 @@ PetscErrorCode TSPreSolve(TS ts, bool tj_store){
   if (!ts->steps && tj_store) {
     ierr = TSTrajectorySet(ts->trajectory,ts,ts->steps,ts->ptime,ts->vec_sol);CHKERRQ(ierr);
   }
-  ierr = TSMonitor(ts,ts->steps,ts->ptime,ts->vec_sol);CHKERRQ(ierr);
+  // ierr = TSMonitor(ts,ts->steps,ts->ptime,ts->vec_sol);CHKERRQ(ierr);
 
   return ierr;
 }
@@ -127,9 +123,7 @@ PetscErrorCode TSStepMod(TS ts, bool tj_store){
 
   ierr = TSPreStep(ts);CHKERRQ(ierr);
   ierr = TSStep(ts);CHKERRQ(ierr);
-
   ierr = TSPostEvaluate(ts);CHKERRQ(ierr);
-
   if (tj_store) ierr = TSTrajectorySet(ts->trajectory,ts,ts->steps,ts->ptime,ts->vec_sol);CHKERRQ(ierr);
   ierr = TSPostStep(ts);CHKERRQ(ierr);
 
@@ -178,11 +172,26 @@ PetscErrorCode TSAdjointStepMod(TS ts) {
 PetscErrorCode TSAdjointPostSolve(TS ts){
   int ierr; 
   ierr = TSTrajectoryGet(ts->trajectory,ts,ts->steps,&ts->ptime);CHKERRQ(ierr);
-  ierr = TSAdjointMonitor(ts,ts->steps,ts->ptime,ts->vec_sol,ts->numcost,ts->vecs_sensi,ts->vecs_sensip);CHKERRQ(ierr);
+  // ierr = TSAdjointMonitor(ts,ts->steps,ts->ptime,ts->vec_sol,ts->numcost,ts->vecs_sensi,ts->vecs_sensip);CHKERRQ(ierr);
   ts->solvetime = ts->ptime;
   ierr = TSTrajectoryViewFromOptions(ts->trajectory,NULL,"-ts_trajectory_view");CHKERRQ(ierr);
   ierr = VecViewFromOptions(ts->vecs_sensi[0],(PetscObject) ts, "-ts_adjoint_view_solution");CHKERRQ(ierr);
   ts->adjoint_max_steps = 0;
 
   return ierr;
+}
+
+
+PetscErrorCode  TSSetAdjointSolution(TS ts,Vec u)
+{
+  PetscErrorCode ierr;
+  PetscFunctionBegin;
+  PetscValidHeaderSpecific(ts,TS_CLASSID,1);
+  PetscValidHeaderSpecific(u,VEC_CLASSID,2);
+
+  ierr = PetscObjectReference((PetscObject)u);CHKERRQ(ierr);
+  ierr = VecDestroy(&ts->vecs_sensi[0]);CHKERRQ(ierr);
+  ts->vecs_sensi[0] = u;
+
+  PetscFunctionReturn(0);
 }

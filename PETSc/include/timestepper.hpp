@@ -54,3 +54,11 @@ PetscErrorCode TSPostSolve(TS ts);
 PetscErrorCode TSAdjointPreSolve(TS ts);
 PetscErrorCode TSAdjointStepMod(TS ts);
 PetscErrorCode TSAdjointPostSolve(TS ts);
+
+
+
+/* 
+ * This sets u to the ts->vec_sensi[0] variable, which hopefully is PETSC's adjoint variable. 
+ * This routine closely follows what is done in TSSetSolution. 
+ */
+PetscErrorCode  TSSetAdjointSolution(TS ts,Vec u);
