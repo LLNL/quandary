@@ -95,7 +95,8 @@ PetscErrorCode TSPreSolve(TS ts, bool tj_store){
   int ierr; 
 
   ierr = TSSetUp(ts); CHKERRQ(ierr);
-  ierr = TSTrajectorySetUp(ts->trajectory,ts);CHKERRQ(ierr);
+  if (tj_store) ierr = TSTrajectorySetUp(ts->trajectory,ts);CHKERRQ(ierr);
+
   /* reset time step and iteration counters */
   if (!ts->steps) {
     ts->ksp_its           = 0;
@@ -159,7 +160,7 @@ PetscErrorCode TSAdjointPreSolve(TS ts){
 
 PetscErrorCode TSAdjointStepMod(TS ts) {
   int ierr;
-  ierr = TSTrajectoryGet(ts->trajectory,ts,ts->steps,&ts->ptime);CHKERRQ(ierr);
+  // ierr = TSTrajectoryGet(ts->trajectory,ts,ts->steps,&ts->ptime);CHKERRQ(ierr);
   ierr = TSAdjointStep(ts);CHKERRQ(ierr);
   if (ts->vec_costintegral && !ts->costintegralfwd) {
     ierr = TSAdjointCostIntegral(ts);CHKERRQ(ierr);
@@ -171,10 +172,10 @@ PetscErrorCode TSAdjointStepMod(TS ts) {
 
 PetscErrorCode TSAdjointPostSolve(TS ts){
   int ierr; 
-  ierr = TSTrajectoryGet(ts->trajectory,ts,ts->steps,&ts->ptime);CHKERRQ(ierr);
+  // ierr = TSTrajectoryGet(ts->trajectory,ts,ts->steps,&ts->ptime);CHKERRQ(ierr);
   // ierr = TSAdjointMonitor(ts,ts->steps,ts->ptime,ts->vec_sol,ts->numcost,ts->vecs_sensi,ts->vecs_sensip);CHKERRQ(ierr);
   ts->solvetime = ts->ptime;
-  ierr = TSTrajectoryViewFromOptions(ts->trajectory,NULL,"-ts_trajectory_view");CHKERRQ(ierr);
+  // ierr = TSTrajectoryViewFromOptions(ts->trajectory,NULL,"-ts_trajectory_view");CHKERRQ(ierr);
   ierr = VecViewFromOptions(ts->vecs_sensi[0],(PetscObject) ts, "-ts_adjoint_view_solution");CHKERRQ(ierr);
   ts->adjoint_max_steps = 0;
 
