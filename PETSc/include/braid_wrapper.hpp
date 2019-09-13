@@ -18,6 +18,8 @@ typedef struct _braid_App_struct
     Hamiltonian *hamiltonian; 
     FILE *ufile;
     FILE *vfile;
+    MPI_Comm comm_braid;
+    MPI_Comm comm_petsc;
 } XB_App;
 
 
