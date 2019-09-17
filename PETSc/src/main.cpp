@@ -35,6 +35,7 @@ int main(int argc,char **argv)
   PetscReal      total_time;   // Total end time T
   TS             ts;           // Timestepping context
   braid_Core     braid_core;   // Core for XBraid simulation
+  braid_Core     braid_core_adj;   // Adjoint Core for XBraid simulation
   XB_App        *braid_app;    // XBraid's application context
   PetscInt       cfactor;      // XBraid's coarsening factor
   PetscInt       maxlevels;    // XBraid's maximum number of levels
@@ -178,18 +179,29 @@ int main(int argc,char **argv)
 
   /* Initialize Braid */
   braid_Init(comm, comm_braid, 0.0, total_time, ntime, braid_app, my_Step, my_Init, my_Clone, my_Free, my_Sum, my_SpatialNorm, my_Access, my_BufSize, my_BufPack, my_BufUnpack, &braid_core);
-  braid_InitAdjoint(my_ObjectiveT, my_ObjectiveT_diff, my_Step_diff, my_ResetGradient, &braid_core);
+  // braid_InitAdjoint(my_ObjectiveT, my_ObjectiveT_diff, my_Step_diff, my_ResetGradient, &braid_core);
+  braid_Init(comm, comm_braid, 0.0, total_time, ntime, braid_app, my_Step_adj, my_Init_adj, my_Clone, my_Free, my_Sum, my_SpatialNorm, my_Access, my_BufSize_adj, my_BufPack_adj, my_BufUnpack_adj, &braid_core_adj);
+  braid_SetRevertedRanks(braid_core_adj, 1);
   
   /* Set Braid options */
   braid_SetPrintLevel( braid_core, 2);
+  braid_SetPrintLevel( braid_core_adj, 2);
   braid_SetAccessLevel( braid_core, 1);
+  braid_SetAccessLevel( braid_core_adj, 1);
   braid_SetMaxLevels(braid_core, maxlevels);
+  braid_SetMaxLevels(braid_core_adj, maxlevels);
   braid_SetNRelax(braid_core, -1, 1);
+  braid_SetNRelax(braid_core_adj, -1, 1);
   braid_SetAbsTol(braid_core, 1e-6);
+  braid_SetAbsTol(braid_core_adj, 1e-6);
   braid_SetCFactor(braid_core, -1, cfactor);
+  braid_SetCFactor(braid_core_adj, -1, cfactor);
   braid_SetMaxIter(braid_core, maxiter);
+  braid_SetMaxIter(braid_core_adj, maxiter);
   braid_SetSkip(braid_core, 0);
+  braid_SetSkip(braid_core_adj, 0);
   braid_SetSeqSoln(braid_core, 0);
+  braid_SetSeqSoln(braid_core_adj, 0);
 
 
    /* Measure wall time */
@@ -224,18 +236,22 @@ int main(int argc,char **argv)
   /* Tell Petsc to save the forward trajectory */
   if (tj_save) {
     ierr = TSSetSaveTrajectory(ts);CHKERRQ(ierr);
-    std::string mystring = "SA_rank" + std::to_string(mpirank);
+    // std::string mystring = "SA_rank" + std::to_string(mpirank);
     // char const *dirname= s.c_str();  //use char const* as target type
-    char const *dirname= mystring.c_str();  //use char const* as target type
-    ierr = TSTrajectorySetDirname(ts->trajectory, dirname);
+    // char const *dirname= mystring.c_str();  //use char const* as target type
+    // ierr = TSTrajectorySetDirname(ts->trajectory, dirname);
+
+    PetscBool flag = (PetscBool) true;
+    TSTrajectorySetMonitor(ts->trajectory, flag);
   }
+  // cout << "\n " << mpirank << ":  trajectory dir " << ts->trajectory->dirname << endl << endl;
+
 
   /* Presolve needed ? */
   ierr = TSPreSolve(ts, tj_save); CHKERRQ(ierr);
-  ierr = TSAdjointPreSolve(ts);
 
   /* Set initial condition */
-  hamiltonian->initialCondition(x);
+  // hamiltonian->initialCondition(x);
 
   // for (int i=0; i<ntime; i++) {
   //   TSStepMod(ts, tj_save);
@@ -249,14 +265,17 @@ int main(int argc,char **argv)
   braid_Drive(braid_core);
 
   TSPostSolve(ts);
-  TSAdjointPostSolve(ts, tj_save);
 
   /* Get the results */
   double obj;
   braid_GetObjective(braid_core, &obj);
   printf("Objective: %1.12e\n", obj);
-  printf("Petsc TSAdjoint gradient:\n");
-  VecView(mu[0], PETSC_VIEWER_STDOUT_WORLD);
+
+
+  /* TODO: MPI Allreduce the reduced gradient mu */
+
+  /* TODO: Only add mu when on finest level!? Look how it's done in LPDNN! */
+
 
 
   /* -------------------------- */
@@ -295,6 +314,19 @@ int main(int argc,char **argv)
   // MatCreateVecs(hamiltonian->getdRHSdp(), &mu5, NULL);   // passend zu p (dHdp * mu)
 
   // /* -------- Finally run adjoint ------ */
+
+  TSTrajectoryView(ts->trajectory,PETSC_VIEWER_STDOUT_WORLD);
+
+  ierr = TSAdjointPreSolve(ts);
+  // _braid_SetVerbosity(braid_core_adj, 1);
+  braid_Drive(braid_core_adj);
+  // ierr = TSAdjointPostSolve(ts, tj_save);
+  printf("Petsc TSAdjoint gradient:\n");
+  VecView(mu[0], PETSC_VIEWER_STDOUT_WORLD);
+
+
+  exit(1);
+
   // printf("-> Solving adjoint... \n");
   // hamiltonian->evalObjective_diff(Tfinal, x, lambda, mu);
   // TSAdjointPreSolve(ts); 

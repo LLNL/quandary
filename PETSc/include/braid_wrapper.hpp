@@ -35,6 +35,7 @@ typedef struct _braid_App_struct
  * Out: u - updated state  
  */
 int my_Step(braid_App app, braid_Vector ustop, braid_Vector fstop, braid_Vector u, braid_StepStatus status);
+int my_Step_adj(braid_App app, braid_Vector ustop, braid_Vector fstop, braid_Vector u, braid_StepStatus status);
 
 
 /* 
@@ -44,6 +45,7 @@ int my_Step(braid_App app, braid_Vector ustop, braid_Vector fstop, braid_Vector 
  * Out: u_ptr - Pointer to the newly allocated state vector
  */
 int my_Init(braid_App app, double t, braid_Vector *u_ptr);
+int my_Init_adj(braid_App app, double t, braid_Vector *u_ptr);
 
 
 /* 
@@ -89,6 +91,7 @@ int my_SpatialNorm(braid_App app, braid_Vector u, double *norm_ptr);
  * Return the size of a state vector
  */
 int my_BufSize(braid_App app, int *size_ptr, braid_BufferStatus bstatus);
+int my_BufSize_adj(braid_App app, int *size_ptr, braid_BufferStatus bstatus);
 
 
 
@@ -96,12 +99,14 @@ int my_BufSize(braid_App app, int *size_ptr, braid_BufferStatus bstatus);
  * Pack a braid vector into a buffer 
  */
 int my_BufPack(braid_App app, braid_Vector u, void *buffer, braid_BufferStatus bstatus);
+int my_BufPack_adj(braid_App app, braid_Vector u, void *buffer, braid_BufferStatus bstatus);
 
 
 /*
  * Unpack a braid vector from a buffer
  */
 int my_BufUnpack(braid_App app, void *buffer, braid_Vector *u_ptr, braid_BufferStatus status);
+int my_BufUnpack_adj(braid_App app, void *buffer, braid_Vector *u_ptr, braid_BufferStatus status);
 
 
 /*

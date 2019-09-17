@@ -2,7 +2,7 @@
 #PETSC_DIR = /usr/tce/packages/petsc/petsc-3.8.3-mvapich2-2.2-gcc-4.8-redhat
 
 # Set Braid location 
-BRAID_DIR = ${HOME}/Numerics/xbraid
+BRAID_DIR = ${HOME}/Numerics/xbraid_solveadjointwithxbraid
 
 # Some braid vars
 BRAID_INC_DIR = $(BRAID_DIR)/braid
