@@ -202,7 +202,24 @@ int main(int argc,char **argv)
   Vec x5;
   VecDuplicate(x, &x5);
 
-  tj_save = true;
+  tj_save = false;
+
+  
+  /* Vector for storing intermediate trajectories */
+  Vec *primal_storage = new Vec[ntime+1];
+  for (int i=0; i<ntime+1; i++) {
+    VecDuplicate(x, &primal_storage[i]);
+  }
+  Vec *stages;
+  PetscInt Nr;
+  // Get a reference to the stages of the theta method. Not sure if that works with anything else than the Theta method...
+  TSGetStages(ts, &Nr, &stages);
+  if (Nr != 1) {
+    printf("\n ERROR: Can't store the primal trajectory if no of stages is != 0\n");
+    PetscFinalize();
+    exit(1);
+  }
+
 
   /* Tell Petsc to save the forward trajectory */
   if (tj_save) ierr = TSSetSaveTrajectory(ts);CHKERRQ(ierr);
@@ -211,13 +228,13 @@ int main(int argc,char **argv)
   printf("-> Solving primal... \n");
   ierr = TSPreSolve(ts, tj_save); CHKERRQ(ierr);
   hamiltonian->initialCondition(x);
+
   // braid_Drive(braid_core);
   for (int i=0; i<ntime; i++) {
     TSStepMod(ts, tj_save);
-    if (i == 5) {
-      TSGetSolution(ts, &x);
-      VecCopy(x, x5);
-    }
+
+    /* Store trajectory */
+    VecCopy(stages[0], primal_storage[i+1]);
   }
   TSPostSolve(ts);
   /* -------------------------- */
@@ -260,17 +277,31 @@ int main(int argc,char **argv)
   hamiltonian->evalObjective_diff(Tfinal, x, lambda, mu);
   TSAdjointPreSolve(ts); 
   TSSetStepNumber(ts, ntime);
-  int storeID = 5;
+  // int storeID = 5;
   for (int istep = ntime; istep>0; istep--){
-    ierr = TSAdjointStepMod(ts, tj_save); CHKERRQ(ierr);
-    if (istep == storeID) { // store solution, adjoint and gradient
-      TSGetCostGradients(ts, &numcost, &lambda, &mu);
-      TSGetSolution(ts, &x);
-      VecCopy(x, x5);
-      VecCopy(*lambda, lambda5);
-      VecCopy(*mu, mu5);
+
+    /* Set stored trajectory */
+    if (!tj_save) {
+      VecCopy(primal_storage[istep], stages[0]);
     }
+
+    /* Set the time and time step */
+    if (!tj_save) {
+      TSSetTime(ts, (istep)*dt);
+      TSSetTimeStep(ts, -dt);
+    }
+
+
+    ierr = TSAdjointStepMod(ts, tj_save); CHKERRQ(ierr);
+    // if (istep == storeID) { // store solution, adjoint and gradient
+    //   TSGetCostGradients(ts, &numcost, &lambda, &mu);
+    //   TSGetSolution(ts, &x);
+    //   VecCopy(x, x5);
+    //   VecCopy(*lambda, lambda5);
+    //   VecCopy(*mu, mu5);
+    // }
   }
+
   ierr = TSAdjointPostSolve(ts, tj_save);CHKERRQ(ierr);
   /* Get the results */
   printf("Petsc TSAdjoint gradient:\n");
