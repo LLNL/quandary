@@ -202,23 +202,23 @@ int main(int argc,char **argv)
   Vec x5;
   VecDuplicate(x, &x5);
 
-  tj_save = false;
+  tj_save = true;
 
   
-  /* Vector for storing intermediate trajectories */
-  Vec *primal_storage = new Vec[ntime+1];
-  for (int i=0; i<ntime+1; i++) {
-    VecDuplicate(x, &primal_storage[i]);
-  }
-  Vec *stages;
-  PetscInt Nr;
-  // Get a reference to the stages of the theta method. Not sure if that works with anything else than the Theta method...
-  TSGetStages(ts, &Nr, &stages);
-  if (Nr != 1) {
-    printf("\n ERROR: Can't store the primal trajectory if no of stages is != 0\n");
-    PetscFinalize();
-    exit(1);
-  }
+  // /* Vector for storing intermediate trajectories */
+  // Vec *primal_storage = new Vec[ntime+1];
+  // for (int i=0; i<ntime+1; i++) {
+  //   VecDuplicate(x, &primal_storage[i]);
+  // }
+  // Vec *stages;
+  // PetscInt Nr;
+  // // Get a reference to the stages of the theta method. Not sure if that works with anything else than the Theta method...
+  // TSGetStages(ts, &Nr, &stages);
+  // if (Nr != 1) {
+  //   printf("\n ERROR: Can't store the primal trajectory if no of stages is != 0\n");
+  //   PetscFinalize();
+  //   exit(1);
+  // }
 
 
   /* Tell Petsc to save the forward trajectory */
@@ -233,7 +233,7 @@ int main(int argc,char **argv)
     TSStepMod(ts, tj_save);
 
     // /* Store trajectory */
-    VecCopy(stages[0], primal_storage[i+1]);
+    // VecCopy(stages[0], primal_storage[i+1]);
   }
   // braid_Drive(braid_core);
   TSPostSolve(ts);
@@ -277,12 +277,12 @@ int main(int argc,char **argv)
   hamiltonian->evalObjective_diff(Tfinal, x, lambda, mu);
   TSAdjointPreSolve(ts); 
   TSSetStepNumber(ts, ntime);
-  // int storeID = 5;
+  int storeID = 5;
   for (int istep = ntime; istep>0; istep--){
 
     /* Set stored trajectory */
     // if (!tj_save) {
-      VecCopy(primal_storage[istep], stages[0]);
+      // VecCopy(primal_storage[istep], stages[0]);
     // }
 
     // /* Set the time and time step */
@@ -293,13 +293,13 @@ int main(int argc,char **argv)
 
 
     ierr = TSAdjointStepMod(ts, tj_save); CHKERRQ(ierr);
-    // if (istep == storeID) { // store solution, adjoint and gradient
-    //   TSGetCostGradients(ts, &numcost, &lambda, &mu);
-    //   TSGetSolution(ts, &x);
-    //   VecCopy(x, x5);
-    //   VecCopy(*lambda, lambda5);
-    //   VecCopy(*mu, mu5);
-    // }
+    if (istep == storeID) { // store solution, adjoint and gradient
+      TSGetCostGradients(ts, &numcost, &lambda, &mu);
+      TSGetSolution(ts, &x);
+      VecCopy(x, x5);
+      VecCopy(*lambda, lambda5);
+      VecCopy(*mu, mu5);
+    }
   }
 
   ierr = TSAdjointPostSolve(ts, tj_save);CHKERRQ(ierr);
@@ -308,21 +308,23 @@ int main(int argc,char **argv)
   VecView(mu[0], PETSC_VIEWER_STDOUT_WORLD);
   // /* -------------------------- */
 
-  // /* -------- Run adjoint again? ------ */
-  // printf("-> Do some adjoint steps inbetween...\n");
-  // // VecView(x5, PETSC_VIEWER_STDOUT_WORLD);
-  // ierr = TSAdjointPreSolve(ts); CHKERRQ(ierr);
-  // TSSetTime(ts, (ntime - storeID-1)*dt);
-  // TSSetStepNumber(ts, ntime - storeID-1);
-  // TSSetCostGradients(ts, 1, &lambda5, &mu5);
-  // VecView(lambda5, PETSC_VIEWER_STDOUT_WORLD);
-  // for (int istep = (ntime - storeID-1); istep>0; istep--){
-  //   ierr = TSAdjointStepMod(ts); CHKERRQ(ierr);
-  // }
-  // ierr = TSAdjointPostSolve(ts);CHKERRQ(ierr);
-  // VecView(mu5, PETSC_VIEWER_STDOUT_WORLD);
-  // /* -------------------------- */
-
+  /* -------- Run adjoint again? ------ */
+  printf("-> Do some adjoint steps inbetween...\n");
+  // VecView(x5, PETSC_VIEWER_STDOUT_WORLD);
+  ierr = TSAdjointPreSolve(ts); CHKERRQ(ierr);
+  TSSetTime(ts, (ntime - storeID-1)*dt);
+  TSSetStepNumber(ts, ntime - storeID-1);
+  VecZeroEntries(lambda[0]);
+  VecZeroEntries(mu[0]);
+  VecZeroEntries(x);
+  TSSetCostGradients(ts, 1, &lambda5, &mu5);
+  VecView(lambda5, PETSC_VIEWER_STDOUT_WORLD);
+  for (int istep = (ntime - storeID-1); istep>0; istep--){
+    ierr = TSAdjointStepMod(ts, tj_save); CHKERRQ(ierr);
+  }
+  ierr = TSAdjointPostSolve(ts, tj_save);CHKERRQ(ierr);
+  VecView(mu5, PETSC_VIEWER_STDOUT_WORLD);
+  /* -------------------------- */
 
 
   /* Get the results */
