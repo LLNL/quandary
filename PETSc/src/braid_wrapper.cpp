@@ -15,13 +15,19 @@ int my_Step(braid_App    app,
     braid_StepStatusGetTIndex(status, &tindex);
     TSSetTime(app->ts, tstart);
     TSSetTimeStep(app->ts, tstop - tstart);
-    printf("Braid %d %f->%f    ", tindex, tstart, tstop);
+    // printf("Braid %d %f->%f    ", tindex, tstart, tstop);
 
     /* Pass the curent state to the Petsc time-stepper */
     TSSetSolution(app->ts, u->x);
 
     /* Take a step forward */
-    TSStepMod(app->ts, true);
+    bool tj_save;
+    TSStepMod(app->ts, tj_save);
+
+    Vec *stages;
+    PetscInt Nr;
+    TSGetStages(app->ts, &Nr, &stages);
+    VecCopy(stages[0], u->stage);
 
     return 0;
 }
@@ -40,6 +46,8 @@ int my_Init(braid_App     app,
 
     /* Allocate the Petsc Vector */
     VecCreateSeq(app->comm_petsc,nreal,&(u->x));
+    VecZeroEntries(u->x);
+    VecDuplicate(u->x, &u->stage);
 
     /* Set initial condition at t=0.0 */
     // if (t == 0.0)
@@ -66,7 +74,9 @@ int my_Clone(braid_App     app,
 
     /* First duplicate storage, then copy values */
     VecDuplicate(u->x, &(ucopy->x));
+    VecDuplicate(u->stage, &(ucopy->stage));
     VecCopy(u->x, ucopy->x);
+    VecCopy(u->stage, ucopy->stage);
 
     /* Set the return pointer */
     *v_ptr = ucopy;
@@ -81,6 +91,7 @@ int my_Free(braid_App    app,
 
     /* Destroy Petsc's vector */
     VecDestroy(&(u->x));
+    VecDestroy(&(u->stage));
 
     /* Destroy XBraid vector */
     free(u);
@@ -95,18 +106,20 @@ int my_Sum(braid_App    app,
        double       beta,
        braid_Vector y)
 {
-    const PetscScalar *x_ptr;
-    PetscScalar *y_ptr;
+    const PetscScalar *x_ptr, *xstage_ptr;
+    PetscScalar *y_ptr, *ystage_ptr;
 
     VecGetArrayRead(x->x, &x_ptr);
+    VecGetArrayRead(x->stage, &xstage_ptr);
     VecGetArray(y->x, &y_ptr);
-
+    VecGetArray(y->stage, &ystage_ptr);
     for (int i = 0; i< 2 * app->hamiltonian->getDim(); i++)
     {
         y_ptr[i] = alpha * x_ptr[i] + beta * y_ptr[i];
+        ystage_ptr[i] = alpha * xstage_ptr[i] + beta * ystage_ptr[i];
     }
-
     VecRestoreArray(y->x, &y_ptr);
+    VecRestoreArray(y->stage, &ystage_ptr);
 
     // VecAXPBY(y->x, alpha, beta, x->x);
 
@@ -201,6 +214,7 @@ int my_BufSize(braid_App           app,
 {
 
     *size_ptr = 2 * app->hamiltonian->getDim() * sizeof(double);
+    *size_ptr += 2 * app->hamiltonian->getDim() * sizeof(double);
     return 0;
 }
 
@@ -210,22 +224,25 @@ int my_BufPack(braid_App       app,
            void                *buffer,
            braid_BufferStatus  bstatus)
 {
-    const PetscScalar *x_ptr;
+    const PetscScalar *x_ptr, *xstage_ptr;
     double* dbuffer = (double*) buffer;
+    int N = 2*app->hamiltonian->getDim();
 
 
     /* Get read access to the Petsc Vector */
     VecGetArrayRead(u->x, &x_ptr);
+    VecGetArrayRead(u->stage, &xstage_ptr);
 
     /* Copy the values into the buffer */
-    dbuffer[0] = 0.0;
-    for (int i=0; i < 2*app->hamiltonian->getDim(); i++)
+    for (int i=0; i < N; i++)
     {
         dbuffer[i] = x_ptr[i];
+        dbuffer[i+N] = xstage_ptr[i];
     }
     VecRestoreArrayRead(u->x, &x_ptr);
+    VecRestoreArrayRead(u->stage, &xstage_ptr);
 
-    int size = 2 * app->hamiltonian->getDim() * sizeof(double);
+    int size = 2 * N * sizeof(double);
     braid_BufferStatusSetSize(bstatus, size);
 
     return 0;
@@ -238,6 +255,7 @@ int my_BufUnpack(braid_App        app,
              braid_BufferStatus   status)
 {
     double* dbuffer = (double*) buffer;
+    int N = 2*app->hamiltonian->getDim();
 
 
     /* Create a new vector */
@@ -245,17 +263,20 @@ int my_BufUnpack(braid_App        app,
     my_Init(app, 0.0, &u);
 
     /* Get write access to the Petsc Vector */
-    PetscScalar *x_ptr;
+    PetscScalar *x_ptr, *xstage_ptr;
     VecGetArray(u->x, &x_ptr);
+    VecGetArray(u->stage, &xstage_ptr);
 
     /* Copy buffer into the vector */
-    for (int i=0; i < 2* app->hamiltonian->getDim(); i++)
+    for (int i=0; i < N; i++)
     {
         x_ptr[i] = dbuffer[i];
+        xstage_ptr[i] = dbuffer[i+N];
     }
 
     /* Restore Petsc's vector */
     VecRestoreArray(u->x, &x_ptr);
+    VecRestoreArray(u->stage, &xstage_ptr);
 
     /* Pass vector to XBraid */
     *u_ptr = u;
@@ -319,24 +340,26 @@ int my_Step_diff(braid_App app, braid_Vector ustop, braid_Vector u, braid_Vector
     braid_StepStatusGetTstartTstop(status, &tstart, &tstop);
     braid_StepStatusGetTIndex(status, &tindex);
     TSSetTime(app->ts, tstart);
-    TSSetTimeStep(app->ts, tstop - tstart);
-    printf("BraidAdj %d %f->%f    ", tindex, tstart, tstop);
+    TSSetTimeStep(app->ts, - (tstop - tstart));
+    // printf("BraidAdj %d %f->%f    ", tindex, tstart, tstop);
 
-    // /* Pass current state to PETSC */
-    // TSSetSolution(app->ts, u->x);
+    /* Pass state to PETSC */
+    Vec *Stages;
+    PetscInt Nr;
+    TSGetStages(app->ts, &Nr, &Stages);
+    VecCopy(u->stage, Stages[0]);
     
     // PetscScalar* x_ptr;
     // VecGetArray(u->x, &x_ptr);
     // printf("x[1]=%1.12e ", x_ptr[1]);
     // VecRestoreArray(u->x, &x_ptr);
 
-    // /* Pass current adjoint state to Petsc */
-    // TSSetAdjointSolution(app->ts, u_bar->x, app->mu);  
+    /* Pass current adjoint state to Petsc */
+    TSSetAdjointSolution(app->ts, u_bar->x, app->mu);  
 
-    // // /* Take an adjoint step */
-    // TSSetStepNumber(app->ts, tindex+1);
-    // TSSetTime(app->ts, tstart);
-    // TSAdjointStepMod(app->ts);
+    /* Take an adjoint step */
+    bool tj_save = false;
+    TSAdjointStepMod(app->ts, tj_save);
 
 
   return 0;

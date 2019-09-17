@@ -229,13 +229,13 @@ int main(int argc,char **argv)
   ierr = TSPreSolve(ts, tj_save); CHKERRQ(ierr);
   hamiltonian->initialCondition(x);
 
-  // braid_Drive(braid_core);
   for (int i=0; i<ntime; i++) {
     TSStepMod(ts, tj_save);
 
-    /* Store trajectory */
+    // /* Store trajectory */
     VecCopy(stages[0], primal_storage[i+1]);
   }
+  // braid_Drive(braid_core);
   TSPostSolve(ts);
   /* -------------------------- */
 
@@ -281,15 +281,15 @@ int main(int argc,char **argv)
   for (int istep = ntime; istep>0; istep--){
 
     /* Set stored trajectory */
-    if (!tj_save) {
+    // if (!tj_save) {
       VecCopy(primal_storage[istep], stages[0]);
-    }
+    // }
 
-    /* Set the time and time step */
-    if (!tj_save) {
-      TSSetTime(ts, (istep)*dt);
-      TSSetTimeStep(ts, -dt);
-    }
+    // /* Set the time and time step */
+    // if (!tj_save) {
+    //   TSSetTime(ts, (istep)*dt);
+    //   TSSetTimeStep(ts, -dt);
+    // }
 
 
     ierr = TSAdjointStepMod(ts, tj_save); CHKERRQ(ierr);

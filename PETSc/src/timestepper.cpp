@@ -63,10 +63,14 @@ PetscErrorCode Monitor(TS ts,PetscInt step,PetscReal t,Vec x,void *ctx) {
   PetscErrorCode ierr;
   PetscFunctionBeginUser;
 
+    Vec *stage;
+    int nr;
+    TSGetStages(ts, &nr, &stage);
+
   const PetscScalar *x_ptr;
-  ierr = VecGetArrayRead(x, &x_ptr);
-  printf("Step %d: ->%f, x[1]=%1.14e\n", step, t, x_ptr[1]);
-  ierr = VecRestoreArrayRead(x, &x_ptr);
+  ierr = VecGetArrayRead(stage[0], &x_ptr);
+  printf("Step %d: ->%f, stage[1]=%1.14e\n", step, t, x_ptr[1]);
+  ierr = VecRestoreArrayRead(stage[0], &x_ptr);
 
   PetscFunctionReturn(0);
 }
@@ -74,15 +78,19 @@ PetscErrorCode Monitor(TS ts,PetscInt step,PetscReal t,Vec x,void *ctx) {
 PetscErrorCode AdjointMonitor(TS ts,PetscInt step,PetscReal t,Vec x, PetscInt numcost, Vec* lambda, Vec* mu, void *ctx) {
   PetscErrorCode ierr;
 
+    Vec *stage;
+    int nr;
+    TSGetStages(ts, &nr, &stage);
+
   const PetscScalar *x_ptr;
   const PetscScalar *lambda_ptr;
   const PetscScalar *mu_ptr;
   ierr = VecGetArrayRead(x, &x_ptr);
   ierr = VecGetArrayRead(lambda[0], &lambda_ptr);
   ierr = VecGetArrayRead(mu[0], &mu_ptr);
-  ierr = VecGetArrayRead(x, &x_ptr);
-  printf("AdjointStep %d: %f->  x[1]=%1.14e, lambda[0]=%1.14e, mu[0]=%1.14e\n", step, t, x_ptr[1], lambda_ptr[0], mu_ptr[0] );
-  ierr = VecRestoreArrayRead(x, &x_ptr);
+  ierr = VecGetArrayRead(stage[0], &x_ptr);
+  printf("AdjointStep %d: %f->  stage[1]=%1.14e, lambda[0]=%1.14e, mu[0]=%1.14e\n", step, t, x_ptr[1], lambda_ptr[0], mu_ptr[0] );
+  ierr = VecRestoreArrayRead(stage[0], &x_ptr);
   ierr = VecRestoreArrayRead(lambda[0], &lambda_ptr);
   ierr = VecRestoreArrayRead(mu[0], &mu_ptr);
 

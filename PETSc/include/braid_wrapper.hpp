@@ -7,7 +7,8 @@
 
 /* Define the solution at one time step */
 typedef struct _braid_Vector_struct {
-    Vec x;    
+    Vec x;      // solution
+    Vec stage;  // trajectory 
 } my_Vector;
 
 
