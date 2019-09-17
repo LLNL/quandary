@@ -35,13 +35,13 @@ CC=mpicxx
 
 # Rule for linking main
 main: $(OBJ_FILES)
-	$(CC) -o $@ $(OBJ_FILES) $(LDFLAGS) -L$(LDPATH)
+	$(CC) -o $@ $(OBJ_FILES) $(LDFLAGS) -L$(LDPATH) -g
 
 # Rule for building all src files
 $(BUILD_DIR)/%.o : $(SRC_DIR)/%.cpp
 	@mkdir -p $(@D)
-	$(CC) -c $< -o $@ $(INC)
-	@$(CC) -MM $< -MP -MT $@ -MF $(@:.o=.d) $(INC)
+	$(CC) -c $< -o $@ $(INC) -g 
+	@$(CC) -MM $< -MP -MT $@ -MF $(@:.o=.d) $(INC) -g 
 
 
 .PHONY: all cleanup

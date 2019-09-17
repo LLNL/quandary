@@ -204,7 +204,7 @@ PetscErrorCode  TSSetAdjointSolution(TS ts,Vec lambda, Vec mu)
   ierr = PetscObjectReference((PetscObject)lambda);CHKERRQ(ierr);
   if (ts->vecs_sensi[0]) ierr = VecDestroy(&ts->vecs_sensi[0]);CHKERRQ(ierr);
   ts->vecs_sensi[0] = lambda;
-  // ierr = VecDestroy(&ts->vecs_sensip[0]);CHKERRQ(ierr);
+  // if (ts->vecs_sensip[0]) ierr = VecDestroy(&ts->vecs_sensip[0]);CHKERRQ(ierr);
   ts->vecs_sensip[0] = mu;
 
   PetscFunctionReturn(0);
