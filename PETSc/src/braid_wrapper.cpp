@@ -29,8 +29,11 @@ int my_Step(braid_App    app,
 
     /* Take a step forward */
     bool tj_save = false;
-    if (done || ml == 1) tj_save = true;
+    if (done || ml <= 1) tj_save = true;
     TSStepMod(app->ts, tj_save);
+
+    /* Call the access routine here, because I removed it from the end of the braid_Drive() routine. This might give wrong tindex values... TODO: Check! */
+    if (done) my_Access(app, u, (braid_AccessStatus) status);
 
     return 0;
 }
@@ -274,99 +277,99 @@ int my_BufUnpack(braid_App        app,
 
 
 
-/*
- * Evaluate the objective function at time t 
- */
-int my_ObjectiveT(braid_App app, braid_Vector u, braid_ObjectiveStatus ostatus, double *objectiveT_ptr){
-  double objective = 0.0;
+// /*
+//  * Evaluate the objective function at time t 
+//  */
+// int my_ObjectiveT(braid_App app, braid_Vector u, braid_ObjectiveStatus ostatus, double *objectiveT_ptr){
+//   double objective = 0.0;
   
-  /* Get current time index */
-  int tindex;
-  double t;
-  braid_ObjectiveStatusGetTIndex(ostatus, &tindex);
-  braid_ObjectiveStatusGetT(ostatus, &t);
+//   /* Get current time index */
+//   int tindex;
+//   double t;
+//   braid_ObjectiveStatusGetTIndex(ostatus, &tindex);
+//   braid_ObjectiveStatusGetT(ostatus, &t);
 
-  /* Evaluate objective at final time */
-  if (tindex == app->ntime){
-    app->hamiltonian->evalObjective(t, u->x, objectiveT_ptr);
-  }
+//   /* Evaluate objective at final time */
+//   if (tindex == app->ntime){
+//     app->hamiltonian->evalObjective(t, u->x, objectiveT_ptr);
+//   }
 
-  *objectiveT_ptr = objective;
-  return 0;
-}
+//   *objectiveT_ptr = objective;
+//   return 0;
+// }
 
-/*
- * Derivative of the objectiveT function 
- */
-int my_ObjectiveT_diff(braid_App app, braid_Vector u, braid_Vector u_bar, braid_Real F_bar, braid_ObjectiveStatus ostatus) {
-  double ddu = 0.0;
-  PetscScalar *x_ptr;
+// /*
+//  * Derivative of the objectiveT function 
+//  */
+// int my_ObjectiveT_diff(braid_App app, braid_Vector u, braid_Vector u_bar, braid_Real F_bar, braid_ObjectiveStatus ostatus) {
+//   double ddu = 0.0;
+//   PetscScalar *x_ptr;
 
-  /* Get current time index */
-  int tindex;
-  double t;
-  braid_ObjectiveStatusGetTIndex(ostatus, &tindex);
-  braid_ObjectiveStatusGetT(ostatus, &t);
+//   /* Get current time index */
+//   int tindex;
+//   double t;
+//   braid_ObjectiveStatusGetTIndex(ostatus, &tindex);
+//   braid_ObjectiveStatusGetT(ostatus, &t);
 
-  VecZeroEntries(u_bar->x);
-  /* Partial derivative wrt u and p */
-  if (tindex == app->ntime){
-    app->hamiltonian->evalObjective_diff(t, u->x, &(u_bar->x), &app->mu);
-  }
+//   VecZeroEntries(u_bar->x);
+//   /* Partial derivative wrt u and p */
+//   if (tindex == app->ntime){
+//     app->hamiltonian->evalObjective_diff(t, u->x, &(u_bar->x), &app->mu);
+//   }
   
-  return 0;
-}
+//   return 0;
+// }
 
-/*
- * Derivative of my_Step
- */
-int my_Step_diff(braid_App app, braid_Vector ustop, braid_Vector u, braid_Vector ustop_bar, braid_Vector u_bar, braid_StepStatus status) {
+// /*
+//  * Derivative of my_Step
+//  */
+// int my_Step_diff(braid_App app, braid_Vector ustop, braid_Vector u, braid_Vector ustop_bar, braid_Vector u_bar, braid_StepStatus status) {
 
-    double tstart, tstop;
-    int tindex;
+//     double tstart, tstop;
+//     int tindex;
 
-    // PetscScalar *x_ptr;
-    // VecGetArray(u_bar->x, &x_ptr);
-    // printf("BraidAdj %d %f->%f  lambda[0]=%1.14e  \n", tindex, tstart, tstop, x_ptr[0]);
-    // VecRestoreArray(u_bar->x, &x_ptr);
+//     // PetscScalar *x_ptr;
+//     // VecGetArray(u_bar->x, &x_ptr);
+//     // printf("BraidAdj %d %f->%f  lambda[0]=%1.14e  \n", tindex, tstart, tstop, x_ptr[0]);
+//     // VecRestoreArray(u_bar->x, &x_ptr);
 
-    /* Grab current time from XBraid and pass it to Petsc time-stepper */
-    braid_StepStatusGetTstartTstop(status, &tstart, &tstop);
-    braid_StepStatusGetTIndex(status, &tindex);
-    TSSetTime(app->ts, tstart);
-    TSSetTimeStep(app->ts, - (tstop - tstart));
+//     /* Grab current time from XBraid and pass it to Petsc time-stepper */
+//     braid_StepStatusGetTstartTstop(status, &tstart, &tstop);
+//     braid_StepStatusGetTIndex(status, &tindex);
+//     TSSetTime(app->ts, tstart);
+//     TSSetTimeStep(app->ts, - (tstop - tstart));
 
-    // PetscScalar* x_ptr;
-    // VecGetArray(u->x, &x_ptr);
-    // printf("x[1]=%1.12e ", x_ptr[1]);
-    // VecRestoreArray(u->x, &x_ptr);
+//     // PetscScalar* x_ptr;
+//     // VecGetArray(u->x, &x_ptr);
+//     // printf("x[1]=%1.12e ", x_ptr[1]);
+//     // VecRestoreArray(u->x, &x_ptr);
 
-    /* Pass adjoint and derivative to Petsc */
-    // TSSetAdjointSolution(app->ts, u_bar->x, app->mu);   // this one works too!?
-    VecCopy(u_bar->x, app->ts->vecs_sensi[0]);
-    VecCopy(app->mu, app->ts->vecs_sensip[0]);
+//     /* Pass adjoint and derivative to Petsc */
+//     // TSSetAdjointSolution(app->ts, u_bar->x, app->mu);   // this one works too!?
+//     VecCopy(u_bar->x, app->ts->vecs_sensi[0]);
+//     VecCopy(app->mu, app->ts->vecs_sensip[0]);
 
-    /* Take an adjoint step */
-    bool tj_save = true;
-    TSAdjointStepMod(app->ts, tj_save);
+//     /* Take an adjoint step */
+//     bool tj_save = true;
+//     TSAdjointStepMod(app->ts, tj_save);
 
-    /* Grab derivatives from Petsc and pass to XBraid */
-    VecCopy(app->ts->vecs_sensi[0], u_bar->x);
-    VecCopy(app->ts->vecs_sensip[0], app->mu);
+//     /* Grab derivatives from Petsc and pass to XBraid */
+//     VecCopy(app->ts->vecs_sensi[0], u_bar->x);
+//     VecCopy(app->ts->vecs_sensip[0], app->mu);
 
 
-  return 0;
-}
+//   return 0;
+// }
 
-/*
- * Set the gradient to zero
- */
-int my_ResetGradient(braid_App app) {
+// /*
+//  * Set the gradient to zero
+//  */
+// int my_ResetGradient(braid_App app) {
 
-  VecZeroEntries(app->mu);
+//   VecZeroEntries(app->mu);
 
-  return 0;
-}
+//   return 0;
+// }
 
 
 
@@ -374,20 +377,40 @@ int my_Step_adj(braid_App app, braid_Vector ustop, braid_Vector fstop, braid_Vec
 
     double tstart, tstop;
     int tindex;
+    int level, done;
+    bool update_gradient;
     int mpirank;
     MPI_Comm_rank(app->comm_braid, &mpirank);
+
+
+    /* Update gradient only on the finest grid */
+    braid_StepStatusGetLevel(status, &level);
+    braid_StatusGetDone((braid_Status) status, &done);
+    if (done){
+      update_gradient = true;
+    }
+    else {
+      update_gradient = false;
+    }
+
 
     /* Grab current time from XBraid and pass it to Petsc time-stepper */
     braid_StepStatusGetTstartTstop(status, &tstart, &tstop);
     braid_StepStatusGetTIndex(status, &tindex);
     TSSetTime(app->ts, tstart);
     TSSetTimeStep(app->ts, -(tstop - tstart));
-    printf("%d: Braid %d %f->%f    \n", mpirank, tindex, tstart, tstop);
+    // printf("%d: Braid %d %f->%f \n", mpirank, tindex, tstart, tstop);
+    // printf("DONE? %d \n", done);
+
 
     /* Pass adjoint and derivative to Petsc */
     // TSSetAdjointSolution(app->ts, u_bar->x, app->mu);   // this one works too!?
     VecCopy(u->x, app->ts->vecs_sensi[0]);
-    VecCopy(app->mu, app->ts->vecs_sensip[0]);
+    if (update_gradient) {
+      VecCopy(app->mu, app->ts->vecs_sensip[0]);
+    } else {
+      VecZeroEntries(app->ts->vecs_sensip[0]);
+    }
 
     /* Take an adjoint step */
     bool tj_save = true;
@@ -396,7 +419,7 @@ int my_Step_adj(braid_App app, braid_Vector ustop, braid_Vector fstop, braid_Vec
 
     /* Grab derivatives from Petsc and pass to XBraid */
     VecCopy(app->ts->vecs_sensi[0], u->x);
-    VecCopy(app->ts->vecs_sensip[0], app->mu);
+    if (update_gradient) VecCopy(app->ts->vecs_sensip[0], app->mu);
 
 
   return 0;
@@ -480,3 +503,12 @@ int my_BufUnpack_adj(braid_App app, void *buffer, braid_Vector *u_ptr, braid_Buf
  
   return 0;
 }
+
+int my_Access_adj(braid_App       app,
+          braid_Vector        u,
+          braid_AccessStatus  astatus)
+{
+
+  return 0;
+}
+

@@ -76,6 +76,7 @@ int my_Sum(braid_App app, double alpha, braid_Vector x, double beta, braid_Vecto
  *     astatus - struct to query current time 
  */
 int my_Access(braid_App app, braid_Vector u, braid_AccessStatus astatus);
+int my_Access_adj(braid_App app, braid_Vector u, braid_AccessStatus astatus);
 
 
 
@@ -109,22 +110,23 @@ int my_BufUnpack(braid_App app, void *buffer, braid_Vector *u_ptr, braid_BufferS
 int my_BufUnpack_adj(braid_App app, void *buffer, braid_Vector *u_ptr, braid_BufferStatus status);
 
 
-/*
- * Evaluate the objective function at time t 
- */
-int my_ObjectiveT(braid_App app, braid_Vector u, braid_ObjectiveStatus ostatus, double *objectiveT_ptr);
+// /*
+//  * Evaluate the objective function at time t 
+//  */
+// int my_ObjectiveT(braid_App app, braid_Vector u, braid_ObjectiveStatus ostatus, double *objectiveT_ptr);
 
-/*
- * Derivative of the objectiveT function 
- */
-int my_ObjectiveT_diff(braid_App app, braid_Vector u, braid_Vector u_bar, braid_Real F_bar, braid_ObjectiveStatus ostatus);
+// /*
+//  * Derivative of the objectiveT function 
+//  */
+// int my_ObjectiveT_diff(braid_App app, braid_Vector u, braid_Vector u_bar, braid_Real F_bar, braid_ObjectiveStatus ostatus);
 
-/*
- * Derivative of my_Step
- */
-int my_Step_diff(braid_App app, braid_Vector ustop, braid_Vector u, braid_Vector ustop_bar, braid_Vector u_bar, braid_StepStatus status);
+// /*
+//  * Derivative of my_Step
+//  */
+// int my_Step_diff(braid_App app, braid_Vector ustop, braid_Vector u, braid_Vector ustop_bar, braid_Vector u_bar, braid_StepStatus status);
 
-/*
- * Set the gradient to zero
- */
-int my_ResetGradient(braid_App app);
+// /*
+//  * Set the gradient to zero
+//  */
+// int my_ResetGradient(braid_App app);
+

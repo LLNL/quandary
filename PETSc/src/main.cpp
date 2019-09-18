@@ -5,6 +5,7 @@
 #include "bspline.hpp"
 #include "oscillator.hpp" 
 #include "hamiltonian.hpp"
+#include "_braid.h"
 
 #define EPS 1e-5
 
@@ -180,7 +181,7 @@ int main(int argc,char **argv)
   /* Initialize Braid */
   braid_Init(comm, comm_braid, 0.0, total_time, ntime, braid_app, my_Step, my_Init, my_Clone, my_Free, my_Sum, my_SpatialNorm, my_Access, my_BufSize, my_BufPack, my_BufUnpack, &braid_core);
   // braid_InitAdjoint(my_ObjectiveT, my_ObjectiveT_diff, my_Step_diff, my_ResetGradient, &braid_core);
-  braid_Init(comm, comm_braid, 0.0, total_time, ntime, braid_app, my_Step_adj, my_Init_adj, my_Clone, my_Free, my_Sum, my_SpatialNorm, my_Access, my_BufSize_adj, my_BufPack_adj, my_BufUnpack_adj, &braid_core_adj);
+  braid_Init(comm, comm_braid, 0.0, total_time, ntime, braid_app, my_Step_adj, my_Init_adj, my_Clone, my_Free, my_Sum, my_SpatialNorm, my_Access_adj, my_BufSize_adj, my_BufPack_adj, my_BufUnpack_adj, &braid_core_adj);
   braid_SetRevertedRanks(braid_core_adj, 1);
   
   /* Set Braid options */
@@ -242,7 +243,7 @@ int main(int argc,char **argv)
     // ierr = TSTrajectorySetDirname(ts->trajectory, dirname);
 
     PetscBool flag = (PetscBool) true;
-    TSTrajectorySetMonitor(ts->trajectory, flag);
+    if (monitor) TSTrajectorySetMonitor(ts->trajectory, flag);
   }
   // cout << "\n " << mpirank << ":  trajectory dir " << ts->trajectory->dirname << endl << endl;
 
@@ -261,8 +262,14 @@ int main(int argc,char **argv)
   // }
 
 
-  /* Solve primal and adjoint */
+  /* Solve primal */
   braid_Drive(braid_core);
+  
+  /* If multilevel solve: Sweep over all points to generate trajectory and access */
+  if (maxlevels > 1) {
+    _braid_CoreElt(braid_core, done) = 1;
+    _braid_FCRelax(braid_core, 0);
+  }
 
   TSPostSolve(ts);
 
@@ -271,10 +278,8 @@ int main(int argc,char **argv)
   braid_GetObjective(braid_core, &obj);
   printf("Objective: %1.12e\n", obj);
 
-
-  /* TODO: MPI Allreduce the reduced gradient mu */
-
-  /* TODO: Only add mu when on finest level!? Look how it's done in LPDNN! */
+  // TSTrajectoryView(ts->trajectory,PETSC_VIEWER_STDOUT_WORLD);
+  // TSTrajectorySetMonitor(ts->trajectory, PETSC_TRUE);
 
 
 
@@ -315,17 +320,41 @@ int main(int argc,char **argv)
 
   // /* -------- Finally run adjoint ------ */
 
-  TSTrajectoryView(ts->trajectory,PETSC_VIEWER_STDOUT_WORLD);
+  // TSTrajectoryView(ts->trajectory,PETSC_VIEWER_STDOUT_WORLD);
 
   ierr = TSAdjointPreSolve(ts);
   // _braid_SetVerbosity(braid_core_adj, 1);
   braid_Drive(braid_core_adj);
-  // ierr = TSAdjointPostSolve(ts, tj_save);
-  printf("Petsc TSAdjoint gradient:\n");
+
+/* If multilevel solve: Sweep over all points to generate trajectory and access */
+  VecZeroEntries(braid_app->mu);
+  if (maxlevels > 1) {
+    _braid_CoreElt(braid_core_adj, done) = 1;
+    _braid_FCRelax(braid_core_adj, 0);
+  }
+
+  ierr = TSAdjointPostSolve(ts, tj_save);
+  
+  printf("%d: MY AWESOME GRADIENT\n", mpirank);
   VecView(mu[0], PETSC_VIEWER_STDOUT_WORLD);
 
 
-  exit(1);
+
+  /* Sum up the reduced gradient mu from all processors */
+  double *mygrad = new double[nspline];
+  PetscScalar *x_ptr;
+  VecGetArray(braid_app->mu, &x_ptr);
+  for (int i=0; i<nspline; i++) {
+    mygrad[i] = x_ptr[i];
+  }
+  MPI_Allreduce(mygrad, x_ptr, nspline, MPI_DOUBLE, MPI_SUM, comm_braid);
+  VecRestoreArray(braid_app->mu, &x_ptr);
+
+  printf("%d: Petsc TSAdjoint gradient:\n", mpirank);
+  VecView(mu[0], PETSC_VIEWER_STDOUT_WORLD);
+
+
+
 
   // printf("-> Solving adjoint... \n");
   // hamiltonian->evalObjective_diff(Tfinal, x, lambda, mu);

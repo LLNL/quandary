@@ -69,7 +69,7 @@ PetscErrorCode Monitor(TS ts,PetscInt step,PetscReal t,Vec x,void *ctx) {
 
   const PetscScalar *x_ptr;
   ierr = VecGetArrayRead(stage[0], &x_ptr);
-  printf("Step %d: ->%f, stage[1]=%1.14e\n", step, t, x_ptr[1]);
+  printf("Step ->%d,%f, stage[1]=%1.14e\n", step, t, x_ptr[1]);
   ierr = VecRestoreArrayRead(stage[0], &x_ptr);
 
   PetscFunctionReturn(0);
@@ -131,7 +131,7 @@ PetscErrorCode TSStepMod(TS ts, bool tj_store){
   int ierr; 
 
   ierr = TSPreStep(ts);CHKERRQ(ierr);
-  ierr = TSMonitor(ts,ts->steps,ts->ptime,ts->vec_sol);CHKERRQ(ierr);
+  // ierr = TSMonitor(ts,ts->steps,ts->ptime,ts->vec_sol);CHKERRQ(ierr);
   ierr = TSStep(ts);CHKERRQ(ierr);
   ierr = TSPostEvaluate(ts);CHKERRQ(ierr);
   if (tj_store) ierr = TSTrajectorySet(ts->trajectory,ts,ts->steps,ts->ptime,ts->vec_sol);CHKERRQ(ierr);
