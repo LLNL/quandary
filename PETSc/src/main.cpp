@@ -23,6 +23,7 @@ Input parameters:\n\
   -cf <int>        : Set XBraid's coarsening factor           (default: 5) \n\
   -ml <int>        : Set XBraid's max levels                  (default: 5)\n\
   -mi <int>        : Set XBraid's max number of iterations    (default: 50)\n\n\
+  -pl <int>        : Set XBraid's print level                 (default: 2)\n\n\
   -monitor         : Prints out additional information on the time stepper\n\n\
   -analytic        : Runs analytic testcase (2-level, 2-oscillator, pure state) \n\n";
 
@@ -40,6 +41,7 @@ int main(int argc,char **argv)
   XB_App        *braid_app;    // XBraid's application context
   PetscInt       cfactor;      // XBraid's coarsening factor
   PetscInt       maxlevels;    // XBraid's maximum number of levels
+  PetscInt       printlevel;    // XBraid's maximum number of levels
   PetscInt       maxiter;      // XBraid's maximum number of iterations
   PetscInt       nspline;      // Number of spline basis functions
   Hamiltonian*   hamiltonian;  // Hamiltonian system
@@ -84,6 +86,7 @@ int main(int argc,char **argv)
   nspline = 100;
   cfactor = 5;
   maxlevels = 5;
+  printlevel = 2;
   maxiter = 50;
   analytic = PETSC_FALSE;
   monitor = PETSC_FALSE;
@@ -95,6 +98,7 @@ int main(int argc,char **argv)
   PetscOptionsGetInt(NULL,NULL,"-nspline",&nspline,NULL);
   PetscOptionsGetInt(NULL,NULL,"-cf",&cfactor,NULL);
   PetscOptionsGetInt(NULL,NULL,"-ml",&maxlevels,NULL);
+  PetscOptionsGetInt(NULL,NULL,"-pl",&printlevel,NULL);
   PetscOptionsGetInt(NULL,NULL,"-mi",&maxiter,NULL);
   PetscOptionsGetBool(NULL,NULL,"-analytic",&analytic,NULL);
   PetscOptionsGetBool(NULL,NULL,"-monitor",&monitor,NULL);
@@ -186,8 +190,8 @@ int main(int argc,char **argv)
   braid_SetRevertedRanks(braid_core_adj, 1);
   
   /* Set Braid options */
-  braid_SetPrintLevel( braid_core, 2);
-  braid_SetPrintLevel( braid_core_adj, 2);
+  braid_SetPrintLevel( braid_core, printlevel);
+  braid_SetPrintLevel( braid_core_adj, printlevel);
   braid_SetAccessLevel( braid_core, 1);
   braid_SetAccessLevel( braid_core_adj, 1);
   braid_SetMaxLevels(braid_core, maxlevels);
