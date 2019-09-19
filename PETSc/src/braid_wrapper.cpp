@@ -414,3 +414,36 @@ int my_Access_adj(braid_App       app,
   return 0;
 }
 
+
+int braid_printConvHistory(braid_Core core, const char* filename) {
+
+  FILE* braidlog;
+  int niter, ntime, nlevels;
+  int cfactor;
+  double dt;
+
+  /* Get some general information from the core */
+  ntime = _braid_CoreElt(core, ntime); 
+  braid_GetNLevels(core, &nlevels);
+  _braid_GetCFactor(core, 0, &cfactor);
+
+  /* Get braid's residual norms for all iterations */
+  braid_GetNumIter(core, &niter);
+  double *norms     = new double[niter];
+  braid_GetRNorms(core, &niter, norms);
+
+  /* Write to file */
+  braidlog = fopen(filename, "w");
+  fprintf(braidlog,"# ntime %d\n", (int) ntime);
+  fprintf(braidlog,"# cfactor %d\n", (int) cfactor);
+  fprintf(braidlog,"# nlevels %d\n", (int) nlevels);
+  for (int i=0; i<niter; i++)
+  {
+    fprintf(braidlog, "%d  %1.14e\n", i, norms[i]);
+  }
+  fprintf(braidlog, "\n\n\n");
+
+  delete [] norms;
+ 
+  return 0;
+}

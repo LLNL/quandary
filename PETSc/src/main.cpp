@@ -276,28 +276,10 @@ int main(int argc,char **argv)
   StopTime = MPI_Wtime();
   UsedTime = StopTime - StartTime;
 
-  /* Get and print convergence history */
-  int niter;
-  braid_GetNumIter(braid_core, &niter);
-  double *norms = new double[niter];
-  braid_GetRNorms(braid_core, &niter, norms);
+  /* Print convergence history */
+  braid_printConvHistory(braid_core, "braid.out.log");
+  braid_printConvHistory(braid_core_adj, "braid_adj.out.log");
 
-  if (mpirank == 0)
-  {
-    FILE* braidlog;
-    braidlog = fopen("braid.out.log", "w");
-    fprintf(braidlog,"# ntime %d\n", (int) ntime);
-    fprintf(braidlog,"# dt %f\n", (double) dt);
-    fprintf(braidlog,"# cf %d\n", (int) cfactor);
-    fprintf(braidlog,"# ml %d\n", (int) maxlevels);
-    for (int i=0; i<niter; i++)
-    {
-      fprintf(braidlog, "%d  %1.14e\n", i, norms[i]);
-    }
-    fprintf(braidlog, "\n\n\n");
-    fprintf(braidlog, "\n wall time\n %f", UsedTime);
-  }
-  
 
 
 

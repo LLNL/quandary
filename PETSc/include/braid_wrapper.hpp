@@ -1,6 +1,7 @@
 #include "timestepper.hpp"
 #include "hamiltonian.hpp"
 #include "braid.h"
+#include "_braid.h"
 
 #pragma once
 
@@ -109,3 +110,8 @@ int my_BufPack_adj(braid_App app, braid_Vector u, void *buffer, braid_BufferStat
 int my_BufUnpack(braid_App app, void *buffer, braid_Vector *u_ptr, braid_BufferStatus status);
 int my_BufUnpack_adj(braid_App app, void *buffer, braid_Vector *u_ptr, braid_BufferStatus status);
 
+
+/*
+ * Dumps xbraid's convergence history to a file 
+ */
+int braid_printConvHistory(braid_Core core, const char* filename);
