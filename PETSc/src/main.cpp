@@ -245,8 +245,8 @@ int main(int argc,char **argv)
   ierr = TSAdjointPreSolve(ts); CHKERRQ(ierr);
   braid_Drive(braid_core_adj);
   /* If multilevel solve: Sweep over all points to compute reduced gradient */
-  VecZeroEntries(braid_app->mu);
   if (maxlevels > 1) {
+    VecZeroEntries(braid_app->mu);
     _braid_CoreElt(braid_core_adj, done) = 1;
     _braid_FCRelax(braid_core_adj, 0);
   }
