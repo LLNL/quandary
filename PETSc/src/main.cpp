@@ -182,8 +182,7 @@ int main(int argc,char **argv)
 
   /* Initialize Braid */
   braid_Init(comm, comm_braid, 0.0, total_time, ntime, braid_app, my_Step, my_Init, my_Clone, my_Free, my_Sum, my_SpatialNorm, my_Access, my_BufSize, my_BufPack, my_BufUnpack, &braid_core);
-  // braid_InitAdjoint(my_ObjectiveT, my_ObjectiveT_diff, my_Step_diff, my_ResetGradient, &braid_core);
-  braid_Init(comm, comm_braid, 0.0, total_time, ntime, braid_app, my_Step_adj, my_Init_adj, my_Clone, my_Free, my_Sum, my_SpatialNorm, my_Access_adj, my_BufSize_adj, my_BufPack_adj, my_BufUnpack_adj, &braid_core_adj);
+  braid_Init(comm, comm_braid, 0.0, total_time, ntime, braid_app, my_Step_adj, my_Init_adj, my_Clone, my_Free, my_Sum, my_SpatialNorm, my_Access_adj, my_BufSize, my_BufPack, my_BufUnpack, &braid_core_adj);
   braid_SetRevertedRanks(braid_core_adj, 1);
   
   /* Set Braid options */

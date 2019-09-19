@@ -346,66 +346,6 @@ int my_Init_adj(braid_App app, double t, braid_Vector *u_ptr){
   return 0;
 }
 
-int my_BufSize_adj(braid_App app, int *size_ptr, braid_BufferStatus bstatus){
-  int size;
-  my_BufSize(app, &size, bstatus);
-  *size_ptr = size;
-  return 0;  
-}
-
-int my_BufPack_adj(braid_App app, braid_Vector u, void *buffer, braid_BufferStatus bstatus){
-
-    const PetscScalar *x_ptr;
-    double* dbuffer = (double*) buffer;
-    int N = 2*app->hamiltonian->getDim();
-
-
-    /* Get read access to the Petsc Vector */
-    VecGetArrayRead(u->x, &x_ptr);
-
-    /* Copy the values into the buffer */
-    for (int i=0; i < N; i++)
-    {
-        dbuffer[i] = x_ptr[i];
-    }
-    VecRestoreArrayRead(u->x, &x_ptr);
-
-    int size =  N * sizeof(double);
-    braid_BufferStatusSetSize(bstatus, size);
-
-
-  return 0;
-}
-
-int my_BufUnpack_adj(braid_App app, void *buffer, braid_Vector *u_ptr, braid_BufferStatus status){
-
-    double* dbuffer = (double*) buffer;
-    int N = 2*app->hamiltonian->getDim();
-
-
-    /* Create a new vector */
-    braid_Vector u;
-    my_Init(app, 0.0, &u);
-
-    /* Get write access to the Petsc Vector */
-    PetscScalar *x_ptr;
-    VecGetArray(u->x, &x_ptr);
-
-    /* Copy buffer into the vector */
-    for (int i=0; i < N; i++)
-    {
-        x_ptr[i] = dbuffer[i];
-    }
-
-    /* Restore Petsc's vector */
-    VecRestoreArray(u->x, &x_ptr);
-
-    /* Pass vector to XBraid */
-    *u_ptr = u;
- 
-  return 0;
-}
-
 int my_Access_adj(braid_App       app,
           braid_Vector        u,
           braid_AccessStatus  astatus)
