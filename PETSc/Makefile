@@ -31,17 +31,19 @@ INC = -I$(INC_DIR) -I$(BRAID_INC_DIR) -I${PETSC_DIR}/include -I${PETSC_DIR}/${PE
 LDPATH  = ${PETSC_DIR}/${PETSC_ARCH}/lib
 LDFLAGS = -lpetsc -lm ${BRAID_LIB_FILE}
 
-CC=mpicxx
+CXX=mpicxx
+CXXFLAGS= -g -lstdc++
+
 
 # Rule for linking main
 main: $(OBJ_FILES)
-	$(CC) -o $@ $(OBJ_FILES) $(LDFLAGS) -L$(LDPATH) -g
+	$(CXX) -o $@ $(OBJ_FILES) $(LDFLAGS) -L$(LDPATH)
 
 # Rule for building all src files
 $(BUILD_DIR)/%.o : $(SRC_DIR)/%.cpp
 	@mkdir -p $(@D)
-	$(CC) -c $< -o $@ $(INC) -g 
-	@$(CC) -MM $< -MP -MT $@ -MF $(@:.o=.d) $(INC) -g 
+	$(CXX) -c $(CXXFLAGS) $< -o $@ $(INC) 
+	@$(CXX) -MM $< -MP -MT $@ -MF $(@:.o=.d) $(INC) 
 
 
 .PHONY: all cleanup
