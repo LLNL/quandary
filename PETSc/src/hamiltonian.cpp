@@ -440,6 +440,10 @@ int TwoOscilHam::assemble_dRHSdp(double t, Vec x) {
   VecRestoreSubVector(x, isu, &u);
   VecRestoreSubVector(x, isv, &v);
 
+  ISDestroy(&isu);
+  ISDestroy(&isv);
+
+
   return 0;
 }
 
