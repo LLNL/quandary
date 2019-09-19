@@ -9,9 +9,9 @@
 
 #define EPS 1e-5
 
-#define FD_TEST_SPLINE 0
-#define FD_TEST_TS 0
-#define DT_TEST 0
+#define TEST_FD_TS 0
+#define TEST_FD_SPLINE 0
+#define TEST_DT 0
 
 
 static char help[] ="Solves the Liouville-von-Neumann equations, two oscillators.\n\
@@ -62,10 +62,10 @@ int main(int argc,char **argv)
   double UsedTime = 0.0;
 
 
-   /* Initialize MPI */
-   MPI_Init(&argc, &argv);
-   MPI_Comm_rank(MPI_COMM_WORLD, &mpirank);
-   MPI_Comm_size(MPI_COMM_WORLD, &mpisize);
+  /* Initialize MPI */
+  MPI_Init(&argc, &argv);
+  MPI_Comm_rank(MPI_COMM_WORLD, &mpirank);
+  MPI_Comm_size(MPI_COMM_WORLD, &mpisize);
 
   MPI_Comm comm = MPI_COMM_WORLD;
   MPI_Comm comm_braid, comm_petsc;
@@ -268,7 +268,7 @@ int main(int argc,char **argv)
 
   /* Gradient output */
   if (mpirank == 0) {
-    printf("\n %d: My awesome gradient:\n\n", mpirank);
+    printf("\n %d: My awesome gradient:\n", mpirank);
     VecView(mu[0], PETSC_VIEWER_STDOUT_WORLD);
   }
 
@@ -281,12 +281,9 @@ int main(int argc,char **argv)
   braid_printConvHistory(braid_core_adj, "braid_adj.out.log");
 
 
+#if TEST_FD_TS
 
-
-
-
-
-#if FD_TEST_TS
+  printf("\n\n FD Testing... \n\n");
 
   /* Set initial condition */
   // Vec x;
@@ -305,6 +302,7 @@ int main(int argc,char **argv)
   // for(PetscInt istep = 0; istep < ntime; istep++) {
   //   ierr = TSStep(ts); CHKERRQ(ierr);
   // }
+  printf("Solve forward...");
   TSSolve(ts, x);
 
   /* Get original objective */
@@ -314,17 +312,19 @@ int main(int argc,char **argv)
   hamiltonian->evalObjective(Tfinal, x, &objective_ref);
 
   /* Set up adjoint variables and initial condition */
-  Vec lambda[1];  // dfdy
-  Vec mu[1];      // dfdp
-  MatCreateVecs(hamiltonian->getRHS(), &lambda[0], NULL);  // passend zu y (RHS * lambda)
-  MatCreateVecs(hamiltonian->getdRHSdp(), &mu[0], NULL);   // passend zu p (dHdp * mu)
+  // Vec lambda[1];  // dfdy
+  // Vec mu[1];      // dfdp
+  // MatCreateVecs(hamiltonian->getRHS(), &lambda[0], NULL);  // passend zu y (RHS * lambda)
+  // MatCreateVecs(hamiltonian->getdRHSdp(), &mu[0], NULL);   // passend zu p (dHdp * mu)
+  VecZeroEntries(lambda[0]);
+  VecZeroEntries(mu[0]);
   hamiltonian->evalObjective_diff(Tfinal, x, &lambda[0], &mu[0]);
 
   /* Set the derivatives for TS */
   ierr = TSSetCostGradients(ts, 1, lambda, mu); CHKERRQ(ierr);
   ierr = TSSetRHSJacobianP(ts,hamiltonian->getdRHSdp(), RHSJacobianP, hamiltonian); CHKERRQ(ierr);
 
-
+  printf("Solve adjoint...");
   ierr = TSAdjointSolve(ts);CHKERRQ(ierr);
 
   /* Get the results */
@@ -345,7 +345,7 @@ int main(int argc,char **argv)
   double fd, grad, err;
   double objective_pert;
   for (int i=0; i<nosci; i++){
-    printf("Oscillator %d\n", i);
+    printf("FD for Oscillator %d\n", i);
 
     for (int iparam=0; iparam<nparam; iparam++){
         printf("  param %d: \n", iparam);
@@ -360,9 +360,6 @@ int main(int argc,char **argv)
         TSInit(ts, hamiltonian, ntime, dt, total_time, x, lambda, mu, monitor);
 
         hamiltonian->initialCondition(x);
-        // // for(PetscInt istep = 0; istep < ntime; istep++) {
-        // //   ierr = TSStep(ts); CHKERRQ(ierr);
-        // // }
         TSSolve(ts, x);
         ierr = TSGetSolveTime(ts, &Tfinal);CHKERRQ(ierr);
         hamiltonian->evalObjective(Tfinal, x, &objective_pert);
@@ -426,7 +423,7 @@ int main(int argc,char **argv)
   VecDestroy(&x);
 #endif
 
-#if FD_TEST_SPLINE
+#if TEST_FD_SPLINE
   printf("\n\n Running finite-differences test...\n\n");
   
 
@@ -491,16 +488,15 @@ int main(int argc,char **argv)
 
 
 
-#if DT_TEST
+#if TEST_DT
   /* 
    * Testing time stepper convergence (dt-test) 
    */  
-  if (analytic){
+  if (!analytic){
     printf("\n WARNING: DT-test works for analytic test case only. Run with \"-analytic \" if you want to test the time-stepper convergence. \n");
     return 0;
   }
 
-  Vec x;      // numerical solution
   Vec exact;  // exact solution
   Vec error;  // error  
   double t;
@@ -571,7 +567,6 @@ int main(int argc,char **argv)
 
   delete [] xi;
 
-  delete [] norms;
 
   delete lambda;
   delete mu;
