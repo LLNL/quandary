@@ -45,13 +45,13 @@ int main(int argc,char **argv)
   Hamiltonian*   hamiltonian;  // Hamiltonian system
   PetscBool      analytic;     // If true: runs analytic test case
   PetscBool      monitor;      // If true: Print out additional time-stepper information
-  // Vec            lambda[1];  // dfdy
-  // Vec            mu[1];      // dfdp
   Vec            x;          // solution vector
   bool           tj_save;    // Determines wether trajectory should be stored in primal run
 
-  Vec* lambda = new Vec;  // dfdy
-  Vec* mu = new Vec;      //dfdp
+  /* Optimization */
+  double objective;        // Objective function value f
+  Vec* lambda = new Vec;   // Adjoint solution in lambda[0]
+  Vec* mu = new Vec;       // Reduced gradient in mu[0]
 
 
   FILE *ufile, *vfile;
@@ -160,8 +160,10 @@ int main(int argc,char **argv)
   }
 
   /* Open output files */
-  sprintf(filename, "out_u.%04d.dat", mpirank);       ufile = fopen(filename, "w");
-  sprintf(filename, "out_v.%04d.dat", mpirank);       vfile = fopen(filename, "w");
+  sprintf(filename, "out_u.%04d.dat", mpirank);
+  ufile = fopen(filename, "w");
+  sprintf(filename, "out_v.%04d.dat", mpirank);
+  vfile = fopen(filename, "w");
 
   /* Allocate and initialize Petsc's Time-stepper */
   TSCreate(PETSC_COMM_SELF,&ts);CHKERRQ(ierr);
@@ -211,220 +213,73 @@ int main(int argc,char **argv)
   UsedTime = 0.0;
 
 
-//////////////////////////////////////////
-  Vec x5;
-  VecDuplicate(x, &x5);
-
-  tj_save = true;
-
-  
-  // /* Vector for storing intermediate trajectories */
-  // Vec *primal_storage = new Vec[ntime+1];
-  // for (int i=0; i<ntime+1; i++) {
-  //   VecDuplicate(x, &primal_storage[i]);
-  // }
-  // Vec *stages;
-  // PetscInt Nr;
-  // // Get a reference to the stages of the theta method. Not sure if that works with anything else than the Theta method...
-  // TSGetStages(ts, &Nr, &stages);
-  // if (Nr != 1) {
-  //   printf("\n ERROR: Can't store the primal trajectory if no of stages is != 0\n");
-  //   PetscFinalize();
-  //   exit(1);
-  // }
-
 
   /* Tell Petsc to save the forward trajectory */
+  tj_save = true;
   if (tj_save) {
     ierr = TSSetSaveTrajectory(ts);CHKERRQ(ierr);
-    // std::string mystring = "SA_rank" + std::to_string(mpirank);
-    // char const *dirname= s.c_str();  //use char const* as target type
-    // char const *dirname= mystring.c_str();  //use char const* as target type
-    // ierr = TSTrajectorySetDirname(ts->trajectory, dirname);
-
-    PetscBool flag = (PetscBool) true;
-    if (monitor) TSTrajectorySetMonitor(ts->trajectory, flag);
+    TSTrajectorySetMonitor(ts->trajectory, (PetscBool) monitor);
   }
-  // cout << "\n " << mpirank << ":  trajectory dir " << ts->trajectory->dirname << endl << endl;
 
+  /* --- Solve primal --- */
 
-  /* Presolve needed ? */
   ierr = TSPreSolve(ts, tj_save); CHKERRQ(ierr);
-
-  /* Set initial condition */
-  // hamiltonian->initialCondition(x);
-
-  // for (int i=0; i<ntime; i++) {
-  //   TSStepMod(ts, tj_save);
-
-  //   // /* Store trajectory */
-  //   // VecCopy(stages[0], primal_storage[i+1]);
-  // }
-
-
-  /* Solve primal */
   braid_Drive(braid_core);
-  
   /* If multilevel solve: Sweep over all points to generate trajectory and access */
   if (maxlevels > 1) {
     _braid_CoreElt(braid_core, done) = 1;
     _braid_FCRelax(braid_core, 0);
   }
+  ierr = TSPostSolve(ts); CHKERRQ(ierr);
 
-  TSPostSolve(ts);
-
-  /* Get the results */
-  double obj;
-  braid_GetObjective(braid_core, &obj);
-  printf("Objective: %1.12e\n", obj);
-
-  // TSTrajectoryView(ts->trajectory,PETSC_VIEWER_STDOUT_WORLD);
-  // TSTrajectorySetMonitor(ts->trajectory, PETSC_TRUE);
+  /* Get the objective */
+  braid_GetObjective(braid_core, &objective);
+  if (mpirank == 0) {
+    printf("Objective: %1.12e\n", objective);
+  }
 
 
 
-  /* -------------------------- */
+  /* --- Solve adjoint --- */
 
-  // /* --- Run forward again, without saving trajectory --- */
-  // // VecView(x5, PETSC_VIEWER_STDOUT_WORLD);
-  // printf("-> Do some steps inbetween...\n");
-  // TSSetTime(ts, 6.*dt);
-  // TSSetStepNumber(ts, 6);
-  // tj_save = false;
-  // ierr = TSPreSolve(ts, tj_save); CHKERRQ(ierr);
-  // TSSetSolution(ts, x5);
-  // for (int i=0; i<4; i++) {
-  //   TSStepMod(ts, tj_save);
-  // }
-  // TSPostSolve(ts);
-  // TSSetSolution(ts, x);
-  // /* -------------------------- */
-
-
-  // int numcost;
-  // TSGetCostGradients(ts, &numcost, &lambda, &mu);
-  /* Get solution */
-  // ierr = TSGetSolution(ts, &x); CHKERRQ(ierr);
-  // VecView(x, PETSC_VIEWER_STDOUT_WORLD);
-
-  /* Get objective */
-  // double Tfinal;
-  // double objective_ref;
-  // TSGetSolveTime(ts, &Tfinal);
-  // hamiltonian->evalObjective(Tfinal, x, &objective_ref);
-
-
-  // Vec lambda5, mu5;
-  // MatCreateVecs(hamiltonian->getRHS(), &lambda5, NULL);  // passend zu y (RHS * lambda)
-  // MatCreateVecs(hamiltonian->getdRHSdp(), &mu5, NULL);   // passend zu p (dHdp * mu)
-
-  // /* -------- Finally run adjoint ------ */
-
-  // TSTrajectoryView(ts->trajectory,PETSC_VIEWER_STDOUT_WORLD);
-
-  ierr = TSAdjointPreSolve(ts);
-  // _braid_SetVerbosity(braid_core_adj, 1);
+  ierr = TSAdjointPreSolve(ts); CHKERRQ(ierr);
   braid_Drive(braid_core_adj);
-
-/* If multilevel solve: Sweep over all points to generate trajectory and access */
+  /* If multilevel solve: Sweep over all points to compute reduced gradient */
   VecZeroEntries(braid_app->mu);
   if (maxlevels > 1) {
     _braid_CoreElt(braid_core_adj, done) = 1;
     _braid_FCRelax(braid_core_adj, 0);
   }
-
-  ierr = TSAdjointPostSolve(ts, tj_save);
+  ierr = TSAdjointPostSolve(ts, tj_save); CHKERRQ(ierr);
   
-  printf("%d: MY AWESOME GRADIENT\n", mpirank);
-  VecView(mu[0], PETSC_VIEWER_STDOUT_WORLD);
-
-
 
   /* Sum up the reduced gradient mu from all processors */
-  double *mygrad = new double[nspline];
   PetscScalar *x_ptr;
+  PetscInt size;
+  VecGetSize(braid_app->mu, &size);
   VecGetArray(braid_app->mu, &x_ptr);
-  for (int i=0; i<nspline; i++) {
+  double *mygrad = new double[size];
+  for (int i=0; i<size; i++) {
     mygrad[i] = x_ptr[i];
   }
-  MPI_Allreduce(mygrad, x_ptr, nspline, MPI_DOUBLE, MPI_SUM, comm_braid);
+  MPI_Allreduce(mygrad, x_ptr, size, MPI_DOUBLE, MPI_SUM, comm_braid);
   VecRestoreArray(braid_app->mu, &x_ptr);
+  delete [] mygrad;
 
-  printf("%d: Petsc TSAdjoint gradient:\n", mpirank);
-  VecView(mu[0], PETSC_VIEWER_STDOUT_WORLD);
-
-
-
-
-  // printf("-> Solving adjoint... \n");
-  // hamiltonian->evalObjective_diff(Tfinal, x, lambda, mu);
-  // TSAdjointPreSolve(ts); 
-  // TSSetStepNumber(ts, ntime);
-  // int storeID = 5;
-  // for (int istep = ntime; istep>0; istep--){
-
-  //   /* Set stored trajectory */
-  //   // if (!tj_save) {
-  //     // VecCopy(primal_storage[istep], stages[0]);
-  //   // }
-
-  //   // /* Set the time and time step */
-  //   // if (!tj_save) {
-  //   //   TSSetTime(ts, (istep)*dt);
-  //   //   TSSetTimeStep(ts, -dt);
-  //   // }
-
-
-  //   ierr = TSAdjointStepMod(ts, tj_save); CHKERRQ(ierr);
-  //   if (istep == storeID) { // store solution, adjoint and gradient
-  //     TSGetCostGradients(ts, &numcost, &lambda, &mu);
-  //     TSGetSolution(ts, &x);
-  //     VecCopy(x, x5);
-  //     VecCopy(*lambda, lambda5);
-  //     VecCopy(*mu, mu5);
-  //   }
-  // }
-
-  // ierr = TSAdjointPostSolve(ts, tj_save);CHKERRQ(ierr);
-  // /* Get the results */
-  // printf("Petsc TSAdjoint gradient:\n");
-  // VecView(mu[0], PETSC_VIEWER_STDOUT_WORLD);
-  // // /* -------------------------- */
-
-  // /* -------- Run adjoint again? ------ */
-  // printf("-> Do some adjoint steps inbetween...\n");
-  // // VecView(x5, PETSC_VIEWER_STDOUT_WORLD);
-  // ierr = TSAdjointPreSolve(ts); CHKERRQ(ierr);
-  // TSSetTime(ts, (ntime - storeID-1)*dt);
-  // TSSetStepNumber(ts, ntime - storeID-1);
-  // VecZeroEntries(lambda[0]);
-  // VecZeroEntries(mu[0]);
-  // VecZeroEntries(x);
-  // TSSetCostGradients(ts, 1, &lambda5, &mu5);
-  // VecView(lambda5, PETSC_VIEWER_STDOUT_WORLD);
-  // for (int istep = (ntime - storeID-1); istep>0; istep--){
-  //   ierr = TSAdjointStepMod(ts, tj_save); CHKERRQ(ierr);
-  // }
-  // ierr = TSAdjointPostSolve(ts, tj_save);CHKERRQ(ierr);
-  // VecView(mu5, PETSC_VIEWER_STDOUT_WORLD);
-  // /* -------------------------- */
-
-
-  /* Get the results */
-  // printf("Petsc TSAdjoint gradient:\n");
-  // VecView(mu[0], PETSC_VIEWER_STDOUT_WORLD);
-
-//////////////////////////////////////////
+  /* Gradient output */
+  if (mpirank == 0) {
+    printf("\n %d: My awesome gradient:\n\n", mpirank);
+    VecView(mu[0], PETSC_VIEWER_STDOUT_WORLD);
+  }
 
   /* Stop timer */
   StopTime = MPI_Wtime();
   UsedTime = StopTime - StartTime;
 
-
   /* Get and print convergence history */
   int niter;
   braid_GetNumIter(braid_core, &niter);
-  double* norms = (double*) malloc(niter*sizeof(double));
+  double *norms = new double[niter];
   braid_GetRNorms(braid_core, &niter, norms);
 
   if (mpirank == 0)
@@ -444,7 +299,6 @@ int main(int argc,char **argv)
   }
   
 
-  free(norms);
 
 
 
@@ -735,6 +589,8 @@ int main(int argc,char **argv)
 
   delete [] xi;
 
+  delete [] norms;
+
   delete lambda;
   delete mu;
 
@@ -743,6 +599,7 @@ int main(int argc,char **argv)
 
   /* Cleanup XBraid */
   braid_Destroy(braid_core);
+  braid_Destroy(braid_core_adj);
   free(braid_app);
 
   /* Finallize Petsc */
