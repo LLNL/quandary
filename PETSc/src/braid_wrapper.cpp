@@ -350,21 +350,12 @@ int my_Step_adj(braid_App app, braid_Vector ustop, braid_Vector fstop, braid_Vec
     TSSolve(app->ts, x);
 
     /* Set adjoint vars */ 
-    VecCopy(u->x, app->ts->vecs_sensi[0]);
-    if (update_gradient) {
-      VecCopy(app->mu, app->ts->vecs_sensip[0]);
-    } else {
-      VecZeroEntries(app->ts->vecs_sensip[0]);
-    }
+    if (!update_gradient) VecZeroEntries(app->mu);
+    TSSetCostGradients(app->ts, 1, &u->x, &app->mu); CHKERRQ(ierr);
 
     /* Solve adjoint */
-    // TSAdjointSetSteps(app->ts, 1);
     TSSetTimeStep(app->ts, -dt);
     TSAdjointSolve(app->ts);
-
-    /* Grab derivatives from Petsc and pass to XBraid */
-    VecCopy(app->ts->vecs_sensi[0], u->x);
-    if (update_gradient) VecCopy(app->ts->vecs_sensip[0], app->mu);
 
     VecDestroy(&x);
     // app->ts->ptime_prev = tstop;
