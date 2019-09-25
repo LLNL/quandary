@@ -48,7 +48,7 @@ int main(int argc,char **argv)
   PetscBool      analytic;     // If true: runs analytic test case
   PetscBool      monitor;      // If true: Print out additional time-stepper information
   Vec            x;          // solution vector
-  bool           tj_save;    // Determines wether trajectory should be stored in primal run
+  // bool           tj_save;    // Determines wether trajectory should be stored in primal run
 
   /* Optimization */
   double objective;        // Objective function value f
@@ -173,21 +173,23 @@ int main(int argc,char **argv)
   TSCreate(PETSC_COMM_SELF,&ts);CHKERRQ(ierr);
   TSInit(ts, hamiltonian, ntime, dt, total_time, x, lambda, mu, monitor);
 
-  /* Set up XBraid's applications structure */
+  /* Initialize Braid */
   braid_app = (XB_App*) malloc(sizeof(XB_App));
+  braid_Init(comm, comm_braid, 0.0, total_time, ntime, braid_app, my_Step, my_Init, my_Clone, my_Free, my_Sum, my_SpatialNorm, my_Access, my_BufSize, my_BufPack, my_BufUnpack, &braid_core);
+  braid_Init(comm, comm_braid, 0.0, total_time, ntime, braid_app, my_Step_adj, my_Init_adj, my_Clone, my_Free, my_Sum, my_SpatialNorm, my_Access_adj, my_BufSize, my_BufPack, my_BufUnpack, &braid_core_adj);
+
+  /* Set up XBraid's applications structure */
   braid_app->ts     = ts;
   braid_app->hamiltonian = hamiltonian;
   braid_app->ntime  = ntime;
+  braid_app->total_time = total_time;
   braid_app->mu     = *mu;
   braid_app->ufile  = ufile;
   braid_app->vfile  = vfile;
   braid_app->comm_braid = comm_braid;
   braid_app->comm_petsc = comm_petsc;
-
-  /* Initialize Braid */
-  braid_Init(comm, comm_braid, 0.0, total_time, ntime, braid_app, my_Step, my_Init, my_Clone, my_Free, my_Sum, my_SpatialNorm, my_Access, my_BufSize, my_BufPack, my_BufUnpack, &braid_core);
-  braid_Init(comm, comm_braid, 0.0, total_time, ntime, braid_app, my_Step_adj, my_Init_adj, my_Clone, my_Free, my_Sum, my_SpatialNorm, my_Access_adj, my_BufSize, my_BufPack, my_BufUnpack, &braid_core_adj);
-  braid_SetRevertedRanks(braid_core_adj, 1);
+  braid_app->primalcore = braid_core;
+  braid_app->monitor = monitor;
   
   /* Set Braid options */
   braid_SetPrintLevel( braid_core, printlevel);
@@ -208,6 +210,16 @@ int main(int argc,char **argv)
   braid_SetSkip(braid_core_adj, 0);
   braid_SetSeqSoln(braid_core, 0);
   braid_SetSeqSoln(braid_core_adj, 0);
+  /* Store all points if 'solveadjointwithxbraid' */
+  braid_SetStorage(braid_core, 0);
+  braid_SetStorage(braid_core_adj, 0);
+  /* Set reverted rank for 'solveadjointwithxbraid' */
+  braid_SetRevertedRanks(braid_core_adj, 1);
+
+
+  int ilower, iupper;
+  _braid_GetDistribution(braid_core, &ilower, &iupper);
+  printf("ilower %d, iupper %d\n", ilower, iupper);
 
 
    /* Measure wall time */
@@ -216,24 +228,27 @@ int main(int argc,char **argv)
   UsedTime = 0.0;
 
 
-
-  /* Tell Petsc to save the forward trajectory */
-  tj_save = true;
-  if (tj_save) {
-    ierr = TSSetSaveTrajectory(ts);CHKERRQ(ierr);
-    TSTrajectorySetMonitor(ts->trajectory, (PetscBool) monitor);
-  }
+  // /* Tell Petsc to save the forward trajectory */
+  // tj_save = false;
+  // if (tj_save) {
+  //   ierr = TSSetSaveTrajectory(ts);CHKERRQ(ierr);
+  //   ierr = TSTrajectorySetSolutionOnly(ts->trajectory, (PetscBool) true);
+  //   ierr = TSTrajectorySetType(ts->trajectory, ts, TSTRAJECTORYMEMORY);
+  //   TSTrajectorySetMonitor(ts->trajectory, (PetscBool) monitor);
+  // }
 
   /* --- Solve primal --- */
 
-  ierr = TSPreSolve(ts, tj_save); CHKERRQ(ierr);
   braid_Drive(braid_core);
-  /* If multilevel solve: Sweep over all points to generate trajectory and access */
+  /* If multilevel solve: Sweep over all points to access */
   if (maxlevels > 1) {
     _braid_CoreElt(braid_core, done) = 1;
     _braid_FCRelax(braid_core, 0);
   }
-  ierr = TSPostSolve(ts); CHKERRQ(ierr);
+
+  // hamiltonian->initialCondition(x);
+  // ierr = TSSolve(ts, x);
+  
 
   /* Get the objective */
   braid_GetObjective(braid_core, &objective);
@@ -241,20 +256,25 @@ int main(int argc,char **argv)
     printf("Objective: %1.12e\n", objective);
   }
 
-
-
   /* --- Solve adjoint --- */
 
-  ierr = TSAdjointPreSolve(ts); CHKERRQ(ierr);
   braid_Drive(braid_core_adj);
-  /* If multilevel solve: Sweep over all points to compute reduced gradient */
+  // /* If multilevel solve: Sweep over all points to compute reduced gradient */
   if (maxlevels > 1) {
     VecZeroEntries(braid_app->mu);
     _braid_CoreElt(braid_core_adj, done) = 1;
     _braid_FCRelax(braid_core_adj, 0);
   }
-  ierr = TSAdjointPostSolve(ts, tj_save); CHKERRQ(ierr);
   
+
+  // printf("\n Backward\n\n");
+  // double t;
+  // TSGetSolveTime(ts, &t);
+  // VecZeroEntries(lambda[0]);
+  // VecZeroEntries(mu[0]);
+  // hamiltonian->evalObjective_diff(t, x, &lambda[0], &mu[0]);
+  // ierr = TSAdjointSolve(ts);
+
 
   /* Sum up the reduced gradient mu from all processors */
   PetscScalar *x_ptr;
@@ -289,8 +309,6 @@ int main(int argc,char **argv)
   printf("\n\n FD Testing... \n\n");
 
   /* Set initial condition */
-  // Vec x;
-  MatCreateVecs(hamiltonian->getRHS(), &x, NULL);
   hamiltonian->initialCondition(x);
 
   /* Build a new time-stepper */
@@ -302,9 +320,8 @@ int main(int argc,char **argv)
 
   /* Solve forward while storing trajectory */
   TSSetSaveTrajectory(ts);
-  // for(PetscInt istep = 0; istep < ntime; istep++) {
-  //   ierr = TSStep(ts); CHKERRQ(ierr);
-  // }
+  TSTrajectorySetSolutionOnly(ts->trajectory, (PetscBool) true);
+  TSTrajectorySetType(ts->trajectory, ts, TSTRAJECTORYMEMORY);
   printf("Solve forward...");
   TSSolve(ts, x);
 
@@ -560,7 +577,7 @@ int main(int argc,char **argv)
   /* Clean up */
   fclose(ufile);
   fclose(vfile);
-  TSDestroy(&ts);
+  // TSDestroy(&ts);
 
   /* Clean up Oscillator */
   for (int i=0; i<nosci; i++){
@@ -578,8 +595,9 @@ int main(int argc,char **argv)
   delete hamiltonian;
 
   /* Cleanup XBraid */
-  braid_Destroy(braid_core);
-  braid_Destroy(braid_core_adj);
+  // braid_Destroy(braid_core);
+  // braid_Destroy(braid_core_adj);
+  TSDestroy(&braid_app->ts);
   free(braid_app);
 
   /* Finallize Petsc */

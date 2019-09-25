@@ -15,25 +15,31 @@ int my_Step(braid_App    app,
     braid_StepStatusGetTstartTstop(status, &tstart, &tstop);
     braid_StepStatusGetTIndex(status, &tindex);
     braid_StatusGetDone((braid_Status) status, &done);
+    // printf("\nBraid %d %f->%f \n", tindex, tstart, tstop);
+
+    /* Set the time */
     TSSetTime(app->ts, tstart);
     TSSetTimeStep(app->ts, tstop - tstart);
-    // printf("Braid %d %f->%f    ", tindex, tstart, tstop);
 
     /* Pass the curent state to the Petsc time-stepper */
-    TSSetSolution(app->ts, u->x);
+    // TSSetSolution(app->ts, u->x);
 
-    app->ts->steps = tindex;
+    // app->ts->steps = 0;
+    TSSetStepNumber(app->ts, 0);
+    TSSetMaxSteps(app->ts, 1);
+    TSSolve(app->ts, u->x);
 
-    int ml = 0;
-    braid_StatusGetNLevels((braid_Status) status, &ml);
+    // int ml = 0;
+    // braid_StatusGetNLevels((braid_Status) status, &ml);
+    
 
     /* Take a step forward */
-    bool tj_save = false;
-    if (done || ml <= 1) tj_save = true;
-    TSStepMod(app->ts, tj_save);
+    // bool tj_save = false;
+    // if (done || ml <= 1) tj_save = true;
+    // TSStepMod(app->ts, tj_save);
 
     /* Calling the access routine here, because I removed it from the end of the braid_Drive() routine. This might give wrong tindex values... TODO: Check! */
-    if (done) my_Access(app, u, (braid_AccessStatus) status);
+    // if (done) my_Access(app, u, (braid_AccessStatus) status);
 
     return 0;
 }
@@ -139,6 +145,9 @@ int my_Access(braid_App       app,
     /* Get time information */
     braid_AccessStatusGetTIndex(astatus, &istep);
     braid_AccessStatusGetT(astatus, &t);
+
+    // printf("\nAccess %d %f\n", istep, t);
+    // VecView(u->x, PETSC_VIEWER_STDOUT_WORLD);
 
     if (t == 0.0) return 0;
 
@@ -278,6 +287,7 @@ int my_BufUnpack(braid_App        app,
 int my_Step_adj(braid_App app, braid_Vector ustop, braid_Vector fstop, braid_Vector u, braid_StepStatus status){
 
     double tstart, tstop;
+   int ierr;
     int tindex;
     int level, done;
     bool update_gradient;
@@ -295,18 +305,51 @@ int my_Step_adj(braid_App app, braid_Vector ustop, braid_Vector fstop, braid_Vec
       update_gradient = false;
     }
 
-
     /* Grab current time from XBraid and pass it to Petsc time-stepper */
     braid_StepStatusGetTstartTstop(status, &tstart, &tstop);
     braid_StepStatusGetTIndex(status, &tindex);
-    TSSetTime(app->ts, tstart);
-    TSSetTimeStep(app->ts, -(tstop - tstart));
-    // printf("%d: Braid %d %f->%f \n", mpirank, tindex, tstart, tstop);
-    // printf("DONE? %d \n", done);
+
+    double dt = tstop - tstart;
+    // printf("\n %d: Braid %d %f->%f, dt=%f \n", mpirank, tindex, tstart, tstop, dt);
 
 
-    /* Pass adjoint and derivative to Petsc */
-    // TSSetAdjointSolution(app->ts, u_bar->x, app->mu);   // this one works too!?
+    /* Get primal state */
+    int finegrid = 0;
+    int tstop_id = GetTimeStepIndex(tstop, app->total_time / app->ntime);
+    int primaltimestep = app->ntime - tstop_id;
+    braid_BaseVector ubaseprimal;
+    my_Vector *uprimal;
+    Vec x;
+    // printf("Accessing primal %d\n", primaltimestep);
+    _braid_UGetVectorRef(app->primalcore, finegrid, primaltimestep, &ubaseprimal);
+    if (ubaseprimal == NULL) printf("ubaseprimal is null!\n");
+    uprimal = (my_Vector*) ubaseprimal->userVector;
+    VecDuplicate(uprimal->x, &x);
+    VecCopy(uprimal->x, x);
+    // VecView(x, PETSC_VIEWER_STDOUT_WORLD);
+
+
+    /* Solve forward while saving trajectory */
+    TSDestroy(&app->ts);
+    TSCreate(PETSC_COMM_SELF,&app->ts);CHKERRQ(ierr);
+    // TSReset(app->ts);
+    TSInit(app->ts, app->hamiltonian, app->ntime  , dt, app->total_time, x, &(u->x), &(app->mu), app->monitor);
+
+    ierr = TSSetSaveTrajectory(app->ts);CHKERRQ(ierr);
+    ierr = TSTrajectorySetSolutionOnly(app->ts->trajectory, (PetscBool) true);
+    ierr = TSTrajectorySetType(app->ts->trajectory, app->ts, TSTRAJECTORYMEMORY);
+
+    TSSetTime(app->ts, app->total_time - tstop);
+    TSSetTimeStep(app->ts, dt);
+
+    TSSetStepNumber(app->ts, 0);
+    TSSetMaxSteps(app->ts, 1);
+
+    TSSetSolution(app->ts, x);
+
+    TSSolve(app->ts, x);
+
+    /* Set adjoint vars */ 
     VecCopy(u->x, app->ts->vecs_sensi[0]);
     if (update_gradient) {
       VecCopy(app->mu, app->ts->vecs_sensip[0]);
@@ -314,14 +357,41 @@ int my_Step_adj(braid_App app, braid_Vector ustop, braid_Vector fstop, braid_Vec
       VecZeroEntries(app->ts->vecs_sensip[0]);
     }
 
-    /* Take an adjoint step */
-    bool tj_save = true;
-    app->ts->steps = app->ntime - tindex;
-    TSAdjointStepMod(app->ts, tj_save);
+    /* Solve adjoint */
+    // TSAdjointSetSteps(app->ts, 1);
+    TSSetTimeStep(app->ts, -dt);
+    TSAdjointSolve(app->ts);
 
     /* Grab derivatives from Petsc and pass to XBraid */
     VecCopy(app->ts->vecs_sensi[0], u->x);
     if (update_gradient) VecCopy(app->ts->vecs_sensip[0], app->mu);
+
+    VecDestroy(&x);
+    // app->ts->ptime_prev = tstop;
+    // TSSetTimeStep(app->ts, -dt) ; 
+    // TSSetTime(app->ts, app->total_time - tstart);
+    // app->ts->ptime_prev = app->total_time - tstop;    
+    // TSSetTimeStep(app->ts, 5000.0) ; // -(ptime - ptime_prev) ?
+
+
+    /* Pass adjoint and derivative to Petsc */
+    // TSSetAdjointSolution(app->ts, u_bar->x, app->mu);   // this one works too!?
+
+    // VecCopy(u->x, app->ts->vecs_sensi[0]);
+    // if (update_gradient) {
+    //   VecCopy(app->mu, app->ts->vecs_sensip[0]);
+    // } else {
+    //   VecZeroEntries(app->ts->vecs_sensip[0]);
+    // }
+
+    // /* Take an adjoint step */
+    // bool tj_save = true;
+    // app->ts->steps = app->ntime - tindex;
+    // TSAdjointStepMod(app->ts, tj_save);
+
+    // /* Grab derivatives from Petsc and pass to XBraid */
+    // VecCopy(app->ts->vecs_sensi[0], u->x);
+    // if (update_gradient) VecCopy(app->ts->vecs_sensip[0], app->mu);
 
 
   return 0;
@@ -334,11 +404,12 @@ int my_Init_adj(braid_App app, double t, braid_Vector *u_ptr){
   braid_Vector u;
   my_Init(app, 0.0, &u);
   VecZeroEntries(u->x);
+  VecZeroEntries(app->mu);
 
   /* Set the differentiated objective function */
   if (t==0){
     double t = 0.0;
-    TSTrajectoryGet(app->ts->trajectory,app->ts, 0, &t);
+    // TSTrajectoryGet(app->ts->trajectory,app->ts, 0, &t);
     app->hamiltonian->evalObjective_diff(t, app->ts->vec_sol, &u->x, &app->mu);
   }
 
@@ -386,4 +457,11 @@ int braid_printConvHistory(braid_Core core, const char* filename) {
   delete [] norms;
  
   return 0;
+}
+
+
+int GetTimeStepIndex(double t, double dt){
+  int ts = round(t / dt);
+  
+  return ts;
 }

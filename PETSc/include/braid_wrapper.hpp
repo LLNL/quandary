@@ -17,12 +17,16 @@ typedef struct _braid_App_struct
 {
     TS      ts;       // Petsc Time-stepper struct
     int     ntime;    // number of time steps
+    double  total_time;
     Hamiltonian *hamiltonian; 
     Vec   mu;         // reduced gradient 
     FILE *ufile;
     FILE *vfile;
     MPI_Comm comm_braid;
     MPI_Comm comm_petsc;
+
+    int monitor;
+    braid_Core primalcore;
 } XB_App;
 
 
@@ -115,3 +119,9 @@ int my_BufUnpack_adj(braid_App app, void *buffer, braid_Vector *u_ptr, braid_Buf
  * Dumps xbraid's convergence history to a file 
  */
 int braid_printConvHistory(braid_Core core, const char* filename);
+
+
+/* 
+ * Return the time point index of a certain time t, on the grid created with spacing dt 
+ */
+int GetTimeStepIndex(double t, double dt);
