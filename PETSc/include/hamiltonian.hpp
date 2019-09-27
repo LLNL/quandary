@@ -9,8 +9,7 @@
 class Hamiltonian{
   protected:
     int dim;                 // Dimension of vectorized system 
-    int nlevels;             // Number of levels
-    int noscillators;        // Number of oscillators 
+    int noscillators;        // Number of oscillators
     Oscillator** oscil_vec;  // Vector storing pointers to the oscillators
 
     Mat Re, Im;             // Real and imaginary part of Hamiltonian operator
@@ -21,7 +20,7 @@ class Hamiltonian{
     /* Default constructor sets zero */
     Hamiltonian();
     /* This constructor sets the variables and allocates Re, Im and M */
-    Hamiltonian(int nlevels_, int noscillators_, Oscillator** oscil_vec_);
+    Hamiltonian(int noscillators_, Oscillator** oscil_vec_);
     ~Hamiltonian();
 
     /* Return dimension of vectorized system */
@@ -74,6 +73,31 @@ class Hamiltonian{
      */
     virtual int evalObjective_diff(double t, Vec x, Vec *lambda, Vec *mu);
 };
+
+
+// /*
+//  * Implements the Liouville-van-Neumann Hamiltonian
+//  */
+// class LiouvilleVN : public Hamiltonian {
+
+//   Mat  Ad, Bd;  // Real and imaginary part of constant drift Hamiltonian Hd 
+//   Mat* Ac_vec;  // Vector of constant matrices for building time-varying Hamiltonian (real part)
+//   Mat* Bc_vec;  // Vector of constant matrices for building time-varying Hamiltonian (imaginary part)
+
+//   double * xi;  // Rotating frame frequencies for constant drift Hamiltonian
+
+//   public: 
+//     LiouvilleVN();
+//     LiouvilleVN(int* nlevels_, int noscillators_, double* xi, Oscillator** oscil_vec_);
+//     ~LiouvilleVN();
+
+//     /* Set the initial condition (zero so far...) */
+//     virtual int initialCondition(Vec x);
+
+//     /* Eval Re and Im of vectorized Hamiltonian, and derivative */
+//     virtual int assemble_RHS(double t);
+//     virtual int assemble_dRHSdp(double t, Vec x);
+// };
 
 /*
  * Hamiltonian with two oscillators 

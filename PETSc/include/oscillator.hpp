@@ -12,7 +12,8 @@ using namespace std;
  */
 class Oscillator {
   protected:
-    int nparam;  // Number of control parameters 
+    int nlevels;  // Number of levels for this the oscillator 
+    int nparam;   // Number of control parameters 
 
   public:
     Oscillator();
@@ -21,11 +22,13 @@ class Oscillator {
     /* Evaluates real and imaginary control function at time t */
     virtual int evalControl(double t, double* Re_ptr, double* Im_ptr) = 0;
 
+    /* Return the constants */
+    int getNParam() { return nparam; };
+    int getNLevels() { return nlevels; };
+
     /* Return pointers to the control parameters */
     virtual int getParams(double* paramsRe, double* paramsIm) = 0;
 
-    /* Return the number of control parameters */
-    int getNParam();
 
     /* Update control parameters x <- x + stepsize*direction */
     virtual int updateParams(double stepsize, double* directionRe, double* directionIm) = 0;
@@ -52,7 +55,7 @@ class SplineOscillator : public Oscillator {
 
   public:
     SplineOscillator();
-    SplineOscillator(int nbasis_, double Tfinal_);
+    SplineOscillator(int nlevels_, int nbasis_, double Tfinal_);
     ~SplineOscillator();
 
     /* Evaluates the real and imaginare spline functions at time t, using current spline parameters */
@@ -82,7 +85,8 @@ class FunctionOscillator : public Oscillator {
 
   public:
     FunctionOscillator();
-    FunctionOscillator( double omegaF_, 
+    FunctionOscillator( int nlevels_, 
+                        double omegaF_, 
                         double (*F_)(double, double), 
                         double (*dFdp) (double, double, double), 
                         double omegaG_, 

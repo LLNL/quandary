@@ -1,11 +1,10 @@
 #include "oscillator.hpp"
 
 Oscillator::Oscillator(){
-  nparam = 0.0;
+  nparam = 0;
+  nlevels = 0;
 }
 Oscillator::~Oscillator(){}
-
-int Oscillator::getNParam() { return nparam; }
 
 int Oscillator::dumpControl(double tfinal, double dt){
   this->dumpControl(tfinal, dt, std::cout);
@@ -44,8 +43,9 @@ SplineOscillator::SplineOscillator() {
 }
 
 
-SplineOscillator::SplineOscillator(int nbasis_, double Tfinal_){
+SplineOscillator::SplineOscillator(int nlevels_, int nbasis_, double Tfinal_){
   Tfinal = Tfinal_;
+  nlevels = nlevels_;
   nparam = nbasis_;  // nparam for Re and nparam for Im ! 
   basisfunctions = new Bspline(nparam, Tfinal_);
   param_Re = new double[nparam];
@@ -127,13 +127,14 @@ FunctionOscillator::FunctionOscillator() {
   param_Im = NULL;
 }
 
-FunctionOscillator::FunctionOscillator( 
+FunctionOscillator::FunctionOscillator( int nlevels_,
         double omegaF_, 
         double (*F_)(double, double), 
         double (*dFdp_) (double, double, double), 
         double omegaG_, 
         double (*G_)(double, double), 
         double (*dGdp_) (double, double, double) ) {
+  nlevels = nlevels_;
   F = F_;
   G = G_;
   dFdp = dFdp_;

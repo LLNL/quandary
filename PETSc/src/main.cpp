@@ -120,11 +120,11 @@ int main(int argc,char **argv)
   if (analytic) {
     double omegaF1 = 1.0;
     double omegaG2 = 1.0;
-    oscil_vec[0] = new FunctionOscillator(omegaF1, &F1_analytic, &dF1_analytic, 0.0, NULL, NULL );
-    oscil_vec[1] = new FunctionOscillator(0.0, NULL, NULL, omegaG2, &G2_analytic, &dG2_analytic);
+    oscil_vec[0] = new FunctionOscillator(nlvl, omegaF1, &F1_analytic, &dF1_analytic, 0.0, NULL, NULL );
+    oscil_vec[1] = new FunctionOscillator(nlvl, 0.0, NULL, NULL, omegaG2, &G2_analytic, &dG2_analytic);
   } else {
     for (int i = 0; i < nosci; i++){
-      oscil_vec[i] = new SplineOscillator(nspline, total_time);
+      oscil_vec[i] = new SplineOscillator(nlvl, nspline, total_time);
     }
     // oscil_vec[0]->dumpControl(total_time, dt, "initcontrol.dat");
   }
@@ -144,7 +144,7 @@ int main(int argc,char **argv)
 
   /* Initialize the Hamiltonian  */
   if (analytic) {
-    hamiltonian = new AnalyticHam(xi, oscil_vec);
+    hamiltonian = new AnalyticHam(xi, oscil_vec); // always 2levels
   } else {
     hamiltonian = new TwoOscilHam(nlvl, xi, oscil_vec);
   }

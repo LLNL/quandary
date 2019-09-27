@@ -3,8 +3,6 @@
 
 Hamiltonian::Hamiltonian(){
   dim = 0;
-  nlevels = 0;
-  noscillators = 0;
   oscil_vec = NULL;
   Re = NULL;
   Im = NULL;
@@ -14,15 +12,19 @@ Hamiltonian::Hamiltonian(){
 }
 
 
-Hamiltonian::Hamiltonian(int nlevels_, int noscillators_, Oscillator** oscil_vec_){
+Hamiltonian::Hamiltonian(int noscillators_, Oscillator** oscil_vec_){
   int ierr;
 
-  /* Set dimensions */
-  dim = (int) pow(nlevels_, noscillators_*2); // n^osc : pure states, (n^osc)^2 : Density matrix
-  nlevels = nlevels_;
   noscillators = noscillators_;
-  /* Set oscillator vector */
   oscil_vec = oscil_vec_;
+
+  /* Dimension of vectorized system: n_1*...*n_q */
+  dim = 1;
+  for (int iosc = 0; iosc < noscillators_; iosc++) {
+    dim *= oscil_vec[iosc]->getNLevels();
+  }
+  dim = dim*dim; // density matrix: dim \time dim -> vectorized: dim^2
+  printf("dim %d\n", dim);
 
   /* Allocate Re */
   MatCreateSeqAIJ(PETSC_COMM_WORLD,dim,dim,0,NULL,&Re);
@@ -169,6 +171,71 @@ int Hamiltonian::evalObjective_diff(double t, Vec x, Vec *lambda, Vec *mu) {
   return 0;
 }
 
+
+// LiouvilleVN::LiouvilleVN() {
+//   Ad     = NULL;
+//   Bd     = NULL;
+//   Ac_vec = NULL;
+//   Bc_vec = NULL;
+//   xi     = NULL;
+// }
+
+
+// LiouvilleVN::LiouvilleVN(int* nlevels_, int noscillators_,  double* xi_, Oscillator** oscil_vec_) 
+//                 :  Hamiltonian(nlevels_, noscillators_, oscil_vec_){
+//   xi = xi_;
+
+//   Mat tmp;
+//   Ac_vec = new Mat[noscillators_];
+//   Bc_vec = new Mat[noscillators_];
+
+//   /* Create constant real and imaginary Hamiltonian Ad = Re(Hd), Bd = Im(Hd) */
+//   MatCreateSeqAIJ(PETSC_COMM_WORLD,dim,dim,0,NULL,&Ad); // Ad is empty for Liouville VN
+//   MatCreateSeqAIJ(PETSC_COMM_WORLD,dim,dim,dim,NULL,&Bd); // Bd is diagonal
+
+//   /* Create building blocks for time-varying Hamiltonian part */
+//   for (int iosc = 0; iosc < noscillators; iosc++) {
+//     int nelem = 1;
+//     MatCreateSeqAIJ(PETSC_COMM_WORLD,dim,dim,nelem,NULL,&Ac_vec[iosc]); 
+//     MatCreateSeqAIJ(PETSC_COMM_WORLD,dim,dim,nelem,NULL,&Bc_vec[iosc]); 
+//   }
+
+//   /* Real part */
+
+//   /* Imaginary part */
+// }
+
+// LiouvilleVN::~LiouvilleVN(){
+//   MatDestroy(&Ad);
+//   MatDestroy(&Bd);
+//   for (int iosc = 0; iosc < noscillators; iosc++) {
+//     MatDestroy(&Ac_vec[iosc]);
+//     MatDestroy(&Bc_vec[iosc]);
+//   }
+//   delete [] Ac_vec;
+//   delete [] Bc_vec;
+// }
+
+
+// int LiouvilleVN::initialCondition(Vec x){
+//   VecZeroEntries(x);
+//   return 0;
+// }
+
+// int LiouvilleVN::assemble_RHS(double t){
+//   printf("To be implmented!\n");
+//   exit(1);
+
+//   return 0;
+// }
+
+// int LiouvilleVN::assemble_dRHSdp(double t, Vec x) {
+//   printf("To be implmented!\n");
+//   exit(1);
+
+//   return 0;
+// }
+
 TwoOscilHam::TwoOscilHam(){
   A1 = NULL;
   A2 = NULL;
@@ -179,7 +246,10 @@ TwoOscilHam::TwoOscilHam(){
 }
 
 TwoOscilHam::TwoOscilHam(int nlevels_, double* xi_, Oscillator** oscil_vec_)
-                :  Hamiltonian(nlevels_, 2, oscil_vec_){
+                :  Hamiltonian(2, oscil_vec_){
+
+  // dimensions: nlvls^nosci for pure states, (nlvls^nosci)^2 for Density matrix
+
   xi = xi_;
 
   /* Create constant matrices */
@@ -191,32 +261,32 @@ TwoOscilHam::TwoOscilHam(int nlevels_, double* xi_, Oscillator** oscil_vec_)
   Mat tmp;
   /* --- Set up A1 = C^{-}(n^2, n) - C^-(1,n^3)^T --- */
   MatCreateSeqAIJ(PETSC_COMM_WORLD,dim,dim,1,NULL,&tmp);
-  BuildingBlock(tmp, -1, 1, (int) pow(nlevels, 3));
+  BuildingBlock(tmp, -1, 1, (int) pow(nlevels_, 3));
   MatTranspose(tmp, MAT_INPLACE_MATRIX, &tmp);
-  BuildingBlock(A1, -1, (int)pow(nlevels, 2), nlevels);
+  BuildingBlock(A1, -1, (int)pow(nlevels_, 2), nlevels_);
   MatAXPY(A1, -1., tmp, DIFFERENT_NONZERO_PATTERN);
   MatDestroy(&tmp);
 
   /* --- Set up A2 = C^{-}(n^3,1) - C^{-}(n,n^2)^T --- */
   MatCreateSeqAIJ(PETSC_COMM_WORLD,dim,dim,1,NULL,&tmp);
-  BuildingBlock(tmp, -1,nlevels, (int) pow(nlevels, 2));
+  BuildingBlock(tmp, -1,nlevels_, (int) pow(nlevels_, 2));
   MatTranspose(tmp, MAT_INPLACE_MATRIX, &tmp);
-  BuildingBlock(A2, -1, (int)pow(nlevels, 3), 1);
+  BuildingBlock(A2, -1, (int)pow(nlevels_, 3), 1);
   MatAXPY(A2, -1., tmp, DIFFERENT_NONZERO_PATTERN);
   MatDestroy(&tmp);
   
   /* --- Set up B1 = C^+(1,n^3)^T - C^+(n^2, n) --- */
   MatCreateSeqAIJ(PETSC_COMM_WORLD,dim,dim,1,NULL,&tmp);
-  BuildingBlock(tmp, 1, (int) pow(nlevels, 2), nlevels);
-  BuildingBlock(B1, 1, 1, (int)pow(nlevels, 3));
+  BuildingBlock(tmp, 1, (int) pow(nlevels_, 2), nlevels_);
+  BuildingBlock(B1, 1, 1, (int)pow(nlevels_, 3));
   MatTranspose(B1, MAT_INPLACE_MATRIX, &B1);
   MatAXPY(B1, -1., tmp, DIFFERENT_NONZERO_PATTERN);
   MatDestroy(&tmp);
 
   /* --- Set up B2 = C^+(n,n^2)^T - C^+(n^3, 1) --- */
   MatCreateSeqAIJ(PETSC_COMM_WORLD,dim,dim,1,NULL,&tmp);
-  BuildingBlock(tmp, 1, nlevels, (int) pow(nlevels, 2));
-  BuildingBlock(B2, 1, nlevels, (int)pow(nlevels, 2));
+  BuildingBlock(tmp, 1, nlevels_, (int) pow(nlevels_, 2));
+  BuildingBlock(B2, 1, nlevels_, (int)pow(nlevels_, 2));
   MatTranspose(B2, MAT_INPLACE_MATRIX, &B2);
   MatAXPY(B2, -1., tmp, DIFFERENT_NONZERO_PATTERN);
   MatDestroy(&tmp);
@@ -225,11 +295,11 @@ TwoOscilHam::TwoOscilHam(int nlevels_, double* xi_, Oscillator** oscil_vec_)
   // tmp = Hs, Hd = -In\kron Hs + Hs^T\kron In
   Vec diag;
   VecCreate(PETSC_COMM_WORLD, &diag);
-  VecSetSizes(diag, PETSC_DECIDE, nlevels*nlevels);
+  VecSetSizes(diag, PETSC_DECIDE, nlevels_*nlevels_);
   VecSetFromOptions(diag);
-  for (int i=1; i<nlevels; i++){  // first block is always empty
-    for (int j=0; j<nlevels; j++){
-      int rowid = i * nlevels + j;
+  for (int i=1; i<nlevels_; i++){  // first block is always empty
+    for (int j=0; j<nlevels_; j++){
+      int rowid = i * nlevels_ + j;
       double val = 0.0;
       val += - xi[0] / 2. * i*(i-1);
       val += - xi[1] / 2. * j*(j-1);
@@ -242,7 +312,7 @@ TwoOscilHam::TwoOscilHam(int nlevels_, double* xi_, Oscillator** oscil_vec_)
   // VecView(diag, PETSC_VIEWER_STDOUT_WORLD);
 
   /* Create diagonal Hs */
-  MatCreateSeqAIJ(PETSC_COMM_WORLD, nlevels*nlevels, nlevels*nlevels, nlevels*nlevels, NULL, &tmp);
+  MatCreateSeqAIJ(PETSC_COMM_WORLD, nlevels_*nlevels_, nlevels_*nlevels_, nlevels_*nlevels_, NULL, &tmp);
   MatSetUp(tmp);
   MatDiagonalSet(tmp, diag, INSERT_VALUES);
   MatAssemblyBegin(tmp, MAT_FINAL_ASSEMBLY);
@@ -251,9 +321,9 @@ TwoOscilHam::TwoOscilHam(int nlevels_, double* xi_, Oscillator** oscil_vec_)
 
   MatCreateSeqAIJ(PETSC_COMM_WORLD,dim,dim,dim,NULL,&Hd); // only diagonal is nonzero
   MatSetUp(Hd);
-  kronI(tmp, nlevels*nlevels, &Hd, INSERT_VALUES);  // Hd = tmp \kron I
+  kronI(tmp, nlevels_*nlevels_, &Hd, INSERT_VALUES);  // Hd = tmp \kron I
   MatScale(tmp, -1.0); 
-  Ikron(tmp, nlevels*nlevels, &Hd, ADD_VALUES);  // Hd += -I \kron tmp
+  Ikron(tmp, nlevels_*nlevels_, &Hd, ADD_VALUES);  // Hd += -I \kron tmp
   MatDestroy(&tmp);
 
   MatAssemblyBegin(Hd, MAT_FINAL_ASSEMBLY);
@@ -291,6 +361,7 @@ int TwoOscilHam::BuildingBlock(Mat C, int sign, int k, int m){
   int i, j;
   int ierr;
   double val;
+  int nlevels = oscil_vec[0]->getNLevels();
 
   // iterate over the blocks
   for(int x = 0; x < k; x++) {
