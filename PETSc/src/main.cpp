@@ -49,6 +49,8 @@ int main(int argc,char **argv)
   PetscBool      monitor;      // If true: Print out additional time-stepper information
   Vec            x;          // solution vector
   // bool           tj_save;    // Determines wether trajectory should be stored in primal run
+  PetscInt ndesign;           // Number of design variables 
+  double *mygrad = NULL;      // Reduced gradient, local on this processor
 
   /* Optimization */
   double objective;        // Objective function value f
@@ -256,6 +258,8 @@ int main(int argc,char **argv)
     printf("Objective: %1.12e\n", objective);
   }
 
+  // goto exit;
+
   /* --- Solve adjoint --- */
 
   braid_Drive(braid_core_adj);
@@ -278,16 +282,14 @@ int main(int argc,char **argv)
 
   /* Sum up the reduced gradient mu from all processors */
   PetscScalar *x_ptr;
-  PetscInt size;
-  VecGetSize(braid_app->mu, &size);
+  VecGetSize(braid_app->mu, &ndesign);
+  mygrad = new double[ndesign];
   VecGetArray(braid_app->mu, &x_ptr);
-  double *mygrad = new double[size];
-  for (int i=0; i<size; i++) {
+  for (int i=0; i<ndesign; i++) {
     mygrad[i] = x_ptr[i];
   }
-  MPI_Allreduce(mygrad, x_ptr, size, MPI_DOUBLE, MPI_SUM, comm_braid);
+  MPI_Allreduce(mygrad, x_ptr, ndesign, MPI_DOUBLE, MPI_SUM, comm_braid);
   VecRestoreArray(braid_app->mu, &x_ptr);
-  delete [] mygrad;
 
   /* Gradient output */
   if (mpirank == 0) {
@@ -574,6 +576,8 @@ int main(int argc,char **argv)
 
 #endif
 
+exit:
+
   /* Clean up */
   fclose(ufile);
   fclose(vfile);
@@ -590,6 +594,7 @@ int main(int argc,char **argv)
 
   delete lambda;
   delete mu;
+  delete [] mygrad;
 
   /* Clean up Hamiltonian */
   delete hamiltonian;
