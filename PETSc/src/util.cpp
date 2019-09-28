@@ -1,12 +1,13 @@
 #include "util.hpp"
 
-PetscErrorCode Ikron(Mat A, int dimI, Mat *Out, InsertMode insert_mode){
+PetscErrorCode Ikron(Mat A, int dimI, double alpha, Mat *Out, InsertMode insert_mode){
 
     int ierr;
     int ncols;
     const PetscInt* cols; 
     const PetscScalar* Avals;
     PetscInt* shiftcols;
+    PetscScalar* vals;
     int dimA;
     int dimOut;
     int nonzeroOut;
@@ -15,6 +16,7 @@ PetscErrorCode Ikron(Mat A, int dimI, Mat *Out, InsertMode insert_mode){
     MatGetSize(A, &dimA, NULL);
 
     ierr = PetscMalloc1(dimA, &shiftcols); CHKERRQ(ierr);
+    ierr = PetscMalloc1(dimA, &vals); CHKERRQ(ierr);
 
     /* Loop over dimension of I */
     for (int i = 0; i < dimI; i++){
@@ -25,20 +27,22 @@ PetscErrorCode Ikron(Mat A, int dimI, Mat *Out, InsertMode insert_mode){
             rowID = i*dimA + j;
             for (int k=0; k<ncols; k++){
                 shiftcols[k] = cols[k] + i*dimA;
+                vals[k] = Avals[k] * alpha;
             }
-            MatSetValues(*Out, 1, &rowID, ncols, shiftcols, Avals, insert_mode);
+            MatSetValues(*Out, 1, &rowID, ncols, shiftcols, vals, insert_mode);
             MatRestoreRow(A, j, &ncols, &cols, &Avals);
         }
 
     }
-    MatAssemblyBegin(*Out, MAT_FINAL_ASSEMBLY);
-    MatAssemblyEnd(*Out, MAT_FINAL_ASSEMBLY);
+    // MatAssemblyBegin(*Out, MAT_FINAL_ASSEMBLY);
+    // MatAssemblyEnd(*Out, MAT_FINAL_ASSEMBLY);
 
     PetscFree(shiftcols);
+    PetscFree(vals);
     return 0;
 }
 
-PetscErrorCode kronI(Mat A, int dimI, Mat *Out, InsertMode insert_mode){
+PetscErrorCode kronI(Mat A, int dimI, double alpha, Mat *Out, InsertMode insert_mode){
     
     int ierr;
     int dimA;
@@ -68,7 +72,7 @@ PetscErrorCode kronI(Mat A, int dimI, Mat *Out, InsertMode insert_mode){
             for (int k=0; k<dimI; k++) {
                rowid = i*dimI + k;
                colid = cols[j]*dimI + k;
-               insertval = Avals[j];
+               insertval = Avals[j] * alpha;
                MatSetValues(*Out, 1, &rowid, 1, &colid, &insertval, insert_mode);
               //  printf("Setting %d,%d %f\n", rowid, colid, insertval);
             }
@@ -76,8 +80,8 @@ PetscErrorCode kronI(Mat A, int dimI, Mat *Out, InsertMode insert_mode){
         MatRestoreRow(A, i, &ncols, &cols, &Avals);
     }
 
-    MatAssemblyBegin(*Out, MAT_FINAL_ASSEMBLY);
-    MatAssemblyEnd(*Out, MAT_FINAL_ASSEMBLY);
+    // MatAssemblyBegin(*Out, MAT_FINAL_ASSEMBLY);
+    // MatAssemblyEnd(*Out, MAT_FINAL_ASSEMBLY);
 
     PetscFree(cols);
     PetscFree(Avals);

@@ -26,6 +26,11 @@ class Hamiltonian{
     /* Return dimension of vectorized system */
     int getDim();
 
+    /* Compute lowering operator a_k = I_n1 \kron ... \kron a^(nk) \kron ... \kron I_nQ */
+    int createLoweringOP(int ioscillator, Mat* loweringOP);
+
+    int createNumberOP(int ioscillator, Mat* numberOP);
+
     /* 
      * Evaluate the exact solution at time t.
      * Inheriting classes should store exact solution in x and return true.  
@@ -75,29 +80,29 @@ class Hamiltonian{
 };
 
 
-// /*
-//  * Implements the Liouville-van-Neumann Hamiltonian
-//  */
-// class LiouvilleVN : public Hamiltonian {
+/*
+ * Implements the Liouville-van-Neumann Hamiltonian
+ */
+class LiouvilleVN : public Hamiltonian {
 
-//   Mat  Ad, Bd;  // Real and imaginary part of constant drift Hamiltonian Hd 
-//   Mat* Ac_vec;  // Vector of constant matrices for building time-varying Hamiltonian (real part)
-//   Mat* Bc_vec;  // Vector of constant matrices for building time-varying Hamiltonian (imaginary part)
+  Mat* Ac_vec;  // Vector of constant matrices for building time-varying Hamiltonian (real part)
+  Mat* Bc_vec;  // Vector of constant matrices for building time-varying Hamiltonian (imaginary part)
+  Mat  Ad, Bd;  // Real and imaginary part of constant drift Hamiltonian Hd 
 
-//   double * xi;  // Rotating frame frequencies for constant drift Hamiltonian
+  double* xi;  // Constants for rotating frame frequencies of drift Hamiltonian
 
-//   public: 
-//     LiouvilleVN();
-//     LiouvilleVN(int* nlevels_, int noscillators_, double* xi, Oscillator** oscil_vec_);
-//     ~LiouvilleVN();
+  public: 
+    LiouvilleVN();
+    LiouvilleVN(double* xi, int noscillators_, Oscillator** oscil_vec_);
+    ~LiouvilleVN();
 
-//     /* Set the initial condition (zero so far...) */
-//     virtual int initialCondition(Vec x);
+    /* Set the initial condition (zero so far...) */
+    virtual int initialCondition(Vec x);
 
-//     /* Eval Re and Im of vectorized Hamiltonian, and derivative */
-//     virtual int assemble_RHS(double t);
-//     virtual int assemble_dRHSdp(double t, Vec x);
-// };
+    /* Eval Re and Im of vectorized Hamiltonian, and derivative */
+    virtual int assemble_RHS(double t);
+    virtual int assemble_dRHSdp(double t, Vec x);
+};
 
 /*
  * Hamiltonian with two oscillators 
@@ -135,7 +140,8 @@ class TwoOscilHam : public Hamiltonian {
 /* 
  * Ander's testcase with analytic solution 
  */
-class AnalyticHam : public TwoOscilHam {
+class AnalyticHam : public LiouvilleVN {
+// class AnalyticHam : public TwoOscilHam{
   
   public:
     AnalyticHam(double* xi_, Oscillator** oscil_vec_);

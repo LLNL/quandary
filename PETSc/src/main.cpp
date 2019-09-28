@@ -146,7 +146,8 @@ int main(int argc,char **argv)
   if (analytic) {
     hamiltonian = new AnalyticHam(xi, oscil_vec); // always 2levels
   } else {
-    hamiltonian = new TwoOscilHam(nlvl, xi, oscil_vec);
+    // hamiltonian = new TwoOscilHam(nlvl, xi, oscil_vec);
+    hamiltonian = new LiouvilleVN(xi, 2, oscil_vec);
   }
 
   /* Create solution vector x */
@@ -258,7 +259,7 @@ int main(int argc,char **argv)
     printf("Objective: %1.12e\n", objective);
   }
 
-  // goto exit;
+  goto exit;
 
   /* --- Solve adjoint --- */
 

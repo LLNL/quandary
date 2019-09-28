@@ -24,7 +24,6 @@ Hamiltonian::Hamiltonian(int noscillators_, Oscillator** oscil_vec_){
     dim *= oscil_vec[iosc]->getNLevels();
   }
   dim = dim*dim; // density matrix: dim \time dim -> vectorized: dim^2
-  printf("dim %d\n", dim);
 
   /* Allocate Re */
   MatCreateSeqAIJ(PETSC_COMM_WORLD,dim,dim,0,NULL,&Re);
@@ -171,70 +170,222 @@ int Hamiltonian::evalObjective_diff(double t, Vec x, Vec *lambda, Vec *mu) {
   return 0;
 }
 
+int Hamiltonian::createLoweringOP(int iosc, Mat* loweringOP) {
 
-// LiouvilleVN::LiouvilleVN() {
-//   Ad     = NULL;
-//   Bd     = NULL;
-//   Ac_vec = NULL;
-//   Bc_vec = NULL;
-//   xi     = NULL;
-// }
+  /* Get dimensions */
+  int nlvls = oscil_vec[iosc]->getNLevels();
+  int dim_prekron = 1;
+  int dim_postkron = 1;
+  for (int j=0; j<noscillators; j++) {
+    if (j < iosc) dim_prekron  *= oscil_vec[j]->getNLevels();
+    if (j > iosc) dim_postkron *= oscil_vec[j]->getNLevels();
+  }
+  int dim_lowering = dim_prekron*nlvls*dim_postkron;
 
+  /* create and set lowering operator */
+  MatCreateSeqAIJ(PETSC_COMM_WORLD,dim_lowering,dim_lowering,dim_lowering,NULL, loweringOP); 
+  for (int i=0; i<dim_prekron; i++) {
+    for (int j=0; j<nlvls-1; j++) {
+      double val = sqrt(j+1);
+      for (int k=0; k<dim_postkron; k++) {
+        int row = i * nlvls*dim_postkron + j * dim_postkron + k;
+        int col = row + 1;
+        MatSetValue(*loweringOP, row, col, val, INSERT_VALUES);
+      }
+    }
+  }
+  MatAssemblyBegin(*loweringOP, MAT_FINAL_ASSEMBLY);
+  MatAssemblyEnd(*loweringOP, MAT_FINAL_ASSEMBLY);
 
-// LiouvilleVN::LiouvilleVN(int* nlevels_, int noscillators_,  double* xi_, Oscillator** oscil_vec_) 
-//                 :  Hamiltonian(nlevels_, noscillators_, oscil_vec_){
-//   xi = xi_;
-
-//   Mat tmp;
-//   Ac_vec = new Mat[noscillators_];
-//   Bc_vec = new Mat[noscillators_];
-
-//   /* Create constant real and imaginary Hamiltonian Ad = Re(Hd), Bd = Im(Hd) */
-//   MatCreateSeqAIJ(PETSC_COMM_WORLD,dim,dim,0,NULL,&Ad); // Ad is empty for Liouville VN
-//   MatCreateSeqAIJ(PETSC_COMM_WORLD,dim,dim,dim,NULL,&Bd); // Bd is diagonal
-
-//   /* Create building blocks for time-varying Hamiltonian part */
-//   for (int iosc = 0; iosc < noscillators; iosc++) {
-//     int nelem = 1;
-//     MatCreateSeqAIJ(PETSC_COMM_WORLD,dim,dim,nelem,NULL,&Ac_vec[iosc]); 
-//     MatCreateSeqAIJ(PETSC_COMM_WORLD,dim,dim,nelem,NULL,&Bc_vec[iosc]); 
-//   }
-
-//   /* Real part */
-
-//   /* Imaginary part */
-// }
-
-// LiouvilleVN::~LiouvilleVN(){
-//   MatDestroy(&Ad);
-//   MatDestroy(&Bd);
-//   for (int iosc = 0; iosc < noscillators; iosc++) {
-//     MatDestroy(&Ac_vec[iosc]);
-//     MatDestroy(&Bc_vec[iosc]);
-//   }
-//   delete [] Ac_vec;
-//   delete [] Bc_vec;
-// }
+  return dim_lowering;
+}
 
 
-// int LiouvilleVN::initialCondition(Vec x){
-//   VecZeroEntries(x);
-//   return 0;
-// }
 
-// int LiouvilleVN::assemble_RHS(double t){
-//   printf("To be implmented!\n");
-//   exit(1);
+int Hamiltonian::createNumberOP(int iosc, Mat* numberOP) {
 
-//   return 0;
-// }
+  /* Get dimensions */
+  int nlvls = oscil_vec[iosc]->getNLevels();
+  int dim_prekron = 1;
+  int dim_postkron = 1;
+  for (int j=0; j<noscillators; j++) {
+    if (j < iosc) dim_prekron  *= oscil_vec[j]->getNLevels();
+    if (j > iosc) dim_postkron *= oscil_vec[j]->getNLevels();
+  }
+  int dim_number = dim_prekron*nlvls*dim_postkron;
 
-// int LiouvilleVN::assemble_dRHSdp(double t, Vec x) {
-//   printf("To be implmented!\n");
-//   exit(1);
+  /* Create and set number operator */
+  MatCreateSeqAIJ(PETSC_COMM_WORLD,dim_number, dim_number,dim_number,NULL, numberOP); 
+  for (int i=0; i<dim_prekron; i++) {
+    for (int j=0; j<nlvls; j++) {
+      double val = j;
+      for (int k=0; k<dim_postkron; k++) {
+        int row = i * nlvls*dim_postkron + j * dim_postkron + k;
+        int col = row;
+        MatSetValue(*numberOP, row, col, val, INSERT_VALUES);
+      }
+    }
+  }
+  MatAssemblyBegin(*numberOP, MAT_FINAL_ASSEMBLY);
+  MatAssemblyEnd(*numberOP, MAT_FINAL_ASSEMBLY);
+ 
+  return dim_number;
+}
 
-//   return 0;
-// }
+
+LiouvilleVN::LiouvilleVN() {
+  Ad     = NULL;
+  Bd     = NULL;
+  Ac_vec = NULL;
+  Bc_vec = NULL;
+  xi     = NULL;
+}
+
+
+LiouvilleVN::LiouvilleVN(double* xi_, int noscillators_, Oscillator** oscil_vec_) 
+                :  Hamiltonian(noscillators_, oscil_vec_){
+  Mat loweringOP, loweringOP_T;
+  Mat numberOP;
+
+  printf("dim %d\n", dim);
+
+  xi = xi_;
+
+  Ac_vec = new Mat[noscillators_];
+  Bc_vec = new Mat[noscillators_];
+
+  /* Allocate constant real and imaginary Hamiltonian Ad = Re(Hd), Bd = Im(Hd) */
+  MatCreateSeqAIJ(PETSC_COMM_WORLD,dim,dim,0,NULL,&Ad); // Ad is empty for Liouville VN
+  MatCreateSeqAIJ(PETSC_COMM_WORLD,dim,dim,dim,NULL,&Bd); // Bd is diagonal
+
+
+  /* Compute building blocks for time-varying Hamiltonian part */
+  for (int iosc = 0; iosc < noscillators_; iosc++) {
+
+    /* Get lowering operator */
+    int dim_lowering = createLoweringOP(iosc, &loweringOP);
+    MatTranspose(loweringOP, MAT_INITIAL_MATRIX, &loweringOP_T);
+
+
+    /* Compute Ac = I_N \kron (a - a^T) - (a - a^T) \kron I_N */
+    MatCreateSeqAIJ(PETSC_COMM_WORLD,dim,dim,4*dim,NULL,&Ac_vec[iosc]); 
+    Ikron(loweringOP,   dim_lowering,  1.0, &Ac_vec[iosc], ADD_VALUES);
+    Ikron(loweringOP_T, dim_lowering, -1.0, &Ac_vec[iosc], ADD_VALUES);
+    kronI(loweringOP,   dim_lowering, -1.0, &Ac_vec[iosc], ADD_VALUES);
+    kronI(loweringOP_T, dim_lowering,  1.0, &Ac_vec[iosc], ADD_VALUES);
+    MatAssemblyBegin(Ac_vec[iosc], MAT_FINAL_ASSEMBLY);
+    MatAssemblyEnd(Ac_vec[iosc], MAT_FINAL_ASSEMBLY);
+    
+    /* Compute Bc = - I_N \kron (a + a^T) + (a + a^T) \kron I_N */
+    MatCreateSeqAIJ(PETSC_COMM_WORLD,dim,dim,4*dim,NULL,&Bc_vec[iosc]); 
+    Ikron(loweringOP,   dim_lowering, -1.0, &Bc_vec[iosc], ADD_VALUES);
+    Ikron(loweringOP_T, dim_lowering, -1.0, &Bc_vec[iosc], ADD_VALUES);
+    kronI(loweringOP,   dim_lowering,  1.0, &Bc_vec[iosc], ADD_VALUES);
+    kronI(loweringOP_T, dim_lowering,  1.0, &Bc_vec[iosc], ADD_VALUES);
+    MatAssemblyBegin(Bc_vec[iosc], MAT_FINAL_ASSEMBLY);
+    MatAssemblyEnd(Bc_vec[iosc], MAT_FINAL_ASSEMBLY);
+
+    MatDestroy(&loweringOP);
+    MatDestroy(&loweringOP_T);
+    
+  }
+
+  
+  /* Compute drift Hamiltonian (Bd only, Ad=0 for Liouville) */
+  for (int iosc = 0; iosc < noscillators_; iosc++) {
+
+    Mat tmp, tmp_T;
+    Mat numberOPj;
+    int dim_number = createNumberOP(iosc, &numberOP);
+
+    /* Diagonal term -xi/2(N_i^2 - N_i) */
+    MatMatMult(numberOP, numberOP, MAT_INITIAL_MATRIX, PETSC_DEFAULT, &tmp);
+    MatAXPY(tmp, -1.0, numberOP, SAME_NONZERO_PATTERN);
+    MatScale(tmp, -xi[iosc]/2.0);
+
+    MatTranspose(tmp, MAT_INITIAL_MATRIX, &tmp_T);
+    Ikron(tmp,   dim_number, -1.0, &Bd, ADD_VALUES);
+    kronI(tmp_T, dim_number,  1.0, &Bd, ADD_VALUES);
+
+    MatDestroy(&tmp);
+    MatDestroy(&tmp_T);
+
+
+    /* Mixed term -xi(N_i*N_j) for j > i */
+    for (int josc = iosc+1; josc < noscillators_; josc++) {
+
+      createNumberOP(iosc, &numberOPj);
+      MatMatMult(numberOP, numberOPj, MAT_INITIAL_MATRIX, PETSC_DEFAULT, &tmp);
+      int xi_id = iosc*noscillators_ - iosc*(iosc+1)/2 + josc - (iosc+1);
+      MatScale(tmp, -xi[xi_id]);
+
+      MatTranspose(tmp, MAT_INITIAL_MATRIX, &tmp_T);
+      Ikron(tmp,   dim_number, -1.0, &Bd, ADD_VALUES);
+      kronI(tmp_T, dim_number,  1.0, &Bd, ADD_VALUES);
+
+      MatDestroy(&tmp);
+      MatDestroy(&tmp_T);
+
+      MatDestroy(&numberOPj);
+    }
+
+    MatDestroy(&numberOP);
+  }
+
+  MatAssemblyBegin(Bd, MAT_FINAL_ASSEMBLY);
+  MatAssemblyEnd(Bd, MAT_FINAL_ASSEMBLY);
+
+  MatView(Bd, PETSC_VIEWER_STDOUT_WORLD);
+
+}
+
+LiouvilleVN::~LiouvilleVN(){
+  MatDestroy(&Ad);
+  MatDestroy(&Bd);
+  for (int iosc = 0; iosc < noscillators; iosc++) {
+    MatDestroy(&Ac_vec[iosc]);
+    MatDestroy(&Bc_vec[iosc]);
+  }
+  delete [] Ac_vec;
+  delete [] Bc_vec;
+}
+
+
+int LiouvilleVN::initialCondition(Vec x){
+  VecZeroEntries(x);
+  return 0;
+}
+
+int LiouvilleVN::assemble_RHS(double t){
+  int ierr;
+  double control_Re, control_Im;
+
+  /* Reset */
+  ierr = MatZeroEntries(Re);CHKERRQ(ierr);
+  ierr = MatZeroEntries(Im);CHKERRQ(ierr);
+
+  /* Time-dependent control part */
+  for (int iosc = 0; iosc < noscillators; iosc++) {
+    oscil_vec[iosc]->evalControl(t, &control_Re, &control_Im);
+    ierr = MatAXPY(Re,control_Im,Ac_vec[iosc],DIFFERENT_NONZERO_PATTERN); CHKERRQ(ierr);
+    ierr = MatAXPY(Im,control_Re,Bc_vec[iosc],DIFFERENT_NONZERO_PATTERN); CHKERRQ(ierr);
+  }
+
+  /* Constant drift */
+  ierr = MatAXPY(Im, 1.0, Bd, DIFFERENT_NONZERO_PATTERN); CHKERRQ(ierr);
+
+  /* Set RHS from Re and Im */
+  Hamiltonian::assemble_RHS(t);
+
+  return 0;
+}
+
+int LiouvilleVN::assemble_dRHSdp(double t, Vec x) {
+  printf("To be implmented!\n");
+  exit(1);
+
+  return 0;
+}
 
 TwoOscilHam::TwoOscilHam(){
   A1 = NULL;
@@ -321,14 +472,14 @@ TwoOscilHam::TwoOscilHam(int nlevels_, double* xi_, Oscillator** oscil_vec_)
 
   MatCreateSeqAIJ(PETSC_COMM_WORLD,dim,dim,dim,NULL,&Hd); // only diagonal is nonzero
   MatSetUp(Hd);
-  kronI(tmp, nlevels_*nlevels_, &Hd, INSERT_VALUES);  // Hd = tmp \kron I
+  kronI(tmp, nlevels_*nlevels_, 1.0, &Hd, INSERT_VALUES);  // Hd = tmp \kron I
   MatScale(tmp, -1.0); 
-  Ikron(tmp, nlevels_*nlevels_, &Hd, ADD_VALUES);  // Hd += -I \kron tmp
-  MatDestroy(&tmp);
+  Ikron(tmp, nlevels_*nlevels_, 1.0, &Hd, INSERT_VALUES);  // Hd += -I \kron tmp
 
   MatAssemblyBegin(Hd, MAT_FINAL_ASSEMBLY);
   MatAssemblyEnd(Hd, MAT_FINAL_ASSEMBLY);
-  // MatView(Hd, PETSC_VIEWER_STDOUT_WORLD);
+  MatView(Hd, PETSC_VIEWER_STDOUT_WORLD);
+
 
   /* Assemble the matrices */
   MatAssemblyBegin(A1, MAT_FINAL_ASSEMBLY);
@@ -340,6 +491,7 @@ TwoOscilHam::TwoOscilHam(int nlevels_, double* xi_, Oscillator** oscil_vec_)
   MatAssemblyBegin(B2, MAT_FINAL_ASSEMBLY);
   MatAssemblyEnd(B2, MAT_FINAL_ASSEMBLY);
 
+  MatDestroy(&tmp);
 }
 
 
@@ -409,8 +561,11 @@ int TwoOscilHam::assemble_RHS(double t){
   ierr = MatAXPY(Im,control_Re(1),B2,DIFFERENT_NONZERO_PATTERN);CHKERRQ(ierr);
   ierr = MatAXPY(Im, 1.0, Hd, DIFFERENT_NONZERO_PATTERN); CHKERRQ(ierr);
 
+
   /* Set RHS from Re and Im */
   Hamiltonian::assemble_RHS(t);
+  
+  MatView(RHS, PETSC_VIEWER_STDOUT_WORLD);
 
   return 0;
 }
@@ -526,7 +681,8 @@ int TwoOscilHam::initialCondition(Vec x) {
   return 0;
 }
 
-AnalyticHam::AnalyticHam(double* xi_, Oscillator** oscil_vec_) : TwoOscilHam(2, xi_, oscil_vec_) {}
+AnalyticHam::AnalyticHam(double* xi_, Oscillator** oscil_vec_) : LiouvilleVN(xi_, 2, oscil_vec_) {}
+// AnalyticHam::AnalyticHam(double* xi_, Oscillator** oscil_vec_) : TwoOscilHam(2, xi_, oscil_vec_) {}
 
 
 PetscScalar F1_analytic(PetscReal t, PetscReal freq)
