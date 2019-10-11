@@ -110,44 +110,10 @@ class LiouvilleVN : public Hamiltonian {
     virtual int assemble_dRHSdp(double t, Vec x);
 };
 
-/*
- * Hamiltonian with two oscillators 
- */
-class TwoOscilHam : public Hamiltonian {
-
-  Mat A1, A2;  // Building blocks for real part of Hamiltonian
-  Mat B1, B2;  // Building blocks for imaginary part of Hamiltonian
-  Mat Hd;      // Constant part of Hamiltonian matrix ("drift Hamiltonian")
-
-  double* xi;   // xi = xi1, xi2, xi12
-
-  public:
-    TwoOscilHam();
-    TwoOscilHam(int nlevels_, double* xi, Oscillator** oscil_vec_); 
-    ~TwoOscilHam(); 
-
-    /* Helper function for constructing building blocks */
-    int BuildingBlock(Mat C, int sign, int k, int m);
-
-    /* Set the initial condition (zero so far...) */
-    int initialCondition(Vec x);
-
-    /* Evaluates Re and Im of the Hamiltonian. Then calls the base-class assembleRHS routine to set up M. */
-    virtual int assemble_RHS(double t);
-
-    /* 
-     * Assemble the derivative of RHS(x) wrt the controls.
-     */
-    virtual int assemble_dRHSdp(double t, Vec x);
-
-};
-
-
 /* 
  * Ander's testcase with analytic solution 
  */
 class AnalyticHam : public LiouvilleVN {
-// class AnalyticHam : public TwoOscilHam{
   
   public:
     AnalyticHam(double* xi_, Oscillator** oscil_vec_);
