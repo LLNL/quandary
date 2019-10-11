@@ -239,6 +239,11 @@ LiouvilleVN::LiouvilleVN() {
   Ac_vec = NULL;
   Bc_vec = NULL;
   xi     = NULL;
+  dRedp = NULL;
+  dImdp = NULL;
+  rowid = NULL;
+  rowid_shift = NULL;
+
 }
 
 
@@ -334,7 +339,18 @@ LiouvilleVN::LiouvilleVN(double* xi_, int noscillators_, Oscillator** oscil_vec_
   MatAssemblyBegin(Bd, MAT_FINAL_ASSEMBLY);
   MatAssemblyEnd(Bd, MAT_FINAL_ASSEMBLY);
 
-  MatView(Bd, PETSC_VIEWER_STDOUT_WORLD);
+  // MatView(Bd, PETSC_VIEWER_STDOUT_WORLD);
+
+  /* Allocate some auxiliary vectors */
+  dRedp = new double[oscil_vec[0]->getNParam()];
+  dImdp = new double[oscil_vec[0]->getNParam()];
+  rowid = new int[dim];
+  rowid_shift = new int[dim];
+  for (int i=0; i<dim;i++) {
+    rowid[i] = i;
+    rowid_shift[i] = i + dim;
+  }
+
 
 }
 
@@ -347,6 +363,11 @@ LiouvilleVN::~LiouvilleVN(){
   }
   delete [] Ac_vec;
   delete [] Bc_vec;
+  delete [] dRedp;
+  delete [] dImdp;
+  delete [] rowid;
+  delete [] rowid_shift;
+
 }
 
 
@@ -380,8 +401,95 @@ int LiouvilleVN::assemble_RHS(double t){
 }
 
 int LiouvilleVN::assemble_dRHSdp(double t, Vec x) {
-  printf("To be implmented!\n");
-  exit(1);
+
+  Vec u, v;
+  IS isu, isv;
+  ISCreateStride(PETSC_COMM_WORLD, dim, 0, 1, &isu);
+  ISCreateStride(PETSC_COMM_WORLD, dim, dim, 1, &isv);
+
+  /* Get u and v from x = [u v] */
+  VecGetSubVector(x, isu, &u);
+  VecGetSubVector(x, isv, &v);
+
+  Vec M;
+  VecDuplicate(u, &M);
+  Vec Acu;
+  Vec Acv;
+  Vec Bcu;
+  Vec Bcv;
+  VecDuplicate(u, &Acu);
+  VecDuplicate(u, &Acv);
+  VecDuplicate(u, &Bcu);
+  VecDuplicate(u, &Bcv);
+  
+  const double *col_ptr;
+  int colid;
+  int nparam = oscil_vec[0]->getNParam();
+
+  Vec tmp;
+  VecDuplicate(u, &tmp);
+
+  /* Reset dRHSdp) */
+  MatZeroEntries(dRHSdp);
+
+  /* Loop over oscillators */
+  for (int iosc= 0; iosc < noscillators; iosc++){
+
+    /* Evaluate the derivative of the control functions wrt control parameters */
+    for (int i=0; i<nparam; i++){
+      dRedp[i] = 0.0;
+      dImdp[i] = 0.0;
+    }
+    oscil_vec[iosc]->evalDerivative(t, dRedp, dImdp);
+
+    MatMult(Ac_vec[iosc], u, Acu);
+    MatMult(Ac_vec[iosc], v, Acv);
+    MatMult(Bc_vec[iosc], u, Bcu);
+    MatMult(Bc_vec[iosc], v, Bcv);
+
+    /* Loop over control parameters */
+    for (int iparam=0; iparam < nparam; iparam++) {
+
+      /* Derivative wrt paramRe */
+      colid = iosc*2*nparam +  iparam;
+      VecAXPBY(tmp, -dRedp[iparam], 0.0, Bcv);
+      VecGetArrayRead(tmp, &col_ptr);
+      MatSetValues(dRHSdp, dim, rowid, 1, &colid, col_ptr, INSERT_VALUES);
+
+      VecAXPBY(tmp, dRedp[iparam], 0.0, Bcu);
+      VecGetArrayRead(tmp, &col_ptr);
+      MatSetValues(dRHSdp, dim, rowid_shift, 1, &colid, col_ptr, INSERT_VALUES);
+
+      /* wrt paramIm */
+      colid = iosc*2*nparam + nparam + iparam;
+      VecAXPBY(tmp, dImdp[iparam], 0.0, Acu);
+      VecGetArrayRead(tmp, &col_ptr);
+      MatSetValues(dRHSdp, dim, rowid, 1, &colid, col_ptr, INSERT_VALUES);
+
+      VecAXPBY(tmp, dImdp[iparam], 0.0, Acv);
+      VecGetArrayRead(tmp, &col_ptr);
+      MatSetValues(dRHSdp, dim, rowid_shift, 1, &colid, col_ptr, INSERT_VALUES);
+    }
+  }
+
+  MatAssemblyBegin(dRHSdp, MAT_FINAL_ASSEMBLY);
+  MatAssemblyEnd(dRHSdp, MAT_FINAL_ASSEMBLY);
+  MatView(dRHSdp, PETSC_VIEWER_STDOUT_WORLD);
+
+  VecDestroy(&M);
+  VecDestroy(&Acu);
+  VecDestroy(&Acv);
+  VecDestroy(&Bcu);
+  VecDestroy(&Bcv);
+  VecDestroy(&tmp);
+
+  /* Restore y */
+  VecRestoreSubVector(x, isu, &u);
+  VecRestoreSubVector(x, isv, &v);
+
+  ISDestroy(&isu);
+  ISDestroy(&isv);
+
 
   return 0;
 }

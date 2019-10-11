@@ -91,6 +91,12 @@ class LiouvilleVN : public Hamiltonian {
 
   double* xi;  // Constants for rotating frame frequencies of drift Hamiltonian
 
+  /* Some auxiliary vectors */
+  double *dRedp;
+  double *dImdp;
+  int *rowid;
+  int *rowid_shift;
+
   public: 
     LiouvilleVN();
     LiouvilleVN(double* xi, int noscillators_, Oscillator** oscil_vec_);
