@@ -372,7 +372,9 @@ LiouvilleVN::~LiouvilleVN(){
 
 
 int LiouvilleVN::initialCondition(Vec x){
-  VecZeroEntries(x);
+  VecZeroEntries(x); 
+  VecSet(x, 0.1);
+  
   return 0;
 }
 
@@ -412,11 +414,11 @@ int LiouvilleVN::assemble_dRHSdp(double t, Vec x) {
   VecGetSubVector(x, isv, &v);
 
   Vec M;
-  VecDuplicate(u, &M);
   Vec Acu;
   Vec Acv;
   Vec Bcu;
   Vec Bcv;
+  VecDuplicate(u, &M);
   VecDuplicate(u, &Acu);
   VecDuplicate(u, &Acv);
   VecDuplicate(u, &Bcu);
@@ -455,26 +457,30 @@ int LiouvilleVN::assemble_dRHSdp(double t, Vec x) {
       VecAXPBY(tmp, -dRedp[iparam], 0.0, Bcv);
       VecGetArrayRead(tmp, &col_ptr);
       MatSetValues(dRHSdp, dim, rowid, 1, &colid, col_ptr, INSERT_VALUES);
+      VecRestoreArrayRead(tmp, &col_ptr);
 
       VecAXPBY(tmp, dRedp[iparam], 0.0, Bcu);
       VecGetArrayRead(tmp, &col_ptr);
       MatSetValues(dRHSdp, dim, rowid_shift, 1, &colid, col_ptr, INSERT_VALUES);
+      VecRestoreArrayRead(tmp, &col_ptr);
 
       /* wrt paramIm */
       colid = iosc*2*nparam + nparam + iparam;
       VecAXPBY(tmp, dImdp[iparam], 0.0, Acu);
       VecGetArrayRead(tmp, &col_ptr);
       MatSetValues(dRHSdp, dim, rowid, 1, &colid, col_ptr, INSERT_VALUES);
+      VecRestoreArrayRead(tmp, &col_ptr);
 
       VecAXPBY(tmp, dImdp[iparam], 0.0, Acv);
       VecGetArrayRead(tmp, &col_ptr);
       MatSetValues(dRHSdp, dim, rowid_shift, 1, &colid, col_ptr, INSERT_VALUES);
+      VecRestoreArrayRead(tmp, &col_ptr);
     }
   }
 
   MatAssemblyBegin(dRHSdp, MAT_FINAL_ASSEMBLY);
   MatAssemblyEnd(dRHSdp, MAT_FINAL_ASSEMBLY);
-  MatView(dRHSdp, PETSC_VIEWER_STDOUT_WORLD);
+  // MatView(dRHSdp, PETSC_VIEWER_STDOUT_WORLD);
 
   VecDestroy(&M);
   VecDestroy(&Acu);
@@ -585,7 +591,7 @@ TwoOscilHam::TwoOscilHam(int nlevels_, double* xi_, Oscillator** oscil_vec_)
 
   MatAssemblyBegin(Hd, MAT_FINAL_ASSEMBLY);
   MatAssemblyEnd(Hd, MAT_FINAL_ASSEMBLY);
-  MatView(Hd, PETSC_VIEWER_STDOUT_WORLD);
+  // MatView(Hd, PETSC_VIEWER_STDOUT_WORLD);
 
 
   /* Assemble the matrices */
@@ -672,7 +678,7 @@ int TwoOscilHam::assemble_RHS(double t){
   /* Set RHS from Re and Im */
   Hamiltonian::assemble_RHS(t);
   
-  MatView(RHS, PETSC_VIEWER_STDOUT_WORLD);
+  // MatView(RHS, PETSC_VIEWER_STDOUT_WORLD);
 
   return 0;
 }
