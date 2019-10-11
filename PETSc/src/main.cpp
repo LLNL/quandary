@@ -306,6 +306,7 @@ int main(int argc,char **argv)
   braid_printConvHistory(braid_core, "braid.out.log");
   braid_printConvHistory(braid_core_adj, "braid_adj.out.log");
 
+exit:
 
 #if TEST_FD_TS
 
@@ -577,7 +578,6 @@ int main(int argc,char **argv)
 
 #endif
 
-exit:
 
   /* Clean up */
   fclose(ufile);
