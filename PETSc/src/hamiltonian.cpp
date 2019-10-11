@@ -183,13 +183,13 @@ int Hamiltonian::createLoweringOP(int iosc, Mat* loweringOP) {
   int dim_lowering = dim_prekron*nlvls*dim_postkron;
 
   /* create and set lowering operator */
-  MatCreateSeqAIJ(PETSC_COMM_WORLD,dim_lowering,dim_lowering,dim_lowering,NULL, loweringOP); 
+  MatCreateSeqAIJ(PETSC_COMM_WORLD,dim_lowering,dim_lowering,dim_lowering-1,NULL, loweringOP); 
   for (int i=0; i<dim_prekron; i++) {
     for (int j=0; j<nlvls-1; j++) {
       double val = sqrt(j+1);
       for (int k=0; k<dim_postkron; k++) {
         int row = i * nlvls*dim_postkron + j * dim_postkron + k;
-        int col = row + 1;
+        int col = row + dim_postkron;
         MatSetValue(*loweringOP, row, col, val, INSERT_VALUES);
       }
     }
@@ -266,13 +266,12 @@ LiouvilleVN::LiouvilleVN(double* xi_, int noscillators_, Oscillator** oscil_vec_
     int dim_lowering = createLoweringOP(iosc, &loweringOP);
     MatTranspose(loweringOP, MAT_INITIAL_MATRIX, &loweringOP_T);
 
-
     /* Compute Ac = I_N \kron (a - a^T) - (a - a^T) \kron I_N */
     MatCreateSeqAIJ(PETSC_COMM_WORLD,dim,dim,4*dim,NULL,&Ac_vec[iosc]); 
     Ikron(loweringOP,   dim_lowering,  1.0, &Ac_vec[iosc], ADD_VALUES);
     Ikron(loweringOP_T, dim_lowering, -1.0, &Ac_vec[iosc], ADD_VALUES);
-    kronI(loweringOP,   dim_lowering, -1.0, &Ac_vec[iosc], ADD_VALUES);
-    kronI(loweringOP_T, dim_lowering,  1.0, &Ac_vec[iosc], ADD_VALUES);
+    kronI(loweringOP_T, dim_lowering, -1.0, &Ac_vec[iosc], ADD_VALUES);
+    kronI(loweringOP,   dim_lowering,  1.0, &Ac_vec[iosc], ADD_VALUES);
     MatAssemblyBegin(Ac_vec[iosc], MAT_FINAL_ASSEMBLY);
     MatAssemblyEnd(Ac_vec[iosc], MAT_FINAL_ASSEMBLY);
     
@@ -280,8 +279,8 @@ LiouvilleVN::LiouvilleVN(double* xi_, int noscillators_, Oscillator** oscil_vec_
     MatCreateSeqAIJ(PETSC_COMM_WORLD,dim,dim,4*dim,NULL,&Bc_vec[iosc]); 
     Ikron(loweringOP,   dim_lowering, -1.0, &Bc_vec[iosc], ADD_VALUES);
     Ikron(loweringOP_T, dim_lowering, -1.0, &Bc_vec[iosc], ADD_VALUES);
-    kronI(loweringOP,   dim_lowering,  1.0, &Bc_vec[iosc], ADD_VALUES);
     kronI(loweringOP_T, dim_lowering,  1.0, &Bc_vec[iosc], ADD_VALUES);
+    kronI(loweringOP,   dim_lowering,  1.0, &Bc_vec[iosc], ADD_VALUES);
     MatAssemblyBegin(Bc_vec[iosc], MAT_FINAL_ASSEMBLY);
     MatAssemblyEnd(Bc_vec[iosc], MAT_FINAL_ASSEMBLY);
 
