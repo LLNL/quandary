@@ -17,6 +17,7 @@
 static char help[] ="Solves the Liouville-von-Neumann equations, two oscillators.\n\
 Input parameters:\n\
   -nlvl <int>      : Set the number of levels     (default: 2) \n\
+  -nosci <int>     : Set the number of oscillators (default: 2) \n\
   -ntime <int>     : Set the number of time steps (default: 1000) \n\
   -dt <double>     : Set the time step size       (default: 0.01)\n\
   -nspline <int>   : Set the number of spline basis functions (default: 100) \n\

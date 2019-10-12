@@ -1,5 +1,4 @@
 #include <stdio.h>
-#include "vector.hpp"
 #include "bspline.hpp"
 #include <fstream>
 #include <iomanip>
@@ -36,10 +35,10 @@ class Oscillator {
     /* Compute derivatives of the Re and Im control function wrt the parameters */
     virtual int evalDerivative(double t, double* dRedp, double* dImdp) = 0;
 
-    /* Print the control functions for each t \in [0,tfinal] */
-    virtual int dumpControl(double tfinal, double dt);
-    virtual void dumpControl(double tfinal, double dt, std::ostream &output);
-    virtual void dumpControl(double tfinal, double dt, std::string filename);
+    // /* Print the control functions for each t \in [0,tfinal] */
+    // virtual int dumpControl(double tfinal, double dt);
+    // virtual void dumpControl(double tfinal, double dt, std::ostream &output);
+    // virtual void dumpControl(double tfinal, double dt, std::string filename);
 
 };
 

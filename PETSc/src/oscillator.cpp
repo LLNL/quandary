@@ -6,34 +6,34 @@ Oscillator::Oscillator(){
 }
 Oscillator::~Oscillator(){}
 
-int Oscillator::dumpControl(double tfinal, double dt){
-  this->dumpControl(tfinal, dt, std::cout);
-  return 0;
-}
+// int Oscillator::dumpControl(double tfinal, double dt){
+//   this->dumpControl(tfinal, dt, std::cout);
+//   return 0;
+// }
 
 
-void Oscillator::dumpControl(double tfinal, double dt, std::ostream &output){
+// void Oscillator::dumpControl(double tfinal, double dt, std::ostream &output){
 
-  int N = tfinal / dt;
-  MultiVector controlout(N, 3, 0.0);
+//   int N = tfinal / dt;
+//   MultiVector controlout(N, 3, 0.0);
 
-  /* Evaluate control at all time steps */
-  for (int i=0; i < N; i++){
-    double t = (double) i * dt;
-    controlout(i,0) = i*dt;
-    evalControl(t,  &controlout(i,1), &controlout(i,2));
-  }
-  controlout.dump(output);
-}
+//   /* Evaluate control at all time steps */
+//   for (int i=0; i < N; i++){
+//     double t = (double) i * dt;
+//     controlout(i,0) = i*dt;
+//     evalControl(t,  &controlout(i,1), &controlout(i,2));
+//   }
+//   controlout.dump(output);
+// }
 
-void Oscillator::dumpControl(double tfinal, double dt, std::string filename){
-  ofstream file;
-  file.open(filename.c_str());
-  file << setprecision(20);
-  this->dumpControl(tfinal, dt, file);
-  file << endl;
-  file.close();
-}
+// void Oscillator::dumpControl(double tfinal, double dt, std::string filename){
+//   ofstream file;
+//   file.open(filename.c_str());
+//   file << setprecision(20);
+//   this->dumpControl(tfinal, dt, file);
+//   file << endl;
+//   file.close();
+// }
 
 SplineOscillator::SplineOscillator() {
   Tfinal = 0;
