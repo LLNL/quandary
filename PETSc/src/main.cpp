@@ -95,6 +95,7 @@ int main(int argc,char **argv)
 
   /* Parse command line arguments to overwrite default constants */
   PetscOptionsGetInt(NULL,NULL,"-nlvl",&nlvl,NULL);
+  PetscOptionsGetInt(NULL,NULL,"-nosci",&nosci,NULL);
   PetscOptionsGetInt(NULL,NULL,"-ntime",&ntime,NULL);
   PetscOptionsGetReal(NULL,NULL,"-dt",&dt,NULL);
   PetscOptionsGetInt(NULL,NULL,"-nspline",&nspline,NULL);
@@ -105,17 +106,12 @@ int main(int argc,char **argv)
   PetscOptionsGetBool(NULL,NULL,"-analytic",&analytic,NULL);
   PetscOptionsGetBool(NULL,NULL,"-monitor",&monitor,NULL);
 
-  /* Sanity check */
-  if (nosci != 2)
-  {
-    printf("\nERROR: Current only 2 oscillators are supported.\n You chose %d oscillators.\n\n", nlvl, nosci);
-    exit(0);
-  }
 
   /* Initialize time horizon */
   total_time = ntime * dt;
 
   /* Initialize the Hamiltonian */
+  if (analytic) nosci = 2;
   Oscillator** oscil_vec = new Oscillator*[nosci];
   if (analytic) {
     double omegaF1 = 1.0;
@@ -147,7 +143,7 @@ int main(int argc,char **argv)
     hamiltonian = new AnalyticHam(xi, oscil_vec); // always 2levels
   } else {
     // hamiltonian = new TwoOscilHam(nlvl, xi, oscil_vec);
-    hamiltonian = new LiouvilleVN(xi, 2, oscil_vec);
+    hamiltonian = new LiouvilleVN(xi, nosci, oscil_vec);
   }
 
   /* Create solution vector x */
