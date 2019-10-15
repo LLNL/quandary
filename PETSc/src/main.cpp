@@ -256,6 +256,8 @@ int main(int argc,char **argv)
     printf("Objective: %1.12e\n", objective);
   }
 
+  braid_printConvHistory(braid_core, "braid.out.log");
+
   goto exit;
 
   /* --- Solve adjoint --- */
@@ -300,10 +302,10 @@ int main(int argc,char **argv)
   UsedTime = StopTime - StartTime;
 
   /* Print convergence history */
-  braid_printConvHistory(braid_core, "braid.out.log");
   braid_printConvHistory(braid_core_adj, "braid_adj.out.log");
 
 exit:
+
 
 #if TEST_FD_TS
 
