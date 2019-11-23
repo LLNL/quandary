@@ -6,34 +6,23 @@ Oscillator::Oscillator(){
 }
 Oscillator::~Oscillator(){}
 
-// int Oscillator::dumpControl(double tfinal, double dt){
-//   this->dumpControl(tfinal, dt, std::cout);
-//   return 0;
-// }
+void Oscillator::flushControl(int ntime, double dt, const char* filename) {
+  double time;
+  double Re, Im;
+  FILE *file = 0;
+  file = fopen(filename, "w");
+
+  for (int i=0; i<ntime; i++) {
+    time = i*dt; 
+    this->evalControl(time, &Re, &Im);
+    fprintf(file, "%08d  % 1.4f   % 1.14e   % 1.14e\n", i, time, Re, Im);
+  }
+
+  fclose(file);
+  printf("File written: %s\n", filename);
+}
 
 
-// void Oscillator::dumpControl(double tfinal, double dt, std::ostream &output){
-
-//   int N = tfinal / dt;
-//   MultiVector controlout(N, 3, 0.0);
-
-//   /* Evaluate control at all time steps */
-//   for (int i=0; i < N; i++){
-//     double t = (double) i * dt;
-//     controlout(i,0) = i*dt;
-//     evalControl(t,  &controlout(i,1), &controlout(i,2));
-//   }
-//   controlout.dump(output);
-// }
-
-// void Oscillator::dumpControl(double tfinal, double dt, std::string filename){
-//   ofstream file;
-//   file.open(filename.c_str());
-//   file << setprecision(20);
-//   this->dumpControl(tfinal, dt, file);
-//   file << endl;
-//   file.close();
-// }
 
 SplineOscillator::SplineOscillator() {
   Tfinal = 0;

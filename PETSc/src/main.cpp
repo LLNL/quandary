@@ -119,11 +119,15 @@ int main(int argc,char **argv)
     double omegaG2 = 1.0;
     oscil_vec[0] = new FunctionOscillator(nlvl, omegaF1, &F1_analytic, &dF1_analytic, 0.0, NULL, NULL );
     oscil_vec[1] = new FunctionOscillator(nlvl, 0.0, NULL, NULL, omegaG2, &G2_analytic, &dG2_analytic);
+    if (mpirank == 0) {
+      oscil_vec[0]->flushControl(ntime, dt, "control_osc1.dat");
+      oscil_vec[1]->flushControl(ntime, dt, "control_osc2.dat");
+    }
   } else {
     for (int i = 0; i < nosci; i++){
       oscil_vec[i] = new SplineOscillator(nlvl, nspline, total_time);
     }
-    // oscil_vec[0]->dumpControl(total_time, dt, "initcontrol.dat");
+    oscil_vec[0]->flushControl(ntime, dt, "control_osc1.dat");
   }
 
 

@@ -2,6 +2,7 @@
 #include "bspline.hpp"
 #include <fstream>
 #include <iomanip>
+
 #pragma once
 
 using namespace std;
@@ -35,10 +36,8 @@ class Oscillator {
     /* Compute derivatives of the Re and Im control function wrt the parameters */
     virtual int evalDerivative(double t, double* dRedp, double* dImdp) = 0;
 
-    // /* Print the control functions for each t \in [0,tfinal] */
-    // virtual int dumpControl(double tfinal, double dt);
-    // virtual void dumpControl(double tfinal, double dt, std::ostream &output);
-    // virtual void dumpControl(double tfinal, double dt, std::string filename);
+    /* Print the control functions for each t \in [0,ntime*dt] */
+    virtual void flushControl(int ntime, double dt, const char* filename);
 
 };
 
@@ -68,6 +67,9 @@ class SplineOscillator : public Oscillator {
 
     /* Update control parameters x <- x + stepsize*direction */
     virtual int updateParams(double stepsize, double* directionRe, double* directionIm);
+
+    /* Print the control functions for each t \in [0,tfinal] */
+    // virtual void flushControl(int ntime, double dt, const char* filename);
 
 };
 
