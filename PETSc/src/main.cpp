@@ -29,6 +29,7 @@ Input parameters:\n\
   -monitor         : Prints out additional information on the time stepper\n\n\
   -fmg             : Turn on full multigrid cycling           \n\
   -skip            : Turn on skipping work on xbraid's first downcycle \n\
+  -primal_only     : Run primal simulation only (no adjoint, no optim) \n\
   -analytic        : Runs analytic testcase (2-level, 2-oscillator, pure state) \n\n";
 
 
@@ -51,6 +52,7 @@ int main(int argc,char **argv)
   PetscInt       nspline;      // Number of spline basis functions
   Hamiltonian*   hamiltonian;  // Hamiltonian system
   PetscBool      analytic;     // If true: runs analytic test case
+  PetscBool      primal_only;  // If true: runs only one primal simulation
   PetscBool      fmg;          // If true: Turns on full multigrid cycling
   PetscBool      monitor;      // If true: Print out additional time-stepper information
   PetscBool      skip;         // If true: Skip work on braid's downcycle
@@ -101,6 +103,7 @@ int main(int argc,char **argv)
   iolevel = 1;
   maxiter = 50;
   analytic = PETSC_FALSE;
+  primal_only = PETSC_FALSE;
   fmg = PETSC_FALSE;
   monitor = PETSC_FALSE;
   skip = PETSC_FALSE;
@@ -117,6 +120,7 @@ int main(int argc,char **argv)
   PetscOptionsGetInt(NULL,NULL,"-iolevel",&iolevel,NULL);
   PetscOptionsGetInt(NULL,NULL,"-mi",&maxiter,NULL);
   PetscOptionsGetBool(NULL,NULL,"-analytic",&analytic,NULL);
+  PetscOptionsGetBool(NULL,NULL,"-primal_only",&primal_only,NULL);
   PetscOptionsGetBool(NULL,NULL,"-fmg",&fmg,NULL);
   PetscOptionsGetBool(NULL,NULL,"-monitor",&monitor,NULL);
   PetscOptionsGetBool(NULL,NULL,"-skip",&skip,NULL);
@@ -169,8 +173,8 @@ int main(int argc,char **argv)
   MatCreateVecs(hamiltonian->getRHS(), &x, NULL);
 
   /* Initialize reduced gradient and adjoints */
-  MatCreateVecs(hamiltonian->getRHS(), lambda, NULL);  // passend zu y (RHS * lambda)
-  MatCreateVecs(hamiltonian->getdRHSdp(), mu, NULL);   // passend zu p (dHdp * mu)
+  MatCreateVecs(hamiltonian->getRHS(), lambda, NULL);  // adjoint 
+  MatCreateVecs(hamiltonian->getdRHSdp(), mu, NULL);   // reduced gradient
 
   /* Screen output */
   if (mpirank == 0)
@@ -228,10 +232,10 @@ int main(int argc,char **argv)
   braid_SetSkip(braid_core_adj, skip);
   braid_SetSeqSoln(braid_core, 0);
   braid_SetSeqSoln(braid_core_adj, 0);
-  /* Store all points if 'solveadjointwithxbraid' */
-  braid_SetStorage(braid_core, 0);
-  braid_SetStorage(braid_core_adj, 0);
-  /* Set reverted rank for 'solveadjointwithxbraid' */
+  /* Set reverted rank for adjoint with 'solveadjointwithxbraid' */
+  if (!primal_only) braid_SetStorage(braid_core, 0);
+  if (!primal_only) braid_SetStorage(braid_core_adj, 0);
+  /* Set reverted rank for adjoint with 'solveadjointwithxbraid' */
   braid_SetRevertedRanks(braid_core_adj, 1);
   if (fmg) braid_SetFMG(braid_core);
   if (fmg) braid_SetFMG(braid_core_adj);
@@ -260,15 +264,13 @@ int main(int argc,char **argv)
   /* --- Solve primal --- */
 
   braid_Drive(braid_core);
+
   /* If multilevel solve: Sweep over all points to access */
-  if (maxlevels > 1) {
+  if (maxlevels > 1 && iolevel > 0) {
     _braid_CoreElt(braid_core, done) = 1;
     _braid_FCRelax(braid_core, 0);
   }
-
-  // hamiltonian->initialCondition(x);
-  // ierr = TSSolve(ts, x);
-  
+ 
 
   /* Get the objective */
   braid_GetObjective(braid_core, &objective);
@@ -278,7 +280,8 @@ int main(int argc,char **argv)
 
   braid_printConvHistory(braid_core, "braid.out.log");
 
-  goto exit;
+  /* Exit if primal run only */
+  if (primal_only) goto exit;
 
   /* --- Solve adjoint --- */
 

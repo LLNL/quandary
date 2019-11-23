@@ -252,7 +252,7 @@ LiouvilleVN::LiouvilleVN(double* xi_, int noscillators_, Oscillator** oscil_vec_
   Mat loweringOP, loweringOP_T;
   Mat numberOP;
 
-  printf("dim %d\n", dim);
+  // printf("dim %d\n", dim);
 
   xi = xi_;
 
