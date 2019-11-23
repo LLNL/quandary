@@ -25,7 +25,10 @@ Input parameters:\n\
   -ml <int>        : Set XBraid's max levels                  (default: 5)\n\
   -mi <int>        : Set XBraid's max number of iterations    (default: 50)\n\n\
   -pl <int>        : Set XBraid's print level                 (default: 2)\n\n\
+  -iolevel <int>   : Set file io level (0 - no IO)            (default: 1)\n\n\
   -monitor         : Prints out additional information on the time stepper\n\n\
+  -fmg             : Turn on full multigrid cycling           \n\
+  -skip            : Turn on skipping work on xbraid's first downcycle \n\
   -analytic        : Runs analytic testcase (2-level, 2-oscillator, pure state) \n\n";
 
 
@@ -44,10 +47,14 @@ int main(int argc,char **argv)
   PetscInt       maxlevels;    // XBraid's maximum number of levels
   PetscInt       printlevel;    // XBraid's maximum number of levels
   PetscInt       maxiter;      // XBraid's maximum number of iterations
+  PetscInt       iolevel;      // Level of file output (0: no output)
   PetscInt       nspline;      // Number of spline basis functions
   Hamiltonian*   hamiltonian;  // Hamiltonian system
   PetscBool      analytic;     // If true: runs analytic test case
+  PetscBool      fmg;          // If true: Turns on full multigrid cycling
   PetscBool      monitor;      // If true: Print out additional time-stepper information
+  PetscBool      skip;         // If true: Skip work on braid's downcycle
+
   Vec            x;          // solution vector
   // bool           tj_save;    // Determines wether trajectory should be stored in primal run
   PetscInt ndesign;           // Number of design variables 
@@ -59,7 +66,8 @@ int main(int argc,char **argv)
   Vec* mu = new Vec;       // Reduced gradient in mu[0]
 
 
-  FILE *ufile, *vfile;
+  FILE *ufile = NULL;
+  FILE *vfile = NULL;
   char filename[255];
   PetscErrorCode ierr;
   PetscMPIInt    mpisize, mpirank;
@@ -90,9 +98,12 @@ int main(int argc,char **argv)
   cfactor = 5;
   maxlevels = 5;
   printlevel = 2;
+  iolevel = 1;
   maxiter = 50;
   analytic = PETSC_FALSE;
+  fmg = PETSC_FALSE;
   monitor = PETSC_FALSE;
+  skip = PETSC_FALSE;
 
   /* Parse command line arguments to overwrite default constants */
   PetscOptionsGetInt(NULL,NULL,"-nlvl",&nlvl,NULL);
@@ -103,9 +114,12 @@ int main(int argc,char **argv)
   PetscOptionsGetInt(NULL,NULL,"-cf",&cfactor,NULL);
   PetscOptionsGetInt(NULL,NULL,"-ml",&maxlevels,NULL);
   PetscOptionsGetInt(NULL,NULL,"-pl",&printlevel,NULL);
+  PetscOptionsGetInt(NULL,NULL,"-iolevel",&iolevel,NULL);
   PetscOptionsGetInt(NULL,NULL,"-mi",&maxiter,NULL);
   PetscOptionsGetBool(NULL,NULL,"-analytic",&analytic,NULL);
+  PetscOptionsGetBool(NULL,NULL,"-fmg",&fmg,NULL);
   PetscOptionsGetBool(NULL,NULL,"-monitor",&monitor,NULL);
+  PetscOptionsGetBool(NULL,NULL,"-skip",&skip,NULL);
 
 
   /* Initialize time horizon */
@@ -119,7 +133,7 @@ int main(int argc,char **argv)
     double omegaG2 = 1.0;
     oscil_vec[0] = new FunctionOscillator(nlvl, omegaF1, &F1_analytic, &dF1_analytic, 0.0, NULL, NULL );
     oscil_vec[1] = new FunctionOscillator(nlvl, 0.0, NULL, NULL, omegaG2, &G2_analytic, &dG2_analytic);
-    if (mpirank == 0) {
+    if (mpirank == 0 && iolevel > 0) {
       oscil_vec[0]->flushControl(ntime, dt, "control_osc1.dat");
       oscil_vec[1]->flushControl(ntime, dt, "control_osc2.dat");
     }
@@ -127,7 +141,7 @@ int main(int argc,char **argv)
     for (int i = 0; i < nosci; i++){
       oscil_vec[i] = new SplineOscillator(nlvl, nspline, total_time);
     }
-    oscil_vec[0]->flushControl(ntime, dt, "control_osc1.dat");
+    if (mpirank == 0 && iolevel > 0) oscil_vec[0]->flushControl(ntime, dt, "control_osc1.dat");
   }
 
 
@@ -169,9 +183,9 @@ int main(int argc,char **argv)
 
   /* Open output files */
   sprintf(filename, "out_u.%04d.dat", mpirank);
-  ufile = fopen(filename, "w");
+  if (iolevel > 0) ufile = fopen(filename, "w");
   sprintf(filename, "out_v.%04d.dat", mpirank);
-  vfile = fopen(filename, "w");
+  if (iolevel > 0) vfile = fopen(filename, "w");
 
   /* Allocate and initialize Petsc's Time-stepper */
   TSCreate(PETSC_COMM_SELF,&ts);CHKERRQ(ierr);
@@ -198,8 +212,8 @@ int main(int argc,char **argv)
   /* Set Braid options */
   braid_SetPrintLevel( braid_core, printlevel);
   braid_SetPrintLevel( braid_core_adj, printlevel);
-  braid_SetAccessLevel( braid_core, 1);
-  braid_SetAccessLevel( braid_core_adj, 1);
+  braid_SetAccessLevel( braid_core, iolevel);
+  braid_SetAccessLevel( braid_core_adj, iolevel);
   braid_SetMaxLevels(braid_core, maxlevels);
   braid_SetMaxLevels(braid_core_adj, maxlevels);
   braid_SetNRelax(braid_core, -1, 1);
@@ -210,8 +224,8 @@ int main(int argc,char **argv)
   braid_SetCFactor(braid_core_adj, -1, cfactor);
   braid_SetMaxIter(braid_core, maxiter);
   braid_SetMaxIter(braid_core_adj, maxiter);
-  braid_SetSkip(braid_core, 0);
-  braid_SetSkip(braid_core_adj, 0);
+  braid_SetSkip(braid_core, skip);
+  braid_SetSkip(braid_core_adj, skip);
   braid_SetSeqSoln(braid_core, 0);
   braid_SetSeqSoln(braid_core_adj, 0);
   /* Store all points if 'solveadjointwithxbraid' */
@@ -219,6 +233,8 @@ int main(int argc,char **argv)
   braid_SetStorage(braid_core_adj, 0);
   /* Set reverted rank for 'solveadjointwithxbraid' */
   braid_SetRevertedRanks(braid_core_adj, 1);
+  if (fmg) braid_SetFMG(braid_core);
+  if (fmg) braid_SetFMG(braid_core_adj);
 
 
   int ilower, iupper;
@@ -583,8 +599,8 @@ exit:
 
 
   /* Clean up */
-  fclose(ufile);
-  fclose(vfile);
+  if (ufile != NULL) fclose(ufile);
+  if (vfile != NULL) fclose(vfile);
   // TSDestroy(&ts);
 
   /* Clean up Oscillator */
