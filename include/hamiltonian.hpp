@@ -21,7 +21,7 @@ class Hamiltonian{
     Hamiltonian();
     /* This constructor sets the variables and allocates Re, Im and M */
     Hamiltonian(int noscillators_, Oscillator** oscil_vec_);
-    ~Hamiltonian();
+    virtual ~Hamiltonian();
 
     /* Return dimension of vectorized system */
     int getDim();
@@ -100,7 +100,7 @@ class LiouvilleVN : public Hamiltonian {
   public: 
     LiouvilleVN();
     LiouvilleVN(double* xi, int noscillators_, Oscillator** oscil_vec_);
-    ~LiouvilleVN();
+    virtual ~LiouvilleVN();
 
     /* Set the initial condition (zero so far...) */
     virtual int initialCondition(Vec x);
@@ -117,7 +117,7 @@ class AnalyticHam : public LiouvilleVN {
   
   public:
     AnalyticHam(double* xi_, Oscillator** oscil_vec_);
-    ~AnalyticHam();
+    virtual ~AnalyticHam();
 
     /* Evaluate the exact solution at time t. */
     virtual bool ExactSolution(double t, Vec x);

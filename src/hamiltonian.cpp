@@ -503,6 +503,8 @@ int LiouvilleVN::assemble_dRHSdp(double t, Vec x) {
 
 AnalyticHam::AnalyticHam(double* xi_, Oscillator** oscil_vec_) : LiouvilleVN(xi_, 2, oscil_vec_) {}
 
+AnalyticHam::~AnalyticHam() {}
+
 
 PetscScalar F1_analytic(PetscReal t, PetscReal freq)
 {
