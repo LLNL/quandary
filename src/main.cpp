@@ -104,7 +104,7 @@ int main(int argc,char **argv)
   iolevel = 1;
   maxiter = 50;
   analytic = PETSC_FALSE;
-  primal_only = PETSC_FALSE;
+  primal_only = PETSC_TRUE;
   fmg = PETSC_FALSE;
   monitor = PETSC_FALSE;
   skip = PETSC_FALSE;
