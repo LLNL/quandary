@@ -5,6 +5,7 @@
 #include "bspline.hpp"
 #include "oscillator.hpp" 
 #include "hamiltonian.hpp"
+#include "map_param.hpp"
 #include "_braid.h"
 
 #define EPS 1e-5
