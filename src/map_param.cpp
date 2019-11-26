@@ -7,7 +7,7 @@ void export_param(int mpi_rank, string key, T value, T default_value)
 {
   if (mpi_rank == 0)
   {
-    cout << "Using ";
+    cout << "# Using ";
     if (value == default_value)
       cout << " (default) ";
     cout << "parameter: " << key << " = " << value << endl;
@@ -76,7 +76,7 @@ void MapParam::ReadFile(string filename)
   file.close();
 }
 
-double MapParam::GetdoubleParam(string key, double default_val) const
+double MapParam::GetDoubleParam(string key, double default_val) const
 {
   map<string, string>::const_iterator it_value = this->find(key);
   double val;

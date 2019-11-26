@@ -7,6 +7,7 @@
 #include "hamiltonian.hpp"
 #include "map_param.hpp"
 #include "_braid.h"
+#include <stdlib.h>
 
 #define EPS 1e-5
 
@@ -88,45 +89,36 @@ int main(int argc,char **argv)
   braid_SplitCommworld(&comm, 1, &comm_petsc, &comm_braid);
   PETSC_COMM_WORLD = comm_petsc;
 
-
   /* Initialize Petsc */
   ierr = PetscInitialize(&argc,&argv,(char*)0,help);if (ierr) return ierr;
 
-  /* Set default constants */
-  nlvl = 2;
-  nosci = 2;
-  ntime = 1000;
-  dt = 0.01;
-  nspline = 100;
-  cfactor = 5;
-  maxlevels = 5;
-  printlevel = 2;
-  iolevel = 1;
-  maxiter = 50;
-  analytic = PETSC_FALSE;
-  primal_only = PETSC_TRUE;
-  fmg = PETSC_FALSE;
-  monitor = PETSC_FALSE;
-  skip = PETSC_FALSE;
-
-  /* Parse command line arguments to overwrite default constants */
-  PetscOptionsGetInt(NULL,NULL,"-nlvl",&nlvl,NULL);
-  PetscOptionsGetInt(NULL,NULL,"-nosci",&nosci,NULL);
-  PetscOptionsGetInt(NULL,NULL,"-ntime",&ntime,NULL);
-  PetscOptionsGetReal(NULL,NULL,"-dt",&dt,NULL);
-  PetscOptionsGetInt(NULL,NULL,"-nspline",&nspline,NULL);
-  PetscOptionsGetInt(NULL,NULL,"-cf",&cfactor,NULL);
-  PetscOptionsGetInt(NULL,NULL,"-ml",&maxlevels,NULL);
-  PetscOptionsGetInt(NULL,NULL,"-pl",&printlevel,NULL);
-  PetscOptionsGetInt(NULL,NULL,"-iolevel",&iolevel,NULL);
-  PetscOptionsGetInt(NULL,NULL,"-mi",&maxiter,NULL);
-  PetscOptionsGetBool(NULL,NULL,"-analytic",&analytic,NULL);
-  PetscOptionsGetBool(NULL,NULL,"-primal_only",&primal_only,NULL);
-  PetscOptionsGetBool(NULL,NULL,"-fmg",&fmg,NULL);
-  PetscOptionsGetBool(NULL,NULL,"-monitor",&monitor,NULL);
-  PetscOptionsGetBool(NULL,NULL,"-skip",&skip,NULL);
-
-
+  /* Read config file and set default */
+  if (argc != 2) {
+    if (mpirank == 0) {
+      printf("\n");
+      printf("USAGE: ./main </path/to/configfile> \n");
+    }
+    MPI_Finalize();
+    return 0;
+  }
+  MapParam config(comm);
+  config.ReadFile(argv[1]);
+  nlvl  = config.GetIntParam("nlevels", 2);
+  nosci = config.GetIntParam("noscillators", 2);
+  ntime = config.GetIntParam("ntime", 1000);
+  dt    = config.GetDoubleParam("dt", 0.01);
+  nspline = config.GetIntParam("nspline", 100);
+  cfactor = config.GetIntParam("cfactor", 5);
+  maxlevels = config.GetIntParam("maxlevels", 5);
+  printlevel = config.GetIntParam("printlevel", 2);
+  iolevel = config.GetIntParam("iolevel", 1);
+  maxiter = config.GetIntParam("maxiter", 50);
+  analytic = (PetscBool) config.GetBoolParam("analytic", false);
+  primal_only = (PetscBool) config.GetBoolParam("primal_only", false);
+  fmg = (PetscBool) config.GetBoolParam("fmg", false);
+  monitor = (PetscBool) config.GetBoolParam("monitor", false);
+  skip = (PetscBool) config.GetBoolParam("skip", false);
+  
   /* Initialize time horizon */
   total_time = ntime * dt;
 

@@ -22,11 +22,16 @@ public:
   /* Destructor */
   ~MapParam();
   
+  /* Parse the config file. Stores keys and values in the map. */
   void ReadFile(std::string filename);
-  double GetdoubleParam(std::string key, double default_val = -1.) const;
+
+  /* Return mpirank */
+  int GetMpiRank() const;
+
+  /* Get config options (double, int, string, bool) */
+  double GetDoubleParam(std::string key, double default_val = -1.) const;
   int GetIntParam(std::string key, int default_val = -1) const;
   std::string GetStrParam(std::string key, std::string default_val = "") const;
   bool GetBoolParam(std::string key, bool default_val = false) const;
-  int GetMpiRank() const;
 };
 
