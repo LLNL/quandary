@@ -16,25 +16,6 @@
 #define TEST_DT 0
 
 
-static char help[] ="Solves the Liouville-von-Neumann equations, two oscillators.\n\
-Input parameters:\n\
-  -nlvl <int>      : Set the number of levels     (default: 2) \n\
-  -nosci <int>     : Set the number of oscillators (default: 2) \n\
-  -ntime <int>     : Set the number of time steps (default: 1000) \n\
-  -dt <double>     : Set the time step size       (default: 0.01)\n\
-  -nspline <int>   : Set the number of spline basis functions (default: 100) \n\
-  -cf <int>        : Set XBraid's coarsening factor           (default: 5) \n\
-  -ml <int>        : Set XBraid's max levels                  (default: 5)\n\
-  -mi <int>        : Set XBraid's max number of iterations    (default: 50)\n\n\
-  -pl <int>        : Set XBraid's print level                 (default: 2)\n\n\
-  -iolevel <int>   : Set file io level (0 - no IO)            (default: 1)\n\n\
-  -monitor         : Prints out additional information on the time stepper\n\n\
-  -fmg             : Turn on full multigrid cycling           \n\
-  -skip            : Turn on skipping work on xbraid's first downcycle \n\
-  -primal_only     : Run primal simulation only (no adjoint, no optim) \n\
-  -analytic        : Runs analytic testcase (2-level, 2-oscillator, pure state) \n\n";
-
-
 int main(int argc,char **argv)
 {
   PetscInt       nlvl;         // Number of levels for each oscillator (currently 2)
@@ -90,7 +71,7 @@ int main(int argc,char **argv)
   PETSC_COMM_WORLD = comm_petsc;
 
   /* Initialize Petsc */
-  ierr = PetscInitialize(&argc,&argv,(char*)0,help);if (ierr) return ierr;
+  ierr = PetscInitialize(&argc,&argv,(char*)0,NULL);if (ierr) return ierr;
 
   /* Read config file and set default */
   if (argc != 2) {
