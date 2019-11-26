@@ -1,9 +1,9 @@
 .vscode
 *.out
 *.dat
-PETSc/build/*
-PETSc/main
-*/*braid.out.cycle
+build/*
+main
+braid.out.cycle
 *.aux
 *.log
 *.err
