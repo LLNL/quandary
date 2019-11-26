@@ -1,12 +1,12 @@
-# Parallel-in-time quantum control (PinT-QC)
+# Quac - Quantum control for HPC
+This project implements a parallel-in-time optimization solver for quantum control based on the density matrix formulation. The underlying dynamics model open quantum systems, using the Lindblad master equation to evolve the density matrix in time. The software library XBraid is used to distribute the simulation time domain onto multiple cores and apply the time-parallel multigrid iterations.
 
 ## Requirements:
 To build this project, you need to have the following packages installed:
 * Petsc [https://www.mcs.anl.gov/petsc/]
-* Xbraid [https://github.com/XBraid/xbraid]
+* Xbraid [https://github.com/XBraid/xbraid], on branch 'solveadjointwithxbraid'
 
 ## Installation
-* For XBraid: 
 * Download XBraid, switch to the 'solveadjointwithxbraid' branch and build the shared library:
     - git clone https://github.com/XBraid/xbraid.git
     - cd xbraid
