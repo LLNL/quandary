@@ -18,10 +18,5 @@ To build this project, you need to have the following packages installed:
 * Type `make main` to build the code. 
 
 ## Running
-The code builds into the executable `./main`.
-* Show available command line arguments, type `./main --help`. This however also shows PETSC's command line arguments. So you might want to have a look into 'src/main.c' to see the command line arguments specific for this project.
-* For serial time-stepping, use `./main -ml 1`, which executes XBraid on one time-grid level, which is equivalent to serial time-stepping. 
-* For multigrid time-stepping, use higher `-ml` argument, e.g. the default `./main -ml 5`. 
-* For parallel computations, run with `mpirun -np <nprocessors> ./main <args>`
-
+The code builds into the executable `./main`. It takes one argument being the name of the config file. A template for a config file listing all options is in 'config.cfg'. For serial time-stepping, use `maxlevels=1`, which executes XBraid on one time-grid level, which is equivalent to serial time-stepping. 
 
