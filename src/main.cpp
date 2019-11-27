@@ -88,9 +88,9 @@ int main(int argc,char **argv)
   nosci = config.GetIntParam("noscillators", 2);
   ntime = config.GetIntParam("ntime", 1000);
   dt    = config.GetDoubleParam("dt", 0.01);
-  nspline = config.GetIntParam("nspline", 100);
+  nspline = config.GetIntParam("nspline", 10);
   cfactor = config.GetIntParam("cfactor", 5);
-  maxlevels = config.GetIntParam("maxlevels", 5);
+  maxlevels = config.GetIntParam("maxlevels", 20);
   printlevel = config.GetIntParam("printlevel", 2);
   iolevel = config.GetIntParam("iolevel", 1);
   maxiter = config.GetIntParam("maxiter", 50);
