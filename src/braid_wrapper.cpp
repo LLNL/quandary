@@ -17,6 +17,15 @@ int my_Step(braid_App    app,
     braid_StatusGetDone((braid_Status) status, &done);
     // printf("\nBraid %d %f->%f \n", tindex, tstart, tstop);
 
+    /* Sanity check. Be careful: This is costly! */
+    PetscBool isHermitian;
+    int ierr = StateIsHermitian(u->x, 1e-14, &isHermitian);
+    if (!isHermitian) {
+      printf("%f: WARNING! State is not hermitian!\n", tstart);
+      exit(1);
+    }
+
+
     /* Set the time */
     TSSetTime(app->ts, tstart);
     TSSetTimeStep(app->ts, tstop - tstart);

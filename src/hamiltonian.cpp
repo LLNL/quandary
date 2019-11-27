@@ -127,6 +127,11 @@ int Hamiltonian::assemble_RHS(double t){
   ierr = MatAssemblyEnd(RHS,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
   // MatView(RHS, PETSC_VIEWER_STDOUT_SELF);
 
+  /* Sanity check. Be careful: This is expensive. */
+  PetscBool isAntiSymmetric;
+  MatIsAntiSymmetric(RHS, 0.0, &isAntiSymmetric);
+  if (!isAntiSymmetric) printf("%f WARNING: RHS is not symmetric!\n",t);
+
   /* Cleanup */
   ierr = PetscFree(col_idx_shift);
   ierr = PetscFree(negvals);
@@ -373,7 +378,11 @@ LiouvilleVN::~LiouvilleVN(){
 
 int LiouvilleVN::initialCondition(Vec x){
   VecZeroEntries(x); 
-  VecSet(x, 0.1);
+
+  /* Set to first identity vector */
+  int idx = 0;
+  double val = 1.0;
+  VecSetValues(x,1, &idx, &val, INSERT_VALUES);
   
   return 0;
 }

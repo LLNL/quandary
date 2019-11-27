@@ -19,3 +19,13 @@ PetscErrorCode Ikron(Mat A, int dimI, double alpha, Mat *Out, InsertMode insert_
  * Output: Mat Out = A \kron Id
  */
 PetscErrorCode kronI(Mat A, int dimI, double alpha, Mat *Out, InsertMode insert_mode);
+
+
+/* Tests if a matrix A is anti-symmetric (A^T=-A) */
+PetscErrorCode MatIsAntiSymmetric(Mat A, PetscReal tol, PetscBool *flag);
+
+
+/* Test if the vectorized state vector x=[u,v] represents a hermitian matrix.
+ * For this to be true, we need u being symmetric, v being antisymmetric
+ */
+PetscErrorCode StateIsHermitian(Vec x, PetscReal tol, PetscBool *flag);
