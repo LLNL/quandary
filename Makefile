@@ -5,7 +5,7 @@
 BRAID_DIR = ${HOME}/Numerics/xbraid_solveadjointwithxbraid
 
 # Set compiler options, e.g. define SANITY_CHECK. Comment out if none.
-CXX_OPT = -DSANITY_CHECK
+#CXX_OPT = -DSANITY_CHECK
 
 #######################################################
 # Typically no need to change anything below

@@ -217,9 +217,10 @@ int main(int argc,char **argv)
   if (fmg) braid_SetFMG(braid_core_adj);
 
 
-  int ilower, iupper;
-  _braid_GetDistribution(braid_core, &ilower, &iupper);
-  printf("ilower %d, iupper %d\n", ilower, iupper);
+  /* Print some information on the time-grid distribution */
+  // int ilower, iupper;
+  // _braid_GetDistribution(braid_core, &ilower, &iupper);
+  // printf("ilower %d, iupper %d\n", ilower, iupper);
 
 
    /* Measure wall time */
