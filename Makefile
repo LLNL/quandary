@@ -4,6 +4,12 @@
 # Set Braid location 
 BRAID_DIR = ${HOME}/Numerics/xbraid_solveadjointwithxbraid
 
+# Set compiler options, e.g. define SANITY_CHECK. Comment out if none.
+#CXX_OPT = -DSANITY_CHECK
+
+#######################################################
+# Typically no need to change anything below
+
 # Some braid vars
 BRAID_INC_DIR = $(BRAID_DIR)/braid
 BRAID_LIB_FILE = $(BRAID_DIR)/braid/libbraid.a
@@ -31,8 +37,9 @@ INC = -I$(INC_DIR) -I$(BRAID_INC_DIR) -I${PETSC_DIR}/include -I${PETSC_DIR}/${PE
 LDPATH  = ${PETSC_DIR}/${PETSC_ARCH}/lib
 LDFLAGS = -lpetsc -lm ${BRAID_LIB_FILE}
 
+# Set compiler and flags 
 CXX=mpicxx
-CXXFLAGS= -g -lstdc++
+CXXFLAGS= -g -lstdc++ $(CXX_OPT)
 
 
 # Rule for linking main

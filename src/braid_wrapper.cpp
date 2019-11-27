@@ -17,6 +17,23 @@ int my_Step(braid_App    app,
     braid_StatusGetDone((braid_Status) status, &done);
     // printf("\nBraid %d %f->%f \n", tindex, tstart, tstop);
 
+#ifdef SANITY_CHECK
+     printf("Performing check Hermitian, Trace... \n");
+    /* Sanity check. Be careful: This is costly! */
+    PetscBool check;
+    double tol = 1e-14;
+    StateIsHermitian(u->x, tol, &check);
+    if (!check) {
+      printf("%f: WARNING! State is not hermitian!\n", tstart);
+      exit(1);
+    }
+    StateHasTrace1(u->x, tol, &check);
+    if (!check) {
+      printf("%f: WARNING! Trace(State) is not one!\n", tstart);
+      exit(1);
+    }
+  #endif
+
     /* Set the time */
     TSSetTime(app->ts, tstart);
     TSSetTimeStep(app->ts, tstop - tstart);
