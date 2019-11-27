@@ -7,6 +7,7 @@
  * Abstract base class for Hamiltonian systems 
  */
 class Hamiltonian{
+
   protected:
     int dim;                 // Dimension of vectorized system 
     int noscillators;        // Number of oscillators
@@ -15,6 +16,11 @@ class Hamiltonian{
     Mat Re, Im;             // Real and imaginary part of Hamiltonian operator
     Mat RHS;                // Realvalued, vectorized Hamiltonian operator vec(-i(Hq-qH))
     Mat dRHSdp;             // Derivative of RHS(x) wrt control parameters
+
+  private: 
+    PetscInt    *col_idx_shift; // Auxiliary vector holding shifted indices
+    PetscScalar *negvals;       // Auxiliary vector holding negative vals of some matrix
+
 
   public:
     /* Default constructor sets zero */

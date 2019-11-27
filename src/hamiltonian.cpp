@@ -62,6 +62,11 @@ Hamiltonian::Hamiltonian(int noscillators_, Oscillator** oscil_vec_){
   MatSetUp(dRHSdp);
   MatAssemblyBegin(dRHSdp,MAT_FINAL_ASSEMBLY);
   MatAssemblyEnd(dRHSdp,MAT_FINAL_ASSEMBLY);
+
+  /* Allocate auxiliary vectors */
+  ierr = PetscMalloc1(dim, &col_idx_shift);
+  ierr = PetscMalloc1(dim, &negvals);
+  
 }
 
 
@@ -71,6 +76,8 @@ Hamiltonian::~Hamiltonian(){
     MatDestroy(&Im);
     MatDestroy(&RHS);
     MatDestroy(&dRHSdp);
+    PetscFree(col_idx_shift);
+    PetscFree(negvals);
   }
 }
 
@@ -84,12 +91,6 @@ int Hamiltonian::assemble_RHS(double t){
   int ncol;
   const PetscInt *col_idx;
   const PetscScalar *vals;
-  PetscScalar *negvals;
-  PetscInt *col_idx_shift;
-
-  /* Allocate tmp vectors */
-  ierr = PetscMalloc1(dim, &col_idx_shift);CHKERRQ(ierr);
-  ierr = PetscMalloc1(dim, &negvals);CHKERRQ(ierr);
 
   /* Set up Jacobian M (=RHS)
    * M(0, 0) =  Re    M(0,1) = -Im
@@ -134,10 +135,6 @@ int Hamiltonian::assemble_RHS(double t){
   MatIsAntiSymmetric(RHS, 0.0, &isAntiSymmetric);
   if (!isAntiSymmetric) printf("%f WARNING: RHS is not symmetric!\n",t);
 #endif
-
-  /* Cleanup */
-  ierr = PetscFree(col_idx_shift);
-  ierr = PetscFree(negvals);
 
   return 0;
 }
