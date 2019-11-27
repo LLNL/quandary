@@ -88,9 +88,9 @@ int main(int argc,char **argv)
   nosci = config.GetIntParam("noscillators", 2);
   ntime = config.GetIntParam("ntime", 1000);
   dt    = config.GetDoubleParam("dt", 0.01);
-  nspline = config.GetIntParam("nspline", 100);
+  nspline = config.GetIntParam("nspline", 10);
   cfactor = config.GetIntParam("cfactor", 5);
-  maxlevels = config.GetIntParam("maxlevels", 5);
+  maxlevels = config.GetIntParam("maxlevels", 20);
   printlevel = config.GetIntParam("printlevel", 2);
   iolevel = config.GetIntParam("iolevel", 1);
   maxiter = config.GetIntParam("maxiter", 50);
@@ -111,17 +111,19 @@ int main(int argc,char **argv)
     double omegaG2 = 1.0;
     oscil_vec[0] = new FunctionOscillator(nlvl, omegaF1, &F1_analytic, &dF1_analytic, 0.0, NULL, NULL );
     oscil_vec[1] = new FunctionOscillator(nlvl, 0.0, NULL, NULL, omegaG2, &G2_analytic, &dG2_analytic);
-    if (mpirank == 0 && iolevel > 0) {
-      oscil_vec[0]->flushControl(ntime, dt, "control_osc1.dat");
-      oscil_vec[1]->flushControl(ntime, dt, "control_osc2.dat");
-    }
   } else {
     for (int i = 0; i < nosci; i++){
       oscil_vec[i] = new SplineOscillator(nlvl, nspline, total_time);
     }
-    if (mpirank == 0 && iolevel > 0) oscil_vec[0]->flushControl(ntime, dt, "control_osc1.dat");
   }
 
+  /* Flush control functions */
+  if (mpirank == 0 && iolevel > 0) {
+    for (int i = 0; i < nosci; i++){
+      sprintf(filename, "control_%04d.dat", i);
+      oscil_vec[i]->flushControl(ntime, dt, filename);
+    }
+  }
 
   /* Set frequencies for drift hamiltonian Hd xi = [xi_1, xi_2, xi_12] */
   double* xi = new double[nlvl*nlvl];
