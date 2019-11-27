@@ -18,7 +18,7 @@ int my_Step(braid_App    app,
     // printf("\nBraid %d %f->%f \n", tindex, tstart, tstop);
 
 #ifdef SANITY_CHECK
-     printf("Performing check Hermitian, Trace... \n");
+    //  printf("Performing check Hermitian, Trace... \n");
     /* Sanity check. Be careful: This is costly! */
     PetscBool check;
     double tol = 1e-14;

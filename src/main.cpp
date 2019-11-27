@@ -577,6 +577,10 @@ exit:
 
 #endif
 
+#ifdef SANITY_CHECK
+  printf("\n\n Sanity checks have been performed. Check output for warnings and errors!\n\n");
+#endif
+
 
   /* Clean up */
   if (ufile != NULL) fclose(ufile);
