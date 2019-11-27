@@ -29,3 +29,7 @@ PetscErrorCode MatIsAntiSymmetric(Mat A, PetscReal tol, PetscBool *flag);
  * For this to be true, we need u being symmetric, v being antisymmetric
  */
 PetscErrorCode StateIsHermitian(Vec x, PetscReal tol, PetscBool *flag);
+
+
+/* Test if vectorized state vector x=[u,v] represent matrix with Trace 1 */
+PetscErrorCode StateHasTrace1(Vec x, PetscReal tol, PetscBool *flag);
