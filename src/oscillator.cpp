@@ -42,7 +42,7 @@ SplineOscillator::SplineOscillator(int nlevels_, int nbasis_, double Tfinal_){
 
   /* Set some initial parameters */
   for (int i=0; i<nparam; i++){
-    param_Re[i] = pow(-1., i+1); //alternate 1 and -1
+    param_Re[i] = pow(-1., i); //alternate 1 and -1
     param_Im[i] = pow(-1., i+1); //alternate 1 and -1
   }
 }

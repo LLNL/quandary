@@ -173,8 +173,8 @@ int my_Access(braid_App       app,
     VecGetArrayRead(u->x, &x_ptr);
 
     /* Write solution to files */
-    fprintf(app->ufile,  "%.2f  ", t);
-    fprintf(app->vfile,  "%.2f  ", t);
+    fprintf(app->ufile,  "%.8f  ", t);
+    fprintf(app->vfile,  "%.8f  ", t);
     for (int i = 0; i < 2*app->hamiltonian->getDim(); i++)
     {
 
