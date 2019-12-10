@@ -5,7 +5,7 @@
 #include "bspline.hpp"
 #include "oscillator.hpp" 
 #include "hamiltonian.hpp"
-#include "map_param.hpp"
+#include "config.hpp"
 #include "_braid.h"
 #include <stdlib.h>
 
