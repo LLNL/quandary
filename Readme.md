@@ -1,5 +1,5 @@
-# Quac - Quantum control on HPC clusters
-This project implements a parallel-in-time optimization solver for quantum control based on the density matrix formulation. The underlying dynamics model open quantum systems, using the Lindblad master equation to evolve the density matrix in time. The software library XBraid is used to distribute the simulation time domain onto multiple cores and apply the time-parallel multigrid iterations.
+# Quandary - Quantum control on HPC clusters
+This project implements a parallel-in-time optimization solver for quantum control problems. The underlying quantum dynamics model open quantum systems, using the Lindblad master equation to evolve the density matrix in time. The control problem aims to find control pulses that realize a certain gate, i.e. drive the system to a desired target state. The software library XBraid is used to distribute the simulation time domain onto multiple cores and apply the time-parallel multigrid iterations.
 
 ## Requirements:
 To build this project, you need to have the following packages installed:
