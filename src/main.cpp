@@ -103,7 +103,7 @@ int main(int argc,char **argv)
   /* Initialize time horizon */
   total_time = ntime * dt;
 
-  /* Initialize the Hamiltonian */
+  /* Initialize the Oscillators */
   if (analytic) nosci = 2;
   Oscillator** oscil_vec = new Oscillator*[nosci];
   if (analytic) {
@@ -155,10 +155,10 @@ int main(int argc,char **argv)
   /* Screen output */
   if (mpirank == 0)
   {
-    printf("System with %d oscillators, %d levels. \n", nosci, nlvl);
-    printf("Time horizon:   [0,%.1f]\n", total_time);
-    printf("Number of time steps: %d\n", ntime);
-    printf("Time step size: %f\n", dt );
+    printf("# System with %d oscillators, %d levels. \n", nosci, nlvl);
+    printf("# Time horizon:   [0,%.1f]\n", total_time);
+    printf("# Number of time steps: %d\n", ntime);
+    printf("# Time step size: %f\n", dt );
   }
 
   /* Open output files */
@@ -263,6 +263,7 @@ int main(int argc,char **argv)
   /* --- Solve adjoint --- */
 
   braid_Drive(braid_core_adj);
+
   // /* If multilevel solve: Sweep over all points to compute reduced gradient */
   if (maxlevels > 1) {
     VecZeroEntries(braid_app->mu);
