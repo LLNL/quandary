@@ -310,23 +310,26 @@ exit:
 
 #if TEST_FD_TS
 
-  printf("\n\n FD Testing... \n\n");
+  printf("\n\n#########################\n");
+  printf(" FD Testing... \n");
+  printf("#########################\n\n");
 
   /* Set initial condition */
   hamiltonian->initialCondition(x);
 
   /* Build a new time-stepper */
-  TSDestroy(&ts);
+  TSDestroy(&ts); CHKERRQ(ierr);
   TSCreate(PETSC_COMM_SELF,&ts);CHKERRQ(ierr);
   TSInit(ts, hamiltonian, ntime, dt, total_time, x, lambda, mu, monitor);
 
   TSSetSolution(ts, x);
 
+
   /* Solve forward while storing trajectory */
   TSSetSaveTrajectory(ts);
   TSTrajectorySetSolutionOnly(ts->trajectory, (PetscBool) true);
   TSTrajectorySetType(ts->trajectory, ts, TSTRAJECTORYMEMORY);
-  printf("Solve forward...");
+  printf("Solve forward...\n");
   TSSolve(ts, x);
 
   /* Get original objective */
@@ -348,7 +351,7 @@ exit:
   ierr = TSSetCostGradients(ts, 1, lambda, mu); CHKERRQ(ierr);
   ierr = TSSetRHSJacobianP(ts,hamiltonian->getdRHSdp(), RHSJacobianP, hamiltonian); CHKERRQ(ierr);
 
-  printf("Solve adjoint...");
+  printf("Solve adjoint...\n");
   ierr = TSAdjointSolve(ts);CHKERRQ(ierr);
 
   /* Get the results */
@@ -451,7 +454,7 @@ exit:
   printf("\n\n Running finite-differences test...\n\n");
   
 
-  double t = 0.3;
+  double t = 1.0;
   double f, g;
   double f_pert, g_pert;
 
@@ -464,25 +467,26 @@ exit:
   }
 
   /* Init derivative */
-  Vector *dfdw = new Vector(nparam, 0.0);
-  Vector *dgdw = new Vector(nparam, 0.0);
+  double *dfdw = new double[nparam];
+  double *dgdw = new double[nparam];
 
   for (int i=0; i<nosci; i++)
   {
     printf("FD for oscillator %d:\n", i);
-    // oscil_vec[i]->dumpControl(total_time, dt);
 
     for (int iparam = 0; iparam < nparam; iparam++)
     {
       printf("  param %d:\n", iparam);
 
       /* Reset gradient */
-      dfdw->Fill(0.0);
-      dgdw->Fill(0.0);
+      for (int i=0; i< nparam; i++) {
+        dfdw[i] = 0.0;
+        dgdw[i] = 0.0;
+      }
 
       /* Eval original objectives and gradient */
       oscil_vec[i]->evalControl(t, &f, &g);
-      oscil_vec[i]->evalDerivative(t, dfdw->GetData(), dgdw->GetData());
+      oscil_vec[i]->evalDerivative(t, dfdw, dgdw);
 
       /* Eval perturbed objectives */
       dirRe[iparam] = 1.0;
@@ -495,10 +499,10 @@ exit:
       double g_fd = (g_pert - g) / EPS;
       double f_err = 0.0;
       double g_err = 0.0;
-      if (f_fd != 0.0) f_err = (dfdw->GetData()[iparam] - f_fd) / f_fd;
-      if (g_fd != 0.0) g_err = (dgdw->GetData()[iparam] - g_fd) / g_fd;
-      printf("    f_pert %1.12e, f %1.12e, f_fd %1.12e, dfdw %1.12e, f_err %2.4f\%\n", f_pert, f, f_fd, dfdw->GetData()[iparam],  f_err*100.0);
-      printf("    g_pert %1.12e, g %1.12e, g_fd %1.12e, dgdw %1.12e, g_err %2.4f\%\n", g_pert, g, g_fd, dgdw->GetData()[iparam],  g_err*100.0);
+      if (f_fd != 0.0) f_err = (dfdw[iparam] - f_fd) / f_fd;
+      if (g_fd != 0.0) g_err = (dgdw[iparam] - g_fd) / g_fd;
+      printf("    f_pert %1.12e, f %1.12e, f_fd %1.12e, dfdw %1.12e, f_err %2.4f\%\n", f_pert, f, f_fd, dfdw[iparam],  f_err*100.0);
+      printf("    g_pert %1.12e, g %1.12e, g_fd %1.12e, dgdw %1.12e, g_err %2.4f\%\n", g_pert, g, g_fd, dgdw[iparam],  g_err*100.0);
 
       /* Restore parameter */
       oscil_vec[i]->updateParams(-EPS, dirRe, dirIm);
@@ -605,8 +609,8 @@ exit:
   delete hamiltonian;
 
   /* Cleanup XBraid */
-  // braid_Destroy(braid_core);
-  // braid_Destroy(braid_core_adj);
+  braid_Destroy(braid_core);
+  if (!primal_only)  braid_Destroy(braid_core_adj);
   TSDestroy(&braid_app->ts);
   free(braid_app);
 
