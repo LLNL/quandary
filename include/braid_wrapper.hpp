@@ -1,127 +1,117 @@
+#include "config.hpp"
 #include "timestepper.hpp"
 #include "hamiltonian.hpp"
-#include "braid.h"
-#include "_braid.h"
+#include "braid.hpp"
 
 #pragma once
 
+class myBraidVector {
+  public: 
+    Vec x;
+    
+    myBraidVector();
+    myBraidVector(MPI_Comm comm, int dim);
+    ~myBraidVector();
+};
 
-/* Define the solution at one time step */
-typedef struct _braid_Vector_struct {
-    Vec x;      // solution
-} my_Vector;
-
-
-/* Define the braid application structure */
-typedef struct _braid_App_struct
-{
-    TS      ts;       // Petsc Time-stepper struct
+class myBraidApp : public BraidApp {
+  protected: 
     int     ntime;    // number of time steps
     double  total_time;
+    TS           timestepper;       // Petsc Time-stepper struct
     Hamiltonian *hamiltonian; 
-    Vec   mu;         // reduced gradient 
-    FILE *ufile;
-    FILE *vfile;
-    MPI_Comm comm_braid;
-    MPI_Comm comm_petsc;
+    // Vec   mu;                       // reduced gradient 
+    // FILE *ufile;
+    // FILE *vfile;
+    // MPI_Comm comm_braid;
+    // MPI_Comm comm_petsc;
 
     int monitor;
-    braid_Core primalcore;
-} XB_App;
+    BraidCore *core;  // Braid core for running PinT simulation */
+
+  public:
+
+    myBraidApp(MPI_Comm comm_braid_, MPI_Comm comm_petsc_, double total_time_, int ntime_, TS ts_, Hamiltonian* ham_, MapParam* config);
+    ~myBraidApp();
+
+    /* Dumps xbraid's convergence history to a file */
+    braid_Int printConvHistory(BraidCore core, const char* filename);
 
 
-/* 
- * Perform one time-step forward from tstart to tstop
- * In: app - XBraid's application struct
- *     ustop - state at tstop
- *     fstop - ?
- *     u     - state at tstart
- *     status - struct to query current time tstart / tstop 
- * Out: u - updated state  
+    /* Return the time point index of a certain time t, on the grid created with spacing dt  */
+    braid_Int getTimeStepIndex(double t, double dt);
+
+    /* Return the core */
+    BraidCore *getCore();
+
+    /* Apply one time step */
+    virtual braid_Int Step(braid_Vector u_, braid_Vector ustop_,
+                         braid_Vector fstop_, BraidStepStatus &pstatus);
+
+    /* Compute residual: Does nothing. */
+    braid_Int Residual(braid_Vector u_, braid_Vector r_,
+                     BraidStepStatus &pstatus);
+
+    /* Allocate a new vector in *v_ptr, which is a deep copy of u_. */
+    braid_Int Clone(braid_Vector u_, braid_Vector *v_ptr);
+
+    /* Allocate a new vector in *u_ptr and initialize it with an initial guess appropriate for time t. */
+    virtual braid_Int Init(braid_Real t, braid_Vector *u_ptr);
+
+  /* De-allocate the vector @a u_. */
+  braid_Int Free(braid_Vector u_);
+
+  /* Perform the operation: y_ = alpha * x_ + beta * @a y_. */
+  braid_Int Sum(braid_Real alpha, braid_Vector x_, braid_Real beta,
+                braid_Vector y_);
+
+  /* Compute in @a *norm_ptr an appropriate spatial norm of @a u_. */
+  braid_Int SpatialNorm(braid_Vector u_, braid_Real *norm_ptr);
+
+  /* @see braid_PtFcnAccess. */
+  braid_Int Access(braid_Vector u_, BraidAccessStatus &astatus);
+
+  /* @see braid_PtFcnBufSize. */
+  virtual braid_Int BufSize(braid_Int *size_ptr, BraidBufferStatus &bstatus);
+
+  /* @see braid_PtFcnBufPack. */
+  virtual braid_Int BufPack(braid_Vector u_, void *buffer,
+                            BraidBufferStatus &bstatus);
+
+  /* @see braid_PtFcnBufUnpack. */
+  virtual braid_Int BufUnpack(void *buffer, braid_Vector *u_ptr,
+                              BraidBufferStatus &bstatus);
+
+  /* Set the initial condition */
+  virtual braid_Int SetInitialCondition();
+
+  /* Run Braid drive, return norm */
+  double run();
+
+
+};
+
+/**
+ * Adjoint braid App for solving adjoint eqations with xbraid.
  */
-int my_Step(braid_App app, braid_Vector ustop, braid_Vector fstop, braid_Vector u, braid_StepStatus status);
-int my_Step_adj(braid_App app, braid_Vector ustop, braid_Vector fstop, braid_Vector u, braid_StepStatus status);
+class myAdjointBraidApp : public myBraidApp {
+ protected:
+  BraidCore *primalcore; /* pointer to primal core for accessing primal states */
 
+  public:
 
-/* 
- * Allocate and initialize a braid vector at time t
- * In: app - XBraid's application struct
- *     t   - current time
- * Out: u_ptr - Pointer to the newly allocated state vector
- */
-int my_Init(braid_App app, double t, braid_Vector *u_ptr);
-int my_Init_adj(braid_App app, double t, braid_Vector *u_ptr);
+    myAdjointBraidApp(MPI_Comm comm_braid_, MPI_Comm comm_petsc_, double total_time_, int ntime_, TS ts_, Hamiltonian* ham_, MapParam* config, BraidCore *Primalcoreptr_);
+    ~myAdjointBraidApp();
 
+  /* Get the storage index of primal (reversed) time point index of a certain time t, on the grid created with spacing dt  */
+  int getPrimalIndex(int ts);
 
-/* 
- * Create a copy of a braid vector v <- u
- * In: app - XBraid's application struct
- *     u   - state vector
- * Out: v_ptr - a pointer to the copy of u 
- */
-int my_Clone(braid_App app, braid_Vector  u, braid_Vector *v_ptr);
+  /* Apply one adjoint time step */
+  braid_Int Step(braid_Vector u_, braid_Vector ustop_, braid_Vector fstop_,
+                 BraidStepStatus &pstatus);
 
+  /* Set the adjoint initial condition (derivative of primal objective function)
+   */
+  int SetInitialCondition();
 
-/* 
- * Deallocate a braid vector 
- */
-int my_Free(braid_App app, braid_Vector u);
-
-
-/* 
- * Sum two vectors (AXPBY): y = alpha * x + beta * y 
- */
-int my_Sum(braid_App app, double alpha, braid_Vector x, double beta, braid_Vector y);
-
-
-/*
- * Access a state vector
- * In: app - XBraid's application struct
- *     u   - state at current time
- *     astatus - struct to query current time 
- */
-int my_Access(braid_App app, braid_Vector u, braid_AccessStatus astatus);
-int my_Access_adj(braid_App app, braid_Vector u, braid_AccessStatus astatus);
-
-
-
-/* 
- * Compute the norm of a state vector
- * In: u - current state
- * Out: norm_ptr - pointer to the computed norm value 
- */
-int my_SpatialNorm(braid_App app, braid_Vector u, double *norm_ptr);
-
-
-/* 
- * Return the size of a state vector
- */
-int my_BufSize(braid_App app, int *size_ptr, braid_BufferStatus bstatus);
-int my_BufSize_adj(braid_App app, int *size_ptr, braid_BufferStatus bstatus);
-
-
-
-/* 
- * Pack a braid vector into a buffer 
- */
-int my_BufPack(braid_App app, braid_Vector u, void *buffer, braid_BufferStatus bstatus);
-int my_BufPack_adj(braid_App app, braid_Vector u, void *buffer, braid_BufferStatus bstatus);
-
-
-/*
- * Unpack a braid vector from a buffer
- */
-int my_BufUnpack(braid_App app, void *buffer, braid_Vector *u_ptr, braid_BufferStatus status);
-int my_BufUnpack_adj(braid_App app, void *buffer, braid_Vector *u_ptr, braid_BufferStatus status);
-
-
-/*
- * Dumps xbraid's convergence history to a file 
- */
-int braid_printConvHistory(braid_Core core, const char* filename);
-
-
-/* 
- * Return the time point index of a certain time t, on the grid created with spacing dt 
- */
-int GetTimeStepIndex(double t, double dt);
+};
