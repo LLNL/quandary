@@ -45,9 +45,9 @@ int main(int argc,char **argv)
   Vec* mu = new Vec;       // Reduced gradient in mu[0]
 
 
-  FILE *ufile = NULL;
-  FILE *vfile = NULL;
   char filename[255];
+  FILE* ufile;
+  FILE* vfile;
   PetscErrorCode ierr;
   PetscMPIInt    mpisize, mpirank;
   double StartTime, StopTime;
@@ -148,19 +148,22 @@ int main(int argc,char **argv)
     printf("# Time step size: %f\n", dt );
   }
 
-  /* Open output files */
-  sprintf(filename, "out_u.%04d.dat", mpirank);
-  if (iolevel > 0) ufile = fopen(filename, "w");
-  sprintf(filename, "out_v.%04d.dat", mpirank);
-  if (iolevel > 0) vfile = fopen(filename, "w");
-
   /* Allocate and initialize Petsc's Time-stepper */
   TSCreate(PETSC_COMM_SELF,&ts);CHKERRQ(ierr);
   TSInit(ts, hamiltonian, ntime, dt, total_time, x, lambda, mu, monitor);
 
   /* Initialize Braid */
   primalbraidapp = new myBraidApp(comm_braid, comm_petsc, total_time, ntime, ts, hamiltonian, &config);
-  primalbraidapp = new myAdjointBraidApp(comm_braid, comm_petsc, total_time, ntime, ts, hamiltonian, &config, primalbraidapp->getCore());
+  primalbraidapp = new myAdjointBraidApp(comm_braid, comm_petsc, total_time, ntime, ts, hamiltonian, *mu, &config, primalbraidapp->getCore());
+
+  /* Prepare output */
+  sprintf(filename, "out_u.%04d.dat", mpirank);
+  if (iolevel > 0) ufile = fopen(filename, "w");
+  sprintf(filename, "out_v.%04d.dat", mpirank);
+  if (iolevel > 0) vfile = fopen(filename, "w");
+
+  primalbraidapp->ufile = ufile;
+  primalbraidapp->vfile = ufile;
 
   // braid_app = (XB_App*) malloc(sizeof(XB_App));
   // braid_Init(comm, comm_braid, 0.0, total_time, ntime, braid_app, my_Step, my_Init, my_Clone, my_Free, my_Sum, my_SpatialNorm, my_Access, my_BufSize, my_BufPack, my_BufUnpack, &braid_core);
@@ -550,10 +553,12 @@ exit:
 #endif
 
 
-  /* Clean up */
+  /* Close output files */
   if (ufile != NULL) fclose(ufile);
   if (vfile != NULL) fclose(vfile);
-  // TSDestroy(&ts);
+
+  /* Clean up */
+  // TSDestroy(&ts);  /* TODO */
 
   /* Clean up Oscillator */
   for (int i=0; i<nosci; i++){
