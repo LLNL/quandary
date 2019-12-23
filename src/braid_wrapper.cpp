@@ -479,7 +479,7 @@ braid_Int myAdjointBraidApp::Step(braid_Vector u_, braid_Vector ustop_, braid_Ve
 
     /* Solve forward while saving trajectory */
     TSDestroy(&timestepper);
-    TSCreate(PETSC_COMM_SELF,&timestepper);CHKERRQ(ierr);
+    ierr = TSCreate(PETSC_COMM_SELF,&timestepper);CHKERRQ(ierr);
     // TSReset(app->ts);
     TSInit(timestepper, hamiltonian, ntime  , dt, total_time, x, &(u->x), &redgrad, false);
 
