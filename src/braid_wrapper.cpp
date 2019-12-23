@@ -410,21 +410,21 @@ double myBraidApp::run() {
 /* ================================================================*/
 /* Adjoint Braid App */
 /* ================================================================*/
-myAdjointBraidApp::myAdjointBraidApp(MPI_Comm comm_braid_, MPI_Comm comm_petsc_, double total_time_, int ntime_, TS ts_, Hamiltonian* ham_, Vec redgrad, MapParam* config, BraidCore *Primalcoreptr_)
+myAdjointBraidApp::myAdjointBraidApp(MPI_Comm comm_braid_, MPI_Comm comm_petsc_, double total_time_, int ntime_, TS ts_, Hamiltonian* ham_, Vec redgrad_, MapParam* config, BraidCore *Primalcoreptr_)
         : myBraidApp(comm_braid_, comm_petsc_, total_time_, ntime_, ts_, ham_, config) {
 
   /* Store the primal core */
   primalcore = Primalcoreptr_;
 
   /* Store reduced gradient */
-  // redgrad = redgrad_;
-  redgrad = NULL;
+  redgrad = redgrad_;
 
   /* Ensure that primal core stores all points */
   primalcore->SetStorage(0);
 
   /* Revert processor ranks for solving adjoint */
   core->SetRevertedRanks(1);
+  // _braid_SetVerbosity(core->GetCore(), 1);
 }
 
 myAdjointBraidApp::~myAdjointBraidApp() {}

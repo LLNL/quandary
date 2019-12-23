@@ -176,23 +176,14 @@ int main(int argc,char **argv)
   UsedTime = 0.0;
 
 
-  // /* Tell Petsc to save the forward trajectory */
-  // tj_save = false;
-  // if (tj_save) {
-  //   ierr = TSSetSaveTrajectory(ts);CHKERRQ(ierr);
-  //   ierr = TSTrajectorySetSolutionOnly(ts->trajectory, (PetscBool) true);
-  //   ierr = TSTrajectorySetType(ts->trajectory, ts, TSTRAJECTORYMEMORY);
-  //   TSTrajectorySetMonitor(ts->trajectory, (PetscBool) monitor);
-  // }
-
   /* --- Solve primal --- */
 
   primalbraidapp->run();
 
   // /* If multilevel solve: Sweep over all points to access */
   // if (maxlevels > 1 && iolevel > 0) {
-  //   _braid_CoreElt(braid_core, done) = 1;
-  //   _braid_FCRelax(braid_core, 0);
+    _braid_CoreElt(primalbraidapp->getCore()->GetCore(), done) = 1;
+    _braid_FCRelax(primalbraidapp->getCore()->GetCore(), 0);
   // }
  
 
@@ -207,9 +198,9 @@ int main(int argc,char **argv)
   // /* Exit if primal run only */
   // if (primal_only) goto exit;
 
-  // /* --- Solve adjoint --- */
+  /* --- Solve adjoint --- */
 
-  // braid_Drive(braid_core_adj);
+  adjointbraidapp->run();
 
   // // /* If multilevel solve: Sweep over all points to compute reduced gradient */
   // if (maxlevels > 1) {
@@ -239,11 +230,11 @@ int main(int argc,char **argv)
   // MPI_Allreduce(mygrad, x_ptr, ndesign, MPI_DOUBLE, MPI_SUM, comm_braid);
   // VecRestoreArray(braid_app->mu, &x_ptr);
 
-  // /* Gradient output */
-  // if (mpirank == 0) {
-  //   printf("\n %d: My awesome gradient:\n", mpirank);
-  //   VecView(mu[0], PETSC_VIEWER_STDOUT_WORLD);
-  // }
+  /* Gradient output */
+  if (mpirank == 0) {
+    printf("\n %d: My awesome gradient:\n", mpirank);
+    VecView(mu[0], PETSC_VIEWER_STDOUT_WORLD);
+  }
 
   // /* Stop timer */
   // StopTime = MPI_Wtime();
