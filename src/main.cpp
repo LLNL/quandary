@@ -8,6 +8,7 @@
 #include "map_param.hpp"
 #include "_braid.h"
 #include <stdlib.h>
+#include "IpIpoptApplication.hpp"
 
 #define EPS 1e-5
 

@@ -4,6 +4,8 @@
 # Set Braid location 
 BRAID_DIR = ${HOME}/Numerics/xbraid_solveadjointwithxbraid
 
+OPT_DIR = /usr/local/Cellar/ipopt/3.12.13_3/
+
 # Set compiler options, e.g. define SANITY_CHECK. Comment out if none.
 #CXX_OPT = -DSANITY_CHECK
 
@@ -31,11 +33,11 @@ SRC_FILES += $(wildcard $(SRC_DIR)/*/*.cpp)
 OBJ_FILES  = $(patsubst $(SRC_DIR)/%.cpp,$(BUILD_DIR)/%.o,$(SRC_FILES))
 
 # set include directory
-INC = -I$(INC_DIR) -I$(BRAID_INC_DIR) -I${PETSC_DIR}/include -I${PETSC_DIR}/${PETSC_ARCH}/include
+INC = -I$(INC_DIR) -I$(BRAID_INC_DIR) -I${PETSC_DIR}/include -I${PETSC_DIR}/${PETSC_ARCH}/include -I${OPT_DIR}/include/coin
 
 # Set Library paths and flags
 LDPATH  = ${PETSC_DIR}/${PETSC_ARCH}/lib
-LDFLAGS = -lpetsc -lm ${BRAID_LIB_FILE}
+LDFLAGS = -lpetsc -lm ${BRAID_LIB_FILE} -L${PETSC_DIR}/${PETSC_ARCH}/lib -L/usr/local/Cellar/ipopt/3.12.13_3/lib -L/usr/local/opt/openblas/lib -L/usr/local/Cellar/gcc/9.2.0_2/lib/gcc/9/gcc/x86_64-apple-darwin18/9.2.0 -L/usr/local/Cellar/gcc/9.2.0_2/lib/gcc/9/gcc/x86_64-apple-darwin18/9.2.0/../../.. -L/usr/local/opt/openblas/lib -L/usr/local/Cellar/gcc/9.2.0_2/lib/gcc/9/gcc/x86_64-apple-darwin18/9.2.0 -L/usr/local/Cellar/gcc/9.2.0_2/lib/gcc/9/gcc/x86_64-apple-darwin18/9.2.0/../../.. -lipopt -ldmumps -lmpiseq -lmumps_common -lopenblas -lpord -lopenblas -lgfortran -lSystem -lquadmath -lm -lopenblas -lgfortran -lSystem -lquadmath -lm -ldl
 
 # Set compiler and flags 
 CXX=mpicxx
