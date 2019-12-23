@@ -348,7 +348,7 @@ int my_Step_adj(braid_App app, braid_Vector ustop, braid_Vector fstop, braid_Vec
 
     /* Solve forward while saving trajectory */
     TSDestroy(&app->ts);
-    TSCreate(PETSC_COMM_SELF,&app->ts);CHKERRQ(ierr);
+    ierr = TSCreate(PETSC_COMM_SELF,&app->ts);CHKERRQ(ierr);
     // TSReset(app->ts);
     TSInit(app->ts, app->hamiltonian, app->ntime  , dt, app->total_time, x, &(u->x), &(app->mu), app->monitor);
 
