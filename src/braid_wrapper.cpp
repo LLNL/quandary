@@ -53,6 +53,8 @@ myBraidApp::myBraidApp(MPI_Comm comm_braid_, MPI_Comm comm_petsc_, double total_
   core->SetNRelax(-1, 1);
   core->SetAbsTol(1e-6);
   core->SetSeqSoln(0);
+
+  // _braid_SetVerbosity(core->GetCore(), 1);
 }
 
 myBraidApp::~myBraidApp() {
@@ -112,7 +114,7 @@ braid_Int myBraidApp::Step(braid_Vector u_, braid_Vector ustop_, braid_Vector fs
     /* Grab current time from XBraid and pass it to Petsc time-stepper */
     pstatus.GetTstartTstop(&tstart, &tstop);
     pstatus.GetTIndex(&tindex);
-    // pstatus.GetDone(&done); // TODO: Implement C++ interface for braid_StatusGetDone().
+    pstatus.GetDone(&done); 
   
     // printf("\nBraid %d %f->%f \n", tindex, tstart, tstop);
 

@@ -154,7 +154,7 @@ int main(int argc,char **argv)
 
   /* Initialize Braid */
   primalbraidapp = new myBraidApp(comm_braid, comm_petsc, total_time, ntime, ts, hamiltonian, &config);
-  primalbraidapp = new myAdjointBraidApp(comm_braid, comm_petsc, total_time, ntime, ts, hamiltonian, *mu, &config, primalbraidapp->getCore());
+  adjointbraidapp = new myAdjointBraidApp(comm_braid, comm_petsc, total_time, ntime, ts, hamiltonian, *mu, &config, primalbraidapp->getCore());
 
   /* Prepare output */
   sprintf(filename, "out_u.%04d.dat", mpirank);
@@ -165,29 +165,10 @@ int main(int argc,char **argv)
   primalbraidapp->ufile = ufile;
   primalbraidapp->vfile = ufile;
 
-  // braid_app = (XB_App*) malloc(sizeof(XB_App));
-  // braid_Init(comm, comm_braid, 0.0, total_time, ntime, braid_app, my_Step, my_Init, my_Clone, my_Free, my_Sum, my_SpatialNorm, my_Access, my_BufSize, my_BufPack, my_BufUnpack, &braid_core);
-  // braid_Init(comm, comm_braid, 0.0, total_time, ntime, braid_app, my_Step_adj, my_Init_adj, my_Clone, my_Free, my_Sum, my_SpatialNorm, my_Access_adj, my_BufSize, my_BufPack, my_BufUnpack, &braid_core_adj);
-
-  // /* Set up XBraid's applications structure */
-  // braid_app->ts     = ts;
-  // braid_app->hamiltonian = hamiltonian;
-  // braid_app->ntime  = ntime;
-  // braid_app->total_time = total_time;
-  // braid_app->mu     = *mu;
-  // braid_app->ufile  = ufile;
-  // braid_app->vfile  = vfile;
-  // braid_app->comm_braid = comm_braid;
-  // braid_app->comm_petsc = comm_petsc;
-  // braid_app->primalcore = braid_core;
-  // braid_app->monitor = monitor;
-  
-
   /* Print some information on the time-grid distribution */
   // int ilower, iupper;
   // _braid_GetDistribution(braid_core, &ilower, &iupper);
   // printf("ilower %d, iupper %d\n", ilower, iupper);
-
 
    /* Measure wall time */
   StartTime = MPI_Wtime();
@@ -206,7 +187,7 @@ int main(int argc,char **argv)
 
   /* --- Solve primal --- */
 
-  // braid_Drive(braid_core);
+  primalbraidapp->run();
 
   // /* If multilevel solve: Sweep over all points to access */
   // if (maxlevels > 1 && iolevel > 0) {
