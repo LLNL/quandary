@@ -85,11 +85,13 @@ class myBraidApp : public BraidApp {
     */
     virtual int SetInitialCondition();
 
+    /* Postprocess. This is called inside run(), after braid_Drive.  */
+    virtual int PostProcess();
+
     /* Sets the initial condition, then calls braid_drive. 
     * Return residual norm of last iteration.
     */
     double run();
-
 };
 
 /**
@@ -116,5 +118,7 @@ class myAdjointBraidApp : public myBraidApp {
 
     /* Set the adjoint initial condition (derivative of primal objective function) */
     int SetInitialCondition();
+
+    int PostProcess();
 
 };

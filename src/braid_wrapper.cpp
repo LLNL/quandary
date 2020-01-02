@@ -394,6 +394,22 @@ int myBraidApp::SetInitialCondition(){
 }
 
 
+
+int myBraidApp::PostProcess() {
+
+  int maxlevels;
+  maxlevels = _braid_CoreElt(core->GetCore(), max_levels);
+
+  /* If multilevel solve: Sweep over all points to access */
+  if (maxlevels > 1) {
+    _braid_CoreElt(core->GetCore(), done) = 1;
+    _braid_FCRelax(core->GetCore(), 0);
+  }
+
+  return 0;
+}
+
+
 double myBraidApp::run() { 
   
   int nreq = -1;
@@ -402,6 +418,7 @@ double myBraidApp::run() {
   SetInitialCondition();
   core->Drive();
   core->GetRNorms(&nreq, &norm);
+  PostProcess();
 
   return norm; 
 }
@@ -578,6 +595,20 @@ int myAdjointBraidApp::SetInitialCondition() {
     hamiltonian->evalObjective_diff(0.0, NULL, &uadjoint->x, &redgrad);
   }
 
+
+  return 0;
+}
+
+int myAdjointBraidApp::PostProcess() {
+
+  int maxlevels;
+  maxlevels = _braid_CoreElt(core->GetCore(), max_levels);
+
+  if (maxlevels > 1) {
+    VecZeroEntries(redgrad);
+    _braid_CoreElt(core->GetCore(), done) = 1;
+    _braid_FCRelax(core->GetCore(), 0);
+  }
 
   return 0;
 }
