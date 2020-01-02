@@ -372,7 +372,7 @@ braid_Int myBraidApp::BufUnpack(void *buffer, braid_Vector *u_ptr, BraidBufferSt
   return 0; 
 }
 
-braid_Int myBraidApp::SetInitialCondition(){ 
+int myBraidApp::SetInitialCondition(){ 
 /* Apply initial condition if warm_restart (otherwise it is set in my_Init().
  * Can not be set here if !(warm_restart) because the braid_grid is created only when braid_drive() is called. 
  */

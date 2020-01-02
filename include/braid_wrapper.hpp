@@ -83,7 +83,7 @@ class myBraidApp : public BraidApp {
     /* Sets the initial condition if warm_restart (otherwise it is set in my_Init().
     * Can not be set here if !(warm_restart) because the braid_grid is created only when braid_drive() is called. 
     */
-    virtual braid_Int SetInitialCondition();
+    virtual int SetInitialCondition();
 
     /* Sets the initial condition, then calls braid_drive. 
     * Return residual norm of last iteration.
