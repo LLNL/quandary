@@ -167,18 +167,19 @@ braid_Int myBraidApp::Step(braid_Vector u_, braid_Vector ustop_, braid_Vector fs
 braid_Int myBraidApp::Residual(braid_Vector u_, braid_Vector r_, BraidStepStatus &pstatus){ return 0; }
 
 braid_Int myBraidApp::Clone(braid_Vector u_, braid_Vector *v_ptr){ 
-    /* Cast input braid vector to class vector definition */
-    myBraidVector *u = (myBraidVector *)u_;
 
-    /* Allocate a new vector */
-    myBraidVector* ucopy = new myBraidVector();
+  /* Cast input braid vector to class vector definition */
+  myBraidVector *u = (myBraidVector *)u_;
 
-    /* First duplicate storage, then copy values */
-    VecDuplicate(u->x, &(ucopy->x));
-    VecCopy(u->x, ucopy->x);
+  /* Allocate a new vector */
+  myBraidVector* ucopy = new myBraidVector();
 
-    /* Set the return pointer */
-    *v_ptr = (braid_Vector) ucopy;
+  /* First duplicate storage, then copy values */
+  VecDuplicate(u->x, &(ucopy->x));
+  VecCopy(u->x, ucopy->x);
+
+  /* Set the return pointer */
+  *v_ptr = (braid_Vector) ucopy;
 
   return 0; 
 }
