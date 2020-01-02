@@ -86,6 +86,7 @@ int main(int argc,char **argv)
   analytic = (PetscBool) config.GetBoolParam("analytic", false);
   primal_only = (PetscBool) config.GetBoolParam("primal_only", false);
   monitor = (PetscBool) config.GetBoolParam("monitor", false);
+  iolevel = (PetscInt) config.GetIntParam("iolevel", 1);
   
   /* Initialize time horizon */
   total_time = ntime * dt;
@@ -163,7 +164,7 @@ int main(int argc,char **argv)
   if (iolevel > 0) vfile = fopen(filename, "w");
 
   primalbraidapp->ufile = ufile;
-  primalbraidapp->vfile = ufile;
+  primalbraidapp->vfile = vfile;
 
   /* Print some information on the time-grid distribution */
   // int ilower, iupper;
