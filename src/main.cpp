@@ -203,34 +203,6 @@ int main(int argc,char **argv)
 
   adjointbraidapp->run();
 
-  // // /* If multilevel solve: Sweep over all points to compute reduced gradient */
-  // if (maxlevels > 1) {
-  //   VecZeroEntries(braid_app->mu);
-  //   _braid_CoreElt(braid_core_adj, done) = 1;
-  //   _braid_FCRelax(braid_core_adj, 0);
-  // }
-  
-
-  // // printf("\n Backward\n\n");
-  // // double t;
-  // // TSGetSolveTime(ts, &t);
-  // // VecZeroEntries(lambda[0]);
-  // // VecZeroEntries(mu[0]);
-  // // hamiltonian->evalObjective_diff(t, x, &lambda[0], &mu[0]);
-  // // ierr = TSAdjointSolve(ts);
-
-
-  // /* Sum up the reduced gradient mu from all processors */
-  // PetscScalar *x_ptr;
-  // VecGetSize(braid_app->mu, &ndesign);
-  // mygrad = new double[ndesign];
-  // VecGetArray(braid_app->mu, &x_ptr);
-  // for (int i=0; i<ndesign; i++) {
-  //   mygrad[i] = x_ptr[i];
-  // }
-  // MPI_Allreduce(mygrad, x_ptr, ndesign, MPI_DOUBLE, MPI_SUM, comm_braid);
-  // VecRestoreArray(braid_app->mu, &x_ptr);
-
   /* Gradient output */
   if (mpirank == 0) {
     printf("\n %d: My awesome gradient:\n", mpirank);

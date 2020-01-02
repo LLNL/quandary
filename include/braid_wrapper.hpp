@@ -22,6 +22,7 @@ class myBraidApp : public BraidApp {
     TS           timestepper;       /* Petsc Time-stepper struct */
     Hamiltonian *hamiltonian;       /* Hamiltonian system */
     MPI_Comm comm_petsc;            /* Petsc's communicator */
+    MPI_Comm comm_braid;            /* Braid's communicator */
 
     BraidCore *core;                /* Braid core for running PinT simulation */
 

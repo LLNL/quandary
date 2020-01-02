@@ -27,6 +27,7 @@ myBraidApp::myBraidApp(MPI_Comm comm_braid_, MPI_Comm comm_petsc_, double total_
   timestepper = ts_;
   hamiltonian = ham_;
   comm_petsc = comm_petsc_;
+  comm_braid = comm_braid_;
   ufile = NULL;
   vfile = NULL;
 
@@ -610,6 +611,19 @@ int myAdjointBraidApp::PostProcess() {
     _braid_CoreElt(core->GetCore(), done) = 1;
     _braid_FCRelax(core->GetCore(), 0);
   }
+
+  /* Sum up the reduced gradient mu from all processors */
+  int ndesign;
+  PetscScalar *x_ptr;
+  VecGetSize(redgrad, &ndesign);
+  double* mygrad = new double[ndesign];
+  VecGetArray(redgrad, &x_ptr);
+  for (int i=0; i<ndesign; i++) {
+    mygrad[i] = x_ptr[i];
+  }
+  MPI_Allreduce(mygrad, x_ptr, ndesign, MPI_DOUBLE, MPI_SUM, comm_braid);
+  VecRestoreArray(redgrad, &x_ptr);
+
 
   return 0;
 }
