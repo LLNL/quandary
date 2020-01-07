@@ -20,13 +20,13 @@ class myBraidApp : public BraidApp {
     int          ntime;             /* number of time steps */
     double       total_time;        /* total time  */
     TS           timestepper;       /* Petsc Time-stepper struct */
-    Hamiltonian *hamiltonian;       /* Hamiltonian system */
     MPI_Comm comm_petsc;            /* Petsc's communicator */
     MPI_Comm comm_braid;            /* Braid's communicator */
 
     BraidCore *core;                /* Braid core for running PinT simulation */
 
   public:
+    Hamiltonian *hamiltonian;       /* Hamiltonian system */
     FILE *ufile;
     FILE *vfile;
 

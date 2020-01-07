@@ -84,6 +84,10 @@ Hamiltonian::~Hamiltonian(){
 
 int Hamiltonian::getDim(){ return dim; }
 
+int Hamiltonian::getNOscillators() { return noscillators; }
+
+Oscillator* Hamiltonian::getOscillator(int i) { return oscil_vec[i]; }
+
 bool Hamiltonian::ExactSolution(double t, Vec x) { return false; }
 
 int Hamiltonian::assemble_RHS(double t){

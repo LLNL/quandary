@@ -175,9 +175,20 @@ int main(int argc,char **argv)
   // _braid_GetDistribution(braid_core, &ilower, &iupper);
   // printf("ilower %d, iupper %d\n", ilower, iupper);
 
-  /* Initializer the optimization */
+  /* Initialize the optimization */
   SmartPtr<TNLP> optimizer = new OptimProblem();
-  SmartPtr<IpoptApplication> app = IpoptApplicationFactory(); // not sure why "factory". Took it from Ipopt example hs071_nlp
+  SmartPtr<IpoptApplication> optimapp = IpoptApplicationFactory(); // why "factory"?
+  /* Set options */
+  optimapp->Options()->SetNumericValue("tol", 1e-7);
+	optimapp->Options()->SetStringValue("output_file", "optim.out");
+	optimapp->Options()->SetStringValue("hessian_approximation", "limited-memory");
+  /* Initialize optim status */
+  ApplicationReturnStatus optimstatus;
+  optimstatus = optimapp->Initialize();
+  if (optimstatus != Solve_Succeeded) {
+    printf("\n\n*** Error during optimization init!\n\n");
+    return (int) optimstatus;
+  }
 
 
    /* Measure wall time */

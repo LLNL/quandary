@@ -29,6 +29,12 @@ class Hamiltonian{
     Hamiltonian(int noscillators_, Oscillator** oscil_vec_);
     virtual ~Hamiltonian();
 
+    /* Return the i-th oscillator */
+    Oscillator* getOscillator(int i);
+
+    /* Return number of oscillators */
+    int getNOscillators();
+
     /* Return dimension of vectorized system */
     int getDim();
 

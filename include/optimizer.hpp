@@ -1,3 +1,4 @@
+#include "braid_wrapper.hpp"
 #include "IpTNLP.hpp"
 
 #pragma once
@@ -6,14 +7,19 @@ using namespace Ipopt;
 
 class OptimProblem : public TNLP {
 
+    protected:
+        myBraidApp* primalbraidapp;
+        myAdjointBraidApp* adjointbraidapp;
+
     public:
         OptimProblem();
+        OptimProblem(myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_);
         virtual ~OptimProblem();
 
     /* --- Overload required Ipopt interface routines --- */
     
 	/* Return info about the optim problem*/
-	virtual bool get_nlp_info(Index& n, Index& m, Index&, Index& nnz_h_lag, IndexStyleEnum& index_style);
+	virtual bool get_nlp_info(Index& n, Index& m, Index& nnz_jac_g, Index& nnz_h_lag, IndexStyleEnum& index_style);
 
 	/* Return the bounds */
 	virtual bool get_bounds_info(Index n, Number* x_l, Number* x_u, Index m, Number* g_l, Number* g_u);
@@ -39,11 +45,8 @@ class OptimProblem : public TNLP {
 	virtual bool eval_jac_g(Index n, const Number* x, bool new_x, Index m, Index nele_jac, Index* iRow, Index *jCol, Number* values);
 
 
-	/* Return:
-	 *   1) The structure of the hessian of the lagrangian (if "values" is NULL)
-	 *   2) The values of the hessian of the lagrangian (if "values" is not NULL)
-	 */
-	virtual bool eval_h(Index n, const Number* x, bool new_x, Number obj_factor, Index m, const Number* lambda, bool new_lambda, Index nele_hess, Index* iRow, Index* jCol, Number* values);
+	// /* Hessian of the Lagrangian. In case of L-BFGS optimization, this function will never be called. It does nothing therefore. */
+	// virtual bool eval_h(Index n, const Number* x, bool new_x, Number obj_factor, Index m, const Number* lambda, bool new_lambda, Index nele_hess, Index* iRow, Index* jCol, Number* values);
 
 
 	/* This method is called when the algorithm is complete so the TNLP can store/write the solution */
