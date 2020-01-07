@@ -6,9 +6,12 @@
 #include "oscillator.hpp" 
 #include "hamiltonian.hpp"
 #include "config.hpp"
+#include "optimizer.hpp"
 #include "_braid.h"
 #include <stdlib.h>
 #include "IpIpoptApplication.hpp"
+
+using namespace Ipopt;
 
 #define EPS 1e-5
 
@@ -171,6 +174,11 @@ int main(int argc,char **argv)
   // int ilower, iupper;
   // _braid_GetDistribution(braid_core, &ilower, &iupper);
   // printf("ilower %d, iupper %d\n", ilower, iupper);
+
+  /* Initializer the optimization */
+  SmartPtr<TNLP> optimizer = new OptimProblem();
+  SmartPtr<IpoptApplication> app = IpoptApplicationFactory(); // not sure why "factory". Took it from Ipopt example hs071_nlp
+
 
    /* Measure wall time */
   StartTime = MPI_Wtime();
