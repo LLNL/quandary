@@ -37,7 +37,7 @@ INC = -I$(INC_DIR) -I$(BRAID_INC_DIR) -I${PETSC_DIR}/include -I${PETSC_DIR}/${PE
 
 # Set Library paths and flags
 LDPATH  = ${PETSC_DIR}/${PETSC_ARCH}/lib
-LDFLAGS = -lpetsc -lm ${BRAID_LIB_FILE} -L${PETSC_DIR}/${PETSC_ARCH}/lib -L/usr/local/Cellar/ipopt/3.12.13_3/lib -L/usr/local/opt/openblas/lib -L/usr/local/Cellar/gcc/9.2.0_2/lib/gcc/9/gcc/x86_64-apple-darwin18/9.2.0 -L/usr/local/Cellar/gcc/9.2.0_2/lib/gcc/9/gcc/x86_64-apple-darwin18/9.2.0/../../.. -L/usr/local/opt/openblas/lib -L/usr/local/Cellar/gcc/9.2.0_2/lib/gcc/9/gcc/x86_64-apple-darwin18/9.2.0 -L/usr/local/Cellar/gcc/9.2.0_2/lib/gcc/9/gcc/x86_64-apple-darwin18/9.2.0/../../.. -lipopt -ldmumps -lmpiseq -lmumps_common -lopenblas -lpord -lopenblas -lgfortran -lSystem -lquadmath -lm -lopenblas -lgfortran -lSystem -lquadmath -lm -ldl
+LDFLAGS = -lpetsc -lm ${BRAID_LIB_FILE} -L${PETSC_DIR}/${PETSC_ARCH}/lib -L/usr/local/Cellar/ipopt/3.12.13_3/lib -L/usr/local/opt/openblas/lib -lipopt -ldmumps -lmumps_common -lopenblas -lpord -lopenblas -lSystem 
 
 # Set compiler and flags 
 CXX=mpicxx
