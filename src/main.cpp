@@ -24,21 +24,15 @@ int main(int argc,char **argv)
   PetscReal      dt;           // Time step size
   PetscReal      total_time;   // Total end time T
   TS             ts;           // Timestepping context
-  braid_Core     braid_core;   // Core for XBraid simulation
-  braid_Core     braid_core_adj;   // Adjoint Core for XBraid simulation
-  XB_App        *braid_app;    // XBraid's application context
-  PetscInt       cfactor;      // XBraid's coarsening factor
-  PetscInt       maxlevels;    // XBraid's maximum number of levels
-  PetscInt       printlevel;    // XBraid's maximum number of levels
-  PetscInt       maxiter;      // XBraid's maximum number of iterations
   PetscInt       iolevel;      // Level of file output (0: no output)
   PetscInt       nspline;      // Number of spline basis functions
   Hamiltonian*   hamiltonian;  // Hamiltonian system
   PetscBool      analytic;     // If true: runs analytic test case
   PetscBool      primal_only;  // If true: runs only one primal simulation
-  PetscBool      fmg;          // If true: Turns on full multigrid cycling
   PetscBool      monitor;      // If true: Print out additional time-stepper information
-  PetscBool      skip;         // If true: Skip work on braid's downcycle
+  /* Braid */
+  myBraidApp *primalbraidapp;
+  myBraidApp *adjointbraidapp;
 
   Vec            x;          // solution vector
   // bool           tj_save;    // Determines wether trajectory should be stored in primal run
@@ -51,9 +45,9 @@ int main(int argc,char **argv)
   Vec* mu = new Vec;       // Reduced gradient in mu[0]
 
 
-  FILE *ufile = NULL;
-  FILE *vfile = NULL;
   char filename[255];
+  FILE* ufile;
+  FILE* vfile;
   PetscErrorCode ierr;
   PetscMPIInt    mpisize, mpirank;
   double StartTime, StopTime;
@@ -89,16 +83,10 @@ int main(int argc,char **argv)
   ntime = config.GetIntParam("ntime", 1000);
   dt    = config.GetDoubleParam("dt", 0.01);
   nspline = config.GetIntParam("nspline", 10);
-  cfactor = config.GetIntParam("cfactor", 5);
-  maxlevels = config.GetIntParam("maxlevels", 20);
-  printlevel = config.GetIntParam("printlevel", 2);
-  iolevel = config.GetIntParam("iolevel", 1);
-  maxiter = config.GetIntParam("maxiter", 50);
   analytic = (PetscBool) config.GetBoolParam("analytic", false);
   primal_only = (PetscBool) config.GetBoolParam("primal_only", false);
-  fmg = (PetscBool) config.GetBoolParam("fmg", false);
   monitor = (PetscBool) config.GetBoolParam("monitor", false);
-  skip = (PetscBool) config.GetBoolParam("skip", false);
+  iolevel = (PetscInt) config.GetIntParam("iolevel", 1);
   
   /* Initialize time horizon */
   total_time = ntime * dt;
@@ -161,67 +149,27 @@ int main(int argc,char **argv)
     printf("# Time step size: %f\n", dt );
   }
 
-  /* Open output files */
-  sprintf(filename, "out_u.%04d.dat", mpirank);
-  if (iolevel > 0) ufile = fopen(filename, "w");
-  sprintf(filename, "out_v.%04d.dat", mpirank);
-  if (iolevel > 0) vfile = fopen(filename, "w");
-
   /* Allocate and initialize Petsc's Time-stepper */
   TSCreate(PETSC_COMM_SELF,&ts);CHKERRQ(ierr);
   TSInit(ts, hamiltonian, ntime, dt, total_time, x, lambda, mu, monitor);
 
   /* Initialize Braid */
-  braid_app = (XB_App*) malloc(sizeof(XB_App));
-  braid_Init(comm, comm_braid, 0.0, total_time, ntime, braid_app, my_Step, my_Init, my_Clone, my_Free, my_Sum, my_SpatialNorm, my_Access, my_BufSize, my_BufPack, my_BufUnpack, &braid_core);
-  braid_Init(comm, comm_braid, 0.0, total_time, ntime, braid_app, my_Step_adj, my_Init_adj, my_Clone, my_Free, my_Sum, my_SpatialNorm, my_Access_adj, my_BufSize, my_BufPack, my_BufUnpack, &braid_core_adj);
+  primalbraidapp = new myBraidApp(comm_braid, comm_petsc, total_time, ntime, ts, hamiltonian, &config);
+  adjointbraidapp = new myAdjointBraidApp(comm_braid, comm_petsc, total_time, ntime, ts, hamiltonian, *mu, &config, primalbraidapp->getCore());
 
-  /* Set up XBraid's applications structure */
-  braid_app->ts     = ts;
-  braid_app->hamiltonian = hamiltonian;
-  braid_app->ntime  = ntime;
-  braid_app->total_time = total_time;
-  braid_app->mu     = *mu;
-  braid_app->ufile  = ufile;
-  braid_app->vfile  = vfile;
-  braid_app->comm_braid = comm_braid;
-  braid_app->comm_petsc = comm_petsc;
-  braid_app->primalcore = braid_core;
-  braid_app->monitor = monitor;
-  
-  /* Set Braid options */
-  braid_SetPrintLevel( braid_core, printlevel);
-  braid_SetPrintLevel( braid_core_adj, printlevel);
-  braid_SetAccessLevel( braid_core, iolevel);
-  braid_SetAccessLevel( braid_core_adj, iolevel);
-  braid_SetMaxLevels(braid_core, maxlevels);
-  braid_SetMaxLevels(braid_core_adj, maxlevels);
-  braid_SetNRelax(braid_core, -1, 1);
-  braid_SetNRelax(braid_core_adj, -1, 1);
-  braid_SetAbsTol(braid_core, 1e-6);
-  braid_SetAbsTol(braid_core_adj, 1e-6);
-  braid_SetCFactor(braid_core, -1, cfactor);
-  braid_SetCFactor(braid_core_adj, -1, cfactor);
-  braid_SetMaxIter(braid_core, maxiter);
-  braid_SetMaxIter(braid_core_adj, maxiter);
-  braid_SetSkip(braid_core, skip);
-  braid_SetSkip(braid_core_adj, skip);
-  braid_SetSeqSoln(braid_core, 0);
-  braid_SetSeqSoln(braid_core_adj, 0);
-  /* Set reverted rank for adjoint with 'solveadjointwithxbraid' */
-  if (!primal_only) braid_SetStorage(braid_core, 0);
-  if (!primal_only) braid_SetStorage(braid_core_adj, 0);
-  /* Set reverted rank for adjoint with 'solveadjointwithxbraid' */
-  braid_SetRevertedRanks(braid_core_adj, 1);
-  if (fmg) braid_SetFMG(braid_core);
-  if (fmg) braid_SetFMG(braid_core_adj);
+  /* Prepare output */
+  sprintf(filename, "out_u.%04d.dat", mpirank);
+  if (iolevel > 0) ufile = fopen(filename, "w");
+  sprintf(filename, "out_v.%04d.dat", mpirank);
+  if (iolevel > 0) vfile = fopen(filename, "w");
 
+  primalbraidapp->ufile = ufile;
+  primalbraidapp->vfile = vfile;
 
   /* Print some information on the time-grid distribution */
   // int ilower, iupper;
   // _braid_GetDistribution(braid_core, &ilower, &iupper);
   // printf("ilower %d, iupper %d\n", ilower, iupper);
-
 
    /* Measure wall time */
   StartTime = MPI_Wtime();
@@ -229,68 +177,31 @@ int main(int argc,char **argv)
   UsedTime = 0.0;
 
 
-  // /* Tell Petsc to save the forward trajectory */
-  // tj_save = false;
-  // if (tj_save) {
-  //   ierr = TSSetSaveTrajectory(ts);CHKERRQ(ierr);
-  //   ierr = TSTrajectorySetSolutionOnly(ts->trajectory, (PetscBool) true);
-  //   ierr = TSTrajectorySetType(ts->trajectory, ts, TSTRAJECTORYMEMORY);
-  //   TSTrajectorySetMonitor(ts->trajectory, (PetscBool) monitor);
-  // }
-
   /* --- Solve primal --- */
 
-  braid_Drive(braid_core);
+  primalbraidapp->run();
 
-  /* If multilevel solve: Sweep over all points to access */
-  if (maxlevels > 1 && iolevel > 0) {
-    _braid_CoreElt(braid_core, done) = 1;
-    _braid_FCRelax(braid_core, 0);
-  }
+  // /* If multilevel solve: Sweep over all points to access */
+  // if (maxlevels > 1 && iolevel > 0) {
+    _braid_CoreElt(primalbraidapp->getCore()->GetCore(), done) = 1;
+    _braid_FCRelax(primalbraidapp->getCore()->GetCore(), 0);
+  // }
  
 
-  /* Get the objective */
-  braid_GetObjective(braid_core, &objective);
-  if (mpirank == 0) {
-    printf("Objective: %1.12e\n", objective);
-  }
+  // /* Get the objective */
+  // braid_GetObjective(braid_core, &objective);
+  // if (mpirank == 0) {
+  //   printf("Objective: %1.12e\n", objective);
+  // }
 
-  braid_printConvHistory(braid_core, "braid.out.log");
+  // braid_printConvHistory(braid_core, "braid.out.log");
 
-  /* Exit if primal run only */
-  if (primal_only) goto exit;
+  // /* Exit if primal run only */
+  // if (primal_only) goto exit;
 
   /* --- Solve adjoint --- */
 
-  braid_Drive(braid_core_adj);
-
-  // /* If multilevel solve: Sweep over all points to compute reduced gradient */
-  if (maxlevels > 1) {
-    VecZeroEntries(braid_app->mu);
-    _braid_CoreElt(braid_core_adj, done) = 1;
-    _braid_FCRelax(braid_core_adj, 0);
-  }
-  
-
-  // printf("\n Backward\n\n");
-  // double t;
-  // TSGetSolveTime(ts, &t);
-  // VecZeroEntries(lambda[0]);
-  // VecZeroEntries(mu[0]);
-  // hamiltonian->evalObjective_diff(t, x, &lambda[0], &mu[0]);
-  // ierr = TSAdjointSolve(ts);
-
-
-  /* Sum up the reduced gradient mu from all processors */
-  PetscScalar *x_ptr;
-  VecGetSize(braid_app->mu, &ndesign);
-  mygrad = new double[ndesign];
-  VecGetArray(braid_app->mu, &x_ptr);
-  for (int i=0; i<ndesign; i++) {
-    mygrad[i] = x_ptr[i];
-  }
-  MPI_Allreduce(mygrad, x_ptr, ndesign, MPI_DOUBLE, MPI_SUM, comm_braid);
-  VecRestoreArray(braid_app->mu, &x_ptr);
+  adjointbraidapp->run();
 
   /* Gradient output */
   if (mpirank == 0) {
@@ -298,12 +209,12 @@ int main(int argc,char **argv)
     VecView(mu[0], PETSC_VIEWER_STDOUT_WORLD);
   }
 
-  /* Stop timer */
-  StopTime = MPI_Wtime();
-  UsedTime = StopTime - StartTime;
+  // /* Stop timer */
+  // StopTime = MPI_Wtime();
+  // UsedTime = StopTime - StartTime;
 
-  /* Print convergence history */
-  braid_printConvHistory(braid_core_adj, "braid_adj.out.log");
+  // /* Print convergence history */
+  // braid_printConvHistory(braid_core_adj, "braid_adj.out.log");
 
 exit:
 
@@ -587,10 +498,12 @@ exit:
 #endif
 
 
-  /* Clean up */
+  /* Close output files */
   if (ufile != NULL) fclose(ufile);
   if (vfile != NULL) fclose(vfile);
-  // TSDestroy(&ts);
+
+  /* Clean up */
+  // TSDestroy(&ts);  /* TODO */
 
   /* Clean up Oscillator */
   for (int i=0; i<nosci; i++){
@@ -608,15 +521,16 @@ exit:
   /* Clean up Hamiltonian */
   delete hamiltonian;
 
-  /* Cleanup XBraid */
-  braid_Destroy(braid_core);
-  if (!primal_only)  braid_Destroy(braid_core_adj);
-  TSDestroy(&braid_app->ts);
-  free(braid_app);
+  /* Cleanup */
+  // TSDestroy(&braid_app->ts);
+
+  delete primalbraidapp;
+  delete adjointbraidapp;
 
   /* Finallize Petsc */
   ierr = PetscFinalize();
 
+  MPI_Finalize();
   return ierr;
 }
 
