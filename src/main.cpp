@@ -530,6 +530,7 @@ exit:
   /* Finallize Petsc */
   ierr = PetscFinalize();
 
+  MPI_Finalize();
   return ierr;
 }
 
