@@ -416,8 +416,9 @@ int myBraidApp::SetInitialCondition(int i){
 
 int myBraidApp::PostProcess() {
 
-  int maxlevels;
-  maxlevels = _braid_CoreElt(core->GetCore(), max_levels);
+  braid_BaseVector ubase;
+  myBraidVector *u;
+  int maxlevels = _braid_CoreElt(core->GetCore(), max_levels);
 
   /* If multilevel solve: Sweep over all points to access */
   if (maxlevels > 1) {
@@ -466,6 +467,15 @@ myAdjointBraidApp::myAdjointBraidApp(MPI_Comm comm_braid_, MPI_Comm comm_petsc_,
 }
 
 myAdjointBraidApp::~myAdjointBraidApp() {}
+
+
+const double* myAdjointBraidApp::getReducedGradientPtr(){
+
+    const PetscScalar *grad_ptr;
+    VecGetArrayRead(redgrad, &grad_ptr);
+
+    return grad_ptr;
+}
 
 int myAdjointBraidApp::getPrimalIndex(int ts) { 
   /* TODO: Check this! Might need -1 */
