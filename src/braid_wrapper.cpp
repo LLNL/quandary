@@ -68,6 +68,23 @@ int myBraidApp::getTimeStepIndex(double t, double dt){
   return ts;
 }
 
+Vec myBraidApp::getState(double t) {
+  if (t != total_time) {
+   printf("ERROR: getState not implemented yet for (t != final_time)\n\n");
+   exit(1);
+  }
+  
+  braid_BaseVector ubase;
+  myBraidVector *u;
+  Vec myvec = NULL;
+  _braid_UGetLast(core->GetCore(), &ubase);
+  if (ubase != NULL) { // only true on last processor 
+    u = (myBraidVector *)ubase->userVector;
+    myvec = u->x;
+  }
+
+  return myvec;
+}
 
 BraidCore* myBraidApp::getCore() { return core; }
 
