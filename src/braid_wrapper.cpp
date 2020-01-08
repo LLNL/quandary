@@ -194,7 +194,7 @@ braid_Int myBraidApp::Init(braid_Real t, braid_Vector *u_ptr){
   myBraidVector *u = new myBraidVector(comm_petsc, nreal);
 
   /* Set the initial condition */
-  hamiltonian->initialCondition(u->x);
+  hamiltonian->initialCondition(0,u->x);
 
   /* Return vector to braid */
   *u_ptr = (braid_Vector) u;
@@ -374,7 +374,7 @@ braid_Int myBraidApp::BufUnpack(void *buffer, braid_Vector *u_ptr, BraidBufferSt
   return 0; 
 }
 
-int myBraidApp::SetInitialCondition(){ 
+int myBraidApp::SetInitialCondition(int i){ 
 /* Apply initial condition if warm_restart (otherwise it is set in my_Init().
  * Can not be set here if !(warm_restart) because the braid_grid is created only when braid_drive() is called. 
  */
@@ -388,7 +388,7 @@ int myBraidApp::SetInitialCondition(){
     if (ubase != NULL)  // only true on one first processor !
     {
       u = (myBraidVector *)ubase->userVector;
-      hamiltonian->initialCondition(u->x);
+      hamiltonian->initialCondition(i, u->x);
     }
   }
 
@@ -412,15 +412,17 @@ int myBraidApp::PostProcess() {
 }
 
 
-double myBraidApp::run() { 
+double myBraidApp::run(int i) { 
   
   int nreq = -1;
   double norm;
 
-  SetInitialCondition();
+  SetInitialCondition(i);
   core->Drive();
   core->GetRNorms(&nreq, &norm);
   PostProcess();
+
+  // braid_printConvHistory(braid_core, "braid.out.log");
 
   return norm; 
 }
@@ -579,7 +581,7 @@ braid_Int myAdjointBraidApp::Init(braid_Real t, braid_Vector *u_ptr) {
 }
 
 
-int myAdjointBraidApp::SetInitialCondition() {
+int myAdjointBraidApp::SetInitialCondition(int i) {
 /* If warm_restart: set adjoint initial condition here. Otherwise it's set in my_Init_Adj.
  * It can not be done here if drive() has not been called before, because the braid grid is allocated only at the beginning of drive() 
 */

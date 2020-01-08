@@ -81,32 +81,35 @@ class myBraidApp : public BraidApp {
     virtual braid_Int BufUnpack(void *buffer, braid_Vector *u_ptr,
                                 BraidBufferStatus &bstatus);
 
-    /* Sets the initial condition if warm_restart (otherwise it is set in my_Init().
+    /* Sets the initial condition with index i if warm_restart (otherwise it is set in my_Init().
     * Can not be set here if !(warm_restart) because the braid_grid is created only when braid_drive() is called. 
     */
-    virtual int SetInitialCondition();
+    virtual int SetInitialCondition(int i);
 
     /* Postprocess. This is called inside run(), after braid_Drive.  */
     virtual int PostProcess();
 
-    /* Sets the initial condition, then calls braid_drive. 
+    /* Sets the initial condition with index i, then calls braid_drive, then postprocess().
     * Return residual norm of last iteration.
     */
-    double run();
+    double run(int i);
 };
 
 /**
  * Adjoint braid App for solving adjoint eqations with xbraid.
  */
 class myAdjointBraidApp : public myBraidApp {
- protected:
-  BraidCore *primalcore;    /* pointer to primal core for accessing primal states */
-  Vec   redgrad;            /* reduced gradient */
+  protected:
+    BraidCore *primalcore;    /* pointer to primal core for accessing primal states */
+    Vec   redgrad;            /* reduced gradient */
 
   public:
 
     myAdjointBraidApp(MPI_Comm comm_braid_, MPI_Comm comm_petsc_, double total_time_, int ntime_, TS ts_, Hamiltonian* ham_, Vec redgrad_, MapParam* config, BraidCore *Primalcoreptr_);
     ~myAdjointBraidApp();
+
+    /* Get pointer to reduced gradient. READ ONLY!! */
+    const double* getReducedGradientPtr();
 
     /* Get the storage index of primal (reversed) time point index of a certain time t, on the grid created with spacing dt  */
     int getPrimalIndex(int ts);
@@ -118,7 +121,7 @@ class myAdjointBraidApp : public myBraidApp {
     braid_Int Init(braid_Real t, braid_Vector *u_ptr);
 
     /* Set the adjoint initial condition (derivative of primal objective function) */
-    int SetInitialCondition();
+    int SetInitialCondition(int i);
 
     int PostProcess();
 

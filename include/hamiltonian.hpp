@@ -68,9 +68,9 @@ class Hamiltonian{
     virtual int assemble_dRHSdp(double t, Vec x);
 
     /* 
-     * Set x to the initial condition 
+     * Set x to the initial condition of index iinit
      */
-    virtual int initialCondition(Vec x) = 0;
+    virtual int initialCondition(int iinit, Vec x) = 0;
 
     /* Access the Hamiltonian and derivative matrix */
     Mat getRHS();
@@ -114,8 +114,8 @@ class LiouvilleVN : public Hamiltonian {
     LiouvilleVN(double* xi, int noscillators_, Oscillator** oscil_vec_);
     virtual ~LiouvilleVN();
 
-    /* Set the initial condition (zero so far...) */
-    virtual int initialCondition(Vec x);
+    /* Set the initial condition of index iinit */
+    virtual int initialCondition(int iinit, Vec x);
 
     /* Eval Re and Im of vectorized Hamiltonian, and derivative */
     virtual int assemble_RHS(double t);
@@ -135,7 +135,7 @@ class AnalyticHam : public LiouvilleVN {
     virtual bool ExactSolution(double t, Vec x);
 
     /* Set the initial condition (exact(0)) */
-    int initialCondition(Vec x);
+    int initialCondition(int iinit, Vec x);
 };
 
 /* Real part for Oscillator 1 of analytic solution */

@@ -380,12 +380,12 @@ LiouvilleVN::~LiouvilleVN(){
 }
 
 
-int LiouvilleVN::initialCondition(Vec x){
-  VecZeroEntries(x); 
+int LiouvilleVN::initialCondition(int iinit, Vec x){
 
-  /* Set to first identity vector */
-  int idx = 0;
+  /* Set to i-th unit vector */
+  int idx = iinit;
   double val = 1.0;
+  VecZeroEntries(x); 
   VecSetValues(x,1, &idx, &val, INSERT_VALUES);
   
   return 0;
@@ -611,16 +611,15 @@ bool AnalyticHam::ExactSolution(PetscReal t,Vec s)
 }
 
 
-PetscErrorCode AnalyticHam::initialCondition(Vec x)
+PetscErrorCode AnalyticHam::initialCondition(int iinit, Vec x)
 {
-  // ExactSolution(0,x);
-  // VecView(x, PETSC_VIEWER_STDOUT_WORLD);
 
-  VecZeroEntries(x);
-  PetscScalar *x_ptr;
-  VecGetArray(x, &x_ptr);
-  x_ptr[0] = 1.0;
-  VecRestoreArray(x, &x_ptr);
+  /* Set to i-th unit vector */
+  int idx = iinit;
+  double val = 1.0;
+  VecZeroEntries(x); 
+  VecSetValues(x,1, &idx, &val, INSERT_VALUES);
+
   return 0;
 }
 

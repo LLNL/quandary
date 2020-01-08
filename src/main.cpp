@@ -199,29 +199,13 @@ int main(int argc,char **argv)
 
   /* --- Solve primal --- */
 
-  primalbraidapp->run();
+  primalbraidapp->run(0);
 
-  // /* If multilevel solve: Sweep over all points to access */
-  // if (maxlevels > 1 && iolevel > 0) {
-    _braid_CoreElt(primalbraidapp->getCore()->GetCore(), done) = 1;
-    _braid_FCRelax(primalbraidapp->getCore()->GetCore(), 0);
-  // }
- 
 
-  // /* Get the objective */
-  // braid_GetObjective(braid_core, &objective);
-  // if (mpirank == 0) {
-  //   printf("Objective: %1.12e\n", objective);
-  // }
-
-  // braid_printConvHistory(braid_core, "braid.out.log");
-
-  // /* Exit if primal run only */
-  // if (primal_only) goto exit;
 
   /* --- Solve adjoint --- */
 
-  adjointbraidapp->run();
+  adjointbraidapp->run(0);
 
   /* Gradient output */
   if (mpirank == 0) {
@@ -246,7 +230,7 @@ exit:
   printf("#########################\n\n");
 
   /* Set initial condition */
-  hamiltonian->initialCondition(x);
+  hamiltonian->initialCondition(0,x);
 
   /* Build a new time-stepper */
   TSDestroy(&ts); CHKERRQ(ierr);
@@ -317,7 +301,7 @@ exit:
         TSCreate(PETSC_COMM_SELF,&ts);CHKERRQ(ierr);
         TSInit(ts, hamiltonian, ntime, dt, total_time, x, lambda, mu, monitor);
 
-        hamiltonian->initialCondition(x);
+        hamiltonian->initialCondition(0,x);
         TSSolve(ts, x);
         ierr = TSGetSolveTime(ts, &Tfinal);CHKERRQ(ierr);
         hamiltonian->evalObjective(Tfinal, x, &objective_pert);
@@ -344,7 +328,7 @@ exit:
         TSDestroy(&ts);
         TSCreate(PETSC_COMM_SELF,&ts);CHKERRQ(ierr);
         TSInit(ts, hamiltonian, ntime, dt, total_time, x, lambda, mu, monitor);
-        hamiltonian->initialCondition(x);
+        hamiltonian->initialCondition(0,x);
         // for(PetscInt istep = 0; istep < ntime; istep++) {
         //   ierr = TSStep(ts);CHKERRQ(ierr);
         // }
@@ -486,7 +470,7 @@ exit:
     TSSetSolution(ts, x);
 
     // /* Set the initial condition */
-    hamiltonian->initialCondition(x);
+    hamiltonian->initialCondition(0,x);
 
     /* Run time-stepping loop */
     for(PetscInt istep = 0; istep <= ntime; istep++) 
