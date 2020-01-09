@@ -122,7 +122,7 @@ bool OptimProblem::eval_f(Index n, const Number* x, bool new_x, Number& obj_valu
   primalbraidapp->Drive();
 
   /* Compute objective function value */
-  Vec finalstate = primalbraidapp->getState(primalbraidapp->total_time); // this returns NULL for all but the last processors! 
+  const double *finalstate = primalbraidapp->getState(primalbraidapp->total_time); // this returns NULL for all but the last processors! 
   if (finalstate != NULL) {
       /* TODO: Compare to target gate */
   }

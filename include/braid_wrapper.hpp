@@ -40,8 +40,8 @@ class myBraidApp : public BraidApp {
 
     int getTimeStepIndex(double t, double dt);
 
-    /* Return state at a certain time point. CURRENTLY ONLY VALID FOR time == total_time */
-    Vec getState(double time);
+    /* Return READ-ONLY state at a certain time point. CURRENTLY ONLY VALID FOR time == total_time */
+    const double* getState(double time);
 
     /* Return the core */
     BraidCore *getCore();
