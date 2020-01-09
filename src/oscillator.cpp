@@ -1,10 +1,26 @@
 #include "oscillator.hpp"
 
-Oscillator::Oscillator(){
-  nparam = 0;
-  nlevels = 0;
+Oscillator::Oscillator(){}
+
+Oscillator::Oscillator(int nlevels_, int nparam_){
+  nlevels = nlevels_;
+  nparam = nparam_;
+  if (nparam>0) {
+    param_Re = new double[nparam];
+    param_Im = new double[nparam];
+    for (int i=0; i<nparam; i++) {
+      param_Re[i] = 0.0;
+      param_Im[i] = 0.0;
+    }
+  }
 }
-Oscillator::~Oscillator(){}
+
+Oscillator::~Oscillator(){
+  if (nparam>0) {
+    delete [] param_Re;
+    delete [] param_Im;
+  }
+}
 
 void Oscillator::flushControl(int ntime, double dt, const char* filename) {
   double time;
@@ -22,23 +38,19 @@ void Oscillator::flushControl(int ntime, double dt, const char* filename) {
   printf("File written: %s\n", filename);
 }
 
+double* Oscillator::getParamsRe(){ return param_Re; }
+double* Oscillator::getParamsIm(){ return param_Im; }
 
 
 SplineOscillator::SplineOscillator() {
   Tfinal = 0;
   basisfunctions = NULL;
-  param_Re = NULL;
-  param_Im = NULL;
 }
 
 
-SplineOscillator::SplineOscillator(int nlevels_, int nbasis_, double Tfinal_){
+SplineOscillator::SplineOscillator(int nlevels_, int nbasis_, double Tfinal_) : Oscillator(nlevels_, nbasis_) {
   Tfinal = Tfinal_;
-  nlevels = nlevels_;
-  nparam = nbasis_;  // nparam for Re and nparam for Im ! 
   basisfunctions = new Bspline(nparam, Tfinal_);
-  param_Re = new double[nparam];
-  param_Im = new double[nparam];
 
   /* Set some initial parameters */
   for (int i=0; i<nparam; i++){
@@ -50,8 +62,6 @@ SplineOscillator::SplineOscillator(int nlevels_, int nbasis_, double Tfinal_){
 SplineOscillator::~SplineOscillator(){
   if (nparam > 0){
     delete basisfunctions;
-    delete [] param_Re;
-    delete [] param_Im;
   }
 }
 
@@ -70,13 +80,15 @@ int SplineOscillator::evalControl(double t, double* Re_ptr, double* Im_ptr){
   return 0;
 }
 
-int SplineOscillator::getParams(double* paramsRe, double* paramsIm) {
+// int SplineOscillator::getParams(double* paramsRe, double* paramsIm) {
 
-  paramsRe = param_Re;
-  paramsIm = param_Im;
+//   paramsRe = param_Re;
+//   paramsIm = param_Im;
+//   printf("%p param_Re\n", param_Re);
+//   printf("%p paramsRe\n", paramsRe);
 
-  return 0;
-}
+//   return 0;
+// }
 
 
 int SplineOscillator::evalDerivative(double t, double* dRedp, double* dImdp) {
@@ -112,8 +124,6 @@ FunctionOscillator::FunctionOscillator() {
   G = NULL;
   dFdp = NULL;
   dGdp = NULL;
-  param_Re = NULL;
-  param_Im = NULL;
 }
 
 FunctionOscillator::FunctionOscillator( int nlevels_,
@@ -122,23 +132,16 @@ FunctionOscillator::FunctionOscillator( int nlevels_,
         double (*dFdp_) (double, double, double), 
         double omegaG_, 
         double (*G_)(double, double), 
-        double (*dGdp_) (double, double, double) ) {
-  nlevels = nlevels_;
+        double (*dGdp_) (double, double, double) ) : Oscillator(nlevels_, 1) {
   F = F_;
   G = G_;
   dFdp = dFdp_;
   dGdp = dGdp_;
-  nparam = 1;  // one for F (Re) one for G (Im)
-  param_Re = new double[nparam];
-  param_Im = new double[nparam];
   param_Re[0] = omegaF_;
   param_Im[0] = omegaG_;
 }
 
-FunctionOscillator::~FunctionOscillator(){
-  delete [] param_Re;
-  delete [] param_Im;
-}
+FunctionOscillator::~FunctionOscillator(){}
 
 int FunctionOscillator::evalControl(double t, double* Re_ptr, double* Im_ptr){
 
@@ -169,12 +172,12 @@ int FunctionOscillator::evalDerivative(double t, double* dRedp, double* dImdp) {
   return 0;
 }
 
-int FunctionOscillator::getParams(double* paramsRe, double* paramsIm) {
-  *paramsRe = param_Re[0];
-  *paramsIm = param_Im[0];
+// int FunctionOscillator::getParams(double* paramsRe, double* paramsIm) {
+//   *paramsRe = param_Re[0];
+//   *paramsIm = param_Im[0];
 
-  return 0;
-}
+//   return 0;
+// }
 
 int FunctionOscillator::updateParams(double stepsize, double* directionRe, double* directionIm) {
 

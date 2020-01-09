@@ -546,8 +546,10 @@ PetscScalar dG2_analytic(PetscReal t,PetscReal freq, PetscReal Gbar) {
 bool AnalyticHam::ExactSolution(PetscReal t,Vec s)
 {
   double f1, f2, g1, g2;
-  oscil_vec[0]->getParams(&f1, &g1);
-  oscil_vec[1]->getParams(&f2, &g2);
+  // oscil_vec[0]->getParams(&f1, &g1);
+  // oscil_vec[1]->getParams(&f2, &g2);
+  printf("TODO: IMPLEMENT GetParamRe!\n");
+  exit(1);
 
   if (fabs(f1) < 1e-12 || fabs(g2) < 1e-12){
     printf("\n ERROR: Can't use 0.0 for FunctionOscillatorFrequency!\n");
