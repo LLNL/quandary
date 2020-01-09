@@ -36,7 +36,7 @@ int main(int argc,char **argv)
   PetscBool      monitor;      // If true: Print out additional time-stepper information
   /* Braid */
   myBraidApp *primalbraidapp;
-  myBraidApp *adjointbraidapp;
+  myAdjointBraidApp *adjointbraidapp;
 
   Vec            x;          // solution vector
   // bool           tj_save;    // Determines wether trajectory should be stored in primal run
@@ -176,7 +176,7 @@ int main(int argc,char **argv)
   // printf("ilower %d, iupper %d\n", ilower, iupper);
 
   /* Initialize the optimization */
-  SmartPtr<TNLP> optimizer = new OptimProblem();
+  SmartPtr<TNLP> optimizer = new OptimProblem(primalbraidapp, adjointbraidapp);
   SmartPtr<IpoptApplication> optimapp = IpoptApplicationFactory(); // why "factory"?
   /* Set options */
   optimapp->Options()->SetNumericValue("tol", 1e-7);
@@ -199,20 +199,34 @@ int main(int argc,char **argv)
 
   /* --- Solve primal --- */
 
-  primalbraidapp->run(0);
+  /* Test optimproblem */
+  int n, m, nnz_jac, nnz_h;
+  OptimProblem::IndexStyleEnum index_style;
+  optimizer->get_nlp_info(n,m,nnz_jac, nnz_h, index_style);
+  printf("n=%d, m=%d, nnz_jac=%d, nnz_h=%d\n", n,m,nnz_jac, nnz_h);
 
+  double* myinit = new double[n];
+  optimizer->get_starting_point(n, true, myinit, false, NULL, NULL, m, false, NULL);
+
+  double obj_val;
+  printf("Running optimizer eval_f...\n");
+  optimizer->eval_f(n, myinit, true, obj_val);
 
 
   /* --- Solve adjoint --- */
 
-  adjointbraidapp->run(0);
-
-  /* Gradient output */
+  printf("Running optimizer eval_grad_f...\n");
+  double* optimgrad = new double[n];
+  optimizer->eval_grad_f(n, myinit, true, optimgrad);
   if (mpirank == 0) {
     printf("\n %d: My awesome gradient:\n", mpirank);
-    VecView(mu[0], PETSC_VIEWER_STDOUT_WORLD);
+    for (int i=0; i<n; i++) {
+      printf("%1.4e\n", optimgrad[i]);
+    }
   }
 
+
+  /* Gradient output */
   // /* Stop timer */
   // StopTime = MPI_Wtime();
   // UsedTime = StopTime - StartTime;

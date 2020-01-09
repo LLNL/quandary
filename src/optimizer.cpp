@@ -48,6 +48,7 @@ bool OptimProblem::get_bounds_info(Index n, Number* x_l, Number* x_u, Index m, N
     x_u[i] =  bound;
   }
 
+  assert(m=0);
   for (int i=0; i<m; i++) {
       g_l[i] = -bound;
       g_u[i] =  bound;
@@ -63,6 +64,7 @@ bool OptimProblem::get_starting_point(Index n, bool init_x, Number* x, bool init
   assert(init_z == false);
   assert(init_lambda == false);
 
+
   double *paramRe, *paramIm;
   int nparam;
   int j = 0;
@@ -72,7 +74,8 @@ bool OptimProblem::get_starting_point(Index n, bool init_x, Number* x, bool init
       /* Get number of parameters of oscillator i */
       nparam = hamil->getOscillator(ioscil)->getNParam();
       /* Get pointers to parameters of oscillator i */
-      hamil->getOscillator(ioscil)->getParams(paramRe, paramIm);
+      paramRe = hamil->getOscillator(ioscil)->getParamsRe();
+      paramIm = hamil->getOscillator(ioscil)->getParamsIm();
       /* Set initial condition */
       for (int iparam=0; iparam<nparam; iparam++) {
           x[j] = paramRe[iparam]; j++;
@@ -87,17 +90,20 @@ bool OptimProblem::get_starting_point(Index n, bool init_x, Number* x, bool init
 
 bool OptimProblem::eval_f(Index n, const Number* x, bool new_x, Number& obj_value){
 
-  /* --- Pass design vector x to oscillator --- */
-  /* Iterate over oscillators */
   Hamiltonian* hamil = primalbraidapp->hamiltonian;
+  int dim = hamil->getDim();
+
+  /* Pass design vector x to oscillator */
   int nparam;
   double *paramRe, *paramIm;
   int j = 0;
+  /* Iterate over oscillators */
   for (int ioscil = 0; ioscil < hamil->getNOscillators(); ioscil++) {
       /* Get number of parameters of oscillator i */
       nparam = hamil->getOscillator(ioscil)->getNParam();
       /* Get pointers to parameters of oscillator i */
-      hamil->getOscillator(ioscil)->getParams(paramRe, paramIm);
+      paramRe = hamil->getOscillator(ioscil)->getParamsRe();
+      paramIm = hamil->getOscillator(ioscil)->getParamsIm();
       /* Set parameters */
       for (int iparam=0; iparam<nparam; iparam++) {
           paramRe[iparam] = x[j]; j++;
@@ -105,13 +111,18 @@ bool OptimProblem::eval_f(Index n, const Number* x, bool new_x, Number& obj_valu
       }
   }
 
-  /* Run simulation */
-  primalbraidapp->run();
+  /* TODO: Iterate over initial condition */
+  obj_value = 0.0;
 
-  /* Get objective function value */
-  double objective;
-  braid_GetObjective(primalbraidapp->getCore()->GetCore(), &objective);
-  obj_value = objective;
+  /* Run simulation */
+  int iinit = 0;
+  primalbraidapp->run(iinit);
+
+  /* Compute objective function value */
+  Vec finalstate = primalbraidapp->getState(primalbraidapp->total_time); // this returns NULL for all but the last processors! 
+  if (finalstate != NULL) {
+      /* TODO: Compare to target gate */
+  }
 
   return true;
 }
@@ -120,12 +131,21 @@ bool OptimProblem::eval_f(Index n, const Number* x, bool new_x, Number& obj_valu
 
 bool OptimProblem::eval_grad_f(Index n, const Number* x, bool new_x, Number* grad_f){
 
-    /* TODO: if new_x: pass x to braid, forward simulation */
+    /* if new_x: pass x to braid, forward simulation */
+    if (new_x) {
+        double objective;
+        eval_f(n, x, true, objective);
+    }
 
     /* run backward simulation */
-    adjointbraidapp->run();
+    int iinit = 0;
+    adjointbraidapp->run(iinit);
 
-    /* TODO: pass reduced gradient to ipopt */
+    /* Pass reduced gradient to ipopt */
+    const double* grad_ptr = adjointbraidapp->getReducedGradientPtr();
+    for (int i=0; i<n; i++) {
+        grad_f[i] = grad_ptr[i];
+    }
     
     return true;
 }
@@ -145,13 +165,12 @@ bool OptimProblem::eval_jac_g(Index n, const Number* x, bool new_x, Index m, Ind
 }
 
 
+//  We are using l-bfgs. So no hessian needed.
 // bool OptimProblem::eval_h(Index n, const Number* x, bool new_x, Number obj_factor, Index m, const Number* lambda, bool new_lambda, Index nele_hess, Index* iRow, Index* jCol, Number* values){
-    
-//     /* We are using l-bfgs. So no hessian here. */
 //     return false;
 // }
 
 void OptimProblem::finalize_solution(SolverReturn status, Index n, const Number* x, const Number* z_L, const Number* z_U, Index m, const Number* g, const Number* lambda, Number obj_value, const IpoptData* ip_data,IpoptCalculatedQuantities* ip_cq){
     /* This is called after Ipopt finished. */
-    /* TODO: pass x to someone. */
+    /* TODO: pass x to someone, write to file... */
 }

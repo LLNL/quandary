@@ -18,7 +18,6 @@ class myBraidVector {
 class myBraidApp : public BraidApp {
   protected: 
     int          ntime;             /* number of time steps */
-    double       total_time;        /* total time  */
     TS           timestepper;       /* Petsc Time-stepper struct */
     MPI_Comm comm_petsc;            /* Petsc's communicator */
     MPI_Comm comm_braid;            /* Braid's communicator */
@@ -26,6 +25,7 @@ class myBraidApp : public BraidApp {
     BraidCore *core;                /* Braid core for running PinT simulation */
 
   public:
+    double       total_time;        /* total time  */
     Hamiltonian *hamiltonian;       /* Hamiltonian system */
     FILE *ufile;
     FILE *vfile;
