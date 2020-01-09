@@ -430,12 +430,11 @@ int myBraidApp::PostProcess() {
 }
 
 
-double myBraidApp::run(int i) { 
+double myBraidApp::Drive() { 
   
   int nreq = -1;
   double norm;
 
-  SetInitialCondition(i);
   core->Drive();
   core->GetRNorms(&nreq, &norm);
   PostProcess();
@@ -653,6 +652,7 @@ int myAdjointBraidApp::PostProcess() {
   MPI_Allreduce(mygrad, x_ptr, ndesign, MPI_DOUBLE, MPI_SUM, comm_braid);
   VecRestoreArray(redgrad, &x_ptr);
 
+  delete [] mygrad;
 
   return 0;
 }

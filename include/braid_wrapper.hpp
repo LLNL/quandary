@@ -89,13 +89,12 @@ class myBraidApp : public BraidApp {
     */
     virtual int SetInitialCondition(int i);
 
-    /* Postprocess. This is called inside run(), after braid_Drive.  */
+    /* Performs one last FRelax. */
     virtual int PostProcess();
 
-    /* Sets the initial condition with index i, then calls braid_drive, then postprocess().
-    * Return residual norm of last iteration.
-    */
-    double run(int i);
+    /* Call braid_drive and postprocess. Return braid norm */
+    double Drive();
+
 };
 
 /**
@@ -126,6 +125,7 @@ class myAdjointBraidApp : public myBraidApp {
     /* Set the adjoint initial condition (derivative of primal objective function) */
     int SetInitialCondition(int i);
 
+    /* Performs one last FRelax and MPI_Allreduce the gradient. */
     int PostProcess();
 
 };

@@ -93,6 +93,8 @@ bool OptimProblem::eval_f(Index n, const Number* x, bool new_x, Number& obj_valu
   Hamiltonian* hamil = primalbraidapp->hamiltonian;
   int dim = hamil->getDim();
 
+  /* TODO: if (new_x) ... */
+
   /* Pass design vector x to oscillator */
   int nparam;
   double *paramRe, *paramIm;
@@ -112,11 +114,12 @@ bool OptimProblem::eval_f(Index n, const Number* x, bool new_x, Number& obj_valu
   }
 
   /* TODO: Iterate over initial condition */
+  int iinit = 0;
   obj_value = 0.0;
 
   /* Run simulation */
-  int iinit = 0;
-  primalbraidapp->run(iinit);
+  primalbraidapp->SetInitialCondition(iinit);
+  primalbraidapp->Drive();
 
   /* Compute objective function value */
   Vec finalstate = primalbraidapp->getState(primalbraidapp->total_time); // this returns NULL for all but the last processors! 
@@ -139,7 +142,8 @@ bool OptimProblem::eval_grad_f(Index n, const Number* x, bool new_x, Number* gra
 
     /* run backward simulation */
     int iinit = 0;
-    adjointbraidapp->run(iinit);
+    adjointbraidapp->SetInitialCondition(iinit);
+    adjointbraidapp->Drive();
 
     /* Pass reduced gradient to ipopt */
     const double* grad_ptr = adjointbraidapp->getReducedGradientPtr();
