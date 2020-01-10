@@ -1,4 +1,5 @@
 #include "braid_wrapper.hpp"
+#include "gate.hpp"
 #include "IpTNLP.hpp"
 
 #pragma once
@@ -10,11 +11,15 @@ class OptimProblem : public TNLP {
     protected:
         myBraidApp* primalbraidapp;
         myAdjointBraidApp* adjointbraidapp;
+		Gate* targetgate;
 
     public:
         OptimProblem();
-        OptimProblem(myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_);
+        OptimProblem(myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, Gate* targetgate);
         virtual ~OptimProblem();
+
+		/* Compare a gate to a current state */
+		double compare(Gate* gate, const double* state);
 
     /* --- Overload required Ipopt interface routines --- */
     

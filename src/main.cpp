@@ -137,6 +137,9 @@ int main(int argc,char **argv)
     hamiltonian = new LiouvilleVN(xi, nosci, oscil_vec);
   }
 
+  /* Initialize the target */
+  Gate* targetgate = new CNOT();
+
   /* Create solution vector x */
   MatCreateVecs(hamiltonian->getRHS(), &x, NULL);
 
@@ -175,8 +178,9 @@ int main(int argc,char **argv)
   // _braid_GetDistribution(braid_core, &ilower, &iupper);
   // printf("ilower %d, iupper %d\n", ilower, iupper);
 
+
   /* Initialize the optimization */
-  SmartPtr<TNLP> optimizer = new OptimProblem(primalbraidapp, adjointbraidapp);
+  SmartPtr<TNLP> optimizer = new OptimProblem(primalbraidapp, adjointbraidapp, targetgate);
   SmartPtr<IpoptApplication> optimapp = IpoptApplicationFactory(); // why "factory"?
   /* Set options */
   optimapp->Options()->SetNumericValue("tol", 1e-7);
@@ -538,6 +542,7 @@ exit:
 
   /* Clean up Hamiltonian */
   delete hamiltonian;
+  delete targetgate;
 
   /* Cleanup */
   // TSDestroy(&braid_app->ts);

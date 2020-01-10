@@ -153,15 +153,7 @@ Mat Hamiltonian::getRHS() { return RHS; }
 Mat Hamiltonian::getdRHSdp() { return dRHSdp; }
 
 
-int Hamiltonian::evalObjective(double t, Vec x, double *objective_ptr) {
-  
-  const PetscScalar *x_ptr;
-  VecGetArrayRead(x, &x_ptr);
 
-  *objective_ptr = 200.0 * x_ptr[1]; // TODO: Evaluate objective 
-
-  return 0;
-}
 
 
 int Hamiltonian::evalObjective_diff(double t, Vec x, Vec *lambda, Vec *mu) {

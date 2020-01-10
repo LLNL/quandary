@@ -5,15 +5,23 @@ using namespace Ipopt;
 OptimProblem::OptimProblem() {
     primalbraidapp  = NULL;
     adjointbraidapp = NULL;
+    targetgate = NULL;
 }
 
-OptimProblem::OptimProblem(myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_){
+OptimProblem::OptimProblem(myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, Gate* targetgate_){
     primalbraidapp  = primalbraidapp_;
     adjointbraidapp = adjointbraidapp_;
+    targetgate = targetgate_;
 }
 
 OptimProblem::~OptimProblem() {}
 
+double OptimProblem::compare(Gate* gate, const double* state) {
+    /* TODO: Compare distance of gate and state */
+    /* For now, dummy objective function */
+    double obj_val = 200.0 * state[1];
+    return obj_val;
+}
 
 bool OptimProblem::get_nlp_info(Index& n, Index& m, Index& nnz_jac_g, Index& nnz_h_lag, IndexStyleEnum& index_style){
 
@@ -124,7 +132,9 @@ bool OptimProblem::eval_f(Index n, const Number* x, bool new_x, Number& obj_valu
   /* Compute objective function value */
   const double *finalstate = primalbraidapp->getState(primalbraidapp->total_time); // this returns NULL for all but the last processors! 
   if (finalstate != NULL) {
-      /* TODO: Compare to target gate */
+    /* Compare to target gate */
+    obj_value += compare(targetgate, finalstate);
+
   }
 
   return true;
@@ -134,11 +144,9 @@ bool OptimProblem::eval_f(Index n, const Number* x, bool new_x, Number& obj_valu
 
 bool OptimProblem::eval_grad_f(Index n, const Number* x, bool new_x, Number* grad_f){
 
-    /* if new_x: pass x to braid, forward simulation */
-    if (new_x) {
-        double objective;
-        eval_f(n, x, true, objective);
-    }
+    /* pass x to braid, forward simulation */
+    double objective;
+    eval_f(n, x, true, objective);
 
     /* run backward simulation */
     int iinit = 0;

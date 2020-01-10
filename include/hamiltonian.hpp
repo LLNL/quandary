@@ -77,12 +77,6 @@ class Hamiltonian{
     Mat getdRHSdp();
     
     /* 
-     * Evaluate the objective function at time t and current solution x
-     * Return objective = F(t,x)
-     */
-    virtual int evalObjective(double t, Vec x, double *objective_ptr);
-
-    /* 
      * Evaluate the derivative of the objective function wrt x.
      * Return lambda = dFdx(t,x)
      * lambda must be allocated and of size dim (matching RHS)
