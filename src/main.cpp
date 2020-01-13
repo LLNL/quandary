@@ -219,15 +219,15 @@ int main(int argc,char **argv)
 
   /* --- Solve adjoint --- */
 
-  printf("Running optimizer eval_grad_f...\n");
-  double* optimgrad = new double[n];
-  optimizer->eval_grad_f(n, myinit, true, optimgrad);
-  if (mpirank == 0) {
-    printf("\n %d: My awesome gradient:\n", mpirank);
-    for (int i=0; i<n; i++) {
-      printf("%1.4e\n", optimgrad[i]);
-    }
-  }
+  // printf("Running optimizer eval_grad_f...\n");
+  // double* optimgrad = new double[n];
+  // optimizer->eval_grad_f(n, myinit, true, optimgrad);
+  // if (mpirank == 0) {
+  //   printf("\n %d: My awesome gradient:\n", mpirank);
+  //   for (int i=0; i<n; i++) {
+  //     printf("%1.4e\n", optimgrad[i]);
+  //   }
+  // }
 
 
   /* Gradient output */

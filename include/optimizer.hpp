@@ -18,8 +18,8 @@ class OptimProblem : public TNLP {
         OptimProblem(myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, Gate* targetgate);
         virtual ~OptimProblem();
 
-		/* Compare a gate to a current state */
-		double compare(Gate* gate, const double* state);
+		/* Compare a gate to a current state of index iinit */
+		double compare(Gate* gate, const double* state, int iinit);
 
     /* --- Overload required Ipopt interface routines --- */
     

@@ -16,11 +16,14 @@ OptimProblem::OptimProblem(myBraidApp* primalbraidapp_, myAdjointBraidApp* adjoi
 
 OptimProblem::~OptimProblem() {}
 
-double OptimProblem::compare(Gate* gate, const double* state) {
-    /* TODO: Compare distance of gate and state */
-    /* For now, dummy objective function */
-    double obj_val = 200.0 * state[1];
-    return obj_val;
+double OptimProblem::compare(Gate* gate, const double* state, int iinit) {
+  /* --- using trace norm --- */
+
+  /* g_i is nonzero only at one entry. Get it's index here. */
+  int igate = gate->getIndex(iinit);
+
+  /* Return */
+  return state[igate];
 }
 
 bool OptimProblem::get_nlp_info(Index& n, Index& m, Index& nnz_jac_g, Index& nnz_h_lag, IndexStyleEnum& index_style){
@@ -121,21 +124,28 @@ bool OptimProblem::eval_f(Index n, const Number* x, bool new_x, Number& obj_valu
       }
   }
 
-  /* TODO: Iterate over initial condition */
-  int iinit = 0;
+  /*  Iterate over initial condition */
+  double dist=0.0;
   obj_value = 0.0;
+  for (int iinit = 0; iinit < dim; iinit++) {
+    /* Set initial condition for index iinit */
+    printf("Now SetInitialCondition(%d):\n", iinit);
+    primalbraidapp->SetInitialCondition(iinit);
+    /* Solve forward problem */
+    primalbraidapp->Drive();
 
-  /* Run simulation */
-  primalbraidapp->SetInitialCondition(iinit);
-  primalbraidapp->Drive();
+    /* Add to objective function value */
+    const double *finalstate = primalbraidapp->getState(primalbraidapp->total_time); // this returns NULL for all but the last processors! 
+    if (finalstate != NULL) {
+      /* Compare to target gate */
+      dist = compare(targetgate, finalstate, iinit);
+    }
+    obj_value += dist;
 
-  /* Compute objective function value */
-  const double *finalstate = primalbraidapp->getState(primalbraidapp->total_time); // this returns NULL for all but the last processors! 
-  if (finalstate != NULL) {
-    /* Compare to target gate */
-    obj_value += compare(targetgate, finalstate);
-
+    printf(" dist(%d) = %1.14e\n", iinit, dist);
   }
+
+  /* TODO: MPI_Allreduce objective value */
 
   return true;
 }
@@ -144,22 +154,24 @@ bool OptimProblem::eval_f(Index n, const Number* x, bool new_x, Number& obj_valu
 
 bool OptimProblem::eval_grad_f(Index n, const Number* x, bool new_x, Number* grad_f){
 
-    /* pass x to braid, forward simulation */
-    double objective;
-    eval_f(n, x, true, objective);
+  /* TODO: Pass initial condition */
 
-    /* run backward simulation */
-    int iinit = 0;
-    adjointbraidapp->SetInitialCondition(iinit);
-    adjointbraidapp->Drive();
+  /* pass x to braid & do forward simulation */
+  double objective;
+  eval_f(n, x, true, objective);
 
-    /* Pass reduced gradient to ipopt */
-    const double* grad_ptr = adjointbraidapp->getReducedGradientPtr();
-    for (int i=0; i<n; i++) {
-        grad_f[i] = grad_ptr[i];
-    }
+  /* run backward simulation */
+  int iinit = 0;
+  adjointbraidapp->SetInitialCondition(iinit);
+  adjointbraidapp->Drive();
+
+  /* Pass reduced gradient to ipopt */
+  const double* grad_ptr = adjointbraidapp->getReducedGradientPtr();
+  for (int i=0; i<n; i++) {
+      grad_f[i] = grad_ptr[i];
+  }
     
-    return true;
+  return true;
 }
 
 
