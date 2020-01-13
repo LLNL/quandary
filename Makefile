@@ -4,7 +4,7 @@
 # Set Braid location 
 BRAID_DIR = ${HOME}/Numerics/xbraid_solveadjointwithxbraid
 
-OPT_DIR = /usr/local/Cellar/ipopt/3.12.13_3/
+IPOPT_DIR = ${HOME}
 
 # Set compiler options, e.g. define SANITY_CHECK. Comment out if none.
 #CXX_OPT = -DSANITY_CHECK
@@ -33,11 +33,11 @@ SRC_FILES += $(wildcard $(SRC_DIR)/*/*.cpp)
 OBJ_FILES  = $(patsubst $(SRC_DIR)/%.cpp,$(BUILD_DIR)/%.o,$(SRC_FILES))
 
 # set include directory
-INC = -I$(INC_DIR) -I$(BRAID_INC_DIR) -I${PETSC_DIR}/include -I${PETSC_DIR}/${PETSC_ARCH}/include -I${OPT_DIR}/include/coin
+INC = -I$(INC_DIR) -I$(BRAID_INC_DIR) -I${PETSC_DIR}/include -I${PETSC_DIR}/${PETSC_ARCH}/include -I${IPOPT_DIR}/include/coin-or
 
 # Set Library paths and flags
 LDPATH  = ${PETSC_DIR}/${PETSC_ARCH}/lib
-LDFLAGS = -lpetsc -lm ${BRAID_LIB_FILE} -L${PETSC_DIR}/${PETSC_ARCH}/lib -L/usr/local/Cellar/ipopt/3.12.13_3/lib -L/usr/local/opt/openblas/lib -lipopt -ldmumps -lmumps_common -lopenblas -lpord -lopenblas -lSystem 
+LDFLAGS = -lpetsc -lm ${BRAID_LIB_FILE} -L${PETSC_DIR}/${PETSC_ARCH}/lib -L${IPOPT_DIR}/lib -L/usr/local/opt/openblas/lib -lipopt -lopenblas
 
 # Set compiler and flags 
 CXX=mpicxx
