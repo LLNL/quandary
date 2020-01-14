@@ -95,7 +95,7 @@ bool OptimProblem::get_bounds_info(Index n, Number* x_l, Number* x_u, Index m, N
     x_u[i] =  bound;
   }
 
-  assert(m=0);
+  assert(m==0);
   for (int i=0; i<m; i++) {
       g_l[i] = -bound;
       g_u[i] =  bound;
@@ -201,14 +201,14 @@ bool OptimProblem::eval_grad_f(Index n, const Number* x, bool new_x, Number* gra
 
 
 bool OptimProblem::eval_g(Index n, const Number* x, bool new_x, Index m, Number* g) {
-    assert(m=0);
+    assert(m==0);
     /* No constraints. Nothing to be done. */
     return true;
 }
 
 
 bool OptimProblem::eval_jac_g(Index n, const Number* x, bool new_x, Index m, Index nele_jac, Index* iRow, Index *jCol, Number* values){
-    assert(m=0);
+    assert(m==0);
     /* No constraints. Nothing to be done. */
     return true;
 }
