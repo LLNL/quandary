@@ -154,23 +154,6 @@ Mat Hamiltonian::getdRHSdp() { return dRHSdp; }
 
 
 
-
-
-int Hamiltonian::evalObjective_diff(double t, Vec x, Vec *lambda, Vec *mu) {
-  PetscScalar *x_ptr;
-
-  /* lambda: Derivative of objective wrt x */
-  VecZeroEntries(*lambda);  
-  VecGetArray(*lambda, &x_ptr);
-  x_ptr[1] = 200.0;
-  VecRestoreArray(*lambda, &x_ptr);
-
-  /* mu: Derivative of objective wrt parameters */
-  VecZeroEntries(*mu);
-
-  return 0;
-}
-
 int Hamiltonian::createLoweringOP(int iosc, Mat* loweringOP) {
 
   /* Get dimensions */
@@ -379,6 +362,7 @@ int LiouvilleVN::initialCondition(int iinit, Vec x){
   double val = 1.0;
   VecZeroEntries(x); 
   VecSetValues(x,1, &idx, &val, INSERT_VALUES);
+  // VecView(x, PETSC_VIEWER_STDOUT_WORLD);
   
   return 0;
 }

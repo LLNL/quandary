@@ -161,8 +161,8 @@ int main(int argc,char **argv)
   TSInit(ts, hamiltonian, ntime, dt, total_time, x, lambda, mu, monitor);
 
   /* Initialize Braid */
-  primalbraidapp = new myBraidApp(comm_braid, comm_petsc, total_time, ntime, ts, hamiltonian, &config);
-  adjointbraidapp = new myAdjointBraidApp(comm_braid, comm_petsc, total_time, ntime, ts, hamiltonian, *mu, &config, primalbraidapp->getCore());
+  primalbraidapp = new myBraidApp(comm_braid, comm_petsc, total_time, ntime, ts, hamiltonian, targetgate, &config);
+  adjointbraidapp = new myAdjointBraidApp(comm_braid, comm_petsc, total_time, ntime, ts, hamiltonian, targetgate, *mu, &config, primalbraidapp->getCore());
 
   /* Prepare output */
   sprintf(filename, "out_u.%04d.dat", mpirank);
@@ -180,7 +180,7 @@ int main(int argc,char **argv)
 
 
   /* Initialize the optimization */
-  SmartPtr<TNLP> optimizer = new OptimProblem(primalbraidapp, adjointbraidapp, targetgate);
+  SmartPtr<TNLP> optimizer = new OptimProblem(primalbraidapp, adjointbraidapp);
   SmartPtr<IpoptApplication> optimapp = IpoptApplicationFactory(); // why "factory"?
   /* Set options */
   optimapp->Options()->SetNumericValue("tol", 1e-7);
@@ -213,15 +213,15 @@ int main(int argc,char **argv)
   optimizer->get_starting_point(n, true, myinit, false, NULL, NULL, m, false, NULL);
 
   double obj_val;
-  printf("Running optimizer eval_f...\n");
+  printf("\nRunning optimizer eval_f...\n");
   optimizer->eval_f(n, myinit, true, obj_val);
 
 
   /* --- Solve adjoint --- */
 
-  // printf("Running optimizer eval_grad_f...\n");
-  // double* optimgrad = new double[n];
-  // optimizer->eval_grad_f(n, myinit, true, optimgrad);
+  printf("\nRunning optimizer eval_grad_f...\n");
+  double* optimgrad = new double[n];
+  optimizer->eval_grad_f(n, myinit, true, optimgrad);
   // if (mpirank == 0) {
   //   printf("\n %d: My awesome gradient:\n", mpirank);
   //   for (int i=0; i<n; i++) {

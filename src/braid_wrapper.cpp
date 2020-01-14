@@ -19,13 +19,14 @@ myBraidVector::~myBraidVector() {
 
 
 
-myBraidApp::myBraidApp(MPI_Comm comm_braid_, MPI_Comm comm_petsc_, double total_time_, int ntime_, TS ts_, Hamiltonian* ham_, MapParam* config) 
+myBraidApp::myBraidApp(MPI_Comm comm_braid_, MPI_Comm comm_petsc_, double total_time_, int ntime_, TS ts_, Hamiltonian* ham_, Gate* targate_, MapParam* config) 
           : BraidApp(comm_braid_, 0.0, total_time_, ntime_) {
 
   ntime = ntime_;
   total_time = total_time_;
   timestepper = ts_;
   hamiltonian = ham_;
+  targetgate = targate_;
   comm_petsc = comm_petsc_;
   comm_braid = comm_braid_;
   ufile = NULL;
@@ -68,7 +69,7 @@ int myBraidApp::getTimeStepIndex(double t, double dt){
   return ts;
 }
 
-const double* myBraidApp::getState(double t) {
+const double* myBraidApp::getStateRead(double t) {
   if (t != total_time) {
    printf("ERROR: getState not implemented yet for (t != final_time)\n\n");
    exit(1);
@@ -85,6 +86,7 @@ const double* myBraidApp::getState(double t) {
 
   return state_ptr;
 }
+
 
 BraidCore* myBraidApp::getCore() { return core; }
 
@@ -153,31 +155,15 @@ braid_Int myBraidApp::Step(braid_Vector u_, braid_Vector ustop_, braid_Vector fs
     }
   #endif
 
-    /* Set the time */
-    TSSetTime(timestepper, tstart);
-    TSSetTimeStep(timestepper, tstop - tstart);
+  // Something is wrong with the time stepper.  
+    // /* Forward */
+    // TSSetTime(timestepper, tstart);
+    // TSSetTimeStep(timestepper, tstop - tstart);
+    // TSSetStepNumber(timestepper, 0);
+    // TSSetMaxSteps(timestepper, 1);
+    // TSSolve(timestepper, u->x);
+  
 
-    /* Pass the curent state to the Petsc time-stepper */
-    // TSSetSolution(app->ts, u->x);
-
-    // app->ts->steps = 0;
-    TSSetStepNumber(timestepper, 0);
-    TSSetMaxSteps(timestepper, 1);
-    TSSolve(timestepper, u->x);
-
-    // int ml = 0;
-    // braid_StatusGetNLevels((braid_Status) status, &ml);
-    
-
-    /* Take a step forward */
-    // bool tj_save = false;
-    // if (done || ml <= 1) tj_save = true;
-    // TSStepMod(app->ts, tj_save);
-
-    /* Calling the access routine here, because I removed it from the end of the braid_Drive() routine. This might give wrong tindex values... TODO: Check! */
-    // if (done) my_Access(app, u, (braid_AccessStatus) status);
-
- 
   return 0;
 }
 
@@ -391,7 +377,7 @@ braid_Int myBraidApp::BufUnpack(void *buffer, braid_Vector *u_ptr, BraidBufferSt
   return 0; 
 }
 
-int myBraidApp::SetInitialCondition(int i){ 
+int myBraidApp::PreProcess(int iinit){ 
 /* Apply initial condition if warm_restart (otherwise it is set in my_Init().
  * Can not be set here if !(warm_restart) because the braid_grid is created only when braid_drive() is called. 
  */
@@ -399,13 +385,14 @@ int myBraidApp::SetInitialCondition(int i){
   braid_BaseVector ubase;
   myBraidVector *u;
       
+  printf("Preprocess initial condition %d\n", iinit);
   if (core->GetWarmRestart()) {
     /* Get vector at t == 0 */
     _braid_UGetVectorRef(core->GetCore(), 0, 0, &ubase);
     if (ubase != NULL)  // only true on one first processor !
     {
       u = (myBraidVector *)ubase->userVector;
-      hamiltonian->initialCondition(i, u->x);
+      hamiltonian->initialCondition(iinit, u->x);
     }
   }
 
@@ -414,7 +401,7 @@ int myBraidApp::SetInitialCondition(int i){
 
 
 
-int myBraidApp::PostProcess() {
+int myBraidApp::PostProcess(int iinit, double* f) {
 
   braid_BaseVector ubase;
   myBraidVector *u;
@@ -425,6 +412,19 @@ int myBraidApp::PostProcess() {
     _braid_CoreElt(core->GetCore(), done) = 1;
     _braid_FCRelax(core->GetCore(), 0);
   }
+
+  /* Eval objective function for initial condition iinit */
+  double obj_local = 0.0;
+  const double *finalstate = getStateRead(total_time); // this returns NULL for all but the last processors! 
+  if (finalstate != NULL) {
+    /* Compare to target gate */
+    obj_local = targetgate->apply(iinit, finalstate);
+  }
+
+  /* TODO: MPI_Allreduce objective value */
+
+  /* Set return value */
+  *f = obj_local;
 
   return 0;
 }
@@ -437,7 +437,6 @@ double myBraidApp::Drive() {
 
   core->Drive();
   core->GetRNorms(&nreq, &norm);
-  PostProcess();
 
   // braid_printConvHistory(braid_core, "braid.out.log");
 
@@ -448,8 +447,8 @@ double myBraidApp::Drive() {
 /* ================================================================*/
 /* Adjoint Braid App */
 /* ================================================================*/
-myAdjointBraidApp::myAdjointBraidApp(MPI_Comm comm_braid_, MPI_Comm comm_petsc_, double total_time_, int ntime_, TS ts_, Hamiltonian* ham_, Vec redgrad_, MapParam* config, BraidCore *Primalcoreptr_)
-        : myBraidApp(comm_braid_, comm_petsc_, total_time_, ntime_, ts_, ham_, config) {
+myAdjointBraidApp::myAdjointBraidApp(MPI_Comm comm_braid_, MPI_Comm comm_petsc_, double total_time_, int ntime_, TS ts_, Hamiltonian* ham_, Gate* targate_, Vec redgrad_, MapParam* config, BraidCore *Primalcoreptr_)
+        : myBraidApp(comm_braid_, comm_petsc_, total_time_, ntime_, ts_, ham_, targate_, config) {
 
   /* Store the primal core */
   primalcore = Primalcoreptr_;
@@ -463,9 +462,16 @@ myAdjointBraidApp::myAdjointBraidApp(MPI_Comm comm_braid_, MPI_Comm comm_petsc_,
   /* Revert processor ranks for solving adjoint */
   core->SetRevertedRanks(1);
   // _braid_SetVerbosity(core->GetCore(), 1);
+
+  int ndesign;
+  VecGetSize(redgrad, &ndesign);
+  mygrad = new double[ndesign];
+
 }
 
-myAdjointBraidApp::~myAdjointBraidApp() {}
+myAdjointBraidApp::~myAdjointBraidApp() {
+  delete [] mygrad;
+}
 
 
 const double* myAdjointBraidApp::getReducedGradientPtr(){
@@ -509,77 +515,47 @@ braid_Int myAdjointBraidApp::Step(braid_Vector u_, braid_Vector ustop_, braid_Ve
     // printf("\n %d: Braid %d %f->%f, dt=%f \n", mpirank, tindex, tstart, tstop, dt);
 
     /* Get primal state */
-    int finegrid = 0;
-    int tstop_id = getTimeStepIndex(tstop, total_time / ntime);
-    int primaltimestep = ntime - tstop_id;
-    braid_BaseVector ubaseprimal;
-    myBraidVector *uprimal;
-    Vec x;
-    // printf("Accessing primal %d\n", primaltimestep);
-    _braid_UGetVectorRef(primalcore->GetCore(), finegrid, primaltimestep, &ubaseprimal);
-    if (ubaseprimal == NULL) printf("ubaseprimal is null!\n");
-    uprimal = (myBraidVector*) ubaseprimal->userVector;
-    VecDuplicate(uprimal->x, &x);
-    VecCopy(uprimal->x, x);
-    // VecView(x, PETSC_VIEWER_STDOUT_WORLD);
+    // int finegrid = 0;
+    // int tstop_id = getTimeStepIndex(tstop, total_time / ntime);
+    // int primaltimestep = ntime - tstop_id;
+    // braid_BaseVector ubaseprimal;
+    // myBraidVector *uprimal;
+    // Vec x;
+    // _braid_UGetVectorRef(primalcore->GetCore(), finegrid, primaltimestep, &ubaseprimal);
+    // if (ubaseprimal == NULL) printf("ubaseprimal is null!\n");
+    // uprimal = (myBraidVector*) ubaseprimal->userVector;
+    // VecDuplicate(uprimal->x, &x);
+    // VecCopy(uprimal->x, x);
 
 
-    /* Solve forward while saving trajectory */
-    TSDestroy(&timestepper);
-    ierr = TSCreate(PETSC_COMM_SELF,&timestepper);CHKERRQ(ierr);
-    // TSReset(app->ts);
-    TSInit(timestepper, hamiltonian, ntime  , dt, total_time, x, &(u->x), &redgrad, false);
+    // /* Solve forward while saving trajectory */
+    // TSDestroy(&timestepper);
+    // ierr = TSCreate(PETSC_COMM_SELF,&timestepper);CHKERRQ(ierr);
+    // TSInit(timestepper, hamiltonian, ntime  , dt, total_time, x, &(u->x), &redgrad, false);
 
-    ierr = TSSetSaveTrajectory(timestepper);CHKERRQ(ierr);
-    ierr = TSTrajectorySetSolutionOnly(timestepper->trajectory, (PetscBool) true);
-    ierr = TSTrajectorySetType(timestepper->trajectory, timestepper, TSTRAJECTORYMEMORY);
+    // ierr = TSSetSaveTrajectory(timestepper);CHKERRQ(ierr);
+    // ierr = TSTrajectorySetSolutionOnly(timestepper->trajectory, (PetscBool) true);
+    // ierr = TSTrajectorySetType(timestepper->trajectory, timestepper, TSTRAJECTORYMEMORY);
 
-    TSSetTime(timestepper, total_time - tstop);
-    TSSetTimeStep(timestepper, dt);
+    // TSSetTime(timestepper, total_time - tstop);
+    // TSSetTimeStep(timestepper, dt);
 
-    TSSetStepNumber(timestepper, 0);
-    TSSetMaxSteps(timestepper, 1);
+    // TSSetStepNumber(timestepper, 0);
+    // TSSetMaxSteps(timestepper, 1);
 
-    TSSetSolution(timestepper, x);
+    // TSSetSolution(timestepper, x);
 
-    TSSolve(timestepper, x);
+    // TSSolve(timestepper, x);
 
-    /* Set adjoint vars */ 
-    if (!update_gradient) VecZeroEntries(redgrad);
-    TSSetCostGradients(timestepper, 1, &u->x, &redgrad); CHKERRQ(ierr);
+    // /* Set adjoint vars */ 
+    // if (!update_gradient) VecZeroEntries(redgrad);
+    // TSSetCostGradients(timestepper, 1, &u->x, &redgrad); CHKERRQ(ierr);
 
-    /* Solve adjoint */
-    TSSetTimeStep(timestepper, -dt);
-    TSAdjointSolve(timestepper);
+    // /* Solve adjoint */
+    // TSSetTimeStep(timestepper, -dt);
+    // TSAdjointSolve(timestepper);
 
-    VecDestroy(&x);
-    // app->ts->ptime_prev = tstop;
-    // TSSetTimeStep(app->ts, -dt) ; 
-    // TSSetTime(app->ts, app->total_time - tstart);
-    // app->ts->ptime_prev = app->total_time - tstop;    
-    // TSSetTimeStep(app->ts, 5000.0) ; // -(ptime - ptime_prev) ?
-
-
-    /* Pass adjoint and derivative to Petsc */
-    // TSSetAdjointSolution(app->ts, u_bar->x, app->redgrad);   // this one works too!?
-
-    // VecCopy(u->x, app->ts->vecs_sensi[0]);
-    // if (update_gradient) {
-    //   VecCopy(app->redgrad, app->ts->vecs_sensip[0]);
-    // } else {
-    //   VecZeroEntries(app->ts->vecs_sensip[0]);
-    // }
-
-    // /* Take an adjoint step */
-    // bool tj_save = true;
-    // app->ts->steps = app->ntime - tindex;
-    // TSAdjointStepMod(app->ts, tj_save);
-
-    // /* Grab derivatives from Petsc and pass to XBraid */
-    // VecCopy(app->ts->vecs_sensi[0], u->x);
-    // if (update_gradient) VecCopy(app->ts->vecs_sensip[0], app->redgrad);
-
-
+    // VecDestroy(&x);
 
   return 0;  
 }
@@ -595,9 +571,12 @@ braid_Int myAdjointBraidApp::Init(braid_Real t, braid_Vector *u_ptr) {
 
   /* Set the differentiated objective function */
   if (t==0){
-    double t = 0.0;
-    // TSTrajectoryGet(app->ts->trajectory,app->ts, 0, &t);
-    hamiltonian->evalObjective_diff(t, timestepper->vec_sol, &u->x, &redgrad);
+
+    /* Set derivative of objective function value */
+    PetscScalar* x_ptr;
+    VecGetArray(u->x,&x_ptr);
+    targetgate->apply_diff(0, x_ptr);
+    VecRestoreArray(u->x, &x_ptr);
   }
 
   /* Return new vector to braid */
@@ -607,29 +586,36 @@ braid_Int myAdjointBraidApp::Init(braid_Real t, braid_Vector *u_ptr) {
 }
 
 
-int myAdjointBraidApp::SetInitialCondition(int i) {
+int myAdjointBraidApp::PreProcess(int iinit) {
 /* If warm_restart: set adjoint initial condition here. Otherwise it's set in my_Init_Adj.
  * It can not be done here if drive() has not been called before, because the braid grid is allocated only at the beginning of drive() 
 */
   braid_BaseVector ubaseadjoint;
   myBraidVector *uadjoint;
 
+  /* Set initial condition for adjoint: Derivative of objective function */
   if (core->GetWarmRestart()) {
-    /* Get adjoint state */
+    /* Get adjoint state at t=0.0 */
     _braid_UGetVectorRef(core->GetCore(), 0, 0, &ubaseadjoint);
-    if (ubaseadjoint != NULL) {   // this on true at the last processor only
+    if (ubaseadjoint != NULL) {   // this is true only at the last processor
       uadjoint = (myBraidVector *) ubaseadjoint->userVector;
-    }
 
-    /* Evaluate differentiated objective function */
-    hamiltonian->evalObjective_diff(0.0, NULL, &uadjoint->x, &redgrad);
+      /* Set derivative of objective function value */
+      VecZeroEntries(uadjoint->x);
+      PetscScalar* x_ptr;
+      VecGetArray(uadjoint->x,&x_ptr);
+      targetgate->apply_diff(iinit, x_ptr);
+      VecRestoreArray(uadjoint->x, &x_ptr);
+    }
   }
 
+  /* Reset the reduced gradient */
+  VecZeroEntries(redgrad); 
 
   return 0;
 }
 
-int myAdjointBraidApp::PostProcess() {
+int myAdjointBraidApp::PostProcess(int i, double* f) {
 
   int maxlevels;
   maxlevels = _braid_CoreElt(core->GetCore(), max_levels);
@@ -641,18 +627,15 @@ int myAdjointBraidApp::PostProcess() {
   }
 
   /* Sum up the reduced gradient mu from all processors */
-  int ndesign;
   PetscScalar *x_ptr;
+  int ndesign;
   VecGetSize(redgrad, &ndesign);
-  double* mygrad = new double[ndesign];
   VecGetArray(redgrad, &x_ptr);
   for (int i=0; i<ndesign; i++) {
     mygrad[i] = x_ptr[i];
   }
   MPI_Allreduce(mygrad, x_ptr, ndesign, MPI_DOUBLE, MPI_SUM, comm_braid);
   VecRestoreArray(redgrad, &x_ptr);
-
-  delete [] mygrad;
 
   return 0;
 }

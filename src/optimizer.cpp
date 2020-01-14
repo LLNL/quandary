@@ -5,25 +5,61 @@ using namespace Ipopt;
 OptimProblem::OptimProblem() {
     primalbraidapp  = NULL;
     adjointbraidapp = NULL;
-    targetgate = NULL;
+    objective_curr = 0.0;
 }
 
-OptimProblem::OptimProblem(myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, Gate* targetgate_){
+OptimProblem::OptimProblem(myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_){
     primalbraidapp  = primalbraidapp_;
     adjointbraidapp = adjointbraidapp_;
-    targetgate = targetgate_;
 }
 
 OptimProblem::~OptimProblem() {}
 
-double OptimProblem::compare(Gate* gate, const double* state, int iinit) {
-  /* --- using trace norm --- */
 
-  /* g_i is nonzero only at one entry. Get it's index here. */
-  int igate = gate->getIndex(iinit);
 
-  /* Return */
-  return state[igate];
+void OptimProblem::setDesign(Index n, const Number* x) {
+
+  Hamiltonian* hamil = primalbraidapp->hamiltonian;
+
+  /* Pass design vector x to oscillator */
+  int nparam;
+  double *paramRe, *paramIm;
+  int j = 0;
+  /* Iterate over oscillators */
+  for (int ioscil = 0; ioscil < hamil->getNOscillators(); ioscil++) {
+      /* Get number of parameters of oscillator i */
+      nparam = hamil->getOscillator(ioscil)->getNParam();
+      /* Get pointers to parameters of oscillator i */
+      paramRe = hamil->getOscillator(ioscil)->getParamsRe();
+      paramIm = hamil->getOscillator(ioscil)->getParamsIm();
+      /* Set parameters */
+      for (int iparam=0; iparam<nparam; iparam++) {
+          paramRe[iparam] = x[j]; j++;
+          paramIm[iparam] = x[j]; j++;
+      }
+  }
+}
+
+
+void OptimProblem::getDesign(Index n, Number* x){
+
+  double *paramRe, *paramIm;
+  int nparam;
+  int j = 0;
+  /* Iterate over oscillators */
+  Hamiltonian* hamil = primalbraidapp->hamiltonian;
+  for (int ioscil = 0; ioscil < hamil->getNOscillators(); ioscil++) {
+      /* Get number of parameters of oscillator i */
+      nparam = hamil->getOscillator(ioscil)->getNParam();
+      /* Get pointers to parameters of oscillator i */
+      paramRe = hamil->getOscillator(ioscil)->getParamsRe();
+      paramIm = hamil->getOscillator(ioscil)->getParamsIm();
+      /* Set initial condition */
+      for (int iparam=0; iparam<nparam; iparam++) {
+          x[j] = paramRe[iparam]; j++;
+          x[j] = paramIm[iparam]; j++;
+      }
+  }
 }
 
 bool OptimProblem::get_nlp_info(Index& n, Index& m, Index& nnz_jac_g, Index& nnz_h_lag, IndexStyleEnum& index_style){
@@ -75,25 +111,9 @@ bool OptimProblem::get_starting_point(Index n, bool init_x, Number* x, bool init
   assert(init_z == false);
   assert(init_lambda == false);
 
-
-  double *paramRe, *paramIm;
-  int nparam;
-  int j = 0;
-  /* Iterate over oscillators */
-  Hamiltonian* hamil = primalbraidapp->hamiltonian;
-  for (int ioscil = 0; ioscil < hamil->getNOscillators(); ioscil++) {
-      /* Get number of parameters of oscillator i */
-      nparam = hamil->getOscillator(ioscil)->getNParam();
-      /* Get pointers to parameters of oscillator i */
-      paramRe = hamil->getOscillator(ioscil)->getParamsRe();
-      paramIm = hamil->getOscillator(ioscil)->getParamsIm();
-      /* Set initial condition */
-      for (int iparam=0; iparam<nparam; iparam++) {
-          x[j] = paramRe[iparam]; j++;
-          x[j] = paramIm[iparam]; j++;
-      }
-  }
-
+  /* Get x from oscillators */
+  getDesign(n, x);
+  
   return true;
 }
 
@@ -101,51 +121,35 @@ bool OptimProblem::get_starting_point(Index n, bool init_x, Number* x, bool init
 
 bool OptimProblem::eval_f(Index n, const Number* x, bool new_x, Number& obj_value){
 
+  double obj_local;
   Hamiltonian* hamil = primalbraidapp->hamiltonian;
   int dim = hamil->getDim();
 
   /* TODO: if (new_x) ... */
 
   /* Pass design vector x to oscillator */
-  int nparam;
-  double *paramRe, *paramIm;
-  int j = 0;
-  /* Iterate over oscillators */
-  for (int ioscil = 0; ioscil < hamil->getNOscillators(); ioscil++) {
-      /* Get number of parameters of oscillator i */
-      nparam = hamil->getOscillator(ioscil)->getNParam();
-      /* Get pointers to parameters of oscillator i */
-      paramRe = hamil->getOscillator(ioscil)->getParamsRe();
-      paramIm = hamil->getOscillator(ioscil)->getParamsIm();
-      /* Set parameters */
-      for (int iparam=0; iparam<nparam; iparam++) {
-          paramRe[iparam] = x[j]; j++;
-          paramIm[iparam] = x[j]; j++;
-      }
-  }
+  setDesign(n, x);
+
+
+  /* Reset objective function value */
+  objective_curr = 0.0;
 
   /*  Iterate over initial condition */
-  double dist=0.0;
-  obj_value = 0.0;
   for (int iinit = 0; iinit < dim; iinit++) {
     /* Set initial condition for index iinit */
-    printf("Now SetInitialCondition(%d):\n", iinit);
-    primalbraidapp->SetInitialCondition(iinit);
+    primalbraidapp->PreProcess(iinit);
     /* Solve forward problem */
     primalbraidapp->Drive();
+    /* Eval objective function for initial condition i */
+    primalbraidapp->PostProcess(iinit, &obj_local);
+    printf("Local objective %d : %1.14e\n", iinit, obj_local);
 
-    /* Add to objective function value */
-    const double *finalstate = primalbraidapp->getState(primalbraidapp->total_time); // this returns NULL for all but the last processors! 
-    if (finalstate != NULL) {
-      /* Compare to target gate */
-      dist = compare(targetgate, finalstate, iinit);
-    }
-    obj_value += dist;
-
-    printf(" dist(%d) = %1.14e\n", iinit, dist);
+    /* Add to global objective value */
+    objective_curr += obj_local;
   }
 
-  /* TODO: MPI_Allreduce objective value */
+  /* Return objective value */
+  obj_value = objective_curr;
 
   return true;
 }
@@ -154,21 +158,42 @@ bool OptimProblem::eval_f(Index n, const Number* x, bool new_x, Number& obj_valu
 
 bool OptimProblem::eval_grad_f(Index n, const Number* x, bool new_x, Number* grad_f){
 
-  /* TODO: Pass initial condition */
+  Hamiltonian* hamil = primalbraidapp->hamiltonian;
+  double obj_local;
+  int dim = hamil->getDim();
 
-  /* pass x to braid & do forward simulation */
-  double objective;
-  eval_f(n, x, true, objective);
-
-  /* run backward simulation */
-  int iinit = 0;
-  adjointbraidapp->SetInitialCondition(iinit);
-  adjointbraidapp->Drive();
-
-  /* Pass reduced gradient to ipopt */
-  const double* grad_ptr = adjointbraidapp->getReducedGradientPtr();
+  /* Make sure that grad_f is zero when it comes in. */
   for (int i=0; i<n; i++) {
-      grad_f[i] = grad_ptr[i];
+    grad_f[i] = 0.0;
+  }
+
+  /* Pass x to Oscillator */
+  setDesign(n, x);
+
+  /* Reset objective function value */
+  objective_curr = 0.0;
+
+  /* Iterate over initial conditions */
+  for (int iinit = 0; iinit < dim; iinit++) {
+
+    /* --- Solve primal --- */
+    primalbraidapp->PreProcess(iinit);
+    printf("Solve forward %d:\n", iinit);
+    primalbraidapp->Drive();
+    primalbraidapp->PostProcess(iinit, &obj_local);
+    /* Add to global objective value */
+    objective_curr += obj_local;
+
+    /* --- Solve adjoint --- */
+    adjointbraidapp->PreProcess(iinit);
+    adjointbraidapp->Drive();
+    adjointbraidapp->PostProcess(iinit, NULL);
+
+    /* Add to Ipopt's gradient */
+    // const double* grad_ptr = adjointbraidapp->getReducedGradientPtr();
+    // for (int i=0; i<n; i++) {
+        // grad_f[i] += grad_ptr[i]; 
+    // }
   }
     
   return true;

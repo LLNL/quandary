@@ -3,6 +3,7 @@
 #include "hamiltonian.hpp"
 #include "braid.hpp"
 #include "util.hpp"
+#include "gate.hpp"
 
 #pragma once
 
@@ -21,18 +22,19 @@ class myBraidApp : public BraidApp {
     TS           timestepper;       /* Petsc Time-stepper struct */
     MPI_Comm comm_petsc;            /* Petsc's communicator */
     MPI_Comm comm_braid;            /* Braid's communicator */
+    double       total_time;        /* total time  */
+    Gate         *targetgate;
 
     BraidCore *core;                /* Braid core for running PinT simulation */
 
   public:
-    double       total_time;        /* total time  */
     Hamiltonian *hamiltonian;       /* Hamiltonian system */
     FILE *ufile;
     FILE *vfile;
 
   public:
 
-  myBraidApp(MPI_Comm comm_braid_, MPI_Comm comm_petsc_, double total_time_, int ntime_, TS ts_, Hamiltonian* ham_, MapParam* config);
+  myBraidApp(MPI_Comm comm_braid_, MPI_Comm comm_petsc_, double total_time_, int ntime_, TS ts_, Hamiltonian* ham_, Gate* targate_, MapParam* config);
   ~myBraidApp();
 
     /* Dumps xbraid's convergence history to a file */
@@ -40,8 +42,8 @@ class myBraidApp : public BraidApp {
 
     int getTimeStepIndex(double t, double dt);
 
-    /* Return READ-ONLY state at a certain time point. CURRENTLY ONLY VALID FOR time == total_time */
-    const double* getState(double time);
+    /* Return read-only state at a certain time point. CURRENTLY ONLY VALID FOR time == total_time */
+    const double* getStateRead(double time);
 
     /* Return the core */
     BraidCore *getCore();
@@ -84,13 +86,11 @@ class myBraidApp : public BraidApp {
     virtual braid_Int BufUnpack(void *buffer, braid_Vector *u_ptr,
                                 BraidBufferStatus &bstatus);
 
-    /* Sets the initial condition with index i if warm_restart (otherwise it is set in my_Init().
-    * Can not be set here if !(warm_restart) because the braid_grid is created only when braid_drive() is called. 
-    */
-    virtual int SetInitialCondition(int i);
+    /* Sets the initial condition with index i if warm_restart (otherwise it is set in my_Init() */
+    virtual int PreProcess(int i);
 
-    /* Performs one last FRelax. */
-    virtual int PostProcess();
+    /* Performs one last FRelax, evaluates the objective function value for init i */
+    virtual int PostProcess(int i, double* f);
 
     /* Call braid_drive and postprocess. Return braid norm */
     double Drive();
@@ -105,9 +105,12 @@ class myAdjointBraidApp : public myBraidApp {
     BraidCore *primalcore;    /* pointer to primal core for accessing primal states */
     Vec   redgrad;            /* reduced gradient */
 
+  private:
+    double* mygrad; /* auxiliary vector used to MPI_Allreduce the gradient */
+
   public:
 
-    myAdjointBraidApp(MPI_Comm comm_braid_, MPI_Comm comm_petsc_, double total_time_, int ntime_, TS ts_, Hamiltonian* ham_, Vec redgrad_, MapParam* config, BraidCore *Primalcoreptr_);
+    myAdjointBraidApp(MPI_Comm comm_braid_, MPI_Comm comm_petsc_, double total_time_, int ntime_, TS ts_, Hamiltonian* ham_, Gate* targate_, Vec redgrad_, MapParam* config, BraidCore *Primalcoreptr_);
     ~myAdjointBraidApp();
 
     /* Get pointer to reduced gradient. READ ONLY!! */
@@ -122,10 +125,10 @@ class myAdjointBraidApp : public myBraidApp {
     /* Set adjoint initial condition */
     braid_Int Init(braid_Real t, braid_Vector *u_ptr);
 
-    /* Set the adjoint initial condition (derivative of primal objective function) */
-    int SetInitialCondition(int i);
+    /* Sets the adjoint initial condition if warmrestart (derivative of primal objective function) */
+    int PreProcess(int i);
 
     /* Performs one last FRelax and MPI_Allreduce the gradient. */
-    int PostProcess();
+    int PostProcess(int i, double* f);
 
 };
