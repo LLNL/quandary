@@ -1,3 +1,3 @@
-* Remove evalObjectiveDiff from Hamiltonian. 
+* Test setDesign and getDesign functions. 
 
 * fix getParams() for FunctionOscillator!

@@ -3,31 +3,29 @@
 Gate::Gate(){
   nqubits = 0; 
   dim = 0;
-  lookup = NULL;
 }
 
 Gate::Gate(int nqubits_){
   nqubits = nqubits_;
   dim = pow(nqubits,4);  
 
-  lookup = new int[dim];
-  for (int i=0; i<dim; i++) {
-    lookup[i] = 0;
-  }
+
 }
 
-Gate::~Gate(){
-  delete [] lookup;
-}
+Gate::~Gate(){}
 
-int Gate::getIndex(int i) { return lookup[i]; }
 
 
 CNOT::CNOT() : Gate(2) { // CNOT spans two qubits
 
   assert(dim == 16);
 
-  /* Fill the lookup table ! */
+  lookup = new int[dim];
+  for (int i=0; i<dim; i++) {
+    lookup[i] = 0;
+  }
+
+  /* Fill the CNOT lookup table V\kron V! */
   lookup[0] = 0;
   lookup[1] = 1;
   lookup[2] = 3;
@@ -44,7 +42,24 @@ CNOT::CNOT() : Gate(2) { // CNOT spans two qubits
   lookup[12] = 8;
   lookup[13] = 9;
   lookup[14] = 11;
-  lookup[15] = 12;
+  lookup[15] = 10;
 }
 
-CNOT::~CNOT(){}
+int CNOT::getIndex(int i) { return lookup[i]; }
+
+CNOT::~CNOT(){
+  delete [] lookup;
+}
+
+
+double CNOT::apply(int i, const double* state){
+
+  return state[getIndex(i)];
+}
+
+
+
+void CNOT::apply_diff(int i, double* state_bar){
+
+  state_bar[getIndex(i)] += 1.0;
+}
