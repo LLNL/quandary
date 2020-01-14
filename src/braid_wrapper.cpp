@@ -156,12 +156,12 @@ braid_Int myBraidApp::Step(braid_Vector u_, braid_Vector ustop_, braid_Vector fs
   #endif
 
   // Something is wrong with the time stepper.  
-    // /* Forward */
-    // TSSetTime(timestepper, tstart);
-    // TSSetTimeStep(timestepper, tstop - tstart);
-    // TSSetStepNumber(timestepper, 0);
-    // TSSetMaxSteps(timestepper, 1);
-    // TSSolve(timestepper, u->x);
+    /* Forward */
+    TSSetTime(timestepper, tstart);
+    TSSetTimeStep(timestepper, tstop - tstart);
+    TSSetStepNumber(timestepper, 0);
+    TSSetMaxSteps(timestepper, 1);
+    TSSolve(timestepper, u->x);
   
 
   return 0;
@@ -416,12 +416,15 @@ int myBraidApp::PostProcess(int iinit, double* f) {
   /* Eval objective function for initial condition iinit */
   double obj_local = 0.0;
   const double *finalstate = getStateRead(total_time); // this returns NULL for all but the last processors! 
-  if (finalstate != NULL) {
-    /* Compare to target gate */
-    obj_local = targetgate->apply(iinit, finalstate);
-  }
+  // if (finalstate != NULL) {
+  //   /* Compare to target gate */
+  //   obj_local = targetgate->apply(iinit, finalstate);
+  // }
+  // /* TODO: MPI_Allreduce objective value */
 
-  /* TODO: MPI_Allreduce objective value */
+  // for (int i = 0; i < 32; i++) {
+    obj_local = 200.0*finalstate[1];
+  // }
 
   /* Set return value */
   *f = obj_local;
@@ -515,47 +518,47 @@ braid_Int myAdjointBraidApp::Step(braid_Vector u_, braid_Vector ustop_, braid_Ve
     // printf("\n %d: Braid %d %f->%f, dt=%f \n", mpirank, tindex, tstart, tstop, dt);
 
     /* Get primal state */
-    // int finegrid = 0;
-    // int tstop_id = getTimeStepIndex(tstop, total_time / ntime);
-    // int primaltimestep = ntime - tstop_id;
-    // braid_BaseVector ubaseprimal;
-    // myBraidVector *uprimal;
-    // Vec x;
-    // _braid_UGetVectorRef(primalcore->GetCore(), finegrid, primaltimestep, &ubaseprimal);
-    // if (ubaseprimal == NULL) printf("ubaseprimal is null!\n");
-    // uprimal = (myBraidVector*) ubaseprimal->userVector;
-    // VecDuplicate(uprimal->x, &x);
-    // VecCopy(uprimal->x, x);
+    int finegrid = 0;
+    int tstop_id = getTimeStepIndex(tstop, total_time / ntime);
+    int primaltimestep = ntime - tstop_id;
+    braid_BaseVector ubaseprimal;
+    myBraidVector *uprimal;
+    Vec x;
+    _braid_UGetVectorRef(primalcore->GetCore(), finegrid, primaltimestep, &ubaseprimal);
+    if (ubaseprimal == NULL) printf("ubaseprimal is null!\n");
+    uprimal = (myBraidVector*) ubaseprimal->userVector;
+    VecDuplicate(uprimal->x, &x);
+    VecCopy(uprimal->x, x);
 
 
-    // /* Solve forward while saving trajectory */
-    // TSDestroy(&timestepper);
-    // ierr = TSCreate(PETSC_COMM_SELF,&timestepper);CHKERRQ(ierr);
-    // TSInit(timestepper, hamiltonian, ntime  , dt, total_time, x, &(u->x), &redgrad, false);
+    /* Solve forward while saving trajectory */
+    TSDestroy(&timestepper);
+    ierr = TSCreate(PETSC_COMM_SELF,&timestepper);CHKERRQ(ierr);
+    TSInit(timestepper, hamiltonian, ntime  , dt, total_time, x, &(u->x), &redgrad, false);
 
-    // ierr = TSSetSaveTrajectory(timestepper);CHKERRQ(ierr);
-    // ierr = TSTrajectorySetSolutionOnly(timestepper->trajectory, (PetscBool) true);
-    // ierr = TSTrajectorySetType(timestepper->trajectory, timestepper, TSTRAJECTORYMEMORY);
+    ierr = TSSetSaveTrajectory(timestepper);CHKERRQ(ierr);
+    ierr = TSTrajectorySetSolutionOnly(timestepper->trajectory, (PetscBool) true);
+    ierr = TSTrajectorySetType(timestepper->trajectory, timestepper, TSTRAJECTORYMEMORY);
 
-    // TSSetTime(timestepper, total_time - tstop);
-    // TSSetTimeStep(timestepper, dt);
+    TSSetTime(timestepper, total_time - tstop);
+    TSSetTimeStep(timestepper, dt);
 
-    // TSSetStepNumber(timestepper, 0);
-    // TSSetMaxSteps(timestepper, 1);
+    TSSetStepNumber(timestepper, 0);
+    TSSetMaxSteps(timestepper, 1);
 
-    // TSSetSolution(timestepper, x);
+    TSSetSolution(timestepper, x);
 
-    // TSSolve(timestepper, x);
+    TSSolve(timestepper, x);
 
-    // /* Set adjoint vars */ 
-    // if (!update_gradient) VecZeroEntries(redgrad);
-    // TSSetCostGradients(timestepper, 1, &u->x, &redgrad); CHKERRQ(ierr);
+    /* Set adjoint vars */ 
+    if (!update_gradient) VecZeroEntries(redgrad);
+    TSSetCostGradients(timestepper, 1, &u->x, &redgrad); CHKERRQ(ierr);
 
-    // /* Solve adjoint */
-    // TSSetTimeStep(timestepper, -dt);
-    // TSAdjointSolve(timestepper);
+    /* Solve adjoint */
+    TSSetTimeStep(timestepper, -dt);
+    TSAdjointSolve(timestepper);
 
-    // VecDestroy(&x);
+    VecDestroy(&x);
 
   return 0;  
 }
@@ -575,7 +578,10 @@ braid_Int myAdjointBraidApp::Init(braid_Real t, braid_Vector *u_ptr) {
     /* Set derivative of objective function value */
     PetscScalar* x_ptr;
     VecGetArray(u->x,&x_ptr);
-    targetgate->apply_diff(0, x_ptr);
+    // targetgate->apply_diff(0, x_ptr);
+      // for(int i=0; i<32; i++) {
+        x_ptr[1] = 200.0; 
+      // }
     VecRestoreArray(u->x, &x_ptr);
   }
 
@@ -604,7 +610,10 @@ int myAdjointBraidApp::PreProcess(int iinit) {
       VecZeroEntries(uadjoint->x);
       PetscScalar* x_ptr;
       VecGetArray(uadjoint->x,&x_ptr);
-      targetgate->apply_diff(iinit, x_ptr);
+      // targetgate->apply_diff(iinit, x_ptr);
+      // for(int i=0; i<32; i++) {
+        x_ptr[1] = 200.0; 
+      // }
       VecRestoreArray(uadjoint->x, &x_ptr);
     }
   }

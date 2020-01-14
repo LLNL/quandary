@@ -65,8 +65,11 @@ int main(int argc,char **argv)
 
   MPI_Comm comm = MPI_COMM_WORLD;
   MPI_Comm comm_braid, comm_petsc;
-  braid_SplitCommworld(&comm, 1, &comm_petsc, &comm_braid);
-  PETSC_COMM_WORLD = comm_petsc;
+  /* TODO:  FIX THE MPI SHIT ! */
+  // braid_SplitCommworld(&comm, 1, &comm_petsc, &comm_braid);
+  // PETSC_COMM_WORLD = comm_petsc;
+  comm_petsc = MPI_COMM_WORLD;
+  comm_braid = MPI_COMM_WORLD;
 
   /* Initialize Petsc */
   ierr = PetscInitialize(&argc,&argv,(char*)0,NULL);if (ierr) return ierr;
@@ -180,12 +183,15 @@ int main(int argc,char **argv)
 
 
   /* Initialize the optimization */
-  SmartPtr<TNLP> optimizer = new OptimProblem(primalbraidapp, adjointbraidapp);
+  SmartPtr<TNLP> optimproblem = new OptimProblem(primalbraidapp, adjointbraidapp);
   SmartPtr<IpoptApplication> optimapp = IpoptApplicationFactory(); // why "factory"?
   /* Set options */
   optimapp->Options()->SetNumericValue("tol", 1e-7);
 	optimapp->Options()->SetStringValue("output_file", "optim.out");
 	optimapp->Options()->SetStringValue("hessian_approximation", "limited-memory");
+	optimapp->Options()->SetStringValue("derivative_test", "first-order");
+	optimapp->Options()->SetStringValue("derivative_test_print_all", "yes");
+  optimapp->Options()->SetIntegerValue("max_iter", 0);
   /* Initialize optim status */
   ApplicationReturnStatus optimstatus;
   optimstatus = optimapp->Initialize();
@@ -201,33 +207,60 @@ int main(int argc,char **argv)
   UsedTime = 0.0;
 
 
-  /* --- Solve primal --- */
+  // /* Solve the optimization  */
+  // printf("Now solving the optim problem \n");
+  // optimstatus = optimapp->OptimizeTNLP(optimproblem);
 
-  /* Test optimproblem */
+
   int n, m, nnz_jac, nnz_h;
   OptimProblem::IndexStyleEnum index_style;
-  optimizer->get_nlp_info(n,m,nnz_jac, nnz_h, index_style);
+  optimproblem->get_nlp_info(n,m,nnz_jac, nnz_h, index_style);
   printf("n=%d, m=%d, nnz_jac=%d, nnz_h=%d\n", n,m,nnz_jac, nnz_h);
 
+  /* Test optimproblem */
   double* myinit = new double[n];
-  optimizer->get_starting_point(n, true, myinit, false, NULL, NULL, m, false, NULL);
+  optimproblem->get_starting_point(n, true, myinit, false, NULL, NULL, m, false, NULL);
 
-  double obj_val;
-  printf("\nRunning optimizer eval_f...\n");
-  optimizer->eval_f(n, myinit, true, obj_val);
+
+  double obj_orig, obj_perturb;
+
+  /* --- Solve primal --- */
+  printf("\nRunning optimizer eval_f... ");
+  optimproblem->eval_f(n, myinit, true, obj_orig);
+  printf(" Objective_orig %1.14e\n", obj_orig);
+
+  oscil_vec[0]->flushControl(ntime, dt, "control_orig.dat");
+
+  // perturb design */
+  int iperturb = 2;
+  myinit[iperturb] += EPS;
+
+  /* --- Solve primal --- */
+  printf("Running optimizer eval_f... ");
+  optimproblem->eval_f(n, myinit, true, obj_perturb);
+  printf(" Objective_perturb %1.14e\n", obj_perturb);
+
+  oscil_vec[0]->flushControl(ntime, dt, "control_perturb.dat");
 
 
   /* --- Solve adjoint --- */
+  myinit[iperturb] -= EPS;
 
   printf("\nRunning optimizer eval_grad_f...\n");
   double* optimgrad = new double[n];
-  optimizer->eval_grad_f(n, myinit, true, optimgrad);
-  // if (mpirank == 0) {
-  //   printf("\n %d: My awesome gradient:\n", mpirank);
-  //   for (int i=0; i<n; i++) {
-  //     printf("%1.4e\n", optimgrad[i]);
-  //   }
-  // }
+  optimproblem->eval_grad_f(n, myinit, true, optimgrad);
+  if (mpirank == 0) {
+    printf("\n %d: My awesome gradient:\n", mpirank);
+    for (int i=0; i<n; i++) {
+      printf("%1.14e\n", optimgrad[i]);
+    }
+  }
+
+  /* compute FD */
+  double findiff = (obj_perturb - obj_orig) / EPS;
+  double error = 0.0;
+  if (findiff != 0.0) error = ( optimgrad[iperturb] - findiff ) / findiff;
+  printf("Findiff = %1.14e, grad=%1.14e, error=%1.14e\n", findiff, optimgrad[iperturb], error);
 
 
   /* Gradient output */

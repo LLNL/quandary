@@ -32,9 +32,13 @@ void OptimProblem::setDesign(Index n, const Number* x) {
       /* Get pointers to parameters of oscillator i */
       paramRe = hamil->getOscillator(ioscil)->getParamsRe();
       paramIm = hamil->getOscillator(ioscil)->getParamsIm();
-      /* Set parameters */
+      /* Design storage: x = (ReParams, ImParams)_iOscil
+      /* Set Re parameters */
       for (int iparam=0; iparam<nparam; iparam++) {
           paramRe[iparam] = x[j]; j++;
+      }
+      /* Set Im parameters */
+      for (int iparam=0; iparam<nparam; iparam++) {
           paramIm[iparam] = x[j]; j++;
       }
   }
@@ -54,9 +58,12 @@ void OptimProblem::getDesign(Index n, Number* x){
       /* Get pointers to parameters of oscillator i */
       paramRe = hamil->getOscillator(ioscil)->getParamsRe();
       paramIm = hamil->getOscillator(ioscil)->getParamsIm();
-      /* Set initial condition */
+      /* Set Re params */
       for (int iparam=0; iparam<nparam; iparam++) {
           x[j] = paramRe[iparam]; j++;
+      }
+      /* Set Im params */
+      for (int iparam=0; iparam<nparam; iparam++) {
           x[j] = paramIm[iparam]; j++;
       }
   }
@@ -190,10 +197,10 @@ bool OptimProblem::eval_grad_f(Index n, const Number* x, bool new_x, Number* gra
     adjointbraidapp->PostProcess(iinit, NULL);
 
     /* Add to Ipopt's gradient */
-    // const double* grad_ptr = adjointbraidapp->getReducedGradientPtr();
-    // for (int i=0; i<n; i++) {
-        // grad_f[i] += grad_ptr[i]; 
-    // }
+    const double* grad_ptr = adjointbraidapp->getReducedGradientPtr();
+    for (int i=0; i<n; i++) {
+        grad_f[i] += grad_ptr[i]; 
+    }
   }
     
   return true;
