@@ -416,15 +416,11 @@ int myBraidApp::PostProcess(int iinit, double* f) {
   /* Eval objective function for initial condition iinit */
   double obj_local = 0.0;
   const double *finalstate = getStateRead(total_time); // this returns NULL for all but the last processors! 
-  // if (finalstate != NULL) {
-  //   /* Compare to target gate */
-  //   obj_local = targetgate->apply(iinit, finalstate);
-  // }
-  // /* TODO: MPI_Allreduce objective value */
-
-  // for (int i = 0; i < 32; i++) {
-    obj_local = 200.0*finalstate[1];
-  // }
+  if (finalstate != NULL) {
+    /* Compare to target gate */
+    obj_local = targetgate->apply(iinit, finalstate);
+  }
+  /* TODO: MPI_Allreduce objective value */
 
   /* Set return value */
   *f = obj_local;
@@ -578,10 +574,7 @@ braid_Int myAdjointBraidApp::Init(braid_Real t, braid_Vector *u_ptr) {
     /* Set derivative of objective function value */
     PetscScalar* x_ptr;
     VecGetArray(u->x,&x_ptr);
-    // targetgate->apply_diff(0, x_ptr);
-      // for(int i=0; i<32; i++) {
-        x_ptr[1] = 200.0; 
-      // }
+    targetgate->apply_diff(0, x_ptr);
     VecRestoreArray(u->x, &x_ptr);
   }
 
@@ -610,10 +603,7 @@ int myAdjointBraidApp::PreProcess(int iinit) {
       VecZeroEntries(uadjoint->x);
       PetscScalar* x_ptr;
       VecGetArray(uadjoint->x,&x_ptr);
-      // targetgate->apply_diff(iinit, x_ptr);
-      // for(int i=0; i<32; i++) {
-        x_ptr[1] = 200.0; 
-      // }
+      targetgate->apply_diff(iinit, x_ptr);
       VecRestoreArray(uadjoint->x, &x_ptr);
     }
   }

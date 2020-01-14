@@ -224,15 +224,14 @@ int main(int argc,char **argv)
 
   double obj_orig, obj_perturb;
 
+
   /* --- Solve primal --- */
   printf("\nRunning optimizer eval_f... ");
   optimproblem->eval_f(n, myinit, true, obj_orig);
   printf(" Objective_orig %1.14e\n", obj_orig);
 
-  oscil_vec[0]->flushControl(ntime, dt, "control_orig.dat");
-
   // perturb design */
-  int iperturb = 2;
+  int iperturb = 0;
   myinit[iperturb] += EPS;
 
   /* --- Solve primal --- */
@@ -240,11 +239,9 @@ int main(int argc,char **argv)
   optimproblem->eval_f(n, myinit, true, obj_perturb);
   printf(" Objective_perturb %1.14e\n", obj_perturb);
 
-  oscil_vec[0]->flushControl(ntime, dt, "control_perturb.dat");
-
+  myinit[iperturb] -= EPS;
 
   /* --- Solve adjoint --- */
-  myinit[iperturb] -= EPS;
 
   printf("\nRunning optimizer eval_grad_f...\n");
   double* optimgrad = new double[n];
