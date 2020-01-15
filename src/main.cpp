@@ -167,6 +167,10 @@ int main(int argc,char **argv)
   sprintf(filename, "out_v.%04d.dat", mpirank);
   if (iolevel > 0) vfile = fopen(filename, "w");
 
+
+  /* Create a timestepper */
+  TimeStepper* timestepper = new ImplMidpoint(hamiltonian);
+
   /* Allocate and initialize Petsc's Time-stepper */
   TSCreate(PETSC_COMM_SELF,&ts);CHKERRQ(ierr);
   TSInit(ts, hamiltonian, ntime, dt, total_time, x, lambda, mu, monitor);
@@ -178,6 +182,7 @@ int main(int argc,char **argv)
 
   /* Set up XBraid's applications structure */
   braid_app->ts     = ts;
+  braid_app->timestepper = timestepper;
   braid_app->hamiltonian = hamiltonian;
   braid_app->ntime  = ntime;
   braid_app->total_time = total_time;
@@ -602,6 +607,8 @@ exit:
 
   /* Clean up Hamiltonian */
   delete hamiltonian;
+
+  delete timestepper;
 
   /* Cleanup XBraid */
   // braid_Destroy(braid_core);

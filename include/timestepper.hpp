@@ -4,6 +4,40 @@
 #pragma once
 
 
+/* Base class for time steppers */
+class TimeStepper{
+  protected:
+    int dim;                   /* State vector dimension */
+    Hamiltonian* hamiltonian;  
+
+  public: 
+    TimeStepper(); 
+    TimeStepper(Hamiltonian* hamiltonian_); 
+    virtual ~TimeStepper(); 
+
+    /* Evolving x from tstart to tstop. */
+    virtual void evolvForward(double tstart, double tstop, Vec x) = 0;
+};
+
+/* Implements implicit midpoint rule. 2nd order. Simplectic. 
+ * RK tableau:  1/2 |  1/2
+ *              ------------
+ *                  |   1
+ */
+class ImplMidpoint : public TimeStepper {
+
+  Vec rhs;
+  Vec stage;
+
+  public:
+    ImplMidpoint(Hamiltonian* hamiltonian_);
+    ~ImplMidpoint();
+
+    void evolvForward(double tstart, double tstop, Vec x);
+};
+
+
+
 /*
  * Evaluate the right-hand side system Matrix (real, vectorized Hamiltonian system matrix)
  * In: ts - time stepper

@@ -1,5 +1,46 @@
 #include "timestepper.hpp"
 
+TimeStepper::TimeStepper() {
+  dim = 0;
+  hamiltonian = NULL;
+}
+
+TimeStepper::TimeStepper(Hamiltonian* hamiltonian_) {
+  hamiltonian = hamiltonian_;
+  dim = 2*hamiltonian->getDim();
+}
+
+TimeStepper::~TimeStepper() {}
+
+
+ImplMidpoint::ImplMidpoint(Hamiltonian* hamiltonian_) : TimeStepper(hamiltonian_) {
+
+  /* Create and reset the intermediate vectors */
+  VecCreateSeq(PETSC_COMM_WORLD, dim, &stage);
+  VecCreateSeq(PETSC_COMM_WORLD, dim, &rhs);
+  VecZeroEntries(stage);
+  VecZeroEntries(rhs);
+}
+
+
+ImplMidpoint::~ImplMidpoint(){
+  /* Free up intermediate stage vector */
+  VecDestroy(&stage);
+  VecDestroy(&rhs);
+}
+
+void ImplMidpoint::evolvForward(double tstart, double tstop, Vec x) {
+
+  /* Time step size */
+  double dt = tstop - tstart;
+
+  printf("Now evolving from %f to %f.\n", tstart, tstop);
+
+  /* Compute stage variable */
+
+  /* Update */
+}
+
 
 PetscErrorCode RHSJacobian(TS ts,PetscReal t,Vec u,Mat M,Mat P,void *ctx){
 

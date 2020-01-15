@@ -19,6 +19,7 @@ typedef struct _braid_App_struct
     int     ntime;    // number of time steps
     double  total_time;
     Hamiltonian *hamiltonian; 
+    TimeStepper *timestepper;
     Vec   mu;         // reduced gradient 
     FILE *ufile;
     FILE *vfile;

@@ -46,6 +46,8 @@ int my_Step(braid_App    app,
     TSSetMaxSteps(app->ts, 1);
     TSSolve(app->ts, u->x);
 
+    app->timestepper->evolvForward(tstart, tstop, u->x);
+
     // int ml = 0;
     // braid_StatusGetNLevels((braid_Status) status, &ml);
     
