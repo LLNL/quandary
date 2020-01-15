@@ -142,6 +142,7 @@ bool OptimProblem::eval_f(Index n, const Number* x, bool new_x, Number& obj_valu
   objective_curr = 0.0;
 
   /*  Iterate over initial condition */
+    dim = 1;
   for (int iinit = 0; iinit < dim; iinit++) {
     /* Set initial condition for index iinit */
     primalbraidapp->PreProcess(iinit);
@@ -149,7 +150,6 @@ bool OptimProblem::eval_f(Index n, const Number* x, bool new_x, Number& obj_valu
     primalbraidapp->Drive();
     /* Eval objective function for initial condition i */
     primalbraidapp->PostProcess(iinit, &obj_local);
-    printf("Local objective %d : %1.14e\n", iinit, obj_local);
 
     /* Add to global objective value */
     objective_curr += obj_local;
@@ -181,11 +181,11 @@ bool OptimProblem::eval_grad_f(Index n, const Number* x, bool new_x, Number* gra
   objective_curr = 0.0;
 
   /* Iterate over initial conditions */
+    dim = 1;
   for (int iinit = 0; iinit < dim; iinit++) {
 
     /* --- Solve primal --- */
     primalbraidapp->PreProcess(iinit);
-    printf("Solve forward %d:\n", iinit);
     primalbraidapp->Drive();
     primalbraidapp->PostProcess(iinit, &obj_local);
     /* Add to global objective value */

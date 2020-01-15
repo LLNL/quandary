@@ -385,7 +385,6 @@ int myBraidApp::PreProcess(int iinit){
   braid_BaseVector ubase;
   myBraidVector *u;
       
-  printf("Preprocess initial condition %d\n", iinit);
   if (core->GetWarmRestart()) {
     /* Get vector at t == 0 */
     _braid_UGetVectorRef(core->GetCore(), 0, 0, &ubase);

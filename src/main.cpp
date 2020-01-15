@@ -13,7 +13,7 @@
 
 using namespace Ipopt;
 
-#define EPS 1e-5
+#define EPS 1e-8
 
 #define TEST_FD_TS 0
 #define TEST_FD_SPLINE 0
@@ -207,7 +207,7 @@ int main(int argc,char **argv)
   UsedTime = 0.0;
 
 
-  // /* Solve the optimization  */
+  /* Solve the optimization  */
   // printf("Now solving the optim problem \n");
   // optimstatus = optimapp->OptimizeTNLP(optimproblem);
 
