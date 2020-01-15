@@ -31,14 +31,29 @@ ImplMidpoint::~ImplMidpoint(){
 
 void ImplMidpoint::evolvForward(double tstart, double tstop, Vec x) {
 
-  /* Time step size */
+  /* Compute time step size */
   double dt = tstop - tstart;
 
   printf("Now evolving from %f to %f.\n", tstart, tstop);
 
-  /* Compute stage variable */
+  /* --- Compute stage variable  --- */
 
-  /* Update */
+  /* Compute A(t_n+h/2) */
+  hamiltonian->assemble_RHS(tstart + dt / 2.0);
+
+  /* Compute rhs = A(t_n+h/2) y_n */
+  MatMult(hamiltonian->getRHS(), x, rhs);
+
+  /* Build system matrix I-h/2 A(t_n+h/2). */
+  /* WARNING: This modifies the hamiltonians RHS matrix!  */
+  MatScale(hamiltonian->getRHS(), dt/2.0);
+  MatShift(hamiltonian->getRHS(), 1.0);  // WARNING: this can be very slow if some diagonal elements are missing. TODO: CHECK. 
+  
+  /* solve nonlinear equation -> GMRES? QMR? TF-QMR? */
+
+
+  /* --- Update --- */
+  VecAXPY(x, dt, stage);
 }
 
 
