@@ -409,6 +409,41 @@ int my_Access_adj(braid_App       app,
           braid_AccessStatus  astatus)
 {
 
+    int istep;
+    double t;
+    double err_norm, exact_norm;
+    Vec err;
+    Vec exact;
+
+    /* Get time information */
+    braid_AccessStatusGetTIndex(astatus, &istep);
+    braid_AccessStatusGetT(astatus, &t);
+
+    if (t == 0.0) return 0;
+
+    /* Get access to Petsc's vector */
+    const PetscScalar *x_ptr;
+    VecGetArrayRead(u->x, &x_ptr);
+
+    /* Write solution to files */
+    fprintf(app->uadjfile,  "%.8f  ", t);
+    fprintf(app->vadjfile,  "%.8f  ", t);
+    for (int i = 0; i < 2*app->hamiltonian->getDim(); i++)
+    {
+
+      if (i < app->hamiltonian->getDim()) // real part
+      {
+        fprintf(app->uadjfile, "%1.14e  ", x_ptr[i]);  
+      }  
+      else  // imaginary part
+      {
+        fprintf(app->vadjfile, "%1.14e  ", x_ptr[i]); 
+      }
+      
+    }
+    fprintf(app->uadjfile, "\n");
+    fprintf(app->vadjfile, "\n");
+
   return 0;
 }
 

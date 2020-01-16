@@ -23,6 +23,8 @@ typedef struct _braid_App_struct
     Vec   mu;         // reduced gradient 
     FILE *ufile;
     FILE *vfile;
+    FILE *uadjfile;
+    FILE *vadjfile;
     MPI_Comm comm_braid;
     MPI_Comm comm_petsc;
 

@@ -53,6 +53,8 @@ int main(int argc,char **argv)
 
   FILE *ufile = NULL;
   FILE *vfile = NULL;
+  FILE *uadjfile = NULL;
+  FILE *vadjfile = NULL;
   char filename[255];
   PetscErrorCode ierr;
   PetscMPIInt    mpisize, mpirank;
@@ -166,6 +168,10 @@ int main(int argc,char **argv)
   if (iolevel > 0) ufile = fopen(filename, "w");
   sprintf(filename, "out_v.%04d.dat", mpirank);
   if (iolevel > 0) vfile = fopen(filename, "w");
+  sprintf(filename, "out_uadj.%04d.dat", mpirank);
+  if (iolevel > 0) uadjfile = fopen(filename, "w");
+  sprintf(filename, "out_vadj.%04d.dat", mpirank);
+  if (iolevel > 0) vadjfile = fopen(filename, "w");
 
 
   /* Create a timestepper */
@@ -189,6 +195,8 @@ int main(int argc,char **argv)
   braid_app->mu     = *mu;
   braid_app->ufile  = ufile;
   braid_app->vfile  = vfile;
+  braid_app->uadjfile  = uadjfile;
+  braid_app->vadjfile  = vadjfile;
   braid_app->comm_braid = comm_braid;
   braid_app->comm_petsc = comm_petsc;
   braid_app->primalcore = braid_core;
@@ -590,6 +598,8 @@ exit:
   /* Clean up */
   if (ufile != NULL) fclose(ufile);
   if (vfile != NULL) fclose(vfile);
+  if (uadjfile != NULL) fclose(uadjfile);
+  if (vadjfile != NULL) fclose(vadjfile);
   // TSDestroy(&ts);
 
   /* Clean up Oscillator */
