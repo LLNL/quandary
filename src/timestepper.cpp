@@ -63,6 +63,7 @@ void ImplMidpoint::evolvForward(double tstart, double tstop, Vec x) {
   /* Build system matrix I-h/2 A(t_n+h/2). This modifies the hamiltonians RHS matrix! Make sure to call assemble_RHS before use */
   Mat A = hamiltonian->getRHS();
   MatScale(A, dt/2.0);
+  MatScale(A, - dt/2.0);
   MatShift(A, 1.0);  // WARNING: this can be very slow if some diagonal elements are missing. TODO: CHECK. 
   KSPSetOperators(linearsolver, A, A);// TODO: Do we have to do this in each time step?? 
   
