@@ -2,6 +2,7 @@
 #include <petscts.h>
 #include <petscksp.h>
 #include "hamiltonian.hpp"
+#include <assert.h> 
 #pragma once
 
 

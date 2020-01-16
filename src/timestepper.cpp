@@ -49,6 +49,7 @@ ImplMidpoint::~ImplMidpoint(){
 }
 
 void ImplMidpoint::evolvForward(double tstart, double tstop, Vec x) {
+  assert(tstart < tstop);
 
   /* Compute time step size */
   double dt = tstop - tstart;
