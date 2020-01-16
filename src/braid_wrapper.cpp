@@ -34,8 +34,29 @@ int my_Step(braid_App    app,
     }
   #endif
 
-    /* Evolve solution forward from tstart to tstop */
-    app->timestepper->evolve(FWD, tstart, tstop, u->x);
+    /* -------------------------------------------------------------*/
+    /* --- PETSC timestepper --- */
+    /* -------------------------------------------------------------*/
+
+    /* Set the time */
+    TSSetTime(app->ts, tstart);
+    TSSetTimeStep(app->ts, tstop - tstart);
+
+    /* Pass the curent state to the Petsc time-stepper */
+    // TSSetSolution(app->ts, u->x);
+
+    // app->ts->steps = 0;
+    TSSetStepNumber(app->ts, 0);
+    TSSetMaxSteps(app->ts, 1);
+    TSSolve(app->ts, u->x);
+
+
+    /* -------------------------------------------------------------*/
+    /* --- my timestepper --- */
+    /* -------------------------------------------------------------*/
+
+    // /* Evolve solution forward from tstart to tstop */
+    // app->timestepper->evolve(FWD, tstart, tstop, u->x);
 
     return 0;
 }
@@ -186,8 +207,8 @@ int my_Access(braid_App       app,
       const PetscScalar *exact_ptr;
       VecGetArrayRead(exact, &exact_ptr);
       if (istep == app->ntime){
-          printf("Last step: ");
-          printf("%5d  %1.5f  x[1] = %1.14e  exact[1] = %1.14e  err = %1.14e \n",istep,(double)t, x_ptr[1], exact_ptr[1], err_norm);
+          // printf("Last step: ");
+          // printf("%5d  %1.5f  x[1] = %1.14e  exact[1] = %1.14e  err = %1.14e \n",istep,(double)t, x_ptr[1], exact_ptr[1], err_norm);
       } 
 
       VecDestroy(&err);
@@ -309,76 +330,100 @@ int my_Step_adj(braid_App app, braid_Vector ustop, braid_Vector fstop, braid_Vec
     // printf("\n %d: Braid %d %f->%f, dt=%f \n", mpirank, tindex, tstart, tstop, dt);
 
 
-    /* Get primal state */
-    int finegrid = 0;
-    int tstop_id = GetTimeStepIndex(tstop, app->total_time / app->ntime);
-    int primaltimestep = app->ntime - tstop_id;
-    braid_BaseVector ubaseprimal;
-    my_Vector *uprimal;
-    Vec x;
-    // printf("Accessing primal %d\n", primaltimestep);
-    _braid_UGetVectorRef(app->primalcore, finegrid, primaltimestep, &ubaseprimal);
-    if (ubaseprimal == NULL) printf("ubaseprimal is null!\n");
-    uprimal = (my_Vector*) ubaseprimal->userVector;
-    VecDuplicate(uprimal->x, &x);
-    VecCopy(uprimal->x, x);
-    // VecView(x, PETSC_VIEWER_STDOUT_WORLD);
+    if (app->petscts)
+    {    
+      /* ------------------------------------------------------------------*/
+      /* ---- PETSC time stepper ---- */
+      /* ------------------------------------------------------------------*/
+
+      /* Get primal state */
+      int finegrid = 0;
+      int tstop_id = GetTimeStepIndex(tstop, app->total_time / app->ntime);
+      int primaltimestep = app->ntime - tstop_id;
+      braid_BaseVector ubaseprimal;
+      my_Vector *uprimal;
+      Vec x;
+      // printf("Accessing primal %d\n", primaltimestep);
+      _braid_UGetVectorRef(app->primalcore, finegrid, primaltimestep, &ubaseprimal);
+      if (ubaseprimal == NULL) printf("ubaseprimal is null!\n");
+      uprimal = (my_Vector*) ubaseprimal->userVector;
+      VecDuplicate(uprimal->x, &x);
+      VecCopy(uprimal->x, x);
+      // VecView(x, PETSC_VIEWER_STDOUT_WORLD);
 
 
-    /* Solve forward while saving trajectory */
-    TSDestroy(&app->ts);
-    ierr = TSCreate(PETSC_COMM_SELF,&app->ts);CHKERRQ(ierr);
-    // TSReset(app->ts);
-    TSInit(app->ts, app->hamiltonian, app->ntime  , dt, app->total_time, x, &(u->x), &(app->mu), app->monitor);
+      /* Solve forward while saving trajectory */
+      TSDestroy(&app->ts);
+      ierr = TSCreate(PETSC_COMM_SELF,&app->ts);CHKERRQ(ierr);
+      // TSReset(app->ts);
+      TSInit(app->ts, app->hamiltonian, app->ntime  , dt, app->total_time, x, &(u->x), &(app->mu), app->monitor);
 
-    ierr = TSSetSaveTrajectory(app->ts);CHKERRQ(ierr);
-    ierr = TSTrajectorySetSolutionOnly(app->ts->trajectory, (PetscBool) true);
-    ierr = TSTrajectorySetType(app->ts->trajectory, app->ts, TSTRAJECTORYMEMORY);
+      ierr = TSSetSaveTrajectory(app->ts);CHKERRQ(ierr);
+      ierr = TSTrajectorySetSolutionOnly(app->ts->trajectory, (PetscBool) true);
+      ierr = TSTrajectorySetType(app->ts->trajectory, app->ts, TSTRAJECTORYMEMORY);
 
-    TSSetTime(app->ts, app->total_time - tstop);
-    TSSetTimeStep(app->ts, dt);
+      TSSetTime(app->ts, app->total_time - tstop);
+      TSSetTimeStep(app->ts, dt);
 
-    TSSetStepNumber(app->ts, 0);
-    TSSetMaxSteps(app->ts, 1);
+      TSSetStepNumber(app->ts, 0);
+      TSSetMaxSteps(app->ts, 1);
 
-    TSSetSolution(app->ts, x);
+      TSSetSolution(app->ts, x);
 
-    TSSolve(app->ts, x);
+      TSSolve(app->ts, x);
 
-    /* Set adjoint vars */ 
-    if (!update_gradient) VecZeroEntries(app->mu);
-    TSSetCostGradients(app->ts, 1, &u->x, &app->mu); CHKERRQ(ierr);
+      /* Set adjoint vars */ 
+      if (!update_gradient) VecZeroEntries(app->mu);
+      TSSetCostGradients(app->ts, 1, &u->x, &app->mu); CHKERRQ(ierr);
 
-    /* Solve adjoint */
-    TSSetTimeStep(app->ts, -dt);
-    TSAdjointSolve(app->ts);
+      /* Solve adjoint */
+      TSSetTimeStep(app->ts, -dt);
+      TSAdjointSolve(app->ts);
 
-    VecDestroy(&x);
-    // app->ts->ptime_prev = tstop;
-    // TSSetTimeStep(app->ts, -dt) ; 
-    // TSSetTime(app->ts, app->total_time - tstart);
-    // app->ts->ptime_prev = app->total_time - tstop;    
-    // TSSetTimeStep(app->ts, 5000.0) ; // -(ptime - ptime_prev) ?
+      VecDestroy(&x);
+
+    } else {
+      /* --------------------------------------------------------------------------*/
+      /* --- New timestepper --- */
+      /* --------------------------------------------------------------------------*/
+
+      /* Reset gradient, if neccessary */
+      if (!update_gradient) VecZeroEntries(app->mu);
+
+      /* Get primal states at tstop and tstart*/
+      Mat A;
+      my_Vector *uprimal_tstop;
+      my_Vector *uprimal_tstart;
+      braid_BaseVector ubaseprimal_tstop;
+      braid_BaseVector ubaseprimal_tstart;
+      int tstop_id  = GetTimeStepIndex(tstop, app->total_time / app->ntime);
+      int tstart_id = GetTimeStepIndex(tstart, app->total_time / app->ntime);
+      int primaltstop_id  = app->ntime - tstop_id;
+      int primaltstart_id = app->ntime - tstart_id;
+      _braid_UGetVectorRef(app->primalcore, 0, primaltstop_id, &ubaseprimal_tstop);
+      _braid_UGetVectorRef(app->primalcore, 0, primaltstart_id, &ubaseprimal_tstart);
+      if (ubaseprimal_tstop == NULL) printf("ubaseprimal_tstop is null!\n");
+      if (ubaseprimal_tstart == NULL) printf("ubaseprimal_tstart is null!\n");
+      uprimal_tstop  = (my_Vector*) ubaseprimal_tstop->userVector;
+      uprimal_tstart = (my_Vector*) ubaseprimal_tstart->userVector;
+      
+      /* Add dRHSdp(tstart,ustart)^T\bar u to gradient // mu = mu + h/2 A^T\bar u */
+      app->hamiltonian->assemble_dRHSdp(tstart, uprimal_tstart->x);
+      A = app->hamiltonian->getdRHSdp();
+      MatScale(A, dt/2.0);
+      MatMultTransposeAdd(A, u->x, app->mu, app->mu); 
 
 
-    /* Pass adjoint and derivative to Petsc */
-    // TSSetAdjointSolution(app->ts, u_bar->x, app->mu);   // this one works too!?
+      /* Evolve u backwards in time */
+      app->timestepper->evolve(BWD, tstart, tstop, u->x);
 
-    // VecCopy(u->x, app->ts->vecs_sensi[0]);
-    // if (update_gradient) {
-    //   VecCopy(app->mu, app->ts->vecs_sensip[0]);
-    // } else {
-    //   VecZeroEntries(app->ts->vecs_sensip[0]);
-    // }
-
-    // /* Take an adjoint step */
-    // bool tj_save = true;
-    // app->ts->steps = app->ntime - tindex;
-    // TSAdjointStepMod(app->ts, tj_save);
-
-    // /* Grab derivatives from Petsc and pass to XBraid */
-    // VecCopy(app->ts->vecs_sensi[0], u->x);
-    // if (update_gradient) VecCopy(app->ts->vecs_sensip[0], app->mu);
+      /* Add dRHSdp(tstop,ustop)^T\bar u to gradient // mu = mu + h/2 A^T\bar u */
+      app->hamiltonian->assemble_dRHSdp(tstop, uprimal_tstop->x);
+      A = app->hamiltonian->getdRHSdp();
+      MatScale(A, dt/2.0);
+      MatMultTransposeAdd(A, u->x, app->mu, app->mu); 
+      // printf("Added to gradient %f %f\n", tstart, tstop);
+    }
 
 
   return 0;

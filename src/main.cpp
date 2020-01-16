@@ -187,6 +187,7 @@ int main(int argc,char **argv)
   braid_Init(comm, comm_braid, 0.0, total_time, ntime, braid_app, my_Step_adj, my_Init_adj, my_Clone, my_Free, my_Sum, my_SpatialNorm, my_Access_adj, my_BufSize, my_BufPack, my_BufUnpack, &braid_core_adj);
 
   /* Set up XBraid's applications structure */
+  braid_app->petscts = config.GetIntParam("usepetscts", 0);
   braid_app->ts     = ts;
   braid_app->timestepper = timestepper;
   braid_app->hamiltonian = hamiltonian;

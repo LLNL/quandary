@@ -28,6 +28,8 @@ typedef struct _braid_App_struct
     MPI_Comm comm_braid;
     MPI_Comm comm_petsc;
 
+    int petscts;
+
     int monitor;
     braid_Core primalcore;
 } XB_App;
