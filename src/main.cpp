@@ -13,7 +13,7 @@
 
 #define TEST_FD_TS 0
 #define TEST_FD_SPLINE 0
-#define TEST_DT 0
+#define TEST_DT 1
 
 
 int main(int argc,char **argv)

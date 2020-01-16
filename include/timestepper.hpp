@@ -1,5 +1,6 @@
 #include <petsc/private/tsimpl.h>        /*I "petscts.h"  I*/
 #include <petscts.h>
+#include <petscksp.h>
 #include "hamiltonian.hpp"
 #pragma once
 
@@ -26,8 +27,13 @@ class TimeStepper{
  */
 class ImplMidpoint : public TimeStepper {
 
-  Vec rhs;
+  /* RK variables */
   Vec stage;
+
+  /* Linear system solve */
+  Vec rhs;   /* right hand side */
+  KSP linearsolver;   /* linear solver context */
+  PC  preconditioner; /* Preconditioner for linear solver */
 
   public:
     ImplMidpoint(Hamiltonian* hamiltonian_);

@@ -20,21 +20,38 @@ ImplMidpoint::ImplMidpoint(Hamiltonian* hamiltonian_) : TimeStepper(hamiltonian_
   VecCreateSeq(PETSC_COMM_WORLD, dim, &rhs);
   VecZeroEntries(stage);
   VecZeroEntries(rhs);
+
+  /* Create linear solver */
+  KSPCreate(PETSC_COMM_WORLD, &linearsolver);
+  /* Pass the system matrix and preconditioner to linear solver */
+  KSPSetOperators(linearsolver, hamiltonian->getRHS(), hamiltonian->getRHS());// TODO: Do we have to do this in each time step?? 
+
+  /* Set options */
+  // KSPGetPC(linearsolver, &preconditioner);
+  // PCSetType(preconditioner, PCJACOBI);
+  double reltol = 1.e-5;
+  double abstol = 1.e-10;
+  KSPSetTolerances(linearsolver, reltol, abstol, PETSC_DEFAULT, PETSC_DEFAULT);
+  KSPSetType(linearsolver, KSPGMRES);
+  /* Set runtime options */
+  KSPSetFromOptions(linearsolver);
+
 }
 
 
 ImplMidpoint::~ImplMidpoint(){
-  /* Free up intermediate stage vector */
+  /* Free up intermediate vectors */
   VecDestroy(&stage);
   VecDestroy(&rhs);
+
+  /* Free up linear solver */
+  KSPDestroy(&linearsolver);
 }
 
 void ImplMidpoint::evolvForward(double tstart, double tstop, Vec x) {
 
   /* Compute time step size */
   double dt = tstop - tstart;
-
-  printf("Now evolving from %f to %f.\n", tstart, tstop);
 
   /* --- Compute stage variable  --- */
 
@@ -49,8 +66,13 @@ void ImplMidpoint::evolvForward(double tstart, double tstop, Vec x) {
   MatScale(hamiltonian->getRHS(), dt/2.0);
   MatShift(hamiltonian->getRHS(), 1.0);  // WARNING: this can be very slow if some diagonal elements are missing. TODO: CHECK. 
   
-  /* solve nonlinear equation -> GMRES? QMR? TF-QMR? */
+  /* solve nonlinear equation */
+  // TODO: SHoud KSPSetOperators be called again?
+  KSPSolve(linearsolver, rhs, stage);
 
+  /* Get and print some linear solver info */
+  // KSPView(linearsolver, PETSC_VIEWER_STDOUT_WORLD);
+  // KSPGetIterationNumber(linearsolver, &iter);
 
   /* --- Update --- */
   VecAXPY(x, dt, stage);

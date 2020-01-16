@@ -35,16 +35,16 @@ int my_Step(braid_App    app,
   #endif
 
     /* Set the time */
-    TSSetTime(app->ts, tstart);
-    TSSetTimeStep(app->ts, tstop - tstart);
+    // TSSetTime(app->ts, tstart);
+    // TSSetTimeStep(app->ts, tstop - tstart);
 
-    /* Pass the curent state to the Petsc time-stepper */
-    // TSSetSolution(app->ts, u->x);
+    // /* Pass the curent state to the Petsc time-stepper */
+    // // TSSetSolution(app->ts, u->x);
 
-    // app->ts->steps = 0;
-    TSSetStepNumber(app->ts, 0);
-    TSSetMaxSteps(app->ts, 1);
-    TSSolve(app->ts, u->x);
+    // // app->ts->steps = 0;
+    // TSSetStepNumber(app->ts, 0);
+    // TSSetMaxSteps(app->ts, 1);
+    // TSSolve(app->ts, u->x);
 
     app->timestepper->evolvForward(tstart, tstop, u->x);
 
