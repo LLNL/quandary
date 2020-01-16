@@ -35,7 +35,7 @@ int my_Step(braid_App    app,
   #endif
 
     /* Evolve solution forward from tstart to tstop */
-    app->timestepper->evolvForward(tstart, tstop, u->x);
+    app->timestepper->evolve(1, tstart, tstop, u->x);
 
     return 0;
 }

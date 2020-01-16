@@ -46,32 +46,39 @@ ImplMidpoint::~ImplMidpoint(){
   KSPDestroy(&linearsolver);
 }
 
-void ImplMidpoint::evolvForward(double tstart, double tstop, Vec x) {
+void ImplMidpoint::evolve(int type, double tstart, double tstop, Vec x) {
   assert(tstart < tstop);
+  assert( type == 1 || type == -1 );
 
   /* Compute time step size */
   double dt = tstop - tstart;
 
-  /* --- Compute stage variable  --- */
-
   /* Compute A(t_n+h/2) */
   hamiltonian->assemble_RHS(tstart + dt / 2.0);
 
-  /* Compute rhs = A(t_n+h/2) y_n */
-  MatMult(hamiltonian->getRHS(), x, rhs);
+  /* --- Compute stage variable  --- */
+  Mat A;
 
-  /* Build system matrix I-h/2 A(t_n+h/2). This modifies the hamiltonians RHS matrix! Make sure to call assemble_RHS before use */
-  Mat A = hamiltonian->getRHS();
-  MatScale(A, dt/2.0);
+  if (type == 1) {
+    /* forward evaluation. System matrix A = A(t_n+h/2) */
+    A = hamiltonian->getRHS();
+  } else if (type == -1) {
+    /* Backward evaluation. System matrix A = A(t_n+h/2) */
+    MatCreateTranspose(hamiltonian->getRHS(), &A);
+    // not sure if this is a good idea. Is memory allocated here? Should I destroy A afterwards?
+  } 
+
+  /* Compute rhs = A x */
+  MatMult(A, x, rhs);
+
+  /* Build system matrix I-h/2 A. This modifies the hamiltonians RHS matrix! Make sure to call assemble_RHS before use */
   MatScale(A, - dt/2.0);
   MatShift(A, 1.0);  // WARNING: this can be very slow if some diagonal elements are missing. TODO: CHECK. 
   KSPSetOperators(linearsolver, A, A);// TODO: Do we have to do this in each time step?? 
   
   /* solve nonlinear equation */
-  // TODO: SHoud KSPSetOperators be called again?
   KSPSolve(linearsolver, rhs, stage);
-
-  /* TODO: Catch error if no convergence */
+  // TODO: Catch error if no convergence
 
   /* --- Update --- */
   VecAXPY(x, dt, stage);
