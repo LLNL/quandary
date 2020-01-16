@@ -158,7 +158,12 @@ int Hamiltonian::evalObjective(double t, Vec x, double *objective_ptr) {
   const PetscScalar *x_ptr;
   VecGetArrayRead(x, &x_ptr);
 
-  *objective_ptr = 200.0 * x_ptr[1]; // TODO: Evaluate objective 
+  double obj = 0.0;
+  for (int i=0; i<2*dim; i++) {
+    obj += x_ptr[i];
+  }
+  // *objective_ptr = 200.0 * x_ptr[1]; // TODO: Evaluate objective 
+  *objective_ptr = obj;
 
   return 0;
 }
@@ -170,7 +175,12 @@ int Hamiltonian::evalObjective_diff(double t, Vec x, Vec *lambda, Vec *mu) {
   /* lambda: Derivative of objective wrt x */
   VecZeroEntries(*lambda);  
   VecGetArray(*lambda, &x_ptr);
-  x_ptr[1] = 200.0;
+  // x_ptr[1] = 200.0;
+  for (int i=0; i<2*dim; i++) {
+    x_ptr[i] = 1.0;
+  }
+
+
   VecRestoreArray(*lambda, &x_ptr);
 
   /* mu: Derivative of objective wrt parameters */

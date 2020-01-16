@@ -532,3 +532,21 @@ int GetTimeStepIndex(double t, double dt){
   
   return ts;
 }
+
+
+
+void evalObjective(braid_Core core, braid_App app, double *obj_ptr) {
+  braid_BaseVector ulast_base;
+  my_Vector *ulast;
+  double obj;
+
+  _braid_UGetLast(core, &ulast_base);
+  if (ulast_base == NULL) { 
+      printf("Error: can't get ulast from braid!\n"); 
+      exit(1); 
+  }
+  ulast = (my_Vector*) ulast_base->userVector;
+  app->hamiltonian->evalObjective(app->total_time, ulast->x, &obj);
+
+  *obj_ptr = obj;
+}

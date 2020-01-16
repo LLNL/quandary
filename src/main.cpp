@@ -242,16 +242,6 @@ int main(int argc,char **argv)
   StopTime = 0.0;
   UsedTime = 0.0;
 
-
-  // /* Tell Petsc to save the forward trajectory */
-  // tj_save = false;
-  // if (tj_save) {
-  //   ierr = TSSetSaveTrajectory(ts);CHKERRQ(ierr);
-  //   ierr = TSTrajectorySetSolutionOnly(ts->trajectory, (PetscBool) true);
-  //   ierr = TSTrajectorySetType(ts->trajectory, ts, TSTRAJECTORYMEMORY);
-  //   TSTrajectorySetMonitor(ts->trajectory, (PetscBool) monitor);
-  // }
-
   /* --- Solve primal --- */
 
   braid_Drive(braid_core);
@@ -325,47 +315,24 @@ exit:
 
   printf("\n\n FD Testing... \n\n");
 
-  /* Set initial condition */
-  hamiltonian->initialCondition(x);
-
-  /* Build a new time-stepper */
-  TSDestroy(&ts);
-  TSCreate(PETSC_COMM_SELF,&ts);CHKERRQ(ierr);
-  TSInit(ts, hamiltonian, ntime, dt, total_time, x, lambda, mu, monitor);
-
-  TSSetSolution(ts, x);
-
-  /* Solve forward while storing trajectory */
-  TSSetSaveTrajectory(ts);
-  TSTrajectorySetSolutionOnly(ts->trajectory, (PetscBool) true);
-  TSTrajectorySetType(ts->trajectory, ts, TSTRAJECTORYMEMORY);
-  printf("Solve forward...");
-  TSSolve(ts, x);
-
-  /* Get original objective */
-  double Tfinal;
   double objective_ref;
-  TSGetSolveTime(ts, &Tfinal);
-  hamiltonian->evalObjective(Tfinal, x, &objective_ref);
+  braid_SetMaxLevels(braid_core, 1);
 
-  /* Set up adjoint variables and initial condition */
-  // Vec lambda[1];  // dfdy
-  // Vec mu[1];      // dfdp
-  // MatCreateVecs(hamiltonian->getRHS(), &lambda[0], NULL);  // passend zu y (RHS * lambda)
-  // MatCreateVecs(hamiltonian->getdRHSdp(), &mu[0], NULL);   // passend zu p (dHdp * mu)
-  VecZeroEntries(lambda[0]);
+  /* Solve */
+  braid_Drive(braid_core);
+
+  /* Evaluate the objective function */
+  evalObjective(braid_core, braid_app, &objective_ref);
+  printf("Objective_ref = %1.13e\n", objective_ref);
+
+  /* Reset gradient */
   VecZeroEntries(mu[0]);
-  hamiltonian->evalObjective_diff(Tfinal, x, &lambda[0], &mu[0]);
 
   /* Set the derivatives for TS */
-  ierr = TSSetCostGradients(ts, 1, lambda, mu); CHKERRQ(ierr);
-  ierr = TSSetRHSJacobianP(ts,hamiltonian->getdRHSdp(), RHSJacobianP, hamiltonian); CHKERRQ(ierr);
-
-  printf("Solve adjoint...");
-  ierr = TSAdjointSolve(ts);CHKERRQ(ierr);
+  braid_Drive(braid_core_adj);
 
   /* Get the results */
-  printf("Petsc TSAdjoint gradient:\n");
+  printf("Gradient:\n");
   VecView(mu[0], PETSC_VIEWER_STDOUT_WORLD);
 
   /* Perturb controls */
@@ -392,23 +359,16 @@ exit:
         oscil_vec[i]->updateParams(EPS, dirRe, dirIm);
 
         /* Run the time stepper */
-        TSDestroy(&ts);
-        TSCreate(PETSC_COMM_SELF,&ts);CHKERRQ(ierr);
-        TSInit(ts, hamiltonian, ntime, dt, total_time, x, lambda, mu, monitor);
-
-        hamiltonian->initialCondition(x);
-        TSSolve(ts, x);
-        ierr = TSGetSolveTime(ts, &Tfinal);CHKERRQ(ierr);
-        hamiltonian->evalObjective(Tfinal, x, &objective_pert);
+        braid_Drive(braid_core);
+        evalObjective(braid_core, braid_app, &objective_pert);
 
         /* Eval FD and error */
-        PetscScalar *x_ptr;
-        VecGetArray(mu[0], &x_ptr);
+        const PetscScalar *x_ptr;
+        VecGetArrayRead(mu[0], &x_ptr);
         grad = x_ptr[i*2*nparam + iparam];
-        VecRestoreArray(mu[0], &x_ptr);
         fd = (objective_pert - objective_ref) / EPS;
         err = ( grad - fd) / fd;
-        printf("     Re %f: obj_pert %1.14e, obj %1.14e, fd %1.14e, mu %1.14e, err %1.14e\n", Tfinal, objective_pert, objective_ref, fd, grad, err);
+        printf("     Re: obj_pert %1.14e, obj %1.14e, fd %1.14e, mu %1.14e, err %1.14e\n", objective_pert, objective_ref, fd, grad, err);
 
         // /* Restore parameter */
         oscil_vec[i]->updateParams(-EPS, dirRe, dirIm);
@@ -420,24 +380,15 @@ exit:
         oscil_vec[i]->updateParams(EPS, dirRe, dirIm);
 
         /* Run the time stepper */
-        TSDestroy(&ts);
-        TSCreate(PETSC_COMM_SELF,&ts);CHKERRQ(ierr);
-        TSInit(ts, hamiltonian, ntime, dt, total_time, x, lambda, mu, monitor);
-        hamiltonian->initialCondition(x);
-        // for(PetscInt istep = 0; istep < ntime; istep++) {
-        //   ierr = TSStep(ts);CHKERRQ(ierr);
-        // }
-        TSSolve(ts, x);
-        ierr = TSGetSolveTime(ts, &Tfinal);CHKERRQ(ierr);
-        hamiltonian->evalObjective(Tfinal, x, &objective_pert);
+        braid_Drive(braid_core);
+        evalObjective(braid_core, braid_app, &objective_pert);
 
         /* Eval FD and error */
         fd = (objective_pert - objective_ref) / EPS;
-        VecGetArray(mu[0], &x_ptr);
+        VecGetArrayRead(mu[0], &x_ptr);
         grad = x_ptr[i*2*nparam + iparam + nparam];
-        VecRestoreArray(mu[0], &x_ptr);
         err = ( grad - fd) / fd;
-        printf("     Im %f: obj_pert %1.14e, obj %1.14e, fd %1.14e, mu %1.14e, err %1.12e\n", Tfinal, objective_pert, objective_ref, fd, grad, err);
+        printf("     Im: obj_pert %1.14e, obj %1.14e, fd %1.14e, mu %1.14e, err %1.12e\n", objective_pert, objective_ref, fd, grad, err);
 
         /* Restore parameter */
         oscil_vec[i]->updateParams(-EPS, dirRe, dirIm);

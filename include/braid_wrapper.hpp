@@ -130,3 +130,5 @@ int braid_printConvHistory(braid_Core core, const char* filename);
  * Return the time point index of a certain time t, on the grid created with spacing dt 
  */
 int GetTimeStepIndex(double t, double dt);
+
+void evalObjective(braid_Core core, braid_App app, double *obj_ptr);

@@ -56,15 +56,13 @@ void ImplMidpoint::evolve(Mode direction, double tstart, double tstop, Vec x) {
   hamiltonian->assemble_RHS(tstart + dt / 2.0);
 
   /* Decide for forward mode (A) or backward mode (A^T)*/
-  Mat A;
+  Mat A = hamiltonian->getRHS(); 
   switch(direction)
   {
-    case FWD :  // forward stepping. System matrix uses A(t_n+h/2)
-      A = hamiltonian->getRHS(); 
+    case FWD :  // forward stepping. System matrix uses A(t_n+h/2). Do nothing.
       break;
     case BWD :  // backward stepping. System matrix uses A(t_n+h/2)^T
-      MatCreateTranspose(hamiltonian->getRHS(), &A); 
-      // not sure if this is a good idea. Is memory allocated here? Should I destroy A afterwards?
+      MatTranspose(A, MAT_INPLACE_MATRIX, &A);
       break;
     default  : 
       printf("ERROR: Wrong timestepping mode!\n"); exit(1);
@@ -88,7 +86,6 @@ void ImplMidpoint::evolve(Mode direction, double tstart, double tstop, Vec x) {
   /* --- Update state x += dt * stage --- */
   VecAXPY(x, dt, stage);
 
-  /* TODO: if BWD: destroy A?? */
 }
 
 
