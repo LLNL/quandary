@@ -1,7 +1,55 @@
 #include <petsc/private/tsimpl.h>        /*I "petscts.h"  I*/
 #include <petscts.h>
+#include <petscksp.h>
 #include "hamiltonian.hpp"
+#include <assert.h> 
 #pragma once
+
+/* Available timestepping modes are 
+ * FWD = forward
+ * BWD = backward 
+ */
+enum Mode { FWD, BWD }; 
+
+
+/* Base class for time steppers */
+class TimeStepper{
+  protected:
+    int dim;                   /* State vector dimension */
+    Hamiltonian* hamiltonian;  
+
+  public: 
+    TimeStepper(); 
+    TimeStepper(Hamiltonian* hamiltonian_); 
+    virtual ~TimeStepper(); 
+
+    /* Type =  1: Evolve state forward from tstart to tstop */
+    /* Type = -1: Evolve adjoint backward from tstop to tstart */
+    virtual void evolve(Mode direction, double tstart, double tstop, Vec x) = 0;
+};
+
+/* Implements implicit midpoint rule. 2nd order. Simplectic. 
+ * RK tableau:  1/2 |  1/2
+ *              ------------
+ *                  |   1
+ */
+class ImplMidpoint : public TimeStepper {
+
+  /* RK variables */
+  Vec stage;
+
+  /* Linear system solve */
+  Vec rhs;   /* right hand side */
+  KSP linearsolver;   /* linear solver context */
+  PC  preconditioner; /* Preconditioner for linear solver */
+
+  public:
+    ImplMidpoint(Hamiltonian* hamiltonian_);
+    ~ImplMidpoint();
+
+    void evolve(Mode direction, double tstart, double tstop, Vec x);
+};
+
 
 
 /*

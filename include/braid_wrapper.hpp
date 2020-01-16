@@ -19,13 +19,16 @@ class myBraidVector {
 class myBraidApp : public BraidApp {
   protected: 
     int          ntime;             /* number of time steps */
-    TS           timestepper;       /* Petsc Time-stepper struct */
+    TS           ts_petsc;       /* Petsc Time-stepper struct */
     MPI_Comm comm_petsc;            /* Petsc's communicator */
     MPI_Comm comm_braid;            /* Braid's communicator */
     double       total_time;        /* total time  */
     Gate         *targetgate;
+    TimeStepper  *mytimestepper;
 
     BraidCore *core;                /* Braid core for running PinT simulation */
+
+    int usepetscts;
 
   public:
     Hamiltonian *hamiltonian;       /* Hamiltonian system */
@@ -34,7 +37,7 @@ class myBraidApp : public BraidApp {
 
   public:
 
-  myBraidApp(MPI_Comm comm_braid_, MPI_Comm comm_petsc_, double total_time_, int ntime_, TS ts_, Hamiltonian* ham_, Gate* targate_, MapParam* config);
+  myBraidApp(MPI_Comm comm_braid_, MPI_Comm comm_petsc_, double total_time_, int ntime_, TS ts_petsc_, TimeStepper* mytimestepper_, Hamiltonian* ham_, Gate* targate_, MapParam* config);
   ~myBraidApp();
 
     /* Dumps xbraid's convergence history to a file */
@@ -110,7 +113,7 @@ class myAdjointBraidApp : public myBraidApp {
 
   public:
 
-    myAdjointBraidApp(MPI_Comm comm_braid_, MPI_Comm comm_petsc_, double total_time_, int ntime_, TS ts_, Hamiltonian* ham_, Gate* targate_, Vec redgrad_, MapParam* config, BraidCore *Primalcoreptr_);
+    myAdjointBraidApp(MPI_Comm comm_braid_, MPI_Comm comm_petsc_, double total_time_, int ntime_, TS ts_petsc_,TimeStepper* mytimestepper_, Hamiltonian* ham_, Gate* targate_, Vec redgrad_, MapParam* config, BraidCore *Primalcoreptr_);
     ~myAdjointBraidApp();
 
     /* Get pointer to reduced gradient. READ ONLY!! */

@@ -19,12 +19,13 @@ myBraidVector::~myBraidVector() {
 
 
 
-myBraidApp::myBraidApp(MPI_Comm comm_braid_, MPI_Comm comm_petsc_, double total_time_, int ntime_, TS ts_, Hamiltonian* ham_, Gate* targate_, MapParam* config) 
+myBraidApp::myBraidApp(MPI_Comm comm_braid_, MPI_Comm comm_petsc_, double total_time_, int ntime_, TS ts_petsc_, TimeStepper* mytimestepper_, Hamiltonian* ham_, Gate* targate_, MapParam* config) 
           : BraidApp(comm_braid_, 0.0, total_time_, ntime_) {
 
   ntime = ntime_;
   total_time = total_time_;
-  timestepper = ts_;
+  ts_petsc = ts_petsc_;
+  mytimestepper = mytimestepper_;
   hamiltonian = ham_;
   targetgate = targate_;
   comm_petsc = comm_petsc_;
@@ -32,6 +33,7 @@ myBraidApp::myBraidApp(MPI_Comm comm_braid_, MPI_Comm comm_petsc_, double total_
   ufile = NULL;
   vfile = NULL;
 
+  usepetscts = config->GetIntParam("usepetscts",0);
 
   /* Init Braid core */
   core = new BraidCore(comm_braid_, this);
@@ -155,14 +157,23 @@ braid_Int myBraidApp::Step(braid_Vector u_, braid_Vector ustop_, braid_Vector fs
     }
   #endif
 
-  // Something is wrong with the time stepper.  
-    /* Forward */
-    TSSetTime(timestepper, tstart);
-    TSSetTimeStep(timestepper, tstop - tstart);
-    TSSetStepNumber(timestepper, 0);
-    TSSetMaxSteps(timestepper, 1);
-    TSSolve(timestepper, u->x);
-  
+  if (usepetscts) {
+    /* -------------------------------------------------------------*/
+    /* --- PETSC timestepper --- */
+    /* -------------------------------------------------------------*/
+    TSSetTime(ts_petsc, tstart);
+    TSSetTimeStep(ts_petsc, tstop - tstart);
+    TSSetStepNumber(ts_petsc, 0);
+    TSSetMaxSteps(ts_petsc, 1);
+    TSSolve(ts_petsc, u->x);
+  } else {
+    /* -------------------------------------------------------------*/
+    /* --- my timestepper --- */
+    /* -------------------------------------------------------------*/
+
+    /* Evolve solution forward from tstart to tstop */
+    mytimestepper->evolve(FWD, tstart, tstop, u->x);
+  }
 
   return 0;
 }
@@ -281,7 +292,6 @@ braid_Int myBraidApp::Access(braid_Vector u_, BraidAccessStatus &astatus){
       {
         fprintf(vfile, "%1.14e  ", x_ptr[i]); 
       }
-
     }
     fprintf(ufile, "\n");
     fprintf(vfile, "\n");
@@ -445,8 +455,8 @@ double myBraidApp::Drive() {
 /* ================================================================*/
 /* Adjoint Braid App */
 /* ================================================================*/
-myAdjointBraidApp::myAdjointBraidApp(MPI_Comm comm_braid_, MPI_Comm comm_petsc_, double total_time_, int ntime_, TS ts_, Hamiltonian* ham_, Gate* targate_, Vec redgrad_, MapParam* config, BraidCore *Primalcoreptr_)
-        : myBraidApp(comm_braid_, comm_petsc_, total_time_, ntime_, ts_, ham_, targate_, config) {
+myAdjointBraidApp::myAdjointBraidApp(MPI_Comm comm_braid_, MPI_Comm comm_petsc_, double total_time_, int ntime_, TS ts_, TimeStepper* mytimestepper_, Hamiltonian* ham_, Gate* targate_, Vec redgrad_, MapParam* config, BraidCore *Primalcoreptr_)
+        : myBraidApp(comm_braid_, comm_petsc_, total_time_, ntime_, ts_, mytimestepper_, ham_, targate_, config) {
 
   /* Store the primal core */
   primalcore = Primalcoreptr_;
@@ -505,12 +515,17 @@ braid_Int myAdjointBraidApp::Step(braid_Vector u_, braid_Vector ustop_, braid_Ve
     update_gradient = false;
   }
 
-    /* Grab current time from XBraid and pass it to Petsc time-stepper */
-    pstatus.GetTstartTstop(&tstart, &tstop);
-    pstatus.GetTIndex(&tindex);
+  /* Grab current time from XBraid and pass it to Petsc time-stepper */
+  pstatus.GetTstartTstop(&tstart, &tstop);
+  pstatus.GetTIndex(&tindex);
 
-    double dt = tstop - tstart;
-    // printf("\n %d: Braid %d %f->%f, dt=%f \n", mpirank, tindex, tstart, tstop, dt);
+  double dt = tstop - tstart;
+  // printf("\n %d: Braid %d %f->%f, dt=%f \n", mpirank, tindex, tstart, tstop, dt);
+
+  if (usepetscts) {
+    /* ------------------------------------------------------------------*/
+    /* ---- PETSC time stepper ---- */
+    /* ------------------------------------------------------------------*/
 
     /* Get primal state */
     int finegrid = 0;
@@ -527,33 +542,79 @@ braid_Int myAdjointBraidApp::Step(braid_Vector u_, braid_Vector ustop_, braid_Ve
 
 
     /* Solve forward while saving trajectory */
-    TSDestroy(&timestepper);
-    ierr = TSCreate(PETSC_COMM_SELF,&timestepper);CHKERRQ(ierr);
-    TSInit(timestepper, hamiltonian, ntime  , dt, total_time, x, &(u->x), &redgrad, false);
+    TSDestroy(&ts_petsc);
+    ierr = TSCreate(PETSC_COMM_SELF,&ts_petsc);CHKERRQ(ierr);
+    TSInit(ts_petsc, hamiltonian, ntime  , dt, total_time, x, &(u->x), &redgrad, false);
 
-    ierr = TSSetSaveTrajectory(timestepper);CHKERRQ(ierr);
-    ierr = TSTrajectorySetSolutionOnly(timestepper->trajectory, (PetscBool) true);
-    ierr = TSTrajectorySetType(timestepper->trajectory, timestepper, TSTRAJECTORYMEMORY);
+    ierr = TSSetSaveTrajectory(ts_petsc);CHKERRQ(ierr);
+    ierr = TSTrajectorySetSolutionOnly(ts_petsc->trajectory, (PetscBool) true);
+    ierr = TSTrajectorySetType(ts_petsc->trajectory, ts_petsc, TSTRAJECTORYMEMORY);
 
-    TSSetTime(timestepper, total_time - tstop);
-    TSSetTimeStep(timestepper, dt);
+    TSSetTime(ts_petsc, total_time - tstop);
+    TSSetTimeStep(ts_petsc, dt);
 
-    TSSetStepNumber(timestepper, 0);
-    TSSetMaxSteps(timestepper, 1);
+    TSSetStepNumber(ts_petsc, 0);
+    TSSetMaxSteps(ts_petsc, 1);
 
-    TSSetSolution(timestepper, x);
+    TSSetSolution(ts_petsc, x);
 
-    TSSolve(timestepper, x);
+    TSSolve(ts_petsc, x);
 
     /* Set adjoint vars */ 
     if (!update_gradient) VecZeroEntries(redgrad);
-    TSSetCostGradients(timestepper, 1, &u->x, &redgrad); CHKERRQ(ierr);
+    TSSetCostGradients(ts_petsc, 1, &u->x, &redgrad); CHKERRQ(ierr);
 
     /* Solve adjoint */
-    TSSetTimeStep(timestepper, -dt);
-    TSAdjointSolve(timestepper);
+    TSSetTimeStep(ts_petsc, -dt);
+    TSAdjointSolve(ts_petsc);
 
     VecDestroy(&x);
+
+  } else {
+    /* --------------------------------------------------------------------------*/
+    /* --- New timestepper --- */
+    /* --------------------------------------------------------------------------*/
+
+    /* Reset gradient, if neccessary */
+    if (!update_gradient) VecZeroEntries(redgrad);
+
+    /* Get primal states at tstop and tstart*/
+    Mat A;
+    myBraidVector *uprimal_tstop;
+    myBraidVector *uprimal_tstart;
+    braid_BaseVector ubaseprimal_tstop;
+    braid_BaseVector ubaseprimal_tstart;
+
+    int tstop_id  = getTimeStepIndex(tstop, total_time / ntime);
+    int tstart_id = getTimeStepIndex(tstart, total_time / ntime);
+    int primaltstop_id  = ntime - tstop_id;
+    int primaltstart_id = ntime - tstart_id;
+    _braid_UGetVectorRef(primalcore->GetCore(), 0, primaltstop_id, &ubaseprimal_tstop);
+    _braid_UGetVectorRef(primalcore->GetCore(), 0, primaltstart_id, &ubaseprimal_tstart);
+    if (ubaseprimal_tstop == NULL) printf("ubaseprimal_tstop is null!\n");
+    if (ubaseprimal_tstart == NULL) printf("ubaseprimal_tstart is null!\n");
+    uprimal_tstop  = (myBraidVector*) ubaseprimal_tstop->userVector;
+    uprimal_tstart = (myBraidVector*) ubaseprimal_tstart->userVector;
+      
+    /* Add dRHSdp(tstart,ustart)^T\bar u to gradient // mu = mu + h/2 A^T\bar u */
+    hamiltonian->assemble_dRHSdp(tstart, uprimal_tstart->x);
+    A = hamiltonian->getdRHSdp();
+    MatScale(A, dt/2.0);
+    MatMultTransposeAdd(A, u->x, redgrad, redgrad); 
+
+
+    /* Evolve u backwards in time */
+    mytimestepper->evolve(BWD, tstart, tstop, u->x);
+
+    /* Add dRHSdp(tstop,ustop)^T\bar u to gradient // mu = mu + h/2 A^T\bar u */
+    hamiltonian->assemble_dRHSdp(tstop, uprimal_tstop->x);
+    A = hamiltonian->getdRHSdp();
+    MatScale(A, dt/2.0);
+    MatMultTransposeAdd(A, u->x, redgrad, redgrad); 
+    // printf("Added to gradient %f %f\n", tstart, tstop);
+
+  }
+
 
   return 0;  
 }
@@ -638,3 +699,19 @@ int myAdjointBraidApp::PostProcess(int i, double* f) {
   return 0;
 }
 
+
+// void evalObjective(braid_Core core, braid_App app, double *obj_ptr) {
+//   braid_BaseVector ulast_base;
+//   my_Vector *ulast;
+//   double obj;
+
+//   _braid_UGetLast(core, &ulast_base);
+//   if (ulast_base == NULL) { 
+//       printf("Error: can't get ulast from braid!\n"); 
+//       exit(1); 
+//   }
+//   ulast = (my_Vector*) ulast_base->userVector;
+//   app->hamiltonian->evalObjective(app->total_time, ulast->x, &obj);
+
+//   *obj_ptr = obj;
+// }

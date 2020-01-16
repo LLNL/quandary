@@ -96,6 +96,10 @@ int Hamiltonian::assemble_RHS(double t){
   const PetscInt *col_idx;
   const PetscScalar *vals;
 
+
+  /* Reset RHS */
+  ierr = MatZeroEntries(RHS);CHKERRQ(ierr);
+
   /* Set up Jacobian M (=RHS)
    * M(0, 0) =  Re    M(0,1) = -Im
    * M(1, 0) =  Im    M(1,1) = Re

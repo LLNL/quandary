@@ -1,5 +1,93 @@
 #include "timestepper.hpp"
 
+TimeStepper::TimeStepper() {
+  dim = 0;
+  hamiltonian = NULL;
+}
+
+TimeStepper::TimeStepper(Hamiltonian* hamiltonian_) {
+  hamiltonian = hamiltonian_;
+  dim = 2*hamiltonian->getDim();
+}
+
+TimeStepper::~TimeStepper() {}
+
+
+ImplMidpoint::ImplMidpoint(Hamiltonian* hamiltonian_) : TimeStepper(hamiltonian_) {
+
+  /* Create and reset the intermediate vectors */
+  VecCreateSeq(PETSC_COMM_WORLD, dim, &stage);
+  VecCreateSeq(PETSC_COMM_WORLD, dim, &rhs);
+  VecZeroEntries(stage);
+  VecZeroEntries(rhs);
+
+  /* Create linear solver */
+  KSPCreate(PETSC_COMM_WORLD, &linearsolver);
+
+  /* Set options */
+  // KSPGetPC(linearsolver, &preconditioner);
+  // PCSetType(preconditioner, PCJACOBI);
+  double reltol = 1.e-5;
+  double abstol = 1.e-10;
+  KSPSetTolerances(linearsolver, reltol, abstol, PETSC_DEFAULT, PETSC_DEFAULT);
+  KSPSetType(linearsolver, KSPGMRES);
+  /* Set runtime options */
+  KSPSetFromOptions(linearsolver);
+
+}
+
+
+ImplMidpoint::~ImplMidpoint(){
+  /* Free up intermediate vectors */
+  VecDestroy(&stage);
+  VecDestroy(&rhs);
+
+  /* Free up linear solver */
+  KSPDestroy(&linearsolver);
+}
+
+void ImplMidpoint::evolve(Mode direction, double tstart, double tstop, Vec x) {
+  assert(tstart < tstop);
+
+  /* Compute time step size */
+  double dt = tstop - tstart;
+
+  /* Compute A(t_n+h/2) */
+  hamiltonian->assemble_RHS(tstart + dt / 2.0);
+
+  /* Decide for forward mode (A) or backward mode (A^T)*/
+  Mat A = hamiltonian->getRHS(); 
+  switch(direction)
+  {
+    case FWD :  // forward stepping. System matrix uses A(t_n+h/2). Do nothing.
+      break;
+    case BWD :  // backward stepping. System matrix uses A(t_n+h/2)^T
+      MatTranspose(A, MAT_INPLACE_MATRIX, &A);
+      break;
+    default  : 
+      printf("ERROR: Wrong timestepping mode!\n"); exit(1);
+      break;
+  }
+
+  /* --- Solve for stage variable */
+
+  /* Compute rhs = A x */
+  MatMult(A, x, rhs);
+
+  /* Build system matrix I-h/2 A. This modifies the hamiltonians RHS matrix! Make sure to call assemble_RHS before the next use! */
+  MatScale(A, - dt/2.0);
+  MatShift(A, 1.0);  // WARNING: this can be very slow if some diagonal elements are missing. TODO: CHECK!
+  KSPSetOperators(linearsolver, A, A);// TODO: Do we have to do this in each time step?? 
+  
+  /* solve nonlinear equation */
+  KSPSolve(linearsolver, rhs, stage);
+  // TODO: Catch error if no convergence
+
+  /* --- Update state x += dt * stage --- */
+  VecAXPY(x, dt, stage);
+
+}
+
 
 PetscErrorCode RHSJacobian(TS ts,PetscReal t,Vec u,Mat M,Mat P,void *ctx){
 

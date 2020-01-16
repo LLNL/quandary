@@ -50,8 +50,8 @@ int main(int argc,char **argv)
 
 
   char filename[255];
-  FILE* ufile;
-  FILE* vfile;
+  FILE* ufile, *uadjfile;
+  FILE* vfile, *vadjfile;
   PetscErrorCode ierr;
   PetscMPIInt    mpisize, mpirank;
   double StartTime, StopTime;
@@ -159,22 +159,31 @@ int main(int argc,char **argv)
     printf("# Time step size: %f\n", dt );
   }
 
+  TimeStepper *mytimestepper = new ImplMidpoint(hamiltonian);
+
   /* Allocate and initialize Petsc's Time-stepper */
   TSCreate(PETSC_COMM_SELF,&ts);CHKERRQ(ierr);
   TSInit(ts, hamiltonian, ntime, dt, total_time, x, lambda, mu, monitor);
 
   /* Initialize Braid */
-  primalbraidapp = new myBraidApp(comm_braid, comm_petsc, total_time, ntime, ts, hamiltonian, targetgate, &config);
-  adjointbraidapp = new myAdjointBraidApp(comm_braid, comm_petsc, total_time, ntime, ts, hamiltonian, targetgate, *mu, &config, primalbraidapp->getCore());
+  primalbraidapp = new myBraidApp(comm_braid, comm_petsc, total_time, ntime, ts, mytimestepper, hamiltonian, targetgate, &config);
+  adjointbraidapp = new myAdjointBraidApp(comm_braid, comm_petsc, total_time, ntime, ts, mytimestepper, hamiltonian, targetgate, *mu, &config, primalbraidapp->getCore());
 
   /* Prepare output */
   sprintf(filename, "out_u.%04d.dat", mpirank);
   if (iolevel > 0) ufile = fopen(filename, "w");
   sprintf(filename, "out_v.%04d.dat", mpirank);
   if (iolevel > 0) vfile = fopen(filename, "w");
+  sprintf(filename, "out_uadj.%04d.dat", mpirank);
+  if (iolevel > 0) uadjfile = fopen(filename, "w");
+  sprintf(filename, "out_vadj.%04d.dat", mpirank);
+  if (iolevel > 0) vadjfile = fopen(filename, "w");
+
 
   primalbraidapp->ufile = ufile;
   primalbraidapp->vfile = vfile;
+  adjointbraidapp->ufile = ufile;
+  adjointbraidapp->vfile = vfile;
 
   /* Print some information on the time-grid distribution */
   // int ilower, iupper;
@@ -277,48 +286,24 @@ exit:
   printf(" FD Testing... \n");
   printf("#########################\n\n");
 
-  /* Set initial condition */
-  hamiltonian->initialCondition(0,x);
-
-  /* Build a new time-stepper */
-  TSDestroy(&ts); CHKERRQ(ierr);
-  TSCreate(PETSC_COMM_SELF,&ts);CHKERRQ(ierr);
-  TSInit(ts, hamiltonian, ntime, dt, total_time, x, lambda, mu, monitor);
-
-  TSSetSolution(ts, x);
-
-
-  /* Solve forward while storing trajectory */
-  TSSetSaveTrajectory(ts);
-  TSTrajectorySetSolutionOnly(ts->trajectory, (PetscBool) true);
-  TSTrajectorySetType(ts->trajectory, ts, TSTRAJECTORYMEMORY);
-  printf("Solve forward...\n");
-  TSSolve(ts, x);
-
-  /* Get original objective */
-  double Tfinal;
   double objective_ref;
-  TSGetSolveTime(ts, &Tfinal);
-  hamiltonian->evalObjective(Tfinal, x, &objective_ref);
+  braid_SetMaxLevels(braid_core, 1);
 
-  /* Set up adjoint variables and initial condition */
-  // Vec lambda[1];  // dfdy
-  // Vec mu[1];      // dfdp
-  // MatCreateVecs(hamiltonian->getRHS(), &lambda[0], NULL);  // passend zu y (RHS * lambda)
-  // MatCreateVecs(hamiltonian->getdRHSdp(), &mu[0], NULL);   // passend zu p (dHdp * mu)
-  VecZeroEntries(lambda[0]);
+  /* Solve */
+  braid_Drive(braid_core);
+
+  /* Evaluate the objective function */
+  evalObjective(braid_core, braid_app, &objective_ref);
+  printf("Objective_ref = %1.13e\n", objective_ref);
+
+  /* Reset gradient */
   VecZeroEntries(mu[0]);
-  hamiltonian->evalObjective_diff(Tfinal, x, &lambda[0], &mu[0]);
 
   /* Set the derivatives for TS */
-  ierr = TSSetCostGradients(ts, 1, lambda, mu); CHKERRQ(ierr);
-  ierr = TSSetRHSJacobianP(ts,hamiltonian->getdRHSdp(), RHSJacobianP, hamiltonian); CHKERRQ(ierr);
-
-  printf("Solve adjoint...\n");
-  ierr = TSAdjointSolve(ts);CHKERRQ(ierr);
+  braid_Drive(braid_core_adj);
 
   /* Get the results */
-  printf("Petsc TSAdjoint gradient:\n");
+  printf("Gradient:\n");
   VecView(mu[0], PETSC_VIEWER_STDOUT_WORLD);
 
   /* Perturb controls */
@@ -345,23 +330,16 @@ exit:
         oscil_vec[i]->updateParams(EPS, dirRe, dirIm);
 
         /* Run the time stepper */
-        TSDestroy(&ts);
-        TSCreate(PETSC_COMM_SELF,&ts);CHKERRQ(ierr);
-        TSInit(ts, hamiltonian, ntime, dt, total_time, x, lambda, mu, monitor);
-
-        hamiltonian->initialCondition(0,x);
-        TSSolve(ts, x);
-        ierr = TSGetSolveTime(ts, &Tfinal);CHKERRQ(ierr);
-        hamiltonian->evalObjective(Tfinal, x, &objective_pert);
+        braid_Drive(braid_core);
+        evalObjective(braid_core, braid_app, &objective_pert);
 
         /* Eval FD and error */
-        PetscScalar *x_ptr;
-        VecGetArray(mu[0], &x_ptr);
+        const PetscScalar *x_ptr;
+        VecGetArrayRead(mu[0], &x_ptr);
         grad = x_ptr[i*2*nparam + iparam];
-        VecRestoreArray(mu[0], &x_ptr);
         fd = (objective_pert - objective_ref) / EPS;
         err = ( grad - fd) / fd;
-        printf("     Re %f: obj_pert %1.14e, obj %1.14e, fd %1.14e, mu %1.14e, err %1.14e\n", Tfinal, objective_pert, objective_ref, fd, grad, err);
+        printf("     Re: obj_pert %1.14e, obj %1.14e, fd %1.14e, mu %1.14e, err %1.14e\n", objective_pert, objective_ref, fd, grad, err);
 
         // /* Restore parameter */
         oscil_vec[i]->updateParams(-EPS, dirRe, dirIm);
@@ -373,24 +351,15 @@ exit:
         oscil_vec[i]->updateParams(EPS, dirRe, dirIm);
 
         /* Run the time stepper */
-        TSDestroy(&ts);
-        TSCreate(PETSC_COMM_SELF,&ts);CHKERRQ(ierr);
-        TSInit(ts, hamiltonian, ntime, dt, total_time, x, lambda, mu, monitor);
-        hamiltonian->initialCondition(0,x);
-        // for(PetscInt istep = 0; istep < ntime; istep++) {
-        //   ierr = TSStep(ts);CHKERRQ(ierr);
-        // }
-        TSSolve(ts, x);
-        ierr = TSGetSolveTime(ts, &Tfinal);CHKERRQ(ierr);
-        hamiltonian->evalObjective(Tfinal, x, &objective_pert);
+        braid_Drive(braid_core);
+        evalObjective(braid_core, braid_app, &objective_pert);
 
         /* Eval FD and error */
         fd = (objective_pert - objective_ref) / EPS;
-        VecGetArray(mu[0], &x_ptr);
+        VecGetArrayRead(mu[0], &x_ptr);
         grad = x_ptr[i*2*nparam + iparam + nparam];
-        VecRestoreArray(mu[0], &x_ptr);
         err = ( grad - fd) / fd;
-        printf("     Im %f: obj_pert %1.14e, obj %1.14e, fd %1.14e, mu %1.14e, err %1.12e\n", Tfinal, objective_pert, objective_ref, fd, grad, err);
+        printf("     Im: obj_pert %1.14e, obj %1.14e, fd %1.14e, mu %1.14e, err %1.12e\n", objective_pert, objective_ref, fd, grad, err);
 
         /* Restore parameter */
         oscil_vec[i]->updateParams(-EPS, dirRe, dirIm);
@@ -553,6 +522,8 @@ exit:
   /* Close output files */
   if (ufile != NULL) fclose(ufile);
   if (vfile != NULL) fclose(vfile);
+  if (uadjfile != NULL) fclose(uadjfile);
+  if (vadjfile != NULL) fclose(vadjfile);
 
   /* Clean up */
   // TSDestroy(&ts);  /* TODO */
@@ -577,6 +548,8 @@ exit:
   /* Cleanup */
   // TSDestroy(&braid_app->ts);
 
+  delete mytimestepper;
+  
   delete primalbraidapp;
   delete adjointbraidapp;
 
