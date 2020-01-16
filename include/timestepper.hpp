@@ -16,7 +16,7 @@ class TimeStepper{
     TimeStepper(Hamiltonian* hamiltonian_); 
     virtual ~TimeStepper(); 
 
-    /* Evolving x from tstart to tstop. */
+    /* Evolving x from tstart to tstop (tstart < tstop !) */
     virtual void evolvForward(double tstart, double tstop, Vec x) = 0;
 };
 

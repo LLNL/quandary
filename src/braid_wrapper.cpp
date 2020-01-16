@@ -34,31 +34,8 @@ int my_Step(braid_App    app,
     }
   #endif
 
-    /* Set the time */
-    // TSSetTime(app->ts, tstart);
-    // TSSetTimeStep(app->ts, tstop - tstart);
-
-    // /* Pass the curent state to the Petsc time-stepper */
-    // // TSSetSolution(app->ts, u->x);
-
-    // // app->ts->steps = 0;
-    // TSSetStepNumber(app->ts, 0);
-    // TSSetMaxSteps(app->ts, 1);
-    // TSSolve(app->ts, u->x);
-
+    /* Evolve solution forward from tstart to tstop */
     app->timestepper->evolvForward(tstart, tstop, u->x);
-
-    // int ml = 0;
-    // braid_StatusGetNLevels((braid_Status) status, &ml);
-    
-
-    /* Take a step forward */
-    // bool tj_save = false;
-    // if (done || ml <= 1) tj_save = true;
-    // TSStepMod(app->ts, tj_save);
-
-    /* Calling the access routine here, because I removed it from the end of the braid_Drive() routine. This might give wrong tindex values... TODO: Check! */
-    // if (done) my_Access(app, u, (braid_AccessStatus) status);
 
     return 0;
 }
