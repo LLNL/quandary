@@ -46,9 +46,8 @@ ImplMidpoint::~ImplMidpoint(){
   KSPDestroy(&linearsolver);
 }
 
-void ImplMidpoint::evolve(int type, double tstart, double tstop, Vec x) {
+void ImplMidpoint::evolve(Mode direction, double tstart, double tstop, Vec x) {
   assert(tstart < tstop);
-  assert( type == 1 || type == -1 );
 
   /* Compute time step size */
   double dt = tstop - tstart;
@@ -56,32 +55,40 @@ void ImplMidpoint::evolve(int type, double tstart, double tstop, Vec x) {
   /* Compute A(t_n+h/2) */
   hamiltonian->assemble_RHS(tstart + dt / 2.0);
 
-  /* --- Compute stage variable  --- */
+  /* Decide for forward mode (A) or backward mode (A^T)*/
   Mat A;
+  switch(direction)
+  {
+    case FWD :  // forward stepping. System matrix uses A(t_n+h/2)
+      A = hamiltonian->getRHS(); 
+      break;
+    case BWD :  // backward stepping. System matrix uses A(t_n+h/2)^T
+      MatCreateTranspose(hamiltonian->getRHS(), &A); 
+      // not sure if this is a good idea. Is memory allocated here? Should I destroy A afterwards?
+      break;
+    default  : 
+      printf("ERROR: Wrong timestepping mode!\n"); exit(1);
+      break;
+  }
 
-  if (type == 1) {
-    /* forward evaluation. System matrix A = A(t_n+h/2) */
-    A = hamiltonian->getRHS();
-  } else if (type == -1) {
-    /* Backward evaluation. System matrix A = A(t_n+h/2) */
-    MatCreateTranspose(hamiltonian->getRHS(), &A);
-    // not sure if this is a good idea. Is memory allocated here? Should I destroy A afterwards?
-  } 
+  /* --- Solve for stage variable */
 
   /* Compute rhs = A x */
   MatMult(A, x, rhs);
 
-  /* Build system matrix I-h/2 A. This modifies the hamiltonians RHS matrix! Make sure to call assemble_RHS before use */
+  /* Build system matrix I-h/2 A. This modifies the hamiltonians RHS matrix! Make sure to call assemble_RHS before the next use! */
   MatScale(A, - dt/2.0);
-  MatShift(A, 1.0);  // WARNING: this can be very slow if some diagonal elements are missing. TODO: CHECK. 
+  MatShift(A, 1.0);  // WARNING: this can be very slow if some diagonal elements are missing. TODO: CHECK!
   KSPSetOperators(linearsolver, A, A);// TODO: Do we have to do this in each time step?? 
   
   /* solve nonlinear equation */
   KSPSolve(linearsolver, rhs, stage);
   // TODO: Catch error if no convergence
 
-  /* --- Update --- */
+  /* --- Update state x += dt * stage --- */
   VecAXPY(x, dt, stage);
+
+  /* TODO: if BWD: destroy A?? */
 }
 
 

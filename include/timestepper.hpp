@@ -5,6 +5,12 @@
 #include <assert.h> 
 #pragma once
 
+/* Available timestepping modes are 
+ * FWD = forward
+ * BWD = backward 
+ */
+enum Mode { FWD, BWD }; 
+
 
 /* Base class for time steppers */
 class TimeStepper{
@@ -19,7 +25,7 @@ class TimeStepper{
 
     /* Type =  1: Evolve state forward from tstart to tstop */
     /* Type = -1: Evolve adjoint backward from tstop to tstart */
-    virtual void evolve(int type, double tstart, double tstop, Vec x) = 0;
+    virtual void evolve(Mode direction, double tstart, double tstop, Vec x) = 0;
 };
 
 /* Implements implicit midpoint rule. 2nd order. Simplectic. 
@@ -41,7 +47,7 @@ class ImplMidpoint : public TimeStepper {
     ImplMidpoint(Hamiltonian* hamiltonian_);
     ~ImplMidpoint();
 
-    void evolve(int type, double tstart, double tstop, Vec x);
+    void evolve(Mode direction, double tstart, double tstop, Vec x);
 };
 
 
