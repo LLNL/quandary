@@ -80,7 +80,13 @@ void ImplMidpoint::evolve(Mode direction, double tstart, double tstop, Vec x) {
   
   /* solve nonlinear equation */
   KSPSolve(linearsolver, rhs, stage);
-  // TODO: Catch error if no convergence
+
+  /* Monitor error */
+  double rnorm;
+  int iters_taken;
+  KSPGetResidualNorm(linearsolver, &rnorm);
+  KSPGetIterationNumber(linearsolver, &iters_taken);
+  // printf("Residual norm %d: %1.5e\n", iters_taken, rnorm);
 
   /* --- Update state x += dt * stage --- */
   VecAXPY(x, dt, stage);
