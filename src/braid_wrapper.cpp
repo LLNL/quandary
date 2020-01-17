@@ -71,6 +71,7 @@ int myBraidApp::getTimeStepIndex(double t, double dt){
   return ts;
 }
 
+
 const double* myBraidApp::getStateRead(double t) {
   if (t != total_time) {
    printf("ERROR: getState not implemented yet for (t != final_time)\n\n");
@@ -583,16 +584,13 @@ braid_Int myAdjointBraidApp::Step(braid_Vector u_, braid_Vector ustop_, braid_Ve
     double tstop_orig  = total_time - tstop;
 
     /* Get primal states at tstop and tstart*/
-    Mat A;
     myBraidVector *uprimal_tstop;
     myBraidVector *uprimal_tstart;
     braid_BaseVector ubaseprimal_tstop;
     braid_BaseVector ubaseprimal_tstart;
 
-    int tstop_id  = getTimeStepIndex(tstop, total_time / ntime);
-    int tstart_id = getTimeStepIndex(tstart, total_time / ntime);
-    int primaltstop_id  = ntime - tstop_id;
-    int primaltstart_id = ntime - tstart_id;
+    int primaltstop_id  = ntime - getTimeStepIndex(tstop, total_time / ntime);
+    int primaltstart_id = ntime - getTimeStepIndex(tstart, total_time / ntime);
     _braid_UGetVectorRef(primalcore->GetCore(), 0, primaltstop_id, &ubaseprimal_tstop);
     _braid_UGetVectorRef(primalcore->GetCore(), 0, primaltstart_id, &ubaseprimal_tstart);
     if (ubaseprimal_tstop == NULL) printf("ubaseprimal_tstop is null!\n");
@@ -602,9 +600,8 @@ braid_Int myAdjointBraidApp::Step(braid_Vector u_, braid_Vector ustop_, braid_Ve
       
     /* Add dRHSdp(tstart,ustart)^T\bar u to gradient // mu = mu + h/2 A^T\bar u */
     hamiltonian->assemble_dRHSdp(tstart_orig, uprimal_tstart->x);
-    A = hamiltonian->getdRHSdp();
-    MatScale(A, dt/2.0);
-    MatMultTransposeAdd(A, u->x, redgrad, redgrad); 
+    MatScale(hamiltonian->getdRHSdp(), dt/2.0);
+    MatMultTransposeAdd(hamiltonian->getdRHSdp(), u->x, redgrad, redgrad); 
 
 
     /* Evolve u backwards in time */
@@ -612,9 +609,8 @@ braid_Int myAdjointBraidApp::Step(braid_Vector u_, braid_Vector ustop_, braid_Ve
 
     /* Add dRHSdp(tstop,ustop)^T\bar u to gradient // mu = mu + h/2 A^T\bar u */
     hamiltonian->assemble_dRHSdp(tstop_orig, uprimal_tstop->x);
-    A = hamiltonian->getdRHSdp();
-    MatScale(A, dt/2.0);
-    MatMultTransposeAdd(A, u->x, redgrad, redgrad); 
+    MatScale(hamiltonian->getdRHSdp(), dt/2.0);
+    MatMultTransposeAdd(hamiltonian->getdRHSdp(), u->x, redgrad, redgrad); 
     // printf("Added to gradient %f %f\n", tstart, tstop);
 
   }
