@@ -15,7 +15,7 @@ using namespace Ipopt;
 
 #define EPS 1e-8
 
-#define TEST_FD_TS 0
+#define TEST_FD_TS 1
 #define TEST_FD_SPLINE 0
 #define TEST_DT 0
 
@@ -221,61 +221,32 @@ int main(int argc,char **argv)
   // optimstatus = optimapp->OptimizeTNLP(optimproblem);
 
 
-  int n, m, nnz_jac, nnz_h;
+  int m, nnz_jac, nnz_h;
   OptimProblem::IndexStyleEnum index_style;
-  optimproblem->get_nlp_info(n,m,nnz_jac, nnz_h, index_style);
-  printf("n=%d, m=%d, nnz_jac=%d, nnz_h=%d\n", n,m,nnz_jac, nnz_h);
+  optimproblem->get_nlp_info(ndesign,m,nnz_jac, nnz_h, index_style);
+  printf("ndesign=%d, m=%d, nnz_jac=%d, nnz_h=%d\n", ndesign,m,nnz_jac, nnz_h);
 
   /* Test optimproblem */
-  double* myinit = new double[n];
-  optimproblem->get_starting_point(n, true, myinit, false, NULL, NULL, m, false, NULL);
-
-
-  double obj_orig, obj_perturb;
+  double* myinit = new double[ndesign];
+  optimproblem->get_starting_point(ndesign, true, myinit, false, NULL, NULL, m, false, NULL);
 
 
   /* --- Solve primal --- */
   printf("\nRunning optimizer eval_f... ");
-  optimproblem->eval_f(n, myinit, true, obj_orig);
-  printf(" Objective_orig %1.14e\n", obj_orig);
-
-  // perturb design */
-  int iperturb = 0;
-  myinit[iperturb] += EPS;
-
-  /* --- Solve primal --- */
-  printf("Running optimizer eval_f... ");
-  optimproblem->eval_f(n, myinit, true, obj_perturb);
-  printf(" Objective_perturb %1.14e\n", obj_perturb);
-
-  myinit[iperturb] -= EPS;
+  optimproblem->eval_f(ndesign, myinit, true, objective);
+  printf(" Objective %1.14e\n", objective);
 
   /* --- Solve adjoint --- */
-
   printf("\nRunning optimizer eval_grad_f...\n");
-  double* optimgrad = new double[n];
-  optimproblem->eval_grad_f(n, myinit, true, optimgrad);
+  double* optimgrad = new double[ndesign];
+  optimproblem->eval_grad_f(ndesign, myinit, true, optimgrad);
   if (mpirank == 0) {
     printf("\n %d: My awesome gradient:\n", mpirank);
-    for (int i=0; i<n; i++) {
+    for (int i=0; i<ndesign; i++) {
       printf("%1.14e\n", optimgrad[i]);
     }
   }
 
-  /* compute FD */
-  double findiff = (obj_perturb - obj_orig) / EPS;
-  double error = 0.0;
-  if (findiff != 0.0) error = ( optimgrad[iperturb] - findiff ) / findiff;
-  printf("Findiff = %1.14e, grad=%1.14e, error=%1.14e\n", findiff, optimgrad[iperturb], error);
-
-
-  /* Gradient output */
-  // /* Stop timer */
-  // StopTime = MPI_Wtime();
-  // UsedTime = StopTime - StartTime;
-
-  // /* Print convergence history */
-  // braid_printConvHistory(braid_core_adj, "braid_adj.out.log");
 
 exit:
 
@@ -286,85 +257,26 @@ exit:
   printf(" FD Testing... \n");
   printf("#########################\n\n");
 
-  double objective_ref;
-  braid_SetMaxLevels(braid_core, 1);
-
-  /* Solve */
-  braid_Drive(braid_core);
-
-  /* Evaluate the objective function */
-  evalObjective(braid_core, braid_app, &objective_ref);
-  printf("Objective_ref = %1.13e\n", objective_ref);
-
-  /* Reset gradient */
-  VecZeroEntries(mu[0]);
-
-  /* Set the derivatives for TS */
-  braid_Drive(braid_core_adj);
-
-  /* Get the results */
-  printf("Gradient:\n");
-  VecView(mu[0], PETSC_VIEWER_STDOUT_WORLD);
-
-  /* Perturb controls */
-  int nparam = oscil_vec[0]->getNParam();
-  double *dirRe = new double[nparam];
-  double *dirIm = new double[nparam];
-  for (int iparam = 0; iparam<nparam; iparam++){
-    dirRe[iparam] = 0.0;
-    dirIm[iparam] = 0.0;
-  }
-
+  double objective_ref = objective;
 
   /* Finite Differences */
-  double fd, grad, err;
   double objective_pert;
-  for (int i=0; i<nosci; i++){
-    printf("FD for Oscillator %d\n", i);
+  for (int i=0; i<ndesign; i++){
 
-    for (int iparam=0; iparam<nparam; iparam++){
-        printf("  param %d: \n", iparam);
+    /* Perturb design */
+    myinit[i] += EPS;
 
-        /* Perturb Re*/
-        dirRe[iparam] = 1.0;
-        oscil_vec[i]->updateParams(EPS, dirRe, dirIm);
+    /* Evaluate objective */
+    optimproblem->eval_f(ndesign, myinit, true, objective_pert);
 
-        /* Run the time stepper */
-        braid_Drive(braid_core);
-        evalObjective(braid_core, braid_app, &objective_pert);
+    /* Eval FD and error */
+    double fd = (objective_pert - objective_ref) / EPS;
+    double err = 0.0;
+    if (fd != 0.0) err = (optimgrad[i] - fd) / fd;
+    printf(" %d: obj_pert %1.14e, obj %1.14e, fd %1.14e, grad %1.14e, err %1.14e\n", i, objective_pert, objective_ref, fd, optimgrad[i], err);
 
-        /* Eval FD and error */
-        const PetscScalar *x_ptr;
-        VecGetArrayRead(mu[0], &x_ptr);
-        grad = x_ptr[i*2*nparam + iparam];
-        fd = (objective_pert - objective_ref) / EPS;
-        err = ( grad - fd) / fd;
-        printf("     Re: obj_pert %1.14e, obj %1.14e, fd %1.14e, mu %1.14e, err %1.14e\n", objective_pert, objective_ref, fd, grad, err);
-
-        // /* Restore parameter */
-        oscil_vec[i]->updateParams(-EPS, dirRe, dirIm);
-        dirRe[iparam] = 0.0;
-
-
-        /* Perturb Im*/
-        dirIm[iparam] = 1.0;
-        oscil_vec[i]->updateParams(EPS, dirRe, dirIm);
-
-        /* Run the time stepper */
-        braid_Drive(braid_core);
-        evalObjective(braid_core, braid_app, &objective_pert);
-
-        /* Eval FD and error */
-        fd = (objective_pert - objective_ref) / EPS;
-        VecGetArrayRead(mu[0], &x_ptr);
-        grad = x_ptr[i*2*nparam + iparam + nparam];
-        err = ( grad - fd) / fd;
-        printf("     Im: obj_pert %1.14e, obj %1.14e, fd %1.14e, mu %1.14e, err %1.12e\n", objective_pert, objective_ref, fd, grad, err);
-
-        /* Restore parameter */
-        oscil_vec[i]->updateParams(-EPS, dirRe, dirIm);
-        dirIm[iparam] = 0.0;
-    }
+    /* Restore parameter */
+    myinit[i] -= EPS;
   }
 
   /* Evaluate finite difference */
@@ -377,9 +289,6 @@ exit:
   //  printf("Finite Differences: %1.14e\n", finite_differences);
   //  printf(" Relative gradient error: %1.6f\n\n", err);
 
-
-
-  VecDestroy(&x);
 #endif
 
 #if TEST_FD_SPLINE
