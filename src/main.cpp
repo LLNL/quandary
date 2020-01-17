@@ -182,8 +182,8 @@ int main(int argc,char **argv)
 
   primalbraidapp->ufile = ufile;
   primalbraidapp->vfile = vfile;
-  adjointbraidapp->ufile = ufile;
-  adjointbraidapp->vfile = vfile;
+  adjointbraidapp->ufile = uadjfile;
+  adjointbraidapp->vfile = vadjfile;
 
   /* Print some information on the time-grid distribution */
   // int ilower, iupper;

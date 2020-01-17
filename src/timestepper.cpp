@@ -47,13 +47,12 @@ ImplMidpoint::~ImplMidpoint(){
 }
 
 void ImplMidpoint::evolve(Mode direction, double tstart, double tstop, Vec x) {
-  assert(tstart < tstop);
 
   /* Compute time step size */
-  double dt = tstop - tstart;
+  double dt = fabs(tstop - tstart); // absolute values needed in case this runs backwards! 
 
   /* Compute A(t_n+h/2) */
-  hamiltonian->assemble_RHS(tstart + dt / 2.0);
+  hamiltonian->assemble_RHS( (tstart + tstop) / 2.0);
 
   /* Decide for forward mode (A) or backward mode (A^T)*/
   Mat A = hamiltonian->getRHS(); 

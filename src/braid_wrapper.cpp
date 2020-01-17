@@ -578,6 +578,10 @@ braid_Int myAdjointBraidApp::Step(braid_Vector u_, braid_Vector ustop_, braid_Ve
     /* Reset gradient, if neccessary */
     if (!update_gradient) VecZeroEntries(redgrad);
 
+    /* Get original time */
+    double tstart_orig = total_time - tstart;
+    double tstop_orig  = total_time - tstop;
+
     /* Get primal states at tstop and tstart*/
     Mat A;
     myBraidVector *uprimal_tstop;
@@ -597,17 +601,17 @@ braid_Int myAdjointBraidApp::Step(braid_Vector u_, braid_Vector ustop_, braid_Ve
     uprimal_tstart = (myBraidVector*) ubaseprimal_tstart->userVector;
       
     /* Add dRHSdp(tstart,ustart)^T\bar u to gradient // mu = mu + h/2 A^T\bar u */
-    hamiltonian->assemble_dRHSdp(tstart, uprimal_tstart->x);
+    hamiltonian->assemble_dRHSdp(tstart_orig, uprimal_tstart->x);
     A = hamiltonian->getdRHSdp();
     MatScale(A, dt/2.0);
     MatMultTransposeAdd(A, u->x, redgrad, redgrad); 
 
 
     /* Evolve u backwards in time */
-    mytimestepper->evolve(BWD, tstart, tstop, u->x);
+    mytimestepper->evolve(BWD, tstart_orig, tstop_orig, u->x);
 
     /* Add dRHSdp(tstop,ustop)^T\bar u to gradient // mu = mu + h/2 A^T\bar u */
-    hamiltonian->assemble_dRHSdp(tstop, uprimal_tstop->x);
+    hamiltonian->assemble_dRHSdp(tstop_orig, uprimal_tstop->x);
     A = hamiltonian->getdRHSdp();
     MatScale(A, dt/2.0);
     MatMultTransposeAdd(A, u->x, redgrad, redgrad); 
