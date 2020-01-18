@@ -91,6 +91,25 @@ const double* myBraidApp::getStateRead(double t) {
 }
 
 
+Vec myBraidApp::getStateVec(double time) {
+  if (time != total_time) {
+   printf("ERROR: getState not implemented yet for (t != final_time)\n\n");
+   exit(1);
+  }
+
+  Vec x = NULL;
+  braid_BaseVector ubase;
+  myBraidVector *u;
+  const double* state_ptr= NULL;
+  _braid_UGetLast(core->GetCore(), &ubase);
+  if (ubase != NULL) { // only true on last processor 
+    u = (myBraidVector *)ubase->userVector;
+    x = u->x;
+  }
+  return x;
+}
+
+
 BraidCore* myBraidApp::getCore() { return core; }
 
 int myBraidApp::printConvHistory(const char* filename){ 
@@ -589,10 +608,10 @@ braid_Int myAdjointBraidApp::Step(braid_Vector u_, braid_Vector ustop_, braid_Ve
     braid_BaseVector ubaseprimal_tstop;
     braid_BaseVector ubaseprimal_tstart;
 
-    int primaltstop_id  = ntime - getTimeStepIndex(tstop, total_time / ntime);
-    int primaltstart_id = ntime - getTimeStepIndex(tstart, total_time / ntime);
-    _braid_UGetVectorRef(primalcore->GetCore(), 0, primaltstop_id, &ubaseprimal_tstop);
-    _braid_UGetVectorRef(primalcore->GetCore(), 0, primaltstart_id, &ubaseprimal_tstart);
+    int tstop_orig_id  = getTimeStepIndex(tstop_orig, total_time/ntime);
+    int tstart_orig_id = getTimeStepIndex(tstart_orig, total_time/ntime);
+    _braid_UGetVectorRef(primalcore->GetCore(), 0, tstop_orig_id, &ubaseprimal_tstop);
+    _braid_UGetVectorRef(primalcore->GetCore(), 0, tstart_orig_id, &ubaseprimal_tstart);
     if (ubaseprimal_tstop == NULL) printf("ubaseprimal_tstop is null!\n");
     if (ubaseprimal_tstart == NULL) printf("ubaseprimal_tstart is null!\n");
     uprimal_tstop  = (myBraidVector*) ubaseprimal_tstop->userVector;
