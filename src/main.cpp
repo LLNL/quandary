@@ -13,10 +13,11 @@
 
 using namespace Ipopt;
 
-#define EPS 1e-8
+#define EPS 1e-7
 
-#define TEST_FD_TS 1
-#define TEST_FD_SPLINE 0
+#define TEST_DRHSDP 0
+#define TEST_FD_TS 0 
+#define TEST_FD_SPLINE 1
 #define TEST_DT 0
 
 
@@ -192,7 +193,8 @@ int main(int argc,char **argv)
 
 
   /* Initialize the optimization */
-  SmartPtr<TNLP> optimproblem = new OptimProblem(primalbraidapp, adjointbraidapp);
+  // SmartPtr<TNLP> optimproblem = new OptimProblem(primalbraidapp, adjointbraidapp);
+  OptimProblem* optimproblem = new OptimProblem(primalbraidapp, adjointbraidapp);
   SmartPtr<IpoptApplication> optimapp = IpoptApplicationFactory(); // why "factory"?
   /* Set options */
   optimapp->Options()->SetNumericValue("tol", 1e-7);
@@ -232,24 +234,120 @@ int main(int argc,char **argv)
 
 
   /* --- Solve primal --- */
-  printf("\nRunning optimizer eval_f... ");
-  optimproblem->eval_f(ndesign, myinit, true, objective);
-  printf(" Objective %1.14e\n", objective);
+  // printf("\nRunning optimizer eval_f... ");
+  // optimproblem->eval_f(ndesign, myinit, true, objective);
+  // printf(" Objective %1.14e\n", objective);
 
-  /* --- Solve adjoint --- */
-  printf("\nRunning optimizer eval_grad_f...\n");
-  double* optimgrad = new double[ndesign];
-  optimproblem->eval_grad_f(ndesign, myinit, true, optimgrad);
-  if (mpirank == 0) {
-    printf("\n %d: My awesome gradient:\n", mpirank);
-    for (int i=0; i<ndesign; i++) {
-      printf("%1.14e\n", optimgrad[i]);
-    }
-  }
+  // // /* --- Solve adjoint --- */
+  // printf("\nRunning optimizer eval_grad_f...\n");
+  // double* optimgrad = new double[ndesign];
+  // optimproblem->eval_grad_f(ndesign, myinit, true, optimgrad);
+  // if (mpirank == 0) {
+  //   printf("\n %d: My awesome gradient:\n", mpirank);
+  //   for (int i=0; i<ndesign; i++) {
+  //     printf("%1.14e\n", optimgrad[i]);
+  //   }
+  // }
 
 
 exit:
 
+
+#if TEST_DRHSDP
+  printf("\n\n#########################\n");
+  printf(" dRHSdp Testing... \n");
+  printf("#########################\n\n");
+
+  double t = 0.345;
+  double err_i = 0.0;
+  Vec Ax, Bx, Cx, fd, err, grad_col;
+  Mat G;
+  int size;
+  VecGetSize(x, &size);
+  VecDuplicate(x, &Ax);
+  VecDuplicate(x, &Bx);
+  VecDuplicate(x, &Cx);
+  VecDuplicate(x, &fd);
+  VecDuplicate(x, &err);
+  VecDuplicate(x, &grad_col);
+
+  /* Set x to last time step */
+  // x = primalbraidapp->getStateVec(total_time);
+  /* Set x to all ones */
+  VecZeroEntries(x);
+  VecShift(x, 1.0);
+
+  /* Evaluate RHS(p)x */
+  optimproblem->setDesign(ndesign, myinit);
+  hamiltonian->assemble_RHS(t);
+  hamiltonian->getRHS();
+  MatMult(hamiltonian->getRHS(), x, Ax);
+
+  /* Evaluate dRHSdp(t,p)x */
+  hamiltonian->assemble_dRHSdp(t, x);
+  G = hamiltonian->getdRHSdp();
+  // MatView(G, PETSC_VIEWER_STDOUT_WORLD);
+
+  /* Flush control functions */
+  for (int i = 0; i < nosci; i++){
+    sprintf(filename, "control_%04d.dat", i);
+    oscil_vec[i]->flushControl(ntime, dt, filename);
+  }
+
+  /* FD loop */
+  // for (int i=0; i<ndesign; i++) {
+  {int i=3;
+
+    /* Eval RHS(p+eps)x */
+    myinit[i] -= EPS;
+    optimproblem->setDesign(ndesign, myinit);
+    hamiltonian->assemble_RHS(t);
+    MatMult(hamiltonian->getRHS(), x, Bx);
+
+    /* Eval RHS(p-eps)x */
+    myinit[i] += 2.*EPS;
+    optimproblem->setDesign(ndesign, myinit);
+    hamiltonian->assemble_RHS(t);
+    MatMult(hamiltonian->getRHS(), x, Cx);
+
+    /* Eval central finite differences (Bx - Cx) / 2eps */
+    VecAXPBYPCZ(fd, 1.0, -1.0, 0.0, Bx, Cx);
+    VecScale(fd, 1./(2.*EPS));
+
+    /* Compute error */
+    MatGetColumnVector(G, grad_col, i);
+    VecAXPBYPCZ(err, 1.0, -1.0, 0.0, grad_col, fd); 
+    VecPointwiseDivide(err, err, fd);
+    VecNorm(err, NORM_2, &err_i);
+
+    /* Output */
+    printf(" %d: || e_i|| = %1.4e\n", i, err_i);
+    if (err_i > 1e-5) {
+      const PetscScalar *err_ptr, *grad_ptr, *fd_ptr, *ax_ptr, *bx_ptr, *cx_ptr;
+      VecGetArrayRead(err, &err_ptr);
+      VecGetArrayRead(fd, &fd_ptr);
+      VecGetArrayRead(Ax, &ax_ptr);
+      VecGetArrayRead(Bx, &bx_ptr);
+      VecGetArrayRead(Cx, &cx_ptr);
+      VecGetArrayRead(grad_col, &grad_ptr);
+      printf("ERR    Ax[i]     Bx[i]     Cx[i]    FD       GRADCOL\n");
+      for (int j=0; j<size; j++){
+        printf("%1.14e  %1.20e  %1.20e  %1.20e  %1.14e  %1.14e\n", err_ptr[j], ax_ptr[i], bx_ptr[i], cx_ptr[i], fd_ptr[j], grad_ptr[j]);
+      }
+    }
+
+
+    // printf("FD column:\n");
+    // VecView(fd, PETSC_VIEWER_STDOUT_WORLD);
+    // printf("dRHSdp column:\n");
+    // VecView(grad_col, PETSC_VIEWER_STDOUT_WORLD);
+
+    /* Reset design */
+    myinit[i] -= EPS;
+  }
+
+
+#endif
 
 #if TEST_FD_TS
 
