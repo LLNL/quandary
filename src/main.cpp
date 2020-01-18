@@ -390,66 +390,91 @@ exit:
 #endif
 
 #if TEST_FD_SPLINE
-  printf("\n\n Running finite-differences test...\n\n");
+  printf("\n\n Finite-differences for Spline discretization...\n\n");
   
-
-  double t = 1.0;
+  double t = 0.345;
   double f, g;
-  double f_pert, g_pert;
+  double f_pert1, g_pert1, f_pert2, g_pert2;
 
   int nparam = oscil_vec[0]->getNParam();
-  double *dirRe = new double[nparam];
-  double *dirIm = new double[nparam];
-  for (int iparam = 0; iparam<nparam; iparam++){
-    dirRe[iparam] = 0.0;
-    dirIm[iparam] = 0.0;
-  }
 
   /* Init derivative */
   double *dfdw = new double[nparam];
   double *dgdw = new double[nparam];
 
+  int design_id = 0;
   for (int i=0; i<nosci; i++)
   {
     printf("FD for oscillator %d:\n", i);
 
+    /* RE */
+    printf("Re:\n");
     for (int iparam = 0; iparam < nparam; iparam++)
     {
-      printf("  param %d:\n", iparam);
+      printf("  param %d: design id=%d\n", iparam, design_id);
 
-      /* Reset gradient */
+      /* Eval gradients */
+      optimproblem->setDesign(ndesign, myinit);
+      oscil_vec[i]->evalControl(t, &f, &g);
       for (int i=0; i< nparam; i++) {
         dfdw[i] = 0.0;
         dgdw[i] = 0.0;
       }
-
-      /* Eval original objectives and gradient */
-      oscil_vec[i]->evalControl(t, &f, &g);
       oscil_vec[i]->evalDerivative(t, dfdw, dgdw);
 
       /* Eval perturbed objectives */
-      dirRe[iparam] = 1.0;
-      dirIm[iparam] = 1.0;
-      oscil_vec[i]->updateParams(EPS, dirRe, dirIm);
-      oscil_vec[i]->evalControl(t, &f_pert, &g_pert);
+      myinit[design_id] += EPS;
+      optimproblem->setDesign(ndesign, myinit);
+      oscil_vec[i]->evalControl(t, &f_pert1, &g_pert1);
+
+      myinit[design_id] -= 2.*EPS;
+      optimproblem->setDesign(ndesign, myinit);
+      oscil_vec[i]->evalControl(t, &f_pert2, &g_pert2);
 
       /* Eval FD and error */
-      double f_fd = (f_pert - f) / EPS;
-      double g_fd = (g_pert - g) / EPS;
+      double f_fd = (f_pert1 - f_pert2) / (2.*EPS);
       double f_err = 0.0;
-      double g_err = 0.0;
       if (f_fd != 0.0) f_err = (dfdw[iparam] - f_fd) / f_fd;
-      if (g_fd != 0.0) g_err = (dgdw[iparam] - g_fd) / g_fd;
-      printf("    f_pert %1.12e, f %1.12e, f_fd %1.12e, dfdw %1.12e, f_err %2.4f\%\n", f_pert, f, f_fd, dfdw[iparam],  f_err*100.0);
-      printf("    g_pert %1.12e, g %1.12e, g_fd %1.12e, dgdw %1.12e, g_err %2.4f\%\n", g_pert, g, g_fd, dgdw[iparam],  g_err*100.0);
+      printf("    f %1.12e  f1 %1.12e  f2 %1.12e  f_fd %1.12e, dfdw %1.12e, f_err %1.8e\n", f, f_pert1, f_pert2, f_fd, dfdw[iparam],  f_err);
 
       /* Restore parameter */
-      oscil_vec[i]->updateParams(-EPS, dirRe, dirIm);
-      dirRe[iparam] = 0.0;
-      dirIm[iparam] = 0.0;
-
+      myinit[design_id] += EPS;
+      design_id++;
     }
+    /* IM */
+    printf("Im:\n");
+    for (int iparam = 0; iparam < nparam; iparam++)
+    {
+      printf("  param %d: design id=%d\n", iparam, design_id);
 
+      /* Eval gradients */
+      optimproblem->setDesign(ndesign, myinit);
+      oscil_vec[i]->evalControl(t, &f, &g);
+      for (int i=0; i< nparam; i++) {
+        dfdw[i] = 0.0;
+        dgdw[i] = 0.0;
+      }
+      oscil_vec[i]->evalDerivative(t, dfdw, dgdw);
+
+      /* Im: Eval perturbed objectives */
+      myinit[design_id] += EPS;
+      optimproblem->setDesign(ndesign, myinit);
+      oscil_vec[i]->evalControl(t, &f_pert1, &g_pert1);
+
+      myinit[design_id] -= 2.*EPS;
+      optimproblem->setDesign(ndesign, myinit);
+      oscil_vec[i]->evalControl(t, &f_pert2, &g_pert2);
+
+      /* Eval FD and error */
+      double g_fd = (g_pert1 - g_pert2) / (2.*EPS);
+      double g_err = 0.0;
+      if (g_fd != 0.0) g_err = (dgdw[iparam] - g_fd) / g_fd;
+      printf("    g %1.12e  g1 %1.12e  f2 %1.12e  g_fd %1.12e, dgdw %1.12e, g_err %1.8e\n", g, f_pert1, f_pert2, g_fd, dgdw[iparam],  g_err);
+
+      /* Restore parameter */
+      myinit[design_id] += EPS;
+      design_id++;
+    }
   }
 #endif
 
