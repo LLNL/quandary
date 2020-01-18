@@ -118,8 +118,16 @@ bool OptimProblem::get_starting_point(Index n, bool init_x, Number* x, bool init
   assert(init_z == false);
   assert(init_lambda == false);
 
-  /* Get x from oscillators */
-  getDesign(n, x);
+  // /* Get x from oscillators */
+  // getDesign(n, x);
+
+  /* Set initial parameters */
+  for (int i=0; i<n; i++) {
+    x[i] = i;
+  }
+
+  /* Pass to oscillator */
+  setDesign(n, x);
   
   return true;
 }
