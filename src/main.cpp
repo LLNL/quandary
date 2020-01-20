@@ -160,8 +160,8 @@ int main(int argc,char **argv)
     printf("# Time step size: %f\n", dt );
   }
 
-  // TimeStepper *mytimestepper = new ImplMidpoint(hamiltonian);
-  TimeStepper *mytimestepper = new ExplEuler(hamiltonian);
+  TimeStepper *mytimestepper = new ImplMidpoint(hamiltonian);
+  // TimeStepper *mytimestepper = new ExplEuler(hamiltonian);
 
   /* Allocate and initialize Petsc's Time-stepper */
   TSCreate(PETSC_COMM_SELF,&ts);CHKERRQ(ierr);
