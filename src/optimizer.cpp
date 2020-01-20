@@ -118,13 +118,22 @@ bool OptimProblem::get_starting_point(Index n, bool init_x, Number* x, bool init
   assert(init_z == false);
   assert(init_lambda == false);
 
-  // /* Get x from oscillators */
-  // getDesign(n, x);
-
   /* Set initial parameters */
   for (int i=0; i<n; i++) {
-    x[i] = i;
+    x[i] = (double) rand() / ((double)RAND_MAX);
   }
+
+  /* Flush control functions */
+  // if (mpirank == 0 && iolevel > 0) {
+  int ntime = primalbraidapp->ntime;
+  double dt = primalbraidapp->total_time / ntime;
+  char filename[255];
+  Hamiltonian* hamil = primalbraidapp->hamiltonian;
+  for (int ioscil = 0; ioscil < hamil->getNOscillators(); ioscil++) {
+      sprintf(filename, "control_init_oscil%04d.dat", ioscil);
+      hamil->getOscillator(ioscil)->flushControl(ntime, dt, filename);
+  }
+// }
 
   /* Pass to oscillator */
   setDesign(n, x);
@@ -235,6 +244,14 @@ bool OptimProblem::eval_jac_g(Index n, const Number* x, bool new_x, Index m, Ind
 // }
 
 void OptimProblem::finalize_solution(SolverReturn status, Index n, const Number* x, const Number* z_L, const Number* z_U, Index m, const Number* g, const Number* lambda, Number obj_value, const IpoptData* ip_data,IpoptCalculatedQuantities* ip_cq){
-    /* This is called after Ipopt finished. */
-    /* TODO: pass x to someone, write to file... */
+  /* This is called after Ipopt finished. */
+
+  /* Print optimized parameters */
+  FILE *optimfile;
+  optimfile = fopen("optimal_param.dat", "w");
+  for (int i=0; i<n; i++){
+    fprintf(optimfile, "%1.14e\n", x[i]);
+  }
+  fclose(optimfile);
+
 }
