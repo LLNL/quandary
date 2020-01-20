@@ -13,11 +13,11 @@
 
 using namespace Ipopt;
 
-#define EPS 1e-6
+#define EPS 1e-7
 
 #define TEST_DRHSDP 0
-#define TEST_FD_TS 0 
-#define TEST_FD_SPLINE 1
+#define TEST_FD_TS 1
+#define TEST_FD_SPLINE 0
 #define TEST_DT 0
 
 
@@ -160,7 +160,8 @@ int main(int argc,char **argv)
     printf("# Time step size: %f\n", dt );
   }
 
-  TimeStepper *mytimestepper = new ImplMidpoint(hamiltonian);
+  // TimeStepper *mytimestepper = new ImplMidpoint(hamiltonian);
+  TimeStepper *mytimestepper = new ExplEuler(hamiltonian);
 
   /* Allocate and initialize Petsc's Time-stepper */
   TSCreate(PETSC_COMM_SELF,&ts);CHKERRQ(ierr);
@@ -355,37 +356,40 @@ exit:
   printf(" FD Testing... \n");
   printf("#########################\n\n");
 
-  double objective_ref = objective;
+  double obj_org;
+  double obj_pert1, obj_pert2;
+
+  optimproblem->eval_f(ndesign, myinit, true, obj_org);
+  printf(" Obj_orig %1.14e\n", obj_org);
+
+  // /* --- Solve adjoint --- */
+  double* testgrad = new double[ndesign];
+  optimproblem->eval_grad_f(ndesign, myinit, true, testgrad );
 
   /* Finite Differences */
-  double objective_pert;
+  printf("FD...\n");
   for (int i=0; i<ndesign; i++){
+  // {int i=0;
 
-    /* Perturb design */
+    /* Evaluate f(p+eps)*/
     myinit[i] += EPS;
+    optimproblem->eval_f(ndesign, myinit, true, obj_pert1);
 
-    /* Evaluate objective */
-    optimproblem->eval_f(ndesign, myinit, true, objective_pert);
+    /* Evaluate f(p-eps)*/
+    myinit[i] -= 2.*EPS;
+    optimproblem->eval_f(ndesign, myinit, true, obj_pert2);
 
     /* Eval FD and error */
-    double fd = (objective_pert - objective_ref) / EPS;
+    double fd = (obj_pert1 - obj_pert2) / (2.*EPS);
     double err = 0.0;
-    if (fd != 0.0) err = (optimgrad[i] - fd) / fd;
-    printf(" %d: obj_pert %1.14e, obj %1.14e, fd %1.14e, grad %1.14e, err %1.14e\n", i, objective_pert, objective_ref, fd, optimgrad[i], err);
+    if (fd != 0.0) err = (testgrad[i] - fd) / fd;
+    printf(" %d: obj %1.14e, obj_pert1 %1.14e, obj_pert2 %1.14e, fd %1.14e, grad %1.14e, err %1.14e\n", i, obj_org, obj_pert1, obj_pert2, fd, testgrad[i], err);
 
     /* Restore parameter */
-    myinit[i] -= EPS;
+    myinit[i] += EPS;
   }
-
-  /* Evaluate finite difference */
-  /* Compute finite differences and relative error */
-  //  finite_differences = (objective_perturb - objective_ref) / EPS;
-  //  err = (gradient_ref - finite_differences) / finite_differences;
-
-   /* Output */
-  //  printf("Objectives: %1.14e %1.14e\n", objective_ref, objective_perturb);
-  //  printf("Finite Differences: %1.14e\n", finite_differences);
-  //  printf(" Relative gradient error: %1.6f\n\n", err);
+  
+  delete [] testgrad;
 
 #endif
 

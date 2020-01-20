@@ -13,6 +13,41 @@ TimeStepper::TimeStepper(Hamiltonian* hamiltonian_) {
 TimeStepper::~TimeStepper() {}
 
 
+ExplEuler::ExplEuler(Hamiltonian* hamiltonian_) : TimeStepper(hamiltonian_) {
+  VecCreateSeq(PETSC_COMM_WORLD, dim, &stage);
+  VecZeroEntries(stage);
+}
+
+ExplEuler::~ExplEuler() {
+  VecDestroy(&stage);
+}
+
+void ExplEuler::evolve(Mode direction, double tstart, double tstop, Vec x) {
+
+  double dt = fabs(tstop - tstart);
+
+   /* Compute A(tstart) */
+  hamiltonian->assemble_RHS(tstart);
+
+  /* Decide for forward mode (A) or backward mode (A^T)*/
+  Mat A = hamiltonian->getRHS(); 
+  switch(direction)
+  {
+    case FWD :  // forward stepping. Use A. Do nothing.
+      break;
+    case BWD :  // backward stepping. Use A^T.
+      MatTranspose(A, MAT_INPLACE_MATRIX, &A);
+      break;
+    default  : 
+      printf("ERROR: Wrong timestepping mode!\n"); exit(1);
+      break;
+  } 
+
+  /* update x = x + hAx */
+  MatMult(A, x, stage);
+  VecAXPY(x, dt, stage);
+}
+
 ImplMidpoint::ImplMidpoint(Hamiltonian* hamiltonian_) : TimeStepper(hamiltonian_) {
 
   /* Create and reset the intermediate vectors */

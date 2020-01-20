@@ -28,6 +28,17 @@ class TimeStepper{
     virtual void evolve(Mode direction, double tstart, double tstop, Vec x) = 0;
 };
 
+class ExplEuler : public TimeStepper {
+  Vec stage;
+  public:
+    ExplEuler(Hamiltonian* hamiltonian_);
+    ~ExplEuler();
+
+    void evolve(Mode direction, double tstart, double tstop, Vec x);
+};
+
+
+
 /* Implements implicit midpoint rule. 2nd order. Simplectic. 
  * RK tableau:  1/2 |  1/2
  *              ------------
