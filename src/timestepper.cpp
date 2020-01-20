@@ -110,7 +110,7 @@ void ImplMidpoint::evolve(Mode direction, double tstart, double tstop, Vec x) {
 
   /* Build system matrix I-h/2 A. This modifies the hamiltonians RHS matrix! Make sure to call assemble_RHS before the next use! */
   MatScale(A, - dt/2.0);
-  MatShift(A, 1.0);  // WARNING: this can be very slow if some diagonal elements are missing. TODO: CHECK!
+  MatShift(A, 1.0);  // WARNING: this can be very slow if some diagonal elements are missing.
   KSPSetOperators(linearsolver, A, A);// TODO: Do we have to do this in each time step?? 
   
   /* solve nonlinear equation */

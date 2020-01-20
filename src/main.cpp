@@ -16,7 +16,7 @@ using namespace Ipopt;
 #define EPS 1e-7
 
 #define TEST_DRHSDP 0
-#define TEST_FD_TS 1
+#define TEST_FD_TS 0
 #define TEST_FD_SPLINE 0
 #define TEST_DT 0
 
@@ -113,14 +113,6 @@ int main(int argc,char **argv)
     }
   }
 
-  /* Flush control functions */
-  if (mpirank == 0 && iolevel > 0) {
-    for (int i = 0; i < nosci; i++){
-      sprintf(filename, "control_%04d.dat", i);
-      oscil_vec[i]->flushControl(ntime, dt, filename);
-    }
-  }
-
   /* Set frequencies for drift hamiltonian Hd xi = [xi_1, xi_2, xi_12] */
   double* xi = new double[nlvl*nlvl];
   if (analytic) {  // no drift Hamiltonian in analytic case
@@ -201,9 +193,9 @@ int main(int argc,char **argv)
   optimapp->Options()->SetNumericValue("tol", 1e-7);
 	optimapp->Options()->SetStringValue("output_file", "optim.out");
 	optimapp->Options()->SetStringValue("hessian_approximation", "limited-memory");
-	optimapp->Options()->SetStringValue("derivative_test", "first-order");
-	optimapp->Options()->SetStringValue("derivative_test_print_all", "yes");
-  optimapp->Options()->SetIntegerValue("max_iter", 0);
+	// optimapp->Options()->SetStringValue("derivative_test", "first-order");
+	// optimapp->Options()->SetStringValue("derivative_test_print_all", "yes");
+  // optimapp->Options()->SetIntegerValue("max_iter", 0);
   /* Initialize optim status */
   ApplicationReturnStatus optimstatus;
   optimstatus = optimapp->Initialize();
@@ -212,29 +204,23 @@ int main(int argc,char **argv)
     return (int) optimstatus;
   }
 
-
    /* Measure wall time */
   StartTime = MPI_Wtime();
   StopTime = 0.0;
   UsedTime = 0.0;
 
 
-  /* Solve the optimization  */
-  // printf("Now solving the optim problem \n");
-  // optimstatus = optimapp->OptimizeTNLP(optimproblem);
-
-
+  /* Test optimproblem */
   int m, nnz_jac, nnz_h;
   OptimProblem::IndexStyleEnum index_style;
   optimproblem->get_nlp_info(ndesign,m,nnz_jac, nnz_h, index_style);
   printf("ndesign=%d, m=%d, nnz_jac=%d, nnz_h=%d\n", ndesign,m,nnz_jac, nnz_h);
 
-  /* Test optimproblem */
   double* myinit = new double[ndesign];
   optimproblem->get_starting_point(ndesign, true, myinit, false, NULL, NULL, m, false, NULL);
 
 
-  /* --- Solve primal --- */
+  // /* --- Solve primal --- */
   // printf("\nRunning optimizer eval_f... ");
   // optimproblem->eval_f(ndesign, myinit, true, objective);
   // printf(" Objective %1.14e\n", objective);
@@ -249,6 +235,11 @@ int main(int argc,char **argv)
   //     printf("%1.14e\n", optimgrad[i]);
   //   }
   // }
+
+  /* Solve the optimization  */
+  printf("Now starting IpOpt \n");
+  optimstatus = optimapp->OptimizeTNLP(optimproblem);
+
 
 
 exit:

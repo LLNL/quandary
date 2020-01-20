@@ -511,7 +511,6 @@ const double* myAdjointBraidApp::getReducedGradientPtr(){
 }
 
 int myAdjointBraidApp::getPrimalIndex(int ts) { 
-  /* TODO: Check this! Might need -1 */
   return ntime - ts; 
 }
 
