@@ -14,7 +14,7 @@
 #define EPS 1e-7
 
 #define TEST_DRHSDP 0
-#define TEST_FD_TS 0
+#define TEST_FD_TS 1
 #define TEST_FD_SPLINE 0
 #define TEST_DT 0
 
@@ -64,10 +64,10 @@ int main(int argc,char **argv)
   MPI_Comm comm = MPI_COMM_WORLD;
   MPI_Comm comm_braid, comm_petsc;
   /* TODO:  FIX THE MPI SHIT ! */
-  // braid_SplitCommworld(&comm, 1, &comm_petsc, &comm_braid);
-  // PETSC_COMM_WORLD = comm_petsc;
-  comm_petsc = MPI_COMM_WORLD;
-  comm_braid = MPI_COMM_WORLD;
+  braid_SplitCommworld(&comm, 1, &comm_petsc, &comm_braid);
+  PETSC_COMM_WORLD = comm_petsc;
+  // comm_petsc = MPI_COMM_WORLD;
+  // comm_braid = MPI_COMM_WORLD;
 
   /* Initialize Petsc */
   ierr = PetscInitialize(&argc,&argv,(char*)0,NULL);if (ierr) return ierr;
@@ -336,25 +336,35 @@ exit:
   double obj_org;
   double obj_pert1, obj_pert2;
 
-  optimproblem->eval_f(ndesign, myinit, true, obj_org);
+  long long int n,l;
+  optimproblem.get_prob_sizes(n, m);
+
+  double* myx = new double[n];
+  optimproblem.get_starting_point(n, myx);
+
+
+  // /* --- Solve primal --- */
+  printf("\nRunning optimizer eval_f... ");
+  optimproblem.eval_f(n, myx, true, obj_org);
   printf(" Obj_orig %1.14e\n", obj_org);
 
-  // /* --- Solve adjoint --- */
-  double* testgrad = new double[ndesign];
-  optimproblem->eval_grad_f(ndesign, myinit, true, testgrad );
+  /* --- Solve adjoint --- */
+  printf("\nRunning optimizer eval_grad_f...\n");
+  double* testgrad = new double[n];
+  optimproblem.eval_grad_f(n, myx, true, testgrad);
 
   /* Finite Differences */
   printf("FD...\n");
-  for (int i=0; i<ndesign; i++){
+  for (int i=0; i<n; i++){
   // {int i=0;
 
     /* Evaluate f(p+eps)*/
-    myinit[i] += EPS;
-    optimproblem->eval_f(ndesign, myinit, true, obj_pert1);
+    myx[i] += EPS;
+    optimproblem.eval_f(n, myx, true, obj_pert1);
 
     /* Evaluate f(p-eps)*/
-    myinit[i] -= 2.*EPS;
-    optimproblem->eval_f(ndesign, myinit, true, obj_pert2);
+    myx[i] -= 2.*EPS;
+    optimproblem.eval_f(n, myx, true, obj_pert2);
 
     /* Eval FD and error */
     double fd = (obj_pert1 - obj_pert2) / (2.*EPS);
@@ -363,10 +373,11 @@ exit:
     printf(" %d: obj %1.14e, obj_pert1 %1.14e, obj_pert2 %1.14e, fd %1.14e, grad %1.14e, err %1.14e\n", i, obj_org, obj_pert1, obj_pert2, fd, testgrad[i], err);
 
     /* Restore parameter */
-    myinit[i] += EPS;
+    myx[i] += EPS;
   }
   
   delete [] testgrad;
+  delete [] myx;
 
 #endif
 
