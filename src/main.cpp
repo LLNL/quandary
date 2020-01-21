@@ -9,9 +9,7 @@
 #include "optimizer.hpp"
 #include "_braid.h"
 #include <stdlib.h>
-#include "IpIpoptApplication.hpp"
-
-using namespace Ipopt;
+#include "hiopAlgFilterIPM.hpp"
 
 #define EPS 1e-7
 
@@ -41,7 +39,6 @@ int main(int argc,char **argv)
 
   Vec            x;          // solution vector
   // bool           tj_save;    // Determines wether trajectory should be stored in primal run
-  PetscInt ndesign;           // Number of design variables 
   double *mygrad = NULL;      // Reduced gradient, local on this processor
 
   /* Optimization */
@@ -186,23 +183,13 @@ int main(int argc,char **argv)
 
 
   /* Initialize the optimization */
-  // SmartPtr<TNLP> optimproblem = new OptimProblem(primalbraidapp, adjointbraidapp);
-  OptimProblem* optimproblem = new OptimProblem(primalbraidapp, adjointbraidapp);
-  SmartPtr<IpoptApplication> optimapp = IpoptApplicationFactory(); // why "factory"?
+  OptimProblem optimproblem(primalbraidapp, adjointbraidapp);
+  hiop::hiopNlpDenseConstraints nlp(optimproblem);
   /* Set options */
-  optimapp->Options()->SetNumericValue("tol", 1e-7);
-	optimapp->Options()->SetStringValue("output_file", "optim.out");
-	optimapp->Options()->SetStringValue("hessian_approximation", "limited-memory");
-	// optimapp->Options()->SetStringValue("derivative_test", "first-order");
-	// optimapp->Options()->SetStringValue("derivative_test_print_all", "yes");
-  // optimapp->Options()->SetIntegerValue("max_iter", 0);
-  /* Initialize optim status */
-  ApplicationReturnStatus optimstatus;
-  optimstatus = optimapp->Initialize();
-  if (optimstatus != Solve_Succeeded) {
-    printf("\n\n*** Error during optimization init!\n\n");
-    return (int) optimstatus;
-  }
+  nlp.options->SetNumericValue("tolerance", 1e-4);
+  nlp.options->SetIntegerValue("max_iter", 2);
+  /* Create solver */
+  hiop::hiopAlgFilterIPM optimsolver(&nlp);
 
    /* Measure wall time */
   StartTime = MPI_Wtime();
@@ -211,35 +198,34 @@ int main(int argc,char **argv)
 
 
   /* Test optimproblem */
-  int m, nnz_jac, nnz_h;
-  OptimProblem::IndexStyleEnum index_style;
-  optimproblem->get_nlp_info(ndesign,m,nnz_jac, nnz_h, index_style);
-  printf("ndesign=%d, m=%d, nnz_jac=%d, nnz_h=%d\n", ndesign,m,nnz_jac, nnz_h);
+  long long int ndesign,m;
+  optimproblem.get_prob_sizes(ndesign, m);
+  printf("ndesign=%d\n", ndesign);
 
   double* myinit = new double[ndesign];
-  optimproblem->get_starting_point(ndesign, true, myinit, false, NULL, NULL, m, false, NULL);
+  optimproblem.get_starting_point(ndesign, myinit);
 
 
   // /* --- Solve primal --- */
-  // printf("\nRunning optimizer eval_f... ");
-  // optimproblem->eval_f(ndesign, myinit, true, objective);
-  // printf(" Objective %1.14e\n", objective);
+  printf("\nRunning optimizer eval_f... ");
+  optimproblem.eval_f(ndesign, myinit, true, objective);
+  printf(" Objective %1.14e\n", objective);
 
-  // // /* --- Solve adjoint --- */
-  // printf("\nRunning optimizer eval_grad_f...\n");
-  // double* optimgrad = new double[ndesign];
-  // optimproblem->eval_grad_f(ndesign, myinit, true, optimgrad);
-  // if (mpirank == 0) {
-  //   printf("\n %d: My awesome gradient:\n", mpirank);
-  //   for (int i=0; i<ndesign; i++) {
-  //     printf("%1.14e\n", optimgrad[i]);
-  //   }
-  // }
+  /* --- Solve adjoint --- */
+  printf("\nRunning optimizer eval_grad_f...\n");
+  double* optimgrad = new double[ndesign];
+  optimproblem.eval_grad_f(ndesign, myinit, true, optimgrad);
+  if (mpirank == 0) {
+    printf("\n %d: My awesome gradient:\n", mpirank);
+    for (int i=0; i<ndesign; i++) {
+      printf("%1.14e\n", optimgrad[i]);
+    }
+  }
 
-  /* Solve the optimization  */
-  printf("Now starting IpOpt \n");
-  optimstatus = optimapp->OptimizeTNLP(optimproblem);
-
+  // /* Solve the optimization  */
+  // printf("Now starting HiOp \n");
+  // hiop::hiopSolveStatus status = optimsolver.run();
+  // double myobj = optimsolver.getObjective();
 
 
 exit:

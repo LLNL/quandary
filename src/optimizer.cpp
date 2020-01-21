@@ -1,7 +1,5 @@
 #include "optimizer.hpp"
 
-using namespace Ipopt;
-
 OptimProblem::OptimProblem() {
     primalbraidapp  = NULL;
     adjointbraidapp = NULL;
@@ -17,7 +15,7 @@ OptimProblem::~OptimProblem() {}
 
 
 
-void OptimProblem::setDesign(Index n, const Number* x) {
+void OptimProblem::setDesign(int n, const double* x) {
 
   Hamiltonian* hamil = primalbraidapp->hamiltonian;
 
@@ -45,7 +43,7 @@ void OptimProblem::setDesign(Index n, const Number* x) {
 }
 
 
-void OptimProblem::getDesign(Index n, Number* x){
+void OptimProblem::getDesign(int n, double* x){
 
   double *paramRe, *paramIm;
   int nparam;
@@ -69,7 +67,7 @@ void OptimProblem::getDesign(Index n, Number* x){
   }
 }
 
-bool OptimProblem::get_nlp_info(Index& n, Index& m, Index& nnz_jac_g, Index& nnz_h_lag, IndexStyleEnum& index_style){
+bool OptimProblem::get_prob_sizes(long long& n, long long& m) {
 
   // n - number of design variables 
   n = 0;
@@ -80,70 +78,33 @@ bool OptimProblem::get_nlp_info(Index& n, Index& m, Index& nnz_jac_g, Index& nnz
   
   // m - number of constraints 
   m = 0;          
-  // number of non-zeros in jacobian of constraint
-  nnz_jac_g = 0;  
-  // number of non-zeros in hessian. Dense storage -> full hessian, but symmetric -> store lower left triangle
-  nnz_h_lag = (int) n*(n+1)/2; 
-  // use C-style indexing (0-based)
-  index_style = TNLP::C_STYLE; 
 
   return true;
 }
 
 
-
-bool OptimProblem::get_bounds_info(Index n, Number* x_l, Number* x_u, Index m, Number* g_l, Number* g_u){
+bool OptimProblem::get_vars_info(const long long& n, double *xlow, double* xupp, NonlinearityType* type) {
 
   /* no lower bound or upper bounds. Set bounds very big. */
   double bound = 2e19;
 
   for (int i=0; i<n; i++) {
-    x_l[i] = -bound;
-    x_u[i] =  bound;
+    xlow[i] = -bound;
+    xupp[i] =  bound;
+    type[i] =  hiopNonlinear;
   }
 
+  return true;
+}
+
+bool OptimProblem::get_cons_info(const long long& m, double* clow, double* cupp, NonlinearityType* type){
   assert(m==0);
-  for (int i=0; i<m; i++) {
-      g_l[i] = -bound;
-      g_u[i] =  bound;
-  }
-
   return true;
 }
 
 
-bool OptimProblem::get_starting_point(Index n, bool init_x, Number* x, bool init_z, Number* z_L, Number* z_U, Index m, bool init_lambda, Number* lambda){
-  /* Make sure that only x requires an initial guess, not the dual variable z or the multiplier lambda. */
-  assert(init_x == true);
-  assert(init_z == false);
-  assert(init_lambda == false);
-
-  /* Set initial parameters */
-  for (int i=0; i<n; i++) {
-    x[i] = (double) rand() / ((double)RAND_MAX);
-  }
-
-  /* Flush control functions */
-  // if (mpirank == 0 && iolevel > 0) {
-  int ntime = primalbraidapp->ntime;
-  double dt = primalbraidapp->total_time / ntime;
-  char filename[255];
-  Hamiltonian* hamil = primalbraidapp->hamiltonian;
-  for (int ioscil = 0; ioscil < hamil->getNOscillators(); ioscil++) {
-      sprintf(filename, "control_init_oscil%04d.dat", ioscil);
-      hamil->getOscillator(ioscil)->flushControl(ntime, dt, filename);
-  }
-// }
-
-  /* Pass to oscillator */
-  setDesign(n, x);
-  
-  return true;
-}
-
-
-
-bool OptimProblem::eval_f(Index n, const Number* x, bool new_x, Number& obj_value){
+bool OptimProblem::eval_f(const long long& n, const double* x_in, bool new_x, double& obj_value){
+// bool OptimProblem::eval_f(Index n, const Number* x, bool new_x, Number& obj_value){
 
   double obj_local;
   Hamiltonian* hamil = primalbraidapp->hamiltonian;
@@ -152,14 +113,13 @@ bool OptimProblem::eval_f(Index n, const Number* x, bool new_x, Number& obj_valu
   /* TODO: if (new_x) ... */
 
   /* Pass design vector x to oscillator */
-  setDesign(n, x);
-
+  setDesign(n, x_in);
 
   /* Reset objective function value */
   objective_curr = 0.0;
 
   /*  Iterate over initial condition */
-    dim = 1;
+  // dim = 1;
   for (int iinit = 0; iinit < dim; iinit++) {
     /* Set initial condition for index iinit */
     primalbraidapp->PreProcess(iinit);
@@ -179,8 +139,8 @@ bool OptimProblem::eval_f(Index n, const Number* x, bool new_x, Number& obj_valu
 }
 
 
-
-bool OptimProblem::eval_grad_f(Index n, const Number* x, bool new_x, Number* grad_f){
+bool OptimProblem::eval_grad_f(const long long& n, const double* x_in, bool new_x, double* gradf){
+// bool OptimProblem::eval_grad_f(Index n, const Number* x, bool new_x, Number* grad_f){
 
   Hamiltonian* hamil = primalbraidapp->hamiltonian;
   double obj_local;
@@ -188,17 +148,17 @@ bool OptimProblem::eval_grad_f(Index n, const Number* x, bool new_x, Number* gra
 
   /* Make sure that grad_f is zero when it comes in. */
   for (int i=0; i<n; i++) {
-    grad_f[i] = 0.0;
+    gradf[i] = 0.0;
   }
 
   /* Pass x to Oscillator */
-  setDesign(n, x);
+  setDesign(n, x_in);
 
   /* Reset objective function value */
   objective_curr = 0.0;
 
   /* Iterate over initial conditions */
-    dim = 1;
+    // dim = 1;
   for (int iinit = 0; iinit < dim; iinit++) {
 
     /* --- Solve primal --- */
@@ -216,7 +176,7 @@ bool OptimProblem::eval_grad_f(Index n, const Number* x, bool new_x, Number* gra
     /* Add to Ipopt's gradient */
     const double* grad_ptr = adjointbraidapp->getReducedGradientPtr();
     for (int i=0; i<n; i++) {
-        grad_f[i] += grad_ptr[i]; 
+        gradf[i] += grad_ptr[i]; 
     }
   }
     
@@ -224,34 +184,58 @@ bool OptimProblem::eval_grad_f(Index n, const Number* x, bool new_x, Number* gra
 }
 
 
-bool OptimProblem::eval_g(Index n, const Number* x, bool new_x, Index m, Number* g) {
+bool OptimProblem::eval_cons(const long long& n, const long long& m, const long long& num_cons, const long long* idx_cons, const double* x_in, bool new_x, double* cons) {
     assert(m==0);
     /* No constraints. Nothing to be done. */
     return true;
 }
 
 
-bool OptimProblem::eval_jac_g(Index n, const Number* x, bool new_x, Index m, Index nele_jac, Index* iRow, Index *jCol, Number* values){
+bool OptimProblem::eval_Jac_cons(const long long& n, const long long& m, const long long& num_cons, const long long* idx_cons, const double* x_in, bool new_x, double** Jac){
     assert(m==0);
     /* No constraints. Nothing to be done. */
     return true;
 }
 
+bool OptimProblem::get_starting_point(const long long &global_n, double* x0) {
+// bool OptimProblem::get_starting_point(Index n, bool init_x, Number* x, bool init_z, Number* z_L, Number* z_U, Index m, bool init_lambda, Number* lambda){
 
-//  We are using l-bfgs. So no hessian needed.
-// bool OptimProblem::eval_h(Index n, const Number* x, bool new_x, Number obj_factor, Index m, const Number* lambda, bool new_lambda, Index nele_hess, Index* iRow, Index* jCol, Number* values){
-//     return false;
+  /* Set initial parameters */
+  // srand (time(NULL));  // TODO: initialize the random seed. 
+  srand (1.0);            // seed 1.0 only for code debugging!
+  for (int i=0; i<global_n; i++) {
+    x0[i] = (double) rand() / ((double)RAND_MAX);
+  }
+
+  /* Pass to oscillator */
+  setDesign(global_n, x0);
+  
+  /* Flush control functions */
+  // if (mpirank == 0 && iolevel > 0) {
+  int ntime = primalbraidapp->ntime;
+  double dt = primalbraidapp->total_time / ntime;
+  char filename[255];
+  Hamiltonian* hamil = primalbraidapp->hamiltonian;
+  for (int ioscil = 0; ioscil < hamil->getNOscillators(); ioscil++) {
+      sprintf(filename, "control_init_oscil%04d.dat", ioscil);
+      hamil->getOscillator(ioscil)->flushControl(ntime, dt, filename);
+  }
 // }
 
-void OptimProblem::finalize_solution(SolverReturn status, Index n, const Number* x, const Number* z_L, const Number* z_U, Index m, const Number* g, const Number* lambda, Number obj_value, const IpoptData* ip_data,IpoptCalculatedQuantities* ip_cq){
-  /* This is called after Ipopt finished. */
-
-  /* Print optimized parameters */
-  FILE *optimfile;
-  optimfile = fopen("optimal_param.dat", "w");
-  for (int i=0; i<n; i++){
-    fprintf(optimfile, "%1.14e\n", x[i]);
-  }
-  fclose(optimfile);
-
+ 
+  return true;
 }
+
+// void OptimProblem::finalize_solution(SolverReturn status, Index n, const Number* x, const Number* z_L, const Number* z_U, Index m, const Number* g, const Number* lambda, Number obj_value, const IpoptData* ip_data,IpoptCalculatedQuantities* ip_cq){
+//   /* This is called after Ipopt finished. */
+
+//   /* Print optimized parameters */
+//   FILE *optimfile;
+//   optimfile = fopen("optimal_param.dat", "w");
+//   for (int i=0; i<n; i++){
+//     fprintf(optimfile, "%1.14e\n", x[i]);
+//   }
+//   fclose(optimfile);
+// }
+
+

@@ -1,11 +1,10 @@
 #include "braid_wrapper.hpp"
-#include "IpTNLP.hpp"
+#include "hiopInterface.hpp"
 
 #pragma once
 
-using namespace Ipopt;
 
-class OptimProblem : public TNLP {
+class OptimProblem : public hiop::hiopInterfaceDenseConstraints {
 
     protected:
         myBraidApp* primalbraidapp;
@@ -19,46 +18,24 @@ class OptimProblem : public TNLP {
 
 
         /* Pass x to the oscillator parameters */
-        void setDesign(Index n, const Number* x);
+        void setDesign(int n, const double* x);
         /* Pass the oscillator parameters to x */
-        void getDesign(Index n, Number* x);
+        void getDesign(int n, double* x);
 
-    /* --- Overload required Ipopt interface routines --- */
+        /* Required interface routines. These are purely virtual in HiOp. */
+        bool get_prob_sizes(long long& n, long long& m);
+        bool get_vars_info(const long long& n, double *xlow, double* xupp, NonlinearityType* type);
+        bool get_cons_info(const long long& m, double* clow, double* cupp, NonlinearityType* type);
+        bool eval_f(const long long& n, const double* x_in, bool new_x, double& obj_value);
+        bool eval_grad_f(const long long& n, const double* x_in, bool new_x, double* gradf);
+        bool eval_cons(const long long& n, const long long& m, const long long& num_cons, const long long* idx_cons, const double* x_in, bool new_x, double* cons);
+        bool eval_Jac_cons(const long long& n, const long long& m, const long long& num_cons, const long long* idx_cons, const double* x_in, bool new_x, double** Jac);
+
+        /* Optional interface routines. These have a default implementation. */
+        bool get_starting_point(const long long &global_n, double* x0);
+        // bool get_MPI_comm(MPI_Comm& comm_out);
+
     
-	/* Return info about the optim problem*/
-	virtual bool get_nlp_info(Index& n, Index& m, Index& nnz_jac_g, Index& nnz_h_lag, IndexStyleEnum& index_style);
-
-	/* Return the bounds */
-	virtual bool get_bounds_info(Index n, Number* x_l, Number* x_u, Index m, Number* g_l, Number* g_u);
-
-
-
-	/* Return the initial guess (starting point of the optimization */
-	virtual bool get_starting_point(Index n, bool init_x, Number* x, bool init_z, Number* z_L, Number* z_U, Index m, bool init_lambda, Number* lambda);
-
-	/* Return the objective function value */
-	virtual bool eval_f(Index n, const Number* x, bool new_x, Number& obj_value);
-
-	/* Return the gradient of the objective function */
-	virtual bool eval_grad_f(Index n, const Number* x, bool new_x, Number* grad_f);
-	
-	/* Return the residual of the constraints */
-	virtual bool eval_g(Index n, const Number* x, bool new_x, Index m, Number* g);
-
-	/* Return:
-	 *   1) The structure of the jacobian (if "values" is NULL)
-	 *   2) The values of the jacobian (if "values" is not NULL)
-	 */
-	virtual bool eval_jac_g(Index n, const Number* x, bool new_x, Index m, Index nele_jac, Index* iRow, Index *jCol, Number* values);
-
-
-	// /* Hessian of the Lagrangian. In case of L-BFGS optimization, this function will never be called. It does nothing therefore. */
-	// virtual bool eval_h(Index n, const Number* x, bool new_x, Number obj_factor, Index m, const Number* lambda, bool new_lambda, Index nele_hess, Index* iRow, Index* jCol, Number* values);
-
-
-	/* This method is called when the algorithm is complete so the TNLP can store/write the solution */
-	virtual void finalize_solution(SolverReturn status, Index n, const Number* x, const Number* z_L, const Number* z_U, Index m, const Number* g, const Number* lambda, Number obj_value, const IpoptData* ip_data,IpoptCalculatedQuantities* ip_cq);
-
 
 	private:
 	/* Methods to block default compiler methods.
