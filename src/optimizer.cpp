@@ -106,30 +106,32 @@ bool OptimProblem::get_cons_info(const long long& m, double* clow, double* cupp,
 bool OptimProblem::eval_f(const long long& n, const double* x_in, bool new_x, double& obj_value){
 // bool OptimProblem::eval_f(Index n, const Number* x, bool new_x, Number& obj_value){
 
+  printf("EVAL F\n");
   double obj_local;
   Hamiltonian* hamil = primalbraidapp->hamiltonian;
   int dim = hamil->getDim();
 
-  /* TODO: if (new_x) ... */
+  /* Run simulation, only if x_in is new. Otherwise, f(x_in) has been computed already and stored in objective_curr. */
+  if (new_x) { 
 
-  /* Pass design vector x to oscillator */
-  setDesign(n, x_in);
+    /* Pass design vector x to oscillator */
+    setDesign(n, x_in);
 
-  /* Reset objective function value */
-  objective_curr = 0.0;
+    /*  Iterate over initial condition */
+    // dim = 1;
+    objective_curr = 0.0;
+    for (int iinit = 0; iinit < dim; iinit++) {
+      /* Set initial condition for index iinit */
+      primalbraidapp->PreProcess(iinit);
+      /* Solve forward problem */
+      primalbraidapp->Drive();
+      /* Eval objective function for initial condition i */
+      primalbraidapp->PostProcess(iinit, &obj_local);
 
-  /*  Iterate over initial condition */
-  // dim = 1;
-  for (int iinit = 0; iinit < dim; iinit++) {
-    /* Set initial condition for index iinit */
-    primalbraidapp->PreProcess(iinit);
-    /* Solve forward problem */
-    primalbraidapp->Drive();
-    /* Eval objective function for initial condition i */
-    primalbraidapp->PostProcess(iinit, &obj_local);
+      /* Add to global objective value */
+      objective_curr += obj_local;
+    }
 
-    /* Add to global objective value */
-    objective_curr += obj_local;
   }
 
   /* Return objective value */
@@ -141,6 +143,7 @@ bool OptimProblem::eval_f(const long long& n, const double* x_in, bool new_x, do
 
 bool OptimProblem::eval_grad_f(const long long& n, const double* x_in, bool new_x, double* gradf){
 // bool OptimProblem::eval_grad_f(Index n, const Number* x, bool new_x, Number* grad_f){
+  printf("EVAL GRAD F\n");
 
   Hamiltonian* hamil = primalbraidapp->hamiltonian;
   double obj_local;
@@ -154,11 +157,11 @@ bool OptimProblem::eval_grad_f(const long long& n, const double* x_in, bool new_
   /* Pass x to Oscillator */
   setDesign(n, x_in);
 
-  /* Reset objective function value */
   objective_curr = 0.0;
 
   /* Iterate over initial conditions */
     // dim = 1;
+  /* Reset objective function value */
   for (int iinit = 0; iinit < dim; iinit++) {
 
     /* --- Solve primal --- */
@@ -217,7 +220,7 @@ bool OptimProblem::get_starting_point(const long long &global_n, double* x0) {
   char filename[255];
   Hamiltonian* hamil = primalbraidapp->hamiltonian;
   for (int ioscil = 0; ioscil < hamil->getNOscillators(); ioscil++) {
-      sprintf(filename, "control_init_oscil%04d.dat", ioscil);
+      sprintf(filename, "control_init_%02d.dat", ioscil+1);
       hamil->getOscillator(ioscil)->flushControl(ntime, dt, filename);
   }
 // }
@@ -226,16 +229,38 @@ bool OptimProblem::get_starting_point(const long long &global_n, double* x0) {
   return true;
 }
 
-// void OptimProblem::finalize_solution(SolverReturn status, Index n, const Number* x, const Number* z_L, const Number* z_U, Index m, const Number* g, const Number* lambda, Number obj_value, const IpoptData* ip_data,IpoptCalculatedQuantities* ip_cq){
-//   /* This is called after Ipopt finished. */
+/* This is called after HiOp finishes. x is LOCAL to each processor ! */
+void OptimProblem::solution_callback(hiop::hiopSolveStatus status, int n, const double* x, const double* z_L, const double* z_U, int m, const double* g, const double* lambda, double obj_value) {
+  
+  /* Print optimized parameters */
+  FILE *optimfile;
+  optimfile = fopen("param_optimized.dat", "w");
+  for (int i=0; i<n; i++){
+    fprintf(optimfile, "%1.14e\n", x[i]);
+  }
+  fclose(optimfile);
 
-//   /* Print optimized parameters */
-//   FILE *optimfile;
-//   optimfile = fopen("optimal_param.dat", "w");
-//   for (int i=0; i<n; i++){
-//     fprintf(optimfile, "%1.14e\n", x[i]);
-//   }
-//   fclose(optimfile);
-// }
+  /* Print out control functions */
+  setDesign(n, x);
+  int ntime = primalbraidapp->ntime;
+  double dt = primalbraidapp->total_time / ntime;
+  char filename[255];
+  Hamiltonian* hamil = primalbraidapp->hamiltonian;
+  for (int ioscil = 0; ioscil < hamil->getNOscillators(); ioscil++) {
+      sprintf(filename, "control_optimized_%02d.dat", ioscil+1);
+      hamil->getOscillator(ioscil)->flushControl(ntime, dt, filename);
+  }
+}
 
 
+/* This is called after each iteration. x is LOCAL to each processor ! */
+bool OptimProblem::iterate_callback(int iter, double obj_value, int n, const double* x, const double* z_L, const double* z_U, int m, const double* g, const double* lambda, double inf_pr, double inf_du, double mu, double alpha_du, double alpha_pr, int ls_trials) {
+
+  /* Add to state output files. */
+  if (primalbraidapp->ufile != NULL)  fprintf(primalbraidapp->ufile, "\n\n# Iteration %d\n", iter);
+  if (primalbraidapp->vfile != NULL)  fprintf(primalbraidapp->vfile, "\n\n# Iteration %d\n", iter);
+  if (adjointbraidapp->ufile != NULL) fprintf(adjointbraidapp->ufile, "\n\n# Iteration %d\n", iter);
+  if (adjointbraidapp->vfile != NULL) fprintf(adjointbraidapp->vfile, "\n\n# Iteration %d\n", iter);
+
+  return true;
+}

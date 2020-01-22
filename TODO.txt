@@ -1,3 +1,1 @@
-* MPI Splitting not working with Ipopt. 
-
 * fix getParams() for FunctionOscillator!

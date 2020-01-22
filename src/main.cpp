@@ -14,7 +14,7 @@
 #define EPS 1e-7
 
 #define TEST_DRHSDP 0
-#define TEST_FD_TS 1
+#define TEST_FD_TS 0
 #define TEST_FD_SPLINE 0
 #define TEST_DT 0
 
@@ -39,7 +39,6 @@ int main(int argc,char **argv)
 
   Vec            x;          // solution vector
   // bool           tj_save;    // Determines wether trajectory should be stored in primal run
-  double *mygrad = NULL;      // Reduced gradient, local on this processor
 
   /* Optimization */
   double objective;        // Objective function value f
@@ -48,8 +47,6 @@ int main(int argc,char **argv)
 
 
   char filename[255];
-  FILE* ufile, *uadjfile;
-  FILE* vfile, *vadjfile;
   PetscErrorCode ierr;
   PetscMPIInt    mpisize, mpirank;
   double StartTime, StopTime;
@@ -65,11 +62,9 @@ int main(int argc,char **argv)
   MPI_Comm comm_braid, comm_petsc;
   /* TODO:  FIX THE MPI SHIT ! */
   braid_SplitCommworld(&comm, 1, &comm_petsc, &comm_braid);
-  PETSC_COMM_WORLD = comm_petsc;
-  // comm_petsc = MPI_COMM_WORLD;
-  // comm_braid = MPI_COMM_WORLD;
 
-  /* Initialize Petsc */
+  /* Initialize Petsc using petsc's communicator */
+  PETSC_COMM_WORLD = comm_petsc;
   ierr = PetscInitialize(&argc,&argv,(char*)0,NULL);if (ierr) return ierr;
 
   /* Read config file and set default */
@@ -161,20 +156,16 @@ int main(int argc,char **argv)
   adjointbraidapp = new myAdjointBraidApp(comm_braid, comm_petsc, total_time, ntime, ts, mytimestepper, hamiltonian, targetgate, *mu, &config, primalbraidapp->getCore());
 
   /* Prepare output */
-  sprintf(filename, "out_u.%04d.dat", mpirank);
-  if (iolevel > 0) ufile = fopen(filename, "w");
-  sprintf(filename, "out_v.%04d.dat", mpirank);
-  if (iolevel > 0) vfile = fopen(filename, "w");
-  sprintf(filename, "out_uadj.%04d.dat", mpirank);
-  if (iolevel > 0) uadjfile = fopen(filename, "w");
-  sprintf(filename, "out_vadj.%04d.dat", mpirank);
-  if (iolevel > 0) vadjfile = fopen(filename, "w");
-
-
-  primalbraidapp->ufile = ufile;
-  primalbraidapp->vfile = vfile;
-  adjointbraidapp->ufile = uadjfile;
-  adjointbraidapp->vfile = vadjfile;
+  if (iolevel > 0) {
+    sprintf(filename, "out_u.%04d.dat", mpirank);
+    primalbraidapp->ufile = fopen(filename, "w");
+    sprintf(filename, "out_v.%04d.dat", mpirank);
+    primalbraidapp->vfile = fopen(filename, "w");
+    sprintf(filename, "out_uadj.%04d.dat", mpirank);
+    adjointbraidapp->ufile = fopen(filename, "w");
+    sprintf(filename, "out_vadj.%04d.dat", mpirank);
+    adjointbraidapp->vfile = fopen(filename, "w");
+  }
 
   /* Print some information on the time-grid distribution */
   // int ilower, iupper;
@@ -183,11 +174,13 @@ int main(int argc,char **argv)
 
 
   /* Initialize the optimization */
+  long long int ndesign,m;
   OptimProblem optimproblem(primalbraidapp, adjointbraidapp);
   hiop::hiopNlpDenseConstraints nlp(optimproblem);
+  optimproblem.get_prob_sizes(ndesign, m);
   /* Set options */
   nlp.options->SetNumericValue("tolerance", 1e-4);
-  nlp.options->SetIntegerValue("max_iter", 2);
+  nlp.options->SetIntegerValue("max_iter", 1);
   /* Create solver */
   hiop::hiopAlgFilterIPM optimsolver(&nlp);
 
@@ -197,35 +190,30 @@ int main(int argc,char **argv)
   UsedTime = 0.0;
 
 
-  /* Test optimproblem */
-  long long int ndesign,m;
-  optimproblem.get_prob_sizes(ndesign, m);
-  printf("ndesign=%d\n", ndesign);
+  // /* --- Test optimproblem --- */
+  // printf("ndesign=%d\n", ndesign);
+  // double* myinit = new double[ndesign];
+  // optimproblem.get_starting_point(ndesign, myinit);
 
-  double* myinit = new double[ndesign];
-  optimproblem.get_starting_point(ndesign, myinit);
+  // // /* --- Solve primal --- */
+  // printf("\nRunning optimizer eval_f... ");
+  // optimproblem.eval_f(ndesign, myinit, true, objective);
+  // printf(" Objective %1.14e\n", objective);
 
+  // /* --- Solve adjoint --- */
+  // printf("\nRunning optimizer eval_grad_f...\n");
+  // double* optimgrad = new double[ndesign];
+  // optimproblem.eval_grad_f(ndesign, myinit, true, optimgrad);
+  // if (mpirank == 0) {
+  //   printf("\n %d: My awesome gradient:\n", mpirank);
+  //   for (int i=0; i<ndesign; i++) {
+  //     printf("%1.14e\n", optimgrad[i]);
+  //   }
+  // }
 
-  // /* --- Solve primal --- */
-  printf("\nRunning optimizer eval_f... ");
-  optimproblem.eval_f(ndesign, myinit, true, objective);
-  printf(" Objective %1.14e\n", objective);
-
-  /* --- Solve adjoint --- */
-  printf("\nRunning optimizer eval_grad_f...\n");
-  double* optimgrad = new double[ndesign];
-  optimproblem.eval_grad_f(ndesign, myinit, true, optimgrad);
-  if (mpirank == 0) {
-    printf("\n %d: My awesome gradient:\n", mpirank);
-    for (int i=0; i<ndesign; i++) {
-      printf("%1.14e\n", optimgrad[i]);
-    }
-  }
-
-  // /* Solve the optimization  */
-  // printf("Now starting HiOp \n");
-  // hiop::hiopSolveStatus status = optimsolver.run();
-  // double myobj = optimsolver.getObjective();
+  /* Solve the optimization  */
+  printf("Now starting HiOp \n");
+  hiop::hiopSolveStatus status = optimsolver.run();
 
 
 exit:
@@ -517,10 +505,10 @@ exit:
 
 
   /* Close output files */
-  if (ufile != NULL) fclose(ufile);
-  if (vfile != NULL) fclose(vfile);
-  if (uadjfile != NULL) fclose(uadjfile);
-  if (vadjfile != NULL) fclose(vadjfile);
+  if (primalbraidapp->ufile != NULL) fclose(primalbraidapp->ufile);
+  if (primalbraidapp->vfile != NULL) fclose(primalbraidapp->vfile);
+  if (adjointbraidapp->ufile != NULL) fclose(adjointbraidapp->ufile);
+  if (adjointbraidapp->vfile != NULL) fclose(adjointbraidapp->vfile);
 
   /* Clean up */
   // TSDestroy(&ts);  /* TODO */
@@ -536,7 +524,6 @@ exit:
 
   delete lambda;
   delete mu;
-  delete [] mygrad;
 
   /* Clean up Hamiltonian */
   delete hamiltonian;

@@ -34,8 +34,9 @@ class OptimProblem : public hiop::hiopInterfaceDenseConstraints {
         /* Optional interface routines. These have a default implementation. */
         bool get_starting_point(const long long &global_n, double* x0);
         // bool get_MPI_comm(MPI_Comm& comm_out);
-
-    
+        void solution_callback(hiop::hiopSolveStatus status, int n, const double* x, const double* z_L, const double* z_U, int m, const double* g, const double* lambda, double obj_value);
+        bool iterate_callback(int iter, double obj_value, int n, const double* x, const double* z_L, const double* z_U, int m, const double* g, const double* lambda, double inf_pr, double inf_du, double mu, double alpha_du, double alpha_pr, int ls_trials) ;
+ 
 
 	private:
 	/* Methods to block default compiler methods.
