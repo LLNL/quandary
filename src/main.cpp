@@ -179,8 +179,10 @@ int main(int argc,char **argv)
   hiop::hiopNlpDenseConstraints nlp(optimproblem);
   optimproblem.get_prob_sizes(ndesign, m);
   /* Set options */
-  nlp.options->SetNumericValue("tolerance", 1e-4);
-  nlp.options->SetIntegerValue("max_iter", 1);
+  double optim_tol = config.GetDoubleParam("optim_tol", 1e-4);
+  nlp.options->SetNumericValue("tolerance", optim_tol);
+  double optim_maxiter = config.GetIntParam("optim_maxiter", 200);
+  nlp.options->SetIntegerValue("max_iter", optim_maxiter);
   /* Create solver */
   hiop::hiopAlgFilterIPM optimsolver(&nlp);
 

@@ -39,19 +39,19 @@ myBraidApp::myBraidApp(MPI_Comm comm_braid_, MPI_Comm comm_petsc_, double total_
   core = new BraidCore(comm_braid_, this);
 
   /* Get and set Braid options */
-  int printlevel = config->GetIntParam("printlevel", 2);
+  int printlevel = config->GetIntParam("braid_printlevel", 2);
   core->SetPrintLevel(printlevel);
   int iolevel = config->GetIntParam("iolevel", 1);
   core->SetAccessLevel( iolevel);
-  int maxlevels = config->GetIntParam("maxlevels", 20);
+  int maxlevels = config->GetIntParam("braid_maxlevels", 20);
   core->SetMaxLevels(maxlevels);
-  int cfactor = config->GetIntParam("cfactor", 5);
+  int cfactor = config->GetIntParam("braid_cfactor", 5);
   core->SetCFactor(-1, cfactor);
-  int maxiter = config->GetIntParam("maxiter", 50);
+  int maxiter = config->GetIntParam("braid_maxiter", 50);
   core->SetMaxIter( maxiter);
-  bool skip = (PetscBool) config->GetBoolParam("skip", false);
+  bool skip = (PetscBool) config->GetBoolParam("braid_skip", false);
   core->SetSkip( skip);
-  bool fmg = (PetscBool) config->GetBoolParam("fmg", false);
+  bool fmg = (PetscBool) config->GetBoolParam("braid_fmg", false);
   if (fmg) core->SetFMG();
 
   core->SetNRelax(-1, 1);
