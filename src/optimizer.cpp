@@ -6,9 +6,10 @@ OptimProblem::OptimProblem() {
     objective_curr = 0.0;
 }
 
-OptimProblem::OptimProblem(myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_){
+OptimProblem::OptimProblem(myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, MPI_Comm comm_hiop_){
     primalbraidapp  = primalbraidapp_;
     adjointbraidapp = adjointbraidapp_;
+    comm_hiop = comm_hiop_;
 }
 
 OptimProblem::~OptimProblem() {}
@@ -134,6 +135,10 @@ bool OptimProblem::eval_f(const long long& n, const double* x_in, bool new_x, do
 
   }
 
+  /* Sum up objective from all processors */
+  double myobj = objective_curr;
+  MPI_Allreduce(&myobj, &objective_curr, 1, MPI_DOUBLE, MPI_SUM, primalbraidapp->comm_braid);
+
   /* Return objective value */
   obj_value = objective_curr;
 
@@ -182,6 +187,15 @@ bool OptimProblem::eval_grad_f(const long long& n, const double* x_in, bool new_
         gradf[i] += grad_ptr[i]; 
     }
   }
+
+  /* Sum up the gradient from all braid processors */
+  double* mygrad = new double[n];
+  for (int i=0; i<n; i++) {
+    mygrad[i] = gradf[i];
+  }
+  MPI_Allreduce(mygrad, gradf, n, MPI_DOUBLE, MPI_SUM, primalbraidapp->comm_braid);
+
+
     
   return true;
 }
@@ -262,5 +276,11 @@ bool OptimProblem::iterate_callback(int iter, double obj_value, int n, const dou
   if (adjointbraidapp->ufile != NULL) fprintf(adjointbraidapp->ufile, "\n\n# Iteration %d\n", iter);
   if (adjointbraidapp->vfile != NULL) fprintf(adjointbraidapp->vfile, "\n\n# Iteration %d\n", iter);
 
+  return true;
+}
+
+
+bool OptimProblem::get_MPI_comm(MPI_Comm& comm_out){
+  comm_out = comm_hiop;
   return true;
 }

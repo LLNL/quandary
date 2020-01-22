@@ -19,8 +19,6 @@ class myBraidVector {
 class myBraidApp : public BraidApp {
   protected: 
     TS           ts_petsc;       /* Petsc Time-stepper struct */
-    MPI_Comm comm_petsc;            /* Petsc's communicator */
-    MPI_Comm comm_braid;            /* Braid's communicator */
     Gate         *targetgate;
     TimeStepper  *mytimestepper;
 
@@ -29,6 +27,8 @@ class myBraidApp : public BraidApp {
     int usepetscts;
 
   public:
+    MPI_Comm comm_petsc;            /* Petsc's communicator */
+    MPI_Comm comm_braid;            /* Braid's communicator */
     int          ntime;             /* number of time steps */
     double       total_time;        /* total time  */
     Hamiltonian *hamiltonian;       /* Hamiltonian system */

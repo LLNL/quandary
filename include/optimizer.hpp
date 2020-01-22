@@ -10,10 +10,11 @@ class OptimProblem : public hiop::hiopInterfaceDenseConstraints {
         myBraidApp* primalbraidapp;
         myAdjointBraidApp* adjointbraidapp;
         double objective_curr;  // holds the current objective function value
+        MPI_Comm comm_hiop;
 
     public:
         OptimProblem();
-        OptimProblem(myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_);
+        OptimProblem(myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, MPI_Comm comm_hiop_);
         virtual ~OptimProblem();
 
 
@@ -33,7 +34,7 @@ class OptimProblem : public hiop::hiopInterfaceDenseConstraints {
 
         /* Optional interface routines. These have a default implementation. */
         bool get_starting_point(const long long &global_n, double* x0);
-        // bool get_MPI_comm(MPI_Comm& comm_out);
+        bool get_MPI_comm(MPI_Comm& comm_out);
         void solution_callback(hiop::hiopSolveStatus status, int n, const double* x, const double* z_L, const double* z_U, int m, const double* g, const double* lambda, double obj_value);
         bool iterate_callback(int iter, double obj_value, int n, const double* x, const double* z_L, const double* z_U, int m, const double* g, const double* lambda, double inf_pr, double inf_du, double mu, double alpha_du, double alpha_pr, int ls_trials) ;
  

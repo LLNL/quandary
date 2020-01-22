@@ -14,7 +14,7 @@
 #define EPS 1e-7
 
 #define TEST_DRHSDP 0
-#define TEST_FD_TS 0
+#define TEST_FD_TS 1
 #define TEST_FD_SPLINE 0
 #define TEST_DT 0
 
@@ -59,9 +59,9 @@ int main(int argc,char **argv)
   MPI_Comm_size(MPI_COMM_WORLD, &mpisize);
 
   MPI_Comm comm = MPI_COMM_WORLD;
-  MPI_Comm comm_braid, comm_petsc;
-  /* TODO:  FIX THE MPI SHIT ! */
+  MPI_Comm comm_braid, comm_petsc, comm_hiop;
   braid_SplitCommworld(&comm, 1, &comm_petsc, &comm_braid);
+  MPI_Comm_split(MPI_COMM_WORLD, mpirank, mpirank, &comm_hiop);
 
   /* Initialize Petsc using petsc's communicator */
   PETSC_COMM_WORLD = comm_petsc;
@@ -175,7 +175,7 @@ int main(int argc,char **argv)
 
   /* Initialize the optimization */
   long long int ndesign,m;
-  OptimProblem optimproblem(primalbraidapp, adjointbraidapp);
+  OptimProblem optimproblem(primalbraidapp, adjointbraidapp, comm_hiop);
   hiop::hiopNlpDenseConstraints nlp(optimproblem);
   optimproblem.get_prob_sizes(ndesign, m);
   /* Set options */

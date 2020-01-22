@@ -725,17 +725,6 @@ int myAdjointBraidApp::PostProcess(int i, double* f) {
     _braid_FCRelax(core->GetCore(), 0);
   }
 
-  /* Sum up the reduced gradient mu from all processors */
-  PetscScalar *x_ptr;
-  int ndesign;
-  VecGetSize(redgrad, &ndesign);
-  VecGetArray(redgrad, &x_ptr);
-  for (int i=0; i<ndesign; i++) {
-    mygrad[i] = x_ptr[i];
-  }
-  MPI_Allreduce(mygrad, x_ptr, ndesign, MPI_DOUBLE, MPI_SUM, comm_braid);
-  VecRestoreArray(redgrad, &x_ptr);
-
   return 0;
 }
 
