@@ -616,18 +616,38 @@ braid_Int myAdjointBraidApp::Step(braid_Vector u_, braid_Vector ustop_, braid_Ve
     uprimal_tstop  = (myBraidVector*) ubaseprimal_tstop->userVector;
     uprimal_tstart = (myBraidVector*) ubaseprimal_tstart->userVector;
       
+    // /* Add dRHSdp(tstop,ustart)^T\bar u to gradient // mu = mu + h/2 A^T\bar u */
+    // hamiltonian->assemble_dRHSdp(tstart_orig, uprimal_tstart->x);
+    // MatScale(hamiltonian->getdRHSdp(), dt/2.0);
+    // MatMultTransposeAdd(hamiltonian->getdRHSdp(), u->x, redgrad, redgrad); 
+
+    // /* Evolve u backwards in time */
+    // mytimestepper->evolve(BWD, tstop_orig, tstart_orig, u->x);
+
+    // /* Add dRHSdp(tstart,ustart)^T\bar u to gradient // mu = mu + h/2 A^T\bar u */
+    // hamiltonian->assemble_dRHSdp(tstop_orig, uprimal_tstop->x);
+    // MatScale(hamiltonian->getdRHSdp(), dt/2.0);
+    // MatMultTransposeAdd(hamiltonian->getdRHSdp(), u->x, redgrad, redgrad); 
+
+
     /* Add dRHSdp(tstop,ustart)^T\bar u to gradient // mu = mu + h/2 A^T\bar u */
+    double scale;
     hamiltonian->assemble_dRHSdp(tstart_orig, uprimal_tstart->x);
-    MatScale(hamiltonian->getdRHSdp(), dt/2.0);
+    if (tstart == 0.0 ) scale = dt/2.0;
+    else scale = dt;
+    MatScale(hamiltonian->getdRHSdp(), scale);
     MatMultTransposeAdd(hamiltonian->getdRHSdp(), u->x, redgrad, redgrad); 
 
     /* Evolve u backwards in time */
     mytimestepper->evolve(BWD, tstop_orig, tstart_orig, u->x);
 
     /* Add dRHSdp(tstart,ustart)^T\bar u to gradient // mu = mu + h/2 A^T\bar u */
-    hamiltonian->assemble_dRHSdp(tstop_orig, uprimal_tstop->x);
-    MatScale(hamiltonian->getdRHSdp(), dt/2.0);
-    MatMultTransposeAdd(hamiltonian->getdRHSdp(), u->x, redgrad, redgrad); 
+    if (tstop == total_time) {
+      hamiltonian->assemble_dRHSdp(tstop_orig, uprimal_tstop->x);
+      MatScale(hamiltonian->getdRHSdp(), dt/2.0);
+      MatMultTransposeAdd(hamiltonian->getdRHSdp(), u->x, redgrad, redgrad); 
+    }
+
 
 
     /* ---------------- working for explicit euler --------- */
