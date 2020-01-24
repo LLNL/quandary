@@ -48,6 +48,27 @@ void ExplEuler::evolve(Mode direction, double tstart, double tstop, Vec x) {
   VecAXPY(x, dt, stage);
 }
 
+void ExplEuler::evolveBWD(double tstart, double tstop, Vec x, Vec x_adj, Vec grad){
+  double dt = fabs(tstop - tstart);
+
+  hamiltonian->assemble_dRHSdp(tstart, x);
+  MatScale(hamiltonian->getdRHSdp(), dt);
+  MatMultTransposeAdd(hamiltonian->getdRHSdp(), x_adj, grad, grad); 
+
+
+   /* Compute A(tstart) */
+  hamiltonian->assemble_RHS(tstart);
+
+  /* Decide for forward mode (A) or backward mode (A^T)*/
+  Mat A = hamiltonian->getRHS(); 
+  MatTranspose(A, MAT_INPLACE_MATRIX, &A);
+
+  /* update x_adj = x_adj + hAx_adj */
+  MatMult(A, x_adj, stage);
+  VecAXPY(x_adj, dt, stage);
+
+}
+
 ImplMidpoint::ImplMidpoint(Hamiltonian* hamiltonian_) : TimeStepper(hamiltonian_) {
 
   /* Create and reset the intermediate vectors */
@@ -127,6 +148,8 @@ void ImplMidpoint::evolve(Mode direction, double tstart, double tstop, Vec x) {
   VecAXPY(x, dt, stage);
 
 }
+
+void ImplMidpoint::evolveBWD(double tstart, double tstop, Vec x, Vec x_adj, Vec grad){}
 
 
 PetscErrorCode RHSJacobian(TS ts,PetscReal t,Vec u,Mat M,Mat P,void *ctx){

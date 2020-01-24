@@ -26,6 +26,7 @@ class TimeStepper{
     /* Type =  1: Evolve state forward from tstart to tstop */
     /* Type = -1: Evolve adjoint backward from tstop to tstart */
     virtual void evolve(Mode direction, double tstart, double tstop, Vec x) = 0;
+    virtual void evolveBWD(double tstart, double tstop, Vec x, Vec x_adj, Vec grad) = 0;
 };
 
 class ExplEuler : public TimeStepper {
@@ -35,6 +36,7 @@ class ExplEuler : public TimeStepper {
     ~ExplEuler();
 
     void evolve(Mode direction, double tstart, double tstop, Vec x);
+    void evolveBWD(double tstart, double tstop, Vec x, Vec x_adj, Vec grad);
 };
 
 
@@ -59,6 +61,7 @@ class ImplMidpoint : public TimeStepper {
     ~ImplMidpoint();
 
     void evolve(Mode direction, double tstart, double tstop, Vec x);
+    void evolveBWD(double tstart, double tstop, Vec x, Vec x_adj, Vec grad);
 };
 
 
