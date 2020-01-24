@@ -160,7 +160,7 @@ void ImplMidpoint::evolve(Mode direction, double tstart, double tstop, Vec x) {
 
 }
 
-void ImplMidpoint::evolveBWD(double tstart, double tstop, Vec x, Vec x_adj, Vec grad){
+void ImplMidpoint::evolveBWD(double tstop, double tstart, Vec x, Vec x_adj, Vec grad){
   Mat A;
 
   /* Compute time step size */
@@ -183,7 +183,6 @@ void ImplMidpoint::evolveBWD(double tstart, double tstop, Vec x, Vec x_adj, Vec 
   /* Solve for adjoin stage variable */
   hamiltonian->assemble_RHS( (tstart + tstop) / 2.0);
   A = hamiltonian->getRHS();
-  MatMultTranspose(A, x_adj, rhs_adj);
   MatScale(A, - dt/2.0);
   MatShift(A, 1.0);  
   MatTranspose(A, MAT_INPLACE_MATRIX, &A);
@@ -192,7 +191,7 @@ void ImplMidpoint::evolveBWD(double tstart, double tstop, Vec x, Vec x_adj, Vec 
   KSPSetType(linearsolver, KSPGMRES);
   KSPSetFromOptions(linearsolver);
   KSPSetOperators(linearsolver, A, A);// TODO: Do we have to do this in each time step?? 
-  KSPSolve(linearsolver, rhs_adj, stage_adj);
+  KSPSolve(linearsolver, x_adj, stage_adj);
 
   double rnorm;
   KSPGetResidualNorm(linearsolver, &rnorm);
@@ -205,8 +204,11 @@ void ImplMidpoint::evolveBWD(double tstart, double tstop, Vec x, Vec x_adj, Vec 
   MatScale(B, dt);
   MatMultTransposeAdd(B, stage_adj, grad, grad);
 
-  /* Update adjoint state x_adj += dt * stage_adj --- */
-  VecAXPY(x_adj, dt, stage_adj);
+  /* Update adjoint state x_adj += dt * A^Tstage_adj --- */
+  hamiltonian->assemble_RHS( (tstart + tstop) / 2.0);
+  A = hamiltonian->getRHS();
+  MatScale(A, dt);
+  MatMultTransposeAdd(A, stage_adj, x_adj, x_adj);
 
 }
 
