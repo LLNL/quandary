@@ -22,48 +22,31 @@ ExplEuler::~ExplEuler() {
   VecDestroy(&stage);
 }
 
-void ExplEuler::evolve(Mode direction, double tstart, double tstop, Vec x) {
+void ExplEuler::evolveFWD(double tstart, double tstop, Vec x) {
 
   double dt = fabs(tstop - tstart);
 
    /* Compute A(tstart) */
   hamiltonian->assemble_RHS(tstart);
-
-  /* Decide for forward mode (A) or backward mode (A^T)*/
   Mat A = hamiltonian->getRHS(); 
-  switch(direction)
-  {
-    case FWD :  // forward stepping. Use A. Do nothing.
-      break;
-    case BWD :  // backward stepping. Use A^T.
-      MatTranspose(A, MAT_INPLACE_MATRIX, &A);
-      break;
-    default  : 
-      printf("ERROR: Wrong timestepping mode!\n"); exit(1);
-      break;
-  } 
 
   /* update x = x + hAx */
   MatMult(A, x, stage);
   VecAXPY(x, dt, stage);
 }
 
-void ExplEuler::evolveBWD(double tstart, double tstop, Vec x, Vec x_adj, Vec grad){
+void ExplEuler::evolveBWD(double tstop, double tstart, Vec x, Vec x_adj, Vec grad){
   double dt = fabs(tstop - tstart);
 
-  hamiltonian->assemble_dRHSdp(tstart, x);
+  /* Add to reduced gradient */
+  hamiltonian->assemble_dRHSdp(tstop, x);
   MatScale(hamiltonian->getdRHSdp(), dt);
   MatMultTransposeAdd(hamiltonian->getdRHSdp(), x_adj, grad, grad); 
 
-
-   /* Compute A(tstart) */
-  hamiltonian->assemble_RHS(tstart);
-
-  /* Decide for forward mode (A) or backward mode (A^T)*/
+  /* update x_adj = x_adj + hA^Tx_adj */
+  hamiltonian->assemble_RHS(tstop);
   Mat A = hamiltonian->getRHS(); 
   MatTranspose(A, MAT_INPLACE_MATRIX, &A);
-
-  /* update x_adj = x_adj + hAx_adj */
   MatMult(A, x_adj, stage);
   VecAXPY(x_adj, dt, stage);
 
@@ -108,29 +91,14 @@ ImplMidpoint::~ImplMidpoint(){
   KSPDestroy(&linearsolver);
 }
 
-void ImplMidpoint::evolve(Mode direction, double tstart, double tstop, Vec x) {
+void ImplMidpoint::evolveFWD(double tstart, double tstop, Vec x) {
 
   /* Compute time step size */
   double dt = fabs(tstop - tstart); // absolute values needed in case this runs backwards! 
 
   /* Compute A(t_n+h/2) */
   hamiltonian->assemble_RHS( (tstart + tstop) / 2.0);
-
-  /* Decide for forward mode (A) or backward mode (A^T)*/
   Mat A = hamiltonian->getRHS(); 
-  switch(direction)
-  {
-    case FWD :  // forward stepping. System matrix uses A(t_n+h/2). Do nothing.
-      break;
-    case BWD :  // backward stepping. System matrix uses A(t_n+h/2)^T
-      MatTranspose(A, MAT_INPLACE_MATRIX, &A);
-      break;
-    default  : 
-      printf("ERROR: Wrong timestepping mode!\n"); exit(1);
-      break;
-  }
-
-  /* --- Solve for stage variable */
 
   /* Compute rhs = A x */
   MatMult(A, x, rhs);
@@ -139,13 +107,12 @@ void ImplMidpoint::evolve(Mode direction, double tstart, double tstop, Vec x) {
   MatScale(A, - dt/2.0);
   MatShift(A, 1.0);  // WARNING: this can be very slow if some diagonal elements are missing.
   
+  /* solve nonlinear equation */
   KSPReset(linearsolver);
   KSPSetTolerances(linearsolver, 1.e-5, 1.e-10, PETSC_DEFAULT, PETSC_DEFAULT);
   KSPSetType(linearsolver, KSPGMRES);
   KSPSetFromOptions(linearsolver);
   KSPSetOperators(linearsolver, A, A);// TODO: Do we have to do this in each time step?? 
-  
-  /* solve nonlinear equation */
   KSPSolve(linearsolver, rhs, stage);
 
   /* Monitor error */
