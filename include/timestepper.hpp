@@ -48,11 +48,8 @@ class ExplEuler : public TimeStepper {
  */
 class ImplMidpoint : public TimeStepper {
 
-  /* RK variables */
-  Vec stage;
-
-  /* Linear system solve */
-  Vec rhs;   /* right hand side */
+  Vec stage, stage_adj;  /* Intermediate stage vars */
+  Vec rhs, rhs_adj;   /* right hand side */
   KSP linearsolver;   /* linear solver context */
   PC  preconditioner; /* Preconditioner for linear solver */
 

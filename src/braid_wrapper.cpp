@@ -607,36 +607,37 @@ braid_Int myAdjointBraidApp::Step(braid_Vector u_, braid_Vector ustop_, braid_Ve
     braid_BaseVector ubaseprimal_tstop;
     braid_BaseVector ubaseprimal_tstart;
 
-      
-    /* Add dRHSdp(tstart,ustart)^T\bar u to gradient // mu = mu + h/2 y^tA^T\bar u */
-    if (tstart == 0.0 ) {
-      /* Get uprimal at tstart_orig */
-      int tstart_orig_id = getTimeStepIndex(tstart_orig, total_time/ntime);
-      _braid_UGetVectorRef(primalcore->GetCore(), 0, tstart_orig_id, &ubaseprimal_tstart);
-      if (ubaseprimal_tstart == NULL) printf("ubaseprimal_tstart is null!\n");
-      uprimal_tstart = (myBraidVector*) ubaseprimal_tstart->userVector;
-      /* Add to gradient */
-      hamiltonian->assemble_dRHSdp(tstart_orig, uprimal_tstart->x);
-      MatScale(hamiltonian->getdRHSdp(), dt/2.0);
-      MatMultTransposeAdd(hamiltonian->getdRHSdp(), u->x, redgrad, redgrad); 
-    }
-
-    /* Evolve u backwards in time */
-    mytimestepper->evolve(BWD, tstop_orig, tstart_orig, u->x);
-
-    /* Add dRHSdp(tstop,ustop)^T\bar u to gradient // mu = mu + h/2 y^TA^T\bar u */
     /* Get uprimal at tstop_orig */
     int tstop_orig_id  = getTimeStepIndex(tstop_orig, total_time/ntime);
     _braid_UGetVectorRef(primalcore->GetCore(), 0, tstop_orig_id, &ubaseprimal_tstop);
     if (ubaseprimal_tstop == NULL) printf("ubaseprimal_tstop is null!\n");
     uprimal_tstop  = (myBraidVector*) ubaseprimal_tstop->userVector;
+
+      
+    /* Add dRHSdp(tstart,ustart)^T\bar u to gradient // mu = mu + h/2 y^tA^T\bar u */
+    // if (tstart == 0.0 ) {
+    //   /* Get uprimal at tstart_orig */
+    //   int tstart_orig_id = getTimeStepIndex(tstart_orig, total_time/ntime);
+    //   _braid_UGetVectorRef(primalcore->GetCore(), 0, tstart_orig_id, &ubaseprimal_tstart);
+    //   if (ubaseprimal_tstart == NULL) printf("ubaseprimal_tstart is null!\n");
+    //   uprimal_tstart = (myBraidVector*) ubaseprimal_tstart->userVector;
+    //   /* Add to gradient */
+    //   hamiltonian->assemble_dRHSdp(tstart_orig, uprimal_tstart->x);
+    //   MatScale(hamiltonian->getdRHSdp(), dt/2.0);
+    //   MatMultTransposeAdd(hamiltonian->getdRHSdp(), u->x, redgrad, redgrad); 
+    // }
+
+    // /* Evolve u backwards in time */
+    mytimestepper->evolveBWD(tstop_orig, tstart_orig, uprimal_tstop->x, u->x, redgrad);
+
+    /* Add dRHSdp(tstop,ustop)^T\bar u to gradient // mu = mu + h/2 y^TA^T\bar u */
     /* Add to gradient */
-    double scale;
-    if (tstop == total_time) scale = dt/2.0;
-    else scale = dt;
-    hamiltonian->assemble_dRHSdp(tstop_orig, uprimal_tstop->x);
-    MatScale(hamiltonian->getdRHSdp(), scale);
-    MatMultTransposeAdd(hamiltonian->getdRHSdp(), u->x, redgrad, redgrad); 
+    // double scale;
+    // if (tstop == total_time) scale = dt/2.0;
+    // else scale = dt;
+    // hamiltonian->assemble_dRHSdp(tstop_orig, uprimal_tstop->x);
+    // MatScale(hamiltonian->getdRHSdp(), scale);
+    // MatMultTransposeAdd(hamiltonian->getdRHSdp(), u->x, redgrad, redgrad); 
     
 
     /* ---------------- working for explicit euler --------- */

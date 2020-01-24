@@ -73,9 +73,13 @@ ImplMidpoint::ImplMidpoint(Hamiltonian* hamiltonian_) : TimeStepper(hamiltonian_
 
   /* Create and reset the intermediate vectors */
   VecCreateSeq(PETSC_COMM_WORLD, dim, &stage);
+  VecCreateSeq(PETSC_COMM_WORLD, dim, &stage_adj);
   VecCreateSeq(PETSC_COMM_WORLD, dim, &rhs);
+  VecCreateSeq(PETSC_COMM_WORLD, dim, &rhs_adj);
   VecZeroEntries(stage);
+  VecZeroEntries(stage_adj);
   VecZeroEntries(rhs);
+  VecZeroEntries(rhs_adj);
 
   /* Create linear solver */
   KSPCreate(PETSC_COMM_WORLD, &linearsolver);
@@ -95,7 +99,9 @@ ImplMidpoint::ImplMidpoint(Hamiltonian* hamiltonian_) : TimeStepper(hamiltonian_
 
 ImplMidpoint::~ImplMidpoint(){
   /* Free up intermediate vectors */
+  VecDestroy(&stage_adj);
   VecDestroy(&stage);
+  VecDestroy(&rhs_adj);
   VecDestroy(&rhs);
 
   /* Free up linear solver */
@@ -132,6 +138,11 @@ void ImplMidpoint::evolve(Mode direction, double tstart, double tstop, Vec x) {
   /* Build system matrix I-h/2 A. This modifies the hamiltonians RHS matrix! Make sure to call assemble_RHS before the next use! */
   MatScale(A, - dt/2.0);
   MatShift(A, 1.0);  // WARNING: this can be very slow if some diagonal elements are missing.
+  
+  KSPReset(linearsolver);
+  KSPSetTolerances(linearsolver, 1.e-5, 1.e-10, PETSC_DEFAULT, PETSC_DEFAULT);
+  KSPSetType(linearsolver, KSPGMRES);
+  KSPSetFromOptions(linearsolver);
   KSPSetOperators(linearsolver, A, A);// TODO: Do we have to do this in each time step?? 
   
   /* solve nonlinear equation */
@@ -149,7 +160,55 @@ void ImplMidpoint::evolve(Mode direction, double tstart, double tstop, Vec x) {
 
 }
 
-void ImplMidpoint::evolveBWD(double tstart, double tstop, Vec x, Vec x_adj, Vec grad){}
+void ImplMidpoint::evolveBWD(double tstart, double tstop, Vec x, Vec x_adj, Vec grad){
+  Mat A;
+
+  /* Compute time step size */
+  double dt = fabs(tstop - tstart); // absolute values needed in case this runs backwards! 
+  double thalf = (tstart + tstop) / 2.0;
+
+  /* Recompute the stage */
+  hamiltonian->assemble_RHS( (tstart + tstop) / 2.0);
+  A = hamiltonian->getRHS();
+  MatMult(A, x, rhs);
+  MatScale(A, - dt/2.0);
+  MatShift(A, 1.0);  // WARNING: this can be very slow if some diagonal elements are missing.
+  KSPReset(linearsolver);
+  KSPSetTolerances(linearsolver, 1.e-5, 1.e-10, PETSC_DEFAULT, PETSC_DEFAULT);
+  KSPSetType(linearsolver, KSPGMRES);
+  KSPSetFromOptions(linearsolver);
+  KSPSetOperators(linearsolver, A, A);// TODO: Do we have to do this in each time step?? 
+  KSPSolve(linearsolver, rhs, stage);
+
+  /* Solve for adjoin stage variable */
+  hamiltonian->assemble_RHS( (tstart + tstop) / 2.0);
+  A = hamiltonian->getRHS();
+  MatMultTranspose(A, x_adj, rhs_adj);
+  MatScale(A, - dt/2.0);
+  MatShift(A, 1.0);  
+  MatTranspose(A, MAT_INPLACE_MATRIX, &A);
+  KSPReset(linearsolver);
+  KSPSetTolerances(linearsolver, 1.e-5, 1.e-10, PETSC_DEFAULT, PETSC_DEFAULT);
+  KSPSetType(linearsolver, KSPGMRES);
+  KSPSetFromOptions(linearsolver);
+  KSPSetOperators(linearsolver, A, A);// TODO: Do we have to do this in each time step?? 
+  KSPSolve(linearsolver, rhs_adj, stage_adj);
+
+  double rnorm;
+  KSPGetResidualNorm(linearsolver, &rnorm);
+  if (rnorm > 1e-3)  printf("Residual norm: %1.5e\n", rnorm);
+
+  /* Add to reduced gradient */
+  VecAYPX(stage, dt / 2.0, x);
+  hamiltonian->assemble_dRHSdp(thalf, stage);
+  Mat B = hamiltonian->getdRHSdp();
+  MatScale(B, dt);
+  MatMultTransposeAdd(B, stage_adj, grad, grad);
+
+  /* Update adjoint state x_adj += dt * stage_adj --- */
+  VecAXPY(x_adj, dt, stage_adj);
+
+}
 
 
 PetscErrorCode RHSJacobian(TS ts,PetscReal t,Vec u,Mat M,Mat P,void *ctx){

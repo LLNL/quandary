@@ -214,8 +214,8 @@ int main(int argc,char **argv)
   // }
 
   /* Solve the optimization  */
-  printf("Now starting HiOp \n");
-  hiop::hiopSolveStatus status = optimsolver.run();
+  // printf("Now starting HiOp \n");
+  // hiop::hiopSolveStatus status = optimsolver.run();
 
 
 exit:
