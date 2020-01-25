@@ -108,10 +108,10 @@ void ImplMidpoint::evolveFWD(double tstart, double tstop, Vec x) {
   MatShift(A, 1.0);  // WARNING: this can be very slow if some diagonal elements are missing.
   
   /* solve nonlinear equation */
-  KSPReset(linearsolver);
-  KSPSetTolerances(linearsolver, 1.e-5, 1.e-10, PETSC_DEFAULT, PETSC_DEFAULT);
-  KSPSetType(linearsolver, KSPGMRES);
-  KSPSetFromOptions(linearsolver);
+  // KSPReset(linearsolver);
+  // KSPSetTolerances(linearsolver, 1.e-5, 1.e-10, PETSC_DEFAULT, PETSC_DEFAULT);
+  // KSPSetType(linearsolver, KSPGMRES);
+  // KSPSetFromOptions(linearsolver);
   KSPSetOperators(linearsolver, A, A);// TODO: Do we have to do this in each time step?? 
   KSPSolve(linearsolver, rhs, stage);
 
@@ -140,23 +140,23 @@ void ImplMidpoint::evolveBWD(double tstop, double tstart, Vec x, Vec x_adj, Vec 
   MatMult(A, x, rhs);
   MatScale(A, - dt/2.0);
   MatShift(A, 1.0);  // WARNING: this can be very slow if some diagonal elements are missing.
-  KSPReset(linearsolver);
-  KSPSetTolerances(linearsolver, 1.e-5, 1.e-10, PETSC_DEFAULT, PETSC_DEFAULT);
-  KSPSetType(linearsolver, KSPGMRES);
-  KSPSetFromOptions(linearsolver);
+  // KSPReset(linearsolver);
+  // KSPSetTolerances(linearsolver, 1.e-5, 1.e-10, PETSC_DEFAULT, PETSC_DEFAULT);
+  // KSPSetType(linearsolver, KSPGMRES);
+  // KSPSetFromOptions(linearsolver);
   KSPSetOperators(linearsolver, A, A);// TODO: Do we have to do this in each time step?? 
   KSPSolve(linearsolver, rhs, stage);
 
   /* Solve for adjoin stage variable */
-  hamiltonian->assemble_RHS( (tstart + tstop) / 2.0);
-  A = hamiltonian->getRHS();
-  MatScale(A, - dt/2.0);
-  MatShift(A, 1.0);  
+  // hamiltonian->assemble_RHS( (tstart + tstop) / 2.0);
+  // A = hamiltonian->getRHS();
+  // MatScale(A, - dt/2.0);
+  // MatShift(A, 1.0);  
   MatTranspose(A, MAT_INPLACE_MATRIX, &A);
-  KSPReset(linearsolver);
-  KSPSetTolerances(linearsolver, 1.e-5, 1.e-10, PETSC_DEFAULT, PETSC_DEFAULT);
-  KSPSetType(linearsolver, KSPGMRES);
-  KSPSetFromOptions(linearsolver);
+  // KSPReset(linearsolver);
+  // KSPSetTolerances(linearsolver, 1.e-5, 1.e-10, PETSC_DEFAULT, PETSC_DEFAULT);
+  // KSPSetType(linearsolver, KSPGMRES);
+  // KSPSetFromOptions(linearsolver);
   KSPSetOperators(linearsolver, A, A);// TODO: Do we have to do this in each time step?? 
   KSPSolve(linearsolver, x_adj, stage_adj);
 
@@ -164,17 +164,18 @@ void ImplMidpoint::evolveBWD(double tstop, double tstart, Vec x, Vec x_adj, Vec 
   KSPGetResidualNorm(linearsolver, &rnorm);
   if (rnorm > 1e-3)  printf("Residual norm: %1.5e\n", rnorm);
 
+  // k_bar = h*k_bar 
+  VecScale(stage_adj, dt);
+
   /* Add to reduced gradient */
   VecAYPX(stage, dt / 2.0, x);
   hamiltonian->assemble_dRHSdp(thalf, stage);
   Mat B = hamiltonian->getdRHSdp();
-  MatScale(B, dt);
   MatMultTransposeAdd(B, stage_adj, grad, grad);
 
   /* Update adjoint state x_adj += dt * A^Tstage_adj --- */
   hamiltonian->assemble_RHS( (tstart + tstop) / 2.0);
   A = hamiltonian->getRHS();
-  MatScale(A, dt);
   MatMultTransposeAdd(A, stage_adj, x_adj, x_adj);
 
 }
