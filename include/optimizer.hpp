@@ -12,6 +12,11 @@ class OptimProblem : public hiop::hiopInterfaceDenseConstraints {
         double objective_curr;  // holds the current objective function value
         MPI_Comm comm_hiop;
 
+        int mpirank_braid, mpisize_braid;
+        int mpirank_space, mpisize_space;
+        int mpirank_optim, mpisize_optim;
+        int mpirank_world, mpisize_world;
+
     public:
         OptimProblem();
         OptimProblem(myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, MPI_Comm comm_hiop_);

@@ -5,10 +5,10 @@ myBraidVector::myBraidVector() {
   x = NULL;
 }
 
-myBraidVector::myBraidVector(MPI_Comm comm, int dim) {
+myBraidVector::myBraidVector(int dim) {
 
     /* Allocate the Petsc Vector */
-    VecCreateSeq(comm, dim, &x);
+    VecCreateSeq(PETSC_COMM_WORLD, dim, &x);
     VecZeroEntries(x);
 }
 
@@ -19,7 +19,7 @@ myBraidVector::~myBraidVector() {
 
 
 
-myBraidApp::myBraidApp(MPI_Comm comm_braid_, MPI_Comm comm_petsc_, double total_time_, int ntime_, TS ts_petsc_, TimeStepper* mytimestepper_, Hamiltonian* ham_, Gate* targate_, MapParam* config) 
+myBraidApp::myBraidApp(MPI_Comm comm_braid_, double total_time_, int ntime_, TS ts_petsc_, TimeStepper* mytimestepper_, Hamiltonian* ham_, Gate* targate_, MapParam* config) 
           : BraidApp(comm_braid_, 0.0, total_time_, ntime_) {
 
   ntime = ntime_;
@@ -28,7 +28,6 @@ myBraidApp::myBraidApp(MPI_Comm comm_braid_, MPI_Comm comm_petsc_, double total_
   mytimestepper = mytimestepper_;
   hamiltonian = ham_;
   targetgate = targate_;
-  comm_petsc = comm_petsc_;
   comm_braid = comm_braid_;
   ufile = NULL;
   vfile = NULL;
@@ -225,7 +224,7 @@ braid_Int myBraidApp::Init(braid_Real t, braid_Vector *u_ptr){
   int nreal = 2 * hamiltonian->getDim();
 
   /* Create the vector */
-  myBraidVector *u = new myBraidVector(comm_petsc, nreal);
+  myBraidVector *u = new myBraidVector(nreal);
 
   /* Set the initial condition */
   hamiltonian->initialCondition(0,u->x);
@@ -388,7 +387,7 @@ braid_Int myBraidApp::BufUnpack(void *buffer, braid_Vector *u_ptr, BraidBufferSt
 
   /* Allocate a new vector */
   int dim = 2 * hamiltonian->getDim();
-  myBraidVector *u = new myBraidVector(comm_petsc, dim);
+  myBraidVector *u = new myBraidVector(dim);
 
   /* Copy buffer into the vector */
   PetscScalar *x_ptr;
@@ -475,8 +474,8 @@ double myBraidApp::Drive() {
 /* ================================================================*/
 /* Adjoint Braid App */
 /* ================================================================*/
-myAdjointBraidApp::myAdjointBraidApp(MPI_Comm comm_braid_, MPI_Comm comm_petsc_, double total_time_, int ntime_, TS ts_, TimeStepper* mytimestepper_, Hamiltonian* ham_, Gate* targate_, Vec redgrad_, MapParam* config, BraidCore *Primalcoreptr_)
-        : myBraidApp(comm_braid_, comm_petsc_, total_time_, ntime_, ts_, mytimestepper_, ham_, targate_, config) {
+myAdjointBraidApp::myAdjointBraidApp(MPI_Comm comm_braid_, double total_time_, int ntime_, TS ts_, TimeStepper* mytimestepper_, Hamiltonian* ham_, Gate* targate_, Vec redgrad_, MapParam* config, BraidCore *Primalcoreptr_)
+        : myBraidApp(comm_braid_, total_time_, ntime_, ts_, mytimestepper_, ham_, targate_, config) {
 
   /* Store the primal core */
   primalcore = Primalcoreptr_;
@@ -562,7 +561,7 @@ braid_Int myAdjointBraidApp::Step(braid_Vector u_, braid_Vector ustop_, braid_Ve
 
     /* Solve forward while saving trajectory */
     TSDestroy(&ts_petsc);
-    ierr = TSCreate(PETSC_COMM_SELF,&ts_petsc);CHKERRQ(ierr);
+    ierr = TSCreate(PETSC_COMM_WORLD,&ts_petsc);CHKERRQ(ierr);
     TSInit(ts_petsc, hamiltonian, ntime  , dt, total_time, x, &(u->x), &redgrad, false);
 
     ierr = TSSetSaveTrajectory(ts_petsc);CHKERRQ(ierr);
@@ -622,7 +621,7 @@ braid_Int myAdjointBraidApp::Step(braid_Vector u_, braid_Vector ustop_, braid_Ve
 braid_Int myAdjointBraidApp::Init(braid_Real t, braid_Vector *u_ptr) {
 
   /* Allocate the adjoint vector and set to zero */
-  myBraidVector *u = new myBraidVector(comm_petsc, 2*hamiltonian->getDim());
+  myBraidVector *u = new myBraidVector(2*hamiltonian->getDim());
 
   /* Reset the reduced gradient */
   VecZeroEntries(redgrad); 

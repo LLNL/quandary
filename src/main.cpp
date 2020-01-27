@@ -14,7 +14,7 @@
 #define EPS 1e-7
 
 #define TEST_DRHSDP 0
-#define TEST_FD_TS 1
+#define TEST_FD_TS 0
 #define TEST_FD_SPLINE 0
 #define TEST_DT 0
 
@@ -76,7 +76,7 @@ int main(int argc,char **argv)
     MPI_Finalize();
     return 0;
   }
-  MapParam config(comm);
+  MapParam config(MPI_COMM_WORLD);
   config.ReadFile(argv[1]);
   nlvl  = config.GetIntParam("nlevels", 2);
   nosci = config.GetIntParam("noscillators", 2);
@@ -152,8 +152,8 @@ int main(int argc,char **argv)
   TSInit(ts, hamiltonian, ntime, dt, total_time, x, lambda, mu, monitor);
 
   /* Initialize Braid */
-  primalbraidapp = new myBraidApp(comm_braid, comm_petsc, total_time, ntime, ts, mytimestepper, hamiltonian, targetgate, &config);
-  adjointbraidapp = new myAdjointBraidApp(comm_braid, comm_petsc, total_time, ntime, ts, mytimestepper, hamiltonian, targetgate, *mu, &config, primalbraidapp->getCore());
+  primalbraidapp = new myBraidApp(comm_braid, total_time, ntime, ts, mytimestepper, hamiltonian, targetgate, &config);
+  adjointbraidapp = new myAdjointBraidApp(comm_braid, total_time, ntime, ts, mytimestepper, hamiltonian, targetgate, *mu, &config, primalbraidapp->getCore());
 
   /* Prepare output */
   if (iolevel > 0) {
@@ -183,6 +183,7 @@ int main(int argc,char **argv)
   nlp.options->SetNumericValue("tolerance", optim_tol);
   double optim_maxiter = config.GetIntParam("optim_maxiter", 200);
   nlp.options->SetIntegerValue("max_iter", optim_maxiter);
+  if (mpirank != 0) nlp.options->SetIntegerValue("verbosity_level", 0);
   /* Create solver */
   hiop::hiopAlgFilterIPM optimsolver(&nlp);
 
@@ -192,26 +193,26 @@ int main(int argc,char **argv)
   UsedTime = 0.0;
 
 
-  // /* --- Test optimproblem --- */
-  // printf("ndesign=%d\n", ndesign);
-  // double* myinit = new double[ndesign];
-  // optimproblem.get_starting_point(ndesign, myinit);
+  /* --- Test optimproblem --- */
+  if (mpirank == 0) printf("ndesign=%d\n", ndesign);
+  double* myinit = new double[ndesign];
+  optimproblem.get_starting_point(ndesign, myinit);
 
-  // // /* --- Solve primal --- */
-  // printf("\nRunning optimizer eval_f... ");
-  // optimproblem.eval_f(ndesign, myinit, true, objective);
-  // printf(" Objective %1.14e\n", objective);
+  // /* --- Solve primal --- */
+  printf("%d: Running optimizer eval_f... \n", mpirank);
+  optimproblem.eval_f(ndesign, myinit, true, objective);
+  printf("%d: Objective %1.14e\n", mpirank, objective);
 
-  // /* --- Solve adjoint --- */
-  // printf("\nRunning optimizer eval_grad_f...\n");
-  // double* optimgrad = new double[ndesign];
-  // optimproblem.eval_grad_f(ndesign, myinit, true, optimgrad);
-  // if (mpirank == 0) {
-  //   printf("\n %d: My awesome gradient:\n", mpirank);
-  //   for (int i=0; i<ndesign; i++) {
-  //     printf("%1.14e\n", optimgrad[i]);
-  //   }
-  // }
+  /* --- Solve adjoint --- */
+  printf("%d: Running optimizer eval_grad_f...\n", mpirank);
+  double* optimgrad = new double[ndesign];
+  optimproblem.eval_grad_f(ndesign, myinit, true, optimgrad);
+  if (mpirank == 0) {
+    printf("\n%d: My awesome gradient:\n", mpirank);
+    for (int i=0; i<ndesign; i++) {
+      printf("%1.14e\n", optimgrad[i]);
+    }
+  }
 
   /* Solve the optimization  */
   // printf("Now starting HiOp \n");
