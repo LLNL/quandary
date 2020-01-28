@@ -89,7 +89,7 @@ double MapParam::GetDoubleParam(string key, double default_val) const
   else
     val = atof(it_value->second.c_str());
 
-  export_param(mpi_rank, key, val, default_val);
+  // export_param(mpi_rank, key, val, default_val);
   return val;
 }
 
@@ -106,7 +106,7 @@ int MapParam::GetIntParam(string key, int default_val) const
   else
     val = atoi(it_value->second.c_str());
 
-  export_param(mpi_rank, key, val, default_val);
+  // export_param(mpi_rank, key, val, default_val);
   return val;
 }
 
@@ -123,7 +123,7 @@ string MapParam::GetStrParam(string key, string default_val) const
   else
     val = it_value->second;
 
-  export_param(mpi_rank, key, val, default_val);
+  // export_param(mpi_rank, key, val, default_val);
   return val;
 }
 
@@ -142,7 +142,7 @@ bool MapParam::GetBoolParam(string key, bool default_val) const
   else
     val = false;
 
-  export_param(mpi_rank, key, val, default_val);
+  // export_param(mpi_rank, key, val, default_val);
   return val;
 }
 
