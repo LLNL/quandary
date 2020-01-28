@@ -3,6 +3,7 @@
 #include <petscts.h>
 #pragma once
 
+
 /* 
  * Abstract base class for Hamiltonian systems 
  */
@@ -35,6 +36,7 @@ class Hamiltonian{
     /* Compute lowering operator a_k = I_n1 \kron ... \kron a^(nk) \kron ... \kron I_nQ */
     int createLoweringOP(int ioscillator, Mat* loweringOP);
 
+    /* Compute number operator N_k = a_k^T a_k */
     int createNumberOP(int ioscillator, Mat* numberOP);
 
     /* 
@@ -105,7 +107,7 @@ class LiouvilleVN : public Hamiltonian {
 
   public: 
     LiouvilleVN();
-    LiouvilleVN(double* xi, int noscillators_, Oscillator** oscil_vec_);
+    LiouvilleVN(double* xi_, int noscillators_, Oscillator** oscil_vec_);
     virtual ~LiouvilleVN();
 
     /* Set the initial condition (zero so far...) */
@@ -114,6 +116,22 @@ class LiouvilleVN : public Hamiltonian {
     /* Eval Re and Im of vectorized Hamiltonian, and derivative */
     virtual int assemble_RHS(double t);
     virtual int assemble_dRHSdp(double t, Vec x);
+};
+
+/*
+ * Implements the Lindblad terms
+ */
+
+class Lindblad : public LiouvilleVN {
+
+  public: 
+    /* Available lindblad terms */
+    enum LindbladType {DECAY, DEPHASING}; 
+    
+    Lindblad();
+    Lindblad(LindbladType lindblad_type, double* xi_, int noscillators_, Oscillator** oscil_vec_);
+    virtual ~Lindblad();
+
 };
 
 /* 
