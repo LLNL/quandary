@@ -119,10 +119,10 @@ class Lindblad : public LiouvilleVN {
 
   public: 
     /* Available lindblad terms */
-    enum LindbladType {DECAY, DEPHASING}; 
+    enum CollapseType {DECAY, DEPHASING}; 
     
     Lindblad();
-    Lindblad(LindbladType lindblad_type, double* xi_, int noscillators_, Oscillator** oscil_vec_);
+    Lindblad(CollapseType collapse_type, double* xi_, int noscillators_, Oscillator** oscil_vec_);
     virtual ~Lindblad();
 
 };
