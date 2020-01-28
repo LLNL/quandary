@@ -510,7 +510,7 @@ int LiouvilleVN::assemble_dRHSdp(double t, Vec x) {
 }
 
 Lindblad::Lindblad() : LiouvilleVN() {}
-Lindblad::Lindblad(LindbladType lindblad_type, double* xi_, int noscillators_, Oscillator** oscil_vec_) : LiouvilleVN(xi_, noscillators_, oscil_vec_) {
+Lindblad::Lindblad(CollapseType collapse_type, double* xi_, int noscillators_, Oscillator** oscil_vec_) : LiouvilleVN(xi_, noscillators_, oscil_vec_) {
 
   Mat L;
   int dim_L;
@@ -519,7 +519,7 @@ Lindblad::Lindblad(LindbladType lindblad_type, double* xi_, int noscillators_, O
   for (int iosc = 0; iosc < noscillators_; iosc++) {
 
     /* Get lowering operator */
-    switch (lindblad_type)  {
+    switch (collapse_type)  {
       case DECAY: 
         dim_L = createLoweringOP(iosc, &L);
         break;
@@ -527,7 +527,7 @@ Lindblad::Lindblad(LindbladType lindblad_type, double* xi_, int noscillators_, O
         dim_L = createNumberOP(iosc, &L);
         break;
       default:
-        printf("ERROR! Wrong lindblad type: %d\n", lindblad_type);
+        printf("ERROR! Wrong lindblad type: %d\n", collapse_type);
         exit(1);
     }
     
