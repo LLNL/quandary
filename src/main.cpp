@@ -105,16 +105,17 @@ int main(int argc,char **argv)
     }
   }
 
-  /* Set frequencies for drift hamiltonian Hd xi = [xi_1, xi_2, xi_12] */
+  /* Set frequencies for drift hamiltonian Hd */
+  // Format: xi = [xi_00, xi_01, xi_02,...,xi_11, xi_12,....]
   double* xi = new double[nlvl*nlvl];
   if (analytic) {  // no drift Hamiltonian in analytic case
     xi[0] = 0.0;
     xi[1] = 0.0;
     xi[2] = 0.0;
   } else {
-    xi[0] =  2. * (2.*M_PI*0.1099);  // from Anders
-    xi[1] =  2. * (2.*M_PI*0.1126);  // from Anders
-    xi[2] =  0.1;                    // from Anders, might be too big!
+    xi[0] =  2. * (2.*M_PI*0.1099);  // \xi_0 from Anders
+    xi[1] =  0.1;                    // \xi_01 from Anders, might be too big!
+    xi[2] =  2. * (2.*M_PI*0.1126);  // \xi_1 from Anders
   }
 
   /* Initialize the Hamiltonian  */

@@ -284,6 +284,7 @@ LiouvilleVN::LiouvilleVN(double* xi_, int noscillators_, Oscillator** oscil_vec_
 
   
   /* Compute drift Hamiltonian (Bd only, Ad=0 for Liouville) */
+  int xi_id = 0;
   for (int iosc = 0; iosc < noscillators_; iosc++) {
 
     Mat tmp, tmp_T;
@@ -294,6 +295,7 @@ LiouvilleVN::LiouvilleVN(double* xi_, int noscillators_, Oscillator** oscil_vec_
     MatMatMult(numberOP, numberOP, MAT_INITIAL_MATRIX, PETSC_DEFAULT, &tmp);
     MatAXPY(tmp, -1.0, numberOP, SAME_NONZERO_PATTERN);
     MatScale(tmp, -xi[iosc]/2.0);
+    xi_id++;
 
     MatTranspose(tmp, MAT_INITIAL_MATRIX, &tmp_T);
     Ikron(tmp,   dim_number, -1.0, &Bd, ADD_VALUES);
@@ -306,10 +308,10 @@ LiouvilleVN::LiouvilleVN(double* xi_, int noscillators_, Oscillator** oscil_vec_
     /* Mixed term -xi(N_i*N_j) for j > i */
     for (int josc = iosc+1; josc < noscillators_; josc++) {
 
-      createNumberOP(iosc, &numberOPj);
+      createNumberOP(josc, &numberOPj);
       MatMatMult(numberOP, numberOPj, MAT_INITIAL_MATRIX, PETSC_DEFAULT, &tmp);
-      int xi_id = iosc*noscillators_ - iosc*(iosc+1)/2 + josc - (iosc+1);
       MatScale(tmp, -xi[xi_id]);
+      xi_id++;
 
       MatTranspose(tmp, MAT_INITIAL_MATRIX, &tmp_T);
       Ikron(tmp,   dim_number, -1.0, &Bd, ADD_VALUES);
