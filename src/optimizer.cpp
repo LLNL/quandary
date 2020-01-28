@@ -4,12 +4,29 @@ OptimProblem::OptimProblem() {
     primalbraidapp  = NULL;
     adjointbraidapp = NULL;
     objective_curr = 0.0;
+    mpirank_braid = 0;
+    mpisize_braid = 0;
+    mpirank_space = 0;
+    mpisize_space = 0;
+    mpirank_optim = 0;
+    mpisize_optim = 0;
+    mpirank_world = 0;
+    mpisize_world = 0;
 }
 
 OptimProblem::OptimProblem(myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, MPI_Comm comm_hiop_){
     primalbraidapp  = primalbraidapp_;
     adjointbraidapp = adjointbraidapp_;
     comm_hiop = comm_hiop_;
+
+    MPI_Comm_rank(primalbraidapp->comm_braid, &mpirank_braid);
+    MPI_Comm_size(primalbraidapp->comm_braid, &mpisize_braid);
+    MPI_Comm_rank(PETSC_COMM_WORLD, &mpirank_space);
+    MPI_Comm_size(PETSC_COMM_WORLD, &mpisize_space);
+    MPI_Comm_rank(comm_hiop, &mpirank_optim);
+    MPI_Comm_size(comm_hiop, &mpisize_optim);
+    MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
+    MPI_Comm_size(MPI_COMM_WORLD, &mpisize_world);
 }
 
 OptimProblem::~OptimProblem() {}
@@ -107,7 +124,7 @@ bool OptimProblem::get_cons_info(const long long& m, double* clow, double* cupp,
 bool OptimProblem::eval_f(const long long& n, const double* x_in, bool new_x, double& obj_value){
 // bool OptimProblem::eval_f(Index n, const Number* x, bool new_x, Number& obj_value){
 
-  printf("EVAL F\n");
+  printf("%d: EVAL F\n", mpirank_world);
   double obj_local;
   Hamiltonian* hamil = primalbraidapp->hamiltonian;
   int dim = hamil->getDim();
@@ -135,7 +152,7 @@ bool OptimProblem::eval_f(const long long& n, const double* x_in, bool new_x, do
 
   }
 
-  /* Sum up objective from all processors */
+  /* Sum up objective from all braid processors */
   double myobj = objective_curr;
   MPI_Allreduce(&myobj, &objective_curr, 1, MPI_DOUBLE, MPI_SUM, primalbraidapp->comm_braid);
 
@@ -148,7 +165,7 @@ bool OptimProblem::eval_f(const long long& n, const double* x_in, bool new_x, do
 
 bool OptimProblem::eval_grad_f(const long long& n, const double* x_in, bool new_x, double* gradf){
 // bool OptimProblem::eval_grad_f(Index n, const Number* x, bool new_x, Number* grad_f){
-  printf("EVAL GRAD F\n");
+  printf("%d: EVAL GRAD F\n", mpirank_world);
 
   Hamiltonian* hamil = primalbraidapp->hamiltonian;
   double obj_local;
@@ -217,27 +234,31 @@ bool OptimProblem::eval_Jac_cons(const long long& n, const long long& m, const l
 bool OptimProblem::get_starting_point(const long long &global_n, double* x0) {
 // bool OptimProblem::get_starting_point(Index n, bool init_x, Number* x, bool init_z, Number* z_L, Number* z_U, Index m, bool init_lambda, Number* lambda){
 
-  /* Set initial parameters */
-  // srand (time(NULL));  // TODO: initialize the random seed. 
-  srand (1.0);            // seed 1.0 only for code debugging!
-  for (int i=0; i<global_n; i++) {
-    x0[i] = (double) rand() / ((double)RAND_MAX);
+  /* Set initial parameters. */
+  // Do this on one processor only, then broadcast, to make sure that every processor starts with the same initial guess. 
+  if (mpirank_world == 0) {
+    // srand (time(NULL));  // TODO: initialize the random seed. 
+    srand (1.0);            // seed 1.0 only for code debugging!
+    for (int i=0; i<global_n; i++) {
+      x0[i] = (double) rand() / ((double)RAND_MAX);
+    }
   }
+  MPI_Bcast(x0, global_n, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
   /* Pass to oscillator */
   setDesign(global_n, x0);
   
   /* Flush control functions */
-  // if (mpirank == 0 && iolevel > 0) {
-  int ntime = primalbraidapp->ntime;
-  double dt = primalbraidapp->total_time / ntime;
-  char filename[255];
-  Hamiltonian* hamil = primalbraidapp->hamiltonian;
-  for (int ioscil = 0; ioscil < hamil->getNOscillators(); ioscil++) {
-      sprintf(filename, "control_init_%02d.dat", ioscil+1);
-      hamil->getOscillator(ioscil)->flushControl(ntime, dt, filename);
+  if (mpirank_world == 0 ) {
+    int ntime = primalbraidapp->ntime;
+    double dt = primalbraidapp->total_time / ntime;
+    char filename[255];
+    Hamiltonian* hamil = primalbraidapp->hamiltonian;
+    for (int ioscil = 0; ioscil < hamil->getNOscillators(); ioscil++) {
+        sprintf(filename, "control_init_%02d.dat", ioscil+1);
+        hamil->getOscillator(ioscil)->flushControl(ntime, dt, filename);
+    }
   }
-// }
 
  
   return true;
@@ -246,23 +267,25 @@ bool OptimProblem::get_starting_point(const long long &global_n, double* x0) {
 /* This is called after HiOp finishes. x is LOCAL to each processor ! */
 void OptimProblem::solution_callback(hiop::hiopSolveStatus status, int n, const double* x, const double* z_L, const double* z_U, int m, const double* g, const double* lambda, double obj_value) {
   
-  /* Print optimized parameters */
-  FILE *optimfile;
-  optimfile = fopen("param_optimized.dat", "w");
-  for (int i=0; i<n; i++){
-    fprintf(optimfile, "%1.14e\n", x[i]);
-  }
-  fclose(optimfile);
+  if (mpirank_world == 0) {
+    /* Print optimized parameters */
+    FILE *optimfile;
+    optimfile = fopen("param_optimized.dat", "w");
+    for (int i=0; i<n; i++){
+      fprintf(optimfile, "%1.14e\n", x[i]);
+    }
+    fclose(optimfile);
 
-  /* Print out control functions */
-  setDesign(n, x);
-  int ntime = primalbraidapp->ntime;
-  double dt = primalbraidapp->total_time / ntime;
-  char filename[255];
-  Hamiltonian* hamil = primalbraidapp->hamiltonian;
-  for (int ioscil = 0; ioscil < hamil->getNOscillators(); ioscil++) {
-      sprintf(filename, "control_optimized_%02d.dat", ioscil+1);
-      hamil->getOscillator(ioscil)->flushControl(ntime, dt, filename);
+    /* Print out control functions */
+    setDesign(n, x);
+    int ntime = primalbraidapp->ntime;
+    double dt = primalbraidapp->total_time / ntime;
+    char filename[255];
+    Hamiltonian* hamil = primalbraidapp->hamiltonian;
+    for (int ioscil = 0; ioscil < hamil->getNOscillators(); ioscil++) {
+        sprintf(filename, "control_optimized_%02d.dat", ioscil+1);
+        hamil->getOscillator(ioscil)->flushControl(ntime, dt, filename);
+    }
   }
 }
 
