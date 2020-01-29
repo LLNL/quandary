@@ -44,8 +44,7 @@ class myBraidApp : public BraidApp {
 
     int getTimeStepIndex(double t, double dt);
 
-    /* Return read-only state at a certain time point. CURRENTLY ONLY VALID FOR time == total_time */
-    const double* getStateRead(double time);
+    /* Return  state vector at a certain time point. CURRENTLY ONLY VALID FOR time == total_time. Be careful: might return NULL! */
     Vec getStateVec(double time);
 
     /* Return the core */

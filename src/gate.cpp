@@ -17,7 +17,6 @@ Gate::~Gate(){}
 
 
 CNOT::CNOT() : Gate(2) { // CNOT spans two qubits
-
   assert(dim == 16);
 
   lookup = new int[dim];
@@ -52,14 +51,22 @@ CNOT::~CNOT(){
 }
 
 
-double CNOT::apply(int i, const double* state){
+double CNOT::apply(int i, Vec state){
 
-  return state[getIndex(i)];
+  const PetscScalar* x_ptr;
+  VecGetArrayRead(state, &x_ptr);
+  double out = x_ptr[getIndex(i)];
+  VecRestoreArrayRead(state, &x_ptr);
+
+  return out;
 }
 
 
 
-void CNOT::apply_diff(int i, double* state_bar, double obj_bar){
+void CNOT::apply_diff(int i, Vec state_bar, double obj_bar){
 
-  state_bar[getIndex(i)] += 1.0 * obj_bar;
+  PetscScalar* x_ptr;
+  VecGetArray(state_bar, &x_ptr);
+  x_ptr[getIndex(i)] += 1.0 * obj_bar;
+  VecRestoreArray(state_bar, &x_ptr);
 }

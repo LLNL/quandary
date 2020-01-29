@@ -71,25 +71,6 @@ int myBraidApp::getTimeStepIndex(double t, double dt){
 }
 
 
-const double* myBraidApp::getStateRead(double t) {
-  if (t != total_time) {
-   printf("ERROR: getState not implemented yet for (t != final_time)\n\n");
-   exit(1);
-  }
-  
-  braid_BaseVector ubase;
-  myBraidVector *u;
-  const double* state_ptr= NULL;
-  _braid_UGetLast(core->GetCore(), &ubase);
-  if (ubase != NULL) { // only true on last processor 
-    u = (myBraidVector *)ubase->userVector;
-    VecGetArrayRead(u->x, &state_ptr);
-  }
-
-  return state_ptr;
-}
-
-
 Vec myBraidApp::getStateVec(double time) {
   if (time != total_time) {
    printf("ERROR: getState not implemented yet for (t != final_time)\n\n");
@@ -443,7 +424,7 @@ int myBraidApp::PostProcess(int iinit, double* f) {
 
   /* Eval objective function for initial condition iinit */
   double obj_local = 0.0;
-  const double *finalstate = getStateRead(total_time); // this returns NULL for all but the last processors! 
+  Vec finalstate = getStateVec(total_time); // this returns NULL for all but the last processors! 
   if (finalstate != NULL) {
     /* Compare to target gate */
     obj_local = targetgate->apply(iinit, finalstate);
@@ -629,11 +610,8 @@ braid_Int myAdjointBraidApp::Init(braid_Real t, braid_Vector *u_ptr) {
   if (t==0){
 
     /* Set derivative of objective function value */
-    PetscScalar* x_ptr;
-    VecGetArray(u->x,&x_ptr);
     double obj_bar = - 1./(hamiltonian->getDim() * hamiltonian->getDim());
-    targetgate->apply_diff(0, x_ptr, obj_bar);
-    VecRestoreArray(u->x, &x_ptr);
+    targetgate->apply_diff(0, u->x, obj_bar);
   }
 
   /* Return new vector to braid */
@@ -659,11 +637,8 @@ int myAdjointBraidApp::PreProcess(int iinit) {
 
       /* Set derivative of objective function value */
       VecZeroEntries(uadjoint->x);
-      PetscScalar* x_ptr;
-      VecGetArray(uadjoint->x,&x_ptr);
       double obj_bar = - 1./(hamiltonian->getDim() * hamiltonian->getDim());
-      targetgate->apply_diff(iinit, x_ptr, obj_bar);
-      VecRestoreArray(uadjoint->x, &x_ptr);
+      targetgate->apply_diff(iinit, uadjoint->x, obj_bar);
     }
   }
 

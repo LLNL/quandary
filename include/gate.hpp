@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <math.h>
 #include <assert.h>
+#include <petscmat.h>
 #pragma once
 
 // enum GATETYPE = {CNOT};
@@ -16,10 +17,10 @@ class Gate {
     virtual ~Gate();
     
     /* Apply i-th column of the gate to a state vector */
-    virtual double apply(int i, const double* state) = 0;
+    virtual double apply(int i, Vec state) = 0;
 
     /* Derivative of gate application */
-    virtual void apply_diff(int i, double* state_bar, double obj_bar) = 0;
+    virtual void apply_diff(int i, Vec state_bar, double obj_bar) = 0;
 
 };
 
@@ -41,8 +42,8 @@ class CNOT : public Gate {
     ~CNOT();
 
     /* Apply i-th column of the gate to a state vector */
-    virtual double apply(int i, const double* state);
+    virtual double apply(int i, Vec state);
 
     /* Derivative of gate application */
-    virtual void apply_diff(int i, double* state_bar, double obj_bar);
+    virtual void apply_diff(int i, Vec state_bar, double obj_bar);
 };
