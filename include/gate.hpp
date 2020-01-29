@@ -19,7 +19,7 @@ class Gate {
     virtual double apply(int i, const double* state) = 0;
 
     /* Derivative of gate application */
-    virtual void apply_diff(int i, double* state_bar) = 0;
+    virtual void apply_diff(int i, double* state_bar, double obj_bar) = 0;
 
 };
 
@@ -44,5 +44,5 @@ class CNOT : public Gate {
     virtual double apply(int i, const double* state);
 
     /* Derivative of gate application */
-    virtual void apply_diff(int i, double* state_bar);
+    virtual void apply_diff(int i, double* state_bar, double obj_bar);
 };

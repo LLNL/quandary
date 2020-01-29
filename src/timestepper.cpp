@@ -70,7 +70,7 @@ ImplMidpoint::ImplMidpoint(Hamiltonian* hamiltonian_) : TimeStepper(hamiltonian_
   /* Set options */
   // KSPGetPC(linearsolver, &preconditioner);
   // PCSetType(preconditioner, PCJACOBI);
-  double reltol = 1.e-5;
+  double reltol = 1.e-8;
   double abstol = 1.e-10;
   KSPSetTolerances(linearsolver, reltol, abstol, PETSC_DEFAULT, PETSC_DEFAULT);
   KSPSetType(linearsolver, KSPGMRES);

@@ -448,7 +448,6 @@ int myBraidApp::PostProcess(int iinit, double* f) {
     /* Compare to target gate */
     obj_local = targetgate->apply(iinit, finalstate);
   }
-  /* TODO: MPI_Allreduce objective value */
 
   /* Set return value */
   *f = obj_local;
@@ -632,7 +631,8 @@ braid_Int myAdjointBraidApp::Init(braid_Real t, braid_Vector *u_ptr) {
     /* Set derivative of objective function value */
     PetscScalar* x_ptr;
     VecGetArray(u->x,&x_ptr);
-    targetgate->apply_diff(0, x_ptr);
+    double obj_bar = - 1./(hamiltonian->getDim() * hamiltonian->getDim());
+    targetgate->apply_diff(0, x_ptr, obj_bar);
     VecRestoreArray(u->x, &x_ptr);
   }
 
@@ -661,7 +661,8 @@ int myAdjointBraidApp::PreProcess(int iinit) {
       VecZeroEntries(uadjoint->x);
       PetscScalar* x_ptr;
       VecGetArray(uadjoint->x,&x_ptr);
-      targetgate->apply_diff(iinit, x_ptr);
+      double obj_bar = - 1./(hamiltonian->getDim() * hamiltonian->getDim());
+      targetgate->apply_diff(iinit, x_ptr, obj_bar);
       VecRestoreArray(uadjoint->x, &x_ptr);
     }
   }

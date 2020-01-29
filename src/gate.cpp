@@ -59,7 +59,7 @@ double CNOT::apply(int i, const double* state){
 
 
 
-void CNOT::apply_diff(int i, double* state_bar){
+void CNOT::apply_diff(int i, double* state_bar, double obj_bar){
 
-  state_bar[getIndex(i)] += 1.0;
+  state_bar[getIndex(i)] += 1.0 * obj_bar;
 }

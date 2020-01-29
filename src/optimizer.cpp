@@ -149,12 +149,13 @@ bool OptimProblem::eval_f(const long long& n, const double* x_in, bool new_x, do
       /* Add to global objective value */
       objective_curr += obj_local;
     }
-
   }
 
   /* Sum up objective from all braid processors */
   double myobj = objective_curr;
   MPI_Allreduce(&myobj, &objective_curr, 1, MPI_DOUBLE, MPI_SUM, primalbraidapp->comm_braid);
+  /* J = 1 - 1/N^4 * obj */
+  objective_curr = 1. - 1./(dim*dim) * objective_curr;
 
   /* Return objective value */
   obj_value = objective_curr;
@@ -204,6 +205,12 @@ bool OptimProblem::eval_grad_f(const long long& n, const double* x_in, bool new_
         gradf[i] += grad_ptr[i]; 
     }
   }
+
+  /* Sum up objective from all braid processors */
+  double myobj = objective_curr;
+  MPI_Allreduce(&myobj, &objective_curr, 1, MPI_DOUBLE, MPI_SUM, primalbraidapp->comm_braid);
+  /* J = 1 - 1/N^4 * obj */
+  objective_curr = 1. - 1./(dim*dim) * objective_curr;
 
   /* Sum up the gradient from all braid processors */
   double* mygrad = new double[n];
