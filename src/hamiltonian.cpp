@@ -291,10 +291,10 @@ LiouvilleVN::LiouvilleVN(double* xi_, int noscillators_, Oscillator** oscil_vec_
     Mat numberOPj;
     int dim_number = createNumberOP(iosc, &numberOP);
 
-    /* Diagonal term -xi/2(N_i^2 - N_i) */
+    /* Diagonal term - 2*PI* xi/2 *(N_i^2 - N_i) */
     MatMatMult(numberOP, numberOP, MAT_INITIAL_MATRIX, PETSC_DEFAULT, &tmp);
     MatAXPY(tmp, -1.0, numberOP, SAME_NONZERO_PATTERN);
-    MatScale(tmp, -xi[iosc]/2.0);
+    MatScale(tmp, -xi[xi_id] * M_PI);
     xi_id++;
 
     MatTranspose(tmp, MAT_INITIAL_MATRIX, &tmp_T);
@@ -305,12 +305,12 @@ LiouvilleVN::LiouvilleVN(double* xi_, int noscillators_, Oscillator** oscil_vec_
     MatDestroy(&tmp_T);
 
 
-    /* Mixed term -xi(N_i*N_j) for j > i */
+    /* Mixed term - 2*PI * xi * (N_i*N_j) for j > i */
     for (int josc = iosc+1; josc < noscillators_; josc++) {
 
       createNumberOP(josc, &numberOPj);
       MatMatMult(numberOP, numberOPj, MAT_INITIAL_MATRIX, PETSC_DEFAULT, &tmp);
-      MatScale(tmp, -xi[xi_id]);
+      MatScale(tmp, -xi[xi_id] * 2.0 * M_PI);
       xi_id++;
 
       MatTranspose(tmp, MAT_INITIAL_MATRIX, &tmp_T);
