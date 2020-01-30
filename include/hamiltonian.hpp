@@ -90,13 +90,14 @@ class LiouvilleVN : public Hamiltonian {
   Mat* Bc_vec;  // Vector of constant matrices for building time-varying Hamiltonian (imaginary part)
   Mat  Ad, Bd;  // Real and imaginary part of constant drift Hamiltonian Hd 
 
-  double* xi;  // Constants for rotating frame frequencies of drift Hamiltonian
+  double* xi;  // Constants for frequencies of drift Hamiltonian
 
   /* Some auxiliary vectors */
   double *dRedp;
   double *dImdp;
   int *rowid;
   int *rowid_shift;
+  IS isu, isv;
 
   public: 
     LiouvilleVN();

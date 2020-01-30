@@ -324,6 +324,10 @@ LiouvilleVN::LiouvilleVN(double* xi_, int noscillators_, Oscillator** oscil_vec_
     }
 
     MatDestroy(&numberOP);
+
+    /* Create vector strides for accessing Re and Im part for x = [u v] */
+    ISCreateStride(PETSC_COMM_WORLD, dim, 0, 1, &isu);
+    ISCreateStride(PETSC_COMM_WORLD, dim, dim, 1, &isv);
   }
 
   MatAssemblyBegin(Bd, MAT_FINAL_ASSEMBLY);
@@ -358,6 +362,8 @@ LiouvilleVN::~LiouvilleVN(){
   delete [] rowid;
   delete [] rowid_shift;
 
+  ISDestroy(&isu);
+  ISDestroy(&isv);
 }
 
 
@@ -399,12 +405,8 @@ int LiouvilleVN::assemble_RHS(double t){
 
 int LiouvilleVN::assemble_dRHSdp(double t, Vec x) {
 
+  /* Get real and imaginary part from x = [u v] */
   Vec u, v;
-  IS isu, isv;
-  ISCreateStride(PETSC_COMM_WORLD, dim, 0, 1, &isu);
-  ISCreateStride(PETSC_COMM_WORLD, dim, dim, 1, &isv);
-
-  /* Get u and v from x = [u v] */
   VecGetSubVector(x, isu, &u);
   VecGetSubVector(x, isv, &v);
 
@@ -484,13 +486,9 @@ int LiouvilleVN::assemble_dRHSdp(double t, Vec x) {
   VecDestroy(&Bcv);
   VecDestroy(&tmp);
 
-  /* Restore y */
+  /* Restore x */
   VecRestoreSubVector(x, isu, &u);
   VecRestoreSubVector(x, isv, &v);
-
-  ISDestroy(&isu);
-  ISDestroy(&isv);
-
 
   return 0;
 }

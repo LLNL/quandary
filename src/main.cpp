@@ -120,7 +120,7 @@ int main(int argc,char **argv)
 
   /* Initialize the Hamiltonian  */
   if (analytic) {
-    hamiltonian = new AnalyticHam(xi, oscil_vec); // always 2levels
+    hamiltonian = new AnalyticHam(xi, oscil_vec); 
   } else {
     // hamiltonian = new TwoOscilHam(nlvl, xi, oscil_vec);
     hamiltonian = new LiouvilleVN(xi, nosci, oscil_vec);
@@ -129,7 +129,7 @@ int main(int argc,char **argv)
   /* Initialize the target */
   double f1 = 4.10595;
   double f2 = 4.81526;
-  Gate* targetgate = new CNOT(f1,f2, total_time);
+  Gate* targetgate = new CNOT(f1,f2, total_time); // ONLY WORKS FOR 2by2 testcase!!
 
   /* Create solution vector x */
   MatCreateVecs(hamiltonian->getRHS(), &x, NULL);
