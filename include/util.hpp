@@ -33,3 +33,9 @@ PetscErrorCode StateIsHermitian(Vec x, PetscReal tol, PetscBool *flag);
 
 /* Test if vectorized state vector x=[u,v] represent matrix with Trace 1 */
 PetscErrorCode StateHasTrace1(Vec x, PetscReal tol, PetscBool *flag);
+
+
+/**
+ * Read data from file
+ */
+void read_vector(const char *filename, double *var, int dim);

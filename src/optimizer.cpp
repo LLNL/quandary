@@ -7,6 +7,7 @@ OptimProblem::OptimProblem() {
     regul = 0.0;
     alpha_max = 0.0;
     beta_max = 0.0;
+    x0filename = "none";
     mpirank_braid = 0;
     mpisize_braid = 0;
     mpirank_space = 0;
@@ -17,13 +18,14 @@ OptimProblem::OptimProblem() {
     mpisize_world = 0;
 }
 
-OptimProblem::OptimProblem(myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, MPI_Comm comm_hiop_, double optim_regul_, double alpha_max_, double beta_max_){
+OptimProblem::OptimProblem(myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, MPI_Comm comm_hiop_, double optim_regul_, double alpha_max_, double beta_max_, std::string x0filename_){
     primalbraidapp  = primalbraidapp_;
     adjointbraidapp = adjointbraidapp_;
     comm_hiop = comm_hiop_;
     regul = optim_regul_;
     alpha_max = alpha_max_;
     beta_max = beta_max_;
+    x0filename = x0filename_;
 
     MPI_Comm_rank(primalbraidapp->comm_braid, &mpirank_braid);
     MPI_Comm_size(primalbraidapp->comm_braid, &mpisize_braid);
@@ -270,17 +272,23 @@ bool OptimProblem::eval_Jac_cons(const long long& n, const long long& m, const l
 }
 
 bool OptimProblem::get_starting_point(const long long &global_n, double* x0) {
-// bool OptimProblem::get_starting_point(Index n, bool init_x, Number* x, bool init_z, Number* z_L, Number* z_U, Index m, bool init_lambda, Number* lambda){
 
   /* Set initial parameters. */
   // Do this on one processor only, then broadcast, to make sure that every processor starts with the same initial guess. 
   if (mpirank_world == 0) {
-    // srand (time(NULL));  // TODO: initialize the random seed. 
-    srand (1.0);            // seed 1.0 only for code debugging!
-    for (int i=0; i<global_n; i++) {
-      x0[i] = (double) rand() / ((double)RAND_MAX);
+    if (x0filename.compare("none") != 0)  {
+        /* read from file */
+        read_vector(x0filename.c_str(), x0, global_n); 
+    }
+    else {
+      /* Set to random initial guess. */
+      srand (1.0);    // seed 1.0 only for code debugging! seed with time(NULL) otherwise!
+      for (int i=0; i<global_n; i++) {
+        x0[i] = (double) rand() / ((double)RAND_MAX);
+      }
     }
   }
+
   MPI_Bcast(x0, global_n, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
   /* Pass to oscillator */

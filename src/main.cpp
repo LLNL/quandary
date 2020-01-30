@@ -177,7 +177,7 @@ int main(int argc,char **argv)
 
   /* Initialize the optimization */
   long long int ndesign,m;
-  OptimProblem optimproblem(primalbraidapp, adjointbraidapp, comm_hiop, config.GetDoubleParam("optim_regul", 1e-4), config.GetDoubleParam("optim_alphamax", 1e20), config.GetDoubleParam("optim_betamax", 1e20));
+  OptimProblem optimproblem(primalbraidapp, adjointbraidapp, comm_hiop, config.GetDoubleParam("optim_regul", 1e-4), config.GetDoubleParam("optim_alphamax", 1e20), config.GetDoubleParam("optim_betamax", 1e20), config.GetStrParam("optim_x0filename", "none"));
   hiop::hiopNlpDenseConstraints nlp(optimproblem);
   optimproblem.get_prob_sizes(ndesign, m);
   /* Set options */
@@ -196,7 +196,7 @@ int main(int argc,char **argv)
 
 
   /* --- Test optimproblem --- */
-  if (mpirank == 0) printf("#ndesign=%d\n", ndesign);
+  if (mpirank == 0) printf("# ndesign=%d\n", ndesign);
   double* myinit = new double[ndesign];
   double* optimgrad = new double[ndesign];
   optimproblem.get_starting_point(ndesign, myinit);
