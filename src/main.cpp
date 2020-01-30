@@ -27,7 +27,6 @@ int main(int argc,char **argv)
   PetscReal      dt;           // Time step size
   PetscReal      total_time;   // Total end time T
   TS             ts;           // Timestepping context
-  PetscInt       iolevel;      // Level of file output (0: no output)
   PetscInt       nspline;      // Number of spline basis functions
   Hamiltonian*   hamiltonian;  // Hamiltonian system
   PetscBool      analytic;     // If true: runs analytic test case
@@ -57,6 +56,7 @@ int main(int argc,char **argv)
   MPI_Init(&argc, &argv);
   MPI_Comm_rank(MPI_COMM_WORLD, &mpirank);
   MPI_Comm_size(MPI_COMM_WORLD, &mpisize);
+  if (mpirank == 0) printf("# Running on %d cores.\n", mpisize);
 
   MPI_Comm comm = MPI_COMM_WORLD;
   MPI_Comm comm_braid, comm_petsc, comm_hiop;
@@ -86,7 +86,6 @@ int main(int argc,char **argv)
   analytic = (PetscBool) config.GetBoolParam("analytic", false);
   primal_only = (PetscBool) config.GetBoolParam("primal_only", false);
   monitor = (PetscBool) config.GetBoolParam("monitor", false);
-  iolevel = (PetscInt) config.GetIntParam("iolevel", 1);
   
   /* Initialize time horizon */
   total_time = ntime * dt;
@@ -159,7 +158,7 @@ int main(int argc,char **argv)
   adjointbraidapp = new myAdjointBraidApp(comm_braid, total_time, ntime, ts, mytimestepper, hamiltonian, targetgate, *mu, &config, primalbraidapp->getCore());
 
   /* Prepare output */
-  if (iolevel > 0) {
+  // if (iolevel > 0) {
     sprintf(filename, "out_u.%04d.dat", mpirank);
     primalbraidapp->ufile = fopen(filename, "w");
     sprintf(filename, "out_v.%04d.dat", mpirank);
@@ -168,7 +167,7 @@ int main(int argc,char **argv)
     adjointbraidapp->ufile = fopen(filename, "w");
     sprintf(filename, "out_vadj.%04d.dat", mpirank);
     adjointbraidapp->vfile = fopen(filename, "w");
-  }
+  // }
 
   /* Print some information on the time-grid distribution */
   // int ilower, iupper;

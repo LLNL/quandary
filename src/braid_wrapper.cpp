@@ -40,8 +40,8 @@ myBraidApp::myBraidApp(MPI_Comm comm_braid_, double total_time_, int ntime_, TS 
   /* Get and set Braid options */
   int printlevel = config->GetIntParam("braid_printlevel", 2);
   core->SetPrintLevel(printlevel);
-  int iolevel = config->GetIntParam("iolevel", 1);
-  core->SetAccessLevel( iolevel);
+  int accesslevel = config->GetIntParam("braid_accesslevel", 1);
+  core->SetAccessLevel( accesslevel );
   int maxlevels = config->GetIntParam("braid_maxlevels", 20);
   core->SetMaxLevels(maxlevels);
   int cfactor = config->GetIntParam("braid_cfactor", 5);

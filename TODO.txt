@@ -3,5 +3,4 @@
     - make sure that braid_Drive() is called once before optimization.
     - pass J_bar through the app
     - adapt xbraid solveadjointwithbraid to do the grid initialization before the actual braid_Drive. 
-* Generalize Gate interface!
 * fix getParams() for FunctionOscillator!
