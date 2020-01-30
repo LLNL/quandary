@@ -387,7 +387,7 @@ braid_Int myBraidApp::BufUnpack(void *buffer, braid_Vector *u_ptr, BraidBufferSt
   return 0; 
 }
 
-int myBraidApp::PreProcess(int iinit){ 
+int myBraidApp::PreProcess(int iinit, double f_Re, double f_Im){
 /* Apply initial condition if warm_restart (otherwise it is set in my_Init().
  * Can not be set here if !(warm_restart) because the braid_grid is created only when braid_drive() is called. 
  */
@@ -410,7 +410,7 @@ int myBraidApp::PreProcess(int iinit){
 
 
 
-int myBraidApp::PostProcess(int iinit, double* f) {
+int myBraidApp::PostProcess(int iinit, double* f_Re, double* f_Im) {
 
   braid_BaseVector ubase;
   myBraidVector *u;
@@ -423,15 +423,17 @@ int myBraidApp::PostProcess(int iinit, double* f) {
   }
 
   /* Eval objective function for initial condition iinit */
-  double obj_local = 0.0;
+  double obj_Re_local = 0.0;
+  double obj_Im_local = 0.0;
   Vec finalstate = getStateVec(total_time); // this returns NULL for all but the last processors! 
   if (finalstate != NULL) {
     /* Compare to target gate */
-    obj_local = targetgate->apply(iinit, finalstate);
+    targetgate->apply(iinit, finalstate, obj_Re_local, obj_Im_local);
   }
 
   /* Set return value */
-  *f = obj_local;
+  *f_Re = obj_Re_local;
+  *f_Im = obj_Im_local;
 
   return 0;
 }
@@ -610,8 +612,9 @@ braid_Int myAdjointBraidApp::Init(braid_Real t, braid_Vector *u_ptr) {
   if (t==0){
 
     /* Set derivative of objective function value */
+    /* TODO: THIS IS BULLSHIT! MAKE SURE THAT PreProcess is called after this!! */
     double obj_bar = - 1./(hamiltonian->getDim() * hamiltonian->getDim());
-    targetgate->apply_diff(0, u->x, obj_bar);
+    targetgate->apply_diff(0, u->x, 1.0, 1.0);
   }
 
   /* Return new vector to braid */
@@ -621,7 +624,7 @@ braid_Int myAdjointBraidApp::Init(braid_Real t, braid_Vector *u_ptr) {
 }
 
 
-int myAdjointBraidApp::PreProcess(int iinit) {
+int myAdjointBraidApp::PreProcess(int iinit, double f_Re_bar, double f_Im_bar){
 /* If warm_restart: set adjoint initial condition here. Otherwise it's set in my_Init_Adj.
  * It can not be done here if drive() has not been called before, because the braid grid is allocated only at the beginning of drive() 
 */
@@ -637,8 +640,7 @@ int myAdjointBraidApp::PreProcess(int iinit) {
 
       /* Set derivative of objective function value */
       VecZeroEntries(uadjoint->x);
-      double obj_bar = - 1./(hamiltonian->getDim() * hamiltonian->getDim());
-      targetgate->apply_diff(iinit, uadjoint->x, obj_bar);
+      targetgate->apply_diff(iinit, uadjoint->x, f_Re_bar, f_Im_bar);
     }
   }
 
@@ -648,7 +650,7 @@ int myAdjointBraidApp::PreProcess(int iinit) {
   return 0;
 }
 
-int myAdjointBraidApp::PostProcess(int i, double* f) {
+int myAdjointBraidApp::PostProcess(int i, double* f_Re, double* f_Im) {
 
   int maxlevels;
   maxlevels = _braid_CoreElt(core->GetCore(), max_levels);

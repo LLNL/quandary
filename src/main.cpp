@@ -127,7 +127,9 @@ int main(int argc,char **argv)
   }
 
   /* Initialize the target */
-  Gate* targetgate = new CNOT();
+  double f1 = 4.10595;
+  double f2 = 4.81526;
+  Gate* targetgate = new CNOT(f1,f2, total_time);
 
   /* Create solution vector x */
   MatCreateVecs(hamiltonian->getRHS(), &x, NULL);

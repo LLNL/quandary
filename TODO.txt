@@ -1,1 +1,8 @@
+* Read in xi and fa frequencies. Multiply by 2*pi only in Hd, and in gate.
+* Setting J_bar in myAdjointBraidApp::Preprocess will not be called in the first Braid_Drive instance. Instead only myAdjointBraidApp::Init. But I need to set the J_bar derivative in the initial conditions of the adjoint. Not sure what to do. Options:
+    - make sure that braid_Drive() is called once before optimization.
+    - pass J_bar through the app
+    - adapt xbraid solveadjointwithbraid to do the grid initialization before the actual braid_Drive. 
+* Remove creation and destroy of IS Stride from assemble_dRHSdp
+* Generalize Gate interface!
 * fix getParams() for FunctionOscillator!

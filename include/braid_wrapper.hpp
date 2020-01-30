@@ -89,10 +89,10 @@ class myBraidApp : public BraidApp {
                                 BraidBufferStatus &bstatus);
 
     /* Sets the initial condition with index i if warm_restart (otherwise it is set in my_Init() */
-    virtual int PreProcess(int i);
+    virtual int PreProcess(int i, double f_Re, double f_Im);
 
     /* Performs one last FRelax, evaluates the objective function value for init i */
-    virtual int PostProcess(int i, double* f);
+    virtual int PostProcess(int i, double* f_Re, double* f_Im);
 
     /* Call braid_drive and postprocess. Return braid norm */
     double Drive();
@@ -128,9 +128,9 @@ class myAdjointBraidApp : public myBraidApp {
     braid_Int Init(braid_Real t, braid_Vector *u_ptr);
 
     /* Sets the adjoint initial condition if warmrestart (derivative of primal objective function) */
-    int PreProcess(int i);
+    int PreProcess(int i, double f_Re_bar, double f_Im_bar);
 
     /* Performs one last FRelax and MPI_Allreduce the gradient. */
-    int PostProcess(int i, double* f);
+    int PostProcess(int i, double* f_Re, double* f_Im);
 
 };

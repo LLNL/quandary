@@ -125,7 +125,8 @@ bool OptimProblem::eval_f(const long long& n, const double* x_in, bool new_x, do
 // bool OptimProblem::eval_f(Index n, const Number* x, bool new_x, Number& obj_value){
 
   printf("%d: EVAL F\n", mpirank_world);
-  double obj_local;
+  double obj_Re_local;
+  double obj_Im_local;
   Hamiltonian* hamil = primalbraidapp->hamiltonian;
   int dim = hamil->getDim();
 
@@ -140,20 +141,21 @@ bool OptimProblem::eval_f(const long long& n, const double* x_in, bool new_x, do
     objective_curr = 0.0;
     for (int iinit = 0; iinit < dim; iinit++) {
       /* Set initial condition for index iinit */
-      primalbraidapp->PreProcess(iinit);
+      primalbraidapp->PreProcess(iinit, 0.0, 0.0);
       /* Solve forward problem */
       primalbraidapp->Drive();
       /* Eval objective function for initial condition i */
-      primalbraidapp->PostProcess(iinit, &obj_local);
+      primalbraidapp->PostProcess(iinit, &obj_Re_local, &obj_Im_local);
 
       /* Add to global objective value */
-      objective_curr += obj_local;
+      objective_curr += pow(obj_Re_local,2.0) + pow(obj_Im_local, 2.0);
     }
   }
 
   /* Sum up objective from all braid processors */
   double myobj = objective_curr;
   MPI_Allreduce(&myobj, &objective_curr, 1, MPI_DOUBLE, MPI_SUM, primalbraidapp->comm_braid);
+
   /* J = 1 - 1/N^4 * obj */
   objective_curr = 1. - 1./(dim*dim) * objective_curr;
 
@@ -169,7 +171,8 @@ bool OptimProblem::eval_grad_f(const long long& n, const double* x_in, bool new_
   printf("%d: EVAL GRAD F\n", mpirank_world);
 
   Hamiltonian* hamil = primalbraidapp->hamiltonian;
-  double obj_local;
+  double obj_Re_local, obj_Im_local;
+  double obj_Re_bar, obj_Im_bar;
   int dim = hamil->getDim();
 
   /* Make sure that grad_f is zero when it comes in. */
@@ -188,16 +191,20 @@ bool OptimProblem::eval_grad_f(const long long& n, const double* x_in, bool new_
   for (int iinit = 0; iinit < dim; iinit++) {
 
     /* --- Solve primal --- */
-    primalbraidapp->PreProcess(iinit);
+    primalbraidapp->PreProcess(iinit, 0.0, 0.0);
     primalbraidapp->Drive();
-    primalbraidapp->PostProcess(iinit, &obj_local);
+    primalbraidapp->PostProcess(iinit, &obj_Re_local, &obj_Im_local);
     /* Add to global objective value */
-    objective_curr += obj_local;
+    objective_curr += pow(obj_Re_local,2.0) + pow(obj_Im_local, 2.0);
+
+    /* Derivative of local objective */
+    obj_Re_bar =  - 1./(dim*dim) * 2. * obj_Re_local;
+    obj_Im_bar =  - 1./(dim*dim) * 2. * obj_Im_local;
 
     /* --- Solve adjoint --- */
-    adjointbraidapp->PreProcess(iinit);
+    adjointbraidapp->PreProcess(iinit, obj_Re_bar, obj_Im_bar);
     adjointbraidapp->Drive();
-    adjointbraidapp->PostProcess(iinit, NULL);
+    adjointbraidapp->PostProcess(iinit, NULL, NULL);
 
     /* Add to Ipopt's gradient */
     const double* grad_ptr = adjointbraidapp->getReducedGradientPtr();
