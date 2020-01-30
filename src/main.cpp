@@ -197,18 +197,20 @@ int main(int argc,char **argv)
 
 
   /* --- Test optimproblem --- */
-  if (mpirank == 0) printf("ndesign=%d\n", ndesign);
+  if (mpirank == 0) printf("#ndesign=%d\n", ndesign);
   double* myinit = new double[ndesign];
+  double* optimgrad = new double[ndesign];
   optimproblem.get_starting_point(ndesign, myinit);
 
-  // /* --- Solve primal --- */
-  printf("%d: Running optimizer eval_f... \n", mpirank);
+  // TODO: THIS IS A HACK: Make sure to run one braid_Drive before the actual optimization (in order to initialize Braid's time-grid.)
+  optimproblem.eval_f(ndesign, myinit, true, objective);
+  optimproblem.eval_grad_f(ndesign, myinit, true, optimgrad);
+  
+  /* --- Solve primal --- */
   optimproblem.eval_f(ndesign, myinit, true, objective);
   printf("%d: Objective %1.14e\n", mpirank, objective);
 
   /* --- Solve adjoint --- */
-  printf("%d: Running optimizer eval_grad_f...\n", mpirank);
-  double* optimgrad = new double[ndesign];
   optimproblem.eval_grad_f(ndesign, myinit, true, optimgrad);
   if (mpirank == 0) {
     printf("\n%d: My awesome gradient:\n", mpirank);

@@ -575,9 +575,6 @@ braid_Int myAdjointBraidApp::Step(braid_Vector u_, braid_Vector ustop_, braid_Ve
     /* --- New timestepper --- */
     /* --------------------------------------------------------------------------*/
 
-    /* Reset gradient, if neccessary */
-    if (!update_gradient) VecZeroEntries(redgrad);
-
     /* Get original time */
     double tstart_orig = total_time - tstart;
     double tstop_orig  = total_time - tstop;
@@ -590,8 +587,11 @@ braid_Int myAdjointBraidApp::Step(braid_Vector u_, braid_Vector ustop_, braid_Ve
     if (ubaseprimal_tstop == NULL) printf("ubaseprimal_tstop is null!\n");
     uprimal_tstop  = (myBraidVector*) ubaseprimal_tstop->userVector;
 
+    /* Reset gradient, if neccessary */
+    if (!done) VecZeroEntries(redgrad);
+
     /* Evolve u backwards in time and update gradient */
-    mytimestepper->evolveBWD(tstop_orig, tstart_orig, uprimal_tstop->x, u->x, redgrad);
+    mytimestepper->evolveBWD(tstop_orig, tstart_orig, uprimal_tstop->x, u->x, redgrad, done);
 
   }
 
@@ -655,11 +655,10 @@ int myAdjointBraidApp::PostProcess(int i, double* f_Re, double* f_Im) {
   int maxlevels;
   maxlevels = _braid_CoreElt(core->GetCore(), max_levels);
 
-  if (maxlevels > 1) {
-    VecZeroEntries(redgrad);
-    _braid_CoreElt(core->GetCore(), done) = 1;
-    _braid_FCRelax(core->GetCore(), 0);
-  }
+  /* Sweep over all points to collect the gradient */
+  VecZeroEntries(redgrad);
+  _braid_CoreElt(core->GetCore(), done) = 1;
+  _braid_FCRelax(core->GetCore(), 0);
 
   return 0;
 }

@@ -35,13 +35,15 @@ void ExplEuler::evolveFWD(double tstart, double tstop, Vec x) {
   VecAXPY(x, dt, stage);
 }
 
-void ExplEuler::evolveBWD(double tstop, double tstart, Vec x, Vec x_adj, Vec grad){
+void ExplEuler::evolveBWD(double tstop, double tstart, Vec x, Vec x_adj, Vec grad, bool compute_gradient){
   double dt = fabs(tstop - tstart);
 
   /* Add to reduced gradient */
-  hamiltonian->assemble_dRHSdp(tstop, x);
-  MatScale(hamiltonian->getdRHSdp(), dt);
-  MatMultTransposeAdd(hamiltonian->getdRHSdp(), x_adj, grad, grad); 
+  if (compute_gradient) {
+    hamiltonian->assemble_dRHSdp(tstop, x);
+    MatScale(hamiltonian->getdRHSdp(), dt);
+    MatMultTransposeAdd(hamiltonian->getdRHSdp(), x_adj, grad, grad); 
+  }
 
   /* update x_adj = x_adj + hA^Tx_adj */
   hamiltonian->assemble_RHS(tstop);
@@ -127,7 +129,7 @@ void ImplMidpoint::evolveFWD(double tstart, double tstop, Vec x) {
 
 }
 
-void ImplMidpoint::evolveBWD(double tstop, double tstart, Vec x, Vec x_adj, Vec grad){
+void ImplMidpoint::evolveBWD(double tstop, double tstart, Vec x, Vec x_adj, Vec grad, bool compute_gradient){
   Mat A;
 
   /* Compute time step size */
@@ -168,10 +170,12 @@ void ImplMidpoint::evolveBWD(double tstop, double tstart, Vec x, Vec x_adj, Vec 
   VecScale(stage_adj, dt);
 
   /* Add to reduced gradient */
-  VecAYPX(stage, dt / 2.0, x);
-  hamiltonian->assemble_dRHSdp(thalf, stage);
-  Mat B = hamiltonian->getdRHSdp();
-  MatMultTransposeAdd(B, stage_adj, grad, grad);
+  if (compute_gradient) {
+    VecAYPX(stage, dt / 2.0, x);
+    hamiltonian->assemble_dRHSdp(thalf, stage);
+    Mat B = hamiltonian->getdRHSdp();
+    MatMultTransposeAdd(B, stage_adj, grad, grad);
+  }
 
   /* Update adjoint state x_adj += dt * A^Tstage_adj --- */
   hamiltonian->assemble_RHS( (tstart + tstop) / 2.0);

@@ -26,7 +26,7 @@ class TimeStepper{
     /* Evolve state forward from tstart to tstop */
     virtual void evolveFWD(double tstart, double tstop, Vec x) = 0;
     /* Evolve adjoint backward from tstop to tstart and update reduced gradient */
-    virtual void evolveBWD(double tstart, double tstop, Vec x_stop, Vec x_adj, Vec grad) = 0;
+    virtual void evolveBWD(double tstart, double tstop, Vec x_stop, Vec x_adj, Vec grad, bool compute_gradient) = 0;
 };
 
 class ExplEuler : public TimeStepper {
@@ -38,7 +38,7 @@ class ExplEuler : public TimeStepper {
     /* Evolve state forward from tstart to tstop */
     void evolveFWD(double tstart, double tstop, Vec x);
     /* Evolve adjoint backward from tstop to tstart and update reduced gradient */
-    void evolveBWD(double tstart, double tstop, Vec x_stop, Vec x_adj, Vec grad);
+    void evolveBWD(double tstart, double tstop, Vec x_stop, Vec x_adj, Vec grad, bool compute_gradient);
 };
 
 
@@ -63,7 +63,7 @@ class ImplMidpoint : public TimeStepper {
     /* Evolve state forward from tstart to tstop */
     void evolveFWD(double tstart, double tstop, Vec x);
     /* Evolve adjoint backward from tstop to tstart and update reduced gradient */
-    void evolveBWD(double tstart, double tstop, Vec x_stop, Vec x_adj, Vec grad);
+    void evolveBWD(double tstart, double tstop, Vec x_stop, Vec x_adj, Vec grad, bool compute_gradient);
 };
 
 
