@@ -1,5 +1,6 @@
 #include "braid_wrapper.hpp"
 #include "hiopInterface.hpp"
+#include "math.h"
 
 #pragma once
 
@@ -7,11 +8,12 @@
 class OptimProblem : public hiop::hiopInterfaceDenseConstraints {
 
     protected:
-        myBraidApp* primalbraidapp;
-        myAdjointBraidApp* adjointbraidapp;
-        double objective_curr;  // holds the current objective function value
-        MPI_Comm comm_hiop;
+        myBraidApp* primalbraidapp;         /* Primal BraidApp to carry out PinT forward sim.*/
+        myAdjointBraidApp* adjointbraidapp; /* Adjoint BraidApp to carry out PinT backward sim. */
+        double objective_curr;              /* holds the current objective function value */
+        double regul;                       /* Parameter for L2 regularization */
 
+        MPI_Comm comm_hiop;
         int mpirank_braid, mpisize_braid;
         int mpirank_space, mpisize_space;
         int mpirank_optim, mpisize_optim;
@@ -19,7 +21,7 @@ class OptimProblem : public hiop::hiopInterfaceDenseConstraints {
 
     public:
         OptimProblem();
-        OptimProblem(myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, MPI_Comm comm_hiop_);
+        OptimProblem(myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, MPI_Comm comm_hiop_, double optim_regul_);
         virtual ~OptimProblem();
 
 

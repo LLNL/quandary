@@ -177,7 +177,7 @@ int main(int argc,char **argv)
 
   /* Initialize the optimization */
   long long int ndesign,m;
-  OptimProblem optimproblem(primalbraidapp, adjointbraidapp, comm_hiop);
+  OptimProblem optimproblem(primalbraidapp, adjointbraidapp, comm_hiop, config.GetDoubleParam("optim_regul", 1e-4));
   hiop::hiopNlpDenseConstraints nlp(optimproblem);
   optimproblem.get_prob_sizes(ndesign, m);
   /* Set options */

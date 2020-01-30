@@ -4,6 +4,7 @@ OptimProblem::OptimProblem() {
     primalbraidapp  = NULL;
     adjointbraidapp = NULL;
     objective_curr = 0.0;
+    regul = 0.0;
     mpirank_braid = 0;
     mpisize_braid = 0;
     mpirank_space = 0;
@@ -14,10 +15,11 @@ OptimProblem::OptimProblem() {
     mpisize_world = 0;
 }
 
-OptimProblem::OptimProblem(myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, MPI_Comm comm_hiop_){
+OptimProblem::OptimProblem(myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, MPI_Comm comm_hiop_, double optim_regul_){
     primalbraidapp  = primalbraidapp_;
     adjointbraidapp = adjointbraidapp_;
     comm_hiop = comm_hiop_;
+    regul = optim_regul_;
 
     MPI_Comm_rank(primalbraidapp->comm_braid, &mpirank_braid);
     MPI_Comm_size(primalbraidapp->comm_braid, &mpisize_braid);
@@ -147,7 +149,7 @@ bool OptimProblem::eval_f(const long long& n, const double* x_in, bool new_x, do
       /* Eval objective function for initial condition i */
       primalbraidapp->PostProcess(iinit, &obj_Re_local, &obj_Im_local);
 
-      /* Add to global objective value */
+      /* Add to objective function (trace) */
       objective_curr += pow(obj_Re_local,2.0) + pow(obj_Im_local, 2.0);
     }
   }
@@ -156,8 +158,11 @@ bool OptimProblem::eval_f(const long long& n, const double* x_in, bool new_x, do
   double myobj = objective_curr;
   MPI_Allreduce(&myobj, &objective_curr, 1, MPI_DOUBLE, MPI_SUM, primalbraidapp->comm_braid);
 
-  /* J = 1 - 1/N^4 * obj */
+  /* J = 1 - 1/N^4 * obj + gamma * ||x||^2*/
   objective_curr = 1. - 1./(dim*dim) * objective_curr;
+  for (int i=0; i<n; i++) {
+    objective_curr += regul / 2.0 * pow(x_in[i], 2.0);
+  }
 
   /* Return objective value */
   obj_value = objective_curr;
@@ -175,19 +180,17 @@ bool OptimProblem::eval_grad_f(const long long& n, const double* x_in, bool new_
   double obj_Re_bar, obj_Im_bar;
   int dim = hamil->getDim();
 
-  /* Make sure that grad_f is zero when it comes in. */
-  for (int i=0; i<n; i++) {
-    gradf[i] = 0.0;
-  }
-
   /* Pass x to Oscillator */
   setDesign(n, x_in);
 
-  objective_curr = 0.0;
+  /* Derivative of J = 1 - 1/N^4 * obj + gamma * ||x||^2 */
+  double objective_curr_bar = -1./(dim*dim);
+  for (int i=0; i<n; i++) {
+    gradf[i] = regul * x_in[i];
+  }
 
   /* Iterate over initial conditions */
-    // dim = 1;
-  /* Reset objective function value */
+  objective_curr = 0.0;
   for (int iinit = 0; iinit < dim; iinit++) {
 
     /* --- Solve primal --- */
@@ -197,9 +200,9 @@ bool OptimProblem::eval_grad_f(const long long& n, const double* x_in, bool new_
     /* Add to global objective value */
     objective_curr += pow(obj_Re_local,2.0) + pow(obj_Im_local, 2.0);
 
-    /* Derivative of local objective */
-    obj_Re_bar =  - 1./(dim*dim) * 2. * obj_Re_local;
-    obj_Im_bar =  - 1./(dim*dim) * 2. * obj_Im_local;
+    /* Derivative of local trace objective */
+    obj_Re_bar =  2. * obj_Re_local * objective_curr_bar;
+    obj_Im_bar =  2. * obj_Im_local * objective_curr_bar;
 
     /* --- Solve adjoint --- */
     adjointbraidapp->PreProcess(iinit, obj_Re_bar, obj_Im_bar);
@@ -216,8 +219,11 @@ bool OptimProblem::eval_grad_f(const long long& n, const double* x_in, bool new_
   /* Sum up objective from all braid processors */
   double myobj = objective_curr;
   MPI_Allreduce(&myobj, &objective_curr, 1, MPI_DOUBLE, MPI_SUM, primalbraidapp->comm_braid);
-  /* J = 1 - 1/N^4 * obj */
+  /* J = 1 - 1/N^4 * obj + gamma*||x||^2 */
   objective_curr = 1. - 1./(dim*dim) * objective_curr;
+  for (int i=0; i<n; i++) {
+    objective_curr += regul / 2.0 * pow(x_in[i], 2.0);
+  }
 
   /* Sum up the gradient from all braid processors */
   double* mygrad = new double[n];
