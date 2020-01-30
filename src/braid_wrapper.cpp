@@ -29,6 +29,7 @@ myBraidApp::myBraidApp(MPI_Comm comm_braid_, double total_time_, int ntime_, TS 
   hamiltonian = ham_;
   targetgate = targate_;
   comm_braid = comm_braid_;
+  MPI_Comm_rank(comm_braid, &braidrank);
   ufile = NULL;
   vfile = NULL;
 
@@ -40,8 +41,6 @@ myBraidApp::myBraidApp(MPI_Comm comm_braid_, double total_time_, int ntime_, TS 
   /* Get and set Braid options */
   int printlevel = config->GetIntParam("braid_printlevel", 2);
   core->SetPrintLevel(printlevel);
-  int accesslevel = config->GetIntParam("braid_accesslevel", 1);
-  core->SetAccessLevel( accesslevel );
   int maxlevels = config->GetIntParam("braid_maxlevels", 20);
   core->SetMaxLevels(maxlevels);
   int cfactor = config->GetIntParam("braid_cfactor", 5);
@@ -57,7 +56,19 @@ myBraidApp::myBraidApp(MPI_Comm comm_braid_, double total_time_, int ntime_, TS 
   core->SetAbsTol(1e-6);
   core->SetSeqSoln(0);
 
+
+  /* Output */
+  accesslevel = config->GetIntParam("braid_accesslevel", 1);
+  core->SetAccessLevel( accesslevel );
+  datadir = config->GetStrParam("braid_datadir", "./braid_out");
   // _braid_SetVerbosity(core->GetCore(), 1);
+
+  int worldrank;
+  MPI_Comm_rank(MPI_COMM_WORLD, &worldrank);
+  if (worldrank == 0) {
+    mkdir(datadir.c_str(), 0777);
+    cout << "# Data directory: " << datadir << endl; 
+  }
 }
 
 myBraidApp::~myBraidApp() {
@@ -259,22 +270,20 @@ braid_Int myBraidApp::SpatialNorm(braid_Vector u_, braid_Real *norm_ptr){
 braid_Int myBraidApp::Access(braid_Vector u_, BraidAccessStatus &astatus){ 
   myBraidVector *u = (myBraidVector *)u_;
   int istep;
+  int done = 0;
   double t;
-  double err_norm, exact_norm;
-  Vec err;
-  Vec exact;
 
   /* Get time information */
   astatus.GetTIndex(&istep);
   astatus.GetT(&t);
+  astatus.GetDone(&done);
 
-  // printf("\nAccess %d %f\n", istep, t);
-  // VecView(u->x, PETSC_VIEWER_STDOUT_WORLD);
-
+  /* Don't print first time step. Something is fishy herre.*/
   if (t == 0.0) return 0;
 
-  if (ufile != NULL && vfile != NULL) {
+  if (done && ufile != NULL && vfile != NULL) {
 
+    
     /* Get access to Petsc's vector */
     const PetscScalar *x_ptr;
     VecGetArrayRead(u->x, &x_ptr);
@@ -298,6 +307,9 @@ braid_Int myBraidApp::Access(braid_Vector u_, BraidAccessStatus &astatus){
   }
 
     /* TODO */ 
+    // double err_norm, exact_norm;
+    // Vec err;
+    // Vec exact;
     // /* If set, compare to the exact solution */
     // VecDuplicate(u->x,&exact);
     // if (app->hamiltonian->ExactSolution(t, exact) ) {  
@@ -405,6 +417,16 @@ int myBraidApp::PreProcess(int iinit, double f_Re, double f_Im){
     }
   }
 
+  /* Open output files */
+  if (accesslevel > 0) {
+    char filename[255];
+    sprintf(filename, "%s/out_u.iinit%04d.rank%04d.dat", datadir.c_str(),iinit, braidrank);
+    ufile = fopen(filename, "w");
+    sprintf(filename, "%s/out_v.iinit%04d.rank%04d.dat", datadir.c_str(), iinit, braidrank);
+    vfile = fopen(filename, "w");
+  }
+
+
   return 0; 
 }
 
@@ -434,6 +456,10 @@ int myBraidApp::PostProcess(int iinit, double* f_Re, double* f_Im) {
   /* Set return value */
   *f_Re = obj_Re_local;
   *f_Im = obj_Im_local;
+
+  /* Close output files */
+  if (ufile != NULL) fclose(ufile);
+  if (vfile != NULL) fclose(vfile);
 
   return 0;
 }
@@ -647,6 +673,15 @@ int myAdjointBraidApp::PreProcess(int iinit, double f_Re_bar, double f_Im_bar){
   /* Reset the reduced gradient */
   VecZeroEntries(redgrad); 
 
+  /* Open output files */
+  if (accesslevel > 0) {
+    char filename[255];
+    sprintf(filename, "%s/out_uadj.iinit%04d.rank%04d.dat", datadir.c_str(),iinit, braidrank);
+    ufile = fopen(filename, "w");
+    sprintf(filename, "%s/out_vadj.iinit%04d.rank%04d.dat", datadir.c_str(),iinit, braidrank);
+    vfile = fopen(filename, "w");
+  }
+
   return 0;
 }
 
@@ -659,6 +694,10 @@ int myAdjointBraidApp::PostProcess(int i, double* f_Re, double* f_Im) {
   VecZeroEntries(redgrad);
   _braid_CoreElt(core->GetCore(), done) = 1;
   _braid_FCRelax(core->GetCore(), 0);
+
+  /* Close output files */
+  if (ufile != NULL) fclose(ufile);
+  if (vfile != NULL) fclose(vfile);
 
   return 0;
 }

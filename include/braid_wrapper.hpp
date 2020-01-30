@@ -4,6 +4,8 @@
 #include "braid.hpp"
 #include "util.hpp"
 #include "gate.hpp"
+#include <iostream> 
+#include <sys/stat.h> 
 
 #pragma once
 
@@ -23,16 +25,19 @@ class myBraidApp : public BraidApp {
     TimeStepper  *mytimestepper;
 
     BraidCore *core;                /* Braid core for running PinT simulation */
+    FILE *ufile;
+    FILE *vfile;
 
     int usepetscts;
+    int braidrank;
 
   public:
     MPI_Comm comm_braid;            /* Braid's communicator */
     int          ntime;             /* number of time steps */
+    int          accesslevel;
+    std::string  datadir;           /* Name of output data directory */
     double       total_time;        /* total time  */
     Hamiltonian *hamiltonian;       /* Hamiltonian system */
-    FILE *ufile;
-    FILE *vfile;
 
   public:
 

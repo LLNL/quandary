@@ -146,7 +146,7 @@ bool OptimProblem::get_cons_info(const long long& m, double* clow, double* cupp,
 bool OptimProblem::eval_f(const long long& n, const double* x_in, bool new_x, double& obj_value){
 // bool OptimProblem::eval_f(Index n, const Number* x, bool new_x, Number& obj_value){
 
-  printf("%d: EVAL F\n", mpirank_world);
+  if (mpirank_world == 0) printf(" EVAL F... ");
   double obj_Re_local;
   double obj_Im_local;
   Hamiltonian* hamil = primalbraidapp->hamiltonian;
@@ -159,9 +159,9 @@ bool OptimProblem::eval_f(const long long& n, const double* x_in, bool new_x, do
     setDesign(n, x_in);
 
     /*  Iterate over initial condition */
-    // dim = 1;
     objective_curr = 0.0;
     for (int iinit = 0; iinit < dim; iinit++) {
+      if (mpirank_world == 0) printf(" %d FWD. ", iinit);
       /* Set initial condition for index iinit */
       primalbraidapp->PreProcess(iinit, 0.0, 0.0);
       /* Solve forward problem */
@@ -172,6 +172,7 @@ bool OptimProblem::eval_f(const long long& n, const double* x_in, bool new_x, do
       /* Add to objective function (trace) */
       objective_curr += pow(obj_Re_local,2.0) + pow(obj_Im_local, 2.0);
     }
+    if (mpirank_world == 0) printf("\n");
   }
 
   /* Sum up objective from all braid processors */
@@ -193,7 +194,7 @@ bool OptimProblem::eval_f(const long long& n, const double* x_in, bool new_x, do
 
 bool OptimProblem::eval_grad_f(const long long& n, const double* x_in, bool new_x, double* gradf){
 // bool OptimProblem::eval_grad_f(Index n, const Number* x, bool new_x, Number* grad_f){
-  printf("%d: EVAL GRAD F\n", mpirank_world);
+  if (mpirank_world == 0) printf(" EVAL GRAD F...");
 
   Hamiltonian* hamil = primalbraidapp->hamiltonian;
   double obj_Re_local, obj_Im_local;
@@ -214,6 +215,7 @@ bool OptimProblem::eval_grad_f(const long long& n, const double* x_in, bool new_
   for (int iinit = 0; iinit < dim; iinit++) {
 
     /* --- Solve primal --- */
+    if (mpirank_world == 0) printf(" %d FWD -", iinit);
     primalbraidapp->PreProcess(iinit, 0.0, 0.0);
     primalbraidapp->Drive();
     primalbraidapp->PostProcess(iinit, &obj_Re_local, &obj_Im_local);
@@ -225,6 +227,7 @@ bool OptimProblem::eval_grad_f(const long long& n, const double* x_in, bool new_
     obj_Im_bar =  2. * obj_Im_local * objective_curr_bar;
 
     /* --- Solve adjoint --- */
+    if (mpirank_world == 0) printf(" BWD. ");
     adjointbraidapp->PreProcess(iinit, obj_Re_bar, obj_Im_bar);
     adjointbraidapp->Drive();
     adjointbraidapp->PostProcess(iinit, NULL, NULL);
@@ -235,6 +238,7 @@ bool OptimProblem::eval_grad_f(const long long& n, const double* x_in, bool new_
         gradf[i] += grad_ptr[i]; 
     }
   }
+  if (mpirank_world == 0) printf("\n");
 
   /* Sum up objective from all braid processors */
   double myobj = objective_curr;
@@ -339,11 +343,11 @@ void OptimProblem::solution_callback(hiop::hiopSolveStatus status, int n, const 
 /* This is called after each iteration. x is LOCAL to each processor ! */
 bool OptimProblem::iterate_callback(int iter, double obj_value, int n, const double* x, const double* z_L, const double* z_U, int m, const double* g, const double* lambda, double inf_pr, double inf_du, double mu, double alpha_du, double alpha_pr, int ls_trials) {
 
-  /* Add to state output files. */
-  if (primalbraidapp->ufile != NULL)  fprintf(primalbraidapp->ufile, "\n\n# Iteration %d\n", iter);
-  if (primalbraidapp->vfile != NULL)  fprintf(primalbraidapp->vfile, "\n\n# Iteration %d\n", iter);
-  if (adjointbraidapp->ufile != NULL) fprintf(adjointbraidapp->ufile, "\n\n# Iteration %d\n", iter);
-  if (adjointbraidapp->vfile != NULL) fprintf(adjointbraidapp->vfile, "\n\n# Iteration %d\n", iter);
+  // /* Add to state output files. */
+  // if (primalbraidapp->ufile != NULL)  fprintf(primalbraidapp->ufile, "\n\n# Iteration %d\n", iter);
+  // if (primalbraidapp->vfile != NULL)  fprintf(primalbraidapp->vfile, "\n\n# Iteration %d\n", iter);
+  // if (adjointbraidapp->ufile != NULL) fprintf(adjointbraidapp->ufile, "\n\n# Iteration %d\n", iter);
+  // if (adjointbraidapp->vfile != NULL) fprintf(adjointbraidapp->vfile, "\n\n# Iteration %d\n", iter);
 
   return true;
 }

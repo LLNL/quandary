@@ -68,7 +68,7 @@ void MapParam::ReadFile(string filename)
       else
       {
         if (mpi_rank == 0)
-          cerr << "Warning: existing param found : " << key << ", with new value " << value << ". Replacing" << endl;
+          cerr << "# Warning: existing param found : " << key << ", with new value " << value << ". Replacing" << endl;
         it_value->second = value;
       }
     }
@@ -83,7 +83,7 @@ double MapParam::GetDoubleParam(string key, double default_val) const
   if (it_value == this->end())
   {
     if (mpi_rank == 0)
-      cerr << "Warning: parameter " << key << " not found ! Taking default = " << default_val << endl;
+      cerr << "# Warning: parameter " << key << " not found ! Taking default = " << default_val << endl;
     val = default_val;
   }
   else
@@ -100,7 +100,7 @@ int MapParam::GetIntParam(string key, int default_val) const
   if (it_value == this->end())
   {
     if (mpi_rank == 0)
-      cerr << "Warning: parameter " << key << " not found ! Taking default = " << default_val << endl;
+      cerr << "# Warning: parameter " << key << " not found ! Taking default = " << default_val << endl;
     val = default_val;
   }
   else
@@ -117,7 +117,7 @@ string MapParam::GetStrParam(string key, string default_val) const
   if (it_value == this->end())
   {
     if (mpi_rank == 0)
-      cerr << "Warning: parameter " << key << " not found ! Taking default = " << default_val << endl;
+      cerr << "# Warning: parameter " << key << " not found ! Taking default = " << default_val << endl;
     val = default_val;
   }
   else
@@ -134,7 +134,7 @@ bool MapParam::GetBoolParam(string key, bool default_val) const
   if (it_value == this->end())
   {
     if (mpi_rank == 0)
-      cerr << "Warning: parameter " << key << " not found ! Taking default = " << default_val << endl;
+      cerr << "# Warning: parameter " << key << " not found ! Taking default = " << default_val << endl;
     val = default_val;
   }
   else if (!strcmp(it_value->second.c_str(), "yes") || !strcmp(it_value->second.c_str(), "true") || !strcmp(it_value->second.c_str(), "YES") || !strcmp(it_value->second.c_str(), "1"))

@@ -14,7 +14,7 @@
 #define EPS 1e-4
 
 #define TEST_DRHSDP 0
-#define TEST_FD_TS 1
+#define TEST_FD_TS 0
 #define TEST_FD_SPLINE 0
 #define TEST_DT 0
 
@@ -157,18 +157,6 @@ int main(int argc,char **argv)
   primalbraidapp = new myBraidApp(comm_braid, total_time, ntime, ts, mytimestepper, hamiltonian, targetgate, &config);
   adjointbraidapp = new myAdjointBraidApp(comm_braid, total_time, ntime, ts, mytimestepper, hamiltonian, targetgate, *mu, &config, primalbraidapp->getCore());
 
-  /* Prepare output */
-  // if (iolevel > 0) {
-    sprintf(filename, "out_u.%04d.dat", mpirank);
-    primalbraidapp->ufile = fopen(filename, "w");
-    sprintf(filename, "out_v.%04d.dat", mpirank);
-    primalbraidapp->vfile = fopen(filename, "w");
-    sprintf(filename, "out_uadj.%04d.dat", mpirank);
-    adjointbraidapp->ufile = fopen(filename, "w");
-    sprintf(filename, "out_vadj.%04d.dat", mpirank);
-    adjointbraidapp->vfile = fopen(filename, "w");
-  // }
-
   /* Print some information on the time-grid distribution */
   // int ilower, iupper;
   // _braid_GetDistribution(braid_core, &ilower, &iupper);
@@ -207,7 +195,7 @@ int main(int argc,char **argv)
   
   /* --- Solve primal --- */
   optimproblem.eval_f(ndesign, myinit, true, objective);
-  printf("%d: Objective %1.14e\n", mpirank, objective);
+  if (mpirank == 0) printf("%d: Objective %1.14e\n", mpirank, objective);
 
   /* --- Solve adjoint --- */
   optimproblem.eval_grad_f(ndesign, myinit, true, optimgrad);
@@ -509,13 +497,6 @@ exit:
 #ifdef SANITY_CHECK
   printf("\n\n Sanity checks have been performed. Check output for warnings and errors!\n\n");
 #endif
-
-
-  /* Close output files */
-  if (primalbraidapp->ufile != NULL) fclose(primalbraidapp->ufile);
-  if (primalbraidapp->vfile != NULL) fclose(primalbraidapp->vfile);
-  if (adjointbraidapp->ufile != NULL) fclose(adjointbraidapp->ufile);
-  if (adjointbraidapp->vfile != NULL) fclose(adjointbraidapp->vfile);
 
   /* Clean up */
   // TSDestroy(&ts);  /* TODO */
