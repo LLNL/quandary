@@ -16,6 +16,7 @@ OptimProblem::OptimProblem() {
     mpisize_optim = 0;
     mpirank_world = 0;
     mpisize_world = 0;
+    firstcall = false;
 }
 
 OptimProblem::OptimProblem(myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, MPI_Comm comm_hiop_, double optim_regul_, double alpha_max_, double beta_max_, std::string x0filename_){
@@ -160,6 +161,7 @@ bool OptimProblem::eval_f(const long long& n, const double* x_in, bool new_x, do
 
     /*  Iterate over initial condition */
     objective_curr = 0.0;
+    if (firstcall) dim = 1; // HACK 
     for (int iinit = 0; iinit < dim; iinit++) {
       if (mpirank_world == 0) printf(" %d FWD. ", iinit);
       /* Set initial condition for index iinit */
@@ -212,6 +214,7 @@ bool OptimProblem::eval_grad_f(const long long& n, const double* x_in, bool new_
 
   /* Iterate over initial conditions */
   objective_curr = 0.0;
+  if (firstcall) dim = 1; // HACK 
   for (int iinit = 0; iinit < dim; iinit++) {
 
     /* --- Solve primal --- */

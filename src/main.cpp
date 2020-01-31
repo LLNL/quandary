@@ -190,25 +190,27 @@ int main(int argc,char **argv)
   optimproblem.get_starting_point(ndesign, myinit);
 
   // TODO: THIS IS A HACK: Make sure to run one braid_Drive before the actual optimization (in order to initialize Braid's time-grid.)
+  optimproblem.firstcall = true;
   optimproblem.eval_f(ndesign, myinit, true, objective);
   optimproblem.eval_grad_f(ndesign, myinit, true, optimgrad);
+  optimproblem.firstcall = false;
   
   /* --- Solve primal --- */
-  optimproblem.eval_f(ndesign, myinit, true, objective);
-  if (mpirank == 0) printf("%d: Objective %1.14e\n", mpirank, objective);
+  // optimproblem.eval_f(ndesign, myinit, true, objective);
+  // if (mpirank == 0) printf("%d: Objective %1.14e\n", mpirank, objective);
 
-  /* --- Solve adjoint --- */
-  optimproblem.eval_grad_f(ndesign, myinit, true, optimgrad);
-  if (mpirank == 0) {
-    printf("\n%d: My awesome gradient:\n", mpirank);
-    for (int i=0; i<ndesign; i++) {
-      printf("%1.14e\n", optimgrad[i]);
-    }
-  }
+  // /* --- Solve adjoint --- */
+  // optimproblem.eval_grad_f(ndesign, myinit, true, optimgrad);
+  // if (mpirank == 0) {
+  //   printf("\n%d: My awesome gradient:\n", mpirank);
+  //   for (int i=0; i<ndesign; i++) {
+  //     printf("%1.14e\n", optimgrad[i]);
+  //   }
+  // }
 
   /* Solve the optimization  */
-  // printf("Now starting HiOp \n");
-  // hiop::hiopSolveStatus status = optimsolver.run();
+  printf("Now starting HiOp \n");
+  hiop::hiopSolveStatus status = optimsolver.run();
 
 
 exit:

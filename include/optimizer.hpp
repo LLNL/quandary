@@ -14,7 +14,7 @@ class OptimProblem : public hiop::hiopInterfaceDenseConstraints {
         double regul;                       /* Parameter for L2 regularization */
         double alpha_max;                   /* Box constraint on spline amplitudes for Real part */
         double beta_max;                    /* Box constraint on spline amplitudes for Imaginary part */
-        std::string x0filename;
+        std::string x0filename;             /* Name of data directory for braid's output */
 
         MPI_Comm comm_hiop;
         int mpirank_braid, mpisize_braid;
@@ -23,6 +23,7 @@ class OptimProblem : public hiop::hiopInterfaceDenseConstraints {
         int mpirank_world, mpisize_world;
 
     public:
+        bool firstcall;                     // HACK: run braid once before the optimization. 
         OptimProblem();
         OptimProblem(myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, MPI_Comm comm_hiop_, double optim_regul_, double alpha_max_, double beta_max_, std::string x0filename_);
         virtual ~OptimProblem();
