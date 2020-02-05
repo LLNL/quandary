@@ -32,6 +32,7 @@ int main(int argc,char **argv)
   PetscBool      analytic;     // If true: runs analytic test case
   PetscBool      primal_only;  // If true: runs only one primal simulation
   PetscBool      monitor;      // If true: Print out additional time-stepper information
+  std::vector<double> xi;      // Frequencies for drift Hamiltonian
   /* Braid */
   myBraidApp *primalbraidapp;
   myAdjointBraidApp *adjointbraidapp;
@@ -104,20 +105,9 @@ int main(int argc,char **argv)
     }
   }
 
-  /* Set frequencies for drift hamiltonian Hd */
-  // Format: xi = [xi_00, xi_01, xi_02,...,xi_11, xi_12,....]
-  double* xi = new double[nosci * (nosci+1)/2];
-  if (analytic) {  // no drift Hamiltonian in analytic case
-    xi[0] = 0.0;
-    xi[1] = 0.0;
-    xi[2] = 0.0;
-  } else {
-    xi[0] =  0.2198;  // xi_0 from Anders
-    xi[1] =  0.1;     // xi_01 from Anders, might be too big!
-    xi[2] =  0.2252;  // xi_1 from Anders
-  }
 
   /* Initialize the Hamiltonian  */
+  config.GetVecDoubleParam("xi", xi, 2.0);
   if (analytic) {
     hamiltonian = new AnalyticHam(xi, oscil_vec); 
   } else {
@@ -508,8 +498,6 @@ exit:
     delete oscil_vec[i];
   }
   delete [] oscil_vec;
-
-  delete [] xi;
 
 
   delete lambda;

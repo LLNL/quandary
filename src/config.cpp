@@ -76,6 +76,30 @@ void MapParam::ReadFile(string filename)
   file.close();
 }
 
+void MapParam::GetVecDoubleParam(string key, vector<double> &fillme, double default_val) const 
+{
+  map<string, string>::const_iterator it_value = this->find(key);
+  double val;
+  if (it_value == this->end())
+  {
+    if (mpi_rank == 0)
+      cerr << "# Warning: parameter " << key << " not found ! Taking default = " << default_val << endl;
+      fillme.push_back(default_val);
+  }
+  else 
+  {
+    /* Parse the string line w.r.t. comma separator */
+    string intermediate; 
+    stringstream check1(it_value->second); 
+    while(getline(check1, intermediate, ',')) 
+    { 
+        fillme.push_back(atof(intermediate.c_str()));
+    } 
+  }
+
+  // export_param(mpi_rank, key, val, default_val);
+}
+
 double MapParam::GetDoubleParam(string key, double default_val) const
 {
   map<string, string>::const_iterator it_value = this->find(key);

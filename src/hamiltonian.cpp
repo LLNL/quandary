@@ -226,7 +226,6 @@ LiouvilleVN::LiouvilleVN() {
   Bd     = NULL;
   Ac_vec = NULL;
   Bc_vec = NULL;
-  xi     = NULL;
   dRedp = NULL;
   dImdp = NULL;
   rowid = NULL;
@@ -235,7 +234,7 @@ LiouvilleVN::LiouvilleVN() {
 }
 
 
-LiouvilleVN::LiouvilleVN(double* xi_, int noscillators_, Oscillator** oscil_vec_) 
+LiouvilleVN::LiouvilleVN(const std::vector<double> xi_, int noscillators_, Oscillator** oscil_vec_) 
                 :  Hamiltonian(noscillators_, oscil_vec_){
   Mat loweringOP, loweringOP_T;
   Mat numberOP;
@@ -494,7 +493,7 @@ int LiouvilleVN::assemble_dRHSdp(double t, Vec x) {
 }
 
 Lindblad::Lindblad() : LiouvilleVN() {}
-Lindblad::Lindblad(CollapseType collapse_type, double* xi_, int noscillators_, Oscillator** oscil_vec_) : LiouvilleVN(xi_, noscillators_, oscil_vec_) {
+Lindblad::Lindblad(CollapseType collapse_type, const std::vector<double> xi_, int noscillators_, Oscillator** oscil_vec_) : LiouvilleVN(xi_, noscillators_, oscil_vec_) {
 
   Mat L;
   int dim_L;
@@ -523,7 +522,7 @@ Lindblad::Lindblad(CollapseType collapse_type, double* xi_, int noscillators_, O
 
 Lindblad::~Lindblad(){}
 
-AnalyticHam::AnalyticHam(double* xi_, Oscillator** oscil_vec_) : LiouvilleVN(xi_, 2, oscil_vec_) {}
+AnalyticHam::AnalyticHam(const std::vector<double> xi_, Oscillator** oscil_vec_) : LiouvilleVN(xi_, 2, oscil_vec_) {}
 
 AnalyticHam::~AnalyticHam() {}
 

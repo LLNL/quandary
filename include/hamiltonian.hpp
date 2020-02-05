@@ -1,6 +1,7 @@
 #include "oscillator.hpp"
 #include "util.hpp"
 #include <petscts.h>
+#include <vector>
 #pragma once
 
 
@@ -90,7 +91,7 @@ class LiouvilleVN : public Hamiltonian {
   Mat* Bc_vec;  // Vector of constant matrices for building time-varying Hamiltonian (imaginary part)
   Mat  Ad, Bd;  // Real and imaginary part of constant drift Hamiltonian Hd 
 
-  double* xi;  // Constants for frequencies of drift Hamiltonian
+  std::vector<double> xi;  // Constants for frequencies of drift Hamiltonian
 
   /* Some auxiliary vectors */
   double *dRedp;
@@ -101,7 +102,7 @@ class LiouvilleVN : public Hamiltonian {
 
   public: 
     LiouvilleVN();
-    LiouvilleVN(double* xi_, int noscillators_, Oscillator** oscil_vec_);
+    LiouvilleVN(const std::vector<double> xi_, int noscillators_, Oscillator** oscil_vec_);
     virtual ~LiouvilleVN();
 
     /* Set the initial condition of index iinit */
@@ -123,7 +124,7 @@ class Lindblad : public LiouvilleVN {
     enum CollapseType {DECAY, DEPHASING}; 
     
     Lindblad();
-    Lindblad(CollapseType collapse_type, double* xi_, int noscillators_, Oscillator** oscil_vec_);
+    Lindblad(CollapseType collapse_type, const std::vector<double> xi_, int noscillators_, Oscillator** oscil_vec_);
     virtual ~Lindblad();
 
 };
@@ -134,7 +135,7 @@ class Lindblad : public LiouvilleVN {
 class AnalyticHam : public LiouvilleVN {
   
   public:
-    AnalyticHam(double* xi_, Oscillator** oscil_vec_);
+    AnalyticHam(const std::vector<double> xi_, Oscillator** oscil_vec_);
     virtual ~AnalyticHam();
 
     /* Evaluate the exact solution at time t. */

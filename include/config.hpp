@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <cstdio>
 #include <cctype>
+#include <bits/stdc++.h> 
 
 #pragma once
 
@@ -33,5 +34,6 @@ public:
   int GetIntParam(std::string key, int default_val = -1) const;
   std::string GetStrParam(std::string key, std::string default_val = "") const;
   bool GetBoolParam(std::string key, bool default_val = false) const;
+  void GetVecDoubleParam(std::string key, std::vector<double> &fillme, double default_val = 1e20) const;
 };
 
