@@ -19,9 +19,10 @@ OptimProblem::OptimProblem() {
     mpirank_world = 0;
     mpisize_world = 0;
     firstcall = false;
+    diag_only = false;
 }
 
-OptimProblem::OptimProblem(myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, MPI_Comm comm_hiop_, double optim_regul_, double alpha_max_, double beta_max_, std::string x0filename_){
+OptimProblem::OptimProblem(myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, MPI_Comm comm_hiop_, double optim_regul_, double alpha_max_, double beta_max_, std::string x0filename_, bool diag_only_){
     primalbraidapp  = primalbraidapp_;
     adjointbraidapp = adjointbraidapp_;
     comm_hiop = comm_hiop_;
@@ -29,6 +30,7 @@ OptimProblem::OptimProblem(myBraidApp* primalbraidapp_, myAdjointBraidApp* adjoi
     alpha_max = alpha_max_;
     beta_max = beta_max_;
     x0filename = x0filename_;
+    diag_only = diag_only_;
 
     MPI_Comm_rank(primalbraidapp->comm_braid, &mpirank_braid);
     MPI_Comm_size(primalbraidapp->comm_braid, &mpisize_braid);
@@ -154,6 +156,8 @@ bool OptimProblem::eval_f(const long long& n, const double* x_in, bool new_x, do
   double obj_Im_local;
   Hamiltonian* hamil = primalbraidapp->hamiltonian;
   int dim = hamil->getDim();
+  int nominator = dim*dim;
+  if (diag_only) nominator = dim;
 
   /* Run simulation, only if x_in is new. Otherwise, f(x_in) has been computed already and stored in fidelity. */
   // this is fishy. check if fidelity is computed correctly in grad_f
@@ -167,6 +171,10 @@ bool OptimProblem::eval_f(const long long& n, const double* x_in, bool new_x, do
     trace_Im = 0.0;
     if (firstcall) dim = 1; // HACK 
     for (int iinit = 0; iinit < dim; iinit++) {
+      
+      /* if diag_only, run add only diagonal elements for comparing with Ander's case */
+      if (diag_only && iinit != 0 && iinit != 5 && iinit != 10 && iinit != 15) continue;
+
       if (mpirank_world == 0) printf(" %d FWD. ", iinit);
       /* Set initial condition for index iinit */
       primalbraidapp->PreProcess(iinit, 0.0, 0.0);
@@ -363,6 +371,21 @@ bool OptimProblem::iterate_callback(int iter, double obj_value, int n, const dou
   // if (primalbraidapp->vfile != NULL)  fprintf(primalbraidapp->vfile, "\n\n# Iteration %d\n", iter);
   // if (adjointbraidapp->ufile != NULL) fprintf(adjointbraidapp->ufile, "\n\n# Iteration %d\n", iter);
   // if (adjointbraidapp->vfile != NULL) fprintf(adjointbraidapp->vfile, "\n\n# Iteration %d\n", iter);
+
+  // /* Flush control functions */
+  // setDesign(n, x);
+  // if (mpirank_world == 0 ) {
+  //   int ntime = primalbraidapp->ntime;
+  //   double dt = primalbraidapp->total_time / ntime;
+  //   char filename[255];
+  //   Hamiltonian* hamil = primalbraidapp->hamiltonian;
+  //   for (int ioscil = 0; ioscil < hamil->getNOscillators(); ioscil++) {
+  //       sprintf(filename, "control_iter%04d_%02d.dat", iter, ioscil+1);
+  //       hamil->getOscillator(ioscil)->flushControl(ntime, dt, filename);
+  //   }
+  // }
+
+
 
   return true;
 }
