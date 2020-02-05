@@ -3,7 +3,9 @@
 OptimProblem::OptimProblem() {
     primalbraidapp  = NULL;
     adjointbraidapp = NULL;
-    objective_curr = 0.0;
+    fidelity = 0.0;
+    trace_Re = 0.0;
+    trace_Im = 0.0;
     regul = 0.0;
     alpha_max = 0.0;
     beta_max = 0.0;
@@ -153,14 +155,16 @@ bool OptimProblem::eval_f(const long long& n, const double* x_in, bool new_x, do
   Hamiltonian* hamil = primalbraidapp->hamiltonian;
   int dim = hamil->getDim();
 
-  /* Run simulation, only if x_in is new. Otherwise, f(x_in) has been computed already and stored in objective_curr. */
-  if (new_x) { 
+  /* Run simulation, only if x_in is new. Otherwise, f(x_in) has been computed already and stored in fidelity. */
+  // this is fishy. check if fidelity is computed correctly in grad_f
+  // if (new_x) { 
 
     /* Pass design vector x to oscillator */
     setDesign(n, x_in);
 
     /*  Iterate over initial condition */
-    objective_curr = 0.0;
+    trace_Re = 0.0;
+    trace_Im = 0.0;
     if (firstcall) dim = 1; // HACK 
     for (int iinit = 0; iinit < dim; iinit++) {
       if (mpirank_world == 0) printf(" %d FWD. ", iinit);
@@ -171,67 +175,74 @@ bool OptimProblem::eval_f(const long long& n, const double* x_in, bool new_x, do
       /* Eval objective function for initial condition i */
       primalbraidapp->PostProcess(iinit, &obj_Re_local, &obj_Im_local);
 
-      /* Add to objective function (trace) */
-      objective_curr += pow(obj_Re_local,2.0) + pow(obj_Im_local, 2.0);
+      /* Add to trace */
+      trace_Re += obj_Re_local;
+      trace_Im += obj_Im_local;
     }
     if (mpirank_world == 0) printf("\n");
-  }
+  // }
 
-  /* Sum up objective from all braid processors */
-  double myobj = objective_curr;
-  MPI_Allreduce(&myobj, &objective_curr, 1, MPI_DOUBLE, MPI_SUM, primalbraidapp->comm_braid);
+  /* Compute fidelity 1 - 1/N^4 |trace|^2 */
+  fidelity = 1. - 1. / nominator * (pow(trace_Re, 2.0) + pow(trace_Im, 2.0));
 
-  /* J = 1 - 1/N^4 * obj + gamma * ||x||^2*/
-  objective_curr = 1. - 1./(dim*dim) * objective_curr;
+  /* Add regularization J += gamma * ||x||^2*/
   for (int i=0; i<n; i++) {
-    objective_curr += regul / 2.0 * pow(x_in[i], 2.0);
+    fidelity += regul / 2.0 * pow(x_in[i], 2.0);
   }
+
+  /* Sum up fidelity from all braid processors */
+  double myfidelity = fidelity;
+  MPI_Allreduce(&myfidelity, &fidelity, 1, MPI_DOUBLE, MPI_SUM, primalbraidapp->comm_braid);
 
   /* Return objective value */
-  obj_value = objective_curr;
+  obj_value = fidelity;
 
   return true;
 }
 
 
 bool OptimProblem::eval_grad_f(const long long& n, const double* x_in, bool new_x, double* gradf){
-// bool OptimProblem::eval_grad_f(Index n, const Number* x, bool new_x, Number* grad_f){
   if (mpirank_world == 0) printf(" EVAL GRAD F...");
 
   Hamiltonian* hamil = primalbraidapp->hamiltonian;
   double obj_Re_local, obj_Im_local;
-  double obj_Re_bar, obj_Im_bar;
   int dim = hamil->getDim();
+  int nominator = dim*dim;
+  if (diag_only) nominator = dim;
 
   /* Pass x to Oscillator */
   setDesign(n, x_in);
 
-  /* Derivative of J = 1 - 1/N^4 * obj + gamma * ||x||^2 */
-  double objective_curr_bar = -1./(dim*dim);
+  /* Derivative of regularization gamma * ||x||^2 */
   for (int i=0; i<n; i++) {
     gradf[i] = regul * x_in[i];
   }
 
+  /* Derivative fidelity 1-1/N^4 |trace|^2 */
+  double trace_Re_bar = - 2. / (dim*dim) * trace_Re ;
+  double trace_Im_bar = - 2. / (dim*dim) * trace_Im ;
+
   /* Iterate over initial conditions */
-  objective_curr = 0.0;
+  trace_Re = 0.0;
+  trace_Im = 0.0;
   if (firstcall) dim = 1; // HACK 
   for (int iinit = 0; iinit < dim; iinit++) {
+
+    /* if diag_only, run add only diagonal elements for comparing with Ander's case */
+    if (diag_only && iinit != 0 && iinit != 5 && iinit != 10 && iinit != 15) continue;
 
     /* --- Solve primal --- */
     if (mpirank_world == 0) printf(" %d FWD -", iinit);
     primalbraidapp->PreProcess(iinit, 0.0, 0.0);
     primalbraidapp->Drive();
     primalbraidapp->PostProcess(iinit, &obj_Re_local, &obj_Im_local);
-    /* Add to global objective value */
-    objective_curr += pow(obj_Re_local,2.0) + pow(obj_Im_local, 2.0);
-
-    /* Derivative of local trace objective */
-    obj_Re_bar =  2. * obj_Re_local * objective_curr_bar;
-    obj_Im_bar =  2. * obj_Im_local * objective_curr_bar;
+    /* Add to trace */
+    trace_Re += obj_Re_local;
+    trace_Im += obj_Im_local;
 
     /* --- Solve adjoint --- */
     if (mpirank_world == 0) printf(" BWD. ");
-    adjointbraidapp->PreProcess(iinit, obj_Re_bar, obj_Im_bar);
+    adjointbraidapp->PreProcess(iinit, trace_Re_bar, trace_Im_bar);
     adjointbraidapp->Drive();
     adjointbraidapp->PostProcess(iinit, NULL, NULL);
 
@@ -243,14 +254,15 @@ bool OptimProblem::eval_grad_f(const long long& n, const double* x_in, bool new_
   }
   if (mpirank_world == 0) printf("\n");
 
-  /* Sum up objective from all braid processors */
-  double myobj = objective_curr;
-  MPI_Allreduce(&myobj, &objective_curr, 1, MPI_DOUBLE, MPI_SUM, primalbraidapp->comm_braid);
-  /* J = 1 - 1/N^4 * obj + gamma*||x||^2 */
-  objective_curr = 1. - 1./(dim*dim) * objective_curr;
+  /* Compute fidelity 1 - 1/N^4 |trace|^2 */
+  fidelity = 1. - 1. / nominator * (pow(trace_Re, 2.0) + pow(trace_Im, 2.0));
+  /* Add regularization + gamma*||x||^2 */
   for (int i=0; i<n; i++) {
-    objective_curr += regul / 2.0 * pow(x_in[i], 2.0);
+    fidelity += regul / 2.0 * pow(x_in[i], 2.0);
   }
+  /* Sum up fidelity from all braid processors */
+  double myfidelity = fidelity;
+  MPI_Allreduce(&myfidelity, &fidelity, 1, MPI_DOUBLE, MPI_SUM, primalbraidapp->comm_braid);
 
   /* Sum up the gradient from all braid processors */
   double* mygrad = new double[n];

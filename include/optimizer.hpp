@@ -10,7 +10,8 @@ class OptimProblem : public hiop::hiopInterfaceDenseConstraints {
     protected:
         myBraidApp* primalbraidapp;         /* Primal BraidApp to carry out PinT forward sim.*/
         myAdjointBraidApp* adjointbraidapp; /* Adjoint BraidApp to carry out PinT backward sim. */
-        double objective_curr;              /* holds the current objective function value */
+        double fidelity;              /* holds the current objective function value */
+        double trace_Re, trace_Im;        /* Temporarily holding the sum of local objective functions */
         double regul;                       /* Parameter for L2 regularization */
         double alpha_max;                   /* Box constraint on spline amplitudes for Real part */
         double beta_max;                    /* Box constraint on spline amplitudes for Imaginary part */
