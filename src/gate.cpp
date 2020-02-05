@@ -15,7 +15,7 @@ Gate::Gate(int nqubits_){
 Gate::~Gate(){}
 
 
-CNOT::CNOT(double f1, double f2, double time) : Gate(2) { // CNOT spans two qubits
+CNOT::CNOT(const std::vector<double> f, double time) : Gate(2) { // CNOT spans two qubits
   assert(dim == 16);
 
    /* Fill the CNOT lookup table V\kron V! */
@@ -39,8 +39,8 @@ CNOT::CNOT(double f1, double f2, double time) : Gate(2) { // CNOT spans two qubi
   lookup[15] = 10;
 
   /* Transform frequencies to radian */
-  omega1 = 2.*M_PI * f1;
-  omega2 = 2.*M_PI * f2; 
+  omega1 = 2.*M_PI * f[0];
+  omega2 = 2.*M_PI * f[1]; 
 
   /* Fill the rotation matrix (diagonal!) */
   rotation_Re = new double[dim];

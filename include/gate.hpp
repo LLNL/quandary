@@ -2,6 +2,7 @@
 #include <math.h>
 #include <assert.h>
 #include <petscmat.h>
+#include <vector>
 #pragma once
 
 // enum GATETYPE = {CNOT};
@@ -45,7 +46,7 @@ class CNOT : public Gate {
 
   public:
     /* Constructor takes ground frequencies, and time when to apply the gate. */
-    CNOT(double f1, double f2, double time);
+    CNOT(const std::vector<double> f, double time);
     ~CNOT();
 
     /* Apply i-th column of the gate to a state vector */

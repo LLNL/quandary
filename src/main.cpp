@@ -32,7 +32,6 @@ int main(int argc,char **argv)
   PetscBool      analytic;     // If true: runs analytic test case
   PetscBool      primal_only;  // If true: runs only one primal simulation
   PetscBool      monitor;      // If true: Print out additional time-stepper information
-  std::vector<double> xi;      // Frequencies for drift Hamiltonian
   /* Braid */
   myBraidApp *primalbraidapp;
   myAdjointBraidApp *adjointbraidapp;
@@ -107,6 +106,7 @@ int main(int argc,char **argv)
 
 
   /* Initialize the Hamiltonian  */
+  std::vector<double> xi;  
   config.GetVecDoubleParam("xi", xi, 2.0);
   if (analytic) {
     hamiltonian = new AnalyticHam(xi, oscil_vec); 
@@ -116,9 +116,9 @@ int main(int argc,char **argv)
   }
 
   /* Initialize the target */
-  double f1 = 4.10595;
-  double f2 = 4.81526;
-  Gate* targetgate = new CNOT(f1,f2, total_time); // ONLY WORKS FOR 2by2 testcase!!
+  std::vector<double> f;
+  config.GetVecDoubleParam("frequencies", f, 1e20);
+  Gate* targetgate = new CNOT(f, total_time); // ONLY WORKS FOR 2by2 testcase!!
 
   /* Create solution vector x */
   MatCreateVecs(hamiltonian->getRHS(), &x, NULL);
