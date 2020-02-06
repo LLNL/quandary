@@ -304,10 +304,22 @@ bool OptimProblem::get_starting_point(const long long &global_n, double* x0) {
       for (int i=0; i<global_n; i++) {
         x0[i] = (double) rand() / ((double)RAND_MAX);
       }
+      /* Trimm back to the box constraints */
+      int j = 0;
+      Hamiltonian* hamil = primalbraidapp->hamiltonian;
+      for (int ioscil = 0; ioscil < hamil->getNOscillators(); ioscil++) {
+          int nparam = hamil->getOscillator(ioscil)->getNParam();
+          for (int i = 0; i < 2 * nparam; i++) {
+              x0[j] = x0[j] * bounds[ioscil];
+              j++;
+          }
+      }
     }
   }
 
+  /* Broadcast the initial guess */
   MPI_Bcast(x0, global_n, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+
 
   /* Pass to oscillator */
   setDesign(global_n, x0);
