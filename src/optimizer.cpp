@@ -7,8 +7,6 @@ OptimProblem::OptimProblem() {
     trace_Re = 0.0;
     trace_Im = 0.0;
     regul = 0.0;
-    alpha_max = 0.0;
-    beta_max = 0.0;
     x0filename = "none";
     mpirank_braid = 0;
     mpisize_braid = 0;
@@ -22,15 +20,14 @@ OptimProblem::OptimProblem() {
     diag_only = false;
 }
 
-OptimProblem::OptimProblem(myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, MPI_Comm comm_hiop_, double optim_regul_, double alpha_max_, double beta_max_, std::string x0filename_, bool diag_only_){
+OptimProblem::OptimProblem(myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, MPI_Comm comm_hiop_, const std::vector<double> optim_bounds_, double optim_regul_, std::string x0filename_, bool diag_only_){
     primalbraidapp  = primalbraidapp_;
     adjointbraidapp = adjointbraidapp_;
     comm_hiop = comm_hiop_;
     regul = optim_regul_;
-    alpha_max = alpha_max_;
-    beta_max = beta_max_;
     x0filename = x0filename_;
     diag_only = diag_only_;
+    bounds = optim_bounds_;
 
     MPI_Comm_rank(primalbraidapp->comm_braid, &mpirank_braid);
     MPI_Comm_size(primalbraidapp->comm_braid, &mpisize_braid);
@@ -116,21 +113,16 @@ bool OptimProblem::get_prob_sizes(long long& n, long long& m) {
 
 bool OptimProblem::get_vars_info(const long long& n, double *xlow, double* xupp, NonlinearityType* type) {
 
-
   /* Iterate over oscillators */
   int j = 0;
   Hamiltonian* hamil = primalbraidapp->hamiltonian;
   for (int ioscil = 0; ioscil < hamil->getNOscillators(); ioscil++) {
       /* Get number of parameters of oscillator i */
       int nparam = hamil->getOscillator(ioscil)->getNParam();
-      for (int iparam=0; iparam<nparam; iparam++) {
-          /* Set boundary on real part */
-          xlow[j] = - alpha_max;
-          xupp[j] =   alpha_max; 
-          j++;
-          /* Set boundary on imaginary part */
-          xlow[j] = - beta_max; 
-          xupp[j] =   beta_max; 
+      /* Iterate over real and imaginary part */
+      for (int i = 0; i < 2 * nparam; i++) {
+          xlow[j] = - bounds[ioscil];
+          xupp[j] =   bounds[ioscil]; 
           j++;
       }
   }

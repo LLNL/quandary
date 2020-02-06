@@ -17,6 +17,7 @@ Gate::~Gate(){}
 
 CNOT::CNOT(const std::vector<double> f, double time) : Gate(2) { // CNOT spans two qubits
   assert(dim == 16);
+  assert(f.size() == 2);
 
    /* Fill the CNOT lookup table V\kron V! */
   lookup = new int[dim];

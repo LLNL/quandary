@@ -13,10 +13,9 @@ class OptimProblem : public hiop::hiopInterfaceDenseConstraints {
         double fidelity;              /* holds the current objective function value */
         double trace_Re, trace_Im;        /* Temporarily holding the sum of local objective functions */
         double regul;                       /* Parameter for L2 regularization */
-        double alpha_max;                   /* Box constraint on spline amplitudes for Real part */
-        double beta_max;                    /* Box constraint on spline amplitudes for Imaginary part */
         std::string x0filename;             /* Name of data directory for braid's output */
         bool diag_only;                     /* only the diagonal elements of the density matrix are taken for optimization */
+        std::vector<double> bounds;    /* Bounds for the control function amplitudes for each oscillator */
 
         MPI_Comm comm_hiop;
         int mpirank_braid, mpisize_braid;
@@ -27,7 +26,7 @@ class OptimProblem : public hiop::hiopInterfaceDenseConstraints {
     public:
         bool firstcall;                     // HACK: run braid once before the optimization. 
         OptimProblem();
-        OptimProblem(myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, MPI_Comm comm_hiop_, double optim_regul_, double alpha_max_, double beta_max_, std::string x0filename_, bool diag_only_);
+        OptimProblem(myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, MPI_Comm comm_hiop_, const std::vector<double>optim_bounds, double optim_regul_, std::string x0filename_, bool diag_only_);
         virtual ~OptimProblem();
 
 

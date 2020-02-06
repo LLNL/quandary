@@ -242,6 +242,7 @@ LiouvilleVN::LiouvilleVN(const std::vector<double> xi_, int noscillators_, Oscil
   // printf("dim %d\n", dim);
 
   xi = xi_;
+  assert(xi.size() == (noscillators_+1) * noscillators_ / 2);
 
   Ac_vec = new Mat[noscillators_];
   Bc_vec = new Mat[noscillators_];

@@ -2,6 +2,7 @@
 #include "util.hpp"
 #include <petscts.h>
 #include <vector>
+#include <assert.h>
 #pragma once
 
 
