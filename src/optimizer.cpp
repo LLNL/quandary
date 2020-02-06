@@ -16,11 +16,10 @@ OptimProblem::OptimProblem() {
     mpisize_optim = 0;
     mpirank_world = 0;
     mpisize_world = 0;
-    firstcall = false;
     diag_only = false;
 }
 
-OptimProblem::OptimProblem(myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, MPI_Comm comm_hiop_, const std::vector<double> optim_bounds_, double optim_regul_, std::string x0filename_, bool diag_only_){
+OptimProblem::OptimProblem(myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, MPI_Comm comm_hiop_, const std::vector<double> optim_bounds_, double optim_regul_, std::string x0filename_, bool diag_only_, std::string datadir_){
     primalbraidapp  = primalbraidapp_;
     adjointbraidapp = adjointbraidapp_;
     comm_hiop = comm_hiop_;
@@ -28,6 +27,7 @@ OptimProblem::OptimProblem(myBraidApp* primalbraidapp_, myAdjointBraidApp* adjoi
     x0filename = x0filename_;
     diag_only = diag_only_;
     bounds = optim_bounds_;
+    datadir = datadir_;
 
     MPI_Comm_rank(primalbraidapp->comm_braid, &mpirank_braid);
     MPI_Comm_size(primalbraidapp->comm_braid, &mpisize_braid);
@@ -161,7 +161,6 @@ bool OptimProblem::eval_f(const long long& n, const double* x_in, bool new_x, do
     /*  Iterate over initial condition */
     trace_Re = 0.0;
     trace_Im = 0.0;
-    if (firstcall) dim = 1; // HACK 
     for (int iinit = 0; iinit < dim; iinit++) {
       
       /* if diag_only, run add only diagonal elements for comparing with Ander's case */
@@ -225,7 +224,6 @@ bool OptimProblem::eval_grad_f(const long long& n, const double* x_in, bool new_
   /* Iterate over initial conditions */
   trace_Re = 0.0;
   trace_Im = 0.0;
-  if (firstcall) dim = 1; // HACK 
   for (int iinit = 0; iinit < dim; iinit++) {
 
     /* if diag_only, run add only diagonal elements for comparing with Ander's case */
@@ -320,7 +318,7 @@ bool OptimProblem::get_starting_point(const long long &global_n, double* x0) {
     char filename[255];
     Hamiltonian* hamil = primalbraidapp->hamiltonian;
     for (int ioscil = 0; ioscil < hamil->getNOscillators(); ioscil++) {
-        sprintf(filename, "control_init_%02d.dat", ioscil+1);
+        sprintf(filename, "%s/control_init_%02d.dat", datadir.c_str(), ioscil+1);
         hamil->getOscillator(ioscil)->flushControl(ntime, dt, filename);
     }
   }
@@ -333,9 +331,12 @@ bool OptimProblem::get_starting_point(const long long &global_n, double* x0) {
 void OptimProblem::solution_callback(hiop::hiopSolveStatus status, int n, const double* x, const double* z_L, const double* z_U, int m, const double* g, const double* lambda, double obj_value) {
   
   if (mpirank_world == 0) {
-    /* Print optimized parameters */
+    char filename[255];
     FILE *optimfile;
-    optimfile = fopen("param_optimized.dat", "w");
+
+    /* Print optimized parameters */
+    sprintf(filename, "%s/param_optimized.dat", datadir.c_str());
+    optimfile = fopen(filename, "w");
     for (int i=0; i<n; i++){
       fprintf(optimfile, "%1.14e\n", x[i]);
     }
@@ -345,10 +346,9 @@ void OptimProblem::solution_callback(hiop::hiopSolveStatus status, int n, const 
     setDesign(n, x);
     int ntime = primalbraidapp->ntime;
     double dt = primalbraidapp->total_time / ntime;
-    char filename[255];
     Hamiltonian* hamil = primalbraidapp->hamiltonian;
     for (int ioscil = 0; ioscil < hamil->getNOscillators(); ioscil++) {
-        sprintf(filename, "control_optimized_%02d.dat", ioscil+1);
+        sprintf(filename, "%s/control_optimized_%02d.dat", datadir.c_str(), ioscil+1);
         hamil->getOscillator(ioscil)->flushControl(ntime, dt, filename);
     }
   }
@@ -364,20 +364,27 @@ bool OptimProblem::iterate_callback(int iter, double obj_value, int n, const dou
   // if (adjointbraidapp->ufile != NULL) fprintf(adjointbraidapp->ufile, "\n\n# Iteration %d\n", iter);
   // if (adjointbraidapp->vfile != NULL) fprintf(adjointbraidapp->vfile, "\n\n# Iteration %d\n", iter);
 
-  // /* Flush control functions */
-  // setDesign(n, x);
-  // if (mpirank_world == 0 ) {
-  //   int ntime = primalbraidapp->ntime;
-  //   double dt = primalbraidapp->total_time / ntime;
-  //   char filename[255];
-  //   Hamiltonian* hamil = primalbraidapp->hamiltonian;
-  //   for (int ioscil = 0; ioscil < hamil->getNOscillators(); ioscil++) {
-  //       sprintf(filename, "control_iter%04d_%02d.dat", iter, ioscil+1);
-  //       hamil->getOscillator(ioscil)->flushControl(ntime, dt, filename);
-  //   }
-  // }
+  if (mpirank_world == 0) {
+    char filename[255];
+    FILE *optimfile;
+    /* Print optimized parameters */
+    sprintf(filename, "%s/param_iter%04d.dat", datadir.c_str(), iter);
+    optimfile = fopen(filename, "w");
+    for (int i=0; i<n; i++){
+      fprintf(optimfile, "%1.14e\n", x[i]);
+    }
+    fclose(optimfile);
 
-
+    /* Print out control functions */
+    setDesign(n, x);
+    int ntime = primalbraidapp->ntime;
+    double dt = primalbraidapp->total_time / ntime;
+    Hamiltonian* hamil = primalbraidapp->hamiltonian;
+    for (int ioscil = 0; ioscil < hamil->getNOscillators(); ioscil++) {
+        sprintf(filename, "%s/control_iter%04d_%02d.dat", datadir.c_str(), iter, ioscil+1);
+        hamil->getOscillator(ioscil)->flushControl(ntime, dt, filename);
+    }
+  }
 
   return true;
 }

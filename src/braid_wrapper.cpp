@@ -60,7 +60,7 @@ myBraidApp::myBraidApp(MPI_Comm comm_braid_, double total_time_, int ntime_, TS 
   /* Output */
   accesslevel = config->GetIntParam("braid_accesslevel", 1);
   core->SetAccessLevel( accesslevel );
-  datadir = config->GetStrParam("braid_datadir", "./braid_out");
+  datadir = config->GetStrParam("datadir", "./data_out");
   // _braid_SetVerbosity(core->GetCore(), 1);
 
   int worldrank;
