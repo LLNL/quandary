@@ -9,6 +9,7 @@
 #include "optimizer.hpp"
 #include "_braid.h"
 #include <stdlib.h>
+#include <sys/resource.h>
 #include "hiopAlgFilterIPM.hpp"
 
 #define EPS 1e-4
@@ -54,9 +55,6 @@ int main(int argc,char **argv)
   char filename[255];
   PetscErrorCode ierr;
   PetscMPIInt    mpisize, mpirank;
-  double StartTime, StopTime;
-  double UsedTime = 0.0;
-
 
   /* Initialize MPI */
   MPI_Init(&argc, &argv);
@@ -185,12 +183,6 @@ int main(int argc,char **argv)
   hiop::hiopAlgFilterIPM optimsolver(&nlp);
   hiop::hiopSolveStatus  optimstatus;
 
-   /* Measure wall time */
-  StartTime = MPI_Wtime();
-  StopTime = 0.0;
-  UsedTime = 0.0;
-
-
   /* --- Test optimproblem --- */
   if (mpirank == 0) printf("# ndesign=%d\n", ndesign);
   double* myinit = new double[ndesign];
@@ -202,7 +194,10 @@ int main(int argc,char **argv)
   primalbraidapp->Drive();
   adjointbraidapp->Drive();
 
-  
+
+   /* Start timer */
+  double StartTime = MPI_Wtime();
+
   /* --- Solve primal --- */
   if (runtype == primal || runtype == adjoint) {
     optimproblem.eval_f(ndesign, myinit, true, objective);
@@ -225,11 +220,26 @@ int main(int argc,char **argv)
     if (mpirank == 0) printf("Now starting HiOp... \n");
     optimstatus = optimsolver.run();
 
-    goto exit;
   }
 
+  /* Get timings */
+  double UsedTime = MPI_Wtime() - StartTime;
+  /* Get memory usage */
+  struct rusage r_usage;
+  getrusage(RUSAGE_SELF, &r_usage);
+  double myMB = (double)r_usage.ru_maxrss / 1024.0;
+  double globalMB;
+  MPI_Allreduce(&myMB, &globalMB, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 
-exit:
+  /* Print statistics */
+  if (mpirank == 0) {
+    printf("\n");
+    printf(" Used Time:        %.2f seconds\n", UsedTime);
+    printf(" Global Memory:    %.2f MB\n", globalMB);
+    printf(" Processors used:  %d\n", mpisize);
+    printf("\n");
+  }
+
 
 
 #if TEST_DRHSDP
