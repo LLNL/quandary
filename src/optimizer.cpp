@@ -218,8 +218,9 @@ bool OptimProblem::eval_grad_f(const long long& n, const double* x_in, bool new_
   }
 
   /* Derivative fidelity 1-1/N^4 |trace|^2 */
-  double trace_Re_bar = - 2. / (dim*dim) * trace_Re ;
-  double trace_Im_bar = - 2. / (dim*dim) * trace_Im ;
+  if(new_x) printf(" ++++++ WARNING: Not sure if trace_Re and trace_Im hold the correct value!++++\n");
+  double trace_Re_bar = - 2. / nominator * trace_Re ;
+  double trace_Im_bar = - 2. / nominator * trace_Im ;
 
   /* Iterate over initial conditions */
   trace_Re = 0.0;
