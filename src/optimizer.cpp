@@ -392,8 +392,7 @@ void OptimProblem::solution_callback(hiop::hiopSolveStatus status, int n, const 
 /* This is called after each iteration. x is LOCAL to each processor ! */
 bool OptimProblem::iterate_callback(int iter, double obj_value, int n, const double* x, const double* z_L, const double* z_U, int m, const double* g, const double* lambda, double inf_pr, double inf_du, double mu, double alpha_du, double alpha_pr, int ls_trials) {
 
-  /* Compute corrent gradient norm. */
-  /* TODO: Not sure which one it is... */
+  /* Compute current gradient norm. */
   const double* grad_ptr = adjointbraidapp->getReducedGradientPtr();
   double gnorm = 0.0;
   for (int i=0; i<n; i++) {

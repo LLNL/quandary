@@ -5,13 +5,6 @@
 #include <assert.h> 
 #pragma once
 
-/* Available timestepping modes are 
- * FWD = forward
- * BWD = backward 
- */
-enum Mode { FWD, BWD }; 
-
-
 /* Base class for time steppers */
 class TimeStepper{
   protected:
