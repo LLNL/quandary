@@ -37,9 +37,20 @@ OptimProblem::OptimProblem(myBraidApp* primalbraidapp_, myAdjointBraidApp* adjoi
     MPI_Comm_size(comm_hiop, &mpisize_optim);
     MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
     MPI_Comm_size(MPI_COMM_WORLD, &mpisize_world);
+
+    /* Open optim file */
+    if (mpirank_world == 0) {
+      char filename[255];
+      sprintf(filename, "%s/optim.dat", datadir.c_str());
+      optimfile = fopen(filename, "w");
+      fprintf(optimfile, "#iter    obj_value           ||grad||                inf_du             ls trials \n");
+    }
 }
 
-OptimProblem::~OptimProblem() {}
+OptimProblem::~OptimProblem() {
+  /* Close optim file */
+  if (mpirank_world == 0) fclose(optimfile);
+}
 
 
 
@@ -354,15 +365,15 @@ void OptimProblem::solution_callback(hiop::hiopSolveStatus status, int n, const 
   
   if (mpirank_world == 0) {
     char filename[255];
-    FILE *optimfile;
+    FILE *paramfile;
 
     /* Print optimized parameters */
     sprintf(filename, "%s/param_optimized.dat", datadir.c_str());
-    optimfile = fopen(filename, "w");
+    paramfile = fopen(filename, "w");
     for (int i=0; i<n; i++){
-      fprintf(optimfile, "%1.14e\n", x[i]);
+      fprintf(paramfile, "%1.14e\n", x[i]);
     }
-    fclose(optimfile);
+    fclose(paramfile);
 
     /* Print out control functions */
     setDesign(n, x);
@@ -380,22 +391,31 @@ void OptimProblem::solution_callback(hiop::hiopSolveStatus status, int n, const 
 /* This is called after each iteration. x is LOCAL to each processor ! */
 bool OptimProblem::iterate_callback(int iter, double obj_value, int n, const double* x, const double* z_L, const double* z_U, int m, const double* g, const double* lambda, double inf_pr, double inf_du, double mu, double alpha_du, double alpha_pr, int ls_trials) {
 
-  // /* Add to state output files. */
-  // if (primalbraidapp->ufile != NULL)  fprintf(primalbraidapp->ufile, "\n\n# Iteration %d\n", iter);
-  // if (primalbraidapp->vfile != NULL)  fprintf(primalbraidapp->vfile, "\n\n# Iteration %d\n", iter);
-  // if (adjointbraidapp->ufile != NULL) fprintf(adjointbraidapp->ufile, "\n\n# Iteration %d\n", iter);
-  // if (adjointbraidapp->vfile != NULL) fprintf(adjointbraidapp->vfile, "\n\n# Iteration %d\n", iter);
+  /* Compute corrent gradient norm. */
+  /* TODO: Not sure which one it is... */
+  const double* grad_ptr = adjointbraidapp->getReducedGradientPtr();
+  double gnorm = 0.0;
+  for (int i=0; i<n; i++) {
+    gnorm += pow(grad_ptr[i], 2.0);
+  }
 
+  /* Print to optimization file */
+  if (mpirank_world == 0) {
+    fprintf(optimfile, "%05d  %1.14e  %1.14e  %1.14e  %02d\n", iter, obj_value, gnorm, inf_du, ls_trials);
+    fflush(optimfile);
+  }
+
+  /* Print parameters and controls to file */
   if (mpirank_world == 0) {
     char filename[255];
-    FILE *optimfile;
+    FILE *paramfile;
     /* Print optimized parameters */
     sprintf(filename, "%s/param_iter%04d.dat", datadir.c_str(), iter);
-    optimfile = fopen(filename, "w");
+    paramfile = fopen(filename, "w");
     for (int i=0; i<n; i++){
-      fprintf(optimfile, "%1.14e\n", x[i]);
+      fprintf(paramfile, "%1.14e\n", x[i]);
     }
-    fclose(optimfile);
+    fclose(paramfile);
 
     /* Print out control functions */
     setDesign(n, x);

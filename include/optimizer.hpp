@@ -23,6 +23,7 @@ class OptimProblem : public hiop::hiopInterfaceDenseConstraints {
         int mpirank_space, mpisize_space;
         int mpirank_optim, mpisize_optim;
         int mpirank_world, mpisize_world;
+        FILE* optimfile;
 
     public:
         OptimProblem();
