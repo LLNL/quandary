@@ -17,9 +17,10 @@ OptimProblem::OptimProblem() {
     mpirank_world = 0;
     mpisize_world = 0;
     diag_only = false;
+    printlevel = 0;
 }
 
-OptimProblem::OptimProblem(myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, MPI_Comm comm_hiop_, const std::vector<double> optim_bounds_, double optim_regul_, std::string x0filename_, bool diag_only_, std::string datadir_){
+OptimProblem::OptimProblem(myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, MPI_Comm comm_hiop_, const std::vector<double> optim_bounds_, double optim_regul_, std::string x0filename_, bool diag_only_, std::string datadir_, int optim_printlevel_){
     primalbraidapp  = primalbraidapp_;
     adjointbraidapp = adjointbraidapp_;
     comm_hiop = comm_hiop_;
@@ -28,6 +29,7 @@ OptimProblem::OptimProblem(myBraidApp* primalbraidapp_, myAdjointBraidApp* adjoi
     diag_only = diag_only_;
     bounds = optim_bounds_;
     datadir = datadir_;
+    printlevel = optim_printlevel_;
 
     MPI_Comm_rank(primalbraidapp->comm_braid, &mpirank_braid);
     MPI_Comm_size(primalbraidapp->comm_braid, &mpisize_braid);
@@ -39,7 +41,7 @@ OptimProblem::OptimProblem(myBraidApp* primalbraidapp_, myAdjointBraidApp* adjoi
     MPI_Comm_size(MPI_COMM_WORLD, &mpisize_world);
 
     /* Open optim file */
-    if (mpirank_world == 0) {
+    if (mpirank_world == 0 && printlevel > 0) {
       char filename[255];
       sprintf(filename, "%s/optim.dat", datadir.c_str());
       optimfile = fopen(filename, "w");
@@ -49,7 +51,7 @@ OptimProblem::OptimProblem(myBraidApp* primalbraidapp_, myAdjointBraidApp* adjoi
 
 OptimProblem::~OptimProblem() {
   /* Close optim file */
-  if (mpirank_world == 0) fclose(optimfile);
+  if (mpirank_world == 0 && printlevel > 0) fclose(optimfile);
 }
 
 
@@ -346,7 +348,7 @@ bool OptimProblem::get_starting_point(const long long &global_n, double* x0) {
   setDesign(global_n, x0);
   
   /* Flush control functions */
-  if (mpirank_world == 0 ) {
+  if (mpirank_world == 0 && printlevel >= 2) {
     int ntime = primalbraidapp->ntime;
     double dt = primalbraidapp->total_time / ntime;
     char filename[255];
@@ -364,7 +366,7 @@ bool OptimProblem::get_starting_point(const long long &global_n, double* x0) {
 /* This is called after HiOp finishes. x is LOCAL to each processor ! */
 void OptimProblem::solution_callback(hiop::hiopSolveStatus status, int n, const double* x, const double* z_L, const double* z_U, int m, const double* g, const double* lambda, double obj_value) {
   
-  if (mpirank_world == 0) {
+  if (mpirank_world == 0 && printlevel > 0) {
     char filename[255];
     FILE *paramfile;
 
@@ -392,39 +394,42 @@ void OptimProblem::solution_callback(hiop::hiopSolveStatus status, int n, const 
 /* This is called after each iteration. x is LOCAL to each processor ! */
 bool OptimProblem::iterate_callback(int iter, double obj_value, int n, const double* x, const double* z_L, const double* z_U, int m, const double* g, const double* lambda, double inf_pr, double inf_du, double mu, double alpha_du, double alpha_pr, int ls_trials) {
 
-  /* Compute current gradient norm. */
-  const double* grad_ptr = adjointbraidapp->getReducedGradientPtr();
-  double gnorm = 0.0;
-  for (int i=0; i<n; i++) {
-    gnorm += pow(grad_ptr[i], 2.0);
-  }
+  /* Output */
+  if (mpirank_world == 0 && printlevel > 0) {
 
-  /* Print to optimization file */
-  if (mpirank_world == 0) {
+    /* Compute current gradient norm. */
+    const double* grad_ptr = adjointbraidapp->getReducedGradientPtr();
+    double gnorm = 0.0;
+    for (int i=0; i<n; i++) {
+      gnorm += pow(grad_ptr[i], 2.0);
+    }
+
+    /* Print to optimization file */
     fprintf(optimfile, "%05d  %1.14e  %1.14e  %1.14e  %02d\n", iter, obj_value, gnorm, inf_du, ls_trials);
     fflush(optimfile);
-  }
 
-  /* Print parameters and controls to file */
-  if (mpirank_world == 0) {
-    char filename[255];
-    FILE *paramfile;
-    /* Print optimized parameters */
-    sprintf(filename, "%s/param_iter%04d.dat", datadir.c_str(), iter);
-    paramfile = fopen(filename, "w");
-    for (int i=0; i<n; i++){
-      fprintf(paramfile, "%1.14e\n", x[i]);
-    }
-    fclose(paramfile);
+    /* Print parameters and controls to file */
+    if (printlevel > 1) {
+      char filename[255];
 
-    /* Print out control functions */
-    setDesign(n, x);
-    int ntime = primalbraidapp->ntime;
-    double dt = primalbraidapp->total_time / ntime;
-    Hamiltonian* hamil = primalbraidapp->hamiltonian;
-    for (int ioscil = 0; ioscil < hamil->getNOscillators(); ioscil++) {
-        sprintf(filename, "%s/control_iter%04d_%02d.dat", datadir.c_str(), iter, ioscil+1);
-        hamil->getOscillator(ioscil)->flushControl(ntime, dt, filename);
+      /* Print optimized parameters */
+      FILE *paramfile;
+      sprintf(filename, "%s/param_iter%04d.dat", datadir.c_str(), iter);
+      paramfile = fopen(filename, "w");
+      for (int i=0; i<n; i++){
+        fprintf(paramfile, "%1.14e\n", x[i]);
+      }
+      fclose(paramfile);
+
+      /* Print control functions */
+      setDesign(n, x);
+      int ntime = primalbraidapp->ntime;
+      double dt = primalbraidapp->total_time / ntime;
+      Hamiltonian* hamil = primalbraidapp->hamiltonian;
+      for (int ioscil = 0; ioscil < hamil->getNOscillators(); ioscil++) {
+          sprintf(filename, "%s/control_iter%04d_%02d.dat", datadir.c_str(), iter, ioscil+1);
+          hamil->getOscillator(ioscil)->flushControl(ntime, dt, filename);
+      }
     }
   }
 
