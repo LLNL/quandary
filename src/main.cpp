@@ -18,6 +18,12 @@
 #define TEST_FD_SPLINE 0
 #define TEST_DT 0
 
+enum RunType {
+  primal,            // Runs one objective function evaluation (forward)
+  adjoint,           // Runs one gradient computation (forward & backward)
+  optimization       // Run optimization 
+};
+
 
 int main(int argc,char **argv)
 {
@@ -30,8 +36,8 @@ int main(int argc,char **argv)
   PetscInt       nspline;      // Number of spline basis functions
   Hamiltonian*   hamiltonian;  // Hamiltonian system
   PetscBool      analytic;     // If true: runs analytic test case
-  PetscBool      primal_only;  // If true: runs only one primal simulation
   PetscBool      monitor;      // If true: Print out additional time-stepper information
+  RunType        runtype;      // Decides if forward only, forward+backward, or optimization
   /* Braid */
   myBraidApp *primalbraidapp;
   myAdjointBraidApp *adjointbraidapp;
@@ -67,25 +73,33 @@ int main(int argc,char **argv)
   PETSC_COMM_WORLD = comm_petsc;
   ierr = PetscInitialize(&argc,&argv,(char*)0,NULL);if (ierr) return ierr;
 
-  /* Read config file and set default */
+  /* Read config file */
   if (argc != 2) {
     if (mpirank == 0) {
-      printf("\n");
-      printf("USAGE: ./main </path/to/configfile> \n");
+      printf("\nUSAGE: ./main </path/to/configfile> \n");
     }
     MPI_Finalize();
     return 0;
   }
   MapParam config(MPI_COMM_WORLD);
   config.ReadFile(argv[1]);
+
+  /* Get some options from the config file */
   nlvl  = config.GetIntParam("nlevels", 2);
   nosci = config.GetIntParam("noscillators", 2);
   ntime = config.GetIntParam("ntime", 1000);
   dt    = config.GetDoubleParam("dt", 0.01);
   nspline = config.GetIntParam("nspline", 10);
   analytic = (PetscBool) config.GetBoolParam("analytic", false);
-  primal_only = (PetscBool) config.GetBoolParam("primal_only", false);
   monitor = (PetscBool) config.GetBoolParam("monitor", false);
+  std::string runtypestr = config.GetStrParam("runtype", "primal");
+  if      (runtypestr.compare("primal")      == 0) runtype = primal;
+  else if (runtypestr.compare("adjoint")     == 0) runtype = adjoint;
+  else if (runtypestr.compare("optimization")== 0) runtype = optimization;
+  else {
+    printf("ERROR: Unknown runtype: %s. Options are 'primal', 'adjoint' or 'optimization'.", runtypestr.c_str());
+    exit(1);
+  }
   
   /* Initialize time horizon */
   total_time = ntime * dt;
@@ -169,6 +183,7 @@ int main(int argc,char **argv)
   if (mpirank != 0) nlp.options->SetIntegerValue("verbosity_level", 0);
   /* Create solver */
   hiop::hiopAlgFilterIPM optimsolver(&nlp);
+  hiop::hiopSolveStatus  optimstatus;
 
    /* Measure wall time */
   StartTime = MPI_Wtime();
@@ -189,21 +204,29 @@ int main(int argc,char **argv)
 
   
   /* --- Solve primal --- */
-  // optimproblem.eval_f(ndesign, myinit, true, objective);
-  // if (mpirank == 0) printf("%d: Objective %1.14e\n", mpirank, objective);
-
-  // /* --- Solve adjoint --- */
-  // optimproblem.eval_grad_f(ndesign, myinit, true, optimgrad);
-  // if (mpirank == 0) {
-  //   printf("\n%d: My awesome gradient:\n", mpirank);
-  //   for (int i=0; i<ndesign; i++) {
-  //     printf("%1.14e\n", optimgrad[i]);
-  //   }
-  // }
+  if (runtype == primal || runtype == adjoint) {
+    optimproblem.eval_f(ndesign, myinit, true, objective);
+    if (mpirank == 0) printf("%d: Objective %1.14e\n", mpirank, objective);
+  } 
+  
+  /* --- Solve adjoint --- */
+  if (runtype == adjoint) {
+    optimproblem.eval_grad_f(ndesign, myinit, true, optimgrad);
+    if (mpirank == 0) {
+      printf("\n%d: My awesome gradient:\n", mpirank);
+      for (int i=0; i<ndesign; i++) {
+        printf("%1.14e\n", optimgrad[i]);
+      }
+    }
+  }
 
   /* Solve the optimization  */
-  if (mpirank == 0) printf("Now starting HiOp... \n");
-  hiop::hiopSolveStatus status = optimsolver.run();
+  if (runtype == optimization) {
+    if (mpirank == 0) printf("Now starting HiOp... \n");
+    optimstatus = optimsolver.run();
+
+    goto exit;
+  }
 
 
 exit:
