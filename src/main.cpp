@@ -183,10 +183,10 @@ int main(int argc,char **argv)
   optimproblem.get_starting_point(ndesign, myinit);
 
   // TODO: THIS IS A HACK: Make sure to run one braid_Drive before the actual optimization (in order to initialize Braid's time-grid.)
-  optimproblem.firstcall = true;
-  optimproblem.eval_f(ndesign, myinit, true, objective);
-  optimproblem.eval_grad_f(ndesign, myinit, true, optimgrad);
-  optimproblem.firstcall = false;
+  if (mpirank == 0) printf("# Hack: Running initial braid_Drive to set up time grids.\n");
+  primalbraidapp->Drive();
+  adjointbraidapp->Drive();
+
   
   /* --- Solve primal --- */
   // optimproblem.eval_f(ndesign, myinit, true, objective);
