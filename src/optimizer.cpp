@@ -178,20 +178,21 @@ bool OptimProblem::eval_f(const long long& n, const double* x_in, bool new_x, do
       trace_Re += obj_Re_local;
       trace_Im += obj_Im_local;
     }
-    if (mpirank_world == 0) printf("\n");
   // }
 
   /* Compute fidelity 1 - 1/N^4 |trace|^2 */
   fidelity = 1. - 1. / nominator * (pow(trace_Re, 2.0) + pow(trace_Im, 2.0));
 
+  /* Sum up fidelity from all braid processors */
+  double myfidelity = fidelity;
+  MPI_Allreduce(&myfidelity, &fidelity, 1, MPI_DOUBLE, MPI_SUM, primalbraidapp->comm_braid);
+
+  if (mpirank_world == 0) printf("  -->  Fidelity: %1.14e\n", fidelity);
+
   /* Add regularization J += gamma * ||x||^2*/
   for (int i=0; i<n; i++) {
     fidelity += regul / 2.0 * pow(x_in[i], 2.0);
   }
-
-  /* Sum up fidelity from all braid processors */
-  double myfidelity = fidelity;
-  MPI_Allreduce(&myfidelity, &fidelity, 1, MPI_DOUBLE, MPI_SUM, primalbraidapp->comm_braid);
 
   /* Return objective value */
   obj_value = fidelity;
@@ -251,17 +252,19 @@ bool OptimProblem::eval_grad_f(const long long& n, const double* x_in, bool new_
         gradf[i] += grad_ptr[i]; 
     }
   }
-  if (mpirank_world == 0) printf("\n");
 
   /* Compute fidelity 1 - 1/N^4 |trace|^2 */
   fidelity = 1. - 1. / nominator * (pow(trace_Re, 2.0) + pow(trace_Im, 2.0));
+
+  /* Sum up fidelity from all braid processors */
+  double myfidelity = fidelity;
+  MPI_Allreduce(&myfidelity, &fidelity, 1, MPI_DOUBLE, MPI_SUM, primalbraidapp->comm_braid);
+
+
   /* Add regularization + gamma*||x||^2 */
   for (int i=0; i<n; i++) {
     fidelity += regul / 2.0 * pow(x_in[i], 2.0);
   }
-  /* Sum up fidelity from all braid processors */
-  double myfidelity = fidelity;
-  MPI_Allreduce(&myfidelity, &fidelity, 1, MPI_DOUBLE, MPI_SUM, primalbraidapp->comm_braid);
 
   /* Sum up the gradient from all braid processors */
   double* mygrad = new double[n];
@@ -270,7 +273,13 @@ bool OptimProblem::eval_grad_f(const long long& n, const double* x_in, bool new_
   }
   MPI_Allreduce(mygrad, gradf, n, MPI_DOUBLE, MPI_SUM, primalbraidapp->comm_braid);
 
+  /* Compute gradient norm */
+  double gradnorm = 0.0;
+  for (int i=0; i<n; i++) {
+    gradnorm += pow(gradf[i], 2.0);
+  }
 
+  if (mpirank_world == 0) printf(" -->  Fidelity: %1.14e, ||grad|| = %1.14e\n", fidelity, gradnorm);
     
   return true;
 }
