@@ -319,10 +319,11 @@ bool OptimProblem::get_starting_point(const long long &global_n, double* x0) {
         read_vector(x0filename.c_str(), x0, global_n); 
     }
     else {
-      /* Set to random initial guess. */
+      /* Set to random initial guess. between [-1:1] */
       srand (1.0);    // seed 1.0 only for code debugging! seed with time(NULL) otherwise!
       for (int i=0; i<global_n; i++) {
         x0[i] = (double) rand() / ((double)RAND_MAX);
+        x0[i] = 2.*x0[i] - 1.;
       }
       /* Trimm back to the box constraints */
       int j = 0;
