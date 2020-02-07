@@ -159,6 +159,9 @@ int main(int argc,char **argv)
   /* Initialize Braid */
   primalbraidapp = new myBraidApp(comm_braid, total_time, ntime, ts, mytimestepper, hamiltonian, targetgate, &config);
   adjointbraidapp = new myAdjointBraidApp(comm_braid, total_time, ntime, ts, mytimestepper, hamiltonian, targetgate, *mu, &config, primalbraidapp->getCore());
+  primalbraidapp->InitGrids();
+  adjointbraidapp->InitGrids();
+
 
   /* Print some information on the time-grid distribution */
   // int ilower, iupper;
@@ -189,12 +192,6 @@ int main(int argc,char **argv)
   double* myinit = new double[ndesign];
   double* optimgrad = new double[ndesign];
   optimproblem.get_starting_point(ndesign, myinit);
-
-  // TODO: THIS IS A HACK: Make sure to run one braid_Drive before the actual optimization (in order to initialize Braid's time-grid.)
-  if (mpirank == 0) printf("# Hack: Running initial braid_Drive to set up time grids.\n");
-  primalbraidapp->Drive();
-  adjointbraidapp->Drive();
-
 
    /* Start timer */
   double StartTime = MPI_Wtime();

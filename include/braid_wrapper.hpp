@@ -102,6 +102,9 @@ class myBraidApp : public BraidApp {
     /* Call braid_drive and postprocess. Return braid norm */
     double Drive();
 
+    /* Initialize braids time grids */
+    void InitGrids();
+
 };
 
 /**

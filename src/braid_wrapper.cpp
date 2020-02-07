@@ -57,7 +57,7 @@ myBraidApp::myBraidApp(MPI_Comm comm_braid_, double total_time_, int ntime_, TS 
   core->SetSeqSoln(0);
 
 
-  /* Output */
+  /* Output options */
   accesslevel = config->GetIntParam("braid_accesslevel", 1);
   core->SetAccessLevel( accesslevel );
   datadir = config->GetStrParam("datadir", "./data_out");
@@ -69,11 +69,12 @@ myBraidApp::myBraidApp(MPI_Comm comm_braid_, double total_time_, int ntime_, TS 
     mkdir(datadir.c_str(), 0777);
     cout << "# Data directory: " << datadir << endl; 
   }
+
 }
 
 myBraidApp::~myBraidApp() {
   /* Delete the core, if drive() has been called */
-  if (core->GetWarmRestart()) delete core;
+  delete core;
 }
 
 int myBraidApp::getTimeStepIndex(double t, double dt){
@@ -132,6 +133,25 @@ int myBraidApp::printConvHistory(const char* filename){
   delete [] norms;
 
   return 0;
+}
+
+
+void myBraidApp::InitGrids() {
+
+  double* ta;
+  _braid_Grid   *grid;
+  int ilower, iupper;
+
+  _braid_GetDistribution(core->GetCore(), &ilower, &iupper);
+  _braid_GridInit(core->GetCore(), 0, ilower, iupper, &grid);
+  ta = _braid_GridElt(grid, ta);
+     for (int i = ilower; i <= iupper; i++)
+     {
+        ta[i-ilower] = 0.0 + (((braid_Real)i)/ntime)*(total_time);
+     }
+  _braid_InitHierarchy(core->GetCore(), grid, 0);
+  _braid_InitGuess(core->GetCore(), 0);
+  _braid_CoreElt(core->GetCore(), warm_restart) = 1;
 }
 
 
@@ -217,9 +237,6 @@ braid_Int myBraidApp::Init(braid_Real t, braid_Vector *u_ptr){
 
   /* Create the vector */
   myBraidVector *u = new myBraidVector(nreal);
-
-  /* Set the initial condition */
-  hamiltonian->initialCondition(0,u->x);
 
   /* Return vector to braid */
   *u_ptr = (braid_Vector) u;
@@ -400,21 +417,16 @@ braid_Int myBraidApp::BufUnpack(void *buffer, braid_Vector *u_ptr, BraidBufferSt
 }
 
 int myBraidApp::PreProcess(int iinit, double f_Re, double f_Im){
-/* Apply initial condition if warm_restart (otherwise it is set in my_Init().
- * Can not be set here if !(warm_restart) because the braid_grid is created only when braid_drive() is called. 
- */
 
   braid_BaseVector ubase;
   myBraidVector *u;
       
-  if (core->GetWarmRestart()) {
-    /* Get vector at t == 0 */
-    _braid_UGetVectorRef(core->GetCore(), 0, 0, &ubase);
-    if (ubase != NULL)  // only true on one first processor !
-    {
-      u = (myBraidVector *)ubase->userVector;
-      hamiltonian->initialCondition(iinit, u->x);
-    }
+  /* Get vector at t == 0 */
+  _braid_UGetVectorRef(core->GetCore(), 0, 0, &ubase);
+  if (ubase != NULL)  // only true on one first processor !
+  {
+    u = (myBraidVector *)ubase->userVector;
+    hamiltonian->initialCondition(iinit, u->x);
   }
 
   /* Open output files */
@@ -634,14 +646,6 @@ braid_Int myAdjointBraidApp::Init(braid_Real t, braid_Vector *u_ptr) {
   /* Reset the reduced gradient */
   VecZeroEntries(redgrad); 
 
-  /* Set the differentiated objective function */
-  if (t==0){
-
-    /* Set derivative of objective function value */
-    /* TODO: THIS IS BULLSHIT! MAKE SURE THAT PreProcess is called after this!! */
-    double obj_bar = - 1./(hamiltonian->getDim() * hamiltonian->getDim());
-    targetgate->apply_diff(0, u->x, 1.0, 1.0);
-  }
 
   /* Return new vector to braid */
   *u_ptr = (braid_Vector) u;
@@ -651,23 +655,20 @@ braid_Int myAdjointBraidApp::Init(braid_Real t, braid_Vector *u_ptr) {
 
 
 int myAdjointBraidApp::PreProcess(int iinit, double f_Re_bar, double f_Im_bar){
-/* If warm_restart: set adjoint initial condition here. Otherwise it's set in my_Init_Adj.
- * It can not be done here if drive() has not been called before, because the braid grid is allocated only at the beginning of drive() 
-*/
+
   braid_BaseVector ubaseadjoint;
   myBraidVector *uadjoint;
 
-  /* Set initial condition for adjoint: Derivative of objective function */
-  if (core->GetWarmRestart()) {
-    /* Get adjoint state at t=0.0 */
-    _braid_UGetVectorRef(core->GetCore(), 0, 0, &ubaseadjoint);
-    if (ubaseadjoint != NULL) {   // this is true only at the last processor
-      uadjoint = (myBraidVector *) ubaseadjoint->userVector;
+  /* Set adjoint initial condition: Derivative of objective function */
 
-      /* Set derivative of objective function value */
-      VecZeroEntries(uadjoint->x);
-      targetgate->apply_diff(iinit, uadjoint->x, f_Re_bar, f_Im_bar);
-    }
+  /* Get adjoint state at t=0.0 */
+  _braid_UGetVectorRef(core->GetCore(), 0, 0, &ubaseadjoint);
+  if (ubaseadjoint != NULL) {   // this is true only at the last processor
+    uadjoint = (myBraidVector *) ubaseadjoint->userVector;
+
+    /* Set derivative of objective function value */
+    VecZeroEntries(uadjoint->x);
+    targetgate->apply_diff(iinit, uadjoint->x, f_Re_bar, f_Im_bar);
   }
 
   /* Reset the reduced gradient */
