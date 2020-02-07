@@ -15,14 +15,15 @@
 #define EPS 1e-4
 
 #define TEST_DRHSDP 0
-#define TEST_FD_TS 0
+#define TEST_FD_TS 1
 #define TEST_FD_SPLINE 0
 #define TEST_DT 0
 
 enum RunType {
   primal,            // Runs one objective function evaluation (forward)
   adjoint,           // Runs one gradient computation (forward & backward)
-  optimization       // Run optimization 
+  optimization,      // Run optimization 
+  none               // Don't run anything.
 };
 
 
@@ -95,8 +96,8 @@ int main(int argc,char **argv)
   else if (runtypestr.compare("adjoint")     == 0) runtype = adjoint;
   else if (runtypestr.compare("optimization")== 0) runtype = optimization;
   else {
-    printf("ERROR: Unknown runtype: %s. Options are 'primal', 'adjoint' or 'optimization'.", runtypestr.c_str());
-    exit(1);
+    printf("\n\n WARNING: Unknown runtype: %s.\n\n", runtypestr.c_str());
+    runtype = none;
   }
   
   /* Initialize time horizon */
