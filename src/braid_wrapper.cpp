@@ -33,7 +33,7 @@ myBraidApp::myBraidApp(MPI_Comm comm_braid_, double total_time_, int ntime_, TS 
   ufile = NULL;
   vfile = NULL;
 
-  usepetscts = config->GetIntParam("usepetscts",0);
+  usepetscts = config->GetBoolParam("usepetscts", false);
 
   /* Init Braid core */
   core = new BraidCore(comm_braid_, this);

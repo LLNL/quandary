@@ -5,6 +5,7 @@ This project implements a parallel-in-time optimization solver for quantum contr
 To build this project, you need to have the following packages installed:
 * Petsc [https://www.mcs.anl.gov/petsc/]
 * Xbraid [https://github.com/XBraid/xbraid], on branch 'solveadjointwithxbraid'
+* HiOp [https://github.com/LLNL/hiop]
 
 ## Installation
 * Download XBraid, switch to the 'solveadjointwithxbraid' branch and build the shared library:
@@ -13,10 +14,14 @@ To build this project, you need to have the following packages installed:
     - git checkout solveadjointwithxbraid
     - make braid
 * Install Petsc (see Petsc manual for installation guide). Set the `PETSC_DIR` and `PETSC_ARCH` variables.
-* In the main directory of this project, adapt the beginning of the Makefile to set the path to the XBraid and Petsc locations. 
+* To install HiOp, run in clean 'build' directory:
+    > cmake ..
+    > make
+    > make test
+    > make install
+* In the main directory of this project, adapt the beginning of the Makefile to set the path to the XBraid, Petsc, and HiOp locations. 
 * Type `make cleanup` to clean the build directory.
-* Type `make main` to build the code. 
+* Type `make -j main` to build the code. 
 
 ## Running
-The code builds into the executable `./main`. It takes one argument being the name of the config file. A template for a config file listing all options is in 'config.cfg'. For serial time-stepping, use `maxlevels=1`, which executes XBraid on one time-grid level, which is equivalent to serial time-stepping. 
-
+The code builds into the executable `./main`. It takes one argument being the name of the config file. A template for a config file listing all options is in 'config_template.cfg'. 

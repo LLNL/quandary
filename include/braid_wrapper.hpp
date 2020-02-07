@@ -28,7 +28,7 @@ class myBraidApp : public BraidApp {
     FILE *ufile;
     FILE *vfile;
 
-    int usepetscts;
+    bool usepetscts;
     int braidrank;
 
   public:
