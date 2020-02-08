@@ -97,6 +97,7 @@ void OptimProblem::getDesign(int n, double* x){
       /* Get pointers to parameters of oscillator i */
       paramRe = hamil->getOscillator(ioscil)->getParamsRe();
       paramIm = hamil->getOscillator(ioscil)->getParamsIm();
+      /* Design storage: x = (ReParams, ImParams)_iOscil
       /* Set Re params */
       for (int iparam=0; iparam<nparam; iparam++) {
           x[j] = paramRe[iparam]; j++;
@@ -347,8 +348,8 @@ bool OptimProblem::get_starting_point(const long long &global_n, double* x0) {
   /* Pass to oscillator */
   setDesign(global_n, x0);
   
-  /* Flush control functions */
-  if (mpirank_world == 0 && printlevel >= 2) {
+  /* Flush initial control functions */
+  if (mpirank_world == 0 && printlevel > 0) {
     int ntime = primalbraidapp->ntime;
     double dt = primalbraidapp->total_time / ntime;
     char filename[255];

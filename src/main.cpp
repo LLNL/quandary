@@ -205,11 +205,14 @@ int main(int argc,char **argv)
   /* --- Solve adjoint --- */
   if (runtype == adjoint) {
     optimproblem.eval_grad_f(ndesign, myinit, true, optimgrad);
+    double gnorm = 0.0;
     if (mpirank == 0) {
       printf("\n%d: My awesome gradient:\n", mpirank);
       for (int i=0; i<ndesign; i++) {
+        gnorm += pow(optimgrad[i], 2.0);
         printf("%1.14e\n", optimgrad[i]);
       }
+      printf("Gradient norm: %1.14e\n", gnorm);
     }
   }
 
