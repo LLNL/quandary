@@ -7,7 +7,8 @@
 #include <algorithm>
 #include <cstdio>
 #include <cctype>
-#include <bits/stdc++.h> 
+#include <vector>
+#include <sstream>
 
 #pragma once
 
