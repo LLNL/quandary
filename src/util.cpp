@@ -219,10 +219,12 @@ PetscErrorCode StateHasTrace1(Vec x, PetscReal tol, PetscBool *flag) {
   if (!u_hastrace1) {
     printf("\n u :\n");
     VecView(u, PETSC_VIEWER_STDOUT_WORLD);
+    printf("\n");
   }
   if (!v_haszerodiag) {
     printf("\n v :\n");
     VecView(v, PETSC_VIEWER_STDOUT_WORLD);
+    printf("\n");
   }
 
 

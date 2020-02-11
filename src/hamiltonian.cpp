@@ -141,7 +141,7 @@ int Hamiltonian::assemble_RHS(double t){
   // printf("Performing check AntiSymmetric...\n");
   PetscBool isAntiSymmetric;
   MatIsAntiSymmetric(RHS, 0.0, &isAntiSymmetric);
-  if (!isAntiSymmetric) printf("%f WARNING: RHS is not symmetric!\n",t);
+  if (!isAntiSymmetric) printf("%f WARNING: RHS is not antisymmetric!\n",t);
 #endif
 
   return 0;
