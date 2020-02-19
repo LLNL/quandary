@@ -3,7 +3,8 @@
 OptimProblem::OptimProblem() {
     primalbraidapp  = NULL;
     adjointbraidapp = NULL;
-    fidelity = 0.0;
+    objective = 0.0;
+    infidelity = 0.0;
     trace_Re = 0.0;
     trace_Im = 0.0;
     regul = 0.0;
@@ -45,7 +46,7 @@ OptimProblem::OptimProblem(myBraidApp* primalbraidapp_, myAdjointBraidApp* adjoi
       char filename[255];
       sprintf(filename, "%s/optim.dat", datadir.c_str());
       optimfile = fopen(filename, "w");
-      fprintf(optimfile, "#iter    obj_value           ||grad||                inf_du             ls trials \n");
+      fprintf(optimfile, "#iter    obj_value           infidelity            ||grad||              inf_du               ls trials \n");
     }
 }
 
@@ -165,8 +166,8 @@ bool OptimProblem::eval_f(const long long& n, const double* x_in, bool new_x, do
   int nominator = dim*dim;
   if (diag_only) nominator = dim;
 
-  /* Run simulation, only if x_in is new. Otherwise, f(x_in) has been computed already and stored in fidelity. */
-  // this is fishy. check if fidelity is computed correctly in grad_f
+  /* Run simulation, only if x_in is new. Otherwise, f(x_in) has been computed already and stored in infidelity. */
+  // this is fishy. check if infidelity is computed correctly in grad_f
   // if (new_x) { 
 
     /* Pass design vector x to oscillator */
@@ -194,22 +195,23 @@ bool OptimProblem::eval_f(const long long& n, const double* x_in, bool new_x, do
     }
   // }
 
-  /* Compute fidelity 1 - 1/N^4 |trace|^2 */
-  fidelity = 1. - 1. / nominator * (pow(trace_Re, 2.0) + pow(trace_Im, 2.0));
+  /* Compute infidelity 1 - 1/N^4 |trace|^2 */
+  infidelity = 1. - 1. / nominator * (pow(trace_Re, 2.0) + pow(trace_Im, 2.0));
 
-  /* Sum up fidelity from all braid processors */
-  double myfidelity = fidelity;
-  MPI_Allreduce(&myfidelity, &fidelity, 1, MPI_DOUBLE, MPI_SUM, primalbraidapp->comm_braid);
+  /* Sum up infidelity from all braid processors */
+  double myinfidelity = infidelity;
+  MPI_Allreduce(&myinfidelity, &infidelity, 1, MPI_DOUBLE, MPI_SUM, primalbraidapp->comm_braid);
 
-  if (mpirank_world == 0) printf("  -->  Fidelity: %1.14e\n", fidelity);
+  if (mpirank_world == 0) printf("  -->  infidelity: %1.14e\n", infidelity);
 
-  /* Add regularization J += gamma * ||x||^2*/
+  /* Add regularization objective = infidelity + gamma * ||x||^2*/
+  objective = infidelity;
   for (int i=0; i<n; i++) {
-    fidelity += regul / 2.0 * pow(x_in[i], 2.0);
+    objective += regul / 2.0 * pow(x_in[i], 2.0);
   }
 
   /* Return objective value */
-  obj_value = fidelity;
+  obj_value = objective;
 
   return true;
 }
@@ -232,7 +234,7 @@ bool OptimProblem::eval_grad_f(const long long& n, const double* x_in, bool new_
     gradf[i] = regul * x_in[i];
   }
 
-  /* Derivative fidelity 1-1/N^4 |trace|^2 */
+  /* Derivative infidelity 1-1/N^4 |trace|^2 */
   if(new_x) printf(" ++++++ WARNING: Not sure if trace_Re and trace_Im hold the correct value!++++\n");
   double trace_Re_bar = - 2. / nominator * trace_Re ;
   double trace_Im_bar = - 2. / nominator * trace_Im ;
@@ -267,17 +269,18 @@ bool OptimProblem::eval_grad_f(const long long& n, const double* x_in, bool new_
     }
   }
 
-  /* Compute fidelity 1 - 1/N^4 |trace|^2 */
-  fidelity = 1. - 1. / nominator * (pow(trace_Re, 2.0) + pow(trace_Im, 2.0));
+  /* Compute infidelity 1 - 1/N^4 |trace|^2 */
+  infidelity = 1. - 1. / nominator * (pow(trace_Re, 2.0) + pow(trace_Im, 2.0));
 
-  /* Sum up fidelity from all braid processors */
-  double myfidelity = fidelity;
-  MPI_Allreduce(&myfidelity, &fidelity, 1, MPI_DOUBLE, MPI_SUM, primalbraidapp->comm_braid);
+  /* Sum up infidelity from all braid processors */
+  double myinfidelity = infidelity;
+  MPI_Allreduce(&myinfidelity, &infidelity, 1, MPI_DOUBLE, MPI_SUM, primalbraidapp->comm_braid);
 
 
-  /* Add regularization + gamma*||x||^2 */
+  /* Add regularization: objective = infidelity + gamma*||x||^2 */
+  objective = infidelity;
   for (int i=0; i<n; i++) {
-    fidelity += regul / 2.0 * pow(x_in[i], 2.0);
+    objective += regul / 2.0 * pow(x_in[i], 2.0);
   }
 
   /* Sum up the gradient from all braid processors */
@@ -293,7 +296,7 @@ bool OptimProblem::eval_grad_f(const long long& n, const double* x_in, bool new_
     gradnorm += pow(gradf[i], 2.0);
   }
 
-  if (mpirank_world == 0) printf(" -->  Fidelity: %1.14e, ||grad|| = %1.14e\n", fidelity, gradnorm);
+  if (mpirank_world == 0) printf(" -->  infidelity: %1.14e, ||grad|| = %1.14e\n", infidelity, gradnorm);
     
   return true;
 }
@@ -406,7 +409,7 @@ bool OptimProblem::iterate_callback(int iter, double obj_value, int n, const dou
     }
 
     /* Print to optimization file */
-    fprintf(optimfile, "%05d  %1.14e  %1.14e  %1.14e  %02d\n", iter, obj_value, gnorm, inf_du, ls_trials);
+    fprintf(optimfile, "%05d  %1.14e  %1.14e  %1.14e  %1.14e  %02d\n", iter, obj_value, infidelity, gnorm, inf_du, ls_trials);
     fflush(optimfile);
 
     /* Print parameters and controls to file */
