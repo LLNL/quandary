@@ -195,13 +195,13 @@ bool OptimProblem::eval_f(const long long& n, const double* x_in, bool new_x, do
     }
   // }
 
+
+  /* Broadcast trace from last to all processors */
+  MPI_Bcast(&trace_Re, 1, MPI_DOUBLE, mpisize_braid-1, primalbraidapp->comm_braid);
+  MPI_Bcast(&trace_Im, 1, MPI_DOUBLE, mpisize_braid-1, primalbraidapp->comm_braid);
+
   /* Compute infidelity 1 - 1/N^4 |trace|^2 */
   infidelity = 1. - 1. / nominator * (pow(trace_Re, 2.0) + pow(trace_Im, 2.0));
-
-  /* Sum up infidelity from all braid processors */
-  double myinfidelity = infidelity;
-  MPI_Allreduce(&myinfidelity, &infidelity, 1, MPI_DOUBLE, MPI_SUM, primalbraidapp->comm_braid);
-
   if (mpirank_world == 0) printf("  -->  infidelity: %1.14e\n", infidelity);
 
   /* Add regularization objective = infidelity + gamma * ||x||^2*/
@@ -268,14 +268,13 @@ bool OptimProblem::eval_grad_f(const long long& n, const double* x_in, bool new_
         gradf[i] += grad_ptr[i]; 
     }
   }
+  
+  /* Broadcast trace from last to all processors */
+  MPI_Bcast(&trace_Re, 1, MPI_DOUBLE, mpisize_braid-1, primalbraidapp->comm_braid);
+  MPI_Bcast(&trace_Im, 1, MPI_DOUBLE, mpisize_braid-1, primalbraidapp->comm_braid);
 
   /* Compute infidelity 1 - 1/N^4 |trace|^2 */
   infidelity = 1. - 1. / nominator * (pow(trace_Re, 2.0) + pow(trace_Im, 2.0));
-
-  /* Sum up infidelity from all braid processors */
-  double myinfidelity = infidelity;
-  MPI_Allreduce(&myinfidelity, &infidelity, 1, MPI_DOUBLE, MPI_SUM, primalbraidapp->comm_braid);
-
 
   /* Add regularization: objective = infidelity + gamma*||x||^2 */
   objective = infidelity;
