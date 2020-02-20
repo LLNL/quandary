@@ -240,6 +240,17 @@ int main(int argc,char **argv)
     printf(" Processors used:  %d\n", mpisize);
     printf("\n");
   }
+  printf("Rank %d: %.2fMB\n", mpirank, myMB );
+
+  /* Print timing to file */
+  if (mpirank == 0) {
+    sprintf(filename, "timing.dat");
+    FILE* timefile = fopen(filename, "w");
+    fprintf(timefile, "%d  %1.8e\n", mpisize, UsedTime);
+    fclose(timefile);
+    printf("%s written.\n", filename);
+  }
+
 
 
 
