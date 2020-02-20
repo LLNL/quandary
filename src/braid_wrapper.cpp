@@ -47,13 +47,16 @@ myBraidApp::myBraidApp(MPI_Comm comm_braid_, double total_time_, int ntime_, TS 
   core->SetCFactor(-1, cfactor);
   int maxiter = config->GetIntParam("braid_maxiter", 50);
   core->SetMaxIter( maxiter);
+  double abstol = config->GetDoubleParam("braid_abstol", 1e-6);
+  core->SetAbsTol( abstol );
+  double reltol = config->GetDoubleParam("braid_reltol", 1e-4);
+  core->SetRelTol( reltol );
   bool skip = (PetscBool) config->GetBoolParam("braid_skip", false);
   core->SetSkip( skip);
   bool fmg = (PetscBool) config->GetBoolParam("braid_fmg", false);
   if (fmg) core->SetFMG();
 
   core->SetNRelax(-1, 1);
-  core->SetAbsTol(1e-6);
   core->SetSeqSoln(0);
 
 
