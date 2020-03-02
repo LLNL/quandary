@@ -11,7 +11,7 @@ class OptimProblem : public hiop::hiopInterfaceDenseConstraints {
         myBraidApp* primalbraidapp;         /* Primal BraidApp to carry out PinT forward sim.*/
         myAdjointBraidApp* adjointbraidapp; /* Adjoint BraidApp to carry out PinT backward sim. */
         double objective;                 /* holds the current objective value */
-        double infidelity;                /* holds the current infidelity value */
+        double fidelity;                /* holds the current fidelity value */
         double trace_Re, trace_Im;        /* Temporarily holding the sum of local objective functions */
         double regul;                       /* Parameter for L2 regularization */
         std::string x0filename;             /* Name of data directory for braid's output */

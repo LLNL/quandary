@@ -4,7 +4,7 @@ OptimProblem::OptimProblem() {
     primalbraidapp  = NULL;
     adjointbraidapp = NULL;
     objective = 0.0;
-    infidelity = 0.0;
+    fidelity = 0.0;
     trace_Re = 0.0;
     trace_Im = 0.0;
     regul = 0.0;
@@ -46,7 +46,7 @@ OptimProblem::OptimProblem(myBraidApp* primalbraidapp_, myAdjointBraidApp* adjoi
       char filename[255];
       sprintf(filename, "%s/optim.dat", datadir.c_str());
       optimfile = fopen(filename, "w");
-      fprintf(optimfile, "#iter    obj_value           infidelity            ||grad||              inf_du               ls trials \n");
+      fprintf(optimfile, "#iter    obj_value           fidelity              ||grad||              inf_du               ls trials \n");
     }
 }
 
@@ -166,8 +166,8 @@ bool OptimProblem::eval_f(const long long& n, const double* x_in, bool new_x, do
   int nominator = dim*dim;
   if (diag_only) nominator = dim;
 
-  /* Run simulation, only if x_in is new. Otherwise, f(x_in) has been computed already and stored in infidelity. */
-  // this is fishy. check if infidelity is computed correctly in grad_f
+  /* Run simulation, only if x_in is new. Otherwise, f(x_in) has been computed already and stored in fidelity. */
+  // this is fishy. check if fidelity is computed correctly in grad_f
   // if (new_x) { 
 
     /* Pass design vector x to oscillator */
@@ -178,8 +178,6 @@ bool OptimProblem::eval_f(const long long& n, const double* x_in, bool new_x, do
     trace_Im = 0.0;
     for (int iinit = 0; iinit < dim; iinit++) {
       
-      /* if diag_only, run add only diagonal elements for comparing with Ander's case */
-      if (diag_only && iinit != 0 && iinit != 5 && iinit != 10 && iinit != 15) continue;
 
       if (mpirank_world == 0) printf(" %d FWD. ", iinit);
       /* Set initial condition for index iinit */
@@ -189,9 +187,12 @@ bool OptimProblem::eval_f(const long long& n, const double* x_in, bool new_x, do
       /* Eval objective function for initial condition i */
       primalbraidapp->PostProcess(iinit, &obj_Re_local, &obj_Im_local);
 
-      /* Add to trace */
-      trace_Re += obj_Re_local;
-      trace_Im += obj_Im_local;
+      /* Add diagonal elements to fidelity trace */
+      if (iinit % ((int)sqrt(dim)+1) == 0 )
+      {
+        trace_Re += obj_Re_local;
+        trace_Im += obj_Im_local;
+      }
     }
   // }
 
@@ -200,12 +201,12 @@ bool OptimProblem::eval_f(const long long& n, const double* x_in, bool new_x, do
   MPI_Bcast(&trace_Re, 1, MPI_DOUBLE, mpisize_braid-1, primalbraidapp->comm_braid);
   MPI_Bcast(&trace_Im, 1, MPI_DOUBLE, mpisize_braid-1, primalbraidapp->comm_braid);
 
-  /* Compute infidelity 1 - 1/N^4 |trace|^2 */
-  infidelity = 1. - 1. / nominator * (pow(trace_Re, 2.0) + pow(trace_Im, 2.0));
-  if (mpirank_world == 0) printf("  -->  infidelity: %1.14e\n", infidelity);
+  /* Compute fidelity 1/N^2 |trace|^2 */
+  fidelity = 1. - 1. / dim * (pow(trace_Re, 2.0) + pow(trace_Im, 2.0));
+  if (mpirank_world == 0) printf("  -->  fidelity: %1.14e\n", fidelity);
 
-  /* Add regularization objective = infidelity + gamma * ||x||^2*/
-  objective = infidelity;
+  /* Add regularization objective = 1.0 - fidelity + gamma * ||x||^2*/
+  objective = 1.0 - fidelity;
   for (int i=0; i<n; i++) {
     objective += regul / 2.0 * pow(x_in[i], 2.0);
   }
@@ -273,11 +274,11 @@ bool OptimProblem::eval_grad_f(const long long& n, const double* x_in, bool new_
   MPI_Bcast(&trace_Re, 1, MPI_DOUBLE, mpisize_braid-1, primalbraidapp->comm_braid);
   MPI_Bcast(&trace_Im, 1, MPI_DOUBLE, mpisize_braid-1, primalbraidapp->comm_braid);
 
-  /* Compute infidelity 1 - 1/N^4 |trace|^2 */
-  infidelity = 1. - 1. / nominator * (pow(trace_Re, 2.0) + pow(trace_Im, 2.0));
+  /* Compute fidelity 1/N^4 |trace|^2 */
+  fidelity = 1. / nominator * (pow(trace_Re, 2.0) + pow(trace_Im, 2.0));
 
-  /* Add regularization: objective = infidelity + gamma*||x||^2 */
-  objective = infidelity;
+  /* Add regularization: objective = fidelity + gamma*||x||^2 */
+  objective = 1.0 - fidelity;
   for (int i=0; i<n; i++) {
     objective += regul / 2.0 * pow(x_in[i], 2.0);
   }
@@ -295,7 +296,7 @@ bool OptimProblem::eval_grad_f(const long long& n, const double* x_in, bool new_
     gradnorm += pow(gradf[i], 2.0);
   }
 
-  if (mpirank_world == 0) printf(" -->  infidelity: %1.14e, ||grad|| = %1.14e\n", infidelity, gradnorm);
+  if (mpirank_world == 0) printf(" -->  fidelity: %1.14e, ||grad|| = %1.14e\n", fidelity, gradnorm);
     
   return true;
 }
@@ -408,7 +409,7 @@ bool OptimProblem::iterate_callback(int iter, double obj_value, int n, const dou
     }
 
     /* Print to optimization file */
-    fprintf(optimfile, "%05d  %1.14e  %1.14e  %1.14e  %1.14e  %02d\n", iter, obj_value, infidelity, gnorm, inf_du, ls_trials);
+    fprintf(optimfile, "%05d  %1.14e  %1.14e  %1.14e  %1.14e  %02d\n", iter, obj_value, fidelity, gnorm, inf_du, ls_trials);
     fflush(optimfile);
 
     /* Print parameters and controls to file */
