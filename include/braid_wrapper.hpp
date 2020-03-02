@@ -21,7 +21,6 @@ class myBraidVector {
 class myBraidApp : public BraidApp {
   protected: 
     TS           ts_petsc;       /* Petsc Time-stepper struct */
-    Gate         *targetgate;
     TimeStepper  *mytimestepper;
 
     BraidCore *core;                /* Braid core for running PinT simulation */
@@ -41,7 +40,7 @@ class myBraidApp : public BraidApp {
 
   public:
 
-  myBraidApp(MPI_Comm comm_braid_, double total_time_, int ntime_, TS ts_petsc_, TimeStepper* mytimestepper_, Hamiltonian* ham_, Gate* targate_, MapParam* config);
+  myBraidApp(MPI_Comm comm_braid_, double total_time_, int ntime_, TS ts_petsc_, TimeStepper* mytimestepper_, Hamiltonian* ham_, MapParam* config);
   ~myBraidApp();
 
     /* Dumps xbraid's convergence history to a file */
@@ -96,8 +95,8 @@ class myBraidApp : public BraidApp {
     /* Sets the initial condition with index i if warm_restart (otherwise it is set in my_Init() */
     virtual int PreProcess(int i, double f_Re, double f_Im);
 
-    /* Performs one last FRelax, evaluates the objective function value for init i */
-    virtual int PostProcess(int i, double* f_Re, double* f_Im);
+    /* Performs one last FRelax. Returns state at last time step or NULL if not stored on this processor */
+    virtual Vec PostProcess();
 
     /* Call braid_drive and postprocess. Return braid norm */
     double Drive();
@@ -120,7 +119,7 @@ class myAdjointBraidApp : public myBraidApp {
 
   public:
 
-    myAdjointBraidApp(MPI_Comm comm_braid_, double total_time_, int ntime_, TS ts_petsc_,TimeStepper* mytimestepper_, Hamiltonian* ham_, Gate* targate_, Vec redgrad_, MapParam* config, BraidCore *Primalcoreptr_);
+    myAdjointBraidApp(MPI_Comm comm_braid_, double total_time_, int ntime_, TS ts_petsc_,TimeStepper* mytimestepper_, Hamiltonian* ham_, Vec redgrad_, MapParam* config, BraidCore *Primalcoreptr_);
     ~myAdjointBraidApp();
 
     /* Get pointer to reduced gradient. READ ONLY!! */
@@ -139,6 +138,6 @@ class myAdjointBraidApp : public myBraidApp {
     int PreProcess(int i, double f_Re_bar, double f_Im_bar);
 
     /* Performs one last FRelax and MPI_Allreduce the gradient. */
-    int PostProcess(int i, double* f_Re, double* f_Im);
+    Vec PostProcess();
 
 };

@@ -157,8 +157,8 @@ int main(int argc,char **argv)
   TSInit(ts, hamiltonian, ntime, dt, total_time, x, lambda, mu, monitor);
 
   /* Initialize Braid */
-  primalbraidapp = new myBraidApp(comm_braid, total_time, ntime, ts, mytimestepper, hamiltonian, targetgate, &config);
-  adjointbraidapp = new myAdjointBraidApp(comm_braid, total_time, ntime, ts, mytimestepper, hamiltonian, targetgate, *mu, &config, primalbraidapp->getCore());
+  primalbraidapp = new myBraidApp(comm_braid, total_time, ntime, ts, mytimestepper, hamiltonian, &config);
+  adjointbraidapp = new myAdjointBraidApp(comm_braid, total_time, ntime, ts, mytimestepper, hamiltonian, *mu, &config, primalbraidapp->getCore());
   primalbraidapp->InitGrids();
   adjointbraidapp->InitGrids();
 
@@ -173,7 +173,7 @@ int main(int argc,char **argv)
   std::vector<double> optimbounds;
   config.GetVecDoubleParam("optim_bounds", optimbounds, 1e20);
   assert (optimbounds.size() == hamiltonian->getNOscillators());
-  OptimProblem optimproblem(primalbraidapp, adjointbraidapp, comm_hiop, optimbounds, config.GetDoubleParam("optim_regul", 1e-4), config.GetStrParam("optim_x0filename", "none"), config.GetBoolParam("optim_diagonly", false), config.GetStrParam("datadir", "./data_out"), config.GetIntParam("optim_printlevel", 1));
+  OptimProblem optimproblem(primalbraidapp, adjointbraidapp, targetgate, comm_hiop, optimbounds, config.GetDoubleParam("optim_regul", 1e-4), config.GetStrParam("optim_x0filename", "none"), config.GetBoolParam("optim_diagonly", false), config.GetStrParam("datadir", "./data_out"), config.GetIntParam("optim_printlevel", 1));
   hiop::hiopNlpDenseConstraints nlp(optimproblem);
   long long int ndesign,m;
   optimproblem.get_prob_sizes(ndesign, m);

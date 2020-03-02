@@ -19,7 +19,7 @@ myBraidVector::~myBraidVector() {
 
 
 
-myBraidApp::myBraidApp(MPI_Comm comm_braid_, double total_time_, int ntime_, TS ts_petsc_, TimeStepper* mytimestepper_, Hamiltonian* ham_, Gate* targate_, MapParam* config) 
+myBraidApp::myBraidApp(MPI_Comm comm_braid_, double total_time_, int ntime_, TS ts_petsc_, TimeStepper* mytimestepper_, Hamiltonian* ham_, MapParam* config) 
           : BraidApp(comm_braid_, 0.0, total_time_, ntime_) {
 
   ntime = ntime_;
@@ -27,7 +27,6 @@ myBraidApp::myBraidApp(MPI_Comm comm_braid_, double total_time_, int ntime_, TS 
   ts_petsc = ts_petsc_;
   mytimestepper = mytimestepper_;
   hamiltonian = ham_;
-  targetgate = targate_;
   comm_braid = comm_braid_;
   MPI_Comm_rank(comm_braid, &braidrank);
   ufile = NULL;
@@ -450,7 +449,7 @@ int myBraidApp::PreProcess(int iinit, double f_Re, double f_Im){
 
 
 
-int myBraidApp::PostProcess(int iinit, double* f_Re, double* f_Im) {
+Vec myBraidApp::PostProcess() {
 
   braid_BaseVector ubase;
   myBraidVector *u;
@@ -462,24 +461,12 @@ int myBraidApp::PostProcess(int iinit, double* f_Re, double* f_Im) {
     _braid_FCRelax(core->GetCore(), 0);
   }
 
-  /* Eval objective function for initial condition iinit */
-  double obj_Re_local = 0.0;
-  double obj_Im_local = 0.0;
-  Vec finalstate = getStateVec(total_time); // this returns NULL for all but the last processors! 
-  if (finalstate != NULL) {
-    /* Compare to target gate */
-    targetgate->apply(iinit, finalstate, obj_Re_local, obj_Im_local);
-  }
-
-  /* Set return value */
-  *f_Re = obj_Re_local;
-  *f_Im = obj_Im_local;
-
   /* Close output files */
   if (ufile != NULL) fclose(ufile);
   if (vfile != NULL) fclose(vfile);
 
-  return 0;
+  return getStateVec(total_time);// this returns NULL for all but the last processors! 
+
 }
 
 
@@ -500,8 +487,8 @@ double myBraidApp::Drive() {
 /* ================================================================*/
 /* Adjoint Braid App */
 /* ================================================================*/
-myAdjointBraidApp::myAdjointBraidApp(MPI_Comm comm_braid_, double total_time_, int ntime_, TS ts_, TimeStepper* mytimestepper_, Hamiltonian* ham_, Gate* targate_, Vec redgrad_, MapParam* config, BraidCore *Primalcoreptr_)
-        : myBraidApp(comm_braid_, total_time_, ntime_, ts_, mytimestepper_, ham_, targate_, config) {
+myAdjointBraidApp::myAdjointBraidApp(MPI_Comm comm_braid_, double total_time_, int ntime_, TS ts_, TimeStepper* mytimestepper_, Hamiltonian* ham_, Vec redgrad_, MapParam* config, BraidCore *Primalcoreptr_)
+        : myBraidApp(comm_braid_, total_time_, ntime_, ts_, mytimestepper_, ham_, config) {
 
   /* Store the primal core */
   primalcore = Primalcoreptr_;
@@ -674,7 +661,7 @@ int myAdjointBraidApp::PreProcess(int iinit, double f_Re_bar, double f_Im_bar){
 
     /* Set derivative of objective function value */
     VecZeroEntries(uadjoint->x);
-    targetgate->apply_diff(iinit, uadjoint->x, f_Re_bar, f_Im_bar);
+    // targetgate->apply_diff(iinit, uadjoint->x, f_Re_bar, f_Im_bar);
   }
 
   /* Reset the reduced gradient */
@@ -692,7 +679,7 @@ int myAdjointBraidApp::PreProcess(int iinit, double f_Re_bar, double f_Im_bar){
   return 0;
 }
 
-int myAdjointBraidApp::PostProcess(int i, double* f_Re, double* f_Im) {
+Vec myAdjointBraidApp::PostProcess() {
 
   int maxlevels;
   maxlevels = _braid_CoreElt(core->GetCore(), max_levels);

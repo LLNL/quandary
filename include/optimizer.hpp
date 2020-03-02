@@ -10,6 +10,7 @@ class OptimProblem : public hiop::hiopInterfaceDenseConstraints {
     protected:
         myBraidApp* primalbraidapp;         /* Primal BraidApp to carry out PinT forward sim.*/
         myAdjointBraidApp* adjointbraidapp; /* Adjoint BraidApp to carry out PinT backward sim. */
+        Gate  *targetgate;                  
         double objective;                 /* holds the current objective value */
         double fidelity;                /* holds the current fidelity value */
         double trace_Re, trace_Im;        /* Temporarily holding the sum of local objective functions */
@@ -29,7 +30,7 @@ class OptimProblem : public hiop::hiopInterfaceDenseConstraints {
 
     public:
         OptimProblem();
-        OptimProblem(myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, MPI_Comm comm_hiop_, const std::vector<double>optim_bounds, double optim_regul_, std::string x0filename_, bool diag_only_, std::string datadir_, int optim_printlevel_);
+        OptimProblem(myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, Gate* targate_, MPI_Comm comm_hiop_, const std::vector<double>optim_bounds, double optim_regul_, std::string x0filename_, bool diag_only_, std::string datadir_, int optim_printlevel_);
         virtual ~OptimProblem();
 
 

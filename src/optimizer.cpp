@@ -21,9 +21,10 @@ OptimProblem::OptimProblem() {
     printlevel = 0;
 }
 
-OptimProblem::OptimProblem(myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, MPI_Comm comm_hiop_, const std::vector<double> optim_bounds_, double optim_regul_, std::string x0filename_, bool diag_only_, std::string datadir_, int optim_printlevel_){
+OptimProblem::OptimProblem(myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, Gate* targate_, MPI_Comm comm_hiop_, const std::vector<double> optim_bounds_, double optim_regul_, std::string x0filename_, bool diag_only_, std::string datadir_, int optim_printlevel_){
     primalbraidapp  = primalbraidapp_;
     adjointbraidapp = adjointbraidapp_;
+    targetgate = targate_;
     comm_hiop = comm_hiop_;
     regul = optim_regul_;
     x0filename = x0filename_;
@@ -180,30 +181,33 @@ bool OptimProblem::eval_f(const long long& n, const double* x_in, bool new_x, do
       
 
       if (mpirank_world == 0) printf(" %d FWD. ", iinit);
-      /* Set initial condition for index iinit */
+      /* Run forward with initial condition iinit */
       primalbraidapp->PreProcess(iinit, 0.0, 0.0);
-      /* Solve forward problem */
       primalbraidapp->Drive();
-      /* Eval objective function for initial condition i */
-      primalbraidapp->PostProcess(iinit, &obj_Re_local, &obj_Im_local);
+      Vec finalstate = primalbraidapp->PostProcess(); // this return NULL for all but the last time processor
 
       /* Add diagonal elements to fidelity trace */
       if (iinit % ((int)sqrt(dim)+1) == 0 )
       {
-        trace_Re += obj_Re_local;
-        trace_Im += obj_Im_local;
+        double Re_local = 0.0;
+        double Im_local = 0.0;
+        if (finalstate != NULL) {
+          targetgate->apply(iinit, finalstate, Re_local, Im_local);
+          trace_Re += Re_local;
+          trace_Im += Im_local;
+        }
       }
     }
   // }
 
 
-  /* Broadcast trace from last to all processors */
+  /* Broadcast fidelity trace from last to all processors */
   MPI_Bcast(&trace_Re, 1, MPI_DOUBLE, mpisize_braid-1, primalbraidapp->comm_braid);
   MPI_Bcast(&trace_Im, 1, MPI_DOUBLE, mpisize_braid-1, primalbraidapp->comm_braid);
 
   /* Compute fidelity 1/N^2 |trace|^2 */
-  fidelity = 1. - 1. / dim * (pow(trace_Re, 2.0) + pow(trace_Im, 2.0));
-  if (mpirank_world == 0) printf("  -->  fidelity: %1.14e\n", fidelity);
+  fidelity = 1. / dim * (pow(trace_Re, 2.0) + pow(trace_Im, 2.0));
+  if (mpirank_world == 0) printf("  -->  fidelity: %1.14e\n", 1.0 - fidelity);
 
   /* Add regularization objective = 1.0 - fidelity + gamma * ||x||^2*/
   objective = 1.0 - fidelity;
@@ -252,7 +256,7 @@ bool OptimProblem::eval_grad_f(const long long& n, const double* x_in, bool new_
     if (mpirank_world == 0) printf(" %d FWD -", iinit);
     primalbraidapp->PreProcess(iinit, 0.0, 0.0);
     primalbraidapp->Drive();
-    primalbraidapp->PostProcess(iinit, &obj_Re_local, &obj_Im_local);
+    primalbraidapp->PostProcess();
     /* Add to trace */
     trace_Re += obj_Re_local;
     trace_Im += obj_Im_local;
@@ -261,7 +265,7 @@ bool OptimProblem::eval_grad_f(const long long& n, const double* x_in, bool new_
     if (mpirank_world == 0) printf(" BWD. ");
     adjointbraidapp->PreProcess(iinit, trace_Re_bar, trace_Im_bar);
     adjointbraidapp->Drive();
-    adjointbraidapp->PostProcess(iinit, NULL, NULL);
+    adjointbraidapp->PostProcess();
 
     /* Add to Ipopt's gradient */
     const double* grad_ptr = adjointbraidapp->getReducedGradientPtr();
