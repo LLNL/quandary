@@ -421,17 +421,18 @@ braid_Int myBraidApp::BufUnpack(void *buffer, braid_Vector *u_ptr, BraidBufferSt
   return 0; 
 }
 
-int myBraidApp::PreProcess(int iinit, double f_Re, double f_Im){
+Vec myBraidApp::PreProcess(int iinit){
 
   braid_BaseVector ubase;
   myBraidVector *u;
+  Vec initstate = NULL;
       
   /* Get vector at t == 0 */
   _braid_UGetVectorRef(core->GetCore(), 0, 0, &ubase);
   if (ubase != NULL)  // only true on one first processor !
   {
     u = (myBraidVector *)ubase->userVector;
-    hamiltonian->initialCondition(iinit, u->x);
+    initstate = u->x;
   }
 
   /* Open output files */
@@ -443,8 +444,7 @@ int myBraidApp::PreProcess(int iinit, double f_Re, double f_Im){
     vfile = fopen(filename, "w");
   }
 
-
-  return 0; 
+  return initstate; 
 }
 
 
@@ -647,21 +647,19 @@ braid_Int myAdjointBraidApp::Init(braid_Real t, braid_Vector *u_ptr) {
 }
 
 
-int myAdjointBraidApp::PreProcess(int iinit, double f_Re_bar, double f_Im_bar){
+Vec myAdjointBraidApp::PreProcess(int iinit){
 
   braid_BaseVector ubaseadjoint;
   myBraidVector *uadjoint;
-
-  /* Set adjoint initial condition: Derivative of objective function */
+  Vec initstate = NULL;
 
   /* Get adjoint state at t=0.0 */
   _braid_UGetVectorRef(core->GetCore(), 0, 0, &ubaseadjoint);
   if (ubaseadjoint != NULL) {   // this is true only at the last processor
     uadjoint = (myBraidVector *) ubaseadjoint->userVector;
 
-    /* Set derivative of objective function value */
     VecZeroEntries(uadjoint->x);
-    // targetgate->apply_diff(iinit, uadjoint->x, f_Re_bar, f_Im_bar);
+    initstate = uadjoint->x;
   }
 
   /* Reset the reduced gradient */
@@ -676,7 +674,7 @@ int myAdjointBraidApp::PreProcess(int iinit, double f_Re_bar, double f_Im_bar){
     vfile = fopen(filename, "w");
   }
 
-  return 0;
+  return initstate;
 }
 
 Vec myAdjointBraidApp::PostProcess() {

@@ -114,29 +114,62 @@ void CNOT::apply(int i, Vec state, double& obj_re, double& obj_im){
 
 
 
-void CNOT::apply_diff(int i, Vec state_bar, const double obj_re_bar, const double obj_im_bar){
+void CNOT::compare(int i, Vec state, double& delta) {
+
+  delta = 0.0;
+
+  /* first term state^dag state */
+  double t1;
+  VecNorm(state, NORM_2, &t1);
+  delta += t1*t1;
+
+  /* second term gate_i^\dag gate_i */
+  int id = getIndex(i);
+  delta += pow(rotation_Re[id],2) + pow(rotation_Im[id],2); // this should be one always !?
+   
+  /* Third term 2*Re(state^dag gate_i) */
+  Vec u, v;
+  const PetscScalar *re_ptr, *im_ptr;
+  VecGetSubVector(state, isu, &u);
+  VecGetSubVector(state, isv, &v);
+  VecGetArrayRead(u, &re_ptr);
+  VecGetArrayRead(v, &im_ptr);
+
+  delta -= 2. * ( re_ptr[id] * rotation_Re[id] + im_ptr[id] * rotation_Im[id] );
+
+  VecRestoreArrayRead(u, &re_ptr);
+  VecRestoreArrayRead(v, &im_ptr);
+  VecRestoreSubVector(state, isu, &u);
+  VecRestoreSubVector(state, isv, &v);
+
+}
+
+
+void CNOT::compare_diff(int i, const Vec state, Vec state_bar, const double delta_bar){
 
   Vec u, v;
   PetscScalar *re_ptr, *im_ptr;
 
-  /* Get real (u) and imaginary (v) part of the state x = [u v] */
+  /* Derivative of third term: -2*Rot[id]*objbar */
   VecGetSubVector(state_bar, isu, &u);
   VecGetSubVector(state_bar, isv, &v);
   VecGetArray(u, &re_ptr);
   VecGetArray(v, &im_ptr);
-
   int id = getIndex(i);
+  
+  re_ptr[id] = - 2.*rotation_Re[id]*delta_bar;
+  im_ptr[id] = - 2.*rotation_Im[id]*delta_bar;
 
-  /* Set derivatives */
-  re_ptr[id] +=   rotation_Re[id] * obj_re_bar;
-  im_ptr[id] +=   rotation_Im[id] * obj_re_bar;
-  re_ptr[id] +=   rotation_Im[id] * obj_im_bar;
-  im_ptr[id] += - rotation_Re[id] * obj_im_bar;
-
-  /* Restore state_bar */
   VecRestoreArray(u, &re_ptr);
   VecRestoreArray(v, &im_ptr);
   VecRestoreSubVector(state_bar, isu, &u);
   VecRestoreSubVector(state_bar, isv, &v);
+
+  /* Derivative of second term: 0.0 */
+
+  /* Derivative of first term: xbar += 2*objbar*x  */
+  VecAXPY(state_bar, 2.*delta_bar, state);
+
+
 
 }

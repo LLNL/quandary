@@ -21,8 +21,10 @@ class Gate {
      * Out: real and imaginary part of state^T Gate_i */
     virtual void apply(int i, Vec state, double& obj_Re, double& obj_Im) = 0;
 
-    /* Derivative of gate application */
-    virtual void apply_diff(int i, Vec state_bar, const double obj_Re_bar, const double obj_Im_bar) = 0;
+    /* compare the k-th column of the gate to a state vector */
+    /* in Frobenius norm ||w_k - g_k||^2_F = w_k^dag w_k + g_k^dag g_k - 2*Re(w_k^dag g_k) */
+    virtual void compare(int i, Vec state, double& delta) = 0;
+    virtual void compare_diff(int i, const Vec state, Vec state_bar, const double delta_bar) = 0;
 
 };
 
@@ -52,6 +54,8 @@ class CNOT : public Gate {
     /* Apply i-th column of the gate to a state vector */
     virtual void apply(int i, Vec state, double& obj_re, double& obj_im);
 
-    /* Derivative of gate application */
-    virtual void apply_diff(int i, Vec state_bar, const double obj_re_bar, const double obj_im_bar);
+    /* compare the k-th column of the gate to a state vector */
+    /* in Frobenius norm ||w_k - g_k||^2_F = w_k^dag w_k + g_k^dag g_k - 2*Re(w_k^dag g_k) */
+    virtual void compare(int i, Vec state, double& delta);
+    virtual void compare_diff(int i, const Vec state, Vec state_bar, const double delta_bar);
 };

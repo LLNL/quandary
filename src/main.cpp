@@ -173,7 +173,7 @@ int main(int argc,char **argv)
   std::vector<double> optimbounds;
   config.GetVecDoubleParam("optim_bounds", optimbounds, 1e20);
   assert (optimbounds.size() == hamiltonian->getNOscillators());
-  OptimProblem optimproblem(primalbraidapp, adjointbraidapp, targetgate, comm_hiop, optimbounds, config.GetDoubleParam("optim_regul", 1e-4), config.GetStrParam("optim_x0filename", "none"), config.GetBoolParam("optim_diagonly", false), config.GetStrParam("datadir", "./data_out"), config.GetIntParam("optim_printlevel", 1));
+  OptimProblem optimproblem(primalbraidapp, adjointbraidapp, targetgate, comm_hiop, optimbounds, config.GetDoubleParam("optim_regul", 1e-4), config.GetStrParam("optim_x0filename", "none"), config.GetStrParam("datadir", "./data_out"), config.GetIntParam("optim_printlevel", 1));
   hiop::hiopNlpDenseConstraints nlp(optimproblem);
   long long int ndesign,m;
   optimproblem.get_prob_sizes(ndesign, m);

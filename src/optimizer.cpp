@@ -17,18 +17,16 @@ OptimProblem::OptimProblem() {
     mpisize_optim = 0;
     mpirank_world = 0;
     mpisize_world = 0;
-    diag_only = false;
     printlevel = 0;
 }
 
-OptimProblem::OptimProblem(myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, Gate* targate_, MPI_Comm comm_hiop_, const std::vector<double> optim_bounds_, double optim_regul_, std::string x0filename_, bool diag_only_, std::string datadir_, int optim_printlevel_){
+OptimProblem::OptimProblem(myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, Gate* targate_, MPI_Comm comm_hiop_, const std::vector<double> optim_bounds_, double optim_regul_, std::string x0filename_, std::string datadir_, int optim_printlevel_){
     primalbraidapp  = primalbraidapp_;
     adjointbraidapp = adjointbraidapp_;
     targetgate = targate_;
     comm_hiop = comm_hiop_;
     regul = optim_regul_;
     x0filename = x0filename_;
-    diag_only = diag_only_;
     bounds = optim_bounds_;
     datadir = datadir_;
     printlevel = optim_printlevel_;
@@ -160,12 +158,13 @@ bool OptimProblem::eval_f(const long long& n, const double* x_in, bool new_x, do
 // bool OptimProblem::eval_f(Index n, const Number* x, bool new_x, Number& obj_value){
 
   if (mpirank_world == 0) printf(" EVAL F... ");
-  double obj_Re_local;
-  double obj_Im_local;
   Hamiltonian* hamil = primalbraidapp->hamiltonian;
   int dim = hamil->getDim();
-  int nominator = dim*dim;
-  if (diag_only) nominator = dim;
+  double Re_local = 0.0;
+  double Im_local = 0.0;
+  double obj_local = 0.0;
+  Vec finalstate = NULL;
+  Vec initstate = NULL;
 
   /* Run simulation, only if x_in is new. Otherwise, f(x_in) has been computed already and stored in fidelity. */
   // this is fishy. check if fidelity is computed correctly in grad_f
@@ -177,20 +176,27 @@ bool OptimProblem::eval_f(const long long& n, const double* x_in, bool new_x, do
     /*  Iterate over initial condition */
     trace_Re = 0.0;
     trace_Im = 0.0;
+    objective = 0.0;
     for (int iinit = 0; iinit < dim; iinit++) {
       
 
       if (mpirank_world == 0) printf(" %d FWD. ", iinit);
       /* Run forward with initial condition iinit */
-      primalbraidapp->PreProcess(iinit, 0.0, 0.0);
+      initstate = primalbraidapp->PreProcess(iinit);
+      if (initstate != NULL) 
+        hamil->initialCondition(iinit, initstate);
       primalbraidapp->Drive();
-      Vec finalstate = primalbraidapp->PostProcess(); // this return NULL for all but the last time processor
+      finalstate = primalbraidapp->PostProcess(); // this return NULL for all but the last time processor
 
-      /* Add diagonal elements to fidelity trace */
-      if (iinit % ((int)sqrt(dim)+1) == 0 )
+      /* Add to objective function */
+      if (finalstate != NULL) {
+        targetgate->compare(iinit, finalstate, obj_local);
+        objective += obj_local;
+      }
+
+      /* Add diagonal elements to fidelity trace tr(X^dat G) */
+      if (iinit % ((int)sqrt(dim)+1) == 0 ) // this hits the diagonal elements
       {
-        double Re_local = 0.0;
-        double Im_local = 0.0;
         if (finalstate != NULL) {
           targetgate->apply(iinit, finalstate, Re_local, Im_local);
           trace_Re += Re_local;
@@ -200,17 +206,19 @@ bool OptimProblem::eval_f(const long long& n, const double* x_in, bool new_x, do
     }
   // }
 
-
-  /* Broadcast fidelity trace from last to all processors */
+  /* Broadcast fidelity trace and objective from last to all processors */
   MPI_Bcast(&trace_Re, 1, MPI_DOUBLE, mpisize_braid-1, primalbraidapp->comm_braid);
   MPI_Bcast(&trace_Im, 1, MPI_DOUBLE, mpisize_braid-1, primalbraidapp->comm_braid);
+  MPI_Bcast(&objective, 1, MPI_DOUBLE, mpisize_braid-1, primalbraidapp->comm_braid);
 
   /* Compute fidelity 1/N^2 |trace|^2 */
   fidelity = 1. / dim * (pow(trace_Re, 2.0) + pow(trace_Im, 2.0));
-  if (mpirank_world == 0) printf("  -->  fidelity: %1.14e\n", 1.0 - fidelity);
+  if (mpirank_world == 0) printf("  -->  infidelity: %1.14e\n", 1.0 - fidelity);
 
-  /* Add regularization objective = 1.0 - fidelity + gamma * ||x||^2*/
-  objective = 1.0 - fidelity;
+  /* Compute objective 1/(2*N^2) ||W-G||_F^2 */
+  objective = 1./(2.*dim) * objective;
+
+  /* Add regularization objective = objective + gamma * ||x||^2*/
   for (int i=0; i<n; i++) {
     objective += regul / 2.0 * pow(x_in[i], 2.0);
   }
@@ -228,8 +236,12 @@ bool OptimProblem::eval_grad_f(const long long& n, const double* x_in, bool new_
   Hamiltonian* hamil = primalbraidapp->hamiltonian;
   double obj_Re_local, obj_Im_local;
   int dim = hamil->getDim();
-  int nominator = dim*dim;
-  if (diag_only) nominator = dim;
+  double Re_local = 0.0;
+  double Im_local = 0.0;
+  double obj_local = 0.0;
+  Vec initstate = NULL;
+  Vec finalstate = NULL;
+  Vec initadjoint = NULL;
 
   /* Pass x to Oscillator */
   setDesign(n, x_in);
@@ -239,31 +251,44 @@ bool OptimProblem::eval_grad_f(const long long& n, const double* x_in, bool new_
     gradf[i] = regul * x_in[i];
   }
 
-  /* Derivative infidelity 1-1/N^4 |trace|^2 */
-  if(new_x) printf(" ++++++ WARNING: Not sure if trace_Re and trace_Im hold the correct value!++++\n");
-  double trace_Re_bar = - 2. / nominator * trace_Re ;
-  double trace_Im_bar = - 2. / nominator * trace_Im ;
+  /* Derivative objective 1/(2N^2) J */
+  double obj_bar = 1./(2.*dim);
 
   /* Iterate over initial conditions */
   trace_Re = 0.0;
   trace_Im = 0.0;
+  objective = 0.0;
   for (int iinit = 0; iinit < dim; iinit++) {
-
-    /* if diag_only, run add only diagonal elements for comparing with Ander's case */
-    if (diag_only && iinit != 0 && iinit != 5 && iinit != 10 && iinit != 15) continue;
 
     /* --- Solve primal --- */
     if (mpirank_world == 0) printf(" %d FWD -", iinit);
-    primalbraidapp->PreProcess(iinit, 0.0, 0.0);
+    initstate = primalbraidapp->PreProcess(iinit); // returns NULL if not stored on this proc
+    if (initstate != NULL)
+      hamil->initialCondition(iinit, initstate);
     primalbraidapp->Drive();
-    primalbraidapp->PostProcess();
-    /* Add to trace */
-    trace_Re += obj_Re_local;
-    trace_Im += obj_Im_local;
+    finalstate = primalbraidapp->PostProcess(); // returns NULL if not stored on this proc
+
+    /* Add to objective function */
+    if (finalstate != NULL) {
+      targetgate->compare(iinit, finalstate, obj_local);
+      objective += obj_local;
+    }
+
+    /* Add diagonal elements to fidelity trace tr(X^dat G) */
+    if (iinit % ((int)sqrt(dim)+1) == 0 ) // this hits the diagonal elements
+    {
+      if (finalstate != NULL) {
+        targetgate->apply(iinit, finalstate, Re_local, Im_local);
+        trace_Re += Re_local;
+        trace_Im += Im_local;
+      }
+    }
 
     /* --- Solve adjoint --- */
     if (mpirank_world == 0) printf(" BWD. ");
-    adjointbraidapp->PreProcess(iinit, trace_Re_bar, trace_Im_bar);
+    initadjoint = adjointbraidapp->PreProcess(iinit); // return NULL if not stored on this proc
+    if (initadjoint != NULL) 
+       targetgate->compare_diff(iinit, finalstate, initadjoint, obj_bar);
     adjointbraidapp->Drive();
     adjointbraidapp->PostProcess();
 
@@ -274,15 +299,18 @@ bool OptimProblem::eval_grad_f(const long long& n, const double* x_in, bool new_
     }
   }
   
-  /* Broadcast trace from last to all processors */
+  /* Broadcast trace and objective from last to all processors */
   MPI_Bcast(&trace_Re, 1, MPI_DOUBLE, mpisize_braid-1, primalbraidapp->comm_braid);
   MPI_Bcast(&trace_Im, 1, MPI_DOUBLE, mpisize_braid-1, primalbraidapp->comm_braid);
+  MPI_Bcast(&objective, 1, MPI_DOUBLE, mpisize_braid-1, primalbraidapp->comm_braid);
 
-  /* Compute fidelity 1/N^4 |trace|^2 */
-  fidelity = 1. / nominator * (pow(trace_Re, 2.0) + pow(trace_Im, 2.0));
+  /* Compute fidelity 1/N^2 |trace|^2 */
+  fidelity = 1. / dim * (pow(trace_Re, 2.0) + pow(trace_Im, 2.0));
+
+  /* Compute objective 1/(2*N^2) ||W-G||_F^2 */
+  objective = 1./(2.*dim) * objective;
 
   /* Add regularization: objective = fidelity + gamma*||x||^2 */
-  objective = 1.0 - fidelity;
   for (int i=0; i<n; i++) {
     objective += regul / 2.0 * pow(x_in[i], 2.0);
   }
@@ -300,7 +328,7 @@ bool OptimProblem::eval_grad_f(const long long& n, const double* x_in, bool new_
     gradnorm += pow(gradf[i], 2.0);
   }
 
-  if (mpirank_world == 0) printf(" -->  fidelity: %1.14e, ||grad|| = %1.14e\n", fidelity, gradnorm);
+  if (mpirank_world == 0) printf(" -->  infidelity: %1.14e, ||grad|| = %1.14e\n", 1.0 - fidelity, gradnorm);
     
   return true;
 }
