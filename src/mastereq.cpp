@@ -28,7 +28,7 @@ MasterEq::MasterEq(int noscillators_, Oscillator** oscil_vec_, const std::vector
   oscil_vec = oscil_vec_;
   xi = xi_;
   gamma = gamma_;
-  assert(xi.size() == (noscillators_+1) * noscillators_ / 2);
+  assert(xi.size() >= (noscillators_+1) * noscillators_ / 2);
 
 
   /* Dimension of vectorized system: n_1*...*n_q */

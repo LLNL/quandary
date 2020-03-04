@@ -5,7 +5,6 @@
 #include <vector>
 #pragma once
 
-// enum GATETYPE = {CNOT};
 
 class Gate {
   protected:
@@ -19,12 +18,12 @@ class Gate {
     
     /* Apply i-th column of the gate to a state vector.
      * Out: real and imaginary part of state^T Gate_i */
-    virtual void apply(int i, Vec state, double& obj_Re, double& obj_Im) = 0;
+    virtual void apply(int i, Vec state, double& obj_Re, double& obj_Im);
 
     /* compare the k-th column of the gate to a state vector */
     /* in Frobenius norm ||w_k - g_k||^2_F = w_k^dag w_k + g_k^dag g_k - 2*Re(w_k^dag g_k) */
-    virtual void compare(int i, Vec state, double& delta) = 0;
-    virtual void compare_diff(int i, const Vec state, Vec state_bar, const double delta_bar) = 0;
+    virtual void compare(int i, Vec state, double& delta);
+    virtual void compare_diff(int i, const Vec state, Vec state_bar, const double delta_bar);
 
 };
 

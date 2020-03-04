@@ -127,8 +127,11 @@ int main(int argc,char **argv)
 
   /* Initialize the target gate */
   std::vector<double> f;
+  Gate* targetgate;
   config.GetVecDoubleParam("frequencies", f, 1e20);
-  Gate* targetgate = new CNOT(f, total_time); // ONLY WORKS FOR 2by2 testcase!!
+  std::string gatetype = config.GetStrParam("gate_type", "none");
+  if      (gatetype.compare("none") == 0) targetgate = new Gate(1); // dummy gate. do nothing
+  else if (gatetype.compare("cnot") == 0) targetgate = new CNOT(f, total_time); // ONLY FOR 2osc2lvl case!
 
   /* Create solution vector x */
   MatCreateVecs(mastereq->getRHS(), &x, NULL);
@@ -169,7 +172,7 @@ int main(int argc,char **argv)
   /* Initialize the optimization */
   std::vector<double> optimbounds;
   config.GetVecDoubleParam("optim_bounds", optimbounds, 1e20);
-  assert (optimbounds.size() == mastereq->getNOscillators());
+  assert (optimbounds.size() >= mastereq->getNOscillators());
   OptimProblem optimproblem(primalbraidapp, adjointbraidapp, targetgate, comm_hiop, optimbounds, config.GetDoubleParam("optim_regul", 1e-4), config.GetStrParam("optim_x0filename", "none"), config.GetStrParam("datadir", "./data_out"), config.GetIntParam("optim_printlevel", 1));
   hiop::hiopNlpDenseConstraints nlp(optimproblem);
   long long int ndesign,m;

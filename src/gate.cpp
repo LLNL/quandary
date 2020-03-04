@@ -15,6 +15,17 @@ Gate::Gate(int nqubits_){
 Gate::~Gate(){}
 
 
+void Gate::apply(int i, Vec state, double& obj_Re, double& obj_Im){
+  obj_Re = 0.0;
+  obj_Im = 0.0;
+}
+
+void Gate::compare(int i, Vec state, double& delta){
+  delta = 0.0;
+}
+void Gate::compare_diff(int i, const Vec state, Vec state_bar, const double delta_bar){}
+
+
 CNOT::CNOT(const std::vector<double> f, double time) : Gate(2) { // CNOT spans two qubits
   assert(dim == 16);
   assert(f.size() == 2);
