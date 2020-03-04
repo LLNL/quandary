@@ -37,7 +37,6 @@ int main(int argc,char **argv)
   TS             ts;           // Timestepping context
   PetscInt       nspline;      // Number of spline basis functions
   Hamiltonian*   hamiltonian;  // Hamiltonian system
-  PetscBool      analytic;     // If true: runs analytic test case
   PetscBool      monitor;      // If true: Print out additional time-stepper information
   RunType        runtype;      // Decides if forward only, forward+backward, or optimization
   /* Braid */
@@ -89,7 +88,6 @@ int main(int argc,char **argv)
   ntime = config.GetIntParam("ntime", 1000);
   dt    = config.GetDoubleParam("dt", 0.01);
   nspline = config.GetIntParam("nspline", 10);
-  analytic = (PetscBool) config.GetBoolParam("analytic", false);
   monitor = (PetscBool) config.GetBoolParam("monitor", false);
   std::string runtypestr = config.GetStrParam("runtype", "primal");
   if      (runtypestr.compare("primal")      == 0) runtype = primal;
@@ -104,17 +102,9 @@ int main(int argc,char **argv)
   total_time = ntime * dt;
 
   /* Initialize the Oscillators */
-  if (analytic) nosci = 2;
   Oscillator** oscil_vec = new Oscillator*[nosci];
-  if (analytic) {
-    double omegaF1 = 1.0;
-    double omegaG2 = 1.0;
-    oscil_vec[0] = new FunctionOscillator(nlvl, omegaF1, &F1_analytic, &dF1_analytic, 0.0, NULL, NULL );
-    oscil_vec[1] = new FunctionOscillator(nlvl, 0.0, NULL, NULL, omegaG2, &G2_analytic, &dG2_analytic);
-  } else {
-    for (int i = 0; i < nosci; i++){
-      oscil_vec[i] = new SplineOscillator(nlvl, nspline, total_time);
-    }
+  for (int i = 0; i < nosci; i++){
+    oscil_vec[i] = new SplineOscillator(nlvl, nspline, total_time);
   }
 
 
@@ -122,21 +112,17 @@ int main(int argc,char **argv)
   std::vector<double> xi, gamma;
   config.GetVecDoubleParam("xi", xi, 2.0);
   config.GetVecDoubleParam("lindblad_gamma", gamma, 0.0);
-  if (analytic) {
-    hamiltonian = new AnalyticHam(xi, oscil_vec); 
+  std::string lindblad = config.GetStrParam("lindblad_type", "none");
+  if (lindblad.compare("none") == 0 ) {
+    hamiltonian = new LiouvilleVN(xi, nosci, oscil_vec);
+  } else if (lindblad.compare("decay") == 0 ) {
+    hamiltonian = new Lindblad(Lindblad::CollapseType::DECAY, xi, gamma, nosci, oscil_vec);
+  } else if (lindblad.compare("dephasing") == 0 ) {
+    hamiltonian = new Lindblad(Lindblad::CollapseType::DEPHASING, xi, gamma, nosci, oscil_vec);
   } else {
-    std::string lindblad = config.GetStrParam("lindblad_type", "none");
-    if (lindblad.compare("none") == 0 ) {
-      hamiltonian = new LiouvilleVN(xi, nosci, oscil_vec);
-    } else if (lindblad.compare("decay") == 0 ) {
-      hamiltonian = new Lindblad(Lindblad::CollapseType::DECAY, xi, gamma, nosci, oscil_vec);
-    } else if (lindblad.compare("dephasing") == 0 ) {
-      hamiltonian = new Lindblad(Lindblad::CollapseType::DEPHASING, xi, gamma, nosci, oscil_vec);
-    } else {
-      printf("\n\n ERROR: Unnown lindblad type: %s.\n", lindblad.c_str());
-      printf(" Choose either 'none', 'decay' or 'dephasing'\n");
-      exit(1);
-    }
+    printf("\n\n ERROR: Unnown lindblad type: %s.\n", lindblad.c_str());
+    printf(" Choose either 'none', 'decay' or 'dephasing'\n");
+    exit(1);
   }
 
   /* Initialize the target */
@@ -483,10 +469,6 @@ int main(int argc,char **argv)
   /* 
    * Testing time stepper convergence (dt-test) 
    */  
-  if (!analytic){
-    printf("\n WARNING: DT-test works for analytic test case only. Run with \"-analytic \" if you want to test the time-stepper convergence. \n");
-    return 0;
-  }
 
   Vec exact;  // exact solution
   Vec error;  // error  

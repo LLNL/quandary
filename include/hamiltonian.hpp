@@ -134,32 +134,3 @@ class Lindblad : public LiouvilleVN {
     /* Overwriting assemble_RHS because Ad needs to be added. */
     virtual int assemble_RHS(double t);
 };
-
-/* 
- * Ander's testcase with analytic solution 
- */
-class AnalyticHam : public LiouvilleVN {
-  
-  public:
-    AnalyticHam(const std::vector<double> xi_, Oscillator** oscil_vec_);
-    virtual ~AnalyticHam();
-
-    /* Evaluate the exact solution at time t. */
-    virtual bool ExactSolution(double t, Vec x);
-
-    /* Set the initial condition (exact(0)) */
-    int initialCondition(int iinit, Vec x);
-};
-
-/* Real part for Oscillator 1 of analytic solution */
-PetscScalar F1_analytic(PetscReal t,PetscReal freq);
-
-/* Imaginary part for Oscillator 2 of analytic solution */
-PetscScalar G2_analytic(PetscReal t,PetscReal freq);
-
-
-/* Derivative freq_diff = dF1/dfreq * Fbar */
-PetscScalar dF1_analytic(PetscReal t,PetscReal freq, PetscReal Fbar);
-
-/* Derivative freq_diff = dG2/dfreq * Gbar */
-PetscScalar dG2_analytic(PetscReal t,PetscReal freq, PetscReal Gbar);
