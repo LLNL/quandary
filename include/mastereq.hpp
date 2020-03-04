@@ -6,7 +6,7 @@
 #pragma once
 
 /* Available lindblad types */
-enum LindbladType {NONE, DECAY, DEPHASING, BOTH};
+enum LindbladType {NONE, DECAY, DEPHASE, BOTH};
 
 /* 
  * Implements the Lindblad master equation
@@ -29,7 +29,7 @@ class MasterEq{
     Mat  Ad, Bd;  // Real and imaginary part of constant system matrix
 
     std::vector<double> xi;     // Constants for frequencies of drift Hamiltonian
-    std::vector<double> gamma;  /* Time-constants for decay and dephasing operator */
+    std::vector<double> collapse_time;  /* Time-constants for decay and dephase operator */
 
 
 
@@ -50,7 +50,7 @@ class MasterEq{
     /* Default constructor sets zero */
     MasterEq();
     /* This constructor sets the variables and allocates Re, Im and M */
-    MasterEq(int noscillators_, Oscillator** oscil_vec_, const std::vector<double> xi_, LindbladType lindbladtype, const std::vector<double> gamma_);
+    MasterEq(int noscillators_, Oscillator** oscil_vec_, const std::vector<double> xi_, LindbladType lindbladtype, const std::vector<double> collapse_time_);
     ~MasterEq();
 
     /* Return the i-th oscillator */
