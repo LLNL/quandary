@@ -167,8 +167,12 @@ MasterEq::MasterEq(int noscillators_, Oscillator** oscil_vec_, const std::vector
   int dim_L;
   MatCreateSeqAIJ(PETSC_COMM_WORLD,dim,dim,2,NULL,&Ad); 
   for (int iosc = 0; iosc < noscillators_; iosc++) {
+
     /* Get lowering operator */
     switch (lindbladtype)  {
+      case NONE:
+        continue;
+        break;
       case DECAY: 
         dim_L = createLoweringOP(iosc, &L);
         break;
