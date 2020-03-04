@@ -213,7 +213,6 @@ bool OptimProblem::eval_f(const long long& n, const double* x_in, bool new_x, do
 
   /* Compute fidelity 1/N^2 |trace|^2 */
   fidelity = 1. / dim * (pow(trace_Re, 2.0) + pow(trace_Im, 2.0));
-  if (mpirank_world == 0) printf("  -->  infidelity: %1.14e\n", 1.0 - fidelity);
 
   /* Compute objective 1/(2*N^2) ||W-G||_F^2 */
   objective = 1./(2.*dim) * objective;
@@ -222,6 +221,8 @@ bool OptimProblem::eval_f(const long long& n, const double* x_in, bool new_x, do
   for (int i=0; i<n; i++) {
     objective += regul / 2.0 * pow(x_in[i], 2.0);
   }
+
+  if (mpirank_world == 0) printf("  -->  infidelity: %1.14e, objective: %1.14e\n", 1.0 - fidelity, objective);
 
   /* Return objective value */
   obj_value = objective;

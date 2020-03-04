@@ -119,13 +119,24 @@ int main(int argc,char **argv)
 
 
   /* Initialize the Hamiltonian  */
-  std::vector<double> xi;  
+  std::vector<double> xi, gamma;
   config.GetVecDoubleParam("xi", xi, 2.0);
+  config.GetVecDoubleParam("lindblad_gamma", gamma, 0.0);
   if (analytic) {
     hamiltonian = new AnalyticHam(xi, oscil_vec); 
   } else {
-    // hamiltonian = new TwoOscilHam(nlvl, xi, oscil_vec);
-    hamiltonian = new LiouvilleVN(xi, nosci, oscil_vec);
+    std::string lindblad = config.GetStrParam("lindblad_type", "none");
+    if (lindblad.compare("none") == 0 ) {
+      hamiltonian = new LiouvilleVN(xi, nosci, oscil_vec);
+    } else if (lindblad.compare("decay") == 0 ) {
+      hamiltonian = new Lindblad(Lindblad::CollapseType::DECAY, xi, gamma, nosci, oscil_vec);
+    } else if (lindblad.compare("dephasing") == 0 ) {
+      hamiltonian = new Lindblad(Lindblad::CollapseType::DEPHASING, xi, gamma, nosci, oscil_vec);
+    } else {
+      printf("\n\n ERROR: Unnown lindblad type: %s.\n", lindblad.c_str());
+      printf(" Choose either 'none', 'decay' or 'dephasing'\n");
+      exit(1);
+    }
   }
 
   /* Initialize the target */

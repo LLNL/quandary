@@ -20,6 +20,10 @@ PetscErrorCode Ikron(Mat A, int dimI, double alpha, Mat *Out, InsertMode insert_
  */
 PetscErrorCode kronI(Mat A, int dimI, double alpha, Mat *Out, InsertMode insert_mode);
 
+/* Computes kronecker product A \kron B for SQUARE matrices A,B \in \R^{dim \times dim} 
+/* This works in PETSC SERIAL only. */
+/* The output matrix has to be allocated before with size dim*dim \times dim*dim */
+PetscErrorCode AkronB(int dim, Mat A, Mat B, double alpha, Mat *Out, InsertMode insert_mode);
 
 /* Tests if a matrix A is anti-symmetric (A^T=-A) */
 PetscErrorCode MatIsAntiSymmetric(Mat A, PetscReal tol, PetscBool *flag);

@@ -88,6 +88,7 @@ class Hamiltonian{
  */
 class LiouvilleVN : public Hamiltonian {
 
+  protected: 
   Mat* Ac_vec;  // Vector of constant matrices for building time-varying Hamiltonian (real part)
   Mat* Bc_vec;  // Vector of constant matrices for building time-varying Hamiltonian (imaginary part)
   Mat  Ad, Bd;  // Real and imaginary part of constant drift Hamiltonian Hd 
@@ -119,15 +120,19 @@ class LiouvilleVN : public Hamiltonian {
  */
 
 class Lindblad : public LiouvilleVN {
+  protected:
+    std::vector<double> gamma;   /* Time-constants for decay and dephasing operator */
 
   public: 
     /* Available lindblad terms */
     enum CollapseType {DECAY, DEPHASING}; 
     
     Lindblad();
-    Lindblad(CollapseType collapse_type, const std::vector<double> xi_, int noscillators_, Oscillator** oscil_vec_);
+    Lindblad(CollapseType collapse_type, const std::vector<double> xi_, const std::vector<double> gamma_, int noscillators_, Oscillator** oscil_vec_);
     virtual ~Lindblad();
 
+    /* Overwriting assemble_RHS because Ad needs to be added. */
+    virtual int assemble_RHS(double t);
 };
 
 /* 

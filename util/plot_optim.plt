@@ -12,8 +12,8 @@ set xlabel "Iterations"
 
 p \
     datafile u 2  w l t 'objective', \
-    datafile u 3  w l t 'gradient', \
-    datafile u 4  w l t 'inf du' 
+    datafile u 4  w l t 'gradient', \
+    datafile u 5  w l t 'inf du' 
 
 set term png
 set output 'out.png'

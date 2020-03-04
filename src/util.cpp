@@ -90,6 +90,45 @@ PetscErrorCode kronI(Mat A, int dimI, double alpha, Mat *Out, InsertMode insert_
 }
 
 
+
+PetscErrorCode AkronB(int dim, Mat A, Mat B, double alpha, Mat *Out, InsertMode insert_mode){
+
+    int dimOut = dim*dim;
+
+    int ncolsA,ncolsB;
+    const int *colsA, *colsB;
+    const double *valsA, *valsB;
+    // Iterate over rows of A 
+    for (int irowA = 0; irowA < dim; irowA++){
+        // Iterate over non-zero columns in this row of A
+        MatGetRow(A, irowA, &ncolsA, &colsA, &valsA);
+        for (int j=0; j<ncolsA; j++) {
+            int icolA = colsA[j];
+            double valA = valsA[j];
+            /* put a B-block at position (irowA*dim, icolA*dim): */
+            // Iterate over rows of B 
+            for (int irowB = 0; irowB < dim; irowB++){
+                // Iterate over non-zero columns in this B-row
+                MatGetRow(B, irowB, &ncolsB, &colsB, &valsB);
+                for (int k=0; k< ncolsB; k++) {
+                    int icolB = colsB[k];
+                    double valB = valsB[k];
+                    /* Insert values in Out */
+                    int rowOut = irowA*dim + irowB;
+                    int colOut = icolA*dim + icolB;
+                    double valOut = valA * valB * alpha; 
+                    MatSetValue(*Out, rowOut, colOut, valOut, insert_mode);
+                }
+                MatRestoreRow(B, irowB, &ncolsB, &colsB, &valsB);
+            }
+        }   
+        MatRestoreRow(A, irowA, &ncolsA, &colsA, &valsA);
+    }  
+
+  return 0;
+}
+
+
 PetscErrorCode MatIsAntiSymmetric(Mat A, PetscReal tol, PetscBool *flag) {
   
   int ierr; 

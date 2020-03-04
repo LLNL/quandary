@@ -248,8 +248,8 @@ LiouvilleVN::LiouvilleVN(const std::vector<double> xi_, int noscillators_, Oscil
   Bc_vec = new Mat[noscillators_];
 
   /* Allocate constant real and imaginary Hamiltonian Ad = Re(Hd), Bd = Im(Hd) */
-  MatCreateSeqAIJ(PETSC_COMM_WORLD,dim,dim,0,NULL,&Ad); // Ad is empty for Liouville VN
-  MatCreateSeqAIJ(PETSC_COMM_WORLD,dim,dim,dim,NULL,&Bd); // Bd is diagonal
+  MatCreateSeqAIJ(PETSC_COMM_WORLD,dim,dim,2,NULL,&Ad); // Ad is either diagonal (dephasing) or diagonal and superdiagonal (decay)
+  MatCreateSeqAIJ(PETSC_COMM_WORLD,dim,dim,1,NULL,&Bd); // Bd is diagonal
 
 
   /* Compute building blocks for time-varying Hamiltonian part */
@@ -494,7 +494,9 @@ int LiouvilleVN::assemble_dRHSdp(double t, Vec x) {
 }
 
 Lindblad::Lindblad() : LiouvilleVN() {}
-Lindblad::Lindblad(CollapseType collapse_type, const std::vector<double> xi_, int noscillators_, Oscillator** oscil_vec_) : LiouvilleVN(xi_, noscillators_, oscil_vec_) {
+Lindblad::Lindblad(CollapseType collapse_type, const std::vector<double> xi_, const std::vector<double> gamma_, int noscillators_, Oscillator** oscil_vec_) : LiouvilleVN(xi_, noscillators_, oscil_vec_) {
+
+  gamma = gamma_;
 
   Mat L;
   int dim_L;
@@ -514,11 +516,55 @@ Lindblad::Lindblad(CollapseType collapse_type, const std::vector<double> xi_, in
         printf("ERROR! Wrong lindblad type: %d\n", collapse_type);
         exit(1);
     }
+
+    printf("Dimensions: dim_L %d\n", dim_L);
     
-    /* TODO: Ad = gamma_j L \kron L - gamma_j I\dron L^TL + L^TL\dron I */
+    /* --- Ad = gamma_j L \kron L - gamma_j I\dron L^TL + L^TL\dron I --- */
+    /* First term Ad = gamma_j * L \kron L */
+    AkronB(dim_L, L, L, gamma[iosc], &Ad, ADD_VALUES);
+
+    /* Second term Ad += - gamma_j/2 I_n  \kron L^TL */
+    /* Third term Ad += - gamma_j/2  L^TL \kron I_n */
+    Mat tmp;
+    MatTransposeMatMult(L, L, MAT_INITIAL_MATRIX, PETSC_DEFAULT, &tmp);
+    Ikron(tmp, dim_L, -gamma[iosc]/2, &Ad, ADD_VALUES);
+    kronI(tmp, dim_L, -gamma[iosc]/2, &Ad, ADD_VALUES);
+    MatDestroy(&tmp);
+
   }
+  MatAssemblyBegin(Ad, MAT_FINAL_ASSEMBLY);
+  MatAssemblyEnd(Ad, MAT_FINAL_ASSEMBLY);
+  // MatView(Ad, PETSC_VIEWER_STDOUT_WORLD);
 
   MatDestroy(&L);
+}
+
+
+/* This is basically a COPY of LiouvillevN::assemble_RHS, but it adds the constant AD drift. */
+/* Ad can not be added in Liouville, because the above implementation for Ad requires Ad to be unassembled!*/
+int Lindblad::assemble_RHS(double t){
+  int ierr;
+  double control_Re, control_Im;
+
+  /* Reset */
+  ierr = MatZeroEntries(Re);CHKERRQ(ierr);
+  ierr = MatZeroEntries(Im);CHKERRQ(ierr);
+
+  /* Time-dependent control part */
+  for (int iosc = 0; iosc < noscillators; iosc++) {
+    oscil_vec[iosc]->evalControl(t, &control_Re, &control_Im);
+    ierr = MatAXPY(Re,control_Im,Ac_vec[iosc],DIFFERENT_NONZERO_PATTERN); CHKERRQ(ierr);
+    ierr = MatAXPY(Im,control_Re,Bc_vec[iosc],DIFFERENT_NONZERO_PATTERN); CHKERRQ(ierr);
+  }
+
+  /* Constant drift */
+  ierr = MatAXPY(Re, 1.0, Ad, DIFFERENT_NONZERO_PATTERN); CHKERRQ(ierr);
+  ierr = MatAXPY(Im, 1.0, Bd, DIFFERENT_NONZERO_PATTERN); CHKERRQ(ierr);
+
+  /* Set RHS from Re and Im */
+  Hamiltonian::assemble_RHS(t);
+
+  return 0;
 }
 
 Lindblad::~Lindblad(){}
