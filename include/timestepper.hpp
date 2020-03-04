@@ -1,7 +1,7 @@
 #include <petsc/private/tsimpl.h>        /*I "petscts.h"  I*/
 #include <petscts.h>
 #include <petscksp.h>
-#include "hamiltonian.hpp"
+#include "mastereq.hpp"
 #include <assert.h> 
 #pragma once
 
@@ -9,11 +9,11 @@
 class TimeStepper{
   protected:
     int dim;                   /* State vector dimension */
-    Hamiltonian* hamiltonian;  
+    MasterEq* mastereq;  
 
   public: 
     TimeStepper(); 
-    TimeStepper(Hamiltonian* hamiltonian_); 
+    TimeStepper(MasterEq* mastereq_); 
     virtual ~TimeStepper(); 
 
     /* Evolve state forward from tstart to tstop */
@@ -25,7 +25,7 @@ class TimeStepper{
 class ExplEuler : public TimeStepper {
   Vec stage;
   public:
-    ExplEuler(Hamiltonian* hamiltonian_);
+    ExplEuler(MasterEq* mastereq_);
     ~ExplEuler();
 
     /* Evolve state forward from tstart to tstop */
@@ -49,7 +49,7 @@ class ImplMidpoint : public TimeStepper {
   PC  preconditioner; /* Preconditioner for linear solver */
 
   public:
-    ImplMidpoint(Hamiltonian* hamiltonian_);
+    ImplMidpoint(MasterEq* mastereq_);
     ~ImplMidpoint();
 
 
@@ -62,13 +62,13 @@ class ImplMidpoint : public TimeStepper {
 
 
 /*
- * Evaluate the right-hand side system Matrix (real, vectorized Hamiltonian system matrix)
+ * Evaluate the right-hand side system Matrix (real, vectorized system matrix)
  * In: ts - time stepper
  *      t - current time
  *      u - solution vector x(t) 
  *      M - right hand side system Matrix
  *      P - ??
- *    ctx - Hamiltonian system 
+ *    ctx - system 
  */
 PetscErrorCode RHSJacobian(TS ts,PetscReal t,Vec u,Mat M,Mat P,void *ctx);
 
@@ -80,8 +80,7 @@ PetscErrorCode RHSJacobianP(TS ts, PetscReal t, Vec y, Mat A, void *ctx);
 /*
  * Create Petsc's time stepper 
  */
-// PetscErrorCode TSInit(TS ts, Hamiltonian* hamiltonian, int NSteps, double Dt, double Tfinal, Vec x, bool monitor);
-PetscErrorCode TSInit(TS ts, Hamiltonian* hamiltonian, PetscInt NSteps, PetscReal Dt, PetscReal Tfinal, Vec x, Vec *lambda, Vec *mu, bool monitor);
+PetscErrorCode TSInit(TS ts, MasterEq* mastereq, PetscInt NSteps, PetscReal Dt, PetscReal Tfinal, Vec x, Vec *lambda, Vec *mu, bool monitor);
 
 /*
  * Monitor the time stepper 

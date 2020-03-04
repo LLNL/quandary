@@ -4,7 +4,7 @@
 #include "braid_test.h"
 #include "bspline.hpp"
 #include "oscillator.hpp" 
-#include "hamiltonian.hpp"
+#include "mastereq.hpp"
 #include "config.hpp"
 #include "optimizer.hpp"
 #include "_braid.h"
@@ -36,7 +36,7 @@ int main(int argc,char **argv)
   PetscReal      total_time;   // Total end time T
   TS             ts;           // Timestepping context
   PetscInt       nspline;      // Number of spline basis functions
-  Hamiltonian*   hamiltonian;  // Hamiltonian system
+  MasterEq*      mastereq;     // Master equation
   PetscBool      monitor;      // If true: Print out additional time-stepper information
   RunType        runtype;      // Decides if forward only, forward+backward, or optimization
   /* Braid */
@@ -108,34 +108,34 @@ int main(int argc,char **argv)
   }
 
 
-  /* Initialize the Hamiltonian  */
+  /* Initialize the Master Equation  */
   std::vector<double> xi, gamma;
   config.GetVecDoubleParam("xi", xi, 2.0);
   config.GetVecDoubleParam("lindblad_gamma", gamma, 0.0);
   std::string lindblad = config.GetStrParam("lindblad_type", "none");
-  if (lindblad.compare("none") == 0 ) {
-    hamiltonian = new LiouvilleVN(xi, nosci, oscil_vec);
-  } else if (lindblad.compare("decay") == 0 ) {
-    hamiltonian = new Lindblad(Lindblad::CollapseType::DECAY, xi, gamma, nosci, oscil_vec);
-  } else if (lindblad.compare("dephasing") == 0 ) {
-    hamiltonian = new Lindblad(Lindblad::CollapseType::DEPHASING, xi, gamma, nosci, oscil_vec);
-  } else {
+  LindbladType lindbladtype;
+  if      (lindblad.compare("none")      == 0 ) lindbladtype = NONE;
+  else if (lindblad.compare("decay")     == 0 ) lindbladtype = DECAY;
+  else if (lindblad.compare("dephasing") == 0 ) lindbladtype = DEPHASING;
+  else if (lindblad.compare("both")      == 0 ) lindbladtype = BOTH;
+  else {
     printf("\n\n ERROR: Unnown lindblad type: %s.\n", lindblad.c_str());
-    printf(" Choose either 'none', 'decay' or 'dephasing'\n");
+    printf(" Choose either 'none', 'decay', 'dephasing', or 'both'\n");
     exit(1);
   }
+  mastereq = new MasterEq(nosci, oscil_vec, xi, lindbladtype, gamma);
 
-  /* Initialize the target */
+  /* Initialize the target gate */
   std::vector<double> f;
   config.GetVecDoubleParam("frequencies", f, 1e20);
   Gate* targetgate = new CNOT(f, total_time); // ONLY WORKS FOR 2by2 testcase!!
 
   /* Create solution vector x */
-  MatCreateVecs(hamiltonian->getRHS(), &x, NULL);
+  MatCreateVecs(mastereq->getRHS(), &x, NULL);
 
   /* Initialize reduced gradient and adjoints */
-  MatCreateVecs(hamiltonian->getRHS(), lambda, NULL);  // adjoint 
-  MatCreateVecs(hamiltonian->getdRHSdp(), mu, NULL);   // reduced gradient
+  MatCreateVecs(mastereq->getRHS(), lambda, NULL);  // adjoint 
+  MatCreateVecs(mastereq->getdRHSdp(), mu, NULL);   // reduced gradient
 
   /* Screen output */
   if (mpirank == 0)
@@ -146,16 +146,16 @@ int main(int argc,char **argv)
     printf("# Time step size: %f\n", dt );
   }
 
-  TimeStepper *mytimestepper = new ImplMidpoint(hamiltonian);
-  // TimeStepper *mytimestepper = new ExplEuler(hamiltonian);
+  TimeStepper *mytimestepper = new ImplMidpoint(mastereq);
+  // TimeStepper *mytimestepper = new ExplEuler(mastereq);
 
   /* Allocate and initialize Petsc's Time-stepper */
   TSCreate(PETSC_COMM_SELF,&ts);CHKERRQ(ierr);
-  TSInit(ts, hamiltonian, ntime, dt, total_time, x, lambda, mu, monitor);
+  TSInit(ts, mastereq, ntime, dt, total_time, x, lambda, mu, monitor);
 
   /* Initialize Braid */
-  primalbraidapp = new myBraidApp(comm_braid, total_time, ntime, ts, mytimestepper, hamiltonian, &config);
-  adjointbraidapp = new myAdjointBraidApp(comm_braid, total_time, ntime, ts, mytimestepper, hamiltonian, *mu, &config, primalbraidapp->getCore());
+  primalbraidapp = new myBraidApp(comm_braid, total_time, ntime, ts, mytimestepper, mastereq, &config);
+  adjointbraidapp = new myAdjointBraidApp(comm_braid, total_time, ntime, ts, mytimestepper, mastereq, *mu, &config, primalbraidapp->getCore());
   primalbraidapp->InitGrids();
   adjointbraidapp->InitGrids();
 
@@ -169,7 +169,7 @@ int main(int argc,char **argv)
   /* Initialize the optimization */
   std::vector<double> optimbounds;
   config.GetVecDoubleParam("optim_bounds", optimbounds, 1e20);
-  assert (optimbounds.size() == hamiltonian->getNOscillators());
+  assert (optimbounds.size() == mastereq->getNOscillators());
   OptimProblem optimproblem(primalbraidapp, adjointbraidapp, targetgate, comm_hiop, optimbounds, config.GetDoubleParam("optim_regul", 1e-4), config.GetStrParam("optim_x0filename", "none"), config.GetStrParam("datadir", "./data_out"), config.GetIntParam("optim_printlevel", 1));
   hiop::hiopNlpDenseConstraints nlp(optimproblem);
   long long int ndesign,m;
@@ -277,13 +277,13 @@ int main(int argc,char **argv)
 
   /* Evaluate RHS(p)x */
   optimproblem->setDesign(ndesign, myinit);
-  hamiltonian->assemble_RHS(t);
-  hamiltonian->getRHS();
-  MatMult(hamiltonian->getRHS(), x, Ax);
+  mastereq->assemble_RHS(t);
+  mastereq->getRHS();
+  MatMult(mastereq->getRHS(), x, Ax);
 
   /* Evaluate dRHSdp(t,p)x */
-  hamiltonian->assemble_dRHSdp(t, x);
-  G = hamiltonian->getdRHSdp();
+  mastereq->assemble_dRHSdp(t, x);
+  G = mastereq->getdRHSdp();
   // MatView(G, PETSC_VIEWER_STDOUT_WORLD);
 
   /* Flush control functions */
@@ -299,14 +299,14 @@ int main(int argc,char **argv)
     /* Eval RHS(p+eps)x */
     myinit[i] -= EPS;
     optimproblem->setDesign(ndesign, myinit);
-    hamiltonian->assemble_RHS(t);
-    MatMult(hamiltonian->getRHS(), x, Bx);
+    mastereq->assemble_RHS(t);
+    MatMult(mastereq->getRHS(), x, Bx);
 
     /* Eval RHS(p-eps)x */
     myinit[i] += 2.*EPS;
     optimproblem->setDesign(ndesign, myinit);
-    hamiltonian->assemble_RHS(t);
-    MatMult(hamiltonian->getRHS(), x, Cx);
+    mastereq->assemble_RHS(t);
+    MatMult(mastereq>getRHS(), x, Cx);
 
     /* Eval central finite differences (Bx - Cx) / 2eps */
     VecAXPBYPCZ(fd, 1.0, -1.0, 0.0, Bx, Cx);
@@ -475,7 +475,7 @@ int main(int argc,char **argv)
   double t;
   double error_norm, exact_norm;
 
-  int nreal = 2*hamiltonian->getDim();
+  int nreal = 2*mastereq->getDim();
   VecCreateSeq(PETSC_COMM_WORLD,nreal,&x);
   VecCreateSeq(PETSC_COMM_WORLD,nreal,&exact);
   VecCreateSeq(PETSC_COMM_WORLD,nreal,&error);
@@ -496,11 +496,11 @@ int main(int argc,char **argv)
 
     /* Create and set up the time stepper */
     TSCreate(PETSC_COMM_SELF,&ts);CHKERRQ(ierr);
-    TSInit(ts, hamiltonian, ntime, dt, total_time, x, lambda, mu, monitor);
+    TSInit(ts, mastereq, ntime, dt, total_time, x, lambda, mu, monitor);
     TSSetSolution(ts, x);
 
     // /* Set the initial condition */
-    hamiltonian->initialCondition(0,x);
+    mastereq->initialCondition(0,x);
 
     /* Run time-stepping loop */
     for(PetscInt istep = 0; istep <= ntime; istep++) 
@@ -510,7 +510,7 @@ int main(int argc,char **argv)
 
     /* Compute the relative error at last time step (max-norm) */
     TSGetTime(ts, &t);
-    hamiltonian->ExactSolution(t,exact);
+    mastereq->ExactSolution(t,exact);
     VecWAXPY(error,-1.0,x, exact);
     VecNorm(error, NORM_INFINITY,&error_norm);
     VecNorm(exact, NORM_INFINITY,&exact_norm);
@@ -544,8 +544,8 @@ int main(int argc,char **argv)
   delete lambda;
   delete mu;
 
-  /* Clean up Hamiltonian */
-  delete hamiltonian;
+  /* Clean up Master equation*/
+  delete mastereq;
   delete targetgate;
 
   /* Cleanup */

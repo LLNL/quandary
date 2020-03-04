@@ -19,14 +19,14 @@ myBraidVector::~myBraidVector() {
 
 
 
-myBraidApp::myBraidApp(MPI_Comm comm_braid_, double total_time_, int ntime_, TS ts_petsc_, TimeStepper* mytimestepper_, Hamiltonian* ham_, MapParam* config) 
+myBraidApp::myBraidApp(MPI_Comm comm_braid_, double total_time_, int ntime_, TS ts_petsc_, TimeStepper* mytimestepper_, MasterEq* ham_, MapParam* config) 
           : BraidApp(comm_braid_, 0.0, total_time_, ntime_) {
 
   ntime = ntime_;
   total_time = total_time_;
   ts_petsc = ts_petsc_;
   mytimestepper = mytimestepper_;
-  hamiltonian = ham_;
+  mastereq = ham_;
   comm_braid = comm_braid_;
   MPI_Comm_rank(comm_braid, &braidrank);
   ufile = NULL;
@@ -238,7 +238,7 @@ braid_Int myBraidApp::Clone(braid_Vector u_, braid_Vector *v_ptr){
 braid_Int myBraidApp::Init(braid_Real t, braid_Vector *u_ptr){ 
 
   /* Get dimensions */
-  int nreal = 2 * hamiltonian->getDim();
+  int nreal = 2 * mastereq->getDim();
 
   /* Create the vector */
   myBraidVector *u = new myBraidVector(nreal);
@@ -268,7 +268,7 @@ braid_Int myBraidApp::Sum(braid_Real alpha, braid_Vector x_, braid_Real beta, br
     VecGetSize(x->x, &dim);
     VecGetArrayRead(x->x, &x_ptr);
     VecGetArray(y->x, &y_ptr);
-    for (int i = 0; i< 2 * hamiltonian->getDim(); i++)
+    for (int i = 0; i< 2 * mastereq->getDim(); i++)
     {
         y_ptr[i] = alpha * x_ptr[i] + beta * y_ptr[i];
     }
@@ -313,9 +313,9 @@ braid_Int myBraidApp::Access(braid_Vector u_, BraidAccessStatus &astatus){
     /* Write solution to files */
     fprintf(ufile,  "%.8f  ", t);
     fprintf(vfile,  "%.8f  ", t);
-    for (int i = 0; i < 2*hamiltonian->getDim(); i++)
+    for (int i = 0; i < 2*mastereq->getDim(); i++)
     {
-      if (i < hamiltonian->getDim()) // real part
+      if (i < mastereq->getDim()) // real part
       { 
         fprintf(ufile, "%1.14e  ", x_ptr[i]);  
       }  
@@ -334,7 +334,7 @@ braid_Int myBraidApp::Access(braid_Vector u_, BraidAccessStatus &astatus){
     // Vec exact;
     // /* If set, compare to the exact solution */
     // VecDuplicate(u->x,&exact);
-    // if (app->hamiltonian->ExactSolution(t, exact) ) {  
+    // if (app->mastereq->ExactSolution(t, exact) ) {  
 
     //   /* Compute relative error norm */
     //   VecDuplicate(u->x,&err);
@@ -365,7 +365,7 @@ braid_Int myBraidApp::Access(braid_Vector u_, BraidAccessStatus &astatus){
 
 braid_Int myBraidApp::BufSize(braid_Int *size_ptr, BraidBufferStatus &bstatus){ 
 
-  *size_ptr = 2 * hamiltonian->getDim() * sizeof(double);
+  *size_ptr = 2 * mastereq->getDim() * sizeof(double);
   return 0; 
 }
 
@@ -401,7 +401,7 @@ braid_Int myBraidApp::BufUnpack(void *buffer, braid_Vector *u_ptr, BraidBufferSt
   double* dbuffer = (double*) buffer;
 
   /* Allocate a new vector */
-  int dim = 2 * hamiltonian->getDim();
+  int dim = 2 * mastereq->getDim();
   myBraidVector *u = new myBraidVector(dim);
 
   /* Copy buffer into the vector */
@@ -487,7 +487,7 @@ double myBraidApp::Drive() {
 /* ================================================================*/
 /* Adjoint Braid App */
 /* ================================================================*/
-myAdjointBraidApp::myAdjointBraidApp(MPI_Comm comm_braid_, double total_time_, int ntime_, TS ts_, TimeStepper* mytimestepper_, Hamiltonian* ham_, Vec redgrad_, MapParam* config, BraidCore *Primalcoreptr_)
+myAdjointBraidApp::myAdjointBraidApp(MPI_Comm comm_braid_, double total_time_, int ntime_, TS ts_, TimeStepper* mytimestepper_, MasterEq* ham_, Vec redgrad_, MapParam* config, BraidCore *Primalcoreptr_)
         : myBraidApp(comm_braid_, total_time_, ntime_, ts_, mytimestepper_, ham_, config) {
 
   /* Store the primal core */
@@ -575,7 +575,7 @@ braid_Int myAdjointBraidApp::Step(braid_Vector u_, braid_Vector ustop_, braid_Ve
     /* Solve forward while saving trajectory */
     TSDestroy(&ts_petsc);
     ierr = TSCreate(PETSC_COMM_WORLD,&ts_petsc);CHKERRQ(ierr);
-    TSInit(ts_petsc, hamiltonian, ntime  , dt, total_time, x, &(u->x), &redgrad, false);
+    TSInit(ts_petsc, mastereq, ntime  , dt, total_time, x, &(u->x), &redgrad, false);
 
     ierr = TSSetSaveTrajectory(ts_petsc);CHKERRQ(ierr);
     ierr = TSTrajectorySetSolutionOnly(ts_petsc->trajectory, (PetscBool) true);
@@ -634,7 +634,7 @@ braid_Int myAdjointBraidApp::Step(braid_Vector u_, braid_Vector ustop_, braid_Ve
 braid_Int myAdjointBraidApp::Init(braid_Real t, braid_Vector *u_ptr) {
 
   /* Allocate the adjoint vector and set to zero */
-  myBraidVector *u = new myBraidVector(2*hamiltonian->getDim());
+  myBraidVector *u = new myBraidVector(2*mastereq->getDim());
 
   /* Reset the reduced gradient */
   VecZeroEntries(redgrad); 
@@ -693,20 +693,3 @@ Vec myAdjointBraidApp::PostProcess() {
 
   return 0;
 }
-
-
-// void evalObjective(braid_Core core, braid_App app, double *obj_ptr) {
-//   braid_BaseVector ulast_base;
-//   my_Vector *ulast;
-//   double obj;
-
-//   _braid_UGetLast(core, &ulast_base);
-//   if (ulast_base == NULL) { 
-//       printf("Error: can't get ulast from braid!\n"); 
-//       exit(1); 
-//   }
-//   ulast = (my_Vector*) ulast_base->userVector;
-//   app->hamiltonian->evalObjective(app->total_time, ulast->x, &obj);
-
-//   *obj_ptr = obj;
-// }

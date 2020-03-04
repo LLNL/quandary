@@ -58,19 +58,19 @@ OptimProblem::~OptimProblem() {
 
 void OptimProblem::setDesign(int n, const double* x) {
 
-  Hamiltonian* hamil = primalbraidapp->hamiltonian;
+  MasterEq* mastereq = primalbraidapp->mastereq;
 
   /* Pass design vector x to oscillator */
   int nparam;
   double *paramRe, *paramIm;
   int j = 0;
   /* Iterate over oscillators */
-  for (int ioscil = 0; ioscil < hamil->getNOscillators(); ioscil++) {
+  for (int ioscil = 0; ioscil < mastereq->getNOscillators(); ioscil++) {
       /* Get number of parameters of oscillator i */
-      nparam = hamil->getOscillator(ioscil)->getNParam();
+      nparam = mastereq->getOscillator(ioscil)->getNParam();
       /* Get pointers to parameters of oscillator i */
-      paramRe = hamil->getOscillator(ioscil)->getParamsRe();
-      paramIm = hamil->getOscillator(ioscil)->getParamsIm();
+      paramRe = mastereq->getOscillator(ioscil)->getParamsRe();
+      paramIm = mastereq->getOscillator(ioscil)->getParamsIm();
       /* Design storage: x = (ReParams, ImParams)_iOscil
       /* Set Re parameters */
       for (int iparam=0; iparam<nparam; iparam++) {
@@ -90,13 +90,13 @@ void OptimProblem::getDesign(int n, double* x){
   int nparam;
   int j = 0;
   /* Iterate over oscillators */
-  Hamiltonian* hamil = primalbraidapp->hamiltonian;
-  for (int ioscil = 0; ioscil < hamil->getNOscillators(); ioscil++) {
+  MasterEq* mastereq = primalbraidapp->mastereq;
+  for (int ioscil = 0; ioscil < mastereq->getNOscillators(); ioscil++) {
       /* Get number of parameters of oscillator i */
-      nparam = hamil->getOscillator(ioscil)->getNParam();
+      nparam = mastereq->getOscillator(ioscil)->getNParam();
       /* Get pointers to parameters of oscillator i */
-      paramRe = hamil->getOscillator(ioscil)->getParamsRe();
-      paramIm = hamil->getOscillator(ioscil)->getParamsIm();
+      paramRe = mastereq->getOscillator(ioscil)->getParamsRe();
+      paramIm = mastereq->getOscillator(ioscil)->getParamsIm();
       /* Design storage: x = (ReParams, ImParams)_iOscil
       /* Set Re params */
       for (int iparam=0; iparam<nparam; iparam++) {
@@ -113,9 +113,9 @@ bool OptimProblem::get_prob_sizes(long long& n, long long& m) {
 
   // n - number of design variables 
   n = 0;
-  Hamiltonian* hamil = primalbraidapp->hamiltonian;
-  for (int ioscil = 0; ioscil < hamil->getNOscillators(); ioscil++) {
-      n += 2 * hamil->getOscillator(ioscil)->getNParam(); // Re and Im params for the i-th oscillator
+  MasterEq* mastereq = primalbraidapp->mastereq;
+  for (int ioscil = 0; ioscil < mastereq->getNOscillators(); ioscil++) {
+      n += 2 * mastereq->getOscillator(ioscil)->getNParam(); // Re and Im params for the i-th oscillator
   }
   
   // m - number of constraints 
@@ -129,10 +129,10 @@ bool OptimProblem::get_vars_info(const long long& n, double *xlow, double* xupp,
 
   /* Iterate over oscillators */
   int j = 0;
-  Hamiltonian* hamil = primalbraidapp->hamiltonian;
-  for (int ioscil = 0; ioscil < hamil->getNOscillators(); ioscil++) {
+  MasterEq* mastereq = primalbraidapp->mastereq;
+  for (int ioscil = 0; ioscil < mastereq->getNOscillators(); ioscil++) {
       /* Get number of parameters of oscillator i */
-      int nparam = hamil->getOscillator(ioscil)->getNParam();
+      int nparam = mastereq->getOscillator(ioscil)->getNParam();
       /* Iterate over real and imaginary part */
       for (int i = 0; i < 2 * nparam; i++) {
           xlow[j] = - bounds[ioscil];
@@ -158,8 +158,8 @@ bool OptimProblem::eval_f(const long long& n, const double* x_in, bool new_x, do
 // bool OptimProblem::eval_f(Index n, const Number* x, bool new_x, Number& obj_value){
 
   if (mpirank_world == 0) printf(" EVAL F... ");
-  Hamiltonian* hamil = primalbraidapp->hamiltonian;
-  int dim = hamil->getDim();
+  MasterEq* mastereq = primalbraidapp->mastereq;
+  int dim = mastereq->getDim();
   double Re_local = 0.0;
   double Im_local = 0.0;
   double obj_local = 0.0;
@@ -184,7 +184,7 @@ bool OptimProblem::eval_f(const long long& n, const double* x_in, bool new_x, do
       /* Run forward with initial condition iinit */
       initstate = primalbraidapp->PreProcess(iinit);
       if (initstate != NULL) 
-        hamil->initialCondition(iinit, initstate);
+        mastereq->initialCondition(iinit, initstate);
       primalbraidapp->Drive();
       finalstate = primalbraidapp->PostProcess(); // this return NULL for all but the last time processor
 
@@ -234,9 +234,9 @@ bool OptimProblem::eval_f(const long long& n, const double* x_in, bool new_x, do
 bool OptimProblem::eval_grad_f(const long long& n, const double* x_in, bool new_x, double* gradf){
   if (mpirank_world == 0) printf(" EVAL GRAD F...");
 
-  Hamiltonian* hamil = primalbraidapp->hamiltonian;
+  MasterEq* mastereq = primalbraidapp->mastereq;
   double obj_Re_local, obj_Im_local;
-  int dim = hamil->getDim();
+  int dim = mastereq->getDim();
   double Re_local = 0.0;
   double Im_local = 0.0;
   double obj_local = 0.0;
@@ -265,7 +265,7 @@ bool OptimProblem::eval_grad_f(const long long& n, const double* x_in, bool new_
     if (mpirank_world == 0) printf(" %d FWD -", iinit);
     initstate = primalbraidapp->PreProcess(iinit); // returns NULL if not stored on this proc
     if (initstate != NULL)
-      hamil->initialCondition(iinit, initstate);
+      mastereq->initialCondition(iinit, initstate);
     primalbraidapp->Drive();
     finalstate = primalbraidapp->PostProcess(); // returns NULL if not stored on this proc
 
@@ -366,9 +366,9 @@ bool OptimProblem::get_starting_point(const long long &global_n, double* x0) {
       }
       /* Trimm back to the box constraints */
       int j = 0;
-      Hamiltonian* hamil = primalbraidapp->hamiltonian;
-      for (int ioscil = 0; ioscil < hamil->getNOscillators(); ioscil++) {
-          int nparam = hamil->getOscillator(ioscil)->getNParam();
+      MasterEq* mastereq = primalbraidapp->mastereq;
+      for (int ioscil = 0; ioscil < mastereq->getNOscillators(); ioscil++) {
+          int nparam = mastereq->getOscillator(ioscil)->getNParam();
           for (int i = 0; i < 2 * nparam; i++) {
               x0[j] = x0[j] * bounds[ioscil];
               j++;
@@ -389,10 +389,10 @@ bool OptimProblem::get_starting_point(const long long &global_n, double* x0) {
     int ntime = primalbraidapp->ntime;
     double dt = primalbraidapp->total_time / ntime;
     char filename[255];
-    Hamiltonian* hamil = primalbraidapp->hamiltonian;
-    for (int ioscil = 0; ioscil < hamil->getNOscillators(); ioscil++) {
+    MasterEq* mastereq = primalbraidapp->mastereq;
+    for (int ioscil = 0; ioscil < mastereq->getNOscillators(); ioscil++) {
         sprintf(filename, "%s/control_init_%02d.dat", datadir.c_str(), ioscil+1);
-        hamil->getOscillator(ioscil)->flushControl(ntime, dt, filename);
+        mastereq->getOscillator(ioscil)->flushControl(ntime, dt, filename);
     }
   }
 
@@ -419,10 +419,10 @@ void OptimProblem::solution_callback(hiop::hiopSolveStatus status, int n, const 
     setDesign(n, x);
     int ntime = primalbraidapp->ntime;
     double dt = primalbraidapp->total_time / ntime;
-    Hamiltonian* hamil = primalbraidapp->hamiltonian;
-    for (int ioscil = 0; ioscil < hamil->getNOscillators(); ioscil++) {
+    MasterEq* mastereq = primalbraidapp->mastereq;
+    for (int ioscil = 0; ioscil < mastereq->getNOscillators(); ioscil++) {
         sprintf(filename, "%s/control_optimized_%02d.dat", datadir.c_str(), ioscil+1);
-        hamil->getOscillator(ioscil)->flushControl(ntime, dt, filename);
+        mastereq->getOscillator(ioscil)->flushControl(ntime, dt, filename);
     }
   }
 }
@@ -462,10 +462,10 @@ bool OptimProblem::iterate_callback(int iter, double obj_value, int n, const dou
       setDesign(n, x);
       int ntime = primalbraidapp->ntime;
       double dt = primalbraidapp->total_time / ntime;
-      Hamiltonian* hamil = primalbraidapp->hamiltonian;
-      for (int ioscil = 0; ioscil < hamil->getNOscillators(); ioscil++) {
+      MasterEq* mastereq = primalbraidapp->mastereq;
+      for (int ioscil = 0; ioscil < mastereq->getNOscillators(); ioscil++) {
           sprintf(filename, "%s/control_iter%04d_%02d.dat", datadir.c_str(), iter, ioscil+1);
-          hamil->getOscillator(ioscil)->flushControl(ntime, dt, filename);
+          mastereq->getOscillator(ioscil)->flushControl(ntime, dt, filename);
       }
     }
   }

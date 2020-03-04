@@ -1,6 +1,6 @@
 #include "config.hpp"
 #include "timestepper.hpp"
-#include "hamiltonian.hpp"
+#include "mastereq.hpp"
 #include "braid.hpp"
 #include "util.hpp"
 #include "gate.hpp"
@@ -36,11 +36,11 @@ class myBraidApp : public BraidApp {
     int          accesslevel;
     std::string  datadir;           /* Name of output data directory */
     double       total_time;        /* total time  */
-    Hamiltonian *hamiltonian;       /* Hamiltonian system */
+    MasterEq *mastereq;             /* Master equation */
 
   public:
 
-  myBraidApp(MPI_Comm comm_braid_, double total_time_, int ntime_, TS ts_petsc_, TimeStepper* mytimestepper_, Hamiltonian* ham_, MapParam* config);
+  myBraidApp(MPI_Comm comm_braid_, double total_time_, int ntime_, TS ts_petsc_, TimeStepper* mytimestepper_, MasterEq* ham_, MapParam* config);
   ~myBraidApp();
 
     /* Dumps xbraid's convergence history to a file */
@@ -119,7 +119,7 @@ class myAdjointBraidApp : public myBraidApp {
 
   public:
 
-    myAdjointBraidApp(MPI_Comm comm_braid_, double total_time_, int ntime_, TS ts_petsc_,TimeStepper* mytimestepper_, Hamiltonian* ham_, Vec redgrad_, MapParam* config, BraidCore *Primalcoreptr_);
+    myAdjointBraidApp(MPI_Comm comm_braid_, double total_time_, int ntime_, TS ts_petsc_,TimeStepper* mytimestepper_, MasterEq* ham_, Vec redgrad_, MapParam* config, BraidCore *Primalcoreptr_);
     ~myAdjointBraidApp();
 
     /* Get pointer to reduced gradient. READ ONLY!! */

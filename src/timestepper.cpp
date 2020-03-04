@@ -2,18 +2,18 @@
 
 TimeStepper::TimeStepper() {
   dim = 0;
-  hamiltonian = NULL;
+  mastereq = NULL;
 }
 
-TimeStepper::TimeStepper(Hamiltonian* hamiltonian_) {
-  hamiltonian = hamiltonian_;
-  dim = 2*hamiltonian->getDim();
+TimeStepper::TimeStepper(MasterEq* mastereq_) {
+  mastereq = mastereq_;
+  dim = 2*mastereq->getDim();
 }
 
 TimeStepper::~TimeStepper() {}
 
 
-ExplEuler::ExplEuler(Hamiltonian* hamiltonian_) : TimeStepper(hamiltonian_) {
+ExplEuler::ExplEuler(MasterEq* mastereq_) : TimeStepper(mastereq_) {
   VecCreateSeq(PETSC_COMM_WORLD, dim, &stage);
   VecZeroEntries(stage);
 }
@@ -27,8 +27,8 @@ void ExplEuler::evolveFWD(double tstart, double tstop, Vec x) {
   double dt = fabs(tstop - tstart);
 
    /* Compute A(tstart) */
-  hamiltonian->assemble_RHS(tstart);
-  Mat A = hamiltonian->getRHS(); 
+  mastereq->assemble_RHS(tstart);
+  Mat A = mastereq->getRHS(); 
 
   /* update x = x + hAx */
   MatMult(A, x, stage);
@@ -40,21 +40,21 @@ void ExplEuler::evolveBWD(double tstop, double tstart, Vec x, Vec x_adj, Vec gra
 
   /* Add to reduced gradient */
   if (compute_gradient) {
-    hamiltonian->assemble_dRHSdp(tstop, x);
-    MatScale(hamiltonian->getdRHSdp(), dt);
-    MatMultTransposeAdd(hamiltonian->getdRHSdp(), x_adj, grad, grad); 
+    mastereq->assemble_dRHSdp(tstop, x);
+    MatScale(mastereq->getdRHSdp(), dt);
+    MatMultTransposeAdd(mastereq->getdRHSdp(), x_adj, grad, grad); 
   }
 
   /* update x_adj = x_adj + hA^Tx_adj */
-  hamiltonian->assemble_RHS(tstop);
-  Mat A = hamiltonian->getRHS(); 
+  mastereq->assemble_RHS(tstop);
+  Mat A = mastereq->getRHS(); 
   MatTranspose(A, MAT_INPLACE_MATRIX, &A);
   MatMult(A, x_adj, stage);
   VecAXPY(x_adj, dt, stage);
 
 }
 
-ImplMidpoint::ImplMidpoint(Hamiltonian* hamiltonian_) : TimeStepper(hamiltonian_) {
+ImplMidpoint::ImplMidpoint(MasterEq* mastereq_) : TimeStepper(mastereq_) {
 
   /* Create and reset the intermediate vectors */
   VecCreateSeq(PETSC_COMM_WORLD, dim, &stage);
@@ -99,13 +99,13 @@ void ImplMidpoint::evolveFWD(double tstart, double tstop, Vec x) {
   double dt = fabs(tstop - tstart); // absolute values needed in case this runs backwards! 
 
   /* Compute A(t_n+h/2) */
-  hamiltonian->assemble_RHS( (tstart + tstop) / 2.0);
-  Mat A = hamiltonian->getRHS(); 
+  mastereq->assemble_RHS( (tstart + tstop) / 2.0);
+  Mat A = mastereq->getRHS(); 
 
   /* Compute rhs = A x */
   MatMult(A, x, rhs);
 
-  /* Build system matrix I-h/2 A. This modifies the hamiltonians RHS matrix! Make sure to call assemble_RHS before the next use! */
+  /* Build system matrix I-h/2 A. This modifies the RHS matrix! Make sure to call assemble_RHS before the next use! */
   MatScale(A, - dt/2.0);
   MatShift(A, 1.0);  // WARNING: this can be very slow if some diagonal elements are missing.
   
@@ -137,8 +137,8 @@ void ImplMidpoint::evolveBWD(double tstop, double tstart, Vec x, Vec x_adj, Vec 
   double thalf = (tstart + tstop) / 2.0;
 
   /* Recompute the stage */
-  hamiltonian->assemble_RHS( (tstart + tstop) / 2.0);
-  A = hamiltonian->getRHS();
+  mastereq->assemble_RHS( (tstart + tstop) / 2.0);
+  A = mastereq->getRHS();
   MatMult(A, x, rhs);
   MatScale(A, - dt/2.0);
   MatShift(A, 1.0);  // WARNING: this can be very slow if some diagonal elements are missing.
@@ -150,8 +150,8 @@ void ImplMidpoint::evolveBWD(double tstop, double tstart, Vec x, Vec x_adj, Vec 
   KSPSolve(linearsolver, rhs, stage);
 
   /* Solve for adjoin stage variable */
-  // hamiltonian->assemble_RHS( (tstart + tstop) / 2.0);
-  // A = hamiltonian->getRHS();
+  // mastereq->assemble_RHS( (tstart + tstop) / 2.0);
+  // A = mastereq->getRHS();
   // MatScale(A, - dt/2.0);
   // MatShift(A, 1.0);  
   MatTranspose(A, MAT_INPLACE_MATRIX, &A);
@@ -172,14 +172,14 @@ void ImplMidpoint::evolveBWD(double tstop, double tstart, Vec x, Vec x_adj, Vec 
   /* Add to reduced gradient */
   if (compute_gradient) {
     VecAYPX(stage, dt / 2.0, x);
-    hamiltonian->assemble_dRHSdp(thalf, stage);
-    Mat B = hamiltonian->getdRHSdp();
+    mastereq->assemble_dRHSdp(thalf, stage);
+    Mat B = mastereq->getdRHSdp();
     MatMultTransposeAdd(B, stage_adj, grad, grad);
   }
 
   /* Update adjoint state x_adj += dt * A^Tstage_adj --- */
-  hamiltonian->assemble_RHS( (tstart + tstop) / 2.0);
-  A = hamiltonian->getRHS();
+  mastereq->assemble_RHS( (tstart + tstop) / 2.0);
+  A = mastereq->getRHS();
   MatMultTransposeAdd(A, stage_adj, x_adj, x_adj);
 
 }
@@ -187,14 +187,14 @@ void ImplMidpoint::evolveBWD(double tstop, double tstart, Vec x, Vec x_adj, Vec 
 
 PetscErrorCode RHSJacobian(TS ts,PetscReal t,Vec u,Mat M,Mat P,void *ctx){
 
-  /* Cast ctx to Hamiltonian pointer */
-  Hamiltonian *hamiltonian = (Hamiltonian*) ctx;
+  /* Cast ctx to equation pointer */
+  MasterEq *mastereq = (MasterEq*) ctx;
 
   /* Assembling the Hamiltonian will set the matrix RHS from Re, Im */
-  hamiltonian->assemble_RHS(t);
+  mastereq->assemble_RHS(t);
 
   /* Set the hamiltonian system matrix */
-  M = hamiltonian->getRHS();
+  M = mastereq->getRHS();
 
   return 0;
 }
@@ -202,26 +202,26 @@ PetscErrorCode RHSJacobian(TS ts,PetscReal t,Vec u,Mat M,Mat P,void *ctx){
 PetscErrorCode RHSJacobianP(TS ts, PetscReal t, Vec y, Mat A, void *ctx){
 
   /* Cast ctx to Hamiltonian pointer */
-  Hamiltonian *hamiltonian = (Hamiltonian*) ctx;
+  MasterEq *mastereq= (MasterEq*) ctx;
 
   /* Assembling the derivative of RHS with respect to the control parameters */
-  hamiltonian->assemble_dRHSdp(t, y);
+  mastereq->assemble_dRHSdp(t, y);
 
   /* Set the derivative */
-  A = hamiltonian->getdRHSdp();
+  A = mastereq->getdRHSdp();
 
   return 0;
 }
 
 
-PetscErrorCode TSInit(TS ts, Hamiltonian* hamiltonian, PetscInt NSteps, PetscReal Dt, PetscReal Tfinal, Vec x, Vec *lambda, Vec *mu, bool monitor){
+PetscErrorCode TSInit(TS ts, MasterEq* mastereq, PetscInt NSteps, PetscReal Dt, PetscReal Tfinal, Vec x, Vec *lambda, Vec *mu, bool monitor){
   int ierr;
 
   ierr = TSSetProblemType(ts,TS_LINEAR);CHKERRQ(ierr);
   ierr = TSSetType(ts, TSTHETA); CHKERRQ(ierr);
   ierr = TSThetaSetTheta(ts, 0.5); CHKERRQ(ierr);   // midpoint rule
-  ierr = TSSetRHSFunction(ts,NULL,TSComputeRHSFunctionLinear,hamiltonian);CHKERRQ(ierr);
-  ierr = TSSetRHSJacobian(ts,hamiltonian->getRHS(),hamiltonian->getRHS(),RHSJacobian,hamiltonian);CHKERRQ(ierr);
+  ierr = TSSetRHSFunction(ts,NULL,TSComputeRHSFunctionLinear,mastereq);CHKERRQ(ierr);
+  ierr = TSSetRHSJacobian(ts,mastereq->getRHS(),mastereq->getRHS(),RHSJacobian,mastereq);CHKERRQ(ierr);
   ierr = TSSetTimeStep(ts,Dt);CHKERRQ(ierr);
   ierr = TSSetMaxSteps(ts,NSteps);CHKERRQ(ierr);
   ierr = TSSetMaxTime(ts,Tfinal);CHKERRQ(ierr);
@@ -235,7 +235,7 @@ PetscErrorCode TSInit(TS ts, Hamiltonian* hamiltonian, PetscInt NSteps, PetscRea
 
   /* Set the derivatives for TS */
   ierr = TSSetCostGradients(ts, 1, lambda, mu); CHKERRQ(ierr);
-  ierr = TSSetRHSJacobianP(ts,hamiltonian->getdRHSdp(), RHSJacobianP, hamiltonian); CHKERRQ(ierr);
+  ierr = TSSetRHSJacobianP(ts,mastereq->getdRHSdp(), RHSJacobianP, mastereq); CHKERRQ(ierr);
 
 
   return ierr;
