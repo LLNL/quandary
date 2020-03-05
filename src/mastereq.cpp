@@ -21,13 +21,13 @@ MasterEq::MasterEq(){
 }
 
 
-MasterEq::MasterEq(int noscillators_, Oscillator** oscil_vec_, const std::vector<double> xi_, LindbladType lindbladtype, const std::vector<double> gamma_) {
+MasterEq::MasterEq(int noscillators_, Oscillator** oscil_vec_, const std::vector<double> xi_, LindbladType lindbladtype, const std::vector<double> collapse_time_) {
   int ierr;
 
   noscillators = noscillators_;
   oscil_vec = oscil_vec_;
   xi = xi_;
-  gamma = gamma_;
+  collapse_time = collapse_time_;
   assert(xi.size() >= (noscillators_+1) * noscillators_ / 2);
 
 
@@ -163,8 +163,8 @@ MasterEq::MasterEq(int noscillators_, Oscillator** oscil_vec_, const std::vector
   MatAssemblyEnd(Bd, MAT_FINAL_ASSEMBLY);
 
   /* Allocate and compute real drift part Ad = Lindblad */
-  Mat L, tmp;
-  int dim_L;
+  Mat L1, L2, tmp;
+  int iT1, iT2;
   MatCreateSeqAIJ(PETSC_COMM_WORLD,dim,dim,2,NULL,&Ad); 
   for (int iosc = 0; iosc < noscillators_; iosc++) {
 
@@ -174,25 +174,51 @@ MasterEq::MasterEq(int noscillators_, Oscillator** oscil_vec_, const std::vector
         continue;
         break;
       case DECAY: 
-        dim_L = createLoweringOP(iosc, &L);
+        iT1 = createLoweringOP(iosc, &L1);
+        iT2 = 0;
         break;
-      case DEPHASING:
-        dim_L = createNumberOP(iosc, &L);
+      case DEPHASE:
+        iT1 = 0;
+        iT2 = createNumberOP(iosc, &L2);
+        break;
+      case BOTH:
+        iT1 = createLoweringOP(iosc, &L1);
+        iT2 = createNumberOP(iosc, &L2);
         break;
       default:
         printf("ERROR! Wrong lindblad type: %d\n", lindbladtype);
         exit(1);
     }
-    
-    /* --- Ad = gamma_j L \kron L - gamma_j I\dron L^TL + L^TL\dron I --- */
-    /* First term Ad = gamma_j * L \kron L */
-    AkronB(dim_L, L, L, gamma[iosc], &Ad, ADD_VALUES);
-    /* Second term Ad += - gamma_j/2 I_n  \kron L^TL and third term Ad += - gamma_j/2  L^TL \kron I_n */
-    MatTransposeMatMult(L, L, MAT_INITIAL_MATRIX, PETSC_DEFAULT, &tmp);
-    Ikron(tmp, dim_L, -gamma[iosc]/2, &Ad, ADD_VALUES);
-    kronI(tmp, dim_L, -gamma[iosc]/2, &Ad, ADD_VALUES);
-    MatDestroy(&tmp);
-    MatDestroy(&L);
+
+    /* --- Adding T1-DECAY (L1 = a_j) for oscillator j --- */
+    if (iT1 > 0) {
+      double gamma = 1./sqrt(collapse_time[0]);
+      /* Ad += 1./gamma_j * L \kron L */
+      AkronB(iT1, L1, L1, gamma, &Ad, ADD_VALUES);
+      /* Ad += - gamma_j/2  I_n  \kron L^TL  */
+      /* Ad += - gamma_j/2  L^TL \kron I_n */
+      MatTransposeMatMult(L1, L1, MAT_INITIAL_MATRIX, PETSC_DEFAULT, &tmp);
+      Ikron(tmp, iT1, -gamma/2, &Ad, ADD_VALUES);
+      kronI(tmp, iT1, -gamma/2, &Ad, ADD_VALUES);
+      MatDestroy(&tmp);
+      MatDestroy(&L1);
+    }
+
+    /* --- Adding T2-Dephasing (L1 = a_j^\dag a_j) for oscillator j --- */
+    if (iT2 > 0) {
+      double gamma = 1./sqrt(collapse_time[1]);
+      /* Ad += 1./gamma_j * L \kron L */
+      AkronB(iT2, L2, L2, gamma, &Ad, ADD_VALUES);
+      /* Ad += - gamma_j/2  I_n  \kron L^TL  */
+      /* Ad += - gamma_j/2  L^TL \kron I_n */
+      MatTransposeMatMult(L2, L2, MAT_INITIAL_MATRIX, PETSC_DEFAULT, &tmp);
+      Ikron(tmp, iT2, -gamma/2, &Ad, ADD_VALUES);
+      kronI(tmp, iT2, -gamma/2, &Ad, ADD_VALUES);
+      MatDestroy(&tmp);
+      MatDestroy(&L2);
+    }
+
+
   }
   MatAssemblyBegin(Ad, MAT_FINAL_ASSEMBLY);
   MatAssemblyEnd(Ad, MAT_FINAL_ASSEMBLY);

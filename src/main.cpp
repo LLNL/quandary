@@ -109,21 +109,21 @@ int main(int argc,char **argv)
 
 
   /* Initialize the Master Equation  */
-  std::vector<double> xi, gamma;
+  std::vector<double> xi, t_collapse;
   config.GetVecDoubleParam("xi", xi, 2.0);
-  config.GetVecDoubleParam("lindblad_gamma", gamma, 0.0);
+  config.GetVecDoubleParam("lindblad_collapsetime", t_collapse, 0.0);
   std::string lindblad = config.GetStrParam("lindblad_type", "none");
   LindbladType lindbladtype;
   if      (lindblad.compare("none")      == 0 ) lindbladtype = NONE;
   else if (lindblad.compare("decay")     == 0 ) lindbladtype = DECAY;
-  else if (lindblad.compare("dephasing") == 0 ) lindbladtype = DEPHASING;
+  else if (lindblad.compare("dephase")   == 0 ) lindbladtype = DEPHASE;
   else if (lindblad.compare("both")      == 0 ) lindbladtype = BOTH;
   else {
     printf("\n\n ERROR: Unnown lindblad type: %s.\n", lindblad.c_str());
-    printf(" Choose either 'none', 'decay', 'dephasing', or 'both'\n");
+    printf(" Choose either 'none', 'decay', 'dephase', or 'both'\n");
     exit(1);
   }
-  mastereq = new MasterEq(nosci, oscil_vec, xi, lindbladtype, gamma);
+  mastereq = new MasterEq(nosci, oscil_vec, xi, lindbladtype, t_collapse);
 
   /* Initialize the target gate */
   std::vector<double> f;
