@@ -11,6 +11,8 @@ class Gate {
     int nqubits;    // number of qubits the gate spans. 
     int dim;      // dimension of vectorized system (=n^2^2)
 
+    Mat ReG, ImG;  // Real and imaginary part of \bar V \kron V
+
   public:
     Gate();
     Gate(int nbits_);
@@ -25,6 +27,21 @@ class Gate {
     virtual void compare(int i, Vec state, double& delta);
     virtual void compare_diff(int i, const Vec state, Vec state_bar, const double delta_bar);
 
+};
+
+/* X Gate, spanning one qubit. 
+ * V = 0 1
+ *     1 0
+ */
+
+class XGate : public Gate {
+  protected: 
+    double omega1;  /* Frequency for first oscillator omega = 2\pi*fa radian */
+
+  public:
+    /* Constructor takes ground frequencies, and time when to apply the gate. */
+    XGate(const std::vector<double> f, double time);
+    ~XGate();
 };
 
 /* CNOT Gate, spanning two qubits. This class is mostly hardcoded. TODO: Generalize!

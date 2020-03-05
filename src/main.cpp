@@ -132,6 +132,12 @@ int main(int argc,char **argv)
   std::string gatetype = config.GetStrParam("gate_type", "none");
   if      (gatetype.compare("none") == 0) targetgate = new Gate(1); // dummy gate. do nothing
   else if (gatetype.compare("cnot") == 0) targetgate = new CNOT(f, total_time); // ONLY FOR 2osc2lvl case!
+  else if (gatetype.compare("xgate") == 0) targetgate = new XGate(f, total_time); // ONLY FOR 2osc2lvl case!
+  else {
+    printf("\n\n ERROR: Unnown gate type: %s.\n", gatetype.c_str());
+    printf(" Choose either 'none', 'cnot' or 'xgate'\n");
+    exit(1);
+  }
 
   /* Create solution vector x */
   MatCreateVecs(mastereq->getRHS(), &x, NULL);

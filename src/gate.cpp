@@ -14,6 +14,44 @@ Gate::Gate(int nqubits_){
 
 Gate::~Gate(){}
 
+XGate::XGate(const std::vector<double>f, double time) : Gate(1) { // XGate spans one qubit
+  assert(dim = 4);
+  assert(f.size() >= 1);
+
+  /* Transform frequencies to radian */
+  omega1 = 2.*M_PI * f[0];
+
+  /* Allocate Re(\bar V \kron V), Im(\bar V \kron V) */
+  MatCreate(PETSC_COMM_WORLD, &ReG);
+  MatCreate(PETSC_COMM_WORLD, &ImG);
+  MatSetSizes(ReG, PETSC_DECIDE, PETSC_DECIDE, dim, dim);
+  MatSetSizes(ImG, PETSC_DECIDE, PETSC_DECIDE, dim, dim);
+  MatSetUp(ReG);
+  MatSetUp(ImG);
+
+  /* Fill Re(\bar V \kron V) */
+  MatSetValue(ReG, 0, 3, 1.0, INSERT_VALUES);
+  MatSetValue(ReG, 1, 2, 1.0, INSERT_VALUES);
+  MatSetValue(ReG, 2, 1, 1.0, INSERT_VALUES);
+  MatSetValue(ReG, 3, 0, 1.0, INSERT_VALUES);
+
+  /* Im(..) is zero */
+  
+  /* Final assembly */
+  MatAssemblyBegin(ReG, MAT_FINAL_ASSEMBLY);
+  MatAssemblyEnd(ReG, MAT_FINAL_ASSEMBLY);
+  MatAssemblyBegin(ImG, MAT_FINAL_ASSEMBLY);
+  MatAssemblyEnd(ImG, MAT_FINAL_ASSEMBLY);
+
+  MatView(ReG, PETSC_VIEWER_STDOUT_WORLD);
+  MatView(ImG, PETSC_VIEWER_STDOUT_WORLD);
+  exit(1);
+}
+
+XGate::~XGate() {
+  MatDestroy(&ReG);
+  MatDestroy(&ImG);
+}
 
 void Gate::apply(int i, Vec state, double& obj_Re, double& obj_Im){
   obj_Re = 0.0;
@@ -28,7 +66,7 @@ void Gate::compare_diff(int i, const Vec state, Vec state_bar, const double delt
 
 CNOT::CNOT(const std::vector<double> f, double time) : Gate(2) { // CNOT spans two qubits
   assert(dim == 16);
-  assert(f.size() == 2);
+  assert(f.size() >= 2);
 
    /* Fill the CNOT lookup table V\kron V! */
   lookup = new int[dim];
