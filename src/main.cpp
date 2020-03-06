@@ -130,7 +130,7 @@ int main(int argc,char **argv)
   Gate* targetgate;
   config.GetVecDoubleParam("frequencies", f, 1e20);
   std::string gatetype = config.GetStrParam("gate_type", "none");
-  if      (gatetype.compare("none") == 0) targetgate = new Gate(1); // dummy gate. do nothing
+  if      (gatetype.compare("none") == 0) targetgate = new Gate(); // dummy gate. do nothing
   else if (gatetype.compare("cnot") == 0) targetgate = new CNOT(f, total_time); // ONLY FOR 2osc2lvl case!
   else if (gatetype.compare("xgate") == 0) targetgate = new XGate(f, total_time); // ONLY FOR 2osc2lvl case!
   else {

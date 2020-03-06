@@ -198,7 +198,8 @@ bool OptimProblem::eval_f(const long long& n, const double* x_in, bool new_x, do
       if (iinit % ((int)sqrt(dim)+1) == 0 ) // this hits the diagonal elements
       {
         if (finalstate != NULL) {
-          targetgate->apply(iinit, finalstate, Re_local, Im_local);
+          targetgate->fidelity(iinit, finalstate, Re_local, Im_local);
+          // targetgate->apply(iinit, finalstate, Re_local, Im_local);
           trace_Re += Re_local;
           trace_Im += Im_local;
         }
@@ -279,7 +280,8 @@ bool OptimProblem::eval_grad_f(const long long& n, const double* x_in, bool new_
     if (iinit % ((int)sqrt(dim)+1) == 0 ) // this hits the diagonal elements
     {
       if (finalstate != NULL) {
-        targetgate->apply(iinit, finalstate, Re_local, Im_local);
+        targetgate->fidelity(iinit, finalstate, Re_local, Im_local);
+        // targetgate->apply(iinit, finalstate, Re_local, Im_local);
         trace_Re += Re_local;
         trace_Im += Im_local;
       }
