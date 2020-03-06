@@ -62,12 +62,6 @@ class MasterEq{
     /* Return dimension of vectorized system */
     int getDim();
 
-    /* Compute lowering operator a_k = I_n1 \kron ... \kron a^(nk) \kron ... \kron I_nQ */
-    int createLoweringOP(int ioscillator, Mat* loweringOP);
-
-    /* Compute number operator N_k = a_k^T a_k */
-    int createNumberOP(int ioscillator, Mat* numberOP);
-
     /* 
      * Evaluate the exact solution at time t.
      * Inheriting classes should store exact solution in x and return true.  

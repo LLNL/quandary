@@ -2,6 +2,7 @@
 #include "bspline.hpp"
 #include <fstream>
 #include <iomanip>
+#include <petscmat.h>
 
 #pragma once
 
@@ -45,6 +46,12 @@ class Oscillator {
 
     /* Print the control functions for each t \in [0,ntime*dt] */
     virtual void flushControl(int ntime, double dt, const char* filename);
+
+    /* Compute lowering operator a_k = I_n1 \kron ... \kron a^(nk) \kron ... \kron I_nQ */
+    int createLoweringOP(int dim_prekron, int dim_postkron, Mat* loweringOP);
+
+    /* Compute number operator N_k = a_k^T a_k */
+    int createNumberOP(int dim_prekron, int dim_postcron, Mat* numberOP);
 
 };
 

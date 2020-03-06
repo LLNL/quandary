@@ -91,7 +91,14 @@ MasterEq::MasterEq(int noscillators_, Oscillator** oscil_vec_, const std::vector
   for (int iosc = 0; iosc < noscillators_; iosc++) {
 
     /* Get lowering operator */
-    int dim_lowering = createLoweringOP(iosc, &loweringOP);
+    int nlvls = oscil_vec[iosc]->getNLevels();
+    int dim_prekron = 1;
+    int dim_postkron = 1;
+    for (int j=0; j<noscillators; j++) {
+      if (j < iosc) dim_prekron  *= oscil_vec[j]->getNLevels();
+      if (j > iosc) dim_postkron *= oscil_vec[j]->getNLevels();
+    }
+    int dim_lowering = oscil_vec[iosc]->createLoweringOP(dim_prekron, dim_postkron, &loweringOP);
     MatTranspose(loweringOP, MAT_INITIAL_MATRIX, &loweringOP_T);
 
     /* Compute Ac = I_N \kron (a - a^T) - (a - a^T) \kron I_N */
@@ -124,7 +131,16 @@ MasterEq::MasterEq(int noscillators_, Oscillator** oscil_vec_, const std::vector
   for (int iosc = 0; iosc < noscillators_; iosc++) {
     Mat tmp, tmp_T;
     Mat numberOPj;
-    int dim_number = createNumberOP(iosc, &numberOP);
+    /* Get dimensions */
+    int nlvls = oscil_vec[iosc]->getNLevels();
+    int dim_prekron = 1;
+    int dim_postkron = 1;
+    for (int j=0; j<noscillators; j++) {
+      if (j < iosc) dim_prekron  *= oscil_vec[j]->getNLevels();
+      if (j > iosc) dim_postkron *= oscil_vec[j]->getNLevels();
+    }
+    /* Create number operator */
+    int dim_number = oscil_vec[iosc]->createNumberOP(dim_prekron, dim_postkron, &numberOP);
 
     /* Diagonal term - 2* PI * xi/2 *(N_i^2 - N_i) */
     MatMatMult(numberOP, numberOP, MAT_INITIAL_MATRIX, PETSC_DEFAULT, &tmp);
@@ -141,8 +157,14 @@ MasterEq::MasterEq(int noscillators_, Oscillator** oscil_vec_, const std::vector
 
     /* Mixed term -xi * 2 * PI * (N_i*N_j) for j > i */
     for (int josc = iosc+1; josc < noscillators_; josc++) {
-
-      createNumberOP(josc, &numberOPj);
+      nlvls = oscil_vec[josc]->getNLevels();
+      dim_prekron = 1;
+      dim_postkron = 1;
+      for (int j=0; j<noscillators; j++) {
+        if (j < josc) dim_prekron  *= oscil_vec[j]->getNLevels();
+        if (j > josc) dim_postkron *= oscil_vec[j]->getNLevels();
+      }
+      oscil_vec[josc]->createNumberOP(dim_prekron, dim_postkron, &numberOPj);
       MatMatMult(numberOP, numberOPj, MAT_INITIAL_MATRIX, PETSC_DEFAULT, &tmp);
       MatScale(tmp, -xi[xi_id] * 2.0 * M_PI);
       xi_id++;
@@ -168,22 +190,31 @@ MasterEq::MasterEq(int noscillators_, Oscillator** oscil_vec_, const std::vector
   MatCreateSeqAIJ(PETSC_COMM_WORLD,dim,dim,2,NULL,&Ad); 
   for (int iosc = 0; iosc < noscillators_; iosc++) {
 
+    /* Get dimensions */
+    int nlvls = oscil_vec[iosc]->getNLevels();
+    int dim_prekron = 1;
+    int dim_postkron = 1;
+    for (int j=0; j<noscillators; j++) {
+      if (j < iosc) dim_prekron  *= oscil_vec[j]->getNLevels();
+      if (j > iosc) dim_postkron *= oscil_vec[j]->getNLevels();
+    }
+  
     /* Get lowering operator */
     switch (lindbladtype)  {
       case NONE:
         continue;
         break;
       case DECAY: 
-        iT1 = createLoweringOP(iosc, &L1);
+        iT1 = oscil_vec[iosc]->createLoweringOP(dim_prekron, dim_postkron, &L1);
         iT2 = 0;
         break;
       case DEPHASE:
         iT1 = 0;
-        iT2 = createNumberOP(iosc, &L2);
+        iT2 = oscil_vec[iosc]->createNumberOP(dim_prekron, dim_postkron, &L2);
         break;
       case BOTH:
-        iT1 = createLoweringOP(iosc, &L1);
-        iT2 = createNumberOP(iosc, &L2);
+        iT1 = oscil_vec[iosc]->createLoweringOP(dim_prekron, dim_postkron, &L1);
+        iT2 = oscil_vec[iosc]->createNumberOP(dim_prekron, dim_postkron, &L2);
         break;
       default:
         printf("ERROR! Wrong lindblad type: %d\n", lindbladtype);
@@ -193,7 +224,7 @@ MasterEq::MasterEq(int noscillators_, Oscillator** oscil_vec_, const std::vector
     /* --- Adding T1-DECAY (L1 = a_j) for oscillator j --- */
     if (iT1 > 0) {
       double gamma = 1./sqrt(collapse_time[0]);
-      /* Ad += 1./gamma_j * L \kron L */
+      /* Ad += gamma_j * L \kron L */
       AkronB(iT1, L1, L1, gamma, &Ad, ADD_VALUES);
       /* Ad += - gamma_j/2  I_n  \kron L^TL  */
       /* Ad += - gamma_j/2  L^TL \kron I_n */
@@ -354,68 +385,6 @@ Mat MasterEq::getRHS() { return RHS; }
 Mat MasterEq::getdRHSdp() { return dRHSdp; }
 
 
-
-int MasterEq::createLoweringOP(int iosc, Mat* loweringOP) {
-
-  /* Get dimensions */
-  int nlvls = oscil_vec[iosc]->getNLevels();
-  int dim_prekron = 1;
-  int dim_postkron = 1;
-  for (int j=0; j<noscillators; j++) {
-    if (j < iosc) dim_prekron  *= oscil_vec[j]->getNLevels();
-    if (j > iosc) dim_postkron *= oscil_vec[j]->getNLevels();
-  }
-  int dim_lowering = dim_prekron*nlvls*dim_postkron;
-
-  /* create and set lowering operator */
-  MatCreateSeqAIJ(PETSC_COMM_WORLD,dim_lowering,dim_lowering,dim_lowering-1,NULL, loweringOP); 
-  for (int i=0; i<dim_prekron; i++) {
-    for (int j=0; j<nlvls-1; j++) {
-      double val = sqrt(j+1);
-      for (int k=0; k<dim_postkron; k++) {
-        int row = i * nlvls*dim_postkron + j * dim_postkron + k;
-        int col = row + dim_postkron;
-        MatSetValue(*loweringOP, row, col, val, INSERT_VALUES);
-      }
-    }
-  }
-  MatAssemblyBegin(*loweringOP, MAT_FINAL_ASSEMBLY);
-  MatAssemblyEnd(*loweringOP, MAT_FINAL_ASSEMBLY);
-
-  return dim_lowering;
-}
-
-
-
-int MasterEq::createNumberOP(int iosc, Mat* numberOP) {
-
-  /* Get dimensions */
-  int nlvls = oscil_vec[iosc]->getNLevels();
-  int dim_prekron = 1;
-  int dim_postkron = 1;
-  for (int j=0; j<noscillators; j++) {
-    if (j < iosc) dim_prekron  *= oscil_vec[j]->getNLevels();
-    if (j > iosc) dim_postkron *= oscil_vec[j]->getNLevels();
-  }
-  int dim_number = dim_prekron*nlvls*dim_postkron;
-
-  /* Create and set number operator */
-  MatCreateSeqAIJ(PETSC_COMM_WORLD,dim_number, dim_number,dim_number,NULL, numberOP); 
-  for (int i=0; i<dim_prekron; i++) {
-    for (int j=0; j<nlvls; j++) {
-      double val = j;
-      for (int k=0; k<dim_postkron; k++) {
-        int row = i * nlvls*dim_postkron + j * dim_postkron + k;
-        int col = row;
-        MatSetValue(*numberOP, row, col, val, INSERT_VALUES);
-      }
-    }
-  }
-  MatAssemblyBegin(*numberOP, MAT_FINAL_ASSEMBLY);
-  MatAssemblyEnd(*numberOP, MAT_FINAL_ASSEMBLY);
- 
-  return dim_number;
-}
 
 
 int MasterEq::initialCondition(int iinit, Vec x){
