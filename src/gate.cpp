@@ -57,6 +57,7 @@ Gate::Gate(int nqubits_, const std::vector<double> freq_, double time_) {
 }
 
 Gate::~Gate(){
+  if (dim_vec == 0) return;
   ISDestroy(&isu);
   ISDestroy(&isv);
   MatDestroy(&ReG);
@@ -144,7 +145,6 @@ void Gate::compare_diff(int i, const Vec state, Vec state_bar, const double delt
 
   /* Get the i-th column of the gate matrix  \bar V\kron V */
   /* TODO: This might be slow! Find an alternative!  */
-  Vec ReG_col, ImG_col;
   MatGetColumnVector(ReG, ReG_col, i);
   MatGetColumnVector(ImG, ImG_col, i);
 
