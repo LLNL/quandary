@@ -2,15 +2,16 @@
 
 Gate::Gate(){
   nqubits = 0; 
-  dim = 0;
+  dim_vec = 0;
+  dim_v   = 0;
   time = 0.0;
 }
 
-// Gate::Gate(int nqubits_){
 Gate::Gate(int nqubits_, const std::vector<double> freq_, double time_) {
   nqubits = nqubits_;
   time = time_;
-  dim = pow(2 * nqubits,2);      // 2-levels per qubit, vectorized version squares it.
+  dim_v = 2*nqubits;           // 2-levels per qubit
+  dim_vec = (int) pow(dim_v,2);      // vectorized version squares it.
 
   /* Set the frequencies */
   assert(freq_.size() >= nqubits);
@@ -18,18 +19,40 @@ Gate::Gate(int nqubits_, const std::vector<double> freq_, double time_) {
     omega.push_back(2.*M_PI * freq_[i]);
   }
 
-  /* Allocate Re(\bar V \kron V), Im(\bar V \kron V) */
+  /* Allocate Va, Vb */
+  MatCreate(PETSC_COMM_WORLD, &Va);
+  MatCreate(PETSC_COMM_WORLD, &Vb);
+  MatSetSizes(Va, PETSC_DECIDE, PETSC_DECIDE, dim_v, dim_v);
+  MatSetSizes(Vb, PETSC_DECIDE, PETSC_DECIDE, dim_v, dim_v);
+  MatSetUp(Va);
+  MatSetUp(Vb);
+  MatAssemblyBegin(Va, MAT_FINAL_ASSEMBLY);
+  MatAssemblyBegin(Vb, MAT_FINAL_ASSEMBLY);
+  MatAssemblyEnd(Va, MAT_FINAL_ASSEMBLY);
+  MatAssemblyEnd(Vb, MAT_FINAL_ASSEMBLY);
+
+  /* Allocate ReG = Re(\bar V \kron V), ImG = Im(\bar V \kron V) */
   MatCreate(PETSC_COMM_WORLD, &ReG);
   MatCreate(PETSC_COMM_WORLD, &ImG);
-  MatSetSizes(ReG, PETSC_DECIDE, PETSC_DECIDE, dim, dim);
-  MatSetSizes(ImG, PETSC_DECIDE, PETSC_DECIDE, dim, dim);
+  MatSetSizes(ReG, PETSC_DECIDE, PETSC_DECIDE, dim_vec, dim_vec);
+  MatSetSizes(ImG, PETSC_DECIDE, PETSC_DECIDE, dim_vec, dim_vec);
   MatSetUp(ReG);
   MatSetUp(ImG);
+  MatAssemblyBegin(ReG, MAT_FINAL_ASSEMBLY);
+  MatAssemblyEnd(ReG, MAT_FINAL_ASSEMBLY);
+  MatAssemblyBegin(ImG, MAT_FINAL_ASSEMBLY);
+  MatAssemblyEnd(ImG, MAT_FINAL_ASSEMBLY);
+
 
   /* Create vector strides for later use */
-  ISCreateStride(PETSC_COMM_WORLD, dim, 0, 1, &isu);
-  ISCreateStride(PETSC_COMM_WORLD, dim, dim, 1, &isv);
-  
+  ISCreateStride(PETSC_COMM_WORLD, dim_vec, 0, 1, &isu);
+  ISCreateStride(PETSC_COMM_WORLD, dim_vec, dim_vec, 1, &isv);
+
+  /* Create auxiliary vectors */
+  MatCreateVecs(Va, &Va_col, NULL);
+  MatCreateVecs(Vb, &Vb_col, NULL);
+  MatCreateVecs(ReG, &ReG_col, NULL);
+  MatCreateVecs(ReG, &ImG_col, NULL);
 
 }
 
@@ -38,33 +61,53 @@ Gate::~Gate(){
   ISDestroy(&isv);
   MatDestroy(&ReG);
   MatDestroy(&ImG);
-  MatDestroy(&RVa);
-  MatDestroy(&RVb);
+  MatDestroy(&Va);
+  MatDestroy(&Vb);
+  VecDestroy(&ReG_col);
+  VecDestroy(&ImG_col);
+  VecDestroy(&Va_col);
+  VecDestroy(&Vb_col);
 }
 
-void Gate::apply(int i, Vec state, double& obj_Re, double& obj_Im){
-  obj_Re = 0.0;
-  obj_Im = 0.0;
 
-  /* Exit, if this is a dummy gate */
-  if (dim == 0) {
-    return;
-  }
+void Gate::assembleGate(){
+  /* Compute ReG = Re(\bar V \kron V) = A\kron A + B\kron B  */
+  AkronB(dim_v, Va, Va,  1.0, &ReG, ADD_VALUES);
+  AkronB(dim_v, Vb, Vb,  1.0, &ReG, ADD_VALUES);
+  /* Compute ImG = Im(\bar V\kron V) = A\kron B - B\kron A */
+  AkronB(dim_v, Va, Vb,  1.0, &ImG, ADD_VALUES);
+  AkronB(dim_v, Vb, Va, -1.0, &ImG, ADD_VALUES);
+
+  MatAssemblyBegin(ReG, MAT_FINAL_ASSEMBLY);
+  MatAssemblyEnd(ReG, MAT_FINAL_ASSEMBLY);
+  MatAssemblyBegin(ImG, MAT_FINAL_ASSEMBLY);
+  MatAssemblyEnd(ImG, MAT_FINAL_ASSEMBLY);
+
+  // MatView(ReG, PETSC_VIEWER_STDOUT_WORLD);
+  // MatView(ImG, PETSC_VIEWER_STDOUT_WORLD);
+  // exit(1);
 }
+
+// void Gate::apply(int i, Vec state, double& obj_Re, double& obj_Im){
+//   obj_Re = 0.0;
+//   obj_Im = 0.0;
+
+//   /* Exit, if this is a dummy gate */
+//   if (dim == 0) {
+//     return;
+//   }
+// }
 
 void Gate::compare(int i, Vec state, double& delta){
   delta = 0.0;
 
   /* Exit, if this is a dummy gate */
-  if (dim == 0) {
+  if (dim_vec == 0) {
     return;
   }
 
   /* Get the i-th column of the gate matrix  \bar V\kron V */
   /* TODO: This might be slow! Find an alternative!  */
-  Vec ReG_col, ImG_col;
-  MatCreateVecs(ReG, &ReG_col, NULL);
-  MatCreateVecs(ReG, &ImG_col, NULL);
   MatGetColumnVector(ReG, ReG_col, i);
   MatGetColumnVector(ImG, ImG_col, i);
 
@@ -95,15 +138,13 @@ void Gate::compare(int i, Vec state, double& delta){
 void Gate::compare_diff(int i, const Vec state, Vec state_bar, const double delta_bar){
 
   /* Exit, if this is a dummy gate */
-  if (dim == 0) {
+  if (dim_vec == 0) {
     return;
   }
 
   /* Get the i-th column of the gate matrix  \bar V\kron V */
   /* TODO: This might be slow! Find an alternative!  */
   Vec ReG_col, ImG_col;
-  MatCreateVecs(ReG, &ReG_col, NULL);
-  MatCreateVecs(ImG, &ImG_col, NULL);
   MatGetColumnVector(ReG, ReG_col, i);
   MatGetColumnVector(ImG, ImG_col, i);
 
@@ -131,28 +172,27 @@ void Gate::fidelity(int i, Vec state, double& fid_re, double& fid_im){
   fid_im = 0.0;
   
   /* Exit, if this is a dummy gate */
-  if (dim == 0) {
+  if (dim_vec == 0) {
     return;
   }
 
-  /* Get the i-th column of RVa, RVb */
+  /* Get the i-th column of Va, Vb */
   /* TODO: This might be slow! Find an alternative!  */
-  Vec RVa_col, RVb_col;
-  int colid = i % ((int) sqrt(dim));
-  MatCreateVecs(RVa, &RVa_col, NULL);
-  MatCreateVecs(RVb, &RVb_col, NULL);
-  MatGetColumnVector(RVa, RVa_col, colid);
-  MatGetColumnVector(RVb, RVb_col, colid);
+  int colid = i % dim_v;
+  MatGetColumnVector(Va, Va_col, colid);
+  MatGetColumnVector(Vb, Vb_col, colid);
 
   /* Get real (u) and imaginary (v) part of x = [u v] */
   Vec u, v;
   VecGetSubVector(state, isu, &u);
   VecGetSubVector(state, isv, &v);
-  const PetscScalar *uptr, *vptr, *rvaptr, *rvbptr;
+
+  /* Get read access to u,v, Va_col, Vb_col */
+  const PetscScalar *uptr, *vptr, *vaptr, *vbptr;
   VecGetArrayRead(u, &uptr);
   VecGetArrayRead(v, &vptr);
-  VecGetArrayRead(RVa_col, &rvaptr);
-  VecGetArrayRead(RVb_col, &rvbptr);
+  VecGetArrayRead(Va_col, &vaptr);
+  VecGetArrayRead(Vb_col, &vbptr);
 
   // VecView(u, PETSC_VIEWER_STDOUT_WORLD);
   // VecView(v, PETSC_VIEWER_STDOUT_WORLD);
@@ -160,83 +200,122 @@ void Gate::fidelity(int i, Vec state, double& fid_re, double& fid_im){
   // VecView(RVb_col, PETSC_VIEWER_STDOUT_WORLD);
 
   /* compute (real) u^T RVa_k + v^T RVb_k and (imag) u^T RVb_k - v^T RVa_k */
-  int size;
-  VecGetSize(u, &size);
-  int k = 0; 
-  for (int j=0; j<dim; j++){
-    if (j % ((int)sqrt(dim)+1) == 0 ) { // this hits the diagonal elements
-    printf("\nAdding %d %d ure %f rvare %f", i, j, uptr[j], rvaptr[k]);
-      fid_re += uptr[j] * rvaptr[k] + vptr[j] * rvbptr[k];
-      fid_im += uptr[j] * rvbptr[k] - vptr[j] * rvaptr[k];
-      k++;
-    }
+  for (int k = 0; k < dim_v; k++) {
+      int j = k * dim_v + k;  // this hits the diagonal elements of u, v
+      // printf("\nAdding %d %d ure %f rvare %f", i, j, uptr[j], rvaptr[k]);
+      fid_re += uptr[j] * vaptr[k] + vptr[j] * vbptr[k];
+      fid_im += uptr[j] * vbptr[k] - vptr[j] * vaptr[k];
   }
 
   /* Restore state */
   VecRestoreArrayRead(u, &uptr);
   VecRestoreArrayRead(v, &uptr);
-  VecRestoreArrayRead(RVa_col, &rvaptr);
-  VecRestoreArrayRead(RVb_col, &rvbptr);
+  VecRestoreArrayRead(Va_col, &vaptr);
+  VecRestoreArrayRead(Vb_col, &vbptr);
   VecRestoreSubVector(state, isu, &u);
   VecRestoreSubVector(state, isv, &v);
 }
 
 
 XGate::XGate(const std::vector<double>f, double time) : Gate(1, f, time) { // XGate spans one qubit
-  assert(dim == 4);
+  assert(dim_v   == 2);
+  assert(dim_vec == 4);
   assert(f.size() >= 1);
 
-  int Vdim = 2*nqubits;
- 
-  Mat A, B; 
-  MatCreate(PETSC_COMM_WORLD, &A);
-  MatCreate(PETSC_COMM_WORLD, &B);
-  MatSetSizes(A, PETSC_DECIDE, PETSC_DECIDE, Vdim, Vdim);
-  MatSetSizes(B, PETSC_DECIDE, PETSC_DECIDE, Vdim, Vdim);
-  MatSetUp(A);
-  MatSetUp(B);
-
-  /* Fill A = Re(V) and B = Im(V), V = A + iB */
-  /* A = 0 1    B = 0
-   *     1 0 
+  /* Fill Va = Re(V) and Vb = Im(V), V = Va + iVb */
+  /* Va = 0 1    Vb = 0
+   *      1 0 
    */
-  MatSetValue(A, 0, 1, 1.0, INSERT_VALUES);
-  MatSetValue(A, 1, 0, 1.0, INSERT_VALUES);
+  MatSetValue(Va, 0, 1, 1.0, INSERT_VALUES);
+  MatSetValue(Va, 1, 0, 1.0, INSERT_VALUES);
+  // Assemble
+  MatAssemblyBegin(Va, MAT_FINAL_ASSEMBLY);
+  MatAssemblyEnd(Va, MAT_FINAL_ASSEMBLY);
 
-  MatAssemblyBegin(A, MAT_FINAL_ASSEMBLY);
-  MatAssemblyEnd(A, MAT_FINAL_ASSEMBLY);
-  MatAssemblyBegin(B, MAT_FINAL_ASSEMBLY);
-  MatAssemblyEnd(B, MAT_FINAL_ASSEMBLY);
 
-  /* Compute Re(\bar V \kron V) = A\kron A + B\kron B  */
-  AkronB(Vdim, A, A,  1.0, &ReG, ADD_VALUES);
-  AkronB(Vdim, B, B,  1.0, &ReG, ADD_VALUES);
-  /* Compute Im(\bar V\kron V) = A\kron B - B\kron A */
-  AkronB(Vdim, A, B,  1.0, &ImG, ADD_VALUES);
-  AkronB(Vdim, B, A, -1.0, &ImG, ADD_VALUES);
-
-  MatAssemblyBegin(ReG, MAT_FINAL_ASSEMBLY);
-  MatAssemblyEnd(ReG, MAT_FINAL_ASSEMBLY);
-  MatAssemblyBegin(ImG, MAT_FINAL_ASSEMBLY);
-  MatAssemblyEnd(ImG, MAT_FINAL_ASSEMBLY);
-
-  MatView(ReG, PETSC_VIEWER_STDOUT_WORLD);
-  MatView(ImG, PETSC_VIEWER_STDOUT_WORLD);
-  exit(1);
-
-  MatDestroy(&A);
-  MatDestroy(&B);
+  /* Assemble \bar V \kron V from  V = Va + i Vb*/
+  assembleGate();
 }
 
 XGate::~XGate() {}
 
+YGate::YGate(const std::vector<double>f, double time) : Gate(1, f, time) { // XGate spans one qubit
+  assert(dim_v   == 2);
+  assert(dim_vec == 4);
+  assert(f.size() >= 1);
+
+  /* Fill A = Re(V) and B = Im(V), V = A + iB */
+  /* A = 0     B = 0 -1
+   *               1  0
+   */
+  MatSetValue(Vb, 0, 1, -1.0, INSERT_VALUES);
+  MatSetValue(Vb, 1, 0,  1.0, INSERT_VALUES);
+
+  // Assemble
+  MatAssemblyBegin(Vb, MAT_FINAL_ASSEMBLY);
+  MatAssemblyEnd(Vb, MAT_FINAL_ASSEMBLY);
+
+  /* Assemble \bar V \kron V from  V = Va + i Vb*/
+  assembleGate();
+}
+
+YGate::~YGate() {}
+
+ZGate::ZGate(const std::vector<double>f, double time) : Gate(1, f, time) { // XGate spans one qubit
+  assert(dim_v   == 2);
+  assert(dim_vec == 4);
+  assert(f.size() >= 1);
+
+  /* Fill A = Re(V) and B = Im(V), V = A + iB */
+  /* A =  1  0     B = 0
+   *      0 -1
+   */
+  MatSetValue(Vb, 0, 0,  1.0, INSERT_VALUES);
+  MatSetValue(Vb, 1, 1, -1.0, INSERT_VALUES);
+
+  // Assemble
+  MatAssemblyBegin(Vb, MAT_FINAL_ASSEMBLY);
+  MatAssemblyEnd(Vb, MAT_FINAL_ASSEMBLY);
+
+  /* Assemble \bar V \kron V from  V = Va + i Vb*/
+  assembleGate();
+}
+
+ZGate::~ZGate() {}
+
+HadamardGate::HadamardGate(const std::vector<double>f, double time) : Gate(1, f, time) { // XGate spans one qubit
+  assert(dim_v   == 2);
+  assert(dim_vec == 4);
+  assert(f.size() >= 1);
+
+  /* Fill A = Re(V) and B = Im(V), V = A + iB */
+  /* A =  1  0     B = 0
+   *      0 -1
+   */
+  double val = 1./sqrt(2);
+  MatSetValue(Vb, 0, 0,  val, INSERT_VALUES);
+  MatSetValue(Vb, 0, 1,  val, INSERT_VALUES);
+  MatSetValue(Vb, 1, 0,  val, INSERT_VALUES);
+  MatSetValue(Vb, 1, 1, -val, INSERT_VALUES);
+
+  // Assemble
+  MatAssemblyBegin(Vb, MAT_FINAL_ASSEMBLY);
+  MatAssemblyEnd(Vb, MAT_FINAL_ASSEMBLY);
+
+  /* Assemble \bar V \kron V from  V = Va + i Vb*/
+  assembleGate();
+}
+
+HadamardGate::~HadamardGate() {}
+
+
 
 CNOT::CNOT(const std::vector<double> f, double time) : Gate(2, f, time) { // CNOT spans two qubits
-  assert(dim == 16);
+  assert(dim_vec == 16);
   assert(f.size() >= 2);
 
    /* Fill the CNOT lookup table V\kron V! */
-  lookup = new int[dim];
+  lookup = new int[dim_vec];
   lookup[0] = 0;
   lookup[1] = 1;
   lookup[2] = 3;
@@ -256,8 +335,8 @@ CNOT::CNOT(const std::vector<double> f, double time) : Gate(2, f, time) { // CNO
   lookup[15] = 10;
 
   /* Create the rotation matrix (diagonal!) */
-  rotation_Re = new double[dim];
-  rotation_Im = new double[dim];
+  rotation_Re = new double[dim_vec];
+  rotation_Im = new double[dim_vec];
 
   double o1t = omega[0] * time;
   double o2t = omega[1] * time;
@@ -282,8 +361,8 @@ CNOT::CNOT(const std::vector<double> f, double time) : Gate(2, f, time) { // CNO
   int Vdim = 2*nqubits;
 
   /* Compute rotation R = rotRe + i rotIm*/
-  double *rotRe = new double[4];
-  double *rotIm = new double[4];
+  rotRe = new double[4];
+  rotIm = new double[4];
   rotRe[0] = 1.0;
   rotRe[1] = cos(o2t);
   rotRe[2] = cos(o1t);
@@ -293,13 +372,6 @@ CNOT::CNOT(const std::vector<double> f, double time) : Gate(2, f, time) { // CNO
   rotIm[2] =  sin(o1t);
   rotIm[3] =  sin(o1t+o2t);
  
-  MatCreate(PETSC_COMM_WORLD, &RVa);
-  MatCreate(PETSC_COMM_WORLD, &RVb);
-  MatSetSizes(RVa, PETSC_DECIDE, PETSC_DECIDE, Vdim, Vdim);
-  MatSetSizes(RVb, PETSC_DECIDE, PETSC_DECIDE, Vdim, Vdim);
-  MatSetUp(RVa);
-  MatSetUp(RVb);
-
   // /* Fill A = Re(Rot*V) = Re(Rot)*Re(V) - Im(Rot)*Im(V) */
   // MatSetValue(RVa, 0, 0, 1.0 * rotRe[0] - 0.0 * rotIm[0], INSERT_VALUES);
   // MatSetValue(RVa, 1, 1, 1.0 * rotRe[1] - 0.0 * rotIm[1], INSERT_VALUES);
@@ -311,31 +383,18 @@ CNOT::CNOT(const std::vector<double> f, double time) : Gate(2, f, time) { // CNO
   // MatSetValue(RVb, 2, 3, 1.0 * rotIm[2] + 0.0 * rotRe[2], INSERT_VALUES);
   // MatSetValue(RVb, 3, 2, 1.0 * rotIm[3] + 0.0 * rotRe[3], INSERT_VALUES);
 
-  /* Fill A = Re(V)  */
-  MatSetValue(RVa, 0, 0, 1.0, INSERT_VALUES);
-  MatSetValue(RVa, 1, 1, 1.0, INSERT_VALUES);
-  MatSetValue(RVa, 2, 3, 1.0, INSERT_VALUES);
-  MatSetValue(RVa, 3, 2, 1.0, INSERT_VALUES);
+  /* Fill Va = Re(V) = V, Vb = Im(V) = 0 */
+  MatSetValue(Va, 0, 0, 1.0, INSERT_VALUES);
+  MatSetValue(Va, 1, 1, 1.0, INSERT_VALUES);
+  MatSetValue(Va, 2, 3, 1.0, INSERT_VALUES);
+  MatSetValue(Va, 3, 2, 1.0, INSERT_VALUES);
 
-  MatAssemblyBegin(RVa, MAT_FINAL_ASSEMBLY);
-  MatAssemblyEnd(RVa, MAT_FINAL_ASSEMBLY);
-  MatAssemblyBegin(RVb, MAT_FINAL_ASSEMBLY);
-  MatAssemblyEnd(RVb, MAT_FINAL_ASSEMBLY);
+  MatAssemblyBegin(Va, MAT_FINAL_ASSEMBLY);
+  MatAssemblyEnd(Va, MAT_FINAL_ASSEMBLY);
 
-  /* Compute Re(\bar V \kron V) = A\kron A + B\kron B  */
-  AkronB(Vdim, RVa, RVa,  1.0, &ReG, ADD_VALUES);
-  AkronB(Vdim, RVb, RVb,  1.0, &ReG, ADD_VALUES);
-  /* Compute Im(\bar V\kron V) = A\kron B - B\kron A */
-  AkronB(Vdim, RVa, RVb,  1.0, &ImG, ADD_VALUES);
-  AkronB(Vdim, RVb, RVa, -1.0, &ImG, ADD_VALUES);
+  /* assemble V = \bar V \kron V */
+  assembleGate();
 
-  MatAssemblyBegin(ReG, MAT_FINAL_ASSEMBLY);
-  MatAssemblyEnd(ReG, MAT_FINAL_ASSEMBLY);
-  MatAssemblyBegin(ImG, MAT_FINAL_ASSEMBLY);
-  MatAssemblyEnd(ImG, MAT_FINAL_ASSEMBLY);
-
-  delete[] rotRe;
-  delete[] rotIm;
 }
 
 int CNOT::getIndex(int i) { return lookup[i]; }
@@ -344,6 +403,8 @@ CNOT::~CNOT(){
   delete [] lookup;
   delete [] rotation_Re;
   delete [] rotation_Im;
+  delete [] rotRe;
+  delete [] rotIm;
 }
 
 

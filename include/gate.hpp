@@ -10,20 +10,27 @@
 class Gate {
   protected:
     int nqubits;               /* number of qubits the gate spans.  */
-    int dim;                   /* dimension of vectorized system (=n^2^2) */
+    int dim_vec;                   /* dimension of vectorized system (=n^2^2) */
     double time;               /* Time when to apply the gate */
     std::vector<double> omega; /* Frequencies per oscillator omega = 2\pi*f radian */
 
-    Mat RVa, RVb;  // Input per gate: Real and imaginary part of RV = Rot*V_Target
+    int dim_v;   // dimension of target gate (non-vectorized. dimv = sqrt(dim_vec))
+    Mat Va, Vb;  // Input per gate: Real and imaginary part of V_target 
 
     Mat ReG, ImG;  // Real and imaginary part of \bar RV \kron RV
     IS isu, isv;   // Vector strides for extracting u,v from x = [u,v]
 
+  private:
+    Vec ReG_col, ImG_col; // auxiliary vectors for computing frobenius norm 
+    Vec Va_col, Vb_col;   // auxiliary vectors for computing fidelity
 
   public:
     Gate();
     Gate(int nqubits_, const std::vector<double> freq_, double time_);
     virtual ~Gate();
+
+    /* Assemble ReG = Re(\bar V \kron V) and ImG = Im(\bar V \kron V) */
+    void assembleGate();
     
     /* Apply i-th column of the gate to a state vector.
      * Out: real and imaginary part of state^T Gate_i */
@@ -53,6 +60,46 @@ class XGate : public Gate {
     ~XGate();
 };
 
+/* Y Gate, spanning one qubit. 
+ * V = 0 -i
+ *     i  0
+ */
+
+class YGate : public Gate {
+
+  public:
+    /* Constructor takes ground frequencies, and time when to apply the gate. */
+    YGate(const std::vector<double> f, double time);
+    ~YGate();
+};
+
+/* Z Gate, spanning one qubit. 
+ * V = 1   0
+ *     0  -1
+ */
+class ZGate : public Gate {
+
+  public:
+    /* Constructor takes ground frequencies, and time when to apply the gate. */
+    ZGate(const std::vector<double> f, double time);
+    ~ZGate();
+};
+
+/* Hadamard Gate, spanning one qubit. 
+ * V = 1/sqrt(2) * | 1   1 |
+ *                 | 1  -1 |
+ */
+class HadamardGate : public Gate {
+
+  public:
+    /* Constructor takes ground frequencies, and time when to apply the gate. */
+    HadamardGate(const std::vector<double> f, double time);
+    ~HadamardGate();
+};
+
+
+
+
 /* CNOT Gate, spanning two qubits. This class is mostly hardcoded. TODO: Generalize!
  * V = 1 0 0 0
  *     0 1 0 0 
@@ -65,6 +112,8 @@ class CNOT : public Gate {
 
     double* rotation_Re;  /* Transform gate to rotational frame. Real part. */
     double* rotation_Im;  /* Transform gate to rotational frame. Imaginary part. */
+
+    double *rotRe, *rotIm;
     
     /* Return the CNOT lookup index */
     int getIndex(int i);
@@ -74,6 +123,6 @@ class CNOT : public Gate {
     CNOT(const std::vector<double> f, double time);
     ~CNOT();
 
-    /* Apply i-th column of the gate to a state vector */
+    // /* Apply i-th column of the gate to a state vector */
     // virtual void apply(int i, Vec state, double& obj_re, double& obj_im);
 };
