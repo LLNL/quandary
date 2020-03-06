@@ -187,7 +187,9 @@ MasterEq::MasterEq(int noscillators_, Oscillator** oscil_vec_, const std::vector
   /* Allocate and compute real drift part Ad = Lindblad */
   Mat L1, L2, tmp;
   int iT1, iT2;
-  MatCreateSeqAIJ(PETSC_COMM_WORLD,dim,dim,2,NULL,&Ad); 
+  MatCreate(PETSC_COMM_WORLD, &Ad);
+  MatSetSizes(Ad, PETSC_DECIDE, PETSC_DECIDE, dim, dim);
+  MatSetUp(Ad);
   for (int iosc = 0; iosc < noscillators_; iosc++) {
 
     /* Get dimensions */
