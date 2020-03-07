@@ -220,7 +220,7 @@ bool OptimProblem::eval_f(const long long& n, const double* x_in, bool new_x, do
 
   /* Add regularization objective = objective + gamma * ||x||^2*/
   for (int i=0; i<n; i++) {
-    objective += regul / 2.0 * pow(x_in[i], 2.0);
+    objective += regul / (2.0*n) * pow(x_in[i], 2.0);
   }
 
   if (mpirank_world == 0) printf("  -->  infidelity: %1.14e, objective: %1.14e\n", 1.0 - fidelity, objective);
@@ -250,7 +250,7 @@ bool OptimProblem::eval_grad_f(const long long& n, const double* x_in, bool new_
 
   /* Derivative of regularization gamma * ||x||^2 */
   for (int i=0; i<n; i++) {
-    gradf[i] = regul * x_in[i];
+    gradf[i] = regul / n * x_in[i];
   }
 
   /* Derivative objective 1/(2N^2) J */
@@ -315,7 +315,7 @@ bool OptimProblem::eval_grad_f(const long long& n, const double* x_in, bool new_
 
   /* Add regularization: objective = fidelity + gamma*||x||^2 */
   for (int i=0; i<n; i++) {
-    objective += regul / 2.0 * pow(x_in[i], 2.0);
+    objective += regul / (2.0*n) * pow(x_in[i], 2.0);
   }
 
   /* Sum up the gradient from all braid processors */
