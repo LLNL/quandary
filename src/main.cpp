@@ -430,10 +430,11 @@ int main(int argc,char **argv)
 #endif
 
 #if TEST_FD_TS
-
-  printf("\n\n#########################\n");
-  printf(" FD Testing... \n");
-  printf("#########################\n\n");
+  if (mpirank_world == 0)  {
+    printf("\n\n#########################\n");
+    printf(" FD Testing... \n");
+    printf("#########################\n\n");
+  }
 
   double obj_org;
   double obj_pert1, obj_pert2;
@@ -446,17 +447,20 @@ int main(int argc,char **argv)
 
 
   // /* --- Solve primal --- */
-  printf("\nRunning optimizer eval_f... ");
+  if (mpirank_world == 0) printf("\nRunning optimizer eval_f... ");
   optimproblem.eval_f(n, myx, true, obj_org);
-  printf(" Obj_orig %1.14e\n", obj_org);
+  if (mpirank_world == 0) printf(" Obj_orig %1.14e\n", obj_org);
 
   /* --- Solve adjoint --- */
-  printf("\nRunning optimizer eval_grad_f...\n");
+  if (mpirank_world == 0) printf("\nRunning optimizer eval_grad_f...\n");
   double* testgrad = new double[n];
   optimproblem.eval_grad_f(n, myx, true, testgrad);
+  for (int i=0; i<ndesign; i++) {
+        if (mpirank_world == 0) printf("%1.14e\n", testgrad[i]);
+  }
 
   /* Finite Differences */
-  printf("FD...\n");
+  if (mpirank_world == 0) printf("\nFD...\n");
   for (int i=0; i<n; i++){
   // {int i=0;
 
@@ -472,7 +476,7 @@ int main(int argc,char **argv)
     double fd = (obj_pert1 - obj_pert2) / (2.*EPS);
     double err = 0.0;
     if (fd != 0.0) err = (testgrad[i] - fd) / fd;
-    printf(" %d: obj %1.14e, obj_pert1 %1.14e, obj_pert2 %1.14e, fd %1.14e, grad %1.14e, err %1.14e\n", i, obj_org, obj_pert1, obj_pert2, fd, testgrad[i], err);
+    if (mpirank_world == 0) printf(" %d: obj %1.14e, obj_pert1 %1.14e, obj_pert2 %1.14e, fd %1.14e, grad %1.14e, err %1.14e\n", i, obj_org, obj_pert1, obj_pert2, fd, testgrad[i], err);
 
     /* Restore parameter */
     myx[i] += EPS;
