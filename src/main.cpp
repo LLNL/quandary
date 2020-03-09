@@ -54,18 +54,30 @@ int main(int argc,char **argv)
 
   char filename[255];
   PetscErrorCode ierr;
-  PetscMPIInt    mpisize, mpirank;
+  PetscMPIInt    mpisize_world, mpirank_world;
 
   /* Initialize MPI */
   MPI_Init(&argc, &argv);
-  MPI_Comm_rank(MPI_COMM_WORLD, &mpirank);
-  MPI_Comm_size(MPI_COMM_WORLD, &mpisize);
-  if (mpirank == 0) printf("# Running on %d cores.\n", mpisize);
+  MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
+  MPI_Comm_size(MPI_COMM_WORLD, &mpisize_world);
+  if (mpirank_world == 0) printf("# Running on %d cores.\n", mpisize_world);
 
+  /* Split aside communicators for petsc and hiop */
   MPI_Comm comm = MPI_COMM_WORLD;
-  MPI_Comm comm_braid, comm_petsc, comm_hiop;
-  braid_SplitCommworld(&comm, 1, &comm_petsc, &comm_braid);
-  MPI_Comm_split(MPI_COMM_WORLD, mpirank, mpirank, &comm_hiop);
+  MPI_Comm comm_petsc, comm_hiop;
+  MPI_Comm_split(MPI_COMM_WORLD, mpirank_world, mpirank_world, &comm_hiop);
+  MPI_Comm_split(MPI_COMM_WORLD, mpirank_world, mpirank_world, &comm_petsc);
+
+  // int mpirank_petsc, mpirank_hiop;
+  // int mpisize_petsc, mpisize_hiop;
+  // MPI_Comm_rank(comm_petsc, &mpirank_petsc);
+  // MPI_Comm_size(comm_petsc, &mpisize_petsc);
+  // MPI_Comm_rank(comm_hiop, &mpirank_hiop);
+  // MPI_Comm_size(comm_hiop, &mpisize_hiop);
+  // printf("world %d/%d\n", mpirank_world, mpisize_world);
+  // printf("petsc %d/%d\n", mpirank_petsc, mpisize_petsc);
+  // printf("hiop  %d/%d\n", mpirank_hiop, mpisize_hiop );
+
 
   /* Initialize Petsc using petsc's communicator */
   PETSC_COMM_WORLD = comm_petsc;
@@ -73,7 +85,7 @@ int main(int argc,char **argv)
 
   /* Read config file */
   if (argc != 2) {
-    if (mpirank == 0) {
+    if (mpirank_world == 0) {
       printf("\nUSAGE: ./main </path/to/configfile> \n");
     }
     MPI_Finalize();
@@ -170,7 +182,7 @@ int main(int argc,char **argv)
   MatCreateVecs(mastereq->getdRHSdp(), mu, NULL);   // reduced gradient
 
   /* Screen output */
-  if (mpirank == 0)
+  if (mpirank_world == 0)
   {
     printf("# System with %d oscillators, %d levels. \n", nosci, nlvl);
     printf("# Time horizon:   [0,%.1f]\n", total_time);
@@ -184,6 +196,54 @@ int main(int argc,char **argv)
   /* Allocate and initialize Petsc's Time-stepper */
   TSCreate(PETSC_COMM_SELF,&ts);CHKERRQ(ierr);
   TSInit(ts, mastereq, ntime, dt, total_time, x, lambda, mu, monitor);
+
+  /* Compute distribution of initial conditions */
+  int dimN = mastereq->getDim();
+  int np_braid;     // number of cores per braid instance
+  int ninit;  // number of initial conditions per braid instance
+  int ilower; // index of first initial condition on this processor 
+  int iupper; // index of last initial condition on this processor
+  int p;
+  if (dimN >= mpisize_world) { 
+    // Distribute initial conditions only
+    // each braid instance runs with 1 processor
+    np_braid = 1;
+    // Get distribution of initial conditions
+    int quo = dimN / mpisize_world;
+    int rem = dimN % mpisize_world;
+    p = mpirank_world;
+    ilower = p * quo + (p < rem ? p : rem);
+    p = mpirank_world + 1;
+    iupper = p * quo + (p < rem ? p : rem) - 1;
+    ninit    = iupper - ilower + 1;
+  } else { 
+    // Each initial condition uses separate braid instance
+    // Each braid instance uses nprocs / dimN processors 
+    if (mpisize_world % dimN != 0) {
+      printf("ERROR: #nprocs should be a multiple of the system dimensions %d.\n", dimN);
+      exit(1);
+    }
+    ninit    = 1;    
+    np_braid = (int) mpisize_world / dimN;  
+    ilower = mpirank_world / np_braid ;
+    iupper = mpirank_world / np_braid ;
+  }
+
+  /* Split communicator for braid and initial condition */
+  MPI_Comm comm_braid, comm_init;
+  MPI_Comm_split(MPI_COMM_WORLD, mpirank_world / np_braid, mpirank_world, &comm_braid);
+  MPI_Comm_split(MPI_COMM_WORLD, mpirank_world % np_braid, mpirank_world, &comm_init);
+  int mpirank_init, mpisize_init;
+  int mpirank_braid, mpisize_braid;
+  MPI_Comm_rank(comm_init, &mpirank_init);
+  MPI_Comm_size(comm_init, &mpisize_init);
+  MPI_Comm_rank(comm_braid, &mpirank_braid);
+  MPI_Comm_size(comm_braid, &mpisize_braid);
+
+  printf("%d: np_init %d/%d: ninit %d [%d,%d], np_braid %d/%d\n", mpirank_world, mpirank_init, mpisize_init, ninit, ilower, iupper, mpirank_braid, mpisize_braid);
+
+  MPI_Finalize();
+  exit(1);
 
   /* Initialize Braid */
   primalbraidapp = new myBraidApp(comm_braid, total_time, ntime, ts, mytimestepper, mastereq, &config);
@@ -211,13 +271,13 @@ int main(int argc,char **argv)
   nlp.options->SetNumericValue("tolerance", optim_tol);
   double optim_maxiter = config.GetIntParam("optim_maxiter", 200);
   nlp.options->SetIntegerValue("max_iter", optim_maxiter);
-  if (mpirank != 0) nlp.options->SetIntegerValue("verbosity_level", 0);
+  if (mpirank_world != 0) nlp.options->SetIntegerValue("verbosity_level", 0);
   /* Create solver */
   hiop::hiopAlgFilterIPM optimsolver(&nlp);
   hiop::hiopSolveStatus  optimstatus;
 
   /* --- Test optimproblem --- */
-  if (mpirank == 0) printf("# ndesign=%d\n", ndesign);
+  if (mpirank_world == 0) printf("# ndesign=%d\n", ndesign);
   double* myinit = new double[ndesign];
   double* optimgrad = new double[ndesign];
   optimproblem.get_starting_point(ndesign, myinit);
@@ -228,15 +288,15 @@ int main(int argc,char **argv)
   /* --- Solve primal --- */
   if (runtype == primal || runtype == adjoint) {
     optimproblem.eval_f(ndesign, myinit, true, objective);
-    if (mpirank == 0) printf("%d: Objective %1.14e\n", mpirank, objective);
+    if (mpirank_world == 0) printf("%d: Objective %1.14e\n", mpirank_world, objective);
   } 
   
   /* --- Solve adjoint --- */
   if (runtype == adjoint) {
     optimproblem.eval_grad_f(ndesign, myinit, true, optimgrad);
     double gnorm = 0.0;
-    if (mpirank == 0) {
-      printf("\n%d: My awesome gradient:\n", mpirank);
+    if (mpirank_world == 0) {
+      printf("\n%d: My awesome gradient:\n", mpirank_world);
       for (int i=0; i<ndesign; i++) {
         gnorm += pow(optimgrad[i], 2.0);
         printf("%1.14e\n", optimgrad[i]);
@@ -247,7 +307,7 @@ int main(int argc,char **argv)
 
   /* Solve the optimization  */
   if (runtype == optimization) {
-    if (mpirank == 0) printf("Now starting HiOp... \n");
+    if (mpirank_world == 0) printf("Now starting HiOp... \n");
     optimstatus = optimsolver.run();
 
   }
@@ -262,20 +322,20 @@ int main(int argc,char **argv)
   MPI_Allreduce(&myMB, &globalMB, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 
   /* Print statistics */
-  if (mpirank == 0) {
+  if (mpirank_world == 0) {
     printf("\n");
     printf(" Used Time:        %.2f seconds\n", UsedTime);
     printf(" Global Memory:    %.2f MB\n", globalMB);
-    printf(" Processors used:  %d\n", mpisize);
+    printf(" Processors used:  %d\n", mpisize_world);
     printf("\n");
   }
-  printf("Rank %d: %.2fMB\n", mpirank, myMB );
+  printf("Rank %d: %.2fMB\n", mpirank_world, myMB );
 
   /* Print timing to file */
-  if (mpirank == 0) {
+  if (mpirank_world == 0) {
     sprintf(filename, "timing.dat");
     FILE* timefile = fopen(filename, "w");
-    fprintf(timefile, "%d  %1.8e\n", mpisize, UsedTime);
+    fprintf(timefile, "%d  %1.8e\n", mpisize_world, UsedTime);
     fclose(timefile);
     printf("%s written.\n", filename);
   }
