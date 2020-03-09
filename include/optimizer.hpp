@@ -20,16 +20,19 @@ class OptimProblem : public hiop::hiopInterfaceDenseConstraints {
         std::string datadir;           /* Directory for data output */
         int printlevel;                
 
-        MPI_Comm comm_hiop;
+        MPI_Comm comm_hiop, comm_init;
         int mpirank_braid, mpisize_braid;
         int mpirank_space, mpisize_space;
         int mpirank_optim, mpisize_optim;
         int mpirank_world, mpisize_world;
+        int mpirank_init, mpisize_init;
+
+        int ilower, iupper; 
         FILE* optimfile;
 
     public:
         OptimProblem();
-        OptimProblem(myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, Gate* targate_, MPI_Comm comm_hiop_, const std::vector<double>optim_bounds, double optim_regul_, std::string x0filename_, std::string datadir_, int optim_printlevel_);
+        OptimProblem(myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, Gate* targate_, MPI_Comm comm_hiop_, MPI_Comm comm_init_, const std::vector<double>optim_bounds, double optim_regul_, std::string x0filename_, std::string datadir_, int optim_printlevel_, int ilower_, int iupper_);
         virtual ~OptimProblem();
 
 

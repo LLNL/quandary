@@ -240,29 +240,19 @@ int main(int argc,char **argv)
   MPI_Comm_rank(comm_braid, &mpirank_braid);
   MPI_Comm_size(comm_braid, &mpisize_braid);
 
-  printf("%d: np_init %d/%d: ninit %d [%d,%d], np_braid %d/%d\n", mpirank_world, mpirank_init, mpisize_init, ninit, ilower, iupper, mpirank_braid, mpisize_braid);
+  // printf("%d: np_init %d/%d: ninit %d [%d,%d], np_braid %d/%d\n", mpirank_world, mpirank_init, mpisize_init, ninit, ilower, iupper, mpirank_braid, mpisize_braid);
 
-  MPI_Finalize();
-  exit(1);
-
-  /* Initialize Braid */
+  /* Create braid instances */
   primalbraidapp = new myBraidApp(comm_braid, total_time, ntime, ts, mytimestepper, mastereq, &config);
   adjointbraidapp = new myAdjointBraidApp(comm_braid, total_time, ntime, ts, mytimestepper, mastereq, *mu, &config, primalbraidapp->getCore());
   primalbraidapp->InitGrids();
   adjointbraidapp->InitGrids();
 
-
-  /* Print some information on the time-grid distribution */
-  // int ilower, iupper;
-  // _braid_GetDistribution(braid_core, &ilower, &iupper);
-  // printf("ilower %d, iupper %d\n", ilower, iupper);
-
-
   /* Initialize the optimization */
   std::vector<double> optimbounds;
   config.GetVecDoubleParam("optim_bounds", optimbounds, 1e20);
   assert (optimbounds.size() >= mastereq->getNOscillators());
-  OptimProblem optimproblem(primalbraidapp, adjointbraidapp, targetgate, comm_hiop, optimbounds, config.GetDoubleParam("optim_regul", 1e-4), config.GetStrParam("optim_x0filename", "none"), config.GetStrParam("datadir", "./data_out"), config.GetIntParam("optim_printlevel", 1));
+  OptimProblem optimproblem(primalbraidapp, adjointbraidapp, targetgate, comm_hiop, comm_init, optimbounds, config.GetDoubleParam("optim_regul", 1e-4), config.GetStrParam("optim_x0filename", "none"), config.GetStrParam("datadir", "./data_out"), config.GetIntParam("optim_printlevel", 1), ilower, iupper);
   hiop::hiopNlpDenseConstraints nlp(optimproblem);
   long long int ndesign,m;
   optimproblem.get_prob_sizes(ndesign, m);
@@ -288,7 +278,7 @@ int main(int argc,char **argv)
   /* --- Solve primal --- */
   if (runtype == primal || runtype == adjoint) {
     optimproblem.eval_f(ndesign, myinit, true, objective);
-    if (mpirank_world == 0) printf("%d: Objective %1.14e\n", mpirank_world, objective);
+    if (mpirank_world == 0) printf("%d: Primal Only: Objective %1.14e\n", mpirank_world, objective);
   } 
   
   /* --- Solve adjoint --- */

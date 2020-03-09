@@ -20,16 +20,19 @@ OptimProblem::OptimProblem() {
     printlevel = 0;
 }
 
-OptimProblem::OptimProblem(myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, Gate* targate_, MPI_Comm comm_hiop_, const std::vector<double> optim_bounds_, double optim_regul_, std::string x0filename_, std::string datadir_, int optim_printlevel_){
+OptimProblem::OptimProblem(myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, Gate* targate_, MPI_Comm comm_hiop_, MPI_Comm comm_init_, const std::vector<double> optim_bounds_, double optim_regul_, std::string x0filename_, std::string datadir_, int optim_printlevel_, int ilower_, int iupper_){
     primalbraidapp  = primalbraidapp_;
     adjointbraidapp = adjointbraidapp_;
     targetgate = targate_;
     comm_hiop = comm_hiop_;
+    comm_init = comm_init_;
     regul = optim_regul_;
     x0filename = x0filename_;
     bounds = optim_bounds_;
     datadir = datadir_;
     printlevel = optim_printlevel_;
+    ilower = ilower_;
+    iupper = iupper_;
 
     MPI_Comm_rank(primalbraidapp->comm_braid, &mpirank_braid);
     MPI_Comm_size(primalbraidapp->comm_braid, &mpisize_braid);
@@ -39,6 +42,8 @@ OptimProblem::OptimProblem(myBraidApp* primalbraidapp_, myAdjointBraidApp* adjoi
     MPI_Comm_size(comm_hiop, &mpisize_optim);
     MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
     MPI_Comm_size(MPI_COMM_WORLD, &mpisize_world);
+    MPI_Comm_rank(comm_init, &mpirank_init);
+    MPI_Comm_size(comm_init, &mpisize_init);
 
     /* Open optim file */
     if (mpirank_world == 0 && printlevel > 0) {
@@ -157,7 +162,7 @@ bool OptimProblem::get_cons_info(const long long& m, double* clow, double* cupp,
 bool OptimProblem::eval_f(const long long& n, const double* x_in, bool new_x, double& obj_value){
 // bool OptimProblem::eval_f(Index n, const Number* x, bool new_x, Number& obj_value){
 
-  if (mpirank_world == 0) printf(" EVAL F... ");
+  if (mpirank_world == 0) printf(" EVAL F... \n");
   MasterEq* mastereq = primalbraidapp->mastereq;
   int dim = mastereq->getDim();
   double Re_local = 0.0;
@@ -177,10 +182,10 @@ bool OptimProblem::eval_f(const long long& n, const double* x_in, bool new_x, do
     trace_Re = 0.0;
     trace_Im = 0.0;
     objective = 0.0;
-    for (int iinit = 0; iinit < dim; iinit++) {
+    for (int iinit = ilower; iinit <= iupper; iinit++) {
       
 
-      if (mpirank_world == 0) printf(" %d FWD. ", iinit);
+      // if (mpirank_braid == 0) printf("%d: %d FWD. \n", mpirank_init, iinit);
       /* Run forward with initial condition iinit */
       initstate = primalbraidapp->PreProcess(iinit);
       if (initstate != NULL) 
@@ -193,6 +198,7 @@ bool OptimProblem::eval_f(const long long& n, const double* x_in, bool new_x, do
         targetgate->compare(iinit, finalstate, obj_local);
         objective += obj_local;
       }
+      // if (mpirank_braid == 0) printf("%d: local objective: %1.14e\n", mpirank_init, obj_local);
 
       /* Add diagonal elements to fidelity trace tr(X^dat G) */
       if (iinit % ((int)sqrt(dim)+1) == 0 ) // this hits the diagonal elements
@@ -207,10 +213,21 @@ bool OptimProblem::eval_f(const long long& n, const double* x_in, bool new_x, do
     }
   // }
 
-  /* Broadcast fidelity trace and objective from last to all processors */
+  /* Broadcast fidelity trace and objective from last to all time processors */
   MPI_Bcast(&trace_Re, 1, MPI_DOUBLE, mpisize_braid-1, primalbraidapp->comm_braid);
   MPI_Bcast(&trace_Im, 1, MPI_DOUBLE, mpisize_braid-1, primalbraidapp->comm_braid);
   MPI_Bcast(&objective, 1, MPI_DOUBLE, mpisize_braid-1, primalbraidapp->comm_braid);
+
+
+  /* Sum up objective from all initial conditions */
+  double myobj = objective;
+  double mytRe = trace_Re;
+  double mytIm = trace_Im;
+  MPI_Allreduce(&myobj, &objective, 1, MPI_DOUBLE, MPI_SUM, comm_init);
+  MPI_Allreduce(&mytRe, &trace_Re, 1, MPI_DOUBLE, MPI_SUM, comm_init);
+  MPI_Allreduce(&mytIm, &trace_Im, 1, MPI_DOUBLE, MPI_SUM, comm_init);
+
+  // if (mpirank_init == 0) printf("%d: global sum objective: %1.14e\n\n", mpirank_init, objective);
 
   /* Compute fidelity 1/N^2 |trace|^2 */
   fidelity = 1. / dim * (pow(trace_Re, 2.0) + pow(trace_Im, 2.0));
@@ -223,7 +240,6 @@ bool OptimProblem::eval_f(const long long& n, const double* x_in, bool new_x, do
     objective += regul / (2.0*n) * pow(x_in[i], 2.0);
   }
 
-  if (mpirank_world == 0) printf("  -->  infidelity: %1.14e, objective: %1.14e\n", 1.0 - fidelity, objective);
 
   /* Return objective value */
   obj_value = objective;
@@ -233,7 +249,7 @@ bool OptimProblem::eval_f(const long long& n, const double* x_in, bool new_x, do
 
 
 bool OptimProblem::eval_grad_f(const long long& n, const double* x_in, bool new_x, double* gradf){
-  if (mpirank_world == 0) printf(" EVAL GRAD F...");
+  if (mpirank_world == 0) printf(" EVAL GRAD F...\n");
 
   MasterEq* mastereq = primalbraidapp->mastereq;
   double obj_Re_local, obj_Im_local;
@@ -248,9 +264,11 @@ bool OptimProblem::eval_grad_f(const long long& n, const double* x_in, bool new_
   /* Pass x to Oscillator */
   setDesign(n, x_in);
 
-  /* Derivative of regularization gamma * ||x||^2 */
-  for (int i=0; i<n; i++) {
-    gradf[i] = regul / n * x_in[i];
+  /* Derivative of regularization gamma * ||x||^2 (ADD ON ONE PROC ONLY!) */
+  if (mpirank_init == 0) {
+    for (int i=0; i<n; i++) {
+      gradf[i] = regul / n * x_in[i];
+    }
   }
 
   /* Derivative objective 1/(2N^2) J */
@@ -260,10 +278,10 @@ bool OptimProblem::eval_grad_f(const long long& n, const double* x_in, bool new_
   trace_Re = 0.0;
   trace_Im = 0.0;
   objective = 0.0;
-  for (int iinit = 0; iinit < dim; iinit++) {
+  for (int iinit = ilower; iinit <= iupper; iinit++) {
 
     /* --- Solve primal --- */
-    if (mpirank_world == 0) printf(" %d FWD -", iinit);
+    // if (mpirank_braid == 0) printf("%d: %d FWD.\n", mpirank_init, iinit);
     initstate = primalbraidapp->PreProcess(iinit); // returns NULL if not stored on this proc
     if (initstate != NULL)
       mastereq->initialCondition(iinit, initstate);
@@ -275,6 +293,7 @@ bool OptimProblem::eval_grad_f(const long long& n, const double* x_in, bool new_
       targetgate->compare(iinit, finalstate, obj_local);
       objective += obj_local;
     }
+    // if (mpirank_braid == 0) printf("%d: local objective: %1.14e\n", mpirank_init, obj_local);
 
     /* Add diagonal elements to fidelity trace tr(X^dat G) */
     if (iinit % ((int)sqrt(dim)+1) == 0 ) // this hits the diagonal elements
@@ -288,7 +307,7 @@ bool OptimProblem::eval_grad_f(const long long& n, const double* x_in, bool new_
     }
 
     /* --- Solve adjoint --- */
-    if (mpirank_world == 0) printf(" BWD. ");
+    // if (mpirank_braid == 0) printf("%d: %d BWD.\n", mpirank_init, iinit);
     initadjoint = adjointbraidapp->PreProcess(iinit); // return NULL if not stored on this proc
     if (initadjoint != NULL) 
        targetgate->compare_diff(iinit, finalstate, initadjoint, obj_bar);
@@ -299,13 +318,25 @@ bool OptimProblem::eval_grad_f(const long long& n, const double* x_in, bool new_
     const double* grad_ptr = adjointbraidapp->getReducedGradientPtr();
     for (int i=0; i<n; i++) {
         gradf[i] += grad_ptr[i]; 
+        // printf("%d: grad[i] = %1.14e\n", iinit, grad_ptr[i]);
     }
+    // printf("\n");
   }
   
   /* Broadcast trace and objective from last to all processors */
   MPI_Bcast(&trace_Re, 1, MPI_DOUBLE, mpisize_braid-1, primalbraidapp->comm_braid);
   MPI_Bcast(&trace_Im, 1, MPI_DOUBLE, mpisize_braid-1, primalbraidapp->comm_braid);
   MPI_Bcast(&objective, 1, MPI_DOUBLE, mpisize_braid-1, primalbraidapp->comm_braid);
+
+  /* Sum up objective from all initial conditions */
+  double myobj = objective;
+  double mytRe = trace_Re;
+  double mytIm = trace_Im;
+  MPI_Allreduce(&myobj, &objective, 1, MPI_DOUBLE, MPI_SUM, comm_init);
+  MPI_Allreduce(&mytRe, &trace_Re, 1, MPI_DOUBLE, MPI_SUM, comm_init);
+  MPI_Allreduce(&mytIm, &trace_Im, 1, MPI_DOUBLE, MPI_SUM, comm_init);
+
+  // if (mpirank_init == 0) printf("%d: global sum objective: %1.14e\n\n", mpirank_init, objective);
 
   /* Compute fidelity 1/N^2 |trace|^2 */
   fidelity = 1. / dim * (pow(trace_Re, 2.0) + pow(trace_Im, 2.0));
@@ -325,13 +356,21 @@ bool OptimProblem::eval_grad_f(const long long& n, const double* x_in, bool new_
   }
   MPI_Allreduce(mygrad, gradf, n, MPI_DOUBLE, MPI_SUM, primalbraidapp->comm_braid);
 
+  /* Sum up the gradient from all initial condition processors */
+  for (int i=0; i<n; i++) {
+    mygrad[i] = gradf[i];
+  }
+  MPI_Allreduce(mygrad, gradf, n, MPI_DOUBLE, MPI_SUM, comm_init);
+
   /* Compute gradient norm */
   double gradnorm = 0.0;
   for (int i=0; i<n; i++) {
     gradnorm += pow(gradf[i], 2.0);
   }
 
-  if (mpirank_world == 0) printf(" -->  infidelity: %1.14e, ||grad|| = %1.14e\n", 1.0 - fidelity, gradnorm);
+  // if (mpirank_world == 0) printf("%d: ||grad|| = %1.14e\n", mpirank_init, gradnorm);
+
+  delete [] mygrad;
     
   return true;
 }
