@@ -266,7 +266,7 @@ bool OptimProblem::eval_grad_f(const long long& n, const double* x_in, bool new_
 
   /* Derivative of regularization gamma * ||x||^2 (ADD ON ONE PROC ONLY!) */
   for (int i=0; i<n; i++) {
-    if (mpirank_init == 0) gradf[i] = regul / n * x_in[i];
+    if (mpirank_init == 0 && mpirank_braid == 0) gradf[i] = regul / n * x_in[i];
     else gradf[i] = 0.0;
   }
 
