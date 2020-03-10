@@ -1,5 +1,5 @@
 # Quandary - Quantum control on HPC clusters
-This project implements a parallel-in-time optimization solver for quantum control problems. The underlying quantum dynamics model open quantum systems, using the Lindblad master equation to evolve the density matrix in time. The control problem aims to find control pulses that realize a certain gate, i.e. drive the system to a desired target state. The software library XBraid is used to distribute the simulation time domain onto multiple cores and apply the time-parallel multigrid iterations.
+This project implements a parallel-in-time optimization solver for quantum control. The underlying quantum dynamics model open quantum systems, using the Lindblad master equation to evolve the density matrix in time. The control problem aims to find control pulses that realize a certain gate, i.e. drive the system to a desired target state. 
 
 ## Requirements:
 To build this project, you need to have the following packages installed:
@@ -14,7 +14,7 @@ To build this project, you need to have the following packages installed:
     - git checkout solveadjointwithxbraid
     - make braid
 * Install Petsc (see Petsc manual for installation guide). Set the `PETSC_DIR` and `PETSC_ARCH` variables.
-* To install HiOp, run in clean 'build' directory:
+* To build HiOp, run in clean 'build' directory:
     > cmake ..
     > make
     > make test
