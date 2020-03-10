@@ -15,13 +15,15 @@ To build this project, you need to have the following packages installed:
     - make braid
 * Install Petsc (see Petsc manual for installation guide). Set the `PETSC_DIR` and `PETSC_ARCH` variables.
 * To build HiOp, run in clean 'build' directory:
-    > cmake ..
-    > make
-    > make test
-    > make install
+    - git cone https://github.com/LLNL/hiop
+    - mkdir build; cd build
+    - cmake ..
+    - make
+    - make test
+    - make install
 * In the main directory of this project, adapt the beginning of the Makefile to set the path to the XBraid, Petsc, and HiOp locations. 
 * Type `make cleanup` to clean the build directory.
 * Type `make -j main` to build the code. 
 
 ## Running
-The code builds into the executable `./main`. It takes one argument being the name of the config file. A template for a config file listing all options is in 'config_template.cfg'. 
+The code builds into the executable `./main`. It takes one argument being the name of the config file. A template for a config file listing all options is in `config_template.cfg`. 
