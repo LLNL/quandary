@@ -1,0 +1,54 @@
+\documentclass{article}
+\usepackage{amsmath}
+\usepackage{dsfont}
+\usepackage{graphicx}
+\usepackage[utf8]{inputenc}
+\parindent0pt
+\parskip 1.5ex plus 1ex minus .5ex
+
+\DeclareMathOperator{\Tr}{Tr}
+\newcommand{\Ell}{\mathcal{L}}
+\newcommand{\R}{\mathds{R}}
+\newcommand{\C}{\mathds{C}}
+
+\title{TODO}
+% \author{Stefanie G{\"u}nther}
+% \affil{Lawrence Livermore National Laboratory, CA, USA}
+% \date{}
+
+\begin{document}
+\maketitle
+
+\begin{itemize}
+  \item Modify braid access level option so that it writes the state only after the optimization has finished. 
+  \item Find out why serial run on multiple processors is faster than serial run on one processor. Seems like Petsc is still operating on multiple ranks?
+  \item \textbf{Parallelization:}
+      \begin{itemize}
+        \item Parallelize HiOp: Distribute spline parameters.
+        \item Parallelize linear algebra 
+      \end{itemize}
+  \item \textbf{Generalize gate interface} to more than 2 levels!
+  \item \textbf{Bsplines with carrier waves}
+  \item \textbf{Tensor formulation}
+        \begin{itemize}
+          \item Petsc's MatShell to implement the action of $A(t)$ on a vector ($\rightharpoondown$ compare FD-stencil)
+          \item Taco?
+          \item Preconditioning and solver for linear system $\rightarrow$ Bartlet - Steward for solving silvesters equation ?
+        \end{itemize}
+  \item \textbf{Braid convergence and scaling study} (Ben Southworth):
+        \begin{itemize}
+          \item Numerical convergence study for forward Braid using implicit vs. explicit time-stepping schemes ($\rightarrow$ Petsc's timestepper).
+          \item Compute eigenvalues of system matrix $A(t)$ for theoretical analysis. 
+          \item Compare 1st and 2nd order methods
+          \item Testcase: 2 Oscillators, each 4 levels (more than two levels so that the drift Hamiltonian includes more terms). 
+          \item Plot CPU time over error for various methods (serial vs parallel, both for different time stepping schemes)
+          \item Create reference solution by using some high-order method, super small time-step, maybe variable time-steps. 
+          \item Test all for various initial conditions (different unit vectors)
+          \item Test both with and without the Lindblad terms
+        \end{itemize}  
+  \item Robust optimization, uncertainty quantification
+  \item GPU implementation
+\end{itemize}
+
+
+\end{document}

@@ -1,0 +1,234 @@
+\documentclass[letterpaper]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath}
+\usepackage{dsfont}
+\usepackage{graphicx}
+\usepackage[utf8]{inputenc}
+\usepackage{xcolor}
+% \usepackage[legalpaper, margin=2in]{geometry}
+\parindent0pt
+\parskip 1.5ex plus 1ex minus .5ex
+
+\DeclareMathOperator{\Tr}{Tr}
+\newcommand{\Ell}{\mathcal{L}}
+\newcommand{\R}{\mathds{R}}
+\newcommand{\C}{\mathds{C}}
+
+
+\title{Open System Quantum Control}
+% \author{Stefanie G{\"u}nther}
+% \affil{Lawrence Livermore National Laboratory, CA, USA}
+% \date{}
+
+\begin{document}
+\maketitle
+
+
+We model open quantum systems with $Q$ oscillators with $n_k$ levels for the $k$-th oscillator, $k=1,\dots,Q$. We solve the Lindblad master equation
+\begin{align}\label{mastereq}
+  \dot \rho(t) = &-i(H(t)\rho(t) - \rho(t)H(t)) \\
+          &+ \sum_{l=1}^2 \sum_{k=1}^Q \gamma_{lk} \left( \Ell_{lk} \rho(t) \Ell_{lk}^{\dagger} - \frac 1 2 \left( \Ell_{lk}^{\dagger}\Ell_{lk} \rho(t) + \rho(t)\Ell_{lk}^{\dagger} \Ell_{lk}\right) \right)
+\end{align}
+for the density matrix $\rho(t)\in \C^{N\times N}$, $N := \prod_{k=1}^N n_k$. The Hamiltonian $H(t)$ consists of a constant \textit{drift} part, and a time-varying \textit{control} part. For the \textit{rotating frame}, these are computed from
+\begin{align}
+  H(t) &= H_d + H_c(t) \\
+  \text{with} \quad H_d &:= \sum_{k=1}^Q \left(- \frac{\xi_k}{2} a_k^{\dagger}a_k^{\dagger}a_k a_k - \sum_{l\neq k} \xi_{lk} a_l^{\dagger}a_l a_k^{\dagger} a_k  \right) \\
+                 H_c(t) &:= \sum_{k=1}^Q \left( p(\vec{\alpha}_k,t) (a_k + a_k^{\dagger}) + i p(\vec{\beta}_k,t)(a_k - a_k^{\dagger})  \right)
+\end{align}
+Here, $a_k$ denotes the lowering operator:
+\begin{align}
+  a_1 &:= a^{(n_1)} \otimes I_{n_2} \otimes \dots \otimes I_{n_Q}\\
+  a_2 &:= I_{n_1} \otimes a^{(n_2)} \otimes \dots \otimes I_{n_Q}\\
+  &\vdots \\
+  a_Q &:= I_{n_1} \otimes I_{n_2} \otimes \dots \otimes a^{(n_Q)}\\
+\end{align}
+with 
+\begin{align}
+ a^{(n_k)} = \begin{pmatrix}
+   0 & 1 &          &         &    \\
+     & 0 & \sqrt{2} &         &     \\
+     &   & \ddots   & \ddots  &    \\
+     &   &          &         & \sqrt{n_k-1}  \\
+     &   &          &         & 0   
+ \end{pmatrix} \in \R^{n_k \times n_k}
+\end{align}
+The time-dependent control functions $p(\vec{\alpha}_k,t), p(\vec{\beta}_k,t)$ are real-valued pulses represented by a linear combination of B-splines: 
+\begin{align*}
+  p(\vec{x},t) = \sum_{l=1}^L x_l B_l(t) \quad \text{for} \quad \vec x \in \R^L
+\end{align*}
+for $L$ B-Spline functions $B_l(t)$. The amplitudes $\vec{\alpha}_k, \vec{\beta}_k \in \R^{L}$ serve as control parameters (\textit{design} variables) that we modify in order to realize a desired system behavior, giving a total of $2QL$ design parameters:
+\begin{align*}
+  z &:= \left( \vec{\alpha}_1, \vec{\beta}_1, \dots, \vec{\alpha}_Q, \vec{\beta}_Q \right), \in \mathds{R}^{2LQ} \\
+    &=\left(\alpha_1^1,\dots,\alpha_1^L,\beta_1^1, \dots, \beta_1^L, \dots, \alpha_Q^1,\dots,\alpha_Q^L,\beta_Q^1, \dots, \beta_Q^1 \right) \\
+\end{align*}
+The control functions are in the \textit{rotating frame}. To convert them back to the \textit{Lab frame} use
+\begin{align}
+  f_k(t) = 2p(\vec{\alpha}_k, t) cos(w_k t) - 2 p(\vec{\beta}_k,t) sin(w_k,t)
+\end{align}
+
+The collapse operators $\Ell_{lk}$ in the Lindblad terms of the master equation \eqref{mastereq} can be of the following type:
+\begin{itemize}
+  \item ``T1'' -- Decay: $\Ell_{1k} = a_k$
+  \item ``T2'' -- Dephasing: $\Ell_{2k} = a_k^{\dagger}a_k$
+\end{itemize}
+for each oscillator $k$. The constants $\gamma_{lk}$ are the inverse half-live for the corresponding collapse process $l$: $\gamma_{lk} = \sqrt{\frac{1}{T_l}}$ (in nanoseconds, ns). Typical T1 decay time is between $10-100$ microseconds (us). T2 dephasing time is typically about half of T1 decay time. Decay then behaves like $\exp(-t/\sqrt{T_1})$. Dephasing behaves like $\exp(-\frac{1}{2\sqrt{T_2}})$.
+
+The quantum control problem aims to realize a certain target gate at final time $T$, represented by a unitary matrix $V\in \C^{N\times N}$. For closed quantum systems, we know that $\rho$ evolves in time with the unitary transformation matrix $\rho(t) = U(t)\rho(0) U(t)^{\dagger}$ (because $\rho(t) = \sum_k p_k \psi_k(t)\psi_k(t)^{\dagger}$, and $\psi_k(t)$ evolve according to the (linear) Schroedinger equation giving $\psi(t) = U(t) \psi(0)$). Hence, for closed systems we want to match $V$ with $U(T)$ so that $q(T) = V\rho(0)V^{\dagger}$ holds at final time. For open systems, $\rho(t)$ might not be in a pure state, and we might have $\rho(t) \neq U(t)\rho(0) U(t)^{\dagger}$. However, the optimal control problem still aims to find the amplitudes $z\in \R^{2QL}$ such that $\rho(T)$ is as close as possible to $V\rho(0)V^{\dagger}$, for any initial state $\rho(0)$. We measure the distance in the Frobenius norm:
+\begin{align}\label{optimproblem_matrix}
+ \| \rho(T) - V\rho(0)V^{\dagger} \|^2_F \rightarrow \min  \qquad \text{for all} \quad \rho(0)
+\end{align} 
+where the Frobenius norm is defined as 
+\begin{align}
+  \|A\|^2_F = \Tr(A^{\dagger}A).
+\end{align}
+\textcolor{red}{Controlability: Can we achieve that?}
+
+The Lindblad master equation \eqref{mastereq} is in matrix form, describing the evolution of the densisy matrix $\rho = (\rho_1, \dots, \rho_N) \in \C^{N\times N}$. In order to solve this numerically, we vectorize the equation to receive an ODE for $q(t) := \text{vec}(\rho(t)) \in \C^{N^2}$. Using the relations
+\begin{align}
+  \text{vec}(AB) &= (I_N\otimes A)\text{vec}(B) = (B^T\otimes I_N)\text{vec}(A) \\
+  \text{vec}(ABC) &= (C^T\otimes A)\text{vec}(B)
+\end{align}
+for square matrices $A,B,C\in\C^{N\times N}$, we can derive the vectorized form of the Lindblad master equation:
+\begin{align}\label{mastereq_vectorized}
+  &\dot q(t) = M(t) q(t) \quad  \text{where} \\
+  &M(t) := -i(I_N\otimes H - H^T \otimes I_N) + \sum_{l,k=1}^{2,Q} \gamma_{lk} \left( \Ell_{lk}\otimes \Ell_{lk} - \frac 1 2 \left( I_N\otimes \Ell^T_{lk}\Ell_{lk} + \Ell^T_{lk}\Ell_{lk} \otimes I_N \right) \right)
+\end{align}
+Since this is a linear ODE for $q(t)$, we can make the ansatz $q(T) = X(T) q(0)$. The solution operator $X(t) \in \C^{N^2\times N^2}$ satisfies $X(0) = I_{N^2}$ and $\dot X(t) = M(t) X(t)$. The vectorization of the target gate yields $\text{vec}(V\rho(0)V^{\dagger}) = \bar V\otimes V q(0)$. Hence, minimizing \eqref{optimproblem_matrix} for all initial conditions $\rho(0)$ relates to minimizing the difference between $X(T)$ and $\bar V\otimes V$. We therefore solve the following optimal control problem:
+\begin{align}\label{optimproblem_final}
+  \min_z \, J(z) + \frac{\gamma}{2}R(z) := \frac {1}{2N^2} \| &X(T) - \bar V \otimes V \|^2_F + \frac{\gamma}{2} \|z\|^2_2 \\
+  \text{s.t.} \quad \dot X(t) &= M(t) X(t)  \\
+                    X(0) &= I_{N^2}
+\end{align}
+where a Tikhonov regularizatioe term $R(z)$ has been added in order to well-condition the system. Using the definition $G := \bar V\otimes V$, the objective function $J(z)$ is decomposed into
+\begin{align}
+  J(z) &= \frac{1}{2N^2} \| X(T) - G\|^2_F \\
+       &= \frac{1}{2N^2} \left( X(T)^{\dagger}X(T) + G^{\dagger}G - 2Re(X(T)^{\dagger}G) \right) \\
+       &= \frac{1}{2N^2} \left( \sum_{i=1}^{N^2} x_i(T)^{\dagger}x_i(T) + g_i^{\dagger}g_i - 2Re(x_i(T)^{\dagger}g_i) \right) \\
+       &= \frac{1}{2N^2} \left( \sum_{i=1}^{N^2} \| x_i(T) - g_i) \|^2_2 \right) \\
+\end{align}
+where $x_i$ and $g_i$ denote the $i-th$ column of $X(T)$ and $G=\bar V\otimes V$, respectively. Note, that $x_i(T)$ is the solution of the vectorized master equation \eqref{mastereq_vectorized} for the initial condition $x_i(0) = e_i$ being the $i$-th unit vector in $\R^{N^2}$. Hence, minimizing the normalized Frobenius norm equals to minimizing the average $L_2$ norm of the individual solution operator components. Further, since $V$ is unitary, so is $G=\bar V\otimes V$, hence $g_i^{\dagger}g_i = 1$.
+
+In order to check how well the final state matches the target gate, we further measure the ``fidelity'' of the system by looking at the diagonal components of the density matrix. Denote by $D(T) = (d_1(T), \dots d_N(T)) \in \C^{N\times N}$ the matrix whose $i$-th column contains the diagonal elements of the density matrix at time $T$ for the initial condition $\rho(0) = E_{ii}$ (zero-matrix with a one only at diagonal element $i,i$). We compute the fidelity from 
+\begin{align}
+  F &= \frac{1}{N} \left|\Tr(D(T)^{\dagger}V) \right|^2 \\
+    &= \frac{1}{N} \left| \sum_{i=1}^N d_i(T)^{\dagger}v_i \right|^2 \\
+    &= \frac{1}{N} \left( Re\left(\sum_{i=1}^N d_i(T)^{\dagger}v_i\right)^2 + Im\left( \sum_{i=1}^N d_i(T)^{\dagger}v_i \right)^2 \right)
+\end{align}
+\textcolor{red}{It is unclear if the Fidelity computation should be done using the \textit{rotated} target $R(T)V(T)$, where $R(T) = \prod_{k=1}^Q \exp( i2\pi w_kTa_k^{\dagger}a_k)$.}
+
+Target gates that we consider include
+\begin{enumerate}
+  \item Single qubit gates (1 oscillator, 2 levels):
+    \begin{align}
+      V_{X} := \begin{bmatrix} 0 & 1 \\ 1 & 0  \end{bmatrix} \quad
+      V_{Y} := \begin{bmatrix} 0 & -i \\ i & 0 \end{bmatrix} \quad
+      V_{Z} := \begin{bmatrix} 1 & 0 \\ 0 & -1 \end{bmatrix} \quad 
+      V_{Hadamard} := \frac{1}{\sqrt{2}} \begin{bmatrix} 1 & 1 \\ 1 & -1 \end{bmatrix}
+    \end{align}
+    The rotation matrix for single qubit gates is 
+    \begin{align}
+    R(t) = \exp(iw_kTa_1^{\dagger}a_1) = \begin{bmatrix} 1 & 0 \\ 0 & e^{iw_1T} \end{bmatrix}
+    \end{align}
+  \item 2-qubit gabes (2 oscillators, each 2 levels)
+    \begin{align}
+        V_{CNOT} = \begin{bmatrix} 1  & 0 & 0 & 0 \\ 
+                                   0  & 1 & 0 & 0 \\ 
+                                   0  & 0 & 0 & 1 \\ 
+                                   0  & 0 & 1 & 0 \\ 
+                    \end{bmatrix}
+    \end{align} 
+    The rotation matrix for 2-qubit gates is 
+    \begin{align}
+    R(t) &= \exp(iw_kTa_1^{\dagger}a_1)\exp(iw_kTa_2^{\dagger}a_2) \\
+       &= \begin{bmatrix} 1 & 0 & 0 & 0\\
+                          0 & e^{iw_2T} & 0 & 0 \\
+                          0 & 0 & e^{iw_1T} & 0 \\
+                          0 & 0 & 0 & e^{i(w_1+w_2)T}  \\
+            \end{bmatrix}
+    \end{align}
+
+\end{enumerate}
+
+\section{Implementation}
+  \subsection{Vectorized, real-valued system setup}
+   We solve the vectorized master equation \eqref{mastereq_vectorized} in real-valued variables with $q(t) = u(t) + iv(t)$, evolving the real-valued states $u(t), v(t)\in \R^{N^2}$ with
+   \begin{align}
+     \dot q(t) &= M(t) q(t) \\
+   \Leftrightarrow \quad \begin{bmatrix} \dot u(t) \\ \dot v(t) \end{bmatrix} &= 
+   \begin{bmatrix} A(t) & -B(t) \\ B(t) & A(t) \end{bmatrix} \begin{pmatrix} u(t) \\ v(t) \end{pmatrix} \label{realvaluedODE}
+   \end{align}
+   where $M(t) = A(t) + i B(t)$, $A(t), B(t)\in \R^{N^2\times N^2}$. To assemble $A = Re(M)$ and $B = Im(M)$ consider
+   \begin{align}
+     -i(I_N \otimes H - H^T \otimes I_N) &= -I_N \otimes \left(iH_d + iH_c(t)\right) + \left(iH_d + iH_c(t)\right)^T \otimes I_N \\
+     \text{and} \quad iH_d + iH_c(t) &= i H_d + i\left( \sum_k p(\vec{\alpha}_k,t)(a_k + a_k^{\dagger}) + ip(\vec{\beta}_k,t)(a_k - a_k^{\dagger})\right) \\
+                    &= - \sum_k p(\beta_k,t)(a_k - a_k^{\dagger}) + i\left( H_d + \sum_k p(\alpha_k,t)(a_k+a_k^{\dagger}) \right) 
+   \end{align}
+   Hence $A$ and $B$ consist of a constant part $A_d, B_d$ and a time-varying part $A_c(t), B_c(t)$ with the following:
+   \begin{align}
+     A_d &=  \sum_{l,k=1}^{2,Q}\gamma_{lk} \left( \Ell_{lk}\otimes\Ell_{lk} - \frac 1 2 \left(I_N \otimes \Ell_{lk}^T\Ell_{lk} + \Ell_{lk}^T\Ell_{lk}\otimes I_N\right) \right)\\
+     B_d &= -I_N \otimes H_d + H_d^T \otimes I_N \\
+     A_c(t) &= \sum_k p(\vec{\beta}_k,t) \underbrace{\left( I_N \otimes \left(a_k - a_k^{\dagger}\right) - \left(a_k - a_k^{\dagger}\right)^T\otimes I_N \right)}_{=:A_c^k} \\
+     B_c(t) &= \sum_k p(\vec{\alpha}_k,t) \underbrace{\left( - I_N \otimes \left(a_k + a_k^{\dagger}\right) + \left(a_k + a_k^{\dagger}\right)^T\otimes I_N \right)}_{=:B_c^k} 
+   \end{align}
+   In the code, we initialize and store the constant matricees $A_d,B_d,A_c^k,  B_c^k$, and use them as building blocks to evaluate 
+   \begin{align}
+     A(t) &= Re(M(t)) = A_d + \sum_kp(\beta_k, t)A_c(t) \\
+     B(t) &= Im(M(t)) = B_d + \sum_k p(\alpha_k, t)B_c^k
+   \end{align}
+   at time $t$, and finally build $M(t)$ from \eqref{realvaluedODE}.
+  \subsection{Timestepper}
+    The forward time-evolution can use any of Petsc's time-stepping integration schemes. However the adjoint time-evolution does can not. For this we rely on a hand-written time-stepper. Hand-written time-steppers include Backward-Euler, and (preferred) the \textit{implicit midpoint rule (IMR)}, based on implicit Runge-Kutta scheme. We prefer IMR because it is a simplectic integrator. Because IMR is self-adjoint, the same IMR scheme is used to solve the adjoint equation. 
+
+    In order to choose a time-step size $\Delta t$, we do an eigenvalue analysis of the constant drift Hamiltonian $H_d =  -2\pi \sum_{k=1}^Q \frac{x_k}{2} a_k^{\dagger}a_k^{\dagger}a_ka_k + \sum_{l\neq k} x_kl a_l^{\dagger}a_l a_k^{\dagger}a_k$:
+       \begin{align*}  
+         \dot u = -i H_d u \qquad \text{with} \quad H_d^{\dagger}  = H_d
+       \end{align*} 
+       There exists a transformation $Y$ s.t. 
+       \begin{align*}
+         Y^{\dagger}H_d Y + \Lambda \qquad  \text{where} \quad Y^{\dagger} = Y
+       \end{align*}
+       where $\Lambda$ is a diagonal matrix containing the eigenvalues of $H_d$. Transform $\tilde u = Y^{\dagger} u$, then the ODE transforms to 
+       \begin{align*}
+         \dot \tilde u = -i \Lambda \tilde u \quad \Rightarrow \dot \tilde u_i = -i\lambda_i \tilde u_i \quad \Rightarrow \tilde u_i = a \exp(-i\lambda_i t)
+       \end{align*}
+       Therefore, the period for each mode is $\tau_i = \frac{2\pi}{|\lambda_i|}$, hence the shortest period is $\tau_{min} = \frac{2\pi}{\max_i\{|\lambda_i|}\}$. If we want $p$ discrete time points per period, then $p\Delta t = \tau_{min}$, hence 
+       \begin{align*}
+         \Delta t = \frac{\tau_{min}}{p} = \frac{2\pi}{p\max_i\{|\lambda_i|\}}
+       \end{align*}
+       Usually, for a first order scheme we would use something like $p=20$, second order maybe $p=10$. Ander's used $p=80$ for the test case. 
+
+       If we want to include the time-varying Hamiltonian part $H = H_d + H_c(t)$ in the analysis, then we could use the constraints on the control parameter amplitudes to remove the time-dependency using their larges value instead and so the same analysis again. However this doesn't ensure that we resolve the time-scale of the control functions. 
+
+  \subsection{Optimization}
+    We use the \textit{HiOp} optimization package for solving the vectorized optimal control problem \eqref{optimproblem_final}, which applies an interior point L-BFGS method. Each objective function evaluation requires to solve the initial value problem  
+        \begin{align*}
+          \dot x_i(t) &= M(t) x_i(t) \quad \forall \, t\in (0,T) \\
+          x_i(0) &= e_i
+        \end{align*}
+        for all initial unit vectors $e_i \in \R^{N^2}$, followed by the evaluation of the objective function 
+        \begin{align}
+          J(z) = \frac{1}{2N^2} \left(\sum {i=1}^{N^2} \|x_i(T) - g_i\|^2_2  \right) + \frac{\gamma}{2} \| z\|^2_2
+        \end{align}
+
+    We impose box constraints on the control spline parameters for each oscillator $k=1,\dots, Q$:
+        \begin{align}
+          | \alpha^l_k| \leq a_{max}^k \quad \text{and} \quad | \beta^l_k|  \leq a_{max}^k \quad \forall \, l=1,\dots, L 
+        \end{align}
+
+
+  \subsection{Parallelization}
+    Four levels of parallelization are planned: 
+      \begin{enumerate}
+        \item Parallelization over the $N^2$ initial conditions
+        \item Time-parallelization (XBraid)
+        \item Spatial parallelism for parallel linear algebra (Petsc)
+        \item Parallel optimization (HiOp)
+      \end{enumerate}
+      The global communicator (MPI\_COMM\_WORLD) is split into four sub-communicator, one for each of the above. Currently only the first two levels are implemented, while Petsc and HiOp run on communicators with size 1, i.e. the global communicator is split only between $N^2$ initial conditions and XBraid. For each initial condition, one braid run is performed in parallel, while summing up the global objective function afterwards.
+      \begin{align*}
+        J(z) = \sum_{i=1}^{N^2} f_i(z) + \frac{\gamma}{2}\| z\|^2_2
+      \end{align*}
+      
+      If more than $N^2$ processors are used, each initial condition runs a separate XBraid instance in parallel. It is then required that the number of processors (\#nprocs) is an integer multiple of the number of initial conditions $N^2$, so that each braid instance uses the same number of cores for time-parallelization ($\frac{\#nprocs}{N^2}$). If $\#nprocs < N^2$, the initial conditions are distributed amongst the processors, running braid in serial (make sure to choose maxlevels=1 in that case!)
+  
+\end{document}
