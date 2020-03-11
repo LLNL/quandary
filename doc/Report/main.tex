@@ -102,16 +102,22 @@ where a Tikhonov regularizatioe term $R(z)$ has been added in order to well-cond
        &= \frac{1}{2N^2} \left( \sum_{i=1}^{N^2} x_i(T)^{\dagger}x_i(T) + g_i^{\dagger}g_i - 2Re(x_i(T)^{\dagger}g_i) \right) \\
        &= \frac{1}{2N^2} \left( \sum_{i=1}^{N^2} \| x_i(T) - g_i) \|^2_2 \right) \\
 \end{align}
-where $x_i$ and $g_i$ denote the $i-th$ column of $X(T)$ and $G=\bar V\otimes V$, respectively. Note, that $x_i(T)$ is the solution of the vectorized master equation \eqref{mastereq_vectorized} for the initial condition $x_i(0) = e_i$ being the $i$-th unit vector in $\R^{N^2}$. Hence, minimizing the normalized Frobenius norm equals to minimizing the average $L_2$ norm of the individual solution operator components. Further, since $V$ is unitary, so is $G=\bar V\otimes V$, hence $g_i^{\dagger}g_i = 1$.
-
-\textit{In order to check how well the final state matches the target gate, we further measure the ``fidelity'' of the system by looking at the diagonal components of the density matrix. Denote by $D(T) = (d_1(T), \dots d_N(T)) \in \C^{N\times N}$ the matrix whose $i$-th column contains the diagonal elements of the density matrix at time $T$ for the initial condition $\rho(0) = E_{ii}$ (zero-matrix with a one only at diagonal element $i,i$). We compute the fidelity from 
+where $x_i$ and $g_i$ denote the $i-th$ column of $X(T)$ and $G=\bar V\otimes V$, respectively. Note, that $x_i(T)$ is the solution of the vectorized master equation \eqref{mastereq_vectorized} for the initial condition $x_i(0) = e_i$ being the $i$-th unit vector in $\R^{N^2}$. Hence, minimizing the normalized Frobenius norm equals to minimizing the average $L_2$ norm of the individual solution operator components. The objective function $J(z)$ therefore is the average squared error between the final state and the target gate (averaged over the initial conditions). 
+ 
+\textit{Fidelity:} If $\rho(T)$ would be unitary (as in closed systems), we would have $X(T) = \bar U(T) \otimes U(T)$ where $U(t)$ is the solution operator for the Schroedinger equation. In that case, one can show that 
 \begin{align}
-  F &= \frac{1}{N} \left|\Tr(D(T)^{\dagger}V) \right|^2 \\
-    &= \frac{1}{N} \left| \sum_{i=1}^N d_i(T)^{\dagger}v_i \right|^2 \\
-    &= \frac{1}{N} \left( Re\left(\sum_{i=1}^N d_i(T)^{\dagger}v_i\right)^2 + Im\left( \sum_{i=1}^N d_i(T)^{\dagger}v_i \right)^2 \right)
+  \frac{1}{2N^2}\|X(T) - G\|_F^2 = 1 - \frac{1}{N^2}|\Tr(U(T)^{\dagger}V)|^2,
 \end{align}
-\textcolor{red}{This doesn't make so much sense... Think it through!}
-}
+which we call the \textit{infidelity}, and the trace-term is the \textit{fidelity}. However, since we include the Lindblad terms, $\rho(T)$ is not unitary, and hence we don't have the decomposition using $U$. For defining a fidelity we consider $F(z) := 1 - J(z)$. Note, however, that if the optimized objective is in the order $O(\delta)$, then the error $\epsilon_i$ of a final state component $i$ from the gate is rather of the order $O(\sqrt{\delta})$, since $J$ represents (half of) the average squared error $J = \frac{1}{2N^2}\sum_i \epsilon_i^2$ and so $\epsilon_i^2 \sim O(\delta)$ on average.
+
+% \textit{In order to check how well the final state matches the target gate, we further measure the ``fidelity'' of the system by looking at the diagonal components of the density matrix. Denote by $D(T) = (d_1(T), \dots d_N(T)) \in \C^{N\times N}$ the matrix whose $i$-th column contains the diagonal elements of the density matrix at time $T$ for the initial condition $\rho(0) = E_{ii}$ (zero-matrix with a one only at diagonal element $i,i$). We compute the fidelity from 
+% \begin{align}
+%   F &= \frac{1}{N} \left|\Tr(D(T)^{\dagger}V) \right|^2 \\
+%     &= \frac{1}{N} \left| \sum_{i=1}^N d_i(T)^{\dagger}v_i \right|^2 \\
+%     &= \frac{1}{N} \left( Re\left(\sum_{i=1}^N d_i(T)^{\dagger}v_i\right)^2 + Im\left( \sum_{i=1}^N d_i(T)^{\dagger}v_i \right)^2 \right)
+% \end{align}
+% \textcolor{red}{This doesn't make so much sense... Think it through!}
+% }
 
 Target gates that we consider include
 \begin{enumerate}

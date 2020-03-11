@@ -13,7 +13,6 @@ class OptimProblem : public hiop::hiopInterfaceDenseConstraints {
         Gate  *targetgate;                  
         double objective;                 /* holds the current objective value */
         double fidelity;                /* holds the current fidelity value */
-        double trace_Re, trace_Im;        /* Temporarily holding the sum of local objective functions */
         double regul;                       /* Parameter for L2 regularization */
         std::string x0filename;             /* Name of data directory for braid's output */
         std::vector<double> bounds;    /* Bounds for the control function amplitudes for each oscillator */

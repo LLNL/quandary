@@ -22,7 +22,6 @@ class Gate {
 
   private:
     Vec ReG_col, ImG_col; // auxiliary vectors for computing frobenius norm 
-    Vec Va_col, Vb_col;   // auxiliary vectors for computing fidelity
 
   public:
     Gate();
@@ -32,19 +31,10 @@ class Gate {
     /* Assemble ReG = Re(\bar V \kron V) and ImG = Im(\bar V \kron V) */
     void assembleGate();
     
-    /* Apply i-th column of the gate to a state vector.
-     * Out: real and imaginary part of state^T Gate_i */
-    // virtual void apply(int i, Vec state, double& obj_Re, double& obj_Im);
-
     /* compare the k-th column of the gate to a state vector */
     /* in Frobenius norm ||w_k - g_k||^2_F = w_k^dag w_k + g_k^dag g_k - 2*Re(w_k^dag g_k) */
     void compare(int i, Vec state, double& delta);
     void compare_diff(int i, const Vec state, Vec state_bar, const double delta_bar);
-
-    /* Compute real and imaginary part of fidelity trace term */
-    /* fid_re = Re(state^\dag RV_i), fid_im = Im(state^\dag RV_i) */
-    void fidelity(int i, Vec state, double& fid_re, double& fid_im);
-
 };
 
 /* X Gate, spanning one qubit. 

@@ -49,8 +49,6 @@ Gate::Gate(int nqubits_, const std::vector<double> freq_, double time_) {
   ISCreateStride(PETSC_COMM_WORLD, dim_vec, dim_vec, 1, &isv);
 
   /* Create auxiliary vectors */
-  MatCreateVecs(Va, &Va_col, NULL);
-  MatCreateVecs(Vb, &Vb_col, NULL);
   MatCreateVecs(ReG, &ReG_col, NULL);
   MatCreateVecs(ReG, &ImG_col, NULL);
 
@@ -66,8 +64,6 @@ Gate::~Gate(){
   MatDestroy(&Vb);
   VecDestroy(&ReG_col);
   VecDestroy(&ImG_col);
-  VecDestroy(&Va_col);
-  VecDestroy(&Vb_col);
 }
 
 
@@ -88,16 +84,6 @@ void Gate::assembleGate(){
   // MatView(ImG, PETSC_VIEWER_STDOUT_WORLD);
   // exit(1);
 }
-
-// void Gate::apply(int i, Vec state, double& obj_Re, double& obj_Im){
-//   obj_Re = 0.0;
-//   obj_Im = 0.0;
-
-//   /* Exit, if this is a dummy gate */
-//   if (dim == 0) {
-//     return;
-//   }
-// }
 
 void Gate::compare(int i, Vec state, double& delta){
   delta = 0.0;
@@ -189,56 +175,6 @@ void Gate::compare_diff(int i, const Vec state, Vec state_bar, const double delt
   VecRestoreArrayRead(ReG_col, &ReGptr);
   VecRestoreArrayRead(ImG_col, &ImGptr);
 }
-
-void Gate::fidelity(int i, Vec state, double& fid_re, double& fid_im){
-  fid_re = 0.0;
-  fid_im = 0.0;
-  
-  /* Exit, if this is a dummy gate */
-  if (dim_vec == 0) {
-    return;
-  }
-
-  /* Get the i-th column of Va, Vb */
-  /* TODO: This might be slow! Find an alternative!  */
-  int colid = i % dim_v;
-  MatGetColumnVector(Va, Va_col, colid);
-  MatGetColumnVector(Vb, Vb_col, colid);
-
-  /* Get real (u) and imaginary (v) part of x = [u v] */
-  Vec u, v;
-  VecGetSubVector(state, isu, &u);
-  VecGetSubVector(state, isv, &v);
-
-  /* Get read access to u,v, Va_col, Vb_col */
-  const PetscScalar *uptr, *vptr, *vaptr, *vbptr;
-  VecGetArrayRead(u, &uptr);
-  VecGetArrayRead(v, &vptr);
-  VecGetArrayRead(Va_col, &vaptr);
-  VecGetArrayRead(Vb_col, &vbptr);
-
-  // VecView(u, PETSC_VIEWER_STDOUT_WORLD);
-  // VecView(v, PETSC_VIEWER_STDOUT_WORLD);
-  // VecView(RVa_col, PETSC_VIEWER_STDOUT_WORLD);
-  // VecView(RVb_col, PETSC_VIEWER_STDOUT_WORLD);
-
-  /* compute (real) u^T RVa_k + v^T RVb_k and (imag) u^T RVb_k - v^T RVa_k */
-  for (int k = 0; k < dim_v; k++) {
-      int j = k * dim_v + k;  // this hits the diagonal elements of u, v
-      // printf("\nAdding %d %d ure %f rvare %f", i, j, uptr[j], rvaptr[k]);
-      fid_re += uptr[j] * vaptr[k] + vptr[j] * vbptr[k];
-      fid_im += uptr[j] * vbptr[k] - vptr[j] * vaptr[k];
-  }
-
-  /* Restore state */
-  VecRestoreArrayRead(u, &uptr);
-  VecRestoreArrayRead(v, &uptr);
-  VecRestoreArrayRead(Va_col, &vaptr);
-  VecRestoreArrayRead(Vb_col, &vbptr);
-  VecRestoreSubVector(state, isu, &u);
-  VecRestoreSubVector(state, isv, &v);
-}
-
 
 XGate::XGate(const std::vector<double>f, double time) : Gate(1, f, time) { // XGate spans one qubit
   assert(dim_v   == 2);
