@@ -107,33 +107,37 @@ void Gate::compare(int i, Vec state, double& delta){
     return;
   }
 
+  int size;
+  Vec u, v;
+  const PetscScalar *uptr, *vptr, *ReGptr, *ImGptr;
+
   /* Get the i-th column of the gate matrix  \bar V\kron V */
   /* TODO: This might be slow! Find an alternative!  */
   MatGetColumnVector(ReG, ReG_col, i);
   MatGetColumnVector(ImG, ImG_col, i);
+  VecGetArrayRead(ReG_col, &ReGptr);
+  VecGetArrayRead(ImG_col, &ImGptr);
 
-  /* first term state^\dag state */
-  double norm;
-  VecNorm(state, NORM_2, &norm);
-  delta += norm*norm;
-
-  /* Second term gate_i^\dag gate_i */
-  VecNorm(ReG_col, NORM_2, &norm); 
-  delta += norm*norm;
-  VecNorm(ImG_col, NORM_2, &norm);
-  delta += norm*norm;
-
-  /* third term -2*Re(state^\dag gate_i) */
-  Vec u, v;
+  /* Get u and v from state=[u,v] */
   VecGetSubVector(state, isu, &u);
   VecGetSubVector(state, isv, &v);
-  VecDot(u, ReG_col, &norm);
-  delta -= 2. * norm;
-  VecDot(v, ImG_col, &norm);
-  delta -= 2. * norm;
+  VecGetArrayRead(u, &uptr);
+  VecGetArrayRead(v, &vptr);
+
+  /* Compute ||state - Gcolumn||^2 */
+  VecGetSize(ReG_col, &size);
+  for (int j=0; j<size; j++) {
+    delta += pow(uptr[j] - ReGptr[j],2);
+    delta += pow(vptr[j] - ImGptr[j],2);
+  }
+
+  /* Restore */
+  VecRestoreArrayRead(u, &uptr);
+  VecRestoreArrayRead(v, &vptr);
   VecRestoreSubVector(state, isu, &u);
   VecRestoreSubVector(state, isv, &v);
-
+  VecRestoreArrayRead(ReG_col, &ReGptr);
+  VecRestoreArrayRead(ImG_col, &ImGptr);
 }
 
 void Gate::compare_diff(int i, const Vec state, Vec state_bar, const double delta_bar){
@@ -142,29 +146,48 @@ void Gate::compare_diff(int i, const Vec state, Vec state_bar, const double delt
   if (dim_vec == 0) {
     return;
   }
+  int size;
+  Vec u, v;
+  Vec ubar, vbar;
+  const PetscScalar *uptr, *vptr, *ReGptr, *ImGptr;
+  PetscScalar *ubarptr, *vbarptr;
 
   /* Get the i-th column of the gate matrix  \bar V\kron V */
   /* TODO: This might be slow! Find an alternative!  */
   MatGetColumnVector(ReG, ReG_col, i);
   MatGetColumnVector(ImG, ImG_col, i);
+  VecGetArrayRead(ReG_col, &ReGptr);
+  VecGetArrayRead(ImG_col, &ImGptr);
 
-  /* Get Real and imaginary adjoint state_bar = u+iv */
-  Vec ubar, vbar;
+  /* Get Real and imaginary of adjoint state */
   VecGetSubVector(state_bar, isu, &ubar);
   VecGetSubVector(state_bar, isv, &vbar);
+  VecGetArray(ubar, &ubarptr);
+  VecGetArray(vbar, &vbarptr);
+  /* Get Real and imaginary of state */
+  VecGetSubVector(state, isu, &u);
+  VecGetSubVector(state, isv, &v);
+  VecGetArrayRead(u, &uptr);
+  VecGetArrayRead(v, &vptr);
 
-  /* Derivative of third term: -2*Gate_k*delta_bar */
-  VecAXPY(ubar, -2.*delta_bar, ReG_col);
-  VecAXPY(vbar, -2.*delta_bar, ImG_col);
+  /* Derivative of || state - Gcolumn ||^2 */
+  VecGetSize(ReG_col, &size);
+  for (int j=0; j<size; j++){
+    ubarptr[j] += 2. * (uptr[j] - ReGptr[j]) * delta_bar;
+    vbarptr[j] += 2. * (vptr[j] - ImGptr[j]) * delta_bar;
+  }
 
-  /* Derivative of second term: 0.0 */
-
-  /* Derivative of first term: xbar += 2*objbar*x  */
-  VecAXPY(state_bar, 2.*delta_bar, state);
-
-  /* Restore state_bar */
+  /* Restore */
+  VecRestoreArrayRead(u, &uptr);
+  VecRestoreArrayRead(v, &vptr);
+  VecRestoreSubVector(state, isu, &u);
+  VecRestoreSubVector(state, isv, &v);
+  VecRestoreArray(ubar, &ubarptr);
+  VecRestoreArray(vbar, &vbarptr);
   VecRestoreSubVector(state_bar, isu, &ubar);
   VecRestoreSubVector(state_bar, isv, &vbar);
+  VecRestoreArrayRead(ReG_col, &ReGptr);
+  VecRestoreArrayRead(ImG_col, &ImGptr);
 }
 
 void Gate::fidelity(int i, Vec state, double& fid_re, double& fid_im){
