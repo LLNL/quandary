@@ -225,7 +225,7 @@ MasterEq::MasterEq(int noscillators_, Oscillator** oscil_vec_, const std::vector
 
     /* --- Adding T1-DECAY (L1 = a_j) for oscillator j --- */
     if (iT1 > 0) {
-      double gamma = 1./sqrt(collapse_time[0]);
+      double gamma = 1./(collapse_time[0]);
       /* Ad += gamma_j * L \kron L */
       AkronB(iT1, L1, L1, gamma, &Ad, ADD_VALUES);
       /* Ad += - gamma_j/2  I_n  \kron L^TL  */
@@ -239,7 +239,7 @@ MasterEq::MasterEq(int noscillators_, Oscillator** oscil_vec_, const std::vector
 
     /* --- Adding T2-Dephasing (L1 = a_j^\dag a_j) for oscillator j --- */
     if (iT2 > 0) {
-      double gamma = 1./sqrt(collapse_time[1]);
+      double gamma = 1./(collapse_time[1]);
       /* Ad += 1./gamma_j * L \kron L */
       AkronB(iT2, L2, L2, gamma, &Ad, ADD_VALUES);
       /* Ad += - gamma_j/2  I_n  \kron L^TL  */
