@@ -278,16 +278,16 @@ void read_vector(const char *filename, double *var, int dim) {
 
   /* Open file */
   file = fopen(filename, "r");
-  if (file == NULL) {
-    printf("Can't open %s \n", filename);
+  if (file != NULL) {
+    /* Read data */
+    printf("Reading file %s\n", filename);
+    for (int ix = 0; ix < dim; ix++) {
+      fscanf(file, "%lf", &tmp);
+      var[ix] = tmp;
+    }
+  } else {
+    printf("ERROR: Can't open initialization file %s\n", filename);
     exit(1);
-  }
-
-  /* Read data */
-  printf("Reading file %s\n", filename);
-  for (int ix = 0; ix < dim; ix++) {
-    fscanf(file, "%lf", &tmp);
-    var[ix] = tmp;
   }
 
   fclose(file);

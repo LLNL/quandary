@@ -6,7 +6,6 @@ OptimProblem::OptimProblem() {
     objective = 0.0;
     fidelity = 0.0;
     regul = 0.0;
-    x0filename = "none";
     mpirank_braid = 0;
     mpisize_braid = 0;
     mpirank_space = 0;
@@ -18,14 +17,14 @@ OptimProblem::OptimProblem() {
     printlevel = 0;
 }
 
-OptimProblem::OptimProblem(myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, Gate* targate_, MPI_Comm comm_hiop_, MPI_Comm comm_init_, const std::vector<double> optim_bounds_, double optim_regul_, std::string x0filename_, std::string datadir_, int optim_printlevel_, int ilower_, int iupper_){
+OptimProblem::OptimProblem(myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, Gate* targate_, MPI_Comm comm_hiop_, MPI_Comm comm_init_, const std::vector<double> optim_bounds_, double optim_regul_, std::string init_, std::string datadir_, int optim_printlevel_, int ilower_, int iupper_){
     primalbraidapp  = primalbraidapp_;
     adjointbraidapp = adjointbraidapp_;
     targetgate = targate_;
     comm_hiop = comm_hiop_;
     comm_init = comm_init_;
     regul = optim_regul_;
-    x0filename = x0filename_;
+    init_type = init_;
     bounds = optim_bounds_;
     datadir = datadir_;
     printlevel = optim_printlevel_;
@@ -347,13 +346,17 @@ bool OptimProblem::get_starting_point(const long long &global_n, double* x0) {
   /* Set initial parameters. */
   // Do this on one processor only, then broadcast, to make sure that every processor starts with the same initial guess. 
   if (mpirank_world == 0) {
-    if (x0filename.compare("none") != 0)  {
-        /* read from file */
-        read_vector(x0filename.c_str(), x0, global_n); 
-    }
-    else {
+    if (init_type.compare("zero") == 0)  { // init with zero
+      for (int i=0; i<global_n; i++) {
+        x0[i] = 0.0;
+      }
+    } else if ( init_type.compare("random") == 0 || init_type.compare("random_seed") == 0)  { // init random
+
+      /* Set the random seed */
+      if ( init_type.compare("random") == 0) srand(1);  // fixed seed
+      else srand(time(0)); // random seed
+
       /* Set to random initial guess. between [-1:1] */
-      srand (1.0);    // seed 1.0 only for code debugging! seed with time(NULL) otherwise!
       for (int i=0; i<global_n; i++) {
         x0[i] = (double) rand() / ((double)RAND_MAX);
         x0[i] = 2.*x0[i] - 1.;
@@ -368,6 +371,9 @@ bool OptimProblem::get_starting_point(const long long &global_n, double* x0) {
               j++;
           }
       }
+    } else {
+      /* read from file */
+      read_vector(init_type.c_str(), x0, global_n); 
     }
   }
 
