@@ -1,4 +1,5 @@
 \documentclass{article}
+\usepackage[margin=1in]{geometry}
 \usepackage{amsmath}
 \usepackage{dsfont}
 \usepackage{graphicx}
@@ -21,11 +22,12 @@
 
 \begin{itemize}
   \item Modify braid access level option so that it writes the state only after the optimization has finished. 
-  \item Find out why serial run on multiple processors is faster than serial run on one processor. Seems like Petsc is still operating on multiple ranks?
+  \item For primal runs: Add option to read the initial condition from file (or config?), then run only this one condition forward. 
   \item \textbf{Parallelization:}
       \begin{itemize}
+        \item Allow more flexibility for processor distribution between initial conditions and xbraid
         \item Parallelize HiOp: Distribute spline parameters.
-        \item Parallelize linear algebra 
+        \item Parallelize linear algebra (Find out why serial run on multiple processors is faster than serial run on one processor. Seems like Petsc is still operating on multiple ranks?)
       \end{itemize}
   \item \textbf{Generalize gate interface} to more than 2 levels!
   \item \textbf{Bsplines with carrier waves}
