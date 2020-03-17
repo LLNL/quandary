@@ -150,6 +150,7 @@ int main(int argc,char **argv)
   else if (gatetype.compare("zgate") == 0) targetgate = new ZGate();
   else if (gatetype.compare("hadamard") == 0) targetgate = new HadamardGate();
   else if (gatetype.compare("cnot") == 0) targetgate = new CNOT(); 
+  else if (gatetype.compare("groundstate") == 0) targetgate = new GroundstateGate((int)sqrt(mastereq->getDim())); 
   else {
     printf("\n\n ERROR: Unnown gate type: %s.\n", gatetype.c_str());
     printf(" Available gates are 'none', 'xgate', 'ygate', 'zgate', 'hadamard', 'cnot'\n");

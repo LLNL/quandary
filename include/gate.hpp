@@ -93,7 +93,7 @@ class CNOT : public Gate {
  */
 class GroundstateGate : public Gate {
   public:
-    GroundstateGate();
+    GroundstateGate(int dim_v_);
     ~GroundstateGate();
 };
 

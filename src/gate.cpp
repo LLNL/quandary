@@ -262,3 +262,15 @@ CNOT::CNOT() : Gate(4) {
 }
 
 CNOT::~CNOT(){}
+
+ GroundstateGate::GroundstateGate(int dim_v_) : Gate(dim_v_) {
+
+  /* Fill Va = V, Vb = 0 */
+  MatSetValue(Va, 0, 0, 1.0, INSERT_VALUES);
+  MatAssemblyBegin(Va, MAT_FINAL_ASSEMBLY);
+  MatAssemblyEnd(Va, MAT_FINAL_ASSEMBLY);
+
+  /* assemble V = \bar V \kron V */
+  assembleGate();
+ }
+ GroundstateGate::~GroundstateGate(){}
