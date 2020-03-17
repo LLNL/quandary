@@ -73,7 +73,7 @@ void OptimProblem::setDesign(int n, const double* x) {
       /* Get pointers to parameters of oscillator i */
       paramRe = mastereq->getOscillator(ioscil)->getParamsRe();
       paramIm = mastereq->getOscillator(ioscil)->getParamsIm();
-      /* Design storage: x = (ReParams, ImParams)_iOscil
+      /* Design storage: x = (ReParams, ImParams)_iOscil */
       /* Set Re parameters */
       for (int iparam=0; iparam<nparam; iparam++) {
           paramRe[iparam] = x[j]; j++;
@@ -99,7 +99,7 @@ void OptimProblem::getDesign(int n, double* x){
       /* Get pointers to parameters of oscillator i */
       paramRe = mastereq->getOscillator(ioscil)->getParamsRe();
       paramIm = mastereq->getOscillator(ioscil)->getParamsIm();
-      /* Design storage: x = (ReParams, ImParams)_iOscil
+      /* Design storage: x = (ReParams, ImParams)_iOscil */
       /* Set Re params */
       for (int iparam=0; iparam<nparam; iparam++) {
           x[j] = paramRe[iparam]; j++;
