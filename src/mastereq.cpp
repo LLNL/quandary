@@ -31,7 +31,7 @@ MasterEq::MasterEq(int noscillators_, Oscillator** oscil_vec_, const std::vector
   assert(xi.size() >= (noscillators_+1) * noscillators_ / 2);
 
 
-  /* Dimension of vectorized system: n_1*...*n_q */
+  /* Dimension of vectorized system: (n_1*...*n_q^2 */
   dim = 1;
   for (int iosc = 0; iosc < noscillators_; iosc++) {
     dim *= oscil_vec[iosc]->getNLevels();

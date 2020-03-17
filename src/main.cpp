@@ -119,6 +119,9 @@ int main(int argc,char **argv)
     oscil_vec[i] = new SplineOscillator(nlvl, nspline, total_time);
   }
 
+  /* So far, these frequencies are not used anywhere... */
+  std::vector<double> f;
+  config.GetVecDoubleParam("frequencies", f, 1e20);
 
   /* Initialize the Master Equation  */
   std::vector<double> xi, t_collapse;
@@ -137,40 +140,19 @@ int main(int argc,char **argv)
   }
   mastereq = new MasterEq(nosci, oscil_vec, xi, lindbladtype, t_collapse);
 
+
   /* Initialize the target gate */
-  std::vector<double> f;
   Gate* targetgate;
-  std::string error = "";
-  config.GetVecDoubleParam("frequencies", f, 1e20);
   std::string gatetype = config.GetStrParam("gate_type", "none");
   if      (gatetype.compare("none") == 0) targetgate = new Gate(); // dummy gate. do nothing
-  else if (gatetype.compare("xgate") == 0) {
-    if (nosci == 1 && nlvl == 2) targetgate = new XGate(f, total_time); 
-    else error = "XGate spans ONE Qubit, TWO levels!\n";
-  }
-  else if (gatetype.compare("ygate") == 0) {
-    if (nosci == 1 && nlvl == 2 ) targetgate = new YGate(f, total_time); 
-    else error = "YGate spans ONE Qubit, TWO levels!\n";
-  }
-  else if (gatetype.compare("zgate") == 0) {
-    if (nosci == 1 && nlvl == 2) targetgate = new ZGate(f, total_time); 
-    else error = "ZGate spans ONE Qubit, TWO levels!\n";
-  }
-  else if (gatetype.compare("hadamard") == 0) {
-    if (nosci == 1 && nlvl == 2) targetgate = new HadamardGate(f, total_time); 
-    else error = "Hadamard Gate spans ONE Qubit, TWO levels!\n";
-  }
-  else if (gatetype.compare("cnot") == 0) {
-    if (nosci == 2 && nlvl == 2) targetgate = new CNOT(f, total_time); 
-    else error = "CNOT Gate spans TWO Qubit, each TWO levels!\n";
-  }
+  else if (gatetype.compare("xgate") == 0) targetgate = new XGate(); 
+  else if (gatetype.compare("ygate") == 0) targetgate = new YGate(); 
+  else if (gatetype.compare("zgate") == 0) targetgate = new ZGate();
+  else if (gatetype.compare("hadamard") == 0) targetgate = new HadamardGate();
+  else if (gatetype.compare("cnot") == 0) targetgate = new CNOT(); 
   else {
     printf("\n\n ERROR: Unnown gate type: %s.\n", gatetype.c_str());
-    printf(" Choose either 'none', 'xgate', 'ygate', 'zgate', 'hadamard' or 'cnot'\n");
-    exit(1);
-  }
-  if (error.compare("") != 0) {
-    printf("ERROR: %s\n", error.c_str());
+    printf(" Available gates are 'none', 'xgate', 'ygate', 'zgate', 'hadamard', 'cnot'\n");
     exit(1);
   }
 
