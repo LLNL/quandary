@@ -120,37 +120,38 @@ which we call the \textit{infidelity}, and the trace-term is the \textit{fidelit
 % }
 
 Target gates that we consider include
-\begin{enumerate}
-  \item Single qubit gates (1 oscillator, 2 levels):
     \begin{align}
       V_{X} := \begin{bmatrix} 0 & 1 \\ 1 & 0  \end{bmatrix} \quad
       V_{Y} := \begin{bmatrix} 0 & -i \\ i & 0 \end{bmatrix} \quad
       V_{Z} := \begin{bmatrix} 1 & 0 \\ 0 & -1 \end{bmatrix} \quad 
-      V_{Hadamard} := \frac{1}{\sqrt{2}} \begin{bmatrix} 1 & 1 \\ 1 & -1 \end{bmatrix}
-    \end{align}
-    The rotation matrix for single qubit gates is 
-    \begin{align}
-    R(t) = \exp(iw_kTa_1^{\dagger}a_1) = \begin{bmatrix} 1 & 0 \\ 0 & e^{iw_1T} \end{bmatrix}
-    \end{align}
-  \item 2-qubit gabes (2 oscillators, each 2 levels)
-    \begin{align}
-        V_{CNOT} = \begin{bmatrix} 1  & 0 & 0 & 0 \\ 
+      V_{Hadamard} := \frac{1}{\sqrt{2}} \begin{bmatrix} 1 & 1 \\ 1 & -1 \end{bmatrix} \\
+      V_{CNOT} := \begin{bmatrix} 1  & 0 & 0 & 0 \\ 
                                    0  & 1 & 0 & 0 \\ 
                                    0  & 0 & 0 & 1 \\ 
                                    0  & 0 & 1 & 0 \\ 
+                    \end{bmatrix}\quad 
+      V_{GroundState} := \begin{bmatrix} 1  &   &      \\ 
+                                            & 0 &      \\ 
+                                            &   &  \ddots 
                     \end{bmatrix}
-    \end{align} 
-    The rotation matrix for 2-qubit gates is 
-    \begin{align}
-    R(t) &= \exp(iw_kTa_1^{\dagger}a_1)\exp(iw_kTa_2^{\dagger}a_2) \\
-       &= \begin{bmatrix} 1 & 0 & 0 & 0\\
-                          0 & e^{iw_2T} & 0 & 0 \\
-                          0 & 0 & e^{iw_1T} & 0 \\
-                          0 & 0 & 0 & e^{i(w_1+w_2)T}  \\
-            \end{bmatrix}
     \end{align}
 
-\end{enumerate}
+%The rotation matrix for 
+%\begin{enumerate}
+%    \item single qubit gates is 
+%        \begin{align}
+%           R(t) = \exp(iw_kTa_1^{\dagger}a_1) = \begin{bmatrix} 1 & 0 \\ 0 & e^{iw_1T} \end{bmatrix}
+%        \end{align}
+%    \item 2-qubit gates is 
+%    \begin{align}
+%        R(t) &= \exp(iw_kTa_1^{\dagger}a_1)\exp(iw_kTa_2^{\dagger}a_2) \\
+%             &= \begin{bmatrix} 1 & 0 & 0 & 0\\
+%                          0 & e^{iw_2T} & 0 & 0 \\
+%                          0 & 0 & e^{iw_1T} & 0 \\
+%                          0 & 0 & 0 & e^{i(w_1+w_2)T}  \\
+%            \end{bmatrix}
+%    \end{align}
+%\end{enumerate}
 
 \section{Implementation}
   \subsection{Vectorized, real-valued system setup}
@@ -210,7 +211,7 @@ Target gates that we consider include
         \end{align*}
         for all initial unit vectors $e_i \in \R^{N^2}$, followed by the evaluation of the objective function 
         \begin{align}
-          J(z) = \frac{1}{2N^2} \left(\sum {i=1}^{N^2} \|x_i(T) - g_i\|^2_2  \right) + \frac{\gamma}{2} \| z\|^2_2
+          J(z) = \frac{1}{2N^2} \left(\sum_{i=1}^{N^2} \|x_i(T) - g_i\|^2_2  \right) + \frac{\gamma}{2} \| z\|^2_2
         \end{align}
 
     We impose box constraints on the control spline parameters for each oscillator $k=1,\dots, Q$:

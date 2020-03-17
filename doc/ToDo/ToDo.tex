@@ -21,8 +21,14 @@
 \maketitle
 
 \begin{itemize}
+  \item Add decay for control functions over time: Constraint for the control function amplitudes:
+      \begin{align*}
+          \sum_{l=1}^L w_l\alpha_l \leq c_{max}
+      \end{align*}
+        where $w_l$ are monotonically increasing (e.g. exponentially). This will push later control functions to zero. 
+  \item Add option to read the initial state condition from config, then run only this one condition forward / backward.
+  \item Add option to optimize on diagonal only.
   \item Modify braid access level option so that it writes the state only after the optimization has finished. 
-  \item For primal runs: Add option to read the initial condition from file (or config?), then run only this one condition forward. 
   \item \textbf{Parallelization:}
       \begin{itemize}
         \item Allow more flexibility for processor distribution between initial conditions and xbraid
