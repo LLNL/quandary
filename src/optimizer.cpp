@@ -15,9 +15,10 @@ OptimProblem::OptimProblem() {
     mpirank_world = 0;
     mpisize_world = 0;
     printlevel = 0;
+    diag_only = false;
 }
 
-OptimProblem::OptimProblem(myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, Gate* targate_, MPI_Comm comm_hiop_, MPI_Comm comm_init_, const std::vector<double> optim_bounds_, double optim_regul_, std::string init_, std::string datadir_, int optim_printlevel_, int ilower_, int iupper_){
+OptimProblem::OptimProblem(myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, Gate* targate_, MPI_Comm comm_hiop_, MPI_Comm comm_init_, const std::vector<double> optim_bounds_, double optim_regul_, std::string init_, std::string datadir_, int optim_printlevel_, int ilower_, int iupper_, bool diag_only_){
     primalbraidapp  = primalbraidapp_;
     adjointbraidapp = adjointbraidapp_;
     targetgate = targate_;
@@ -30,6 +31,7 @@ OptimProblem::OptimProblem(myBraidApp* primalbraidapp_, myAdjointBraidApp* adjoi
     printlevel = optim_printlevel_;
     ilower = ilower_;
     iupper = iupper_;
+    diag_only = diag_only_;
 
     MPI_Comm_rank(primalbraidapp->comm_braid, &mpirank_braid);
     MPI_Comm_size(primalbraidapp->comm_braid, &mpisize_braid);
@@ -167,7 +169,9 @@ bool OptimProblem::eval_f(const long long& n, const double* x_in, bool new_x, do
   double obj_local = 0.0;
   Vec finalstate = NULL;
   Vec initstate = NULL;
-
+  int ninit;
+  if (diag_only) ninit = sqrt(dim);
+  else ninit = dim;
   /* Run simulation, only if x_in is new. Otherwise, f(x_in) has been computed already and stored in fidelity. */
   // this is fishy. check if fidelity is computed correctly in grad_f
   // if (new_x) { 
@@ -179,6 +183,8 @@ bool OptimProblem::eval_f(const long long& n, const double* x_in, bool new_x, do
     objective = 0.0;
     for (int iinit = ilower; iinit <= iupper; iinit++) {
       
+      /* Only diagonal elements, if requested */
+      if ( diag_only && iinit % (ninit+1) != 0 ) continue; 
 
       // if (mpirank_braid == 0) printf("%d: %d FWD. \n", mpirank_init, iinit);
       /* Run forward with initial condition iinit */
@@ -207,7 +213,7 @@ bool OptimProblem::eval_f(const long long& n, const double* x_in, bool new_x, do
   // if (mpirank_init == 0) printf("%d: global sum objective: %1.14e\n\n", mpirank_init, objective);
 
   /* Compute objective 1/(2*N^2) ||W-G||_F^2 */
-  objective = 1./(2.*dim) * objective;
+  objective = 1./(2. * ninit) * objective;
 
   /* Compute fidelity 1. - objective */
   fidelity = 1. - objective; 
@@ -236,6 +242,9 @@ bool OptimProblem::eval_grad_f(const long long& n, const double* x_in, bool new_
   Vec initstate = NULL;
   Vec finalstate = NULL;
   Vec initadjoint = NULL;
+  int ninit;
+  if (diag_only) ninit = sqrt(dim);
+  else ninit = dim;
 
   /* Pass x to Oscillator */
   setDesign(n, x_in);
@@ -247,11 +256,14 @@ bool OptimProblem::eval_grad_f(const long long& n, const double* x_in, bool new_
   }
 
   /* Derivative objective 1/(2N^2) J */
-  double obj_bar = 1./(2.*dim);
+  double obj_bar = 1./(2.*ninit);
 
   /* Iterate over initial conditions */
   objective = 0.0;
   for (int iinit = ilower; iinit <= iupper; iinit++) {
+
+    /* Only diagonal elements, if requested */
+    if ( diag_only && iinit % (ninit+1) != 0 ) continue;
 
     /* --- Solve primal --- */
     // if (mpirank_braid == 0) printf("%d: %d FWD.\n", mpirank_init, iinit);
@@ -269,7 +281,7 @@ bool OptimProblem::eval_grad_f(const long long& n, const double* x_in, bool new_
     // if (mpirank_braid == 0) printf("%d: local objective: %1.14e\n", mpirank_init, obj_local);
 
     /* --- Solve adjoint --- */
-    // if (mpirank_braid == 0) printf("%d: %d BWD.\n", mpirank_init, iinit);
+    if (mpirank_braid == 0) printf("%d: %d BWD.\n", mpirank_init, iinit);
     initadjoint = adjointbraidapp->PreProcess(iinit); // return NULL if not stored on this proc
     if (initadjoint != NULL) 
        targetgate->compare_diff(iinit, finalstate, initadjoint, obj_bar);
@@ -292,7 +304,7 @@ bool OptimProblem::eval_grad_f(const long long& n, const double* x_in, bool new_
   // if (mpirank_init == 0) printf("%d: global sum objective: %1.14e\n\n", mpirank_init, objective);
 
   /* Compute objective 1/(2*N^2) ||W-G||_F^2 */
-  objective = 1./(2.*dim) * objective;
+  objective = 1./(2.*ninit) * objective;
 
   /* Compute fidelity 1/N^2 |trace|^2 */
   fidelity = 1. - objective;
