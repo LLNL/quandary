@@ -41,8 +41,8 @@ Gate::Gate(int dim_v_) {
 
 
   /* Create vector strides for later use */
-  ISCreateStride(PETSC_COMM_WORLD, dim_v, 0, 1, &isu);
-  ISCreateStride(PETSC_COMM_WORLD, dim_v, dim_v, 1, &isv);
+  ISCreateStride(PETSC_COMM_WORLD, dim_vec, 0, 1, &isu);
+  ISCreateStride(PETSC_COMM_WORLD, dim_vec, dim_vec, 1, &isv);
 
   /* Create auxiliary vectors */
   MatCreateVecs(ReG, &ReG_col, NULL);
@@ -89,15 +89,6 @@ void Gate::compare(int i, Vec state, double& delta){
     return;
   }
 
-  /* Make sure that state dimensions match the gate dimension */
-  int vec_size;
-  VecGetSize(state, &vec_size);
-  vec_size = vec_size / 2;
-  if (vec_size != dim_vec ) {
-    printf("\n ERROR: Vectorized gate dimension %d doesn't match system dimension %d!\n", dim_vec, vec_size);
-    exit(1);
-  }
-
   Vec u, v;
   const PetscScalar *uptr, *vptr, *ReGptr, *ImGptr;
 
@@ -113,6 +104,15 @@ void Gate::compare(int i, Vec state, double& delta){
   VecGetSubVector(state, isv, &v);
   VecGetArrayRead(u, &uptr);
   VecGetArrayRead(v, &vptr);
+
+  /* Make sure that state dimensions match the gate dimension */
+  int dimu, dimG;
+  VecGetSize(u, &dimu);
+  VecGetSize(ReG_col, &dimG);
+  if (dimu != dimG) {
+    printf("\n ERROR: Target gate dimension %d doesn't match system dimension %u\n", dimG, dimu);
+    exit(1);
+  }
 
   /* Compute ||state - Gcolumn||^2 */
   for (int j=0; j<dim_vec; j++) {
