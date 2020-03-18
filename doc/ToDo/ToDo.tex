@@ -27,7 +27,6 @@
       \end{align*}
         where $w_l$ are monotonically increasing (e.g. exponentially). This will push later control functions to zero. 
   \item Add option to read the initial state condition from config, then run only this one condition forward / backward.
-  \item Add option to optimize on diagonal only.
   \item Modify braid access level option so that it writes the state only after the optimization has finished. 
   \item \textbf{Parallelization:}
       \begin{itemize}
@@ -35,7 +34,6 @@
         \item Parallelize HiOp: Distribute spline parameters.
         \item Parallelize linear algebra (Find out why serial run on multiple processors is faster than serial run on one processor. Seems like Petsc is still operating on multiple ranks?)
       \end{itemize}
-  \item \textbf{Generalize gate interface} to more than 2 levels!
   \item \textbf{Bsplines with carrier waves}
   \item \textbf{Tensor formulation}
         \begin{itemize}

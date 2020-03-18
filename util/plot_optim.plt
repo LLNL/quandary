@@ -15,10 +15,11 @@ p \
     datafile u 4  w l t 'gradient', \
     datafile u 5  w l t 'inf du' 
 
+pause -1 "Plot 'out.png' written. Hit any key to continue"
+
 set term png
 set output 'out.png'
 replot
-set term x11
-replot
+#set term x11
+#replot
 
-pause -1 "Plot 'out.png' written. Hit any key to continue"

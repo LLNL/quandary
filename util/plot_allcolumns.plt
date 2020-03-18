@@ -18,11 +18,11 @@ set grid
 plot \
     for [i=2:ncols] datafile u 1:i w l t "Column ".i
 
+pause -1 "Plot 'out.png' written. Hit any key to continue"
 
 set term png
 set output 'out.png'
 replot
-set term x11
-replot
+#set term x11
+#replot
 
-pause -1 "Plot 'out.png' written. Hit any key to continue"

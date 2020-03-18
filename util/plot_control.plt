@@ -12,10 +12,11 @@ p \
     datafile u 2:3  w l lc 3 t 'Real' ,\
     datafile u 2:4  w l lc 7 t 'Imaginary' ,\
 
+pause -1 "Plot 'out.png' written. Hit any key to continue"
+
 set term png
 set output 'out.png'
 replot
-set term x11
-replot
+#set term x11
+#replot
 
-pause -1 "Plot 'out.png' written. Hit any key to continue"

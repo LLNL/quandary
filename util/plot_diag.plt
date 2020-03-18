@@ -17,10 +17,9 @@ p \
     datafile u 1:12 w l lc 2 t '10' ,\
     datafile u 1:17 w l lc 1 t '11' 
 
+pause -1 "Plot 'out.png' written. Hit any key to continue"
+
 set term png
 set output 'out.png'
 replot
-set term x11
-replot
 
-pause -1 "Plot 'out.png' written. Hit any key to continue"
