@@ -86,11 +86,6 @@ class MasterEq{
      */
     int assemble_dRHSdp(double t, Vec x);
 
-    /* 
-     * Set x to the initial condition of index iinit
-     */
-    int initialCondition(int iinit, Vec x);
-
     /* Access the right-hand-side and derivative matrix */
     Mat getRHS();
     Mat getdRHSdp();

@@ -387,21 +387,6 @@ Mat MasterEq::getRHS() { return RHS; }
 Mat MasterEq::getdRHSdp() { return dRHSdp; }
 
 
-
-
-int MasterEq::initialCondition(int iinit, Vec x){
-
-  /* Set to i-th unit vector */
-  int idx = iinit;
-  double val = 1.0;
-  VecZeroEntries(x); 
-  VecSetValues(x,1, &idx, &val, INSERT_VALUES);
-  // VecView(x, PETSC_VIEWER_STDOUT_WORLD);
-  
-  return 0;
-}
-
-
 int MasterEq::assemble_dRHSdp(double t, Vec x) {
 
   /* Get real and imaginary part from x = [u v] */

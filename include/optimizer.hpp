@@ -41,6 +41,10 @@ class OptimProblem : public hiop::hiopInterfaceDenseConstraints {
         /* Pass the oscillator parameters to x */
         void getDesign(int n, double* x);
 
+        /* Set the initial condition of index iinit */
+        int initialCondition(int iinit, Vec x);
+
+
         /* Required interface routines. These are purely virtual in HiOp. */
         bool get_prob_sizes(long long& n, long long& m);
         bool get_vars_info(const long long& n, double *xlow, double* xupp, NonlinearityType* type);

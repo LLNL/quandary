@@ -189,8 +189,7 @@ bool OptimProblem::eval_f(const long long& n, const double* x_in, bool new_x, do
       // if (mpirank_braid == 0) printf("%d: %d FWD. \n", mpirank_init, iinit);
       /* Run forward with initial condition iinit */
       initstate = primalbraidapp->PreProcess(iinit);
-      if (initstate != NULL) 
-        mastereq->initialCondition(iinit, initstate);
+      if (initstate != NULL) initialCondition(iinit, initstate);
       primalbraidapp->Drive();
       finalstate = primalbraidapp->PostProcess(); // this return NULL for all but the last time processor
 
@@ -268,8 +267,7 @@ bool OptimProblem::eval_grad_f(const long long& n, const double* x_in, bool new_
     /* --- Solve primal --- */
     // if (mpirank_braid == 0) printf("%d: %d FWD.\n", mpirank_init, iinit);
     initstate = primalbraidapp->PreProcess(iinit); // returns NULL if not stored on this proc
-    if (initstate != NULL)
-      mastereq->initialCondition(iinit, initstate);
+    if (initstate != NULL) initialCondition(iinit, initstate);
     primalbraidapp->Drive();
     finalstate = primalbraidapp->PostProcess(); // returns NULL if not stored on this proc
 
@@ -490,3 +488,15 @@ bool OptimProblem::get_MPI_comm(MPI_Comm& comm_out){
   comm_out = comm_hiop;
   return true;
 }
+
+
+int OptimProblem::initialCondition(int iinit, Vec x){
+
+  /* Set x to i-th unit vector */
+  VecZeroEntries(x); 
+  VecSetValue(x, iinit, 1.0, INSERT_VALUES);
+  // VecView(x, PETSC_VIEWER_STDOUT_WORLD);
+  
+  return 0;
+}
+
