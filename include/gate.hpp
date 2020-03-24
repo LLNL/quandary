@@ -17,7 +17,7 @@ class Gate {
     Mat ReG, ImG;     /* Real and imaginary part of \bar V \kron V */
     IS isu, isv;      /* Vector strides for extracting u,v from x = [u,v] */
 
-    Vec ReG_col, ImG_col;   /* auxiliary vectors for computing frobenius norm  */
+    Vec Re0, Im0;   /* auxiliary vectors for computing frobenius norm  */
 
   public:
     Gate();

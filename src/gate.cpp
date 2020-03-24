@@ -45,8 +45,8 @@ Gate::Gate(int dim_v_) {
   ISCreateStride(PETSC_COMM_WORLD, dim_vec, dim_vec, 1, &isv);
 
   /* Create auxiliary vectors */
-  MatCreateVecs(ReG, &ReG_col, NULL);
-  MatCreateVecs(ReG, &ImG_col, NULL);
+  MatCreateVecs(ReG, &Re0, NULL);
+  MatCreateVecs(ReG, &Im0, NULL);
 
 }
 
@@ -58,8 +58,8 @@ Gate::~Gate(){
   MatDestroy(&ImG);
   MatDestroy(&Va);
   MatDestroy(&Vb);
-  VecDestroy(&ReG_col);
-  VecDestroy(&ImG_col);
+  VecDestroy(&Re0);
+  VecDestroy(&Im0);
 }
 
 
@@ -93,11 +93,6 @@ void Gate::compare(Vec finalstate, Vec initcond, double& frob){
 
   Vec ufinal, vfinal, u0, v0;
   const PetscScalar *ufinalptr, *vfinalptr, *Re0ptr, *Im0ptr;
-
-  /* Allocate temporary vecs */
-  Vec Re0, Im0;
-  MatCreateVecs(ReG, &Re0, NULL);
-  MatCreateVecs(ReG, &Im0, NULL);
 
   /* Get real and imag part of final and initial states, x = [u,v] */
   VecGetSubVector(finalstate, isu, &ufinal);
@@ -145,9 +140,6 @@ void Gate::compare(Vec finalstate, Vec initcond, double& frob){
   VecRestoreSubVector(initcond, isu, &u0);
   VecRestoreSubVector(initcond, isv, &v0);
 
-  /* Destroy temporary vecs */
-  VecDestroy(&Re0);
-  VecDestroy(&Im0);
 }
 
 void Gate::compare_diff(const Vec finalstate, const Vec initcond, Vec finalstate_bar, const double frob_bar) {
@@ -160,11 +152,6 @@ void Gate::compare_diff(const Vec finalstate, const Vec initcond, Vec finalstate
   Vec ufinal, vfinal, ufinal_bar, vfinal_bar, u0, v0;
   const PetscScalar *ufinalptr, *vfinalptr, *Re0ptr, *Im0ptr;
   PetscScalar *ufinal_barptr, *vfinal_barptr;
-
-  /* Allocate temporary vecs */
-  Vec Re0, Im0;
-  MatCreateVecs(ReG, &Re0, NULL);
-  MatCreateVecs(ReG, &Im0, NULL);
 
   /* Get real and imag part of final and initial primal and adjoint states, x = [u,v] */
   VecGetSubVector(finalstate, isu, &ufinal);
@@ -212,9 +199,6 @@ void Gate::compare_diff(const Vec finalstate, const Vec initcond, Vec finalstate
   VecRestoreSubVector(initcond, isu, &u0);
   VecRestoreSubVector(initcond, isv, &v0);
 
-  /* Destroy temporary vecs */
-  VecDestroy(&Re0);
-  VecDestroy(&Im0);
 }
 
 XGate::XGate() : Gate(2) {
