@@ -421,19 +421,7 @@ braid_Int myBraidApp::BufUnpack(void *buffer, braid_Vector *u_ptr, BraidBufferSt
   return 0; 
 }
 
-Vec myBraidApp::PreProcess(int iinit){
-
-  braid_BaseVector ubase;
-  myBraidVector *u;
-  Vec initstate = NULL;
-      
-  /* Get vector at t == 0 */
-  _braid_UGetVectorRef(core->GetCore(), 0, 0, &ubase);
-  if (ubase != NULL)  // only true on one first processor !
-  {
-    u = (myBraidVector *)ubase->userVector;
-    initstate = u->x;
-  }
+void myBraidApp::PreProcess(int iinit){
 
   /* Open output files */
   if (accesslevel > 0) {
@@ -443,10 +431,22 @@ Vec myBraidApp::PreProcess(int iinit){
     sprintf(filename, "%s/out_v.iinit%04d.rank%04d.dat", datadir.c_str(), iinit, braidrank);
     vfile = fopen(filename, "w");
   }
-
-  return initstate; 
 }
 
+void myBraidApp::setInitialCondition(Vec initialcondition){
+  braid_BaseVector ubase;
+  Vec x;
+      
+  /* Get braids vector at t == 0  and copy initial condition */
+  _braid_UGetVectorRef(core->GetCore(), 0, 0, &ubase);
+  if (ubase != NULL)  // only true on one first processor !
+  {
+    x = ((myBraidVector *)ubase->userVector)->x;
+
+    /* Copy initial condition into braid's vector */
+    VecCopy(initialcondition, x);
+  }
+}
 
 
 Vec myBraidApp::PostProcess() {
@@ -647,20 +647,7 @@ braid_Int myAdjointBraidApp::Init(braid_Real t, braid_Vector *u_ptr) {
 }
 
 
-Vec myAdjointBraidApp::PreProcess(int iinit){
-
-  braid_BaseVector ubaseadjoint;
-  myBraidVector *uadjoint;
-  Vec initstate = NULL;
-
-  /* Get adjoint state at t=0.0 */
-  _braid_UGetVectorRef(core->GetCore(), 0, 0, &ubaseadjoint);
-  if (ubaseadjoint != NULL) {   // this is true only at the last processor
-    uadjoint = (myBraidVector *) ubaseadjoint->userVector;
-
-    VecZeroEntries(uadjoint->x);
-    initstate = uadjoint->x;
-  }
+void myAdjointBraidApp::PreProcess(int iinit){
 
   /* Reset the reduced gradient */
   VecZeroEntries(redgrad); 
@@ -673,9 +660,9 @@ Vec myAdjointBraidApp::PreProcess(int iinit){
     sprintf(filename, "%s/out_vadj.iinit%04d.rank%04d.dat", datadir.c_str(),iinit, braidrank);
     vfile = fopen(filename, "w");
   }
-
-  return initstate;
 }
+
+
 
 Vec myAdjointBraidApp::PostProcess() {
 

@@ -93,7 +93,10 @@ class myBraidApp : public BraidApp {
                                 BraidBufferStatus &bstatus);
 
     /*  */
-    virtual Vec PreProcess(int iinit);
+    virtual void PreProcess(int iinit);
+
+    /* Set the initial conditions */
+    virtual void setInitialCondition(Vec initialcondition);
 
     /* Performs one last FRelax. Returns state at last time step or NULL if not stored on this processor */
     virtual Vec PostProcess();
@@ -135,7 +138,7 @@ class myAdjointBraidApp : public myBraidApp {
     braid_Int Init(braid_Real t, braid_Vector *u_ptr);
 
     /* */
-    virtual Vec PreProcess(int iinit);
+    virtual void PreProcess(int iinit);
 
     /* Performs one last FRelax and MPI_Allreduce the gradient. */
     Vec PostProcess();

@@ -30,6 +30,9 @@ class OptimProblem : public hiop::hiopInterfaceDenseConstraints {
 
         int ilower, iupper; 
         FILE* optimfile;
+    
+    private: 
+        Vec initcond;   /* Storage for holding the initial condition */
 
     public:
         OptimProblem();
@@ -43,7 +46,7 @@ class OptimProblem : public hiop::hiopInterfaceDenseConstraints {
         void getDesign(int n, double* x);
 
         /* Set the initial condition of index iinit */
-        int initialCondition(int iinit, Vec x);
+        int assembleInitialCondition(int iinit);
 
         /* get index of initial condition */
         int getInitIndex(int iinit);

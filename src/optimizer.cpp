@@ -44,6 +44,7 @@ OptimProblem::OptimProblem(myBraidApp* primalbraidapp_, myAdjointBraidApp* adjoi
     MPI_Comm_rank(comm_init, &mpirank_init);
     MPI_Comm_size(comm_init, &mpisize_init);
 
+    /* Prepare the initial conditions */
     if      (initcond_type.compare("all")      == 0 ) ninit = primalbraidapp->mastereq->getDim();              // N^2
     else if (initcond_type.compare("diagonal") == 0 ) ninit = (int) sqrt(primalbraidapp->mastereq->getDim());  // N
     else if (initcond_type.compare("one")      == 0 ) ninit = 1;
@@ -51,6 +52,8 @@ OptimProblem::OptimProblem(myBraidApp* primalbraidapp_, myAdjointBraidApp* adjoi
       printf("Wrong initial condition type: %s \n", initcond_type.c_str());
       exit(1);
     }
+    /* Allocate initial state vector */
+    MatCreateVecs(primalbraidapp->mastereq->getRHS(), &initcond, NULL);
 
     /* Open optim file */
     if (mpirank_world == 0 && printlevel > 0) {
@@ -174,7 +177,6 @@ bool OptimProblem::eval_f(const long long& n, const double* x_in, bool new_x, do
   double Im_local = 0.0;
   double obj_local = 0.0;
   Vec finalstate = NULL;
-  Vec initstate = NULL;
   /* Run simulation, only if x_in is new. Otherwise, f(x_in) has been computed already and stored in fidelity. */
   // this is fishy. check if fidelity is computed correctly in grad_f
   // if (new_x) { 
@@ -186,13 +188,15 @@ bool OptimProblem::eval_f(const long long& n, const double* x_in, bool new_x, do
     objective = 0.0;
     for (int iinit = 0; iinit < ninit; iinit++) {
       
-      /* Get index of initial condition */
+      /* Prepare the initial condition */
       int initid = getInitIndex(iinit);
+      assembleInitialCondition(initid);
 
       if (mpirank_braid == 0) printf("%d: %d FWD. ", mpirank_init, initid);
+
       /* Run forward with initial condition initid*/
-      initstate = primalbraidapp->PreProcess(initid);
-      if (initstate != NULL) initialCondition(initid, initstate);
+      primalbraidapp->PreProcess(initid);
+      primalbraidapp->setInitialCondition(initcond);
       primalbraidapp->Drive();
       finalstate = primalbraidapp->PostProcess(); // this return NULL for all but the last time processor
 
@@ -239,7 +243,6 @@ bool OptimProblem::eval_grad_f(const long long& n, const double* x_in, bool new_
   double Re_local = 0.0;
   double Im_local = 0.0;
   double obj_local = 0.0;
-  Vec initstate = NULL;
   Vec finalstate = NULL;
   Vec initadjoint = NULL;
 
@@ -259,13 +262,15 @@ bool OptimProblem::eval_grad_f(const long long& n, const double* x_in, bool new_
   objective = 0.0;
   for (int iinit = 0; iinit < ninit; iinit++) {
 
-    /* Only diagonal elements, if requested */
+    /* Prepare the initial condition */
     int initid = getInitIndex(iinit);
+    assembleInitialCondition(initid);
 
     /* --- Solve primal --- */
     if (mpirank_braid == 0) printf("%d: %d FWD. ", mpirank_init, initid);
-    initstate = primalbraidapp->PreProcess(initid); // returns NULL if not stored on this proc
-    if (initstate != NULL) initialCondition(initid, initstate);
+    
+    primalbraidapp->PreProcess(initid);
+    primalbraidapp->setInitialCondition(initcond);
     primalbraidapp->Drive();
     finalstate = primalbraidapp->PostProcess(); // returns NULL if not stored on this proc
 
@@ -277,12 +282,12 @@ bool OptimProblem::eval_grad_f(const long long& n, const double* x_in, bool new_
     if (mpirank_braid == 0) printf("%d: local objective: %1.14e\n", mpirank_init, obj_local);
 
     /* --- Solve adjoint --- */
-    if (mpirank_braid == 0) printf("%d: %d BWD.", mpirank_init, initid);
-    initadjoint = adjointbraidapp->PreProcess(initid); // return NULL if not stored on this proc
-    if (initadjoint != NULL) 
-       targetgate->compare_diff(initid, finalstate, initadjoint, obj_bar);
-    adjointbraidapp->Drive();
-    adjointbraidapp->PostProcess();
+    // if (mpirank_braid == 0) printf("%d: %d BWD.", mpirank_init, initid);
+    // initadjoint = adjointbraidapp->PreProcess(initid); // return NULL if not stored on this proc
+    // if (initadjoint != NULL) 
+    //    targetgate->compare_diff(initid, finalstate, initadjoint, obj_bar);
+    // adjointbraidapp->Drive();
+    // adjointbraidapp->PostProcess();
 
     /* Add to Ipopt's gradient */
     const double* grad_ptr = adjointbraidapp->getReducedGradientPtr();
@@ -488,11 +493,11 @@ bool OptimProblem::get_MPI_comm(MPI_Comm& comm_out){
 }
 
 
-int OptimProblem::initialCondition(int initid, Vec x){
+int OptimProblem::assembleInitialCondition(int initid){
 
   /* Set x to i-th unit vector */
-  VecZeroEntries(x); 
-  VecSetValue(x, initid, 1.0, INSERT_VALUES);
+  VecZeroEntries(initcond); 
+  VecSetValue(initcond, initid, 1.0, INSERT_VALUES);
   // VecView(x, PETSC_VIEWER_STDOUT_WORLD);
   
   return 0;
