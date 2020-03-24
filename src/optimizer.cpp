@@ -15,7 +15,7 @@ OptimProblem::OptimProblem() {
     mpirank_world = 0;
     mpisize_world = 0;
     printlevel = 0;
-    diag_only = false;
+    ninit = 0;
 }
 
 OptimProblem::OptimProblem(myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, Gate* targate_, MPI_Comm comm_hiop_, MPI_Comm comm_init_, const std::vector<double> optim_bounds_, double optim_regul_, std::string optiminit_, std::string datadir_, int optim_printlevel_, int ilower_, int iupper_, std::string initial_cond_type_){
@@ -44,8 +44,9 @@ OptimProblem::OptimProblem(myBraidApp* primalbraidapp_, myAdjointBraidApp* adjoi
     MPI_Comm_rank(comm_init, &mpirank_init);
     MPI_Comm_size(comm_init, &mpisize_init);
 
-    if      (initcond_type.compare("all") == 0 )      diag_only = false;
-    else if (initcond_type.compare("diagonal") == 0 ) diag_only = true;
+    if      (initcond_type.compare("all")      == 0 ) ninit = primalbraidapp->mastereq->getDim();              // N^2
+    else if (initcond_type.compare("diagonal") == 0 ) ninit = (int) sqrt(primalbraidapp->mastereq->getDim());  // N
+    else if (initcond_type.compare("one")      == 0 ) ninit = 1;
     else {
       printf("Wrong initial condition type: %s \n", initcond_type.c_str());
       exit(1);
@@ -169,16 +170,11 @@ bool OptimProblem::eval_f(const long long& n, const double* x_in, bool new_x, do
 // bool OptimProblem::eval_f(Index n, const Number* x, bool new_x, Number& obj_value){
 
   if (mpirank_world == 0) printf(" EVAL F... \n");
-  MasterEq* mastereq = primalbraidapp->mastereq;
-  int dim = mastereq->getDim();
   double Re_local = 0.0;
   double Im_local = 0.0;
   double obj_local = 0.0;
   Vec finalstate = NULL;
   Vec initstate = NULL;
-  int ninit;
-  if (diag_only) ninit = sqrt(dim);
-  else ninit = dim;
   /* Run simulation, only if x_in is new. Otherwise, f(x_in) has been computed already and stored in fidelity. */
   // this is fishy. check if fidelity is computed correctly in grad_f
   // if (new_x) { 
@@ -188,21 +184,21 @@ bool OptimProblem::eval_f(const long long& n, const double* x_in, bool new_x, do
 
     /*  Iterate over initial condition */
     objective = 0.0;
-    for (int iinit = ilower; iinit <= iupper; iinit++) {
+    for (int iinit = 0; iinit < ninit; iinit++) {
       
-      /* Only diagonal elements, if requested */
-      if ( diag_only && iinit % (ninit+1) != 0 ) continue; 
+      /* Get index of initial condition */
+      int initid = getInitIndex(iinit);
 
-      if (mpirank_braid == 0) printf("%d: %d FWD. ", mpirank_init, iinit);
-      /* Run forward with initial condition iinit */
-      initstate = primalbraidapp->PreProcess(iinit);
-      if (initstate != NULL) initialCondition(iinit, initstate);
+      if (mpirank_braid == 0) printf("%d: %d FWD. ", mpirank_init, initid);
+      /* Run forward with initial condition initid*/
+      initstate = primalbraidapp->PreProcess(initid);
+      if (initstate != NULL) initialCondition(initid, initstate);
       primalbraidapp->Drive();
       finalstate = primalbraidapp->PostProcess(); // this return NULL for all but the last time processor
 
       /* Add to objective function */
       if (finalstate != NULL) {
-        targetgate->compare(iinit, finalstate, obj_local);
+        targetgate->compare(initid, finalstate, obj_local);
         objective += obj_local;
       }
       if (mpirank_braid == 0) printf("%d: local objective: %1.14e\n", mpirank_init, obj_local);
@@ -239,18 +235,13 @@ bool OptimProblem::eval_f(const long long& n, const double* x_in, bool new_x, do
 bool OptimProblem::eval_grad_f(const long long& n, const double* x_in, bool new_x, double* gradf){
   if (mpirank_world == 0) printf(" EVAL GRAD F...\n");
 
-  MasterEq* mastereq = primalbraidapp->mastereq;
   double obj_Re_local, obj_Im_local;
-  int dim = mastereq->getDim();
   double Re_local = 0.0;
   double Im_local = 0.0;
   double obj_local = 0.0;
   Vec initstate = NULL;
   Vec finalstate = NULL;
   Vec initadjoint = NULL;
-  int ninit;
-  if (diag_only) ninit = sqrt(dim);
-  else ninit = dim;
 
   /* Pass x to Oscillator */
   setDesign(n, x_in);
@@ -266,30 +257,30 @@ bool OptimProblem::eval_grad_f(const long long& n, const double* x_in, bool new_
 
   /* Iterate over initial conditions */
   objective = 0.0;
-  for (int iinit = ilower; iinit <= iupper; iinit++) {
+  for (int iinit = 0; iinit < ninit; iinit++) {
 
     /* Only diagonal elements, if requested */
-    if ( diag_only && iinit % (ninit+1) != 0 ) continue;
+    int initid = getInitIndex(iinit);
 
     /* --- Solve primal --- */
-    if (mpirank_braid == 0) printf("%d: %d FWD. ", mpirank_init, iinit);
-    initstate = primalbraidapp->PreProcess(iinit); // returns NULL if not stored on this proc
-    if (initstate != NULL) initialCondition(iinit, initstate);
+    if (mpirank_braid == 0) printf("%d: %d FWD. ", mpirank_init, initid);
+    initstate = primalbraidapp->PreProcess(initid); // returns NULL if not stored on this proc
+    if (initstate != NULL) initialCondition(initid, initstate);
     primalbraidapp->Drive();
     finalstate = primalbraidapp->PostProcess(); // returns NULL if not stored on this proc
 
     /* Add to objective function */
     if (finalstate != NULL) {
-      targetgate->compare(iinit, finalstate, obj_local);
+      targetgate->compare(initid, finalstate, obj_local);
       objective += obj_local;
     }
     if (mpirank_braid == 0) printf("%d: local objective: %1.14e\n", mpirank_init, obj_local);
 
     /* --- Solve adjoint --- */
-    if (mpirank_braid == 0) printf("%d: %d BWD.", mpirank_init, iinit);
-    initadjoint = adjointbraidapp->PreProcess(iinit); // return NULL if not stored on this proc
+    if (mpirank_braid == 0) printf("%d: %d BWD.", mpirank_init, initid);
+    initadjoint = adjointbraidapp->PreProcess(initid); // return NULL if not stored on this proc
     if (initadjoint != NULL) 
-       targetgate->compare_diff(iinit, finalstate, initadjoint, obj_bar);
+       targetgate->compare_diff(initid, finalstate, initadjoint, obj_bar);
     adjointbraidapp->Drive();
     adjointbraidapp->PostProcess();
 
@@ -497,13 +488,27 @@ bool OptimProblem::get_MPI_comm(MPI_Comm& comm_out){
 }
 
 
-int OptimProblem::initialCondition(int iinit, Vec x){
+int OptimProblem::initialCondition(int initid, Vec x){
 
   /* Set x to i-th unit vector */
   VecZeroEntries(x); 
-  VecSetValue(x, iinit, 1.0, INSERT_VALUES);
+  VecSetValue(x, initid, 1.0, INSERT_VALUES);
   // VecView(x, PETSC_VIEWER_STDOUT_WORLD);
   
   return 0;
 }
 
+
+int OptimProblem::getInitIndex(int iinit){
+  int initid = -1;
+  
+  if      ( initcond_type.compare("all")      == 0 ) initid = iinit; 
+  else if ( initcond_type.compare("diagonal") == 0 ) initid = iinit * ninit + iinit; 
+  else if ( initcond_type.compare("one")      == 0 ) initid = -1; 
+  else {
+    printf("Wrong initial condition type: %s\n", initcond_type.c_str());
+    exit(1);
+  }
+
+  return initid;
+}

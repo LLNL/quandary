@@ -19,7 +19,7 @@ class OptimProblem : public hiop::hiopInterfaceDenseConstraints {
         std::string optiminit_type;           /* Type of design initialization */
         std::string initcond_type;            /* Type of equation initial conditions */
         int printlevel;                
-        bool diag_only;
+        int ninit;                            /* Number of initial conditions to be considered (N^2, N, or 1) */
 
         MPI_Comm comm_hiop, comm_init;
         int mpirank_braid, mpisize_braid;
@@ -45,6 +45,8 @@ class OptimProblem : public hiop::hiopInterfaceDenseConstraints {
         /* Set the initial condition of index iinit */
         int initialCondition(int iinit, Vec x);
 
+        /* get index of initial condition */
+        int getInitIndex(int iinit);
 
         /* Required interface routines. These are purely virtual in HiOp. */
         bool get_prob_sizes(long long& n, long long& m);
