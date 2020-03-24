@@ -18,7 +18,7 @@ OptimProblem::OptimProblem() {
     diag_only = false;
 }
 
-OptimProblem::OptimProblem(myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, Gate* targate_, MPI_Comm comm_hiop_, MPI_Comm comm_init_, const std::vector<double> optim_bounds_, double optim_regul_, std::string optiminit_, std::string datadir_, int optim_printlevel_, int ilower_, int iupper_, bool diag_only_){
+OptimProblem::OptimProblem(myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, Gate* targate_, MPI_Comm comm_hiop_, MPI_Comm comm_init_, const std::vector<double> optim_bounds_, double optim_regul_, std::string optiminit_, std::string datadir_, int optim_printlevel_, int ilower_, int iupper_, std::string initial_cond_type_){
     primalbraidapp  = primalbraidapp_;
     adjointbraidapp = adjointbraidapp_;
     targetgate = targate_;
@@ -31,7 +31,7 @@ OptimProblem::OptimProblem(myBraidApp* primalbraidapp_, myAdjointBraidApp* adjoi
     printlevel = optim_printlevel_;
     ilower = ilower_;
     iupper = iupper_;
-    diag_only = diag_only_;
+    initcond_type = initial_cond_type_;
 
     MPI_Comm_rank(primalbraidapp->comm_braid, &mpirank_braid);
     MPI_Comm_size(primalbraidapp->comm_braid, &mpisize_braid);
@@ -43,6 +43,13 @@ OptimProblem::OptimProblem(myBraidApp* primalbraidapp_, myAdjointBraidApp* adjoi
     MPI_Comm_size(MPI_COMM_WORLD, &mpisize_world);
     MPI_Comm_rank(comm_init, &mpirank_init);
     MPI_Comm_size(comm_init, &mpisize_init);
+
+    if      (initcond_type.compare("all") == 0 )      diag_only = false;
+    else if (initcond_type.compare("diagonal") == 0 ) diag_only = true;
+    else {
+      printf("Wrong initial condition type: %s \n", initcond_type.c_str());
+      exit(1);
+    }
 
     /* Open optim file */
     if (mpirank_world == 0 && printlevel > 0) {
