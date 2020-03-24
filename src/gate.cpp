@@ -81,52 +81,73 @@ void Gate::assembleGate(){
   // exit(1);
 }
 
-void Gate::compare(int i, Vec state, double& delta){
-  delta = 0.0;
+void Gate::compare(Vec finalstate, Vec initcond, double& frob){
+  frob = 0.0;
+
+  int dimu, dimG;
 
   /* Exit, if this is a dummy gate */
   if (dim_vec == 0) {
     return;
   }
 
-  Vec u, v;
-  const PetscScalar *uptr, *vptr, *ReGptr, *ImGptr;
+  Vec ufinal, vfinal, u0, v0;
+  const PetscScalar *ufinalptr, *vfinalptr, *Re0ptr, *Im0ptr;
 
-  /* Get the i-th column of the gate matrix  \bar V\kron V */
-  /* TODO: This might be slow! Find an alternative!  */
-  MatGetColumnVector(ReG, ReG_col, i);
-  MatGetColumnVector(ImG, ImG_col, i);
-  VecGetArrayRead(ReG_col, &ReGptr);
-  VecGetArrayRead(ImG_col, &ImGptr);
+  /* Allocate temporary vecs */
+  Vec Re0, Im0;
+  MatCreateVecs(ReG, &Re0, NULL);
+  MatCreateVecs(ReG, &Im0, NULL);
 
-  /* Get u and v from state=[u,v] */
-  VecGetSubVector(state, isu, &u);
-  VecGetSubVector(state, isv, &v);
-  VecGetArrayRead(u, &uptr);
-  VecGetArrayRead(v, &vptr);
+  /* Get real and imag part of final and initial states, x = [u,v] */
+  VecGetSubVector(finalstate, isu, &ufinal);
+  VecGetSubVector(finalstate, isv, &vfinal);
+  VecGetArrayRead(ufinal, &ufinalptr);
+  VecGetArrayRead(vfinal, &vfinalptr);
+  VecGetSubVector(initcond, isu, &u0);
+  VecGetSubVector(initcond, isv, &v0);
 
   /* Make sure that state dimensions match the gate dimension */
-  int dimu, dimG;
-  VecGetSize(u, &dimu);
-  VecGetSize(ReG_col, &dimG);
+  VecGetSize(ufinal, &dimu); 
+  VecGetSize(Re0, &dimG);
   if (dimu != dimG) {
     printf("\n ERROR: Target gate dimension %d doesn't match system dimension %u\n", dimG, dimu);
     exit(1);
   }
 
-  /* Compute ||state - Gcolumn||^2 */
+  /* Add read part of frobenius norm || u - ReG*u0 + ImG*v0 ||^2 */
+  MatMult(ReG, u0, Re0);
+  MatMult(ImG, v0, Im0);
+  VecGetArrayRead(Re0, &Re0ptr);
+  VecGetArrayRead(Im0, &Im0ptr);
   for (int j=0; j<dim_vec; j++) {
-    delta += pow(uptr[j] - ReGptr[j],2);
-    delta += pow(vptr[j] - ImGptr[j],2);
+    frob += pow(ufinalptr[j] - Re0ptr[j] + Im0ptr[j],2);
   }
+  VecRestoreArrayRead(Re0, &Re0ptr);
+  VecRestoreArrayRead(Im0, &Im0ptr);
 
-  /* Restore */
-  VecRestoreArrayRead(u, &uptr);
-  VecRestoreArrayRead(v, &vptr);
-  VecRestoreSubVector(state, isu, &u);
-  VecRestoreSubVector(state, isv, &v);
-  VecRestoreArrayRead(ReG_col, &ReGptr);
-  VecRestoreArrayRead(ImG_col, &ImGptr);
+  /* Add imaginary part of frobenius norm || v - ReG*v0 - ImG*u0 ||^2 */
+  MatMult(ReG, v0, Re0);
+  MatMult(ImG, u0, Im0);
+  VecGetArrayRead(Re0, &Re0ptr);
+  VecGetArrayRead(Im0, &Im0ptr);
+  for (int j=0; j<dim_vec; j++) {
+    frob += pow(vfinalptr[j] - Re0ptr[j] - Im0ptr[j],2);
+  }
+  VecRestoreArrayRead(Re0, &Re0ptr);
+  VecRestoreArrayRead(Im0, &Im0ptr);
+
+ /* Restore */
+  VecRestoreArrayRead(ufinal, &ufinalptr);
+  VecRestoreArrayRead(vfinal, &vfinalptr);
+  VecRestoreSubVector(finalstate, isu, &ufinal);
+  VecRestoreSubVector(finalstate, isv, &vfinal);
+  VecRestoreSubVector(initcond, isu, &u0);
+  VecRestoreSubVector(initcond, isv, &v0);
+
+  /* Destroy temporary vecs */
+  VecDestroy(&Re0);
+  VecDestroy(&Im0);
 }
 
 void Gate::compare_diff(int i, const Vec state, Vec state_bar, const double delta_bar){

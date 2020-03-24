@@ -27,10 +27,9 @@ class Gate {
     /* Assemble ReG = Re(\bar V \kron V) and ImG = Im(\bar V \kron V) */
     void assembleGate();
     
-    /* compare the k-th column of the gate to a state vector */
-    /* in Frobenius norm ||w_k - g_k||^2_F = w_k^dag w_k + g_k^dag g_k - 2*Re(w_k^dag g_k) */
-    void compare(int i, Vec state, double& delta);
-    void compare_diff(int i, const Vec state, Vec state_bar, const double delta_bar);
+    /* compare the final state to gate-transformed initialcondition in Frobenius norm || q(T) - V\kronV q(0)||^2 */
+    void compare(Vec finalstate, Vec initcond, double& frob);
+    void compare_diff(int i, const Vec finalstate, Vec state_bar, const double delta_bar);
 };
 
 /* X Gate, spanning one qubit. 

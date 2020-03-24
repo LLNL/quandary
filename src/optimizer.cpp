@@ -202,7 +202,7 @@ bool OptimProblem::eval_f(const long long& n, const double* x_in, bool new_x, do
 
       /* Add to objective function */
       if (finalstate != NULL) {
-        targetgate->compare(initid, finalstate, obj_local);
+        targetgate->compare(finalstate, initcond, obj_local);
         objective += obj_local;
       }
       if (mpirank_braid == 0) printf("%d: local objective: %1.14e\n", mpirank_init, obj_local);
@@ -276,7 +276,7 @@ bool OptimProblem::eval_grad_f(const long long& n, const double* x_in, bool new_
 
     /* Add to objective function */
     if (finalstate != NULL) {
-      targetgate->compare(initid, finalstate, obj_local);
+      targetgate->compare(finalstate, initcond, obj_local);
       objective += obj_local;
     }
     if (mpirank_braid == 0) printf("%d: local objective: %1.14e\n", mpirank_init, obj_local);
