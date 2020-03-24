@@ -50,17 +50,24 @@ OptimProblem::OptimProblem(MapParam config, myBraidApp* primalbraidapp_, myAdjoi
     assert (bounds.size() >= primalbraidapp->mastereq->getNOscillators());
 
     /* Prepare primal and adjoint initial conditions */
+    MatCreateVecs(primalbraidapp->mastereq->getRHS(), &initcond, NULL);
+    MatCreateVecs(primalbraidapp->mastereq->getRHS(), &initcondbar, NULL);
     if      (initcond_type.compare("all")      == 0 ) ninit = primalbraidapp->mastereq->getDim();              // N^2
     else if (initcond_type.compare("diagonal") == 0 ) ninit = (int) sqrt(primalbraidapp->mastereq->getDim());  // N
     else if (initcond_type.compare("one")      == 0 ) {
       ninit = 1;
+      /* Read initial condition from config file */
+      std::vector<double> initvec_re, initvec_im;
+      config.GetVecDoubleParam("initvec_re", initvec_re, 0.0);
+      config.GetVecDoubleParam("initvec_re", initvec_im, 0.0);
+      for (int i=0; i<initvec_re.size(); i++) {
+        printf("%1.14e %1.14e\n", initvec_re[i], initvec_im[i]);
+      }
     }
     else {
       printf("Wrong initial condition type: %s \n", initcond_type.c_str());
       exit(1);
     }
-    MatCreateVecs(primalbraidapp->mastereq->getRHS(), &initcond, NULL);
-    MatCreateVecs(primalbraidapp->mastereq->getRHS(), &initcondbar, NULL);
 
     /* Open optim file */
     if (mpirank_world == 0 && printlevel > 0) {
