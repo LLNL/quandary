@@ -150,52 +150,71 @@ void Gate::compare(Vec finalstate, Vec initcond, double& frob){
   VecDestroy(&Im0);
 }
 
-void Gate::compare_diff(int i, const Vec state, Vec state_bar, const double delta_bar){
+void Gate::compare_diff(const Vec finalstate, const Vec initcond, Vec finalstate_bar, const double frob_bar) {
 
   /* Exit, if this is a dummy gate */
   if (dim_vec == 0) {
     return;
   }
-  Vec u, v;
-  Vec ubar, vbar;
-  const PetscScalar *uptr, *vptr, *ReGptr, *ImGptr;
-  PetscScalar *ubarptr, *vbarptr;
 
-  /* Get the i-th column of the gate matrix  \bar V\kron V */
-  /* TODO: This might be slow! Find an alternative!  */
-  MatGetColumnVector(ReG, ReG_col, i);
-  MatGetColumnVector(ImG, ImG_col, i);
-  VecGetArrayRead(ReG_col, &ReGptr);
-  VecGetArrayRead(ImG_col, &ImGptr);
+  Vec ufinal, vfinal, ufinal_bar, vfinal_bar, u0, v0;
+  const PetscScalar *ufinalptr, *vfinalptr, *Re0ptr, *Im0ptr;
+  PetscScalar *ufinal_barptr, *vfinal_barptr;
 
-  /* Get Real and imaginary of adjoint state */
-  VecGetSubVector(state_bar, isu, &ubar);
-  VecGetSubVector(state_bar, isv, &vbar);
-  VecGetArray(ubar, &ubarptr);
-  VecGetArray(vbar, &vbarptr);
-  /* Get Real and imaginary of state */
-  VecGetSubVector(state, isu, &u);
-  VecGetSubVector(state, isv, &v);
-  VecGetArrayRead(u, &uptr);
-  VecGetArrayRead(v, &vptr);
+  /* Allocate temporary vecs */
+  Vec Re0, Im0;
+  MatCreateVecs(ReG, &Re0, NULL);
+  MatCreateVecs(ReG, &Im0, NULL);
 
-  /* Derivative of || state - Gcolumn ||^2 */
-  for (int j=0; j<dim_vec; j++){
-    ubarptr[j] += 2. * (uptr[j] - ReGptr[j]) * delta_bar;
-    vbarptr[j] += 2. * (vptr[j] - ImGptr[j]) * delta_bar;
+  /* Get real and imag part of final and initial primal and adjoint states, x = [u,v] */
+  VecGetSubVector(finalstate, isu, &ufinal);
+  VecGetSubVector(finalstate, isv, &vfinal);
+  VecGetArrayRead(ufinal, &ufinalptr);
+  VecGetArrayRead(vfinal, &vfinalptr);
+  VecGetSubVector(finalstate_bar, isu, &ufinal_bar);
+  VecGetSubVector(finalstate_bar, isv, &vfinal_bar);
+  VecGetArray(ufinal_bar, &ufinal_barptr);
+  VecGetArray(vfinal_bar, &vfinal_barptr);
+  VecGetSubVector(initcond, isu, &u0);
+  VecGetSubVector(initcond, isv, &v0);
+
+  /* Derivative of read part of frobenius norm: 2 * (u - ReG*u0 + ImG*v0) * frob_bar */
+  MatMult(ReG, u0, Re0);
+  MatMult(ImG, v0, Im0);
+  VecGetArrayRead(Re0, &Re0ptr);
+  VecGetArrayRead(Im0, &Im0ptr);
+  for (int j=0; j<dim_vec; j++) {
+    ufinal_barptr[j] = 2. * ( ufinalptr[j] - Re0ptr[j] + Im0ptr[j] ) * frob_bar;
   }
+  VecRestoreArrayRead(Re0, &Re0ptr);
+  VecRestoreArrayRead(Im0, &Im0ptr);
 
-  /* Restore */
-  VecRestoreArrayRead(u, &uptr);
-  VecRestoreArrayRead(v, &vptr);
-  VecRestoreSubVector(state, isu, &u);
-  VecRestoreSubVector(state, isv, &v);
-  VecRestoreArray(ubar, &ubarptr);
-  VecRestoreArray(vbar, &vbarptr);
-  VecRestoreSubVector(state_bar, isu, &ubar);
-  VecRestoreSubVector(state_bar, isv, &vbar);
-  VecRestoreArrayRead(ReG_col, &ReGptr);
-  VecRestoreArrayRead(ImG_col, &ImGptr);
+  /* Derivative of imaginary part of frobenius norm 2 * (v - ReG*v0 - ImG*u0) * frob_bar  */
+  MatMult(ReG, v0, Re0);
+  MatMult(ImG, u0, Im0);
+  VecGetArrayRead(Re0, &Re0ptr);
+  VecGetArrayRead(Im0, &Im0ptr);
+  for (int j=0; j<dim_vec; j++) {
+    vfinal_barptr[j] = 2. * ( vfinalptr[j] - Re0ptr[j] - Im0ptr[j] ) * frob_bar;
+  }
+  VecRestoreArrayRead(Re0, &Re0ptr);
+  VecRestoreArrayRead(Im0, &Im0ptr);
+
+ /* Restore */
+  VecRestoreArrayRead(ufinal, &ufinalptr);
+  VecRestoreArrayRead(vfinal, &vfinalptr);
+  VecRestoreSubVector(finalstate, isu, &ufinal);
+  VecRestoreSubVector(finalstate, isv, &vfinal);
+  VecRestoreArray(ufinal_bar, &ufinal_barptr);
+  VecRestoreArray(vfinal_bar, &vfinal_barptr);
+  VecRestoreSubVector(finalstate_bar, isu, &ufinal_bar);
+  VecRestoreSubVector(finalstate_bar, isv, &vfinal_bar);
+  VecRestoreSubVector(initcond, isu, &u0);
+  VecRestoreSubVector(initcond, isv, &v0);
+
+  /* Destroy temporary vecs */
+  VecDestroy(&Re0);
+  VecDestroy(&Im0);
 }
 
 XGate::XGate() : Gate(2) {

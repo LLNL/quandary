@@ -52,8 +52,9 @@ OptimProblem::OptimProblem(myBraidApp* primalbraidapp_, myAdjointBraidApp* adjoi
       printf("Wrong initial condition type: %s \n", initcond_type.c_str());
       exit(1);
     }
-    /* Allocate initial state vector */
+    /* Allocate initial state vector and adjoint */
     MatCreateVecs(primalbraidapp->mastereq->getRHS(), &initcond, NULL);
+    MatCreateVecs(primalbraidapp->mastereq->getRHS(), &initcondbar, NULL);
 
     /* Open optim file */
     if (mpirank_world == 0 && printlevel > 0) {
@@ -243,7 +244,6 @@ bool OptimProblem::eval_grad_f(const long long& n, const double* x_in, bool new_
   double Im_local = 0.0;
   double obj_local = 0.0;
   Vec finalstate = NULL;
-  Vec initadjoint = NULL;
 
   /* Pass x to Oscillator */
   setDesign(n, x_in);
@@ -280,12 +280,16 @@ bool OptimProblem::eval_grad_f(const long long& n, const double* x_in, bool new_
     if (mpirank_braid == 0) printf("%d: local objective: %1.14e\n", mpirank_init, obj_local);
 
     /* --- Solve adjoint --- */
-    // if (mpirank_braid == 0) printf("%d: %d BWD.", mpirank_init, initid);
-    // initadjoint = adjointbraidapp->PreProcess(initid); // return NULL if not stored on this proc
-    // if (initadjoint != NULL) 
-    //    targetgate->compare_diff(initid, finalstate, initadjoint, obj_bar);
-    // adjointbraidapp->Drive();
-    // adjointbraidapp->PostProcess();
+    if (mpirank_braid == 0) printf("%d: %d BWD.", mpirank_init, initid);
+    
+    /* Derivative of objective function */
+    if (finalstate != NULL) 
+       targetgate->compare_diff(finalstate, initcond, initcondbar, obj_bar);
+
+    adjointbraidapp->PreProcess(initid);
+    adjointbraidapp->setInitialCondition(initcondbar);
+    adjointbraidapp->Drive();
+    adjointbraidapp->PostProcess();
 
     /* Add to Ipopt's gradient */
     const double* grad_ptr = adjointbraidapp->getReducedGradientPtr();
