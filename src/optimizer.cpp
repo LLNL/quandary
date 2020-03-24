@@ -18,21 +18,16 @@ OptimProblem::OptimProblem() {
     ninit = 0;
 }
 
-OptimProblem::OptimProblem(myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, Gate* targate_, MPI_Comm comm_hiop_, MPI_Comm comm_init_, const std::vector<double> optim_bounds_, double optim_regul_, std::string optiminit_, std::string datadir_, int optim_printlevel_, int ilower_, int iupper_, std::string initial_cond_type_){
+OptimProblem::OptimProblem(MapParam config, myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, Gate* targate_, MPI_Comm comm_hiop_, MPI_Comm comm_init_, int ilower_, int iupper_) {
     primalbraidapp  = primalbraidapp_;
     adjointbraidapp = adjointbraidapp_;
     targetgate = targate_;
     comm_hiop = comm_hiop_;
     comm_init = comm_init_;
-    regul = optim_regul_;
-    optiminit_type = optiminit_;
-    bounds = optim_bounds_;
-    datadir = datadir_;
-    printlevel = optim_printlevel_;
     ilower = ilower_;
     iupper = iupper_;
-    initcond_type = initial_cond_type_;
 
+    /* Store ranks and sizes of communicators */
     MPI_Comm_rank(primalbraidapp->comm_braid, &mpirank_braid);
     MPI_Comm_size(primalbraidapp->comm_braid, &mpisize_braid);
     MPI_Comm_rank(PETSC_COMM_WORLD, &mpirank_space);
@@ -44,15 +39,26 @@ OptimProblem::OptimProblem(myBraidApp* primalbraidapp_, myAdjointBraidApp* adjoi
     MPI_Comm_rank(comm_init, &mpirank_init);
     MPI_Comm_size(comm_init, &mpisize_init);
 
-    /* Prepare the initial conditions */
+
+    /* Read config options */
+    regul = config.GetDoubleParam("optim_regul", 1e-4);
+    optiminit_type = config.GetStrParam("optim_init", "zero");
+    datadir = config.GetStrParam("datadir", "./data_out");
+    printlevel = config.GetIntParam("optim_printlevel", 1);
+    initcond_type = config.GetStrParam("initialconditions", "all");
+    config.GetVecDoubleParam("optim_bounds", bounds, 1e20);
+    assert (bounds.size() >= primalbraidapp->mastereq->getNOscillators());
+
+    /* Prepare primal and adjoint initial conditions */
     if      (initcond_type.compare("all")      == 0 ) ninit = primalbraidapp->mastereq->getDim();              // N^2
     else if (initcond_type.compare("diagonal") == 0 ) ninit = (int) sqrt(primalbraidapp->mastereq->getDim());  // N
-    else if (initcond_type.compare("one")      == 0 ) ninit = 1;
+    else if (initcond_type.compare("one")      == 0 ) {
+      ninit = 1;
+    }
     else {
       printf("Wrong initial condition type: %s \n", initcond_type.c_str());
       exit(1);
     }
-    /* Allocate initial state vector and adjoint */
     MatCreateVecs(primalbraidapp->mastereq->getRHS(), &initcond, NULL);
     MatCreateVecs(primalbraidapp->mastereq->getRHS(), &initcondbar, NULL);
 

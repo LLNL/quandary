@@ -1,6 +1,7 @@
 #include "braid_wrapper.hpp"
 #include "hiopInterface.hpp"
 #include "math.h"
+#include <assert.h>
 
 #pragma once
 
@@ -36,7 +37,7 @@ class OptimProblem : public hiop::hiopInterfaceDenseConstraints {
 
     public:
         OptimProblem();
-        OptimProblem(myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, Gate* targate_, MPI_Comm comm_hiop_, MPI_Comm comm_init_, const std::vector<double>optim_bounds, double optim_regul_, std::string init_, std::string datadir_, int optim_printlevel_, int ilower_, int iupper_, std::string initial_cond_type_);
+        OptimProblem(MapParam config, myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, Gate* targate_, MPI_Comm comm_hiop_, MPI_Comm comm_init_, int ilower_, int iupper_);
         virtual ~OptimProblem();
 
 

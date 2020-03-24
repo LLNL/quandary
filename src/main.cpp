@@ -232,10 +232,7 @@ int main(int argc,char **argv)
   adjointbraidapp->InitGrids();
 
   /* Initialize the optimization */
-  std::vector<double> optimbounds;
-  config.GetVecDoubleParam("optim_bounds", optimbounds, 1e20);
-  assert (optimbounds.size() >= mastereq->getNOscillators());
-  OptimProblem optimproblem(primalbraidapp, adjointbraidapp, targetgate, comm_hiop, comm_init, optimbounds, config.GetDoubleParam("optim_regul", 1e-4), config.GetStrParam("optim_init", "none"), config.GetStrParam("datadir", "./data_out"), config.GetIntParam("optim_printlevel", 1), ilower, iupper, config.GetStrParam("initialconditions", "all"));
+  OptimProblem optimproblem(config, primalbraidapp, adjointbraidapp, targetgate, comm_hiop, comm_init, ilower, iupper);
   hiop::hiopNlpDenseConstraints nlp(optimproblem);
   long long int ndesign,m;
   optimproblem.get_prob_sizes(ndesign, m);
