@@ -48,9 +48,6 @@ class OptimProblem : public hiop::hiopInterfaceDenseConstraints {
         /* Set the initial condition of index iinit */
         int assembleInitialCondition(int iinit);
 
-        /* get index of initial condition */
-        int getInitIndex(int iinit);
-
         /* Required interface routines. These are purely virtual in HiOp. */
         bool get_prob_sizes(long long& n, long long& m);
         bool get_vars_info(const long long& n, double *xlow, double* xupp, NonlinearityType* type);

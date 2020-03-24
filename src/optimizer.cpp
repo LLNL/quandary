@@ -189,8 +189,7 @@ bool OptimProblem::eval_f(const long long& n, const double* x_in, bool new_x, do
     for (int iinit = 0; iinit < ninit; iinit++) {
       
       /* Prepare the initial condition */
-      int initid = getInitIndex(iinit);
-      assembleInitialCondition(initid);
+      int initid = assembleInitialCondition(iinit);
 
       if (mpirank_braid == 0) printf("%d: %d FWD. ", mpirank_init, initid);
 
@@ -263,8 +262,7 @@ bool OptimProblem::eval_grad_f(const long long& n, const double* x_in, bool new_
   for (int iinit = 0; iinit < ninit; iinit++) {
 
     /* Prepare the initial condition */
-    int initid = getInitIndex(iinit);
-    assembleInitialCondition(initid);
+    int initid = assembleInitialCondition(iinit);
 
     /* --- Solve primal --- */
     if (mpirank_braid == 0) printf("%d: %d FWD. ", mpirank_init, initid);
@@ -493,20 +491,10 @@ bool OptimProblem::get_MPI_comm(MPI_Comm& comm_out){
 }
 
 
-int OptimProblem::assembleInitialCondition(int initid){
+int OptimProblem::assembleInitialCondition(int iinit){
+  int initid;
 
-  /* Set x to i-th unit vector */
-  VecZeroEntries(initcond); 
-  VecSetValue(initcond, initid, 1.0, INSERT_VALUES);
-  // VecView(x, PETSC_VIEWER_STDOUT_WORLD);
-  
-  return 0;
-}
-
-
-int OptimProblem::getInitIndex(int iinit){
-  int initid = -1;
-  
+  /* Get index for this initial condition */
   if      ( initcond_type.compare("all")      == 0 ) initid = iinit; 
   else if ( initcond_type.compare("diagonal") == 0 ) initid = iinit * ninit + iinit; 
   else if ( initcond_type.compare("one")      == 0 ) initid = -1; 
@@ -515,5 +503,10 @@ int OptimProblem::getInitIndex(int iinit){
     exit(1);
   }
 
+  /* Set x to i-th unit vector */
+  VecZeroEntries(initcond); 
+  VecSetValue(initcond, initid, 1.0, INSERT_VALUES);
+  // VecView(x, PETSC_VIEWER_STDOUT_WORLD);
+  
   return initid;
 }
