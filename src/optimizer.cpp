@@ -18,14 +18,14 @@ OptimProblem::OptimProblem() {
     diag_only = false;
 }
 
-OptimProblem::OptimProblem(myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, Gate* targate_, MPI_Comm comm_hiop_, MPI_Comm comm_init_, const std::vector<double> optim_bounds_, double optim_regul_, std::string init_, std::string datadir_, int optim_printlevel_, int ilower_, int iupper_, bool diag_only_){
+OptimProblem::OptimProblem(myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, Gate* targate_, MPI_Comm comm_hiop_, MPI_Comm comm_init_, const std::vector<double> optim_bounds_, double optim_regul_, std::string optiminit_, std::string datadir_, int optim_printlevel_, int ilower_, int iupper_, bool diag_only_){
     primalbraidapp  = primalbraidapp_;
     adjointbraidapp = adjointbraidapp_;
     targetgate = targate_;
     comm_hiop = comm_hiop_;
     comm_init = comm_init_;
     regul = optim_regul_;
-    init_type = init_;
+    optiminit_type = optiminit_;
     bounds = optim_bounds_;
     datadir = datadir_;
     printlevel = optim_printlevel_;
@@ -186,7 +186,7 @@ bool OptimProblem::eval_f(const long long& n, const double* x_in, bool new_x, do
       /* Only diagonal elements, if requested */
       if ( diag_only && iinit % (ninit+1) != 0 ) continue; 
 
-      // if (mpirank_braid == 0) printf("%d: %d FWD. \n", mpirank_init, iinit);
+      if (mpirank_braid == 0) printf("%d: %d FWD. ", mpirank_init, iinit);
       /* Run forward with initial condition iinit */
       initstate = primalbraidapp->PreProcess(iinit);
       if (initstate != NULL) initialCondition(iinit, initstate);
@@ -198,7 +198,7 @@ bool OptimProblem::eval_f(const long long& n, const double* x_in, bool new_x, do
         targetgate->compare(iinit, finalstate, obj_local);
         objective += obj_local;
       }
-      // if (mpirank_braid == 0) printf("%d: local objective: %1.14e\n", mpirank_init, obj_local);
+      if (mpirank_braid == 0) printf("%d: local objective: %1.14e\n", mpirank_init, obj_local);
     }
   // }
 
@@ -265,7 +265,7 @@ bool OptimProblem::eval_grad_f(const long long& n, const double* x_in, bool new_
     if ( diag_only && iinit % (ninit+1) != 0 ) continue;
 
     /* --- Solve primal --- */
-    // if (mpirank_braid == 0) printf("%d: %d FWD.\n", mpirank_init, iinit);
+    if (mpirank_braid == 0) printf("%d: %d FWD. ", mpirank_init, iinit);
     initstate = primalbraidapp->PreProcess(iinit); // returns NULL if not stored on this proc
     if (initstate != NULL) initialCondition(iinit, initstate);
     primalbraidapp->Drive();
@@ -276,10 +276,10 @@ bool OptimProblem::eval_grad_f(const long long& n, const double* x_in, bool new_
       targetgate->compare(iinit, finalstate, obj_local);
       objective += obj_local;
     }
-    // if (mpirank_braid == 0) printf("%d: local objective: %1.14e\n", mpirank_init, obj_local);
+    if (mpirank_braid == 0) printf("%d: local objective: %1.14e\n", mpirank_init, obj_local);
 
     /* --- Solve adjoint --- */
-    if (mpirank_braid == 0) printf("%d: %d BWD.\n", mpirank_init, iinit);
+    if (mpirank_braid == 0) printf("%d: %d BWD.", mpirank_init, iinit);
     initadjoint = adjointbraidapp->PreProcess(iinit); // return NULL if not stored on this proc
     if (initadjoint != NULL) 
        targetgate->compare_diff(iinit, finalstate, initadjoint, obj_bar);
@@ -356,14 +356,14 @@ bool OptimProblem::get_starting_point(const long long &global_n, double* x0) {
   /* Set initial parameters. */
   // Do this on one processor only, then broadcast, to make sure that every processor starts with the same initial guess. 
   if (mpirank_world == 0) {
-    if (init_type.compare("zero") == 0)  { // init with zero
+    if (optiminit_type.compare("zero") == 0)  { // init with zero
       for (int i=0; i<global_n; i++) {
         x0[i] = 0.0;
       }
-    } else if ( init_type.compare("random") == 0 || init_type.compare("random_seed") == 0)  { // init random
+    } else if ( optiminit_type.compare("random") == 0 || optiminit_type.compare("random_seed") == 0)  { // init random
 
       /* Set the random seed */
-      if ( init_type.compare("random") == 0) srand(1);  // fixed seed
+      if ( optiminit_type.compare("random") == 0) srand(1);  // fixed seed
       else srand(time(0)); // random seed
 
       /* Set to random initial guess. between [-1:1] */
@@ -383,7 +383,7 @@ bool OptimProblem::get_starting_point(const long long &global_n, double* x0) {
       }
     } else {
       /* read from file */
-      read_vector(init_type.c_str(), x0, global_n); 
+      read_vector(optiminit_type.c_str(), x0, global_n); 
     }
   }
 
