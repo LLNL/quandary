@@ -67,7 +67,7 @@ OptimProblem::OptimProblem(MapParam config, myBraidApp* primalbraidapp_, myAdjoi
       config.GetVecDoubleParam("initvec_im", initvec_im, 0.0);
       assert(initvec_re.size() >= primalbraidapp->mastereq->getDim());
       assert(initvec_im.size() >= primalbraidapp->mastereq->getDim());
-      for (int i=0; i<initvec_re.size(); i++) {
+      for (int i=0; i<primalbraidapp->mastereq->getDim(); i++) {
         if (initvec_re[i] != 0.0) VecSetValue(initcond_re, i, initvec_re[i], INSERT_VALUES);
         if (initvec_im[i] != 0.0) VecSetValue(initcond_im, i, initvec_im[i], INSERT_VALUES);
       }
