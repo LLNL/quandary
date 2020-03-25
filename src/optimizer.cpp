@@ -63,10 +63,15 @@ OptimProblem::OptimProblem(MapParam config, myBraidApp* primalbraidapp_, myAdjoi
       /* Read initial condition from config file */
       std::vector<double> initvec_re, initvec_im;
       config.GetVecDoubleParam("initvec_re", initvec_re, 0.0);
-      config.GetVecDoubleParam("initvec_re", initvec_im, 0.0);
+      config.GetVecDoubleParam("initvec_im", initvec_im, 0.0);
+      assert(initvec_re.size() >= primalbraidapp->mastereq->getDim());
+      assert(initvec_im.size() >= primalbraidapp->mastereq->getDim());
       for (int i=0; i<initvec_re.size(); i++) {
-        printf("%1.14e %1.14e\n", initvec_re[i], initvec_im[i]);
+        if (initvec_re[i] != 0.0) VecSetValue(initcond_re, i, initvec_re[i], INSERT_VALUES);
+        if (initvec_im[i] != 0.0) VecSetValue(initcond_im, i, initvec_im[i], INSERT_VALUES);
       }
+      VecAssemblyBegin(initcond_re); VecAssemblyEnd(initcond_re);
+      VecAssemblyBegin(initcond_im); VecAssemblyEnd(initcond_im);
     }
     else {
       printf("Wrong initial condition type: %s \n", initcond_type.c_str());
@@ -512,12 +517,15 @@ bool OptimProblem::get_MPI_comm(MPI_Comm& comm_out){
 
 
 int OptimProblem::assembleInitialCondition(int iinit){
-  int initid;
+  int initid = -1000;
 
-  /* Get index for this initial condition */
-  if      ( initcond_type.compare("all")      == 0 ) initid = iinit; 
+  /* Check for initial condition type */
+  if ( initcond_type.compare("one") == 0 ) {
+    /* Do nothing. Initial condition is already stored in initcond_re, initcond_im */
+    return -1;
+  }
+  else if ( initcond_type.compare("all")      == 0 ) initid = iinit; 
   else if ( initcond_type.compare("diagonal") == 0 ) initid = iinit * ninit + iinit; 
-  else if ( initcond_type.compare("one")      == 0 ) initid = -1; 
   else {
     printf("Wrong initial condition type: %s\n", initcond_type.c_str());
     exit(1);
@@ -527,6 +535,8 @@ int OptimProblem::assembleInitialCondition(int iinit){
   VecZeroEntries(initcond_re); 
   VecZeroEntries(initcond_im); 
   VecSetValue(initcond_re, initid, 1.0, INSERT_VALUES);
+  VecAssemblyBegin(initcond_re);
+  VecAssemblyEnd(initcond_re);
   // VecView(x, PETSC_VIEWER_STDOUT_WORLD);
   
   return initid;
