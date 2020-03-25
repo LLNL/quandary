@@ -370,14 +370,6 @@ int MasterEq::assemble_RHS(double t){
   ierr = MatAssemblyEnd(RHS,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
   // MatView(RHS, PETSC_VIEWER_STDOUT_SELF);
 
-#ifdef SANITY_CHECK
-  /* Sanity check. Be careful: This is expensive. */
-  // printf("Performing check AntiSymmetric...\n");
-  PetscBool isAntiSymmetric;
-  MatIsAntiSymmetric(RHS, 0.0, &isAntiSymmetric);
-  if (!isAntiSymmetric) printf("%f WARNING: RHS is not antisymmetric!\n",t);
-#endif
-
   return 0;
 }
 

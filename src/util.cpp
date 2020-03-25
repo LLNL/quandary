@@ -166,8 +166,6 @@ PetscErrorCode StateIsHermitian(Vec x, PetscReal tol, PetscBool *flag) {
 
   /* Init flags*/
   *flag = PETSC_TRUE;
-  PetscBool u_isSymm     = PETSC_TRUE;
-  PetscBool v_isAntiSymm = PETSC_TRUE;
 
   /* Check for symmetric u and antisymmetric v */
   const double *u_array;
@@ -180,11 +178,8 @@ PetscErrorCode StateIsHermitian(Vec x, PetscReal tol, PetscBool *flag) {
     for (j=i; j<N; j++) {
       u_diff = u_array[i*N+j] - u_array[j*N+i];
       v_diff = v_array[i*N+j] + v_array[j*N+i];
-      if (fabs(u_diff) > tol) u_isSymm = PETSC_FALSE;
-      if (fabs(v_diff) > tol) v_isAntiSymm = PETSC_FALSE;
-      if (!u_isSymm || !v_isAntiSymm) {
+      if (fabs(u_diff) > tol || fabs(v_diff) > tol ) {
         *flag = PETSC_FALSE;
-        printf("WARNING: not hermitian: i=%d, j=%d u_diff=%1.14e, v_diff=%1.14e\n", i, j, u_diff, v_diff);
         break;
       }
     }
@@ -192,15 +187,10 @@ PetscErrorCode StateIsHermitian(Vec x, PetscReal tol, PetscBool *flag) {
 
   ierr = VecRestoreArrayRead(u, &u_array);
   ierr = VecRestoreArrayRead(v, &v_array);
-  
-  if (!u_isSymm) {
-    printf("\n u :\n");
-    VecView(u, PETSC_VIEWER_STDOUT_WORLD);
-  }
-  if (!v_isAntiSymm) {
-    printf("\n v :\n");
-    VecView(v, PETSC_VIEWER_STDOUT_WORLD);
-  }
+  ierr = VecRestoreSubVector(x, isu, &u);
+  ierr = VecRestoreSubVector(x, isv, &v);
+  ISDestroy(&isu);
+  ISDestroy(&isv);
 
   return ierr;
 }
@@ -224,47 +214,39 @@ PetscErrorCode StateHasTrace1(Vec x, PetscReal tol, PetscBool *flag) {
   ierr = VecGetSubVector(x, isv, &v); CHKERRQ(ierr);
 
   /* Init flags*/
-  *flag = PETSC_TRUE;
-  PetscBool u_hastrace1   = PETSC_TRUE;
-  PetscBool v_haszerodiag = PETSC_TRUE;
+  *flag = PETSC_FALSE;
+  PetscBool u_hastrace1 = PETSC_FALSE;
+  PetscBool v_hastrace0 = PETSC_FALSE;
 
-  /* Check if diagonal of u sums to 1, and all diagonal elements of v are 0 */ 
+  /* Check if diagonal of u sums to 1, and diagonal of v sums to 0 */ 
   const double *u_array;
   const double *v_array;
   double u_sum = 0.0;
+  double v_sum = 0.0;
   ierr = VecGetArrayRead(u, &u_array); CHKERRQ(ierr);
   ierr = VecGetArrayRead(v, &v_array); CHKERRQ(ierr);
   int N = sqrt(dim);
   for (i=0; i<N; i++) {
     u_sum += u_array[i*N+i];
-    if ( fabs(v_array[i*N+i]) > tol ) {
-        v_haszerodiag = PETSC_FALSE;
-        break;
-    }
+    v_sum += v_array[i*N+i];
   }
-  if ( fabs(u_sum - 1.0) > tol ) u_hastrace1 = PETSC_FALSE;
+  if ( fabs(u_sum - 1.0) < tol ) u_hastrace1 = PETSC_TRUE;
+  if ( fabs(v_sum - 0.0) < tol ) v_hastrace0 = PETSC_TRUE;
 
   /* Restore vecs */
   ierr = VecRestoreArrayRead(u, &u_array);
   ierr = VecRestoreArrayRead(v, &v_array);
-
+  ierr = VecRestoreSubVector(x, isu, &u);
+  ierr = VecRestoreSubVector(x, isv, &v);
 
   /* Answer*/
-  if (!u_hastrace1 || !v_haszerodiag) {
-    *flag = PETSC_FALSE;
-    printf("WARNING: Trace(state) is not one!! Trace(u) = %1.14e, i=%d\n", u_sum, i );
+  if (u_hastrace1 && v_hastrace0) {
+    *flag = PETSC_TRUE;
   }
   
-  if (!u_hastrace1) {
-    printf("\n u :\n");
-    VecView(u, PETSC_VIEWER_STDOUT_WORLD);
-    printf("\n");
-  }
-  if (!v_haszerodiag) {
-    printf("\n v :\n");
-    VecView(v, PETSC_VIEWER_STDOUT_WORLD);
-    printf("\n");
-  }
+  /* Destroy vector strides */
+  ISDestroy(&isu);
+  ISDestroy(&isv);
 
 
   return ierr;

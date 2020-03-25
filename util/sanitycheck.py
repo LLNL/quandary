@@ -94,7 +94,7 @@ else:
 
 
 # Test 2: Check if Trace(rho) = 1
-# Hence, Trace(u) = 1 and diag(V) = 0
+# Hence, Trace(u) = 1 and Trace(V) = 0
 hasTrace1 = True
 
 for ts in range(len(udata)):
@@ -109,17 +109,18 @@ for ts in range(len(udata)):
     print("Testing time step", ts, ": t=", time,end=' ') 
  
     utrace = 0.0
+    vtrace = 0.0
     for i in range(dim_mat):
        utrace += uline[i*dim_mat+i] 
-       vdiag   = vline[i*dim_mat+i]
-       if (abs(vdiag) > EPS):
-            print("WARNING: vdiag not zero!", i, vdiag)
+       vtrace += vline[i*dim_mat+i]
+       if (abs(vtrace - 0.0) > EPS):
+            print("WARNING: trace(v) is not 0.0!", i, vtrace)
             hasTrace1 = False
        else:
             print(" ",i, " ", end='')
     if (abs(utrace - 1.0) > EPS):
         hasTrace1 = False
-        print("WARNING: trace(u) not 1.0!", utrace)
+        print("WARNING: trace(u) is not 1.0!", utrace)
     print()
 
 if (not hasTrace1):
