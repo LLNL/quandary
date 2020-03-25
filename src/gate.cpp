@@ -84,7 +84,6 @@ void Gate::assembleGate(){
 void Gate::compare(Vec finalstate, Vec u0, Vec v0, double& frob){
   frob = 0.0;
 
-  int dimu, dimG;
 
   /* Exit, if this is a dummy gate */
   if (dim_vec == 0) {
@@ -101,10 +100,11 @@ void Gate::compare(Vec finalstate, Vec u0, Vec v0, double& frob){
   VecGetArrayRead(vfinal, &vfinalptr);
 
   /* Make sure that state dimensions match the gate dimension */
-  VecGetSize(ufinal, &dimu); 
+  int dimstate, dimG;
+  VecGetSize(finalstate, &dimstate); 
   VecGetSize(Re0, &dimG);
-  if (dimu != dimG) {
-    printf("\n ERROR: Target gate dimension %d doesn't match system dimension %u\n", dimG, dimu);
+  if (dimstate/2 != dimG) {
+    printf("\n ERROR: Target gate dimension %d doesn't match system dimension %u\n", dimG, dimstate/2);
     exit(1);
   }
 
