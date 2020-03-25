@@ -50,8 +50,12 @@ OptimProblem::OptimProblem(MapParam config, myBraidApp* primalbraidapp_, myAdjoi
     assert (bounds.size() >= primalbraidapp->mastereq->getNOscillators());
 
     /* Prepare primal and adjoint initial conditions */
-    MatCreateVecs(primalbraidapp->mastereq->getRHS(), &initcond, NULL);
-    MatCreateVecs(primalbraidapp->mastereq->getRHS(), &initcondbar, NULL);
+    VecCreate(PETSC_COMM_WORLD, &initcond_re); 
+    VecSetSizes(initcond_re,PETSC_DECIDE,primalbraidapp->mastereq->getDim());
+    VecSetFromOptions(initcond_re);
+    VecDuplicate(initcond_re, &initcond_im);
+    VecDuplicate(initcond_re, &initcond_re_bar);
+    VecDuplicate(initcond_re, &initcond_im_bar);
     if      (initcond_type.compare("all")      == 0 ) ninit = primalbraidapp->mastereq->getDim();              // N^2
     else if (initcond_type.compare("diagonal") == 0 ) ninit = (int) sqrt(primalbraidapp->mastereq->getDim());  // N
     else if (initcond_type.compare("one")      == 0 ) {
@@ -204,18 +208,17 @@ bool OptimProblem::eval_f(const long long& n, const double* x_in, bool new_x, do
       
       /* Prepare the initial condition */
       int initid = assembleInitialCondition(iinit);
-
       if (mpirank_braid == 0) printf("%d: %d FWD. ", mpirank_init, initid);
 
       /* Run forward with initial condition initid*/
       primalbraidapp->PreProcess(initid);
-      primalbraidapp->setInitialCondition(initcond);
+      primalbraidapp->setInitialCondition(initcond_re, initcond_im);
       primalbraidapp->Drive();
       finalstate = primalbraidapp->PostProcess(); // this return NULL for all but the last time processor
 
       /* Add to objective function */
       if (finalstate != NULL) {
-        targetgate->compare(finalstate, initcond, obj_local);
+        targetgate->compare(finalstate, initcond_re, initcond_im, obj_local);
         objective += obj_local;
       }
       if (mpirank_braid == 0) printf("%d: local objective: %1.14e\n", mpirank_init, obj_local);
@@ -281,13 +284,13 @@ bool OptimProblem::eval_grad_f(const long long& n, const double* x_in, bool new_
     if (mpirank_braid == 0) printf("%d: %d FWD. ", mpirank_init, initid);
     
     primalbraidapp->PreProcess(initid);
-    primalbraidapp->setInitialCondition(initcond);
+    primalbraidapp->setInitialCondition(initcond_re, initcond_im);
     primalbraidapp->Drive();
     finalstate = primalbraidapp->PostProcess(); // returns NULL if not stored on this proc
 
     /* Add to objective function */
     if (finalstate != NULL) {
-      targetgate->compare(finalstate, initcond, obj_local);
+      targetgate->compare(finalstate, initcond_re, initcond_im, obj_local);
       objective += obj_local;
     }
     if (mpirank_braid == 0) printf("%d: local objective: %1.14e\n", mpirank_init, obj_local);
@@ -297,10 +300,10 @@ bool OptimProblem::eval_grad_f(const long long& n, const double* x_in, bool new_
     
     /* Derivative of objective function */
     if (finalstate != NULL) 
-       targetgate->compare_diff(finalstate, initcond, initcondbar, obj_bar);
+       targetgate->compare_diff(finalstate, initcond_re, initcond_im, initcond_re_bar, initcond_im_bar, obj_bar);
 
     adjointbraidapp->PreProcess(initid);
-    adjointbraidapp->setInitialCondition(initcondbar);
+    adjointbraidapp->setInitialCondition(initcond_re_bar, initcond_im_bar);
     adjointbraidapp->Drive();
     adjointbraidapp->PostProcess();
 
@@ -521,8 +524,9 @@ int OptimProblem::assembleInitialCondition(int iinit){
   }
 
   /* Set x to i-th unit vector */
-  VecZeroEntries(initcond); 
-  VecSetValue(initcond, initid, 1.0, INSERT_VALUES);
+  VecZeroEntries(initcond_re); 
+  VecZeroEntries(initcond_im); 
+  VecSetValue(initcond_re, initid, 1.0, INSERT_VALUES);
   // VecView(x, PETSC_VIEWER_STDOUT_WORLD);
   
   return initid;

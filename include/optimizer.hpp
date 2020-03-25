@@ -33,7 +33,8 @@ class OptimProblem : public hiop::hiopInterfaceDenseConstraints {
         FILE* optimfile;
     
     private: 
-        Vec initcond, initcondbar;   /* Storage for holding the initial condition and its adjoint */
+        Vec initcond_re, initcond_im;           /* Storage for real and imag part of initial condition */
+        Vec initcond_re_bar, initcond_im_bar;   /* Storage for real and imag part of adjoint initial condition */
 
     public:
         OptimProblem();

@@ -95,8 +95,8 @@ class myBraidApp : public BraidApp {
     /*  */
     virtual void PreProcess(int iinit);
 
-    /* Set the initial conditions */
-    virtual void setInitialCondition(Vec initialcondition);
+    /* Set real and imaginary part of the initial conditions at t=0 */
+    virtual void setInitialCondition(Vec initcond_re, Vec initcond_im);
 
     /* Performs one last FRelax. Returns state at last time step or NULL if not stored on this processor */
     virtual Vec PostProcess();

@@ -433,19 +433,36 @@ void myBraidApp::PreProcess(int iinit){
   }
 }
 
-void myBraidApp::setInitialCondition(Vec initialcondition){
+void myBraidApp::setInitialCondition(Vec initcond_re, Vec initcond_im){
   braid_BaseVector ubase;
+  int size;
   Vec x;
       
   /* Get braids vector at t == 0  and copy initial condition */
   _braid_UGetVectorRef(core->GetCore(), 0, 0, &ubase);
-  if (ubase != NULL)  // only true on one first processor !
+  if (ubase != NULL)  // only true on one processor (first, if primal app; last, if adjoint app)
   {
     x = ((myBraidVector *)ubase->userVector)->x;
 
     /* Copy initial condition into braid's vector */
-    VecCopy(initialcondition, x);
+    const PetscScalar *init_reptr, *init_imptr;
+    PetscScalar *xptr;
+    VecGetArrayRead(initcond_re, &init_reptr);
+    VecGetArrayRead(initcond_im, &init_imptr);
+    VecGetArray(x, &xptr);
+    VecGetSize(x, &size);
+    int dimu = (int) size / 2;
+    for (int i=0; i < dimu; i++) {
+      xptr[i]      = init_reptr[i];
+      xptr[i+dimu] = init_imptr[i];
+    }
+    VecRestoreArrayRead(initcond_re, &init_reptr);
+    VecRestoreArrayRead(initcond_im, &init_imptr);
+    VecRestoreArray(x, &xptr);
+
+    // VecView(x, PETSC_VIEWER_STDOUT_WORLD);
   }
+
 }
 
 

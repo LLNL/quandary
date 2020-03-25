@@ -28,8 +28,8 @@ class Gate {
     void assembleGate();
     
     /* compare the final state to gate-transformed initialcondition in Frobenius norm || q(T) - V\kronV q(0)||^2 */
-    void compare(Vec finalstate, Vec initcond, double& frob);
-    void compare_diff(const Vec finalstate, const Vec initcond, Vec finalstate_bar, const double delta_bar);
+    void compare(Vec finalstate, Vec initcond_re, Vec initcond_im, double& frob);
+    void compare_diff(const Vec finalstate, const Vec initcond_re, const Vec initcond_im, Vec u0_bar, Vec v0_bar, const double delta_bar);
 };
 
 /* X Gate, spanning one qubit. 

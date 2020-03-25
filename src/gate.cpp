@@ -81,7 +81,7 @@ void Gate::assembleGate(){
   // exit(1);
 }
 
-void Gate::compare(Vec finalstate, Vec initcond, double& frob){
+void Gate::compare(Vec finalstate, Vec u0, Vec v0, double& frob){
   frob = 0.0;
 
   int dimu, dimG;
@@ -91,7 +91,7 @@ void Gate::compare(Vec finalstate, Vec initcond, double& frob){
     return;
   }
 
-  Vec ufinal, vfinal, u0, v0;
+  Vec ufinal, vfinal;
   const PetscScalar *ufinalptr, *vfinalptr, *Re0ptr, *Im0ptr;
 
   /* Get real and imag part of final and initial states, x = [u,v] */
@@ -99,8 +99,6 @@ void Gate::compare(Vec finalstate, Vec initcond, double& frob){
   VecGetSubVector(finalstate, isv, &vfinal);
   VecGetArrayRead(ufinal, &ufinalptr);
   VecGetArrayRead(vfinal, &vfinalptr);
-  VecGetSubVector(initcond, isu, &u0);
-  VecGetSubVector(initcond, isv, &v0);
 
   /* Make sure that state dimensions match the gate dimension */
   VecGetSize(ufinal, &dimu); 
@@ -137,33 +135,26 @@ void Gate::compare(Vec finalstate, Vec initcond, double& frob){
   VecRestoreArrayRead(vfinal, &vfinalptr);
   VecRestoreSubVector(finalstate, isu, &ufinal);
   VecRestoreSubVector(finalstate, isv, &vfinal);
-  VecRestoreSubVector(initcond, isu, &u0);
-  VecRestoreSubVector(initcond, isv, &v0);
-
 }
 
-void Gate::compare_diff(const Vec finalstate, const Vec initcond, Vec finalstate_bar, const double frob_bar) {
+void Gate::compare_diff(const Vec finalstate, const Vec u0, const Vec v0, Vec u0_bar, Vec v0_bar, const double frob_bar) {
 
   /* Exit, if this is a dummy gate */
   if (dim_vec == 0) {
     return;
   }
 
-  Vec ufinal, vfinal, ufinal_bar, vfinal_bar, u0, v0;
+  Vec ufinal, vfinal;
   const PetscScalar *ufinalptr, *vfinalptr, *Re0ptr, *Im0ptr;
-  PetscScalar *ufinal_barptr, *vfinal_barptr;
+  PetscScalar *u0_barptr, *v0_barptr;
 
   /* Get real and imag part of final and initial primal and adjoint states, x = [u,v] */
   VecGetSubVector(finalstate, isu, &ufinal);
   VecGetSubVector(finalstate, isv, &vfinal);
   VecGetArrayRead(ufinal, &ufinalptr);
   VecGetArrayRead(vfinal, &vfinalptr);
-  VecGetSubVector(finalstate_bar, isu, &ufinal_bar);
-  VecGetSubVector(finalstate_bar, isv, &vfinal_bar);
-  VecGetArray(ufinal_bar, &ufinal_barptr);
-  VecGetArray(vfinal_bar, &vfinal_barptr);
-  VecGetSubVector(initcond, isu, &u0);
-  VecGetSubVector(initcond, isv, &v0);
+  VecGetArray(u0_bar, &u0_barptr);
+  VecGetArray(v0_bar, &v0_barptr);
 
   /* Derivative of read part of frobenius norm: 2 * (u - ReG*u0 + ImG*v0) * frob_bar */
   MatMult(ReG, u0, Re0);
@@ -171,7 +162,7 @@ void Gate::compare_diff(const Vec finalstate, const Vec initcond, Vec finalstate
   VecGetArrayRead(Re0, &Re0ptr);
   VecGetArrayRead(Im0, &Im0ptr);
   for (int j=0; j<dim_vec; j++) {
-    ufinal_barptr[j] = 2. * ( ufinalptr[j] - Re0ptr[j] + Im0ptr[j] ) * frob_bar;
+    u0_barptr[j] = 2. * ( ufinalptr[j] - Re0ptr[j] + Im0ptr[j] ) * frob_bar;
   }
   VecRestoreArrayRead(Re0, &Re0ptr);
   VecRestoreArrayRead(Im0, &Im0ptr);
@@ -182,7 +173,7 @@ void Gate::compare_diff(const Vec finalstate, const Vec initcond, Vec finalstate
   VecGetArrayRead(Re0, &Re0ptr);
   VecGetArrayRead(Im0, &Im0ptr);
   for (int j=0; j<dim_vec; j++) {
-    vfinal_barptr[j] = 2. * ( vfinalptr[j] - Re0ptr[j] - Im0ptr[j] ) * frob_bar;
+    v0_barptr[j] = 2. * ( vfinalptr[j] - Re0ptr[j] - Im0ptr[j] ) * frob_bar;
   }
   VecRestoreArrayRead(Re0, &Re0ptr);
   VecRestoreArrayRead(Im0, &Im0ptr);
@@ -192,12 +183,8 @@ void Gate::compare_diff(const Vec finalstate, const Vec initcond, Vec finalstate
   VecRestoreArrayRead(vfinal, &vfinalptr);
   VecRestoreSubVector(finalstate, isu, &ufinal);
   VecRestoreSubVector(finalstate, isv, &vfinal);
-  VecRestoreArray(ufinal_bar, &ufinal_barptr);
-  VecRestoreArray(vfinal_bar, &vfinal_barptr);
-  VecRestoreSubVector(finalstate_bar, isu, &ufinal_bar);
-  VecRestoreSubVector(finalstate_bar, isv, &vfinal_bar);
-  VecRestoreSubVector(initcond, isu, &u0);
-  VecRestoreSubVector(initcond, isv, &v0);
+  VecRestoreArray(u0_bar, &u0_barptr);
+  VecRestoreArray(v0_bar, &v0_barptr);
 
 }
 
