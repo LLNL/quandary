@@ -103,6 +103,11 @@ where a Tikhonov regularizatioe term $R(z)$ has been added in order to well-cond
        &= \frac{1}{2N^2} \left( \sum_{i=1}^{N^2} \| x_i(T) - g_i) \|^2_2 \right) \\
 \end{align}
 where $x_i$ and $g_i$ denote the $i-th$ column of $X(T)$ and $G=\bar V\otimes V$, respectively. Note, that $x_i(T)$ is the solution of the vectorized master equation \eqref{mastereq_vectorized} for the initial condition $x_i(0) = e_i$ being the $i$-th unit vector in $\R^{N^2}$. Hence, minimizing the normalized Frobenius norm equals to minimizing the average $L_2$ norm of the individual solution operator components. The objective function $J(z)$ therefore is the average squared error between the final state and the target gate (averaged over the initial conditions). 
+
+Since $X(0) = I_{N^2}$ spans a basis for all initial conditions $q(0) \in C^{N^2}$, the optimizer finds optimal control functions that minimize the distance 
+\begin{align}
+       \frac{1}{2} \| q(T) - \bar V\otimes V q(0)) \|^2_2 \quad \text{for any} \quad q(0) \in C^{N^2}.
+\end{align}
  
 \textit{Fidelity:} If $\rho(T)$ would be unitary (as in closed systems), we would have $X(T) = \bar U(T) \otimes U(T)$ where $U(t)$ is the solution operator for the Schroedinger equation. In that case, one can show that 
 \begin{align}

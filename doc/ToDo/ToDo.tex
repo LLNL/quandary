@@ -26,11 +26,10 @@
           \sum_{l=1}^L w_l\alpha_l \leq c_{max}
       \end{align*}
         where $w_l$ are monotonically increasing (e.g. exponentially). This will push later control functions to zero. 
-  \item Add option to read the initial state condition from config, then run only this one condition forward / backward.
   \item Modify braid access level option so that it writes the state only after the optimization has finished. 
   \item \textbf{Parallelization:}
       \begin{itemize}
-        \item Allow more flexibility for processor distribution between initial conditions and xbraid
+        \item Allow more flexibility for processor distribution between initial conditions and xbraid. AND FIX THE CURRENT INITCOND VERSION. 
         \item Parallelize HiOp: Distribute spline parameters.
         \item Parallelize linear algebra (Find out why serial run on multiple processors is faster than serial run on one processor. Seems like Petsc is still operating on multiple ranks?)
       \end{itemize}
