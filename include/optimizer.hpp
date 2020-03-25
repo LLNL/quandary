@@ -20,6 +20,7 @@ class OptimProblem : public hiop::hiopInterfaceDenseConstraints {
         std::string optiminit_type;           /* Type of design initialization */
         int printlevel;                
         int ninit;                            /* Number of initial conditions to be considered (N^2, N, or 1) */
+        int ninit_local;                      /* Local number of initial conditions on this processor */
 
         MPI_Comm comm_hiop, comm_init;
         int mpirank_braid, mpisize_braid;
@@ -28,7 +29,6 @@ class OptimProblem : public hiop::hiopInterfaceDenseConstraints {
         int mpirank_world, mpisize_world;
         int mpirank_init, mpisize_init;
 
-        int ilower, iupper; 
         FILE* optimfile;
     
     private: 
@@ -37,7 +37,7 @@ class OptimProblem : public hiop::hiopInterfaceDenseConstraints {
 
     public:
         OptimProblem();
-        OptimProblem(MapParam config, myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, Gate* targate_, MPI_Comm comm_hiop_, MPI_Comm comm_init_, int ninit_, int ilower_, int iupper_);
+        OptimProblem(MapParam config, myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, Gate* targate_, MPI_Comm comm_hiop_, MPI_Comm comm_init_, int ninit_);
         virtual ~OptimProblem();
 
 

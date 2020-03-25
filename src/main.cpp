@@ -33,7 +33,8 @@ int main(int argc,char **argv)
   PetscInt       nosci;        // Number of oscillators
   PetscInt       ntime;        // Number of time steps
   int            ninit;        // Total number of initial conditions that are considered (N^2, N or 1)
-  int            ninit_local;  // Number of initial conditions per processor 
+  int            np_braid;     // Number of cores for each braid instance
+  int            np_init;      // Number of cores for distributing initial conditions 
   PetscReal      dt;           // Time step size
   PetscReal      total_time;   // Total end time T
   TS             ts;           // Timestepping context
@@ -56,7 +57,9 @@ int main(int argc,char **argv)
 
   char filename[255];
   PetscErrorCode ierr;
-  PetscMPIInt    mpisize_world, mpirank_world;
+  int mpisize_world, mpirank_world;
+  int mpirank_init, mpisize_init, mpirank_braid, mpisize_braid;
+  MPI_Comm comm_braid, comm_init, comm_petsc, comm_hiop;
 
   /* Initialize MPI */
   MPI_Init(&argc, &argv);
@@ -66,20 +69,8 @@ int main(int argc,char **argv)
 
   /* Split aside communicators for petsc and hiop for later development. Size 1 for now. */
   MPI_Comm comm = MPI_COMM_WORLD;
-  MPI_Comm comm_petsc, comm_hiop;
   MPI_Comm_split(MPI_COMM_WORLD, mpirank_world, mpirank_world, &comm_hiop);
   MPI_Comm_split(MPI_COMM_WORLD, mpirank_world, mpirank_world, &comm_petsc);
-
-  // int mpirank_petsc, mpirank_hiop;
-  // int mpisize_petsc, mpisize_hiop;
-  // MPI_Comm_rank(comm_petsc, &mpirank_petsc);
-  // MPI_Comm_size(comm_petsc, &mpisize_petsc);
-  // MPI_Comm_rank(comm_hiop, &mpirank_hiop);
-  // MPI_Comm_size(comm_hiop, &mpisize_hiop);
-  // printf("world %d/%d\n", mpirank_world, mpisize_world);
-  // printf("petsc %d/%d\n", mpirank_petsc, mpisize_petsc);
-  // printf("hiop  %d/%d\n", mpirank_hiop, mpisize_hiop );
-
 
   /* Initialize Petsc using petsc's communicator */
   PETSC_COMM_WORLD = comm_petsc;
@@ -194,9 +185,8 @@ int main(int argc,char **argv)
   }
 
   /* --- Get processor distribution for initial condition and braid --- */
-  int np_braid;     // Number of cores for each braid instance
-  int np_init;      // Number of cores for distributing initial conditions 
-  np_init  = config.GetIntParam("np_init", 1);// default: all cores for braid only, no initial condition parallelism
+  np_init     = config.GetIntParam("np_init", 1); // Size of communicator for initial consitions 
+  np_braid    = mpisize_world / np_init;          // Size of communicator for braid 
   /* Sanity check */
   if (ninit % np_init != 0){
     printf("ERROR: Wrong processor distribution! \n Size of communicator for distributing initial conditions (%d) must be integer divisor of the total number of initial conditions (%d)!!\n", np_init, ninit);
@@ -206,14 +196,7 @@ int main(int argc,char **argv)
     printf("ERROR: Wrong number of threads! \n Total number of threads (%d) must be integer multiple of the size of initial condition communicator (%d)!\n", mpisize_world, np_init);
     exit(1);
   }
-
-  ninit_local = ninit / np_init;      // Number of initial conditions per init-processor group
-  np_braid = mpisize_world / np_init; // Number of cores for braid
-
   /* Split communicator for braid and initial condition */
-  int mpirank_init, mpisize_init, mpirank_braid, mpisize_braid;
-  MPI_Comm comm_braid;
-  MPI_Comm comm_init;
   MPI_Comm_split(MPI_COMM_WORLD, mpirank_world % np_braid, mpirank_world, &comm_init);
   MPI_Comm_split(MPI_COMM_WORLD, mpirank_world / np_braid, mpirank_world, &comm_braid);
   MPI_Comm_rank(comm_init, &mpirank_init);
@@ -221,45 +204,8 @@ int main(int argc,char **argv)
   MPI_Comm_rank(comm_braid, &mpirank_braid);
   MPI_Comm_size(comm_braid, &mpisize_braid);
 
-
-  /* Get distribution of initial conditions */
-  int ilower = mpirank_init * ninit_local;          // id of first initial condition on this processor 
-  int iupper = (mpirank_init+1) * ninit_local - 1;  // id of last initial condition on this processor
-
-  printf("%d: np_init %d/%d: ninit_local %d/%d: [%d,%d] , np_braid %d/%d\n", mpirank_world, mpirank_init, mpisize_init, ninit_local,ninit, ilower, iupper, mpirank_braid, mpisize_braid);
-  ierr = PetscFinalize();
-  MPI_Finalize();
-  exit(1);
+  printf("%d: np_init %d/%d: np_braid %d/%d\n", mpirank_world, mpirank_init, mpisize_init, mpirank_braid, mpisize_braid);
   
-
-  // int dimN = mastereq->getDim();
-  // int p;
-  // if (dimN >= mpisize_world) { 
-  //   // Distribute initial conditions only
-  //   // each braid instance runs with 1 processor
-  //   np_braid = 1;
-  //   // Get distribution of initial conditions
-  //   int quo = dimN / mpisize_world;
-  //   int rem = dimN % mpisize_world;
-  //   p = mpirank_world;
-  //   ilower = p * quo + (p < rem ? p : rem);
-  //   p = mpirank_world + 1;
-  //   iupper = p * quo + (p < rem ? p : rem) - 1;
-  //   ninit    = iupper - ilower + 1;
-  // } else { 
-  //   // Each initial condition uses separate braid instance
-  //   // Each braid instance uses nprocs / dimN processors 
-  //   if (mpisize_world % dimN != 0) {
-  //     printf("ERROR: #nprocs should be a multiple of the system dimensions %d.\n", dimN);
-  //     exit(1);
-  //   }
-  //   ninit    = 1;    
-  //   np_braid = (int) mpisize_world / dimN;  
-  //   ilower = mpirank_world / np_braid ;
-  //   iupper = mpirank_world / np_braid ;
-  // }
-
-
   /* Create braid instances */
   primalbraidapp = new myBraidApp(comm_braid, total_time, ntime, ts, mytimestepper, mastereq, &config);
   adjointbraidapp = new myAdjointBraidApp(comm_braid, total_time, ntime, ts, mytimestepper, mastereq, *mu, &config, primalbraidapp->getCore());
@@ -267,7 +213,7 @@ int main(int argc,char **argv)
   adjointbraidapp->InitGrids();
 
   /* Initialize the optimization */
-  OptimProblem optimproblem(config, primalbraidapp, adjointbraidapp, targetgate, comm_hiop, comm_init, ninit, ilower, iupper);
+  OptimProblem optimproblem(config, primalbraidapp, adjointbraidapp, targetgate, comm_hiop, comm_init, ninit);
   hiop::hiopNlpDenseConstraints nlp(optimproblem);
   long long int ndesign,m;
   optimproblem.get_prob_sizes(ndesign, m);

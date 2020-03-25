@@ -16,17 +16,17 @@ OptimProblem::OptimProblem() {
     mpisize_world = 0;
     printlevel = 0;
     ninit = 0;
+    ninit_local = 0;
 }
 
-OptimProblem::OptimProblem(MapParam config, myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, Gate* targate_, MPI_Comm comm_hiop_, MPI_Comm comm_init_, int ninit_, int ilower_, int iupper_) {
+OptimProblem::OptimProblem(MapParam config, myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, Gate* targate_, MPI_Comm comm_hiop_, MPI_Comm comm_init_, int ninit_) {
     primalbraidapp  = primalbraidapp_;
     adjointbraidapp = adjointbraidapp_;
     targetgate = targate_;
     comm_hiop = comm_hiop_;
     comm_init = comm_init_;
-    ilower = ilower_;
-    iupper = iupper_;
     ninit = ninit_;
+
 
     /* Store ranks and sizes of communicators */
     MPI_Comm_rank(primalbraidapp->comm_braid, &mpirank_braid);
@@ -40,6 +40,8 @@ OptimProblem::OptimProblem(MapParam config, myBraidApp* primalbraidapp_, myAdjoi
     MPI_Comm_rank(comm_init, &mpirank_init);
     MPI_Comm_size(comm_init, &mpisize_init);
 
+    /* Store number of initial conditions per init-processor group */
+    ninit_local = ninit / mpisize_init; 
 
     /* Read config options */
     regul = config.GetDoubleParam("optim_regul", 1e-4);
@@ -204,11 +206,11 @@ bool OptimProblem::eval_f(const long long& n, const double* x_in, bool new_x, do
 
     /*  Iterate over initial condition */
     objective = 0.0;
-    for (int iinit = 0; iinit < ninit; iinit++) {
+    for (int iinit = 0; iinit < ninit_local; iinit++) {
       
       /* Prepare the initial condition */
       int initid = assembleInitialCondition(iinit);
-      if (mpirank_braid == 0) printf("%d: %d FWD. ", mpirank_init, initid);
+      if (mpirank_braid == 0) printf("%d: %d FWD. \n", mpirank_init, initid);
 
       /* Run forward with initial condition initid*/
       primalbraidapp->PreProcess(initid);
@@ -221,7 +223,7 @@ bool OptimProblem::eval_f(const long long& n, const double* x_in, bool new_x, do
         targetgate->compare(finalstate, initcond_re, initcond_im, obj_local);
         objective += obj_local;
       }
-      if (mpirank_braid == 0) printf("%d: local objective: %1.14e\n", mpirank_init, obj_local);
+      // if (mpirank_braid == 0) printf("%d: local objective: %1.14e\n", mpirank_init, obj_local);
     }
   // }
 
@@ -275,13 +277,13 @@ bool OptimProblem::eval_grad_f(const long long& n, const double* x_in, bool new_
 
   /* Iterate over initial conditions */
   objective = 0.0;
-  for (int iinit = 0; iinit < ninit; iinit++) {
+  for (int iinit = 0; iinit < ninit_local; iinit++) {
 
     /* Prepare the initial condition */
     int initid = assembleInitialCondition(iinit);
 
     /* --- Solve primal --- */
-    if (mpirank_braid == 0) printf("%d: %d FWD. ", mpirank_init, initid);
+    // if (mpirank_braid == 0) printf("%d: %d FWD. ", mpirank_init, initid);
     
     primalbraidapp->PreProcess(initid);
     primalbraidapp->setInitialCondition(initcond_re, initcond_im);
@@ -293,10 +295,10 @@ bool OptimProblem::eval_grad_f(const long long& n, const double* x_in, bool new_
       targetgate->compare(finalstate, initcond_re, initcond_im, obj_local);
       objective += obj_local;
     }
-    if (mpirank_braid == 0) printf("%d: local objective: %1.14e\n", mpirank_init, obj_local);
+    // if (mpirank_braid == 0) printf("%d: local objective: %1.14e\n", mpirank_init, obj_local);
 
     /* --- Solve adjoint --- */
-    if (mpirank_braid == 0) printf("%d: %d BWD.", mpirank_init, initid);
+    // if (mpirank_braid == 0) printf("%d: %d BWD.", mpirank_init, initid);
     
     /* Derivative of objective function */
     if (finalstate != NULL) 
@@ -511,9 +513,12 @@ bool OptimProblem::get_MPI_comm(MPI_Comm& comm_out){
 }
 
 
-int OptimProblem::assembleInitialCondition(int iinit){
+int OptimProblem::assembleInitialCondition(int iinit_local){
   int initid = -1000;
   int dim = primalbraidapp->mastereq->getDim(); // N^2
+
+  /* Translate local iinit to this processor's domain 1rank * ninit_local, (rank+1) * ninit_local - 1] */
+  int iinit = mpirank_init * ninit_local + iinit_local;
 
   /* Check for initial condition type */
   if ( ninit == 1) 
