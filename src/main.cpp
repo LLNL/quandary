@@ -33,6 +33,7 @@ int main(int argc,char **argv)
   PetscInt       nosci;        // Number of oscillators
   PetscInt       ntime;        // Number of time steps
   int            ninit;        // Total number of initial conditions that are considered (N^2, N or 1)
+  int            ninit_local;  // Number of initial conditions per processor 
   PetscReal      dt;           // Time step size
   PetscReal      total_time;   // Total end time T
   TS             ts;           // Timestepping context
@@ -181,7 +182,7 @@ int main(int argc,char **argv)
   TSCreate(PETSC_COMM_SELF,&ts);CHKERRQ(ierr);
   TSInit(ts, mastereq, ntime, dt, total_time, x, lambda, mu, monitor);
 
-  /* Get the total number of initial conditions */
+  /* Get the total number of initial conditions 'ninit' */
   std::string initcond_type; 
   initcond_type = config.GetStrParam("initialconditions", "all");
   if      (initcond_type.compare("all")      == 0 ) ninit = mastereq->getDim();              // N^2
@@ -192,11 +193,46 @@ int main(int argc,char **argv)
     exit(1);
   }
 
-  // /* Compute distribution of initial conditions */
+  /* --- Get processor distribution for initial condition and braid --- */
+  int np_braid;     // Number of cores for each braid instance
+  int np_init;      // Number of cores for distributing initial conditions 
+  np_init  = config.GetIntParam("np_init", 1);// default: all cores for braid only, no initial condition parallelism
+  /* Sanity check */
+  if (ninit % np_init != 0){
+    printf("ERROR: Wrong processor distribution! \n Size of communicator for distributing initial conditions (%d) must be integer divisor of the total number of initial conditions (%d)!!\n", np_init, ninit);
+    exit(1);
+  }
+  if (mpisize_world % np_init != 0) {
+    printf("ERROR: Wrong number of threads! \n Total number of threads (%d) must be integer multiple of the size of initial condition communicator (%d)!\n", mpisize_world, np_init);
+    exit(1);
+  }
+
+  ninit_local = ninit / np_init;      // Number of initial conditions per init-processor group
+  np_braid = mpisize_world / np_init; // Number of cores for braid
+
+  /* Split communicator for braid and initial condition */
+  int mpirank_init, mpisize_init, mpirank_braid, mpisize_braid;
+  MPI_Comm comm_braid;
+  MPI_Comm comm_init;
+  MPI_Comm_split(MPI_COMM_WORLD, mpirank_world % np_braid, mpirank_world, &comm_init);
+  MPI_Comm_split(MPI_COMM_WORLD, mpirank_world / np_braid, mpirank_world, &comm_braid);
+  MPI_Comm_rank(comm_init, &mpirank_init);
+  MPI_Comm_size(comm_init, &mpisize_init);
+  MPI_Comm_rank(comm_braid, &mpirank_braid);
+  MPI_Comm_size(comm_braid, &mpisize_braid);
+
+
+  /* Get distribution of initial conditions */
+  int ilower = mpirank_init * ninit_local;          // id of first initial condition on this processor 
+  int iupper = (mpirank_init+1) * ninit_local - 1;  // id of last initial condition on this processor
+
+  printf("%d: np_init %d/%d: ninit_local %d/%d: [%d,%d] , np_braid %d/%d\n", mpirank_world, mpirank_init, mpisize_init, ninit_local,ninit, ilower, iupper, mpirank_braid, mpisize_braid);
+  ierr = PetscFinalize();
+  MPI_Finalize();
+  exit(1);
+  
+
   // int dimN = mastereq->getDim();
-  int np_braid;     // number of cores per braid instance
-  int ilower; // index of first initial condition on this processor 
-  int iupper; // index of last initial condition on this processor
   // int p;
   // if (dimN >= mpisize_world) { 
   //   // Distribute initial conditions only
@@ -223,19 +259,6 @@ int main(int argc,char **argv)
   //   iupper = mpirank_world / np_braid ;
   // }
 
-  /* Split communicator for braid and initial condition */
-  np_braid = 1;
-  MPI_Comm comm_braid, comm_init;
-  MPI_Comm_split(MPI_COMM_WORLD, mpirank_world / np_braid, mpirank_world, &comm_braid);
-  MPI_Comm_split(MPI_COMM_WORLD, mpirank_world % np_braid, mpirank_world, &comm_init);
-  int mpirank_init, mpisize_init;
-  int mpirank_braid, mpisize_braid;
-  MPI_Comm_rank(comm_init, &mpirank_init);
-  MPI_Comm_size(comm_init, &mpisize_init);
-  MPI_Comm_rank(comm_braid, &mpirank_braid);
-  MPI_Comm_size(comm_braid, &mpisize_braid);
-
-  // printf("%d: np_init %d/%d: ninit %d [%d,%d], np_braid %d/%d\n", mpirank_world, mpirank_init, mpisize_init, ninit, ilower, iupper, mpirank_braid, mpisize_braid);
 
   /* Create braid instances */
   primalbraidapp = new myBraidApp(comm_braid, total_time, ntime, ts, mytimestepper, mastereq, &config);
