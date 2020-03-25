@@ -185,15 +185,15 @@ int main(int argc,char **argv)
   }
 
   /* --- Get processor distribution for initial condition and braid --- */
-  np_init     = config.GetIntParam("np_init", 1); // Size of communicator for initial consitions 
-  np_braid    = mpisize_world / np_init;          // Size of communicator for braid 
-  /* Sanity check */
+  np_init  = min(ninit, config.GetIntParam("np_init", 1));  // Size of communicator for initial consitions 
+  np_braid = mpisize_world / np_init;                       // Size of communicator for braid 
+  /* Sanity check */ 
   if (ninit % np_init != 0){
     printf("ERROR: Wrong processor distribution! \n Size of communicator for distributing initial conditions (%d) must be integer divisor of the total number of initial conditions (%d)!!\n", np_init, ninit);
     exit(1);
   }
   if (mpisize_world % np_init != 0) {
-    printf("ERROR: Wrong number of threads! \n Total number of threads (%d) must be integer multiple of the size of initial condition communicator (%d)!\n", mpisize_world, np_init);
+    printf("ERROR: Wrong number of threads! \n Total number of threads (%d) must be integer multiple of the size of the communicator for initial conditions (%d)!\n", mpisize_world, np_init);
     exit(1);
   }
   /* Split communicator for braid and initial condition */
