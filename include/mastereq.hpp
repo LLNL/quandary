@@ -16,7 +16,7 @@ class MasterEq{
   public: 
 
   protected:
-    int dim;                 // Dimension of vectorized system 
+    int dim;                 // Dimension of vectorized system  N^2
     int noscillators;        // Number of oscillators
     Oscillator** oscil_vec;  // Vector storing pointers to the oscillators
 

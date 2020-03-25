@@ -18,7 +18,7 @@ OptimProblem::OptimProblem() {
     ninit = 0;
 }
 
-OptimProblem::OptimProblem(MapParam config, myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, Gate* targate_, MPI_Comm comm_hiop_, MPI_Comm comm_init_, int ilower_, int iupper_) {
+OptimProblem::OptimProblem(MapParam config, myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, Gate* targate_, MPI_Comm comm_hiop_, MPI_Comm comm_init_, int ninit_, int ilower_, int iupper_) {
     primalbraidapp  = primalbraidapp_;
     adjointbraidapp = adjointbraidapp_;
     targetgate = targate_;
@@ -26,6 +26,7 @@ OptimProblem::OptimProblem(MapParam config, myBraidApp* primalbraidapp_, myAdjoi
     comm_init = comm_init_;
     ilower = ilower_;
     iupper = iupper_;
+    ninit = ninit_;
 
     /* Store ranks and sizes of communicators */
     MPI_Comm_rank(primalbraidapp->comm_braid, &mpirank_braid);
@@ -45,7 +46,6 @@ OptimProblem::OptimProblem(MapParam config, myBraidApp* primalbraidapp_, myAdjoi
     optiminit_type = config.GetStrParam("optim_init", "zero");
     datadir = config.GetStrParam("datadir", "./data_out");
     printlevel = config.GetIntParam("optim_printlevel", 1);
-    initcond_type = config.GetStrParam("initialconditions", "all");
     config.GetVecDoubleParam("optim_bounds", bounds, 1e20);
     assert (bounds.size() >= primalbraidapp->mastereq->getNOscillators());
 
@@ -56,10 +56,9 @@ OptimProblem::OptimProblem(MapParam config, myBraidApp* primalbraidapp_, myAdjoi
     VecDuplicate(initcond_re, &initcond_im);
     VecDuplicate(initcond_re, &initcond_re_bar);
     VecDuplicate(initcond_re, &initcond_im_bar);
-    if      (initcond_type.compare("all")      == 0 ) ninit = primalbraidapp->mastereq->getDim();              // N^2
-    else if (initcond_type.compare("diagonal") == 0 ) ninit = (int) sqrt(primalbraidapp->mastereq->getDim());  // N
-    else if (initcond_type.compare("one")      == 0 ) {
-      ninit = 1;
+
+    /* Read a specific initial conditions from config file, if requested */
+    if (ninit == 1) {
       /* Read initial condition from config file */
       std::vector<double> initvec_re, initvec_im;
       config.GetVecDoubleParam("initvec_re", initvec_re, 0.0);
@@ -73,11 +72,7 @@ OptimProblem::OptimProblem(MapParam config, myBraidApp* primalbraidapp_, myAdjoi
       VecAssemblyBegin(initcond_re); VecAssemblyEnd(initcond_re);
       VecAssemblyBegin(initcond_im); VecAssemblyEnd(initcond_im);
     }
-    else {
-      printf("Wrong initial condition type: %s \n", initcond_type.c_str());
-      exit(1);
-    }
-
+   
     /* Open optim file */
     if (mpirank_world == 0 && printlevel > 0) {
       char filename[255];
@@ -518,16 +513,15 @@ bool OptimProblem::get_MPI_comm(MPI_Comm& comm_out){
 
 int OptimProblem::assembleInitialCondition(int iinit){
   int initid = -1000;
+  int dim = primalbraidapp->mastereq->getDim(); // N^2
 
   /* Check for initial condition type */
-  if ( initcond_type.compare("one") == 0 ) {
-    /* Do nothing. Initial condition is already stored in initcond_re, initcond_im */
-    return -1;
-  }
-  else if ( initcond_type.compare("all")      == 0 ) initid = iinit; 
-  else if ( initcond_type.compare("diagonal") == 0 ) initid = iinit * ninit + iinit; 
+  if ( ninit == 1) 
+      return -1;  // Do nothing. Init cond is already stored in initcond_re, initcond_im 
+  else if ( ninit == (int) sqrt(dim) ) initid = iinit * ninit + iinit;  // diagonal only
+  else if ( ninit == dim )             initid = iinit;                  // all initial conditions 
   else {
-    printf("Wrong initial condition type: %s\n", initcond_type.c_str());
+    printf("Something went wrong with initial condistion distribution. This should never happen.\n");
     exit(1);
   }
 

@@ -29,9 +29,10 @@ enum RunType {
 
 int main(int argc,char **argv)
 {
-  PetscInt       nlvl;         // Number of levels for each oscillator (currently 2)
-  PetscInt       nosci;        // Number of oscillators (currently 2)
+  PetscInt       nlvl;         // Number of levels for each oscillator
+  PetscInt       nosci;        // Number of oscillators
   PetscInt       ntime;        // Number of time steps
+  int            ninit;        // Total number of initial conditions that are considered (N^2, N or 1)
   PetscReal      dt;           // Time step size
   PetscReal      total_time;   // Total end time T
   TS             ts;           // Timestepping context
@@ -62,7 +63,7 @@ int main(int argc,char **argv)
   MPI_Comm_size(MPI_COMM_WORLD, &mpisize_world);
   if (mpirank_world == 0) printf("# Running on %d cores.\n", mpisize_world);
 
-  /* Split aside communicators for petsc and hiop */
+  /* Split aside communicators for petsc and hiop for later development. Size 1 for now. */
   MPI_Comm comm = MPI_COMM_WORLD;
   MPI_Comm comm_petsc, comm_hiop;
   MPI_Comm_split(MPI_COMM_WORLD, mpirank_world, mpirank_world, &comm_hiop);
@@ -180,39 +181,50 @@ int main(int argc,char **argv)
   TSCreate(PETSC_COMM_SELF,&ts);CHKERRQ(ierr);
   TSInit(ts, mastereq, ntime, dt, total_time, x, lambda, mu, monitor);
 
-  /* Compute distribution of initial conditions */
-  int dimN = mastereq->getDim();
-  int np_braid;     // number of cores per braid instance
-  int ninit;  // number of initial conditions per braid instance
-  int ilower; // index of first initial condition on this processor 
-  int iupper; // index of last initial condition on this processor
-  int p;
-  if (dimN >= mpisize_world) { 
-    // Distribute initial conditions only
-    // each braid instance runs with 1 processor
-    np_braid = 1;
-    // Get distribution of initial conditions
-    int quo = dimN / mpisize_world;
-    int rem = dimN % mpisize_world;
-    p = mpirank_world;
-    ilower = p * quo + (p < rem ? p : rem);
-    p = mpirank_world + 1;
-    iupper = p * quo + (p < rem ? p : rem) - 1;
-    ninit    = iupper - ilower + 1;
-  } else { 
-    // Each initial condition uses separate braid instance
-    // Each braid instance uses nprocs / dimN processors 
-    if (mpisize_world % dimN != 0) {
-      printf("ERROR: #nprocs should be a multiple of the system dimensions %d.\n", dimN);
-      exit(1);
-    }
-    ninit    = 1;    
-    np_braid = (int) mpisize_world / dimN;  
-    ilower = mpirank_world / np_braid ;
-    iupper = mpirank_world / np_braid ;
+  /* Get the total number of initial conditions */
+  std::string initcond_type; 
+  initcond_type = config.GetStrParam("initialconditions", "all");
+  if      (initcond_type.compare("all")      == 0 ) ninit = mastereq->getDim();              // N^2
+  else if (initcond_type.compare("diagonal") == 0 ) ninit = (int) sqrt(mastereq->getDim());  // N
+  else if (initcond_type.compare("one")      == 0 ) ninit = 1;
+  else {
+    printf("Wrong initial condition type: %s \n", initcond_type.c_str());
+    exit(1);
   }
 
+  // /* Compute distribution of initial conditions */
+  // int dimN = mastereq->getDim();
+  int np_braid;     // number of cores per braid instance
+  int ilower; // index of first initial condition on this processor 
+  int iupper; // index of last initial condition on this processor
+  // int p;
+  // if (dimN >= mpisize_world) { 
+  //   // Distribute initial conditions only
+  //   // each braid instance runs with 1 processor
+  //   np_braid = 1;
+  //   // Get distribution of initial conditions
+  //   int quo = dimN / mpisize_world;
+  //   int rem = dimN % mpisize_world;
+  //   p = mpirank_world;
+  //   ilower = p * quo + (p < rem ? p : rem);
+  //   p = mpirank_world + 1;
+  //   iupper = p * quo + (p < rem ? p : rem) - 1;
+  //   ninit    = iupper - ilower + 1;
+  // } else { 
+  //   // Each initial condition uses separate braid instance
+  //   // Each braid instance uses nprocs / dimN processors 
+  //   if (mpisize_world % dimN != 0) {
+  //     printf("ERROR: #nprocs should be a multiple of the system dimensions %d.\n", dimN);
+  //     exit(1);
+  //   }
+  //   ninit    = 1;    
+  //   np_braid = (int) mpisize_world / dimN;  
+  //   ilower = mpirank_world / np_braid ;
+  //   iupper = mpirank_world / np_braid ;
+  // }
+
   /* Split communicator for braid and initial condition */
+  np_braid = 1;
   MPI_Comm comm_braid, comm_init;
   MPI_Comm_split(MPI_COMM_WORLD, mpirank_world / np_braid, mpirank_world, &comm_braid);
   MPI_Comm_split(MPI_COMM_WORLD, mpirank_world % np_braid, mpirank_world, &comm_init);
@@ -232,7 +244,7 @@ int main(int argc,char **argv)
   adjointbraidapp->InitGrids();
 
   /* Initialize the optimization */
-  OptimProblem optimproblem(config, primalbraidapp, adjointbraidapp, targetgate, comm_hiop, comm_init, ilower, iupper);
+  OptimProblem optimproblem(config, primalbraidapp, adjointbraidapp, targetgate, comm_hiop, comm_init, ninit, ilower, iupper);
   hiop::hiopNlpDenseConstraints nlp(optimproblem);
   long long int ndesign,m;
   optimproblem.get_prob_sizes(ndesign, m);

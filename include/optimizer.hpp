@@ -18,7 +18,6 @@ class OptimProblem : public hiop::hiopInterfaceDenseConstraints {
         std::vector<double> bounds;    /* Bounds for the control function amplitudes for each oscillator */
         std::string datadir;           /* Directory for data output */
         std::string optiminit_type;           /* Type of design initialization */
-        std::string initcond_type;            /* Type of equation initial conditions */
         int printlevel;                
         int ninit;                            /* Number of initial conditions to be considered (N^2, N, or 1) */
 
@@ -38,7 +37,7 @@ class OptimProblem : public hiop::hiopInterfaceDenseConstraints {
 
     public:
         OptimProblem();
-        OptimProblem(MapParam config, myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, Gate* targate_, MPI_Comm comm_hiop_, MPI_Comm comm_init_, int ilower_, int iupper_);
+        OptimProblem(MapParam config, myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, Gate* targate_, MPI_Comm comm_hiop_, MPI_Comm comm_init_, int ninit_, int ilower_, int iupper_);
         virtual ~OptimProblem();
 
 
