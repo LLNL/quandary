@@ -233,11 +233,15 @@ Target gates that we consider include
         \item Spatial parallelism for parallel linear algebra (Petsc)
         \item Parallel optimization (HiOp)
       \end{enumerate}
-      The global communicator (MPI\_COMM\_WORLD) is split into four sub-communicator, one for each of the above. Currently only the first two levels are implemented, while Petsc and HiOp run on communicators with size 1, i.e. the global communicator is split only between $N^2$ initial conditions and XBraid. For each initial condition, one braid run is performed in parallel, while summing up the global objective function afterwards.
-      \begin{align*}
-        J(z) = \sum_{i=1}^{N^2} f_i(z) + \frac{\gamma}{2}\| z\|^2_2
-      \end{align*}
-      
-      If more than $N^2$ processors are used, each initial condition runs a separate XBraid instance in parallel. It is then required that the number of processors (\#nprocs) is an integer multiple of the number of initial conditions $N^2$, so that each braid instance uses the same number of cores for time-parallelization ($\frac{\#nprocs}{N^2}$). If $\#nprocs < N^2$, the initial conditions are distributed amongst the processors, running braid in serial (make sure to choose maxlevels=1 in that case!)
+      The global communicator (MPI\_COMM\_WORLD) is split into four sub-communicator, one for each of the above. Currently only the first two levels are implemented, while Petsc and HiOp run on communicators with size 1. The total number of mpi processes ($np_{total}$) is divided into cores for braid and for the initial conditions like so
+         \begin{align*}
+           np_{braid} * np_{init} = np_{total}.
+         \end{align*}
+      The user specifies the size of the communicator for distributing the initial conditions ($np_{init}$) in the config file, with the following requirements:
+      \begin{itemize}
+        \item $np_{init} \leq n_{init}$, where $n_{init}$ is the total number of initial conditions that are considered (can be $1$, $N$, or $N^2$). This requirement is handled by the code, limiting $np_{init}$ if necessary.
+        \item $\frac{n_{init}}{np_{init}} \in \mathds{N}$, so that each processor group owns the same number of initial conditions.
+        \item $\frac{np_{total}}{np_{init}} \in \mathds{N}$, so that each processor group has the same number of cores for braid, i.e. $np_{braid} = \frac{np_{total}}{np_{init}}$.
+      \end{itemize}
   
 \end{document}
