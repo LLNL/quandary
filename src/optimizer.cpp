@@ -213,7 +213,7 @@ bool OptimProblem::eval_f(const long long& n, const double* x_in, bool new_x, do
       
       /* Prepare the initial condition */
       int initid = assembleInitialCondition(iinit);
-      if (mpirank_braid == 0) printf("%d: %d FWD. \n", mpirank_init, initid);
+      // if (mpirank_braid == 0) printf("%d: %d FWD. \n", mpirank_init, initid);
 
       /* Run forward with initial condition initid*/
       primalbraidapp->PreProcess(initid);

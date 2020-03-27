@@ -183,6 +183,7 @@ int main(int argc,char **argv)
 
   /* --- Get processor distribution for initial condition and braid --- */
   np_init  = min(ninit, config.GetIntParam("np_init", 1));  // Size of communicator for initial consitions 
+  np_init  = min(np_init, mpisize_world);
   np_braid = mpisize_world / np_init;                       // Size of communicator for braid 
   /* Sanity check */ 
   if (ninit % np_init != 0){
