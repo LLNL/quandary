@@ -93,7 +93,7 @@ void Gate::compare(Vec finalstate, Vec u0, Vec v0, double& frob){
   Vec ufinal, vfinal;
   const PetscScalar *ufinalptr, *vfinalptr, *Re0ptr, *Im0ptr;
 
-  /* Get real and imag part of final and initial states, x = [u,v] */
+  /* Get real and imag part of final state, x = [u,v] */
   VecGetSubVector(finalstate, isu, &ufinal);
   VecGetSubVector(finalstate, isv, &vfinal);
   VecGetArrayRead(ufinal, &ufinalptr);
@@ -108,7 +108,7 @@ void Gate::compare(Vec finalstate, Vec u0, Vec v0, double& frob){
     exit(1);
   }
 
-  /* Add read part of frobenius norm || u - ReG*u0 + ImG*v0 ||^2 */
+  /* Add real part of frobenius norm || u - ReG*u0 + ImG*v0 ||^2 */
   MatMult(ReG, u0, Re0);
   MatMult(ImG, v0, Im0);
   VecGetArrayRead(Re0, &Re0ptr);
@@ -275,13 +275,56 @@ CNOT::CNOT() : Gate(4) {
 CNOT::~CNOT(){}
 
  GroundstateGate::GroundstateGate(int dim_v_) : Gate(dim_v_) {
-
-  /* Fill Va = V, Vb = 0 */
-  MatSetValue(Va, 0, 0, 1.0, INSERT_VALUES);
-  MatAssemblyBegin(Va, MAT_FINAL_ASSEMBLY);
-  MatAssemblyEnd(Va, MAT_FINAL_ASSEMBLY);
-
-  /* assemble V = \bar V \kron V */
-  assembleGate();
+   /* Do nothing. All computation done in the overloaded function 'compare' */
  }
  GroundstateGate::~GroundstateGate(){}
+
+
+
+void GroundstateGate::compare(Vec finalstate, Vec u0, Vec v0, double& frob){
+  frob = 0.0;
+
+  // Sanity check for dimensions 
+  int dimstate;
+  VecGetSize(finalstate, &dimstate);
+  if (dimstate != 2*dim_vec) {
+    printf("\n ERROR: Target gate dimension doesn't match system dimension\n") ;
+    exit(1);
+  }
+
+  /* Get ptr to final state */
+  const PetscScalar *stateptr;
+  VecGetArrayRead(finalstate, &stateptr);
+
+  /* Sum up frobenius norm: frob = || q(T) - e_1 ||^2 */
+  frob += pow(stateptr[0] - 1.0, 2); 
+  for (int i = 1; i < 2*dim_vec; i++){
+    frob += pow(stateptr[i], 2);
+  }
+
+  /* Restore */
+  VecRestoreArrayRead(finalstate, &stateptr);
+}
+
+void GroundstateGate::compare_diff(const Vec finalstate, const Vec u0, const Vec v0, Vec u0_bar, Vec v0_bar, const double frob_bar) {
+
+  /* Get real and imag part of final and initial primal and adjoint states, x = [u,v] */
+  const PetscScalar *stateptr;
+  PetscScalar *u0_barptr, *v0_barptr;
+  VecGetArrayRead(finalstate, &stateptr);
+  VecGetArray(u0_bar, &u0_barptr);
+  VecGetArray(v0_bar, &v0_barptr);
+
+  /* Derivative of frobenius norm: 2 * (q(T) - e_1) * frob_bar */
+  u0_barptr[0] = 2. * ( stateptr[0] - 1.0 ) * frob_bar;
+  v0_barptr[0] = 2. * ( stateptr[dim_vec] ) * frob_bar;
+  for (int i=1; i<dim_vec; i++) {
+    u0_barptr[i] = 2. * stateptr[i]         * frob_bar;
+    v0_barptr[i] = 2. * stateptr[i+dim_vec] * frob_bar;
+  }
+
+  /* Restore */
+  VecRestoreArray(u0_bar, &u0_barptr);
+  VecRestoreArray(v0_bar, &v0_barptr);
+  VecRestoreArrayRead(finalstate, &stateptr);
+}
