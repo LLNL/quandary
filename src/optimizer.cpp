@@ -482,7 +482,7 @@ bool OptimProblem::iterate_callback(int iter, double obj_value, int n, const dou
     fflush(optimfile);
 
     /* Print parameters and controls to file */
-    if (printlevel > 1) {
+    if (printlevel > 1 || iter % 10 == 0 ) {
       char filename[255];
 
       /* Print optimized parameters */
