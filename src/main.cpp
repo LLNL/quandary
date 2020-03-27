@@ -175,14 +175,11 @@ int main(int argc,char **argv)
 
   /* Get the total number of initial conditions 'ninit' */
   std::string initcond_type; 
-  initcond_type = config.GetStrParam("initialconditions", "all");
+  initcond_type = config.GetStrParam("initialcondition", "all");
   if      (initcond_type.compare("all")      == 0 ) ninit = mastereq->getDim();              // N^2
   else if (initcond_type.compare("diagonal") == 0 ) ninit = (int) sqrt(mastereq->getDim());  // N
-  else if (initcond_type.compare("one")      == 0 ) ninit = 1;
-  else {
-    printf("Wrong initial condition type: %s \n", initcond_type.c_str());
-    exit(1);
-  }
+  else                                              ninit = 1;
+  
 
   /* --- Get processor distribution for initial condition and braid --- */
   np_init  = min(ninit, config.GetIntParam("np_init", 1));  // Size of communicator for initial consitions 

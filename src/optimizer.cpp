@@ -61,18 +61,21 @@ OptimProblem::OptimProblem(MapParam config, myBraidApp* primalbraidapp_, myAdjoi
 
     /* Read a specific initial conditions from config file, if requested */
     if (ninit == 1) {
-      /* Read initial condition from config file */
-      std::vector<double> initvec_re, initvec_im;
-      config.GetVecDoubleParam("initvec_re", initvec_re, 0.0);
-      config.GetVecDoubleParam("initvec_im", initvec_im, 0.0);
-      assert(initvec_re.size() >= primalbraidapp->mastereq->getDim());
-      assert(initvec_im.size() >= primalbraidapp->mastereq->getDim());
-      for (int i=0; i<primalbraidapp->mastereq->getDim(); i++) {
-        if (initvec_re[i] != 0.0) VecSetValue(initcond_re, i, initvec_re[i], INSERT_VALUES);
-        if (initvec_im[i] != 0.0) VecSetValue(initcond_im, i, initvec_im[i], INSERT_VALUES);
+      /* Read initial condition from file */
+      int dim = primalbraidapp->mastereq->getDim();
+      double * vec = new double[2*dim];
+      if (mpirank_world == 0) {
+        std::string filename = config.GetStrParam("initialcondition", "none");
+        read_vector(filename.c_str(), vec, 2*dim);
+      }
+      MPI_Bcast(vec, 2*dim, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+      for (int i = 0; i < dim; i++) {
+        if (vec[i]     != 0.0) VecSetValue(initcond_re, i, vec[i],     INSERT_VALUES);
+        if (vec[i+dim] != 0.0) VecSetValue(initcond_im, i, vec[i+dim], INSERT_VALUES);
       }
       VecAssemblyBegin(initcond_re); VecAssemblyEnd(initcond_re);
       VecAssemblyBegin(initcond_im); VecAssemblyEnd(initcond_im);
+      delete [] vec;
     }
    
     /* Open optim file */
