@@ -76,9 +76,8 @@ ImplMidpoint::ImplMidpoint(MasterEq* mastereq_) : TimeStepper(mastereq_) {
   double abstol = 1.e-10;
   KSPSetTolerances(linearsolver, reltol, abstol, PETSC_DEFAULT, PETSC_DEFAULT);
   KSPSetType(linearsolver, KSPGMRES);
-  /* Set runtime options */
+  KSPSetOperators(linearsolver, mastereq->getRHS(), mastereq->getRHS());
   KSPSetFromOptions(linearsolver);
-
 }
 
 
@@ -111,10 +110,10 @@ void ImplMidpoint::evolveFWD(double tstart, double tstop, Vec x) {
   
   /* solve nonlinear equation */
   // KSPReset(linearsolver);
-  // KSPSetTolerances(linearsolver, 1.e-5, 1.e-10, PETSC_DEFAULT, PETSC_DEFAULT);
+  // KSPSetTolerances(linearsolver, 1.e-8, 1.e-10, PETSC_DEFAULT, PETSC_DEFAULT);
   // KSPSetType(linearsolver, KSPGMRES);
   // KSPSetFromOptions(linearsolver);
-  KSPSetOperators(linearsolver, A, A);// TODO: Do we have to do this in each time step?? 
+  // KSPSetOperators(linearsolver, A, A);// TODO: Do we have to do this in each time step?? 
   KSPSolve(linearsolver, rhs, stage);
 
   /* Monitor error */
@@ -126,7 +125,6 @@ void ImplMidpoint::evolveFWD(double tstart, double tstop, Vec x) {
 
   /* --- Update state x += dt * stage --- */
   VecAXPY(x, dt, stage);
-
 }
 
 void ImplMidpoint::evolveBWD(double tstop, double tstart, Vec x, Vec x_adj, Vec grad, bool compute_gradient){
@@ -146,21 +144,11 @@ void ImplMidpoint::evolveBWD(double tstop, double tstart, Vec x, Vec x_adj, Vec 
   // KSPSetTolerances(linearsolver, 1.e-5, 1.e-10, PETSC_DEFAULT, PETSC_DEFAULT);
   // KSPSetType(linearsolver, KSPGMRES);
   // KSPSetFromOptions(linearsolver);
-  KSPSetOperators(linearsolver, A, A);// TODO: Do we have to do this in each time step?? 
+  // KSPSetOperators(linearsolver, A, A);// TODO: Do we have to do this in each time step?? 
   KSPSolve(linearsolver, rhs, stage);
 
-  /* Solve for adjoin stage variable */
-  // mastereq->assemble_RHS( (tstart + tstop) / 2.0);
-  // A = mastereq->getRHS();
-  // MatScale(A, - dt/2.0);
-  // MatShift(A, 1.0);  
-  MatTranspose(A, MAT_INPLACE_MATRIX, &A);
-  // KSPReset(linearsolver);
-  // KSPSetTolerances(linearsolver, 1.e-5, 1.e-10, PETSC_DEFAULT, PETSC_DEFAULT);
-  // KSPSetType(linearsolver, KSPGMRES);
-  // KSPSetFromOptions(linearsolver);
-  KSPSetOperators(linearsolver, A, A);// TODO: Do we have to do this in each time step?? 
-  KSPSolve(linearsolver, x_adj, stage_adj);
+  /* Solve for adjoint stage variable */
+  KSPSolveTranspose(linearsolver, x_adj, stage_adj);
 
   double rnorm;
   KSPGetResidualNorm(linearsolver, &rnorm);
