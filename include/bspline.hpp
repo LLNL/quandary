@@ -9,11 +9,15 @@
  * where dtknot = T/(nsplines -2) is the time knot vector spacing.
  */
 class Bspline{
-    int nbasis;     // number of basis functions
 
-    double dtknot;    // spacing of time knot vector    
-    double width;     // support of each spline basis function (d*dtknot)
-    double *tcenter;  // vector of basis function center positions
+    protected:
+        int    nbasis;     // number of basis functions
+        double dtknot;     // spacing of time knot vector    
+        double *tcenter;   // vector of basis function center positions
+        double width;      // support of each basis function (m*dtknot)
+
+        /* Evaluate b_k(tau_k(t)) */
+        double basisfunction(int id, double t);
 
     public:
         /* Constructor */
