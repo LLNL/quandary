@@ -30,16 +30,9 @@ class Oscillator {
     int getNParam() { return nparam; };
     int getNLevels() { return nlevels; };
 
-    /* Return pointers to the control parameters */
-    // virtual int getParams(double* paramsRe, double* paramsIm) = 0;
-
     /* Get real and imaginary part of parameters.  */
     double* getParamsRe();
     double* getParamsIm();
-
-
-    /* Update control parameters x <- x + stepsize*direction */
-    virtual int updateParams(double stepsize, double* directionRe, double* directionIm) = 0;
 
     /* Compute derivatives of the Re and Im control function wrt the parameters */
     virtual int evalDerivative(double t, double* dRedp, double* dImdp) = 0;
@@ -77,11 +70,6 @@ class SplineOscillator : public Oscillator {
     /* Compute derivatives of the Re and Im control function wrt param_Re, param_Im */
     virtual int evalDerivative(double t, double* dRedp, double* dImdp);
 
-    /* Update control parameters x <- x + stepsize*direction */
-    virtual int updateParams(double stepsize, double* directionRe, double* directionIm);
-
-    /* Print the control functions for each t \in [0,tfinal] */
-    // virtual void flushControl(int ntime, double dt, const char* filename);
 
 };
 

@@ -151,13 +151,3 @@ int SplineOscillator::evalDerivative(double t, double* dRedp, double* dImdp) {
 
   return 0;
 }
-
-int SplineOscillator::updateParams(double stepsize, double* directionRe, double* directionIm){
-
-  for (int i=0; i<nparam; i++) {
-    param_Re[i] += stepsize * directionRe[i];
-    param_Im[i] += stepsize * directionIm[i];
-  }
-
-  return 0;
-}
