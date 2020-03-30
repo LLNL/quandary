@@ -237,7 +237,7 @@ int main(int argc,char **argv)
   /* --- Solve primal --- */
   if (runtype == primal || runtype == adjoint) {
     optimproblem.eval_f(ndesign, myinit, true, objective);
-    if (mpirank_world == 0) printf("%d: Primal Only: Objective %1.14e\n", mpirank_world, objective);
+    if (mpirank_world == 0) printf("%d: Primal Only: Objective %1.14e, Fidelity: %1.8f\n", mpirank_world, objective, optimproblem.fidelity);
   } 
   
   /* --- Solve adjoint --- */

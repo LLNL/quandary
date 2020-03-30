@@ -13,7 +13,6 @@ class OptimProblem : public hiop::hiopInterfaceDenseConstraints {
         myAdjointBraidApp* adjointbraidapp; /* Adjoint BraidApp to carry out PinT backward sim. */
         Gate  *targetgate;                  
         double objective;                 /* holds the current objective value */
-        double fidelity;                /* holds the current fidelity value */
         double regul;                       /* Parameter for L2 regularization */
         std::vector<double> bounds;    /* Bounds for the control function amplitudes for each oscillator */
         std::string datadir;           /* Directory for data output */
@@ -30,6 +29,9 @@ class OptimProblem : public hiop::hiopInterfaceDenseConstraints {
         int mpirank_init, mpisize_init;
 
         FILE* optimfile;
+
+    public:
+        double fidelity;                /* holds the current fidelity value */
     
     private: 
         Vec initcond_re, initcond_im;           /* Storage for real and imag part of initial condition */
