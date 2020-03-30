@@ -85,36 +85,3 @@ class SplineOscillator : public Oscillator {
 
 };
 
-
-class FunctionOscillator : public Oscillator {
-
-  double (*F)(double t, double freq);  // function pointer to Re(control function)
-  double (*G)(double t, double freq);  // function pointer to Im(control function)
-
-  double (*dFdp)(double t, double freq, double Fbar); // function ptr to derivative of F
-  double (*dGdp)(double t, double freq, double Gbar); // function ptr to derivative of G
-
-  public:
-    FunctionOscillator();
-    FunctionOscillator( int nlevels_, 
-                        double omegaF_, 
-                        double (*F_)(double, double), 
-                        double (*dFdp) (double, double, double), 
-                        double omegaG_, 
-                        double (*G_)(double, double), 
-                        double (*dGdp) (double, double, double) );
-    ~FunctionOscillator();
-
-    /* Evaluates the control functions at time t */
-    virtual int evalControl(double t, double* Re_ptr, double* Im_ptr);
-
-    /* Returns pointers to the real and imaginary control frequencies */
-    // virtual int getParams(double* paramsRe, double* paramsIm);
-
-    /* Compute derivatives of the Re and Im control function wrt omegaF, omegaG */
-    virtual int evalDerivative(double t, double* dRedp, double* dImdp);
-
-    /* Update control parameters x <- x + stepsize*direction */
-    virtual int updateParams(double stepsize, double* directionRe, double* directionIm);
-
-};
