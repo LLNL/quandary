@@ -23,9 +23,6 @@ class Oscillator {
     Oscillator(int nlevels_, int nparam_);
     virtual ~Oscillator();
 
-    /* Evaluates real and imaginary control function at time t */
-    virtual int evalControl(double t, double* Re_ptr, double* Im_ptr) = 0;
-
     /* Return the constants */
     int getNParam() { return nparam; };
     int getNLevels() { return nlevels; };
@@ -34,11 +31,8 @@ class Oscillator {
     double* getParamsRe();
     double* getParamsIm();
 
-    /* Compute derivatives of the Re and Im control function wrt the parameters */
-    virtual int evalDerivative(double t, double* dRedp, double* dImdp) = 0;
-
     /* Print the control functions for each t \in [0,ntime*dt] */
-    virtual void flushControl(int ntime, double dt, const char* filename);
+    void flushControl(int ntime, double dt, const char* filename);
 
     /* Compute lowering operator a_k = I_n1 \kron ... \kron a^(nk) \kron ... \kron I_nQ */
     int createLoweringOP(int dim_prekron, int dim_postkron, Mat* loweringOP);
@@ -46,6 +40,11 @@ class Oscillator {
     /* Compute number operator N_k = a_k^T a_k */
     int createNumberOP(int dim_prekron, int dim_postcron, Mat* numberOP);
 
+    /* Evaluates real and imaginary control function at time t */
+    virtual int evalControl(double t, double* Re_ptr, double* Im_ptr) = 0;
+
+    /* Compute derivatives of the Re and Im control function wrt the parameters */
+    virtual int evalDerivative(double t, double* dRedp, double* dImdp) = 0;
 };
 
 
@@ -64,12 +63,7 @@ class SplineOscillator : public Oscillator {
     /* Evaluates the real and imaginare spline functions at time t, using current spline parameters */
     virtual int evalControl(double t, double* Re_ptr, double* Im_ptr);
 
-    /* Returns pointers to the real and imaginary control parameters */
-    // virtual int getParams(double* paramsRe, double* paramsIm);
-
     /* Compute derivatives of the Re and Im control function wrt param_Re, param_Im */
     virtual int evalDerivative(double t, double* dRedp, double* dImdp);
-
-
 };
 
