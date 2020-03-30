@@ -123,16 +123,6 @@ int SplineOscillator::evalControl(double t, double* Re_ptr, double* Im_ptr){
   return 0;
 }
 
-// int SplineOscillator::getParams(double* paramsRe, double* paramsIm) {
-
-//   paramsRe = param_Re;
-//   paramsIm = param_Im;
-//   printf("%p param_Re\n", param_Re);
-//   printf("%p paramsRe\n", paramsRe);
-
-//   return 0;
-// }
-
 
 int SplineOscillator::evalDerivative(double t, double* dRedp, double* dImdp) {
 
@@ -145,8 +135,8 @@ int SplineOscillator::evalDerivative(double t, double* dRedp, double* dImdp) {
   } else {
       double Rebar = 1.0;
       double Imbar = 1.0;
-      basisfunctions->derivative(t, param_Re, Rebar, dRedp);
-      basisfunctions->derivative(t, param_Im, Imbar, dImdp);
+      basisfunctions->derivative(t, dRedp, Rebar);
+      basisfunctions->derivative(t, dImdp, Imbar);
   }
 
   return 0;

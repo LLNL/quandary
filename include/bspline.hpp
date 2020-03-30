@@ -26,15 +26,9 @@ class Bspline{
         /* Destructor */
         ~Bspline();
 
-        /* 
-         * Evaluate the spline at time t using the coefficients coeff.
-         * (only the first nspline elements in coeff will be used!)
-         */
+        /* Evaluate the spline at time t using the coefficients coeff. */
         double evaluate(double t, double* coeff);
 
-        /*
-         * Evaluates the derivative at time t, multiplied with fbar.
-         * This updates the vector coeff_diff, which should have same size as coeff (nbasis).
-         */
-        void derivative(double t, double* coeff, double fbar, double* coeff_diff);
+        /* Evaluates the derivative at time t, multiplied with fbar. */
+        void derivative(double t, double* coeff_diff, double fbar);
 };

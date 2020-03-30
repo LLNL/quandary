@@ -20,7 +20,6 @@ Bspline::~Bspline(){
 }
 
 
-
 double Bspline::evaluate(double t, double* coeff){
 
     double val = 0.0;
@@ -35,7 +34,7 @@ double Bspline::evaluate(double t, double* coeff){
     return sum;
 }
 
-void Bspline::derivative(double t, double* coeff, double valbar, double* coeff_diff) {
+void Bspline::derivative(double t, double* coeff_diff, double valbar) {
 
     /* Iterate over basis function */
     for (int k=1; k<=nbasis; k++) {
