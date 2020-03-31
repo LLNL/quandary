@@ -3,6 +3,7 @@
 #include <fstream>
 #include <iomanip>
 #include <petscmat.h>
+#include <vector>
 
 #pragma once
 
@@ -19,7 +20,7 @@ class Oscillator {
 
   public:
     Oscillator();
-    Oscillator(int nlevels_, int nbasis_, double Tfinal_);
+    Oscillator(int nlevels_, int nbasis_, std::vector<double> carrier_freq_, double Tfinal_);
     virtual ~Oscillator();
 
     /* Return the constants */

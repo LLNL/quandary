@@ -1,10 +1,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include <vector>
 #pragma once
 
 /* 
- * Implements quadratic Bspline a la Anders Peterson
+ * Implements quadratic Bspline a la Anders Peterson, including carrier waves
  * Basis function have local support with width = 3*dtknot, 
  * where dtknot = T/(nsplines -2) is the time knot vector spacing.
  */
@@ -15,13 +16,14 @@ class Bspline{
         double dtknot;     // spacing of time knot vector    
         double *tcenter;   // vector of basis function center positions
         double width;      // support of each basis function (m*dtknot)
+        std::vector<double> carrier_freq; // Frequencies of the carrier waves
 
         /* Evaluate b_k(tau_k(t)) */
         double basisfunction(int id, double t);
 
     public:
         /* Constructor */
-        Bspline(int NBasis, double T);
+        Bspline(int NBasis, double T, std::vector<double> carrier_freq_);
 
         /* Destructor */
         ~Bspline();

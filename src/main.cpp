@@ -108,8 +108,10 @@ int main(int argc,char **argv)
 
   /* Initialize the Oscillators */
   Oscillator** oscil_vec = new Oscillator*[nosci];
+  std::vector<double> carrier_freq;
+  config.GetVecDoubleParam("carrier_frequency", carrier_freq, 0.0);
   for (int i = 0; i < nosci; i++){
-    oscil_vec[i] = new Oscillator(nlvl, nspline, total_time);
+    oscil_vec[i] = new Oscillator(nlvl, nspline, carrier_freq, total_time);
   }
 
   /* So far, these frequencies are not used anywhere... */

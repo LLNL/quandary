@@ -1,7 +1,8 @@
 #include "bspline.hpp"
 
-Bspline::Bspline(int NBasis, double T){
+Bspline::Bspline(int NBasis, double T, std::vector<double> carrier_freq_){
     nbasis = NBasis;
+    carrier_freq = carrier_freq_;
 
     dtknot = T / (double)(nbasis - 2);
 	width = 3.0*dtknot;

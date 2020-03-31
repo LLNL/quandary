@@ -9,11 +9,13 @@ Oscillator::Oscillator(){
   basisfunctions = NULL;
 }
 
-Oscillator::Oscillator(int nlevels_, int nbasis_, double Tfinal_){
+Oscillator::Oscillator(int nlevels_, int nbasis_, std::vector<double> carrier_freq_, double Tfinal_){
   nlevels = nlevels_;
-  nparam = nbasis_;
   Tfinal = Tfinal_;
-  basisfunctions = new Bspline(nbasis_, Tfinal_);
+  basisfunctions = new Bspline(nbasis_, Tfinal_, carrier_freq_);
+
+  /* Number of real and imaginary parameter per oscillator */
+  nparam = nbasis_ * carrier_freq_.size();
 
   if (nparam>0) {
     param_Re = new double[nparam];
