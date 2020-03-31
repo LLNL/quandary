@@ -16,14 +16,14 @@
 
 
 \title{Open System Quantum Control}
-% \author{Stefanie G{\"u}nther}
+\author{Stefanie G{\"u}nther}
 % \affil{Lawrence Livermore National Laboratory, CA, USA}
 % \date{}
 
 \begin{document}
 \maketitle
 
-
+\subsection*{Model equation}
 We model open quantum systems with $Q$ oscillators with $n_k$ levels for the $k$-th oscillator, $k=1,\dots,Q$. We solve the Lindblad master equation
 \begin{align}\label{mastereq}
   \dot \rho(t) = &-i(H(t)\rho(t) - \rho(t)H(t)) \\
@@ -33,17 +33,17 @@ for the density matrix $\rho(t)\in \C^{N\times N}$, $N := \prod_{k=1}^N n_k$. Th
 \begin{align}
   H(t) &= H_d + H_c(t) \\
   \text{with} \quad H_d &:= \sum_{k=1}^Q \left(- \frac{\xi_k}{2} a_k^{\dagger}a_k^{\dagger}a_k a_k - \sum_{l\neq k} \xi_{lk} a_l^{\dagger}a_l a_k^{\dagger} a_k  \right) \\
-                 H_c(t) &:= \sum_{k=1}^Q \left( p(\vec{\alpha}_k,t) (a_k + a_k^{\dagger}) + i p(\vec{\beta}_k,t)(a_k - a_k^{\dagger})  \right)
+                 H_c(t) &:= \sum_{k=1}^Q \left( p(\vec{\alpha}^k,t) (a_k + a_k^{\dagger}) + i q(\vec{\alpha}^k,t)(a_k - a_k^{\dagger})  \right)
 \end{align}
 Here, $a_k$ denotes the lowering operator:
 \begin{align}
+  \begin{array}{rl}
   a_1 &:= a^{(n_1)} \otimes I_{n_2} \otimes \dots \otimes I_{n_Q}\\
   a_2 &:= I_{n_1} \otimes a^{(n_2)} \otimes \dots \otimes I_{n_Q}\\
-  &\vdots \\
+  \vdots \, & \\
   a_Q &:= I_{n_1} \otimes I_{n_2} \otimes \dots \otimes a^{(n_Q)}\\
-\end{align}
-with 
-\begin{align}
+  \end{array}
+  \quad \text{with}\quad
  a^{(n_k)} = \begin{pmatrix}
    0 & 1 &          &         &    \\
      & 0 & \sqrt{2} &         &     \\
@@ -52,20 +52,9 @@ with
      &   &          &         & 0   
  \end{pmatrix} \in \R^{n_k \times n_k}
 \end{align}
-The time-dependent control functions $p(\vec{\alpha}_k,t), p(\vec{\beta}_k,t)$ are real-valued pulses represented by a linear combination of B-splines: 
-\begin{align*}
-  p(\vec{x},t) = \sum_{l=1}^L x_l B_l(t) \quad \text{for} \quad \vec x \in \R^L
-\end{align*}
-for $L$ B-Spline functions $B_l(t)$. The amplitudes $\vec{\alpha}_k, \vec{\beta}_k \in \R^{L}$ serve as control parameters (\textit{design} variables) that we modify in order to realize a desired system behavior, giving a total of $2QL$ design parameters:
-\begin{align*}
-  z &:= \left( \vec{\alpha}_1, \vec{\beta}_1, \dots, \vec{\alpha}_Q, \vec{\beta}_Q \right), \in \mathds{R}^{2LQ} \\
-    &=\left(\alpha_1^1,\dots,\alpha_1^L,\beta_1^1, \dots, \beta_1^L, \dots, \alpha_Q^1,\dots,\alpha_Q^L,\beta_Q^1, \dots, \beta_Q^1 \right) \\
-\end{align*}
-The control functions are in the \textit{rotating frame}. To convert them back to the \textit{Lab frame} use
-\begin{align}
-  f_k(t) = 2p(\vec{\alpha}_k, t) cos(w_k t) - 2 p(\vec{\beta}_k,t) sin(w_k,t)
-\end{align}
+and $I_{n_k}$ denotes the identity matrix in $\R^{n_k \times n_k}$.
 
+\subsection*{Collapse operators}
 The collapse operators $\Ell_{lk}$ in the Lindblad terms of the master equation \eqref{mastereq} can be of the following type:
 \begin{itemize}
   \item ``T1'' -- Decay: $\Ell_{1k} = a_k$
@@ -73,11 +62,36 @@ The collapse operators $\Ell_{lk}$ in the Lindblad terms of the master equation 
 \end{itemize}
 for each oscillator $k$. The constants $\gamma_{lk}$ are the inverse half-live for the corresponding collapse process $l$: $\gamma_{lk} = {\frac{1}{T_l}}$ (in nanoseconds, ns). Typical T1 decay time is between $10-100$ microseconds (us). T2 dephasing time is typically about half of T1 decay time. Decay then behaves like $\exp(-t/{T_1})$. Dephasing behaves like $\exp(-\frac{1}{2{T_2}})$.
 
+\subsection*{Control pulses}
+The time-dependent control functions $p(\vec{\alpha}^k,t), q(\vec{\alpha}^k,t)$ are real-valued. We discretize them using B-splines with carrier waves:
+\begin{align}
+  p(\vec{\alpha}^k,t) &= \sum_{l=1}^L B_l(t) \sum_{f=1}^{N_f} \left(\alpha^{k (1)}_{l,f} \cos(\Omega_f) - \alpha^{k (2)}_{l,f} \sin(\Omega_f) \right) \\
+  q(\vec{\alpha}^k,t) &= \sum_{l=1}^L B_l(t) \sum_{f=1}^{N_f} \left( \alpha^{k (1)}_{l,f} \sin(\Omega_f) + \alpha^{k (2)}_{l,f} \cos(\Omega_f) \right)
+\end{align}
+for $L$ B-Spline functions $B_l(t)$, and $N_f$ carrier wave frequencies $\Omega_f$. The amplitudes $\vec{\alpha}^k \in \R^{2LN_f}$ are the control parameters (\textit{design} variables) that we modify in order to realize a desired system behavior, giving a total of $2QLN_f$ design parameters:
+\begin{align}
+  z &:= \left( \vec{\alpha}^1, \dots, \vec{\alpha}^Q \right), \in \mathds{R}^{2QLN_f} \quad \text{where}\\
+  \vec{\alpha}^k &= \left( \alpha_{1,1}^k,\dots, \alpha_{1,N_f}^k, \dots, \alpha_{L,1}^{k}, \dots, \alpha_{L,N_f}^k \right) \in \R^{2LN_f}, \quad \alpha_{l,f}^k = \left(\alpha_{l,f}^{k(1)}, \alpha_{l,f}^{k(2)} \right) \in R^2
+\end{align}
+The control functions are in the \textit{rotating frame}. To convert them back to the \textit{Lab frame} use
+\begin{align}
+  f^k(t) = 2 \sum_{l=1}^L B_l(t) \sum_{f=1}^{N_f} \beta_{l,f}^k \cos(w_r t + \Omega_f t + \theta_{l,f}) \quad \forall k=1,\dots Q
+\end{align}
+where $\beta_{l,f}^k$ and $\theta_{l,f}$ are computed from
+\begin{align}
+  \alpha_{l,f}^{k(1)} = \beta_{l,f}^k \cos(\theta_{l,f}) \quad \text{and} \quad \alpha_{l,f}^{k(2)} = \beta_{l,f}^k \sin(\theta_{l,f})
+\end{align}
+and $w_r$ is ??
+
+
+\subsection*{Optimization problem}
 The quantum control problem aims to realize a certain target gate at final time $T$, represented by a unitary matrix $V\in \C^{N\times N}$. For closed quantum systems, we know that $\rho$ evolves in time with the unitary transformation matrix $\rho(t) = U(t)\rho(0) U(t)^{\dagger}$ (because $\rho(t) = \sum_k p_k \psi_k(t)\psi_k(t)^{\dagger}$, and $\psi_k(t)$ evolve according to the (linear) Schroedinger equation giving $\psi(t) = U(t) \psi(0)$). Hence, for closed systems we want to match $V$ with $U(T)$ so that $q(T) = V\rho(0)V^{\dagger}$ holds at final time. For open systems, $\rho(t)$ might not be in a pure state, and we might have $\rho(t) \neq U(t)\rho(0) U(t)^{\dagger}$. However, the optimal control problem still aims to find the amplitudes $z\in \R^{2QL}$ such that $\rho(T)$ is as close as possible to $V\rho(0)V^{\dagger}$, for any initial state $\rho(0)$. We measure the distance in the Frobenius norm:
 \begin{align}\label{optimproblem_matrix}
  \| \rho(T) - V\rho(0)V^{\dagger} \|^2_F \rightarrow \min  \qquad \text{for all} \quad \rho(0)
 \end{align} 
 where the Frobenius norm is defined as $\|A\|^2_F = \Tr(A^{\dagger}A)$.
+
+
 
 The Lindblad master equation \eqref{mastereq} is in matrix form, describing the evolution of the densisy matrix $\rho = (\rho_1, \dots, \rho_N) \in \C^{N\times N}$. In order to solve this numerically, we vectorize the equation to receive an ODE for $q(t) := \text{vec}(\rho(t)) \in \C^{N^2}$. Using the relations
 \begin{align}
