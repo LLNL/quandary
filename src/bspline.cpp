@@ -28,8 +28,8 @@ double Bspline::evaluate(double t, double* coeff){
 
     /* Sum up basis function */
     double sum = 0.0;
-    for (int k=1; k<=nbasis; k++) {
-        sum += coeff[k-1] * basisfunction(k-1, t);
+    for (int k=0; k<nbasis; k++) {
+        sum += coeff[k] * basisfunction(k, t);
     }
 
     return sum;
