@@ -12,9 +12,9 @@ using namespace std;
 class Oscillator {
   protected:
     int nlevels;  // Number of levels for this the oscillator 
-    int nparam;   // Number of control parameters for each real and imaginary part
-    double* param_Re; // parameters of real part of the control
-    double* param_Im; // parameters of imaginary part of the control
+    int nparams;   // Total number of control parameters (real + imaginary part)
+    double* param_Re; // parameters of real part of the control. Size = nparam/2
+    double* param_Im; // parameters of imaginary part of the control. Size = nparam/2
     double Tfinal;               // final time
     Bspline *basisfunctions;     // Bspline basis function for control discretization 
 
@@ -24,12 +24,13 @@ class Oscillator {
     virtual ~Oscillator();
 
     /* Return the constants */
-    int getNParam() { return nparam; };
+    int getNParams() { return nparams; };
     int getNLevels() { return nlevels; };
 
-    /* Get real and imaginary part of parameters.  */
-    double* getParamsRe();
-    double* getParamsIm();
+    /* Copy x to real and imaginary part of parameter */
+    void setParams(const double* x);
+    /* Copy real and imaginary part of parameters into x */
+    void getParams(double* x);
 
     /* Print the control functions for each t \in [0,ntime*dt] */
     void flushControl(int ntime, double dt, const char* filename);

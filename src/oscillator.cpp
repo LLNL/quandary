@@ -2,7 +2,7 @@
 
 Oscillator::Oscillator(){
   nlevels = 0;
-  nparam = 0;
+  nparams = 0;
   param_Re = NULL;
   param_Im = NULL;
   Tfinal = 0;
@@ -14,13 +14,14 @@ Oscillator::Oscillator(int nlevels_, int nbasis_, std::vector<double> carrier_fr
   Tfinal = Tfinal_;
   basisfunctions = new Bspline(nbasis_, Tfinal_, carrier_freq_);
 
-  /* Number of real and imaginary parameter per oscillator */
-  nparam = nbasis_ * carrier_freq_.size();
+  /* Number of parameters per real and imaginary oscillator */
+  // nparam = 2 * nbasis_ * carrier_freq_.size();
+  nparams = 2 * nbasis_ * carrier_freq_.size();
 
-  if (nparam>0) {
-    param_Re = new double[nparam];
-    param_Im = new double[nparam];
-    for (int i=0; i<nparam; i++) {
+  if (nparams>0) {
+    param_Re = new double[nparams/2];
+    param_Im = new double[nparams/2];
+    for (int i=0; i<nparams/2; i++) {
       param_Re[i] = 0.0;
       param_Im[i] = 0.0;
     }
@@ -28,7 +29,7 @@ Oscillator::Oscillator(int nlevels_, int nbasis_, std::vector<double> carrier_fr
 }
 
 Oscillator::~Oscillator(){
-  if (nparam>0) {
+  if (nparams>0) {
     delete [] param_Re;
     delete [] param_Im;
     delete basisfunctions;
@@ -51,9 +52,29 @@ void Oscillator::flushControl(int ntime, double dt, const char* filename) {
   printf("File written: %s\n", filename);
 }
 
-double* Oscillator::getParamsRe(){ return param_Re; }
-double* Oscillator::getParamsIm(){ return param_Im; }
+void Oscillator::setParams(const double* x){
+  int j=0;
+  for (int i=0; i<nparams/2; i++) {
+    param_Re[i] = x[j]; 
+    j++;
+  }
+  for (int i=0; i<nparams/2; i++) {
+    param_Im[i] = x[j]; 
+    j++;
+  }
+}
 
+void Oscillator::getParams(double* x){
+  int j=0;
+  for (int i=0; i<nparams/2; i++) {
+    x[j] = param_Re[i];
+    j++;
+  }
+  for (int i=0; i<nparams/2; i++) {
+    x[j] = param_Im[i];
+    j++;
+  }
+}
 
 
 int Oscillator::createNumberOP(int dim_prekron, int dim_postkron, Mat* numberOP) {
@@ -123,7 +144,7 @@ int Oscillator::evalDerivative(double t, double* dRedp, double* dImdp) {
 
   if ( t > Tfinal ){
     printf("WARNING: accessing spline derivative outside of [0,T]. Returning 0.0\n");
-    for (int i = 0; i < nparam; i++) {
+    for (int i = 0; i < nparams/2; i++) {
       dRedp[i] = 0.0;
       dRedp[i] = 0.0;
     }

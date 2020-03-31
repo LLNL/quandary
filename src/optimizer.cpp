@@ -99,25 +99,13 @@ void OptimProblem::setDesign(int n, const double* x) {
   MasterEq* mastereq = primalbraidapp->mastereq;
 
   /* Pass design vector x to oscillator */
-  int nparam;
-  double *paramRe, *paramIm;
-  int j = 0;
-  /* Iterate over oscillators */
   for (int ioscil = 0; ioscil < mastereq->getNOscillators(); ioscil++) {
-      /* Get number of parameters of oscillator i */
-      nparam = mastereq->getOscillator(ioscil)->getNParam();
-      /* Get pointers to parameters of oscillator i */
-      paramRe = mastereq->getOscillator(ioscil)->getParamsRe();
-      paramIm = mastereq->getOscillator(ioscil)->getParamsIm();
-      /* Design storage: x = (ReParams, ImParams)_iOscil */
-      /* Set Re parameters */
-      for (int iparam=0; iparam<nparam; iparam++) {
-          paramRe[iparam] = x[j]; j++;
-      }
-      /* Set Im parameters */
-      for (int iparam=0; iparam<nparam; iparam++) {
-          paramIm[iparam] = x[j]; j++;
-      }
+
+      /* Design storage: x = (params_oscil0, params_oscil2, ... ) */
+      int nparam = mastereq->getOscillator(ioscil)->getNParams();
+      int j = ioscil * nparam;
+      const double* ptr_shift = x + j;
+      mastereq->getOscillator(ioscil)->setParams(ptr_shift);
   }
 }
 
@@ -130,20 +118,11 @@ void OptimProblem::getDesign(int n, double* x){
   /* Iterate over oscillators */
   MasterEq* mastereq = primalbraidapp->mastereq;
   for (int ioscil = 0; ioscil < mastereq->getNOscillators(); ioscil++) {
-      /* Get number of parameters of oscillator i */
-      nparam = mastereq->getOscillator(ioscil)->getNParam();
-      /* Get pointers to parameters of oscillator i */
-      paramRe = mastereq->getOscillator(ioscil)->getParamsRe();
-      paramIm = mastereq->getOscillator(ioscil)->getParamsIm();
-      /* Design storage: x = (ReParams, ImParams)_iOscil */
-      /* Set Re params */
-      for (int iparam=0; iparam<nparam; iparam++) {
-          x[j] = paramRe[iparam]; j++;
-      }
-      /* Set Im params */
-      for (int iparam=0; iparam<nparam; iparam++) {
-          x[j] = paramIm[iparam]; j++;
-      }
+
+      nparam = mastereq->getOscillator(ioscil)->getNParams();
+      int j = ioscil * nparam;
+      double* ptr_shift = x + j;
+      mastereq->getOscillator(ioscil)->getParams(ptr_shift);
   }
 }
 
@@ -153,7 +132,7 @@ bool OptimProblem::get_prob_sizes(long long& n, long long& m) {
   n = 0;
   MasterEq* mastereq = primalbraidapp->mastereq;
   for (int ioscil = 0; ioscil < mastereq->getNOscillators(); ioscil++) {
-      n += 2 * mastereq->getOscillator(ioscil)->getNParam(); // Re and Im params for the i-th oscillator
+      n += mastereq->getOscillator(ioscil)->getNParams(); 
   }
   
   // m - number of constraints 
@@ -170,9 +149,9 @@ bool OptimProblem::get_vars_info(const long long& n, double *xlow, double* xupp,
   MasterEq* mastereq = primalbraidapp->mastereq;
   for (int ioscil = 0; ioscil < mastereq->getNOscillators(); ioscil++) {
       /* Get number of parameters of oscillator i */
-      int nparam = mastereq->getOscillator(ioscil)->getNParam();
+      int nparam = mastereq->getOscillator(ioscil)->getNParams();
       /* Iterate over real and imaginary part */
-      for (int i = 0; i < 2 * nparam; i++) {
+      for (int i = 0; i < nparam; i++) {
           xlow[j] = - bounds[ioscil];
           xupp[j] =   bounds[ioscil]; 
           j++;
@@ -401,8 +380,8 @@ bool OptimProblem::get_starting_point(const long long &global_n, double* x0) {
       int j = 0;
       MasterEq* mastereq = primalbraidapp->mastereq;
       for (int ioscil = 0; ioscil < mastereq->getNOscillators(); ioscil++) {
-          int nparam = mastereq->getOscillator(ioscil)->getNParam();
-          for (int i = 0; i < 2 * nparam; i++) {
+          int nparam = mastereq->getOscillator(ioscil)->getNParams();
+          for (int i = 0; i < nparam; i++) {
               x0[j] = x0[j] * bounds[ioscil];
               j++;
           }
