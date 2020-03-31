@@ -2,9 +2,6 @@
 
 Oscillator::Oscillator(){
   nlevels = 0;
-  nparams = 0;
-  param_Re = NULL;
-  param_Im = NULL;
   Tfinal = 0;
   basisfunctions = NULL;
 }
@@ -12,25 +9,17 @@ Oscillator::Oscillator(){
 Oscillator::Oscillator(int nlevels_, int nbasis_, std::vector<double> carrier_freq_, double Tfinal_){
   nlevels = nlevels_;
   Tfinal = Tfinal_;
-  basisfunctions = new Bspline(nbasis_, Tfinal_, carrier_freq_);
+  basisfunctions = new ControlBasis(nbasis_, Tfinal_, carrier_freq_);
 
-  /* Number of parameters per real and imaginary oscillator */
-  nparams = 4 * nbasis_ * carrier_freq_.size();
-
-  if (nparams>0) {
-    param_Re = new double[nparams/2];
-    param_Im = new double[nparams/2];
-    for (int i=0; i<nparams/2; i++) {
-      param_Re[i] = 0.0;
-      param_Im[i] = 0.0;
-    }
+  /* Initialize control parameters */
+  int nparam = 2 * nbasis_ * carrier_freq_.size();
+  for (int i=0; i<nparam; i++) {
+    params.push_back(0.0);
   }
 }
 
 Oscillator::~Oscillator(){
-  if (nparams>0) {
-    delete [] param_Re;
-    delete [] param_Im;
+  if (params.size() > 0) {
     delete basisfunctions;
   }
 }
@@ -52,26 +41,14 @@ void Oscillator::flushControl(int ntime, double dt, const char* filename) {
 }
 
 void Oscillator::setParams(const double* x){
-  int j=0;
-  for (int i=0; i<nparams/2; i++) {
-    param_Re[i] = x[j]; 
-    j++;
-  }
-  for (int i=0; i<nparams/2; i++) {
-    param_Im[i] = x[j]; 
-    j++;
+  for (int i=0; i<params.size(); i++) {
+    params[i] = x[i]; 
   }
 }
 
 void Oscillator::getParams(double* x){
-  int j=0;
-  for (int i=0; i<nparams/2; i++) {
-    x[j] = param_Re[i];
-    j++;
-  }
-  for (int i=0; i<nparams/2; i++) {
-    x[j] = param_Im[i];
-    j++;
+  for (int i=0; i<params.size(); i++) {
+    x[i] = params[i];
   }
 }
 
@@ -131,8 +108,8 @@ int Oscillator::evalControl(double t, double* Re_ptr, double* Im_ptr){
     *Im_ptr = 0.0;
   } else {
     /* Evaluate the spline at time t */
-    *Re_ptr = basisfunctions->evaluate(t, param_Re, -1);
-    *Im_ptr = basisfunctions->evaluate(t, param_Im, +1);
+    *Re_ptr = basisfunctions->evaluate(t, params, ControlBasis::RE);
+    *Im_ptr = basisfunctions->evaluate(t, params, ControlBasis::IM);
   }
 
   return 0;
@@ -143,15 +120,15 @@ int Oscillator::evalDerivative(double t, double* dRedp, double* dImdp) {
 
   if ( t > Tfinal ){
     printf("WARNING: accessing spline derivative outside of [0,T]. Returning 0.0\n");
-    for (int i = 0; i < nparams/2; i++) {
+    for (int i = 0; i < params.size(); i++) {
       dRedp[i] = 0.0;
-      dRedp[i] = 0.0;
+      dImdp[i] = 0.0;
     }
   } else {
       double Rebar = 1.0;
       double Imbar = 1.0;
-      basisfunctions->derivative(t, dRedp, Rebar, -1);
-      basisfunctions->derivative(t, dImdp, Imbar, +1);
+      basisfunctions->derivative(t, dRedp, Rebar, ControlBasis::RE);
+      basisfunctions->derivative(t, dImdp, Imbar, ControlBasis::IM);
   }
 
   return 0;

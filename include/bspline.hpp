@@ -5,33 +5,32 @@
 #pragma once
 
 /* 
- * Implements quadratic Bspline a la Anders Peterson, including carrier waves
- * Basis function have local support with width = 3*dtknot, 
+ * Discretization of the Controls. 
+ * We use quadratic Bsplines a la Anders Peterson combined with carrier waves
+ * Bspline basis functions have local support with width = 3*dtknot, 
  * where dtknot = T/(nsplines -2) is the time knot vector spacing.
  */
-class Bspline{
+class ControlBasis{
+    public:
+        enum ControlType {RE, IM};        // Type of control: p(t) (real) or q(t) (imaginary)
 
     protected:
-        int    nbasis;     // number of basis functions
-        double dtknot;     // spacing of time knot vector    
-        double *tcenter;   // vector of basis function center positions
-        double width;      // support of each basis function (m*dtknot)
+        int    nbasis;                    // number of basis functions
+        double dtknot;                    // spacing of time knot vector    
+        double *tcenter;                  // vector of basis function center positions
+        double width;                     // support of each basis function (m*dtknot)
         std::vector<double> carrier_freq; // Frequencies of the carrier waves
 
-        /* Evaluate b_k(tau_k(t)) */
+        /* Evaluate the bspline basis functions B_l(tau_l(t)) */
         double basisfunction(int id, double t);
 
     public:
-        /* Constructor */
-        Bspline(int NBasis, double T, std::vector<double> carrier_freq_);
-
-        /* Destructor */
-        ~Bspline();
+        ControlBasis(int NBasis, double T, std::vector<double> carrier_freq_);
+        ~ControlBasis();
 
         /* Evaluate the spline at time t using the coefficients coeff. */
-        /* 'sign' is either +1 or -1. It is the multiplier for carrier wave sinus (-1 for re, +1 for im) */
-        double evaluate(double t, double* coeff, int sign);
+        double evaluate(double t, std::vector<double> coeff, ControlType controltype);
 
         /* Evaluates the derivative at time t, multiplied with fbar. */
-        void derivative(double t, double* coeff_diff, double fbar, int sign);
+        void derivative(double t, double* coeff_diff, double fbar, ControlType controltype);
 };

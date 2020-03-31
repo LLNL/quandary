@@ -67,10 +67,9 @@ MasterEq::MasterEq(int noscillators_, Oscillator** oscil_vec_, const std::vector
   MatAssemblyBegin(RHS,MAT_FINAL_ASSEMBLY);
   MatAssemblyEnd(RHS,MAT_FINAL_ASSEMBLY);
 
-  /* Allocate dRHSdp, dimension: 2*dim x 2*nparam*noscil */
-  int nparam = oscil_vec[0]->getNParams();
+  /* Allocate dRHSdp, dimension: 2*dim x nparam*noscil */
   MatCreate(PETSC_COMM_WORLD,&dRHSdp);
-  MatSetSizes(dRHSdp, PETSC_DECIDE, PETSC_DECIDE,2*dim,nparam*noscillators);
+  MatSetSizes(dRHSdp, PETSC_DECIDE, PETSC_DECIDE,2*dim,oscil_vec[0]->getNParams()*noscillators);
   MatSetFromOptions(dRHSdp);
   MatSetUp(dRHSdp);
   MatAssemblyBegin(dRHSdp,MAT_FINAL_ASSEMBLY);
@@ -261,8 +260,8 @@ MasterEq::MasterEq(int noscillators_, Oscillator** oscil_vec_, const std::vector
   ISCreateStride(PETSC_COMM_WORLD, dim, dim, 1, &isv);
  
   /* Allocate some auxiliary vectors */
-  dRedp = new double[oscil_vec[0]->getNParams()/2];
-  dImdp = new double[oscil_vec[0]->getNParams()/2];
+  dRedp = new double[oscil_vec[0]->getNParams()];
+  dImdp = new double[oscil_vec[0]->getNParams()];
   rowid = new int[dim];
   rowid_shift = new int[dim];
   for (int i=0; i<dim;i++) {
@@ -270,6 +269,11 @@ MasterEq::MasterEq(int noscillators_, Oscillator** oscil_vec_, const std::vector
     rowid_shift[i] = i + dim;
   }
 
+  MatCreateVecs(Ac_vec[0], &Acu, NULL);
+  MatCreateVecs(Ac_vec[0], &Acv, NULL);
+  MatCreateVecs(Bc_vec[0], &Bcu, NULL);
+  MatCreateVecs(Bc_vec[0], &Bcv, NULL);
+  MatCreateVecs(Bc_vec[0], &auxil, NULL);
 
 }
 
@@ -298,6 +302,12 @@ MasterEq::~MasterEq(){
 
     ISDestroy(&isu);
     ISDestroy(&isv);
+
+    VecDestroy(&Acu);
+    VecDestroy(&Acv);
+    VecDestroy(&Bcu);
+    VecDestroy(&Bcv);
+    VecDestroy(&auxil);
   }
 }
 
@@ -381,28 +391,12 @@ Mat MasterEq::getdRHSdp() { return dRHSdp; }
 
 int MasterEq::assemble_dRHSdp(double t, Vec x) {
 
+  const double *col_ptr;
+
   /* Get real and imaginary part from x = [u v] */
   Vec u, v;
   VecGetSubVector(x, isu, &u);
   VecGetSubVector(x, isv, &v);
-
-  Vec M;
-  Vec Acu;
-  Vec Acv;
-  Vec Bcu;
-  Vec Bcv;
-  VecDuplicate(u, &M);
-  VecDuplicate(u, &Acu);
-  VecDuplicate(u, &Acv);
-  VecDuplicate(u, &Bcu);
-  VecDuplicate(u, &Bcv);
-  
-  const double *col_ptr;
-  int colid;
-  int nparam = oscil_vec[0]->getNParams();
-
-  Vec tmp;
-  VecDuplicate(u, &tmp);
 
   /* Reset dRHSdp) */
   MatZeroEntries(dRHSdp);
@@ -410,57 +404,47 @@ int MasterEq::assemble_dRHSdp(double t, Vec x) {
   /* Loop over oscillators */
   for (int iosc= 0; iosc < noscillators; iosc++){
 
+    /* Get number of control parameters for this oscillator */
+    int nparam = oscil_vec[iosc]->getNParams();
+
     /* Evaluate the derivative of the control functions wrt control parameters */
-    for (int i=0; i<nparam/2; i++){
+    for (int i=0; i<nparam; i++){
       dRedp[i] = 0.0;
       dImdp[i] = 0.0;
     }
     oscil_vec[iosc]->evalDerivative(t, dRedp, dImdp);
 
+    /* Compute RHS matrix vector products */
     MatMult(Ac_vec[iosc], u, Acu);
     MatMult(Ac_vec[iosc], v, Acv);
     MatMult(Bc_vec[iosc], u, Bcu);
     MatMult(Bc_vec[iosc], v, Bcv);
 
-    /* Loop over control parameters */
-    for (int iparam=0; iparam < nparam/2; iparam++) {
+    /* Loop over control parameters of this oscillator */
+    for (int iparam=0; iparam < nparam; iparam++) {
 
-      /* Derivative wrt paramRe */
-      colid = iosc*nparam +  iparam;
-      VecAXPBY(tmp, -dRedp[iparam], 0.0, Bcv);
-      VecGetArrayRead(tmp, &col_ptr);
+      /* Position in dRHSdp */
+      int colid = iosc*nparam +  iparam;
+
+      /* Set derivative of q(alpha^k) A_c^k u - p(alpha^k) B_c^k v */
+      VecAXPBY(auxil, dImdp[iparam], 0.0, Acu);
+      VecAXPBY(auxil, -dRedp[iparam], 1.0, Bcv);
+      VecGetArrayRead(auxil, &col_ptr);
       MatSetValues(dRHSdp, dim, rowid, 1, &colid, col_ptr, INSERT_VALUES);
-      VecRestoreArrayRead(tmp, &col_ptr);
+      VecRestoreArrayRead(auxil, &col_ptr);
 
-      VecAXPBY(tmp, dRedp[iparam], 0.0, Bcu);
-      VecGetArrayRead(tmp, &col_ptr);
+      /* Set derivative of p(alpha^k)B_c^k u + q(alpha^k)A_c^k v */
+      VecAXPBY(auxil, dRedp[iparam], 0.0, Bcu);
+      VecAXPBY(auxil, dImdp[iparam], 1.0, Acv);
+      VecGetArrayRead(auxil, &col_ptr);
       MatSetValues(dRHSdp, dim, rowid_shift, 1, &colid, col_ptr, INSERT_VALUES);
-      VecRestoreArrayRead(tmp, &col_ptr);
-
-      /* wrt paramIm */
-      colid = iosc*nparam + nparam/2 + iparam;
-      VecAXPBY(tmp, dImdp[iparam], 0.0, Acu);
-      VecGetArrayRead(tmp, &col_ptr);
-      MatSetValues(dRHSdp, dim, rowid, 1, &colid, col_ptr, INSERT_VALUES);
-      VecRestoreArrayRead(tmp, &col_ptr);
-
-      VecAXPBY(tmp, dImdp[iparam], 0.0, Acv);
-      VecGetArrayRead(tmp, &col_ptr);
-      MatSetValues(dRHSdp, dim, rowid_shift, 1, &colid, col_ptr, INSERT_VALUES);
-      VecRestoreArrayRead(tmp, &col_ptr);
+      VecRestoreArrayRead(auxil, &col_ptr);
     }
   }
 
   MatAssemblyBegin(dRHSdp, MAT_FINAL_ASSEMBLY);
   MatAssemblyEnd(dRHSdp, MAT_FINAL_ASSEMBLY);
   // MatView(dRHSdp, PETSC_VIEWER_STDOUT_WORLD);
-
-  VecDestroy(&M);
-  VecDestroy(&Acu);
-  VecDestroy(&Acv);
-  VecDestroy(&Bcu);
-  VecDestroy(&Bcv);
-  VecDestroy(&tmp);
 
   /* Restore x */
   VecRestoreSubVector(x, isu, &u);

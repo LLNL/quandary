@@ -11,12 +11,10 @@ using namespace std;
 
 class Oscillator {
   protected:
-    int nlevels;  // Number of levels for this the oscillator 
-    int nparams;   // Total number of control parameters (real + imaginary part)
-    double* param_Re; // parameters of real part of the control. Size = nparam/2
-    double* param_Im; // parameters of imaginary part of the control. Size = nparam/2
-    double Tfinal;               // final time
-    Bspline *basisfunctions;     // Bspline basis function for control discretization 
+    int nlevels;                   // Number of levels for this the oscillator 
+    std::vector<double> params;    // control parameters 
+    double Tfinal;                 // final time
+    ControlBasis *basisfunctions;  // Control discretization using Bsplines + carrier waves
 
   public:
     Oscillator();
@@ -24,7 +22,7 @@ class Oscillator {
     virtual ~Oscillator();
 
     /* Return the constants */
-    int getNParams() { return nparams; };
+    int getNParams() { return params.size(); };
     int getNLevels() { return nlevels; };
 
     /* Copy x to real and imaginary part of parameter */

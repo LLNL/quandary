@@ -43,7 +43,8 @@ class MasterEq{
     int *rowid;
     int *rowid_shift;
     IS isu, isv;
-
+    Vec Acu, Acv, Bcu, Bcv, auxil;
+ 
 
 
   public:

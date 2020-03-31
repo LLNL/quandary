@@ -1,6 +1,6 @@
 #include "bspline.hpp"
 
-Bspline::Bspline(int NBasis, double T, std::vector<double> carrier_freq_){
+ControlBasis::ControlBasis(int NBasis, double T, std::vector<double> carrier_freq_){
     nbasis = NBasis;
     carrier_freq = carrier_freq_;
 
@@ -15,46 +15,53 @@ Bspline::Bspline(int NBasis, double T, std::vector<double> carrier_freq_){
 
 }
 
-Bspline::~Bspline(){
+ControlBasis::~ControlBasis(){
 
     delete [] tcenter;
 }
 
 
-double Bspline::evaluate(double t, double* coeff, int sign){
+double ControlBasis::evaluate(double t, std::vector<double> coeff, ControlType controltype){
 
     double val = 0.0;
     double tau;
 
     /* Sum up basis function */
     double sum = 0.0;
-    for (int k=0; k<nbasis; k++) {
-        for (int l=0; l < carrier_freq.size(); l++) {
-            double tmp = carrier_freq[l] * t;
-            int coeff_id = k * carrier_freq.size() * 2 + l * 2;
-            sum += basisfunction(k,t) * ( coeff[coeff_id] * cos(tmp) + sign * coeff[coeff_id + 1] * sin(tmp) );
-            // sum += coeff[k] * basisfunction(k, t);
+    for (int l=0; l<nbasis; l++) {
+        double carriersum = 0.0;
+        for (int f=0; f < carrier_freq.size(); f++) {
+            double tmp= carrier_freq[f] * t;
+            int coeff_id = l * carrier_freq.size() * 2 + f * 2;     // alpha^{k(1)}_{l,f}
+            if (controltype == RE) carriersum +=  coeff[coeff_id] * cos(tmp) - coeff[coeff_id + 1] * sin(tmp);
+            else                   carriersum +=  coeff[coeff_id] * sin(tmp) + coeff[coeff_id + 1] * cos(tmp);
         }
+        sum += basisfunction(l,t) * carriersum;
     }
 
     return sum;
 }
 
-void Bspline::derivative(double t, double* coeff_diff, double valbar, int sign) {
+void ControlBasis::derivative(double t, double* coeff_diff, double valbar, ControlType controltype) {
 
     /* Iterate over basis function */
-    for (int k=0; k<nbasis; k++) {
-        for (int l=0; l < carrier_freq.size(); l++) {
-            double tmp = carrier_freq[l] * t;
-            int coeff_id = k * carrier_freq.size() * 2 + l * 2;
-            coeff_diff[coeff_id]     +=  basisfunction(k, t) * cos(tmp) * valbar;
-            coeff_diff[coeff_id + 1] +=  basisfunction(k, t) * sin(tmp) * valbar * sign;
+    for (int l=0; l<nbasis; l++) {
+        double basis = basisfunction(l, t); 
+        for (int f=0; f < carrier_freq.size(); f++) {
+            double tmp = carrier_freq[f] * t;
+            int coeff_id = l * carrier_freq.size() * 2 + f * 2;
+            if (controltype == RE) {
+                coeff_diff[coeff_id]     +=   basis * cos(tmp) * valbar;
+                coeff_diff[coeff_id + 1] += - basis * sin(tmp) * valbar;
+            } else {
+                coeff_diff[coeff_id]     += basis * sin(tmp) * valbar;
+                coeff_diff[coeff_id + 1] += basis * cos(tmp) * valbar;
+            }
         }
     }
- 
 }
 
-double Bspline::basisfunction(int id, double t){
+double ControlBasis::basisfunction(int id, double t){
 
     /* compute scaled time tau = (t-tcenter[k])  */
     double tau = (t - tcenter[id]) / width;
