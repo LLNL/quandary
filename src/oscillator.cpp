@@ -1,10 +1,20 @@
 #include "oscillator.hpp"
 
-Oscillator::Oscillator(){}
+Oscillator::Oscillator(){
+  nlevels = 0;
+  nparam = 0;
+  param_Re = NULL;
+  param_Im = NULL;
+  Tfinal = 0;
+  basisfunctions = NULL;
+}
 
-Oscillator::Oscillator(int nlevels_, int nparam_){
+Oscillator::Oscillator(int nlevels_, int nbasis_, double Tfinal_){
   nlevels = nlevels_;
-  nparam = nparam_;
+  nparam = nbasis_;
+  Tfinal = Tfinal_;
+  basisfunctions = new Bspline(nbasis_, Tfinal_);
+
   if (nparam>0) {
     param_Re = new double[nparam];
     param_Im = new double[nparam];
@@ -19,6 +29,7 @@ Oscillator::~Oscillator(){
   if (nparam>0) {
     delete [] param_Re;
     delete [] param_Im;
+    delete basisfunctions;
   }
 }
 
@@ -90,25 +101,7 @@ int Oscillator::createLoweringOP(int dim_prekron, int dim_postkron, Mat* lowerin
 }
 
 
-
-SplineOscillator::SplineOscillator() {
-  Tfinal = 0;
-  basisfunctions = NULL;
-}
-
-
-SplineOscillator::SplineOscillator(int nlevels_, int nbasis_, double Tfinal_) : Oscillator(nlevels_, nbasis_) {
-  Tfinal = Tfinal_;
-  basisfunctions = new Bspline(nparam, Tfinal_);
-}
-
-SplineOscillator::~SplineOscillator(){
-  if (nparam > 0){
-    delete basisfunctions;
-  }
-}
-
-int SplineOscillator::evalControl(double t, double* Re_ptr, double* Im_ptr){
+int Oscillator::evalControl(double t, double* Re_ptr, double* Im_ptr){
 
   if ( t > Tfinal ){
     printf("WARNING: accessing spline outside of [0,T] at %f. Returning 0.0\n", t);
@@ -124,7 +117,7 @@ int SplineOscillator::evalControl(double t, double* Re_ptr, double* Im_ptr){
 }
 
 
-int SplineOscillator::evalDerivative(double t, double* dRedp, double* dImdp) {
+int Oscillator::evalDerivative(double t, double* dRedp, double* dImdp) {
 
   if ( t > Tfinal ){
     printf("WARNING: accessing spline derivative outside of [0,T]. Returning 0.0\n");

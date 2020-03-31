@@ -8,19 +8,18 @@
 
 using namespace std;
 
-/*
- * Abstract base class for oscillators
- */
 class Oscillator {
   protected:
     int nlevels;  // Number of levels for this the oscillator 
     int nparam;   // Number of control parameters for each real and imaginary part
     double* param_Re; // parameters of real part of the control
     double* param_Im; // parameters of imaginary part of the control
+    double Tfinal;               // final time
+    Bspline *basisfunctions;     // Bspline basis function for control discretization 
 
   public:
     Oscillator();
-    Oscillator(int nlevels_, int nparam_);
+    Oscillator(int nlevels_, int nbasis_, double Tfinal_);
     virtual ~Oscillator();
 
     /* Return the constants */
@@ -41,29 +40,11 @@ class Oscillator {
     int createNumberOP(int dim_prekron, int dim_postcron, Mat* numberOP);
 
     /* Evaluates real and imaginary control function at time t */
-    virtual int evalControl(double t, double* Re_ptr, double* Im_ptr) = 0;
+    int evalControl(double t, double* Re_ptr, double* Im_ptr);
 
     /* Compute derivatives of the Re and Im control function wrt the parameters */
-    virtual int evalDerivative(double t, double* dRedp, double* dImdp) = 0;
+    int evalDerivative(double t, double* dRedp, double* dImdp);
 };
 
 
-/* 
- * Implements oscillators that are discretized by spline basis functions
- */
-class SplineOscillator : public Oscillator {
-    double Tfinal;               // final time
-    Bspline *basisfunctions;  // Bspline basis function for control discretization 
-
-  public:
-    SplineOscillator();
-    SplineOscillator(int nlevels_, int nbasis_, double Tfinal_);
-    ~SplineOscillator();
-
-    /* Evaluates the real and imaginare spline functions at time t, using current spline parameters */
-    virtual int evalControl(double t, double* Re_ptr, double* Im_ptr);
-
-    /* Compute derivatives of the Re and Im control function wrt param_Re, param_Im */
-    virtual int evalDerivative(double t, double* dRedp, double* dImdp);
-};
 

@@ -109,7 +109,7 @@ int main(int argc,char **argv)
   /* Initialize the Oscillators */
   Oscillator** oscil_vec = new Oscillator*[nosci];
   for (int i = 0; i < nosci; i++){
-    oscil_vec[i] = new SplineOscillator(nlvl, nspline, total_time);
+    oscil_vec[i] = new Oscillator(nlvl, nspline, total_time);
   }
 
   /* So far, these frequencies are not used anywhere... */
