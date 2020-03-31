@@ -29,8 +29,9 @@ class Bspline{
         ~Bspline();
 
         /* Evaluate the spline at time t using the coefficients coeff. */
-        double evaluate(double t, double* coeff);
+        /* 'sign' is either +1 or -1. It is the multiplier for carrier wave sinus (-1 for re, +1 for im) */
+        double evaluate(double t, double* coeff, int sign);
 
         /* Evaluates the derivative at time t, multiplied with fbar. */
-        void derivative(double t, double* coeff_diff, double fbar);
+        void derivative(double t, double* coeff_diff, double fbar, int sign);
 };

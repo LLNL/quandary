@@ -15,8 +15,7 @@ Oscillator::Oscillator(int nlevels_, int nbasis_, std::vector<double> carrier_fr
   basisfunctions = new Bspline(nbasis_, Tfinal_, carrier_freq_);
 
   /* Number of parameters per real and imaginary oscillator */
-  // nparam = 2 * nbasis_ * carrier_freq_.size();
-  nparams = 2 * nbasis_ * carrier_freq_.size();
+  nparams = 4 * nbasis_ * carrier_freq_.size();
 
   if (nparams>0) {
     param_Re = new double[nparams/2];
@@ -132,8 +131,8 @@ int Oscillator::evalControl(double t, double* Re_ptr, double* Im_ptr){
     *Im_ptr = 0.0;
   } else {
     /* Evaluate the spline at time t */
-    *Re_ptr = basisfunctions->evaluate(t, param_Re);
-    *Im_ptr = basisfunctions->evaluate(t, param_Im);
+    *Re_ptr = basisfunctions->evaluate(t, param_Re, -1);
+    *Im_ptr = basisfunctions->evaluate(t, param_Im, +1);
   }
 
   return 0;
@@ -151,8 +150,8 @@ int Oscillator::evalDerivative(double t, double* dRedp, double* dImdp) {
   } else {
       double Rebar = 1.0;
       double Imbar = 1.0;
-      basisfunctions->derivative(t, dRedp, Rebar);
-      basisfunctions->derivative(t, dImdp, Imbar);
+      basisfunctions->derivative(t, dRedp, Rebar, -1);
+      basisfunctions->derivative(t, dImdp, Imbar, +1);
   }
 
   return 0;

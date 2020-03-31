@@ -21,7 +21,7 @@ Bspline::~Bspline(){
 }
 
 
-double Bspline::evaluate(double t, double* coeff){
+double Bspline::evaluate(double t, double* coeff, int sign){
 
     double val = 0.0;
     double tau;
@@ -29,17 +29,27 @@ double Bspline::evaluate(double t, double* coeff){
     /* Sum up basis function */
     double sum = 0.0;
     for (int k=0; k<nbasis; k++) {
-        sum += coeff[k] * basisfunction(k, t);
+        for (int l=0; l < carrier_freq.size(); l++) {
+            double tmp = carrier_freq[l] * t;
+            int coeff_id = k * carrier_freq.size() * 2 + l * 2;
+            sum += basisfunction(k,t) * ( coeff[coeff_id] * cos(tmp) + sign * coeff[coeff_id + 1] * sin(tmp) );
+            // sum += coeff[k] * basisfunction(k, t);
+        }
     }
 
     return sum;
 }
 
-void Bspline::derivative(double t, double* coeff_diff, double valbar) {
+void Bspline::derivative(double t, double* coeff_diff, double valbar, int sign) {
 
     /* Iterate over basis function */
-    for (int k=1; k<=nbasis; k++) {
-        coeff_diff[k-1] +=  basisfunction(k-1, t) * valbar;
+    for (int k=0; k<nbasis; k++) {
+        for (int l=0; l < carrier_freq.size(); l++) {
+            double tmp = carrier_freq[l] * t;
+            int coeff_id = k * carrier_freq.size() * 2 + l * 2;
+            coeff_diff[coeff_id]     +=  basisfunction(k, t) * cos(tmp) * valbar;
+            coeff_diff[coeff_id + 1] +=  basisfunction(k, t) * sin(tmp) * valbar * sign;
+        }
     }
  
 }
