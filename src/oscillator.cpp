@@ -10,6 +10,7 @@ Oscillator::Oscillator(int nlevels_, int nbasis_, std::vector<double> carrier_fr
   nlevels = nlevels_;
   Tfinal = Tfinal_;
   basisfunctions = new ControlBasis(nbasis_, Tfinal_, carrier_freq_);
+  printf("Creating oscillator with %d levels\n", nlevels);
 
   /* Initialize control parameters */
   int nparam = 2 * nbasis_ * carrier_freq_.size();
