@@ -90,7 +90,6 @@ MasterEq::MasterEq(int noscillators_, Oscillator** oscil_vec_, const std::vector
   for (int iosc = 0; iosc < noscillators_; iosc++) {
 
     /* Get lowering operator */
-    int nlvls = oscil_vec[iosc]->getNLevels();
     int dim_prekron = 1;
     int dim_postkron = 1;
     for (int j=0; j<noscillators; j++) {
@@ -101,7 +100,7 @@ MasterEq::MasterEq(int noscillators_, Oscillator** oscil_vec_, const std::vector
     MatTranspose(loweringOP, MAT_INITIAL_MATRIX, &loweringOP_T);
 
     /* Compute Ac = I_N \kron (a - a^T) - (a - a^T) \kron I_N */
-    MatCreateSeqAIJ(PETSC_COMM_WORLD,dim,dim,4*dim,NULL,&Ac_vec[iosc]); 
+    MatCreateSeqAIJ(PETSC_COMM_WORLD,dim,dim,4,NULL,&Ac_vec[iosc]); 
     Ikron(loweringOP,   dim_lowering,  1.0, &Ac_vec[iosc], ADD_VALUES);
     Ikron(loweringOP_T, dim_lowering, -1.0, &Ac_vec[iosc], ADD_VALUES);
     kronI(loweringOP_T, dim_lowering, -1.0, &Ac_vec[iosc], ADD_VALUES);
@@ -110,7 +109,7 @@ MasterEq::MasterEq(int noscillators_, Oscillator** oscil_vec_, const std::vector
     MatAssemblyEnd(Ac_vec[iosc], MAT_FINAL_ASSEMBLY);
     
     /* Compute Bc = - I_N \kron (a + a^T) + (a + a^T) \kron I_N */
-    MatCreateSeqAIJ(PETSC_COMM_WORLD,dim,dim,4*dim,NULL,&Bc_vec[iosc]); 
+    MatCreateSeqAIJ(PETSC_COMM_WORLD,dim,dim,4,NULL,&Bc_vec[iosc]); 
     Ikron(loweringOP,   dim_lowering, -1.0, &Bc_vec[iosc], ADD_VALUES);
     Ikron(loweringOP_T, dim_lowering, -1.0, &Bc_vec[iosc], ADD_VALUES);
     kronI(loweringOP_T, dim_lowering,  1.0, &Bc_vec[iosc], ADD_VALUES);
@@ -131,7 +130,6 @@ MasterEq::MasterEq(int noscillators_, Oscillator** oscil_vec_, const std::vector
     Mat tmp, tmp_T;
     Mat numberOPj;
     /* Get dimensions */
-    int nlvls = oscil_vec[iosc]->getNLevels();
     int dim_prekron = 1;
     int dim_postkron = 1;
     for (int j=0; j<noscillators; j++) {
@@ -156,7 +154,6 @@ MasterEq::MasterEq(int noscillators_, Oscillator** oscil_vec_, const std::vector
 
     /* Mixed term -xi * 2 * PI * (N_i*N_j) for j > i */
     for (int josc = iosc+1; josc < noscillators_; josc++) {
-      nlvls = oscil_vec[josc]->getNLevels();
       dim_prekron = 1;
       dim_postkron = 1;
       for (int j=0; j<noscillators; j++) {
@@ -192,7 +189,6 @@ MasterEq::MasterEq(int noscillators_, Oscillator** oscil_vec_, const std::vector
   for (int iosc = 0; iosc < noscillators_; iosc++) {
 
     /* Get dimensions */
-    int nlvls = oscil_vec[iosc]->getNLevels();
     int dim_prekron = 1;
     int dim_postkron = 1;
     for (int j=0; j<noscillators; j++) {
