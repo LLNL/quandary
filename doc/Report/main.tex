@@ -111,7 +111,7 @@ Since this is a linear ODE for $q(t)$, we can make the ansatz $q(T) = X(T) q(0)$
 \end{align}
 where a Tikhonov regularizatioe term $R(z)$ has been added in order to well-condition the system. Using the definition $G := \bar V\otimes V$, the objective function $J(z)$ is decomposed into
 \begin{align}
-  J(z) &= \frac{1}{2N^2} \| X(T) - G\|^2_F \\
+  J(z) &= \frac{1}{2N^2} \| X(T) - G\|^2_F \label{eq:objective}\\
        &= \frac{1}{2N^2} \left( X(T)^{\dagger}X(T) + G^{\dagger}G - 2Re(X(T)^{\dagger}G) \right) \\
        &= \frac{1}{2N^2} \left( \sum_{i=1}^{N^2} x_i(T)^{\dagger}x_i(T) + g_i^{\dagger}g_i - 2Re(x_i(T)^{\dagger}g_i) \right) \\
        &= \frac{1}{2N^2} \left( \sum_{i=1}^{N^2} \| x_i(T) - g_i) \|^2_2 \right) \\
@@ -148,10 +148,6 @@ Target gates that we consider include
                                    0  & 1 & 0 & 0 \\ 
                                    0  & 0 & 0 & 1 \\ 
                                    0  & 0 & 1 & 0 \\ 
-                    \end{bmatrix}\quad 
-      V_{GroundState} := \begin{bmatrix} 1  &   &      \\ 
-                                            & 0 &      \\ 
-                                            &   &  \ddots 
                     \end{bmatrix}
     \end{align}
 
@@ -171,6 +167,14 @@ Target gates that we consider include
 %            \end{bmatrix}
 %    \end{align}
 %\end{enumerate}
+\subsection{Groundstate optimization}
+Here we aim to find control pulses that drive any state towards the ground state $|0\dots 0> = (1, 0, 0, \dots )^T$. Therefore the target matrix $G$ used in the objective function \eqref{eq:objective} is given by 
+\begin{align}
+      G_{GroundState} := \begin{bmatrix} 1      & 1  &  1 & \dots   \\ 
+                                         0      & 0 &   0  & \dots  \\ 
+                                         \vdots & \vdots & \vdots &  \dots 
+                    \end{bmatrix}
+\end{align}
 
 \section{Implementation}
   \subsection{Vectorized, real-valued system setup}
