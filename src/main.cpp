@@ -107,10 +107,10 @@ int main(int argc,char **argv)
   /* Initialize the Oscillators */
   Oscillator** oscil_vec = new Oscillator*[nosci];
   std::vector<int> nlevels;
-  std::vector<double> carrier_freq;
   config.GetVecIntParam("nlevels", nlevels, 2);
   assert(nlevels.size() >= nosci);
   for (int i = 0; i < nosci; i++){
+    std::vector<double> carrier_freq;
     std::string key = "carrier_frequency" + std::to_string(i);
     config.GetVecDoubleParam(key, carrier_freq, 0.0);
     oscil_vec[i] = new Oscillator(nlevels[0], nspline, carrier_freq, total_time);
