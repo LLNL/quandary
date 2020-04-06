@@ -31,7 +31,7 @@ double ControlBasis::evaluate(double t, std::vector<double> coeff, ControlType c
     for (int l=0; l<nbasis; l++) {
         double carriersum = 0.0;
         for (int f=0; f < carrier_freq.size(); f++) {
-            double tmp= carrier_freq[f] * t;
+            double tmp= -2.0 * M_PI * carrier_freq[f] * t;
             int coeff_id = l * carrier_freq.size() * 2 + f * 2;     // alpha^{k(1)}_{l,f}
             if (controltype == RE) carriersum +=  coeff[coeff_id] * cos(tmp) - coeff[coeff_id + 1] * sin(tmp);
             else                   carriersum +=  coeff[coeff_id] * sin(tmp) + coeff[coeff_id + 1] * cos(tmp);

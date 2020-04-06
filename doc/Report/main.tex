@@ -33,7 +33,7 @@ for the density matrix $\rho(t)\in \C^{N\times N}$, $N := \prod_{k=1}^N n_k$. Th
 \begin{align}
   H(t) &= H_d + H_c(t) \\
   \text{with} \quad H_d &:= \sum_{k=1}^Q \left(- \frac{\xi_k}{2} a_k^{\dagger}a_k^{\dagger}a_k a_k - \sum_{l\neq k} \xi_{lk} a_l^{\dagger}a_l a_k^{\dagger} a_k  \right) \\
-                 H_c(t) &:= \sum_{k=1}^Q \left( p(\vec{\alpha}^k,t) (a_k + a_k^{\dagger}) + i q(\vec{\alpha}^k,t)(a_k - a_k^{\dagger})  \right)
+                 H_c(t) &:= \sum_{k=1}^Q \left( p^k(\vec{\alpha}^k,t) (a_k + a_k^{\dagger}) + i q^k(\vec{\alpha}^k,t)(a_k - a_k^{\dagger})  \right)
 \end{align}
 Here, $a_k$ denotes the lowering operator:
 \begin{align}
@@ -63,19 +63,19 @@ The collapse operators $\Ell_{lk}$ in the Lindblad terms of the master equation 
 for each oscillator $k$. The constants $\gamma_{lk}$ are the inverse half-live for the corresponding collapse process $l$: $\gamma_{lk} = {\frac{1}{T_l}}$ (in nanoseconds, ns). Typical T1 decay time is between $10-100$ microseconds (us). T2 dephasing time is typically about half of T1 decay time. Decay then behaves like $\exp(-t/{T_1})$. Dephasing behaves like $\exp(-\frac{1}{2{T_2}})$.
 
 \subsection*{Control pulses}
-The time-dependent control functions $p(\vec{\alpha}^k,t), q(\vec{\alpha}^k,t)$ are real-valued. We discretize them using B-splines with carrier waves:
+The time-dependent control functions $p^k(\vec{\alpha}^k,t), q^k(\vec{\alpha}^k,t)$ are real-valued. We discretize them using B-splines with carrier waves:
 \begin{align}
-  p(\vec{\alpha}^k,t) &= \sum_{l=1}^L B_l(t) \sum_{f=1}^{N_f} \left(\alpha^{k (1)}_{l,f} \cos(\Omega_f) - \alpha^{k (2)}_{l,f} \sin(\Omega_f) \right) \\
-  q(\vec{\alpha}^k,t) &= \sum_{l=1}^L B_l(t) \sum_{f=1}^{N_f} \left( \alpha^{k (1)}_{l,f} \sin(\Omega_f) + \alpha^{k (2)}_{l,f} \cos(\Omega_f) \right)
+  p^k(\vec{\alpha}^k,t) &= \sum_{l=1}^L B_l(t) \sum_{f=1}^{N_f} \left(\alpha^{k (1)}_{l,f} \cos(\Omega_f^k) - \alpha^{k (2)}_{l,f} \sin(\Omega_f^k) \right) \\
+  q^k(\vec{\alpha}^k,t) &= \sum_{l=1}^L B_l(t) \sum_{f=1}^{N_f} \left( \alpha^{k (1)}_{l,f} \sin(\Omega_f^k) + \alpha^{k (2)}_{l,f} \cos(\Omega_f^k) \right)
 \end{align}
-for $L$ B-Spline functions $B_l(t)$, and $N_f$ carrier wave frequencies $\Omega_f$. The amplitudes $\vec{\alpha}^k \in \R^{2LN_f}$ are the control parameters (\textit{design} variables) that we modify in order to realize a desired system behavior, giving a total of $2QLN_f$ design parameters:
+for $L$ B-Spline functions $B_l(t)$, and $N_f$ carrier wave frequencies $\Omega_f^k$. The amplitudes $\vec{\alpha}^k \in \R^{2LN_f}$ are the control parameters (\textit{design} variables) that we modify in order to realize a desired system behavior, giving a total of $2QLN_f$ design parameters:
 \begin{align}
   z &:= \left( \vec{\alpha}^1, \dots, \vec{\alpha}^Q \right), \in \mathds{R}^{2QLN_f} \quad \text{where}\\
   \vec{\alpha}^k &= \left( \alpha_{1,1}^k,\dots, \alpha_{1,N_f}^k, \dots, \alpha_{L,1}^{k}, \dots, \alpha_{L,N_f}^k \right) \in \R^{2LN_f}, \quad \alpha_{l,f}^k = \left(\alpha_{l,f}^{k(1)}, \alpha_{l,f}^{k(2)} \right) \in R^2
 \end{align}
 The control functions are in the \textit{rotating frame}. To convert them back to the \textit{Lab frame} use
 \begin{align}
-  f^k(t) = 2 \sum_{l=1}^L B_l(t) \sum_{f=1}^{N_f} \beta_{l,f}^k \cos(w_r t + \Omega_f t + \theta_{l,f}) \quad \forall k=1,\dots Q
+  f^k(t) = 2 \sum_{l=1}^L B_l(t) \sum_{f=1}^{N_f} \beta_{l,f}^k \cos(w_r t + \Omega_f^k t + \theta_{l,f}) \quad \forall k=1,\dots Q
 \end{align}
 where $\beta_{l,f}^k$ and $\theta_{l,f}$ are computed from
 \begin{align}

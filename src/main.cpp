@@ -108,11 +108,12 @@ int main(int argc,char **argv)
   Oscillator** oscil_vec = new Oscillator*[nosci];
   std::vector<int> nlevels;
   std::vector<double> carrier_freq;
-  config.GetVecDoubleParam("carrier_frequency", carrier_freq, 0.0);
   config.GetVecIntParam("nlevels", nlevels, 2);
   assert(nlevels.size() >= nosci);
   for (int i = 0; i < nosci; i++){
-    oscil_vec[i] = new Oscillator(nlevels[i], nspline, carrier_freq, total_time);
+    std::string key = "carrier_frequency" + std::to_string(i);
+    config.GetVecDoubleParam(key, carrier_freq, 0.0);
+    oscil_vec[i] = new Oscillator(nlevels[0], nspline, carrier_freq, total_time);
   }
 
   /* So far, these frequencies are not used anywhere... */
