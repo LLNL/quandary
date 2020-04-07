@@ -65,21 +65,44 @@ OptimProblem::OptimProblem(MapParam config, myBraidApp* primalbraidapp_, myAdjoi
 
     /* Read a specific initial conditions from config file, if requested */
     if (ninit == 1) {
-      /* Read initial condition from file */
-      int dim = primalbraidapp->mastereq->getDim();
-      double * vec = new double[2*dim];
-      if (mpirank_world == 0) {
-        std::string filename = config.GetStrParam("initialcondition", "none");
-        read_vector(filename.c_str(), vec, 2*dim);
+
+      if (config.GetStrParam("initialcondition").compare("unit") == 0) {
+        // Initialize with tensor product of unit vectors. 
+        std::vector<int> unitids;
+        config.GetVecIntParam("init_unit", unitids);
+        assert (unitids.size() == primalbraidapp->mastereq->getNOscillators());
+        // Compute index of diagonal elements that is one.
+        int diag_id = 0.0;
+        for (int k=0; k < unitids.size(); k++) {
+          // Get dimension of postkronecker
+          int dim_postkron = 1;
+          for (int m=k+1; m < unitids.size(); m++) {
+            dim_postkron *= primalbraidapp->mastereq->getOscillator(m)->getNLevels();
+          }
+          diag_id += unitids[k] * dim_postkron;
+        }
+        int vec_id = diag_id * (int)sqrt(primalbraidapp->mastereq->getDim()) + diag_id;
+        VecSetValue(initcond_re, vec_id, 1.0, INSERT_VALUES);
+        VecAssemblyBegin(initcond_re); VecAssemblyEnd(initcond_re);
+        VecAssemblyBegin(initcond_im); VecAssemblyEnd(initcond_im);
       }
-      MPI_Bcast(vec, 2*dim, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-      for (int i = 0; i < dim; i++) {
-        if (vec[i]     != 0.0) VecSetValue(initcond_re, i, vec[i],     INSERT_VALUES);
-        if (vec[i+dim] != 0.0) VecSetValue(initcond_im, i, vec[i+dim], INSERT_VALUES);
+      else {
+        /* Read initial condition from file */
+        int dim = primalbraidapp->mastereq->getDim();
+        double * vec = new double[2*dim];
+        if (mpirank_world == 0) {
+          std::string filename = config.GetStrParam("initialcondition", "none");
+          read_vector(filename.c_str(), vec, 2*dim);
+        }
+        MPI_Bcast(vec, 2*dim, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+        for (int i = 0; i < dim; i++) {
+          if (vec[i]     != 0.0) VecSetValue(initcond_re, i, vec[i],     INSERT_VALUES);
+          if (vec[i+dim] != 0.0) VecSetValue(initcond_im, i, vec[i+dim], INSERT_VALUES);
+        }
+        VecAssemblyBegin(initcond_re); VecAssemblyEnd(initcond_re);
+        VecAssemblyBegin(initcond_im); VecAssemblyEnd(initcond_im);
+        delete [] vec;
       }
-      VecAssemblyBegin(initcond_re); VecAssemblyEnd(initcond_re);
-      VecAssemblyBegin(initcond_im); VecAssemblyEnd(initcond_im);
-      delete [] vec;
     }
    
     /* Open optim file */
