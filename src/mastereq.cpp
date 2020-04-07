@@ -195,7 +195,7 @@ MasterEq::MasterEq(int noscillators_, Oscillator** oscil_vec_, const std::vector
       if (collapse_time[iosc*2] < 1e-12) { 
         printf("Check lindblad settings! Requested collapse time is zero.\n"); exit(1);
       }
-      double gamma = 1./(collapse_time[iosc*2]) * 2. * M_PI;
+      double gamma = 1./(collapse_time[iosc*2]);
       /* Ad += gamma_j * L \kron L */
       AkronB(dimmat, L1, L1, gamma, &Ad, ADD_VALUES);
       /* Ad += - gamma_j/2  I_n  \kron L^TL  */
@@ -211,7 +211,7 @@ MasterEq::MasterEq(int noscillators_, Oscillator** oscil_vec_, const std::vector
       if (collapse_time[iosc*2+1] < 1e-12) { 
         printf("Check lindblad settings! Requested collapse time is zero.\n"); exit(1);
       }
-      double gamma = 1./(collapse_time[iosc*2+1]) * 2. * M_PI;
+      double gamma = 1./(collapse_time[iosc*2+1]);
       /* Ad += 1./gamma_j * L \kron L */
       AkronB(dimmat, L2, L2, gamma, &Ad, ADD_VALUES);
       /* Ad += - gamma_j/2  I_n  \kron L^TL  */
