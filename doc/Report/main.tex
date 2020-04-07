@@ -84,6 +84,28 @@ where $\beta_{l,f}^k$ and $\theta_{l,f}$ are computed from
 and $w_r$ is ??
 
 
+\subsection*{Projective measure}
+For each oscillator $k$, $k=1,\dots, Q$, we define the observable 
+\begin{align}
+  M^k := a_k^\dag a_k  = I_{n_1} \otimes \dots \otimes I_{n_{k-1}} \otimes  N_k \otimes I_{n_{k+1}} \otimes \dots I_{n_Q} 
+\end{align}
+       
+       \quad
+for the number operator 
+\begin{align}
+  N_k := a^{(n_k)^\dag} a^{(n_k)} = \begin{bmatrix} 
+   0 &    &    & \\
+     &  1 &    &\\
+     &    &  2 &\\
+     &    &    & \ddots 
+  \end{bmatrix}
+\end{align}
+$M^k$ measures the probability of the energy levels of oscillator $k$. The expected energy level of oscillator $k$ is given by 
+\begin{align}
+  \langle M^k \rangle = \sum_{m_k} m_k p(m_k)  = tr(M^k\rho) = \sum_{i=0}^{N-1} M^k_{ii} \rho_{ii}
+\end{align}
+where the last equality holds because $M^k$ is diagonal. Here, $p(m_k)$ is the probability of $\rho$ being the the $m_k$-th energy level for oscillator $k$, $p(m_k) = tr(P^k_m \rho)$ for a spectral decomposition $M^k = \sum_{m_k} m_kP^k_m$. 
+
 \subsection*{Optimization problem}
 The quantum control problem aims to realize a certain target gate at final time $T$, represented by a unitary matrix $V\in \C^{N\times N}$. For closed quantum systems, we know that $\rho$ evolves in time with the unitary transformation matrix $\rho(t) = U(t)\rho(0) U(t)^{\dagger}$ (because $\rho(t) = \sum_k p_k \psi_k(t)\psi_k(t)^{\dagger}$, and $\psi_k(t)$ evolve according to the (linear) Schroedinger equation giving $\psi(t) = U(t) \psi(0)$). Hence, for closed systems we want to match $V$ with $U(T)$ so that $q(T) = V\rho(0)V^{\dagger}$ holds at final time. For open systems, $\rho(t)$ might not be in a pure state, and we might have $\rho(t) \neq U(t)\rho(0) U(t)^{\dagger}$. However, the optimal control problem still aims to find the amplitudes $z\in \R^{2QL}$ such that $\rho(T)$ is as close as possible to $V\rho(0)V^{\dagger}$, for any initial state $\rho(0)$. We measure the distance in the Frobenius norm:
 \begin{align}\label{optimproblem_matrix}

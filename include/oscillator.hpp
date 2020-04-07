@@ -48,6 +48,9 @@ class Oscillator {
 
     /* Compute derivatives of the Re and Im control function wrt the parameters */
     int evalDerivative(double t, double* dRedp, double* dImdp);
+
+    /* Return expected value of projective measure in basis |m> */
+    double projectiveMeasure(Vec x);
 };
 
 

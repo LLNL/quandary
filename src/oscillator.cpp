@@ -161,3 +161,23 @@ int Oscillator::evalDerivative(double t, double* dRedp, double* dImdp) {
 
   return 0;
 }
+
+
+double Oscillator::projectiveMeasure(Vec x) {
+
+  int dimmat;
+  MatGetSize(NumberOP, &dimmat, NULL);
+  double xdiag, num_diag;
+
+  double expected = 0.0;
+  for (int i=0; i<dimmat; i++) {
+    /* Get diagonal element in number operator */
+    MatGetValue(NumberOP, i, i, &num_diag);
+    /* Get diagonal element in row */
+    int idx_diag = i * dimmat + i;
+    VecGetValues(x, 1, &idx_diag, &xdiag);
+    expected += num_diag * xdiag;
+  }
+
+  return expected;
+}

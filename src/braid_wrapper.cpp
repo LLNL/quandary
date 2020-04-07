@@ -31,6 +31,7 @@ myBraidApp::myBraidApp(MPI_Comm comm_braid_, double total_time_, int ntime_, TS 
   MPI_Comm_rank(comm_braid, &braidrank);
   ufile = NULL;
   vfile = NULL;
+  expectedfile = NULL;
 
   usepetscts = config->GetBoolParam("usepetscts", false);
 
@@ -330,38 +331,19 @@ braid_Int myBraidApp::Access(braid_Vector u_, BraidAccessStatus &astatus){
     }
     fprintf(ufile, "\n");
     fprintf(vfile, "\n");
+
+    VecRestoreArrayRead(u->x, &x_ptr);
+
+    /* Compute observable */
+    if (expectedfile != NULL) {
+      fprintf(expectedfile, "%.8f  ", t);
+      for (int iosc = 0; iosc < mastereq->getNOscillators(); iosc++) {
+        double expected = mastereq->getOscillator(iosc)->projectiveMeasure(u->x);
+        fprintf(expectedfile, "%1.14e  ", expected);
+      }
+      fprintf(expectedfile, "\n");
+    }
   }
-
-    /* TODO */ 
-    // double err_norm, exact_norm;
-    // Vec err;
-    // Vec exact;
-    // /* If set, compare to the exact solution */
-    // VecDuplicate(u->x,&exact);
-    // if (app->mastereq->ExactSolution(t, exact) ) {  
-
-    //   /* Compute relative error norm */
-    //   VecDuplicate(u->x,&err);
-    //   VecWAXPY(err,-1.0,u->x, exact);
-    //   VecNorm(err, NORM_2,&err_norm);
-    //   VecNorm(exact, NORM_2,&exact_norm);
-    //   err_norm = err_norm / exact_norm;
-
-    //   /* Print error */
-    //   const PetscScalar *exact_ptr;
-    //   VecGetArrayRead(exact, &exact_ptr);
-    //   if (istep == app->ntime){
-    //       printf("Last step: ");
-    //       printf("%5d  %1.5f  x[1] = %1.14e  exact[1] = %1.14e  err = %1.14e \n",istep,(double)t, x_ptr[1], exact_ptr[1], err_norm);
-    //   } 
-
-    //   VecDestroy(&err);
-    // }
-
-
-    // VecDestroy(&exact);
-
-
 
   return 0; 
 }
@@ -434,6 +416,8 @@ void myBraidApp::PreProcess(int iinit){
     ufile = fopen(filename, "w");
     sprintf(filename, "%s/out_v.iinit%04d.rank%04d.dat", datadir.c_str(), iinit, braidrank);
     vfile = fopen(filename, "w");
+    sprintf(filename, "%s/expected.iinit%04d.rank%04d.dat", datadir.c_str(), iinit, braidrank);
+    expectedfile = fopen(filename, "w");
   }
 }
 
@@ -485,6 +469,7 @@ Vec myBraidApp::PostProcess() {
   /* Close output files */
   if (ufile != NULL) fclose(ufile);
   if (vfile != NULL) fclose(vfile);
+  if (expectedfile != NULL) fclose(expectedfile);
 
   return getStateVec(total_time);// this returns NULL for all but the last processors! 
 

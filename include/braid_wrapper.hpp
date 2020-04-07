@@ -26,6 +26,7 @@ class myBraidApp : public BraidApp {
     BraidCore *core;                /* Braid core for running PinT simulation */
     FILE *ufile;
     FILE *vfile;
+    FILE *expectedfile;
 
     bool usepetscts;
     int braidrank;
