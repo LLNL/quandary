@@ -50,6 +50,10 @@ OptimProblem::OptimProblem(MapParam config, myBraidApp* primalbraidapp_, myAdjoi
     printlevel = config.GetIntParam("optim_printlevel", 1);
     config.GetVecDoubleParam("optim_bounds", bounds, 1e20);
     assert (bounds.size() >= primalbraidapp->mastereq->getNOscillators());
+    /* If constant initialization, read in amplitudes */
+    if (optiminit_type.compare("constant") == 0 ){ // set constant controls. 
+      config.GetVecDoubleParam("optim_init_const", init_ampl, 0.0);
+    }
 
     /* Prepare primal and adjoint initial conditions */
     VecCreate(PETSC_COMM_WORLD, &initcond_re); 
@@ -361,7 +365,18 @@ bool OptimProblem::get_starting_point(const long long &global_n, double* x0) {
   /* Set initial parameters. */
   // Do this on one processor only, then broadcast, to make sure that every processor starts with the same initial guess. 
   if (mpirank_world == 0) {
-    if (optiminit_type.compare("zero") == 0)  { // init with zero
+    if (optiminit_type.compare("constant") == 0 ){ // set constant controls. 
+      int j = 0;
+      MasterEq* mastereq = primalbraidapp->mastereq;
+      assert(init_ampl.size() == mastereq->getNOscillators());
+      for (int ioscil = 0; ioscil < mastereq->getNOscillators(); ioscil++) {
+          int nparam = mastereq->getOscillator(ioscil)->getNParams();
+          for (int i = 0; i < nparam; i++) {
+              x0[j] = init_ampl[ioscil];
+              j++;
+          }
+      }
+    } else if (optiminit_type.compare("zero") == 0)  { // init with zero
       for (int i=0; i<global_n; i++) {
         x0[i] = 0.0;
       }

@@ -20,6 +20,7 @@ class OptimProblem : public hiop::hiopInterfaceDenseConstraints {
         int printlevel;                
         int ninit;                            /* Number of initial conditions to be considered (N^2, N, or 1) */
         int ninit_local;                      /* Local number of initial conditions on this processor */
+        std::vector<double> init_ampl;
 
         MPI_Comm comm_hiop, comm_init;
         int mpirank_braid, mpisize_braid;
