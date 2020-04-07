@@ -209,20 +209,20 @@ Here we aim to find control pulses that drive any state towards the ground state
    where $M(t) = A(t) + i B(t)$, $A(t), B(t)\in \R^{N^2\times N^2}$. To assemble $A = Re(M)$ and $B = Im(M)$ consider
    \begin{align}
      -i(I_N \otimes H - H^T \otimes I_N) &= -I_N \otimes \left(iH_d + iH_c(t)\right) + \left(iH_d + iH_c(t)\right)^T \otimes I_N \\
-     \text{and} \quad iH_d + iH_c(t) &= i H_d + i\left( \sum_k p(\vec{\alpha}_k,t)(a_k + a_k^{\dagger}) + ip(\vec{\beta}_k,t)(a_k - a_k^{\dagger})\right) \\
-                    &= - \sum_k p(\beta_k,t)(a_k - a_k^{\dagger}) + i\left( H_d + \sum_k p(\alpha_k,t)(a_k+a_k^{\dagger}) \right) 
+     \text{and} \quad iH_d + iH_c(t) &= i H_d + i\left( \sum_k p^k(\vec{\alpha}^k,t)(a_k + a_k^{\dagger}) + iq^k(\vec{\alpha}^k,t)(a_k - a_k^{\dagger})\right) \\
+                    &= - \sum_k q^k(\alpha^k,t)(a_k - a_k^{\dagger}) + i\left( H_d + \sum_k p^k(\alpha^k,t)(a_k+a_k^{\dagger}) \right) 
    \end{align}
    Hence $A$ and $B$ consist of a constant part $A_d, B_d$ and a time-varying part $A_c(t), B_c(t)$ with the following:
    \begin{align}
      A_d &=  \sum_{l,k=1}^{2,Q}\gamma_{lk} \left( \Ell_{lk}\otimes\Ell_{lk} - \frac 1 2 \left(I_N \otimes \Ell_{lk}^T\Ell_{lk} + \Ell_{lk}^T\Ell_{lk}\otimes I_N\right) \right)\\
      B_d &= -I_N \otimes H_d + H_d^T \otimes I_N \\
-     A_c(t) &= \sum_k p(\vec{\beta}_k,t) \underbrace{\left( I_N \otimes \left(a_k - a_k^{\dagger}\right) - \left(a_k - a_k^{\dagger}\right)^T\otimes I_N \right)}_{=:A_c^k} \\
-     B_c(t) &= \sum_k p(\vec{\alpha}_k,t) \underbrace{\left( - I_N \otimes \left(a_k + a_k^{\dagger}\right) + \left(a_k + a_k^{\dagger}\right)^T\otimes I_N \right)}_{=:B_c^k} 
+     A_c(t) &= \sum_k q^k(\vec{\alpha}^k,t) \underbrace{\left( I_N \otimes \left(a_k - a_k^{\dagger}\right) - \left(a_k - a_k^{\dagger}\right)^T\otimes I_N \right)}_{=:A_c^k} \\
+     B_c(t) &= \sum_k p^k(\vec{\alpha}^k,t) \underbrace{\left( - I_N \otimes \left(a_k + a_k^{\dagger}\right) + \left(a_k + a_k^{\dagger}\right)^T\otimes I_N \right)}_{=:B_c^k} 
    \end{align}
    In the code, we initialize and store the constant matricees $A_d,B_d,A_c^k,  B_c^k$, and use them as building blocks to evaluate 
    \begin{align}
-     A(t) &= Re(M(t)) = A_d + \sum_kp(\beta_k, t)A_c^k \\
-     B(t) &= Im(M(t)) = B_d + \sum_k p(\alpha_k, t)B_c^k
+     A(t) &= Re(M(t)) = A_d + \sum_kq^k(\alpha^k, t)A_c^k \\
+     B(t) &= Im(M(t)) = B_d + \sum_k p^k(\alpha^k, t)B_c^k
    \end{align}
    at time $t$, and finally build $M(t)$ from \eqref{realvaluedODE}.
   \subsection{Timestepper}
