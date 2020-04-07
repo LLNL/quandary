@@ -188,6 +188,7 @@ braid_Int myBraidApp::Step(braid_Vector u_, braid_Vector ustop_, braid_Vector fs
         VecView(u->x, PETSC_VIEWER_STDOUT_WORLD);
         exit(1);
       }
+      else printf("IsHermitian check passed.\n");
       StateHasTrace1(u->x, tol, &check);
       if (!check) {
         printf("WARNING at t=%f: Tr(rho) is NOT one!\n", tstart);
@@ -195,6 +196,7 @@ braid_Int myBraidApp::Step(braid_Vector u_, braid_Vector ustop_, braid_Vector fs
         VecView(u->x, PETSC_VIEWER_STDOUT_WORLD);
         exit(1);
       }
+      else printf("Trace1 check passed.\n");
     // }
 #endif
 

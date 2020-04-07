@@ -216,9 +216,9 @@ PetscErrorCode StateHasTrace1(Vec x, PetscReal tol, PetscBool *flag) {
   /* Init flags*/
   *flag = PETSC_FALSE;
   PetscBool u_hastrace1 = PETSC_FALSE;
-  PetscBool v_hastrace0 = PETSC_FALSE;
+  PetscBool v_hasdiag0  = PETSC_FALSE;
 
-  /* Check if diagonal of u sums to 1, and diagonal of v sums to 0 */ 
+  /* Check if diagonal of u sums to 1, and diagonal elements of v are 0 */ 
   const double *u_array;
   const double *v_array;
   double u_sum = 0.0;
@@ -228,10 +228,10 @@ PetscErrorCode StateHasTrace1(Vec x, PetscReal tol, PetscBool *flag) {
   int N = sqrt(dim);
   for (i=0; i<N; i++) {
     u_sum += u_array[i*N+i];
-    v_sum += v_array[i*N+i];
+    v_sum += fabs(v_array[i*N+i]);
   }
   if ( fabs(u_sum - 1.0) < tol ) u_hastrace1 = PETSC_TRUE;
-  if ( fabs(v_sum - 0.0) < tol ) v_hastrace0 = PETSC_TRUE;
+  if ( fabs(v_sum      ) < tol ) v_hasdiag0  = PETSC_TRUE;
 
   /* Restore vecs */
   ierr = VecRestoreArrayRead(u, &u_array);
@@ -240,7 +240,7 @@ PetscErrorCode StateHasTrace1(Vec x, PetscReal tol, PetscBool *flag) {
   ierr = VecRestoreSubVector(x, isv, &v);
 
   /* Answer*/
-  if (u_hastrace1 && v_hastrace0) {
+  if (u_hastrace1 && v_hasdiag0) {
     *flag = PETSC_TRUE;
   }
   
