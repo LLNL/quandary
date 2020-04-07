@@ -113,7 +113,7 @@ int main(int argc,char **argv)
     std::vector<double> carrier_freq;
     std::string key = "carrier_frequency" + std::to_string(i);
     config.GetVecDoubleParam(key, carrier_freq, 0.0);
-    oscil_vec[i] = new Oscillator(nlevels[i], nspline, carrier_freq, total_time);
+    oscil_vec[i] = new Oscillator(i, nlevels, nspline, carrier_freq, total_time);
   }
 
   /* So far, these frequencies are not used anywhere... */

@@ -29,6 +29,7 @@ MasterEq::MasterEq(int noscillators_, Oscillator** oscil_vec_, const std::vector
   xi = xi_;
   collapse_time = collapse_time_;
   assert(xi.size() >= (noscillators_+1) * noscillators_ / 2);
+  assert(collapse_time.size() >= 2*noscillators);
 
 
   /* Dimension of vectorized system: (n_1*...*n_q^2 */
@@ -96,7 +97,8 @@ MasterEq::MasterEq(int noscillators_, Oscillator** oscil_vec_, const std::vector
       if (j < iosc) dim_prekron  *= oscil_vec[j]->getNLevels();
       if (j > iosc) dim_postkron *= oscil_vec[j]->getNLevels();
     }
-    int dim_lowering = oscil_vec[iosc]->createLoweringOP(dim_prekron, dim_postkron, &loweringOP);
+    int dim_lowering = dim_prekron * oscil_vec[iosc]->getNLevels() * dim_postkron;
+    loweringOP = oscil_vec[iosc]->getLoweringOP();
     MatTranspose(loweringOP, MAT_INITIAL_MATRIX, &loweringOP_T);
 
     /* Compute Ac = I_N \kron (a - a^T) - (a - a^T) \kron I_N */
@@ -117,7 +119,6 @@ MasterEq::MasterEq(int noscillators_, Oscillator** oscil_vec_, const std::vector
     MatAssemblyBegin(Bc_vec[iosc], MAT_FINAL_ASSEMBLY);
     MatAssemblyEnd(Bc_vec[iosc], MAT_FINAL_ASSEMBLY);
 
-    MatDestroy(&loweringOP);
     MatDestroy(&loweringOP_T);
  
   }
@@ -137,7 +138,8 @@ MasterEq::MasterEq(int noscillators_, Oscillator** oscil_vec_, const std::vector
       if (j > iosc) dim_postkron *= oscil_vec[j]->getNLevels();
     }
     /* Create number operator */
-    int dim_number = oscil_vec[iosc]->createNumberOP(dim_prekron, dim_postkron, &numberOP);
+    int dim_number = dim_prekron * oscil_vec[iosc]->getNLevels() * dim_postkron;
+    numberOP = oscil_vec[iosc]->getNumberOP();
 
     /* Diagonal term - 2* PI * xi/2 *(N_i^2 - N_i) */
     MatMatMult(numberOP, numberOP, MAT_INITIAL_MATRIX, PETSC_DEFAULT, &tmp);
@@ -160,7 +162,7 @@ MasterEq::MasterEq(int noscillators_, Oscillator** oscil_vec_, const std::vector
         if (j < josc) dim_prekron  *= oscil_vec[j]->getNLevels();
         if (j > josc) dim_postkron *= oscil_vec[j]->getNLevels();
       }
-      oscil_vec[josc]->createNumberOP(dim_prekron, dim_postkron, &numberOPj);
+      numberOPj = oscil_vec[josc]->getNumberOP();
       MatMatMult(numberOP, numberOPj, MAT_INITIAL_MATRIX, PETSC_DEFAULT, &tmp);
       MatScale(tmp, -xi[xi_id] * 2.0 * M_PI);
       xi_id++;
@@ -171,11 +173,7 @@ MasterEq::MasterEq(int noscillators_, Oscillator** oscil_vec_, const std::vector
 
       MatDestroy(&tmp);
       MatDestroy(&tmp_T);
-      MatDestroy(&numberOPj);
     }
-
-    MatDestroy(&numberOP);
-
   }
   MatAssemblyBegin(Bd, MAT_FINAL_ASSEMBLY);
   MatAssemblyEnd(Bd, MAT_FINAL_ASSEMBLY);
@@ -202,16 +200,20 @@ MasterEq::MasterEq(int noscillators_, Oscillator** oscil_vec_, const std::vector
         continue;
         break;
       case DECAY: 
-        iT1 = oscil_vec[iosc]->createLoweringOP(dim_prekron, dim_postkron, &L1);
+        L1 = oscil_vec[iosc]->getLoweringOP();
+        iT1 = dim_prekron * oscil_vec[iosc]->getNLevels() * dim_postkron;
         iT2 = 0;
         break;
       case DEPHASE:
         iT1 = 0;
-        iT2 = oscil_vec[iosc]->createNumberOP(dim_prekron, dim_postkron, &L2);
+        L2 = oscil_vec[iosc]->getNumberOP();
+        iT2 = dim_prekron * oscil_vec[iosc]->getNLevels() * dim_postkron;
         break;
       case BOTH:
-        iT1 = oscil_vec[iosc]->createLoweringOP(dim_prekron, dim_postkron, &L1);
-        iT2 = oscil_vec[iosc]->createNumberOP(dim_prekron, dim_postkron, &L2);
+        L1 = oscil_vec[iosc]->getLoweringOP();
+        L2 = oscil_vec[iosc]->getNumberOP();
+        iT1 = dim_prekron * oscil_vec[iosc]->getNLevels() * dim_postkron;
+        iT2 = dim_prekron * oscil_vec[iosc]->getNLevels() * dim_postkron;
         break;
       default:
         printf("ERROR! Wrong lindblad type: %d\n", lindbladtype);
@@ -229,7 +231,6 @@ MasterEq::MasterEq(int noscillators_, Oscillator** oscil_vec_, const std::vector
       Ikron(tmp, iT1, -gamma/2, &Ad, ADD_VALUES);
       kronI(tmp, iT1, -gamma/2, &Ad, ADD_VALUES);
       MatDestroy(&tmp);
-      MatDestroy(&L1);
     }
 
     /* --- Adding T2-Dephasing (L1 = a_j^\dag a_j) for oscillator j --- */
@@ -243,7 +244,6 @@ MasterEq::MasterEq(int noscillators_, Oscillator** oscil_vec_, const std::vector
       Ikron(tmp, iT2, -gamma/2, &Ad, ADD_VALUES);
       kronI(tmp, iT2, -gamma/2, &Ad, ADD_VALUES);
       MatDestroy(&tmp);
-      MatDestroy(&L2);
     }
 
 

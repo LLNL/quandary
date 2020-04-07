@@ -15,10 +15,12 @@ class Oscillator {
     std::vector<double> params;    // control parameters 
     double Tfinal;                 // final time
     ControlBasis *basisfunctions;  // Control discretization using Bsplines + carrier waves
+    Mat NumberOP;                  // Stores the number operator
+    Mat LoweringOP;                // Stores the lowering operator
 
   public:
     Oscillator();
-    Oscillator(int nlevels_, int nbasis_, std::vector<double> carrier_freq_, double Tfinal_);
+    Oscillator(int id, std::vector<int> nlevels_all_, int nbasis_, std::vector<double> carrier_freq_, double Tfinal_);
     virtual ~Oscillator();
 
     /* Return the constants */
@@ -35,9 +37,11 @@ class Oscillator {
 
     /* Compute lowering operator a_k = I_n1 \kron ... \kron a^(nk) \kron ... \kron I_nQ */
     int createLoweringOP(int dim_prekron, int dim_postkron, Mat* loweringOP);
+    Mat getLoweringOP();
 
     /* Compute number operator N_k = a_k^T a_k */
     int createNumberOP(int dim_prekron, int dim_postcron, Mat* numberOP);
+    Mat getNumberOP();
 
     /* Evaluates real and imaginary control function at time t */
     int evalControl(double t, double* Re_ptr, double* Im_ptr);

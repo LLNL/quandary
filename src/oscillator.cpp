@@ -6,8 +6,8 @@ Oscillator::Oscillator(){
   basisfunctions = NULL;
 }
 
-Oscillator::Oscillator(int nlevels_, int nbasis_, std::vector<double> carrier_freq_, double Tfinal_){
-  nlevels = nlevels_;
+Oscillator::Oscillator(int id, std::vector<int> nlevels_all_, int nbasis_, std::vector<double> carrier_freq_, double Tfinal_){
+  nlevels = nlevels_all_[id];
   Tfinal = Tfinal_;
   basisfunctions = new ControlBasis(nbasis_, Tfinal_, carrier_freq_);
   printf("Creating oscillator with %d levels, %d carrierwave frequencies: ", nlevels, carrier_freq_.size());
@@ -17,6 +17,17 @@ Oscillator::Oscillator(int nlevels_, int nbasis_, std::vector<double> carrier_fr
   printf("\n");
 
 
+  /* Create and store the number and lowering operators */
+  int dim_prekron = 1;
+  int dim_postkron = 1;
+  for (int j=0; j<nlevels_all_.size(); j++) {
+    if (j < id) dim_prekron  *= nlevels_all_[j];
+    if (j > id) dim_postkron *= nlevels_all_[j];
+  }
+  createNumberOP(dim_prekron, dim_postkron, &NumberOP);
+  createLoweringOP(dim_prekron, dim_postkron, &LoweringOP);
+
+
   /* Initialize control parameters */
   int nparam = 2 * nbasis_ * carrier_freq_.size();
   for (int i=0; i<nparam; i++) {
@@ -24,10 +35,21 @@ Oscillator::Oscillator(int nlevels_, int nbasis_, std::vector<double> carrier_fr
   }
 }
 
+
 Oscillator::~Oscillator(){
   if (params.size() > 0) {
     delete basisfunctions;
+    MatDestroy(&NumberOP);
+    MatDestroy(&LoweringOP);
   }
+}
+
+Mat Oscillator::getNumberOP() {
+  return NumberOP;
+}
+
+Mat Oscillator::getLoweringOP() {
+  return LoweringOP;
 }
 
 void Oscillator::flushControl(int ntime, double dt, const char* filename) {
