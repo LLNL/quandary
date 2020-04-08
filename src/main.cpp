@@ -29,7 +29,6 @@ enum RunType {
 
 int main(int argc,char **argv)
 {
-  PetscInt       nosci;        // Number of oscillators
   PetscInt       ntime;        // Number of time steps
   int            ninit;        // Total number of initial conditions that are considered (N^2, N or 1)
   int            np_braid;     // Number of cores for each braid instance
@@ -87,7 +86,8 @@ int main(int argc,char **argv)
   config.ReadFile(argv[1]);
 
   /* Get some options from the config file */
-  nosci = config.GetIntParam("noscillators", 2);
+  std::vector<int> nlevels;
+  config.GetVecIntParam("nlevels", nlevels, 0);
   ntime = config.GetIntParam("ntime", 1000);
   dt    = config.GetDoubleParam("dt", 0.01);
   nspline = config.GetIntParam("nspline", 10);
@@ -100,15 +100,15 @@ int main(int argc,char **argv)
     printf("\n\n WARNING: Unknown runtype: %s.\n\n", runtypestr.c_str());
     runtype = none;
   }
+
+  /* Number of oscillators */
+  int nosci = nlevels.size();
   
   /* Initialize time horizon */
   total_time = ntime * dt;
 
   /* Initialize the Oscillators */
   Oscillator** oscil_vec = new Oscillator*[nosci];
-  std::vector<int> nlevels;
-  config.GetVecIntParam("nlevels", nlevels, 0);
-  assert(nlevels.size() == nosci);
   for (int i = 0; i < nosci; i++){
     std::vector<double> carrier_freq;
     std::string key = "carrier_frequency" + std::to_string(i);
