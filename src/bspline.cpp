@@ -26,10 +26,11 @@ double ControlBasis::evaluate(double t, std::vector<double> coeff, ControlType c
     double val = 0.0;
     double tau;
 
-    /* Sum up basis function */
     double sum = 0.0;
+    /* Sum over basis function */
     for (int l=0; l<nbasis; l++) {
         double carriersum = 0.0;
+        /* Sum over carrier frequencies */
         for (int f=0; f < carrier_freq.size(); f++) {
             double tmp= -2.0 * M_PI * carrier_freq[f] * t;
             int coeff_id = l * carrier_freq.size() * 2 + f * 2;     // alpha^{k(1)}_{l,f}
@@ -47,8 +48,9 @@ void ControlBasis::derivative(double t, double* coeff_diff, double valbar, Contr
     /* Iterate over basis function */
     for (int l=0; l<nbasis; l++) {
         double basis = basisfunction(l, t); 
+        /* Iterate over carrier frequencies */
         for (int f=0; f < carrier_freq.size(); f++) {
-            double tmp = carrier_freq[f] * t;
+            double tmp = -2 * M_PI * carrier_freq[f] * t;
             int coeff_id = l * carrier_freq.size() * 2 + f * 2;
             if (controltype == RE) {
                 coeff_diff[coeff_id]     +=   basis * cos(tmp) * valbar;

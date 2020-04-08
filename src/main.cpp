@@ -107,8 +107,8 @@ int main(int argc,char **argv)
   /* Initialize the Oscillators */
   Oscillator** oscil_vec = new Oscillator*[nosci];
   std::vector<int> nlevels;
-  config.GetVecIntParam("nlevels", nlevels, 2);
-  assert(nlevels.size() >= nosci);
+  config.GetVecIntParam("nlevels", nlevels, 0);
+  assert(nlevels.size() == nosci);
   for (int i = 0; i < nosci; i++){
     std::vector<double> carrier_freq;
     std::string key = "carrier_frequency" + std::to_string(i);

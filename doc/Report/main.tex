@@ -65,8 +65,8 @@ for each oscillator $k$. The constants $\gamma_{lk}$ are the inverse half-live f
 \subsection*{Control pulses}
 The time-dependent control functions $p^k(\vec{\alpha}^k,t), q^k(\vec{\alpha}^k,t)$ are real-valued. We discretize them using B-splines with carrier waves:
 \begin{align}
-  p^k(\vec{\alpha}^k,t) &= \sum_{l=1}^L B_l(t) \sum_{f=1}^{N_f} \left(\alpha^{k (1)}_{l,f} \cos(\Omega_f^k) - \alpha^{k (2)}_{l,f} \sin(\Omega_f^k) \right) \\
-  q^k(\vec{\alpha}^k,t) &= \sum_{l=1}^L B_l(t) \sum_{f=1}^{N_f} \left( \alpha^{k (1)}_{l,f} \sin(\Omega_f^k) + \alpha^{k (2)}_{l,f} \cos(\Omega_f^k) \right)
+  p^k(\vec{\alpha}^k,t) &= \sum_{l=1}^L B_l(t) \sum_{f=1}^{N_f} \left(\alpha^{k (1)}_{l,f} \cos(\Omega_f^k t) - \alpha^{k (2)}_{l,f} \sin(\Omega_f^k t) \right) \\
+  q^k(\vec{\alpha}^k,t) &= \sum_{l=1}^L B_l(t) \sum_{f=1}^{N_f} \left( \alpha^{k (1)}_{l,f} \sin(\Omega_f^k t) + \alpha^{k (2)}_{l,f} \cos(\Omega_f^k t) \right)
 \end{align}
 for $L$ B-Spline functions $B_l(t)$, and $N_f$ carrier wave frequencies $\Omega_f^k$. The amplitudes $\vec{\alpha}^k \in \R^{2LN_f}$ are the control parameters (\textit{design} variables) that we modify in order to realize a desired system behavior, giving a total of $2QLN_f$ design parameters:
 \begin{align}
