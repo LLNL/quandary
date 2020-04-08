@@ -5,6 +5,7 @@
 
 #pragma once
 
+enum ObjectiveType {GATE, EXPECTED};        
 
 class OptimProblem : public hiop::hiopInterfaceDenseConstraints {
 
@@ -29,6 +30,9 @@ class OptimProblem : public hiop::hiopInterfaceDenseConstraints {
         int mpirank_world, mpisize_world;
         int mpirank_init, mpisize_init;
 
+        ObjectiveType objective_type;    /* Type of objective function */
+
+
         FILE* optimfile;
 
     public:
@@ -51,6 +55,10 @@ class OptimProblem : public hiop::hiopInterfaceDenseConstraints {
 
         /* Set the initial condition of index iinit */
         int assembleInitialCondition(int iinit);
+
+        /* Compute the objective function (local for one initial condition) and derivative */
+        double objFunc(Vec finalstate);
+        void objFunc_diff(Vec finalstate, double obj_bar);
 
         /* Required interface routines. These are purely virtual in HiOp. */
         bool get_prob_sizes(long long& n, long long& m);

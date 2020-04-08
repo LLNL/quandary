@@ -54,6 +54,14 @@ OptimProblem::OptimProblem(MapParam config, myBraidApp* primalbraidapp_, myAdjoi
     if (optiminit_type.compare("constant") == 0 ){ // set constant controls. 
       config.GetVecDoubleParam("optim_init_const", init_ampl, 0.0);
     }
+    /* Get type of objective function */
+    std::string objective_str = config.GetStrParam("optim_objective", "expected");
+    if      (objective_str.compare("gate")    ==0) objective_type = GATE;
+    else if (objective_str.compare("expected")==0) objective_type = EXPECTED;
+    else {
+      printf("Wrong objective function type: %s\n", objective_str.c_str());
+      exit(1);
+    }
 
     /* Prepare primal and adjoint initial conditions */
     VecCreate(PETSC_COMM_WORLD, &initcond_re); 
@@ -202,9 +210,6 @@ bool OptimProblem::eval_f(const long long& n, const double* x_in, bool new_x, do
 // bool OptimProblem::eval_f(Index n, const Number* x, bool new_x, Number& obj_value){
 
   if (mpirank_world == 0) printf(" EVAL F... \n");
-  double Re_local = 0.0;
-  double Im_local = 0.0;
-  double obj_local = 0.0;
   Vec finalstate = NULL;
   /* Run simulation, only if x_in is new. Otherwise, f(x_in) has been computed already and stored in fidelity. */
   // this is fishy. check if fidelity is computed correctly in grad_f
@@ -228,10 +233,7 @@ bool OptimProblem::eval_f(const long long& n, const double* x_in, bool new_x, do
       finalstate = primalbraidapp->PostProcess(); // this return NULL for all but the last time processor
 
       /* Add to objective function */
-      if (finalstate != NULL) {
-        targetgate->compare(finalstate, initcond_re, initcond_im, obj_local);
-        objective += obj_local;
-      }
+      objective += objFunc(finalstate);
       // if (mpirank_braid == 0) printf("%d: local objective: %1.14e\n", mpirank_init, obj_local);
     }
   // }
@@ -266,10 +268,6 @@ bool OptimProblem::eval_f(const long long& n, const double* x_in, bool new_x, do
 bool OptimProblem::eval_grad_f(const long long& n, const double* x_in, bool new_x, double* gradf){
   if (mpirank_world == 0) printf(" EVAL GRAD F...\n");
 
-  double obj_Re_local, obj_Im_local;
-  double Re_local = 0.0;
-  double Im_local = 0.0;
-  double obj_local = 0.0;
   Vec finalstate = NULL;
 
   /* Pass x to Oscillator */
@@ -300,18 +298,14 @@ bool OptimProblem::eval_grad_f(const long long& n, const double* x_in, bool new_
     finalstate = primalbraidapp->PostProcess(); // returns NULL if not stored on this proc
 
     /* Add to objective function */
-    if (finalstate != NULL) {
-      targetgate->compare(finalstate, initcond_re, initcond_im, obj_local);
-      objective += obj_local;
-    }
+    objective += objFunc(finalstate);
     // if (mpirank_braid == 0) printf("%d: local objective: %1.14e\n", mpirank_init, obj_local);
 
     /* --- Solve adjoint --- */
     // if (mpirank_braid == 0) printf("%d: %d BWD.", mpirank_init, initid);
     
     /* Derivative of objective function */
-    if (finalstate != NULL) 
-       targetgate->compare_diff(finalstate, initcond_re, initcond_im, initcond_re_bar, initcond_im_bar, obj_bar);
+    objFunc_diff(finalstate, obj_bar);
 
     adjointbraidapp->PreProcess(initid);
     adjointbraidapp->setInitialCondition(initcond_re_bar, initcond_im_bar);
@@ -559,4 +553,45 @@ int OptimProblem::assembleInitialCondition(int iinit_local){
   // VecView(x, PETSC_VIEWER_STDOUT_WORLD);
   
   return initid;
+}
+
+
+
+double OptimProblem::objFunc(Vec finalstate) {
+  double obj_local = 0.0;
+
+  if (finalstate != NULL) {
+
+    switch (objective_type) {
+      case GATE:
+        /* compare state to linear transformation of initial conditions */
+        targetgate->compare(finalstate, initcond_re, initcond_im, obj_local);
+        break;
+      case EXPECTED:
+        /* compute the expected value of energy levels for oscillator 1 */
+        obj_local = primalbraidapp->mastereq->getOscillator(0)->projectiveMeasure(finalstate);
+        break;
+      default: 
+        printf("ERROR! Wrong objective type\n");
+        exit(1);
+    }
+  }
+
+  return obj_local;
+}
+
+
+void OptimProblem::objFunc_diff(Vec finalstate, double obj_bar) {
+
+  if (finalstate != NULL) {
+    switch (objective_type) {
+      case GATE:
+        targetgate->compare_diff(finalstate, initcond_re, initcond_im, initcond_re_bar, initcond_im_bar, obj_bar);
+        break;
+      case EXPECTED:
+        /* TODO */
+        primalbraidapp->mastereq->getOscillator(0)->projectiveMeasure_diff(finalstate, initcond_re_bar, initcond_im_bar, obj_bar);
+        break;
+    }
+  }
 }
