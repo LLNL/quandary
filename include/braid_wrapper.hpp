@@ -26,10 +26,13 @@ class myBraidApp : public BraidApp {
     BraidCore *core;                /* Braid core for running PinT simulation */
     FILE *ufile;
     FILE *vfile;
-    FILE *expectedfile;
+    std::vector<FILE *>expectedfile;
+    std::vector<FILE *>populationfile;
 
     bool usepetscts;
     int braidrank;
+
+    std::vector<std::vector<std::string> > outputstr; // List of outputs for each oscillator
 
   public:
     MPI_Comm comm_braid;            /* Braid's communicator */

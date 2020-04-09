@@ -31,7 +31,8 @@ myBraidApp::myBraidApp(MPI_Comm comm_braid_, double total_time_, int ntime_, TS 
   MPI_Comm_rank(comm_braid, &braidrank);
   ufile = NULL;
   vfile = NULL;
-  expectedfile = NULL;
+  for (int i=0; i< mastereq->getNOscillators(); i++) expectedfile.push_back (NULL);
+  for (int i=0; i< mastereq->getNOscillators(); i++) populationfile.push_back (NULL);
 
   usepetscts = config->GetBoolParam("usepetscts", false);
 
@@ -73,6 +74,12 @@ myBraidApp::myBraidApp(MPI_Comm comm_braid_, double total_time_, int ntime_, TS 
     cout << "# Data directory: " << datadir << endl; 
   }
 
+  /* Read desired output from config */
+  for (int i = 0; i < mastereq->getNOscillators(); i++){
+    std::vector<std::string> fillme;
+    config->GetVecStrParam("output" + std::to_string(i), fillme, "none");
+    outputstr.push_back(fillme);
+  }
 }
 
 myBraidApp::~myBraidApp() {
@@ -336,14 +343,12 @@ braid_Int myBraidApp::Access(braid_Vector u_, BraidAccessStatus &astatus){
 
     VecRestoreArrayRead(u->x, &x_ptr);
 
-    /* Compute observable */
-    if (expectedfile != NULL) {
-      fprintf(expectedfile, "%.8f  ", t);
-      for (int iosc = 0; iosc < mastereq->getNOscillators(); iosc++) {
+    /* Compute and print some output */
+    for (int iosc = 0; iosc < mastereq->getNOscillators(); iosc++) {
+      if (expectedfile[iosc] != NULL) {
         double expected = mastereq->getOscillator(iosc)->projectiveMeasure(u->x);
-        fprintf(expectedfile, "%1.14e  ", expected);
+        fprintf(expectedfile[iosc], "%.8f %1.14e\n", t, expected);
       }
-      fprintf(expectedfile, "\n");
     }
   }
 
@@ -418,8 +423,19 @@ void myBraidApp::PreProcess(int iinit){
     ufile = fopen(filename, "w");
     sprintf(filename, "%s/out_v.iinit%04d.rank%04d.dat", datadir.c_str(), iinit, braidrank);
     vfile = fopen(filename, "w");
-    sprintf(filename, "%s/expected.iinit%04d.rank%04d.dat", datadir.c_str(), iinit, braidrank);
-    expectedfile = fopen(filename, "w");
+    
+    for (int i=0; i<expectedfile.size(); i++) {
+      for (int j=0; j<outputstr[i].size(); j++) {
+        if (outputstr[i][j].compare("expectedEnergy") == 0 ) {
+          sprintf(filename, "%s/expected%d.iinit%04d.rank%04d.dat", datadir.c_str(), i, iinit, braidrank);
+          expectedfile[i] = fopen(filename, "w");
+        }
+        if (outputstr[i][j].compare("population") == 0 ) {
+          sprintf(filename, "%s/population%d.iinit%04d.rank%04d.dat", datadir.c_str(), i, iinit, braidrank);
+          populationfile[i] = fopen(filename, "w");
+        }
+      }
+    }
   }
 }
 
@@ -471,7 +487,16 @@ Vec myBraidApp::PostProcess() {
   /* Close output files */
   if (ufile != NULL) fclose(ufile);
   if (vfile != NULL) fclose(vfile);
-  if (expectedfile != NULL) fclose(expectedfile);
+  for (int i=0; i< mastereq->getNOscillators(); i++) {
+    if (expectedfile[i] != NULL) {
+      fclose(expectedfile[i]);
+      expectedfile[i] = NULL;
+    }
+    if (populationfile[i] != NULL) {
+      fclose(populationfile[i]);
+      populationfile[i] = NULL;
+    }
+  }
 
   return getStateVec(total_time);// this returns NULL for all but the last processors! 
 

@@ -106,27 +106,7 @@ int main(int argc,char **argv)
   
   /* Initialize time horizon */
   total_time = ntime * dt;
-
-  /* Read desired output from config */
-  std::vector<std::vector<std::string> > outputstr;
-  for (int i = 0; i < nosci; i++){
-    std::vector<std::string> fillme;
-    config.GetVecStrParam("output" + std::to_string(i), fillme, "none");
-    outputstr.push_back(fillme);
-  }
-
-  for (int i=0; i<outputstr.size(); i++){
-    printf("outputs for oscil %d: ", i);
-    for (int j=0; j<outputstr[i].size(); j++){
-      printf(" %s ", outputstr[i][j].c_str());
-    }
-    printf("\n");  
-  }
-  exit(1);
-
-
-
-
+  
   /* Initialize the Oscillators */
   Oscillator** oscil_vec = new Oscillator*[nosci];
   for (int i = 0; i < nosci; i++){
