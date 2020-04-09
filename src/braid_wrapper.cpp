@@ -426,12 +426,23 @@ void myBraidApp::PreProcess(int iinit){
   /* Open output files */
   if (accesslevel > 0) {
     char filename[255];
-    sprintf(filename, "%s/out_u.iinit%04d.rank%04d.dat", datadir.c_str(),iinit, braidrank);
-    ufile = fopen(filename, "w");
-    sprintf(filename, "%s/out_v.iinit%04d.rank%04d.dat", datadir.c_str(), iinit, braidrank);
-    vfile = fopen(filename, "w");
-    
-    for (int i=0; i<expectedfile.size(); i++) {
+
+    /* Search through outputstrings to see if any oscillator contains "fullstate" */
+    bool writefullstate = false;
+    for (int i=0; i<outputstr.size(); i++) {
+      for (int j=0; j<outputstr[i].size(); j++) {
+        if (outputstr[i][j].compare("fullstate") == 0 ) writefullstate = true;
+      }
+    }
+    /* Open files for full state */
+    if (writefullstate) {
+      sprintf(filename, "%s/out_u.iinit%04d.rank%04d.dat", datadir.c_str(),iinit, braidrank);
+      ufile = fopen(filename, "w");
+      sprintf(filename, "%s/out_v.iinit%04d.rank%04d.dat", datadir.c_str(), iinit, braidrank);
+      vfile = fopen(filename, "w"); 
+    }
+   
+    for (int i=0; i<outputstr.size(); i++) {
       for (int j=0; j<outputstr[i].size(); j++) {
         if (outputstr[i][j].compare("expectedEnergy") == 0 ) {
           sprintf(filename, "%s/expected%d.iinit%04d.rank%04d.dat", datadir.c_str(), i, iinit, braidrank);
@@ -692,14 +703,14 @@ void myAdjointBraidApp::PreProcess(int iinit){
   /* Reset the reduced gradient */
   VecZeroEntries(redgrad); 
 
-  /* Open output files */
-  if (accesslevel > 0) {
-    char filename[255];
-    sprintf(filename, "%s/out_uadj.iinit%04d.rank%04d.dat", datadir.c_str(),iinit, braidrank);
-    ufile = fopen(filename, "w");
-    sprintf(filename, "%s/out_vadj.iinit%04d.rank%04d.dat", datadir.c_str(),iinit, braidrank);
-    vfile = fopen(filename, "w");
-  }
+  // /* Open output files for adjoint */
+  // if (accesslevel > 0) {
+  //   char filename[255];
+  //   sprintf(filename, "%s/out_uadj.iinit%04d.rank%04d.dat", datadir.c_str(),iinit, braidrank);
+  //   ufile = fopen(filename, "w");
+  //   sprintf(filename, "%s/out_vadj.iinit%04d.rank%04d.dat", datadir.c_str(),iinit, braidrank);
+  //   vfile = fopen(filename, "w");
+  // }
 }
 
 
