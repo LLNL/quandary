@@ -4,6 +4,7 @@
 #include <iomanip>
 #include <petscmat.h>
 #include <vector>
+#include <assert.h>
 
 #pragma once
 
@@ -17,6 +18,8 @@ class Oscillator {
     ControlBasis *basisfunctions;  // Control discretization using Bsplines + carrier waves
     Mat NumberOP;                  // Stores the number operator
     Mat LoweringOP;                // Stores the lowering operator
+    int dim_preOsc;                // Dimension of coupled subsystems preceding this oscillator
+    int dim_postOsc;               // Dimension of coupled subsystem following this oscillator
 
   public:
     Oscillator();
@@ -52,6 +55,8 @@ class Oscillator {
     /* Return expected value of projective measure in basis |m> */
     double projectiveMeasure(Vec x);
     void projectiveMeasure_diff(Vec x, Vec x_re_bar, Vec x_im_bar, double obj_bar);
+
+   void population(Vec x, std::vector<double> *pop); 
 };
 
 

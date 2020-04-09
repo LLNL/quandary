@@ -18,14 +18,14 @@ Oscillator::Oscillator(int id, std::vector<int> nlevels_all_, int nbasis_, std::
 
 
   /* Create and store the number and lowering operators */
-  int dim_prekron = 1;
-  int dim_postkron = 1;
+  dim_preOsc = 1;
+  dim_postOsc = 1;
   for (int j=0; j<nlevels_all_.size(); j++) {
-    if (j < id) dim_prekron  *= nlevels_all_[j];
-    if (j > id) dim_postkron *= nlevels_all_[j];
+    if (j < id) dim_preOsc  *= nlevels_all_[j];
+    if (j > id) dim_postOsc *= nlevels_all_[j];
   }
-  createNumberOP(dim_prekron, dim_postkron, &NumberOP);
-  createLoweringOP(dim_prekron, dim_postkron, &LoweringOP);
+  createNumberOP(dim_preOsc, dim_postOsc, &NumberOP);
+  createLoweringOP(dim_preOsc, dim_postOsc, &LoweringOP);
 
 
   /* Initialize control parameters */
@@ -201,4 +201,32 @@ void Oscillator::projectiveMeasure_diff(Vec x, Vec x_re_bar, Vec x_im_bar, doubl
     VecSetValues(x_re_bar, 1, &idx_diag, &val, ADD_VALUES);
   }
   VecAssemblyBegin(x_re_bar); VecAssemblyEnd(x_re_bar);
+}
+
+
+void Oscillator::population(Vec x, std::vector<double> *pop) {
+
+  int dimN = dim_preOsc * nlevels * dim_postOsc;
+
+  assert ((*pop).size() == nlevels);
+
+  /* Iterate over diagonal elements of the reduced density matrix for this oscillator */
+  for (int i=0; i < nlevels; i++) {
+    int identitystartID = i * dim_postOsc;
+    /* Sum up elements from all dim_preOsc blocks of size (n_k * dim_postOsc) */
+    double sum = 0.0;
+    for (int j=0; j < dim_preOsc; j++) {
+      int blockstartID = j * nlevels * dim_postOsc; // Go to the block
+      /* Iterate over identity */
+      for (int l=0; l < dim_postOsc; l++) {
+        /* Get diagonal element */
+        int rhoID = blockstartID + identitystartID + l; // Diagonal element of rho
+        int diagID = rhoID * dimN + rhoID;                // Position in vectorized rho
+        double val;
+        VecGetValues(x, 1, &diagID, &val);
+        sum += val;
+      }
+    }
+    (*pop)[i] = sum;
+  } 
 }
