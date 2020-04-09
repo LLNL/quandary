@@ -350,8 +350,11 @@ braid_Int myBraidApp::Access(braid_Vector u_, BraidAccessStatus &astatus){
         fprintf(expectedfile[iosc], "%.8f %1.14e\n", t, expected);
       }
       if (populationfile[iosc] != NULL) {
-        std::vector<double> pop (mastereq->getOscillator(iosc)->getNLevels(), 0.0);  // crate and fill with zero
+        std::vector<double> pop (mastereq->getOscillator(iosc)->getNLevels(), 0.0);  // create and fill with zero
         mastereq->getOscillator(iosc)->population(u->x, &pop);
+        fprintf(populationfile[iosc], "%.8f ", t);
+        for (int i=0; i<pop.size(); i++) fprintf(populationfile[iosc], "%1.14e ", pop[i]);
+        fprintf(populationfile[iosc], "\n");
       }
     }
   }
