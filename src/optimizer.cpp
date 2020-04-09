@@ -412,6 +412,7 @@ bool OptimProblem::get_starting_point(const long long &global_n, double* x0) {
       int j = 0;
       MasterEq* mastereq = primalbraidapp->mastereq;
       for (int ioscil = 0; ioscil < mastereq->getNOscillators(); ioscil++) {
+          if (bounds[ioscil] > 1.0) continue;
           int nparam = mastereq->getOscillator(ioscil)->getNParams();
           for (int i = 0; i < nparam; i++) {
               x0[j] = x0[j] * bounds[ioscil];
