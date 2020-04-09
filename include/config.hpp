@@ -37,5 +37,6 @@ public:
   bool GetBoolParam(std::string key, bool default_val = false) const;
   void GetVecDoubleParam(std::string key, std::vector<double> &fillme, double default_val = 1e20) const;
   void GetVecIntParam(std::string key, std::vector<int> &fillme, int default_val = -1) const;
+  void GetVecStrParam(std::string key, std::vector<std::string> &fillme, std::string default_val = "none") const;
 };
 

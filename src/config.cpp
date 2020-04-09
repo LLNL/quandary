@@ -199,3 +199,28 @@ void MapParam::GetVecIntParam(std::string key, std::vector<int> &fillme, int def
 
   // export_param(mpi_rank, key, val, default_val);  
 }
+
+
+void MapParam::GetVecStrParam(std::string key, std::vector<std::string> &fillme, std::string default_val) const
+{
+  map<string, string>::const_iterator it_value = this->find(key);
+  double val;
+  if (it_value == this->end())
+  {
+    if (mpi_rank == 0)
+      cerr << "# Warning: parameter " << key << " not found ! Taking default = " << default_val << endl;
+      fillme.push_back(default_val);
+  }
+  else 
+  {
+    /* Parse the string line w.r.t. comma separator */
+    string intermediate; 
+    stringstream check1(it_value->second); 
+    while(getline(check1, intermediate, ',')) 
+    { 
+        fillme.push_back(intermediate);
+    } 
+  }
+
+  // export_param(mpi_rank, key, val, default_val);  
+}
