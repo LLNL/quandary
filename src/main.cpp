@@ -137,23 +137,6 @@ int main(int argc,char **argv)
   }
   mastereq = new MasterEq(nosci, oscil_vec, xi, lindbladtype, t_collapse);
 
-
-  /* Initialize the target gate */
-  Gate* targetgate;
-  std::string gatetype = config.GetStrParam("gate_type", "none");
-  if      (gatetype.compare("none") == 0) targetgate = new Gate(); // dummy gate. do nothing
-  else if (gatetype.compare("xgate") == 0) targetgate = new XGate(); 
-  else if (gatetype.compare("ygate") == 0) targetgate = new YGate(); 
-  else if (gatetype.compare("zgate") == 0) targetgate = new ZGate();
-  else if (gatetype.compare("hadamard") == 0) targetgate = new HadamardGate();
-  else if (gatetype.compare("cnot") == 0) targetgate = new CNOT(); 
-  else if (gatetype.compare("groundstate") == 0) targetgate = new GroundstateGate((int)sqrt(mastereq->getDim())); 
-  else {
-    printf("\n\n ERROR: Unnown gate type: %s.\n", gatetype.c_str());
-    printf(" Available gates are 'none', 'xgate', 'ygate', 'zgate', 'hadamard', 'cnot'\n");
-    exit(1);
-  }
-
   /* Create solution vector x */
   MatCreateVecs(mastereq->getRHS(), &x, NULL);
 
@@ -215,7 +198,7 @@ int main(int argc,char **argv)
   adjointbraidapp->InitGrids();
 
   /* Initialize the optimization */
-  OptimProblem optimproblem(config, primalbraidapp, adjointbraidapp, targetgate, comm_hiop, comm_init, ninit);
+  OptimProblem optimproblem(config, primalbraidapp, adjointbraidapp, comm_hiop, comm_init, ninit);
   hiop::hiopNlpDenseConstraints nlp(optimproblem);
   long long int ndesign,m;
   optimproblem.get_prob_sizes(ndesign, m);
@@ -595,7 +578,6 @@ int main(int argc,char **argv)
 
   /* Clean up Master equation*/
   delete mastereq;
-  delete targetgate;
 
   /* Cleanup */
   // TSDestroy(&braid_app->ts);

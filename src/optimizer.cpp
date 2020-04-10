@@ -17,16 +17,15 @@ OptimProblem::OptimProblem() {
     printlevel = 0;
     ninit = 0;
     ninit_local = 0;
+    targetgate = NULL;
 }
 
-OptimProblem::OptimProblem(MapParam config, myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, Gate* targate_, MPI_Comm comm_hiop_, MPI_Comm comm_init_, int ninit_) {
+OptimProblem::OptimProblem(MapParam config, myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, MPI_Comm comm_hiop_, MPI_Comm comm_init_, int ninit_) {
     primalbraidapp  = primalbraidapp_;
     adjointbraidapp = adjointbraidapp_;
-    targetgate = targate_;
     comm_hiop = comm_hiop_;
     comm_init = comm_init_;
     ninit = ninit_;
-
 
     /* Store ranks and sizes of communicators */
     MPI_Comm_rank(primalbraidapp->comm_braid, &mpirank_braid);
@@ -54,12 +53,32 @@ OptimProblem::OptimProblem(MapParam config, myBraidApp* primalbraidapp_, myAdjoi
     if (optiminit_type.compare("constant") == 0 ){ // set constant controls. 
       config.GetVecDoubleParam("optim_init_const", init_ampl, 0.0);
     }
-    /* Get type of objective function */
-    std::string objective_str = config.GetStrParam("optim_objective", "expected");
-    if      (objective_str.compare("gate")    ==0) objective_type = GATE;
-    else if (objective_str.compare("expected")==0) objective_type = EXPECTED;
+    /* Get objective function */
+    std::vector<std::string> objective_str;
+    config.GetVecStrParam("optim_objective", objective_str);
+    assert ( objective_str.size() >=2 );
+    if ( objective_str[0].compare("gate") ==0 ) {
+      objective_type = GATE;
+      /* Read and initialize the targetgate */
+      if      (objective_str[1].compare("none") == 0) targetgate = new Gate(); // dummy gate. do nothing
+      else if (objective_str[1].compare("xgate") == 0) targetgate = new XGate(); 
+      else if (objective_str[1].compare("ygate") == 0) targetgate = new YGate(); 
+      else if (objective_str[1].compare("zgate") == 0) targetgate = new ZGate();
+      else if (objective_str[1].compare("hadamard") == 0) targetgate = new HadamardGate();
+      else if (objective_str[1].compare("cnot") == 0) targetgate = new CNOT(); 
+      else {
+        printf("\n\n ERROR: Unnown gate type: %s.\n", objective_str[1].c_str());
+        printf(" Available gates are 'none', 'xgate', 'ygate', 'zgate', 'hadamard', 'cnot'\n");
+        exit(1);
+      }
+    }
+    else if (objective_str[0].compare("groundstate")==0) {
+      objective_type = EXPECTED;
+      /* Initialize groundstate optimization */
+      targetgate = new GroundstateGate((int)sqrt(primalbraidapp->mastereq->getDim()));
+    }
     else {
-      printf("Wrong objective function type: %s\n", objective_str.c_str());
+      printf("Wrong objective function type: %s\n", objective_str[0].c_str());
       exit(1);
     }
 
@@ -125,6 +144,7 @@ OptimProblem::OptimProblem(MapParam config, myBraidApp* primalbraidapp_, myAdjoi
 OptimProblem::~OptimProblem() {
   /* Close optim file */
   if (mpirank_world == 0 && printlevel > 0) fclose(optimfile);
+  // if (targetgate != NULL) delete targetgate;
 }
 
 
