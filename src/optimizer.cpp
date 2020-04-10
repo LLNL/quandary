@@ -73,9 +73,13 @@ OptimProblem::OptimProblem(MapParam config, myBraidApp* primalbraidapp_, myAdjoi
       }
     }
     else if (objective_str[0].compare("groundstate")==0) {
-      objective_type = EXPECTED;
       /* Initialize groundstate optimization */
-      targetgate = new GroundstateGate((int)sqrt(primalbraidapp->mastereq->getDim()));
+      if (objective_str[1].compare("expectedEnergy") == 0 )  objective_type = GROUNDSTATE_EXPECTEDENERGY;
+      else if ( objective_str[1].compare("fullstate") == 0 ) objective_type = GROUNDSTATE_STATE;
+      else {
+        printf("\n\n ERROR: Unknown groundstate optimization: %s\n", objective_str[1].c_str());
+        exit(1);
+      }
     }
     else {
       printf("Wrong objective function type: %s\n", objective_str[0].c_str());
@@ -588,13 +592,30 @@ double OptimProblem::objFunc(Vec finalstate) {
         /* compare state to linear transformation of initial conditions */
         targetgate->compare(finalstate, initcond_re, initcond_im, obj_local);
         break;
-      case EXPECTED:
+
+      case GROUNDSTATE_EXPECTEDENERGY:
         /* compute the expected value of energy levels for oscillator 1 */
         obj_local = primalbraidapp->mastereq->getOscillator(0)->projectiveMeasure(finalstate);
         break;
-      default: 
-        printf("ERROR! Wrong objective type\n");
-        exit(1);
+
+      case GROUNDSTATE_STATE:
+        /* compare full state to groundstate */
+
+        /* Get pointer to state */
+        int dimstate;
+        const PetscScalar *stateptr;
+        VecGetSize(finalstate, &dimstate);
+        VecGetArrayRead(finalstate, &stateptr);
+
+        /* Sum up frobenius norm: frob = || q(T) - e_1 ||^2 */
+        obj_local = 0.0;
+        obj_local += pow(stateptr[0] - 1.0, 2); 
+        for (int i = 1; i < dimstate; i++){
+           obj_local += pow(stateptr[i], 2);
+        }
+        /* Restore */
+        VecRestoreArrayRead(finalstate, &stateptr);
+        break;
     }
   }
 
@@ -609,10 +630,37 @@ void OptimProblem::objFunc_diff(Vec finalstate, double obj_bar) {
       case GATE:
         targetgate->compare_diff(finalstate, initcond_re, initcond_im, initcond_re_bar, initcond_im_bar, obj_bar);
         break;
-      case EXPECTED:
-        /* TODO */
+
+      case GROUNDSTATE_EXPECTEDENERGY:
         primalbraidapp->mastereq->getOscillator(0)->projectiveMeasure_diff(finalstate, initcond_re_bar, initcond_im_bar, obj_bar);
         break;
+
+    case GROUNDSTATE_STATE:
+       /* Get real and imag part of final and initial primal and adjoint states, x = [u,v] */
+      const PetscScalar *stateptr;
+      PetscScalar *u0_barptr, *v0_barptr;
+      VecGetArrayRead(finalstate, &stateptr);
+      VecGetArray(initcond_re_bar, &u0_barptr);
+      VecGetArray(initcond_im_bar, &v0_barptr);
+
+      /* Get pointer offset for imaginary part */
+      int dimstate;
+      VecGetSize(finalstate, &dimstate);
+      int offset = dimstate/2;
+
+      /* Derivative of frobenius norm: 2 * (q(T) - e_1) * frob_bar */
+      u0_barptr[0] = 2. * ( stateptr[0] - 1.0 ) * obj_bar;
+      v0_barptr[0] = 2. * ( stateptr[offset] ) * obj_bar;
+      for (int i=1; i<offset; i++) {
+        u0_barptr[i] = 2. * stateptr[i]         * obj_bar;
+        v0_barptr[i] = 2. * stateptr[i+offset] * obj_bar;
+      }
+
+      /* Restore */
+      VecRestoreArray(initcond_re_bar, &u0_barptr);
+      VecRestoreArray(initcond_im_bar, &v0_barptr);
+      VecRestoreArrayRead(finalstate, &stateptr);
+ 
     }
   }
 }

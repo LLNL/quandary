@@ -5,7 +5,9 @@
 
 #pragma once
 
-enum ObjectiveType {GATE, EXPECTED};        
+enum ObjectiveType {GATE,                            // Compare final state to linear gate transformation of initial cond.
+                    GROUNDSTATE_EXPECTEDENERGY,      // Minimizes expected energy levels.
+                    GROUNDSTATE_STATE};              // Compares final state to groundstate (full matrix)
 
 class OptimProblem : public hiop::hiopInterfaceDenseConstraints {
 
