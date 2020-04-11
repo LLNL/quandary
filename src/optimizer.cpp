@@ -591,7 +591,7 @@ double OptimProblem::objFunc(Vec finalstate) {
         /* compute the expected value of energy levels for oscillator 1 */
         obj_local = 0.0;
         for (int i=0; i<obj_oscilIDs.size(); i++) {
-          obj_local += primalbraidapp->mastereq->getOscillator(i)->projectiveMeasure(finalstate);
+          obj_local += primalbraidapp->mastereq->getOscillator(i)->expectedEnergy(finalstate);
         }
         break;
 
@@ -629,7 +629,7 @@ void OptimProblem::objFunc_diff(Vec finalstate, double obj_bar) {
         break;
 
       case EXPECTEDENERGY:
-        primalbraidapp->mastereq->getOscillator(0)->projectiveMeasure_diff(finalstate, initcond_re_bar, initcond_im_bar, obj_bar);
+        primalbraidapp->mastereq->getOscillator(0)->expectedEnergy_diff(finalstate, initcond_re_bar, initcond_im_bar, obj_bar);
         break;
 
     case GROUNDSTATE:

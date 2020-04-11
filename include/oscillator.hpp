@@ -53,8 +53,8 @@ class Oscillator {
     int evalDerivative(double t, double* dRedp, double* dImdp);
 
     /* Return expected value of projective measure in basis |m> */
-    double projectiveMeasure(Vec x);
-    void projectiveMeasure_diff(Vec x, Vec x_re_bar, Vec x_im_bar, double obj_bar);
+    double expectedEnergy(Vec x);
+    void expectedEnergy_diff(Vec x, Vec x_re_bar, Vec x_im_bar, double obj_bar);
 
    void population(Vec x, std::vector<double> *pop); 
 };

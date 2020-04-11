@@ -346,7 +346,7 @@ braid_Int myBraidApp::Access(braid_Vector u_, BraidAccessStatus &astatus){
     /* Compute and print some output */
     for (int iosc = 0; iosc < mastereq->getNOscillators(); iosc++) {
       if (expectedfile[iosc] != NULL) {
-        double expected = mastereq->getOscillator(iosc)->projectiveMeasure(u->x);
+        double expected = mastereq->getOscillator(iosc)->expectedEnergy(u->x);
         fprintf(expectedfile[iosc], "%.8f %1.14e\n", t, expected);
       }
       if (populationfile[iosc] != NULL) {

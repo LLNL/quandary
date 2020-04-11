@@ -163,7 +163,7 @@ int Oscillator::evalDerivative(double t, double* dRedp, double* dImdp) {
 }
 
 
-double Oscillator::projectiveMeasure(Vec x) {
+double Oscillator::expectedEnergy(Vec x) {
 
   int dimmat;
   MatGetSize(NumberOP, &dimmat, NULL);
@@ -183,7 +183,7 @@ double Oscillator::projectiveMeasure(Vec x) {
 }
 
 
-void Oscillator::projectiveMeasure_diff(Vec x, Vec x_re_bar, Vec x_im_bar, double obj_bar) {
+void Oscillator::expectedEnergy_diff(Vec x, Vec x_re_bar, Vec x_im_bar, double obj_bar) {
 
   int dimmat;
   MatGetSize(NumberOP, &dimmat, NULL);
