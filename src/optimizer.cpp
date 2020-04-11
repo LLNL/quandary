@@ -54,12 +54,13 @@ OptimProblem::OptimProblem(MapParam config, myBraidApp* primalbraidapp_, myAdjoi
       config.GetVecDoubleParam("optim_init_const", init_ampl, 0.0);
     }
     /* Get type of objective function */
+    config.GetVecIntParam("optim_oscillators", obj_oscilIDs, 1);
     std::vector<std::string> objective_str;
     config.GetVecStrParam("optim_objective", objective_str);
-    assert ( objective_str.size() >=2 );
     if ( objective_str[0].compare("gate") ==0 ) {
       objective_type = GATE;
       /* Read and initialize the targetgate */
+      assert ( objective_str.size() >=2 );
       if      (objective_str[1].compare("none") == 0) targetgate = new Gate(); // dummy gate. do nothing
       else if (objective_str[1].compare("xgate") == 0) targetgate = new XGate(); 
       else if (objective_str[1].compare("ygate") == 0) targetgate = new YGate(); 
@@ -71,20 +72,13 @@ OptimProblem::OptimProblem(MapParam config, myBraidApp* primalbraidapp_, myAdjoi
         printf(" Available gates are 'none', 'xgate', 'ygate', 'zgate', 'hadamard', 'cnot'\n");
         exit(1);
       }
-    } else if (objective_str[0].compare("groundstate")==0) {
-      /* Initialize groundstate optimization */
-      if (objective_str[1].compare("expectedEnergy") == 0 )  objective_type = GROUNDSTATE_EXPECTEDENERGY;
-      else if ( objective_str[1].compare("fullstate") == 0 ) objective_type = GROUNDSTATE_STATE;
-      else {
-        printf("\n\n ERROR: Unknown groundstate optimization: %s\n", objective_str[1].c_str());
+    } 
+    else if (objective_str[0].compare("expectedEnergy")==0) objective_type = EXPECTEDENERGY;
+    else if (objective_str[0].compare("groudnstate")   ==0) objective_type = GROUNDSTATE;
+    else {
+        printf("\n\n ERROR: Unknown objective function: %s\n", objective_str[0].c_str());
         exit(1);
-      }
-    } else {
-      printf("Wrong objective function type: %s\n", objective_str[0].c_str());
-      exit(1);
     }
-    /* Get oscillator IDs for objective function */    
-    config.GetVecIntParam("optim_oscillators", obj_oscilIDs, 1);
 
     /* Prepare primal and adjoint initial conditions */
     VecCreate(PETSC_COMM_WORLD, &initcond_re); 
@@ -593,7 +587,7 @@ double OptimProblem::objFunc(Vec finalstate) {
         targetgate->compare(finalstate, initcond_re, initcond_im, obj_local);
         break;
 
-      case GROUNDSTATE_EXPECTEDENERGY:
+      case EXPECTEDENERGY:
         /* compute the expected value of energy levels for oscillator 1 */
         obj_local = 0.0;
         for (int i=0; i<obj_oscilIDs.size(); i++) {
@@ -601,7 +595,7 @@ double OptimProblem::objFunc(Vec finalstate) {
         }
         break;
 
-      case GROUNDSTATE_STATE:
+      case GROUNDSTATE:
         /* compare full state to groundstate */
 
         /* Get pointer to state */
@@ -634,11 +628,11 @@ void OptimProblem::objFunc_diff(Vec finalstate, double obj_bar) {
         targetgate->compare_diff(finalstate, initcond_re, initcond_im, initcond_re_bar, initcond_im_bar, obj_bar);
         break;
 
-      case GROUNDSTATE_EXPECTEDENERGY:
+      case EXPECTEDENERGY:
         primalbraidapp->mastereq->getOscillator(0)->projectiveMeasure_diff(finalstate, initcond_re_bar, initcond_im_bar, obj_bar);
         break;
 
-    case GROUNDSTATE_STATE:
+    case GROUNDSTATE:
        /* Get real and imag part of final and initial primal and adjoint states, x = [u,v] */
       const PetscScalar *stateptr;
       PetscScalar *u0_barptr, *v0_barptr;
