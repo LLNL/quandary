@@ -53,7 +53,7 @@ OptimProblem::OptimProblem(MapParam config, myBraidApp* primalbraidapp_, myAdjoi
     if (optiminit_type.compare("constant") == 0 ){ // set constant controls. 
       config.GetVecDoubleParam("optim_init_const", init_ampl, 0.0);
     }
-    /* Get objective function */
+    /* Get type of objective function */
     std::vector<std::string> objective_str;
     config.GetVecStrParam("optim_objective", objective_str);
     assert ( objective_str.size() >=2 );
@@ -71,8 +71,7 @@ OptimProblem::OptimProblem(MapParam config, myBraidApp* primalbraidapp_, myAdjoi
         printf(" Available gates are 'none', 'xgate', 'ygate', 'zgate', 'hadamard', 'cnot'\n");
         exit(1);
       }
-    }
-    else if (objective_str[0].compare("groundstate")==0) {
+    } else if (objective_str[0].compare("groundstate")==0) {
       /* Initialize groundstate optimization */
       if (objective_str[1].compare("expectedEnergy") == 0 )  objective_type = GROUNDSTATE_EXPECTEDENERGY;
       else if ( objective_str[1].compare("fullstate") == 0 ) objective_type = GROUNDSTATE_STATE;
@@ -80,11 +79,12 @@ OptimProblem::OptimProblem(MapParam config, myBraidApp* primalbraidapp_, myAdjoi
         printf("\n\n ERROR: Unknown groundstate optimization: %s\n", objective_str[1].c_str());
         exit(1);
       }
-    }
-    else {
+    } else {
       printf("Wrong objective function type: %s\n", objective_str[0].c_str());
       exit(1);
     }
+    /* Get oscillator IDs for objective function */    
+    config.GetVecIntParam("optim_oscillators", obj_oscilIDs, 1);
 
     /* Prepare primal and adjoint initial conditions */
     VecCreate(PETSC_COMM_WORLD, &initcond_re); 
@@ -595,7 +595,10 @@ double OptimProblem::objFunc(Vec finalstate) {
 
       case GROUNDSTATE_EXPECTEDENERGY:
         /* compute the expected value of energy levels for oscillator 1 */
-        obj_local = primalbraidapp->mastereq->getOscillator(0)->projectiveMeasure(finalstate);
+        obj_local = 0.0;
+        for (int i=0; i<obj_oscilIDs.size(); i++) {
+          obj_local += primalbraidapp->mastereq->getOscillator(i)->projectiveMeasure(finalstate);
+        }
         break;
 
       case GROUNDSTATE_STATE:

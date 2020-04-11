@@ -32,7 +32,8 @@ class OptimProblem : public hiop::hiopInterfaceDenseConstraints {
         int mpirank_world, mpisize_world;
         int mpirank_init, mpisize_init;
 
-        ObjectiveType objective_type;    /* Type of objective function */
+        ObjectiveType objective_type;         /* Type of objective function */
+        std::vector<int> obj_oscilIDs;        /* List of oscillator IDs that are considered for the optimizer */
 
 
         FILE* optimfile;
