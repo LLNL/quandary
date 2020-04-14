@@ -424,35 +424,11 @@ int MasterEq::assemble_dRHSdp(double t, Vec x) {
 }
 
 
-int MasterEq::createReducedDensity(Vec fulldensitymatrix, std::vector<int> oscilIDs, Vec *reduced) {
-  /* get beginning and end of block of IDs */
-
-  assert (oscilIDs.size() > 0);
-  int startID = oscilIDs[0];
-  int endID   = oscilIDs[oscilIDs.size()-1];
-
-  /* Get dimensions of preceding and following subsystem */
-  int dim_pre  = 1; 
-  int dim_post = 1;
-  for (int iosc = 0; iosc < noscillators; iosc++) {
-    if ( iosc < startID ) dim_pre  *= getOscillator(iosc)->getNLevels();
-    if ( iosc > endID )   dim_post *= getOscillator(iosc)->getNLevels();
-  }
-
-  /* Get dimensions of reduced density operator */
-  int dim_reduced = 1;
-  for (int i=0; i<oscilIDs.size(); i++) {
-    dim_reduced *= getOscillator(oscilIDs[i])->getNLevels();
-  }
+int MasterEq::reducedDensity(Vec fulldensitymatrix, Vec *reduced, int dim_pre, int dim_post, int dim_reduced) {
 
   /* sanity test */
   int dimmat = dim_pre * dim_reduced * dim_post;
   assert ( (int) pow(dimmat,2) == dim);
-
-  /* Create reduced density matrix */
-  VecCreate(PETSC_COMM_WORLD, reduced);
-  VecSetSizes(*reduced, PETSC_DECIDE, 2*dim_reduced*dim_reduced);
-  VecSetFromOptions(*reduced);
 
   /* Iterate over reduced density matrix elements */
   for (int i=0; i<dim_reduced; i++) {

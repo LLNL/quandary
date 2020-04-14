@@ -95,7 +95,7 @@ class MasterEq{
     /* Compute reduced density operator for oscillator ID given in the oscilID's vector. 
      * OscilIDs must a consecuitive block (0,1,2 or 4,5 etc.)
      */
-    int createReducedDensity(Vec fulldensitymatrix, std::vector<int> oscilIDs, Vec *reduced); 
+    int reducedDensity(Vec fulldensitymatrix, Vec *reduced, int dim_pre, int dim_post, int dim_reduced);
     
 };
 
