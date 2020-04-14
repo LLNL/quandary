@@ -189,10 +189,6 @@ void Oscillator::expectedEnergy_diff(Vec x, Vec x_re_bar, Vec x_im_bar, double o
   MatGetSize(NumberOP, &dimmat, NULL);
   double num_diag;
 
-  /* Reset adjoints */
-  VecZeroEntries(x_re_bar);
-  VecZeroEntries(x_im_bar);
-
   /* Derivative of projective measure */
   for (int i=0; i<dimmat; i++) {
     MatGetValue(NumberOP, i, i, &num_diag);

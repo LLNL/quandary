@@ -53,8 +53,26 @@ OptimProblem::OptimProblem(MapParam config, myBraidApp* primalbraidapp_, myAdjoi
     if (optiminit_type.compare("constant") == 0 ){ // set constant controls. 
       config.GetVecDoubleParam("optim_init_const", init_ampl, 0.0);
     }
+    /* Read oscillator IDs for objective function */
+    std::vector<std::string> oscilID_str;
+    config.GetVecStrParam("optim_oscillators", oscilID_str);
+    if (oscilID_str[0].compare("all") == 0) {
+      for (int iosc = 0; iosc < primalbraidapp->mastereq->getNOscillators(); iosc++) 
+        obj_oscilIDs.push_back(iosc);
+    } else {
+      config.GetVecIntParam("optim_oscillators", obj_oscilIDs, 1);
+    }
+    /* Sanity check for oscillator IDs */
+    bool err = false;
+    for (int i=0; i<obj_oscilIDs.size(); i++){
+      if ( obj_oscilIDs[i] >= primalbraidapp->mastereq->getNOscillators() ) err = true;
+      if ( i>0 &&  ( obj_oscilIDs[i] != obj_oscilIDs[i-1] + 1 ) )           err = true;
+    }
+    if (err) {
+      printf("ERROR: List of oscillator IDs for objective function invalid\n"); 
+      exit(1);
+    }
     /* Get type of objective function */
-    config.GetVecIntParam("optim_oscillators", obj_oscilIDs, 1);
     std::vector<std::string> objective_str;
     config.GetVecStrParam("optim_objective", objective_str);
     if ( objective_str[0].compare("gate") ==0 ) {
@@ -591,7 +609,7 @@ double OptimProblem::objFunc(Vec finalstate) {
         /* compute the expected value of energy levels for oscillator 1 */
         obj_local = 0.0;
         for (int i=0; i<obj_oscilIDs.size(); i++) {
-          obj_local += primalbraidapp->mastereq->getOscillator(i)->expectedEnergy(finalstate);
+          obj_local += primalbraidapp->mastereq->getOscillator(obj_oscilIDs[i])->expectedEnergy(finalstate);
         }
         break;
 
@@ -622,6 +640,10 @@ double OptimProblem::objFunc(Vec finalstate) {
 
 void OptimProblem::objFunc_diff(Vec finalstate, double obj_bar) {
 
+  /* Reset adjoints */
+  VecZeroEntries(initcond_re_bar);
+  VecZeroEntries(initcond_im_bar);
+
   if (finalstate != NULL) {
     switch (objective_type) {
       case GATE:
@@ -629,7 +651,9 @@ void OptimProblem::objFunc_diff(Vec finalstate, double obj_bar) {
         break;
 
       case EXPECTEDENERGY:
-        primalbraidapp->mastereq->getOscillator(0)->expectedEnergy_diff(finalstate, initcond_re_bar, initcond_im_bar, obj_bar);
+        for (int i=0; i<obj_oscilIDs.size(); i++) {
+          primalbraidapp->mastereq->getOscillator(obj_oscilIDs[i])->expectedEnergy_diff(finalstate, initcond_re_bar, initcond_im_bar, obj_bar);
+        }
         break;
 
     case GROUNDSTATE:
