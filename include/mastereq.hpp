@@ -90,6 +90,12 @@ class MasterEq{
     /* Access the right-hand-side and derivative matrix */
     Mat getRHS();
     Mat getdRHSdp();
+
+
+    /* Compute reduced density operator for oscillator ID given in the oscilID's vector. 
+     * OscilIDs must a consecuitive block (0,1,2 or 4,5 etc.)
+     */
+    int createReducedDensity(Vec fulldensitymatrix, std::vector<int> oscilIDs, Vec *reduced); 
     
 };
 

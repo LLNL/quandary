@@ -630,8 +630,17 @@ double OptimProblem::objFunc(Vec finalstate) {
         }
         /* Restore */
         VecRestoreArrayRead(finalstate, &stateptr);
+
+        /* Compute reduced density matrix */
+        Vec reduced;
+        int dim_red = primalbraidapp->mastereq->createReducedDensity(finalstate, obj_oscilIDs, &reduced);
+
+        PetscViewerSetFormat(PETSC_VIEWER_STDOUT_WORLD, 	PETSC_VIEWER_ASCII_MATLAB );
+        VecView(reduced, PETSC_VIEWER_STDOUT_WORLD);
+
         break;
     }
+
   }
 
   return obj_local;
