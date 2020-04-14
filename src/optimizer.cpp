@@ -60,10 +60,11 @@ OptimProblem::OptimProblem(MapParam config, myBraidApp* primalbraidapp_, myAdjoi
       for (int iosc = 0; iosc < primalbraidapp->mastereq->getNOscillators(); iosc++) 
         obj_oscilIDs.push_back(iosc);
     } else {
-      config.GetVecIntParam("optim_oscillators", obj_oscilIDs, 1);
+      config.GetVecIntParam("optim_oscillators", obj_oscilIDs, 0);
     }
     /* Sanity check for oscillator IDs */
     bool err = false;
+    assert(obj_oscilIDs.size() > 0);
     for (int i=0; i<obj_oscilIDs.size(); i++){
       if ( obj_oscilIDs[i] >= primalbraidapp->mastereq->getNOscillators() ) err = true;
       if ( i>0 &&  ( obj_oscilIDs[i] != obj_oscilIDs[i-1] + 1 ) )           err = true;
@@ -614,55 +615,60 @@ double OptimProblem::objFunc(Vec finalstate) {
         break;
 
       case GROUNDSTATE:
-        /* compare full state to groundstate */
+        /* compare full or pariatl state to groundstate */
+        MasterEq *meq= primalbraidapp->mastereq;
+        Vec state;
 
-        /* Get pointer to state */
+        /* If sub-system is requested, compute reduced density operator first */
+        if (obj_oscilIDs.size() < primalbraidapp->mastereq->getNOscillators()) { 
+          
+          /* Get dimensions of preceding and following subsystem */
+          int dim_pre  = 1; 
+          int dim_post = 1;
+          for (int iosc = 0; iosc < meq->getNOscillators(); iosc++) {
+            if ( iosc < obj_oscilIDs[0])                      
+              dim_pre  *= meq->getOscillator(iosc)->getNLevels();
+            if ( iosc > obj_oscilIDs[obj_oscilIDs.size()-1])   
+              dim_post *= meq->getOscillator(iosc)->getNLevels();
+          }
+
+          /* Create reduced density matrix */
+          int dim_reduced = 1;
+          for (int i = 0; i < obj_oscilIDs.size();i++) {
+            dim_reduced *= meq->getOscillator(obj_oscilIDs[i])->getNLevels();
+          }
+          VecCreate(PETSC_COMM_WORLD, &state);
+          VecSetSizes(state, PETSC_DECIDE, 2*dim_reduced*dim_reduced);
+          VecSetFromOptions(state);
+
+          /* Fill reduced density matrix */
+          meq->reducedDensity(finalstate, &state, dim_pre, dim_post, dim_reduced);
+
+        } else { // full density matrix system 
+
+           state = finalstate; 
+
+        }
+
+        PetscViewerSetFormat(PETSC_VIEWER_STDOUT_WORLD, 	PETSC_VIEWER_ASCII_MATLAB );
+        VecView(state, PETSC_VIEWER_STDOUT_WORLD);
+
+        /* Compute frobenius norm: frob = || q(T) - e_1 ||^2 */
         int dimstate;
         const PetscScalar *stateptr;
-        VecGetSize(finalstate, &dimstate);
-        VecGetArrayRead(finalstate, &stateptr);
-
-        /* Sum up frobenius norm: frob = || q(T) - e_1 ||^2 */
+        VecGetSize(state, &dimstate);
+        VecGetArrayRead(state, &stateptr);
         obj_local = 0.0;
         obj_local += pow(stateptr[0] - 1.0, 2); 
         for (int i = 1; i < dimstate; i++){
            obj_local += pow(stateptr[i], 2);
         }
-        /* Restore */
-        VecRestoreArrayRead(finalstate, &stateptr);
+        VecRestoreArrayRead(state, &stateptr);
 
-        /* --- Compute reduced density matrix --- */
-        MasterEq *meq= primalbraidapp->mastereq;
-        assert (obj_oscilIDs.size() > 0);
-
-        /* Create reduced density matrix */
-        int dim_reduced = 1;
-        for (int i = 0; i < obj_oscilIDs.size();i++) {
-          dim_reduced *= meq->getOscillator(obj_oscilIDs[i])->getNLevels();
+        /* Destroy reduced density matrix, if it has been created */
+        if (obj_oscilIDs.size() < primalbraidapp->mastereq->getNOscillators()) { 
+          VecDestroy(&state);
         }
-        Vec reducedDens;
-        VecCreate(PETSC_COMM_WORLD, &reducedDens);
-        VecSetSizes(reducedDens, PETSC_DECIDE, 2*dim_reduced*dim_reduced);
-        VecSetFromOptions(reducedDens);
-
-
-        /* Get dimensions of preceding and following subsystem */
-        int dim_pre  = 1; 
-        int dim_post = 1;
-        for (int iosc = 0; iosc < meq->getNOscillators(); iosc++) {
-          if ( iosc < obj_oscilIDs[0])                      
-            dim_pre  *= meq->getOscillator(iosc)->getNLevels();
-          if ( iosc > obj_oscilIDs[obj_oscilIDs.size()-1])   
-            dim_post *= meq->getOscillator(iosc)->getNLevels();
-        }
-
-        /* Fill reduced density matrix */
-        meq->reducedDensity(finalstate, &reducedDens, dim_pre, dim_post, dim_reduced);
-
-        PetscViewerSetFormat(PETSC_VIEWER_STDOUT_WORLD, 	PETSC_VIEWER_ASCII_MATLAB );
-        VecView(reducedDens, PETSC_VIEWER_STDOUT_WORLD);
-
-        VecDestroy(&reducedDens);
 
         break;
     }
