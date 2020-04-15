@@ -93,7 +93,7 @@ OptimProblem::OptimProblem(MapParam config, myBraidApp* primalbraidapp_, myAdjoi
       }
     } 
     else if (objective_str[0].compare("expectedEnergy")==0) objective_type = EXPECTEDENERGY;
-    else if (objective_str[0].compare("groudnstate")   ==0) objective_type = GROUNDSTATE;
+    else if (objective_str[0].compare("groundstate")   ==0) objective_type = GROUNDSTATE;
     else {
         printf("\n\n ERROR: Unknown objective function: %s\n", objective_str[0].c_str());
         exit(1);
@@ -650,8 +650,8 @@ double OptimProblem::objFunc(Vec finalstate) {
 
         }
 
-        PetscViewerSetFormat(PETSC_VIEWER_STDOUT_WORLD, 	PETSC_VIEWER_ASCII_MATLAB );
-        VecView(state, PETSC_VIEWER_STDOUT_WORLD);
+        // PetscViewerSetFormat(PETSC_VIEWER_STDOUT_WORLD, 	PETSC_VIEWER_ASCII_MATLAB );
+        // VecView(state, PETSC_VIEWER_STDOUT_WORLD);
 
         /* Compute frobenius norm: frob = || q(T) - e_1 ||^2 */
         int dimstate;
