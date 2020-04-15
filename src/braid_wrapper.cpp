@@ -342,22 +342,23 @@ braid_Int myBraidApp::Access(braid_Vector u_, BraidAccessStatus &astatus){
     fprintf(vfile, "\n");
 
     VecRestoreArrayRead(u->x, &x_ptr);
+  }
 
-    /* Compute and print some output */
-    for (int iosc = 0; iosc < mastereq->getNOscillators(); iosc++) {
-      if (expectedfile[iosc] != NULL) {
-        double expected = mastereq->getOscillator(iosc)->expectedEnergy(u->x);
-        fprintf(expectedfile[iosc], "%.8f %1.14e\n", t, expected);
-      }
-      if (populationfile[iosc] != NULL) {
-        std::vector<double> pop (mastereq->getOscillator(iosc)->getNLevels(), 0.0);  // create and fill with zero
-        mastereq->getOscillator(iosc)->population(u->x, &pop);
-        fprintf(populationfile[iosc], "%.8f ", t);
-        for (int i=0; i<pop.size(); i++) fprintf(populationfile[iosc], "%1.14e ", pop[i]);
-        fprintf(populationfile[iosc], "\n");
-      }
+  /* Compute and print some output */
+  for (int iosc = 0; iosc < mastereq->getNOscillators(); iosc++) {
+    if (expectedfile[iosc] != NULL) {
+      double expected = mastereq->getOscillator(iosc)->expectedEnergy(u->x);
+      fprintf(expectedfile[iosc], "%.8f %1.14e\n", t, expected);
+    }
+    if (populationfile[iosc] != NULL) {
+      std::vector<double> pop (mastereq->getOscillator(iosc)->getNLevels(), 0.0);  // create and fill with zero
+      mastereq->getOscillator(iosc)->population(u->x, &pop);
+      fprintf(populationfile[iosc], "%.8f ", t);
+      for (int i=0; i<pop.size(); i++) fprintf(populationfile[iosc], "%1.14e ", pop[i]);
+      fprintf(populationfile[iosc], "\n");
     }
   }
+
 
   return 0; 
 }
