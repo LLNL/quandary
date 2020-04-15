@@ -698,31 +698,79 @@ void OptimProblem::objFunc_diff(Vec finalstate, double obj_bar) {
         break;
 
     case GROUNDSTATE:
+
+        MasterEq *meq= primalbraidapp->mastereq;
+        Vec state;
+        int dim_pre = 1;
+        int dim_post = 1;
+        int dim_reduced = 1;
+
+        /* If sub-system is requested, compute reduced density operator first */
+        if (obj_oscilIDs.size() < primalbraidapp->mastereq->getNOscillators()) { 
+          
+          /* Get dimensions of preceding and following subsystem */
+          for (int iosc = 0; iosc < meq->getNOscillators(); iosc++) {
+            if ( iosc < obj_oscilIDs[0])                      
+              dim_pre  *= meq->getOscillator(iosc)->getNLevels();
+            if ( iosc > obj_oscilIDs[obj_oscilIDs.size()-1])   
+              dim_post *= meq->getOscillator(iosc)->getNLevels();
+          }
+
+          /* Create reduced density matrix */
+          for (int i = 0; i < obj_oscilIDs.size();i++) {
+            dim_reduced *= meq->getOscillator(obj_oscilIDs[i])->getNLevels();
+          }
+          VecCreate(PETSC_COMM_WORLD, &state);
+          VecSetSizes(state, PETSC_DECIDE, 2*dim_reduced*dim_reduced);
+          VecSetFromOptions(state);
+
+          /* Fill reduced density matrix */
+          meq->reducedDensity(finalstate, &state, dim_pre, dim_post, dim_reduced);
+
+        } else { // full density matrix system 
+
+           state = finalstate; 
+
+        }
+
        /* Get real and imag part of final and initial primal and adjoint states, x = [u,v] */
       const PetscScalar *stateptr;
-      PetscScalar *u0_barptr, *v0_barptr;
-      VecGetArrayRead(finalstate, &stateptr);
-      VecGetArray(initcond_re_bar, &u0_barptr);
-      VecGetArray(initcond_im_bar, &v0_barptr);
-
-      /* Get pointer offset for imaginary part */
-      int dimstate;
-      VecGetSize(finalstate, &dimstate);
-      int offset = dimstate/2;
+      PetscScalar *statebarptr;
+      Vec statebar;
+      VecDuplicate(state, &statebar);
+      VecGetArrayRead(state, &stateptr);
+      VecGetArray(statebar, &statebarptr);
 
       /* Derivative of frobenius norm: 2 * (q(T) - e_1) * frob_bar */
-      u0_barptr[0] = 2. * ( stateptr[0] - 1.0 ) * obj_bar;
-      v0_barptr[0] = 2. * ( stateptr[offset] ) * obj_bar;
-      for (int i=1; i<offset; i++) {
-        u0_barptr[i] = 2. * stateptr[i]         * obj_bar;
-        v0_barptr[i] = 2. * stateptr[i+offset] * obj_bar;
+      int dimstate;
+      VecGetSize(state, &dimstate);
+      statebarptr[0] += 2. * ( stateptr[0] - 1.0 ) * obj_bar;
+      for (int i=1; i<dimstate; i++) {
+        statebarptr[i] += 2. * stateptr[i] * obj_bar;
+      }
+      VecRestoreArrayRead(state, &stateptr);
+
+      /* Derivative of partial trace */
+      if (obj_oscilIDs.size() < meq->getNOscillators()) {
+        meq->reducedDensity_diff(statebar, initcond_re_bar, initcond_im_bar, dim_pre, dim_post, dim_reduced);
+        VecDestroy(&state);
+      } else {
+        /* Split statebar into initcond_rebar, initcond_im_bar */
+        PetscScalar *u0_barptr, *v0_barptr;
+        VecGetArray(initcond_re_bar, &u0_barptr);
+        VecGetArray(initcond_im_bar, &v0_barptr);
+        const PetscScalar *statebarptr;
+        VecGetArrayRead(statebar, &statebarptr);
+        for (int i=0; i<dimstate/2; i++){
+          u0_barptr[i] += statebarptr[i];
+          v0_barptr[i] += statebarptr[i + dimstate/2];
+        }
+        VecRestoreArrayRead(statebar, &statebarptr);
+        VecRestoreArray(initcond_re_bar, &u0_barptr);
+        VecRestoreArray(initcond_im_bar, &v0_barptr);
       }
 
-      /* Restore */
-      VecRestoreArray(initcond_re_bar, &u0_barptr);
-      VecRestoreArray(initcond_im_bar, &v0_barptr);
-      VecRestoreArrayRead(finalstate, &stateptr);
- 
+      VecDestroy(&statebar);
     }
   }
 }
