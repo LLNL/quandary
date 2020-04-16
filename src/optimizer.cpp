@@ -609,9 +609,6 @@ int OptimProblem::assembleInitialCondition(int iinit_local){
       /* Compure nonzero index in vec(\rho_ij(0)) = vec( E_pre \otimes E_ij \otims E_post ) */
       elemID = j * dim_post * ((int) sqrt(dim)) + i * dim_post;
 
-      printf("iinit%d i,j %d, %d, elemID %d\n", iinit, i, j, elemID);
-
-
       /* Assemble */
       VecZeroEntries(initcond_re); 
       VecZeroEntries(initcond_im); 
@@ -625,8 +622,8 @@ int OptimProblem::assembleInitialCondition(int iinit_local){
       exit(1);
   }
 
-  printf("InitCond %d elemID %d\n", iinit_local, elemID);
-  VecView(initcond_re, PETSC_VIEWER_STDOUT_WORLD);
+  // printf("InitCond %d elemID %d\n", iinit_local, elemID);
+  // VecView(initcond_re, PETSC_VIEWER_STDOUT_WORLD);
   
   return elemID;
 }
