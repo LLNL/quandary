@@ -20,11 +20,13 @@ OptimProblem::OptimProblem() {
     targetgate = NULL;
 }
 
-OptimProblem::OptimProblem(MapParam config, myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, MPI_Comm comm_hiop_, MPI_Comm comm_init_, int ninit_) {
+OptimProblem::OptimProblem(MapParam config, myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, MPI_Comm comm_hiop_, MPI_Comm comm_init_, std::vector<int> obj_oscilIDs_, InitialConditionType initcondtype_, int ninit_) {
     primalbraidapp  = primalbraidapp_;
     adjointbraidapp = adjointbraidapp_;
     comm_hiop = comm_hiop_;
     comm_init = comm_init_;
+    obj_oscilIDs = obj_oscilIDs_;
+    initcond_type = initcondtype_;
     ninit = ninit_;
 
     /* Store ranks and sizes of communicators */
@@ -52,26 +54,6 @@ OptimProblem::OptimProblem(MapParam config, myBraidApp* primalbraidapp_, myAdjoi
     /* If constant initialization, read in amplitudes */
     if (optiminit_type.compare("constant") == 0 ){ // set constant controls. 
       config.GetVecDoubleParam("optim_init_const", init_ampl, 0.0);
-    }
-    /* Read oscillator IDs for objective function */
-    std::vector<std::string> oscilID_str;
-    config.GetVecStrParam("optim_oscillators", oscilID_str);
-    if (oscilID_str[0].compare("all") == 0) {
-      for (int iosc = 0; iosc < primalbraidapp->mastereq->getNOscillators(); iosc++) 
-        obj_oscilIDs.push_back(iosc);
-    } else {
-      config.GetVecIntParam("optim_oscillators", obj_oscilIDs, 0);
-    }
-    /* Sanity check for oscillator IDs */
-    bool err = false;
-    assert(obj_oscilIDs.size() > 0);
-    for (int i=0; i<obj_oscilIDs.size(); i++){
-      if ( obj_oscilIDs[i] >= primalbraidapp->mastereq->getNOscillators() ) err = true;
-      if ( i>0 &&  ( obj_oscilIDs[i] != obj_oscilIDs[i-1] + 1 ) )           err = true;
-    }
-    if (err) {
-      printf("ERROR: List of oscillator IDs for objective function invalid\n"); 
-      exit(1);
     }
     /* Get type of objective function */
     std::vector<std::string> objective_str;
@@ -107,48 +89,52 @@ OptimProblem::OptimProblem(MapParam config, myBraidApp* primalbraidapp_, myAdjoi
     VecDuplicate(initcond_re, &initcond_re_bar);
     VecDuplicate(initcond_re, &initcond_im_bar);
 
-    /* Read a specific initial conditions from config file, if requested */
-    if (ninit == 1) {
+
+    /* Initialize with tensor product of unit vectors. */
+    if (initcond_type == PURE) { 
+
       std::vector<std::string> initcondstr;
       config.GetVecStrParam("initialcondition", initcondstr);
-      if (initcondstr[0].compare("pure") == 0) {
-        // Initialize with tensor product of unit vectors. 
-        std::vector<int> unitids;
-        for (int i=1; i<initcondstr.size(); i++) unitids.push_back(atoi(initcondstr[i].c_str()));
-        assert (unitids.size() == primalbraidapp->mastereq->getNOscillators());
-        // Compute index of diagonal elements that is one.
-        int diag_id = 0.0;
-        for (int k=0; k < unitids.size(); k++) {
-          assert (unitids[k] < primalbraidapp->mastereq->getOscillator(k)->getNLevels());
-          int dim_postkron = 1;
-          for (int m=k+1; m < unitids.size(); m++) {
-            dim_postkron *= primalbraidapp->mastereq->getOscillator(m)->getNLevels();
-          }
-          diag_id += unitids[k] * dim_postkron;
+      std::vector<int> unitids;
+      for (int i=1; i<initcondstr.size(); i++) unitids.push_back(atoi(initcondstr[i].c_str()));
+      assert (unitids.size() == primalbraidapp->mastereq->getNOscillators());
+      // Compute index of diagonal elements that is one.
+      int diag_id = 0.0;
+      for (int k=0; k < unitids.size(); k++) {
+        assert (unitids[k] < primalbraidapp->mastereq->getOscillator(k)->getNLevels());
+        int dim_postkron = 1;
+        for (int m=k+1; m < unitids.size(); m++) {
+          dim_postkron *= primalbraidapp->mastereq->getOscillator(m)->getNLevels();
         }
-        int vec_id = diag_id * (int)sqrt(primalbraidapp->mastereq->getDim()) + diag_id;
-        VecSetValue(initcond_re, vec_id, 1.0, INSERT_VALUES);
-        VecAssemblyBegin(initcond_re); VecAssemblyEnd(initcond_re);
-        VecAssemblyBegin(initcond_im); VecAssemblyEnd(initcond_im);
+        diag_id += unitids[k] * dim_postkron;
       }
-      else {
-        /* Read initial condition from file */
-        int dim = primalbraidapp->mastereq->getDim();
-        double * vec = new double[2*dim];
-        if (mpirank_world == 0) {
-          std::string filename = config.GetStrParam("initialcondition", "none");
-          read_vector(filename.c_str(), vec, 2*dim);
-        }
-        MPI_Bcast(vec, 2*dim, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-        for (int i = 0; i < dim; i++) {
-          if (vec[i]     != 0.0) VecSetValue(initcond_re, i, vec[i],     INSERT_VALUES);
-          if (vec[i+dim] != 0.0) VecSetValue(initcond_im, i, vec[i+dim], INSERT_VALUES);
-        }
-        VecAssemblyBegin(initcond_re); VecAssemblyEnd(initcond_re);
-        VecAssemblyBegin(initcond_im); VecAssemblyEnd(initcond_im);
-        delete [] vec;
-      }
+      int vec_id = diag_id * (int)sqrt(primalbraidapp->mastereq->getDim()) + diag_id;
+      VecSetValue(initcond_re, vec_id, 1.0, INSERT_VALUES);
     }
+
+    /* Read initial condition from file */
+    if (initcond_type == FROMFILE) { 
+
+      int dim = primalbraidapp->mastereq->getDim();
+      double * vec = new double[2*dim];
+
+      std::vector<std::string> initcondstr;
+      config.GetVecStrParam("initialcondition", initcondstr);
+      if (mpirank_world == 0) {
+        assert (initcondstr.size()==2);
+        std::string filename = initcondstr[1];
+        read_vector(filename.c_str(), vec, 2*dim);
+      }
+      MPI_Bcast(vec, 2*dim, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+      for (int i = 0; i < dim; i++) {
+        if (vec[i]     != 0.0) VecSetValue(initcond_re, i, vec[i],     INSERT_VALUES);
+        if (vec[i+dim] != 0.0) VecSetValue(initcond_im, i, vec[i+dim], INSERT_VALUES);
+      }
+      delete [] vec;
+    }
+    
+    VecAssemblyBegin(initcond_re); VecAssemblyEnd(initcond_re);
+    VecAssemblyBegin(initcond_im); VecAssemblyEnd(initcond_im);
    
     /* Open optim file */
     if (mpirank_world == 0 && printlevel > 0) {
@@ -260,6 +246,7 @@ bool OptimProblem::eval_f(const long long& n, const double* x_in, bool new_x, do
     objective = 0.0;
     for (int iinit = 0; iinit < ninit_local; iinit++) {
       
+      printf("FWD %d/%d\n", iinit, ninit_local);
       /* Prepare the initial condition */
       int initid = assembleInitialCondition(iinit);
       // if (mpirank_braid == 0) printf("%d: %d FWD. \n", mpirank_init, initid);
@@ -567,31 +554,81 @@ bool OptimProblem::get_MPI_comm(MPI_Comm& comm_out){
 
 
 int OptimProblem::assembleInitialCondition(int iinit_local){
-  int initid = -1000;
+  int diagid, i, j, dim_post;
+
+  int elemID = -1;
   int dim = primalbraidapp->mastereq->getDim(); // N^2
 
-  /* Translate local iinit to this processor's domain 1rank * ninit_local, (rank+1) * ninit_local - 1] */
+  /* Translate local iinit to this processor's domain [rank * ninit_local, (rank+1) * ninit_local - 1] */
   int iinit = mpirank_init * ninit_local + iinit_local;
 
-  /* Check for initial condition type */
-  if ( ninit == 1) 
-      return -1;  // Do nothing. Init cond is already stored in initcond_re, initcond_im 
-  else if ( ninit == (int) sqrt(dim) ) initid = iinit * ninit + iinit;  // diagonal only
-  else if ( ninit == dim )             initid = iinit;                  // all initial conditions 
-  else {
-    printf("Something went wrong with initial condistion distribution. This should never happen.\n");
-    exit(1);
+  /* Switch over type of initial condition */
+  switch (initcond_type) {
+
+    case FROMFILE:
+      /* Do nothing. Init cond is already stored in initcond_re, initcond_im */
+      break;
+
+    case PURE:
+      /* Do nothing. Init cond is already stored in initcond_re, initcond_im */
+      break;
+
+    case DIAGONAL:
+
+      /* Get dimension of partial system behind last oscillator ID */
+      dim_post = 1;
+      for (int k = obj_oscilIDs[obj_oscilIDs.size()-1] + 1; k < primalbraidapp->mastereq->getNOscillators(); k++) {
+        dim_post *= primalbraidapp->mastereq->getOscillator(k)->getNLevels();
+      }
+
+      /* Compute index of the nonzero element in rho_m(0) = E_pre \otimes |m><m| \otimes E_post */
+      diagid = iinit * dim_post;
+      /* Position in vectorized q(0) */
+      elemID = diagid * ( (int) sqrt(dim) ) + diagid;
+
+      /* Assemble */
+      VecZeroEntries(initcond_re); 
+      VecZeroEntries(initcond_im); 
+      VecSetValue(initcond_re, elemID, 1.0, INSERT_VALUES);
+      VecAssemblyBegin(initcond_re);
+      VecAssemblyEnd(initcond_re);
+      break;
+
+    case BASIS:
+
+      /* Get dimension of partial system behind last oscillator ID */
+      dim_post = 1;
+      for (int k = obj_oscilIDs[obj_oscilIDs.size()-1] + 1; k < primalbraidapp->mastereq->getNOscillators(); k++) {
+        dim_post *= primalbraidapp->mastereq->getOscillator(k)->getNLevels();
+      }
+
+      /* Get matrix element IDs from vectorized initial condition IDs */
+      i = iinit % ( (int) sqrt(ninit) );
+      j = (int) iinit / ( (int) sqrt(ninit) );   
+      
+      /* Compure nonzero index in vec(\rho_ij(0)) = vec( E_pre \otimes E_ij \otims E_post ) */
+      elemID = j * dim_post * ((int) sqrt(dim)) + i * dim_post;
+
+      printf("iinit%d i,j %d, %d, elemID %d\n", iinit, i, j, elemID);
+
+
+      /* Assemble */
+      VecZeroEntries(initcond_re); 
+      VecZeroEntries(initcond_im); 
+      VecSetValue(initcond_re, elemID, 1.0, INSERT_VALUES);
+      VecAssemblyBegin(initcond_re);
+      VecAssemblyEnd(initcond_re);
+      break;
+
+    default:
+      printf("ERROR! Wrong initial condition type: %d\n This should never happen!\n", initcond_type);
+      exit(1);
   }
 
-  /* Set x to i-th unit vector */
-  VecZeroEntries(initcond_re); 
-  VecZeroEntries(initcond_im); 
-  VecSetValue(initcond_re, initid, 1.0, INSERT_VALUES);
-  VecAssemblyBegin(initcond_re);
-  VecAssemblyEnd(initcond_re);
-  // VecView(x, PETSC_VIEWER_STDOUT_WORLD);
+  printf("InitCond %d elemID %d\n", iinit_local, elemID);
+  VecView(initcond_re, PETSC_VIEWER_STDOUT_WORLD);
   
-  return initid;
+  return elemID;
 }
 
 

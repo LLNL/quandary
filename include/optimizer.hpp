@@ -9,6 +9,8 @@ enum ObjectiveType {GATE,             // Compare final state to linear gate tran
                     EXPECTEDENERGY,   // Minimizes expected energy levels.
                     GROUNDSTATE};     // Compares final state to groundstate (full matrix)
 
+enum InitialConditionType {FROMFILE, PURE, DIAGONAL, BASIS};
+
 class OptimProblem : public hiop::hiopInterfaceDenseConstraints {
 
     protected:
@@ -35,6 +37,8 @@ class OptimProblem : public hiop::hiopInterfaceDenseConstraints {
         ObjectiveType objective_type;         /* Type of objective function */
         std::vector<int> obj_oscilIDs;        /* List of oscillator IDs that are considered for the optimizer */
 
+        InitialConditionType initcond_type;
+
 
         FILE* optimfile;
 
@@ -47,7 +51,7 @@ class OptimProblem : public hiop::hiopInterfaceDenseConstraints {
 
     public:
         OptimProblem();
-        OptimProblem(MapParam config, myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, MPI_Comm comm_hiop_, MPI_Comm comm_init_, int ninit_);
+        OptimProblem(MapParam config, myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, MPI_Comm comm_hiop_, MPI_Comm comm_init_, std::vector<int> obj_oscilIDs_, InitialConditionType initcondtype_, int ninit_);
         virtual ~OptimProblem();
 
 
