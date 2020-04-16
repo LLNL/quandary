@@ -186,7 +186,7 @@ int main(int argc,char **argv)
   /* Get the total number of initial conditions 'ninit' */
   InitialConditionType inittype; 
   std::vector<std::string> initcondstr;
-  config.GetVecStrParam("initialcondition", initcondstr);
+  config.GetVecStrParam("optim_initialcondition", initcondstr);
   assert (initcondstr.size() > 0);
   if      (initcondstr[0].compare("file") == 0 ) { inittype = FROMFILE; ninit = 1; }
   else if (initcondstr[0].compare("pure") == 0 ) { inittype = PURE;     ninit = 1; }
