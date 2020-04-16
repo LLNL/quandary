@@ -109,16 +109,17 @@ OptimProblem::OptimProblem(MapParam config, myBraidApp* primalbraidapp_, myAdjoi
 
     /* Read a specific initial conditions from config file, if requested */
     if (ninit == 1) {
-
-      if (config.GetStrParam("initialcondition").compare("unit") == 0) {
+      std::vector<std::string> initcondstr;
+      config.GetVecStrParam("initialcondition", initcondstr);
+      if (initcondstr[0].compare("pure") == 0) {
         // Initialize with tensor product of unit vectors. 
         std::vector<int> unitids;
-        config.GetVecIntParam("init_unit", unitids);
+        for (int i=1; i<initcondstr.size(); i++) unitids.push_back(atoi(initcondstr[i].c_str()));
         assert (unitids.size() == primalbraidapp->mastereq->getNOscillators());
         // Compute index of diagonal elements that is one.
         int diag_id = 0.0;
         for (int k=0; k < unitids.size(); k++) {
-          // Get dimension of postkronecker
+          assert (unitids[k] < primalbraidapp->mastereq->getOscillator(k)->getNLevels());
           int dim_postkron = 1;
           for (int m=k+1; m < unitids.size(); m++) {
             dim_postkron *= primalbraidapp->mastereq->getOscillator(m)->getNLevels();

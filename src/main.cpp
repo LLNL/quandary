@@ -161,10 +161,11 @@ int main(int argc,char **argv)
   TSInit(ts, mastereq, ntime, dt, total_time, x, lambda, mu, monitor);
 
   /* Get the total number of initial conditions 'ninit' */
-  std::string initcond_type; 
-  initcond_type = config.GetStrParam("initialcondition", "all");
-  if      (initcond_type.compare("all")      == 0 ) ninit = mastereq->getDim();              // N^2
-  else if (initcond_type.compare("diagonal") == 0 ) ninit = (int) sqrt(mastereq->getDim());  // N
+  std::vector<std::string> initcondstr;
+  config.GetVecStrParam("initialcondition", initcondstr);
+  assert (initcondstr.size() > 0);
+  if      (initcondstr[0].compare("all")      == 0 ) ninit = mastereq->getDim();              // N^2
+  else if (initcondstr[0].compare("diagonal") == 0 ) ninit = (int) sqrt(mastereq->getDim());  // N
   else                                              ninit = 1;
   
 
