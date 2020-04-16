@@ -246,7 +246,7 @@ bool OptimProblem::eval_f(const long long& n, const double* x_in, bool new_x, do
     objective = 0.0;
     for (int iinit = 0; iinit < ninit_local; iinit++) {
       
-      printf("FWD %d/%d\n", iinit, ninit_local);
+      // printf("FWD %d/%d\n", iinit, ninit_local);
       /* Prepare the initial condition */
       int initid = assembleInitialCondition(iinit);
       // if (mpirank_braid == 0) printf("%d: %d FWD. \n", mpirank_init, initid);
