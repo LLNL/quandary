@@ -3,6 +3,7 @@
 #include <petscksp.h>
 #include "mastereq.hpp"
 #include <assert.h> 
+#include <iostream> 
 #pragma once
 
 /* Base class for time steppers */
@@ -80,7 +81,7 @@ PetscErrorCode RHSJacobianP(TS ts, PetscReal t, Vec y, Mat A, void *ctx);
 /*
  * Create Petsc's time stepper 
  */
-PetscErrorCode TSInit(TS ts, MasterEq* mastereq, PetscInt NSteps, PetscReal Dt, PetscReal Tfinal, Vec x, Vec *lambda, Vec *mu, bool monitor);
+PetscErrorCode TSInit(TS ts, MasterEq* mastereq, PetscInt NSteps, PetscReal Dt, PetscReal Tfinal, Vec x, bool monitor);
 
 /*
  * Monitor the time stepper 

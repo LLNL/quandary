@@ -40,9 +40,7 @@ void ExplEuler::evolveBWD(double tstop, double tstart, Vec x, Vec x_adj, Vec gra
 
   /* Add to reduced gradient */
   if (compute_gradient) {
-    mastereq->assemble_dRHSdp(tstop, x);
-    MatScale(mastereq->getdRHSdp(), dt);
-    MatMultTransposeAdd(mastereq->getdRHSdp(), x_adj, grad, grad); 
+    mastereq->computedRHSdp(tstop, x, x_adj, dt, grad);
   }
 
   /* update x_adj = x_adj + hA^Tx_adj */
@@ -160,14 +158,15 @@ void ImplMidpoint::evolveBWD(double tstop, double tstart, Vec x, Vec x_adj, Vec 
   /* Add to reduced gradient */
   if (compute_gradient) {
     VecAYPX(stage, dt / 2.0, x);
-    mastereq->assemble_dRHSdp(thalf, stage);
-    Mat B = mastereq->getdRHSdp();
-    MatMultTransposeAdd(B, stage_adj, grad, grad);
+    mastereq->computedRHSdp(thalf, stage, stage_adj, 1.0, grad);
   }
 
-  /* Update adjoint state x_adj += dt * A^Tstage_adj --- */
-  mastereq->assemble_RHS( (tstart + tstop) / 2.0);
+  /* Revert changes to RHS from above */
   A = mastereq->getRHS();
+  MatShift(A, -1.0); 
+  MatScale(A, - 2.0/dt);
+
+  /* Update adjoint state x_adj += dt * A^Tstage_adj --- */
   MatMultTransposeAdd(A, stage_adj, x_adj, x_adj);
 
 }
@@ -193,16 +192,18 @@ PetscErrorCode RHSJacobianP(TS ts, PetscReal t, Vec y, Mat A, void *ctx){
   MasterEq *mastereq= (MasterEq*) ctx;
 
   /* Assembling the derivative of RHS with respect to the control parameters */
-  mastereq->assemble_dRHSdp(t, y);
+  printf("THIS IS NOT IMPLEMENTED \n");
+  exit(1);
+  // mastereq->assemble_dRHSdp(t, y);
 
   /* Set the derivative */
-  A = mastereq->getdRHSdp();
+  // A = mastereq->getdRHSdp();
 
   return 0;
 }
 
 
-PetscErrorCode TSInit(TS ts, MasterEq* mastereq, PetscInt NSteps, PetscReal Dt, PetscReal Tfinal, Vec x, Vec *lambda, Vec *mu, bool monitor){
+PetscErrorCode TSInit(TS ts, MasterEq* mastereq, PetscInt NSteps, PetscReal Dt, PetscReal Tfinal, Vec x, bool monitor){
   int ierr;
 
   ierr = TSSetProblemType(ts,TS_LINEAR);CHKERRQ(ierr);
@@ -216,14 +217,9 @@ PetscErrorCode TSInit(TS ts, MasterEq* mastereq, PetscInt NSteps, PetscReal Dt, 
   ierr = TSSetExactFinalTime(ts,TS_EXACTFINALTIME_STEPOVER);CHKERRQ(ierr);
   if (monitor) {
     ierr = TSMonitorSet(ts, Monitor, NULL, NULL); CHKERRQ(ierr);
-    ierr = TSAdjointMonitorSet(ts, AdjointMonitor, NULL, NULL); CHKERRQ(ierr);
   }
   ierr = TSSetFromOptions(ts);CHKERRQ(ierr);
   ierr = TSSetSolution(ts, x); CHKERRQ(ierr);
-
-  /* Set the derivatives for TS */
-  ierr = TSSetCostGradients(ts, 1, lambda, mu); CHKERRQ(ierr);
-  ierr = TSSetRHSJacobianP(ts,mastereq->getdRHSdp(), RHSJacobianP, mastereq); CHKERRQ(ierr);
 
 
   return ierr;

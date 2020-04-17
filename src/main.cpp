@@ -49,8 +49,6 @@ int main(int argc,char **argv)
 
   /* Optimization */
   double objective;        // Objective function value f
-  Vec* lambda = new Vec;   // Adjoint solution in lambda[0]
-  Vec* mu = new Vec;       // Reduced gradient in mu[0]
 
 
   char filename[255];
@@ -137,12 +135,6 @@ int main(int argc,char **argv)
   }
   mastereq = new MasterEq(nosci, oscil_vec, xi, lindbladtype, t_collapse);
 
-  /* Create solution vector x */
-  MatCreateVecs(mastereq->getRHS(), &x, NULL);
-
-  /* Initialize reduced gradient and adjoints */
-  MatCreateVecs(mastereq->getRHS(), lambda, NULL);  // adjoint 
-  MatCreateVecs(mastereq->getdRHSdp(), mu, NULL);   // reduced gradient
 
   /* Screen output */
   if (mpirank_world == 0)
@@ -158,7 +150,8 @@ int main(int argc,char **argv)
 
   /* Allocate and initialize Petsc's Time-stepper */
   TSCreate(PETSC_COMM_SELF,&ts);CHKERRQ(ierr);
-  TSInit(ts, mastereq, ntime, dt, total_time, x, lambda, mu, monitor);
+  MatCreateVecs(mastereq->getRHS(), &x, NULL);
+  TSInit(ts, mastereq, ntime, dt, total_time, x, monitor);
 
 
   /* Get the IDs of oscillators that are concerned for optimization */
@@ -246,7 +239,7 @@ int main(int argc,char **argv)
   
   /* Create braid instances */
   primalbraidapp = new myBraidApp(comm_braid, total_time, ntime, ts, mytimestepper, mastereq, &config);
-  adjointbraidapp = new myAdjointBraidApp(comm_braid, total_time, ntime, ts, mytimestepper, mastereq, *mu, &config, primalbraidapp->getCore());
+  adjointbraidapp = new myAdjointBraidApp(comm_braid, total_time, ntime, ts, mytimestepper, mastereq, &config, primalbraidapp->getCore());
   primalbraidapp->InitGrids();
   adjointbraidapp->InitGrids();
 
@@ -618,6 +611,8 @@ int main(int argc,char **argv)
 
   /* Clean up */
   // TSDestroy(&ts);  /* TODO */
+  delete [] myinit;
+  delete [] optimgrad;
 
   /* Clean up Oscillator */
   for (int i=0; i<nosci; i++){
@@ -625,9 +620,6 @@ int main(int argc,char **argv)
   }
   delete [] oscil_vec;
 
-
-  delete lambda;
-  delete mu;
 
   /* Clean up Master equation*/
   delete mastereq;

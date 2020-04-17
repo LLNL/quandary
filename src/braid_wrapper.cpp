@@ -539,14 +539,22 @@ double myBraidApp::Drive() {
 /* ================================================================*/
 /* Adjoint Braid App */
 /* ================================================================*/
-myAdjointBraidApp::myAdjointBraidApp(MPI_Comm comm_braid_, double total_time_, int ntime_, TS ts_, TimeStepper* mytimestepper_, MasterEq* ham_, Vec redgrad_, MapParam* config, BraidCore *Primalcoreptr_)
+myAdjointBraidApp::myAdjointBraidApp(MPI_Comm comm_braid_, double total_time_, int ntime_, TS ts_, TimeStepper* mytimestepper_, MasterEq* ham_, MapParam* config, BraidCore *Primalcoreptr_)
         : myBraidApp(comm_braid_, total_time_, ntime_, ts_, mytimestepper_, ham_, config) {
 
   /* Store the primal core */
   primalcore = Primalcoreptr_;
 
-  /* Store reduced gradient */
-  redgrad = redgrad_;
+  /* Allocate the reduced gradient */
+  int ndesign = 0;
+  for (int ioscil = 0; ioscil < mastereq->getNOscillators(); ioscil++) {
+      ndesign += mastereq->getOscillator(ioscil)->getNParams(); 
+  }
+  VecCreate(PETSC_COMM_WORLD, &redgrad);
+  VecSetSizes(redgrad, PETSC_DECIDE, ndesign);
+  VecSetFromOptions(redgrad);
+  VecAssemblyBegin(redgrad);
+  VecAssemblyEnd(redgrad);
 
   /* Ensure that primal core stores all points */
   primalcore->SetStorage(0);
@@ -555,13 +563,13 @@ myAdjointBraidApp::myAdjointBraidApp(MPI_Comm comm_braid_, double total_time_, i
   core->SetRevertedRanks(1);
   // _braid_SetVerbosity(core->GetCore(), 1);
 
-  int ndesign;
-  VecGetSize(redgrad, &ndesign);
+  /* Allocate auxiliary vector */
   mygrad = new double[ndesign];
 
 }
 
 myAdjointBraidApp::~myAdjointBraidApp() {
+  VecDestroy(&redgrad);
   delete [] mygrad;
 }
 
@@ -606,53 +614,9 @@ braid_Int myAdjointBraidApp::Step(braid_Vector u_, braid_Vector ustop_, braid_Ve
   // printf("\n %d: Braid %d %f->%f, dt=%f \n", mpirank, tindex, tstart, tstop, dt);
 
   if (usepetscts) {
-    /* ------------------------------------------------------------------*/
-    /* ---- PETSC time stepper ---- */
-    /* ------------------------------------------------------------------*/
-
-    /* Get primal state */
-    int finegrid = 0;
-    int tstop_id = getTimeStepIndex(tstop, total_time / ntime);
-    int primaltimestep = ntime - tstop_id;
-    braid_BaseVector ubaseprimal;
-    myBraidVector *uprimal;
-    Vec x;
-    _braid_UGetVectorRef(primalcore->GetCore(), finegrid, primaltimestep, &ubaseprimal);
-    if (ubaseprimal == NULL) printf("ubaseprimal is null!\n");
-    uprimal = (myBraidVector*) ubaseprimal->userVector;
-    VecDuplicate(uprimal->x, &x);
-    VecCopy(uprimal->x, x);
-
-
-    /* Solve forward while saving trajectory */
-    TSDestroy(&ts_petsc);
-    ierr = TSCreate(PETSC_COMM_WORLD,&ts_petsc);CHKERRQ(ierr);
-    TSInit(ts_petsc, mastereq, ntime  , dt, total_time, x, &(u->x), &redgrad, false);
-
-    ierr = TSSetSaveTrajectory(ts_petsc);CHKERRQ(ierr);
-    ierr = TSTrajectorySetSolutionOnly(ts_petsc->trajectory, (PetscBool) true);
-    ierr = TSTrajectorySetType(ts_petsc->trajectory, ts_petsc, TSTRAJECTORYMEMORY);
-
-    TSSetTime(ts_petsc, total_time - tstop);
-    TSSetTimeStep(ts_petsc, dt);
-
-    TSSetStepNumber(ts_petsc, 0);
-    TSSetMaxSteps(ts_petsc, 1);
-
-    TSSetSolution(ts_petsc, x);
-
-    TSSolve(ts_petsc, x);
-
-    /* Set adjoint vars */ 
-    if (!update_gradient) VecZeroEntries(redgrad);
-    TSSetCostGradients(ts_petsc, 1, &u->x, &redgrad); CHKERRQ(ierr);
-
-    /* Solve adjoint */
-    TSSetTimeStep(ts_petsc, -dt);
-    TSAdjointSolve(ts_petsc);
-
-    VecDestroy(&x);
-
+    printf("Error: Adjoint Time stepping with PETSC is not implemented.\n");
+    exit(1);
+    
   } else {
     /* --------------------------------------------------------------------------*/
     /* --- New timestepper --- */

@@ -7,7 +7,6 @@ MasterEq::MasterEq(){
   Re = NULL;
   Im = NULL;
   RHS = NULL;
-  dRHSdp = NULL;
   Ad     = NULL;
   Bd     = NULL;
   Ac_vec = NULL;
@@ -68,14 +67,6 @@ MasterEq::MasterEq(int noscillators_, Oscillator** oscil_vec_, const std::vector
   MatSetUp(RHS);
   MatAssemblyBegin(RHS,MAT_FINAL_ASSEMBLY);
   MatAssemblyEnd(RHS,MAT_FINAL_ASSEMBLY);
-
-  /* Allocate dRHSdp, dimension: 2*dim x nparam*noscil */
-  MatCreate(PETSC_COMM_WORLD,&dRHSdp);
-  MatSetSizes(dRHSdp, PETSC_DECIDE, PETSC_DECIDE,2*dim,oscil_vec[0]->getNParams()*noscillators);
-  MatSetFromOptions(dRHSdp);
-  MatSetUp(dRHSdp);
-  MatAssemblyBegin(dRHSdp,MAT_FINAL_ASSEMBLY);
-  MatAssemblyEnd(dRHSdp,MAT_FINAL_ASSEMBLY);
 
   /* Allocate auxiliary vectors */
   ierr = PetscMalloc1(dim, &col_idx_shift);
@@ -253,7 +244,6 @@ MasterEq::~MasterEq(){
     MatDestroy(&Re);
     MatDestroy(&Im);
     MatDestroy(&RHS);
-    MatDestroy(&dRHSdp);
     PetscFree(col_idx_shift);
     PetscFree(negvals);
 
@@ -356,72 +346,6 @@ int MasterEq::assemble_RHS(double t){
 
 
 Mat MasterEq::getRHS() { return RHS; }
-Mat MasterEq::getdRHSdp() { return dRHSdp; }
-
-
-int MasterEq::assemble_dRHSdp(double t, Vec x) {
-
-  const double *col_ptr;
-
-  /* Get real and imaginary part from x = [u v] */
-  Vec u, v;
-  VecGetSubVector(x, isu, &u);
-  VecGetSubVector(x, isv, &v);
-
-  /* Reset dRHSdp) */
-  MatZeroEntries(dRHSdp);
-
-  /* Loop over oscillators */
-  for (int iosc= 0; iosc < noscillators; iosc++){
-
-    /* Get number of control parameters for this oscillator */
-    int nparam = oscil_vec[iosc]->getNParams();
-
-    /* Evaluate the derivative of the control functions wrt control parameters */
-    for (int i=0; i<nparam; i++){
-      dRedp[i] = 0.0;
-      dImdp[i] = 0.0;
-    }
-    oscil_vec[iosc]->evalDerivative(t, dRedp, dImdp);
-
-    /* Compute RHS matrix vector products */
-    MatMult(Ac_vec[iosc], u, Acu);
-    MatMult(Ac_vec[iosc], v, Acv);
-    MatMult(Bc_vec[iosc], u, Bcu);
-    MatMult(Bc_vec[iosc], v, Bcv);
-
-    /* Loop over control parameters of this oscillator */
-    for (int iparam=0; iparam < nparam; iparam++) {
-
-      /* Position in dRHSdp */
-      int colid = iosc*nparam +  iparam;
-
-      /* Set derivative of q(alpha^k) A_c^k u - p(alpha^k) B_c^k v */
-      VecAXPBY(auxil, dImdp[iparam], 0.0, Acu);
-      VecAXPBY(auxil, -dRedp[iparam], 1.0, Bcv);
-      VecGetArrayRead(auxil, &col_ptr);
-      MatSetValues(dRHSdp, dim, rowid, 1, &colid, col_ptr, INSERT_VALUES);
-      VecRestoreArrayRead(auxil, &col_ptr);
-
-      /* Set derivative of p(alpha^k)B_c^k u + q(alpha^k)A_c^k v */
-      VecAXPBY(auxil, dRedp[iparam], 0.0, Bcu);
-      VecAXPBY(auxil, dImdp[iparam], 1.0, Acv);
-      VecGetArrayRead(auxil, &col_ptr);
-      MatSetValues(dRHSdp, dim, rowid_shift, 1, &colid, col_ptr, INSERT_VALUES);
-      VecRestoreArrayRead(auxil, &col_ptr);
-    }
-  }
-
-  MatAssemblyBegin(dRHSdp, MAT_FINAL_ASSEMBLY);
-  MatAssemblyEnd(dRHSdp, MAT_FINAL_ASSEMBLY);
-  // MatView(dRHSdp, PETSC_VIEWER_STDOUT_WORLD);
-
-  /* Restore x */
-  VecRestoreSubVector(x, isu, &u);
-  VecRestoreSubVector(x, isv, &v);
-
-  return 0;
-}
 
 
 void MasterEq::reducedDensity(Vec fulldensitymatrix, Vec *reduced, int dim_pre, int dim_post, int dim_reduced) {
@@ -497,4 +421,66 @@ void MasterEq::reducedDensity_diff(Vec reddens_bar, Vec x0_re_bar, Vec x0_im_bar
   VecAssemblyBegin(x0_re_bar); VecAssemblyEnd(x0_re_bar);
   VecAssemblyBegin(x0_im_bar); VecAssemblyEnd(x0_im_bar);
 
+}
+
+
+/* grad += RHS(x)^T * xbar  */
+void MasterEq::computedRHSdp(double t, Vec x, Vec xbar, double alpha, Vec grad) {
+
+  /* Get real and imaginary part from x = [u v] and x_bar */
+  Vec u, v, ubar, vbar;
+  VecGetSubVector(x, isu, &u);
+  VecGetSubVector(x, isv, &v);
+  VecGetSubVector(xbar, isu, &ubar);
+  VecGetSubVector(xbar, isv, &vbar);
+
+  /* Loop over oscillators */
+  for (int iosc= 0; iosc < noscillators; iosc++){
+
+    /* Get number of control parameters for this oscillator */
+    int nparam = oscil_vec[iosc]->getNParams();
+
+    /* Evaluate the derivative of the control functions wrt control parameters */
+    for (int i=0; i<nparam; i++){
+      dRedp[i] = 0.0;
+      dImdp[i] = 0.0;
+    }
+    oscil_vec[iosc]->evalDerivative(t, dRedp, dImdp);
+
+    /* Compute RHS matrix vector products */
+    MatMult(Ac_vec[iosc], u, Acu);
+    MatMult(Ac_vec[iosc], v, Acv);
+    MatMult(Bc_vec[iosc], u, Bcu);
+    MatMult(Bc_vec[iosc], v, Bcv);
+
+    /* Compute terms in RHS(x)^T xbar */
+    double uAubar, vAvbar, vBubar, uBvbar;
+    VecDot(Acu, ubar, &uAubar);
+    VecDot(Acv, vbar, &vAvbar);
+    VecDot(Bcu, vbar, &uBvbar);
+    VecDot(Bcv, ubar, &vBubar);
+
+    /* Loop over parameters of this oscillator */
+    for (int iparam=0; iparam < nparam; iparam++) {
+
+      /* Sum up gradient terms for each control parameter */
+      double sum =   dImdp[iparam] * uAubar   \
+                   - dRedp[iparam] * vBubar   \
+                   + dRedp[iparam] * uBvbar   \
+                   + dImdp[iparam] * vAvbar;
+
+      /* Add to global gradient, scaled by alpha */
+      int pos = iosc * nparam + iparam;
+      double val = alpha * sum;
+      VecSetValues(grad, 1, &pos, &val, ADD_VALUES);
+    }
+  }
+  VecAssemblyBegin(grad); 
+  VecAssemblyEnd(grad);
+
+  /* Restore x */
+  VecRestoreSubVector(x, isu, &u);
+  VecRestoreSubVector(x, isv, &v);
+  VecRestoreSubVector(xbar, isu, &ubar);
+  VecRestoreSubVector(xbar, isv, &vbar);
 }

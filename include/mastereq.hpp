@@ -3,6 +3,7 @@
 #include <petscts.h>
 #include <vector>
 #include <assert.h>
+#include <iostream> 
 #pragma once
 
 /* Available lindblad types */
@@ -22,7 +23,6 @@ class MasterEq{
 
     Mat Re, Im;             // Real and imaginary part of system matrix operator
     Mat RHS;                // Realvalued, vectorized systemmatrix
-    Mat dRHSdp;             // Derivative of RHS(x) wrt control parameters
 
     Mat* Ac_vec;  // Vector of constant mats for time-varying Hamiltonian (real) 
     Mat* Bc_vec;  // Vector of constant mats for time-varying Hamiltonian (imag) 
@@ -79,17 +79,13 @@ class MasterEq{
     int assemble_RHS(double t);
 
     /* 
-     * Assemble the derivative of RHS(x) wrt the controls.
-     * dimensions: dRHSdp \in \R^{2*dim \times 2*nparam}
-     * dRHSdp =   du+/dparamRe   du+/dparamIm
-     *            dv+/dparamRe   dv+/dparamIm
-     * where [u+ v+] = RHS(u,v)
+     * Compute gradient of RHS wrt controls:
+     * grad += alpha * RHS(x)^T * x_bar  
      */
-    int assemble_dRHSdp(double t, Vec x);
+    void computedRHSdp(double t, Vec x, Vec x_bar, double alpha, Vec grad);
 
     /* Access the right-hand-side and derivative matrix */
     Mat getRHS();
-    Mat getdRHSdp();
 
 
     /* Compute reduced density operator for oscillator ID given in the oscilID's vector. 
