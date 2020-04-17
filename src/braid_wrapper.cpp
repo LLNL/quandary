@@ -539,6 +539,8 @@ double myBraidApp::Drive() {
 /* ================================================================*/
 /* Adjoint Braid App */
 /* ================================================================*/
+
+
 myAdjointBraidApp::myAdjointBraidApp(MPI_Comm comm_braid_, double total_time_, int ntime_, TS ts_, TimeStepper* mytimestepper_, MasterEq* ham_, MapParam* config, BraidCore *Primalcoreptr_)
         : myBraidApp(comm_braid_, total_time_, ntime_, ts_, mytimestepper_, ham_, config) {
 
@@ -559,9 +561,12 @@ myAdjointBraidApp::myAdjointBraidApp(MPI_Comm comm_braid_, double total_time_, i
   /* Ensure that primal core stores all points */
   primalcore->SetStorage(0);
 
+  /* Store all points for adjoint. */
+  /* Alternatively, recompute the adjoint states during PostProcessing for computing gradient */
+  // core->SetStorage(0);
+
   /* Revert processor ranks for solving adjoint */
   core->SetRevertedRanks(1);
-  // _braid_SetVerbosity(core->GetCore(), 1);
 
   /* Allocate auxiliary vector */
   mygrad = new double[ndesign];
@@ -689,6 +694,26 @@ Vec myAdjointBraidApp::PostProcess() {
   VecZeroEntries(redgrad);
   _braid_CoreElt(core->GetCore(), done) = 1;
   _braid_FCRelax(core->GetCore(), 0);
+
+  // /* Sweep over all points to collect gradient */
+  // for (int ts=0; ts<=ntime; ts++)
+  // {
+  //   /* Get state vector from primal core */
+  //   braid_BaseVector ubaseprimal;
+  //   _braid_UGetVectorRef(primalcore->GetCore(), 0, ts, &ubaseprimal);
+  //   if (ubaseprimal == NULL) printf("ts=%d ubaseprimal is null!\n", ts);
+  //   Vec x = ((myBraidVector *)ubaseprimal->userVector)->x;
+
+
+  //   /* Get adjoint vector from primal core */
+  //   braid_BaseVector ubaseadjoint;
+  //   _braid_UGetVectorRef(core->GetCore(), 0, ntime - ts, &ubaseadjoint);
+  //   if (ubaseadjoint == NULL) printf("ts=%d ubaseadjoint is null!\n", ts);
+  //   Vec xbar = ((myBraidVector *)ubaseadjoint->userVector)->x;
+
+  //   /* Compute the gradient */
+  //   mastereq->computedRHSdp((ts) * 0.1, x, xbar, 0.1, redgrad);
+  // }
 
   /* Close output files */
   if (ufile != NULL) fclose(ufile);
