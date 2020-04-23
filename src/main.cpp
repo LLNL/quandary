@@ -194,14 +194,6 @@ int main(int argc,char **argv)
   else if (initcondstr[0].compare("basis")      == 0 ) {
     inittype = BASIS;
 
-    /* Sanity check */
-    std::vector<std::string> obj_str;
-    config.GetVecStrParam("optim_objective", obj_str);
-    if (obj_str[0].compare("expectedEnergy")==0) {
-      printf("Error: Using a basis of initial conditions leads to non-physical expected Energy objective values.\n");
-      exit(1);
-    }
-
     /* Compute ninit = dim(subsystem defined by obj_oscilIDs)^2 */
     ninit = 1;
     for (int i=0; i<obj_oscilIDs.size(); i++) {
