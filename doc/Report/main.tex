@@ -23,10 +23,10 @@
 \begin{document}
 \maketitle
 
-\subsection*{Model equation}
+\section{Model equation}
 We model open quantum systems with $Q$ oscillators with $n_k$ levels for the $k$-th oscillator, $k=1,\dots,Q$. We solve the Lindblad master equation
 \begin{align}\label{mastereq}
-  \dot \rho(t) = &-i(H(t)\rho(t) - \rho(t)H(t)) \\
+  \dot \rho(t) = &-i(H(t)\rho(t) - \rho(t)H(t)) \notag \\
           &+ \sum_{l=1}^2 \sum_{k=1}^Q \gamma_{lk} \left( \Ell_{lk} \rho(t) \Ell_{lk}^{\dagger} - \frac 1 2 \left( \Ell_{lk}^{\dagger}\Ell_{lk} \rho(t) + \rho(t)\Ell_{lk}^{\dagger} \Ell_{lk}\right) \right)
 \end{align}
 for the density matrix $\rho(t)\in \C^{N\times N}$, $N := \prod_{k=1}^N n_k$. The Hamiltonian $H(t)$ consists of a constant \textit{drift} part, and a time-varying \textit{control} part. For the \textit{rotating frame}, these are computed from
@@ -54,7 +54,7 @@ Here, $a_k$ denotes the lowering operator:
 \end{align}
 and $I_{n_k}$ denotes the identity matrix in $\R^{n_k \times n_k}$.
 
-\subsection*{Collapse operators}
+\subsection{Collapse operators}
 The collapse operators $\Ell_{lk}$ in the Lindblad terms of the master equation \eqref{mastereq} can be of the following type:
 \begin{itemize}
   \item ``T1'' -- Decay: $\Ell_{1k} = a_k$
@@ -62,7 +62,7 @@ The collapse operators $\Ell_{lk}$ in the Lindblad terms of the master equation 
 \end{itemize}
 for each oscillator $k$. The constants $\gamma_{lk}$ are the inverse half-live for the corresponding collapse process $l$: $\gamma_{lk} = {\frac{1}{T_l}}$ (in nanoseconds, ns). Typical T1 decay time is between $10-100$ microseconds (us). T2 dephasing time is typically about half of T1 decay time. Decay then behaves like $\exp(-t/{T_1})$. Dephasing behaves like $\exp(-\frac{1}{2{T_2}})$.
 
-\subsection*{Control pulses}
+\subsection{Control pulses}
 The time-dependent control functions $p^k(\vec{\alpha}^k,t), q^k(\vec{\alpha}^k,t)$ are real-valued. We discretize them using B-splines with carrier waves:
 \begin{align}
   p^k(\vec{\alpha}^k,t) &= \sum_{l=1}^L B_l(t) \sum_{f=1}^{N_f} \left(\alpha^{k (1)}_{l,f} \cos(\Omega_f^k t) - \alpha^{k (2)}_{l,f} \sin(\Omega_f^k t) \right) \\
@@ -84,7 +84,7 @@ where $\beta_{l,f}^k$ and $\theta_{l,f}$ are computed from
 and $w_r$ is ??
 
 
-\subsection*{Projective measure}
+\subsection{Measuring the expected energy level}
 For each oscillator $k$, $k=1,\dots, Q$, we define the observable 
 \begin{align}
   M^k := a_k^\dag a_k  = I_{n_1} \otimes \dots \otimes I_{n_{k-1}} \otimes  N_k \otimes I_{n_{k+1}} \otimes \dots I_{n_Q} 
@@ -102,63 +102,44 @@ for the number operator
 \end{align}
 $M^k$ measures the probability of the energy levels of oscillator $k$. The expected energy level of oscillator $k$ is given by 
 \begin{align}
-  \langle M^k \rangle = \sum_{m_k} m_k p(m_k)  = tr(M^k\rho) = \sum_{i=0}^{N-1} M^k_{ii} \rho_{ii}
+  \langle M^k \rangle &= \sum_{m_k} m_k p(m_k)  = \mbox{Tr}(M^k\rho) = \mbox{Tr}(N_k \rho^k)  = \langle N_k\rangle
 \end{align}
-where the last equality holds because $M^k$ is diagonal. Here, $p(m_k)$ is the probability of $\rho$ being the the $m_k$-th energy level for oscillator $k$, $p(m_k) = tr(P^k_m \rho)$ for a spectral decomposition $M^k = \sum_{m_k} m_kP^k_m$. 
+where $\rho^k$ is the reduced density matrix for oscillator $k$. Here, $p(m_k)$ is the probability of $\rho$ being the the $m_k$-th energy level for oscillator $k$, $p(m_k) = tr(P^k_m \rho)$ for a spectral decomposition $M^k = \sum_{m_k} m_kP^k_m$. 
 
-\subsection*{Optimization problem}
-The quantum control problem aims to realize a certain target gate at final time $T$, represented by a unitary matrix $V\in \C^{N\times N}$. For closed quantum systems, we know that $\rho$ evolves in time with the unitary transformation matrix $\rho(t) = U(t)\rho(0) U(t)^{\dagger}$ (because $\rho(t) = \sum_k p_k \psi_k(t)\psi_k(t)^{\dagger}$, and $\psi_k(t)$ evolve according to the (linear) Schroedinger equation giving $\psi(t) = U(t) \psi(0)$). Hence, for closed systems we want to match $V$ with $U(T)$ so that $q(T) = V\rho(0)V^{\dagger}$ holds at final time. For open systems, $\rho(t)$ might not be in a pure state, and we might have $\rho(t) \neq U(t)\rho(0) U(t)^{\dagger}$. However, the optimal control problem still aims to find the amplitudes $z\in \R^{2QL}$ such that $\rho(T)$ is as close as possible to $V\rho(0)V^{\dagger}$, for any initial state $\rho(0)$. We measure the distance in the Frobenius norm:
-\begin{align}\label{optimproblem_matrix}
- \| \rho(T) - V\rho(0)V^{\dagger} \|^2_F \rightarrow \min  \qquad \text{for all} \quad \rho(0)
+
+\section{Optimization problem}
+
+\subsection{Groundstate optimization}
+We aim to find control pulses that drive any initial state towards the ground state $|0\dots 0\rangle = (1, 0, 0, \dots )^T$. The corresponding ground state density matrix is given by
+\begin{align}
+      \rho_{G} := |0\dots 0\rangle \langle 0 \dots 0 | = \begin{bmatrix} 1      & 0      &  \dots   \\ 
+                                         0      & 0      &  \dots  \\ 
+                                         \vdots & \vdots &  \dots 
+                    \end{bmatrix}
+\end{align}
+
+We define two objective functions for groundstate optimization:
+\begin{enumerate}
+  \item Minimize the expected energy level:
+    \begin{align}
+      J(\rho(T)) = \sum_{k=1}^Q\langle M_k \rangle
+    \end{align}
+    where $M_k = a_k^\dag a_k$ is the number operator for oscillator $k$. 
+  \item Minimize the frobenius norm between the final density matrix and the groundstate density matrix:
+    \begin{align}
+      J(\rho(T)) = \frac 12 \| \rho(T) - \rho_G \|^2_F 
+    \end{align}
+    where the Frobenius norm is defined as $\|A\|^2_F = \Tr(A^{\dagger}A)$.
+\end{enumerate}
+Both of the measures can be applied either to the full system $H = H_1\otimes \dots \otimes H_Q$ with density matrix $\rho$, or for a partial system $H_{k_1}\otimes \dots \otimes H_{K_s}$, with the reduced density matrix $\rho^{k_1, \dots, k_s}$.
+
+\subsection{Target gate optimization}
+
+Here, the goal is to find control pulses that realize a certain gate operation at final time $T$. Representing the gate by a unitary matrix $V\in \C^{N\times N}$, the goal is to match the final state $\rho(T)$ to the unitary transformation $V\rho(0)V^{\dagger}$ for any initial state $\rho(0)$:
+\begin{align}
+  J(\rho(T)) = \| \rho(T) - V\rho(0)V^{\dagger} \|^2_F 
 \end{align} 
-where the Frobenius norm is defined as $\|A\|^2_F = \Tr(A^{\dagger}A)$.
 
-
-
-The Lindblad master equation \eqref{mastereq} is in matrix form, describing the evolution of the densisy matrix $\rho = (\rho_1, \dots, \rho_N) \in \C^{N\times N}$. In order to solve this numerically, we vectorize the equation to receive an ODE for $q(t) := \text{vec}(\rho(t)) \in \C^{N^2}$. Using the relations
-\begin{align}
-  \text{vec}(AB) &= (I_N\otimes A)\text{vec}(B) = (B^T\otimes I_N)\text{vec}(A) \\
-  \text{vec}(ABC) &= (C^T\otimes A)\text{vec}(B)
-\end{align}
-for square matrices $A,B,C\in\C^{N\times N}$, we can derive the vectorized form of the Lindblad master equation:
-\begin{align}\label{mastereq_vectorized}
-  &\dot q(t) = M(t) q(t) \quad  \text{where} \\
-  &M(t) := -i(I_N\otimes H - H^T \otimes I_N) + \sum_{l,k=1}^{2,Q} \gamma_{lk} \left( \Ell_{lk}\otimes \Ell_{lk} - \frac 1 2 \left( I_N\otimes \Ell^T_{lk}\Ell_{lk} + \Ell^T_{lk}\Ell_{lk} \otimes I_N \right) \right)
-\end{align}
-Since this is a linear ODE for $q(t)$, we can make the ansatz $q(T) = X(T) q(0)$. The solution operator $X(t) \in \C^{N^2\times N^2}$ satisfies $X(0) = I_{N^2}$ and $\dot X(t) = M(t) X(t)$. The vectorization of the target gate yields $\text{vec}(V\rho(0)V^{\dagger}) = \bar V\otimes V q(0)$. Hence, minimizing \eqref{optimproblem_matrix} for all initial conditions $\rho(0)$ relates to minimizing the difference between $X(T)$ and $\bar V\otimes V$. We therefore solve the following optimal control problem:
-\begin{align}\label{optimproblem_final}
-  \min_z \, J(z) + \frac{\gamma}{2}R(z) := \frac {1}{2N^2} \| &X(T) - \bar V \otimes V \|^2_F + \frac{\gamma}{2} \|z\|^2_2 \\
-  \text{s.t.} \quad \dot X(t) &= M(t) X(t)  \\
-                    X(0) &= I_{N^2}
-\end{align}
-where a Tikhonov regularizatioe term $R(z)$ has been added in order to well-condition the system. Using the definition $G := \bar V\otimes V$, the objective function $J(z)$ is decomposed into
-\begin{align}
-  J(z) &= \frac{1}{2N^2} \| X(T) - G\|^2_F \label{eq:objective}\\
-       &= \frac{1}{2N^2} \left( X(T)^{\dagger}X(T) + G^{\dagger}G - 2Re(X(T)^{\dagger}G) \right) \\
-       &= \frac{1}{2N^2} \left( \sum_{i=1}^{N^2} x_i(T)^{\dagger}x_i(T) + g_i^{\dagger}g_i - 2Re(x_i(T)^{\dagger}g_i) \right) \\
-       &= \frac{1}{2N^2} \left( \sum_{i=1}^{N^2} \| x_i(T) - g_i) \|^2_2 \right) \\
-\end{align}
-where $x_i$ and $g_i$ denote the $i-th$ column of $X(T)$ and $G=\bar V\otimes V$, respectively. Note, that $x_i(T)$ is the solution of the vectorized master equation \eqref{mastereq_vectorized} for the initial condition $x_i(0) = e_i$ being the $i$-th unit vector in $\R^{N^2}$. Hence, minimizing the normalized Frobenius norm equals to minimizing the average $L_2$ norm of the individual solution operator components. The objective function $J(z)$ therefore is the average squared error between the final state and the target gate (averaged over the initial conditions). 
-
-Since $X(0) = I_{N^2}$ spans a basis for all initial conditions $q(0) \in C^{N^2}$, the optimizer finds optimal control functions that minimize the distance 
-\begin{align}
-       \frac{1}{2} \| q(T) - \bar V\otimes V q(0)) \|^2_2 \quad \text{for any} \quad q(0) \in C^{N^2}.
-\end{align}
- 
-\textit{Fidelity:} If $\rho(T)$ would be unitary (as in closed systems), we would have $X(T) = \bar U(T) \otimes U(T)$ where $U(t)$ is the solution operator for the Schroedinger equation. In that case, one can show that 
-\begin{align}
-  \frac{1}{2N^2}\|X(T) - G\|_F^2 = 1 - \frac{1}{N^2}|\Tr(U(T)^{\dagger}V)|^2,
-\end{align}
-which we call the \textit{infidelity}, and the trace-term is the \textit{fidelity}. However, since we include the Lindblad terms, $\rho(T)$ is not unitary, and hence we don't have the decomposition using $U$. For defining a fidelity we consider $F(z) := 1 - J(z)$. Note, however, that if the optimized objective is in the order $O(\delta)$, then the error $\epsilon_i$ of a final state component $i$ from the gate is rather of the order $O(\sqrt{\delta})$, since $J$ represents (half of) the average squared error $J = \frac{1}{2N^2}\sum_i \epsilon_i^2$ and so $\epsilon_i^2 \sim O(\delta)$ on average.
-
-% \textit{In order to check how well the final state matches the target gate, we further measure the ``fidelity'' of the system by looking at the diagonal components of the density matrix. Denote by $D(T) = (d_1(T), \dots d_N(T)) \in \C^{N\times N}$ the matrix whose $i$-th column contains the diagonal elements of the density matrix at time $T$ for the initial condition $\rho(0) = E_{ii}$ (zero-matrix with a one only at diagonal element $i,i$). We compute the fidelity from 
-% \begin{align}
-%   F &= \frac{1}{N} \left|\Tr(D(T)^{\dagger}V) \right|^2 \\
-%     &= \frac{1}{N} \left| \sum_{i=1}^N d_i(T)^{\dagger}v_i \right|^2 \\
-%     &= \frac{1}{N} \left( Re\left(\sum_{i=1}^N d_i(T)^{\dagger}v_i\right)^2 + Im\left( \sum_{i=1}^N d_i(T)^{\dagger}v_i \right)^2 \right)
-% \end{align}
-% \textcolor{red}{This doesn't make so much sense... Think it through!}
-% }
 
 Target gates that we consider include
     \begin{align}
@@ -173,33 +154,57 @@ Target gates that we consider include
                     \end{bmatrix}
     \end{align}
 
-%The rotation matrix for 
-%\begin{enumerate}
-%    \item single qubit gates is 
-%        \begin{align}
-%           R(t) = \exp(iw_kTa_1^{\dagger}a_1) = \begin{bmatrix} 1 & 0 \\ 0 & e^{iw_1T} \end{bmatrix}
-%        \end{align}
-%    \item 2-qubit gates is 
-%    \begin{align}
-%        R(t) &= \exp(iw_kTa_1^{\dagger}a_1)\exp(iw_kTa_2^{\dagger}a_2) \\
-%             &= \begin{bmatrix} 1 & 0 & 0 & 0\\
-%                          0 & e^{iw_2T} & 0 & 0 \\
-%                          0 & 0 & e^{iw_1T} & 0 \\
-%                          0 & 0 & 0 & e^{i(w_1+w_2)T}  \\
-%            \end{bmatrix}
-%    \end{align}
-%\end{enumerate}
-\subsection{Groundstate optimization}
-Here we aim to find control pulses that drive any state towards the ground state $|0\dots 0> = (1, 0, 0, \dots )^T$. Therefore the target matrix $G$ used in the objective function \eqref{eq:objective} is given by 
+
+
+\subsection{Basis for initial conditions}
+For both of the above optimization targets, the goal is to minimize the respective measure with respect to \textit{any} initial condition $\rho(0)$. We therefore define a basis for all initial density matrices and aim to minimize the above measure for all of the matrix basis elements. The basis matrices are defined as follows:
+
 \begin{align}
-      G_{GroundState} := \begin{bmatrix} 1      & 1  &  1 & \dots   \\ 
-                                         0      & 0 &   0  & \dots  \\ 
-                                         \vdots & \vdots & \vdots &  \dots 
-                    \end{bmatrix}
+B^{kj} := \frac 12 \left( E_{kk} + E_{jj}\right) +  \begin{cases} 
+          0 & \text{if} \, k=j \\ 
+        \frac 12 \left( E_{kj} + E_{jk}\right) & \text{if} \, k<j \\
+        \frac i2 \left( E_{jk} - E_{kj}\right) & \text{if} \, k>j
+      \end{cases} 
+\end{align}
+for all $k,j\in\{0,\dots, N-1\}$, where $E_{kj}$ denotes the matrix of all zeros except for the $(k,j)$-th element ($E_{kj} = e_ke_j^T$). These define $N^2$ hermitian matrices that are linearly independent over the real vector space of hermitian matrices. They further satisfy $\Tr(B^{kj}) = 1$ and are positive semi-definite, hence each basis matrix is a density matrix. 
+
+We can rewrite any initial condition $\rho(0)$ as a linear combination 
+\begin{align}
+  \rho(0) = \sum_{i=0}^{N^2-1} = \alpha_i B^{k(i), j(i)}, \quad \text{where} \quad k(i) := i \,\mbox{mod}\, N, \quad \text{and} \quad j(i) := \left\lfloor \frac{i}{N} \right\rfloor
+\end{align}
+and, using a general solution operator $U(t)$ of the master equation \eqref{mastereq}, we can rewrite the final density matrix in terms of the basis elements:
+\begin{align}
+  \rho(T) = U(t) \rho_0 U(t)^\dag = \sum_{i=0}^{N^2-1} \alpha_i U(t)B^{k(i), j(i)}U(t)^\dag
+\end{align}
+We therefore define the optimization problem for all the basis elements, rather than a specific initial condition:
+\begin{align}\label{optimproblem_basis}
+  \min \frac{1}{N^2}\sum_{i=0}^{N^2-1} J(B^{i}(T)) 
+  \quad \text{s.t.} \quad \text{all}\, B^{i}(t) \, \text{satisfy the master eq.\eqref{mastereq} with} \, B^i(0) = B^{k(i),j(i)}
 \end{align}
 
+
+\subsection{Fidelity} 
+For closed systems, the $\rho(t)$ and the solution operator $U(t)$ are unitary. In that case, one can show that 
+\begin{align}
+  \frac{1}{2N^2}\|\rho(T) - V\rho(0)V\|_F^2 = 1 - \frac{1}{N^2}|\Tr(U(T)^{\dagger}V)|^2,
+\end{align}
+which is called the \textit{infidelity}, and the trace-term is the \textit{fidelity}. However, since we include the Lindblad terms, $\rho(T)$ is not unitary, and the above equation is not valid anymore. For defining a fidelity we consider $F(z) := 1 - J(z)$. Note, however, that if the optimized objective is in the order $O(\delta)$, then the error $\epsilon_i$ of a final state component $i$ from the gate is rather of the order $O(\sqrt{\delta})$, since $J$ represents the average squared error $J = \frac{1}{N^2}\sum_i \epsilon_i^2$ and so $\epsilon_i^2 \sim O(\delta)$ on average.
+
 \section{Implementation}
-  \subsection{Vectorized, real-valued system setup}
+  \subsection{Vectorization}
+
+  The Lindblad master equation \eqref{mastereq} is in matrix form, describing the evolution of the densisy matrix $\rho = (\rho_1, \dots, \rho_N) \in \C^{N\times N}$. In order to solve this numerically, we vectorize the equation to receive an ODE for $q(t) := \text{vec}(\rho(t)) \in \C^{N^2}$. Using the relations
+  \begin{align}
+   \text{vec}(AB) &= (I_N\otimes A)\text{vec}(B) = (B^T\otimes I_N)\text{vec}(A) \\
+   \text{vec}(ABC) &= (C^T\otimes A)\text{vec}(B)
+  \end{align}
+  for square matrices $A,B,C\in\C^{N\times N}$, we can derive the vectorized form of the Lindblad master equation:
+  \begin{align}\label{mastereq_vectorized}
+    &\dot q(t) = M(t) q(t) \quad  \text{where} \\
+    &M(t) := -i(I_N\otimes H - H^T \otimes I_N) + \sum_{l,k=1}^{2,Q} \gamma_{lk} \left( \Ell_{lk}\otimes \Ell_{lk} - \frac 1 2 \left( I_N\otimes \Ell^T_{lk}\Ell_{lk} + \Ell^T_{lk}\Ell_{lk} \otimes I_N \right) \right)
+  \end{align}
+
+  \subsection{Real-valued system}
    We solve the vectorized master equation \eqref{mastereq_vectorized} in real-valued variables with $q(t) = u(t) + iv(t)$, evolving the real-valued states $u(t), v(t)\in \R^{N^2}$ with
    \begin{align}
      \dot q(t) &= M(t) q(t) \\
@@ -225,6 +230,7 @@ Here we aim to find control pulses that drive any state towards the ground state
      B(t) &= Im(M(t)) = B_d + \sum_k p^k(\alpha^k, t)B_c^k
    \end{align}
    at time $t$, and finally build $M(t)$ from \eqref{realvaluedODE}.
+
   \subsection{Timestepper}
     The forward time-evolution can use any of Petsc's time-stepping integration schemes. However the adjoint time-evolution does can not. For this we rely on a hand-written time-stepper. Hand-written time-steppers include Backward-Euler, and (preferred) the \textit{implicit midpoint rule (IMR)}, based on implicit Runge-Kutta scheme. We prefer IMR because it is a simplectic integrator. Because IMR is self-adjoint, the same IMR scheme is used to solve the adjoint equation. 
 
@@ -249,17 +255,18 @@ Here we aim to find control pulses that drive any state towards the ground state
        If we want to include the time-varying Hamiltonian part $H = H_d + H_c(t)$ in the analysis, then we could use the constraints on the control parameter amplitudes to remove the time-dependency using their larges value instead and so the same analysis again. However this doesn't ensure that we resolve the time-scale of the control functions. 
 
   \subsection{Optimization}
-    We use the \textit{HiOp} optimization package for solving the vectorized optimal control problem \eqref{optimproblem_final}, which applies an interior point L-BFGS method. Each objective function evaluation requires to solve the initial value problem  
-        \begin{align*}
-          \dot x_i(t) &= M(t) x_i(t) \quad \forall \, t\in (0,T) \\
-          x_i(0) &= e_i
-        \end{align*}
-        for all initial unit vectors $e_i \in \R^{N^2}$, followed by the evaluation of the objective function 
-        \begin{align}
-          J(z) = \frac{1}{2N^2} \left(\sum_{i=1}^{N^2} \|x_i(T) - g_i\|^2_2  \right) + \frac{\gamma}{2} \| z\|^2_2
-        \end{align}
+    We use the \textit{HiOp} optimization package for solving the vectorized version of the optimal control problem \eqref{optimproblem_basis}. HiOp applies an interior point L-BFGS method. Each objective function evaluation requires to solve the initial value problem  
+    \begin{align*}
+      \dot x_i(t) &= M(t) x_i(t) \quad \forall \, t\in (0,T) \\
+      x_i(0) &= \mbox{vec}(B^{k(i),j(i)})
+    \end{align*}
+    for the vectorized version of all basis elements, followed by the evaluation of the objective function 
+    \begin{align}
+      J(z) = \frac{1}{N^2} \sum_{i=0}^{N^2-1} J(x_i(T)) + \frac{\gamma}{2} \| z\|^2_2
+    \end{align}
+    where a Tikhonov regularization term has been added with parameter $\gamma>0$.
 
-    We impose box constraints on the control spline parameters for each oscillator $k=1,\dots, Q$:
+    We impose box constraints on the control parameters for each oscillator $k=1,\dots, Q$:
         \begin{align}
           | \alpha^l_k| \leq a_{max}^k \quad \text{and} \quad | \beta^l_k|  \leq a_{max}^k \quad \forall \, l=1,\dots, L 
         \end{align}
