@@ -554,10 +554,10 @@ bool OptimProblem::get_MPI_comm(MPI_Comm& comm_out){
 
 
 int OptimProblem::assembleInitialCondition(int iinit_local){
-  int diagid, k, j, dim_post;
+  int dim_post;
 
-  int elemID = -1;
-  int dim = primalbraidapp->mastereq->getDim(); // N^2
+  int initID = -1;    // Output: ID for this initial condition */
+  int dim_rho = (int) sqrt(primalbraidapp->mastereq->getDim()); // N
 
   /* Translate local iinit to this processor's domain [rank * ninit_local, (rank+1) * ninit_local - 1] */
   int iinit = mpirank_init * ninit_local + iinit_local;
@@ -574,6 +574,11 @@ int OptimProblem::assembleInitialCondition(int iinit_local){
       break;
 
     case DIAGONAL:
+      int row, diagelem;
+
+      /* Reset the initial conditions */
+      VecZeroEntries(initcond_re); 
+      VecZeroEntries(initcond_im); 
 
       /* Get dimension of partial system behind last oscillator ID */
       dim_post = 1;
@@ -582,20 +587,23 @@ int OptimProblem::assembleInitialCondition(int iinit_local){
       }
 
       /* Compute index of the nonzero element in rho_m(0) = E_pre \otimes |m><m| \otimes E_post */
-      diagid = iinit * dim_post;
-      /* Position in vectorized q(0) */
-      elemID = diagid * ( (int) sqrt(dim) ) + diagid;
+      diagelem = iinit * dim_post;
+      // /* Position in vectorized q(0) */
+      row = diagelem * dim_rho + diagelem;
 
       /* Assemble */
-      VecZeroEntries(initcond_re); 
-      VecZeroEntries(initcond_im); 
-      VecSetValue(initcond_re, elemID, 1.0, INSERT_VALUES);
+      VecSetValue(initcond_re, row, 1.0, INSERT_VALUES);
       VecAssemblyBegin(initcond_re);
       VecAssemblyEnd(initcond_re);
+
+      /* Set initial conditon ID */
+      initID = iinit * ( (int) sqrt(ninit) ) + iinit;
+
       break;
 
     case BASIS:
 
+      /* Reset the initial conditions */
       VecZeroEntries(initcond_re); 
       VecZeroEntries(initcond_im); 
 
@@ -605,52 +613,56 @@ int OptimProblem::assembleInitialCondition(int iinit_local){
         dim_post *= primalbraidapp->mastereq->getOscillator(k)->getNLevels();
       }
 
-      /* Get index (k,j) of basis element B_{k,j} for this initial condition index iinit */
+      // /* Get index (k,j) of basis element B_{k,j} for this initial condition index iinit */
+      int k, j;
       k = iinit % ( (int) sqrt(ninit) );
       j = (int) iinit / ( (int) sqrt(ninit) );   
 
       if (k == j) {
         /* B_{kk} = E_{kk} -> set only one element at (k,k) */
-        elemID = j * dim_post * ((int)sqrt(dim)) + k * dim_post;
+        int elemID = j * dim_post * dim_rho + k * dim_post;
         double val = 1.0;
         VecSetValues(initcond_re, 1, &elemID, &val, INSERT_VALUES);
         VecAssemblyBegin(initcond_re);
         VecAssemblyEnd(initcond_re);
       } else {
-        /* B_{kj} contains four non-zeros, two per row */
-        int* elemIDs = new int[4];
+      //   /* B_{kj} contains four non-zeros, two per row */
+        int* rows = new int[4];
         double* vals = new double[4];
 
-        int N = (int) sqrt(dim);
-        elemIDs[0] = k * dim_post * N + k * dim_post; // (k,k)
-        elemIDs[1] = j * dim_post * N + j * dim_post; // (j,j)
-        elemIDs[2] = j * dim_post * N + k * dim_post; // (k,j)
-        elemIDs[3] = k * dim_post * N + j * dim_post; // (j,k)
+        rows[0] = k * dim_post * dim_rho + k * dim_post; // (k,k)
+        rows[1] = j * dim_post * dim_rho + j * dim_post; // (j,j)
+        rows[2] = j * dim_post * dim_rho + k * dim_post; // (k,j)
+        rows[3] = k * dim_post * dim_rho + j * dim_post; // (j,k)
 
         if (k < j) { // B_{kj} = 1/2(E_kk + E_jj) + 1/2(E_kj + E_jk)
           vals[0] = 0.5;
           vals[1] = 0.5;
           vals[2] = 0.5;
           vals[3] = 0.5;
-          VecSetValues(initcond_re, 4, elemIDs, vals, INSERT_VALUES);
+          VecSetValues(initcond_re, 4, rows, vals, INSERT_VALUES);
           VecAssemblyBegin(initcond_re);
           VecAssemblyEnd(initcond_re);
         } else {  // B_{kj} = 1/2(E_kk + E_jj) + i/2(E_jk - E_kj)
           vals[0] = 0.5;
           vals[1] = 0.5;
-          VecSetValues(initcond_re, 2, elemIDs, vals, INSERT_VALUES); // diagonal 
+          VecSetValues(initcond_re, 2, rows, vals, INSERT_VALUES); // diagonal, real
           VecAssemblyBegin(initcond_re);
           VecAssemblyEnd(initcond_re);
           vals[0] = -0.5;
           vals[1] = 0.5;
-          VecSetValues(initcond_im, 2, elemIDs+2, vals, INSERT_VALUES); // off-diagonals 
+          VecSetValues(initcond_im, 2, rows+2, vals, INSERT_VALUES); // off-diagonals, imaginary
           VecAssemblyBegin(initcond_im);
           VecAssemblyEnd(initcond_im);
         }
 
-        delete [] elemIDs; 
+        delete [] rows; 
         delete [] vals;
       }
+
+      /* Set initial condition ID */
+      initID = j * ( (int) sqrt(ninit)) + k;
+
       break;
 
     default:
@@ -662,7 +674,7 @@ int OptimProblem::assembleInitialCondition(int iinit_local){
   // VecView(initcond_re, PETSC_VIEWER_STDOUT_WORLD);
   // VecView(initcond_im, PETSC_VIEWER_STDOUT_WORLD);
   
-  return elemID;
+  return initID;
 }
 
 
