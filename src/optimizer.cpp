@@ -272,8 +272,8 @@ bool OptimProblem::eval_f(const long long& n, const double* x_in, bool new_x, do
 
   // if (mpirank_init == 0) printf("%d: global sum objective: %1.14e\n\n", mpirank_init, objective);
 
-  /* Compute objective 1/(2*N^2) ||W-G||_F^2 */
-  objective = 1./(2. * ninit) * objective;
+  /* Compute average objective */
+  objective = 1. / ninit * objective;
 
   /* Compute fidelity 1. - objective */
   fidelity = 1. - objective; 
@@ -305,7 +305,7 @@ bool OptimProblem::eval_grad_f(const long long& n, const double* x_in, bool new_
   }
 
   /* Derivative objective 1/(2N^2) J */
-  double obj_bar = 1./(2.*ninit);
+  double obj_bar = 1. / ninit;
 
   /* Iterate over initial conditions */
   objective = 0.0;
@@ -353,7 +353,7 @@ bool OptimProblem::eval_grad_f(const long long& n, const double* x_in, bool new_
   // if (mpirank_init == 0) printf("%d: global sum objective: %1.14e\n\n", mpirank_init, objective);
 
   /* Compute objective 1/(2*N^2) ||W-G||_F^2 */
-  objective = 1./(2.*ninit) * objective;
+  objective = 1. / ninit * objective;
 
   /* Compute fidelity 1/N^2 |trace|^2 */
   fidelity = 1. - objective;
@@ -691,7 +691,7 @@ double OptimProblem::objFunc(Vec finalstate) {
         break;
 
       case EXPECTEDENERGY:
-        /* compute the expected value of energy levels for oscillator 1 */
+        /* compute the expected value of energy levels for each oscillator */
         obj_local = 0.0;
         for (int i=0; i<obj_oscilIDs.size(); i++) {
           obj_local += primalbraidapp->mastereq->getOscillator(obj_oscilIDs[i])->expectedEnergy(finalstate);
@@ -748,6 +748,9 @@ double OptimProblem::objFunc(Vec finalstate) {
            obj_local += pow(stateptr[i], 2);
         }
         VecRestoreArrayRead(state, &stateptr);
+
+        /* obj = 1/2 * J */
+        obj_local *= 1./2.;
 
         /* Destroy reduced density matrix, if it has been created */
         if (obj_oscilIDs.size() < primalbraidapp->mastereq->getNOscillators()) { 
@@ -825,12 +828,15 @@ void OptimProblem::objFunc_diff(Vec finalstate, double obj_bar) {
       VecGetArrayRead(state, &stateptr);
       VecGetArray(statebar, &statebarptr);
 
+      /* Derivative of 1/2 * J */
+      double dfb = 1./2. * obj_bar;
+
       /* Derivative of frobenius norm: 2 * (q(T) - e_1) * frob_bar */
       int dimstate;
       VecGetSize(state, &dimstate);
-      statebarptr[0] += 2. * ( stateptr[0] - 1.0 ) * obj_bar;
+      statebarptr[0] += 2. * ( stateptr[0] - 1.0 ) * dfb;
       for (int i=1; i<dimstate; i++) {
-        statebarptr[i] += 2. * stateptr[i] * obj_bar;
+        statebarptr[i] += 2. * stateptr[i] * dfb;
       }
       VecRestoreArrayRead(state, &stateptr);
 

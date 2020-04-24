@@ -130,6 +130,9 @@ void Gate::compare(Vec finalstate, Vec u0, Vec v0, double& frob){
   VecRestoreArrayRead(Re0, &Re0ptr);
   VecRestoreArrayRead(Im0, &Im0ptr);
 
+  /* obj = 1/2 * || finalstate - gate*rho(0) ||^2 */
+  frob *= 1./2.;
+
  /* Restore */
   VecRestoreArrayRead(ufinal, &ufinalptr);
   VecRestoreArrayRead(vfinal, &vfinalptr);
@@ -156,24 +159,27 @@ void Gate::compare_diff(const Vec finalstate, const Vec u0, const Vec v0, Vec u0
   VecGetArray(u0_bar, &u0_barptr);
   VecGetArray(v0_bar, &v0_barptr);
 
-  /* Derivative of read part of frobenius norm: 2 * (u - ReG*u0 + ImG*v0) * frob_bar */
+  /* Derivative of 1/2 * J */
+  double dfb = 1./2. * frob_bar;
+
+  /* Derivative of read part of frobenius norm: 2 * (u - ReG*u0 + ImG*v0) * dfb*/
   MatMult(ReG, u0, Re0);
   MatMult(ImG, v0, Im0);
   VecGetArrayRead(Re0, &Re0ptr);
   VecGetArrayRead(Im0, &Im0ptr);
   for (int j=0; j<dim_vec; j++) {
-    u0_barptr[j] = 2. * ( ufinalptr[j] - Re0ptr[j] + Im0ptr[j] ) * frob_bar;
+    u0_barptr[j] = 2. * ( ufinalptr[j] - Re0ptr[j] + Im0ptr[j] ) * dfb;
   }
   VecRestoreArrayRead(Re0, &Re0ptr);
   VecRestoreArrayRead(Im0, &Im0ptr);
 
-  /* Derivative of imaginary part of frobenius norm 2 * (v - ReG*v0 - ImG*u0) * frob_bar  */
+  /* Derivative of imaginary part of frobenius norm 2 * (v - ReG*v0 - ImG*u0) * dfb */
   MatMult(ReG, v0, Re0);
   MatMult(ImG, u0, Im0);
   VecGetArrayRead(Re0, &Re0ptr);
   VecGetArrayRead(Im0, &Im0ptr);
   for (int j=0; j<dim_vec; j++) {
-    v0_barptr[j] = 2. * ( vfinalptr[j] - Re0ptr[j] - Im0ptr[j] ) * frob_bar;
+    v0_barptr[j] = 2. * ( vfinalptr[j] - Re0ptr[j] - Im0ptr[j] ) * dfb;
   }
   VecRestoreArrayRead(Re0, &Re0ptr);
   VecRestoreArrayRead(Im0, &Im0ptr);

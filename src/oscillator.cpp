@@ -173,7 +173,7 @@ double Oscillator::expectedEnergy(Vec x) {
   for (int i=0; i<dimmat; i++) {
     /* Get diagonal element in number operator */
     MatGetValue(NumberOP, i, i, &num_diag);
-    /* Get diagonal element in row */
+    /* Get diagonal element in rho */
     int idx_diag = i * dimmat + i;
     VecGetValues(x, 1, &idx_diag, &xdiag);
     expected += num_diag * xdiag;
