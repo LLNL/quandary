@@ -140,7 +140,7 @@ int main(int argc,char **argv)
   if (mpirank_world == 0)
   {
     printf("# System with %d oscillators \n", nosci);
-    printf("# Time horizon:   [0,%.1f]\n", total_time);
+    printf("# Time horizon:   [0,%.4f]\n", total_time);
     printf("# Number of time steps: %d\n", ntime);
     printf("# Time step size: %f\n", dt );
   }
@@ -275,7 +275,7 @@ int main(int argc,char **argv)
         gnorm += pow(optimgrad[i], 2.0);
         printf("%1.14e\n", optimgrad[i]);
       }
-      printf("Gradient norm: %1.14e\n", gnorm);
+      printf("Gradient norm: %1.14e\n", sqrt(gnorm));
     }
   }
 

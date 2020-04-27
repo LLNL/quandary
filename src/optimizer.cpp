@@ -376,11 +376,12 @@ bool OptimProblem::eval_grad_f(const long long& n, const double* x_in, bool new_
   }
   MPI_Allreduce(mygrad, gradf, n, MPI_DOUBLE, MPI_SUM, comm_init);
 
-  /* Compute gradient norm */
-  double gradnorm = 0.0;
-  for (int i=0; i<n; i++) {
-    gradnorm += pow(gradf[i], 2.0);
-  }
+  // /* Compute gradient norm */
+  // double gradnorm = 0.0;
+  // for (int i=0; i<n; i++) {
+  //   gradnorm += pow(gradf[i], 2.0);
+  // }
+  // gradnorm = sqrt(gradnorm);
   // if (mpirank_world == 0) printf("%d: ||grad|| = %1.14e\n", mpirank_init, gradnorm);
 
   delete [] mygrad;
@@ -513,6 +514,7 @@ bool OptimProblem::iterate_callback(int iter, double obj_value, int n, const dou
     for (int i=0; i<n; i++) {
       gnorm += pow(grad_ptr[i], 2.0);
     }
+    gnorm = sqrt(gnorm);
 
     /* Print to optimization file */
     fprintf(optimfile, "%05d  %1.14e  %1.14e  %1.14e  %1.14e  %02d\n", iter, obj_value, fidelity, gnorm, inf_du, ls_trials);
