@@ -273,7 +273,7 @@ bool OptimProblem::eval_f(const long long& n, const double* x_in, bool new_x, do
   // if (mpirank_init == 0) printf("%d: global sum objective: %1.14e\n\n", mpirank_init, objective);
 
   /* Compute average objective */
-  objective = 1. / ninit * objective;
+  // objective = 1. / ninit * objective;
 
   /* Compute fidelity 1. - objective */
   fidelity = 1. - objective; 
@@ -305,7 +305,8 @@ bool OptimProblem::eval_grad_f(const long long& n, const double* x_in, bool new_
   }
 
   /* Derivative objective 1/(2N^2) J */
-  double obj_bar = 1. / ninit;
+  // double obj_bar = 1. / ninit;
+  double obj_bar = 1.;
 
   /* Iterate over initial conditions */
   objective = 0.0;
@@ -353,7 +354,7 @@ bool OptimProblem::eval_grad_f(const long long& n, const double* x_in, bool new_
   // if (mpirank_init == 0) printf("%d: global sum objective: %1.14e\n\n", mpirank_init, objective);
 
   /* Compute objective 1/(2*N^2) ||W-G||_F^2 */
-  objective = 1. / ninit * objective;
+  // objective = 1. / ninit * objective;
 
   /* Compute fidelity 1/N^2 |trace|^2 */
   fidelity = 1. - objective;
