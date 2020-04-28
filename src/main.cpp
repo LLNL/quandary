@@ -263,6 +263,7 @@ int main(int argc,char **argv)
   if (runtype == primal || runtype == adjoint) {
     optimproblem.eval_f(ndesign, myinit, true, objective);
     if (mpirank_world == 0) printf("%d: Primal Only: Objective %1.14e, Fidelity: %1.8f\n", mpirank_world, objective, optimproblem.fidelity);
+    optimproblem.iterate_callback(-1, objective, ndesign, myinit, NULL, NULL, 0, NULL, NULL, -0.0, -0.0, -0.0, -0.0, -0.0, 0);
   } 
   
   /* --- Solve adjoint --- */
@@ -277,6 +278,7 @@ int main(int argc,char **argv)
       }
       printf("Gradient norm: %1.14e\n", sqrt(gnorm));
     }
+    optimproblem.iterate_callback(-1, objective, ndesign, myinit, NULL, NULL, 0, NULL, NULL, -0.0, -0.0, -0.0, -0.0, -0.0, 0);
   }
 
   /* Solve the optimization  */
