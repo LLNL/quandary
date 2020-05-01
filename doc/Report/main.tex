@@ -266,10 +266,11 @@ which is called the \textit{infidelity}, and the trace-term is the \textit{fidel
     \end{align}
     where a Tikhonov regularization term has been added with parameter $\gamma>0$.
 
-    We impose box constraints on the control parameters for each oscillator $k=1,\dots, Q$:
+    In order to guaranty that the optimizer yields bounded control functions with $|p_k(t)| \leq c^k_{max}$, $|q_k(t)| \leq c^k_{max}$ for all oscillatorx $k=1,\dots, Q$, we impose box constraints on the control parameters:
         \begin{align}
-          | \alpha^l_k| \leq a_{max}^k \quad \text{and} \quad | \beta^l_k|  \leq a_{max}^k \quad \forall \, l=1,\dots, L 
+          | \alpha_{l,f}^{k(1)}| \leq \frac{c^k_{max}}{N_f} \quad \text{and} \quad | \alpha_{l,f}^{k(2)} | \leq \frac{c^k_{max}}{N_f}
         \end{align}
+        where $N_f$ is the number of carrier wave frequencies.
 
 
   \subsection{Parallelization}

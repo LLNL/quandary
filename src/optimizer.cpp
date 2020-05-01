@@ -50,7 +50,16 @@ OptimProblem::OptimProblem(MapParam config, myBraidApp* primalbraidapp_, myAdjoi
     datadir = config.GetStrParam("datadir", "./data_out");
     printlevel = config.GetIntParam("optim_printlevel", 1);
     config.GetVecDoubleParam("optim_bounds", bounds, 1e20);
+
+    /* Scale optim bounds by number of carrier wave frequencies */
     assert (bounds.size() >= primalbraidapp->mastereq->getNOscillators());
+    for (int i=0; i<primalbraidapp->mastereq->getNOscillators(); i++) {
+      std::vector<double> carrier_freq;
+      std::string key = "carrier_frequency" + std::to_string(i);
+      config.GetVecDoubleParam(key, carrier_freq, 0.0);
+      bounds[i] = bounds[i] / carrier_freq.size();
+    }
+
     /* If constant initialization, read in amplitudes */
     if (optiminit_type.compare("constant") == 0 ){ // set constant controls. 
       config.GetVecDoubleParam("optim_init_const", init_ampl, 0.0);
