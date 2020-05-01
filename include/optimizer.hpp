@@ -65,7 +65,7 @@ class OptimProblem : public hiop::hiopInterfaceDenseConstraints {
 
         /* Compute the objective function (local for one initial condition) and derivative */
         double objFunc(Vec finalstate);
-        void objFunc_diff(Vec finalstate, double obj_bar);
+        void objFunc_diff(Vec finalstate, const double objective, const double obj_bar);
 
         /* Required interface routines. These are purely virtual in HiOp. */
         bool get_prob_sizes(long long& n, long long& m);

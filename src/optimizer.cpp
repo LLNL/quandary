@@ -339,14 +339,15 @@ bool OptimProblem::eval_grad_f(const long long& n, const double* x_in, bool new_
     finalstate = primalbraidapp->PostProcess(); // returns NULL if not stored on this proc
 
     /* Add to objective function */
-    objective += objFunc(finalstate);
+    double obj_local = objFunc(finalstate);
+    objective += obj_local;
     // if (mpirank_braid == 0) printf("%d: local objective: %1.14e\n", mpirank_init, obj_local);
 
     /* --- Solve adjoint --- */
     // if (mpirank_braid == 0) printf("%d: %d BWD.", mpirank_init, initid);
     
     /* Derivative of objective function */
-    objFunc_diff(finalstate, obj_bar);
+    objFunc_diff(finalstate, obj_local, obj_bar);
 
     adjointbraidapp->PreProcess(initid);
     adjointbraidapp->setInitialCondition(initcond_re_bar, initcond_im_bar);
@@ -706,6 +707,7 @@ double OptimProblem::objFunc(Vec finalstate) {
         for (int i=0; i<obj_oscilIDs.size(); i++) {
           obj_local += primalbraidapp->mastereq->getOscillator(obj_oscilIDs[i])->expectedEnergy(finalstate);
         }
+        obj_local = pow(obj_local, 2.0);
         break;
 
       case GROUNDSTATE:
@@ -759,9 +761,6 @@ double OptimProblem::objFunc(Vec finalstate) {
         }
         VecRestoreArrayRead(state, &stateptr);
 
-        /* obj = 1/2 * J */
-        obj_local *= 1./2.;
-
         /* Destroy reduced density matrix, if it has been created */
         if (obj_oscilIDs.size() < primalbraidapp->mastereq->getNOscillators()) { 
           VecDestroy(&state);
@@ -776,7 +775,7 @@ double OptimProblem::objFunc(Vec finalstate) {
 }
 
 
-void OptimProblem::objFunc_diff(Vec finalstate, double obj_bar) {
+void OptimProblem::objFunc_diff(Vec finalstate, const double obj, const double obj_bar) {
 
   /* Reset adjoints */
   VecZeroEntries(initcond_re_bar);
@@ -789,8 +788,11 @@ void OptimProblem::objFunc_diff(Vec finalstate, double obj_bar) {
         break;
 
       case EXPECTEDENERGY:
+        double tmp;
+        tmp = 2. * sqrt(obj) * obj_bar;
+        // tmp = obj_bar;
         for (int i=0; i<obj_oscilIDs.size(); i++) {
-          primalbraidapp->mastereq->getOscillator(obj_oscilIDs[i])->expectedEnergy_diff(finalstate, initcond_re_bar, initcond_im_bar, obj_bar);
+          primalbraidapp->mastereq->getOscillator(obj_oscilIDs[i])->expectedEnergy_diff(finalstate, initcond_re_bar, initcond_im_bar, tmp);
         }
         break;
 
@@ -838,15 +840,12 @@ void OptimProblem::objFunc_diff(Vec finalstate, double obj_bar) {
       VecGetArrayRead(state, &stateptr);
       VecGetArray(statebar, &statebarptr);
 
-      /* Derivative of 1/2 * J */
-      double dfb = 1./2. * obj_bar;
-
       /* Derivative of frobenius norm: 2 * (q(T) - e_1) * frob_bar */
       int dimstate;
       VecGetSize(state, &dimstate);
-      statebarptr[0] += 2. * ( stateptr[0] - 1.0 ) * dfb;
+      statebarptr[0] += 2. * ( stateptr[0] - 1.0 ) * obj_bar;
       for (int i=1; i<dimstate; i++) {
-        statebarptr[i] += 2. * stateptr[i] * dfb;
+        statebarptr[i] += 2. * stateptr[i] * obj_bar;
       }
       VecRestoreArrayRead(state, &stateptr);
 
