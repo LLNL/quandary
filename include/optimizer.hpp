@@ -20,7 +20,6 @@ class OptimProblem : public hiop::hiopInterfaceDenseConstraints {
         double objective;                 /* holds the current objective value */
         double regul;                       /* Parameter for L2 regularization */
         std::vector<double> bounds;    /* Bounds for the control function amplitudes for each oscillator */
-        std::string datadir;           /* Directory for data output */
         std::string optiminit_type;           /* Type of design initialization */
         int printlevel;                
         int ninit;                            /* Number of initial conditions to be considered (N^2, N, or 1) */

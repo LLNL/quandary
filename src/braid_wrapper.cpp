@@ -71,7 +71,6 @@ myBraidApp::myBraidApp(MPI_Comm comm_braid_, double total_time_, int ntime_, TS 
   MPI_Comm_rank(MPI_COMM_WORLD, &worldrank);
   if (worldrank == 0) {
     mkdir(datadir.c_str(), 0777);
-    cout << "# Data directory: " << datadir << endl; 
   }
 
   /* Read desired output from config */

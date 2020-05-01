@@ -3,14 +3,11 @@ using namespace std;
 
 
 template <typename T>
-void export_param(int mpi_rank, string key, T value, T default_value)
+void export_param(int mpi_rank, std::stringstream& log, string key, T value)
 {
   if (mpi_rank == 0)
   {
-    cout << "# Using ";
-    if (value == default_value)
-      cout << " (default) ";
-    cout << "parameter: " << key << " = " << value << endl;
+    log << key << " = " << value << endl;
   }
 }
 
@@ -18,10 +15,11 @@ MapParam::MapParam() {
     mpi_rank = 0; 
 }
 
-MapParam::MapParam(MPI_Comm comm_)
+MapParam::MapParam(MPI_Comm comm_, stringstream& logstream)
 {
   comm = comm_;
   MPI_Comm_rank(comm, &mpi_rank);
+  log = &logstream;
 }
 
 MapParam::~MapParam(){}
@@ -78,8 +76,8 @@ void MapParam::ReadFile(string filename)
 
 void MapParam::GetVecDoubleParam(string key, vector<double> &fillme, double default_val) const 
 {
+  string lineexport;
   map<string, string>::const_iterator it_value = this->find(key);
-  double val;
   if (it_value == this->end())
   {
     if (mpi_rank == 0)
@@ -89,15 +87,16 @@ void MapParam::GetVecDoubleParam(string key, vector<double> &fillme, double defa
   else 
   {
     /* Parse the string line w.r.t. comma separator */
+    stringstream line(it_value->second); 
     string intermediate; 
-    stringstream check1(it_value->second); 
-    while(getline(check1, intermediate, ',')) 
+    while(getline(line, intermediate, ',')) 
     { 
         fillme.push_back(atof(intermediate.c_str()));
     } 
+    lineexport = line.str();
   }
 
-  // export_param(mpi_rank, key, val, default_val);
+  export_param(mpi_rank, *log, key, lineexport);
 }
 
 double MapParam::GetDoubleParam(string key, double default_val) const
@@ -113,7 +112,7 @@ double MapParam::GetDoubleParam(string key, double default_val) const
   else
     val = atof(it_value->second.c_str());
 
-  // export_param(mpi_rank, key, val, default_val);
+  export_param(mpi_rank, *log, key, val);
   return val;
 }
 
@@ -130,7 +129,7 @@ int MapParam::GetIntParam(string key, int default_val) const
   else
     val = atoi(it_value->second.c_str());
 
-  // export_param(mpi_rank, key, val, default_val);
+  export_param(mpi_rank, *log, key, val);
   return val;
 }
 
@@ -147,7 +146,7 @@ string MapParam::GetStrParam(string key, string default_val) const
   else
     val = it_value->second;
 
-  // export_param(mpi_rank, key, val, default_val);
+  export_param(mpi_rank, *log, key, val);
   return val;
 }
 
@@ -166,7 +165,7 @@ bool MapParam::GetBoolParam(string key, bool default_val) const
   else
     val = false;
 
-  // export_param(mpi_rank, key, val, default_val);
+  export_param(mpi_rank, *log, key, val);
   return val;
 }
 
@@ -179,6 +178,7 @@ int MapParam::GetMpiRank() const {
 void MapParam::GetVecIntParam(std::string key, std::vector<int> &fillme, int default_val) const 
 {
   map<string, string>::const_iterator it_value = this->find(key);
+  string lineexp;
   double val;
   if (it_value == this->end())
   {
@@ -190,21 +190,22 @@ void MapParam::GetVecIntParam(std::string key, std::vector<int> &fillme, int def
   {
     /* Parse the string line w.r.t. comma separator */
     string intermediate; 
-    stringstream check1(it_value->second); 
-    while(getline(check1, intermediate, ',')) 
+    stringstream line(it_value->second); 
+    while(getline(line, intermediate, ',')) 
     { 
         fillme.push_back(atoi(intermediate.c_str()));
     } 
+    lineexp = line.str();
   }
 
-  // export_param(mpi_rank, key, val, default_val);  
+  export_param(mpi_rank, *log, key, lineexp);  
 }
 
 
 void MapParam::GetVecStrParam(std::string key, std::vector<std::string> &fillme, std::string default_val) const
 {
   map<string, string>::const_iterator it_value = this->find(key);
-  double val;
+  string lineexp;
   if (it_value == this->end())
   {
     if (mpi_rank == 0)
@@ -215,12 +216,13 @@ void MapParam::GetVecStrParam(std::string key, std::vector<std::string> &fillme,
   {
     /* Parse the string line w.r.t. comma separator */
     string intermediate; 
-    stringstream check1(it_value->second); 
-    while(getline(check1, intermediate, ',')) 
+    stringstream line(it_value->second); 
+    while(getline(line, intermediate, ',')) 
     { 
         fillme.push_back(intermediate);
     } 
+    lineexp = line.str();
   }
 
-  // export_param(mpi_rank, key, val, default_val);  
+  export_param(mpi_rank, *log, key, lineexp);  
 }

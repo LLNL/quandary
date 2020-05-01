@@ -16,11 +16,12 @@ class MapParam : public std::map<std::string, std::string>
 {
   MPI_Comm comm;
   int mpi_rank;
+  std::stringstream* log;
 
 public:
   /* Constructor */
   MapParam();
-  MapParam(MPI_Comm comm_);
+  MapParam(MPI_Comm comm_, std::stringstream& logstream);
   /* Destructor */
   ~MapParam();
   

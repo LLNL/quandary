@@ -44,10 +44,9 @@ OptimProblem::OptimProblem(MapParam config, myBraidApp* primalbraidapp_, myAdjoi
     /* Store number of initial conditions per init-processor group */
     ninit_local = ninit / mpisize_init; 
 
-    /* Read config options */
+    /* Read som config params */
     regul = config.GetDoubleParam("optim_regul", 1e-4);
     optiminit_type = config.GetStrParam("optim_init", "zero");
-    datadir = config.GetStrParam("datadir", "./data_out");
     printlevel = config.GetIntParam("optim_printlevel", 1);
     config.GetVecDoubleParam("optim_bounds", bounds, 1e20);
 
@@ -64,6 +63,7 @@ OptimProblem::OptimProblem(MapParam config, myBraidApp* primalbraidapp_, myAdjoi
     if (optiminit_type.compare("constant") == 0 ){ // set constant controls. 
       config.GetVecDoubleParam("optim_init_const", init_ampl, 0.0);
     }
+
     /* Get type of objective function */
     std::vector<std::string> objective_str;
     config.GetVecStrParam("optim_objective", objective_str);
@@ -148,7 +148,7 @@ OptimProblem::OptimProblem(MapParam config, myBraidApp* primalbraidapp_, myAdjoi
     /* Open optim file */
     if (mpirank_world == 0 && printlevel > 0) {
       char filename[255];
-      sprintf(filename, "%s/optim.dat", datadir.c_str());
+      sprintf(filename, "%s/optim.dat", primalbraidapp->datadir.c_str());
       optimfile = fopen(filename, "w");
       fprintf(optimfile, "#iter    obj_value           fidelity              ||grad||              inf_du               ls trials \n");
     }
@@ -475,7 +475,7 @@ bool OptimProblem::get_starting_point(const long long &global_n, double* x0) {
     char filename[255];
     MasterEq* mastereq = primalbraidapp->mastereq;
     for (int ioscil = 0; ioscil < mastereq->getNOscillators(); ioscil++) {
-        sprintf(filename, "%s/control_init_%02d.dat", datadir.c_str(), ioscil+1);
+        sprintf(filename, "%s/control_init_%02d.dat", primalbraidapp->datadir.c_str(), ioscil+1);
         mastereq->getOscillator(ioscil)->flushControl(ntime, dt, filename);
     }
   }
@@ -492,7 +492,7 @@ void OptimProblem::solution_callback(hiop::hiopSolveStatus status, int n, const 
     FILE *paramfile;
 
     /* Print optimized parameters */
-    sprintf(filename, "%s/param_optimized.dat", datadir.c_str());
+    sprintf(filename, "%s/param_optimized.dat", primalbraidapp->datadir.c_str());
     paramfile = fopen(filename, "w");
     for (int i=0; i<n; i++){
       fprintf(paramfile, "%1.14e\n", x[i]);
@@ -505,7 +505,7 @@ void OptimProblem::solution_callback(hiop::hiopSolveStatus status, int n, const 
     double dt = primalbraidapp->total_time / ntime;
     MasterEq* mastereq = primalbraidapp->mastereq;
     for (int ioscil = 0; ioscil < mastereq->getNOscillators(); ioscil++) {
-        sprintf(filename, "%s/control_optimized_%02d.dat", datadir.c_str(), ioscil+1);
+        sprintf(filename, "%s/control_optimized_%02d.dat", primalbraidapp->datadir.c_str(), ioscil+1);
         mastereq->getOscillator(ioscil)->flushControl(ntime, dt, filename);
     }
   }
@@ -536,7 +536,7 @@ bool OptimProblem::iterate_callback(int iter, double obj_value, int n, const dou
 
       /* Print optimized parameters */
       FILE *paramfile;
-      sprintf(filename, "%s/param_iter%04d.dat", datadir.c_str(), iter);
+      sprintf(filename, "%s/param_iter%04d.dat", primalbraidapp->datadir.c_str(), iter);
       paramfile = fopen(filename, "w");
       for (int i=0; i<n; i++){
         fprintf(paramfile, "%1.14e\n", x[i]);
@@ -549,7 +549,7 @@ bool OptimProblem::iterate_callback(int iter, double obj_value, int n, const dou
       double dt = primalbraidapp->total_time / ntime;
       MasterEq* mastereq = primalbraidapp->mastereq;
       for (int ioscil = 0; ioscil < mastereq->getNOscillators(); ioscil++) {
-          sprintf(filename, "%s/control_iter%04d_%02d.dat", datadir.c_str(), iter, ioscil+1);
+          sprintf(filename, "%s/control_iter%04d_%02d.dat", primalbraidapp->datadir.c_str(), iter, ioscil+1);
           mastereq->getOscillator(ioscil)->flushControl(ntime, dt, filename);
       }
     }

@@ -80,7 +80,8 @@ int main(int argc,char **argv)
     MPI_Finalize();
     return 0;
   }
-  MapParam config(MPI_COMM_WORLD);
+  std::stringstream log;
+  MapParam config(MPI_COMM_WORLD, log);
   config.ReadFile(argv[1]);
 
   /* Get some options from the config file */
@@ -309,14 +310,24 @@ int main(int argc,char **argv)
 
   /* Print timing to file */
   if (mpirank_world == 0) {
-    sprintf(filename, "timing.dat");
+    sprintf(filename, "%s/timing.dat", primalbraidapp->datadir.c_str());
     FILE* timefile = fopen(filename, "w");
     fprintf(timefile, "%d  %1.8e\n", mpisize_world, UsedTime);
     fclose(timefile);
     printf("%s written.\n", filename);
   }
 
-
+  /* Print parameters to file */
+  if (mpirank_world == 0) {
+    sprintf(filename, "%s/log_param.dat", primalbraidapp->datadir.c_str());
+    ofstream logfile(filename);
+    if (logfile.is_open()){
+      logfile << log.str();
+      logfile.close();
+      printf("%s written.\n", filename);
+    }
+    else std::cerr << "Unable to open " << filename;
+  }
 
 
 #if TEST_DRHSDP
