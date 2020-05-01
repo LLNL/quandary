@@ -18,6 +18,7 @@ class OptimProblem : public hiop::hiopInterfaceDenseConstraints {
         myAdjointBraidApp* adjointbraidapp; /* Adjoint BraidApp to carry out PinT backward sim. */
         Gate  *targetgate;                  
         double objective;                 /* holds the current objective value */
+        double gradnorm;                  /* norm of the current gradient */
         double regul;                       /* Parameter for L2 regularization */
         std::vector<double> bounds;    /* Bounds for the control function amplitudes for each oscillator */
         std::string optiminit_type;           /* Type of design initialization */

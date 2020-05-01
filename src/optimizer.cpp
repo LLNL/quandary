@@ -4,6 +4,7 @@ OptimProblem::OptimProblem() {
     primalbraidapp  = NULL;
     adjointbraidapp = NULL;
     objective = 0.0;
+    gradnorm = 0.0;
     fidelity = 0.0;
     regul = 0.0;
     mpirank_braid = 0;
@@ -152,6 +153,11 @@ OptimProblem::OptimProblem(MapParam config, myBraidApp* primalbraidapp_, myAdjoi
       optimfile = fopen(filename, "w");
       fprintf(optimfile, "#iter    obj_value           fidelity              ||grad||              inf_du               ls trials \n");
     }
+
+    /* Reset */
+    objective = 0.0;
+    gradnorm = 0.0;
+    fidelity = 0.0;
 }
 
 OptimProblem::~OptimProblem() {
@@ -386,12 +392,12 @@ bool OptimProblem::eval_grad_f(const long long& n, const double* x_in, bool new_
   }
   MPI_Allreduce(mygrad, gradf, n, MPI_DOUBLE, MPI_SUM, comm_init);
 
-  // /* Compute gradient norm */
-  // double gradnorm = 0.0;
-  // for (int i=0; i<n; i++) {
-  //   gradnorm += pow(gradf[i], 2.0);
-  // }
-  // gradnorm = sqrt(gradnorm);
+  /* Compute and store gradient norm */
+  gradnorm = 0.0;
+  for (int i=0; i<n; i++) {
+    gradnorm += pow(gradf[i], 2.0);
+  }
+  gradnorm = sqrt(gradnorm);
   // if (mpirank_world == 0) printf("%d: ||grad|| = %1.14e\n", mpirank_init, gradnorm);
 
   delete [] mygrad;
@@ -518,16 +524,8 @@ bool OptimProblem::iterate_callback(int iter, double obj_value, int n, const dou
   /* Output */
   if (mpirank_world == 0 && printlevel > 0) {
 
-    /* Compute current gradient norm. */
-    const double* grad_ptr = adjointbraidapp->getReducedGradientPtr();
-    double gnorm = 0.0;
-    for (int i=0; i<n; i++) {
-      gnorm += pow(grad_ptr[i], 2.0);
-    }
-    gnorm = sqrt(gnorm);
-
     /* Print to optimization file */
-    fprintf(optimfile, "%05d  %1.14e  %1.14e  %1.14e  %1.14e  %02d\n", iter, obj_value, fidelity, gnorm, inf_du, ls_trials);
+    fprintf(optimfile, "%05d  %1.14e  %1.14e  %1.14e  %1.14e  %02d\n", iter, obj_value, fidelity, gradnorm, inf_du, ls_trials);
     fflush(optimfile);
 
     /* Print parameters and controls to file */
