@@ -11,6 +11,7 @@
 #include <stdlib.h>
 #include <sys/resource.h>
 #include "hiopAlgFilterIPM.hpp"
+#include "optimizer_petsc.hpp"
 
 #define EPS 1e-4
 
@@ -251,11 +252,54 @@ int main(int argc,char **argv)
   hiop::hiopAlgFilterIPM optimsolver(&nlp);
   hiop::hiopSolveStatus  optimstatus;
 
+
+
   /* --- Test optimproblem --- */
   if (mpirank_world == 0) printf("# ndesign=%d\n", ndesign);
   double* myinit = new double[ndesign];
   double* optimgrad = new double[ndesign];
   optimproblem.get_starting_point(ndesign, myinit);
+
+
+
+  Tao optim_tao; /* Petsc's optimization */
+  OptimCtx optimctx;
+  optimctx.mpirank_world = mpirank_world;
+  optimctx.primalbraidapp = primalbraidapp;
+  /* TODO: INIT OPTIM CTX */
+
+  /* Create the optimizer */
+  TaoCreate(PETSC_COMM_WORLD,&optim_tao);
+  TaoSetType(optim_tao,TAOBLMVM);         // Optim type: taoblmvm vs BQNLS ??
+
+  /* Set initial starting point */
+  Vec xinit;
+  VecCreate(PETSC_COMM_WORLD, &xinit);
+  VecSetSizes(xinit, PETSC_DECIDE, ndesign);
+  VecSetFromOptions(xinit);
+  optim_getStartingPoint(xinit, &optimctx);
+  TaoSetInitialVector(optim_tao, x);
+
+  /* Set the user function, gradient, hessian and data structures */
+  TaoSetObjectiveRoutine(optim_tao, optim_evalObjective, (void *)&optimctx);
+  TaoSetGradientRoutine(optim_tao, optim_evalGradient,(void *)&optimctx);
+
+  /* TODO: Create and fill xl, xu */
+  Vec xl, xu;
+  TaoSetVariableBounds(optim_tao, xl, xu);
+
+  /* Finalize Tao */
+  TaoSetFromOptions(optim_tao);
+
+  /* Solve the optimization problem */
+  TaoSolve(optim_tao);
+
+  /* Free tao */
+  TaoDestroy(&optim_tao);
+
+  VecDestroy(&xinit);
+
+
 
    /* Start timer */
   double StartTime = MPI_Wtime();
