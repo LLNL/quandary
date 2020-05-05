@@ -121,6 +121,93 @@ OptimCtx::~OptimCtx() {
 }
 
 
+void OptimCtx::getStartingPoint(Vec xinit, std::string start_type, std::vector<double> start_amplitudes, std::vector<double> bounds){
+  MasterEq* mastereq = primalbraidapp->mastereq;
+
+  if (start_type.compare("constant") == 0 ){ // set constant initial design
+    int j = 0;
+    for (int ioscil = 0; ioscil < mastereq->getNOscillators(); ioscil++) {
+      int nparam = mastereq->getOscillator(ioscil)->getNParams();
+      for (int i = 0; i < nparam; i++) {
+        VecSetValue(xinit, j, start_amplitudes[ioscil], INSERT_VALUES);
+        j++;
+      }
+    }
+  } else if ( start_type.compare("zero") == 0)  { // init design with zero
+    VecZeroEntries(xinit);
+
+  } else if ( start_type.compare("random")      == 0 ||       // init random, fixed seed
+              start_type.compare("random_seed") == 0)  { // init random with new seed
+
+    /* Create random vector on one processor only, then broadcast to all, so that all have the same initial guess */
+    if (mpirank_world == 0) {
+
+      /* Seed */
+      if ( start_type.compare("random") == 0) srand(1);  // fixed seed
+      else srand(time(0)); // random seed
+
+      /* Create vector with random elements between [-1:1] */
+      double* randvec = new double[ndesign];
+      for (int i=0; i<ndesign; i++) {
+        randvec[i] = (double) rand() / ((double)RAND_MAX);
+        randvec[i] = 2.*randvec[i] - 1.;
+      }
+      /* Broadcast random vector to all */
+      MPI_Bcast(randvec, ndesign, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+
+      /* Trimm back to the box constraints */
+      int j = 0;
+      for (int ioscil = 0; ioscil < mastereq->getNOscillators(); ioscil++) {
+        if (bounds[ioscil] >= 1.0) continue;
+        int nparam = mastereq->getOscillator(ioscil)->getNParams();
+        for (int i = 0; i < nparam; i++) {
+          randvec[j] = randvec[j] * bounds[ioscil];
+          j++;
+        }
+      }
+
+      /* Set the initial guess */
+      for (int i=0; i<ndesign; i++) {
+        VecSetValue(xinit, i, randvec[i], INSERT_VALUES);
+      }
+      delete [] randvec;
+    }
+
+  }  else { // Read from file 
+    double* vecread = new double[ndesign];
+
+    if (mpirank_world == 0) read_vector(start_type.c_str(), vecread, ndesign);
+    MPI_Bcast(vecread, ndesign, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+
+    /* Set the initial guess */
+    for (int i=0; i<ndesign; i++) {
+      VecSetValue(xinit, i, vecread[i], INSERT_VALUES);
+    }
+    delete [] vecread;
+  }
+
+  /* Assemble initial guess */
+  VecAssemblyBegin(xinit);
+  VecAssemblyEnd(xinit);
+
+  /* Pass to oscillator */
+  primalbraidapp->mastereq->setControlAmplitudes(xinit);
+  
+  /* Flush initial control functions */
+  if (mpirank_world == 0 ) {
+    int ntime = primalbraidapp->ntime;
+    double dt = primalbraidapp->total_time / ntime;
+    char filename[255];
+    for (int ioscil = 0; ioscil < mastereq->getNOscillators(); ioscil++) {
+        sprintf(filename, "%s/control_init_%02d.dat", primalbraidapp->datadir.c_str(), ioscil+1);
+        mastereq->getOscillator(ioscil)->flushControl(ntime, dt, filename);
+    }
+  }
+
+}
+
+
+
 void OptimTao_Setup(Tao* tao, OptimCtx* ctx, MapParam config, Vec xinit, Vec xlower, Vec xupper){
 
   TaoCreate(PETSC_COMM_WORLD, tao);
@@ -155,98 +242,13 @@ void OptimTao_Setup(Tao* tao, OptimCtx* ctx, MapParam config, Vec xinit, Vec xlo
     config.GetVecDoubleParam("optim_init_const", start_amplitudes, 0.0);
     assert(start_amplitudes.size() == ctx->primalbraidapp->mastereq->getNOscillators());
   }
-  getStartingPoint(xinit, ctx, start_type, start_amplitudes, bounds);
+  ctx->getStartingPoint(xinit, start_type, start_amplitudes, bounds);
   TaoSetInitialVector(*tao, xinit);
 
   /* Set runtime options */
   TaoSetFromOptions(*tao);
 }
 
-
-void getStartingPoint(Vec xinit, OptimCtx* ctx, std::string start_type, std::vector<double> start_amplitudes, std::vector<double> bounds){
-  MasterEq* mastereq = ctx->primalbraidapp->mastereq;
-
-  if (start_type.compare("constant") == 0 ){ // set constant initial design
-    int j = 0;
-    for (int ioscil = 0; ioscil < mastereq->getNOscillators(); ioscil++) {
-      int nparam = mastereq->getOscillator(ioscil)->getNParams();
-      for (int i = 0; i < nparam; i++) {
-        VecSetValue(xinit, j, start_amplitudes[ioscil], INSERT_VALUES);
-        j++;
-      }
-    }
-  } else if ( start_type.compare("zero") == 0)  { // init design with zero
-    VecZeroEntries(xinit);
-
-  } else if ( start_type.compare("random")      == 0 ||       // init random, fixed seed
-              start_type.compare("random_seed") == 0)  { // init random with new seed
-
-    /* Create random vector on one processor only, then broadcast to all, so that all have the same initial guess */
-    if (ctx->mpirank_world == 0) {
-
-      /* Seed */
-      if ( start_type.compare("random") == 0) srand(1);  // fixed seed
-      else srand(time(0)); // random seed
-
-      /* Create vector with random elements between [-1:1] */
-      double* randvec = new double[ctx->ndesign];
-      for (int i=0; i<ctx->ndesign; i++) {
-        randvec[i] = (double) rand() / ((double)RAND_MAX);
-        randvec[i] = 2.*randvec[i] - 1.;
-      }
-      /* Broadcast random vector to all */
-      MPI_Bcast(randvec, ctx->ndesign, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-
-      /* Trimm back to the box constraints */
-      int j = 0;
-      for (int ioscil = 0; ioscil < mastereq->getNOscillators(); ioscil++) {
-        if (bounds[ioscil] >= 1.0) continue;
-        int nparam = mastereq->getOscillator(ioscil)->getNParams();
-        for (int i = 0; i < nparam; i++) {
-          randvec[j] = randvec[j] * bounds[ioscil];
-          j++;
-        }
-      }
-
-      /* Set the initial guess */
-      for (int i=0; i<ctx->ndesign; i++) {
-        VecSetValue(xinit, i, randvec[i], INSERT_VALUES);
-      }
-      delete [] randvec;
-    }
-
-  }  else { // Read from file 
-    double* vecread = new double[ctx->ndesign];
-
-    if (ctx->mpirank_world == 0) read_vector(start_type.c_str(), vecread, ctx->ndesign);
-    MPI_Bcast(vecread, ctx->ndesign, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-
-    /* Set the initial guess */
-    for (int i=0; i<ctx->ndesign; i++) {
-      VecSetValue(xinit, i, vecread[i], INSERT_VALUES);
-    }
-    delete [] vecread;
-  }
-
-  /* Assemble initial guess */
-  VecAssemblyBegin(xinit);
-  VecAssemblyEnd(xinit);
-
-  /* Pass to oscillator */
-  ctx->primalbraidapp->mastereq->setControlAmplitudes(xinit);
-  
-  /* Flush initial control functions */
-  if (ctx->mpirank_world == 0 ) {
-    int ntime = ctx->primalbraidapp->ntime;
-    double dt = ctx->primalbraidapp->total_time / ntime;
-    char filename[255];
-    for (int ioscil = 0; ioscil < mastereq->getNOscillators(); ioscil++) {
-        sprintf(filename, "%s/control_init_%02d.dat", ctx->primalbraidapp->datadir.c_str(), ioscil+1);
-        mastereq->getOscillator(ioscil)->flushControl(ntime, dt, filename);
-    }
-  }
-
-}
 
 PetscErrorCode optim_evalObjective(Tao tao, Vec x, PetscReal *f, void*ptr){
   OptimCtx* ctx = (OptimCtx*) ptr;

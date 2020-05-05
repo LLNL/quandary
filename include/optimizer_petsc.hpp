@@ -37,13 +37,14 @@ typedef struct OptimCtx {
   OptimCtx(MapParam config, myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, MPI_Comm comm_hiop_, MPI_Comm comm_init_, std::vector<int> obj_oscilIDs_, InitialConditionType initcondtype_, int ninit_);
   ~OptimCtx();
 
+
+  /* Compute initial guess for optimization variables */
+  void getStartingPoint(Vec x, std::string start_type, std::vector<double> start_amplitudes, std::vector<double> bounds);
+
 } OptimCtx;
 
 
 void OptimTao_Setup(Tao* tao, OptimCtx* ctx, MapParam config, Vec xinit, Vec xlower, Vec xupper);
-
-/* Get initial starting point */
-void getStartingPoint(Vec x, OptimCtx* ctx, std::string start_type, std::vector<double> start_amplitudes, std::vector<double> bounds);
 
 /* Evaluate objective function f(x) */
 PetscErrorCode optim_evalObjective(Tao tao, Vec x, PetscReal *f, void*ptr);
