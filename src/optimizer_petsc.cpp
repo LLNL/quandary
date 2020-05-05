@@ -507,6 +507,14 @@ PetscErrorCode OptimTao_EvalGradient(Tao tao, Vec x, Vec G, void*ptr){
   /* Pass design vector x to oscillators */
   mastereq->setControlAmplitudes(x); 
 
+  /* Reset Gradient */
+  VecZeroEntries(G);
+
+  /* Derivative of regulatization term gamma / 2 ||x||^2 (ADD ON ONE PROC ONLY!) */
+  if (ctx->mpirank_init == 0 && ctx->mpirank_braid == 0) {
+    VecAXPY(G, ctx->gamma_tik, x);
+  }
+
   /*  Iterate over initial condition */
   double objective = 0.0;
   for (int iinit = 0; iinit < ctx->ninit_local; iinit++) {
