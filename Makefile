@@ -6,7 +6,7 @@ BRAID_DIR = ${HOME}/Numerics/xbraid_solveadjointwithxbraid
 
 
 # Set location of optimizers incudes and library
-OPT_DIR = ${HOME}/Software/hiop/_dist-default-build
+OPT_DIR = ${HOME}/Numerics/hiop/_dist-default-build
 OPT_INC_DIR = $(OPT_DIR)/include
 OPT_LIB_DIR = $(OPT_DIR)/lib
 
@@ -41,7 +41,7 @@ INC = -I$(INC_DIR) -I$(BRAID_INC_DIR) -I${PETSC_DIR}/include -I${PETSC_DIR}/${PE
 
 # Set Library paths and flags
 LDPATH  = ${PETSC_DIR}/${PETSC_ARCH}/lib
-LDFLAGS = -lpetsc -lm ${BRAID_LIB_FILE} -L${PETSC_DIR}/${PETSC_ARCH}/lib -L$(OPT_LIB_DIR) -lhiop -lopenblas
+LDFLAGS = -lpetsc -lm ${BRAID_LIB_FILE} -L${PETSC_DIR}/${PETSC_ARCH}/lib -L$(OPT_LIB_DIR) -lhiop -lblas -llapack
 
 # Set compiler and flags 
 CXX=mpicxx

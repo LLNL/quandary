@@ -265,7 +265,7 @@ int main(int argc,char **argv)
   /* Petsc's optimization */
   OptimCtx* optimctx = new OptimCtx;
   /* Initialize optimization context */
-  optim_CtxSetup(optimctx, config, primalbraidapp, adjointbraidapp, comm_hiop, comm_init, obj_oscilIDs, inittype, ninit);
+  OptimCtx_Setup(optimctx, config, primalbraidapp, adjointbraidapp, comm_hiop, comm_init, obj_oscilIDs, inittype, ninit);
   printf("ndesign petsc %d\n", optimctx->ndesign);
 
   /* Initialize optimization solver */
@@ -277,7 +277,7 @@ int main(int argc,char **argv)
   VecDuplicate(xinit, &xlower);
   VecDuplicate(xinit, &xupper);
 
-  optim_TaoSetup(optim_tao, optimctx, config, xinit, xlower, xupper);
+  OptimTao_Setup(optim_tao, optimctx, config, xinit, xlower, xupper);
 
   //TEST //
   printf("%d: petsc init:\n", mpirank_world);

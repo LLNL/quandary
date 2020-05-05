@@ -31,9 +31,9 @@ typedef struct {
   
 } OptimCtx;
 
-void optim_CtxSetup(OptimCtx* ctx, MapParam config, myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, MPI_Comm comm_hiop_, MPI_Comm comm_init_, std::vector<int> obj_oscilIDs_, InitialConditionType initcondtype_, int ninit_);
+void OptimCtx_Setup(OptimCtx* ctx, MapParam config, myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, MPI_Comm comm_hiop_, MPI_Comm comm_init_, std::vector<int> obj_oscilIDs_, InitialConditionType initcondtype_, int ninit_);
 
-void optim_TaoSetup(Tao* tao, OptimCtx* ctx, MapParam config, Vec xinit, Vec xlower, Vec xupper);
+void OptimTao_Setup(Tao* tao, OptimCtx* ctx, MapParam config, Vec xinit, Vec xlower, Vec xupper);
 
 /* Get initial starting point */
 void getStartingPoint(Vec x, OptimCtx* ctx, std::string start_type, std::vector<double> start_amplitudes, std::vector<double> bounds);

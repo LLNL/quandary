@@ -1,7 +1,7 @@
 #include "optimizer_petsc.hpp"
 
 
-void optim_CtxSetup(OptimCtx* ctx, MapParam config, myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, MPI_Comm comm_hiop_, MPI_Comm comm_init_, std::vector<int> obj_oscilIDs_, InitialConditionType inittype_, int ninit_){
+void OptimCtx_Setup(OptimCtx* ctx, MapParam config, myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, MPI_Comm comm_hiop_, MPI_Comm comm_init_, std::vector<int> obj_oscilIDs_, InitialConditionType inittype_, int ninit_){
   ctx->primalbraidapp  = primalbraidapp_;
   ctx->adjointbraidapp = adjointbraidapp_;
   ctx->initcond_type = inittype_;
@@ -33,7 +33,7 @@ void optim_CtxSetup(OptimCtx* ctx, MapParam config, myBraidApp* primalbraidapp_,
   ctx->ndesign = n;
 }
 
-void optim_TaoSetup(Tao* tao, OptimCtx* ctx, MapParam config, Vec xinit, Vec xlower, Vec xupper){
+void OptimTao_Setup(Tao* tao, OptimCtx* ctx, MapParam config, Vec xinit, Vec xlower, Vec xupper){
 
   TaoCreate(PETSC_COMM_WORLD, tao);
   TaoSetType(*tao,TAOBLMVM);         // Optim type: taoblmvm vs BQNLS ??
