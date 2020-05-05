@@ -15,6 +15,7 @@ typedef struct {
   InitialConditionType initcond_type; /* Type of ODE initial condition (pure, basis, from file, etc.) */
   int ninit;                            /* Number of initial conditions to be considered (N^2, N, or 1) */
   int ninit_local;                      /* Local number of initial conditions on this processor */
+  Vec initcond_re, initcond_im;         /* Current initial condition */
 
   /* MPI stuff */
   MPI_Comm comm_hiop, comm_init;
@@ -25,10 +26,14 @@ typedef struct {
   int mpirank_init, mpisize_init;
 
   /* Optimization stuff */
+  ObjectiveType objective_type;    /* Type of objective function (Gate, <N>, Groundstate, ... ) */
   std::vector<int> obj_oscilIDs;   /* List of oscillator IDs that are considered for the optimizer */
-  int ndesign;                          /* Number of global design parameters */
+  Gate  *targetgate;               /* Target gate */
+  int ndesign;                     /* Number of global design parameters */
+  double objective;                /* Holds current objective function */
+  double gamma_tik;                /* Parameter for tikhonov regularization */
 
-  
+
 } OptimCtx;
 
 void OptimCtx_Setup(OptimCtx* ctx, MapParam config, myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, MPI_Comm comm_hiop_, MPI_Comm comm_init_, std::vector<int> obj_oscilIDs_, InitialConditionType initcondtype_, int ninit_);
@@ -43,3 +48,10 @@ PetscErrorCode optim_evalObjective(Tao tao, Vec x, PetscReal *f, void*ptr);
 
 /* Evaluate gradient g = \nabla f(x) */
 PetscErrorCode optim_evalGradient(Tao tao, Vec x, Vec G, void*ptr);
+
+
+/* Assemble the ODE initial condition */
+int optim_assembleInitCond(int iinit, OptimCtx *ctx);
+
+/* Evaluate final time objective function */
+double optim_objectiveT(Vec finalstate, OptimCtx *ctx);

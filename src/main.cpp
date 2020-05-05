@@ -279,27 +279,6 @@ int main(int argc,char **argv)
 
   OptimTao_Setup(optim_tao, optimctx, config, xinit, xlower, xupper);
 
-  //TEST //
-  printf("%d: petsc init:\n", mpirank_world);
-  VecView(xinit, PETSC_VIEWER_STDOUT_WORLD);
-  printf("%d: myinit:\n", mpirank_world);
-  for (int i=0; i<ndesign; i++) {
-    printf("%1.14e\n", myinit[i]);
-  }
-  exit(1);
-
-
-  /* Solve the optimization problem */
-  TaoSolve(*optim_tao);
-
-  /* Free tao */
-  TaoDestroy(optim_tao);
-
-  VecDestroy(&xinit);
-  VecDestroy(&xlower);
-  VecDestroy(&xupper);
-
-
 
    /* Start timer */
   double StartTime = MPI_Wtime();
@@ -309,6 +288,11 @@ int main(int argc,char **argv)
     optimproblem.eval_f(ndesign, myinit, true, objective);
     if (mpirank_world == 0) printf("%d: Primal Only: Objective %1.14e, Fidelity: %1.8f\n", mpirank_world, objective, optimproblem.fidelity);
     optimproblem.iterate_callback(-1, objective, ndesign, myinit, NULL, NULL, 0, NULL, NULL, -0.0, -0.0, -0.0, -0.0, -0.0, 0);
+
+    double newobjpetsc;
+    optim_evalObjective(*optim_tao, xinit, &newobjpetsc, optimctx);
+    printf("New objective %1.14e\n", newobjpetsc);
+ 
   } 
   
   /* --- Solve adjoint --- */
@@ -331,6 +315,7 @@ int main(int argc,char **argv)
     if (mpirank_world == 0) printf("Now starting HiOp... \n");
     optimstatus = optimsolver.run();
 
+    // TaoSolve(*optim_tao);
   }
 
   /* Get timings */
@@ -680,6 +665,16 @@ int main(int argc,char **argv)
   
   delete primalbraidapp;
   delete adjointbraidapp;
+
+  /* Free tao */
+  TaoDestroy(optim_tao);
+
+  VecDestroy(&xinit);
+  VecDestroy(&xlower);
+  VecDestroy(&xupper);
+
+
+
 
   /* Finallize Petsc */
   ierr = PetscFinalize();

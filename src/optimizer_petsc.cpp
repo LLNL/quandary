@@ -31,6 +31,85 @@ void OptimCtx_Setup(OptimCtx* ctx, MapParam config, myBraidApp* primalbraidapp_,
       n += ctx->primalbraidapp->mastereq->getOscillator(ioscil)->getNParams(); 
   }
   ctx->ndesign = n;
+
+  /* Store other optimization parameters */
+  ctx->gamma_tik = config.GetDoubleParam("optim_regul", 1e-4);
+
+  /* Store objective function type */
+  std::vector<std::string> objective_str;
+  config.GetVecStrParam("optim_objective", objective_str);
+  ctx->targetgate = NULL;
+  if ( objective_str[0].compare("gate") ==0 ) {
+    ctx->objective_type = GATE;
+    /* Read and initialize the targetgate */
+    assert ( objective_str.size() >=2 );
+    if      (objective_str[1].compare("none") == 0)  ctx->targetgate = new Gate(); // dummy gate. do nothing
+    else if (objective_str[1].compare("xgate") == 0) ctx->targetgate = new XGate(); 
+    else if (objective_str[1].compare("ygate") == 0) ctx->targetgate = new YGate(); 
+    else if (objective_str[1].compare("zgate") == 0) ctx->targetgate = new ZGate();
+    else if (objective_str[1].compare("hadamard") == 0) ctx->targetgate = new HadamardGate();
+    else if (objective_str[1].compare("cnot") == 0) ctx->targetgate = new CNOT(); 
+    else {
+      printf("\n\n ERROR: Unnown gate type: %s.\n", objective_str[1].c_str());
+      printf(" Available gates are 'none', 'xgate', 'ygate', 'zgate', 'hadamard', 'cnot'\n");
+      exit(1);
+    }
+  }  
+  else if (objective_str[0].compare("expectedEnergy")==0) ctx->objective_type = EXPECTEDENERGY;
+  else if (objective_str[0].compare("groundstate")   ==0) ctx->objective_type = GROUNDSTATE;
+  else {
+      printf("\n\n ERROR: Unknown objective function: %s\n", objective_str[0].c_str());
+      exit(1);
+  }
+
+  /* Set up and store initial condition vectors */
+  VecCreate(PETSC_COMM_WORLD, &ctx->initcond_re); 
+  VecSetSizes(ctx->initcond_re,PETSC_DECIDE,ctx->primalbraidapp->mastereq->getDim());
+  VecSetFromOptions(ctx->initcond_re);
+  VecDuplicate(ctx->initcond_re, &ctx->initcond_im);
+  // VecDuplicate(ctx->initcond_re, &ctx->initcond_re_bar);
+  // VecDuplicate(ctx->initcond_re, &ctx->initcond_im_bar);
+  
+  if (ctx->initcond_type == PURE) { /* Initialize with tensor product of unit vectors. */
+    std::vector<std::string> initcondstr;
+    config.GetVecStrParam("optim_initialcondition", initcondstr);
+    std::vector<int> unitids;
+    for (int i=1; i<initcondstr.size(); i++) unitids.push_back(atoi(initcondstr[i].c_str()));
+    assert (unitids.size() == ctx->primalbraidapp->mastereq->getNOscillators());
+    // Compute index of diagonal elements that is one.
+    int diag_id = 0.0;
+    for (int k=0; k < unitids.size(); k++) {
+      assert (unitids[k] < ctx->primalbraidapp->mastereq->getOscillator(k)->getNLevels());
+      int dim_postkron = 1;
+      for (int m=k+1; m < unitids.size(); m++) {
+        dim_postkron *= ctx->primalbraidapp->mastereq->getOscillator(m)->getNLevels();
+      }
+      diag_id += unitids[k] * dim_postkron;
+    }
+    int vec_id = diag_id * (int)sqrt(ctx->primalbraidapp->mastereq->getDim()) + diag_id;
+    VecSetValue(ctx->initcond_re, vec_id, 1.0, INSERT_VALUES);
+  }
+  else if (ctx->initcond_type == FROMFILE) { /* Read initial condition from file */
+    int dim = ctx->primalbraidapp->mastereq->getDim();
+    double * vec = new double[2*dim];
+
+    std::vector<std::string> initcondstr;
+    config.GetVecStrParam("optim_initialcondition", initcondstr);
+    if (ctx->mpirank_world == 0) {
+      assert (initcondstr.size()==2);
+      std::string filename = initcondstr[1];
+      read_vector(filename.c_str(), vec, 2*dim);
+    }
+    MPI_Bcast(vec, 2*dim, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    for (int i = 0; i < dim; i++) {
+      if (vec[i]     != 0.0) VecSetValue(ctx->initcond_re, i, vec[i],     INSERT_VALUES);
+      if (vec[i+dim] != 0.0) VecSetValue(ctx->initcond_im, i, vec[i+dim], INSERT_VALUES);
+    }
+    delete [] vec;
+  }
+  VecAssemblyBegin(ctx->initcond_re); VecAssemblyEnd(ctx->initcond_re);
+  VecAssemblyBegin(ctx->initcond_im); VecAssemblyEnd(ctx->initcond_im);
+
 }
 
 void OptimTao_Setup(Tao* tao, OptimCtx* ctx, MapParam config, Vec xinit, Vec xlower, Vec xupper){
@@ -160,12 +239,180 @@ void getStartingPoint(Vec xinit, OptimCtx* ctx, std::string start_type, std::vec
 
 }
 
+
+
+int optim_assembleInitCond(int iinit_local, OptimCtx* ctx){
+  int dim_post;
+
+  int initID = -1;    // Output: ID for this initial condition */
+  int dim_rho = (int) sqrt(ctx->primalbraidapp->mastereq->getDim()); // N
+
+  /* Translate local iinit to this processor's domain [rank * ninit_local, (rank+1) * ninit_local - 1] */
+  int iinit = ctx->mpirank_init * ctx->ninit_local + iinit_local;
+
+  /* Switch over type of initial condition */
+  switch (ctx->initcond_type) {
+
+    case FROMFILE:
+      /* Do nothing. Init cond is already stored in initcond_re, initcond_im */
+      break;
+
+    case PURE:
+      /* Do nothing. Init cond is already stored in initcond_re, initcond_im */
+      break;
+
+    case DIAGONAL:
+      int row, diagelem;
+
+      /* Reset the initial conditions */
+      VecZeroEntries(ctx->initcond_re); 
+      VecZeroEntries(ctx->initcond_im); 
+
+      /* Get dimension of partial system behind last oscillator ID */
+      dim_post = 1;
+      for (int k = ctx->obj_oscilIDs[ctx->obj_oscilIDs.size()-1] + 1; k < ctx->primalbraidapp->mastereq->getNOscillators(); k++) {
+        dim_post *= ctx->primalbraidapp->mastereq->getOscillator(k)->getNLevels();
+      }
+
+      /* Compute index of the nonzero element in rho_m(0) = E_pre \otimes |m><m| \otimes E_post */
+      diagelem = iinit * dim_post;
+      // /* Position in vectorized q(0) */
+      row = diagelem * dim_rho + diagelem;
+
+      /* Assemble */
+      VecSetValue(ctx->initcond_re, row, 1.0, INSERT_VALUES);
+      VecAssemblyBegin(ctx->initcond_re);
+      VecAssemblyEnd(ctx->initcond_re);
+
+      /* Set initial conditon ID */
+      initID = iinit * ( (int) sqrt(ctx->ninit) ) + iinit;
+
+      break;
+
+    case BASIS:
+
+      /* Reset the initial conditions */
+      VecZeroEntries(ctx->initcond_re); 
+      VecZeroEntries(ctx->initcond_im); 
+
+      /* Get dimension of partial system behind last oscillator ID */
+      dim_post = 1;
+      for (int k = ctx->obj_oscilIDs[ctx->obj_oscilIDs.size()-1] + 1; k < ctx->primalbraidapp->mastereq->getNOscillators(); k++) {
+        dim_post *= ctx->primalbraidapp->mastereq->getOscillator(k)->getNLevels();
+      }
+
+      // /* Get index (k,j) of basis element B_{k,j} for this initial condition index iinit */
+      int k, j;
+      k = iinit % ( (int) sqrt(ctx->ninit) );
+      j = (int) iinit / ( (int) sqrt(ctx->ninit) );   
+
+      if (k == j) {
+        /* B_{kk} = E_{kk} -> set only one element at (k,k) */
+        int elemID = j * dim_post * dim_rho + k * dim_post;
+        double val = 1.0;
+        VecSetValues(ctx->initcond_re, 1, &elemID, &val, INSERT_VALUES);
+        VecAssemblyBegin(ctx->initcond_re);
+        VecAssemblyEnd(ctx->initcond_re);
+      } else {
+      //   /* B_{kj} contains four non-zeros, two per row */
+        int* rows = new int[4];
+        double* vals = new double[4];
+
+        rows[0] = k * dim_post * dim_rho + k * dim_post; // (k,k)
+        rows[1] = j * dim_post * dim_rho + j * dim_post; // (j,j)
+        rows[2] = j * dim_post * dim_rho + k * dim_post; // (k,j)
+        rows[3] = k * dim_post * dim_rho + j * dim_post; // (j,k)
+
+        if (k < j) { // B_{kj} = 1/2(E_kk + E_jj) + 1/2(E_kj + E_jk)
+          vals[0] = 0.5;
+          vals[1] = 0.5;
+          vals[2] = 0.5;
+          vals[3] = 0.5;
+          VecSetValues(ctx->initcond_re, 4, rows, vals, INSERT_VALUES);
+          VecAssemblyBegin(ctx->initcond_re);
+          VecAssemblyEnd(ctx->initcond_re);
+        } else {  // B_{kj} = 1/2(E_kk + E_jj) + i/2(E_jk - E_kj)
+          vals[0] = 0.5;
+          vals[1] = 0.5;
+          VecSetValues(ctx->initcond_re, 2, rows, vals, INSERT_VALUES); // diagonal, real
+          VecAssemblyBegin(ctx->initcond_re);
+          VecAssemblyEnd(ctx->initcond_re);
+          vals[0] = -0.5;
+          vals[1] = 0.5;
+          VecSetValues(ctx->initcond_im, 2, rows+2, vals, INSERT_VALUES); // off-diagonals, imaginary
+          VecAssemblyBegin(ctx->initcond_im);
+          VecAssemblyEnd(ctx->initcond_im);
+        }
+
+        delete [] rows; 
+        delete [] vals;
+      }
+
+      /* Set initial condition ID */
+      initID = j * ( (int) sqrt(ctx->ninit)) + k;
+
+      break;
+
+    default:
+      printf("ERROR! Wrong initial condition type: %d\n This should never happen!\n", ctx->initcond_type);
+      exit(1);
+  }
+
+  // printf("InitCond %d \n", iinit);
+  // VecView(initcond_re, PETSC_VIEWER_STDOUT_WORLD);
+  // VecView(initcond_im, PETSC_VIEWER_STDOUT_WORLD);
+  
+  return initID;
+}
+
+
 PetscErrorCode optim_evalObjective(Tao tao, Vec x, PetscReal *f, void*ptr){
-    OptimCtx* optimctx = (OptimCtx*) ptr;
+  OptimCtx* ctx = (OptimCtx*) ptr;
+  MasterEq* mastereq = ctx->primalbraidapp->mastereq;
 
-    /* TODO: Eval objective */
+  if (ctx->mpirank_world == 0) printf(" EVAL F... \n");
+  Vec finalstate = NULL;
 
-    return 0;
+  /* Pass design vector x to oscillators */
+  mastereq->setControlAmplitudes(x); 
+
+  /*  Iterate over initial condition */
+  double objective = 0.0;
+  for (int iinit = 0; iinit < ctx->ninit_local; iinit++) {
+      
+    /* Prepare the initial condition */
+    int initid = optim_assembleInitCond(iinit, ctx);
+    // if (ctx->mpirank_braid == 0) printf("%d: %d FWD. \n", ctx->mpirank_init, initid);
+
+    /* Run forward with initial condition initid*/
+    ctx->primalbraidapp->PreProcess(initid);
+    ctx->primalbraidapp->setInitialCondition(ctx->initcond_re, ctx->initcond_im);
+    ctx->primalbraidapp->Drive();
+    finalstate = ctx->primalbraidapp->PostProcess(); // this return NULL for all but the last time processor
+
+    /* Add to objective function */
+    objective += optim_objectiveT(finalstate, ctx);
+      // if (mpirank_braid == 0) printf("%d: local objective: %1.14e\n", mpirank_init, obj_local);
+  }
+
+  /* Broadcast objective from last to all time processors */
+  MPI_Bcast(&objective, 1, MPI_DOUBLE, ctx->mpisize_braid-1, ctx->primalbraidapp->comm_braid);
+
+  /* Sum up objective from all initial conditions */
+  double myobj = objective;
+  MPI_Allreduce(&myobj, &objective, 1, MPI_DOUBLE, MPI_SUM, ctx->comm_init);
+  // if (ctx->mpirank_init == 0) printf("%d: global sum objective: %1.14e\n\n", ctx->mpirank_init, objective);
+
+  /* Add regularization objective += gamma/2 * ||x||^2*/
+  double xnorm;
+  VecNorm(x, NORM_2, &xnorm);
+  objective += ctx->gamma_tik / 2. * pow(xnorm,2.0);
+
+  /* Store and return objective value */
+  ctx->objective = objective;
+  *f = objective;
+
+  return 0;
 }
 
 
@@ -177,3 +424,87 @@ PetscErrorCode optim_evalGradient(Tao tao, Vec x, Vec G, void*ptr){
     return 0;
 }
 
+
+double optim_objectiveT(Vec finalstate, OptimCtx* ctx){
+  double obj_local = 0.0;
+
+  if (finalstate != NULL) {
+
+    switch (ctx->objective_type) {
+      case GATE:
+        /* compare state to linear transformation of initial conditions */
+        ctx->targetgate->compare(finalstate, ctx->initcond_re, ctx->initcond_im, obj_local);
+        break;
+
+      case EXPECTEDENERGY:
+        /* compute the expected value of energy levels for each oscillator */
+        obj_local = 0.0;
+        for (int i=0; i<ctx->obj_oscilIDs.size(); i++) {
+          obj_local += ctx->primalbraidapp->mastereq->getOscillator(ctx->obj_oscilIDs[i])->expectedEnergy(finalstate);
+        }
+        obj_local = pow(obj_local, 2.0);
+        break;
+
+      case GROUNDSTATE:
+        /* compare full or pariatl state to groundstate */
+        MasterEq *meq= ctx->primalbraidapp->mastereq;
+        Vec state;
+
+        /* If sub-system is requested, compute reduced density operator first */
+        if (ctx->obj_oscilIDs.size() < meq->getNOscillators()) { 
+          
+          /* Get dimensions of preceding and following subsystem */
+          int dim_pre  = 1; 
+          int dim_post = 1;
+          for (int iosc = 0; iosc < meq->getNOscillators(); iosc++) {
+            if ( iosc < ctx->obj_oscilIDs[0])                      
+              dim_pre  *= meq->getOscillator(iosc)->getNLevels();
+            if ( iosc > ctx->obj_oscilIDs[ctx->obj_oscilIDs.size()-1])   
+              dim_post *= meq->getOscillator(iosc)->getNLevels();
+          }
+
+          /* Create reduced density matrix */
+          int dim_reduced = 1;
+          for (int i = 0; i < ctx->obj_oscilIDs.size();i++) {
+            dim_reduced *= meq->getOscillator(ctx->obj_oscilIDs[i])->getNLevels();
+          }
+          VecCreate(PETSC_COMM_WORLD, &state);
+          VecSetSizes(state, PETSC_DECIDE, 2*dim_reduced*dim_reduced);
+          VecSetFromOptions(state);
+
+          /* Fill reduced density matrix */
+          meq->reducedDensity(finalstate, &state, dim_pre, dim_post, dim_reduced);
+
+        } else { // full density matrix system 
+
+           state = finalstate; 
+
+        }
+
+        // PetscViewerSetFormat(PETSC_VIEWER_STDOUT_WORLD, 	PETSC_VIEWER_ASCII_MATLAB );
+        // VecView(state, PETSC_VIEWER_STDOUT_WORLD);
+
+        /* Compute frobenius norm: frob = || q(T) - e_1 ||^2 */
+        int dimstate;
+        const PetscScalar *stateptr;
+        VecGetSize(state, &dimstate);
+        VecGetArrayRead(state, &stateptr);
+        obj_local = 0.0;
+        obj_local += pow(stateptr[0] - 1.0, 2); 
+        for (int i = 1; i < dimstate; i++){
+           obj_local += pow(stateptr[i], 2);
+        }
+        VecRestoreArrayRead(state, &stateptr);
+
+        /* Destroy reduced density matrix, if it has been created */
+        if (ctx->obj_oscilIDs.size() < ctx->primalbraidapp->mastereq->getNOscillators()) { 
+          VecDestroy(&state);
+        }
+
+        break;
+    }
+
+  }
+
+  return obj_local;
+}
