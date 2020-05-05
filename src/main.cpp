@@ -136,7 +136,19 @@ int main(int argc,char **argv)
     printf(" Choose either 'none', 'decay', 'dephase', or 'both'\n");
     exit(1);
   }
-  mastereq = new MasterEq(nosci, oscil_vec, xi, lindbladtype, t_collapse);
+  InitialConditionType initcond_type;
+  std::vector<std::string> initcondstr;
+  config.GetVecStrParam("optim_initialcondition", initcondstr, "basis");
+  assert (initcondstr.size() > 0);
+  if      (initcondstr[0].compare("file") == 0 )     initcond_type = FROMFILE; 
+  else if (initcondstr[0].compare("pure") == 0 )     initcond_type = PURE;
+  else if (initcondstr[0].compare("diagonal") == 0 ) initcond_type = DIAGONAL;
+  else if (initcondstr[0].compare("basis")    == 0 ) initcond_type = BASIS;
+  else {
+    printf("\n\n ERROR: Wrong setting for initial condition.\n");
+    exit(1);
+  }
+  mastereq = new MasterEq(nosci, oscil_vec, xi, lindbladtype, initcond_type, t_collapse);
 
 
   /* Screen output */
@@ -180,35 +192,30 @@ int main(int argc,char **argv)
   }
 
   /* Get the total number of initial conditions 'ninit' */
-  InitialConditionType inittype; 
-  std::vector<std::string> initcondstr;
-  config.GetVecStrParam("optim_initialcondition", initcondstr);
-  assert (initcondstr.size() > 0);
-  if      (initcondstr[0].compare("file") == 0 ) { inittype = FROMFILE; ninit = 1; }
-  else if (initcondstr[0].compare("pure") == 0 ) { inittype = PURE;     ninit = 1; }
-  else if (initcondstr[0].compare("diagonal") == 0 ) {
-    inittype = DIAGONAL;
-    /* Compute ninit = dim(subsystem defined by obj_oscilIDs) */
-    ninit = 1;
-    for (int i=0; i<obj_oscilIDs.size(); i++) {
-      ninit *= mastereq->getOscillator(obj_oscilIDs[i])->getNLevels();
-    }
+  switch(initcond_type) {
+    case FROMFILE:
+      ninit = 1;
+      break;
+    case PURE:
+      ninit = 1;
+      break;
+    case DIAGONAL:
+      /* Compute ninit = dim(subsystem defined by obj_oscilIDs) */
+      ninit = 1;
+      for (int i=0; i<obj_oscilIDs.size(); i++) {
+        ninit *= mastereq->getOscillator(obj_oscilIDs[i])->getNLevels();
+      }
+      break;
+    case BASIS: 
+      /* Compute ninit = dim(subsystem defined by obj_oscilIDs)^2 */
+      ninit = 1;
+      for (int i=0; i<obj_oscilIDs.size(); i++) {
+        ninit *= mastereq->getOscillator(obj_oscilIDs[i])->getNLevels();
+      }
+      ninit = (int) pow(ninit, 2);
+      break;
   }
-  else if (initcondstr[0].compare("basis")      == 0 ) {
-    inittype = BASIS;
-
-    /* Compute ninit = dim(subsystem defined by obj_oscilIDs)^2 */
-    ninit = 1;
-    for (int i=0; i<obj_oscilIDs.size(); i++) {
-      ninit *= mastereq->getOscillator(obj_oscilIDs[i])->getNLevels();
-    }
-    ninit = (int) pow(ninit, 2);
-  }
-  else {
-    printf("Wrong setting for initial condition.\n");
-    exit(1);
-  }
-
+    
   /* --- Get processor distribution for initial condition and braid --- */
   np_init  = min(ninit, config.GetIntParam("np_init", 1));  // Size of communicator for initial consitions 
   np_init  = min(np_init, mpisize_world);
@@ -239,7 +246,7 @@ int main(int argc,char **argv)
   adjointbraidapp->InitGrids();
 
   /* Initialize the optimization */
-  OptimProblem optimproblem(config, primalbraidapp, adjointbraidapp, comm_hiop, comm_init, obj_oscilIDs, inittype, ninit);
+  OptimProblem optimproblem(config, primalbraidapp, adjointbraidapp, comm_hiop, comm_init, obj_oscilIDs, initcond_type, ninit);
   hiop::hiopNlpDenseConstraints nlp(optimproblem);
   long long int ndesign,m;
   optimproblem.get_prob_sizes(ndesign, m);
@@ -263,7 +270,7 @@ int main(int argc,char **argv)
 
 
   /* Petsc's optimization */
-  OptimCtx* optimctx = new OptimCtx(config, primalbraidapp, adjointbraidapp, comm_hiop, comm_init, obj_oscilIDs, inittype, ninit);
+  OptimCtx* optimctx = new OptimCtx(config, primalbraidapp, adjointbraidapp, comm_hiop, comm_init, obj_oscilIDs, initcond_type, ninit);
   printf("ndesign petsc %d\n", optimctx->ndesign);
 
   /* Initialize optimization solver */

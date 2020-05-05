@@ -720,3 +720,31 @@ Vec myAdjointBraidApp::PostProcess() {
 
   return 0;
 }
+
+void myBraidApp::setInitCond(Vec rho_t0){
+  braid_BaseVector ubase;
+  int size;
+  Vec x;
+      
+  /* Get braids vector at t == 0  and copy initial condition */
+  _braid_UGetVectorRef(core->GetCore(), 0, 0, &ubase);
+  if (ubase != NULL)  // only true on one processor (first, if primal app; last, if adjoint app)
+  {
+    x = ((myBraidVector *)ubase->userVector)->x;
+
+    /* Copy initial condition into braid's vector */
+    const PetscScalar *rho_ptr;
+    PetscScalar *xptr;
+    VecGetArrayRead(rho_t0, &rho_ptr);
+    VecGetArray(x, &xptr);
+    VecGetSize(x, &size);
+    for (int i=0; i < size; i++) {
+      xptr[i] = rho_ptr[i];
+    }
+    VecRestoreArrayRead(rho_t0, &rho_ptr);
+    VecRestoreArray(x, &xptr);
+
+    // VecView(x, PETSC_VIEWER_STDOUT_WORLD);
+  }
+
+}

@@ -3,13 +3,14 @@
 #include "math.h"
 #include <assert.h>
 
+
+
 #pragma once
 
 enum ObjectiveType {GATE,             // Compare final state to linear gate transformation of initial cond.
                     EXPECTEDENERGY,   // Minimizes expected energy levels.
                     GROUNDSTATE};     // Compares final state to groundstate (full matrix)
 
-enum InitialConditionType {FROMFILE, PURE, DIAGONAL, BASIS};
 
 class OptimProblem : public hiop::hiopInterfaceDenseConstraints {
 

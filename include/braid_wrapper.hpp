@@ -111,6 +111,10 @@ class myBraidApp : public BraidApp {
     /* Initialize braids time grids */
     void InitGrids();
 
+    /* Set initial condition */
+    void setInitCond(Vec rho_t0);
+
+
 };
 
 /**

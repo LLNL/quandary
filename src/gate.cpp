@@ -140,6 +140,68 @@ void Gate::compare(Vec finalstate, Vec u0, Vec v0, double& frob){
   VecRestoreSubVector(finalstate, isv, &vfinal);
 }
 
+
+void Gate::compare(Vec finalstate, Vec rho0, double& frob){
+  frob = 0.0;
+
+  /* Exit, if this is a dummy gate */
+  if (dim_vec == 0) {
+    return;
+  }
+
+  Vec ufinal, vfinal, u0, v0;
+  const PetscScalar *ufinalptr, *vfinalptr, *Re0ptr, *Im0ptr;
+
+  /* Get real and imag part of final state, x = [u,v] */
+  VecGetSubVector(finalstate, isu, &ufinal);
+  VecGetSubVector(finalstate, isv, &vfinal);
+  VecGetSubVector(rho0, isu, &u0);
+  VecGetSubVector(rho0, isv, &v0);
+  VecGetArrayRead(ufinal, &ufinalptr);
+  VecGetArrayRead(vfinal, &vfinalptr);
+
+  /* Make sure that state dimensions match the gate dimension */
+  int dimstate, dimG;
+  VecGetSize(finalstate, &dimstate); 
+  VecGetSize(Re0, &dimG);
+  if (dimstate/2 != dimG) {
+    printf("\n ERROR: Target gate dimension %d doesn't match system dimension %u\n", dimG, dimstate/2);
+    exit(1);
+  }
+
+  /* Add real part of frobenius norm || u - ReG*u0 + ImG*v0 ||^2 */
+  MatMult(ReG, u0, Re0);
+  MatMult(ImG, v0, Im0);
+  VecGetArrayRead(Re0, &Re0ptr);
+  VecGetArrayRead(Im0, &Im0ptr);
+  for (int j=0; j<dim_vec; j++) {
+    frob += pow(ufinalptr[j] - Re0ptr[j] + Im0ptr[j],2);
+  }
+  VecRestoreArrayRead(Re0, &Re0ptr);
+  VecRestoreArrayRead(Im0, &Im0ptr);
+
+  /* Add imaginary part of frobenius norm || v - ReG*v0 - ImG*u0 ||^2 */
+  MatMult(ReG, v0, Re0);
+  MatMult(ImG, u0, Im0);
+  VecGetArrayRead(Re0, &Re0ptr);
+  VecGetArrayRead(Im0, &Im0ptr);
+  for (int j=0; j<dim_vec; j++) {
+    frob += pow(vfinalptr[j] - Re0ptr[j] - Im0ptr[j],2);
+  }
+  VecRestoreArrayRead(Re0, &Re0ptr);
+  VecRestoreArrayRead(Im0, &Im0ptr);
+
+  /* obj = 1/2 * || finalstate - gate*rho(0) ||^2 */
+  frob *= 1./2.;
+
+ /* Restore */
+  VecRestoreArrayRead(ufinal, &ufinalptr);
+  VecRestoreArrayRead(vfinal, &vfinalptr);
+  VecRestoreSubVector(finalstate, isu, &ufinal);
+  VecRestoreSubVector(finalstate, isv, &vfinal);
+
+}
+
 void Gate::compare_diff(const Vec finalstate, const Vec u0, const Vec v0, Vec u0_bar, Vec v0_bar, const double frob_bar) {
 
   /* Exit, if this is a dummy gate */

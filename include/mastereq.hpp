@@ -8,13 +8,12 @@
 
 /* Available lindblad types */
 enum LindbladType {NONE, DECAY, DEPHASE, BOTH};
+enum InitialConditionType {FROMFILE, PURE, DIAGONAL, BASIS};
 
 /* 
  * Implements the Lindblad master equation
  */
 class MasterEq{
-
-  public: 
 
   protected:
     int dim;                 // Dimension of vectorized system  N^2
@@ -31,7 +30,7 @@ class MasterEq{
     std::vector<double> xi;     // Constants for frequencies of drift Hamiltonian
     std::vector<double> collapse_time;  /* Time-constants for decay and dephase operator */
 
-
+    InitialConditionType initcond_type; 
 
   private: 
     PetscInt    *col_idx_shift; // Auxiliary vector: shifted indices
@@ -51,7 +50,7 @@ class MasterEq{
     /* Default constructor sets zero */
     MasterEq();
     /* This constructor sets the variables and allocates Re, Im and M */
-    MasterEq(int noscillators_, Oscillator** oscil_vec_, const std::vector<double> xi_, LindbladType lindbladtype, const std::vector<double> collapse_time_);
+    MasterEq(int noscillators_, Oscillator** oscil_vec_, const std::vector<double> xi_, LindbladType lindbladtype_, InitialConditionType initcondtype_, const std::vector<double> collapse_time_);
     ~MasterEq();
 
     /* Return the i-th oscillator */
@@ -97,5 +96,14 @@ class MasterEq{
 
     /* Set the oscillators control function amplitudes from design vector x */
     void setControlAmplitudes(Vec x);
+
+    /* Set initial conditions 
+     * In:   iinit -- index in processors range [rank * ninit_local .. (rank+1) * ninit_local - 1]
+     *       ninit -- Number of different initial conditions 
+     *       oscilIDs -- ID of oscillators that are considered for various initial conditions 
+     * Out: initID -- Idenifyier this initial condition: Element number in matrix vectorization. 
+     *       rho_0 -- Vector for setting initial condition 
+     */
+    int getRhoT0(int iinit, std::vector<int> oscilIDs, int ninit, Vec rho0);
 };
 

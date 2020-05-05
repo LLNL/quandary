@@ -20,13 +20,14 @@ MasterEq::MasterEq(){
 }
 
 
-MasterEq::MasterEq(int noscillators_, Oscillator** oscil_vec_, const std::vector<double> xi_, LindbladType lindbladtype, const std::vector<double> collapse_time_) {
+MasterEq::MasterEq(int noscillators_, Oscillator** oscil_vec_, const std::vector<double> xi_, LindbladType lindbladtype, InitialConditionType initcond_type_, const std::vector<double> collapse_time_) {
   int ierr;
 
   noscillators = noscillators_;
   oscil_vec = oscil_vec_;
   xi = xi_;
   collapse_time = collapse_time_;
+  initcond_type = initcond_type_;
   assert(xi.size() >= (noscillators_+1) * noscillators_ / 2);
   assert(collapse_time.size() >= 2*noscillators);
 
@@ -500,3 +501,113 @@ void MasterEq::setControlAmplitudes(Vec x) {
   
 }
 
+
+int MasterEq::getRhoT0(int iinit, std::vector<int> oscilIDs, int ninit, Vec rho0){
+
+  int dim_post;
+  int initID = -1;    // Output: ID for this initial condition */
+  int dim_rho = (int) sqrt(dim); // N
+
+
+  /* Switch over type of initial condition */
+  switch (initcond_type) {
+
+    case FROMFILE:
+      /* Do nothing. Init cond is already stored */
+      break;
+
+    case PURE:
+      /* Do nothing. Init cond is already stored */
+      break;
+
+    case DIAGONAL:
+      int row, diagelem;
+
+      /* Reset the initial conditions */
+      VecZeroEntries(rho0); 
+
+      /* Get dimension of partial system behind last oscillator ID */
+      dim_post = 1;
+      for (int k = oscilIDs[oscilIDs.size()-1] + 1; k < getNOscillators(); k++) {
+        dim_post *= getOscillator(k)->getNLevels();
+      }
+
+      /* Compute index of the nonzero element in rho_m(0) = E_pre \otimes |m><m| \otimes E_post */
+      diagelem = iinit * dim_post;
+      // /* Position in vectorized q(0) */
+      row = diagelem * dim_rho + diagelem;
+
+      /* Assemble */
+      VecSetValue(rho0, row, 1.0, INSERT_VALUES);
+      VecAssemblyBegin(rho0); VecAssemblyEnd(rho0);
+
+      /* Set initial conditon ID */
+      initID = iinit * ( (int) sqrt(ninit) ) + iinit;
+
+      break;
+
+    case BASIS:
+
+      /* Reset the initial conditions */
+      VecZeroEntries(rho0); 
+
+      /* Get dimension of partial system behind last oscillator ID */
+      dim_post = 1;
+      for (int k = oscilIDs[oscilIDs.size()-1] + 1; k < getNOscillators(); k++) {
+        dim_post *= getOscillator(k)->getNLevels();
+      }
+
+      /* Get index (k,j) of basis element B_{k,j} for this initial condition index iinit */
+      int k, j;
+      k = iinit % ( (int) sqrt(ninit) );
+      j = (int) iinit / ( (int) sqrt(ninit) );   
+
+      if (k == j) {
+        /* B_{kk} = E_{kk} -> set only one element at (k,k) */
+        int elemID = j * dim_post * dim_rho + k * dim_post;
+        double val = 1.0;
+        VecSetValues(rho0, 1, &elemID, &val, INSERT_VALUES);
+      } else {
+      //   /* B_{kj} contains four non-zeros, two per row */
+        int* rows = new int[4];
+        double* vals = new double[4];
+
+        rows[0] = k * dim_post * dim_rho + k * dim_post; // (k,k)
+        rows[1] = j * dim_post * dim_rho + j * dim_post; // (j,j)
+        rows[2] = j * dim_post * dim_rho + k * dim_post; // (k,j)
+        rows[3] = k * dim_post * dim_rho + j * dim_post; // (j,k)
+
+        if (k < j) { // B_{kj} = 1/2(E_kk + E_jj) + 1/2(E_kj + E_jk)
+          vals[0] = 0.5;
+          vals[1] = 0.5;
+          vals[2] = 0.5;
+          vals[3] = 0.5;
+          VecSetValues(rho0, 4, rows, vals, INSERT_VALUES);
+        } else {  // B_{kj} = 1/2(E_kk + E_jj) + i/2(E_jk - E_kj)
+          vals[0] = 0.5;
+          vals[1] = 0.5;
+          VecSetValues(rho0, 2, rows, vals, INSERT_VALUES); // diagonal, real
+          vals[0] = -0.5;
+          vals[1] = 0.5;
+          rows[2] = rows[2] + dim; // Shift to imaginary 
+          rows[3] = rows[3] + dim;
+          VecSetValues(rho0, 2, rows+2, vals, INSERT_VALUES); // off-diagonals, imaginary
+        }
+
+        VecAssemblyBegin(rho0); VecAssemblyEnd(rho0);
+        delete [] rows; 
+        delete [] vals;
+      }
+
+      /* Set initial condition ID */
+      initID = j * ( (int) sqrt(ninit)) + k;
+
+      break;
+
+    default:
+      printf("ERROR! Wrong initial condition type: %d\n This should never happen!\n", initcond_type);
+      exit(1);
+  }
+
+  return initID;
+}
