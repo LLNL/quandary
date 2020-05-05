@@ -386,6 +386,43 @@ void MasterEq::reducedDensity(Vec fulldensitymatrix, Vec *reduced, int dim_pre, 
 }
 
 
+void MasterEq::reducedDensity_diff(Vec fulldens_bar, Vec reduced_bar, int dim_pre, int dim_post, int dim_reduced) {
+  /* sanity test */
+  int dimmat = dim_pre * dim_reduced * dim_post;
+  assert ( (int) pow(dimmat,2) == dim);
+
+ /* Iterate over reduced density matrix elements */
+  for (int i=0; i<dim_reduced; i++) {
+    for (int j=0; j<dim_reduced; j++) {
+      /* Iterate over all dim_pre blocks of size n_k * dim_post */
+      for (int l = 0; l < dim_pre; l++) {
+        int blockstartID = l * dim_reduced * dim_post; // Go to beginning of block 
+        /* iterate over elements in this block */
+        for (int m=0; m<dim_post; m++) {
+          /* Get value from reduced redens_bar */
+          int vecID_re = j * dim_reduced + i;
+          int vecID_im = vecID_re + (int) pow(dim_reduced,2);
+          double re, im;
+          VecGetValues( reduced_bar, 1, &vecID_re, &re);
+          VecGetValues( reduced_bar, 1, &vecID_im, &im);
+
+          /* Set values into full density_bar  */
+          int rho_row = blockstartID + i * dim_post + m;
+          int rho_col = blockstartID + j * dim_post + m;
+          int rho_vecID_re = rho_col * dimmat + rho_row;
+          int rho_vecID_im = rho_col * dimmat + rho_row + dim;
+
+          /* Set derivative */
+          VecSetValues(fulldens_bar, 1, &rho_vecID_re, &re, ADD_VALUES);
+          VecSetValues(fulldens_bar, 1, &rho_vecID_im, &im, ADD_VALUES);
+        }
+      }
+    }
+  }
+  VecAssemblyBegin(fulldens_bar); VecAssemblyEnd(fulldens_bar);
+
+}
+
 void MasterEq::reducedDensity_diff(Vec reddens_bar, Vec x0_re_bar, Vec x0_im_bar, int dim_pre, int dim_post, int dim_reduced) {
 
   /* sanity test */

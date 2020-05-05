@@ -183,6 +183,22 @@ double Oscillator::expectedEnergy(Vec x) {
 }
 
 
+void Oscillator::expectedEnergy_diff(Vec x, Vec x_bar, double obj_bar) {
+  int dimmat;
+  MatGetSize(NumberOP, &dimmat, NULL);
+  double num_diag;
+
+  /* Derivative of projective measure */
+  for (int i=0; i<dimmat; i++) {
+    MatGetValue(NumberOP, i, i, &num_diag);
+    int idx_diag = i * dimmat + i;
+    double val = num_diag * obj_bar;
+    VecSetValues(x_bar, 1, &idx_diag, &val, ADD_VALUES);
+  }
+  VecAssemblyBegin(x_bar); VecAssemblyEnd(x_bar);
+
+}
+
 void Oscillator::expectedEnergy_diff(Vec x, Vec x_re_bar, Vec x_im_bar, double obj_bar) {
 
   int dimmat;

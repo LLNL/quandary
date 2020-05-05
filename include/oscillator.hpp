@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include "bspline.hpp"
 #include <fstream>
+#include <iostream> 
 #include <iomanip>
 #include <petscmat.h>
 #include <vector>
@@ -54,6 +55,7 @@ class Oscillator {
 
     /* Return expected value of projective measure in basis |m> */
     double expectedEnergy(Vec x);
+    void expectedEnergy_diff(Vec x, Vec x_bar, double obj_bar);
     void expectedEnergy_diff(Vec x, Vec x_re_bar, Vec x_im_bar, double obj_bar);
 
    void population(Vec x, std::vector<double> *pop); 

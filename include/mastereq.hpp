@@ -87,10 +87,9 @@ class MasterEq{
     Mat getRHS();
 
 
-    /* Compute reduced density operator for oscillator ID given in the oscilID's vector. 
-     * OscilIDs must a consecuitive block (0,1,2 or 4,5 etc.)
-     */
+    /* Compute reduced density operator */
     void reducedDensity(Vec fulldensitymatrix, Vec *reduced, int dim_pre, int dim_post, int dim_reduced);
+    void reducedDensity_diff(Vec fulldens_bar, Vec reduced_bar, int dim_pre, int dim_post, int dim_reduced);
     void reducedDensity_diff(Vec reddens_bar, Vec x0_re_bar, Vec x0_im_bar, int dim_pre, int dim_post, int dim_reduced);
     
 

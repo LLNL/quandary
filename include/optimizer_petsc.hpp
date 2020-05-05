@@ -14,9 +14,8 @@ typedef struct OptimCtx {
   myAdjointBraidApp* adjointbraidapp; /* Adjoint BraidApp to carry out PinT backward sim. */
   int ninit;                            /* Number of initial conditions to be considered (N^2, N, or 1) */
   int ninit_local;                      /* Local number of initial conditions on this processor */
-  // Vec initcond_re, initcond_im;         /* Current initial condition TODO: DESTROY THEM SOME TIME! Or store them in the master eq! */
   Vec rho_t0;
-  // Vec initcond_re_bar, initcond_im_bar;   
+  Vec rho_t0_bar;   
 
   /* MPI stuff */
   MPI_Comm comm_hiop, comm_init;

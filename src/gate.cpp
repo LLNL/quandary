@@ -253,6 +253,65 @@ void Gate::compare_diff(const Vec finalstate, const Vec u0, const Vec v0, Vec u0
   VecRestoreSubVector(finalstate, isv, &vfinal);
   VecRestoreArray(u0_bar, &u0_barptr);
   VecRestoreArray(v0_bar, &v0_barptr);
+}
+
+
+
+void Gate::compare_diff(const Vec finalstate, const Vec rho0, Vec rho0_bar, const double frob_bar){
+
+  /* Exit, if this is a dummy gate */
+  if (dim_vec == 0) {
+    return;
+  }
+
+  Vec ufinal, vfinal, u0_bar, v0_bar, u0, v0;
+  const PetscScalar *ufinalptr, *vfinalptr, *Re0ptr, *Im0ptr;
+  PetscScalar *u0_barptr, *v0_barptr;
+
+  /* Get real and imag part of final and initial primal and adjoint states, x = [u,v] */
+  VecGetSubVector(finalstate, isu, &ufinal);
+  VecGetSubVector(finalstate, isv, &vfinal);
+  VecGetSubVector(rho0_bar, isu, &u0_bar);
+  VecGetSubVector(rho0_bar, isv, &v0_bar);
+  VecGetSubVector(rho0, isu, &u0);
+  VecGetSubVector(rho0, isv, &v0);
+  VecGetArrayRead(ufinal, &ufinalptr);
+  VecGetArrayRead(vfinal, &vfinalptr);
+  VecGetArray(u0_bar, &u0_barptr);
+  VecGetArray(v0_bar, &v0_barptr);
+
+  /* Derivative of 1/2 * J */
+  double dfb = 1./2. * frob_bar;
+
+  /* Derivative of read part of frobenius norm: 2 * (u - ReG*u0 + ImG*v0) * dfb*/
+  MatMult(ReG, u0, Re0);
+  MatMult(ImG, v0, Im0);
+  VecGetArrayRead(Re0, &Re0ptr);
+  VecGetArrayRead(Im0, &Im0ptr);
+  for (int j=0; j<dim_vec; j++) {
+    u0_barptr[j] = 2. * ( ufinalptr[j] - Re0ptr[j] + Im0ptr[j] ) * dfb;
+  }
+  VecRestoreArrayRead(Re0, &Re0ptr);
+  VecRestoreArrayRead(Im0, &Im0ptr);
+
+  /* Derivative of imaginary part of frobenius norm 2 * (v - ReG*v0 - ImG*u0) * dfb */
+  MatMult(ReG, v0, Re0);
+  MatMult(ImG, u0, Im0);
+  VecGetArrayRead(Re0, &Re0ptr);
+  VecGetArrayRead(Im0, &Im0ptr);
+  for (int j=0; j<dim_vec; j++) {
+    v0_barptr[j] = 2. * ( vfinalptr[j] - Re0ptr[j] - Im0ptr[j] ) * dfb;
+  }
+  VecRestoreArrayRead(Re0, &Re0ptr);
+  VecRestoreArrayRead(Im0, &Im0ptr);
+
+ /* Restore */
+  VecRestoreArrayRead(ufinal, &ufinalptr);
+  VecRestoreArrayRead(vfinal, &vfinalptr);
+  VecRestoreSubVector(finalstate, isu, &ufinal);
+  VecRestoreSubVector(finalstate, isv, &vfinal);
+  VecRestoreArray(u0_bar, &u0_barptr);
+  VecRestoreArray(v0_bar, &v0_barptr);
 
 }
 
@@ -270,6 +329,7 @@ XGate::XGate() : Gate(2) {
   /* Assemble vectorized target gate \bar V \kron V from  V = Va + i Vb*/
   assembleGate();
 }
+
 XGate::~XGate() {}
 
 YGate::YGate() : Gate(2) { 
