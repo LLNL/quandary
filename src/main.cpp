@@ -274,7 +274,6 @@ int main(int argc,char **argv)
   printf("ndesign petsc %d\n", optimctx->ndesign);
 
   /* Initialize optimization solver */
-  Tao* optim_tao = new Tao; 
   Vec xinit, xlower, xupper;
   VecCreate(PETSC_COMM_WORLD, &xinit);
   VecSetSizes(xinit, PETSC_DECIDE, 40);
@@ -282,6 +281,8 @@ int main(int argc,char **argv)
   VecDuplicate(xinit, &xlower);
   VecDuplicate(xinit, &xupper);
 
+  Tao* optim_tao = new Tao; 
+  TaoCreate(PETSC_COMM_WORLD, optim_tao);
   OptimTao_Setup(optim_tao, optimctx, config, xinit, xlower, xupper);
 
 
@@ -295,7 +296,7 @@ int main(int argc,char **argv)
     optimproblem.iterate_callback(-1, objective, ndesign, myinit, NULL, NULL, 0, NULL, NULL, -0.0, -0.0, -0.0, -0.0, -0.0, 0);
 
     double newobjpetsc;
-    optim_evalObjective(*optim_tao, xinit, &newobjpetsc, optimctx);
+    OptimTao_EvalObjective(*optim_tao, xinit, &newobjpetsc, optimctx);
     printf("New objective %1.14e\n", newobjpetsc);
  
   } 
@@ -319,7 +320,7 @@ int main(int argc,char **argv)
     VecSetSizes(newgrad, PETSC_DECIDE, optimctx->ndesign);
     VecSetUp(newgrad);
     VecZeroEntries(newgrad);
-    optim_evalGradient(*optim_tao, xinit, newgrad, optimctx);
+    OptimTao_EvalGradient(*optim_tao, xinit, newgrad, optimctx);
     VecView(newgrad, PETSC_VIEWER_STDOUT_WORLD);
     VecNorm(newgrad, NORM_2, &gnorm);
     printf("New grad norm: %1.14e\n", gnorm);
@@ -330,8 +331,12 @@ int main(int argc,char **argv)
     if (mpirank_world == 0) printf("Now starting HiOp... \n");
     optimstatus = optimsolver.run();
 
-    // TaoSolve(*optim_tao);
+    if (mpirank_world == 0) printf("Now starting TaoSolve()... \n");
+    TaoSolve(*optim_tao);
   }
+
+  /* Finalize Tao optimization */
+  OptimTao_SolutionCallback(optim_tao, optimctx);
 
   /* Get timings */
   double UsedTime = MPI_Wtime() - StartTime;

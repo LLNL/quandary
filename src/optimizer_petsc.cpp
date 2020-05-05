@@ -34,6 +34,12 @@ OptimCtx::OptimCtx(MapParam config, myBraidApp* primalbraidapp_, myAdjointBraidA
 
   /* Store other optimization parameters */
   gamma_tik = config.GetDoubleParam("optim_regul", 1e-4);
+  gatol = config.GetDoubleParam("optim_atol", 1e-8);
+  grtol = config.GetDoubleParam("optim_rtol", 1e-4);
+  maxiter = config.GetIntParam("optim_maxiter", 200);
+
+  /* Reset */
+  objective = 0.0;
 
   /* Store objective function type */
   std::vector<std::string> objective_str;
@@ -109,8 +115,14 @@ OptimCtx::OptimCtx(MapParam config, myBraidApp* primalbraidapp_, myAdjointBraidA
   VecZeroEntries(rho_t0_bar);
   VecAssemblyBegin(rho_t0_bar); VecAssemblyEnd(rho_t0_bar);
 
-  /* Reset */
-  objective = 0.0;
+  /* Output */
+  printlevel = config.GetIntParam("optim_printlevel", 1);
+  if (mpirank_world == 0 && printlevel > 0) {
+    char filename[255];
+    sprintf(filename, "%s/optimTao.dat", primalbraidapp->datadir.c_str());
+    optimfile = fopen(filename, "w");
+    fprintf(optimfile, "#iter    obj_value           ||grad||               ||tao_res||\n");
+  } 
 
 }
 
@@ -118,6 +130,7 @@ OptimCtx::OptimCtx(MapParam config, myBraidApp* primalbraidapp_, myAdjointBraidA
 OptimCtx::~OptimCtx() {
   VecDestroy(&rho_t0);
   VecDestroy(&rho_t0_bar);
+  if (mpirank_world == 0 && printlevel > 0) fclose(optimfile);
 }
 
 
@@ -387,10 +400,17 @@ void OptimCtx::objectiveT_diff(Vec finalstate, double obj, double obj_bar){
 
 void OptimTao_Setup(Tao* tao, OptimCtx* ctx, MapParam config, Vec xinit, Vec xlower, Vec xupper){
 
-  TaoCreate(PETSC_COMM_WORLD, tao);
-  TaoSetType(*tao,TAOBLMVM);         // Optim type: taoblmvm vs BQNLS ??
-  TaoSetObjectiveRoutine(*tao, optim_evalObjective, (void *)ctx);
-  TaoSetGradientRoutine(*tao, optim_evalGradient,(void *)ctx);
+  /* Set user-defined objective and gradient evaluation routines */
+  TaoSetObjectiveRoutine(*tao, OptimTao_EvalObjective, (void *)ctx);
+  TaoSetGradientRoutine(*tao, OptimTao_EvalGradient,(void *)ctx);
+
+  /* Set optimization type and parameters */
+  TaoSetType(*tao,TAOBQNLS);         // Optim type: taoblmvm vs BQNLS ??
+  // TaoSetType(*tao,TAOBLMVM);
+  TaoSetMaximumIterations(*tao, ctx->maxiter);
+  printf("Setting MaxIter %d\n", ctx->maxiter);
+  TaoSetTolerances(*tao, ctx->gatol, PETSC_DEFAULT, ctx->grtol);
+  TaoSetMonitor(*tao, OptimTao_Monitor, (void*)ctx, NULL);
 
   /* Set the optimization bounds */
   std::vector<double> bounds;
@@ -427,7 +447,7 @@ void OptimTao_Setup(Tao* tao, OptimCtx* ctx, MapParam config, Vec xinit, Vec xlo
 }
 
 
-PetscErrorCode optim_evalObjective(Tao tao, Vec x, PetscReal *f, void*ptr){
+PetscErrorCode OptimTao_EvalObjective(Tao tao, Vec x, PetscReal *f, void*ptr){
   OptimCtx* ctx = (OptimCtx*) ptr;
   MasterEq* mastereq = ctx->primalbraidapp->mastereq;
 
@@ -478,7 +498,7 @@ PetscErrorCode optim_evalObjective(Tao tao, Vec x, PetscReal *f, void*ptr){
 }
 
 
-PetscErrorCode optim_evalGradient(Tao tao, Vec x, Vec G, void*ptr){
+PetscErrorCode OptimTao_EvalGradient(Tao tao, Vec x, Vec G, void*ptr){
   OptimCtx* ctx = (OptimCtx*) ptr;
   MasterEq* mastereq = ctx->primalbraidapp->mastereq;
 
@@ -554,10 +574,96 @@ PetscErrorCode optim_evalGradient(Tao tao, Vec x, Vec G, void*ptr){
 
 
   /* Compute and store gradient norm */
-  double gradnorm = 0.0;
-  VecNorm(G, NORM_2, &gradnorm);
-  if (ctx->mpirank_world == 0) printf("%d: ||grad|| = %1.14e\n", ctx->mpirank_init, gradnorm);
-
+  VecNorm(G, NORM_2, &(ctx->gnorm));
+  // if (ctx->mpirank_world == 0) printf("%d: ||grad|| = %1.14e\n", ctx->mpirank_init, ctx->gnorm);
 
   return 0;
+}
+
+
+
+PetscErrorCode OptimTao_Monitor(Tao tao,void*ptr){
+  OptimCtx* ctx = (OptimCtx*) ptr;
+
+  /* Output */
+  if (ctx->mpirank_world == 0 && ctx->printlevel > 0) {
+
+    int iter;
+    double deltax;
+    TaoConvergedReason reason;
+    TaoGetSolutionStatus(tao, &iter, NULL, NULL, NULL, &deltax, &reason);
+
+    /* Print to optimization file */
+    fprintf(ctx->optimfile, "%05d  %1.14e  %1.14e  %.12f\n", iter, ctx->objective, ctx->gnorm, deltax);
+    fflush(ctx->optimfile);
+
+    /* Print parameters and controls to file */
+    if ( ctx->printlevel > 1 || iter % 10 == 0 ) {
+      char filename[255];
+
+      /* Print current parameters to file */
+      Vec params;
+      const PetscScalar* params_ptr;
+      TaoGetSolutionVector(tao, &params);
+      VecGetArrayRead(params, &params_ptr);
+      FILE *paramfile;
+      sprintf(filename, "%s/param_iter%04d.dat", ctx->primalbraidapp->datadir.c_str(), iter);
+      paramfile = fopen(filename, "w");
+      for (int i=0; i<ctx->ndesign; i++){
+        fprintf(paramfile, "%1.14e\n", params_ptr[i]);
+      }
+      fclose(paramfile);
+      VecRestoreArrayRead(params, &params_ptr);
+
+      /* Print control functions */
+      ctx->primalbraidapp->mastereq->setControlAmplitudes(params);
+      int ntime = ctx->primalbraidapp->ntime;
+      double dt = ctx->primalbraidapp->total_time / ntime;
+      MasterEq* mastereq = ctx->primalbraidapp->mastereq;
+      for (int ioscil = 0; ioscil < mastereq->getNOscillators(); ioscil++) {
+          sprintf(filename, "%s/control_iter%04d_%02d.dat", ctx->primalbraidapp->datadir.c_str(), iter, ioscil+1);
+          mastereq->getOscillator(ioscil)->flushControl(ntime, dt, filename);
+      }
+    }
+  }
+
+  return 0;
+}
+
+
+void OptimTao_SolutionCallback(Tao* tao, OptimCtx* ctx){
+  if (ctx->mpirank_world == 0 && ctx->printlevel > 0) {
+    char filename[255];
+    FILE *paramfile;
+
+    int iter;
+    double obj, gnorm, cnorm, dx;
+    TaoConvergedReason reason;
+    TaoGetSolutionStatus(*tao, &iter, &obj, &gnorm, &cnorm, &dx, &reason);
+    std::cout<< "\n Optimization finished!\n";
+    std::cout<< " TaoSolve termination reason: " << reason << std::endl;
+
+    /* Print optimized parameters */
+    Vec params;
+    const PetscScalar* params_ptr;
+    TaoGetSolutionVector(*tao, &params);
+    VecGetArrayRead(params, &params_ptr);
+    sprintf(filename, "%s/param_optimized.dat", ctx->primalbraidapp->datadir.c_str());
+    paramfile = fopen(filename, "w");
+    for (int i=0; i<ctx->ndesign; i++){
+      fprintf(paramfile, "%1.14e\n", params_ptr[i]);
+    }
+    fclose(paramfile);
+    VecRestoreArrayRead(params, &params_ptr);
+
+    /* Print control functions */
+    ctx->primalbraidapp->mastereq->setControlAmplitudes(params);
+    int ntime = ctx->primalbraidapp->ntime;
+    double dt = ctx->primalbraidapp->total_time / ntime;
+    MasterEq* mastereq = ctx->primalbraidapp->mastereq;
+    for (int ioscil = 0; ioscil < mastereq->getNOscillators(); ioscil++) {
+        sprintf(filename, "%s/control_optimized_%02d.dat", ctx->primalbraidapp->datadir.c_str(), ioscil+1);
+        mastereq->getOscillator(ioscil)->flushControl(ntime, dt, filename);
+    }
+  }
 }

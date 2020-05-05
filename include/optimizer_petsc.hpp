@@ -14,8 +14,8 @@ typedef struct OptimCtx {
   myAdjointBraidApp* adjointbraidapp; /* Adjoint BraidApp to carry out PinT backward sim. */
   int ninit;                            /* Number of initial conditions to be considered (N^2, N, or 1) */
   int ninit_local;                      /* Local number of initial conditions on this processor */
-  Vec rho_t0;
-  Vec rho_t0_bar;   
+  Vec rho_t0;                            /* Storage for initial condition of the ODE */
+  Vec rho_t0_bar;                        /* Adjoint of ODE initial condition */
 
   /* MPI stuff */
   MPI_Comm comm_hiop, comm_init;
@@ -31,7 +31,15 @@ typedef struct OptimCtx {
   Gate  *targetgate;               /* Target gate */
   int ndesign;                     /* Number of global design parameters */
   double objective;                /* Holds current objective function */
+  double gnorm;                    /* Holds current norm of gradient */
   double gamma_tik;                /* Parameter for tikhonov regularization */
+  double gatol;                    /* Stopping criterion based on absolute gradient norm */
+  double grtol;                    /* Stopping criterion based on relative gradient norm */
+  int maxiter;                     /* Stopping criterion based on maximum number of iterations */
+
+  /* Output */
+  int printlevel;      /* Level of output: 0 - no output, 1 - optimization progress to file */
+  FILE* optimfile;     /* Output file to log optimization progress */
 
   /* Constructor */
   OptimCtx(MapParam config, myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, MPI_Comm comm_hiop_, MPI_Comm comm_init_, std::vector<int> obj_oscilIDs_, InitialConditionType initcondtype_, int ninit_);
@@ -49,10 +57,17 @@ typedef struct OptimCtx {
 } OptimCtx;
 
 
+/* Initialize the Tao optimizer, set options, starting point, etc */
 void OptimTao_Setup(Tao* tao, OptimCtx* ctx, MapParam config, Vec xinit, Vec xlower, Vec xupper);
 
+/* Call this after TaoSolve() has finished to print out some information */
+void OptimTao_SolutionCallback(Tao* tao, OptimCtx* ctx);
+
+/* Monitor the optimization progress. This routine is called in each iteration of TaoSolve() */
+PetscErrorCode OptimTao_Monitor(Tao tao,void*ptr);
+
 /* Petsc's Tao interface routine for evaluating the objective function f = f(x) */
-PetscErrorCode optim_evalObjective(Tao tao, Vec x, PetscReal *f, void*ptr);
+PetscErrorCode OptimTao_EvalObjective(Tao tao, Vec x, PetscReal *f, void*ptr);
 
 /* Petsc's Tao interface routine for evaluating the gradient g = \nabla f(x) */
-PetscErrorCode optim_evalGradient(Tao tao, Vec x, Vec G, void*ptr);
+PetscErrorCode OptimTao_EvalGradient(Tao tao, Vec x, Vec G, void*ptr);
