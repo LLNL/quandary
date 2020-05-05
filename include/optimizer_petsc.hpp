@@ -7,7 +7,7 @@
 #pragma once
 
 
-typedef struct {
+typedef struct OptimCtx {
 
   /* ODE stuff */
   myBraidApp* primalbraidapp;         /* Primal BraidApp to carry out PinT forward sim.*/
@@ -34,10 +34,12 @@ typedef struct {
   double objective;                /* Holds current objective function */
   double gamma_tik;                /* Parameter for tikhonov regularization */
 
+  /* Constructor */
+  OptimCtx(MapParam config, myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, MPI_Comm comm_hiop_, MPI_Comm comm_init_, std::vector<int> obj_oscilIDs_, InitialConditionType initcondtype_, int ninit_);
+  ~OptimCtx();
 
 } OptimCtx;
 
-void OptimCtx_Setup(OptimCtx* ctx, MapParam config, myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, MPI_Comm comm_hiop_, MPI_Comm comm_init_, std::vector<int> obj_oscilIDs_, InitialConditionType initcondtype_, int ninit_);
 
 void OptimTao_Setup(Tao* tao, OptimCtx* ctx, MapParam config, Vec xinit, Vec xlower, Vec xupper);
 

@@ -263,9 +263,7 @@ int main(int argc,char **argv)
 
 
   /* Petsc's optimization */
-  OptimCtx* optimctx = new OptimCtx;
-  /* Initialize optimization context */
-  OptimCtx_Setup(optimctx, config, primalbraidapp, adjointbraidapp, comm_hiop, comm_init, obj_oscilIDs, inittype, ninit);
+  OptimCtx* optimctx = new OptimCtx(config, primalbraidapp, adjointbraidapp, comm_hiop, comm_init, obj_oscilIDs, inittype, ninit);
   printf("ndesign petsc %d\n", optimctx->ndesign);
 
   /* Initialize optimization solver */
@@ -678,6 +676,8 @@ int main(int argc,char **argv)
 
   /* Free tao */
   TaoDestroy(optim_tao);
+
+  delete optimctx;
 
   VecDestroy(&xinit);
   VecDestroy(&xlower);

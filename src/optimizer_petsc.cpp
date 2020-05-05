@@ -1,6 +1,131 @@
 #include "optimizer_petsc.hpp"
 
 
+OptimCtx::OptimCtx(MapParam config, myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, MPI_Comm comm_hiop_, MPI_Comm comm_init_, std::vector<int> obj_oscilIDs_, InitialConditionType initcondtype_, int ninit_) {
+
+  primalbraidapp  = primalbraidapp_;
+  adjointbraidapp = adjointbraidapp_;
+  initcond_type = initcondtype_;
+  ninit = ninit_;
+  comm_hiop = comm_hiop_;
+  comm_init = comm_init_;
+  obj_oscilIDs = obj_oscilIDs_;
+
+  /* Store ranks and sizes of communicators */
+  MPI_Comm_rank(primalbraidapp->comm_braid, &mpirank_braid);
+  MPI_Comm_size(primalbraidapp->comm_braid, &mpisize_braid);
+  MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
+  MPI_Comm_size(MPI_COMM_WORLD, &mpisize_world);
+  MPI_Comm_rank(PETSC_COMM_WORLD, &mpirank_space);
+  MPI_Comm_size(PETSC_COMM_WORLD, &mpisize_space);
+  MPI_Comm_rank(comm_hiop, &mpirank_optim);
+  MPI_Comm_size(comm_hiop, &mpisize_optim);
+  MPI_Comm_rank(comm_init, &mpirank_init);
+  MPI_Comm_size(comm_init, &mpisize_init);
+
+  /* Store number of initial conditions per init-processor group */
+  ninit_local = ninit / mpisize_init; 
+
+  /* Store number of design parameters */
+  int n = 0;
+  for (int ioscil = 0; ioscil < primalbraidapp->mastereq->getNOscillators(); ioscil++) {
+      n += primalbraidapp->mastereq->getOscillator(ioscil)->getNParams(); 
+  }
+  ndesign = n;
+
+  /* Store other optimization parameters */
+  gamma_tik = config.GetDoubleParam("optim_regul", 1e-4);
+
+  /* Store objective function type */
+  std::vector<std::string> objective_str;
+  config.GetVecStrParam("optim_objective", objective_str);
+  targetgate = NULL;
+  if ( objective_str[0].compare("gate") ==0 ) {
+    objective_type = GATE;
+    /* Read and initialize the targetgate */
+    assert ( objective_str.size() >=2 );
+    if      (objective_str[1].compare("none") == 0)  targetgate = new Gate(); // dummy gate. do nothing
+    else if (objective_str[1].compare("xgate") == 0) targetgate = new XGate(); 
+    else if (objective_str[1].compare("ygate") == 0) targetgate = new YGate(); 
+    else if (objective_str[1].compare("zgate") == 0) targetgate = new ZGate();
+    else if (objective_str[1].compare("hadamard") == 0) targetgate = new HadamardGate();
+    else if (objective_str[1].compare("cnot") == 0) targetgate = new CNOT(); 
+    else {
+      printf("\n\n ERROR: Unnown gate type: %s.\n", objective_str[1].c_str());
+      printf(" Available gates are 'none', 'xgate', 'ygate', 'zgate', 'hadamard', 'cnot'\n");
+      exit(1);
+    }
+  }  
+  else if (objective_str[0].compare("expectedEnergy")==0) objective_type = EXPECTEDENERGY;
+  else if (objective_str[0].compare("groundstate")   ==0) objective_type = GROUNDSTATE;
+  else {
+      printf("\n\n ERROR: Unknown objective function: %s\n", objective_str[0].c_str());
+      exit(1);
+  }
+
+  /* Set up and store initial condition vectors */
+  VecCreate(PETSC_COMM_WORLD, &initcond_re); 
+  VecSetSizes(initcond_re,PETSC_DECIDE,primalbraidapp->mastereq->getDim());
+  VecSetFromOptions(initcond_re);
+  VecDuplicate(initcond_re, &initcond_im);
+  VecDuplicate(initcond_re, &initcond_re_bar);
+  VecDuplicate(initcond_re, &initcond_im_bar);
+  
+  if (initcond_type == PURE) { /* Initialize with tensor product of unit vectors. */
+    std::vector<std::string> initcondstr;
+    config.GetVecStrParam("optim_initialcondition", initcondstr);
+    std::vector<int> unitids;
+    for (int i=1; i<initcondstr.size(); i++) unitids.push_back(atoi(initcondstr[i].c_str()));
+    assert (unitids.size() == primalbraidapp->mastereq->getNOscillators());
+    // Compute index of diagonal elements that is one.
+    int diag_id = 0.0;
+    for (int k=0; k < unitids.size(); k++) {
+      assert (unitids[k] < primalbraidapp->mastereq->getOscillator(k)->getNLevels());
+      int dim_postkron = 1;
+      for (int m=k+1; m < unitids.size(); m++) {
+        dim_postkron *= primalbraidapp->mastereq->getOscillator(m)->getNLevels();
+      }
+      diag_id += unitids[k] * dim_postkron;
+    }
+    int vec_id = diag_id * (int)sqrt(primalbraidapp->mastereq->getDim()) + diag_id;
+    VecSetValue(initcond_re, vec_id, 1.0, INSERT_VALUES);
+  }
+  else if (initcond_type == FROMFILE) { /* Read initial condition from file */
+    int dim = primalbraidapp->mastereq->getDim();
+    double * vec = new double[2*dim];
+
+    std::vector<std::string> initcondstr;
+    config.GetVecStrParam("optim_initialcondition", initcondstr);
+    if (mpirank_world == 0) {
+      assert (initcondstr.size()==2);
+      std::string filename = initcondstr[1];
+      read_vector(filename.c_str(), vec, 2*dim);
+    }
+    MPI_Bcast(vec, 2*dim, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    for (int i = 0; i < dim; i++) {
+      if (vec[i]     != 0.0) VecSetValue(initcond_re, i, vec[i],     INSERT_VALUES);
+      if (vec[i+dim] != 0.0) VecSetValue(initcond_im, i, vec[i+dim], INSERT_VALUES);
+    }
+    delete [] vec;
+  }
+  VecAssemblyBegin(initcond_re); VecAssemblyEnd(initcond_re);
+  VecAssemblyBegin(initcond_im); VecAssemblyEnd(initcond_im);
+  VecAssemblyBegin(initcond_re_bar); VecAssemblyEnd(initcond_re_bar);
+  VecAssemblyBegin(initcond_im_bar); VecAssemblyEnd(initcond_im_bar);
+
+  /* Reset */
+  objective = 0.0;
+
+}
+
+
+OptimCtx::~OptimCtx() {
+  VecDestroy(&initcond_re);
+  VecDestroy(&initcond_im);
+  VecDestroy(&initcond_re_bar);
+  VecDestroy(&initcond_im_bar);
+}
+
 void OptimCtx_Setup(OptimCtx* ctx, MapParam config, myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, MPI_Comm comm_hiop_, MPI_Comm comm_init_, std::vector<int> obj_oscilIDs_, InitialConditionType inittype_, int ninit_){
   ctx->primalbraidapp  = primalbraidapp_;
   ctx->adjointbraidapp = adjointbraidapp_;
