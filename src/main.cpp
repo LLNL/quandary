@@ -260,9 +260,6 @@ int main(int argc,char **argv)
   hiop::hiopAlgFilterIPM optimsolver(&nlp);
   hiop::hiopSolveStatus  optimstatus;
 
-
-
-  /* --- Test optimproblem --- */
   if (mpirank_world == 0) printf("# ndesign=%d\n", ndesign);
   double* myinit = new double[ndesign];
   double* optimgrad = new double[ndesign];
@@ -288,54 +285,59 @@ int main(int argc,char **argv)
    /* Start timer */
   double StartTime = MPI_Wtime();
 
+  std::string optimizer = config.GetStrParam("optimizer", "tao");
+  
   /* --- Solve primal --- */
   if (runtype == primal || runtype == adjoint) {
-    optimproblem.eval_f(ndesign, myinit, true, objective);
-    if (mpirank_world == 0) printf("%d: Primal Only: Objective %1.14e, Fidelity: %1.8f\n", mpirank_world, objective, optimproblem.fidelity);
-    optimproblem.iterate_callback(-1, objective, ndesign, myinit, NULL, NULL, 0, NULL, NULL, -0.0, -0.0, -0.0, -0.0, -0.0, 0);
-
-    double newobjpetsc;
-    OptimTao_EvalObjective(*optim_tao, xinit, &newobjpetsc, optimctx);
-    printf("New objective %1.14e\n", newobjpetsc);
- 
+    if (optimizer.compare("hiop")==0) {
+      optimproblem.eval_f(ndesign, myinit, true, objective);
+      if (mpirank_world == 0) printf("%d: HiOp primal: Objective %1.14e, Fidelity: %1.8f\n", mpirank_world, objective, optimproblem.fidelity);
+      optimproblem.iterate_callback(-1, objective, ndesign, myinit, NULL, NULL, 0, NULL, NULL, -0.0, -0.0, -0.0, -0.0, -0.0, 0);
+    } else  {
+      OptimTao_EvalObjective(*optim_tao, xinit, &objective, optimctx);
+      if (mpirank_world == 0) printf("%d: Tao primal: Objective %1.14e, \n", mpirank_world, objective);
+    }
   } 
   
   /* --- Solve adjoint --- */
   if (runtype == adjoint) {
-    optimproblem.eval_grad_f(ndesign, myinit, true, optimgrad);
     double gnorm = 0.0;
-    if (mpirank_world == 0) {
-      printf("\n%d: My awesome gradient:\n", mpirank_world);
-      for (int i=0; i<ndesign; i++) {
-        gnorm += pow(optimgrad[i], 2.0);
-        printf("%1.14e\n", optimgrad[i]);
+    if (optimizer.compare("hiop")==0) {
+      optimproblem.eval_grad_f(ndesign, myinit, true, optimgrad);
+      if (mpirank_world == 0) {
+        printf("\n%d: HiOp gradient:\n", mpirank_world);
+        for (int i=0; i<ndesign; i++) {
+          gnorm += pow(optimgrad[i], 2.0);
+          printf("%1.14e\n", optimgrad[i]);
+        }
+        printf("HiOp gradient norm: %1.14e\n", sqrt(gnorm));
       }
-      printf("Gradient norm: %1.14e\n", sqrt(gnorm));
+      optimproblem.iterate_callback(-1, objective, ndesign, myinit, NULL, NULL, 0, NULL, NULL, -0.0, -0.0, -0.0, -0.0, -0.0, 0);
+    } else {
+      Vec petscgrad;
+      VecCreate(PETSC_COMM_WORLD, &petscgrad);
+      VecSetSizes(petscgrad, PETSC_DECIDE, optimctx->ndesign);
+      VecSetUp(petscgrad);
+      VecZeroEntries(petscgrad);
+      OptimTao_EvalGradient(*optim_tao, xinit, petscgrad, optimctx);
+      VecView(petscgrad, PETSC_VIEWER_STDOUT_WORLD);
+      VecNorm(petscgrad, NORM_2, &gnorm);
+      printf("Tao gradient norm: %1.14e\n", gnorm);
     }
-    optimproblem.iterate_callback(-1, objective, ndesign, myinit, NULL, NULL, 0, NULL, NULL, -0.0, -0.0, -0.0, -0.0, -0.0, 0);
-
-    Vec newgrad;
-    VecCreate(PETSC_COMM_WORLD, &newgrad);
-    VecSetSizes(newgrad, PETSC_DECIDE, optimctx->ndesign);
-    VecSetUp(newgrad);
-    VecZeroEntries(newgrad);
-    OptimTao_EvalGradient(*optim_tao, xinit, newgrad, optimctx);
-    VecView(newgrad, PETSC_VIEWER_STDOUT_WORLD);
-    VecNorm(newgrad, NORM_2, &gnorm);
-    printf("New grad norm: %1.14e\n", gnorm);
   }
 
   /* Solve the optimization  */
   if (runtype == optimization) {
-    if (mpirank_world == 0) printf("Now starting HiOp... \n");
-    optimstatus = optimsolver.run();
-
-    if (mpirank_world == 0) printf("Now starting TaoSolve()... \n");
-    TaoSolve(*optim_tao);
+    if (optimizer.compare("hiop")==0) {
+      if (mpirank_world == 0) printf("\nNow starting HiOp... \n");
+      optimstatus = optimsolver.run();
+    } else {
+      if (mpirank_world == 0) printf("\nNow starting TaoSolve()... \n");
+      TaoSolve(*optim_tao);
+      /* Finalize Tao optimization */
+      OptimTao_SolutionCallback(optim_tao, optimctx);
+    }
   }
-
-  /* Finalize Tao optimization */
-  OptimTao_SolutionCallback(optim_tao, optimctx);
 
   /* Get timings */
   double UsedTime = MPI_Wtime() - StartTime;
