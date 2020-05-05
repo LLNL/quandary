@@ -208,6 +208,183 @@ void OptimCtx::getStartingPoint(Vec xinit, std::string start_type, std::vector<d
 
 
 
+double OptimCtx::objectiveT(Vec finalstate){
+  double obj_local = 0.0;
+
+  if (finalstate != NULL) {
+
+    switch (objective_type) {
+      case GATE:
+        /* compare state to linear transformation of initial conditions */
+        targetgate->compare(finalstate, rho_t0, obj_local);
+        break;
+
+      case EXPECTEDENERGY:
+        /* compute the expected value of energy levels for each oscillator */
+        obj_local = 0.0;
+        for (int i=0; i<obj_oscilIDs.size(); i++) {
+          obj_local += primalbraidapp->mastereq->getOscillator(obj_oscilIDs[i])->expectedEnergy(finalstate);
+        }
+        obj_local = pow(obj_local, 2.0);
+        break;
+
+      case GROUNDSTATE:
+        /* compare full or pariatl state to groundstate */
+        MasterEq *meq= primalbraidapp->mastereq;
+        Vec state;
+
+        /* If sub-system is requested, compute reduced density operator first */
+        if (obj_oscilIDs.size() < meq->getNOscillators()) { 
+          
+          /* Get dimensions of preceding and following subsystem */
+          int dim_pre  = 1; 
+          int dim_post = 1;
+          for (int iosc = 0; iosc < meq->getNOscillators(); iosc++) {
+            if ( iosc < obj_oscilIDs[0])                      
+              dim_pre  *= meq->getOscillator(iosc)->getNLevels();
+            if ( iosc > obj_oscilIDs[obj_oscilIDs.size()-1])   
+              dim_post *= meq->getOscillator(iosc)->getNLevels();
+          }
+
+          /* Create reduced density matrix */
+          int dim_reduced = 1;
+          for (int i = 0; i < obj_oscilIDs.size();i++) {
+            dim_reduced *= meq->getOscillator(obj_oscilIDs[i])->getNLevels();
+          }
+          VecCreate(PETSC_COMM_WORLD, &state);
+          VecSetSizes(state, PETSC_DECIDE, 2*dim_reduced*dim_reduced);
+          VecSetFromOptions(state);
+
+          /* Fill reduced density matrix */
+          meq->reducedDensity(finalstate, &state, dim_pre, dim_post, dim_reduced);
+
+        } else { // full density matrix system 
+
+           state = finalstate; 
+
+        }
+
+        // PetscViewerSetFormat(PETSC_VIEWER_STDOUT_WORLD, 	PETSC_VIEWER_ASCII_MATLAB );
+        // VecView(state, PETSC_VIEWER_STDOUT_WORLD);
+
+        /* Compute frobenius norm: frob = || q(T) - e_1 ||^2 */
+        int dimstate;
+        const PetscScalar *stateptr;
+        VecGetSize(state, &dimstate);
+        VecGetArrayRead(state, &stateptr);
+        obj_local = 0.0;
+        obj_local += pow(stateptr[0] - 1.0, 2); 
+        for (int i = 1; i < dimstate; i++){
+           obj_local += pow(stateptr[i], 2);
+        }
+        VecRestoreArrayRead(state, &stateptr);
+
+        /* Destroy reduced density matrix, if it has been created */
+        if (obj_oscilIDs.size() < primalbraidapp->mastereq->getNOscillators()) { 
+          VecDestroy(&state);
+        }
+
+        break;
+    }
+
+  }
+
+  return obj_local;
+}
+
+
+void OptimCtx::objectiveT_diff(Vec finalstate, double obj, double obj_bar){
+
+  /* Reset adjoints */
+  VecZeroEntries(rho_t0_bar);
+
+  if (finalstate != NULL) {
+    switch (objective_type) {
+      case GATE:
+        targetgate->compare_diff(finalstate, rho_t0, rho_t0_bar, obj_bar);
+        break;
+
+      case EXPECTEDENERGY:
+        double tmp;
+        tmp = 2. * sqrt(obj) * obj_bar;
+        // tmp = obj_bar;
+        for (int i=0; i<obj_oscilIDs.size(); i++) {
+          primalbraidapp->mastereq->getOscillator(obj_oscilIDs[i])->expectedEnergy_diff(finalstate, rho_t0_bar, tmp);
+        }
+        break;
+
+    case GROUNDSTATE:
+
+        MasterEq *meq= primalbraidapp->mastereq;
+        Vec state;
+        int dim_pre = 1;
+        int dim_post = 1;
+        int dim_reduced = 1;
+
+        /* If sub-system is requested, compute reduced density operator first */
+        if (obj_oscilIDs.size() < primalbraidapp->mastereq->getNOscillators()) { 
+          /* Get dimensions of preceding and following subsystem */
+          for (int iosc = 0; iosc < meq->getNOscillators(); iosc++) {
+            if ( iosc < obj_oscilIDs[0])                      
+              dim_pre  *= meq->getOscillator(iosc)->getNLevels();
+            if ( iosc > obj_oscilIDs[obj_oscilIDs.size()-1])   
+              dim_post *= meq->getOscillator(iosc)->getNLevels();
+          }
+
+          /* Create reduced density matrix */
+          for (int i = 0; i < obj_oscilIDs.size();i++) {
+            dim_reduced *= meq->getOscillator(obj_oscilIDs[i])->getNLevels();
+          }
+          VecCreate(PETSC_COMM_WORLD, &state);
+          VecSetSizes(state, PETSC_DECIDE, 2*dim_reduced*dim_reduced);
+          VecSetFromOptions(state);
+
+          /* Fill reduced density matrix */
+          meq->reducedDensity(finalstate, &state, dim_pre, dim_post, dim_reduced);
+
+        } else { // full density matrix system
+           state = finalstate;
+        }
+
+      const PetscScalar *stateptr;
+      PetscScalar *statebarptr;
+      Vec statebar;
+      VecDuplicate(state, &statebar);
+      VecGetArrayRead(state, &stateptr);
+      VecGetArray(statebar, &statebarptr);
+
+      /* Derivative of frobenius norm: 2 * (q(T) - e_1) * frob_bar */
+      int dimstate;
+      VecGetSize(state, &dimstate);
+      statebarptr[0] += 2. * ( stateptr[0] - 1.0 ) * obj_bar;
+      for (int i=1; i<dimstate; i++) {
+        statebarptr[i] += 2. * stateptr[i] * obj_bar;
+      }
+      VecRestoreArrayRead(state, &stateptr);
+
+      /* Derivative of partial trace */
+      if (obj_oscilIDs.size() < meq->getNOscillators()) {
+        meq->reducedDensity_diff(rho_t0_bar, statebar, dim_pre, dim_post, dim_reduced);
+        VecDestroy(&state);
+      } else {
+        PetscScalar *rho_bar_ptr;
+        VecGetArray(rho_t0_bar, &rho_bar_ptr);
+        const PetscScalar *statebarptr;
+        VecGetArrayRead(statebar, &statebarptr);
+        for (int i=0; i<dimstate; i++){
+          rho_bar_ptr[i] += statebarptr[i];
+        }
+        VecRestoreArrayRead(statebar, &statebarptr);
+        VecRestoreArray(rho_t0_bar, &rho_bar_ptr);
+      }
+
+      VecDestroy(&statebar);
+    }
+  }
+
+}
+
+
 void OptimTao_Setup(Tao* tao, OptimCtx* ctx, MapParam config, Vec xinit, Vec xlower, Vec xupper){
 
   TaoCreate(PETSC_COMM_WORLD, tao);
@@ -276,7 +453,7 @@ PetscErrorCode optim_evalObjective(Tao tao, Vec x, PetscReal *f, void*ptr){
     finalstate = ctx->primalbraidapp->PostProcess(); // this return NULL for all but the last time processor
 
     /* Add to objective function */
-    objective += optim_objectiveT(finalstate, ctx);
+    objective += ctx->objectiveT(finalstate);
       // if (mpirank_braid == 0) printf("%d: local objective: %1.14e\n", mpirank_init, obj_local);
   }
 
@@ -330,7 +507,7 @@ PetscErrorCode optim_evalGradient(Tao tao, Vec x, Vec G, void*ptr){
     finalstate = ctx->primalbraidapp->PostProcess(); // this return NULL for all but the last time processor
 
     /* Add final-time objective */
-    double obj_local = optim_objectiveT(finalstate, ctx);
+    double obj_local = ctx->objectiveT(finalstate);
     objective += obj_local;
       // if (ctx->mpirank_braid == 0) printf("%d: local objective: %1.14e\n", ctx->mpirank_init, obj_local);
 
@@ -338,7 +515,7 @@ PetscErrorCode optim_evalGradient(Tao tao, Vec x, Vec G, void*ptr){
     // if (ctx->mpirank_braid == 0) printf("%d: %d BWD.", ctx->mpirank_init, initid);
 
     /* Derivative of final time objective */
-    optim_objectiveT_diff(finalstate, obj_local, 1.0, ctx);
+    ctx->objectiveT_diff(finalstate, obj_local, 1.0);
 
     ctx->adjointbraidapp->PreProcess(initid);
     ctx->adjointbraidapp->setInitCond(ctx->rho_t0_bar);
@@ -383,180 +560,4 @@ PetscErrorCode optim_evalGradient(Tao tao, Vec x, Vec G, void*ptr){
 
 
   return 0;
-}
-
-
-double optim_objectiveT(Vec finalstate, OptimCtx* ctx){
-  double obj_local = 0.0;
-
-  if (finalstate != NULL) {
-
-    switch (ctx->objective_type) {
-      case GATE:
-        /* compare state to linear transformation of initial conditions */
-        ctx->targetgate->compare(finalstate, ctx->rho_t0, obj_local);
-        break;
-
-      case EXPECTEDENERGY:
-        /* compute the expected value of energy levels for each oscillator */
-        obj_local = 0.0;
-        for (int i=0; i<ctx->obj_oscilIDs.size(); i++) {
-          obj_local += ctx->primalbraidapp->mastereq->getOscillator(ctx->obj_oscilIDs[i])->expectedEnergy(finalstate);
-        }
-        obj_local = pow(obj_local, 2.0);
-        break;
-
-      case GROUNDSTATE:
-        /* compare full or pariatl state to groundstate */
-        MasterEq *meq= ctx->primalbraidapp->mastereq;
-        Vec state;
-
-        /* If sub-system is requested, compute reduced density operator first */
-        if (ctx->obj_oscilIDs.size() < meq->getNOscillators()) { 
-          
-          /* Get dimensions of preceding and following subsystem */
-          int dim_pre  = 1; 
-          int dim_post = 1;
-          for (int iosc = 0; iosc < meq->getNOscillators(); iosc++) {
-            if ( iosc < ctx->obj_oscilIDs[0])                      
-              dim_pre  *= meq->getOscillator(iosc)->getNLevels();
-            if ( iosc > ctx->obj_oscilIDs[ctx->obj_oscilIDs.size()-1])   
-              dim_post *= meq->getOscillator(iosc)->getNLevels();
-          }
-
-          /* Create reduced density matrix */
-          int dim_reduced = 1;
-          for (int i = 0; i < ctx->obj_oscilIDs.size();i++) {
-            dim_reduced *= meq->getOscillator(ctx->obj_oscilIDs[i])->getNLevels();
-          }
-          VecCreate(PETSC_COMM_WORLD, &state);
-          VecSetSizes(state, PETSC_DECIDE, 2*dim_reduced*dim_reduced);
-          VecSetFromOptions(state);
-
-          /* Fill reduced density matrix */
-          meq->reducedDensity(finalstate, &state, dim_pre, dim_post, dim_reduced);
-
-        } else { // full density matrix system 
-
-           state = finalstate; 
-
-        }
-
-        // PetscViewerSetFormat(PETSC_VIEWER_STDOUT_WORLD, 	PETSC_VIEWER_ASCII_MATLAB );
-        // VecView(state, PETSC_VIEWER_STDOUT_WORLD);
-
-        /* Compute frobenius norm: frob = || q(T) - e_1 ||^2 */
-        int dimstate;
-        const PetscScalar *stateptr;
-        VecGetSize(state, &dimstate);
-        VecGetArrayRead(state, &stateptr);
-        obj_local = 0.0;
-        obj_local += pow(stateptr[0] - 1.0, 2); 
-        for (int i = 1; i < dimstate; i++){
-           obj_local += pow(stateptr[i], 2);
-        }
-        VecRestoreArrayRead(state, &stateptr);
-
-        /* Destroy reduced density matrix, if it has been created */
-        if (ctx->obj_oscilIDs.size() < ctx->primalbraidapp->mastereq->getNOscillators()) { 
-          VecDestroy(&state);
-        }
-
-        break;
-    }
-
-  }
-
-  return obj_local;
-}
-
-
-void optim_objectiveT_diff(Vec finalstate, double obj, double obj_bar, OptimCtx *ctx){
-
-  /* Reset adjoints */
-  VecZeroEntries(ctx->rho_t0_bar);
-
-  if (finalstate != NULL) {
-    switch (ctx->objective_type) {
-      case GATE:
-        ctx->targetgate->compare_diff(finalstate, ctx->rho_t0, ctx->rho_t0_bar, obj_bar);
-        break;
-
-      case EXPECTEDENERGY:
-        double tmp;
-        tmp = 2. * sqrt(obj) * obj_bar;
-        // tmp = obj_bar;
-        for (int i=0; i<ctx->obj_oscilIDs.size(); i++) {
-          ctx->primalbraidapp->mastereq->getOscillator(ctx->obj_oscilIDs[i])->expectedEnergy_diff(finalstate, ctx->rho_t0_bar, tmp);
-        }
-        break;
-
-    case GROUNDSTATE:
-
-        MasterEq *meq= ctx->primalbraidapp->mastereq;
-        Vec state;
-        int dim_pre = 1;
-        int dim_post = 1;
-        int dim_reduced = 1;
-
-        /* If sub-system is requested, compute reduced density operator first */
-        if (ctx->obj_oscilIDs.size() < ctx->primalbraidapp->mastereq->getNOscillators()) { 
-          /* Get dimensions of preceding and following subsystem */
-          for (int iosc = 0; iosc < meq->getNOscillators(); iosc++) {
-            if ( iosc < ctx->obj_oscilIDs[0])                      
-              dim_pre  *= meq->getOscillator(iosc)->getNLevels();
-            if ( iosc > ctx->obj_oscilIDs[ctx->obj_oscilIDs.size()-1])   
-              dim_post *= meq->getOscillator(iosc)->getNLevels();
-          }
-
-          /* Create reduced density matrix */
-          for (int i = 0; i < ctx->obj_oscilIDs.size();i++) {
-            dim_reduced *= meq->getOscillator(ctx->obj_oscilIDs[i])->getNLevels();
-          }
-          VecCreate(PETSC_COMM_WORLD, &state);
-          VecSetSizes(state, PETSC_DECIDE, 2*dim_reduced*dim_reduced);
-          VecSetFromOptions(state);
-
-          /* Fill reduced density matrix */
-          meq->reducedDensity(finalstate, &state, dim_pre, dim_post, dim_reduced);
-
-        } else { // full density matrix system
-           state = finalstate;
-        }
-
-      const PetscScalar *stateptr;
-      PetscScalar *statebarptr;
-      Vec statebar;
-      VecDuplicate(state, &statebar);
-      VecGetArrayRead(state, &stateptr);
-      VecGetArray(statebar, &statebarptr);
-
-      /* Derivative of frobenius norm: 2 * (q(T) - e_1) * frob_bar */
-      int dimstate;
-      VecGetSize(state, &dimstate);
-      statebarptr[0] += 2. * ( stateptr[0] - 1.0 ) * obj_bar;
-      for (int i=1; i<dimstate; i++) {
-        statebarptr[i] += 2. * stateptr[i] * obj_bar;
-      }
-      VecRestoreArrayRead(state, &stateptr);
-
-      /* Derivative of partial trace */
-      if (ctx->obj_oscilIDs.size() < meq->getNOscillators()) {
-        meq->reducedDensity_diff(ctx->rho_t0_bar, statebar, dim_pre, dim_post, dim_reduced);
-        VecDestroy(&state);
-      } else {
-        PetscScalar *rho_bar_ptr;
-        VecGetArray(ctx->rho_t0_bar, &rho_bar_ptr);
-        const PetscScalar *statebarptr;
-        VecGetArrayRead(statebar, &statebarptr);
-        for (int i=0; i<dimstate; i++){
-          rho_bar_ptr[i] += statebarptr[i];
-        }
-        VecRestoreArrayRead(statebar, &statebarptr);
-        VecRestoreArray(ctx->rho_t0_bar, &rho_bar_ptr);
-      }
-
-      VecDestroy(&statebar);
-    }
-  }
 }

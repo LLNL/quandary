@@ -41,17 +41,18 @@ typedef struct OptimCtx {
   /* Compute initial guess for optimization variables */
   void getStartingPoint(Vec x, std::string start_type, std::vector<double> start_amplitudes, std::vector<double> bounds);
 
+  /* Evaluate final time objective J(T) */
+  double objectiveT(Vec finalstate);
+  /* Derivative of final time objective \nabla J(T) * obj_bar */
+  void objectiveT_diff(Vec finalstate, double obj_local, double obj_bar);
+
 } OptimCtx;
 
 
 void OptimTao_Setup(Tao* tao, OptimCtx* ctx, MapParam config, Vec xinit, Vec xlower, Vec xupper);
 
-/* Evaluate objective function f(x) */
+/* Petsc's Tao interface routine for evaluating the objective function f = f(x) */
 PetscErrorCode optim_evalObjective(Tao tao, Vec x, PetscReal *f, void*ptr);
 
-/* Evaluate gradient g = \nabla f(x) */
+/* Petsc's Tao interface routine for evaluating the gradient g = \nabla f(x) */
 PetscErrorCode optim_evalGradient(Tao tao, Vec x, Vec G, void*ptr);
-
-/* Evaluate final time objective function */
-double optim_objectiveT(Vec finalstate, OptimCtx *ctx);
-void optim_objectiveT_diff(Vec finalstate, double obj_local, double obj_bar, OptimCtx *ctx);
