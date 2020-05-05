@@ -72,6 +72,7 @@ int main(int argc,char **argv)
   /* Initialize Petsc using petsc's communicator */
   PETSC_COMM_WORLD = comm_petsc;
   ierr = PetscInitialize(&argc,&argv,(char*)0,NULL);if (ierr) return ierr;
+  PetscViewerPushFormat(PETSC_VIEWER_STDOUT_WORLD, 	PETSC_VIEWER_ASCII_MATLAB );
 
   /* Read config file */
   if (argc != 2) {
@@ -261,43 +262,42 @@ int main(int argc,char **argv)
   optimproblem.get_starting_point(ndesign, myinit);
 
 
+  /* Petsc's optimization */
+  OptimCtx* optimctx = new OptimCtx;
+  /* Initialize optimization context */
+  optim_CtxSetup(optimctx, config, primalbraidapp, adjointbraidapp, comm_hiop, comm_init, obj_oscilIDs, inittype, ninit);
+  printf("ndesign petsc %d\n", optimctx->ndesign);
 
-  Tao optim_tao; /* Petsc's optimization */
-  OptimCtx optimctx;
-  optimctx.mpirank_world = mpirank_world;
-  optimctx.primalbraidapp = primalbraidapp;
-  /* TODO: INIT OPTIM CTX */
-
-  /* Create the optimizer */
-  TaoCreate(PETSC_COMM_WORLD,&optim_tao);
-  TaoSetType(optim_tao,TAOBLMVM);         // Optim type: taoblmvm vs BQNLS ??
-
-  /* Set initial starting point */
-  Vec xinit;
+  /* Initialize optimization solver */
+  Tao* optim_tao = new Tao; 
+  Vec xinit, xlower, xupper;
   VecCreate(PETSC_COMM_WORLD, &xinit);
-  VecSetSizes(xinit, PETSC_DECIDE, ndesign);
+  VecSetSizes(xinit, PETSC_DECIDE, 40);
   VecSetFromOptions(xinit);
-  optim_getStartingPoint(xinit, &optimctx);
-  TaoSetInitialVector(optim_tao, x);
+  VecDuplicate(xinit, &xlower);
+  VecDuplicate(xinit, &xupper);
 
-  /* Set the user function, gradient, hessian and data structures */
-  TaoSetObjectiveRoutine(optim_tao, optim_evalObjective, (void *)&optimctx);
-  TaoSetGradientRoutine(optim_tao, optim_evalGradient,(void *)&optimctx);
+  optim_TaoSetup(optim_tao, optimctx, config, xinit, xlower, xupper);
 
-  /* TODO: Create and fill xl, xu */
-  Vec xl, xu;
-  TaoSetVariableBounds(optim_tao, xl, xu);
+  //TEST //
+  printf("%d: petsc init:\n", mpirank_world);
+  VecView(xinit, PETSC_VIEWER_STDOUT_WORLD);
+  printf("%d: myinit:\n", mpirank_world);
+  for (int i=0; i<ndesign; i++) {
+    printf("%1.14e\n", myinit[i]);
+  }
+  exit(1);
 
-  /* Finalize Tao */
-  TaoSetFromOptions(optim_tao);
 
   /* Solve the optimization problem */
-  TaoSolve(optim_tao);
+  TaoSolve(*optim_tao);
 
   /* Free tao */
-  TaoDestroy(&optim_tao);
+  TaoDestroy(optim_tao);
 
   VecDestroy(&xinit);
+  VecDestroy(&xlower);
+  VecDestroy(&xupper);
 
 
 

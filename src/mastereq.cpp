@@ -484,3 +484,19 @@ void MasterEq::computedRHSdp(double t, Vec x, Vec xbar, double alpha, Vec grad) 
   VecRestoreSubVector(xbar, isu, &ubar);
   VecRestoreSubVector(xbar, isv, &vbar);
 }
+
+void MasterEq::setControlAmplitudes(Vec x) {
+
+  PetscScalar* ptr;
+  VecGetArray(x, &ptr);
+
+  /* Pass design vector x to oscillators */
+  for (int ioscil = 0; ioscil < getNOscillators(); ioscil++) {
+    /* Design storage: x = (params_oscil0, params_oscil2, ... ) */
+    int nparam = getOscillator(ioscil)->getNParams();
+    int j = ioscil * nparam;
+    getOscillator(ioscil)->setParams(ptr + j); // pointer shift
+  }
+  
+}
+
