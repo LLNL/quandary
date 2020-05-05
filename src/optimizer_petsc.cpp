@@ -408,7 +408,6 @@ void OptimTao_Setup(Tao* tao, OptimCtx* ctx, MapParam config, Vec xinit, Vec xlo
   TaoSetType(*tao,TAOBQNLS);         // Optim type: taoblmvm vs BQNLS ??
   // TaoSetType(*tao,TAOBLMVM);
   TaoSetMaximumIterations(*tao, ctx->maxiter);
-  printf("Setting MaxIter %d\n", ctx->maxiter);
   TaoSetTolerances(*tao, ctx->gatol, PETSC_DEFAULT, ctx->grtol);
   TaoSetMonitor(*tao, OptimTao_Monitor, (void*)ctx, NULL);
 

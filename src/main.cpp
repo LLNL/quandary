@@ -271,12 +271,11 @@ int main(int argc,char **argv)
 
   /* Petsc's optimization */
   OptimCtx* optimctx = new OptimCtx(config, primalbraidapp, adjointbraidapp, comm_hiop, comm_init, obj_oscilIDs, initcond_type, ninit);
-  printf("ndesign petsc %d\n", optimctx->ndesign);
 
   /* Initialize optimization solver */
   Vec xinit, xlower, xupper;
   VecCreate(PETSC_COMM_WORLD, &xinit);
-  VecSetSizes(xinit, PETSC_DECIDE, 40);
+  VecSetSizes(xinit, PETSC_DECIDE, optimctx->ndesign);
   VecSetFromOptions(xinit);
   VecDuplicate(xinit, &xlower);
   VecDuplicate(xinit, &xupper);
