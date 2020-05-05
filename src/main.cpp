@@ -308,6 +308,16 @@ int main(int argc,char **argv)
       printf("Gradient norm: %1.14e\n", sqrt(gnorm));
     }
     optimproblem.iterate_callback(-1, objective, ndesign, myinit, NULL, NULL, 0, NULL, NULL, -0.0, -0.0, -0.0, -0.0, -0.0, 0);
+
+    Vec newgrad;
+    VecCreate(PETSC_COMM_WORLD, &newgrad);
+    VecSetSizes(newgrad, PETSC_DECIDE, optimctx->ndesign);
+    VecSetUp(newgrad);
+    VecZeroEntries(newgrad);
+    optim_evalGradient(*optim_tao, xinit, newgrad, optimctx);
+    VecView(newgrad, PETSC_VIEWER_STDOUT_WORLD);
+    VecNorm(newgrad, NORM_2, &gnorm);
+    printf("New grad norm: %1.14e\n", gnorm);
   }
 
   /* Solve the optimization  */

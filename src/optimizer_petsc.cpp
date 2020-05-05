@@ -67,8 +67,8 @@ void OptimCtx_Setup(OptimCtx* ctx, MapParam config, myBraidApp* primalbraidapp_,
   VecSetSizes(ctx->initcond_re,PETSC_DECIDE,ctx->primalbraidapp->mastereq->getDim());
   VecSetFromOptions(ctx->initcond_re);
   VecDuplicate(ctx->initcond_re, &ctx->initcond_im);
-  // VecDuplicate(ctx->initcond_re, &ctx->initcond_re_bar);
-  // VecDuplicate(ctx->initcond_re, &ctx->initcond_im_bar);
+  VecDuplicate(ctx->initcond_re, &ctx->initcond_re_bar);
+  VecDuplicate(ctx->initcond_re, &ctx->initcond_im_bar);
   
   if (ctx->initcond_type == PURE) { /* Initialize with tensor product of unit vectors. */
     std::vector<std::string> initcondstr;
@@ -109,6 +109,8 @@ void OptimCtx_Setup(OptimCtx* ctx, MapParam config, myBraidApp* primalbraidapp_,
   }
   VecAssemblyBegin(ctx->initcond_re); VecAssemblyEnd(ctx->initcond_re);
   VecAssemblyBegin(ctx->initcond_im); VecAssemblyEnd(ctx->initcond_im);
+  VecAssemblyBegin(ctx->initcond_re_bar); VecAssemblyEnd(ctx->initcond_re_bar);
+  VecAssemblyBegin(ctx->initcond_im_bar); VecAssemblyEnd(ctx->initcond_im_bar);
 
 }
 
@@ -417,11 +419,85 @@ PetscErrorCode optim_evalObjective(Tao tao, Vec x, PetscReal *f, void*ptr){
 
 
 PetscErrorCode optim_evalGradient(Tao tao, Vec x, Vec G, void*ptr){
-    OptimCtx* optimctx = (OptimCtx*) ptr;
+  OptimCtx* ctx = (OptimCtx*) ptr;
+  MasterEq* mastereq = ctx->primalbraidapp->mastereq;
 
-    /* TODO: Eval objective */
+  if (ctx->mpirank_world == 0) printf(" EVAL GRAD F...\n");
+  Vec finalstate = NULL;
 
-    return 0;
+  /* Pass design vector x to oscillators */
+  mastereq->setControlAmplitudes(x); 
+
+  /*  Iterate over initial condition */
+  double objective = 0.0;
+  for (int iinit = 0; iinit < ctx->ninit_local; iinit++) {
+      
+    /* Prepare the initial condition */
+    int initid = optim_assembleInitCond(iinit, ctx);
+
+    /* --- Solve primal --- */
+    // if (ctx->mpirank_braid == 0) printf("%d: %d FWD. ", ctx->mpirank_init, initid);
+
+    /* Run forward with initial condition initid*/
+    ctx->primalbraidapp->PreProcess(initid);
+    ctx->primalbraidapp->setInitialCondition(ctx->initcond_re, ctx->initcond_im);
+    ctx->primalbraidapp->Drive();
+    finalstate = ctx->primalbraidapp->PostProcess(); // this return NULL for all but the last time processor
+
+    /* Add final-time objective */
+    double obj_local = optim_objectiveT(finalstate, ctx);
+    objective += obj_local;
+      // if (ctx->mpirank_braid == 0) printf("%d: local objective: %1.14e\n", ctx->mpirank_init, obj_local);
+
+    /* --- Solve adjoint --- */
+    // if (ctx->mpirank_braid == 0) printf("%d: %d BWD.", ctx->mpirank_init, initid);
+
+    /* Derivative of final time objective */
+    optim_objectiveT_diff(finalstate, obj_local, 1.0, ctx);
+
+    ctx->adjointbraidapp->PreProcess(initid);
+    ctx->adjointbraidapp->setInitialCondition(ctx->initcond_re_bar, ctx->initcond_im_bar);
+    ctx->adjointbraidapp->Drive();
+    ctx->adjointbraidapp->PostProcess();
+
+    /* Add to Ipopt's gradient */
+    const double* grad_ptr = ctx->adjointbraidapp->getReducedGradientPtr();
+    VecAXPY(G, 1.0, ctx->adjointbraidapp->redgrad);
+
+  }
+
+  /* Broadcast objective from last to all time processors */
+  MPI_Bcast(&objective, 1, MPI_DOUBLE, ctx->mpisize_braid-1, ctx->primalbraidapp->comm_braid);
+
+  /* Sum up objective from all initial conditions */
+  double myobj = objective;
+  MPI_Allreduce(&myobj, &objective, 1, MPI_DOUBLE, MPI_SUM, ctx->comm_init);
+  // if (ctx->mpirank_init == 0) printf("%d: global sum objective: %1.14e\n\n", ctx->mpirank_init, objective);
+
+  /* Add regularization objective += gamma/2 * ||x||^2*/
+  double xnorm;
+  VecNorm(x, NORM_2, &xnorm);
+  objective += ctx->gamma_tik / 2. * pow(xnorm,2.0);
+
+  /* Sum up the gradient from all braid processors */
+  PetscScalar* grad; 
+  VecGetArray(G, &grad);
+  double* mygrad = new double[ctx->ndesign];
+  for (int i=0; i<ctx->ndesign; i++) {
+    mygrad[i] = grad[i];
+  }
+  MPI_Allreduce(mygrad, grad, ctx->ndesign, MPI_DOUBLE, MPI_SUM, ctx->primalbraidapp->comm_braid);
+  VecRestoreArray(G, &grad);
+  delete [] mygrad;
+
+
+  /* Compute and store gradient norm */
+  double gradnorm = 0.0;
+  VecNorm(G, NORM_2, &gradnorm);
+  if (ctx->mpirank_world == 0) printf("%d: ||grad|| = %1.14e\n", ctx->mpirank_init, gradnorm);
+
+
+  return 0;
 }
 
 
@@ -507,4 +583,103 @@ double optim_objectiveT(Vec finalstate, OptimCtx* ctx){
   }
 
   return obj_local;
+}
+
+
+void optim_objectiveT_diff(Vec finalstate, double obj, double obj_bar, OptimCtx *ctx){
+  /* Reset adjoints */
+  VecZeroEntries(ctx->initcond_re_bar);
+  VecZeroEntries(ctx->initcond_im_bar);
+
+  if (finalstate != NULL) {
+    switch (ctx->objective_type) {
+      case GATE:
+        ctx->targetgate->compare_diff(finalstate, ctx->initcond_re, ctx->initcond_im, ctx->initcond_re_bar, ctx->initcond_im_bar, obj_bar);
+        break;
+
+      case EXPECTEDENERGY:
+        double tmp;
+        tmp = 2. * sqrt(obj) * obj_bar;
+        // tmp = obj_bar;
+        for (int i=0; i<ctx->obj_oscilIDs.size(); i++) {
+          ctx->primalbraidapp->mastereq->getOscillator(ctx->obj_oscilIDs[i])->expectedEnergy_diff(finalstate, ctx->initcond_re_bar, ctx->initcond_im_bar, tmp);
+        }
+        break;
+
+    case GROUNDSTATE:
+
+        MasterEq *meq= ctx->primalbraidapp->mastereq;
+        Vec state;
+        int dim_pre = 1;
+        int dim_post = 1;
+        int dim_reduced = 1;
+
+        /* If sub-system is requested, compute reduced density operator first */
+        if (ctx->obj_oscilIDs.size() < ctx->primalbraidapp->mastereq->getNOscillators()) { 
+          
+          /* Get dimensions of preceding and following subsystem */
+          for (int iosc = 0; iosc < meq->getNOscillators(); iosc++) {
+            if ( iosc < ctx->obj_oscilIDs[0])                      
+              dim_pre  *= meq->getOscillator(iosc)->getNLevels();
+            if ( iosc > ctx->obj_oscilIDs[ctx->obj_oscilIDs.size()-1])   
+              dim_post *= meq->getOscillator(iosc)->getNLevels();
+          }
+
+          /* Create reduced density matrix */
+          for (int i = 0; i < ctx->obj_oscilIDs.size();i++) {
+            dim_reduced *= meq->getOscillator(ctx->obj_oscilIDs[i])->getNLevels();
+          }
+          VecCreate(PETSC_COMM_WORLD, &state);
+          VecSetSizes(state, PETSC_DECIDE, 2*dim_reduced*dim_reduced);
+          VecSetFromOptions(state);
+
+          /* Fill reduced density matrix */
+          meq->reducedDensity(finalstate, &state, dim_pre, dim_post, dim_reduced);
+
+        } else { // full density matrix system 
+
+           state = finalstate; 
+
+        }
+
+       /* Get real and imag part of final and initial primal and adjoint states, x = [u,v] */
+      const PetscScalar *stateptr;
+      PetscScalar *statebarptr;
+      Vec statebar;
+      VecDuplicate(state, &statebar);
+      VecGetArrayRead(state, &stateptr);
+      VecGetArray(statebar, &statebarptr);
+
+      /* Derivative of frobenius norm: 2 * (q(T) - e_1) * frob_bar */
+      int dimstate;
+      VecGetSize(state, &dimstate);
+      statebarptr[0] += 2. * ( stateptr[0] - 1.0 ) * obj_bar;
+      for (int i=1; i<dimstate; i++) {
+        statebarptr[i] += 2. * stateptr[i] * obj_bar;
+      }
+      VecRestoreArrayRead(state, &stateptr);
+
+      /* Derivative of partial trace */
+      if (ctx->obj_oscilIDs.size() < meq->getNOscillators()) {
+        meq->reducedDensity_diff(statebar, ctx->initcond_re_bar, ctx->initcond_im_bar, dim_pre, dim_post, dim_reduced);
+        VecDestroy(&state);
+      } else {
+        /* Split statebar into initcond_rebar, initcond_im_bar */
+        PetscScalar *u0_barptr, *v0_barptr;
+        VecGetArray(ctx->initcond_re_bar, &u0_barptr);
+        VecGetArray(ctx->initcond_im_bar, &v0_barptr);
+        const PetscScalar *statebarptr;
+        VecGetArrayRead(statebar, &statebarptr);
+        for (int i=0; i<dimstate/2; i++){
+          u0_barptr[i] += statebarptr[i];
+          v0_barptr[i] += statebarptr[i + dimstate/2];
+        }
+        VecRestoreArrayRead(statebar, &statebarptr);
+        VecRestoreArray(ctx->initcond_re_bar, &u0_barptr);
+        VecRestoreArray(ctx->initcond_im_bar, &v0_barptr);
+      }
+
+      VecDestroy(&statebar);
+    }
+  }
 }

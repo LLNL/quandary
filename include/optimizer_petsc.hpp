@@ -15,7 +15,8 @@ typedef struct {
   InitialConditionType initcond_type; /* Type of ODE initial condition (pure, basis, from file, etc.) */
   int ninit;                            /* Number of initial conditions to be considered (N^2, N, or 1) */
   int ninit_local;                      /* Local number of initial conditions on this processor */
-  Vec initcond_re, initcond_im;         /* Current initial condition */
+  Vec initcond_re, initcond_im;         /* Current initial condition TODO: DESTROY THEM SOME TIME! Or store them in the master eq! */
+  Vec initcond_re_bar, initcond_im_bar;   
 
   /* MPI stuff */
   MPI_Comm comm_hiop, comm_init;
@@ -49,9 +50,9 @@ PetscErrorCode optim_evalObjective(Tao tao, Vec x, PetscReal *f, void*ptr);
 /* Evaluate gradient g = \nabla f(x) */
 PetscErrorCode optim_evalGradient(Tao tao, Vec x, Vec G, void*ptr);
 
-
 /* Assemble the ODE initial condition */
 int optim_assembleInitCond(int iinit, OptimCtx *ctx);
 
 /* Evaluate final time objective function */
 double optim_objectiveT(Vec finalstate, OptimCtx *ctx);
+void optim_objectiveT_diff(Vec finalstate, double obj_local, double obj_bar, OptimCtx *ctx);

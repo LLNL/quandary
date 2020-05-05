@@ -119,6 +119,8 @@ class myBraidApp : public BraidApp {
 class myAdjointBraidApp : public myBraidApp {
   protected:
     BraidCore *primalcore;    /* pointer to primal core for accessing primal states */
+  
+  public:
     Vec        redgrad;       /* reduced gradient */
 
   private:
