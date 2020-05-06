@@ -431,9 +431,6 @@ void OptimTao_Setup(Tao* tao, OptimCtx* ctx, MapParam config, Vec xinit, Vec xlo
   VecAssemblyBegin(xlower); VecAssemblyEnd(xlower);
   VecAssemblyBegin(xupper); VecAssemblyEnd(xupper);
   TaoSetVariableBounds(*tao, xlower, xupper);
-  VecView(xlower, PETSC_VIEWER_STDOUT_WORLD);
-  VecView(xupper, PETSC_VIEWER_STDOUT_WORLD);
-  exit(1);
 
   /* Set initial starting point */
   std::string start_type;
