@@ -118,11 +118,11 @@ We aim to find control pulses that drive any initial state towards the ground st
                     \end{bmatrix}
 \end{align}
 
-We define two objective functions for groundstate optimization:
+We define two objective functions for groundstate optimization, both of which can be applied either to the full system $H = H_1\otimes \dots \otimes H_Q$ with density matrix $\rho$, or for a partial system $H_{k_1}\otimes \dots \otimes H_{k_s}$ for some index set $\mathcal{K}=\{k_1,\dots,k_s\}\subset \{1,\dots,Q\}$ and reduced density matrix $\rho^{\mathcal{K}}$.
 \begin{enumerate}
   \item Minimize the expected energy level:
     \begin{align}
-      J(\rho(T)) = \sum_{k=1}^Q\langle M_k \rangle
+      J(\rho(T)) = \sum_{k\in \mathcal{K}}\langle M_k \rangle
     \end{align}
     where $M_k = a_k^\dag a_k$ is the number operator for oscillator $k$. 
   \item Minimize the frobenius norm between the final density matrix and the groundstate density matrix:
@@ -131,7 +131,6 @@ We define two objective functions for groundstate optimization:
     \end{align}
     where the Frobenius norm is defined as $\|A\|^2_F = \Tr(A^{\dagger}A)$.
 \end{enumerate}
-Both of the measures can be applied either to the full system $H = H_1\otimes \dots \otimes H_Q$ with density matrix $\rho$, or for a partial system $H_{k_1}\otimes \dots \otimes H_{K_s}$, with the reduced density matrix $\rho^{k_1, \dots, k_s}$.
 
 \subsection{Target gate optimization}
 
