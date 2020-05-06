@@ -415,20 +415,25 @@ void OptimTao_Setup(Tao* tao, OptimCtx* ctx, MapParam config, Vec xinit, Vec xlo
   std::vector<double> bounds;
   config.GetVecDoubleParam("optim_bounds", bounds, 1e20);
   assert (bounds.size() >= ctx->primalbraidapp->mastereq->getNOscillators());
+  int col = 0;
   for (int iosc = 0; iosc < ctx->primalbraidapp->mastereq->getNOscillators(); iosc++){
     // Scale bounds by number of carrier waves */
     std::vector<double> carrier_freq;
     std::string key = "carrier_frequency" + std::to_string(iosc);
     config.GetVecDoubleParam(key, carrier_freq, 0.0);
+    bounds[iosc] = bounds[iosc] / carrier_freq.size();
     for (int i=0; i<ctx->primalbraidapp->mastereq->getOscillator(iosc)->getNParams(); i++){
-      bounds[iosc] = bounds[iosc] / carrier_freq.size();
-      VecSetValue(xupper, i, bounds[iosc], INSERT_VALUES);
-      VecSetValue(xlower, i, -1. * bounds[iosc], INSERT_VALUES);
+      VecSetValue(xupper, col, bounds[iosc], INSERT_VALUES);
+      VecSetValue(xlower, col, -1. * bounds[iosc], INSERT_VALUES);
+      col++;
     }
   }
   VecAssemblyBegin(xlower); VecAssemblyEnd(xlower);
   VecAssemblyBegin(xupper); VecAssemblyEnd(xupper);
   TaoSetVariableBounds(*tao, xlower, xupper);
+  VecView(xlower, PETSC_VIEWER_STDOUT_WORLD);
+  VecView(xupper, PETSC_VIEWER_STDOUT_WORLD);
+  exit(1);
 
   /* Set initial starting point */
   std::string start_type;
