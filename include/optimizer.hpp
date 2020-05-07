@@ -1,9 +1,7 @@
 #include "braid_wrapper.hpp"
-#include "hiopInterface.hpp"
 #include "math.h"
 #include <assert.h>
-
-
+#include <petsctao.h>
 
 #pragma once
 
@@ -12,89 +10,68 @@ enum ObjectiveType {GATE,             // Compare final state to linear gate tran
                     GROUNDSTATE};     // Compares final state to groundstate (full matrix)
 
 
-class OptimProblem : public hiop::hiopInterfaceDenseConstraints {
 
-    protected:
-        myBraidApp* primalbraidapp;         /* Primal BraidApp to carry out PinT forward sim.*/
-        myAdjointBraidApp* adjointbraidapp; /* Adjoint BraidApp to carry out PinT backward sim. */
-        Gate  *targetgate;                  
-        double objective;                 /* holds the current objective value */
-        double gradnorm;                  /* norm of the current gradient */
-        double regul;                       /* Parameter for L2 regularization */
-        std::vector<double> bounds;    /* Bounds for the control function amplitudes for each oscillator */
-        std::string optiminit_type;           /* Type of design initialization */
-        int printlevel;                
-        int ninit;                            /* Number of initial conditions to be considered (N^2, N, or 1) */
-        int ninit_local;                      /* Local number of initial conditions on this processor */
-        std::vector<double> init_ampl;
+typedef struct OptimCtx {
 
-        MPI_Comm comm_hiop, comm_init;
-        int mpirank_braid, mpisize_braid;
-        int mpirank_space, mpisize_space;
-        int mpirank_optim, mpisize_optim;
-        int mpirank_world, mpisize_world;
-        int mpirank_init, mpisize_init;
+  /* ODE stuff */
+  myBraidApp* primalbraidapp;         /* Primal BraidApp to carry out PinT forward sim.*/
+  myAdjointBraidApp* adjointbraidapp; /* Adjoint BraidApp to carry out PinT backward sim. */
+  int ninit;                            /* Number of initial conditions to be considered (N^2, N, or 1) */
+  int ninit_local;                      /* Local number of initial conditions on this processor */
+  Vec rho_t0;                            /* Storage for initial condition of the ODE */
+  Vec rho_t0_bar;                        /* Adjoint of ODE initial condition */
 
-        ObjectiveType objective_type;         /* Type of objective function */
-        std::vector<int> obj_oscilIDs;        /* List of oscillator IDs that are considered for the optimizer */
+  /* MPI stuff */
+  MPI_Comm comm_hiop, comm_init;
+  int mpirank_braid, mpisize_braid;
+  int mpirank_space, mpisize_space;
+  int mpirank_optim, mpisize_optim;
+  int mpirank_world, mpisize_world;
+  int mpirank_init, mpisize_init;
 
-        InitialConditionType initcond_type;
+  /* Optimization stuff */
+  ObjectiveType objective_type;    /* Type of objective function (Gate, <N>, Groundstate, ... ) */
+  std::vector<int> obj_oscilIDs;   /* List of oscillator IDs that are considered for the optimizer */
+  Gate  *targetgate;               /* Target gate */
+  int ndesign;                     /* Number of global design parameters */
+  double objective;                /* Holds current objective function */
+  double gnorm;                    /* Holds current norm of gradient */
+  double gamma_tik;                /* Parameter for tikhonov regularization */
+  double gatol;                    /* Stopping criterion based on absolute gradient norm */
+  double grtol;                    /* Stopping criterion based on relative gradient norm */
+  int maxiter;                     /* Stopping criterion based on maximum number of iterations */
 
+  /* Output */
+  int printlevel;      /* Level of output: 0 - no output, 1 - optimization progress to file */
+  FILE* optimfile;     /* Output file to log optimization progress */
 
-        FILE* optimfile;
-
-    public:
-        double fidelity;                /* holds the current fidelity value */
-    
-    private: 
-        Vec initcond_re, initcond_im;           /* Storage for real and imag part of initial condition */
-        Vec initcond_re_bar, initcond_im_bar;   /* Storage for real and imag part of adjoint initial condition */
-
-    public:
-        OptimProblem();
-        OptimProblem(MapParam config, myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, MPI_Comm comm_hiop_, MPI_Comm comm_init_, std::vector<int> obj_oscilIDs_, InitialConditionType initcondtype_, int ninit_);
-        virtual ~OptimProblem();
+  /* Constructor */
+  OptimCtx(MapParam config, myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, MPI_Comm comm_hiop_, MPI_Comm comm_init_, std::vector<int> obj_oscilIDs_, InitialConditionType initcondtype_, int ninit_);
+  ~OptimCtx();
 
 
-        /* Pass x to the oscillator parameters */
-        void setDesign(int n, const double* x);
-        /* Pass the oscillator parameters to x */
-        void getDesign(int n, double* x);
+  /* Compute initial guess for optimization variables */
+  void getStartingPoint(Vec x, std::string start_type, std::vector<double> start_amplitudes, std::vector<double> bounds);
 
-        /* Set the initial condition of index iinit */
-        int assembleInitialCondition(int iinit);
+  /* Evaluate final time objective J(T) */
+  double objectiveT(Vec finalstate);
+  /* Derivative of final time objective \nabla J(T) * obj_bar */
+  void objectiveT_diff(Vec finalstate, double obj_local, double obj_bar);
 
-        /* Compute the objective function (local for one initial condition) and derivative */
-        double objFunc(Vec finalstate);
-        void objFunc_diff(Vec finalstate, const double objective, const double obj_bar);
+} OptimCtx;
 
-        /* Required interface routines. These are purely virtual in HiOp. */
-        bool get_prob_sizes(long long& n, long long& m);
-        bool get_vars_info(const long long& n, double *xlow, double* xupp, NonlinearityType* type);
-        bool get_cons_info(const long long& m, double* clow, double* cupp, NonlinearityType* type);
-        bool eval_f(const long long& n, const double* x_in, bool new_x, double& obj_value);
-        bool eval_grad_f(const long long& n, const double* x_in, bool new_x, double* gradf);
-        bool eval_cons(const long long& n, const long long& m, const long long& num_cons, const long long* idx_cons, const double* x_in, bool new_x, double* cons);
-        bool eval_Jac_cons(const long long& n, const long long& m, const long long& num_cons, const long long* idx_cons, const double* x_in, bool new_x, double** Jac);
 
-        /* Optional interface routines. These have a default implementation. */
-        bool get_starting_point(const long long &global_n, double* x0);
-        bool get_MPI_comm(MPI_Comm& comm_out);
-        void solution_callback(hiop::hiopSolveStatus status, int n, const double* x, const double* z_L, const double* z_U, int m, const double* g, const double* lambda, double obj_value);
-        bool iterate_callback(int iter, double obj_value, int n, const double* x, const double* z_L, const double* z_U, int m, const double* g, const double* lambda, double inf_pr, double inf_du, double mu, double alpha_du, double alpha_pr, int ls_trials) ;
- 
+/* Initialize the Tao optimizer, set options, starting point, etc */
+void OptimTao_Setup(Tao* tao, OptimCtx* ctx, MapParam config, Vec xinit, Vec xlower, Vec xupper);
 
-	private:
-	/* Methods to block default compiler methods.
-	 * The compiler automatically generates the following three methods.
-	 * Since the default compiler implementation is generally not what
-	 * you want (for all but the most simple classes), we usually
-	 * put the declarations of these methods in the private section
-	 * and never implement them. This prevents the compiler from
-	 * implementing an incorrect "default" behavior without us
-	 * knowing. (See Scott Meyers book, "Effective C++") 
-     */
-	//  HS071_NLP();
-	OptimProblem(const OptimProblem&);
-	OptimProblem& operator=(const OptimProblem&);
-};
+/* Call this after TaoSolve() has finished to print out some information */
+void OptimTao_SolutionCallback(Tao* tao, OptimCtx* ctx);
+
+/* Monitor the optimization progress. This routine is called in each iteration of TaoSolve() */
+PetscErrorCode OptimTao_Monitor(Tao tao,void*ptr);
+
+/* Petsc's Tao interface routine for evaluating the objective function f = f(x) */
+PetscErrorCode OptimTao_EvalObjective(Tao tao, Vec x, PetscReal *f, void*ptr);
+
+/* Petsc's Tao interface routine for evaluating the gradient g = \nabla f(x) */
+PetscErrorCode OptimTao_EvalGradient(Tao tao, Vec x, Vec G, void*ptr);

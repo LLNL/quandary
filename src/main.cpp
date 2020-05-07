@@ -6,12 +6,10 @@
 #include "oscillator.hpp" 
 #include "mastereq.hpp"
 #include "config.hpp"
-#include "optimizer.hpp"
 #include "_braid.h"
 #include <stdlib.h>
 #include <sys/resource.h>
-#include "hiopAlgFilterIPM.hpp"
-#include "optimizer_petsc.hpp"
+#include "optimizer.hpp"
 
 #define EPS 1e-4
 
@@ -245,28 +243,7 @@ int main(int argc,char **argv)
   primalbraidapp->InitGrids();
   adjointbraidapp->InitGrids();
 
-  /* Initialize the optimization */
-  OptimProblem optimproblem(config, primalbraidapp, adjointbraidapp, comm_hiop, comm_init, obj_oscilIDs, initcond_type, ninit);
-  hiop::hiopNlpDenseConstraints nlp(optimproblem);
-  long long int ndesign,m;
-  optimproblem.get_prob_sizes(ndesign, m);
-  /* Set options */
-  double optim_tol = config.GetDoubleParam("optim_tol", 1e-4);
-  nlp.options->SetNumericValue("tolerance", optim_tol);
-  double optim_maxiter = config.GetIntParam("optim_maxiter", 200);
-  nlp.options->SetIntegerValue("max_iter", optim_maxiter);
-  if (mpirank_world != 0) nlp.options->SetIntegerValue("verbosity_level", 0);
-  /* Create solver */
-  hiop::hiopAlgFilterIPM optimsolver(&nlp);
-  hiop::hiopSolveStatus  optimstatus;
-
-  if (mpirank_world == 0) printf("# ndesign=%d\n", ndesign);
-  double* myinit = new double[ndesign];
-  double* optimgrad = new double[ndesign];
-  optimproblem.get_starting_point(ndesign, myinit);
-
-
-  /* Petsc's optimization */
+  /* Initialize optimization */
   OptimCtx* optimctx = new OptimCtx(config, primalbraidapp, adjointbraidapp, comm_hiop, comm_init, obj_oscilIDs, initcond_type, ninit);
 
   /* Initialize optimization solver */
@@ -285,58 +262,32 @@ int main(int argc,char **argv)
    /* Start timer */
   double StartTime = MPI_Wtime();
 
-  std::string optimizer = config.GetStrParam("optimizer", "tao");
-  
   /* --- Solve primal --- */
   if (runtype == primal || runtype == adjoint) {
-    if (optimizer.compare("hiop")==0) {
-      optimproblem.eval_f(ndesign, myinit, true, objective);
-      if (mpirank_world == 0) printf("%d: HiOp primal: Objective %1.14e, Fidelity: %1.8f\n", mpirank_world, objective, optimproblem.fidelity);
-      optimproblem.iterate_callback(-1, objective, ndesign, myinit, NULL, NULL, 0, NULL, NULL, -0.0, -0.0, -0.0, -0.0, -0.0, 0);
-    } else  {
-      OptimTao_EvalObjective(*optim_tao, xinit, &objective, optimctx);
-      if (mpirank_world == 0) printf("%d: Tao primal: Objective %1.14e, \n", mpirank_world, objective);
-    }
+    OptimTao_EvalObjective(*optim_tao, xinit, &objective, optimctx);
+    if (mpirank_world == 0) printf("%d: Tao primal: Objective %1.14e, \n", mpirank_world, objective);
   } 
   
   /* --- Solve adjoint --- */
   if (runtype == adjoint) {
     double gnorm = 0.0;
-    if (optimizer.compare("hiop")==0) {
-      optimproblem.eval_grad_f(ndesign, myinit, true, optimgrad);
-      if (mpirank_world == 0) {
-        printf("\n%d: HiOp gradient:\n", mpirank_world);
-        for (int i=0; i<ndesign; i++) {
-          gnorm += pow(optimgrad[i], 2.0);
-          printf("%1.14e\n", optimgrad[i]);
-        }
-        printf("HiOp gradient norm: %1.14e\n", sqrt(gnorm));
-      }
-      optimproblem.iterate_callback(-1, objective, ndesign, myinit, NULL, NULL, 0, NULL, NULL, -0.0, -0.0, -0.0, -0.0, -0.0, 0);
-    } else {
-      Vec petscgrad;
-      VecCreate(PETSC_COMM_WORLD, &petscgrad);
-      VecSetSizes(petscgrad, PETSC_DECIDE, optimctx->ndesign);
-      VecSetUp(petscgrad);
-      VecZeroEntries(petscgrad);
-      OptimTao_EvalGradient(*optim_tao, xinit, petscgrad, optimctx);
-      VecView(petscgrad, PETSC_VIEWER_STDOUT_WORLD);
-      VecNorm(petscgrad, NORM_2, &gnorm);
-      printf("Tao gradient norm: %1.14e\n", gnorm);
-    }
+    Vec petscgrad;
+    VecCreate(PETSC_COMM_WORLD, &petscgrad);
+    VecSetSizes(petscgrad, PETSC_DECIDE, optimctx->ndesign);
+    VecSetUp(petscgrad);
+    VecZeroEntries(petscgrad);
+    OptimTao_EvalGradient(*optim_tao, xinit, petscgrad, optimctx);
+    VecView(petscgrad, PETSC_VIEWER_STDOUT_WORLD);
+    VecNorm(petscgrad, NORM_2, &gnorm);
+    printf("Tao gradient norm: %1.14e\n", gnorm);
   }
 
   /* Solve the optimization  */
   if (runtype == optimization) {
-    if (optimizer.compare("hiop")==0) {
-      if (mpirank_world == 0) printf("\nNow starting HiOp... \n");
-      optimstatus = optimsolver.run();
-    } else {
-      if (mpirank_world == 0) printf("\nNow starting TaoSolve()... \n");
-      TaoSolve(*optim_tao);
-      /* Finalize Tao optimization */
-      OptimTao_SolutionCallback(optim_tao, optimctx);
-    }
+    if (mpirank_world == 0) printf("\nNow starting TaoSolve()... \n");
+    TaoSolve(*optim_tao);
+    /* Finalize Tao optimization */
+    OptimTao_SolutionCallback(optim_tao, optimctx);
   }
 
   /* Get timings */
@@ -666,8 +617,6 @@ int main(int argc,char **argv)
 
   /* Clean up */
   // TSDestroy(&ts);  /* TODO */
-  delete [] myinit;
-  delete [] optimgrad;
 
   /* Clean up Oscillator */
   for (int i=0; i<nosci; i++){

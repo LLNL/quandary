@@ -4,12 +4,6 @@
 # Set Braid location 
 BRAID_DIR = ${HOME}/Numerics/xbraid_solveadjointwithxbraid
 
-
-# Set location of optimizers incudes and library
-OPT_DIR = ${HOME}/Numerics/hiop/_dist-default-build
-OPT_INC_DIR = $(OPT_DIR)/include
-OPT_LIB_DIR = $(OPT_DIR)/lib
-
 # Set compiler options, e.g. define SANITY_CHECK. Comment out if none.
 #CXX_OPT = -DSANITY_CHECK
 
@@ -37,11 +31,11 @@ SRC_FILES += $(wildcard $(SRC_DIR)/*/*.cpp)
 OBJ_FILES  = $(patsubst $(SRC_DIR)/%.cpp,$(BUILD_DIR)/%.o,$(SRC_FILES))
 
 # set include directory
-INC = -I$(INC_DIR) -I$(BRAID_INC_DIR) -I${PETSC_DIR}/include -I${PETSC_DIR}/${PETSC_ARCH}/include -I$(OPT_INC_DIR)
+INC = -I$(INC_DIR) -I$(BRAID_INC_DIR) -I${PETSC_DIR}/include -I${PETSC_DIR}/${PETSC_ARCH}/include 
 
 # Set Library paths and flags
 LDPATH  = ${PETSC_DIR}/${PETSC_ARCH}/lib
-LDFLAGS = -lpetsc -lm ${BRAID_LIB_FILE} -L${PETSC_DIR}/${PETSC_ARCH}/lib -L$(OPT_LIB_DIR) -lhiop -lblas -llapack
+LDFLAGS = -lpetsc -lm ${BRAID_LIB_FILE} -L${PETSC_DIR}/${PETSC_ARCH}/lib -lblas -llapack
 
 # Set compiler and flags 
 CXX=mpicxx
