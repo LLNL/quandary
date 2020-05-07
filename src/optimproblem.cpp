@@ -282,7 +282,11 @@ void OptimProblem::evalGradF(Vec x, Vec G){
   VecNorm(G, NORM_2, &(gnorm));
   // if (mpirank_world == 0) printf("%d: ||grad|| = %1.14e\n", mpirank_init, gnorm);
 
+}
 
+
+void OptimProblem::solve() {
+  TaoSolve(tao);
 }
 
 void OptimProblem::getStartingPoint(Vec xinit){

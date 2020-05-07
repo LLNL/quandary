@@ -252,12 +252,12 @@ int main(int argc,char **argv)
   VecSetSizes(xinit, PETSC_DECIDE, optimctx->ndesign);
   VecSetFromOptions(xinit);
 
-  optimctx->getStartingPoint(xinit);
 
   /* --- Solve primal --- */
   Vec opt;
   double objective = 0.0;
   if (runtype == primal || runtype == adjoint) {
+    optimctx->getStartingPoint(xinit);
     objective = optimctx->evalF(xinit);
     if (mpirank_world == 0) printf("%d: Tao primal: Objective %1.14e, \n", mpirank_world, objective);
     optimctx->getSolution(&opt);
@@ -277,13 +277,12 @@ int main(int argc,char **argv)
     printf("Tao gradient norm: %1.14e\n", gnorm);
   }
 
-  // /* Solve the optimization  */
-  // if (runtype == optimization) {
-  //   if (mpirank_world == 0) printf("\nNow starting TaoSolve()... \n");
-  //   TaoSolve(*optim_tao);
-  //   /* Finalize Tao optimization */
-  //   OptimTao_SolutionCallback(optim_tao, optimctx);
-  // }
+  /* Solve the optimization  */
+  if (runtype == optimization) {
+    if (mpirank_world == 0) printf("\nNow starting Optim solver ... \n");
+    optimctx->solve();
+    optimctx->getSolution(&opt);
+  }
 
   /* Get timings */
   double UsedTime = MPI_Wtime() - StartTime;

@@ -62,12 +62,15 @@ class OptimProblem {
   /* Evaluate gradient \nabla F(x) */
   void evalGradF(Vec x, Vec G);
 
+  /* Run optimization solver */
+  void solve();
+
   /* Compute initial guess for optimization variables */
   void getStartingPoint(Vec x);
 
-  /* Evaluate final time objective J(T) */
+  /* Compute final-time part of the objective */
   double objectiveT(Vec finalstate);
-  /* Derivative of final time objective \nabla J(T) * obj_bar */
+  /* Derivative of final-time part of objective times obj_bar */
   void objectiveT_diff(Vec finalstate, double obj_local, double obj_bar);
 
   /* Call this after TaoSolve() has finished to print out some information */
