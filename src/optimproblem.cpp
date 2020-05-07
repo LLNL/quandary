@@ -381,16 +381,19 @@ void OptimProblem::getStartingPoint(Vec xinit){
       /* Broadcast random vector to all */
       MPI_Bcast(randvec, ndesign, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
-      /* Trimm back to the box constraints */ // TODO: 10% of bounds
-      // int j = 0;
-      // for (int ioscil = 0; ioscil < mastereq->getNOscillators(); ioscil++) {
-      //   if (bounds[ioscil] >= 1.0) continue;
-      //   int nparam = mastereq->getOscillator(ioscil)->getNParams();
-      //   for (int i = 0; i < nparam; i++) {
-      //     randvec[j] = randvec[j] * bounds[ioscil];
-      //     j++;
-      //   }
-      // }
+      /* Scale them to be at 10% of the parameter bounds */
+      int j = 0;
+      for (int ioscil = 0; ioscil < mastereq->getNOscillators(); ioscil++) {
+        int nparam = mastereq->getOscillator(ioscil)->getNParams();
+        /* Get upper bound value */
+        int col = ioscil * nparam;
+        double bound;
+        VecGetValues(xupper, 1, &col, &bound);
+        /* Scale the params */
+        for (int i=0; i<nparam; i++) {
+          randvec[ioscil*nparam + i] *= 0.1 * bound;
+        }
+      }
 
       /* Set the initial guess */
       for (int i=0; i<ndesign; i++) {
