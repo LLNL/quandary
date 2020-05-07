@@ -124,6 +124,53 @@ OptimProblem::OptimProblem(MapParam config, myBraidApp* primalbraidapp_, myAdjoi
     fprintf(optimfile, "#iter    obj_value           ||grad||               ||tao_res||\n");
   } 
 
+  /* Store optimization bounds */
+  VecCreate(PETSC_COMM_WORLD, &xlower);
+  VecSetSizes(xlower, PETSC_DECIDE, ndesign);
+  VecSetFromOptions(xlower);
+  VecDuplicate(xlower, &xupper);
+  std::vector<double> bounds;
+  config.GetVecDoubleParam("optim_bounds", bounds, 1e20);
+  assert (bounds.size() >= primalbraidapp->mastereq->getNOscillators());
+  int col = 0;
+  for (int iosc = 0; iosc < primalbraidapp->mastereq->getNOscillators(); iosc++){
+    // Scale bounds by number of carrier waves */
+    std::vector<double> carrier_freq;
+    std::string key = "carrier_frequency" + std::to_string(iosc);
+    config.GetVecDoubleParam(key, carrier_freq, 0.0);
+    bounds[iosc] = bounds[iosc] / carrier_freq.size();
+    for (int i=0; i<primalbraidapp->mastereq->getOscillator(iosc)->getNParams(); i++){
+      VecSetValue(xupper, col, bounds[iosc], INSERT_VALUES);
+      VecSetValue(xlower, col, -1. * bounds[iosc], INSERT_VALUES);
+      col++;
+    }
+  }
+  VecAssemblyBegin(xlower); VecAssemblyEnd(xlower);
+  VecAssemblyBegin(xupper); VecAssemblyEnd(xupper);
+ 
+  /* Create Petsc's optimization solver */
+  TaoCreate(PETSC_COMM_WORLD, &tao);
+  /* Set optimization type and parameters */
+  TaoSetType(tao,TAOBQNLS);         // Optim type: taoblmvm vs BQNLS ??
+  TaoSetMaximumIterations(tao, maxiter);
+  TaoSetTolerances(tao, gatol, PETSC_DEFAULT, grtol);
+  TaoSetMonitor(tao, OptimTao_Monitor, (void*)this, NULL);
+  TaoSetVariableBounds(tao, xlower, xupper);
+  TaoSetFromOptions(tao);
+  /* Set user-defined objective and gradient evaluation routines */
+  TaoSetObjectiveRoutine(tao, OptimTao_EvalObjective, (void *)this);
+  TaoSetGradientRoutine(tao, OptimTao_EvalGradient,(void *)this);
+
+  /* Set initial starting point */
+  initguess_type = config.GetStrParam("optim_init", "zero");
+  if (initguess_type.compare("constant") == 0 ){ 
+    config.GetVecDoubleParam("optim_init_const", initguess_amplitudes, 0.0);
+    assert(initguess_amplitudes.size() == primalbraidapp->mastereq->getNOscillators());
+  }
+  VecDuplicate(xlower, &xinit);
+  getStartingPoint(xinit);
+  TaoSetInitialVector(tao, xinit);
+
 }
 
 
@@ -131,32 +178,44 @@ OptimProblem::~OptimProblem() {
   VecDestroy(&rho_t0);
   VecDestroy(&rho_t0_bar);
   if (mpirank_world == 0 && printlevel > 0) fclose(optimfile);
+
+  VecDestroy(&xinit);
+  VecDestroy(&xlower);
+  VecDestroy(&xupper);
+
+  TaoDestroy(&tao);
 }
 
 
-void OptimProblem::getStartingPoint(Vec xinit, std::string start_type, std::vector<double> start_amplitudes, std::vector<double> bounds){
+double OptimProblem::evalF(Vec x){
+  double obj = 0.0;
+  OptimTao_EvalObjective(tao, x, &obj, this);
+  return obj;
+}
+
+void OptimProblem::getStartingPoint(Vec xinit){
   MasterEq* mastereq = primalbraidapp->mastereq;
 
-  if (start_type.compare("constant") == 0 ){ // set constant initial design
+  if (initguess_type.compare("constant") == 0 ){ // set constant initial design
     int j = 0;
     for (int ioscil = 0; ioscil < mastereq->getNOscillators(); ioscil++) {
       int nparam = mastereq->getOscillator(ioscil)->getNParams();
       for (int i = 0; i < nparam; i++) {
-        VecSetValue(xinit, j, start_amplitudes[ioscil], INSERT_VALUES);
+        VecSetValue(xinit, j, initguess_amplitudes[ioscil], INSERT_VALUES);
         j++;
       }
     }
-  } else if ( start_type.compare("zero") == 0)  { // init design with zero
+  } else if ( initguess_type.compare("zero") == 0)  { // init design with zero
     VecZeroEntries(xinit);
 
-  } else if ( start_type.compare("random")      == 0 ||       // init random, fixed seed
-              start_type.compare("random_seed") == 0)  { // init random with new seed
+  } else if ( initguess_type.compare("random")      == 0 ||       // init random, fixed seed
+              initguess_type.compare("random_seed") == 0)  { // init random with new seed
 
     /* Create random vector on one processor only, then broadcast to all, so that all have the same initial guess */
     if (mpirank_world == 0) {
 
       /* Seed */
-      if ( start_type.compare("random") == 0) srand(1);  // fixed seed
+      if ( initguess_type.compare("random") == 0) srand(1);  // fixed seed
       else srand(time(0)); // random seed
 
       /* Create vector with random elements between [-1:1] */
@@ -168,16 +227,16 @@ void OptimProblem::getStartingPoint(Vec xinit, std::string start_type, std::vect
       /* Broadcast random vector to all */
       MPI_Bcast(randvec, ndesign, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
-      /* Trimm back to the box constraints */
-      int j = 0;
-      for (int ioscil = 0; ioscil < mastereq->getNOscillators(); ioscil++) {
-        if (bounds[ioscil] >= 1.0) continue;
-        int nparam = mastereq->getOscillator(ioscil)->getNParams();
-        for (int i = 0; i < nparam; i++) {
-          randvec[j] = randvec[j] * bounds[ioscil];
-          j++;
-        }
-      }
+      /* Trimm back to the box constraints */ // TODO: 10% of bounds
+      // int j = 0;
+      // for (int ioscil = 0; ioscil < mastereq->getNOscillators(); ioscil++) {
+      //   if (bounds[ioscil] >= 1.0) continue;
+      //   int nparam = mastereq->getOscillator(ioscil)->getNParams();
+      //   for (int i = 0; i < nparam; i++) {
+      //     randvec[j] = randvec[j] * bounds[ioscil];
+      //     j++;
+      //   }
+      // }
 
       /* Set the initial guess */
       for (int i=0; i<ndesign; i++) {
@@ -189,7 +248,7 @@ void OptimProblem::getStartingPoint(Vec xinit, std::string start_type, std::vect
   }  else { // Read from file 
     double* vecread = new double[ndesign];
 
-    if (mpirank_world == 0) read_vector(start_type.c_str(), vecread, ndesign);
+    if (mpirank_world == 0) read_vector(initguess_type.c_str(), vecread, ndesign);
     MPI_Bcast(vecread, ndesign, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
     /* Set the initial guess */
@@ -398,55 +457,6 @@ void OptimProblem::objectiveT_diff(Vec finalstate, double obj, double obj_bar){
 }
 
 
-void OptimTao_Setup(Tao* tao, OptimProblem* ctx, MapParam config, Vec xinit, Vec xlower, Vec xupper){
-
-  /* Set user-defined objective and gradient evaluation routines */
-  TaoSetObjectiveRoutine(*tao, OptimTao_EvalObjective, (void *)ctx);
-  TaoSetGradientRoutine(*tao, OptimTao_EvalGradient,(void *)ctx);
-
-  /* Set optimization type and parameters */
-  TaoSetType(*tao,TAOBQNLS);         // Optim type: taoblmvm vs BQNLS ??
-  // TaoSetType(*tao,TAOBLMVM);
-  TaoSetMaximumIterations(*tao, ctx->maxiter);
-  TaoSetTolerances(*tao, ctx->gatol, PETSC_DEFAULT, ctx->grtol);
-  TaoSetMonitor(*tao, OptimTao_Monitor, (void*)ctx, NULL);
-
-  /* Set the optimization bounds */
-  std::vector<double> bounds;
-  config.GetVecDoubleParam("optim_bounds", bounds, 1e20);
-  assert (bounds.size() >= ctx->primalbraidapp->mastereq->getNOscillators());
-  int col = 0;
-  for (int iosc = 0; iosc < ctx->primalbraidapp->mastereq->getNOscillators(); iosc++){
-    // Scale bounds by number of carrier waves */
-    std::vector<double> carrier_freq;
-    std::string key = "carrier_frequency" + std::to_string(iosc);
-    config.GetVecDoubleParam(key, carrier_freq, 0.0);
-    bounds[iosc] = bounds[iosc] / carrier_freq.size();
-    for (int i=0; i<ctx->primalbraidapp->mastereq->getOscillator(iosc)->getNParams(); i++){
-      VecSetValue(xupper, col, bounds[iosc], INSERT_VALUES);
-      VecSetValue(xlower, col, -1. * bounds[iosc], INSERT_VALUES);
-      col++;
-    }
-  }
-  VecAssemblyBegin(xlower); VecAssemblyEnd(xlower);
-  VecAssemblyBegin(xupper); VecAssemblyEnd(xupper);
-  TaoSetVariableBounds(*tao, xlower, xupper);
-
-  /* Set initial starting point */
-  std::string start_type;
-  std::vector<double> start_amplitudes;
-  start_type = config.GetStrParam("optim_init", "zero");
-  if (start_type.compare("constant") == 0 ){ 
-    config.GetVecDoubleParam("optim_init_const", start_amplitudes, 0.0);
-    assert(start_amplitudes.size() == ctx->primalbraidapp->mastereq->getNOscillators());
-  }
-  ctx->getStartingPoint(xinit, start_type, start_amplitudes, bounds);
-  TaoSetInitialVector(*tao, xinit);
-
-  /* Set runtime options */
-  TaoSetFromOptions(*tao);
-}
-
 
 PetscErrorCode OptimTao_EvalObjective(Tao tao, Vec x, PetscReal *f, void*ptr){
   OptimProblem* ctx = (OptimProblem*) ptr;
@@ -640,7 +650,7 @@ PetscErrorCode OptimTao_Monitor(Tao tao,void*ptr){
 }
 
 
-void OptimTao_SolutionCallback(Tao* tao, OptimProblem* ctx){
+void OptimTao_SolutionCallback(Tao tao, OptimProblem* ctx){
   if (ctx->mpirank_world == 0 && ctx->printlevel > 0) {
     char filename[255];
     FILE *paramfile;
@@ -648,14 +658,14 @@ void OptimTao_SolutionCallback(Tao* tao, OptimProblem* ctx){
     int iter;
     double obj, gnorm, cnorm, dx;
     TaoConvergedReason reason;
-    TaoGetSolutionStatus(*tao, &iter, &obj, &gnorm, &cnorm, &dx, &reason);
+    TaoGetSolutionStatus(tao, &iter, &obj, &gnorm, &cnorm, &dx, &reason);
     std::cout<< "\n Optimization finished!\n";
     std::cout<< " TaoSolve termination reason: " << reason << std::endl;
 
     /* Print optimized parameters */
     Vec params;
     const PetscScalar* params_ptr;
-    TaoGetSolutionVector(*tao, &params);
+    TaoGetSolutionVector(tao, &params);
     VecGetArrayRead(params, &params_ptr);
     sprintf(filename, "%s/param_optimized.dat", ctx->primalbraidapp->datadir.c_str());
     paramfile = fopen(filename, "w");

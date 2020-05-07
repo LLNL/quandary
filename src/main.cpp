@@ -46,8 +46,6 @@ int main(int argc,char **argv)
   Vec            x;          // solution vector
   // bool           tj_save;    // Determines wether trajectory should be stored in primal run
 
-  /* Optimization */
-  double objective;        // Objective function value f
 
 
   char filename[255];
@@ -246,49 +244,44 @@ int main(int argc,char **argv)
   /* Initialize optimization */
   OptimProblem* optimctx = new OptimProblem(config, primalbraidapp, adjointbraidapp, comm_hiop, comm_init, obj_oscilIDs, initcond_type, ninit);
 
-  /* Initialize optimization solver */
-  Vec xinit, xlower, xupper;
-  VecCreate(PETSC_COMM_WORLD, &xinit);
-  VecSetSizes(xinit, PETSC_DECIDE, optimctx->ndesign);
-  VecSetFromOptions(xinit);
-  VecDuplicate(xinit, &xlower);
-  VecDuplicate(xinit, &xupper);
-
-  Tao* optim_tao = new Tao; 
-  TaoCreate(PETSC_COMM_WORLD, optim_tao);
-  OptimTao_Setup(optim_tao, optimctx, config, xinit, xlower, xupper);
-
-
    /* Start timer */
   double StartTime = MPI_Wtime();
 
+  Vec xinit;
+  VecCreate(PETSC_COMM_WORLD, &xinit);
+  VecSetSizes(xinit, PETSC_DECIDE, optimctx->ndesign);
+  VecSetFromOptions(xinit);
+
+  optimctx->getStartingPoint(xinit);
+
   /* --- Solve primal --- */
+  double objective = 0.0;
   if (runtype == primal || runtype == adjoint) {
-    OptimTao_EvalObjective(*optim_tao, xinit, &objective, optimctx);
+    objective = optimctx->evalF(xinit);
     if (mpirank_world == 0) printf("%d: Tao primal: Objective %1.14e, \n", mpirank_world, objective);
   } 
   
-  /* --- Solve adjoint --- */
-  if (runtype == adjoint) {
-    double gnorm = 0.0;
-    Vec petscgrad;
-    VecCreate(PETSC_COMM_WORLD, &petscgrad);
-    VecSetSizes(petscgrad, PETSC_DECIDE, optimctx->ndesign);
-    VecSetUp(petscgrad);
-    VecZeroEntries(petscgrad);
-    OptimTao_EvalGradient(*optim_tao, xinit, petscgrad, optimctx);
-    VecView(petscgrad, PETSC_VIEWER_STDOUT_WORLD);
-    VecNorm(petscgrad, NORM_2, &gnorm);
-    printf("Tao gradient norm: %1.14e\n", gnorm);
-  }
+  // /* --- Solve adjoint --- */
+  // if (runtype == adjoint) {
+  //   double gnorm = 0.0;
+  //   Vec petscgrad;
+  //   VecCreate(PETSC_COMM_WORLD, &petscgrad);
+  //   VecSetSizes(petscgrad, PETSC_DECIDE, optimctx->ndesign);
+  //   VecSetUp(petscgrad);
+  //   VecZeroEntries(petscgrad);
+  //   OptimTao_EvalGradient(*optim_tao, xinit, petscgrad, optimctx);
+  //   VecView(petscgrad, PETSC_VIEWER_STDOUT_WORLD);
+  //   VecNorm(petscgrad, NORM_2, &gnorm);
+  //   printf("Tao gradient norm: %1.14e\n", gnorm);
+  // }
 
-  /* Solve the optimization  */
-  if (runtype == optimization) {
-    if (mpirank_world == 0) printf("\nNow starting TaoSolve()... \n");
-    TaoSolve(*optim_tao);
-    /* Finalize Tao optimization */
-    OptimTao_SolutionCallback(optim_tao, optimctx);
-  }
+  // /* Solve the optimization  */
+  // if (runtype == optimization) {
+  //   if (mpirank_world == 0) printf("\nNow starting TaoSolve()... \n");
+  //   TaoSolve(*optim_tao);
+  //   /* Finalize Tao optimization */
+  //   OptimTao_SolutionCallback(optim_tao, optimctx);
+  // }
 
   /* Get timings */
   double UsedTime = MPI_Wtime() - StartTime;
@@ -636,15 +629,7 @@ int main(int argc,char **argv)
   delete primalbraidapp;
   delete adjointbraidapp;
 
-  /* Free tao */
-  TaoDestroy(optim_tao);
-
   delete optimctx;
-
-  VecDestroy(&xinit);
-  VecDestroy(&xlower);
-  VecDestroy(&xupper);
-
 
 
 

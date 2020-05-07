@@ -11,7 +11,9 @@ enum ObjectiveType {GATE,             // Compare final state to linear gate tran
 
 
 
-typedef struct OptimProblem {
+class OptimProblem {
+
+  public: 
 
   /* ODE stuff */
   myBraidApp* primalbraidapp;         /* Primal BraidApp to carry out PinT forward sim.*/
@@ -40,7 +42,12 @@ typedef struct OptimProblem {
   double gatol;                    /* Stopping criterion based on absolute gradient norm */
   double grtol;                    /* Stopping criterion based on relative gradient norm */
   int maxiter;                     /* Stopping criterion based on maximum number of iterations */
-
+  Tao tao;                        /* Petsc's Optimization solver */
+  Vec xinit;                       /* Initial guess */
+  Vec xlower, xupper;              /* Optimization bounds */
+  std::string initguess_type;      /* Type of initial guess */
+  std::vector<double> initguess_amplitudes; /* Initial amplitudes of controles, or NULL */
+  
   /* Output */
   int printlevel;      /* Level of output: 0 - no output, 1 - optimization progress to file */
   FILE* optimfile;     /* Output file to log optimization progress */
@@ -49,16 +56,18 @@ typedef struct OptimProblem {
   OptimProblem(MapParam config, myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, MPI_Comm comm_hiop_, MPI_Comm comm_init_, std::vector<int> obj_oscilIDs_, InitialConditionType initcondtype_, int ninit_);
   ~OptimProblem();
 
+  /* Evaluate the objective function value */
+  double evalF(Vec x);
 
   /* Compute initial guess for optimization variables */
-  void getStartingPoint(Vec x, std::string start_type, std::vector<double> start_amplitudes, std::vector<double> bounds);
+  void getStartingPoint(Vec x);
 
   /* Evaluate final time objective J(T) */
   double objectiveT(Vec finalstate);
   /* Derivative of final time objective \nabla J(T) * obj_bar */
   void objectiveT_diff(Vec finalstate, double obj_local, double obj_bar);
 
-} OptimProblem;
+};
 
 
 /* Initialize the Tao optimizer, set options, starting point, etc */
