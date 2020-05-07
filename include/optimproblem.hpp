@@ -67,20 +67,15 @@ class OptimProblem {
   /* Derivative of final time objective \nabla J(T) * obj_bar */
   void objectiveT_diff(Vec finalstate, double obj_local, double obj_bar);
 
+  /* Call this after TaoSolve() has finished to print out some information */
+  void getSolution(Vec* opt);
 };
 
-
-/* Initialize the Tao optimizer, set options, starting point, etc */
-void OptimTao_Setup(Tao* tao, OptimProblem* ctx, MapParam config, Vec xinit, Vec xlower, Vec xupper);
-
-/* Call this after TaoSolve() has finished to print out some information */
-void OptimTao_SolutionCallback(Tao* tao, OptimProblem* ctx);
-
 /* Monitor the optimization progress. This routine is called in each iteration of TaoSolve() */
-PetscErrorCode OptimTao_Monitor(Tao tao,void*ptr);
+PetscErrorCode TaoMonitor(Tao tao,void*ptr);
 
 /* Petsc's Tao interface routine for evaluating the objective function f = f(x) */
-PetscErrorCode OptimTao_EvalObjective(Tao tao, Vec x, PetscReal *f, void*ptr);
+PetscErrorCode TaoEvalObjective(Tao tao, Vec x, PetscReal *f, void*ptr);
 
 /* Petsc's Tao interface routine for evaluating the gradient g = \nabla f(x) */
-PetscErrorCode OptimTao_EvalGradient(Tao tao, Vec x, Vec G, void*ptr);
+PetscErrorCode TaoEvalGradient(Tao tao, Vec x, Vec G, void*ptr);

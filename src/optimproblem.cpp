@@ -154,12 +154,12 @@ OptimProblem::OptimProblem(MapParam config, myBraidApp* primalbraidapp_, myAdjoi
   TaoSetType(tao,TAOBQNLS);         // Optim type: taoblmvm vs BQNLS ??
   TaoSetMaximumIterations(tao, maxiter);
   TaoSetTolerances(tao, gatol, PETSC_DEFAULT, grtol);
-  TaoSetMonitor(tao, OptimTao_Monitor, (void*)this, NULL);
+  TaoSetMonitor(tao, TaoMonitor, (void*)this, NULL);
   TaoSetVariableBounds(tao, xlower, xupper);
   TaoSetFromOptions(tao);
   /* Set user-defined objective and gradient evaluation routines */
-  TaoSetObjectiveRoutine(tao, OptimTao_EvalObjective, (void *)this);
-  TaoSetGradientRoutine(tao, OptimTao_EvalGradient,(void *)this);
+  TaoSetObjectiveRoutine(tao, TaoEvalObjective, (void *)this);
+  TaoSetGradientRoutine(tao, TaoEvalGradient,(void *)this);
 
   /* Set initial starting point */
   initguess_type = config.GetStrParam("optim_init", "zero");
@@ -189,7 +189,7 @@ OptimProblem::~OptimProblem() {
 
 double OptimProblem::evalF(Vec x){
   double obj = 0.0;
-  OptimTao_EvalObjective(tao, x, &obj, this);
+  TaoEvalObjective(tao, x, &obj, this);
   return obj;
 }
 
@@ -458,7 +458,7 @@ void OptimProblem::objectiveT_diff(Vec finalstate, double obj, double obj_bar){
 
 
 
-PetscErrorCode OptimTao_EvalObjective(Tao tao, Vec x, PetscReal *f, void*ptr){
+PetscErrorCode TaoEvalObjective(Tao tao, Vec x, PetscReal *f, void*ptr){
   OptimProblem* ctx = (OptimProblem*) ptr;
   MasterEq* mastereq = ctx->primalbraidapp->mastereq;
 
@@ -509,7 +509,7 @@ PetscErrorCode OptimTao_EvalObjective(Tao tao, Vec x, PetscReal *f, void*ptr){
 }
 
 
-PetscErrorCode OptimTao_EvalGradient(Tao tao, Vec x, Vec G, void*ptr){
+PetscErrorCode TaoEvalGradient(Tao tao, Vec x, Vec G, void*ptr){
   OptimProblem* ctx = (OptimProblem*) ptr;
   MasterEq* mastereq = ctx->primalbraidapp->mastereq;
 
@@ -601,7 +601,7 @@ PetscErrorCode OptimTao_EvalGradient(Tao tao, Vec x, Vec G, void*ptr){
 
 
 
-PetscErrorCode OptimTao_Monitor(Tao tao,void*ptr){
+PetscErrorCode TaoMonitor(Tao tao,void*ptr){
   OptimProblem* ctx = (OptimProblem*) ptr;
 
   /* Output */
@@ -650,8 +650,15 @@ PetscErrorCode OptimTao_Monitor(Tao tao,void*ptr){
 }
 
 
-void OptimTao_SolutionCallback(Tao tao, OptimProblem* ctx){
-  if (ctx->mpirank_world == 0 && ctx->printlevel > 0) {
+void OptimProblem::getSolution(Vec* param_ptr){
+  
+  /* Get ref to optimized parameters */
+  Vec params;
+  TaoGetSolutionVector(tao, &params);
+  *param_ptr = params;
+
+  /* Print if needed */
+  if (mpirank_world == 0 && printlevel > 0) {
     char filename[255];
     FILE *paramfile;
 
@@ -663,26 +670,25 @@ void OptimTao_SolutionCallback(Tao tao, OptimProblem* ctx){
     std::cout<< " TaoSolve termination reason: " << reason << std::endl;
 
     /* Print optimized parameters */
-    Vec params;
     const PetscScalar* params_ptr;
-    TaoGetSolutionVector(tao, &params);
     VecGetArrayRead(params, &params_ptr);
-    sprintf(filename, "%s/param_optimized.dat", ctx->primalbraidapp->datadir.c_str());
+    sprintf(filename, "%s/param_optimized.dat", primalbraidapp->datadir.c_str());
     paramfile = fopen(filename, "w");
-    for (int i=0; i<ctx->ndesign; i++){
+    for (int i=0; i<ndesign; i++){
       fprintf(paramfile, "%1.14e\n", params_ptr[i]);
     }
     fclose(paramfile);
     VecRestoreArrayRead(params, &params_ptr);
 
     /* Print control functions */
-    ctx->primalbraidapp->mastereq->setControlAmplitudes(params);
-    int ntime = ctx->primalbraidapp->ntime;
-    double dt = ctx->primalbraidapp->total_time / ntime;
-    MasterEq* mastereq = ctx->primalbraidapp->mastereq;
+    primalbraidapp->mastereq->setControlAmplitudes(params);
+    int ntime = primalbraidapp->ntime;
+    double dt = primalbraidapp->total_time / ntime;
+    MasterEq* mastereq = primalbraidapp->mastereq;
     for (int ioscil = 0; ioscil < mastereq->getNOscillators(); ioscil++) {
-        sprintf(filename, "%s/control_optimized_%02d.dat", ctx->primalbraidapp->datadir.c_str(), ioscil+1);
+        sprintf(filename, "%s/control_optimized_%02d.dat", primalbraidapp->datadir.c_str(), ioscil+1);
         mastereq->getOscillator(ioscil)->flushControl(ntime, dt, filename);
     }
   }
+  // return param_ptr;
 }

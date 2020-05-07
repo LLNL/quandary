@@ -255,10 +255,12 @@ int main(int argc,char **argv)
   optimctx->getStartingPoint(xinit);
 
   /* --- Solve primal --- */
+  Vec opt;
   double objective = 0.0;
   if (runtype == primal || runtype == adjoint) {
     objective = optimctx->evalF(xinit);
     if (mpirank_world == 0) printf("%d: Tao primal: Objective %1.14e, \n", mpirank_world, objective);
+    optimctx->getSolution(&opt);
   } 
   
   // /* --- Solve adjoint --- */
