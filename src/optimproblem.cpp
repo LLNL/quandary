@@ -214,7 +214,7 @@ void OptimProblem::evalGradF(Vec x, Vec G){
   }
 
   /*  Iterate over initial condition */
-  double objective = 0.0;
+  double obj = 0.0;
   for (int iinit = 0; iinit < ninit_local; iinit++) {
       
 
@@ -233,7 +233,7 @@ void OptimProblem::evalGradF(Vec x, Vec G){
 
     /* Add final-time objective */
     double obj_local = objectiveT(finalstate);
-    objective += obj_local;
+    obj += obj_local;
       // if (mpirank_braid == 0) printf("%d: local objective: %1.14e\n", mpirank_init, obj_local);
 
     /* --- Solve adjoint --- */
@@ -254,17 +254,17 @@ void OptimProblem::evalGradF(Vec x, Vec G){
   }
 
   /* Broadcast objective from last to all time processors */
-  MPI_Bcast(&objective, 1, MPI_DOUBLE, mpisize_braid-1, primalbraidapp->comm_braid);
+  MPI_Bcast(&obj, 1, MPI_DOUBLE, mpisize_braid-1, primalbraidapp->comm_braid);
 
   /* Sum up objective from all initial conditions */
-  double myobj = objective;
-  MPI_Allreduce(&myobj, &objective, 1, MPI_DOUBLE, MPI_SUM, comm_init);
-  // if (mpirank_init == 0) printf("%d: global sum objective: %1.14e\n\n", mpirank_init, objective);
+  double myobj = obj;
+  MPI_Allreduce(&myobj, &obj, 1, MPI_DOUBLE, MPI_SUM, comm_init);
+  // if (mpirank_init == 0) printf("%d: global sum objective: %1.14e\n\n", mpirank_init, obj);
 
   /* Add regularization objective += gamma/2 * ||x||^2*/
   double xnorm;
   VecNorm(x, NORM_2, &xnorm);
-  objective += gamma_tik / 2. * pow(xnorm,2.0);
+  obj += gamma_tik / 2. * pow(xnorm,2.0);
 
   /* Sum up the gradient from all braid processors */
   PetscScalar* grad; 
@@ -282,6 +282,8 @@ void OptimProblem::evalGradF(Vec x, Vec G){
   VecNorm(G, NORM_2, &(gnorm));
   // if (mpirank_world == 0) printf("%d: ||grad|| = %1.14e\n", mpirank_init, gnorm);
 
+  /* Store objective */
+  objective = obj;
 }
 
 
