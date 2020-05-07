@@ -1,7 +1,7 @@
-#include "optimizer.hpp"
+#include "optimproblem.hpp"
 
 
-OptimCtx::OptimCtx(MapParam config, myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, MPI_Comm comm_hiop_, MPI_Comm comm_init_, std::vector<int> obj_oscilIDs_, InitialConditionType initcond_type, int ninit_) {
+OptimProblem::OptimProblem(MapParam config, myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, MPI_Comm comm_hiop_, MPI_Comm comm_init_, std::vector<int> obj_oscilIDs_, InitialConditionType initcond_type, int ninit_) {
 
   primalbraidapp  = primalbraidapp_;
   adjointbraidapp = adjointbraidapp_;
@@ -127,14 +127,14 @@ OptimCtx::OptimCtx(MapParam config, myBraidApp* primalbraidapp_, myAdjointBraidA
 }
 
 
-OptimCtx::~OptimCtx() {
+OptimProblem::~OptimProblem() {
   VecDestroy(&rho_t0);
   VecDestroy(&rho_t0_bar);
   if (mpirank_world == 0 && printlevel > 0) fclose(optimfile);
 }
 
 
-void OptimCtx::getStartingPoint(Vec xinit, std::string start_type, std::vector<double> start_amplitudes, std::vector<double> bounds){
+void OptimProblem::getStartingPoint(Vec xinit, std::string start_type, std::vector<double> start_amplitudes, std::vector<double> bounds){
   MasterEq* mastereq = primalbraidapp->mastereq;
 
   if (start_type.compare("constant") == 0 ){ // set constant initial design
@@ -221,7 +221,7 @@ void OptimCtx::getStartingPoint(Vec xinit, std::string start_type, std::vector<d
 
 
 
-double OptimCtx::objectiveT(Vec finalstate){
+double OptimProblem::objectiveT(Vec finalstate){
   double obj_local = 0.0;
 
   if (finalstate != NULL) {
@@ -306,7 +306,7 @@ double OptimCtx::objectiveT(Vec finalstate){
 }
 
 
-void OptimCtx::objectiveT_diff(Vec finalstate, double obj, double obj_bar){
+void OptimProblem::objectiveT_diff(Vec finalstate, double obj, double obj_bar){
 
   /* Reset adjoints */
   VecZeroEntries(rho_t0_bar);
@@ -398,7 +398,7 @@ void OptimCtx::objectiveT_diff(Vec finalstate, double obj, double obj_bar){
 }
 
 
-void OptimTao_Setup(Tao* tao, OptimCtx* ctx, MapParam config, Vec xinit, Vec xlower, Vec xupper){
+void OptimTao_Setup(Tao* tao, OptimProblem* ctx, MapParam config, Vec xinit, Vec xlower, Vec xupper){
 
   /* Set user-defined objective and gradient evaluation routines */
   TaoSetObjectiveRoutine(*tao, OptimTao_EvalObjective, (void *)ctx);
@@ -449,7 +449,7 @@ void OptimTao_Setup(Tao* tao, OptimCtx* ctx, MapParam config, Vec xinit, Vec xlo
 
 
 PetscErrorCode OptimTao_EvalObjective(Tao tao, Vec x, PetscReal *f, void*ptr){
-  OptimCtx* ctx = (OptimCtx*) ptr;
+  OptimProblem* ctx = (OptimProblem*) ptr;
   MasterEq* mastereq = ctx->primalbraidapp->mastereq;
 
   if (ctx->mpirank_world == 0) printf(" EVAL F... \n");
@@ -500,7 +500,7 @@ PetscErrorCode OptimTao_EvalObjective(Tao tao, Vec x, PetscReal *f, void*ptr){
 
 
 PetscErrorCode OptimTao_EvalGradient(Tao tao, Vec x, Vec G, void*ptr){
-  OptimCtx* ctx = (OptimCtx*) ptr;
+  OptimProblem* ctx = (OptimProblem*) ptr;
   MasterEq* mastereq = ctx->primalbraidapp->mastereq;
 
   if (ctx->mpirank_world == 0) printf(" EVAL GRAD F...\n");
@@ -592,7 +592,7 @@ PetscErrorCode OptimTao_EvalGradient(Tao tao, Vec x, Vec G, void*ptr){
 
 
 PetscErrorCode OptimTao_Monitor(Tao tao,void*ptr){
-  OptimCtx* ctx = (OptimCtx*) ptr;
+  OptimProblem* ctx = (OptimProblem*) ptr;
 
   /* Output */
   if (ctx->mpirank_world == 0 && ctx->printlevel > 0) {
@@ -640,7 +640,7 @@ PetscErrorCode OptimTao_Monitor(Tao tao,void*ptr){
 }
 
 
-void OptimTao_SolutionCallback(Tao* tao, OptimCtx* ctx){
+void OptimTao_SolutionCallback(Tao* tao, OptimProblem* ctx){
   if (ctx->mpirank_world == 0 && ctx->printlevel > 0) {
     char filename[255];
     FILE *paramfile;

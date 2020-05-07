@@ -9,7 +9,7 @@
 #include "_braid.h"
 #include <stdlib.h>
 #include <sys/resource.h>
-#include "optimizer.hpp"
+#include "optimproblem.hpp"
 
 #define EPS 1e-4
 
@@ -244,7 +244,7 @@ int main(int argc,char **argv)
   adjointbraidapp->InitGrids();
 
   /* Initialize optimization */
-  OptimCtx* optimctx = new OptimCtx(config, primalbraidapp, adjointbraidapp, comm_hiop, comm_init, obj_oscilIDs, initcond_type, ninit);
+  OptimProblem* optimctx = new OptimProblem(config, primalbraidapp, adjointbraidapp, comm_hiop, comm_init, obj_oscilIDs, initcond_type, ninit);
 
   /* Initialize optimization solver */
   Vec xinit, xlower, xupper;

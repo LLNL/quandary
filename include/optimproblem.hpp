@@ -11,7 +11,7 @@ enum ObjectiveType {GATE,             // Compare final state to linear gate tran
 
 
 
-typedef struct OptimCtx {
+typedef struct OptimProblem {
 
   /* ODE stuff */
   myBraidApp* primalbraidapp;         /* Primal BraidApp to carry out PinT forward sim.*/
@@ -46,8 +46,8 @@ typedef struct OptimCtx {
   FILE* optimfile;     /* Output file to log optimization progress */
 
   /* Constructor */
-  OptimCtx(MapParam config, myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, MPI_Comm comm_hiop_, MPI_Comm comm_init_, std::vector<int> obj_oscilIDs_, InitialConditionType initcondtype_, int ninit_);
-  ~OptimCtx();
+  OptimProblem(MapParam config, myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, MPI_Comm comm_hiop_, MPI_Comm comm_init_, std::vector<int> obj_oscilIDs_, InitialConditionType initcondtype_, int ninit_);
+  ~OptimProblem();
 
 
   /* Compute initial guess for optimization variables */
@@ -58,14 +58,14 @@ typedef struct OptimCtx {
   /* Derivative of final time objective \nabla J(T) * obj_bar */
   void objectiveT_diff(Vec finalstate, double obj_local, double obj_bar);
 
-} OptimCtx;
+} OptimProblem;
 
 
 /* Initialize the Tao optimizer, set options, starting point, etc */
-void OptimTao_Setup(Tao* tao, OptimCtx* ctx, MapParam config, Vec xinit, Vec xlower, Vec xupper);
+void OptimTao_Setup(Tao* tao, OptimProblem* ctx, MapParam config, Vec xinit, Vec xlower, Vec xupper);
 
 /* Call this after TaoSolve() has finished to print out some information */
-void OptimTao_SolutionCallback(Tao* tao, OptimCtx* ctx);
+void OptimTao_SolutionCallback(Tao* tao, OptimProblem* ctx);
 
 /* Monitor the optimization progress. This routine is called in each iteration of TaoSolve() */
 PetscErrorCode OptimTao_Monitor(Tao tao,void*ptr);
