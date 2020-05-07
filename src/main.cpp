@@ -14,7 +14,7 @@
 #define EPS 1e-4
 
 #define TEST_DRHSDP 0
-#define TEST_FD_TS 0
+#define TEST_FD_TS 1
 #define TEST_FD_SPLINE 0
 #define TEST_DT 0
 
@@ -244,17 +244,22 @@ int main(int argc,char **argv)
   /* Initialize optimization */
   OptimProblem* optimctx = new OptimProblem(config, primalbraidapp, adjointbraidapp, comm_hiop, comm_init, obj_oscilIDs, initcond_type, ninit);
 
-   /* Start timer */
-  double StartTime = MPI_Wtime();
-
+  /* Set upt solution and gradient vector */
   Vec xinit;
   VecCreate(PETSC_COMM_WORLD, &xinit);
   VecSetSizes(xinit, PETSC_DECIDE, optimctx->ndesign);
   VecSetFromOptions(xinit);
+  Vec grad;
+  VecCreate(PETSC_COMM_WORLD, &grad);
+  VecSetSizes(grad, PETSC_DECIDE, optimctx->ndesign);
+  VecSetUp(grad);
+  VecZeroEntries(grad);
+  Vec opt;
 
+   /* Start timer */
+  double StartTime = MPI_Wtime();
 
   /* --- Solve primal --- */
-  Vec opt;
   double objective = 0.0;
   if (runtype == primal || runtype == adjoint) {
     optimctx->getStartingPoint(xinit);
@@ -266,11 +271,7 @@ int main(int argc,char **argv)
   /* --- Solve adjoint --- */
   if (runtype == adjoint) {
     double gnorm = 0.0;
-    Vec grad;
-    VecCreate(PETSC_COMM_WORLD, &grad);
-    VecSetSizes(grad, PETSC_DECIDE, optimctx->ndesign);
-    VecSetUp(grad);
-    VecZeroEntries(grad);
+
     optimctx->evalGradF(xinit, grad);
     VecView(grad, PETSC_VIEWER_STDOUT_WORLD);
     VecNorm(grad, NORM_2, &gnorm);
@@ -431,52 +432,44 @@ int main(int argc,char **argv)
   double obj_org;
   double obj_pert1, obj_pert2;
 
-  long long int n,l;
-  optimproblem.get_prob_sizes(n, m);
+  optimctx->getStartingPoint(xinit);
 
-  double* myx = new double[n];
-  optimproblem.get_starting_point(n, myx);
-
-
-  // /* --- Solve primal --- */
+  /* --- Solve primal --- */
   if (mpirank_world == 0) printf("\nRunning optimizer eval_f... ");
-  optimproblem.eval_f(n, myx, true, obj_org);
+  obj_org = optimctx->evalF(xinit);
   if (mpirank_world == 0) printf(" Obj_orig %1.14e\n", obj_org);
 
   /* --- Solve adjoint --- */
   if (mpirank_world == 0) printf("\nRunning optimizer eval_grad_f...\n");
-  double* testgrad = new double[n];
-  optimproblem.eval_grad_f(n, myx, true, testgrad);
-  for (int i=0; i<ndesign; i++) {
-        if (mpirank_world == 0) printf("%1.14e\n", testgrad[i]);
-  }
+  optimctx->evalGradF(xinit, grad);
+  VecView(grad, PETSC_VIEWER_STDOUT_WORLD);
+  
 
-  /* Finite Differences */
+  /* --- Finite Differences --- */
   if (mpirank_world == 0) printf("\nFD...\n");
-  for (int i=0; i<n; i++){
+  for (int i=0; i<optimctx->ndesign; i++){
   // {int i=0;
 
     /* Evaluate f(p+eps)*/
-    myx[i] += EPS;
-    optimproblem.eval_f(n, myx, true, obj_pert1);
+    VecSetValue(xinit, i, EPS, ADD_VALUES);
+    obj_pert1 = optimctx->evalF(xinit);
 
     /* Evaluate f(p-eps)*/
-    myx[i] -= 2.*EPS;
-    optimproblem.eval_f(n, myx, true, obj_pert2);
+    VecSetValue(xinit, i, -2*EPS, ADD_VALUES);
+    obj_pert2 = optimctx->evalF(xinit);
 
     /* Eval FD and error */
     double fd = (obj_pert1 - obj_pert2) / (2.*EPS);
     double err = 0.0;
-    if (fd != 0.0) err = (testgrad[i] - fd) / fd;
-    if (mpirank_world == 0) printf(" %d: obj %1.14e, obj_pert1 %1.14e, obj_pert2 %1.14e, fd %1.14e, grad %1.14e, err %1.14e\n", i, obj_org, obj_pert1, obj_pert2, fd, testgrad[i], err);
+    double gradi; 
+    VecGetValues(grad, 1, &i, &gradi);
+    if (fd != 0.0) err = (gradi - fd) / fd;
+    if (mpirank_world == 0) printf(" %d: obj %1.14e, obj_pert1 %1.14e, obj_pert2 %1.14e, fd %1.14e, grad %1.14e, err %1.14e\n", i, obj_org, obj_pert1, obj_pert2, fd, gradi, err);
 
     /* Restore parameter */
-    myx[i] += EPS;
+    VecSetValue(xinit, i, EPS, ADD_VALUES);
   }
   
-  delete [] testgrad;
-  delete [] myx;
-
 #endif
 
 #if TEST_FD_SPLINE
