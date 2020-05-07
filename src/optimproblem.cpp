@@ -160,6 +160,7 @@ OptimProblem::OptimProblem(MapParam config, myBraidApp* primalbraidapp_, myAdjoi
   /* Set user-defined objective and gradient evaluation routines */
   TaoSetObjectiveRoutine(tao, TaoEvalObjective, (void *)this);
   TaoSetGradientRoutine(tao, TaoEvalGradient,(void *)this);
+  TaoSetObjectiveAndGradientRoutine(tao, TaoEvalObjectiveAndGradient, (void*) this);
 
   /* Set initial starting point */
   initguess_type = config.GetStrParam("optim_init", "zero");
@@ -199,7 +200,7 @@ void OptimProblem::evalGradF(Vec x, Vec G){
 
   MasterEq* mastereq = primalbraidapp->mastereq;
 
-  if (mpirank_world == 0) printf(" EVAL GRAD F...\n");
+  if (mpirank_world == 0) std::cout<< "EVAL GRAD F... " << std::endl;
   Vec finalstate = NULL;
 
   /* Pass design vector x to oscillators */
@@ -280,10 +281,15 @@ void OptimProblem::evalGradF(Vec x, Vec G){
 
   /* Compute and store gradient norm */
   VecNorm(G, NORM_2, &(gnorm));
-  // if (mpirank_world == 0) printf("%d: ||grad|| = %1.14e\n", mpirank_init, gnorm);
+
 
   /* Store objective */
   objective = obj;
+
+  /* Output */
+  if (mpirank_world == 0) {
+    std::cout<< "Obj = " << objective << " ||grad|| = " << gnorm << std::endl;
+  }
 }
 
 
@@ -598,6 +604,12 @@ double OptimProblem::evalF(Vec x) {
   VecNorm(x, NORM_2, &xnorm);
   obj+= gamma_tik / 2. * pow(xnorm,2.0);
 
+
+  /* Output */
+  if (mpirank_world == 0) {
+    std::cout<< "Obj = " << objective << std::endl;
+  }
+
   /* Store and return objective value */
   objective = obj;
   return objective;
@@ -704,4 +716,14 @@ void OptimProblem::getSolution(Vec* param_ptr){
     }
   }
   // return param_ptr;
+}
+
+
+PetscErrorCode TaoEvalObjectiveAndGradient(Tao tao, Vec x, PetscReal *f, Vec G, void*ptr){
+
+  TaoEvalGradient(tao, x, G, ptr);
+  OptimProblem* ctx = (OptimProblem*) ptr;
+  *f = ctx->objective;
+
+  return 0;
 }

@@ -85,3 +85,6 @@ PetscErrorCode TaoEvalObjective(Tao tao, Vec x, PetscReal *f, void*ptr);
 
 /* Petsc's Tao interface routine for evaluating the gradient g = \nabla f(x) */
 PetscErrorCode TaoEvalGradient(Tao tao, Vec x, Vec G, void*ptr);
+
+/* Petsc's Tao interface routine for evaluating the gradient g = \nabla f(x) */
+PetscErrorCode TaoEvalObjectiveAndGradient(Tao tao, Vec x, PetscReal *f, Vec G, void*ptr);

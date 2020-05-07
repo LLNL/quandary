@@ -14,7 +14,7 @@
 #define EPS 1e-4
 
 #define TEST_DRHSDP 0
-#define TEST_FD_TS 1
+#define TEST_FD_TS 0
 #define TEST_FD_SPLINE 0
 #define TEST_DT 0
 
