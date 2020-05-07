@@ -263,19 +263,19 @@ int main(int argc,char **argv)
     optimctx->getSolution(&opt);
   } 
   
-  // /* --- Solve adjoint --- */
-  // if (runtype == adjoint) {
-  //   double gnorm = 0.0;
-  //   Vec petscgrad;
-  //   VecCreate(PETSC_COMM_WORLD, &petscgrad);
-  //   VecSetSizes(petscgrad, PETSC_DECIDE, optimctx->ndesign);
-  //   VecSetUp(petscgrad);
-  //   VecZeroEntries(petscgrad);
-  //   OptimTao_EvalGradient(*optim_tao, xinit, petscgrad, optimctx);
-  //   VecView(petscgrad, PETSC_VIEWER_STDOUT_WORLD);
-  //   VecNorm(petscgrad, NORM_2, &gnorm);
-  //   printf("Tao gradient norm: %1.14e\n", gnorm);
-  // }
+  /* --- Solve adjoint --- */
+  if (runtype == adjoint) {
+    double gnorm = 0.0;
+    Vec grad;
+    VecCreate(PETSC_COMM_WORLD, &grad);
+    VecSetSizes(grad, PETSC_DECIDE, optimctx->ndesign);
+    VecSetUp(grad);
+    VecZeroEntries(grad);
+    optimctx->evalGradF(xinit, grad);
+    VecView(grad, PETSC_VIEWER_STDOUT_WORLD);
+    VecNorm(grad, NORM_2, &gnorm);
+    printf("Tao gradient norm: %1.14e\n", gnorm);
+  }
 
   // /* Solve the optimization  */
   // if (runtype == optimization) {

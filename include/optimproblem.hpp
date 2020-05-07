@@ -59,6 +59,9 @@ class OptimProblem {
   /* Evaluate the objective function F(x) */
   double evalF(Vec x);
 
+  /* Evaluate gradient \nabla F(x) */
+  void evalGradF(Vec x, Vec G);
+
   /* Compute initial guess for optimization variables */
   void getStartingPoint(Vec x);
 

@@ -196,7 +196,93 @@ PetscErrorCode TaoEvalObjective(Tao tao, Vec x, PetscReal *f, void*ptr){
 }
 
 void OptimProblem::evalGradF(Vec x, Vec G){
-  // TaoEvalGradient(tao) // TODO!!
+
+  MasterEq* mastereq = primalbraidapp->mastereq;
+
+  if (mpirank_world == 0) printf(" EVAL GRAD F...\n");
+  Vec finalstate = NULL;
+
+  /* Pass design vector x to oscillators */
+  mastereq->setControlAmplitudes(x); 
+
+  /* Reset Gradient */
+  VecZeroEntries(G);
+
+  /* Derivative of regulatization term gamma / 2 ||x||^2 (ADD ON ONE PROC ONLY!) */
+  if (mpirank_init == 0 && mpirank_braid == 0) {
+    VecAXPY(G, gamma_tik, x);
+  }
+
+  /*  Iterate over initial condition */
+  double objective = 0.0;
+  for (int iinit = 0; iinit < ninit_local; iinit++) {
+      
+
+    /* Prepare the initial condition */
+    int iinit_global = mpirank_init * ninit_local + iinit;
+    int initid = primalbraidapp->mastereq->getRhoT0(iinit_global, obj_oscilIDs, ninit, rho_t0);
+
+    /* --- Solve primal --- */
+    // if (mpirank_braid == 0) printf("%d: %d FWD. ", mpirank_init, initid);
+
+    /* Run forward with initial condition initid*/
+    primalbraidapp->PreProcess(initid);
+    primalbraidapp->setInitCond(rho_t0);
+    primalbraidapp->Drive();
+    finalstate = primalbraidapp->PostProcess(); // this return NULL for all but the last time processor
+
+    /* Add final-time objective */
+    double obj_local = objectiveT(finalstate);
+    objective += obj_local;
+      // if (mpirank_braid == 0) printf("%d: local objective: %1.14e\n", mpirank_init, obj_local);
+
+    /* --- Solve adjoint --- */
+    // if (mpirank_braid == 0) printf("%d: %d BWD.", mpirank_init, initid);
+
+    /* Derivative of final time objective */
+    objectiveT_diff(finalstate, obj_local, 1.0);
+
+    adjointbraidapp->PreProcess(initid);
+    adjointbraidapp->setInitCond(rho_t0_bar);
+    adjointbraidapp->Drive();
+    adjointbraidapp->PostProcess();
+
+    /* Add to Ipopt's gradient */
+    const double* grad_ptr = adjointbraidapp->getReducedGradientPtr();
+    VecAXPY(G, 1.0, adjointbraidapp->redgrad);
+
+  }
+
+  /* Broadcast objective from last to all time processors */
+  MPI_Bcast(&objective, 1, MPI_DOUBLE, mpisize_braid-1, primalbraidapp->comm_braid);
+
+  /* Sum up objective from all initial conditions */
+  double myobj = objective;
+  MPI_Allreduce(&myobj, &objective, 1, MPI_DOUBLE, MPI_SUM, comm_init);
+  // if (mpirank_init == 0) printf("%d: global sum objective: %1.14e\n\n", mpirank_init, objective);
+
+  /* Add regularization objective += gamma/2 * ||x||^2*/
+  double xnorm;
+  VecNorm(x, NORM_2, &xnorm);
+  objective += gamma_tik / 2. * pow(xnorm,2.0);
+
+  /* Sum up the gradient from all braid processors */
+  PetscScalar* grad; 
+  VecGetArray(G, &grad);
+  double* mygrad = new double[ndesign];
+  for (int i=0; i<ndesign; i++) {
+    mygrad[i] = grad[i];
+  }
+  MPI_Allreduce(mygrad, grad, ndesign, MPI_DOUBLE, MPI_SUM, primalbraidapp->comm_braid);
+  VecRestoreArray(G, &grad);
+  delete [] mygrad;
+
+
+  /* Compute and store gradient norm */
+  VecNorm(G, NORM_2, &(gnorm));
+  // if (mpirank_world == 0) printf("%d: ||grad|| = %1.14e\n", mpirank_init, gnorm);
+
+
 }
 
 void OptimProblem::getStartingPoint(Vec xinit){
@@ -459,7 +545,6 @@ void OptimProblem::objectiveT_diff(Vec finalstate, double obj, double obj_bar){
       VecDestroy(&statebar);
     }
   }
-
 }
 
 
@@ -514,92 +599,10 @@ double OptimProblem::evalF(Vec x) {
 
 
 PetscErrorCode TaoEvalGradient(Tao tao, Vec x, Vec G, void*ptr){
+
   OptimProblem* ctx = (OptimProblem*) ptr;
-  MasterEq* mastereq = ctx->primalbraidapp->mastereq;
-
-  if (ctx->mpirank_world == 0) printf(" EVAL GRAD F...\n");
-  Vec finalstate = NULL;
-
-  /* Pass design vector x to oscillators */
-  mastereq->setControlAmplitudes(x); 
-
-  /* Reset Gradient */
-  VecZeroEntries(G);
-
-  /* Derivative of regulatization term gamma / 2 ||x||^2 (ADD ON ONE PROC ONLY!) */
-  if (ctx->mpirank_init == 0 && ctx->mpirank_braid == 0) {
-    VecAXPY(G, ctx->gamma_tik, x);
-  }
-
-  /*  Iterate over initial condition */
-  double objective = 0.0;
-  for (int iinit = 0; iinit < ctx->ninit_local; iinit++) {
-      
-
-    /* Prepare the initial condition */
-    int iinit_global = ctx->mpirank_init * ctx->ninit_local + iinit;
-    int initid = ctx->primalbraidapp->mastereq->getRhoT0(iinit_global, ctx->obj_oscilIDs, ctx->ninit, ctx->rho_t0);
-
-    /* --- Solve primal --- */
-    // if (ctx->mpirank_braid == 0) printf("%d: %d FWD. ", ctx->mpirank_init, initid);
-
-    /* Run forward with initial condition initid*/
-    ctx->primalbraidapp->PreProcess(initid);
-    ctx->primalbraidapp->setInitCond(ctx->rho_t0);
-    ctx->primalbraidapp->Drive();
-    finalstate = ctx->primalbraidapp->PostProcess(); // this return NULL for all but the last time processor
-
-    /* Add final-time objective */
-    double obj_local = ctx->objectiveT(finalstate);
-    objective += obj_local;
-      // if (ctx->mpirank_braid == 0) printf("%d: local objective: %1.14e\n", ctx->mpirank_init, obj_local);
-
-    /* --- Solve adjoint --- */
-    // if (ctx->mpirank_braid == 0) printf("%d: %d BWD.", ctx->mpirank_init, initid);
-
-    /* Derivative of final time objective */
-    ctx->objectiveT_diff(finalstate, obj_local, 1.0);
-
-    ctx->adjointbraidapp->PreProcess(initid);
-    ctx->adjointbraidapp->setInitCond(ctx->rho_t0_bar);
-    ctx->adjointbraidapp->Drive();
-    ctx->adjointbraidapp->PostProcess();
-
-    /* Add to Ipopt's gradient */
-    const double* grad_ptr = ctx->adjointbraidapp->getReducedGradientPtr();
-    VecAXPY(G, 1.0, ctx->adjointbraidapp->redgrad);
-
-  }
-
-  /* Broadcast objective from last to all time processors */
-  MPI_Bcast(&objective, 1, MPI_DOUBLE, ctx->mpisize_braid-1, ctx->primalbraidapp->comm_braid);
-
-  /* Sum up objective from all initial conditions */
-  double myobj = objective;
-  MPI_Allreduce(&myobj, &objective, 1, MPI_DOUBLE, MPI_SUM, ctx->comm_init);
-  // if (ctx->mpirank_init == 0) printf("%d: global sum objective: %1.14e\n\n", ctx->mpirank_init, objective);
-
-  /* Add regularization objective += gamma/2 * ||x||^2*/
-  double xnorm;
-  VecNorm(x, NORM_2, &xnorm);
-  objective += ctx->gamma_tik / 2. * pow(xnorm,2.0);
-
-  /* Sum up the gradient from all braid processors */
-  PetscScalar* grad; 
-  VecGetArray(G, &grad);
-  double* mygrad = new double[ctx->ndesign];
-  for (int i=0; i<ctx->ndesign; i++) {
-    mygrad[i] = grad[i];
-  }
-  MPI_Allreduce(mygrad, grad, ctx->ndesign, MPI_DOUBLE, MPI_SUM, ctx->primalbraidapp->comm_braid);
-  VecRestoreArray(G, &grad);
-  delete [] mygrad;
-
-
-  /* Compute and store gradient norm */
-  VecNorm(G, NORM_2, &(ctx->gnorm));
-  // if (ctx->mpirank_world == 0) printf("%d: ||grad|| = %1.14e\n", ctx->mpirank_init, ctx->gnorm);
-
+  ctx->evalGradF(x, G);
+  
   return 0;
 }
 
