@@ -224,6 +224,8 @@ MasterEq::MasterEq(int noscillators_, Oscillator** oscil_vec_, const std::vector
   /* Allocate some auxiliary vectors */
   dRedp = new double[oscil_vec[0]->getNParams()];
   dImdp = new double[oscil_vec[0]->getNParams()];
+  cols = new int[oscil_vec[0]->getNParams()];
+  vals = new double [oscil_vec[0]->getNParams()];
   rowid = new int[dim];
   rowid_shift = new int[dim];
   for (int i=0; i<dim;i++) {
@@ -258,6 +260,8 @@ MasterEq::~MasterEq(){
     delete [] Bc_vec;
     delete [] dRedp;
     delete [] dImdp;
+    delete [] cols;
+    delete [] vals;
     delete [] rowid;
     delete [] rowid_shift;
 
@@ -472,11 +476,11 @@ void MasterEq::computedRHSdp(double t, Vec x, Vec xbar, double alpha, Vec grad) 
   VecGetSubVector(xbar, isu, &ubar);
   VecGetSubVector(xbar, isv, &vbar);
 
+  /* Get number of control parameters for this oscillator */
+  int nparam = oscil_vec[0]->getNParams(); // TODO: THIS WORKS ONLY IF ALL OSCIL HAVE SAME NUMBER!
+
   /* Loop over oscillators */
   for (int iosc= 0; iosc < noscillators; iosc++){
-
-    /* Get number of control parameters for this oscillator */
-    int nparam = oscil_vec[iosc]->getNParams();
 
     /* Evaluate the derivative of the control functions wrt control parameters */
     for (int i=0; i<nparam; i++){
@@ -498,20 +502,12 @@ void MasterEq::computedRHSdp(double t, Vec x, Vec xbar, double alpha, Vec grad) 
     VecDot(Bcu, vbar, &uBvbar);
     VecDot(Bcv, ubar, &vBubar);
 
-    /* Loop over parameters of this oscillator */
+    /* Set gradient terms for each control parameter */
     for (int iparam=0; iparam < nparam; iparam++) {
-
-      /* Sum up gradient terms for each control parameter */
-      double sum =   dImdp[iparam] * uAubar   \
-                   - dRedp[iparam] * vBubar   \
-                   + dRedp[iparam] * uBvbar   \
-                   + dImdp[iparam] * vAvbar;
-
-      /* Add to global gradient, scaled by alpha */
-      int pos = iosc * nparam + iparam;
-      double val = alpha * sum;
-      VecSetValues(grad, 1, &pos, &val, ADD_VALUES);
+      vals[iparam] = (uAubar + vAvbar) * dImdp[iparam] + ( -vBubar + uBvbar) * dRedp[iparam];
+      cols[iparam] = iosc * nparam + iparam;
     }
+    VecSetValues(grad, nparam, cols, vals, ADD_VALUES);
   }
   VecAssemblyBegin(grad); 
   VecAssemblyEnd(grad);
@@ -521,6 +517,7 @@ void MasterEq::computedRHSdp(double t, Vec x, Vec xbar, double alpha, Vec grad) 
   VecRestoreSubVector(x, isv, &v);
   VecRestoreSubVector(xbar, isu, &ubar);
   VecRestoreSubVector(xbar, isv, &vbar);
+
 }
 
 void MasterEq::setControlAmplitudes(Vec x) {

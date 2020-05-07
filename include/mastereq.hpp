@@ -43,6 +43,8 @@ class MasterEq{
     int *rowid_shift;
     IS isu, isv;
     Vec Acu, Acv, Bcu, Bcv, auxil;
+    int* cols;
+    double* vals;
  
 
 
