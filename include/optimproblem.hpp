@@ -56,7 +56,7 @@ class OptimProblem {
   OptimProblem(MapParam config, myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, MPI_Comm comm_hiop_, MPI_Comm comm_init_, std::vector<int> obj_oscilIDs_, InitialConditionType initcondtype_, int ninit_);
   ~OptimProblem();
 
-  /* Evaluate the objective function value */
+  /* Evaluate the objective function F(x) */
   double evalF(Vec x);
 
   /* Compute initial guess for optimization variables */

@@ -187,10 +187,16 @@ OptimProblem::~OptimProblem() {
 }
 
 
-double OptimProblem::evalF(Vec x){
-  double obj = 0.0;
-  TaoEvalObjective(tao, x, &obj, this);
-  return obj;
+PetscErrorCode TaoEvalObjective(Tao tao, Vec x, PetscReal *f, void*ptr){
+
+  OptimProblem* ctx = (OptimProblem*) ptr;
+  *f = ctx->evalF(x);
+  
+  return 0;
+}
+
+void OptimProblem::evalGradF(Vec x, Vec G){
+  // TaoEvalGradient(tao) // TODO!!
 }
 
 void OptimProblem::getStartingPoint(Vec xinit){
@@ -457,55 +463,53 @@ void OptimProblem::objectiveT_diff(Vec finalstate, double obj, double obj_bar){
 }
 
 
+double OptimProblem::evalF(Vec x) {
 
-PetscErrorCode TaoEvalObjective(Tao tao, Vec x, PetscReal *f, void*ptr){
-  OptimProblem* ctx = (OptimProblem*) ptr;
-  MasterEq* mastereq = ctx->primalbraidapp->mastereq;
+  // OptimProblem* ctx = (OptimProblem*) ptr;
+  MasterEq* mastereq = primalbraidapp->mastereq;
 
-  if (ctx->mpirank_world == 0) printf(" EVAL F... \n");
+  if (mpirank_world == 0) printf(" EVAL F... \n");
   Vec finalstate = NULL;
 
   /* Pass design vector x to oscillators */
   mastereq->setControlAmplitudes(x); 
 
   /*  Iterate over initial condition */
-  double objective = 0.0;
-  for (int iinit = 0; iinit < ctx->ninit_local; iinit++) {
+  double obj= 0.0;
+  for (int iinit = 0; iinit < ninit_local; iinit++) {
       
     /* Prepare the initial condition in [rank * ninit_local, ... , (rank+1) * ninit_local - 1] */
-    int iinit_global = ctx->mpirank_init * ctx->ninit_local + iinit;
-    int initid = ctx->primalbraidapp->mastereq->getRhoT0(iinit_global, ctx->obj_oscilIDs, ctx->ninit, ctx->rho_t0);
-    // if (ctx->mpirank_braid == 0) printf("%d: %d FWD. \n", ctx->mpirank_init, initid);
+    int iinit_global = mpirank_init * ninit_local + iinit;
+    int initid = primalbraidapp->mastereq->getRhoT0(iinit_global, obj_oscilIDs, ninit, rho_t0);
+    // if (mpirank_braid == 0) printf("%d: %d FWD. \n", mpirank_init, initid);
 
     /* Run forward with initial condition initid*/
-    ctx->primalbraidapp->PreProcess(initid);
-    ctx->primalbraidapp->setInitCond(ctx->rho_t0);
-    ctx->primalbraidapp->Drive();
-    finalstate = ctx->primalbraidapp->PostProcess(); // this return NULL for all but the last time processor
+    primalbraidapp->PreProcess(initid);
+    primalbraidapp->setInitCond(rho_t0);
+    primalbraidapp->Drive();
+    finalstate = primalbraidapp->PostProcess(); // this return NULL for all but the last time processor
 
     /* Add to objective function */
-    objective += ctx->objectiveT(finalstate);
+    obj+= objectiveT(finalstate);
       // if (mpirank_braid == 0) printf("%d: local objective: %1.14e\n", mpirank_init, obj_local);
   }
 
   /* Broadcast objective from last to all time processors */
-  MPI_Bcast(&objective, 1, MPI_DOUBLE, ctx->mpisize_braid-1, ctx->primalbraidapp->comm_braid);
+  MPI_Bcast(&obj, 1, MPI_DOUBLE, mpisize_braid-1, primalbraidapp->comm_braid);
 
   /* Sum up objective from all initial conditions */
-  double myobj = objective;
-  MPI_Allreduce(&myobj, &objective, 1, MPI_DOUBLE, MPI_SUM, ctx->comm_init);
-  // if (ctx->mpirank_init == 0) printf("%d: global sum objective: %1.14e\n\n", ctx->mpirank_init, objective);
+  double myobj = obj;
+  MPI_Allreduce(&myobj, &obj, 1, MPI_DOUBLE, MPI_SUM, comm_init);
+  // if (mpirank_init == 0) printf("%d: global sum objective: %1.14e\n\n", mpirank_init, obj);
 
   /* Add regularization objective += gamma/2 * ||x||^2*/
   double xnorm;
   VecNorm(x, NORM_2, &xnorm);
-  objective += ctx->gamma_tik / 2. * pow(xnorm,2.0);
+  obj+= gamma_tik / 2. * pow(xnorm,2.0);
 
   /* Store and return objective value */
-  ctx->objective = objective;
-  *f = objective;
-
-  return 0;
+  objective = obj;
+  return objective;
 }
 
 
