@@ -188,13 +188,63 @@ OptimProblem::~OptimProblem() {
 }
 
 
-PetscErrorCode TaoEvalObjective(Tao tao, Vec x, PetscReal *f, void*ptr){
 
-  OptimProblem* ctx = (OptimProblem*) ptr;
-  *f = ctx->evalF(x);
-  
-  return 0;
+double OptimProblem::evalF(Vec x) {
+
+  // OptimProblem* ctx = (OptimProblem*) ptr;
+  MasterEq* mastereq = primalbraidapp->mastereq;
+
+  if (mpirank_world == 0) printf(" EVAL F... \n");
+  Vec finalstate = NULL;
+
+  /* Pass design vector x to oscillators */
+  mastereq->setControlAmplitudes(x); 
+
+  /*  Iterate over initial condition */
+  double obj= 0.0;
+  for (int iinit = 0; iinit < ninit_local; iinit++) {
+      
+    /* Prepare the initial condition in [rank * ninit_local, ... , (rank+1) * ninit_local - 1] */
+    int iinit_global = mpirank_init * ninit_local + iinit;
+    int initid = primalbraidapp->mastereq->getRhoT0(iinit_global, obj_oscilIDs, ninit, rho_t0);
+    // if (mpirank_braid == 0) printf("%d: %d FWD. \n", mpirank_init, initid);
+
+    /* Run forward with initial condition initid*/
+    primalbraidapp->PreProcess(initid);
+    primalbraidapp->setInitCond(rho_t0);
+    primalbraidapp->Drive();
+    finalstate = primalbraidapp->PostProcess(); // this return NULL for all but the last time processor
+
+    /* Add to objective function */
+    obj+= objectiveT(finalstate);
+      // if (mpirank_braid == 0) printf("%d: local objective: %1.14e\n", mpirank_init, obj_local);
+  }
+
+  /* Broadcast objective from last to all time processors */
+  MPI_Bcast(&obj, 1, MPI_DOUBLE, mpisize_braid-1, primalbraidapp->comm_braid);
+
+  /* Sum up objective from all initial conditions */
+  double myobj = obj;
+  MPI_Allreduce(&myobj, &obj, 1, MPI_DOUBLE, MPI_SUM, comm_init);
+  // if (mpirank_init == 0) printf("%d: global sum objective: %1.14e\n\n", mpirank_init, obj);
+
+  /* Add regularization objective += gamma/2 * ||x||^2*/
+  double xnorm;
+  VecNorm(x, NORM_2, &xnorm);
+  obj+= gamma_tik / 2. * pow(xnorm,2.0);
+
+
+  /* Output */
+  if (mpirank_world == 0) {
+    std::cout<< "Obj = " << objective << std::endl;
+  }
+
+  /* Store and return objective value */
+  objective = obj;
+  return objective;
 }
+
+
 
 void OptimProblem::evalGradF(Vec x, Vec G){
 
@@ -560,70 +610,48 @@ void OptimProblem::objectiveT_diff(Vec finalstate, double obj, double obj_bar){
 }
 
 
-double OptimProblem::evalF(Vec x) {
-
-  // OptimProblem* ctx = (OptimProblem*) ptr;
-  MasterEq* mastereq = primalbraidapp->mastereq;
-
-  if (mpirank_world == 0) printf(" EVAL F... \n");
-  Vec finalstate = NULL;
-
-  /* Pass design vector x to oscillators */
-  mastereq->setControlAmplitudes(x); 
-
-  /*  Iterate over initial condition */
-  double obj= 0.0;
-  for (int iinit = 0; iinit < ninit_local; iinit++) {
-      
-    /* Prepare the initial condition in [rank * ninit_local, ... , (rank+1) * ninit_local - 1] */
-    int iinit_global = mpirank_init * ninit_local + iinit;
-    int initid = primalbraidapp->mastereq->getRhoT0(iinit_global, obj_oscilIDs, ninit, rho_t0);
-    // if (mpirank_braid == 0) printf("%d: %d FWD. \n", mpirank_init, initid);
-
-    /* Run forward with initial condition initid*/
-    primalbraidapp->PreProcess(initid);
-    primalbraidapp->setInitCond(rho_t0);
-    primalbraidapp->Drive();
-    finalstate = primalbraidapp->PostProcess(); // this return NULL for all but the last time processor
-
-    /* Add to objective function */
-    obj+= objectiveT(finalstate);
-      // if (mpirank_braid == 0) printf("%d: local objective: %1.14e\n", mpirank_init, obj_local);
-  }
-
-  /* Broadcast objective from last to all time processors */
-  MPI_Bcast(&obj, 1, MPI_DOUBLE, mpisize_braid-1, primalbraidapp->comm_braid);
-
-  /* Sum up objective from all initial conditions */
-  double myobj = obj;
-  MPI_Allreduce(&myobj, &obj, 1, MPI_DOUBLE, MPI_SUM, comm_init);
-  // if (mpirank_init == 0) printf("%d: global sum objective: %1.14e\n\n", mpirank_init, obj);
-
-  /* Add regularization objective += gamma/2 * ||x||^2*/
-  double xnorm;
-  VecNorm(x, NORM_2, &xnorm);
-  obj+= gamma_tik / 2. * pow(xnorm,2.0);
-
-
-  /* Output */
-  if (mpirank_world == 0) {
-    std::cout<< "Obj = " << objective << std::endl;
-  }
-
-  /* Store and return objective value */
-  objective = obj;
-  return objective;
-}
-
-
-PetscErrorCode TaoEvalGradient(Tao tao, Vec x, Vec G, void*ptr){
-
-  OptimProblem* ctx = (OptimProblem*) ptr;
-  ctx->evalGradF(x, G);
+void OptimProblem::getSolution(Vec* param_ptr){
   
-  return 0;
-}
+  /* Get ref to optimized parameters */
+  Vec params;
+  TaoGetSolutionVector(tao, &params);
+  *param_ptr = params;
 
+  /* Print if needed */
+  if (mpirank_world == 0 && printlevel > 0) {
+    char filename[255];
+    FILE *paramfile;
+
+    int iter;
+    double obj, gnorm, cnorm, dx;
+    TaoConvergedReason reason;
+    TaoGetSolutionStatus(tao, &iter, &obj, &gnorm, &cnorm, &dx, &reason);
+    std::cout<< "\n Optimization finished!\n";
+    std::cout<< " TaoSolve termination reason: " << reason << std::endl;
+
+    /* Print optimized parameters */
+    const PetscScalar* params_ptr;
+    VecGetArrayRead(params, &params_ptr);
+    sprintf(filename, "%s/param_optimized.dat", primalbraidapp->datadir.c_str());
+    paramfile = fopen(filename, "w");
+    for (int i=0; i<ndesign; i++){
+      fprintf(paramfile, "%1.14e\n", params_ptr[i]);
+    }
+    fclose(paramfile);
+    VecRestoreArrayRead(params, &params_ptr);
+
+    /* Print control functions */
+    primalbraidapp->mastereq->setControlAmplitudes(params);
+    int ntime = primalbraidapp->ntime;
+    double dt = primalbraidapp->total_time / ntime;
+    MasterEq* mastereq = primalbraidapp->mastereq;
+    for (int ioscil = 0; ioscil < mastereq->getNOscillators(); ioscil++) {
+        sprintf(filename, "%s/control_optimized_%02d.dat", primalbraidapp->datadir.c_str(), ioscil+1);
+        mastereq->getOscillator(ioscil)->flushControl(ntime, dt, filename);
+    }
+  }
+  // return param_ptr;
+}
 
 
 PetscErrorCode TaoMonitor(Tao tao,void*ptr){
@@ -675,55 +703,28 @@ PetscErrorCode TaoMonitor(Tao tao,void*ptr){
 }
 
 
-void OptimProblem::getSolution(Vec* param_ptr){
-  
-  /* Get ref to optimized parameters */
-  Vec params;
-  TaoGetSolutionVector(tao, &params);
-  *param_ptr = params;
-
-  /* Print if needed */
-  if (mpirank_world == 0 && printlevel > 0) {
-    char filename[255];
-    FILE *paramfile;
-
-    int iter;
-    double obj, gnorm, cnorm, dx;
-    TaoConvergedReason reason;
-    TaoGetSolutionStatus(tao, &iter, &obj, &gnorm, &cnorm, &dx, &reason);
-    std::cout<< "\n Optimization finished!\n";
-    std::cout<< " TaoSolve termination reason: " << reason << std::endl;
-
-    /* Print optimized parameters */
-    const PetscScalar* params_ptr;
-    VecGetArrayRead(params, &params_ptr);
-    sprintf(filename, "%s/param_optimized.dat", primalbraidapp->datadir.c_str());
-    paramfile = fopen(filename, "w");
-    for (int i=0; i<ndesign; i++){
-      fprintf(paramfile, "%1.14e\n", params_ptr[i]);
-    }
-    fclose(paramfile);
-    VecRestoreArrayRead(params, &params_ptr);
-
-    /* Print control functions */
-    primalbraidapp->mastereq->setControlAmplitudes(params);
-    int ntime = primalbraidapp->ntime;
-    double dt = primalbraidapp->total_time / ntime;
-    MasterEq* mastereq = primalbraidapp->mastereq;
-    for (int ioscil = 0; ioscil < mastereq->getNOscillators(); ioscil++) {
-        sprintf(filename, "%s/control_optimized_%02d.dat", primalbraidapp->datadir.c_str(), ioscil+1);
-        mastereq->getOscillator(ioscil)->flushControl(ntime, dt, filename);
-    }
-  }
-  // return param_ptr;
-}
-
-
 PetscErrorCode TaoEvalObjectiveAndGradient(Tao tao, Vec x, PetscReal *f, Vec G, void*ptr){
 
   TaoEvalGradient(tao, x, G, ptr);
   OptimProblem* ctx = (OptimProblem*) ptr;
   *f = ctx->objective;
 
+  return 0;
+}
+
+PetscErrorCode TaoEvalObjective(Tao tao, Vec x, PetscReal *f, void*ptr){
+
+  OptimProblem* ctx = (OptimProblem*) ptr;
+  *f = ctx->evalF(x);
+  
+  return 0;
+}
+
+
+PetscErrorCode TaoEvalGradient(Tao tao, Vec x, Vec G, void*ptr){
+
+  OptimProblem* ctx = (OptimProblem*) ptr;
+  ctx->evalGradF(x, G);
+  
   return 0;
 }
