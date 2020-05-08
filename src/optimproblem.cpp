@@ -214,10 +214,12 @@ double OptimProblem::evalF(Vec x) {
     primalbraidapp->setInitCond(rho_t0);
     primalbraidapp->Drive();
     finalstate = primalbraidapp->PostProcess(); // this return NULL for all but the last time processor
+    
 
     /* Add to objective function */
-    obj+= objectiveT(finalstate);
-      // if (mpirank_braid == 0) printf("%d: local objective: %1.14e\n", mpirank_init, obj_local);
+    double obj_local = objectiveT(finalstate);
+    obj += obj_local;
+    // printf("%d, %d: local objective: %1.14e\n", mpirank_world, mpirank_init, obj_local);
   }
 
   /* Broadcast objective from last to all time processors */
@@ -235,9 +237,9 @@ double OptimProblem::evalF(Vec x) {
 
 
   /* Output */
-  if (mpirank_world == 0) {
-    std::cout<< "Obj = " << objective << std::endl;
-  }
+  // if (mpirank_world == 0) {
+    // std::cout<< mpirank_world << ": Obj = " << std::scientific<<std::setprecision(14) << obj << std::endl;
+  // }
 
   /* Store and return objective value */
   objective = obj;
@@ -365,42 +367,36 @@ void OptimProblem::getStartingPoint(Vec xinit){
   } else if ( initguess_type.compare("random")      == 0 ||       // init random, fixed seed
               initguess_type.compare("random_seed") == 0)  { // init random with new seed
 
-    /* Create random vector on one processor only, then broadcast to all, so that all have the same initial guess */
-    if (mpirank_world == 0) {
-
-      /* Seed */
-      if ( initguess_type.compare("random") == 0) srand(1);  // fixed seed
-      else srand(time(0)); // random seed
-
-      /* Create vector with random elements between [-1:1] */
-      double* randvec = new double[ndesign];
-      for (int i=0; i<ndesign; i++) {
-        randvec[i] = (double) rand() / ((double)RAND_MAX);
-        randvec[i] = 2.*randvec[i] - 1.;
-      }
-      /* Broadcast random vector to all */
-      MPI_Bcast(randvec, ndesign, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-
-      /* Scale them to be at 10% of the parameter bounds */
-      int j = 0;
-      for (int ioscil = 0; ioscil < mastereq->getNOscillators(); ioscil++) {
-        int nparam = mastereq->getOscillator(ioscil)->getNParams();
-        /* Get upper bound value */
-        int col = ioscil * nparam;
-        double bound;
-        VecGetValues(xupper, 1, &col, &bound);
-        /* Scale the params */
-        for (int i=0; i<nparam; i++) {
-          randvec[ioscil*nparam + i] *= 0.1 * bound;
-        }
-      }
-
-      /* Set the initial guess */
-      for (int i=0; i<ndesign; i++) {
-        VecSetValue(xinit, i, randvec[i], INSERT_VALUES);
-      }
-      delete [] randvec;
+    /* Create vector with random elements between [-1:1] */
+    if ( initguess_type.compare("random") == 0) srand(1);  // fixed seed
+    else srand(time(0)); // random seed
+    double* randvec = new double[ndesign];
+    for (int i=0; i<ndesign; i++) {
+      randvec[i] = (double) rand() / ((double)RAND_MAX);
+      randvec[i] = 2.*randvec[i] - 1.;
     }
+    /* Broadcast random vector from rank 0 to all, so that all have the same starting point (necessary?) */
+    MPI_Bcast(randvec, ndesign, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+
+    /* Scale vector to be at 10% of the parameter bounds */
+    int j = 0;
+    for (int ioscil = 0; ioscil < mastereq->getNOscillators(); ioscil++) {
+      int nparam = mastereq->getOscillator(ioscil)->getNParams();
+      /* Get upper bound value */
+      int col = ioscil * nparam;
+      double bound;
+      VecGetValues(xupper, 1, &col, &bound);
+      /* Scale */
+      for (int i=0; i<nparam; i++) {
+        randvec[ioscil*nparam + i] *= 0.1 * bound;
+      }
+    }
+
+    /* Set the initial guess */
+    for (int i=0; i<ndesign; i++) {
+      VecSetValue(xinit, i, randvec[i], INSERT_VALUES);
+    }
+    delete [] randvec;
 
   }  else { // Read from file 
     double* vecread = new double[ndesign];
