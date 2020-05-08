@@ -29,48 +29,15 @@ enum RunType {
 
 int main(int argc,char **argv)
 {
-  PetscInt       ntime;        // Number of time steps
-  int            ninit;        // Total number of initial conditions that are considered (N^2, N or 1)
-  int            np_braid;     // Number of cores for each braid instance
-  int            np_init;      // Number of cores for distributing initial conditions 
-  PetscReal      dt;           // Time step size
-  PetscReal      total_time;   // Total end time T
-  TS             ts;           // Timestepping context
-  PetscInt       nspline;      // Number of spline basis functions
-  MasterEq*      mastereq;     // Master equation
-  PetscBool      monitor;      // If true: Print out additional time-stepper information
-  RunType        runtype;      // Decides if forward only, forward+backward, or optimization
-  /* Braid */
-  myBraidApp *primalbraidapp;
-  myAdjointBraidApp *adjointbraidapp;
-
-  Vec            x;          // solution vector
-  // bool           tj_save;    // Determines wether trajectory should be stored in primal run
-
-  /* Optimization */
-  double objective;        // Objective function value f
-
-
   char filename[255];
   PetscErrorCode ierr;
-  int mpisize_world, mpirank_world;
-  int mpirank_init, mpisize_init, mpirank_braid, mpisize_braid;
-  MPI_Comm comm_braid, comm_init, comm_petsc, comm_hiop;
 
   /* Initialize MPI */
   MPI_Init(&argc, &argv);
+  int mpisize_world, mpirank_world;
   MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
   MPI_Comm_size(MPI_COMM_WORLD, &mpisize_world);
   if (mpirank_world == 0) printf("# Running on %d cores.\n", mpisize_world);
-
-  /* Split aside communicators for petsc and hiop for later development. Size 1 for now. */
-  MPI_Comm comm = MPI_COMM_WORLD;
-  MPI_Comm_split(MPI_COMM_WORLD, mpirank_world, mpirank_world, &comm_hiop);
-  MPI_Comm_split(MPI_COMM_WORLD, mpirank_world, mpirank_world, &comm_petsc);
-
-  /* Initialize Petsc using petsc's communicator */
-  PETSC_COMM_WORLD = comm_petsc;
-  ierr = PetscInitialize(&argc,&argv,(char*)0,NULL);if (ierr) return ierr;
 
   /* Read config file */
   if (argc != 2) {
@@ -84,13 +51,14 @@ int main(int argc,char **argv)
   MapParam config(MPI_COMM_WORLD, log);
   config.ReadFile(argv[1]);
 
-  /* Get some options from the config file */
+  /* --- Get some options from the config file --- */
   std::vector<int> nlevels;
   config.GetVecIntParam("nlevels", nlevels, 0);
-  ntime = config.GetIntParam("ntime", 1000);
-  dt    = config.GetDoubleParam("dt", 0.01);
-  nspline = config.GetIntParam("nspline", 10);
-  monitor = (PetscBool) config.GetBoolParam("monitor", false);
+  int ntime = config.GetIntParam("ntime", 1000);
+  double dt    = config.GetDoubleParam("dt", 0.01);
+  int nspline = config.GetIntParam("nspline", 10);
+  PetscBool monitor = (PetscBool) config.GetBoolParam("monitor", false);
+  RunType runtype;
   std::string runtypestr = config.GetStrParam("runtype", "primal");
   if      (runtypestr.compare("primal")      == 0) runtype = primal;
   else if (runtypestr.compare("adjoint")     == 0) runtype = adjoint;
@@ -99,27 +67,106 @@ int main(int argc,char **argv)
     printf("\n\n WARNING: Unknown runtype: %s.\n\n", runtypestr.c_str());
     runtype = none;
   }
+  std::vector<double> f;
+  config.GetVecDoubleParam("frequencies", f, 1e20); // These are actually never used in the code... 
 
-  /* Number of oscillators */
-  int nosci = nlevels.size();
-  
-  /* Initialize time horizon */
-  total_time = ntime * dt;
+
+  /* Get the IDs of oscillators that are concerned for optimization */
+  std::vector<std::string> oscilIDstr;
+  std::vector<int> obj_oscilIDs; 
+  config.GetVecStrParam("optim_oscillators", oscilIDstr);
+  if (oscilIDstr[0].compare("all") == 0) {
+    for (int iosc = 0; iosc < nlevels.size(); iosc++) 
+      obj_oscilIDs.push_back(iosc);
+  } else {
+    config.GetVecIntParam("optim_oscillators", obj_oscilIDs, 0);
+  }
+  /* Sanity check for oscillator IDs */
+  bool err = false;
+  assert(obj_oscilIDs.size() > 0);
+  for (int i=0; i<obj_oscilIDs.size(); i++){
+    if ( obj_oscilIDs[i] >= nlevels.size() )       err = true;
+    if ( i>0 &&  ( obj_oscilIDs[i] != obj_oscilIDs[i-1] + 1 ) ) err = true;
+  }
+  if (err) {
+    printf("ERROR: List of oscillator IDs for objective function invalid\n"); 
+    exit(1);
+  }
+
+  /* Get type and the total number of initial conditions */
+  int ninit = 1;
+  std::vector<std::string> initcondstr;
+  config.GetVecStrParam("optim_initialcondition", initcondstr, "basis");
+  InitialConditionType initcond_type;
+  assert (initcondstr.size() > 0);
+  if      (initcondstr[0].compare("file") == 0 ) {
+    initcond_type = FROMFILE;
+    ninit = 1;
+  }     
+  else if (initcondstr[0].compare("pure") == 0 ) {
+    initcond_type = PURE;
+    ninit = 1;
+  }     
+  else if (initcondstr[0].compare("diagonal") == 0 ) {
+    initcond_type = DIAGONAL;
+    /* Compute ninit = dim(subsystem defined by obj_oscilIDs) */
+    ninit = 1;
+    for (int i=0; i<obj_oscilIDs.size(); i++) {
+      ninit *= nlevels[obj_oscilIDs[i]];
+    }
+  }
+  else if (initcondstr[0].compare("basis")    == 0 ) {
+    initcond_type = BASIS;
+    /* Compute ninit = dim(subsystem defined by obj_oscilIDs)^2 */
+    ninit = 1;
+    for (int i=0; i<obj_oscilIDs.size(); i++) {
+      ninit *= nlevels[obj_oscilIDs[i]];
+    }
+    ninit = (int) pow(ninit, 2);
+  }
+  else {
+    printf("\n\n ERROR: Wrong setting for initial condition.\n");
+    exit(1);
+  }
+
+  /* --- Split communicators for distributed initial conditions, distributed linear algebra, time-parallel braid and parallel optimizer (if HiOp, size 1 for now) --- */
+  int mpirank_init, mpisize_init, mpirank_braid, mpisize_braid;
+  MPI_Comm comm_braid, comm_init, comm_petsc, comm_hiop;
+
+  int np_init  = min(ninit, config.GetIntParam("np_init", 1));  // Size of communicator for initial consitions 
+  np_init  = min(np_init, mpisize_world);
+  /* Sanity check */ 
+  if (ninit % np_init != 0){
+    printf("ERROR: Wrong processor distribution! \n Size of communicator for distributing initial conditions (%d) must be integer divisor of the total number of initial conditions (%d)!!\n", np_init, ninit);
+    exit(1);
+  }
+  if (mpisize_world % np_init != 0) {
+    printf("ERROR: Wrong number of threads! \n Total number of threads (%d) must be integer multiple of the size of the communicator for initial conditions (%d)!\n", mpisize_world, np_init);
+    exit(1);
+  }
+
+  /* Split for petsc, hiop. Size 1 for now */  
+  MPI_Comm_split(MPI_COMM_WORLD, mpirank_world, mpirank_world, &comm_hiop);
+  MPI_Comm_split(MPI_COMM_WORLD, mpirank_world, mpirank_world, &comm_petsc);
+
+
+  /* Initialize Petsc using petsc's communicator */
+  PETSC_COMM_WORLD = comm_petsc;
+  ierr = PetscInitialize(&argc,&argv,(char*)0,NULL);if (ierr) return ierr;
+  PetscViewerPushFormat(PETSC_VIEWER_STDOUT_WORLD, 	PETSC_VIEWER_ASCII_MATLAB );
+
   
   /* Initialize the Oscillators */
-  Oscillator** oscil_vec = new Oscillator*[nosci];
-  for (int i = 0; i < nosci; i++){
+  double total_time = ntime * dt;
+  Oscillator** oscil_vec = new Oscillator*[nlevels.size()];
+  for (int i = 0; i < nlevels.size(); i++){
     std::vector<double> carrier_freq;
     std::string key = "carrier_frequency" + std::to_string(i);
     config.GetVecDoubleParam(key, carrier_freq, 0.0);
     oscil_vec[i] = new Oscillator(i, nlevels, nspline, carrier_freq, total_time);
   }
 
-  /* So far, these frequencies are not used anywhere... */
-  std::vector<double> f;
-  config.GetVecDoubleParam("frequencies", f, 1e20);
-
-  /* Initialize the Master Equation  */
+  /* --- Initialize the Master Equation  --- */
   std::vector<double> xi, t_collapse;
   config.GetVecDoubleParam("xi", xi, 2.0);
   config.GetVecDoubleParam("lindblad_collapsetime", t_collapse, 0.0);
@@ -134,93 +181,35 @@ int main(int argc,char **argv)
     printf(" Choose either 'none', 'decay', 'dephase', or 'both'\n");
     exit(1);
   }
-  mastereq = new MasterEq(nosci, oscil_vec, xi, lindbladtype, t_collapse);
+  MasterEq* mastereq = new MasterEq(nlevels.size(), oscil_vec, xi, lindbladtype, t_collapse);
 
 
   /* Screen output */
   if (mpirank_world == 0)
   {
-    printf("# System with %d oscillators \n", nosci);
+    printf("# System with %lu oscillators \n", nlevels.size());
     printf("# Time horizon:   [0,%.4f]\n", total_time);
     printf("# Number of time steps: %d\n", ntime);
     printf("# Time step size: %f\n", dt );
   }
 
+
+  /* --- Initialize the time-stepper --- */
+  /* My time stepper */
   TimeStepper *mytimestepper = new ImplMidpoint(mastereq);
   // TimeStepper *mytimestepper = new ExplEuler(mastereq);
 
-  /* Allocate and initialize Petsc's Time-stepper */
+  /* Petsc's Time-stepper */
+  TS ts;
+  Vec x;
   TSCreate(PETSC_COMM_SELF,&ts);CHKERRQ(ierr);
   MatCreateVecs(mastereq->getRHS(), &x, NULL);
   TSInit(ts, mastereq, ntime, dt, total_time, x, monitor);
-
-
-  /* Get the IDs of oscillators that are concerned for optimization */
-  std::vector<std::string> oscilIDstr;
-  std::vector<int> obj_oscilIDs; 
-  config.GetVecStrParam("optim_oscillators", oscilIDstr);
-  if (oscilIDstr[0].compare("all") == 0) {
-    for (int iosc = 0; iosc < mastereq->getNOscillators(); iosc++) 
-      obj_oscilIDs.push_back(iosc);
-  } else {
-    config.GetVecIntParam("optim_oscillators", obj_oscilIDs, 0);
-  }
-  /* Sanity check for oscillator IDs */
-  bool err = false;
-  assert(obj_oscilIDs.size() > 0);
-  for (int i=0; i<obj_oscilIDs.size(); i++){
-    if ( obj_oscilIDs[i] >= mastereq->getNOscillators() )       err = true;
-    if ( i>0 &&  ( obj_oscilIDs[i] != obj_oscilIDs[i-1] + 1 ) ) err = true;
-  }
-  if (err) {
-    printf("ERROR: List of oscillator IDs for objective function invalid\n"); 
-    exit(1);
-  }
-
-  /* Get the total number of initial conditions 'ninit' */
-  InitialConditionType inittype; 
-  std::vector<std::string> initcondstr;
-  config.GetVecStrParam("optim_initialcondition", initcondstr);
-  assert (initcondstr.size() > 0);
-  if      (initcondstr[0].compare("file") == 0 ) { inittype = FROMFILE; ninit = 1; }
-  else if (initcondstr[0].compare("pure") == 0 ) { inittype = PURE;     ninit = 1; }
-  else if (initcondstr[0].compare("diagonal") == 0 ) {
-    inittype = DIAGONAL;
-    /* Compute ninit = dim(subsystem defined by obj_oscilIDs) */
-    ninit = 1;
-    for (int i=0; i<obj_oscilIDs.size(); i++) {
-      ninit *= mastereq->getOscillator(obj_oscilIDs[i])->getNLevels();
-    }
-  }
-  else if (initcondstr[0].compare("basis")      == 0 ) {
-    inittype = BASIS;
-
-    /* Compute ninit = dim(subsystem defined by obj_oscilIDs)^2 */
-    ninit = 1;
-    for (int i=0; i<obj_oscilIDs.size(); i++) {
-      ninit *= mastereq->getOscillator(obj_oscilIDs[i])->getNLevels();
-    }
-    ninit = (int) pow(ninit, 2);
-  }
-  else {
-    printf("Wrong setting for initial condition.\n");
-    exit(1);
-  }
-
-  /* --- Get processor distribution for initial condition and braid --- */
-  np_init  = min(ninit, config.GetIntParam("np_init", 1));  // Size of communicator for initial consitions 
-  np_init  = min(np_init, mpisize_world);
+   
+  
+  /* --- Split communicator for braid and initial condition --- */
+  int            np_braid;     // Number of cores for each braid instance
   np_braid = mpisize_world / np_init;                       // Size of communicator for braid 
-  /* Sanity check */ 
-  if (ninit % np_init != 0){
-    printf("ERROR: Wrong processor distribution! \n Size of communicator for distributing initial conditions (%d) must be integer divisor of the total number of initial conditions (%d)!!\n", np_init, ninit);
-    exit(1);
-  }
-  if (mpisize_world % np_init != 0) {
-    printf("ERROR: Wrong number of threads! \n Total number of threads (%d) must be integer multiple of the size of the communicator for initial conditions (%d)!\n", mpisize_world, np_init);
-    exit(1);
-  }
-  /* Split communicator for braid and initial condition */
   MPI_Comm_split(MPI_COMM_WORLD, mpirank_world % np_braid, mpirank_world, &comm_init);
   MPI_Comm_split(MPI_COMM_WORLD, mpirank_world / np_braid, mpirank_world, &comm_braid);
   MPI_Comm_rank(comm_init, &mpirank_init);
@@ -230,14 +219,14 @@ int main(int argc,char **argv)
 
   printf("%d: np_init %d/%d: np_braid %d/%d\n", mpirank_world, mpirank_init, mpisize_init, mpirank_braid, mpisize_braid);
   
-  /* Create braid instances */
-  primalbraidapp = new myBraidApp(comm_braid, total_time, ntime, ts, mytimestepper, mastereq, &config);
-  adjointbraidapp = new myAdjointBraidApp(comm_braid, total_time, ntime, ts, mytimestepper, mastereq, &config, primalbraidapp->getCore());
+  /* --- Create braid instances --- */
+  myBraidApp* primalbraidapp = new myBraidApp(comm_braid, total_time, ntime, ts, mytimestepper, mastereq, &config);
+  myAdjointBraidApp *adjointbraidapp = new myAdjointBraidApp(comm_braid, total_time, ntime, ts, mytimestepper, mastereq, &config, primalbraidapp->getCore());
   primalbraidapp->InitGrids();
   adjointbraidapp->InitGrids();
 
   /* Initialize the optimization */
-  OptimProblem optimproblem(config, primalbraidapp, adjointbraidapp, comm_hiop, comm_init, obj_oscilIDs, inittype, ninit);
+  OptimProblem optimproblem(config, primalbraidapp, adjointbraidapp, comm_hiop, comm_init, obj_oscilIDs, initcond_type, ninit);
   hiop::hiopNlpDenseConstraints nlp(optimproblem);
   long long int ndesign,m;
   optimproblem.get_prob_sizes(ndesign, m);
@@ -257,9 +246,10 @@ int main(int argc,char **argv)
   double* optimgrad = new double[ndesign];
   optimproblem.get_starting_point(ndesign, myinit);
 
-   /* Start timer */
+  /* Start timer */
   double StartTime = MPI_Wtime();
 
+  double objective;
   /* --- Solve primal --- */
   if (runtype == primal || runtype == adjoint) {
     optimproblem.eval_f(ndesign, myinit, true, objective);
@@ -282,12 +272,15 @@ int main(int argc,char **argv)
     optimproblem.iterate_callback(-1, objective, ndesign, myinit, NULL, NULL, 0, NULL, NULL, -0.0, -0.0, -0.0, -0.0, -0.0, 0);
   }
 
-  /* Solve the optimization  */
+  /* --- Solve the optimization  --- */
   if (runtype == optimization) {
     if (mpirank_world == 0) printf("Now starting HiOp... \n");
     optimstatus = optimsolver.run();
 
   }
+
+
+  /* --- Finalize --- */
 
   /* Get timings */
   double UsedTime = MPI_Wtime() - StartTime;
@@ -366,7 +359,7 @@ int main(int argc,char **argv)
   // MatView(G, PETSC_VIEWER_STDOUT_WORLD);
 
   /* Flush control functions */
-  for (int i = 0; i < nosci; i++){
+  for (int i = 0; i < nlevels.size(); i++){
     sprintf(filename, "control_%04d.dat", i);
     oscil_vec[i]->flushControl(ntime, dt, filename);
   }
@@ -498,7 +491,7 @@ int main(int argc,char **argv)
   double *dfdw = new double[nparam];
   double *dgdw = new double[nparam];
 
-  for (int iosc=0; iosc<nosci; iosc++)
+  for (int iosc=0; iosc<nlevels.size(); iosc++)
   {
     printf("FD for oscillator %d:\n", iosc);
 
@@ -620,7 +613,7 @@ int main(int argc,char **argv)
   delete [] optimgrad;
 
   /* Clean up Oscillator */
-  for (int i=0; i<nosci; i++){
+  for (int i=0; i<nlevels.size(); i++){
     delete oscil_vec[i];
   }
   delete [] oscil_vec;
