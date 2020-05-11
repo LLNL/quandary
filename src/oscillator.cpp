@@ -86,7 +86,10 @@ int Oscillator::createNumberOP(int dim_prekron, int dim_postkron, Mat* numberOP)
   int dim_number = dim_prekron*nlevels*dim_postkron;
 
   /* Create and set number operator */
-  MatCreateSeqAIJ(PETSC_COMM_WORLD,dim_number, dim_number,dim_number,NULL, numberOP); 
+  MatCreate(PETSC_COMM_WORLD, numberOP);
+  MatSetSizes(*numberOP, PETSC_DECIDE, PETSC_DECIDE, dim_number, dim_number);
+  MatSetUp(*numberOP);
+  MatSetFromOptions(*numberOP);
   for (int i=0; i<dim_prekron; i++) {
     for (int j=0; j<nlevels; j++) {
       double val = j;
@@ -110,7 +113,10 @@ int Oscillator::createLoweringOP(int dim_prekron, int dim_postkron, Mat* lowerin
   int dim_lowering = dim_prekron*nlevels*dim_postkron;
 
   /* create and set lowering operator */
-  MatCreateSeqAIJ(PETSC_COMM_WORLD,dim_lowering,dim_lowering,dim_lowering-1,NULL, loweringOP); 
+  MatCreate(PETSC_COMM_WORLD, loweringOP);
+  MatSetSizes(*loweringOP, PETSC_DECIDE, PETSC_DECIDE, dim_lowering, dim_lowering); 
+  MatSetUp(*loweringOP);
+  MatSetFromOptions(*loweringOP);
   for (int i=0; i<dim_prekron; i++) {
     for (int j=0; j<nlevels-1; j++) {
       double val = sqrt(j+1);

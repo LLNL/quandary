@@ -8,7 +8,9 @@ myBraidVector::myBraidVector() {
 myBraidVector::myBraidVector(int dim) {
 
     /* Allocate the Petsc Vector */
-    VecCreateSeq(PETSC_COMM_WORLD, dim, &x);
+    VecCreate(PETSC_COMM_WORLD, &x);
+    VecSetSizes(x, PETSC_DECIDE, dim);
+    VecSetFromOptions(x);
     VecZeroEntries(x);
 }
 

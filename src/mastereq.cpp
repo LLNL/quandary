@@ -41,7 +41,8 @@ MasterEq::MasterEq(int noscillators_, Oscillator** oscil_vec_, const std::vector
   dim = dim*dim; // density matrix: N \times N -> vectorized: N^2
 
   /* Allocate Re */
-  MatCreateSeqAIJ(PETSC_COMM_WORLD,dim,dim,0,NULL,&Re);
+  MatCreate(PETSC_COMM_WORLD, &Re);
+  MatSetSizes(Re, PETSC_DECIDE, PETSC_DECIDE, dim, dim);
   MatSetFromOptions(Re);
   MatSetUp(Re);
   MatSetOption(Re, MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);
@@ -54,7 +55,8 @@ MasterEq::MasterEq(int noscillators_, Oscillator** oscil_vec_, const std::vector
 
 
   /* Allocate Im */
-  MatCreateSeqAIJ(PETSC_COMM_WORLD,dim,dim,0,NULL,&Im);
+  MatCreate(PETSC_COMM_WORLD, &Im);
+  MatSetSizes(Im, PETSC_DECIDE, PETSC_DECIDE, dim, dim);
   MatSetFromOptions(Im);
   MatSetUp(Im);
   MatAssemblyBegin(Im,MAT_FINAL_ASSEMBLY);
@@ -88,7 +90,10 @@ MasterEq::MasterEq(int noscillators_, Oscillator** oscil_vec_, const std::vector
     MatTranspose(loweringOP, MAT_INITIAL_MATRIX, &loweringOP_T);
 
     /* Compute Ac = I_N \kron (a - a^T) - (a - a^T) \kron I_N */
-    MatCreateSeqAIJ(PETSC_COMM_WORLD,dim,dim,4,NULL,&Ac_vec[iosc]); 
+    MatCreate(PETSC_COMM_WORLD, &Ac_vec[iosc]);
+    MatSetSizes(Ac_vec[iosc], PETSC_DECIDE, PETSC_DECIDE, dim, dim);
+    MatSetUp(Ac_vec[iosc]);
+    MatSetFromOptions(Ac_vec[iosc]);
     Ikron(loweringOP,   dimmat,  1.0, &Ac_vec[iosc], ADD_VALUES);
     Ikron(loweringOP_T, dimmat, -1.0, &Ac_vec[iosc], ADD_VALUES);
     kronI(loweringOP_T, dimmat, -1.0, &Ac_vec[iosc], ADD_VALUES);
@@ -97,7 +102,10 @@ MasterEq::MasterEq(int noscillators_, Oscillator** oscil_vec_, const std::vector
     MatAssemblyEnd(Ac_vec[iosc], MAT_FINAL_ASSEMBLY);
     
     /* Compute Bc = - I_N \kron (a + a^T) + (a + a^T) \kron I_N */
-    MatCreateSeqAIJ(PETSC_COMM_WORLD,dim,dim,4,NULL,&Bc_vec[iosc]); 
+    MatCreate(PETSC_COMM_WORLD, &Bc_vec[iosc]);
+    MatSetSizes(Bc_vec[iosc], PETSC_DECIDE, PETSC_DECIDE, dim, dim);
+    MatSetUp(Bc_vec[iosc]);
+    MatSetFromOptions(Bc_vec[iosc]);
     Ikron(loweringOP,   dimmat, -1.0, &Bc_vec[iosc], ADD_VALUES);
     Ikron(loweringOP_T, dimmat, -1.0, &Bc_vec[iosc], ADD_VALUES);
     kronI(loweringOP_T, dimmat,  1.0, &Bc_vec[iosc], ADD_VALUES);
@@ -109,7 +117,10 @@ MasterEq::MasterEq(int noscillators_, Oscillator** oscil_vec_, const std::vector
   }
 
   /* Allocate and compute imag drift part Bd = Hd */
-  MatCreateSeqAIJ(PETSC_COMM_WORLD,dim,dim,1,NULL,&Bd); 
+  MatCreate(PETSC_COMM_WORLD, &Bd);
+  MatSetSizes(Bd, PETSC_DECIDE, PETSC_DECIDE, dim, dim);
+  MatSetUp(Bd);
+  MatSetFromOptions(Bd);
   int xi_id = 0;
   for (int iosc = 0; iosc < noscillators_; iosc++) {
     Mat tmp, tmp_T;
@@ -154,6 +165,7 @@ MasterEq::MasterEq(int noscillators_, Oscillator** oscil_vec_, const std::vector
   bool addT1, addT2;
   MatCreate(PETSC_COMM_WORLD, &Ad);
   MatSetSizes(Ad, PETSC_DECIDE, PETSC_DECIDE, dim, dim);
+  MatSetFromOptions(Ad);
   MatSetUp(Ad);
   for (int iosc = 0; iosc < noscillators_; iosc++) {
   

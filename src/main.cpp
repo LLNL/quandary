@@ -551,9 +551,11 @@ int main(int argc,char **argv)
   double error_norm, exact_norm;
 
   int nreal = 2*mastereq->getDim();
-  VecCreateSeq(PETSC_COMM_WORLD,nreal,&x);
-  VecCreateSeq(PETSC_COMM_WORLD,nreal,&exact);
-  VecCreateSeq(PETSC_COMM_WORLD,nreal,&error);
+  VecCreate(PETSC_COMM_WORLD,&x);
+  VecSetSizes(x, PETSC_DECIDE, nreal);
+  VecSetFromOptions(x);
+  VecDuplicate(x, &exact);
+  VecDuplicate(x, &error);
 
   /* Destroy old time stepper */
   TSDestroy(&ts);
