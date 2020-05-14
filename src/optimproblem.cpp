@@ -211,11 +211,13 @@ double OptimProblem::evalF(Vec x) {
     int initid = primalbraidapp->mastereq->getRhoT0(iinit_global, obj_oscilIDs, ninit, rho_t0);
     // if (mpirank_braid == 0) printf("%d: %d FWD. \n", mpirank_init, initid);
 
+    VecView(rho_t0,0);
+    // exit(1);
     /* Run forward with initial condition initid*/
-    primalbraidapp->PreProcess(initid);
-    primalbraidapp->setInitCond(rho_t0);
-    primalbraidapp->Drive();
-    finalstate = primalbraidapp->PostProcess(); // this return NULL for all but the last time processor
+    // primalbraidapp->PreProcess(initid);
+    // primalbraidapp->setInitCond(rho_t0);
+    // primalbraidapp->Drive();
+    // finalstate = primalbraidapp->PostProcess(); // this return NULL for all but the last time processor
     
 
     /* Add to objective function */

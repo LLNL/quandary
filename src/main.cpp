@@ -177,7 +177,7 @@ int main(int argc,char **argv)
            << mpirank_braid << "/" << mpisize_braid << ", " \
            << mpirank_petsc << "/" << mpisize_petsc << ", " << std::endl;
 
-  exit(1);
+  // exit(1);
 
   /* Initialize Petsc using petsc's communicator */
   PETSC_COMM_WORLD = comm_petsc;

@@ -318,8 +318,8 @@ int MasterEq::assemble_RHS(double t){
     PetscInt irow_shift = irow + dim;
 
     /* Get row in Re */
-    PetscInt *colids;
-    PetscScalar *vals;
+    const PetscInt *colids;
+    const PetscScalar *vals;
     int ncol;
     ierr = MatGetRow(Re, irow, &ncol, &colids, &vals);CHKERRQ(ierr);
 
@@ -630,7 +630,7 @@ int MasterEq::getRhoT0(int iinit, std::vector<int> oscilIDs, int ninit, Vec rho0
         rows[3] = k * dim_post * dim_rho + j * dim_post; // (j,k)
 
         /* Colocated storage xi = (ui, vi) */
-        for (int r=0; r<3; r++) rows[r] = 2 * rows[r]; // real parts
+        for (int r=0; r<4; r++) rows[r] = 2 * rows[r]; // real parts
 
         if (k < j) { // B_{kj} = 1/2(E_kk + E_jj) + 1/2(E_kj + E_jk)
           vals[0] = 0.5;
