@@ -33,18 +33,19 @@ class MasterEq{
     InitialConditionType initcond_type; 
 
   private: 
-    PetscInt    *col_idx_shift; // Auxiliary vector: shifted indices
-    PetscScalar *negvals;       // Auxiliary vector: negative vals of some matrix
+    IS isu, isv;        // Vector strides for accessing u=Re(x), v=Im(x) 
 
     /* Some auxiliary vectors */
+    PetscInt    *colid1, *colid2; 
+    PetscScalar *negvals;         
+
     double *dRedp;
     double *dImdp;
-    int *rowid;
-    int *rowid_shift;
-    IS isu, isv;
+    // int *rowid;
+    // int *rowid_shift;
     Vec Acu, Acv, Bcu, Bcv, auxil;
-    int* cols;
-    double* vals;
+    int* cols;           // holding columns when evaluating dRHSdp
+    PetscScalar* vals;   // holding values when evaluating dRHSdp
  
 
 

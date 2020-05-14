@@ -90,6 +90,7 @@ OptimProblem::OptimProblem(MapParam config, myBraidApp* primalbraidapp_, myAdjoi
       diag_id += unitids[k] * dim_postkron;
     }
     int vec_id = diag_id * (int)sqrt(primalbraidapp->mastereq->getDim()) + diag_id;
+    vec_id = 2*vec_id; // colocated storage xi = (ui, vi)
     VecSetValue(rho_t0, vec_id, 1.0, INSERT_VALUES);
   }
   else if (initcond_type == FROMFILE) { /* Read initial condition from file */
@@ -104,7 +105,8 @@ OptimProblem::OptimProblem(MapParam config, myBraidApp* primalbraidapp_, myAdjoi
     }
     MPI_Bcast(vec, 2*dim, MPI_DOUBLE, 0, MPI_COMM_WORLD);
     for (int i = 0; i < dim; i++) {
-      VecSetValue(rho_t0, i, vec[i], INSERT_VALUES);
+      VecSetValue(rho_t0, 2*i,   vec[i], INSERT_VALUES); // RealPart
+      VecSetValue(rho_t0, 2*i+1, vec[i + dim ], INSERT_VALUES); // Imaginary Part
     }
     delete [] vec;
   }
