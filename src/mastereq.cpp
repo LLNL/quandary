@@ -315,41 +315,43 @@ int MasterEq::assemble_RHS(double t){
 
   /* Iterate over rows in A, B */
   for (int irow = 0; irow < dim; irow++) {
-    PetscInt irow_shift = irow + dim;
 
-    /* Get row in Re */
-    const PetscInt *colids;
+    const PetscInt *getcol;
     const PetscScalar *vals;
     int ncol;
-    ierr = MatGetRow(Re, irow, &ncol, &colids, &vals);CHKERRQ(ierr);
 
-    // Set up columids in M
+    /* Get row in Re */
+    ierr = MatGetRow(Re, irow, &ncol, &getcol, &vals);CHKERRQ(ierr);
+
+    /* Set up row and colum ids for Re in M */
+    int rowid1 = 2*irow;
+    int rowid2 = 2*irow + 1;
     for (int icol = 0; icol < ncol; icol++)
     {
-      colid1[icol] = 2*colids[icol];       // uk
-      colid2[icol] = colid1[icol] + 1;      // vk
+      colid1[icol] = 2*getcol[icol];       // uk
+      colid2[icol] = 2*getcol[icol] + 1;   // vk
     }
     /* Set Re-row in M */
-    int rowid = 2*irow;
-    ierr = MatSetValues(RHS, 1, &rowid, ncol, colid1, vals, INSERT_VALUES); CHKERRQ(ierr);
-    rowid+=1;
-    ierr = MatSetValues(RHS, 1, &rowid, ncol, colid2, vals,INSERT_VALUES); CHKERRQ(ierr);
-    ierr = MatRestoreRow(Re,irow,&ncol,&colids,&vals);CHKERRQ(ierr);
+    ierr = MatSetValues(RHS, 1, &rowid1, ncol, colid1, vals, INSERT_VALUES); CHKERRQ(ierr);
+    ierr = MatSetValues(RHS, 1, &rowid2, ncol, colid2, vals,INSERT_VALUES); CHKERRQ(ierr);
+    ierr = MatRestoreRow(Re,irow,&ncol,&getcol,&vals);CHKERRQ(ierr);
 
     /* Get row in Im */
-    ierr = MatGetRow(Im, irow, &ncol, &colids, &vals);CHKERRQ(ierr);
+    ierr = MatGetRow(Im, irow, &ncol, &getcol, &vals);CHKERRQ(ierr);
+
+    /* Set up row and column ids for Im in M */
     for (int icol = 0; icol < ncol; icol++)
     {
-      colid1[icol] = 2*colids[icol] + 1;  // uk
-      colid2[icol] = colid1[icol] + 1;      // vk
+      colid1[icol] = 2*getcol[icol] + 1;  // uk
+      colid2[icol] = 2*getcol[icol];      // vk
       negvals[icol] = -vals[icol];
     }
     // Set Im in M: 
-    rowid = 2 * irow + 1;
-    ierr = MatSetValues(RHS,1,&rowid,ncol,colid1,negvals,INSERT_VALUES);CHKERRQ(ierr);
-    rowid+=1;
-    ierr = MatSetValues(RHS,1,&rowid,ncol,colid2,vals,INSERT_VALUES);CHKERRQ(ierr);
-    ierr = MatRestoreRow(Im,irow,&ncol,&colids,&vals);CHKERRQ(ierr);
+    rowid1 = 2 * irow;
+    rowid2 = 2 * irow + 1;
+    ierr = MatSetValues(RHS,1,&rowid1,ncol,colid1,negvals,INSERT_VALUES);CHKERRQ(ierr);
+    ierr = MatSetValues(RHS,1,&rowid2,ncol,colid2,vals,INSERT_VALUES);CHKERRQ(ierr);
+    ierr = MatRestoreRow(Im,irow,&ncol,&getcol,&vals);CHKERRQ(ierr);
   }
 
   /* Assemble M */
