@@ -462,37 +462,10 @@ double OptimProblem::objectiveT(Vec finalstate){
 
         /* If sub-system is requested, compute reduced density operator first */
         if (obj_oscilIDs.size() < meq->getNOscillators()) { 
-          
-          /* Get dimensions of preceding and following subsystem */
-          int dim_pre  = 1; 
-          int dim_post = 1;
-          for (int iosc = 0; iosc < meq->getNOscillators(); iosc++) {
-            if ( iosc < obj_oscilIDs[0])                      
-              dim_pre  *= meq->getOscillator(iosc)->getNLevels();
-            if ( iosc > obj_oscilIDs[obj_oscilIDs.size()-1])   
-              dim_post *= meq->getOscillator(iosc)->getNLevels();
-          }
-
-          /* Create reduced density matrix */
-          int dim_reduced = 1;
-          for (int i = 0; i < obj_oscilIDs.size();i++) {
-            dim_reduced *= meq->getOscillator(obj_oscilIDs[i])->getNLevels();
-          }
-          VecCreate(PETSC_COMM_WORLD, &state);
-          VecSetSizes(state, PETSC_DECIDE, 2*dim_reduced*dim_reduced);
-          VecSetFromOptions(state);
-
-          /* Fill reduced density matrix */
-          meq->reducedDensity(finalstate, &state, dim_pre, dim_post, dim_reduced);
-
+          meq->createReducedDensity(finalstate, &state, obj_oscilIDs);
         } else { // full density matrix system 
-
            state = finalstate; 
-
         }
-
-        // PetscViewerSetFormat(PETSC_VIEWER_STDOUT_WORLD, 	PETSC_VIEWER_ASCII_MATLAB );
-        // VecView(state, PETSC_VIEWER_STDOUT_WORLD);
 
         /* Compute frobenius norm: frob = || q(T) - e_1 ||^2 */
         int dimstate;

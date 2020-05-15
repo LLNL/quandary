@@ -367,48 +367,64 @@ int MasterEq::assemble_RHS(double t){
 Mat MasterEq::getRHS() { return RHS; }
 
 
-void MasterEq::reducedDensity(Vec fulldensitymatrix, Vec *reduced, int dim_pre, int dim_post, int dim_reduced) {
+void MasterEq::createReducedDensity(Vec rho, Vec *reduced, std::vector<int>oscilIDs) {
 
-  /* TODO: CHANGE!
+  /* Get dimensions of preceding and following subsystem */
+  int dim_pre  = 1; 
+  int dim_post = 1;
+  for (int iosc = 0; iosc < oscilIDs[0]; iosc++) 
+    dim_pre  *= getOscillator(iosc)->getNLevels();
+  for (int iosc = oscilIDs[oscilIDs.size()-1]+1; iosc < getNOscillators(); iosc++) 
+    dim_post *= getOscillator(iosc)->getNLevels();
 
-  // /* sanity test */
-  // int dimmat = dim_pre * dim_reduced * dim_post;
-  // assert ( (int) pow(dimmat,2) == dim);
+  int dim_reduced = 1;
+  for (int i = 0; i < oscilIDs.size();i++) {
+    dim_reduced *= getOscillator(oscilIDs[i])->getNLevels();
+  }
 
-  // /* Iterate over reduced density matrix elements */
-  // for (int i=0; i<dim_reduced; i++) {
-  //   for (int j=0; j<dim_reduced; j++) {
-  //     /* Iterate over all dim_pre blocks of size n_k * dim_post */
-  //     for (int l = 0; l < dim_pre; l++) {
-  //       int blockstartID = l * dim_reduced * dim_post; // Go to beginning of block 
-  //       /* iterate over elements in this block */
-  //       for (int m=0; m<dim_post; m++) {
-  //         int rho_row = blockstartID + i * dim_post + m;
-  //         int rho_col = blockstartID + j * dim_post + m;
-  //         int rho_vecID_re = rho_col * dimmat + rho_row;
-  //         int rho_vecID_im = rho_vecID_re + (int) pow(dimmat,2);
-  //         /* Get real and imaginary part from full density matrix */
-  //         double re, im;
-  //         VecGetValues(fulldensitymatrix, 1, &rho_vecID_re, &re);
-  //         VecGetValues(fulldensitymatrix, 1, &rho_vecID_im, &im);
-  //         /* Set real and imaginary part for reduced density matrix */
-  //         int out_vecID_re = j * dim_reduced + i;
-  //         int out_vecID_im = out_vecID_re + (int) pow(dim_reduced,2);
-  //         VecSetValues( *reduced, 1, &out_vecID_re, &re, ADD_VALUES);
-  //         VecSetValues( *reduced, 1, &out_vecID_im, &im, ADD_VALUES);
-  //       }
-  //     }
-  //   }
-  // }
-  // VecAssemblyBegin(*reduced);
-  // VecAssemblyEnd(*reduced);
+  /* sanity test */
+  int dimmat = dim_pre * dim_reduced * dim_post;
+  assert ( (int) pow(dimmat,2) == dim);
+
+  /* Create reduced density matrix */
+  VecCreate(PETSC_COMM_WORLD, reduced);
+  VecSetSizes(*reduced, PETSC_DECIDE, 2*dim_reduced*dim_reduced);
+  VecSetFromOptions(*reduced);
+
+  /* Iterate over reduced density matrix elements */
+  for (int i=0; i<dim_reduced; i++) {
+    for (int j=0; j<dim_reduced; j++) {
+      /* Iterate over all dim_pre blocks of size n_k * dim_post */
+      for (int l = 0; l < dim_pre; l++) {
+        int blockstartID = l * dim_reduced * dim_post; // Go to beginning of block 
+        /* iterate over elements in this block */
+        for (int m=0; m<dim_post; m++) {
+          int rho_row = blockstartID + i * dim_post + m;
+          int rho_col = blockstartID + j * dim_post + m;
+          int rho_vecID_re = 2 * (rho_col * dimmat + rho_row);
+          int rho_vecID_im = rho_vecID_re + 1;
+          /* Get real and imaginary part from full density matrix */
+          double re, im;
+          VecGetValues(rho, 1, &rho_vecID_re, &re);
+          VecGetValues(rho, 1, &rho_vecID_im, &im);
+          /* Set real and imaginary part for reduced density matrix */
+          int out_vecID_re = 2 * (j * dim_reduced + i);
+          int out_vecID_im = out_vecID_re + 1;
+          VecSetValues( *reduced, 1, &out_vecID_re, &re, ADD_VALUES);
+          VecSetValues( *reduced, 1, &out_vecID_im, &im, ADD_VALUES);
+        }
+      }
+    }
+  }
+  VecAssemblyBegin(*reduced);
+  VecAssemblyEnd(*reduced);
 
 }
 
 
 void MasterEq::reducedDensity_diff(Vec fulldens_bar, Vec reduced_bar, int dim_pre, int dim_post, int dim_reduced) {
 
-//   /* sanity test */
+  /* sanity test */
 //   int dimmat = dim_pre * dim_reduced * dim_post;
 //   assert ( (int) pow(dimmat,2) == dim);
 
