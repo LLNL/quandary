@@ -41,11 +41,6 @@ MasterEq::MasterEq(int noscillators_, Oscillator** oscil_vec_, const std::vector
   MatSetSizes(Re, PETSC_DECIDE, PETSC_DECIDE, dim, dim);
   MatSetFromOptions(Re);
   MatSetUp(Re);
-  MatSetOption(Re, MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);
-  for (int irow = 0; irow < dim; irow++)
-  {
-    MatSetValue(Re, irow, irow, 0.0, INSERT_VALUES);
-  }
   MatAssemblyBegin(Re,MAT_FINAL_ASSEMBLY);
   MatAssemblyEnd(Re,MAT_FINAL_ASSEMBLY);
 

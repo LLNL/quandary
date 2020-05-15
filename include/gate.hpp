@@ -75,7 +75,7 @@ class HadamardGate : public Gate {
     ~HadamardGate();
 };
 
-/* CNOT Gate, spanning two qubits. This class is mostly hardcoded. TODO: Generalize!
+/* CNOT Gate, spanning two qubits. 
  * V = 1 0 0 0
  *     0 1 0 0 
  *     0 0 0 1
