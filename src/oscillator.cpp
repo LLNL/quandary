@@ -225,7 +225,7 @@ void Oscillator::population(Vec x, std::vector<double> *pop) {
       for (int l=0; l < dim_postOsc; l++) {
         /* Get diagonal element */
         int rhoID = blockstartID + identitystartID + l; // Diagonal element of rho
-        int diagID = rhoID * dimN + rhoID;                // Position in vectorized rho
+        int diagID = 2*(rhoID * dimN + rhoID);                // Position in vectorized rho
         double val;
         VecGetValues(x, 1, &diagID, &val);
         sum += val;
