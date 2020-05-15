@@ -735,18 +735,8 @@ void myBraidApp::setInitCond(Vec rho_t0){
     x = ((myBraidVector *)ubase->userVector)->x;
 
     /* Copy initial condition into braid's vector */
-    const PetscScalar *rho_ptr;
-    PetscScalar *xptr;
-    VecGetArrayRead(rho_t0, &rho_ptr);
-    VecGetArray(x, &xptr);
-    VecGetSize(x, &size);
-    for (int i=0; i < size; i++) {
-      xptr[i] = rho_ptr[i];
-    }
-    VecRestoreArrayRead(rho_t0, &rho_ptr);
-    VecRestoreArray(x, &xptr);
+    VecCopy(rho_t0, x);
 
-    // VecView(x, PETSC_VIEWER_STDOUT_WORLD);
   }
 
 }
