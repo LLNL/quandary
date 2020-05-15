@@ -330,13 +330,13 @@ braid_Int myBraidApp::Access(braid_Vector u_, BraidAccessStatus &astatus){
     fprintf(vfile,  "%.8f  ", t);
     for (int i = 0; i < 2*mastereq->getDim(); i++)
     {
-      if (i < mastereq->getDim()) // real part
+      if (i % 2 == 0) // real part
       { 
-        fprintf(ufile, "%1.14e  ", x_ptr[i]);  
+        fprintf(ufile, "%1.10e  ", x_ptr[i]);  
       }  
       else  // imaginary part
       {
-        fprintf(vfile, "%1.14e  ", x_ptr[i]); 
+        fprintf(vfile, "%1.10e  ", x_ptr[i]); 
       }
     }
     fprintf(ufile, "\n");
