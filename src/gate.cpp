@@ -268,13 +268,15 @@ void Gate::compare_diff(const Vec finalstate, const Vec rho0, Vec rho0_bar, cons
   const PetscScalar *ufinalptr, *vfinalptr, *Re0ptr, *Im0ptr;
   PetscScalar *u0_barptr, *v0_barptr;
 
-  /* Get real and imag part of final and initial primal and adjoint states, x = [u,v] */
+  /* Get real and imag part of final state, initial state, and adjoint */
   VecGetSubVector(finalstate, isu, &ufinal);
   VecGetSubVector(finalstate, isv, &vfinal);
-  VecGetSubVector(rho0_bar, isu, &u0_bar);
-  VecGetSubVector(rho0_bar, isv, &v0_bar);
   VecGetSubVector(rho0, isu, &u0);
   VecGetSubVector(rho0, isv, &v0);
+  VecGetSubVector(rho0_bar, isu, &u0_bar);
+  VecGetSubVector(rho0_bar, isv, &v0_bar);
+
+  /* Get pointers  */
   VecGetArrayRead(ufinal, &ufinalptr);
   VecGetArrayRead(vfinal, &vfinalptr);
   VecGetArray(u0_bar, &u0_barptr);
@@ -305,13 +307,19 @@ void Gate::compare_diff(const Vec finalstate, const Vec rho0, Vec rho0_bar, cons
   VecRestoreArrayRead(Re0, &Re0ptr);
   VecRestoreArrayRead(Im0, &Im0ptr);
 
- /* Restore */
+ /* Restore pointers */
   VecRestoreArrayRead(ufinal, &ufinalptr);
   VecRestoreArrayRead(vfinal, &vfinalptr);
-  VecRestoreSubVector(finalstate, isu, &ufinal);
-  VecRestoreSubVector(finalstate, isv, &vfinal);
   VecRestoreArray(u0_bar, &u0_barptr);
   VecRestoreArray(v0_bar, &v0_barptr);
+
+  /* Restore final, initial and adjoint state */
+  VecRestoreSubVector(finalstate, isu, &ufinal);
+  VecRestoreSubVector(finalstate, isv, &vfinal);
+  VecRestoreSubVector(rho0, isu, &u0);
+  VecRestoreSubVector(rho0, isv, &v0);
+  VecRestoreSubVector(rho0_bar, isu, &u0_bar);
+  VecRestoreSubVector(rho0_bar, isv, &v0_bar);
 
 }
 
