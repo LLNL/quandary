@@ -92,7 +92,6 @@ class MasterEq{
     /* Compute reduced density operator */
     void reducedDensity(Vec fulldensitymatrix, Vec *reduced, int dim_pre, int dim_post, int dim_reduced);
     void reducedDensity_diff(Vec fulldens_bar, Vec reduced_bar, int dim_pre, int dim_post, int dim_reduced);
-    void reducedDensity_diff(Vec reddens_bar, Vec x0_re_bar, Vec x0_im_bar, int dim_pre, int dim_post, int dim_reduced);
     
 
     /* Set the oscillators control function amplitudes from design vector x */
