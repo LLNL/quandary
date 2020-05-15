@@ -41,8 +41,8 @@ Gate::Gate(int dim_v_) {
 
 
   /* Create vector strides for later use */
-  ISCreateStride(PETSC_COMM_WORLD, dim_vec, 0, 1, &isu);
-  ISCreateStride(PETSC_COMM_WORLD, dim_vec, dim_vec, 1, &isv);
+  ISCreateStride(PETSC_COMM_WORLD, dim_vec, 0, 2, &isu);
+  ISCreateStride(PETSC_COMM_WORLD, dim_vec, 1, 2, &isv);
 
   /* Create auxiliary vectors */
   MatCreateVecs(ReG, &Re0, NULL);

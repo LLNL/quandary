@@ -207,6 +207,7 @@ void Oscillator::expectedEnergy_diff(Vec x, Vec x_bar, double obj_bar) {
 }
 
 void Oscillator::expectedEnergy_diff(Vec x, Vec x_re_bar, Vec x_im_bar, double obj_bar) {
+  // TODO WHY IS THERE TWO VERSIONS? Change in petscopt!
 
   int dimmat;
   MatGetSize(NumberOP, &dimmat, NULL);
