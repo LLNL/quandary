@@ -199,6 +199,7 @@ void Oscillator::expectedEnergy_diff(Vec x, Vec x_bar, double obj_bar) {
   for (int i=0; i<dimmat; i++) {
     MatGetValue(NumberOP, i, i, &num_diag);
     int idx_diag = i * dimmat + i;
+    idx_diag = 2 * idx_diag;
     double val = num_diag * obj_bar;
     VecSetValues(x_bar, 1, &idx_diag, &val, ADD_VALUES);
   }
