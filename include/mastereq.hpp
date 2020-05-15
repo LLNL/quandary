@@ -94,9 +94,6 @@ class MasterEq{
     void createReducedDensity(Vec rho, Vec *reduced, std::vector<int>oscilIDs);
     void createReducedDensity_diff(Vec rhobar, Vec reducedbar, std::vector<int>oscilIDs);
 
-    // old version blow. not in use.
-    void reducedDensity_diff(Vec reddens_bar, Vec x0_re_bar, Vec x0_im_bar, int dim_pre, int dim_post, int dim_reduced);
-    
 
     /* Set the oscillators control function amplitudes from design vector x */
     void setControlAmplitudes(Vec x);

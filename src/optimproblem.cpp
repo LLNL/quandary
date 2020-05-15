@@ -468,16 +468,10 @@ double OptimProblem::objectiveT(Vec finalstate){
         }
 
         /* Compute frobenius norm: frob = || q(T) - e_1 ||^2 */
-        int dimstate;
-        const PetscScalar *stateptr;
-        VecGetSize(state, &dimstate);
-        VecGetArrayRead(state, &stateptr);
-        obj_local = 0.0;
-        obj_local += pow(stateptr[0] - 1.0, 2); 
-        for (int i = 1; i < dimstate; i++){
-           obj_local += pow(stateptr[i], 2);
-        }
-        VecRestoreArrayRead(state, &stateptr);
+        VecSetValue(state, 0, -1.0, ADD_VALUES); // substract 1.0 from (0,0) element
+        VecNorm(state, NORM_2, &obj_local);
+        obj_local = pow(obj_local, 2.0);
+        VecSetValue(state, 0, 1.0, ADD_VALUES); // restore state 
 
         /* Destroy reduced density matrix, if it has been created */
         if (obj_oscilIDs.size() < primalbraidapp->mastereq->getNOscillators()) { 
@@ -530,35 +524,18 @@ void OptimProblem::objectiveT_diff(Vec finalstate, double obj, double obj_bar){
       PetscScalar *statebarptr;
       Vec statebar;
       VecDuplicate(state, &statebar);
-      VecGetArrayRead(state, &stateptr);
-      VecGetArray(statebar, &statebarptr);
 
       /* Derivative of frobenius norm: 2 * (q(T) - e_1) * frob_bar */
-      int dimstate;
-      VecGetSize(state, &dimstate);
-      statebarptr[0] += 2. * ( stateptr[0] - 1.0 ) * obj_bar; // (0,0)-element
-      for (int i=1; i<dimstate; i++) { // all others 
-        statebarptr[i] += 2. * stateptr[i] * obj_bar;
-      }
-      VecRestoreArrayRead(state, &stateptr);
-
+      VecAXPY(statebar, 2.0*obj_bar, state);
+      VecSetValue(statebar, 0, -2.0*obj_bar, ADD_VALUES);
+      
       /* Pass derivative from statebar to rho_t0_bar */
       if (obj_oscilIDs.size() < meq->getNOscillators()) {
         /* Derivative of partial trace  */
         meq->createReducedDensity_diff(rho_t0_bar, statebar, obj_oscilIDs);
         VecDestroy(&state);
       } else {
-        /* Add statebar to rho_to_bar */
-        // TODO: USE PETSC's VecAXPY 
-        PetscScalar *rho_bar_ptr;
-        VecGetArray(rho_t0_bar, &rho_bar_ptr);
-        const PetscScalar *statebarptr;
-        VecGetArrayRead(statebar, &statebarptr);
-        for (int i=0; i<dimstate; i++){
-          rho_bar_ptr[i] += statebarptr[i];
-        }
-        VecRestoreArrayRead(statebar, &statebarptr);
-        VecRestoreArray(rho_t0_bar, &rho_bar_ptr);
+        VecCopy(statebar, rho_t0_bar);
       }
 
       VecDestroy(&statebar);
