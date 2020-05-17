@@ -14,7 +14,7 @@ TimeStepper::~TimeStepper() {}
 
 
 ExplEuler::ExplEuler(MasterEq* mastereq_) : TimeStepper(mastereq_) {
-  VecCreateSeq(PETSC_COMM_WORLD, dim, &stage);
+  MatCreateVecs(mastereq->getRHS(), &stage, NULL);
   VecZeroEntries(stage);
 }
 
@@ -55,10 +55,10 @@ void ExplEuler::evolveBWD(double tstop, double tstart, Vec x, Vec x_adj, Vec gra
 ImplMidpoint::ImplMidpoint(MasterEq* mastereq_) : TimeStepper(mastereq_) {
 
   /* Create and reset the intermediate vectors */
-  VecCreateSeq(PETSC_COMM_WORLD, dim, &stage);
-  VecCreateSeq(PETSC_COMM_WORLD, dim, &stage_adj);
-  VecCreateSeq(PETSC_COMM_WORLD, dim, &rhs);
-  VecCreateSeq(PETSC_COMM_WORLD, dim, &rhs_adj);
+  MatCreateVecs(mastereq->getRHS(), &stage, NULL);
+  VecDuplicate(stage, &stage_adj);
+  VecDuplicate(stage, &rhs);
+  VecDuplicate(stage, &rhs_adj);
   VecZeroEntries(stage);
   VecZeroEntries(stage_adj);
   VecZeroEntries(rhs);
