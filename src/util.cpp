@@ -167,6 +167,8 @@ PetscErrorCode StateIsHermitian(Vec x, PetscReal tol, PetscBool *flag) {
   /* Init flags*/
   *flag = PETSC_TRUE;
 
+  // TODO Check!
+
   /* Check for symmetric u and antisymmetric v */
   const double *u_array;
   const double *v_array;

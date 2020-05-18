@@ -280,14 +280,18 @@ braid_Int myBraidApp::Sum(braid_Real alpha, braid_Vector x_, braid_Real beta, br
     const PetscScalar *x_ptr;
     PetscScalar *y_ptr;
 
-    VecGetSize(x->x, &dim);
+    int ilow, iupp;
+    VecGetOwnershipRange(x->x, &ilow, &iupp);
+
     VecGetArrayRead(x->x, &x_ptr);
     VecGetArray(y->x, &y_ptr);
-    for (int i = 0; i< 2 * mastereq->getDim(); i++)
-    {
-        y_ptr[i] = alpha * x_ptr[i] + beta * y_ptr[i];
+    for (int i = ilow; i < iupp; i++) {
+        y_ptr[i-ilow] = alpha * x_ptr[i-ilow] + beta * y_ptr[i-ilow];
+
     }
     VecRestoreArray(y->x, &y_ptr);
+    VecRestoreArrayRead(x->x, &x_ptr);
+
 
   return 0; 
 }
@@ -318,47 +322,48 @@ braid_Int myBraidApp::Access(braid_Vector u_, BraidAccessStatus &astatus){
   /* Don't print first time step. Something is fishy herre.*/
   if (t == 0.0) return 0;
 
-  if (done && ufile != NULL && vfile != NULL) {
+  // if (done && ufile != NULL && vfile != NULL) {
 
+    // TODO 
     
-    /* Get access to Petsc's vector */
-    const PetscScalar *x_ptr;
-    VecGetArrayRead(u->x, &x_ptr);
+  //   /* Get access to Petsc's vector */
+  //   const PetscScalar *x_ptr;
+  //   VecGetArrayRead(u->x, &x_ptr);
 
-    /* Write solution to files */
-    fprintf(ufile,  "%.8f  ", t);
-    fprintf(vfile,  "%.8f  ", t);
-    for (int i = 0; i < 2*mastereq->getDim(); i++)
-    {
-      if (i % 2 == 0) // real part
-      { 
-        fprintf(ufile, "%1.10e  ", x_ptr[i]);  
-      }  
-      else  // imaginary part
-      {
-        fprintf(vfile, "%1.10e  ", x_ptr[i]); 
-      }
-    }
-    fprintf(ufile, "\n");
-    fprintf(vfile, "\n");
+  //   /* Write solution to files */
+  //   fprintf(ufile,  "%.8f  ", t);
+  //   fprintf(vfile,  "%.8f  ", t);
+  //   for (int i = 0; i < 2*mastereq->getDim(); i++)
+  //   {
+  //     if (i % 2 == 0) // real part
+  //     { 
+  //       fprintf(ufile, "%1.10e  ", x_ptr[i]);  
+  //     }  
+  //     else  // imaginary part
+  //     {
+  //       fprintf(vfile, "%1.10e  ", x_ptr[i]); 
+  //     }
+  //   }
+  //   fprintf(ufile, "\n");
+  //   fprintf(vfile, "\n");
 
-    VecRestoreArrayRead(u->x, &x_ptr);
-  }
+  //   VecRestoreArrayRead(u->x, &x_ptr);
+  // }
 
-  /* Compute and print some output */
-  for (int iosc = 0; iosc < mastereq->getNOscillators(); iosc++) {
-    if (expectedfile[iosc] != NULL) {
-      double expected = mastereq->getOscillator(iosc)->expectedEnergy(u->x);
-      fprintf(expectedfile[iosc], "%.8f %1.14e\n", t, expected);
-    }
-    if (populationfile[iosc] != NULL) {
-      std::vector<double> pop (mastereq->getOscillator(iosc)->getNLevels(), 0.0);  // create and fill with zero
-      mastereq->getOscillator(iosc)->population(u->x, &pop);
-      fprintf(populationfile[iosc], "%.8f ", t);
-      for (int i=0; i<pop.size(); i++) fprintf(populationfile[iosc], "%1.14e ", pop[i]);
-      fprintf(populationfile[iosc], "\n");
-    }
-  }
+  // /* Compute and print some output */
+  // for (int iosc = 0; iosc < mastereq->getNOscillators(); iosc++) {
+  //   if (expectedfile[iosc] != NULL) {
+  //     double expected = mastereq->getOscillator(iosc)->expectedEnergy(u->x);
+  //     fprintf(expectedfile[iosc], "%.8f %1.14e\n", t, expected);
+  //   }
+  //   if (populationfile[iosc] != NULL) {
+  //     std::vector<double> pop (mastereq->getOscillator(iosc)->getNLevels(), 0.0);  // create and fill with zero
+  //     mastereq->getOscillator(iosc)->population(u->x, &pop);
+  //     fprintf(populationfile[iosc], "%.8f ", t);
+  //     for (int i=0; i<pop.size(); i++) fprintf(populationfile[iosc], "%1.14e ", pop[i]);
+  //     fprintf(populationfile[iosc], "\n");
+  //   }
+  // }
 
 
   return 0; 
@@ -378,20 +383,22 @@ braid_Int myBraidApp::BufPack(braid_Vector u_, void *buffer, BraidBufferStatus &
   myBraidVector *u = (myBraidVector *)u_;
   double* dbuffer = (double*) buffer;
 
-  const PetscScalar *x_ptr;
-  int dim;
-  VecGetSize(u->x, &dim);
+  // TODO  !!
 
-  /* Copy the values into the buffer */
-  VecGetArrayRead(u->x, &x_ptr);
-  for (int i=0; i < dim; i++)
-  {
-      dbuffer[i] = x_ptr[i];
-  }
-  VecRestoreArrayRead(u->x, &x_ptr);
+  // const PetscScalar *x_ptr;
+  // int dim;
+  // VecGetSize(u->x, &dim);
 
-  int size =  dim * sizeof(double);
-  bstatus.SetSize(size);
+  // /* Copy the values into the buffer */
+  // VecGetArrayRead(u->x, &x_ptr);
+  // for (int i=0; i < dim; i++)
+  // {
+  //     dbuffer[i] = x_ptr[i];
+  // }
+  // VecRestoreArrayRead(u->x, &x_ptr);
+
+  // int size =  dim * sizeof(double);
+  // bstatus.SetSize(size);
 
   return 0; 
 }
@@ -406,16 +413,17 @@ braid_Int myBraidApp::BufUnpack(void *buffer, braid_Vector *u_ptr, BraidBufferSt
   int dim = 2 * mastereq->getDim();
   myBraidVector *u = new myBraidVector(dim);
 
-  /* Copy buffer into the vector */
-  PetscScalar *x_ptr;
-  VecGetArray(u->x, &x_ptr);
-  for (int i=0; i < dim; i++)
-  {
-      x_ptr[i] = dbuffer[i];
-  }
+  // TODO 
+  // /* Copy buffer into the vector */
+  // PetscScalar *x_ptr;
+  // VecGetArray(u->x, &x_ptr);
+  // for (int i=0; i < dim; i++)
+  // {
+  //     x_ptr[i] = dbuffer[i];
+  // }
 
-  /* Restore Petsc's vector */
-  VecRestoreArray(u->x, &x_ptr);
+  // /* Restore Petsc's vector */
+  // VecRestoreArray(u->x, &x_ptr);
 
   /* Pass vector to XBraid */
   *u_ptr = (braid_Vector) u;
@@ -457,38 +465,6 @@ void myBraidApp::PreProcess(int iinit){
       }
     }
   }
-}
-
-void myBraidApp::setInitialCondition(Vec initcond_re, Vec initcond_im){
-  braid_BaseVector ubase;
-  int size;
-  Vec x;
-      
-  /* Get braids vector at t == 0  and copy initial condition */
-  _braid_UGetVectorRef(core->GetCore(), 0, 0, &ubase);
-  if (ubase != NULL)  // only true on one processor (first, if primal app; last, if adjoint app)
-  {
-    x = ((myBraidVector *)ubase->userVector)->x;
-
-    /* Copy initial condition into braid's vector */
-    const PetscScalar *init_reptr, *init_imptr;
-    PetscScalar *xptr;
-    VecGetArrayRead(initcond_re, &init_reptr);
-    VecGetArrayRead(initcond_im, &init_imptr);
-    VecGetArray(x, &xptr);
-    VecGetSize(x, &size);
-    int dimu = (int) size / 2;
-    for (int i=0; i < dimu; i++) {
-      xptr[i]      = init_reptr[i];
-      xptr[i+dimu] = init_imptr[i];
-    }
-    VecRestoreArrayRead(initcond_re, &init_reptr);
-    VecRestoreArrayRead(initcond_im, &init_imptr);
-    VecRestoreArray(x, &xptr);
-
-    // VecView(x, PETSC_VIEWER_STDOUT_WORLD);
-  }
-
 }
 
 
@@ -553,8 +529,7 @@ myAdjointBraidApp::myAdjointBraidApp(MPI_Comm comm_braid_, double total_time_, i
   for (int ioscil = 0; ioscil < mastereq->getNOscillators(); ioscil++) {
       ndesign += mastereq->getOscillator(ioscil)->getNParams(); 
   }
-  VecCreate(PETSC_COMM_WORLD, &redgrad);
-  VecSetSizes(redgrad, PETSC_DECIDE, ndesign);
+  VecCreateSeq(PETSC_COMM_SELF, ndesign, &redgrad);
   VecSetFromOptions(redgrad);
   VecAssemblyBegin(redgrad);
   VecAssemblyEnd(redgrad);
@@ -584,6 +559,7 @@ const double* myAdjointBraidApp::getReducedGradientPtr(){
 
     const PetscScalar *grad_ptr;
     VecGetArrayRead(redgrad, &grad_ptr);
+    // TODO: Gradient sequential!!
 
     return grad_ptr;
 }

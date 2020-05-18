@@ -36,6 +36,14 @@ MasterEq::MasterEq(int noscillators_, Oscillator** oscil_vec_, const std::vector
   int dimmat = dim;
   dim = dim*dim; // density matrix: N \times N -> vectorized: N^2
 
+  /* Sanity check for parallel petsc with colocated x storage */
+  int mpisize_petsc;
+  MPI_Comm_size(PETSC_COMM_WORLD, &mpisize_petsc);
+  if (dim % mpisize_petsc != NULL) {
+    printf("\n ERROR in parallel distribution: Petsc's communicator size (%d) must be integer multiple of system dimension N^2=%d\n", mpisize_petsc, dim);
+    exit(1);
+  }
+
   /* Allocate Re */
   MatCreate(PETSC_COMM_WORLD, &Re);
   MatSetSizes(Re, PETSC_DECIDE, PETSC_DECIDE, dim, dim);
@@ -308,8 +316,10 @@ int MasterEq::assemble_RHS(double t){
    * for reordered x = u1 v1 ... uN vN
    */
 
-  /* Iterate over rows in A, B */
-  for (int irow = 0; irow < dim; irow++) {
+  /* Iterate over local rows in Re, Im */
+  int ilower, iupper;
+  MatGetOwnershipRange(Re, &ilower, &iupper);
+  for (int irow = ilower; irow < iupper; irow++) {
 
     const PetscInt *getcol;
     const PetscScalar *vals;

@@ -22,6 +22,8 @@ class Oscillator {
     int dim_preOsc;                // Dimension of coupled subsystems preceding this oscillator
     int dim_postOsc;               // Dimension of coupled subsystem following this oscillator
 
+    int mpirank_petsc;
+
   public:
     Oscillator();
     Oscillator(int id, std::vector<int> nlevels_all_, int nbasis_, std::vector<double> carrier_freq_, double Tfinal_);
