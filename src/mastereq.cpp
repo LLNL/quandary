@@ -552,6 +552,7 @@ void MasterEq::setControlAmplitudes(Vec x) {
 
 int MasterEq::getRhoT0(int iinit, std::vector<int> oscilIDs, int ninit, Vec rho0){
 
+  int ilow, iupp;
   int dim_post;
   int initID = -1;    // Output: ID for this initial condition */
   int dim_rho = (int) sqrt(dim); // N
@@ -584,9 +585,11 @@ int MasterEq::getRhoT0(int iinit, std::vector<int> oscilIDs, int ninit, Vec rho0
       diagelem = iinit * dim_post;
       /* Position in vectorized q(0) */
       row = diagelem * dim_rho + diagelem;
+      row = 2*row; // real part;
 
       /* Assemble */
-      VecSetValue(rho0, 2*row, 1.0, INSERT_VALUES); // real part only
+      VecGetOwnershipRange(rho0, &ilow, &iupp);
+      if (ilow <= row && row < iupp) VecSetValue(rho0, row, 1.0, INSERT_VALUES); 
       VecAssemblyBegin(rho0); VecAssemblyEnd(rho0);
 
       /* Set initial conditon ID */
@@ -598,6 +601,9 @@ int MasterEq::getRhoT0(int iinit, std::vector<int> oscilIDs, int ninit, Vec rho0
 
       /* Reset the initial conditions */
       VecZeroEntries(rho0); 
+
+      /* Get distribution */
+      VecGetOwnershipRange(rho0, &ilow, &iupp);
 
       /* Get dimension of partial system behind last oscillator ID */
       dim_post = 1;
@@ -615,7 +621,7 @@ int MasterEq::getRhoT0(int iinit, std::vector<int> oscilIDs, int ninit, Vec rho0
         int elemID = j * dim_post * dim_rho + k * dim_post;
         elemID = 2*elemID; // real part
         double val = 1.0;
-        VecSetValues(rho0, 1, &elemID, &val, INSERT_VALUES);
+        if (ilow <= elemID && elemID < iupp) VecSetValues(rho0, 1, &elemID, &val, INSERT_VALUES);
       } else {
       //   /* B_{kj} contains four non-zeros, two per row */
         int* rows = new int[4];
@@ -634,22 +640,29 @@ int MasterEq::getRhoT0(int iinit, std::vector<int> oscilIDs, int ninit, Vec rho0
           vals[1] = 0.5;
           vals[2] = 0.5;
           vals[3] = 0.5;
-          VecSetValues(rho0, 4, rows, vals, INSERT_VALUES);
+          for (int i=0; i<4; i++) {
+            if (ilow <= rows[i] && rows[i] < iupp) VecSetValues(rho0, 1, &(rows[i]), &(vals[i]), INSERT_VALUES);
+          }
         } else {  // B_{kj} = 1/2(E_kk + E_jj) + i/2(E_jk - E_kj)
           vals[0] = 0.5;
           vals[1] = 0.5;
-          VecSetValues(rho0, 2, rows, vals, INSERT_VALUES); // diagonal, real
-          vals[0] = -0.5;
-          vals[1] = 0.5;
+          for (int i=0; i<2; i++) {
+            if (ilow <= rows[i] && rows[i] < iupp) VecSetValues(rho0, 1, &(rows[i]), &(vals[i]), INSERT_VALUES);
+          }
+          vals[2] = -0.5;
+          vals[3] = 0.5;
           rows[2] = rows[2] + 1; // Shift to imaginary 
           rows[3] = rows[3] + 1;
-          VecSetValues(rho0, 2, rows+2, vals, INSERT_VALUES); // off-diagonals, imaginary
+          for (int i=2; i<4; i++) {
+            if (ilow <= rows[i] && rows[i] < iupp) VecSetValues(rho0, 1, &(rows[i]), &(vals[i]), INSERT_VALUES);
+          }
         }
-
-        VecAssemblyBegin(rho0); VecAssemblyEnd(rho0);
         delete [] rows; 
         delete [] vals;
       }
+      
+      /* Assemble rho0 */
+      VecAssemblyBegin(rho0); VecAssemblyEnd(rho0);
 
       /* Set initial condition ID */
       initID = j * ( (int) sqrt(ninit)) + k;
