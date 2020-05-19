@@ -390,22 +390,23 @@ braid_Int myBraidApp::BufPack(braid_Vector u_, void *buffer, BraidBufferStatus &
   myBraidVector *u = (myBraidVector *)u_;
   double* dbuffer = (double*) buffer;
 
-  // TODO  !!
+  /* Get locally owned range */
+  int xlo, xhi;
+  VecGetOwnershipRange(u->x, &xlo, &xhi);
 
-  // const PetscScalar *x_ptr;
-  // int dim;
-  // VecGetSize(u->x, &dim);
+  /* Copy real and imaginary values into the buffer */
+  for (int i=0; i < 2*mastereq->getDim(); i++)
+  {
+    if (xlo <= i && i < xhi) { // if stored on this proc
+      double val;
+      VecGetValues(u->x, 1, &i, &val);
+      dbuffer[i] = val;
+    }
+  }
 
-  // /* Copy the values into the buffer */
-  // VecGetArrayRead(u->x, &x_ptr);
-  // for (int i=0; i < dim; i++)
-  // {
-  //     dbuffer[i] = x_ptr[i];
-  // }
-  // VecRestoreArrayRead(u->x, &x_ptr);
-
-  // int size =  dim * sizeof(double);
-  // bstatus.SetSize(size);
+  /* Set size */
+  int size =  2 * mastereq->getDim() * sizeof(double);
+  bstatus.SetSize(size);
 
   return 0; 
 }
@@ -420,20 +421,18 @@ braid_Int myBraidApp::BufUnpack(void *buffer, braid_Vector *u_ptr, BraidBufferSt
   int dim = 2 * mastereq->getDim();
   myBraidVector *u = new myBraidVector(dim);
 
-  // TODO 
-  // /* Copy buffer into the vector */
-  // PetscScalar *x_ptr;
-  // VecGetArray(u->x, &x_ptr);
-  // for (int i=0; i < dim; i++)
-  // {
-  //     x_ptr[i] = dbuffer[i];
-  // }
+  /* Get locally owned range */
+  int xlo, xhi;
+  VecGetOwnershipRange(u->x, &xlo, &xhi);
 
-  // /* Restore Petsc's vector */
-  // VecRestoreArray(u->x, &x_ptr);
-
-  /* Pass vector to XBraid */
-  *u_ptr = (braid_Vector) u;
+  /* Copy real and imaginary values from the buffer */
+  for (int i=0; i < 2*mastereq->getDim(); i++)
+  {
+    if (xlo <= i && i < xhi) { // if stored on this proc
+      double val;
+      VecSetValues(u->x, 1, &i, &(dbuffer[i]), INSERT_VALUES);
+    }
+  }
 
   return 0; 
 }
