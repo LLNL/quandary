@@ -153,6 +153,8 @@ PetscErrorCode StateIsHermitian(Vec x, PetscReal tol, PetscBool *flag) {
   int ierr;
   int i, j;
 
+  /* TODO: MAKE THIS WORK IN PARALLEL */
+  
   /* Get u and v from x */
   int dim;
   ierr = VecGetSize(x, &dim); CHKERRQ(ierr);
@@ -166,8 +168,6 @@ PetscErrorCode StateIsHermitian(Vec x, PetscReal tol, PetscBool *flag) {
 
   /* Init flags*/
   *flag = PETSC_TRUE;
-
-  // TODO Check!
 
   /* Check for symmetric u and antisymmetric v */
   const double *u_array;

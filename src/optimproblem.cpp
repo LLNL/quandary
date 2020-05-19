@@ -302,7 +302,7 @@ void OptimProblem::evalGradF(Vec x, Vec G){
     adjointbraidapp->Drive();
     adjointbraidapp->PostProcess();
 
-    /* Add to Ipopt's gradient */
+    /* Add to optimizers's gradient */
     VecAXPY(G, 1.0, adjointbraidapp->redgrad);
 
   }
