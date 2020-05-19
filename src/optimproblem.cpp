@@ -303,7 +303,6 @@ void OptimProblem::evalGradF(Vec x, Vec G){
     adjointbraidapp->PostProcess();
 
     /* Add to Ipopt's gradient */
-    const double* grad_ptr = adjointbraidapp->getReducedGradientPtr();
     VecAXPY(G, 1.0, adjointbraidapp->redgrad);
 
   }
