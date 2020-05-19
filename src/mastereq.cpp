@@ -27,6 +27,9 @@ MasterEq::MasterEq(int noscillators_, Oscillator** oscil_vec_, const std::vector
   assert(xi.size() >= (noscillators_+1) * noscillators_ / 2);
   assert(collapse_time.size() >= 2*noscillators);
 
+  int mpisize_petsc;
+  MPI_Comm_size(PETSC_COMM_WORLD, &mpisize_petsc);
+  MPI_Comm_rank(PETSC_COMM_WORLD, &mpirank_petsc);
 
   /* Dimension of vectorized system: (n_1*...*n_q^2 */
   dim = 1;
@@ -37,9 +40,7 @@ MasterEq::MasterEq(int noscillators_, Oscillator** oscil_vec_, const std::vector
   dim = dim*dim; // density matrix: N \times N -> vectorized: N^2
 
   /* Sanity check for parallel petsc with colocated x storage */
-  int mpisize_petsc;
-  MPI_Comm_size(PETSC_COMM_WORLD, &mpisize_petsc);
-  if (dim % mpisize_petsc != NULL) {
+  if (dim % mpisize_petsc != 0) {
     printf("\n ERROR in parallel distribution: Petsc's communicator size (%d) must be integer multiple of system dimension N^2=%d\n", mpisize_petsc, dim);
     exit(1);
   }
@@ -391,7 +392,7 @@ void MasterEq::createReducedDensity(Vec rho, Vec *reduced, std::vector<int>oscil
   int dimmat = dim_pre * dim_reduced * dim_post;
   assert ( (int) pow(dimmat,2) == dim);
 
-  /* Create reduced density matrix */
+  /* Create reduced density matrix */ // TODO: CHECK PARALLEL LAYOUT 
   VecCreate(PETSC_COMM_WORLD, reduced);
   VecSetSizes(*reduced, PETSC_DECIDE, 2*dim_reduced*dim_reduced);
   VecSetFromOptions(*reduced);

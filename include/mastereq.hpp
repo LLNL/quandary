@@ -32,6 +32,8 @@ class MasterEq{
 
     InitialConditionType initcond_type; 
 
+    int mpirank_petsc;
+
   private: 
     IS isu, isv;        // Vector strides for accessing u=Re(x), v=Im(x) 
 

@@ -10,11 +10,13 @@ Oscillator::Oscillator(int id, std::vector<int> nlevels_all_, int nbasis_, std::
   nlevels = nlevels_all_[id];
   Tfinal = Tfinal_;
   basisfunctions = new ControlBasis(nbasis_, Tfinal_, carrier_freq_);
-  printf("Creating oscillator with %d levels, %d carrierwave frequencies: ", nlevels, carrier_freq_.size());
-  for (int f = 0; f < carrier_freq_.size(); f++) {
-    printf("%f ", carrier_freq_[f]);
+  if (mpirank_petsc == 0) {
+    printf("Creating oscillator with %d levels, %d carrierwave frequencies: ", nlevels, carrier_freq_.size());
+    for (int f = 0; f < carrier_freq_.size(); f++) {
+      printf("%f ", carrier_freq_[f]);
+    }
+    printf("\n");
   }
-  printf("\n");
 
   MPI_Comm_rank(PETSC_COMM_WORLD, &mpirank_petsc);
 

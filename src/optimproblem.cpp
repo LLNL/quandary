@@ -127,8 +127,7 @@ OptimProblem::OptimProblem(MapParam config, myBraidApp* primalbraidapp_, myAdjoi
   } 
 
   /* Store optimization bounds */
-  VecCreate(PETSC_COMM_WORLD, &xlower);
-  VecSetSizes(xlower, PETSC_DECIDE, ndesign);
+  VecCreateSeq(PETSC_COMM_SELF, ndesign, &xlower);
   VecSetFromOptions(xlower);
   VecDuplicate(xlower, &xupper);
   std::vector<double> bounds;

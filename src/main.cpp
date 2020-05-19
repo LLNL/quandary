@@ -247,12 +247,10 @@ int main(int argc,char **argv)
 
   /* Set upt solution and gradient vector */
   Vec xinit;
-  VecCreate(PETSC_COMM_WORLD, &xinit);
-  VecSetSizes(xinit, PETSC_DECIDE, optimctx->ndesign);
+  VecCreateSeq(PETSC_COMM_SELF, optimctx->ndesign, &xinit);
   VecSetFromOptions(xinit);
   Vec grad;
-  VecCreate(PETSC_COMM_WORLD, &grad);
-  VecSetSizes(grad, PETSC_DECIDE, optimctx->ndesign);
+  VecCreateSeq(PETSC_COMM_SELF, optimctx->ndesign, &grad);
   VecSetUp(grad);
   VecZeroEntries(grad);
   Vec opt;
