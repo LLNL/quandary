@@ -22,6 +22,8 @@ class Oscillator {
     int dim_preOsc;                // Dimension of coupled subsystems preceding this oscillator
     int dim_postOsc;               // Dimension of coupled subsystem following this oscillator
 
+    Mat zeromat;
+
     int mpirank_petsc;
 
   public:
@@ -43,11 +45,13 @@ class Oscillator {
 
     /* Compute lowering operator a_k = I_n1 \kron ... \kron a^(nk) \kron ... \kron I_nQ */
     int createLoweringOP(int dim_prekron, int dim_postkron, Mat* loweringOP);
-    Mat getLoweringOP();
+    /* Returns the lowering operator, unless dummy is true, then return a zero matrix */
+    Mat getLoweringOP(bool dummy);
 
     /* Compute number operator N_k = a_k^T a_k */
     int createNumberOP(int dim_prekron, int dim_postcron, Mat* numberOP);
-    Mat getNumberOP();
+    /* Returns the number operator, unless dummy is true, then return a zero matrix */
+    Mat getNumberOP(bool dummy);
 
     /* Evaluates real and imaginary control function at time t */
     int evalControl(double t, double* Re_ptr, double* Im_ptr);

@@ -31,6 +31,7 @@ OptimProblem::OptimProblem(MapParam config, myBraidApp* primalbraidapp_, myAdjoi
       n += primalbraidapp->mastereq->getOscillator(ioscil)->getNParams(); 
   }
   ndesign = n;
+  if (mpirank_world == 0) std::cout<< "ndesign = " << ndesign << std::endl;
 
   /* Store other optimization parameters */
   gamma_tik = config.GetDoubleParam("optim_regul", 1e-4);

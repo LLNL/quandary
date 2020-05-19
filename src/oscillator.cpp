@@ -9,16 +9,19 @@ Oscillator::Oscillator(){
 Oscillator::Oscillator(int id, std::vector<int> nlevels_all_, int nbasis_, std::vector<double> carrier_freq_, double Tfinal_){
   nlevels = nlevels_all_[id];
   Tfinal = Tfinal_;
+  MPI_Comm_rank(PETSC_COMM_WORLD, &mpirank_petsc);
+  int mpirank_world;
+  MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
+
+  /* Create control functions */
   basisfunctions = new ControlBasis(nbasis_, Tfinal_, carrier_freq_);
-  if (mpirank_petsc == 0) {
+  if (mpirank_world == 0) {
     printf("Creating oscillator with %d levels, %d carrierwave frequencies: ", nlevels, carrier_freq_.size());
     for (int f = 0; f < carrier_freq_.size(); f++) {
       printf("%f ", carrier_freq_[f]);
     }
     printf("\n");
   }
-
-  MPI_Comm_rank(PETSC_COMM_WORLD, &mpirank_petsc);
 
   /* Create and store the number and lowering operators */
   dim_preOsc = 1;
@@ -30,7 +33,14 @@ Oscillator::Oscillator(int id, std::vector<int> nlevels_all_, int nbasis_, std::
   createNumberOP(dim_preOsc, dim_postOsc, &NumberOP);
   createLoweringOP(dim_preOsc, dim_postOsc, &LoweringOP);
 
-
+  /* Create a zero matrix. Used in parallel computation */
+  int dim = dim_preOsc * nlevels * dim_postOsc;
+  MatCreateSeqAIJ(PETSC_COMM_SELF, dim, dim, 0, NULL, &zeromat);
+  MatSetUp(zeromat);
+  MatSetFromOptions(zeromat);
+  MatAssemblyBegin(zeromat, MAT_FINAL_ASSEMBLY);
+  MatAssemblyEnd(zeromat, MAT_FINAL_ASSEMBLY);
+ 
   /* Initialize control parameters */
   int nparam = 2 * nbasis_ * carrier_freq_.size();
   for (int i=0; i<nparam; i++) {
@@ -47,12 +57,14 @@ Oscillator::~Oscillator(){
   }
 }
 
-Mat Oscillator::getNumberOP() {
-  return NumberOP;
+Mat Oscillator::getNumberOP(bool dummy) {
+  if (dummy) return zeromat;
+  else return NumberOP;
 }
 
-Mat Oscillator::getLoweringOP() {
-  return LoweringOP;
+Mat Oscillator::getLoweringOP(bool dummy) {
+  if (dummy) return zeromat;
+  else return LoweringOP;
 }
 
 void Oscillator::flushControl(int ntime, double dt, const char* filename) {
@@ -92,21 +104,19 @@ int Oscillator::createNumberOP(int dim_prekron, int dim_postkron, Mat* numberOP)
   MatCreateSeqAIJ(PETSC_COMM_SELF, dim_number, dim_number, 1, NULL, numberOP);
   MatSetUp(*numberOP);
   MatSetFromOptions(*numberOP);
-  if (mpirank_petsc == 0 ) {
-    for (int i=0; i<dim_prekron; i++) {
-      for (int j=0; j<nlevels; j++) {
-        double val = j;
-        for (int k=0; k<dim_postkron; k++) {
-          int row = i * nlevels*dim_postkron + j * dim_postkron + k;
-          int col = row;
-          MatSetValue(*numberOP, row, col, val, INSERT_VALUES);
-        }
+  for (int i=0; i<dim_prekron; i++) {
+    for (int j=0; j<nlevels; j++) {
+      double val = j;
+      for (int k=0; k<dim_postkron; k++) {
+        int row = i * nlevels*dim_postkron + j * dim_postkron + k;
+        int col = row;
+        MatSetValue(*numberOP, row, col, val, INSERT_VALUES);
       }
     }
   }
   MatAssemblyBegin(*numberOP, MAT_FINAL_ASSEMBLY);
   MatAssemblyEnd(*numberOP, MAT_FINAL_ASSEMBLY);
- 
+
   return dim_number;
 }
 
@@ -196,6 +206,10 @@ double Oscillator::expectedEnergy(Vec x) {
     else xdiag = 0.0;
     expected += num_diag * xdiag;
   }
+  
+  /* Sum up from all processors */
+  double myexp = expected;
+  MPI_Allreduce(&myexp, &expected, 1, MPI_DOUBLE, MPI_SUM, PETSC_COMM_WORLD);
 
   return expected;
 }

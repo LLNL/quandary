@@ -87,7 +87,7 @@ MasterEq::MasterEq(int noscillators_, Oscillator** oscil_vec_, const std::vector
   for (int iosc = 0; iosc < noscillators_; iosc++) {
 
     /* Get lowering operator a = I_(n_1) \kron ... \kron a^(n_k) \kron ... \kron I_(n_q) */
-    loweringOP = oscil_vec[iosc]->getLoweringOP();
+    loweringOP = oscil_vec[iosc]->getLoweringOP((bool)mpirank_petsc);
     MatTranspose(loweringOP, MAT_INITIAL_MATRIX, &loweringOP_T);
 
     /* Compute Ac = I_N \kron (a - a^T) - (a - a^T) \kron I_N */
@@ -127,8 +127,9 @@ MasterEq::MasterEq(int noscillators_, Oscillator** oscil_vec_, const std::vector
     Mat tmp, tmp_T;
     Mat numberOPj;
     
-    /* Create number operator */
-    numberOP = oscil_vec[iosc]->getNumberOP();
+    /* Get the number operator */
+    // Zero mat on all but the first petsc procs */
+    numberOP = oscil_vec[iosc]->getNumberOP((bool) mpirank_petsc);
 
     /* Diagonal term - 2* PI * xi/2 *(N_i^2 - N_i) */
     MatMatMult(numberOP, numberOP, MAT_INITIAL_MATRIX, PETSC_DEFAULT, &tmp);
@@ -145,7 +146,7 @@ MasterEq::MasterEq(int noscillators_, Oscillator** oscil_vec_, const std::vector
 
     /* Mixed term -xi * 2 * PI * (N_i*N_j) for j > i */
     for (int josc = iosc+1; josc < noscillators_; josc++) {
-      numberOPj = oscil_vec[josc]->getNumberOP();
+      numberOPj = oscil_vec[josc]->getNumberOP((bool) mpirank_petsc);
       MatMatMult(numberOP, numberOPj, MAT_INITIAL_MATRIX, PETSC_DEFAULT, &tmp);
       MatScale(tmp, -xi[xi_id] * 2.0 * M_PI);
       xi_id++;
@@ -175,18 +176,18 @@ MasterEq::MasterEq(int noscillators_, Oscillator** oscil_vec_, const std::vector
         continue;
         break;
       case DECAY: 
-        L1 = oscil_vec[iosc]->getLoweringOP();
+        L1 = oscil_vec[iosc]->getLoweringOP((bool)mpirank_petsc);
         addT1 = true;
         addT2 = false;
         break;
       case DEPHASE:
-        L2 = oscil_vec[iosc]->getNumberOP();
+        L2 = oscil_vec[iosc]->getNumberOP((bool)mpirank_petsc);
         addT1 = false;
         addT2 = true;
         break;
       case BOTH:
-        L1 = oscil_vec[iosc]->getLoweringOP();
-        L2 = oscil_vec[iosc]->getNumberOP();
+        L1 = oscil_vec[iosc]->getLoweringOP((bool)mpirank_petsc);
+        L2 = oscil_vec[iosc]->getNumberOP((bool)mpirank_petsc);
         addT1 = true;
         addT2 = true;
         break;
