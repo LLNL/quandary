@@ -9,6 +9,8 @@ Gate::Gate(int dim_v_) {
   dim_v = dim_v_; 
   dim_vec = (int) pow(dim_v,2);      // vectorized version squares dimensions.
 
+  MPI_Comm_rank(PETSC_COMM_WORLD, &mpirank_petsc);
+
   // /* Set the frequencies */
   // assert(freq_.size() >= noscillators);
   // for (int i=0; i<noscillators; i++) {
@@ -39,11 +41,6 @@ Gate::Gate(int dim_v_) {
   MatAssemblyBegin(ImG, MAT_FINAL_ASSEMBLY);
   MatAssemblyEnd(ImG, MAT_FINAL_ASSEMBLY);
 
-
-  /* Create vector strides for later use */
-  ISCreateStride(PETSC_COMM_WORLD, dim_vec, 0, 2, &isu);
-  ISCreateStride(PETSC_COMM_WORLD, dim_vec, 1, 2, &isv);
-
   /* Create auxiliary vectors */
   MatCreateVecs(ReG, &Re0, NULL);
   MatCreateVecs(ReG, &Im0, NULL);
@@ -52,8 +49,6 @@ Gate::Gate(int dim_v_) {
 
 Gate::~Gate(){
   if (dim_vec == 0) return;
-  ISDestroy(&isu);
-  ISDestroy(&isv);
   MatDestroy(&ReG);
   MatDestroy(&ImG);
   MatDestroy(&Va);
@@ -81,65 +76,6 @@ void Gate::assembleGate(){
   // exit(1);
 }
 
-void Gate::compare(Vec finalstate, Vec u0, Vec v0, double& frob){
-  frob = 0.0;
-
-
-  /* Exit, if this is a dummy gate */
-  if (dim_vec == 0) {
-    return;
-  }
-
-  Vec ufinal, vfinal;
-  const PetscScalar *ufinalptr, *vfinalptr, *Re0ptr, *Im0ptr;
-
-  /* Get real and imag part of final state, x = [u,v] */
-  VecGetSubVector(finalstate, isu, &ufinal);
-  VecGetSubVector(finalstate, isv, &vfinal);
-  VecGetArrayRead(ufinal, &ufinalptr);
-  VecGetArrayRead(vfinal, &vfinalptr);
-
-  /* Make sure that state dimensions match the gate dimension */
-  int dimstate, dimG;
-  VecGetSize(finalstate, &dimstate); 
-  VecGetSize(Re0, &dimG);
-  if (dimstate/2 != dimG) {
-    printf("\n ERROR: Target gate dimension %d doesn't match system dimension %u\n", dimG, dimstate/2);
-    exit(1);
-  }
-
-  /* Add real part of frobenius norm || u - ReG*u0 + ImG*v0 ||^2 */
-  MatMult(ReG, u0, Re0);
-  MatMult(ImG, v0, Im0);
-  VecGetArrayRead(Re0, &Re0ptr);
-  VecGetArrayRead(Im0, &Im0ptr);
-  for (int j=0; j<dim_vec; j++) {
-    frob += pow(ufinalptr[j] - Re0ptr[j] + Im0ptr[j],2);
-  }
-  VecRestoreArrayRead(Re0, &Re0ptr);
-  VecRestoreArrayRead(Im0, &Im0ptr);
-
-  /* Add imaginary part of frobenius norm || v - ReG*v0 - ImG*u0 ||^2 */
-  MatMult(ReG, v0, Re0);
-  MatMult(ImG, u0, Im0);
-  VecGetArrayRead(Re0, &Re0ptr);
-  VecGetArrayRead(Im0, &Im0ptr);
-  for (int j=0; j<dim_vec; j++) {
-    frob += pow(vfinalptr[j] - Re0ptr[j] - Im0ptr[j],2);
-  }
-  VecRestoreArrayRead(Re0, &Re0ptr);
-  VecRestoreArrayRead(Im0, &Im0ptr);
-
-  /* obj = 1/2 * || finalstate - gate*rho(0) ||^2 */
-  frob *= 1./2.;
-
- /* Restore */
-  VecRestoreArrayRead(ufinal, &ufinalptr);
-  VecRestoreArrayRead(vfinal, &vfinalptr);
-  VecRestoreSubVector(finalstate, isu, &ufinal);
-  VecRestoreSubVector(finalstate, isv, &vfinal);
-}
-
 
 void Gate::compare(Vec finalstate, Vec rho0, double& frob){
   frob = 0.0;
@@ -149,14 +85,23 @@ void Gate::compare(Vec finalstate, Vec rho0, double& frob){
     return;
   }
 
-  Vec ufinal, vfinal, u0, v0;
-  const PetscScalar *ufinalptr, *vfinalptr, *Re0ptr, *Im0ptr;
+  /* Create vector strides for accessing real and imaginary part of co-located x */
+  int ilow, iupp;
+  VecGetOwnershipRange(finalstate, &ilow, &iupp);
+  int dimis = (iupp - ilow)/2;
+  IS isu, isv;
+  ISCreateStride(PETSC_COMM_WORLD, dimis, ilow, 2, &isu);
+  ISCreateStride(PETSC_COMM_WORLD, dimis, ilow+1, 2, &isv);
 
   /* Get real and imag part of final state, x = [u,v] */
+  Vec ufinal, vfinal, u0, v0;
   VecGetSubVector(finalstate, isu, &ufinal);
   VecGetSubVector(finalstate, isv, &vfinal);
   VecGetSubVector(rho0, isu, &u0);
   VecGetSubVector(rho0, isv, &v0);
+
+
+  const PetscScalar *ufinalptr, *vfinalptr, *Re0ptr, *Im0ptr;
   VecGetArrayRead(ufinal, &ufinalptr);
   VecGetArrayRead(vfinal, &vfinalptr);
 
@@ -200,61 +145,10 @@ void Gate::compare(Vec finalstate, Vec rho0, double& frob){
   VecRestoreSubVector(finalstate, isu, &ufinal);
   VecRestoreSubVector(finalstate, isv, &vfinal);
 
+  /* Free vindex strides */
+  ISDestroy(&isu);
+  ISDestroy(&isv);
 }
-
-void Gate::compare_diff(const Vec finalstate, const Vec u0, const Vec v0, Vec u0_bar, Vec v0_bar, const double frob_bar) {
-
-  /* Exit, if this is a dummy gate */
-  if (dim_vec == 0) {
-    return;
-  }
-
-  Vec ufinal, vfinal;
-  const PetscScalar *ufinalptr, *vfinalptr, *Re0ptr, *Im0ptr;
-  PetscScalar *u0_barptr, *v0_barptr;
-
-  /* Get real and imag part of final and initial primal and adjoint states, x = [u,v] */
-  VecGetSubVector(finalstate, isu, &ufinal);
-  VecGetSubVector(finalstate, isv, &vfinal);
-  VecGetArrayRead(ufinal, &ufinalptr);
-  VecGetArrayRead(vfinal, &vfinalptr);
-  VecGetArray(u0_bar, &u0_barptr);
-  VecGetArray(v0_bar, &v0_barptr);
-
-  /* Derivative of 1/2 * J */
-  double dfb = 1./2. * frob_bar;
-
-  /* Derivative of read part of frobenius norm: 2 * (u - ReG*u0 + ImG*v0) * dfb*/
-  MatMult(ReG, u0, Re0);
-  MatMult(ImG, v0, Im0);
-  VecGetArrayRead(Re0, &Re0ptr);
-  VecGetArrayRead(Im0, &Im0ptr);
-  for (int j=0; j<dim_vec; j++) {
-    u0_barptr[j] = 2. * ( ufinalptr[j] - Re0ptr[j] + Im0ptr[j] ) * dfb;
-  }
-  VecRestoreArrayRead(Re0, &Re0ptr);
-  VecRestoreArrayRead(Im0, &Im0ptr);
-
-  /* Derivative of imaginary part of frobenius norm 2 * (v - ReG*v0 - ImG*u0) * dfb */
-  MatMult(ReG, v0, Re0);
-  MatMult(ImG, u0, Im0);
-  VecGetArrayRead(Re0, &Re0ptr);
-  VecGetArrayRead(Im0, &Im0ptr);
-  for (int j=0; j<dim_vec; j++) {
-    v0_barptr[j] = 2. * ( vfinalptr[j] - Re0ptr[j] - Im0ptr[j] ) * dfb;
-  }
-  VecRestoreArrayRead(Re0, &Re0ptr);
-  VecRestoreArrayRead(Im0, &Im0ptr);
-
- /* Restore */
-  VecRestoreArrayRead(ufinal, &ufinalptr);
-  VecRestoreArrayRead(vfinal, &vfinalptr);
-  VecRestoreSubVector(finalstate, isu, &ufinal);
-  VecRestoreSubVector(finalstate, isv, &vfinal);
-  VecRestoreArray(u0_bar, &u0_barptr);
-  VecRestoreArray(v0_bar, &v0_barptr);
-}
-
 
 
 void Gate::compare_diff(const Vec finalstate, const Vec rho0, Vec rho0_bar, const double frob_bar){
@@ -267,6 +161,15 @@ void Gate::compare_diff(const Vec finalstate, const Vec rho0, Vec rho0_bar, cons
   Vec ufinal, vfinal, u0_bar, v0_bar, u0, v0;
   const PetscScalar *ufinalptr, *vfinalptr, *Re0ptr, *Im0ptr;
   PetscScalar *u0_barptr, *v0_barptr;
+
+  /* Create vector strides for accessing real and imaginary part of co-located x */
+  int ilow, iupp;
+  VecGetOwnershipRange(finalstate, &ilow, &iupp);
+  int dimis = (iupp - ilow)/2;
+  IS isu, isv;
+  ISCreateStride(PETSC_COMM_WORLD, dimis, ilow, 2, &isu);
+  ISCreateStride(PETSC_COMM_WORLD, dimis, ilow+1, 2, &isv);
+
 
   /* Get real and imag part of final state, initial state, and adjoint */
   VecGetSubVector(finalstate, isu, &ufinal);
@@ -320,6 +223,10 @@ void Gate::compare_diff(const Vec finalstate, const Vec rho0, Vec rho0_bar, cons
   VecRestoreSubVector(rho0, isv, &v0);
   VecRestoreSubVector(rho0_bar, isu, &u0_bar);
   VecRestoreSubVector(rho0_bar, isv, &v0_bar);
+
+  /* Free vindex strides */
+  ISDestroy(&isu);
+  ISDestroy(&isv);
 
 }
 

@@ -232,9 +232,12 @@ MasterEq::MasterEq(int noscillators_, Oscillator** oscil_vec_, const std::vector
   MatAssemblyEnd(Ad, MAT_FINAL_ASSEMBLY);
 
   /* Create vector strides for accessing Re and Im part in x */
-  ISCreateStride(PETSC_COMM_WORLD, dim, 0, 2, &isu);
-  ISCreateStride(PETSC_COMM_WORLD, dim, 1, 2, &isv);
- 
+  int ilow, iupp;
+  MatGetOwnershipRange(RHS, &ilow, &iupp);
+  int dimis = (iupp - ilow)/2;
+  ISCreateStride(PETSC_COMM_WORLD, dimis, ilow, 2, &isu);
+  ISCreateStride(PETSC_COMM_WORLD, dimis, ilow+1, 2, &isv);
+
   /* Allocate some auxiliary vectors */ // TODO: THIS WORKS ONLY IF ALL OSCIL HAVE SAME NUMBER!
   dRedp = new double[oscil_vec[0]->getNParams()];
   dImdp = new double[oscil_vec[0]->getNParams()];
