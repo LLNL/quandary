@@ -15,7 +15,7 @@ class Gate {
   private:
     Mat ReG, ImG;     /* Real and imaginary part of \bar V \kron V */
 
-    Vec Re0, Im0;   /* auxiliary vectors */
+    Vec x;             /* auxiliary vectors */
   protected:
     int dim_vec;      /* dimension of vectorized system dim_vec = dim_v^2 */
 
