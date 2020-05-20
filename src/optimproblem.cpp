@@ -242,7 +242,7 @@ double OptimProblem::evalF(Vec x) {
 
   /* Output */
   // if (mpirank_world == 0) {
-    // std::cout<< mpirank_world << ": Obj = " << std::scientific<<std::setprecision(14) << obj_cost " + " obj_regul << std::endl;
+    // std::cout<< mpirank_world << ": Obj = " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << std::endl;
   // }
 
   return objective;
@@ -470,6 +470,7 @@ double OptimProblem::objectiveT(Vec finalstate){
         } else { // full density matrix system 
            state = finalstate; 
         }
+
 
         /* Compute frobenius norm: frob = || q(T) - e_1 ||^2 */
         int ilo, ihi;

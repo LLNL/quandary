@@ -379,6 +379,8 @@ Mat MasterEq::getRHS() { return RHS; }
 
 void MasterEq::createReducedDensity(Vec rho, Vec *reduced, std::vector<int>oscilIDs) {
 
+  Vec red;
+
   /* Get dimensions of preceding and following subsystem */
   int dim_pre  = 1; 
   int dim_post = 1;
@@ -400,9 +402,9 @@ void MasterEq::createReducedDensity(Vec rho, Vec *reduced, std::vector<int>oscil
   int ilow, iupp;
   VecGetOwnershipRange(rho, &ilow, &iupp);
 
-  /* Create reduced density matrix, sequential, same on all processors */
-  VecCreateSeq(PETSC_COMM_SELF, 2*dim_reduced*dim_reduced, reduced);
-  VecSetFromOptions(*reduced);
+  /* Create reduced density matrix, sequential */
+  VecCreateSeq(PETSC_COMM_SELF, 2*dim_reduced*dim_reduced, &red);
+  VecSetFromOptions(red);
 
   /* Iterate over reduced density matrix elements */
   for (int i=0; i<dim_reduced; i++) {
@@ -430,16 +432,30 @@ void MasterEq::createReducedDensity(Vec rho, Vec *reduced, std::vector<int>oscil
           sum_im += im;
         }
       }
-      /* Set real and imaginary part of element (i,j) of the reduced density matrix (reduced is sequential vec!) */
+      /* Set real and imaginary part of element (i,j) of the reduced density matrix */
       int out_vecID_re = 2 * (j * dim_reduced + i);
       int out_vecID_im = out_vecID_re + 1;
-      VecSetValues( *reduced, 1, &out_vecID_re, &sum_re, INSERT_VALUES);
-      VecSetValues( *reduced, 1, &out_vecID_im, &sum_im, INSERT_VALUES);
+      VecSetValues( red, 1, &out_vecID_re, &sum_re, INSERT_VALUES);
+      VecSetValues( red, 1, &out_vecID_im, &sum_im, INSERT_VALUES);
     }
   }
-  VecAssemblyBegin(*reduced);
-  VecAssemblyEnd(*reduced);
+  VecAssemblyBegin(red);
+  VecAssemblyEnd(red);
 
+  /* Sum up from all petsc cores. This is not at all a good solution. TODO: Change this! */
+  double* dataptr;
+  int size = 2*dim_reduced*dim_reduced;
+  double* mydata = new double[size];
+  VecGetArray(red, &dataptr);
+  for (int i=0; i<size; i++) {
+    mydata[i] = dataptr[i];
+  }
+  MPI_Allreduce(mydata, dataptr, size, MPI_DOUBLE, MPI_SUM, PETSC_COMM_WORLD);
+  VecRestoreArray(red, &dataptr);
+  delete [] mydata;
+
+  /* Set output */
+  *reduced = red;
 }
 
 
@@ -462,6 +478,10 @@ void MasterEq::createReducedDensity_diff(Vec rhobar, Vec reducedbar, std::vector
   int ilow, iupp;
   VecGetOwnershipRange(rhobar, &ilow, &iupp);
 
+  /* Get local ownership of reduced density bar*/
+  int ilow_red, iupp_red;
+  VecGetOwnershipRange(reducedbar, &ilow_red, &iupp_red);
+
   /* sanity test */
   int dimmat = dim_pre * dim_reduced * dim_post;
   assert ( (int) pow(dimmat,2) == dim);
@@ -469,10 +489,11 @@ void MasterEq::createReducedDensity_diff(Vec rhobar, Vec reducedbar, std::vector
  /* Iterate over reduced density matrix elements */
   for (int i=0; i<dim_reduced; i++) {
     for (int j=0; j<dim_reduced; j++) {
-      /* Get value from reducedbar (reducedbar is sequential vec!) */
+      /* Get value from reducedbar */
       int vecID_re = 2 * (j * dim_reduced + i);
       int vecID_im = vecID_re + 1;
-      double re, im;
+      double re = 0.0;
+      double im = 0.0;
       VecGetValues( reducedbar, 1, &vecID_re, &re);
       VecGetValues( reducedbar, 1, &vecID_im, &im);
 
