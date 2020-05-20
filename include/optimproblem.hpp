@@ -36,7 +36,9 @@ class OptimProblem {
   std::vector<int> obj_oscilIDs;   /* List of oscillator IDs that are considered for the optimizer */
   Gate  *targetgate;               /* Target gate */
   int ndesign;                     /* Number of global design parameters */
-  double objective;                /* Holds current objective function */
+  double objective;                /* Holds current objective function value */
+  double obj_cost;                 /* Regularization term in objective */
+  double obj_regul;                /* Cost function term in objective */
   double gnorm;                    /* Holds current norm of gradient */
   double gamma_tik;                /* Parameter for tikhonov regularization */
   double gatol;                    /* Stopping criterion based on absolute gradient norm */

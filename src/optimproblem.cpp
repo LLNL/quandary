@@ -124,7 +124,7 @@ OptimProblem::OptimProblem(MapParam config, myBraidApp* primalbraidapp_, myAdjoi
     char filename[255];
     sprintf(filename, "%s/optimTao.dat", primalbraidapp->datadir.c_str());
     optimfile = fopen(filename, "w");
-    fprintf(optimfile, "#iter    obj_value           ||grad||               ||tao_res||\n");
+    fprintf(optimfile, "#iter    obj_value           ||grad||               LS step          Regularization\n");
   } 
 
   /* Store optimization bounds */
@@ -203,7 +203,7 @@ double OptimProblem::evalF(Vec x) {
   mastereq->setControlAmplitudes(x); 
 
   /*  Iterate over initial condition */
-  double obj= 0.0;
+  obj_cost = 0.0;
   for (int iinit = 0; iinit < ninit_local; iinit++) {
       
     /* Prepare the initial condition in [rank * ninit_local, ... , (rank+1) * ninit_local - 1] */
@@ -219,32 +219,32 @@ double OptimProblem::evalF(Vec x) {
     
 
     /* Add to objective function */
-    double obj_local = objectiveT(finalstate);
-    obj += obj_local;
-    // printf("%d, %d: local objective: %1.14e\n", mpirank_world, mpirank_init, obj_local);
+    double obj_iinit = objectiveT(finalstate);
+    obj_cost += obj_iinit;
+    // printf("%d, %d: iinit objective: %1.14e\n", mpirank_world, mpirank_init, obj_iinit);
   }
 
   /* Broadcast objective from last to all time processors */
-  MPI_Bcast(&obj, 1, MPI_DOUBLE, mpisize_braid-1, primalbraidapp->comm_braid);
+  MPI_Bcast(&obj_cost, 1, MPI_DOUBLE, mpisize_braid-1, primalbraidapp->comm_braid);
 
   /* Sum up objective from all initial conditions */
-  double myobj = obj;
-  MPI_Allreduce(&myobj, &obj, 1, MPI_DOUBLE, MPI_SUM, comm_init);
+  double myobj = obj_cost;
+  MPI_Allreduce(&myobj, &obj_cost, 1, MPI_DOUBLE, MPI_SUM, comm_init);
   // if (mpirank_init == 0) printf("%d: global sum objective: %1.14e\n\n", mpirank_init, obj);
 
   /* Add regularization objective += gamma/2 * ||x||^2*/
   double xnorm;
   VecNorm(x, NORM_2, &xnorm);
-  obj+= gamma_tik / 2. * pow(xnorm,2.0);
+  obj_regul = gamma_tik / 2. * pow(xnorm,2.0);
 
+  /* Store and return objective value */
+  objective = obj_cost + obj_regul;
 
   /* Output */
   // if (mpirank_world == 0) {
-    // std::cout<< mpirank_world << ": Obj = " << std::scientific<<std::setprecision(14) << obj << std::endl;
+    // std::cout<< mpirank_world << ": Obj = " << std::scientific<<std::setprecision(14) << obj_cost " + " obj_regul << std::endl;
   // }
 
-  /* Store and return objective value */
-  objective = obj;
   return objective;
 }
 
@@ -269,7 +269,7 @@ void OptimProblem::evalGradF(Vec x, Vec G){
   }
 
   /*  Iterate over initial condition */
-  double obj = 0.0;
+  obj_cost = 0.0;
   for (int iinit = 0; iinit < ninit_local; iinit++) {
       
 
@@ -287,15 +287,15 @@ void OptimProblem::evalGradF(Vec x, Vec G){
     finalstate = primalbraidapp->PostProcess(); // this return NULL for all but the last time processor
 
     /* Add final-time objective */
-    double obj_local = objectiveT(finalstate);
-    obj += obj_local;
-      // if (mpirank_braid == 0) printf("%d: local objective: %1.14e\n", mpirank_init, obj_local);
+    double obj_iinit = objectiveT(finalstate);
+    obj_cost += obj_iinit;
+      // if (mpirank_braid == 0) printf("%d: iinit objective: %1.14e\n", mpirank_init, obj_iinit);
 
     /* --- Solve adjoint --- */
     // if (mpirank_braid == 0) printf("%d: %d BWD.", mpirank_init, initid);
 
     /* Derivative of final time objective */
-    objectiveT_diff(finalstate, obj_local, 1.0);
+    objectiveT_diff(finalstate, obj_iinit, 1.0);
 
     adjointbraidapp->PreProcess(initid);
     adjointbraidapp->setInitCond(rho_t0_bar);
@@ -308,17 +308,21 @@ void OptimProblem::evalGradF(Vec x, Vec G){
   }
 
   /* Broadcast objective from last to all time processors */
-  MPI_Bcast(&obj, 1, MPI_DOUBLE, mpisize_braid-1, primalbraidapp->comm_braid);
+  MPI_Bcast(&obj_cost, 1, MPI_DOUBLE, mpisize_braid-1, primalbraidapp->comm_braid);
 
   /* Sum up objective from all initial conditions */
-  double myobj = obj;
-  MPI_Allreduce(&myobj, &obj, 1, MPI_DOUBLE, MPI_SUM, comm_init);
+  double myobj = obj_cost;
+  MPI_Allreduce(&myobj, &obj_cost, 1, MPI_DOUBLE, MPI_SUM, comm_init);
   // if (mpirank_init == 0) printf("%d: global sum objective: %1.14e\n\n", mpirank_init, obj);
 
-  /* Add regularization objective += gamma/2 * ||x||^2*/
+  /* Evaluate regularization gamma/2 * ||x||^2*/
   double xnorm;
   VecNorm(x, NORM_2, &xnorm);
-  obj += gamma_tik / 2. * pow(xnorm,2.0);
+  obj_regul = gamma_tik / 2. * pow(xnorm,2.0);
+
+  /* Store objective function value*/
+  objective = obj_cost + obj_regul;
+
 
   /* Sum up the gradient from all braid processors */
   PetscScalar* grad; 
@@ -335,13 +339,9 @@ void OptimProblem::evalGradF(Vec x, Vec G){
   /* Compute and store gradient norm */
   VecNorm(G, NORM_2, &(gnorm));
 
-
-  /* Store objective */
-  objective = obj;
-
   /* Output */
   if (mpirank_world == 0) {
-    std::cout<< "Obj = " << objective << " ||grad|| = " << gnorm << std::endl;
+    std::cout<< "Obj = " << obj_cost << " + " << obj_regul << " ||grad|| = " << gnorm << std::endl;
   }
 }
 
@@ -604,7 +604,7 @@ PetscErrorCode TaoMonitor(Tao tao,void*ptr){
     TaoGetSolutionStatus(tao, &iter, NULL, NULL, NULL, &deltax, &reason);
 
     /* Print to optimization file */
-    fprintf(ctx->optimfile, "%05d  %1.14e  %1.14e  %.12f\n", iter, ctx->objective, ctx->gnorm, deltax);
+    fprintf(ctx->optimfile, "%05d  %1.14e  %1.14e  %.8f  %1.14e\n", iter, ctx->objective, ctx->gnorm, deltax, ctx->obj_regul);
     fflush(ctx->optimfile);
 
     /* Print parameters and controls to file */
