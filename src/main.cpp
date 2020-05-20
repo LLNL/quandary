@@ -210,17 +210,6 @@ int main(int argc,char **argv)
   }
   MasterEq* mastereq = new MasterEq(nlevels.size(), oscil_vec, xi, lindbladtype, initcond_type, t_collapse);
 
-
-  /* Screen output */
-  if (mpirank_world == 0)
-  {
-    printf("# System with %lu oscillators \n", nlevels.size());
-    printf("# Time horizon:   [0,%.4f]\n", total_time);
-    printf("# Number of time steps: %d\n", ntime);
-    printf("# Time step size: %f\n", dt );
-  }
-
-
   /* --- Initialize the time-stepper --- */
   /* My time stepper */
   TimeStepper *mytimestepper = new ImplMidpoint(mastereq);
@@ -252,6 +241,26 @@ int main(int argc,char **argv)
   VecSetUp(grad);
   VecZeroEntries(grad);
   Vec opt;
+
+  /* Some output */
+  if (mpirank_world == 0)
+  {
+  /* Screen */
+    printf("# System with %lu oscillators \n", nlevels.size());
+    printf("# Time horizon:   [0,%.4f]\n", total_time);
+    printf("# Number of time steps: %d\n", ntime);
+    printf("# Time step size: %f\n", dt );
+
+    /* Print parameters to file */
+    sprintf(filename, "%s/config_log.dat", primalbraidapp->datadir.c_str());
+    ofstream logfile(filename);
+    if (logfile.is_open()){
+      logfile << log.str();
+      logfile.close();
+      printf("File written: %s\n", filename);
+    }
+    else std::cerr << "Unable to open " << filename;
+  }
 
   /* Start timer */
   double StartTime = MPI_Wtime();
@@ -311,18 +320,6 @@ int main(int argc,char **argv)
     fprintf(timefile, "%d  %1.8e\n", mpisize_world, UsedTime);
     fclose(timefile);
     printf("%s written.\n", filename);
-  }
-
-  /* Print parameters to file */
-  if (mpirank_world == 0) {
-    sprintf(filename, "%s/log_param.dat", primalbraidapp->datadir.c_str());
-    ofstream logfile(filename);
-    if (logfile.is_open()){
-      logfile << log.str();
-      logfile.close();
-      printf("%s written.\n", filename);
-    }
-    else std::cerr << "Unable to open " << filename;
   }
 
 
