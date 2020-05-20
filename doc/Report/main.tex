@@ -68,11 +68,8 @@ The time-dependent control functions $p^k(\vec{\alpha}^k,t), q^k(\vec{\alpha}^k,
   p^k(\vec{\alpha}^k,t) &= \sum_{l=1}^L B_l(t) \sum_{f=1}^{N_f} \left(\alpha^{k (1)}_{l,f} \cos(\Omega_f^k t) - \alpha^{k (2)}_{l,f} \sin(\Omega_f^k t) \right) \\
   q^k(\vec{\alpha}^k,t) &= \sum_{l=1}^L B_l(t) \sum_{f=1}^{N_f} \left( \alpha^{k (1)}_{l,f} \sin(\Omega_f^k t) + \alpha^{k (2)}_{l,f} \cos(\Omega_f^k t) \right)
 \end{align}
-for $L$ B-Spline functions $B_l(t)$, and $N_f$ carrier wave frequencies $\Omega_f^k$. The amplitudes $\vec{\alpha}^k \in \R^{2LN_f}$ are the control parameters (\textit{design} variables) that we modify in order to realize a desired system behavior, giving a total of $2QLN_f$ design parameters:
-\begin{align}
-  z &:= \left( \vec{\alpha}^1, \dots, \vec{\alpha}^Q \right), \in \mathds{R}^{2QLN_f} \quad \text{where}\\
-  \vec{\alpha}^k &= \left( \alpha_{1,1}^k,\dots, \alpha_{1,N_f}^k, \dots, \alpha_{L,1}^{k}, \dots, \alpha_{L,N_f}^k \right) \in \R^{2LN_f}, \quad \alpha_{l,f}^k = \left(\alpha_{l,f}^{k(1)}, \alpha_{l,f}^{k(2)} \right) \in R^2
-\end{align}
+for $L$ B-Spline functions $B_l(t)$, and $N_f$ carrier wave frequencies $\Omega_f^k$. The amplitudes $\vec{\alpha}^k \in \R^{2LN_f}$ are the control parameters (\textit{design} variables) that we modify in order to realize a desired system behavior, giving a total of $2QLN_f$ design parameters.
+
 The control functions are in the \textit{rotating frame}. To convert them back to the \textit{Lab frame} use
 \begin{align}
   f^k(t) = 2 \sum_{l=1}^L B_l(t) \sum_{f=1}^{N_f} \beta_{l,f}^k \cos(w_r t + \Omega_f^k t + \theta_{l,f}) \quad \forall k=1,\dots Q
@@ -122,7 +119,7 @@ We define two objective functions for groundstate optimization, both of which ca
 \begin{enumerate}
   \item Minimize the expected energy level:
     \begin{align}
-      J(\rho(T)) = \left(\sum_{k\in \mathcal{K}}\langle M_k \rangle \right)^2
+      J(\rho(T)) = \sum_{k=1}^Q\langle M_k \rangle^2
     \end{align}
     where $M_k = a_k^\dag a_k$ is the number operator for oscillator $k$. 
   \item Minimize the frobenius norm between the final density matrix and the groundstate density matrix:
@@ -134,7 +131,7 @@ We define two objective functions for groundstate optimization, both of which ca
 
 \subsection{Target gate optimization}
 
-Here, the goal is to find control pulses that realize a certain gate operation at final time $T$. Representing the gate by a unitary matrix $V\in \C^{N\times N}$, the goal is to match the final state $\rho(T)$ to the unitary transformation $V\rho(0)V^{\dagger}$ for any initial state $\rho(0)$:
+Here, the goal is to find control pulses that realize a certain logical gate operation at final time $T$. Representing the gate by a unitary matrix $V\in \C^{N\times N}$, the goal is to match the final state $\rho(T)$ to the unitary transformation $V\rho(0)V^{\dagger}$ for any initial state $\rho(0)$:
 \begin{align}
   J(\rho(T)) = \| \rho(T) - V\rho(0)V^{\dagger} \|^2_F 
 \end{align} 
@@ -165,20 +162,21 @@ B^{kj} := \frac 12 \left( E_{kk} + E_{jj}\right) +  \begin{cases}
         \frac i2 \left( E_{jk} - E_{kj}\right) & \text{if} \, k>j
       \end{cases} 
 \end{align}
-for all $k,j\in\{0,\dots, N-1\}$, where $E_{kj}$ denotes the matrix of all zeros except for the $(k,j)$-th element ($E_{kj} = e_ke_j^T$). These define $N^2$ hermitian matrices that are linearly independent over the real vector space of hermitian matrices. They further satisfy $\Tr(B^{kj}) = 1$ and are positive semi-definite, hence each basis matrix is a density matrix. 
+for all $k,j\in\{0,\dots, N-1\}$, where $E_{kj}$ denotes the matrix of all zeros except for the $(k,j)$-th element which is one (hence $E_{kj} = e_ke_j^T$). These $N^2$ matrices are hermitian, and they are linearly independent over the real vector space of hermitian matrices. They further satisfy $\Tr(B^{kj}) = 1$ and they are positive semi-definite, hence each basis matrix is a density matrix. 
 
 We can rewrite any initial condition $\rho(0)$ as a linear combination 
 \begin{align}
-  \rho(0) = \sum_{i=0}^{N^2-1} = \alpha_i B^{k(i), j(i)}, \quad \text{where} \quad k(i) := i \,\mbox{mod}\, N, \quad \text{and} \quad j(i) := \left\lfloor \frac{i}{N} \right\rfloor
+  \rho(0) = \sum_{k=0}^{N-1} \sum_{j=0}^{N-1} \alpha_{kj} B^{k, j},
 \end{align}
 and, using a general solution operator $U(t)$ of the master equation \eqref{mastereq}, we can rewrite the final density matrix in terms of the basis elements:
 \begin{align}
-  \rho(T) = U(t) \rho_0 U(t)^\dag = \sum_{i=0}^{N^2-1} \alpha_i U(t)B^{k(i), j(i)}U(t)^\dag
+  \rho(T) = U(t) \rho_0 U(t)^\dag = \sum_{k=0}^{N-1} \sum_{j=0}^{N-1} \alpha_{kj} U(t)B^{k, j}U(t)^\dag.
+  % \rho(T) = U(t) \rho_0 U(t)^\dag = \sum_{i=0}^{N^2-1} \alpha_i U(t)B^{k(i), j(i)}U(t)^\dag
 \end{align}
 We therefore define the optimization problem for all the basis elements, rather than a specific initial condition:
 \begin{align}\label{optimproblem_basis}
-  \min \frac{1}{N^2}\sum_{i=0}^{N^2-1} J(B^{i}(T)) 
-  \quad \text{s.t.} \quad \text{all}\, B^{i}(t) \, \text{satisfy the master eq.\eqref{mastereq} with} \, B^i(0) = B^{k(i),j(i)}
+  \min \frac{1}{N^2} & \sum_{k=0}^{N-1}\sum_{j=0}^{N-1} \, J(\rho^{k,j}(T))  \\
+  \text{s.t.} \quad  \text{each} \quad \rho^{k,j}(t) \quad & \text{solves \eqref{mastereq} with initial condition} \quad \rho^{k,j}(0) = B^{k,j}
 \end{align}
 
 
@@ -190,8 +188,8 @@ For closed systems, the $\rho(t)$ and the solution operator $U(t)$ are unitary. 
 which is called the \textit{infidelity}, and the trace-term is the \textit{fidelity}. However, since we include the Lindblad terms, $\rho(T)$ is not unitary, and the above equation is not valid anymore. For defining a fidelity we consider $F(z) := 1 - J(z)$. Note, however, that if the optimized objective is in the order $O(\delta)$, then the error $\epsilon_i$ of a final state component $i$ from the gate is rather of the order $O(\sqrt{\delta})$, since $J$ represents the average squared error $J = \frac{1}{N^2}\sum_i \epsilon_i^2$ and so $\epsilon_i^2 \sim O(\delta)$ on average.
 
 \section{Implementation}
-  \subsection{Vectorization}
 
+  \subsection{Vectorization}
   The Lindblad master equation \eqref{mastereq} is in matrix form, describing the evolution of the densisy matrix $\rho = (\rho_1, \dots, \rho_N) \in \C^{N\times N}$. In order to solve this numerically, we vectorize the equation to receive an ODE for $q(t) := \text{vec}(\rho(t)) \in \C^{N^2}$. Using the relations
   \begin{align}
    \text{vec}(AB) &= (I_N\otimes A)\text{vec}(B) = (B^T\otimes I_N)\text{vec}(A) \\
@@ -230,6 +228,22 @@ which is called the \textit{infidelity}, and the trace-term is the \textit{fidel
    \end{align}
    at time $t$, and finally build $M(t)$ from \eqref{realvaluedODE}.
 
+  \subsubsection{Co-located storage of real and imaginary part}
+  The real and imaginary parts of $q(t)$ are stored in a co-located manner: For $q = u+iv$ with $u,v\in\R^{N^2}$, a vector of size $2N^2$ is stored that staggers real and imaginary parts behind each other for each component:
+  \begin{align*}
+    q = u+iv = \begin{bmatrix}
+     u^1\\u^2\\ \vdots \\ u^{N^2-1} 
+    \end{bmatrix}
+    + i \begin{bmatrix}
+     v^1\\v^2\\ \vdots \\ v^{N^2-1} 
+    \end{bmatrix}
+    \quad \Rightarrow \quad
+    q_{store} = \begin{bmatrix}
+      u_1 \\ v_1\\ u_2 \\ v_2 \\ \vdots \\ u_{N^2-1} \\ v_{N^2-1}
+    \end{bmatrix}
+  \end{align*}
+  In order to access the real and imaginary parts of the $i^{th}$ component of $q$, one has to access the elements of $q_{store}$ at index $2i$ and $2i+1$, respectively. 
+
   \subsection{Timestepper}
     The forward time-evolution can use any of Petsc's time-stepping integration schemes. However the adjoint time-evolution does can not. For this we rely on a hand-written time-stepper. Hand-written time-steppers include Backward-Euler, and (preferred) the \textit{implicit midpoint rule (IMR)}, based on implicit Runge-Kutta scheme. We prefer IMR because it is a simplectic integrator. Because IMR is self-adjoint, the same IMR scheme is used to solve the adjoint equation. 
 
@@ -254,41 +268,58 @@ which is called the \textit{infidelity}, and the trace-term is the \textit{fidel
        If we want to include the time-varying Hamiltonian part $H = H_d + H_c(t)$ in the analysis, then we could use the constraints on the control parameter amplitudes to remove the time-dependency using their larges value instead and so the same analysis again. However this doesn't ensure that we resolve the time-scale of the control functions. 
 
   \subsection{Optimization}
-    We use the \textit{HiOp} optimization package for solving the vectorized version of the optimal control problem \eqref{optimproblem_basis}. HiOp applies an interior point L-BFGS method. Each objective function evaluation requires to solve the initial value problem  
-    \begin{align*}
-      \dot x_i(t) &= M(t) x_i(t) \quad \forall \, t\in (0,T) \\
-      x_i(0) &= \mbox{vec}(B^{k(i),j(i)})
-    \end{align*}
-    for the vectorized version of all basis elements, followed by the evaluation of the objective function 
-    \begin{align}
-      J(z) = \frac{1}{N^2} \sum_{i=0}^{N^2-1} J(x_i(T)) + \frac{\gamma}{2} \| z\|^2_2
-    \end{align}
-    where a Tikhonov regularization term has been added with parameter $\gamma>0$.
+    We use the \textit{Tao} optimization package included in Petsc for solving the vectorized version of the optimal control problem \eqref{optimproblem_basis}. We choose the nonlinear Quasi-Newton optimization method that applies $L-BFGS$ updates to approximate the Hessian of the objective function. 
 
-    In order to guaranty that the optimizer yields bounded control functions with $|p_k(t)| \leq c^k_{max}$, $|q_k(t)| \leq c^k_{max}$ for all oscillatorx $k=1,\dots, Q$, we impose box constraints on the control parameters:
-        \begin{align}
-          | \alpha_{l,f}^{k(1)}| \leq \frac{c^k_{max}}{N_f} \quad \text{and} \quad | \alpha_{l,f}^{k(2)} | \leq \frac{c^k_{max}}{N_f}
-        \end{align}
-        where $N_f$ is the number of carrier wave frequencies.
+  \subsubsection{Optimization variables and bounds}
+  We store the $2QLN_f$ optimization parameters in the following order:
+  \begin{align}
+    z &:= \left( \vec{\alpha}^1, \dots, \vec{\alpha}^Q \right), \in \mathds{R}^{2QLN_f} \quad \text{where}\\
+    \vec{\alpha}^k &= \left( \alpha_{1,1}^k,\dots, \alpha_{1,N_f}^k, \dots, \alpha_{L,1}^{k}, \dots, \alpha_{L,N_f}^k \right) \in \R^{2LN_f}, \quad \alpha_{l,f}^k = \left(\alpha_{l,f}^{k(1)}, \alpha_{l,f}^{k(2)} \right) \in R^2,
+  \end{align}
+  iterating over $Q$ oscillators first, then $L$ splines, then $N_f$ carrier wave frequencies. 
+
+  In order to guarantee that the optimizer yields control pulses that are bounded with $|p_k(t)| \leq c^k_{max}$, $|q_k(t)| \leq c^k_{max}$ for all oscillatorx $k=1,\dots, Q$, we impose box constraints on the control parameters:
+   \begin{align}
+     | \alpha_{l,f}^{k(1)}| \leq \frac{c^k_{max}}{N_f} \quad \text{and} \quad | \alpha_{l,f}^{k(2)} | \leq \frac{c^k_{max}}{N_f}
+   \end{align}
+   where $N_f$ is the number of carrier wave frequencies.
+
+
+
+  \subsubsection{Evaluating objective function}
+    Each objective function evaluation requires to solve the vectorized, real-valued initial value problem forward in time
+    \begin{align*}
+      \dot x^{kj}(t) &= M(t) x^{kj}(t) \quad \forall \, t\in (0,T) \\
+      x^{kj}(0) &= \mbox{vec}(B^{k,j})
+    \end{align*}
+    for all initial basis matrices $B^{k,j}, k,j=0,\dots,N^2-1$. To uniquely identify the different forward solves, we assign a unique index $i \in \{0,\dots, N^2-1\}$ to each basis elements with 
+    \begin{align*}
+      B^i := B^{k(i), j(i)}, \quad \text{with} \quad k(i) := i \,\mbox{mod}\, N, \quad \text{and} \quad j(i) := \left\lfloor \frac{i}{N} \right\rfloor
+    \end{align*}
+
+    After each forward solve, we add to the final-time objective function:
+    \begin{align}
+      J_{total}(z) = \frac{1}{N^2} \sum_{i=0}^{N^2-1} J\left(x^{k(i), j(i)}(T)\right) + \frac{\gamma}{2} \| z\|^2_2
+    \end{align}
+    where we add a Tikhonov regularization term with parameter $\gamma>0$ for stability.
 
 
   \subsection{Parallelization}
-    Four levels of parallelization are planned: 
+    Three levels of parallelization are implemented: 
       \begin{enumerate}
-        \item Parallelization over the $N^2$ initial conditions
+        \item Parallelization over initial conditions
         \item Time-parallelization (XBraid)
         \item Spatial parallelism for parallel linear algebra (Petsc)
-        \item Parallel optimization (HiOp)
       \end{enumerate}
-      The global communicator (MPI\_COMM\_WORLD) is split into four sub-communicator, one for each of the above. Currently only the first two levels are implemented, while Petsc and HiOp run on communicators with size 1. The total number of mpi processes ($np_{total}$) is divided into cores for braid and for the initial conditions like so
+      The global communicator (MPI\_COMM\_WORLD) is split into three sub-communicator, one for each of the above. The total number of mpi processes ($np_{total}$) is split into three subgroups such that 
          \begin{align*}
-           np_{braid} * np_{init} = np_{total}.
+           np_{braid} * np_{init} * np_{petsc} = np_{total}.
          \end{align*}
-      The user specifies the size of the communicator for distributing the initial conditions ($np_{init}$) in the config file, with the following requirements:
+      The user specifies the size of the communicator for distributing the initial conditions ($np_{init}$) as well as time-parallelization ($np_{braid}$) in the config file. The number of cores for parallel linear algebra ($np_{petsc}$) is then computed from the above equation. The following requirements for parallel distribution must be considered when setting up parallel runs:
       \begin{itemize}
-        \item $np_{init} \leq n_{init}$, where $n_{init}$ is the total number of initial conditions that are considered (can be $1$, $N$, or $N^2$). This requirement is handled by the code, limiting $np_{init}$ if necessary.
         \item $\frac{n_{init}}{np_{init}} \in \mathds{N}$, so that each processor group owns the same number of initial conditions.
-        \item $\frac{np_{total}}{np_{init}} \in \mathds{N}$, so that each processor group has the same number of cores for braid, i.e. $np_{braid} = \frac{np_{total}}{np_{init}}$.
+        \item $\frac{np_{total}}{np_{init}*np_{braid}} \in \mathds{N}$, so that each processor group has the same number of cores for petsc.
+        \item $\frac{N^2}{np_{petsc}} \in \mathds{N}$, hence the system dimensions must be integer multiple of the number of cores for distributing linear algebra in Petsc. This constraint is a little annoying, however the current implementation requires this due to the co-located storage of the real and imaginary parts of the vectorized state.
       \end{itemize}
   
 \end{document}
