@@ -647,14 +647,14 @@ void myAdjointBraidApp::PreProcess(int iinit){
   /* Reset the reduced gradient */
   VecZeroEntries(redgrad); 
 
-  // /* Open output files for adjoint */
-  if (accesslevel > 0 && mpirank_petsc == 0) {
-    char filename[255];
-    sprintf(filename, "%s/out_uadj.iinit%04d.rank%04d.dat", datadir.c_str(),iinit, mpirank_braid);
-    ufile = fopen(filename, "w");
-    sprintf(filename, "%s/out_vadj.iinit%04d.rank%04d.dat", datadir.c_str(),iinit, mpirank_braid);
-    vfile = fopen(filename, "w");
-  }
+  // // /* Open output files for adjoint */
+  // if (accesslevel > 0 && mpirank_petsc == 0) {
+  //   char filename[255];
+  //   sprintf(filename, "%s/out_uadj.iinit%04d.rank%04d.dat", datadir.c_str(),iinit, mpirank_braid);
+  //   ufile = fopen(filename, "w");
+  //   sprintf(filename, "%s/out_vadj.iinit%04d.rank%04d.dat", datadir.c_str(),iinit, mpirank_braid);
+  //   vfile = fopen(filename, "w");
+  // }
 }
 
 
