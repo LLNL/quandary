@@ -15,13 +15,6 @@ Oscillator::Oscillator(int id, std::vector<int> nlevels_all_, int nbasis_, std::
 
   /* Create control functions */
   basisfunctions = new ControlBasis(nbasis_, Tfinal_, carrier_freq_);
-  if (mpirank_world == 0) {
-    printf("Creating oscillator with %d levels, %d carrierwave frequencies: ", nlevels, carrier_freq_.size());
-    for (int f = 0; f < carrier_freq_.size(); f++) {
-      printf("%f ", carrier_freq_[f]);
-    }
-    printf("\n");
-  }
 
   /* Create and store the number and lowering operators */
   dim_preOsc = 1;

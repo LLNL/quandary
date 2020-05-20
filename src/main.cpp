@@ -36,7 +36,7 @@ int main(int argc,char **argv)
   int mpisize_world, mpirank_world;
   MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
   MPI_Comm_size(MPI_COMM_WORLD, &mpisize_world);
-  if (mpirank_world == 0) printf("# Running on %d cores.\n", mpisize_world);
+  if (mpirank_world == 0) printf("Running on %d cores.\n", mpisize_world);
 
   /* Read config file */
   if (argc != 2) {
@@ -182,9 +182,10 @@ int main(int argc,char **argv)
   ierr = PetscInitialize(&argc,&argv,(char*)0,NULL);if (ierr) return ierr;
   PetscViewerPushFormat(PETSC_VIEWER_STDOUT_WORLD, 	PETSC_VIEWER_ASCII_MATLAB );
 
-  
-  /* Initialize the Oscillators */
+
   double total_time = ntime * dt;
+
+  /* Initialize the Oscillators */
   Oscillator** oscil_vec = new Oscillator*[nlevels.size()];
   for (int i = 0; i < nlevels.size(); i++){
     std::vector<double> carrier_freq;
@@ -209,6 +210,25 @@ int main(int argc,char **argv)
     exit(1);
   }
   MasterEq* mastereq = new MasterEq(nlevels.size(), oscil_vec, xi, lindbladtype, initcond_type, t_collapse);
+
+
+  /* Screen output */
+  if (mpirank_world == 0) {
+    std::cout << "Time: [0:" << total_time << "], ";
+    std::cout << "N="<< ntime << ", dt=" << dt << std::endl;
+    std::cout<< "System: ";
+    for (int i=0; i<nlevels.size(); i++) {
+      std::cout<< nlevels[i];
+      if (i < nlevels.size()-1) std::cout<< "x";
+    }
+    std::cout << "\nT1/T2 times: ";
+    for (int i=0; i<t_collapse.size(); i++) {
+      std::cout << t_collapse[i];
+      if ((i+1)%2 == 0 && i < t_collapse.size()-1) std::cout<< ",";
+      std::cout<< " ";
+    }
+    std::cout << std::endl;
+  }
 
   /* --- Initialize the time-stepper --- */
   /* My time stepper */
@@ -245,12 +265,6 @@ int main(int argc,char **argv)
   /* Some output */
   if (mpirank_world == 0)
   {
-  /* Screen */
-    printf("# System with %lu oscillators \n", nlevels.size());
-    printf("# Time horizon:   [0,%.4f]\n", total_time);
-    printf("# Number of time steps: %d\n", ntime);
-    printf("# Time step size: %f\n", dt );
-
     /* Print parameters to file */
     sprintf(filename, "%s/config_log.dat", primalbraidapp->datadir.c_str());
     ofstream logfile(filename);
