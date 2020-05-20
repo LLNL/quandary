@@ -467,10 +467,12 @@ double OptimProblem::objectiveT(Vec finalstate){
         }
 
         /* Compute frobenius norm: frob = || q(T) - e_1 ||^2 */
-        VecSetValue(state, 0, -1.0, ADD_VALUES); // substract 1.0 from (0,0) element
+        int ilo, ihi;
+        VecGetOwnershipRange(state, &ilo, &ihi);
+        if (ilo <= 0 && 0 < ihi) VecSetValue(state, 0, -1.0, ADD_VALUES); // substract 1.0 from (0,0) element
         VecNorm(state, NORM_2, &obj_local);
         obj_local = pow(obj_local, 2.0);
-        VecSetValue(state, 0, 1.0, ADD_VALUES); // restore state 
+        if (ilo <= 0 && 0 < ihi) VecSetValue(state, 0, 1.0, ADD_VALUES); // restore state 
 
         /* Destroy reduced density matrix, if it has been created */
         if (obj_oscilIDs.size() < primalbraidapp->mastereq->getNOscillators()) { 
@@ -524,9 +526,12 @@ void OptimProblem::objectiveT_diff(Vec finalstate, double obj, double obj_bar){
       Vec statebar;
       VecDuplicate(state, &statebar);
 
+      int ilo, ihi;
+      VecGetOwnershipRange(statebar, &ilo, &ihi);
+
       /* Derivative of frobenius norm: 2 * (q(T) - e_1) * frob_bar */
       VecAXPY(statebar, 2.0*obj_bar, state);
-      VecSetValue(statebar, 0, -2.0*obj_bar, ADD_VALUES);
+      if (ilo <= 0 && 0 < ihi) VecSetValue(statebar, 0, -2.0*obj_bar, ADD_VALUES);
       
       /* Pass derivative from statebar to rho_t0_bar */
       if (obj_oscilIDs.size() < meq->getNOscillators()) {

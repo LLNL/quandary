@@ -396,14 +396,19 @@ void MasterEq::createReducedDensity(Vec rho, Vec *reduced, std::vector<int>oscil
   int dimmat = dim_pre * dim_reduced * dim_post;
   assert ( (int) pow(dimmat,2) == dim);
 
-  /* Create reduced density matrix */ // TODO: CHECK PARALLEL LAYOUT 
-  VecCreate(PETSC_COMM_WORLD, reduced);
-  VecSetSizes(*reduced, PETSC_DECIDE, 2*dim_reduced*dim_reduced);
+  /* Get local ownership of incoming full density matrix */
+  int ilow, iupp;
+  VecGetOwnershipRange(rho, &ilow, &iupp);
+
+  /* Create reduced density matrix, sequential, same on all processors */
+  VecCreateSeq(PETSC_COMM_SELF, 2*dim_reduced*dim_reduced, reduced);
   VecSetFromOptions(*reduced);
 
   /* Iterate over reduced density matrix elements */
   for (int i=0; i<dim_reduced; i++) {
     for (int j=0; j<dim_reduced; j++) {
+      double sum_re = 0.0;
+      double sum_im = 0.0;
       /* Iterate over all dim_pre blocks of size n_k * dim_post */
       for (int l = 0; l < dim_pre; l++) {
         int blockstartID = l * dim_reduced * dim_post; // Go to beginning of block 
@@ -414,16 +419,22 @@ void MasterEq::createReducedDensity(Vec rho, Vec *reduced, std::vector<int>oscil
           int rho_vecID_re = 2 * (rho_col * dimmat + rho_row);
           int rho_vecID_im = rho_vecID_re + 1;
           /* Get real and imaginary part from full density matrix */
-          double re, im;
-          VecGetValues(rho, 1, &rho_vecID_re, &re);
-          VecGetValues(rho, 1, &rho_vecID_im, &im);
-          /* Set real and imaginary part for reduced density matrix */
-          int out_vecID_re = 2 * (j * dim_reduced + i);
-          int out_vecID_im = out_vecID_re + 1;
-          VecSetValues( *reduced, 1, &out_vecID_re, &re, ADD_VALUES);
-          VecSetValues( *reduced, 1, &out_vecID_im, &im, ADD_VALUES);
+          double re = 0.0;
+          double im = 0.0;
+          if (ilow <= rho_vecID_re && rho_vecID_re < iupp) {
+            VecGetValues(rho, 1, &rho_vecID_re, &re);
+            VecGetValues(rho, 1, &rho_vecID_im, &im);
+          } 
+          /* add to partial trace */
+          sum_re += re;
+          sum_im += im;
         }
       }
+      /* Set real and imaginary part of element (i,j) of the reduced density matrix (reduced is sequential vec!) */
+      int out_vecID_re = 2 * (j * dim_reduced + i);
+      int out_vecID_im = out_vecID_re + 1;
+      VecSetValues( *reduced, 1, &out_vecID_re, &sum_re, INSERT_VALUES);
+      VecSetValues( *reduced, 1, &out_vecID_im, &sum_im, INSERT_VALUES);
     }
   }
   VecAssemblyBegin(*reduced);
@@ -447,6 +458,10 @@ void MasterEq::createReducedDensity_diff(Vec rhobar, Vec reducedbar, std::vector
     dim_reduced *= getOscillator(oscilIDs[i])->getNLevels();
   }
 
+  /* Get local ownership of full density rhobar */
+  int ilow, iupp;
+  VecGetOwnershipRange(rhobar, &ilow, &iupp);
+
   /* sanity test */
   int dimmat = dim_pre * dim_reduced * dim_post;
   assert ( (int) pow(dimmat,2) == dim);
@@ -454,18 +469,18 @@ void MasterEq::createReducedDensity_diff(Vec rhobar, Vec reducedbar, std::vector
  /* Iterate over reduced density matrix elements */
   for (int i=0; i<dim_reduced; i++) {
     for (int j=0; j<dim_reduced; j++) {
+      /* Get value from reducedbar (reducedbar is sequential vec!) */
+      int vecID_re = 2 * (j * dim_reduced + i);
+      int vecID_im = vecID_re + 1;
+      double re, im;
+      VecGetValues( reducedbar, 1, &vecID_re, &re);
+      VecGetValues( reducedbar, 1, &vecID_im, &im);
+
       /* Iterate over all dim_pre blocks of size n_k * dim_post */
       for (int l = 0; l < dim_pre; l++) {
         int blockstartID = l * dim_reduced * dim_post; // Go to beginning of block 
         /* iterate over elements in this block */
         for (int m=0; m<dim_post; m++) {
-          /* Get value from reducedbar */
-          int vecID_re = 2 * (j * dim_reduced + i);
-          int vecID_im = vecID_re + 1;
-          double re, im;
-          VecGetValues( reducedbar, 1, &vecID_re, &re);
-          VecGetValues( reducedbar, 1, &vecID_im, &im);
-
           /* Set values into rhobar */
           int rho_row = blockstartID + i * dim_post + m;
           int rho_col = blockstartID + j * dim_post + m;
@@ -473,8 +488,10 @@ void MasterEq::createReducedDensity_diff(Vec rhobar, Vec reducedbar, std::vector
           int rho_vecID_im = rho_vecID_re + 1;
 
           /* Set derivative */
-          VecSetValues(rhobar, 1, &rho_vecID_re, &re, ADD_VALUES);
-          VecSetValues(rhobar, 1, &rho_vecID_im, &im, ADD_VALUES);
+          if (ilow <= rho_vecID_re && rho_vecID_re < iupp) {
+            VecSetValues(rhobar, 1, &rho_vecID_re, &re, ADD_VALUES);
+            VecSetValues(rhobar, 1, &rho_vecID_im, &im, ADD_VALUES);
+          }
         }
       }
     }
