@@ -532,6 +532,7 @@ void OptimProblem::objectiveT_diff(Vec finalstate, double obj, double obj_bar){
       /* Derivative of frobenius norm: 2 * (q(T) - e_1) * frob_bar */
       VecAXPY(statebar, 2.0*obj_bar, state);
       if (ilo <= 0 && 0 < ihi) VecSetValue(statebar, 0, -2.0*obj_bar, ADD_VALUES);
+      VecAssemblyBegin(statebar); VecAssemblyEnd(statebar);
       
       /* Pass derivative from statebar to rho_t0_bar */
       if (obj_oscilIDs.size() < meq->getNOscillators()) {
