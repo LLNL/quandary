@@ -613,7 +613,7 @@ int MasterEq::getRhoT0(int iinit, std::vector<int> oscilIDs, int ninit, Vec rho0
       VecAssemblyBegin(rho0); VecAssemblyEnd(rho0);
 
       /* Set initial conditon ID */
-      initID = iinit * ( (int) sqrt(ninit) ) + iinit;
+      initID = iinit * ninit + iinit;
 
       break;
 
