@@ -293,9 +293,11 @@ int main(int argc,char **argv)
     double gnorm = 0.0;
 
     optimctx->evalGradF(xinit, grad);
-    VecView(grad, PETSC_VIEWER_STDOUT_WORLD);
     VecNorm(grad, NORM_2, &gnorm);
-    if (mpirank_world == 0) printf("Tao gradient norm: %1.14e\n", gnorm);
+    if (mpirank_world == 0) {
+      VecView(grad, PETSC_VIEWER_STDOUT_WORLD);
+      printf("Tao gradient norm: %1.14e\n", gnorm);
+    }
   }
 
   /* --- Solve the optimization  --- */

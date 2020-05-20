@@ -332,6 +332,11 @@ void OptimProblem::evalGradF(Vec x, Vec G){
     mygrad[i] = grad[i];
   }
   MPI_Allreduce(mygrad, grad, ndesign, MPI_DOUBLE, MPI_SUM, primalbraidapp->comm_braid);
+  /* Sum up the gradient from all initial condition processors */
+  for (int i=0; i<ndesign; i++) {
+    mygrad[i] = grad[i];
+  }
+  MPI_Allreduce(mygrad, grad, ndesign, MPI_DOUBLE, MPI_SUM, comm_init);
   VecRestoreArray(G, &grad);
   delete [] mygrad;
 
