@@ -153,6 +153,8 @@ PetscErrorCode StateIsHermitian(Vec x, PetscReal tol, PetscBool *flag) {
   int ierr;
   int i, j;
 
+  /* TODO: MAKE THIS WORK IN PARALLEL */
+  
   /* Get u and v from x */
   int dim;
   ierr = VecGetSize(x, &dim); CHKERRQ(ierr);

@@ -9,13 +9,12 @@ Oscillator::Oscillator(){
 Oscillator::Oscillator(int id, std::vector<int> nlevels_all_, int nbasis_, std::vector<double> carrier_freq_, double Tfinal_){
   nlevels = nlevels_all_[id];
   Tfinal = Tfinal_;
-  basisfunctions = new ControlBasis(nbasis_, Tfinal_, carrier_freq_);
-  printf("Creating oscillator with %d levels, %d carrierwave frequencies: ", nlevels, carrier_freq_.size());
-  for (int f = 0; f < carrier_freq_.size(); f++) {
-    printf("%f ", carrier_freq_[f]);
-  }
-  printf("\n");
+  MPI_Comm_rank(PETSC_COMM_WORLD, &mpirank_petsc);
+  int mpirank_world;
+  MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
 
+  /* Create control functions */
+  basisfunctions = new ControlBasis(nbasis_, Tfinal_, carrier_freq_);
 
   /* Create and store the number and lowering operators */
   dim_preOsc = 1;
@@ -27,7 +26,14 @@ Oscillator::Oscillator(int id, std::vector<int> nlevels_all_, int nbasis_, std::
   createNumberOP(dim_preOsc, dim_postOsc, &NumberOP);
   createLoweringOP(dim_preOsc, dim_postOsc, &LoweringOP);
 
-
+  /* Create a zero matrix. Used in parallel computation */
+  int dim = dim_preOsc * nlevels * dim_postOsc;
+  MatCreateSeqAIJ(PETSC_COMM_SELF, dim, dim, 0, NULL, &zeromat);
+  MatSetUp(zeromat);
+  MatSetFromOptions(zeromat);
+  MatAssemblyBegin(zeromat, MAT_FINAL_ASSEMBLY);
+  MatAssemblyEnd(zeromat, MAT_FINAL_ASSEMBLY);
+ 
   /* Initialize control parameters */
   int nparam = 2 * nbasis_ * carrier_freq_.size();
   for (int i=0; i<nparam; i++) {
@@ -44,12 +50,14 @@ Oscillator::~Oscillator(){
   }
 }
 
-Mat Oscillator::getNumberOP() {
-  return NumberOP;
+Mat Oscillator::getNumberOP(bool dummy) {
+  if (dummy) return zeromat;
+  else return NumberOP;
 }
 
-Mat Oscillator::getLoweringOP() {
-  return LoweringOP;
+Mat Oscillator::getLoweringOP(bool dummy) {
+  if (dummy) return zeromat;
+  else return LoweringOP;
 }
 
 void Oscillator::flushControl(int ntime, double dt, const char* filename) {
@@ -86,7 +94,9 @@ int Oscillator::createNumberOP(int dim_prekron, int dim_postkron, Mat* numberOP)
   int dim_number = dim_prekron*nlevels*dim_postkron;
 
   /* Create and set number operator */
-  MatCreateSeqAIJ(PETSC_COMM_WORLD,dim_number, dim_number,dim_number,NULL, numberOP); 
+  MatCreateSeqAIJ(PETSC_COMM_SELF, dim_number, dim_number, 1, NULL, numberOP);
+  MatSetUp(*numberOP);
+  MatSetFromOptions(*numberOP);
   for (int i=0; i<dim_prekron; i++) {
     for (int j=0; j<nlevels; j++) {
       double val = j;
@@ -99,7 +109,7 @@ int Oscillator::createNumberOP(int dim_prekron, int dim_postkron, Mat* numberOP)
   }
   MatAssemblyBegin(*numberOP, MAT_FINAL_ASSEMBLY);
   MatAssemblyEnd(*numberOP, MAT_FINAL_ASSEMBLY);
- 
+
   return dim_number;
 }
 
@@ -110,14 +120,18 @@ int Oscillator::createLoweringOP(int dim_prekron, int dim_postkron, Mat* lowerin
   int dim_lowering = dim_prekron*nlevels*dim_postkron;
 
   /* create and set lowering operator */
-  MatCreateSeqAIJ(PETSC_COMM_WORLD,dim_lowering,dim_lowering,dim_lowering-1,NULL, loweringOP); 
-  for (int i=0; i<dim_prekron; i++) {
-    for (int j=0; j<nlevels-1; j++) {
-      double val = sqrt(j+1);
-      for (int k=0; k<dim_postkron; k++) {
-        int row = i * nlevels*dim_postkron + j * dim_postkron + k;
-        int col = row + dim_postkron;
-        MatSetValue(*loweringOP, row, col, val, INSERT_VALUES);
+  MatCreateSeqAIJ(PETSC_COMM_SELF, dim_lowering, dim_lowering, 1, NULL, loweringOP);
+  MatSetUp(*loweringOP);
+  MatSetFromOptions(*loweringOP);
+  if (mpirank_petsc == 0) {
+    for (int i=0; i<dim_prekron; i++) {
+      for (int j=0; j<nlevels-1; j++) {
+        double val = sqrt(j+1);
+        for (int k=0; k<dim_postkron; k++) {
+          int row = i * nlevels*dim_postkron + j * dim_postkron + k;
+          int col = row + dim_postkron;
+          MatSetValue(*loweringOP, row, col, val, INSERT_VALUES);
+        }
       }
     }
   }
@@ -169,34 +183,50 @@ double Oscillator::expectedEnergy(Vec x) {
   MatGetSize(NumberOP, &dimmat, NULL);
   double xdiag, num_diag;
 
+  /* Get locally owned portion of x */
+  int ilow, iupp;
+  VecGetOwnershipRange(x, &ilow, &iupp);
+
+  /* Iterate over diagonal elements to add up expected energy level */
   double expected = 0.0;
   for (int i=0; i<dimmat; i++) {
     /* Get diagonal element in number operator */
     MatGetValue(NumberOP, i, i, &num_diag);
-    /* Get diagonal element in rho */
+    /* Get diagonal element in rho (real) */
     int idx_diag = i * dimmat + i;
-    VecGetValues(x, 1, &idx_diag, &xdiag);
+    idx_diag = 2*idx_diag;
+    if (ilow <= idx_diag && idx_diag < iupp) VecGetValues(x, 1, &idx_diag, &xdiag);
+    else xdiag = 0.0;
     expected += num_diag * xdiag;
   }
+  
+  /* Sum up from all processors */
+  double myexp = expected;
+  MPI_Allreduce(&myexp, &expected, 1, MPI_DOUBLE, MPI_SUM, PETSC_COMM_WORLD);
 
   return expected;
 }
 
 
-void Oscillator::expectedEnergy_diff(Vec x, Vec x_re_bar, Vec x_im_bar, double obj_bar) {
-
+void Oscillator::expectedEnergy_diff(Vec x, Vec x_bar, double obj_bar) {
   int dimmat;
   MatGetSize(NumberOP, &dimmat, NULL);
   double num_diag;
+
+  /* Get locally owned portion of x */
+  int ilow, iupp;
+  VecGetOwnershipRange(x, &ilow, &iupp);
 
   /* Derivative of projective measure */
   for (int i=0; i<dimmat; i++) {
     MatGetValue(NumberOP, i, i, &num_diag);
     int idx_diag = i * dimmat + i;
+    idx_diag = 2 * idx_diag;
     double val = num_diag * obj_bar;
-    VecSetValues(x_re_bar, 1, &idx_diag, &val, ADD_VALUES);
+    if (ilow < idx_diag && idx_diag < iupp) VecSetValues(x_bar, 1, &idx_diag, &val, ADD_VALUES);
   }
-  VecAssemblyBegin(x_re_bar); VecAssemblyEnd(x_re_bar);
+  VecAssemblyBegin(x_bar); VecAssemblyEnd(x_bar);
+
 }
 
 
@@ -205,6 +235,12 @@ void Oscillator::population(Vec x, std::vector<double> *pop) {
   int dimN = dim_preOsc * nlevels * dim_postOsc;
 
   assert ((*pop).size() == nlevels);
+
+  /* Get locally owned portion of x */
+  int ilow, iupp;
+  VecGetOwnershipRange(x, &ilow, &iupp);
+
+  /* TODO: Check parallel layout of x! */
 
   /* Iterate over diagonal elements of the reduced density matrix for this oscillator */
   for (int i=0; i < nlevels; i++) {
@@ -217,7 +253,7 @@ void Oscillator::population(Vec x, std::vector<double> *pop) {
       for (int l=0; l < dim_postOsc; l++) {
         /* Get diagonal element */
         int rhoID = blockstartID + identitystartID + l; // Diagonal element of rho
-        int diagID = rhoID * dimN + rhoID;                // Position in vectorized rho
+        int diagID = 2*(rhoID * dimN + rhoID);                // Position in vectorized rho
         double val;
         VecGetValues(x, 1, &diagID, &val);
         sum += val;

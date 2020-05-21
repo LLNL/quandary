@@ -14,7 +14,7 @@ TimeStepper::~TimeStepper() {}
 
 
 ExplEuler::ExplEuler(MasterEq* mastereq_) : TimeStepper(mastereq_) {
-  VecCreateSeq(PETSC_COMM_WORLD, dim, &stage);
+  MatCreateVecs(mastereq->getRHS(), &stage, NULL);
   VecZeroEntries(stage);
 }
 
@@ -55,10 +55,10 @@ void ExplEuler::evolveBWD(double tstop, double tstart, Vec x, Vec x_adj, Vec gra
 ImplMidpoint::ImplMidpoint(MasterEq* mastereq_) : TimeStepper(mastereq_) {
 
   /* Create and reset the intermediate vectors */
-  VecCreateSeq(PETSC_COMM_WORLD, dim, &stage);
-  VecCreateSeq(PETSC_COMM_WORLD, dim, &stage_adj);
-  VecCreateSeq(PETSC_COMM_WORLD, dim, &rhs);
-  VecCreateSeq(PETSC_COMM_WORLD, dim, &rhs_adj);
+  MatCreateVecs(mastereq->getRHS(), &stage, NULL);
+  VecDuplicate(stage, &stage_adj);
+  VecDuplicate(stage, &rhs);
+  VecDuplicate(stage, &rhs_adj);
   VecZeroEntries(stage);
   VecZeroEntries(stage_adj);
   VecZeroEntries(rhs);
@@ -132,20 +132,18 @@ void ImplMidpoint::evolveBWD(double tstop, double tstart, Vec x, Vec x_adj, Vec 
   double dt = fabs(tstop - tstart); // absolute values needed in case this runs backwards! 
   double thalf = (tstart + tstop) / 2.0;
 
-  /* Recompute the stage */
+  /* Assemble RHS(t_1/2) */
   mastereq->assemble_RHS( (tstart + tstop) / 2.0);
   A = mastereq->getRHS();
-  MatMult(A, x, rhs);
-  MatScale(A, - dt/2.0);
-  MatShift(A, 1.0);  // WARNING: this can be very slow if some diagonal elements are missing.
-  // KSPReset(linearsolver);
-  // KSPSetTolerances(linearsolver, 1.e-5, 1.e-10, PETSC_DEFAULT, PETSC_DEFAULT);
-  // KSPSetType(linearsolver, KSPGMRES);
-  // KSPSetFromOptions(linearsolver);
-  // KSPSetOperators(linearsolver, A, A);// TODO: Do we have to do this in each time step?? 
-  KSPSolve(linearsolver, rhs, stage);
+
+  /* Get Ax_n for use in gradient */
+  if (compute_gradient) {
+    MatMult(A, x, rhs);
+  }
 
   /* Solve for adjoint stage variable */
+  MatScale(A, - dt/2.0);
+  MatShift(A, 1.0);  // WARNING: this can be very slow if some diagonal elements are missing.
   KSPSolveTranspose(linearsolver, x_adj, stage_adj);
 
   double rnorm;
@@ -157,6 +155,7 @@ void ImplMidpoint::evolveBWD(double tstop, double tstart, Vec x, Vec x_adj, Vec 
 
   /* Add to reduced gradient */
   if (compute_gradient) {
+    KSPSolve(linearsolver, rhs, stage);
     VecAYPX(stage, dt / 2.0, x);
     mastereq->computedRHSdp(thalf, stage, stage_adj, 1.0, grad);
   }

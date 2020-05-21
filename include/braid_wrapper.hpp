@@ -20,19 +20,26 @@ class myBraidVector {
 
 class myBraidApp : public BraidApp {
   protected: 
-    TS           ts_petsc;       /* Petsc Time-stepper struct */
-    TimeStepper  *mytimestepper;
-
+    TS           ts_petsc;        /* Petsc Time-stepper struct */
+    TimeStepper  *mytimestepper;  /* My new time-stepper */
     BraidCore *core;                /* Braid core for running PinT simulation */
+
+    /* output stuff */
     FILE *ufile;
     FILE *vfile;
     std::vector<FILE *>expectedfile;
     std::vector<FILE *>populationfile;
-
-    bool usepetscts;
-    int braidrank;
-
     std::vector<std::vector<std::string> > outputstr; // List of outputs for each oscillator
+
+    /* MPI stuff */
+    bool usepetscts;
+    int mpirank_petsc;
+    int mpirank_braid;
+    int mpirank_world;
+
+    VecScatter scat;    /* Petsc's scatter context to communicate a state across petsc's cores */
+    Vec xseq;           /* A sequential vector for IO. */
+
 
   public:
     MPI_Comm comm_braid;            /* Braid's communicator */
@@ -99,9 +106,6 @@ class myBraidApp : public BraidApp {
     /*  */
     virtual void PreProcess(int iinit);
 
-    /* Set real and imaginary part of the initial conditions at t=0 */
-    virtual void setInitialCondition(Vec initcond_re, Vec initcond_im);
-
     /* Performs one last FRelax. Returns state at last time step or NULL if not stored on this processor */
     virtual Vec PostProcess();
 
@@ -111,6 +115,10 @@ class myBraidApp : public BraidApp {
     /* Initialize braids time grids */
     void InitGrids();
 
+    /* Set initial condition */
+    void setInitCond(Vec rho_t0);
+
+
 };
 
 /**
@@ -119,6 +127,8 @@ class myBraidApp : public BraidApp {
 class myAdjointBraidApp : public myBraidApp {
   protected:
     BraidCore *primalcore;    /* pointer to primal core for accessing primal states */
+  
+  public:
     Vec        redgrad;       /* reduced gradient */
 
   private:
@@ -128,9 +138,6 @@ class myAdjointBraidApp : public myBraidApp {
 
     myAdjointBraidApp(MPI_Comm comm_braid_, double total_time_, int ntime_, TS ts_petsc_,TimeStepper* mytimestepper_, MasterEq* ham_, MapParam* config, BraidCore *Primalcoreptr_);
     ~myAdjointBraidApp();
-
-    /* Get pointer to reduced gradient. READ ONLY!! */
-    const double* getReducedGradientPtr();
 
     /* Get the storage index of primal (reversed) time point index of a certain time t, on the grid created with spacing dt  */
     int getPrimalIndex(int ts);

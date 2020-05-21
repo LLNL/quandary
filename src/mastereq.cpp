@@ -13,10 +13,6 @@ MasterEq::MasterEq(){
   Bc_vec = NULL;
   dRedp = NULL;
   dImdp = NULL;
-  rowid = NULL;
-  rowid_shift = NULL;
-
-
 }
 
 
@@ -30,6 +26,9 @@ MasterEq::MasterEq(int noscillators_, Oscillator** oscil_vec_, const std::vector
   assert(xi.size() >= (noscillators_+1) * noscillators_ / 2);
   assert(collapse_time.size() >= 2*noscillators);
 
+  int mpisize_petsc;
+  MPI_Comm_size(PETSC_COMM_WORLD, &mpisize_petsc);
+  MPI_Comm_rank(PETSC_COMM_WORLD, &mpirank_petsc);
 
   /* Dimension of vectorized system: (n_1*...*n_q^2 */
   dim = 1;
@@ -39,21 +38,24 @@ MasterEq::MasterEq(int noscillators_, Oscillator** oscil_vec_, const std::vector
   int dimmat = dim;
   dim = dim*dim; // density matrix: N \times N -> vectorized: N^2
 
+  /* Sanity check for parallel petsc with colocated x storage */
+  if (dim % mpisize_petsc != 0) {
+    printf("\n ERROR in parallel distribution: Petsc's communicator size (%d) must be integer multiple of system dimension N^2=%d\n", mpisize_petsc, dim);
+    exit(1);
+  }
+
   /* Allocate Re */
-  MatCreateSeqAIJ(PETSC_COMM_WORLD,dim,dim,0,NULL,&Re);
+  MatCreate(PETSC_COMM_WORLD, &Re);
+  MatSetSizes(Re, PETSC_DECIDE, PETSC_DECIDE, dim, dim);
   MatSetFromOptions(Re);
   MatSetUp(Re);
-  MatSetOption(Re, MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);
-  for (int irow = 0; irow < dim; irow++)
-  {
-    MatSetValue(Re, irow, irow, 0.0, INSERT_VALUES);
-  }
   MatAssemblyBegin(Re,MAT_FINAL_ASSEMBLY);
   MatAssemblyEnd(Re,MAT_FINAL_ASSEMBLY);
 
 
   /* Allocate Im */
-  MatCreateSeqAIJ(PETSC_COMM_WORLD,dim,dim,0,NULL,&Im);
+  MatCreate(PETSC_COMM_WORLD, &Im);
+  MatSetSizes(Im, PETSC_DECIDE, PETSC_DECIDE, dim, dim);
   MatSetFromOptions(Im);
   MatSetUp(Im);
   MatAssemblyBegin(Im,MAT_FINAL_ASSEMBLY);
@@ -69,7 +71,8 @@ MasterEq::MasterEq(int noscillators_, Oscillator** oscil_vec_, const std::vector
   MatAssemblyEnd(RHS,MAT_FINAL_ASSEMBLY);
 
   /* Allocate auxiliary vectors */
-  ierr = PetscMalloc1(dim, &col_idx_shift);
+  ierr = PetscMalloc1(dim, &colid1);
+  ierr = PetscMalloc1(dim, &colid2);
   ierr = PetscMalloc1(dim, &negvals);
   
  /* Allocate time-varying building blocks */
@@ -83,11 +86,14 @@ MasterEq::MasterEq(int noscillators_, Oscillator** oscil_vec_, const std::vector
   for (int iosc = 0; iosc < noscillators_; iosc++) {
 
     /* Get lowering operator a = I_(n_1) \kron ... \kron a^(n_k) \kron ... \kron I_(n_q) */
-    loweringOP = oscil_vec[iosc]->getLoweringOP();
+    loweringOP = oscil_vec[iosc]->getLoweringOP((bool)mpirank_petsc);
     MatTranspose(loweringOP, MAT_INITIAL_MATRIX, &loweringOP_T);
 
     /* Compute Ac = I_N \kron (a - a^T) - (a - a^T) \kron I_N */
-    MatCreateSeqAIJ(PETSC_COMM_WORLD,dim,dim,4,NULL,&Ac_vec[iosc]); 
+    MatCreate(PETSC_COMM_WORLD, &Ac_vec[iosc]);
+    MatSetSizes(Ac_vec[iosc], PETSC_DECIDE, PETSC_DECIDE, dim, dim);
+    MatSetUp(Ac_vec[iosc]);
+    MatSetFromOptions(Ac_vec[iosc]);
     Ikron(loweringOP,   dimmat,  1.0, &Ac_vec[iosc], ADD_VALUES);
     Ikron(loweringOP_T, dimmat, -1.0, &Ac_vec[iosc], ADD_VALUES);
     kronI(loweringOP_T, dimmat, -1.0, &Ac_vec[iosc], ADD_VALUES);
@@ -96,7 +102,10 @@ MasterEq::MasterEq(int noscillators_, Oscillator** oscil_vec_, const std::vector
     MatAssemblyEnd(Ac_vec[iosc], MAT_FINAL_ASSEMBLY);
     
     /* Compute Bc = - I_N \kron (a + a^T) + (a + a^T) \kron I_N */
-    MatCreateSeqAIJ(PETSC_COMM_WORLD,dim,dim,4,NULL,&Bc_vec[iosc]); 
+    MatCreate(PETSC_COMM_WORLD, &Bc_vec[iosc]);
+    MatSetSizes(Bc_vec[iosc], PETSC_DECIDE, PETSC_DECIDE, dim, dim);
+    MatSetUp(Bc_vec[iosc]);
+    MatSetFromOptions(Bc_vec[iosc]);
     Ikron(loweringOP,   dimmat, -1.0, &Bc_vec[iosc], ADD_VALUES);
     Ikron(loweringOP_T, dimmat, -1.0, &Bc_vec[iosc], ADD_VALUES);
     kronI(loweringOP_T, dimmat,  1.0, &Bc_vec[iosc], ADD_VALUES);
@@ -108,14 +117,18 @@ MasterEq::MasterEq(int noscillators_, Oscillator** oscil_vec_, const std::vector
   }
 
   /* Allocate and compute imag drift part Bd = Hd */
-  MatCreateSeqAIJ(PETSC_COMM_WORLD,dim,dim,1,NULL,&Bd); 
+  MatCreate(PETSC_COMM_WORLD, &Bd);
+  MatSetSizes(Bd, PETSC_DECIDE, PETSC_DECIDE, dim, dim);
+  MatSetUp(Bd);
+  MatSetFromOptions(Bd);
   int xi_id = 0;
   for (int iosc = 0; iosc < noscillators_; iosc++) {
     Mat tmp, tmp_T;
     Mat numberOPj;
     
-    /* Create number operator */
-    numberOP = oscil_vec[iosc]->getNumberOP();
+    /* Get the number operator */
+    // Zero mat on all but the first petsc procs */
+    numberOP = oscil_vec[iosc]->getNumberOP((bool) mpirank_petsc);
 
     /* Diagonal term - 2* PI * xi/2 *(N_i^2 - N_i) */
     MatMatMult(numberOP, numberOP, MAT_INITIAL_MATRIX, PETSC_DEFAULT, &tmp);
@@ -132,7 +145,7 @@ MasterEq::MasterEq(int noscillators_, Oscillator** oscil_vec_, const std::vector
 
     /* Mixed term -xi * 2 * PI * (N_i*N_j) for j > i */
     for (int josc = iosc+1; josc < noscillators_; josc++) {
-      numberOPj = oscil_vec[josc]->getNumberOP();
+      numberOPj = oscil_vec[josc]->getNumberOP((bool) mpirank_petsc);
       MatMatMult(numberOP, numberOPj, MAT_INITIAL_MATRIX, PETSC_DEFAULT, &tmp);
       MatScale(tmp, -xi[xi_id] * 2.0 * M_PI);
       xi_id++;
@@ -153,6 +166,7 @@ MasterEq::MasterEq(int noscillators_, Oscillator** oscil_vec_, const std::vector
   bool addT1, addT2;
   MatCreate(PETSC_COMM_WORLD, &Ad);
   MatSetSizes(Ad, PETSC_DECIDE, PETSC_DECIDE, dim, dim);
+  MatSetFromOptions(Ad);
   MatSetUp(Ad);
   for (int iosc = 0; iosc < noscillators_; iosc++) {
   
@@ -161,18 +175,18 @@ MasterEq::MasterEq(int noscillators_, Oscillator** oscil_vec_, const std::vector
         continue;
         break;
       case DECAY: 
-        L1 = oscil_vec[iosc]->getLoweringOP();
+        L1 = oscil_vec[iosc]->getLoweringOP((bool)mpirank_petsc);
         addT1 = true;
         addT2 = false;
         break;
       case DEPHASE:
-        L2 = oscil_vec[iosc]->getNumberOP();
+        L2 = oscil_vec[iosc]->getNumberOP((bool)mpirank_petsc);
         addT1 = false;
         addT2 = true;
         break;
       case BOTH:
-        L1 = oscil_vec[iosc]->getLoweringOP();
-        L2 = oscil_vec[iosc]->getNumberOP();
+        L1 = oscil_vec[iosc]->getLoweringOP((bool)mpirank_petsc);
+        L2 = oscil_vec[iosc]->getNumberOP((bool)mpirank_petsc);
         addT1 = true;
         addT2 = true;
         break;
@@ -216,19 +230,19 @@ MasterEq::MasterEq(int noscillators_, Oscillator** oscil_vec_, const std::vector
   MatAssemblyBegin(Ad, MAT_FINAL_ASSEMBLY);
   MatAssemblyEnd(Ad, MAT_FINAL_ASSEMBLY);
 
-  /* Create vector strides for accessing Re and Im part for x = [u v] */
-  ISCreateStride(PETSC_COMM_WORLD, dim, 0, 1, &isu);
-  ISCreateStride(PETSC_COMM_WORLD, dim, dim, 1, &isv);
- 
-  /* Allocate some auxiliary vectors */
+  /* Create vector strides for accessing Re and Im part in x */
+  int ilow, iupp;
+  MatGetOwnershipRange(RHS, &ilow, &iupp);
+  int dimis = (iupp - ilow)/2;
+  ISCreateStride(PETSC_COMM_WORLD, dimis, ilow, 2, &isu);
+  ISCreateStride(PETSC_COMM_WORLD, dimis, ilow+1, 2, &isv);
+
+  /* Allocate some auxiliary vectors */ // TODO: THIS WORKS ONLY IF ALL OSCIL HAVE SAME NUMBER!
   dRedp = new double[oscil_vec[0]->getNParams()];
   dImdp = new double[oscil_vec[0]->getNParams()];
-  rowid = new int[dim];
-  rowid_shift = new int[dim];
-  for (int i=0; i<dim;i++) {
-    rowid[i] = i;
-    rowid_shift[i] = i + dim;
-  }
+  cols = new int[oscil_vec[0]->getNParams()];
+  vals = new double [oscil_vec[0]->getNParams()];
+  
 
   MatCreateVecs(Ac_vec[0], &Acu, NULL);
   MatCreateVecs(Ac_vec[0], &Acv, NULL);
@@ -244,7 +258,8 @@ MasterEq::~MasterEq(){
     MatDestroy(&Re);
     MatDestroy(&Im);
     MatDestroy(&RHS);
-    PetscFree(col_idx_shift);
+    PetscFree(colid1);
+    PetscFree(colid2);
     PetscFree(negvals);
 
     MatDestroy(&Ad);
@@ -257,8 +272,7 @@ MasterEq::~MasterEq(){
     delete [] Bc_vec;
     delete [] dRedp;
     delete [] dImdp;
-    delete [] rowid;
-    delete [] rowid_shift;
+    // delete [] vals;
 
     ISDestroy(&isu);
     ISDestroy(&isv);
@@ -282,10 +296,6 @@ bool MasterEq::ExactSolution(double t, Vec x) { return false; }
 
 int MasterEq::assemble_RHS(double t){
   int ierr;
-  int ncol;
-  const PetscInt *col_idx;
-  const PetscScalar *vals;
-  double control_Re, control_Im;
 
   /* Reset */
   ierr = MatZeroEntries(Re);CHKERRQ(ierr);
@@ -294,6 +304,7 @@ int MasterEq::assemble_RHS(double t){
 
   /* Time-dependent control part */
   for (int iosc = 0; iosc < noscillators; iosc++) {
+    double control_Re, control_Im;
     oscil_vec[iosc]->evalControl(t, &control_Re, &control_Im);
     ierr = MatAXPY(Re,control_Im,Ac_vec[iosc],DIFFERENT_NONZERO_PATTERN); CHKERRQ(ierr);
     ierr = MatAXPY(Im,control_Re,Bc_vec[iosc],DIFFERENT_NONZERO_PATTERN); CHKERRQ(ierr);
@@ -304,35 +315,52 @@ int MasterEq::assemble_RHS(double t){
   ierr = MatAXPY(Im, 1.0, Bd, DIFFERENT_NONZERO_PATTERN); CHKERRQ(ierr);
 
 
-  /* Set up Jacobian M (=RHS) from Re and Im
-   * M(0, 0) =  Re    M(0,1) = -Im
-   * M(1, 0) =  Im    M(1,1) = Re
+  /* 
+   * Set up Jacobian M (=RHS) from Re and Im
+   * for reordered x = u1 v1 ... uN vN
    */
-  for (int irow = 0; irow < dim; irow++) {
-    PetscInt irow_shift = irow + dim;
+
+  /* Iterate over local rows in Re, Im */
+  int ilower, iupper;
+  MatGetOwnershipRange(Re, &ilower, &iupper);
+  for (int irow = ilower; irow < iupper; irow++) {
+
+    const PetscInt *getcol;
+    const PetscScalar *vals;
+    int ncol;
 
     /* Get row in Re */
-    ierr = MatGetRow(Re, irow, &ncol, &col_idx, &vals);CHKERRQ(ierr);
+    ierr = MatGetRow(Re, irow, &ncol, &getcol, &vals);CHKERRQ(ierr);
+
+    /* Set up row and colum ids for Re in M */
+    int rowid1 = 2*irow;
+    int rowid2 = 2*irow + 1;
     for (int icol = 0; icol < ncol; icol++)
     {
-      col_idx_shift[icol] = col_idx[icol] + dim;
+      colid1[icol] = 2*getcol[icol];       // uk
+      colid2[icol] = 2*getcol[icol] + 1;   // vk
     }
-    // Set A in M: M(0,0) = Re  M(1,1) = Re
-    ierr = MatSetValues(RHS,1,&irow,ncol,col_idx,vals,INSERT_VALUES);CHKERRQ(ierr);
-    ierr = MatSetValues(RHS,1,&irow_shift,ncol,col_idx_shift,vals,INSERT_VALUES);CHKERRQ(ierr);
-    ierr = MatRestoreRow(Re,irow,&ncol,&col_idx,&vals);CHKERRQ(ierr);
+    /* Set Re-row in M */
+    ierr = MatSetValues(RHS, 1, &rowid1, ncol, colid1, vals, INSERT_VALUES); CHKERRQ(ierr);
+    ierr = MatSetValues(RHS, 1, &rowid2, ncol, colid2, vals,INSERT_VALUES); CHKERRQ(ierr);
+    ierr = MatRestoreRow(Re,irow,&ncol,&getcol,&vals);CHKERRQ(ierr);
 
     /* Get row in Im */
-    ierr = MatGetRow(Im, irow, &ncol, &col_idx, &vals);CHKERRQ(ierr);
+    ierr = MatGetRow(Im, irow, &ncol, &getcol, &vals);CHKERRQ(ierr);
+
+    /* Set up row and column ids for Im in M */
     for (int icol = 0; icol < ncol; icol++)
     {
-      col_idx_shift[icol] = col_idx[icol] + dim;
+      colid1[icol] = 2*getcol[icol] + 1;  // uk
+      colid2[icol] = 2*getcol[icol];      // vk
       negvals[icol] = -vals[icol];
     }
-    // Set Im in M: M(1,0) = Im, M(0,1) = -Im
-    ierr = MatSetValues(RHS,1,&irow,ncol,col_idx_shift,negvals,INSERT_VALUES);CHKERRQ(ierr);
-    ierr = MatSetValues(RHS,1,&irow_shift,ncol,col_idx,vals,INSERT_VALUES);CHKERRQ(ierr);
-    ierr = MatRestoreRow(Im,irow,&ncol,&col_idx,&vals);CHKERRQ(ierr);
+    // Set Im in M: 
+    rowid1 = 2 * irow;
+    rowid2 = 2 * irow + 1;
+    ierr = MatSetValues(RHS,1,&rowid1,ncol,colid1,negvals,INSERT_VALUES);CHKERRQ(ierr);
+    ierr = MatSetValues(RHS,1,&rowid2,ncol,colid2,vals,INSERT_VALUES);CHKERRQ(ierr);
+    ierr = MatRestoreRow(Im,irow,&ncol,&getcol,&vals);CHKERRQ(ierr);
   }
 
   /* Assemble M */
@@ -348,15 +376,40 @@ int MasterEq::assemble_RHS(double t){
 Mat MasterEq::getRHS() { return RHS; }
 
 
-void MasterEq::reducedDensity(Vec fulldensitymatrix, Vec *reduced, int dim_pre, int dim_post, int dim_reduced) {
+void MasterEq::createReducedDensity(Vec rho, Vec *reduced, std::vector<int>oscilIDs) {
+
+  Vec red;
+
+  /* Get dimensions of preceding and following subsystem */
+  int dim_pre  = 1; 
+  int dim_post = 1;
+  for (int iosc = 0; iosc < oscilIDs[0]; iosc++) 
+    dim_pre  *= getOscillator(iosc)->getNLevels();
+  for (int iosc = oscilIDs[oscilIDs.size()-1]+1; iosc < getNOscillators(); iosc++) 
+    dim_post *= getOscillator(iosc)->getNLevels();
+
+  int dim_reduced = 1;
+  for (int i = 0; i < oscilIDs.size();i++) {
+    dim_reduced *= getOscillator(oscilIDs[i])->getNLevels();
+  }
 
   /* sanity test */
   int dimmat = dim_pre * dim_reduced * dim_post;
   assert ( (int) pow(dimmat,2) == dim);
 
+  /* Get local ownership of incoming full density matrix */
+  int ilow, iupp;
+  VecGetOwnershipRange(rho, &ilow, &iupp);
+
+  /* Create reduced density matrix, sequential */
+  VecCreateSeq(PETSC_COMM_SELF, 2*dim_reduced*dim_reduced, &red);
+  VecSetFromOptions(red);
+
   /* Iterate over reduced density matrix elements */
   for (int i=0; i<dim_reduced; i++) {
     for (int j=0; j<dim_reduced; j++) {
+      double sum_re = 0.0;
+      double sum_im = 0.0;
       /* Iterate over all dim_pre blocks of size n_k * dim_post */
       for (int l = 0; l < dim_pre; l++) {
         int blockstartID = l * dim_reduced * dim_post; // Go to beginning of block 
@@ -364,28 +417,69 @@ void MasterEq::reducedDensity(Vec fulldensitymatrix, Vec *reduced, int dim_pre, 
         for (int m=0; m<dim_post; m++) {
           int rho_row = blockstartID + i * dim_post + m;
           int rho_col = blockstartID + j * dim_post + m;
-          int rho_vecID_re = rho_col * dimmat + rho_row;
-          int rho_vecID_im = rho_vecID_re + (int) pow(dimmat,2);
+          int rho_vecID_re = 2 * (rho_col * dimmat + rho_row);
+          int rho_vecID_im = rho_vecID_re + 1;
           /* Get real and imaginary part from full density matrix */
-          double re, im;
-          VecGetValues(fulldensitymatrix, 1, &rho_vecID_re, &re);
-          VecGetValues(fulldensitymatrix, 1, &rho_vecID_im, &im);
-          /* Set real and imaginary part for reduced density matrix */
-          int out_vecID_re = j * dim_reduced + i;
-          int out_vecID_im = out_vecID_re + (int) pow(dim_reduced,2);
-          VecSetValues( *reduced, 1, &out_vecID_re, &re, ADD_VALUES);
-          VecSetValues( *reduced, 1, &out_vecID_im, &im, ADD_VALUES);
+          double re = 0.0;
+          double im = 0.0;
+          if (ilow <= rho_vecID_re && rho_vecID_re < iupp) {
+            VecGetValues(rho, 1, &rho_vecID_re, &re);
+            VecGetValues(rho, 1, &rho_vecID_im, &im);
+          } 
+          /* add to partial trace */
+          sum_re += re;
+          sum_im += im;
         }
       }
+      /* Set real and imaginary part of element (i,j) of the reduced density matrix */
+      int out_vecID_re = 2 * (j * dim_reduced + i);
+      int out_vecID_im = out_vecID_re + 1;
+      VecSetValues( red, 1, &out_vecID_re, &sum_re, INSERT_VALUES);
+      VecSetValues( red, 1, &out_vecID_im, &sum_im, INSERT_VALUES);
     }
   }
-  VecAssemblyBegin(*reduced);
-  VecAssemblyEnd(*reduced);
+  VecAssemblyBegin(red);
+  VecAssemblyEnd(red);
 
+  /* Sum up from all petsc cores. This is not at all a good solution. TODO: Change this! */
+  double* dataptr;
+  int size = 2*dim_reduced*dim_reduced;
+  double* mydata = new double[size];
+  VecGetArray(red, &dataptr);
+  for (int i=0; i<size; i++) {
+    mydata[i] = dataptr[i];
+  }
+  MPI_Allreduce(mydata, dataptr, size, MPI_DOUBLE, MPI_SUM, PETSC_COMM_WORLD);
+  VecRestoreArray(red, &dataptr);
+  delete [] mydata;
+
+  /* Set output */
+  *reduced = red;
 }
 
 
-void MasterEq::reducedDensity_diff(Vec reddens_bar, Vec x0_re_bar, Vec x0_im_bar, int dim_pre, int dim_post, int dim_reduced) {
+void MasterEq::createReducedDensity_diff(Vec rhobar, Vec reducedbar, std::vector<int> oscilIDs) {
+  
+  /* Get dimensions of preceding and following subsystem */
+  int dim_pre  = 1; 
+  int dim_post = 1;
+  for (int iosc = 0; iosc < oscilIDs[0]; iosc++) 
+    dim_pre  *= getOscillator(iosc)->getNLevels();
+  for (int iosc = oscilIDs[oscilIDs.size()-1]+1; iosc < getNOscillators(); iosc++) 
+    dim_post *= getOscillator(iosc)->getNLevels();
+
+  int dim_reduced = 1;
+  for (int i = 0; i < oscilIDs.size();i++) {
+    dim_reduced *= getOscillator(oscilIDs[i])->getNLevels();
+  }
+
+  /* Get local ownership of full density rhobar */
+  int ilow, iupp;
+  VecGetOwnershipRange(rhobar, &ilow, &iupp);
+
+  /* Get local ownership of reduced density bar*/
+  int ilow_red, iupp_red;
+  VecGetOwnershipRange(reducedbar, &ilow_red, &iupp_red);
 
   /* sanity test */
   int dimmat = dim_pre * dim_reduced * dim_post;
@@ -394,51 +488,53 @@ void MasterEq::reducedDensity_diff(Vec reddens_bar, Vec x0_re_bar, Vec x0_im_bar
  /* Iterate over reduced density matrix elements */
   for (int i=0; i<dim_reduced; i++) {
     for (int j=0; j<dim_reduced; j++) {
+      /* Get value from reducedbar */
+      int vecID_re = 2 * (j * dim_reduced + i);
+      int vecID_im = vecID_re + 1;
+      double re = 0.0;
+      double im = 0.0;
+      VecGetValues( reducedbar, 1, &vecID_re, &re);
+      VecGetValues( reducedbar, 1, &vecID_im, &im);
+
       /* Iterate over all dim_pre blocks of size n_k * dim_post */
       for (int l = 0; l < dim_pre; l++) {
         int blockstartID = l * dim_reduced * dim_post; // Go to beginning of block 
         /* iterate over elements in this block */
         for (int m=0; m<dim_post; m++) {
-          /* Get value from reduced redens_bar */
-          int vecID_re = j * dim_reduced + i;
-          int vecID_im = vecID_re + (int) pow(dim_reduced,2);
-          double re, im;
-          VecGetValues( reddens_bar, 1, &vecID_re, &re);
-          VecGetValues( reddens_bar, 1, &vecID_im, &im);
-
-          /* Set values into full density_bar  */
+          /* Set values into rhobar */
           int rho_row = blockstartID + i * dim_post + m;
           int rho_col = blockstartID + j * dim_post + m;
-          int rho_vecID = rho_col * dimmat + rho_row;
+          int rho_vecID_re = 2 * (rho_col * dimmat + rho_row);
+          int rho_vecID_im = rho_vecID_re + 1;
 
           /* Set derivative */
-          VecSetValues(x0_re_bar, 1, &rho_vecID, &re, ADD_VALUES);
-          VecSetValues(x0_im_bar, 1, &rho_vecID, &im, ADD_VALUES);
+          if (ilow <= rho_vecID_re && rho_vecID_re < iupp) {
+            VecSetValues(rhobar, 1, &rho_vecID_re, &re, ADD_VALUES);
+            VecSetValues(rhobar, 1, &rho_vecID_im, &im, ADD_VALUES);
+          }
         }
       }
     }
   }
-  VecAssemblyBegin(x0_re_bar); VecAssemblyEnd(x0_re_bar);
-  VecAssemblyBegin(x0_im_bar); VecAssemblyEnd(x0_im_bar);
+  VecAssemblyBegin(rhobar); VecAssemblyEnd(rhobar);
 
 }
-
 
 /* grad += RHS(x)^T * xbar  */
 void MasterEq::computedRHSdp(double t, Vec x, Vec xbar, double alpha, Vec grad) {
 
-  /* Get real and imaginary part from x = [u v] and x_bar */
+  /* Get real and imaginary part from x and x_bar */
   Vec u, v, ubar, vbar;
   VecGetSubVector(x, isu, &u);
   VecGetSubVector(x, isv, &v);
   VecGetSubVector(xbar, isu, &ubar);
   VecGetSubVector(xbar, isv, &vbar);
 
+  /* Get number of control parameters for this oscillator */
+  int nparam = oscil_vec[0]->getNParams(); // TODO: THIS WORKS ONLY IF ALL OSCIL HAVE SAME NUMBER!
+
   /* Loop over oscillators */
   for (int iosc= 0; iosc < noscillators; iosc++){
-
-    /* Get number of control parameters for this oscillator */
-    int nparam = oscil_vec[iosc]->getNParams();
 
     /* Evaluate the derivative of the control functions wrt control parameters */
     for (int i=0; i<nparam; i++){
@@ -460,20 +556,12 @@ void MasterEq::computedRHSdp(double t, Vec x, Vec xbar, double alpha, Vec grad) 
     VecDot(Bcu, vbar, &uBvbar);
     VecDot(Bcv, ubar, &vBubar);
 
-    /* Loop over parameters of this oscillator */
+    /* Set gradient terms for each control parameter */
     for (int iparam=0; iparam < nparam; iparam++) {
-
-      /* Sum up gradient terms for each control parameter */
-      double sum =   dImdp[iparam] * uAubar   \
-                   - dRedp[iparam] * vBubar   \
-                   + dRedp[iparam] * uBvbar   \
-                   + dImdp[iparam] * vAvbar;
-
-      /* Add to global gradient, scaled by alpha */
-      int pos = iosc * nparam + iparam;
-      double val = alpha * sum;
-      VecSetValues(grad, 1, &pos, &val, ADD_VALUES);
+      vals[iparam] = (uAubar + vAvbar) * dImdp[iparam] + ( -vBubar + uBvbar) * dRedp[iparam];
+      cols[iparam] = iosc * nparam + iparam;
     }
+    VecSetValues(grad, nparam, cols, vals, ADD_VALUES);
   }
   VecAssemblyBegin(grad); 
   VecAssemblyEnd(grad);
@@ -483,4 +571,148 @@ void MasterEq::computedRHSdp(double t, Vec x, Vec xbar, double alpha, Vec grad) 
   VecRestoreSubVector(x, isv, &v);
   VecRestoreSubVector(xbar, isu, &ubar);
   VecRestoreSubVector(xbar, isv, &vbar);
+
+}
+
+void MasterEq::setControlAmplitudes(Vec x) {
+
+  const PetscScalar* ptr;
+  VecGetArrayRead(x, &ptr);
+
+  /* Pass design vector x to oscillators */
+  int shift=0;
+  for (int ioscil = 0; ioscil < getNOscillators(); ioscil++) {
+    /* Design storage: x = (params_oscil0, params_oscil2, ... ) */
+    getOscillator(ioscil)->setParams(ptr + shift); 
+    shift += getOscillator(ioscil)->getNParams();
+  }
+  VecRestoreArrayRead(x, &ptr);
+}
+
+
+int MasterEq::getRhoT0(int iinit, int ninit, InitialConditionType initcond_type, std::vector<int> oscilIDs, Vec rho0){
+
+  int ilow, iupp;
+  int dim_post;
+  int initID = -1;    // Output: ID for this initial condition */
+  int dim_rho = (int) sqrt(dim); // N
+
+
+  /* Switch over type of initial condition */
+  switch (initcond_type) {
+
+    case FROMFILE:
+      /* Do nothing. Init cond is already stored */
+      break;
+
+    case PURE:
+      /* Do nothing. Init cond is already stored */
+      break;
+
+    case DIAGONAL:
+      int row, diagelem;
+
+      /* Reset the initial conditions */
+      VecZeroEntries(rho0); 
+
+      /* Get dimension of partial system behind last oscillator ID */
+      dim_post = 1;
+      for (int k = oscilIDs[oscilIDs.size()-1] + 1; k < getNOscillators(); k++) {
+        dim_post *= getOscillator(k)->getNLevels();
+      }
+
+      /* Compute index of the nonzero element in rho_m(0) = E_pre \otimes |m><m| \otimes E_post */
+      diagelem = iinit * dim_post;
+      /* Position in vectorized q(0) */
+      row = diagelem * dim_rho + diagelem;
+      row = 2*row; // real part;
+
+      /* Assemble */
+      VecGetOwnershipRange(rho0, &ilow, &iupp);
+      if (ilow <= row && row < iupp) VecSetValue(rho0, row, 1.0, INSERT_VALUES); 
+      VecAssemblyBegin(rho0); VecAssemblyEnd(rho0);
+
+      /* Set initial conditon ID */
+      initID = iinit * ninit + iinit;
+
+      break;
+
+    case BASIS:
+
+      /* Reset the initial conditions */
+      VecZeroEntries(rho0); 
+
+      /* Get distribution */
+      VecGetOwnershipRange(rho0, &ilow, &iupp);
+
+      /* Get dimension of partial system behind last oscillator ID */
+      dim_post = 1;
+      for (int k = oscilIDs[oscilIDs.size()-1] + 1; k < getNOscillators(); k++) {
+        dim_post *= getOscillator(k)->getNLevels();
+      }
+
+      /* Get index (k,j) of basis element B_{k,j} for this initial condition index iinit */
+      int k, j;
+      k = iinit % ( (int) sqrt(ninit) );
+      j = (int) iinit / ( (int) sqrt(ninit) );   
+
+      if (k == j) {
+        /* B_{kk} = E_{kk} -> set only one element at (k,k) */
+        int elemID = j * dim_post * dim_rho + k * dim_post;
+        elemID = 2*elemID; // real part
+        double val = 1.0;
+        if (ilow <= elemID && elemID < iupp) VecSetValues(rho0, 1, &elemID, &val, INSERT_VALUES);
+      } else {
+      //   /* B_{kj} contains four non-zeros, two per row */
+        int* rows = new int[4];
+        double* vals = new double[4];
+
+        rows[0] = k * dim_post * dim_rho + k * dim_post; // (k,k)
+        rows[1] = j * dim_post * dim_rho + j * dim_post; // (j,j)
+        rows[2] = j * dim_post * dim_rho + k * dim_post; // (k,j)
+        rows[3] = k * dim_post * dim_rho + j * dim_post; // (j,k)
+
+        /* Colocated storage xi = (ui, vi) */
+        for (int r=0; r<4; r++) rows[r] = 2 * rows[r]; // real parts
+
+        if (k < j) { // B_{kj} = 1/2(E_kk + E_jj) + 1/2(E_kj + E_jk)
+          vals[0] = 0.5;
+          vals[1] = 0.5;
+          vals[2] = 0.5;
+          vals[3] = 0.5;
+          for (int i=0; i<4; i++) {
+            if (ilow <= rows[i] && rows[i] < iupp) VecSetValues(rho0, 1, &(rows[i]), &(vals[i]), INSERT_VALUES);
+          }
+        } else {  // B_{kj} = 1/2(E_kk + E_jj) + i/2(E_jk - E_kj)
+          vals[0] = 0.5;
+          vals[1] = 0.5;
+          for (int i=0; i<2; i++) {
+            if (ilow <= rows[i] && rows[i] < iupp) VecSetValues(rho0, 1, &(rows[i]), &(vals[i]), INSERT_VALUES);
+          }
+          vals[2] = -0.5;
+          vals[3] = 0.5;
+          rows[2] = rows[2] + 1; // Shift to imaginary 
+          rows[3] = rows[3] + 1;
+          for (int i=2; i<4; i++) {
+            if (ilow <= rows[i] && rows[i] < iupp) VecSetValues(rho0, 1, &(rows[i]), &(vals[i]), INSERT_VALUES);
+          }
+        }
+        delete [] rows; 
+        delete [] vals;
+      }
+      
+      /* Assemble rho0 */
+      VecAssemblyBegin(rho0); VecAssemblyEnd(rho0);
+
+      /* Set initial condition ID */
+      initID = j * ( (int) sqrt(ninit)) + k;
+
+      break;
+
+    default:
+      printf("ERROR! Wrong initial condition type: %d\n This should never happen!\n", initcond_type);
+      exit(1);
+  }
+
+  return initID;
 }

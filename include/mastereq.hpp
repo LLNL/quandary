@@ -8,13 +8,12 @@
 
 /* Available lindblad types */
 enum LindbladType {NONE, DECAY, DEPHASE, BOTH};
+enum InitialConditionType {FROMFILE, PURE, DIAGONAL, BASIS};
 
 /* 
  * Implements the Lindblad master equation
  */
 class MasterEq{
-
-  public: 
 
   protected:
     int dim;                 // Dimension of vectorized system  N^2
@@ -31,19 +30,22 @@ class MasterEq{
     std::vector<double> xi;     // Constants for frequencies of drift Hamiltonian
     std::vector<double> collapse_time;  /* Time-constants for decay and dephase operator */
 
-
+    int mpirank_petsc;
 
   private: 
-    PetscInt    *col_idx_shift; // Auxiliary vector: shifted indices
-    PetscScalar *negvals;       // Auxiliary vector: negative vals of some matrix
+    IS isu, isv;        // Vector strides for accessing u=Re(x), v=Im(x) 
 
     /* Some auxiliary vectors */
+    PetscInt    *colid1, *colid2; 
+    PetscScalar *negvals;         
+
     double *dRedp;
     double *dImdp;
-    int *rowid;
-    int *rowid_shift;
-    IS isu, isv;
+    // int *rowid;
+    // int *rowid_shift;
     Vec Acu, Acv, Bcu, Bcv, auxil;
+    int* cols;           // holding columns when evaluating dRHSdp
+    PetscScalar* vals;   // holding values when evaluating dRHSdp
  
 
 
@@ -51,7 +53,7 @@ class MasterEq{
     /* Default constructor sets zero */
     MasterEq();
     /* This constructor sets the variables and allocates Re, Im and M */
-    MasterEq(int noscillators_, Oscillator** oscil_vec_, const std::vector<double> xi_, LindbladType lindbladtype, const std::vector<double> collapse_time_);
+    MasterEq(int noscillators_, Oscillator** oscil_vec_, const std::vector<double> xi_, LindbladType lindbladtype_, const std::vector<double> collapse_time_);
     ~MasterEq();
 
     /* Return the i-th oscillator */
@@ -88,11 +90,22 @@ class MasterEq{
     Mat getRHS();
 
 
-    /* Compute reduced density operator for oscillator ID given in the oscilID's vector. 
-     * OscilIDs must a consecuitive block (0,1,2 or 4,5 etc.)
+    /* Compute reduced density operator */
+    void createReducedDensity(Vec rho, Vec *reduced, std::vector<int>oscilIDs);
+    void createReducedDensity_diff(Vec rhobar, Vec reducedbar, std::vector<int>oscilIDs);
+
+
+    /* Set the oscillators control function amplitudes from design vector x */
+    void setControlAmplitudes(Vec x);
+
+    /* Set initial conditions 
+     * In:   iinit -- index in processors range [rank * ninit_local .. (rank+1) * ninit_local - 1]
+     *       ninit -- number of initial conditions 
+     *       initcond_type -- type of initial condition (pure, fromfile, diagona, basis)
+     *       oscilIDs -- ID of oscillators defining the subsystem for the initial conditions  
+     * Out: initID -- Idenifyier for this initial condition: Element number in matrix vectorization. 
+     *       rho0 -- Vector for setting initial condition 
      */
-    void reducedDensity(Vec fulldensitymatrix, Vec *reduced, int dim_pre, int dim_post, int dim_reduced);
-    void reducedDensity_diff(Vec reddens_bar, Vec x0_re_bar, Vec x0_im_bar, int dim_pre, int dim_post, int dim_reduced);
-    
+    int getRhoT0(int iinit, int ninit, InitialConditionType initcond_type, std::vector<int> oscilIDs, Vec rho0);
 };
 
