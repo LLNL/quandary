@@ -22,6 +22,9 @@ class OptimProblem {
   int ninit_local;                      /* Local number of initial conditions on this processor */
   Vec rho_t0;                            /* Storage for initial condition of the ODE */
   Vec rho_t0_bar;                        /* Adjoint of ODE initial condition */
+  InitialConditionType initcond_type;    /* Type of initial conditions */
+  std::vector<int> initcond_IDs;         /* IDs of subsystem oscillators considered for initial conditions */
+
 
   /* MPI stuff */
   MPI_Comm comm_hiop, comm_init;
@@ -55,7 +58,7 @@ class OptimProblem {
   FILE* optimfile;     /* Output file to log optimization progress */
 
   /* Constructor */
-  OptimProblem(MapParam config, myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, MPI_Comm comm_hiop_, MPI_Comm comm_init_, std::vector<int> obj_oscilIDs_, InitialConditionType initcondtype_, int ninit_);
+  OptimProblem(MapParam config, myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, MPI_Comm comm_hiop_, MPI_Comm comm_init_, int ninit_);
   ~OptimProblem();
 
   /* Evaluate the objective function F(x) */

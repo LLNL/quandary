@@ -30,8 +30,6 @@ class MasterEq{
     std::vector<double> xi;     // Constants for frequencies of drift Hamiltonian
     std::vector<double> collapse_time;  /* Time-constants for decay and dephase operator */
 
-    InitialConditionType initcond_type; 
-
     int mpirank_petsc;
 
   private: 
@@ -55,7 +53,7 @@ class MasterEq{
     /* Default constructor sets zero */
     MasterEq();
     /* This constructor sets the variables and allocates Re, Im and M */
-    MasterEq(int noscillators_, Oscillator** oscil_vec_, const std::vector<double> xi_, LindbladType lindbladtype_, InitialConditionType initcondtype_, const std::vector<double> collapse_time_);
+    MasterEq(int noscillators_, Oscillator** oscil_vec_, const std::vector<double> xi_, LindbladType lindbladtype_, const std::vector<double> collapse_time_);
     ~MasterEq();
 
     /* Return the i-th oscillator */
@@ -102,11 +100,12 @@ class MasterEq{
 
     /* Set initial conditions 
      * In:   iinit -- index in processors range [rank * ninit_local .. (rank+1) * ninit_local - 1]
-     *       ninit -- Number of different initial conditions 
-     *       oscilIDs -- ID of oscillators that are considered for various initial conditions 
-     * Out: initID -- Idenifyier this initial condition: Element number in matrix vectorization. 
-     *       rho_0 -- Vector for setting initial condition 
+     *       ninit -- number of initial conditions 
+     *       initcond_type -- type of initial condition (pure, fromfile, diagona, basis)
+     *       oscilIDs -- ID of oscillators defining the subsystem for the initial conditions  
+     * Out: initID -- Idenifyier for this initial condition: Element number in matrix vectorization. 
+     *       rho0 -- Vector for setting initial condition 
      */
-    int getRhoT0(int iinit, std::vector<int> oscilIDs, int ninit, Vec rho0);
+    int getRhoT0(int iinit, int ninit, InitialConditionType initcond_type, std::vector<int> oscilIDs, Vec rho0);
 };
 

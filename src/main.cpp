@@ -69,59 +69,21 @@ int main(int argc,char **argv)
   std::vector<double> f;
   config.GetVecDoubleParam("frequencies", f, 1e20); // These are actually never used in the code... 
 
-
-  /* Get the IDs of oscillators that are concerned for optimization */
-  std::vector<std::string> oscilIDstr;
-  std::vector<int> obj_oscilIDs; 
-  config.GetVecStrParam("optim_oscillators", oscilIDstr);
-  if (oscilIDstr[0].compare("all") == 0) {
-    for (int iosc = 0; iosc < nlevels.size(); iosc++) 
-      obj_oscilIDs.push_back(iosc);
-  } else {
-    config.GetVecIntParam("optim_oscillators", obj_oscilIDs, 0);
-  }
-  /* Sanity check for oscillator IDs */
-  bool err = false;
-  assert(obj_oscilIDs.size() > 0);
-  for (int i=0; i<obj_oscilIDs.size(); i++){
-    if ( obj_oscilIDs[i] >= nlevels.size() )       err = true;
-    if ( i>0 &&  ( obj_oscilIDs[i] != obj_oscilIDs[i-1] + 1 ) ) err = true;
-  }
-  if (err) {
-    printf("ERROR: List of oscillator IDs for objective function invalid\n"); 
-    exit(1);
-  }
-
   /* Get type and the total number of initial conditions */
   int ninit = 1;
   std::vector<std::string> initcondstr;
   config.GetVecStrParam("optim_initialcondition", initcondstr, "basis");
-  InitialConditionType initcond_type;
   assert (initcondstr.size() > 0);
-  if      (initcondstr[0].compare("file") == 0 ) {
-    initcond_type = FROMFILE;
-    ninit = 1;
-  }     
-  else if (initcondstr[0].compare("pure") == 0 ) {
-    initcond_type = PURE;
-    ninit = 1;
-  }     
-  else if (initcondstr[0].compare("diagonal") == 0 ) {
-    initcond_type = DIAGONAL;
+  if      (initcondstr[0].compare("file") == 0 ) ninit = 1;
+  else if (initcondstr[0].compare("pure") == 0 ) ninit = 1;
+  else if ( initcondstr[0].compare("diagonal") == 0 ||
+            initcondstr[0].compare("basis")    == 0  ) {
     /* Compute ninit = dim(subsystem defined by obj_oscilIDs) */
     ninit = 1;
-    for (int i=0; i<obj_oscilIDs.size(); i++) {
-      ninit *= nlevels[obj_oscilIDs[i]];
+    for (int i = 1; i<initcondstr.size(); i++){
+      int oscilID = atoi(initcondstr[i].c_str());
+      ninit *= nlevels[oscilID];
     }
-  }
-  else if (initcondstr[0].compare("basis")    == 0 ) {
-    initcond_type = BASIS;
-    /* Compute ninit = dim(subsystem defined by obj_oscilIDs)^2 */
-    ninit = 1;
-    for (int i=0; i<obj_oscilIDs.size(); i++) {
-      ninit *= nlevels[obj_oscilIDs[i]];
-    }
-    ninit = (int) pow(ninit, 2);
   }
   else {
     printf("\n\n ERROR: Wrong setting for initial condition.\n");
@@ -209,7 +171,7 @@ int main(int argc,char **argv)
     printf(" Choose either 'none', 'decay', 'dephase', or 'both'\n");
     exit(1);
   }
-  MasterEq* mastereq = new MasterEq(nlevels.size(), oscil_vec, xi, lindbladtype, initcond_type, t_collapse);
+  MasterEq* mastereq = new MasterEq(nlevels.size(), oscil_vec, xi, lindbladtype, t_collapse);
 
 
   /* Screen output */
@@ -250,7 +212,7 @@ int main(int argc,char **argv)
   adjointbraidapp->InitGrids();
 
   /* --- Initialize optimization --- */
-  OptimProblem* optimctx = new OptimProblem(config, primalbraidapp, adjointbraidapp, comm_hiop, comm_init, obj_oscilIDs, initcond_type, ninit);
+  OptimProblem* optimctx = new OptimProblem(config, primalbraidapp, adjointbraidapp, comm_hiop, comm_init, ninit);
 
   /* Set upt solution and gradient vector */
   Vec xinit;

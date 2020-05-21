@@ -16,14 +16,13 @@ MasterEq::MasterEq(){
 }
 
 
-MasterEq::MasterEq(int noscillators_, Oscillator** oscil_vec_, const std::vector<double> xi_, LindbladType lindbladtype, InitialConditionType initcond_type_, const std::vector<double> collapse_time_) {
+MasterEq::MasterEq(int noscillators_, Oscillator** oscil_vec_, const std::vector<double> xi_, LindbladType lindbladtype, const std::vector<double> collapse_time_) {
   int ierr;
 
   noscillators = noscillators_;
   oscil_vec = oscil_vec_;
   xi = xi_;
   collapse_time = collapse_time_;
-  initcond_type = initcond_type_;
   assert(xi.size() >= (noscillators_+1) * noscillators_ / 2);
   assert(collapse_time.size() >= 2*noscillators);
 
@@ -591,7 +590,7 @@ void MasterEq::setControlAmplitudes(Vec x) {
 }
 
 
-int MasterEq::getRhoT0(int iinit, std::vector<int> oscilIDs, int ninit, Vec rho0){
+int MasterEq::getRhoT0(int iinit, int ninit, InitialConditionType initcond_type, std::vector<int> oscilIDs, Vec rho0){
 
   int ilow, iupp;
   int dim_post;

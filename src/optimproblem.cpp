@@ -1,14 +1,13 @@
 #include "optimproblem.hpp"
 
 
-OptimProblem::OptimProblem(MapParam config, myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, MPI_Comm comm_hiop_, MPI_Comm comm_init_, std::vector<int> obj_oscilIDs_, InitialConditionType initcond_type, int ninit_) {
+OptimProblem::OptimProblem(MapParam config, myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, MPI_Comm comm_hiop_, MPI_Comm comm_init_, int ninit_) {
 
   primalbraidapp  = primalbraidapp_;
   adjointbraidapp = adjointbraidapp_;
   ninit = ninit_;
   comm_hiop = comm_hiop_;
   comm_init = comm_init_;
-  obj_oscilIDs = obj_oscilIDs_;
 
   /* Store ranks and sizes of communicators */
   MPI_Comm_rank(primalbraidapp->comm_braid, &mpirank_braid);
@@ -69,32 +68,85 @@ OptimProblem::OptimProblem(MapParam config, myBraidApp* primalbraidapp_, myAdjoi
       exit(1);
   }
 
-  /* Set up and store initial condition vectors */
+  /* Get the IDs of oscillators that are considered in the objective function */
+  std::vector<std::string> oscilIDstr;
+  config.GetVecStrParam("optim_oscillators", oscilIDstr);
+  if (oscilIDstr[0].compare("all") == 0) {
+    for (int iosc = 0; iosc < primalbraidapp->mastereq->getNOscillators(); iosc++) 
+      obj_oscilIDs.push_back(iosc);
+  } else {
+    config.GetVecIntParam("optim_oscillators", obj_oscilIDs, 0);
+  }
+  /* Sanity check for oscillator IDs */
+  bool err = false;
+  assert(obj_oscilIDs.size() > 0);
+  for (int i=0; i<obj_oscilIDs.size(); i++){
+    if ( obj_oscilIDs[i] >= primalbraidapp->mastereq->getNOscillators() ) err = true;
+    if ( i>0 &&  ( obj_oscilIDs[i] != obj_oscilIDs[i-1] + 1 ) ) err = true;
+  }
+  if (err) {
+    printf("ERROR: List of oscillator IDs for objective function invalid\n"); 
+    exit(1);
+  }
+
+  /* Get initial condition type and involved oscillators */
+  std::vector<std::string> initcondstr;
+  config.GetVecStrParam("optim_initialcondition", initcondstr);
+  for (int i=1; i<initcondstr.size(); i++) initcond_IDs.push_back(atoi(initcondstr[i].c_str()));
+  ninit = 1;
+  if (initcondstr[0].compare("file") == 0 )      initcond_type = FROMFILE;
+  else if (initcondstr[0].compare("pure") == 0 ) initcond_type = PURE;
+  else if (initcondstr[0].compare("diagonal") == 0 ) {
+    initcond_type = DIAGONAL;
+    /* Compute ninit = dim(subsystem defined by initcond_IDs) */
+    ninit = 1;
+    for (int i = 1; i<initcondstr.size(); i++){
+      int oscilID = atoi(initcondstr[i].c_str());
+      ninit *= primalbraidapp->mastereq->getOscillator(oscilID)->getNLevels();
+    }
+  }
+  else if (initcondstr[0].compare("basis")    == 0 ) {
+    initcond_type = BASIS;
+    /* Compute ninit = dim(subsystem defined by obj_oscilIDs)^2 */
+    ninit = 1;
+    for (int i = 1; i<initcondstr.size(); i++){
+      int oscilID = atoi(initcondstr[i].c_str());
+      ninit *= primalbraidapp->mastereq->getOscillator(oscilID)->getNLevels();
+    }
+    ninit = (int) pow(ninit, 2);
+  }
+  else {
+    printf("\n\n ERROR: Wrong setting for initial condition.\n");
+    exit(1);
+  }
+
+  /* Allocate the initial condition vector */
   VecCreate(PETSC_COMM_WORLD, &rho_t0); 
   VecSetSizes(rho_t0,PETSC_DECIDE,2*primalbraidapp->mastereq->getDim());
   VecSetFromOptions(rho_t0);
-  
-  if (initcond_type == PURE) { /* Initialize with tensor product of unit vectors. */
-    std::vector<std::string> initcondstr;
-    config.GetVecStrParam("optim_initialcondition", initcondstr);
-    std::vector<int> unitids;
-    for (int i=1; i<initcondstr.size(); i++) unitids.push_back(atoi(initcondstr[i].c_str()));
-    assert (unitids.size() == primalbraidapp->mastereq->getNOscillators());
+
+  /* If PURE or FROMFILE initialization, store them here. Otherwise they are set inside evalF */
+  if (initcond_type == PURE) { 
+    /* Initialize with tensor product of unit vectors. */
+
     // Compute index of diagonal elements that is one.
+    assert (initcond_IDs.size() == primalbraidapp->mastereq->getNOscillators());
     int diag_id = 0.0;
-    for (int k=0; k < unitids.size(); k++) {
-      assert (unitids[k] < primalbraidapp->mastereq->getOscillator(k)->getNLevels());
+    for (int k=0; k < initcond_IDs.size(); k++) {
+      assert (initcond_IDs[k] < primalbraidapp->mastereq->getOscillator(k)->getNLevels());
       int dim_postkron = 1;
-      for (int m=k+1; m < unitids.size(); m++) {
+      for (int m=k+1; m < initcond_IDs.size(); m++) {
         dim_postkron *= primalbraidapp->mastereq->getOscillator(m)->getNLevels();
       }
-      diag_id += unitids[k] * dim_postkron;
+      diag_id += initcond_IDs[k] * dim_postkron;
     }
     int vec_id = diag_id * (int)sqrt(primalbraidapp->mastereq->getDim()) + diag_id;
     vec_id = 2*vec_id; // colocated storage xi = (ui, vi)
     VecSetValue(rho_t0, vec_id, 1.0, INSERT_VALUES);
   }
-  else if (initcond_type == FROMFILE) { /* Read initial condition from file */
+  else if (initcond_type == FROMFILE) { 
+    /* Read initial condition from file */
+    
     int dim = primalbraidapp->mastereq->getDim();
     double * vec = new double[2*dim];
     std::vector<std::string> initcondstr;
@@ -208,8 +260,8 @@ double OptimProblem::evalF(Vec x) {
       
     /* Prepare the initial condition in [rank * ninit_local, ... , (rank+1) * ninit_local - 1] */
     int iinit_global = mpirank_init * ninit_local + iinit;
-    int initid = primalbraidapp->mastereq->getRhoT0(iinit_global, obj_oscilIDs, ninit, rho_t0);
-    // if (mpirank_braid == 0) printf("%d: %d FWD. \n", mpirank_init, initid);
+    int initid = primalbraidapp->mastereq->getRhoT0(iinit_global, ninit, initcond_type, initcond_IDs, rho_t0);
+    if (mpirank_braid == 0) printf("%d: %d FWD. \n", mpirank_init, initid);
 
     /* Run forward with initial condition initid*/
     primalbraidapp->PreProcess(initid);
@@ -275,7 +327,7 @@ void OptimProblem::evalGradF(Vec x, Vec G){
 
     /* Prepare the initial condition */
     int iinit_global = mpirank_init * ninit_local + iinit;
-    int initid = primalbraidapp->mastereq->getRhoT0(iinit_global, obj_oscilIDs, ninit, rho_t0);
+    int initid = primalbraidapp->mastereq->getRhoT0(iinit_global, ninit, initcond_type, initcond_IDs, rho_t0);
 
     /* --- Solve primal --- */
     // if (mpirank_braid == 0) printf("%d: %d FWD. ", mpirank_init, initid);
