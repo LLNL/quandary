@@ -172,7 +172,9 @@ int main(int argc,char **argv)
     printf(" Choose either 'none', 'decay', 'dephase', or 'both'\n");
     exit(1);
   }
-  MasterEq* mastereq = new MasterEq(nlevels.size(), oscil_vec, xi, lindbladtype, t_collapse);
+  bool usematshell;
+  usematshell = config.GetBoolParam("usematshell", false);
+  MasterEq* mastereq = new MasterEq(nlevels.size(), oscil_vec, xi, lindbladtype, t_collapse, usematshell);
 
 
   /* Screen output */

@@ -10,6 +10,21 @@
 enum LindbladType {NONE, DECAY, DEPHASE, BOTH};
 enum InitialConditionType {FROMFILE, PURE, DIAGONAL, BASIS};
 
+/* Define a matshell context for RHS */
+/* It contains pointers to data that is needed to apply the RHS matrix to a vector */
+typedef struct {
+  int noscil; 
+  IS *isu, *isv;
+  Mat *Re, *Im; 
+  Oscillator*** oscil_vec;
+  std::vector<double> *xi;
+  double time;
+} MatShellCtx;
+
+/* Define the Matrix-Vector product for the RHS MatShell */
+int myMatMult(Mat RHS, Vec x, Vec y);
+int myMatMultTranspose(Mat RHS, Vec x, Vec y);
+
 /* 
  * Implements the Lindblad master equation
  */
@@ -22,6 +37,8 @@ class MasterEq{
 
     Mat Re, Im;             // Real and imaginary part of system matrix operator
     Mat RHS;                // Realvalued, vectorized systemmatrix
+    MatShellCtx RHSctx;     // MatShell context that contains data needed to apply the RHS
+    bool usematshell;        // bool: decides if RHS is used as shell matrix or full matrix
 
     Mat* Ac_vec;  // Vector of constant mats for time-varying Hamiltonian (real) 
     Mat* Bc_vec;  // Vector of constant mats for time-varying Hamiltonian (imag) 
@@ -53,7 +70,7 @@ class MasterEq{
     /* Default constructor sets zero */
     MasterEq();
     /* This constructor sets the variables and allocates Re, Im and M */
-    MasterEq(int noscillators_, Oscillator** oscil_vec_, const std::vector<double> xi_, LindbladType lindbladtype_, const std::vector<double> collapse_time_);
+    MasterEq(int noscillators_, Oscillator** oscil_vec_, const std::vector<double> xi_, LindbladType lindbladtype_, const std::vector<double> collapse_time_, bool usematshell_);
     ~MasterEq();
 
     /* Return the i-th oscillator */
@@ -74,9 +91,7 @@ class MasterEq{
 
     /* 
      * Uses Re and Im to build the vectorized Hamiltonian operator M = vec(-i(Hq-qH)). 
-     * M(0, 0) =  Re    M(0,1) = -Im
-     * M(1, 0) =  Im    M(1,1) = Re
-     * Both Re and Im should be set up in the inherited 'assemble_RHS' routines. 
+     * This should always be called before applying the RHS matrix.
      */
     int assemble_RHS(double t);
 
