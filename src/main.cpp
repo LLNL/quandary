@@ -84,6 +84,7 @@ int main(int argc,char **argv)
       int oscilID = atoi(initcondstr[i].c_str());
       ninit *= nlevels[oscilID];
     }
+    if (initcondstr[0].compare("basis") == 0  ) ninit = (int) pow(ninit,2.0);
   }
   else {
     printf("\n\n ERROR: Wrong setting for initial condition.\n");
