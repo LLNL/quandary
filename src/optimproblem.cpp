@@ -456,7 +456,6 @@ double OptimProblem::objectiveT(Vec finalstate){
         for (int i=0; i<obj_oscilIDs.size(); i++) {
           obj_local += primalbraidapp->mastereq->getOscillator(obj_oscilIDs[i])->expectedEnergy(finalstate);
         }
-        obj_local = pow(obj_local, 2.0);
         break;
 
       case GROUNDSTATE:
@@ -506,11 +505,8 @@ void OptimProblem::objectiveT_diff(Vec finalstate, double obj, double obj_bar){
         break;
 
       case EXPECTEDENERGY:
-        double tmp;
-        tmp = 2. * sqrt(obj) * obj_bar;
-        // tmp = obj_bar;
         for (int i=0; i<obj_oscilIDs.size(); i++) {
-          primalbraidapp->mastereq->getOscillator(obj_oscilIDs[i])->expectedEnergy_diff(finalstate, rho_t0_bar, tmp);
+          primalbraidapp->mastereq->getOscillator(obj_oscilIDs[i])->expectedEnergy_diff(finalstate, rho_t0_bar, obj_bar);
         }
         break;
 
