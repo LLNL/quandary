@@ -30,6 +30,9 @@ int myMatMultTranspose(Mat RHS, Vec x, Vec y);
  */
 class MasterEq{
 
+  public:
+    bool usematshell;        // bool: decides if RHS is used as shell matrix or full matrix
+
   protected:
     int dim;                 // Dimension of vectorized system  N^2
     int noscillators;        // Number of oscillators
@@ -38,7 +41,6 @@ class MasterEq{
     Mat Re, Im;             // Real and imaginary part of system matrix operator
     Mat RHS;                // Realvalued, vectorized systemmatrix
     MatShellCtx RHSctx;     // MatShell context that contains data needed to apply the RHS
-    bool usematshell;        // bool: decides if RHS is used as shell matrix or full matrix
 
     Mat* Ac_vec;  // Vector of constant mats for time-varying Hamiltonian (real) 
     Mat* Bc_vec;  // Vector of constant mats for time-varying Hamiltonian (imag) 
