@@ -14,6 +14,7 @@ using namespace std;
 class Oscillator {
   protected:
     int nlevels;                   // Number of levels for this the oscillator 
+    double ground_freq;            // Ground frequency of this oscillator
     std::vector<double> params;    // control parameters 
     double Tfinal;                 // final time
     ControlBasis *basisfunctions;  // Control discretization using Bsplines + carrier waves
@@ -28,7 +29,7 @@ class Oscillator {
 
   public:
     Oscillator();
-    Oscillator(int id, std::vector<int> nlevels_all_, int nbasis_, std::vector<double> carrier_freq_, double Tfinal_);
+    Oscillator(int id, std::vector<int> nlevels_all_, int nbasis_, double ground_freq_, std::vector<double> carrier_freq_, double Tfinal_);
     virtual ~Oscillator();
 
     /* Return the constants */
@@ -53,8 +54,11 @@ class Oscillator {
     /* Returns the number operator, unless dummy is true, then return a zero matrix */
     Mat getNumberOP(bool dummy);
 
-    /* Evaluates real and imaginary control function at time t */
+    /* Evaluates rotating frame control functions Re = p(t), Im = q(t) */
     int evalControl(double t, double* Re_ptr, double* Im_ptr);
+
+    /* Evaluates Lab-frame control function f(t) */
+    int evalControl_Labframe(double t, double* f_ptr);
 
     /* Compute derivatives of the Re and Im control function wrt the parameters */
     int evalDerivative(double t, double* dRedp, double* dImdp);

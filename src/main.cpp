@@ -66,8 +66,6 @@ int main(int argc,char **argv)
     printf("\n\n WARNING: Unknown runtype: %s.\n\n", runtypestr.c_str());
     runtype = none;
   }
-  std::vector<double> f;
-  config.GetVecDoubleParam("frequencies", f, 1e20); // These are actually never used in the code... 
 
   /* Get type and the total number of initial conditions */
   int ninit = 1;
@@ -150,11 +148,14 @@ int main(int argc,char **argv)
 
   /* Initialize the Oscillators */
   Oscillator** oscil_vec = new Oscillator*[nlevels.size()];
+  std::vector<double> ground_freq;
+  config.GetVecDoubleParam("frequencies", ground_freq, 1e20);
+  assert(ground_freq.size() == nlevels.size());
   for (int i = 0; i < nlevels.size(); i++){
     std::vector<double> carrier_freq;
     std::string key = "carrier_frequency" + std::to_string(i);
     config.GetVecDoubleParam(key, carrier_freq, 0.0);
-    oscil_vec[i] = new Oscillator(i, nlevels, nspline, carrier_freq, total_time);
+    oscil_vec[i] = new Oscillator(i, nlevels, nspline, ground_freq[i], carrier_freq, total_time);
   }
 
   /* --- Initialize the Master Equation  --- */

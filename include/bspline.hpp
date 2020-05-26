@@ -12,7 +12,7 @@
  */
 class ControlBasis{
     public:
-        enum ControlType {RE, IM};        // Type of control: p(t) (real) or q(t) (imaginary)
+        enum ControlType {RE, IM, LAB};   // Type of control: Rotating frame Real p(t), rotating frame imaginary q(t), or Lab frame f(t)
 
     protected:
         int    nbasis;                    // number of basis functions
@@ -29,7 +29,7 @@ class ControlBasis{
         ~ControlBasis();
 
         /* Evaluate the spline at time t using the coefficients coeff. */
-        double evaluate(double t, std::vector<double> coeff, ControlType controltype);
+        double evaluate(double t, std::vector<double> coeff, double ground_freq, ControlType controltype);
 
         /* Evaluates the derivative at time t, multiplied with fbar. */
         void derivative(double t, double* coeff_diff, double fbar, ControlType controltype);

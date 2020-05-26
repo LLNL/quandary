@@ -21,23 +21,33 @@ ControlBasis::~ControlBasis(){
 }
 
 
-double ControlBasis::evaluate(double t, std::vector<double> coeff, ControlType controltype){
+double ControlBasis::evaluate(double t, std::vector<double> coeff, double ground_freq, ControlType controltype){
 
-    double val = 0.0;
-    double tau;
+    double freq;
 
     double sum = 0.0;
     /* Sum over basis function */
     for (int l=0; l<nbasis; l++) {
-        double carriersum = 0.0;
-        /* Sum over carrier frequencies */
+        double ampl = 0.0;
+        /* Sum over carrier wave frequencies */
         for (int f=0; f < carrier_freq.size(); f++) {
-            double tmp= -2.0 * M_PI * carrier_freq[f] * t;
             int coeff_id = l * carrier_freq.size() * 2 + f * 2;     // alpha^{k(1)}_{l,f}
-            if (controltype == RE) carriersum +=  coeff[coeff_id] * cos(tmp) - coeff[coeff_id + 1] * sin(tmp);
-            else                   carriersum +=  coeff[coeff_id] * sin(tmp) + coeff[coeff_id + 1] * cos(tmp);
+            switch (controltype) {
+                case RE:
+                    freq = -2.0 * M_PI * carrier_freq[f];
+                    ampl += coeff[coeff_id] * cos(freq*t) - coeff[coeff_id + 1] * sin(freq*t);
+                    break;
+                case IM:
+                    freq = -2.0 * M_PI * carrier_freq[f];
+                    ampl += coeff[coeff_id] * sin(freq*t) + coeff[coeff_id + 1] * cos(freq*t);
+                    break;
+                case LAB:
+                    freq = -2.0 * M_PI * (ground_freq + carrier_freq[f]);
+                    ampl += coeff[coeff_id] * cos(freq*t) - coeff[coeff_id + 1] * sin(freq*t);
+                    break;
+            }   
         }
-        sum += basisfunction(l,t) * carriersum;
+        sum += basisfunction(l,t) * ampl;
     }
 
     return sum;

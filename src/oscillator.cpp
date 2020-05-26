@@ -4,11 +4,13 @@ Oscillator::Oscillator(){
   nlevels = 0;
   Tfinal = 0;
   basisfunctions = NULL;
+  ground_freq = 0.0;
 }
 
-Oscillator::Oscillator(int id, std::vector<int> nlevels_all_, int nbasis_, std::vector<double> carrier_freq_, double Tfinal_){
+Oscillator::Oscillator(int id, std::vector<int> nlevels_all_, int nbasis_, double ground_freq_, std::vector<double> carrier_freq_, double Tfinal_){
   nlevels = nlevels_all_[id];
   Tfinal = Tfinal_;
+  ground_freq = ground_freq_;
   MPI_Comm_rank(PETSC_COMM_WORLD, &mpirank_petsc);
   int mpirank_world;
   MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
@@ -62,19 +64,22 @@ Mat Oscillator::getLoweringOP(bool dummy) {
 
 void Oscillator::flushControl(int ntime, double dt, const char* filename) {
   double time;
-  double Re, Im;
+  double Re, Im; // Rotatinf frame controls p(t), q(t)
+  double Lab;    // Lab-frame control f(t)
   FILE *file = 0;
   file = fopen(filename, "w");
 
   for (int i=0; i<ntime; i++) {
     time = i*dt; 
     this->evalControl(time, &Re, &Im);
-    fprintf(file, "%08d  % 1.4f   % 1.14e   % 1.14e\n", i, time, Re, Im);
+    this->evalControl_Labframe(time, &Lab);
+    fprintf(file, "%08d  % 1.4f   % 1.14e   % 1.14e   % 1.14e \n", i, time, Re, Im, Lab);
   }
 
   fclose(file);
   printf("File written: %s\n", filename);
 }
+
 
 void Oscillator::setParams(const double* x){
   for (int i=0; i<params.size(); i++) {
@@ -150,13 +155,25 @@ int Oscillator::evalControl(double t, double* Re_ptr, double* Im_ptr){
     *Im_ptr = 0.0;
   } else {
     /* Evaluate the spline at time t */
-    *Re_ptr = basisfunctions->evaluate(t, params, ControlBasis::RE);
-    *Im_ptr = basisfunctions->evaluate(t, params, ControlBasis::IM);
+    *Re_ptr = basisfunctions->evaluate(t, params, ground_freq, ControlBasis::RE);
+    *Im_ptr = basisfunctions->evaluate(t, params, ground_freq, ControlBasis::IM);
   }
 
   return 0;
 }
 
+int Oscillator::evalControl_Labframe(double t, double* f){
+
+  if ( t > Tfinal ){
+    printf("WARNING: accessing spline outside of [0,T] at %f. Returning 0.0\n", t);
+    *f = 0.0;
+  } else {
+    /* Evaluate the spline at time t */
+    *f = basisfunctions->evaluate(t, params, ground_freq, ControlBasis::LAB);
+  }
+
+  return 0;
+}
 
 int Oscillator::evalDerivative(double t, double* dRedp, double* dImdp) {
 
