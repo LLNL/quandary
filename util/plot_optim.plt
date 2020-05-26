@@ -11,15 +11,13 @@ set y2tics
 set ytics nomirror
 set y2range[0:1.1]
 
-set xlabel "Iterations"
-set y2label "Fidelity"
-set ylabel "Objective, gradient, inf du"
+set xlabel "iteration"
+set y2label "objective"
+set ylabel "||gradient||"
 
 p \
-    datafile u 2  w l t 'objective', \
-    datafile u 4  w l t 'gradient', \
-    datafile u 5  w l t 'inf du', \
-    datafile u 3 axis x1y2 w l t 'fidelity'
+    datafile u 2 axis x1y2 w l t 'objective', \
+    datafile u 3 axis x1y1  w l t '||gradient||', \
 
 pause -1 "Plot 'out.png' written. Hit any key to continue"
 
