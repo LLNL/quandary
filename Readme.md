@@ -1,11 +1,10 @@
 # Quandary - Quantum control on HPC clusters
-This project implements a parallel-in-time optimization solver for quantum control. The underlying quantum dynamics model open quantum systems, using the Lindblad master equation to evolve the density matrix in time. The control problem aims to find control pulses that realize a certain gate, i.e. drive the system to a desired target state. 
+This project implements a parallel-in-time optimization solver for quantum control. The underlying quantum dynamics model open quantum systems, using the Lindblad master equation to evolve the density matrix in time. The control problem aims to find control pulses that realize a certain gate, i.e. drive the system to a desired target state
 
 ## Requirements:
 To build this project, you need to have the following packages installed:
 * Petsc [https://www.mcs.anl.gov/petsc/]
 * Xbraid [https://github.com/XBraid/xbraid], on branch 'solveadjointwithxbraid'
-* HiOp [https://github.com/LLNL/hiop]
 
 ## Installation
 * Download XBraid, switch to the 'solveadjointwithxbraid' branch and build the shared library:
@@ -14,14 +13,7 @@ To build this project, you need to have the following packages installed:
     - git checkout solveadjointwithxbraid
     - make braid
 * Install Petsc (see Petsc manual for installation guide). Set the `PETSC_DIR` and `PETSC_ARCH` variables.
-* To build HiOp, run in clean 'build' directory:
-    - git cone https://github.com/LLNL/hiop
-    - mkdir build; cd build
-    - cmake ..
-    - make
-    - make test
-    - make install
-* In the main directory of this project, adapt the beginning of the Makefile to set the path to the XBraid, Petsc, and HiOp locations. 
+* In the main directory of this project, adapt the beginning of the Makefile to set the path to XBraid and Petsc. 
 * Type `make cleanup` to clean the build directory.
 * Type `make -j main` to build the code. 
 
