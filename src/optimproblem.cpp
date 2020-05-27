@@ -437,17 +437,17 @@ void OptimProblem::getStartingPoint(Vec xinit){
     MPI_Bcast(randvec, ndesign, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
     /* Scale vector to be at 10% of the parameter bounds */
-    int j = 0;
+    int shift = 0;
     for (int ioscil = 0; ioscil < mastereq->getNOscillators(); ioscil++) {
-      int nparam = mastereq->getOscillator(ioscil)->getNParams();
       /* Get upper bound value */
-      int col = ioscil * nparam;
       double bound;
-      VecGetValues(xupper, 1, &col, &bound);
-      /* Scale */
-      for (int i=0; i<nparam; i++) {
-        randvec[ioscil*nparam + i] *= 0.1 * bound;
+      VecGetValues(xupper, 1, &shift, &bound);
+      /* Scale all parameters */
+      int nparam_iosc = mastereq->getOscillator(ioscil)->getNParams();
+      for (int i=0; i<nparam_iosc; i++) {
+        randvec[shift + i] *= 0.1 * bound;
       }
+      shift+= nparam_iosc;
     }
 
     /* Set the initial guess */

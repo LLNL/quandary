@@ -245,11 +245,18 @@ MasterEq::MasterEq(int noscillators_, Oscillator** oscil_vec_, const std::vector
   ISCreateStride(PETSC_COMM_WORLD, dimis, ilow, 2, &isu);
   ISCreateStride(PETSC_COMM_WORLD, dimis, ilow+1, 2, &isv);
 
-  /* Allocate some auxiliary vectors */ // TODO: THIS WORKS ONLY IF ALL OSCIL HAVE SAME NUMBER!
-  dRedp = new double[oscil_vec[0]->getNParams()];
-  dImdp = new double[oscil_vec[0]->getNParams()];
-  cols = new int[oscil_vec[0]->getNParams()];
-  vals = new double [oscil_vec[0]->getNParams()];
+  /* Compute maximum number of design parameters over all oscillators */
+  nparams_max = 0;
+  for (int ioscil = 0; ioscil < getNOscillators(); ioscil++) {
+      int n = getOscillator(ioscil)->getNParams(); 
+      if (n > nparams_max) nparams_max = n;
+  }
+
+  /* Allocate some auxiliary vectors */
+  dRedp = new double[nparams_max];
+  dImdp = new double[nparams_max];
+  cols = new int[nparams_max];
+  vals = new double [nparams_max];
   
 
   MatCreateVecs(Ac_vec[0], &Acu, NULL);
@@ -559,14 +566,12 @@ void MasterEq::computedRHSdp(double t, Vec x, Vec xbar, double alpha, Vec grad) 
   VecGetSubVector(xbar, isu, &ubar);
   VecGetSubVector(xbar, isv, &vbar);
 
-  /* Get number of control parameters for this oscillator */
-  int nparam = oscil_vec[0]->getNParams(); // TODO: THIS WORKS ONLY IF ALL OSCIL HAVE SAME NUMBER!
-
   /* Loop over oscillators */
+  int col_shift = 0;
   for (int iosc= 0; iosc < noscillators; iosc++){
 
     /* Evaluate the derivative of the control functions wrt control parameters */
-    for (int i=0; i<nparam; i++){
+    for (int i=0; i<nparams_max; i++){
       dRedp[i] = 0.0;
       dImdp[i] = 0.0;
     }
@@ -585,12 +590,16 @@ void MasterEq::computedRHSdp(double t, Vec x, Vec xbar, double alpha, Vec grad) 
     VecDot(Bcu, vbar, &uBvbar);
     VecDot(Bcv, ubar, &vBubar);
 
+    /* Number of parameters for this oscillator */
+    int nparams_iosc = getOscillator(iosc)->getNParams();
+
     /* Set gradient terms for each control parameter */
-    for (int iparam=0; iparam < nparam; iparam++) {
+    for (int iparam=0; iparam < nparams_iosc; iparam++) {
       vals[iparam] = (uAubar + vAvbar) * dImdp[iparam] + ( -vBubar + uBvbar) * dRedp[iparam];
-      cols[iparam] = iosc * nparam + iparam;
+      cols[iparam] = col_shift + iparam;
     }
-    VecSetValues(grad, nparam, cols, vals, ADD_VALUES);
+    VecSetValues(grad, nparams_iosc, cols, vals, ADD_VALUES);
+    col_shift += nparams_iosc;
   }
   VecAssemblyBegin(grad); 
   VecAssemblyEnd(grad);

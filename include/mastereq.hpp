@@ -58,6 +58,7 @@ class MasterEq{
     PetscInt    *colid1, *colid2; 
     PetscScalar *negvals;         
 
+    int nparams_max;   // Maximum number of design parameters per oscilator 
     double *dRedp;
     double *dImdp;
     // int *rowid;
