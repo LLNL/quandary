@@ -49,6 +49,7 @@ double ControlBasis::evaluate(double t, std::vector<double> coeff, double ground
         }
         sum += basisfunction(l,t) * ampl;
     }
+    if (controltype == LAB) sum *= 2.0;
 
     return sum;
 }
