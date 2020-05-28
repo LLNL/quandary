@@ -11,12 +11,8 @@
 #include <sys/resource.h>
 #include "optimproblem.hpp"
 
-#define EPS 1e-4
-
-#define TEST_DRHSDP 0
-#define TEST_FD_TS 0
-#define TEST_FD_SPLINE 0
-#define TEST_DT 0
+#define TEST_FD 0    // Finite Differences gradient test
+#define EPS 1e-4     // Epsilon for Finite Differences
 
 enum RunType {
   primal,            // Runs one objective function evaluation (forward)
@@ -305,103 +301,7 @@ int main(int argc,char **argv)
   }
 
 
-#if TEST_DRHSDP
-  printf("\n\n#########################\n");
-  printf(" dRHSdp Testing... \n");
-  printf("#########################\n\n");
-
-  double t = 0.345;
-  double err_i = 0.0;
-  Vec Ax, Bx, Cx, fd, err, grad_col;
-  Mat G;
-  int size;
-  VecGetSize(x, &size);
-  VecDuplicate(x, &Ax);
-  VecDuplicate(x, &Bx);
-  VecDuplicate(x, &Cx);
-  VecDuplicate(x, &fd);
-  VecDuplicate(x, &err);
-  VecDuplicate(x, &grad_col);
-
-  /* Set x to last time step */
-  // x = primalbraidapp->getStateVec(total_time);
-  /* Set x to all ones */
-  VecZeroEntries(x);
-  VecShift(x, 1.0);
-
-  /* Evaluate RHS(p)x */
-  optimproblem->setDesign(ndesign, myinit);
-  mastereq->assemble_RHS(t);
-  mastereq->getRHS();
-  MatMult(mastereq->getRHS(), x, Ax);
-
-  /* Evaluate dRHSdp(t,p)x */
-  mastereq->assemble_dRHSdp(t, x);
-  G = mastereq->getdRHSdp();
-  // MatView(G, PETSC_VIEWER_STDOUT_WORLD);
-
-  /* Flush control functions */
-  for (int i = 0; i < nlevels.size(); i++){
-    sprintf(filename, "control_%04d.dat", i);
-    oscil_vec[i]->flushControl(ntime, dt, filename);
-  }
-
-  /* FD loop */
-  // for (int i=0; i<ndesign; i++) {
-  {int i=3;
-
-    /* Eval RHS(p+eps)x */
-    myinit[i] -= EPS;
-    optimproblem->setDesign(ndesign, myinit);
-    mastereq->assemble_RHS(t);
-    MatMult(mastereq->getRHS(), x, Bx);
-
-    /* Eval RHS(p-eps)x */
-    myinit[i] += 2.*EPS;
-    optimproblem->setDesign(ndesign, myinit);
-    mastereq->assemble_RHS(t);
-    MatMult(mastereq>getRHS(), x, Cx);
-
-    /* Eval central finite differences (Bx - Cx) / 2eps */
-    VecAXPBYPCZ(fd, 1.0, -1.0, 0.0, Bx, Cx);
-    VecScale(fd, 1./(2.*EPS));
-
-    /* Compute error */
-    MatGetColumnVector(G, grad_col, i);
-    VecAXPBYPCZ(err, 1.0, -1.0, 0.0, grad_col, fd); 
-    VecPointwiseDivide(err, err, fd);
-    VecNorm(err, NORM_2, &err_i);
-
-    /* Output */
-    printf(" %d: || e_i|| = %1.4e\n", i, err_i);
-    if (err_i > 1e-5) {
-      const PetscScalar *err_ptr, *grad_ptr, *fd_ptr, *ax_ptr, *bx_ptr, *cx_ptr;
-      VecGetArrayRead(err, &err_ptr);
-      VecGetArrayRead(fd, &fd_ptr);
-      VecGetArrayRead(Ax, &ax_ptr);
-      VecGetArrayRead(Bx, &bx_ptr);
-      VecGetArrayRead(Cx, &cx_ptr);
-      VecGetArrayRead(grad_col, &grad_ptr);
-      printf("ERR    Ax[i]     Bx[i]     Cx[i]    FD       GRADCOL\n");
-      for (int j=0; j<size; j++){
-        printf("%1.14e  %1.20e  %1.20e  %1.20e  %1.14e  %1.14e\n", err_ptr[j], ax_ptr[i], bx_ptr[i], cx_ptr[i], fd_ptr[j], grad_ptr[j]);
-      }
-    }
-
-
-    // printf("FD column:\n");
-    // VecView(fd, PETSC_VIEWER_STDOUT_WORLD);
-    // printf("dRHSdp column:\n");
-    // VecView(grad_col, PETSC_VIEWER_STDOUT_WORLD);
-
-    /* Reset design */
-    myinit[i] -= EPS;
-  }
-
-
-#endif
-
-#if TEST_FD_TS
+#if TEST_FD
   if (mpirank_world == 0)  {
     printf("\n\n#########################\n");
     printf(" FD Testing... \n");
@@ -451,162 +351,23 @@ int main(int argc,char **argv)
   
 #endif
 
-#if TEST_FD_SPLINE
-  printf("\n\n Finite-differences for Spline discretization...\n\n");
-  
-  // double t = 0.345;
-  double t = 0.345;
-  double f, g;
-  double f_pert1, g_pert1, f_pert2, g_pert2;
-
-  int nparam = oscil_vec[0]->getNParam();
-
-  /* Init derivative */
-  double *dfdw = new double[nparam];
-  double *dgdw = new double[nparam];
-
-  for (int iosc=0; iosc<nlevels.size(); iosc++)
-  {
-    printf("FD for oscillator %d:\n", iosc);
-
-    /* Eval gradients */
-    optimproblem->setDesign(ndesign, myinit);
-    oscil_vec[iosc]->evalControl(t, &f, &g);
-    for (int iparam=0; iparam< nparam; iparam++) {
-      dfdw[iparam] = 0.0;
-      dgdw[iparam] = 0.0;
-    }
-    oscil_vec[iosc]->evalDerivative(t, dfdw, dgdw);
-
-    /* FD testing for all parameters of oscil 1 */
-    for (int iparam = 0; iparam < nparam; iparam++)
-    {
-      int alpha_id = iosc * 2 * nparam + iparam;
-      int beta_id  = iosc * 2 * nparam + nparam + iparam;
-      printf("  param %d: \n", iparam);
-
-      /* Eval perturbed objectives */
-      myinit[alpha_id] += EPS;
-      myinit[beta_id]  += EPS;
-      optimproblem->setDesign(ndesign, myinit);
-      oscil_vec[iosc]->evalControl(t, &f_pert1, &g_pert1);
-
-      myinit[alpha_id] -= 2.*EPS;
-      myinit[beta_id]  -= 2.*EPS;
-      optimproblem->setDesign(ndesign, myinit);
-      oscil_vec[iosc]->evalControl(t, &f_pert2, &g_pert2);
-
-      /* Eval FD and error */
-      double f_fd = f_pert1/(2.*EPS) - f_pert2 / (2.*EPS);
-      double g_fd = g_pert1/(2.*EPS) - g_pert2 / (2.*EPS);
-      double f_err = 0.0;
-      double g_err = 0.0;
-      if (f_fd != 0.0) f_err = (dfdw[iparam] - f_fd) / f_fd;
-      if (g_fd != 0.0) g_err = (dgdw[iparam] - g_fd) / g_fd;
-      printf("    f %1.12e  f1 %1.12e  f2 %1.12e  f_fd %1.12e, dfdw %1.12e, f_err %1.8e\n", f, f_pert1, f_pert2, f_fd, dfdw[iparam],  f_err);
-      printf("    g %1.12e  g1 %1.12e  f2 %1.12e  g_fd %1.12e, dgdw %1.12e, g_err %1.8e\n", g, g_pert1, g_pert2, g_fd, dgdw[iparam],  g_err);
-
-      /* Restore parameter */
-      myinit[alpha_id] += EPS;
-      myinit[beta_id]  += EPS;
-    }
-  }
-#endif
-
-
-
-#if TEST_DT
-  /* 
-   * Testing time stepper convergence (dt-test) 
-   */  
-
-  Vec exact;  // exact solution
-  Vec error;  // error  
-  double t;
-  double error_norm, exact_norm;
-
-  int nreal = 2*mastereq->getDim();
-  VecCreate(PETSC_COMM_WORLD,&x);
-  VecSetSizes(x, PETSC_DECIDE, nreal);
-  VecSetFromOptions(x);
-  VecDuplicate(x, &exact);
-  VecDuplicate(x, &error);
-
-  /* Destroy old time stepper */
-  TSDestroy(&ts);
-
-  /* Set time horizon */
-  total_time = 10.0;
-  printf("\n\n Running time-stepping convergence test... \n\n");
-  printf(" Time horizon: [0, %.1f]\n\n", total_time);
-
-  /* Decrease time step size */
-  printf("   ntime      dt    error\n");
-  for (int ntime = 10; ntime <= 1e+5; ntime = ntime * 10)
-  {
-    dt = total_time / ntime;
-
-    /* Create and set up the time stepper */
-    TSCreate(PETSC_COMM_WORLD,&ts);CHKERRQ(ierr);
-    TSInit(ts, mastereq, ntime, dt, total_time, x, lambda, mu, monitor);
-    TSSetSolution(ts, x);
-
-    // /* Set the initial condition */
-    mastereq->initialCondition(0,x);
-
-    /* Run time-stepping loop */
-    for(PetscInt istep = 0; istep <= ntime; istep++) 
-    {
-      TSStep(ts);
-    }
-
-    /* Compute the relative error at last time step (max-norm) */
-    TSGetTime(ts, &t);
-    mastereq->ExactSolution(t,exact);
-    VecWAXPY(error,-1.0,x, exact);
-    VecNorm(error, NORM_INFINITY,&error_norm);
-    VecNorm(exact, NORM_INFINITY,&exact_norm);
-    error_norm = error_norm / exact_norm;
-
-    /* Print error norm */
-    printf("%8d   %1.e   %1.14e\n", ntime, dt, error_norm);
-
-  }
-
-  VecDestroy(&x);
-  VecDestroy(&exact);
-  VecDestroy(&error);
-
-#endif
 
 #ifdef SANITY_CHECK
   printf("\n\n Sanity checks have been performed. Check output for warnings and errors!\n\n");
 #endif
 
   /* Clean up */
-  // TSDestroy(&ts);  /* TODO */
-
-  /* Clean up Oscillator */
   for (int i=0; i<nlevels.size(); i++){
     delete oscil_vec[i];
   }
   delete [] oscil_vec;
-
-
-  /* Clean up Master equation*/
   delete mastereq;
-
-  /* Cleanup */
-  // TSDestroy(&braid_app->ts);
-
   delete mytimestepper;
-  
   delete primalbraidapp;
   delete adjointbraidapp;
-
   delete optimctx;
 
-
+  // TSDestroy(&ts);  /* TODO */
 
   /* Finallize Petsc */
   ierr = PetscFinalize();
