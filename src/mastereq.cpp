@@ -32,7 +32,7 @@ MasterEq::MasterEq(int noscillators_, Oscillator** oscil_vec_, const std::vector
   MPI_Comm_size(PETSC_COMM_WORLD, &mpisize_petsc);
   MPI_Comm_rank(PETSC_COMM_WORLD, &mpirank_petsc);
 
-  /* Dimension of vectorized system: (n_1*...*n_q^2 */
+  /* Dimension of vectorized system: (n_1*...*n_q)^2 */
   dim = 1;
   for (int iosc = 0; iosc < noscillators_; iosc++) {
     dim *= oscil_vec[iosc]->getNLevels();
@@ -46,24 +46,17 @@ MasterEq::MasterEq(int noscillators_, Oscillator** oscil_vec_, const std::vector
     exit(1);
   }
 
-  /* Allocate Re */
+  /* Allocate real and imaginary part of system matrix */
   MatCreate(PETSC_COMM_WORLD, &Re);
-  MatSetSizes(Re, PETSC_DECIDE, PETSC_DECIDE, dim, dim);
-  MatSetFromOptions(Re);
-  MatSetUp(Re);
-  MatAssemblyBegin(Re,MAT_FINAL_ASSEMBLY);
-  MatAssemblyEnd(Re,MAT_FINAL_ASSEMBLY);
-
-
-  /* Allocate Im */
   MatCreate(PETSC_COMM_WORLD, &Im);
+  MatSetSizes(Re, PETSC_DECIDE, PETSC_DECIDE, dim, dim);
   MatSetSizes(Im, PETSC_DECIDE, PETSC_DECIDE, dim, dim);
-  MatSetFromOptions(Im);
-  MatSetUp(Im);
-  MatAssemblyBegin(Im,MAT_FINAL_ASSEMBLY);
-  MatAssemblyEnd(Im,MAT_FINAL_ASSEMBLY);
+  MatSetFromOptions(Re); MatSetUp(Re);
+  MatSetFromOptions(Im); MatSetUp(Im);
+  MatAssemblyBegin(Re,MAT_FINAL_ASSEMBLY); MatAssemblyEnd(Re,MAT_FINAL_ASSEMBLY);
+  MatAssemblyBegin(Im,MAT_FINAL_ASSEMBLY); MatAssemblyEnd(Im,MAT_FINAL_ASSEMBLY);
 
-  /* Allocate RHS, either as matrix or as matrix shell. */
+  /* Allocate system matrix (RHS), either as matrix or as matrix shell. */
   /* dimension: 2*dim x 2*dim for the real-valued system */
   if (usematshell)
     MatCreateShell(PETSC_COMM_WORLD, PETSC_DECIDE, PETSC_DECIDE, 2*dim, 2*dim, (void**) &RHSctx, &RHS);
@@ -73,10 +66,8 @@ MasterEq::MasterEq(int noscillators_, Oscillator** oscil_vec_, const std::vector
     MatSetSizes(RHS, PETSC_DECIDE, PETSC_DECIDE,2*dim,2*dim);
   }
   MatSetOptionsPrefix(RHS, "system");
-  MatSetFromOptions(RHS);
-  MatSetUp(RHS);
-  MatAssemblyBegin(RHS,MAT_FINAL_ASSEMBLY);
-  MatAssemblyEnd(RHS,MAT_FINAL_ASSEMBLY);
+  MatSetFromOptions(RHS); MatSetUp(RHS);
+  MatAssemblyBegin(RHS,MAT_FINAL_ASSEMBLY); MatAssemblyEnd(RHS,MAT_FINAL_ASSEMBLY);
 
   /* Allocate auxiliary vectors */
   ierr = PetscMalloc1(dim, &colid1);
@@ -88,7 +79,6 @@ MasterEq::MasterEq(int noscillators_, Oscillator** oscil_vec_, const std::vector
   Mat numberOP;
   Ac_vec = new Mat[noscillators_];
   Bc_vec = new Mat[noscillators_];
-
 
   /* Compute building blocks */
   for (int iosc = 0; iosc < noscillators_; iosc++) {
@@ -258,7 +248,6 @@ MasterEq::MasterEq(int noscillators_, Oscillator** oscil_vec_, const std::vector
   cols = new int[nparams_max];
   vals = new double [nparams_max];
   
-
   MatCreateVecs(Ac_vec[0], &Acu, NULL);
   MatCreateVecs(Ac_vec[0], &Acv, NULL);
   MatCreateVecs(Bc_vec[0], &Bcu, NULL);
@@ -321,8 +310,6 @@ int MasterEq::getNOscillators() { return noscillators; }
 
 Oscillator* MasterEq::getOscillator(int i) { return oscil_vec[i]; }
 
-bool MasterEq::ExactSolution(double t, Vec x) { return false; }
-
 int MasterEq::assemble_RHS(double t){
   int ierr;
 
@@ -330,7 +317,7 @@ int MasterEq::assemble_RHS(double t){
   ierr = MatZeroEntries(Re);CHKERRQ(ierr);
   ierr = MatZeroEntries(Im);CHKERRQ(ierr);
 
-  /* Time-dependent control part */
+  /* Time-dependent control part: Im += sum_k p_k(t) Ac_k and Re += sum_k q_k(t) Bc_k */
   for (int iosc = 0; iosc < noscillators; iosc++) {
     double control_Re, control_Im;
     oscil_vec[iosc]->evalControl(t, &control_Re, &control_Im);
@@ -575,7 +562,7 @@ void MasterEq::computedRHSdp(double t, Vec x, Vec xbar, double alpha, Vec grad) 
       dRedp[i] = 0.0;
       dImdp[i] = 0.0;
     }
-    oscil_vec[iosc]->evalDerivative(t, dRedp, dImdp);
+    oscil_vec[iosc]->evalControl_diff(t, dRedp, dImdp);
 
     /* Compute RHS matrix vector products */
     MatMult(Ac_vec[iosc], u, Acu);

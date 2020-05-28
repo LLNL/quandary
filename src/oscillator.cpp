@@ -15,7 +15,7 @@ Oscillator::Oscillator(int id, std::vector<int> nlevels_all_, int nbasis_, doubl
   int mpirank_world;
   MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
 
-  /* Create control functions */
+  /* Create control basis functions */
   basisfunctions = new ControlBasis(nbasis_, Tfinal_, carrier_freq_);
 
   /* Create and store the number and lowering operators */
@@ -49,6 +49,7 @@ Oscillator::~Oscillator(){
     delete basisfunctions;
     MatDestroy(&NumberOP);
     MatDestroy(&LoweringOP);
+    MatDestroy(&zeromat);
   }
 }
 
@@ -64,8 +65,8 @@ Mat Oscillator::getLoweringOP(bool dummy) {
 
 void Oscillator::flushControl(int ntime, double dt, const char* filename) {
   double time;
-  double Re, Im; // Rotatinf frame controls p(t), q(t)
-  double Lab;    // Lab-frame control f(t)
+  double Re, Im;    // Rotating frame controls p(t), q(t)
+  double Lab;       // Lab-frame control f(t)
   FILE *file = 0;
   file = fopen(filename, "w");
 
@@ -84,12 +85,6 @@ void Oscillator::flushControl(int ntime, double dt, const char* filename) {
 void Oscillator::setParams(const double* x){
   for (int i=0; i<params.size(); i++) {
     params[i] = x[i]; 
-  }
-}
-
-void Oscillator::getParams(double* x){
-  for (int i=0; i<params.size(); i++) {
-    x[i] = params[i];
   }
 }
 
@@ -162,20 +157,7 @@ int Oscillator::evalControl(double t, double* Re_ptr, double* Im_ptr){
   return 0;
 }
 
-int Oscillator::evalControl_Labframe(double t, double* f){
-
-  if ( t > Tfinal ){
-    printf("WARNING: accessing spline outside of [0,T] at %f. Returning 0.0\n", t);
-    *f = 0.0;
-  } else {
-    /* Evaluate the spline at time t */
-    *f = basisfunctions->evaluate(t, params, ground_freq, ControlBasis::LAB);
-  }
-
-  return 0;
-}
-
-int Oscillator::evalDerivative(double t, double* dRedp, double* dImdp) {
+int Oscillator::evalControl_diff(double t, double* dRedp, double* dImdp) {
 
   if ( t > Tfinal ){
     printf("WARNING: accessing spline derivative outside of [0,T]. Returning 0.0\n");
@@ -193,6 +175,18 @@ int Oscillator::evalDerivative(double t, double* dRedp, double* dImdp) {
   return 0;
 }
 
+int Oscillator::evalControl_Labframe(double t, double* f){
+
+  if ( t > Tfinal ){
+    printf("WARNING: accessing spline outside of [0,T] at %f. Returning 0.0\n", t);
+    *f = 0.0;
+  } else {
+    /* Evaluate the spline at time t */
+    *f = basisfunctions->evaluate(t, params, ground_freq, ControlBasis::LAB);
+  }
+
+  return 0;
+}
 
 double Oscillator::expectedEnergy(Vec x) {
 

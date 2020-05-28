@@ -23,9 +23,8 @@ class Oscillator {
     int dim_preOsc;                // Dimension of coupled subsystems preceding this oscillator
     int dim_postOsc;               // Dimension of coupled subsystem following this oscillator
 
-    Mat zeromat;
-
-    int mpirank_petsc;
+    Mat zeromat;                   // auxiliary matrix with zero entries
+    int mpirank_petsc;             // rank of Petsc's communicator
 
   public:
     Oscillator();
@@ -36,10 +35,8 @@ class Oscillator {
     int getNParams() { return params.size(); };
     int getNLevels() { return nlevels; };
 
-    /* Copy x to real and imaginary part of parameter */
+    /* Copy x into the control parameter vector */
     void setParams(const double* x);
-    /* Copy real and imaginary part of parameters into x */
-    void getParams(double* x);
 
     /* Print the control functions for each t \in [0,ntime*dt] */
     void flushControl(int ntime, double dt, const char* filename);
@@ -56,18 +53,19 @@ class Oscillator {
 
     /* Evaluates rotating frame control functions Re = p(t), Im = q(t) */
     int evalControl(double t, double* Re_ptr, double* Im_ptr);
+    /* Compute derivatives of the p(t) and q(t) control function wrt the parameters */
+    int evalControl_diff(double t, double* dRedp, double* dImdp);
 
     /* Evaluates Lab-frame control function f(t) */
     int evalControl_Labframe(double t, double* f_ptr);
 
-    /* Compute derivatives of the Re and Im control function wrt the parameters */
-    int evalDerivative(double t, double* dRedp, double* dImdp);
-
     /* Return expected value of projective measure in basis |m> */
     double expectedEnergy(Vec x);
+    /* Derivative of expected alrue computation */
     void expectedEnergy_diff(Vec x, Vec x_bar, double obj_bar);
 
-   void population(Vec x, std::vector<double> *pop); 
+    /* Compute population (=diagonal elements) for this oscillators reduced system */
+    void population(Vec x, std::vector<double> *pop); 
 };
 
 

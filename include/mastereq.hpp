@@ -8,10 +8,10 @@
 
 /* Available lindblad types */
 enum LindbladType {NONE, DECAY, DEPHASE, BOTH};
+/* Available types of initial conditions */
 enum InitialConditionType {FROMFILE, PURE, DIAGONAL, BASIS};
 
-/* Define a matshell context for RHS */
-/* It contains pointers to data that is needed to apply the RHS matrix to a vector */
+/* Define a matshell context containing pointers to data needed for applying the RHS matrix to a vector */
 typedef struct {
   int noscil; 
   IS *isu, *isv;
@@ -21,58 +21,52 @@ typedef struct {
   double time;
 } MatShellCtx;
 
-/* Define the Matrix-Vector product for the RHS MatShell */
+
+/* Define the Matrix-Vector products for the RHS MatShell */
 int myMatMult(Mat RHS, Vec x, Vec y);
 int myMatMultTranspose(Mat RHS, Vec x, Vec y);
+
 
 /* 
  * Implements the Lindblad master equation
  */
 class MasterEq{
 
-  public:
-    bool usematshell;        // bool: decides if RHS is used as shell matrix or full matrix
-
   protected:
-    int dim;                 // Dimension of vectorized system  N^2
+    int dim;                 // Dimension of vectorized system = N^2
     int noscillators;        // Number of oscillators
     Oscillator** oscil_vec;  // Vector storing pointers to the oscillators
 
     Mat Re, Im;             // Real and imaginary part of system matrix operator
-    Mat RHS;                // Realvalued, vectorized systemmatrix
+    Mat RHS;                // Realvalued, vectorized systemmatrix (2N^2 x 2N^2)
     MatShellCtx RHSctx;     // MatShell context that contains data needed to apply the RHS
 
     Mat* Ac_vec;  // Vector of constant mats for time-varying Hamiltonian (real) 
     Mat* Bc_vec;  // Vector of constant mats for time-varying Hamiltonian (imag) 
     Mat  Ad, Bd;  // Real and imaginary part of constant system matrix
 
-    std::vector<double> xi;     // Constants for frequencies of drift Hamiltonian
-    std::vector<double> collapse_time;  /* Time-constants for decay and dephase operator */
+    std::vector<double> xi;             // Constants for frequencies of drift Hamiltonian
+    std::vector<double> collapse_time;  // Time-constants for decay and dephase operators
 
-    int mpirank_petsc;
+    /* Auxiliary stuff */
+    int mpirank_petsc;   // Rank of Petsc's communicator
+    int nparams_max;     // Maximum number of design parameters per oscilator 
+    IS isu, isv;         // Vector strides for accessing u=Re(x), v=Im(x) 
 
-  private: 
-    IS isu, isv;        // Vector strides for accessing u=Re(x), v=Im(x) 
-
-    /* Some auxiliary vectors */
     PetscInt    *colid1, *colid2; 
     PetscScalar *negvals;         
 
-    int nparams_max;   // Maximum number of design parameters per oscilator 
     double *dRedp;
     double *dImdp;
-    // int *rowid;
-    // int *rowid_shift;
     Vec Acu, Acv, Bcu, Bcv, auxil;
     int* cols;           // holding columns when evaluating dRHSdp
     PetscScalar* vals;   // holding values when evaluating dRHSdp
  
-
+  public:
+    bool usematshell;        // decides if RHS is used as a shell matrix or full matrix
 
   public:
-    /* Default constructor sets zero */
     MasterEq();
-    /* This constructor sets the variables and allocates Re, Im and M */
     MasterEq(int noscillators_, Oscillator** oscil_vec_, const std::vector<double> xi_, LindbladType lindbladtype_, const std::vector<double> collapse_time_, bool usematshell_);
     ~MasterEq();
 
@@ -86,34 +80,26 @@ class MasterEq{
     int getDim();
 
     /* 
-     * Evaluate the exact solution at time t.
-     * Inheriting classes should store exact solution in x and return true.  
-     * Return false, if exact solution is not available.
-     */
-    bool ExactSolution(double t, Vec x);
-
-    /* 
-     * Uses Re and Im to build the vectorized Hamiltonian operator M = vec(-i(Hq-qH)). 
+     * Uses Re and Im to build the vectorized Hamiltonian operator M = vec(-i(Hq-qH)+Lindblad). 
      * This should always be called before applying the RHS matrix.
      */
     int assemble_RHS(double t);
 
+    /* Access the right-hand-side matrix */
+    Mat getRHS();
+
     /* 
-     * Compute gradient of RHS wrt controls:
+     * Compute gradient of RHS wrt control parameters:
      * grad += alpha * RHS(x)^T * x_bar  
      */
     void computedRHSdp(double t, Vec x, Vec x_bar, double alpha, Vec grad);
 
-    /* Access the right-hand-side and derivative matrix */
-    Mat getRHS();
-
-
-    /* Compute reduced density operator */
+    /* Compute reduced density operator for a sub-system defined by IDs in the oscilIDs vector */
     void createReducedDensity(Vec rho, Vec *reduced, std::vector<int>oscilIDs);
+    /* Derivative of reduced density computation */
     void createReducedDensity_diff(Vec rhobar, Vec reducedbar, std::vector<int>oscilIDs);
 
-
-    /* Set the oscillators control function amplitudes from design vector x */
+    /* Set the oscillators control function parameters from global design vector x */
     void setControlAmplitudes(Vec x);
 
     /* Set initial conditions 
