@@ -480,11 +480,12 @@ Vec myBraidApp::PostProcess() {
   myBraidVector *u;
   int maxlevels = _braid_CoreElt(core->GetCore(), max_levels);
 
-  /* If multilevel solve: Sweep over all points to access */
-  if (maxlevels > 1) {
-    _braid_CoreElt(core->GetCore(), done) = 1;
-    _braid_FCRelax(core->GetCore(), 0);
-  }
+  /* If multilevel solve: Sweep over all points to access TODO: CHECK IF THIS IS NEEDED */
+  // if (maxlevels > 1) {
+  //   printf("Now FCRelax...\n");
+  //   _braid_CoreElt(core->GetCore(), done) = 1;
+  //   _braid_FCRelax(core->GetCore(), 0);
+  // }
 
   /* Close output files */
   if (ufile != NULL) fclose(ufile);
@@ -510,6 +511,8 @@ double myBraidApp::Drive() {
   int nreq = -1;
   double norm;
 
+
+  _braid_CoreElt(core->GetCore(), done) = 0;
   core->Drive();
   core->GetRNorms(&nreq, &norm);
 
@@ -573,16 +576,16 @@ braid_Int myAdjointBraidApp::Step(braid_Vector u_, braid_Vector ustop_, braid_Ve
   int ierr;
   int tindex;
   int level, done;
-  bool update_gradient;
+  bool compute_gradient;
 
-  /* Update gradient only on the finest grid */
+  /* Update gradient only when done */
   pstatus.GetLevel(&level);
   pstatus.GetDone(&done);
   if (done){
-    update_gradient = true;
+    compute_gradient = true;
   }
   else {
-    update_gradient = false;
+    compute_gradient = false;
   }
 
   /* Grab current time from XBraid and pass it to Petsc time-stepper */
@@ -617,7 +620,7 @@ braid_Int myAdjointBraidApp::Step(braid_Vector u_, braid_Vector ustop_, braid_Ve
     if (!done) VecZeroEntries(redgrad);
 
     /* Evolve u backwards in time and update gradient */
-    mytimestepper->evolveBWD(tstop_orig, tstart_orig, uprimal_tstop->x, u->x, redgrad, done);
+    mytimestepper->evolveBWD(tstop_orig, tstart_orig, uprimal_tstop->x, u->x, redgrad, compute_gradient);
 
   }
 
@@ -664,30 +667,14 @@ Vec myAdjointBraidApp::PostProcess() {
   int maxlevels;
   maxlevels = _braid_CoreElt(core->GetCore(), max_levels);
 
-  /* Sweep over all points to collect the gradient */
-  VecZeroEntries(redgrad);
-  _braid_CoreElt(core->GetCore(), done) = 1;
-  _braid_FCRelax(core->GetCore(), 0);
-
-  // /* Sweep over all points to collect gradient */
-  // for (int ts=0; ts<=ntime; ts++)
-  // {
-  //   /* Get state vector from primal core */
-  //   braid_BaseVector ubaseprimal;
-  //   _braid_UGetVectorRef(primalcore->GetCore(), 0, ts, &ubaseprimal);
-  //   if (ubaseprimal == NULL) printf("ts=%d ubaseprimal is null!\n", ts);
-  //   Vec x = ((myBraidVector *)ubaseprimal->userVector)->x;
-
-
-  //   /* Get adjoint vector from primal core */
-  //   braid_BaseVector ubaseadjoint;
-  //   _braid_UGetVectorRef(core->GetCore(), 0, ntime - ts, &ubaseadjoint);
-  //   if (ubaseadjoint == NULL) printf("ts=%d ubaseadjoint is null!\n", ts);
-  //   Vec xbar = ((myBraidVector *)ubaseadjoint->userVector)->x;
-
-  //   /* Compute the gradient */
-  //   mastereq->computedRHSdp((ts) * 0.1, x, xbar, 0.1, redgrad);
-  // }
+  if (maxlevels > 1) {
+    // printf("Error: Gradient computation with braid_maxlevels>1 is wrong. Neex to sweep over all points here!\n");
+    // exit(1);
+    /* Sweep over all points to collect the gradient */
+    VecZeroEntries(redgrad);
+    _braid_CoreElt(core->GetCore(), done) = 1;
+    _braid_FCRelax(core->GetCore(), 0);
+  }
 
   /* Close output files */
   if (ufile != NULL) fclose(ufile);
