@@ -29,7 +29,7 @@ We model open quantum systems with $Q$ oscillators with $n_k$ levels for the $k$
   \dot \rho(t) = &-i(H(t)\rho(t) - \rho(t)H(t)) \notag \\
           &+ \sum_{l=1}^2 \sum_{k=1}^Q \gamma_{lk} \left( \Ell_{lk} \rho(t) \Ell_{lk}^{\dagger} - \frac 1 2 \left( \Ell_{lk}^{\dagger}\Ell_{lk} \rho(t) + \rho(t)\Ell_{lk}^{\dagger} \Ell_{lk}\right) \right)
 \end{align}
-for the density matrix $\rho(t)\in \C^{N\times N}$, $N := \prod_{k=1}^N n_k$. The Hamiltonian $H(t)$ consists of a constant \textit{drift} part, and a time-varying \textit{control} part. For the \textit{rotating frame}, these are computed from
+for the density matrix $\rho(t)\in \C^{N\times N}$ with dimension $N := \prod_{k=1}^N n_k$. The Hamiltonian $H(t)$ consists of a constant \textit{drift} part, and a time-varying \textit{control} part. For the computation \textit{rotating frame}, these are computed from
 \begin{align}
   H(t) &= H_d + H_c(t) \\
   \text{with} \quad H_d &:= \sum_{k=1}^Q \left(- \frac{\xi_k}{2} a_k^{\dagger}a_k^{\dagger}a_k a_k - \sum_{l\neq k} \xi_{lk} a_l^{\dagger}a_l a_k^{\dagger} a_k  \right) \\
@@ -60,7 +60,7 @@ The collapse operators $\Ell_{lk}$ in the Lindblad terms of the master equation 
   \item ``T1'' -- Decay: $\Ell_{1k} = a_k$
   \item ``T2'' -- Dephasing: $\Ell_{2k} = a_k^{\dagger}a_k$
 \end{itemize}
-for each oscillator $k$. The constants $\gamma_{lk}$ are the inverse half-live for the corresponding collapse process $l$: $\gamma_{lk} = {\frac{1}{T_l}}$ (in nanoseconds, ns). Typical T1 decay time is between $10-100$ microseconds (us). T2 dephasing time is typically about half of T1 decay time. Decay then behaves like $\exp(-t/{T_1})$. Dephasing behaves like $\exp(-\frac{1}{2{T_2}})$.
+for each oscillator $k$. The constants $\gamma_{lk}$ are the inverse half-live for the corresponding collapse process $l$: $\gamma_{lk} = {\frac{1}{T_l}}$. Typical T1 decay time is between $10-100$ microseconds (us). T2 dephasing time is typically about half of T1 decay time. Decay then behaves like $\exp(-t/{T_1})$. Dephasing behaves like $\exp(-\frac{1}{2{T_2}})$.
 
 \subsection{Control pulses}
 The time-dependent control functions $p^k(\vec{\alpha}^k,t), q^k(\vec{\alpha}^k,t)$ are real-valued. We discretize them using B-splines with carrier waves:
@@ -99,15 +99,16 @@ for the number operator
 \end{align}
 $M^k$ measures the probability of the energy levels of oscillator $k$. The expected energy level of oscillator $k$ is given by 
 \begin{align}
-  \langle M^k \rangle &= \sum_{m_k} m_k p(m_k)  = \mbox{Tr}(M^k\rho) = \mbox{Tr}(N_k \rho^k)  = \langle N_k\rangle
+  \langle M^k \rangle &= \sum_{m_k} m_k p(m_k)  = \mbox{Tr}(M^k\rho) \\
+   & = \mbox{Tr}(N_k \rho^k)  = \langle N_k\rangle
 \end{align}
-where $\rho^k$ is the reduced density matrix for oscillator $k$. Here, $p(m_k)$ is the probability of $\rho$ being the the $m_k$-th energy level for oscillator $k$, $p(m_k) = tr(P^k_m \rho)$ for a spectral decomposition $M^k = \sum_{m_k} m_kP^k_m$. 
+where $\rho^k$ is the reduced density matrix for oscillator $k$. Here, $p(m_k)$ is the probability of $\rho$ being the the $m_k$-th energy level for oscillator $k$, $p(m_k) = \mbox{Tr}(P^k_m \rho)$ for a spectral decomposition $M^k = \sum_{m_k} m_kP^k_m$. 
 
 
 \section{Optimization problem}
 
 \subsection{Groundstate optimization}
-We aim to find control pulses that drive any initial state towards the ground state $|0\dots 0\rangle = (1, 0, 0, \dots )^T$. The corresponding ground state density matrix is given by
+We aim to find control pulses $p^k(\vec{\alpha}^k, t), q^k(\vec{\alpha}^k, (t)$, that drive any initial state towards the ground state $|0\dots 0\rangle = (1, 0, 0, \dots )^T$. The corresponding ground state density matrix is given by
 \begin{align}
       \rho_{G} := |0\dots 0\rangle \langle 0 \dots 0 | = \begin{bmatrix} 1      & 0      &  \dots   \\ 
                                          0      & 0      &  \dots  \\ 
@@ -228,7 +229,7 @@ which is called the \textit{infidelity}, and the trace-term is the \textit{fidel
    \end{align}
    at time $t$, and finally build $M(t)$ from \eqref{realvaluedODE}.
 
-  \subsubsection{Co-located storage of real and imaginary part}
+  \subsection{Co-located storage of real and imaginary part}
   The real and imaginary parts of $q(t)$ are stored in a co-located manner: For $q = u+iv$ with $u,v\in\R^{N^2}$, a vector of size $2N^2$ is stored that staggers real and imaginary parts behind each other for each component:
   \begin{align*}
     q = u+iv = \begin{bmatrix}
@@ -244,14 +245,41 @@ which is called the \textit{infidelity}, and the trace-term is the \textit{fidel
   \end{align*}
   In order to access the real and imaginary parts of the $i^{th}$ component of $q$, one has to access the elements of $q_{store}$ at index $2i$ and $2i+1$, respectively. 
 
-  \subsection{Timestepper}
-    The forward time-evolution can use any of Petsc's time-stepping integration schemes. However the adjoint time-evolution does can not. For this we rely on a hand-written time-stepper. Hand-written time-steppers include Backward-Euler, and (preferred) the \textit{implicit midpoint rule (IMR)}, based on implicit Runge-Kutta scheme. We prefer IMR because it is a simplectic integrator. Because IMR is self-adjoint, the same IMR scheme is used to solve the adjoint equation. 
+  \subsection{Time-stepping}
+    To solve the vectorized master equation \eqref{mastereq_vectorized} $\dot q(t) = M(t) q(t)$ for $t\in [0,T]$, we apply a time-stepping integration scheme on a uniform time discretization grid $0=t_0 < \dots t_{N} = T$, with $t_n = n \delta t$ and $\delta t = \frac{T}{N}$, and approximate the solution at each discrete time step $q^{n} \approx q(t_n)$.
+   
+    \subsubsection{Implicit Midpoint Rule (IMR)} 
+    The implicit mid-point rule is a simplectic, second-order integration scheme of Runge-Kutta type, with a Runge-Kutta tableau given by
+    \begin{tabular}{ c | c }
+      $1/2$ & $ 1/2$ \\
+      \hline
+                &  $1$
+    \end{tabular}
+    Given a state $q^n$ at time $t_n$, the update formula to compute $q^{n+1}$ is hence 
+    \begin{align}
+      q^{n+1} = q^n + \delta t k_1 \quad \text{where} \, k_1 \, \text{solves} \quad \left( I-\frac{\delta t}{2} M^{n+1/2} \right) k_1 = M^{n+1/2}  q^n
+    \end{align}
+    where $M^{n+1/2} := M(t_n + \frac{\delta t}{2})$. In each time-step, we first solve a linear equation to get the stage variable $k_1$, then use it to update $q^{n+1}$. 
 
-    In order to choose a time-step size $\Delta t$, we do an eigenvalue analysis of the constant drift Hamiltonian $H_d =  -2\pi \sum_{k=1}^Q \frac{x_k}{2} a_k^{\dagger}a_k^{\dagger}a_ka_k + \sum_{l\neq k} x_kl a_l^{\dagger}a_l a_k^{\dagger}a_k$:
+    The consistent discrete adjoint (backwards) time-integration step for adjoint variables $\bar q^{n+1}, \bar q^n$, and the gradient update for this step are given by
+    \begin{align}
+      \bar q^{n} = \bar q^{n+1} + \delta t \left(M^{n+1/2}\right)^T \bar k_1 \quad \text{where} \, \bar k_1 \, \text{solves} \quad \left( I-\frac{\delta t}{2} M^{n+1/2}\right)^T  \bar k_1 = \bar q^n 
+    \end{align}
+    The contribution to the reduced gradient $\nabla J$ for each time step is then given by
+    \begin{align}
+      \nabla J += \delta t \left( \frac{\partial M^{n+1/2}}{\partial z} \left(q^n + \frac{\delta t}{2} k_1\right) \right)^T\bar k_1
+    \end{align}
+
+
+    \subsubsection{Other integrators}
+    The code offers the possibility to apply any time-stepping integrators provided by the Petsc software package (class TS). Implementation needs to verified. Adjoint time-stepping with Petsc is currently not implemented. 
+
+    \subsubsection{Choice of the time-step size}
+    In order to choose a time-step size $\delta t$, an eigenvalue analysis of the constant drift Hamiltonian $H_d =  -2\pi \sum_{k=1}^Q \frac{x_k}{2} a_k^{\dagger}a_k^{\dagger}a_ka_k + \sum_{l\neq k} x_kl a_l^{\dagger}a_l a_k^{\dagger}a_k$ is considered:
        \begin{align*}  
          \dot u = -i H_d u \qquad \text{with} \quad H_d^{\dagger}  = H_d
        \end{align*} 
-       There exists a transformation $Y$ s.t. 
+       Since $H_d$ is hermitian, there exists a transformation $Y$ s.t. 
        \begin{align*}
          Y^{\dagger}H_d Y + \Lambda \qquad  \text{where} \quad Y^{\dagger} = Y
        \end{align*}
@@ -259,13 +287,13 @@ which is called the \textit{infidelity}, and the trace-term is the \textit{fidel
        \begin{align*}
          \dot \tilde u = -i \Lambda \tilde u \quad \Rightarrow \dot \tilde u_i = -i\lambda_i \tilde u_i \quad \Rightarrow \tilde u_i = a \exp(-i\lambda_i t)
        \end{align*}
-       Therefore, the period for each mode is $\tau_i = \frac{2\pi}{|\lambda_i|}$, hence the shortest period is $\tau_{min} = \frac{2\pi}{\max_i\{|\lambda_i|}\}$. If we want $p$ discrete time points per period, then $p\Delta t = \tau_{min}$, hence 
+       Therefore, the period for each mode is $\tau_i = \frac{2\pi}{|\lambda_i|}$, hence the shortest period is $\tau_{min} = \frac{2\pi}{\max_i\{|\lambda_i|\}}$. If we want $p$ discrete time points per period, then $p\delta t = \tau_{min}$, hence 
        \begin{align*}
-         \Delta t = \frac{\tau_{min}}{p} = \frac{2\pi}{p\max_i\{|\lambda_i|\}}
+         \delta t = \frac{\tau_{min}}{p} = \frac{2\pi}{p\max_i\{|\lambda_i|\}}
        \end{align*}
-       Usually, for a first order scheme we would use something like $p=20$, second order maybe $p=10$. Ander's used $p=80$ for the test case. 
+       Usually, for a first order scheme we would use something like $p=20$, second order may use $p=10$. 
 
-       If we want to include the time-varying Hamiltonian part $H = H_d + H_c(t)$ in the analysis, then we could use the constraints on the control parameter amplitudes to remove the time-dependency using their larges value instead and so the same analysis again. However this doesn't ensure that we resolve the time-scale of the control functions. 
+       If we want to include the time-varying Hamiltonian part $H = H_d + H_c(t)$ in the analysis, then we could use the constraints on the control parameter amplitudes to remove the time-dependency using their larges value instead, and then do the same analysis as above. However this doesn't ensure that we resolve the time-scale of the fastest control function. 
 
   \subsection{Optimization}
     We use the \textit{Tao} optimization package included in Petsc for solving the vectorized version of the optimal control problem \eqref{optimproblem_basis}. We choose the nonlinear Quasi-Newton optimization method that applies $L-BFGS$ updates to approximate the Hessian of the objective function. 
@@ -286,13 +314,13 @@ which is called the \textit{infidelity}, and the trace-term is the \textit{fidel
 
 
 
-  \subsubsection{Evaluating objective function}
+  \subsubsection{Evaluating the objective function}
     Each objective function evaluation requires to solve the vectorized, real-valued initial value problem forward in time
     \begin{align*}
       \dot x^{kj}(t) &= M(t) x^{kj}(t) \quad \forall \, t\in (0,T) \\
       x^{kj}(0) &= \mbox{vec}(B^{k,j})
     \end{align*}
-    for all initial basis matrices $B^{k,j}, k,j=0,\dots,N^2-1$. To uniquely identify the different forward solves, we assign a unique index $i \in \{0,\dots, N^2-1\}$ to each basis elements with 
+    for all initial basis matrices $B^{k,j}, k,j=0,\dots,N-1$. To uniquely identify the different forward solves, we assign a unique index $i \in \{0,\dots, N^2-1\}$ to each basis elements with 
     \begin{align*}
       B^i := B^{k(i), j(i)}, \quad \text{with} \quad k(i) := i \,\mbox{mod}\, N, \quad \text{and} \quad j(i) := \left\lfloor \frac{i}{N} \right\rfloor
     \end{align*}
@@ -317,7 +345,7 @@ which is called the \textit{infidelity}, and the trace-term is the \textit{fidel
          \end{align*}
       The user specifies the size of the communicator for distributing the initial conditions ($np_{init}$) as well as time-parallelization ($np_{braid}$) in the config file. The number of cores for parallel linear algebra ($np_{petsc}$) is then computed from the above equation. The following requirements for parallel distribution must be considered when setting up parallel runs:
       \begin{itemize}
-        \item $\frac{n_{init}}{np_{init}} \in \mathds{N}$, so that each processor group owns the same number of initial conditions.
+        \item $\frac{n_{init}}{np_{init}} \in \mathds{N}$, where $n_{init}$ is the number of initial conditions that are considered (being $N^2$ for the full basis). This requirement ensures that each processor group owns the same number of initial conditions.
         \item $\frac{np_{total}}{np_{init}*np_{braid}} \in \mathds{N}$, so that each processor group has the same number of cores for petsc.
         \item $\frac{N^2}{np_{petsc}} \in \mathds{N}$, hence the system dimensions must be integer multiple of the number of cores for distributing linear algebra in Petsc. This constraint is a little annoying, however the current implementation requires this due to the co-located storage of the real and imaginary parts of the vectorized state.
       \end{itemize}
