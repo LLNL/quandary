@@ -188,11 +188,11 @@ OptimProblem::OptimProblem(MapParam config, myBraidApp* primalbraidapp_, myAdjoi
   assert (bounds.size() >= primalbraidapp->mastereq->getNOscillators());
   int col = 0;
   for (int iosc = 0; iosc < primalbraidapp->mastereq->getNOscillators(); iosc++){
-    // Scale bounds by number of carrier waves */
+    // Scale bounds by 1/sqrt(2) * (number of carrier waves) */
     std::vector<double> carrier_freq;
     std::string key = "carrier_frequency" + std::to_string(iosc);
     config.GetVecDoubleParam(key, carrier_freq, 0.0);
-    bounds[iosc] = bounds[iosc] / carrier_freq.size();
+    bounds[iosc] = bounds[iosc] / ( sqrt(2) * carrier_freq.size()) ;
     for (int i=0; i<primalbraidapp->mastereq->getOscillator(iosc)->getNParams(); i++){
       VecSetValue(xupper, col, bounds[iosc], INSERT_VALUES);
       VecSetValue(xlower, col, -1. * bounds[iosc], INSERT_VALUES);
