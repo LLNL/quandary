@@ -91,7 +91,7 @@ OptimProblem::OptimProblem(MapParam config, myBraidApp* primalbraidapp_, myAdjoi
 
   /* Get initial condition type and involved oscillators */
   std::vector<std::string> initcondstr;
-  config.GetVecStrParam("optim_initialcondition", initcondstr);
+  config.GetVecStrParam("initialcondition", initcondstr);
   for (int i=1; i<initcondstr.size(); i++) initcond_IDs.push_back(atoi(initcondstr[i].c_str()));
   ninit = 1;
   if (initcondstr[0].compare("file") == 0 )      initcond_type = FROMFILE;
@@ -150,7 +150,7 @@ OptimProblem::OptimProblem(MapParam config, myBraidApp* primalbraidapp_, myAdjoi
     int dim = primalbraidapp->mastereq->getDim();
     double * vec = new double[2*dim];
     std::vector<std::string> initcondstr;
-    config.GetVecStrParam("optim_initialcondition", initcondstr);
+    config.GetVecStrParam("initialcondition", initcondstr);
     if (mpirank_world == 0) {
       assert (initcondstr.size()==2);
       std::string filename = initcondstr[1];

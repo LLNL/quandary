@@ -66,14 +66,15 @@ int main(int argc,char **argv)
   /* Get type and the total number of initial conditions */
   int ninit = 1;
   std::vector<std::string> initcondstr;
-  config.GetVecStrParam("optim_initialcondition", initcondstr, "basis");
-  assert (initcondstr.size() > 0);
+  config.GetVecStrParam("initialcondition", initcondstr, "basis");
+  assert (initcondstr.size() >= 1);
   if      (initcondstr[0].compare("file") == 0 ) ninit = 1;
   else if (initcondstr[0].compare("pure") == 0 ) ninit = 1;
   else if ( initcondstr[0].compare("diagonal") == 0 ||
             initcondstr[0].compare("basis")    == 0  ) {
-    /* Compute ninit = dim(subsystem defined by obj_oscilIDs) */
+    /* Compute ninit = dim(subsystem defined by list of oscil IDs) */
     ninit = 1;
+    assert (initcondstr.size() >= 2);
     for (int i = 1; i<initcondstr.size(); i++){
       int oscilID = atoi(initcondstr[i].c_str());
       ninit *= nlevels[oscilID];
