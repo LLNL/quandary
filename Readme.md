@@ -19,5 +19,5 @@ To build this project, you need to have the following packages installed:
 
 ## Running
 The code builds into the executable `./main`. It takes one argument being the name of the config file. The config file `AxC.cfg`, lists all possible config options. It is currently set to run the Alice-Cavity testcase (3x20 levels).
-* './main AxC.cfg' 
-* 'srun -np36 ./main AxC.cfg' 
+* `./main AxC.cfg`
+* `srun -np36 ./main AxC.cfg`
