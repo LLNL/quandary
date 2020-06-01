@@ -1,4 +1,5 @@
 #include "timestepper.hpp"
+#include "petscvec.h"
 
 TimeStepper::TimeStepper() {
   dim = 0;

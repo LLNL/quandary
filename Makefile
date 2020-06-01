@@ -1,8 +1,11 @@
 # Set location of PETSC
-#PETSC_DIR = /usr/tce/packages/petsc/petsc-3.8.3-mvapich2-2.2-gcc-4.8-redhat
+PETSC_DIR = /usr/tce/packages/petsc/petsc-3.12.4-mvapich2-2.3-gcc-4.8-redhat
+#PETSC_DIR=/usr/WS2/dubois9/quandry/petsc/
+#PETSC_ARCH=arch-linux-c-debug
 
 # Set Braid location 
-BRAID_DIR = ${HOME}/Numerics/xbraid_solveadjointwithxbraid
+#BRAID_DIR = ${HOME}/Numerics/xbraid_solveadjointwithxbraid
+BRAID_DIR = /usr/workspace/wsb/dubois9/quandry/xbraid
 
 # Set compiler options, e.g. define SANITY_CHECK. Comment out if none.
 #CXX_OPT = -DSANITY_CHECK
@@ -39,7 +42,7 @@ LDFLAGS = -lpetsc -lm ${BRAID_LIB_FILE} -L${PETSC_DIR}/${PETSC_ARCH}/lib -lblas 
 
 # Set compiler and flags 
 CXX=mpicxx
-CXXFLAGS= -g -lstdc++ $(CXX_OPT)
+CXXFLAGS= -g -std=c++11 -lstdc++ $(CXX_OPT)
 
 
 # Rule for linking main
