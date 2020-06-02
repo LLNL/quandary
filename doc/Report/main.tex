@@ -81,7 +81,7 @@ where $\beta_{l,f}^k$ and $\theta_{l,f}$ are computed from
 and $w_r$ is ??
 
 
-\subsection{Measuring the expected energy level}
+\subsection{Measuring the expected energy level}\label{sec:expectedenergy}
 For each oscillator $k$, $k=1,\dots, Q$, we define the observable 
 \begin{align}
   M^k := a_k^\dag a_k  = I_{n_1} \otimes \dots \otimes I_{n_{k-1}} \otimes  N_k \otimes I_{n_{k+1}} \otimes \dots I_{n_Q} 
@@ -118,11 +118,11 @@ We aim to find control pulses $p^k(\vec{\alpha}^k, t), q^k(\vec{\alpha}^k, (t)$,
 
 We define two objective functions for groundstate optimization, both of which can be applied either to the full system $H = H_1\otimes \dots \otimes H_Q$ with density matrix $\rho$, or for a partial system $H_{k_1}\otimes \dots \otimes H_{k_s}$ for some index set $\mathcal{K}=\{k_1,\dots,k_s\}\subset \{1,\dots,Q\}$ and reduced density matrix $\rho^{\mathcal{K}}$.
 \begin{enumerate}
-  \item Minimize the expected energy level:
+  \item Minimize the square of the average expected energy level of all oscillators
     \begin{align}
-      J(\rho(T)) = \sum_{k=1}^Q\langle M_k \rangle^2
+      J(\rho(T)) = \left(\frac{1}{|\mathcal{K}|}\sum_{k\in\mathcal{K}}\langle M_k \rangle \right)^2
     \end{align}
-    where $M_k = a_k^\dag a_k$ is the number operator for oscillator $k$. 
+    where $M_k = a_k^\dag a_k$ is the number operator for oscillator $k$, and $\langle \cdot \rangle = \mbox{Tr} (M_k\rho^k)$ gives the expected energy level of the subsystem $k$ as in Section \ref{sec:expectedenergy}.
   \item Minimize the frobenius norm between the final density matrix and the groundstate density matrix:
     \begin{align}
       J(\rho(T)) = \frac 12 \| \rho(T) - \rho_G \|^2_F 

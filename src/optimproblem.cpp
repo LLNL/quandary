@@ -280,6 +280,7 @@ double OptimProblem::evalF(Vec x) {
   MPI_Bcast(&obj_cost, 1, MPI_DOUBLE, mpisize_braid-1, primalbraidapp->comm_braid);
 
   /* Sum up objective from all initial conditions */
+  obj_cost = 1./ninit * obj_cost;
   double myobj = obj_cost;
   MPI_Allreduce(&myobj, &obj_cost, 1, MPI_DOUBLE, MPI_SUM, comm_init);
   // if (mpirank_init == 0) printf("%d: global sum objective: %1.14e\n\n", mpirank_init, obj);
@@ -347,7 +348,8 @@ void OptimProblem::evalGradF(Vec x, Vec G){
     // if (mpirank_braid == 0) printf("%d: %d BWD.", mpirank_init, initid);
 
     /* Derivative of final time objective */
-    objectiveT_diff(finalstate, obj_iinit, 1.0);
+    double Jbar = 1.0 / ninit;
+    objectiveT_diff(finalstate, obj_iinit, Jbar);
 
     adjointbraidapp->PreProcess(initid);
     adjointbraidapp->setInitCond(rho_t0_bar);
@@ -503,12 +505,14 @@ double OptimProblem::objectiveT(Vec finalstate){
         break;
 
       case EXPECTEDENERGY:
-        /* compute the expected value of energy levels for each oscillator */
-        obj_local = 0.0;
+        /* Squared average of expected energy level f = ( sum_{k=0}^Q < N_k(rho(T)) > )^2 */
+        double sum;
+        sum = 0.0;
         for (int i=0; i<obj_oscilIDs.size(); i++) {
-          obj_local += primalbraidapp->mastereq->getOscillator(obj_oscilIDs[i])->expectedEnergy(finalstate);
+          /* compute the expected value of energy levels for each oscillator */
+          sum += primalbraidapp->mastereq->getOscillator(obj_oscilIDs[i])->expectedEnergy(finalstate);
         }
-        obj_local = pow(obj_local, 2.0);
+        obj_local = pow(sum / obj_oscilIDs.size(), 2.0);
         break;
 
       case GROUNDSTATE:
@@ -559,7 +563,7 @@ void OptimProblem::objectiveT_diff(Vec finalstate, double obj, double obj_bar){
 
       case EXPECTEDENERGY:
         double tmp;
-        tmp = 2. * sqrt(obj) * obj_bar;
+        tmp = 2. * sqrt(obj) * obj_bar / obj_oscilIDs.size();
         // tmp = obj_bar;
         for (int i=0; i<obj_oscilIDs.size(); i++) {
           primalbraidapp->mastereq->getOscillator(obj_oscilIDs[i])->expectedEnergy_diff(finalstate, rho_t0_bar, tmp);
