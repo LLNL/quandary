@@ -6,5 +6,5 @@ cnot2-pcof-opt-alpha-0.15_orig.dat:
  param_optimized_CNOT.dat:
  * These are optimized parameters realizing a CNOT gate. Optimization has been performed on the Diagonal of the density only. The initial parameters were Ander's parameters. 
 
- param_optimized_AxC_cooling.dat:
+ AxC_cooling/param_optimized_AxC_cooling.dat:
  * Alice-Cavity testcase (3x20): parameters for driving the expected value of Alice's and the cavities energy level to zero. Use together with AxC.cfg

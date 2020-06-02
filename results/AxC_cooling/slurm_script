@@ -1,0 +1,19 @@
+#!/bin/tcsh
+##### These lines are for slurm
+#SBATCH -t 04:00:00
+#SBATCH -p pbatch
+#SBATCH -o   out.%j
+#SBATCH -e   err.%j
+#SBATCH -J optim_basis
+#SBATCH --ntasks=324
+
+echo -n 'This machine is '; hostname
+echo -n 'My jobid is '; echo $SLURM_JOBID
+echo -n 'Timestamp START: ';date 
+
+srun -n324 ../../main AxC.cfg 
+
+echo -n 'Timestamp TH NDSA-TRT_sigma1e-3_marshak_AIR_GMRES_real1D.lua: ';date
+echo 'Done'
+echo -n 'Timestamp END: ';date
+
