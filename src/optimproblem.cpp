@@ -508,7 +508,7 @@ double OptimProblem::objectiveT(Vec finalstate){
         break;
 
       case EXPECTEDENERGY:
-        /* Squared average of expected energy level f = ( sum_{k=0}^Q < N_k(rho(T)) > )^2 */
+        /* Squared average of expected energy level f = 1/Q ( sum_{k=0}^Q < N_k(rho(T)) > )^2 */
         sum = 0.0;
         for (int i=0; i<obj_oscilIDs.size(); i++) {
           /* compute the expected value of energy levels for each oscillator */
@@ -518,7 +518,7 @@ double OptimProblem::objectiveT(Vec finalstate){
         break;
 
       case EXPECTEDENERGYb:
-        /* average of Squared expected energy level f = sum_{k=0}^Q < N_k(rho(T))>^2 */
+        /* average of Squared expected energy level f = 1/Qsum_{k=0}^Q < N_k(rho(T))>^2 */
         double g;
         sum = 0.0;
         for (int i=0; i<obj_oscilIDs.size(); i++) {
@@ -526,11 +526,11 @@ double OptimProblem::objectiveT(Vec finalstate){
           g = primalbraidapp->mastereq->getOscillator(obj_oscilIDs[i])->expectedEnergy(finalstate);
           sum += pow(g,2.0);
         }
-        obj_local = pow(sum, 2.0) / obj_oscilIDs.size();
+        obj_local = sum / obj_oscilIDs.size();
         break;
 
       case EXPECTEDENERGYc:
-        /* average of expected energy level f = sum_{k=0}^Q < N_k(rho(T))> */
+        /* average of expected energy level f = 1/Q sum_{k=0}^Q < N_k(rho(T))> */
         sum = 0.0;
         for (int i=0; i<obj_oscilIDs.size(); i++) {
           /* compute the expected value of energy levels for each oscillator */
