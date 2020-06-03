@@ -62,6 +62,8 @@ OptimProblem::OptimProblem(MapParam config, myBraidApp* primalbraidapp_, myAdjoi
     }
   }  
   else if (objective_str[0].compare("expectedEnergy")==0) objective_type = EXPECTEDENERGY;
+  else if (objective_str[0].compare("expectedEnergyb")==0) objective_type = EXPECTEDENERGYb;
+  else if (objective_str[0].compare("expectedEnergyc")==0) objective_type = EXPECTEDENERGYc;
   else if (objective_str[0].compare("groundstate")   ==0) objective_type = GROUNDSTATE;
   else {
       printf("\n\n ERROR: Unknown objective function: %s\n", objective_str[0].c_str());
@@ -495,6 +497,7 @@ void OptimProblem::getStartingPoint(Vec xinit){
 
 double OptimProblem::objectiveT(Vec finalstate){
   double obj_local = 0.0;
+  double sum;
 
   if (finalstate != NULL) {
 
@@ -506,13 +509,34 @@ double OptimProblem::objectiveT(Vec finalstate){
 
       case EXPECTEDENERGY:
         /* Squared average of expected energy level f = ( sum_{k=0}^Q < N_k(rho(T)) > )^2 */
-        double sum;
         sum = 0.0;
         for (int i=0; i<obj_oscilIDs.size(); i++) {
           /* compute the expected value of energy levels for each oscillator */
           sum += primalbraidapp->mastereq->getOscillator(obj_oscilIDs[i])->expectedEnergy(finalstate);
         }
         obj_local = pow(sum / obj_oscilIDs.size(), 2.0);
+        break;
+
+      case EXPECTEDENERGYb:
+        /* average of Squared expected energy level f = sum_{k=0}^Q < N_k(rho(T))>^2 */
+        double g;
+        sum = 0.0;
+        for (int i=0; i<obj_oscilIDs.size(); i++) {
+          /* compute the expected value of energy levels for each oscillator */
+          g = primalbraidapp->mastereq->getOscillator(obj_oscilIDs[i])->expectedEnergy(finalstate);
+          sum += pow(g,2.0);
+        }
+        obj_local = pow(sum, 2.0) / obj_oscilIDs.size();
+        break;
+
+      case EXPECTEDENERGYc:
+        /* average of expected energy level f = sum_{k=0}^Q < N_k(rho(T))> */
+        sum = 0.0;
+        for (int i=0; i<obj_oscilIDs.size(); i++) {
+          /* compute the expected value of energy levels for each oscillator */
+          sum += primalbraidapp->mastereq->getOscillator(obj_oscilIDs[i])->expectedEnergy(finalstate);
+        }
+        obj_local = sum / obj_oscilIDs.size();
         break;
 
       case GROUNDSTATE:
@@ -551,6 +575,7 @@ double OptimProblem::objectiveT(Vec finalstate){
 
 
 void OptimProblem::objectiveT_diff(Vec finalstate, double obj, double obj_bar){
+  double tmp;
 
   /* Reset adjoints */
   VecZeroEntries(rho_t0_bar);
@@ -562,13 +587,28 @@ void OptimProblem::objectiveT_diff(Vec finalstate, double obj, double obj_bar){
         break;
 
       case EXPECTEDENERGY:
-        double tmp;
         tmp = 2. * sqrt(obj) * obj_bar / obj_oscilIDs.size();
         // tmp = obj_bar;
         for (int i=0; i<obj_oscilIDs.size(); i++) {
           primalbraidapp->mastereq->getOscillator(obj_oscilIDs[i])->expectedEnergy_diff(finalstate, rho_t0_bar, tmp);
         }
         break;
+
+      case EXPECTEDENERGYb:
+        for (int i=0; i<obj_oscilIDs.size(); i++) {
+          tmp = 2. / obj_oscilIDs.size() * primalbraidapp->mastereq->getOscillator(obj_oscilIDs[i])->expectedEnergy(finalstate) * obj_bar;
+          primalbraidapp->mastereq->getOscillator(obj_oscilIDs[i])->expectedEnergy_diff(finalstate, rho_t0_bar, tmp);
+        }
+        break;
+
+      case EXPECTEDENERGYc:
+        tmp = obj_bar / obj_oscilIDs.size();
+        for (int i=0; i<obj_oscilIDs.size(); i++) {
+          primalbraidapp->mastereq->getOscillator(obj_oscilIDs[i])->expectedEnergy_diff(finalstate, rho_t0_bar, tmp);
+        }
+        break;
+
+
 
     case GROUNDSTATE:
 

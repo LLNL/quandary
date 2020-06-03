@@ -7,6 +7,8 @@
 
 enum ObjectiveType {GATE,             // Compare final state to linear gate transformation of initial cond.
                     EXPECTEDENERGY,   // Minimizes expected energy levels.
+                    EXPECTEDENERGYb,   // Minimizes expected energy levels.
+                    EXPECTEDENERGYc,   // Minimizes expected energy levels.
                     GROUNDSTATE};     // Compares final state to groundstate (full matrix)
 
 
