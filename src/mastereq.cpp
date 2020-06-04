@@ -46,16 +46,6 @@ MasterEq::MasterEq(int noscillators_, Oscillator** oscil_vec_, const std::vector
     exit(1);
   }
 
-  /* Allocate real and imaginary part of system matrix */
-  MatCreate(PETSC_COMM_WORLD, &Re);
-  MatCreate(PETSC_COMM_WORLD, &Im);
-  MatSetSizes(Re, PETSC_DECIDE, PETSC_DECIDE, dim, dim);
-  MatSetSizes(Im, PETSC_DECIDE, PETSC_DECIDE, dim, dim);
-  MatSetFromOptions(Re); MatSetUp(Re);
-  MatSetFromOptions(Im); MatSetUp(Im);
-  MatAssemblyBegin(Re,MAT_FINAL_ASSEMBLY); MatAssemblyEnd(Re,MAT_FINAL_ASSEMBLY);
-  MatAssemblyBegin(Im,MAT_FINAL_ASSEMBLY); MatAssemblyEnd(Im,MAT_FINAL_ASSEMBLY);
-
   /* Allocate system matrix (RHS), either as matrix or as matrix shell. */
   /* dimension: 2*dim x 2*dim for the real-valued system */
   if (usematshell)
@@ -278,13 +268,23 @@ MasterEq::MasterEq(int noscillators_, Oscillator** oscil_vec_, const std::vector
     MatShellSetOperation(RHS, MATOP_MULT, (void(*)(void)) myMatMult);
     MatShellSetOperation(RHS, MATOP_MULT_TRANSPOSE, (void(*)(void)) myMatMultTranspose);
   }
+
+  /* Allocate real and imaginary part of system matrix, as needed by the RHS if not matshell*/
+  if (!usematshell) {
+    MatCreate(PETSC_COMM_WORLD, &Re);
+    MatCreate(PETSC_COMM_WORLD, &Im);
+    MatSetSizes(Re, PETSC_DECIDE, PETSC_DECIDE, dim, dim);
+    MatSetSizes(Im, PETSC_DECIDE, PETSC_DECIDE, dim, dim);
+    MatSetFromOptions(Re); MatSetUp(Re);
+    MatSetFromOptions(Im); MatSetUp(Im);
+    MatAssemblyBegin(Re,MAT_FINAL_ASSEMBLY); MatAssemblyEnd(Re,MAT_FINAL_ASSEMBLY);
+    MatAssemblyBegin(Im,MAT_FINAL_ASSEMBLY); MatAssemblyEnd(Im,MAT_FINAL_ASSEMBLY);
+  }
 }
 
 
 MasterEq::~MasterEq(){
   if (dim > 0){
-    MatDestroy(&Re);
-    MatDestroy(&Im);
     MatDestroy(&RHS);
     PetscFree(colid1);
     PetscFree(colid2);
@@ -310,6 +310,11 @@ MasterEq::~MasterEq(){
     VecDestroy(&Bcu);
     VecDestroy(&Bcv);
     VecDestroy(&auxil);
+    
+    if (!usematshell) {
+      MatDestroy(&Re);
+      MatDestroy(&Im);
+    }
   }
 }
 
