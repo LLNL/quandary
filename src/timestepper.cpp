@@ -77,10 +77,20 @@ ImplMidpoint::ImplMidpoint(MasterEq* mastereq_) : TimeStepper(mastereq_) {
   KSPSetType(linearsolver, KSPGMRES);
   KSPSetOperators(linearsolver, mastereq->getRHS(), mastereq->getRHS());
   KSPSetFromOptions(linearsolver);
+
+  KSPsolve_counter = 0;
+  KSPsolve_iterstaken_avg = 0.0;
 }
 
 
 ImplMidpoint::~ImplMidpoint(){
+
+  /* Print */
+  KSPsolve_iterstaken_avg = (int) KSPsolve_iterstaken_avg / KSPsolve_counter;
+  int myrank;
+  MPI_Comm_rank(MPI_COMM_WORLD, &myrank);
+  if (myrank == 0) printf("KSPsolve: Average iterations = %d\n", KSPsolve_iterstaken_avg);
+
   /* Free up intermediate vectors */
   VecDestroy(&stage_adj);
   VecDestroy(&stage);
@@ -120,7 +130,9 @@ void ImplMidpoint::evolveFWD(double tstart, double tstop, Vec x) {
   int iters_taken;
   KSPGetResidualNorm(linearsolver, &rnorm);
   KSPGetIterationNumber(linearsolver, &iters_taken);
-  // printf("Residual norm %d: %1.5e\n", iters_taken, rnorm);
+  //printf("Residual norm %d: %1.5e\n", iters_taken, rnorm);
+  KSPsolve_iterstaken_avg += iters_taken;
+  KSPsolve_counter++;
 
   /* If matshell, revert the scaling and shifting */
   if (mastereq->usematshell){

@@ -12,6 +12,9 @@ class TimeStepper{
     int dim;                   /* State vector dimension */
     MasterEq* mastereq;  
 
+    int KSPsolve_iterstaken_avg;  // Computing the average number of iterations taken by KSP solve
+    int KSPsolve_counter;            // Counting how often KSPsolve is called
+
   public: 
     TimeStepper(); 
     TimeStepper(MasterEq* mastereq_); 
