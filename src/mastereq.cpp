@@ -1,6 +1,14 @@
 #include "mastereq.hpp"
 
 
+int getIndexReal(int i) {
+  return 2*i;
+}
+
+int getIndexImag(int i) {
+  return 2*i + 1;
+}
+
 MasterEq::MasterEq(){
   dim = 0;
   oscil_vec = NULL;
@@ -40,7 +48,7 @@ MasterEq::MasterEq(int noscillators_, Oscillator** oscil_vec_, const std::vector
   int dimmat = dim;
   dim = dim*dim; // density matrix: N \times N -> vectorized: N^2
 
-  /* Sanity check for parallel petsc with colocated x storage */
+  /* Sanity check for parallel petsc */
   if (dim % mpisize_petsc != 0) {
     printf("\n ERROR in parallel distribution: Petsc's communicator size (%d) must be integer multiple of system dimension N^2=%d\n", mpisize_petsc, dim);
     exit(1);
@@ -384,8 +392,8 @@ int MasterEq::assemble_RHS(double t){
     int rowid2 = 2*irow + 1;
     for (int icol = 0; icol < ncol; icol++)
     {
-      colid1[icol] = 2*getcol[icol];       // uk
-      colid2[icol] = 2*getcol[icol] + 1;   // vk
+      colid1[icol] = getIndexReal(getcol[icol]);   // uk
+      colid2[icol] = getIndexImag(getcol[icol]);   // vk
     }
     /* Set Re-row in M */
     ierr = MatSetValues(RHS, 1, &rowid1, ncol, colid1, vals, INSERT_VALUES); CHKERRQ(ierr);
@@ -398,13 +406,13 @@ int MasterEq::assemble_RHS(double t){
     /* Set up row and column ids for Im in M */
     for (int icol = 0; icol < ncol; icol++)
     {
-      colid1[icol] = 2*getcol[icol] + 1;  // uk
-      colid2[icol] = 2*getcol[icol];      // vk
+      colid1[icol] = getIndexImag(getcol[icol]);  // uk // TODO: IS THIS A BUG????
+      colid2[icol] = getIndexReal(getcol[icol]);  // vk
       negvals[icol] = -vals[icol];
     }
     // Set Im in M: 
-    rowid1 = 2 * irow;
-    rowid2 = 2 * irow + 1;
+    rowid1 = getIndexReal(irow);
+    rowid2 = getIndexImag(irow);
     ierr = MatSetValues(RHS,1,&rowid1,ncol,colid1,negvals,INSERT_VALUES);CHKERRQ(ierr);
     ierr = MatSetValues(RHS,1,&rowid2,ncol,colid2,vals,INSERT_VALUES);CHKERRQ(ierr);
     ierr = MatRestoreRow(Im,irow,&ncol,&getcol,&vals);CHKERRQ(ierr);
@@ -464,8 +472,8 @@ void MasterEq::createReducedDensity(Vec rho, Vec *reduced, std::vector<int>oscil
         for (int m=0; m<dim_post; m++) {
           int rho_row = blockstartID + i * dim_post + m;
           int rho_col = blockstartID + j * dim_post + m;
-          int rho_vecID_re = 2 * (rho_col * dimmat + rho_row);
-          int rho_vecID_im = rho_vecID_re + 1;
+          int rho_vecID_re = getIndexReal(rho_col * dimmat + rho_row);
+          int rho_vecID_im = getIndexImag(rho_col * dimmat + rho_row);
           /* Get real and imaginary part from full density matrix */
           double re = 0.0;
           double im = 0.0;
@@ -479,8 +487,8 @@ void MasterEq::createReducedDensity(Vec rho, Vec *reduced, std::vector<int>oscil
         }
       }
       /* Set real and imaginary part of element (i,j) of the reduced density matrix */
-      int out_vecID_re = 2 * (j * dim_reduced + i);
-      int out_vecID_im = out_vecID_re + 1;
+      int out_vecID_re = getIndexReal(j * dim_reduced + i);
+      int out_vecID_im = getIndexImag(j * dim_reduced + i);
       VecSetValues( red, 1, &out_vecID_re, &sum_re, INSERT_VALUES);
       VecSetValues( red, 1, &out_vecID_im, &sum_im, INSERT_VALUES);
     }
@@ -536,8 +544,8 @@ void MasterEq::createReducedDensity_diff(Vec rhobar, Vec reducedbar, std::vector
   for (int i=0; i<dim_reduced; i++) {
     for (int j=0; j<dim_reduced; j++) {
       /* Get value from reducedbar */
-      int vecID_re = 2 * (j * dim_reduced + i);
-      int vecID_im = vecID_re + 1;
+      int vecID_re = getIndexReal(j * dim_reduced + i);
+      int vecID_im = getIndexImag(j * dim_reduced + i);
       double re = 0.0;
       double im = 0.0;
       VecGetValues( reducedbar, 1, &vecID_re, &re);
@@ -551,8 +559,8 @@ void MasterEq::createReducedDensity_diff(Vec rhobar, Vec reducedbar, std::vector
           /* Set values into rhobar */
           int rho_row = blockstartID + i * dim_post + m;
           int rho_col = blockstartID + j * dim_post + m;
-          int rho_vecID_re = 2 * (rho_col * dimmat + rho_row);
-          int rho_vecID_im = rho_vecID_re + 1;
+          int rho_vecID_re = getIndexReal(rho_col * dimmat + rho_row);
+          int rho_vecID_im = getIndexImag(rho_col * dimmat + rho_row);
 
           /* Set derivative */
           if (ilow <= rho_vecID_re && rho_vecID_re < iupp) {
@@ -673,8 +681,7 @@ int MasterEq::getRhoT0(int iinit, int ninit, InitialConditionType initcond_type,
       /* Compute index of the nonzero element in rho_m(0) = E_pre \otimes |m><m| \otimes E_post */
       diagelem = iinit * dim_post;
       /* Position in vectorized q(0) */
-      row = diagelem * dim_rho + diagelem;
-      row = 2*row; // real part;
+      row = getIndexReal(diagelem * dim_rho + diagelem);
 
       /* Assemble */
       VecGetOwnershipRange(rho0, &ilow, &iupp);
@@ -708,7 +715,7 @@ int MasterEq::getRhoT0(int iinit, int ninit, InitialConditionType initcond_type,
       if (k == j) {
         /* B_{kk} = E_{kk} -> set only one element at (k,k) */
         int elemID = j * dim_post * dim_rho + k * dim_post;
-        elemID = 2*elemID; // real part
+        elemID = getIndexReal(elemID); // real part
         double val = 1.0;
         if (ilow <= elemID && elemID < iupp) VecSetValues(rho0, 1, &elemID, &val, INSERT_VALUES);
       } else {
@@ -716,13 +723,11 @@ int MasterEq::getRhoT0(int iinit, int ninit, InitialConditionType initcond_type,
         int* rows = new int[4];
         double* vals = new double[4];
 
-        rows[0] = k * dim_post * dim_rho + k * dim_post; // (k,k)
-        rows[1] = j * dim_post * dim_rho + j * dim_post; // (j,j)
-        rows[2] = j * dim_post * dim_rho + k * dim_post; // (k,j)
-        rows[3] = k * dim_post * dim_rho + j * dim_post; // (j,k)
-
-        /* Colocated storage xi = (ui, vi) */
-        for (int r=0; r<4; r++) rows[r] = 2 * rows[r]; // real parts
+        /* Get storage index of Re(x) */
+        rows[0] = getIndexReal(k * dim_post * dim_rho + k * dim_post); // (k,k)
+        rows[1] = getIndexReal(j * dim_post * dim_rho + j * dim_post); // (j,j)
+        rows[2] = getIndexReal(j * dim_post * dim_rho + k * dim_post); // (k,j)
+        rows[3] = getIndexReal(k * dim_post * dim_rho + j * dim_post); // (j,k)
 
         if (k < j) { // B_{kj} = 1/2(E_kk + E_jj) + 1/2(E_kj + E_jk)
           vals[0] = 0.5;
@@ -740,8 +745,8 @@ int MasterEq::getRhoT0(int iinit, int ninit, InitialConditionType initcond_type,
           }
           vals[2] = -0.5;
           vals[3] = 0.5;
-          rows[2] = rows[2] + 1; // Shift to imaginary 
-          rows[3] = rows[3] + 1;
+          rows[2] = getIndexImag(j * dim_post * dim_rho + k * dim_post); // Index of Im(x)
+          rows[3] = getIndexImag(k * dim_post * dim_rho + j * dim_post); // Index of Im(x)
           for (int i=2; i<4; i++) {
             if (ilow <= rows[i] && rows[i] < iupp) VecSetValues(rho0, 1, &(rows[i]), &(vals[i]), INSERT_VALUES);
           }

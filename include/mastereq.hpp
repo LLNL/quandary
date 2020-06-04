@@ -11,6 +11,9 @@ enum LindbladType {NONE, DECAY, DEPHASE, BOTH};
 /* Available types of initial conditions */
 enum InitialConditionType {FROMFILE, PURE, DIAGONAL, BASIS};
 
+int getIndexReal(int i); // Return storage index of Re(x[i]) (colocated: x[2*i], blocked: x[i])
+int getIndexImag(int i); // Return storage index of Im(x[i]) (colocated: x[2*i+1], blocked: x[i+dim])
+
 /* Define a matshell context containing pointers to data needed for applying the RHS matrix to a vector */
 typedef struct {
   int noscil; 
