@@ -15,7 +15,6 @@ enum InitialConditionType {FROMFILE, PURE, DIAGONAL, BASIS};
 typedef struct {
   int noscil; 
   IS *isu, *isv;
-  Mat *Re, *Im; 
   Oscillator*** oscil_vec;
   std::vector<double> *xi;
   std::vector<double> control_Re, control_Im;

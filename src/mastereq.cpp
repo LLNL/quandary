@@ -258,8 +258,6 @@ MasterEq::MasterEq(int noscillators_, Oscillator** oscil_vec_, const std::vector
   if (usematshell) {
     RHSctx.isu = &isu;
     RHSctx.isv = &isv;
-    RHSctx.Re = &Re;
-    RHSctx.Im = &Im;
     RHSctx.xi = &xi;
     RHSctx.Ac_vec = &Ac_vec;
     RHSctx.Bc_vec = &Bc_vec;
@@ -782,8 +780,8 @@ int myMatMult(Mat RHS, Vec x, Vec y){
 
   // uout = Re*u - Im*v
   //      = (Ad + sum_k q_kA_k)*u - (Bd + sum_k p_kB_k)*v
-  // vout = Re*u + Im*v
-  //      = (Ad + sum_k q_kA_k)*v + (Bd + sum_k p_kB_k)*u
+  // vout = Im*u + Re*v
+  //      = (Bd + sum_k p_kB_k)*u + (Ad + sum_k q_kA_k)*v
 
   // Constant part uout = Adu - Bdv
   MatMult(*shellctx->Bd, v, uout);
@@ -842,13 +840,39 @@ int myMatMultTranspose(Mat RHS, Vec x, Vec y) {
   VecGetSubVector(y, *shellctx->isv, &vout);
 
   // uout = Re^T*u + Im^T*v
-  MatMultTranspose(*shellctx->Im, v, uout);      
-  MatMultTransposeAdd(*shellctx->Re, u, uout, uout);
-
+  //      = (Ad + sum_k q_kA_k)^T*u + (Bd + sum_k p_kB_k)^T*v
   // vout = -Im^T*u + Re^T*v
-  MatMultTranspose(*shellctx->Im, u, vout);      
-  VecScale(vout, -1.0);
-  MatMultTransposeAdd(*shellctx->Re, v, vout, vout);      
+  //      = -(Bd + sum_k p_kB_k)^T*u + (Ad + sum_k q_kA_k)^T*v
+
+  // Constant part uout = Ad^Tu + Bd^Tv
+  MatMultTranspose(*shellctx->Bd, v, uout);
+  MatMultTransposeAdd(*shellctx->Ad, u, uout, uout);
+  // Constant part vout = -Bd^Tu + Ad^Tv
+  MatMultTranspose(*shellctx->Ad, v, vout);
+  VecScale(vout, 1.0);
+  MatMultTransposeAdd(*shellctx->Bd, u, vout, vout);
+
+  /* Control part */
+  for (int iosc = 0; iosc < shellctx->noscil; iosc++) {
+    /* Get controls */
+    double p = shellctx->control_Re[iosc];
+    double q = shellctx->control_Im[iosc];
+
+    // uout += q^k*Ac^Tu 
+    MatMultTranspose((*(shellctx->Ac_vec))[iosc], u, *shellctx->Acu);
+    VecAXPY(uout, q, *shellctx->Acu);
+    // uout += p^kBc^Tv
+    MatMultTranspose((*(shellctx->Bc_vec))[iosc], v, *shellctx->Bcv);
+    VecAXPY(uout, p, *shellctx->Bcv);
+    // vout += q^kAc^Tv
+    MatMultTranspose((*(shellctx->Ac_vec))[iosc], v, *shellctx->Acv);
+    VecAXPY(vout, q, *shellctx->Acv);
+    // vout -= p^kBc^Tu
+    MatMultTranspose((*(shellctx->Bc_vec))[iosc], u, *shellctx->Bcu);
+    VecAXPY(vout, -1.*p, *shellctx->Bcu);
+  }
+
+
 
   /* Restore */
   VecRestoreSubVector(x, *shellctx->isu, &u);
