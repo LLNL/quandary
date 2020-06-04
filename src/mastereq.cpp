@@ -261,9 +261,21 @@ MasterEq::MasterEq(int noscillators_, Oscillator** oscil_vec_, const std::vector
     RHSctx.Re = &Re;
     RHSctx.Im = &Im;
     RHSctx.xi = &xi;
+    RHSctx.Ac_vec = &Ac_vec;
+    RHSctx.Bc_vec = &Bc_vec;
+    RHSctx.Ad = &Ad;
+    RHSctx.Bd = &Bd;
+    RHSctx.Acu = &Acu;
+    RHSctx.Acv = &Acv;
+    RHSctx.Bcu = &Bcu;
+    RHSctx.Bcv = &Bcv;
     RHSctx.noscil = noscillators;
     RHSctx.oscil_vec = &oscil_vec;
     RHSctx.time = 0.0;
+    for (int iosc = 0; iosc < noscillators; iosc++) {
+      RHSctx.control_Re.push_back(0.0);
+      RHSctx.control_Im.push_back(0.0);
+    }
 
     MatShellSetOperation(RHS, MATOP_MULT, (void(*)(void)) myMatMult);
     MatShellSetOperation(RHS, MATOP_MULT_TRANSPOSE, (void(*)(void)) myMatMultTranspose);
@@ -313,6 +325,20 @@ Oscillator* MasterEq::getOscillator(int i) { return oscil_vec[i]; }
 int MasterEq::assemble_RHS(double t){
   int ierr;
 
+  /* If using the shell option, prepare the shell to perform the action of RHS on a vector (MyMatMult) */
+  if (usematshell) {
+    RHSctx.time = t;
+
+    for (int iosc = 0; iosc < noscillators; iosc++) {
+      double p, q;
+      oscil_vec[iosc]->evalControl(t, &p, &q);
+      RHSctx.control_Re[iosc] = p;
+      RHSctx.control_Im[iosc] = q;
+    }
+
+    return 0;
+  }
+
   /* Reset */
   ierr = MatZeroEntries(Re);CHKERRQ(ierr);
   ierr = MatZeroEntries(Im);CHKERRQ(ierr);
@@ -329,11 +355,6 @@ int MasterEq::assemble_RHS(double t){
   ierr = MatAXPY(Re, 1.0, Ad, DIFFERENT_NONZERO_PATTERN); CHKERRQ(ierr);
   ierr = MatAXPY(Im, 1.0, Bd, DIFFERENT_NONZERO_PATTERN); CHKERRQ(ierr);
 
-  /* If using the shell option, then nothing else to do here. Instead, using MyMatMult routine to define the action of RHS on a vector */
-  if (usematshell) {
-    RHSctx.time = t;
-    return 0;
-  }
 
   /* 
    * If not shell option, set up the RHS matrix from Re and Im
@@ -750,7 +771,8 @@ int myMatMult(Mat RHS, Vec x, Vec y){
   MatShellCtx *shellctx;
   MatShellGetContext(RHS, (void**) &shellctx);
 
-  /* Get u, v from x and y  */
+    
+/* Get u, v from x and y  */
   Vec u, v;
   Vec uout, vout;
   VecGetSubVector(x, *shellctx->isu, &u);
@@ -759,13 +781,38 @@ int myMatMult(Mat RHS, Vec x, Vec y){
   VecGetSubVector(y, *shellctx->isv, &vout);
 
   // uout = Re*u - Im*v
-  MatMult(*shellctx->Im, v, uout);      
-  VecScale(uout, -1.0);
-  MatMultAdd(*shellctx->Re, u, uout, uout);
+  //      = (Ad + sum_k q_kA_k)*u - (Bd + sum_k p_kB_k)*v
+  // vout = Re*u + Im*v
+  //      = (Ad + sum_k q_kA_k)*v + (Bd + sum_k p_kB_k)*u
 
-  // vout = Bd*u + Ad*v
-  MatMult(*shellctx->Im, u, vout);      
-  MatMultAdd(*shellctx->Re, v, vout, vout);      
+  // Constant part uout = Adu - Bdv
+  MatMult(*shellctx->Bd, v, uout);
+  VecScale(uout, -1.0);
+  MatMultAdd(*shellctx->Ad, u, uout, uout);
+  // Constant part vout = Adv + Bdu
+  MatMult(*shellctx->Ad, v, vout);
+  MatMultAdd(*shellctx->Bd, u, vout, vout);
+
+  /* Control part */
+  for (int iosc = 0; iosc < shellctx->noscil; iosc++) {
+    /* Get controls */
+    double p = shellctx->control_Re[iosc];
+    double q = shellctx->control_Im[iosc];
+
+    // uout += q^k*Acu 
+    MatMult((*(shellctx->Ac_vec))[iosc], u, *shellctx->Acu);
+    VecAXPY(uout, q, *shellctx->Acu);
+    // uout -= p^kBcv
+    MatMult((*(shellctx->Bc_vec))[iosc], v, *shellctx->Bcv);
+    VecAXPY(uout, -1.*p, *shellctx->Bcv);
+    // vout += q^kAcv
+    MatMult((*(shellctx->Ac_vec))[iosc], v, *shellctx->Acv);
+    VecAXPY(vout, q, *shellctx->Acv);
+    // vout += p^kBcu
+    MatMult((*(shellctx->Bc_vec))[iosc], u, *shellctx->Bcu);
+    VecAXPY(vout, p, *shellctx->Bcu);
+  }
+
 
   /* Restore */
   VecRestoreSubVector(x, *shellctx->isu, &u);

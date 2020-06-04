@@ -18,6 +18,11 @@ typedef struct {
   Mat *Re, *Im; 
   Oscillator*** oscil_vec;
   std::vector<double> *xi;
+  std::vector<double> control_Re, control_Im;
+  Mat** Ac_vec;
+  Mat** Bc_vec;
+  Mat *Ad, *Bd;
+  Vec *Acu, *Acv, *Bcu, *Bcv;
   double time;
 } MatShellCtx;
 
