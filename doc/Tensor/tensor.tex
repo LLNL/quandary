@@ -123,15 +123,37 @@ and when applying from the right:
 
 \section{Implementation}
 
-\begin{itemize}
-    \item To apply the above operators efficiently, collect those terms that access the same index set, such as $(i_k..,i_k^\prime)$ vs. $(i_k+1, i_k^\prime)$, etc. Even though all the above operations will be applied for all $i_k.., i_k^\prime..$, these loops should be separated for each of those different index sets in order to ensure optimized memory loading and caching.
-    \item  Iterate over the slowest moving index first. I.e. if the mapping from the vectorized $q = \vec(\rho)$ to $rho_(i_k..,i_k^\prime)$ is given by
+  To apply the above operators efficiently, collect those terms that access the same index set, such as $(i_k..,i_k^\prime)$ vs. $(i_k+1, i_k^\prime)$, etc. The application of the ODE's right-hand-side to a current state tensor $\rho_{i_k..,i_k^\prime}$ gives the output $y^{out}$ as follows:
+  \begin{align}
+       y^{out}(i_k..,i_k^\prime..)  &= 
+       \left(-i h_d(i_k..) + ih_d(i_k^\prime)
+        + l_2(i_k..,i_k^\prime..) + \sum_k l_1^{\text{diag}}(i_k, i_k^\prime) \right) \rho(i_k..,i_k^\prime..) \\
+        &+ \sum_k l_1^{\text{off}}(i_k, i_k^\prime) \rho(i_k+1.., i_k^\prime -1..)\\
+        &+ \sum_k -i h_c^1(i_k) \rho(i_k+1.., i_k^\prime..) \\
+        &+ \sum_k ih_c^1(i_k^\prime) \rho(i_k..,i_k^\prime +1 ..) \\
+        &+ \sum_k -i h_c^2(i_k) \rho(i_k-1.., i_k^\prime..) \\
+        &+ \sum_k ih_c^2(i_k^\prime) \rho(i_k..,i_k^\prime -1 ..) 
+  \end{align}
+  where 
+  \begin{align}
+    h_d(i_k..) &= -\sum_k \frac{\xi_k}{2}(i_k^2 - i_k) - \sum_{l<k} \xi_{lk} (i_l i_k) \\
+    h_c^1(i_k) &= \left(p^{i_k}(t) + iq^{i_k}\right)\sqrt(i_k+1) \\
+    h_c^2(i_k) &= \left(p^{i_k}(t) - iq^{i_k}\right)\sqrt(i_k) \\
+    l_1^{\text{diag}}(i_k, i_k^\prime) &= -\frac{\gamma_{1k}}{2}\left(i_k + i_k^\prime\right) \\
+    l_1^{\text{off}}(i_k,i_k^\prime) &= \gamma_{1k} \sqrt{i_k+1}\sqrt{i_k^\prime} \\
+    l_2(i_k..,i_k..^\prime) &= \sum_k \gamma_{2k} i_ki_k^\prime - \frac 12 \left( (i_k)^2 - (i_k^\prime)^2\right)
+  \end{align}
+  
+  Even though all the above operations will be applied for all $i_k.., i_k^\prime..$, these loops should be separated for each of those different index sets in order to ensure optimized memory loading and caching.
+
+  Iterate over the slowest moving index first. I.e. if the mapping from the vectorized $q = \vec(\rho)$ to $rho_(i_k..,i_k^\prime)$ is given by
     \begin{align}
         rho(i_1,\dots,i_Q,i_1^\prime,\dots,i_Q^\prime) = q[i_1 + i_2n_1 + i_3n_1n_2 + \dots]
     \end{align}
-    then iterate over $i_Q^\prime$ as the most outer loop, then moving backwards with $i_1$ being the most inner, i.e. fastest moving, iteration index.
-    \item Parallelization: The terms that contain off-diagonals will require communication of neighbouring processes to access an index $i_k+1$ from $i_k$ $\rightarrow$ ghost-layers?
-\end{itemize}
+  then iterate over $i_Q^\prime$ as the most outer loop, then moving backwards with $i_1$ being the most inner, i.e. fastest moving, iteration index.
+
+ \subsection{Parallelization} 
+ The terms that contain off-diagonals will require communication of neighbouring processes to access an index $i_k+1$ from $i_k$ $\rightarrow$ ghost-layers?
 
 
 
