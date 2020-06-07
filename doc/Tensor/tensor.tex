@@ -1,0 +1,138 @@
+\documentclass[letterpaper]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath}
+\usepackage{dsfont}
+\usepackage{graphicx}
+\usepackage[utf8]{inputenc}
+\usepackage{xcolor}
+% \usepackage[legalpaper, margin=2in]{geometry}
+\parindent0pt
+\parskip 1.5ex plus 1ex minus .5ex
+
+\DeclareMathOperator{\Tr}{Tr}
+\newcommand{\Ell}{\mathcal{L}}
+\newcommand{\R}{\mathds{R}}
+\newcommand{\C}{\mathds{C}}
+
+
+\title{Tensor contractions for the Lindblad master equation}
+\author{Stefanie G{\"u}nther}
+% \date{\today}
+
+\begin{document}
+\maketitle
+
+\section{Tensor contractions}
+Consider a matrix-matrix multiplication as rank-2 tensor contractions. For a general $A\in \R^{N\times N}$ and $\rho\in \R^{N\times N}$ the product $A\rho$ corresponds to a contraction of the rows of $A$ with the columns of $\rho$:
+\begin{align}
+    A \rho = y \quad \Leftrightarrow \quad y_{a,b} = A_a^{i} \rho_{i,b} = \sum_i A_a^i \rho_{i,b} \quad \forall a,b = 0,\dots, N
+\end{align}
+where subscript and superscript indeces correspond to rows and columns, respectively, $A_m^l = A_{m,l} = A(m,l)$. 
+
+Similarly, when applying $A$ to $\rho$ from the right, one gets 
+\begin{align}
+    \rho A = y \quad \Leftrightarrow \quad y_{a,b} = \rho_a^{i} A_{i,b} = \sum_i \rho_a^i A_{i,b} \quad \forall a,b = 0,\dots, n \\
+   = \sum_i A_i^b \rho_{a,i} = \sum_i (A^T)_b^i \rho^T_{i,a} = A_i^b \rho_{a,i}
+\end{align}
+contracting the rows of $A$ with the columns of $\rho$. 
+
+Now consider a kronecker product of operators $A\otimes B$ with dimensions $A\in\R^{n_a\times n_a}, B\in\R^{n_b\times n_b}$ multiplied to a matrix $\rho \in \R^{n_an_b\times n_bn_b}$ of matching dimensions. We can think of $\rho$ as a rank-4 tensor $\rho\in\R^{n_a\times n_b \times n_a \times n_b}$. The application of $A\otimes B$ to the tensor $\rho$ then corresponds to the tensor contraction 
+\begin{align}
+    z := A\otimes B \rho = A_{j_2}^{i_2}\otimes B_{j_1}^{i_1} \rho_{i_1, i_2, i_1^{\prime}, \i_2^{\prime}}
+\end{align}
+contracting first $B$ with $\rho$ on the first dimension $i_1$, then $A$ on the second dimension $i_2$:
+\begin{align}
+    y_{j_1, i_2, i_1^{\prime}, i_2^{\prime}} := B_{j_1}^{i_1} \rho_{i_1, i_2, i_1^{\prime}, i_2^{\prime}} = \sum_{i_1} B_{j_1}^{i_1} \rho_{i_1, i_2, i_1^{\prime}, i_2^{\prime}} \quad \forall j_1,i_2,i_1^\prime, i_2^\prime\\
+    z_{j_1, j_2, i_1^{\prime}, i_2^{\prime}} := A_{j_2}^{i_2} y_{j_1, i_2, i_1^{\prime}, i_2^{\prime}} = \sum_{i_2} A_{j_2}^{i_2} y_{j_1, i_2, i_1^{\prime}, i_2^{\prime}} \quad \forall j_1,j_2,i_1^\prime, i_2^\prime
+\end{align}
+
+
+\section{Tensor contraction for Lindblad master equation}
+For a quantum system with $Q$ oscillators in $H_{n_1} \otimes \dots H_{n_Q}$, with $n_k$ levels for the $k$-the oscillator and density matrix $\rho \in \C^{N\times N}$ with $N=\prod_{k=1}^{Q}$. Consider the density matrix being a tensor of rank $2Q$: 
+\begin{align}
+    \rho_{i_1,\dots, i_Q, i_1^{\prime}, \dots, i_Q^{\prime}} =: \rho_{i_k .., i_k^\prime..}\in\C^{n_1\times \dots \times n_Q \times n_1 \times \dots \times n_Q}
+\end{align}
+All operations that are applied to $\rho$ in the Lindblad equation are of the form $I\otimes \dots \otimes M^{n_k} \otimes \dots \otimes I$, or $I\otimes \dots \otimes M^{n_l} \otimes \dots \otimes I \otimes \dots \otimes M^{n_l} \otimes \dots \otimes I$, hence applying those operators to the tensor $\rho$ acts in at most two of the dimensions. Example for a 3-partite systems $H^{n_1} \otimes H^{n_2} \otimes H^{n_3}$:
+\begin{align}
+    I^{i_3}_{j_3}\otimes M^{i_2}_{j_2} \otimes I^{i_1}_{j_1} \rho_{i_1i_2i_3i_1^{\prime}i_2^\prime i_3^\prime} = M^{i_2}_{j_2} \rho_{i_1i_2i_3i_1^{\prime}i_2^\prime i_3^\prime} = \sum_{i_2} M(j_2, i_2) \rho(i_1,i_2,i_3,i_1^{\prime},i_2^\prime, i_3^\prime)  =: y_{i_1,j_2,i_3,i_1^{\prime},i_2^\prime,i_3^\prime}
+\end{align}
+and when applying from the right:
+\begin{align}
+    \rho_{i_1i_2i_3i_1^{\prime}i_2^\prime i_3^\prime}I^{i_3^{\prime}}_{j_3}\otimes M^{i_2^\prime}_{j_2} \otimes I^{i_1^\prime}_{j_1}  = M^{j_2}_{i_2^\prime} \rho_{i_1i_2i_3i_1^{\prime}i_2^\prime i_3^\prime} = \sum_{i_2^\prime} M(i_2^{\prime}, j_2) \rho(i_1,i_2,i_3,i_1^{\prime}i_2^\prime, i_3^\prime)  =: y_{i_1,i_2,i_3,i_1^{\prime}j_2, i_3^\prime}
+\end{align}
+
+\begin{enumerate}
+    \item \textbf{Constant drift Hamiltonian} $H_d = -\sum_k \frac{\xi}{2} \left(N_k^2 - N_k\right) - \sum_{l<k} \xi_{lk} N_lN_k$, with
+      \begin{align}
+      N_k = I_{n_1}\otimes \dots \otimes N^{n_k} \otimes \dots \otimes I_{n_Q} \quad \text{with} \quad N^{n_k} := \begin{pmatrix} 0 & & \\ & 1& \\ & & \ddots \end{pmatrix}
+      \end{align}
+      Application to the tensor $\rho_{i_k .., i_k^\prime}$ is hence a sum of contractions to each of the $k$ dimensions, such as
+      \begin{align}
+        \left(N_k\right)_{j_k}^{i_k} \rho_{i_k .., i_k^\prime ..} = \sum_{i_k} \underbrace{N(j_k, i_k)}_{ = j_k\delta_{j_ki_k} } \rho(i_k.., i_k^\prime ..) = j_k \rho_{i_1\dots j_k \dots i_Q i_1^\prime \dots i_Q^\prime}
+      \end{align}
+      And similarly
+      \begin{align}
+        \left(N_k^2-N_k^2\right)_{j_k}^{i_k} \rho_{i_k .., i_k^\prime ..} = \left(j_k^2 - j_k\right) \rho_{i_1\dots j_k \dots i_Q i_1^\prime \dots i_Q^\prime}
+      \end{align}
+
+      The mixed term $N_lN_k$ expands to $N_k = I_{n_1}\otimes \dots \otimes N^{n_l} \otimes \dots \otimes N^{(n_k)} \otimes \dots \otimes I_{n_Q}$ and their tensor contraction results in products of the form 
+      \begin{align}
+        (N_l)^{i_l}_{j_l} \otimes (N_k)_{j_k}^{i_k} \rho_{i_k .., i_k^\prime ..} = j_lj_k\rho(..j_l .. j_k.., i_k^\prime ..)
+      \end{align}
+
+      Applying $H_d$ to the tensor $\rho$ from the left therefore gives  
+      \begin{align}
+        H_d \rho_{i_k .., i_k^\prime ..} = \underbrace{\left(-\sum_k \frac{\xi_k}{2}(i_k^2 - i_k) - \sum_{l<k} \xi_{lk} (i_l i_k) \right)}_{=:h_d(i_k..)} \rho_{i_k .., i_k^\prime..} \quad \forall i_k, i_k^\prime
+      \end{align}
+      Applying $H_d$ to $\rho$ from the right contracts on dimensions $i_k^\prime$:
+      \begin{align}
+        \rho_{i_k .., i_k^\prime ..} H_d  = h_d(i_k^\prime..) \rho_{i_k .., i_k^\prime..} \quad \forall i_k, i_k^\prime
+        \end{align}
+
+    \item \textbf{Time-dependent control Hamiltonian} $H_c(t) = \sum_k p^k(t) (a_k + a_k^\dag) + iq^k(a_k - a_k^\dag)$, with  
+      \begin{align}
+      a_k = I_{n_1}\otimes \dots \otimes a^{n_k} \otimes \dots \otimes I_{n_Q} \quad \text{with} \quad a^{n_k} := \begin{pmatrix} 0 & 1 & \\ & 0 & \sqrt{2} \\ & & & \ddots \end{pmatrix}
+      \end{align}
+      Each term contracts to the $k-$th dimension:
+      \begin{align}
+        (a_k\pm a_k^\dag) \rho_{i_k..i_k^\prime ..} = (a^{n_k} \pm a^{n_k})^{i_k}_{j_k} \rho_{i_k..i_k^\prime} &= \sum_{i_k} \underbrace{(a^{n_l} \pm a^{n_k})_{j_k}^{i_k}}_{= \sqrt{j_k+1} \delta_{i_k,j_k+1,i_{k}} \pm \sqrt{j_k} \delta_{i_k,j_k-1}} \rho_{i_k.. i_k^{\prime}} \\
+        &= \sqrt{j_k+1} \rho(j_k+1.., i_k^\prime..) \pm \sqrt{j_k} \rho_(j_k-1, i_k^\prime)
+      \end{align} 
+      Applying $H_c(t)$ from the left then gives 
+      \begin{align}
+        H_c(t) \rho_{i_k.., i_k^\prime ..} = \sum_k p^k(t) \left(\sqrt{i_k+1} \rho_{i_k+1..,i_k^\prime..} + \sqrt{i_k} \rho_{i_k-1..,i_k^\prime..} \right) + q^k(t) \left(\sqrt{i_k+1} \rho_{i_k+1..,i_k^\prime..} - \sqrt{i_k} \rho_{i_k-1..,i_k^\prime..} \right)
+      \end{align}
+      Similar, applying $H_c(t)$ from the right to $\rho$ contracts on the dimensions $i_k^\prime$:
+      \begin{align}
+        \rho_{i_k.., i_k^\prime ..} H_c(t) = \sum_k p^k(t) \left(\sqrt{i_k^\prime+1} \rho_{i_k..,i_k^\prime+1..} + \sqrt{i_k^\prime} \rho_{i_k..,i_k^\prime-1..} \right) + q^k(t) \left(\sqrt{i_k^\prime+1} \rho_{i_k..,i_k^\prime+1..} - \sqrt{i_k^\prime} \rho_{i_k..,i_k^\prime-1..} \right)
+      \end{align}
+
+    \item \textbf{Lindblad terms} $\sum_k \sum_{l\in{1,2}} \gamma_{lk} \Ell_{lk} \rho \Ell_{lk}^\dag - \frac{1}{2} \left( \Ell_{lk}^\dag \Ell_{lk} \rho + \rho \Ell_{lk}^\dag \Ell_{lk}\right)$.
+    
+    The dephasing collapse operator $\Ell_{2k} = a_k^\dag a_k$ is diagonal. Contraction with $\rho_{i_k..i_k^\prime..}$ yields
+    \begin{align}
+        \sum_k \left( \gamma_{2k} i_ki_k^\prime - \frac 12 \left( i_k^2 + (i_k^\prime)^2\right) \right) \rho_{i_k..i_k^\prime..}
+    \end{align}
+
+    The decay collapse operator $\Ell_{1k} = a_k$ contains off-diagonals, and yields
+    \begin{align}
+        \sum_k \gamma_{1k} \sqrt{i_k+1}\sqrt{i_k^\prime} \rho_{i_k+1.., i_k-1..} - \frac 12 \left( i_k+ i_k^\prime \right)\rho_{i_k.., i_k^\prime..} 
+    \end{align}
+      
+\end{enumerate}
+
+\section{Implementation}
+
+\begin{itemize}
+    \item To apply the above operators efficiently, collect those terms that access the same index set, such as $(i_k..,i_k^\prime)$ vs. $(i_k+1, i_k^\prime)$, etc. Even though all the above operations will be applied for all $i_k.., i_k^\prime..$, these loops should be separated for each of those different index sets in order to ensure optimized memory loading and caching.
+    \item  Iterate over the slowest moving index first. I.e. if the mapping from the vectorized $q = \vec(\rho)$ to $rho_(i_k..,i_k^\prime)$ is given by
+    \begin{align}
+        rho(i_1,\dots,i_Q,i_1^\prime,\dots,i_Q^\prime) = q[i_1 + i_2n_1 + i_3n_1n_2 + \dots]
+    \end{align}
+    then iterate over $i_Q^\prime$ as the most outer loop, then moving backwards with $i_1$ being the most inner, i.e. fastest moving, iteration index.
+    \item Parallelization: The terms that contain off-diagonals will require communication of neighbouring processes to access an index $i_k+1$ from $i_k$ $\rightarrow$ ghost-layers?
+\end{itemize}
+
+
+
+\end{document}
