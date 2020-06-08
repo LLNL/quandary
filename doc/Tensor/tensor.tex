@@ -25,16 +25,16 @@
 \section{Tensor contractions}
 Consider a matrix-matrix multiplication as rank-2 tensor contractions. For a general $A\in \R^{N\times N}$ and $\rho\in \R^{N\times N}$ the product $A\rho$ corresponds to a contraction of the rows of $A$ with the columns of $\rho$:
 \begin{align}
-    A \rho = y \quad \Leftrightarrow \quad y_{a,b} = A_a^{i} \rho_{i,b} = \sum_i A_a^i \rho_{i,b} \quad \forall a,b = 0,\dots, N
+    A \rho = y \quad \Leftrightarrow \quad y_{j_1,i_2} = A_{j_1}^{i_1} \rho_{i_1,i_2} = \sum_{i_1} A_{j_1}^{i_1} \rho_{i_1,i_2} \quad \forall j_1,i_2 = 0,\dots, N
 \end{align}
 where subscript and superscript indeces correspond to rows and columns, respectively, $A_m^l = A_{m,l} = A(m,l)$. 
 
-Similarly, when applying $A$ to $\rho$ from the right, one gets 
+Note than when applying $A$ to $\rho$ from the right, one gets 
 \begin{align}
     \rho A = y \quad \Leftrightarrow \quad y_{a,b} = \rho_a^{i} A_{i,b} = \sum_i \rho_a^i A_{i,b} \quad \forall a,b = 0,\dots, n \\
    = \sum_i A_i^b \rho_{a,i} = \sum_i (A^T)_b^i \rho^T_{i,a} = A_i^b \rho_{a,i}
 \end{align}
-contracting the rows of $A$ with the columns of $\rho$. 
+contracting the rows of $A$ with the rows of $\rho$. 
 
 Now consider a kronecker product of operators $A\otimes B$ with dimensions $A\in\R^{n_a\times n_a}, B\in\R^{n_b\times n_b}$ multiplied to a matrix $\rho \in \R^{n_an_b\times n_bn_b}$ of matching dimensions. We can think of $\rho$ as a rank-4 tensor $\rho\in\R^{n_a\times n_b \times n_a \times n_b}$. The application of $A\otimes B$ to the tensor $\rho$ then corresponds to the tensor contraction 
 \begin{align}
@@ -45,14 +45,23 @@ contracting first $B$ with $\rho$ on the first dimension $i_1$, then $A$ on the 
     y_{j_1, i_2, i_1^{\prime}, i_2^{\prime}} := B_{j_1}^{i_1} \rho_{i_1, i_2, i_1^{\prime}, i_2^{\prime}} = \sum_{i_1} B_{j_1}^{i_1} \rho_{i_1, i_2, i_1^{\prime}, i_2^{\prime}} \quad \forall j_1,i_2,i_1^\prime, i_2^\prime\\
     z_{j_1, j_2, i_1^{\prime}, i_2^{\prime}} := A_{j_2}^{i_2} y_{j_1, i_2, i_1^{\prime}, i_2^{\prime}} = \sum_{i_2} A_{j_2}^{i_2} y_{j_1, i_2, i_1^{\prime}, i_2^{\prime}} \quad \forall j_1,j_2,i_1^\prime, i_2^\prime
 \end{align}
+Similarly, when applying $A\otimes B$ from the right, the contraction acts on $i_2^\prime, i_1^\prime$, as above. 
+
+More generally, for a tensor $\rho \in \R^{n_1\times \dots \times n_N}$ we can define the contraction of an operator $A$ on a certain dimension $i_l$ of $\rho_{i_1,\dots i_N}$:
+\begin{align}
+    y_{i_1,\dots,j_l,\dots,i_N} = A_{j_l}^{i_l} \rho_{i_1,\dots,i_l,\dots,i_N} = \sum_{i_l} A_{j_l}^{i_l} \rho_{i_1,\dots,i_l,\dots i_N} \quad \forall i_1,\dots, j_l,\dots,i_N
+\end{align}
+
 
 
 \section{Tensor contraction for Lindblad master equation}
-For a quantum system with $Q$ oscillators in $H_{n_1} \otimes \dots H_{n_Q}$, with $n_k$ levels for the $k$-the oscillator and density matrix $\rho \in \C^{N\times N}$ with $N=\prod_{k=1}^{Q}$. Consider the density matrix being a tensor of rank $2Q$: 
+Consider a quantum system with $Q$ oscillators in $H_{n_1} \otimes \dots H_{n_Q}$, with $n_k$ levels for the $k$-the oscillator and density matrix $\rho \in \C^{N\times N}$ with $N=\prod_{k=1}^{Q} n_k$. Consider the density matrix being a tensor of rank $2Q$: 
 \begin{align}
     \rho_{i_1,\dots, i_Q, i_1^{\prime}, \dots, i_Q^{\prime}} =: \rho_{i_k .., i_k^\prime..}\in\C^{n_1\times \dots \times n_Q \times n_1 \times \dots \times n_Q}
 \end{align}
-All operations that are applied to $\rho$ in the Lindblad equation are of the form $I\otimes \dots \otimes M^{n_k} \otimes \dots \otimes I$, or $I\otimes \dots \otimes M^{n_l} \otimes \dots \otimes I \otimes \dots \otimes M^{n_l} \otimes \dots \otimes I$, hence applying those operators to the tensor $\rho$ acts in at most two of the dimensions. Example for a 3-partite systems $H^{n_1} \otimes H^{n_2} \otimes H^{n_3}$:
+where the index notation $i_k..$ expands to $i_1,\dots i_k, \dots,i_Q$.
+
+All operations that are applied to $\rho$ in the Lindblad equation are of the form $I\otimes \dots \otimes M^{n_k} \otimes \dots \otimes I$, or $I\otimes \dots \otimes M^{n_l} \otimes \dots \otimes I \otimes \dots \otimes M^{n_k} \otimes \dots \otimes I$, where $I$ is the identity. Applying those operators to the tensor $\rho$ therefore effectively acts in at most two of the dimensions, while others are contracted only with identities that don't change the matrix. Example for a 3-partite systems $H^{n_1} \otimes H^{n_2} \otimes H^{n_3}$:
 \begin{align}
     I^{i_3}_{j_3}\otimes M^{i_2}_{j_2} \otimes I^{i_1}_{j_1} \rho_{i_1i_2i_3i_1^{\prime}i_2^\prime i_3^\prime} = M^{i_2}_{j_2} \rho_{i_1i_2i_3i_1^{\prime}i_2^\prime i_3^\prime} = \sum_{i_2} M(j_2, i_2) \rho(i_1,i_2,i_3,i_1^{\prime},i_2^\prime, i_3^\prime)  =: y_{i_1,j_2,i_3,i_1^{\prime},i_2^\prime,i_3^\prime}
 \end{align}
@@ -64,11 +73,11 @@ and when applying from the right:
 \begin{enumerate}
     \item \textbf{Constant drift Hamiltonian} $H_d = -\sum_k \frac{\xi}{2} \left(N_k^2 - N_k\right) - \sum_{l<k} \xi_{lk} N_lN_k$, with
       \begin{align}
-      N_k = I_{n_1}\otimes \dots \otimes N^{n_k} \otimes \dots \otimes I_{n_Q} \quad \text{with} \quad N^{n_k} := \begin{pmatrix} 0 & & \\ & 1& \\ & & \ddots \end{pmatrix}
+      N_k = I_{n_1}\otimes \dots \otimes N^{n_k} \otimes \dots \otimes I_{n_Q} \quad \text{with} \quad N^{(n_k)} := \begin{pmatrix} 0 & & \\ & 1& \\ & & \ddots \end{pmatrix}
       \end{align}
-      Application to the tensor $\rho_{i_k .., i_k^\prime}$ is hence a sum of contractions to each of the $k$ dimensions, such as
+      Application to $\rho$ is hence a sum of contractions of $N^{(n_k)}$ to the corresponding $k$-th dimension of the tensor $\rho_{i_k..i_k^\prime..}$ , such as
       \begin{align}
-        \left(N_k\right)_{j_k}^{i_k} \rho_{i_k .., i_k^\prime ..} = \sum_{i_k} \underbrace{N(j_k, i_k)}_{ = j_k\delta_{j_ki_k} } \rho(i_k.., i_k^\prime ..) = j_k \rho_{i_1\dots j_k \dots i_Q i_1^\prime \dots i_Q^\prime}
+        N_k \rho = \left(N^{(n_k)}\right)_{j_k}^{i_k} \rho_{i_k .., i_k^\prime ..} = \sum_{i_k} \underbrace{N^{(n_k)}(j_k, i_k)}_{ = j_k\delta_{j_ki_k} } \rho(i_k.., i_k^\prime ..) = j_k \rho_{i_1\dots j_k \dots i_Q i_1^\prime \dots i_Q^\prime}
       \end{align}
       And similarly
       \begin{align}
@@ -95,9 +104,11 @@ and when applying from the right:
       \end{align}
       Each term contracts to the $k-$th dimension:
       \begin{align}
-        (a_k\pm a_k^\dag) \rho_{i_k..i_k^\prime ..} = (a^{n_k} \pm a^{n_k})^{i_k}_{j_k} \rho_{i_k..i_k^\prime} &= \sum_{i_k} \underbrace{(a^{n_l} \pm a^{n_k})_{j_k}^{i_k}}_{= \sqrt{j_k+1} \delta_{i_k,j_k+1,i_{k}} \pm \sqrt{j_k} \delta_{i_k,j_k-1}} \rho_{i_k.. i_k^{\prime}} \\
-        &= \sqrt{j_k+1} \rho(j_k+1.., i_k^\prime..) \pm \sqrt{j_k} \rho_(j_k-1, i_k^\prime)
+        (a_k\pm a_k^\dag) \rho_{i_k..i_k^\prime ..} = (a^{n_k} \pm a^{n_k})^{i_k}_{j_k} \rho_{i_k..i_k^\prime..} &= \sum_{i_k} \underbrace{(a^{n_l} \pm a^{n_k})_{j_k,i_k}}_{= \sqrt{j_k+1} \delta_{i_k,j_k+1,i_{k}} \pm \sqrt{j_k} \delta_{i_k,j_k-1}} \rho_{i_k.. i_k^{\prime}..} \\
+        &= \sqrt{j_k+1} \rho(j_k+1.., i_k^\prime..) \pm \sqrt{j_k} \rho_(j_k-1.., i_k^\prime..)
       \end{align} 
+      where $i_k\pm1..$ expands to $i_1,\dots,i_k\pm 1,\dots,i_Q$.
+
       Applying $H_c(t)$ from the left then gives 
       \begin{align}
         H_c(t) \rho_{i_k.., i_k^\prime ..} = \sum_k p^k(t) \left(\sqrt{i_k+1} \rho_{i_k+1..,i_k^\prime..} + \sqrt{i_k} \rho_{i_k-1..,i_k^\prime..} \right) + q^k(t) \left(\sqrt{i_k+1} \rho_{i_k+1..,i_k^\prime..} - \sqrt{i_k} \rho_{i_k-1..,i_k^\prime..} \right)
@@ -123,11 +134,11 @@ and when applying from the right:
 
 \section{Implementation}
 
-  To apply the above operators efficiently, collect those terms that access the same index set, such as $(i_k..,i_k^\prime)$ vs. $(i_k+1, i_k^\prime)$, etc. The application of the ODE's right-hand-side to a current state tensor $\rho_{i_k..,i_k^\prime}$ gives the output $y^{out}$ as follows:
+  To apply the above operators efficiently, collect those terms that access the same index set, such as $(i_k..,i_k^\prime..)$ vs. $(i_k+1.., i_k^\prime..)$, etc. The application of the ODE's right-hand-side to a current state tensor $\rho_{i_k..,i_k^\prime..}$ gives the output $y^{out}$ as follows:
   \begin{align}
        y^{out}(i_k..,i_k^\prime..)  &= 
        \left(-i h_d(i_k..) + ih_d(i_k^\prime)
-        + l_2(i_k..,i_k^\prime..) + \sum_k l_1^{\text{diag}}(i_k, i_k^\prime) \right) \rho(i_k..,i_k^\prime..) \\
+        + l_2(i_k..,i_k^\prime..) + l_1^{\text{diag}}(i_k.., i_k^\prime..) \right) \rho(i_k..,i_k^\prime..) \\
         &+ \sum_k l_1^{\text{off}}(i_k, i_k^\prime) \rho(i_k+1.., i_k^\prime -1..)\\
         &+ \sum_k -i h_c^1(i_k) \rho(i_k+1.., i_k^\prime..) \\
         &+ \sum_k ih_c^1(i_k^\prime) \rho(i_k..,i_k^\prime +1 ..) \\
@@ -137,24 +148,23 @@ and when applying from the right:
   where 
   \begin{align}
     h_d(i_k..) &= -\sum_k \frac{\xi_k}{2}(i_k^2 - i_k) - \sum_{l<k} \xi_{lk} (i_l i_k) \\
-    h_c^1(i_k) &= \left(p^{i_k}(t) + iq^{i_k}\right)\sqrt(i_k+1) \\
-    h_c^2(i_k) &= \left(p^{i_k}(t) - iq^{i_k}\right)\sqrt(i_k) \\
-    l_1^{\text{diag}}(i_k, i_k^\prime) &= -\frac{\gamma_{1k}}{2}\left(i_k + i_k^\prime\right) \\
+    l_2(i_k..,i_k..^\prime) &= \sum_k \gamma_{2k} i_ki_k^\prime - \frac 12 \left( (i_k)^2 + (i_k^\prime)^2\right)\\
+    l_1^{\text{diag}}(i_k.., i_k^\prime..) &= \sum_k -\frac{\gamma_{1k}}{2}\left(i_k + i_k^\prime\right) \\
     l_1^{\text{off}}(i_k,i_k^\prime) &= \gamma_{1k} \sqrt{i_k+1}\sqrt{i_k^\prime} \\
-    l_2(i_k..,i_k..^\prime) &= \sum_k \gamma_{2k} i_ki_k^\prime - \frac 12 \left( (i_k)^2 - (i_k^\prime)^2\right)
+    h_c^1(i_k) &= \left(p^{i_k}(t) + iq^{i_k}\right)\sqrt{i_k+1} \\
+    h_c^2(i_k) &= \left(p^{i_k}(t) - iq^{i_k}\right)\sqrt{i_k} 
   \end{align}
   
-  Even though all the above operations will be applied for all $i_k.., i_k^\prime..$, these loops should be separated for each of those different index sets in order to ensure optimized memory loading and caching.
+  Even though all the above operations will be applied for all $i_k.., i_k^\prime..$, these loops should be separated for each of those different index sets so that the compiler optimizes memory access and caching.
 
-  Iterate over the slowest moving index first. I.e. if the mapping from the vectorized $q = \vec(\rho)$ to $rho_(i_k..,i_k^\prime)$ is given by
+  Iterating for all $i_k..i_k^\prime..$ should start with the slowest moving index in the most outer loop. I.e. if the mapping from the stored vectorized $q := vec(\rho)$ to the tensor $\rho_(i_k..,i_k^\prime..)$ is given by
     \begin{align}
-        rho(i_1,\dots,i_Q,i_1^\prime,\dots,i_Q^\prime) = q[i_1 + i_2n_1 + i_3n_1n_2 + \dots]
+        \rho(i_1,\dots,i_Q,i_1^\prime,\dots,i_Q^\prime) = q[i_1 + i_2n_1 + i_3n_1n_2 + \dots + i_1^\prime N + i_2^\prime Nn_1 + \dots]
     \end{align}
-  then iterate over $i_Q^\prime$ as the most outer loop, then moving backwards with $i_1$ being the most inner, i.e. fastest moving, iteration index.
+  then iterate over $i_Q^\prime$ as the most outer loop, then moving backwards with $i_1$ being the most inner, i.e. fastest moving iteration index.
 
  \subsection{Parallelization} 
- The terms that contain off-diagonals will require communication of neighbouring processes to access an index $i_k+1$ from $i_k$ $\rightarrow$ ghost-layers?
-
+ The terms that contain off-diagonals will require communication of neighbouring processes to access an index $i_k+1$ from $i_k$. We can consider to realize parallel application by storing and communicating ghost-layers for the corresponding dimensions. 
 
 
 \end{document}
