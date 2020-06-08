@@ -13,10 +13,10 @@ enum InitialConditionType {FROMFILE, PURE, DIAGONAL, BASIS};
 
 /* Define a matshell context containing pointers to data needed for applying the RHS matrix to a vector */
 typedef struct {
-  int noscil; 
+  std::vector<int> nlevels;
   IS *isu, *isv;
   Oscillator*** oscil_vec;
-  std::vector<double> *xi;
+  std::vector<double> xi;
   std::vector<double> control_Re, control_Im;
   Mat** Ac_vec;
   Mat** Bc_vec;
@@ -28,6 +28,7 @@ typedef struct {
 
 /* Define the Matrix-Vector products for the RHS MatShell */
 int myMatMult(Mat RHS, Vec x, Vec y);
+int myMatMultAxC(Mat RHS, Vec x, Vec y);
 int myMatMultTranspose(Mat RHS, Vec x, Vec y);
 
 
@@ -39,6 +40,7 @@ class MasterEq{
   protected:
     int dim;                 // Dimension of vectorized system = N^2
     int noscillators;        // Number of oscillators
+    std::vector<int> nlevels; 
     Oscillator** oscil_vec;  // Vector storing pointers to the oscillators
 
     Mat Re, Im;             // Real and imaginary part of system matrix operator
@@ -68,10 +70,11 @@ class MasterEq{
  
   public:
     bool usematshell;        // decides if RHS is used as a shell matrix or full matrix
+    bool usematfree; 
 
   public:
     MasterEq();
-    MasterEq(int noscillators_, Oscillator** oscil_vec_, const std::vector<double> xi_, LindbladType lindbladtype_, const std::vector<double> collapse_time_, bool usematshell_);
+    MasterEq(std::vector<int> nlevels, Oscillator** oscil_vec_, const std::vector<double> xi_, LindbladType lindbladtype_, const std::vector<double> collapse_time_, bool usematshell_, bool usematfree);
     ~MasterEq();
 
     /* Return the i-th oscillator */
@@ -117,3 +120,7 @@ class MasterEq{
     int getRhoT0(int iinit, int ninit, InitialConditionType initcond_type, std::vector<int> oscilIDs, Vec rho0);
 };
 
+
+
+int TensorGetIndex(int i0, int i1, int i0p, int i1p);
+double Hd(std::vector<double> xi, int a, int b);

@@ -170,9 +170,10 @@ int main(int argc,char **argv)
     printf(" Choose either 'none', 'decay', 'dephase', or 'both'\n");
     exit(1);
   }
-  bool usematshell;
+  bool usematshell, usematfree;
   usematshell = config.GetBoolParam("usematshell", false);
-  MasterEq* mastereq = new MasterEq(nlevels.size(), oscil_vec, xi, lindbladtype, t_collapse, usematshell);
+  usematfree = config.GetBoolParam("usematfree", false);
+  MasterEq* mastereq = new MasterEq(nlevels, oscil_vec, xi, lindbladtype, t_collapse, usematshell, usematfree);
 
 
   /* Screen output */
@@ -195,8 +196,8 @@ int main(int argc,char **argv)
 
   /* --- Initialize the time-stepper --- */
   /* My time stepper */
-  TimeStepper *mytimestepper = new ImplMidpoint(mastereq);
-  // TimeStepper *mytimestepper = new ExplEuler(mastereq);
+  // TimeStepper *mytimestepper = new ImplMidpoint(mastereq);
+  TimeStepper *mytimestepper = new ExplEuler(mastereq);
 
   /* Petsc's Time-stepper */
   TS ts;

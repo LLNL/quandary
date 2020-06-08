@@ -19,16 +19,18 @@ MasterEq::MasterEq(){
 }
 
 
-MasterEq::MasterEq(int noscillators_, Oscillator** oscil_vec_, const std::vector<double> xi_, LindbladType lindbladtype, const std::vector<double> collapse_time_, bool usematshell_) {
+MasterEq::MasterEq(std::vector<int> nlevels_, Oscillator** oscil_vec_, const std::vector<double> xi_, LindbladType lindbladtype, const std::vector<double> collapse_time_, bool usematshell_, bool usematfree_) {
   int ierr;
 
-  noscillators = noscillators_;
+  nlevels = nlevels_;
+  noscillators = nlevels.size();
   oscil_vec = oscil_vec_;
   xi = xi_;
   collapse_time = collapse_time_;
-  assert(xi.size() >= (noscillators_+1) * noscillators_ / 2);
+  assert(xi.size() >= (noscillators+1) * noscillators / 2);
   assert(collapse_time.size() >= 2*noscillators);
   usematshell = usematshell_;
+  usematfree = usematfree_;
 
   int mpisize_petsc;
   MPI_Comm_size(PETSC_COMM_WORLD, &mpisize_petsc);
@@ -36,7 +38,7 @@ MasterEq::MasterEq(int noscillators_, Oscillator** oscil_vec_, const std::vector
 
   /* Dimension of vectorized system: (n_1*...*n_q)^2 */
   dim = 1;
-  for (int iosc = 0; iosc < noscillators_; iosc++) {
+  for (int iosc = 0; iosc < noscillators; iosc++) {
     dim *= oscil_vec[iosc]->getNLevels();
   }
   int dimmat = dim;
@@ -69,11 +71,11 @@ MasterEq::MasterEq(int noscillators_, Oscillator** oscil_vec_, const std::vector
  /* Allocate time-varying building blocks */
   Mat loweringOP, loweringOP_T;
   Mat numberOP;
-  Ac_vec = new Mat[noscillators_];
-  Bc_vec = new Mat[noscillators_];
+  Ac_vec = new Mat[noscillators];
+  Bc_vec = new Mat[noscillators];
 
   /* Compute building blocks */
-  for (int iosc = 0; iosc < noscillators_; iosc++) {
+  for (int iosc = 0; iosc < noscillators; iosc++) {
 
     /* Get lowering operator a = I_(n_1) \kron ... \kron a^(n_k) \kron ... \kron I_(n_q) */
     loweringOP = oscil_vec[iosc]->getLoweringOP((bool)mpirank_petsc);
@@ -112,7 +114,7 @@ MasterEq::MasterEq(int noscillators_, Oscillator** oscil_vec_, const std::vector
   MatSetUp(Bd);
   MatSetFromOptions(Bd);
   int xi_id = 0;
-  for (int iosc = 0; iosc < noscillators_; iosc++) {
+  for (int iosc = 0; iosc < noscillators; iosc++) {
     Mat tmp, tmp_T;
     Mat numberOPj;
     
@@ -134,7 +136,7 @@ MasterEq::MasterEq(int noscillators_, Oscillator** oscil_vec_, const std::vector
     MatDestroy(&tmp_T);
 
     /* Mixed term -xi * 2 * PI * (N_i*N_j) for j > i */
-    for (int josc = iosc+1; josc < noscillators_; josc++) {
+    for (int josc = iosc+1; josc < noscillators; josc++) {
       numberOPj = oscil_vec[josc]->getNumberOP((bool) mpirank_petsc);
       MatMatMult(numberOP, numberOPj, MAT_INITIAL_MATRIX, PETSC_DEFAULT, &tmp);
       MatScale(tmp, -xi[xi_id] * 2.0 * M_PI);
@@ -158,7 +160,7 @@ MasterEq::MasterEq(int noscillators_, Oscillator** oscil_vec_, const std::vector
   MatSetSizes(Ad, PETSC_DECIDE, PETSC_DECIDE, dim, dim);
   MatSetFromOptions(Ad);
   MatSetUp(Ad);
-  for (int iosc = 0; iosc < noscillators_; iosc++) {
+  for (int iosc = 0; iosc < noscillators; iosc++) {
   
     switch (lindbladtype)  {
       case NONE:
@@ -250,7 +252,7 @@ MasterEq::MasterEq(int noscillators_, Oscillator** oscil_vec_, const std::vector
   if (usematshell) {
     RHSctx.isu = &isu;
     RHSctx.isv = &isv;
-    RHSctx.xi = &xi;
+    RHSctx.xi = xi;
     RHSctx.Ac_vec = &Ac_vec;
     RHSctx.Bc_vec = &Bc_vec;
     RHSctx.Ad = &Ad;
@@ -259,7 +261,7 @@ MasterEq::MasterEq(int noscillators_, Oscillator** oscil_vec_, const std::vector
     RHSctx.Acv = &Acv;
     RHSctx.Bcu = &Bcu;
     RHSctx.Bcv = &Bcv;
-    RHSctx.noscil = noscillators;
+    RHSctx.nlevels = nlevels;
     RHSctx.oscil_vec = &oscil_vec;
     RHSctx.time = 0.0;
     for (int iosc = 0; iosc < noscillators; iosc++) {
@@ -267,7 +269,8 @@ MasterEq::MasterEq(int noscillators_, Oscillator** oscil_vec_, const std::vector
       RHSctx.control_Im.push_back(0.0);
     }
 
-    MatShellSetOperation(RHS, MATOP_MULT, (void(*)(void)) myMatMult);
+    if (!usematfree) MatShellSetOperation(RHS, MATOP_MULT, (void(*)(void)) myMatMult);
+    else MatShellSetOperation(RHS, MATOP_MULT, (void(*)(void)) myMatMultAxC);
     MatShellSetOperation(RHS, MATOP_MULT_TRANSPOSE, (void(*)(void)) myMatMultTranspose);
   }
 
@@ -772,8 +775,7 @@ int myMatMult(Mat RHS, Vec x, Vec y){
   /* Get the shell context */
   MatShellCtx *shellctx;
   MatShellGetContext(RHS, (void**) &shellctx);
-
-    
+  
 /* Get u, v from x and y  */
   Vec u, v;
   Vec uout, vout;
@@ -787,6 +789,12 @@ int myMatMult(Mat RHS, Vec x, Vec y){
   // vout = Im*u + Re*v
   //      = (Bd + sum_k p_kB_k)*u + (Ad + sum_k q_kA_k)*v
 
+  // Test only Bd for now. 
+  // MatView(*shellctx->Bd,0);
+  // MatView(*shellctx->Ad,0);
+  MatZeroEntries(*shellctx->Ad);
+  // MatZeroEntries(*shellctx->Bd);
+
   // Constant part uout = Adu - Bdv
   MatMult(*shellctx->Bd, v, uout);
   VecScale(uout, -1.0);
@@ -795,25 +803,25 @@ int myMatMult(Mat RHS, Vec x, Vec y){
   MatMult(*shellctx->Ad, v, vout);
   MatMultAdd(*shellctx->Bd, u, vout, vout);
 
-  /* Control part */
-  for (int iosc = 0; iosc < shellctx->noscil; iosc++) {
-    /* Get controls */
-    double p = shellctx->control_Re[iosc];
-    double q = shellctx->control_Im[iosc];
+  // /* Control part */
+  // for (int iosc = 0; iosc < shellctx->noscil; iosc++) {
+  //   /* Get controls */
+  //   double p = shellctx->control_Re[iosc];
+  //   double q = shellctx->control_Im[iosc];
 
-    // uout += q^k*Acu 
-    MatMult((*(shellctx->Ac_vec))[iosc], u, *shellctx->Acu);
-    VecAXPY(uout, q, *shellctx->Acu);
-    // uout -= p^kBcv
-    MatMult((*(shellctx->Bc_vec))[iosc], v, *shellctx->Bcv);
-    VecAXPY(uout, -1.*p, *shellctx->Bcv);
-    // vout += q^kAcv
-    MatMult((*(shellctx->Ac_vec))[iosc], v, *shellctx->Acv);
-    VecAXPY(vout, q, *shellctx->Acv);
-    // vout += p^kBcu
-    MatMult((*(shellctx->Bc_vec))[iosc], u, *shellctx->Bcu);
-    VecAXPY(vout, p, *shellctx->Bcu);
-  }
+  //   // uout += q^k*Acu 
+  //   MatMult((*(shellctx->Ac_vec))[iosc], u, *shellctx->Acu);
+  //   VecAXPY(uout, q, *shellctx->Acu);
+  //   // uout -= p^kBcv
+  //   MatMult((*(shellctx->Bc_vec))[iosc], v, *shellctx->Bcv);
+  //   VecAXPY(uout, -1.*p, *shellctx->Bcv);
+  //   // vout += q^kAcv
+  //   MatMult((*(shellctx->Ac_vec))[iosc], v, *shellctx->Acv);
+  //   VecAXPY(vout, q, *shellctx->Acv);
+  //   // vout += p^kBcu
+  //   MatMult((*(shellctx->Bc_vec))[iosc], u, *shellctx->Bcu);
+  //   VecAXPY(vout, p, *shellctx->Bcu);
+  // }
 
 
   /* Restore */
@@ -822,8 +830,59 @@ int myMatMult(Mat RHS, Vec x, Vec y){
   VecRestoreSubVector(y, *shellctx->isu, &uout);
   VecRestoreSubVector(y, *shellctx->isv, &vout);
 
-  // VecView(y, PETSC_VIEWER_STDOUT_WORLD);
-  // exit(1);
+  VecView(y, PETSC_VIEWER_STDOUT_WORLD);
+  exit(1);
+
+  return 0;
+}
+
+
+
+/* Define the action of RHS on a vector x */
+int myMatMultAxC(Mat RHS, Vec x, Vec y){
+
+  /* Get the shell context */
+  MatShellCtx *shellctx;
+  MatShellGetContext(RHS, (void**) &shellctx);
+
+  /* Get access to x and y */
+  const double* xptr;
+  double* yptr;
+  VecGetArrayRead(x, &xptr);
+  VecGetArray(y, &yptr);
+
+  /* Diagonal elements */
+  for (int i1p = 0; i1p < shellctx->nlevels[1]; i1p++)  {
+    for (int i0p = 0; i0p < shellctx->nlevels[0]; i0p++)  {
+      for (int i1 = 0; i1 < shellctx->nlevels[1]; i1++)  {
+        for (int i0 = 0; i0 < shellctx->nlevels[0]; i0++)  {
+
+          /* Get index in vectorized, colocated x */
+          int it = TensorGetIndex(i0,i1,i0p,i1p);
+          int rowre = getIndexReal(it);
+          int rowim = getIndexImag(it);
+
+          // Constant Hd part: uout = ( hd(ik) - hd(ik'))*vin
+          //                   vout = (-hd(ik) + hd(ik'))*uin
+          double hd  = Hd(shellctx->xi, i0, i1); 
+          double hdp = Hd(shellctx->xi, i0p, i1p); 
+          yptr[rowre] = (hd - hdp)  * xptr[rowim];
+          yptr[rowim] = (-hd + hdp) * xptr[rowre];
+
+          // Dephasing l2 
+          // double l2 = L2(shellctx->collapse_time)
+        }
+      }
+    }
+  }
+
+  /* Restore x and y */
+  VecRestoreArrayRead(x, &xptr);
+  VecRestoreArray(y, &yptr);
+
+    
+  VecView(y, PETSC_VIEWER_STDOUT_WORLD);
+  exit(1);
 
   return 0;
 }
@@ -857,7 +916,7 @@ int myMatMultTranspose(Mat RHS, Vec x, Vec y) {
   MatMultTransposeAdd(*shellctx->Bd, u, vout, vout);
 
   /* Control part */
-  for (int iosc = 0; iosc < shellctx->noscil; iosc++) {
+  for (int iosc = 0; iosc < shellctx->nlevels.size(); iosc++) {
     /* Get controls */
     double p = shellctx->control_Re[iosc];
     double q = shellctx->control_Im[iosc];
@@ -885,4 +944,20 @@ int myMatMultTranspose(Mat RHS, Vec x, Vec y) {
   VecRestoreSubVector(y, *shellctx->isv, &vout);
 
   return 0;
+}
+
+
+
+double Hd(std::vector<double> xi, int a, int b) {
+
+  return - xi[0]*M_PI * a * (a-1) - xi[1]*M_PI*2 * a * b - xi[2]*M_PI * b * (b-1); 
+}
+
+
+int TensorGetIndex(int i0, int i1, int i0p, int i1p){
+  int nlevels0 = 2;
+  int nlevels1 = 2;
+  int N = nlevels0 * nlevels1;
+
+  return i0 + i1*nlevels0 + i0p * N + i1p * N*nlevels0;
 }
