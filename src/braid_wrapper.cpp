@@ -434,6 +434,9 @@ braid_Int myBraidApp::BufUnpack(void *buffer, braid_Vector *u_ptr, BraidBufferSt
     }
   }
 
+  VecAssemblyBegin(u->x);
+  VecAssemblyEnd(u->x);
+
   return 0; 
 }
 

@@ -535,6 +535,8 @@ double OptimProblem::objectiveT(Vec finalstate){
         VecNorm(state, NORM_2, &obj_local);
         obj_local = pow(obj_local, 2.0);
         if (ilo <= 0 && 0 < ihi) VecSetValue(state, 0, 1.0, ADD_VALUES); // restore state 
+        VecAssemblyBegin(state);
+        VecAssemblyEnd(state);
 
         /* Destroy reduced density matrix, if it has been created */
         if (obj_oscilIDs.size() < primalbraidapp->mastereq->getNOscillators()) { 

@@ -31,6 +31,10 @@ void ExplEuler::evolveFWD(double tstart, double tstop, Vec x) {
   mastereq->assemble_RHS(tstart);
   Mat A = mastereq->getRHS(); 
 
+  VecSet(x, 1.0);
+  VecAssemblyBegin(x); 
+  VecAssemblyEnd(x); 
+    
   /* update x = x + hAx */
   MatMult(A, x, stage);
   VecAXPY(x, dt, stage);
