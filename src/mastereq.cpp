@@ -1,13 +1,7 @@
 #include "mastereq.hpp"
 
 
-int getIndexReal(int i) {
-  return 2*i;
-}
 
-int getIndexImag(int i) {
-  return 2*i + 1;
-}
 
 MasterEq::MasterEq(){
   dim = 0;
