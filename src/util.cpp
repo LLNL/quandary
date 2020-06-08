@@ -1,5 +1,13 @@
 #include "util.hpp"
 
+int getIndexReal(int i) {
+  return 2*i;
+}
+
+int getIndexImag(int i) {
+  return 2*i + 1;
+}
+
 PetscErrorCode Ikron(Mat A, int dimI, double alpha, Mat *Out, InsertMode insert_mode){
 
     int ierr;

@@ -6,6 +6,7 @@
 #include <petscmat.h>
 #include <vector>
 #include <assert.h>
+#include "util.hpp"
 
 #pragma once
 
