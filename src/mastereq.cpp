@@ -852,10 +852,10 @@ int myMatMultAxC(Mat RHS, Vec x, Vec y){
   VecGetArray(y, &yptr);
 
   /* Diagonal elements */
-  for (int i1p = 0; i1p < shellctx->nlevels[1]; i1p++)  {
-    for (int i0p = 0; i0p < shellctx->nlevels[0]; i0p++)  {
-      for (int i1 = 0; i1 < shellctx->nlevels[1]; i1++)  {
-        for (int i0 = 0; i0 < shellctx->nlevels[0]; i0++)  {
+  for (int i0p = 0; i0p < shellctx->nlevels[0]; i0p++)  {
+    for (int i1p = 0; i1p < shellctx->nlevels[1]; i1p++)  {
+      for (int i0 = 0; i0 < shellctx->nlevels[0]; i0++)  {
+        for (int i1 = 0; i1 < shellctx->nlevels[1]; i1++)  {
 
           /* Get index in vectorized, colocated x */
           int it = TensorGetIndex(i0,i1,i0p,i1p);
@@ -959,5 +959,3 @@ int TensorGetIndex(int i0, int i1, int i0p, int i1p){
   int nlevels1 = 2;
   int N = nlevels0 * nlevels1;
 
-  return i0 + i1*nlevels0 + i0p * N + i1p * N*nlevels0;
-}
