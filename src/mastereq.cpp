@@ -793,7 +793,7 @@ int myMatMult(Mat RHS, Vec x, Vec y){
   // MatView(*shellctx->Bd,0);
   // MatView(*shellctx->Ad,0);
   MatZeroEntries(*shellctx->Ad);
-  // MatZeroEntries(*shellctx->Bd);
+  MatZeroEntries(*shellctx->Bd);
 
   // Constant part uout = Adu - Bdv
   MatMult(*shellctx->Bd, v, uout);
@@ -803,25 +803,25 @@ int myMatMult(Mat RHS, Vec x, Vec y){
   MatMult(*shellctx->Ad, v, vout);
   MatMultAdd(*shellctx->Bd, u, vout, vout);
 
-  // /* Control part */
-  // for (int iosc = 0; iosc < shellctx->noscil; iosc++) {
-  //   /* Get controls */
-  //   double p = shellctx->control_Re[iosc];
-  //   double q = shellctx->control_Im[iosc];
+  /* Control part */
+  for (int iosc = 0; iosc < shellctx->nlevels.size(); iosc++) {
+    /* Get controls */
+    double p = shellctx->control_Re[iosc];
+    double q = shellctx->control_Im[iosc];
 
-  //   // uout += q^k*Acu 
-  //   MatMult((*(shellctx->Ac_vec))[iosc], u, *shellctx->Acu);
-  //   VecAXPY(uout, q, *shellctx->Acu);
-  //   // uout -= p^kBcv
-  //   MatMult((*(shellctx->Bc_vec))[iosc], v, *shellctx->Bcv);
-  //   VecAXPY(uout, -1.*p, *shellctx->Bcv);
-  //   // vout += q^kAcv
-  //   MatMult((*(shellctx->Ac_vec))[iosc], v, *shellctx->Acv);
-  //   VecAXPY(vout, q, *shellctx->Acv);
-  //   // vout += p^kBcu
-  //   MatMult((*(shellctx->Bc_vec))[iosc], u, *shellctx->Bcu);
-  //   VecAXPY(vout, p, *shellctx->Bcu);
-  // }
+    // uout += q^k*Acu 
+    MatMult((*(shellctx->Ac_vec))[iosc], u, *shellctx->Acu);
+    VecAXPY(uout, q, *shellctx->Acu);
+    // uout -= p^kBcv
+    MatMult((*(shellctx->Bc_vec))[iosc], v, *shellctx->Bcv);
+    VecAXPY(uout, -1.*p, *shellctx->Bcv);
+    // vout += q^kAcv
+    MatMult((*(shellctx->Ac_vec))[iosc], v, *shellctx->Acv);
+    VecAXPY(vout, q, *shellctx->Acv);
+    // vout += p^kBcu
+    MatMult((*(shellctx->Bc_vec))[iosc], u, *shellctx->Bcu);
+    VecAXPY(vout, p, *shellctx->Bcu);
+  }
 
 
   /* Restore */
@@ -851,7 +851,7 @@ int myMatMultAxC(Mat RHS, Vec x, Vec y){
   VecGetArrayRead(x, &xptr);
   VecGetArray(y, &yptr);
 
-  /* Diagonal elements */
+  /* Diagonal elements: Hd (later also L2, L1diag */
   for (int i0p = 0; i0p < shellctx->nlevels[0]; i0p++)  {
     for (int i1p = 0; i1p < shellctx->nlevels[1]; i1p++)  {
       for (int i0 = 0; i0 < shellctx->nlevels[0]; i0++)  {
@@ -862,19 +862,209 @@ int myMatMultAxC(Mat RHS, Vec x, Vec y){
           int rowre = getIndexReal(it);
           int rowim = getIndexImag(it);
 
+          /* Get incoming x at diagonal elements */
+          double xre = xptr[rowre];
+          double xim = xptr[rowim];
+
           // Constant Hd part: uout = ( hd(ik) - hd(ik'))*vin
           //                   vout = (-hd(ik) + hd(ik'))*uin
           double hd  = Hd(shellctx->xi, i0, i1); 
           double hdp = Hd(shellctx->xi, i0p, i1p); 
-          yptr[rowre] = (hd - hdp)  * xptr[rowim];
-          yptr[rowim] = (-hd + hdp) * xptr[rowre];
+          yptr[rowre] = (hd - hdp)  * xim;
+          yptr[rowim] = (-hd + hdp) * xre;
 
-          // Dephasing l2 
-          // double l2 = L2(shellctx->collapse_time)
+          // // Dephasing l2: uout += l2(ik, ikp) uin
+          // //               vout += l2(ik, ikp) vin
+          // double l2 = L2(shellctx->collapse_time, i0, i1, i0p, i1p);
+          // yptr[rowre] += l2 * xptr[rowre];
+          // yptr[rowim] += l2 * xptr[rowim];
+
+          // // Decay l1, diagonal part: uout += l1diag uin
+          // //                          vout += l1diag vin
+          // double l1 = L1diag(shellctx->collapse_time, i0, i1, i0p, i1p);
+          // yptr[rowre] += l1 * xptr[rowre];
+          // yptr[rowim] += l1 * xptr[rowim];
         }
       }
     }
   }
+
+// RESET for testing without Bd.
+  for (int i0p = 0; i0p < shellctx->nlevels[0]; i0p++)  {
+    for (int i1p = 0; i1p < shellctx->nlevels[1]; i1p++)  {
+      for (int i0 = 0; i0 < shellctx->nlevels[0]; i0++)  {
+        for (int i1 = 0; i1 < shellctx->nlevels[1]; i1++)  {
+          int it = TensorGetIndex(i0,i1,i0p,i1p);
+          int rowre = getIndexReal(it);
+          int rowim = getIndexImag(it);
+          yptr[rowre] = 0.0; 
+          yptr[rowim] = 0.0; 
+
+        }
+      }
+    }
+  }
+
+  int it, rowre, rowim;
+  int itx, row_xre, row_xim;
+  int iosc;
+  double pt, qt, sq;
+  double u, v;
+
+  /* Controls hamiltonian */
+  for (int i0p = 0; i0p < shellctx->nlevels[0]; i0p++)  {
+    for (int i1p = 0; i1p < shellctx->nlevels[1]; i1p++)  {
+      for (int i0 = 0; i0 < shellctx->nlevels[0]; i0++)  {
+        for (int i1 = 0; i1 < shellctx->nlevels[1]; i1++)  {
+
+          /* Get output index in vectorized, colocated y */
+          it = TensorGetIndex(i0,i1,i0p,i1p);
+          rowre = getIndexReal(it);
+          rowim = getIndexImag(it);
+
+          /* --- Oscil k=0 --- */
+          iosc = 0;
+          // Get controls
+          pt = shellctx->control_Re[iosc];
+          qt = shellctx->control_Im[iosc];
+
+          /* \rho(ik+1..,ik'..) term */
+          if (i0 < 2-1) {
+            itx = TensorGetIndex(i0+1,i1,i0p,i1p);
+            row_xre = getIndexReal(itx);
+            row_xim = getIndexImag(itx);
+            u = xptr[row_xre];
+            v = xptr[row_xim];
+            sq = sqrt(i0 + 1);
+            yptr[rowre] += sq * (   pt * v + qt * u);
+            yptr[rowim] += sq * ( - pt * u + qt * v);
+          }
+          /* \rho(ik..,ik'+1..) */
+          if (i0p < 2-1) {
+            sq = sqrt(i0p + 1);
+            itx = TensorGetIndex(i0,i1,i0p+1,i1p);
+            row_xre = getIndexReal(itx);
+            row_xim = getIndexImag(itx);
+            u = xptr[row_xre];
+            v = xptr[row_xim];
+            yptr[rowre] += sq * ( -pt * v + qt * u);
+            yptr[rowim] += sq * (  pt * u + qt * v);
+          }
+          /* \rho(ik-1..,ik'..) */
+          if (i0 > 0) {
+            itx = TensorGetIndex(i0-1,i1,i0p,i1p);
+            row_xre = getIndexReal(itx);
+            row_xim = getIndexImag(itx);
+            u = xptr[row_xre];
+            v = xptr[row_xim];
+            sq = sqrt(i0);
+            yptr[rowre] += sq * (  pt * v - qt * u);
+            yptr[rowim] += sq * (- pt * u - qt * v);
+          }
+          /* \rho(ik..,ik'-1..) */
+          if (i0p > 0) {
+            itx = TensorGetIndex(i0,i1,i0p-1,i1p);
+            row_xre = getIndexReal(itx);
+            row_xim = getIndexImag(itx);
+            u = xptr[row_xre];
+            v = xptr[row_xim];
+            sq = sqrt(i0p);
+            yptr[rowre] += sq * (- pt * v - qt * u);
+            yptr[rowim] += sq * (  pt * u - qt * v);
+          }
+
+          /* --- Oscil k=0 --- */
+          iosc = 1;
+          // Get controls
+          pt = shellctx->control_Re[iosc];
+          qt = shellctx->control_Im[iosc];
+
+          /* \rho(ik+1..,ik'..) term */
+          if (i1 < 2-1) {
+            itx = TensorGetIndex(i0,i1+1,i0p,i1p);
+            row_xre = getIndexReal(itx);
+            row_xim = getIndexImag(itx);
+            u = xptr[row_xre];
+            v = xptr[row_xim];
+            sq = sqrt(i1 + 1);
+            yptr[rowre] += sq * (   pt * v + qt * u);
+            yptr[rowim] += sq * ( - pt * u + qt * v);
+          }
+          /* \rho(ik..,ik'+1..) */
+          if (i1p < 2-1) {
+            sq = sqrt(i1p + 1);
+            itx = TensorGetIndex(i0,i1,i0p,i1p+1);
+            row_xre = getIndexReal(itx);
+            row_xim = getIndexImag(itx);
+            u = xptr[row_xre];
+            v = xptr[row_xim];
+            yptr[rowre] += sq * ( -pt * v + qt * u);
+            yptr[rowim] += sq * (  pt * u + qt * v);
+          }
+          /* \rho(ik-1..,ik'..) */
+          if (i1 > 0) {
+            itx = TensorGetIndex(i0,i1-1,i0p,i1p);
+            row_xre = getIndexReal(itx);
+            row_xim = getIndexImag(itx);
+            u = xptr[row_xre];
+            v = xptr[row_xim];
+            sq = sqrt(i1);
+            yptr[rowre] += sq * (  pt * v - qt * u);
+            yptr[rowim] += sq * (- pt * u - qt * v);
+          }
+          /* \rho(ik..,ik'-1..) */
+          if (i1p > 0) {
+            itx = TensorGetIndex(i0,i1,i0p,i1p-1);
+            row_xre = getIndexReal(itx);
+            row_xim = getIndexImag(itx);
+            u = xptr[row_xre];
+            v = xptr[row_xim];
+            sq = sqrt(i1p);
+            yptr[rowre] += sq * (- pt * v - qt * u);
+            yptr[rowim] += sq * (  pt * u - qt * v);
+          }
+        }
+      }
+    }
+  }
+
+
+
+  // // off-diagonal elements, l1
+  // for (int i1p = 0; i1p < shellctx->nlevels[1]; i1p++)  {
+  //   for (int i0p = 0; i0p < shellctx->nlevels[0]; i0p++)  {
+  //     for (int i1 = 0; i1 < shellctx->nlevels[1]; i1++)  {
+  //       for (int i0 = 0; i0 < shellctx->nlevels[0]; i0++)  {
+
+  //         /* Get index in vectorized, colocated output y */
+  //         int it = TensorGetIndex(i0,i1,i0p,i1p);
+  //         int rowre = getIndexReal(it);
+  //         int rowim = getIndexImag(it);
+
+  //         /* Oscillators 0 */
+  //         double l1off = L1off(shellctx->collapse_time[2*0], i0, i0p);
+  //         int itx = TensorGetIndex(i0+1,i1,i0p+1,i1p);
+  //         int itre = getIndexReal(itx);
+  //         yptr[rowre] += l1off * xptr[itre];
+  //         int itim = getIndexImag(itx);
+  //         yptr[rowim] += l1off * xptr[itim];
+
+  //         /* Oscillators 0 */
+  //         l1off = L1off(shellctx->collapse_time[2*1], i1, i1p);
+  //         itx = TensorGetIndex(i0,i1+1,i0p,i1p+1);
+  //         itre = getIndexReal(itx);
+  //         yptr[rowre] += l1off * xptr[itre];
+  //         itim = getIndexImag(itx);
+  //         yptr[rowim] += l1off * xptr[itim];
+
+  //       }
+  //     }
+  //   }
+  // }
+
+
+  /* Control part */
+  
 
   /* Restore x and y */
   VecRestoreArrayRead(x, &xptr);
@@ -959,3 +1149,5 @@ int TensorGetIndex(int i0, int i1, int i0p, int i1p){
   int nlevels1 = 2;
   int N = nlevels0 * nlevels1;
 
+  return i0*nlevels1 + i1 + i0p *N * nlevels1 + i1p*N;
+}
