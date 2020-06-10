@@ -17,6 +17,7 @@ typedef struct {
   IS *isu, *isv;
   Oscillator*** oscil_vec;
   std::vector<double> xi;
+  std::vector<double> collapse_time;
   std::vector<double> control_Re, control_Im;
   Mat** Ac_vec;
   Mat** Bc_vec;
@@ -124,3 +125,5 @@ class MasterEq{
 
 int TensorGetIndex(int i0, int i1, int i0p, int i1p);
 double Hd(std::vector<double> xi, int a, int b);
+double L2(std::vector<double> collapse_time, int i0, int i1, int i0p, int i1p);
+double L1diag(std::vector<double> collapse_time, int i0, int i1, int i0p, int i1p);

@@ -253,6 +253,7 @@ MasterEq::MasterEq(std::vector<int> nlevels_, Oscillator** oscil_vec_, const std
     RHSctx.isu = &isu;
     RHSctx.isv = &isv;
     RHSctx.xi = xi;
+    RHSctx.collapse_time = collapse_time;
     RHSctx.Ac_vec = &Ac_vec;
     RHSctx.Bc_vec = &Bc_vec;
     RHSctx.Ad = &Ad;
@@ -791,8 +792,7 @@ int myMatMult(Mat RHS, Vec x, Vec y){
 
   // Test only Bd for now. 
   // MatView(*shellctx->Bd,0);
-  // MatView(*shellctx->Ad,0);
-  MatZeroEntries(*shellctx->Ad);
+  // MatZeroEntries(*shellctx->Ad);
   MatZeroEntries(*shellctx->Bd);
 
   // Constant part uout = Adu - Bdv
@@ -851,13 +851,13 @@ int myMatMultAxC(Mat RHS, Vec x, Vec y){
   VecGetArrayRead(x, &xptr);
   VecGetArray(y, &yptr);
 
-  /* Diagonal elements: Hd (later also L2, L1diag */
+  /* Diagonal elements: Hd, Dephasing L2, Decay L1 diagonal part*/
   for (int i0p = 0; i0p < shellctx->nlevels[0]; i0p++)  {
     for (int i1p = 0; i1p < shellctx->nlevels[1]; i1p++)  {
       for (int i0 = 0; i0 < shellctx->nlevels[0]; i0++)  {
         for (int i1 = 0; i1 < shellctx->nlevels[1]; i1++)  {
 
-          /* Get index in vectorized, colocated x */
+          /* Get output index in vectorized, colocated y */
           int it = TensorGetIndex(i0,i1,i0p,i1p);
           int rowre = getIndexReal(it);
           int rowim = getIndexImag(it);
@@ -873,41 +873,74 @@ int myMatMultAxC(Mat RHS, Vec x, Vec y){
           yptr[rowre] = (hd - hdp)  * xim;
           yptr[rowim] = (-hd + hdp) * xre;
 
-          // // Dephasing l2: uout += l2(ik, ikp) uin
-          // //               vout += l2(ik, ikp) vin
-          // double l2 = L2(shellctx->collapse_time, i0, i1, i0p, i1p);
-          // yptr[rowre] += l2 * xptr[rowre];
-          // yptr[rowim] += l2 * xptr[rowim];
+          // RESET FOR TESTING LINDBLAD
+          yptr[rowre] = 0.0; 
+          yptr[rowim] = 0.0;
 
-          // // Decay l1, diagonal part: uout += l1diag uin
-          // //                          vout += l1diag vin
-          // double l1 = L1diag(shellctx->collapse_time, i0, i1, i0p, i1p);
-          // yptr[rowre] += l1 * xptr[rowre];
-          // yptr[rowim] += l1 * xptr[rowim];
+          // Dephasing l2: xout += l2(ik, ikp) xin
+          double l2 = L2(shellctx->collapse_time, i0, i1, i0p, i1p);
+          yptr[rowre] += l2 * xre;
+          yptr[rowim] += l2 * xim;
+
+          // Decay l1, diagonal part: xout += l1diag xin
+          double l1diag = L1diag(shellctx->collapse_time, i0, i1, i0p, i1p);
+          yptr[rowre] += l1diag * xre;
+          yptr[rowim] += l1diag * xim;
         }
       }
     }
   }
 
-// RESET for testing without Bd.
+  int iosc;
+  int it, rowre, rowim;
+  double decay_time, l1off;
+  int itx, row_xre, row_xim;
+
+  /* Decay L1, off-diagonal */
   for (int i0p = 0; i0p < shellctx->nlevels[0]; i0p++)  {
     for (int i1p = 0; i1p < shellctx->nlevels[1]; i1p++)  {
       for (int i0 = 0; i0 < shellctx->nlevels[0]; i0++)  {
         for (int i1 = 0; i1 < shellctx->nlevels[1]; i1++)  {
-          int it = TensorGetIndex(i0,i1,i0p,i1p);
-          int rowre = getIndexReal(it);
-          int rowim = getIndexImag(it);
-          yptr[rowre] = 0.0; 
-          yptr[rowim] = 0.0; 
+
+          /* Get output index in vectorized, colocated output y */
+          it = TensorGetIndex(i0,i1,i0p,i1p);
+          rowre = getIndexReal(it);
+          rowim = getIndexImag(it);
+
+          /* Oscillators 0 */
+          iosc = 0;
+          if (i0 < 2-1 && i0p < 2-1) {
+            decay_time = 0.0;
+            if (shellctx->collapse_time[2*iosc] > 1e-14) 
+              decay_time = 1./ shellctx->collapse_time[2*iosc];
+            l1off = decay_time * sqrt((i0+1)*(i0p+1));
+            itx = TensorGetIndex(i0+1,i1,i0p+1,i1p);
+            row_xre = getIndexReal(itx);
+            row_xim = getIndexImag(itx);
+            yptr[rowre] += l1off * xptr[row_xre];
+            yptr[rowim] += l1off * xptr[row_xim];
+          }
+
+          /* Oscillators 1 */
+          iosc = 1;
+          if (i1 < 2-1 && i1p < 2-1) {
+            decay_time = 0.0;
+            if (shellctx->collapse_time[2*iosc] > 1e-14) 
+              decay_time = 1./ shellctx->collapse_time[2*iosc];
+            l1off = decay_time * sqrt((i1+1)*(i1p+1));
+            itx = TensorGetIndex(i0,i1+1,i0p,i1p+1);
+            row_xre = getIndexReal(itx);
+            row_xim = getIndexImag(itx);
+            yptr[rowre] += l1off * xptr[row_xre];
+            yptr[rowim] += l1off * xptr[row_xim];
+          }
 
         }
       }
     }
   }
 
-  int it, rowre, rowim;
-  int itx, row_xre, row_xim;
-  int iosc;
+
   double pt, qt, sq;
   double u, v;
 
@@ -1028,44 +1061,6 @@ int myMatMultAxC(Mat RHS, Vec x, Vec y){
     }
   }
 
-
-
-  // // off-diagonal elements, l1
-  // for (int i1p = 0; i1p < shellctx->nlevels[1]; i1p++)  {
-  //   for (int i0p = 0; i0p < shellctx->nlevels[0]; i0p++)  {
-  //     for (int i1 = 0; i1 < shellctx->nlevels[1]; i1++)  {
-  //       for (int i0 = 0; i0 < shellctx->nlevels[0]; i0++)  {
-
-  //         /* Get index in vectorized, colocated output y */
-  //         int it = TensorGetIndex(i0,i1,i0p,i1p);
-  //         int rowre = getIndexReal(it);
-  //         int rowim = getIndexImag(it);
-
-  //         /* Oscillators 0 */
-  //         double l1off = L1off(shellctx->collapse_time[2*0], i0, i0p);
-  //         int itx = TensorGetIndex(i0+1,i1,i0p+1,i1p);
-  //         int itre = getIndexReal(itx);
-  //         yptr[rowre] += l1off * xptr[itre];
-  //         int itim = getIndexImag(itx);
-  //         yptr[rowim] += l1off * xptr[itim];
-
-  //         /* Oscillators 0 */
-  //         l1off = L1off(shellctx->collapse_time[2*1], i1, i1p);
-  //         itx = TensorGetIndex(i0,i1+1,i0p,i1p+1);
-  //         itre = getIndexReal(itx);
-  //         yptr[rowre] += l1off * xptr[itre];
-  //         itim = getIndexImag(itx);
-  //         yptr[rowim] += l1off * xptr[itim];
-
-  //       }
-  //     }
-  //   }
-  // }
-
-
-  /* Control part */
-  
-
   /* Restore x and y */
   VecRestoreArrayRead(x, &xptr);
   VecRestoreArray(y, &yptr);
@@ -1141,6 +1136,33 @@ int myMatMultTranspose(Mat RHS, Vec x, Vec y) {
 double Hd(std::vector<double> xi, int a, int b) {
 
   return - xi[0]*M_PI * a * (a-1) - xi[1]*M_PI*2 * a * b - xi[2]*M_PI * b * (b-1); 
+}
+
+double L2(std::vector<double> collapse_time, int i0, int i1, int i0p, int i1p){
+
+  double l2 = 0.0;
+  int iosc = 0;
+  if (collapse_time[2*iosc+1] > 0.0)
+     l2  += 1./collapse_time[2*iosc+1] * ( i0*i0p - 1./2. * (i0*i0 + i0p*i0p) );
+  iosc = 1;
+  if (collapse_time[2*iosc+1] > 0.0)
+    l2 += 1./collapse_time[2*iosc+1] * ( i1*i1p - 1./2. * (i1*i1 + i1p*i1p) );
+
+  return l2;
+}
+
+
+
+double L1diag(std::vector<double> collapse_time, int i0, int i1, int i0p, int i1p){
+  double l1 = 0.0;
+  int iosc = 0;
+  if (collapse_time[2*iosc] > 1e-14)
+     l1  += - 1./(2*collapse_time[2*iosc]) * ( i0 + i0p );
+  iosc=1;
+  if (collapse_time[2*iosc] > 1e-14)
+    l1  += - 1./(2*collapse_time[2*iosc]) * ( i1 + i1p );
+
+  return l1;
 }
 
 
