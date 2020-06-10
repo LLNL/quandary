@@ -846,8 +846,11 @@ int myMatMultAxC(Mat RHS, Vec x, Vec y){
       for (int i0 = 0; i0 < shellctx->nlevels[0]; i0++)  {
         for (int i1 = 0; i1 < shellctx->nlevels[1]; i1++)  {
 
+          int n0 = shellctx->nlevels[0];
+          int n1 = shellctx->nlevels[1];
+
           /* Get output index in vectorized, colocated y */
-          it = TensorGetIndex(i0,i1,i0p,i1p);
+          it = TensorGetIndex(n0, n1,i0,i1,i0p,i1p);
           rowre = getIndexReal(it);
           rowim = getIndexImag(it);
 
@@ -886,19 +889,22 @@ int myMatMultAxC(Mat RHS, Vec x, Vec y){
       for (int i0 = 0; i0 < shellctx->nlevels[0]; i0++)  {
         for (int i1 = 0; i1 < shellctx->nlevels[1]; i1++)  {
 
+          int n0 = shellctx->nlevels[0];
+          int n1 = shellctx->nlevels[1];
+
           /* Get output index in vectorized, colocated output y */
-          it = TensorGetIndex(i0,i1,i0p,i1p);
+          it = TensorGetIndex(n0,n1,i0,i1,i0p,i1p);
           rowre = getIndexReal(it);
           rowim = getIndexImag(it);
 
           /* Oscillators 0 */
           iosc = 0;
-          if (i0 < 2-1 && i0p < 2-1) {
+          if (i0 < shellctx->nlevels[iosc]-1 && i0p < shellctx->nlevels[iosc]-1) {
             decay_time = 0.0;
             if (shellctx->collapse_time[2*iosc] > 1e-14) 
               decay_time = 1./ shellctx->collapse_time[2*iosc];
             l1off = decay_time * sqrt((i0+1)*(i0p+1));
-            itx = TensorGetIndex(i0+1,i1,i0p+1,i1p);
+            itx = TensorGetIndex(n0,n1,i0+1,i1,i0p+1,i1p);
             row_xre = getIndexReal(itx);
             row_xim = getIndexImag(itx);
             yptr[rowre] += l1off * xptr[row_xre];
@@ -907,12 +913,12 @@ int myMatMultAxC(Mat RHS, Vec x, Vec y){
 
           /* Oscillators 1 */
           iosc = 1;
-          if (i1 < 2-1 && i1p < 2-1) {
+          if (i1 < shellctx->nlevels[1]-1 && i1p < shellctx->nlevels[1]-1) {
             decay_time = 0.0;
             if (shellctx->collapse_time[2*iosc] > 1e-14) 
               decay_time = 1./ shellctx->collapse_time[2*iosc];
             l1off = decay_time * sqrt((i1+1)*(i1p+1));
-            itx = TensorGetIndex(i0,i1+1,i0p,i1p+1);
+            itx = TensorGetIndex(n0,n1,i0,i1+1,i0p,i1p+1);
             row_xre = getIndexReal(itx);
             row_xim = getIndexImag(itx);
             yptr[rowre] += l1off * xptr[row_xre];
@@ -927,14 +933,16 @@ int myMatMultAxC(Mat RHS, Vec x, Vec y){
 
   double pt, qt, sq;
 
-  /* Controls hamiltonian */
+  /* --- Control hamiltonian --- */
   for (int i0p = 0; i0p < shellctx->nlevels[0]; i0p++)  {
     for (int i1p = 0; i1p < shellctx->nlevels[1]; i1p++)  {
       for (int i0 = 0; i0 < shellctx->nlevels[0]; i0++)  {
         for (int i1 = 0; i1 < shellctx->nlevels[1]; i1++)  {
 
+          int n0 = shellctx->nlevels[0];
+          int n1 = shellctx->nlevels[1];
           /* Get output index in vectorized, colocated y */
-          it = TensorGetIndex(i0,i1,i0p,i1p);
+          it = TensorGetIndex(n0, n1, i0,i1,i0p,i1p);
           rowre = getIndexReal(it);
           rowim = getIndexImag(it);
 
@@ -945,8 +953,8 @@ int myMatMultAxC(Mat RHS, Vec x, Vec y){
           qt = shellctx->control_Im[iosc];
 
           /* \rho(ik+1..,ik'..) term */
-          if (i0 < 2-1) {
-            itx = TensorGetIndex(i0+1,i1,i0p,i1p);
+          if (i0 < shellctx->nlevels[iosc]-1) {
+            itx = TensorGetIndex(n0, n1,i0+1,i1,i0p,i1p);
             row_xre = getIndexReal(itx);
             row_xim = getIndexImag(itx);
             u = xptr[row_xre];
@@ -956,9 +964,9 @@ int myMatMultAxC(Mat RHS, Vec x, Vec y){
             yptr[rowim] += sq * ( - pt * u + qt * v);
           }
           /* \rho(ik..,ik'+1..) */
-          if (i0p < 2-1) {
+          if (i0p < shellctx->nlevels[iosc]-1) {
             sq = sqrt(i0p + 1);
-            itx = TensorGetIndex(i0,i1,i0p+1,i1p);
+            itx = TensorGetIndex(n0,n1,i0,i1,i0p+1,i1p);
             row_xre = getIndexReal(itx);
             row_xim = getIndexImag(itx);
             u = xptr[row_xre];
@@ -968,7 +976,7 @@ int myMatMultAxC(Mat RHS, Vec x, Vec y){
           }
           /* \rho(ik-1..,ik'..) */
           if (i0 > 0) {
-            itx = TensorGetIndex(i0-1,i1,i0p,i1p);
+            itx = TensorGetIndex(n0,n1,i0-1,i1,i0p,i1p);
             row_xre = getIndexReal(itx);
             row_xim = getIndexImag(itx);
             u = xptr[row_xre];
@@ -979,7 +987,7 @@ int myMatMultAxC(Mat RHS, Vec x, Vec y){
           }
           /* \rho(ik..,ik'-1..) */
           if (i0p > 0) {
-            itx = TensorGetIndex(i0,i1,i0p-1,i1p);
+            itx = TensorGetIndex(n0,n1,i0,i1,i0p-1,i1p);
             row_xre = getIndexReal(itx);
             row_xim = getIndexImag(itx);
             u = xptr[row_xre];
@@ -996,8 +1004,8 @@ int myMatMultAxC(Mat RHS, Vec x, Vec y){
           qt = shellctx->control_Im[iosc];
 
           /* \rho(ik+1..,ik'..) term */
-          if (i1 < 2-1) {
-            itx = TensorGetIndex(i0,i1+1,i0p,i1p);
+          if (i1 < shellctx->nlevels[iosc]-1) {
+            itx = TensorGetIndex(n0,n1,i0,i1+1,i0p,i1p);
             row_xre = getIndexReal(itx);
             row_xim = getIndexImag(itx);
             u = xptr[row_xre];
@@ -1007,9 +1015,9 @@ int myMatMultAxC(Mat RHS, Vec x, Vec y){
             yptr[rowim] += sq * ( - pt * u + qt * v);
           }
           /* \rho(ik..,ik'+1..) */
-          if (i1p < 2-1) {
+          if (i1p < shellctx->nlevels[iosc]-1) {
             sq = sqrt(i1p + 1);
-            itx = TensorGetIndex(i0,i1,i0p,i1p+1);
+            itx = TensorGetIndex(n0,n1,i0,i1,i0p,i1p+1);
             row_xre = getIndexReal(itx);
             row_xim = getIndexImag(itx);
             u = xptr[row_xre];
@@ -1019,7 +1027,7 @@ int myMatMultAxC(Mat RHS, Vec x, Vec y){
           }
           /* \rho(ik-1..,ik'..) */
           if (i1 > 0) {
-            itx = TensorGetIndex(i0,i1-1,i0p,i1p);
+            itx = TensorGetIndex(n0,n1,i0,i1-1,i0p,i1p);
             row_xre = getIndexReal(itx);
             row_xim = getIndexImag(itx);
             u = xptr[row_xre];
@@ -1030,7 +1038,7 @@ int myMatMultAxC(Mat RHS, Vec x, Vec y){
           }
           /* \rho(ik..,ik'-1..) */
           if (i1p > 0) {
-            itx = TensorGetIndex(i0,i1,i0p,i1p-1);
+            itx = TensorGetIndex(n0,n1,i0,i1,i0p,i1p-1);
             row_xre = getIndexReal(itx);
             row_xim = getIndexImag(itx);
             u = xptr[row_xre];
@@ -1146,10 +1154,6 @@ double L1diag(std::vector<double> collapse_time, int i0, int i1, int i0p, int i1
 }
 
 
-int TensorGetIndex(int i0, int i1, int i0p, int i1p){
-  int nlevels0 = 2;
-  int nlevels1 = 2;
-  int N = nlevels0 * nlevels1;
-
-  return i0*nlevels1 + i1 + i0p *N * nlevels1 + i1p*N;
+int TensorGetIndex(int nlevels0, int nlevels1, int i0, int i1, int i0p, int i1p){
+  return i0*nlevels1 + i1 + (nlevels0 * nlevels1) * ( i0p * nlevels1 + i1p);
 }
