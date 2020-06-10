@@ -790,11 +790,6 @@ int myMatMult(Mat RHS, Vec x, Vec y){
   // vout = Im*u + Re*v
   //      = (Bd + sum_k p_kB_k)*u + (Ad + sum_k q_kA_k)*v
 
-  // Test only Bd for now. 
-  // MatView(*shellctx->Bd,0);
-  // MatZeroEntries(*shellctx->Ad);
-  MatZeroEntries(*shellctx->Bd);
-
   // Constant part uout = Adu - Bdv
   MatMult(*shellctx->Bd, v, uout);
   VecScale(uout, -1.0);
@@ -851,6 +846,9 @@ int myMatMultAxC(Mat RHS, Vec x, Vec y){
   VecGetArrayRead(x, &xptr);
   VecGetArray(y, &yptr);
 
+  double u, v;
+  int it, rowre, rowim;
+  double hd, hdp;
   /* Diagonal elements: Hd, Dephasing L2, Decay L1 diagonal part*/
   for (int i0p = 0; i0p < shellctx->nlevels[0]; i0p++)  {
     for (int i1p = 0; i1p < shellctx->nlevels[1]; i1p++)  {
@@ -858,41 +856,36 @@ int myMatMultAxC(Mat RHS, Vec x, Vec y){
         for (int i1 = 0; i1 < shellctx->nlevels[1]; i1++)  {
 
           /* Get output index in vectorized, colocated y */
-          int it = TensorGetIndex(i0,i1,i0p,i1p);
-          int rowre = getIndexReal(it);
-          int rowim = getIndexImag(it);
+          it = TensorGetIndex(i0,i1,i0p,i1p);
+          rowre = getIndexReal(it);
+          rowim = getIndexImag(it);
 
           /* Get incoming x at diagonal elements */
-          double xre = xptr[rowre];
-          double xim = xptr[rowim];
+          u = xptr[rowre];
+          v = xptr[rowim];
 
           // Constant Hd part: uout = ( hd(ik) - hd(ik'))*vin
           //                   vout = (-hd(ik) + hd(ik'))*uin
-          double hd  = Hd(shellctx->xi, i0, i1); 
-          double hdp = Hd(shellctx->xi, i0p, i1p); 
-          yptr[rowre] = (hd - hdp)  * xim;
-          yptr[rowim] = (-hd + hdp) * xre;
-
-          // RESET FOR TESTING LINDBLAD
-          yptr[rowre] = 0.0; 
-          yptr[rowim] = 0.0;
+          hd  = Hd(shellctx->xi, i0, i1); 
+          hdp = Hd(shellctx->xi, i0p, i1p); 
+          yptr[rowre] = (hd - hdp)  * v;
+          yptr[rowim] = (-hd + hdp) * u;
 
           // Dephasing l2: xout += l2(ik, ikp) xin
           double l2 = L2(shellctx->collapse_time, i0, i1, i0p, i1p);
-          yptr[rowre] += l2 * xre;
-          yptr[rowim] += l2 * xim;
+          yptr[rowre] += l2 * u;
+          yptr[rowim] += l2 * v;
 
           // Decay l1, diagonal part: xout += l1diag xin
           double l1diag = L1diag(shellctx->collapse_time, i0, i1, i0p, i1p);
-          yptr[rowre] += l1diag * xre;
-          yptr[rowim] += l1diag * xim;
+          yptr[rowre] += l1diag * u;
+          yptr[rowim] += l1diag * v;
         }
       }
     }
   }
 
   int iosc;
-  int it, rowre, rowim;
   double decay_time, l1off;
   int itx, row_xre, row_xim;
 
@@ -942,7 +935,6 @@ int myMatMultAxC(Mat RHS, Vec x, Vec y){
 
 
   double pt, qt, sq;
-  double u, v;
 
   /* Controls hamiltonian */
   for (int i0p = 0; i0p < shellctx->nlevels[0]; i0p++)  {
