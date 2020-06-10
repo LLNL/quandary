@@ -819,9 +819,6 @@ int myMatMult(Mat RHS, Vec x, Vec y){
   VecRestoreSubVector(y, *shellctx->isu, &uout);
   VecRestoreSubVector(y, *shellctx->isv, &vout);
 
-  VecView(y, PETSC_VIEWER_STDOUT_WORLD);
-  exit(1);
-
   return 0;
 }
 
@@ -1052,9 +1049,6 @@ int myMatMultAxC(Mat RHS, Vec x, Vec y){
   VecRestoreArray(y, &yptr);
 
     
-  VecView(y, PETSC_VIEWER_STDOUT_WORLD);
-  exit(1);
-
   return 0;
 }
 
