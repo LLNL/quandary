@@ -28,9 +28,9 @@ typedef struct {
 
 
 /* Define the Matrix-Vector products for the RHS MatShell */
-int myMatMult(Mat RHS, Vec x, Vec y);
-int myMatMultAxC(Mat RHS, Vec x, Vec y);
-int myMatMultTranspose(Mat RHS, Vec x, Vec y);
+int myMatMultSparseMat(Mat RHS, Vec x, Vec y);
+int myMatMultMatFree_2Osc(Mat RHS, Vec x, Vec y);
+int myMatMultTransposeSparseMat(Mat RHS, Vec x, Vec y);
 
 
 /* 
@@ -44,7 +44,6 @@ class MasterEq{
     std::vector<int> nlevels; 
     Oscillator** oscil_vec;  // Vector storing pointers to the oscillators
 
-    Mat Re, Im;             // Real and imaginary part of system matrix operator
     Mat RHS;                // Realvalued, vectorized systemmatrix (2N^2 x 2N^2)
     MatShellCtx RHSctx;     // MatShell context that contains data needed to apply the RHS
 
@@ -60,9 +59,6 @@ class MasterEq{
     int nparams_max;     // Maximum number of design parameters per oscilator 
     IS isu, isv;         // Vector strides for accessing u=Re(x), v=Im(x) 
 
-    PetscInt    *colid1, *colid2; 
-    PetscScalar *negvals;         
-
     double *dRedp;
     double *dImdp;
     Vec Acu, Acv, Bcu, Bcv, auxil;
@@ -70,12 +66,11 @@ class MasterEq{
     PetscScalar* vals;   // holding values when evaluating dRHSdp
  
   public:
-    bool usematshell;        // decides if RHS is used as a shell matrix or full matrix
-    bool usematfree; 
+    bool usematfree;  // Use matrix free solver
 
   public:
     MasterEq();
-    MasterEq(std::vector<int> nlevels, Oscillator** oscil_vec_, const std::vector<double> xi_, LindbladType lindbladtype_, const std::vector<double> collapse_time_, bool usematshell_, bool usematfree);
+    MasterEq(std::vector<int> nlevels, Oscillator** oscil_vec_, const std::vector<double> xi_, LindbladType lindbladtype_, const std::vector<double> collapse_time_, bool usematfree_);
     ~MasterEq();
 
     /* Return the i-th oscillator */

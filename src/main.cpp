@@ -170,10 +170,14 @@ int main(int argc,char **argv)
     printf(" Choose either 'none', 'decay', 'dephase', or 'both'\n");
     exit(1);
   }
-  bool usematshell, usematfree;
-  usematshell = config.GetBoolParam("usematshell", false);
+  bool usematfree;
   usematfree = config.GetBoolParam("usematfree", false);
-  MasterEq* mastereq = new MasterEq(nlevels, oscil_vec, xi, lindbladtype, t_collapse, usematshell, usematfree);
+  // Sanity check
+  if (usematfree && nlevels.size() != 2 ){
+    printf("ERROR: Matrix free solver is only implemented for systems with TWO oscillators!\n");
+    exit(1);
+  }
+  MasterEq* mastereq = new MasterEq(nlevels, oscil_vec, xi, lindbladtype, t_collapse, usematfree);
 
 
   /* Screen output */

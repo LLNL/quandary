@@ -6,8 +6,6 @@
 MasterEq::MasterEq(){
   dim = 0;
   oscil_vec = NULL;
-  Re = NULL;
-  Im = NULL;
   RHS = NULL;
   Ad     = NULL;
   Bd     = NULL;
@@ -15,11 +13,11 @@ MasterEq::MasterEq(){
   Bc_vec = NULL;
   dRedp = NULL;
   dImdp = NULL;
-  usematshell = false;
+  usematfree = false;
 }
 
 
-MasterEq::MasterEq(std::vector<int> nlevels_, Oscillator** oscil_vec_, const std::vector<double> xi_, LindbladType lindbladtype, const std::vector<double> collapse_time_, bool usematshell_, bool usematfree_) {
+MasterEq::MasterEq(std::vector<int> nlevels_, Oscillator** oscil_vec_, const std::vector<double> xi_, LindbladType lindbladtype, const std::vector<double> collapse_time_, bool usematfree_) {
   int ierr;
 
   nlevels = nlevels_;
@@ -29,7 +27,6 @@ MasterEq::MasterEq(std::vector<int> nlevels_, Oscillator** oscil_vec_, const std
   collapse_time = collapse_time_;
   assert(xi.size() >= (noscillators+1) * noscillators / 2);
   assert(collapse_time.size() >= 2*noscillators);
-  usematshell = usematshell_;
   usematfree = usematfree_;
 
   int mpisize_petsc;
@@ -50,25 +47,14 @@ MasterEq::MasterEq(std::vector<int> nlevels_, Oscillator** oscil_vec_, const std
     exit(1);
   }
 
-  /* Allocate system matrix (RHS), either as matrix or as matrix shell. */
+  /* Create matrix shell for applying system matrix (RHS), */
   /* dimension: 2*dim x 2*dim for the real-valued system */
-  if (usematshell)
-    MatCreateShell(PETSC_COMM_WORLD, PETSC_DECIDE, PETSC_DECIDE, 2*dim, 2*dim, (void**) &RHSctx, &RHS);
-  else
-  {
-    MatCreate(PETSC_COMM_WORLD,&RHS);
-    MatSetSizes(RHS, PETSC_DECIDE, PETSC_DECIDE,2*dim,2*dim);
-  }
+  MatCreateShell(PETSC_COMM_WORLD, PETSC_DECIDE, PETSC_DECIDE, 2*dim, 2*dim, (void**) &RHSctx, &RHS);
   MatSetOptionsPrefix(RHS, "system");
   MatSetFromOptions(RHS); MatSetUp(RHS);
   MatAssemblyBegin(RHS,MAT_FINAL_ASSEMBLY); MatAssemblyEnd(RHS,MAT_FINAL_ASSEMBLY);
 
-  /* Allocate auxiliary vectors */
-  ierr = PetscMalloc1(dim, &colid1);
-  ierr = PetscMalloc1(dim, &colid2);
-  ierr = PetscMalloc1(dim, &negvals);
-  
- /* Allocate time-varying building blocks */
+  /* Allocate time-varying building blocks */
   Mat loweringOP, loweringOP_T;
   Mat numberOP;
   Ac_vec = new Mat[noscillators];
@@ -243,53 +229,37 @@ MasterEq::MasterEq(std::vector<int> nlevels_, Oscillator** oscil_vec_, const std
   MatCreateVecs(Bc_vec[0], &auxil, NULL);
 
   /* Allocate MatShell context for applying RHS */
-  if (usematshell) {
-    RHSctx.isu = &isu;
-    RHSctx.isv = &isv;
-    RHSctx.xi = xi;
-    RHSctx.collapse_time = collapse_time;
-    RHSctx.Ac_vec = &Ac_vec;
-    RHSctx.Bc_vec = &Bc_vec;
-    RHSctx.Ad = &Ad;
-    RHSctx.Bd = &Bd;
-    RHSctx.Acu = &Acu;
-    RHSctx.Acv = &Acv;
-    RHSctx.Bcu = &Bcu;
-    RHSctx.Bcv = &Bcv;
-    RHSctx.nlevels = nlevels;
-    RHSctx.oscil_vec = &oscil_vec;
-    RHSctx.time = 0.0;
-    for (int iosc = 0; iosc < noscillators; iosc++) {
-      RHSctx.control_Re.push_back(0.0);
-      RHSctx.control_Im.push_back(0.0);
-    }
-
-    if (!usematfree) MatShellSetOperation(RHS, MATOP_MULT, (void(*)(void)) myMatMult);
-    else MatShellSetOperation(RHS, MATOP_MULT, (void(*)(void)) myMatMultAxC);
-    MatShellSetOperation(RHS, MATOP_MULT_TRANSPOSE, (void(*)(void)) myMatMultTranspose);
+  RHSctx.isu = &isu;
+  RHSctx.isv = &isv;
+  RHSctx.xi = xi;
+  RHSctx.collapse_time = collapse_time;
+  RHSctx.Ac_vec = &Ac_vec;
+  RHSctx.Bc_vec = &Bc_vec;
+  RHSctx.Ad = &Ad;
+  RHSctx.Bd = &Bd;
+  RHSctx.Acu = &Acu;
+  RHSctx.Acv = &Acv;
+  RHSctx.Bcu = &Bcu;
+  RHSctx.Bcv = &Bcv;
+  RHSctx.nlevels = nlevels;
+  RHSctx.oscil_vec = &oscil_vec;
+  RHSctx.time = 0.0;
+  for (int iosc = 0; iosc < noscillators; iosc++) {
+    RHSctx.control_Re.push_back(0.0);
+    RHSctx.control_Im.push_back(0.0);
   }
 
-  /* Allocate real and imaginary part of system matrix, as needed by the RHS if not matshell*/
-  if (!usematshell) {
-    MatCreate(PETSC_COMM_WORLD, &Re);
-    MatCreate(PETSC_COMM_WORLD, &Im);
-    MatSetSizes(Re, PETSC_DECIDE, PETSC_DECIDE, dim, dim);
-    MatSetSizes(Im, PETSC_DECIDE, PETSC_DECIDE, dim, dim);
-    MatSetFromOptions(Re); MatSetUp(Re);
-    MatSetFromOptions(Im); MatSetUp(Im);
-    MatAssemblyBegin(Re,MAT_FINAL_ASSEMBLY); MatAssemblyEnd(Re,MAT_FINAL_ASSEMBLY);
-    MatAssemblyBegin(Im,MAT_FINAL_ASSEMBLY); MatAssemblyEnd(Im,MAT_FINAL_ASSEMBLY);
-  }
+  /* Set the MatMult routine for applying the RHS to a vector x */
+  if (usematfree) MatShellSetOperation(RHS, MATOP_MULT, (void(*)(void)) myMatMultMatFree_2Osc);
+  else            MatShellSetOperation(RHS, MATOP_MULT, (void(*)(void)) myMatMultSparseMat);
+  MatShellSetOperation(RHS, MATOP_MULT_TRANSPOSE, (void(*)(void)) myMatMultTransposeSparseMat);
+
 }
 
 
 MasterEq::~MasterEq(){
   if (dim > 0){
     MatDestroy(&RHS);
-    PetscFree(colid1);
-    PetscFree(colid2);
-    PetscFree(negvals);
-
     MatDestroy(&Ad);
     MatDestroy(&Bd);
     for (int iosc = 0; iosc < noscillators; iosc++) {
@@ -310,11 +280,6 @@ MasterEq::~MasterEq(){
     VecDestroy(&Bcu);
     VecDestroy(&Bcv);
     VecDestroy(&auxil);
-    
-    if (!usematshell) {
-      MatDestroy(&Re);
-      MatDestroy(&Im);
-    }
   }
 }
 
@@ -328,92 +293,15 @@ Oscillator* MasterEq::getOscillator(int i) { return oscil_vec[i]; }
 int MasterEq::assemble_RHS(double t){
   int ierr;
 
-  /* If using the shell option, prepare the shell to perform the action of RHS on a vector (MyMatMult) */
-  if (usematshell) {
-    RHSctx.time = t;
+  /* Prepare the matrix shell to perform the action of RHS on a vector */
+  RHSctx.time = t;
 
-    for (int iosc = 0; iosc < noscillators; iosc++) {
-      double p, q;
-      oscil_vec[iosc]->evalControl(t, &p, &q);
-      RHSctx.control_Re[iosc] = p;
-      RHSctx.control_Im[iosc] = q;
-    }
-
-    return 0;
-  }
-
-  /* Reset */
-  ierr = MatZeroEntries(Re);CHKERRQ(ierr);
-  ierr = MatZeroEntries(Im);CHKERRQ(ierr);
-
-  /* Time-dependent control part: Im += sum_k p_k(t) Ac_k and Re += sum_k q_k(t) Bc_k */
   for (int iosc = 0; iosc < noscillators; iosc++) {
-    double control_Re, control_Im;
-    oscil_vec[iosc]->evalControl(t, &control_Re, &control_Im);
-    ierr = MatAXPY(Re,control_Im,Ac_vec[iosc],DIFFERENT_NONZERO_PATTERN); CHKERRQ(ierr);
-    ierr = MatAXPY(Im,control_Re,Bc_vec[iosc],DIFFERENT_NONZERO_PATTERN); CHKERRQ(ierr);
+    double p, q;
+    oscil_vec[iosc]->evalControl(t, &p, &q);
+    RHSctx.control_Re[iosc] = p;
+    RHSctx.control_Im[iosc] = q;
   }
-
-  /* Constant drift parts */
-  ierr = MatAXPY(Re, 1.0, Ad, DIFFERENT_NONZERO_PATTERN); CHKERRQ(ierr);
-  ierr = MatAXPY(Im, 1.0, Bd, DIFFERENT_NONZERO_PATTERN); CHKERRQ(ierr);
-
-
-  /* 
-   * If not shell option, set up the RHS matrix from Re and Im
-   * using the staggered ordering x = u1 v1 ... uN vN
-   */
-
-  /* Reset */
-  ierr = MatZeroEntries(RHS);CHKERRQ(ierr);
-
-  /* Iterate over local rows in Re, Im */
-  int ilower, iupper;
-  MatGetOwnershipRange(Re, &ilower, &iupper);
-  for (int irow = ilower; irow < iupper; irow++) {
-
-    const PetscInt *getcol;
-    const PetscScalar *vals;
-    int ncol;
-
-    /* Get row in Re */
-    ierr = MatGetRow(Re, irow, &ncol, &getcol, &vals);CHKERRQ(ierr);
-
-    /* Set up row and colum ids for Re in M */
-    int rowid1 = 2*irow;
-    int rowid2 = 2*irow + 1;
-    for (int icol = 0; icol < ncol; icol++)
-    {
-      colid1[icol] = getIndexReal(getcol[icol]);   // uk
-      colid2[icol] = getIndexImag(getcol[icol]);   // vk
-    }
-    /* Set Re-row in M */
-    ierr = MatSetValues(RHS, 1, &rowid1, ncol, colid1, vals, INSERT_VALUES); CHKERRQ(ierr);
-    ierr = MatSetValues(RHS, 1, &rowid2, ncol, colid2, vals,INSERT_VALUES); CHKERRQ(ierr);
-    ierr = MatRestoreRow(Re,irow,&ncol,&getcol,&vals);CHKERRQ(ierr);
-
-    /* Get row in Im */
-    ierr = MatGetRow(Im, irow, &ncol, &getcol, &vals);CHKERRQ(ierr);
-
-    /* Set up row and column ids for Im in M */
-    for (int icol = 0; icol < ncol; icol++)
-    {
-      colid1[icol] = getIndexImag(getcol[icol]);  // uk // TODO: IS THIS A BUG????
-      colid2[icol] = getIndexReal(getcol[icol]);  // vk
-      negvals[icol] = -vals[icol];
-    }
-    // Set Im in M: 
-    rowid1 = getIndexReal(irow);
-    rowid2 = getIndexImag(irow);
-    ierr = MatSetValues(RHS,1,&rowid1,ncol,colid1,negvals,INSERT_VALUES);CHKERRQ(ierr);
-    ierr = MatSetValues(RHS,1,&rowid2,ncol,colid2,vals,INSERT_VALUES);CHKERRQ(ierr);
-    ierr = MatRestoreRow(Im,irow,&ncol,&getcol,&vals);CHKERRQ(ierr);
-  }
-
-  /* Assemble M */
-  ierr = MatAssemblyBegin(RHS,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
-  ierr = MatAssemblyEnd(RHS,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
-  // MatView(RHS, PETSC_VIEWER_STDOUT_SELF);
 
   return 0;
 }
@@ -765,7 +653,7 @@ int MasterEq::getRhoT0(int iinit, int ninit, InitialConditionType initcond_type,
 
 
 /* Define the action of RHS on a vector x */
-int myMatMult(Mat RHS, Vec x, Vec y){
+int myMatMultSparseMat(Mat RHS, Vec x, Vec y){
 
   /* Get the shell context */
   MatShellCtx *shellctx;
@@ -825,7 +713,7 @@ int myMatMult(Mat RHS, Vec x, Vec y){
 
 
 /* Define the action of RHS on a vector x */
-int myMatMultAxC(Mat RHS, Vec x, Vec y){
+int myMatMultMatFree_2Osc(Mat RHS, Vec x, Vec y){
 
   /* Get the shell context */
   MatShellCtx *shellctx;
@@ -1061,7 +949,7 @@ int myMatMultAxC(Mat RHS, Vec x, Vec y){
 }
 
 /* Define the action of RHS^T on a vector x */
-int myMatMultTranspose(Mat RHS, Vec x, Vec y) {
+int myMatMultTransposeSparseMat(Mat RHS, Vec x, Vec y) {
  
   /* Get time from shell context */
   MatShellCtx *shellctx;

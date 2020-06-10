@@ -74,7 +74,7 @@ ImplMidpoint::ImplMidpoint(MasterEq* mastereq_) : TimeStepper(mastereq_) {
 
   /* Set options */
   KSPGetPC(linearsolver, &preconditioner);
-  if (mastereq->usematshell) PCSetType(preconditioner, PCNONE);
+  PCSetType(preconditioner, PCNONE); // TODO: Implement a preconditioner as shell!
   double reltol = 1.e-8;
   double abstol = 1.e-10;
   KSPSetTolerances(linearsolver, reltol, abstol, PETSC_DEFAULT, PETSC_DEFAULT);
@@ -139,10 +139,8 @@ void ImplMidpoint::evolveFWD(double tstart, double tstop, Vec x) {
   KSPsolve_counter++;
 
   /* If matshell, revert the scaling and shifting */
-  if (mastereq->usematshell){
-    MatAssemblyBegin(A, MAT_FINAL_ASSEMBLY);
-    MatAssemblyEnd(A, MAT_FINAL_ASSEMBLY);
-  }
+  MatAssemblyBegin(A, MAT_FINAL_ASSEMBLY);
+  MatAssemblyEnd(A, MAT_FINAL_ASSEMBLY);
 
   /* --- Update state x += dt * stage --- */
   VecAXPY(x, dt, stage);
@@ -186,14 +184,9 @@ void ImplMidpoint::evolveBWD(double tstop, double tstart, Vec x, Vec x_adj, Vec 
   /* Revert changes to RHS from above */
   A = mastereq->getRHS();
 /* If matshell, revert the scaling and shifting */
-  if (mastereq->usematshell){
-    MatAssemblyBegin(A, MAT_FINAL_ASSEMBLY);
-    MatAssemblyEnd(A, MAT_FINAL_ASSEMBLY);
-  } else {
-    MatShift(A, -1.0); 
-    MatScale(A, - 2.0/dt);
-  }
-
+  MatAssemblyBegin(A, MAT_FINAL_ASSEMBLY);
+  MatAssemblyEnd(A, MAT_FINAL_ASSEMBLY);
+  
   /* Update adjoint state x_adj += dt * A^Tstage_adj --- */
   MatMultTransposeAdd(A, stage_adj, x_adj, x_adj);
 
