@@ -188,10 +188,7 @@ MasterEq::MasterEq(std::vector<int> nlevels_, Oscillator** oscil_vec_, const std
     }
 
     /* --- Adding T1-DECAY (L1 = a_j) for oscillator j --- */
-    if (addT1) {
-      if (collapse_time[iosc*2] < 1e-12) { 
-        printf("Check lindblad settings! Requested collapse time is zero.\n"); exit(1);
-      }
+    if (addT1 && collapse_time[iosc*2] > 1e-14) { 
       double gamma = 1./(collapse_time[iosc*2]);
       /* Ad += gamma_j * L \kron L */
       AkronB(dimmat, L1, L1, gamma, &Ad, ADD_VALUES);
@@ -204,10 +201,7 @@ MasterEq::MasterEq(std::vector<int> nlevels_, Oscillator** oscil_vec_, const std
     }
 
     /* --- Adding T2-Dephasing (L1 = a_j^\dag a_j) for oscillator j --- */
-    if (addT2) {
-      if (collapse_time[iosc*2+1] < 1e-12) { 
-        printf("Check lindblad settings! Requested collapse time is zero.\n"); exit(1);
-      }
+    if (addT2 && collapse_time[iosc*2+1] > 1e-14) { 
       double gamma = 1./(collapse_time[iosc*2+1]);
       /* Ad += 1./gamma_j * L \kron L */
       AkronB(dimmat, L2, L2, gamma, &Ad, ADD_VALUES);

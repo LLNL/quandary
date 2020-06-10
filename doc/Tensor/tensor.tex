@@ -61,13 +61,13 @@ Consider a quantum system with $Q$ oscillators in $H_{n_1} \otimes \dots H_{n_Q}
 \end{align}
 where the index notation $i_k..$ expands to $i_1,\dots i_k, \dots,i_Q$.
 
-All operations that are applied to $\rho$ in the Lindblad equation are of the form $I\otimes \dots \otimes M^{n_k} \otimes \dots \otimes I$, or $I\otimes \dots \otimes M^{n_l} \otimes \dots \otimes I \otimes \dots \otimes M^{n_k} \otimes \dots \otimes I$, where $I$ is the identity. Applying those operators to the tensor $\rho$ therefore effectively acts in at most two of the dimensions, while others are contracted only with identities that don't change the matrix. Example for a 3-partite systems $H^{n_1} \otimes H^{n_2} \otimes H^{n_3}$:
+All operations that are applied to $\rho$ in the Lindblad equation are of the form $I\otimes \dots \otimes M^{n_k} \otimes \dots \otimes I$, or $I\otimes \dots \otimes M^{n_l} \otimes \dots \otimes I \otimes \dots \otimes M^{n_k} \otimes \dots \otimes I$, where $I$ is the identity. Applying those operators to the tensor $\rho$ therefore effectively acts in at most two of the dimensions, while others are contracted only with identities that don't change the matrix. Example for a 3-partite systems $H^{n_1} \otimes H^{n_2} \otimes H^{n_3}$. Consider the operator $I_{n_1} \otimes M_{n_2} \otimes I_{n_3}$ with corresponding dimension. It's action on $\rho \in \C^{n1\times n2\times n3 \times n1\times n2 \times n3}$ is
 \begin{align}
-    I^{i_3}_{j_3}\otimes M^{i_2}_{j_2} \otimes I^{i_1}_{j_1} \rho_{i_1i_2i_3i_1^{\prime}i_2^\prime i_3^\prime} = M^{i_2}_{j_2} \rho_{i_1i_2i_3i_1^{\prime}i_2^\prime i_3^\prime} = \sum_{i_2} M(j_2, i_2) \rho(i_1,i_2,i_3,i_1^{\prime},i_2^\prime, i_3^\prime)  =: y_{i_1,j_2,i_3,i_1^{\prime},i_2^\prime,i_3^\prime}
+    I^{i_1}_{j_1}\otimes M^{i_2}_{j_2} \otimes I^{i_3}_{j_3} \rho_{i_1i_2i_3i_1^{\prime}i_2^\prime i_3^\prime} = M^{i_2}_{j_2} \rho_{j_1i_2i_3j_1^{\prime}i_2^\prime i_3^\prime} = \sum_{i_2} M(j_2, i_2) \rho(j_1,i_2,j_3,i_1^{\prime},i_2^\prime, i_3^\prime)  =: y_{j_1,j_2,j_3,i_1^{\prime},i_2^\prime,i_3^\prime}
 \end{align}
 and when applying from the right:
 \begin{align}
-    \rho_{i_1i_2i_3i_1^{\prime}i_2^\prime i_3^\prime}I^{i_3^{\prime}}_{j_3}\otimes M^{i_2^\prime}_{j_2} \otimes I^{i_1^\prime}_{j_1}  = M^{j_2}_{i_2^\prime} \rho_{i_1i_2i_3i_1^{\prime}i_2^\prime i_3^\prime} = \sum_{i_2^\prime} M(i_2^{\prime}, j_2) \rho(i_1,i_2,i_3,i_1^{\prime}i_2^\prime, i_3^\prime)  =: y_{i_1,i_2,i_3,i_1^{\prime}j_2, i_3^\prime}
+    \rho_{i_1i_2i_3i_1^{\prime}i_2^\prime i_3^\prime}I^{i_1^{\prime}}_{j_1}\otimes M^{i_2^\prime}_{j_2} \otimes I^{i_3^\prime}_{j_3}  = M^{j_2^\prime}_{i_2^\prime} \rho_{i_1i_2i_3j_1^{\prime}i_2^\prime j_3^\prime} = \sum_{i_2^\prime} M(i_2^{\prime}, j_2^\prime) \rho(i_1,i_2,i_3,j_1^{\prime}i_2^\prime, j_3^\prime)  =: y_{i_1,i_2,i_3,j_1^{\prime}j_2^\prime, j_3^\prime}
 \end{align}
 
 \begin{enumerate}
@@ -104,18 +104,18 @@ and when applying from the right:
       \end{align}
       Each term contracts to the $k-$th dimension:
       \begin{align}
-        (a_k\pm a_k^\dag) \rho_{i_k..i_k^\prime ..} = (a^{n_k} \pm a^{n_k})^{i_k}_{j_k} \rho_{i_k..i_k^\prime..} &= \sum_{i_k} \underbrace{(a^{n_l} \pm a^{n_k})_{j_k,i_k}}_{= \sqrt{j_k+1} \delta_{i_k,j_k+1,i_{k}} \pm \sqrt{j_k} \delta_{i_k,j_k-1}} \rho_{i_k.. i_k^{\prime}..} \\
+        (a_k\pm a_k^\dag) \rho_{i_k..i_k^\prime ..} = (a^{n_k} \pm a^{n_k})^{i_k}_{j_k} \rho_{i_k..i_k^\prime..} &= \sum_{i_k} \underbrace{(a^{n_k} \pm a^{n_k})_{j_k,i_k}}_{= \sqrt{j_k+1} \delta_{i_k,j_k+1,i_{k}} \pm \sqrt{j_k} \delta_{i_k,j_k-1}} \rho_{i_k.. i_k^{\prime}..} \\
         &= \sqrt{j_k+1} \rho(j_k+1.., i_k^\prime..) \pm \sqrt{j_k} \rho_(j_k-1.., i_k^\prime..)
       \end{align} 
       where $i_k\pm1..$ expands to $i_1,\dots,i_k\pm 1,\dots,i_Q$.
 
       Applying $H_c(t)$ from the left then gives 
       \begin{align}
-        H_c(t) \rho_{i_k.., i_k^\prime ..} = \sum_k p^k(t) \left(\sqrt{i_k+1} \rho_{i_k+1..,i_k^\prime..} + \sqrt{i_k} \rho_{i_k-1..,i_k^\prime..} \right) + q^k(t) \left(\sqrt{i_k+1} \rho_{i_k+1..,i_k^\prime..} - \sqrt{i_k} \rho_{i_k-1..,i_k^\prime..} \right)
+        H_c(t) \rho_{i_k.., i_k^\prime ..} = \sum_k p^k(t) \left(\sqrt{i_k+1} \rho_{i_k+1..,i_k^\prime..} + \sqrt{i_k} \rho_{i_k-1..,i_k^\prime..} \right) + iq^k(t) \left(\sqrt{i_k+1} \rho_{i_k+1..,i_k^\prime..} - \sqrt{i_k} \rho_{i_k-1..,i_k^\prime..} \right)
       \end{align}
-      Similar, applying $H_c(t)$ from the right to $\rho$ contracts on the dimensions $i_k^\prime$:
+      Applying $H_c(t)$ from the right to $\rho$ contracts on the dimensions $i_k^\prime$, and the matrix $(a^{n_k } \pm a^{n_k})$ is accessed at $(a^{n_k } \pm a^{n_k})_{i_k^\prime,j_k^\prime} = \pm \sqrt{j_k^\prime+1} \delta_{i_k^\prime, j_k^\prime +1} + \sqrt{j_k^\prime} \delta_{i_k^\prime j_k^\prime -1}$, giving
       \begin{align}
-        \rho_{i_k.., i_k^\prime ..} H_c(t) = \sum_k p^k(t) \left(\sqrt{i_k^\prime+1} \rho_{i_k..,i_k^\prime+1..} + \sqrt{i_k^\prime} \rho_{i_k..,i_k^\prime-1..} \right) + q^k(t) \left(\sqrt{i_k^\prime+1} \rho_{i_k..,i_k^\prime+1..} - \sqrt{i_k^\prime} \rho_{i_k..,i_k^\prime-1..} \right)
+        \rho_{i_k.., i_k^\prime ..} H_c(t) = \sum_k p^k(t) \left(\sqrt{i_k^\prime+1} \rho_{i_k..,i_k^\prime+1..} + \sqrt{i_k^\prime} \rho_{i_k..,i_k^\prime-1..} \right) + iq^k(t) \left( - \sqrt{i_k^\prime+1} \rho_{i_k..,i_k^\prime+1..} + \sqrt{i_k^\prime} \rho_{i_k..,i_k^\prime-1..} \right)
       \end{align}
 
     \item \textbf{Lindblad terms} $\sum_k \sum_{l\in{1,2}} \gamma_{lk} \Ell_{lk} \rho \Ell_{lk}^\dag - \frac{1}{2} \left( \Ell_{lk}^\dag \Ell_{lk} \rho + \rho \Ell_{lk}^\dag \Ell_{lk}\right)$.
@@ -127,7 +127,7 @@ and when applying from the right:
 
     The decay collapse operator $\Ell_{1k} = a_k$ contains off-diagonals, and yields
     \begin{align}
-        \sum_k \gamma_{1k} \sqrt{i_k+1}\sqrt{i_k^\prime} \rho_{i_k+1.., i_k-1^\prime..} - \frac 12 \left( i_k+ i_k^\prime \right)\rho_{i_k.., i_k^\prime..} 
+        \sum_k \gamma_{1k} \sqrt{(i_k+1)(i_k^\prime+1)} \rho_{i_k+1.., i_k+1^\prime..} - \frac 12 \left( i_k+ i_k^\prime \right)\rho_{i_k.., i_k^\prime..} 
     \end{align}
       
 \end{enumerate}
@@ -139,20 +139,17 @@ and when applying from the right:
        y^{out}(i_k..,i_k^\prime..)  &= 
        \left(-i h_d(i_k..) + ih_d(i_k^\prime)
         + l_2(i_k..,i_k^\prime..) + l_1^{\text{diag}}(i_k.., i_k^\prime..) \right) \rho(i_k..,i_k^\prime..) \\
-        &+ \sum_k l_1^{\text{off}}(i_k, i_k^\prime) \rho(i_k+1.., i_k^\prime -1..)\\
-        &+ \sum_k -i h_c^1(i_k) \rho(i_k+1.., i_k^\prime..) \\
-        &+ \sum_k ih_c^1(i_k^\prime) \rho(i_k..,i_k^\prime +1 ..) \\
-        &+ \sum_k -i h_c^2(i_k) \rho(i_k-1.., i_k^\prime..) \\
-        &+ \sum_k ih_c^2(i_k^\prime) \rho(i_k..,i_k^\prime -1 ..) 
+        &+ \sum_k \gamma_{1k} \sqrt{(i_k+1)(i_k^\prime+1)} \rho(i_k+1.., i_k^\prime +1..)\\
+        &+ \sum_k \left(-ip^k(t) + q^k(t)\right) \sqrt{i_k+1} \rho(i_k+1.., i_k^\prime..) \\
+        &+ \sum_k \left( ip^k(t) + q^k(t)\right) \sqrt{i_k^\prime+1} \rho(i_k..,i_k^\prime +1 ..) \\
+        &+ \sum_k \left(-ip^k(t) - q^k(t)\right) \sqrt{i_k} \rho(i_k-1.., i_k^\prime..) \\
+        &+ \sum_k \left( ip^k(t) - q^k(t)\right) \sqrt{i_k^\prime} \rho(i_k..,i_k^\prime -1 ..) 
   \end{align}
   where 
   \begin{align}
     h_d(i_k..) &= -\sum_k \frac{\xi_k}{2}(i_k^2 - i_k) - \sum_{l<k} \xi_{lk} (i_l i_k) \\
     l_2(i_k..,i_k..^\prime) &= \sum_k \gamma_{2k} \left(i_ki_k^\prime - \frac 12 \left( (i_k)^2 + (i_k^\prime)^2\right) \right)\\
-    l_1^{\text{diag}}(i_k.., i_k^\prime..) &= \sum_k -\frac{\gamma_{1k}}{2}\left(i_k + i_k^\prime\right) \\
-    l_1^{\text{off}}(i_k,i_k^\prime) &= \gamma_{1k} \sqrt{i_k+1}\sqrt{i_k^\prime} \\
-    h_c^1(i_k) &= \left(p^{i_k}(t) + iq^{i_k}\right)\sqrt{i_k+1} \\
-    h_c^2(i_k) &= \left(p^{i_k}(t) - iq^{i_k}\right)\sqrt{i_k} 
+    l_1^{\text{diag}}(i_k.., i_k^\prime..) &= \sum_k -\frac{\gamma_{1k}}{2}\left(i_k + i_k^\prime\right) 
   \end{align}
   
   Even though all the above operations will be applied for all $i_k.., i_k^\prime..$, these loops should be separated for each of those different index sets so that the compiler optimizes memory access and caching.
