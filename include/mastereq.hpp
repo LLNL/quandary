@@ -117,7 +117,7 @@ class MasterEq{
 };
 
 
-int TensorGetIndex(int nlevels0, int nlevels1, int i0, int i1, int i0p, int i1p);
-double Hd(std::vector<double> xi, int a, int b);
-double L2(std::vector<double> collapse_time, int i0, int i1, int i0p, int i1p);
-double L1diag(std::vector<double> collapse_time, int i0, int i1, int i0p, int i1p);
+int TensorGetIndex(const int nlevels0, const int nlevels1,const  int i0, const int i1, int i0p, const int i1p);
+double Hd(const std::vector<double> &xi,const  int a, const int b);
+double L1diag(const std::vector<double> &collapse_time, const int i0,const int i1, const int i0p,const int i1p);
+double L2(const std::vector<double> &collapse_time,const int i0, const int i1, const int i0p,const int i1p);
