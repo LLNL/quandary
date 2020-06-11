@@ -728,15 +728,17 @@ int myMatMultMatFree_2Osc(Mat RHS, Vec x, Vec y){
   double u, v;
   int it, rowre, rowim;
   double hd, hdp;
+
+
+  int n0 = shellctx->nlevels[0];
+  int n1 = shellctx->nlevels[1];
+
+
   /* Diagonal elements: Hd, Dephasing L2, Decay L1 diagonal part*/
-  for (int i0p = 0; i0p < shellctx->nlevels[0]; i0p++)  {
-    for (int i1p = 0; i1p < shellctx->nlevels[1]; i1p++)  {
-      for (int i0 = 0; i0 < shellctx->nlevels[0]; i0++)  {
-        for (int i1 = 0; i1 < shellctx->nlevels[1]; i1++)  {
-
-          int n0 = shellctx->nlevels[0];
-          int n1 = shellctx->nlevels[1];
-
+  for (int i0p = 0; i0p < n0; i0p++)  {
+    for (int i1p = 0; i1p < n1; i1p++)  {
+      for (int i0 = 0; i0 < n0; i0++)  {
+        for (int i1 = 0; i1 < n1; i1++)  {
           /* Get output index in vectorized, colocated y */
           it = TensorGetIndex(n0, n1,i0,i1,i0p,i1p);
           rowre = getIndexReal(it);
@@ -767,27 +769,23 @@ int myMatMultMatFree_2Osc(Mat RHS, Vec x, Vec y){
     }
   }
 
-  int iosc;
   double decay_time, l1off;
   int itx, row_xre, row_xim;
 
   /* Decay L1, off-diagonal */
-  for (int i0p = 0; i0p < shellctx->nlevels[0]; i0p++)  {
-    for (int i1p = 0; i1p < shellctx->nlevels[1]; i1p++)  {
-      for (int i0 = 0; i0 < shellctx->nlevels[0]; i0++)  {
-        for (int i1 = 0; i1 < shellctx->nlevels[1]; i1++)  {
-
-          int n0 = shellctx->nlevels[0];
-          int n1 = shellctx->nlevels[1];
+  /* Oscillators 0 */
+  int iosc = 0;
+        // if (i0 < n0-1 && i0p < n0-1) {
+  for (int i0p = 0; i0p < n0-1; i0p++)  {
+    for (int i1p = 0; i1p < n1; i1p++)  {
+      for (int i0 = 0; i0 < n0-1; i0++)  {
+        for (int i1 = 0; i1 < n1; i1++)  {
 
           /* Get output index in vectorized, colocated output y */
           it = TensorGetIndex(n0,n1,i0,i1,i0p,i1p);
           rowre = getIndexReal(it);
           rowim = getIndexImag(it);
 
-          /* Oscillators 0 */
-          iosc = 0;
-          if (i0 < shellctx->nlevels[iosc]-1 && i0p < shellctx->nlevels[iosc]-1) {
             decay_time = 0.0;
             if (shellctx->collapse_time[2*iosc] > 1e-14) 
               decay_time = 1./ shellctx->collapse_time[2*iosc];
@@ -797,11 +795,22 @@ int myMatMultMatFree_2Osc(Mat RHS, Vec x, Vec y){
             row_xim = getIndexImag(itx);
             yptr[rowre] += l1off * xptr[row_xre];
             yptr[rowim] += l1off * xptr[row_xim];
-          }
+        }
+      }
+    }
+  }
+  /* Oscillators 1 */
+  iosc = 1;
+  for (int i0p = 0; i0p < n0; i0p++)  {
+    for (int i1p = 0; i1p < n1-1; i1p++)  {
+      for (int i0 = 0; i0 < n0; i0++)  {
+        for (int i1 = 0; i1 < n1-1; i1++)  {
+        // if (i1 < n1-1 && i1p < n1-1) {
+         /* Get output index in vectorized, colocated output y */
+          it = TensorGetIndex(n0,n1,i0,i1,i0p,i1p);
+          rowre = getIndexReal(it);
+          rowim = getIndexImag(it);
 
-          /* Oscillators 1 */
-          iosc = 1;
-          if (i1 < shellctx->nlevels[1]-1 && i1p < shellctx->nlevels[1]-1) {
             decay_time = 0.0;
             if (shellctx->collapse_time[2*iosc] > 1e-14) 
               decay_time = 1./ shellctx->collapse_time[2*iosc];
@@ -811,8 +820,7 @@ int myMatMultMatFree_2Osc(Mat RHS, Vec x, Vec y){
             row_xim = getIndexImag(itx);
             yptr[rowre] += l1off * xptr[row_xre];
             yptr[rowim] += l1off * xptr[row_xim];
-          }
-
+          // }
         }
       }
     }
@@ -822,26 +830,22 @@ int myMatMultMatFree_2Osc(Mat RHS, Vec x, Vec y){
   double pt, qt, sq;
 
   /* --- Control hamiltonian --- */
-  for (int i0p = 0; i0p < shellctx->nlevels[0]; i0p++)  {
-    for (int i1p = 0; i1p < shellctx->nlevels[1]; i1p++)  {
-      for (int i0 = 0; i0 < shellctx->nlevels[0]; i0++)  {
-        for (int i1 = 0; i1 < shellctx->nlevels[1]; i1++)  {
+  /* Oscil k=0 */
+  iosc = 0;
+  pt = shellctx->control_Re[iosc];
+  qt = shellctx->control_Im[iosc];
 
-          int n0 = shellctx->nlevels[0];
-          int n1 = shellctx->nlevels[1];
+  for (int i0p = 0; i0p < n0; i0p++)  {
+    for (int i1p = 0; i1p < n1; i1p++)  {
+      for (int i0 = 0; i0 < n0-1; i0++)  {
+        // if (i0 < n0-1) {
+        for (int i1 = 0; i1 < n1; i1++)  {
           /* Get output index in vectorized, colocated y */
           it = TensorGetIndex(n0, n1, i0,i1,i0p,i1p);
           rowre = getIndexReal(it);
           rowim = getIndexImag(it);
 
-          /* --- Oscil k=0 --- */
-          iosc = 0;
-          // Get controls
-          pt = shellctx->control_Re[iosc];
-          qt = shellctx->control_Im[iosc];
-
           /* \rho(ik+1..,ik'..) term */
-          if (i0 < shellctx->nlevels[iosc]-1) {
             itx = TensorGetIndex(n0, n1,i0+1,i1,i0p,i1p);
             row_xre = getIndexReal(itx);
             row_xim = getIndexImag(itx);
@@ -850,9 +854,21 @@ int myMatMultMatFree_2Osc(Mat RHS, Vec x, Vec y){
             sq = sqrt(i0 + 1);
             yptr[rowre] += sq * (   pt * v + qt * u);
             yptr[rowim] += sq * ( - pt * u + qt * v);
-          }
+          // }
+        }
+      }
+    }
+  }
+  for (int i0p = 0; i0p < n0-1; i0p++)  {
+  //  if (i0p < n0-1) {
+    for (int i1p = 0; i1p < n1; i1p++)  {
+      for (int i0 = 0; i0 < n0; i0++)  {
+        for (int i1 = 0; i1 < n1; i1++)  {
+          /* Get output index in vectorized, colocated y */
+          it = TensorGetIndex(n0, n1, i0,i1,i0p,i1p);
+          rowre = getIndexReal(it);
+          rowim = getIndexImag(it);
           /* \rho(ik..,ik'+1..) */
-          if (i0p < shellctx->nlevels[iosc]-1) {
             sq = sqrt(i0p + 1);
             itx = TensorGetIndex(n0,n1,i0,i1,i0p+1,i1p);
             row_xre = getIndexReal(itx);
@@ -861,9 +877,21 @@ int myMatMultMatFree_2Osc(Mat RHS, Vec x, Vec y){
             v = xptr[row_xim];
             yptr[rowre] += sq * ( -pt * v + qt * u);
             yptr[rowim] += sq * (  pt * u + qt * v);
-          }
-          /* \rho(ik-1..,ik'..) */
-          if (i0 > 0) {
+          // }
+        }
+      }
+    }
+  }
+  for (int i0p = 0; i0p < n0; i0p++)  {
+    for (int i1p = 0; i1p < n1; i1p++)  {
+      for (int i0 = 1; i0 < n0; i0++)  {
+          // if (i0 > 0) {
+        for (int i1 = 0; i1 < n1; i1++)  {
+          /* Get output index in vectorized, colocated y */
+          it = TensorGetIndex(n0, n1, i0,i1,i0p,i1p);
+          rowre = getIndexReal(it);
+          rowim = getIndexImag(it);
+           /* \rho(ik-1..,ik'..) */
             itx = TensorGetIndex(n0,n1,i0-1,i1,i0p,i1p);
             row_xre = getIndexReal(itx);
             row_xim = getIndexImag(itx);
@@ -872,9 +900,21 @@ int myMatMultMatFree_2Osc(Mat RHS, Vec x, Vec y){
             sq = sqrt(i0);
             yptr[rowre] += sq * (  pt * v - qt * u);
             yptr[rowim] += sq * (- pt * u - qt * v);
-          }
-          /* \rho(ik..,ik'-1..) */
-          if (i0p > 0) {
+          // }
+        }
+      }
+    }
+  }
+  for (int i0p = 1; i0p < n0; i0p++)  {
+          // if (i0p > 0) {
+    for (int i1p = 0; i1p < n1; i1p++)  {
+      for (int i0 = 0; i0 < n0; i0++)  {
+        for (int i1 = 0; i1 < n1; i1++)  {
+          /* Get output index in vectorized, colocated y */
+          it = TensorGetIndex(n0, n1, i0,i1,i0p,i1p);
+          rowre = getIndexReal(it);
+          rowim = getIndexImag(it);
+           /* \rho(ik..,ik'-1..) */
             itx = TensorGetIndex(n0,n1,i0,i1,i0p-1,i1p);
             row_xre = getIndexReal(itx);
             row_xim = getIndexImag(itx);
@@ -883,16 +923,26 @@ int myMatMultMatFree_2Osc(Mat RHS, Vec x, Vec y){
             sq = sqrt(i0p);
             yptr[rowre] += sq * (- pt * v - qt * u);
             yptr[rowim] += sq * (  pt * u - qt * v);
-          }
+          // }
+        }
+      }
+    }
+  }
 
-          /* --- Oscil k=0 --- */
-          iosc = 1;
-          // Get controls
-          pt = shellctx->control_Re[iosc];
-          qt = shellctx->control_Im[iosc];
-
+  /* --- Oscil k=1 --- */
+  iosc = 1;
+  pt = shellctx->control_Re[iosc];
+  qt = shellctx->control_Im[iosc];
+  for (int i0p = 0; i0p < n0; i0p++)  {
+    for (int i1p = 0; i1p < n1; i1p++)  {
+      for (int i0 = 0; i0 < n0; i0++)  {
+        for (int i1 = 0; i1 < n1-1; i1++)  {
+          // if (i1 < n1-1) {
+          /* Get output index in vectorized, colocated y */
+          it = TensorGetIndex(n0, n1, i0,i1,i0p,i1p);
+          rowre = getIndexReal(it);
+          rowim = getIndexImag(it);
           /* \rho(ik+1..,ik'..) term */
-          if (i1 < shellctx->nlevels[iosc]-1) {
             itx = TensorGetIndex(n0,n1,i0,i1+1,i0p,i1p);
             row_xre = getIndexReal(itx);
             row_xim = getIndexImag(itx);
@@ -901,9 +951,21 @@ int myMatMultMatFree_2Osc(Mat RHS, Vec x, Vec y){
             sq = sqrt(i1 + 1);
             yptr[rowre] += sq * (   pt * v + qt * u);
             yptr[rowim] += sq * ( - pt * u + qt * v);
-          }
-          /* \rho(ik..,ik'+1..) */
-          if (i1p < shellctx->nlevels[iosc]-1) {
+          // }
+        }
+      }
+    }
+  }
+  for (int i0p = 0; i0p < n0; i0p++)  {
+    for (int i1p = 0; i1p < n1-1; i1p++)  {
+          // if (i1p < n1-1) {
+      for (int i0 = 0; i0 < n0; i0++)  {
+        for (int i1 = 0; i1 < n1; i1++)  {
+          /* Get output index in vectorized, colocated y */
+          it = TensorGetIndex(n0, n1, i0,i1,i0p,i1p);
+          rowre = getIndexReal(it);
+          rowim = getIndexImag(it);
+           /* \rho(ik..,ik'+1..) */
             sq = sqrt(i1p + 1);
             itx = TensorGetIndex(n0,n1,i0,i1,i0p,i1p+1);
             row_xre = getIndexReal(itx);
@@ -912,9 +974,21 @@ int myMatMultMatFree_2Osc(Mat RHS, Vec x, Vec y){
             v = xptr[row_xim];
             yptr[rowre] += sq * ( -pt * v + qt * u);
             yptr[rowim] += sq * (  pt * u + qt * v);
-          }
-          /* \rho(ik-1..,ik'..) */
-          if (i1 > 0) {
+          // }
+        }
+      }
+    }
+  }
+  for (int i0p = 0; i0p < n0; i0p++)  {
+    for (int i1p = 0; i1p < n1; i1p++)  {
+      for (int i0 = 0; i0 < n0; i0++)  {
+        for (int i1 = 1; i1 < n1; i1++)  {
+        // if (i1 > 0) {
+          /* Get output index in vectorized, colocated y */
+          it = TensorGetIndex(n0, n1, i0,i1,i0p,i1p);
+          rowre = getIndexReal(it);
+          rowim = getIndexImag(it);
+           /* \rho(ik-1..,ik'..) */
             itx = TensorGetIndex(n0,n1,i0,i1-1,i0p,i1p);
             row_xre = getIndexReal(itx);
             row_xim = getIndexImag(itx);
@@ -923,18 +997,30 @@ int myMatMultMatFree_2Osc(Mat RHS, Vec x, Vec y){
             sq = sqrt(i1);
             yptr[rowre] += sq * (  pt * v - qt * u);
             yptr[rowim] += sq * (- pt * u - qt * v);
-          }
-          /* \rho(ik..,ik'-1..) */
-          if (i1p > 0) {
-            itx = TensorGetIndex(n0,n1,i0,i1,i0p,i1p-1);
-            row_xre = getIndexReal(itx);
-            row_xim = getIndexImag(itx);
-            u = xptr[row_xre];
-            v = xptr[row_xim];
-            sq = sqrt(i1p);
-            yptr[rowre] += sq * (- pt * v - qt * u);
-            yptr[rowim] += sq * (  pt * u - qt * v);
-          }
+          // }
+        }
+      }
+    }
+  }
+  for (int i0p = 0; i0p < n0; i0p++)  {
+    for (int i1p = 1; i1p < n1; i1p++)  {
+      // if (i1p > 0) {
+        for (int i0 = 0; i0 < n0; i0++)  {
+          for (int i1 = 0; i1 < n1; i1++)  {
+            /* Get output index in vectorized, colocated y */
+            it = TensorGetIndex(n0, n1, i0,i1,i0p,i1p);
+            rowre = getIndexReal(it);
+            rowim = getIndexImag(it);
+             /* \rho(ik..,ik'-1..) */
+              itx = TensorGetIndex(n0,n1,i0,i1,i0p,i1p-1);
+              row_xre = getIndexReal(itx);
+              row_xim = getIndexImag(itx);
+              u = xptr[row_xre];
+              v = xptr[row_xim];
+              sq = sqrt(i1p);
+              yptr[rowre] += sq * (- pt * v - qt * u);
+              yptr[rowim] += sq * (  pt * u - qt * v);
+          // }
         }
       }
     }
