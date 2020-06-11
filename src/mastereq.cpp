@@ -727,7 +727,23 @@ int myMatMultMatFree(Mat RHS, Vec x, Vec y){
   VecGetArray(y, &yptr);
 
   int it, rowre, rowim;
-  double hd, hdp;
+
+  /* Evaluate coefficients */
+  double xi0  = shellctx->xi[0];
+  double xi01 = shellctx->xi[1];
+  double xi1  = shellctx->xi[2];
+  double decay0 = 0.0;
+  double decay1 = 0.0;
+  double dephase0= 0.0;
+  double dephase1= 0.0;
+  if (shellctx->collapse_time[0] > 1e-14)
+    decay0 = 1./shellctx->collapse_time[0];
+  if (shellctx->collapse_time[1] > 1e-14)
+    dephase0 = 1./shellctx->collapse_time[1];
+  if (shellctx->collapse_time[2] > 1e-14)
+    decay1= 1./shellctx->collapse_time[2];
+  if (shellctx->collapse_time[3] > 1e-14)
+    dephase1 = 1./shellctx->collapse_time[3];
 
   /* Diagonal elements: Hd, Dephasing L2, Decay L1 diagonal part*/
   for (int i0p = 0; i0p < n0; i0p++)  {
@@ -741,13 +757,14 @@ int myMatMultMatFree(Mat RHS, Vec x, Vec y){
           
           // Constant Hd part: uout = ( hd(ik) - hd(ik'))*vin
           //                   vout = (-hd(ik) + hd(ik'))*uin
-          hd  = Hd(shellctx->xi, i0, i1); 
-          hdp = Hd(shellctx->xi, i0p, i1p); 
-          // Dephasing l2: xout += l2(ik, ikp) xin
-          double l2 = L2(shellctx->collapse_time, i0, i1, i0p, i1p);
+          double hd  = Hd(xi0, xi01, xi1, i0, i1); 
+          double hdp = Hd(xi0, xi01, xi1, i0p, i1p); 
           // Decay l1, diagonal part: xout += l1diag xin
-          double l1diag = L1diag(shellctx->collapse_time, i0, i1, i0p, i1p);
+          double l1diag = L1diag(decay0, decay1, i0, i1, i0p, i1p);
+          // Dephasing l2: xout += l2(ik, ikp) xin
+          double l2 = L2(dephase0, dephase1, i0, i1, i0p, i1p);
 
+          /* Update output */
           yptr[rowre] = ( hd - hdp + l2 + l1diag) * xptr[rowim];
           yptr[rowim] = (-hd + hdp + l2 + l1diag) * xptr[rowre];
         }
@@ -755,15 +772,10 @@ int myMatMultMatFree(Mat RHS, Vec x, Vec y){
     }
   }
 
-
   /* Decay L1, off-diagonal */
   /* Oscillators 0 */
-  int iosc = 0;
   double l1off;
   int itx, row_xre, row_xim;
-  double decay_time = 0.0;
-  if (shellctx->collapse_time[2*iosc] > 1e-14) decay_time = 1./ shellctx->collapse_time[2*iosc];
-
         // if (i0 < n0-1 && i0p < n0-1) {
   for (int i0p = 0; i0p < n0-1; i0p++)  {
     for (int i1p = 0; i1p < n1; i1p++)  {
@@ -774,7 +786,7 @@ int myMatMultMatFree(Mat RHS, Vec x, Vec y){
           rowre = 2*(it);
           rowim = rowre+1;
 
-          l1off = decay_time * sqrt((i0+1)*(i0p+1));
+          l1off = decay0 * sqrt((i0+1)*(i0p+1));
           itx = TensorGetIndex(n0,n1,i0+1,i1,i0p+1,i1p);
           row_xre = 2*(itx);
           row_xim = row_xre+1;
@@ -784,12 +796,7 @@ int myMatMultMatFree(Mat RHS, Vec x, Vec y){
       }
     }
   }
-
   /* Oscillators 1 */
-  iosc = 1;
-  decay_time = 0.0;
-  if (shellctx->collapse_time[2*iosc] > 1e-14) decay_time = 1./ shellctx->collapse_time[2*iosc];
-
   for (int i0p = 0; i0p < n0; i0p++)  {
     for (int i1p = 0; i1p < n1-1; i1p++)  {
       for (int i0 = 0; i0 < n0; i0++)  {
@@ -800,7 +807,7 @@ int myMatMultMatFree(Mat RHS, Vec x, Vec y){
           rowre = 2*(it);
           rowim = rowre+1;
 
-          l1off = decay_time * sqrt((i1+1)*(i1p+1));
+          l1off = decay1 * sqrt((i1+1)*(i1p+1));
           itx = TensorGetIndex(n0,n1,i0,i1+1,i0p,i1p+1);
           row_xre = 2*(itx);
           row_xim = row_xre+1;
@@ -813,13 +820,11 @@ int myMatMultMatFree(Mat RHS, Vec x, Vec y){
   }
 
 
-  double pt, qt, sq;
-
   /* --- Control hamiltonian --- */
   /* Oscil k=0 */
-  iosc = 0;
-  pt = shellctx->control_Re[iosc];
-  qt = shellctx->control_Im[iosc];
+  double pt = shellctx->control_Re[0];
+  double qt = shellctx->control_Im[1];
+  double sq;
 
   for (int i0p = 0; i0p < n0; i0p++)  {
     for (int i1p = 0; i1p < n1; i1p++)  {
@@ -832,12 +837,12 @@ int myMatMultMatFree(Mat RHS, Vec x, Vec y){
           rowim = rowre+1;
 
           /* \rho(ik+1..,ik'..) term */
-            itx = TensorGetIndex(n0, n1,i0+1,i1,i0p,i1p);
-            row_xre = 2*(itx);
-            row_xim = row_xre+1;
-            sq = sqrt(i0 + 1);
-            yptr[rowre] += sq * (   pt * xptr[rowim] + qt * xptr[rowre]);
-            yptr[rowim] += sq * ( - pt * xptr[rowre] + qt * xptr[rowim]);
+          itx = TensorGetIndex(n0, n1,i0+1,i1,i0p,i1p);
+          row_xre = 2*(itx);
+          row_xim = row_xre+1;
+          sq = sqrt(i0 + 1);
+          yptr[rowre] += sq * (   pt * xptr[rowim] + qt * xptr[rowre]);
+          yptr[rowim] += sq * ( - pt * xptr[rowre] + qt * xptr[rowim]);
           // }
         }
       }
@@ -853,12 +858,12 @@ int myMatMultMatFree(Mat RHS, Vec x, Vec y){
           rowre = 2*(it);
           rowim = rowre+1;
           /* \rho(ik..,ik'+1..) */
-            sq = sqrt(i0p + 1);
-            itx = TensorGetIndex(n0,n1,i0,i1,i0p+1,i1p);
-            row_xre = 2*(itx);
-            row_xim = row_xre + 1;
-            yptr[rowre] += sq * ( -pt * xptr[row_xim] + qt * xptr[row_xre]);
-            yptr[rowim] += sq * (  pt * xptr[row_xre] + qt * xptr[row_xim]);
+          sq = sqrt(i0p + 1);
+          itx = TensorGetIndex(n0,n1,i0,i1,i0p+1,i1p);
+          row_xre = 2*(itx);
+          row_xim = row_xre + 1;
+          yptr[rowre] += sq * ( -pt * xptr[row_xim] + qt * xptr[row_xre]);
+          yptr[rowim] += sq * (  pt * xptr[row_xre] + qt * xptr[row_xim]);
           // }
         }
       }
@@ -873,13 +878,13 @@ int myMatMultMatFree(Mat RHS, Vec x, Vec y){
           it = TensorGetIndex(n0, n1, i0,i1,i0p,i1p);
           rowre = 2*(it);
           rowim = rowre+1;
-           /* \rho(ik-1..,ik'..) */
-            itx = TensorGetIndex(n0,n1,i0-1,i1,i0p,i1p);
-            row_xre = 2*itx;
-            row_xim = row_xre+1;
-            sq = sqrt(i0);
-            yptr[rowre] += sq * (  pt * xptr[row_xim] - qt * xptr[row_xre]);
-            yptr[rowim] += sq * (- pt * xptr[row_xre] - qt * xptr[row_xim]);
+          /* \rho(ik-1..,ik'..) */
+          itx = TensorGetIndex(n0,n1,i0-1,i1,i0p,i1p);
+          row_xre = 2*itx;
+          row_xim = row_xre+1;
+          sq = sqrt(i0);
+          yptr[rowre] += sq * (  pt * xptr[row_xim] - qt * xptr[row_xre]);
+          yptr[rowim] += sq * (- pt * xptr[row_xre] - qt * xptr[row_xim]);
           // }
         }
       }
@@ -894,13 +899,13 @@ int myMatMultMatFree(Mat RHS, Vec x, Vec y){
           it = TensorGetIndex(n0, n1, i0,i1,i0p,i1p);
           rowre = 2*(it);
           rowim = rowre + 1;
-           /* \rho(ik..,ik'-1..) */
-            itx = TensorGetIndex(n0,n1,i0,i1,i0p-1,i1p);
-            row_xre = 2*(itx);
-            row_xim = row_xre + 1;
-            sq = sqrt(i0p);
-            yptr[rowre] += sq * (- pt * xptr[row_xim] - qt * xptr[row_xre]);
-            yptr[rowim] += sq * (  pt * xptr[row_xre] - qt * xptr[row_xim]);
+          /* \rho(ik..,ik'-1..) */
+          itx = TensorGetIndex(n0,n1,i0,i1,i0p-1,i1p);
+          row_xre = 2*(itx);
+          row_xim = row_xre + 1;
+          sq = sqrt(i0p);
+          yptr[rowre] += sq * (- pt * xptr[row_xim] - qt * xptr[row_xre]);
+          yptr[rowim] += sq * (  pt * xptr[row_xre] - qt * xptr[row_xim]);
           // }
         }
       }
@@ -908,9 +913,8 @@ int myMatMultMatFree(Mat RHS, Vec x, Vec y){
   }
 
   /* --- Oscil k=1 --- */
-  iosc = 1;
-  pt = shellctx->control_Re[iosc];
-  qt = shellctx->control_Im[iosc];
+  pt = shellctx->control_Re[1];
+  qt = shellctx->control_Im[1];
   for (int i0p = 0; i0p < n0; i0p++)  {
     for (int i1p = 0; i1p < n1; i1p++)  {
       for (int i0 = 0; i0 < n0; i0++)  {
@@ -921,12 +925,12 @@ int myMatMultMatFree(Mat RHS, Vec x, Vec y){
           rowre = getIndexReal(it);
           rowim = getIndexImag(it);
           /* \rho(ik+1..,ik'..) term */
-            itx = TensorGetIndex(n0,n1,i0,i1+1,i0p,i1p);
-            row_xre = getIndexReal(itx);
-            row_xim = getIndexImag(itx);
-            sq = sqrt(i1 + 1);
-            yptr[rowre] += sq * (   pt * xptr[row_xim] + qt * xptr[row_xre]);
-            yptr[rowim] += sq * ( - pt * xptr[row_xre] + qt * xptr[row_xim]);
+          itx = TensorGetIndex(n0,n1,i0,i1+1,i0p,i1p);
+          row_xre = getIndexReal(itx);
+          row_xim = getIndexImag(itx);
+          sq = sqrt(i1 + 1);
+          yptr[rowre] += sq * (   pt * xptr[row_xim] + qt * xptr[row_xre]);
+          yptr[rowim] += sq * ( - pt * xptr[row_xre] + qt * xptr[row_xim]);
           // }
         }
       }
@@ -941,13 +945,13 @@ int myMatMultMatFree(Mat RHS, Vec x, Vec y){
           it = TensorGetIndex(n0, n1, i0,i1,i0p,i1p);
           rowre = getIndexReal(it);
           rowim = getIndexImag(it);
-           /* \rho(ik..,ik'+1..) */
-            sq = sqrt(i1p + 1);
-            itx = TensorGetIndex(n0,n1,i0,i1,i0p,i1p+1);
-            row_xre = getIndexReal(itx);
-            row_xim = getIndexImag(itx);
-            yptr[rowre] += sq * ( -pt * xptr[row_xim] + qt * xptr[row_xre]);
-            yptr[rowim] += sq * (  pt * xptr[row_xre] + qt * xptr[row_xim]);
+          /* \rho(ik..,ik'+1..) */
+          sq = sqrt(i1p + 1);
+          itx = TensorGetIndex(n0,n1,i0,i1,i0p,i1p+1);
+          row_xre = getIndexReal(itx);
+          row_xim = getIndexImag(itx);
+          yptr[rowre] += sq * ( -pt * xptr[row_xim] + qt * xptr[row_xre]);
+          yptr[rowim] += sq * (  pt * xptr[row_xre] + qt * xptr[row_xim]);
           // }
         }
       }
@@ -962,13 +966,13 @@ int myMatMultMatFree(Mat RHS, Vec x, Vec y){
           it = TensorGetIndex(n0, n1, i0,i1,i0p,i1p);
           rowre = 2*(it);
           rowim = rowre+1;
-           /* \rho(ik-1..,ik'..) */
-            itx = TensorGetIndex(n0,n1,i0,i1-1,i0p,i1p);
-            row_xre = 2 * itx;
-            row_xim = row_xre + 1;
-            sq = sqrt(i1);
-            yptr[rowre] += sq * (  pt * xptr[row_xim] - qt * xptr[row_xre]);
-            yptr[rowim] += sq * (- pt * xptr[row_xre] - qt * xptr[row_xim]);
+          /* \rho(ik-1..,ik'..) */
+          itx = TensorGetIndex(n0,n1,i0,i1-1,i0p,i1p);
+          row_xre = 2 * itx;
+          row_xim = row_xre + 1;
+          sq = sqrt(i1);
+          yptr[rowre] += sq * (  pt * xptr[row_xim] - qt * xptr[row_xre]);
+          yptr[rowim] += sq * (- pt * xptr[row_xre] - qt * xptr[row_xim]);
           // }
         }
       }
@@ -983,13 +987,13 @@ int myMatMultMatFree(Mat RHS, Vec x, Vec y){
             it = TensorGetIndex(n0, n1, i0,i1,i0p,i1p);
             rowre = 2*(it);
             rowim = rowre+1;
-             /* \rho(ik..,ik'-1..) */
-              itx = TensorGetIndex(n0,n1,i0,i1,i0p,i1p-1);
-              row_xre = 2*itx;
-              row_xim = row_xre + 1;
-              sq = sqrt(i1p);
-              yptr[rowre] += sq * (- pt * xptr[row_xim] - qt * xptr[row_xim]);
-              yptr[rowim] += sq * (  pt * xptr[row_xim] - qt * xptr[row_xim]);
+            /* \rho(ik..,ik'-1..) */
+            itx = TensorGetIndex(n0,n1,i0,i1,i0p,i1p-1);
+            row_xre = 2*itx;
+            row_xim = row_xre + 1;
+            sq = sqrt(i1p);
+            yptr[rowre] += sq * (- pt * xptr[row_xim] - qt * xptr[row_xim]);
+            yptr[rowim] += sq * (  pt * xptr[row_xim] - qt * xptr[row_xim]);
           // }
         }
       }
@@ -1065,36 +1069,18 @@ int myMatMultTransposeSparseMat(Mat RHS, Vec x, Vec y) {
 
 
 
-double Hd(const std::vector<double> &xi,const int a, const int b) {
-
-  return - xi[0]*M_PI * a * (a-1) - xi[1]*M_PI*2 * a * b - xi[2]*M_PI * b * (b-1); 
+double Hd(const double xi0, const double xi01, const double xi1,const int a, const int b) {
+  return - xi0*M_PI * a * (a-1) - xi01*M_PI*2 * a * b - xi1*M_PI * b * (b-1); 
 }
 
-double L2(const std::vector<double> &collapse_time,const int i0, const int i1, const int i0p,const int i1p){
-
-  double l2 = 0.0;
-  int iosc = 0;
-  if (collapse_time[2*iosc+1] > 0.0)
-     l2  += 1./collapse_time[2*iosc+1] * ( i0*i0p - 1./2. * (i0*i0 + i0p*i0p) );
-  iosc = 1;
-  if (collapse_time[2*iosc+1] > 0.0)
-    l2 += 1./collapse_time[2*iosc+1] * ( i1*i1p - 1./2. * (i1*i1 + i1p*i1p) );
-
-  return l2;
+double L2(double dephase0, double dephase1, const int i0, const int i1, const int i0p, const int i1p){
+  return dephase0 * ( i0*i0p - 1./2. * (i0*i0 + i0p*i0p) ) + dephase1 * ( i1*i1p - 1./2. * (i1*i1 + i1p*i1p) );
 }
 
 
 
-double L1diag(const std::vector<double> &collapse_time, const int i0, const int i1, const int i0p, const int i1p){
-  double l1 = 0.0;
-  int iosc = 0;
-  if (collapse_time[2*iosc] > 1e-14)
-     l1  += - 1./(2*collapse_time[2*iosc]) * ( i0 + i0p );
-  iosc=1;
-  if (collapse_time[2*iosc] > 1e-14)
-    l1  += - 1./(2*collapse_time[2*iosc]) * ( i1 + i1p );
-
-  return l1;
+double L1diag(double decay0, double decay1, const int i0, const int i1, const int i0p, const int i1p){
+  return - decay0 / 2.0 * ( i0 + i0p ) - decay1 / 2.0 * ( i1 + i1p );
 }
 
 
