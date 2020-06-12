@@ -73,7 +73,7 @@ void Gate::assembleGate(){
 }
 
 
-void Gate::compare(Vec finalstate, Vec rho0, double& frob){
+void Gate::compare(const Vec finalstate, const Vec rho0, double& frob){
   frob = 0.0;
 
   /* Exit, if this is a dummy gate */

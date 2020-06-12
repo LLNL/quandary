@@ -21,7 +21,7 @@ ControlBasis::~ControlBasis(){
 }
 
 
-double ControlBasis::evaluate(double t, std::vector<double> coeff, double ground_freq, ControlType controltype){
+double ControlBasis::evaluate(const double t, const std::vector<double>& coeff, const double ground_freq, const ControlType controltype){
 
     double freq;
 
@@ -54,7 +54,7 @@ double ControlBasis::evaluate(double t, std::vector<double> coeff, double ground
     return sum;
 }
 
-void ControlBasis::derivative(double t, double* coeff_diff, double valbar, ControlType controltype) {
+void ControlBasis::derivative(const double t, double* coeff_diff, const double valbar, const ControlType controltype) {
 
     /* Iterate over basis function */
     for (int l=0; l<nbasis; l++) {

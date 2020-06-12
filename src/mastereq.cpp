@@ -317,9 +317,9 @@ int MasterEq::getDim(){ return dim; }
 
 int MasterEq::getNOscillators() { return noscillators; }
 
-Oscillator* MasterEq::getOscillator(int i) { return oscil_vec[i]; }
+Oscillator* MasterEq::getOscillator(const int i) { return oscil_vec[i]; }
 
-int MasterEq::assemble_RHS(double t){
+int MasterEq::assemble_RHS(const double t){
   int ierr;
 
   /* If using the shell option, prepare the shell to perform the action of RHS on a vector (MyMatMult) */
@@ -417,7 +417,7 @@ int MasterEq::assemble_RHS(double t){
 Mat MasterEq::getRHS() { return RHS; }
 
 
-void MasterEq::createReducedDensity(Vec rho, Vec *reduced, std::vector<int>oscilIDs) {
+void MasterEq::createReducedDensity(const Vec rho, Vec *reduced, const std::vector<int>& oscilIDs) {
 
   Vec red;
 
@@ -499,7 +499,7 @@ void MasterEq::createReducedDensity(Vec rho, Vec *reduced, std::vector<int>oscil
 }
 
 
-void MasterEq::createReducedDensity_diff(Vec rhobar, Vec reducedbar, std::vector<int> oscilIDs) {
+void MasterEq::createReducedDensity_diff(Vec rhobar, const Vec reducedbar,const std::vector<int>& oscilIDs) {
   
   /* Get dimensions of preceding and following subsystem */
   int dim_pre  = 1; 
@@ -562,7 +562,7 @@ void MasterEq::createReducedDensity_diff(Vec rhobar, Vec reducedbar, std::vector
 }
 
 /* grad += RHS(x)^T * xbar  */
-void MasterEq::computedRHSdp(double t, Vec x, Vec xbar, double alpha, Vec grad) {
+void MasterEq::computedRHSdp(const double t, const Vec x, const Vec xbar, const double alpha, Vec grad) {
 
   /* Get real and imaginary part from x and x_bar */
   Vec u, v, ubar, vbar;
@@ -617,7 +617,7 @@ void MasterEq::computedRHSdp(double t, Vec x, Vec xbar, double alpha, Vec grad) 
 
 }
 
-void MasterEq::setControlAmplitudes(Vec x) {
+void MasterEq::setControlAmplitudes(const Vec x) {
 
   const PetscScalar* ptr;
   VecGetArrayRead(x, &ptr);
@@ -633,7 +633,7 @@ void MasterEq::setControlAmplitudes(Vec x) {
 }
 
 
-int MasterEq::getRhoT0(int iinit, int ninit, InitialConditionType initcond_type, std::vector<int> oscilIDs, Vec rho0){
+int MasterEq::getRhoT0(const int iinit, const int ninit, const InitialConditionType initcond_type, const std::vector<int>& oscilIDs, Vec rho0){
 
   int ilow, iupp;
   int dim_post;

@@ -13,6 +13,7 @@ TimeStepper::TimeStepper(MasterEq* mastereq_) {
 
 TimeStepper::~TimeStepper() {}
 
+void TimeStepper::evolveBWD(const double tstart, const double tstop, const Vec x_stop, Vec x_adj, Vec grad, bool compute_gradient){}
 
 ExplEuler::ExplEuler(MasterEq* mastereq_) : TimeStepper(mastereq_) {
   MatCreateVecs(mastereq->getRHS(), &stage, NULL);
@@ -23,7 +24,7 @@ ExplEuler::~ExplEuler() {
   VecDestroy(&stage);
 }
 
-void ExplEuler::evolveFWD(double tstart, double tstop, Vec x) {
+void ExplEuler::evolveFWD(const double tstart,const  double tstop, Vec x) {
 
   double dt = fabs(tstop - tstart);
 
@@ -36,7 +37,7 @@ void ExplEuler::evolveFWD(double tstart, double tstop, Vec x) {
   VecAXPY(x, dt, stage);
 }
 
-void ExplEuler::evolveBWD(double tstop, double tstart, Vec x, Vec x_adj, Vec grad, bool compute_gradient){
+void ExplEuler::evolveBWD(const double tstop,const  double tstart,const  Vec x, Vec x_adj, Vec grad, bool compute_gradient){
   double dt = fabs(tstop - tstart);
 
   /* Add to reduced gradient */
@@ -101,7 +102,7 @@ ImplMidpoint::~ImplMidpoint(){
   KSPDestroy(&linearsolver);
 }
 
-void ImplMidpoint::evolveFWD(double tstart, double tstop, Vec x) {
+void ImplMidpoint::evolveFWD(const double tstart,const  double tstop, Vec x) {
 
   /* Compute time step size */
   double dt = fabs(tstop - tstart); // absolute values needed in case this runs backwards! 
@@ -144,7 +145,7 @@ void ImplMidpoint::evolveFWD(double tstart, double tstop, Vec x) {
   VecAXPY(x, dt, stage);
 }
 
-void ImplMidpoint::evolveBWD(double tstop, double tstart, Vec x, Vec x_adj, Vec grad, bool compute_gradient){
+void ImplMidpoint::evolveBWD(const double tstop, const double tstart, const Vec x, Vec x_adj, Vec grad, bool compute_gradient){
   Mat A;
 
   /* Compute time step size */
