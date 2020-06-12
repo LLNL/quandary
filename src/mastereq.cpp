@@ -823,7 +823,7 @@ int myMatMultMatFree(Mat RHS, Vec x, Vec y){
   /* --- Control hamiltonian --- */
   /* Oscil k=0 */
   double pt = shellctx->control_Re[0];
-  double qt = shellctx->control_Im[1];
+  double qt = shellctx->control_Im[0];
   double sq;
 
   for (int i0p = 0; i0p < n0; i0p++)  {
@@ -992,8 +992,8 @@ int myMatMultMatFree(Mat RHS, Vec x, Vec y){
             row_xre = 2*itx;
             row_xim = row_xre + 1;
             sq = sqrt(i1p);
-            yptr[rowre] += sq * (- pt * xptr[row_xim] - qt * xptr[row_xim]);
-            yptr[rowim] += sq * (  pt * xptr[row_xim] - qt * xptr[row_xim]);
+            yptr[rowre] += sq * (- pt * xptr[row_xre] - qt * xptr[row_xim]);
+            yptr[rowim] += sq * (  pt * xptr[row_xim] - qt * xptr[row_xre]);
           // }
         }
       }
