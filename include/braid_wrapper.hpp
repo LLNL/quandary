@@ -57,10 +57,10 @@ class myBraidApp : public BraidApp {
     /* Dumps xbraid's convergence history to a file */
     int printConvHistory(const char* filename);
 
-    int getTimeStepIndex(double t, double dt);
+    int getTimeStepIndex(const double t,const  double dt);
 
     /* Return  state vector at a certain time point. CURRENTLY ONLY VALID FOR time == total_time. Be careful: might return NULL! */
-    Vec getStateVec(double time);
+    Vec getStateVec(const double time);
 
     /* Return the core */
     BraidCore *getCore();
@@ -116,7 +116,7 @@ class myBraidApp : public BraidApp {
     void InitGrids();
 
     /* Set initial condition */
-    void setInitCond(Vec rho_t0);
+    void setInitCond(const Vec rho_t0);
 
 
 };

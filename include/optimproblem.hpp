@@ -62,10 +62,10 @@ class OptimProblem {
   ~OptimProblem();
 
   /* Evaluate the objective function F(x) */
-  double evalF(Vec x);
+  double evalF(const Vec x);
 
   /* Evaluate gradient \nabla F(x) */
-  void evalGradF(Vec x, Vec G);
+  void evalGradF(const Vec x, Vec G);
 
   /* Run optimization solver */
   void solve();
@@ -76,7 +76,7 @@ class OptimProblem {
   /* Compute final-time part of the objective */
   double objectiveT(Vec finalstate);
   /* Derivative of final-time part of objective times obj_bar */
-  void objectiveT_diff(Vec finalstate, double obj_local, double obj_bar);
+  void objectiveT_diff(Vec finalstate, const double obj_local, const double obj_bar);
 
   /* Call this after TaoSolve() has finished to print out some information */
   void getSolution(Vec* opt);

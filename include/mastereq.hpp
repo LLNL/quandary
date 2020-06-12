@@ -74,7 +74,7 @@ class MasterEq{
     ~MasterEq();
 
     /* Return the i-th oscillator */
-    Oscillator* getOscillator(int i);
+    Oscillator* getOscillator(const int i);
 
     /* Return number of oscillators */
     int getNOscillators();
@@ -86,7 +86,7 @@ class MasterEq{
      * Uses Re and Im to build the vectorized Hamiltonian operator M = vec(-i(Hq-qH)+Lindblad). 
      * This should always be called before applying the RHS matrix.
      */
-    int assemble_RHS(double t);
+    int assemble_RHS(const double t);
 
     /* Access the right-hand-side matrix */
     Mat getRHS();
@@ -95,15 +95,15 @@ class MasterEq{
      * Compute gradient of RHS wrt control parameters:
      * grad += alpha * RHS(x)^T * x_bar  
      */
-    void computedRHSdp(double t, Vec x, Vec x_bar, double alpha, Vec grad);
+    void computedRHSdp(const double t,const Vec x,const Vec x_bar, const double alpha, Vec grad);
 
     /* Compute reduced density operator for a sub-system defined by IDs in the oscilIDs vector */
-    void createReducedDensity(Vec rho, Vec *reduced, std::vector<int>oscilIDs);
+    void createReducedDensity(const Vec rho, Vec *reduced, const std::vector<int>& oscilIDs);
     /* Derivative of reduced density computation */
-    void createReducedDensity_diff(Vec rhobar, Vec reducedbar, std::vector<int>oscilIDs);
+    void createReducedDensity_diff(Vec rhobar, const Vec reducedbar, const std::vector<int>& oscilIDs);
 
     /* Set the oscillators control function parameters from global design vector x */
-    void setControlAmplitudes(Vec x);
+    void setControlAmplitudes(const Vec x);
 
     /* Set initial conditions 
      * In:   iinit -- index in processors range [rank * ninit_local .. (rank+1) * ninit_local - 1]
@@ -113,7 +113,7 @@ class MasterEq{
      * Out: initID -- Idenifyier for this initial condition: Element number in matrix vectorization. 
      *       rho0 -- Vector for setting initial condition 
      */
-    int getRhoT0(int iinit, int ninit, InitialConditionType initcond_type, std::vector<int> oscilIDs, Vec rho0);
+    int getRhoT0(const int iinit, const int ninit, const InitialConditionType initcond_type, const std::vector<int>& oscilIDs, Vec rho0);
 };
 
 

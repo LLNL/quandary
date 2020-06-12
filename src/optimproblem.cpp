@@ -243,7 +243,7 @@ OptimProblem::~OptimProblem() {
 
 
 
-double OptimProblem::evalF(Vec x) {
+double OptimProblem::evalF(const Vec x) {
 
   // OptimProblem* ctx = (OptimProblem*) ptr;
   MasterEq* mastereq = primalbraidapp->mastereq;
@@ -303,7 +303,7 @@ double OptimProblem::evalF(Vec x) {
 
 
 
-void OptimProblem::evalGradF(Vec x, Vec G){
+void OptimProblem::evalGradF(const Vec x, Vec G){
 
   MasterEq* mastereq = primalbraidapp->mastereq;
 
@@ -552,7 +552,7 @@ double OptimProblem::objectiveT(Vec finalstate){
 }
 
 
-void OptimProblem::objectiveT_diff(Vec finalstate, double obj, double obj_bar){
+void OptimProblem::objectiveT_diff(Vec finalstate, const double obj, const double obj_bar){
 
   /* Reset adjoints */
   VecZeroEntries(rho_t0_bar);
