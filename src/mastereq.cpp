@@ -1140,6 +1140,12 @@ int myMatMultMatFree(Mat RHS, Vec x, Vec y){
   double pt1 = shellctx->control_Re[1];
   double qt1 = shellctx->control_Im[1];
 
+  /* compute strides for accessing x at i0+1, i0-1, i0p+1, i0p-1, i1+1, i1-1, i1p+1, i1p-1: */
+  int stridei0  = TensorGetIndex(n0,n1, 1,0,0,0);
+  int stridei1  = TensorGetIndex(n0,n1, 0,1,0,0);
+  int stridei0p = TensorGetIndex(n0,n1, 0,0,1,0);
+  int stridei1p = TensorGetIndex(n0,n1, 0,0,0,1);
+
   /* Diagonal elements: Hd, Dephasing L2, Decay L1 diagonal part*/
   int it = 0;
   for (int i0p = 0; i0p < n0; i0p++)  {
@@ -1168,7 +1174,7 @@ int myMatMultMatFree(Mat RHS, Vec x, Vec y){
           // Oscillators 0 
           if (i0 < n0-1 && i0p < n0-1) {
             double l1off = decay0 * sqrt((i0+1)*(i0p+1));
-            int itx = TensorGetIndex(n0,n1,i0+1,i1,i0p+1,i1p);
+            int itx = it + stridei0 + stridei0p;
             double xre = xptr[2 * itx];
             double xim = xptr[2 * itx + 1];
             yre += l1off * xre;
@@ -1177,7 +1183,7 @@ int myMatMultMatFree(Mat RHS, Vec x, Vec y){
           // Oscillator 1 
           if (i1 < n1-1 && i1p < n1-1) {
             double l1off = decay1 * sqrt((i1+1)*(i1p+1));
-            int itx = TensorGetIndex(n0,n1,i0,i1+1,i0p,i1p+1);
+            int itx = it + stridei1 + stridei1p;
             double xre = xptr[2 * itx];
             double xim = xptr[2 * itx + 1];
             yre += l1off * xre;
@@ -1187,7 +1193,7 @@ int myMatMultMatFree(Mat RHS, Vec x, Vec y){
           /* --- Control hamiltonian --- Oscillator 0 --- */
           /* \rho(ik+1..,ik'..) term */
           if (i0 < n0-1) {
-            int itx = TensorGetIndex(n0, n1,i0+1,i1,i0p,i1p);
+            int itx = it + stridei0;
             double xre = xptr[2 * itx];
             double xim = xptr[2 * itx + 1];
             double sq = sqrt(i0 + 1);
@@ -1196,7 +1202,7 @@ int myMatMultMatFree(Mat RHS, Vec x, Vec y){
           }
           /* \rho(ik..,ik'+1..) */
           if (i0p < n0-1) {
-            int itx = TensorGetIndex(n0,n1,i0,i1,i0p+1,i1p);
+            int itx = it + stridei0p;
             double xre = xptr[2 * itx];
             double xim = xptr[2 * itx + 1];
             double sq = sqrt(i0p + 1);
@@ -1205,7 +1211,7 @@ int myMatMultMatFree(Mat RHS, Vec x, Vec y){
           }
           /* \rho(ik-1..,ik'..) */
           if (i0 > 0) {
-            int itx = TensorGetIndex(n0,n1,i0-1,i1,i0p,i1p);
+            int itx = it - stridei0;
             double xre = xptr[2 * itx];
             double xim = xptr[2 * itx + 1];
             double sq = sqrt(i0);
@@ -1214,7 +1220,7 @@ int myMatMultMatFree(Mat RHS, Vec x, Vec y){
           }
           /* \rho(ik..,ik'-1..) */
           if (i0p > 0) {
-            int itx = TensorGetIndex(n0,n1,i0,i1,i0p-1,i1p);
+            int itx = it - stridei0p;
             double xre = xptr[2 * itx];
             double xim = xptr[2 * itx + 1];
             double sq = sqrt(i0p);
@@ -1225,7 +1231,7 @@ int myMatMultMatFree(Mat RHS, Vec x, Vec y){
           /* --- Control hamiltonian --- Oscillator 1 --- */
           /* \rho(ik+1..,ik'..) term */
           if (i1 < n1-1) {
-            int itx = TensorGetIndex(n0,n1,i0,i1+1,i0p,i1p);
+            int itx = it + stridei1;
             double xre = xptr[2 * itx];
             double xim = xptr[2 * itx + 1];
             double sq = sqrt(i1 + 1);
@@ -1234,7 +1240,7 @@ int myMatMultMatFree(Mat RHS, Vec x, Vec y){
           }
           /* \rho(ik..,ik'+1..) */
           if (i1p < n1-1) {
-            int itx = TensorGetIndex(n0,n1,i0,i1,i0p,i1p+1);
+            int itx = it + stridei1p;
             double xre = xptr[2 * itx];
             double xim = xptr[2 * itx + 1];
             double sq = sqrt(i1p + 1);
@@ -1243,7 +1249,7 @@ int myMatMultMatFree(Mat RHS, Vec x, Vec y){
           }
           /* \rho(ik-1..,ik'..) */
           if (i1 > 0) {
-            int itx = TensorGetIndex(n0,n1,i0,i1-1,i0p,i1p);
+            int itx = it - stridei1;
             double xre = xptr[2 * itx];
             double xim = xptr[2 * itx + 1];
             double sq = sqrt(i1);
@@ -1253,7 +1259,7 @@ int myMatMultMatFree(Mat RHS, Vec x, Vec y){
           /* \rho(ik..,ik'-1..) */
           if (i1p > 0) {
             /* Get output index in vectorized, colocated y */
-            int itx = TensorGetIndex(n0,n1,i0,i1,i0p,i1p-1);
+            int itx = it - stridei1p;
             double xre = xptr[2 * itx];
             double xim = xptr[2 * itx + 1];
             double sq = sqrt(i1p);
