@@ -1169,96 +1169,96 @@ int myMatMultMatFree(Mat RHS, Vec x, Vec y){
           if (i0 < n0-1 && i0p < n0-1) {
             double l1off = decay0 * sqrt((i0+1)*(i0p+1));
             int itx = TensorGetIndex(n0,n1,i0+1,i1,i0p+1,i1p);
-            int row_xre = 2*itx;
-            int row_xim = row_xre+1;
-            yre += l1off * xptr[row_xre];
-            yim += l1off * xptr[row_xim];         
+            double xre = xptr[2 * itx];
+            double xim = xptr[2 * itx + 1];
+            yre += l1off * xre;
+            yim += l1off * xim;         
           }
           // Oscillator 1 
           if (i1 < n1-1 && i1p < n1-1) {
             double l1off = decay1 * sqrt((i1+1)*(i1p+1));
             int itx = TensorGetIndex(n0,n1,i0,i1+1,i0p,i1p+1);
-            int row_xre = 2*(itx);
-            int row_xim = row_xre+1;
-            yre += l1off * xptr[row_xre];
-            yim += l1off * xptr[row_xim];
+            double xre = xptr[2 * itx];
+            double xim = xptr[2 * itx + 1];
+            yre += l1off * xre;
+            yim += l1off * xim;
           }
 
           /* --- Control hamiltonian --- Oscillator 0 --- */
           /* \rho(ik+1..,ik'..) term */
           if (i0 < n0-1) {
             int itx = TensorGetIndex(n0, n1,i0+1,i1,i0p,i1p);
-            int row_xre = 2*(itx);
-            int row_xim = row_xre+1;
+            double xre = xptr[2 * itx];
+            double xim = xptr[2 * itx + 1];
             double sq = sqrt(i0 + 1);
-            yre += sq * (   pt0 * xptr[row_xim] + qt0 * xptr[row_xre]);
-            yim += sq * ( - pt0 * xptr[row_xre] + qt0 * xptr[row_xim]);
+            yre += sq * (   pt0 * xim + qt0 * xre);
+            yim += sq * ( - pt0 * xre + qt0 * xim);
           }
           /* \rho(ik..,ik'+1..) */
           if (i0p < n0-1) {
             int itx = TensorGetIndex(n0,n1,i0,i1,i0p+1,i1p);
-            int row_xre = 2*(itx);
-            int row_xim = row_xre + 1;
+            double xre = xptr[2 * itx];
+            double xim = xptr[2 * itx + 1];
             double sq = sqrt(i0p + 1);
-            yre += sq * ( -pt0 * xptr[row_xim] + qt0 * xptr[row_xre]);
-            yim += sq * (  pt0 * xptr[row_xre] + qt0 * xptr[row_xim]);
+            yre += sq * ( -pt0 * xim + qt0 * xre);
+            yim += sq * (  pt0 * xre + qt0 * xim);
           }
           /* \rho(ik-1..,ik'..) */
           if (i0 > 0) {
             int itx = TensorGetIndex(n0,n1,i0-1,i1,i0p,i1p);
-            int row_xre = 2*itx;
-            int row_xim = row_xre+1;
+            double xre = xptr[2 * itx];
+            double xim = xptr[2 * itx + 1];
             double sq = sqrt(i0);
-            yre += sq * (  pt0 * xptr[row_xim] - qt0 * xptr[row_xre]);
-            yim += sq * (- pt0 * xptr[row_xre] - qt0 * xptr[row_xim]);
+            yre += sq * (  pt0 * xim - qt0 * xre);
+            yim += sq * (- pt0 * xre - qt0 * xim);
           }
           /* \rho(ik..,ik'-1..) */
           if (i0p > 0) {
             int itx = TensorGetIndex(n0,n1,i0,i1,i0p-1,i1p);
-            int row_xre = 2*(itx);
-            int row_xim = row_xre + 1;
+            double xre = xptr[2 * itx];
+            double xim = xptr[2 * itx + 1];
             double sq = sqrt(i0p);
-            yre += sq * (- pt0 * xptr[row_xim] - qt0 * xptr[row_xre]);
-            yim += sq * (  pt0 * xptr[row_xre] - qt0 * xptr[row_xim]);
+            yre += sq * (- pt0 * xim - qt0 * xre);
+            yim += sq * (  pt0 * xre - qt0 * xim);
           }
  
           /* --- Control hamiltonian --- Oscillator 1 --- */
           /* \rho(ik+1..,ik'..) term */
           if (i1 < n1-1) {
             int itx = TensorGetIndex(n0,n1,i0,i1+1,i0p,i1p);
-            int row_xre = getIndexReal(itx);
-            int row_xim = getIndexImag(itx);
+            double xre = xptr[2 * itx];
+            double xim = xptr[2 * itx + 1];
             double sq = sqrt(i1 + 1);
-            yre += sq * (   pt1 * xptr[row_xim] + qt1 * xptr[row_xre]);
-            yim += sq * ( - pt1 * xptr[row_xre] + qt1 * xptr[row_xim]);
+            yre += sq * (   pt1 * xim + qt1 * xre);
+            yim += sq * ( - pt1 * xre + qt1 * xim);
           }
           /* \rho(ik..,ik'+1..) */
           if (i1p < n1-1) {
             int itx = TensorGetIndex(n0,n1,i0,i1,i0p,i1p+1);
-            int row_xre = getIndexReal(itx);
-            int row_xim = getIndexImag(itx);
+            double xre = xptr[2 * itx];
+            double xim = xptr[2 * itx + 1];
             double sq = sqrt(i1p + 1);
-            yre += sq * ( -pt1 * xptr[row_xim] + qt1 * xptr[row_xre]);
-            yim += sq * (  pt1 * xptr[row_xre] + qt1 * xptr[row_xim]);
+            yre += sq * ( -pt1 * xim + qt1 * xre);
+            yim += sq * (  pt1 * xre + qt1 * xim);
           }
           /* \rho(ik-1..,ik'..) */
           if (i1 > 0) {
             int itx = TensorGetIndex(n0,n1,i0,i1-1,i0p,i1p);
-            int row_xre = 2 * itx;
-            int row_xim = row_xre + 1;
+            double xre = xptr[2 * itx];
+            double xim = xptr[2 * itx + 1];
             double sq = sqrt(i1);
-            yre += sq * (  pt1 * xptr[row_xim] - qt1 * xptr[row_xre]);
-            yim += sq * (- pt1 * xptr[row_xre] - qt1 * xptr[row_xim]);
+            yre += sq * (  pt1 * xim - qt1 * xre);
+            yim += sq * (- pt1 * xre - qt1 * xim);
           }
           /* \rho(ik..,ik'-1..) */
           if (i1p > 0) {
             /* Get output index in vectorized, colocated y */
             int itx = TensorGetIndex(n0,n1,i0,i1,i0p,i1p-1);
-            int row_xre = 2*itx;
-            int row_xim = row_xre + 1;
+            double xre = xptr[2 * itx];
+            double xim = xptr[2 * itx + 1];
             double sq = sqrt(i1p);
-            yre += sq * (- pt1 * xptr[row_xim] - qt1 * xptr[row_xim]);
-            yim += sq * (  pt1 * xptr[row_xim] - qt1 * xptr[row_xim]);
+            yre += sq * (- pt1 * xim - qt1 * xre);
+            yim += sq * (  pt1 * xre - qt1 * xim);
           }
  
           /* Update */
