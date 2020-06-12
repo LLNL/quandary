@@ -726,7 +726,6 @@ int myMatMultMatFree(Mat RHS, Vec x, Vec y){
   VecGetArrayRead(x, &xptr);
   VecGetArray(y, &yptr);
 
-  int it, rowre, rowim;
 
   /* Evaluate coefficients */
   double xi0  = shellctx->xi[0];
@@ -746,27 +745,32 @@ int myMatMultMatFree(Mat RHS, Vec x, Vec y){
     dephase1 = 1./shellctx->collapse_time[3];
 
   /* Diagonal elements: Hd, Dephasing L2, Decay L1 diagonal part*/
+  int it = 0;
   for (int i0p = 0; i0p < n0; i0p++)  {
     for (int i1p = 0; i1p < n1; i1p++)  {
       for (int i0 = 0; i0 < n0; i0++)  {
         for (int i1 = 0; i1 < n1; i1++)  {
           /* Get output index in vectorized, colocated y */
-          it = TensorGetIndex(n0, n1,i0,i1,i0p,i1p);
-          rowre = 2*(it);
-          rowim = rowre+1;
+          int rowre = 2 * it;
+          int rowim = rowre + 1;
           
           // Constant Hd part: uout = ( hd(ik) - hd(ik'))*vin
           //                   vout = (-hd(ik) + hd(ik'))*uin
           double hd  = Hd(xi0, xi01, xi1, i0, i1); 
           double hdp = Hd(xi0, xi01, xi1, i0p, i1p); 
+          double resre = ( hd - hdp ) * xptr[rowim];
+          double resim = (-hd + hdp ) * xptr[rowre];
           // Decay l1, diagonal part: xout += l1diag xin
-          double l1diag = L1diag(decay0, decay1, i0, i1, i0p, i1p);
           // Dephasing l2: xout += l2(ik, ikp) xin
+          double l1diag = L1diag(decay0, decay1, i0, i1, i0p, i1p);
           double l2 = L2(dephase0, dephase1, i0, i1, i0p, i1p);
+          resre += (l2 + l1diag) * xptr[rowre];
+          resim += (l2 + l1diag) * xptr[rowim];
 
-          /* Update output */
-          yptr[rowre] = ( hd - hdp + l2 + l1diag) * xptr[rowim];
-          yptr[rowim] = (-hd + hdp + l2 + l1diag) * xptr[rowre];
+          /* Update */
+          yptr[rowre] = resre;
+          yptr[rowim] = resim;
+          it++;
         }
       }
     }
@@ -774,46 +778,47 @@ int myMatMultMatFree(Mat RHS, Vec x, Vec y){
 
   /* Decay L1, off-diagonal */
   /* Oscillators 0 */
-  double l1off;
-  int itx, row_xre, row_xim;
-        // if (i0 < n0-1 && i0p < n0-1) {
-  for (int i0p = 0; i0p < n0-1; i0p++)  {
+  it = 0;
+  for (int i0p = 0; i0p < n0; i0p++)  {
     for (int i1p = 0; i1p < n1; i1p++)  {
-      for (int i0 = 0; i0 < n0-1; i0++)  {
+      for (int i0 = 0; i0 < n0; i0++)  {
         for (int i1 = 0; i1 < n1; i1++)  {
-          /* Get output index in vectorized, colocated output y */
-          it = TensorGetIndex(n0,n1,i0,i1,i0p,i1p);
-          rowre = 2*(it);
-          rowim = rowre+1;
+          if (i0 < n0-1 && i0p < n0-1) {
+            /* Get output index in vectorized, colocated output y */
+            int rowre = 2 * it;
+            int rowim = rowre + 1;
 
-          l1off = decay0 * sqrt((i0+1)*(i0p+1));
-          itx = TensorGetIndex(n0,n1,i0+1,i1,i0p+1,i1p);
-          row_xre = 2*(itx);
-          row_xim = row_xre+1;
-          yptr[rowre] += l1off * xptr[row_xre];
-          yptr[rowim] += l1off * xptr[row_xim];
+            double l1off = decay0 * sqrt((i0+1)*(i0p+1));
+            int itx = TensorGetIndex(n0,n1,i0+1,i1,i0p+1,i1p);
+            int row_xre = 2*(itx);
+            int row_xim = row_xre+1;
+            yptr[rowre] += l1off * xptr[row_xre];
+            yptr[rowim] += l1off * xptr[row_xim];
+          }
+          it++;
         }
       }
     }
   }
+  it = 0;
   /* Oscillators 1 */
   for (int i0p = 0; i0p < n0; i0p++)  {
-    for (int i1p = 0; i1p < n1-1; i1p++)  {
+    for (int i1p = 0; i1p < n1; i1p++)  {
       for (int i0 = 0; i0 < n0; i0++)  {
-        for (int i1 = 0; i1 < n1-1; i1++)  {
-        // if (i1 < n1-1 && i1p < n1-1) {
-         /* Get output index in vectorized, colocated output y */
-          it = TensorGetIndex(n0,n1,i0,i1,i0p,i1p);
-          rowre = 2*(it);
-          rowim = rowre+1;
+        for (int i1 = 0; i1 < n1; i1++)  {
+          if (i1 < n1-1 && i1p < n1-1) {
+            /* Get output index in vectorized, colocated output y */
+            int rowre = 2*(it);
+            int rowim = rowre+1;
 
-          l1off = decay1 * sqrt((i1+1)*(i1p+1));
-          itx = TensorGetIndex(n0,n1,i0,i1+1,i0p,i1p+1);
-          row_xre = 2*(itx);
-          row_xim = row_xre+1;
-          yptr[rowre] += l1off * xptr[row_xre];
-          yptr[rowim] += l1off * xptr[row_xim];
-          // }
+            double l1off = decay1 * sqrt((i1+1)*(i1p+1));
+            int itx = TensorGetIndex(n0,n1,i0,i1+1,i0p,i1p+1);
+            int row_xre = 2*(itx);
+            int row_xim = row_xre+1;
+            yptr[rowre] += l1off * xptr[row_xre];
+            yptr[rowim] += l1off * xptr[row_xim];
+          }
+          it++;
         }
       }
     }
@@ -824,89 +829,91 @@ int myMatMultMatFree(Mat RHS, Vec x, Vec y){
   /* Oscil k=0 */
   double pt = shellctx->control_Re[0];
   double qt = shellctx->control_Im[0];
-  double sq;
-
+  it=0;
   for (int i0p = 0; i0p < n0; i0p++)  {
-    for (int i1p = 0; i1p < n1; i1p++)  {
-      for (int i0 = 0; i0 < n0-1; i0++)  {
-        // if (i0 < n0-1) {
-        for (int i1 = 0; i1 < n1; i1++)  {
-          /* Get output index in vectorized, colocated y */
-          it = TensorGetIndex(n0, n1, i0,i1,i0p,i1p);
-          rowre = 2*(it);
-          rowim = rowre+1;
-
-          /* \rho(ik+1..,ik'..) term */
-          itx = TensorGetIndex(n0, n1,i0+1,i1,i0p,i1p);
-          row_xre = 2*(itx);
-          row_xim = row_xre+1;
-          sq = sqrt(i0 + 1);
-          yptr[rowre] += sq * (   pt * xptr[rowim] + qt * xptr[rowre]);
-          yptr[rowim] += sq * ( - pt * xptr[rowre] + qt * xptr[rowim]);
-          // }
-        }
-      }
-    }
-  }
-  for (int i0p = 0; i0p < n0-1; i0p++)  {
-  //  if (i0p < n0-1) {
     for (int i1p = 0; i1p < n1; i1p++)  {
       for (int i0 = 0; i0 < n0; i0++)  {
         for (int i1 = 0; i1 < n1; i1++)  {
-          /* Get output index in vectorized, colocated y */
-          it = TensorGetIndex(n0, n1, i0,i1,i0p,i1p);
-          rowre = 2*(it);
-          rowim = rowre+1;
-          /* \rho(ik..,ik'+1..) */
-          sq = sqrt(i0p + 1);
-          itx = TensorGetIndex(n0,n1,i0,i1,i0p+1,i1p);
-          row_xre = 2*(itx);
-          row_xim = row_xre + 1;
-          yptr[rowre] += sq * ( -pt * xptr[row_xim] + qt * xptr[row_xre]);
-          yptr[rowim] += sq * (  pt * xptr[row_xre] + qt * xptr[row_xim]);
-          // }
+          if (i0 < n0-1) {
+            /* Get output index in vectorized, colocated y */
+            int rowre = 2*(it);
+            int rowim = rowre+1;
+
+            /* \rho(ik+1..,ik'..) term */
+            int itx = TensorGetIndex(n0, n1,i0+1,i1,i0p,i1p);
+            int row_xre = 2*(itx);
+            int row_xim = row_xre+1;
+            double sq = sqrt(i0 + 1);
+            yptr[rowre] += sq * (   pt * xptr[rowim] + qt * xptr[rowre]);
+            yptr[rowim] += sq * ( - pt * xptr[rowre] + qt * xptr[rowim]);
+          }
+          it++;
         }
       }
     }
   }
+  it=0;
   for (int i0p = 0; i0p < n0; i0p++)  {
-    for (int i1p = 0; i1p < n1; i1p++)  {
-      for (int i0 = 1; i0 < n0; i0++)  {
-          // if (i0 > 0) {
-        for (int i1 = 0; i1 < n1; i1++)  {
-          /* Get output index in vectorized, colocated y */
-          it = TensorGetIndex(n0, n1, i0,i1,i0p,i1p);
-          rowre = 2*(it);
-          rowim = rowre+1;
-          /* \rho(ik-1..,ik'..) */
-          itx = TensorGetIndex(n0,n1,i0-1,i1,i0p,i1p);
-          row_xre = 2*itx;
-          row_xim = row_xre+1;
-          sq = sqrt(i0);
-          yptr[rowre] += sq * (  pt * xptr[row_xim] - qt * xptr[row_xre]);
-          yptr[rowim] += sq * (- pt * xptr[row_xre] - qt * xptr[row_xim]);
-          // }
-        }
-      }
-    }
-  }
-  for (int i0p = 1; i0p < n0; i0p++)  {
-          // if (i0p > 0) {
     for (int i1p = 0; i1p < n1; i1p++)  {
       for (int i0 = 0; i0 < n0; i0++)  {
         for (int i1 = 0; i1 < n1; i1++)  {
+          if (i0p < n0-1) {
+            /* Get output index in vectorized, colocated y */
+            int rowre = 2*(it);
+            int rowim = rowre+1;
+            /* \rho(ik..,ik'+1..) */
+            double sq = sqrt(i0p + 1);
+            int itx = TensorGetIndex(n0,n1,i0,i1,i0p+1,i1p);
+            int row_xre = 2*(itx);
+            int row_xim = row_xre + 1;
+            yptr[rowre] += sq * ( -pt * xptr[row_xim] + qt * xptr[row_xre]);
+            yptr[rowim] += sq * (  pt * xptr[row_xre] + qt * xptr[row_xim]);
+          }
+          it++;
+        }
+      }
+    }
+  }
+  it = 0;
+  for (int i0p = 0; i0p < n0; i0p++)  {
+    for (int i1p = 0; i1p < n1; i1p++)  {
+      for (int i0 = 0; i0 < n0; i0++)  {
+        for (int i1 = 0; i1 < n1; i1++)  {
+          if (i0 > 0) {
+            /* Get output index in vectorized, colocated y */
+            int rowre = 2*(it);
+            int rowim = rowre+1;
+            /* \rho(ik-1..,ik'..) */
+            int itx = TensorGetIndex(n0,n1,i0-1,i1,i0p,i1p);
+            int row_xre = 2*itx;
+            int row_xim = row_xre+1;
+            double sq = sqrt(i0);
+            yptr[rowre] += sq * (  pt * xptr[row_xim] - qt * xptr[row_xre]);
+            yptr[rowim] += sq * (- pt * xptr[row_xre] - qt * xptr[row_xim]);
+          }
+          it++;
+        }
+      }
+    }
+  }
+  it = 0;
+  for (int i0p = 0; i0p < n0; i0p++)  {
+    for (int i1p = 0; i1p < n1; i1p++)  {
+      for (int i0 = 0; i0 < n0; i0++)  {
+        for (int i1 = 0; i1 < n1; i1++)  {
+          if (i0p > 0) {
           /* Get output index in vectorized, colocated y */
-          it = TensorGetIndex(n0, n1, i0,i1,i0p,i1p);
-          rowre = 2*(it);
-          rowim = rowre + 1;
+          int rowre = 2*(it);
+          int rowim = rowre + 1;
           /* \rho(ik..,ik'-1..) */
-          itx = TensorGetIndex(n0,n1,i0,i1,i0p-1,i1p);
-          row_xre = 2*(itx);
-          row_xim = row_xre + 1;
-          sq = sqrt(i0p);
+          int itx = TensorGetIndex(n0,n1,i0,i1,i0p-1,i1p);
+          int row_xre = 2*(itx);
+          int row_xim = row_xre + 1;
+          double sq = sqrt(i0p);
           yptr[rowre] += sq * (- pt * xptr[row_xim] - qt * xptr[row_xre]);
           yptr[rowim] += sq * (  pt * xptr[row_xre] - qt * xptr[row_xim]);
-          // }
+          }
+          it++;
         }
       }
     }
@@ -915,86 +922,90 @@ int myMatMultMatFree(Mat RHS, Vec x, Vec y){
   /* --- Oscil k=1 --- */
   pt = shellctx->control_Re[1];
   qt = shellctx->control_Im[1];
+  it = 0;
   for (int i0p = 0; i0p < n0; i0p++)  {
     for (int i1p = 0; i1p < n1; i1p++)  {
-      for (int i0 = 0; i0 < n0; i0++)  {
-        for (int i1 = 0; i1 < n1-1; i1++)  {
-          // if (i1 < n1-1) {
-          /* Get output index in vectorized, colocated y */
-          it = TensorGetIndex(n0, n1, i0,i1,i0p,i1p);
-          rowre = getIndexReal(it);
-          rowim = getIndexImag(it);
-          /* \rho(ik+1..,ik'..) term */
-          itx = TensorGetIndex(n0,n1,i0,i1+1,i0p,i1p);
-          row_xre = getIndexReal(itx);
-          row_xim = getIndexImag(itx);
-          sq = sqrt(i1 + 1);
-          yptr[rowre] += sq * (   pt * xptr[row_xim] + qt * xptr[row_xre]);
-          yptr[rowim] += sq * ( - pt * xptr[row_xre] + qt * xptr[row_xim]);
-          // }
-        }
-      }
-    }
-  }
-  for (int i0p = 0; i0p < n0; i0p++)  {
-    for (int i1p = 0; i1p < n1-1; i1p++)  {
-          // if (i1p < n1-1) {
       for (int i0 = 0; i0 < n0; i0++)  {
         for (int i1 = 0; i1 < n1; i1++)  {
-          /* Get output index in vectorized, colocated y */
-          it = TensorGetIndex(n0, n1, i0,i1,i0p,i1p);
-          rowre = getIndexReal(it);
-          rowim = getIndexImag(it);
-          /* \rho(ik..,ik'+1..) */
-          sq = sqrt(i1p + 1);
-          itx = TensorGetIndex(n0,n1,i0,i1,i0p,i1p+1);
-          row_xre = getIndexReal(itx);
-          row_xim = getIndexImag(itx);
-          yptr[rowre] += sq * ( -pt * xptr[row_xim] + qt * xptr[row_xre]);
-          yptr[rowim] += sq * (  pt * xptr[row_xre] + qt * xptr[row_xim]);
-          // }
+          if (i1 < n1-1) {
+            /* Get output index in vectorized, colocated y */
+            int rowre = getIndexReal(it);
+            int rowim = getIndexImag(it);
+            /* \rho(ik+1..,ik'..) term */
+            int itx = TensorGetIndex(n0,n1,i0,i1+1,i0p,i1p);
+            int row_xre = getIndexReal(itx);
+            int row_xim = getIndexImag(itx);
+            double sq = sqrt(i1 + 1);
+            yptr[rowre] += sq * (   pt * xptr[row_xim] + qt * xptr[row_xre]);
+            yptr[rowim] += sq * ( - pt * xptr[row_xre] + qt * xptr[row_xim]);
+          }
+          it++;
         }
       }
     }
   }
+  it = 0;
   for (int i0p = 0; i0p < n0; i0p++)  {
     for (int i1p = 0; i1p < n1; i1p++)  {
       for (int i0 = 0; i0 < n0; i0++)  {
-        for (int i1 = 1; i1 < n1; i1++)  {
-        // if (i1 > 0) {
-          /* Get output index in vectorized, colocated y */
-          it = TensorGetIndex(n0, n1, i0,i1,i0p,i1p);
-          rowre = 2*(it);
-          rowim = rowre+1;
-          /* \rho(ik-1..,ik'..) */
-          itx = TensorGetIndex(n0,n1,i0,i1-1,i0p,i1p);
-          row_xre = 2 * itx;
-          row_xim = row_xre + 1;
-          sq = sqrt(i1);
-          yptr[rowre] += sq * (  pt * xptr[row_xim] - qt * xptr[row_xre]);
-          yptr[rowim] += sq * (- pt * xptr[row_xre] - qt * xptr[row_xim]);
-          // }
+        for (int i1 = 0; i1 < n1; i1++)  {
+          if (i1p < n1-1) {
+            /* Get output index in vectorized, colocated y */
+            int rowre = getIndexReal(it);
+            int rowim = getIndexImag(it);
+            /* \rho(ik..,ik'+1..) */
+            double sq = sqrt(i1p + 1);
+            int itx = TensorGetIndex(n0,n1,i0,i1,i0p,i1p+1);
+            int row_xre = getIndexReal(itx);
+            int row_xim = getIndexImag(itx);
+            yptr[rowre] += sq * ( -pt * xptr[row_xim] + qt * xptr[row_xre]);
+            yptr[rowim] += sq * (  pt * xptr[row_xre] + qt * xptr[row_xim]);
+          }
+          it++;
         }
       }
     }
   }
+  it = 0;
   for (int i0p = 0; i0p < n0; i0p++)  {
-    for (int i1p = 1; i1p < n1; i1p++)  {
-      // if (i1p > 0) {
-        for (int i0 = 0; i0 < n0; i0++)  {
-          for (int i1 = 0; i1 < n1; i1++)  {
+    for (int i1p = 0; i1p < n1; i1p++)  {
+      for (int i0 = 0; i0 < n0; i0++)  {
+        for (int i1 = 0; i1 < n1; i1++)  {
+          if (i1 > 0) {
             /* Get output index in vectorized, colocated y */
-            it = TensorGetIndex(n0, n1, i0,i1,i0p,i1p);
-            rowre = 2*(it);
-            rowim = rowre+1;
+            int rowre = 2*(it);
+            int rowim = rowre+1;
+            /* \rho(ik-1..,ik'..) */
+            int itx = TensorGetIndex(n0,n1,i0,i1-1,i0p,i1p);
+            int row_xre = 2 * itx;
+            int row_xim = row_xre + 1;
+            double sq = sqrt(i1);
+            yptr[rowre] += sq * (  pt * xptr[row_xim] - qt * xptr[row_xre]);
+            yptr[rowim] += sq * (- pt * xptr[row_xre] - qt * xptr[row_xim]);
+          }
+          it++;
+        }
+      }
+    }
+  }
+  it = 0;
+  for (int i0p = 0; i0p < n0; i0p++)  {
+    for (int i1p = 0; i1p < n1; i1p++)  {
+      for (int i0 = 0; i0 < n0; i0++)  {
+        for (int i1 = 0; i1 < n1; i1++)  {
+          if (i1p > 0) {
+            /* Get output index in vectorized, colocated y */
+            int rowre = 2*(it);
+            int rowim = rowre+1;
             /* \rho(ik..,ik'-1..) */
-            itx = TensorGetIndex(n0,n1,i0,i1,i0p,i1p-1);
-            row_xre = 2*itx;
-            row_xim = row_xre + 1;
-            sq = sqrt(i1p);
+            int itx = TensorGetIndex(n0,n1,i0,i1,i0p,i1p-1);
+            int row_xre = 2*itx;
+            int row_xim = row_xre + 1;
+            double sq = sqrt(i1p);
             yptr[rowre] += sq * (- pt * xptr[row_xre] - qt * xptr[row_xim]);
             yptr[rowim] += sq * (  pt * xptr[row_xim] - qt * xptr[row_xre]);
-          // }
+          }
+          it++;
         }
       }
     }
