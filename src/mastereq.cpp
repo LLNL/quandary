@@ -714,7 +714,7 @@ int myMatMultSparseMat(Mat RHS, Vec x, Vec y){
 
 /* Define the action of RHS on a vector x */
 template <int n0, int n1>
-int myMatMultMatFree(Mat RHS, Vec x, Vec y){
+int myMatMultMatFree_splitloops(Mat RHS, Vec x, Vec y){
 
   /* Get the shell context */
   MatShellCtx *shellctx;
@@ -1100,6 +1100,185 @@ int TensorGetIndex(const int nlevels0, const int nlevels1,const  int i0, const i
 }
 
 
+
+
+
+
+/* Define the action of RHS on a vector x */
+template <int n0, int n1>
+int myMatMultMatFree(Mat RHS, Vec x, Vec y){
+
+  /* Get the shell context */
+  MatShellCtx *shellctx;
+  MatShellGetContext(RHS, (void**) &shellctx);
+
+  /* Get access to x and y */
+  const double* xptr;
+  double* yptr;
+  VecGetArrayRead(x, &xptr);
+  VecGetArray(y, &yptr);
+
+
+  /* Evaluate coefficients */
+  double xi0  = shellctx->xi[0];
+  double xi01 = shellctx->xi[1];
+  double xi1  = shellctx->xi[2];
+  double decay0 = 0.0;
+  double decay1 = 0.0;
+  double dephase0= 0.0;
+  double dephase1= 0.0;
+  if (shellctx->collapse_time[0] > 1e-14)
+    decay0 = 1./shellctx->collapse_time[0];
+  if (shellctx->collapse_time[1] > 1e-14)
+    dephase0 = 1./shellctx->collapse_time[1];
+  if (shellctx->collapse_time[2] > 1e-14)
+    decay1= 1./shellctx->collapse_time[2];
+  if (shellctx->collapse_time[3] > 1e-14)
+    dephase1 = 1./shellctx->collapse_time[3];
+  double pt0 = shellctx->control_Re[0];
+  double qt0 = shellctx->control_Im[0];
+  double pt1 = shellctx->control_Re[1];
+  double qt1 = shellctx->control_Im[1];
+
+  /* Diagonal elements: Hd, Dephasing L2, Decay L1 diagonal part*/
+  int it = 0;
+  for (int i0p = 0; i0p < n0; i0p++)  {
+    for (int i1p = 0; i1p < n1; i1p++)  {
+      for (int i0 = 0; i0 < n0; i0++)  {
+        for (int i1 = 0; i1 < n1; i1++)  {
+         
+          /* --- Diagonal part ---*/
+          //Get input x values 
+          double xre = xptr[2 * it];
+          double xim = xptr[2 * it + 1];
+          // Constant Hd part: uout = ( hd(ik) - hd(ik'))*vin
+          //                   vout = (-hd(ik) + hd(ik'))*uin
+          double hd  = Hd(xi0, xi01, xi1, i0, i1); 
+          double hdp = Hd(xi0, xi01, xi1, i0p, i1p); 
+          double yre = ( hd - hdp ) * xim;
+          double yim = (-hd + hdp ) * xre;
+          // Decay l1, diagonal part: xout += l1diag xin
+          // Dephasing l2: xout += l2(ik, ikp) xin
+          double l1diag = L1diag(decay0, decay1, i0, i1, i0p, i1p);
+          double l2 = L2(dephase0, dephase1, i0, i1, i0p, i1p);
+          yre += (l2 + l1diag) * xre; 
+          yim += (l2 + l1diag) * xim;
+
+          /* --- Offdiagonal part of decay L1 */
+          // Oscillators 0 
+          if (i0 < n0-1 && i0p < n0-1) {
+            double l1off = decay0 * sqrt((i0+1)*(i0p+1));
+            int itx = TensorGetIndex(n0,n1,i0+1,i1,i0p+1,i1p);
+            int row_xre = 2*itx;
+            int row_xim = row_xre+1;
+            yre += l1off * xptr[row_xre];
+            yim += l1off * xptr[row_xim];         
+          }
+          // Oscillator 1 
+          if (i1 < n1-1 && i1p < n1-1) {
+            double l1off = decay1 * sqrt((i1+1)*(i1p+1));
+            int itx = TensorGetIndex(n0,n1,i0,i1+1,i0p,i1p+1);
+            int row_xre = 2*(itx);
+            int row_xim = row_xre+1;
+            yre += l1off * xptr[row_xre];
+            yim += l1off * xptr[row_xim];
+          }
+
+          /* --- Control hamiltonian --- Oscillator 0 --- */
+          /* \rho(ik+1..,ik'..) term */
+          if (i0 < n0-1) {
+            int itx = TensorGetIndex(n0, n1,i0+1,i1,i0p,i1p);
+            int row_xre = 2*(itx);
+            int row_xim = row_xre+1;
+            double sq = sqrt(i0 + 1);
+            yre += sq * (   pt0 * xptr[row_xim] + qt0 * xptr[row_xre]);
+            yim += sq * ( - pt0 * xptr[row_xre] + qt0 * xptr[row_xim]);
+          }
+          /* \rho(ik..,ik'+1..) */
+          if (i0p < n0-1) {
+            int itx = TensorGetIndex(n0,n1,i0,i1,i0p+1,i1p);
+            int row_xre = 2*(itx);
+            int row_xim = row_xre + 1;
+            double sq = sqrt(i0p + 1);
+            yre += sq * ( -pt0 * xptr[row_xim] + qt0 * xptr[row_xre]);
+            yim += sq * (  pt0 * xptr[row_xre] + qt0 * xptr[row_xim]);
+          }
+          /* \rho(ik-1..,ik'..) */
+          if (i0 > 0) {
+            int itx = TensorGetIndex(n0,n1,i0-1,i1,i0p,i1p);
+            int row_xre = 2*itx;
+            int row_xim = row_xre+1;
+            double sq = sqrt(i0);
+            yre += sq * (  pt0 * xptr[row_xim] - qt0 * xptr[row_xre]);
+            yim += sq * (- pt0 * xptr[row_xre] - qt0 * xptr[row_xim]);
+          }
+          /* \rho(ik..,ik'-1..) */
+          if (i0p > 0) {
+            int itx = TensorGetIndex(n0,n1,i0,i1,i0p-1,i1p);
+            int row_xre = 2*(itx);
+            int row_xim = row_xre + 1;
+            double sq = sqrt(i0p);
+            yre += sq * (- pt0 * xptr[row_xim] - qt0 * xptr[row_xre]);
+            yim += sq * (  pt0 * xptr[row_xre] - qt0 * xptr[row_xim]);
+          }
+ 
+          /* --- Control hamiltonian --- Oscillator 1 --- */
+          /* \rho(ik+1..,ik'..) term */
+          if (i1 < n1-1) {
+            int itx = TensorGetIndex(n0,n1,i0,i1+1,i0p,i1p);
+            int row_xre = getIndexReal(itx);
+            int row_xim = getIndexImag(itx);
+            double sq = sqrt(i1 + 1);
+            yre += sq * (   pt1 * xptr[row_xim] + qt1 * xptr[row_xre]);
+            yim += sq * ( - pt1 * xptr[row_xre] + qt1 * xptr[row_xim]);
+          }
+          /* \rho(ik..,ik'+1..) */
+          if (i1p < n1-1) {
+            int itx = TensorGetIndex(n0,n1,i0,i1,i0p,i1p+1);
+            int row_xre = getIndexReal(itx);
+            int row_xim = getIndexImag(itx);
+            double sq = sqrt(i1p + 1);
+            yre += sq * ( -pt1 * xptr[row_xim] + qt1 * xptr[row_xre]);
+            yim += sq * (  pt1 * xptr[row_xre] + qt1 * xptr[row_xim]);
+          }
+          /* \rho(ik-1..,ik'..) */
+          if (i1 > 0) {
+            int itx = TensorGetIndex(n0,n1,i0,i1-1,i0p,i1p);
+            int row_xre = 2 * itx;
+            int row_xim = row_xre + 1;
+            double sq = sqrt(i1);
+            yre += sq * (  pt1 * xptr[row_xim] - qt1 * xptr[row_xre]);
+            yim += sq * (- pt1 * xptr[row_xre] - qt1 * xptr[row_xim]);
+          }
+          /* \rho(ik..,ik'-1..) */
+          if (i1p > 0) {
+            /* Get output index in vectorized, colocated y */
+            int itx = TensorGetIndex(n0,n1,i0,i1,i0p,i1p-1);
+            int row_xre = 2*itx;
+            int row_xim = row_xre + 1;
+            double sq = sqrt(i1p);
+            yre += sq * (- pt1 * xptr[row_xim] - qt1 * xptr[row_xim]);
+            yim += sq * (  pt1 * xptr[row_xim] - qt1 * xptr[row_xim]);
+          }
+ 
+          /* Update */
+          yptr[2*it]   = yre;
+          yptr[2*it+1] = yim;
+          it++;
+        }
+      }
+    }
+  }
+
+  /* Restore x and y */
+  VecRestoreArrayRead(x, &xptr);
+  VecRestoreArray(y, &yptr);
+
+    
+  return 0;
+}
+
+
 int myMatMultMatFree_2Osc(Mat RHS, Vec x, Vec y){
   /* Get the shell context */
   MatShellCtx *shellctx;
@@ -1110,8 +1289,10 @@ int myMatMultMatFree_2Osc(Mat RHS, Vec x, Vec y){
   int n1 = shellctx->nlevels[1];
   if(n0==3 && n1==20)
   {
+    return myMatMultMatFree_splitloops<3,20>(RHS, x, y);
     return myMatMultMatFree<3,20>(RHS, x, y);
   } else if(n0==3 && n1==10){
+    return myMatMultMatFree_splitloops<3,10>(RHS, x, y);
     return myMatMultMatFree<3,10>(RHS, x, y);
   } else {
     printf("ERROR: Matrix free implementation NOT IMPLEMENTED for cases other than 3x10 or 3x20!\n");
