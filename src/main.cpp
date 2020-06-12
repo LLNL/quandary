@@ -200,8 +200,8 @@ int main(int argc,char **argv)
 
   /* --- Initialize the time-stepper --- */
   /* My time stepper */
-  // TimeStepper *mytimestepper = new ImplMidpoint(mastereq);
-  TimeStepper *mytimestepper = new ExplEuler(mastereq);
+  TimeStepper *mytimestepper = new ImplMidpoint(mastereq);
+  // TimeStepper *mytimestepper = new ExplEuler(mastereq);
 
   /* Petsc's Time-stepper */
   TS ts;
