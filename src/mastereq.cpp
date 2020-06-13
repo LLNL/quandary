@@ -516,7 +516,7 @@ void MasterEq::computedRHSdp(const double t, const Vec x, const Vec xbar, const 
               double xim = xptr[2 * itx + 1];
               double sq = sqrt(i0p + 1);
               res_p_re += - sq * xim;
-              res_p_im += + sq * xre;
+              res_p_im += - sq * xre;
               res_q_re +=   sq * xre;
               res_q_im +=   sq * xim;
             }
@@ -569,7 +569,7 @@ void MasterEq::computedRHSdp(const double t, const Vec x, const Vec xbar, const 
               double xim = xptr[2 * itx + 1];
               double sq = sqrt(i1p + 1);
               res_p_re += - sq * xim;
-              res_p_im += + sq * xre;
+              res_p_im += - sq * xre;
               res_q_re +=   sq * xre;
               res_q_im +=   sq * xim;
             }
@@ -1203,8 +1203,8 @@ int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
           //                     vout = (-hd(ik) + hd(ik'))*uin
           double hd  = Hd(xi0, xi01, xi1, i0, i1); 
           double hdp = Hd(xi0, xi01, xi1, i0p, i1p); 
-          double yre = ( hd - hdp ) * xim;
-          double yim = (-hd + hdp ) * xre;
+          double yre = (-hd + hdp ) * xim;
+          double yim = ( hd - hdp ) * xre;
           // Decay l1^T, diagonal part: xout += l1diag xin
           // Dephasing l2^T: xout += l2(ik, ikp) xin
           double l1diag = L1diag(decay0, decay1, i0, i1, i0p, i1p);
@@ -1240,8 +1240,8 @@ int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
             double xre = xptr[2 * itx];
             double xim = xptr[2 * itx + 1];
             double sq = sqrt(i0);
-            yre += sq * (   pt0 * xim + qt0 * xre);
-            yim += sq * ( - pt0 * xre + qt0 * xim);
+            yre += sq * ( - pt0 * xim + qt0 * xre);
+            yim += sq * (   pt0 * xre + qt0 * xim);
           }
           /* \rho(ik..,ik'+1..) */
           if (i0p > 0) {
@@ -1249,8 +1249,8 @@ int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
             double xre = xptr[2 * itx];
             double xim = xptr[2 * itx + 1];
             double sq = sqrt(i0p);
-            yre += sq * ( -pt0 * xim + qt0 * xre);
-            yim += sq * (  pt0 * xre + qt0 * xim);
+            yre += sq * (  pt0 * xim + qt0 * xre);
+            yim += sq * ( -pt0 * xre + qt0 * xim);
           }
           /* \rho(ik-1..,ik'..) */
           if (i0 < n0-1) {
@@ -1258,8 +1258,8 @@ int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
             double xre = xptr[2 * itx];
             double xim = xptr[2 * itx + 1];
             double sq = sqrt(i0+1);
-            yre += sq * (  pt0 * xim - qt0 * xre);
-            yim += sq * (- pt0 * xre - qt0 * xim);
+            yre += sq * (- pt0 * xim - qt0 * xre);
+            yim += sq * (  pt0 * xre - qt0 * xim);
           }
           /* \rho(ik..,ik'-1..) */
           if (i0p < n0-1) {
@@ -1267,8 +1267,8 @@ int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
             double xre = xptr[2 * itx];
             double xim = xptr[2 * itx + 1];
             double sq = sqrt(i0p+1);
-            yre += sq * (- pt0 * xim - qt0 * xre);
-            yim += sq * (  pt0 * xre - qt0 * xim);
+            yre += sq * (+ pt0 * xim - qt0 * xre);
+            yim += sq * (- pt0 * xre - qt0 * xim);
           }
 
           /* --- Control hamiltonian --- Oscillator 1 --- */
@@ -1278,8 +1278,8 @@ int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
             double xre = xptr[2 * itx];
             double xim = xptr[2 * itx + 1];
             double sq = sqrt(i1);
-            yre += sq * (   pt1 * xim + qt1 * xre);
-            yim += sq * ( - pt1 * xre + qt1 * xim);
+            yre += sq * ( - pt1 * xim + qt1 * xre);
+            yim += sq * (   pt1 * xre + qt1 * xim);
           }
           /* \rho(ik..,ik'+1..) */
           if (i1p > 0) {
@@ -1287,8 +1287,8 @@ int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
             double xre = xptr[2 * itx];
             double xim = xptr[2 * itx + 1];
             double sq = sqrt(i1p);
-            yre += sq * ( -pt1 * xim + qt1 * xre);
-            yim += sq * (  pt1 * xre + qt1 * xim);
+            yre += sq * (  pt1 * xim + qt1 * xre);
+            yim += sq * ( -pt1 * xre + qt1 * xim);
           }
           /* \rho(ik-1..,ik'..) */
           if (i1 < n1-1) {
@@ -1296,8 +1296,8 @@ int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
             double xre = xptr[2 * itx];
             double xim = xptr[2 * itx + 1];
             double sq = sqrt(i1+1);
-            yre += sq * (  pt1 * xim - qt1 * xre);
-            yim += sq * (- pt1 * xre - qt1 * xim);
+            yre += sq * (- pt1 * xim - qt1 * xre);
+            yim += sq * (  pt1 * xre - qt1 * xim);
           }
           /* \rho(ik..,ik'-1..) */
           if (i1p < n1-1) {
@@ -1306,8 +1306,8 @@ int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
             double xre = xptr[2 * itx];
             double xim = xptr[2 * itx + 1];
             double sq = sqrt(i1p+1);
-            yre += sq * (- pt1 * xim - qt1 * xre);
-            yim += sq * (  pt1 * xre - qt1 * xim);
+            yre += sq * (  pt1 * xim - qt1 * xre);
+            yim += sq * (- pt1 * xre - qt1 * xim);
           } 
 
           /* Update */
