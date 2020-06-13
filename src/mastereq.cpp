@@ -847,9 +847,9 @@ int myMatMultTranspose(Mat RHS, Vec x, Vec y) {
   MatMultTranspose(*shellctx->Bd, v, uout);
   MatMultTransposeAdd(*shellctx->Ad, u, uout, uout);
   // Constant part vout = -Bd^Tu + Ad^Tv
-  MatMultTranspose(*shellctx->Ad, v, vout);
-  VecScale(vout, 1.0);
-  MatMultTransposeAdd(*shellctx->Bd, u, vout, vout);
+  MatMultTranspose(*shellctx->Bd, u, vout);
+  VecScale(vout, -1.0);
+  MatMultTransposeAdd(*shellctx->Ad, v, vout, vout);
 
   /* Control part */
   for (int iosc = 0; iosc < shellctx->noscil; iosc++) {
