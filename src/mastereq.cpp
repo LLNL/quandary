@@ -516,7 +516,7 @@ void MasterEq::computedRHSdp(const double t, const Vec x, const Vec xbar, const 
               double xim = xptr[2 * itx + 1];
               double sq = sqrt(i0p + 1);
               res_p_re += - sq * xim;
-              res_p_im += - sq * xre;
+              res_p_im += + sq * xre;
               res_q_re +=   sq * xre;
               res_q_im +=   sq * xim;
             }
@@ -569,7 +569,7 @@ void MasterEq::computedRHSdp(const double t, const Vec x, const Vec xbar, const 
               double xim = xptr[2 * itx + 1];
               double sq = sqrt(i1p + 1);
               res_p_re += - sq * xim;
-              res_p_im += - sq * xre;
+              res_p_im += + sq * xre;
               res_q_re +=   sq * xre;
               res_q_im +=   sq * xim;
             }
@@ -607,21 +607,29 @@ void MasterEq::computedRHSdp(const double t, const Vec x, const Vec xbar, const 
 
     /* Set the gradient values */
     // Oscillator 0
+    for (int i=0; i<nparams_max; i++){
+      dRedp[i] = 0.0;
+      dImdp[i] = 0.0;
+    }
     oscil_vec[0]->evalControl_diff(t, dRedp, dImdp);
     int nparam0 = getOscillator(0)->getNParams();
     for (int iparam=0; iparam < nparam0; iparam++) {
-      vals[iparam] = coeff_p_osc0 * dRedp[iparam] + coeff_q_osc0 * dImdp[iparam];
+      vals[iparam] = alpha * (coeff_p_osc0 * dRedp[iparam] + coeff_q_osc0 * dImdp[iparam]);
       cols[iparam] = iparam;
     }
     VecSetValues(grad, nparam0, cols, vals, ADD_VALUES);
     // Oscillator 1
+    for (int i=0; i<nparams_max; i++){
+      dRedp[i] = 0.0;
+      dImdp[i] = 0.0;
+    }
     oscil_vec[1]->evalControl_diff(t, dRedp, dImdp);
     int nparam1 = getOscillator(1)->getNParams();
     for (int iparam=0; iparam < nparam1; iparam++) {
-      vals[iparam] = coeff_p_osc1 * dRedp[iparam] + coeff_q_osc1 * dImdp[iparam];
+      vals[iparam] = alpha * (coeff_p_osc1 * dRedp[iparam] + coeff_q_osc1 * dImdp[iparam]);
       cols[iparam] = iparam + nparam0;
     }
-    VecSetValues(grad, nparam0, cols, vals, ADD_VALUES);
+    VecSetValues(grad, nparam1, cols, vals, ADD_VALUES);
     VecAssemblyBegin(grad); 
     VecAssemblyEnd(grad);
 
