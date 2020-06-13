@@ -463,6 +463,170 @@ void MasterEq::createReducedDensity_diff(Vec rhobar, const Vec reducedbar,const 
 /* grad += RHS(x)^T * xbar  */
 void MasterEq::computedRHSdp(const double t, const Vec x, const Vec xbar, const double alpha, Vec grad) {
 
+
+  if (usematfree) { // matrix free solver
+    const double* xptr, *xbarptr;
+    VecGetArrayRead(x, &xptr);
+    VecGetArrayRead(xbar, &xbarptr);
+
+    /* compute strides for accessing x at i0+1, i0-1, i0p+1, i0p-1, i1+1, i1-1, i1p+1, i1p-1: */
+    int n0 = nlevels[0];
+    int n1 = nlevels[1];
+    int stridei0  = TensorGetIndex(n0,n1, 1,0,0,0);
+    int stridei1  = TensorGetIndex(n0,n1, 0,1,0,0);
+    int stridei0p = TensorGetIndex(n0,n1, 0,0,1,0);
+    int stridei1p = TensorGetIndex(n0,n1, 0,0,0,1);
+
+    /* Collect coefficients for gradient  */
+    double coeff_p_osc0 = 0.0;
+    double coeff_q_osc0 = 0.0;
+    double coeff_p_osc1 = 0.0;
+    double coeff_q_osc1 = 0.0;
+    int it = 0;
+    // Iterate over indices of xbar
+    for (int i0p = 0; i0p < n0; i0p++)  {
+      for (int i1p = 0; i1p < n1; i1p++)  {
+        for (int i0 = 0; i0 < n0; i0++)  {
+          for (int i1 = 0; i1 < n1; i1++)  {
+
+            /* Get xbar */
+            double xbarre = xbarptr[2*it];
+            double xbarim = xbarptr[2*it+1];
+
+            /* --- Oscillator 0 --- */
+            double res_p_re = 0.0;
+            double res_p_im = 0.0;
+            double res_q_re = 0.0;
+            double res_q_im = 0.0;
+            /* ik+1..,ik'.. term */
+            if (i0 < n0-1) {
+              int itx = it + stridei0;
+              double xre = xptr[2 * itx];
+              double xim = xptr[2 * itx + 1];
+              double sq = sqrt(i0 + 1);
+              res_p_re +=   sq * xim;
+              res_p_im += - sq * xre;
+              res_q_re +=   sq * xre;
+              res_q_im +=   sq * xim;
+            }
+            /* \rho(ik..,ik'+1..) */
+            if (i0p < n0-1) {
+              int itx = it + stridei0p;
+              double xre = xptr[2 * itx];
+              double xim = xptr[2 * itx + 1];
+              double sq = sqrt(i0p + 1);
+              res_p_re += - sq * xim;
+              res_p_im += + sq * xre;
+              res_q_re +=   sq * xre;
+              res_q_im +=   sq * xim;
+            }
+            /* \rho(ik-1..,ik'..) */
+            if (i0 > 0) {
+              int itx = it - stridei0;
+              double xre = xptr[2 * itx];
+              double xim = xptr[2 * itx + 1];
+              double sq = sqrt(i0);
+              res_p_re += + sq * xim;
+              res_p_im += - sq * xre;
+              res_q_re += - sq * xre;
+              res_q_im += - sq * xim;
+            }
+            /* \rho(ik..,ik'-1..) */
+            if (i0p > 0) {
+              int itx = it - stridei0p;
+              double xre = xptr[2 * itx];
+              double xim = xptr[2 * itx + 1];
+              double sq = sqrt(i0p);
+              res_p_re += - sq * xim;
+              res_p_im += + sq * xre;
+              res_q_re += - sq * xre;
+              res_q_im += - sq * xim;
+            }
+            /* Update the coefficients */
+            coeff_p_osc0 += res_p_re * xbarre + res_p_im * xbarim; 
+            coeff_q_osc0 += res_q_re * xbarre + res_q_im * xbarim; 
+
+            /* --- Oscillator 1 --- */
+            res_p_re = 0.0;
+            res_p_im = 0.0;
+            res_q_re = 0.0;
+            res_q_im = 0.0;
+            /* ik+1..,ik'.. term */
+            if (i1 < n1-1) {
+              int itx = it + stridei1;
+              double xre = xptr[2 * itx];
+              double xim = xptr[2 * itx + 1];
+              double sq = sqrt(i1 + 1);
+              res_p_re +=   sq * xim;
+              res_p_im += - sq * xre;
+              res_q_re +=   sq * xre;
+              res_q_im +=   sq * xim;
+            }
+            /* \rho(ik..,ik'+1..) */
+            if (i1p < n1-1) {
+              int itx = it + stridei1p;
+              double xre = xptr[2 * itx];
+              double xim = xptr[2 * itx + 1];
+              double sq = sqrt(i1p + 1);
+              res_p_re += - sq * xim;
+              res_p_im += + sq * xre;
+              res_q_re +=   sq * xre;
+              res_q_im +=   sq * xim;
+            }
+            /* \rho(ik-1..,ik'..) */
+            if (i1 > 0) {
+              int itx = it - stridei1;
+              double xre = xptr[2 * itx];
+              double xim = xptr[2 * itx + 1];
+              double sq = sqrt(i1);
+              res_p_re += + sq * xim;
+              res_p_im += - sq * xre;
+              res_q_re += - sq * xre;
+              res_q_im += - sq * xim;
+            }
+            /* \rho(ik..,ik'-1..) */
+            if (i1p > 0) {
+              int itx = it - stridei1p;
+              double xre = xptr[2 * itx];
+              double xim = xptr[2 * itx + 1];
+              double sq = sqrt(i1p);
+              res_p_re += - sq * xim;
+              res_p_im += + sq * xre;
+              res_q_re += - sq * xre;
+              res_q_im += - sq * xim;
+            }
+            coeff_p_osc1 += res_p_re * xbarre + res_p_im * xbarim; 
+            coeff_q_osc1 += res_q_re * xbarre + res_q_im * xbarim; 
+            it++;
+          }
+        }
+      }
+    }
+    VecRestoreArrayRead(x, &xptr);
+    VecRestoreArrayRead(xbar, &xbarptr);
+
+    /* Set the gradient values */
+    // Oscillator 0
+    oscil_vec[0]->evalControl_diff(t, dRedp, dImdp);
+    int nparam0 = getOscillator(0)->getNParams();
+    for (int iparam=0; iparam < nparam0; iparam++) {
+      vals[iparam] = coeff_p_osc0 * dRedp[iparam] + coeff_q_osc0 * dImdp[iparam];
+      cols[iparam] = iparam;
+    }
+    VecSetValues(grad, nparam0, cols, vals, ADD_VALUES);
+    // Oscillator 1
+    oscil_vec[1]->evalControl_diff(t, dRedp, dImdp);
+    int nparam1 = getOscillator(1)->getNParams();
+    for (int iparam=0; iparam < nparam1; iparam++) {
+      vals[iparam] = coeff_p_osc1 * dRedp[iparam] + coeff_q_osc1 * dImdp[iparam];
+      cols[iparam] = iparam + nparam0;
+    }
+    VecSetValues(grad, nparam0, cols, vals, ADD_VALUES);
+    VecAssemblyBegin(grad); 
+    VecAssemblyEnd(grad);
+
+  } else {  // sparse matrix solver
+
   /* Get real and imaginary part from x and x_bar */
   Vec u, v, ubar, vbar;
   VecGetSubVector(x, isu, &u);
@@ -513,6 +677,7 @@ void MasterEq::computedRHSdp(const double t, const Vec x, const Vec xbar, const 
   VecRestoreSubVector(x, isv, &v);
   VecRestoreSubVector(xbar, isu, &ubar);
   VecRestoreSubVector(xbar, isv, &vbar);
+  }
 
 }
 
