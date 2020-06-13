@@ -28,9 +28,10 @@ typedef struct {
 
 
 /* Define the Matrix-Vector products for the RHS MatShell */
-int myMatMultSparseMat(Mat RHS, Vec x, Vec y);
-int myMatMultMatFree_2Osc(Mat RHS, Vec x, Vec y);
-int myMatMultTransposeSparseMat(Mat RHS, Vec x, Vec y);
+int myMatMult_matfree_2osc(Mat RHS, Vec x, Vec y);              // Matrix free solver, currently only for 2 oscillators 
+int myMatMultTranspose_matfree_2Osc(Mat RHS, Vec x, Vec y);
+int myMatMult_sparsemat(Mat RHS, Vec x, Vec y);                 // Sparse matrix solver
+int myMatMultTranspose_sparsemat(Mat RHS, Vec x, Vec y);
 
 
 /* 
