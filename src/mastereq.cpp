@@ -561,7 +561,7 @@ void MasterEq::createReducedDensity_diff(Vec rhobar, const Vec reducedbar,const 
 
 }
 
-/* grad += RHS(x)^T * xbar  */
+/* grad += alpha * RHS(x)^T * xbar  */
 void MasterEq::computedRHSdp(const double t, const Vec x, const Vec xbar, const double alpha, Vec grad) {
 
   /* Get real and imaginary part from x and x_bar */
@@ -600,7 +600,7 @@ void MasterEq::computedRHSdp(const double t, const Vec x, const Vec xbar, const 
 
     /* Set gradient terms for each control parameter */
     for (int iparam=0; iparam < nparams_iosc; iparam++) {
-      vals[iparam] = (uAubar + vAvbar) * dImdp[iparam] + ( -vBubar + uBvbar) * dRedp[iparam];
+      vals[iparam] = alpha * ((uAubar + vAvbar) * dImdp[iparam] + ( -vBubar + uBvbar) * dRedp[iparam]);
       cols[iparam] = col_shift + iparam;
     }
     VecSetValues(grad, nparams_iosc, cols, vals, ADD_VALUES);

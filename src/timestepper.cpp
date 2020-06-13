@@ -48,8 +48,7 @@ void ExplEuler::evolveBWD(const double tstop,const  double tstart,const  Vec x, 
   /* update x_adj = x_adj + hA^Tx_adj */
   mastereq->assemble_RHS(tstop);
   Mat A = mastereq->getRHS(); 
-  MatTranspose(A, MAT_INPLACE_MATRIX, &A);
-  MatMult(A, x_adj, stage);
+  MatMultTranspose(A, x_adj, stage);
   VecAXPY(x_adj, dt, stage);
 
 }
