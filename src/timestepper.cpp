@@ -65,16 +65,40 @@ ImplMidpoint::ImplMidpoint(MasterEq* mastereq_) : TimeStepper(mastereq_) {
   VecZeroEntries(rhs);
   VecZeroEntries(rhs_adj);
 
- }
+  /* Create linear solver */
+  KSPCreate(PETSC_COMM_WORLD, &linearsolver);
+
+  /* Set options */
+  KSPGetPC(linearsolver, &preconditioner);
+  if (mastereq->usematshell) PCSetType(preconditioner, PCNONE);
+  double reltol = 1.e-8;
+  double abstol = 1.e-10;
+  KSPSetTolerances(linearsolver, reltol, abstol, PETSC_DEFAULT, PETSC_DEFAULT);
+  KSPSetType(linearsolver, KSPGMRES);
+  KSPSetOperators(linearsolver, mastereq->getRHS(), mastereq->getRHS());
+  KSPSetFromOptions(linearsolver);
+
+  KSPsolve_counter = 0;
+  KSPsolve_iterstaken_avg = 0.0;
+}
 
 
 ImplMidpoint::~ImplMidpoint(){
+
+  /* Print */
+  KSPsolve_iterstaken_avg = (int) KSPsolve_iterstaken_avg / KSPsolve_counter;
+  int myrank;
+  MPI_Comm_rank(MPI_COMM_WORLD, &myrank);
+  if (myrank == 0) printf("KSPsolve: Average iterations = %d\n", KSPsolve_iterstaken_avg);
 
   /* Free up intermediate vectors */
   VecDestroy(&stage_adj);
   VecDestroy(&stage);
   VecDestroy(&rhs_adj);
   VecDestroy(&rhs);
+
+  /* Free up linear solver */
+  KSPDestroy(&linearsolver);
 }
 
 void ImplMidpoint::evolveFWD(const double tstart,const  double tstop, Vec x) {
@@ -89,10 +113,34 @@ void ImplMidpoint::evolveFWD(const double tstart,const  double tstop, Vec x) {
   /* Compute rhs = A x */
   MatMult(A, x, rhs);
 
-  // Solve for the stage variable: (I-dt/2 A) * stage = rhs
-  NeumannSolve(A, rhs, stage, dt/2.0, false);
+  /* Build system matrix I-h/2 A. This modifies the RHS matrix! Make sure to call assemble_RHS before the next use! */
+  MatScale(A, - dt/2.0);
+  MatShift(A, 1.0);  // WARNING: this can be very slow if some diagonal elements are missing.
+  
+  /* solve nonlinear equation */
+  // KSPReset(linearsolver);
+  // KSPSetTolerances(linearsolver, 1.e-8, 1.e-10, PETSC_DEFAULT, PETSC_DEFAULT);
+  // KSPSetType(linearsolver, KSPGMRES);
+  // KSPSetFromOptions(linearsolver);
+  // KSPSetOperators(linearsolver, A, A);// TODO: Do we have to do this in each time step?? 
+  KSPSolve(linearsolver, rhs, stage);
 
-  /* Update state x += dt * stage */
+  /* Monitor error */
+  double rnorm;
+  int iters_taken;
+  KSPGetResidualNorm(linearsolver, &rnorm);
+  KSPGetIterationNumber(linearsolver, &iters_taken);
+  //printf("Residual norm %d: %1.5e\n", iters_taken, rnorm);
+  KSPsolve_iterstaken_avg += iters_taken;
+  KSPsolve_counter++;
+
+  /* If matshell, revert the scaling and shifting */
+  if (mastereq->usematshell){
+    MatAssemblyBegin(A, MAT_FINAL_ASSEMBLY);
+    MatAssemblyEnd(A, MAT_FINAL_ASSEMBLY);
+  }
+
+  /* --- Update state x += dt * stage --- */
   VecAXPY(x, dt, stage);
 }
 
@@ -112,24 +160,37 @@ void ImplMidpoint::evolveBWD(const double tstop, const double tstart, const Vec 
     MatMult(A, x, rhs);
   }
 
-  /* Solve for adjoint stage variable (I-dt/2 A^T) stage_adj = x_adj */
-  NeumannSolve(A, x_adj, stage_adj, dt/2.0, true);
+  /* Solve for adjoint stage variable */
+  MatScale(A, - dt/2.0);
+  MatShift(A, 1.0);  // WARNING: this can be very slow if some diagonal elements are missing.
+  KSPSolveTranspose(linearsolver, x_adj, stage_adj);
+
+  double rnorm;
+  KSPGetResidualNorm(linearsolver, &rnorm);
+  if (rnorm > 1e-3)  printf("Residual norm: %1.5e\n", rnorm);
 
   // k_bar = h*k_bar 
   VecScale(stage_adj, dt);
 
   /* Add to reduced gradient */
   if (compute_gradient) {
-    // first recompute stage
-    NeumannSolve(A, rhs, stage, dt/2.0, false);
+    KSPSolve(linearsolver, rhs, stage);
     VecAYPX(stage, dt / 2.0, x);
     mastereq->computedRHSdp(thalf, stage, stage_adj, 1.0, grad);
   }
 
   /* Revert changes to RHS from above */
   A = mastereq->getRHS();
+/* If matshell, revert the scaling and shifting */
+  if (mastereq->usematshell){
+    MatAssemblyBegin(A, MAT_FINAL_ASSEMBLY);
+    MatAssemblyEnd(A, MAT_FINAL_ASSEMBLY);
+  } else {
+    MatShift(A, -1.0); 
+    MatScale(A, - 2.0/dt);
+  }
 
-  /* Update adjoint state x_adj += dt * A^Tstage_adj */
+  /* Update adjoint state x_adj += dt * A^Tstage_adj --- */
   MatMultTransposeAdd(A, stage_adj, x_adj, x_adj);
 
 }

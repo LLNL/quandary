@@ -46,7 +46,3 @@ PetscErrorCode StateHasTrace1(Vec x, PetscReal tol, PetscBool *flag);
  * Read data from file
  */
 void read_vector(const char *filename, double *var, int dim);
-
-
-// PowerIteration to compute y = (I - alpha * A)^{-1} b
-void NeumannSolve(Mat A, Vec b, Vec y, double alpha, bool transpose);
