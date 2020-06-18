@@ -199,9 +199,17 @@ int main(int argc,char **argv)
   }
 
   /* --- Initialize the time-stepper --- */
+  LinearSolverType linsolvetype;
+  std::string linsolvestr = config.GetStrParam("linearsolver_type", "gmres");
+  int linsolve_maxiter = config.GetIntParam("linearsolver_maxiter", 10);
+  if      (linsolvestr.compare("gmres")   == 0) linsolvetype = GMRES;
+  else if (linsolvestr.compare("neumann") == 0) linsolvetype = NEUMANN;
+  else {
+    printf("\n\n ERROR: Unknown linear solver type: %s.\n\n", linsolvestr.c_str());
+    exit(1);
+  }
   /* My time stepper */
-  bool usegmres = config.GetBoolParam("usegmres", false);
-  TimeStepper *mytimestepper = new ImplMidpoint(mastereq, usegmres);
+  TimeStepper *mytimestepper = new ImplMidpoint(mastereq, linsolvetype, linsolve_maxiter);
   // TimeStepper *mytimestepper = new ExplEuler(mastereq);
 
   /* Petsc's Time-stepper */

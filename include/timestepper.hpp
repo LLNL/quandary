@@ -6,6 +6,13 @@
 #include <iostream> 
 #pragma once
 
+enum LinearSolverType{
+  GMRES,   // uses Petsc's GMRES solver
+  NEUMANN   // uses Neuman power iterations 
+};
+
+
+
 /* Base class for time steppers */
 class TimeStepper{
   protected:
@@ -45,15 +52,17 @@ class ExplEuler : public TimeStepper {
 class ImplMidpoint : public TimeStepper {
 
   Vec stage, stage_adj;  /* Intermediate stage vars */
-  Vec rhs, rhs_adj;   /* right hand side */
-  KSP linearsolver;   /* linear solver context */
-  PC  preconditioner; /* Preconditioner for linear solver */
+  Vec rhs, rhs_adj;      /* right hand side */
+  KSP ksp;               /* Petsc's linear solver context for running GMRES */
+  PC  preconditioner;    /* Preconditioner for linear solver */
   int KSPsolve_iterstaken_avg;  // Computing the average number of iterations taken by KSP solve
   int KSPsolve_counter;            // Counting how often KSPsolve is called
-  bool usegmres;      /* Use either Petsc's GMRES (true) or neumann series to solve linear system */
+  LinearSolverType linsolve_type;  // Either GMRES or NEUMANN
+  int linsolve_maxiter;
+  Vec tmp;                /* Auxiliary vector for applying the neuman iterations */
 
   public:
-    ImplMidpoint(MasterEq* mastereq_, bool usegmres);
+    ImplMidpoint(MasterEq* mastereq_, LinearSolverType linsolve_type_, int linsolve_maxiter_);
     ~ImplMidpoint();
 
 
@@ -61,6 +70,10 @@ class ImplMidpoint : public TimeStepper {
     void evolveFWD(const double tstart, const double tstop, Vec x);
     /* Evolve adjoint backward from tstop to tstart and update reduced gradient */
     void evolveBWD(const double tstart, const double tstop, const Vec x_stop, Vec x_adj, Vec grad, bool compute_gradient);
+
+    /* Solve (I-alpha*A) * x = b using Neumann iterations */
+    // bool transpose=true solves the transposed system (I-alpha A^T)x = b
+    void NeumannSolve(Mat A, Vec b, Vec x, double alpha, bool transpose);
 };
 
 
