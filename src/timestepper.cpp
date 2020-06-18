@@ -35,6 +35,7 @@ void ExplEuler::evolveFWD(const double tstart,const  double tstop, Vec x) {
   /* update x = x + hAx */
   MatMult(A, x, stage);
   VecAXPY(x, dt, stage);
+
 }
 
 void ExplEuler::evolveBWD(const double tstop,const  double tstart,const  Vec x, Vec x_adj, Vec grad, bool compute_gradient){
@@ -71,7 +72,7 @@ ImplMidpoint::ImplMidpoint(MasterEq* mastereq_, LinearSolverType linsolve_type_,
     /* Create Petsc's linear solver */
     KSPCreate(PETSC_COMM_WORLD, &ksp);
     KSPGetPC(ksp, &preconditioner);
-    if (mastereq->usematshell) PCSetType(preconditioner, PCNONE);
+    PCSetType(preconditioner, PCNONE);
     double reltol = 1.e-8;
     double abstol = 1.e-10;
     KSPSetTolerances(ksp, reltol, abstol, PETSC_DEFAULT, linsolve_maxiter);
@@ -204,13 +205,8 @@ void ImplMidpoint::evolveBWD(const double tstop, const double tstart, const Vec 
   /* Revert changes to RHS from above, if gmres solver */
   A = mastereq->getRHS();
   if (linsolve_type == GMRES) {
-    if (mastereq->usematshell){
-      MatAssemblyBegin(A, MAT_FINAL_ASSEMBLY);
-      MatAssemblyEnd(A, MAT_FINAL_ASSEMBLY);
-    } else {
-      MatShift(A, -1.0); 
-      MatScale(A, - 2.0/dt);
-    }
+    MatAssemblyBegin(A, MAT_FINAL_ASSEMBLY);
+    MatAssemblyEnd(A, MAT_FINAL_ASSEMBLY);
   }
 
   /* Update adjoint state x_adj += dt * A^Tstage_adj --- */

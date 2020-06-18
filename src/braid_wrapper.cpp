@@ -345,8 +345,8 @@ braid_Int myBraidApp::Access(braid_Vector u_, BraidAccessStatus &astatus){
       VecGetArrayRead(xseq, &x);
       /* Write real and imaginary parts */
       for (int i=0; i<mastereq->getDim(); i++) {
-        fprintf(ufile, "%1.10e  ", x[2*i]);  
-        fprintf(vfile, "%1.10e  ", x[2*i+1]);  
+        fprintf(ufile, "%1.10e  ", x[getIndexReal(i)]);  
+        fprintf(vfile, "%1.10e  ", x[getIndexImag(i)]);  
       }
       fprintf(ufile, "\n");
       fprintf(vfile, "\n");
@@ -433,6 +433,9 @@ braid_Int myBraidApp::BufUnpack(void *buffer, braid_Vector *u_ptr, BraidBufferSt
       VecSetValues(u->x, 1, &i, &(dbuffer[i]), INSERT_VALUES);
     }
   }
+
+  VecAssemblyBegin(u->x);
+  VecAssemblyEnd(u->x);
 
   return 0; 
 }

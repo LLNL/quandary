@@ -13,10 +13,11 @@ enum InitialConditionType {FROMFILE, PURE, DIAGONAL, BASIS};
 
 /* Define a matshell context containing pointers to data needed for applying the RHS matrix to a vector */
 typedef struct {
-  int noscil; 
+  std::vector<int> nlevels;
   IS *isu, *isv;
   Oscillator*** oscil_vec;
-  std::vector<double> *xi;
+  std::vector<double> xi;
+  std::vector<double> collapse_time;
   std::vector<double> control_Re, control_Im;
   Mat** Ac_vec;
   Mat** Bc_vec;
@@ -27,8 +28,10 @@ typedef struct {
 
 
 /* Define the Matrix-Vector products for the RHS MatShell */
-int myMatMult(Mat RHS, Vec x, Vec y);
-int myMatMultTranspose(Mat RHS, Vec x, Vec y);
+int myMatMult_matfree_2osc(Mat RHS, Vec x, Vec y);              // Matrix free solver, currently only for 2 oscillators 
+int myMatMultTranspose_matfree_2Osc(Mat RHS, Vec x, Vec y);
+int myMatMult_sparsemat(Mat RHS, Vec x, Vec y);                 // Sparse matrix solver
+int myMatMultTranspose_sparsemat(Mat RHS, Vec x, Vec y);
 
 
 /* 
@@ -39,9 +42,9 @@ class MasterEq{
   protected:
     int dim;                 // Dimension of vectorized system = N^2
     int noscillators;        // Number of oscillators
+    std::vector<int> nlevels; 
     Oscillator** oscil_vec;  // Vector storing pointers to the oscillators
 
-    Mat Re, Im;             // Real and imaginary part of system matrix operator
     Mat RHS;                // Realvalued, vectorized systemmatrix (2N^2 x 2N^2)
     MatShellCtx RHSctx;     // MatShell context that contains data needed to apply the RHS
 
@@ -57,9 +60,6 @@ class MasterEq{
     int nparams_max;     // Maximum number of design parameters per oscilator 
     IS isu, isv;         // Vector strides for accessing u=Re(x), v=Im(x) 
 
-    PetscInt    *colid1, *colid2; 
-    PetscScalar *negvals;         
-
     double *dRedp;
     double *dImdp;
     Vec Acu, Acv, Bcu, Bcv, auxil;
@@ -67,11 +67,11 @@ class MasterEq{
     PetscScalar* vals;   // holding values when evaluating dRHSdp
  
   public:
-    bool usematshell;        // decides if RHS is used as a shell matrix or full matrix
+    bool usematfree;  // Use matrix free solver
 
   public:
     MasterEq();
-    MasterEq(int noscillators_, Oscillator** oscil_vec_, const std::vector<double> xi_, LindbladType lindbladtype_, const std::vector<double> collapse_time_, bool usematshell_);
+    MasterEq(std::vector<int> nlevels, Oscillator** oscil_vec_, const std::vector<double> xi_, LindbladType lindbladtype_, const std::vector<double> collapse_time_, bool usematfree_);
     ~MasterEq();
 
     /* Return the i-th oscillator */
@@ -117,3 +117,8 @@ class MasterEq{
     int getRhoT0(const int iinit, const int ninit, const InitialConditionType initcond_type, const std::vector<int>& oscilIDs, Vec rho0);
 };
 
+
+int TensorGetIndex(const int nlevels0, const int nlevels1,const  int i0, const int i1, int i0p, const int i1p);
+double Hd(const double xi0, const double xi01, const double xi1,const int a, const int b);
+double L1diag(double decay0, double decay1, const int i0, const int i1, const int i0p, const int i1p);
+double L2(double dephase0, double dephase1, const int i0, const int i1, const int i0p, const int i1p);
