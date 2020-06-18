@@ -46,3 +46,9 @@ PetscErrorCode StateHasTrace1(Vec x, PetscReal tol, PetscBool *flag);
  * Read data from file
  */
 void read_vector(const char *filename, double *var, int dim);
+
+
+/*
+ * Solve (I-alpha*A) * x = b using Neuman series
+ */
+void NeumannSolve(Mat A, Vec b, Vec x, double alpha, bool transpose);

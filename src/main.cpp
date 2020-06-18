@@ -195,7 +195,8 @@ int main(int argc,char **argv)
 
   /* --- Initialize the time-stepper --- */
   /* My time stepper */
-  TimeStepper *mytimestepper = new ImplMidpoint(mastereq);
+  bool usegmres = config.GetBoolParam("usegmres", false);
+  TimeStepper *mytimestepper = new ImplMidpoint(mastereq, usegmres);
   // TimeStepper *mytimestepper = new ExplEuler(mastereq);
 
   /* Petsc's Time-stepper */
