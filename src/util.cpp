@@ -284,3 +284,24 @@ void read_vector(const char *filename, double *var, int dim) {
 
   fclose(file);
 }
+
+
+void NeumannSolve(Mat A, Vec b, Vec y, double alpha, bool transpose){
+
+  Vec tmp;
+  MatCreateVecs(A, &tmp, NULL);
+
+  // Initialize y = b
+  VecCopy(b, y);
+
+  int maxiter = 20;
+  for (int iter = 0; iter < maxiter; iter++) {
+    // tmp = Ab
+    if (!transpose) MatMult(A, y, tmp);
+    else            MatMultTranspose(A, y, tmp);
+    // y = b + alpha * tmp 
+    VecAXPBYPCZ(y, 1.0, alpha, 0.0, b, tmp);
+  }
+
+  VecDestroy(&tmp);
+}
