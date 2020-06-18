@@ -286,6 +286,7 @@ void read_vector(const char *filename, double *var, int dim) {
 }
 
 
+
 void NeumannSolve(Mat A, Vec b, Vec y, double alpha, bool transpose){
 
   Vec tmp;

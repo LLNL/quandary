@@ -1,5 +1,6 @@
 #include <petsc/private/tsimpl.h>        /*I "petscts.h"  I*/
 #include <petscts.h>
+#include <petscksp.h>
 #include "mastereq.hpp"
 #include <assert.h> 
 #include <iostream> 
@@ -45,9 +46,14 @@ class ImplMidpoint : public TimeStepper {
 
   Vec stage, stage_adj;  /* Intermediate stage vars */
   Vec rhs, rhs_adj;   /* right hand side */
+  KSP linearsolver;   /* linear solver context */
+  PC  preconditioner; /* Preconditioner for linear solver */
+  int KSPsolve_iterstaken_avg;  // Computing the average number of iterations taken by KSP solve
+  int KSPsolve_counter;            // Counting how often KSPsolve is called
+  bool usegmres;      /* Use either Petsc's GMRES (true) or neumann series to solve linear system */
 
   public:
-    ImplMidpoint(MasterEq* mastereq_);
+    ImplMidpoint(MasterEq* mastereq_, bool usegmres);
     ~ImplMidpoint();
 
 
