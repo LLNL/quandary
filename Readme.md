@@ -17,7 +17,17 @@ To build this project, you need to have the following packages installed:
 * Type `make cleanup` to clean the build directory.
 * Type `make -j main` to build the code. 
 
+### Notes for installing petsc
+* Clone Petsc from github
+* By default, Petsc will compile in debug mode. To configure petsc with compiler optimization, run
+  `./configure --with-debugging=0 --with-fc=0 --with-cxx=mpicxx --with-cc=mpicc COPTFLAGS='-O3' CXXOPTFLAGS='-O3'`
+* The output of `./configure` reports on how to set the `PETSC_DIR` and `PETSC_ARCH` variables
+* Compile petsc with `make all test`
+
+ 
+
 ## Running
 The code builds into the executable `./main`. It takes one argument being the name of the config file. The config file `AxC.cfg`, lists all possible config options. It is currently set to run the Alice-Cavity testcase (3x20 levels).
 * `./main AxC.cfg` for serial run
 * `srun -n36 ./main AxC.cfg` for parallel run using 36 cores
+
