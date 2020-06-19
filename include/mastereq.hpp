@@ -62,17 +62,20 @@ class MasterEq{
 
     double *dRedp;
     double *dImdp;
-    Vec Acu, Acv, Bcu, Bcv, auxil;
+    Vec Acu, Acv, Bcu, Bcv;
     int* cols;           // holding columns when evaluating dRHSdp
     PetscScalar* vals;   // holding values when evaluating dRHSdp
  
   public:
-    bool usematfree;  // Use matrix free solver
+    bool usematfree;  // Flag for using matrix free solver
 
   public:
     MasterEq();
     MasterEq(std::vector<int> nlevels, Oscillator** oscil_vec_, const std::vector<double> xi_, LindbladType lindbladtype_, const std::vector<double> collapse_time_, bool usematfree_);
     ~MasterEq();
+
+    /* initialize matrices needed for applying sparse-mat solver */
+    void initSparseMatSolver(LindbladType lindbladtype);
 
     /* Return the i-th oscillator */
     Oscillator* getOscillator(const int i);

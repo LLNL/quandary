@@ -38,7 +38,6 @@ MasterEq::MasterEq(std::vector<int> nlevels_, Oscillator** oscil_vec_, const std
   for (int iosc = 0; iosc < noscillators; iosc++) {
     dim *= oscil_vec[iosc]->getNLevels();
   }
-  int dimmat = dim;
   dim = dim*dim; // density matrix: N \times N -> vectorized: N^2
 
   /* Sanity check for parallel petsc */
@@ -54,11 +53,104 @@ MasterEq::MasterEq(std::vector<int> nlevels_, Oscillator** oscil_vec_, const std
   MatSetFromOptions(RHS); MatSetUp(RHS);
   MatAssemblyBegin(RHS,MAT_FINAL_ASSEMBLY); MatAssemblyEnd(RHS,MAT_FINAL_ASSEMBLY);
 
-  /* Allocate time-varying building blocks */
+  if (!usematfree) {
+    initSparseMatSolver(lindbladtype);
+  }
+
+  /* Create vector strides for accessing Re and Im part in x */
+  int ilow, iupp;
+  MatGetOwnershipRange(RHS, &ilow, &iupp);
+  int dimis = (iupp - ilow)/2;
+  ISCreateStride(PETSC_COMM_WORLD, dimis, ilow, 2, &isu);
+  ISCreateStride(PETSC_COMM_WORLD, dimis, ilow+1, 2, &isv);
+
+  /* Compute maximum number of design parameters over all oscillators */
+  nparams_max = 0;
+  for (int ioscil = 0; ioscil < getNOscillators(); ioscil++) {
+      int n = getOscillator(ioscil)->getNParams(); 
+      if (n > nparams_max) nparams_max = n;
+  }
+
+  /* Allocate some auxiliary vectors */
+  dRedp = new double[nparams_max];
+  dImdp = new double[nparams_max];
+  cols = new int[nparams_max];
+  vals = new double [nparams_max];
+  
+  /* Allocate MatShell context for applying RHS */
+  RHSctx.isu = &isu;
+  RHSctx.isv = &isv;
+  RHSctx.xi = xi;
+  RHSctx.collapse_time = collapse_time;
+  if (!usematfree){
+    RHSctx.Ac_vec = &Ac_vec;
+    RHSctx.Bc_vec = &Bc_vec;
+    RHSctx.Ad = &Ad;
+    RHSctx.Bd = &Bd;
+    RHSctx.Acu = &Acu;
+    RHSctx.Acv = &Acv;
+    RHSctx.Bcu = &Bcu;
+    RHSctx.Bcv = &Bcv;
+  }
+  RHSctx.nlevels = nlevels;
+  RHSctx.oscil_vec = &oscil_vec;
+  RHSctx.time = 0.0;
+  for (int iosc = 0; iosc < noscillators; iosc++) {
+    RHSctx.control_Re.push_back(0.0);
+    RHSctx.control_Im.push_back(0.0);
+  }
+
+  /* Set the MatMult routine for applying the RHS to a vector x */
+  if (usematfree) {
+    MatShellSetOperation(RHS, MATOP_MULT, (void(*)(void)) myMatMult_matfree_2osc);
+    MatShellSetOperation(RHS, MATOP_MULT_TRANSPOSE, (void(*)(void)) myMatMultTranspose_matfree_2Osc);
+  }
+  else {
+    MatShellSetOperation(RHS, MATOP_MULT, (void(*)(void)) myMatMult_sparsemat);
+    MatShellSetOperation(RHS, MATOP_MULT_TRANSPOSE, (void(*)(void)) myMatMultTranspose_sparsemat);
+  }            
+
+}
+
+
+MasterEq::~MasterEq(){
+  if (dim > 0){
+    MatDestroy(&RHS);
+    if (!usematfree){
+      MatDestroy(&Ad);
+      MatDestroy(&Bd);
+      for (int iosc = 0; iosc < noscillators; iosc++) {
+        MatDestroy(&Ac_vec[iosc]);
+        MatDestroy(&Bc_vec[iosc]);
+      }
+      VecDestroy(&Acu);
+      VecDestroy(&Acv);
+      VecDestroy(&Bcu);
+      VecDestroy(&Bcv);
+      delete [] Ac_vec;
+      delete [] Bc_vec;
+    }
+    delete [] dRedp;
+    delete [] dImdp;
+    delete [] vals;
+    delete [] cols;
+
+    ISDestroy(&isu);
+    ISDestroy(&isv);
+  }
+}
+
+
+void MasterEq::initSparseMatSolver(LindbladType lindbladtype){
+
   Mat loweringOP, loweringOP_T;
   Mat numberOP;
+
+  /* Allocate time-varying building blocks */
   Ac_vec = new Mat[noscillators];
   Bc_vec = new Mat[noscillators];
+
+  int dimmat = (int) sqrt(dim);
 
   /* Compute building blocks */
   for (int iosc = 0; iosc < noscillators; iosc++) {
@@ -202,92 +294,14 @@ MasterEq::MasterEq(std::vector<int> nlevels_, Oscillator** oscil_vec_, const std
   MatAssemblyBegin(Ad, MAT_FINAL_ASSEMBLY);
   MatAssemblyEnd(Ad, MAT_FINAL_ASSEMBLY);
 
-  /* Create vector strides for accessing Re and Im part in x */
-  int ilow, iupp;
-  MatGetOwnershipRange(RHS, &ilow, &iupp);
-  int dimis = (iupp - ilow)/2;
-  ISCreateStride(PETSC_COMM_WORLD, dimis, ilow, 2, &isu);
-  ISCreateStride(PETSC_COMM_WORLD, dimis, ilow+1, 2, &isv);
-
-  /* Compute maximum number of design parameters over all oscillators */
-  nparams_max = 0;
-  for (int ioscil = 0; ioscil < getNOscillators(); ioscil++) {
-      int n = getOscillator(ioscil)->getNParams(); 
-      if (n > nparams_max) nparams_max = n;
-  }
-
   /* Allocate some auxiliary vectors */
-  dRedp = new double[nparams_max];
-  dImdp = new double[nparams_max];
-  cols = new int[nparams_max];
-  vals = new double [nparams_max];
-  
   MatCreateVecs(Ac_vec[0], &Acu, NULL);
   MatCreateVecs(Ac_vec[0], &Acv, NULL);
   MatCreateVecs(Bc_vec[0], &Bcu, NULL);
   MatCreateVecs(Bc_vec[0], &Bcv, NULL);
-  MatCreateVecs(Bc_vec[0], &auxil, NULL);
-
-  /* Allocate MatShell context for applying RHS */
-  RHSctx.isu = &isu;
-  RHSctx.isv = &isv;
-  RHSctx.xi = xi;
-  RHSctx.collapse_time = collapse_time;
-  RHSctx.Ac_vec = &Ac_vec;
-  RHSctx.Bc_vec = &Bc_vec;
-  RHSctx.Ad = &Ad;
-  RHSctx.Bd = &Bd;
-  RHSctx.Acu = &Acu;
-  RHSctx.Acv = &Acv;
-  RHSctx.Bcu = &Bcu;
-  RHSctx.Bcv = &Bcv;
-  RHSctx.nlevels = nlevels;
-  RHSctx.oscil_vec = &oscil_vec;
-  RHSctx.time = 0.0;
-  for (int iosc = 0; iosc < noscillators; iosc++) {
-    RHSctx.control_Re.push_back(0.0);
-    RHSctx.control_Im.push_back(0.0);
-  }
-
-  /* Set the MatMult routine for applying the RHS to a vector x */
-  if (usematfree) {
-    MatShellSetOperation(RHS, MATOP_MULT, (void(*)(void)) myMatMult_matfree_2osc);
-    MatShellSetOperation(RHS, MATOP_MULT_TRANSPOSE, (void(*)(void)) myMatMultTranspose_matfree_2Osc);
-  }
-  else {
-    MatShellSetOperation(RHS, MATOP_MULT, (void(*)(void)) myMatMult_sparsemat);
-    MatShellSetOperation(RHS, MATOP_MULT_TRANSPOSE, (void(*)(void)) myMatMultTranspose_sparsemat);
-  }            
-
-}
 
 
-MasterEq::~MasterEq(){
-  if (dim > 0){
-    MatDestroy(&RHS);
-    MatDestroy(&Ad);
-    MatDestroy(&Bd);
-    for (int iosc = 0; iosc < noscillators; iosc++) {
-      MatDestroy(&Ac_vec[iosc]);
-      MatDestroy(&Bc_vec[iosc]);
-    }
-    delete [] Ac_vec;
-    delete [] Bc_vec;
-    delete [] dRedp;
-    delete [] dImdp;
-    // delete [] vals;
-
-    ISDestroy(&isu);
-    ISDestroy(&isv);
-
-    VecDestroy(&Acu);
-    VecDestroy(&Acv);
-    VecDestroy(&Bcu);
-    VecDestroy(&Bcv);
-    VecDestroy(&auxil);
-  }
-}
-
+ }
 
 int MasterEq::getDim(){ return dim; }
 
@@ -399,7 +413,7 @@ void MasterEq::createReducedDensity(const Vec rho, Vec *reduced, const std::vect
 
 
 void MasterEq::createReducedDensity_diff(Vec rhobar, const Vec reducedbar,const std::vector<int>& oscilIDs) {
-  
+
   /* Get dimensions of preceding and following subsystem */
   int dim_pre  = 1; 
   int dim_post = 1;
