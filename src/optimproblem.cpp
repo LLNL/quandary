@@ -180,7 +180,7 @@ OptimProblem::OptimProblem(MapParam config, myBraidApp* primalbraidapp_, myAdjoi
     char filename[255];
     sprintf(filename, "%s/optimTao.dat", primalbraidapp->datadir.c_str());
     optimfile = fopen(filename, "w");
-    fprintf(optimfile, "#iter    obj_value           ||grad||               LS step          Regularization\n");
+    fprintf(optimfile, "#iter    obj_value           ||grad||               LS step           Costfunction     Tikhonov-regul      Penalty-term\n");
   } 
 
   /* Store optimization bounds */
@@ -259,7 +259,9 @@ double OptimProblem::evalF(const Vec x) {
   mastereq->setControlAmplitudes(x); 
 
   /*  Iterate over initial condition */
-  obj_cost = 0.0;
+  obj_cost  = 0.0;
+  obj_regul = 0.0;
+  obj_penal = 0.0;
   for (int iinit = 0; iinit < ninit_local; iinit++) {
       
     /* Prepare the initial condition in [rank * ninit_local, ... , (rank+1) * ninit_local - 1] */
@@ -281,17 +283,21 @@ double OptimProblem::evalF(const Vec x) {
 
     /* Add integral penalty term */
     double obj_iinit_penalty = objectivePenalty();
-    obj_cost += penalty_coeff * obj_iinit_penalty;
+    obj_penal += penalty_coeff * obj_iinit_penalty;
   }
 
-  /* Broadcast objective from last to all time processors */
+  /* Broadcast cost function from last to all time processors */
   MPI_Bcast(&obj_cost, 1, MPI_DOUBLE, mpisize_braid-1, primalbraidapp->comm_braid);
 
-  /* Sum up objective from all initial conditions */
+  /* Sum up cost from all initial conditions */
   obj_cost = 1./ninit * obj_cost;
   double myobj = obj_cost;
   MPI_Allreduce(&myobj, &obj_cost, 1, MPI_DOUBLE, MPI_SUM, comm_init);
   // if (mpirank_init == 0) printf("%d: global sum objective: %1.14e\n\n", mpirank_init, obj);
+
+  /* Sum penalty from all braid processors */
+  double mypen = obj_penal;
+  MPI_Allreduce(&mypen, &obj_penal, 1, MPI_DOUBLE, MPI_SUM, primalbraidapp->comm_braid);
 
   /* Add regularization objective += gamma/2 * ||x||^2*/
   double xnorm;
@@ -299,12 +305,12 @@ double OptimProblem::evalF(const Vec x) {
   obj_regul = gamma_tik / 2. * pow(xnorm,2.0);
 
   /* Store and return objective value */
-  objective = obj_cost + obj_regul;
+  objective = obj_cost + obj_regul + obj_penal;
 
   /* Output */
-  // if (mpirank_world == 0) {
-    // std::cout<< mpirank_world << ": Obj = " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << std::endl;
-  // }
+  if (mpirank_world == 0) {
+    std::cout<< mpirank_world << ": Obj = " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal << std::endl;
+  }
 
   return objective;
 }
@@ -679,7 +685,7 @@ PetscErrorCode TaoMonitor(Tao tao,void*ptr){
     TaoGetSolutionStatus(tao, &iter, NULL, NULL, NULL, &deltax, &reason);
 
     /* Print to optimization file */
-    fprintf(ctx->optimfile, "%05d  %1.14e  %1.14e  %.8f  %1.14e\n", iter, ctx->objective, ctx->gnorm, deltax, ctx->obj_regul);
+    fprintf(ctx->optimfile, "%05d  %1.14e  %1.14e  %.8f  %1.14e  %1.14e  %1.14e\n", iter, ctx->objective, ctx->gnorm, deltax, ctx->obj_cost, ctx->obj_regul, ctx->obj_penal);
     fflush(ctx->optimfile);
 
     /* Print parameters and controls to file */
@@ -747,20 +753,26 @@ double OptimProblem::objectivePenalty(){
   Vec x;
   double dt = primalbraidapp->total_time/primalbraidapp->ntime;
 
-  /* Loop over time domain */
-  for (int n = 0; n<primalbraidapp->ntime; n++){
+  /* Loop over time domain, all except the boundary */
+  for (int n = 1; n<primalbraidapp->ntime; n++){
     /* Get state from primal app */
     x = primalbraidapp->getStateVec(n*dt);
     if (x == NULL) // only false on one braid processor!
       continue;
 
-    /* Compute objective */
-
+    /* evaluate objective */
+    double obj = objectiveT(x);
     
+    /* evaluate weight */
+    double weight = pow((double) n / (double) primalbraidapp->ntime, penalty_exp);  
+  
     /* Add to penalty term */
-    
-    /* Sum up from all braid processors */
+    penalty += dt * weight * obj;
   }
+
+  /* Add the last term at final time */
+  x = primalbraidapp->getStateVec(primalbraidapp->total_time);
+  if (x != NULL) penalty += dt/2.0 * objectiveT(x);
 
   return penalty;
 }

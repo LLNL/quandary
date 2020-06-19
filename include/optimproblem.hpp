@@ -40,8 +40,9 @@ class OptimProblem {
   Gate  *targetgate;               /* Target gate */
   int ndesign;                     /* Number of global design parameters */
   double objective;                /* Holds current objective function value */
-  double obj_cost;                 /* Regularization term in objective */
-  double obj_regul;                /* Cost function term in objective */
+  double obj_cost;                 /* Cost function term in objective */
+  double obj_regul;                /* Regularization term in objective */
+  double obj_penal;                /* Penalty term in objective */
   double gnorm;                    /* Holds current norm of gradient */
   double gamma_tik;                /* Parameter for tikhonov regularization */
   double penalty_coeff;            /* Parameter multiplying integral penalty term */
