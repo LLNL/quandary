@@ -82,7 +82,7 @@ class OptimProblem {
   void objectiveT_diff(Vec finalstate, const double obj_local, const double obj_bar);
 
   /* Compute penalty integral term. WARNING: this might expensive, since it's a loop over all time steps */
-  double objectivePenalty();
+  double penaltyIntegral();
 
   /* Call this after TaoSolve() has finished to print out some information */
   void getSolution(Vec* opt);

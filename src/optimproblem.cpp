@@ -282,7 +282,7 @@ double OptimProblem::evalF(const Vec x) {
     // printf("%d, %d: iinit objective: %1.14e\n", mpirank_world, mpirank_init, obj_iinit);
 
     /* Add integral penalty term */
-    double obj_iinit_penalty = objectivePenalty();
+    double obj_iinit_penalty = penaltyIntegral();
     obj_penal += penalty_coeff * obj_iinit_penalty;
   }
 
@@ -748,7 +748,7 @@ PetscErrorCode TaoEvalGradient(Tao tao, Vec x, Vec G, void*ptr){
   return 0;
 }
 
-double OptimProblem::objectivePenalty(){
+double OptimProblem::penaltyIntegral(){
   double penalty = 0.0;
   Vec x;
   double dt = primalbraidapp->total_time/primalbraidapp->ntime;
