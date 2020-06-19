@@ -38,6 +38,10 @@ OptimProblem::OptimProblem(MapParam config, myBraidApp* primalbraidapp_, myAdjoi
   grtol = config.GetDoubleParam("optim_rtol", 1e-4);
   maxiter = config.GetIntParam("optim_maxiter", 200);
 
+  /* Prepare for penalty integral term */
+  penalty_coeff = config.GetDoubleParam("optim_penalty", 1e-4);
+  penalty_exp = config.GetIntParam("optim_penalty_exponent", 10);
+
   /* Reset */
   objective = 0.0;
 
@@ -274,6 +278,10 @@ double OptimProblem::evalF(const Vec x) {
     double obj_iinit = objectiveT(finalstate);
     obj_cost += obj_iinit;
     // printf("%d, %d: iinit objective: %1.14e\n", mpirank_world, mpirank_init, obj_iinit);
+
+    /* Add integral penalty term */
+    double obj_iinit_penalty = objectivePenalty();
+    obj_cost += penalty_coeff * obj_iinit_penalty;
   }
 
   /* Broadcast objective from last to all time processors */
@@ -732,4 +740,27 @@ PetscErrorCode TaoEvalGradient(Tao tao, Vec x, Vec G, void*ptr){
   ctx->evalGradF(x, G);
   
   return 0;
+}
+
+double OptimProblem::objectivePenalty(){
+  double penalty = 0.0;
+  Vec x;
+  double dt = primalbraidapp->total_time/primalbraidapp->ntime;
+
+  /* Loop over time domain */
+  for (int n = 0; n<primalbraidapp->ntime; n++){
+    /* Get state from primal app */
+    x = primalbraidapp->getStateVec(n*dt);
+    if (x == NULL) // only false on one braid processor!
+      continue;
+
+    /* Compute objective */
+
+    
+    /* Add to penalty term */
+    
+    /* Sum up from all braid processors */
+  }
+
+  return penalty;
 }

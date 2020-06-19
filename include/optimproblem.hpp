@@ -44,6 +44,8 @@ class OptimProblem {
   double obj_regul;                /* Cost function term in objective */
   double gnorm;                    /* Holds current norm of gradient */
   double gamma_tik;                /* Parameter for tikhonov regularization */
+  double penalty_coeff;            /* Parameter multiplying integral penalty term */
+  double penalty_exp;              /* Exponent inside integral penalty term (p) */
   double gatol;                    /* Stopping criterion based on absolute gradient norm */
   double grtol;                    /* Stopping criterion based on relative gradient norm */
   int maxiter;                     /* Stopping criterion based on maximum number of iterations */
@@ -78,8 +80,13 @@ class OptimProblem {
   /* Derivative of final-time part of objective times obj_bar */
   void objectiveT_diff(Vec finalstate, const double obj_local, const double obj_bar);
 
+  /* Compute penalty integral term. WARNING: this might expensive, since it's a loop over all time steps */
+  double objectivePenalty();
+
   /* Call this after TaoSolve() has finished to print out some information */
   void getSolution(Vec* opt);
+
+  static void integral_penalty();
 };
 
 /* Monitor the optimization progress. This routine is called in each iteration of TaoSolve() */
