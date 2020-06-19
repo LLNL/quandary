@@ -258,7 +258,7 @@ int main(int argc,char **argv)
 
   double objective;
   /* --- Solve primal --- */
-  if (runtype == primal || runtype == adjoint) {
+  if (runtype == primal) {
     optimctx->getStartingPoint(xinit);
     objective = optimctx->evalF(xinit);
     if (mpirank_world == 0) printf("%d: Tao primal: Objective %1.14e, \n", mpirank_world, objective);
@@ -268,7 +268,7 @@ int main(int argc,char **argv)
   /* --- Solve adjoint --- */
   if (runtype == adjoint) {
     double gnorm = 0.0;
-
+    optimctx->getStartingPoint(xinit);
     optimctx->evalGradF(xinit, grad);
     VecNorm(grad, NORM_2, &gnorm);
     VecView(grad, PETSC_VIEWER_STDOUT_WORLD);

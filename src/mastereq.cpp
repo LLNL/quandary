@@ -949,31 +949,6 @@ int myMatMultTranspose_sparsemat(Mat RHS, Vec x, Vec y) {
 }
 
 
-
-double Hd(const double xi0, const double xi01, const double xi1,const int a, const int b) {
-  return - xi0*M_PI * a * (a-1) - xi01*M_PI*2 * a * b - xi1*M_PI * b * (b-1); 
-}
-
-double L2(double dephase0, double dephase1, const int i0, const int i1, const int i0p, const int i1p){
-  return dephase0 * ( i0*i0p - 1./2. * (i0*i0 + i0p*i0p) ) + dephase1 * ( i1*i1p - 1./2. * (i1*i1 + i1p*i1p) );
-}
-
-
-
-double L1diag(double decay0, double decay1, const int i0, const int i1, const int i0p, const int i1p){
-  return - decay0 / 2.0 * ( i0 + i0p ) - decay1 / 2.0 * ( i1 + i1p );
-}
-
-
-int TensorGetIndex(const int nlevels0, const int nlevels1,const  int i0, const int i1, int i0p, const int i1p){
-  return i0*nlevels1 + i1 + (nlevels0 * nlevels1) * ( i0p * nlevels1 + i1p);
-}
-
-
-
-
-
-
 /* Define the action of RHS on a vector x */
 template <int n0, int n1>
 int myMatMult_matfree(Mat RHS, Vec x, Vec y){
