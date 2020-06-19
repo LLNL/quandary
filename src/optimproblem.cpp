@@ -516,16 +516,20 @@ double OptimProblem::objectiveT(Vec finalstate){
         break;
 
       case GROUNDSTATE:
-        /* compare full or pariatl state to groundstate */
+        /* compare full state to groundstate */
+
         MasterEq *meq= primalbraidapp->mastereq;
-        Vec state;
+        Vec state = finalstate;
 
         /* If sub-system is requested, compute reduced density operator first */
         if (obj_oscilIDs.size() < meq->getNOscillators()) { 
-          meq->createReducedDensity(finalstate, &state, obj_oscilIDs);
-        } else { // full density matrix system 
-           state = finalstate; 
+          printf("ERROR: Computing reduced density matrix is currently not available and needs testing!\n");
+          exit(1);
         }
+          // meq->createReducedDensity(finalstate, &state, obj_oscilIDs);
+        // } else { // full density matrix system 
+          //  state = finalstate; 
+        // }
 
 
         /* Compute frobenius norm: frob = || q(T) - e_1 ||^2 */
@@ -538,11 +542,10 @@ double OptimProblem::objectiveT(Vec finalstate){
         VecAssemblyBegin(state);
         VecAssemblyEnd(state);
 
-        /* Destroy reduced density matrix, if it has been created */
-        if (obj_oscilIDs.size() < primalbraidapp->mastereq->getNOscillators()) { 
-          VecDestroy(&state);
-        }
-
+        // /* Destroy reduced density matrix, if it has been created */
+        // if (obj_oscilIDs.size() < primalbraidapp->mastereq->getNOscillators()) { 
+        //   VecDestroy(&state);
+        // }
         break;
     }
 
@@ -575,39 +578,38 @@ void OptimProblem::objectiveT_diff(Vec finalstate, const double obj, const doubl
     case GROUNDSTATE:
 
       MasterEq *meq= primalbraidapp->mastereq;
-      Vec state;
+      Vec state = finalstate;
 
       /* If sub-system is requested, compute reduced density operator first */
+      // TODO: CHECK IMPLEMENTATION OF REDUCEDDENSITY!
       if (obj_oscilIDs.size() < primalbraidapp->mastereq->getNOscillators()) { 
-        /* Create reduced density matrix */
-        meq->createReducedDensity(finalstate, &state, obj_oscilIDs);
-      } else { // full density matrix system
-         state = finalstate;
+        printf("ERROR: Computing reduced density matrix is currently not available and needs testing!\n");
+        exit(1);
       }
-
-      const PetscScalar *stateptr;
-      PetscScalar *statebarptr;
-      Vec statebar;
-      VecDuplicate(state, &statebar);
+        /* Create reduced density matrix */
+        // meq->createReducedDensity(finalstate, &state, obj_oscilIDs);
+      // } else { // full density matrix system
+      //    state = finalstate;
+      // }
 
       int ilo, ihi;
-      VecGetOwnershipRange(statebar, &ilo, &ihi);
+      VecGetOwnershipRange(rho_t0_bar, &ilo, &ihi);
 
       /* Derivative of frobenius norm: 2 * (q(T) - e_1) * frob_bar */
-      VecAXPY(statebar, 2.0*obj_bar, state);
-      if (ilo <= 0 && 0 < ihi) VecSetValue(statebar, 0, -2.0*obj_bar, ADD_VALUES);
-      VecAssemblyBegin(statebar); VecAssemblyEnd(statebar);
+      VecAXPY(rho_t0_bar, 2.0*obj_bar, state);
+      if (ilo <= 0 && 0 < ihi) VecSetValue(rho_t0_bar, 0, -2.0*obj_bar, ADD_VALUES);
+      VecAssemblyBegin(rho_t0_bar); VecAssemblyEnd(rho_t0_bar);
       
-      /* Pass derivative from statebar to rho_t0_bar */
-      if (obj_oscilIDs.size() < meq->getNOscillators()) {
-        /* Derivative of partial trace  */
-        meq->createReducedDensity_diff(rho_t0_bar, statebar, obj_oscilIDs);
-        VecDestroy(&state);
-      } else {
-        VecCopy(statebar, rho_t0_bar);
-      }
+      // /* Pass derivative from statebar to rho_t0_bar */
+      // if (obj_oscilIDs.size() < meq->getNOscillators()) {
+      //   /* Derivative of partial trace  */
+      //   meq->createReducedDensity_diff(rho_t0_bar, statebar, obj_oscilIDs);
+      //   VecDestroy(&state);
+      // } else {
+      //   VecCopy(statebar, rho_t0_bar);
+      // }
 
-      VecDestroy(&statebar);
+      // VecDestroy(&statebar);
     }
   }
 }
