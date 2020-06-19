@@ -76,13 +76,14 @@ class OptimProblem {
   /* Compute initial guess for optimization variables */
   void getStartingPoint(Vec x);
 
-  /* Compute final-time part of the objective */
-  double objectiveT(Vec finalstate);
-  /* Derivative of final-time part of objective times obj_bar */
-  void objectiveT_diff(Vec finalstate, const double obj_local, const double obj_bar);
+  /* Compute local objective function J(rho(t)) */
+  double objectiveT(Vec state);
+  /* Derivative of local objective function times obj_bar */
+  void objectiveT_diff(Vec state, Vec state_bar, const double obj_bar);
 
   /* Compute penalty integral term. WARNING: this might expensive, since it's a loop over all time steps */
   double penaltyIntegral();
+  void penaltyIntegral_diff(const double pbar);
 
   /* Call this after TaoSolve() has finished to print out some information */
   void getSolution(Vec* opt);

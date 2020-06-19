@@ -101,11 +101,13 @@ Vec myBraidApp::getStateVec(const double time) {
   Vec x = NULL;
   braid_BaseVector ubase;
   myBraidVector *u;
-  const double* state_ptr= NULL;
 
   int tindex = getTimeStepIndex(time, total_time/ ntime);
 
-  if (time == total_time) _braid_UGetLast(core->GetCore(), &ubase);
+  if (time == total_time) {
+    _braid_UGetLast(core->GetCore(), &ubase);
+    printf("_braid_UGetLast\n");
+  }
   else _braid_UGetVectorRef(core->GetCore(), 0, tindex, &ubase);
   if (ubase != NULL) { // only true on ONE processor !!
     u = (myBraidVector *)ubase->userVector;
@@ -548,9 +550,10 @@ myAdjointBraidApp::myAdjointBraidApp(MPI_Comm comm_braid_, double total_time_, i
   /* Ensure that primal core stores all points */
   primalcore->SetStorage(0);
 
-  /* Store all points for adjoint. */
+  /* Store all points for adjoint, needed for penalty integral term */
   /* Alternatively, recompute the adjoint states during PostProcessing for computing gradient */
-  // core->SetStorage(0);
+  core->SetStorage(0);
+  
 
   /* Revert processor ranks for solving adjoint */
   core->SetRevertedRanks(1);
