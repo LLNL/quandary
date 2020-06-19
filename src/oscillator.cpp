@@ -63,7 +63,7 @@ Mat Oscillator::getLoweringOP(bool dummy) {
   else return LoweringOP;
 }
 
-void Oscillator::flushControl(int ntime, double dt, const char* filename) {
+void Oscillator::flushControl(const int ntime, const double dt, const char* filename) {
   double time;
   double Re, Im;    // Rotating frame controls p(t), q(t)
   double Lab;       // Lab-frame control f(t)
@@ -89,7 +89,7 @@ void Oscillator::setParams(const double* x){
 }
 
 
-int Oscillator::createNumberOP(int dim_prekron, int dim_postkron, Mat* numberOP) {
+int Oscillator::createNumberOP(const int dim_prekron, const int dim_postkron, Mat* numberOP) {
 
   int dim_number = dim_prekron*nlevels*dim_postkron;
 
@@ -142,7 +142,7 @@ int Oscillator::createLoweringOP(int dim_prekron, int dim_postkron, Mat* lowerin
 }
 
 
-int Oscillator::evalControl(double t, double* Re_ptr, double* Im_ptr){
+int Oscillator::evalControl(const double t, double* Re_ptr, double* Im_ptr){
 
   if ( t > Tfinal ){
     printf("WARNING: accessing spline outside of [0,T] at %f. Returning 0.0\n", t);
@@ -157,7 +157,7 @@ int Oscillator::evalControl(double t, double* Re_ptr, double* Im_ptr){
   return 0;
 }
 
-int Oscillator::evalControl_diff(double t, double* dRedp, double* dImdp) {
+int Oscillator::evalControl_diff(const double t, double* dRedp, double* dImdp) {
 
   if ( t > Tfinal ){
     printf("WARNING: accessing spline derivative outside of [0,T]. Returning 0.0\n");
@@ -175,7 +175,7 @@ int Oscillator::evalControl_diff(double t, double* dRedp, double* dImdp) {
   return 0;
 }
 
-int Oscillator::evalControl_Labframe(double t, double* f){
+int Oscillator::evalControl_Labframe(const double t, double* f){
 
   if ( t > Tfinal ){
     printf("WARNING: accessing spline outside of [0,T] at %f. Returning 0.0\n", t);
@@ -188,7 +188,7 @@ int Oscillator::evalControl_Labframe(double t, double* f){
   return 0;
 }
 
-double Oscillator::expectedEnergy(Vec x) {
+double Oscillator::expectedEnergy(const Vec x) {
 
   int dimmat;
   MatGetSize(NumberOP, &dimmat, NULL);
@@ -219,7 +219,7 @@ double Oscillator::expectedEnergy(Vec x) {
 }
 
 
-void Oscillator::expectedEnergy_diff(Vec x, Vec x_bar, double obj_bar) {
+void Oscillator::expectedEnergy_diff(const Vec x, Vec x_bar, const double obj_bar) {
   int dimmat;
   MatGetSize(NumberOP, &dimmat, NULL);
   double num_diag;
@@ -232,7 +232,7 @@ void Oscillator::expectedEnergy_diff(Vec x, Vec x_bar, double obj_bar) {
   for (int i=0; i<dimmat; i++) {
     MatGetValue(NumberOP, i, i, &num_diag);
     int idx_diag = i * dimmat + i;
-    idx_diag = 2 * idx_diag;
+    idx_diag = getIndexReal(idx_diag);
     double val = num_diag * obj_bar;
     if (ilow < idx_diag && idx_diag < iupp) VecSetValues(x_bar, 1, &idx_diag, &val, ADD_VALUES);
   }
@@ -241,11 +241,11 @@ void Oscillator::expectedEnergy_diff(Vec x, Vec x_bar, double obj_bar) {
 }
 
 
-void Oscillator::population(Vec x, std::vector<double> *pop) {
+void Oscillator::population(const Vec x, std::vector<double> &pop) {
 
   int dimN = dim_preOsc * nlevels * dim_postOsc;
 
-  assert ((*pop).size() == nlevels);
+  assert (pop.size() == nlevels);
 
   /* Get locally owned portion of x */
   int ilow, iupp;
@@ -270,6 +270,6 @@ void Oscillator::population(Vec x, std::vector<double> *pop) {
         sum += val;
       }
     }
-    (*pop)[i] = sum;
+    pop[i] = sum;
   } 
 }

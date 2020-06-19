@@ -1,0 +1,105 @@
+\documentclass[letterpaper]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath}
+\usepackage{dsfont}
+\usepackage{graphicx}
+\usepackage[utf8]{inputenc}
+\usepackage{xcolor}
+% \usepackage[legalpaper, margin=2in]{geometry}
+\parindent0pt
+\parskip 1.5ex plus 1ex minus .5ex
+
+\DeclareMathOperator{\Tr}{Tr}
+\newcommand{\Ell}{\mathcal{L}}
+\newcommand{\R}{\mathds{R}}
+\newcommand{\C}{\mathds{C}}
+
+
+\title{Alice-Cavity Cooling problem}
+\author{Stefanie G{\"u}nther}
+% \date{\today}
+
+\begin{document}
+\maketitle
+
+Consider the coupled quantum system of a qudit (Alice) with $n_A$ levels and a readout cavity with $n_C$ levels. The density matrix $\rho$ is in $\C^{n_An_C \times n_An_C}$.The goal is to drive the coupled system from any initial state to the ground state.
+
+\section{Model equations}
+We solve Lindblad's master equation in the rotating frame
+\begin{align}
+    \dot \rho(t) = -i \left(H(t)\rho(t) - \rho(t)H(t) \right) + [\Ell \rho(t)]
+\end{align}
+with the following definitions:
+
+\begin{enumerate}
+  \item The rotating-frame \textbf{Hamiltonian} is given by 
+    \begin{align}
+        H(t) &= H_d + H_c(t) \quad \text{with} \\
+        H_d  &= -\frac{\xi_a}{2} a^\dagger a^\dagger a a - \frac{\xi_c}{2} c^\dagger c^\dagger c c - \xi_{ac} a^\dagger a c^\dagger c \\ 
+        H_c(t) &= p^a(\alpha^a,t) (a+a^\dagger) + iq^a(\alpha^a, t)(a-a^\dagger) + p^c(\alpha^c,t)(c+c^\dagger) + iq^c(\alpha^c,t)(c-c^\dagger)
+    \end{align}
+    for Alice's and the cavity's lowering operator $a$ and $c$ given by 
+    \begin{align}
+        a = a^{(n_A)} \otimes I_{n_c} \quad c = I_{n_a} \otimes a^{(n_c)}  \\
+        \text{with} \quad a^{(n_k)} = \begin{pmatrix} 0 & 1 & \\ & 0 & \sqrt{2} & \\ & & \ddots  & \ddots \end{pmatrix} \in \R^{n_k\otimes n_k}
+    \end{align}
+    where $I_n$ denotes the identiy matrix in $\R^{n\times n}$, and the following coefficients:
+    \begin{align}
+        \xi_a &= 225.6 [\text{MHz}] * 2\pi \quad \text{is the qudit anharmonicity} \\
+        \xi_c &= 0 [\text{MHz}] * 2\pi  \quad \quad\text{is the cavity anharmonicity which is assumed to be very small} \\
+        \xi_{ac} &= 1 [\text{Mhz}] * 2\pi \quad \quad\text{is the quidit cavity dispersive shift}
+    \end{align}
+
+  \item The rotating frame \textbf{control functions} $p,q$ are discretized with $L$ B-spline basis functions with carrier waves. We use two carrier wave frequencies for Alice with frequencies $\Omega^a_1 = 0.0, \Omega^a_2 = -\xi_a$, and one carrier wave for the cavity with $\Omega^c_1 = 0.0$. The controls are 
+   \begin{align}
+       \text{Alice:} \quad p^a(\alpha^a,t) &= \sum_{l=1}^L B_l(t) \left(\alpha^{a(1)}_{l,\Omega^a_1} + \alpha^{a(1)}_{l,\Omega^a_2}\cos(\Omega^a_2 t) - \alpha^{a(2)}_{l,\Omega^a_2}\sin(\Omega^a_2 t) \right)\\
+       q^a(\alpha^a,t) &= \sum_{l=1}^L B_l(t) \left(\alpha^{a(2)}_{l,\Omega^a_1} + \alpha^{a(1)}_{l,\Omega^a_2}\sin(\Omega^a_2 t) + \alpha^{a(2)}_{l,\Omega^a_2}\cos(\Omega^a_2 t) \right) \\
+       \text{cavity:} \quad p^c(\alpha^c,t) &= \sum_{l=1}^L B_l(t) \left( \alpha^{c(1)}_{l,\Omega^c_1} \right) \\
+       p^c(\alpha^c,t) &= \sum_{l=1}^L B_l(t) \left( \alpha^{c(2)}_{l,\Omega^c_1} \right) 
+   \end{align}
+
+   The following converts the rotating frame controls to the Lab frame:
+   \begin{align}
+       f^a(t) &= 2\sum_{l=1}^L B_l(t) \left(\alpha^{a(1)}_{l,\Omega^a_1}\cos(w_r^a t) - \alpha^{a(2)}_{l,\Omega^a_1}\sin(w_r^a t) + \alpha^{a(1)}_{l,\Omega^a_2}\cos( \left(w_r^a + \Omega^a_2\right) t) - \alpha^{a(2)}_{l,\Omega^a_2}\sin(\left(w_r^a + \Omega^a_2\right) t)  \right) \\
+       f^c(t) &= 2\sum_{l=1}^L B_l(t) \left(\alpha^{c(1)}_{l,\Omega^c_1}\cos(w_r^c t) - \alpha^{c(2)}_{l,\Omega^c_1}\sin(w_r^c t) \right)
+   \end{align}
+   for the funcamental resonance frequencies
+   \begin{align}
+       w_r^a = 4099.47 [\text{MHz}] * 2\pi, \\
+       w_r^c = 7076.8 [\text{MHz}] * 2\pi
+   \end{align}
+   The Lab-frame control amplitudes are bounded due to device restictions. For Alice, the bound for the amplitudes are
+   \begin{align}
+       \text{Alice:} \quad |f^a(t)| \leq 6 [\text{MHz}] * 2\pi.
+   \end{align}
+   The bounds for the cavity are $1000$ times bigger. 
+
+  \item We consider \textbf{decaying collapse operators} for Alice and the cavity acting on the density matrix $\rho$ of the coupled system as follows:
+   \begin{align}
+       [\Ell \rho] := \gamma_a \left(\Ell_a\rho\Ell_a - \frac{1}{2} \left( \Ell_a^\dagger \Ell_a \rho + \rho \Ell_a^\dagger \Ell_a \right) \right)
+       + \gamma_c \left(\Ell_c\rho\Ell_c - \frac{1}{2} \left( \Ell_c^\dagger \Ell_c \rho + \rho \Ell_c^\dagger \Ell_c \right) \right)
+   \end{align}
+   where the decay operators are $\Ell_a = a, \Ell_c = c$, with decay times 
+   \begin{align}
+       \frac{1}{\gamma_a} = 30 [\text{us}] \quad \text{and} \quad \frac{1}{\gamma_c} = \frac{1}{\kappa} [\text{us}], \, \kappa = 1.4 [\text{MHz}] * 2\pi
+   \end{align}
+\end{enumerate}
+
+\section{Optimization}
+The goal is to find control pulses (i.e. find coefficients $\alpha^a, \alpha^c$) that drive any initial state to the ground state with density matrix $\rho_G := |0><0| \otimes |0><0|$. We assume that the initial state of the cavity is the ground state, so that any initial density matrix $\rho$ can be written as . 
+\begin{align}
+    \rho(t=0) = \rho^a(t=0) \otimes |0><0|_c
+\end{align}
+for the reduced density matrix $\rho^a$ for Alice. To span any initial state for Alice, we consider a basis of all possible initial states, denoted by $B_{ij} \in \C^{n_A\times n_A}$. 
+
+The objective function minimizes the square expected energy levels at the final time $T=1 us$ for Alice and the cavity, summed over all possible initial conditions:
+\begin{align}
+    \min \frac{1}{(n_A)^2} \sum_{i,j} \langle N^a_{ij} \rangle^2 + \langle N^c_{ij} \rangle^2
+\end{align}
+where $N^a = a^\dagger a, N^c = c^\dag c$ are the number operators (observable), $\langle \cdot \rangle$ denotes the expected value of the observable, and the indeces $i,j$ correspond to the initial condition basis elements. 
+\begin{align}
+    \langle N^a_{ij} \rangle = \mbox{Tr}\left( N^a \rho_{ij}(T) \right)
+\end{align}
+where $\rho_ij$ solves Lindblad's master equation with initial condition $\rho_{ij}(t=0) = B_{ij}$.
+
+\end{document}

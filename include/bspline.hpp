@@ -29,8 +29,8 @@ class ControlBasis{
         ~ControlBasis();
 
         /* Evaluate the spline at time t using the coefficients coeff. */
-        double evaluate(double t, std::vector<double> coeff, double ground_freq, ControlType controltype);
+        double evaluate(const double t, const std::vector<double>& coeff, const double ground_freq, const ControlType controltype);
 
         /* Evaluates the derivative at time t, multiplied with fbar. */
-        void derivative(double t, double* coeff_diff, double fbar, ControlType controltype);
+        void derivative(const double t, double* coeff_diff, const double fbar, const ControlType controltype);
 };

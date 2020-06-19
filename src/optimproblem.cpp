@@ -143,7 +143,7 @@ OptimProblem::OptimProblem(MapParam config, myBraidApp* primalbraidapp_, myAdjoi
       diag_id += initcond_IDs[k] * dim_postkron;
     }
     int vec_id = diag_id * (int)sqrt(primalbraidapp->mastereq->getDim()) + diag_id;
-    vec_id = 2*vec_id; // colocated storage xi = (ui, vi)
+    vec_id = getIndexReal(vec_id); // Real part of x
     VecSetValue(rho_t0, vec_id, 1.0, INSERT_VALUES);
   }
   else if (initcond_type == FROMFILE) { 
@@ -160,8 +160,8 @@ OptimProblem::OptimProblem(MapParam config, myBraidApp* primalbraidapp_, myAdjoi
     }
     MPI_Bcast(vec, 2*dim, MPI_DOUBLE, 0, MPI_COMM_WORLD);
     for (int i = 0; i < dim; i++) {
-      VecSetValue(rho_t0, 2*i,   vec[i], INSERT_VALUES); // RealPart
-      VecSetValue(rho_t0, 2*i+1, vec[i + dim ], INSERT_VALUES); // Imaginary Part
+      VecSetValue(rho_t0, getIndexReal(i), vec[i], INSERT_VALUES);        // RealPart
+      VecSetValue(rho_t0, getIndexImag(i), vec[i + dim ], INSERT_VALUES); // Imaginary Part
     }
     delete [] vec;
   }
@@ -245,7 +245,7 @@ OptimProblem::~OptimProblem() {
 
 
 
-double OptimProblem::evalF(Vec x) {
+double OptimProblem::evalF(const Vec x) {
 
   // OptimProblem* ctx = (OptimProblem*) ptr;
   MasterEq* mastereq = primalbraidapp->mastereq;
@@ -305,7 +305,7 @@ double OptimProblem::evalF(Vec x) {
 
 
 
-void OptimProblem::evalGradF(Vec x, Vec G){
+void OptimProblem::evalGradF(const Vec x, Vec G){
 
   MasterEq* mastereq = primalbraidapp->mastereq;
 
@@ -559,6 +559,8 @@ double OptimProblem::objectiveT(Vec finalstate){
         VecNorm(state, NORM_2, &obj_local);
         obj_local = pow(obj_local, 2.0);
         if (ilo <= 0 && 0 < ihi) VecSetValue(state, 0, 1.0, ADD_VALUES); // restore state 
+        VecAssemblyBegin(state);
+        VecAssemblyEnd(state);
 
         /* Destroy reduced density matrix, if it has been created */
         if (obj_oscilIDs.size() < primalbraidapp->mastereq->getNOscillators()) { 
@@ -574,7 +576,7 @@ double OptimProblem::objectiveT(Vec finalstate){
 }
 
 
-void OptimProblem::objectiveT_diff(Vec finalstate, double obj, double obj_bar){
+void OptimProblem::objectiveT_diff(Vec finalstate, const double obj, const double obj_bar){
   double tmp;
 
   /* Reset adjoints */

@@ -91,13 +91,13 @@ myBraidApp::~myBraidApp() {
   delete core;
 }
 
-int myBraidApp::getTimeStepIndex(double t, double dt){
+int myBraidApp::getTimeStepIndex(const double t, const double dt){
   int ts = round(t / dt);
   return ts;
 }
 
 
-Vec myBraidApp::getStateVec(double time) {
+Vec myBraidApp::getStateVec(const double time) {
   if (time != total_time) {
    printf("ERROR: getState not implemented yet for (t != final_time)\n\n");
    exit(1);
@@ -345,8 +345,8 @@ braid_Int myBraidApp::Access(braid_Vector u_, BraidAccessStatus &astatus){
       VecGetArrayRead(xseq, &x);
       /* Write real and imaginary parts */
       for (int i=0; i<mastereq->getDim(); i++) {
-        fprintf(ufile, "%1.10e  ", x[2*i]);  
-        fprintf(vfile, "%1.10e  ", x[2*i+1]);  
+        fprintf(ufile, "%1.10e  ", x[getIndexReal(i)]);  
+        fprintf(vfile, "%1.10e  ", x[getIndexImag(i)]);  
       }
       fprintf(ufile, "\n");
       fprintf(vfile, "\n");
@@ -363,7 +363,7 @@ braid_Int myBraidApp::Access(braid_Vector u_, BraidAccessStatus &astatus){
       if (expectedfile[iosc] != NULL) fprintf(expectedfile[iosc], "%.8f %1.14e\n", t, expected);
       // if (populationfile[iosc] != NULL) { // TODO Implement parallel population 
       //   std::vector<double> pop (mastereq->getOscillator(iosc)->getNLevels(), 0.0);  // create and fill with zero
-      //   mastereq->getOscillator(iosc)->population(u->x, &pop);
+      //   mastereq->getOscillator(iosc)->population(u->x, pop);
       //   fprintf(populationfile[iosc], "%.8f ", t);
       //   for (int i=0; i<pop.size(); i++) fprintf(populationfile[iosc], "%1.14e ", pop[i]);
       //   fprintf(populationfile[iosc], "\n");
@@ -433,6 +433,9 @@ braid_Int myBraidApp::BufUnpack(void *buffer, braid_Vector *u_ptr, BraidBufferSt
       VecSetValues(u->x, 1, &i, &(dbuffer[i]), INSERT_VALUES);
     }
   }
+
+  VecAssemblyBegin(u->x);
+  VecAssemblyEnd(u->x);
 
   return 0; 
 }
@@ -683,7 +686,7 @@ Vec myAdjointBraidApp::PostProcess() {
   return 0;
 }
 
-void myBraidApp::setInitCond(Vec rho_t0){
+void myBraidApp::setInitCond(const Vec rho_t0){
   braid_BaseVector ubase;
   int size;
   Vec x;

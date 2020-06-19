@@ -30,7 +30,7 @@ class Gate {
     void assembleGate();
     
     /* compare the final state to gate-transformed initialcondition in Frobenius norm 1/2 * || q(T) - V\kronV q(0)||^2 */
-    void compare(Vec finalstate, Vec rho0, double& frob);
+    void compare(const Vec finalstate, const Vec rho0, double& frob);
     void compare_diff(const Vec finalstate, const Vec rho0, Vec rho0bar, const double delta_bar);
 };
 

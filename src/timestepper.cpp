@@ -13,6 +13,7 @@ TimeStepper::TimeStepper(MasterEq* mastereq_) {
 
 TimeStepper::~TimeStepper() {}
 
+void TimeStepper::evolveBWD(const double tstart, const double tstop, const Vec x_stop, Vec x_adj, Vec grad, bool compute_gradient){}
 
 ExplEuler::ExplEuler(MasterEq* mastereq_) : TimeStepper(mastereq_) {
   MatCreateVecs(mastereq->getRHS(), &stage, NULL);
@@ -23,7 +24,7 @@ ExplEuler::~ExplEuler() {
   VecDestroy(&stage);
 }
 
-void ExplEuler::evolveFWD(double tstart, double tstop, Vec x) {
+void ExplEuler::evolveFWD(const double tstart,const  double tstop, Vec x) {
 
   double dt = fabs(tstop - tstart);
 
@@ -34,9 +35,10 @@ void ExplEuler::evolveFWD(double tstart, double tstop, Vec x) {
   /* update x = x + hAx */
   MatMult(A, x, stage);
   VecAXPY(x, dt, stage);
+
 }
 
-void ExplEuler::evolveBWD(double tstop, double tstart, Vec x, Vec x_adj, Vec grad, bool compute_gradient){
+void ExplEuler::evolveBWD(const double tstop,const  double tstart,const  Vec x, Vec x_adj, Vec grad, bool compute_gradient){
   double dt = fabs(tstop - tstart);
 
   /* Add to reduced gradient */
@@ -47,13 +49,12 @@ void ExplEuler::evolveBWD(double tstop, double tstart, Vec x, Vec x_adj, Vec gra
   /* update x_adj = x_adj + hA^Tx_adj */
   mastereq->assemble_RHS(tstop);
   Mat A = mastereq->getRHS(); 
-  MatTranspose(A, MAT_INPLACE_MATRIX, &A);
-  MatMult(A, x_adj, stage);
+  MatMultTranspose(A, x_adj, stage);
   VecAXPY(x_adj, dt, stage);
 
 }
 
-ImplMidpoint::ImplMidpoint(MasterEq* mastereq_) : TimeStepper(mastereq_) {
+ImplMidpoint::ImplMidpoint(MasterEq* mastereq_, LinearSolverType linsolve_type_, int linsolve_maxiter_) : TimeStepper(mastereq_) {
 
   /* Create and reset the intermediate vectors */
   MatCreateVecs(mastereq->getRHS(), &stage, NULL);
@@ -64,34 +65,52 @@ ImplMidpoint::ImplMidpoint(MasterEq* mastereq_) : TimeStepper(mastereq_) {
   VecZeroEntries(stage_adj);
   VecZeroEntries(rhs);
   VecZeroEntries(rhs_adj);
+  linsolve_type = linsolve_type_;
+  linsolve_maxiter = linsolve_maxiter_;
 
-  /* Create linear solver */
-  KSPCreate(PETSC_COMM_WORLD, &linearsolver);
-
-  /* Set options */
-  KSPGetPC(linearsolver, &preconditioner);
-  if (mastereq->usematshell) PCSetType(preconditioner, PCNONE);
-  double reltol = 1.e-8;
-  double abstol = 1.e-10;
-  KSPSetTolerances(linearsolver, reltol, abstol, PETSC_DEFAULT, PETSC_DEFAULT);
-  KSPSetType(linearsolver, KSPGMRES);
-  KSPSetOperators(linearsolver, mastereq->getRHS(), mastereq->getRHS());
-  KSPSetFromOptions(linearsolver);
+  if (linsolve_type == GMRES) {
+    /* Create Petsc's linear solver */
+    KSPCreate(PETSC_COMM_WORLD, &ksp);
+    KSPGetPC(ksp, &preconditioner);
+    PCSetType(preconditioner, PCNONE);
+    double reltol = 1.e-8;
+    double abstol = 1.e-10;
+    KSPSetTolerances(ksp, reltol, abstol, PETSC_DEFAULT, linsolve_maxiter);
+    KSPSetType(ksp, KSPGMRES);
+    KSPSetOperators(ksp, mastereq->getRHS(), mastereq->getRHS());
+    KSPSetFromOptions(ksp);
+    KSPsolve_counter = 0;
+    KSPsolve_iterstaken_avg = 0.0;
+  }
+  else {
+    /* For Neumann iterations, allocate a temporary vector */
+    MatCreateVecs(mastereq->getRHS(), &tmp, NULL);
+  }
 }
 
 
 ImplMidpoint::~ImplMidpoint(){
+
+  /* Free up Petsc's linear solver */
+  if (linsolve_type == GMRES) {
+    KSPDestroy(&ksp);
+    KSPsolve_iterstaken_avg = (int) KSPsolve_iterstaken_avg / KSPsolve_counter;
+    int myrank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &myrank);
+    if (myrank == 0) printf("KSPsolve: Average iterations = %d\n", KSPsolve_iterstaken_avg);
+  } else {
+    VecDestroy(&tmp);
+  }
+
   /* Free up intermediate vectors */
   VecDestroy(&stage_adj);
   VecDestroy(&stage);
   VecDestroy(&rhs_adj);
   VecDestroy(&rhs);
 
-  /* Free up linear solver */
-  KSPDestroy(&linearsolver);
 }
 
-void ImplMidpoint::evolveFWD(double tstart, double tstop, Vec x) {
+void ImplMidpoint::evolveFWD(const double tstart,const  double tstop, Vec x) {
 
   /* Compute time step size */
   double dt = fabs(tstop - tstart); // absolute values needed in case this runs backwards! 
@@ -103,36 +122,38 @@ void ImplMidpoint::evolveFWD(double tstart, double tstop, Vec x) {
   /* Compute rhs = A x */
   MatMult(A, x, rhs);
 
-  /* Build system matrix I-h/2 A. This modifies the RHS matrix! Make sure to call assemble_RHS before the next use! */
-  MatScale(A, - dt/2.0);
-  MatShift(A, 1.0);  // WARNING: this can be very slow if some diagonal elements are missing.
-  
-  /* solve nonlinear equation */
-  // KSPReset(linearsolver);
-  // KSPSetTolerances(linearsolver, 1.e-8, 1.e-10, PETSC_DEFAULT, PETSC_DEFAULT);
-  // KSPSetType(linearsolver, KSPGMRES);
-  // KSPSetFromOptions(linearsolver);
-  // KSPSetOperators(linearsolver, A, A);// TODO: Do we have to do this in each time step?? 
-  KSPSolve(linearsolver, rhs, stage);
+  /* Solve for the stage variable (I-dt/2 A) k1 = Ax */
+  switch (linsolve_type) {
+    case GMRES:
+      /* Set up I-dt/2 A, then solve */
+      MatScale(A, - dt/2.0);
+      MatShift(A, 1.0);  
+      KSPSolve(ksp, rhs, stage);
 
-  /* Monitor error */
-  double rnorm;
-  int iters_taken;
-  KSPGetResidualNorm(linearsolver, &rnorm);
-  KSPGetIterationNumber(linearsolver, &iters_taken);
-  // printf("Residual norm %d: %1.5e\n", iters_taken, rnorm);
+      /* Monitor error */
+      double rnorm;
+      int iters_taken;
+      KSPGetResidualNorm(ksp, &rnorm);
+      KSPGetIterationNumber(ksp, &iters_taken);
+      //printf("Residual norm %d: %1.5e\n", iters_taken, rnorm);
+      KSPsolve_iterstaken_avg += iters_taken;
+      KSPsolve_counter++;
 
-  /* If matshell, revert the scaling and shifting */
-  if (mastereq->usematshell){
-    MatAssemblyBegin(A, MAT_FINAL_ASSEMBLY);
-    MatAssemblyEnd(A, MAT_FINAL_ASSEMBLY);
+      /* Revert the scaling and shifting if gmres solver */
+      MatAssemblyBegin(A, MAT_FINAL_ASSEMBLY);
+      MatAssemblyEnd(A, MAT_FINAL_ASSEMBLY);
+      break;
+
+    case NEUMANN:
+      NeumannSolve(A, rhs, stage, dt/2.0, false);
+      break;
   }
 
   /* --- Update state x += dt * stage --- */
   VecAXPY(x, dt, stage);
 }
 
-void ImplMidpoint::evolveBWD(double tstop, double tstart, Vec x, Vec x_adj, Vec grad, bool compute_gradient){
+void ImplMidpoint::evolveBWD(const double tstop, const double tstart, const Vec x, Vec x_adj, Vec grad, bool compute_gradient){
   Mat A;
 
   /* Compute time step size */
@@ -149,33 +170,43 @@ void ImplMidpoint::evolveBWD(double tstop, double tstart, Vec x, Vec x_adj, Vec 
   }
 
   /* Solve for adjoint stage variable */
-  MatScale(A, - dt/2.0);
-  MatShift(A, 1.0);  // WARNING: this can be very slow if some diagonal elements are missing.
-  KSPSolveTranspose(linearsolver, x_adj, stage_adj);
+  switch (linsolve_type) {
+    case GMRES:
+      MatScale(A, - dt/2.0);
+      MatShift(A, 1.0);  // WARNING: this can be very slow if some diagonal elements are missing.
+      KSPSolveTranspose(ksp, x_adj, stage_adj);
+      double rnorm;
+      KSPGetResidualNorm(ksp, &rnorm);
+      if (rnorm > 1e-3)  printf("Residual norm: %1.5e\n", rnorm);
+      break;
 
-  double rnorm;
-  KSPGetResidualNorm(linearsolver, &rnorm);
-  if (rnorm > 1e-3)  printf("Residual norm: %1.5e\n", rnorm);
+    case NEUMANN: 
+      NeumannSolve(A, x_adj, stage_adj, dt/2.0, true);
+      break;
+  }
 
   // k_bar = h*k_bar 
   VecScale(stage_adj, dt);
 
   /* Add to reduced gradient */
   if (compute_gradient) {
-    KSPSolve(linearsolver, rhs, stage);
+    switch (linsolve_type) {
+      case GMRES: 
+        KSPSolve(ksp, rhs, stage);
+        break;
+      case NEUMANN:
+        NeumannSolve(A, rhs, stage, dt/2.0, false);
+        break;
+    }
     VecAYPX(stage, dt / 2.0, x);
     mastereq->computedRHSdp(thalf, stage, stage_adj, 1.0, grad);
   }
 
-  /* Revert changes to RHS from above */
+  /* Revert changes to RHS from above, if gmres solver */
   A = mastereq->getRHS();
-/* If matshell, revert the scaling and shifting */
-  if (mastereq->usematshell){
+  if (linsolve_type == GMRES) {
     MatAssemblyBegin(A, MAT_FINAL_ASSEMBLY);
     MatAssemblyEnd(A, MAT_FINAL_ASSEMBLY);
-  } else {
-    MatShift(A, -1.0); 
-    MatScale(A, - 2.0/dt);
   }
 
   /* Update adjoint state x_adj += dt * A^Tstage_adj --- */
@@ -183,6 +214,20 @@ void ImplMidpoint::evolveBWD(double tstop, double tstart, Vec x, Vec x_adj, Vec 
 
 }
 
+
+void ImplMidpoint::NeumannSolve(Mat A, Vec b, Vec y, double alpha, bool transpose){
+
+  // Initialize y = b
+  VecCopy(b, y);
+
+  for (int iter = 0; iter < linsolve_maxiter; iter++) {
+    // tmp = Ab
+    if (!transpose) MatMult(A, y, tmp);
+    else            MatMultTranspose(A, y, tmp);
+    // y = b + alpha * tmp 
+    VecAXPBYPCZ(y, 1.0, alpha, 0.0, b, tmp);
+  }
+}
 
 PetscErrorCode RHSJacobian(TS ts,PetscReal t,Vec u,Mat M,Mat P,void *ctx){
 
@@ -393,3 +438,4 @@ PetscErrorCode  TSSetAdjointSolution(TS ts,Vec lambda, Vec mu)
 
   PetscFunctionReturn(0);
 }
+

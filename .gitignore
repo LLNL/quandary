@@ -8,3 +8,6 @@ braid.out.cycle
 *.log
 *.err
 *.batch
+*.pdf
+*.DS_Store
+quandary.code-workspace

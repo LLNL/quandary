@@ -1,6 +1,14 @@
 #include "util.hpp"
 
-PetscErrorCode Ikron(Mat A, int dimI, double alpha, Mat *Out, InsertMode insert_mode){
+int getIndexReal(const int i) {
+  return 2*i;
+}
+
+int getIndexImag(const int i) {
+  return 2*i + 1;
+}
+
+PetscErrorCode Ikron(const Mat A,const  int dimI, const double alpha, Mat *Out, InsertMode insert_mode){
 
     int ierr;
     int ncols;
@@ -42,7 +50,7 @@ PetscErrorCode Ikron(Mat A, int dimI, double alpha, Mat *Out, InsertMode insert_
     return 0;
 }
 
-PetscErrorCode kronI(Mat A, int dimI, double alpha, Mat *Out, InsertMode insert_mode){
+PetscErrorCode kronI(const Mat A, const int dimI, const double alpha, Mat *Out, InsertMode insert_mode){
     
     int ierr;
     int dimA;
@@ -91,7 +99,7 @@ PetscErrorCode kronI(Mat A, int dimI, double alpha, Mat *Out, InsertMode insert_
 
 
 
-PetscErrorCode AkronB(int dim, Mat A, Mat B, double alpha, Mat *Out, InsertMode insert_mode){
+PetscErrorCode AkronB(const int dim, const Mat A, const Mat B, const double alpha, Mat *Out, InsertMode insert_mode){
 
     int dimOut = dim*dim;
 
@@ -276,3 +284,4 @@ void read_vector(const char *filename, double *var, int dim) {
 
   fclose(file);
 }
+

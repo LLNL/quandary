@@ -170,9 +170,14 @@ int main(int argc,char **argv)
     printf(" Choose either 'none', 'decay', 'dephase', or 'both'\n");
     exit(1);
   }
-  bool usematshell;
-  usematshell = config.GetBoolParam("usematshell", false);
-  MasterEq* mastereq = new MasterEq(nlevels.size(), oscil_vec, xi, lindbladtype, t_collapse, usematshell);
+  bool usematfree;
+  usematfree = config.GetBoolParam("usematfree", false);
+  // Sanity check
+  if (usematfree && nlevels.size() != 2 ){
+    printf("ERROR: Matrix free solver is only implemented for systems with TWO oscillators!\n");
+    exit(1);
+  }
+  MasterEq* mastereq = new MasterEq(nlevels, oscil_vec, xi, lindbladtype, t_collapse, usematfree);
 
 
   /* Screen output */
@@ -194,8 +199,17 @@ int main(int argc,char **argv)
   }
 
   /* --- Initialize the time-stepper --- */
+  LinearSolverType linsolvetype;
+  std::string linsolvestr = config.GetStrParam("linearsolver_type", "gmres");
+  int linsolve_maxiter = config.GetIntParam("linearsolver_maxiter", 10);
+  if      (linsolvestr.compare("gmres")   == 0) linsolvetype = GMRES;
+  else if (linsolvestr.compare("neumann") == 0) linsolvetype = NEUMANN;
+  else {
+    printf("\n\n ERROR: Unknown linear solver type: %s.\n\n", linsolvestr.c_str());
+    exit(1);
+  }
   /* My time stepper */
-  TimeStepper *mytimestepper = new ImplMidpoint(mastereq);
+  TimeStepper *mytimestepper = new ImplMidpoint(mastereq, linsolvetype, linsolve_maxiter);
   // TimeStepper *mytimestepper = new ExplEuler(mastereq);
 
   /* Petsc's Time-stepper */
@@ -244,7 +258,7 @@ int main(int argc,char **argv)
 
   double objective;
   /* --- Solve primal --- */
-  if (runtype == primal || runtype == adjoint) {
+  if (runtype == primal) {
     optimctx->getStartingPoint(xinit);
     objective = optimctx->evalF(xinit);
     if (mpirank_world == 0) printf("%d: Tao primal: Objective %1.14e, \n", mpirank_world, objective);
@@ -254,7 +268,7 @@ int main(int argc,char **argv)
   /* --- Solve adjoint --- */
   if (runtype == adjoint) {
     double gnorm = 0.0;
-
+    optimctx->getStartingPoint(xinit);
     optimctx->evalGradF(xinit, grad);
     VecNorm(grad, NORM_2, &gnorm);
     VecView(grad, PETSC_VIEWER_STDOUT_WORLD);

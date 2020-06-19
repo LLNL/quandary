@@ -6,6 +6,7 @@
 #include <petscmat.h>
 #include <vector>
 #include <assert.h>
+#include "util.hpp"
 
 #pragma once
 
@@ -39,33 +40,33 @@ class Oscillator {
     void setParams(const double* x);
 
     /* Print the control functions for each t \in [0,ntime*dt] */
-    void flushControl(int ntime, double dt, const char* filename);
+    void flushControl(const int ntime, const double dt, const char* filename);
 
     /* Compute lowering operator a_k = I_n1 \kron ... \kron a^(nk) \kron ... \kron I_nQ */
-    int createLoweringOP(int dim_prekron, int dim_postkron, Mat* loweringOP);
+    int createLoweringOP(const int dim_prekron, const int dim_postkron, Mat* loweringOP);
     /* Returns the lowering operator, unless dummy is true, then return a zero matrix */
     Mat getLoweringOP(bool dummy);
 
     /* Compute number operator N_k = a_k^T a_k */
-    int createNumberOP(int dim_prekron, int dim_postcron, Mat* numberOP);
+    int createNumberOP(const int dim_prekron, const int dim_postcron, Mat* numberOP);
     /* Returns the number operator, unless dummy is true, then return a zero matrix */
     Mat getNumberOP(bool dummy);
 
     /* Evaluates rotating frame control functions Re = p(t), Im = q(t) */
-    int evalControl(double t, double* Re_ptr, double* Im_ptr);
+    int evalControl(const double t, double* Re_ptr, double* Im_ptr);
     /* Compute derivatives of the p(t) and q(t) control function wrt the parameters */
-    int evalControl_diff(double t, double* dRedp, double* dImdp);
+    int evalControl_diff(const double t, double* dRedp, double* dImdp);
 
     /* Evaluates Lab-frame control function f(t) */
-    int evalControl_Labframe(double t, double* f_ptr);
+    int evalControl_Labframe(const double t, double* f_ptr);
 
     /* Return expected value of projective measure in basis |m> */
-    double expectedEnergy(Vec x);
+    double expectedEnergy(const Vec x);
     /* Derivative of expected alrue computation */
-    void expectedEnergy_diff(Vec x, Vec x_bar, double obj_bar);
+    void expectedEnergy_diff(const Vec x, Vec x_bar, const double obj_bar);
 
     /* Compute population (=diagonal elements) for this oscillators reduced system */
-    void population(Vec x, std::vector<double> *pop); 
+    void population(const Vec x, std::vector<double> &pop); 
 };
 
 
