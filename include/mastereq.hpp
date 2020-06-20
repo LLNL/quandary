@@ -4,12 +4,18 @@
 #include <vector>
 #include <assert.h>
 #include <iostream> 
+#include "gate.hpp"
 #pragma once
 
 /* Available lindblad types */
 enum LindbladType {NONE, DECAY, DEPHASE, BOTH};
 /* Available types of initial conditions */
 enum InitialConditionType {FROMFILE, PURE, DIAGONAL, BASIS};
+
+enum ObjectiveType {GATE,             // Compare final state to linear gate transformation of initial cond.
+                    EXPECTEDENERGY,   // Minimizes expected energy levels.
+                    GROUNDSTATE};     // Compares final state to groundstate (full matrix)
+
 
 /* Define a matshell context containing pointers to data needed for applying the RHS matrix to a vector */
 typedef struct {
@@ -118,6 +124,12 @@ class MasterEq{
      *       rho0 -- Vector for setting initial condition 
      */
     int getRhoT0(const int iinit, const int ninit, const InitialConditionType initcond_type, const std::vector<int>& oscilIDs, Vec rho0);
+
+
+    /* Compute local objective function J(rho(t)) */
+    double objectiveT(ObjectiveType objective_type, const std::vector<int>& obj_oscilIDs, const Vec state, const Vec rho_t0, Gate* targetgate);
+    /* Derivative of local objective function times obj_bar */
+    void objectiveT_diff(ObjectiveType objective_type, const std::vector<int>& obj_oscilIDs, Vec state, Vec state_bar, const Vec rho_t0, const double obj_bar, Gate* targetgate);
 };
 
 

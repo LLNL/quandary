@@ -1365,3 +1365,90 @@ int myMatMultTranspose_matfree_2Osc(Mat RHS, Vec x, Vec y){
     exit(1);
   } 
 }
+
+
+
+double MasterEq::objectiveT(ObjectiveType objective_type, const std::vector<int>& obj_oscilIDs, const Vec state, const Vec rho_t0, Gate* targetgate) {
+  double obj_local = 0.0;
+
+  if (state != NULL) {
+
+    switch (objective_type) {
+      case GATE:
+        /* compare state to linear transformation of initial conditions */
+        targetgate->compare(state, rho_t0, obj_local);
+        break;
+
+      case EXPECTEDENERGY:
+        /* Squared average of expected energy level f = ( sum_{k=0}^Q < N_k(rho(T)) > )^2 */
+        double sum;
+        sum = 0.0;
+        for (int i=0; i<obj_oscilIDs.size(); i++) {
+          /* compute the expected value of energy levels for each oscillator */
+          sum += getOscillator(obj_oscilIDs[i])->expectedEnergy(state);
+        }
+        obj_local = pow(sum / obj_oscilIDs.size(), 2.0);
+        break;
+
+      case GROUNDSTATE:
+        /* compare full state to groundstate */
+
+        /* If sub-system is requested, compute reduced density operator first */
+        if (obj_oscilIDs.size() < getNOscillators()) { 
+          printf("ERROR: Computing reduced density matrix is currently not available and needs testing!\n");
+          exit(1);
+        }
+
+        /* Compute frobenius norm: frob = || q(T) - e_1 ||^2 */
+        int ilo, ihi;
+        VecGetOwnershipRange(state, &ilo, &ihi);
+        if (ilo <= 0 && 0 < ihi) VecSetValue(state, 0, -1.0, ADD_VALUES); // substract 1.0 from (0,0) element
+        VecNorm(state, NORM_2, &obj_local);
+        obj_local = pow(obj_local, 2.0);
+        if (ilo <= 0 && 0 < ihi) VecSetValue(state, 0, 1.0, ADD_VALUES); // restore state 
+        VecAssemblyBegin(state);
+        VecAssemblyEnd(state);
+        break;
+    }
+  }
+  return obj_local;
+}
+
+
+void MasterEq::objectiveT_diff(ObjectiveType objective_type, const std::vector<int>& obj_oscilIDs, Vec state, Vec statebar, const Vec rho_t0, const double obj_bar, Gate* targetgate){
+
+  if (state != NULL) {
+    switch (objective_type) {
+
+      case GATE:
+        targetgate->compare_diff(state, rho_t0, statebar, obj_bar);
+        break;
+
+      case EXPECTEDENERGY:
+        double Jbar, sum;
+        // Recompute sum over energy levels 
+        sum = 0.0;
+        for (int i=0; i<obj_oscilIDs.size(); i++) {
+          sum += getOscillator(obj_oscilIDs[i])->expectedEnergy(state);
+        } 
+        sum = sum / obj_oscilIDs.size();
+        // Derivative of expected energy levels 
+        Jbar = 2. * sum * obj_bar / obj_oscilIDs.size();
+        printf("Jbar%f\n", Jbar);
+        for (int i=0; i<obj_oscilIDs.size(); i++) {
+          getOscillator(obj_oscilIDs[i])->expectedEnergy_diff(state, statebar, Jbar);
+        }
+        break;
+
+    case GROUNDSTATE:
+      int ilo, ihi;
+      VecGetOwnershipRange(statebar, &ilo, &ihi);
+
+      /* Derivative of frobenius norm: 2 * (q(T) - e_1) * frob_bar */
+      VecAXPY(statebar, 2.0*obj_bar, state);
+      if (ilo <= 0 && 0 < ihi) VecSetValue(statebar, 0, -2.0*obj_bar, ADD_VALUES);
+      VecAssemblyBegin(statebar); VecAssemblyEnd(statebar);
+      break;
+    }
+  }
+}

@@ -552,7 +552,7 @@ myAdjointBraidApp::myAdjointBraidApp(MPI_Comm comm_braid_, double total_time_, i
 
   /* Store all points for adjoint, needed for penalty integral term */
   /* Alternatively, recompute the adjoint states during PostProcessing for computing gradient */
-  core->SetStorage(0);
+  // core->SetStorage(0);
   
 
   /* Revert processor ranks for solving adjoint */
@@ -655,14 +655,14 @@ void myAdjointBraidApp::PreProcess(int iinit){
   /* Reset the reduced gradient */
   VecZeroEntries(redgrad); 
 
-  // // /* Open output files for adjoint */
-  // if (accesslevel > 0 && mpirank_petsc == 0) {
-  //   char filename[255];
-  //   sprintf(filename, "%s/out_uadj.iinit%04d.rank%04d.dat", datadir.c_str(),iinit, mpirank_braid);
-  //   ufile = fopen(filename, "w");
-  //   sprintf(filename, "%s/out_vadj.iinit%04d.rank%04d.dat", datadir.c_str(),iinit, mpirank_braid);
-  //   vfile = fopen(filename, "w");
-  // }
+  // /* Open output files for adjoint */
+  if (accesslevel > 0 && mpirank_petsc == 0) {
+    char filename[255];
+    sprintf(filename, "%s/out_uadj.iinit%04d.rank%04d.dat", datadir.c_str(),iinit, mpirank_braid);
+    ufile = fopen(filename, "w");
+    sprintf(filename, "%s/out_vadj.iinit%04d.rank%04d.dat", datadir.c_str(),iinit, mpirank_braid);
+    vfile = fopen(filename, "w");
+  }
 }
 
 

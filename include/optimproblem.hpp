@@ -5,10 +5,6 @@
 
 #pragma once
 
-enum ObjectiveType {GATE,             // Compare final state to linear gate transformation of initial cond.
-                    EXPECTEDENERGY,   // Minimizes expected energy levels.
-                    GROUNDSTATE};     // Compares final state to groundstate (full matrix)
-
 
 
 class OptimProblem {
@@ -75,11 +71,6 @@ class OptimProblem {
 
   /* Compute initial guess for optimization variables */
   void getStartingPoint(Vec x);
-
-  /* Compute local objective function J(rho(t)) */
-  double objectiveT(Vec state);
-  /* Derivative of local objective function times obj_bar */
-  void objectiveT_diff(Vec state, Vec state_bar, const double obj_bar);
 
   /* Compute penalty integral term. WARNING: this might expensive, since it's a loop over all time steps */
   double penaltyIntegral();
