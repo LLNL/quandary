@@ -67,39 +67,45 @@ ImplMidpoint::ImplMidpoint(MasterEq* mastereq_, LinearSolverType linsolve_type_,
   VecZeroEntries(rhs_adj);
   linsolve_type = linsolve_type_;
   linsolve_maxiter = linsolve_maxiter_;
+  linsolve_reltol = 1.e-20;
+  linsolve_abstol = 1.e-10;
+  linsolve_iterstaken_avg = 0;
+  linsolve_counter = 0;
+  linsolve_error_avg = 0.0;
 
   if (linsolve_type == GMRES) {
     /* Create Petsc's linear solver */
     KSPCreate(PETSC_COMM_WORLD, &ksp);
     KSPGetPC(ksp, &preconditioner);
     PCSetType(preconditioner, PCNONE);
-    double reltol = 1.e-8;
-    double abstol = 1.e-10;
-    KSPSetTolerances(ksp, reltol, abstol, PETSC_DEFAULT, linsolve_maxiter);
+    KSPSetTolerances(ksp, linsolve_reltol, linsolve_abstol, PETSC_DEFAULT, linsolve_maxiter);
     KSPSetType(ksp, KSPGMRES);
     KSPSetOperators(ksp, mastereq->getRHS(), mastereq->getRHS());
     KSPSetFromOptions(ksp);
-    KSPsolve_counter = 0;
-    KSPsolve_iterstaken_avg = 0.0;
   }
   else {
     /* For Neumann iterations, allocate a temporary vector */
     MatCreateVecs(mastereq->getRHS(), &tmp, NULL);
+    MatCreateVecs(mastereq->getRHS(), &err, NULL);
   }
 }
 
 
 ImplMidpoint::~ImplMidpoint(){
 
+  /* Print linear solver statistics */
+  linsolve_iterstaken_avg = (int) linsolve_iterstaken_avg / linsolve_counter;
+  linsolve_error_avg = linsolve_error_avg / linsolve_counter;
+  int myrank;
+  MPI_Comm_rank(MPI_COMM_WORLD, &myrank);
+  if (myrank == 0) printf("Linear solver type %d: Average iterations = %d, average error = %1.2e\n", linsolve_type, linsolve_iterstaken_avg, linsolve_error_avg);
+
   /* Free up Petsc's linear solver */
   if (linsolve_type == GMRES) {
     KSPDestroy(&ksp);
-    KSPsolve_iterstaken_avg = (int) KSPsolve_iterstaken_avg / KSPsolve_counter;
-    int myrank;
-    MPI_Comm_rank(MPI_COMM_WORLD, &myrank);
-    if (myrank == 0) printf("KSPsolve: Average iterations = %d\n", KSPsolve_iterstaken_avg);
   } else {
     VecDestroy(&tmp);
+    VecDestroy(&err);
   }
 
   /* Free up intermediate vectors */
@@ -136,8 +142,8 @@ void ImplMidpoint::evolveFWD(const double tstart,const  double tstop, Vec x) {
       KSPGetResidualNorm(ksp, &rnorm);
       KSPGetIterationNumber(ksp, &iters_taken);
       //printf("Residual norm %d: %1.5e\n", iters_taken, rnorm);
-      KSPsolve_iterstaken_avg += iters_taken;
-      KSPsolve_counter++;
+      linsolve_iterstaken_avg += iters_taken;
+      linsolve_error_avg += rnorm;
 
       /* Revert the scaling and shifting if gmres solver */
       MatAssemblyBegin(A, MAT_FINAL_ASSEMBLY);
@@ -145,9 +151,10 @@ void ImplMidpoint::evolveFWD(const double tstart,const  double tstop, Vec x) {
       break;
 
     case NEUMANN:
-      NeumannSolve(A, rhs, stage, dt/2.0, false);
+      linsolve_iterstaken_avg += NeumannSolve(A, rhs, stage, dt/2.0, false);
       break;
   }
+  linsolve_counter++;
 
   /* --- Update state x += dt * stage --- */
   VecAXPY(x, dt, stage);
@@ -215,18 +222,36 @@ void ImplMidpoint::evolveBWD(const double tstop, const double tstart, const Vec 
 }
 
 
-void ImplMidpoint::NeumannSolve(Mat A, Vec b, Vec y, double alpha, bool transpose){
+int ImplMidpoint::NeumannSolve(Mat A, Vec b, Vec y, double alpha, bool transpose){
+
+  double errnorm, errnorm0;
 
   // Initialize y = b
   VecCopy(b, y);
 
-  for (int iter = 0; iter < linsolve_maxiter; iter++) {
-    // tmp = Ab
+  int iter;
+  for (iter = 0; iter < linsolve_maxiter; iter++) {
+    VecCopy(y, err);
+
+    // y = b + alpha * A *  y
     if (!transpose) MatMult(A, y, tmp);
     else            MatMultTranspose(A, y, tmp);
-    // y = b + alpha * tmp 
     VecAXPBYPCZ(y, 1.0, alpha, 0.0, b, tmp);
+
+    /* Error approximation  */
+    VecAXPY(err, -1.0, y); // err = yprev - y 
+    VecNorm(err, NORM_2, &errnorm);
+
+    /* Stopping criteria */
+    if (iter == 0) errnorm0 = errnorm;
+    if (errnorm < linsolve_abstol) break;
+    if (errnorm / errnorm0 < linsolve_reltol) break;
   }
+
+  // printf("Neumann error: %1.14e\n", errnorm);
+  linsolve_error_avg += errnorm;
+
+  return iter;
 }
 
 PetscErrorCode RHSJacobian(TS ts,PetscReal t,Vec u,Mat M,Mat P,void *ctx){

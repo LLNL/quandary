@@ -220,10 +220,8 @@ OptimProblem::OptimProblem(MapParam config, myBraidApp* primalbraidapp_, myAdjoi
 
   /* Set initial starting point */
   initguess_type = config.GetStrParam("optim_init", "zero");
-  if (initguess_type.compare("constant") == 0 ){ 
-    config.GetVecDoubleParam("optim_init_const", initguess_amplitudes, 0.0);
-    assert(initguess_amplitudes.size() == primalbraidapp->mastereq->getNOscillators());
-  }
+  config.GetVecDoubleParam("optim_init_ampl", initguess_amplitudes, 0.0);
+  assert(initguess_amplitudes.size() == primalbraidapp->mastereq->getNOscillators());
   VecDuplicate(xlower, &xinit);
   getStartingPoint(xinit);
   TaoSetInitialVector(tao, xinit);
@@ -423,9 +421,6 @@ void OptimProblem::getStartingPoint(Vec xinit){
         j++;
       }
     }
-  } else if ( initguess_type.compare("zero") == 0)  { // init design with zero
-    VecZeroEntries(xinit);
-
   } else if ( initguess_type.compare("random")      == 0 ||       // init random, fixed seed
               initguess_type.compare("random_seed") == 0)  { // init random with new seed
 
@@ -440,16 +435,12 @@ void OptimProblem::getStartingPoint(Vec xinit){
     /* Broadcast random vector from rank 0 to all, so that all have the same starting point (necessary?) */
     MPI_Bcast(randvec, ndesign, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
-    /* Scale vector to be at 10% of the parameter bounds */
+    /* Scale vector by the initial amplitudes */
     int shift = 0;
     for (int ioscil = 0; ioscil < mastereq->getNOscillators(); ioscil++) {
-      /* Get upper bound value */
-      double bound;
-      VecGetValues(xupper, 1, &shift, &bound);
-      /* Scale all parameters */
       int nparam_iosc = mastereq->getOscillator(ioscil)->getNParams();
       for (int i=0; i<nparam_iosc; i++) {
-        randvec[shift + i] *= 0.1 * bound;
+        randvec[shift + i] *= initguess_amplitudes[ioscil];
       }
       shift+= nparam_iosc;
     }
@@ -540,16 +531,20 @@ double OptimProblem::objectiveT(Vec finalstate){
         break;
 
       case GROUNDSTATE:
-        /* compare full or pariatl state to groundstate */
+        /* compare full state to groundstate */
+
         MasterEq *meq= primalbraidapp->mastereq;
-        Vec state;
+        Vec state = finalstate;
 
         /* If sub-system is requested, compute reduced density operator first */
         if (obj_oscilIDs.size() < meq->getNOscillators()) { 
-          meq->createReducedDensity(finalstate, &state, obj_oscilIDs);
-        } else { // full density matrix system 
-           state = finalstate; 
+          printf("ERROR: Computing reduced density matrix is currently not available and needs testing!\n");
+          exit(1);
         }
+          // meq->createReducedDensity(finalstate, &state, obj_oscilIDs);
+        // } else { // full density matrix system 
+          //  state = finalstate; 
+        // }
 
 
         /* Compute frobenius norm: frob = || q(T) - e_1 ||^2 */
@@ -562,11 +557,10 @@ double OptimProblem::objectiveT(Vec finalstate){
         VecAssemblyBegin(state);
         VecAssemblyEnd(state);
 
-        /* Destroy reduced density matrix, if it has been created */
-        if (obj_oscilIDs.size() < primalbraidapp->mastereq->getNOscillators()) { 
-          VecDestroy(&state);
-        }
-
+        // /* Destroy reduced density matrix, if it has been created */
+        // if (obj_oscilIDs.size() < primalbraidapp->mastereq->getNOscillators()) { 
+        //   VecDestroy(&state);
+        // }
         break;
     }
 
@@ -615,39 +609,38 @@ void OptimProblem::objectiveT_diff(Vec finalstate, const double obj, const doubl
     case GROUNDSTATE:
 
       MasterEq *meq= primalbraidapp->mastereq;
-      Vec state;
+      Vec state = finalstate;
 
       /* If sub-system is requested, compute reduced density operator first */
+      // TODO: CHECK IMPLEMENTATION OF REDUCEDDENSITY!
       if (obj_oscilIDs.size() < primalbraidapp->mastereq->getNOscillators()) { 
-        /* Create reduced density matrix */
-        meq->createReducedDensity(finalstate, &state, obj_oscilIDs);
-      } else { // full density matrix system
-         state = finalstate;
+        printf("ERROR: Computing reduced density matrix is currently not available and needs testing!\n");
+        exit(1);
       }
-
-      const PetscScalar *stateptr;
-      PetscScalar *statebarptr;
-      Vec statebar;
-      VecDuplicate(state, &statebar);
+        /* Create reduced density matrix */
+        // meq->createReducedDensity(finalstate, &state, obj_oscilIDs);
+      // } else { // full density matrix system
+      //    state = finalstate;
+      // }
 
       int ilo, ihi;
-      VecGetOwnershipRange(statebar, &ilo, &ihi);
+      VecGetOwnershipRange(rho_t0_bar, &ilo, &ihi);
 
       /* Derivative of frobenius norm: 2 * (q(T) - e_1) * frob_bar */
-      VecAXPY(statebar, 2.0*obj_bar, state);
-      if (ilo <= 0 && 0 < ihi) VecSetValue(statebar, 0, -2.0*obj_bar, ADD_VALUES);
-      VecAssemblyBegin(statebar); VecAssemblyEnd(statebar);
+      VecAXPY(rho_t0_bar, 2.0*obj_bar, state);
+      if (ilo <= 0 && 0 < ihi) VecSetValue(rho_t0_bar, 0, -2.0*obj_bar, ADD_VALUES);
+      VecAssemblyBegin(rho_t0_bar); VecAssemblyEnd(rho_t0_bar);
       
-      /* Pass derivative from statebar to rho_t0_bar */
-      if (obj_oscilIDs.size() < meq->getNOscillators()) {
-        /* Derivative of partial trace  */
-        meq->createReducedDensity_diff(rho_t0_bar, statebar, obj_oscilIDs);
-        VecDestroy(&state);
-      } else {
-        VecCopy(statebar, rho_t0_bar);
-      }
+      // /* Pass derivative from statebar to rho_t0_bar */
+      // if (obj_oscilIDs.size() < meq->getNOscillators()) {
+      //   /* Derivative of partial trace  */
+      //   meq->createReducedDensity_diff(rho_t0_bar, statebar, obj_oscilIDs);
+      //   VecDestroy(&state);
+      // } else {
+      //   VecCopy(statebar, rho_t0_bar);
+      // }
 
-      VecDestroy(&statebar);
+      // VecDestroy(&statebar);
     }
   }
 }
