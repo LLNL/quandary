@@ -499,21 +499,19 @@ double OptimProblem::objectiveT(Vec finalstate){
         break;
 
       case EXPECTEDENERGY:
-        /* Squared average of expected energy level f = 1/Q ( sum_{k=0}^Q < N_k(rho(T)) > )^2 */
+        /* Squared average of expected energy level f = (1/Q sum_{k=0}^Q < N_k(rho(T)) > )^2 */
         sum = 0.0;
         for (int i=0; i<obj_oscilIDs.size(); i++) {
-          /* compute the expected value of energy levels for each oscillator */
           sum += primalbraidapp->mastereq->getOscillator(obj_oscilIDs[i])->expectedEnergy(finalstate);
         }
         obj_local = pow(sum / obj_oscilIDs.size(), 2.0);
         break;
 
       case EXPECTEDENERGYb:
-        /* average of Squared expected energy level f = 1/Qsum_{k=0}^Q < N_k(rho(T))>^2 */
+        /* average of Squared expected energy level f = 1/Q sum_{k=0}^Q < N_k(rho(T))>^2 */
         double g;
         sum = 0.0;
         for (int i=0; i<obj_oscilIDs.size(); i++) {
-          /* compute the expected value of energy levels for each oscillator */
           g = primalbraidapp->mastereq->getOscillator(obj_oscilIDs[i])->expectedEnergy(finalstate);
           sum += pow(g,2.0);
         }
@@ -524,7 +522,6 @@ double OptimProblem::objectiveT(Vec finalstate){
         /* average of expected energy level f = 1/Q sum_{k=0}^Q < N_k(rho(T))> */
         sum = 0.0;
         for (int i=0; i<obj_oscilIDs.size(); i++) {
-          /* compute the expected value of energy levels for each oscillator */
           sum += primalbraidapp->mastereq->getOscillator(obj_oscilIDs[i])->expectedEnergy(finalstate);
         }
         obj_local = sum / obj_oscilIDs.size();
@@ -532,20 +529,7 @@ double OptimProblem::objectiveT(Vec finalstate){
 
       case GROUNDSTATE:
         /* compare full state to groundstate */
-
-        MasterEq *meq= primalbraidapp->mastereq;
         Vec state = finalstate;
-
-        /* If sub-system is requested, compute reduced density operator first */
-        if (obj_oscilIDs.size() < meq->getNOscillators()) { 
-          printf("ERROR: Computing reduced density matrix is currently not available and needs testing!\n");
-          exit(1);
-        }
-          // meq->createReducedDensity(finalstate, &state, obj_oscilIDs);
-        // } else { // full density matrix system 
-          //  state = finalstate; 
-        // }
-
 
         /* Compute frobenius norm: frob = || q(T) - e_1 ||^2 */
         int ilo, ihi;
@@ -556,16 +540,9 @@ double OptimProblem::objectiveT(Vec finalstate){
         if (ilo <= 0 && 0 < ihi) VecSetValue(state, 0, 1.0, ADD_VALUES); // restore state 
         VecAssemblyBegin(state);
         VecAssemblyEnd(state);
-
-        // /* Destroy reduced density matrix, if it has been created */
-        // if (obj_oscilIDs.size() < primalbraidapp->mastereq->getNOscillators()) { 
-        //   VecDestroy(&state);
-        // }
         break;
     }
-
   }
-
   return obj_local;
 }
 
@@ -604,24 +581,8 @@ void OptimProblem::objectiveT_diff(Vec finalstate, const double obj, const doubl
         }
         break;
 
-
-
     case GROUNDSTATE:
-
-      MasterEq *meq= primalbraidapp->mastereq;
       Vec state = finalstate;
-
-      /* If sub-system is requested, compute reduced density operator first */
-      // TODO: CHECK IMPLEMENTATION OF REDUCEDDENSITY!
-      if (obj_oscilIDs.size() < primalbraidapp->mastereq->getNOscillators()) { 
-        printf("ERROR: Computing reduced density matrix is currently not available and needs testing!\n");
-        exit(1);
-      }
-        /* Create reduced density matrix */
-        // meq->createReducedDensity(finalstate, &state, obj_oscilIDs);
-      // } else { // full density matrix system
-      //    state = finalstate;
-      // }
 
       int ilo, ihi;
       VecGetOwnershipRange(rho_t0_bar, &ilo, &ihi);
@@ -630,17 +591,7 @@ void OptimProblem::objectiveT_diff(Vec finalstate, const double obj, const doubl
       VecAXPY(rho_t0_bar, 2.0*obj_bar, state);
       if (ilo <= 0 && 0 < ihi) VecSetValue(rho_t0_bar, 0, -2.0*obj_bar, ADD_VALUES);
       VecAssemblyBegin(rho_t0_bar); VecAssemblyEnd(rho_t0_bar);
-      
-      // /* Pass derivative from statebar to rho_t0_bar */
-      // if (obj_oscilIDs.size() < meq->getNOscillators()) {
-      //   /* Derivative of partial trace  */
-      //   meq->createReducedDensity_diff(rho_t0_bar, statebar, obj_oscilIDs);
-      //   VecDestroy(&state);
-      // } else {
-      //   VecCopy(statebar, rho_t0_bar);
-      // }
-
-      // VecDestroy(&statebar);
+      break;
     }
   }
 }
