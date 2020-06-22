@@ -103,8 +103,8 @@ class myBraidApp : public BraidApp {
     virtual braid_Int BufUnpack(void *buffer, braid_Vector *u_ptr,
                                 BraidBufferStatus &bstatus);
 
-    /*  */
-    virtual void PreProcess(int iinit);
+    /* Pass initial condition to braid, open output files. */
+    virtual void PreProcess(int iinit, const Vec rho_t0);
 
     /* Performs one last FRelax. Returns state at last time step or NULL if not stored on this processor */
     virtual Vec PostProcess();
@@ -115,10 +115,8 @@ class myBraidApp : public BraidApp {
     /* Initialize braids time grids */
     void InitGrids();
 
-    /* Set initial condition */
+    /* Pass the initial condition rho_t0 to braid at t=0 */
     void setInitCond(const Vec rho_t0);
-
-
 };
 
 /**
@@ -148,8 +146,8 @@ class myAdjointBraidApp : public myBraidApp {
     /* Set adjoint initial condition */
     braid_Int Init(braid_Real t, braid_Vector *u_ptr);
 
-    /* */
-    virtual void PreProcess(int iinit);
+    /* Pass initial condition to braid, reset gradient, open output files. */
+    virtual void PreProcess(int iinit, const Vec rho_t0_bar);
 
     /* Performs one last FRelax and MPI_Allreduce the gradient. */
     Vec PostProcess();

@@ -441,7 +441,10 @@ braid_Int myBraidApp::BufUnpack(void *buffer, braid_Vector *u_ptr, BraidBufferSt
   return 0; 
 }
 
-void myBraidApp::PreProcess(int iinit){
+void myBraidApp::PreProcess(int iinit, const Vec rho_t0){
+
+  /* Pass initial condition to braid */
+  setInitCond(rho_t0);
 
   /* Open output files */
   if (accesslevel > 0 && mpirank_petsc == 0) {
@@ -650,7 +653,10 @@ braid_Int myAdjointBraidApp::Init(braid_Real t, braid_Vector *u_ptr) {
 }
 
 
-void myAdjointBraidApp::PreProcess(int iinit){
+void myAdjointBraidApp::PreProcess(int iinit, const Vec rho_t0_bar){
+
+  /* Pass initial condition to braid */
+  setInitCond(rho_t0_bar);
 
   /* Reset the reduced gradient */
   VecZeroEntries(redgrad); 
@@ -701,7 +707,5 @@ void myBraidApp::setInitCond(const Vec rho_t0){
 
     /* Copy initial condition into braid's vector */
     VecCopy(rho_t0, x);
-
   }
-
 }

@@ -270,8 +270,7 @@ double OptimProblem::evalF(const Vec x) {
     if (mpirank_braid == 0) printf("%d: %d FWD. \n", mpirank_init, initid);
 
     /* Run forward with initial condition initid*/
-    primalbraidapp->PreProcess(initid);
-    primalbraidapp->setInitCond(rho_t0);
+    primalbraidapp->PreProcess(initid, rho_t0);
     primalbraidapp->Drive();
     finalstate = primalbraidapp->PostProcess(); // this return NULL for all but the last time processor
     
@@ -348,9 +347,8 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
     /* --- Solve primal --- */
     // if (mpirank_braid == 0) printf("%d: %d FWD. ", mpirank_init, initid);
 
-    /* Run forward with initial condition initid*/
-    primalbraidapp->PreProcess(initid);
-    primalbraidapp->setInitCond(rho_t0);
+    /* Run forward with initial condition rho_t0 */
+    primalbraidapp->PreProcess(initid, rho_t0);
     primalbraidapp->Drive();
     finalstate = primalbraidapp->PostProcess(); // this return NULL for all but the last time processor
 
@@ -382,8 +380,7 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
     /* Derivative of final time objective */
     primalbraidapp->mastereq->objectiveT_diff(objective_type, obj_oscilIDs, finalstate, rho_t0_bar, rho_t0, Jbar, targetgate);
 
-    adjointbraidapp->PreProcess(initid);
-    adjointbraidapp->setInitCond(rho_t0_bar);
+    adjointbraidapp->PreProcess(initid, rho_t0_bar);
     adjointbraidapp->Drive();
     adjointbraidapp->PostProcess();
 
