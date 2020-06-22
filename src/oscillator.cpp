@@ -150,8 +150,8 @@ int Oscillator::evalControl(const double t, double* Re_ptr, double* Im_ptr){
     *Im_ptr = 0.0;
   } else {
     /* Evaluate the spline at time t */
-    *Re_ptr = basisfunctions->evaluate(t, params, ground_freq, ControlBasis::RE);
-    *Im_ptr = basisfunctions->evaluate(t, params, ground_freq, ControlBasis::IM);
+    *Re_ptr = basisfunctions->evaluate(t, params, ground_freq, RE);
+    *Im_ptr = basisfunctions->evaluate(t, params, ground_freq, IM);
   }
 
   return 0;
@@ -168,8 +168,8 @@ int Oscillator::evalControl_diff(const double t, double* dRedp, double* dImdp) {
   } else {
       double Rebar = 1.0;
       double Imbar = 1.0;
-      basisfunctions->derivative(t, dRedp, Rebar, ControlBasis::RE);
-      basisfunctions->derivative(t, dImdp, Imbar, ControlBasis::IM);
+      basisfunctions->derivative(t, dRedp, Rebar, RE);
+      basisfunctions->derivative(t, dImdp, Imbar, IM);
   }
 
   return 0;
@@ -182,7 +182,7 @@ int Oscillator::evalControl_Labframe(const double t, double* f){
     *f = 0.0;
   } else {
     /* Evaluate the spline at time t */
-    *f = basisfunctions->evaluate(t, params, ground_freq, ControlBasis::LAB);
+    *f = basisfunctions->evaluate(t, params, ground_freq, LAB);
   }
 
   return 0;

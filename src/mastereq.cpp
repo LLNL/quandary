@@ -1370,6 +1370,7 @@ int myMatMultTranspose_matfree_2Osc(Mat RHS, Vec x, Vec y){
 
 double MasterEq::objectiveT(ObjectiveType objective_type, const std::vector<int>& obj_oscilIDs, const Vec state, const Vec rho_t0, Gate* targetgate) {
   double obj_local = 0.0;
+  double sum;
 
   if (state != NULL) {
 
@@ -1381,13 +1382,31 @@ double MasterEq::objectiveT(ObjectiveType objective_type, const std::vector<int>
 
       case EXPECTEDENERGY:
         /* Squared average of expected energy level f = ( sum_{k=0}^Q < N_k(rho(T)) > )^2 */
-        double sum;
         sum = 0.0;
         for (int i=0; i<obj_oscilIDs.size(); i++) {
-          /* compute the expected value of energy levels for each oscillator */
           sum += getOscillator(obj_oscilIDs[i])->expectedEnergy(state);
         }
         obj_local = pow(sum / obj_oscilIDs.size(), 2.0);
+        break;
+
+      case EXPECTEDENERGYb:
+        /* average of Squared expected energy level f = 1/Q sum_{k=0}^Q < N_k(rho(T))>^2 */
+        double g;
+        sum = 0.0;
+        for (int i=0; i<obj_oscilIDs.size(); i++) {
+          g = getOscillator(obj_oscilIDs[i])->expectedEnergy(state);
+          sum += pow(g,2.0);
+        }
+        obj_local = sum / obj_oscilIDs.size();
+        break;
+
+      case EXPECTEDENERGYc:
+        /* average of expected energy level f = 1/Q sum_{k=0}^Q < N_k(rho(T))> */
+        sum = 0.0;
+        for (int i=0; i<obj_oscilIDs.size(); i++) {
+          sum += getOscillator(obj_oscilIDs[i])->expectedEnergy(state);
+        }
+        obj_local = sum / obj_oscilIDs.size();
         break;
 
       case GROUNDSTATE:
@@ -1434,7 +1453,20 @@ void MasterEq::objectiveT_diff(ObjectiveType objective_type, const std::vector<i
         sum = sum / obj_oscilIDs.size();
         // Derivative of expected energy levels 
         Jbar = 2. * sum * obj_bar / obj_oscilIDs.size();
-        printf("Jbar%f\n", Jbar);
+        for (int i=0; i<obj_oscilIDs.size(); i++) {
+          getOscillator(obj_oscilIDs[i])->expectedEnergy_diff(state, statebar, Jbar);
+        }
+        break;
+
+      case EXPECTEDENERGYb:
+        for (int i=0; i<obj_oscilIDs.size(); i++) {
+          Jbar = 2. / obj_oscilIDs.size() * getOscillator(obj_oscilIDs[i])->expectedEnergy(state) * obj_bar;
+          getOscillator(obj_oscilIDs[i])->expectedEnergy_diff(state, statebar, Jbar);
+        }
+        break;
+
+      case EXPECTEDENERGYc:
+        Jbar = obj_bar / obj_oscilIDs.size();
         for (int i=0; i<obj_oscilIDs.size(); i++) {
           getOscillator(obj_oscilIDs[i])->expectedEnergy_diff(state, statebar, Jbar);
         }

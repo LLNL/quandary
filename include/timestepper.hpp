@@ -4,14 +4,8 @@
 #include "mastereq.hpp"
 #include <assert.h> 
 #include <iostream> 
+#include "defs.hpp"
 #pragma once
-
-enum LinearSolverType{
-  GMRES,   // uses Petsc's GMRES solver
-  NEUMANN   // uses Neuman power iterations 
-};
-
-
 
 /* Base class for time steppers */
 class TimeStepper{
@@ -55,11 +49,14 @@ class ImplMidpoint : public TimeStepper {
   Vec rhs, rhs_adj;      /* right hand side */
   KSP ksp;               /* Petsc's linear solver context for running GMRES */
   PC  preconditioner;    /* Preconditioner for linear solver */
-  int KSPsolve_iterstaken_avg;  // Computing the average number of iterations taken by KSP solve
-  int KSPsolve_counter;            // Counting how often KSPsolve is called
   LinearSolverType linsolve_type;  // Either GMRES or NEUMANN
-  int linsolve_maxiter;
-  Vec tmp;                /* Auxiliary vector for applying the neuman iterations */
+  int linsolve_maxiter;            // Maximum number of linear solver iterations
+  double linsolve_abstol;          // Absolute stopping criteria for linear solver
+  double linsolve_reltol;          // Relative stopping criteria for linear solver
+  int linsolve_iterstaken_avg;     // Computing the average number of linear solver iterations
+  double linsolve_error_avg;       // Computing the average error of linear solver 
+  int linsolve_counter;            // Counting how often a linear solve is performed is called
+  Vec tmp, err;                    /* Auxiliary vector for applying the neuman iterations */
 
   public:
     ImplMidpoint(MasterEq* mastereq_, LinearSolverType linsolve_type_, int linsolve_maxiter_);
@@ -73,7 +70,8 @@ class ImplMidpoint : public TimeStepper {
 
     /* Solve (I-alpha*A) * x = b using Neumann iterations */
     // bool transpose=true solves the transposed system (I-alpha A^T)x = b
-    void NeumannSolve(Mat A, Vec b, Vec x, double alpha, bool transpose);
+    // Return residual norm ||y-yprev||
+    int NeumannSolve(Mat A, Vec b, Vec x, double alpha, bool transpose);
 };
 
 

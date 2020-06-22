@@ -14,14 +14,6 @@
 #define TEST_FD 0    // Finite Differences gradient test
 #define EPS 1e-4     // Epsilon for Finite Differences
 
-enum RunType {
-  primal,            // Runs one objective function evaluation (forward)
-  adjoint,           // Runs one gradient computation (forward & backward)
-  optimization,      // Run optimization 
-  none               // Don't run anything.
-};
-
-
 int main(int argc,char **argv)
 {
   char filename[255];

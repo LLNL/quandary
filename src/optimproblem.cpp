@@ -66,6 +66,8 @@ OptimProblem::OptimProblem(MapParam config, myBraidApp* primalbraidapp_, myAdjoi
     }
   }  
   else if (objective_str[0].compare("expectedEnergy")==0) objective_type = EXPECTEDENERGY;
+  else if (objective_str[0].compare("expectedEnergyb")==0) objective_type = EXPECTEDENERGYb;
+  else if (objective_str[0].compare("expectedEnergyc")==0) objective_type = EXPECTEDENERGYc;
   else if (objective_str[0].compare("groundstate")   ==0) objective_type = GROUNDSTATE;
   else {
       printf("\n\n ERROR: Unknown objective function: %s\n", objective_str[0].c_str());
@@ -222,10 +224,8 @@ OptimProblem::OptimProblem(MapParam config, myBraidApp* primalbraidapp_, myAdjoi
 
   /* Set initial starting point */
   initguess_type = config.GetStrParam("optim_init", "zero");
-  if (initguess_type.compare("constant") == 0 ){ 
-    config.GetVecDoubleParam("optim_init_const", initguess_amplitudes, 0.0);
-    assert(initguess_amplitudes.size() == primalbraidapp->mastereq->getNOscillators());
-  }
+  config.GetVecDoubleParam("optim_init_ampl", initguess_amplitudes, 0.0);
+  assert(initguess_amplitudes.size() == primalbraidapp->mastereq->getNOscillators());
   VecDuplicate(xlower, &xinit);
   getStartingPoint(xinit);
   TaoSetInitialVector(tao, xinit);
@@ -449,9 +449,6 @@ void OptimProblem::getStartingPoint(Vec xinit){
         j++;
       }
     }
-  } else if ( initguess_type.compare("zero") == 0)  { // init design with zero
-    VecZeroEntries(xinit);
-
   } else if ( initguess_type.compare("random")      == 0 ||       // init random, fixed seed
               initguess_type.compare("random_seed") == 0)  { // init random with new seed
 
@@ -466,16 +463,12 @@ void OptimProblem::getStartingPoint(Vec xinit){
     /* Broadcast random vector from rank 0 to all, so that all have the same starting point (necessary?) */
     MPI_Bcast(randvec, ndesign, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
-    /* Scale vector to be at 10% of the parameter bounds */
+    /* Scale vector by the initial amplitudes */
     int shift = 0;
     for (int ioscil = 0; ioscil < mastereq->getNOscillators(); ioscil++) {
-      /* Get upper bound value */
-      double bound;
-      VecGetValues(xupper, 1, &shift, &bound);
-      /* Scale all parameters */
       int nparam_iosc = mastereq->getOscillator(ioscil)->getNParams();
       for (int i=0; i<nparam_iosc; i++) {
-        randvec[shift + i] *= 0.1 * bound;
+        randvec[shift + i] *= initguess_amplitudes[ioscil];
       }
       shift+= nparam_iosc;
     }

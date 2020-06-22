@@ -1,3 +1,4 @@
+#include "defs.hpp"
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
@@ -11,9 +12,6 @@
  * where dtknot = T/(nsplines -2) is the time knot vector spacing.
  */
 class ControlBasis{
-    public:
-        enum ControlType {RE, IM, LAB};   // Type of control: Rotating frame Real p(t), rotating frame imaginary q(t), or Lab frame f(t)
-
     protected:
         int    nbasis;                    // number of basis functions
         double dtknot;                    // spacing of time knot vector    

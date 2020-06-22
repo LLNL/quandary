@@ -1,3 +1,4 @@
+#include "defs.hpp"
 #include "oscillator.hpp"
 #include "util.hpp"
 #include <petscts.h>
@@ -6,15 +7,6 @@
 #include <iostream> 
 #include "gate.hpp"
 #pragma once
-
-/* Available lindblad types */
-enum LindbladType {NONE, DECAY, DEPHASE, BOTH};
-/* Available types of initial conditions */
-enum InitialConditionType {FROMFILE, PURE, DIAGONAL, BASIS};
-
-enum ObjectiveType {GATE,             // Compare final state to linear gate transformation of initial cond.
-                    EXPECTEDENERGY,   // Minimizes expected energy levels.
-                    GROUNDSTATE};     // Compares final state to groundstate (full matrix)
 
 
 /* Define a matshell context containing pointers to data needed for applying the RHS matrix to a vector */
