@@ -58,6 +58,7 @@ class myBraidApp : public BraidApp {
     std::vector<int> obj_oscilIDs;
     double Jbar;
     double penalty_exp;
+    double penalty_coeff;
     double penalty_integral;
 
   public:

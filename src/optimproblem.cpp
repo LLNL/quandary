@@ -100,6 +100,14 @@ OptimProblem::OptimProblem(MapParam config, myBraidApp* primalbraidapp_, myAdjoi
   adjointbraidapp->obj_oscilIDs = obj_oscilIDs;
   primalbraidapp->penalty_exp = penalty_exp;
   adjointbraidapp->penalty_exp = penalty_exp;
+  primalbraidapp->penalty_coeff = penalty_coeff;
+  adjointbraidapp->penalty_coeff = penalty_coeff;
+
+  // check if implemented:
+  if (objective_type == GATE && penalty_coeff > 1e-13) {
+        printf("ERROR: Penalty integral for Gate objective is currently not implemented.\n");
+        exit(1);
+  }
 
 
   /* Get initial condition type and involved oscillators */

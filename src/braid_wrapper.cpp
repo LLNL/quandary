@@ -229,10 +229,9 @@ braid_Int myBraidApp::Step(braid_Vector u_, braid_Vector ustop_, braid_Vector fs
     /* -------------------------------------------------------------*/
 
     /* Add penalty term */
-    if (_braid_CoreElt(core->GetCore(), max_levels) == 1) {
+    if (_braid_CoreElt(core->GetCore(), max_levels) == 1 && penalty_coeff > 1e-13) {
 
       /* Get objective and weight */
-
       double expected = objectiveT(mastereq, objective_type, obj_oscilIDs, u->x, NULL, NULL);
       double weight = pow(tstart / total_time, penalty_exp);  
 
@@ -647,7 +646,7 @@ braid_Int myAdjointBraidApp::Step(braid_Vector u_, braid_Vector ustop_, braid_Ve
     mytimestepper->evolveBWD(tstop_orig, tstart_orig, uprimal_tstop->x, u->x, redgrad, compute_gradient);
 
     /* Derivative of penalty objective */
-    if (_braid_CoreElt(core->GetCore(), max_levels) == 1) {
+    if (_braid_CoreElt(core->GetCore(), max_levels) == 1 && penalty_coeff > 1e-13) {
       
       double weight = pow(tstop_orig / total_time, penalty_exp);  
       double fbar = (tstart_orig-tstop_orig) * weight * Jbar;
