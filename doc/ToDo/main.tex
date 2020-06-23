@@ -21,24 +21,17 @@
 \maketitle
 
 \begin{itemize}
-  \item Scale initial control parameters to be $x\% $ of the control bounds, e.g. $10\%$.
   \item During groundstate opimization: discourage higher energy levels:
      \begin{align*}
         \frac 1 T \int_0^T \left( \rho_{kk}\right)^2 \, dt, \quad k > 0
      \end{align*}
   \item Look at eigenvalues of the Hessian of the objective function (SLEPc library?)
-  \item Initialize ODE with thermal population 
   \item Add decay for control functions over time: Constraint for the control function amplitudes:
       \begin{align*}
           \sum_{l=1}^L w_l\alpha_l \leq c_{max}
       \end{align*}
         where $w_l$ are monotonically increasing (e.g. exponentially). This will push later control functions to zero. 
   \item Modify braid access level option so that it writes the state only after the optimization has finished. 
-  \item \textbf{Parallelization:}
-      \begin{itemize}
-        \item Parallelize HiOp: Distribute spline parameters.
-        \item Parallelize linear algebra (Find out why serial run on multiple processors is faster than serial run on one processor. Seems like Petsc is still operating on multiple ranks?)
-      \end{itemize}
   \item \textbf{Braid convergence and scaling study} (Ben Southworth):
         \begin{itemize}
           \item Numerical convergence study for forward Braid using implicit vs. explicit time-stepping schemes ($\rightarrow$ Petsc's timestepper).
