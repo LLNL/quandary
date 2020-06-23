@@ -116,19 +116,31 @@ We aim to find control pulses $p^k(\vec{\alpha}^k, t), q^k(\vec{\alpha}^k, (t)$,
                     \end{bmatrix}
 \end{align}
 
-We define two objective functions for groundstate optimization, both of which can be applied either to the full system $H = H_1\otimes \dots \otimes H_Q$ with density matrix $\rho$, or for a partial system $H_{k_1}\otimes \dots \otimes H_{k_s}$ for some index set $\mathcal{K}=\{k_1,\dots,k_s\}\subset \{1,\dots,Q\}$ and reduced density matrix $\rho^{\mathcal{K}}$.
+To reach this goal, we either minimize the distance between the final state density matrix and the ground-state density matrix, measured in the frobenius norm (1), or we look at the expected energy level of the system and minimize that:
 \begin{enumerate}
-  \item Minimize the square of the average expected energy level of all oscillators
-    \begin{align}
-      J(\rho(T)) = \left(\frac{1}{|\mathcal{K}|}\sum_{k\in\mathcal{K}}\langle M_k \rangle \right)^2
-    \end{align}
-    where $M_k = a_k^\dag a_k$ is the number operator for oscillator $k$, and $\langle \cdot \rangle = \mbox{Tr} (M_k\rho^k)$ gives the expected energy level of the subsystem $k$ as in Section \ref{sec:expectedenergy}.
-  \item Minimize the frobenius norm between the final density matrix and the groundstate density matrix:
+  \item \textit{Direct ground-state optimization}: Minimize the frobenius norm between the final density matrix and the groundstate density matrix:
     \begin{align}
       J(\rho(T)) = \frac 12 \| \rho(T) - \rho_G \|^2_F 
     \end{align}
     where the Frobenius norm is defined as $\|A\|^2_F = \Tr(A^{\dagger}A)$.
+  \item \textit{Expected energy minimization}: Minimize the average expected energy level of all oscillators
+    \begin{align}
+      (a) \quad J(\rho(T)) = \left(\frac{1}{|\mathcal{K}|}\sum_{k\in\mathcal{K}}\langle M_k \rangle \right)^2
+    \end{align}
+    where $M_k = a_k^\dag a_k$ is the number operator for oscillator $k$, and $\langle \cdot \rangle$ denotes the expected value, as in Section \ref{sec:expectedenergy}. Here, $\mathcal{K}=\{k_1,\dots,k_s\}\subset \{1,\dots,Q\}$ is an index set of oscillator IDs defining a subsystem $H_{k_1}\otimes H_{k_s}$.
+    Variations of the above measure are 
+    \begin{enumerate}
+      \item[(b)] $J(\rho(T)) = \frac{1}{|\mathcal{K}|}\left(\sum_{k\in\mathcal{K}}\langle M_k \rangle \right)^2 $
+      \item[(c)] $J(\rho(T)) = \frac{1}{|\mathcal{K}|}\sum_{k\in\mathcal{K}}\langle M_k \rangle$
+    \end{enumerate}
+
 \end{enumerate}
+
+For both objective types, we add an integral penalty term to the objective function, that discourages non-zero energy states over time as so:
+\begin{align}
+  \int_0^T w(t) J(\rho(t)) \, \mathrm{d}t, \quad \text{where} \quad w(t) = \left(\frac{t}{T}\right)^p, p \geq 1
+\end{align}
+
 
 \subsection{Target gate optimization}
 
