@@ -72,10 +72,6 @@ class OptimProblem {
   /* Compute initial guess for optimization variables */
   void getStartingPoint(Vec x);
 
-  /* Compute penalty integral term. WARNING: this might expensive, since it's a loop over all time steps */
-  double penaltyIntegral();
-  void penaltyIntegral_diff(const double pbar);
-
   /* Call this after TaoSolve() has finished to print out some information */
   void getSolution(Vec* opt);
 
@@ -93,3 +89,10 @@ PetscErrorCode TaoEvalGradient(Tao tao, Vec x, Vec G, void*ptr);
 
 /* Petsc's Tao interface routine for evaluating the gradient g = \nabla f(x) */
 PetscErrorCode TaoEvalObjectiveAndGradient(Tao tao, Vec x, PetscReal *f, Vec G, void*ptr);
+
+
+/* Compute local objective function J(rho(t)) */
+double objectiveT(MasterEq* mastereq, ObjectiveType objective_type, const std::vector<int>& obj_oscilIDs, const Vec state, const Vec rho_t0, Gate* targetgate);
+
+/* Derivative of local objective function times obj_bar */
+void objectiveT_diff(MasterEq* mastereq, ObjectiveType objective_type, const std::vector<int>& obj_oscilIDs, Vec state, Vec state_bar, const Vec rho_t0, const double obj_bar, Gate* targetgate);

@@ -9,6 +9,10 @@
 
 #pragma once
 
+// define as extern here, they are needed for penalty integral term, implemented in optimproble.cpp
+extern double objectiveT(MasterEq* mastereq, ObjectiveType objective_type, const std::vector<int>& obj_oscilIDs, const Vec state, const Vec rho_t0, Gate* targetgate);
+extern void objectiveT_diff(MasterEq* mastereq, ObjectiveType objective_type, const std::vector<int>& obj_oscilIDs, Vec state, Vec state_bar, const Vec rho_t0, const double obj_bar, Gate* targetgate);
+
 class myBraidVector {
   public: 
     Vec x;
@@ -48,6 +52,13 @@ class myBraidApp : public BraidApp {
     std::string  datadir;           /* Name of output data directory */
     double       total_time;        /* total time  */
     MasterEq *mastereq;             /* Master equation */
+
+    /* Stuff for evaluating penalty term objective function */
+    ObjectiveType objective_type;
+    std::vector<int> obj_oscilIDs;
+    double Jbar;
+    double penalty_exp;
+    double penalty_integral;
 
   public:
 
@@ -103,8 +114,8 @@ class myBraidApp : public BraidApp {
     virtual braid_Int BufUnpack(void *buffer, braid_Vector *u_ptr,
                                 BraidBufferStatus &bstatus);
 
-    /* Pass initial condition to braid, open output files. */
-    virtual void PreProcess(int iinit, const Vec rho_t0);
+    /* Pass initial condition to braid, open output files*/
+    virtual void PreProcess(int iinit, const Vec rho_t0, double Jbar);
 
     /* Performs one last FRelax. Returns state at last time step or NULL if not stored on this processor */
     virtual Vec PostProcess();
@@ -146,8 +157,8 @@ class myAdjointBraidApp : public myBraidApp {
     /* Set adjoint initial condition */
     braid_Int Init(braid_Real t, braid_Vector *u_ptr);
 
-    /* Pass initial condition to braid, reset gradient, open output files. */
-    virtual void PreProcess(int iinit, const Vec rho_t0_bar);
+    /* Pass initial condition to braid, reset gradient, open output files */
+    virtual void PreProcess(int iinit, const Vec rho_t0, double Jbar);
 
     /* Performs one last FRelax and MPI_Allreduce the gradient. */
     Vec PostProcess();

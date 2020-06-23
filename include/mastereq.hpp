@@ -117,11 +117,6 @@ class MasterEq{
      */
     int getRhoT0(const int iinit, const int ninit, const InitialConditionType initcond_type, const std::vector<int>& oscilIDs, Vec rho0);
 
-
-    /* Compute local objective function J(rho(t)) */
-    double objectiveT(ObjectiveType objective_type, const std::vector<int>& obj_oscilIDs, const Vec state, const Vec rho_t0, Gate* targetgate);
-    /* Derivative of local objective function times obj_bar */
-    void objectiveT_diff(ObjectiveType objective_type, const std::vector<int>& obj_oscilIDs, Vec state, Vec state_bar, const Vec rho_t0, const double obj_bar, Gate* targetgate);
 };
 
 

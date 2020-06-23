@@ -38,10 +38,6 @@ OptimProblem::OptimProblem(MapParam config, myBraidApp* primalbraidapp_, myAdjoi
   grtol = config.GetDoubleParam("optim_rtol", 1e-4);
   maxiter = config.GetIntParam("optim_maxiter", 200);
 
-  /* Prepare for penalty integral term */
-  penalty_coeff = config.GetDoubleParam("optim_penalty", 1e-4);
-  penalty_exp = config.GetIntParam("optim_penalty_exponent", 10);
-
   /* Reset */
   objective = 0.0;
 
@@ -94,6 +90,17 @@ OptimProblem::OptimProblem(MapParam config, myBraidApp* primalbraidapp_, myAdjoi
     printf("ERROR: List of oscillator IDs for objective function invalid\n"); 
     exit(1);
   }
+
+  /* Pass information on objective function to braid needed for penalty objective function */
+  penalty_coeff = config.GetDoubleParam("optim_penalty", 1e-4);
+  penalty_exp = config.GetIntParam("optim_penalty_exponent", 10);
+  primalbraidapp->objective_type = objective_type;
+  adjointbraidapp->objective_type = objective_type;
+  primalbraidapp->obj_oscilIDs = obj_oscilIDs;
+  adjointbraidapp->obj_oscilIDs = obj_oscilIDs;
+  primalbraidapp->penalty_exp = penalty_exp;
+  adjointbraidapp->penalty_exp = penalty_exp;
+
 
   /* Get initial condition type and involved oscillators */
   std::vector<std::string> initcondstr;
@@ -270,40 +277,37 @@ double OptimProblem::evalF(const Vec x) {
     if (mpirank_braid == 0) printf("%d: %d FWD. \n", mpirank_init, initid);
 
     /* Run forward with initial condition initid*/
-    primalbraidapp->PreProcess(initid, rho_t0);
+    primalbraidapp->PreProcess(initid, rho_t0, 0.0);
     primalbraidapp->Drive();
     finalstate = primalbraidapp->PostProcess(); // this return NULL for all but the last time processor
-    
 
-    /* Add final-time cost to objective */
-    double obj_iinit = primalbraidapp->mastereq->objectiveT(objective_type, obj_oscilIDs, finalstate, rho_t0, targetgate);
+    /* Add integral penalty term to objective */
+    obj_penal += penalty_coeff * primalbraidapp->penalty_integral;
+
+    /* Add final-time cost */
+    double obj_iinit = objectiveT(primalbraidapp->mastereq, objective_type, obj_oscilIDs, finalstate, rho_t0, targetgate);
     obj_cost += obj_iinit;
     // printf("%d, %d: iinit objective: %1.14e\n", mpirank_world, mpirank_init, obj_iinit);
-
-    /* Add integral penalty term */
-    double obj_iinit_penalty = penaltyIntegral();
-    obj_penal += penalty_coeff * obj_iinit_penalty;
   }
 
-  /* Broadcast cost function from last to all time processors */
+  /* Communicate over braid processors: Sum up penalty, broadcast final time cost */
+  double mine = obj_penal;
+  MPI_Allreduce(&mine, &obj_penal, 1, MPI_DOUBLE, MPI_SUM, primalbraidapp->comm_braid);
   MPI_Bcast(&obj_cost, 1, MPI_DOUBLE, mpisize_braid-1, primalbraidapp->comm_braid);
 
-  /* Sum up cost from all initial conditions */
-  obj_cost = 1./ninit * obj_cost;
-  double myobj = obj_cost;
-  MPI_Allreduce(&myobj, &obj_cost, 1, MPI_DOUBLE, MPI_SUM, comm_init);
+  /* Average over initial conditions processors */
+  double mypen = 1./ninit * obj_penal;
+  double mycost = 1./ninit * obj_cost;
+  MPI_Allreduce(&mypen, &obj_penal, 1, MPI_DOUBLE, MPI_SUM, primalbraidapp->comm_braid);
+  MPI_Allreduce(&mycost, &obj_cost, 1, MPI_DOUBLE, MPI_SUM, comm_init);
   // if (mpirank_init == 0) printf("%d: global sum objective: %1.14e\n\n", mpirank_init, obj);
 
-  /* Sum penalty from all braid processors */
-  double mypen = obj_penal;
-  MPI_Allreduce(&mypen, &obj_penal, 1, MPI_DOUBLE, MPI_SUM, primalbraidapp->comm_braid);
-
-  /* Add regularization objective += gamma/2 * ||x||^2*/
+  /* Evaluate regularization objective += gamma/2 * ||x||^2*/
   double xnorm;
   VecNorm(x, NORM_2, &xnorm);
   obj_regul = gamma_tik / 2. * pow(xnorm,2.0);
 
-  /* Store and return objective value */
+  /* Sum, store and return objective value */
   objective = obj_cost + obj_regul + obj_penal;
 
   /* Output */
@@ -348,22 +352,17 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
     // if (mpirank_braid == 0) printf("%d: %d FWD. ", mpirank_init, initid);
 
     /* Run forward with initial condition rho_t0 */
-    primalbraidapp->PreProcess(initid, rho_t0);
+    primalbraidapp->PreProcess(initid, rho_t0, 0.0);
     primalbraidapp->Drive();
     finalstate = primalbraidapp->PostProcess(); // this return NULL for all but the last time processor
 
-    /* Add final-time objective */
-    double obj_iinit = primalbraidapp->mastereq->objectiveT(objective_type, obj_oscilIDs, finalstate, rho_t0, targetgate);
+    /* Add integral penalty term to objective */
+    obj_penal += penalty_coeff * primalbraidapp->penalty_integral;
+
+    /* Add final-time cost */
+    double obj_iinit = objectiveT(primalbraidapp->mastereq, objective_type, obj_oscilIDs, finalstate, rho_t0, targetgate);
     obj_cost += obj_iinit;
       // if (mpirank_braid == 0) printf("%d: iinit objective: %1.14e\n", mpirank_init, obj_iinit);
-
-    /* Add integral penalty term */
-    double obj_iinit_penalty = penaltyIntegral();
-    obj_penal += penalty_coeff * obj_iinit_penalty;
-
-    /* Sum penalty from all braid processors */
-    double mypen = obj_penal;
-    MPI_Allreduce(&mypen, &obj_penal, 1, MPI_DOUBLE, MPI_SUM, primalbraidapp->comm_braid);
 
     /* --- Solve adjoint --- */
     // if (mpirank_braid == 0) printf("%d: %d BWD.", mpirank_init, initid);
@@ -371,16 +370,14 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
     /* Reset adjoint */
     VecZeroEntries(rho_t0_bar);
 
-    /* Derivative of penalty term */
+    /* Derivative of average over initial conditions */
     double Jbar = 1.0 / ninit;
-    printf("Jbar = %f\n", Jbar);
-    printf("penaltycoeff = %f\n", penalty_coeff);
-    penaltyIntegral_diff(Jbar*penalty_coeff);
 
     /* Derivative of final time objective */
-    primalbraidapp->mastereq->objectiveT_diff(objective_type, obj_oscilIDs, finalstate, rho_t0_bar, rho_t0, Jbar, targetgate);
+    objectiveT_diff(primalbraidapp->mastereq, objective_type, obj_oscilIDs, finalstate, rho_t0_bar, rho_t0, Jbar, targetgate);
 
-    adjointbraidapp->PreProcess(initid, rho_t0_bar);
+    /* Derivative of time-stepping */
+    adjointbraidapp->PreProcess(initid, rho_t0_bar, Jbar*penalty_coeff);
     adjointbraidapp->Drive();
     adjointbraidapp->PostProcess();
 
@@ -388,13 +385,16 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
     VecAXPY(G, 1.0, adjointbraidapp->redgrad);
 
   }
-
-  /* Broadcast cost function from last to all time processors */
+  /* Communicate over braid processors: Sum up penalty, broadcast final time cost */
+  double mine = obj_penal;
+  MPI_Allreduce(&mine, &obj_penal, 1, MPI_DOUBLE, MPI_SUM, primalbraidapp->comm_braid);
   MPI_Bcast(&obj_cost, 1, MPI_DOUBLE, mpisize_braid-1, primalbraidapp->comm_braid);
 
-  /* Sum up cost from all initial conditions */
-  double myobj = obj_cost;
-  MPI_Allreduce(&myobj, &obj_cost, 1, MPI_DOUBLE, MPI_SUM, comm_init);
+  /* Average over initial conditions processors */
+  double mypen = 1./ninit * obj_penal;
+  double mycost = 1./ninit * obj_cost;
+  MPI_Allreduce(&mypen, &obj_penal, 1, MPI_DOUBLE, MPI_SUM, primalbraidapp->comm_braid);
+  MPI_Allreduce(&mycost, &obj_cost, 1, MPI_DOUBLE, MPI_SUM, comm_init);
   // if (mpirank_init == 0) printf("%d: global sum objective: %1.14e\n\n", mpirank_init, obj);
 
   /* Evaluate regularization gamma/2 * ||x||^2*/
@@ -402,9 +402,8 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
   VecNorm(x, NORM_2, &xnorm);
   obj_regul = gamma_tik / 2. * pow(xnorm,2.0);
 
-  /* Store objective function value*/
-  objective = obj_cost + obj_regul;
-
+  /* Sum, store and return objective function value*/
+  objective = obj_cost + obj_regul + obj_penal;
 
   /* Sum up the gradient from all braid processors */
   PetscScalar* grad; 
@@ -422,13 +421,12 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
   VecRestoreArray(G, &grad);
   delete [] mygrad;
 
-
   /* Compute and store gradient norm */
   VecNorm(G, NORM_2, &(gnorm));
 
   /* Output */
   if (mpirank_world == 0) {
-    std::cout<< "Obj = " << obj_cost << " + " << obj_regul << " ||grad|| = " << gnorm << std::endl;
+    std::cout<< mpirank_world << ": Obj = " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal << std::endl;
   }
 }
 
@@ -632,58 +630,122 @@ PetscErrorCode TaoEvalGradient(Tao tao, Vec x, Vec G, void*ptr){
   return 0;
 }
 
-double OptimProblem::penaltyIntegral(){
-  double penalty = 0.0;
-  // Vec x;
-  // double T = primalbraidapp->total_time;
-  // int N = primalbraidapp->ntime;
-  // double dt = T/N;
 
-  // /* Loop over time domain, all except the boundary */
-  // for (int n = 1; n<N; n++){
-  //   /* Get state from primal app */
-  //   x = primalbraidapp->getStateVec(n*dt);
-  //   if (x != NULL) {// only true on one braid processor!
-  //     /* evaluate objective */
-  //     double obj = objectiveT(x);
-  //     /* evaluate weight */
-  //     double weight = pow((double) n / (double) N, penalty_exp);  
-  //     /* Add to penalty term */
-  //     penalty += dt * weight * obj;
-  //   }
-  // }
 
-  // /* Add the last term at final time */
-  // x = primalbraidapp->getStateVec(T);
-  // if (x != NULL) penalty += dt/2.0 * objectiveT(x);
+double objectiveT(MasterEq* mastereq, ObjectiveType objective_type, const std::vector<int>& obj_oscilIDs, const Vec state, const Vec rho_t0, Gate* targetgate) {
+  double obj_local = 0.0;
+  double sum;
 
-  return penalty;
+  if (state != NULL) {
+
+    switch (objective_type) {
+      case GATE:
+        /* compare state to linear transformation of initial conditions */
+        targetgate->compare(state, rho_t0, obj_local);
+        break;
+
+      case EXPECTEDENERGY:
+        /* Squared average of expected energy level f = ( sum_{k=0}^Q < N_k(rho(T)) > )^2 */
+        sum = 0.0;
+        for (int i=0; i<obj_oscilIDs.size(); i++) {
+          sum += mastereq->getOscillator(obj_oscilIDs[i])->expectedEnergy(state);
+        }
+        obj_local = pow(sum / obj_oscilIDs.size(), 2.0);
+        break;
+
+      case EXPECTEDENERGYb:
+        /* average of Squared expected energy level f = 1/Q sum_{k=0}^Q < N_k(rho(T))>^2 */
+        double g;
+        sum = 0.0;
+        for (int i=0; i<obj_oscilIDs.size(); i++) {
+          g = mastereq->getOscillator(obj_oscilIDs[i])->expectedEnergy(state);
+          sum += pow(g,2.0);
+        }
+        obj_local = sum / obj_oscilIDs.size();
+        break;
+
+      case EXPECTEDENERGYc:
+        /* average of expected energy level f = 1/Q sum_{k=0}^Q < N_k(rho(T))> */
+        sum = 0.0;
+        for (int i=0; i<obj_oscilIDs.size(); i++) {
+          sum += mastereq->getOscillator(obj_oscilIDs[i])->expectedEnergy(state);
+        }
+        obj_local = sum / obj_oscilIDs.size();
+        break;
+
+      case GROUNDSTATE:
+        /* compare full state to groundstate */
+
+        /* If sub-system is requested, compute reduced density operator first */
+        if (obj_oscilIDs.size() < mastereq->getNOscillators()) { 
+          printf("ERROR: Computing reduced density matrix is currently not available and needs testing!\n");
+          exit(1);
+        }
+
+        /* Compute frobenius norm: frob = || q(T) - e_1 ||^2 */
+        int ilo, ihi;
+        VecGetOwnershipRange(state, &ilo, &ihi);
+        if (ilo <= 0 && 0 < ihi) VecSetValue(state, 0, -1.0, ADD_VALUES); // substract 1.0 from (0,0) element
+        VecNorm(state, NORM_2, &obj_local);
+        obj_local = pow(obj_local, 2.0);
+        if (ilo <= 0 && 0 < ihi) VecSetValue(state, 0, 1.0, ADD_VALUES); // restore state 
+        VecAssemblyBegin(state);
+        VecAssemblyEnd(state);
+        break;
+    }
+  }
+  return obj_local;
 }
 
 
-void OptimProblem::penaltyIntegral_diff(const double Jbar){
-  // Vec x;
-  // Vec xbar;
-  // double T = primalbraidapp->total_time;
-  // int N = primalbraidapp->ntime;
-  // double dt = T/N;
 
-  // /* Last term derivative */
-  // printf("time = %f\n", T);
-  // x    = primalbraidapp->getStateVec(T);
-  // xbar = adjointbraidapp->getStateVec(0.0);
-  // if (x != NULL && xbar != NULL) objectiveT_diff(x, xbar, dt/2.0*Jbar);
+void objectiveT_diff(MasterEq* mastereq, ObjectiveType objective_type, const std::vector<int>& obj_oscilIDs, Vec state, Vec statebar, const Vec rho_t0, const double obj_bar, Gate* targetgate){
 
-  // /* Loop over time domain backwards */
-  // for (int n = N-1; n > 0; n--){
-  //   // Get state and adjoint 
-  //   x = primalbraidapp->getStateVec(n*dt);
-  //   xbar = adjointbraidapp->getStateVec(T - n*dt);
-  //   if (x!= NULL && xbar != NULL) {
-  //     printf("time=%f, tindex=%d, adjtime=%f\n", n*dt, n, T-n*dt);
-  //     VecZeroEntries(xbar);
-  //     double weight = pow((double) n / (double) N, penalty_exp);  
-  //     objectiveT_diff(x, xbar, dt * weight * Jbar);
-  //   }
-  // }
+  if (state != NULL) {
+    switch (objective_type) {
+
+      case GATE:
+        targetgate->compare_diff(state, rho_t0, statebar, obj_bar);
+        break;
+
+      case EXPECTEDENERGY:
+        double Jbar, sum;
+        // Recompute sum over energy levels 
+        sum = 0.0;
+        for (int i=0; i<obj_oscilIDs.size(); i++) {
+          sum += mastereq->getOscillator(obj_oscilIDs[i])->expectedEnergy(state);
+        } 
+        sum = sum / obj_oscilIDs.size();
+        // Derivative of expected energy levels 
+        Jbar = 2. * sum * obj_bar / obj_oscilIDs.size();
+        for (int i=0; i<obj_oscilIDs.size(); i++) {
+          mastereq->getOscillator(obj_oscilIDs[i])->expectedEnergy_diff(state, statebar, Jbar);
+        }
+        break;
+
+      case EXPECTEDENERGYb:
+        for (int i=0; i<obj_oscilIDs.size(); i++) {
+          Jbar = 2. / obj_oscilIDs.size() * mastereq->getOscillator(obj_oscilIDs[i])->expectedEnergy(state) * obj_bar;
+          mastereq->getOscillator(obj_oscilIDs[i])->expectedEnergy_diff(state, statebar, Jbar);
+        }
+        break;
+
+      case EXPECTEDENERGYc:
+        Jbar = obj_bar / obj_oscilIDs.size();
+        for (int i=0; i<obj_oscilIDs.size(); i++) {
+          mastereq->getOscillator(obj_oscilIDs[i])->expectedEnergy_diff(state, statebar, Jbar);
+        }
+        break;
+
+    case GROUNDSTATE:
+      int ilo, ihi;
+      VecGetOwnershipRange(statebar, &ilo, &ihi);
+
+      /* Derivative of frobenius norm: 2 * (q(T) - e_1) * frob_bar */
+      VecAXPY(statebar, 2.0*obj_bar, state);
+      if (ilo <= 0 && 0 < ihi) VecSetValue(statebar, 0, -2.0*obj_bar, ADD_VALUES);
+      VecAssemblyBegin(statebar); VecAssemblyEnd(statebar);
+      break;
+    }
+  }
 }

@@ -106,7 +106,6 @@ Vec myBraidApp::getStateVec(const double time) {
 
   if (time == total_time) {
     _braid_UGetLast(core->GetCore(), &ubase);
-    printf("_braid_UGetLast\n");
   }
   else _braid_UGetVectorRef(core->GetCore(), 0, tindex, &ubase);
   if (ubase != NULL) { // only true on ONE processor !!
@@ -228,6 +227,19 @@ braid_Int myBraidApp::Step(braid_Vector u_, braid_Vector ustop_, braid_Vector fs
     /* -------------------------------------------------------------*/
     /* --- my timestepper --- */
     /* -------------------------------------------------------------*/
+
+    /* Add penalty term */
+    if (_braid_CoreElt(core->GetCore(), max_levels) == 1) {
+
+      /* Get objective and weight */
+
+      double expected = objectiveT(mastereq, objective_type, obj_oscilIDs, u->x, NULL, NULL);
+      double weight = pow(tstart / total_time, penalty_exp);  
+
+      /* Add to integral */
+      penalty_integral += (tstop - tstart) * weight * expected;
+      // printf("%f %.8f %.8f\n", tstart, weight, penalty_integral); 
+    }
 
     /* Evolve solution forward from tstart to tstop */
     mytimestepper->evolveFWD(tstart, tstop, u->x);
@@ -441,10 +453,14 @@ braid_Int myBraidApp::BufUnpack(void *buffer, braid_Vector *u_ptr, BraidBufferSt
   return 0; 
 }
 
-void myBraidApp::PreProcess(int iinit, const Vec rho_t0){
+void myBraidApp::PreProcess(int iinit, const Vec rho_t0, double jbar){
 
   /* Pass initial condition to braid */
   setInitCond(rho_t0);
+
+  /* Reset penalty integral */
+  penalty_integral = 0.0;
+  Jbar = jbar;
 
   /* Open output files */
   if (accesslevel > 0 && mpirank_petsc == 0) {
@@ -630,6 +646,14 @@ braid_Int myAdjointBraidApp::Step(braid_Vector u_, braid_Vector ustop_, braid_Ve
     /* Evolve u backwards in time and update gradient */
     mytimestepper->evolveBWD(tstop_orig, tstart_orig, uprimal_tstop->x, u->x, redgrad, compute_gradient);
 
+    /* Derivative of penalty objective */
+    if (_braid_CoreElt(core->GetCore(), max_levels) == 1) {
+      
+      double weight = pow(tstop_orig / total_time, penalty_exp);  
+      double fbar = (tstart_orig-tstop_orig) * weight * Jbar;
+      objectiveT_diff(mastereq, objective_type, obj_oscilIDs, uprimal_tstop->x, u->x, NULL, fbar, NULL);
+    }
+
   }
 
 
@@ -653,10 +677,14 @@ braid_Int myAdjointBraidApp::Init(braid_Real t, braid_Vector *u_ptr) {
 }
 
 
-void myAdjointBraidApp::PreProcess(int iinit, const Vec rho_t0_bar){
+void myAdjointBraidApp::PreProcess(int iinit, const Vec rho_t0_bar, double jbar){
 
   /* Pass initial condition to braid */
   setInitCond(rho_t0_bar);
+
+  /* Reset penalty integral */
+  penalty_integral = 0.0;
+  Jbar = jbar;
 
   /* Reset the reduced gradient */
   VecZeroEntries(redgrad); 
