@@ -198,39 +198,63 @@ The control functions $p^k, q^k$ depend on optimization parameters $\alpha^k$: $
 
 
 \section{Performance}
-Table \ref{tab:runtime_mac} and \ref{tab:runtime_quartz} compare runtimes of the matrix-free tensor contraction solver to the sparse-matrix implementation that explicitly computes and stores the sparse matrices. The tests run the Alice-Cavity cooling problem, integrating for $N=10000$ time-steps in $[0,1]us$, using the implicit midpoint rule and Petsc's GMRES linear solver, Controls are initialized constant, driving the $|2>$ to the $|1>$ state (approximately). GMRES takes $5$ iterations on average. 
-Runtimes and speeups are reported for one sequential evaluation of the objective function (evalF) as well as the gradient (evalGradF), for different problem sizes. Two different platforms: MacBook Pro (2017, 2.3 GHz Intel Core i5), table \ref{tab:runtime_mac} and on LC's Quartz (2.1 GHz Intel Xeon E5-2695), table \ref{tab:runtime_quartz}.
+Table \ref{tab:runtime_qvsm} compares runtimes of the matrix-free tensor contraction solver to the sparse-matrix implementation that explicitly computes and stores the sparse matrices. The tests run the Alice-Cavity cooling problem, integrating for $N=10000$ time-steps in $[0,1]us$, using the implicit midpoint rule and Petsc's GMRES linear solver, Controls are initialized constant, driving the $|2>$ to the $|1>$ state (approximately). GMRES takes $5$ iterations on average. 
+Runtimes and speeups are reported for one sequential evaluation of the objective function (evalF) as well as the gradient (evalGradF), for different problem sizes. Two different platforms: MacBook Pro (2017, 2.3 GHz Intel Core i5) using LLVM 10.0.1 compiler (clang/1001.0.46.4) and petsc-3.13, and LC's Quartz (2.1 GHz Intel Xeon E5-2695) using gcc/8.1.0 compiler and petsc-3.12.4.
 
 % MACBOOK
 \begin{table}[h]
   \begin{tabular}{l|lr|lr}
     \hline\noalign{\smallskip}
-         & evalF &    &  evalGradF &\\
-         & sparse-mat & mat-free & sparse-mat& mat-free  \\
+     MACBOOK    & evalF &    &  evalGradF &\\
+                & sparse-mat & mat-free & sparse-mat& mat-free  \\
     \noalign{\smallskip}\hline\noalign{\smallskip}
     2x2  & 3.42   & 0.27 \textcolor{red}{(12.6x)}  & 8.35  &  0.28 \textcolor{red}{(29.8x)}  \\
     3x10 & 16.64  & 1.30  \textcolor{red}{(12.8x)} & 48.29 &  4.25 \textcolor{red}{(11.3x)}  \\
     3x20 &  50.87 & 5.54  \textcolor{red}{(9.2x)}  & 151.81 & 16.83 \textcolor{red}{ (9.0x)} \\
     \noalign{\smallskip}\hline
-  \end{tabular}
-  \caption{MacBook: Runtimes (sec) for one objective function and one gradient evaluation. Numbers in red parenthesis are speedup of matrix-free over sparse-matrix implementation.}
-  \label{tab:runtime_mac} 
-\end{table}
-
+  \end{tabular}\\[2ex]
 % QUARTZ, pbatch
-\begin{table}[h]
   \begin{tabular}{l|lr|lr}
     \hline\noalign{\smallskip}
-         & evalF &    &  evalGradF & \\
-         & sparse-mat & mat-free & sparse-mat& mat-free  \\
+     QUARTZ  & evalF &    &  evalGradF & \\
+            & sparse-mat & mat-free & sparse-mat& mat-free  \\
     \noalign{\smallskip}\hline\noalign{\smallskip}
     2x2  &  2.14 & 0.52  \textcolor{red}{ (4.1x)} &  5.84 & 0.86 \textcolor{red}{ (6.7x)}  \\
     3x10 &  6.84 & 2.80  \textcolor{red}{ (2.4x)} & 21.75 & 7.61 \textcolor{red}{(2.8x)}   \\
     3x20 & 18.76 & 9.76  \textcolor{red}{(1.9x)}  & 59.97 & 27.95 \textcolor{red}{(2.1x)}  \\
     \noalign{\smallskip}\hline
   \end{tabular}
-  \caption{Quartz: Runtimes (sec) for one objective function and one gradient evaluation. Numbers in red parenthesis are speedup of matrix-free over sparse-matrix implementation.}
-  \label{tab:runtime_quartz} 
+  \caption{Runtimes (sec) for one objective function and one gradient evaluation. Numbers in red parenthesis are speedup of matrix-free over sparse-matrix implementation.}
+  \label{tab:runtime_qvsm} 
 \end{table}
+
+\begin{table}[h]
+  \begin{tabular}{c|cc}
+    \hline\noalign{\smallskip} 
+   SPARSE-MAT &  TCE Petsc & WSA petsc    \\ 
+    \hline\noalign{\smallskip} 
+      gcc  &   58       &     182        \\
+      intel&   61       &     180 \\
+      \noalign{\smallskip}\hline
+  \end{tabular}\\[2ex]
+  \begin{tabular}{c|cc}
+    \hline\noalign{\smallskip}
+    MAT-FREE &  TCE Petsc & WSA petsc    \\ 
+    \hline\noalign{\smallskip} 
+      gcc  &   27       &     27         \\
+      intel&   24       &     22 \\
+    \noalign{\smallskip}\hline
+  \end{tabular}
+  \caption{Quartz: Runtimes (sec) for one gradient evaluation, case 3x20.}
+  \label{tab:compiler_quartz} 
+\end{table}
+
+Then, perform tests for compiler and petsc versions on LC's quartz: For Petsc, consider
+\begin{itemize}
+  \item TCE: /usr/tce/packages/petsc/petsc-3.12.4-mvapich2-2.3-gcc-4.8-redhat, and
+  \item WSA: /usr/workspace/wsa/wave/petsc-3.13
+\end{itemize}
+and two different compiler versions: gcc/8.1.0 and intel/19.0.3.
+
 
 \end{document}
