@@ -179,12 +179,11 @@ for all $k,j\in\{0,\dots, N-1\}$, where $E_{kj}$ denotes the matrix of all zeros
 
 We can rewrite any initial condition $\rho(0)$ as a linear combination 
 \begin{align}
-  \rho(0) = \sum_{k=0}^{N-1} \sum_{j=0}^{N-1} \alpha_{kj} B^{k, j},
+  \rho(0) = \sum_{k=0}^{N-1} \sum_{j=0}^{N-1} \alpha_{kj} B^{k, j}.
 \end{align}
-and, using a general solution operator $U(t)$ of the master equation \eqref{mastereq}, we can rewrite the final density matrix in terms of the basis elements:
+Since the master equation \eqref{mastereq} is linear, we can formally define a linear solution operator $S_T(\rho(0))$, mapping an initial state to the final state at time $T$, and we can rewrite the final density matrix at time $T$ in terms of the basis elements:
 \begin{align}
-  \rho(T) = U(t) \rho_0 U(t)^\dag = \sum_{k=0}^{N-1} \sum_{j=0}^{N-1} \alpha_{kj} U(t)B^{k, j}U(t)^\dag.
-  % \rho(T) = U(t) \rho_0 U(t)^\dag = \sum_{i=0}^{N^2-1} \alpha_i U(t)B^{k(i), j(i)}U(t)^\dag
+  \rho(T) = S_T(\rho_0) = \sum_{k=0}^{N-1} \sum_{j=0}^{N-1} \alpha_{kj} S_T(B^{k, j}).
 \end{align}
 We therefore define the optimization problem for all the basis elements, rather than a specific initial condition:
 \begin{align}\label{optimproblem_basis}
