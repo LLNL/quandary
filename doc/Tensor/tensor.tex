@@ -14,6 +14,7 @@
 \newcommand{\R}{\mathds{R}}
 \newcommand{\C}{\mathds{C}}
 \newcommand{\bfi}{\boldsymbol{i}}
+\newcommand{\bfj}{\boldsymbol{j}}
 \newcommand{\p}{\prime}
 \newcommand{\Epk}{E_{+k}}
 \newcommand{\Emk}{E_{-k}}
@@ -64,7 +65,7 @@ Consider a quantum system with $Q$ oscillators in $H_{n_1} \otimes \dots H_{n_Q}
 \begin{align}
     \rho_{i_1,\dots, i_Q, i_1^{\prime}, \dots, i_Q^{\prime}} =: \rho_{\bfi, \bfi^\prime}\in\C^{n_1\times \dots \times n_Q \times n_1 \times \dots \times n_Q}
 \end{align}
-using multi-indeces $\bfi := i_{1},\dots,i_{Q}$, and $\bfi^\prime = i_0^\prime, \dots, i_Q^\prime$. For ease of notation, we use the follwoing index shifting operators 
+using multi-indices $\bfi := i_{1},\dots,i_{Q}$, and $\bfi^\prime = i_0^\prime, \dots, i_Q^\prime$. For ease of notation, we use the follwoing index shifting operators 
 \begin{align}
   E_{+k} \bfi := i_0,\dots, i_{k}+1, \dots, i_Q \quad E_{+k} \bfi^\prime := i_0^\prime, \dots, i_k^\prime + 1, \dots, i_Q\\
   E_{-k} \bfi := i_0,\dots, i_{k}-1, \dots, i_Q \quad E_{-k} \bfi^\prime := i_0^\prime, \dots, i_k^\prime - 1, \dots, i_Q\\
@@ -169,8 +170,14 @@ Note that when applying from the right, the access of elements in $M$ is inverte
   the the slowest moving index is $i_1^\prime$, followed by $i_2^\prime, \dots, i_Q^\prime$, then $i_1, \dots i_Q$ with $i_Q$ being the fastest moving index. Hence, the most outer loop should iterate over $i_1^\prime$, then moving backwards through this order until $i_Q$ being the most inner iteration loop.
 
  \subsection{Parallelization} 
- The terms that contain off-diagonals will require communication to access an index $i_k+1$ from $i_k$. We can consider to realize parallel application by storing and communicating ghost-layers for the corresponding dimensions. 
+ 
+ For parallel distribution, consider hyper-cubes along the dimensions of each oscillator. For the $2Q$-rank tensor $\rho_{\bfi, \bfi^\p}$, consider a distribution of the $k-$th dimension $i_k$ in $\bfi$ and $i_k^\p$ in $\bfi^\p$ using $p_k$ processes, where $p_k$ should be an integer divisor of the number of levels $n_k$ of the $k$-th oscillator. Then we can distribute $\rho$ on $p_1^2\cdot \ldots \cdot p_Q^2$ processors $P_{\bfj, \bfj^\p}$ with $j_k, j_k^\p \in \{0,\dots,p_k-1\}$ such that
+ \begin{align}
+   P_{\bfj, \bfj^\p} \quad \text{owns} \quad \rho_{\bfi, \bfi^\p} \quad &\text{for} \quad i_k \in \{ j_k \frac{n_k}{p_k}, \dots, \left(j_k+1\right) \frac{n_k}{p_k} - 1 \}\\
+    &\text{and} \quad i_k^\p \in \{ j_k^\p \frac{n_k}{p_k}, \dots, \left(j_k^\p+1\right) \frac{n_k}{p_k} - 1 \}
+ \end{align}
 
+ Accessing $\rho$ at shifted indices $E_{\pm k}\bfi, E_{\pm k}\bfi^\p$ requires communication at processor boundaries. We can consider to realize this by storing and communicating ghost-layers for each processor hyper-cube.
 
 \section{AD-based derviative}
 To compute the adjoint action of the ODE right-hand-side to an input adjoint variable $\bar y_{\bfi, \bfi^p}$, consider derivatives based on discrete Automatic Differentiation applied to the update formula \eqref{eq:applyRHS1} -- \eqref{eq:applyRHS2}:
