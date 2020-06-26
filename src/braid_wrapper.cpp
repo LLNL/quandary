@@ -191,18 +191,19 @@ braid_Int myBraidApp::Step(braid_Vector u_, braid_Vector ustop_, braid_Vector fs
 #ifdef SANITY_CHECK
     // printf("Performing check Hermitian, Trace... \n");
     /* Sanity check. Be careful: This is costly! */
-    // if (tstop == total_time) 
-    // {
+    if (tstop == total_time) 
+    {
+      printf("Trace check %f ...\n", tstop);
       PetscBool check;
       double tol = 1e-10;
-      StateIsHermitian(u->x, tol, &check);
-      if (!check) {
-        printf("WARNING at t=%f: rho is not hermitian!\n", tstart);
-        printf("\n rho :\n");
-        VecView(u->x, PETSC_VIEWER_STDOUT_WORLD);
-        exit(1);
-      }
-      else printf("IsHermitian check passed.\n");
+      // StateIsHermitian(u->x, tol, &check);
+      // if (!check) {
+      //   printf("WARNING at t=%f: rho is not hermitian!\n", tstart);
+      //   printf("\n rho :\n");
+      //   VecView(u->x, PETSC_VIEWER_STDOUT_WORLD);
+      //   exit(1);
+      // }
+      // else printf("IsHermitian check passed.\n");
       StateHasTrace1(u->x, tol, &check);
       if (!check) {
         printf("WARNING at t=%f: Tr(rho) is NOT one!\n", tstart);
@@ -211,7 +212,7 @@ braid_Int myBraidApp::Step(braid_Vector u_, braid_Vector ustop_, braid_Vector fs
         exit(1);
       }
       else printf("Trace1 check passed.\n");
-    // }
+    }
 #endif
 
   if (usepetscts) {
