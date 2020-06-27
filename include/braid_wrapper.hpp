@@ -34,6 +34,7 @@ class myBraidApp : public BraidApp {
     std::vector<FILE *>expectedfile;
     std::vector<FILE *>populationfile;
     std::vector<std::vector<std::string> > outputstr; // List of outputs for each oscillator
+    bool writefullstate;
 
     /* MPI stuff */
     bool usepetscts;
@@ -116,7 +117,7 @@ class myBraidApp : public BraidApp {
                                 BraidBufferStatus &bstatus);
 
     /* Pass initial condition to braid, open output files*/
-    virtual void PreProcess(int iinit, const Vec rho_t0, double Jbar);
+    virtual void PreProcess(int iinit, const Vec rho_t0, double Jbar, bool output);
 
     /* Performs one last FRelax. Returns state at last time step or NULL if not stored on this processor */
     virtual Vec PostProcess();
@@ -159,7 +160,7 @@ class myAdjointBraidApp : public myBraidApp {
     braid_Int Init(braid_Real t, braid_Vector *u_ptr);
 
     /* Pass initial condition to braid, reset gradient, open output files */
-    virtual void PreProcess(int iinit, const Vec rho_t0, double Jbar);
+    virtual void PreProcess(int iinit, const Vec rho_t0, double Jbar, bool output);
 
     /* Performs one last FRelax and MPI_Allreduce the gradient. */
     Vec PostProcess();

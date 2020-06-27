@@ -53,8 +53,9 @@ class OptimProblem {
   std::vector<double> initguess_amplitudes; /* Initial amplitudes of controles, or NULL */
   
   /* Output */
-  int printlevel;      /* Level of output: 0 - no output, 1 - optimization progress to file */
-  FILE* optimfile;     /* Output file to log optimization progress */
+  int outfreq;      /* Write state output to file every <outfreq> iterations */
+  bool output;      /* Switches to true every <outfreq> iterations */
+  FILE* optimfile;  /* Output file to log optimization progress */
 
   /* Constructor */
   OptimProblem(MapParam config, myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, MPI_Comm comm_hiop_, MPI_Comm comm_init_, int ninit_);
