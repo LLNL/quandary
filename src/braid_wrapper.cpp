@@ -240,7 +240,7 @@ braid_Int myBraidApp::Step(braid_Vector u_, braid_Vector ustop_, braid_Vector fs
     if (_braid_CoreElt(core->GetCore(), max_levels) == 1 && penalty_coeff > 1e-13) {
 
       /* Get objective and weight */
-      double expected = objectiveT(mastereq, objective_type, obj_oscilIDs, u->x, NULL, NULL);
+      double expected = objectiveT(mastereq, objective_type, obj_oscilIDs, obj_weights, u->x, NULL, NULL);
       double weight = pow(tstart / total_time, penalty_exp);  
 
       /* Add to integral */
@@ -652,7 +652,7 @@ braid_Int myAdjointBraidApp::Step(braid_Vector u_, braid_Vector ustop_, braid_Ve
       
       double weight = pow(tstop_orig / total_time, penalty_exp);  
       double fbar = (tstart_orig-tstop_orig) * weight * Jbar;
-      objectiveT_diff(mastereq, objective_type, obj_oscilIDs, uprimal_tstop->x, u->x, NULL, fbar, NULL);
+      objectiveT_diff(mastereq, objective_type, obj_oscilIDs, obj_weights, uprimal_tstop->x, u->x, NULL, fbar, NULL);
     }
 
   }

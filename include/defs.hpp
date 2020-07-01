@@ -8,9 +8,10 @@ enum InitialConditionType {FROMFILE, PURE, DIAGONAL, BASIS};
 
 /* Typye of objective functions */
 enum ObjectiveType {GATE,             // Compare final state to linear gate transformation of initial cond.
-                    EXPECTEDENERGY,   // Minimizes expected energy levels.
-                    EXPECTEDENERGYb,   // Minimizes expected energy levels.
-                    EXPECTEDENERGYc,   // Minimizes expected energy levels.
+                    EXPECTEDENERGY,   // Expected energy levels of full system
+                    EXPECTEDENERGYa,   // Square average of expected energy levels of each oscillator
+                    EXPECTEDENERGYb,   // Average of square expected energy levels of each oscillator
+                    EXPECTEDENERGYc,   // Average of expected energy levels of each oscillator
                     GROUNDSTATE};     // Compares final state to groundstate (full matrix)
 
 /* Type of control fucntion evaluation: Rotating frame Real p(t), rotating frame imaginary q(t), or Lab frame f(t) */

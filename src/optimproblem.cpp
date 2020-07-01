@@ -62,6 +62,7 @@ OptimProblem::OptimProblem(MapParam config, myBraidApp* primalbraidapp_, myAdjoi
     }
   }  
   else if (objective_str[0].compare("expectedEnergy")==0) objective_type = EXPECTEDENERGY;
+  else if (objective_str[0].compare("expectedEnergya")==0) objective_type = EXPECTEDENERGYa;
   else if (objective_str[0].compare("expectedEnergyb")==0) objective_type = EXPECTEDENERGYb;
   else if (objective_str[0].compare("expectedEnergyc")==0) objective_type = EXPECTEDENERGYc;
   else if (objective_str[0].compare("groundstate")   ==0) objective_type = GROUNDSTATE;
@@ -70,7 +71,7 @@ OptimProblem::OptimProblem(MapParam config, myBraidApp* primalbraidapp_, myAdjoi
       exit(1);
   }
 
-  /* Get the IDs of oscillators that are considered in the objective function */
+  /* Get the IDs of oscillators that are considered in the objective function and corresponding weights */
   std::vector<std::string> oscilIDstr;
   config.GetVecStrParam("optim_oscillators", oscilIDstr);
   if (oscilIDstr[0].compare("all") == 0) {
@@ -78,6 +79,11 @@ OptimProblem::OptimProblem(MapParam config, myBraidApp* primalbraidapp_, myAdjoi
       obj_oscilIDs.push_back(iosc);
   } else {
     config.GetVecIntParam("optim_oscillators", obj_oscilIDs, 0);
+  }
+  config.GetVecDoubleParam("optim_weights", obj_weights, 1.0);
+  if (obj_weights.size() < obj_oscilIDs.size()){
+    for (int iosc = obj_weights.size(); iosc < obj_oscilIDs.size(); iosc++) 
+      obj_weights.push_back(1.0);
   }
   /* Sanity check for oscillator IDs */
   bool err = false;
@@ -98,6 +104,8 @@ OptimProblem::OptimProblem(MapParam config, myBraidApp* primalbraidapp_, myAdjoi
   adjointbraidapp->objective_type = objective_type;
   primalbraidapp->obj_oscilIDs = obj_oscilIDs;
   adjointbraidapp->obj_oscilIDs = obj_oscilIDs;
+  primalbraidapp->obj_weights= obj_weights;
+  adjointbraidapp->obj_weights= obj_weights;
   primalbraidapp->penalty_exp = penalty_exp;
   adjointbraidapp->penalty_exp = penalty_exp;
   primalbraidapp->penalty_coeff = penalty_coeff;
@@ -294,7 +302,7 @@ double OptimProblem::evalF(const Vec x) {
     obj_penal += penalty_coeff * primalbraidapp->penalty_integral;
 
     /* Add final-time cost */
-    double obj_iinit = objectiveT(primalbraidapp->mastereq, objective_type, obj_oscilIDs, finalstate, rho_t0, targetgate);
+    double obj_iinit = objectiveT(primalbraidapp->mastereq, objective_type, obj_oscilIDs, obj_weights, finalstate, rho_t0, targetgate);
     obj_cost += obj_iinit;
     // printf("%d, %d: iinit objective: %1.14e\n", mpirank_world, mpirank_init, obj_iinit);
   }
@@ -369,7 +377,7 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
     obj_penal += penalty_coeff * primalbraidapp->penalty_integral;
 
     /* Add final-time cost */
-    double obj_iinit = objectiveT(primalbraidapp->mastereq, objective_type, obj_oscilIDs, finalstate, rho_t0, targetgate);
+    double obj_iinit = objectiveT(primalbraidapp->mastereq, objective_type, obj_oscilIDs, obj_weights, finalstate, rho_t0, targetgate);
     obj_cost += obj_iinit;
       // if (mpirank_braid == 0) printf("%d: iinit objective: %1.14e\n", mpirank_init, obj_iinit);
 
@@ -383,7 +391,7 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
     double Jbar = 1.0 / ninit;
 
     /* Derivative of final time objective */
-    objectiveT_diff(primalbraidapp->mastereq, objective_type, obj_oscilIDs, finalstate, rho_t0_bar, rho_t0, Jbar, targetgate);
+    objectiveT_diff(primalbraidapp->mastereq, objective_type, obj_oscilIDs, obj_weights, finalstate, rho_t0_bar, rho_t0, Jbar, targetgate);
 
     /* Derivative of time-stepping */
     adjointbraidapp->PreProcess(initid, rho_t0_bar, Jbar*penalty_coeff, output);
@@ -643,7 +651,7 @@ PetscErrorCode TaoEvalGradient(Tao tao, Vec x, Vec G, void*ptr){
 
 
 
-double objectiveT(MasterEq* mastereq, ObjectiveType objective_type, const std::vector<int>& obj_oscilIDs, const Vec state, const Vec rho_t0, Gate* targetgate) {
+double objectiveT(MasterEq* mastereq, ObjectiveType objective_type, const std::vector<int>& obj_oscilIDs, const std::vector<double>& obj_weights,  const Vec state, const Vec rho_t0, Gate* targetgate) {
   double obj_local = 0.0;
   double sum;
 
@@ -656,6 +664,14 @@ double objectiveT(MasterEq* mastereq, ObjectiveType objective_type, const std::v
         break;
 
       case EXPECTEDENERGY:
+        /* Weighted sum of expected energy levels */
+        obj_local = 0.0;
+        for (int i=0; i<obj_oscilIDs.size(); i++) {
+          obj_local += obj_weights[i] * mastereq->getOscillator(obj_oscilIDs[i])->expectedEnergy(state);
+        }
+        break;
+
+      case EXPECTEDENERGYa:
         /* Squared average of expected energy level f = ( sum_{k=0}^Q < N_k(rho(T)) > )^2 */
         sum = 0.0;
         for (int i=0; i<obj_oscilIDs.size(); i++) {
@@ -710,7 +726,7 @@ double objectiveT(MasterEq* mastereq, ObjectiveType objective_type, const std::v
 
 
 
-void objectiveT_diff(MasterEq* mastereq, ObjectiveType objective_type, const std::vector<int>& obj_oscilIDs, Vec state, Vec statebar, const Vec rho_t0, const double obj_bar, Gate* targetgate){
+void objectiveT_diff(MasterEq* mastereq, ObjectiveType objective_type, const std::vector<int>& obj_oscilIDs, const std::vector<double>& obj_weights, Vec state, Vec statebar, const Vec rho_t0, const double obj_bar, Gate* targetgate){
 
   if (state != NULL) {
     switch (objective_type) {
@@ -720,6 +736,12 @@ void objectiveT_diff(MasterEq* mastereq, ObjectiveType objective_type, const std
         break;
 
       case EXPECTEDENERGY:
+        for (int i=0; i<obj_oscilIDs.size(); i++) {
+          mastereq->getOscillator(obj_oscilIDs[i])->expectedEnergy_diff(state, statebar, obj_weights[i] * obj_bar);
+        }
+        break;
+
+      case EXPECTEDENERGYa:
         double Jbar, sum;
         // Recompute sum over energy levels 
         sum = 0.0;

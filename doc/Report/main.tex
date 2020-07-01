@@ -123,13 +123,13 @@ To reach this goal, we either minimize the distance between the final state dens
       J(\rho(T)) = \frac 12 \| \rho(T) - \rho_G \|^2_F 
     \end{align}
     where the Frobenius norm is defined as $\|A\|^2_F = \Tr(A^{\dagger}A)$.
-  \item \textit{Expected energy minimization}: Minimize the average expected energy level of all oscillators
+  \item \textit{Expected energy minimization}: Minimize a weighted sum over expected energy levels of the (full or partial) system
     \begin{align}
-      (a) \quad J(\rho(T)) = \left(\frac{1}{|\mathcal{K}|}\sum_{k\in\mathcal{K}}\langle M_k \rangle \right)^2
+       \quad J(\rho(T)) = \sum_{k\in \mathcal{K}} \beta_k \langle M_k \rangle 
     \end{align}
-    where $M_k = a_k^\dag a_k$ is the number operator for oscillator $k$, and $\langle \cdot \rangle$ denotes the expected value, as in Section \ref{sec:expectedenergy}. Here, $\mathcal{K}=\{k_1,\dots,k_s\}\subset \{1,\dots,Q\}$ is an index set of oscillator IDs defining a subsystem $H_{k_1}\otimes H_{k_s}$.
-    Variations of the above measure are 
+    using the number operator $M_k = a_k^\dag a_k$ for the oscillator $k$ (compare Section \ref{sec:expectedenergy}), and defining a partial system $H_{k_1}\otimes \dots \otimes H_{k_s}$ from an index set of oscillator IDs $\mathcal{K}=\{k_1,\dots,k_s\}\subset \{1,\dots,Q\}$. We can use the following variations of the above measure
     \begin{enumerate}
+      \item[(a)] $J(\rho(T)) = \left(\frac{1}{|\mathcal{K}|}\sum_{k\in\mathcal{K}}\langle M_k \rangle \right)^2$
       \item[(b)] $J(\rho(T)) = \frac{1}{|\mathcal{K}|}\left(\sum_{k\in\mathcal{K}}\langle M_k \rangle \right)^2 $
       \item[(c)] $J(\rho(T)) = \frac{1}{|\mathcal{K}|}\sum_{k\in\mathcal{K}}\langle M_k \rangle$
     \end{enumerate}
@@ -166,7 +166,7 @@ Target gates that we consider include
 
 
 \subsection{Basis for initial conditions}
-For both of the above optimization targets, the goal is to minimize the respective measure with respect to \textit{any} initial condition $\rho(0)$. We therefore define a basis for all initial density matrices and aim to minimize the above measure for all of the matrix basis elements. The basis matrices are defined as follows:
+For both of the above optimization targets, the goal is to find control parameters that minimize the respective measure for \textit{any} possible initial condition $\rho(0)$. We therefore define a basis for all initial density matrices and aim to minimize the above measure for all of the matrix basis elements. The basis matrices are defined as follows:
 
 \begin{align}
 B^{kj} := \frac 12 \left( E_{kk} + E_{jj}\right) +  \begin{cases} 
@@ -183,14 +183,22 @@ We can rewrite any initial condition $\rho(0)$ as a linear combination
 \end{align}
 Since the master equation \eqref{mastereq} is linear, we can formally define a linear solution operator $S_T(\rho(0))$, mapping an initial state to the final state at time $T$, and we can rewrite the final density matrix at time $T$ in terms of the basis elements:
 \begin{align}
-  \rho(T) = S_T(\rho_0) = \sum_{k=0}^{N-1} \sum_{j=0}^{N-1} \alpha_{kj} S_T(B^{k, j}).
+  \rho(T) = S_T(\rho(0)) = \sum_{k,j=0}^{N-1} \alpha_{kj} S_T(B^{k, j}).
 \end{align}
-We therefore define the optimization problem for all the basis elements, rather than a specific initial condition:
+We therefore define the optimization problem that minimizes the respective measure averaged over all the basis elements:
 \begin{align}\label{optimproblem_basis}
-  \min \frac{1}{N^2} & \sum_{k=0}^{N-1}\sum_{j=0}^{N-1} \, J(\rho^{k,j}(T))  \\
+  \min \frac{1}{N^2} & \sum_{k,j=0}^{N-1} \, J(\rho^{k,j}(T))  \\
   \text{s.t.} \quad  \text{each} \quad \rho^{k,j}(t) \quad & \text{solves \eqref{mastereq} with initial condition} \quad \rho^{k,j}(0) = B^{k,j}
 \end{align}
 
+If the objective measure $J(\rho)$ is linear in $\rho$, we can reduce the optimization using the linearity of $S_T$:
+\begin{align}
+   \frac{1}{N^2}  \sum_{k,j=0}^{N-1} \, J\left(\rho^{k,j}(T)\right) = J\left(S_T\left(\frac{1}{N^2}  \sum_{k,j=0}^{N-1} B^{kj}\right)\right)
+\end{align}
+Hence, we define a new optimization problem using the specific initial condition that averages over the basis matrices:
+\begin{align}
+  \min \, J(S_T(\rho(T))) \quad \text{s.t.} \quad \rho(0) = \frac{1}{N^2}  \sum_{k,j=0}^{N-1} B^{kj}
+\end{align}
 
 \subsection{Fidelity} 
 For closed systems, the $\rho(t)$ and the solution operator $U(t)$ are unitary. In that case, one can show that 
