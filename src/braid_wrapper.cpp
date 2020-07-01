@@ -348,15 +348,15 @@ braid_Int myBraidApp::Access(braid_Vector u_, BraidAccessStatus &astatus){
   // if (t == 0.0) return 0;
 
   /* Write header */
-  if (accesslevel > 0 && ufile != NULL && vfile != NULL) {
-    fprintf(ufile,  "%.8f  ", t);
-    fprintf(vfile,  "%.8f  ", t);
-  }
+  // if (accesslevel > 0 && ufile != NULL && vfile != NULL) {
+  //   fprintf(ufile,  "%.8f  ", t);
+  //   fprintf(vfile,  "%.8f  ", t);
+  // }
 
   if (accesslevel > 0) {
 
     /* Write full density matrix, if desired */
-    if (writefullstate) {
+    if (writefullstate && t == total_time) {
       /* Gather the vector from all petsc processors onto the first one */
       VecScatterCreateToZero(u->x, &scat, &xseq);
       VecScatterBegin(scat, u->x, xseq, INSERT_VALUES, SCATTER_FORWARD);
