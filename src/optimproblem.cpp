@@ -27,8 +27,8 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, myBraidAp
 
   /* Store number of design parameters */
   int n = 0;
-  for (int ioscil = 0; ioscil < primalbraidapp->mastereq->getNOscillators(); ioscil++) {
-      n += primalbraidapp->mastereq->getOscillator(ioscil)->getNParams(); 
+  for (int ioscil = 0; ioscil < timestepper->mastereq->getNOscillators(); ioscil++) {
+      n += timestepper->mastereq->getOscillator(ioscil)->getNParams(); 
   }
   ndesign = n;
   if (mpirank_world == 0) std::cout<< "ndesign = " << ndesign << std::endl;
@@ -76,7 +76,7 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, myBraidAp
   std::vector<std::string> oscilIDstr;
   config.GetVecStrParam("optim_oscillators", oscilIDstr);
   if (oscilIDstr[0].compare("all") == 0) {
-    for (int iosc = 0; iosc < primalbraidapp->mastereq->getNOscillators(); iosc++) 
+    for (int iosc = 0; iosc < timestepper->mastereq->getNOscillators(); iosc++) 
       obj_oscilIDs.push_back(iosc);
   } else {
     config.GetVecIntParam("optim_oscillators", obj_oscilIDs, 0);
@@ -90,7 +90,7 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, myBraidAp
   bool err = false;
   assert(obj_oscilIDs.size() > 0);
   for (int i=0; i<obj_oscilIDs.size(); i++){
-    if ( obj_oscilIDs[i] >= primalbraidapp->mastereq->getNOscillators() ) err = true;
+    if ( obj_oscilIDs[i] >= timestepper->mastereq->getNOscillators() ) err = true;
     if ( i>0 &&  ( obj_oscilIDs[i] != obj_oscilIDs[i-1] + 1 ) ) err = true;
   }
   if (err) {
@@ -98,19 +98,14 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, myBraidAp
     exit(1);
   }
 
-  /* Pass information on objective function to braid needed for penalty objective function */
+  /* Pass information on objective function to the time stepper needed for penalty objective function */
   penalty_coeff = config.GetDoubleParam("optim_penalty", 1e-4);
   penalty_exp = config.GetIntParam("optim_penalty_exponent", 10);
-  primalbraidapp->objective_type = objective_type;
-  adjointbraidapp->objective_type = objective_type;
-  primalbraidapp->obj_oscilIDs = obj_oscilIDs;
-  adjointbraidapp->obj_oscilIDs = obj_oscilIDs;
-  primalbraidapp->obj_weights= obj_weights;
-  adjointbraidapp->obj_weights= obj_weights;
-  primalbraidapp->penalty_exp = penalty_exp;
-  adjointbraidapp->penalty_exp = penalty_exp;
-  primalbraidapp->penalty_coeff = penalty_coeff;
-  adjointbraidapp->penalty_coeff = penalty_coeff;
+  timestepper->objective_type = objective_type;
+  timestepper->obj_oscilIDs = obj_oscilIDs;
+  timestepper->obj_weights= obj_weights;
+  timestepper->penalty_exp = penalty_exp;
+  timestepper->penalty_coeff = penalty_coeff;
 
   // check if implemented:
   if (objective_type == GATE && penalty_coeff > 1e-13) {
@@ -132,7 +127,7 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, myBraidAp
     ninit = 1;
     for (int i = 1; i<initcondstr.size(); i++){
       int oscilID = atoi(initcondstr[i].c_str());
-      ninit *= primalbraidapp->mastereq->getOscillator(oscilID)->getNLevels();
+      ninit *= timestepper->mastereq->getOscillator(oscilID)->getNLevels();
     }
   }
   else if (initcondstr[0].compare("basis")    == 0 ) {
@@ -141,7 +136,7 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, myBraidAp
     ninit = 1;
     for (int i = 1; i<initcondstr.size(); i++){
       int oscilID = atoi(initcondstr[i].c_str());
-      ninit *= primalbraidapp->mastereq->getOscillator(oscilID)->getNLevels();
+      ninit *= timestepper->mastereq->getOscillator(oscilID)->getNLevels();
     }
     ninit = (int) pow(ninit, 2);
   }
@@ -152,7 +147,7 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, myBraidAp
 
   /* Allocate the initial condition vector */
   VecCreate(PETSC_COMM_WORLD, &rho_t0); 
-  VecSetSizes(rho_t0,PETSC_DECIDE,2*primalbraidapp->mastereq->getDim());
+  VecSetSizes(rho_t0,PETSC_DECIDE,2*timestepper->mastereq->getDim());
   VecSetFromOptions(rho_t0);
 
   /* If PURE or FROMFILE initialization, store them here. Otherwise they are set inside evalF */
@@ -160,24 +155,24 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, myBraidAp
     /* Initialize with tensor product of unit vectors. */
 
     // Compute index of diagonal elements that is one.
-    assert (initcond_IDs.size() == primalbraidapp->mastereq->getNOscillators());
+    assert (initcond_IDs.size() == timestepper->mastereq->getNOscillators());
     int diag_id = 0.0;
     for (int k=0; k < initcond_IDs.size(); k++) {
-      assert (initcond_IDs[k] < primalbraidapp->mastereq->getOscillator(k)->getNLevels());
+      assert (initcond_IDs[k] < timestepper->mastereq->getOscillator(k)->getNLevels());
       int dim_postkron = 1;
       for (int m=k+1; m < initcond_IDs.size(); m++) {
-        dim_postkron *= primalbraidapp->mastereq->getOscillator(m)->getNLevels();
+        dim_postkron *= timestepper->mastereq->getOscillator(m)->getNLevels();
       }
       diag_id += initcond_IDs[k] * dim_postkron;
     }
-    int vec_id = diag_id * (int)sqrt(primalbraidapp->mastereq->getDim()) + diag_id;
+    int vec_id = diag_id * (int)sqrt(timestepper->mastereq->getDim()) + diag_id;
     vec_id = getIndexReal(vec_id); // Real part of x
     VecSetValue(rho_t0, vec_id, 1.0, INSERT_VALUES);
   }
   else if (initcond_type == FROMFILE) { 
     /* Read initial condition from file */
     
-    int dim = primalbraidapp->mastereq->getDim();
+    int dim = timestepper->mastereq->getDim();
     double * vec = new double[2*dim];
     std::vector<std::string> initcondstr;
     config.GetVecStrParam("initialcondition", initcondstr);
@@ -216,15 +211,15 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, myBraidAp
   VecDuplicate(xlower, &xupper);
   std::vector<double> bounds;
   config.GetVecDoubleParam("optim_bounds", bounds, 1e20);
-  assert (bounds.size() >= primalbraidapp->mastereq->getNOscillators());
+  assert (bounds.size() >= timestepper->mastereq->getNOscillators());
   int col = 0;
-  for (int iosc = 0; iosc < primalbraidapp->mastereq->getNOscillators(); iosc++){
+  for (int iosc = 0; iosc < timestepper->mastereq->getNOscillators(); iosc++){
     // Scale bounds by 1/sqrt(2) * (number of carrier waves) */
     std::vector<double> carrier_freq;
     std::string key = "carrier_frequency" + std::to_string(iosc);
     config.GetVecDoubleParam(key, carrier_freq, 0.0);
     bounds[iosc] = bounds[iosc] / ( sqrt(2) * carrier_freq.size()) ;
-    for (int i=0; i<primalbraidapp->mastereq->getOscillator(iosc)->getNParams(); i++){
+    for (int i=0; i<timestepper->mastereq->getOscillator(iosc)->getNParams(); i++){
       VecSetValue(xupper, col, bounds[iosc], INSERT_VALUES);
       VecSetValue(xlower, col, -1. * bounds[iosc], INSERT_VALUES);
       col++;
@@ -250,7 +245,7 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, myBraidAp
   /* Set initial starting point */
   initguess_type = config.GetStrParam("optim_init", "zero");
   config.GetVecDoubleParam("optim_init_ampl", initguess_amplitudes, 0.0);
-  assert(initguess_amplitudes.size() == primalbraidapp->mastereq->getNOscillators());
+  assert(initguess_amplitudes.size() == timestepper->mastereq->getNOscillators());
   VecDuplicate(xlower, &xinit);
   getStartingPoint(xinit);
   TaoSetInitialVector(tao, xinit);
@@ -275,7 +270,7 @@ OptimProblem::~OptimProblem() {
 double OptimProblem::evalF(const Vec x) {
 
   // OptimProblem* ctx = (OptimProblem*) ptr;
-  MasterEq* mastereq = primalbraidapp->mastereq;
+  MasterEq* mastereq = timestepper->mastereq;
 
   if (mpirank_world == 0) printf(" EVAL F... \n");
   Vec finalstate = NULL;
@@ -291,7 +286,7 @@ double OptimProblem::evalF(const Vec x) {
       
     /* Prepare the initial condition in [rank * ninit_local, ... , (rank+1) * ninit_local - 1] */
     int iinit_global = mpirank_init * ninit_local + iinit;
-    int initid = primalbraidapp->mastereq->getRhoT0(iinit_global, ninit, initcond_type, initcond_IDs, rho_t0);
+    int initid = timestepper->mastereq->getRhoT0(iinit_global, ninit, initcond_type, initcond_IDs, rho_t0);
     if (mpirank_braid == 0) printf("%d: %d FWD. \n", mpirank_init, initid);
 
     /* Run forward with initial condition initid*/
@@ -305,14 +300,12 @@ double OptimProblem::evalF(const Vec x) {
       double pen = timestepper->solveODE(initid, rho_t0, output);
       finalstate = timestepper->store_states[timestepper->ntime];
     }
-    VecView(finalstate, 0);
-    exit(1);
 
     /* Add integral penalty term to objective */
-    obj_penal += penalty_coeff * primalbraidapp->penalty_integral;
+    obj_penal += penalty_coeff * timestepper->penalty_integral;
 
     /* Add final-time cost */
-    double obj_iinit = objectiveT(primalbraidapp->mastereq, objective_type, obj_oscilIDs, obj_weights, finalstate, rho_t0, targetgate);
+    double obj_iinit = objectiveT(timestepper->mastereq, objective_type, obj_oscilIDs, obj_weights, finalstate, rho_t0, targetgate);
     obj_cost += obj_iinit;
     // printf("%d, %d: iinit objective: %1.14e\n", mpirank_world, mpirank_init, obj_iinit);
   }
@@ -349,7 +342,7 @@ double OptimProblem::evalF(const Vec x) {
 
 void OptimProblem::evalGradF(const Vec x, Vec G){
 
-  MasterEq* mastereq = primalbraidapp->mastereq;
+  MasterEq* mastereq = timestepper->mastereq;
 
   if (mpirank_world == 0) std::cout<< "EVAL GRAD F... " << std::endl;
   Vec finalstate = NULL;
@@ -373,15 +366,15 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
 
     /* Prepare the initial condition */
     int iinit_global = mpirank_init * ninit_local + iinit;
-    int initid = primalbraidapp->mastereq->getRhoT0(iinit_global, ninit, initcond_type, initcond_IDs, rho_t0);
+    int initid = timestepper->mastereq->getRhoT0(iinit_global, ninit, initcond_type, initcond_IDs, rho_t0);
 
     /* --- Solve primal --- */
     // if (mpirank_braid == 0) printf("%d: %d FWD. ", mpirank_init, initid);
 
     /* Run forward with initial condition rho_t0 */
     // #ifdef Braid: 
-    // bool usebraid = false;
-    bool usebraid = true;
+    bool usebraid = false;
+    // bool usebraid = true;
     if (usebraid) {
       primalbraidapp->PreProcess(initid, rho_t0, 0.0, output);
       primalbraidapp->Drive();
@@ -393,10 +386,10 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
     }
 
     /* Add integral penalty term to objective */
-    obj_penal += penalty_coeff * primalbraidapp->penalty_integral;
+    obj_penal += penalty_coeff * timestepper->penalty_integral;
 
     /* Add final-time cost */
-    double obj_iinit = objectiveT(primalbraidapp->mastereq, objective_type, obj_oscilIDs, obj_weights, finalstate, rho_t0, targetgate);
+    double obj_iinit = objectiveT(timestepper->mastereq, objective_type, obj_oscilIDs, obj_weights, finalstate, rho_t0, targetgate);
     obj_cost += obj_iinit;
       // if (mpirank_braid == 0) printf("%d: iinit objective: %1.14e\n", mpirank_init, obj_iinit);
 
@@ -410,7 +403,7 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
     double Jbar = 1.0 / ninit;
 
     /* Derivative of final time objective */
-    objectiveT_diff(primalbraidapp->mastereq, objective_type, obj_oscilIDs, obj_weights, finalstate, rho_t0_bar, rho_t0, Jbar, targetgate);
+    objectiveT_diff(timestepper->mastereq, objective_type, obj_oscilIDs, obj_weights, finalstate, rho_t0_bar, rho_t0, Jbar, targetgate);
 
     /* Derivative of time-stepping */
     if (usebraid) {
@@ -433,7 +426,7 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
   /* Average over initial conditions processors */
   double mypen = 1./ninit * obj_penal;
   double mycost = 1./ninit * obj_cost;
-  MPI_Allreduce(&mypen, &obj_penal, 1, MPI_DOUBLE, MPI_SUM, primalbraidapp->comm_braid);
+  MPI_Allreduce(&mypen, &obj_penal, 1, MPI_DOUBLE, MPI_SUM, comm_init);
   MPI_Allreduce(&mycost, &obj_cost, 1, MPI_DOUBLE, MPI_SUM, comm_init);
   // if (mpirank_init == 0) printf("%d: global sum objective: %1.14e\n\n", mpirank_init, obj);
 
@@ -476,7 +469,7 @@ void OptimProblem::solve() {
 }
 
 void OptimProblem::getStartingPoint(Vec xinit){
-  MasterEq* mastereq = primalbraidapp->mastereq;
+  MasterEq* mastereq = timestepper->mastereq;
 
   if (initguess_type.compare("constant") == 0 ){ // set constant initial design
     int j = 0;
@@ -535,7 +528,7 @@ void OptimProblem::getStartingPoint(Vec xinit){
   VecAssemblyEnd(xinit);
 
   /* Pass to oscillator */
-  primalbraidapp->mastereq->setControlAmplitudes(xinit);
+  timestepper->mastereq->setControlAmplitudes(xinit);
   
   /* Flush initial control functions */
   if (mpirank_world == 0 ) {
@@ -582,10 +575,10 @@ void OptimProblem::getSolution(Vec* param_ptr){
     VecRestoreArrayRead(params, &params_ptr);
 
     /* Print control functions */
-    primalbraidapp->mastereq->setControlAmplitudes(params);
+    timestepper->mastereq->setControlAmplitudes(params);
     int ntime = primalbraidapp->ntime;
     double dt = primalbraidapp->total_time / ntime;
-    MasterEq* mastereq = primalbraidapp->mastereq;
+    MasterEq* mastereq = timestepper->mastereq;
     for (int ioscil = 0; ioscil < mastereq->getNOscillators(); ioscil++) {
         sprintf(filename, "%s/control_optimized_%02d.dat", primalbraidapp->datadir.c_str(), ioscil+1);
         mastereq->getOscillator(ioscil)->flushControl(ntime, dt, filename);
@@ -632,10 +625,10 @@ PetscErrorCode TaoMonitor(Tao tao,void*ptr){
     VecRestoreArrayRead(params, &params_ptr);
 
     /* Print control functions */
-    ctx->primalbraidapp->mastereq->setControlAmplitudes(params);
+    ctx->timestepper->mastereq->setControlAmplitudes(params);
     int ntime = ctx->primalbraidapp->ntime;
     double dt = ctx->primalbraidapp->total_time / ntime;
-    MasterEq* mastereq = ctx->primalbraidapp->mastereq;
+    MasterEq* mastereq = ctx->timestepper->mastereq;
     for (int ioscil = 0; ioscil < mastereq->getNOscillators(); ioscil++) {
         sprintf(filename, "%s/control_iter%04d_%02d.dat", ctx->primalbraidapp->datadir.c_str(), iter, ioscil+1);
         mastereq->getOscillator(ioscil)->flushControl(ntime, dt, filename);

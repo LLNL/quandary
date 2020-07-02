@@ -1,5 +1,5 @@
 #include "braid_wrapper.hpp"
-
+;
 
 myBraidVector::myBraidVector() {
   x = NULL;
@@ -27,7 +27,7 @@ myBraidApp::myBraidApp(MPI_Comm comm_braid_, double total_time_, int ntime_, TS 
   ntime = ntime_;
   total_time = total_time_;
   ts_petsc = ts_petsc_;
-  mytimestepper = mytimestepper_;
+  timestepper = mytimestepper_;
   mastereq = ham_;
   comm_braid = comm_braid_;
   MPI_Comm_rank(comm_braid, &mpirank_braid);
@@ -237,19 +237,14 @@ braid_Int myBraidApp::Step(braid_Vector u_, braid_Vector ustop_, braid_Vector fs
     /* -------------------------------------------------------------*/
 
     /* Add penalty term */
-    if (_braid_CoreElt(core->GetCore(), max_levels) == 1 && penalty_coeff > 1e-13) {
+    if (_braid_CoreElt(core->GetCore(), max_levels) == 1 && timestepper->penalty_coeff > 1e-13) {
 
-      /* Get objective and weight */
-      double expected = objectiveT(mastereq, objective_type, obj_oscilIDs, obj_weights, u->x, NULL, NULL);
-      double weight = pow(tstart / total_time, penalty_exp);  
-
-      /* Add to integral */
-      penalty_integral += (tstop - tstart) * weight * expected;
+      timestepper->penalty_integral += timestepper->penaltyIntegral(tstart, u->x);
       // printf("%f %.8f %.8f\n", tstart, weight, penalty_integral); 
     }
 
     /* Evolve solution forward from tstart to tstop */
-    mytimestepper->evolveFWD(tstart, tstop, u->x);
+    timestepper->evolveFWD(tstart, tstop, u->x);
   }
 
   return 0;
@@ -466,7 +461,7 @@ void myBraidApp::PreProcess(int iinit, const Vec rho_t0, double jbar, bool outpu
   setInitCond(rho_t0);
 
   /* Reset penalty integral */
-  penalty_integral = 0.0;
+  timestepper->penalty_integral = 0.0;
   Jbar = jbar;
 
   /* Open output files */
@@ -627,19 +622,15 @@ braid_Int myAdjointBraidApp::Step(braid_Vector u_, braid_Vector ustop_, braid_Ve
     uprimal_tstop  = (myBraidVector*) ubaseprimal_tstop->userVector;
 
     /* Reset gradient, if neccessary */
-    if (!done) VecZeroEntries(mytimestepper->redgrad);
+    if (!done) VecZeroEntries(timestepper->redgrad);
 
     /* Evolve u backwards in time and update gradient */
-    mytimestepper->evolveBWD(tstop_orig, tstart_orig, uprimal_tstop->x, u->x, mytimestepper->redgrad, compute_gradient);
+    timestepper->evolveBWD(tstop_orig, tstart_orig, uprimal_tstop->x, u->x, timestepper->redgrad, compute_gradient);
 
     /* Derivative of penalty objective */
-    if (_braid_CoreElt(core->GetCore(), max_levels) == 1 && penalty_coeff > 1e-13) {
-      
-      double weight = pow(tstop_orig / total_time, penalty_exp);  
-      double fbar = (tstart_orig-tstop_orig) * weight * Jbar;
-      objectiveT_diff(mastereq, objective_type, obj_oscilIDs, obj_weights, uprimal_tstop->x, u->x, NULL, fbar, NULL);
+    if (_braid_CoreElt(core->GetCore(), max_levels) == 1 && timestepper->penalty_coeff > 1e-13) {
+      timestepper->penaltyIntegral_diff(tstop_orig, uprimal_tstop->x, u->x, Jbar);
     }
-
   }
 
 
@@ -653,7 +644,7 @@ braid_Int myAdjointBraidApp::Init(braid_Real t, braid_Vector *u_ptr) {
   myBraidVector *u = new myBraidVector(2*mastereq->getDim());
 
   /* Reset the reduced gradient */
-  VecZeroEntries(mytimestepper->redgrad); 
+  VecZeroEntries(timestepper->redgrad); 
 
 
   /* Return new vector to braid */
@@ -669,11 +660,11 @@ void myAdjointBraidApp::PreProcess(int iinit, const Vec rho_t0_bar, double jbar,
   setInitCond(rho_t0_bar);
 
   /* Reset penalty integral */
-  penalty_integral = 0.0;
+  timestepper->penalty_integral = 0.0;
   Jbar = jbar;
 
   /* Reset the reduced gradient */
-  VecZeroEntries(mytimestepper->redgrad); 
+  VecZeroEntries(timestepper->redgrad); 
 
   // /* Open output files for adjoint */
   // if (output && accesslevel > 0 && mpirank_petsc == 0) {
@@ -696,7 +687,7 @@ Vec myAdjointBraidApp::PostProcess() {
     // printf("Error: Gradient computation with braid_maxlevels>1 is wrong. Neex to sweep over all points here!\n");
     // exit(1);
     /* Sweep over all points to collect the gradient */
-    VecZeroEntries(mytimestepper->redgrad);
+    VecZeroEntries(timestepper->redgrad);
     _braid_CoreElt(core->GetCore(), done) = 1;
     _braid_FCRelax(core->GetCore(), 0);
   }

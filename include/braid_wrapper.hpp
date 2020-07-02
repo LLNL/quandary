@@ -9,10 +9,6 @@
 
 #pragma once
 
-// define as extern here, they are needed for penalty integral term, implemented in optimproble.cpp
-extern double objectiveT(MasterEq* mastereq, ObjectiveType objective_type, const std::vector<int>& obj_oscilIDs, const std::vector<double>& obj_weights, const Vec state, const Vec rho_t0, Gate* targetgate);
-extern void objectiveT_diff(MasterEq* mastereq, ObjectiveType objective_type, const std::vector<int>& obj_oscilIDs, const std::vector<double>& obj_weights, Vec state, Vec state_bar, const Vec rho_t0, const double obj_bar, Gate* targetgate);
-
 class myBraidVector {
   public: 
     Vec x;
@@ -25,7 +21,7 @@ class myBraidVector {
 class myBraidApp : public BraidApp {
   protected: 
     TS           ts_petsc;        /* Petsc Time-stepper struct */
-    TimeStepper  *mytimestepper;  /* My new time-stepper */
+    TimeStepper  *timestepper;  /* My new time-stepper */
     BraidCore *core;                /* Braid core for running PinT simulation */
 
     /* output stuff */
@@ -45,6 +41,9 @@ class myBraidApp : public BraidApp {
     VecScatter scat;    /* Petsc's scatter context to communicate a state across petsc's cores */
     Vec xseq;           /* A sequential vector for IO. */
 
+    /* For penalty integral */
+    double Jbar;
+
 
   public:
     MPI_Comm comm_braid;            /* Braid's communicator */
@@ -53,15 +52,6 @@ class myBraidApp : public BraidApp {
     std::string  datadir;           /* Name of output data directory */
     double       total_time;        /* total time  */
     MasterEq *mastereq;             /* Master equation */
-
-    /* Stuff for evaluating penalty term objective function */
-    ObjectiveType objective_type;
-    std::vector<int> obj_oscilIDs;
-    std::vector<double> obj_weights;
-    double Jbar;
-    double penalty_exp;
-    double penalty_coeff;
-    double penalty_integral;
 
   public:
 

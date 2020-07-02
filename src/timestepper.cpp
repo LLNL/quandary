@@ -59,22 +59,19 @@ double TimeStepper::solveODE(int initid, Vec rho_t0, bool output){
   VecCopy(rho_t0, x);
 
   /* Loop over time interval */
-  double penalty_integral = 0.0;
+  penalty_integral = 0.0;
   for (int n = 0; n < ntime; n++){
+    /* current time */
+    double tstart = n * dt;
+    double tstop  = (n+1) * dt;
 
     /* store current state */
     VecCopy(x, store_states[n]);
 
-    // /* Add to penalty integral */
-    // if (penalty_coeff > 1e-13) {
-    //   double expected = objectiveT(mastereq, objective_type, obj_oscilIDs, obj_weights, x, NULL, NULL);
-    //   double weight = pow( (n*dt) / total_time, penalty_exp);  
-    //   penalty_integral += (tstop - tstart) * weight * expected;
-    // }
+    /* Add to penalty objective term */
+    if (penalty_coeff > 1e-13) penalty_integral += penaltyIntegral(tstart, x);
 
     /* Take one time step */
-    double tstart = n * dt;
-    double tstop  = (n+1) * dt;
     evolveFWD(tstart, tstop, x);
   }
 
@@ -94,19 +91,32 @@ void TimeStepper::solveAdjointODE(int initid, Vec rho_t0_bar, double Jbar, bool 
   VecCopy(rho_t0_bar, x);
 
   /* Loop over time interval */
-  double penalty_integral = 0.0;
   for (int n = ntime; n > 0; n--){
 
     /* Take one time step backwards */
     double tstop  = n * dt;
     double tstart = (n-1) * dt;
 
-    printf("n=%d t: %f->%f\n", n, tstop, tstart);
-    VecView(store_states[n-1], 0);
-    VecView(x,0);
-
     evolveBWD(tstop, tstart, store_states[n-1], x, redgrad, true);
+
+    /* Derivative of penalty objective term */
+    if (penalty_coeff > 1e-13) penaltyIntegral_diff(tstart, store_states[n-1], x, Jbar);
   }
+}
+
+
+double TimeStepper::penaltyIntegral(double time, const Vec x){
+
+  double expected = objectiveT(mastereq, objective_type, obj_oscilIDs, obj_weights, x, NULL, NULL);
+  double weight = pow( (time) / total_time, penalty_exp);  
+    
+  return dt * weight * expected;
+}
+
+void TimeStepper::penaltyIntegral_diff(double time, const Vec x, Vec xbar, double penaltybar){
+
+  double weight = pow(time/ total_time, penalty_exp);  
+  objectiveT_diff(mastereq, objective_type, obj_oscilIDs, obj_weights, x, xbar, NULL, dt*weight*penaltybar, NULL);
 }
 
 void TimeStepper::evolveBWD(const double tstart, const double tstop, const Vec x_stop, Vec x_adj, Vec grad, bool compute_gradient){}
