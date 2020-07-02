@@ -1,7 +1,7 @@
 #include "optimproblem.hpp"
 
 
-OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, MPI_Comm comm_hiop_, MPI_Comm comm_init_, int ninit_) {
+OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, MPI_Comm comm_hiop_, MPI_Comm comm_init_, int ninit_, std::string datadir_) {
 
   timestepper = timestepper_;
   primalbraidapp  = primalbraidapp_;
@@ -9,6 +9,7 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, myBraidAp
   ninit = ninit_;
   comm_hiop = comm_hiop_;
   comm_init = comm_init_;
+  datadir = datadir_;
 
   /* Store ranks and sizes of communicators */
   MPI_Comm_rank(primalbraidapp->comm_braid, &mpirank_braid);
@@ -200,7 +201,7 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, myBraidAp
   outfreq = config.GetIntParam("optim_outputfrequency", 10);
   if (mpirank_world == 0) {
     char filename[255];
-    sprintf(filename, "%s/optimTao.dat", primalbraidapp->datadir.c_str());
+    sprintf(filename, "%s/optimTao.dat", datadir.c_str());
     optimfile = fopen(filename, "w");
     fprintf(optimfile, "#iter    obj_value           ||grad||               LS step           Costfunction     Tikhonov-regul      Penalty-term\n");
   } 
@@ -536,7 +537,7 @@ void OptimProblem::getStartingPoint(Vec xinit){
     double dt = primalbraidapp->total_time / ntime;
     char filename[255];
     for (int ioscil = 0; ioscil < mastereq->getNOscillators(); ioscil++) {
-        sprintf(filename, "%s/control_init_%02d.dat", primalbraidapp->datadir.c_str(), ioscil+1);
+        sprintf(filename, "%s/control_init_%02d.dat", datadir.c_str(), ioscil+1);
         mastereq->getOscillator(ioscil)->flushControl(ntime, dt, filename);
     }
   }
@@ -566,7 +567,7 @@ void OptimProblem::getSolution(Vec* param_ptr){
     /* Print optimized parameters */
     const PetscScalar* params_ptr;
     VecGetArrayRead(params, &params_ptr);
-    sprintf(filename, "%s/param_optimized.dat", primalbraidapp->datadir.c_str());
+    sprintf(filename, "%s/param_optimized.dat", datadir.c_str());
     paramfile = fopen(filename, "w");
     for (int i=0; i<ndesign; i++){
       fprintf(paramfile, "%1.14e\n", params_ptr[i]);
@@ -580,7 +581,7 @@ void OptimProblem::getSolution(Vec* param_ptr){
     double dt = primalbraidapp->total_time / ntime;
     MasterEq* mastereq = timestepper->mastereq;
     for (int ioscil = 0; ioscil < mastereq->getNOscillators(); ioscil++) {
-        sprintf(filename, "%s/control_optimized_%02d.dat", primalbraidapp->datadir.c_str(), ioscil+1);
+        sprintf(filename, "%s/control_optimized_%02d.dat", datadir.c_str(), ioscil+1);
         mastereq->getOscillator(ioscil)->flushControl(ntime, dt, filename);
     }
   }
@@ -616,7 +617,7 @@ PetscErrorCode TaoMonitor(Tao tao,void*ptr){
     TaoGetSolutionVector(tao, &params);
     VecGetArrayRead(params, &params_ptr);
     FILE *paramfile;
-    sprintf(filename, "%s/param_iter%04d.dat", ctx->primalbraidapp->datadir.c_str(), iter);
+    sprintf(filename, "%s/param_iter%04d.dat", ctx->datadir.c_str(), iter);
     paramfile = fopen(filename, "w");
     for (int i=0; i<ctx->ndesign; i++){
       fprintf(paramfile, "%1.14e\n", params_ptr[i]);
@@ -630,7 +631,7 @@ PetscErrorCode TaoMonitor(Tao tao,void*ptr){
     double dt = ctx->primalbraidapp->total_time / ntime;
     MasterEq* mastereq = ctx->timestepper->mastereq;
     for (int ioscil = 0; ioscil < mastereq->getNOscillators(); ioscil++) {
-        sprintf(filename, "%s/control_iter%04d_%02d.dat", ctx->primalbraidapp->datadir.c_str(), iter, ioscil+1);
+        sprintf(filename, "%s/control_iter%04d_%02d.dat", ctx->datadir.c_str(), iter, ioscil+1);
         mastereq->getOscillator(ioscil)->flushControl(ntime, dt, filename);
     }
   }

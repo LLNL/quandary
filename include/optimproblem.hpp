@@ -58,9 +58,10 @@ class OptimProblem {
   int outfreq;      /* Write state output to file every <outfreq> iterations */
   bool output;      /* Switches to true every <outfreq> iterations */
   FILE* optimfile;  /* Output file to log optimization progress */
+  std::string datadir; /* Name of the output directory */
 
   /* Constructor */
-  OptimProblem(MapParam config, TimeStepper* timestepper_, myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, MPI_Comm comm_hiop_, MPI_Comm comm_init_, int ninit_);
+  OptimProblem(MapParam config, TimeStepper* timestepper_, myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, MPI_Comm comm_hiop_, MPI_Comm comm_init_, int ninit_, std::string datadir_);
   ~OptimProblem();
 
   /* Evaluate the objective function F(x) */

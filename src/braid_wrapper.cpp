@@ -21,7 +21,7 @@ myBraidVector::~myBraidVector() {
 
 
 
-myBraidApp::myBraidApp(MPI_Comm comm_braid_, double total_time_, int ntime_, TS ts_petsc_, TimeStepper* mytimestepper_, MasterEq* ham_, MapParam* config) 
+myBraidApp::myBraidApp(MPI_Comm comm_braid_, double total_time_, int ntime_, TS ts_petsc_, TimeStepper* mytimestepper_, MasterEq* ham_, MapParam* config, std::string datadir_) 
           : BraidApp(comm_braid_, 0.0, total_time_, ntime_) {
 
   ntime = ntime_;
@@ -30,6 +30,7 @@ myBraidApp::myBraidApp(MPI_Comm comm_braid_, double total_time_, int ntime_, TS 
   timestepper = mytimestepper_;
   mastereq = ham_;
   comm_braid = comm_braid_;
+  datadir = datadir_;
   MPI_Comm_rank(comm_braid, &mpirank_braid);
   MPI_Comm_rank(PETSC_COMM_WORLD, &mpirank_petsc);
   MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
@@ -68,14 +69,9 @@ myBraidApp::myBraidApp(MPI_Comm comm_braid_, double total_time_, int ntime_, TS 
   /* Output options */
   accesslevel = config->GetIntParam("braid_accesslevel", 1);
   core->SetAccessLevel( accesslevel );
-  datadir = config->GetStrParam("datadir", "./data_out");
   // _braid_SetVerbosity(core->GetCore(), 1);
 
-  int worldrank;
-  MPI_Comm_rank(MPI_COMM_WORLD, &worldrank);
-  if (worldrank == 0) {
-    mkdir(datadir.c_str(), 0777);
-  }
+  
 
   /* Read desired output from config */
   for (int i = 0; i < mastereq->getNOscillators(); i++){
@@ -546,8 +542,8 @@ double myBraidApp::Drive() {
 /* ================================================================*/
 
 
-myAdjointBraidApp::myAdjointBraidApp(MPI_Comm comm_braid_, double total_time_, int ntime_, TS ts_, TimeStepper* mytimestepper_, MasterEq* ham_, MapParam* config, BraidCore *Primalcoreptr_)
-        : myBraidApp(comm_braid_, total_time_, ntime_, ts_, mytimestepper_, ham_, config) {
+myAdjointBraidApp::myAdjointBraidApp(MPI_Comm comm_braid_, double total_time_, int ntime_, TS ts_, TimeStepper* mytimestepper_, MasterEq* ham_, MapParam* config, BraidCore *Primalcoreptr_, std::string datadir_)
+        : myBraidApp(comm_braid_, total_time_, ntime_, ts_, mytimestepper_, ham_, config, datadir_) {
 
   /* Store the primal core */
   primalcore = Primalcoreptr_;

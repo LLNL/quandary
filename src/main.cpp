@@ -172,7 +172,13 @@ int main(int argc,char **argv)
   MasterEq* mastereq = new MasterEq(nlevels, oscil_vec, xi, lindbladtype, t_collapse, usematfree);
 
 
-  /* Screen output */
+  /* Output */
+  std::string datadir = config.GetStrParam("datadir", "./data_out");
+  // Create output data directory
+  if (mpirank_world == 0) {
+    mkdir(datadir.c_str(), 0777);
+  }
+  // Some screen output 
   if (mpirank_world == 0) {
     std::cout << "Time: [0:" << total_time << "], ";
     std::cout << "N="<< ntime << ", dt=" << dt << std::endl;
@@ -213,13 +219,13 @@ int main(int argc,char **argv)
    
 
   /* --- Create braid instances --- */
-  myBraidApp* primalbraidapp = new myBraidApp(comm_braid, total_time, ntime, ts, mytimestepper, mastereq, &config);
-  myAdjointBraidApp *adjointbraidapp = new myAdjointBraidApp(comm_braid, total_time, ntime, ts, mytimestepper, mastereq, &config, primalbraidapp->getCore());
+  myBraidApp* primalbraidapp = new myBraidApp(comm_braid, total_time, ntime, ts, mytimestepper, mastereq, &config, datadir);
+  myAdjointBraidApp *adjointbraidapp = new myAdjointBraidApp(comm_braid, total_time, ntime, ts, mytimestepper, mastereq, &config, primalbraidapp->getCore(), datadir);
   primalbraidapp->InitGrids();
   adjointbraidapp->InitGrids();
 
   /* --- Initialize optimization --- */
-  OptimProblem* optimctx = new OptimProblem(config, mytimestepper, primalbraidapp, adjointbraidapp, comm_hiop, comm_init, ninit);
+  OptimProblem* optimctx = new OptimProblem(config, mytimestepper, primalbraidapp, adjointbraidapp, comm_hiop, comm_init, ninit, datadir);
 
   /* Set upt solution and gradient vector */
   Vec xinit;
@@ -235,7 +241,7 @@ int main(int argc,char **argv)
   if (mpirank_world == 0)
   {
     /* Print parameters to file */
-    sprintf(filename, "%s/config_log.dat", primalbraidapp->datadir.c_str());
+    sprintf(filename, "%s/config_log.dat", datadir.c_str());
     ofstream logfile(filename);
     if (logfile.is_open()){
       logfile << log.str();
@@ -300,7 +306,7 @@ int main(int argc,char **argv)
 
   /* Print timing to file */
   if (mpirank_world == 0) {
-    sprintf(filename, "%s/timing.dat", primalbraidapp->datadir.c_str());
+    sprintf(filename, "%s/timing.dat", datadir.c_str());
     FILE* timefile = fopen(filename, "w");
     fprintf(timefile, "%d  %1.8e\n", mpisize_world, UsedTime);
     fclose(timefile);
