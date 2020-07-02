@@ -5,6 +5,7 @@
 #include <assert.h> 
 #include <iostream> 
 #include "defs.hpp"
+#include "output.hpp"
 #pragma once
 
 // define as extern here, they are needed for penalty integral term, implemented in optimproble.cpp
@@ -37,15 +38,18 @@ class TimeStepper{
     double penalty_exp;
     double penalty_coeff;
 
+    /* Output */
+    Output* output;
+
   public: 
     TimeStepper(); 
-    TimeStepper(MasterEq* mastereq_, int ntime_, double total_time_); 
+    TimeStepper(MasterEq* mastereq_, int ntime_, double total_time_, Output* output_); 
     virtual ~TimeStepper(); 
 
     /* Solve the ODE forward in time with initial condition rho_t0 */
-    double solveODE(int initid, Vec rho_t0, bool output);
+    double solveODE(int initid, Vec rho_t0, bool writeoutput);
     /* Solve the adjoint ODE backwards in time with terminal condition rho_t0_bar */
-    void solveAdjointODE(int initid, Vec rho_t0_bar, double Jbar, bool output);
+    void solveAdjointODE(int initid, Vec rho_t0_bar, double Jbar, bool writeoutput);
 
     /* evaluate the penalty integral term */
     double penaltyIntegral(double time, const Vec x);
@@ -60,7 +64,7 @@ class TimeStepper{
 class ExplEuler : public TimeStepper {
   Vec stage;
   public:
-    ExplEuler(MasterEq* mastereq_, int ntime_, double total_time_);
+    ExplEuler(MasterEq* mastereq_, int ntime_, double total_time_, Output* output_);
     ~ExplEuler();
 
     /* Evolve state forward from tstart to tstop */
@@ -92,7 +96,7 @@ class ImplMidpoint : public TimeStepper {
   Vec tmp, err;                    /* Auxiliary vector for applying the neuman iterations */
 
   public:
-    ImplMidpoint(MasterEq* mastereq_, int ntime_, double total_time_, LinearSolverType linsolve_type_, int linsolve_maxiter_);
+    ImplMidpoint(MasterEq* mastereq_, int ntime_, double total_time_, LinearSolverType linsolve_type_, int linsolve_maxiter_, Output* output_);
     ~ImplMidpoint();
 
 

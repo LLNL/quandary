@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include <sys/resource.h>
 #include "optimproblem.hpp"
+#include "output.hpp"
 
 #define TEST_FD 0    // Finite Differences gradient test
 #define EPS 1e-4     // Epsilon for Finite Differences
@@ -173,11 +174,8 @@ int main(int argc,char **argv)
 
 
   /* Output */
-  std::string datadir = config.GetStrParam("datadir", "./data_out");
-  // Create output data directory
-  if (mpirank_world == 0) {
-    mkdir(datadir.c_str(), 0777);
-  }
+  Output* output = new Output(config, mpirank_petsc, mpirank_init, mpirank_braid);
+
   // Some screen output 
   if (mpirank_world == 0) {
     std::cout << "Time: [0:" << total_time << "], ";
@@ -207,7 +205,7 @@ int main(int argc,char **argv)
     exit(1);
   }
   /* My time stepper */
-  TimeStepper *mytimestepper = new ImplMidpoint(mastereq, ntime, total_time, linsolvetype, linsolve_maxiter);
+  TimeStepper *mytimestepper = new ImplMidpoint(mastereq, ntime, total_time, linsolvetype, linsolve_maxiter, output);
   // TimeStepper *mytimestepper = new ExplEuler(mastereq);
 
   /* Petsc's Time-stepper */
@@ -219,13 +217,13 @@ int main(int argc,char **argv)
    
 
   /* --- Create braid instances --- */
-  myBraidApp* primalbraidapp = new myBraidApp(comm_braid, total_time, ntime, ts, mytimestepper, mastereq, &config, datadir);
-  myAdjointBraidApp *adjointbraidapp = new myAdjointBraidApp(comm_braid, total_time, ntime, ts, mytimestepper, mastereq, &config, primalbraidapp->getCore(), datadir);
+  myBraidApp* primalbraidapp = new myBraidApp(comm_braid, total_time, ntime, ts, mytimestepper, mastereq, &config, output);
+  myAdjointBraidApp *adjointbraidapp = new myAdjointBraidApp(comm_braid, total_time, ntime, ts, mytimestepper, mastereq, &config, primalbraidapp->getCore(), output);
   primalbraidapp->InitGrids();
   adjointbraidapp->InitGrids();
 
   /* --- Initialize optimization --- */
-  OptimProblem* optimctx = new OptimProblem(config, mytimestepper, primalbraidapp, adjointbraidapp, comm_hiop, comm_init, ninit, datadir);
+  OptimProblem* optimctx = new OptimProblem(config, mytimestepper, primalbraidapp, adjointbraidapp, comm_hiop, comm_init, ninit, output);
 
   /* Set upt solution and gradient vector */
   Vec xinit;
@@ -241,7 +239,7 @@ int main(int argc,char **argv)
   if (mpirank_world == 0)
   {
     /* Print parameters to file */
-    sprintf(filename, "%s/config_log.dat", datadir.c_str());
+    sprintf(filename, "%s/config_log.dat", output->datadir.c_str());
     ofstream logfile(filename);
     if (logfile.is_open()){
       logfile << log.str();
@@ -306,7 +304,7 @@ int main(int argc,char **argv)
 
   /* Print timing to file */
   if (mpirank_world == 0) {
-    sprintf(filename, "%s/timing.dat", datadir.c_str());
+    sprintf(filename, "%s/timing.dat", output->datadir.c_str());
     FILE* timefile = fopen(filename, "w");
     fprintf(timefile, "%d  %1.8e\n", mpisize_world, UsedTime);
     fclose(timefile);
@@ -379,6 +377,7 @@ int main(int argc,char **argv)
   delete primalbraidapp;
   delete adjointbraidapp;
   delete optimctx;
+  delete output;
 
   // TSDestroy(&ts);  /* TODO */
 

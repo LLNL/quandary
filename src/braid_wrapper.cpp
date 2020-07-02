@@ -21,7 +21,7 @@ myBraidVector::~myBraidVector() {
 
 
 
-myBraidApp::myBraidApp(MPI_Comm comm_braid_, double total_time_, int ntime_, TS ts_petsc_, TimeStepper* mytimestepper_, MasterEq* ham_, MapParam* config, std::string datadir_) 
+myBraidApp::myBraidApp(MPI_Comm comm_braid_, double total_time_, int ntime_, TS ts_petsc_, TimeStepper* mytimestepper_, MasterEq* ham_, MapParam* config, Output* output_) 
           : BraidApp(comm_braid_, 0.0, total_time_, ntime_) {
 
   ntime = ntime_;
@@ -30,7 +30,7 @@ myBraidApp::myBraidApp(MPI_Comm comm_braid_, double total_time_, int ntime_, TS 
   timestepper = mytimestepper_;
   mastereq = ham_;
   comm_braid = comm_braid_;
-  datadir = datadir_;
+  output = output_;
   MPI_Comm_rank(comm_braid, &mpirank_braid);
   MPI_Comm_rank(PETSC_COMM_WORLD, &mpirank_petsc);
   MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
@@ -451,7 +451,7 @@ braid_Int myBraidApp::BufUnpack(void *buffer, braid_Vector *u_ptr, BraidBufferSt
   return 0; 
 }
 
-void myBraidApp::PreProcess(int iinit, const Vec rho_t0, double jbar, bool output){
+void myBraidApp::PreProcess(int iinit, const Vec rho_t0, double jbar, bool writeoutput){
 
   /* Pass initial condition to braid */
   setInitCond(rho_t0);
@@ -461,14 +461,14 @@ void myBraidApp::PreProcess(int iinit, const Vec rho_t0, double jbar, bool outpu
   Jbar = jbar;
 
   /* Open output files */
-  if (output && accesslevel > 0 && mpirank_petsc == 0) {
+  if (writeoutput && accesslevel > 0 && mpirank_petsc == 0) {
     char filename[255];
 
     /* Open files for full state */
     if (writefullstate) {
-      sprintf(filename, "%s/out_u.iinit%04d.rank%04d.dat", datadir.c_str(),iinit, mpirank_braid);
+      sprintf(filename, "%s/out_u.iinit%04d.rank%04d.dat", output->datadir.c_str(),iinit, mpirank_braid);
       ufile = fopen(filename, "w");
-      sprintf(filename, "%s/out_v.iinit%04d.rank%04d.dat", datadir.c_str(), iinit, mpirank_braid);
+      sprintf(filename, "%s/out_v.iinit%04d.rank%04d.dat", output->datadir.c_str(), iinit, mpirank_braid);
       vfile = fopen(filename, "w"); 
     }
    
@@ -476,11 +476,11 @@ void myBraidApp::PreProcess(int iinit, const Vec rho_t0, double jbar, bool outpu
     for (int i=0; i<outputstr.size(); i++) {
       for (int j=0; j<outputstr[i].size(); j++) {
         if (outputstr[i][j].compare("expectedEnergy") == 0 ) {
-          sprintf(filename, "%s/expected%d.iinit%04d.rank%04d.dat", datadir.c_str(), i, iinit, mpirank_braid);
+          sprintf(filename, "%s/expected%d.iinit%04d.rank%04d.dat", output->datadir.c_str(), i, iinit, mpirank_braid);
           expectedfile[i] = fopen(filename, "w");
         }
         // if (outputstr[i][j].compare("population") == 0 ) {
-        //   sprintf(filename, "%s/population%d.iinit%04d.rank%04d.dat", datadir.c_str(), i, iinit, mpirank_braid);
+        //   sprintf(filename, "%s/population%d.iinit%04d.rank%04d.dat", output->datadir.c_str(), i, iinit, mpirank_braid);
         //   populationfile[i] = fopen(filename, "w");
         // }
       }
@@ -542,8 +542,8 @@ double myBraidApp::Drive() {
 /* ================================================================*/
 
 
-myAdjointBraidApp::myAdjointBraidApp(MPI_Comm comm_braid_, double total_time_, int ntime_, TS ts_, TimeStepper* mytimestepper_, MasterEq* ham_, MapParam* config, BraidCore *Primalcoreptr_, std::string datadir_)
-        : myBraidApp(comm_braid_, total_time_, ntime_, ts_, mytimestepper_, ham_, config, datadir_) {
+myAdjointBraidApp::myAdjointBraidApp(MPI_Comm comm_braid_, double total_time_, int ntime_, TS ts_, TimeStepper* mytimestepper_, MasterEq* ham_, MapParam* config, BraidCore *Primalcoreptr_, Output* output_)
+        : myBraidApp(comm_braid_, total_time_, ntime_, ts_, mytimestepper_, ham_, config, output_) {
 
   /* Store the primal core */
   primalcore = Primalcoreptr_;
@@ -650,7 +650,7 @@ braid_Int myAdjointBraidApp::Init(braid_Real t, braid_Vector *u_ptr) {
 }
 
 
-void myAdjointBraidApp::PreProcess(int iinit, const Vec rho_t0_bar, double jbar, bool output){
+void myAdjointBraidApp::PreProcess(int iinit, const Vec rho_t0_bar, double jbar, bool writeoutput){
 
   /* Pass initial condition to braid */
   setInitCond(rho_t0_bar);
@@ -663,11 +663,11 @@ void myAdjointBraidApp::PreProcess(int iinit, const Vec rho_t0_bar, double jbar,
   VecZeroEntries(timestepper->redgrad); 
 
   // /* Open output files for adjoint */
-  // if (output && accesslevel > 0 && mpirank_petsc == 0) {
+  // if (writeoutput && accesslevel > 0 && mpirank_petsc == 0) {
     // char filename[255];
-    // sprintf(filename, "%s/out_uadj.iinit%04d.rank%04d.dat", datadir.c_str(),iinit, mpirank_braid);
+    // sprintf(filename, "%s/out_uadj.iinit%04d.rank%04d.dat", output->datadir.c_str(),iinit, mpirank_braid);
     // ufile = fopen(filename, "w");
-    // sprintf(filename, "%s/out_vadj.iinit%04d.rank%04d.dat", datadir.c_str(),iinit, mpirank_braid);
+    // sprintf(filename, "%s/out_vadj.iinit%04d.rank%04d.dat", output->datadir.c_str(),iinit, mpirank_braid);
     // vfile = fopen(filename, "w");
   // }
 }

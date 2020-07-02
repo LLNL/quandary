@@ -5,6 +5,7 @@
 #include "util.hpp"
 #include "gate.hpp"
 #include <iostream> 
+#include "output.hpp"
 #include <sys/stat.h> 
 
 #pragma once
@@ -31,6 +32,7 @@ class myBraidApp : public BraidApp {
     std::vector<FILE *>populationfile;
     std::vector<std::vector<std::string> > outputstr; // List of outputs for each oscillator
     bool writefullstate;
+    Output* output;
 
     /* MPI stuff */
     bool usepetscts;
@@ -49,13 +51,12 @@ class myBraidApp : public BraidApp {
     MPI_Comm comm_braid;            /* Braid's communicator */
     int          ntime;             /* number of time steps */
     int          accesslevel;
-    std::string  datadir;           /* Name of output data directory */
     double       total_time;        /* total time  */
     MasterEq *mastereq;             /* Master equation */
 
   public:
 
-  myBraidApp(MPI_Comm comm_braid_, double total_time_, int ntime_, TS ts_petsc_, TimeStepper* mytimestepper_, MasterEq* ham_, MapParam* config, std::string datadir_);
+  myBraidApp(MPI_Comm comm_braid_, double total_time_, int ntime_, TS ts_petsc_, TimeStepper* mytimestepper_, MasterEq* ham_, MapParam* config, Output* output);
   ~myBraidApp();
 
     /* Dumps xbraid's convergence history to a file */
@@ -132,7 +133,7 @@ class myAdjointBraidApp : public myBraidApp {
   
   public:
 
-    myAdjointBraidApp(MPI_Comm comm_braid_, double total_time_, int ntime_, TS ts_petsc_,TimeStepper* mytimestepper_, MasterEq* ham_, MapParam* config, BraidCore *Primalcoreptr_, std::string datadir);
+    myAdjointBraidApp(MPI_Comm comm_braid_, double total_time_, int ntime_, TS ts_petsc_,TimeStepper* mytimestepper_, MasterEq* ham_, MapParam* config, BraidCore *Primalcoreptr_, Output* output);
     ~myAdjointBraidApp();
 
     /* Get the storage index of primal (reversed) time point index of a certain time t, on the grid created with spacing dt  */
