@@ -1,8 +1,9 @@
 #include "optimproblem.hpp"
 
 
-OptimProblem::OptimProblem(MapParam config, myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, MPI_Comm comm_hiop_, MPI_Comm comm_init_, int ninit_) {
+OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, MPI_Comm comm_hiop_, MPI_Comm comm_init_, int ninit_) {
 
+  timestepper = timestepper_;
   primalbraidapp  = primalbraidapp_;
   adjointbraidapp = adjointbraidapp_;
   ninit = ninit_;
@@ -294,9 +295,18 @@ double OptimProblem::evalF(const Vec x) {
     if (mpirank_braid == 0) printf("%d: %d FWD. \n", mpirank_init, initid);
 
     /* Run forward with initial condition initid*/
-    primalbraidapp->PreProcess(initid, rho_t0, 0.0, output);
-    primalbraidapp->Drive();
-    finalstate = primalbraidapp->PostProcess(); // this return NULL for all but the last time processor
+    // #ifdef Braid: 
+    if (0) {
+      primalbraidapp->PreProcess(initid, rho_t0, 0.0, output);
+      primalbraidapp->Drive();
+      finalstate = primalbraidapp->PostProcess(); // this return NULL for all but the last time processor
+    }
+    else {
+      double pen = timestepper->solveODE(initid, rho_t0, output);
+      finalstate = timestepper->store_states[timestepper->ntime];
+    }
+    VecView(finalstate, 0);
+    exit(1);
 
     /* Add integral penalty term to objective */
     obj_penal += penalty_coeff * primalbraidapp->penalty_integral;

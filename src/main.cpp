@@ -201,7 +201,7 @@ int main(int argc,char **argv)
     exit(1);
   }
   /* My time stepper */
-  TimeStepper *mytimestepper = new ImplMidpoint(mastereq, linsolvetype, linsolve_maxiter);
+  TimeStepper *mytimestepper = new ImplMidpoint(mastereq, ntime, total_time, linsolvetype, linsolve_maxiter);
   // TimeStepper *mytimestepper = new ExplEuler(mastereq);
 
   /* Petsc's Time-stepper */
@@ -219,7 +219,7 @@ int main(int argc,char **argv)
   adjointbraidapp->InitGrids();
 
   /* --- Initialize optimization --- */
-  OptimProblem* optimctx = new OptimProblem(config, primalbraidapp, adjointbraidapp, comm_hiop, comm_init, ninit);
+  OptimProblem* optimctx = new OptimProblem(config, mytimestepper, primalbraidapp, adjointbraidapp, comm_hiop, comm_init, ninit);
 
   /* Set upt solution and gradient vector */
   Vec xinit;

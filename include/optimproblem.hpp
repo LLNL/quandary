@@ -21,6 +21,7 @@ class OptimProblem {
   InitialConditionType initcond_type;    /* Type of initial conditions */
   std::vector<int> initcond_IDs;         /* IDs of subsystem oscillators considered for initial conditions */
 
+  TimeStepper* timestepper;
 
   /* MPI stuff */
   MPI_Comm comm_hiop, comm_init;
@@ -59,7 +60,7 @@ class OptimProblem {
   FILE* optimfile;  /* Output file to log optimization progress */
 
   /* Constructor */
-  OptimProblem(MapParam config, myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, MPI_Comm comm_hiop_, MPI_Comm comm_init_, int ninit_);
+  OptimProblem(MapParam config, TimeStepper* timestepper_, myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, MPI_Comm comm_hiop_, MPI_Comm comm_init_, int ninit_);
   ~OptimProblem();
 
   /* Evaluate the objective function F(x) */

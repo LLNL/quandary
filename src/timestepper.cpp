@@ -4,18 +4,76 @@
 TimeStepper::TimeStepper() {
   dim = 0;
   mastereq = NULL;
+  ntime = 0;
+  total_time = 0.0;
+  dt = 0.0;
 }
 
-TimeStepper::TimeStepper(MasterEq* mastereq_) {
+TimeStepper::TimeStepper(MasterEq* mastereq_, int ntime_, double total_time_) {
   mastereq = mastereq_;
   dim = 2*mastereq->getDim();
+  ntime = ntime_;
+  total_time = total_time_;
+  dt = total_time / ntime;
+
+  /* Allocate storage of primal state */
+  for (int n = 0; n <=ntime; n++) {
+    Vec state;
+    VecCreate(PETSC_COMM_WORLD, &state);
+    VecSetSizes(state, PETSC_DECIDE, dim);
+    VecSetFromOptions(state);
+    store_states.push_back(state);
+  }
+
+  /* Allocate auxiliary vector */
+  VecCreate(PETSC_COMM_WORLD, &x);
+  VecSetSizes(x, PETSC_DECIDE, dim);
+  VecSetFromOptions(x);
+  VecZeroEntries(x);
 }
 
-TimeStepper::~TimeStepper() {}
+TimeStepper::~TimeStepper() {
+  for (int n = 0; n <=ntime; n++) {
+    VecDestroy(&(store_states[n]));
+  }
+  VecDestroy(&x);
+}
+
+
+double TimeStepper::solveODE(int initid, Vec rho_t0, bool output){
+
+  /* Set initial condition  */
+  VecCopy(rho_t0, x);
+
+  /* Loop over time interval */
+  double penalty_integral = 0.0;
+  for (int n = 0; n < ntime; n++){
+
+    /* store current state */
+    VecCopy(x, store_states[n]);
+
+    // /* Add to penalty integral */
+    // if (penalty_coeff > 1e-13) {
+    //   double expected = objectiveT(mastereq, objective_type, obj_oscilIDs, obj_weights, x, NULL, NULL);
+    //   double weight = pow( (n*dt) / total_time, penalty_exp);  
+    //   penalty_integral += (tstop - tstart) * weight * expected;
+    // }
+
+    /* Take one time step */
+    double tstart = n * dt;
+    double tstop  = (n+1) * dt;
+    evolveFWD(tstart, tstop, x);
+  }
+
+  /* Store last time step */
+  VecCopy(x, store_states[ntime]);
+
+  return penalty_integral;
+}
 
 void TimeStepper::evolveBWD(const double tstart, const double tstop, const Vec x_stop, Vec x_adj, Vec grad, bool compute_gradient){}
 
-ExplEuler::ExplEuler(MasterEq* mastereq_) : TimeStepper(mastereq_) {
+ExplEuler::ExplEuler(MasterEq* mastereq_, int ntime_, double total_time_) : TimeStepper(mastereq_, ntime_, total_time_) {
   MatCreateVecs(mastereq->getRHS(), &stage, NULL);
   VecZeroEntries(stage);
 }
@@ -54,7 +112,7 @@ void ExplEuler::evolveBWD(const double tstop,const  double tstart,const  Vec x, 
 
 }
 
-ImplMidpoint::ImplMidpoint(MasterEq* mastereq_, LinearSolverType linsolve_type_, int linsolve_maxiter_) : TimeStepper(mastereq_) {
+ImplMidpoint::ImplMidpoint(MasterEq* mastereq_, int ntime_, double total_time_, LinearSolverType linsolve_type_, int linsolve_maxiter_) : TimeStepper(mastereq_, ntime_, total_time_) {
 
   /* Create and reset the intermediate vectors */
   MatCreateVecs(mastereq->getRHS(), &stage, NULL);
