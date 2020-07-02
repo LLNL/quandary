@@ -141,12 +141,6 @@ class myAdjointBraidApp : public myBraidApp {
     BraidCore *primalcore;    /* pointer to primal core for accessing primal states */
   
   public:
-    Vec        redgrad;       /* reduced gradient */
-
-  private:
-    double* mygrad; /* auxiliary vector used to MPI_Allreduce the gradient */
-
-  public:
 
     myAdjointBraidApp(MPI_Comm comm_braid_, double total_time_, int ntime_, TS ts_petsc_,TimeStepper* mytimestepper_, MasterEq* ham_, MapParam* config, BraidCore *Primalcoreptr_);
     ~myAdjointBraidApp();

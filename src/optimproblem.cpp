@@ -417,14 +417,13 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
       adjointbraidapp->PreProcess(initid, rho_t0_bar, Jbar*penalty_coeff, output);
       adjointbraidapp->Drive();
       adjointbraidapp->PostProcess();
-      /* Add to optimizers's gradient */
-      VecAXPY(G, 1.0, adjointbraidapp->redgrad);
 
     } else {
       timestepper->solveAdjointODE(initid, rho_t0_bar, Jbar*penalty_coeff, output);
-      VecAXPY(G, 1.0, timestepper->redgrad);
     }
 
+    /* Add to optimizers's gradient */
+    VecAXPY(G, 1.0, timestepper->redgrad);
   }
   /* Communicate over braid processors: Sum up penalty, broadcast final time cost */
   double mine = obj_penal;

@@ -557,16 +557,6 @@ myAdjointBraidApp::myAdjointBraidApp(MPI_Comm comm_braid_, double total_time_, i
   /* Store the primal core */
   primalcore = Primalcoreptr_;
 
-  /* Allocate the reduced gradient */
-  int ndesign = 0;
-  for (int ioscil = 0; ioscil < mastereq->getNOscillators(); ioscil++) {
-      ndesign += mastereq->getOscillator(ioscil)->getNParams(); 
-  }
-  VecCreateSeq(PETSC_COMM_SELF, ndesign, &redgrad);
-  VecSetFromOptions(redgrad);
-  VecAssemblyBegin(redgrad);
-  VecAssemblyEnd(redgrad);
-
   /* Ensure that primal core stores all points */
   primalcore->SetStorage(0);
 
@@ -578,14 +568,9 @@ myAdjointBraidApp::myAdjointBraidApp(MPI_Comm comm_braid_, double total_time_, i
   /* Revert processor ranks for solving adjoint */
   core->SetRevertedRanks(1);
 
-  /* Allocate auxiliary vector */
-  mygrad = new double[ndesign];
-
 }
 
 myAdjointBraidApp::~myAdjointBraidApp() {
-  VecDestroy(&redgrad);
-  delete [] mygrad;
 }
 
 
@@ -642,10 +627,10 @@ braid_Int myAdjointBraidApp::Step(braid_Vector u_, braid_Vector ustop_, braid_Ve
     uprimal_tstop  = (myBraidVector*) ubaseprimal_tstop->userVector;
 
     /* Reset gradient, if neccessary */
-    if (!done) VecZeroEntries(redgrad);
+    if (!done) VecZeroEntries(mytimestepper->redgrad);
 
     /* Evolve u backwards in time and update gradient */
-    mytimestepper->evolveBWD(tstop_orig, tstart_orig, uprimal_tstop->x, u->x, redgrad, compute_gradient);
+    mytimestepper->evolveBWD(tstop_orig, tstart_orig, uprimal_tstop->x, u->x, mytimestepper->redgrad, compute_gradient);
 
     /* Derivative of penalty objective */
     if (_braid_CoreElt(core->GetCore(), max_levels) == 1 && penalty_coeff > 1e-13) {
@@ -668,7 +653,7 @@ braid_Int myAdjointBraidApp::Init(braid_Real t, braid_Vector *u_ptr) {
   myBraidVector *u = new myBraidVector(2*mastereq->getDim());
 
   /* Reset the reduced gradient */
-  VecZeroEntries(redgrad); 
+  VecZeroEntries(mytimestepper->redgrad); 
 
 
   /* Return new vector to braid */
@@ -688,7 +673,7 @@ void myAdjointBraidApp::PreProcess(int iinit, const Vec rho_t0_bar, double jbar,
   Jbar = jbar;
 
   /* Reset the reduced gradient */
-  VecZeroEntries(redgrad); 
+  VecZeroEntries(mytimestepper->redgrad); 
 
   // /* Open output files for adjoint */
   // if (output && accesslevel > 0 && mpirank_petsc == 0) {
@@ -711,7 +696,7 @@ Vec myAdjointBraidApp::PostProcess() {
     // printf("Error: Gradient computation with braid_maxlevels>1 is wrong. Neex to sweep over all points here!\n");
     // exit(1);
     /* Sweep over all points to collect the gradient */
-    VecZeroEntries(redgrad);
+    VecZeroEntries(mytimestepper->redgrad);
     _braid_CoreElt(core->GetCore(), done) = 1;
     _braid_FCRelax(core->GetCore(), 0);
   }
