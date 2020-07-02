@@ -159,7 +159,10 @@ OptimProblem::OptimProblem(MapParam config, myBraidApp* primalbraidapp_, myAdjoi
     /* Initialize with tensor product of unit vectors. */
 
     // Compute index of diagonal elements that is one.
-    assert (initcond_IDs.size() == primalbraidapp->mastereq->getNOscillators());
+    if (initcond_IDs.size() != primalbraidapp->mastereq->getNOscillators()) {
+      printf("ERROR during pure-state initialization: List of IDs must contain %d elements!\n", primalbraidapp->mastereq->getNOscillators());
+      exit(1);
+    }
     int diag_id = 0.0;
     for (int k=0; k < initcond_IDs.size(); k++) {
       assert (initcond_IDs[k] < primalbraidapp->mastereq->getOscillator(k)->getNLevels());
@@ -249,7 +252,6 @@ OptimProblem::OptimProblem(MapParam config, myBraidApp* primalbraidapp_, myAdjoi
   /* Set initial starting point */
   initguess_type = config.GetStrParam("optim_init", "zero");
   config.GetVecDoubleParam("optim_init_ampl", initguess_amplitudes, 0.0);
-  assert(initguess_amplitudes.size() == primalbraidapp->mastereq->getNOscillators());
   VecDuplicate(xlower, &xinit);
   getStartingPoint(xinit);
   TaoSetInitialVector(tao, xinit);
@@ -456,6 +458,12 @@ void OptimProblem::getStartingPoint(Vec xinit){
   MasterEq* mastereq = primalbraidapp->mastereq;
 
   if (initguess_type.compare("constant") == 0 ){ // set constant initial design
+    // sanity check
+    if (initguess_amplitudes.size() < primalbraidapp->mastereq->getNOscillators()) {
+      printf("ERROR reading config file: List of initial optimization parameter amplitudes is too short!\n");
+      exit(1);
+    }
+    // set values
     int j = 0;
     for (int ioscil = 0; ioscil < mastereq->getNOscillators(); ioscil++) {
       int nparam = mastereq->getOscillator(ioscil)->getNParams();
@@ -466,7 +474,11 @@ void OptimProblem::getStartingPoint(Vec xinit){
     }
   } else if ( initguess_type.compare("random")      == 0 ||       // init random, fixed seed
               initguess_type.compare("random_seed") == 0)  { // init random with new seed
-
+    // sanity check
+    if (initguess_amplitudes.size() < primalbraidapp->mastereq->getNOscillators()) {
+      printf("ERROR reading config file: List of initial optimization parameter amplitudes is too short!\n");
+      exit(1);
+    }
     /* Create vector with random elements between [-1:1] */
     if ( initguess_type.compare("random") == 0) srand(1);  // fixed seed
     else srand(time(0)); // random seed

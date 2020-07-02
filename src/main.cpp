@@ -66,7 +66,10 @@ int main(int argc,char **argv)
             initcondstr[0].compare("basis")    == 0  ) {
     /* Compute ninit = dim(subsystem defined by list of oscil IDs) */
     ninit = 1;
-    assert (initcondstr.size() >= 2);
+    if (initcondstr.size() < 2) {
+      printf("ERROR for initial condition option: If choosing 'basis' or 'diagonal', specify the list oscillator IDs!\n");
+      exit(1);
+    }
     for (int i = 1; i<initcondstr.size(); i++){
       int oscilID = atoi(initcondstr[i].c_str());
       ninit *= nlevels[oscilID];
@@ -139,7 +142,10 @@ int main(int argc,char **argv)
   Oscillator** oscil_vec = new Oscillator*[nlevels.size()];
   std::vector<double> ground_freq;
   config.GetVecDoubleParam("frequencies", ground_freq, 1e20);
-  assert(ground_freq.size() == nlevels.size());
+  if (ground_freq.size() < nlevels.size()) {
+    printf("Error: Number of given ground frequencies (%lu) is smaller than the the number of oscillators (%lu)\n", ground_freq.size(), nlevels.size());
+    exit(1);
+  } 
   for (int i = 0; i < nlevels.size(); i++){
     std::vector<double> carrier_freq;
     std::string key = "carrier_frequency" + std::to_string(i);
