@@ -379,9 +379,18 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
     // if (mpirank_braid == 0) printf("%d: %d FWD. ", mpirank_init, initid);
 
     /* Run forward with initial condition rho_t0 */
-    primalbraidapp->PreProcess(initid, rho_t0, 0.0, output);
-    primalbraidapp->Drive();
-    finalstate = primalbraidapp->PostProcess(); // this return NULL for all but the last time processor
+    // #ifdef Braid: 
+    // bool usebraid = false;
+    bool usebraid = true;
+    if (usebraid) {
+      primalbraidapp->PreProcess(initid, rho_t0, 0.0, output);
+      primalbraidapp->Drive();
+      finalstate = primalbraidapp->PostProcess(); // this return NULL for all but the last time processor
+    }
+    else {
+      double pen = timestepper->solveODE(initid, rho_t0, output);
+      finalstate = timestepper->store_states[timestepper->ntime];
+    }
 
     /* Add integral penalty term to objective */
     obj_penal += penalty_coeff * primalbraidapp->penalty_integral;
@@ -404,12 +413,17 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
     objectiveT_diff(primalbraidapp->mastereq, objective_type, obj_oscilIDs, obj_weights, finalstate, rho_t0_bar, rho_t0, Jbar, targetgate);
 
     /* Derivative of time-stepping */
-    adjointbraidapp->PreProcess(initid, rho_t0_bar, Jbar*penalty_coeff, output);
-    adjointbraidapp->Drive();
-    adjointbraidapp->PostProcess();
+    if (usebraid) {
+      adjointbraidapp->PreProcess(initid, rho_t0_bar, Jbar*penalty_coeff, output);
+      adjointbraidapp->Drive();
+      adjointbraidapp->PostProcess();
+      /* Add to optimizers's gradient */
+      VecAXPY(G, 1.0, adjointbraidapp->redgrad);
 
-    /* Add to optimizers's gradient */
-    VecAXPY(G, 1.0, adjointbraidapp->redgrad);
+    } else {
+      timestepper->solveAdjointODE(initid, rho_t0_bar, Jbar*penalty_coeff, output);
+      VecAXPY(G, 1.0, timestepper->redgrad);
+    }
 
   }
   /* Communicate over braid processors: Sum up penalty, broadcast final time cost */

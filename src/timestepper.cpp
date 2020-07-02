@@ -25,18 +25,31 @@ TimeStepper::TimeStepper(MasterEq* mastereq_, int ntime_, double total_time_) {
     store_states.push_back(state);
   }
 
-  /* Allocate auxiliary vector */
+  /* Allocate auxiliary state vector */
   VecCreate(PETSC_COMM_WORLD, &x);
   VecSetSizes(x, PETSC_DECIDE, dim);
   VecSetFromOptions(x);
   VecZeroEntries(x);
+
+  /* Allocate the reduced gradient */
+  int ndesign = 0;
+  for (int ioscil = 0; ioscil < mastereq->getNOscillators(); ioscil++) {
+      ndesign += mastereq->getOscillator(ioscil)->getNParams(); 
+  }
+  VecCreateSeq(PETSC_COMM_SELF, ndesign, &redgrad);
+  VecSetFromOptions(redgrad);
+  VecAssemblyBegin(redgrad);
+  VecAssemblyEnd(redgrad);
+
 }
+
 
 TimeStepper::~TimeStepper() {
   for (int n = 0; n <=ntime; n++) {
     VecDestroy(&(store_states[n]));
   }
   VecDestroy(&x);
+  VecDestroy(&redgrad);
 }
 
 
@@ -69,6 +82,31 @@ double TimeStepper::solveODE(int initid, Vec rho_t0, bool output){
   VecCopy(x, store_states[ntime]);
 
   return penalty_integral;
+}
+
+
+void TimeStepper::solveAdjointODE(int initid, Vec rho_t0_bar, double Jbar, bool output) {
+
+  /* Reset gradient */
+  VecZeroEntries(redgrad);
+
+  /* Set terminal condition */
+  VecCopy(rho_t0_bar, x);
+
+  /* Loop over time interval */
+  double penalty_integral = 0.0;
+  for (int n = ntime; n > 0; n--){
+
+    /* Take one time step backwards */
+    double tstop  = n * dt;
+    double tstart = (n-1) * dt;
+
+    printf("n=%d t: %f->%f\n", n, tstop, tstart);
+    VecView(store_states[n-1], 0);
+    VecView(x,0);
+
+    evolveBWD(tstop, tstart, store_states[n-1], x, redgrad, true);
+  }
 }
 
 void TimeStepper::evolveBWD(const double tstart, const double tstop, const Vec x_stop, Vec x_adj, Vec grad, bool compute_gradient){}

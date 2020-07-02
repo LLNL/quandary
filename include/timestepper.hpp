@@ -16,13 +16,13 @@ class TimeStepper{
     Vec x;
 
   public:
-    /* Time horizon */
     int ntime;           // number of time steps
     double total_time;   // final time
     double dt;           // time step size
 
-    /* Storage for primal states */
-    std::vector<Vec> store_states;
+    
+    std::vector<Vec> store_states; /* Storage for primal states */
+    Vec redgrad;                   /* Reduced gradient */
 
   public: 
     TimeStepper(); 
@@ -30,6 +30,7 @@ class TimeStepper{
     virtual ~TimeStepper(); 
 
     double solveODE(int initid, Vec rho_t0, bool output);
+    void solveAdjointODE(int initid, Vec rho_t0_bar, double Jbar, bool output);
 
     /* Evolve state forward from tstart to tstop */
     virtual void evolveFWD(const double tstart, const double tstop, Vec x) = 0;
