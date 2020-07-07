@@ -196,16 +196,6 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, myBraidAp
   VecZeroEntries(rho_t0_bar);
   VecAssemblyBegin(rho_t0_bar); VecAssemblyEnd(rho_t0_bar);
 
-  /* Output */
-  writeoutput = true;
-  outfreq = config.GetIntParam("optim_outputfrequency", 10);
-  if (mpirank_world == 0) {
-    char filename[255];
-    sprintf(filename, "%s/optimTao.dat", output->datadir.c_str());
-    optimfile = fopen(filename, "w");
-    fprintf(optimfile, "#iter    obj_value           ||grad||               LS step           Costfunction     Tikhonov-regul      Penalty-term\n");
-  } 
-
   /* Store optimization bounds */
   VecCreateSeq(PETSC_COMM_SELF, ndesign, &xlower);
   VecSetFromOptions(xlower);
@@ -257,7 +247,6 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, myBraidAp
 OptimProblem::~OptimProblem() {
   VecDestroy(&rho_t0);
   VecDestroy(&rho_t0_bar);
-  if (mpirank_world == 0) fclose(optimfile);
 
   VecDestroy(&xinit);
   VecDestroy(&xlower);
@@ -292,13 +281,14 @@ double OptimProblem::evalF(const Vec x) {
 
     /* Run forward with initial condition initid*/
     // #ifdef Braid: 
+    bool writeoutput = true;
     if (0) {
       primalbraidapp->PreProcess(initid, rho_t0, 0.0, writeoutput);
       primalbraidapp->Drive();
       finalstate = primalbraidapp->PostProcess(); // this return NULL for all but the last time processor
     }
     else {
-      double pen = timestepper->solveODE(initid, rho_t0, writeoutput);
+      double pen = timestepper->solveODE(initid, rho_t0);
       finalstate = timestepper->store_states[timestepper->ntime];
     }
 
@@ -376,13 +366,14 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
     // #ifdef Braid: 
     bool usebraid = false;
     // bool usebraid = true;
+    bool writeoutput = true;
     if (usebraid) {
       primalbraidapp->PreProcess(initid, rho_t0, 0.0, writeoutput);
       primalbraidapp->Drive();
       finalstate = primalbraidapp->PostProcess(); // this return NULL for all but the last time processor
     }
     else {
-      double pen = timestepper->solveODE(initid, rho_t0, writeoutput);
+      double pen = timestepper->solveODE(initid, rho_t0);
       finalstate = timestepper->store_states[timestepper->ntime];
     }
 
@@ -413,7 +404,7 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
       adjointbraidapp->PostProcess();
 
     } else {
-      timestepper->solveAdjointODE(initid, rho_t0_bar, Jbar*penalty_coeff, writeoutput);
+      timestepper->solveAdjointODE(initid, rho_t0_bar, Jbar*penalty_coeff);
     }
 
     /* Add to optimizers's gradient */
@@ -531,16 +522,8 @@ void OptimProblem::getStartingPoint(Vec xinit){
   /* Pass to oscillator */
   timestepper->mastereq->setControlAmplitudes(xinit);
   
-  /* Flush initial control functions */
-  if (mpirank_world == 0 ) {
-    int ntime = primalbraidapp->ntime;
-    double dt = primalbraidapp->total_time / ntime;
-    char filename[255];
-    for (int ioscil = 0; ioscil < mastereq->getNOscillators(); ioscil++) {
-        sprintf(filename, "%s/control_init_%02d.dat", output->datadir.c_str(), ioscil+1);
-        mastereq->getOscillator(ioscil)->flushControl(ntime, dt, filename);
-    }
-  }
+  /* Write initial control functions to file */
+  output->writeControls(xinit, timestepper->mastereq, timestepper->ntime, timestepper->dt);
 
 }
 
@@ -551,90 +534,28 @@ void OptimProblem::getSolution(Vec* param_ptr){
   Vec params;
   TaoGetSolutionVector(tao, &params);
   *param_ptr = params;
-
-  /* Print to file */
-  if (mpirank_world == 0) {
-    char filename[255];
-    FILE *paramfile;
-
-    int iter;
-    double obj, gnorm, cnorm, dx;
-    TaoConvergedReason reason;
-    TaoGetSolutionStatus(tao, &iter, &obj, &gnorm, &cnorm, &dx, &reason);
-    std::cout<< "\n Optimization finished!\n";
-    std::cout<< " TaoSolve termination reason: " << reason << std::endl;
-
-    /* Print optimized parameters */
-    const PetscScalar* params_ptr;
-    VecGetArrayRead(params, &params_ptr);
-    sprintf(filename, "%s/param_optimized.dat", output->datadir.c_str());
-    paramfile = fopen(filename, "w");
-    for (int i=0; i<ndesign; i++){
-      fprintf(paramfile, "%1.14e\n", params_ptr[i]);
-    }
-    fclose(paramfile);
-    VecRestoreArrayRead(params, &params_ptr);
-
-    /* Print control functions */
-    timestepper->mastereq->setControlAmplitudes(params);
-    int ntime = primalbraidapp->ntime;
-    double dt = primalbraidapp->total_time / ntime;
-    MasterEq* mastereq = timestepper->mastereq;
-    for (int ioscil = 0; ioscil < mastereq->getNOscillators(); ioscil++) {
-        sprintf(filename, "%s/control_optimized_%02d.dat", output->datadir.c_str(), ioscil+1);
-        mastereq->getOscillator(ioscil)->flushControl(ntime, dt, filename);
-    }
-  }
-  // return param_ptr;
 }
 
 
 PetscErrorCode TaoMonitor(Tao tao,void*ptr){
   OptimProblem* ctx = (OptimProblem*) ptr;
 
+  /* Get information from Tao optimization */
   int iter;
   double deltax;
+  Vec params;
   TaoConvergedReason reason;
   TaoGetSolutionStatus(tao, &iter, NULL, NULL, NULL, &deltax, &reason);
+  TaoGetSolutionVector(tao, &params);
 
-  /* Check if the following iteration should print output. Store this in ctx for later use */
-  if ( iter % ctx->outfreq == 0 ) ctx->writeoutput = true;
-  else ctx->writeoutput = false;
+  /* Pass current iteration number to output manager */
+  ctx->output->optim_iter = iter;
 
   /* Print to optimization file */
-  if (ctx->mpirank_world == 0){
-    fprintf(ctx->optimfile, "%05d  %1.14e  %1.14e  %.8f  %1.14e  %1.14e  %1.14e\n", iter, ctx->objective, ctx->gnorm, deltax, ctx->obj_cost, ctx->obj_regul, ctx->obj_penal);
-    fflush(ctx->optimfile);
-  } 
+  ctx->output->writeOptimFile(ctx->objective, ctx->gnorm, deltax, ctx->obj_cost, ctx->obj_regul, ctx->obj_penal);
 
   /* Print parameters and controls to file */
-  if (ctx->writeoutput && ctx->mpirank_world == 0) {
-    char filename[255];
-
-    /* Print current parameters to file */
-    Vec params;
-    const PetscScalar* params_ptr;
-    TaoGetSolutionVector(tao, &params);
-    VecGetArrayRead(params, &params_ptr);
-    FILE *paramfile;
-    sprintf(filename, "%s/param_iter%04d.dat", ctx->output->datadir.c_str(), iter);
-    paramfile = fopen(filename, "w");
-    for (int i=0; i<ctx->ndesign; i++){
-      fprintf(paramfile, "%1.14e\n", params_ptr[i]);
-    }
-    fclose(paramfile);
-    VecRestoreArrayRead(params, &params_ptr);
-
-    /* Print control functions */
-    ctx->timestepper->mastereq->setControlAmplitudes(params);
-    int ntime = ctx->primalbraidapp->ntime;
-    double dt = ctx->primalbraidapp->total_time / ntime;
-    MasterEq* mastereq = ctx->timestepper->mastereq;
-    for (int ioscil = 0; ioscil < mastereq->getNOscillators(); ioscil++) {
-        sprintf(filename, "%s/control_iter%04d_%02d.dat", ctx->output->datadir.c_str(), iter, ioscil+1);
-        mastereq->getOscillator(ioscil)->flushControl(ntime, dt, filename);
-    }
-  }
+  ctx->output->writeControls(params, ctx->timestepper->mastereq, ctx->timestepper->ntime, ctx->timestepper->dt);
 
   return 0;
 }

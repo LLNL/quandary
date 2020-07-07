@@ -47,9 +47,9 @@ class TimeStepper{
     virtual ~TimeStepper(); 
 
     /* Solve the ODE forward in time with initial condition rho_t0 */
-    double solveODE(int initid, Vec rho_t0, bool writeoutput);
+    double solveODE(int initid, Vec rho_t0);
     /* Solve the adjoint ODE backwards in time with terminal condition rho_t0_bar */
-    void solveAdjointODE(int initid, Vec rho_t0_bar, double Jbar, bool writeoutput);
+    void solveAdjointODE(int initid, Vec rho_t0_bar, double Jbar);
 
     /* evaluate the penalty integral term */
     double penaltyIntegral(double time, const Vec x);

@@ -56,12 +56,10 @@ TimeStepper::~TimeStepper() {
 }
 
 
-double TimeStepper::solveODE(int initid, Vec rho_t0, bool writeoutput){
+double TimeStepper::solveODE(int initid, Vec rho_t0){
 
   /* Open output files */
-  if (writeoutput) {
-  }
-
+  output->openDataFiles("rho", initid, 0);
 
   /* Set initial condition  */
   VecCopy(rho_t0, x);
@@ -74,8 +72,9 @@ double TimeStepper::solveODE(int initid, Vec rho_t0, bool writeoutput){
     double tstart = n * dt;
     double tstop  = (n+1) * dt;
 
-    /* store current state */
+    /* store and write current state */
     VecCopy(x, store_states[n]);
+    output->writeDataFiles(tstart, x, mastereq);
 
     /* Add to penalty objective term */
     if (penalty_coeff > 1e-13) penalty_integral += penaltyIntegral(tstart, x);
@@ -89,14 +88,15 @@ double TimeStepper::solveODE(int initid, Vec rho_t0, bool writeoutput){
   VecCopy(x, store_states[ntime]);
 
   /* Write last time step and close files */
-  if (writeoutput) {
-  }
+  output->writeDataFiles(ntime*dt, x, mastereq);
+  output->closeDataFiles();
+  
 
   return penalty_integral;
 }
 
 
-void TimeStepper::solveAdjointODE(int initid, Vec rho_t0_bar, double Jbar, bool writeoutput) {
+void TimeStepper::solveAdjointODE(int initid, Vec rho_t0_bar, double Jbar) {
 
   /* Reset gradient */
   VecZeroEntries(redgrad);

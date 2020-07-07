@@ -374,13 +374,6 @@ braid_Int myBraidApp::Access(braid_Vector u_, BraidAccessStatus &astatus){
     for (int iosc = 0; iosc < mastereq->getNOscillators(); iosc++) {
       double expected = mastereq->getOscillator(iosc)->expectedEnergy(u->x); // Todo: don't do this unless necessary!
       if (expectedfile[iosc] != NULL) fprintf(expectedfile[iosc], "%.8f %1.14e\n", t, expected);
-      // if (populationfile[iosc] != NULL) { // TODO Implement parallel population 
-      //   std::vector<double> pop (mastereq->getOscillator(iosc)->getNLevels(), 0.0);  // create and fill with zero
-      //   mastereq->getOscillator(iosc)->population(u->x, pop);
-      //   fprintf(populationfile[iosc], "%.8f ", t);
-      //   for (int i=0; i<pop.size(); i++) fprintf(populationfile[iosc], "%1.14e ", pop[i]);
-      //   fprintf(populationfile[iosc], "\n");
-      // }
     }
   }
 

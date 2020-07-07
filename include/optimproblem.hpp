@@ -55,9 +55,6 @@ class OptimProblem {
   std::vector<double> initguess_amplitudes; /* Initial amplitudes of controles, or NULL */
   
   /* Output */
-  int outfreq;      /* Write state output to file every <outfreq> iterations */
-  bool writeoutput;      /* Switches to true every <outfreq> iterations */
-  FILE* optimfile;  /* Output file to log optimization progress */
   Output* output;
 
   /* Constructor */
