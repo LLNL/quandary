@@ -185,6 +185,13 @@ Since the master equation \eqref{mastereq} is linear, we can formally define a l
 \begin{align}
   \rho(T) = S_T(\rho(0)) = \sum_{k,j=0}^{N-1} \alpha_{kj} S_T(B^{k, j}).
 \end{align}
+AP: According to D.~Lidar's lectue notes, eqn. (112), the most general expression for the evolution
+of the density matrix follows from the Kraus operator sum representation,
+\[
+  \rho(T) = \sum_{\mu,\nu} K_{\mu\nu}(t) \rho(0) K_{\mu\nu}^\dagger(t),\quad \sum_{\mu,\nu}
+  K_{\mu\nu}^\dagger(t)K_{\mu\nu}(t)=I.
+\]
+
 We therefore define the optimization problem that minimizes the respective measure averaged over all the basis elements:
 \begin{align}\label{optimproblem_basis}
   \min \frac{1}{N^2} & \sum_{k,j=0}^{N-1} \, J(\rho^{k,j}(T))  \\
