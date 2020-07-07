@@ -21,18 +21,10 @@ class myBraidVector {
 
 class myBraidApp : public BraidApp {
   protected: 
-    TS           ts_petsc;        /* Petsc Time-stepper struct */
-    TimeStepper  *timestepper;  /* My new time-stepper */
-    BraidCore *core;                /* Braid core for running PinT simulation */
-
-    /* output stuff */
-    FILE *ufile;
-    FILE *vfile;
-    std::vector<FILE *>expectedfile;
-    std::vector<FILE *>populationfile;
-    std::vector<std::vector<std::string> > outputstr; // List of outputs for each oscillator
-    bool writefullstate;
-    Output* output;
+    TS ts_petsc;               /* Petsc Time-stepper struct (not used) */
+    TimeStepper *timestepper;  /* My new time-stepper */
+    BraidCore *core;           /* Braid core for running PinT simulation */
+    Output* output;            /* Managing output */
 
     /* MPI stuff */
     bool usepetscts;
@@ -40,12 +32,8 @@ class myBraidApp : public BraidApp {
     int mpirank_braid;
     int mpirank_world;
 
-    VecScatter scat;    /* Petsc's scatter context to communicate a state across petsc's cores */
-    Vec xseq;           /* A sequential vector for IO. */
-
     /* For penalty integral */
     double Jbar;
-
 
   public:
     MPI_Comm comm_braid;            /* Braid's communicator */
@@ -109,7 +97,7 @@ class myBraidApp : public BraidApp {
                                 BraidBufferStatus &bstatus);
 
     /* Pass initial condition to braid, open output files*/
-    virtual void PreProcess(int iinit, const Vec rho_t0, double Jbar, bool output);
+    virtual void PreProcess(int iinit, const Vec rho_t0, double Jbar);
 
     /* Performs one last FRelax. Returns state at last time step or NULL if not stored on this processor */
     virtual Vec PostProcess();
@@ -146,7 +134,7 @@ class myAdjointBraidApp : public myBraidApp {
     braid_Int Init(braid_Real t, braid_Vector *u_ptr);
 
     /* Pass initial condition to braid, reset gradient, open output files */
-    virtual void PreProcess(int iinit, const Vec rho_t0, double Jbar, bool output);
+    virtual void PreProcess(int iinit, const Vec rho_t0, double Jbar);
 
     /* Performs one last FRelax and MPI_Allreduce the gradient. */
     Vec PostProcess();

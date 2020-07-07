@@ -22,6 +22,8 @@ class Output{
   FILE *vfile;          /* File for writing imaginary part of solution vector */
   std::vector<FILE *>expectedfile;  /* Files for writing expected energy levels over time */
 
+  // VecScatter scat;    /* Petsc's scatter context to communicate a state across petsc's cores */
+  // Vec xseq;           /* A sequential vector for IO. */
 
   public:
     std::string datadir;

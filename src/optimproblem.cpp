@@ -281,9 +281,8 @@ double OptimProblem::evalF(const Vec x) {
 
     /* Run forward with initial condition initid*/
     // #ifdef Braid: 
-    bool writeoutput = true;
     if (0) {
-      primalbraidapp->PreProcess(initid, rho_t0, 0.0, writeoutput);
+      primalbraidapp->PreProcess(initid, rho_t0, 0.0);
       primalbraidapp->Drive();
       finalstate = primalbraidapp->PostProcess(); // this return NULL for all but the last time processor
     }
@@ -364,11 +363,10 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
 
     /* Run forward with initial condition rho_t0 */
     // #ifdef Braid: 
-    bool usebraid = false;
-    // bool usebraid = true;
-    bool writeoutput = true;
+    // bool usebraid = false;
+    bool usebraid = true;
     if (usebraid) {
-      primalbraidapp->PreProcess(initid, rho_t0, 0.0, writeoutput);
+      primalbraidapp->PreProcess(initid, rho_t0, 0.0);
       primalbraidapp->Drive();
       finalstate = primalbraidapp->PostProcess(); // this return NULL for all but the last time processor
     }
@@ -399,7 +397,7 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
 
     /* Derivative of time-stepping */
     if (usebraid) {
-      adjointbraidapp->PreProcess(initid, rho_t0_bar, Jbar*penalty_coeff, writeoutput);
+      adjointbraidapp->PreProcess(initid, rho_t0_bar, Jbar*penalty_coeff);
       adjointbraidapp->Drive();
       adjointbraidapp->PostProcess();
 
