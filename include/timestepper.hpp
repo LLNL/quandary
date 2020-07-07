@@ -19,6 +19,7 @@ class TimeStepper{
   protected:
     int dim;             /* State vector dimension */
     Vec x;               // auxiliary vector needed for time stepping
+    std::vector<Vec> store_states; /* Storage for primal states */
 
   public:
     MasterEq* mastereq;  // Lindblad master equation
@@ -26,8 +27,6 @@ class TimeStepper{
     double total_time;   // final time
     double dt;           // time step size
 
-    
-    std::vector<Vec> store_states; /* Storage for primal states */
     Vec redgrad;                   /* Reduced gradient */
 
     /* Stuff for objective function penalty integral term */
@@ -45,6 +44,9 @@ class TimeStepper{
     TimeStepper(); 
     TimeStepper(MasterEq* mastereq_, int ntime_, double total_time_, Output* output_); 
     virtual ~TimeStepper(); 
+
+    /* Return the state at a certain time index */
+    Vec getState(int tindex);
 
     /* Solve the ODE forward in time with initial condition rho_t0 */
     double solveODE(int initid, Vec rho_t0);

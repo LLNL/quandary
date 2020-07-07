@@ -288,7 +288,7 @@ double OptimProblem::evalF(const Vec x) {
     }
     else {
       double pen = timestepper->solveODE(initid, rho_t0);
-      finalstate = timestepper->store_states[timestepper->ntime];
+      finalstate = timestepper->getState(timestepper->ntime);
     }
 
     /* Add integral penalty term to objective */
@@ -372,7 +372,7 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
     }
     else {
       double pen = timestepper->solveODE(initid, rho_t0);
-      finalstate = timestepper->store_states[timestepper->ntime];
+      finalstate = timestepper->getState(timestepper->ntime);
     }
 
     /* Add integral penalty term to objective */

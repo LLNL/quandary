@@ -56,6 +56,12 @@ TimeStepper::~TimeStepper() {
 }
 
 
+
+Vec TimeStepper::getState(int tindex){
+  
+  return store_states[tindex];
+}
+
 double TimeStepper::solveODE(int initid, Vec rho_t0){
 
   /* Open output files */
