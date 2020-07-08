@@ -33,8 +33,9 @@ Output::Output(MapParam& config, int mpirank_petsc_, int mpirank_init_){
   } 
 
   /* Read from config what output is desired */
-  int nOscillators = 2; // TODO: CHANGE!
-  for (int i = 0; i < nOscillators; i++){
+  std::vector<int> nlevels;
+  config.GetVecIntParam("nlevels", nlevels);
+  for (int i = 0; i < nlevels.size(); i++){
     std::vector<std::string> fillme;
     config.GetVecStrParam("output" + std::to_string(i), fillme, "none");
     outputstr.push_back(fillme);
