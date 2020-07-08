@@ -48,8 +48,9 @@ class TimeStepper{
     /* Return the state at a certain time index */
     Vec getState(int tindex);
 
-    /* Solve the ODE forward in time with initial condition rho_t0 */
-    double solveODE(int initid, Vec rho_t0);
+    /* Solve the ODE forward in time with initial condition rho_t0. Return state at final time step */
+    Vec solveODE(int initid, Vec rho_t0);
+
     /* Solve the adjoint ODE backwards in time with terminal condition rho_t0_bar */
     void solveAdjointODE(int initid, Vec rho_t0_bar, double Jbar);
 

@@ -294,8 +294,7 @@ double OptimProblem::evalF(const Vec x) {
       primalbraidapp->Drive();
       finalstate = primalbraidapp->PostProcess(); // this return NULL for all but the last time processor
 #else
-      double pen = timestepper->solveODE(initid, rho_t0);
-      finalstate = timestepper->getState(timestepper->ntime);
+      finalstate = timestepper->solveODE(initid, rho_t0);
 #endif
 
     /* Add integral penalty term to objective */
@@ -371,13 +370,12 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
     // if (mpirank_braid == 0) printf("%d: %d FWD. ", mpirank_init, initid);
 
     /* Run forward with initial condition rho_t0 */
- #ifdef WITH_BRAID 
+#ifdef WITH_BRAID 
       primalbraidapp->PreProcess(initid, rho_t0, 0.0);
       primalbraidapp->Drive();
       finalstate = primalbraidapp->PostProcess(); // this return NULL for all but the last time processor
- #else 
-      double pen = timestepper->solveODE(initid, rho_t0);
-      finalstate = timestepper->getState(timestepper->ntime);
+#else 
+      finalstate = timestepper->solveODE(initid, rho_t0);
 #endif
 
     /* Add integral penalty term to objective */

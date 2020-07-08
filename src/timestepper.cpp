@@ -62,7 +62,7 @@ Vec TimeStepper::getState(int tindex){
   return store_states[tindex];
 }
 
-double TimeStepper::solveODE(int initid, Vec rho_t0){
+Vec TimeStepper::solveODE(int initid, Vec rho_t0){
 
   /* Open output files */
   output->openDataFiles("rho", initid, 0);
@@ -98,7 +98,7 @@ double TimeStepper::solveODE(int initid, Vec rho_t0){
   output->closeDataFiles();
   
 
-  return penalty_integral;
+  return store_states[ntime];
 }
 
 
