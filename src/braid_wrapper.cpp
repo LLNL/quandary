@@ -1,5 +1,7 @@
+#ifdef WITH_BRAID
+
 #include "braid_wrapper.hpp"
-;
+
 
 myBraidVector::myBraidVector() {
   x = NULL;
@@ -605,3 +607,5 @@ void myBraidApp::setInitCond(const Vec rho_t0){
     VecCopy(rho_t0, x);
   }
 }
+
+#endif

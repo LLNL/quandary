@@ -1,22 +1,28 @@
 # Set location of PETSC
 #PETSC_DIR = /usr/tce/packages/petsc/petsc-3.12.4-mvapich2-2.3-gcc-4.8-redhat
-#PETSC_DIR=/usr/WS2/dubois9/quandry/petsc/
+#PETSC_DIR=/usr/workspace/wsa/wave/petsc-3.13
 #PETSC_ARCH=arch-linux-c-debug
 
-# Set Braid location 
+# Set Braid location, or comment out
 BRAID_DIR = ${HOME}/Numerics/xbraid_solveadjointwithxbraid
-#BRAID_DIR = /usr/workspace/wsb/dubois9/quandry/xbraid
 
-# Set compiler options, e.g. define SANITY_CHECK. Comment out if none.
-#CXX_OPT = -DSANITY_CHECK
+# Choose to run sanity tests
+SANITY_CHECK = false
 
 #######################################################
 # Typically no need to change anything below
 
-# Some braid vars
+# Define Braid include and library location
+ifdef BRAID_DIR
 BRAID_INC_DIR = $(BRAID_DIR)/braid
 BRAID_LIB_FILE = $(BRAID_DIR)/braid/libbraid.a
+CXX_OPT = -DWITH_BRAID
+endif
 
+# Add sanity check to compiler option
+ifeq ($(SANITY_CHECK), true)
+CXX_OPT += -DSANITY_CHECK
+endif
 
 # Include some petsc libs, these might change depending on the example you run
 include ${PETSC_DIR}/lib/petsc/conf/variables
@@ -34,11 +40,11 @@ SRC_FILES += $(wildcard $(SRC_DIR)/*/*.cpp)
 OBJ_FILES  = $(patsubst $(SRC_DIR)/%.cpp,$(BUILD_DIR)/%.o,$(SRC_FILES))
 
 # set include directory
-INC = -I$(INC_DIR) -I$(BRAID_INC_DIR) -I${PETSC_DIR}/include -I${PETSC_DIR}/${PETSC_ARCH}/include 
+INC = -I$(INC_DIR) -I${PETSC_DIR}/include -I${PETSC_DIR}/${PETSC_ARCH}/include -I$(BRAID_INC_DIR) 
 
 # Set Library paths and flags
 LDPATH  = ${PETSC_DIR}/${PETSC_ARCH}/lib
-LDFLAGS = -lpetsc -lm ${BRAID_LIB_FILE} -L${PETSC_DIR}/${PETSC_ARCH}/lib -lblas -llapack
+LDFLAGS = -lpetsc -lm  -L${PETSC_DIR}/${PETSC_ARCH}/lib -lblas -llapack ${BRAID_LIB_FILE}
 
 # Set compiler and flags 
 CXX=mpicxx

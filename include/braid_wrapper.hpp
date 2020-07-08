@@ -1,3 +1,5 @@
+#ifdef WITH_BRAID
+
 #include "config.hpp"
 #include "timestepper.hpp"
 #include "mastereq.hpp"
@@ -140,3 +142,6 @@ class myAdjointBraidApp : public myBraidApp {
     Vec PostProcess();
 
 };
+
+
+#endif
