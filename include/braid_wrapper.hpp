@@ -1,3 +1,5 @@
+#ifdef WITH_BRAID
+
 #include "config.hpp"
 #include "timestepper.hpp"
 #include "mastereq.hpp"
@@ -5,13 +7,10 @@
 #include "util.hpp"
 #include "gate.hpp"
 #include <iostream> 
+#include "output.hpp"
 #include <sys/stat.h> 
 
 #pragma once
-
-// define as extern here, they are needed for penalty integral term, implemented in optimproble.cpp
-extern double objectiveT(MasterEq* mastereq, ObjectiveType objective_type, const std::vector<int>& obj_oscilIDs, const std::vector<double>& obj_weights, const Vec state, const Vec rho_t0, Gate* targetgate);
-extern void objectiveT_diff(MasterEq* mastereq, ObjectiveType objective_type, const std::vector<int>& obj_oscilIDs, const std::vector<double>& obj_weights, Vec state, Vec state_bar, const Vec rho_t0, const double obj_bar, Gate* targetgate);
 
 class myBraidVector {
   public: 
@@ -24,17 +23,10 @@ class myBraidVector {
 
 class myBraidApp : public BraidApp {
   protected: 
-    TS           ts_petsc;        /* Petsc Time-stepper struct */
-    TimeStepper  *mytimestepper;  /* My new time-stepper */
-    BraidCore *core;                /* Braid core for running PinT simulation */
-
-    /* output stuff */
-    FILE *ufile;
-    FILE *vfile;
-    std::vector<FILE *>expectedfile;
-    std::vector<FILE *>populationfile;
-    std::vector<std::vector<std::string> > outputstr; // List of outputs for each oscillator
-    bool writefullstate;
+    TS ts_petsc;               /* Petsc Time-stepper struct (not used) */
+    TimeStepper *timestepper;  /* My new time-stepper */
+    BraidCore *core;           /* Braid core for running PinT simulation */
+    Output* output;            /* Managing output */
 
     /* MPI stuff */
     bool usepetscts;
@@ -42,30 +34,19 @@ class myBraidApp : public BraidApp {
     int mpirank_braid;
     int mpirank_world;
 
-    VecScatter scat;    /* Petsc's scatter context to communicate a state across petsc's cores */
-    Vec xseq;           /* A sequential vector for IO. */
-
+    /* For penalty integral */
+    double Jbar;
 
   public:
     MPI_Comm comm_braid;            /* Braid's communicator */
     int          ntime;             /* number of time steps */
     int          accesslevel;
-    std::string  datadir;           /* Name of output data directory */
     double       total_time;        /* total time  */
     MasterEq *mastereq;             /* Master equation */
 
-    /* Stuff for evaluating penalty term objective function */
-    ObjectiveType objective_type;
-    std::vector<int> obj_oscilIDs;
-    std::vector<double> obj_weights;
-    double Jbar;
-    double penalty_exp;
-    double penalty_coeff;
-    double penalty_integral;
-
   public:
 
-  myBraidApp(MPI_Comm comm_braid_, double total_time_, int ntime_, TS ts_petsc_, TimeStepper* mytimestepper_, MasterEq* ham_, MapParam* config);
+  myBraidApp(MPI_Comm comm_braid_, double total_time_, int ntime_, TS ts_petsc_, TimeStepper* mytimestepper_, MasterEq* ham_, MapParam* config, Output* output);
   ~myBraidApp();
 
     /* Dumps xbraid's convergence history to a file */
@@ -118,7 +99,7 @@ class myBraidApp : public BraidApp {
                                 BraidBufferStatus &bstatus);
 
     /* Pass initial condition to braid, open output files*/
-    virtual void PreProcess(int iinit, const Vec rho_t0, double Jbar, bool output);
+    virtual void PreProcess(int iinit, const Vec rho_t0, double Jbar);
 
     /* Performs one last FRelax. Returns state at last time step or NULL if not stored on this processor */
     virtual Vec PostProcess();
@@ -141,14 +122,8 @@ class myAdjointBraidApp : public myBraidApp {
     BraidCore *primalcore;    /* pointer to primal core for accessing primal states */
   
   public:
-    Vec        redgrad;       /* reduced gradient */
 
-  private:
-    double* mygrad; /* auxiliary vector used to MPI_Allreduce the gradient */
-
-  public:
-
-    myAdjointBraidApp(MPI_Comm comm_braid_, double total_time_, int ntime_, TS ts_petsc_,TimeStepper* mytimestepper_, MasterEq* ham_, MapParam* config, BraidCore *Primalcoreptr_);
+    myAdjointBraidApp(MPI_Comm comm_braid_, double total_time_, int ntime_, TS ts_petsc_,TimeStepper* mytimestepper_, MasterEq* ham_, MapParam* config, BraidCore *Primalcoreptr_, Output* output);
     ~myAdjointBraidApp();
 
     /* Get the storage index of primal (reversed) time point index of a certain time t, on the grid created with spacing dt  */
@@ -161,9 +136,12 @@ class myAdjointBraidApp : public myBraidApp {
     braid_Int Init(braid_Real t, braid_Vector *u_ptr);
 
     /* Pass initial condition to braid, reset gradient, open output files */
-    virtual void PreProcess(int iinit, const Vec rho_t0, double Jbar, bool output);
+    virtual void PreProcess(int iinit, const Vec rho_t0, double Jbar);
 
     /* Performs one last FRelax and MPI_Allreduce the gradient. */
     Vec PostProcess();
 
 };
+
+
+#endif

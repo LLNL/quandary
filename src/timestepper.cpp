@@ -4,18 +4,144 @@
 TimeStepper::TimeStepper() {
   dim = 0;
   mastereq = NULL;
+  ntime = 0;
+  total_time = 0.0;
+  dt = 0.0;
 }
 
-TimeStepper::TimeStepper(MasterEq* mastereq_) {
+TimeStepper::TimeStepper(MasterEq* mastereq_, int ntime_, double total_time_, Output* output_) {
   mastereq = mastereq_;
   dim = 2*mastereq->getDim();
+  ntime = ntime_;
+  total_time = total_time_;
+  output = output_;
+
+  /* Set the time-step size */
+  dt = total_time / ntime;
+
+  /* Allocate storage of primal state */
+  for (int n = 0; n <=ntime; n++) {
+    Vec state;
+    VecCreate(PETSC_COMM_WORLD, &state);
+    VecSetSizes(state, PETSC_DECIDE, dim);
+    VecSetFromOptions(state);
+    store_states.push_back(state);
+  }
+
+  /* Allocate auxiliary state vector */
+  VecCreate(PETSC_COMM_WORLD, &x);
+  VecSetSizes(x, PETSC_DECIDE, dim);
+  VecSetFromOptions(x);
+  VecZeroEntries(x);
+
+  /* Allocate the reduced gradient */
+  int ndesign = 0;
+  for (int ioscil = 0; ioscil < mastereq->getNOscillators(); ioscil++) {
+      ndesign += mastereq->getOscillator(ioscil)->getNParams(); 
+  }
+  VecCreateSeq(PETSC_COMM_SELF, ndesign, &redgrad);
+  VecSetFromOptions(redgrad);
+  VecAssemblyBegin(redgrad);
+  VecAssemblyEnd(redgrad);
+
 }
 
-TimeStepper::~TimeStepper() {}
+
+TimeStepper::~TimeStepper() {
+  for (int n = 0; n <=ntime; n++) {
+    VecDestroy(&(store_states[n]));
+  }
+  VecDestroy(&x);
+  VecDestroy(&redgrad);
+}
+
+
+
+Vec TimeStepper::getState(int tindex){
+  
+  return store_states[tindex];
+}
+
+Vec TimeStepper::solveODE(int initid, Vec rho_t0){
+
+  /* Open output files */
+  output->openDataFiles("rho", initid, 0);
+
+  /* Set initial condition  */
+  VecCopy(rho_t0, x);
+
+  /* --- Loop over time interval --- */
+  penalty_integral = 0.0;
+  for (int n = 0; n < ntime; n++){
+
+    /* current time */
+    double tstart = n * dt;
+    double tstop  = (n+1) * dt;
+
+    /* store and write current state */
+    VecCopy(x, store_states[n]);
+    output->writeDataFiles(tstart, x, mastereq);
+
+    /* Add to penalty objective term */
+    if (penalty_coeff > 1e-13) penalty_integral += penaltyIntegral(tstart, x);
+
+    /* Take one time step */
+    evolveFWD(tstart, tstop, x);
+
+  }
+
+  /* Store last time step */
+  VecCopy(x, store_states[ntime]);
+
+  /* Write last time step and close files */
+  output->writeDataFiles(ntime*dt, x, mastereq);
+  output->closeDataFiles();
+  
+
+  return store_states[ntime];
+}
+
+
+void TimeStepper::solveAdjointODE(int initid, Vec rho_t0_bar, double Jbar) {
+
+  /* Reset gradient */
+  VecZeroEntries(redgrad);
+
+  /* Set terminal condition */
+  VecCopy(rho_t0_bar, x);
+
+  /* Loop over time interval */
+  for (int n = ntime; n > 0; n--){
+
+    /* Take one time step backwards */
+    double tstop  = n * dt;
+    double tstart = (n-1) * dt;
+
+    evolveBWD(tstop, tstart, store_states[n-1], x, redgrad, true);
+
+    /* Derivative of penalty objective term */
+    if (penalty_coeff > 1e-13) penaltyIntegral_diff(tstart, store_states[n-1], x, Jbar);
+  }
+}
+
+
+double TimeStepper::penaltyIntegral(double time, const Vec x){
+
+  double expected = objectiveT(mastereq, objective_type, obj_oscilIDs, obj_weights, x, NULL, NULL);
+  double weight = pow( (time) / total_time, penalty_exp);  
+    
+  return dt * weight * expected;
+}
+
+void TimeStepper::penaltyIntegral_diff(double time, const Vec x, Vec xbar, double penaltybar){
+
+  double weight = pow(time/ total_time, penalty_exp);  
+  objectiveT_diff(mastereq, objective_type, obj_oscilIDs, obj_weights, x, xbar, NULL, dt*weight*penaltybar, NULL);
+}
 
 void TimeStepper::evolveBWD(const double tstart, const double tstop, const Vec x_stop, Vec x_adj, Vec grad, bool compute_gradient){}
 
-ExplEuler::ExplEuler(MasterEq* mastereq_) : TimeStepper(mastereq_) {
+ExplEuler::ExplEuler(MasterEq* mastereq_, int ntime_, double total_time_, Output* output_) : TimeStepper(mastereq_, ntime_, total_time_, output_) {
   MatCreateVecs(mastereq->getRHS(), &stage, NULL);
   VecZeroEntries(stage);
 }
@@ -54,7 +180,7 @@ void ExplEuler::evolveBWD(const double tstop,const  double tstart,const  Vec x, 
 
 }
 
-ImplMidpoint::ImplMidpoint(MasterEq* mastereq_, LinearSolverType linsolve_type_, int linsolve_maxiter_) : TimeStepper(mastereq_) {
+ImplMidpoint::ImplMidpoint(MasterEq* mastereq_, int ntime_, double total_time_, LinearSolverType linsolve_type_, int linsolve_maxiter_, Output* output_) : TimeStepper(mastereq_, ntime_, total_time_, output_) {
 
   /* Create and reset the intermediate vectors */
   MatCreateVecs(mastereq->getRHS(), &stage, NULL);

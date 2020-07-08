@@ -5,18 +5,58 @@
 #include <assert.h> 
 #include <iostream> 
 #include "defs.hpp"
+#include "output.hpp"
 #pragma once
+
+// define as extern here, they are needed for penalty integral term, implemented in optimproble.cpp
+extern double objectiveT(MasterEq* mastereq, ObjectiveType objective_type, const std::vector<int>& obj_oscilIDs, const std::vector<double>& obj_weights, const Vec state, const Vec rho_t0, Gate* targetgate);
+extern void objectiveT_diff(MasterEq* mastereq, ObjectiveType objective_type, const std::vector<int>& obj_oscilIDs, const std::vector<double>& obj_weights, Vec state, Vec state_bar, const Vec rho_t0, const double obj_bar, Gate* targetgate);
+
+
 
 /* Base class for time steppers */
 class TimeStepper{
   protected:
-    int dim;                   /* State vector dimension */
-    MasterEq* mastereq;  
+    int dim;             /* State vector dimension */
+    Vec x;               // auxiliary vector needed for time stepping
+    std::vector<Vec> store_states; /* Storage for primal states */
+
+  public:
+    MasterEq* mastereq;  // Lindblad master equation
+    int ntime;           // number of time steps
+    double total_time;   // final time
+    double dt;           // time step size
+
+    Vec redgrad;                   /* Reduced gradient */
+
+    /* Stuff for objective function penalty integral term */
+    double penalty_integral;
+    ObjectiveType objective_type;
+    std::vector<int> obj_oscilIDs;
+    std::vector<double> obj_weights;
+    double penalty_exp;
+    double penalty_coeff;
+
+    /* Output */
+    Output* output;
 
   public: 
     TimeStepper(); 
-    TimeStepper(MasterEq* mastereq_); 
+    TimeStepper(MasterEq* mastereq_, int ntime_, double total_time_, Output* output_); 
     virtual ~TimeStepper(); 
+
+    /* Return the state at a certain time index */
+    Vec getState(int tindex);
+
+    /* Solve the ODE forward in time with initial condition rho_t0. Return state at final time step */
+    Vec solveODE(int initid, Vec rho_t0);
+
+    /* Solve the adjoint ODE backwards in time with terminal condition rho_t0_bar */
+    void solveAdjointODE(int initid, Vec rho_t0_bar, double Jbar);
+
+    /* evaluate the penalty integral term */
+    double penaltyIntegral(double time, const Vec x);
+    void penaltyIntegral_diff(double time, const Vec x, Vec xbar, double Jbar);
 
     /* Evolve state forward from tstart to tstop */
     virtual void evolveFWD(const double tstart, const double tstop, Vec x) = 0;
@@ -27,7 +67,7 @@ class TimeStepper{
 class ExplEuler : public TimeStepper {
   Vec stage;
   public:
-    ExplEuler(MasterEq* mastereq_);
+    ExplEuler(MasterEq* mastereq_, int ntime_, double total_time_, Output* output_);
     ~ExplEuler();
 
     /* Evolve state forward from tstart to tstop */
@@ -59,7 +99,7 @@ class ImplMidpoint : public TimeStepper {
   Vec tmp, err;                    /* Auxiliary vector for applying the neuman iterations */
 
   public:
-    ImplMidpoint(MasterEq* mastereq_, LinearSolverType linsolve_type_, int linsolve_maxiter_);
+    ImplMidpoint(MasterEq* mastereq_, int ntime_, double total_time_, LinearSolverType linsolve_type_, int linsolve_maxiter_, Output* output_);
     ~ImplMidpoint();
 
 

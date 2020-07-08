@@ -1,3 +1,5 @@
+#ifdef WITH_BRAID
+
 #include "braid_wrapper.hpp"
 
 
@@ -21,22 +23,19 @@ myBraidVector::~myBraidVector() {
 
 
 
-myBraidApp::myBraidApp(MPI_Comm comm_braid_, double total_time_, int ntime_, TS ts_petsc_, TimeStepper* mytimestepper_, MasterEq* ham_, MapParam* config) 
+myBraidApp::myBraidApp(MPI_Comm comm_braid_, double total_time_, int ntime_, TS ts_petsc_, TimeStepper* mytimestepper_, MasterEq* ham_, MapParam* config, Output* output_) 
           : BraidApp(comm_braid_, 0.0, total_time_, ntime_) {
 
   ntime = ntime_;
   total_time = total_time_;
   ts_petsc = ts_petsc_;
-  mytimestepper = mytimestepper_;
+  timestepper = mytimestepper_;
   mastereq = ham_;
   comm_braid = comm_braid_;
+  output = output_;
   MPI_Comm_rank(comm_braid, &mpirank_braid);
   MPI_Comm_rank(PETSC_COMM_WORLD, &mpirank_petsc);
   MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
-  ufile = NULL;
-  vfile = NULL;
-  for (int i=0; i< mastereq->getNOscillators(); i++) expectedfile.push_back (NULL);
-  for (int i=0; i< mastereq->getNOscillators(); i++) populationfile.push_back (NULL);
 
   usepetscts = config->GetBoolParam("usepetscts", false);
 
@@ -68,28 +67,7 @@ myBraidApp::myBraidApp(MPI_Comm comm_braid_, double total_time_, int ntime_, TS 
   /* Output options */
   accesslevel = config->GetIntParam("braid_accesslevel", 1);
   core->SetAccessLevel( accesslevel );
-  datadir = config->GetStrParam("datadir", "./data_out");
   // _braid_SetVerbosity(core->GetCore(), 1);
-
-  int worldrank;
-  MPI_Comm_rank(MPI_COMM_WORLD, &worldrank);
-  if (worldrank == 0) {
-    mkdir(datadir.c_str(), 0777);
-  }
-
-  /* Read desired output from config */
-  for (int i = 0; i < mastereq->getNOscillators(); i++){
-    std::vector<std::string> fillme;
-    config->GetVecStrParam("output" + std::to_string(i), fillme, "none");
-    outputstr.push_back(fillme);
-  }
-  /* Search through outputstrings to see if any oscillator contains "fullstate" */
-  writefullstate = false;
-  for (int i=0; i<outputstr.size(); i++) {
-    for (int j=0; j<outputstr[i].size(); j++) {
-      if (outputstr[i][j].compare("fullstate") == 0 ) writefullstate = true;
-    }
-  }
 
 }
 
@@ -237,19 +215,14 @@ braid_Int myBraidApp::Step(braid_Vector u_, braid_Vector ustop_, braid_Vector fs
     /* -------------------------------------------------------------*/
 
     /* Add penalty term */
-    if (_braid_CoreElt(core->GetCore(), max_levels) == 1 && penalty_coeff > 1e-13) {
+    if (_braid_CoreElt(core->GetCore(), max_levels) == 1 && timestepper->penalty_coeff > 1e-13) {
 
-      /* Get objective and weight */
-      double expected = objectiveT(mastereq, objective_type, obj_oscilIDs, obj_weights, u->x, NULL, NULL);
-      double weight = pow(tstart / total_time, penalty_exp);  
-
-      /* Add to integral */
-      penalty_integral += (tstop - tstart) * weight * expected;
+      timestepper->penalty_integral += timestepper->penaltyIntegral(tstart, u->x);
       // printf("%f %.8f %.8f\n", tstart, weight, penalty_integral); 
     }
 
     /* Evolve solution forward from tstart to tstop */
-    mytimestepper->evolveFWD(tstart, tstop, u->x);
+    timestepper->evolveFWD(tstart, tstop, u->x);
   }
 
   return 0;
@@ -347,50 +320,8 @@ braid_Int myBraidApp::Access(braid_Vector u_, BraidAccessStatus &astatus){
   /* Don't print first time step. */
   // if (t == 0.0) return 0;
 
-  /* Write header */
-  // if (accesslevel > 0 && ufile != NULL && vfile != NULL) {
-  //   fprintf(ufile,  "%.8f  ", t);
-  //   fprintf(vfile,  "%.8f  ", t);
-  // }
-
   if (accesslevel > 0) {
-
-    /* Write full density matrix, if desired */
-    if (writefullstate && t == total_time) {
-      /* Gather the vector from all petsc processors onto the first one */
-      VecScatterCreateToZero(u->x, &scat, &xseq);
-      VecScatterBegin(scat, u->x, xseq, INSERT_VALUES, SCATTER_FORWARD);
-      VecScatterEnd(scat, u->x, xseq, INSERT_VALUES, SCATTER_FORWARD);
-      /* Write vector to file */
-      if (ufile != NULL && vfile != NULL) {
-        const PetscScalar *x;
-        VecGetArrayRead(xseq, &x);
-        /* Write real and imaginary parts */
-        for (int i=0; i<mastereq->getDim(); i++) {
-          fprintf(ufile, "%1.10e  ", x[getIndexReal(i)]);  
-          fprintf(vfile, "%1.10e  ", x[getIndexImag(i)]);  
-        }
-        fprintf(ufile, "\n");
-        fprintf(vfile, "\n");
-        VecRestoreArrayRead(xseq, &x);
-      }
-      /* Destroy scatter context and vector */
-      VecScatterDestroy(&scat);
-      VecDestroy(&xseq); // TODO create and destroy scatter and xseq in contructor/destructor
-    }
-   
-    /* Write expected energy levels to file */
-    for (int iosc = 0; iosc < mastereq->getNOscillators(); iosc++) {
-      double expected = mastereq->getOscillator(iosc)->expectedEnergy(u->x); // Todo: don't do this unless necessary!
-      if (expectedfile[iosc] != NULL) fprintf(expectedfile[iosc], "%.8f %1.14e\n", t, expected);
-      // if (populationfile[iosc] != NULL) { // TODO Implement parallel population 
-      //   std::vector<double> pop (mastereq->getOscillator(iosc)->getNLevels(), 0.0);  // create and fill with zero
-      //   mastereq->getOscillator(iosc)->population(u->x, pop);
-      //   fprintf(populationfile[iosc], "%.8f ", t);
-      //   for (int i=0; i<pop.size(); i++) fprintf(populationfile[iosc], "%1.14e ", pop[i]);
-      //   fprintf(populationfile[iosc], "\n");
-      // }
-    }
+    output->writeDataFiles(t, u->x, mastereq);
   }
 
   return 0; 
@@ -460,41 +391,17 @@ braid_Int myBraidApp::BufUnpack(void *buffer, braid_Vector *u_ptr, BraidBufferSt
   return 0; 
 }
 
-void myBraidApp::PreProcess(int iinit, const Vec rho_t0, double jbar, bool output){
+void myBraidApp::PreProcess(int iinit, const Vec rho_t0, double jbar){
 
   /* Pass initial condition to braid */
   setInitCond(rho_t0);
 
   /* Reset penalty integral */
-  penalty_integral = 0.0;
+  timestepper->penalty_integral = 0.0;
   Jbar = jbar;
 
   /* Open output files */
-  if (output && accesslevel > 0 && mpirank_petsc == 0) {
-    char filename[255];
-
-    /* Open files for full state */
-    if (writefullstate) {
-      sprintf(filename, "%s/out_u.iinit%04d.rank%04d.dat", datadir.c_str(),iinit, mpirank_braid);
-      ufile = fopen(filename, "w");
-      sprintf(filename, "%s/out_v.iinit%04d.rank%04d.dat", datadir.c_str(), iinit, mpirank_braid);
-      vfile = fopen(filename, "w"); 
-    }
-   
-    /* Open files for expected energy */
-    for (int i=0; i<outputstr.size(); i++) {
-      for (int j=0; j<outputstr[i].size(); j++) {
-        if (outputstr[i][j].compare("expectedEnergy") == 0 ) {
-          sprintf(filename, "%s/expected%d.iinit%04d.rank%04d.dat", datadir.c_str(), i, iinit, mpirank_braid);
-          expectedfile[i] = fopen(filename, "w");
-        }
-        // if (outputstr[i][j].compare("population") == 0 ) {
-        //   sprintf(filename, "%s/population%d.iinit%04d.rank%04d.dat", datadir.c_str(), i, iinit, mpirank_braid);
-        //   populationfile[i] = fopen(filename, "w");
-        // }
-      }
-    }
-  }
+  if (accesslevel > 0 ) output->openDataFiles("rho", iinit, mpirank_braid);
 }
 
 
@@ -512,21 +419,9 @@ Vec myBraidApp::PostProcess() {
   // }
 
   /* Close output files */
-  if (ufile != NULL) fclose(ufile);
-  if (vfile != NULL) fclose(vfile);
-  for (int i=0; i< mastereq->getNOscillators(); i++) {
-    if (expectedfile[i] != NULL) {
-      fclose(expectedfile[i]);
-      expectedfile[i] = NULL;
-    }
-    if (populationfile[i] != NULL) {
-      fclose(populationfile[i]);
-      populationfile[i] = NULL;
-    }
-  }
+  output->closeDataFiles();
 
   return getStateVec(total_time);// this returns NULL for all but the last processors! 
-
 }
 
 
@@ -551,21 +446,11 @@ double myBraidApp::Drive() {
 /* ================================================================*/
 
 
-myAdjointBraidApp::myAdjointBraidApp(MPI_Comm comm_braid_, double total_time_, int ntime_, TS ts_, TimeStepper* mytimestepper_, MasterEq* ham_, MapParam* config, BraidCore *Primalcoreptr_)
-        : myBraidApp(comm_braid_, total_time_, ntime_, ts_, mytimestepper_, ham_, config) {
+myAdjointBraidApp::myAdjointBraidApp(MPI_Comm comm_braid_, double total_time_, int ntime_, TS ts_, TimeStepper* mytimestepper_, MasterEq* ham_, MapParam* config, BraidCore *Primalcoreptr_, Output* output_)
+        : myBraidApp(comm_braid_, total_time_, ntime_, ts_, mytimestepper_, ham_, config, output_) {
 
   /* Store the primal core */
   primalcore = Primalcoreptr_;
-
-  /* Allocate the reduced gradient */
-  int ndesign = 0;
-  for (int ioscil = 0; ioscil < mastereq->getNOscillators(); ioscil++) {
-      ndesign += mastereq->getOscillator(ioscil)->getNParams(); 
-  }
-  VecCreateSeq(PETSC_COMM_SELF, ndesign, &redgrad);
-  VecSetFromOptions(redgrad);
-  VecAssemblyBegin(redgrad);
-  VecAssemblyEnd(redgrad);
 
   /* Ensure that primal core stores all points */
   primalcore->SetStorage(0);
@@ -578,14 +463,9 @@ myAdjointBraidApp::myAdjointBraidApp(MPI_Comm comm_braid_, double total_time_, i
   /* Revert processor ranks for solving adjoint */
   core->SetRevertedRanks(1);
 
-  /* Allocate auxiliary vector */
-  mygrad = new double[ndesign];
-
 }
 
 myAdjointBraidApp::~myAdjointBraidApp() {
-  VecDestroy(&redgrad);
-  delete [] mygrad;
 }
 
 
@@ -642,19 +522,15 @@ braid_Int myAdjointBraidApp::Step(braid_Vector u_, braid_Vector ustop_, braid_Ve
     uprimal_tstop  = (myBraidVector*) ubaseprimal_tstop->userVector;
 
     /* Reset gradient, if neccessary */
-    if (!done) VecZeroEntries(redgrad);
+    if (!done) VecZeroEntries(timestepper->redgrad);
 
     /* Evolve u backwards in time and update gradient */
-    mytimestepper->evolveBWD(tstop_orig, tstart_orig, uprimal_tstop->x, u->x, redgrad, compute_gradient);
+    timestepper->evolveBWD(tstop_orig, tstart_orig, uprimal_tstop->x, u->x, timestepper->redgrad, compute_gradient);
 
     /* Derivative of penalty objective */
-    if (_braid_CoreElt(core->GetCore(), max_levels) == 1 && penalty_coeff > 1e-13) {
-      
-      double weight = pow(tstop_orig / total_time, penalty_exp);  
-      double fbar = (tstart_orig-tstop_orig) * weight * Jbar;
-      objectiveT_diff(mastereq, objective_type, obj_oscilIDs, obj_weights, uprimal_tstop->x, u->x, NULL, fbar, NULL);
+    if (_braid_CoreElt(core->GetCore(), max_levels) == 1 && timestepper->penalty_coeff > 1e-13) {
+      timestepper->penaltyIntegral_diff(tstop_orig, uprimal_tstop->x, u->x, Jbar);
     }
-
   }
 
 
@@ -668,7 +544,7 @@ braid_Int myAdjointBraidApp::Init(braid_Real t, braid_Vector *u_ptr) {
   myBraidVector *u = new myBraidVector(2*mastereq->getDim());
 
   /* Reset the reduced gradient */
-  VecZeroEntries(redgrad); 
+  VecZeroEntries(timestepper->redgrad); 
 
 
   /* Return new vector to braid */
@@ -678,26 +554,20 @@ braid_Int myAdjointBraidApp::Init(braid_Real t, braid_Vector *u_ptr) {
 }
 
 
-void myAdjointBraidApp::PreProcess(int iinit, const Vec rho_t0_bar, double jbar, bool output){
+void myAdjointBraidApp::PreProcess(int iinit, const Vec rho_t0_bar, double jbar){
 
   /* Pass initial condition to braid */
   setInitCond(rho_t0_bar);
 
   /* Reset penalty integral */
-  penalty_integral = 0.0;
+  timestepper->penalty_integral = 0.0;
   Jbar = jbar;
 
   /* Reset the reduced gradient */
-  VecZeroEntries(redgrad); 
+  VecZeroEntries(timestepper->redgrad); 
 
-  // /* Open output files for adjoint */
-  // if (output && accesslevel > 0 && mpirank_petsc == 0) {
-    // char filename[255];
-    // sprintf(filename, "%s/out_uadj.iinit%04d.rank%04d.dat", datadir.c_str(),iinit, mpirank_braid);
-    // ufile = fopen(filename, "w");
-    // sprintf(filename, "%s/out_vadj.iinit%04d.rank%04d.dat", datadir.c_str(),iinit, mpirank_braid);
-    // vfile = fopen(filename, "w");
-  // }
+  /* Open output files for adjoint */
+  // if (accesslevel > 0) output->openDataFiles("rho_adj", iinit, mpirank_braid);
 }
 
 
@@ -711,14 +581,13 @@ Vec myAdjointBraidApp::PostProcess() {
     // printf("Error: Gradient computation with braid_maxlevels>1 is wrong. Neex to sweep over all points here!\n");
     // exit(1);
     /* Sweep over all points to collect the gradient */
-    VecZeroEntries(redgrad);
+    VecZeroEntries(timestepper->redgrad);
     _braid_CoreElt(core->GetCore(), done) = 1;
     _braid_FCRelax(core->GetCore(), 0);
   }
 
   /* Close output files */
-  if (ufile != NULL) fclose(ufile);
-  if (vfile != NULL) fclose(vfile);
+  output->closeDataFiles();
 
   return 0;
 }
@@ -738,3 +607,5 @@ void myBraidApp::setInitCond(const Vec rho_t0){
     VecCopy(rho_t0, x);
   }
 }
+
+#endif

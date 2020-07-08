@@ -1,15 +1,15 @@
+#ifdef WITH_BRAID
 #include "braid_wrapper.hpp"
+#endif
 #include "timestepper.hpp"
-#include "braid.h"
-#include "braid_test.h"
 #include "bspline.hpp"
 #include "oscillator.hpp" 
 #include "mastereq.hpp"
 #include "config.hpp"
-#include "_braid.h"
 #include <stdlib.h>
 #include <sys/resource.h>
 #include "optimproblem.hpp"
+#include "output.hpp"
 
 #define TEST_FD 0    // Finite Differences gradient test
 #define EPS 1e-4     // Epsilon for Finite Differences
@@ -91,9 +91,13 @@ int main(int argc,char **argv)
   MPI_Comm_split(MPI_COMM_WORLD, mpirank_world, mpirank_world, &comm_hiop);
 
   /* Get the size of communicators  */
+#ifdef WITH_BRAID
   int np_braid = config.GetIntParam("np_braid", 1);
-  int np_init  = min(ninit, config.GetIntParam("np_init", 1)); 
   np_braid = min(np_braid, mpisize_world); 
+#else 
+  int np_braid = 1; 
+#endif
+  int np_init  = min(ninit, config.GetIntParam("np_init", 1)); 
   np_init  = min(np_init,  mpisize_world); 
   int np_petsc = mpisize_world / (np_init * np_braid);
 
@@ -114,11 +118,16 @@ int main(int argc,char **argv)
   MPI_Comm_rank(comm_init, &mpirank_init);
   MPI_Comm_size(comm_init, &mpisize_init);
 
+#ifdef WITH_BRAID
   // Time-parallel Braid
   int color_braid = mpirank_world % np_petsc + mpirank_init * np_petsc;
   MPI_Comm_split(MPI_COMM_WORLD, color_braid, mpirank_world, &comm_braid);
   MPI_Comm_rank(comm_braid, &mpirank_braid);
   MPI_Comm_size(comm_braid, &mpisize_braid);
+#else 
+  mpirank_braid = 0;
+  mpisize_braid = 1;
+#endif
 
   // Distributed Linear algebra: Petsc
   int color_petsc = mpirank_world / np_petsc;
@@ -126,9 +135,12 @@ int main(int argc,char **argv)
   MPI_Comm_rank(comm_petsc, &mpirank_petsc);
   MPI_Comm_size(comm_petsc, &mpisize_petsc);
 
-  std::cout<< "Parallel distribution: " << "init " << mpirank_init << "/" << mpisize_init \
-           << ", braid " << mpirank_braid << "/" << mpisize_braid  \
-           << ", petsc " << mpirank_petsc << "/" << mpisize_petsc << ", " << std::endl;
+  std::cout<< "Parallel distribution: " << "init " << mpirank_init << "/" << mpisize_init;
+  std::cout<< ", petsc " << mpirank_petsc << "/" << mpisize_petsc;
+#ifdef WITH_BRAID
+  std::cout<< ", braid " << mpirank_braid << "/" << mpisize_braid;
+#endif
+  std::cout<< std::endl;
 
   /* Initialize Petsc using petsc's communicator */
   PETSC_COMM_WORLD = comm_petsc;
@@ -178,7 +190,10 @@ int main(int argc,char **argv)
   MasterEq* mastereq = new MasterEq(nlevels, oscil_vec, xi, lindbladtype, t_collapse, usematfree);
 
 
-  /* Screen output */
+  /* Output */
+  Output* output = new Output(config, mpirank_petsc, mpirank_init, mpirank_braid);
+
+  // Some screen output 
   if (mpirank_world == 0) {
     std::cout << "Time: [0:" << total_time << "], ";
     std::cout << "N="<< ntime << ", dt=" << dt << std::endl;
@@ -207,7 +222,7 @@ int main(int argc,char **argv)
     exit(1);
   }
   /* My time stepper */
-  TimeStepper *mytimestepper = new ImplMidpoint(mastereq, linsolvetype, linsolve_maxiter);
+  TimeStepper *mytimestepper = new ImplMidpoint(mastereq, ntime, total_time, linsolvetype, linsolve_maxiter, output);
   // TimeStepper *mytimestepper = new ExplEuler(mastereq);
 
   /* Petsc's Time-stepper */
@@ -218,14 +233,20 @@ int main(int argc,char **argv)
   TSInit(ts, mastereq, ntime, dt, total_time, x, monitor);
    
 
+#ifdef WITH_BRAID
   /* --- Create braid instances --- */
-  myBraidApp* primalbraidapp = new myBraidApp(comm_braid, total_time, ntime, ts, mytimestepper, mastereq, &config);
-  myAdjointBraidApp *adjointbraidapp = new myAdjointBraidApp(comm_braid, total_time, ntime, ts, mytimestepper, mastereq, &config, primalbraidapp->getCore());
+  myBraidApp* primalbraidapp = new myBraidApp(comm_braid, total_time, ntime, ts, mytimestepper, mastereq, &config, output);
+  myAdjointBraidApp *adjointbraidapp = new myAdjointBraidApp(comm_braid, total_time, ntime, ts, mytimestepper, mastereq, &config, primalbraidapp->getCore(), output);
   primalbraidapp->InitGrids();
   adjointbraidapp->InitGrids();
+#endif
 
   /* --- Initialize optimization --- */
-  OptimProblem* optimctx = new OptimProblem(config, primalbraidapp, adjointbraidapp, comm_hiop, comm_init, ninit);
+#ifdef WITH_BRAID
+  OptimProblem* optimctx = new OptimProblem(config, mytimestepper, primalbraidapp, adjointbraidapp, comm_hiop, comm_init, ninit, output);
+#else 
+  OptimProblem* optimctx = new OptimProblem(config, mytimestepper, comm_hiop, comm_init, ninit, output);
+#endif
 
   /* Set upt solution and gradient vector */
   Vec xinit;
@@ -241,7 +262,7 @@ int main(int argc,char **argv)
   if (mpirank_world == 0)
   {
     /* Print parameters to file */
-    sprintf(filename, "%s/config_log.dat", primalbraidapp->datadir.c_str());
+    sprintf(filename, "%s/config_log.dat", output->datadir.c_str());
     ofstream logfile(filename);
     if (logfile.is_open()){
       logfile << log.str();
@@ -306,7 +327,7 @@ int main(int argc,char **argv)
 
   /* Print timing to file */
   if (mpirank_world == 0) {
-    sprintf(filename, "%s/timing.dat", primalbraidapp->datadir.c_str());
+    sprintf(filename, "%s/timing.dat", output->datadir.c_str());
     FILE* timefile = fopen(filename, "w");
     fprintf(timefile, "%d  %1.8e\n", mpisize_world, UsedTime);
     fclose(timefile);
@@ -376,9 +397,12 @@ int main(int argc,char **argv)
   delete [] oscil_vec;
   delete mastereq;
   delete mytimestepper;
+#ifdef WITH_BRAID
   delete primalbraidapp;
   delete adjointbraidapp;
+#endif
   delete optimctx;
+  delete output;
 
   // TSDestroy(&ts);  /* TODO */
 

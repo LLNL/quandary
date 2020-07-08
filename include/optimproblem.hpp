@@ -1,7 +1,11 @@
-#include "braid_wrapper.hpp"
 #include "math.h"
 #include <assert.h>
 #include <petsctao.h>
+#include "defs.hpp"
+#include "timestepper.hpp"
+#ifdef WITH_BRAID
+  #include "braid_wrapper.hpp"
+#endif
 
 #pragma once
 
@@ -12,8 +16,10 @@ class OptimProblem {
   public: 
 
   /* ODE stuff */
+#ifdef WITH_BRAID
   myBraidApp* primalbraidapp;         /* Primal BraidApp to carry out PinT forward sim.*/
   myAdjointBraidApp* adjointbraidapp; /* Adjoint BraidApp to carry out PinT backward sim. */
+#endif
   int ninit;                            /* Number of initial conditions to be considered (N^2, N, or 1) */
   int ninit_local;                      /* Local number of initial conditions on this processor */
   Vec rho_t0;                            /* Storage for initial condition of the ODE */
@@ -21,6 +27,7 @@ class OptimProblem {
   InitialConditionType initcond_type;    /* Type of initial conditions */
   std::vector<int> initcond_IDs;         /* IDs of subsystem oscillators considered for initial conditions */
 
+  TimeStepper* timestepper;
 
   /* MPI stuff */
   MPI_Comm comm_hiop, comm_init;
@@ -52,14 +59,16 @@ class OptimProblem {
   Vec xlower, xupper;              /* Optimization bounds */
   std::string initguess_type;      /* Type of initial guess */
   std::vector<double> initguess_amplitudes; /* Initial amplitudes of controles, or NULL */
+  double* mygrad;  /* Auxiliary */
   
   /* Output */
-  int outfreq;      /* Write state output to file every <outfreq> iterations */
-  bool output;      /* Switches to true every <outfreq> iterations */
-  FILE* optimfile;  /* Output file to log optimization progress */
+  Output* output;
 
   /* Constructor */
-  OptimProblem(MapParam config, myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, MPI_Comm comm_hiop_, MPI_Comm comm_init_, int ninit_);
+  OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm comm_hiop_, MPI_Comm comm_init_, int ninit_, Output* output_);
+#ifdef WITH_BRAID
+  OptimProblem(MapParam config, TimeStepper* timestepper_, myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, MPI_Comm comm_hiop_, MPI_Comm comm_init_, int ninit_, Output* output_);
+#endif
   ~OptimProblem();
 
   /* Evaluate the objective function F(x) */
