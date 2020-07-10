@@ -223,7 +223,7 @@ int main(int argc,char **argv)
   }
   /* My time stepper */
   TimeStepper *mytimestepper = new ImplMidpoint(mastereq, ntime, total_time, linsolvetype, linsolve_maxiter, output);
-  // TimeStepper *mytimestepper = new ExplEuler(mastereq);
+  // TimeStepper *mytimestepper = new ExplEuler(mastereq, ntime, total_time, output);
 
   /* Petsc's Time-stepper */
   TS ts;

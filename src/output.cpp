@@ -9,7 +9,7 @@ Output::Output(){
   optim_iter = 0;
 }
 
-Output::Output(MapParam& config, int mpirank_petsc_, int mpirank_init_){
+Output::Output(MapParam& config, int mpirank_petsc_, int mpirank_init_) : Output() {
   mpirank_petsc = mpirank_petsc_;
   mpirank_init  = mpirank_init_;
   mpirank_braid = 0;
@@ -79,7 +79,7 @@ void Output::writeOptimFile(double objective, double gnorm, double stepsize, dou
 void Output::writeControls(Vec params, MasterEq* mastereq, int ntime, double dt){
 
   /* Write controls every <outfreq> iterations */
-  if ( optim_iter % optim_outputfreq == 0 ) { 
+  if ( mpirank_world == 0 && optim_iter % optim_outputfreq == 0 ) { 
 
     char filename[255];
     int ndesign;
@@ -112,11 +112,11 @@ void Output::writeControls(Vec params, MasterEq* mastereq, int ntime, double dt)
 void Output::openDataFiles(std::string prefix, int initid, int rank){
   char filename[255];
 
-  bool output = false;
-  if (optim_iter % optim_outputfreq == 0) output = true;
+  bool write_this_iter = false;
+  if (optim_iter % optim_outputfreq == 0) write_this_iter = true;
 
   /* Open files for state vector */
-  if (writefullstate && output) {
+  if (writefullstate && write_this_iter) {
     sprintf(filename, "%s/%s_Re.iinit%04d.rank%04d.dat", datadir.c_str(), prefix.c_str(), initid, rank);
     ufile = fopen(filename, "w");
     sprintf(filename, "%s/%s_Im.iinit%04d.rank%04d.dat", datadir.c_str(), prefix.c_str(), initid, rank);
@@ -126,7 +126,7 @@ void Output::openDataFiles(std::string prefix, int initid, int rank){
   /* Open files for expected energy */
   for (int i=0; i<outputstr.size(); i++) {
     for (int j=0; j<outputstr[i].size(); j++) {
-      if (outputstr[i][j].compare("expectedEnergy") == 0 && output ) {
+      if (outputstr[i][j].compare("expectedEnergy") == 0 && write_this_iter) {
         sprintf(filename, "%s/expected%d.iinit%04d.rank%04d.dat", datadir.c_str(), i, initid, rank);
         expectedfile[i] = fopen(filename, "w");
       }

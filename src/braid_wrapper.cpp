@@ -43,6 +43,7 @@ myBraidApp::myBraidApp(MPI_Comm comm_braid_, double total_time_, int ntime_, TS 
   core = new BraidCore(comm_braid_, this);
 
   /* Get and set Braid options */
+  core->SetNRelax(-1, 1); // Number of CF-relaxations on all (-1) grids (0: F, 1: FCF, 2: FCFCF, etc)
   int printlevel = config->GetIntParam("braid_printlevel", 2);
   core->SetPrintLevel(printlevel);
   int maxlevels = config->GetIntParam("braid_maxlevels", 20);
@@ -387,6 +388,9 @@ braid_Int myBraidApp::BufUnpack(void *buffer, braid_Vector *u_ptr, BraidBufferSt
 
   VecAssemblyBegin(u->x);
   VecAssemblyEnd(u->x);
+
+  /* Return vector to braid */
+  *u_ptr = (braid_Vector) u;
 
   return 0; 
 }
