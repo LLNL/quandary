@@ -425,6 +425,9 @@ Vec myBraidApp::PostProcess() {
   /* Close output files */
   output->closeDataFiles();
 
+  /* Print XBraid statistics */
+  // core->PrintStats();
+
   return getStateVec(total_time);// this returns NULL for all but the last processors! 
 }
 
