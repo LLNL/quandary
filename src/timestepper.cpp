@@ -7,25 +7,29 @@ TimeStepper::TimeStepper() {
   ntime = 0;
   total_time = 0.0;
   dt = 0.0;
+  storeFWD = false;
 }
 
-TimeStepper::TimeStepper(MasterEq* mastereq_, int ntime_, double total_time_, Output* output_) {
+TimeStepper::TimeStepper(MasterEq* mastereq_, int ntime_, double total_time_, Output* output_, bool storeFWD_) : TimeStepper() {
   mastereq = mastereq_;
   dim = 2*mastereq->getDim();
   ntime = ntime_;
   total_time = total_time_;
   output = output_;
+  storeFWD = storeFWD_;
 
   /* Set the time-step size */
   dt = total_time / ntime;
 
   /* Allocate storage of primal state */
-  for (int n = 0; n <=ntime; n++) {
-    Vec state;
-    VecCreate(PETSC_COMM_WORLD, &state);
-    VecSetSizes(state, PETSC_DECIDE, dim);
-    VecSetFromOptions(state);
-    store_states.push_back(state);
+  if (storeFWD) { 
+    for (int n = 0; n <=ntime; n++) {
+      Vec state;
+      VecCreate(PETSC_COMM_WORLD, &state);
+      VecSetSizes(state, PETSC_DECIDE, dim);
+      VecSetFromOptions(state);
+      store_states.push_back(state);
+    }
   }
 
   /* Allocate auxiliary state vector */
@@ -48,7 +52,7 @@ TimeStepper::TimeStepper(MasterEq* mastereq_, int ntime_, double total_time_, Ou
 
 
 TimeStepper::~TimeStepper() {
-  for (int n = 0; n <=ntime; n++) {
+  for (int n = 0; n < store_states.size(); n++) {
     VecDestroy(&(store_states[n]));
   }
   VecDestroy(&x);
@@ -59,6 +63,11 @@ TimeStepper::~TimeStepper() {
 
 Vec TimeStepper::getState(int tindex){
   
+  if (tindex >= store_states.size()) {
+    printf("ERROR: Time-stepper requested state at time index %d, but didn't store it.\n", tindex);
+    exit(1);
+  }
+
   return store_states[tindex];
 }
 
@@ -79,7 +88,7 @@ Vec TimeStepper::solveODE(int initid, Vec rho_t0){
     double tstop  = (n+1) * dt;
 
     /* store and write current state */
-    VecCopy(x, store_states[n]);
+    if (storeFWD) VecCopy(x, store_states[n]);
     output->writeDataFiles(tstart, x, mastereq);
 
     /* Add to penalty objective term */
@@ -91,14 +100,14 @@ Vec TimeStepper::solveODE(int initid, Vec rho_t0){
   }
 
   /* Store last time step */
-  VecCopy(x, store_states[ntime]);
+  if (storeFWD) VecCopy(x, store_states[ntime]);
 
   /* Write last time step and close files */
   output->writeDataFiles(ntime*dt, x, mastereq);
   output->closeDataFiles();
   
 
-  return store_states[ntime];
+  return x;
 }
 
 
@@ -117,10 +126,10 @@ void TimeStepper::solveAdjointODE(int initid, Vec rho_t0_bar, double Jbar) {
     double tstop  = n * dt;
     double tstart = (n-1) * dt;
 
-    evolveBWD(tstop, tstart, store_states[n-1], x, redgrad, true);
+    evolveBWD(tstop, tstart, getState(n-1), x, redgrad, true);
 
     /* Derivative of penalty objective term */
-    if (penalty_coeff > 1e-13) penaltyIntegral_diff(tstart, store_states[n-1], x, Jbar);
+    if (penalty_coeff > 1e-13) penaltyIntegral_diff(tstart, getState(n-1), x, Jbar);
   }
 }
 
@@ -141,7 +150,7 @@ void TimeStepper::penaltyIntegral_diff(double time, const Vec x, Vec xbar, doubl
 
 void TimeStepper::evolveBWD(const double tstart, const double tstop, const Vec x_stop, Vec x_adj, Vec grad, bool compute_gradient){}
 
-ExplEuler::ExplEuler(MasterEq* mastereq_, int ntime_, double total_time_, Output* output_) : TimeStepper(mastereq_, ntime_, total_time_, output_) {
+ExplEuler::ExplEuler(MasterEq* mastereq_, int ntime_, double total_time_, Output* output_, bool storeFWD_) : TimeStepper(mastereq_, ntime_, total_time_, output_, storeFWD_) {
   MatCreateVecs(mastereq->getRHS(), &stage, NULL);
   VecZeroEntries(stage);
 }
@@ -180,7 +189,7 @@ void ExplEuler::evolveBWD(const double tstop,const  double tstart,const  Vec x, 
 
 }
 
-ImplMidpoint::ImplMidpoint(MasterEq* mastereq_, int ntime_, double total_time_, LinearSolverType linsolve_type_, int linsolve_maxiter_, Output* output_) : TimeStepper(mastereq_, ntime_, total_time_, output_) {
+ImplMidpoint::ImplMidpoint(MasterEq* mastereq_, int ntime_, double total_time_, LinearSolverType linsolve_type_, int linsolve_maxiter_, Output* output_, bool storeFWD_) : TimeStepper(mastereq_, ntime_, total_time_, output_, storeFWD_) {
 
   /* Create and reset the intermediate vectors */
   MatCreateVecs(mastereq->getRHS(), &stage, NULL);

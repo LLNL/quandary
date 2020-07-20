@@ -19,6 +19,7 @@ class TimeStepper{
   protected:
     int dim;             /* State vector dimension */
     Vec x;               // auxiliary vector needed for time stepping
+    bool storeFWD;       /* Flag that determines if primal states should be stored during forward evaluation */
     std::vector<Vec> store_states; /* Storage for primal states */
 
   public:
@@ -42,7 +43,7 @@ class TimeStepper{
 
   public: 
     TimeStepper(); 
-    TimeStepper(MasterEq* mastereq_, int ntime_, double total_time_, Output* output_); 
+    TimeStepper(MasterEq* mastereq_, int ntime_, double total_time_, Output* output_, bool storeFWD_); 
     virtual ~TimeStepper(); 
 
     /* Return the state at a certain time index */
@@ -67,7 +68,7 @@ class TimeStepper{
 class ExplEuler : public TimeStepper {
   Vec stage;
   public:
-    ExplEuler(MasterEq* mastereq_, int ntime_, double total_time_, Output* output_);
+    ExplEuler(MasterEq* mastereq_, int ntime_, double total_time_, Output* output_, bool storeFWD_);
     ~ExplEuler();
 
     /* Evolve state forward from tstart to tstop */
@@ -99,7 +100,7 @@ class ImplMidpoint : public TimeStepper {
   Vec tmp, err;                    /* Auxiliary vector for applying the neuman iterations */
 
   public:
-    ImplMidpoint(MasterEq* mastereq_, int ntime_, double total_time_, LinearSolverType linsolve_type_, int linsolve_maxiter_, Output* output_);
+    ImplMidpoint(MasterEq* mastereq_, int ntime_, double total_time_, LinearSolverType linsolve_type_, int linsolve_maxiter_, Output* output_, bool storeFWD_);
     ~ImplMidpoint();
 
 
