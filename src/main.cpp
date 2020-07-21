@@ -237,10 +237,15 @@ int main(int argc,char **argv)
 
 #ifdef WITH_BRAID
   /* --- Create braid instances --- */
-  myBraidApp* primalbraidapp = new myBraidApp(comm_braid, total_time, ntime, ts, mytimestepper, mastereq, &config, output);
-  myAdjointBraidApp *adjointbraidapp = new myAdjointBraidApp(comm_braid, total_time, ntime, ts, mytimestepper, mastereq, &config, primalbraidapp->getCore(), output);
+  myBraidApp* primalbraidapp = NULL;
+  myAdjointBraidApp *adjointbraidapp = NULL;
+  // Create primal app always, adjoint only if runtype is adjoint or optimization 
+  primalbraidapp = new myBraidApp(comm_braid, total_time, ntime, ts, mytimestepper, mastereq, &config, output);
+  if (runtype == adjoint || runtype == optimization) adjointbraidapp = new myAdjointBraidApp(comm_braid, total_time, ntime, ts, mytimestepper, mastereq, &config, primalbraidapp->getCore(), output);
+  // Initialize the braid time-grids. Warning: initGrids for primal app depends on initialization of adjoint! Do not move this line up!
   primalbraidapp->InitGrids();
-  adjointbraidapp->InitGrids();
+  if (runtype == adjoint || runtype == optimization) adjointbraidapp->InitGrids();
+  
 #endif
 
   /* --- Initialize optimization --- */
@@ -403,7 +408,7 @@ int main(int argc,char **argv)
   delete mytimestepper;
 #ifdef WITH_BRAID
   delete primalbraidapp;
-  delete adjointbraidapp;
+  if (runtype == primal || runtype == adjoint) delete adjointbraidapp;
 #endif
   delete optimctx;
   delete output;
