@@ -13,7 +13,7 @@ SANITY_CHECK = false
 
 # Define Braid include and library location
 ifdef BRAID_DIR
-BRAID_INC_DIR = $(BRAID_DIR)/braid
+BRAID_INC = -I$(BRAID_DIR)/braid
 BRAID_LIB_FILE = $(BRAID_DIR)/braid/libbraid.a
 CXX_OPT = -DWITH_BRAID
 endif
@@ -39,7 +39,7 @@ SRC_FILES += $(wildcard $(SRC_DIR)/*/*.cpp)
 OBJ_FILES  = $(patsubst $(SRC_DIR)/%.cpp,$(BUILD_DIR)/%.o,$(SRC_FILES))
 
 # set include directory
-INC = -I$(INC_DIR) -I${PETSC_DIR}/include -I${PETSC_DIR}/${PETSC_ARCH}/include -I$(BRAID_INC_DIR) 
+INC = -I$(INC_DIR) -I${PETSC_DIR}/include -I${PETSC_DIR}/${PETSC_ARCH}/include ${BRAID_INC}
 
 # Set Library paths and flags
 LDPATH  = ${PETSC_DIR}/${PETSC_ARCH}/lib
