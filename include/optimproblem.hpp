@@ -55,7 +55,6 @@ class OptimProblem {
   double grtol;                    /* Stopping criterion based on relative gradient norm */
   int maxiter;                     /* Stopping criterion based on maximum number of iterations */
   Tao tao;                        /* Petsc's Optimization solver */
-  Vec xinit;                       /* Initial guess */
   Vec xlower, xupper;              /* Optimization bounds */
   std::string initguess_type;      /* Type of initial guess */
   std::vector<double> initguess_amplitudes; /* Initial amplitudes of controles, or NULL */
@@ -77,8 +76,8 @@ class OptimProblem {
   /* Evaluate gradient \nabla F(x) */
   void evalGradF(const Vec x, Vec G);
 
-  /* Run optimization solver */
-  void solve();
+  /* Run optimization solver, starting from initial guess xinit */
+  void solve(Vec xinit);
 
   /* Compute initial guess for optimization variables */
   void getStartingPoint(Vec x);

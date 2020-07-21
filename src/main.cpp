@@ -300,8 +300,10 @@ int main(int argc,char **argv)
 
   /* --- Solve the optimization  --- */
   if (runtype == optimization) {
+    /* Set initial starting point */
+    optimctx->getStartingPoint(xinit);
     if (mpirank_world == 0) printf("\nNow starting Optim solver ... \n");
-    optimctx->solve();
+    optimctx->solve(xinit);
     optimctx->getSolution(&opt);
   }
 

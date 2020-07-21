@@ -45,6 +45,8 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   gatol = config.GetDoubleParam("optim_atol", 1e-8);
   grtol = config.GetDoubleParam("optim_rtol", 1e-4);
   maxiter = config.GetIntParam("optim_maxiter", 200);
+  initguess_type = config.GetStrParam("optim_init", "zero");
+  config.GetVecDoubleParam("optim_init_ampl", initguess_amplitudes, 0.0);
 
   /* Reset */
   objective = 0.0;
@@ -242,13 +244,6 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   TaoSetGradientRoutine(tao, TaoEvalGradient,(void *)this);
   TaoSetObjectiveAndGradientRoutine(tao, TaoEvalObjectiveAndGradient, (void*) this);
 
-  /* Set initial starting point */
-  initguess_type = config.GetStrParam("optim_init", "zero");
-  config.GetVecDoubleParam("optim_init_ampl", initguess_amplitudes, 0.0);
-  VecDuplicate(xlower, &xinit);
-  getStartingPoint(xinit);
-  TaoSetInitialVector(tao, xinit);
-
   /* Allocate auxiliary vector */
   mygrad = new double[ndesign];
 }
@@ -259,7 +254,6 @@ OptimProblem::~OptimProblem() {
   VecDestroy(&rho_t0);
   VecDestroy(&rho_t0_bar);
 
-  VecDestroy(&xinit);
   VecDestroy(&xlower);
   VecDestroy(&xupper);
 
@@ -464,7 +458,8 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
 }
 
 
-void OptimProblem::solve() {
+void OptimProblem::solve(Vec xinit) {
+  TaoSetInitialVector(tao, xinit);
   TaoSolve(tao);
 }
 
