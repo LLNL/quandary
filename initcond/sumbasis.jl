@@ -1,47 +1,52 @@
 using LinearAlgebra
 using DelimitedFiles
 
-function sumbasis(N, Neye, filename)
+function addBkj(S,k,j,N)
+    # Diagonal part
+    S[k,k] += 1/2.
+    S[j,j] += 1/2.
 
-    # Construct matrix
-    p = (1+im)/2
-    m = (1-im)/2
+    # Off-diagonal part
+    if k<j
+        S[k,j] += 1/2.
+        S[j,k] += 1/2.
+    end
+    if j<k
+        S[j,k] += im/2.
+        S[k,j] -= im/2.
+    end
+end
 
-    S =  N * Matrix{Complex{Float64}}(I,N,N)
-    
-    for i = 1:N
-        for j = 1:i-1
-            S[i,j] = m
-        end
-        for j = i+1:N
-            S[i,j] = p
+function sumbasis(N, filename)
+
+    S = zeros(Complex{Float64}, N, N)
+
+    for k = 1:N
+        for j=1:N
+            addBkj(S,k,j,N)
         end
     end
-
+    
     S = S / (N*N)
 
-    # Kronecker S \otimes I
-    Id = zeros(Neye,Neye)
-    Id[1,1] = 1
-    S = kron(S,Id)
-    dim = N*N*Neye*Neye
-
     # Vectorize real and imaginary part and concatenate
+    dim = N*N
     Re = reshape(real(S), dim, 1)
     Im = reshape(imag(S), dim, 1)
     x = [Re;Im]
     for i = 1:dim*2
-        println(x[i])
+    #    println(x[i])
         if abs(x[i]) < 1e-12 
             x[i] = 0.0
         end
     end
 
-    ## Write x to file
-    #open(filename, "w") do io
-    #    writedlm(io, x)
-    #end
+    # Write x to file
+    open(filename, "w") do io
+        writedlm(io, x)
+    end
 end
 
 
-sumbasis(3,20,"alice_sumbasis.dat")
+AxC = 3*20
+sumbasis(AxC,"AxC_sumFullbasis.dat")
