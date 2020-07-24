@@ -137,14 +137,16 @@ void TimeStepper::solveAdjointODE(int initid, Vec rho_t0_bar, double Jbar) {
 double TimeStepper::penaltyIntegral(double time, const Vec x){
 
   double expected = objectiveT(mastereq, objective_type, obj_oscilIDs, obj_weights, x, NULL, NULL);
-  double weight = pow( (time) / total_time, penalty_exp);  
+  // double weight = pow( (time) / total_time, penalty_exp);  
+  double weight = penalty_exp * exp(- pow((time - total_time)/penalty_exp, 2));
     
   return dt * weight * expected;
 }
 
 void TimeStepper::penaltyIntegral_diff(double time, const Vec x, Vec xbar, double penaltybar){
 
-  double weight = pow(time/ total_time, penalty_exp);  
+  // double weight = pow(time/ total_time, penalty_exp);  
+  double weight = penalty_exp * exp(- pow((time - total_time)/penalty_exp, 2));
   objectiveT_diff(mastereq, objective_type, obj_oscilIDs, obj_weights, x, xbar, NULL, dt*weight*penaltybar, NULL);
 }
 
