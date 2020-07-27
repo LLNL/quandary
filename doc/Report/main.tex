@@ -78,7 +78,11 @@ where $\beta_{l,f}^k$ and $\theta_{l,f}$ are computed from
 \begin{align}
   \alpha_{l,f}^{k(1)} = \beta_{l,f}^k \cos(\theta_{l,f}) \quad \text{and} \quad \alpha_{l,f}^{k(2)} = \beta_{l,f}^k \sin(\theta_{l,f})
 \end{align}
-and $w_r$ is ??
+and $w_r$ are the transition frequencies. Using trigenomic equalities, the Lab-frame comtrols can be expressed as
+\begin{align}
+  f^k(t) &= 2 \sum_{l=1}^L B_l(t) \sum_{f=1}^{N_f} \alpha_{l,f}^{k(1)} \cos((w_r + \Omega_f^k) t) - \alpha_{l,f}^{k(2)}\sin((w_r + \Omega_f^k) t) \quad \forall k=1,\dots Q \\
+         &= 2 p^k(\vec{\alpha}^k, t) \cos(w_r t) - 2 q^k(\vec{\alpha}^k, t)\sin(w_r t) \\
+\end{align}
 
 
 \subsection{Measuring the expected energy level}\label{sec:expectedenergy}
