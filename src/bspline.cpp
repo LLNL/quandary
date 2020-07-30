@@ -42,7 +42,7 @@ double ControlBasis::evaluate(const double t, const std::vector<double>& coeff, 
                     ampl += coeff[coeff_id] * sin(freq*t) + coeff[coeff_id + 1] * cos(freq*t);
                     break;
                 case LAB:
-                    freq = -2.0 * M_PI * (ground_freq + carrier_freq[f]);
+                    freq = 2.0 * M_PI * (ground_freq - carrier_freq[f]);
                     ampl += coeff[coeff_id] * cos(freq*t) - coeff[coeff_id + 1] * sin(freq*t);
                     break;
             }   
