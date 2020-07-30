@@ -24,12 +24,12 @@
 \maketitle
 
 \section{Model equation}
-We model open quantum systems with $Q$ oscillators with $n_k$ levels for the $k$-th oscillator, $k=1,\dots,Q$. We solve the Lindblad master equation
+We model open quantum systems with $Q$ subsystems with $n_k$ levels for the $k$-th subsystem, $k=1,\dots,Q$. We solve the Lindblad master equation
 \begin{align}\label{mastereq}
   \dot \rho(t) = &-i(H(t)\rho(t) - \rho(t)H(t)) \notag \\
           &+ \sum_{l=1}^2 \sum_{k=1}^Q \gamma_{lk} \left( \Ell_{lk} \rho(t) \Ell_{lk}^{\dagger} - \frac 1 2 \left( \Ell_{lk}^{\dagger}\Ell_{lk} \rho(t) + \rho(t)\Ell_{lk}^{\dagger} \Ell_{lk}\right) \right)
 \end{align}
-for the density matrix $\rho(t)\in \C^{N\times N}$ with dimension $N := \prod_{k=1}^N n_k$. The Hamiltonian $H(t)$ consists of a constant \textit{drift} part, and a time-varying \textit{control} part. For the computation \textit{rotating frame}, these are computed from
+for the density matrix $\rho(t)\in \C^{N\times N}$ with dimension $N := \prod_{k=1}^Q n_k$. The Hamiltonian $H(t)$ consists of a constant \textit{drift} part, and a time-varying \textit{control} part. For the computational \textit{rotating frame}, these are computed from
 \begin{align}
   H(t) &= H_d + H_c(t) \\
   \text{with} \quad H_d &:= \sum_{k=1}^Q \left(- \frac{\xi_k}{2} a_k^{\dagger}a_k^{\dagger}a_k a_k - \sum_{l\neq k} \xi_{lk} a_l^{\dagger}a_l a_k^{\dagger} a_k  \right) \\
@@ -60,7 +60,7 @@ The collapse operators $\Ell_{lk}$ in the Lindblad terms of the master equation 
   \item ``T1'' -- Decay: $\Ell_{1k} = a_k$
   \item ``T2'' -- Dephasing: $\Ell_{2k} = a_k^{\dagger}a_k$
 \end{itemize}
-for each oscillator $k$. The constants $\gamma_{lk}$ are the inverse half-live for the corresponding collapse process $l$: $\gamma_{lk} = {\frac{1}{T_l}}$. Typical T1 decay time is between $10-100$ microseconds (us). T2 dephasing time is typically about half of T1 decay time. Decay then behaves like $\exp(-t/{T_1})$. Dephasing behaves like $\exp(-\frac{1}{2{T_2}})$.
+for each subsystem $k$. The constants $\gamma_{lk}$ are the inverse half-live for the corresponding collapse process $l$: $\gamma_{lk} = {\frac{1}{T_l}}$. Typical T1 decay time is between $10-100$ microseconds (us). T2 dephasing time is typically about half of T1 decay time. Decay then behaves like $\exp(-t/{T_1})$. Dephasing behaves like $\exp(-\frac{1}{2{T_2}})$.
 
 \subsection{Control pulses}
 The time-dependent control functions $p^k(\vec{\alpha}^k,t), q^k(\vec{\alpha}^k,t)$ are real-valued. We discretize them using B-splines with carrier waves:
@@ -72,23 +72,23 @@ for $L$ B-Spline functions $B_l(t)$, and $N_f$ carrier wave frequencies $\Omega_
 
 The control functions are in the \textit{rotating frame}. To convert them back to the \textit{Lab frame} use
 \begin{align}
-  f^k(t) = 2 \sum_{l=1}^L B_l(t) \sum_{f=1}^{N_f} \beta_{l,f}^k \cos(w_r t + \Omega_f^k t + \theta_{l,f}) \quad \forall k=1,\dots Q
+  f^k(t) = 2 \sum_{l=1}^L B_l(t) \sum_{f=1}^{N_f} \beta_{l,f}^k \cos(w_k t + \Omega_f^k t + \theta_{l,f}) \quad \forall k=1,\dots Q
 \end{align}
 where $\beta_{l,f}^k$ and $\theta_{l,f}$ are computed from
 \begin{align}
   \alpha_{l,f}^{k(1)} = \beta_{l,f}^k \cos(\theta_{l,f}) \quad \text{and} \quad \alpha_{l,f}^{k(2)} = \beta_{l,f}^k \sin(\theta_{l,f})
 \end{align}
-and $w_r$ are the transition frequencies. Using trigenomic equalities, the Lab-frame comtrols can be expressed as
+and $w_k$ are the fundamental resonance frequencies of subsystems $k$. Using trigenomic equalities, the Lab-frame comtrols can be expressed as
 \begin{align}
-  f^k(t) &= 2 \sum_{l=1}^L B_l(t) \sum_{f=1}^{N_f} \alpha_{l,f}^{k(1)} \cos((w_r + \Omega_f^k) t) - \alpha_{l,f}^{k(2)}\sin((w_r + \Omega_f^k) t) \quad \forall k=1,\dots Q \\
-         &= 2 p^k(\vec{\alpha}^k, t) \cos(w_r t) - 2 q^k(\vec{\alpha}^k, t)\sin(w_r t) \\
+  f^k(t) &= 2 \sum_{l=1}^L B_l(t) \sum_{f=1}^{N_f} \alpha_{l,f}^{k(1)} \cos((w_k + \Omega_f^k) t) - \alpha_{l,f}^{k(2)}\sin((w_k + \Omega_f^k) t) \quad \forall k=1,\dots Q \\
+         &= 2 p^k(\vec{\alpha}^k, t) \cos(w_k t) - 2 q^k(\vec{\alpha}^k, t)\sin(w_k t) \\
 \end{align}
 
 
 \subsection{Measuring the expected energy level}\label{sec:expectedenergy}
-For each oscillator $k$, $k=1,\dots, Q$, we define the observable 
+For each subsystem $k$, $k=1,\dots, Q$, we define the observable 
 \begin{align}
-  M^k := a_k^\dag a_k  = I_{n_1} \otimes \dots \otimes I_{n_{k-1}} \otimes  N_k \otimes I_{n_{k+1}} \otimes \dots I_{n_Q} 
+  O^k := a_k^\dag a_k  = I_{n_1} \otimes \dots \otimes I_{n_{k-1}} \otimes  N_k \otimes I_{n_{k+1}} \otimes \dots I_{n_Q} 
 \end{align}
        
        \quad
@@ -101,12 +101,12 @@ for the number operator
      &    &    & \ddots 
   \end{bmatrix}
 \end{align}
-$M^k$ measures the probability of the energy levels of oscillator $k$. The expected energy level of oscillator $k$ is given by 
+$O^k$ measures the probability of the energy levels of subsystem $k$. The expected energy level of subsystem $k$ is given by 
 \begin{align}
-  \langle M^k \rangle &= \sum_{m_k} m_k p(m_k)  = \mbox{Tr}(M^k\rho) \\
+  \langle O^k \rangle &= \sum_{o_k} o_k p(o_k)  = \mbox{Tr}(O^k\rho) \\
    & = \mbox{Tr}(N_k \rho^k)  = \langle N_k\rangle
 \end{align}
-where $\rho^k$ is the reduced density matrix for oscillator $k$. Here, $p(m_k)$ is the probability of $\rho$ being the the $m_k$-th energy level for oscillator $k$, $p(m_k) = \mbox{Tr}(P^k_m \rho)$ for a spectral decomposition $M^k = \sum_{m_k} m_kP^k_m$. 
+where $\rho^k$ is the reduced density matrix for subsystem $k$. Here, $p(o_k)$ is the probability of $\rho$ being the the $o_k$-th energy level for subsystem $k$, $p(o_k) = \mbox{Tr}(P^k_o \rho)$ for a spectral decomposition $O^k = \sum_{o_k} o_kP^k_o$. 
 
 
 \section{Optimization problem}
@@ -129,22 +129,23 @@ To reach this goal, we either minimize the distance between the final state dens
     where the Frobenius norm is defined as $\|A\|^2_F = \Tr(A^{\dagger}A)$.
   \item \textit{Expected energy minimization}: Minimize a weighted sum over expected energy levels of the (full or partial) system
     \begin{align}
-       \quad J(\rho(T)) = \sum_{k\in \mathcal{K}} \beta_k \langle M_k \rangle 
+       \quad J(\rho(T)) = \sum_{k\in \mathcal{K}} \beta_k \langle O_k \rangle 
     \end{align}
-    using the number operator $M_k = a_k^\dag a_k$ for the oscillator $k$ (compare Section \ref{sec:expectedenergy}), and defining a partial system $H_{k_1}\otimes \dots \otimes H_{k_s}$ from an index set of oscillator IDs $\mathcal{K}=\{k_1,\dots,k_s\}\subset \{1,\dots,Q\}$. We can use the following variations of the above measure
+    using the number operator $O_k = a_k^\dag a_k$ for the subsystem $k$ (compare Section \ref{sec:expectedenergy}), and defining a partial system $H_{k_1}\otimes \dots \otimes H_{k_s}$ from an index set of subsystem IDs $\mathcal{K}=\{k_1,\dots,k_s\}\subset \{1,\dots,Q\}$. We can use the following variations of the above measure
     \begin{enumerate}
-      \item[(a)] $J(\rho(T)) = \left(\frac{1}{|\mathcal{K}|}\sum_{k\in\mathcal{K}}\langle M_k \rangle \right)^2$
-      \item[(b)] $J(\rho(T)) = \frac{1}{|\mathcal{K}|}\left(\sum_{k\in\mathcal{K}}\langle M_k \rangle \right)^2 $
-      \item[(c)] $J(\rho(T)) = \frac{1}{|\mathcal{K}|}\sum_{k\in\mathcal{K}}\langle M_k \rangle$
+      \item[(a)] $J(\rho(T)) = \left(\frac{1}{|\mathcal{K}|}\sum_{k\in\mathcal{K}}\langle O_k \rangle \right)^2$
+      \item[(b)] $J(\rho(T)) = \frac{1}{|\mathcal{K}|}\sum_{k\in\mathcal{K}}\left(\langle O_k \rangle \right)^2 $
+      \item[(c)] $J(\rho(T)) = \frac{1}{|\mathcal{K}|}\sum_{k\in\mathcal{K}}\langle O_k \rangle$
     \end{enumerate}
 
 \end{enumerate}
 
 For both objective types, we add an integral penalty term to the objective function, that discourages non-zero energy states over time as so:
 \begin{align}
-  \int_0^T w(t) J(\rho(t)) \, \mathrm{d}t, \quad \text{where} \quad w(t) = \left(\frac{t}{T}\right)^p, p \geq 1
+  % \int_0^T w(t) J(\rho(t)) \, \mathrm{d}t, \quad \text{where} \quad w(t) = \left(\frac{t}{T}\right)^p, p \geq 1
+  \int_0^T w(t) J(\rho(t)) \, \mathrm{d}t, \quad \text{where} \quad w(t) = \frac{1}{a} e^{ -\left(\frac{t-T}{a} \right)^2}, \quad a \leq 1
 \end{align}
-
+Note, that as $a\to 0$, the weight $w(t)$ converges to the dirac delta distribution with peak at final time $T$. 
 
 \subsection{Target gate optimization}
 
@@ -183,11 +184,12 @@ for all $k,j\in\{0,\dots, N-1\}$, where $E_{kj}$ denotes the matrix of all zeros
 
 We can rewrite any initial condition $\rho(0)$ as a linear combination 
 \begin{align}
-  \rho(0) = \sum_{k=0}^{N-1} \sum_{j=0}^{N-1} \alpha_{kj} B^{k, j}.
+  \rho(0) = \sum_{k=0}^{N-1} \sum_{j=0}^{N-1} a_{kj} B^{k, j}.
 \end{align}
-Since the master equation \eqref{mastereq} is linear, we can formally define a linear solution operator $S_T(\rho(0))$, mapping an initial state to the final state at time $T$, and we can rewrite the final density matrix at time $T$ in terms of the basis elements:
+for coefficients $a_{kj} \in \R$.
+Since the master equation \eqref{mastereq} is linear, we can formally define a linear solution operator $S^{\vec{\alpha}}(t,\rho(0))$, mapping an initial state to the state at time $t$, and we can rewrite the final density matrix at time $T$ in terms of the basis elements:
 \begin{align}
-  \rho(T) = S_T(\rho(0)) = \sum_{k,j=0}^{N-1} \alpha_{kj} S_T(B^{k, j}).
+  \rho(T) = S^{\vec{\alpha}}(T,\rho(0)) = \sum_{k,j=0}^{N-1} a_{kj} S^{\vec{\alpha}}(T,B^{k, j}).
 \end{align}
 AP: According to D.~Lidar's lectue notes, eqn. (112), the most general expression for the evolution
 of the density matrix follows from the Kraus operator sum representation,
@@ -202,13 +204,13 @@ We therefore define the optimization problem that minimizes the respective measu
   \text{s.t.} \quad  \text{each} \quad \rho^{k,j}(t) \quad & \text{solves \eqref{mastereq} with initial condition} \quad \rho^{k,j}(0) = B^{k,j}
 \end{align}
 
-If the objective measure $J(\rho)$ is linear in $\rho$, we can reduce the optimization using the linearity of $S_T$:
+If the objective measure $J(\rho)$ is linear in $\rho$, we can reduce the optimization using the linearity of $S^{\vec{\alpha}}$:
 \begin{align}
-   \frac{1}{N^2}  \sum_{k,j=0}^{N-1} \, J\left(\rho^{k,j}(T)\right) = J\left(S_T\left(\frac{1}{N^2}  \sum_{k,j=0}^{N-1} B^{kj}\right)\right)
+   \frac{1}{N^2}  \sum_{k,j=0}^{N-1} \, J\left(\rho^{k,j}(T)\right) = J\left(S^{\vec{\alpha}}\left(T,\frac{1}{N^2}  \sum_{k,j=0}^{N-1} B^{kj}\right)\right)
 \end{align}
 Hence, we define a new optimization problem using the specific initial condition that averages over the basis matrices:
 \begin{align}
-  \min \, J(S_T(\rho(T))) \quad \text{s.t.} \quad \rho(0) = \frac{1}{N^2}  \sum_{k,j=0}^{N-1} B^{kj}
+  \min \, J(S^{\vec{\alpha}}(,T\rho(0))) \quad \text{s.t.} \quad \rho(0) = \frac{1}{N^2}  \sum_{k,j=0}^{N-1} B^{kj}
 \end{align}
 
 \subsection{Fidelity} 
@@ -334,9 +336,9 @@ which is called the \textit{infidelity}, and the trace-term is the \textit{fidel
     z &:= \left( \vec{\alpha}^1, \dots, \vec{\alpha}^Q \right), \in \mathds{R}^{2QLN_f} \quad \text{where}\\
     \vec{\alpha}^k &= \left( \alpha_{1,1}^k,\dots, \alpha_{1,N_f}^k, \dots, \alpha_{L,1}^{k}, \dots, \alpha_{L,N_f}^k \right) \in \R^{2LN_f}, \quad \alpha_{l,f}^k = \left(\alpha_{l,f}^{k(1)}, \alpha_{l,f}^{k(2)} \right) \in R^2,
   \end{align}
-  iterating over $Q$ oscillators first, then $L$ splines, then $N_f$ carrier wave frequencies. 
+  iterating over $Q$ subsystems first, then $L$ splines, then $N_f$ carrier wave frequencies. 
 
-  In order to guarantee that the optimizer yields control pulses that are bounded with $|p_k(t)| \leq c^k_{max}$, $|q_k(t)| \leq c^k_{max}$ for all oscillatorx $k=1,\dots, Q$, we impose box constraints on the control parameters:
+  In order to guarantee that the optimizer yields control pulses that are bounded with $|p_k(t)| \leq c^k_{max}$, $|q_k(t)| \leq c^k_{max}$ for all subsystems $k=1,\dots, Q$, we impose box constraints on the control parameters:
    \begin{align}
      | \alpha_{l,f}^{k(1)}| \leq \frac{c^k_{max}}{N_f} \quad \text{and} \quad | \alpha_{l,f}^{k(2)} | \leq \frac{c^k_{max}}{N_f}
    \end{align}
