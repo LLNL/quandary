@@ -50,7 +50,7 @@ class OptimProblem {
   double gnorm;                    /* Holds current norm of gradient */
   double gamma_tik;                /* Parameter for tikhonov regularization */
   double penalty_coeff;            /* Parameter multiplying integral penalty term */
-  double penalty_exp;              /* Exponent inside integral penalty term (p) */
+  double penalty_weightparam;      /* Parameter inside integral penalty term w(t) (Gaussian variance) */
   double gatol;                    /* Stopping criterion based on absolute gradient norm */
   double grtol;                    /* Stopping criterion based on relative gradient norm */
   int maxiter;                     /* Stopping criterion based on maximum number of iterations */

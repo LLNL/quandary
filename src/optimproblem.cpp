@@ -109,11 +109,11 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
 
   /* Pass information on objective function to the time stepper needed for penalty objective function */
   penalty_coeff = config.GetDoubleParam("optim_penalty", 1e-4);
-  penalty_exp = config.GetIntParam("optim_penalty_exponent", 10);
+  penalty_weightparam = config.GetDoubleParam("optim_penalty_param", 0.5);
   timestepper->objective_type = objective_type;
   timestepper->obj_oscilIDs = obj_oscilIDs;
   timestepper->obj_weights= obj_weights;
-  timestepper->penalty_exp = penalty_exp;
+  timestepper->penalty_weightparam = penalty_weightparam;
   timestepper->penalty_coeff = penalty_coeff;
 
   // check if implemented:

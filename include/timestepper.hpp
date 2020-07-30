@@ -35,7 +35,7 @@ class TimeStepper{
     ObjectiveType objective_type;
     std::vector<int> obj_oscilIDs;
     std::vector<double> obj_weights;
-    double penalty_exp;
+    double penalty_weightparam;
     double penalty_coeff;
 
     /* Output */
