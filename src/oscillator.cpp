@@ -74,7 +74,7 @@ void Oscillator::flushControl(const int ntime, const double dt, const char* file
     time = i*dt; 
     this->evalControl(time, &Re, &Im);
     this->evalControl_Labframe(time, &Lab);
-    fprintf(file, "%08d  % 1.4f   % 1.14e   % 1.14e   % 1.14e \n", i, time, Re, Im, Lab);
+    fprintf(file, "%08d  % 1.8f   % 1.14e   % 1.14e   % 1.14e \n", i, time, Re, Im, Lab);
   }
 
   fclose(file);
