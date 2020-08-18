@@ -42,7 +42,7 @@ Note than when applying $A$ to $\rho$ from the right, one gets
 \end{align}
 contracting the rows of $A$ with the rows of $\rho$. 
 
-Now consider a kronecker product of operators $A\otimes B$ with dimensions $A\in\R^{n_a\times n_a}, B\in\R^{n_b\times n_b}$ multiplied to a matrix $\rho \in \R^{n_an_b\times n_bn_b}$ of matching dimensions. We can think of $\rho$ as a rank-4 tensor $\rho\in\R^{n_a\times n_b \times n_a \times n_b}$. The application of $A\otimes B$ to the tensor $\rho$ then corresponds to the tensor contraction 
+Now consider a kronecker product of operators $A\otimes B$ with dimensions $A\in\R^{n_a\times n_a}, B\in\R^{n_b\times n_b}$ multiplied to a matrix $\rho \in \R^{n_an_b\times n_an_b}$ of matching dimensions. We can think of $\rho$ as a rank-4 tensor $\rho\in\R^{n_b\times n_a \times n_b \times n_a}$. The application of $A\otimes B$ to the tensor $\rho$ then corresponds to the tensor contraction 
 \begin{align}
     z := A\otimes B \rho = A_{j_2}^{i_2}\otimes B_{j_1}^{i_1} \rho_{i_1, i_2, i_1^{\prime}, \i_2^{\prime}}
 \end{align}
