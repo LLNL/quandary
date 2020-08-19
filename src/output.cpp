@@ -53,6 +53,7 @@ Output::Output(MapParam& config, int mpirank_petsc_, int mpirank_init_) : Output
   ufile = NULL;
   vfile = NULL;
   for (int i=0; i< outputstr.size(); i++) expectedfile.push_back (NULL);
+  for (int i=0; i< outputstr.size(); i++) populationfile.push_back (NULL);
 
 }
 
@@ -130,6 +131,10 @@ void Output::openDataFiles(std::string prefix, int initid, int rank){
         sprintf(filename, "%s/expected%d.iinit%04d.rank%04d.dat", datadir.c_str(), i, initid, rank);
         expectedfile[i] = fopen(filename, "w");
       }
+      if (outputstr[i][j].compare("population") == 0 && write_this_iter) {
+        sprintf(filename, "%s/population%d.iinit%04d.rank%04d.dat", datadir.c_str(), i, initid, rank);
+        populationfile[i] = fopen(filename, "w");
+      }
     }
   }
 
@@ -144,6 +149,20 @@ void Output::writeDataFiles(double time, const Vec state, MasterEq* mastereq){
       fprintf(expectedfile[iosc], "%.8f %1.14e\n", time, expected);
     }
   }
+
+  /* Write population to file */
+  for (int iosc = 0; iosc < populationfile.size(); iosc++) {
+    if (populationfile[iosc] != NULL) {
+      std::vector<double> pop (mastereq->getOscillator(iosc)->getNLevels(), 0.0);
+      mastereq->getOscillator(iosc)->population(state, pop);
+      fprintf(populationfile[iosc], "%.8f ", time);
+      for (int i = 0; i<pop.size(); i++) {
+        fprintf(populationfile[iosc], " %1.14e", pop[i]);
+      }
+      fprintf(populationfile[iosc], "\n");
+    }
+  }
+
 
 
   /* Write full state to file */
@@ -190,6 +209,12 @@ void Output::closeDataFiles(){
     if (expectedfile[i] != NULL) {
       fclose(expectedfile[i]);
       expectedfile[i] = NULL;
+    }
+  }
+  for (int i=0; i< populationfile.size(); i++) {
+    if (populationfile[i] != NULL) {
+      fclose(populationfile[i]);
+      populationfile[i] = NULL;
     }
   }
 }
