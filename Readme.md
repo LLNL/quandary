@@ -1,5 +1,5 @@
 # Quandary - Quantum control on HPC clusters
-This project implements a parallel-in-time optimization solver for quantum control. The underlying quantum dynamics model open quantum systems, using the Lindblad master equation to evolve the density matrix in time. The control problem aims to find control pulses that drive the system to a desired target state.
+This project implements an optimization solver for quantum control. The underlying quantum dynamics model open quantum systems, using the Lindblad master equation to evolve the density matrix in time. The control problem aims to find control pulses that drive the system to a desired target state.
 
 ## Installation
 This project relies on the Petsc package [https://www.mcs.anl.gov/petsc/] to handle linear algebra. Optionally, XBraid is used for realizing time-parallelization [https://github.com/XBraid/xbraid].
@@ -35,7 +35,6 @@ This project relies on the Petsc package [https://www.mcs.anl.gov/petsc/] to han
  
 
 ## Running
-The code builds into the executable `main`. It takes one argument being the name of the config file. The config file `AxC.cfg`, lists all possible config options. It is currently set to run the Alice-Cavity testcase (3x20 levels).
-* `./main AxC.cfg` for serial run
-* `srun -n36 ./main AxC.cfg` for parallel run using 36 cores
+The code builds into the executable `main`. It takes one argument being the name of the config file. The config file `AxC.cfg`, lists all possible config options. It is currently set to run the Alice-Cavity testcase (3x20 levels):
+* `./main AxC.cfg`
 
