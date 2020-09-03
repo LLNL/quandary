@@ -8,7 +8,7 @@ This project relies on the Petsc package [https://www.mcs.anl.gov/petsc/] to han
     * `cd petsc`
     * Configure petsc with `./configure`, check [https://www.mcs.anl.gov/petsc/download/index.html] for optional arguments
     * Note: Petsc compiles in debug mode by default. To configure petsc with compiler optimization, run
-        `./configure --with-debugging=0 --with-fc=0 --with-cxx=mpicxx --with-cc=mpicc COPTFLAGS='-O3' CXXOPTFLAGS='-O3'`
+        `./configure --prefix=/YOUR/INSTALL/DIR --with-debugging=0 --with-fc=0 --with-cxx=mpicxx --with-cc=mpicc COPTFLAGS='-O3' CXXOPTFLAGS='-O3'`
     * The output of `./configure` reports on how to set the `PETSC_DIR` and `PETSC_ARCH` variables
     * Compile petsc with `make all test`
     * Append Petsc directory to the `LD_LIBRARY_PATH`:
