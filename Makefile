@@ -3,7 +3,7 @@
 #PETSC_ARCH=arch-linux-c-debug
 
 # Set Braid location, or comment out
-BRAID_DIR = ${HOME}/Numerics/xbraid_solveadjointwithxbraid
+#BRAID_DIR = ${HOME}/Numerics/xbraid_solveadjointwithxbraid
 
 # Choose to run sanity tests
 SANITY_CHECK = false
