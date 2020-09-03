@@ -70,7 +70,7 @@ The time-dependent control functions $p^k(\vec{\alpha}^k,t), q^k(\vec{\alpha}^k,
 \end{align}
 for $L$ B-Spline functions $B_l(t)$, and $N_f$ carrier wave frequencies $\Omega_f^k$. The amplitudes $\vec{\alpha}^k \in \R^{2LN_f}$ are the control parameters (\textit{design} variables) that we modify in order to realize a desired system behavior. 
 
-Design storage in the Quandary code design vector is oscillators first $(\vec{\alpha}^1, \dots, \vec{\alpha}^Q)$, then for each $\vec{\alpha}^k \in \R^{2LN_f}$ iterates over $L$ splines first: $\vec{\alpha}^k = (\alpha^k_1,\dots, \alpha^k_{L})$ with $\alpha^k_1 \in \R^{2N_f}$, then each $\alpha^k_l$ iterates over carrierwaves first and for each carrierwaves lists the two components: $\alpha^k_l = \alpha^{k(1)}_{l,1}, \alpha^{k(2)}_{l,1}, \dots \alpha^{k(1)}_{l,N_f}, \alpha^{k(2)}_{l,N_f}$.
+Design storage in the Quandary code design vector is oscillators first $(\vec{\alpha}^1, \dots, \vec{\alpha}^Q)$, then for each $\vec{\alpha}^k \in \R^{2LN_f}$ iterates over $L$ splines first: $\vec{\alpha}^k = (\alpha^k_1,\dots, \alpha^k_{L})$ with $\alpha^k_l \in \R^{2N_f}$, then each $\alpha^k_l$ iterates over carrierwaves first and for each carrierwaves lists the two components: $\alpha^k_l = \alpha^{k(1)}_{l,1}, \alpha^{k(2)}_{l,1}, \dots \alpha^{k(1)}_{l,N_f}, \alpha^{k(2)}_{l,N_f}$.
 
 The control functions are in the \textit{rotating frame}. To convert them back to the \textit{Lab frame} use
 \begin{align}
