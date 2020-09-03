@@ -63,6 +63,7 @@ Output::Output(MapParam& config, int mpirank_petsc_, int mpirank_init_, int mpir
 
 
 Output::~Output(){
+  printf("Output directory: %s\n", datadir.c_str());
   if (mpirank_world == 0) fclose(optimfile);
 }
 

@@ -332,7 +332,7 @@ int main(int argc,char **argv)
     printf(" Processors used:  %d\n", mpisize_world);
     printf("\n");
   }
-  printf("Rank %d: %.2fMB\n", mpirank_world, myMB );
+  // printf("Rank %d: %.2fMB\n", mpirank_world, myMB );
 
   /* Print timing to file */
   if (mpirank_world == 0) {
@@ -340,7 +340,6 @@ int main(int argc,char **argv)
     FILE* timefile = fopen(filename, "w");
     fprintf(timefile, "%d  %1.8e\n", mpisize_world, UsedTime);
     fclose(timefile);
-    printf("%s written.\n", filename);
   }
 
 

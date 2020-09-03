@@ -234,8 +234,8 @@ ImplMidpoint::~ImplMidpoint(){
   linsolve_iterstaken_avg = (int) linsolve_iterstaken_avg / linsolve_counter;
   linsolve_error_avg = linsolve_error_avg / linsolve_counter;
   int myrank;
-  MPI_Comm_rank(MPI_COMM_WORLD, &myrank);
-  if (myrank == 0) printf("Linear solver type %d: Average iterations = %d, average error = %1.2e\n", linsolve_type, linsolve_iterstaken_avg, linsolve_error_avg);
+  // MPI_Comm_rank(MPI_COMM_WORLD, &myrank);
+  // if (myrank == 0) printf("Linear solver type %d: Average iterations = %d, average error = %1.2e\n", linsolve_type, linsolve_iterstaken_avg, linsolve_error_avg);
 
   /* Free up Petsc's linear solver */
   if (linsolve_type == GMRES) {
