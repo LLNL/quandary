@@ -60,7 +60,7 @@ The collapse operators $\Ell_{lk}$ in the Lindblad terms of the master equation 
   \item ``T1'' -- Decay: $\Ell_{1k} = a_k$
   \item ``T2'' -- Dephasing: $\Ell_{2k} = a_k^{\dagger}a_k$
 \end{itemize}
-for each subsystem $k$. The constants $\gamma_{lk}$ are the inverse half-live for the corresponding collapse process $l$: $\gamma_{lk} = {\frac{1}{T_l}}$. Typical T1 decay time is between $10-100$ microseconds (us). T2 dephasing time is typically about half of T1 decay time. Decay then behaves like $\exp(-t/{T_1})$. Dephasing behaves like $\exp(-\frac{1}{2{T_2}})$.
+for each subsystem $k$. The constants $\gamma_{lk}$ are the inverse half-life for the corresponding collapse process $l$: $\gamma_{lk} = {\frac{1}{T_l}}$. Typical T1 decay time is between $10-100$ microseconds (us). T2 dephasing time is typically about half of T1 decay time. Decay then behaves like $\exp(-t/{T_1})$. Dephasing behaves like $\exp(- t / T_1)$.
 
 \subsection{Control pulses}
 The time-dependent control functions $p^k(\vec{\alpha}^k,t), q^k(\vec{\alpha}^k,t)$ are real-valued. We discretize them using B-splines with carrier waves:
@@ -68,7 +68,9 @@ The time-dependent control functions $p^k(\vec{\alpha}^k,t), q^k(\vec{\alpha}^k,
   p^k(\vec{\alpha}^k,t) &= \sum_{l=1}^L B_l(t) \sum_{f=1}^{N_f} \left(\alpha^{k (1)}_{l,f} \cos(\Omega_f^k t) - \alpha^{k (2)}_{l,f} \sin(\Omega_f^k t) \right) \\
   q^k(\vec{\alpha}^k,t) &= \sum_{l=1}^L B_l(t) \sum_{f=1}^{N_f} \left( \alpha^{k (1)}_{l,f} \sin(\Omega_f^k t) + \alpha^{k (2)}_{l,f} \cos(\Omega_f^k t) \right)
 \end{align}
-for $L$ B-Spline functions $B_l(t)$, and $N_f$ carrier wave frequencies $\Omega_f^k$. The amplitudes $\vec{\alpha}^k \in \R^{2LN_f}$ are the control parameters (\textit{design} variables) that we modify in order to realize a desired system behavior, giving a total of $2QLN_f$ design parameters.
+for $L$ B-Spline functions $B_l(t)$, and $N_f$ carrier wave frequencies $\Omega_f^k$. The amplitudes $\vec{\alpha}^k \in \R^{2LN_f}$ are the control parameters (\textit{design} variables) that we modify in order to realize a desired system behavior. 
+
+Design storage in the Quandary code design vector is oscillators first $(\vec{\alpha}^1, \dots, \vec{\alpha}^Q)$, then for each $\vec{\alpha}^k \in \R^{2LN_f}$ iterates over $L$ splines first: $\vec{\alpha}^k = (\alpha^k_1,\dots, \alpha^k_{L})$ with $\alpha^k_1 \in \R^{2N_f}$, then each $\alpha^k_l$ iterates over carrierwaves first and for each carrierwaves lists the two components: $\alpha^k_l = \alpha^{k(1)}_{l,1}, \alpha^{k(2)}_{l,1}, \dots \alpha^{k(1)}_{l,N_f}, \alpha^{k(2)}_{l,N_f}$.
 
 The control functions are in the \textit{rotating frame}. To convert them back to the \textit{Lab frame} use
 \begin{align}
@@ -90,8 +92,6 @@ For each subsystem $k$, $k=1,\dots, Q$, we define the observable
 \begin{align}
   O^k := a_k^\dag a_k  = I_{n_1} \otimes \dots \otimes I_{n_{k-1}} \otimes  N_k \otimes I_{n_{k+1}} \otimes \dots I_{n_Q} 
 \end{align}
-       
-       \quad
 for the number operator 
 \begin{align}
   N_k := a^{(n_k)^\dag} a^{(n_k)} = \begin{bmatrix} 
