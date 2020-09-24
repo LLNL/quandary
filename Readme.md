@@ -10,9 +10,11 @@ This project relies on the Petsc package [https://www.mcs.anl.gov/petsc/] to han
     * Note: Petsc compiles in debug mode by default. To configure petsc with compiler optimization, run
         `./configure --prefix=/YOUR/INSTALL/DIR --with-debugging=0 --with-fc=0 --with-cxx=mpicxx --with-cc=mpicc COPTFLAGS='-O3' CXXOPTFLAGS='-O3'`
     * The output of `./configure` reports on how to set the `PETSC_DIR` and `PETSC_ARCH` variables
+        * `export PETSC_DIR=/YOUR/INSTALL/DIR`
+        * `export PETSC_ARCH=/YOUR/ARCH/PREFIX
     * Compile petsc with `make all test`
     * Append Petsc directory to the `LD_LIBRARY_PATH`:
-        `export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$PETSC_DIR/$PETSC_ARCH`
+        * `export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$PETSC_DIR/$PETSC_ARCH`
 
 * Optional: Install XBraid, using the branch 'solveadjointwithxbraid': 
     - git clone https://github.com/XBraid/xbraid.git
@@ -27,11 +29,11 @@ This project relies on the Petsc package [https://www.mcs.anl.gov/petsc/] to han
 * Petc is already installed on LC machines, in the directory
 `/usr/tce/packages/petsc/petsc-3.12.4-mvapich2-2.3-gcc-4.8-redhat`
 * To use it, load the following modules
-`module load gcc/8.1.0`
-`module load mvapich2/2.3`
+    * `module load gcc/8.1.0`
+    * `module load mvapich2/2.3`
 * Set the `PETSC_DIR` variable to point to the Petsc folder and add it to the `LD_LIBRARY_PATH`:
-`export PETSC_DIR=/usr/tce/packages/petsc/petsc-3.12.4-mvapich2-2.3-gcc-4.8-redhat`
-`export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$PETSC_DIR`
+    * `export PETSC_DIR=/usr/tce/packages/petsc/petsc-3.12.4-mvapich2-2.3-gcc-4.8-redhat`
+    * `export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$PETSC_DIR`
  
 
 ## Running
