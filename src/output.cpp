@@ -89,7 +89,7 @@ void Output::writeControls(Vec params, MasterEq* mastereq, int ntime, double dt)
 
     /* Print current parameters to file */
     FILE *paramfile;
-    sprintf(filename, "%s/param_iter%04d.dat", datadir.c_str(), optim_iter);
+    sprintf(filename, "%s/optim_param_iter%04d.dat", datadir.c_str(), optim_iter);
     paramfile = fopen(filename, "w");
 
     const PetscScalar* params_ptr;
@@ -131,10 +131,12 @@ void Output::openDataFiles(std::string prefix, int initid, int rank){
       if (outputstr[i][j].compare("expectedEnergy") == 0 && write_this_iter) {
         sprintf(filename, "%s/expected%d.iinit%04d.rank%04d.dat", datadir.c_str(), i, initid, rank);
         expectedfile[i] = fopen(filename, "w");
+        fprintf(expectedfile[i], "# time      expected energy level\n");
       }
       if (outputstr[i][j].compare("population") == 0 && write_this_iter) {
         sprintf(filename, "%s/population%d.iinit%04d.rank%04d.dat", datadir.c_str(), i, initid, rank);
         populationfile[i] = fopen(filename, "w");
+        fprintf(populationfile[i], "# time      diagonal of the density matrix \n");
       }
     }
   }

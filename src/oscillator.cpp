@@ -70,6 +70,7 @@ void Oscillator::flushControl(const int ntime, const double dt, const char* file
   FILE *file = 0;
   file = fopen(filename, "w");
 
+  fprintf(file, "# timestep    time       p(t) (rotating)          q(t) (rotating)        f(t) (labframe) \n");
   for (int i=0; i<ntime; i++) {
     time = i*dt; 
     this->evalControl(time, &Re, &Im);
