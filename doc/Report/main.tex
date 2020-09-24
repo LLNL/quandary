@@ -292,7 +292,7 @@ If only one initial condition is considered, the unique integer identifier for t
 
      Notes:
      \begin{itemize}
-       \item For our current test cases, the matrix-free solver is much faster than the sparse-matrix solver (see tensor.pdf). However it is currently only implemented for systems consisting of \textit{two} subsystems with $n_1 \otimes n_2$ levels. Future development will extend the approach to more than two subsystem. 
+       \item For our current test cases, the matrix-free solver is much faster than the sparse-matrix solver (about 10x, see tensor.pdf). However it is currently only implemented for systems consisting of \textit{two} subsystems with $n_1 \otimes n_2$ levels. Future development will extend the approach to more than two subsystem. 
        \item The matrix-free solver currently does not parallelize across the system dimension (i.e. no parallel Petsc!).
      \end{itemize}
 

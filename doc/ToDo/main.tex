@@ -21,7 +21,9 @@
 \maketitle
 
 \begin{itemize}
-  \item For matrix-free tensor formulation (in the Alice-Cavity case), store $\sqrt{i_k}$ instead of recomputing them inside the loop. Or rather, allow for variable coefficients inside the lowering operators. 
+  \item Matrix-free solver generalization to more than two subsystems
+  \item Parallel tensor contractions.
+  \item For matrix-free tensor formulation, store $\sqrt{i_k}$ instead of recomputing them inside the loop. Or rather, allow for variable coefficients inside the lowering operators. 
   \item During groundstate opimization: discourage higher energy levels:
      \begin{align*}
         \frac 1 T \int_0^T \left( \rho_{kk}\right)^2 \, dt, \quad k > 0
@@ -32,7 +34,6 @@
           \sum_{l=1}^L w_l\alpha_l \leq c_{max}
       \end{align*}
         where $w_l$ are monotonically increasing (e.g. exponentially). This will push later control functions to zero. 
-  \item Allow to compile with or without braid
   \item \textbf{Braid convergence and scaling study} (Ben Southworth):
         \begin{itemize}
           \item Numerical convergence study for forward Braid using implicit vs. explicit time-stepping schemes ($\rightarrow$ Petsc's timestepper).
