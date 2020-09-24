@@ -170,6 +170,10 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
     }
     int diag_id = 0.0;
     for (int k=0; k < initcond_IDs.size(); k++) {
+      if (initcond_IDs[k] > timestepper->mastereq->getOscillator(k)->getNLevels()-1){
+        printf("ERROR in config setting. The requested pure state initialization |%d> exceeds the number of allowed levels for that oscillator (%d).\n", initcond_IDs[k], timestepper->mastereq->getOscillator(k)->getNLevels());
+        exit(1);
+      }
       assert (initcond_IDs[k] < timestepper->mastereq->getOscillator(k)->getNLevels());
       int dim_postkron = 1;
       for (int m=k+1; m < initcond_IDs.size(); m++) {

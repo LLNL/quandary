@@ -187,6 +187,10 @@ int main(int argc,char **argv)
     printf("ERROR: Matrix free solver is only implemented for systems with TWO oscillators!\n");
     exit(1);
   }
+  if (usematfree && mpisize_petsc > 1) {
+    printf("ERROR: No Petsc-parallel version for the matrix free solver available!");
+    exit(1);
+  }
   MasterEq* mastereq = new MasterEq(nlevels, oscil_vec, xi, lindbladtype, t_collapse, usematfree);
 
 
