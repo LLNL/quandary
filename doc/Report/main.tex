@@ -120,13 +120,8 @@ We aim to find control pulses $p^k(\vec{\alpha}^k, t), q^k(\vec{\alpha}^k, (t)$,
                     \end{bmatrix}
 \end{align}
 
-To reach this goal, we either minimize the distance between the final state density matrix and the ground-state density matrix, measured in the frobenius norm (1), or we look at the expected energy level of the system and minimize that:
+To reach this goal, we either minimize the distance between the final state density matrix and the ground-state density matrix, measured in the frobenius norm, or we look at the expected energy level of the system and minimize that:
 \begin{enumerate}
-  \item \textit{Direct ground-state optimization}: Minimize the frobenius norm between the final density matrix and the groundstate density matrix:
-    \begin{align}
-      J(\rho(T)) = \frac 12 \| \rho(T) - \rho_G \|^2_F 
-    \end{align}
-    where the Frobenius norm is defined as $\|A\|^2_F = \Tr(A^{\dagger}A)$.
   \item \textit{Expected energy minimization}: Minimize a weighted sum over expected energy levels of the (full or partial) system
     \begin{align}
        \quad J(\rho(T)) = \sum_{k\in \mathcal{K}} \beta_k \langle O_k \rangle 
@@ -137,13 +132,18 @@ To reach this goal, we either minimize the distance between the final state dens
       \item[(b)] $J(\rho(T)) = \frac{1}{|\mathcal{K}|}\sum_{k\in\mathcal{K}}\left(\langle O_k \rangle \right)^2 $
       \item[(c)] $J(\rho(T)) = \frac{1}{|\mathcal{K}|}\sum_{k\in\mathcal{K}}\langle O_k \rangle$
     \end{enumerate}
+  \item \textit{Direct ground-state optimization}: Minimize the frobenius norm between the final density matrix and the groundstate density matrix:
+    \begin{align}
+      J(\rho(T)) = \frac 12 \| \rho(T) - \rho_G \|^2_F 
+    \end{align}
+    where the Frobenius norm is defined as $\|A\|^2_F = \Tr(A^{\dagger}A)$.
 
 \end{enumerate}
 
 For both objective types, we add an integral penalty term to the objective function, that discourages non-zero energy states over time as so:
 \begin{align}
   % \int_0^T w(t) J(\rho(t)) \, \mathrm{d}t, \quad \text{where} \quad w(t) = \left(\frac{t}{T}\right)^p, p \geq 1
-  \int_0^T w(t) J(\rho(t)) \, \mathrm{d}t, \quad \text{where} \quad w(t) = \frac{1}{a} e^{ -\left(\frac{t-T}{a} \right)^2}, \quad a \leq 1
+  \int_0^T w(t) J(\rho(t)) \, \mathrm{d}t, \quad \text{where} \quad w(t) = \frac{1}{a} e^{ -\left(\frac{t-T}{a} \right)^2}, \quad  0 < a \leq 1
 \end{align}
 Note, that as $a\to 0$, the weight $w(t)$ converges to the dirac delta distribution with peak at final time $T$. 
 
@@ -170,8 +170,10 @@ Target gates that we consider include
 
 
 
-\subsection{Basis for initial conditions}
-For both of the above optimization targets, the goal is to find control parameters that minimize the respective measure for \textit{any} possible initial condition $\rho(0)$. We therefore define a basis for all initial density matrices and aim to minimize the above measure for all of the matrix basis elements. The basis matrices are defined as follows:
+\subsection{Initial conditions}\label{subsec:initcond}
+
+\subsubsection{Basis for initial condition density matrices}
+Typically, the optimization goal is to find control parameters that minimize the respective measure for \textit{any} possible initial condition $\rho(0)$. We therefore define a basis for all initial density matrices and aim to minimize the average of the above measure over those matrix basis elements. The basis matrices are defined as follows:
 
 \begin{align}
 B^{kj} := \frac 12 \left( E_{kk} + E_{jj}\right) +  \begin{cases} 
@@ -182,6 +184,11 @@ B^{kj} := \frac 12 \left( E_{kk} + E_{jj}\right) +  \begin{cases}
 \end{align}
 for all $k,j\in\{0,\dots, N-1\}$, where $E_{kj}$ denotes the matrix of all zeros except for the $(k,j)$-th element which is one (hence $E_{kj} = e_ke_j^T$). These $N^2$ matrices are hermitian, and they are linearly independent over the real vector space of hermitian matrices. They further satisfy $\Tr(B^{kj}) = 1$ and they are positive semi-definite, hence each basis matrix is a density matrix. 
 
+To uniquely identify the different initial conditions in the code, we assign a unique index $i \in \{0,\dots, N^2-1\}$ to each basis elements with 
+    \begin{align*}
+      B^i := B^{k(i), j(i)}, \quad \text{with} \quad k(i) := i \,\mbox{mod}\, N, \quad \text{and} \quad j(i) := \left\lfloor \frac{i}{N} \right\rfloor
+    \end{align*}
+
 We can rewrite any initial condition $\rho(0)$ as a linear combination 
 \begin{align}
   \rho(0) = \sum_{k=0}^{N-1} \sum_{j=0}^{N-1} a_{kj} B^{k, j}.
@@ -191,12 +198,12 @@ Since the master equation \eqref{mastereq} is linear, we can formally define a l
 \begin{align}
   \rho(T) = S^{\vec{\alpha}}(T,\rho(0)) = \sum_{k,j=0}^{N-1} a_{kj} S^{\vec{\alpha}}(T,B^{k, j}).
 \end{align}
-AP: According to D.~Lidar's lectue notes, eqn. (112), the most general expression for the evolution
-of the density matrix follows from the Kraus operator sum representation,
-\[
-  \rho(T) = \sum_{\mu,\nu} K_{\mu\nu}(t) \rho(0) K_{\mu\nu}^\dagger(t),\quad \sum_{\mu,\nu}
-  K_{\mu\nu}^\dagger(t)K_{\mu\nu}(t)=I.
-\]
+% AP: According to D.~Lidar's lectue notes, eqn. (112), the most general expression for the evolution
+% of the density matrix follows from the Kraus operator sum representation,
+% \[
+%   \rho(T) = \sum_{\mu,\nu} K_{\mu\nu}(t) \rho(0) K_{\mu\nu}^\dagger(t),\quad \sum_{\mu,\nu}
+%   K_{\mu\nu}^\dagger(t)K_{\mu\nu}(t)=I.
+% \]
 
 We therefore define the optimization problem that minimizes the respective measure averaged over all the basis elements:
 \begin{align}\label{optimproblem_basis}
@@ -204,7 +211,7 @@ We therefore define the optimization problem that minimizes the respective measu
   \text{s.t.} \quad  \text{each} \quad \rho^{k,j}(t) \quad & \text{solves \eqref{mastereq} with initial condition} \quad \rho^{k,j}(0) = B^{k,j}
 \end{align}
 
-If the objective measure $J(\rho)$ is linear in $\rho$, we can reduce the optimization using the linearity of $S^{\vec{\alpha}}$:
+If the objective measure $J(\rho)$ is linear in $\rho$ (as for example in the groundstate optimization minimizing the expected energy levels), we can make use of the linearity of $S^{\vec{\alpha}}$:
 \begin{align}
    \frac{1}{N^2}  \sum_{k,j=0}^{N-1} \, J\left(\rho^{k,j}(T)\right) = J\left(S^{\vec{\alpha}}\left(T,\frac{1}{N^2}  \sum_{k,j=0}^{N-1} B^{kj}\right)\right)
 \end{align}
@@ -212,13 +219,26 @@ Hence, we define a new optimization problem using the specific initial condition
 \begin{align}
   \min \, J(S^{\vec{\alpha}}(,T\rho(0))) \quad \text{s.t.} \quad \rho(0) = \frac{1}{N^2}  \sum_{k,j=0}^{N-1} B^{kj}
 \end{align}
+In this case, each objective function evaluation requires to propagate only one initial condition $\rho(0)$. 
 
-\subsection{Fidelity} 
-For closed systems, the $\rho(t)$ and the solution operator $U(t)$ are unitary. In that case, one can show that 
+\subsubsection{Diagonals as initial condition}
+Optionally, one can choose to propagate a basis for only the diagonals of initial density matrices. In that case, only the basis matrices that correspond to diagonal elements ($B^{mm}, m=1,\dots,N)$ are propagated through the time domain, and the objective function evaluates the average measure over those $N$ initial conditions at the final time $T$. 
+
+\subsubsection{Pure state initialization, or reading a state from file}
+One can choose to simulate for only one specific initial condition. Here, we consider pure-state initialization, where the initial density matrix is composed of pure states for each of the subsystems. E.g. for a bipartite system with $n_1 \otimes n_2$ levels, one can propagate any initial pure state 
 \begin{align}
-  \frac{1}{2N^2}\|\rho(T) - V\rho(0)V\|_F^2 = 1 - \frac{1}{N^2}|\Tr(U(T)^{\dagger}V)|^2,
+  \rho(0)  = |a\rangle \langle a| \otimes |b\rangle \langle b| \quad \text{for} \quad a \in \{0,\dots, n_1\}, b\in \{0,\dots, n_2\}
 \end{align}
-which is called the \textit{infidelity}, and the trace-term is the \textit{fidelity}. However, since we include the Lindblad terms, $\rho(T)$ is not unitary, and the above equation is not valid anymore. For defining a fidelity we consider $F(z) := 1 - J(z)$. Note, however, that if the optimized objective is in the order $O(\delta)$, then the error $\epsilon_i$ of a final state component $i$ from the gate is rather of the order $O(\sqrt{\delta})$, since $J$ represents the average squared error $J = \frac{1}{N^2}\sum_i \epsilon_i^2$ and so $\epsilon_i^2 \sim O(\delta)$ on average.
+Alternatively, a specific initial condition can also be read from a file. 
+
+If only one initial condition is considered, the unique integer identifier for this initial condition will be $i=-1$ (in order to distinguish from the above basis elements or diagonals).
+
+% \subsection{Fidelity} 
+% For closed systems, the $\rho(t)$ and the solution operator $U(t)$ are unitary. In that case, one can show that 
+% \begin{align}
+%   \frac{1}{2N^2}\|\rho(T) - V\rho(0)V\|_F^2 = 1 - \frac{1}{N^2}|\Tr(U(T)^{\dagger}V)|^2,
+% \end{align}
+% which is called the \textit{infidelity}, and the trace-term is the \textit{fidelity}. However, since we include the Lindblad terms, $\rho(T)$ is not unitary, and the above equation is not valid anymore. For defining a fidelity we consider $F(z) := 1 - J(z)$. Note, however, that if the optimized objective is in the order $O(\delta)$, then the error $\epsilon_i$ of a final state component $i$ from the gate is rather of the order $O(\sqrt{\delta})$, since $J$ represents the average squared error $J = \frac{1}{N^2}\sum_i \epsilon_i^2$ and so $\epsilon_i^2 \sim O(\delta)$ on average.
 
 \section{Implementation}
 
@@ -254,12 +274,30 @@ which is called the \textit{infidelity}, and the trace-term is the \textit{fidel
      A_c(t) &= \sum_k q^k(\vec{\alpha}^k,t) \underbrace{\left( I_N \otimes \left(a_k - a_k^{\dagger}\right) - \left(a_k - a_k^{\dagger}\right)^T\otimes I_N \right)}_{=:A_c^k} \\
      B_c(t) &= \sum_k p^k(\vec{\alpha}^k,t) \underbrace{\left( - I_N \otimes \left(a_k + a_k^{\dagger}\right) + \left(a_k + a_k^{\dagger}\right)^T\otimes I_N \right)}_{=:B_c^k} 
    \end{align}
-   In the code, we initialize and store the constant matricees $A_d,B_d,A_c^k,  B_c^k$, and use them as building blocks to evaluate 
-   \begin{align}
-     A(t) &= Re(M(t)) = A_d + \sum_kq^k(\alpha^k, t)A_c^k \\
-     B(t) &= Im(M(t)) = B_d + \sum_k p^k(\alpha^k, t)B_c^k
-   \end{align}
-   at time $t$, and finally build $M(t)$ from \eqref{realvaluedODE}.
+
+   \subsection{Sparse-matrix vs. matrix-free solver}
+
+   In the code, two versions to evaluate the right hand side of Lindblad's equation, $M(t)q(t)$, of the vectorized real-valued system are available:
+   \begin{itemize}
+     \item \textit{Sparse-matrix solver:}
+      The sparse-matrix solver initializes and stores the constant matrices $A_d,B_d, A_c^k, B_c^k$ using Petsc's sparse-matrix format. They are used as building blocks to evaluate the sparse system matrix $M(t)$ with 
+     \begin{align}
+       A(t) &= Re(M(t)) = A_d + \sum_kq^k(\alpha^k, t)A_c^k \\
+       B(t) &= Im(M(t)) = B_d + \sum_k p^k(\alpha^k, t)B_c^k
+     \end{align}
+   at each time $t$. $M(t)$ is then multiplied to the vectorized density matrix $q(t)$ using Petsc's sparse MatVec implementation. 
+
+   \item \textit{Matrix-free solver using tensor contractions:}
+     Then tensor-contraction code is matrix-free, i.e. the matrices $A_d,B_d, A_c^k, B_c^k$ and hence $M(t)$ and not stored explicitly, but instead their action on a vector $q(t)$ is evaluated at each time step $t$. The action of those matrices to the system vector is implemented using tensor-contractions applied to the corresponding dimension of the density matrix. The document 'tensor.pdf' explains the tensor contractions in more detail. 
+
+     Notes:
+     \begin{itemize}
+       \item For our current test cases, the matrix-free solver is much faster than the sparse-matrix solver (see tensor.pdf). However it is currently only implemented for systems consisting of \textit{two} subsystems with $n_1 \otimes n_2$ levels. Future development will extend the approach to more than two subsystem. 
+       \item The matrix-free solver currently does not parallelize across the system dimension (i.e. no parallel Petsc!).
+     \end{itemize}
+
+
+   \end{itemize}
 
   \subsection{Co-located storage of real and imaginary part}
   The real and imaginary parts of $q(t)$ are stored in a co-located manner: For $q = u+iv$ with $u,v\in\R^{N^2}$, a vector of size $2N^2$ is stored that staggers real and imaginary parts behind each other for each component:
@@ -352,10 +390,7 @@ which is called the \textit{infidelity}, and the trace-term is the \textit{fidel
       \dot x^{kj}(t) &= M(t) x^{kj}(t) \quad \forall \, t\in (0,T) \\
       x^{kj}(0) &= \mbox{vec}(B^{k,j})
     \end{align*}
-    for all initial basis matrices $B^{k,j}, k,j=0,\dots,N-1$. To uniquely identify the different forward solves, we assign a unique index $i \in \{0,\dots, N^2-1\}$ to each basis elements with 
-    \begin{align*}
-      B^i := B^{k(i), j(i)}, \quad \text{with} \quad k(i) := i \,\mbox{mod}\, N, \quad \text{and} \quad j(i) := \left\lfloor \frac{i}{N} \right\rfloor
-    \end{align*}
+    either for all initial basis matrices $B^{k,j}, k,j=0,\dots,N-1$, or for only the diagonals $B^{mm}$, or for only one specific initial condition, depending on the test case (compare section \ref{subsec:initcond}). 
 
     After each forward solve, we add to the final-time objective function:
     \begin{align}
@@ -364,20 +399,20 @@ which is called the \textit{infidelity}, and the trace-term is the \textit{fidel
     where we add a Tikhonov regularization term with parameter $\gamma>0$ for stability.
 
 
-  \subsection{Parallelization}
-    Three levels of parallelization are implemented: 
+  \subsection{Parallelization (experimental)}
+    Three levels of parallelization are planned, and partly implemented: 
       \begin{enumerate}
-        \item Parallelization over initial conditions
-        \item Time-parallelization (XBraid)
-        \item Spatial parallelism for parallel linear algebra (Petsc)
+        \item Parallelization over initial conditions: working, configuration option \textit{np\_init}. Speedup over serial should be ideal, i.e. equal to \textit{np\_init}.
+        \item Time-parallelization via XBraid: working implementation, but speedup depends on testcase and XBraid setting (experts only), configuration option is \textit{np\_braid}
+        \item Spatial parallelism for parallel linear algebra (Petsc): working for the sparse-matrix solver, not for the tensor-contraction solver
       \end{enumerate}
-      The global communicator (MPI\_COMM\_WORLD) is split into three sub-communicator, one for each of the above. The total number of mpi processes ($np_{total}$) is split into three subgroups such that 
+      In the main code, the global communicator (MPI\_COMM\_WORLD) is split into three sub-communicator, one for each of the above. The total number of mpi processes ($np_{total}$) is split into three subgroups such that 
          \begin{align*}
            np_{braid} * np_{init} * np_{petsc} = np_{total}.
          \end{align*}
       The user specifies the size of the communicator for distributing the initial conditions ($np_{init}$) as well as time-parallelization ($np_{braid}$) in the config file. The number of cores for parallel linear algebra ($np_{petsc}$) is then computed from the above equation. The following requirements for parallel distribution must be considered when setting up parallel runs:
       \begin{itemize}
-        \item $\frac{n_{init}}{np_{init}} \in \mathds{N}$, where $n_{init}$ is the number of initial conditions that are considered (being $N^2$ for the full basis). This requirement ensures that each processor group owns the same number of initial conditions.
+        \item $\frac{n_{init}}{np_{init}} \in \mathds{N}$, where $n_{init}$ is the number of initial conditions that are considered (being $N^2$ for the full basis, $N$ for considering diagonals only as initial condition, and $1$ if propagating only one initial condition e.g. reading from file, or pure state initialization). This requirement ensures that each processor group owns the same number of initial conditions.
         \item $\frac{np_{total}}{np_{init}*np_{braid}} \in \mathds{N}$, so that each processor group has the same number of cores for petsc.
         \item $\frac{N^2}{np_{petsc}} \in \mathds{N}$, hence the system dimensions must be integer multiple of the number of cores for distributing linear algebra in Petsc. This constraint is a little annoying, however the current implementation requires this due to the co-located storage of the real and imaginary parts of the vectorized state.
       \end{itemize}
