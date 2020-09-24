@@ -11,7 +11,7 @@ This project relies on the Petsc package [https://www.mcs.anl.gov/petsc/] to han
         `./configure --prefix=/YOUR/INSTALL/DIR --with-debugging=0 --with-fc=0 --with-cxx=mpicxx --with-cc=mpicc COPTFLAGS='-O3' CXXOPTFLAGS='-O3'`
     * The output of `./configure` reports on how to set the `PETSC_DIR` and `PETSC_ARCH` variables
         * `export PETSC_DIR=/YOUR/INSTALL/DIR`
-        * `export PETSC_ARCH=/YOUR/ARCH/PREFIX
+        * `export PETSC_ARCH=/YOUR/ARCH/PREFIX`
     * Compile petsc with `make all test`
     * Append Petsc directory to the `LD_LIBRARY_PATH`:
         * `export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$PETSC_DIR/$PETSC_ARCH`

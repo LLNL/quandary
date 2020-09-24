@@ -27,7 +27,7 @@ Output::Output(MapParam& config, int mpirank_petsc_, int mpirank_init_) : Output
   optim_outputfreq = config.GetIntParam("optim_outputfrequency", 10);
   if (mpirank_world == 0) {
     char filename[255];
-    sprintf(filename, "%s/optimTao.dat", datadir.c_str());
+    sprintf(filename, "%s/optim_history.dat", datadir.c_str());
     optimfile = fopen(filename, "w");
     fprintf(optimfile, "#iter    obj_value           ||grad||               LS step           Costfunction     Tikhonov-regul      Penalty-term\n");
   } 
@@ -103,7 +103,7 @@ void Output::writeControls(Vec params, MasterEq* mastereq, int ntime, double dt)
     /* Print control functions */
     mastereq->setControlAmplitudes(params);
     for (int ioscil = 0; ioscil < mastereq->getNOscillators(); ioscil++) {
-        sprintf(filename, "%s/control_iter%04d_%02d.dat", datadir.c_str(), optim_iter, ioscil+1);
+        sprintf(filename, "%s/control%d_iter%04d.dat", datadir.c_str(), ioscil, optim_iter);
         mastereq->getOscillator(ioscil)->flushControl(ntime, dt, filename);
     }
 
