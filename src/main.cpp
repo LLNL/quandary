@@ -150,19 +150,57 @@ int main(int argc,char **argv)
 
   double total_time = ntime * dt;
 
-  /* Initialize the Oscillators */
+  /* --- Initialize the Oscillators --- */
   Oscillator** oscil_vec = new Oscillator*[nlevels.size()];
+  // Get ground frequencies from config file 
   std::vector<double> ground_freq;
   config.GetVecDoubleParam("frequencies", ground_freq, 1e20);
   if (ground_freq.size() < nlevels.size()) {
     printf("Error: Number of given ground frequencies (%lu) is smaller than the the number of oscillators (%lu)\n", ground_freq.size(), nlevels.size());
     exit(1);
   } 
+  // Create up the oscillators 
   for (int i = 0; i < nlevels.size(); i++){
     std::vector<double> carrier_freq;
     std::string key = "carrier_frequency" + std::to_string(i);
     config.GetVecDoubleParam(key, carrier_freq, 0.0);
     oscil_vec[i] = new Oscillator(i, nlevels, nspline, ground_freq[i], carrier_freq, total_time);
+  }
+
+  // Get pi-pulses, if any
+  std::vector<std::string> pipulse_str;
+  config.GetVecStrParam("apply_pipulse", pipulse_str, "none");
+  if (pipulse_str[0].compare("none") != 0) { // There is at least one pipulse to be applied!
+    // sanity check
+    if (pipulse_str.size() % 4 != 0) {
+      printf("Wrong pi-pulse configuration. Number of elements must be multiple of 4!\n");
+      printf("apply_pipulse config option: <oscilID>, <tstart>, <tstop>, <amp>, <anotherOscilID>, <anotherTstart>, <anotherTstop>, <anotherAmp> ...\n");
+      exit(1);
+    }
+    int k=0;
+    while (k < pipulse_str.size()){
+      // Set pipulse for this oscillator
+      int pipulse_id = atoi(pipulse_str[k+0].c_str());
+      oscil_vec[pipulse_id]->pipulse.tstart.push_back(atof(pipulse_str[k+1].c_str()));
+      oscil_vec[pipulse_id]->pipulse.tstop.push_back(atof(pipulse_str[k+2].c_str()));
+      oscil_vec[pipulse_id]->pipulse.amp.push_back(atof(pipulse_str[k+3].c_str()));
+      // Set zero control for all other oscillators during this pipulse
+      for (int i=0; i<nlevels.size(); i++){
+        if (i != pipulse_id) {
+          oscil_vec[i]->pipulse.tstart.push_back(atof(pipulse_str[k+1].c_str()));
+          oscil_vec[i]->pipulse.tstop.push_back(atof(pipulse_str[k+2].c_str()));
+          oscil_vec[i]->pipulse.amp.push_back(0.0);
+        }
+      }
+      k+=4;
+    }
+  }
+
+  for (int i = 0; i < nlevels.size(); i++){
+    int pipulse_id = i;
+    for (int ipulse = 0; ipulse < oscil_vec[pipulse_id]->pipulse.tstart.size(); ipulse++){
+      printf("PiPulse settings: %d, %f %f %f\n", pipulse_id, oscil_vec[pipulse_id]->pipulse.tstart[ipulse], oscil_vec[pipulse_id]->pipulse.tstop[ipulse], oscil_vec[pipulse_id]->pipulse.amp[ipulse]);
+    }
   }
 
   /* --- Initialize the Master Equation  --- */

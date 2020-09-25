@@ -145,14 +145,22 @@ int Oscillator::createLoweringOP(int dim_prekron, int dim_postkron, Mat* lowerin
 
 int Oscillator::evalControl(const double t, double* Re_ptr, double* Im_ptr){
 
+  // Sanity check 
   if ( t > Tfinal ){
-    printf("WARNING: accessing spline outside of [0,T] at %f. Returning 0.0\n", t);
-    *Re_ptr = 0.0;
-    *Im_ptr = 0.0;
-  } else {
-    /* Evaluate the spline at time t */
-    *Re_ptr = basisfunctions->evaluate(t, params, ground_freq, RE);
-    *Im_ptr = basisfunctions->evaluate(t, params, ground_freq, IM);
+    printf("ERROR: accessing spline outside of [0,T] at %f. Should never happen! Bug.\n", t);
+    exit(1);
+  }
+
+  /* Evaluate the spline at time t */
+  *Re_ptr = basisfunctions->evaluate(t, params, ground_freq, RE);
+  *Im_ptr = basisfunctions->evaluate(t, params, ground_freq, IM);
+
+  /* If pipulse: Overwrite controls by constant amplitude */
+  for (int ipulse=0; ipulse< pipulse.tstart.size(); ipulse++){
+    if (pipulse.tstart[ipulse] <= t && t <= pipulse.tstop[ipulse]) {
+      *Re_ptr = pipulse.amp[ipulse];
+      *Im_ptr = pipulse.amp[ipulse];
+    }
   }
 
   return 0;
@@ -160,31 +168,43 @@ int Oscillator::evalControl(const double t, double* Re_ptr, double* Im_ptr){
 
 int Oscillator::evalControl_diff(const double t, double* dRedp, double* dImdp) {
 
+  // Sanity check 
   if ( t > Tfinal ){
-    printf("WARNING: accessing spline derivative outside of [0,T]. Returning 0.0\n");
-    for (int i = 0; i < params.size(); i++) {
-      dRedp[i] = 0.0;
-      dImdp[i] = 0.0;
-    }
-  } else {
-      double Rebar = 1.0;
-      double Imbar = 1.0;
-      basisfunctions->derivative(t, dRedp, Rebar, RE);
-      basisfunctions->derivative(t, dImdp, Imbar, IM);
-  }
+    printf("ERROR: accessing spline outside of [0,T] at %f. Should never happen! Bug.\n", t);
+    exit(1);
+  } 
+
+  /* Evaluate derivative of spline basis at time t */
+  double Rebar = 1.0;
+  double Imbar = 1.0;
+  basisfunctions->derivative(t, dRedp, Rebar, RE);
+  basisfunctions->derivative(t, dImdp, Imbar, IM);
+
+  /* TODO: Derivative of pipulse? */
+  // if (pipulse.tstart <= t && t <= pipulse.tstop) {
+  //   printf("ERROR: Derivative of pipulse not implemented. \n");
+  //   exit(1);
+  // }
 
   return 0;
 }
 
 int Oscillator::evalControl_Labframe(const double t, double* f){
 
+  // Sanity check 
   if ( t > Tfinal ){
-    printf("WARNING: accessing spline outside of [0,T] at %f. Returning 0.0\n", t);
-    *f = 0.0;
-  } else {
-    /* Evaluate the spline at time t */
-    *f = basisfunctions->evaluate(t, params, ground_freq, LAB);
+    printf("ERROR: accessing spline outside of [0,T] at %f. Should never happen! Bug.\n", t);
+    exit(1);
   }
+
+  /* Evaluate the spline at time t */
+  *f = basisfunctions->evaluate(t, params, ground_freq, LAB);
+
+  // TODO
+  // if (pipulse.tstart <= t && t <= pipulse.tstop) {
+  //   printf("WARNING: Lab-frame controls for pipulse not correctly implemented!\n");
+  //   printf("Output data for lab-frame controls will be wrong!\n");
+  // }
 
   return 0;
 }

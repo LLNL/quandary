@@ -12,6 +12,12 @@
 
 using namespace std;
 
+struct PiPulse {
+  std::vector<double> tstart; 
+  std::vector<double> tstop;
+  std::vector<double> amp;
+};
+
 class Oscillator {
   protected:
     int nlevels;                   // Number of levels for this the oscillator 
@@ -26,6 +32,10 @@ class Oscillator {
 
     Mat zeromat;                   // auxiliary matrix with zero entries
     int mpirank_petsc;             // rank of Petsc's communicator
+
+  public:
+    PiPulse pipulse;  // Store a dummy pipulse that does nothing
+
 
   public:
     Oscillator();
