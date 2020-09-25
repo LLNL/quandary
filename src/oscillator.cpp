@@ -181,10 +181,12 @@ int Oscillator::evalControl_diff(const double t, double* dRedp, double* dImdp) {
   basisfunctions->derivative(t, dImdp, Imbar, IM);
 
   /* TODO: Derivative of pipulse? */
-  // if (pipulse.tstart <= t && t <= pipulse.tstop) {
-  //   printf("ERROR: Derivative of pipulse not implemented. \n");
-  //   exit(1);
-  // }
+  for (int ipulse=0; ipulse< pipulse.tstart.size(); ipulse++){
+    if (pipulse.tstart[ipulse] <= t && t <= pipulse.tstop[ipulse]) {
+      printf("ERROR: Derivative of pipulse not implemented. \n");
+      exit(1);
+    }
+  }
 
   return 0;
 }
@@ -200,11 +202,24 @@ int Oscillator::evalControl_Labframe(const double t, double* f){
   /* Evaluate the spline at time t */
   *f = basisfunctions->evaluate(t, params, ground_freq, LAB);
 
-  // TODO
-  // if (pipulse.tstart <= t && t <= pipulse.tstop) {
-  //   printf("WARNING: Lab-frame controls for pipulse not correctly implemented!\n");
-  //   printf("Output data for lab-frame controls will be wrong!\n");
-  // }
+  // Test implementation of lab frame controls. 
+  // double forig = *f;
+  // double p = basisfunctions->evaluate(t, params, ground_freq, RE);
+  // double q = basisfunctions->evaluate(t, params, ground_freq, IM);
+  // double arg = 2.0*M_PI*ground_freq*t;
+  // double ftest = 2.0*p*cos(arg) - 2.0*q*sin(arg);
+  // double err = fabs(forig-ftest);
+  // if (err > 1e-13) printf("err %f\n", err);
+
+  /* If inside a pipulse, overwrite lab control */
+  for (int ipulse=0; ipulse< pipulse.tstart.size(); ipulse++){
+    if (pipulse.tstart[ipulse] <= t && t <= pipulse.tstop[ipulse]) {
+      double p = pipulse.amp[ipulse];
+      double q = pipulse.amp[ipulse];
+      double lab_freq = 2.0*M_PI*ground_freq;
+      *f = 2.0 * p * cos(lab_freq*t) - 2.0 * q * sin(lab_freq*t);
+    }
+  }
 
   return 0;
 }
