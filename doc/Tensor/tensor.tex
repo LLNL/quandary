@@ -35,16 +35,16 @@ Consider a matrix-matrix multiplication as rank-2 tensor contractions. For a gen
 \end{align}
 where subscript and superscript indices correspond to rows and columns, respectively, $A_m^l = A_{m,l} = A(m,l)$. 
 
-Note than when applying $A$ to $\rho$ from the right, one gets 
+Note that when applying $A$ to $\rho$ from the right, one gets 
 \begin{align}
-    \rho A = y \quad \Leftrightarrow \quad y_{j_1,i_2} = \rho_{j_1}^{i_1} A_{i_1,i_2} = \sum_{i_1} \rho_{j_1}^{i_1} A_{i_1,i_2} \quad \forall j_1,i_2 = 0,\dots, n \\
+    \rho A = y \quad \Leftrightarrow \quad y_{j_1,i_2} = \rho_{j_1}^{i_1} A_{i_1,i_2} = \sum_{i_1} \rho_{j_1}^{i_1} A_{i_1,i_2} \quad \forall j_1,i_2 = 0,\dots, N \\
    = \sum_{i_1} A_{i_1}^{i_2} \rho_{j_1,i_1} = \sum_{i_1} (A^T)_{i_2}^{i_1} \rho^T_{i_1,j_1} = A_{i_1}^{i_2} \rho_{j_1,i_1}
 \end{align}
-contracting the rows of $A$ with the rows of $\rho$. 
+contracting the columns of $A$ with the rows of $\rho$. 
 
 Now consider a kronecker product of operators $A\otimes B$ with dimensions $A\in\R^{n_a\times n_a}, B\in\R^{n_b\times n_b}$ multiplied to a matrix $\rho \in \R^{n_an_b\times n_an_b}$ of matching dimensions. We can think of $\rho$ as a rank-4 tensor $\rho\in\R^{n_b\times n_a \times n_b \times n_a}$. The application of $A\otimes B$ to the tensor $\rho$ then corresponds to the tensor contraction 
 \begin{align}
-    z := A\otimes B \rho = A_{j_2}^{i_2}\otimes B_{j_1}^{i_1} \rho_{i_1, i_2, i_1^{\prime}, \i_2^{\prime}}
+    z := A\otimes B \rho = A_{j_2}^{i_2}\otimes B_{j_1}^{i_1} \rho_{i_1, i_2, i_1^{\prime}, i_2^{\prime}}
 \end{align}
 contracting first $B$ with $\rho$ on the first dimension $i_1$, then $A$ on the second dimension $i_2$:
 \begin{align}
@@ -61,7 +61,7 @@ More generally, for a tensor $\rho \in \R^{n_1\times \dots \times n_N}$ we can d
 
 
 \section{Tensor contraction for Lindblad master equation}
-Consider a quantum system with $Q$ oscillators in $H_{n_1} \otimes \dots H_{n_Q}$, with $n_k$ levels for the $k$-the oscillator and density matrix $\rho \in \C^{N\times N}$ with $N=\prod_{k=1}^{Q} n_k$. Consider the density matrix being a tensor of rank $2Q$: 
+Consider a quantum system with $Q$ oscillators in $H_{n_1} \otimes \dots H_{n_Q}$, with $n_k$ levels for the $k$-th oscillator and density matrix $\rho \in \C^{N\times N}$ with $N=\prod_{k=1}^{Q} n_k$. Consider the density matrix being a tensor of rank $2Q$: 
 \begin{align}
     \rho_{i_1,\dots, i_Q, i_1^{\prime}, \dots, i_Q^{\prime}} =: \rho_{\bfi, \bfi^\prime}\in\C^{n_1\times \dots \times n_Q \times n_1 \times \dots \times n_Q}
 \end{align}
@@ -74,18 +74,18 @@ to shift $i_k$ by one.
 
 All operations that are applied to $\rho$ in the Lindblad equation are of the form $I_{n_1}\otimes \dots \otimes M^{n_k} \otimes \dots \otimes I_{n_Q}$, or $I_{n_1}\otimes \dots \otimes M^{n_l} \otimes I_{n_{l+1}\dots n_{k-1}} \otimes M^{n_k} \otimes \dots \otimes I_{n_Q}$, where $I_{n_k}$ is the identity in $\R^{n_k}$. Applying those operators to the tensor $\rho$ therefore effectively acts in at most two of the dimensions, while others are contracted only with identities. Example for a 3-partite systems $H^{n_1} \otimes H^{n_2} \otimes H^{n_3}$. Consider the operator $I_{n_1} \otimes M_{n_2} \otimes I_{n_3}$ with corresponding dimension. It's action on $\rho \in \C^{n1\times n2\times n3 \times n1\times n2 \times n3}$ is
 \begin{align}
-    I^{i_1}_{j_1}\otimes M^{i_2}_{j_2} \otimes I^{i_3}_{j_3} \rho_{i_1i_2i_3i_1^{\prime}i_2^\prime i_3^\prime} = M^{i_2}_{j_2} \rho_{j_1i_2i_3j_1^{\prime}i_2^\prime i_3^\prime} = \sum_{i_2} M(j_2, i_2) \rho(j_1,i_2,j_3,i_1^{\prime},i_2^\prime, i_3^\prime)  =: y_{j_1,j_2,j_3,i_1^{\prime},i_2^\prime,i_3^\prime}
+    I^{i_1}_{j_1}\otimes M^{i_2}_{j_2} \otimes I^{i_3}_{j_3} \rho_{i_1i_2i_3i_1^{\prime}i_2^\prime i_3^\prime} = M^{i_2}_{j_2} \rho_{j_1i_2j_3i_1^{\prime}i_2^\prime i_3^\prime} = \sum_{i_2} M(j_2, i_2) \rho(j_1,i_2,j_3,i_1^{\prime},i_2^\prime, i_3^\prime)  =: y_{j_1,j_2,j_3,i_1^{\prime},i_2^\prime,i_3^\prime}
 \end{align}
 and when applying from the right
 \begin{align}
-    \rho_{i_1i_2i_3i_1^{\prime}i_2^\prime i_3^\prime}I^{i_1^{\prime}}_{j_1}\otimes M^{i_2^\prime}_{j_2} \otimes I^{i_3^\prime}_{j_3}  = M^{j_2^\prime}_{i_2^\prime} \rho_{i_1i_2i_3j_1^{\prime}i_2^\prime j_3^\prime} = \sum_{i_2^\prime} M(i_2^{\prime}, j_2^\prime) \rho(i_1,i_2,i_3,j_1^{\prime}i_2^\prime, j_3^\prime)  =: y_{i_1,i_2,i_3,j_1^{\prime}j_2^\prime, j_3^\prime}
+    \rho_{i_1i_2i_3i_1^{\prime}i_2^\prime i_3^\prime}I^{j_1^{\prime}}_{i_1}\otimes M^{j_2^\prime}_{i_2} \otimes I^{j_3^\prime}_{i_3}  = M^{j_2^\prime}_{i_2^\prime} \rho_{i_1i_2i_3j_1^{\prime}i_2^\prime j_3^\prime} = \sum_{i_2^\prime} M(i_2^{\prime}, j_2^\prime) \rho(i_1,i_2,i_3,j_1^{\prime}i_2^\prime, j_3^\prime)  =: y_{i_1,i_2,i_3,j_1^{\prime}j_2^\prime, j_3^\prime}
 \end{align}
 Note that when applying from the right, the access of elements in $M$ is inverted, summing over columns in $M$.
 
 \begin{enumerate}
     \item \textbf{Constant drift Hamiltonian} $H_d = -\sum_k \frac{\xi}{2} \left(N_k^2 - N_k\right) - \sum_{l<k} \xi_{lk} N_lN_k$, with
       \begin{align}
-      N_k = I_{n_1}\otimes \dots \otimes N^{(n_k)} \otimes \dots \otimes I_{n_Q} \quad \text{with} \quad N^{(n_k)} := \begin{pmatrix} 0 & & \\ & 1& \\ & & \ddots \end{pmatrix}
+      N_k = I_{n_1}\otimes \dots \otimes N^{(n_k)} \otimes \dots \otimes I_{n_Q} \quad \text{and} \quad N^{(n_k)} := \begin{pmatrix} 0 & & \\ & 1& \\ & & \ddots \\ & & & n_k -1\end{pmatrix} \in \R^{n_k}
       \end{align}
       Application to $\rho$ is hence a sum of contractions of $N^{(n_k)}$ to the corresponding $k$-th dimension of the tensor $\rho_{\bfi, \bfi^\p}$ , such as
       \begin{align}
