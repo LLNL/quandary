@@ -196,9 +196,8 @@ void MapParam::GetVecIntParam(std::string key, std::vector<int> &fillme, int def
         fillme.push_back(atoi(intermediate.c_str()));
     } 
     lineexp = line.str();
+    export_param(mpi_rank, *log, key, lineexp);  
   }
-
-  export_param(mpi_rank, *log, key, lineexp);  
 }
 
 
@@ -222,7 +221,6 @@ void MapParam::GetVecStrParam(std::string key, std::vector<std::string> &fillme,
         fillme.push_back(intermediate);
     } 
     lineexp = line.str();
+    export_param(mpi_rank, *log, key, lineexp);  
   }
-
-  export_param(mpi_rank, *log, key, lineexp);  
 }
