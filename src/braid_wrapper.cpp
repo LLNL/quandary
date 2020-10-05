@@ -312,17 +312,19 @@ braid_Int myBraidApp::Access(braid_Vector u_, BraidAccessStatus &astatus){
   myBraidVector *u = (myBraidVector *)u_;
   int done = 0;
   double t;
+  int timestep;
 
   /* Get time information */
   astatus.GetT(&t);
   astatus.GetDone(&done);
+  astatus.GetTIndex(&timestep);
   if (!done) return 0;
 
   /* Don't print first time step. */
   // if (t == 0.0) return 0;
 
   if (accesslevel > 0) {
-    output->writeDataFiles(t, u->x, mastereq);
+    output->writeDataFiles(timestep, t, u->x, mastereq);
   }
 
   return 0; 

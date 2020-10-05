@@ -6,6 +6,7 @@ Output::Output(){
   mpirank_init  = 0;
   mpirank_braid = 0;
   optim_monitor_freq = 0;
+  output_frequency = 0;
   optim_iter = 0;
 }
 
@@ -25,6 +26,7 @@ Output::Output(MapParam& config, int mpirank_petsc_, int mpirank_init_) : Output
 
   /* Prepare output for optimizer */
   optim_monitor_freq = config.GetIntParam("optim_monitor_frequency", 10);
+  output_frequency = config.GetIntParam("output_frequency", 1);
   if (mpirank_world == 0) {
     char filename[255];
     sprintf(filename, "%s/optim_history.dat", datadir.c_str());
@@ -88,23 +90,38 @@ void Output::writeControls(Vec params, MasterEq* mastereq, int ntime, double dt)
     VecGetSize(params, &ndesign);
 
     /* Print current parameters to file */
-    FILE *paramfile;
-    sprintf(filename, "%s/optim_param_iter%04d.dat", datadir.c_str(), optim_iter);
-    paramfile = fopen(filename, "w");
+    FILE *file;
+    sprintf(filename, "%s/param_iter%04d.dat", datadir.c_str(), optim_iter);
+    file = fopen(filename, "w");
 
     const PetscScalar* params_ptr;
     VecGetArrayRead(params, &params_ptr);
     for (int i=0; i<ndesign; i++){
-      fprintf(paramfile, "%1.14e\n", params_ptr[i]);
+      fprintf(file, "%1.14e\n", params_ptr[i]);
     }
-    fclose(paramfile);
+    fclose(file);
     VecRestoreArrayRead(params, &params_ptr);
+    printf("File written: %s\n", filename);
 
-    /* Print control functions */
+    /* Print control functions to file */
     mastereq->setControlAmplitudes(params);
     for (int ioscil = 0; ioscil < mastereq->getNOscillators(); ioscil++) {
-        sprintf(filename, "%s/control%d_iter%04d.dat", datadir.c_str(), ioscil, optim_iter);
-        mastereq->getOscillator(ioscil)->flushControl(ntime, dt, filename);
+      sprintf(filename, "%s/control%d_iter%04d.dat", datadir.c_str(), ioscil, optim_iter);
+      // mastereq->getOscillator(ioscil)->flushControl(ntime, dt, filename);
+      file = fopen(filename, "w");
+      fprintf(file, "# time         p(t) (rotating)          q(t) (rotating)        f(t) (labframe) \n");
+
+      /* Write every <num> timestep to file */
+      for (int i=0; i<=ntime; i+=output_frequency) {
+        double time = i*dt; 
+        double Re, Im, Lab;
+        mastereq->getOscillator(ioscil)->evalControl(time, &Re, &Im);
+        mastereq->getOscillator(ioscil)->evalControl_Labframe(time, &Lab);
+        fprintf(file, "% 1.8f   % 1.14e   % 1.14e   % 1.14e \n", time, Re, Im, Lab);
+      }
+
+      fclose(file);
+      printf("File written: %s\n", filename);
     }
 
   }
@@ -143,27 +160,32 @@ void Output::openDataFiles(std::string prefix, int initid, int rank){
 
 }
 
-void Output::writeDataFiles(double time, const Vec state, MasterEq* mastereq){
+void Output::writeDataFiles(int timestep, double time, const Vec state, MasterEq* mastereq){
 
-  /* Write expected energy levels to file */
-  for (int iosc = 0; iosc < expectedfile.size(); iosc++) {
-    if (expectedfile[iosc] != NULL) {
-      double expected = mastereq->getOscillator(iosc)->expectedEnergy(state);
-      fprintf(expectedfile[iosc], "%.8f %1.14e\n", time, expected);
-    }
-  }
+  /* Write output only every <num> time-steps */
+  if (timestep % output_frequency == 0) {
 
-  /* Write population to file */
-  for (int iosc = 0; iosc < populationfile.size(); iosc++) {
-    if (populationfile[iosc] != NULL) {
-      std::vector<double> pop (mastereq->getOscillator(iosc)->getNLevels(), 0.0);
-      mastereq->getOscillator(iosc)->population(state, pop);
-      fprintf(populationfile[iosc], "%.8f ", time);
-      for (int i = 0; i<pop.size(); i++) {
-        fprintf(populationfile[iosc], " %1.14e", pop[i]);
+    /* Write expected energy levels to file */
+    for (int iosc = 0; iosc < expectedfile.size(); iosc++) {
+      if (expectedfile[iosc] != NULL) {
+        double expected = mastereq->getOscillator(iosc)->expectedEnergy(state);
+        fprintf(expectedfile[iosc], "%.8f %1.14e\n", time, expected);
       }
-      fprintf(populationfile[iosc], "\n");
     }
+
+    /* Write population to file */
+    for (int iosc = 0; iosc < populationfile.size(); iosc++) {
+      if (populationfile[iosc] != NULL) {
+        std::vector<double> pop (mastereq->getOscillator(iosc)->getNLevels(), 0.0);
+        mastereq->getOscillator(iosc)->population(state, pop);
+        fprintf(populationfile[iosc], "%.8f ", time);
+        for (int i = 0; i<pop.size(); i++) {
+          fprintf(populationfile[iosc], " %1.14e", pop[i]);
+        }
+        fprintf(populationfile[iosc], "\n");
+      }
+    }
+
   }
 
 

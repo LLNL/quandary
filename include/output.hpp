@@ -14,7 +14,8 @@ class Output{
   int mpirank_braid;  /* Rank of processor for parallelizing XBraid, or zero if compiling without XBraid */
   
   FILE* optimfile;      /* Output file to log optimization progress */
-  int optim_monitor_freq; /* Write state output to file every <outfreq> iterations */
+  int optim_monitor_freq; /* Write output files every <num> optimization iterations */
+  int output_frequency;   /* Output frequency in time domain: write output at every <num> time step. */
   std::vector<std::vector<std::string> > outputstr; // List of outputs for each oscillator
 
   bool writefullstate;  /* Flag to determin if full state vector should be written to file */
@@ -44,7 +45,7 @@ class Output{
 
     /* Open, write and close files for fullstate and expected energy levels over time */
     void openDataFiles(std::string prefix, int initid, int rank);
-    void writeDataFiles(double time, const Vec state, MasterEq* mastereq);
+    void writeDataFiles(int timestep, double time, const Vec state, MasterEq* mastereq);
     void closeDataFiles();
 
 };

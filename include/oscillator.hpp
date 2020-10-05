@@ -49,9 +49,6 @@ class Oscillator {
     /* Copy x into the control parameter vector */
     void setParams(const double* x);
 
-    /* Print the control functions for each t \in [0,ntime*dt] */
-    void flushControl(const int ntime, const double dt, const char* filename);
-
     /* Compute lowering operator a_k = I_n1 \kron ... \kron a^(nk) \kron ... \kron I_nQ */
     int createLoweringOP(const int dim_prekron, const int dim_postkron, Mat* loweringOP);
     /* Returns the lowering operator, unless dummy is true, then return a zero matrix */

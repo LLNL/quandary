@@ -89,7 +89,7 @@ Vec TimeStepper::solveODE(int initid, Vec rho_t0){
 
     /* store and write current state */
     if (storeFWD) VecCopy(x, store_states[n]);
-    output->writeDataFiles(tstart, x, mastereq);
+    output->writeDataFiles(n, tstart, x, mastereq);
 
     /* Add to penalty objective term */
     if (penalty_coeff > 1e-13) penalty_integral += penaltyIntegral(tstart, x);
@@ -103,7 +103,7 @@ Vec TimeStepper::solveODE(int initid, Vec rho_t0){
   if (storeFWD) VecCopy(x, store_states[ntime]);
 
   /* Write last time step and close files */
-  output->writeDataFiles(ntime*dt, x, mastereq);
+  output->writeDataFiles(ntime, ntime*dt, x, mastereq);
   output->closeDataFiles();
   
 

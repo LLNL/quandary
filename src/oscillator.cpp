@@ -63,25 +63,6 @@ Mat Oscillator::getLoweringOP(bool dummy) {
   else return LoweringOP;
 }
 
-void Oscillator::flushControl(const int ntime, const double dt, const char* filename) {
-  double time;
-  double Re, Im;    // Rotating frame controls p(t), q(t)
-  double Lab;       // Lab-frame control f(t)
-  FILE *file = 0;
-  file = fopen(filename, "w");
-
-  fprintf(file, "# time         p(t) (rotating)          q(t) (rotating)        f(t) (labframe) \n");
-  for (int i=0; i<ntime; i++) {
-    time = i*dt; 
-    this->evalControl(time, &Re, &Im);
-    this->evalControl_Labframe(time, &Lab);
-    fprintf(file, "% 1.8f   % 1.14e   % 1.14e   % 1.14e \n", time, Re, Im, Lab);
-  }
-
-  fclose(file);
-  printf("File written: %s\n", filename);
-}
-
 
 void Oscillator::setParams(const double* x){
   for (int i=0; i<params.size(); i++) {
