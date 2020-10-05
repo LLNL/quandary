@@ -65,7 +65,7 @@ Consider a quantum system with $Q$ oscillators in $H_{n_1} \otimes \dots H_{n_Q}
 \begin{align}
     \rho_{i_1,\dots, i_Q, i_1^{\prime}, \dots, i_Q^{\prime}} =: \rho_{\bfi, \bfi^\prime}\in\C^{n_1\times \dots \times n_Q \times n_1 \times \dots \times n_Q}
 \end{align}
-using multi-indices $\bfi := i_{1},\dots,i_{Q}$, and $\bfi^\prime = i_0^\prime, \dots, i_Q^\prime$. For ease of notation, we use the follwoing index shifting operators 
+using multi-indices $\bfi := i_{1},\dots,i_{Q}$, and $\bfi^\prime = i_1^\prime, \dots, i_Q^\prime$, where each index $i_k, i_k^\p$ iterates in $\{0,\dots,n_k-1\}$. For ease of notation, we use the follwoing index shifting operators 
 \begin{align}
   E_{+k} \bfi := i_0,\dots, i_{k}+1, \dots, i_Q \quad E_{+k} \bfi^\prime := i_0^\prime, \dots, i_k^\prime + 1, \dots, i_Q\\
   E_{-k} \bfi := i_0,\dots, i_{k}-1, \dots, i_Q \quad E_{-k} \bfi^\prime := i_0^\prime, \dots, i_k^\prime - 1, \dots, i_Q\\
@@ -78,7 +78,7 @@ All operations that are applied to $\rho$ in the Lindblad equation are of the fo
 \end{align}
 and when applying from the right
 \begin{align}
-    \rho_{i_1i_2i_3i_1^{\prime}i_2^\prime i_3^\prime}I^{j_1^{\prime}}_{i_1}\otimes M^{j_2^\prime}_{i_2} \otimes I^{j_3^\prime}_{i_3}  = M^{j_2^\prime}_{i_2^\prime} \rho_{i_1i_2i_3j_1^{\prime}i_2^\prime j_3^\prime} = \sum_{i_2^\prime} M(i_2^{\prime}, j_2^\prime) \rho(i_1,i_2,i_3,j_1^{\prime}i_2^\prime, j_3^\prime)  =: y_{i_1,i_2,i_3,j_1^{\prime}j_2^\prime, j_3^\prime}
+    \rho_{i_1i_2i_3i_1^{\prime}i_2^\prime i_3^\prime}I^{j_1^{\prime}}_{i_1^\p}\otimes M^{j_2^\prime}_{i_2^\p} \otimes I^{j_3^\prime}_{i_3^\p}  = M^{j_2^\prime}_{i_2^\prime} \rho_{i_1i_2i_3j_1^{\prime}i_2^\prime j_3^\prime} = \sum_{i_2^\prime} M(i_2^{\prime}, j_2^\prime) \rho(i_1,i_2,i_3,j_1^{\prime}i_2^\prime, j_3^\prime)  =: y_{i_1,i_2,i_3,j_1^{\prime}j_2^\prime, j_3^\prime}
 \end{align}
 Note that when applying from the right, the access of elements in $M$ is inverted, summing over columns in $M$.
 
@@ -187,7 +187,7 @@ Note that when applying from the right, the access of elements in $M$ is inverte
  Accessing $\rho$ at shifted indices $E_{\pm k}\bfi, E_{\pm k}\bfi^\p$ requires communication at processor boundaries. We can consider to realize this by storing and communicating ghost-layers for each processor hyper-cube.
 
 \section{AD-based derviative}
-To compute the adjoint action of the ODE right-hand-side to an input adjoint variable $\bar y_{\bfi, \bfi^p}$, consider derivatives based on discrete Automatic Differentiation applied to the update formula \eqref{eq:applyRHS1} -- \eqref{eq:applyRHS2}:
+To compute the adjoint action of the ODE right-hand-side to an input adjoint variable $\bar y_{\bfi, \bfi^\p}$, consider derivatives based on discrete Automatic Differentiation applied to the update formula \eqref{eq:applyRHS1} -- \eqref{eq:applyRHS2}:
 \begin{align} 
        \bar \rho_{\bfi, \bfi^\p} &\pluseq \left(-i h_d(\bfi) + ih_d(\bfi^\prime)
         + l_2(\bfi,\bfi^\prime) + l_1^{\text{diag}}(\bfi, \bfi^\prime) \right) \bar y_{\bfi,\bfi^\prime} \\
