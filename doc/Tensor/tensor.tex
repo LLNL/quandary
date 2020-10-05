@@ -89,9 +89,14 @@ Note that when applying from the right, the access of elements in $M$ is inverte
       \end{align}
       Application to $\rho$ is hence a sum of contractions of $N^{(n_k)}$ to the corresponding $k$-th dimension of the tensor $\rho_{\bfi, \bfi^\p}$ , such as
       \begin{align}
-        N_k \rho = \left(N^{(n_k)}\right)_{j_k}^{i_k} \rho_{\bfi, \bfi^\p} = \sum_{i_k} \underbrace{N^{(n_k)}(j_k, i_k)}_{ = j_k\delta_{j_ki_k} } \rho(\bfi, \bfi^\p) = i_k \rho_{\bfi, \bfi^\p}
+        N_k \rho_{\bfi, \bfi^\p} &=  \left(I_{n_1}\right)^{i_1}_{j_1}\otimes \dots \otimes \left(N^{(n_k)}\right)^{i_k}_{j_k} \otimes \dots \otimes \left(I_{n_Q}\right)^{i_Q}_{j_Q} \label{mylabel} \\ 
+        &= \left(N^{(n_k)}\right)_{j_k}^{i_k} \rho_{j_1,\dots, i_k, \dots, j_Q, \bfi^\p} \\
+        &= \sum_{i_k} \underbrace{N^{(n_k)}(j_k, i_k)}_{ = j_k\delta_{j_ki_k} } \rho(j_1,\dots, i_k,\dots, j_Q, \bfi^\p) \\
+        &= j_k \rho_{\bfj, \bfi^\p}
       \end{align}
-      And similarly
+      Note that the above operation \eqref{mylabel} is done for \textbf{all} (output) indices $(j_1, \dots, j_Q, i_1^\p,\dots,i_Q^\p)$, as applications of the operator from the left to $\rho_{\bfi, \bfi^\p}$ acts on the $\bfi$, with corresponding output indices $\bfj$. The notation is a bit cumbersome. For the reminder, the $\bfj$ output index will be replaced by an $\bfi$, knowing that this index corresponds to the output of the contraction hence will be done for each of those indices. 
+
+      Similarly as above, one the gets
       \begin{align}
         \left(N_k^2-N_k\right)_{j_k}^{i_k} \rho_{\bfi, \bfi^\p} = \left(i_k^2 - i_k\right) \rho_{\bfi,\bfi^\prime}
       \end{align}
@@ -163,7 +168,9 @@ Note that when applying from the right, the access of elements in $M$ is inverte
     l_1^{\text{diag}}(\bfi, \bfi^\prime) &= \sum_k -\frac{\gamma_{1k}}{2}\left(i_k + i_k^\prime\right) 
   \end{align}
 
-  These operations will be applied for all $i_0,\dots, i_Q, i_0^\prime, \dots, i_Q^\prime$. It is important to access the data storage is a linear fashion, if possible. Iterating for all $\bfi, \bfi^\prime$ should therefore start with the slowest moving index in the most outer loop. For example, consider the mapping from the stored vectorized $q := vec(\rho)$ to the tensor $\rho_(\bfi,\bfi^\prime)$ to be
+  These operations will be applied for all $i_1,\dots, i_Q, i_1^\prime, \dots, i_Q^\prime$. 
+  
+  It is important to access the data storage is a linear fashion, if possible. Iterating for all $\bfi, \bfi^\prime$ should therefore start with the slowest moving index in the most outer loop. For example, consider the mapping from the stored vectorized $q := vec(\rho)$ to the tensor $\rho_(\bfi,\bfi^\prime)$ to be
     \begin{align}
         \rho(i_1,\dots,i_Q,i_1^\prime,\dots,i_Q^\prime) = q[i_1 \frac{N}{n_1} + i_2\frac{N}{n_1n_2} + i_3\frac{N}{n_1n_2n_3} + \dots + i_1^\prime N\frac{N}{n_1} + i_2^\prime N\frac{N}{n_1n_2} + \dots]
     \end{align}
