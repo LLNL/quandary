@@ -325,6 +325,7 @@ int main(int argc,char **argv)
     objective = optimctx->evalF(xinit);
     if (mpirank_world == 0) printf("%d: Tao primal: Objective %1.14e, \n", mpirank_world, objective);
     optimctx->getSolution(&opt);
+    optimctx->output->writeOptimFile(optimctx->objective, 0.0, 0.0, optimctx->obj_cost, optimctx->obj_regul, optimctx->obj_penal);
   } 
   
   /* --- Solve adjoint --- */
@@ -337,6 +338,7 @@ int main(int argc,char **argv)
     if (mpirank_world == 0) {
       printf("Tao gradient norm: %1.14e\n", gnorm);
     }
+    optimctx->output->writeOptimFile(optimctx->objective, optimctx->gnorm, 0.0, optimctx->obj_cost, optimctx->obj_regul, optimctx->obj_penal);
   }
 
   /* --- Solve the optimization  --- */

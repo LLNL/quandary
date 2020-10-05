@@ -70,12 +70,12 @@ void Oscillator::flushControl(const int ntime, const double dt, const char* file
   FILE *file = 0;
   file = fopen(filename, "w");
 
-  fprintf(file, "# timestep    time       p(t) (rotating)          q(t) (rotating)        f(t) (labframe) \n");
+  fprintf(file, "# time         p(t) (rotating)          q(t) (rotating)        f(t) (labframe) \n");
   for (int i=0; i<ntime; i++) {
     time = i*dt; 
     this->evalControl(time, &Re, &Im);
     this->evalControl_Labframe(time, &Lab);
-    fprintf(file, "%08d  % 1.8f   % 1.14e   % 1.14e   % 1.14e \n", i, time, Re, Im, Lab);
+    fprintf(file, "% 1.8f   % 1.14e   % 1.14e   % 1.14e \n", time, Re, Im, Lab);
   }
 
   fclose(file);
