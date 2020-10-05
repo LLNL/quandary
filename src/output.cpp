@@ -29,7 +29,7 @@ Output::Output(MapParam& config, int mpirank_petsc_, int mpirank_init_) : Output
     char filename[255];
     sprintf(filename, "%s/optim_history.dat", datadir.c_str());
     optimfile = fopen(filename, "w");
-    fprintf(optimfile, "#iter    obj_value           ||grad||               LS step           Costfunction     Tikhonov-regul      Penalty-term\n");
+    fprintf(optimfile, "#iter    Objective           ||Pr(grad)||           LS step           Costfunction     Tikhonov-regul      Penalty-term\n");
   } 
 
   /* Read from config what output is desired */

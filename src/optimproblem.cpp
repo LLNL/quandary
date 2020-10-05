@@ -562,14 +562,15 @@ PetscErrorCode TaoMonitor(Tao tao,void*ptr){
   double deltax;
   Vec params;
   TaoConvergedReason reason;
-  TaoGetSolutionStatus(tao, &iter, NULL, NULL, NULL, &deltax, &reason);
+  double f, gnorm;
+  TaoGetSolutionStatus(tao, &iter, &f, &gnorm, NULL, &deltax, &reason);
   TaoGetSolutionVector(tao, &params);
 
   /* Pass current iteration number to output manager */
   ctx->output->optim_iter = iter;
 
   /* Print to optimization file */
-  ctx->output->writeOptimFile(ctx->objective, ctx->gnorm, deltax, ctx->obj_cost, ctx->obj_regul, ctx->obj_penal);
+  ctx->output->writeOptimFile(f, gnorm, deltax, ctx->obj_cost, ctx->obj_regul, ctx->obj_penal);
 
   /* Print parameters and controls to file */
   ctx->output->writeControls(params, ctx->timestepper->mastereq, ctx->timestepper->ntime, ctx->timestepper->dt);
