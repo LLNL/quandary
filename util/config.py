@@ -169,7 +169,7 @@ def read_config(filename):
                 case("optim_printlevel") or \
                 case("optim_penalty_exponent") or \
                 case("linearsolver_maxiter") or \
-                case("optim_outputfrequency") :
+                case("optim_monitor_frequency") :
                 data_dict[this_param] = int(this_value)
                 break
 

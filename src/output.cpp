@@ -5,7 +5,7 @@ Output::Output(){
   mpirank_petsc = 0;
   mpirank_init  = 0;
   mpirank_braid = 0;
-  optim_outputfreq = 0;
+  optim_monitor_freq = 0;
   optim_iter = 0;
 }
 
@@ -24,7 +24,7 @@ Output::Output(MapParam& config, int mpirank_petsc_, int mpirank_init_) : Output
   }
 
   /* Prepare output for optimizer */
-  optim_outputfreq = config.GetIntParam("optim_outputfrequency", 10);
+  optim_monitor_freq = config.GetIntParam("optim_monitor_frequency", 10);
   if (mpirank_world == 0) {
     char filename[255];
     sprintf(filename, "%s/optim_history.dat", datadir.c_str());
@@ -81,7 +81,7 @@ void Output::writeOptimFile(double objective, double gnorm, double stepsize, dou
 void Output::writeControls(Vec params, MasterEq* mastereq, int ntime, double dt){
 
   /* Write controls every <outfreq> iterations */
-  if ( mpirank_world == 0 && optim_iter % optim_outputfreq == 0 ) { 
+  if ( mpirank_world == 0 && optim_iter % optim_monitor_freq == 0 ) { 
 
     char filename[255];
     int ndesign;
@@ -115,7 +115,7 @@ void Output::openDataFiles(std::string prefix, int initid, int rank){
   char filename[255];
 
   bool write_this_iter = false;
-  if (optim_iter % optim_outputfreq == 0) write_this_iter = true;
+  if (optim_iter % optim_monitor_freq == 0) write_this_iter = true;
 
   /* Open files for state vector */
   if (writefullstate && write_this_iter) {
