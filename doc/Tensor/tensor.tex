@@ -37,97 +37,171 @@
 \maketitle
 
 \section{Tensor contractions}
-Consider a matrix-matrix multiplication as rank-2 tensor contractions. For a general $A\in \R^{N\times N}$ and $\rho\in \R^{N\times N}$ the product $A\rho$ corresponds to a contraction of the rows of $A$ with the columns of $\rho$:
+Consider a matrix-matrix multiplication as rank-2 tensor contractions. For a
+general $A\in \R^{N\times N}$ and $\rho\in \R^{N\times N}$ the product $A\rho$
+corresponds to a contraction of the rows of $A$ with the columns of $\rho$:
 \begin{align}
-    A \rho = y \quad \Leftrightarrow \quad y_{j_1,i_2} = A_{j_1}^{i_1} \rho_{i_1,i_2} = \sum_{i_1} A_{j_1}^{i_1} \rho_{i_1,i_2} \quad \forall j_1,i_2 = 0,\dots, N
+    A \rho = y \quad \Leftrightarrow \quad y_{j_1,i_2} = A_{j_1}^{i_1}
+    \rho_{i_1,i_2} = \sum_{i_1} A_{j_1}^{i_1} \rho_{i_1,i_2} \quad \forall
+    j_1,i_2 = 0,\dots, N
 \end{align}
-where subscript and superscript indices correspond to rows and columns, respectively, $A_m^l = A_{m,l} = A(m,l)$. 
+where subscript and superscript indices correspond to rows and columns,
+respectively, $A_m^l = A_{m,l} = A(m,l)$. 
 
 Note that when applying $A$ to $\rho$ from the right, one gets 
 \begin{align}
-    \rho A = y \quad \Leftrightarrow \quad y_{j_1,i_2} = \rho_{j_1}^{i_1} A_{i_1,i_2} = \sum_{i_1} \rho_{j_1}^{i_1} A_{i_1,i_2} \quad \forall j_1,i_2 = 0,\dots, N \\
-   = \sum_{i_1} A_{i_1}^{i_2} \rho_{j_1,i_1} = \sum_{i_1} (A^T)_{i_2}^{i_1} \rho^T_{i_1,j_1} = A_{i_1}^{i_2} \rho_{j_1,i_1}
+    \rho A = y \quad \Leftrightarrow \quad y_{j_1,i_2} = \rho_{j_1}^{i_1}
+    A_{i_1,i_2} = \sum_{i_1} \rho_{j_1}^{i_1} A_{i_1,i_2} \quad \forall j_1,i_2
+    = 0,\dots, N \\
+   = \sum_{i_1} A_{i_1}^{i_2} \rho_{j_1,i_1} = \sum_{i_1} (A^T)_{i_2}^{i_1}
+   \rho^T_{i_1,j_1} = A_{i_1}^{i_2} \rho_{j_1,i_1}
 \end{align}
 contracting the columns of $A$ with the rows of $\rho$. 
 
-Now consider a kronecker product of operators $A\otimes B$ with dimensions $A\in\R^{n_a\times n_a}, B\in\R^{n_b\times n_b}$ multiplied to a matrix $\rho \in \R^{n_an_b\times n_an_b}$ of matching dimensions. We can think of $\rho$ as a rank-4 tensor $\rho\in\R^{n_b\times n_a \times n_b \times n_a}$. The application of $A\otimes B$ to the tensor $\rho$ then corresponds to the tensor contraction 
+Now consider a kronecker product of operators $A\otimes B$ with dimensions
+$A\in\R^{n_a\times n_a}, B\in\R^{n_b\times n_b}$ multiplied to a matrix $\rho
+\in \R^{n_an_b\times n_an_b}$ of matching dimensions. We can think of $\rho$ as
+a rank-4 tensor $\rho\in\R^{n_b\times n_a \times n_b \times n_a}$. The
+application of $A\otimes B$ to the tensor $\rho$ then corresponds to the tensor
+contraction 
 \begin{align}
-    z := A\otimes B \rho = A_{j_2}^{i_2}\otimes B_{j_1}^{i_1} \rho_{i_1, i_2, i_1^{\prime}, i_2^{\prime}}
+    z := A\otimes B \rho = A_{j_2}^{i_2}\otimes B_{j_1}^{i_1} \rho_{i_1, i_2,
+    i_1^{\prime}, i_2^{\prime}}
 \end{align}
-contracting first $B$ with $\rho$ on the first dimension $i_1$, then $A$ on the second dimension $i_2$:
+contracting first $B$ with $\rho$ on the first dimension $i_1$, then $A$ on the
+second dimension $i_2$:
 \begin{align}
-    y_{j_1, i_2, i_1^{\prime}, i_2^{\prime}} := B_{j_1}^{i_1} \rho_{i_1, i_2, i_1^{\prime}, i_2^{\prime}} = \sum_{i_1} B_{j_1}^{i_1} \rho_{i_1, i_2, i_1^{\prime}, i_2^{\prime}} \quad \forall j_1,i_2,i_1^\prime, i_2^\prime\\
-    z_{j_1, j_2, i_1^{\prime}, i_2^{\prime}} := A_{j_2}^{i_2} y_{j_1, i_2, i_1^{\prime}, i_2^{\prime}} = \sum_{i_2} A_{j_2}^{i_2} y_{j_1, i_2, i_1^{\prime}, i_2^{\prime}} \quad \forall j_1,j_2,i_1^\prime, i_2^\prime
+    y_{j_1, i_2, i_1^{\prime}, i_2^{\prime}} := B_{j_1}^{i_1} \rho_{i_1, i_2,
+    i_1^{\prime}, i_2^{\prime}} = \sum_{i_1} B_{j_1}^{i_1} \rho_{i_1, i_2,
+    i_1^{\prime}, i_2^{\prime}} \quad \forall j_1,i_2,i_1^\prime, i_2^\prime\\
+    z_{j_1, j_2, i_1^{\prime}, i_2^{\prime}} := A_{j_2}^{i_2} y_{j_1, i_2,
+    i_1^{\prime}, i_2^{\prime}} = \sum_{i_2} A_{j_2}^{i_2} y_{j_1, i_2,
+    i_1^{\prime}, i_2^{\prime}} \quad \forall j_1,j_2,i_1^\prime, i_2^\prime
 \end{align}
-Similarly, when applying $A\otimes B$ from the right, the contraction acts on $i_2^\prime, i_1^\prime$, as above. 
+Similarly, when applying $A\otimes B$ from the right, the contraction acts on
+$i_2^\prime, i_1^\prime$, as above. 
 
-More generally, for a tensor $\rho \in \R^{n_1\times \dots \times n_N}$ we can define the contraction of an operator $A$ on a certain dimension $i_l$ of $\rho_{i_1,\dots i_N}$:
+More generally, for a tensor $\rho \in \R^{n_1\times \dots \times n_N}$ we can
+define the contraction of an operator $A$ on a certain dimension $i_l$ of
+$\rho_{i_1,\dots i_N}$:
 \begin{align}
-    y_{i_1,\dots,j_l,\dots,i_N} = A_{j_l}^{i_l} \rho_{i_1,\dots,i_l,\dots,i_N} = \sum_{i_l} A_{j_l}^{i_l} \rho_{i_1,\dots,i_l,\dots i_N} \quad \forall i_1,\dots, j_l,\dots,i_N
+    y_{i_1,\dots,j_l,\dots,i_N} = A_{j_l}^{i_l} \rho_{i_1,\dots,i_l,\dots,i_N} =
+    \sum_{i_l} A_{j_l}^{i_l} \rho_{i_1,\dots,i_l,\dots i_N} \quad \forall
+    i_1,\dots, j_l,\dots,i_N
 \end{align}
 
 
 
 \section{Tensor contraction for Lindblad master equation}
-Consider a quantum system with $Q$ oscillators in $H_{n_1} \otimes \dots H_{n_Q}$, with $n_k$ levels for the $k$-th oscillator and density matrix $\rho \in \C^{N\times N}$ with $N=\prod_{k=1}^{Q} n_k$. Consider the density matrix being a tensor of rank $2Q$: 
+Consider a quantum system with $Q$ oscillators in $H_{n_1} \otimes \dots
+H_{n_Q}$, with $n_k$ levels for the $k$-th oscillator and density matrix $\rho
+\in \C^{N\times N}$ with $N=\prod_{k=1}^{Q} n_k$. Consider the density matrix
+being a tensor of rank $2Q$: 
 \begin{align}
-    \rho_{i_1,\dots, i_Q, i_1^{\prime}, \dots, i_Q^{\prime}} =: \rho_{\bfi, \bfi^\prime}\in\C^{n_1\times \dots \times n_Q \times n_1 \times \dots \times n_Q}
+    \rho_{i_1,\dots, i_Q, i_1^{\prime}, \dots, i_Q^{\prime}} =: \rho_{\bfi,
+    \bfi^\prime}\in\C^{n_1\times \dots \times n_Q \times n_1 \times \dots \times
+    n_Q}
 \end{align}
-using multi-indices $\bfi := i_{1},\dots,i_{Q}$, and $\bfi^\prime = i_1^\prime, \dots, i_Q^\prime$, where each index $i_k, i_k^\p$ iterates in $\{0,\dots,n_k-1\}$. For ease of notation, we use the follwoing index shifting operators 
+using multi-indices $\bfi := i_{1},\dots,i_{Q}$, and $\bfi^\prime = i_1^\prime,
+\dots, i_Q^\prime$, where each index $i_k, i_k^\p$ iterates in
+$\{0,\dots,n_k-1\}$. For ease of notation, we use the follwoing index shifting
+operators 
 \begin{align}
-  E_{+k} \bfi := i_0,\dots, i_{k}+1, \dots, i_Q \quad E_{+k} \bfi^\prime := i_0^\prime, \dots, i_k^\prime + 1, \dots, i_Q\\
-  E_{-k} \bfi := i_0,\dots, i_{k}-1, \dots, i_Q \quad E_{-k} \bfi^\prime := i_0^\prime, \dots, i_k^\prime - 1, \dots, i_Q\\
+  E_{+k} \bfi := i_0,\dots, i_{k}+1, \dots, i_Q \quad E_{+k} \bfi^\prime :=
+  i_0^\prime, \dots, i_k^\prime + 1, \dots, i_Q\\
+  E_{-k} \bfi := i_0,\dots, i_{k}-1, \dots, i_Q \quad E_{-k} \bfi^\prime :=
+  i_0^\prime, \dots, i_k^\prime - 1, \dots, i_Q\\
 \end{align}
 to shift $i_k$ by one. 
 
-All operations that are applied to $\rho$ in the Lindblad equation are of the form $I_{n_1}\otimes \dots \otimes M^{n_k} \otimes \dots \otimes I_{n_Q}$, or $I_{n_1}\otimes \dots \otimes M^{n_l} \otimes I_{n_{l+1}\dots n_{k-1}} \otimes M^{n_k} \otimes \dots \otimes I_{n_Q}$, where $I_{n_k}$ is the identity in $\R^{n_k}$. Applying those operators to the tensor $\rho$ therefore effectively acts in at most two of the dimensions, while others are contracted only with identities. Example for a 3-partite systems $H^{n_1} \otimes H^{n_2} \otimes H^{n_3}$. Consider the operator $I_{n_1} \otimes M_{n_2} \otimes I_{n_3}$ with corresponding dimension. It's action on $\rho \in \C^{n1\times n2\times n3 \times n1\times n2 \times n3}$ is
+All operations that are applied to $\rho$ in the Lindblad equation are of the
+form $I_{n_1}\otimes \dots \otimes M^{n_k} \otimes \dots \otimes I_{n_Q}$, or
+$I_{n_1}\otimes \dots \otimes M^{n_l} \otimes I_{n_{l+1}\dots n_{k-1}} \otimes
+M^{n_k} \otimes \dots \otimes I_{n_Q}$, where $I_{n_k}$ is the identity in
+$\R^{n_k}$. Applying those operators to the tensor $\rho$ therefore effectively
+acts in at most two of the dimensions, while others are contracted only with
+identities. Example for a 3-partite systems $H^{n_1} \otimes H^{n_2} \otimes
+H^{n_3}$. Consider the operator $I_{n_1} \otimes M_{n_2} \otimes I_{n_3}$ with
+corresponding dimension. It's action on $\rho \in \C^{n1\times n2\times n3
+\times n1\times n2 \times n3}$ is
 \begin{align}
-    I^{i_1}_{j_1}\otimes M^{i_2}_{j_2} \otimes I^{i_3}_{j_3} \rho_{i_1i_2i_3i_1^{\prime}i_2^\prime i_3^\prime} = M^{i_2}_{j_2} \rho_{j_1i_2j_3i_1^{\prime}i_2^\prime i_3^\prime} = \sum_{i_2} M(j_2, i_2) \rho(j_1,i_2,j_3,i_1^{\prime},i_2^\prime, i_3^\prime)  =: y_{j_1,j_2,j_3,i_1^{\prime},i_2^\prime,i_3^\prime}
+    I^{i_1}_{j_1}\otimes M^{i_2}_{j_2} \otimes I^{i_3}_{j_3}
+    \rho_{i_1i_2i_3i_1^{\prime}i_2^\prime i_3^\prime} = M^{i_2}_{j_2}
+    \rho_{j_1i_2j_3i_1^{\prime}i_2^\prime i_3^\prime} = \sum_{i_2} M(j_2, i_2)
+    \rho(j_1,i_2,j_3,i_1^{\prime},i_2^\prime, i_3^\prime)  =:
+    y_{j_1,j_2,j_3,i_1^{\prime},i_2^\prime,i_3^\prime}
 \end{align}
 and when applying from the right
 \begin{align}
-    \rho_{i_1i_2i_3i_1^{\prime}i_2^\prime i_3^\prime}I^{j_1^{\prime}}_{i_1^\p}\otimes M^{j_2^\prime}_{i_2^\p} \otimes I^{j_3^\prime}_{i_3^\p}  = M^{j_2^\prime}_{i_2^\prime} \rho_{i_1i_2i_3j_1^{\prime}i_2^\prime j_3^\prime} = \sum_{i_2^\prime} M(i_2^{\prime}, j_2^\prime) \rho(i_1,i_2,i_3,j_1^{\prime}i_2^\prime, j_3^\prime)  =: y_{i_1,i_2,i_3,j_1^{\prime}j_2^\prime, j_3^\prime}
+    \rho_{i_1i_2i_3i_1^{\prime}i_2^\prime
+    i_3^\prime}I^{j_1^{\prime}}_{i_1^\p}\otimes M^{j_2^\prime}_{i_2^\p} \otimes
+    I^{j_3^\prime}_{i_3^\p}  = M^{j_2^\prime}_{i_2^\prime}
+    \rho_{i_1i_2i_3j_1^{\prime}i_2^\prime j_3^\prime} = \sum_{i_2^\prime}
+    M(i_2^{\prime}, j_2^\prime) \rho(i_1,i_2,i_3,j_1^{\prime}i_2^\prime,
+    j_3^\prime)  =: y_{i_1,i_2,i_3,j_1^{\prime}j_2^\prime, j_3^\prime}
 \end{align}
-Note that when applying from the right, the access of elements in $M$ is inverted, summing over columns in $M$.
+Note that when applying from the right, the access of elements in $M$ is
+inverted, summing over columns in $M$.
 
 \begin{enumerate}
-    \item \textbf{Constant drift Hamiltonian} $H_d = -\sum_k \frac{\xi}{2} \left(N_k^2 - N_k\right) - \sum_{l<k} \xi_{lk} N_lN_k$, with
+    \item \textbf{Constant drift Hamiltonian} $H_d = -\sum_k \frac{\xi}{2}
+      \left(N_k^2 - N_k\right) - \sum_{l<k} \xi_{lk} N_lN_k$, with
       \begin{align}
-      N_k = I_{n_1}\otimes \dots \otimes N^{(n_k)} \otimes \dots \otimes I_{n_Q} \quad \text{and} \quad N^{(n_k)} := \begin{pmatrix} 0 & & \\ & 1& \\ & & \ddots \\ & & & n_k -1\end{pmatrix} \in \R^{n_k}
+      N_k = I_{n_1}\otimes \dots \otimes N^{(n_k)} \otimes \dots \otimes I_{n_Q}
+        \quad \text{and} \quad N^{(n_k)} := \begin{pmatrix} 0 & & \\ & 1& \\ & &
+        \ddots \\ & & & n_k -1\end{pmatrix} \in \R^{n_k}
       \end{align}
-      Application to $\rho$ is hence a sum of contractions of $N^{(n_k)}$ to the corresponding $k$-th dimension of the tensor $\rho_{\bfi, \bfi^\p}$ , such as
+      Application to $\rho$ is hence a sum of contractions of $N^{(n_k)}$ to the
+      corresponding $k$-th dimension of the tensor $\rho_{\bfi, \bfi^\p}$ , such
+      as
       \begin{align}
-        N_k \rho_{\bfi, \bfi^\p} &=  \left(I_{n_1}\right)^{i_1}_{j_1}\otimes \dots \otimes \left(N^{(n_k)}\right)^{i_k}_{j_k} \otimes \dots \otimes \left(I_{n_Q}\right)^{i_Q}_{j_Q} \label{mylabel} \\ 
-        &= \left(N^{(n_k)}\right)_{j_k}^{i_k} \rho_{j_1,\dots, i_k, \dots, j_Q, \bfi^\p} \\
-        &= \sum_{i_k} \underbrace{N^{(n_k)}(j_k, i_k)}_{ = j_k\delta_{j_ki_k} } \rho(j_1,\dots, i_k,\dots, j_Q, \bfi^\p) \\
+        N_k \rho_{\bfi, \bfi^\p} &=  \left(I_{n_1}\right)^{i_1}_{j_1}\otimes
+        \dots \otimes \left(N^{(n_k)}\right)^{i_k}_{j_k} \otimes \dots \otimes
+        \left(I_{n_Q}\right)^{i_Q}_{j_Q} \label{mylabel} \\ 
+        &= \left(N^{(n_k)}\right)_{j_k}^{i_k} \rho_{j_1,\dots, i_k, \dots, j_Q,
+        \bfi^\p} \\
+        &= \sum_{i_k} \underbrace{N^{(n_k)}(j_k, i_k)}_{ = j_k\delta_{j_ki_k} }
+        \rho(j_1,\dots, i_k,\dots, j_Q, \bfi^\p) \\
         &= j_k \rho_{\bfj, \bfi^\p}
       \end{align}
       Note that the above operation \eqref{mylabel} is done for \textbf{all}
       (output) indices $(j_1, \dots, j_Q, i_1^\p,\dots,i_Q^\p)$, as applications
       of the operator from the left to $\rho_{\bfi, \bfi^\p}$ acts on the
       $\bfi$, with corresponding output indices $\bfj$. The notation is a bit
-      cumbersome. For the \YC{remainder}, the $\bfj$ output index will be replaced by an $\bfi$, knowing that this index corresponds to the output of the contraction hence will be done for each of those indices. 
+      cumbersome. For the \YC{remainder}, the $\bfj$ output index will be
+      replaced by an $\bfi$, knowing that this index corresponds to the output
+      of the contraction hence will be done for each of those indices. 
 
       Similarly as above, one the gets
       \begin{align}
-        \left(N_k^2-N_k\right)_{j_k}^{i_k} \rho_{\bfi, \bfi^\p} = \left(i_k^2 - i_k\right) \rho_{\bfi,\bfi^\prime}
+        \left(N_k^2-N_k\right)_{j_k}^{i_k} \rho_{\bfi, \bfi^\p} = \left(i_k^2 -
+        i_k\right) \rho_{\bfi,\bfi^\prime}
       \end{align}
 
-      The mixed term $N_lN_k$ expands to $\YC{N_l}N_k = I_{n_1}\otimes \dots \otimes N^{(n_l)} \otimes I_{n_{l+1} \dots n_{k-1}}\otimes N^{(n_k)} \otimes \dots \otimes I_{n_Q}$ and their tensor contraction results in products of the form 
+      The mixed term $N_lN_k$ expands to $\YC{N_l}N_k = I_{n_1}\otimes \dots
+      \otimes N^{(n_l)} \otimes I_{n_{l+1} \dots n_{k-1}}\otimes N^{(n_k)}
+      \otimes \dots \otimes I_{n_Q}$ and their tensor contraction results in
+      products of the form 
       \begin{align}
-        (N_l)^{i_l}_{j_l} \otimes (N_k)_{j_k}^{i_k} \rho_{\bfi, \bfi^\p} = i_li_k\rho(\bfi, \bfi^\prime)
+        (N_l)^{i_l}_{j_l} \otimes (N_k)_{j_k}^{i_k} \rho_{\bfi, \bfi^\p} =
+        i_li_k\rho(\bfi, \bfi^\prime)
       \end{align}
 
-      Applying $H_d$ to the tensor $\rho_{\bfi, \bfi^\YC{\p}}$ from the left therefore gives  
+      Applying $H_d$ to the tensor $\rho_{\bfi, \bfi^\YC{\p}}$ from the left
+      therefore gives  
       \begin{align}
-        H_d \rho_{\bfi, \bfi^\p} = \underbrace{\left(-\sum_k \frac{\xi_k}{2}(i_k^2 - i_k) - \sum_{l<k} \xi_{lk} (i_l i_k) \right)}_{=:h_d(\bfi)} \rho_{\bfi, \bfi^\p}
+        H_d \rho_{\bfi, \bfi^\p} = \underbrace{\left(-\sum_k
+        \frac{\xi_k}{2}(i_k^2 - i_k) - \sum_{l<k} \xi_{lk} (i_l i_k)
+        \right)}_{=:h_d(\bfi)} \rho_{\bfi, \bfi^\p}
       \end{align}
-      Applying $H_d$ to $\rho$ from the right contracts on dimensions $\bfi^\prime$:
+      Applying $H_d$ to $\rho$ from the right contracts on dimensions
+      $\bfi^\prime$:
       \begin{align}
-        \rho_{\bfi, \bfi^\p} H_d  = \YC{H}_d(\bfi^\p) \rho_{\bfi,\bfi^\p}
-        \end{align}
+        \rho_{\bfi, \bfi^\p} H_d  = h_d(\bfi^\p) \rho_{\bfi,\bfi^\p}
+      \end{align}
 
-    \item \textbf{Time-dependent control Hamiltonian} $H_c(t) = \sum_k p^k(t) (a_k + a_k^\dag) + iq^k(a_k - a_k^\dag)$, with  
+    \item \textbf{Time-dependent control Hamiltonian} $H_c(t) = \sum_k p^k(t)
+      (a_k + a_k^\dag) + iq^k(a_k - a_k^\dag)$, with  
       \begin{align}
       a_k = I_{n_1}\otimes \dots \otimes a^{(n_k)} \otimes \dots \otimes I_{n_Q}
         \quad \text{with} \quad a^{(n_k)} := \begin{pmatrix} 0 & 1 & \\ & 0 &
@@ -142,14 +216,19 @@ Note that when applying from the right, the access of elements in $M$ is inverte
         \sqrt{\YC{i_k}+1}
         \delta_{\YC{j_k,i_k+1}} \pm \sqrt{\YC{i_k}} \delta_{\YC{j_k,i_k-1}}}
         \rho_{\bfi, \bfi^{\prime}} \\
-        &= \sqrt{i_k+1} \rho_{E_{+k}\bfi, \bfi^\prime} \pm \sqrt{i_k} \rho_{E_{-k}\bfi, \bfi^\prime}.
+        &= \sqrt{i_k+1} \rho_{E_{+k}\bfi, \bfi^\prime} \pm \sqrt{i_k}
+        \rho_{E_{-k}\bfi, \bfi^\prime}.
       \end{align}
       \YC{Note that the boundary terms, i.e., $i_k = 0$ and $i_k = n_k-1$, need
       to be treated separately.}
 
       Applying $H_c(t)$ from the left then gives 
       \begin{align}
-        H_c(t) \rho_{\bfi, \bfi^\prime} = \sum_k p^k(t) \left(\sqrt{i_k+1} \rho_{E_{+k}\bfi,\bfi^\prime} + \sqrt{i_k} \rho_{E_{-k} \bfi,\bfi^\prime} \right) + iq^k(t) \left(\sqrt{i_k+1} \rho_{E_{+k}\bfi,\bfi^\prime} - \sqrt{i_k} \rho_{E_{-k}\bfi,\bfi^\prime} \right)
+        H_c(t) \rho_{\bfi, \bfi^\prime} = \sum_k p^k(t) \left(\sqrt{i_k+1}
+        \rho_{E_{+k}\bfi,\bfi^\prime} + \sqrt{i_k} \rho_{E_{-k}
+        \bfi,\bfi^\prime} \right) + iq^k(t) \left(\sqrt{i_k+1}
+        \rho_{E_{+k}\bfi,\bfi^\prime} - \sqrt{i_k} \rho_{E_{-k}\bfi,\bfi^\prime}
+        \right)
       \end{align}
       Applying $H_c(t)$ from the right to $\rho$ contracts on the dimensions
       $\bfi^\prime$, and the matrix $(a^{(n_k)} \pm {a^{(n_k)}}^{\YC{\dagger}})$
@@ -166,9 +245,9 @@ Note that when applying from the right, the access of elements in $M$ is inverte
         \rho_{\bfi,E_{-k}\bfi^\prime} \right)
       \end{align}
 
-    \item \textbf{Lindblad terms} $\sum_k \sum_{l\in{1,2}} \gamma_{lk} \Ell_{lk}
-      \rho \Ell_{lk}^\dag - \frac{1}{2} \left( \Ell_{lk}^\dag \Ell_{lk} \rho +
-      \rho \Ell_{lk}^\dag \Ell_{lk}\right)$.
+    \item \textbf{Lindblad terms} $\sum_k \sum_{l\in{1,2}} \gamma_{lk} \YC{(}
+      \Ell_{lk} \rho \Ell_{lk}^\dag - \frac{1}{2} \left( \Ell_{lk}^\dag
+      \Ell_{lk} \rho + \rho \Ell_{lk}^\dag \Ell_{lk}\right)$ \YC{)}.
     
     The dephasing collapse operator $\Ell_{2k} = a_k^\dag a_k$ is diagonal.    
     Contraction with $\rho_{\bfi,\bfi^\prime}$ yields
@@ -186,9 +265,9 @@ Note that when applying from the right, the access of elements in $M$ is inverte
       \YC{\gamma_{1k}\Ell_{1k}\rho\Ell_{1k}^\dagger -\frac 12
         \left (\Ell_{1k}^\dagger\Ell_{1k}\rho +
         \rho \Ell_{1k}^\dagger\Ell_{1k} \right )} =
-        \sum_k \gamma_{1k} \sqrt{(i_k+1)(i_k^\prime+1)} \rho_{E_{+k}\bfi,
-        E_{+k}\bfi^\prime} - \frac 12 \left( i_k+ i_k^\prime \right)\rho_{\bfi,
-        \bfi^\prime} 
+        \sum_k \gamma_{1k} \YC{ (} \sqrt{(i_k+1)(i_k^\prime+1)}
+        \rho_{E_{+k}\bfi, E_{+k}\bfi^\prime} - \frac 12 \left( i_k+ i_k^\prime
+        \right)\rho_{\bfi, \bfi^\prime} \YC{ ) }
     \end{align}
       
 \end{enumerate}
@@ -199,66 +278,125 @@ Note that when applying from the right, the access of elements in $M$ is inverte
   \begin{align} 
        y^{out}_{\bfi,\bfi^\prime}  &= 
        \left(-i h_d(\bfi) + ih_d(\bfi^\prime)
-        + l_2(\bfi,\bfi^\prime) + l_1^{\text{diag}}(\bfi, \bfi^\prime) \right) \rho_{\bfi,\bfi^\prime} \\ \label{eq:applyRHS1}
-        &+ \sum_k \gamma_{1k} \sqrt{(i_k+1)(i_k^\prime+1)} \rho_{E_{+k}\bfi, E_{+k}\bfi^\prime}\\
-        &+ \sum_k \left(-ip^k(t) + q^k(t)\right) \sqrt{i_k+1} \rho_{\Epk \bfi, \bfi^\prime} \\
-        &+ \sum_k \left( ip^k(t) + q^k(t)\right) \sqrt{i_k^\prime+1} \rho_{\bfi,\Epk \bfi^\prime} \\
-        &+ \sum_k \left(-ip^k(t) - q^k(t)\right) \sqrt{i_k} \rho_{\Emk \bfi, \bfi^\prime} \\
-        &+ \sum_k \left( ip^k(t) - q^k(t)\right) \sqrt{i_k^\prime} \rho_{\bfi,\Emk \bfi^\prime}  \label{eq:applyRHS2}
+        + l_2(\bfi,\bfi^\prime) + l_1^{\text{diag}}(\bfi, \bfi^\prime) \right)
+        \rho_{\bfi,\bfi^\prime} \\ \label{eq:applyRHS1}
+        &+ \sum_k \gamma_{1k} \sqrt{(i_k+1)(i_k^\prime+1)} \rho_{E_{+k}\bfi,
+        E_{+k}\bfi^\prime}\\
+        &+ \sum_k \left(-ip^k(t) + q^k(t)\right) \sqrt{i_k+1} \rho_{\Epk \bfi,
+        \bfi^\prime} \\
+        &+ \sum_k \left( ip^k(t) + q^k(t)\right) \sqrt{i_k^\prime+1}
+        \rho_{\bfi,\Epk \bfi^\prime} \\
+        &+ \sum_k \left(-ip^k(t) - q^k(t)\right) \sqrt{i_k} \rho_{\Emk \bfi,
+        \bfi^\prime} \\
+        &+ \sum_k \left( ip^k(t) - q^k(t)\right) \sqrt{i_k^\prime}
+        \rho_{\bfi,\Emk \bfi^\prime}  \label{eq:applyRHS2}
   \end{align}
   where 
   \begin{align}
-    h_d(\bfi) &= -\sum_k \frac{\xi_k}{2}(i_k^2 - i_k) - \sum_{l<k} \xi_{lk} (i_l i_k) \\
-    l_2(\bfi,\bfi^\prime) &= \sum_k \gamma_{2k} \left(i_ki_k^\prime - \frac 12 \left( (i_k)^2 + (i_k^\prime)^2\right) \right)\\
-    l_1^{\text{diag}}(\bfi, \bfi^\prime) &= \sum_k -\frac{\gamma_{1k}}{2}\left(i_k + i_k^\prime\right) 
+    h_d(\bfi) &= -\sum_k \frac{\xi_k}{2}(i_k^2 - i_k) - \sum_{l<k} \xi_{lk} (i_l
+    i_k) \\
+    l_2(\bfi,\bfi^\prime) &= \sum_k \gamma_{2k} \left(i_ki_k^\prime - \frac 12
+    \left( (i_k)^2 + (i_k^\prime)^2\right) \right)\\
+    l_1^{\text{diag}}(\bfi, \bfi^\prime) &= \sum_k
+    -\frac{\gamma_{1k}}{2}\left(i_k + i_k^\prime\right) 
   \end{align}
 
-  These operations will be applied for all $i_1,\dots, i_Q, i_1^\prime, \dots, i_Q^\prime$. 
+  These operations will be applied for all $i_1,\dots, i_Q, i_1^\prime, \dots,
+  i_Q^\prime$. 
   
-  It is important to access the data storage is a linear fashion, if possible. Iterating for all $\bfi, \bfi^\prime$ should therefore start with the slowest moving index in the most outer loop. For example, consider the mapping from the stored vectorized $q := vec(\rho)$ to the tensor $\rho_(\bfi,\bfi^\prime)$ to be
+  It is important to access the data storage is a linear fashion, if possible.
+  Iterating for all $\bfi, \bfi^\prime$ should therefore start with the slowest
+  moving index in the most outer loop. For example, consider the mapping from
+  the stored vectorized $q := vec(\rho)$ to the tensor $\rho_(\bfi,\bfi^\prime)$
+  to be
     \begin{align}
-        \rho(i_1,\dots,i_Q,i_1^\prime,\dots,i_Q^\prime) = q[i_1 \frac{N}{n_1} + i_2\frac{N}{n_1n_2} + i_3\frac{N}{n_1n_2n_3} + \dots + i_1^\prime N\frac{N}{n_1} + i_2^\prime N\frac{N}{n_1n_2} + \dots]
+        \rho(i_1,\dots,i_Q,i_1^\prime,\dots,i_Q^\prime) = q[i_1 \frac{N}{n_1} +
+        i_2\frac{N}{n_1n_2} + i_3\frac{N}{n_1n_2n_3} + \dots + i_1^\prime
+        N\frac{N}{n_1} + i_2^\prime N\frac{N}{n_1n_2} + \dots]
     \end{align}
-  the the slowest moving index is $i_1^\prime$, followed by $i_2^\prime, \dots, i_Q^\prime$, then $i_1, \dots i_Q$ with $i_Q$ being the fastest moving index. Hence, the most outer loop should iterate over $i_1^\prime$, then moving backwards through this order until $i_Q$ being the most inner iteration loop.
+  the the slowest moving index is $i_1^\prime$, followed by $i_2^\prime, \dots,
+  i_Q^\prime$, then $i_1, \dots i_Q$ with $i_Q$ being the fastest moving index.
+  Hence, the most outer loop should iterate over $i_1^\prime$, then moving
+  backwards through this order until $i_Q$ being the most inner iteration loop.
 
  \subsection{Parallelization} 
  
- For parallel distribution, consider hyper-cubes along the dimensions of each oscillator. For the $2Q$-rank tensor $\rho_{\bfi, \bfi^\p}$, consider a distribution of the $k-$th dimension $i_k$ in $\bfi$ and $i_k^\p$ in $\bfi^\p$ using $p_k$ processes, where $p_k$ should be an integer divisor of the number of levels $n_k$ of the $k$-th oscillator. Then we can distribute $\rho$ on $p_1^2\cdot \ldots \cdot p_Q^2$ processors $P_{\bfj, \bfj^\p}$ with $j_k, j_k^\p \in \{0,\dots,p_k-1\}$ such that
+ For parallel distribution, consider hyper-cubes along the dimensions of each
+ oscillator. For the $2Q$-rank tensor $\rho_{\bfi, \bfi^\p}$, consider a
+ distribution of the $k-$th dimension $i_k$ in $\bfi$ and $i_k^\p$ in $\bfi^\p$
+ using $p_k$ processes, where $p_k$ should be an integer divisor of the number
+ of levels $n_k$ of the $k$-th oscillator. Then we can distribute $\rho$ on
+ $p_1^2\cdot \ldots \cdot p_Q^2$ processors $P_{\bfj, \bfj^\p}$ with $j_k,
+ j_k^\p \in \{0,\dots,p_k-1\}$ such that
  \begin{align}
-   P_{\bfj, \bfj^\p} \quad \text{owns} \quad \rho_{\bfi, \bfi^\p} \quad &\text{for} \quad i_k \in \{ j_k \frac{n_k}{p_k}, \dots, \left(j_k+1\right) \frac{n_k}{p_k} - 1 \}\\
-    &\text{and} \quad i_k^\p \in \{ j_k^\p \frac{n_k}{p_k}, \dots, \left(j_k^\p+1\right) \frac{n_k}{p_k} - 1 \}
+   P_{\bfj, \bfj^\p} \quad \text{owns} \quad \rho_{\bfi, \bfi^\p} \quad
+   &\text{for} \quad i_k \in \{ j_k \frac{n_k}{p_k}, \dots, \left(j_k+1\right)
+   \frac{n_k}{p_k} - 1 \}\\
+    &\text{and} \quad i_k^\p \in \{ j_k^\p \frac{n_k}{p_k}, \dots,
+    \left(j_k^\p+1\right) \frac{n_k}{p_k} - 1 \}
  \end{align}
 
- Accessing $\rho$ at shifted indices $E_{\pm k}\bfi, E_{\pm k}\bfi^\p$ requires communication at processor boundaries. We can consider to realize this by storing and communicating ghost-layers for each processor hyper-cube.
+ Accessing $\rho$ at shifted indices $E_{\pm k}\bfi, E_{\pm k}\bfi^\p$ requires
+ communication at processor boundaries. We can consider to realize this by
+ storing and communicating ghost-layers for each processor hyper-cube.
 
 \section{AD-based derviative}
-To compute the adjoint action of the ODE right-hand-side to an input adjoint variable $\bar y_{\bfi, \bfi^\p}$, consider derivatives based on discrete Automatic Differentiation applied to the update formula \eqref{eq:applyRHS1} -- \eqref{eq:applyRHS2}:
+To compute the adjoint action of the ODE right-hand-side to an input adjoint
+variable $\bar y_{\bfi, \bfi^\p}$, consider derivatives based on discrete
+Automatic Differentiation applied to the update formula \eqref{eq:applyRHS1} --
+\eqref{eq:applyRHS2}:
 \begin{align} 
-       \bar \rho_{\bfi, \bfi^\p} &\pluseq \left(-i h_d(\bfi) + ih_d(\bfi^\prime)
-        + l_2(\bfi,\bfi^\prime) + l_1^{\text{diag}}(\bfi, \bfi^\prime) \right) \bar y_{\bfi,\bfi^\prime} \\
-        \bar \rho_{E_{+k}\bfi, E_{+k}\bfi^\prime} &\pluseq \sum_k \gamma_{1k} \sqrt{(i_k+1)(i_k^\prime+1)} \bar y_{\bfi, \bfi^\p} \\
-        \bar \rho_{\Epk \bfi, \bfi^\prime} &\pluseq \sum_k \left(-ip^k(t) + q^k(t)\right) \sqrt{i_k+1} \bar y_{\bfi, \bfi^\p} \\
-        \bar \rho_{\bfi,\Epk \bfi^\prime} &\pluseq \sum_k \left( ip^k(t) + q^k(t)\right) \sqrt{i_k^\prime+1} \bar y_{\bfi, \bfi^\p} \\
-        \bar \rho_{\Emk \bfi, \bfi^\prime} &\pluseq \sum_k \left(-ip^k(t) - q^k(t)\right) \sqrt{i_k} \bar y_{\bfi, \bfi^\p} \\
-        \bar \rho_{\bfi,\Emk \bfi^\prime} &\pluseq \sum_k \left( ip^k(t) - q^k(t)\right) \sqrt{i_k^\prime} \bar y_{\bfi, \bfi^\p}
-  \end{align}
-which can be written in terms of updates for $\bar \rho_{\bfi, \bfi^\p}$ as follows
+  \bar \rho_{\bfi, \bfi^\p} &\pluseq \left(-i h_d(\bfi) + ih_d(\bfi^\prime) +
+  l_2(\bfi,\bfi^\prime) + l_1^{\text{diag}}(\bfi, \bfi^\prime) \right) \bar
+  y_{\bfi,\bfi^\prime} \\
+  \bar \rho_{E_{+k}\bfi, E_{+k}\bfi^\prime} &\pluseq \sum_k \gamma_{1k}
+  \sqrt{(i_k+1)(i_k^\prime+1)} \bar y_{\bfi, \bfi^\p} \\
+  \bar \rho_{\Epk \bfi, \bfi^\prime} &\pluseq \sum_k \left(-ip^k(t) +
+  q^k(t)\right) \sqrt{i_k+1} \bar y_{\bfi, \bfi^\p} \\
+  \bar \rho_{\bfi,\Epk \bfi^\prime} &\pluseq \sum_k \left( ip^k(t) +
+  q^k(t)\right) \sqrt{i_k^\prime+1} \bar y_{\bfi, \bfi^\p} \\
+  \bar \rho_{\Emk \bfi, \bfi^\prime} &\pluseq \sum_k \left(-ip^k(t) -
+  q^k(t)\right) \sqrt{i_k} \bar y_{\bfi, \bfi^\p} \\
+  \bar \rho_{\bfi,\Emk \bfi^\prime} &\pluseq \sum_k \left( ip^k(t) -
+  q^k(t)\right) \sqrt{i_k^\prime} \bar y_{\bfi, \bfi^\p}
+\end{align}
+which can be written in terms of updates for $\bar \rho_{\bfi, \bfi^\p}$ as
+follows
 \begin{align} 
-       \bar \rho_{\bfi, \bfi^\p} &\pluseq \left(-i h_d(\bfi) + ih_d(\bfi^\prime)
-        + l_2(\bfi,\bfi^\prime) + l_1^{\text{diag}}(\bfi, \bfi^\prime) \right) \bar y_{\bfi,\bfi^\prime} \\
-         &+ \sum_k \gamma_{1k} \sqrt{(i_k)(i_k^\prime)} \bar y_{E_{-k}\bfi, E_{-k}\bfi^\p} \\
-         &+ \sum_k \left(-ip^k(t) + q^k(t)\right) \sqrt{i_k} \bar y_{\Emk\bfi, \bfi^\p} \\
-         &+ \sum_k \left( ip^k(t) + q^k(t)\right) \sqrt{i_k^\prime} \bar y_{\bfi, \Emk \bfi^\p} \\
-         &+ \sum_k \left(-ip^k(t) - q^k(t)\right) \sqrt{i_k+1} \bar y_{\Epk \bfi, \bfi^\p} \\
-         &+ \sum_k \left( ip^k(t) - q^k(t)\right) \sqrt{i_k^\prime+1} \bar y_{\bfi, \Epk\bfi^\p}
-  \end{align}
+  \bar \rho_{\bfi, \bfi^\p} &\pluseq \left(-i h_d(\bfi) + ih_d(\bfi^\prime) +
+  l_2(\bfi,\bfi^\prime) + l_1^{\text{diag}}(\bfi, \bfi^\prime) \right) \bar
+  y_{\bfi,\bfi^\prime} \\
+   &+ \sum_k \gamma_{1k} \sqrt{(i_k)(i_k^\prime)} \bar y_{E_{-k}\bfi,
+   E_{-k}\bfi^\p} \\
+   &+ \sum_k \left(-ip^k(t) + q^k(t)\right) \sqrt{i_k} \bar y_{\Emk\bfi,
+   \bfi^\p} \\
+   &+ \sum_k \left( ip^k(t) + q^k(t)\right) \sqrt{i_k^\prime} \bar y_{\bfi, \Emk
+   \bfi^\p} \\
+   &+ \sum_k \left(-ip^k(t) - q^k(t)\right) \sqrt{i_k+1} \bar y_{\Epk \bfi,
+   \bfi^\p} \\
+   &+ \sum_k \left( ip^k(t) - q^k(t)\right) \sqrt{i_k^\prime+1} \bar y_{\bfi,
+   \Epk\bfi^\p}
+\end{align}
 for all $\bfi, \bfi^\p$.
-The control functions $p^k, q^k$ depend on optimization parameters $\alpha^k$: $p^k = p(\alpha^k,t), q = q(\alpha^k,t)$. To compute the derivative with respect to those parameters, the same AD-base method can be applied to update $\bar \alpha^k$ from each of the terms.
+The control functions $p^k, q^k$ depend on optimization parameters $\alpha^k$:
+$p^k = p(\alpha^k,t), q = q(\alpha^k,t)$. To compute the derivative with respect
+to those parameters, the same AD-base method can be applied to update $\bar
+\alpha^k$ from each of the terms.
 
 
 \section{Performance}
-Table \ref{tab:runtime_qvsm} compares runtimes of the matrix-free tensor contraction solver to the sparse-matrix implementation that explicitly computes and stores the sparse matrices. The tests run the Alice-Cavity cooling problem, integrating for $N=10000$ time-steps in $[0,1]us$, using the implicit midpoint rule and Petsc's GMRES linear solver, Controls are initialized constant, driving the $|2>$ to the $|1>$ state (approximately). GMRES takes $5$ iterations on average. 
-Runtimes and speeups are reported for one sequential evaluation of the objective function (evalF) as well as the gradient (evalGradF), for different problem sizes. Two different platforms: MacBook Pro (2017, 2.3 GHz Intel Core i5) using LLVM 10.0.1 compiler (clang/1001.0.46.4) and petsc-3.13, and LC's Quartz (2.1 GHz Intel Xeon E5-2695) using gcc/8.1.0 compiler and petsc-3.12.4.
+Table \ref{tab:runtime_qvsm} compares runtimes of the matrix-free tensor
+contraction solver to the sparse-matrix implementation that explicitly computes
+and stores the sparse matrices. The tests run the Alice-Cavity cooling problem,
+integrating for $N=10000$ time-steps in $[0,1]us$, using the implicit midpoint
+rule and Petsc's GMRES linear solver, Controls are initialized constant, driving
+the $|2>$ to the $|1>$ state (approximately). GMRES takes $5$ iterations on
+average. 
+Runtimes and speeups are reported for one sequential evaluation of the objective
+function (evalF) as well as the gradient (evalGradF), for different problem
+sizes. Two different platforms: MacBook Pro (2017, 2.3 GHz Intel Core i5) using
+LLVM 10.0.1 compiler (clang/1001.0.46.4) and petsc-3.13, and LC's Quartz (2.1
+GHz Intel Xeon E5-2695) using gcc/8.1.0 compiler and petsc-3.12.4.
 
 % MACBOOK
 \begin{table}[h]
@@ -283,7 +421,9 @@ Runtimes and speeups are reported for one sequential evaluation of the objective
     3x20 & 18.76 & 9.76  \textcolor{red}{(1.9x)}  & 59.97 & 27.95 \textcolor{red}{(2.1x)}  \\
     \noalign{\smallskip}\hline
   \end{tabular}
-  \caption{Runtimes (sec) for one objective function and one gradient evaluation. Numbers in red parenthesis are speedup of matrix-free over sparse-matrix implementation.}
+  \caption{Runtimes (sec) for one objective function and one gradient
+  evaluation. Numbers in red parenthesis are speedup of matrix-free over
+  sparse-matrix implementation.}
   \label{tab:runtime_qvsm} 
 \end{table}
 
@@ -308,9 +448,11 @@ Runtimes and speeups are reported for one sequential evaluation of the objective
   \label{tab:compiler_quartz} 
 \end{table}
 
-Then, perform tests for compiler and petsc versions on LC's quartz: For Petsc, consider
+Then, perform tests for compiler and petsc versions on LC's quartz: For Petsc,
+consider
 \begin{itemize}
-  \item TCE: /usr/tce/packages/petsc/petsc-3.12.4-mvapich2-2.3-gcc-4.8-redhat, and
+  \item TCE: /usr/tce/packages/petsc/petsc-3.12.4-mvapich2-2.3-gcc-4.8-redhat,
+    and
   \item WSA: /usr/workspace/wsa/wave/petsc-3.13
 \end{itemize}
 and two different compiler versions: gcc/8.1.0 and intel/19.0.3.
