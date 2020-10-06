@@ -242,33 +242,34 @@ Runtimes and speeups are reported for one sequential evaluation of the objective
   \label{tab:runtime_qvsm} 
 \end{table}
 
-\begin{table}[h]
-  \begin{tabular}{c|cc}
-    \hline\noalign{\smallskip} 
-   SPARSE-MAT &  TCE Petsc & WSA petsc    \\ 
-    \hline\noalign{\smallskip} 
-      gcc  &   58       &     182        \\
-      intel&   61       &     180 \\
-      \noalign{\smallskip}\hline
-  \end{tabular}\\[2ex]
-  \begin{tabular}{c|cc}
-    \hline\noalign{\smallskip}
-    MAT-FREE &  TCE Petsc & WSA petsc    \\ 
-    \hline\noalign{\smallskip} 
-      gcc  &   27       &     27         \\
-      intel&   24       &     22 \\
-    \noalign{\smallskip}\hline
-  \end{tabular}
-  \caption{Quartz: Runtimes (sec) for one gradient evaluation, case 3x20.}
-  \label{tab:compiler_quartz} 
-\end{table}
+% Tests for compiler and petsc versions on LC's quartz: For Petsc, consider
+% \begin{itemize}
+%   \item TCE: /usr/tce/packages/petsc/petsc-3.12.4-mvapich2-2.3-gcc-4.8-redhat, and
+%   \item WSA: /usr/workspace/wsa/wave/petsc-3.13
+% \end{itemize}
+% and two different compiler versions: gcc/8.1.0 and intel/19.0.3.
 
-Then, perform tests for compiler and petsc versions on LC's quartz: For Petsc, consider
-\begin{itemize}
-  \item TCE: /usr/tce/packages/petsc/petsc-3.12.4-mvapich2-2.3-gcc-4.8-redhat, and
-  \item WSA: /usr/workspace/wsa/wave/petsc-3.13
-\end{itemize}
-and two different compiler versions: gcc/8.1.0 and intel/19.0.3.
+
+% \begin{table}[h]
+%   \begin{tabular}{c|cc}
+%     \hline\noalign{\smallskip} 
+%    SPARSE-MAT &  TCE Petsc & WSA petsc    \\ 
+%     \hline\noalign{\smallskip} 
+%       gcc  &   58       &     182        \\
+%       intel&   61       &     180 \\
+%       \noalign{\smallskip}\hline
+%   \end{tabular}\\[2ex]
+%   \begin{tabular}{c|cc}
+%     \hline\noalign{\smallskip}
+%     MAT-FREE &  TCE Petsc & WSA petsc    \\ 
+%     \hline\noalign{\smallskip} 
+%       gcc  &   27       &     27         \\
+%       intel&   24       &     22 \\
+%     \noalign{\smallskip}\hline
+%   \end{tabular}
+%   \caption{Quartz: Runtimes (sec) for one gradient evaluation, case 3x20.}
+%   \label{tab:compiler_quartz} 
+% \end{table}
 
 
 \end{document}
