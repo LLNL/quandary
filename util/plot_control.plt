@@ -5,12 +5,12 @@ reset
 set grid
 
 set title datafile 
-set xlabel "Time"
-set ylabel "Control"
+set xlabel "time"
+set ylabel "rotating frame controls"
 
 p \
-    datafile u 2:3  w l lc 3 t 'Real' ,\
-    datafile u 2:4  w l lc 7 t 'Imaginary' ,\
+    datafile u 1:2  w l lc 3 t 'p(t)' ,\
+    datafile u 1:3  w l lc 7 t 'q(t)' ,\
 
 pause -1 "Plot 'out.png' written. Hit any key to continue"
 
