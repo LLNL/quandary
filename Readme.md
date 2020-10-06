@@ -40,3 +40,6 @@ This project relies on the Petsc package [https://www.mcs.anl.gov/petsc/] to han
 The code builds into the executable `main`. It takes one argument being the name of the config file. The config file `AxC.cfg`, lists all possible config options. It is currently set to run the Alice-Cavity testcase (3x20 levels):
 * `./main AxC.cfg`
 
+
+## Documentation
+The documentation is under development. In the meantime, refer to the report that can be found in the `/doc/` folder. It lines out the underlying mathematical models as well as details on their implementation in Quandary. Many of the variable names in that documents have been adapoted throughout the code. 
