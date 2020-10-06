@@ -20,6 +20,14 @@
 \newcommand{\Emk}{E_{-k}}
 \newcommand{\pluseq}{\mathrel{+}=}
 
+\definecolor{Blue}{rgb}{0,0,1}                                                     
+\definecolor{Red}{rgb}{1,0,0}                                                      
+\definecolor{Green}{rgb}{0,1,0}                                                    
+\definecolor{Bronze}{rgb}{0.8,0.5,0.2}                                             
+\definecolor{Violet}{rgb}{0.54,0.17,0.89}                                          
+                                                                                   
+\newcommand{\TODO}[1]{{\textcolor{Violet}{TODO: #1}}}                              
+\newcommand{\YC}[1]{{\textcolor{Bronze}{#1}}}                                     
 
 \title{Tensor contractions for the Lindblad master equation}
 \author{Stefanie G{\"u}nther}
@@ -94,56 +102,93 @@ Note that when applying from the right, the access of elements in $M$ is inverte
         &= \sum_{i_k} \underbrace{N^{(n_k)}(j_k, i_k)}_{ = j_k\delta_{j_ki_k} } \rho(j_1,\dots, i_k,\dots, j_Q, \bfi^\p) \\
         &= j_k \rho_{\bfj, \bfi^\p}
       \end{align}
-      Note that the above operation \eqref{mylabel} is done for \textbf{all} (output) indices $(j_1, \dots, j_Q, i_1^\p,\dots,i_Q^\p)$, as applications of the operator from the left to $\rho_{\bfi, \bfi^\p}$ acts on the $\bfi$, with corresponding output indices $\bfj$. The notation is a bit cumbersome. For the reminder, the $\bfj$ output index will be replaced by an $\bfi$, knowing that this index corresponds to the output of the contraction hence will be done for each of those indices. 
+      Note that the above operation \eqref{mylabel} is done for \textbf{all}
+      (output) indices $(j_1, \dots, j_Q, i_1^\p,\dots,i_Q^\p)$, as applications
+      of the operator from the left to $\rho_{\bfi, \bfi^\p}$ acts on the
+      $\bfi$, with corresponding output indices $\bfj$. The notation is a bit
+      cumbersome. For the \YC{remainder}, the $\bfj$ output index will be replaced by an $\bfi$, knowing that this index corresponds to the output of the contraction hence will be done for each of those indices. 
 
       Similarly as above, one the gets
       \begin{align}
         \left(N_k^2-N_k\right)_{j_k}^{i_k} \rho_{\bfi, \bfi^\p} = \left(i_k^2 - i_k\right) \rho_{\bfi,\bfi^\prime}
       \end{align}
 
-      The mixed term $N_lN_k$ expands to $N_k = I_{n_1}\otimes \dots \otimes N^{(n_l)} \otimes I_{n_{l+1} \dots n_{k-1}}\otimes N^{(n_k)} \otimes \dots \otimes I_{n_Q}$ and their tensor contraction results in products of the form 
+      The mixed term $N_lN_k$ expands to $\YC{N_l}N_k = I_{n_1}\otimes \dots \otimes N^{(n_l)} \otimes I_{n_{l+1} \dots n_{k-1}}\otimes N^{(n_k)} \otimes \dots \otimes I_{n_Q}$ and their tensor contraction results in products of the form 
       \begin{align}
         (N_l)^{i_l}_{j_l} \otimes (N_k)_{j_k}^{i_k} \rho_{\bfi, \bfi^\p} = i_li_k\rho(\bfi, \bfi^\prime)
       \end{align}
 
-      Applying $H_d$ to the tensor $\rho_{\bfi, \bfi^p}$ from the left therefore gives  
+      Applying $H_d$ to the tensor $\rho_{\bfi, \bfi^\YC{\p}}$ from the left therefore gives  
       \begin{align}
         H_d \rho_{\bfi, \bfi^\p} = \underbrace{\left(-\sum_k \frac{\xi_k}{2}(i_k^2 - i_k) - \sum_{l<k} \xi_{lk} (i_l i_k) \right)}_{=:h_d(\bfi)} \rho_{\bfi, \bfi^\p}
       \end{align}
       Applying $H_d$ to $\rho$ from the right contracts on dimensions $\bfi^\prime$:
       \begin{align}
-        \rho_{\bfi, \bfi^\p} H_d  = h_d(\bfi^\p) \rho_{\bfi,\bfi^\p}
+        \rho_{\bfi, \bfi^\p} H_d  = \YC{H}_d(\bfi^\p) \rho_{\bfi,\bfi^\p}
         \end{align}
 
     \item \textbf{Time-dependent control Hamiltonian} $H_c(t) = \sum_k p^k(t) (a_k + a_k^\dag) + iq^k(a_k - a_k^\dag)$, with  
       \begin{align}
-      a_k = I_{n_1}\otimes \dots \otimes a^{(n_k)} \otimes \dots \otimes I_{n_Q} \quad \text{with} \quad a^{(n_k)} := \begin{pmatrix} 0 & 1 & \\ & 0 & \sqrt{2} \\ & & & \ddots \end{pmatrix}
+      a_k = I_{n_1}\otimes \dots \otimes a^{(n_k)} \otimes \dots \otimes I_{n_Q}
+        \quad \text{with} \quad a^{(n_k)} := \begin{pmatrix} 0 & 1 & \\ & 0 &
+        \sqrt{2} & \\ & & \ddots & \ddots \\ & & & \YC{0} &
+        \YC{\sqrt{n_k-1}} \\ & & & & \YC{0} \end{pmatrix}
       \end{align}
       Each term contracts to the $k-$th dimension:
       \begin{align}
-        (a_k\pm a_k^\dag) \rho_{\bfi,\bfi^\p} = (a^{(n_k}) \pm a^{(n_k)})^{i_k}_{j_k} \rho_{\bfi,\bfi^\prime} &= \sum_{i_k} \underbrace{(a^{(n_k)} \pm a^{(n_k)})_{j_k,i_k}}_{= \sqrt{j_k+1} \delta_{i_k,j_k+1} \pm \sqrt{j_k} \delta_{i_k,j_k-1}} \rho_{\bfi, \bfi^{\prime}} \\
+        (a_k\pm a_k^\dag) \rho_{\bfi,\bfi^\p} = (a^{(n_k\YC{)}} \pm
+        {a^{(n_k)}}^\YC{\dag})^{i_k}_{j_k} \rho_{\bfi,\bfi^\prime} &= \sum_{i_k}
+        \underbrace{(a^{(n_k)} \pm {a^{(n_k)}}^{\YC{\dag}})_{j_k,i_k}}_{=
+        \sqrt{\YC{i_k}+1}
+        \delta_{\YC{j_k,i_k+1}} \pm \sqrt{\YC{i_k}} \delta_{\YC{j_k,i_k-1}}}
+        \rho_{\bfi, \bfi^{\prime}} \\
         &= \sqrt{i_k+1} \rho_{E_{+k}\bfi, \bfi^\prime} \pm \sqrt{i_k} \rho_{E_{-k}\bfi, \bfi^\prime}.
-      \end{align} 
+      \end{align}
+      \YC{Note that the boundary terms, i.e., $i_k = 0$ and $i_k = n_k-1$, need
+      to be treated separately.}
 
       Applying $H_c(t)$ from the left then gives 
       \begin{align}
         H_c(t) \rho_{\bfi, \bfi^\prime} = \sum_k p^k(t) \left(\sqrt{i_k+1} \rho_{E_{+k}\bfi,\bfi^\prime} + \sqrt{i_k} \rho_{E_{-k} \bfi,\bfi^\prime} \right) + iq^k(t) \left(\sqrt{i_k+1} \rho_{E_{+k}\bfi,\bfi^\prime} - \sqrt{i_k} \rho_{E_{-k}\bfi,\bfi^\prime} \right)
       \end{align}
-      Applying $H_c(t)$ from the right to $\rho$ contracts on the dimensions $\bfi^\prime$, and the matrix $(a^{n_k } \pm a^{n_k})$ is accessed at $(a^{n_k } \pm a^{n_k})_{i_k^\prime,j_k^\prime} = \pm \sqrt{j_k^\prime+1} \delta_{i_k^\prime, j_k^\prime +1} + \sqrt{j_k^\prime} \delta_{i_k^\prime j_k^\prime -1}$, giving
+      Applying $H_c(t)$ from the right to $\rho$ contracts on the dimensions
+      $\bfi^\prime$, and the matrix $(a^{(n_k)} \pm {a^{(n_k)}}^{\YC{\dagger}})$
+      is accessed at $(a^{(n_k) } \pm
+      {a^{(n_k)}}^{\YC{\dagger}})_{i_k^\prime,j_k^\prime} = \pm
+      \sqrt{\YC{i_k}^\prime+1} \delta_{i_k^\prime\YC{+1}, \YC{j_k^\prime}} +
+      \sqrt{\YC{i}_k^\prime}
+      \delta_{i_k^\prime\YC{-1, j_k^\prime}}$, giving
       \begin{align}
-        \rho_{\bfi, \bfi^\prime} H_c(t) = \sum_k p^k(t) \left(\sqrt{i_k^\prime+1} \rho_{\bfi,E_{+k}\bfi^\prime} + \sqrt{i_k^\prime} \rho_{\bfi,E_{-k}\bfi^\prime} \right) + iq^k(t) \left( - \sqrt{i_k^\prime+1} \rho_{\bfi,E_{+k}\bfi^\prime} + \sqrt{i_k^\prime} \rho_{\bfi,E_{-k}\bfi^\prime} \right)
+        \rho_{\bfi, \bfi^\prime} H_c(t) = \sum_k p^k(t)
+        \left(\sqrt{i_k^\prime+1} \rho_{\bfi,E_{+k}\bfi^\prime} +
+        \sqrt{i_k^\prime} \rho_{\bfi,E_{-k}\bfi^\prime} \right) + iq^k(t) \left(
+        - \sqrt{i_k^\prime+1} \rho_{\bfi,E_{+k}\bfi^\prime} + \sqrt{i_k^\prime}
+        \rho_{\bfi,E_{-k}\bfi^\prime} \right)
       \end{align}
 
-    \item \textbf{Lindblad terms} $\sum_k \sum_{l\in{1,2}} \gamma_{lk} \Ell_{lk} \rho \Ell_{lk}^\dag - \frac{1}{2} \left( \Ell_{lk}^\dag \Ell_{lk} \rho + \rho \Ell_{lk}^\dag \Ell_{lk}\right)$.
+    \item \textbf{Lindblad terms} $\sum_k \sum_{l\in{1,2}} \gamma_{lk} \Ell_{lk}
+      \rho \Ell_{lk}^\dag - \frac{1}{2} \left( \Ell_{lk}^\dag \Ell_{lk} \rho +
+      \rho \Ell_{lk}^\dag \Ell_{lk}\right)$.
     
-    The dephasing collapse operator $\Ell_{2k} = a_k^\dag a_k$ is diagonal. Contraction with $\rho_{\bfi,\bfi^\prime}$ yields
+    The dephasing collapse operator $\Ell_{2k} = a_k^\dag a_k$ is diagonal.    
+    Contraction with $\rho_{\bfi,\bfi^\prime}$ yields
     \begin{align}
-        \sum_k \left( \gamma_{2k} i_ki_k^\prime - \frac 12 \left( i_k^2 + (i_k^\prime)^2\right) \right) \rho_{\bfi,\bfi^\prime}
+      \YC{\gamma_{2k}\Ell_{2k}\rho\Ell_{2k}^\dagger -\frac 12
+        \left (\Ell_{2k}^\dagger\Ell_{2k}\rho +
+        \rho \Ell_{2k}^\dagger\Ell_{2k} \right )} =
+        \sum_k \left( \gamma_{2k} i_ki_k^\prime - \frac 12 \left( i_k^2 +
+        (i_k^\prime)^2\right) \right) \rho_{\bfi,\bfi^\prime}
     \end{align}
 
-    The decay collapse operator $\Ell_{1k} = a_k$ contains off-diagonals, and yields
+    The decay collapse operator $\Ell_{1k} = a_k$ contains off-diagonals, and
+    yields
     \begin{align}
-        \sum_k \gamma_{1k} \sqrt{(i_k+1)(i_k^\prime+1)} \rho_{E_{+k}\bfi, E_{+k}\bfi^\prime} - \frac 12 \left( i_k+ i_k^\prime \right)\rho_{\bfi, \bfi^\prime} 
+      \YC{\gamma_{1k}\Ell_{1k}\rho\Ell_{1k}^\dagger -\frac 12
+        \left (\Ell_{1k}^\dagger\Ell_{1k}\rho +
+        \rho \Ell_{1k}^\dagger\Ell_{1k} \right )} =
+        \sum_k \gamma_{1k} \sqrt{(i_k+1)(i_k^\prime+1)} \rho_{E_{+k}\bfi,
+        E_{+k}\bfi^\prime} - \frac 12 \left( i_k+ i_k^\prime \right)\rho_{\bfi,
+        \bfi^\prime} 
     \end{align}
       
 \end{enumerate}
