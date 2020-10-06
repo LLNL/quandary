@@ -29,7 +29,14 @@ This project relies on Petsc [https://www.mcs.anl.gov/petsc/] to handle linear a
 * Type `make cleanup` to clean the build directory.
 * Type `make -j main` to build the code. 
 
-### Notes for Petsc on LC machines
+
+
+## Running
+The code builds into the executable `main`. It takes one argument being the name of the config file. The config file `AxC.cfg`, lists all possible config options. It is currently set to run the Alice-Cavity testcase (3x20 levels):
+* `./main AxC.cfg`
+
+
+## Notes for Petsc on LC machines
 * Petc is already installed on LC machines, in the directory
 `/usr/tce/packages/petsc/petsc-3.12.4-mvapich2-2.3-gcc-4.8-redhat`
 * To use it, load the following modules
@@ -39,8 +46,3 @@ This project relies on Petsc [https://www.mcs.anl.gov/petsc/] to handle linear a
     * `export PETSC_DIR=/usr/tce/packages/petsc/petsc-3.12.4-mvapich2-2.3-gcc-4.8-redhat`
     * `export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$PETSC_DIR`
  
-
-## Running
-The code builds into the executable `main`. It takes one argument being the name of the config file. The config file `AxC.cfg`, lists all possible config options. It is currently set to run the Alice-Cavity testcase (3x20 levels):
-* `./main AxC.cfg`
-
