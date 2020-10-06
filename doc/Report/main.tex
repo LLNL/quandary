@@ -24,16 +24,26 @@
 \maketitle
 
 \section{Model equation}
-We model open quantum systems with $Q$ subsystems with $n_k$ levels for the $k$-th subsystem, $k=1,\dots,Q$. We solve the Lindblad master equation
+We model open quantum systems with $Q$ subsystems with $n_k$ levels for the
+$k$-th subsystem, $k=1,\dots,Q$. We solve the Lindblad master equation
 \begin{align}\label{mastereq}
   \dot \rho(t) = &-i(H(t)\rho(t) - \rho(t)H(t)) \notag \\
-          &+ \sum_{l=1}^2 \sum_{k=1}^Q \gamma_{lk} \left( \Ell_{lk} \rho(t) \Ell_{lk}^{\dagger} - \frac 1 2 \left( \Ell_{lk}^{\dagger}\Ell_{lk} \rho(t) + \rho(t)\Ell_{lk}^{\dagger} \Ell_{lk}\right) \right)
+  &+ \sum_{l=1}^2 \sum_{k=1}^Q \gamma_{lk} \left( \Ell_{lk} \rho(t)
+  \Ell_{lk}^{\dagger} - \frac 1 2 \left( \Ell_{lk}^{\dagger}\Ell_{lk}
+  \rho(t) + \rho(t)\Ell_{lk}^{\dagger} \Ell_{lk}\right) \right)
 \end{align}
-for the density matrix $\rho(t)\in \C^{N\times N}$ with dimension $N := \prod_{k=1}^Q n_k$. The Hamiltonian $H(t)$ consists of a constant \textit{drift} part, and a time-varying \textit{control} part. For the computational \textit{rotating frame}, these are computed from
+for the density matrix $\rho(t)\in \C^{N\times N}$ with dimension $N :=
+\prod_{k=1}^Q n_k$. The Hamiltonian $H(t)$ consists of a constant \textit{drift}
+part, and a time-varying \textit{control} part. For the computational
+\textit{rotating frame}, these are computed from
 \begin{align}
   H(t) &= H_d + H_c(t) \\
-  \text{with} \quad H_d &:= \sum_{k=1}^Q \left(- \frac{\xi_k}{2} a_k^{\dagger}a_k^{\dagger}a_k a_k - \sum_{l\neq k} \xi_{lk} a_l^{\dagger}a_l a_k^{\dagger} a_k  \right) \\
-                 H_c(t) &:= \sum_{k=1}^Q \left( p^k(\vec{\alpha}^k,t) (a_k + a_k^{\dagger}) + i q^k(\vec{\alpha}^k,t)(a_k - a_k^{\dagger})  \right)
+  \text{with} \quad H_d &:= \sum_{k=1}^Q \left(- \frac{\xi_k}{2}
+  a_k^{\dagger}a_k^{\dagger}a_k a_k - \sum_{l\neq k} \xi_{lk} a_l^{\dagger}a_l
+  a_k^{\dagger} a_k  \right) \\
+   H_c(t) &:= \sum_{k=1}^Q \left( p^k(\vec{\alpha}^k,t) (a_k +
+   a_k^{\dagger}) + i q^k(\vec{\alpha}^k,t)(a_k - a_k^{\dagger})
+   \right)
 \end{align}
 Here, $a_k$ denotes the lowering operator:
 \begin{align}
@@ -55,42 +65,70 @@ Here, $a_k$ denotes the lowering operator:
 and $I_{n_k}$ denotes the identity matrix in $\R^{n_k \times n_k}$.
 
 \subsection{Collapse operators}
-The collapse operators $\Ell_{lk}$ in the Lindblad terms of the master equation \eqref{mastereq} can be of the following type:
+The collapse operators $\Ell_{lk}$ in the Lindblad terms of the master equation
+\eqref{mastereq} can be of the following type:
 \begin{itemize}
   \item ``T1'' -- Decay: $\Ell_{1k} = a_k$
   \item ``T2'' -- Dephasing: $\Ell_{2k} = a_k^{\dagger}a_k$
 \end{itemize}
-for each subsystem $k$. The constants $\gamma_{lk}$ are the inverse half-life for the corresponding collapse process $l$: $\gamma_{lk} = {\frac{1}{T_l}}$. Typical T1 decay time is between $10-100$ microseconds (us). T2 dephasing time is typically about half of T1 decay time. Decay then behaves like $\exp(-t/{T_1})$. Dephasing behaves like $\exp(- t / T_1)$.
+for each subsystem $k$. The constants $\gamma_{lk}$ are the inverse half-life
+for the corresponding collapse process $l$: $\gamma_{lk} = {\frac{1}{T_l}}$.
+Typical T1 decay time is between $10-100$ microseconds (us). T2 dephasing time
+is typically about half of T1 decay time. Decay then behaves like
+$\exp(-t/{T_1})$. Dephasing behaves like $\exp(- t / T_1)$.
 
 \subsection{Control pulses}
-The time-dependent control functions $p^k(\vec{\alpha}^k,t), q^k(\vec{\alpha}^k,t)$ are real-valued. We discretize them using B-splines with carrier waves:
+The time-dependent control functions $p^k(\vec{\alpha}^k,t),
+q^k(\vec{\alpha}^k,t)$ are real-valued. We discretize them using B-splines with
+carrier waves:
 \begin{align}
-  p^k(\vec{\alpha}^k,t) &= \sum_{l=1}^L B_l(t) \sum_{f=1}^{N_f} \left(\alpha^{k (1)}_{l,f} \cos(\Omega_f^k t) - \alpha^{k (2)}_{l,f} \sin(\Omega_f^k t) \right) \\
-  q^k(\vec{\alpha}^k,t) &= \sum_{l=1}^L B_l(t) \sum_{f=1}^{N_f} \left( \alpha^{k (1)}_{l,f} \sin(\Omega_f^k t) + \alpha^{k (2)}_{l,f} \cos(\Omega_f^k t) \right)
+  p^k(\vec{\alpha}^k,t) &= \sum_{l=1}^L B_l(t) \sum_{f=1}^{N_f} \left(\alpha^{k
+  (1)}_{l,f} \cos(\Omega_f^k t) - \alpha^{k (2)}_{l,f} \sin(\Omega_f^k t)
+  \right) \\
+  q^k(\vec{\alpha}^k,t) &= \sum_{l=1}^L B_l(t) \sum_{f=1}^{N_f} \left( \alpha^{k
+  (1)}_{l,f} \sin(\Omega_f^k t) + \alpha^{k (2)}_{l,f} \cos(\Omega_f^k t)
+  \right)
 \end{align}
-for $L$ B-Spline functions $B_l(t)$, and $N_f$ carrier wave frequencies $\Omega_f^k$. The amplitudes $\vec{\alpha}^k \in \R^{2LN_f}$ are the control parameters (\textit{design} variables) that we modify in order to realize a desired system behavior. 
+for $L$ B-Spline functions $B_l(t)$, and $N_f$ carrier wave frequencies
+$\Omega_f^k$. The amplitudes $\vec{\alpha}^k \in \R^{2LN_f}$ are the control
+parameters (\textit{design} variables) that we modify in order to realize a
+desired system behavior. 
 
-Design storage in the Quandary code design vector is oscillators first $(\vec{\alpha}^1, \dots, \vec{\alpha}^Q)$, then for each $\vec{\alpha}^k \in \R^{2LN_f}$ iterates over $L$ splines first: $\vec{\alpha}^k = (\alpha^k_1,\dots, \alpha^k_{L})$ with $\alpha^k_l \in \R^{2N_f}$, then each $\alpha^k_l$ iterates over carrierwaves first and for each carrierwaves lists the two components: $\alpha^k_l = \alpha^{k(1)}_{l,1}, \alpha^{k(2)}_{l,1}, \dots \alpha^{k(1)}_{l,N_f}, \alpha^{k(2)}_{l,N_f}$.
+Design storage in the Quandary code design vector is oscillators first
+$(\vec{\alpha}^1, \dots, \vec{\alpha}^Q)$, then for each $\vec{\alpha}^k \in
+\R^{2LN_f}$ iterates over $L$ splines first: $\vec{\alpha}^k =
+(\alpha^k_1,\dots, \alpha^k_{L})$ with $\alpha^k_l \in \R^{2N_f}$, then each
+$\alpha^k_l$ iterates over carrierwaves first and for each carrierwaves lists
+the two components: $\alpha^k_l = \alpha^{k(1)}_{l,1}, \alpha^{k(2)}_{l,1},
+\dots \alpha^{k(1)}_{l,N_f}, \alpha^{k(2)}_{l,N_f}$.
 
-The control functions are in the \textit{rotating frame}. To convert them back to the \textit{Lab frame} use
+The control functions are in the \textit{rotating frame}. To convert them back
+to the \textit{Lab frame} use
 \begin{align}
-  f^k(t) = 2 \sum_{l=1}^L B_l(t) \sum_{f=1}^{N_f} \beta_{l,f}^k \cos(w_k t + \Omega_f^k t + \theta_{l,f}) \quad \forall k=1,\dots Q
+  f^k(t) = 2 \sum_{l=1}^L B_l(t) \sum_{f=1}^{N_f} \beta_{l,f}^k \cos(w_k t +
+  \Omega_f^k t + \theta_{l,f}) \quad \forall k=1,\dots Q
 \end{align}
 where $\beta_{l,f}^k$ and $\theta_{l,f}$ are computed from
 \begin{align}
-  \alpha_{l,f}^{k(1)} = \beta_{l,f}^k \cos(\theta_{l,f}) \quad \text{and} \quad \alpha_{l,f}^{k(2)} = \beta_{l,f}^k \sin(\theta_{l,f})
+  \alpha_{l,f}^{k(1)} = \beta_{l,f}^k \cos(\theta_{l,f}) \quad \text{and} \quad
+  \alpha_{l,f}^{k(2)} = \beta_{l,f}^k \sin(\theta_{l,f})
 \end{align}
-and $w_k$ are the fundamental resonance frequencies of subsystems $k$. Using trigenomic equalities, the Lab-frame comtrols can be expressed as
+and $w_k$ are the fundamental resonance frequencies of subsystems $k$. Using
+trigenomic equalities, the Lab-frame comtrols can be expressed as
 \begin{align}
-  f^k(t) &= 2 \sum_{l=1}^L B_l(t) \sum_{f=1}^{N_f} \alpha_{l,f}^{k(1)} \cos((w_k + \Omega_f^k) t) - \alpha_{l,f}^{k(2)}\sin((w_k + \Omega_f^k) t) \quad \forall k=1,\dots Q \\
-         &= 2 p^k(\vec{\alpha}^k, t) \cos(w_k t) - 2 q^k(\vec{\alpha}^k, t)\sin(w_k t) \\
+  f^k(t) &= 2 \sum_{l=1}^L B_l(t) \sum_{f=1}^{N_f} \alpha_{l,f}^{k(1)} \cos((w_k
+  + \Omega_f^k) t) - \alpha_{l,f}^{k(2)}\sin((w_k + \Omega_f^k) t) \quad \forall
+  k=1,\dots Q \\
+         &= 2 p^k(\vec{\alpha}^k, t) \cos(w_k t) - 2 q^k(\vec{\alpha}^k,
+         t)\sin(w_k t) \\
 \end{align}
 
 
 \subsection{Measuring the expected energy level}\label{sec:expectedenergy}
 For each subsystem $k$, $k=1,\dots, Q$, we define the observable 
 \begin{align}
-  O^k := a_k^\dag a_k  = I_{n_1} \otimes \dots \otimes I_{n_{k-1}} \otimes  N_k \otimes I_{n_{k+1}} \otimes \dots I_{n_Q} 
+  O^k := a_k^\dag a_k  = I_{n_1} \otimes \dots \otimes I_{n_{k-1}} \otimes  N_k
+  \otimes I_{n_{k+1}} \otimes \dots I_{n_Q} 
 \end{align}
 for the number operator 
 \begin{align}
@@ -101,38 +139,58 @@ for the number operator
      &    &    & \ddots 
   \end{bmatrix}
 \end{align}
-$O^k$ measures the probability of the energy levels of subsystem $k$. The expected energy level of subsystem $k$ is given by 
+$O^k$ measures the probability of the energy levels of subsystem $k$. The
+expected energy level of subsystem $k$ is given by 
 \begin{align}
   \langle O^k \rangle &= \sum_{o_k} o_k p(o_k)  = \mbox{Tr}(O^k\rho) \\
    & = \mbox{Tr}(N_k \rho^k)  = \langle N_k\rangle
 \end{align}
-where $\rho^k$ is the reduced density matrix for subsystem $k$. Here, $p(o_k)$ is the probability of $\rho$ being the the $o_k$-th energy level for subsystem $k$, $p(o_k) = \mbox{Tr}(P^k_o \rho)$ for a spectral decomposition $O^k = \sum_{o_k} o_kP^k_o$. 
+where $\rho^k$ is the reduced density matrix for subsystem $k$. Here, $p(o_k)$
+is the probability of $\rho$ being the the $o_k$-th energy level for subsystem
+$k$, $p(o_k) = \mbox{Tr}(P^k_o \rho)$ for a spectral decomposition $O^k =
+\sum_{o_k} o_kP^k_o$. 
 
 
 \section{Optimization problem}
 
 \subsection{Groundstate optimization}
-We aim to find control pulses $p^k(\vec{\alpha}^k, t), q^k(\vec{\alpha}^k, (t)$, that drive any initial state towards the ground state $|0\dots 0\rangle = (1, 0, 0, \dots )^T$. The corresponding ground state density matrix is given by
+We aim to find control pulses $p^k(\vec{\alpha}^k, t), q^k(\vec{\alpha}^k, (t)$,
+that drive any initial state towards the ground state $|0\dots 0\rangle = (1, 0,
+0, \dots )^T$. The corresponding ground state density matrix is given by
 \begin{align}
-      \rho_{G} := |0\dots 0\rangle \langle 0 \dots 0 | = \begin{bmatrix} 1      & 0      &  \dots   \\ 
-                                         0      & 0      &  \dots  \\ 
-                                         \vdots & \vdots &  \dots 
-                    \end{bmatrix}
+  \rho_{G} := |0\dots 0\rangle \langle 0 \dots 0 | = 
+  \begin{bmatrix} 1      & 0      &  \dots   \\ 
+                  0      & 0      &  \dots  \\ 
+                  \vdots & \vdots &  \dots 
+  \end{bmatrix}
 \end{align}
 
-To reach this goal, we either minimize the distance between the final state density matrix and the ground-state density matrix, measured in the frobenius norm, or we look at the expected energy level of the system and minimize that:
+To reach this goal, we either minimize the distance between the final state
+density matrix and the ground-state density matrix, measured in the frobenius
+norm, or we look at the expected energy level of the system and minimize that:
 \begin{enumerate}
-  \item \textit{Expected energy minimization}: Minimize a weighted sum over expected energy levels of the (full or partial) system
+  \item \textit{Expected energy minimization}: Minimize a weighted sum over
+    expected energy levels of the (full or partial) system
     \begin{align}
        \quad J(\rho(T)) = \sum_{k\in \mathcal{K}} \beta_k \langle O_k \rangle 
     \end{align}
-    using the number operator $O_k = a_k^\dag a_k$ for the subsystem $k$ (compare Section \ref{sec:expectedenergy}), and defining a partial system $H_{k_1}\otimes \dots \otimes H_{k_s}$ from an index set of subsystem IDs $\mathcal{K}=\{k_1,\dots,k_s\}\subset \{1,\dots,Q\}$. We can use the following variations of the above measure
+    using the number operator $O_k = a_k^\dag a_k$ for the subsystem $k$
+    (compare Section \ref{sec:expectedenergy}), and defining a partial system
+    $H_{k_1}\otimes \dots \otimes H_{k_s}$ from an index set of subsystem IDs
+    $\mathcal{K}=\{k_1,\dots,k_s\}\subset \{1,\dots,Q\}$. We can use the
+    following variations of the above measure
     \begin{enumerate}
-      \item[(a)] $J(\rho(T)) = \left(\frac{1}{|\mathcal{K}|}\sum_{k\in\mathcal{K}}\langle O_k \rangle \right)^2$
-      \item[(b)] $J(\rho(T)) = \frac{1}{|\mathcal{K}|}\sum_{k\in\mathcal{K}}\left(\langle O_k \rangle \right)^2 $
-      \item[(c)] $J(\rho(T)) = \frac{1}{|\mathcal{K}|}\sum_{k\in\mathcal{K}}\langle O_k \rangle$
+      \item[(a)] $J(\rho(T)) =
+        \left(\frac{1}{|\mathcal{K}|}\sum_{k\in\mathcal{K}}\langle O_k \rangle
+        \right)^2$
+      \item[(b)] $J(\rho(T)) =
+        \frac{1}{|\mathcal{K}|}\sum_{k\in\mathcal{K}}\left(\langle O_k \rangle
+        \right)^2 $
+      \item[(c)] $J(\rho(T)) =
+        \frac{1}{|\mathcal{K}|}\sum_{k\in\mathcal{K}}\langle O_k \rangle$
     \end{enumerate}
-  \item \textit{Direct ground-state optimization}: Minimize the frobenius norm between the final density matrix and the groundstate density matrix:
+  \item \textit{Direct ground-state optimization}: Minimize the frobenius norm
+    between the final density matrix and the groundstate density matrix:
     \begin{align}
       J(\rho(T)) = \frac 12 \| \rho(T) - \rho_G \|^2_F 
     \end{align}
@@ -140,40 +198,52 @@ To reach this goal, we either minimize the distance between the final state dens
 
 \end{enumerate}
 
-For both objective types, we add an integral penalty term to the objective function, that discourages non-zero energy states over time as so:
+For both objective types, we add an integral penalty term to the objective
+function, that discourages non-zero energy states over time as so:
 \begin{align}
-  % \int_0^T w(t) J(\rho(t)) \, \mathrm{d}t, \quad \text{where} \quad w(t) = \left(\frac{t}{T}\right)^p, p \geq 1
-  \int_0^T w(t) J(\rho(t)) \, \mathrm{d}t, \quad \text{where} \quad w(t) = \frac{1}{a} e^{ -\left(\frac{t-T}{a} \right)^2}, \quad  0 < a \leq 1
+  % \int_0^T w(t) J(\rho(t)) \, \mathrm{d}t, \quad \text{where} \quad w(t) =
+  % \left(\frac{t}{T}\right)^p, p \geq 1
+  \int_0^T w(t) J(\rho(t)) \, \mathrm{d}t, \quad \text{where} \quad w(t) =
+  \frac{1}{a} e^{ -\left(\frac{t-T}{a} \right)^2}, \quad  0 < a \leq 1
 \end{align}
-Note, that as $a\to 0$, the weight $w(t)$ converges to the dirac delta distribution with peak at final time $T$. 
+Note, that as $a\to 0$, the weight $w(t)$ converges to the dirac delta
+distribution with peak at final time $T$. 
 
 \subsection{Target gate optimization}
 
-Here, the goal is to find control pulses that realize a certain logical gate operation at final time $T$. Representing the gate by a unitary matrix $V\in \C^{N\times N}$, the goal is to match the final state $\rho(T)$ to the unitary transformation $V\rho(0)V^{\dagger}$ for any initial state $\rho(0)$:
+Here, the goal is to find control pulses that realize a certain logical gate
+operation at final time $T$. Representing the gate by a unitary matrix $V\in
+\C^{N\times N}$, the goal is to match the final state $\rho(T)$ to the unitary
+transformation $V\rho(0)V^{\dagger}$ for any initial state $\rho(0)$:
 \begin{align}
   J(\rho(T)) = \| \rho(T) - V\rho(0)V^{\dagger} \|^2_F 
 \end{align} 
 
 
 Target gates that we consider include
-    \begin{align}
-      V_{X} := \begin{bmatrix} 0 & 1 \\ 1 & 0  \end{bmatrix} \quad
-      V_{Y} := \begin{bmatrix} 0 & -i \\ i & 0 \end{bmatrix} \quad
-      V_{Z} := \begin{bmatrix} 1 & 0 \\ 0 & -1 \end{bmatrix} \quad 
-      V_{Hadamard} := \frac{1}{\sqrt{2}} \begin{bmatrix} 1 & 1 \\ 1 & -1 \end{bmatrix} \\
-      V_{CNOT} := \begin{bmatrix} 1  & 0 & 0 & 0 \\ 
-                                   0  & 1 & 0 & 0 \\ 
-                                   0  & 0 & 0 & 1 \\ 
-                                   0  & 0 & 1 & 0 \\ 
-                    \end{bmatrix}
-    \end{align}
+\begin{align}
+  V_{X} := \begin{bmatrix} 0 & 1 \\ 1 & 0  \end{bmatrix} \quad
+  V_{Y} := \begin{bmatrix} 0 & -i \\ i & 0 \end{bmatrix} \quad
+  V_{Z} := \begin{bmatrix} 1 & 0 \\ 0 & -1 \end{bmatrix} \quad 
+  V_{Hadamard} := \frac{1}{\sqrt{2}} 
+           \begin{bmatrix} 1 & 1 \\ 1 & -1 \end{bmatrix} \\
+  V_{CNOT} := \begin{bmatrix} 1  & 0 & 0 & 0 \\ 
+                               0  & 1 & 0 & 0 \\ 
+                               0  & 0 & 0 & 1 \\ 
+                               0  & 0 & 1 & 0 \\ 
+                \end{bmatrix}
+\end{align}
 
 
 
 \subsection{Initial conditions}\label{subsec:initcond}
 
 \subsubsection{Basis for initial condition density matrices}
-Typically, the optimization goal is to find control parameters that minimize the respective measure for \textit{any} possible initial condition $\rho(0)$. We therefore define a basis for all initial density matrices and aim to minimize the average of the above measure over those matrix basis elements. The basis matrices are defined as follows:
+Typically, the optimization goal is to find control parameters that minimize the
+respective measure for \textit{any} possible initial condition $\rho(0)$. We
+therefore define a basis for all initial density matrices and aim to minimize
+the average of the above measure over those matrix basis elements. The basis
+matrices are defined as follows:
 
 \begin{align}
 B^{kj} := \frac 12 \left( E_{kk} + E_{jj}\right) +  \begin{cases} 
@@ -182,56 +252,87 @@ B^{kj} := \frac 12 \left( E_{kk} + E_{jj}\right) +  \begin{cases}
         \frac i2 \left( E_{jk} - E_{kj}\right) & \text{if} \, k>j
       \end{cases} 
 \end{align}
-for all $k,j\in\{0,\dots, N-1\}$, where $E_{kj}$ denotes the matrix of all zeros except for the $(k,j)$-th element which is one (hence $E_{kj} = e_ke_j^T$). These $N^2$ matrices are hermitian, and they are linearly independent over the real vector space of hermitian matrices. They further satisfy $\Tr(B^{kj}) = 1$ and they are positive semi-definite, hence each basis matrix is a density matrix. 
+for all $k,j\in\{0,\dots, N-1\}$, where $E_{kj}$ denotes the matrix of all zeros
+except for the $(k,j)$-th element which is one (hence $E_{kj} = e_ke_j^T$).
+These $N^2$ matrices are hermitian, and they are linearly independent over the
+real vector space of hermitian matrices. They further satisfy $\Tr(B^{kj}) = 1$
+and they are positive semi-definite, hence each basis matrix is a density
+matrix. 
 
-To uniquely identify the different initial conditions in the code, we assign a unique index $i \in \{0,\dots, N^2-1\}$ to each basis elements with 
-    \begin{align*}
-      B^i := B^{k(i), j(i)}, \quad \text{with} \quad k(i) := i \,\mbox{mod}\, N, \quad \text{and} \quad j(i) := \left\lfloor \frac{i}{N} \right\rfloor
-    \end{align*}
+To uniquely identify the different initial conditions in the code, we assign a
+unique index $i \in \{0,\dots, N^2-1\}$ to each basis elements with 
+\begin{align*}
+  B^i := B^{k(i), j(i)}, \quad \text{with} \quad k(i) := i \,\mbox{mod}\, N,
+  \quad \text{and} \quad j(i) := \left\lfloor \frac{i}{N} \right\rfloor
+\end{align*}
 
 We can rewrite any initial condition $\rho(0)$ as a linear combination 
 \begin{align}
   \rho(0) = \sum_{k=0}^{N-1} \sum_{j=0}^{N-1} a_{kj} B^{k, j}.
 \end{align}
 for coefficients $a_{kj} \in \R$.
-Since the master equation \eqref{mastereq} is linear, we can formally define a linear solution operator $S^{\vec{\alpha}}(t,\rho(0))$, mapping an initial state to the state at time $t$, and we can rewrite the final density matrix at time $T$ in terms of the basis elements:
+Since the master equation \eqref{mastereq} is linear, we can formally define a
+linear solution operator $S^{\vec{\alpha}}(t,\rho(0))$, mapping an initial state
+to the state at time $t$, and we can rewrite the final density matrix at time
+$T$ in terms of the basis elements:
 \begin{align}
-  \rho(T) = S^{\vec{\alpha}}(T,\rho(0)) = \sum_{k,j=0}^{N-1} a_{kj} S^{\vec{\alpha}}(T,B^{k, j}).
+  \rho(T) = S^{\vec{\alpha}}(T,\rho(0)) = \sum_{k,j=0}^{N-1} a_{kj}
+  S^{\vec{\alpha}}(T,B^{k, j}).
 \end{align}
-% AP: According to D.~Lidar's lectue notes, eqn. (112), the most general expression for the evolution
-% of the density matrix follows from the Kraus operator sum representation,
+% AP: According to D.~Lidar's lectue notes, eqn. (112), the most general
+% expression for the evolution of the density matrix follows from the Kraus
+% operator sum representation,
 % \[
-%   \rho(T) = \sum_{\mu,\nu} K_{\mu\nu}(t) \rho(0) K_{\mu\nu}^\dagger(t),\quad \sum_{\mu,\nu}
+%   \rho(T) = \sum_{\mu,\nu} K_{\mu\nu}(t) \rho(0) K_{\mu\nu}^\dagger(t),\quad
+%   \sum_{\mu,\nu}
 %   K_{\mu\nu}^\dagger(t)K_{\mu\nu}(t)=I.
 % \]
 
-We therefore define the optimization problem that minimizes the respective measure averaged over all the basis elements:
+We therefore define the optimization problem that minimizes the respective
+measure averaged over all the basis elements:
 \begin{align}\label{optimproblem_basis}
   \min \frac{1}{N^2} & \sum_{k,j=0}^{N-1} \, J(\rho^{k,j}(T))  \\
-  \text{s.t.} \quad  \text{each} \quad \rho^{k,j}(t) \quad & \text{solves \eqref{mastereq} with initial condition} \quad \rho^{k,j}(0) = B^{k,j}
+  \text{s.t.} \quad  \text{each} \quad \rho^{k,j}(t) \quad & \text{solves
+  \eqref{mastereq} with initial condition} \quad \rho^{k,j}(0) = B^{k,j}
 \end{align}
 
-If the objective measure $J(\rho)$ is linear in $\rho$ (as for example in the groundstate optimization minimizing the expected energy levels), we can make use of the linearity of $S^{\vec{\alpha}}$:
+If the objective measure $J(\rho)$ is linear in $\rho$ (as for example in the
+groundstate optimization minimizing the expected energy levels), we can make use
+of the linearity of $S^{\vec{\alpha}}$:
 \begin{align}
-   \frac{1}{N^2}  \sum_{k,j=0}^{N-1} \, J\left(\rho^{k,j}(T)\right) = J\left(S^{\vec{\alpha}}\left(T,\frac{1}{N^2}  \sum_{k,j=0}^{N-1} B^{kj}\right)\right)
+   \frac{1}{N^2}  \sum_{k,j=0}^{N-1} \, J\left(\rho^{k,j}(T)\right) =
+   J\left(S^{\vec{\alpha}}\left(T,\frac{1}{N^2}  \sum_{k,j=0}^{N-1}
+   B^{kj}\right)\right)
 \end{align}
-Hence, we define a new optimization problem using the specific initial condition that averages over the basis matrices:
+Hence, we define a new optimization problem using the specific initial condition
+that averages over the basis matrices:
 \begin{align}
-  \min \, J(S^{\vec{\alpha}}(,T\rho(0))) \quad \text{s.t.} \quad \rho(0) = \frac{1}{N^2}  \sum_{k,j=0}^{N-1} B^{kj}
+  \min \, J(S^{\vec{\alpha}}(,T\rho(0))) \quad \text{s.t.} \quad \rho(0) =
+  \frac{1}{N^2}  \sum_{k,j=0}^{N-1} B^{kj}
 \end{align}
-In this case, each objective function evaluation requires to propagate only one initial condition $\rho(0)$. 
+In this case, each objective function evaluation requires to propagate only one
+initial condition $\rho(0)$. 
 
 \subsubsection{Diagonals as initial condition}
-Optionally, one can choose to propagate a basis for only the diagonals of initial density matrices. In that case, only the basis matrices that correspond to diagonal elements ($B^{mm}, m=1,\dots,N)$ are propagated through the time domain, and the objective function evaluates the average measure over those $N$ initial conditions at the final time $T$. 
+Optionally, one can choose to propagate a basis for only the diagonals of
+initial density matrices. In that case, only the basis matrices that correspond
+to diagonal elements ($B^{mm}, m=1,\dots,N)$ are propagated through the time
+domain, and the objective function evaluates the average measure over those $N$
+initial conditions at the final time $T$. 
 
 \subsubsection{Pure state initialization, or reading a state from file}
-One can choose to simulate for only one specific initial condition. Here, we consider pure-state initialization, where the initial density matrix is composed of pure states for each of the subsystems. E.g. for a bipartite system with $n_1 \otimes n_2$ levels, one can propagate any initial pure state 
+One can choose to simulate for only one specific initial condition. Here, we
+consider pure-state initialization, where the initial density matrix is composed
+of pure states for each of the subsystems. E.g. for a bipartite system with $n_1
+\otimes n_2$ levels, one can propagate any initial pure state 
 \begin{align}
   \rho(0)  = |a\rangle \langle a| \otimes |b\rangle \langle b| \quad \text{for} \quad a \in \{0,\dots, n_1\}, b\in \{0,\dots, n_2\}
 \end{align}
 Alternatively, a specific initial condition can also be read from a file. 
 
-If only one initial condition is considered, the unique integer identifier for this initial condition will be $i=-1$ (in order to distinguish from the above basis elements or diagonals).
+If only one initial condition is considered, the unique integer identifier for
+this initial condition will be $i=-1$ (in order to distinguish from the above
+basis elements or diagonals).
 
 % \subsection{Fidelity} 
 % For closed systems, the $\rho(t)$ and the solution operator $U(t)$ are unitary. In that case, one can show that 
@@ -243,64 +344,105 @@ If only one initial condition is considered, the unique integer identifier for t
 \section{Implementation}
 
   \subsection{Vectorization}
-  The Lindblad master equation \eqref{mastereq} is in matrix form, describing the evolution of the densisy matrix $\rho = (\rho_1, \dots, \rho_N) \in \C^{N\times N}$. In order to solve this numerically, we vectorize the equation to receive an ODE for $q(t) := \text{vec}(\rho(t)) \in \C^{N^2}$. Using the relations
+  The Lindblad master equation \eqref{mastereq} is in matrix form, describing
+  the evolution of the densisy matrix $\rho = (\rho_1, \dots, \rho_N) \in
+  \C^{N\times N}$. In order to solve this numerically, we vectorize the equation
+  to receive an ODE for $q(t) := \text{vec}(\rho(t)) \in \C^{N^2}$. Using the
+  relations
   \begin{align}
-   \text{vec}(AB) &= (I_N\otimes A)\text{vec}(B) = (B^T\otimes I_N)\text{vec}(A) \\
+   \text{vec}(AB) &= (I_N\otimes A)\text{vec}(B) = (B^T\otimes I_N)\text{vec}(A)
+    \\
    \text{vec}(ABC) &= (C^T\otimes A)\text{vec}(B)
   \end{align}
-  for square matrices $A,B,C\in\C^{N\times N}$, we can derive the vectorized form of the Lindblad master equation:
+  for square matrices $A,B,C\in\C^{N\times N}$, we can derive the vectorized
+  form of the Lindblad master equation:
   \begin{align}\label{mastereq_vectorized}
     &\dot q(t) = M(t) q(t) \quad  \text{where} \\
-    &M(t) := -i(I_N\otimes H - H^T \otimes I_N) + \sum_{l,k=1}^{2,Q} \gamma_{lk} \left( \Ell_{lk}\otimes \Ell_{lk} - \frac 1 2 \left( I_N\otimes \Ell^T_{lk}\Ell_{lk} + \Ell^T_{lk}\Ell_{lk} \otimes I_N \right) \right)
+    &M(t) := -i(I_N\otimes H - H^T \otimes I_N) + \sum_{l,k=1}^{2,Q} \gamma_{lk}
+    \left( \Ell_{lk}\otimes \Ell_{lk} - \frac 1 2 \left( I_N\otimes
+    \Ell^T_{lk}\Ell_{lk} + \Ell^T_{lk}\Ell_{lk} \otimes I_N \right) \right)
   \end{align}
 
   \subsection{Real-valued system}
-   We solve the vectorized master equation \eqref{mastereq_vectorized} in real-valued variables with $q(t) = u(t) + iv(t)$, evolving the real-valued states $u(t), v(t)\in \R^{N^2}$ with
+   We solve the vectorized master equation \eqref{mastereq_vectorized} in
+   real-valued variables with $q(t) = u(t) + iv(t)$, evolving the real-valued
+   states $u(t), v(t)\in \R^{N^2}$ with
    \begin{align}
      \dot q(t) &= M(t) q(t) \\
    \Leftrightarrow \quad \begin{bmatrix} \dot u(t) \\ \dot v(t) \end{bmatrix} &= 
-   \begin{bmatrix} A(t) & -B(t) \\ B(t) & A(t) \end{bmatrix} \begin{pmatrix} u(t) \\ v(t) \end{pmatrix} \label{realvaluedODE}
+   \begin{bmatrix} A(t) & -B(t) \\ B(t) & A(t) \end{bmatrix} 
+   \begin{pmatrix} u(t) \\ v(t) \end{pmatrix} 
+   \label{realvaluedODE}
    \end{align}
-   where $M(t) = A(t) + i B(t)$, $A(t), B(t)\in \R^{N^2\times N^2}$. To assemble $A = Re(M)$ and $B = Im(M)$ consider
+   where $M(t) = A(t) + i B(t)$, $A(t), B(t)\in \R^{N^2\times N^2}$. To assemble
+   $A = Re(M)$ and $B = Im(M)$ consider
    \begin{align}
-     -i(I_N \otimes H - H^T \otimes I_N) &= -I_N \otimes \left(iH_d + iH_c(t)\right) + \left(iH_d + iH_c(t)\right)^T \otimes I_N \\
-     \text{and} \quad iH_d + iH_c(t) &= i H_d + i\left( \sum_k p^k(\vec{\alpha}^k,t)(a_k + a_k^{\dagger}) + iq^k(\vec{\alpha}^k,t)(a_k - a_k^{\dagger})\right) \\
-                    &= - \sum_k q^k(\alpha^k,t)(a_k - a_k^{\dagger}) + i\left( H_d + \sum_k p^k(\alpha^k,t)(a_k+a_k^{\dagger}) \right) 
+     -i(I_N \otimes H - H^T \otimes I_N) &= -I_N \otimes \left(iH_d +
+     iH_c(t)\right) + \left(iH_d + iH_c(t)\right)^T \otimes I_N \\
+     \text{and} \quad iH_d + iH_c(t) &= i H_d + i\left( \sum_k
+     p^k(\vec{\alpha}^k,t)(a_k + a_k^{\dagger}) + iq^k(\vec{\alpha}^k,t)(a_k -
+     a_k^{\dagger})\right) \\
+                    &= - \sum_k q^k(\alpha^k,t)(a_k - a_k^{\dagger}) + i\left(
+                    H_d + \sum_k p^k(\alpha^k,t)(a_k+a_k^{\dagger}) \right) 
    \end{align}
-   Hence $A$ and $B$ consist of a constant part $A_d, B_d$ and a time-varying part $A_c(t), B_c(t)$ with the following:
+   Hence $A$ and $B$ consist of a constant part $A_d, B_d$ and a time-varying
+   part $A_c(t), B_c(t)$ with the following:
    \begin{align}
-     A_d &=  \sum_{l,k=1}^{2,Q}\gamma_{lk} \left( \Ell_{lk}\otimes\Ell_{lk} - \frac 1 2 \left(I_N \otimes \Ell_{lk}^T\Ell_{lk} + \Ell_{lk}^T\Ell_{lk}\otimes I_N\right) \right)\\
+     A_d &=  \sum_{l,k=1}^{2,Q}\gamma_{lk} \left( \Ell_{lk}\otimes\Ell_{lk} -
+     \frac 1 2 \left(I_N \otimes \Ell_{lk}^T\Ell_{lk} +
+     \Ell_{lk}^T\Ell_{lk}\otimes I_N\right) \right)\\
      B_d &= -I_N \otimes H_d + H_d^T \otimes I_N \\
-     A_c(t) &= \sum_k q^k(\vec{\alpha}^k,t) \underbrace{\left( I_N \otimes \left(a_k - a_k^{\dagger}\right) - \left(a_k - a_k^{\dagger}\right)^T\otimes I_N \right)}_{=:A_c^k} \\
-     B_c(t) &= \sum_k p^k(\vec{\alpha}^k,t) \underbrace{\left( - I_N \otimes \left(a_k + a_k^{\dagger}\right) + \left(a_k + a_k^{\dagger}\right)^T\otimes I_N \right)}_{=:B_c^k} 
+     A_c(t) &= \sum_k q^k(\vec{\alpha}^k,t) \underbrace{\left( I_N \otimes
+     \left(a_k - a_k^{\dagger}\right) - \left(a_k -
+     a_k^{\dagger}\right)^T\otimes I_N \right)}_{=:A_c^k} \\
+     B_c(t) &= \sum_k p^k(\vec{\alpha}^k,t) \underbrace{\left( - I_N \otimes
+     \left(a_k + a_k^{\dagger}\right) + \left(a_k +
+     a_k^{\dagger}\right)^T\otimes I_N \right)}_{=:B_c^k} 
    \end{align}
 
    \subsection{Sparse-matrix vs. matrix-free solver}
 
-   In the code, two versions to evaluate the right hand side of Lindblad's equation, $M(t)q(t)$, of the vectorized real-valued system are available:
+   In the code, two versions to evaluate the right hand side of Lindblad's
+   equation, $M(t)q(t)$, of the vectorized real-valued system are available:
    \begin{itemize}
      \item \textit{Sparse-matrix solver:}
-      The sparse-matrix solver initializes and stores the constant matrices $A_d,B_d, A_c^k, B_c^k$ using Petsc's sparse-matrix format. They are used as building blocks to evaluate the sparse system matrix $M(t)$ with 
+      The sparse-matrix solver initializes and stores the constant matrices
+       $A_d,B_d, A_c^k, B_c^k$ using Petsc's sparse-matrix format. They are used
+       as building blocks to evaluate the sparse system matrix $M(t)$ with 
      \begin{align}
        A(t) &= Re(M(t)) = A_d + \sum_kq^k(\alpha^k, t)A_c^k \\
        B(t) &= Im(M(t)) = B_d + \sum_k p^k(\alpha^k, t)B_c^k
      \end{align}
-   at each time $t$. $M(t)$ is then multiplied to the vectorized density matrix $q(t)$ using Petsc's sparse MatVec implementation. 
+   at each time $t$. $M(t)$ is then multiplied to the vectorized density matrix
+       $q(t)$ using Petsc's sparse MatVec implementation. 
 
    \item \textit{Matrix-free solver using tensor contractions:}
-     Then tensor-contraction code is matrix-free, i.e. the matrices $A_d,B_d, A_c^k, B_c^k$ and hence $M(t)$ and not stored explicitly, but instead their action on a vector $q(t)$ is evaluated at each time step $t$. The action of those matrices to the system vector is implemented using tensor-contractions applied to the corresponding dimension of the density matrix. The document 'tensor.pdf' explains the tensor contractions in more detail. 
+     Then tensor-contraction code is matrix-free, i.e. the matrices $A_d,B_d,
+       A_c^k, B_c^k$ and hence $M(t)$ and not stored explicitly, but instead
+       their action on a vector $q(t)$ is evaluated at each time step $t$. The
+       action of those matrices to the system vector is implemented using
+       tensor-contractions applied to the corresponding dimension of the density
+       matrix. The document 'tensor.pdf' explains the tensor contractions in
+       more detail. 
 
      Notes:
      \begin{itemize}
-       \item For our current test cases, the matrix-free solver is much faster than the sparse-matrix solver (about 10x, see tensor.pdf). However it is currently only implemented for systems consisting of \textit{two} subsystems with $n_1 \otimes n_2$ levels. Future development will extend the approach to more than two subsystem. 
-       \item The matrix-free solver currently does not parallelize across the system dimension (i.e. no parallel Petsc!).
+       \item For our current test cases, the matrix-free solver is much faster
+         than the sparse-matrix solver (about 10x, see tensor.pdf). However it
+         is currently only implemented for systems consisting of \textit{two}
+         subsystems with $n_1 \otimes n_2$ levels. Future development will
+         extend the approach to more than two subsystem. 
+       \item The matrix-free solver currently does not parallelize across the
+         system dimension (i.e. no parallel Petsc!).
      \end{itemize}
 
 
    \end{itemize}
 
   \subsection{Co-located storage of real and imaginary part}
-  The real and imaginary parts of $q(t)$ are stored in a co-located manner: For $q = u+iv$ with $u,v\in\R^{N^2}$, a vector of size $2N^2$ is stored that staggers real and imaginary parts behind each other for each component:
+  The real and imaginary parts of $q(t)$ are stored in a co-located manner: For
+  $q = u+iv$ with $u,v\in\R^{N^2}$, a vector of size $2N^2$ is stored that
+  staggers real and imaginary parts behind each other for each component:
   \begin{align*}
     q = u+iv = \begin{bmatrix}
      u^1\\u^2\\ \vdots \\ u^{N^2-1} 
@@ -313,39 +455,61 @@ If only one initial condition is considered, the unique integer identifier for t
       u_1 \\ v_1\\ u_2 \\ v_2 \\ \vdots \\ u_{N^2-1} \\ v_{N^2-1}
     \end{bmatrix}
   \end{align*}
-  In order to access the real and imaginary parts of the $i^{th}$ component of $q$, one has to access the elements of $q_{store}$ at index $2i$ and $2i+1$, respectively. 
+  In order to access the real and imaginary parts of the $i^{th}$ component of
+  $q$, one has to access the elements of $q_{store}$ at index $2i$ and $2i+1$,
+  respectively. 
 
   \subsection{Time-stepping}
-    To solve the vectorized master equation \eqref{mastereq_vectorized} $\dot q(t) = M(t) q(t)$ for $t\in [0,T]$, we apply a time-stepping integration scheme on a uniform time discretization grid $0=t_0 < \dots t_{N} = T$, with $t_n = n \delta t$ and $\delta t = \frac{T}{N}$, and approximate the solution at each discrete time step $q^{n} \approx q(t_n)$.
+    To solve the vectorized master equation \eqref{mastereq_vectorized} $\dot
+    q(t) = M(t) q(t)$ for $t\in [0,T]$, we apply a time-stepping integration
+    scheme on a uniform time discretization grid $0=t_0 < \dots t_{N} = T$, with
+    $t_n = n \delta t$ and $\delta t = \frac{T}{N}$, and approximate the
+    solution at each discrete time step $q^{n} \approx q(t_n)$.
    
     \subsubsection{Implicit Midpoint Rule (IMR)} 
-    The implicit mid-point rule is a simplectic, second-order integration scheme of Runge-Kutta type, with a Runge-Kutta tableau given by
+    The implicit mid-point rule is a simplectic, second-order integration scheme
+    of Runge-Kutta type, with a Runge-Kutta tableau given by
     \begin{tabular}{ c | c }
       $1/2$ & $ 1/2$ \\
       \hline
                 &  $1$
     \end{tabular}
-    Given a state $q^n$ at time $t_n$, the update formula to compute $q^{n+1}$ is hence 
+    Given a state $q^n$ at time $t_n$, the update formula to compute $q^{n+1}$
+    is hence 
     \begin{align}
-      q^{n+1} = q^n + \delta t k_1 \quad \text{where} \, k_1 \, \text{solves} \quad \left( I-\frac{\delta t}{2} M^{n+1/2} \right) k_1 = M^{n+1/2}  q^n
+      q^{n+1} = q^n + \delta t k_1 \quad \text{where} \, k_1 \, \text{solves}
+      \quad \left( I-\frac{\delta t}{2} M^{n+1/2} \right) k_1 = M^{n+1/2}  q^n
     \end{align}
-    where $M^{n+1/2} := M(t_n + \frac{\delta t}{2})$. In each time-step, we first solve a linear equation to get the stage variable $k_1$, then use it to update $q^{n+1}$. 
+    where $M^{n+1/2} := M(t_n + \frac{\delta t}{2})$. In each time-step, we
+    first solve a linear equation to get the stage variable $k_1$, then use it
+    to update $q^{n+1}$. 
 
-    The consistent discrete adjoint (backwards) time-integration step for adjoint variables $\bar q^{n+1}, \bar q^n$, and the gradient update for this step are given by
+    The consistent discrete adjoint (backwards) time-integration step for
+    adjoint variables $\bar q^{n+1}, \bar q^n$, and the gradient update for this
+    step are given by
     \begin{align}
-      \bar q^{n} = \bar q^{n+1} + \delta t \left(M^{n+1/2}\right)^T \bar k_1 \quad \text{where} \, \bar k_1 \, \text{solves} \quad \left( I-\frac{\delta t}{2} M^{n+1/2}\right)^T  \bar k_1 = \bar q^n 
+      \bar q^{n} = \bar q^{n+1} + \delta t \left(M^{n+1/2}\right)^T \bar k_1
+      \quad \text{where} \, \bar k_1 \, \text{solves} \quad \left(
+      I-\frac{\delta t}{2} M^{n+1/2}\right)^T  \bar k_1 = \bar q^n 
     \end{align}
-    The contribution to the reduced gradient $\nabla J$ for each time step is then given by
+    The contribution to the reduced gradient $\nabla J$ for each time step is
+    then given by
     \begin{align}
-      \nabla J += \delta t \left( \frac{\partial M^{n+1/2}}{\partial z} \left(q^n + \frac{\delta t}{2} k_1\right) \right)^T\bar k_1
+      \nabla J += \delta t \left( \frac{\partial M^{n+1/2}}{\partial z}
+      \left(q^n + \frac{\delta t}{2} k_1\right) \right)^T\bar k_1
     \end{align}
 
 
     \subsubsection{Other integrators}
-    The code offers the possibility to apply any time-stepping integrators provided by the Petsc software package (class TS). Implementation needs to verified. Adjoint time-stepping with Petsc is currently not implemented. 
+    The code offers the possibility to apply any time-stepping integrators
+    provided by the Petsc software package (class TS). Implementation needs to
+    verified. Adjoint time-stepping with Petsc is currently not implemented. 
 
     \subsubsection{Choice of the time-step size}
-    In order to choose a time-step size $\delta t$, an eigenvalue analysis of the constant drift Hamiltonian $H_d =  -2\pi \sum_{k=1}^Q \frac{x_k}{2} a_k^{\dagger}a_k^{\dagger}a_ka_k + \sum_{l\neq k} x_kl a_l^{\dagger}a_l a_k^{\dagger}a_k$ is considered:
+    In order to choose a time-step size $\delta t$, an eigenvalue analysis of
+    the constant drift Hamiltonian $H_d =  -2\pi \sum_{k=1}^Q \frac{x_k}{2}
+    a_k^{\dagger}a_k^{\dagger}a_ka_k + \sum_{l\neq k} x_kl a_l^{\dagger}a_l
+    a_k^{\dagger}a_k$ is considered:
        \begin{align*}  
          \dot u = -i H_d u \qquad \text{with} \quad H_d^{\dagger}  = H_d
        \end{align*} 
@@ -353,68 +517,122 @@ If only one initial condition is considered, the unique integer identifier for t
        \begin{align*}
          Y^{\dagger}H_d Y + \Lambda \qquad  \text{where} \quad Y^{\dagger} = Y
        \end{align*}
-       where $\Lambda$ is a diagonal matrix containing the eigenvalues of $H_d$. Transform $\tilde u = Y^{\dagger} u$, then the ODE transforms to 
+       where $\Lambda$ is a diagonal matrix containing the eigenvalues of $H_d$.
+       Transform $\tilde u = Y^{\dagger} u$, then the ODE transforms to 
        \begin{align*}
-         \dot \tilde u = -i \Lambda \tilde u \quad \Rightarrow \dot \tilde u_i = -i\lambda_i \tilde u_i \quad \Rightarrow \tilde u_i = a \exp(-i\lambda_i t)
+         \dot \tilde u = -i \Lambda \tilde u \quad \Rightarrow \dot \tilde u_i =
+         -i\lambda_i \tilde u_i \quad \Rightarrow \tilde u_i = a
+         \exp(-i\lambda_i t)
        \end{align*}
-       Therefore, the period for each mode is $\tau_i = \frac{2\pi}{|\lambda_i|}$, hence the shortest period is $\tau_{min} = \frac{2\pi}{\max_i\{|\lambda_i|\}}$. If we want $p$ discrete time points per period, then $p\delta t = \tau_{min}$, hence 
+       Therefore, the period for each mode is $\tau_i =
+       \frac{2\pi}{|\lambda_i|}$, hence the shortest period is $\tau_{min} =
+       \frac{2\pi}{\max_i\{|\lambda_i|\}}$. If we want $p$ discrete time points
+       per period, then $p\delta t = \tau_{min}$, hence 
        \begin{align*}
          \delta t = \frac{\tau_{min}}{p} = \frac{2\pi}{p\max_i\{|\lambda_i|\}}
        \end{align*}
-       Usually, for a first order scheme we would use something like $p=20$, second order may use $p=10$. 
+       Usually, for a first order scheme we would use something like $p=20$,
+       second order may use $p=10$. 
 
-       If we want to include the time-varying Hamiltonian part $H = H_d + H_c(t)$ in the analysis, then we could use the constraints on the control parameter amplitudes to remove the time-dependency using their larges value instead, and then do the same analysis as above. However this doesn't ensure that we resolve the time-scale of the fastest control function. 
+       If we want to include the time-varying Hamiltonian part $H = H_d +
+       H_c(t)$ in the analysis, then we could use the constraints on the control
+       parameter amplitudes to remove the time-dependency using their larges
+       value instead, and then do the same analysis as above. However this
+       doesn't ensure that we resolve the time-scale of the fastest control
+       function. 
 
   \subsection{Optimization}
-    We use the \textit{Tao} optimization package included in Petsc for solving the vectorized version of the optimal control problem \eqref{optimproblem_basis}. We choose the nonlinear Quasi-Newton optimization method that applies $L-BFGS$ updates to approximate the Hessian of the objective function. 
+    We use the \textit{Tao} optimization package included in Petsc for solving
+    the vectorized version of the optimal control problem
+    \eqref{optimproblem_basis}. We choose the nonlinear Quasi-Newton
+    optimization method that applies $L-BFGS$ updates to approximate the Hessian
+    of the objective function. 
 
   \subsubsection{Optimization variables and bounds}
   We store the $2QLN_f$ optimization parameters in the following order:
   \begin{align}
-    z &:= \left( \vec{\alpha}^1, \dots, \vec{\alpha}^Q \right), \in \mathds{R}^{2QLN_f} \quad \text{where}\\
-    \vec{\alpha}^k &= \left( \alpha_{1,1}^k,\dots, \alpha_{1,N_f}^k, \dots, \alpha_{L,1}^{k}, \dots, \alpha_{L,N_f}^k \right) \in \R^{2LN_f}, \quad \alpha_{l,f}^k = \left(\alpha_{l,f}^{k(1)}, \alpha_{l,f}^{k(2)} \right) \in R^2,
+    z &:= \left( \vec{\alpha}^1, \dots, \vec{\alpha}^Q \right), \in
+    \mathds{R}^{2QLN_f} \quad \text{where}\\
+    \vec{\alpha}^k &= \left( \alpha_{1,1}^k,\dots, \alpha_{1,N_f}^k, \dots,
+    \alpha_{L,1}^{k}, \dots, \alpha_{L,N_f}^k \right) \in \R^{2LN_f}, \quad
+    \alpha_{l,f}^k = \left(\alpha_{l,f}^{k(1)}, \alpha_{l,f}^{k(2)} \right) \in
+    R^2,
   \end{align}
-  iterating over $Q$ subsystems first, then $L$ splines, then $N_f$ carrier wave frequencies. 
+  iterating over $Q$ subsystems first, then $L$ splines, then $N_f$ carrier wave
+  frequencies. 
 
-  In order to guarantee that the optimizer yields control pulses that are bounded with $|p_k(t)| \leq c^k_{max}$, $|q_k(t)| \leq c^k_{max}$ for all subsystems $k=1,\dots, Q$, we impose box constraints on the control parameters:
+  In order to guarantee that the optimizer yields control pulses that are
+  bounded with $|p_k(t)| \leq c^k_{max}$, $|q_k(t)| \leq c^k_{max}$ for all
+  subsystems $k=1,\dots, Q$, we impose box constraints on the control
+  parameters:
    \begin{align}
-     | \alpha_{l,f}^{k(1)}| \leq \frac{c^k_{max}}{N_f} \quad \text{and} \quad | \alpha_{l,f}^{k(2)} | \leq \frac{c^k_{max}}{N_f}
+     | \alpha_{l,f}^{k(1)}| \leq \frac{c^k_{max}}{N_f} \quad \text{and} \quad |
+     \alpha_{l,f}^{k(2)} | \leq \frac{c^k_{max}}{N_f}
    \end{align}
    where $N_f$ is the number of carrier wave frequencies.
 
 
 
   \subsubsection{Evaluating the objective function}
-    Each objective function evaluation requires to solve the vectorized, real-valued initial value problem forward in time
+    Each objective function evaluation requires to solve the vectorized,
+    real-valued initial value problem forward in time
     \begin{align*}
       \dot x^{kj}(t) &= M(t) x^{kj}(t) \quad \forall \, t\in (0,T) \\
       x^{kj}(0) &= \mbox{vec}(B^{k,j})
     \end{align*}
-    either for all initial basis matrices $B^{k,j}, k,j=0,\dots,N-1$, or for only the diagonals $B^{mm}$, or for only one specific initial condition, depending on the test case (compare section \ref{subsec:initcond}). 
+    either for all initial basis matrices $B^{k,j}, k,j=0,\dots,N-1$, or for
+    only the diagonals $B^{mm}$, or for only one specific initial condition,
+    depending on the test case (compare section \ref{subsec:initcond}). 
 
     After each forward solve, we add to the final-time objective function:
     \begin{align}
-      J_{total}(z) = \frac{1}{N^2} \sum_{i=0}^{N^2-1} J\left(x^{k(i), j(i)}(T)\right) + \frac{\gamma}{2} \| z\|^2_2
+      J_{total}(z) = \frac{1}{N^2} \sum_{i=0}^{N^2-1} J\left(x^{k(i),
+      j(i)}(T)\right) + \frac{\gamma}{2} \| z\|^2_2
     \end{align}
-    where we add a Tikhonov regularization term with parameter $\gamma>0$ for stability.
+    where we add a Tikhonov regularization term with parameter $\gamma>0$ for
+    stability.
 
 
   \subsection{Parallelization (experimental)}
     Three levels of parallelization are planned, and partly implemented: 
       \begin{enumerate}
-        \item Parallelization over initial conditions: working, configuration option \textit{np\_init}. Speedup over serial should be ideal, i.e. equal to \textit{np\_init}.
-        \item Time-parallelization via XBraid: working implementation, but speedup depends on testcase and XBraid setting (experts only), configuration option is \textit{np\_braid}
-        \item Spatial parallelism for parallel linear algebra (Petsc): working for the sparse-matrix solver, not for the tensor-contraction solver
+        \item Parallelization over initial conditions: working, configuration
+          option \textit{np\_init}. Speedup over serial should be ideal, i.e.
+          equal to \textit{np\_init}.
+        \item Time-parallelization via XBraid: working implementation, but
+          speedup depends on testcase and XBraid setting (experts only),
+          configuration option is \textit{np\_braid}
+        \item Spatial parallelism for parallel linear algebra (Petsc): working
+          for the sparse-matrix solver, not for the tensor-contraction solver
       \end{enumerate}
-      In the main code, the global communicator (MPI\_COMM\_WORLD) is split into three sub-communicator, one for each of the above. The total number of mpi processes ($np_{total}$) is split into three subgroups such that 
-         \begin{align*}
-           np_{braid} * np_{init} * np_{petsc} = np_{total}.
-         \end{align*}
-      The user specifies the size of the communicator for distributing the initial conditions ($np_{init}$) as well as time-parallelization ($np_{braid}$) in the config file. The number of cores for parallel linear algebra ($np_{petsc}$) is then computed from the above equation. The following requirements for parallel distribution must be considered when setting up parallel runs:
+      In the main code, the global communicator (MPI\_COMM\_WORLD) is split into
+      three sub-communicator, one for each of the above. The total number of mpi
+      processes ($np_{total}$) is split into three subgroups such that 
+       \begin{align*}
+         np_{braid} * np_{init} * np_{petsc} = np_{total}.
+       \end{align*}
+      The user specifies the size of the communicator for distributing the
+      initial conditions ($np_{init}$) as well as time-parallelization
+      ($np_{braid}$) in the config file. The number of cores for parallel linear
+      algebra ($np_{petsc}$) is then computed from the above equation. The
+      following requirements for parallel distribution must be considered when
+      setting up parallel runs:
       \begin{itemize}
-        \item $\frac{n_{init}}{np_{init}} \in \mathds{N}$, where $n_{init}$ is the number of initial conditions that are considered (being $N^2$ for the full basis, $N$ for considering diagonals only as initial condition, and $1$ if propagating only one initial condition e.g. reading from file, or pure state initialization). This requirement ensures that each processor group owns the same number of initial conditions.
-        \item $\frac{np_{total}}{np_{init}*np_{braid}} \in \mathds{N}$, so that each processor group has the same number of cores for petsc.
-        \item $\frac{N^2}{np_{petsc}} \in \mathds{N}$, hence the system dimensions must be integer multiple of the number of cores for distributing linear algebra in Petsc. This constraint is a little annoying, however the current implementation requires this due to the co-located storage of the real and imaginary parts of the vectorized state.
+        \item $\frac{n_{init}}{np_{init}} \in \mathds{N}$, where $n_{init}$ is
+          the number of initial conditions that are considered (being $N^2$ for
+          the full basis, $N$ for considering diagonals only as initial
+          condition, and $1$ if propagating only one initial condition e.g.
+          reading from file, or pure state initialization). This requirement
+          ensures that each processor group owns the same number of initial
+          conditions.
+        \item $\frac{np_{total}}{np_{init}*np_{braid}} \in \mathds{N}$, so that
+          each processor group has the same number of cores for petsc.
+        \item $\frac{N^2}{np_{petsc}} \in \mathds{N}$, hence the system
+          dimensions must be integer multiple of the number of cores for
+          distributing linear algebra in Petsc. This constraint is a little
+          annoying, however the current implementation requires this due to the
+          co-located storage of the real and imaginary parts of the vectorized
+          state.
       \end{itemize}
   
 \end{document}
