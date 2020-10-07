@@ -5,6 +5,7 @@
 \usepackage{graphicx}
 \usepackage[utf8]{inputenc}
 \usepackage{xcolor}
+\usepackage{soul}
 % \usepackage[legalpaper, margin=2in]{geometry}
 \parindent0pt
 \parskip 1.5ex plus 1ex minus .5ex
@@ -196,7 +197,7 @@ inverted, summing over columns in $M$.
       \end{align}
       Applying $H_d$ to $\rho$ from the right contracts on dimensions
       $\bfi^\prime$:
-      \begin{align}
+      \begin{align}\label{eq:HdRight}
         \rho_{\bfi, \bfi^\p} H_d  = h_d(\bfi^\p) \rho_{\bfi,\bfi^\p}
       \end{align}
 
@@ -223,7 +224,7 @@ inverted, summing over columns in $M$.
       to be treated separately.}
 
       Applying $H_c(t)$ from the left then gives 
-      \begin{align}
+      \begin{align}\label{eq:HcLeft}
         H_c(t) \rho_{\bfi, \bfi^\prime} = \sum_k p^k(t) \left(\sqrt{i_k+1}
         \rho_{E_{+k}\bfi,\bfi^\prime} + \sqrt{i_k} \rho_{E_{-k}
         \bfi,\bfi^\prime} \right) + iq^k(t) \left(\sqrt{i_k+1}
@@ -237,7 +238,7 @@ inverted, summing over columns in $M$.
       \sqrt{\YC{i_k}^\prime+1} \delta_{i_k^\prime\YC{+1}, \YC{j_k^\prime}} +
       \sqrt{\YC{i}_k^\prime}
       \delta_{i_k^\prime\YC{-1, j_k^\prime}}$, giving
-      \begin{align}
+      \begin{align}\label{eq:HcRight}
         \rho_{\bfi, \bfi^\prime} H_c(t) = \sum_k p^k(t)
         \left(\sqrt{i_k^\prime+1} \rho_{\bfi,E_{+k}\bfi^\prime} +
         \sqrt{i_k^\prime} \rho_{\bfi,E_{-k}\bfi^\prime} \right) + iq^k(t) \left(
@@ -251,17 +252,17 @@ inverted, summing over columns in $M$.
     
     The dephasing collapse operator $\Ell_{2k} = a_k^\dag a_k$ is diagonal.    
     Contraction with $\rho_{\bfi,\bfi^\prime}$ yields
-    \begin{align}
+    \begin{align}\label{eq:actionDephasing}
       \YC{\gamma_{2k}\Ell_{2k}\rho\Ell_{2k}^\dagger -\frac 12
         \left (\Ell_{2k}^\dagger\Ell_{2k}\rho +
         \rho \Ell_{2k}^\dagger\Ell_{2k} \right )} =
-        \sum_k \left( \gamma_{2k} i_ki_k^\prime - \frac 12 \left( i_k^2 +
-        (i_k^\prime)^2\right) \right) \rho_{\bfi,\bfi^\prime}
+        \sum_k \left( \gamma_{2k} \YC{(} i_ki_k^\prime - \frac 12 \left( i_k^2 +
+        (i_k^\prime)^2\right) \YC{)} \right) \rho_{\bfi,\bfi^\prime}
     \end{align}
 
     The decay collapse operator $\Ell_{1k} = a_k$ contains off-diagonals, and
     yields
-    \begin{align}
+    \begin{align}\label{eq:actionDecayCollapse}
       \YC{\gamma_{1k}\Ell_{1k}\rho\Ell_{1k}^\dagger -\frac 12
         \left (\Ell_{1k}^\dagger\Ell_{1k}\rho +
         \rho \Ell_{1k}^\dagger\Ell_{1k} \right )} =
@@ -279,42 +280,52 @@ inverted, summing over columns in $M$.
        y^{out}_{\bfi,\bfi^\prime}  &= 
        \left(-i h_d(\bfi) + ih_d(\bfi^\prime)
         + l_2(\bfi,\bfi^\prime) + l_1^{\text{diag}}(\bfi, \bfi^\prime) \right)
-        \rho_{\bfi,\bfi^\prime} \\ \label{eq:applyRHS1}
+        \rho_{\bfi,\bfi^\prime} \label{eq:applyRHS1} \\
         &+ \sum_k \gamma_{1k} \sqrt{(i_k+1)(i_k^\prime+1)} \rho_{E_{+k}\bfi,
-        E_{+k}\bfi^\prime}\\
+        E_{+k}\bfi^\prime} \label{eq:applyRHS2} \\
         &+ \sum_k \left(-ip^k(t) + q^k(t)\right) \sqrt{i_k+1} \rho_{\Epk \bfi,
-        \bfi^\prime} \\
+        \bfi^\prime} \label{eq:applyRHS3} \\
         &+ \sum_k \left( ip^k(t) + q^k(t)\right) \sqrt{i_k^\prime+1}
-        \rho_{\bfi,\Epk \bfi^\prime} \\
+        \rho_{\bfi,\Epk \bfi^\prime} \label{eq:applyRHS4} \\
         &+ \sum_k \left(-ip^k(t) - q^k(t)\right) \sqrt{i_k} \rho_{\Emk \bfi,
-        \bfi^\prime} \\
+        \bfi^\prime} \label{eq:applyRHS5} \\
         &+ \sum_k \left( ip^k(t) - q^k(t)\right) \sqrt{i_k^\prime}
-        \rho_{\bfi,\Emk \bfi^\prime}  \label{eq:applyRHS2}
+        \rho_{\bfi,\Emk \bfi^\prime},  \label{eq:applyRHS6}
   \end{align}
   where 
   \begin{align}
     h_d(\bfi) &= -\sum_k \frac{\xi_k}{2}(i_k^2 - i_k) - \sum_{l<k} \xi_{lk} (i_l
-    i_k) \\
+    i_k) \label{eq:nonOffsetTerm1} \\
     l_2(\bfi,\bfi^\prime) &= \sum_k \gamma_{2k} \left(i_ki_k^\prime - \frac 12
-    \left( (i_k)^2 + (i_k^\prime)^2\right) \right)\\
+    \left( (i_k)^2 + (i_k^\prime)^2\right) \right) \label{eq:nonOffsetTerm2} \\
     l_1^{\text{diag}}(\bfi, \bfi^\prime) &= \sum_k
-    -\frac{\gamma_{1k}}{2}\left(i_k + i_k^\prime\right) 
+    -\frac{\gamma_{1k}}{2}\left(i_k + i_k^\prime\right),
+    \label{eq:nonOffsetTerm3} 
   \end{align}
-
+  \YC{where Eq.~\eqref{eq:applyRHS2} is the first term of
+  Eq.~\eqref{eq:actionDecayCollapse}; Eq.~\eqref{eq:applyRHS3} is the first and
+  third terms of Eq.~\eqref{eq:HcLeft}; Eq.~\eqref{eq:applyRHS4} is the first
+  and third terms of Eq.~\eqref{eq:HcRight}; Eq.~\eqref{eq:applyRHS5} is the
+  second and fourth terms of Eq.~\eqref{eq:HcLeft}; Eq.~\eqref{eq:applyRHS6} is
+  the second and fourth terms of Eq.~\eqref{eq:HcRight};
+  Eq.~\eqref{eq:nonOffsetTerm1} is from Eq.~\eqref{eq:HdRight};
+  Eq.~\eqref{eq:nonOffsetTerm2} is from Eq.~\eqref{eq:actionDephasing};
+  Eq.~\eqref{eq:nonOffsetTerm3} is the second term of
+  Eq.~\eqref{eq:actionDecayCollapse}.}
   These operations will be applied for all $i_1,\dots, i_Q, i_1^\prime, \dots,
   i_Q^\prime$. 
   
-  It is important to access the data storage is a linear fashion, if possible.
-  Iterating for all $\bfi, \bfi^\prime$ should therefore start with the slowest
-  moving index in the most outer loop. For example, consider the mapping from
-  the stored vectorized $q := vec(\rho)$ to the tensor $\rho_(\bfi,\bfi^\prime)$
-  to be
+  It is important to access the data storage \YC{in} a linear fashion, if
+  possible.  Iterating for all $\bfi, \bfi^\prime$ should therefore start with
+  the slowest moving index in the most outer loop. For example, consider the
+  mapping from the stored vectorized $q := vec(\rho)$ to the tensor
+  $\rho_(\bfi,\bfi^\prime)$ to be
     \begin{align}
         \rho(i_1,\dots,i_Q,i_1^\prime,\dots,i_Q^\prime) = q[i_1 \frac{N}{n_1} +
         i_2\frac{N}{n_1n_2} + i_3\frac{N}{n_1n_2n_3} + \dots + i_1^\prime
         N\frac{N}{n_1} + i_2^\prime N\frac{N}{n_1n_2} + \dots]
     \end{align}
-  the the slowest moving index is $i_1^\prime$, followed by $i_2^\prime, \dots,
+  \YC{\st{the}} the slowest moving index is $i_1^\prime$, followed by $i_2^\prime, \dots,
   i_Q^\prime$, then $i_1, \dots i_Q$ with $i_Q$ being the fastest moving index.
   Hence, the most outer loop should iterate over $i_1^\prime$, then moving
   backwards through this order until $i_Q$ being the most inner iteration loop.
@@ -335,16 +346,19 @@ inverted, summing over columns in $M$.
     &\text{and} \quad i_k^\p \in \{ j_k^\p \frac{n_k}{p_k}, \dots,
     \left(j_k^\p+1\right) \frac{n_k}{p_k} - 1 \}
  \end{align}
+ \YC{Not sure about notation. I need explanation from Stefanie.}
 
  Accessing $\rho$ at shifted indices $E_{\pm k}\bfi, E_{\pm k}\bfi^\p$ requires
  communication at processor boundaries. We can consider to realize this by
  storing and communicating ghost-layers for each processor hyper-cube.
+ \YC{How about $y_{\bfi,\bfi^\prime}$ Is it distribute in the same fashtion?}
 
 \section{AD-based derviative}
+\YC{I need explanation from Stefanie.}
 To compute the adjoint action of the ODE right-hand-side to an input adjoint
 variable $\bar y_{\bfi, \bfi^\p}$, consider derivatives based on discrete
-Automatic Differentiation applied to the update formula \eqref{eq:applyRHS1} --
-\eqref{eq:applyRHS2}:
+Automatic Differentiation applied to the update formula
+\YC{\eqref{eq:applyRHS1}} -- \eqref{eq:applyRHS6}:
 \begin{align} 
   \bar \rho_{\bfi, \bfi^\p} &\pluseq \left(-i h_d(\bfi) + ih_d(\bfi^\prime) +
   l_2(\bfi,\bfi^\prime) + l_1^{\text{diag}}(\bfi, \bfi^\prime) \right) \bar
@@ -390,13 +404,14 @@ contraction solver to the sparse-matrix implementation that explicitly computes
 and stores the sparse matrices. The tests run the Alice-Cavity cooling problem,
 integrating for $N=10000$ time-steps in $[0,1]us$, using the implicit midpoint
 rule and Petsc's GMRES linear solver, Controls are initialized constant, driving
-the $|2>$ to the $|1>$ state (approximately). GMRES takes $5$ iterations on
-average. 
-Runtimes and speeups are reported for one sequential evaluation of the objective
-function (evalF) as well as the gradient (evalGradF), for different problem
-sizes. Two different platforms: MacBook Pro (2017, 2.3 GHz Intel Core i5) using
-LLVM 10.0.1 compiler (clang/1001.0.46.4) and petsc-3.13, and LC's Quartz (2.1
-GHz Intel Xeon E5-2695) using gcc/8.1.0 compiler and petsc-3.12.4.
+the $|2>$ to the $|1>$ state (approximately). \YC{Not sure what $|2>$ and $|1>$
+are. Are they some sort of column vectors?} GMRES takes $5$ iterations on
+average. \YC{What is the convergence threshold for GMRES?} Runtimes and speeups
+are reported for one sequential evaluation of the objective function (evalF) as
+well as the gradient (evalGradF), for different problem sizes. Two different
+platforms: MacBook Pro (2017, 2.3 GHz Intel Core i5) using LLVM 10.0.1 compiler
+(clang/1001.0.46.4) and petsc-3.13, and LC's Quartz (2.1 GHz Intel Xeon E5-2695)
+using gcc/8.1.0 compiler and petsc-3.12.4.
 
 % MACBOOK
 \begin{table}[h]
@@ -426,6 +441,8 @@ GHz Intel Xeon E5-2695) using gcc/8.1.0 compiler and petsc-3.12.4.
   sparse-matrix implementation.}
   \label{tab:runtime_qvsm} 
 \end{table}
+\YC{I guess that the relative difference of $F$ and $GradF$ between sparse-mat
+and mat-free are very small, e.g., close to machine precision?}
 
 \begin{table}[h]
   \begin{tabular}{c|cc}
