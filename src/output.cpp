@@ -91,7 +91,8 @@ void Output::writeControls(Vec params, MasterEq* mastereq, int ntime, double dt)
 
     /* Print current parameters to file */
     FILE *file;
-    sprintf(filename, "%s/param_iter%04d.dat", datadir.c_str(), optim_iter);
+    // sprintf(filename, "%s/params_iter%04d.dat", datadir.c_str(), optim_iter);
+    sprintf(filename, "%s/params.dat", datadir.c_str());
     file = fopen(filename, "w");
 
     const PetscScalar* params_ptr;
@@ -106,8 +107,7 @@ void Output::writeControls(Vec params, MasterEq* mastereq, int ntime, double dt)
     /* Print control functions to file */
     mastereq->setControlAmplitudes(params);
     for (int ioscil = 0; ioscil < mastereq->getNOscillators(); ioscil++) {
-      sprintf(filename, "%s/control%d_iter%04d.dat", datadir.c_str(), ioscil, optim_iter);
-      // mastereq->getOscillator(ioscil)->flushControl(ntime, dt, filename);
+      sprintf(filename, "%s/control%d.dat", datadir.c_str(), ioscil);
       file = fopen(filename, "w");
       fprintf(file, "# time         p(t) (rotating)          q(t) (rotating)        f(t) (labframe) \n");
 

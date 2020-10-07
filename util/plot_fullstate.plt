@@ -1,10 +1,7 @@
 reset
 
 # run from command line with 
-# gnuplot -e "datafile='datafile.dat'" plot_allcolumns.plt
-
-# set default datafiles
-if (!exists("datafile")) datafile='out_u.0000.dat'
+# gnuplot -e "datafile='datafile.dat'" plot_fullstate.plt
 
 # get number of columns from awk on datafile file
 syscommand = "awk 'NR==1{print NF}' ".datafile

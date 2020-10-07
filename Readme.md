@@ -1,9 +1,11 @@
-# Quandary - Quantum control on HPC clusters
+# Quandary - Optimal Open Quantum Control
 This project implements an optimization solver for quantum control. The underlying quantum dynamics model open quantum systems, using the Lindblad master equation to evolve the density matrix in time. The control problem aims to find control pulses that drive the system to a desired target state.
 
-## Installation
-This project relies on the Petsc package [https://www.mcs.anl.gov/petsc/] to handle linear algebra. Optionally, XBraid is used for realizing time-parallelization [https://github.com/XBraid/xbraid].
-* Required: Install Petsc
+A documentation is under development. In the meantime, refer to the report in the `/doc/` folder for information on the underlying mathematical models as well as details on their implementation in Quandary. 
+
+## Dependencies
+This project relies on Petsc [https://www.mcs.anl.gov/petsc/] to handle linear algebra. Optionally, XBraid [https://github.com/XBraid/xbraid] can be linked to realize time-parallelization.
+* **Required:** Install Petsc
     * `git clone -b maint https://gitlab.com/petsc/petsc.git petsc`
     * `cd petsc`
     * Configure petsc with `./configure`, check [https://www.mcs.anl.gov/petsc/download/index.html] for optional arguments
@@ -16,16 +18,25 @@ This project relies on the Petsc package [https://www.mcs.anl.gov/petsc/] to han
     * Append Petsc directory to the `LD_LIBRARY_PATH`:
         * `export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$PETSC_DIR/$PETSC_ARCH`
 
-* Optional: Install XBraid, using the branch 'solveadjointwithxbraid': 
+* **Optional:** Install XBraid, using the branch 'solveadjointwithxbraid': 
     - git clone https://github.com/XBraid/xbraid.git
     - cd xbraid
     - git checkout solveadjointwithxbraid
     - make braid
-* In the main directory of this project, adapt the beginning of the Makefile to set the path to Petsc, and possibly to XBraid
+
+## Installation
+* In the main directory of this project, adapt the beginning of the Makefile to set the path to Petsc, and possibly to XBraid.
 * Type `make cleanup` to clean the build directory.
 * Type `make -j main` to build the code. 
 
-### Petsc on LC 
+
+
+## Running
+The code builds into the executable `main`. It takes one argument being the name of the config file. The config file `AxC.cfg`, lists all possible config options. It is currently set to run the Alice-Cavity testcase (3x20 levels):
+* `./main AxC.cfg`
+
+
+## Notes for Petsc on LC machines
 * Petc is already installed on LC machines, in the directory
 `/usr/tce/packages/petsc/petsc-3.12.4-mvapich2-2.3-gcc-4.8-redhat`
 * To use it, load the following modules
@@ -35,8 +46,3 @@ This project relies on the Petsc package [https://www.mcs.anl.gov/petsc/] to han
     * `export PETSC_DIR=/usr/tce/packages/petsc/petsc-3.12.4-mvapich2-2.3-gcc-4.8-redhat`
     * `export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$PETSC_DIR`
  
-
-## Running
-The code builds into the executable `main`. It takes one argument being the name of the config file. The config file `AxC.cfg`, lists all possible config options. It is currently set to run the Alice-Cavity testcase (3x20 levels):
-* `./main AxC.cfg`
-
