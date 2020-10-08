@@ -184,7 +184,7 @@ int main(int argc,char **argv)
       oscil_vec[pipulse_id]->pipulse.tstart.push_back(atof(pipulse_str[k+1].c_str()));
       oscil_vec[pipulse_id]->pipulse.tstop.push_back(atof(pipulse_str[k+2].c_str()));
       oscil_vec[pipulse_id]->pipulse.amp.push_back(atof(pipulse_str[k+3].c_str()));
-      printf("Applying PiPulse to oscillator %d in [%f,%f]: |p+iq|=%f\n", pipulse_id, oscil_vec[pipulse_id]->pipulse.tstart.back(), oscil_vec[pipulse_id]->pipulse.tstop.back(), oscil_vec[pipulse_id]->pipulse.amp.back());
+      if (mpirank_world==0) printf("Applying PiPulse to oscillator %d in [%f,%f]: |p+iq|=%f\n", pipulse_id, oscil_vec[pipulse_id]->pipulse.tstart.back(), oscil_vec[pipulse_id]->pipulse.tstop.back(), oscil_vec[pipulse_id]->pipulse.amp.back());
       // Set zero control for all other oscillators during this pipulse
       for (int i=0; i<nlevels.size(); i++){
         if (i != pipulse_id) {
@@ -322,8 +322,9 @@ int main(int argc,char **argv)
   /* --- Solve primal --- */
   if (runtype == primal) {
     optimctx->getStartingPoint(xinit);
+    if (mpirank_world == 0) printf("\nStarting primal solver... \n");
     objective = optimctx->evalF(xinit);
-    if (mpirank_world == 0) printf("%d: Tao primal: Objective %1.14e, \n", mpirank_world, objective);
+    if (mpirank_world == 0) printf("\nTotal objective = %1.14e, \n", objective);
     optimctx->getSolution(&opt);
     optimctx->output->writeOptimFile(optimctx->objective, 0.0, 0.0, optimctx->obj_cost, optimctx->obj_regul, optimctx->obj_penal);
   } 
@@ -332,11 +333,12 @@ int main(int argc,char **argv)
   if (runtype == adjoint) {
     double gnorm = 0.0;
     optimctx->getStartingPoint(xinit);
+    if (mpirank_world == 0) printf("\nStarting adjoint solver...\n");
     optimctx->evalGradF(xinit, grad);
     VecNorm(grad, NORM_2, &gnorm);
-    VecView(grad, PETSC_VIEWER_STDOUT_WORLD);
+    // VecView(grad, PETSC_VIEWER_STDOUT_WORLD);
     if (mpirank_world == 0) {
-      printf("Tao gradient norm: %1.14e\n", gnorm);
+      printf("\nGradient norm: %1.14e\n", gnorm);
     }
     optimctx->output->writeOptimFile(optimctx->objective, optimctx->gnorm, 0.0, optimctx->obj_cost, optimctx->obj_regul, optimctx->obj_penal);
   }
@@ -345,7 +347,7 @@ int main(int argc,char **argv)
   if (runtype == optimization) {
     /* Set initial starting point */
     optimctx->getStartingPoint(xinit);
-    if (mpirank_world == 0) printf("\nNow starting Optim solver ... \n");
+    if (mpirank_world == 0) printf("\nStarting Optimization solver ... \n");
     optimctx->solve(xinit);
     optimctx->getSolution(&opt);
   }
