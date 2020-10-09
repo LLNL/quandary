@@ -67,8 +67,7 @@ for amp in range(len(optim_init_ampl)):
 
         # create a folder for this job
         if os.path.exists(jobname):
-           #pass
-           continue
+           pass
         else:
 
            # Create and dump the config file to the folder
