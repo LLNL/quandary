@@ -271,7 +271,7 @@ double OptimProblem::evalF(const Vec x) {
   // OptimProblem* ctx = (OptimProblem*) ptr;
   MasterEq* mastereq = timestepper->mastereq;
 
-  if (mpirank_world == 0) printf(" EVAL F... \n");
+  if (mpirank_world == 0) printf("EVAL F... \n");
   Vec finalstate = NULL;
 
   /* Pass design vector x to oscillators */
@@ -286,7 +286,7 @@ double OptimProblem::evalF(const Vec x) {
     /* Prepare the initial condition in [rank * ninit_local, ... , (rank+1) * ninit_local - 1] */
     int iinit_global = mpirank_init * ninit_local + iinit;
     int initid = timestepper->mastereq->getRhoT0(iinit_global, ninit, initcond_type, initcond_IDs, rho_t0);
-    if (mpirank_braid == 0) printf("%d: %d FWD. \n", mpirank_init, initid);
+    if (mpirank_braid == 0) printf("%d: Initial condition id=%d ...\n", mpirank_init, initid);
 
     /* Run forward with initial condition initid */
 #ifdef WITH_BRAID
@@ -330,7 +330,7 @@ double OptimProblem::evalF(const Vec x) {
 
   /* Output */
   if (mpirank_world == 0) {
-    std::cout<< mpirank_world << ": Obj = " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal << std::endl;
+    std::cout<< "Objective = " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal << std::endl;
   }
 
   return objective;
@@ -457,7 +457,7 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
 
   /* Output */
   if (mpirank_world == 0) {
-    std::cout<< mpirank_world << ": Obj = " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal << std::endl;
+    std::cout<< "Objective = " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal << std::endl;
   }
 }
 
