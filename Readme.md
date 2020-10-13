@@ -25,13 +25,13 @@ This project relies on Petsc [https://www.mcs.anl.gov/petsc/] to handle linear a
     - make braid
  
 ###  Petsc on LLNL's LC
-* Petc is already installed on LLNL LC machines, see here [https://hpc.llnl.gov/software/mathematical-software/petsc]
+Petc is already installed on LLNL LC machines, see here [https://hpc.llnl.gov/software/mathematical-software/petsc]
 
 
 ## Installation
-* In the main directory of this project, adapt the beginning of the Makefile to set the path to Petsc, and possibly to XBraid.
-* Type `make cleanup` to clean the build directory.
-* Type `make -j main` to build the code. 
+In the main directory of this project, adapt the beginning of the Makefile to set the path to Petsc, and possibly to XBraid.
+* `make cleanup` to clean the build directory.
+* `make -j main` to build the code. 
 
 
 ## Running
