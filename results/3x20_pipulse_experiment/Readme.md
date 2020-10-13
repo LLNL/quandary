@@ -1,4 +1,4 @@
-# Pi-Pulse experiment. Calibrating Nut. 
+# Pi-Pulse experiment. 
 
 AxC.cfg is set for Nut resonator, simulating a bipartite system with 3x20 levels: Alice ("0") and  cavity ("1"). It runs the following experiment:
 
