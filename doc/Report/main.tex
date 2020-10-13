@@ -5,9 +5,20 @@
 \usepackage{graphicx}
 \usepackage[utf8]{inputenc}
 \usepackage{xcolor}
+\usepackage{soul}
 % \usepackage[legalpaper, margin=2in]{geometry}
 \parindent0pt
 \parskip 1.5ex plus 1ex minus .5ex
+
+\definecolor{Blue}{rgb}{0,0,1}                                                     
+\definecolor{Red}{rgb}{1,0,0}                                                      
+\definecolor{Green}{rgb}{0,1,0}                                                    
+\definecolor{Bronze}{rgb}{0.8,0.5,0.2}                                             
+\definecolor{Violet}{rgb}{0.54,0.17,0.89}                                          
+                                                                                   
+\newcommand{\TODO}[1]{{\textcolor{Violet}{TODO: #1}}}                              
+\newcommand{\YC}[1]{{\textcolor{Bronze}{#1}}}                                     
+\newcommand{\SG}[1]{{\textcolor{Blue}{#1}}}
 
 \DeclareMathOperator{\Tr}{Tr}
 \newcommand{\Ell}{\mathcal{L}}
@@ -16,7 +27,10 @@
 
 
 \title{Open System Quantum Control}
-\author{Stefanie G{\"u}nther}
+\author{Stefanie G{\"u}nther \and 
+        \YC{Youngsoo Choi\thanks{Center for Applied Scientific Computing,
+        Lawrence Livermore National Laboratory, 7000 East Ave, Livermore, CA
+        94550.}}}
 % \affil{Lawrence Livermore National Laboratory, CA, USA}
 % \date{}
 
@@ -75,7 +89,8 @@ for each subsystem $k$. The constants $\gamma_{lk}$ are the inverse half-life
 for the corresponding collapse process $l$: $\gamma_{lk} = {\frac{1}{T_l}}$.
 Typical T1 decay time is between $10-100$ microseconds (us). T2 dephasing time
 is typically about half of T1 decay time. Decay then behaves like
-$\exp(-t/{T_1})$. Dephasing behaves like $\exp(- t / T_1)$.
+$\exp(-t/{T_1})$. Dephasing behaves like $\exp(- t / T_1)$ \YC{maybe $\exp(-2t /
+T_1)$?}.
 
 \subsection{Control pulses}
 The time-dependent control functions $p^k(\vec{\alpha}^k,t),
@@ -98,9 +113,9 @@ Design storage in the Quandary code design vector is oscillators first
 $(\vec{\alpha}^1, \dots, \vec{\alpha}^Q)$, then for each $\vec{\alpha}^k \in
 \R^{2LN_f}$ iterates over $L$ splines first: $\vec{\alpha}^k =
 (\alpha^k_1,\dots, \alpha^k_{L})$ with $\alpha^k_l \in \R^{2N_f}$, then each
-$\alpha^k_l$ iterates over carrierwaves first and for each carrierwaves lists
-the two components: $\alpha^k_l = \alpha^{k(1)}_{l,1}, \alpha^{k(2)}_{l,1},
-\dots \alpha^{k(1)}_{l,N_f}, \alpha^{k(2)}_{l,N_f}$.
+\YC{$\alpha^k_{l,f} \in \R$} iterates over carrierwaves first and for each
+carrierwaves lists the two components: $\alpha^k_l = \alpha^{k(1)}_{l,1},
+\alpha^{k(2)}_{l,1}, \dots \alpha^{k(1)}_{l,N_f}, \alpha^{k(2)}_{l,N_f}$.
 
 The control functions are in the \textit{rotating frame}. To convert them back
 to the \textit{Lab frame} use
@@ -122,7 +137,15 @@ trigenomic equalities, the Lab-frame comtrols can be expressed as
          &= 2 p^k(\vec{\alpha}^k, t) \cos(w_k t) - 2 q^k(\vec{\alpha}^k,
          t)\sin(w_k t) \\
 \end{align}
-
+\begin{itemize}
+  \item \YC{Q1. How are the model parameters determined, e.g., $L$, $N_f$, and
+    $\Omega_f^k$?}
+  \item \YC{Q2. Can $L$ and $N_f$ depend on $k$?}
+  \item \YC{Q3. How is the smoothness requirement of $\rho$ in time?}
+  \item \YC{Q4. What about other discretizations? Perhaps wavelets?}
+  \item \YC{Q5. How does the number of design parameters become small when a
+    small time window is chosen?}
+\end{itemize}
 
 \subsection{Measuring the expected energy level}\label{sec:expectedenergy}
 For each subsystem $k$, $k=1,\dots, Q$, we define the observable 
@@ -146,9 +169,9 @@ expected energy level of subsystem $k$ is given by
    & = \mbox{Tr}(N_k \rho^k)  = \langle N_k\rangle
 \end{align}
 where $\rho^k$ is the reduced density matrix for subsystem $k$. Here, $p(o_k)$
-is the probability of $\rho$ being the the $o_k$-th energy level for subsystem
-$k$, $p(o_k) = \mbox{Tr}(P^k_o \rho)$ for a spectral decomposition $O^k =
-\sum_{o_k} o_kP^k_o$. 
+is the probability of $\rho$ being \YC{\st{the}} the $o_k$-th energy level for
+subsystem $k$, $p(o_k) = \mbox{Tr}(P^k_o \rho)$ for a spectral decomposition
+$O^k = \sum_{o_k} o_kP^k_o$. 
 
 
 \section{Optimization problem}
