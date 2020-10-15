@@ -15,17 +15,24 @@
 \newcommand{\C}{\mathds{C}}
 
 
-\title{Open System Quantum Control}
-\author{Stefanie G{\"u}nther}
+\title{Quandary: Optimal Control for Quantum Systems}
+% \author{Stefanie G{\"u}nther}
 % \affil{Lawrence Livermore National Laboratory, CA, USA}
 % \date{}
 
 \begin{document}
 \maketitle
 
+
+Quandary numerically simulates and optimizes the time-evolution of open quantum systems. The underlying dynamics are modelled by Lindblad's master equation, a linear ordinary differential equation (ODE) describing quantum systems interacting with the environment. Quandary solves this ODE numerically by applying a time-stepping integration scheme, and utilizes gradient-based numerical optimization approaches to determine optimal control pulses that drive the quantum system to a desired target state. 
+Two optimization objectives are considered: (a) Unitary gate optimization that finds controls to realize a unitary gate transformation, and (b) optimal reset that aims to drive the quantum system to the ground states. 
+Gradient-based optimization schemes utilizing Petsc's Tao optimization package are applied to generate control pulses that minimize the respective measure. 
+To mitigate excessive execution run times, Quandary can be build to link with the XBraid software library which provides a parallelization strategy to distribute the time-evolution of the underlying dynamics onto multiple processor applying a parallel-in-time multigrid reduction scheme. 
+
+
 \section{Model equation}
-We model open quantum systems with $Q$ subsystems with $n_k$ levels for the
-$k$-th subsystem, $k=1,\dots,Q$. We solve the Lindblad master equation
+Quandary models open quantum systems with $Q$ subsystems with $n_k$ levels for the
+$k$-th subsystem, $k=1,\dots,Q$. The time-evolution of the open quantum system is modeled by Lindblad's master equation:
 \begin{align}\label{mastereq}
   \dot \rho(t) = &-i(H(t)\rho(t) - \rho(t)H(t)) \notag \\
   &+ \sum_{l=1}^2 \sum_{k=1}^Q \gamma_{lk} \left( \Ell_{lk} \rho(t)
@@ -77,35 +84,27 @@ Typical T1 decay time is between $10-100$ microseconds (us). T2 dephasing time
 is typically about half of T1 decay time. Decay then behaves like
 $\exp(-t/{T_1})$. Dephasing behaves like $\exp(- t / T_1)$.
 
-\subsection{Control pulses}
+\subsection{Control pulses} \label{subsec:controlpulses}
 The time-dependent control functions $p^k(\vec{\alpha}^k,t),
-q^k(\vec{\alpha}^k,t)$ are real-valued. We discretize them using B-splines with
-carrier waves:
+q^k(\vec{\alpha}^k,t)$ are real-valued. They are discretized using piecewise quadratic B-spline basis functions with
+carrier waves: 
 \begin{align}
-  p^k(\vec{\alpha}^k,t) &= \sum_{l=1}^L B_l(t) \sum_{f=1}^{N_f} \left(\alpha^{k
+  p^k(\vec{\alpha}^k,t) &= \sum_{l=1}^L B_l(t) \sum_{f=1}^{N_f^k} \left(\alpha^{k
   (1)}_{l,f} \cos(\Omega_f^k t) - \alpha^{k (2)}_{l,f} \sin(\Omega_f^k t)
   \right) \\
-  q^k(\vec{\alpha}^k,t) &= \sum_{l=1}^L B_l(t) \sum_{f=1}^{N_f} \left( \alpha^{k
+  q^k(\vec{\alpha}^k,t) &= \sum_{l=1}^L B_l(t) \sum_{f=1}^{N_f^k} \left( \alpha^{k
   (1)}_{l,f} \sin(\Omega_f^k t) + \alpha^{k (2)}_{l,f} \cos(\Omega_f^k t)
   \right)
 \end{align}
-for $L$ B-Spline functions $B_l(t)$, and $N_f$ carrier wave frequencies
-$\Omega_f^k$. The amplitudes $\vec{\alpha}^k \in \R^{2LN_f}$ are the control
-parameters (\textit{design} variables) that we modify in order to realize a
+for $L$ B-Spline functions $B_l(t)$, and $N_f^k$ carrier wave frequencies
+$\Omega_f^k$ per oscillator. The amplitudes $\vec{\alpha}^k \in \R^{2LN_f^k}$ are the control
+parameters (\textit{design} variables) that Quandary can optimize in order to realize a
 desired system behavior. 
 
-Design storage in the Quandary code design vector is oscillators first
-$(\vec{\alpha}^1, \dots, \vec{\alpha}^Q)$, then for each $\vec{\alpha}^k \in
-\R^{2LN_f}$ iterates over $L$ splines first: $\vec{\alpha}^k =
-(\alpha^k_1,\dots, \alpha^k_{L})$ with $\alpha^k_l \in \R^{2N_f}$, then each
-$\alpha^k_l$ iterates over carrierwaves first and for each carrierwaves lists
-the two components: $\alpha^k_l = \alpha^{k(1)}_{l,1}, \alpha^{k(2)}_{l,1},
-\dots \alpha^{k(1)}_{l,N_f}, \alpha^{k(2)}_{l,N_f}$.
-
-The control functions are in the \textit{rotating frame}. To convert them back
-to the \textit{Lab frame} use
+These control functions are in the \textit{rotating frame}. To convert them back
+to the \textit{Lab frame}, Quandary uses
 \begin{align}
-  f^k(t) = 2 \sum_{l=1}^L B_l(t) \sum_{f=1}^{N_f} \beta_{l,f}^k \cos(w_k t +
+  f^k(t) = 2 \sum_{l=1}^L B_l(t) \sum_{f=1}^{N_f^k} \beta_{l,f}^k \cos(w_k t +
   \Omega_f^k t + \theta_{l,f}) \quad \forall k=1,\dots Q
 \end{align}
 where $\beta_{l,f}^k$ and $\theta_{l,f}$ are computed from
@@ -116,7 +115,7 @@ where $\beta_{l,f}^k$ and $\theta_{l,f}$ are computed from
 and $w_k$ are the fundamental resonance frequencies of subsystems $k$. Using
 trigenomic equalities, the Lab-frame comtrols can be expressed as
 \begin{align}
-  f^k(t) &= 2 \sum_{l=1}^L B_l(t) \sum_{f=1}^{N_f} \alpha_{l,f}^{k(1)} \cos((w_k
+  f^k(t) &= 2 \sum_{l=1}^L B_l(t) \sum_{f=1}^{N_f^k} \alpha_{l,f}^{k(1)} \cos((w_k
   + \Omega_f^k) t) - \alpha_{l,f}^{k(2)}\sin((w_k + \Omega_f^k) t) \quad \forall
   k=1,\dots Q \\
          &= 2 p^k(\vec{\alpha}^k, t) \cos(w_k t) - 2 q^k(\vec{\alpha}^k,
@@ -153,8 +152,8 @@ $k$, $p(o_k) = \mbox{Tr}(P^k_o \rho)$ for a spectral decomposition $O^k =
 
 \section{Optimization problem}
 
-\subsection{Groundstate optimization}
-We aim to find control pulses $p^k(\vec{\alpha}^k, t), q^k(\vec{\alpha}^k, (t)$,
+\subsection{Groundstate optimization aka optimal reset}
+Optimal reset aims to find control pulses $p^k(\vec{\alpha}^k, t), q^k(\vec{\alpha}^k, t)$,
 that drive any initial state towards the ground state $|0\dots 0\rangle = (1, 0,
 0, \dots )^T$. The corresponding ground state density matrix is given by
 \begin{align}
@@ -165,9 +164,9 @@ that drive any initial state towards the ground state $|0\dots 0\rangle = (1, 0,
   \end{bmatrix}
 \end{align}
 
-To reach this goal, we either minimize the distance between the final state
+To reach this goal, Quandary either minimizes the distance between the final state
 density matrix and the ground-state density matrix, measured in the frobenius
-norm, or we look at the expected energy level of the system and minimize that:
+norm, or minimizes a weighted average of the expected energy level over each subsystem:
 \begin{enumerate}
   \item \textit{Expected energy minimization}: Minimize a weighted sum over
     expected energy levels of the (full or partial) system
@@ -177,7 +176,7 @@ norm, or we look at the expected energy level of the system and minimize that:
     using the number operator $O_k = a_k^\dag a_k$ for the subsystem $k$
     (compare Section \ref{sec:expectedenergy}), and defining a partial system
     $H_{k_1}\otimes \dots \otimes H_{k_s}$ from an index set of subsystem IDs
-    $\mathcal{K}=\{k_1,\dots,k_s\}\subset \{1,\dots,Q\}$. We can use the
+    $\mathcal{K}=\{k_1,\dots,k_s\}\subset \{1,\dots,Q\}$. Quandary can use the
     following variations of the above measure
     \begin{enumerate}
       \item[(a)] $J(\rho(T)) =
@@ -198,17 +197,6 @@ norm, or we look at the expected energy level of the system and minimize that:
 
 \end{enumerate}
 
-For both objective types, we add an integral penalty term to the objective
-function, that discourages non-zero energy states over time as so:
-\begin{align}
-  % \int_0^T w(t) J(\rho(t)) \, \mathrm{d}t, \quad \text{where} \quad w(t) =
-  % \left(\frac{t}{T}\right)^p, p \geq 1
-  \int_0^T w(t) J(\rho(t)) \, \mathrm{d}t, \quad \text{where} \quad w(t) =
-  \frac{1}{a} e^{ -\left(\frac{t-T}{a} \right)^2}, \quad  0 < a \leq 1
-\end{align}
-Note, that as $a\to 0$, the weight $w(t)$ converges to the dirac delta
-distribution with peak at final time $T$. 
-
 \subsection{Target gate optimization}
 
 Here, the goal is to find control pulses that realize a certain logical gate
@@ -220,7 +208,7 @@ transformation $V\rho(0)V^{\dagger}$ for any initial state $\rho(0)$:
 \end{align} 
 
 
-Target gates that we consider include
+Target gates that are currently implemented are
 \begin{align}
   V_{X} := \begin{bmatrix} 0 & 1 \\ 1 & 0  \end{bmatrix} \quad
   V_{Y} := \begin{bmatrix} 0 & -i \\ i & 0 \end{bmatrix} \quad
@@ -233,6 +221,24 @@ Target gates that we consider include
                                0  & 0 & 1 & 0 \\ 
                 \end{bmatrix}
 \end{align}
+
+\subsection{Penalty and regularization term}
+In order to stabilize the optimization problem, a Tikhonov regularization term can be added to the objective function:
+\begin{align}
+ \frac{\gamma_1}{2} \| \boldsymbol{\alpha} \|^2_2
+\end{align}
+with Tikhonov parameter $\gamma_1 > 0$, where $\boldsymbol{\alpha}$ denotes the vector of design parameters as in section \ref{subsec:controlpulses}.
+
+
+In addition, when considering ground-state optimization, an integral penalty term can be added to the objective function that discourages non-zero energy states over time:
+\begin{align}
+  % \int_0^T w(t) J(\rho(t)) \, \mathrm{d}t, \quad \text{where} \quad w(t) =
+  % \left(\frac{t}{T}\right)^p, p \geq 1
+  \gamma_2 \int_0^T w(t) J(\rho(t)) \, \mathrm{d}t, \quad \text{where} \quad w(t) =
+  \frac{1}{a} e^{ -\left(\frac{t-T}{a} \right)^2}
+\end{align}
+for a penalty parameter $\gamma_2 > 0$, and parameter $0 < a \leq 1$. Note, that as $a\to 0$, the weight $w(t)$ converges to the dirac delta
+distribution with peak at final time $T$. 
 
 
 
@@ -254,8 +260,8 @@ B^{kj} := \frac 12 \left( E_{kk} + E_{jj}\right) +  \begin{cases}
 \end{align}
 for all $k,j\in\{0,\dots, N-1\}$, where $E_{kj}$ denotes the matrix of all zeros
 except for the $(k,j)$-th element which is one (hence $E_{kj} = e_ke_j^T$).
-These $N^2$ matrices are hermitian, and they are linearly independent over the
-real vector space of hermitian matrices. They further satisfy $\Tr(B^{kj}) = 1$
+These $N^2$ matrices are Hermitian, and they are linearly independent over the
+real vector space of Hermitian matrices. They further satisfy $\Tr(B^{kj}) = 1$
 and they are positive semi-definite, hence each basis matrix is a density
 matrix. 
 
@@ -307,7 +313,7 @@ of the linearity of $S^{\vec{\alpha}}$:
 Hence, we define a new optimization problem using the specific initial condition
 that averages over the basis matrices:
 \begin{align}
-  \min \, J(S^{\vec{\alpha}}(,T\rho(0))) \quad \text{s.t.} \quad \rho(0) =
+  \min \, J(S^{\vec{\alpha}}(T,\rho(0))) \quad \text{s.t.} \quad \rho(0) =
   \frac{1}{N^2}  \sum_{k,j=0}^{N-1} B^{kj}
 \end{align}
 In this case, each objective function evaluation requires to propagate only one
@@ -321,12 +327,11 @@ domain, and the objective function evaluates the average measure over those $N$
 initial conditions at the final time $T$. 
 
 \subsubsection{Pure state initialization, or reading a state from file}
-One can choose to simulate for only one specific initial condition. Here, we
-consider pure-state initialization, where the initial density matrix is composed
+One can choose to simulate and optimize for only one specific initial condition (pure-state initialization). In that case, the initial density matrix is composed
 of pure states for each of the subsystems. E.g. for a bipartite system with $n_1
 \otimes n_2$ levels, one can propagate any initial pure state 
 \begin{align}
-  \rho(0)  = |a\rangle \langle a| \otimes |b\rangle \langle b| \quad \text{for} \quad a \in \{0,\dots, n_1\}, b\in \{0,\dots, n_2\}
+  \rho(0)  = |a\rangle \langle a| \otimes |b\rangle \langle b| \quad \text{for} \quad a \in \{0,\dots, n_1-1\}, b\in \{0,\dots, n_2-1\}
 \end{align}
 Alternatively, a specific initial condition can also be read from a file. 
 
@@ -364,12 +369,11 @@ basis elements or diagonals).
   \end{align}
 
   \subsection{Real-valued system}
-   We solve the vectorized master equation \eqref{mastereq_vectorized} in
+   Quandary solves the vectorized master equation \eqref{mastereq_vectorized} in
    real-valued variables with $q(t) = u(t) + iv(t)$, evolving the real-valued
    states $u(t), v(t)\in \R^{N^2}$ with
    \begin{align}
-     \dot q(t) &= M(t) q(t) \\
-   \Leftrightarrow \quad \begin{bmatrix} \dot u(t) \\ \dot v(t) \end{bmatrix} &= 
+     \dot q(t) = M(t) q(t) \quad \Leftrightarrow \quad \begin{bmatrix} \dot u(t) \\ \dot v(t) \end{bmatrix} = 
    \begin{bmatrix} A(t) & -B(t) \\ B(t) & A(t) \end{bmatrix} 
    \begin{pmatrix} u(t) \\ v(t) \end{pmatrix} 
    \label{realvaluedODE}
@@ -402,7 +406,7 @@ basis elements or diagonals).
 
    \subsection{Sparse-matrix vs. matrix-free solver}
 
-   In the code, two versions to evaluate the right hand side of Lindblad's
+   In Quandary, two versions to evaluate the right hand side of Lindblad's
    equation, $M(t)q(t)$, of the vectorized real-valued system are available:
    \begin{itemize}
      \item \textit{Sparse-matrix solver:}
@@ -418,18 +422,17 @@ basis elements or diagonals).
 
    \item \textit{Matrix-free solver using tensor contractions:}
      Then tensor-contraction code is matrix-free, i.e. the matrices $A_d,B_d,
-       A_c^k, B_c^k$ and hence $M(t)$ and not stored explicitly, but instead
+       A_c^k, B_c^k$ and hence $M(t)$ are not stored explicitly, but instead
        their action on a vector $q(t)$ is evaluated at each time step $t$. The
        action of those matrices to the system vector is implemented using
        tensor-contractions applied to the corresponding dimension of the density
-       matrix. The document 'tensor.pdf' explains the tensor contractions in
-       more detail. 
+       matrix. 
 
-     Notes:
+     \textbf{Notes}:
      \begin{itemize}
        \item For our current test cases, the matrix-free solver is much faster
-         than the sparse-matrix solver (about 10x, see tensor.pdf). However it
-         is currently only implemented for systems consisting of \textit{two}
+         than the sparse-matrix solver (about 10x). However the matrix-free solver
+         is currently only implemented for systems consisting of \textbf{two}
          subsystems with $n_1 \otimes n_2$ levels. Future development will
          extend the approach to more than two subsystem. 
        \item The matrix-free solver currently does not parallelize across the
@@ -460,11 +463,11 @@ basis elements or diagonals).
   respectively. 
 
   \subsection{Time-stepping}
-    To solve the vectorized master equation \eqref{mastereq_vectorized} $\dot
-    q(t) = M(t) q(t)$ for $t\in [0,T]$, we apply a time-stepping integration
+    To solve the vectorized master equation \eqref{mastereq_vectorized}, $\dot
+    q(t) = M(t) q(t)$ for $t\in [0,T]$, Quandary applies a time-stepping integration
     scheme on a uniform time discretization grid $0=t_0 < \dots t_{N} = T$, with
-    $t_n = n \delta t$ and $\delta t = \frac{T}{N}$, and approximate the
-    solution at each discrete time step $q^{n} \approx q(t_n)$.
+    $t_n = n \delta t$ and $\delta t = \frac{T}{N}$, and approximates the
+    solution at each discrete time step $q^{n} \approx q(t_n)$. The implicit midpoint rule is the default setting, and is the preferred time-stepping integration scheme. 
    
     \subsubsection{Implicit Midpoint Rule (IMR)} 
     The implicit mid-point rule is a simplectic, second-order integration scheme
@@ -473,7 +476,7 @@ basis elements or diagonals).
       $1/2$ & $ 1/2$ \\
       \hline
                 &  $1$
-    \end{tabular}
+    \end{tabular}.
     Given a state $q^n$ at time $t_n$, the update formula to compute $q^{n+1}$
     is hence 
     \begin{align}
@@ -513,7 +516,7 @@ basis elements or diagonals).
        \begin{align*}  
          \dot u = -i H_d u \qquad \text{with} \quad H_d^{\dagger}  = H_d
        \end{align*} 
-       Since $H_d$ is hermitian, there exists a transformation $Y$ s.t. 
+       Since $H_d$ is Hermitian, there exists a transformation $Y$ s.t. 
        \begin{align*}
          Y^{\dagger}H_d Y + \Lambda \qquad  \text{where} \quad Y^{\dagger} = Y
        \end{align*}
@@ -549,16 +552,22 @@ basis elements or diagonals).
     of the objective function. 
 
   \subsubsection{Optimization variables and bounds}
-  We store the $2QLN_f$ optimization parameters in the following order:
+
+Design parameters (optimization variables) are storaged in the Quandary code in the following order: List oscillators first $(\vec{\alpha}^1, \dots, \vec{\alpha}^Q)$, then for each $\vec{\alpha}^k \in
+\R^{2LN_f^k}$ iterate over $L$ splines: $\vec{\alpha}^k =
+(\alpha^k_1,\dots, \alpha^k_{L})$ with $\alpha^k_l \in \R^{2N_f^k}$, then each
+$\alpha^k_l$ iterates over carrierwaves and for each carrierwaves lists
+the two components: $\alpha^k_l = \alpha^{k(1)}_{l,1}, \alpha^{k(2)}_{l,1},
+\dots \alpha^{k(1)}_{l,N_f^k}, \alpha^{k(2)}_{l,N_f^k}$. Hence there are a total of $2QL\sum_k N_f^k$ optimization parameters, which are stored in the following order:
   \begin{align}
-    z &:= \left( \vec{\alpha}^1, \dots, \vec{\alpha}^Q \right), \in
-    \mathds{R}^{2QLN_f} \quad \text{where}\\
-    \vec{\alpha}^k &= \left( \alpha_{1,1}^k,\dots, \alpha_{1,N_f}^k, \dots,
-    \alpha_{L,1}^{k}, \dots, \alpha_{L,N_f}^k \right) \in \R^{2LN_f}, \quad
+    \boldsymbol{\alpha} &:= \left( \vec{\alpha}^1, \dots, \vec{\alpha}^Q \right), \in
+    \mathds{R}^{2QL\sum_k N_f^k} \quad \text{where}\\
+    \vec{\alpha}^k &= \left( \alpha_{1,1}^k,\dots, \alpha_{1,N_f^k}^k, \dots,
+    \alpha_{L,1}^{k}, \dots, \alpha_{L,N_f^k}^k \right), \quad \text{with} \quad
     \alpha_{l,f}^k = \left(\alpha_{l,f}^{k(1)}, \alpha_{l,f}^{k(2)} \right) \in
-    R^2,
+    \R^2,
   \end{align}
-  iterating over $Q$ subsystems first, then $L$ splines, then $N_f$ carrier wave
+  iterating over $Q$ subsystems first, then $L$ splines, then $N_f^k$ carrier wave
   frequencies. 
 
   In order to guarantee that the optimizer yields control pulses that are
@@ -566,31 +575,10 @@ basis elements or diagonals).
   subsystems $k=1,\dots, Q$, we impose box constraints on the control
   parameters:
    \begin{align}
-     | \alpha_{l,f}^{k(1)}| \leq \frac{c^k_{max}}{N_f} \quad \text{and} \quad |
-     \alpha_{l,f}^{k(2)} | \leq \frac{c^k_{max}}{N_f}
+     | \alpha_{l,f}^{k(1)}| \leq \frac{c^k_{max}}{N_f^k} \quad \text{and} \quad |
+     \alpha_{l,f}^{k(2)} | \leq \frac{c^k_{max}}{N_f^k}
    \end{align}
-   where $N_f$ is the number of carrier wave frequencies.
-
-
-
-  \subsubsection{Evaluating the objective function}
-    Each objective function evaluation requires to solve the vectorized,
-    real-valued initial value problem forward in time
-    \begin{align*}
-      \dot x^{kj}(t) &= M(t) x^{kj}(t) \quad \forall \, t\in (0,T) \\
-      x^{kj}(0) &= \mbox{vec}(B^{k,j})
-    \end{align*}
-    either for all initial basis matrices $B^{k,j}, k,j=0,\dots,N-1$, or for
-    only the diagonals $B^{mm}$, or for only one specific initial condition,
-    depending on the test case (compare section \ref{subsec:initcond}). 
-
-    After each forward solve, we add to the final-time objective function:
-    \begin{align}
-      J_{total}(z) = \frac{1}{N^2} \sum_{i=0}^{N^2-1} J\left(x^{k(i),
-      j(i)}(T)\right) + \frac{\gamma}{2} \| z\|^2_2
-    \end{align}
-    where we add a Tikhonov regularization term with parameter $\gamma>0$ for
-    stability.
+   where $N_f^k$ is the number of carrier wave frequencies.
 
 
   \subsection{Parallelization (experimental)}

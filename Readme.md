@@ -1,7 +1,9 @@
 # Quandary - Optimal Open Quantum Control
-This project implements an optimization solver for quantum control. The underlying quantum dynamics model open quantum systems, using the Lindblad master equation to evolve the density matrix in time. The control problem aims to find control pulses that drive the system to a desired target state.
+This project implements an optimization solver for quantum control. The underlying quantum dynamics model open quantum systems, using the Lindblad master equation to evolve a density matrix in time. The control problem aims to find control pulses that drive the system to a desired target state.
 
-A documentation is under development. In the meantime, refer to the report in the `/doc/` folder for information on the underlying mathematical models as well as details on their implementation in Quandary. 
+A documentation is under development. In the meantime, refer to the user guide in the `/doc/` folder for information on the underlying mathematical models as well as details on their implementation in Quandary. 
+
+For questions, feel free to reach out to Stefanie Guenther [guenther5@llnl.gov].
 
 ## Dependencies
 This project relies on Petsc [https://www.mcs.anl.gov/petsc/] to handle linear algebra. Optionally, XBraid [https://github.com/XBraid/xbraid] can be linked to realize time-parallelization.
