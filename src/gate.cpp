@@ -240,7 +240,28 @@ void Gate::compare_trace(const Vec finalstate, const Vec rho0, double& obj){
 
   /* Objective J = 1.0 - Trace(...) */
   obj = 1.0 - trace;
-  
+ 
+  // // Test: compute purity of rho(T): 1/2*Tr(rho^2)
+  // double purity = 0.0;
+  // VecNorm(ufinal, NORM_2, &dot);
+  // purity += 1./2. * dot*dot;
+  // VecNorm(vfinal, NORM_2, &dot);
+  // purity += 1./2. * dot*dot;
+  // // Test: constant term  1/2*Tr((Vrho0V^dag)^2)
+  // MatMult(ImG, v0, x);      
+  // VecScale(x, -1.0);           // x = - ImG*v0
+  // MatMultAdd(ReG, u0, x, x);   // x = ReG*u0 - ImG*v0
+  // VecNorm(x, NORM_2, &dot);
+  // double constant = 1./2. * dot*dot;
+  // MatMult(ImG, u0, x);         // x = ImG*u0
+  // MatMultAdd(ReG, v0, x, x);   // x = ReG*v0 + ImG*u0
+  // VecNorm(x, NORM_2, &dot);
+  // constant += 1./2. * dot*dot;
+
+  // obj = obj + purity;
+
+  // obj = obj - 1.0 + constant;
+ 
   /* Restore vectors from index set */
   VecRestoreSubVector(finalstate, isu, &ufinal);
   VecRestoreSubVector(finalstate, isv, &vfinal);
@@ -250,6 +271,16 @@ void Gate::compare_trace(const Vec finalstate, const Vec rho0, double& obj){
   /* Free index strides */
   ISDestroy(&isu);
   ISDestroy(&isv);
+
+  // /* Verify trace overlap */
+  // double Jdist = 0.0;
+  // compare_frobenius(finalstate, rho0, Jdist);
+  // test = test + 1. + Jdist;
+
+  // printf("\n");
+  // printf(" J_T:   %1.14e\n", obj);
+  // printf(" test:  %1.14e\n", test);
+
 }
 
 
@@ -284,12 +315,20 @@ void Gate::compare_trace_diff(const Vec finalstate, const Vec rho0, Vec rho0_bar
   VecScale(x, -1.0);           // x = - ImG*v0
   MatMultAdd(ReG, u0, x, x);   // x = ReG*u0 - ImG*v0
   VecScale(x, dfb);            // x = -(ReG*u0 - ImG*v0)*obj_bar
+
+  /* Derivative of purity */
+  // VecAXPY(x, obj_bar, ufinal);
+
   VecISCopy(rho0_bar, isu, SCATTER_FORWARD, x);  // set real part in rho0bar
   
   // Derivative of second term: -(ReG*v0 + ImG*u0)*obj_bar
   MatMult(ImG, u0, x);         // x = ImG*u0
   MatMultAdd(ReG, v0, x, x);   // x = ReG*v0 + ImG*u0
   VecScale(x, dfb);            // x = -(ReG*v0 + ImG*u0)*obj_bar
+
+  /* Derivative of purity */
+  // VecAXPY(x, obj_bar, vfinal);
+
   VecISCopy(rho0_bar, isv, SCATTER_FORWARD, x);  // set imaginary part in rho0bar
 
 
