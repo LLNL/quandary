@@ -73,7 +73,7 @@ void Gate::assembleGate(){
 }
 
 
-void Gate::compare(const Vec finalstate, const Vec rho0, double& frob){
+void Gate::compare_frobenius(const Vec finalstate, const Vec rho0, double& frob){
   frob = 0.0;
 
   /* Exit, if this is a dummy gate */
@@ -100,7 +100,7 @@ void Gate::compare(const Vec finalstate, const Vec rho0, double& frob){
   /* Make sure that state dimensions match the gate dimension */
   int dimstate, dimG;
   VecGetSize(finalstate, &dimstate); 
-  VecGetSize(x, &dimG);
+  VecGetSize(x, &dimG);     // x is an auxiliary variable, used for the computation below
   if (dimstate/2 != dimG) {
     printf("\n ERROR: Target gate dimension %d doesn't match system dimension %u\n", dimG, dimstate/2);
     exit(1);
@@ -135,8 +135,7 @@ void Gate::compare(const Vec finalstate, const Vec rho0, double& frob){
   ISDestroy(&isv);
 }
 
-
-void Gate::compare_diff(const Vec finalstate, const Vec rho0, Vec rho0_bar, const double frob_bar){
+void Gate::compare_frobenius_diff(const Vec finalstate, const Vec rho0, Vec rho0_bar, const double frob_bar){
 
   /* Exit, if this is a dummy gate */
   if (dim_vec == 0) {
@@ -162,7 +161,7 @@ void Gate::compare_diff(const Vec finalstate, const Vec rho0, Vec rho0_bar, cons
   /* Derivative of 1/2 * J */
   double dfb = 1./2. * frob_bar;
 
-  /* Derivative of read part of frobenius norm: 2 * (u - ReG*u0 + ImG*v0) * dfb */
+  /* Derivative of real part of frobenius norm: 2 * (u - ReG*u0 + ImG*v0) * dfb */
   MatMult(ReG, u0, x);            // x = ReG*u0
   VecAYPX(x, -1.0, ufinal);       // x = ufinal - ReG*u0 
   MatMultAdd(ImG, v0, x, x);      // x = ufinal - ReG*u0 + ImG*v0
@@ -186,6 +185,125 @@ void Gate::compare_diff(const Vec finalstate, const Vec rho0, Vec rho0_bar, cons
   ISDestroy(&isu);
   ISDestroy(&isv);
 }
+
+void Gate::compare_trace(const Vec finalstate, const Vec rho0, double& obj){
+  obj = 0.0;
+
+  /* Exit, if this is a dummy gate */
+  if (dim_vec == 0) {
+    return;
+  }
+
+  /* Create vector strides for accessing real and imaginary part of co-located x */
+  int ilow, iupp;
+  VecGetOwnershipRange(finalstate, &ilow, &iupp);
+  int dimis = (iupp - ilow)/2;
+  IS isu, isv;
+  ISCreateStride(PETSC_COMM_WORLD, dimis, ilow, 2, &isu);
+  ISCreateStride(PETSC_COMM_WORLD, dimis, ilow+1, 2, &isv);
+
+  /* Get real and imag part of final state, x = [u,v] */
+  Vec ufinal, vfinal, u0, v0;
+  VecGetSubVector(finalstate, isu, &ufinal);
+  VecGetSubVector(finalstate, isv, &vfinal);
+  VecGetSubVector(rho0, isu, &u0);
+  VecGetSubVector(rho0, isv, &v0);
+
+
+  /* Make sure that state dimensions match the gate dimension */
+  int dimstate, dimG;
+  VecGetSize(finalstate, &dimstate); 
+  VecGetSize(x, &dimG);
+  if (dimstate/2 != dimG) {
+    printf("\n ERROR: Target gate dimension %d doesn't match system dimension %u\n", dimG, dimstate/2);
+    exit(1);
+  }
+
+  /* trace overlap: (ReG*u0 - ImG*v0)^T u + (ReG*v0 + ImG*u0)^Tv
+              [ + i (ReG*u0 - ImG*v0)^T v - (ReG*v0 + ImG*u0)^Tu ]   <- this should be zero!
+  */
+  double dot;
+  double trace = 0.0;
+
+  // first term: (ReG*u0 - ImG*v0)^T u
+  MatMult(ImG, v0, x);      
+  VecScale(x, -1.0);           // x = - ImG*v0
+  MatMultAdd(ReG, u0, x, x);   // x = ReG*u0 - ImG*v0
+  VecTDot(x, ufinal, &dot);    // dot = (ReG*u0 - ImG*v0)^T u    
+  trace += dot;
+  
+  // second term: (ReG*v0 + ImG*u0)^Tv
+  MatMult(ImG, u0, x);         // x = ImG*u0
+  MatMultAdd(ReG, v0, x, x);   // x = ReG*v0 + ImG*u0
+  VecTDot(x, vfinal, &dot);    // dot = (ReG*v0 + ImG*u0)^T v    
+  trace += dot;
+
+  /* Objective J = 1.0 - Trace(...) */
+  obj = 1.0 - trace;
+  
+  /* Restore vectors from index set */
+  VecRestoreSubVector(finalstate, isu, &ufinal);
+  VecRestoreSubVector(finalstate, isv, &vfinal);
+  VecRestoreSubVector(rho0, isu, &u0);
+  VecRestoreSubVector(rho0, isv, &v0);
+
+  /* Free index strides */
+  ISDestroy(&isu);
+  ISDestroy(&isv);
+}
+
+
+void Gate::compare_trace_diff(const Vec finalstate, const Vec rho0, Vec rho0_bar, const double obj_bar){
+
+  /* Exit, if this is a dummy gate */
+  if (dim_vec == 0) {
+    return;
+  }
+
+  /* Create vector strides for accessing real and imaginary part of co-located x */
+  int ilow, iupp;
+  VecGetOwnershipRange(finalstate, &ilow, &iupp);
+  int dimis = (iupp - ilow)/2;
+  IS isu, isv;
+  ISCreateStride(PETSC_COMM_WORLD, dimis, ilow, 2, &isu);
+  ISCreateStride(PETSC_COMM_WORLD, dimis, ilow+1, 2, &isv);
+
+
+  /* Get real and imag part of final state, initial state, and adjoint */
+  Vec ufinal, vfinal, u0, v0;
+  VecGetSubVector(finalstate, isu, &ufinal);
+  VecGetSubVector(finalstate, isv, &vfinal);
+  VecGetSubVector(rho0, isu, &u0);
+  VecGetSubVector(rho0, isv, &v0);
+
+  /* Derivative of 1-trace */
+  double dfb = -1.0 * obj_bar;
+
+  // Derivative of first term: -(ReG*u0 - ImG*v0)*obj_bar
+  MatMult(ImG, v0, x);      
+  VecScale(x, -1.0);           // x = - ImG*v0
+  MatMultAdd(ReG, u0, x, x);   // x = ReG*u0 - ImG*v0
+  VecScale(x, dfb);            // x = -(ReG*u0 - ImG*v0)*obj_bar
+  VecISCopy(rho0_bar, isu, SCATTER_FORWARD, x);  // set real part in rho0bar
+  
+  // Derivative of second term: -(ReG*v0 + ImG*u0)*obj_bar
+  MatMult(ImG, u0, x);         // x = ImG*u0
+  MatMultAdd(ReG, v0, x, x);   // x = ReG*v0 + ImG*u0
+  VecScale(x, dfb);            // x = -(ReG*v0 + ImG*u0)*obj_bar
+  VecISCopy(rho0_bar, isv, SCATTER_FORWARD, x);  // set imaginary part in rho0bar
+
+
+  /* Restore final, initial and adjoint state */
+  VecRestoreSubVector(finalstate, isu, &ufinal);
+  VecRestoreSubVector(finalstate, isv, &vfinal);
+  VecRestoreSubVector(rho0, isu, &u0);
+  VecRestoreSubVector(rho0, isv, &v0);
+
+  /* Free vindex strides */
+  ISDestroy(&isu);
+  ISDestroy(&isv);
+}
+
 
 XGate::XGate() : Gate(2) {
 

@@ -30,8 +30,12 @@ class Gate {
     void assembleGate();
     
     /* compare the final state to gate-transformed initialcondition in Frobenius norm 1/2 * || q(T) - V\kronV q(0)||^2 */
-    void compare(const Vec finalstate, const Vec rho0, double& frob);
-    void compare_diff(const Vec finalstate, const Vec rho0, Vec rho0bar, const double delta_bar);
+    void compare_frobenius(const Vec finalstate, const Vec rho0, double& obj);
+    void compare_frobenius_diff(const Vec finalstate, const Vec rho0, Vec rho0bar, const double delta_bar);
+
+    /* compare the final state to gate-transformed initialcondition using trace distance overlap 1 - Tr(V\rho(0)V^d \rho(T)) */
+    void compare_trace(const Vec finalstate, const Vec rho0, double& obj);
+    void compare_trace_diff(const Vec finalstate, const Vec rho0, Vec rho0bar, const double delta_bar);
 };
 
 /* X Gate, spanning one qubit. 

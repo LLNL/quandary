@@ -56,7 +56,6 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   config.GetVecStrParam("optim_objective", objective_str);
   targetgate = NULL;
   if ( objective_str[0].compare("gate") ==0 ) {
-    objective_type = GATE;
     /* Read and initialize the targetgate */
     assert ( objective_str.size() >=2 );
     if      (objective_str[1].compare("none") == 0)  targetgate = new Gate(); // dummy gate. do nothing
@@ -68,6 +67,14 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
     else {
       printf("\n\n ERROR: Unnown gate type: %s.\n", objective_str[1].c_str());
       printf(" Available gates are 'none', 'xgate', 'ygate', 'zgate', 'hadamard', 'cnot'\n");
+      exit(1);
+    }
+    /* Get gate type */
+    std::string gate_measure = config.GetStrParam("gate_measure", "frobenius");
+    if (gate_measure.compare("frobenius")==0) objective_type = GATE_FROBENIUS;
+    else if (gate_measure.compare("trace")==0) objective_type = GATE_TRACE;
+    else  {
+      printf("\n\n ERROR: Unknown gate measure: %s\n", gate_measure.c_str());
       exit(1);
     }
   }  
@@ -117,7 +124,7 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   timestepper->penalty_coeff = penalty_coeff;
 
   // check if implemented:
-  if (objective_type == GATE && penalty_coeff > 1e-13) {
+  if ( (objective_type == GATE_FROBENIUS || objective_type == GATE_TRACE ) && penalty_coeff > 1e-13) {
         printf("ERROR: Penalty integral for Gate objective is currently not implemented.\n");
         exit(1);
   }
@@ -614,9 +621,14 @@ double objectiveT(MasterEq* mastereq, ObjectiveType objective_type, const std::v
   if (state != NULL) {
 
     switch (objective_type) {
-      case GATE:
-        /* compare state to linear transformation of initial conditions */
-        targetgate->compare(state, rho_t0, obj_local);
+      case GATE_FROBENIUS:
+        /* compare state to linear transformation of initial conditions using Frobenius norm */
+        targetgate->compare_frobenius(state, rho_t0, obj_local);
+        break;
+
+      case GATE_TRACE:
+        /* compare state to linear transformation of initial conditions using Trace overlap */
+        targetgate->compare_trace(state, rho_t0, obj_local);
         break;
 
       case EXPECTEDENERGY:
@@ -687,8 +699,12 @@ void objectiveT_diff(MasterEq* mastereq, ObjectiveType objective_type, const std
   if (state != NULL) {
     switch (objective_type) {
 
-      case GATE:
-        targetgate->compare_diff(state, rho_t0, statebar, obj_bar);
+      case GATE_FROBENIUS:
+        targetgate->compare_frobenius_diff(state, rho_t0, statebar, obj_bar);
+        break;
+
+      case GATE_TRACE:
+        targetgate->compare_trace_diff(state, rho_t0, statebar, obj_bar);
         break;
 
       case EXPECTEDENERGY:
