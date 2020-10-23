@@ -9,7 +9,6 @@ import copy
 from batch_job import submit_job
 from config import *
 from util import *
-import matplotlib.pyplot as plt
 import numpy as np
 
 # Specify runcommand
@@ -19,11 +18,14 @@ runcommand = "../../../main"
 configfile = Config("AxC.cfg")
 
 # Specify different cavity amplitudes
-optim_init_ampl = [1,2,3,4,5,6,7,8,9]
+optim_init_ampl = [5,9]
+#optim_init_ampl = [1,2,3,4,5,6,7,8,9]
 
 # Set number and spacing of time-duration
-nsteps = 40
-dsteps = 0.05
+nsteps = 20     # giving durations in [0.1,2.0]us
+dsteps = 0.1
+#nsteps = 40 
+#dsteps = 0.05
 
 # Prepare output
 time   = np.zeros(nsteps)
@@ -82,9 +84,6 @@ for amp in range(len(optim_init_ampl)):
            os.chdir("../")
 
 
-
-
-
         ##############
         # Read result from output files
         ##############
@@ -129,29 +128,4 @@ fexp1.close()
 fpop0.close()
 
 
-# Plot
-fig, axs = plt.subplots(1,2, figsize=(10,7))
-fig.suptitle("Expected energy level")
-axs[0].set_title("Alice")
-axs[1].set_title("Cavity")
-
-for i in range(len(optim_init_ampl)):
-    axs[0].plot(time, exp0[i, :], label="p=q="+str(optim_init_ampl[i]))
-    axs[1].plot(time, exp1[i, :], label="p=q="+str(optim_init_ampl[i]))
-for ax in axs.flat:
-    ax.set(xlabel='duration')
-plt.legend()
-plt.show()
-
-
-fig, axs = plt.subplots(1,3, figsize=(20,7))
-fig.suptitle("Alice population aka photon number")
-for i in range(len(optim_init_ampl)):
-    axs[0].plot(time, pop0_0[i, :], label="p=q="+str(optim_init_ampl[i]))
-    axs[1].plot(time, pop0_1[i, :], label="p=q="+str(optim_init_ampl[i]))
-    axs[2].plot(time, pop0_2[i, :], label="p=q="+str(optim_init_ampl[i]))
-for ax in axs.flat:
-    ax.set(xlabel='duration')
-plt.legend()
-plt.show()
 
