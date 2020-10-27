@@ -4,7 +4,7 @@
 enum LindbladType {NONE, DECAY, DEPHASE, BOTH};
 
 /* Available types of initial conditions */
-enum InitialConditionType {FROMFILE, PURE, DIAGONAL, BASIS, ROTATED};
+enum InitialConditionType {FROMFILE, PURE, DIAGONAL, BASIS, THREESTATES};
 
 /* Typye of objective functions */
 enum ObjectiveType {GATE,             // Compare final state to linear gate transformation of initial cond.

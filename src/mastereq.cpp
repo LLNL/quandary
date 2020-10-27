@@ -738,7 +738,7 @@ int MasterEq::getRhoT0(const int iinit, const int ninit, const InitialConditionT
       /* Do nothing. Init cond is already stored */
       break;
 
-    case ROTATED:
+    case THREESTATES:
 
       /* Reset the initial conditions */
       VecZeroEntries(rho0); 
