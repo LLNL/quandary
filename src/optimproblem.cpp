@@ -623,11 +623,13 @@ double objectiveT(MasterEq* mastereq, ObjectiveType objective_type, const std::v
     switch (objective_type) {
       case GATE_FROBENIUS:
         /* compare state to linear transformation of initial conditions using Frobenius norm */
+        /* J_T = 1/2 || rho(T) - Vrho(0)V^d||^2 */
         targetgate->compare_frobenius(state, rho_t0, obj_local);
         break;
 
       case GATE_TRACE:
         /* compare state to linear transformation of initial conditions using Trace overlap */
+        /* J_T = 1 - Tr[Vrho(0)V^d rho(T)] */
         targetgate->compare_trace(state, rho_t0, obj_local);
         break;
 
