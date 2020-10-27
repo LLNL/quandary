@@ -738,6 +738,56 @@ int MasterEq::getRhoT0(const int iinit, const int ninit, const InitialConditionT
       /* Do nothing. Init cond is already stored */
       break;
 
+    case THREESTATES:
+
+      /* Reset the initial conditions */
+      VecZeroEntries(rho0); 
+
+      /* Get partitioning */
+      VecGetOwnershipRange(rho0, &ilow, &iupp);
+
+      /* Set the <iinit>'th initial state */
+      if (iinit == 0) {
+        // 1st initial state: rho(0)_IJ = 2(N-i+1)/(d(d+1)) Delta_IJ
+        initID = 1;
+
+        /* Iterate over diagonal elements */
+        for (int i = 0; i<dim_rho; i++) {
+          int diagID = getIndexReal(i * dim_rho + i);
+          double val = 2.*(dim_rho - i) / (dim_rho * (dim_rho + 1));
+          if (ilow <= diagID && diagID < iupp) VecSetValue(rho0, diagID, val, INSERT_VALUES); 
+        }
+
+      } else if (iinit == 1) {
+        // 2nd initial state: rho(0)_IJ = 1/d
+        initID = 2;
+        for (int i = ilow; i<iupp; i++) {
+          double val = 1./dim_rho;
+          VecSetValue(rho0, i, val, INSERT_VALUES); 
+        }
+
+      } else if (iinit == 2) {
+        // 3rd initial state: rho(0)_IJ = 1/d Delta_IJ
+        initID = 3;
+
+        /* Iterate over diagonal elements */
+        for (int i = 0; i<dim_rho; i++) {
+          int diagID = getIndexReal(i * dim_rho + i);
+          double val = 1./ dim_rho;
+          if (ilow <= diagID && diagID < iupp) VecSetValue(rho0, diagID, val, INSERT_VALUES); 
+        }
+
+      } else {
+        printf("ERROR: Wrong initial condition setting!\n");
+        exit(1);
+      }
+      
+      /* Assemble rho0 */
+      VecAssemblyBegin(rho0); VecAssemblyEnd(rho0);
+
+      break;
+      
+
     case DIAGONAL:
       int row, diagelem;
 

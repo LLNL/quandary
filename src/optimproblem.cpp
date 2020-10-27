@@ -1,4 +1,5 @@
 #include "optimproblem.hpp"
+#include <algorithm>
 
 #ifdef WITH_BRAID
 OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, MPI_Comm comm_hiop_, MPI_Comm comm_init_, int ninit_, Output* output_) : OptimProblem(config, timestepper_, comm_hiop_, comm_init_, ninit_, output_) {
@@ -137,6 +138,10 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   ninit = 1;
   if (initcondstr[0].compare("file") == 0 )      initcond_type = FROMFILE;
   else if (initcondstr[0].compare("pure") == 0 ) initcond_type = PURE;
+  else if (initcondstr[0].compare("3states") == 0 ) {
+    initcond_type = THREESTATES;
+    ninit = 3;
+  }
   else if (initcondstr[0].compare("diagonal") == 0 ) {
     initcond_type = DIAGONAL;
     /* Compute ninit = dim(subsystem defined by initcond_IDs) */
@@ -286,6 +291,7 @@ double OptimProblem::evalF(const Vec x) {
 
   /*  Iterate over initial condition */
   obj_cost  = 0.0;
+  double obj_cost_max = 0.0;
   obj_regul = 0.0;
   obj_penal = 0.0;
   for (int iinit = 0; iinit < ninit_local; iinit++) {
@@ -310,6 +316,7 @@ double OptimProblem::evalF(const Vec x) {
     /* Add final-time cost */
     double obj_iinit = objectiveT(timestepper->mastereq, objective_type, obj_oscilIDs, obj_weights, finalstate, rho_t0, targetgate);
     obj_cost += obj_iinit;
+    obj_cost_max = std::max(obj_cost_max, obj_iinit);
     // printf("%d, %d: iinit objective: %1.14e\n", mpirank_world, mpirank_init, obj_iinit);
   }
 
@@ -338,6 +345,7 @@ double OptimProblem::evalF(const Vec x) {
   /* Output */
   if (mpirank_world == 0) {
     std::cout<< "Objective = " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal << std::endl;
+    std::cout<< "Max. costT = " << obj_cost_max << std::endl;
   }
 
   return objective;

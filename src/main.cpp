@@ -62,6 +62,7 @@ int main(int argc,char **argv)
   assert (initcondstr.size() >= 1);
   if      (initcondstr[0].compare("file") == 0 ) ninit = 1;
   else if (initcondstr[0].compare("pure") == 0 ) ninit = 1;
+  else if (initcondstr[0].compare("3states") == 0 ) ninit = 3;
   else if ( initcondstr[0].compare("diagonal") == 0 ||
             initcondstr[0].compare("basis")    == 0  ) {
     /* Compute ninit = dim(subsystem defined by list of oscil IDs) */
@@ -260,6 +261,9 @@ int main(int argc,char **argv)
   /* My time stepper */
   bool storeFWD = false;
   if (runtype == adjoint || runtype == optimization) storeFWD = true;
+#if TEST_FD
+  storeFWD = true;
+#endif
   TimeStepper *mytimestepper = new ImplMidpoint(mastereq, ntime, total_time, linsolvetype, linsolve_maxiter, output, storeFWD);
   // TimeStepper *mytimestepper = new ExplEuler(mastereq, ntime, total_time, output, storeFWD);
 
