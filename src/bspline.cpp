@@ -34,15 +34,15 @@ double ControlBasis::evaluate(const double t, const std::vector<double>& coeff, 
             int coeff_id = l * carrier_freq.size() * 2 + f * 2;     // alpha^{k(1)}_{l,f}
             switch (controltype) {
                 case RE:
-                    freq = -2.0 * M_PI * carrier_freq[f];
+                    freq = 2.0 * M_PI * carrier_freq[f];
                     ampl += coeff[coeff_id] * cos(freq*t) - coeff[coeff_id + 1] * sin(freq*t);
                     break;
                 case IM:
-                    freq = -2.0 * M_PI * carrier_freq[f];
+                    freq = 2.0 * M_PI * carrier_freq[f];
                     ampl += coeff[coeff_id] * sin(freq*t) + coeff[coeff_id + 1] * cos(freq*t);
                     break;
                 case LAB:
-                    freq = 2.0 * M_PI * (ground_freq - carrier_freq[f]);
+                    freq = 2.0 * M_PI * (ground_freq + carrier_freq[f]);
                     ampl += coeff[coeff_id] * cos(freq*t) - coeff[coeff_id + 1] * sin(freq*t);
                     break;
             }   
@@ -61,7 +61,7 @@ void ControlBasis::derivative(const double t, double* coeff_diff, const double v
         double basis = basisfunction(l, t); 
         /* Iterate over carrier frequencies */
         for (int f=0; f < carrier_freq.size(); f++) {
-            double tmp = -2 * M_PI * carrier_freq[f] * t;
+            double tmp = 2 * M_PI * carrier_freq[f] * t;
             int coeff_id = l * carrier_freq.size() * 2 + f * 2;
             if (controltype == RE) {
                 coeff_diff[coeff_id]     +=   basis * cos(tmp) * valbar;
