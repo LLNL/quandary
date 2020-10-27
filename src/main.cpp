@@ -260,6 +260,9 @@ int main(int argc,char **argv)
   /* My time stepper */
   bool storeFWD = false;
   if (runtype == adjoint || runtype == optimization) storeFWD = true;
+#if TEST_FD
+  storeFWD = true;
+#endif
   TimeStepper *mytimestepper = new ImplMidpoint(mastereq, ntime, total_time, linsolvetype, linsolve_maxiter, output, storeFWD);
   // TimeStepper *mytimestepper = new ExplEuler(mastereq, ntime, total_time, output, storeFWD);
 
