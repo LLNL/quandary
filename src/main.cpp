@@ -16,7 +16,8 @@
 
 
 #define TEST_FD_GRAD 0    // Run Finite Differences gradient test
-#define TEST_FD_HESS 1    // Run Finite Differences Hessian test
+#define TEST_FD_HESS 0    // Run Finite Differences Hessian test
+#define HESSIAN_DECOMPOSITION 1 // Run eigenvalue analysis for Hessian
 #define EPS 1e-4          // Epsilon for Finite Differences
 
 int main(int argc,char **argv)
@@ -467,13 +468,10 @@ int main(int argc,char **argv)
 
   double grad_org;
   double grad_pert1, grad_pert2;
-  Mat Hess;
 
+  Mat Hess;
   MatCreateSeqDense(PETSC_COMM_SELF, optimctx->ndesign, optimctx->ndesign, NULL, &Hess);
   MatSetUp(Hess);
-  MatAssemblyBegin(Hess, MAT_FINAL_ASSEMBLY);
-  MatAssemblyEnd(Hess, MAT_FINAL_ASSEMBLY);
-
 
 
   optimctx->getStartingPoint(xinit);
@@ -518,12 +516,44 @@ int main(int argc,char **argv)
   PetscViewerFileSetMode(viewer, FILE_MODE_WRITE);
   PetscViewerFileSetName(viewer, filename);
   // PetscViewerPushFormat(viewer, PETSC_VIEWER_ASCII_DENSE);
-
   MatView(Hess, viewer);
   PetscViewerPopFormat(viewer);
   PetscViewerDestroy(&viewer);
 
+  // write again in binary
+  sprintf(filename, "%s/hessian_bin.dat", output->datadir.c_str());
+  printf("File written: %s.\n", filename);
+  PetscViewerBinaryOpen(MPI_COMM_WORLD, filename, FILE_MODE_WRITE, &viewer);
+  MatView(Hess, viewer);
+  PetscViewerDestroy(&viewer);
+
+  MatDestroy(&Hess);
+
+#endif
+
+#if HESSIAN_DECOMPOSITION 
   /* --- Compute eigenvalues of Hessian --- */
+  printf("\n\n#########################\n");
+  printf(" Eigenvalue analysis... \n");
+  printf("#########################\n\n");
+
+  /* Load Hessian from file */
+  Mat Hess;
+  MatCreateSeqDense(PETSC_COMM_SELF, optimctx->ndesign, optimctx->ndesign, NULL, &Hess);
+  MatSetUp(Hess);
+  sprintf(filename, "%s/hessian_bin.dat", output->datadir.c_str());
+  printf("Reading file: %s\n", filename);
+  PetscViewer viewer;
+  PetscViewerCreate(MPI_COMM_WORLD, &viewer);
+  PetscViewerSetType(viewer, PETSCVIEWERBINARY);
+  PetscViewerFileSetMode(viewer, FILE_MODE_READ);
+  PetscViewerFileSetName(viewer, filename);
+  // PetscViewerPushFormat(viewer, PETSC_VIEWER_ASCII_DENSE);
+  MatLoad(Hess, viewer);
+  PetscViewerPopFormat(viewer);
+  PetscViewerDestroy(&viewer);
+
+
 
   /* Set the percentage of eigenpairs that should be computed */
   double frac = 1.0;  // 1.0 = 100%
@@ -545,7 +575,7 @@ int main(int argc,char **argv)
   // for (int i=0; i<eigvals.size(); i++){
   //     fprintf(file, "  % 1.8e", eigvals[i]);  
   // }
-  fprintf(file, "\n");  
+  // fprintf(file, "\n");  
   // Iter over rows 
   for (int j=0; j<optimctx->ndesign; j++){  // rows
     for (int i=0; i<eigvals.size(); i++){
@@ -557,12 +587,8 @@ int main(int argc,char **argv)
   }
   fclose(file);
 
-  
-  /* Destroy Hessian */
-  MatDestroy(&Hess);
 
 #endif
-
 
 #ifdef SANITY_CHECK
   printf("\n\n Sanity checks have been performed. Check output for warnings and errors!\n\n");
