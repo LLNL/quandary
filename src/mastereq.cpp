@@ -748,7 +748,7 @@ int MasterEq::getRhoT0(const int iinit, const int ninit, const InitialConditionT
 
       /* Set the <iinit>'th initial state */
       if (iinit == 0) {
-        // 1st initial state: rho(0)_IJ = 2(N-i+1)/(d(d+1)) Delta_IJ
+        // 1st initial state: rho(0)_IJ = 2(N-i+1)/(N(N+1)) Delta_IJ
         initID = 1;
 
         /* Iterate over diagonal elements */
@@ -761,9 +761,12 @@ int MasterEq::getRhoT0(const int iinit, const int ninit, const InitialConditionT
       } else if (iinit == 1) {
         // 2nd initial state: rho(0)_IJ = 1/d
         initID = 2;
-        for (int i = ilow; i<iupp; i++) {
-          double val = 1./dim_rho;
-          VecSetValue(rho0, i, val, INSERT_VALUES); 
+        for (int i = 0; i<dim_rho; i++) {
+          for (int j = 0; j<dim_rho; j++) {
+            double val = 1./dim_rho;
+            int index = getIndexReal(i * dim_rho + j);   // Re(rho_ij)
+            VecSetValue(rho0, index, val, INSERT_VALUES); 
+          }
         }
 
       } else if (iinit == 2) {
