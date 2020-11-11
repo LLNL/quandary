@@ -285,3 +285,64 @@ void read_vector(const char *filename, double *var, int dim) {
   fclose(file);
 }
 
+
+/* Compute eigenvalues */
+int getEigvals(const Mat A, const int neigvals, std::vector<double>& eigvals, std::vector<Vec>& eigvecs){
+
+int nconv = 0;
+#ifdef WITH_SLEPC
+
+  /* Create Slepc's eigensolver */
+  EPS eigensolver;       
+  EPSCreate(PETSC_COMM_WORLD, &eigensolver);
+  EPSSetOperators(eigensolver, A, NULL);
+  EPSSetProblemType(eigensolver, EPS_NHEP);
+  EPSSetFromOptions(eigensolver);
+
+  /* Number of requested eigenvalues */
+  EPSSetDimensions(eigensolver,neigvals,PETSC_DEFAULT,PETSC_DEFAULT);
+
+  // Solve eigenvalue problem
+  int ierr = EPSSolve(eigensolver); CHKERRQ(ierr);
+
+  /* Get information about convergence */
+  int its, nev, maxit;
+  EPSType type;
+  double tol;
+  EPSGetIterationNumber(eigensolver,&its);
+  EPSGetType(eigensolver,&type);
+  EPSGetDimensions(eigensolver,&nev,NULL,NULL);
+  EPSGetTolerances(eigensolver,&tol,&maxit);
+  EPSGetConverged(eigensolver, &nconv );
+
+  PetscPrintf(PETSC_COMM_WORLD," Solution method: %s\n",type);
+  PetscPrintf(PETSC_COMM_WORLD," Number of requested eigenpairs: %D\n",nev);
+  PetscPrintf(PETSC_COMM_WORLD," Number of iterations taken: %D / %D\n",its, maxit);
+  PetscPrintf(PETSC_COMM_WORLD," Stopping condition: tol=%.4g\n",(double)tol);
+  PetscPrintf(PETSC_COMM_WORLD," Number of converged eigenpairs: %D\n\n",nconv);
+
+  /* Allocate eigenvectors */
+  Vec eigvec;
+  MatCreateVecs(A, &eigvec, NULL);
+
+  // Get the result
+  double kr, ki, error;
+  printf("Eigenvalues: \n");
+  for (int j=0; j<nconv; j++) {
+      EPSGetEigenpair( eigensolver, j, &kr, &ki, eigvec, NULL);
+      EPSComputeError( eigensolver, j, EPS_ERROR_RELATIVE, &error );
+      printf("%f + i%f (err %f)\n", kr, ki, error);
+
+      /* Store the eigenpair */
+      eigvals.push_back(kr);
+      eigvecs.push_back(eigvec);
+      if (ki != 0.0) printf("Warning: eigenvalue imaginary! : %f", ki);
+  }
+  // printf("\n");
+  // EPSView(eigensolver, PETSC_VIEWER_STDOUT_WORLD);
+
+  /* Clean up*/
+  EPSDestroy(&eigensolver);
+#endif
+  return nconv;
+}

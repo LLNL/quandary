@@ -10,9 +10,14 @@
 #include <sys/resource.h>
 #include "optimproblem.hpp"
 #include "output.hpp"
+#ifdef WITH_SLEPC
+#include <slepceps.h>
+#endif
 
-#define TEST_FD 0    // Finite Differences gradient test
-#define EPS 1e-4     // Epsilon for Finite Differences
+
+#define TEST_FD_GRAD 0    // Run Finite Differences gradient test
+#define TEST_FD_HESS 1    // Run Finite Differences Hessian test
+#define EPS 1e-4          // Epsilon for Finite Differences
 
 int main(int argc,char **argv)
 {
@@ -145,8 +150,13 @@ int main(int argc,char **argv)
 
   /* Initialize Petsc using petsc's communicator */
   PETSC_COMM_WORLD = comm_petsc;
+#ifdef WITH_SLEPC
+  ierr = SlepcInitialize(&argc, &argv, (char*)0, NULL);if (ierr) return ierr;
+#else
   ierr = PetscInitialize(&argc,&argv,(char*)0,NULL);if (ierr) return ierr;
+#endif
   PetscViewerPushFormat(PETSC_VIEWER_STDOUT_WORLD, 	PETSC_VIEWER_ASCII_MATLAB );
+
 
 
   double total_time = ntime * dt;
@@ -261,7 +271,10 @@ int main(int argc,char **argv)
   /* My time stepper */
   bool storeFWD = false;
   if (runtype == adjoint || runtype == optimization) storeFWD = true;
-#if TEST_FD
+#if TEST_FD_GRAD
+  storeFWD = true;
+#endif
+#if TEST_FD_HESS
   storeFWD = true;
 #endif
   TimeStepper *mytimestepper = new ImplMidpoint(mastereq, ntime, total_time, linsolvetype, linsolve_maxiter, output, storeFWD);
@@ -394,10 +407,10 @@ int main(int argc,char **argv)
   }
 
 
-#if TEST_FD
+#if TEST_FD_GRAD
   if (mpirank_world == 0)  {
     printf("\n\n#########################\n");
-    printf(" FD Testing... \n");
+    printf(" FD Testing for Gradient ... \n");
     printf("#########################\n\n");
   }
 
@@ -445,6 +458,112 @@ int main(int argc,char **argv)
 #endif
 
 
+#if TEST_FD_HESS
+  if (mpirank_world == 0)  {
+    printf("\n\n#########################\n");
+    printf(" FD Testing for Hessian... \n");
+    printf("#########################\n\n");
+  }
+
+  double grad_org;
+  double grad_pert1, grad_pert2;
+  Mat Hess;
+
+  MatCreateSeqDense(PETSC_COMM_SELF, optimctx->ndesign, optimctx->ndesign, NULL, &Hess);
+  MatSetUp(Hess);
+  MatAssemblyBegin(Hess, MAT_FINAL_ASSEMBLY);
+  MatAssemblyEnd(Hess, MAT_FINAL_ASSEMBLY);
+
+
+
+  optimctx->getStartingPoint(xinit);
+
+
+  /* Iterate over all Hessian elements, upper triangle only */
+  for (int i=0; i<optimctx->ndesign; i++){
+    for (int j=i; j<optimctx->ndesign; j++){
+      /* Evaluate \nabla_x_i J(x + eps * e_j) */
+      VecSetValue(xinit, j, EPS, ADD_VALUES); 
+      optimctx->evalGradF(xinit, grad);        
+      VecGetValues(grad, 1, &i, &grad_pert1);   // \nabla_x_i J(x+eps*e_j)
+
+      /* Evaluate \nabla_x_i J(x - eps * e_j) */
+      VecSetValue(xinit, j, -2.*EPS, ADD_VALUES); 
+      optimctx->evalGradF(xinit, grad);
+      VecGetValues(grad, 1, &i, &grad_pert2);    // \nabla_x_i J(x-eps*e_j)
+
+      /* Finite difference */
+      double fd = (grad_pert1 - grad_pert2) / (2.*EPS);
+      if (mpirank_world == 0) printf("Hess(%d,%d) = %1.14e\n", i,j,fd);
+  
+      /* Fill hessian element */
+      MatSetValue(Hess, i, j, fd, INSERT_VALUES);
+      MatSetValue(Hess, j, i, fd, INSERT_VALUES);
+
+      /* Restore parameter xinit */
+      VecSetValue(xinit, i, EPS, ADD_VALUES);
+    }
+  }
+
+  MatAssemblyBegin(Hess, MAT_FINAL_ASSEMBLY);
+  MatAssemblyEnd(Hess, MAT_FINAL_ASSEMBLY);
+
+  /* --- Print Hessian to file */
+  
+  sprintf(filename, "%s/hessian.dat", output->datadir.c_str());
+  printf("File written: %s.\n", filename);
+  PetscViewer viewer;
+  PetscViewerCreate(MPI_COMM_WORLD, &viewer);
+  PetscViewerSetType(viewer, PETSCVIEWERASCII);
+  PetscViewerFileSetMode(viewer, FILE_MODE_WRITE);
+  PetscViewerFileSetName(viewer, filename);
+  // PetscViewerPushFormat(viewer, PETSC_VIEWER_ASCII_DENSE);
+
+  MatView(Hess, viewer);
+  PetscViewerPopFormat(viewer);
+  PetscViewerDestroy(&viewer);
+
+  /* --- Compute eigenvalues of Hessian --- */
+
+  /* Set the percentage of eigenpairs that should be computed */
+  double frac = 1.0;  // 1.0 = 100%
+  int neigvals = optimctx->ndesign * frac;     // hopefully rounds to closes int 
+  printf("\nComputing %d eigenpairs now...\n", neigvals);
+  
+  /* Compute eigenpair */
+  std::vector<double> eigvals;
+  std::vector<Vec> eigvecs;
+  getEigvals(Hess, neigvals, eigvals, eigvecs);
+
+  /* Print eigenvectors to file. Row wise. */
+  FILE *file;
+  sprintf(filename, "%s/eigvecs.dat", output->datadir.c_str());
+  printf("File written: %s.\n", filename);
+  file =fopen(filename,"w");
+  // // Header: # eigenvalues 
+  // fprintf(file, "#");  
+  // for (int i=0; i<eigvals.size(); i++){
+  //     fprintf(file, "  % 1.8e", eigvals[i]);  
+  // }
+  fprintf(file, "\n");  
+  // Iter over rows 
+  for (int j=0; j<optimctx->ndesign; j++){  // rows
+    for (int i=0; i<eigvals.size(); i++){
+      double val;
+      VecGetValues(eigvecs[i], 1, &j, &val); // j-th row of eigenvalue i
+      fprintf(file, "% 1.8e  ", val);  
+    }
+    fprintf(file, "\n");
+  }
+  fclose(file);
+
+  
+  /* Destroy Hessian */
+  MatDestroy(&Hess);
+
+#endif
+
+
 #ifdef SANITY_CHECK
   printf("\n\n Sanity checks have been performed. Check output for warnings and errors!\n\n");
 #endif
@@ -466,7 +585,12 @@ int main(int argc,char **argv)
   // TSDestroy(&ts);  /* TODO */
 
   /* Finallize Petsc */
+#ifdef WITH_SLEPC
+  ierr = SlepcFinalize();
+#else
   ierr = PetscFinalize();
+#endif
+
 
   MPI_Finalize();
   return ierr;
