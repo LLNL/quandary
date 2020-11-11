@@ -315,7 +315,8 @@ double OptimProblem::evalF(const Vec x) {
 
     /* Add final-time cost */
     double obj_iinit = objectiveT(timestepper->mastereq, objective_type, obj_oscilIDs, obj_weights, finalstate, rho_t0, targetgate);
-    obj_cost += obj_iinit;
+    obj_cost +=  obj_iinit;
+    // obj_cost +=  obj_weights[iinit] * obj_iinit;
     obj_cost_max = std::max(obj_cost_max, obj_iinit);
     // printf("%d, %d: iinit objective: %1.14e\n", mpirank_world, mpirank_init, obj_iinit);
   }
@@ -399,7 +400,8 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
     /* Add final-time cost */
     double obj_iinit = objectiveT(timestepper->mastereq, objective_type, obj_oscilIDs, obj_weights, finalstate, rho_t0, targetgate);
     obj_cost += obj_iinit;
-      // if (mpirank_braid == 0) printf("%d: iinit objective: %1.14e\n", mpirank_init, obj_iinit);
+    // obj_cost += obj_weights[iinit] * obj_iinit;
+    // if (mpirank_braid == 0) printf("%d: iinit objective: %1.14e\n", mpirank_init, obj_iinit);
 
     /* --- Solve adjoint --- */
     // if (mpirank_braid == 0) printf("%d: %d BWD.", mpirank_init, initid);
@@ -409,6 +411,7 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
 
     /* Derivative of average over initial conditions */
     double Jbar = 1.0 / ninit;
+    // double Jbar = 1.0 / ninit * obj_weights[iinit];
 
     /* Derivative of final time objective */
     objectiveT_diff(timestepper->mastereq, objective_type, obj_oscilIDs, obj_weights, finalstate, rho_t0_bar, rho_t0, Jbar, targetgate);

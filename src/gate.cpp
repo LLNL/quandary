@@ -240,26 +240,29 @@ void Gate::compare_trace(const Vec finalstate, const Vec rho0, double& obj){
 
   /* Objective J = 1.0 - Trace(...) */
   obj = 1.0 - trace;
+  // obj = - trace;
  
-  // Test: compute purity of rho(T): 1/2*Tr(rho^2)
+  // // Test: compute purity of rho(T): 1/2*Tr(rho^2)
   // double purity_rhoT = 0.0;
   // VecNorm(ufinal, NORM_2, &dot);
   // purity_rhoT += dot*dot;
   // VecNorm(vfinal, NORM_2, &dot);
   // purity_rhoT += dot*dot;
-  // // Test: constant term  1/2*Tr((Vrho0V^dag)^2)
+  // // Test: compute constant term  1/2*Tr((Vrho0V^dag)^2)
+  // double purity_VrhoV = 0.0;
   // MatMult(ImG, v0, x);      
   // VecScale(x, -1.0);           // x = - ImG*v0
   // MatMultAdd(ReG, u0, x, x);   // x = ReG*u0 - ImG*v0
   // VecNorm(x, NORM_2, &dot);
-  // double purity_VrhoV = dot*dot;
+  // purity_VrhoV += dot*dot;
   // MatMult(ImG, u0, x);         // x = ImG*u0
   // MatMultAdd(ReG, v0, x, x);   // x = ReG*v0 + ImG*u0
   // VecNorm(x, NORM_2, &dot);
   // purity_VrhoV += dot*dot;
-  // printf("purity: rho(T): %f \n", purity_rhoT);
+  // double J_dist = purity_rhoT/2. - trace + purity_VrhoV/2.;
+  // printf("J_dist = 1/2 * %f - %f + 1/2 * %f = %1.14e\n", purity_rhoT, trace, purity_VrhoV, J_dist);
 
-  // obj = obj + purity_rhoT / 2. - 0.5;
+  // // obj = obj + purity_rhoT / 2. - 0.5;
 
   /* Restore vectors from index set */
   VecRestoreSubVector(finalstate, isu, &ufinal);
