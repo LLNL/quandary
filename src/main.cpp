@@ -356,6 +356,13 @@ int main(int argc,char **argv)
     optimctx->getSolution(&opt);
   }
 
+  /* Average fidelity */
+  double F_avg = 1. - optimctx->obj_cost;
+  printf("F_avg = %f \n", F_avg);
+  if (optimctx->initcond_type != BASIS ||
+      optimctx->objective_type != GATE_TRACE) {
+    printf("Warning: Recomupte the average fidelity, using all basis elements as initial conditions, and setting GATE_TRACE as objective function!\n");
+  }
 
   /* --- Finalize --- */
 
