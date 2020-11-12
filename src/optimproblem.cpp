@@ -587,6 +587,20 @@ PetscErrorCode TaoMonitor(Tao tao,void*ptr){
   /* Pass current iteration number to output manager */
   ctx->output->optim_iter = iter;
 
+  /* Compute average fidelity */
+  InitialConditionType inittype_org = ctx->initcond_type; 
+  ObjectiveType objtype_org = ctx->objective_type; 
+  int ninit_org = ctx->ninit_local;
+  ctx->initcond_type = BASIS;
+  ctx->ninit_local = 16;
+  ctx->ninit= 16;
+  ctx->objective_type = GATE_TRACE;
+  double obj = ctx->evalF(params);
+  // double F_avg = 1.0 - ctx->obj_cost;
+  ctx->initcond_type = inittype_org;
+  ctx->objective_type = objtype_org;
+  ctx->ninit_local = ninit_org;
+
   /* Print to optimization file */
   ctx->output->writeOptimFile(f, gnorm, deltax, ctx->obj_cost, ctx->obj_regul, ctx->obj_penal);
 
