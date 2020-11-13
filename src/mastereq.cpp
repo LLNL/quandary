@@ -17,13 +17,15 @@ MasterEq::MasterEq(){
 }
 
 
-MasterEq::MasterEq(std::vector<int> nlevels_, Oscillator** oscil_vec_, const std::vector<double> xi_, LindbladType lindbladtype, const std::vector<double> collapse_time_, bool usematfree_) {
+MasterEq::MasterEq(std::vector<int> nlevels_, Oscillator** oscil_vec_, const std::vector<double> xi_, const std::vector<double> detuning_freq_,
+                   LindbladType lindbladtype, const std::vector<double> collapse_time_, bool usematfree_) {
   int ierr;
 
   nlevels = nlevels_;
   noscillators = nlevels.size();
   oscil_vec = oscil_vec_;
   xi = xi_;
+  detuning_freq = detuning_freq_;
   collapse_time = collapse_time_;
   assert(xi.size() >= (noscillators+1) * noscillators / 2);
   assert(collapse_time.size() >= 2*noscillators);
@@ -81,6 +83,7 @@ MasterEq::MasterEq(std::vector<int> nlevels_, Oscillator** oscil_vec_, const std
   RHSctx.isu = &isu;
   RHSctx.isv = &isv;
   RHSctx.xi = xi;
+  RHSctx.detuning_freq = detuning_freq;
   RHSctx.collapse_time = collapse_time;
   if (!usematfree){
     RHSctx.Ac_vec = &Ac_vec;
@@ -159,7 +162,7 @@ void MasterEq::initSparseMatSolver(LindbladType lindbladtype){
     loweringOP = oscil_vec[iosc]->getLoweringOP((bool)mpirank_petsc);
     MatTranspose(loweringOP, MAT_INITIAL_MATRIX, &loweringOP_T);
 
-    /* Compute Ac = I_N \kron (a - a^T) - (a - a^T) \kron I_N */
+    /* Compute Ac = I_N \kron (a - a^T) - (a^T - a) \kron I_N */
     MatCreate(PETSC_COMM_WORLD, &Ac_vec[iosc]);
     MatSetSizes(Ac_vec[iosc], PETSC_DECIDE, PETSC_DECIDE, dim, dim);
     MatSetUp(Ac_vec[iosc]);
@@ -205,6 +208,9 @@ void MasterEq::initSparseMatSolver(LindbladType lindbladtype){
     MatAXPY(tmp, -1.0, numberOP, SAME_NONZERO_PATTERN);
     MatScale(tmp, -xi[xi_id] * M_PI);
     xi_id++;
+
+    /* add detuning term: 2 * PI * detuning_freq * N_i  */
+    MatAXPY(tmp, detuning_freq[iosc] * 2.0 * M_PI, numberOP, SAME_NONZERO_PATTERN);
 
     MatTranspose(tmp, MAT_INITIAL_MATRIX, &tmp_T);
     Ikron(tmp,   dimmat, -1.0, &Bd, ADD_VALUES);
@@ -278,7 +284,7 @@ void MasterEq::initSparseMatSolver(LindbladType lindbladtype){
       MatDestroy(&tmp);
     }
 
-    /* --- Adding T2-Dephasing (L1 = a_j^\dag a_j) for oscillator j --- */
+    /* --- Adding T2-Dephasing (L2 = a_j^\dag a_j) for oscillator j --- */
     if (addT2 && collapse_time[iosc*2+1] > 1e-14) { 
       double gamma = 1./(collapse_time[iosc*2+1]);
       /* Ad += 1./gamma_j * L \kron L */
@@ -982,6 +988,8 @@ int myMatMult_matfree(Mat RHS, Vec x, Vec y){
   double xi0  = shellctx->xi[0];
   double xi01 = shellctx->xi[1];
   double xi1  = shellctx->xi[2];
+  double detuning_freq0 = shellctx->detuning_freq[0];
+  double detuning_freq1 = shellctx->detuning_freq[1];
   double decay0 = 0.0;
   double decay1 = 0.0;
   double dephase0= 0.0;
@@ -1018,8 +1026,8 @@ int myMatMult_matfree(Mat RHS, Vec x, Vec y){
           double xim = xptr[2 * it + 1];
           // Constant Hd part: uout = ( hd(ik) - hd(ik'))*vin
           //                   vout = (-hd(ik) + hd(ik'))*uin
-          double hd  = Hd(xi0, xi01, xi1, i0, i1); 
-          double hdp = Hd(xi0, xi01, xi1, i0p, i1p); 
+          double hd  = Hd(xi0, xi01, xi1, detuning_freq0, detuning_freq1, i0, i1); 
+          double hdp = Hd(xi0, xi01, xi1, detuning_freq0, detuning_freq1, i0p, i1p); 
           double yre = ( hd - hdp ) * xim;
           double yim = (-hd + hdp ) * xre;
           // Decay l1, diagonal part: xout += l1diag xin
@@ -1161,6 +1169,8 @@ int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
   double xi0  = shellctx->xi[0];
   double xi01 = shellctx->xi[1];
   double xi1  = shellctx->xi[2];
+  double detuning_freq0 = shellctx->detuning_freq[0];
+  double detuning_freq1 = shellctx->detuning_freq[1];
   double decay0 = 0.0;
   double decay1 = 0.0;
   double dephase0= 0.0;
@@ -1198,8 +1208,8 @@ int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
           double xim = xptr[2 * it + 1];
           // Constant Hd^T part: uout = ( hd(ik) - hd(ik'))*vin
           //                     vout = (-hd(ik) + hd(ik'))*uin
-          double hd  = Hd(xi0, xi01, xi1, i0, i1); 
-          double hdp = Hd(xi0, xi01, xi1, i0p, i1p); 
+          double hd  = Hd(xi0, xi01, xi1, detuning_freq0, detuning_freq1, i0, i1); 
+          double hdp = Hd(xi0, xi01, xi1, detuning_freq0, detuning_freq1, i0p, i1p); 
           double yre = (-hd + hdp ) * xim;
           double yim = ( hd - hdp ) * xre;
           // Decay l1^T, diagonal part: xout += l1diag xin

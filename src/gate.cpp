@@ -190,8 +190,8 @@ void Gate::compare_diff(const Vec finalstate, const Vec rho0, Vec rho0_bar, cons
 XGate::XGate() : Gate(2) {
 
   /* Fill Va = Re(V) and Vb = Im(V), V = Va + iVb */
-  /* Va = 0 1    Vb = 0
-   *      1 0 
+  /* Va = 0 1    Vb = 0 0
+   *      1 0         0 0
    */
   if (mpirank_petsc == 0) {
     MatSetValue(Va, 0, 1, 1.0, INSERT_VALUES);
@@ -209,8 +209,8 @@ XGate::~XGate() {}
 YGate::YGate() : Gate(2) { 
   
   /* Fill A = Re(V) and B = Im(V), V = A + iB */
-  /* A = 0     B = 0 -1
-   *               1  0
+  /* A = 0 0    B = 0 -1
+   *     0 0        1  0
    */
   if (mpirank_petsc == 0) {
     MatSetValue(Vb, 0, 1, -1.0, INSERT_VALUES);
@@ -227,8 +227,8 @@ YGate::~YGate() {}
 ZGate::ZGate() : Gate(2) { 
 
   /* Fill A = Re(V) and B = Im(V), V = A + iB */
-  /* A =  1  0     B = 0
-   *      0 -1
+  /* A =  1  0     B = 0 0
+   *      0 -1         0 0
    */
   if (mpirank_petsc == 0) {
     MatSetValue(Vb, 0, 0,  1.0, INSERT_VALUES);
@@ -246,8 +246,8 @@ ZGate::~ZGate() {}
 HadamardGate::HadamardGate() : Gate(2) { 
 
   /* Fill A = Re(V) and B = Im(V), V = A + iB */
-  /* A =  1  0     B = 0
-   *      0 -1
+  /* A =  1  0     B = 0 0
+   *      0 -1         0 0
    */
   if (mpirank_petsc == 0) {
     double val = 1./sqrt(2);

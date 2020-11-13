@@ -152,13 +152,22 @@ int main(int argc,char **argv)
 
   /* --- Initialize the Oscillators --- */
   Oscillator** oscil_vec = new Oscillator*[nlevels.size()];
-  // Get ground frequencies from config file 
-  std::vector<double> ground_freq;
+  // Get ground and rotation frequencies from config file 
+  std::vector<double> ground_freq, rot_freq;
   config.GetVecDoubleParam("frequencies", ground_freq, 1e20);
   if (ground_freq.size() < nlevels.size()) {
     printf("Error: Number of given ground frequencies (%lu) is smaller than the the number of oscillators (%lu)\n", ground_freq.size(), nlevels.size());
     exit(1);
   } 
+  config.GetVecDoubleParam("rotfrequencies", rot_freq, 1e20);
+  if (rot_freq.size() < nlevels.size()) {
+    printf("Error: Number of given rotation frequencies (%lu) is smaller than the the number of oscillators (%lu)\n", rot_freq.size(), nlevels.size());
+    exit(1);
+  } 
+  std::vector<double> detuning_freq(rot_freq.size());
+  for(int i=0; i<rot_freq.size(); ++i) {
+    detuning_freq[i] = ground_freq[i] - rot_freq[i];
+  }
   // Create up the oscillators 
   for (int i = 0; i < nlevels.size(); i++){
     std::vector<double> carrier_freq;
@@ -223,7 +232,7 @@ int main(int argc,char **argv)
     printf("ERROR: No Petsc-parallel version for the matrix free solver available!");
     exit(1);
   }
-  MasterEq* mastereq = new MasterEq(nlevels, oscil_vec, xi, lindbladtype, t_collapse, usematfree);
+  MasterEq* mastereq = new MasterEq(nlevels, oscil_vec, xi, detuning_freq, lindbladtype, t_collapse, usematfree);
 
 
   /* Output */
