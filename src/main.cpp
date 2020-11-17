@@ -16,9 +16,9 @@
 
 
 #define TEST_FD_GRAD 0    // Run Finite Differences gradient test
-#define TEST_FD_HESS 0    // Run Finite Differences Hessian test
+#define TEST_FD_HESS 1    // Run Finite Differences Hessian test
 #define HESSIAN_DECOMPOSITION 1 // Run eigenvalue analysis for Hessian
-#define EPS 1e-4          // Epsilon for Finite Differences
+#define EPS 1e-8          // Epsilon for Finite Differences
 
 int main(int argc,char **argv)
 {
@@ -473,38 +473,62 @@ int main(int argc,char **argv)
   MatCreateSeqDense(PETSC_COMM_SELF, optimctx->ndesign, optimctx->ndesign, NULL, &Hess);
   MatSetUp(Hess);
 
+  Vec grad1, grad2;
+  MatCreateVecs(Hess, &grad1, NULL);
+  MatCreateVecs(Hess, &grad2, NULL);
 
   optimctx->getStartingPoint(xinit);
 
 
-  /* Iterate over all Hessian elements, upper triangle only */
-  for (int i=0; i<optimctx->ndesign; i++){
-    for (int j=i; j<optimctx->ndesign; j++){
-      /* Evaluate \nabla_x_i J(x + eps * e_j) */
-      VecSetValue(xinit, j, EPS, ADD_VALUES); 
-      optimctx->evalGradF(xinit, grad);        
-      VecGetValues(grad, 1, &i, &grad_pert1);   // \nabla_x_i J(x+eps*e_j)
+  /* Iterate over all gradient directions */
+  for (int j=0; j<optimctx->ndesign; j++){
+    printf("Computing column %d\n", j);
 
-      /* Evaluate \nabla_x_i J(x - eps * e_j) */
-      VecSetValue(xinit, j, -2.*EPS, ADD_VALUES); 
-      optimctx->evalGradF(xinit, grad);
-      VecGetValues(grad, 1, &i, &grad_pert2);    // \nabla_x_i J(x-eps*e_j)
+    /* Evaluate \nabla_x J(x + eps * e_j) */
+    VecSetValue(xinit, j, EPS, ADD_VALUES); 
+    optimctx->evalGradF(xinit, grad);        
+    VecCopy(grad, grad1);
 
-      /* Finite difference */
+    /* Evaluate \nabla_x J(x - eps * e_j) */
+    VecSetValue(xinit, j, -2.*EPS, ADD_VALUES); 
+    optimctx->evalGradF(xinit, grad);
+    VecCopy(grad, grad2);
+
+    for (int i=0; i<optimctx->ndesign; i++){
+
+      /* Get the derivative wrt parameter i */
+      VecGetValues(grad1, 1, &i, &grad_pert1);   // \nabla_x_i J(x+eps*e_j)
+      VecGetValues(grad2, 1, &i, &grad_pert2);    // \nabla_x_i J(x-eps*e_j)
+
+      /* Finite difference for element Hess(i,j) */
       double fd = (grad_pert1 - grad_pert2) / (2.*EPS);
-      if (mpirank_world == 0) printf("Hess(%d,%d) = %1.14e\n", i,j,fd);
-  
-      /* Fill hessian element */
       MatSetValue(Hess, i, j, fd, INSERT_VALUES);
-      MatSetValue(Hess, j, i, fd, INSERT_VALUES);
-
-      /* Restore parameter xinit */
-      VecSetValue(xinit, i, EPS, ADD_VALUES);
     }
-  }
 
+    /* Restore parameters xinit */
+    VecSetValue(xinit, j, EPS, ADD_VALUES);
+  }
+  /* Assemble the Hessian */
   MatAssemblyBegin(Hess, MAT_FINAL_ASSEMBLY);
   MatAssemblyEnd(Hess, MAT_FINAL_ASSEMBLY);
+  
+  /* Clean up */
+  VecDestroy(&grad1);
+  VecDestroy(&grad2);
+
+
+  /* Epsilon test: compute ||1/2(H-H^T)||_F  */
+  MatScale(Hess, 0.5);
+  Mat HessT, Htest;
+  MatDuplicate(Hess, MAT_COPY_VALUES, &Htest);
+  MatTranspose(Hess, MAT_INITIAL_MATRIX, &HessT);
+  MatAXPY(Htest, -1.0, HessT, SAME_NONZERO_PATTERN);
+  double fnorm;
+  MatNorm(Htest, NORM_FROBENIUS, &fnorm);
+  printf("EPS-test: ||1/2(H-H^T)||= %1.14e\n", fnorm);
+
+  /* symmetrize H_symm = 1/2(H+H^T) */
+  MatAXPY(Hess, 1.0, HessT, SAME_NONZERO_PATTERN);
 
   /* --- Print Hessian to file */
   
@@ -538,12 +562,12 @@ int main(int argc,char **argv)
   printf("#########################\n\n");
 
   /* Load Hessian from file */
-  Mat Hess;
+  // Mat Hess;
   MatCreateSeqDense(PETSC_COMM_SELF, optimctx->ndesign, optimctx->ndesign, NULL, &Hess);
   MatSetUp(Hess);
   sprintf(filename, "%s/hessian_bin.dat", output->datadir.c_str());
   printf("Reading file: %s\n", filename);
-  PetscViewer viewer;
+  // PetscViewer viewer;
   PetscViewerCreate(MPI_COMM_WORLD, &viewer);
   PetscViewerSetType(viewer, PETSCVIEWERBINARY);
   PetscViewerFileSetMode(viewer, FILE_MODE_READ);
@@ -554,10 +578,9 @@ int main(int argc,char **argv)
   PetscViewerDestroy(&viewer);
 
 
-
   /* Set the percentage of eigenpairs that should be computed */
   double frac = 1.0;  // 1.0 = 100%
-  int neigvals = optimctx->ndesign * frac;     // hopefully rounds to closes int 
+  int neigvals = optimctx->ndesign * frac;     // hopefully rounds to closest int 
   printf("\nComputing %d eigenpairs now...\n", neigvals);
   
   /* Compute eigenpair */
@@ -565,18 +588,19 @@ int main(int argc,char **argv)
   std::vector<Vec> eigvecs;
   getEigvals(Hess, neigvals, eigvals, eigvecs);
 
-  /* Print eigenvectors to file. Row wise. */
+  /* Print eigenvalues to file. */
   FILE *file;
-  sprintf(filename, "%s/eigvecs.dat", output->datadir.c_str());
-  printf("File written: %s.\n", filename);
+  sprintf(filename, "%s/eigvals.dat", output->datadir.c_str());
   file =fopen(filename,"w");
-  // // Header: # eigenvalues 
-  // fprintf(file, "#");  
-  // for (int i=0; i<eigvals.size(); i++){
-  //     fprintf(file, "  % 1.8e", eigvals[i]);  
-  // }
-  // fprintf(file, "\n");  
-  // Iter over rows 
+  for (int i=0; i<eigvals.size(); i++){
+      fprintf(file, "% 1.8e\n", eigvals[i]);  
+  }
+  fclose(file);
+  printf("File written: %s.\n", filename);
+
+  /* Print eigenvectors to file. Columns wise */
+  sprintf(filename, "%s/eigvecs.dat", output->datadir.c_str());
+  file =fopen(filename,"w");
   for (int j=0; j<optimctx->ndesign; j++){  // rows
     for (int i=0; i<eigvals.size(); i++){
       double val;
@@ -586,6 +610,7 @@ int main(int argc,char **argv)
     fprintf(file, "\n");
   }
   fclose(file);
+  printf("File written: %s.\n", filename);
 
 
 #endif

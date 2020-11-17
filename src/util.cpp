@@ -327,11 +327,11 @@ int nconv = 0;
 
   // Get the result
   double kr, ki, error;
-  printf("Eigenvalues: \n");
+  // printf("Eigenvalues: \n");
   for (int j=0; j<nconv; j++) {
       EPSGetEigenpair( eigensolver, j, &kr, &ki, eigvec, NULL);
       EPSComputeError( eigensolver, j, EPS_ERROR_RELATIVE, &error );
-      printf("%f + i%f (err %f)\n", kr, ki, error);
+      // printf("%f + i%f (err %f)\n", kr, ki, error);
 
       /* Store the eigenpair */
       eigvals.push_back(kr);
