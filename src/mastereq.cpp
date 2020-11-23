@@ -28,7 +28,7 @@ MasterEq::MasterEq(std::vector<int> nlevels_, Oscillator** oscil_vec_, const std
   detuning_freq = detuning_freq_;
   collapse_time = collapse_time_;
   assert(xi.size() >= (noscillators+1) * noscillators / 2);
-  assert(collapse_time.size() >= 2*noscillators);
+  if (lindbladtype != NONE) assert(collapse_time.size() >= 2*noscillators);
   usematfree = usematfree_;
 
   int mpisize_petsc;
@@ -1350,6 +1350,8 @@ int myMatMult_matfree_2osc(Mat RHS, Vec x, Vec y){
     return myMatMult_matfree<3,10>(RHS, x, y);
   } else if(n0==2 && n1==2){
     return myMatMult_matfree<2,2>(RHS, x, y);
+  } else if(n0==20 && n1==20){
+    return myMatMult_matfree<20,20>(RHS, x, y);
   } else {
     printf("ERROR: In order to run this case, run add a line at the end of mastereq.cpp with the corresponding number of levels!\n");
     exit(1);
@@ -1370,6 +1372,8 @@ int myMatMultTranspose_matfree_2Osc(Mat RHS, Vec x, Vec y){
     return myMatMultTranspose_matfree<3,10>(RHS, x, y);
   } else if(n0==2 && n1==2){
     return myMatMultTranspose_matfree<2,2>(RHS, x, y);
+  } else if(n0==20 && n1==20){
+    return myMatMultTranspose_matfree<20,20>(RHS, x, y);
   } else {
     printf("ERROR: In order to run this case, run add a line at the end of mastereq.cpp with the corresponding number of levels!\n");
     exit(1);
