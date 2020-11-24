@@ -158,24 +158,26 @@ for the number operator
   \end{bmatrix}
 \end{align}
 $O^k$ measures the probability of the energy levels of subsystem $k$. The
-expected energy level of subsystem $k$ is given by 
+expected energy level of subsystem $k$ is hence given by 
 \begin{align}
-  \langle O^k \rangle &= \sum_{o_k} o_k p(o_k)  = \mbox{Tr}(O^k\rho)
-  \label{eq:expected_energy1} \\
-   & = \mbox{Tr}(N_k \rho^k)  = \langle N_k\rangle \label{eq:expected_energy2},
+  \langle O^k \rangle &= \sum_{o_k} o_k p(o_k)  = \mbox{Tr}(O^k\rho).
+  \label{eq:expected_energy1}
 \end{align}
-where $\rho^k$ is the reduced density matrix for subsystem $k$. Here, $p(o_k)$
-is the probability of $\rho$ being the $o_k$-th energy level for
+Here, $p(o_k)$ is the probability of $\rho$ being the $o_k$-th energy level for
 subsystem $k$, $p(o_k) = \mbox{Tr}(P^k_o \rho)$ for a spectral decomposition
-$O^k = \sum_{o_k} o_kP^k_o$. 
-\YC{Eq.~\eqref{eq:expected_energy2} seems to be inconsistent with what is
+$O^k = \sum_{o_k} o_kP^k_o$. Note also, that $\langle O^k \rangle = \mbox{Tr}(N_k \rho^k)$,
+where $\rho^k$ is the \textit{reduced} density matrix for subsystem $k$. 
+
+\YC{YC: Eq.~\eqref{eq:expected_energy2} seems to be inconsistent with what is
 implemented Oscillator::expectedEnergy(const Vec x) in src/oscillator.cpp of
 quandary.  There seem to be inconsistency between
 Eqs.~\eqref{eq:expected_energy1} and \eqref{eq:expected_energy2}.  For example,
 the size of $N_k$ is $n_k \times n_k$, while the size of $O^k$ is $N \times N$.
 It seems that the quandary code computes in the level of $O^k$, which is
 consistent with $\mbox{Tr}(O^k\rho)$ in Eq.~\eqref{eq:expected_energy1}, but not
-Eq.~\eqref{eq:expected_energy2}.}
+Eq.~\eqref{eq:expected_energy2}.\\
+SG: Yes quandary uses \eqref{eq:expected_energy1} to compute the expected energy level. The second equation was rather a note saying that the expected energy level could also be computed from the \textit{reduced} density matrix and using the ``smaller'' operator $N_k$. It makes sense that those two computations are equivalent. I've added that in text instead. We can remove this discussion from the doc. 
+}
 
 
 \section{Optimization problem}
@@ -200,23 +202,23 @@ norm, or minimizes a weighted average of the expected energy level over each sub
   \item \textit{Expected energy minimization}: Minimize a weighted sum over
     expected energy levels of the (full or partial) system
     \begin{align}
-       \quad J(\rho(T)) = \sum_{k\in \mathcal{K}} \beta_k \langle O_k \rangle 
+       \quad J(\rho(T)) = \sum_{k\in \mathcal{K}} \beta_k \langle O^k \rangle 
     \end{align}
-    using the number operator $O_k = a_k^\dag a_k$ for the subsystem $k$
+    using the observable $O^k = a_k^\dag a_k$ for the subsystem $k$
     (compare Section \ref{sec:expectedenergy}), and defining a partial system
     $\YC{H_{k_0}}\otimes \dots \otimes \YC{H_{k_{s-1}}}$ from an index set of
-    subsystem IDs $\mathcal{K}=\{\YC{k_0},\dots,\YC{k_{s-1}}\}\subset
+    subsystem IDs $\mathcal{K}=\{\YC{k_0},\dots,\YC{k_{s}}\}\subset
     \{\YC{0},\dots,\YC{Q-1}\}$. Quandary can use the following variations of the
     above measure
     \begin{enumerate}
       \item[(a)] $J(\rho(T)) =
-        \left(\frac{1}{|\mathcal{K}|}\sum_{k\in\mathcal{K}}\langle O_k \rangle
+        \left(\frac{1}{|\mathcal{K}|}\sum_{k\in\mathcal{K}}\langle O^k \rangle
         \right)^2$
       \item[(b)] $J(\rho(T)) =
-        \frac{1}{|\mathcal{K}|}\sum_{k\in\mathcal{K}}\left(\langle O_k \rangle
+        \frac{1}{|\mathcal{K}|}\sum_{k\in\mathcal{K}}\left(\langle O^k \rangle
         \right)^2 $
       \item[(c)] $J(\rho(T)) =
-        \frac{1}{|\mathcal{K}|}\sum_{k\in\mathcal{K}}\langle O_k \rangle$
+        \frac{1}{|\mathcal{K}|}\sum_{k\in\mathcal{K}}\langle O^k \rangle$
     \end{enumerate}
   \item \textit{Direct ground-state optimization}: Minimize the frobenius norm
     between the final density matrix and the groundstate density matrix:
@@ -224,8 +226,6 @@ norm, or minimizes a weighted average of the expected energy level over each sub
       J(\rho(T)) = \frac 12 \| \rho(T) - \rho_G \|^2_F 
     \end{align}
     where the Frobenius norm is defined as $\|A\|^2_F = \Tr(A^{\dagger}A)$.
-    \YC{I think that $\frac 12$ in \eqref{eq:ground-state-obj} is not there in
-    Quandary code.}
 \end{enumerate}
 
 \subsection{Target gate optimization}
