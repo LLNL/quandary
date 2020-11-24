@@ -162,7 +162,7 @@ void MasterEq::initSparseMatSolver(LindbladType lindbladtype){
     loweringOP = oscil_vec[iosc]->getLoweringOP((bool)mpirank_petsc);
     MatTranspose(loweringOP, MAT_INITIAL_MATRIX, &loweringOP_T);
 
-    /* Compute Ac = I_N \kron (a - a^T) - (a^T - a) \kron I_N */
+    /* Compute Ac = I_N \kron (a - a^T) - (a - a^T)^T \kron I_N */
     MatCreate(PETSC_COMM_WORLD, &Ac_vec[iosc]);
     MatSetSizes(Ac_vec[iosc], PETSC_DECIDE, PETSC_DECIDE, dim, dim);
     MatSetUp(Ac_vec[iosc]);
@@ -174,7 +174,7 @@ void MasterEq::initSparseMatSolver(LindbladType lindbladtype){
     MatAssemblyBegin(Ac_vec[iosc], MAT_FINAL_ASSEMBLY);
     MatAssemblyEnd(Ac_vec[iosc], MAT_FINAL_ASSEMBLY);
     
-    /* Compute Bc = - I_N \kron (a + a^T) + (a + a^T) \kron I_N */
+    /* Compute Bc = - I_N \kron (a + a^T) + (a + a^T)^T \kron I_N */
     MatCreate(PETSC_COMM_WORLD, &Bc_vec[iosc]);
     MatSetSizes(Bc_vec[iosc], PETSC_DECIDE, PETSC_DECIDE, dim, dim);
     MatSetUp(Bc_vec[iosc]);
