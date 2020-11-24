@@ -266,7 +266,7 @@ Section~\ref{sec:groundstate-obj}}, an integral penalty term can be added to the
 \begin{align}
   % \int_0^T w(t) J(\rho(t)) \, \mathrm{d}t, \quad \text{where} \quad w(t) =
   % \left(\frac{t}{T}\right)^p, p \geq 1
-  \gamma_2 \int_0^T w(t) J(\rho(t)) \, \mathrm{d}t, \quad \text{where} \quad w(t) =
+  \gamma_2 \int_0^T w(t) J\left(\rho(t)\right) \, \mathrm{d}t, \quad \text{where} \quad w(t) =
   \frac{1}{a} e^{ -\left(\frac{t-T}{a} \right)^2},
 \end{align}
 for a penalty parameter $\gamma_2 > 0$, and parameter $0 < a \leq 1$. 
@@ -396,9 +396,9 @@ basis elements or diagonals).
   form of the Lindblad master equation:
   \begin{align}\label{mastereq_vectorized}
     &\dot q(t) = M(t) q(t) \quad  \text{where} \\
-    &M(t) := -i(I_N\otimes H - H^T \otimes I_N) + \sum_{l,k=\YC{0}}^{\YC{1,Q-1}} \gamma_{lk}
-    \left( \YC{\overline{\Ell_{lk}}}\otimes \Ell_{lk} - \frac 1 2 \left( I_N\otimes
-    \Ell^{\YC{\dagger}}_{lk}\Ell_{lk} + \YC{\Ell^T_{lk}\overline{\Ell_{lk}}} \otimes I_N \right) \right)
+    &M(t) := -i(I_N\otimes H - H^T \otimes I_N) + \sum_{k=0}^{Q-1}\sum_{l=1}^2 \gamma_{lk}
+    \left( \Ell_{lk}\otimes \Ell_{lk} - \frac 1 2 \left( I_N\otimes
+    \Ell^T_{lk}\Ell_{lk} + \Ell^T_{lk}\Ell_{lk} \otimes I_N \right) \right)
   \end{align}
 
   \subsection{Real-valued system}
@@ -425,7 +425,7 @@ basis elements or diagonals).
    Hence $A$ and $B$ consist of a constant part $A_d, B_d$ and a time-varying
    part $A_c(t), B_c(t)$ with the following:
    \begin{align}
-     A_d &=  \sum_{l,k=\YC{0}}^{\YC{1,Q-1}}\gamma_{lk} \left( \Ell_{lk}\otimes\Ell_{lk} -
+     A_d &=  \sum_{l,k}\gamma_{lk} \left( \Ell_{lk}\otimes\Ell_{lk} -
      \frac 1 2 \left(I_N \otimes \Ell_{lk}^T\Ell_{lk} +
      \Ell_{lk}^T\Ell_{lk}\otimes I_N\right) \right)\\
      B_d &= -I_N \otimes H_d + H_d^T \otimes I_N \\
