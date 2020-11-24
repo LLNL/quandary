@@ -152,11 +152,11 @@ int main(int argc,char **argv)
 
   /* --- Initialize the Oscillators --- */
   Oscillator** oscil_vec = new Oscillator*[nlevels.size()];
-  // Get ground and rotation frequencies from config file 
+  // Get fundamental and rotation frequencies from config file 
   std::vector<double> fundamental_freq, rot_freq;
   config.GetVecDoubleParam("transfreq", fundamental_freq, 1e20);
   if (fundamental_freq.size() < nlevels.size()) {
-    printf("Error: Number of given ground frequencies (%lu) is smaller than the the number of oscillators (%lu)\n", fundamental_freq.size(), nlevels.size());
+    printf("Error: Number of given fundamental frequencies (%lu) is smaller than the the number of oscillators (%lu)\n", fundamental_freq.size(), nlevels.size());
     exit(1);
   } 
   config.GetVecDoubleParam("rotfreq", rot_freq, 1e20);
@@ -165,10 +165,10 @@ int main(int argc,char **argv)
     exit(1);
   } 
   std::vector<double> detuning_freq(rot_freq.size());
-  for(int i=0; i<rot_freq.size(); ++i) {
+  for(int i=0; i<rot_freq.size(); i++) {
     detuning_freq[i] = fundamental_freq[i] - rot_freq[i];
   }
-  // Create up the oscillators 
+  // Create the oscillators 
   for (int i = 0; i < nlevels.size(); i++){
     std::vector<double> carrier_freq;
     std::string key = "carrier_frequency" + std::to_string(i);
