@@ -578,15 +578,10 @@ basis elements or diagonals).
        value instead, and then do the same analysis as above. However this
        doesn't ensure that we resolve the time-scale of the fastest control
        function. 
+      
+\subsection{Optimization}
 
-  \subsection{Optimization}
-    We use the \textit{Tao} optimization package included in Petsc for solving
-    the vectorized version of the optimal control problem
-    \eqref{optimproblem_basis}. We choose the nonlinear Quasi-Newton
-    optimization method that applies $L-BFGS$ updates to approximate the Hessian
-    of the objective function. 
-
-  \subsubsection{Optimization variables and bounds}
+\subsubsection{Optimization variables and bounds}
 
 Design parameters (optimization variables) are storaged in the Quandary code in the following order: List oscillators first $(\vec{\alpha}^1, \dots, \vec{\alpha}^Q)$, then for each $\vec{\alpha}^k \in
 \R^{2LN_f^k}$ iterate over $L$ splines: $\vec{\alpha}^k =
@@ -614,6 +609,13 @@ the two components: $\alpha^k_l = \alpha^{k(1)}_{l,1}, \alpha^{k(2)}_{l,1},
      \alpha_{l,f}^{k(2)} | \leq \frac{c^k_{max}}{N_f^k}
    \end{align}
    where $N_f^k$ is the number of carrier wave frequencies.
+
+  \subsubsection{Optimization algorithm}
+    Quandary use Petsc's \textit{Tao} optimization package for solving
+    the vectorized version of the optimal control problem
+    \eqref{optimproblem_basis}. It uses the nonlinear Quasi-Newton
+    optimization method that applies iterative preconditioned gradient steps using L-BFGS updates to approximate the Hessian. A projected line-search is applied to ensure that the control parameters stay within the prescribed box constraints and that the objective function yields sufficient decrease per iteration.
+
 
 
   \subsection{Parallelization (experimental)}
