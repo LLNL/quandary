@@ -16,8 +16,8 @@
 
 
 #define TEST_FD_GRAD 0    // Run Finite Differences gradient test
-#define TEST_FD_HESS 1    // Run Finite Differences Hessian test
-#define HESSIAN_DECOMPOSITION 1 // Run eigenvalue analysis for Hessian
+#define TEST_FD_HESS 0    // Run Finite Differences Hessian test
+#define HESSIAN_DECOMPOSITION 0 // Run eigenvalue analysis for Hessian
 #define EPS 1e-8          // Epsilon for Finite Differences
 
 int main(int argc,char **argv)
@@ -465,23 +465,41 @@ int main(int argc,char **argv)
     printf(" FD Testing for Hessian... \n");
     printf("#########################\n\n");
   }
+  optimctx->getStartingPoint(xinit);
+
+  /* Figure out which parameters are hitting bounds */
+  double bound_tol = 1e-3;
+  std::vector<int> Ihess; // Index set for all elements that do NOT hit a bound
+  for (int i=0; i<optimctx->ndesign; i++){
+    // get x_i and bounds for x_i
+    double xi, blower, bupper;
+    VecGetValues(xinit, 1, &i, &xi);
+    VecGetValues(optimctx->xlower, 1, &i, &blower);
+    VecGetValues(optimctx->xupper, 1, &i, &bupper);
+    // compare 
+    if (fabs(xi - blower) < bound_tol || 
+        fabs(xi - bupper) < bound_tol  ) {
+          printf("Parameter %d hits bound: x=%f\n", i, xi);
+    } else {
+      Ihess.push_back(i);
+    }
+  }
 
   double grad_org;
   double grad_pert1, grad_pert2;
-
   Mat Hess;
-  MatCreateSeqDense(PETSC_COMM_SELF, optimctx->ndesign, optimctx->ndesign, NULL, &Hess);
+  int nhess = Ihess.size();
+  MatCreateSeqDense(PETSC_COMM_SELF, nhess, nhess, NULL, &Hess);
   MatSetUp(Hess);
 
   Vec grad1, grad2;
-  MatCreateVecs(Hess, &grad1, NULL);
-  MatCreateVecs(Hess, &grad2, NULL);
-
-  optimctx->getStartingPoint(xinit);
+  VecDuplicate(grad, &grad1);
+  VecDuplicate(grad, &grad2);
 
 
-  /* Iterate over all gradient directions */
-  for (int j=0; j<optimctx->ndesign; j++){
+  /* Iterate over all params that do not hit a bound */
+  for (int k=0; k< Ihess.size(); k++){
+    int j = Ihess[k];
     printf("Computing column %d\n", j);
 
     /* Evaluate \nabla_x J(x + eps * e_j) */
@@ -494,15 +512,16 @@ int main(int argc,char **argv)
     optimctx->evalGradF(xinit, grad);
     VecCopy(grad, grad2);
 
-    for (int i=0; i<optimctx->ndesign; i++){
+    for (int l=0; l<Ihess.size(); l++){
+      int i = Ihess[l];
 
       /* Get the derivative wrt parameter i */
       VecGetValues(grad1, 1, &i, &grad_pert1);   // \nabla_x_i J(x+eps*e_j)
       VecGetValues(grad2, 1, &i, &grad_pert2);    // \nabla_x_i J(x-eps*e_j)
 
-      /* Finite difference for element Hess(i,j) */
+      /* Finite difference for element Hess(l,k) */
       double fd = (grad_pert1 - grad_pert2) / (2.*EPS);
-      MatSetValue(Hess, i, j, fd, INSERT_VALUES);
+      MatSetValue(Hess, l, k, fd, INSERT_VALUES);
     }
 
     /* Restore parameters xinit */
@@ -563,8 +582,7 @@ int main(int argc,char **argv)
 
   /* Load Hessian from file */
   // Mat Hess;
-  MatCreateSeqDense(PETSC_COMM_SELF, optimctx->ndesign, optimctx->ndesign, NULL, &Hess);
-  MatSetUp(Hess);
+  MatCreate(PETSC_COMM_SELF, &Hess);
   sprintf(filename, "%s/hessian_bin.dat", output->datadir.c_str());
   printf("Reading file: %s\n", filename);
   // PetscViewer viewer;
@@ -576,11 +594,13 @@ int main(int argc,char **argv)
   MatLoad(Hess, viewer);
   PetscViewerPopFormat(viewer);
   PetscViewerDestroy(&viewer);
+  int nrows, ncols;
+  MatGetSize(Hess, &nrows, &ncols);
 
 
   /* Set the percentage of eigenpairs that should be computed */
   double frac = 1.0;  // 1.0 = 100%
-  int neigvals = optimctx->ndesign * frac;     // hopefully rounds to closest int 
+  int neigvals = nrows * frac;     // hopefully rounds to closest int 
   printf("\nComputing %d eigenpairs now...\n", neigvals);
   
   /* Compute eigenpair */
@@ -601,7 +621,7 @@ int main(int argc,char **argv)
   /* Print eigenvectors to file. Columns wise */
   sprintf(filename, "%s/eigvecs.dat", output->datadir.c_str());
   file =fopen(filename,"w");
-  for (int j=0; j<optimctx->ndesign; j++){  // rows
+  for (int j=0; j<nrows; j++){  // rows
     for (int i=0; i<eigvals.size(); i++){
       double val;
       VecGetValues(eigvecs[i], 1, &j, &val); // j-th row of eigenvalue i
