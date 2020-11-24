@@ -43,39 +43,39 @@ To mitigate excessive execution run times, Quandary can be build to link with th
 
 \section{Model equation}
 Quandary models open quantum systems with $Q$ subsystems with $n_k$ levels for the
-$k$-th subsystem, $k=\YC{0},\dots,Q\YC{-1}$. The time-evolution of the open quantum system is modeled by Lindblad's master equation:
+$k$-th subsystem, $k=0,\dots,Q-1$. The time-evolution of the open quantum system is modeled by Lindblad's master equation:
 \begin{align}\label{mastereq}
   \dot \rho(t) = &-i(H(t)\rho(t) - \rho(t)H(t)) \notag \\
-  &+ \sum_{l=1}^2 \sum_{k=\YC{0}}^{Q\YC{-1}} \gamma_{lk} \left( \Ell_{lk} \rho(t)
+  &+ \sum_{l=1}^2 \sum_{k=0}^{Q-1} \gamma_{lk} \left( \Ell_{lk} \rho(t)
   \Ell_{lk}^{\dagger} - \frac 1 2 \left( \Ell_{lk}^{\dagger}\Ell_{lk}
   \rho(t) + \rho(t)\Ell_{lk}^{\dagger} \Ell_{lk}\right) \right)
 \end{align}
 for the density matrix $\rho(t)\in \C^{N\times N}$ with dimension $N :=
-\prod_{k=\YC{0}}^{Q\YC{-1}} n_k$. The Hamiltonian $H(t)$ consists of a constant \textit{drift}
+\prod_{k=0}^{Q-1} n_k$. The Hamiltonian $H(t)$ consists of a constant \textit{drift}
 part, and a time-varying \textit{control} part. For the computational
-\textit{rotating frame} \YC{with fundamental frequencies $\omega_k$ and rotation
-frequency $\omega_k^{\text{rot}}$}, these are computed from
+\textit{rotating frame} with fundamental frequencies $\omega_k$ and rotation
+frequency $\omega_k^{\text{rot}}$, these are computed from
 \begin{align}
   H(t) &= H_d + H_c(t) \\
-  \text{with} \quad H_d &:= \sum_{k=\YC{0}}^{\YC{Q-1}} \left(\YC{(\omega_k -                                 
-  \omega_k^{\text{rot}})a_k^{\dagger}a_k}- \frac{\xi_k}{2}
-  a_k^{\dagger}a_k^{\dagger}a_k a_k - \sum_{\YC{l> k}} \xi_{lk}
-  a_{\YC{k}}^{\dagger}a_{\YC{k}}
-  a_{\YC{l}}^{\dagger} a_{\YC{l}} \right) \\
-   H_c(t) &:= \sum_{k=\YC{0}}^{\YC{Q-1}} \left( p^k(\vec{\alpha}^k,t) (a_k +
+  \text{with} \quad H_d &:= \sum_{k=0}^{Q-1} \left((\omega_k -                                 
+  \omega_k^{\text{rot})a_k^{\dagger}a_k}- \frac{\xi_k}{2}
+  a_k^{\dagger}a_k^{\dagger}a_k a_k - \sum_{l> k} \xi_{lk}
+  a_{k}^{\dagger}a_{k}
+  a_{l}^{\dagger} a_{l} \right) \\
+   H_c(t) &:= \sum_{k=0}^{Q-1} \left( p^k(\vec{\alpha}^k,t) (a_k +
    a_k^{\dagger}) + i q^k(\vec{\alpha}^k,t)(a_k - a_k^{\dagger})
    \right)
 \end{align}
 Here, $a_k$ denotes the lowering operator:
 \begin{align}
   \begin{array}{rl}
-  \YC{a_0} &:= a^{(\YC{n_0})} \otimes I_{\YC{n_1}} \otimes \dots \otimes
-  I_{\YC{n_{Q-1}}}\\
-  \YC{a_1} &:= I_{\YC{n_0}} \otimes a^{(\YC{n_1})} \otimes \dots \otimes
-  I_{\YC{n_{Q-1}}}\\
+  a_0 &:= a^{(n_0)} \otimes I_{n_1} \otimes \dots \otimes
+  I_{n_{Q-1}}\\
+  a_1 &:= I_{n_0} \otimes a^{(n_1)} \otimes \dots \otimes
+  I_{n_{Q-1}}\\
   \vdots \, & \\
-  \YC{a_{Q-1}} &:= I_{\YC{n_0}} \otimes I_{\YC{n_1}} \otimes \dots \otimes
-  a^{(\YC{n_{Q-1}})}\\
+  a_{Q-1} &:= I_{n_0} \otimes I_{n_1} \otimes \dots \otimes
+  a^{(n_{Q-1})}\\
   \end{array}
   \quad \text{with}\quad
  a^{(n_k)} = \begin{pmatrix}
@@ -100,20 +100,19 @@ for the corresponding collapse process $l$: $\gamma_{lk} = {\frac{1}{T_l}}$.
 Typical T1 decay time is between $10-100$ microseconds (us). T2
 dephasing time is typically about half of T1 decay time. Decay then behaves
 like $\exp(-t/{T_1})$. 
-% Dephasing behaves like $\exp(- t / T_1)$ \YC{maybe $\exp(-2t / \YC{T_0})$?}.
 
 \subsection{Control pulses} \label{subsec:controlpulses}
 The time-dependent control functions $p^k(\vec{\alpha}^k,t),
 q^k(\vec{\alpha}^k,t)$ are real-valued. They are discretized using piecewise quadratic B-spline basis functions with
 carrier waves: 
 \begin{align}
-  p^k(\vec{\alpha}^k,t) &= \sum_{\YC{l=0}}^{\YC{L-1}} B_l(t)
-  \sum_{\YC{f=0}}^{\YC{N_f^k-1}} \left(\alpha^{k
-  (\YC{0})}_{l,f} \cos(\Omega_f^k t) - \alpha^{k (\YC{1})}_{l,f} \sin(\Omega_f^k t)
+  p^k(\vec{\alpha}^k,t) &= \sum_{l=0}^{L-1} B_l(t)
+  \sum_{f=0}^{N_f^k-1} \left(\alpha^{k
+  (0)}_{l,f} \cos(\Omega_f^k t) - \alpha^{k (1)}_{l,f} \sin(\Omega_f^k t)
   \right) \\
-  q^k(\vec{\alpha}^k,t) &= \sum_{\YC{l=0}}^{\YC{L-1}} B_l(t)
-  \sum_{\YC{f=0}}^{\YC{N_f^k-1}} \left( \alpha^{k
-  (\YC{0})}_{l,f} \sin(\Omega_f^k t) + \alpha^{k (\YC{1})}_{l,f} \cos(\Omega_f^k t)
+  q^k(\vec{\alpha}^k,t) &= \sum_{l=0}^{L-1} B_l(t)
+  \sum_{f=0}^{N_f^k-1} \left( \alpha^{k
+  (0)}_{l,f} \sin(\Omega_f^k t) + \alpha^{k (1)}_{l,f} \cos(\Omega_f^k t)
   \right)
 \end{align}
 for $L$ B-Spline functions $B_l(t)$, and $N_f^k$ carrier wave frequencies
@@ -124,29 +123,29 @@ desired system behavior.
 These control functions are in the \textit{rotating frame}. To convert them back
 to the \textit{Lab frame}, Quandary uses
 \begin{align}
-  f^k(t) = 2 \sum_{\YC{l=0}}^\YC{L-1} B_l(t) \sum_{\YC{f=0}}^{\YC{N_f^k-1}} \beta_{l,f}^k \cos(w_k t +
-  \Omega_f^k t + \theta_{l,f}) \quad \forall k=\YC{0},\dots \YC{Q-1}
+  f^k(t) = 2 \sum_{l=0}^{L-1} B_l(t) \sum_{f=0}^{N_f^k-1} \beta_{l,f}^k \cos(w_k t +
+  \Omega_f^k t + \theta_{l,f}) \quad \forall k=0,\dots Q-1
 \end{align}
 where $\beta_{l,f}^k$ and $\theta_{l,f}$ are computed from
 \begin{align}
-  \alpha_{l,f}^{k(\YC{0})} = \beta_{l,f}^k \cos(\theta_{l,f}) \quad \text{and} \quad
-  \alpha_{l,f}^{k(\YC{1})} = \beta_{l,f}^k \sin(\theta_{l,f})
+  \alpha_{l,f}^{k(0)} = \beta_{l,f}^k \cos(\theta_{l,f}) \quad \text{and} \quad
+  \alpha_{l,f}^{k(1)} = \beta_{l,f}^k \sin(\theta_{l,f})
 \end{align}
 and $w_k$ are the fundamental resonance frequencies of subsystems $k$. Using
-\YC{trigonometric} equalities, the Lab-frame co\YC{n}trols can be expressed as
+trigonometric equalities, the Lab-frame controls can be expressed as
 \begin{align}
-  f^k(t) &= 2 \sum_{l=1}^L B_l(t) \sum_{f=1}^{N_f^k} \alpha_{l,f}^{k(\YC{0})} \cos((w_k
-  + \Omega_f^k) t) - \alpha_{l,f}^{k(\YC{1})}\sin((w_k + \Omega_f^k) t) \quad \forall
-  k=\YC{0},\dots \YC{Q-1} \\
+  f^k(t) &= 2 \sum_{l=1}^L B_l(t) \sum_{f=1}^{N_f^k} \alpha_{l,f}^{k(0)} \cos((w_k
+  + \Omega_f^k) t) - \alpha_{l,f}^{k(1)}\sin((w_k + \Omega_f^k) t) \quad \forall
+  k=0,\dots Q-1 \\
          &= 2 p^k(\vec{\alpha}^k, t) \cos(w_k t) - 2 q^k(\vec{\alpha}^k,
          t)\sin(w_k t) \\
 \end{align}
 
 \subsection{Measuring the expected energy level}\label{sec:expectedenergy}
-For each subsystem $k$, $k=\YC{0,1},\dots, \YC{Q-1}$, we define the observable 
+For each subsystem $k$, $k=0,1,\dots, Q-1$, we define the observable 
 \begin{align}
-  O^k := a_k^\dag a_k  = I_{\YC{n_0}} \otimes \dots \otimes I_{n_{k-1}} \otimes  N_k
-  \otimes I_{n_{k+1}} \otimes \dots I_{\YC{n_{Q-1}}} 
+  O^k := a_k^\dag a_k  = I_{n_0} \otimes \dots \otimes I_{n_{k-1}} \otimes  N_k
+  \otimes I_{n_{k+1}} \otimes \dots I_{n_{Q-1}} 
 \end{align}
 for the number operator 
 \begin{align}
@@ -167,17 +166,6 @@ Here, $p(o_k)$ is the probability of $\rho$ being the $o_k$-th energy level for
 subsystem $k$, $p(o_k) = \mbox{Tr}(P^k_o \rho)$ for a spectral decomposition
 $O^k = \sum_{o_k} o_kP^k_o$. Note also, that $\langle O^k \rangle = \mbox{Tr}(N_k \rho^k)$,
 where $\rho^k$ is the \textit{reduced} density matrix for subsystem $k$. 
-
-\YC{YC: Eq.~\eqref{eq:expected_energy2} seems to be inconsistent with what is
-implemented Oscillator::expectedEnergy(const Vec x) in src/oscillator.cpp of
-quandary.  There seem to be inconsistency between
-Eqs.~\eqref{eq:expected_energy1} and \eqref{eq:expected_energy2}.  For example,
-the size of $N_k$ is $n_k \times n_k$, while the size of $O^k$ is $N \times N$.
-It seems that the quandary code computes in the level of $O^k$, which is
-consistent with $\mbox{Tr}(O^k\rho)$ in Eq.~\eqref{eq:expected_energy1}, but not
-Eq.~\eqref{eq:expected_energy2}.\\
-SG: Yes quandary uses \eqref{eq:expected_energy1} to compute the expected energy level. The second equation was rather a note saying that the expected energy level could also be computed from the \textit{reduced} density matrix and using the ``smaller'' operator $N_k$. It makes sense that those two computations are equivalent. I've added that in text instead. We can remove this discussion from the doc. 
-}
 
 
 \section{Optimization problem}
@@ -206,9 +194,9 @@ norm, or minimizes a weighted average of the expected energy level over each sub
     \end{align}
     using the observable $O^k = a_k^\dag a_k$ for the subsystem $k$
     (compare Section \ref{sec:expectedenergy}), and defining a partial system
-    $\YC{H_{k_0}}\otimes \dots \otimes \YC{H_{k_{s-1}}}$ from an index set of
-    subsystem IDs $\mathcal{K}=\{\YC{k_0},\dots,\YC{k_{s}}\}\subset
-    \{\YC{0},\dots,\YC{Q-1}\}$. Quandary can use the following variations of the
+    $H_{k_0}\otimes \dots \otimes H_{k_s}$ from an index set of
+    subsystem IDs $\mathcal{K}=\{k_0,\dots,k_s\}\subset
+    \{0,\dots,Q-1\}$. Quandary can use the following variations of the
     above measure
     \begin{enumerate}
       \item[(a)] $J(\rho(T)) =
@@ -261,8 +249,8 @@ In order to stabilize the optimization problem, a Tikhonov regularization term c
 with Tikhonov parameter $\gamma_1 > 0$, where $\boldsymbol{\alpha}$ denotes the vector of design parameters as in section \ref{subsec:controlpulses}.
 
 
-In addition, when considering ground-state optimization \YC{in
-Section~\ref{sec:groundstate-obj}}, an integral penalty term can be added to the objective function that discourages non-zero energy states over time:
+In addition, when considering ground-state optimization in
+Section~\ref{sec:groundstate-obj}, an integral penalty term can be added to the objective function that discourages non-zero energy states over time:
 \begin{align}
   % \int_0^T w(t) J(\rho(t)) \, \mathrm{d}t, \quad \text{where} \quad w(t) =
   % \left(\frac{t}{T}\right)^p, p \geq 1
@@ -526,7 +514,7 @@ basis elements or diagonals).
     \begin{align}
       \bar q^{n} = \bar q^{n+1} + \delta t \left(M^{n+1/2}\right)^T \bar k_1
       \quad \text{where} \, \bar k_1 \, \text{solves} \quad \left(
-      I-\frac{\delta t}{2} M^{n+1/2}\right)^T  \bar k_1 = \bar q^{\YC{n+1}} 
+      I-\frac{\delta t}{2} M^{n+1/2}\right)^T  \bar k_1 = \bar q^{n+1} 
     \end{align}
     The contribution to the reduced gradient $\nabla J$ for each time step is
     then given by
@@ -539,21 +527,21 @@ basis elements or diagonals).
     \subsubsection{Other integrators}
     The code offers the possibility to apply any time-stepping integrators
     provided by the Petsc software package (class TS). Implementation needs to
-    \YC{be} verified. Adjoint time-stepping with Petsc is currently not
+    be verified. Adjoint time-stepping with Petsc is currently not
     implemented. 
 
     \subsubsection{Choice of the time-step size}
     In order to choose a time-step size $\delta t$, an eigenvalue analysis of
-    the constant drift Hamiltonian $H_d =  -2\pi \sum_{k=\YC{0}}^{\YC{Q-1}} \frac{x_k}{2}
-    a_k^{\dagger}a_k^{\dagger}a_ka_k + \sum_{l\YC{>}k} x_{\YC{lk}}
-    a_{\YC{k}}^{\dagger}a_{\YC{k}}
-    a_{\YC{l}}^{\dagger}a_{\YC{l}}$ is considered:
+    the constant drift Hamiltonian $H_d =  -2\pi \left(\sum_{k=0}^{Q-1} \frac{x_k}{2}
+    a_k^{\dagger}a_k^{\dagger}a_ka_k + \sum_{l>k} x_{lk}
+    a_{k}^{\dagger}a_{k}
+    a_{l}^{\dagger}a_{l}\right)$ is considered:
        \begin{align*}  
          \dot u = -i H_d u \qquad \text{with} \quad H_d^{\dagger}  = H_d
        \end{align*} 
        Since $H_d$ is Hermitian, there exists a transformation $Y$ s.t. 
        \begin{align*}
-         Y^{\dagger}H_d Y \YC{=} \Lambda \qquad  \text{where} \quad Y^{\dagger} = Y
+         Y^{\dagger}H_d Y = \Lambda \qquad  \text{where} \quad Y^{\dagger} = Y
        \end{align*}
        where $\Lambda$ is a diagonal matrix containing the eigenvalues of $H_d$.
        Transform $\tilde u = Y^{\dagger} u$, then the ODE transforms to 
