@@ -15,6 +15,7 @@ typedef struct {
   IS *isu, *isv;
   Oscillator*** oscil_vec;
   std::vector<double> xi;
+  std::vector<double> detuning_freq;
   std::vector<double> collapse_time;
   std::vector<double> control_Re, control_Im;
   Mat** Ac_vec;
@@ -51,6 +52,7 @@ class MasterEq{
     Mat  Ad, Bd;  // Real and imaginary part of constant system matrix
 
     std::vector<double> xi;             // Constants for frequencies of drift Hamiltonian
+    std::vector<double> detuning_freq;  // detuning frequencies of drift Hamiltonian
     std::vector<double> collapse_time;  // Time-constants for decay and dephase operators
 
     /* Auxiliary stuff */
@@ -69,7 +71,8 @@ class MasterEq{
 
   public:
     MasterEq();
-    MasterEq(std::vector<int> nlevels, Oscillator** oscil_vec_, const std::vector<double> xi_, LindbladType lindbladtype_, const std::vector<double> collapse_time_, bool usematfree_);
+    MasterEq(std::vector<int> nlevels, Oscillator** oscil_vec_, const std::vector<double> xi_, std::vector<double> detuning_freq_,
+             LindbladType lindbladtype_, const std::vector<double> collapse_time_, bool usematfree_);
     ~MasterEq();
 
     /* initialize matrices needed for applying sparse-mat solver */
@@ -120,8 +123,8 @@ class MasterEq{
 };
 
 
-inline double Hd(const double xi0, const double xi01, const double xi1,const int a, const int b) {
-  return - xi0*M_PI * a * (a-1) - xi01*M_PI*2 * a * b - xi1*M_PI * b * (b-1); 
+inline double Hd(const double xi0, const double xi01, const double xi1, const double detuning0, const double detuning1, const int a, const int b) {
+  return - xi0*M_PI * a * (a-1) - xi01*M_PI*2 * a * b - xi1*M_PI * b * (b-1) + detuning0*2*M_PI*a + detuning1*2*M_PI*b; 
 };
 
 inline double L2(double dephase0, double dephase1, const int i0, const int i1, const int i0p, const int i1p){
