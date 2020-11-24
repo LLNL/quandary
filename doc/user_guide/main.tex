@@ -46,7 +46,7 @@ Quandary models open quantum systems with $Q$ subsystems with $n_k$ levels for t
 $k$-th subsystem, $k=\YC{0},\dots,Q\YC{-1}$. The time-evolution of the open quantum system is modeled by Lindblad's master equation:
 \begin{align}\label{mastereq}
   \dot \rho(t) = &-i(H(t)\rho(t) - \rho(t)H(t)) \notag \\
-  &+ \sum_{l=\YC{0}}^{\YC{1}} \sum_{k=\YC{0}}^{Q\YC{-1}} \gamma_{lk} \left( \Ell_{lk} \rho(t)
+  &+ \sum_{l=1}^2 \sum_{k=\YC{0}}^{Q\YC{-1}} \gamma_{lk} \left( \Ell_{lk} \rho(t)
   \Ell_{lk}^{\dagger} - \frac 1 2 \left( \Ell_{lk}^{\dagger}\Ell_{lk}
   \rho(t) + \rho(t)\Ell_{lk}^{\dagger} \Ell_{lk}\right) \right)
 \end{align}
@@ -92,15 +92,15 @@ and $I_{n_k}$ denotes the identity matrix in $\R^{n_k \times n_k}$.
 The collapse operators $\Ell_{lk}$ in the Lindblad terms of the master equation
 \eqref{mastereq} can be of the following type:
 \begin{itemize}
-  \item ``T\YC{0}'' -- Decay: $\Ell_{\YC{0}k} = a_k$
-  \item ``T\YC{1}'' -- Dephasing: $\Ell_{\YC{1}k} = a_k^{\dagger}a_k$
+  \item ``T1'' -- Decay: $\Ell_{1k} = a_k$
+  \item ``T2'' -- Dephasing: $\Ell_{2k} = a_k^{\dagger}a_k$
 \end{itemize}
 for each subsystem $k$. The constants $\gamma_{lk}$ are the inverse half-life
 for the corresponding collapse process $l$: $\gamma_{lk} = {\frac{1}{T_l}}$.
-Typical \YC{T0} decay time is between $10-100$ microseconds (us). \YC{T1}
-dephasing time is typically about half of \YC{T0} decay time. Decay then behaves
-like $\exp(-t/{\YC{T_0}})$. Dephasing behaves like $\exp(- t / \YC{T_0})$ \YC{maybe
-$\exp(-2t / \YC{T_0})$?}.
+Typical T1 decay time is between $10-100$ microseconds (us). T2
+dephasing time is typically about half of T1 decay time. Decay then behaves
+like $\exp(-t/{T_1})$. 
+% Dephasing behaves like $\exp(- t / T_1)$ \YC{maybe $\exp(-2t / \YC{T_0})$?}.
 
 \subsection{Control pulses} \label{subsec:controlpulses}
 The time-dependent control functions $p^k(\vec{\alpha}^k,t),
