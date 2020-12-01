@@ -193,8 +193,8 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
       }
       diag_id += initcond_IDs[k] * dim_postkron;
     }
-    int vec_id = diag_id * (int)sqrt(timestepper->mastereq->getDim()) + diag_id;
-    vec_id = getIndexReal(vec_id); // Real part of x
+    int ndim = (int)sqrt(timestepper->mastereq->getDim());
+    int vec_id = getIndexReal(getVecID( diag_id, diag_id, ndim )); // Real part of x
     VecSetValue(rho_t0, vec_id, 1.0, INSERT_VALUES);
   }
   else if (initcond_type == FROMFILE) { 

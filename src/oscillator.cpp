@@ -250,8 +250,7 @@ void Oscillator::expectedEnergy_diff(const Vec x, Vec x_bar, const double obj_ba
   /* Derivative of projective measure */
   for (int i=0; i<dimmat; i++) {
     MatGetValue(NumberOP, i, i, &num_diag);
-    int idx_diag = i * dimmat + i;
-    idx_diag = getIndexReal(idx_diag);
+    int idx_diag = getIndexReal(getVecID(i, i, dimmat));
     double val = num_diag * obj_bar;
     if (ilow < idx_diag && idx_diag < iupp) VecSetValues(x_bar, 1, &idx_diag, &val, ADD_VALUES);
   }
