@@ -101,7 +101,7 @@ PetscErrorCode kronI(const Mat A, const int dimI, const double alpha, Mat *Out, 
 
 PetscErrorCode AkronB(const int dim, const Mat A, const Mat B, const double alpha, Mat *Out, InsertMode insert_mode){
 
-    int dimOut = dim*dim;
+    int dimOut = dim*dim;  // this variable is not used.
 
     int ncolsA,ncolsB;
     const int *colsA, *colsB;

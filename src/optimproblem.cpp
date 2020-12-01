@@ -704,12 +704,12 @@ double objectiveT(MasterEq* mastereq, ObjectiveType objective_type, const std::v
           exit(1);
         }
 
-        /* Compute frobenius norm: frob = || q(T) - e_1 ||^2 */
+        /* Compute frobenius norm: frob = 1/2|| q(T) - e_0 ||^2 */
         int ilo, ihi;
         VecGetOwnershipRange(state, &ilo, &ihi);
         if (ilo <= 0 && 0 < ihi) VecSetValue(state, 0, -1.0, ADD_VALUES); // substract 1.0 from (0,0) element
         VecNorm(state, NORM_2, &obj_local);
-        obj_local = pow(obj_local, 2.0);
+        obj_local = 0.5*pow(obj_local, 2.0);
         if (ilo <= 0 && 0 < ihi) VecSetValue(state, 0, 1.0, ADD_VALUES); // restore state 
         VecAssemblyBegin(state);
         VecAssemblyEnd(state);
@@ -773,9 +773,9 @@ void objectiveT_diff(MasterEq* mastereq, ObjectiveType objective_type, const std
       int ilo, ihi;
       VecGetOwnershipRange(statebar, &ilo, &ihi);
 
-      /* Derivative of frobenius norm: 2 * (q(T) - e_1) * frob_bar */
-      VecAXPY(statebar, 2.0*obj_bar, state);
-      if (ilo <= 0 && 0 < ihi) VecSetValue(statebar, 0, -2.0*obj_bar, ADD_VALUES);
+      /* Derivative of frobenius norm: (q(T) - e_0) * frob_bar */
+      VecAXPY(statebar, obj_bar, state);
+      if (ilo <= 0 && 0 < ihi) VecSetValue(statebar, 0, -1.0*obj_bar, ADD_VALUES);
       VecAssemblyBegin(statebar); VecAssemblyEnd(statebar);
       break;
     }

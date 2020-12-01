@@ -207,7 +207,7 @@ int Oscillator::evalControl_Labframe(const double t, double* f){
 }
 
 double Oscillator::expectedEnergy(const Vec x) {
-
+ 
   int dimmat;
   MatGetSize(NumberOP, &dimmat, NULL);
   double xdiag, num_diag;
@@ -218,6 +218,7 @@ double Oscillator::expectedEnergy(const Vec x) {
 
   /* Iterate over diagonal elements to add up expected energy level */
   double expected = 0.0;
+  // YC: for-loop below can iterate only for ilow <= 2 * (i * dimmat + i) < iupp
   for (int i=0; i<dimmat; i++) {
     /* Get diagonal element in number operator */
     MatGetValue(NumberOP, i, i, &num_diag);
