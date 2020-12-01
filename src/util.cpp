@@ -8,6 +8,10 @@ int getIndexImag(const int i) {
   return 2*i + 1;
 }
 
+int getVecID(const int i, const int j, const int dim){
+  return i*dim + j;
+} 
+
 PetscErrorCode Ikron(const Mat A,const  int dimI, const double alpha, Mat *Out, InsertMode insert_mode){
 
     int ierr;

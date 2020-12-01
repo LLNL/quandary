@@ -4,6 +4,8 @@
 int getIndexReal(const int i); // Return storage index of Re(x[i]) (colocated: x[2*i], blocked: x[i])
 int getIndexImag(const int i); // Return storage index of Im(x[i]) (colocated: x[2*i+1], blocked: x[i+dim])
 
+int getVecID(const int i, const int j, const int dim); // Return index of vectorized element from matrix element (i,j) in square matrix of dimension dim. 
+
 
 /* Kronecker product : Id \kron A, where Id is the Identitymatrix 
  * Mat Out must be allocated with nonzerosA * dimI
