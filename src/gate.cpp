@@ -5,10 +5,8 @@ Gate::Gate(){
   // dim_vec = 0;
 }
 
-Gate::Gate(std::vector<int> nlevels_, std::vector<int> nessential_){
+Gate::Gate(std::vector<int> nlevels, std::vector<int> nessential){
 
-  nlevels = nlevels_;
-  nessential = nessential_;
   MPI_Comm_rank(PETSC_COMM_WORLD, &mpirank_petsc);
 
   /* Dimension of gate = \prod_j nessential_j */
@@ -34,6 +32,7 @@ Gate::Gate(std::vector<int> nlevels_, std::vector<int> nessential_){
   MatAssemblyEnd(Vb, MAT_FINAL_ASSEMBLY);
 
   /* Set up projection matrix to map essential levels to full system dimension */
+  Mat P;
   MatCreate(PETSC_COMM_WORLD, &P);
   MatSetSizes(P, PETSC_DECIDE, PETSC_DECIDE, dim_ess, dim_rho);
   MatSetUp(P);
@@ -60,11 +59,18 @@ Gate::Gate(std::vector<int> nlevels_, std::vector<int> nessential_){
   MatAssemblyBegin(PxP, MAT_FINAL_ASSEMBLY);
   MatAssemblyEnd(PxP, MAT_FINAL_ASSEMBLY);
 
-  /* Allocate ReG = Re(\bar VP \kron VP), ImG = Im(\bar VP \kron VP), parallel */
+  /* Allocate final and initial states, projected onto essential levels */
+  MatCreateVecs(PxP, NULL, &ufinal_e);
+  MatCreateVecs(PxP, NULL, &vfinal_e);
+  MatCreateVecs(PxP, NULL, &u0_e);
+  MatCreateVecs(PxP, NULL, &v0_e);
+
+
+  /* Allocate ReG = Re(\bar V \kron V), ImG = Im(\bar V \kron V), parallel */
   MatCreate(PETSC_COMM_WORLD, &ReG);
   MatCreate(PETSC_COMM_WORLD, &ImG);
-  MatSetSizes(ReG, PETSC_DECIDE, PETSC_DECIDE, dim_ess*dim_ess, dim_rho*dim_rho);
-  MatSetSizes(ImG, PETSC_DECIDE, PETSC_DECIDE, dim_ess*dim_ess, dim_rho*dim_rho);
+  MatSetSizes(ReG, PETSC_DECIDE, PETSC_DECIDE, dim_ess*dim_ess, dim_ess*dim_ess);
+  MatSetSizes(ImG, PETSC_DECIDE, PETSC_DECIDE, dim_ess*dim_ess, dim_ess*dim_ess);
   MatSetUp(ReG);
   MatSetUp(ImG);
   MatAssemblyBegin(ReG, MAT_FINAL_ASSEMBLY);
@@ -73,7 +79,8 @@ Gate::Gate(std::vector<int> nlevels_, std::vector<int> nessential_){
   MatAssemblyEnd(ImG, MAT_FINAL_ASSEMBLY);
 
   /* Create auxiliary vectors */
-  MatCreateVecs(ReG, NULL, &x);
+  MatCreateVecs(PxP, &x_full, NULL);   // full state dimension
+  MatCreateVecs(PxP, NULL, &x_e);     // essential levels only 
 
 }
 
@@ -83,25 +90,24 @@ Gate::~Gate(){
   MatDestroy(&ImG);
   MatDestroy(&Va);
   MatDestroy(&Vb);
-  MatDestroy(&P);
   MatDestroy(&PxP);
-  VecDestroy(&x);
+  VecDestroy(&x_full);
+  VecDestroy(&x_e);
+  VecDestroy(&ufinal_e);
+  VecDestroy(&vfinal_e);
+  VecDestroy(&u0_e);
+  VecDestroy(&v0_e);
 }
 
 
 void Gate::assembleGate(){
   
-  /* Multiply Gate Va and Vb by essential level map P*/
-  Mat VaP, VbP; 
-  MatMatMult(Va, P, MAT_INITIAL_MATRIX, PETSC_DEFAULT, &VaP);
-  MatMatMult(Vb, P, MAT_INITIAL_MATRIX, PETSC_DEFAULT, &VbP);
-
-  /* Compute ReG = Re(\bar VP \kron VP) = VaP\kron VaP + VbP\kron VbP  */
-  AkronB(VaP, VaP,  1.0, &ReG, ADD_VALUES);
-  AkronB(VbP, VbP,  1.0, &ReG, ADD_VALUES);
+  /* Compute ReG = Re(\bar V \kron V) = Va\kron Va + Vb\kron Vb  */
+  AkronB(Va, Va,  1.0, &ReG, ADD_VALUES);
+  AkronB(Vb, Vb,  1.0, &ReG, ADD_VALUES);
   /* Compute ImG = Im(\bar V\kron V) = A\kron B - B\kron A */
-  AkronB(VaP, VbP,  1.0, &ImG, ADD_VALUES);
-  AkronB(VbP, VaP, -1.0, &ImG, ADD_VALUES);
+  AkronB(Va, Vb,  1.0, &ImG, ADD_VALUES);
+  AkronB(Vb, Va, -1.0, &ImG, ADD_VALUES);
 
   MatAssemblyBegin(ReG, MAT_FINAL_ASSEMBLY);
   MatAssemblyEnd(ReG, MAT_FINAL_ASSEMBLY);
@@ -114,8 +120,6 @@ void Gate::assembleGate(){
   // MatView(ImG, PETSC_VIEWER_STDOUT_WORLD);
   // exit(1);
 
-  MatDestroy(&VaP);
-  MatDestroy(&VbP);
 }
 
 
@@ -135,44 +139,43 @@ void Gate::compare_frobenius(const Vec finalstate, const Vec rho0, double& frob)
   ISCreateStride(PETSC_COMM_WORLD, dimis, ilow, 2, &isu);
   ISCreateStride(PETSC_COMM_WORLD, dimis, ilow+1, 2, &isv);
 
-  /* Get real and imag part of final state, x = [u,v] */
-  Vec ufinal_full, vfinal_full, u0, v0;
+  /* Get real and imag part of final state and initial state */
+  Vec ufinal_full, vfinal_full, u0_full, v0_full;
   VecGetSubVector(finalstate, isu, &ufinal_full);
   VecGetSubVector(finalstate, isv, &vfinal_full);
-  VecGetSubVector(rho0, isu, &u0);
-  VecGetSubVector(rho0, isv, &v0);
+  VecGetSubVector(rho0, isu, &u0_full);
+  VecGetSubVector(rho0, isv, &v0_full);
 
-  /* Project final state onto essential levels */
-  Vec ufinal, vfinal;
-  MatCreateVecs(PxP, NULL, &ufinal);
-  MatCreateVecs(PxP, NULL, &vfinal);
-  MatMult(PxP, ufinal_full, ufinal);
-  MatMult(PxP, vfinal_full, vfinal);
+  /* Project final and initial states onto essential levels */
+  MatMult(PxP, ufinal_full, ufinal_e);
+  MatMult(PxP, vfinal_full, vfinal_e);
+  MatMult(PxP, u0_full, u0_e);
+  MatMult(PxP, v0_full, v0_e);
 
   /* Add real part of frobenius norm || u - ReG*u0 + ImG*v0 ||^2 */
-  MatMult(ReG, u0, x);            // x = ReG*u0
-  VecAYPX(x, -1.0, ufinal);       // x = ufinal - ReG*u0 
-  MatMultAdd(ImG, v0, x, x);      // x = ufinal - ReG*u0 + ImG*v0
+  MatMult(ReG, u0_e, x_e);            // x = ReG*u0
+  VecAYPX(x_e, -1.0, ufinal_e);       // x = ufinal - ReG*u0 
+  MatMultAdd(ImG, v0_e, x_e, x_e);      // x = ufinal - ReG*u0 + ImG*v0
   double norm;
-  VecNorm(x, NORM_2, &norm);
+  VecNorm(x_e, NORM_2, &norm);
   frob = pow(norm,2.0);           // frob = || x ||^2
 
 
   /* Add imaginary part of frobenius norm || v - ReG*v0 - ImG*u0 ||^2 */
-  MatMult(ReG, v0, x);         // x = ReG*v0
-  MatMultAdd(ImG, u0, x, x);   // x = ReG*v0 + ImG*u0
-  VecAYPX(x, -1.0, vfinal);     // x = vfinal - (ReG*v0 + ImG*u0)
-  VecNorm(x, NORM_2, &norm);
+  MatMult(ReG, v0_e, x_e);         // x = ReG*v0
+  MatMultAdd(ImG, u0_e, x_e, x_e);   // x = ReG*v0 + ImG*u0
+  VecAYPX(x_e, -1.0, vfinal_e);     // x = vfinal - (ReG*v0 + ImG*u0)
+  VecNorm(x_e, NORM_2, &norm);
   frob += pow(norm, 2.0);      // frob += ||x||^2
 
   /* obj = 1/2 * || finalstate - gate*rho(0) ||^2 */
   frob *= 1./2.;
 
   /* Restore vectors from index set */
-  VecRestoreSubVector(finalstate, isu, &ufinal);
-  VecRestoreSubVector(finalstate, isv, &vfinal);
-  VecRestoreSubVector(rho0, isu, &u0);
-  VecRestoreSubVector(rho0, isv, &v0);
+  VecRestoreSubVector(finalstate, isu, &ufinal_full);
+  VecRestoreSubVector(finalstate, isv, &vfinal_full);
+  VecRestoreSubVector(rho0, isu, &u0_full);
+  VecRestoreSubVector(rho0, isv, &v0_full);
 
   /* Free index strides */
   ISDestroy(&isu);
@@ -196,34 +199,45 @@ void Gate::compare_frobenius_diff(const Vec finalstate, const Vec rho0, Vec rho0
 
 
   /* Get real and imag part of final state, initial state, and adjoint */
-  Vec ufinal, vfinal, u0, v0;
-  VecGetSubVector(finalstate, isu, &ufinal);
-  VecGetSubVector(finalstate, isv, &vfinal);
-  VecGetSubVector(rho0, isu, &u0);
-  VecGetSubVector(rho0, isv, &v0);
+  Vec ufinal_full, vfinal_full, u0_full, v0_full;
+  VecGetSubVector(finalstate, isu, &ufinal_full);
+  VecGetSubVector(finalstate, isv, &vfinal_full);
+  VecGetSubVector(rho0, isu, &u0_full);
+  VecGetSubVector(rho0, isv, &v0_full);
+
+  /* Project final and initial states onto essential levels */
+  MatMult(PxP, ufinal_full, ufinal_e);
+  MatMult(PxP, vfinal_full, vfinal_e);
+  MatMult(PxP, u0_full, u0_e);
+  MatMult(PxP, v0_full, v0_e);
 
   /* Derivative of 1/2 * J */
   double dfb = 1./2. * frob_bar;
 
   /* Derivative of real part of frobenius norm: 2 * (u - ReG*u0 + ImG*v0) * dfb */
-  MatMult(ReG, u0, x);            // x = ReG*u0
-  VecAYPX(x, -1.0, ufinal);       // x = ufinal - ReG*u0 
-  MatMultAdd(ImG, v0, x, x);      // x = ufinal - ReG*u0 + ImG*v0
-  VecScale(x, 2*dfb);             // x = 2*(ufinal - ReG*u0 + ImG*v0)*dfb
-  VecISCopy(rho0_bar, isu, SCATTER_FORWARD, x);  // set real part in rho0bar
+  MatMult(ReG, u0_e, x_e);            // x = ReG*u0
+  VecAYPX(x_e, -1.0, ufinal_e);       // x = ufinal - ReG*u0 
+  MatMultAdd(ImG, v0_e, x_e, x_e);      // x = ufinal - ReG*u0 + ImG*v0
+  VecScale(x_e, 2*dfb);             // x = 2*(ufinal - ReG*u0 + ImG*v0)*dfb
+  // Project essential to full state 
+  MatMultTranspose(PxP, x_e, x_full);
+  // set real part in rho0bar
+  VecISCopy(rho0_bar, isu, SCATTER_FORWARD, x_full);
 
   /* Derivative of imaginary part of frobenius norm 2 * (v - ReG*v0 - ImG*u0) * dfb */
-  MatMult(ReG, v0, x);         // x = ReG*v0
-  MatMultAdd(ImG, u0, x, x);   // x = ReG*v0 + ImG*u0
-  VecAYPX(x, -1.0, vfinal);     // x = vfinal - (ReG*v0 + ImG*u0)
-  VecScale(x, 2*dfb);          // x = 2*(vfinal - (ReG*v0 + ImG*u0)*dfb
-  VecISCopy(rho0_bar, isv, SCATTER_FORWARD, x);  // set imaginary part in rho0bar
+  MatMult(ReG, v0_e, x_e);         // x = ReG*v0
+  MatMultAdd(ImG, u0_e, x_e, x_e);   // x = ReG*v0 + ImG*u0
+  VecAYPX(x_e, -1.0, vfinal_e);     // x = vfinal - (ReG*v0 + ImG*u0)
+  VecScale(x_e, 2*dfb);          // x = 2*(vfinal - (ReG*v0 + ImG*u0)*dfb
+  // Project essential to full state 
+  MatMultTranspose(PxP, x_e, x_full);
+  VecISCopy(rho0_bar, isv, SCATTER_FORWARD, x_full);  // set imaginary part in rho0bar
 
   /* Restore final, initial and adjoint state */
-  VecRestoreSubVector(finalstate, isu, &ufinal);
-  VecRestoreSubVector(finalstate, isv, &vfinal);
-  VecRestoreSubVector(rho0, isu, &u0);
-  VecRestoreSubVector(rho0, isv, &v0);
+  VecRestoreSubVector(finalstate, isu, &ufinal_full);
+  VecRestoreSubVector(finalstate, isv, &vfinal_full);
+  VecRestoreSubVector(rho0, isu, &u0_full);
+  VecRestoreSubVector(rho0, isv, &v0_full);
 
   /* Free vindex strides */
   ISDestroy(&isu);
@@ -246,22 +260,19 @@ void Gate::compare_trace(const Vec finalstate, const Vec rho0, double& obj){
   ISCreateStride(PETSC_COMM_WORLD, dimis, ilow, 2, &isu);
   ISCreateStride(PETSC_COMM_WORLD, dimis, ilow+1, 2, &isv);
 
-  /* Get real and imag part of final state, x = [u,v] */
-  Vec ufinal, vfinal, u0, v0;
-  VecGetSubVector(finalstate, isu, &ufinal);
-  VecGetSubVector(finalstate, isv, &vfinal);
-  VecGetSubVector(rho0, isu, &u0);
-  VecGetSubVector(rho0, isv, &v0);
+  /* Get real and imag part of final state and initial state */
+  Vec ufinal_full, vfinal_full, u0_full, v0_full;
+  VecGetSubVector(finalstate, isu, &ufinal_full);
+  VecGetSubVector(finalstate, isv, &vfinal_full);
+  VecGetSubVector(rho0, isu, &u0_full);
+  VecGetSubVector(rho0, isv, &v0_full);
 
+  /* Project final and initial states onto essential levels */
+  MatMult(PxP, ufinal_full, ufinal_e);
+  MatMult(PxP, vfinal_full, vfinal_e);
+  MatMult(PxP, u0_full, u0_e);
+  MatMult(PxP, v0_full, v0_e);
 
-  /* Make sure that state dimensions match the gate dimension */
-  int dimstate, dimG;
-  VecGetSize(finalstate, &dimstate); 
-  VecGetSize(x, &dimG);
-  if (dimstate/2 != dimG) {
-    printf("\n ERROR: Target gate dimension %d doesn't match system dimension %u\n", dimG, dimstate/2);
-    exit(1);
-  }
 
   /* trace overlap: (ReG*u0 - ImG*v0)^T u + (ReG*v0 + ImG*u0)^Tv
               [ + i (ReG*u0 - ImG*v0)^T v - (ReG*v0 + ImG*u0)^Tu ]   <- this should be zero!
@@ -270,16 +281,16 @@ void Gate::compare_trace(const Vec finalstate, const Vec rho0, double& obj){
   double trace = 0.0;
 
   // first term: (ReG*u0 - ImG*v0)^T u
-  MatMult(ImG, v0, x);      
-  VecScale(x, -1.0);           // x = - ImG*v0
-  MatMultAdd(ReG, u0, x, x);   // x = ReG*u0 - ImG*v0
-  VecTDot(x, ufinal, &dot);    // dot = (ReG*u0 - ImG*v0)^T u    
+  MatMult(ImG, v0_e, x_e);      
+  VecScale(x_e, -1.0);                // x = - ImG*v0
+  MatMultAdd(ReG, u0_e, x_e, x_e);  // x = ReG*u0 - ImG*v0
+  VecTDot(x_e, ufinal_e, &dot);       // dot = (ReG*u0 - ImG*v0)^T u    
   trace += dot;
   
   // second term: (ReG*v0 + ImG*u0)^Tv
-  MatMult(ImG, u0, x);         // x = ImG*u0
-  MatMultAdd(ReG, v0, x, x);   // x = ReG*v0 + ImG*u0
-  VecTDot(x, vfinal, &dot);    // dot = (ReG*v0 + ImG*u0)^T v    
+  MatMult(ImG, u0_e, x_e);         // x = ImG*u0
+  MatMultAdd(ReG, v0_e, x_e, x_e); // x = ReG*v0 + ImG*u0
+  VecTDot(x_e, vfinal_e, &dot);      // dot = (ReG*v0 + ImG*u0)^T v    
   trace += dot;
 
   /* Objective J = 1.0 - Trace(...) */
@@ -309,10 +320,10 @@ void Gate::compare_trace(const Vec finalstate, const Vec rho0, double& obj){
   // // obj = obj + purity_rhoT / 2. - 0.5;
 
   /* Restore vectors from index set */
-  VecRestoreSubVector(finalstate, isu, &ufinal);
-  VecRestoreSubVector(finalstate, isv, &vfinal);
-  VecRestoreSubVector(rho0, isu, &u0);
-  VecRestoreSubVector(rho0, isv, &v0);
+  VecRestoreSubVector(finalstate, isu, &ufinal_full);
+  VecRestoreSubVector(finalstate, isv, &vfinal_full);
+  VecRestoreSubVector(rho0, isu, &u0_full);
+  VecRestoreSubVector(rho0, isv, &v0_full);
 
   /* Free index strides */
   ISDestroy(&isu);
@@ -345,44 +356,51 @@ void Gate::compare_trace_diff(const Vec finalstate, const Vec rho0, Vec rho0_bar
   ISCreateStride(PETSC_COMM_WORLD, dimis, ilow, 2, &isu);
   ISCreateStride(PETSC_COMM_WORLD, dimis, ilow+1, 2, &isv);
 
+  /* Get real and imag part of final state and initial state */
+  Vec ufinal_full, vfinal_full, u0_full, v0_full;
+  VecGetSubVector(finalstate, isu, &ufinal_full);
+  VecGetSubVector(finalstate, isv, &vfinal_full);
+  VecGetSubVector(rho0, isu, &u0_full);
+  VecGetSubVector(rho0, isv, &v0_full);
 
-  /* Get real and imag part of final state, initial state, and adjoint */
-  Vec ufinal, vfinal, u0, v0;
-  VecGetSubVector(finalstate, isu, &ufinal);
-  VecGetSubVector(finalstate, isv, &vfinal);
-  VecGetSubVector(rho0, isu, &u0);
-  VecGetSubVector(rho0, isv, &v0);
+  /* Project final and initial states onto essential levels */
+  MatMult(PxP, ufinal_full, ufinal_e);
+  MatMult(PxP, vfinal_full, vfinal_e);
+  MatMult(PxP, u0_full, u0_e);
+  MatMult(PxP, v0_full, v0_e);
 
   /* Derivative of 1-trace */
   double dfb = -1.0 * obj_bar;
 
   // Derivative of first term: -(ReG*u0 - ImG*v0)*obj_bar
-  MatMult(ImG, v0, x);      
-  VecScale(x, -1.0);           // x = - ImG*v0
-  MatMultAdd(ReG, u0, x, x);   // x = ReG*u0 - ImG*v0
-  VecScale(x, dfb);            // x = -(ReG*u0 - ImG*v0)*obj_bar
+  MatMult(ImG, v0_e, x_e);      
+  VecScale(x_e, -1.0);              // x = - ImG*v0
+  MatMultAdd(ReG, u0_e, x_e, x_e);  // x = ReG*u0 - ImG*v0
+  VecScale(x_e, dfb);                 // x = -(ReG*u0 - ImG*v0)*obj_bar
 
   /* Derivative of purity */
   // VecAXPY(x, obj_bar, ufinal);
 
-  VecISCopy(rho0_bar, isu, SCATTER_FORWARD, x);  // set real part in rho0bar
+  MatMultTranspose(PxP, x_e, x_full);
+  VecISCopy(rho0_bar, isu, SCATTER_FORWARD, x_full);  // set real part in rho0bar
   
   // Derivative of second term: -(ReG*v0 + ImG*u0)*obj_bar
-  MatMult(ImG, u0, x);         // x = ImG*u0
-  MatMultAdd(ReG, v0, x, x);   // x = ReG*v0 + ImG*u0
-  VecScale(x, dfb);            // x = -(ReG*v0 + ImG*u0)*obj_bar
+  MatMult(ImG, u0_e, x_e);         // x = ImG*u0
+  MatMultAdd(ReG, v0_e, x_e, x_e); // x = ReG*v0 + ImG*u0
+  VecScale(x_e , dfb);               // x = -(ReG*v0 + ImG*u0)*obj_bar
 
   /* Derivative of purity */
   // VecAXPY(x, obj_bar, vfinal);
 
-  VecISCopy(rho0_bar, isv, SCATTER_FORWARD, x);  // set imaginary part in rho0bar
+  MatMultTranspose(PxP, x_e, x_full);
+  VecISCopy(rho0_bar, isv, SCATTER_FORWARD, x_full);  // set imaginary part in rho0bar
 
 
   /* Restore final, initial and adjoint state */
-  VecRestoreSubVector(finalstate, isu, &ufinal);
-  VecRestoreSubVector(finalstate, isv, &vfinal);
-  VecRestoreSubVector(rho0, isu, &u0);
-  VecRestoreSubVector(rho0, isv, &v0);
+  VecRestoreSubVector(finalstate, isu, &ufinal_full);
+  VecRestoreSubVector(finalstate, isv, &vfinal_full);
+  VecRestoreSubVector(rho0, isu, &u0_full);
+  VecRestoreSubVector(rho0, isv, &v0_full);
 
   /* Free vindex strides */
   ISDestroy(&isu);

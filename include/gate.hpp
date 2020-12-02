@@ -9,20 +9,19 @@
 
 class Gate {
   protected:
-    Mat Va, Vb;       /* User Input: Real and imaginary part of V_target, non-vectorized */
-    Mat P;            /* Projection matrix to map from essential levels to full system */
-    Mat PxP;          /* Vectorized projection matrix to map from essential levels to full system */
+    Mat Va, Vb;        /* Input: Real and imaginary part of V_target, non-vectorized */
+    Mat PxP;           /* Vectorized projection matrix P\kron P to map between essential levels and full system */
 
-    std::vector<int> nlevels;    // Number of levels per oscillator 
-    std::vector<int> nessential; // Numver of essential levels per oscillator
     int mpirank_petsc;
 
     int dim_ess;   /* Dimension of target Gate matrix (non-vectorized), essential levels only */
     int dim_rho;   /* Dimension of system matrix rho (non-vectorized), all levels */
 
   private:
-    Mat ReG, ImG;     /* Real and imaginary part of \bar VP \kron VP */
-    Vec x;             /* auxiliary vectors */
+    Mat ReG, ImG;           /* Real and imaginary part of \bar V \kron V */
+    Vec ufinal_e, vfinal_e; /* auxiliary, holding final state projected onto essential levels */
+    Vec u0_e, v0_e;         /* auxiliary, holding final state projected onto essential levels */
+    Vec x_full, x_e;        /* auxiliary vecs */
 
   public:
     Gate();
