@@ -1,25 +1,31 @@
 #include "gate.hpp"
 
 Gate::Gate(){
-  dim_v   = 0;
-  dim_vec = 0;
+  dim_ess = 0;
+  // dim_vec = 0;
 }
 
-Gate::Gate(int dim_v_) {
-  dim_v = dim_v_; 
-  dim_vec = (int) pow(dim_v,2);      // vectorized version squares dimensions.
+Gate::Gate(std::vector<int> nlevels_, std::vector<int> nessential_){
 
+  nlevels = nlevels_;
+  nessential = nessential_;
   MPI_Comm_rank(PETSC_COMM_WORLD, &mpirank_petsc);
 
-  // /* Set the frequencies */
-  // assert(freq_.size() >= noscillators);
-  // for (int i=0; i<noscillators; i++) {
-  //   omega.push_back(2.*M_PI * freq_[i]);
-  // }
+  /* Dimension of gate = \prod_j nessential_j */
+  dim_ess = 1;
+  for (int i=0; i<nessential.size(); i++) {
+    dim_ess *= nessential[i];
+  }
+
+  /* Dimension of system matrix rho */
+  dim_rho = 1;
+  for (int i=0; i<nlevels.size(); i++) {
+    dim_rho *= nlevels[i];
+  }
 
   /* Allocate Va, Vb, sequential, only on proc 0 */
-  MatCreateSeqDense(PETSC_COMM_SELF, dim_v, dim_v, NULL, &Va);
-  MatCreateSeqDense(PETSC_COMM_SELF, dim_v, dim_v, NULL, &Vb);
+  MatCreateSeqDense(PETSC_COMM_SELF, dim_ess, dim_ess, NULL, &Va);
+  MatCreateSeqDense(PETSC_COMM_SELF, dim_ess, dim_ess, NULL, &Vb);
   MatSetUp(Va);
   MatSetUp(Vb);
   MatAssemblyBegin(Va, MAT_FINAL_ASSEMBLY);
@@ -27,11 +33,38 @@ Gate::Gate(int dim_v_) {
   MatAssemblyEnd(Va, MAT_FINAL_ASSEMBLY);
   MatAssemblyEnd(Vb, MAT_FINAL_ASSEMBLY);
 
-  /* Allocate ReG = Re(\bar V \kron V), ImG = Im(\bar V \kron V), parallel */
+  /* Set up projection matrix to map essential levels to full system dimension */
+  MatCreate(PETSC_COMM_WORLD, &P);
+  MatSetSizes(P, PETSC_DECIDE, PETSC_DECIDE, dim_ess, dim_rho);
+  MatSetUp(P);
+  if (dim_ess < dim_rho && nlevels.size() > 2) {
+    printf("\n ERROR: Gate objective for essential levels with noscillators > 2 not implemented yet. \n");
+    exit(1);
+  }
+  for (int i=0; i<nessential[0]; i++) {
+    // Place identity of size n_e^B \times n_e^B at position (i*n_e^B, i*n^B)
+    for (int j=0; j<nessential[1]; j++) {        
+      int row = i * nessential[1] + j;
+      int col = i * nlevels[1] + j;
+      MatSetValue(P, row, col,  1.0, INSERT_VALUES);
+    }
+  }
+  MatAssemblyBegin(P, MAT_FINAL_ASSEMBLY);
+  MatAssemblyEnd(P, MAT_FINAL_ASSEMBLY);
+
+  /* Set up vectorized projection P\kron P */
+  MatCreate(PETSC_COMM_WORLD, &PxP);
+  MatSetSizes(PxP, PETSC_DECIDE, PETSC_DECIDE, dim_ess*dim_ess, dim_rho*dim_rho);
+  MatSetUp(PxP);
+  AkronB(P, P, 1.0, &PxP, INSERT_VALUES);
+  MatAssemblyBegin(PxP, MAT_FINAL_ASSEMBLY);
+  MatAssemblyEnd(PxP, MAT_FINAL_ASSEMBLY);
+
+  /* Allocate ReG = Re(\bar VP \kron VP), ImG = Im(\bar VP \kron VP), parallel */
   MatCreate(PETSC_COMM_WORLD, &ReG);
   MatCreate(PETSC_COMM_WORLD, &ImG);
-  MatSetSizes(ReG, PETSC_DECIDE, PETSC_DECIDE, dim_vec, dim_vec);
-  MatSetSizes(ImG, PETSC_DECIDE, PETSC_DECIDE, dim_vec, dim_vec);
+  MatSetSizes(ReG, PETSC_DECIDE, PETSC_DECIDE, dim_ess*dim_ess, dim_rho*dim_rho);
+  MatSetSizes(ImG, PETSC_DECIDE, PETSC_DECIDE, dim_ess*dim_ess, dim_rho*dim_rho);
   MatSetUp(ReG);
   MatSetUp(ImG);
   MatAssemblyBegin(ReG, MAT_FINAL_ASSEMBLY);
@@ -40,36 +73,49 @@ Gate::Gate(int dim_v_) {
   MatAssemblyEnd(ImG, MAT_FINAL_ASSEMBLY);
 
   /* Create auxiliary vectors */
-  MatCreateVecs(ReG, &x, NULL);
+  MatCreateVecs(ReG, NULL, &x);
 
 }
 
 Gate::~Gate(){
-  if (dim_vec == 0) return;
+  if (dim_rho == 0) return;
   MatDestroy(&ReG);
   MatDestroy(&ImG);
   MatDestroy(&Va);
   MatDestroy(&Vb);
+  MatDestroy(&P);
+  MatDestroy(&PxP);
   VecDestroy(&x);
 }
 
 
 void Gate::assembleGate(){
-  /* Compute ReG = Re(\bar V \kron V) = A\kron A + B\kron B  */
-  AkronB(dim_v, Va, Va,  1.0, &ReG, ADD_VALUES);
-  AkronB(dim_v, Vb, Vb,  1.0, &ReG, ADD_VALUES);
+  
+  /* Multiply Gate Va and Vb by essential level map P*/
+  Mat VaP, VbP; 
+  MatMatMult(Va, P, MAT_INITIAL_MATRIX, PETSC_DEFAULT, &VaP);
+  MatMatMult(Vb, P, MAT_INITIAL_MATRIX, PETSC_DEFAULT, &VbP);
+
+  /* Compute ReG = Re(\bar VP \kron VP) = VaP\kron VaP + VbP\kron VbP  */
+  AkronB(VaP, VaP,  1.0, &ReG, ADD_VALUES);
+  AkronB(VbP, VbP,  1.0, &ReG, ADD_VALUES);
   /* Compute ImG = Im(\bar V\kron V) = A\kron B - B\kron A */
-  AkronB(dim_v, Va, Vb,  1.0, &ImG, ADD_VALUES);
-  AkronB(dim_v, Vb, Va, -1.0, &ImG, ADD_VALUES);
+  AkronB(VaP, VbP,  1.0, &ImG, ADD_VALUES);
+  AkronB(VbP, VaP, -1.0, &ImG, ADD_VALUES);
 
   MatAssemblyBegin(ReG, MAT_FINAL_ASSEMBLY);
   MatAssemblyEnd(ReG, MAT_FINAL_ASSEMBLY);
   MatAssemblyBegin(ImG, MAT_FINAL_ASSEMBLY);
   MatAssemblyEnd(ImG, MAT_FINAL_ASSEMBLY);
 
+  // printf("ReG:");
   // MatView(ReG, PETSC_VIEWER_STDOUT_WORLD);
+  // printf("ImG:");
   // MatView(ImG, PETSC_VIEWER_STDOUT_WORLD);
   // exit(1);
+
+  MatDestroy(&VaP);
+  MatDestroy(&VbP);
 }
 
 
@@ -77,11 +123,11 @@ void Gate::compare_frobenius(const Vec finalstate, const Vec rho0, double& frob)
   frob = 0.0;
 
   /* Exit, if this is a dummy gate */
-  if (dim_vec == 0) {
+  if (dim_rho == 0) {
     return;
   }
 
-  /* Create vector strides for accessing real and imaginary part of co-located x */
+  /* Create vector strides for accessing real and imaginary part of co-located state */
   int ilow, iupp;
   VecGetOwnershipRange(finalstate, &ilow, &iupp);
   int dimis = (iupp - ilow)/2;
@@ -90,21 +136,18 @@ void Gate::compare_frobenius(const Vec finalstate, const Vec rho0, double& frob)
   ISCreateStride(PETSC_COMM_WORLD, dimis, ilow+1, 2, &isv);
 
   /* Get real and imag part of final state, x = [u,v] */
-  Vec ufinal, vfinal, u0, v0;
-  VecGetSubVector(finalstate, isu, &ufinal);
-  VecGetSubVector(finalstate, isv, &vfinal);
+  Vec ufinal_full, vfinal_full, u0, v0;
+  VecGetSubVector(finalstate, isu, &ufinal_full);
+  VecGetSubVector(finalstate, isv, &vfinal_full);
   VecGetSubVector(rho0, isu, &u0);
   VecGetSubVector(rho0, isv, &v0);
 
-
-  /* Make sure that state dimensions match the gate dimension */
-  int dimstate, dimG;
-  VecGetSize(finalstate, &dimstate); 
-  VecGetSize(x, &dimG);     // x is an auxiliary variable, used for the computation below
-  if (dimstate/2 != dimG) {
-    printf("\n ERROR: Target gate dimension %d doesn't match system dimension %u\n", dimG, dimstate/2);
-    exit(1);
-  }
+  /* Project final state onto essential levels */
+  Vec ufinal, vfinal;
+  MatCreateVecs(PxP, NULL, &ufinal);
+  MatCreateVecs(PxP, NULL, &vfinal);
+  MatMult(PxP, ufinal_full, ufinal);
+  MatMult(PxP, vfinal_full, vfinal);
 
   /* Add real part of frobenius norm || u - ReG*u0 + ImG*v0 ||^2 */
   MatMult(ReG, u0, x);            // x = ReG*u0
@@ -113,6 +156,7 @@ void Gate::compare_frobenius(const Vec finalstate, const Vec rho0, double& frob)
   double norm;
   VecNorm(x, NORM_2, &norm);
   frob = pow(norm,2.0);           // frob = || x ||^2
+
 
   /* Add imaginary part of frobenius norm || v - ReG*v0 - ImG*u0 ||^2 */
   MatMult(ReG, v0, x);         // x = ReG*v0
@@ -138,7 +182,7 @@ void Gate::compare_frobenius(const Vec finalstate, const Vec rho0, double& frob)
 void Gate::compare_frobenius_diff(const Vec finalstate, const Vec rho0, Vec rho0_bar, const double frob_bar){
 
   /* Exit, if this is a dummy gate */
-  if (dim_vec == 0) {
+  if (dim_rho == 0) {
     return;
   }
 
@@ -190,7 +234,7 @@ void Gate::compare_trace(const Vec finalstate, const Vec rho0, double& obj){
   obj = 0.0;
 
   /* Exit, if this is a dummy gate */
-  if (dim_vec == 0) {
+  if (dim_rho== 0) {
     return;
   }
 
@@ -289,7 +333,7 @@ void Gate::compare_trace(const Vec finalstate, const Vec rho0, double& obj){
 void Gate::compare_trace_diff(const Vec finalstate, const Vec rho0, Vec rho0_bar, const double obj_bar){
 
   /* Exit, if this is a dummy gate */
-  if (dim_vec == 0) {
+  if (dim_rho== 0) {
     return;
   }
 
@@ -346,7 +390,9 @@ void Gate::compare_trace_diff(const Vec finalstate, const Vec rho0, Vec rho0_bar
 }
 
 
-XGate::XGate() : Gate(2) {
+  XGate::XGate(std::vector<int> nlevels, std::vector<int> nessential) : Gate(nlevels, nessential) {
+
+  assert(dim_ess == 2);
 
   /* Fill Va = Re(V) and Vb = Im(V), V = Va + iVb */
   /* Va = 0 1    Vb = 0 0
@@ -359,13 +405,15 @@ XGate::XGate() : Gate(2) {
     MatAssemblyEnd(Va, MAT_FINAL_ASSEMBLY);
   }
 
-  /* Assemble vectorized target gate \bar V \kron V from  V = Va + i Vb*/
+  /* Assemble vectorized target gate \bar VP \kron VP from  V = Va + i Vb */
   assembleGate();
 }
 
 XGate::~XGate() {}
 
-YGate::YGate() : Gate(2) { 
+YGate::YGate(std::vector<int> nlevels, std::vector<int> nessential) : Gate(nlevels, nessential) {
+
+  assert(dim_ess == 2);
   
   /* Fill A = Re(V) and B = Im(V), V = A + iB */
   /* A = 0 0    B = 0 -1
@@ -378,12 +426,14 @@ YGate::YGate() : Gate(2) {
     MatAssemblyEnd(Vb, MAT_FINAL_ASSEMBLY);
   }
 
-  /* Assemble vectorized target gate \bar V \kron V from  V = Va + i Vb*/
+  /* Assemble vectorized target gate \bar VP \kron VP from  V = Va + i Vb*/
   assembleGate();
 }
 YGate::~YGate() {}
 
-ZGate::ZGate() : Gate(2) { 
+ZGate::ZGate(std::vector<int> nlevels, std::vector<int> nessential) : Gate(nlevels, nessential) {
+
+  assert(dim_ess == 2);
 
   /* Fill A = Re(V) and B = Im(V), V = A + iB */
   /* A =  1  0     B = 0 0
@@ -402,7 +452,9 @@ ZGate::ZGate() : Gate(2) {
 
 ZGate::~ZGate() {}
 
-HadamardGate::HadamardGate() : Gate(2) { 
+HadamardGate::HadamardGate(std::vector<int> nlevels, std::vector<int> nessential) : Gate(nlevels, nessential) {
+
+  assert(dim_ess == 2);
 
   /* Fill A = Re(V) and B = Im(V), V = A + iB */
   /* A =  1  0     B = 0 0
@@ -425,7 +477,9 @@ HadamardGate::~HadamardGate() {}
 
 
 
-CNOT::CNOT() : Gate(4) {
+CNOT::CNOT(std::vector<int> nlevels, std::vector<int> nessential) : Gate(nlevels, nessential) {
+
+  assert(dim_ess == 4);
 
   /* Fill Va = Re(V) = V, Vb = Im(V) = 0 */
   if (mpirank_petsc == 0) {

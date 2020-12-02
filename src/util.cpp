@@ -103,31 +103,32 @@ PetscErrorCode kronI(const Mat A, const int dimI, const double alpha, Mat *Out, 
 
 
 
-PetscErrorCode AkronB(const int dim, const Mat A, const Mat B, const double alpha, Mat *Out, InsertMode insert_mode){
+PetscErrorCode AkronB(const Mat A, const Mat B, const double alpha, Mat *Out, InsertMode insert_mode){
+    int Adim1, Adim2, Bdim1, Bdim2;
+    MatGetSize(A, &Adim1, &Adim2);
+    MatGetSize(B, &Bdim1, &Bdim2);
 
-    int dimOut = dim*dim;  // this variable is not used.
-
-    int ncolsA,ncolsB;
+    int ncolsA, ncolsB;
     const int *colsA, *colsB;
     const double *valsA, *valsB;
     // Iterate over rows of A 
-    for (int irowA = 0; irowA < dim; irowA++){
+    for (int irowA = 0; irowA < Adim1; irowA++){
         // Iterate over non-zero columns in this row of A
         MatGetRow(A, irowA, &ncolsA, &colsA, &valsA);
         for (int j=0; j<ncolsA; j++) {
             int icolA = colsA[j];
             double valA = valsA[j];
-            /* put a B-block at position (irowA*dim, icolA*dim): */
+            /* put a B-block at position (irowA*Bdim1, icolA*Bdim2): */
             // Iterate over rows of B 
-            for (int irowB = 0; irowB < dim; irowB++){
+            for (int irowB = 0; irowB < Bdim1; irowB++){
                 // Iterate over non-zero columns in this B-row
                 MatGetRow(B, irowB, &ncolsB, &colsB, &valsB);
                 for (int k=0; k< ncolsB; k++) {
                     int icolB = colsB[k];
                     double valB = valsB[k];
                     /* Insert values in Out */
-                    int rowOut = irowA*dim + irowB;
-                    int colOut = icolA*dim + icolB;
+                    int rowOut = irowA*Bdim1 + irowB;
+                    int colOut = icolA*Bdim2 + icolB;
                     double valOut = valA * valB * alpha; 
                     MatSetValue(*Out, rowOut, colOut, valOut, insert_mode);
                 }

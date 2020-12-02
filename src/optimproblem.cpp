@@ -60,11 +60,11 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
     /* Read and initialize the targetgate */
     assert ( objective_str.size() >=2 );
     if      (objective_str[1].compare("none") == 0)  targetgate = new Gate(); // dummy gate. do nothing
-    else if (objective_str[1].compare("xgate") == 0) targetgate = new XGate(); 
-    else if (objective_str[1].compare("ygate") == 0) targetgate = new YGate(); 
-    else if (objective_str[1].compare("zgate") == 0) targetgate = new ZGate();
-    else if (objective_str[1].compare("hadamard") == 0) targetgate = new HadamardGate();
-    else if (objective_str[1].compare("cnot") == 0) targetgate = new CNOT(); 
+    else if (objective_str[1].compare("xgate") == 0) targetgate = new XGate(timestepper->mastereq->nlevels, timestepper->mastereq->nessential); 
+    else if (objective_str[1].compare("ygate") == 0) targetgate = new YGate(timestepper->mastereq->nlevels, timestepper->mastereq->nessential); 
+    else if (objective_str[1].compare("zgate") == 0) targetgate = new ZGate(timestepper->mastereq->nlevels, timestepper->mastereq->nessential);
+    else if (objective_str[1].compare("hadamard") == 0) targetgate = new HadamardGate(timestepper->mastereq->nlevels, timestepper->mastereq->nessential);
+    else if (objective_str[1].compare("cnot") == 0) targetgate = new CNOT(timestepper->mastereq->nlevels, timestepper->mastereq->nessential); 
     else {
       printf("\n\n ERROR: Unnown gate type: %s.\n", objective_str[1].c_str());
       printf(" Available gates are 'none', 'xgate', 'ygate', 'zgate', 'hadamard', 'cnot'\n");

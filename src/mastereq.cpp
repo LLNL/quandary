@@ -17,11 +17,12 @@ MasterEq::MasterEq(){
 }
 
 
-MasterEq::MasterEq(std::vector<int> nlevels_, Oscillator** oscil_vec_, const std::vector<double> xi_, const std::vector<double> detuning_freq_,
+MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Oscillator** oscil_vec_, const std::vector<double> xi_, const std::vector<double> detuning_freq_,
                    LindbladType lindbladtype, const std::vector<double> collapse_time_, bool usematfree_) {
   int ierr;
 
   nlevels = nlevels_;
+  nessential = nessential_;
   noscillators = nlevels.size();
   oscil_vec = oscil_vec_;
   xi = xi_;
@@ -275,7 +276,7 @@ void MasterEq::initSparseMatSolver(LindbladType lindbladtype){
     if (addT1 && collapse_time[iosc*2] > 1e-14) { 
       double gamma = 1./(collapse_time[iosc*2]);
       /* Ad += gamma_j * L \kron L */
-      AkronB(dimmat, L1, L1, gamma, &Ad, ADD_VALUES);
+      AkronB(L1, L1, gamma, &Ad, ADD_VALUES);
       /* Ad += - gamma_j/2  I_n  \kron L^TL  */
       /* Ad += - gamma_j/2  L^TL \kron I_n */
       MatTransposeMatMult(L1, L1, MAT_INITIAL_MATRIX, PETSC_DEFAULT, &tmp);
@@ -288,7 +289,7 @@ void MasterEq::initSparseMatSolver(LindbladType lindbladtype){
     if (addT2 && collapse_time[iosc*2+1] > 1e-14) { 
       double gamma = 1./(collapse_time[iosc*2+1]);
       /* Ad += 1./gamma_j * L \kron L */
-      AkronB(dimmat, L2, L2, gamma, &Ad, ADD_VALUES);
+      AkronB(L2, L2, gamma, &Ad, ADD_VALUES);
       /* Ad += - gamma_j/2  I_n  \kron L^TL  */
       /* Ad += - gamma_j/2  L^TL \kron I_n */
       MatTransposeMatMult(L2, L2, MAT_INITIAL_MATRIX, PETSC_DEFAULT, &tmp);
@@ -1402,10 +1403,12 @@ int myMatMult_matfree_2osc(Mat RHS, Vec x, Vec y){
     return myMatMult_matfree<3,10>(RHS, x, y);
   } else if(n0==2 && n1==2){
     return myMatMult_matfree<2,2>(RHS, x, y);
+  } else if(n0==3 && n1==3){
+    return myMatMult_matfree<3,3>(RHS, x, y);
   } else if(n0==20 && n1==20){
     return myMatMult_matfree<20,20>(RHS, x, y);
   } else {
-    printf("ERROR: In order to run this case, run add a line at the end of mastereq.cpp with the corresponding number of levels!\n");
+    printf("ERROR: In order to run this case, add a line at the end of mastereq.cpp with the corresponding number of levels!\n");
     exit(1);
   }
 }
@@ -1424,10 +1427,12 @@ int myMatMultTranspose_matfree_2Osc(Mat RHS, Vec x, Vec y){
     return myMatMultTranspose_matfree<3,10>(RHS, x, y);
   } else if(n0==2 && n1==2){
     return myMatMultTranspose_matfree<2,2>(RHS, x, y);
+  } else if(n0==3 && n1==3){
+    return myMatMult_matfree<3,3>(RHS, x, y);
   } else if(n0==20 && n1==20){
     return myMatMultTranspose_matfree<20,20>(RHS, x, y);
   } else {
-    printf("ERROR: In order to run this case, run add a line at the end of mastereq.cpp with the corresponding number of levels!\n");
+    printf("ERROR: In order to run this case, add a line at the end of mastereq.cpp with the corresponding number of levels!\n");
     exit(1);
   } 
 }

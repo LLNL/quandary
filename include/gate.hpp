@@ -9,21 +9,24 @@
 
 class Gate {
   protected:
-    int dim_v;        /* Input: dimension of target gate (non-vectorized) */
-    Mat Va, Vb;       /* Input: Real and imaginary part of V_target, non-vectorized */
+    Mat Va, Vb;       /* User Input: Real and imaginary part of V_target, non-vectorized */
+    Mat P;            /* Projection matrix to map from essential levels to full system */
+    Mat PxP;          /* Vectorized projection matrix to map from essential levels to full system */
+
+    std::vector<int> nlevels;    // Number of levels per oscillator 
+    std::vector<int> nessential; // Numver of essential levels per oscillator
+    int mpirank_petsc;
+
+    int dim_ess;   /* Dimension of target Gate matrix (non-vectorized), essential levels only */
+    int dim_rho;   /* Dimension of system matrix rho (non-vectorized), all levels */
 
   private:
-    Mat ReG, ImG;     /* Real and imaginary part of \bar V \kron V */
-
+    Mat ReG, ImG;     /* Real and imaginary part of \bar VP \kron VP */
     Vec x;             /* auxiliary vectors */
-  protected:
-    int dim_vec;      /* dimension of vectorized system dim_vec = dim_v^2 */
-
-    int mpirank_petsc;
 
   public:
     Gate();
-    Gate(int dim_V_);
+    Gate(std::vector<int> nlevels_, std::vector<int> nessential_);
     virtual ~Gate();
 
     /* Assemble ReG = Re(\bar V \kron V) and ImG = Im(\bar V \kron V) */
@@ -44,7 +47,7 @@ class Gate {
  */
 class XGate : public Gate {
   public:
-    XGate();
+    XGate(std::vector<int> nlevels_, std::vector<int> nessential_);
     ~XGate();
 };
 
@@ -54,7 +57,7 @@ class XGate : public Gate {
  */
 class YGate : public Gate {
   public:
-    YGate();
+    YGate(std::vector<int> nlevels_, std::vector<int> nessential_);
     ~YGate();
 };
 
@@ -64,7 +67,7 @@ class YGate : public Gate {
  */
 class ZGate : public Gate {
   public:
-    ZGate();
+    ZGate(std::vector<int> nlevels_, std::vector<int> nessential_);
     ~ZGate();
 };
 
@@ -74,7 +77,7 @@ class ZGate : public Gate {
  */
 class HadamardGate : public Gate {
   public:
-    HadamardGate();
+    HadamardGate(std::vector<int> nlevels_, std::vector<int> nessential_);
     ~HadamardGate();
 };
 
@@ -86,7 +89,7 @@ class HadamardGate : public Gate {
  */
 class CNOT : public Gate {
     public:
-    CNOT();
+    CNOT(std::vector<int> nlevels_, std::vector<int> nessential_);
     ~CNOT();
 };
 
