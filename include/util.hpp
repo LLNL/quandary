@@ -11,6 +11,7 @@ int getIndexImag(const int i); // Return storage index of Im(x[i]) (colocated: x
 
 int getVecID(const int i, const int j, const int dim); // Return index of vectorized element from matrix element (i,j) in square matrix of dimension dim. 
 
+int mapEssToFull(const int i, const std::vector<int> &nlevels, const std::vector<int> &nessential);
 
 /* Kronecker product : Id \kron A, where Id is the Identitymatrix 
  * Mat Out must be allocated with nonzerosA * dimI

@@ -58,6 +58,7 @@ Gate::Gate(std::vector<int> nlevels, std::vector<int> nessential){
   AkronB(P, P, 1.0, &PxP, INSERT_VALUES);
   MatAssemblyBegin(PxP, MAT_FINAL_ASSEMBLY);
   MatAssemblyEnd(PxP, MAT_FINAL_ASSEMBLY);
+  MatDestroy(&P);
 
   /* Allocate final and initial states, projected onto essential levels */
   MatCreateVecs(PxP, NULL, &ufinal_e);

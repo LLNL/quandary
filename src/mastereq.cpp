@@ -36,12 +36,14 @@ MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Osci
   MPI_Comm_size(PETSC_COMM_WORLD, &mpisize_petsc);
   MPI_Comm_rank(PETSC_COMM_WORLD, &mpirank_petsc);
 
-  /* Dimension of vectorized system: (n_1*...*n_q)^2 */
-  dim = 1;
+  /* Get dimensions */
+  dim_rho = 1;
+  dim_ess = 1;
   for (int iosc = 0; iosc < noscillators; iosc++) {
-    dim *= oscil_vec[iosc]->getNLevels();
+    dim_rho *= oscil_vec[iosc]->getNLevels();
+    dim_ess *= nessential[iosc];
   }
-  dim = dim*dim; // density matrix: N \times N -> vectorized: N^2
+  dim = dim_rho*dim_rho; // density matrix: N \times N -> vectorized: N^2
 
   /* Sanity check for parallel petsc */
   if (dim % mpisize_petsc != 0) {
@@ -804,16 +806,19 @@ int MasterEq::getRhoT0(const int iinit, const int ninit, const InitialConditionT
       /* Reset the initial conditions */
       VecZeroEntries(rho0); 
 
-      /* Get dimension of partial system behind last oscillator ID */
+      /* Get dimension of partial system behind last oscillator ID (essential levels only) */
       dim_post = 1;
       for (int k = oscilIDs[oscilIDs.size()-1] + 1; k < getNOscillators(); k++) {
-        dim_post *= getOscillator(k)->getNLevels();
+        // dim_post *= getOscillator(k)->getNLevels();
+        dim_post *= nessential[k];
       }
 
       /* Compute index of the nonzero element in rho_m(0) = E_pre \otimes |m><m| \otimes E_post */
       diagelem = iinit * dim_post;
       /* Position in vectorized q(0) */
       row = getIndexReal(getVecID(diagelem, diagelem, dim_rho));
+
+      // TODO: Map from essential to guard levels 
 
       /* Assemble */
       VecGetOwnershipRange(rho0, &ilow, &iupp);
@@ -833,10 +838,11 @@ int MasterEq::getRhoT0(const int iinit, const int ninit, const InitialConditionT
       /* Get distribution */
       VecGetOwnershipRange(rho0, &ilow, &iupp);
 
-      /* Get dimension of partial system behind last oscillator ID */
+      /* Get dimension of partial system behind last oscillator ID (essential levels only) */
       dim_post = 1;
       for (int k = oscilIDs[oscilIDs.size()-1] + 1; k < getNOscillators(); k++) {
-        dim_post *= getOscillator(k)->getNLevels();
+        // dim_post *= getOscillator(k)->getNLevels();
+        dim_post *= nessential[k];
       }
 
       /* Get index (k,j) of basis element B_{k,j} for this initial condition index iinit */
@@ -844,9 +850,20 @@ int MasterEq::getRhoT0(const int iinit, const int ninit, const InitialConditionT
       k = iinit % ( (int) sqrt(ninit) );
       j = (int) iinit / ( (int) sqrt(ninit) );   
 
+      /* Set initial condition ID */
+      initID = j * ( (int) sqrt(ninit)) + k;
+
+      /* Set position in rho */
+      k = k*dim_post;
+      j = j*dim_post;
+      if (dim_ess < dim_rho) { 
+        k = mapEssToFull(k, nlevels, nessential);
+        j = mapEssToFull(j, nlevels, nessential);
+      }
+
       if (k == j) {
         /* B_{kk} = E_{kk} -> set only one element at (k,k) */
-        int elemID = getIndexReal(getVecID(j*dim_post, k*dim_post, dim_rho)); // real part
+        int elemID = getIndexReal(getVecID(k, k, dim_rho)); // real part in vectorized system
         double val = 1.0;
         if (ilow <= elemID && elemID < iupp) VecSetValues(rho0, 1, &elemID, &val, INSERT_VALUES);
       } else {
@@ -855,10 +872,10 @@ int MasterEq::getRhoT0(const int iinit, const int ninit, const InitialConditionT
         double* vals = new double[4];
 
         /* Get storage index of Re(x) */
-        rows[0] = getIndexReal(getVecID(k * dim_post, k * dim_post, dim_rho)); // (k,k)
-        rows[1] = getIndexReal(getVecID(j * dim_post, j * dim_post, dim_rho)); // (j,j)
-        rows[2] = getIndexReal(getVecID(j * dim_post, k * dim_post, dim_rho)); // (k,j)
-        rows[3] = getIndexReal(getVecID(k * dim_post, j * dim_post, dim_rho)); // (j,k)
+        rows[0] = getIndexReal(getVecID(k, k, dim_rho)); // (k,k)
+        rows[1] = getIndexReal(getVecID(j, j, dim_rho)); // (j,j)
+        rows[2] = getIndexReal(getVecID(j, k, dim_rho)); // (j,k)
+        rows[3] = getIndexReal(getVecID(k, j, dim_rho)); // (k,j)
 
         if (k < j) { // B_{kj} = 1/2(E_kk + E_jj) + 1/2(E_kj + E_jk)
           vals[0] = 0.5;
@@ -876,8 +893,8 @@ int MasterEq::getRhoT0(const int iinit, const int ninit, const InitialConditionT
           }
           vals[2] = -0.5;
           vals[3] = 0.5;
-          rows[2] = getIndexImag(getVecID(j * dim_post, k * dim_post, dim_rho)); // Index of Im(x)
-          rows[3] = getIndexImag(getVecID(k * dim_post, j * dim_post, dim_rho)); // Index of Im(x)
+          rows[2] = getIndexImag(getVecID(j, k, dim_rho)); // Index of Im(x)
+          rows[3] = getIndexImag(getVecID(k, j, dim_rho)); // Index of Im(x)
           for (int i=2; i<4; i++) {
             if (ilow <= rows[i] && rows[i] < iupp) VecSetValues(rho0, 1, &(rows[i]), &(vals[i]), INSERT_VALUES);
           }
@@ -888,9 +905,6 @@ int MasterEq::getRhoT0(const int iinit, const int ninit, const InitialConditionT
       
       /* Assemble rho0 */
       VecAssemblyBegin(rho0); VecAssemblyEnd(rho0);
-
-      /* Set initial condition ID */
-      initID = j * ( (int) sqrt(ninit)) + k;
 
       break;
 

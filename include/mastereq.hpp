@@ -39,7 +39,9 @@ int myMatMultTranspose_sparsemat(Mat RHS, Vec x, Vec y);
 class MasterEq{
 
   protected:
-    int dim;                   // Dimension of vectorized system = N^2
+    int dim;                   // Dimension of full vectorized system = N^2
+    int dim_rho;               // Dimension of full system = N
+    int dim_ess;               // Dimension of system of essential levels = N_e
     int noscillators;          // Number of oscillators
     Oscillator** oscil_vec;    // Vector storing pointers to the oscillators
 

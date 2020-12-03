@@ -135,32 +135,11 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   std::vector<std::string> initcondstr;
   config.GetVecStrParam("initialcondition", initcondstr);
   for (int i=1; i<initcondstr.size(); i++) initcond_IDs.push_back(atoi(initcondstr[i].c_str()));
-  ninit = 1;
-  if (initcondstr[0].compare("file") == 0 )      initcond_type = FROMFILE;
-  else if (initcondstr[0].compare("pure") == 0 ) initcond_type = PURE;
-  else if (initcondstr[0].compare("3states") == 0 ) {
-    initcond_type = THREESTATES;
-    ninit = 3;
-  }
-  else if (initcondstr[0].compare("diagonal") == 0 ) {
-    initcond_type = DIAGONAL;
-    /* Compute ninit = dim(subsystem defined by initcond_IDs) */
-    ninit = 1;
-    for (int i = 1; i<initcondstr.size(); i++){
-      int oscilID = atoi(initcondstr[i].c_str());
-      ninit *= timestepper->mastereq->getOscillator(oscilID)->getNLevels();
-    }
-  }
-  else if (initcondstr[0].compare("basis")    == 0 ) {
-    initcond_type = BASIS;
-    /* Compute ninit = dim(subsystem defined by obj_oscilIDs)^2 */
-    ninit = 1;
-    for (int i = 1; i<initcondstr.size(); i++){
-      int oscilID = atoi(initcondstr[i].c_str());
-      ninit *= timestepper->mastereq->getOscillator(oscilID)->getNLevels();
-    }
-    ninit = (int) pow(ninit, 2);
-  }
+  if (initcondstr[0].compare("file") == 0 )          initcond_type = FROMFILE;
+  else if (initcondstr[0].compare("pure") == 0 )     initcond_type = PURE;
+  else if (initcondstr[0].compare("3states") == 0 )  initcond_type = THREESTATES;
+  else if (initcondstr[0].compare("diagonal") == 0 ) initcond_type = DIAGONAL;
+  else if (initcondstr[0].compare("basis")    == 0 ) initcond_type = BASIS;
   else {
     printf("\n\n ERROR: Wrong setting for initial condition.\n");
     exit(1);

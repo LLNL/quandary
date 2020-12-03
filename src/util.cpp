@@ -12,6 +12,13 @@ int getVecID(const int i, const int j, const int dim){
   return i*dim + j;
 } 
 
+
+int mapEssToFull(const int i, const std::vector<int> &nlevels, const std::vector<int> &nessential){
+  assert(nlevels.size() == 2); // TODO: Generalize this formula for more than two oscillators 
+
+  return ( (int) i/nessential[1] ) * nlevels[1] + i % nessential[1];
+}
+
 PetscErrorCode Ikron(const Mat A,const  int dimI, const double alpha, Mat *Out, InsertMode insert_mode){
 
     int ierr;
