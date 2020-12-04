@@ -8,8 +8,8 @@ int getIndexImag(const int i) {
   return 2*i + 1;
 }
 
-int getVecID(const int i, const int j, const int dim){
-  return i*dim + j;
+int getVecID(const int row, const int col, const int dim){
+  return row + col * dim;  
 } 
 
 

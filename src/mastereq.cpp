@@ -380,8 +380,8 @@ void MasterEq::createReducedDensity(const Vec rho, Vec *reduced, const std::vect
         for (int m=0; m<dim_post; m++) {
           int rho_row = blockstartID + i * dim_post + m;
           int rho_col = blockstartID + j * dim_post + m;
-          int rho_vecID_re = getIndexReal(getVecID(rho_col, rho_row, dimmat));
-          int rho_vecID_im = getIndexImag(getVecID(rho_col, rho_row, dimmat));
+          int rho_vecID_re = getIndexReal(getVecID(rho_row, rho_col, dimmat));
+          int rho_vecID_im = getIndexImag(getVecID(rho_row, rho_col, dimmat));
           /* Get real and imaginary part from full density matrix */
           double re = 0.0;
           double im = 0.0;
@@ -395,8 +395,8 @@ void MasterEq::createReducedDensity(const Vec rho, Vec *reduced, const std::vect
         }
       }
       /* Set real and imaginary part of element (i,j) of the reduced density matrix */
-      int out_vecID_re = getIndexReal(getVecID(j, i, dim_reduced));
-      int out_vecID_im = getIndexImag(getVecID(j, i, dim_reduced));
+      int out_vecID_re = getIndexReal(getVecID(i, j, dim_reduced));
+      int out_vecID_im = getIndexImag(getVecID(i, j, dim_reduced));
       VecSetValues( red, 1, &out_vecID_re, &sum_re, INSERT_VALUES);
       VecSetValues( red, 1, &out_vecID_im, &sum_im, INSERT_VALUES);
     }
@@ -452,8 +452,8 @@ void MasterEq::createReducedDensity_diff(Vec rhobar, const Vec reducedbar,const 
   for (int i=0; i<dim_reduced; i++) {
     for (int j=0; j<dim_reduced; j++) {
       /* Get value from reducedbar */
-      int vecID_re = getIndexReal(getVecID(j, i, dim_reduced));
-      int vecID_im = getIndexImag(getVecID(j, i, dim_reduced));
+      int vecID_re = getIndexReal(getVecID(i, j, dim_reduced));
+      int vecID_im = getIndexImag(getVecID(i, j, dim_reduced));
       double re = 0.0;
       double im = 0.0;
       VecGetValues( reducedbar, 1, &vecID_re, &re);
@@ -467,8 +467,8 @@ void MasterEq::createReducedDensity_diff(Vec rhobar, const Vec reducedbar,const 
           /* Set values into rhobar */
           int rho_row = blockstartID + i * dim_post + m;
           int rho_col = blockstartID + j * dim_post + m;
-          int rho_vecID_re = getIndexReal(getVecID(rho_col, rho_row, dimmat));
-          int rho_vecID_im = getIndexImag(getVecID(rho_col, rho_row, dimmat));
+          int rho_vecID_re = getIndexReal(getVecID(rho_row, rho_col, dimmat));
+          int rho_vecID_im = getIndexImag(getVecID(rho_row, rho_col, dimmat));
 
           /* Set derivative */
           if (ilow <= rho_vecID_re && rho_vecID_re < iupp) {
@@ -872,10 +872,10 @@ int MasterEq::getRhoT0(const int iinit, const int ninit, const InitialConditionT
         double* vals = new double[4];
 
         /* Get storage index of Re(x) */
-        rows[0] = getIndexReal(getVecID(k, k, dim_rho)); // (k,k)
-        rows[1] = getIndexReal(getVecID(j, j, dim_rho)); // (j,j)
-        rows[2] = getIndexReal(getVecID(j, k, dim_rho)); // (j,k)
-        rows[3] = getIndexReal(getVecID(k, j, dim_rho)); // (k,j)
+        rows[0] = getIndexReal(getVecID(k * dim_post, k * dim_post, dim_rho)); // (k,k)
+        rows[1] = getIndexReal(getVecID(j * dim_post, j * dim_post, dim_rho)); // (j,j)
+        rows[2] = getIndexReal(getVecID(k * dim_post, j * dim_post, dim_rho)); // (k,j)
+        rows[3] = getIndexReal(getVecID(j * dim_post, k * dim_post, dim_rho)); // (j,k)
 
         if (k < j) { // B_{kj} = 1/2(E_kk + E_jj) + 1/2(E_kj + E_jk)
           vals[0] = 0.5;
@@ -893,8 +893,8 @@ int MasterEq::getRhoT0(const int iinit, const int ninit, const InitialConditionT
           }
           vals[2] = -0.5;
           vals[3] = 0.5;
-          rows[2] = getIndexImag(getVecID(j, k, dim_rho)); // Index of Im(x)
-          rows[3] = getIndexImag(getVecID(k, j, dim_rho)); // Index of Im(x)
+          rows[2] = getIndexImag(getVecID(k, j, dim_rho)); // (k,j)
+          rows[3] = getIndexImag(getVecID(j, k, dim_rho)); // (j,k)
           for (int i=2; i<4; i++) {
             if (ilow <= rows[i] && rows[i] < iupp) VecSetValues(rho0, 1, &(rows[i]), &(vals[i]), INSERT_VALUES);
           }
