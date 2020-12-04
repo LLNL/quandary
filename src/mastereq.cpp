@@ -822,8 +822,8 @@ int MasterEq::getRhoT0(const int iinit, const int ninit, const InitialConditionT
           }
           vals[2] = -0.5;
           vals[3] = 0.5;
-          rows[2] = getIndexImag(getVecID(k * dim_post, j * dim_post, dim_rho)); // Index of Im(x)
-          rows[3] = getIndexImag(getVecID(j * dim_post, k * dim_post, dim_rho)); // Index of Im(x)
+          rows[2] = getIndexImag(getVecID(k * dim_post, j * dim_post, dim_rho)); // (k,j)
+          rows[3] = getIndexImag(getVecID(j * dim_post, k * dim_post, dim_rho)); // (j,k)
           for (int i=2; i<4; i++) {
             if (ilow <= rows[i] && rows[i] < iupp) VecSetValues(rho0, 1, &(rows[i]), &(vals[i]), INSERT_VALUES);
           }
