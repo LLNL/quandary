@@ -186,36 +186,33 @@ void Output::writeDataFiles(int timestep, double time, const Vec state, MasterEq
       }
     }
 
-  }
+    /* Write full state to file */
+    if (writefullstate) {
 
+      /* Gather the vector from all petsc processors onto the first one */
+      // VecScatterCreateToZero(x, &scat, &xseq);
+      // VecScatterBegin(scat, u->x, xseq, INSERT_VALUES, SCATTER_FORWARD);
+      // VecScatterEnd(scat, u->x, xseq, INSERT_VALUES, SCATTER_FORWARD);
 
+      /* Write full state vector to file */
+      if (ufile != NULL && vfile != NULL) {
+        fprintf(ufile,  "%.8f  ", time);
+        fprintf(vfile,  "%.8f  ", time);
 
-  /* Write full state to file */
-  if (writefullstate) {
-
-    /* Gather the vector from all petsc processors onto the first one */
-    // VecScatterCreateToZero(x, &scat, &xseq);
-    // VecScatterBegin(scat, u->x, xseq, INSERT_VALUES, SCATTER_FORWARD);
-    // VecScatterEnd(scat, u->x, xseq, INSERT_VALUES, SCATTER_FORWARD);
-
-    /* Write full state vector to file */
-    if (ufile != NULL && vfile != NULL) {
-      fprintf(ufile,  "%.8f  ", time);
-      fprintf(vfile,  "%.8f  ", time);
-
-      const PetscScalar *x;
-      VecGetArrayRead(state, &x);
-      for (int i=0; i<mastereq->getDim(); i++) {
-        fprintf(ufile, "%1.10e  ", x[getIndexReal(i)]);  
-        fprintf(vfile, "%1.10e  ", x[getIndexImag(i)]);  
+        const PetscScalar *x;
+        VecGetArrayRead(state, &x);
+        for (int i=0; i<mastereq->getDim(); i++) {
+          fprintf(ufile, "%1.10e  ", x[getIndexReal(i)]);  
+          fprintf(vfile, "%1.10e  ", x[getIndexImag(i)]);  
+        }
+        fprintf(ufile, "\n");
+        fprintf(vfile, "\n");
+        VecRestoreArrayRead(state, &x);
       }
-      fprintf(ufile, "\n");
-      fprintf(vfile, "\n");
-      VecRestoreArrayRead(state, &x);
+        /* Destroy scatter context and vector */
+        // VecScatterDestroy(&scat);
+        // VecDestroy(&xseq); // TODO create and destroy scatter and xseq in contructor/destructor
     }
-      /* Destroy scatter context and vector */
-      // VecScatterDestroy(&scat);
-      // VecDestroy(&xseq); // TODO create and destroy scatter and xseq in contructor/destructor
   }
 }
 
