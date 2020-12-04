@@ -87,8 +87,14 @@ class MasterEq{
     /* Return number of oscillators */
     int getNOscillators();
 
-    /* Return dimension of vectorized system */
+    /* Return dimension of vectorized system N^2 */
     int getDim();
+
+    /* Return dimension of essential level system: N_e */
+    int getDimEss();
+    
+    /* Return dimension of system matrix rho: N */
+    int getDimRho();
 
     /* 
      * Uses Re and Im to build the vectorized Hamiltonian operator M = vec(-i(Hq-qH)+Lindblad). 

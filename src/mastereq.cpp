@@ -314,6 +314,10 @@ void MasterEq::initSparseMatSolver(LindbladType lindbladtype){
 
 int MasterEq::getDim(){ return dim; }
 
+int MasterEq::getDimEss(){ return dim_ess; }
+
+int MasterEq::getDimRho(){ return dim_rho; }
+
 int MasterEq::getNOscillators() { return noscillators; }
 
 Oscillator* MasterEq::getOscillator(const int i) { return oscil_vec[i]; }

@@ -179,19 +179,30 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   else if (initcond_type == FROMFILE) { 
     /* Read initial condition from file */
     
-    int dim = timestepper->mastereq->getDim();
-    double * vec = new double[2*dim];
+    // int dim = timestepper->mastereq->getDim();
+    int dim_ess = timestepper->mastereq->getDimEss();
+    int dim_rho = timestepper->mastereq->getDimRho();
+    double * vec = new double[2*dim_ess*dim_ess];
     std::vector<std::string> initcondstr;
     config.GetVecStrParam("initialcondition", initcondstr);
     if (mpirank_world == 0) {
       assert (initcondstr.size()==2);
       std::string filename = initcondstr[1];
-      read_vector(filename.c_str(), vec, 2*dim);
+      read_vector(filename.c_str(), vec, 2*dim_ess*dim_ess);
     }
-    MPI_Bcast(vec, 2*dim, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-    for (int i = 0; i < dim; i++) {
-      VecSetValue(rho_t0, getIndexReal(i), vec[i], INSERT_VALUES);        // RealPart
-      VecSetValue(rho_t0, getIndexImag(i), vec[i + dim ], INSERT_VALUES); // Imaginary Part
+    MPI_Bcast(vec, 2*dim_ess*dim_ess, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    for (int i = 0; i < dim_ess*dim_ess; i++) {
+      int k = i % dim_ess;
+      int j = (int) i / dim_ess;
+      // printf("k=%d, j=%d (orig)  ", k,j);
+      if (dim_ess*dim_ess < timestepper->mastereq->getDim()) {
+        k = mapEssToFull(k, timestepper->mastereq->nlevels, timestepper->mastereq->nessential);
+        j = mapEssToFull(j, timestepper->mastereq->nlevels, timestepper->mastereq->nessential);
+      }
+      int elemid = getVecID(k, j, dim_rho);
+      VecSetValue(rho_t0, getIndexReal(elemid), vec[i], INSERT_VALUES);        // RealPart
+      VecSetValue(rho_t0, getIndexImag(elemid), vec[i + dim_ess*dim_ess], INSERT_VALUES); // Imaginary Part
+      // printf("  -> k=%d j=%d, elemid=%d vals=%1.4e, %1.4e\n", k, j, elemid, vec[i], vec[i+dim_ess*dim_ess]);
     }
     delete [] vec;
   }
