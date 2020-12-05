@@ -1446,7 +1446,7 @@ int myMatMultTranspose_matfree_2Osc(Mat RHS, Vec x, Vec y){
   } else if(n0==2 && n1==2){
     return myMatMultTranspose_matfree<2,2>(RHS, x, y);
   } else if(n0==3 && n1==3){
-    return myMatMult_matfree<3,3>(RHS, x, y);
+    return myMatMultTranspose_matfree<3,3>(RHS, x, y);
   } else if(n0==20 && n1==20){
     return myMatMultTranspose_matfree<20,20>(RHS, x, y);
   } else {
