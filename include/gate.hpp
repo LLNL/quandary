@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <iostream> 
 #include <math.h>
 #include <assert.h>
 #include <petscmat.h>
@@ -10,8 +11,10 @@
 class Gate {
   protected:
     Mat Va, Vb;        /* Input: Real and imaginary part of V_target, non-vectorized */
-    Mat PxP;           /* Vectorized projection matrix P\kron P to map between essential levels and full system */
+    // Mat PxP;           /* Vectorized projection matrix P\kron P to map between essential levels and full system */
 
+    std::vector<int> nessential;
+    std::vector<int> nlevels;
     int mpirank_petsc;
 
     int dim_ess;   /* Dimension of target Gate matrix (non-vectorized), essential levels only */
@@ -19,9 +22,10 @@ class Gate {
 
   private:
     Mat ReG, ImG;           /* Real and imaginary part of \bar V \kron V */
-    Vec ufinal_e, vfinal_e; /* auxiliary, holding final state projected onto essential levels */
-    Vec u0_e, v0_e;         /* auxiliary, holding final state projected onto essential levels */
-    Vec x_full, x_e;        /* auxiliary vecs */
+    // Vec ufinal_e, vfinal_e; /* auxiliary, holding final state projected onto essential levels */
+    // Vec u0_e, v0_e;         /* auxiliary, holding final state projected onto essential levels */
+    Vec x_full;          /* auxiliary vecs */
+    // Vec x_e;        /* auxiliary vecs */
 
   public:
     Gate();
