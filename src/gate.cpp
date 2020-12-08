@@ -277,10 +277,10 @@ void Gate::compare_trace(const Vec finalstate, const Vec rho0, double& obj){
   VecGetSubVector(rho0, isv, &v0_full);
 
   /* Project final and initial states onto essential levels */
-  // MatMult(PxP, ufinal_full, ufinal_e);
-  // MatMult(PxP, vfinal_full, vfinal_e);
-  // MatMult(PxP, u0_full, u0_e);
-  // MatMult(PxP, v0_full, v0_e);
+  MatMult(PxP, ufinal_full, ufinal_e);
+  MatMult(PxP, vfinal_full, vfinal_e);
+  MatMult(PxP, u0_full, u0_e);
+  MatMult(PxP, v0_full, v0_e);
 
 
   /* trace overlap: (ReG*u0 - ImG*v0)^T u + (ReG*v0 + ImG*u0)^Tv
@@ -290,16 +290,16 @@ void Gate::compare_trace(const Vec finalstate, const Vec rho0, double& obj){
   double trace = 0.0;
 
   // first term: (ReG*u0 - ImG*v0)^T u
-  MatMult(ImG, v0_full, x_full);      
-  VecScale(x_full, -1.0);                // x = - ImG*v0
-  MatMultAdd(ReG, u0_full, x_full, x_full);  // x = ReG*u0 - ImG*v0
-  VecTDot(x_full, ufinal_full, &dot);       // dot = (ReG*u0 - ImG*v0)^T u    
+  MatMult(ImG, v0_e, x_e);      
+  VecScale(x_e, -1.0);                // x = - ImG*v0
+  MatMultAdd(ReG, u0_e, x_e, x_e);  // x = ReG*u0 - ImG*v0
+  VecTDot(x_e, ufinal_e, &dot);       // dot = (ReG*u0 - ImG*v0)^T u    
   trace += dot;
   
   // second term: (ReG*v0 + ImG*u0)^Tv
-  MatMult(ImG, u0_full, x_full);         // x = ImG*u0
-  MatMultAdd(ReG, v0_full, x_full, x_full); // x = ReG*v0 + ImG*u0
-  VecTDot(x_full, vfinal_full, &dot);      // dot = (ReG*v0 + ImG*u0)^T v    
+  MatMult(ImG, u0_e, x_e);         // x = ImG*u0
+  MatMultAdd(ReG, v0_e, x_e, x_e); // x = ReG*v0 + ImG*u0
+  VecTDot(x_e, vfinal_e, &dot);      // dot = (ReG*v0 + ImG*u0)^T v    
   trace += dot;
 
   /* Objective J = 1.0 - Trace(...) */
@@ -373,35 +373,35 @@ void Gate::compare_trace_diff(const Vec finalstate, const Vec rho0, Vec rho0_bar
   VecGetSubVector(rho0, isv, &v0_full);
 
   /* Project final and initial states onto essential levels */
-  // MatMult(PxP, ufinal_full, ufinal_e);
-  // MatMult(PxP, vfinal_full, vfinal_e);
-  // MatMult(PxP, u0_full, u0_e);
-  // MatMult(PxP, v0_full, v0_e);
+  MatMult(PxP, ufinal_full, ufinal_e);
+  MatMult(PxP, vfinal_full, vfinal_e);
+  MatMult(PxP, u0_full, u0_e);
+  MatMult(PxP, v0_full, v0_e);
 
   /* Derivative of 1-trace */
   double dfb = -1.0 * obj_bar;
 
   // Derivative of first term: -(ReG*u0 - ImG*v0)*obj_bar
-  MatMult(ImG, v0_full, x_full);      
-  VecScale(x_full, -1.0);              // x = - ImG*v0
-  MatMultAdd(ReG, u0_full, x_full, x_full);  // x = ReG*u0 - ImG*v0
-  VecScale(x_full, dfb);                 // x = -(ReG*u0 - ImG*v0)*obj_bar
+  MatMult(ImG, v0_e, x_e);      
+  VecScale(x_e, -1.0);              // x = - ImG*v0
+  MatMultAdd(ReG, u0_e, x_e, x_e);  // x = ReG*u0 - ImG*v0
+  VecScale(x_e, dfb);                 // x = -(ReG*u0 - ImG*v0)*obj_bar
 
   /* Derivative of purity */
   // VecAXPY(x, obj_bar, ufinal);
 
-  // MatMultTranspose(PxP, x_e, x_full);
+  MatMultTranspose(PxP, x_e, x_full);
   VecISCopy(rho0_bar, isu, SCATTER_FORWARD, x_full);  // set real part in rho0bar
   
   // Derivative of second term: -(ReG*v0 + ImG*u0)*obj_bar
-  MatMult(ImG, u0_full, x_full);         // x = ImG*u0
-  MatMultAdd(ReG, v0_full, x_full, x_full); // x = ReG*v0 + ImG*u0
-  VecScale(x_full , dfb);               // x = -(ReG*v0 + ImG*u0)*obj_bar
+  MatMult(ImG, u0_e, x_e);         // x = ImG*u0
+  MatMultAdd(ReG, v0_e, x_e, x_e); // x = ReG*v0 + ImG*u0
+  VecScale(x_e, dfb);               // x = -(ReG*v0 + ImG*u0)*obj_bar
 
   /* Derivative of purity */
   // VecAXPY(x, obj_bar, vfinal);
 
-  // MatMultTranspose(PxP, x_e, x_full);
+  MatMultTranspose(PxP, x_e, x_full);
   VecISCopy(rho0_bar, isv, SCATTER_FORWARD, x_full);  // set imaginary part in rho0bar
 
 
