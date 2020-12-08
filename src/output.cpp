@@ -79,6 +79,26 @@ void Output::writeOptimFile(double objective, double gnorm, double stepsize, dou
 
 }
 
+void Output::writeGradient(Vec grad){
+  char filename[255];  
+  int ngrad;
+  VecGetSize(grad, &ngrad);
+
+  /* Print current gradients to file */
+  FILE *file;
+  // sprintf(filename, "%s/grad_iter%04d.dat", datadir.c_str(), optim_iter);
+  sprintf(filename, "%s/grad.dat", datadir.c_str());
+  file = fopen(filename, "w");
+
+  const PetscScalar* grad_ptr;
+  VecGetArrayRead(grad, &grad_ptr);
+  for (int i=0; i<ngrad; i++){
+    fprintf(file, "%1.14e\n", grad_ptr[i]);
+  }
+  fclose(file);
+  VecRestoreArrayRead(grad, &grad_ptr);
+  printf("File written: %s\n", filename);
+}
 
 void Output::writeControls(Vec params, MasterEq* mastereq, int ntime, double dt){
 
@@ -186,36 +206,33 @@ void Output::writeDataFiles(int timestep, double time, const Vec state, MasterEq
       }
     }
 
-  }
+    /* Write full state to file */
+    if (writefullstate) {
 
+      /* Gather the vector from all petsc processors onto the first one */
+      // VecScatterCreateToZero(x, &scat, &xseq);
+      // VecScatterBegin(scat, u->x, xseq, INSERT_VALUES, SCATTER_FORWARD);
+      // VecScatterEnd(scat, u->x, xseq, INSERT_VALUES, SCATTER_FORWARD);
 
+      /* Write full state vector to file */
+      if (ufile != NULL && vfile != NULL) {
+        fprintf(ufile,  "%.8f  ", time);
+        fprintf(vfile,  "%.8f  ", time);
 
-  /* Write full state to file */
-  if (writefullstate) {
-
-    /* Gather the vector from all petsc processors onto the first one */
-    // VecScatterCreateToZero(x, &scat, &xseq);
-    // VecScatterBegin(scat, u->x, xseq, INSERT_VALUES, SCATTER_FORWARD);
-    // VecScatterEnd(scat, u->x, xseq, INSERT_VALUES, SCATTER_FORWARD);
-
-    /* Write full state vector to file */
-    if (ufile != NULL && vfile != NULL) {
-      fprintf(ufile,  "%.8f  ", time);
-      fprintf(vfile,  "%.8f  ", time);
-
-      const PetscScalar *x;
-      VecGetArrayRead(state, &x);
-      for (int i=0; i<mastereq->getDim(); i++) {
-        fprintf(ufile, "%1.10e  ", x[getIndexReal(i)]);  
-        fprintf(vfile, "%1.10e  ", x[getIndexImag(i)]);  
+        const PetscScalar *x;
+        VecGetArrayRead(state, &x);
+        for (int i=0; i<mastereq->getDim(); i++) {
+          fprintf(ufile, "%1.10e  ", x[getIndexReal(i)]);  
+          fprintf(vfile, "%1.10e  ", x[getIndexImag(i)]);  
+        }
+        fprintf(ufile, "\n");
+        fprintf(vfile, "\n");
+        VecRestoreArrayRead(state, &x);
       }
-      fprintf(ufile, "\n");
-      fprintf(vfile, "\n");
-      VecRestoreArrayRead(state, &x);
+        /* Destroy scatter context and vector */
+        // VecScatterDestroy(&scat);
+        // VecDestroy(&xseq); // TODO create and destroy scatter and xseq in contructor/destructor
     }
-      /* Destroy scatter context and vector */
-      // VecScatterDestroy(&scat);
-      // VecDestroy(&xseq); // TODO create and destroy scatter and xseq in contructor/destructor
   }
 }
 

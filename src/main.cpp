@@ -353,6 +353,7 @@ int main(int argc,char **argv)
       printf("\nGradient norm: %1.14e\n", gnorm);
     }
     optimctx->output->writeOptimFile(optimctx->objective, optimctx->gnorm, 0.0, optimctx->obj_cost, optimctx->obj_regul, optimctx->obj_penal);
+    optimctx->output->writeGradient(grad);
   }
 
   /* --- Solve the optimization  --- */
