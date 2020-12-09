@@ -43,7 +43,7 @@ class Output{
     /* Write current controls and parameters every <optim_monitor_freq> iterations */
     void writeControls(Vec params, MasterEq* mastereq, int ntime, double dt);
 
-    /* Write gradient for adjoing mode */
+    /* Write gradient for adjoint mode */
     void writeGradient(Vec grad);
 
     /* Open, write and close files for fullstate and expected energy levels over time */
