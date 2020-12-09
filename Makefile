@@ -1,8 +1,7 @@
 # Set location of PETSC
 #PETSC_DIR=/usr/workspace/wsa/wave/petsc-3.13
 #PETSC_ARCH=arch-linux-c-debug
-PETSC_DIR=/Users/choi15/Softwares/petsc
-PETSC_ARCH=arch-darwin-c-debug/
+PETSC_DIR=/usr/tce/packages/petsc/petsc-3.12.4-mvapich2-2.3-gcc-4.8-redhat
 
 # Set Braid location, or comment out
 #BRAID_DIR = ${HOME}/Numerics/xbraid_solveadjointwithxbraid
@@ -43,11 +42,11 @@ SRC_FILES += $(wildcard $(SRC_DIR)/*/*.cpp)
 OBJ_FILES  = $(patsubst $(SRC_DIR)/%.cpp,$(BUILD_DIR)/%.o,$(SRC_FILES))
 
 # set include directory
-INC = -I$(INC_DIR) -I${PETSC_DIR}/include -I${PETSC_DIR}/${PETSC_ARCH}/include ${INC_OPT}
+INC = -I$(INC_DIR) -I${PETSC_DIR}/include -I${PETSC_DIR}/include ${INC_OPT}
 
 # Set Library paths and flags
-LDPATH  = ${PETSC_DIR}/${PETSC_ARCH}/lib
-LDFLAGS = -lpetsc -lm  -L${PETSC_DIR}/${PETSC_ARCH}/lib -lblas -llapack ${LDFLAGS_OPT}
+LDPATH  = ${PETSC_DIR}/lib
+LDFLAGS = -lpetsc -lm  -L${PETSC_DIR}/lib -lblas -llapack ${LDFLAGS_OPT}
 
 # Set compiler and flags 
 CXX=mpicxx
