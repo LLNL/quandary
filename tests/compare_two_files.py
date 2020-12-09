@@ -27,12 +27,12 @@ def compare_two_files(basefile, currentfile):
     #compute relative difference for the first column
     for j in range(ncol):
         for i in range(nrow):
-            if base_values[i][j] != 0:
+            if abs(base_values[i][j]) > 10e-15:
                 error = abs(base_values[i][j] - current_values[i][j])/abs(base_values[i][j])
             else:
                 error = abs(base_values[i][j] - current_values[i][j])
        
-            if error > 0.0:
+            if error > 1.0e-3:
                 return sys.exit(1)
     return sys.exit(0)
 

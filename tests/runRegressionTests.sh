@@ -104,6 +104,9 @@ done
 # Create results directory
 RESULTS_DIR=$DIR/results
 
+# erase log files in results directory
+rm -rf ${RESULTS_DIR}/*.log
+
 ###############################################################################
 # RUN TESTS
 ###############################################################################
