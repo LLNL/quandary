@@ -4,10 +4,11 @@
 enum LindbladType {NONE, DECAY, DEPHASE, BOTH};
 
 /* Available types of initial conditions */
-enum InitialConditionType {FROMFILE, PURE, DIAGONAL, BASIS};
+enum InitialConditionType {FROMFILE, PURE, DIAGONAL, BASIS, THREESTATES};
 
 /* Typye of objective functions */
-enum ObjectiveType {GATE,             // Compare final state to linear gate transformation of initial cond.
+enum ObjectiveType {GATE_FROBENIUS,    // Compare final state to linear gate transformation of initial cond. Frobenius norm: 1/2 || Vrho(0)V - rho(T)||^2
+                    GATE_TRACE,        // Trace overlap: Tr(Vrho(0)V^d rho(T))
                     EXPECTEDENERGY,   // Expected energy levels of full system
                     EXPECTEDENERGYa,   // Square average of expected energy levels of each oscillator
                     EXPECTEDENERGYb,   // Average of square expected energy levels of each oscillator

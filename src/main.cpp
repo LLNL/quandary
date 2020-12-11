@@ -10,9 +10,15 @@
 #include <sys/resource.h>
 #include "optimproblem.hpp"
 #include "output.hpp"
+#ifdef WITH_SLEPC
+#include <slepceps.h>
+#endif
 
-#define TEST_FD 0    // Finite Differences gradient test
-#define EPS 1e-4     // Epsilon for Finite Differences
+
+#define TEST_FD_GRAD 0    // Run Finite Differences gradient test
+#define TEST_FD_HESS 0    // Run Finite Differences Hessian test
+#define HESSIAN_DECOMPOSITION 0 // Run eigenvalue analysis for Hessian
+#define EPS 1e-8          // Epsilon for Finite Differences
 
 int main(int argc,char **argv)
 {
@@ -62,6 +68,7 @@ int main(int argc,char **argv)
   assert (initcondstr.size() >= 1);
   if      (initcondstr[0].compare("file") == 0 ) ninit = 1;
   else if (initcondstr[0].compare("pure") == 0 ) ninit = 1;
+  else if (initcondstr[0].compare("3states") == 0 ) ninit = 3;
   else if ( initcondstr[0].compare("diagonal") == 0 ||
             initcondstr[0].compare("basis")    == 0  ) {
     /* Compute ninit = dim(subsystem defined by list of oscil IDs) */
@@ -144,8 +151,13 @@ int main(int argc,char **argv)
 
   /* Initialize Petsc using petsc's communicator */
   PETSC_COMM_WORLD = comm_petsc;
+#ifdef WITH_SLEPC
+  ierr = SlepcInitialize(&argc, &argv, (char*)0, NULL);if (ierr) return ierr;
+#else
   ierr = PetscInitialize(&argc,&argv,(char*)0,NULL);if (ierr) return ierr;
+#endif
   PetscViewerPushFormat(PETSC_VIEWER_STDOUT_WORLD, 	PETSC_VIEWER_ASCII_MATLAB );
+
 
 
   double total_time = ntime * dt;
@@ -269,7 +281,10 @@ int main(int argc,char **argv)
   /* My time stepper */
   bool storeFWD = false;
   if (runtype == adjoint || runtype == optimization) storeFWD = true;
-#if TEST_FD
+#if TEST_FD_GRAD
+  storeFWD = true;
+#endif
+#if TEST_FD_HESS
   storeFWD = true;
 #endif
   TimeStepper *mytimestepper = new ImplMidpoint(mastereq, ntime, total_time, linsolvetype, linsolve_maxiter, output, storeFWD);
@@ -365,6 +380,13 @@ int main(int argc,char **argv)
     optimctx->getSolution(&opt);
   }
 
+  /* Average fidelity */
+  double F_avg = 1. - optimctx->obj_cost;
+  printf("F_avg = %f \n", F_avg);
+  if (optimctx->initcond_type != BASIS ||
+      optimctx->objective_type != GATE_TRACE) {
+    printf("Warning: Average gate fidelity only defined for gates using trace distance, and using a basis of initial conditions.\n Recomupte the average fidelity if needed, using all basis elements as initial conditions, and setting GATE_TRACE as objective function.\n");
+  }
 
   /* --- Finalize --- */
 
@@ -396,10 +418,10 @@ int main(int argc,char **argv)
   }
 
 
-#if TEST_FD
+#if TEST_FD_GRAD
   if (mpirank_world == 0)  {
     printf("\n\n#########################\n");
-    printf(" FD Testing... \n");
+    printf(" FD Testing for Gradient ... \n");
     printf("#########################\n\n");
   }
 
@@ -447,6 +469,182 @@ int main(int argc,char **argv)
 #endif
 
 
+#if TEST_FD_HESS
+  if (mpirank_world == 0)  {
+    printf("\n\n#########################\n");
+    printf(" FD Testing for Hessian... \n");
+    printf("#########################\n\n");
+  }
+  optimctx->getStartingPoint(xinit);
+
+  /* Figure out which parameters are hitting bounds */
+  double bound_tol = 1e-3;
+  std::vector<int> Ihess; // Index set for all elements that do NOT hit a bound
+  for (int i=0; i<optimctx->ndesign; i++){
+    // get x_i and bounds for x_i
+    double xi, blower, bupper;
+    VecGetValues(xinit, 1, &i, &xi);
+    VecGetValues(optimctx->xlower, 1, &i, &blower);
+    VecGetValues(optimctx->xupper, 1, &i, &bupper);
+    // compare 
+    if (fabs(xi - blower) < bound_tol || 
+        fabs(xi - bupper) < bound_tol  ) {
+          printf("Parameter %d hits bound: x=%f\n", i, xi);
+    } else {
+      Ihess.push_back(i);
+    }
+  }
+
+  double grad_org;
+  double grad_pert1, grad_pert2;
+  Mat Hess;
+  int nhess = Ihess.size();
+  MatCreateSeqDense(PETSC_COMM_SELF, nhess, nhess, NULL, &Hess);
+  MatSetUp(Hess);
+
+  Vec grad1, grad2;
+  VecDuplicate(grad, &grad1);
+  VecDuplicate(grad, &grad2);
+
+
+  /* Iterate over all params that do not hit a bound */
+  for (int k=0; k< Ihess.size(); k++){
+    int j = Ihess[k];
+    printf("Computing column %d\n", j);
+
+    /* Evaluate \nabla_x J(x + eps * e_j) */
+    VecSetValue(xinit, j, EPS, ADD_VALUES); 
+    optimctx->evalGradF(xinit, grad);        
+    VecCopy(grad, grad1);
+
+    /* Evaluate \nabla_x J(x - eps * e_j) */
+    VecSetValue(xinit, j, -2.*EPS, ADD_VALUES); 
+    optimctx->evalGradF(xinit, grad);
+    VecCopy(grad, grad2);
+
+    for (int l=0; l<Ihess.size(); l++){
+      int i = Ihess[l];
+
+      /* Get the derivative wrt parameter i */
+      VecGetValues(grad1, 1, &i, &grad_pert1);   // \nabla_x_i J(x+eps*e_j)
+      VecGetValues(grad2, 1, &i, &grad_pert2);    // \nabla_x_i J(x-eps*e_j)
+
+      /* Finite difference for element Hess(l,k) */
+      double fd = (grad_pert1 - grad_pert2) / (2.*EPS);
+      MatSetValue(Hess, l, k, fd, INSERT_VALUES);
+    }
+
+    /* Restore parameters xinit */
+    VecSetValue(xinit, j, EPS, ADD_VALUES);
+  }
+  /* Assemble the Hessian */
+  MatAssemblyBegin(Hess, MAT_FINAL_ASSEMBLY);
+  MatAssemblyEnd(Hess, MAT_FINAL_ASSEMBLY);
+  
+  /* Clean up */
+  VecDestroy(&grad1);
+  VecDestroy(&grad2);
+
+
+  /* Epsilon test: compute ||1/2(H-H^T)||_F  */
+  MatScale(Hess, 0.5);
+  Mat HessT, Htest;
+  MatDuplicate(Hess, MAT_COPY_VALUES, &Htest);
+  MatTranspose(Hess, MAT_INITIAL_MATRIX, &HessT);
+  MatAXPY(Htest, -1.0, HessT, SAME_NONZERO_PATTERN);
+  double fnorm;
+  MatNorm(Htest, NORM_FROBENIUS, &fnorm);
+  printf("EPS-test: ||1/2(H-H^T)||= %1.14e\n", fnorm);
+
+  /* symmetrize H_symm = 1/2(H+H^T) */
+  MatAXPY(Hess, 1.0, HessT, SAME_NONZERO_PATTERN);
+
+  /* --- Print Hessian to file */
+  
+  sprintf(filename, "%s/hessian.dat", output->datadir.c_str());
+  printf("File written: %s.\n", filename);
+  PetscViewer viewer;
+  PetscViewerCreate(MPI_COMM_WORLD, &viewer);
+  PetscViewerSetType(viewer, PETSCVIEWERASCII);
+  PetscViewerFileSetMode(viewer, FILE_MODE_WRITE);
+  PetscViewerFileSetName(viewer, filename);
+  // PetscViewerPushFormat(viewer, PETSC_VIEWER_ASCII_DENSE);
+  MatView(Hess, viewer);
+  PetscViewerPopFormat(viewer);
+  PetscViewerDestroy(&viewer);
+
+  // write again in binary
+  sprintf(filename, "%s/hessian_bin.dat", output->datadir.c_str());
+  printf("File written: %s.\n", filename);
+  PetscViewerBinaryOpen(MPI_COMM_WORLD, filename, FILE_MODE_WRITE, &viewer);
+  MatView(Hess, viewer);
+  PetscViewerDestroy(&viewer);
+
+  MatDestroy(&Hess);
+
+#endif
+
+#if HESSIAN_DECOMPOSITION 
+  /* --- Compute eigenvalues of Hessian --- */
+  printf("\n\n#########################\n");
+  printf(" Eigenvalue analysis... \n");
+  printf("#########################\n\n");
+
+  /* Load Hessian from file */
+  // Mat Hess;
+  MatCreate(PETSC_COMM_SELF, &Hess);
+  sprintf(filename, "%s/hessian_bin.dat", output->datadir.c_str());
+  printf("Reading file: %s\n", filename);
+  // PetscViewer viewer;
+  PetscViewerCreate(MPI_COMM_WORLD, &viewer);
+  PetscViewerSetType(viewer, PETSCVIEWERBINARY);
+  PetscViewerFileSetMode(viewer, FILE_MODE_READ);
+  PetscViewerFileSetName(viewer, filename);
+  // PetscViewerPushFormat(viewer, PETSC_VIEWER_ASCII_DENSE);
+  MatLoad(Hess, viewer);
+  PetscViewerPopFormat(viewer);
+  PetscViewerDestroy(&viewer);
+  int nrows, ncols;
+  MatGetSize(Hess, &nrows, &ncols);
+
+
+  /* Set the percentage of eigenpairs that should be computed */
+  double frac = 1.0;  // 1.0 = 100%
+  int neigvals = nrows * frac;     // hopefully rounds to closest int 
+  printf("\nComputing %d eigenpairs now...\n", neigvals);
+  
+  /* Compute eigenpair */
+  std::vector<double> eigvals;
+  std::vector<Vec> eigvecs;
+  getEigvals(Hess, neigvals, eigvals, eigvecs);
+
+  /* Print eigenvalues to file. */
+  FILE *file;
+  sprintf(filename, "%s/eigvals.dat", output->datadir.c_str());
+  file =fopen(filename,"w");
+  for (int i=0; i<eigvals.size(); i++){
+      fprintf(file, "% 1.8e\n", eigvals[i]);  
+  }
+  fclose(file);
+  printf("File written: %s.\n", filename);
+
+  /* Print eigenvectors to file. Columns wise */
+  sprintf(filename, "%s/eigvecs.dat", output->datadir.c_str());
+  file =fopen(filename,"w");
+  for (int j=0; j<nrows; j++){  // rows
+    for (int i=0; i<eigvals.size(); i++){
+      double val;
+      VecGetValues(eigvecs[i], 1, &j, &val); // j-th row of eigenvalue i
+      fprintf(file, "% 1.8e  ", val);  
+    }
+    fprintf(file, "\n");
+  }
+  fclose(file);
+  printf("File written: %s.\n", filename);
+
+
+#endif
+
 #ifdef SANITY_CHECK
   printf("\n\n Sanity checks have been performed. Check output for warnings and errors!\n\n");
 #endif
@@ -468,7 +666,12 @@ int main(int argc,char **argv)
   // TSDestroy(&ts);  /* TODO */
 
   /* Finallize Petsc */
+#ifdef WITH_SLEPC
+  ierr = SlepcFinalize();
+#else
   ierr = PetscFinalize();
+#endif
+
 
   MPI_Finalize();
   return ierr;
