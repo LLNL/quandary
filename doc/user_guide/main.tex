@@ -141,34 +141,13 @@ trigonometric equalities, the Lab-frame controls can be expressed as
          t)\sin(w_k t) \\
 \end{align}
 
-\subsection{Measuring the expected energy level}\label{sec:expectedenergy}
-For each subsystem $k$, $k=0,1,\dots, Q-1$, we define the observable 
-\begin{align}
-  O^k := a_k^\dag a_k  = I_{n_0} \otimes \dots \otimes I_{n_{k-1}} \otimes  N_k
-  \otimes I_{n_{k+1}} \otimes \dots I_{n_{Q-1}} 
-\end{align}
-for the number operator 
-\begin{align}
-  N_k := a^{(n_k)^\dag} a^{(n_k)} = \begin{bmatrix} 
-   0 &    &    & \\
-     &  1 &    &\\
-     &    &  2 &\\
-     &    &    & \ddots 
-  \end{bmatrix}
-\end{align}
-$O^k$ measures the probability of the energy levels of subsystem $k$. The
-expected energy level of subsystem $k$ is hence given by 
-\begin{align}
-  \langle O^k \rangle &= \sum_{o_k} o_k p(o_k)  = \mbox{Tr}(O^k\rho).
-  \label{eq:expected_energy1}
-\end{align}
-Here, $p(o_k)$ is the probability of $\rho$ being the $o_k$-th energy level for
-subsystem $k$, $p(o_k) = \mbox{Tr}(P^k_o \rho)$ for a spectral decomposition
-$O^k = \sum_{o_k} o_kP^k_o$. Note also, that $\langle O^k \rangle = \mbox{Tr}(N_k \rho^k)$,
-where $\rho^k$ is the \textit{reduced} density matrix for subsystem $k$. 
-
 
 \section{Optimization problem}
+In the most general form, Quandary can solve the following optimization problem
+\begin{align}
+  \min_{\boldsymbol{\alpha}} \frac{1}{ninit} \sum_{i=1}^{ninit} \beta_i J(\rho_i(T))  + R(\boldsymbol{\alpha})
+\end{align}
+where $\rho_i(T)$ solves the master equation \eqref{mastereq} for initial conditions $\rho_i(0)$, as explained below. Specific coices of $J$ and initial conditions $\rho_i(0)$ are given below, as well as regularization and penalty terms denoted by $R$ above. 
 
 \subsection{Groundstate optimization aka optimal
 reset}\label{sec:groundstate-obj}
@@ -190,13 +169,20 @@ norm, or minimizes a weighted average of the expected energy level over each sub
   \item \textit{Expected energy minimization}: Minimize a weighted sum over
     expected energy levels of the (full or partial) system
     \begin{align}
-       \quad J(\rho(T)) = \sum_{k\in \mathcal{K}} \beta_k \langle O^k \rangle 
+       \quad J(\rho(T)) = \sum_{k\in \mathcal{K}} \langle O^k \rangle 
     \end{align}
-    using the observable $O^k = a_k^\dag a_k$ for the subsystem $k$
-    (compare Section \ref{sec:expectedenergy}), and defining a partial system
+    using the observable $O^k = a_k^\dag a_k$ for the subsystem $k$, and defining a partial system
     $H_{k_0}\otimes \dots \otimes H_{k_s}$ from an index set of
     subsystem IDs $\mathcal{K}=\{k_0,\dots,k_s\}\subset
-    \{0,\dots,Q-1\}$. Quandary can use the following variations of the
+    \{0,\dots,Q-1\}$. 
+    $O^k$ measures the probability of the energy levels of subsystem $k$. The
+   expected energy level of subsystem $k$ is hence given by 
+  \begin{align}
+    \langle O^k \rangle &= \mbox{Tr}(O^k\rho).
+    \label{eq:expected_energy1}
+  \end{align}
+    
+    Quandary can use the following variations of the
     above measure
     \begin{enumerate}
       \item[(a)] $J(\rho(T)) =
@@ -221,9 +207,11 @@ norm, or minimizes a weighted average of the expected energy level over each sub
 Here, the goal is to find control pulses that realize a certain logical gate
 operation at final time $T$. Representing the gate by a unitary matrix $V\in
 \C^{N\times N}$, the goal is to match the final state $\rho(T)$ to the unitary
-transformation $V\rho(0)V^{\dagger}$ for any initial state $\rho(0)$:
+transformation $V\rho(0)V^{\dagger}$ for any initial state $\rho(0)$. Two different measures are available:
+
 \begin{align}
-  J(\rho(T)) = \| \rho(T) - V\rho(0)V^{\dagger} \|^2_F 
+ \text{Frobenius norm:} \quad & J(\rho(T)) = \frac{1}{2}\| \rho(T) - V\rho(0)V^{\dagger} \|^2_F  \\
+ \text{Trace overlap:} \quad  & J(\rho(T)) = 1 - \mbox{Tr}\left(V\rho(0)V^{\dagger}\rho(T) \right) 
 \end{align} 
 
 
@@ -240,6 +228,12 @@ Target gates that are currently implemented are
                                0  & 0 & 1 & 0 \\ 
                 \end{bmatrix}
 \end{align}
+
+An average gate fidelity is computed from 
+\begin{align}
+  F_{avg} = \frac{1}{N^2} \sum_{i=1}^{N^2} \mbox{Tr}\left(V\rho_i(0)V^{\dagger}\rho_i(T) \right) 
+\end{align}
+where $\rho_i(0) = B^{k(i), j(i)}$ are the basis initial states and $\rho_i(T)$ their corresponding propagated final time states.
 
 \subsection{Penalty and regularization term}
 In order to stabilize the optimization problem, a Tikhonov regularization term can be added to the objective function:
@@ -265,6 +259,21 @@ distribution with peak at final time $T$.
 
 \subsection{Initial conditions}\label{subsec:initcond}
 
+\subsubsection{Pure state initialization}
+One can choose to simulate and optimize for only one specific initial condition $\rho(0)$. In that case, each evaluation of the objective function solves the master equation once for this specific initial condition ($\Rightarrow ninit = 1$). 
+
+In the case of pure-state initialization, the initial density matrix is composed
+of kronecker products of pure states for each of the subsystems. E.g. for a bipartite system with $n_1
+\otimes n_2$ levels, one can propagate any initial pure state 
+\begin{align}
+  \rho(0)  = |a\rangle \langle a| \otimes |b\rangle \langle b| \quad \text{for} \quad a \in \{0,\dots, n_1-1\}, b\in \{0,\dots, n_2-1\}
+\end{align}
+Alternatively, a specific initial condition can also be read from a file. 
+
+The unique integer identifier for
+this initial condition will be $i=-1$ (in order to distinguish from the below
+basis elements or diagonals as below). 
+
 \subsubsection{Basis for initial condition density matrices}
 Typically, the optimization goal is to find control parameters that minimize the
 respective measure for \textit{any} possible initial condition $\rho(0)$. We
@@ -286,27 +295,27 @@ real vector space of Hermitian matrices. They further satisfy $\Tr(B^{kj}) = 1$
 and they are positive semi-definite, hence each basis matrix is a density
 matrix. 
 
-To uniquely identify the different initial conditions in the code, we assign a
+In Quandary, these $N^2$ basis elements can be used to perform the optimization ($\Rightarrow ninit=N^2$). To uniquely identify the different initial conditions in the code, we assign a
 unique index $i \in \{0,\dots, N^2-1\}$ to each basis elements with 
 \begin{align*}
   B^i := B^{k(i), j(i)}, \quad \text{with} \quad k(i) := i \,\mbox{mod}\, N,
   \quad \text{and} \quad j(i) := \left\lfloor \frac{i}{N} \right\rfloor
 \end{align*}
 
-We can rewrite any initial condition $\rho(0)$ as a linear combination 
-\begin{align}
-  \rho(0) = \sum_{k=0}^{N-1} \sum_{j=0}^{N-1} a_{kj} B^{k, j}.
-\end{align}
-for coefficients $a_{kj} \in \R$.
-Since the master equation \eqref{mastereq} is linear, we can formally define a
-linear solution operator $S^{\vec{\alpha}}(t,\rho(0))$, mapping an initial state
-to the state at time $t$, and we can rewrite the final density matrix at time
-$T$ in terms of the basis elements:
-\begin{align}
-  \rho(T) = S^{\vec{\alpha}}(T,\rho(0)) = \sum_{k,j=0}^{N-1} a_{kj}
-  S^{\vec{\alpha}}(T,B^{k, j}).
-\end{align}
-% AP: According to D.~Lidar's lectue notes, eqn. (112), the most general
+% We can rewrite any initial condition $\rho(0)$ as a linear combination 
+% \begin{align}
+%   \rho(0) = \sum_{k=0}^{N-1} \sum_{j=0}^{N-1} a_{kj} B^{k, j}.
+% \end{align}
+% for coefficients $a_{kj} \in \R$.
+% Since the master equation \eqref{mastereq} is linear, we can formally define a
+% linear solution operator $S^{\vec{\alpha}}(t,\rho(0))$, mapping an initial state
+% to the state at time $t$, and we can rewrite the final density matrix at time
+% $T$ in terms of the basis elements:
+% \begin{align}
+%   \rho(T) = S^{\vec{\alpha}}(T,\rho(0)) = \sum_{k,j=0}^{N-1} a_{kj}
+%   S^{\vec{\alpha}}(T,B^{k, j}).
+% \end{align}
+% % AP: According to D.~Lidar's lectue notes, eqn. (112), the most general
 % expression for the evolution of the density matrix follows from the Kraus
 % operator sum representation,
 % \[
@@ -315,50 +324,36 @@ $T$ in terms of the basis elements:
 %   K_{\mu\nu}^\dagger(t)K_{\mu\nu}(t)=I.
 % \]
 
-We therefore define the optimization problem that minimizes the respective
-measure averaged over all the basis elements:
-\begin{align}\label{optimproblem_basis}
-  \min \frac{1}{N^2} & \sum_{k,j=0}^{N-1} \, J(\rho^{k,j}(T))  \\
-  \text{s.t.} \quad  \text{each} \quad \rho^{k,j}(t) \quad & \text{solves
-  \eqref{mastereq} with initial condition} \quad \rho^{k,j}(0) = B^{k,j}
-\end{align}
+% We therefore define the optimization problem that minimizes the respective
+% measure averaged over all the basis elements:
+% \begin{align}\label{optimproblem_basis}
+%   \min \frac{1}{N^2} & \sum_{k,j=0}^{N-1} \, J(\rho^{k,j}(T))  \\
+%   \text{s.t.} \quad  \text{each} \quad \rho^{k,j}(t) \quad & \text{solves
+%   \eqref{mastereq} with initial condition} \quad \rho^{k,j}(0) = B^{k,j}
+% \end{align}
 
-If the objective measure $J(\rho)$ is linear in $\rho$ (as for example in the
-groundstate optimization minimizing the expected energy levels), we can make use
-of the linearity of $S^{\vec{\alpha}}$:
-\begin{align}
-   \frac{1}{N^2}  \sum_{k,j=0}^{N-1} \, J\left(\rho^{k,j}(T)\right) =
-   J\left(S^{\vec{\alpha}}\left(T,\frac{1}{N^2}  \sum_{k,j=0}^{N-1}
-   B^{kj}\right)\right)
-\end{align}
-Hence, we define a new optimization problem using the specific initial condition
-that averages over the basis matrices:
-\begin{align}
-  \min \, J(S^{\vec{\alpha}}(T,\rho(0))) \quad \text{s.t.} \quad \rho(0) =
-  \frac{1}{N^2}  \sum_{k,j=0}^{N-1} B^{kj}
-\end{align}
-In this case, each objective function evaluation requires to propagate only one
-initial condition $\rho(0)$. 
+% If the objective measure $J(\rho)$ is linear in $\rho$ (as for example in the
+% groundstate optimization minimizing the expected energy levels), we can make use
+% of the linearity of $S^{\vec{\alpha}}$:
+% \begin{align}
+%    \frac{1}{N^2}  \sum_{k,j=0}^{N-1} \, J\left(\rho^{k,j}(T)\right) =
+%    J\left(S^{\vec{\alpha}}\left(T,\frac{1}{N^2}  \sum_{k,j=0}^{N-1}
+%    B^{kj}\right)\right)
+% \end{align}
+% Hence, we define a new optimization problem using the specific initial condition
+% that averages over the basis matrices:
+% \begin{align}
+%   \min \, J(S^{\vec{\alpha}}(T,\rho(0))) \quad \text{s.t.} \quad \rho(0) =
+%   \frac{1}{N^2}  \sum_{k,j=0}^{N-1} B^{kj}
+% \end{align}
+% In this case, each objective function evaluation requires to propagate only one
+% initial condition $\rho(0)$. 
 
 \subsubsection{Diagonals as initial condition}
-Optionally, one can choose to propagate a basis for only the diagonals of
-initial density matrices. In that case, only the basis matrices that correspond
+One can choose to propagate only those basis elements that correspond to pure states. In that case, only the basis matrices that correspond
 to diagonal elements ($B^{mm}, m=1,\dots,N)$ are propagated through the time
 domain, and the objective function evaluates the average measure over those $N$
-initial conditions at the final time $T$. 
-
-\subsubsection{Pure state initialization, or reading a state from file}
-One can choose to simulate and optimize for only one specific initial condition (pure-state initialization). In that case, the initial density matrix is composed
-of pure states for each of the subsystems. E.g. for a bipartite system with $n_1
-\otimes n_2$ levels, one can propagate any initial pure state 
-\begin{align}
-  \rho(0)  = |a\rangle \langle a| \otimes |b\rangle \langle b| \quad \text{for} \quad a \in \{0,\dots, n_1-1\}, b\in \{0,\dots, n_2-1\}
-\end{align}
-Alternatively, a specific initial condition can also be read from a file. 
-
-If only one initial condition is considered, the unique integer identifier for
-this initial condition will be $i=-1$ (in order to distinguish from the above
-basis elements or diagonals).
+initial conditions at the final time $T$ ($\Rightarrow ninit = N$).
 
 % \subsection{Fidelity} 
 % For closed systems, the $\rho(t)$ and the solution operator $U(t)$ are unitary. In that case, one can show that 
@@ -366,6 +361,18 @@ basis elements or diagonals).
 %   \frac{1}{2N^2}\|\rho(T) - V\rho(0)V\|_F^2 = 1 - \frac{1}{N^2}|\Tr(U(T)^{\dagger}V)|^2,
 % \end{align}
 % which is called the \textit{infidelity}, and the trace-term is the \textit{fidelity}. However, since we include the Lindblad terms, $\rho(T)$ is not unitary, and the above equation is not valid anymore. For defining a fidelity we consider $F(z) := 1 - J(z)$. Note, however, that if the optimized objective is in the order $O(\delta)$, then the error $\epsilon_i$ of a final state component $i$ from the gate is rather of the order $O(\sqrt{\delta})$, since $J$ represents the average squared error $J = \frac{1}{N^2}\sum_i \epsilon_i^2$ and so $\epsilon_i^2 \sim O(\delta)$ on average.
+
+\subsection{Three-state initialization}
+According to Koch et al. it is sufficient to utilize only three initial condition to describe a unitary gate, independent of the dimension $N$. Therefore, if one optimizes for realizing a unitary gate, the following three initial states can be chosen to be considered in Quandary:
+\begin{align}
+    \rho(0)_0 &= \sum_{i=0}^{N-1} \frac{2(N-i+1)}{N(N+1)} |i\rangle\langle i|\\
+    \rho(0)_1 &= \sum_{ij=0}^{N-1} \frac{1}{N} |i\rangle\langle j|\\
+    \rho(0)_2 &= \frac{1}{N} I_N
+\end{align}
+
+
+\subsection{Reading an initial condition from file}
+A specific initial condition can be read from file ($\Rightarrow ninit=1$ with unique identifier $-1$). Format: one column being the vectorized density matrix, first all real parts, then all imaginary parts. 
 
 \section{Implementation}
 
@@ -600,8 +607,7 @@ the two components: $\alpha^k_l = \alpha^{k(1)}_{l,1}, \alpha^{k(2)}_{l,1},
 
   \subsubsection{Optimization algorithm}
     Quandary use Petsc's \textit{Tao} optimization package for solving
-    the vectorized version of the optimal control problem
-    \eqref{optimproblem_basis}. It uses the nonlinear Quasi-Newton
+    the vectorized version of the optimal control problem. It uses the nonlinear Quasi-Newton
     optimization method that applies iterative preconditioned gradient steps using L-BFGS updates to approximate the Hessian. A projected line-search is applied to ensure that the control parameters stay within the prescribed box constraints and that the objective function yields sufficient decrease per iteration.
 
 
