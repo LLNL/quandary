@@ -101,7 +101,7 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   int nfill = 0;
   if (obj_weights.size() < ninit) nfill = ninit - obj_weights.size();
   double val = obj_weights[obj_weights.size()-1];
-  printf("nfill %d, ninit %d, size %d\n", nfill, ninit, obj_weights.size());
+  // printf("nfill %d, ninit %d, size %d\n", nfill, ninit, obj_weights.size());
   if (obj_weights.size() < ninit){
     for (int i = 0; i < nfill; i++) 
       obj_weights.push_back(1.0);
