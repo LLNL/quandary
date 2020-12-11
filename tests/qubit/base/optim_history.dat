@@ -1,0 +1,2 @@
+#iter    Objective           ||Pr(grad)||           LS step           Costfunction     Tikhonov-regul      Penalty-term
+00000  2.04391143673808e+00  1.69136970024899e-01  0.00000000  1.11117442072217e+00  8.10000000000000e-03  9.24637016015916e-01

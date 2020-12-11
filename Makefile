@@ -1,6 +1,7 @@
 # Set location of PETSC
 #PETSC_DIR=/usr/workspace/wsa/wave/petsc-3.13
 #PETSC_ARCH=arch-linux-c-debug
+include user.mk
 
 # Set Braid location, or comment out
 #BRAID_DIR = ${HOME}/Numerics/xbraid_solveadjointwithxbraid
@@ -63,13 +64,17 @@ $(BUILD_DIR)/%.o : $(SRC_DIR)/%.cpp
 	@$(CXX) -MM $< -MP -MT $@ -MF $(@:.o=.d) $(INC) 
 
 
-.PHONY: all cleanup
+.PHONY: all cleanup clean-regtest
 
 # use 'make cleanup' to remove object files and executable
 cleanup:
 	rm -fr $(BUILD_DIR) 
 	rm -f  main 
 
+# use 'make clean-regtest' to remove tests/results
+clean-regtest:
+	rm -rf tests/results/*
+	rm -rf tests/*/data_out
 
 # include the dependency files
 -include $(OBJ_FILES:.o=.d)
