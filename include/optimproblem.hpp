@@ -3,6 +3,8 @@
 #include <petsctao.h>
 #include "defs.hpp"
 #include "timestepper.hpp"
+#include <iostream>
+#include <algorithm>
 #ifdef WITH_BRAID
   #include "braid_wrapper.hpp"
 #endif

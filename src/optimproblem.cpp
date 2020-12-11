@@ -1,5 +1,4 @@
 #include "optimproblem.hpp"
-#include <algorithm>
 
 #ifdef WITH_BRAID
 OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, MPI_Comm comm_hiop_, MPI_Comm comm_init_, int ninit_, Output* output_) : OptimProblem(config, timestepper_, comm_hiop_, comm_init_, ninit_, output_) {
@@ -99,13 +98,15 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
     config.GetVecIntParam("optim_oscillators", obj_oscilIDs, 0);
   }
   config.GetVecDoubleParam("optim_weights", obj_weights, 1.0);
-  int nfill = ninit - obj_weights.size();
+  int nfill = 0;
+  if (obj_weights.size() < ninit) nfill = ninit - obj_weights.size();
   double val = obj_weights[obj_weights.size()-1];
+  printf("nfill %d, ninit %d, size %d\n", nfill, ninit, obj_weights.size());
   if (obj_weights.size() < ninit){
     for (int i = 0; i < nfill; i++) 
       obj_weights.push_back(1.0);
   }
-  assert(obj_weights.size() == ninit);
+  assert(obj_weights.size() >= ninit);
   /* Sanity check for oscillator IDs */
   bool err = false;
   assert(obj_oscilIDs.size() > 0);
