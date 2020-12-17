@@ -8,7 +8,7 @@ For questions, feel free to reach out to Stefanie Guenther [guenther5@llnl.gov].
 ## Dependencies
 This project relies on Petsc [https://www.mcs.anl.gov/petsc/] to handle linear algebra. Optionally, XBraid [https://github.com/XBraid/xbraid] can be linked to realize time-parallelization.
 * **Required:** Install Petsc
-    * `git clone -b maint https://gitlab.com/petsc/petsc.git petsc`
+    * `git clone -b release https://gitlab.com/petsc/petsc.git petsc`
     * `cd petsc`
     * Configure petsc with `./configure`, check [https://www.mcs.anl.gov/petsc/download/index.html] for optional arguments
     * Note: Petsc compiles in debug mode by default. To configure petsc with compiler optimization, consider configuration such as
