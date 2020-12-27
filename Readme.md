@@ -1,5 +1,5 @@
 # Quandary - Optimal Open Quantum Control
-This project implements an optimization solver for quantum control. The underlying quantum dynamics model open quantum systems, using the Lindblad master equation to evolve a density matrix in time. The control problem aims to find control pulses that drive the system to a desired target state.
+Quandary implements an optimization solver for quantum control. The underlying quantum dynamics model open quantum systems, using the Lindblad master equation to evolve a density matrix in time. The control problem aims to find control pulses that drive the system to a desired target state.
 
 A documentation is under development. In the meantime, refer to the user guide in the `doc/` folder for information on the underlying mathematical models as well as details on their implementation in Quandary. 
 
@@ -42,3 +42,15 @@ In the main directory of this project, adapt the beginning of the Makefile to se
 The code builds into the executable `main`. It takes one argument being the name of the test-case's configuration file. The config file `AxC.cfg`, lists all possible configuration options and can be used as a template. It is currently set to simulate a bipartite system with 3x20 levels ("Alice x Cavity"). 
 * `./main AxC.cfg`
 
+
+## Community and Contributing
+
+Quandary is an open source project that is under heavy development. Contributions in all forms are very welcome, and can be anything from new features to bugfixes, documentation, or even discussions. Contributing is easy, work on your branch, create a pull request to master when you're good to go and the regression tests in 'tests/' pass.
+
+## License
+
+Quandary is distributed under the terms of the MIT license. All new contributions must be made under this license.
+
+SPDX-License-Identifier: MIT
+
+LLNL-CODE-817714
