@@ -39,8 +39,8 @@ In the main directory of this project, adapt the beginning of the Makefile to se
 
 
 ## Running
-The code builds into the executable `main`. It takes one argument being the name of the test-case's configuration file. The config file `AxC.cfg`, lists all possible configuration options and can be used as a template. It is currently set to simulate a bipartite system with 3x20 levels ("Alice x Cavity"). 
-* `./main AxC.cfg`
+The code builds into the executable `main`. It takes one argument being the name of the test-case's configuration file. The file `config_template.cfg`, lists all possible configuration options. It is currently set to simulate a bipartite system with 3x20 levels (Alice - cavity testcase "AxC"). 
+* `./main config_template.cfg`
 
 
 ## Community and Contributing
