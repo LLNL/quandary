@@ -1128,7 +1128,7 @@ int myMatMult_matfree(Mat RHS, Vec x, Vec y){
             yim += xi01 * sq * (   cos01 * xre - sin01 * xim);
           }
           // 4) J_kl ( icos + sin)sqrt(il'*(ik' +1)) ρ_{i,E+k-li'}
-          if (i0p < n0-1 && i0p > 0) {
+          if (i0p < n0-1 && i1p > 0) {
             int itx = it + stridei0p - stridei1p;  // i, E+k-l i'
             double xre = xptr[2 * itx];
             double xim = xptr[2 * itx + 1];
@@ -1271,6 +1271,7 @@ int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
   double xi0  = shellctx->xi[0];
   double xi01 = shellctx->xi[1];
   double xi1  = shellctx->xi[2];
+  double eta01 = shellctx->eta[0];
   double detuning_freq0 = shellctx->detuning_freq[0];
   double detuning_freq1 = shellctx->detuning_freq[1];
   double decay0 = 0.0;
@@ -1289,6 +1290,8 @@ int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
   double qt0 = shellctx->control_Im[0];
   double pt1 = shellctx->control_Re[1];
   double qt1 = shellctx->control_Im[1];
+  double cos01 = cos(eta01*2*M_PI * shellctx->time);
+  double sin01 = sin(eta01*2*M_PI * shellctx->time);
 
   /* compute strides for accessing x at i0+1, i0-1, i0p+1, i0p-1, i1+1, i1-1, i1p+1, i1p-1: */
   int stridei0  = TensorGetIndex(n0,n1, 1,0,0,0);
@@ -1311,11 +1314,9 @@ int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
           // drift Hamiltonian Hd^T: uout = ( hd(ik) - hd(ik'))*vin
           //                         vout = (-hd(ik) + hd(ik'))*uin
           double hd  = H_detune(detuning_freq0, detuning_freq1, i0, i1)
-                     + H_selfkerr(xi0, xi1, i0, i1)
-                     + H_coupling(xi01, i0, i1);
+                     + H_selfkerr(xi0, xi1, i0, i1);
           double hdp = H_detune(detuning_freq0, detuning_freq1, i0p, i1p)
-                     + H_selfkerr(xi0, xi1, i0p, i1p)
-                     + H_coupling(xi01, i0p, i1p);
+                     + H_selfkerr(xi0, xi1, i0p, i1p);
           double yre = (-hd + hdp ) * xim;
           double yim = ( hd - hdp ) * xre;
           // Decay l1^T, diagonal part: xout += l1diag xin
@@ -1325,6 +1326,47 @@ int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
           yre += (l2 + l1diag) * xre;
           yim += (l2 + l1diag) * xim;
 
+          /* --- Offdiagonal: coupling term, oscil 0<->1 --- */
+          //  1) [...] * \bar y_{E+k-l i, i′}
+          if (i0 < n0-1 && i1 > 0) {
+            int itx = it + stridei0 - stridei1;
+            double xre = xptr[2 * itx];
+            double xim = xptr[2 * itx + 1];
+            double sq = sqrt(i1 * (i0 + 1));
+            yre += xi01 * sq * (   cos01 * xim + sin01 * xre);
+            yim += xi01 * sq * ( - cos01 * xre + sin01 * xim);
+          }
+          // 2) J_kl (−icos − sin)sqrt(ik*(il +1)) ρ_{E-k+li,i′}
+          // -sin u + cos v + i (-cos u - sin v)
+          if (i0 > 0 && i1 < n1-1) {
+            int itx = it - stridei0 + stridei1;  // E-k+l i, i'
+            double xre = xptr[2 * itx];
+            double xim = xptr[2 * itx + 1];
+            double sq = sqrt(i0 * (i1 + 1)); // sqrt( ik*(il+1))
+            // -sin u + cos v + i (-cos u - sin v)
+            yre += xi01 * sq * (   cos01 * xim - sin01 * xre);
+            yim += xi01 * sq * ( - cos01 * xre - sin01 * xim);
+          }
+          // 3) J_kl ( icos − sin)sqrt(il'*(ik' +1)) ρ_{i,E+k-li'}
+          if (i0p < n0-1 && i1p > 0) {
+            int itx = it + stridei0p - stridei1p;  // i, E+k-l i'
+            double xre = xptr[2 * itx];
+            double xim = xptr[2 * itx + 1];
+            double sq = sqrt(i1p * (i0p + 1)); // sqrt( il'*(ik'+1))
+            // $-sin u - cos v + i ( cos u - sin v)$
+            yre += xi01 * sq * ( - cos01 * xim - sin01 * xre);
+            yim += xi01 * sq * (   cos01 * xre - sin01 * xim);
+          }
+          // 4) J_kl ( icos + sin)sqrt(ik'*(il' +1)) ρ_{i,E-k+li'}
+          if (i0p > 0 && i1p > n1-1) {
+            int itx = it - stridei0p + stridei1p;  // i, E-k+l i'
+            double xre = xptr[2 * itx];
+            double xim = xptr[2 * itx + 1];
+            double sq = sqrt(i0p * (i1p + 1)); // sqrt( ik'*(il'+1))
+            // sin u - cos v + i ( cos u + sin v)
+            yre += xi01 * sq * ( - cos01 * xim + sin01 * xre);
+            yim += xi01 * sq * (   cos01 * xre + sin01 * xim);
+          }
 
           /* --- Offdiagonal part of decay L1^T */
           // Oscillators 0
