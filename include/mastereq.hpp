@@ -123,9 +123,19 @@ class MasterEq{
 };
 
 
-inline double Hd(const double xi0, const double xi01, const double xi1, const double detuning0, const double detuning1, const int a, const int b) {
-  return - xi0*M_PI * a * (a-1) - xi01*M_PI*2 * a * b - xi1*M_PI * b * (b-1) + detuning0*2*M_PI*a + detuning1*2*M_PI*b; 
+inline double H_detune(const double detuning0, const double detuning1, const int a, const int b) {
+  return detuning0*2*M_PI*a + detuning1*2*M_PI*b;
 };
+
+inline double H_selfkerr(const double xi0, const double xi1, const int a, const int b) {
+  return - xi0*M_PI * a * (a-1) - xi1*M_PI * b * (b-1);
+};
+
+inline double H_coupling(const double xi01, const int a, const int b) {
+  return - xi01*M_PI*2 * a * b;
+};
+
+
 
 inline double L2(double dephase0, double dephase1, const int i0, const int i1, const int i0p, const int i1p){
   return dephase0 * ( i0*i0p - 1./2. * (i0*i0 + i0p*i0p) ) + dephase1 * ( i1*i1p - 1./2. * (i1*i1 + i1p*i1p) );

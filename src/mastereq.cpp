@@ -1076,10 +1076,14 @@ int myMatMult_matfree(Mat RHS, Vec x, Vec y){
           //Get input x values 
           double xre = xptr[2 * it];
           double xim = xptr[2 * it + 1];
-          // Constant Hd part: uout = ( hd(ik) - hd(ik'))*vin
-          //                   vout = (-hd(ik) + hd(ik'))*uin
-          double hd  = Hd(xi0, xi01, xi1, detuning_freq0, detuning_freq1, i0, i1); 
-          double hdp = Hd(xi0, xi01, xi1, detuning_freq0, detuning_freq1, i0p, i1p); 
+          // drift Hamiltonian: uout = ( hd(ik) - hd(ik'))*vin
+          //                    vout = (-hd(ik) + hd(ik'))*uin
+          double hd  = H_detune(detuning_freq0, detuning_freq1, i0, i1)
+                     + H_selfkerr(xi0, xi1, i0, i1)
+                     + H_coupling(xi01, i0, i1);
+          double hdp = H_detune(detuning_freq0, detuning_freq1, i0p, i1p)
+                     + H_selfkerr(xi0, xi1, i0p, i1p)
+                     + H_coupling(xi01, i0p, i1p);
           double yre = ( hd - hdp ) * xim;
           double yim = (-hd + hdp ) * xre;
           // Decay l1, diagonal part: xout += l1diag xin
@@ -1258,10 +1262,14 @@ int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
           //Get input x values 
           double xre = xptr[2 * it];
           double xim = xptr[2 * it + 1];
-          // Constant Hd^T part: uout = ( hd(ik) - hd(ik'))*vin
-          //                     vout = (-hd(ik) + hd(ik'))*uin
-          double hd  = Hd(xi0, xi01, xi1, detuning_freq0, detuning_freq1, i0, i1); 
-          double hdp = Hd(xi0, xi01, xi1, detuning_freq0, detuning_freq1, i0p, i1p); 
+          // drift Hamiltonian Hd^T: uout = ( hd(ik) - hd(ik'))*vin
+          //                         vout = (-hd(ik) + hd(ik'))*uin
+          double hd  = H_detune(detuning_freq0, detuning_freq1, i0, i1)
+                     + H_selfkerr(xi0, xi1, i0, i1)
+                     + H_coupling(xi01, i0, i1);
+          double hdp = H_detune(detuning_freq0, detuning_freq1, i0p, i1p)
+                     + H_selfkerr(xi0, xi1, i0p, i1p)
+                     + H_coupling(xi01, i0p, i1p);
           double yre = (-hd + hdp ) * xim;
           double yim = ( hd - hdp ) * xre;
           // Decay l1^T, diagonal part: xout += l1diag xin
