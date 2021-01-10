@@ -17,14 +17,14 @@ MasterEq::MasterEq(){
 }
 
 
-MasterEq::MasterEq(std::vector<int> nlevels_, Oscillator** oscil_vec_, const std::vector<double> xi_, const std::vector<double> detuning_freq_,
-                   LindbladType lindbladtype, const std::vector<double> collapse_time_, bool usematfree_) {
+MasterEq::MasterEq(std::vector<int> nlevels_, Oscillator** oscil_vec_, const std::vector<double> xi_, const std::vector<double> eta_, const std::vector<double> detuning_freq_, LindbladType lindbladtype, const std::vector<double> collapse_time_, bool usematfree_) {
   int ierr;
 
   nlevels = nlevels_;
   noscillators = nlevels.size();
   oscil_vec = oscil_vec_;
   xi = xi_;
+  eta = eta_;
   detuning_freq = detuning_freq_;
   collapse_time = collapse_time_;
   assert(xi.size() >= (noscillators+1) * noscillators / 2);
@@ -69,7 +69,7 @@ MasterEq::MasterEq(std::vector<int> nlevels_, Oscillator** oscil_vec_, const std
   /* Compute maximum number of design parameters over all oscillators */
   nparams_max = 0;
   for (int ioscil = 0; ioscil < getNOscillators(); ioscil++) {
-      int n = getOscillator(ioscil)->getNParams(); 
+      int n = getOscillator(ioscil)->getNParams();
       if (n > nparams_max) nparams_max = n;
   }
 
@@ -78,11 +78,12 @@ MasterEq::MasterEq(std::vector<int> nlevels_, Oscillator** oscil_vec_, const std
   dImdp = new double[nparams_max];
   cols = new int[nparams_max];
   vals = new double [nparams_max];
-  
+
   /* Allocate MatShell context for applying RHS */
   RHSctx.isu = &isu;
   RHSctx.isv = &isv;
   RHSctx.xi = xi;
+  RHSctx.eta = eta;
   RHSctx.detuning_freq = detuning_freq;
   RHSctx.collapse_time = collapse_time;
   if (!usematfree){
@@ -111,7 +112,7 @@ MasterEq::MasterEq(std::vector<int> nlevels_, Oscillator** oscil_vec_, const std
   else {
     MatShellSetOperation(RHS, MATOP_MULT, (void(*)(void)) myMatMult_sparsemat);
     MatShellSetOperation(RHS, MATOP_MULT_TRANSPOSE, (void(*)(void)) myMatMultTranspose_sparsemat);
-  }            
+  }
 
 }
 
@@ -173,7 +174,7 @@ void MasterEq::initSparseMatSolver(LindbladType lindbladtype){
     kronI(loweringOP,   dimmat,  1.0, &Ac_vec[iosc], ADD_VALUES);
     MatAssemblyBegin(Ac_vec[iosc], MAT_FINAL_ASSEMBLY);
     MatAssemblyEnd(Ac_vec[iosc], MAT_FINAL_ASSEMBLY);
-    
+
     /* Compute Bc = - I_N \kron (a + a^T) + (a + a^T)^T \kron I_N */
     MatCreate(PETSC_COMM_WORLD, &Bc_vec[iosc]);
     MatSetSizes(Bc_vec[iosc], PETSC_DECIDE, PETSC_DECIDE, dim, dim);
@@ -198,7 +199,7 @@ void MasterEq::initSparseMatSolver(LindbladType lindbladtype){
   for (int iosc = 0; iosc < noscillators; iosc++) {
     Mat tmp, tmp_T;
     Mat numberOPj;
-    
+
     /* Get the number operator */
     // Zero mat on all but the first petsc procs */
     numberOP = oscil_vec[iosc]->getNumberOP((bool) mpirank_petsc);
@@ -245,12 +246,12 @@ void MasterEq::initSparseMatSolver(LindbladType lindbladtype){
   MatSetFromOptions(Ad);
   MatSetUp(Ad);
   for (int iosc = 0; iosc < noscillators; iosc++) {
-  
+
     switch (lindbladtype)  {
       case NONE:
         continue;
         break;
-      case DECAY: 
+      case DECAY:
         L1 = oscil_vec[iosc]->getLoweringOP((bool)mpirank_petsc);
         addT1 = true;
         addT2 = false;
@@ -272,7 +273,7 @@ void MasterEq::initSparseMatSolver(LindbladType lindbladtype){
     }
 
     /* --- Adding T1-DECAY (L1 = a_j) for oscillator j --- */
-    if (addT1 && collapse_time[iosc*2] > 1e-14) { 
+    if (addT1 && collapse_time[iosc*2] > 1e-14) {
       double gamma = 1./(collapse_time[iosc*2]);
       /* Ad += gamma_j * L \kron L */
       AkronB(dimmat, L1, L1, gamma, &Ad, ADD_VALUES);
@@ -285,7 +286,7 @@ void MasterEq::initSparseMatSolver(LindbladType lindbladtype){
     }
 
     /* --- Adding T2-Dephasing (L2 = a_j^\dag a_j) for oscillator j --- */
-    if (addT2 && collapse_time[iosc*2+1] > 1e-14) { 
+    if (addT2 && collapse_time[iosc*2+1] > 1e-14) {
       double gamma = 1./(collapse_time[iosc*2+1]);
       /* Ad += 1./gamma_j * L \kron L */
       AkronB(dimmat, L2, L2, gamma, &Ad, ADD_VALUES);
@@ -341,11 +342,11 @@ void MasterEq::createReducedDensity(const Vec rho, Vec *reduced, const std::vect
   Vec red;
 
   /* Get dimensions of preceding and following subsystem */
-  int dim_pre  = 1; 
+  int dim_pre  = 1;
   int dim_post = 1;
-  for (int iosc = 0; iosc < oscilIDs[0]; iosc++) 
+  for (int iosc = 0; iosc < oscilIDs[0]; iosc++)
     dim_pre  *= getOscillator(iosc)->getNLevels();
-  for (int iosc = oscilIDs[oscilIDs.size()-1]+1; iosc < getNOscillators(); iosc++) 
+  for (int iosc = oscilIDs[oscilIDs.size()-1]+1; iosc < getNOscillators(); iosc++)
     dim_post *= getOscillator(iosc)->getNLevels();
 
   int dim_reduced = 1;
@@ -372,7 +373,7 @@ void MasterEq::createReducedDensity(const Vec rho, Vec *reduced, const std::vect
       double sum_im = 0.0;
       /* Iterate over all dim_pre blocks of size n_k * dim_post */
       for (int l = 0; l < dim_pre; l++) {
-        int blockstartID = l * dim_reduced * dim_post; // Go to beginning of block 
+        int blockstartID = l * dim_reduced * dim_post; // Go to beginning of block
         /* iterate over elements in this block */
         for (int m=0; m<dim_post; m++) {
           int rho_row = blockstartID + i * dim_post + m;
@@ -385,7 +386,7 @@ void MasterEq::createReducedDensity(const Vec rho, Vec *reduced, const std::vect
           if (ilow <= rho_vecID_re && rho_vecID_re < iupp) {
             VecGetValues(rho, 1, &rho_vecID_re, &re);
             VecGetValues(rho, 1, &rho_vecID_im, &im);
-          } 
+          }
           /* add to partial trace */
           sum_re += re;
           sum_im += im;
@@ -421,11 +422,11 @@ void MasterEq::createReducedDensity(const Vec rho, Vec *reduced, const std::vect
 void MasterEq::createReducedDensity_diff(Vec rhobar, const Vec reducedbar,const std::vector<int>& oscilIDs) {
 
   /* Get dimensions of preceding and following subsystem */
-  int dim_pre  = 1; 
+  int dim_pre  = 1;
   int dim_post = 1;
-  for (int iosc = 0; iosc < oscilIDs[0]; iosc++) 
+  for (int iosc = 0; iosc < oscilIDs[0]; iosc++)
     dim_pre  *= getOscillator(iosc)->getNLevels();
-  for (int iosc = oscilIDs[oscilIDs.size()-1]+1; iosc < getNOscillators(); iosc++) 
+  for (int iosc = oscilIDs[oscilIDs.size()-1]+1; iosc < getNOscillators(); iosc++)
     dim_post *= getOscillator(iosc)->getNLevels();
 
   int dim_reduced = 1;
@@ -458,7 +459,7 @@ void MasterEq::createReducedDensity_diff(Vec rhobar, const Vec reducedbar,const 
 
       /* Iterate over all dim_pre blocks of size n_k * dim_post */
       for (int l = 0; l < dim_pre; l++) {
-        int blockstartID = l * dim_reduced * dim_post; // Go to beginning of block 
+        int blockstartID = l * dim_reduced * dim_post; // Go to beginning of block
         /* iterate over elements in this block */
         for (int m=0; m<dim_post; m++) {
           /* Set values into rhobar */
@@ -563,8 +564,8 @@ void MasterEq::computedRHSdp(const double t, const Vec x, const Vec xbar, const 
               res_q_im += - sq * xim;
             }
             /* Update the coefficients */
-            coeff_p_osc0 += res_p_re * xbarre + res_p_im * xbarim; 
-            coeff_q_osc0 += res_q_re * xbarre + res_q_im * xbarim; 
+            coeff_p_osc0 += res_p_re * xbarre + res_p_im * xbarim;
+            coeff_q_osc0 += res_q_re * xbarre + res_q_im * xbarim;
 
             /* --- Oscillator 1 --- */
             res_p_re = 0.0;
@@ -615,8 +616,8 @@ void MasterEq::computedRHSdp(const double t, const Vec x, const Vec xbar, const 
               res_q_re += - sq * xre;
               res_q_im += - sq * xim;
             }
-            coeff_p_osc1 += res_p_re * xbarre + res_p_im * xbarim; 
-            coeff_q_osc1 += res_q_re * xbarre + res_q_im * xbarim; 
+            coeff_p_osc1 += res_p_re * xbarre + res_p_im * xbarim;
+            coeff_q_osc1 += res_q_re * xbarre + res_q_im * xbarim;
             it++;
           }
         }
@@ -650,7 +651,7 @@ void MasterEq::computedRHSdp(const double t, const Vec x, const Vec xbar, const 
       cols[iparam] = iparam + nparam0;
     }
     VecSetValues(grad, nparam1, cols, vals, ADD_VALUES);
-    VecAssemblyBegin(grad); 
+    VecAssemblyBegin(grad);
     VecAssemblyEnd(grad);
 
   } else {  // sparse matrix solver
@@ -697,7 +698,7 @@ void MasterEq::computedRHSdp(const double t, const Vec x, const Vec xbar, const 
     VecSetValues(grad, nparams_iosc, cols, vals, ADD_VALUES);
     col_shift += nparams_iosc;
   }
-  VecAssemblyBegin(grad); 
+  VecAssemblyBegin(grad);
   VecAssemblyEnd(grad);
 
   /* Restore x */
@@ -718,7 +719,7 @@ void MasterEq::setControlAmplitudes(const Vec x) {
   int shift=0;
   for (int ioscil = 0; ioscil < getNOscillators(); ioscil++) {
     /* Design storage: x = (params_oscil0, params_oscil2, ... ) */
-    getOscillator(ioscil)->setParams(ptr + shift); 
+    getOscillator(ioscil)->setParams(ptr + shift);
     shift += getOscillator(ioscil)->getNParams();
   }
   VecRestoreArrayRead(x, &ptr);
@@ -747,7 +748,7 @@ int MasterEq::getRhoT0(const int iinit, const int ninit, const InitialConditionT
     case THREESTATES:
 
       /* Reset the initial conditions */
-      VecZeroEntries(rho0); 
+      VecZeroEntries(rho0);
 
       /* Get partitioning */
       VecGetOwnershipRange(rho0, &ilow, &iupp);
@@ -761,7 +762,7 @@ int MasterEq::getRhoT0(const int iinit, const int ninit, const InitialConditionT
         for (int i = 0; i<dim_rho; i++) {
           int diagID = getIndexReal(i * dim_rho + i);
           double val = 2.*(dim_rho - i) / (dim_rho * (dim_rho + 1));
-          if (ilow <= diagID && diagID < iupp) VecSetValue(rho0, diagID, val, INSERT_VALUES); 
+          if (ilow <= diagID && diagID < iupp) VecSetValue(rho0, diagID, val, INSERT_VALUES);
         }
 
       } else if (iinit == 1) {
@@ -771,7 +772,7 @@ int MasterEq::getRhoT0(const int iinit, const int ninit, const InitialConditionT
           for (int j = 0; j<dim_rho; j++) {
             double val = 1./dim_rho;
             int index = getIndexReal(i * dim_rho + j);   // Re(rho_ij)
-            VecSetValue(rho0, index, val, INSERT_VALUES); 
+            VecSetValue(rho0, index, val, INSERT_VALUES);
           }
         }
 
@@ -783,25 +784,25 @@ int MasterEq::getRhoT0(const int iinit, const int ninit, const InitialConditionT
         for (int i = 0; i<dim_rho; i++) {
           int diagID = getIndexReal(i * dim_rho + i);
           double val = 1./ dim_rho;
-          if (ilow <= diagID && diagID < iupp) VecSetValue(rho0, diagID, val, INSERT_VALUES); 
+          if (ilow <= diagID && diagID < iupp) VecSetValue(rho0, diagID, val, INSERT_VALUES);
         }
 
       } else {
         printf("ERROR: Wrong initial condition setting!\n");
         exit(1);
       }
-      
+
       /* Assemble rho0 */
       VecAssemblyBegin(rho0); VecAssemblyEnd(rho0);
 
       break;
-      
+
 
     case DIAGONAL:
       int row, diagelem;
 
       /* Reset the initial conditions */
-      VecZeroEntries(rho0); 
+      VecZeroEntries(rho0);
 
       /* Get dimension of partial system behind last oscillator ID */
       dim_post = 1;
@@ -816,7 +817,7 @@ int MasterEq::getRhoT0(const int iinit, const int ninit, const InitialConditionT
 
       /* Assemble */
       VecGetOwnershipRange(rho0, &ilow, &iupp);
-      if (ilow <= row && row < iupp) VecSetValue(rho0, row, 1.0, INSERT_VALUES); 
+      if (ilow <= row && row < iupp) VecSetValue(rho0, row, 1.0, INSERT_VALUES);
       VecAssemblyBegin(rho0); VecAssemblyEnd(rho0);
 
       /* Set initial conditon ID */
@@ -827,7 +828,7 @@ int MasterEq::getRhoT0(const int iinit, const int ninit, const InitialConditionT
     case BASIS:
 
       /* Reset the initial conditions */
-      VecZeroEntries(rho0); 
+      VecZeroEntries(rho0);
 
       /* Get distribution */
       VecGetOwnershipRange(rho0, &ilow, &iupp);
@@ -841,7 +842,7 @@ int MasterEq::getRhoT0(const int iinit, const int ninit, const InitialConditionT
       /* Get index (k,j) of basis element B_{k,j} for this initial condition index iinit */
       int k, j;
       k = iinit % ( (int) sqrt(ninit) );
-      j = (int) iinit / ( (int) sqrt(ninit) );   
+      j = (int) iinit / ( (int) sqrt(ninit) );
 
       if (k == j) {
         /* B_{kk} = E_{kk} -> set only one element at (k,k) */
@@ -881,10 +882,10 @@ int MasterEq::getRhoT0(const int iinit, const int ninit, const InitialConditionT
             if (ilow <= rows[i] && rows[i] < iupp) VecSetValues(rho0, 1, &(rows[i]), &(vals[i]), INSERT_VALUES);
           }
         }
-        delete [] rows; 
+        delete [] rows;
         delete [] vals;
       }
-      
+
       /* Assemble rho0 */
       VecAssemblyBegin(rho0); VecAssemblyEnd(rho0);
 
@@ -908,7 +909,7 @@ int myMatMult_sparsemat(Mat RHS, Vec x, Vec y){
   /* Get the shell context */
   MatShellCtx *shellctx;
   MatShellGetContext(RHS, (void**) &shellctx);
-  
+
 /* Get u, v from x and y  */
   Vec u, v;
   Vec uout, vout;
@@ -936,7 +937,7 @@ int myMatMult_sparsemat(Mat RHS, Vec x, Vec y){
     double p = shellctx->control_Re[iosc];
     double q = shellctx->control_Im[iosc];
 
-    // uout += q^k*Acu 
+    // uout += q^k*Acu
     MatMult((*(shellctx->Ac_vec))[iosc], u, *shellctx->Acu);
     VecAXPY(uout, q, *shellctx->Acu);
     // uout -= p^kBcv
@@ -963,7 +964,7 @@ int myMatMult_sparsemat(Mat RHS, Vec x, Vec y){
 
 /* Define the action of RHS^T on a vector x */
 int myMatMultTranspose_sparsemat(Mat RHS, Vec x, Vec y) {
- 
+
   /* Get time from shell context */
   MatShellCtx *shellctx;
   MatShellGetContext(RHS, (void**) &shellctx);
@@ -995,7 +996,7 @@ int myMatMultTranspose_sparsemat(Mat RHS, Vec x, Vec y) {
     double p = shellctx->control_Re[iosc];
     double q = shellctx->control_Im[iosc];
 
-    // uout += q^k*Ac^Tu 
+    // uout += q^k*Ac^Tu
     MatMultTranspose((*(shellctx->Ac_vec))[iosc], u, *shellctx->Acu);
     VecAXPY(uout, q, *shellctx->Acu);
     // uout += p^kBc^Tv
@@ -1040,6 +1041,7 @@ int myMatMult_matfree(Mat RHS, Vec x, Vec y){
   double xi0  = shellctx->xi[0];
   double xi01 = shellctx->xi[1];
   double xi1  = shellctx->xi[2];
+  double eta01 = shellctx->eta[0];
   double detuning_freq0 = shellctx->detuning_freq[0];
   double detuning_freq1 = shellctx->detuning_freq[1];
   double decay0 = 0.0;
@@ -1058,6 +1060,8 @@ int myMatMult_matfree(Mat RHS, Vec x, Vec y){
   double qt0 = shellctx->control_Im[0];
   double pt1 = shellctx->control_Re[1];
   double qt1 = shellctx->control_Im[1];
+  double cos01 = cos(eta01*2*M_PI * shellctx->time);
+  double sin01 = sin(eta01*2*M_PI * shellctx->time);
 
   /* compute strides for accessing x at i0+1, i0-1, i0p+1, i0p-1, i1+1, i1-1, i1p+1, i1p-1: */
   int stridei0  = TensorGetIndex(n0,n1, 1,0,0,0);
@@ -1071,39 +1075,81 @@ int myMatMult_matfree(Mat RHS, Vec x, Vec y){
     for (int i1p = 0; i1p < n1; i1p++)  {
       for (int i0 = 0; i0 < n0; i0++)  {
         for (int i1 = 0; i1 < n1; i1++)  {
-         
+
           /* --- Diagonal part ---*/
-          //Get input x values 
+          //Get input x values
           double xre = xptr[2 * it];
           double xim = xptr[2 * it + 1];
           // drift Hamiltonian: uout = ( hd(ik) - hd(ik'))*vin
           //                    vout = (-hd(ik) + hd(ik'))*uin
           double hd  = H_detune(detuning_freq0, detuning_freq1, i0, i1)
-                     + H_selfkerr(xi0, xi1, i0, i1)
-                     + H_coupling(xi01, i0, i1);
+                     + H_selfkerr(xi0, xi1, i0, i1);
           double hdp = H_detune(detuning_freq0, detuning_freq1, i0p, i1p)
-                     + H_selfkerr(xi0, xi1, i0p, i1p)
-                     + H_coupling(xi01, i0p, i1p);
+                     + H_selfkerr(xi0, xi1, i0p, i1p);
           double yre = ( hd - hdp ) * xim;
           double yim = (-hd + hdp ) * xre;
           // Decay l1, diagonal part: xout += l1diag xin
           // Dephasing l2: xout += l2(ik, ikp) xin
           double l1diag = L1diag(decay0, decay1, i0, i1, i0p, i1p);
           double l2 = L2(dephase0, dephase1, i0, i1, i0p, i1p);
-          yre += (l2 + l1diag) * xre; 
+          yre += (l2 + l1diag) * xre;
           yim += (l2 + l1diag) * xim;
 
+
+          /* --- Offdiagonal: coupling term, oscil 0<->1 --- */
+          //  1) [...] * ρ_{E−k+l i, i′}
+          if (i0 > 0 && i1 < n1-1) {
+            int itx = it - stridei0 + stridei1;
+            double xre = xptr[2 * itx];
+            double xim = xptr[2 * itx + 1];
+            double sq = sqrt(i0 * (i1 + 1));
+            yre += xi01 * sq * (   cos01 * xim + sin01 * xre);
+            yim += xi01 * sq * ( - cos01 * xre + sin01 * xim);
+          }
+          // 2) J_kl (−icos − sin)sqrt(il*(ik +1)) ρ_{E+k−li,i′}
+          // -sin u + cos v + i (-cos u - sin v)
+          if (i0 < n0-1 && i1 > 0) {
+            int itx = it + stridei0 - stridei1;  // E+k-l i, i'
+            double xre = xptr[2 * itx];
+            double xim = xptr[2 * itx + 1];
+            double sq = sqrt(i1 * (i0 + 1)); // sqrt( il*(ik+1))
+            // -sin u + cos v + i (-cos u - sin v)
+            yre += xi01 * sq * (   cos01 * xim - sin01 * xre);
+            yim += xi01 * sq * ( - cos01 * xre - sin01 * xim);
+          }
+          // 3) J_kl ( icos − sin)sqrt(ik'*(il' +1)) ρ_{i,E-k+li'}
+          if (i0p > 0 && i1p < n1-1) {
+            int itx = it - stridei0p + stridei1p;  // i, E-k+l i'
+            double xre = xptr[2 * itx];
+            double xim = xptr[2 * itx + 1];
+            double sq = sqrt(i0p * (i1p + 1)); // sqrt( ik'*(il'+1))
+            // $-sin u - cos v + i ( cos u - sin v)$
+            yre += xi01 * sq * ( - cos01 * xim - sin01 * xre);
+            yim += xi01 * sq * (   cos01 * xre - sin01 * xim);
+          }
+          // 4) J_kl ( icos + sin)sqrt(il'*(ik' +1)) ρ_{i,E+k-li'}
+          if (i0p < n0-1 && i0p > 0) {
+            int itx = it + stridei0p - stridei1p;  // i, E+k-l i'
+            double xre = xptr[2 * itx];
+            double xim = xptr[2 * itx + 1];
+            double sq = sqrt(i1p * (i0p + 1)); // sqrt( il'*(ik'+1))
+            // sin u - cos v + i ( cos u + sin v)
+            yre += xi01 * sq * ( - cos01 * xim + sin01 * xre);
+            yim += xi01 * sq * (   cos01 * xre + sin01 * xim);
+          }
+
+
           /* --- Offdiagonal part of decay L1 */
-          // Oscillators 0 
+          // Oscillators 0
           if (i0 < n0-1 && i0p < n0-1) {
             double l1off = decay0 * sqrt((i0+1)*(i0p+1));
             int itx = it + stridei0 + stridei0p;
             double xre = xptr[2 * itx];
             double xim = xptr[2 * itx + 1];
             yre += l1off * xre;
-            yim += l1off * xim;         
+            yim += l1off * xim;
           }
-          // Oscillator 1 
+          // Oscillator 1
           if (i1 < n1-1 && i1p < n1-1) {
             double l1off = decay1 * sqrt((i1+1)*(i1p+1));
             int itx = it + stridei1 + stridei1p;
@@ -1150,7 +1196,7 @@ int myMatMult_matfree(Mat RHS, Vec x, Vec y){
             yre += sq * (- pt0 * xim - qt0 * xre);
             yim += sq * (  pt0 * xre - qt0 * xim);
           }
- 
+
           /* --- Control hamiltonian --- Oscillator 1 --- */
           /* \rho(ik+1..,ik'..) term */
           if (i1 < n1-1) {
@@ -1189,7 +1235,7 @@ int myMatMult_matfree(Mat RHS, Vec x, Vec y){
             yre += sq * (- pt1 * xim - qt1 * xre);
             yim += sq * (  pt1 * xre - qt1 * xim);
           }
- 
+
           /* Update */
           yptr[2*it]   = yre;
           yptr[2*it+1] = yim;
@@ -1203,7 +1249,7 @@ int myMatMult_matfree(Mat RHS, Vec x, Vec y){
   VecRestoreArrayRead(x, &xptr);
   VecRestoreArray(y, &yptr);
 
-    
+
   return 0;
 }
 
@@ -1259,7 +1305,7 @@ int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
         for (int i1 = 0; i1 < n1; i1++)  {
 
           /* --- Diagonal part ---*/
-          //Get input x values 
+          //Get input x values
           double xre = xptr[2 * it];
           double xim = xptr[2 * it + 1];
           // drift Hamiltonian Hd^T: uout = ( hd(ik) - hd(ik'))*vin
@@ -1276,21 +1322,21 @@ int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
           // Dephasing l2^T: xout += l2(ik, ikp) xin
           double l1diag = L1diag(decay0, decay1, i0, i1, i0p, i1p);
           double l2 = L2(dephase0, dephase1, i0, i1, i0p, i1p);
-          yre += (l2 + l1diag) * xre; 
+          yre += (l2 + l1diag) * xre;
           yim += (l2 + l1diag) * xim;
 
 
           /* --- Offdiagonal part of decay L1^T */
-          // Oscillators 0 
+          // Oscillators 0
           if (i0 > 0 && i0p > 0) {
             double l1off = decay0 * sqrt(i0*i0p);
             int itx = it - stridei0 - stridei0p;
             double xre = xptr[2 * itx];
             double xim = xptr[2 * itx + 1];
             yre += l1off * xre;
-            yim += l1off * xim;         
+            yim += l1off * xim;
           }
-          // Oscillator 1 
+          // Oscillator 1
           if (i1 > 0 && i1p > 0) {
             double l1off = decay1 * sqrt(i1*i1p);
             int itx = it - stridei1 - stridei1p;
@@ -1375,7 +1421,7 @@ int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
             double sq = sqrt(i1p+1);
             yre += sq * (  pt1 * xim - qt1 * xre);
             yim += sq * (- pt1 * xre - qt1 * xim);
-          } 
+          }
 
           /* Update */
           yptr[2*it]   = yre;
@@ -1385,7 +1431,7 @@ int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
       }
     }
   }
-         
+
 
 
   /* Restore x and y */
@@ -1437,7 +1483,7 @@ int myMatMultTranspose_matfree_2Osc(Mat RHS, Vec x, Vec y){
   } else {
     printf("ERROR: In order to run this case, run add a line at the end of mastereq.cpp with the corresponding number of levels!\n");
     exit(1);
-  } 
+  }
 }
 
 

@@ -221,6 +221,16 @@ int main(int argc,char **argv)
   /* --- Initialize the Master Equation  --- */
   std::vector<double> xi, t_collapse;
   config.GetVecDoubleParam("xi", xi, 2.0);
+  // Get coupling eta_ij = w_i - w_j
+  std::vector<double> eta(nlevels.size()*(nlevels.size()-1)/2.);
+  int idx = 0;
+  for (int iosc=0; iosc<nlevels.size(); iosc++){
+    for (int josc=iosc+1; josc<nlevels.size(); josc++){
+      eta[idx] = fundamental_freq[iosc] - fundamental_freq[josc];
+      idx++;
+    }
+  }
+  // Get lindblad type
   config.GetVecDoubleParam("lindblad_collapsetime", t_collapse, 0.0);
   std::string lindblad = config.GetStrParam("lindblad_type", "none");
   LindbladType lindbladtype;
@@ -244,7 +254,7 @@ int main(int argc,char **argv)
     printf("ERROR: No Petsc-parallel version for the matrix free solver available!");
     exit(1);
   }
-  MasterEq* mastereq = new MasterEq(nlevels, oscil_vec, xi, detuning_freq, lindbladtype, t_collapse, usematfree);
+  MasterEq* mastereq = new MasterEq(nlevels, oscil_vec, xi, eta, detuning_freq, lindbladtype, t_collapse, usematfree);
 
 
   /* Output */
