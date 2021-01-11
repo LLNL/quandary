@@ -101,6 +101,7 @@ void Gate::compare_frobenius(const Vec finalstate, const Vec rho0, double& frob)
   int dimstate, dimG;
   VecGetSize(finalstate, &dimstate); 
   VecGetSize(x, &dimG);     // x is an auxiliary variable, used for the computation below
+  printf("\n target gate dimension %d, system dimension %u\n", dimG, dimstate/2);
   if (dimstate/2 != dimG) {
     printf("\n ERROR: Target gate dimension %d doesn't match system dimension %u\n", dimG, dimstate/2);
     exit(1);
