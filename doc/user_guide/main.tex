@@ -1,4 +1,4 @@
-\documentclass[letterpaper]{article}
+\documentclass[11pt]{article}
 \usepackage[margin=1in]{geometry}
 \usepackage{amsmath}
 \usepackage{dsfont}
@@ -6,6 +6,7 @@
 \usepackage[utf8]{inputenc}
 \usepackage{xcolor}
 \usepackage{soul}
+\usepackage{authblk}
 % \usepackage[legalpaper, margin=2in]{geometry}
 \parindent0pt
 \parskip 1.5ex plus 1ex minus .5ex
@@ -25,21 +26,54 @@
 \newcommand{\R}{\mathds{R}}
 \newcommand{\C}{\mathds{C}}
 
+\newcommand\blfootnote[1]{%
+  \begingroup
+  \renewcommand\thefootnote{}\footnote{#1}%
+  \addtocounter{footnote}{-1}%
+  \endgroup
+}
 
 \title{Quandary: Optimal Control for Quantum Systems}
-% \author{Stefanie G{\"u}nther}
-% \affil{Lawrence Livermore National Laboratory, CA, USA}
-% \date{}
+\author{Stefanie G{\"u}nther\thanks{Center for Applied Scientific Computing, Lawrence Livermore
+    National Laboratory, Livermore, CA, USA.} \and N. Anders Petersson$^*$} 
+\date{December 29, 2020}
 
 \begin{document}
 \maketitle
 
+\section*{Disclaimer}
+This document was prepared as an account of work sponsored by an agency of the United States
+government. Neither the United States government nor Lawrence Livermore National Security, LLC,
+nor any of their employees makes any warranty, expressed or implied, or assumes any legal
+liability or responsibility for the accuracy, completeness, or usefulness of any information,
+apparatus, product, or process disclosed, or represents that its use would not infringe
+privately owned rights. Reference herein to any specific commercial product, process, or service
+by trade name, trademark, manufacturer, or otherwise does not necessarily constitute or imply
+its endorsement, recommendation, or favoring by the United States government or Lawrence
+Livermore National Security, LLC. The views and opinions of authors expressed herein do not
+necessarily state or reflect those of the United States government or Lawrence Livermore
+National Security, LLC, and shall not be used for advertising or product endorsement purposes.
 
-Quandary numerically simulates and optimizes the time-evolution of open quantum systems. The underlying dynamics are modelled by Lindblad's master equation, a linear ordinary differential equation (ODE) describing quantum systems interacting with the environment. Quandary solves this ODE numerically by applying a time-stepping integration scheme, and utilizes gradient-based numerical optimization approaches to determine optimal control pulses that drive the quantum system to a desired target state. 
-Two optimization objectives are considered: (a) Unitary gate optimization that finds controls to realize a unitary gate transformation, and (b) optimal reset that aims to drive the quantum system to the ground states. 
-Gradient-based optimization schemes utilizing Petsc's Tao optimization package are applied to generate control pulses that minimize the respective measure. 
-To mitigate excessive execution run times, Quandary can be build to link with the XBraid software library which provides a parallelization strategy to distribute the time-evolution of the underlying dynamics onto multiple processor applying a parallel-in-time multigrid reduction scheme. 
 
+\section{Introduction}
+Quandary numerically simulates and optimizes the time-evolution of open quantum systems. The
+underlying dynamics are modeled by Lindblad's master equation, a linear ordinary differential
+equation (ODE) describing quantum systems interacting with the environment. Quandary solves this ODE
+numerically by applying a time-stepping integration scheme and applies a gradient-based optimization
+scheme to determine optimal control pulses that drive the quantum system to a desired target state.
+Two optimization objectives are considered: (a) Unitary gate optimization that finds controls to
+realize a logical quantum gate, and (b) optimal reset that aims to drive the quantum system to the
+ground states.
+% Gradient-based optimization schemes utilizing Petsc's Tao optimization package are applied to
+% generate control pulses that minimize the respective measure.
+To mitigate excessive execution run times, Quandary can be build to link with the XBraid software
+library which provides a parallelization strategy to distribute the time-evolution of the underlying
+dynamics onto multiple processor applying a parallel-in-time multigrid reduction scheme.
+
+This document outlines the mathematical background and underlying equations, and summarizes their
+implementation in Quandary. A full documentation is under development. In the meantime, don't
+hesitate to direct any questions to guenther5@llnl.gov. For installation instructions, please take a
+look at the README.md document in the \verb+quandary+ directory.
 
 \section{Model equation}
 Quandary models open quantum systems with $Q$ subsystems with $n_k$ levels for the
@@ -147,9 +181,9 @@ In the most general form, Quandary can solve the following optimization problem
 \begin{align}
   \min_{\boldsymbol{\alpha}} \frac{1}{ninit} \sum_{i=1}^{ninit} \beta_i J(\rho_i(T))  + R(\boldsymbol{\alpha})
 \end{align}
-where $\rho_i(T)$ solves the master equation \eqref{mastereq} for initial conditions $\rho_i(0)$, as explained below. Specific coices of $J$ and initial conditions $\rho_i(0)$ are given below, as well as regularization and penalty terms denoted by $R$ above. 
+where $\rho_i(T)$ solves the master equation \eqref{mastereq} for initial conditions $\rho_i(0)$, as explained below. Specific choices of $J$ and initial conditions $\rho_i(0)$ are given below, as well as regularization and penalty terms denoted by $R$ above. 
 
-\subsection{Groundstate optimization aka optimal
+\subsection{Ground-state optimization aka optimal
 reset}\label{sec:groundstate-obj}
 Optimal reset aims to find control pulses $p^k(\vec{\alpha}^k, t), q^k(\vec{\alpha}^k, t)$,
 that drive any initial state towards the ground state $|0\dots 0\rangle = (1, 0,
@@ -163,7 +197,7 @@ that drive any initial state towards the ground state $|0\dots 0\rangle = (1, 0,
 \end{align}
 
 To reach this goal, Quandary either minimizes the distance between the final state
-density matrix and the ground-state density matrix, measured in the frobenius
+density matrix and the ground-state density matrix, measured in the Frobenius
 norm, or minimizes a weighted average of the expected energy level over each subsystem:
 \begin{enumerate}
   \item \textit{Expected energy minimization}: Minimize a weighted sum over
@@ -194,8 +228,8 @@ norm, or minimizes a weighted average of the expected energy level over each sub
       \item[(c)] $J(\rho(T)) =
         \frac{1}{|\mathcal{K}|}\sum_{k\in\mathcal{K}}\langle O^k \rangle$
     \end{enumerate}
-  \item \textit{Direct ground-state optimization}: Minimize the frobenius norm
-    between the final density matrix and the groundstate density matrix:
+  \item \textit{Direct ground-state optimization}: Minimize the Frobenius norm
+    between the final density matrix and the ground-state density matrix:
     \begin{align}\label{eq:ground-state-obj}
       J(\rho(T)) = \frac 12 \| \rho(T) - \rho_G \|^2_F 
     \end{align}
@@ -252,7 +286,7 @@ Section~\ref{sec:groundstate-obj}, an integral penalty term can be added to the 
   \frac{1}{a} e^{ -\left(\frac{t-T}{a} \right)^2},
 \end{align}
 for a penalty parameter $\gamma_2 > 0$, and parameter $0 < a \leq 1$. 
-Note, that as $a\to 0$, the weight $w(t)$ converges to the dirac delta
+Note, that as $a\to 0$, the weight $w(t)$ converges to the Dirac delta
 distribution with peak at final time $T$. 
 
 
@@ -263,7 +297,7 @@ distribution with peak at final time $T$.
 One can choose to simulate and optimize for only one specific initial condition $\rho(0)$. In that case, each evaluation of the objective function solves the master equation once for this specific initial condition ($\Rightarrow ninit = 1$). 
 
 In the case of pure-state initialization, the initial density matrix is composed
-of kronecker products of pure states for each of the subsystems. E.g. for a bipartite system with $n_1
+of Kronecker products of pure states for each of the subsystems. E.g. for a bipartite system with $n_1
 \otimes n_2$ levels, one can propagate any initial pure state 
 \begin{align}
   \rho(0)  = |a\rangle \langle a| \otimes |b\rangle \langle b| \quad \text{for} \quad a \in \{0,\dots, n_1-1\}, b\in \{0,\dots, n_2-1\}
@@ -378,7 +412,7 @@ A specific initial condition can be read from file ($\Rightarrow ninit=1$ with u
 
   \subsection{Vectorization}
   The Lindblad master equation \eqref{mastereq} is in matrix form, describing
-  the evolution of the densisy matrix $\rho = (\rho_1, \dots, \rho_N) \in
+  the evolution of the density matrix $\rho = (\rho_1, \dots, \rho_N) \in
   \C^{N\times N}$. In order to solve this numerically, we vectorize the equation
   to receive an ODE for $q(t) := \text{vec}(\rho(t)) \in \C^{N^2}$. Using the
   relations
@@ -470,8 +504,8 @@ A specific initial condition can be read from file ($\Rightarrow ninit=1$ with u
 
    \end{itemize}
 
-  \subsection{Co-located storage of real and imaginary part}
-  The real and imaginary parts of $q(t)$ are stored in a co-located manner: For
+  \subsection{Colocated storage of real and imaginary part}
+  The real and imaginary parts of $q(t)$ are stored in a colocated manner: For
   $q = u+iv$ with $u,v\in\R^{N^2}$, a vector of size $2N^2$ is stored that
   staggers real and imaginary parts behind each other for each component:
   \begin{align*}
@@ -498,7 +532,7 @@ A specific initial condition can be read from file ($\Rightarrow ninit=1$ with u
     solution at each discrete time step $q^{n} \approx q(t_n)$. The implicit midpoint rule is the default setting, and is the preferred time-stepping integration scheme. 
    
     \subsubsection{Implicit Midpoint Rule (IMR)} 
-    The implicit mid-point rule is a simplectic, second-order integration scheme
+    The implicit mid-point rule is a symplectic, second-order integration scheme
     of Runge-Kutta type, with a Runge-Kutta tableau given by
     \begin{tabular}{ c | c }
       $1/2$ & $ 1/2$ \\
@@ -578,10 +612,10 @@ A specific initial condition can be read from file ($\Rightarrow ninit=1$ with u
 
 \subsubsection{Optimization variables and bounds}
 
-Design parameters (optimization variables) are storaged in the Quandary code in the following order: List oscillators first $(\vec{\alpha}^1, \dots, \vec{\alpha}^Q)$, then for each $\vec{\alpha}^k \in
+Design parameters (optimization variables) are stored in the Quandary code in the following order: List oscillators first $(\vec{\alpha}^1, \dots, \vec{\alpha}^Q)$, then for each $\vec{\alpha}^k \in
 \R^{2LN_f^k}$ iterate over $L$ splines: $\vec{\alpha}^k =
 (\alpha^k_1,\dots, \alpha^k_{L})$ with $\alpha^k_l \in \R^{2N_f^k}$, then each
-$\alpha^k_l$ iterates over carrierwaves and for each carrierwaves lists
+$\alpha^k_l$ iterates over carrier waves and for each carrier wave lists
 the two components: $\alpha^k_l = \alpha^{k(1)}_{l,1}, \alpha^{k(2)}_{l,1},
 \dots \alpha^{k(1)}_{l,N_f^k}, \alpha^{k(2)}_{l,N_f^k}$. Hence there are a total of $2QL\sum_k N_f^k$ optimization parameters, which are stored in the following order:
   \begin{align}
@@ -612,46 +646,50 @@ the two components: $\alpha^k_l = \alpha^{k(1)}_{l,1}, \alpha^{k(2)}_{l,1},
 
 
 
-  \subsection{Parallelization (experimental)}
+    \subsection{Parallelization (experimental)}
     Three levels of parallelization are planned, and partly implemented: 
-      \begin{enumerate}
-        \item Parallelization over initial conditions: working, configuration
-          option \textit{np\_init}. Speedup over serial should be ideal, i.e.
-          equal to \textit{np\_init}.
-        \item Time-parallelization via XBraid: working implementation, but
-          speedup depends on testcase and XBraid setting (experts only),
-          configuration option is \textit{np\_braid}
-        \item Spatial parallelism for parallel linear algebra (Petsc): working
-          for the sparse-matrix solver, not for the tensor-contraction solver
-      \end{enumerate}
-      In the main code, the global communicator (MPI\_COMM\_WORLD) is split into
-      three sub-communicator, one for each of the above. The total number of mpi
-      processes ($np_{total}$) is split into three subgroups such that 
-       \begin{align*}
-         np_{braid} * np_{init} * np_{petsc} = np_{total}.
-       \end{align*}
-      The user specifies the size of the communicator for distributing the
-      initial conditions ($np_{init}$) as well as time-parallelization
-      ($np_{braid}$) in the config file. The number of cores for parallel linear
-      algebra ($np_{petsc}$) is then computed from the above equation. The
-      following requirements for parallel distribution must be considered when
-      setting up parallel runs:
-      \begin{itemize}
-        \item $\frac{n_{init}}{np_{init}} \in \mathds{N}$, where $n_{init}$ is
-          the number of initial conditions that are considered (being $N^2$ for
-          the full basis, $N$ for considering diagonals only as initial
-          condition, and $1$ if propagating only one initial condition e.g.
-          reading from file, or pure state initialization). This requirement
-          ensures that each processor group owns the same number of initial
-          conditions.
-        \item $\frac{np_{total}}{np_{init}*np_{braid}} \in \mathds{N}$, so that
-          each processor group has the same number of cores for petsc.
-        \item $\frac{N^2}{np_{petsc}} \in \mathds{N}$, hence the system
-          dimensions must be integer multiple of the number of cores for
-          distributing linear algebra in Petsc. This constraint is a little
-          annoying, however the current implementation requires this due to the
-          co-located storage of the real and imaginary parts of the vectorized
-          state.
-      \end{itemize}
-  
+    \begin{enumerate}
+    \item Parallelization over initial conditions: working, configuration
+      option \textit{np\_init}. Speedup over serial should be ideal, i.e.
+      equal to \textit{np\_init}.
+    \item Time-parallelization via XBraid: working implementation, but
+      speedup depends on the test case and XBraid setting (experts only),
+      configuration option is \textit{np\_braid}
+    \item Spatial parallelism for parallel linear algebra (Petsc): working
+      for the sparse-matrix solver, not for the tensor-contraction solver
+    \end{enumerate}
+    In the main code, the global communicator (MPI\_COMM\_WORLD) is split into
+    three sub-communicator, one for each of the above. The total number of MPI
+    processes ($np_{total}$) is split into three subgroups such that 
+    \begin{align*}
+      np_{braid} * np_{init} * np_{petsc} = np_{total}.
+    \end{align*}
+    The user specifies the size of the communicator for distributing the
+    initial conditions ($np_{init}$) as well as time-parallelization
+    ($np_{braid}$) in the config file. The number of cores for parallel linear
+    algebra ($np_{petsc}$) is then computed from the above equation. The
+    following requirements for parallel distribution must be considered when
+    setting up parallel runs:
+    \begin{itemize}
+    \item $\frac{n_{init}}{np_{init}} \in \mathds{N}$, where $n_{init}$ is
+      the number of initial conditions that are considered (being $N^2$ for
+      the full basis, $N$ for considering diagonals only as initial
+      condition, and $1$ if propagating only one initial condition e.g.
+      reading from file, or pure state initialization). This requirement
+      ensures that each processor group owns the same number of initial
+      conditions.
+    \item $\frac{np_{total}}{np_{init}*np_{braid}} \in \mathds{N}$, so that
+      each processor group has the same number of cores for Petsc.
+    \item $\frac{N^2}{np_{petsc}} \in \mathds{N}$, hence the system
+      dimensions must be integer multiple of the number of cores for
+      distributing linear algebra in Petsc. This constraint is a little
+      annoying, however the current implementation requires this due to the
+      colocated storage of the real and imaginary parts of the vectorized
+      state.
+    \end{itemize}
+
+    \section*{Acknowledgments}
+    This work was performed under the auspices of the U.S. Department of Energy by Lawrence
+    Livermore National Laboratory under Contract DE-AC52-07NA27344. LLNL-SM-818073. 
+
 \end{document}

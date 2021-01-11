@@ -14,7 +14,7 @@ SANITY_CHECK = false
 
 #######################################################
 # Typically no need to change anything below
-#
+
 # Add optional Slepc
 #ifdef SLEPC_DIR
 #CXX_OPT = -DWITH_SLEPC
@@ -41,7 +41,7 @@ endif
 include ${PETSC_DIR}/lib/petsc/conf/variables
 include ${PETSC_DIR}/lib/petsc/conf/rules
 include ${PETSC_DIR}/lib/petsc/conf/test
-#
+
 # Set direction of source and header files, and build direction
 SRC_DIR   = src
 INC_DIR   = include
