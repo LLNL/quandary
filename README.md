@@ -52,5 +52,3 @@ Quandary is an open source project that is under heavy development. Contribution
 Quandary is distributed under the terms of the MIT license. All new contributions must be made under this license. See LICENSE, and NOTICE, for details. 
 
 SPDX-License-Identifier: MIT
-
-LLNL-CODE-817714
