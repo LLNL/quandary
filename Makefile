@@ -1,6 +1,7 @@
 # Set location of PETSC
 #PETSC_DIR=/usr/workspace/wsa/wave/petsc-3.13
 #PETSC_ARCH=arch-linux-c-debug
+include user.mk
 
 # Set Braid location, or comment out
 #BRAID_DIR = ${HOME}/Numerics/xbraid_solveadjointwithxbraid
