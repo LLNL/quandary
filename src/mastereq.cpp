@@ -1132,7 +1132,7 @@ int myMatMult_matfree(Mat RHS, Vec x, Vec y){
 
   /* Evaluate coefficients */
   double xi0  = shellctx->xi[0];
-  double xi01 = shellctx->xi[1];
+  double xi01 = shellctx->xi[1]; // This is J_01 in the IBM Hamiltonian!
   double xi1  = shellctx->xi[2];
   double eta01 = shellctx->eta[0];
   double detuning_freq0 = shellctx->detuning_freq[0];
@@ -1190,7 +1190,8 @@ int myMatMult_matfree(Mat RHS, Vec x, Vec y){
 
 
           /* --- Offdiagonal: coupling term, oscil 0<->1 --- */
-          //  1) [...] * ρ_{E−k+l i, i′}
+          //  1) J_kl (-icos + sin) * ρ_{E−k+l i, i′}
+          // sin u + cos v + i ( -cos u + sin v)
           if (i0 > 0 && i1 < n1-1) {
             int itx = it - stridei0 + stridei1;
             double xre = xptr[2 * itx];
@@ -1200,7 +1201,6 @@ int myMatMult_matfree(Mat RHS, Vec x, Vec y){
             yim += xi01 * sq * ( - cos01 * xre + sin01 * xim);
           }
           // 2) J_kl (−icos − sin)sqrt(il*(ik +1)) ρ_{E+k−li,i′}
-          // -sin u + cos v + i (-cos u - sin v)
           if (i0 < n0-1 && i1 > 0) {
             int itx = it + stridei0 - stridei1;  // E+k-l i, i'
             double xre = xptr[2 * itx];
@@ -1216,7 +1216,7 @@ int myMatMult_matfree(Mat RHS, Vec x, Vec y){
             double xre = xptr[2 * itx];
             double xim = xptr[2 * itx + 1];
             double sq = sqrt(i0p * (i1p + 1)); // sqrt( ik'*(il'+1))
-            // $-sin u - cos v + i ( cos u - sin v)$
+            // -sin u - cos v + i ( cos u - sin v)
             yre += xi01 * sq * ( - cos01 * xim - sin01 * xre);
             yim += xi01 * sq * (   cos01 * xre - sin01 * xim);
           }
@@ -1419,7 +1419,7 @@ int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
           yre += (l2 + l1diag) * xre;
           yim += (l2 + l1diag) * xim;
 
-          /* --- Offdiagonal: coupling term, oscil 0<->1 --- */
+          /* --- Offdiagonal coupling term J_01, oscil 0<->1 --- */
           //  1) [...] * \bar y_{E+k-l i, i′}
           if (i0 < n0-1 && i1 > 0) {
             int itx = it + stridei0 - stridei1;
@@ -1429,7 +1429,7 @@ int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
             yre += xi01 * sq * (   cos01 * xim + sin01 * xre);
             yim += xi01 * sq * ( - cos01 * xre + sin01 * xim);
           }
-          // 2) J_kl (−icos − sin)sqrt(ik*(il +1)) ρ_{E-k+li,i′}
+          // 2) J_kl (−icos − sin)sqrt(ik*(il +1)) \bar y_{E-k+li,i′}
           // -sin u + cos v + i (-cos u - sin v)
           if (i0 > 0 && i1 < n1-1) {
             int itx = it - stridei0 + stridei1;  // E-k+l i, i'
@@ -1440,7 +1440,7 @@ int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
             yre += xi01 * sq * (   cos01 * xim - sin01 * xre);
             yim += xi01 * sq * ( - cos01 * xre - sin01 * xim);
           }
-          // 3) J_kl ( icos − sin)sqrt(il'*(ik' +1)) ρ_{i,E+k-li'}
+          // 3) J_kl ( icos − sin)sqrt(il'*(ik' +1)) \bar y_{i,E+k-li'}
           if (i0p < n0-1 && i1p > 0) {
             int itx = it + stridei0p - stridei1p;  // i, E+k-l i'
             double xre = xptr[2 * itx];
@@ -1450,7 +1450,7 @@ int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
             yre += xi01 * sq * ( - cos01 * xim - sin01 * xre);
             yim += xi01 * sq * (   cos01 * xre - sin01 * xim);
           }
-          // 4) J_kl ( icos + sin)sqrt(ik'*(il' +1)) ρ_{i,E-k+li'}
+          // 4) J_kl ( icos + sin)sqrt(ik'*(il' +1)) \bar y_{i,E-k+li'}
           if (i0p > 0 && i1p > n1-1) {
             int itx = it - stridei0p + stridei1p;  // i, E-k+l i'
             double xre = xptr[2 * itx];
