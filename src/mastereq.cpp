@@ -177,6 +177,7 @@ void MasterEq::initSparseMatSolver(LindbladType lindbladtype){
   int dimmat = (int) sqrt(dim);
 
   /* Compute building blocks */
+  int id_kl=0;  // index for accessing Ad_kl in Ad_vec
   for (int iosc = 0; iosc < noscillators; iosc++) {
 
     /* Get lowering operator a = I_(n_1) \kron ... \kron a^(n_k) \kron ... \kron I_(n_q) */
@@ -209,46 +210,47 @@ void MasterEq::initSparseMatSolver(LindbladType lindbladtype){
 
 
     /* Compute coupling building blocks */
-    int idx=0;
     for (int josc=iosc+1; josc<noscillators; josc++){
 
       Mat loweringOPj, loweringOPj_T;
       loweringOPj = oscil_vec[josc]->getLoweringOP((bool)mpirank_petsc);
       MatTranspose(loweringOPj, MAT_INITIAL_MATRIX, &loweringOPj_T);
 
-      MatCreate(PETSC_COMM_WORLD, &Ad_vec[idx]);
-      MatCreate(PETSC_COMM_WORLD, &Bd_vec[idx]);
-      MatSetSizes(Ad_vec[idx], PETSC_DECIDE, PETSC_DECIDE, dim, dim);
-      MatSetSizes(Bd_vec[idx], PETSC_DECIDE, PETSC_DECIDE, dim, dim);
-      MatSetUp(Ad_vec[idx]);
-      MatSetUp(Bd_vec[idx]);
-      MatSetFromOptions(Ad_vec[idx]);
-      MatSetFromOptions(Bd_vec[idx]);
+      MatCreate(PETSC_COMM_WORLD, &Ad_vec[id_kl]);
+      MatCreate(PETSC_COMM_WORLD, &Bd_vec[id_kl]);
+      MatSetSizes(Ad_vec[id_kl], PETSC_DECIDE, PETSC_DECIDE, dim, dim);
+      MatSetSizes(Bd_vec[id_kl], PETSC_DECIDE, PETSC_DECIDE, dim, dim);
+      MatSetUp(Ad_vec[id_kl]);
+      MatSetUp(Bd_vec[id_kl]);
+      MatSetFromOptions(Ad_vec[id_kl]);
+      MatSetFromOptions(Bd_vec[id_kl]);
 
       /* Ad_kl(t) =  I_N \kron (ak^Tal − akal^T) − (al^Tak − alak^T) \kron IN */
       /* Bd_kl(t) = -I_N \kron (ak^Tal + akal^T) + (al^Tak + alak_T) \kron IN */
       Mat tmp;
       MatMatMult(loweringOP_T, loweringOPj, MAT_INITIAL_MATRIX, PETSC_DEFAULT, &tmp);
-      Ikron(tmp, dimmat, 1.0, &Ad_vec[idx], ADD_VALUES);  // Ad +=  I_n \kron ak^Tal
-      Ikron(tmp, dimmat, -1.0, &Bd_vec[idx], ADD_VALUES); // Bd += -I_n \kron ak^Tal
+      Ikron(tmp, dimmat, 1.0, &Ad_vec[id_kl], ADD_VALUES);  // Ad +=  I_n \kron ak^Tal
+      Ikron(tmp, dimmat, -1.0, &Bd_vec[id_kl], ADD_VALUES); // Bd += -I_n \kron ak^Tal
       MatDestroy(&tmp);
       MatMatMult(loweringOP, loweringOPj_T, MAT_INITIAL_MATRIX, PETSC_DEFAULT, &tmp);
-      Ikron(tmp, dimmat, -1.0, &Ad_vec[idx], ADD_VALUES); // Ad += -I_n \kron akal^T
-      Ikron(tmp, dimmat, -1.0, &Bd_vec[idx], ADD_VALUES); // Bd += -I_n \kron akal^T
+      Ikron(tmp, dimmat, -1.0, &Ad_vec[id_kl], ADD_VALUES); // Ad += -I_n \kron akal^T
+      Ikron(tmp, dimmat, -1.0, &Bd_vec[id_kl], ADD_VALUES); // Bd += -I_n \kron akal^T
       MatDestroy(&tmp);
       MatMatMult(loweringOPj_T, loweringOP, MAT_INITIAL_MATRIX, PETSC_DEFAULT, &tmp);
-      kronI(tmp, dimmat, -1.0, &Ad_vec[idx], ADD_VALUES); // Ad += - al^Tak \kron I_N
-      kronI(tmp, dimmat,  1.0, &Bd_vec[idx], ADD_VALUES); // Bd +=   al^Tak \kron I_N
+      kronI(tmp, dimmat, -1.0, &Ad_vec[id_kl], ADD_VALUES); // Ad += - al^Tak \kron I_N
+      kronI(tmp, dimmat,  1.0, &Bd_vec[id_kl], ADD_VALUES); // Bd +=   al^Tak \kron I_N
       MatDestroy(&tmp);
       MatMatMult(loweringOPj, loweringOP_T, MAT_INITIAL_MATRIX, PETSC_DEFAULT, &tmp);
-      kronI(tmp, dimmat,  1.0, &Ad_vec[idx], ADD_VALUES); // Ad +=   alak^T \kron I_N
-      kronI(tmp, dimmat,  1.0, &Bd_vec[idx], ADD_VALUES); // Bd +=   alak^T \kron I_N
+      kronI(tmp, dimmat,  1.0, &Ad_vec[id_kl], ADD_VALUES); // Ad +=   alak^T \kron I_N
+      kronI(tmp, dimmat,  1.0, &Bd_vec[id_kl], ADD_VALUES); // Bd +=   alak^T \kron I_N
       MatDestroy(&tmp);
-      MatAssemblyBegin(Ad_vec[idx], MAT_FINAL_ASSEMBLY);
-      MatAssemblyBegin(Bd_vec[idx], MAT_FINAL_ASSEMBLY);
-      MatAssemblyEnd(Ad_vec[idx], MAT_FINAL_ASSEMBLY);
-      MatAssemblyEnd(Bd_vec[idx], MAT_FINAL_ASSEMBLY);
-      idx++;
+      MatAssemblyBegin(Ad_vec[id_kl], MAT_FINAL_ASSEMBLY);
+      MatAssemblyBegin(Bd_vec[id_kl], MAT_FINAL_ASSEMBLY);
+      MatAssemblyEnd(Ad_vec[id_kl], MAT_FINAL_ASSEMBLY);
+      MatAssemblyEnd(Bd_vec[id_kl], MAT_FINAL_ASSEMBLY);
+      id_kl++;
+
+      MatDestroy(&loweringOPj_T);
     }
 
     MatDestroy(&loweringOP_T);
@@ -285,11 +287,13 @@ void MasterEq::initSparseMatSolver(LindbladType lindbladtype){
     MatDestroy(&tmp_T);
 
     // /* Previously: Cross term -xi * 2 * PI * (N_i*N_j) for j > i */
-    // for (int josc = iosc+1; josc < noscillators; josc++) {
+    // Now only skipping over the coupling elements in xi
+    // IBM cross terms are time-dependent and added when applied.
+    for (int josc = iosc+1; josc < noscillators; josc++) {
     //   numberOPj = oscil_vec[josc]->getNumberOP((bool) mpirank_petsc);
     //   MatMatMult(numberOP, numberOPj, MAT_INITIAL_MATRIX, PETSC_DEFAULT, &tmp);
     //   MatScale(tmp, -xi[xi_id] * 2.0 * M_PI);
-    //   xi_id++;
+      xi_id++;
     //
     //   MatTranspose(tmp, MAT_INITIAL_MATRIX, &tmp_T);
     //   Ikron(tmp,   dimmat, -1.0, &Bd, ADD_VALUES);
@@ -297,7 +301,7 @@ void MasterEq::initSparseMatSolver(LindbladType lindbladtype){
     //
     //   MatDestroy(&tmp);
     //   MatDestroy(&tmp_T);
-    // }
+    }
   }
   MatAssemblyBegin(Bd, MAT_FINAL_ASSEMBLY);
   MatAssemblyEnd(Bd, MAT_FINAL_ASSEMBLY);
@@ -1004,7 +1008,10 @@ int myMatMult_sparsemat(Mat RHS, Vec x, Vec y){
 
 
   /* Control and coupling terms */
+  int id_kl = 0; // index for accessing Ad_kl inside Ad_vec
+  int id_xi = 0;  // index for accessing xi_kl inside xi
   for (int iosc = 0; iosc < shellctx->nlevels.size(); iosc++) {
+
     /* Get controls */
     double p = shellctx->control_Re[iosc];
     double q = shellctx->control_Im[iosc];
@@ -1022,26 +1029,29 @@ int myMatMult_sparsemat(Mat RHS, Vec x, Vec y){
     MatMult((*(shellctx->Bc_vec))[iosc], u, *shellctx->Bcu);
     VecAXPY(vout, p, *shellctx->Bcu);
 
+    id_xi++;
+
     // Coupling terms
-    int idx = 0;
     for (int josc=iosc+1; josc<shellctx->nlevels.size(); josc++){
 
-      double etakl = shellctx->eta[idx];
+      double etakl = shellctx->eta[id_kl];
       double coskl = cos(etakl*2*M_PI * shellctx->time);
       double sinkl = sin(etakl*2*M_PI * shellctx->time);
+      double Jkl = shellctx->xi[id_xi]*2*M_PI; 
       // uout += J_kl*sin*Adklu
-      MatMult((*(shellctx->Ad_vec))[idx], u, *shellctx->Adklu);
-      VecAXPY(uout, etakl*sinkl, *shellctx->Adklu);
+      MatMult((*(shellctx->Ad_vec))[id_kl], u, *shellctx->Adklu);
+      VecAXPY(uout, Jkl*sinkl, *shellctx->Adklu);
       // uout += -Jkl*cos*Bdklv
-      MatMult((*(shellctx->Bd_vec))[idx], v, *shellctx->Bdklv);
-      VecAXPY(uout, -etakl*coskl, *shellctx->Bdklv);
+      MatMult((*(shellctx->Bd_vec))[id_kl], v, *shellctx->Bdklv);
+      VecAXPY(uout, -Jkl*coskl, *shellctx->Bdklv);
       // vout += Jkl*cos*Bdklu
-      MatMult((*(shellctx->Bd_vec))[idx], u, *shellctx->Bdklu);
-      VecAXPY(uout, etakl*coskl, *shellctx->Bdklu);
+      MatMult((*(shellctx->Bd_vec))[id_kl], u, *shellctx->Bdklu);
+      VecAXPY(vout, Jkl*coskl, *shellctx->Bdklu);
       //vout += Jkl*sin*Adklv
-      MatMult((*(shellctx->Ad_vec))[idx], v, *shellctx->Adklv);
-      VecAXPY(uout, etakl*sinkl, *shellctx->Adklv);
-      idx++;
+      MatMult((*(shellctx->Ad_vec))[id_kl], v, *shellctx->Adklv);
+      VecAXPY(vout, Jkl*sinkl, *shellctx->Adklv);
+      id_kl++;
+      id_xi++;
     }
   }
 
