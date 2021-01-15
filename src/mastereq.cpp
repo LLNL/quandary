@@ -1132,7 +1132,7 @@ int myMatMult_matfree(Mat RHS, Vec x, Vec y){
 
   /* Evaluate coefficients */
   double xi0  = shellctx->xi[0];
-  double xi01 = shellctx->xi[1]; // This is J_01 in the IBM Hamiltonian!
+  double xi01 = shellctx->xi[1]*2*M_PI; // This is J_01 in the IBM Hamiltonian!
   double xi1  = shellctx->xi[2];
   double eta01 = shellctx->eta[0];
   double detuning_freq0 = shellctx->detuning_freq[0];
@@ -1362,7 +1362,7 @@ int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
 
   /* Evaluate coefficients */
   double xi0  = shellctx->xi[0];
-  double xi01 = shellctx->xi[1];
+  double xi01 = shellctx->xi[1]*2*M_PI;  // This is J_kl in IBM Hamiltonian
   double xi1  = shellctx->xi[2];
   double eta01 = shellctx->eta[0];
   double detuning_freq0 = shellctx->detuning_freq[0];
