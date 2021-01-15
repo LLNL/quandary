@@ -22,7 +22,10 @@ typedef struct {
   Mat** Ac_vec;
   Mat** Bc_vec;
   Mat *Ad, *Bd;
+  Mat** Ad_vec;
+  Mat** Bd_vec;
   Vec *Acu, *Acv, *Bcu, *Bcv;
+  Vec *Adklu, *Adklv, *Bdklu, *Bdklv;
   double time;
 } MatShellCtx;
 
@@ -48,9 +51,11 @@ class MasterEq{
     Mat RHS;                // Realvalued, vectorized systemmatrix (2N^2 x 2N^2)
     MatShellCtx RHSctx;     // MatShell context that contains data needed to apply the RHS
 
-    Mat* Ac_vec;  // Vector of constant mats for time-varying Hamiltonian (real) 
-    Mat* Bc_vec;  // Vector of constant mats for time-varying Hamiltonian (imag) 
+    Mat* Ac_vec;  // Vector of constant mats for time-varying control term (real)
+    Mat* Bc_vec;  // Vector of constant mats for time-varying control term (imag)
     Mat  Ad, Bd;  // Real and imaginary part of constant system matrix
+    Mat* Ad_vec;  // Vector of constant mats for IBM coupling term in drift Hamiltonian (real)
+    Mat* Bd_vec;  // Vector of constant mats for IBM coupling term in drift Hamiltonian (imag)
 
     std::vector<double> xi;             // Self- and cross kerrs in drift Hamiltonian
     std::vector<double> eta;             // coefficient of coupling terms for IBM casablanca
@@ -65,6 +70,7 @@ class MasterEq{
     double *dRedp;
     double *dImdp;
     Vec Acu, Acv, Bcu, Bcv;
+    Vec Adklu, Adklv, Bdklu, Bdklv;
     int* cols;           // holding columns when evaluating dRHSdp
     PetscScalar* vals;   // holding values when evaluating dRHSdp
  
