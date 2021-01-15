@@ -1201,12 +1201,12 @@ int myMatMult_matfree(Mat RHS, Vec x, Vec y){
 
           /* --- Offdiagonal: coupling term, oscil 0<->1 --- */
           //  1) J_kl (-icos + sin) * ρ_{E−k+l i, i′}
-          // sin u + cos v + i ( -cos u + sin v)
           if (i0 > 0 && i1 < n1-1) {
             int itx = it - stridei0 + stridei1;
             double xre = xptr[2 * itx];
             double xim = xptr[2 * itx + 1];
             double sq = sqrt(i0 * (i1 + 1));
+            // sin u + cos v + i ( -cos u + sin v)
             yre += xi01 * sq * (   cos01 * xim + sin01 * xre);
             yim += xi01 * sq * ( - cos01 * xre + sin01 * xim);
           }
@@ -1220,25 +1220,25 @@ int myMatMult_matfree(Mat RHS, Vec x, Vec y){
             yre += xi01 * sq * (   cos01 * xim - sin01 * xre);
             yim += xi01 * sq * ( - cos01 * xre - sin01 * xim);
           }
-          // 3) J_kl ( icos − sin)sqrt(ik'*(il' +1)) ρ_{i,E-k+li'}
+          // 3) J_kl ( icos + sin)sqrt(ik'*(il' +1)) ρ_{i,E-k+li'}
           if (i0p > 0 && i1p < n1-1) {
             int itx = it - stridei0p + stridei1p;  // i, E-k+l i'
             double xre = xptr[2 * itx];
             double xim = xptr[2 * itx + 1];
             double sq = sqrt(i0p * (i1p + 1)); // sqrt( ik'*(il'+1))
-            // -sin u - cos v + i ( cos u - sin v)
-            yre += xi01 * sq * ( - cos01 * xim - sin01 * xre);
-            yim += xi01 * sq * (   cos01 * xre - sin01 * xim);
+            //  sin u - cos v + i ( cos u + sin v)
+            yre += xi01 * sq * ( - cos01 * xim + sin01 * xre);
+            yim += xi01 * sq * (   cos01 * xre + sin01 * xim);
           }
-          // 4) J_kl ( icos + sin)sqrt(il'*(ik' +1)) ρ_{i,E+k-li'}
+          // 4) J_kl ( icos - sin)sqrt(il'*(ik' +1)) ρ_{i,E+k-li'}
           if (i0p < n0-1 && i1p > 0) {
             int itx = it + stridei0p - stridei1p;  // i, E+k-l i'
             double xre = xptr[2 * itx];
             double xim = xptr[2 * itx + 1];
             double sq = sqrt(i1p * (i0p + 1)); // sqrt( il'*(ik'+1))
-            // sin u - cos v + i ( cos u + sin v)
-            yre += xi01 * sq * ( - cos01 * xim + sin01 * xre);
-            yim += xi01 * sq * (   cos01 * xre + sin01 * xim);
+            // - sin u - cos v + i ( cos u - sin v)
+            yre += xi01 * sq * ( - cos01 * xim - sin01 * xre);
+            yim += xi01 * sq * (   cos01 * xre - sin01 * xim);
           }
 
 
