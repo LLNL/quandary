@@ -1082,8 +1082,12 @@ int myMatMultTranspose_sparsemat(Mat RHS, Vec x, Vec y) {
 
   // uout = Re^T*u + Im^T*v
   //      = (Ad + sum_k q_kA_k)^T*u + (Bd + sum_k p_kB_k)^T*v
+          // + sum_kl J_kl*sin(eta_kl*t) * Ad_kl^T * u
+          //         +J_kl*cos(eta_kl*t) * Bd_kl^T * v  ]   cross terms
   // vout = -Im^T*u + Re^T*v
   //      = -(Bd + sum_k p_kB_k)^T*u + (Ad + sum_k q_kA_k)^T*v
+        // + sum_kl - J_kl*cos(eta_kl*t) * Bd_kl^T * u
+        //          + J_kl*sin(eta_kl*t) * Ad_kl^T * v  ]   cross terms
 
   // Constant part uout = Ad^Tu + Bd^Tv
   MatMultTranspose(*shellctx->Bd, v, uout);
@@ -1093,7 +1097,9 @@ int myMatMultTranspose_sparsemat(Mat RHS, Vec x, Vec y) {
   VecScale(vout, -1.0);
   MatMultTransposeAdd(*shellctx->Ad, v, vout, vout);
 
-  /* Control part */
+  /* Control and coupling term */
+  int id_kl = 0; // index for accessing Ad_kl inside Ad_vec
+  int id_xi = 0;  // index for accessing xi_kl inside xi
   for (int iosc = 0; iosc < shellctx->nlevels.size(); iosc++) {
     /* Get controls */
     double p = shellctx->control_Re[iosc];
@@ -1111,6 +1117,32 @@ int myMatMultTranspose_sparsemat(Mat RHS, Vec x, Vec y) {
     // vout -= p^kBc^Tu
     MatMultTranspose((*(shellctx->Bc_vec))[iosc], u, *shellctx->Bcu);
     VecAXPY(vout, -1.*p, *shellctx->Bcu);
+
+    id_xi++;
+
+    // Coupling terms
+    for (int josc=iosc+1; josc<shellctx->nlevels.size(); josc++){
+
+      double etakl = shellctx->eta[id_kl];
+      double coskl = cos(etakl*2*M_PI * shellctx->time);
+      double sinkl = sin(etakl*2*M_PI * shellctx->time);
+      double Jkl = shellctx->xi[id_xi]*2*M_PI; 
+      // uout += J_kl*sin*Adklu^T
+      MatMultTranspose((*(shellctx->Ad_vec))[id_kl], u, *shellctx->Adklu);
+      VecAXPY(uout, Jkl*sinkl, *shellctx->Adklu);
+      // uout += +Jkl*cos*Bdklv
+      MatMultTranspose((*(shellctx->Bd_vec))[id_kl], v, *shellctx->Bdklv);
+      VecAXPY(uout,  Jkl*coskl, *shellctx->Bdklv);
+      // vout += - Jkl*cos*Bdklu
+      MatMultTranspose((*(shellctx->Bd_vec))[id_kl], u, *shellctx->Bdklu);
+      VecAXPY(vout, - Jkl*coskl, *shellctx->Bdklu);
+      //vout += Jkl*sin*Adklv
+      MatMultTranspose((*(shellctx->Ad_vec))[id_kl], v, *shellctx->Adklv);
+      VecAXPY(vout, Jkl*sinkl, *shellctx->Adklv);
+      id_kl++;
+      id_xi++;
+    }
+
   }
 
 
