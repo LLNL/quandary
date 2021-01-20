@@ -250,12 +250,14 @@ do
             for baseOutput in ${DIR}/${simulation}/data_out/*
             do
               fileName="$(basename "$baseOutput")"
+              cd ${DIR}
               if [[ "$fileName" == "grad.dat" ]] || [[ "$fileName" == "optim_history.dat" ]]; then
-                cd ${DIR}
                 mv  "${simulation}/data_out/$fileName" "${simulation}/base/$fileName"  
               elif [[ "$fileName" == "params.dat" ]]; then
-                cd ${DIR}
                 mv  "${simulation}/data_out/$fileName" "${simulation}/base/$fileName"  
+              fi
+              if [[ "$testName" == "primal" ]] && [[ "$fileName" == "rho"*".dat" ]]; then
+                mv "${simulation}/data_out/$fileName" "${simulation}/base/$fileName"
               fi
             done
             set_rebase 
