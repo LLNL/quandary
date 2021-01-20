@@ -1130,13 +1130,13 @@ int myMatMultTranspose_sparsemat(Mat RHS, Vec x, Vec y) {
       // uout += J_kl*sin*Adklu^T
       MatMultTranspose((*(shellctx->Ad_vec))[id_kl], u, *shellctx->Adklu);
       VecAXPY(uout, Jkl*sinkl, *shellctx->Adklu);
-      // uout += +Jkl*cos*Bdklv
+      // uout += +Jkl*cos*Bdklv^T
       MatMultTranspose((*(shellctx->Bd_vec))[id_kl], v, *shellctx->Bdklv);
       VecAXPY(uout,  Jkl*coskl, *shellctx->Bdklv);
-      // vout += - Jkl*cos*Bdklu
+      // vout += - Jkl*cos*Bdklu^T
       MatMultTranspose((*(shellctx->Bd_vec))[id_kl], u, *shellctx->Bdklu);
       VecAXPY(vout, - Jkl*coskl, *shellctx->Bdklu);
-      //vout += Jkl*sin*Adklv
+      //vout += Jkl*sin*Adklv^T
       MatMultTranspose((*(shellctx->Ad_vec))[id_kl], v, *shellctx->Adklv);
       VecAXPY(vout, Jkl*sinkl, *shellctx->Adklv);
       id_kl++;
