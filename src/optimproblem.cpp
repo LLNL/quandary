@@ -64,9 +64,10 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
     else if (objective_str[1].compare("zgate") == 0) targetgate = new ZGate();
     else if (objective_str[1].compare("hadamard") == 0) targetgate = new HadamardGate();
     else if (objective_str[1].compare("cnot") == 0) targetgate = new CNOT(); 
+    else if (objective_str[1].compare("swap") == 0) targetgate = new SWAP(); 
     else {
       printf("\n\n ERROR: Unnown gate type: %s.\n", objective_str[1].c_str());
-      printf(" Available gates are 'none', 'xgate', 'ygate', 'zgate', 'hadamard', 'cnot'\n");
+      printf(" Available gates are 'none', 'xgate', 'ygate', 'zgate', 'hadamard', 'cnot', 'swap'.\n");
       exit(1);
     }
     /* Get gate type */
