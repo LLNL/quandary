@@ -2,7 +2,7 @@
 # > gnuplot -e "datafile='data.dat'" plot_optim.plt
 
 # set a default file 
-if (!exists("datafile")) datafile='optim.dat'
+if (!exists("datafile")) datafile='optim_history.dat'
 
 set grid
 set logscale y
@@ -15,10 +15,10 @@ set xlabel "iteration"
 #set y2label "objective"
 #set ylabel "||Pr(gradient)||"
 
-set title 'min J\_trace, init 3 states, F\_avg = 0.997472'
+#set title 'min J\_trace, init 3 states, F\_avg = 0.997472'
 
 p \
-    datafile u 2 axis x1y1 w l t 'J\_trace', \
+    datafile u 2 axis x1y1 w l t 'J', \
     datafile u 3 axis x1y1  w l t '||Pr(gradient)||', \
 #    datafile u 5 axis x1y1  w l t 'terminal cost', \
 #    datafile u 6 axis x1y1  w l t 'tikhonov', \
