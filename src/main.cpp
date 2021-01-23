@@ -376,6 +376,7 @@ int main(int argc,char **argv)
       printf("\nGradient norm: %1.14e\n", gnorm);
     }
     optimctx->output->writeOptimFile(optimctx->objective, optimctx->gnorm, 0.0, optimctx->obj_cost, optimctx->obj_regul, optimctx->obj_penal);
+    optimctx->output->writeGradient(grad);
   }
 
   /* --- Solve the optimization  --- */
@@ -392,7 +393,7 @@ int main(int argc,char **argv)
   printf("F_avg = %f \n", F_avg);
   if (optimctx->initcond_type != BASIS ||
       optimctx->objective_type != GATE_TRACE) {
-    printf("Warning: Recomupte the average fidelity, using all basis elements as initial conditions, and setting GATE_TRACE as objective function!\n");
+    printf("Warning: Average gate fidelity only defined for gates using trace distance, and using a basis of initial conditions.\n Recomupte the average fidelity if needed, using all basis elements as initial conditions, and setting GATE_TRACE as objective function.\n");
   }
 
   /* --- Finalize --- */

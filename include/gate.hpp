@@ -96,3 +96,16 @@ class CNOT : public Gate {
     ~CNOT();
 };
 
+/* SWAP Gate, spanning two qubits. 
+ * V = 1 0 0 0
+ *     0 0 1 0 
+ *     0 1 0 1
+ *     0 0 0 1 
+ */
+class SWAP: public Gate {
+    public:
+    SWAP(std::vector<int> nlevels_, std::vector<int> nessential_);
+    ~SWAP();
+};
+
+

@@ -530,3 +530,24 @@ CNOT::CNOT(std::vector<int> nlevels, std::vector<int> nessential) : Gate(nlevels
 
 CNOT::~CNOT(){}
 
+
+SWAP::SWAP(std::vector<int> nlevels, std::vector<int> nessential) : Gate(nlevels, nessential) {
+
+  assert(dim_ess == 4);
+
+  /* Fill Va = Re(V) = V, Vb = Im(V) = 0 */
+  if (mpirank_petsc == 0) {
+    MatSetValue(Va, 0, 0, 1.0, INSERT_VALUES);
+    MatSetValue(Va, 1, 2, 1.0, INSERT_VALUES);
+    MatSetValue(Va, 2, 1, 1.0, INSERT_VALUES);
+    MatSetValue(Va, 3, 3, 1.0, INSERT_VALUES);
+    MatAssemblyBegin(Va, MAT_FINAL_ASSEMBLY);
+    MatAssemblyEnd(Va, MAT_FINAL_ASSEMBLY);
+  }
+
+  /* assemble V = \bar V \kron V */
+  assembleGate();
+}
+
+SWAP::~SWAP(){}
+

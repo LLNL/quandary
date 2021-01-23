@@ -823,6 +823,8 @@ int MasterEq::getRhoT0(const int iinit, const int ninit, const InitialConditionT
       row = getIndexReal(getVecID(diagelem, diagelem, dim_rho));
 
       // TODO: Map from essential to guard levels 
+      printf("ERROR: Missing mapping from essential to guard levels for initial condition = diagonal.\n");
+      exit(1);
 
       /* Assemble */
       VecGetOwnershipRange(rho0, &ilow, &iupp);

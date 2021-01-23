@@ -4,16 +4,16 @@
 
 # Set Braid location, or comment out
 #BRAID_DIR = ${HOME}/Numerics/xbraid_solveadjointwithxbraid
-#
-# Set location of SLEPC
-SLEPC_DIR=${HOME}/Software/slepc-3.13.3
+
+# Set SLEPC location, or comment out
+#SLEPC_DIR=${HOME}/Software/slepc-3.13.3
 
 # Choose to run sanity tests
 SANITY_CHECK = false
 
 #######################################################
 # Typically no need to change anything below
-#
+
 # Add optional Slepc
 ifdef SLEPC_DIR
 CXX_OPT = -DWITH_SLEPC
@@ -40,7 +40,7 @@ endif
 include ${PETSC_DIR}/lib/petsc/conf/variables
 include ${PETSC_DIR}/lib/petsc/conf/rules
 include ${PETSC_DIR}/lib/petsc/conf/test
-#
+
 # Set direction of source and header files, and build direction
 SRC_DIR   = src
 INC_DIR   = include
@@ -74,13 +74,17 @@ $(BUILD_DIR)/%.o : $(SRC_DIR)/%.cpp
 	@$(CXX) -MM $< -MP -MT $@ -MF $(@:.o=.d) $(INC) 
 
 
-.PHONY: all cleanup
+.PHONY: all cleanup clean-regtest
 
 # use 'make cleanup' to remove object files and executable
 cleanup:
 	rm -fr $(BUILD_DIR) 
 	rm -f  main 
 
+# use 'make clean-regtest' to remove tests/results
+clean-regtest:
+	rm -rf tests/results/*
+	rm -rf tests/*/data_out
 
 # include the dependency files
 -include $(OBJ_FILES:.o=.d)
