@@ -588,26 +588,24 @@ PetscErrorCode TaoMonitor(Tao tao,void*ptr){
   /* Pass current iteration number to output manager */
   ctx->output->optim_iter = iter;
 
-//  if (iter > 0 && iter % ctx->output->optim_monitor_freq == 0) {
-//    /* Compute average fidelity */
-//    if (ctx->objective_type == GATE_FROBENIUS ||
-//        (ctx->objective_type == GATE_TRACE && ctx->initcond_type != BASIS) ){
-//      InitialConditionType inittype_org = ctx->initcond_type; 
-//      ObjectiveType objtype_org = ctx->objective_type; 
-//      int ninit_local_org = ctx->ninit_local;
-//      int ninit_org = ctx->ninit;
-//      ctx->initcond_type = BASIS;
-//      ctx->ninit_local = 16;
-//      ctx->ninit= 16;
-//      ctx->objective_type = GATE_TRACE;
-//      double obj = ctx->evalF(params);    // this sets ctx->obj_cost
-//      // double F_avg = 1.0 - ctx->obj_cost;
-//      ctx->initcond_type = inittype_org;
-//      ctx->objective_type = objtype_org;
-//      ctx->ninit_local = ninit_local_org;
-//      ctx->ninit = ninit_org;
-//    }
-//  }
+   /* Compute average fidelity */
+   if (ctx->objective_type == GATE_FROBENIUS ||
+       (ctx->objective_type == GATE_TRACE && ctx->initcond_type != BASIS) ){
+     InitialConditionType inittype_org = ctx->initcond_type; 
+     ObjectiveType objtype_org = ctx->objective_type; 
+     int ninit_local_org = ctx->ninit_local;
+     int ninit_org = ctx->ninit;
+     ctx->initcond_type = BASIS;
+     ctx->ninit_local = 16;
+     ctx->ninit= 16;
+     ctx->objective_type = GATE_TRACE;
+     double obj = ctx->evalF(params);    // this sets ctx->obj_cost
+     // double F_avg = 1.0 - ctx->obj_cost;
+     ctx->initcond_type = inittype_org;
+     ctx->objective_type = objtype_org;
+     ctx->ninit_local = ninit_local_org;
+     ctx->ninit = ninit_org;
+   }
 
   /* Print to optimization file */
   ctx->output->writeOptimFile(f, gnorm, deltax, ctx->obj_cost, ctx->obj_regul, ctx->obj_penal);
