@@ -226,7 +226,7 @@ int main(int argc,char **argv)
   int idx = 0;
   for (int iosc=0; iosc<nlevels.size(); iosc++){
     for (int josc=iosc+1; josc<nlevels.size(); josc++){
-      eta[idx] = fundamental_freq[iosc] - fundamental_freq[josc];
+      eta[idx] = rot_freq[iosc] - rot_freq[josc];
       idx++;
     }
   }
