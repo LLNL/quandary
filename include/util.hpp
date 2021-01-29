@@ -13,7 +13,12 @@ int getIndexImag(const int i); // Return storage index of Im(x[i]) (colocated: x
 int getVecID(const int row, const int col, const int dim);
 
 /* Map an index i in essential level state to the corresponding index in full-dimension state */
+// 2 OSCILLATOR ONLY 
 int mapEssToFull(const int i, const std::vector<int> &nlevels, const std::vector<int> &nessential);
+
+/* Test if a certain row/column i of the full density matrix corresponds to an essential level */
+// 2 OSCILLATOR ONLY 
+int isEssential(const int i, const std::vector<int> &nlevels, const std::vector<int> &nessential);
 
 /* Kronecker product : Id \kron A, where Id is the Identitymatrix 
  * Mat Out must be allocated with nonzerosA * dimI

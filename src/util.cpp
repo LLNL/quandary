@@ -23,6 +23,26 @@ int mapEssToFull(const int i, const std::vector<int> &nlevels, const std::vector
   return ( (int) i/nessential[1] ) * nlevels[1] + i % nessential[1];
 }
 
+
+int isEssential(const int i, const std::vector<int> &nlevels, const std::vector<int> &nessential) {
+  if (nlevels.size() != 2) {
+  printf("\n ERROR: guard levels currently only for two oscillators.\n");
+    printf("\n TODO: To make this work, generalize isEssential(i).\n");
+    assert(nlevels.size() == 2); // TODO: Generalize this formula for more than two oscillators 
+  }
+
+  int isEss;
+
+  /* i corresponds to an essential in rho = rho^A \kron \rho^B iff (i/n^B <= n^A_e) && (i mod n^b <= n^B_e) */
+  int a = i / nlevels[1];  
+  int b = i % nlevels[1];
+  if ( a < nessential[0] && b < nessential[1]) isEss = 1;
+  else isEss = 0;
+
+  return isEss; 
+}
+
+
 PetscErrorCode Ikron(const Mat A,const  int dimI, const double alpha, Mat *Out, InsertMode insert_mode){
 
     int ierr;

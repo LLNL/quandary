@@ -128,11 +128,11 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   timestepper->penalty_weightparam = penalty_weightparam;
   timestepper->penalty_coeff = penalty_coeff;
 
-  // check if implemented:
-  if ( (objective_type == GATE_FROBENIUS || objective_type == GATE_TRACE ) && penalty_coeff > 1e-13) {
-        printf("ERROR: Penalty integral for Gate objective is currently not implemented.\n");
-        exit(1);
-  }
+  // // check if implemented:
+  // if ( (objective_type == GATE_FROBENIUS || objective_type == GATE_TRACE ) && penalty_coeff > 1e-13) {
+  //       printf("ERROR: Penalty integral for Gate objective is currently not implemented.\n");
+  //       exit(1);
+  // }
 
 
   /* Get initial condition type and involved oscillators */
