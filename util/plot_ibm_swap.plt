@@ -3,7 +3,7 @@ reset
 set grid
 set xlabel 'time (ns)'
 set ylabel 'expected energy level'
-set yrange [0:1]
+#set yrange [0:1]
 
 #set term png
 #set output 'expected_all.png'
