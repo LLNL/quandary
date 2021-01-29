@@ -49,6 +49,8 @@ PetscErrorCode StateIsHermitian(Vec x, PetscReal tol, PetscBool *flag);
 /* Test if vectorized state vector x=[u,v] represent matrix with Trace 1 */
 PetscErrorCode StateHasTrace1(Vec x, PetscReal tol, PetscBool *flag);
 
+/* All sanity tests */
+PetscErrorCode SanityTests(Vec x, PetscReal time);
 
 /**
  * Read data from file

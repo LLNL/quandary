@@ -173,8 +173,10 @@ PetscErrorCode StateIsHermitian(Vec x, PetscReal tol, PetscBool *flag) {
   dim = dim/2;
   Vec u, v;
   IS isu, isv;
-  ierr = ISCreateStride(PETSC_COMM_WORLD, dim, 0, 1, &isu); CHKERRQ(ierr);
-  ierr = ISCreateStride(PETSC_COMM_WORLD, dim, dim, 1, &isv); CHKERRQ(ierr);
+
+  int dimis = dim;
+  ierr = ISCreateStride(PETSC_COMM_WORLD, dimis, 0, 2, &isu); CHKERRQ(ierr);
+  ierr = ISCreateStride(PETSC_COMM_WORLD, dimis, 1, 2, &isv); CHKERRQ(ierr);
   ierr = VecGetSubVector(x, isu, &u); CHKERRQ(ierr);
   ierr = VecGetSubVector(x, isv, &v); CHKERRQ(ierr);
 
@@ -264,6 +266,34 @@ PetscErrorCode StateHasTrace1(Vec x, PetscReal tol, PetscBool *flag) {
 
 
   return ierr;
+}
+
+
+
+PetscErrorCode SanityTests(Vec x, double time){
+
+  /* Sanity check. Be careful: This is costly! */
+  printf("Trace check %f ...\n", time);
+  PetscBool check;
+  double tol = 1e-10;
+  StateIsHermitian(x, tol, &check);
+  if (!check) {
+    printf("WARNING at t=%f: rho is not hermitian!\n", time);
+    printf("\n rho :\n");
+    VecView(x, PETSC_VIEWER_STDOUT_WORLD);
+    exit(1);
+  }
+  else printf("IsHermitian check passed.\n");
+  StateHasTrace1(x, tol, &check);
+  if (!check) {
+    printf("WARNING at t=%f: Tr(rho) is NOT one!\n", time);
+    printf("\n rho :\n");
+    VecView(x, PETSC_VIEWER_STDOUT_WORLD);
+    exit(1);
+  }
+  else printf("Trace1 check passed.\n");
+
+  return 0;
 }
 
 

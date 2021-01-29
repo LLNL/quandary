@@ -97,6 +97,11 @@ Vec TimeStepper::solveODE(int initid, Vec rho_t0){
     /* Take one time step */
     evolveFWD(tstart, tstop, x);
 
+
+#ifdef SANITY_CHECK
+    SanityTests(x, tstart);
+#endif
+
   }
 
   /* Store last time step */
