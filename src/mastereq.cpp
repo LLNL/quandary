@@ -806,7 +806,8 @@ void MasterEq::setControlAmplitudes(const Vec x) {
 
 int MasterEq::getRhoT0(const int iinit, const int ninit, const InitialConditionType initcond_type, const std::vector<int>& oscilIDs, Vec rho0){
 
-  int ilow, iupp;
+  int ilow, iupp, elemID;
+  double val;
   int dim_post;
   int initID = -1;    // Output: ID for this initial condition */
   int dim_rho = (int) sqrt(dim); // N
@@ -891,20 +892,19 @@ int MasterEq::getRhoT0(const int iinit, const int ninit, const InitialConditionT
 
       /* Compute index of the nonzero element in rho_m(0) = E_pre \otimes |m><m| \otimes E_post */
       diagelem = iinit * dim_post;
-      /* Position in vectorized q(0) */
-      row = getIndexReal(getVecID(diagelem, diagelem, dim_rho));
+      if (dim_ess < dim_rho)  diagelem = mapEssToFull(diagelem, nlevels, nessential);
 
-      // TODO: Map from essential to guard levels 
-      printf("ERROR: Missing mapping from essential to guard levels for initial condition = diagonal.\n");
-      exit(1);
-
-      /* Assemble */
+      /* Set B_{mm} */
+      elemID = getIndexReal(getVecID(diagelem, diagelem, dim_rho)); // real part in vectorized system
+      val = 1.0;
       VecGetOwnershipRange(rho0, &ilow, &iupp);
-      if (ilow <= row && row < iupp) VecSetValue(rho0, row, 1.0, INSERT_VALUES);
+      if (ilow <= elemID && elemID < iupp) VecSetValues(rho0, 1, &elemID, &val, INSERT_VALUES);
       VecAssemblyBegin(rho0); VecAssemblyEnd(rho0);
 
       /* Set initial conditon ID */
       initID = iinit * ninit + iinit;
+
+      printf("Initial condition %d:\n", initID);
 
       break;
 
@@ -919,7 +919,6 @@ int MasterEq::getRhoT0(const int iinit, const int ninit, const InitialConditionT
       /* Get dimension of partial system behind last oscillator ID (essential levels only) */
       dim_post = 1;
       for (int k = oscilIDs[oscilIDs.size()-1] + 1; k < getNOscillators(); k++) {
-        // dim_post *= getOscillator(k)->getNLevels();
         dim_post *= nessential[k];
       }
 
