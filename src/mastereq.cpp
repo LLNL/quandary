@@ -17,10 +17,11 @@ MasterEq::MasterEq(){
 }
 
 
-MasterEq::MasterEq(std::vector<int> nlevels_, Oscillator** oscil_vec_, const std::vector<double> xi_, const std::vector<double> eta_, const std::vector<double> detuning_freq_, LindbladType lindbladtype, const std::vector<double> collapse_time_, bool usematfree_) {
+MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Oscillator** oscil_vec_, const std::vector<double> xi_, const std::vector<double> eta_, const std::vector<double> detuning_freq_, LindbladType lindbladtype, const std::vector<double> collapse_time_, bool usematfree_) {
   int ierr;
 
   nlevels = nlevels_;
+  nessential = nessential_;
   noscillators = nlevels.size();
   oscil_vec = oscil_vec_;
   xi = xi_;
@@ -35,12 +36,14 @@ MasterEq::MasterEq(std::vector<int> nlevels_, Oscillator** oscil_vec_, const std
   MPI_Comm_size(PETSC_COMM_WORLD, &mpisize_petsc);
   MPI_Comm_rank(PETSC_COMM_WORLD, &mpirank_petsc);
 
-  /* Dimension of vectorized system: (n_1*...*n_q)^2 */
-  dim = 1;
+  /* Get dimensions */
+  dim_rho = 1;
+  dim_ess = 1;
   for (int iosc = 0; iosc < noscillators; iosc++) {
-    dim *= oscil_vec[iosc]->getNLevels();
+    dim_rho *= oscil_vec[iosc]->getNLevels();
+    dim_ess *= nessential[iosc];
   }
-  dim = dim*dim; // density matrix: N \times N -> vectorized: N^2
+  dim = dim_rho*dim_rho; // density matrix: N \times N -> vectorized: N^2
 
   /* Sanity check for parallel petsc */
   if (dim % mpisize_petsc != 0) {
@@ -344,7 +347,7 @@ void MasterEq::initSparseMatSolver(LindbladType lindbladtype){
     if (addT1 && collapse_time[iosc*2] > 1e-14) {
       double gamma = 1./(collapse_time[iosc*2]);
       /* Ad += gamma_j * L \kron L */
-      AkronB(dimmat, L1, L1, gamma, &Ad, ADD_VALUES);
+      AkronB(L1, L1, gamma, &Ad, ADD_VALUES);
       /* Ad += - gamma_j/2  I_n  \kron L^TL  */
       /* Ad += - gamma_j/2  L^TL \kron I_n */
       MatTransposeMatMult(L1, L1, MAT_INITIAL_MATRIX, PETSC_DEFAULT, &tmp);
@@ -357,7 +360,7 @@ void MasterEq::initSparseMatSolver(LindbladType lindbladtype){
     if (addT2 && collapse_time[iosc*2+1] > 1e-14) {
       double gamma = 1./(collapse_time[iosc*2+1]);
       /* Ad += 1./gamma_j * L \kron L */
-      AkronB(dimmat, L2, L2, gamma, &Ad, ADD_VALUES);
+      AkronB(L2, L2, gamma, &Ad, ADD_VALUES);
       /* Ad += - gamma_j/2  I_n  \kron L^TL  */
       /* Ad += - gamma_j/2  L^TL \kron I_n */
       MatTransposeMatMult(L2, L2, MAT_INITIAL_MATRIX, PETSC_DEFAULT, &tmp);
@@ -382,6 +385,10 @@ void MasterEq::initSparseMatSolver(LindbladType lindbladtype){
  }
 
 int MasterEq::getDim(){ return dim; }
+
+int MasterEq::getDimEss(){ return dim_ess; }
+
+int MasterEq::getDimRho(){ return dim_rho; }
 
 int MasterEq::getNOscillators() { return noscillators; }
 
@@ -831,7 +838,7 @@ int MasterEq::getRhoT0(const int iinit, const int ninit, const InitialConditionT
 
         /* Iterate over diagonal elements */
         for (int i = 0; i<dim_rho; i++) {
-          int diagID = getIndexReal(i * dim_rho + i);
+          int diagID = getIndexReal(getVecID(i,i,dim_rho));
           double val = 2.*(dim_rho - i) / (dim_rho * (dim_rho + 1));
           if (ilow <= diagID && diagID < iupp) VecSetValue(rho0, diagID, val, INSERT_VALUES);
         }
@@ -842,8 +849,8 @@ int MasterEq::getRhoT0(const int iinit, const int ninit, const InitialConditionT
         for (int i = 0; i<dim_rho; i++) {
           for (int j = 0; j<dim_rho; j++) {
             double val = 1./dim_rho;
-            int index = getIndexReal(i * dim_rho + j);   // Re(rho_ij)
-            VecSetValue(rho0, index, val, INSERT_VALUES);
+            int index = getIndexReal(getVecID(i,j,dim_rho));   // Re(rho_ij)
+            VecSetValue(rho0, index, val, INSERT_VALUES); 
           }
         }
 
@@ -853,7 +860,7 @@ int MasterEq::getRhoT0(const int iinit, const int ninit, const InitialConditionT
 
         /* Iterate over diagonal elements */
         for (int i = 0; i<dim_rho; i++) {
-          int diagID = getIndexReal(i * dim_rho + i);
+          int diagID = getIndexReal(getVecID(i,i,dim_rho));
           double val = 1./ dim_rho;
           if (ilow <= diagID && diagID < iupp) VecSetValue(rho0, diagID, val, INSERT_VALUES);
         }
@@ -875,16 +882,21 @@ int MasterEq::getRhoT0(const int iinit, const int ninit, const InitialConditionT
       /* Reset the initial conditions */
       VecZeroEntries(rho0);
 
-      /* Get dimension of partial system behind last oscillator ID */
+      /* Get dimension of partial system behind last oscillator ID (essential levels only) */
       dim_post = 1;
       for (int k = oscilIDs[oscilIDs.size()-1] + 1; k < getNOscillators(); k++) {
-        dim_post *= getOscillator(k)->getNLevels();
+        // dim_post *= getOscillator(k)->getNLevels();
+        dim_post *= nessential[k];
       }
 
       /* Compute index of the nonzero element in rho_m(0) = E_pre \otimes |m><m| \otimes E_post */
       diagelem = iinit * dim_post;
       /* Position in vectorized q(0) */
       row = getIndexReal(getVecID(diagelem, diagelem, dim_rho));
+
+      // TODO: Map from essential to guard levels 
+      printf("ERROR: Missing mapping from essential to guard levels for initial condition = diagonal.\n");
+      exit(1);
 
       /* Assemble */
       VecGetOwnershipRange(rho0, &ilow, &iupp);
@@ -904,10 +916,11 @@ int MasterEq::getRhoT0(const int iinit, const int ninit, const InitialConditionT
       /* Get distribution */
       VecGetOwnershipRange(rho0, &ilow, &iupp);
 
-      /* Get dimension of partial system behind last oscillator ID */
+      /* Get dimension of partial system behind last oscillator ID (essential levels only) */
       dim_post = 1;
       for (int k = oscilIDs[oscilIDs.size()-1] + 1; k < getNOscillators(); k++) {
-        dim_post *= getOscillator(k)->getNLevels();
+        // dim_post *= getOscillator(k)->getNLevels();
+        dim_post *= nessential[k];
       }
 
       /* Get index (k,j) of basis element B_{k,j} for this initial condition index iinit */
@@ -915,9 +928,20 @@ int MasterEq::getRhoT0(const int iinit, const int ninit, const InitialConditionT
       k = iinit % ( (int) sqrt(ninit) );
       j = (int) iinit / ( (int) sqrt(ninit) );
 
+      /* Set initial condition ID */
+      initID = j * ( (int) sqrt(ninit)) + k;
+
+      /* Set position in rho */
+      k = k*dim_post;
+      j = j*dim_post;
+      if (dim_ess < dim_rho) { 
+        k = mapEssToFull(k, nlevels, nessential);
+        j = mapEssToFull(j, nlevels, nessential);
+      }
+
       if (k == j) {
         /* B_{kk} = E_{kk} -> set only one element at (k,k) */
-        int elemID = getIndexReal(getVecID(k*dim_post, j*dim_post, dim_rho)); // real part
+        int elemID = getIndexReal(getVecID(k, k, dim_rho)); // real part in vectorized system
         double val = 1.0;
         if (ilow <= elemID && elemID < iupp) VecSetValues(rho0, 1, &elemID, &val, INSERT_VALUES);
       } else {
@@ -947,8 +971,8 @@ int MasterEq::getRhoT0(const int iinit, const int ninit, const InitialConditionT
           }
           vals[2] = -0.5;
           vals[3] = 0.5;
-          rows[2] = getIndexImag(getVecID(k * dim_post, j * dim_post, dim_rho)); // (k,j)
-          rows[3] = getIndexImag(getVecID(j * dim_post, k * dim_post, dim_rho)); // (j,k)
+          rows[2] = getIndexImag(getVecID(k, j, dim_rho)); // (k,j)
+          rows[3] = getIndexImag(getVecID(j, k, dim_rho)); // (j,k)
           for (int i=2; i<4; i++) {
             if (ilow <= rows[i] && rows[i] < iupp) VecSetValues(rho0, 1, &(rows[i]), &(vals[i]), INSERT_VALUES);
           }
@@ -959,9 +983,6 @@ int MasterEq::getRhoT0(const int iinit, const int ninit, const InitialConditionT
 
       /* Assemble rho0 */
       VecAssemblyBegin(rho0); VecAssemblyEnd(rho0);
-
-      /* Set initial condition ID */
-      initID = j * ( (int) sqrt(ninit)) + k;
 
       break;
 
@@ -1634,7 +1655,7 @@ int myMatMult_matfree_2osc(Mat RHS, Vec x, Vec y){
   } else if(n0==20 && n1==20){
     return myMatMult_matfree<20,20>(RHS, x, y);
   } else {
-    printf("ERROR: In order to run this case, run add a line at the end of mastereq.cpp with the corresponding number of levels!\n");
+    printf("ERROR: In order to run this case, add a line at the end of mastereq.cpp with the corresponding number of levels!\n");
     exit(1);
   }
 }
@@ -1658,7 +1679,7 @@ int myMatMultTranspose_matfree_2Osc(Mat RHS, Vec x, Vec y){
   } else if(n0==20 && n1==20){
     return myMatMultTranspose_matfree<20,20>(RHS, x, y);
   } else {
-    printf("ERROR: In order to run this case, run add a line at the end of mastereq.cpp with the corresponding number of levels!\n");
+    printf("ERROR: In order to run this case, add a line at the end of mastereq.cpp with the corresponding number of levels!\n");
     exit(1);
   }
 }

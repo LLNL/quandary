@@ -46,7 +46,10 @@ int main(int argc,char **argv)
 
   /* --- Get some options from the config file --- */
   std::vector<int> nlevels;
+  std::vector<int> nessential;
   config.GetVecIntParam("nlevels", nlevels, 0);
+  config.GetVecIntParam("nessential", nessential, 0);
+  assert(nlevels.size() <= nessential.size());
   int ntime = config.GetIntParam("ntime", 1000);
   double dt    = config.GetDoubleParam("dt", 0.01);
   int nspline = config.GetIntParam("nspline", 10);
@@ -79,7 +82,7 @@ int main(int argc,char **argv)
     }
     for (int i = 1; i<initcondstr.size(); i++){
       int oscilID = atoi(initcondstr[i].c_str());
-      ninit *= nlevels[oscilID];
+      ninit *= nessential[oscilID];
     }
     if (initcondstr[0].compare("basis") == 0  ) ninit = (int) pow(ninit,2.0);
   }
@@ -254,7 +257,7 @@ int main(int argc,char **argv)
     printf("ERROR: No Petsc-parallel version for the matrix free solver available!");
     exit(1);
   }
-  MasterEq* mastereq = new MasterEq(nlevels, oscil_vec, xi, eta, detuning_freq, lindbladtype, t_collapse, usematfree);
+  MasterEq* mastereq = new MasterEq(nlevels, nessential, oscil_vec, xi, eta, detuning_freq, lindbladtype, t_collapse, usematfree);
 
 
   /* Output */
@@ -269,7 +272,12 @@ int main(int argc,char **argv)
       std::cout<< nlevels[i];
       if (i < nlevels.size()-1) std::cout<< "x";
     }
-    std::cout << "\nT1/T2 times: ";
+    std::cout<<"  (essential levels: ";
+    for (int i=0; i<nlevels.size(); i++) {
+      std::cout<< nessential[i];
+      if (i < nlevels.size()-1) std::cout<< "x";
+    }
+    std::cout << ")\nT1/T2 times: ";
     for (int i=0; i<t_collapse.size(); i++) {
       std::cout << t_collapse[i];
       if ((i+1)%2 == 0 && i < t_collapse.size()-1) std::cout<< ",";

@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <iostream> 
 #include <math.h>
 #include <assert.h>
 #include <petscmat.h>
@@ -9,21 +10,26 @@
 
 class Gate {
   protected:
-    int dim_v;        /* Input: dimension of target gate (non-vectorized) */
-    Mat Va, Vb;       /* Input: Real and imaginary part of V_target, non-vectorized */
+    Mat Va, Vb;        /* Input: Real and imaginary part of V_target, non-vectorized */
+    Mat PxP;           /* Vectorized projection matrix P\kron P to map between essential levels and full system */
+
+    std::vector<int> nessential;
+    std::vector<int> nlevels;
+    int mpirank_petsc;
+
+    int dim_ess;   /* Dimension of target Gate matrix (non-vectorized), essential levels only */
+    int dim_rho;   /* Dimension of system matrix rho (non-vectorized), all levels */
 
   private:
-    Mat ReG, ImG;     /* Real and imaginary part of \bar V \kron V */
-
-    Vec x;             /* auxiliary vectors */
-  protected:
-    int dim_vec;      /* dimension of vectorized system dim_vec = dim_v^2 */
-
-    int mpirank_petsc;
+    Mat ReG, ImG;           /* Real and imaginary part of \bar V \kron V */
+    Vec ufinal_e, vfinal_e; /* auxiliary, holding final state projected onto essential levels */
+    Vec u0_e, v0_e;         /* auxiliary, holding final state projected onto essential levels */
+    Vec x_full;          /* auxiliary vecs */
+    Vec x_e;        /* auxiliary vecs */
 
   public:
     Gate();
-    Gate(int dim_V_);
+    Gate(std::vector<int> nlevels_, std::vector<int> nessential_);
     virtual ~Gate();
 
     /* Assemble ReG = Re(\bar V \kron V) and ImG = Im(\bar V \kron V) */
@@ -44,7 +50,7 @@ class Gate {
  */
 class XGate : public Gate {
   public:
-    XGate();
+    XGate(std::vector<int> nlevels_, std::vector<int> nessential_);
     ~XGate();
 };
 
@@ -54,7 +60,7 @@ class XGate : public Gate {
  */
 class YGate : public Gate {
   public:
-    YGate();
+    YGate(std::vector<int> nlevels_, std::vector<int> nessential_);
     ~YGate();
 };
 
@@ -64,7 +70,7 @@ class YGate : public Gate {
  */
 class ZGate : public Gate {
   public:
-    ZGate();
+    ZGate(std::vector<int> nlevels_, std::vector<int> nessential_);
     ~ZGate();
 };
 
@@ -74,7 +80,7 @@ class ZGate : public Gate {
  */
 class HadamardGate : public Gate {
   public:
-    HadamardGate();
+    HadamardGate(std::vector<int> nlevels_, std::vector<int> nessential_);
     ~HadamardGate();
 };
 
@@ -86,7 +92,7 @@ class HadamardGate : public Gate {
  */
 class CNOT : public Gate {
     public:
-    CNOT();
+    CNOT(std::vector<int> nlevels_, std::vector<int> nessential_);
     ~CNOT();
 };
 
@@ -98,7 +104,7 @@ class CNOT : public Gate {
  */
 class SWAP: public Gate {
     public:
-    SWAP();
+    SWAP(std::vector<int> nlevels_, std::vector<int> nessential_);
     ~SWAP();
 };
 

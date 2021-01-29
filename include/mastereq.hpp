@@ -43,10 +43,11 @@ int myMatMultTranspose_sparsemat(Mat RHS, Vec x, Vec y);
 class MasterEq{
 
   protected:
-    int dim;                 // Dimension of vectorized system = N^2
-    int noscillators;        // Number of oscillators
-    std::vector<int> nlevels; 
-    Oscillator** oscil_vec;  // Vector storing pointers to the oscillators
+    int dim;                   // Dimension of full vectorized system = N^2
+    int dim_rho;               // Dimension of full system = N
+    int dim_ess;               // Dimension of system of essential levels = N_e
+    int noscillators;          // Number of oscillators
+    Oscillator** oscil_vec;    // Vector storing pointers to the oscillators
 
     Mat RHS;                // Realvalued, vectorized systemmatrix (2N^2 x 2N^2)
     MatShellCtx RHSctx;     // MatShell context that contains data needed to apply the RHS
@@ -75,12 +76,13 @@ class MasterEq{
     PetscScalar* vals;   // holding values when evaluating dRHSdp
  
   public:
+    std::vector<int> nlevels;  // Number of levels per oscillator
+    std::vector<int> nessential; // Number of essential levels per oscillator
     bool usematfree;  // Flag for using matrix free solver
 
   public:
     MasterEq();
-    MasterEq(std::vector<int> nlevels, Oscillator** oscil_vec_, const std::vector<double> xi_, const std::vector<double> eta_, std::vector<double> detuning_freq_,
-             LindbladType lindbladtype_, const std::vector<double> collapse_time_, bool usematfree_);
+    MasterEq(std::vector<int> nlevels, std::vector<int> nessential, Oscillator** oscil_vec_, const std::vector<double> xi_, const std::vector<double> eta_, std::vector<double> detuning_freq_, LindbladType lindbladtype_, const std::vector<double> collapse_time_, bool usematfree_);
     ~MasterEq();
 
     /* initialize matrices needed for applying sparse-mat solver */
@@ -92,8 +94,14 @@ class MasterEq{
     /* Return number of oscillators */
     int getNOscillators();
 
-    /* Return dimension of vectorized system */
+    /* Return dimension of vectorized system N^2 */
     int getDim();
+
+    /* Return dimension of essential level system: N_e */
+    int getDimEss();
+    
+    /* Return dimension of system matrix rho: N */
+    int getDimRho();
 
     /* 
      * Uses Re and Im to build the vectorized Hamiltonian operator M = vec(-i(Hq-qH)+Lindblad). 

@@ -59,12 +59,12 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
     /* Read and initialize the targetgate */
     assert ( objective_str.size() >=2 );
     if      (objective_str[1].compare("none") == 0)  targetgate = new Gate(); // dummy gate. do nothing
-    else if (objective_str[1].compare("xgate") == 0) targetgate = new XGate(); 
-    else if (objective_str[1].compare("ygate") == 0) targetgate = new YGate(); 
-    else if (objective_str[1].compare("zgate") == 0) targetgate = new ZGate();
-    else if (objective_str[1].compare("hadamard") == 0) targetgate = new HadamardGate();
-    else if (objective_str[1].compare("cnot") == 0) targetgate = new CNOT(); 
-    else if (objective_str[1].compare("swap") == 0) targetgate = new SWAP(); 
+    else if (objective_str[1].compare("xgate") == 0) targetgate = new XGate(timestepper->mastereq->nlevels, timestepper->mastereq->nessential); 
+    else if (objective_str[1].compare("ygate") == 0) targetgate = new YGate(timestepper->mastereq->nlevels, timestepper->mastereq->nessential); 
+    else if (objective_str[1].compare("zgate") == 0) targetgate = new ZGate(timestepper->mastereq->nlevels, timestepper->mastereq->nessential);
+    else if (objective_str[1].compare("hadamard") == 0) targetgate = new HadamardGate(timestepper->mastereq->nlevels, timestepper->mastereq->nessential);
+    else if (objective_str[1].compare("cnot") == 0) targetgate = new CNOT(timestepper->mastereq->nlevels, timestepper->mastereq->nessential); 
+    else if (objective_str[1].compare("swap") == 0) targetgate = new SWAP(timestepper->mastereq->nlevels, timestepper->mastereq->nessential); 
     else {
       printf("\n\n ERROR: Unnown gate type: %s.\n", objective_str[1].c_str());
       printf(" Available gates are 'none', 'xgate', 'ygate', 'zgate', 'hadamard', 'cnot', 'swap'.\n");
@@ -139,32 +139,11 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   std::vector<std::string> initcondstr;
   config.GetVecStrParam("initialcondition", initcondstr);
   for (int i=1; i<initcondstr.size(); i++) initcond_IDs.push_back(atoi(initcondstr[i].c_str()));
-  ninit = 1;
-  if (initcondstr[0].compare("file") == 0 )      initcond_type = FROMFILE;
-  else if (initcondstr[0].compare("pure") == 0 ) initcond_type = PURE;
-  else if (initcondstr[0].compare("3states") == 0 ) {
-    initcond_type = THREESTATES;
-    ninit = 3;
-  }
-  else if (initcondstr[0].compare("diagonal") == 0 ) {
-    initcond_type = DIAGONAL;
-    /* Compute ninit = dim(subsystem defined by initcond_IDs) */
-    ninit = 1;
-    for (int i = 1; i<initcondstr.size(); i++){
-      int oscilID = atoi(initcondstr[i].c_str());
-      ninit *= timestepper->mastereq->getOscillator(oscilID)->getNLevels();
-    }
-  }
-  else if (initcondstr[0].compare("basis")    == 0 ) {
-    initcond_type = BASIS;
-    /* Compute ninit = dim(subsystem defined by obj_oscilIDs)^2 */
-    ninit = 1;
-    for (int i = 1; i<initcondstr.size(); i++){
-      int oscilID = atoi(initcondstr[i].c_str());
-      ninit *= timestepper->mastereq->getOscillator(oscilID)->getNLevels();
-    }
-    ninit = (int) pow(ninit, 2);
-  }
+  if (initcondstr[0].compare("file") == 0 )          initcond_type = FROMFILE;
+  else if (initcondstr[0].compare("pure") == 0 )     initcond_type = PURE;
+  else if (initcondstr[0].compare("3states") == 0 )  initcond_type = THREESTATES;
+  else if (initcondstr[0].compare("diagonal") == 0 ) initcond_type = DIAGONAL;
+  else if (initcondstr[0].compare("basis")    == 0 ) initcond_type = BASIS;
   else {
     printf("\n\n ERROR: Wrong setting for initial condition.\n");
     exit(1);
@@ -204,19 +183,30 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   else if (initcond_type == FROMFILE) { 
     /* Read initial condition from file */
     
-    int dim = timestepper->mastereq->getDim();
-    double * vec = new double[2*dim];
+    // int dim = timestepper->mastereq->getDim();
+    int dim_ess = timestepper->mastereq->getDimEss();
+    int dim_rho = timestepper->mastereq->getDimRho();
+    double * vec = new double[2*dim_ess*dim_ess];
     std::vector<std::string> initcondstr;
     config.GetVecStrParam("initialcondition", initcondstr);
     if (mpirank_world == 0) {
       assert (initcondstr.size()==2);
       std::string filename = initcondstr[1];
-      read_vector(filename.c_str(), vec, 2*dim);
+      read_vector(filename.c_str(), vec, 2*dim_ess*dim_ess);
     }
-    MPI_Bcast(vec, 2*dim, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-    for (int i = 0; i < dim; i++) {
-      VecSetValue(rho_t0, getIndexReal(i), vec[i], INSERT_VALUES);        // RealPart
-      VecSetValue(rho_t0, getIndexImag(i), vec[i + dim ], INSERT_VALUES); // Imaginary Part
+    MPI_Bcast(vec, 2*dim_ess*dim_ess, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    for (int i = 0; i < dim_ess*dim_ess; i++) {
+      int k = i % dim_ess;
+      int j = (int) i / dim_ess;
+      // printf("k=%d, j=%d (orig)  ", k,j);
+      if (dim_ess*dim_ess < timestepper->mastereq->getDim()) {
+        k = mapEssToFull(k, timestepper->mastereq->nlevels, timestepper->mastereq->nessential);
+        j = mapEssToFull(j, timestepper->mastereq->nlevels, timestepper->mastereq->nessential);
+      }
+      int elemid = getVecID(k, j, dim_rho);
+      VecSetValue(rho_t0, getIndexReal(elemid), vec[i], INSERT_VALUES);        // RealPart
+      VecSetValue(rho_t0, getIndexImag(elemid), vec[i + dim_ess*dim_ess], INSERT_VALUES); // Imaginary Part
+      // printf("  -> k=%d j=%d, elemid=%d vals=%1.4e, %1.4e\n", k, j, elemid, vec[i], vec[i+dim_ess*dim_ess]);
     }
     delete [] vec;
   }
