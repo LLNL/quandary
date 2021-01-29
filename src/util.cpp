@@ -14,7 +14,11 @@ int getVecID(const int row, const int col, const int dim){
 
 
 int mapEssToFull(const int i, const std::vector<int> &nlevels, const std::vector<int> &nessential){
-  assert(nlevels.size() == 2); // TODO: Generalize this formula for more than two oscillators 
+  if (nlevels.size() != 2) {
+    printf("\n ERROR: guard levels currently only for two oscillators.\n");
+    printf("\n TODO: To make this work, generalize mapEssToFull(i).\n");
+    assert(nlevels.size() == 2); // TODO: Generalize this formula for more than two oscillators 
+  }
 
   return ( (int) i/nessential[1] ) * nlevels[1] + i % nessential[1];
 }

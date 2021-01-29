@@ -12,6 +12,7 @@ int getIndexImag(const int i); // Return storage index of Im(x[i]) (colocated: x
 /* Return the index of vectorized matrix element (row,col) with matrix dimension dim x dim */
 int getVecID(const int row, const int col, const int dim);
 
+/* Map an index i in essential level state to the corresponding index in full-dimension state */
 int mapEssToFull(const int i, const std::vector<int> &nlevels, const std::vector<int> &nessential);
 
 /* Kronecker product : Id \kron A, where Id is the Identitymatrix 
