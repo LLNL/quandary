@@ -826,6 +826,12 @@ int MasterEq::getRhoT0(const int iinit, const int ninit, const InitialConditionT
 
     case THREESTATES:
 
+      /* TODO Generalize for guard levels! */
+      if (dim_ess < dim_rho) {
+        printf("ERROR: three-states initialization using guard levels not implemented yet.\n");
+        exit(1);
+      }
+
       /* Reset the initial conditions */
       VecZeroEntries(rho0);
 
