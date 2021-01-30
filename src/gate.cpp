@@ -2,7 +2,7 @@
 
 Gate::Gate(){
   dim_ess = 0;
-  // dim_vec = 0;
+  dim_rho = 0;
 }
 
 Gate::Gate(std::vector<int> nlevels_, std::vector<int> nessential_){
