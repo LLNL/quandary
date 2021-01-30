@@ -17,7 +17,6 @@ int getVecID(const int row, const int col, const int dim);
 int mapEssToFull(const int i, const std::vector<int> &nlevels, const std::vector<int> &nessential);
 
 /* Test if a certain row/column i of the full density matrix corresponds to an essential level */
-// 2 OSCILLATOR ONLY 
 int isEssential(const int i, const std::vector<int> &nlevels, const std::vector<int> &nessential);
 
 /* Kronecker product : Id \kron A, where Id is the Identitymatrix 

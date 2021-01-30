@@ -25,19 +25,25 @@ int mapEssToFull(const int i, const std::vector<int> &nlevels, const std::vector
 
 
 int isEssential(const int i, const std::vector<int> &nlevels, const std::vector<int> &nessential) {
-  if (nlevels.size() != 2) {
-  printf("\n ERROR: guard levels currently only for two oscillators.\n");
-    printf("\n TODO: To make this work, generalize isEssential(i).\n");
-    assert(nlevels.size() == 2); // TODO: Generalize this formula for more than two oscillators 
+
+  int isEss = 1;
+  int index = i;
+  for (int iosc = 0; iosc < nlevels.size()-1; iosc++){
+
+    int postdim = 1;
+    for (int j = iosc+1; j<nlevels.size(); j++){
+      postdim *= nlevels[j];
+    }
+    int itest = (int) index / postdim;
+    index = index % postdim;
+    // test if essential for this oscillator
+    if (itest >= nessential[iosc]) {
+      isEss = 0;
+      break;
+    }
+    // test if essential for last oscillator
+    if (index >= nessential[nlevels.size()-1]) isEss=0;
   }
-
-  int isEss;
-
-  /* i corresponds to an essential in rho = rho^A \kron \rho^B iff (i/n^B <= n^A_e) && (i mod n^b <= n^B_e) */
-  int a = i / nlevels[1];  
-  int b = i % nlevels[1];
-  if ( a < nessential[0] && b < nessential[1]) isEss = 1;
-  else isEss = 0;
 
   return isEss; 
 }
