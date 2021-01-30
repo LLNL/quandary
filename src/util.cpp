@@ -14,13 +14,25 @@ int getVecID(const int row, const int col, const int dim){
 
 
 int mapEssToFull(const int i, const std::vector<int> &nlevels, const std::vector<int> &nessential){
-  if (nlevels.size() != 2) {
-    printf("\n ERROR: guard levels currently only for two oscillators.\n");
-    printf("\n TODO: To make this work, generalize mapEssToFull(i).\n");
-    assert(nlevels.size() == 2); // TODO: Generalize this formula for more than two oscillators 
-  }
 
-  return ( (int) i/nessential[1] ) * nlevels[1] + i % nessential[1];
+  int id = 0;
+  int index = i;
+  for (int iosc = 0; iosc<nlevels.size()-1; iosc++){
+    int postdim = 1;
+    int postdim_ess = 1;
+    for (int j = iosc+1; j<nlevels.size(); j++){
+      postdim *= nlevels[j];
+      postdim_ess *= nessential[j];
+    }
+    int iblock = (int) index / postdim_ess;
+    index = index % postdim_ess;
+    // move id to that block
+    id += iblock * postdim;  
+  }
+  // move to index in last block
+  id += index;
+
+  return id;
 }
 
 
