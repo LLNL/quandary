@@ -36,6 +36,7 @@ Gate::Gate(std::vector<int> nlevels_, std::vector<int> nessential_){
   MatAssemblyEnd(Vb, MAT_FINAL_ASSEMBLY);
 
   /* Set up projection matrix to map ful system to essential levels */
+  // TODO: Generalize for more than two oscillators! 
   Mat P;
   MatCreate(PETSC_COMM_WORLD, &P);
   MatSetSizes(P, PETSC_DECIDE, PETSC_DECIDE, dim_ess, dim_rho);
