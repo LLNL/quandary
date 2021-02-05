@@ -2,10 +2,12 @@
 #PETSC_DIR=/usr/workspace/wsa/wave/petsc-3.13
 #PETSC_ARCH=arch-linux-c-debug
 
-# Set Braid location, or comment out
+# Choose to link with XBraid, set the location if true
+WITH_XBRAID = false
 #BRAID_DIR = ${HOME}/Numerics/xbraid_solveadjointwithxbraid
 
-# Set SLEPC location, or comment out
+# Choose to link with the SLEPC library, set the location if true
+WITH_SLEPC = false
 #SLEPC_DIR=${HOME}/Software/slepc-3.13.3
 
 # Choose to run sanity tests
@@ -15,7 +17,7 @@ SANITY_CHECK = false
 # Typically no need to change anything below
 
 # Add optional Slepc
-ifdef SLEPC_DIR
+ifeq ($(WITH_SLEPC), true)
 CXX_OPT = -DWITH_SLEPC
 LDFLAGS_OPT = -L${SLEPC_DIR}/lib -L${SLEPC_DIR}/${PETSC_ARCH}/lib -lslepc 
 INC_OPT = -I${SLEPC_DIR}/${PETSC_ARCH}/include -I${SLEPC_DIR}/include
@@ -23,7 +25,7 @@ endif
 
 
 # Add optional Braid include and library location
-ifdef BRAID_DIR
+ifeq ($(WITH_XBRAID), true)
 BRAID_INC_DIR  = $(BRAID_DIR)/braid
 BRAID_LIB_FILE = $(BRAID_DIR)/braid/libbraid.a
 CXX_OPT += -DWITH_BRAID
