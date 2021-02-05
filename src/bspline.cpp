@@ -23,33 +23,33 @@ ControlBasis::~ControlBasis(){
 
 double ControlBasis::evaluate(const double t, const std::vector<double>& coeff, const double ground_freq, const ControlType controltype){
 
-    double freq;
-
     double sum = 0.0;
     /* Sum over basis function */
     for (int l=0; l<nbasis; l++) {
-        double ampl = 0.0;
+        double Blt = basisfunction(l,t);
         /* Sum over carrier wave frequencies */
         for (int f=0; f < carrier_freq.size(); f++) {
-            int coeff_id = l * carrier_freq.size() * 2 + f * 2;     // alpha^{k(1)}_{l,f}
+            double alpha1 = coeff[l*carrier_freq.size()*2 + f*2];
+            double alpha2 = coeff[l*carrier_freq.size()*2 + f*2 + 1];
+            double cos_omt = cos(2.*M_PI*carrier_freq[f]*t);
+            double sin_omt = sin(2.*M_PI*carrier_freq[f]*t);
             switch (controltype) {
                 case RE:
-                    freq = 2.0 * M_PI * carrier_freq[f];
-                    ampl += coeff[coeff_id] * cos(freq*t) - coeff[coeff_id + 1] * sin(freq*t);
+                    sum += alpha1 * cos_omt * Blt; 
+                    sum -= alpha2 * sin_omt * Blt;
                     break;
                 case IM:
-                    freq = 2.0 * M_PI * carrier_freq[f];
-                    ampl += coeff[coeff_id] * sin(freq*t) + coeff[coeff_id + 1] * cos(freq*t);
+                    sum += alpha1 * sin_omt * Blt;
+                    sum += alpha2 * cos_omt * Blt;
                     break;
                 case LAB:
-                    freq = 2.0 * M_PI * (ground_freq + carrier_freq[f]);
-                    ampl += coeff[coeff_id] * cos(freq*t) - coeff[coeff_id + 1] * sin(freq*t);
+                    sum += 2. * alpha1 * Blt * cos(2.*M_PI*(ground_freq + carrier_freq[f])*t);
+                    sum -= 2. * alpha2 * Blt * sin(2.*M_PI*(ground_freq + carrier_freq[f])*t);
                     break;
             }   
         }
-        sum += basisfunction(l,t) * ampl;
     }
-    if (controltype == LAB) sum *= 2.0;
+
 
     return sum;
 }
