@@ -1,5 +1,5 @@
 NUM_PARALLEL_PROCESSORS=0
-testNames=(primal)
+testNames=(adjoint)
 case $subTestNum in
   1)
     rm -rf data_out

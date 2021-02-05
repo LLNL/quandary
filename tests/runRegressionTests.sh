@@ -250,22 +250,17 @@ do
             for baseOutput in ${DIR}/${simulation}/data_out/*
             do
               fileName="$(basename "$baseOutput")"
-              cd ${DIR}
-              if [[ "$fileName" == "grad.dat" ]] || [[ "$fileName" == "optim_history.dat" ]]; then
+              if [[ "$fileName" != "timing."* ]] && [[ "$fileName" != "config_log."* ]]; then
+                cd ${DIR}
                 mv  "${simulation}/data_out/$fileName" "${simulation}/base/$fileName"  
-              elif [[ "$fileName" == "params.dat" ]]; then
-                mv  "${simulation}/data_out/$fileName" "${simulation}/base/$fileName"  
-              fi
-              if [[ "$testName" == "primal" ]] && [[ "$fileName" == "rho"*".dat" ]]; then
-                mv "${simulation}/data_out/$fileName" "${simulation}/base/$fileName"
               fi
             done
-            set_rebase 
+            set_rebase
           else
             for baseOutput in ${DIR}/${simulation}/base/*
             do
               fileName="$(basename "$baseOutput")"
-              if [[ "$fileName" == "grad.dat" ]] || [[ "$fileName" == "optim_history.dat" ]]; then
+              if [[ "$fileName" != "timing."* ]] && [[ "$fileName" != "config_log."* ]]; then
                 cd ${DIR}
                 python3 compare_two_files.py "${simulation}/base/$fileName" "${simulation}/data_out/$fileName"
                 if [[ $? -eq 1 ]]; then

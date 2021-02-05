@@ -1400,8 +1400,6 @@ int myMatMult_matfree_2osc(Mat RHS, Vec x, Vec y){
     return myMatMult_matfree<3,20>(RHS, x, y);
   } else if(n0==3 && n1==10){
     return myMatMult_matfree<3,10>(RHS, x, y);
-  } else if(n0==1 && n1==1){
-    return myMatMult_matfree<1,1>(RHS, x, y);
   } else if(n0==2 && n1==2){
     return myMatMult_matfree<2,2>(RHS, x, y);
   } else if(n0==20 && n1==20){
@@ -1424,8 +1422,6 @@ int myMatMultTranspose_matfree_2Osc(Mat RHS, Vec x, Vec y){
     return myMatMultTranspose_matfree<3,20>(RHS, x, y);
   } else if(n0==3 && n1==10){
     return myMatMultTranspose_matfree<3,10>(RHS, x, y);
-  } else if(n0==1 && n1==1){
-    return myMatMultTranspose_matfree<1,1>(RHS, x, y);
   } else if(n0==2 && n1==2){
     return myMatMultTranspose_matfree<2,2>(RHS, x, y);
   } else if(n0==20 && n1==20){
