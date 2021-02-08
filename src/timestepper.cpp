@@ -144,11 +144,13 @@ double TimeStepper::penaltyIntegral(double time, const Vec x){
   int dim_rho = (int)sqrt(dim/2);  // dim = 2*N^2 vectorized system. dim_rho = N = dimension of matrix system
 
   double x_re, x_im;
-  /* Sum over all diagonal elements that do NOT belong to an essential level */
+  /* Sum over all diagonal elements that correspond to a guard level. 
+   * A guard level is the LAST energy level of an oscillator */
   double penalty = 0.0;
   for (int i=0; i<dim_rho; i++) {
-    // printf("%d / %d\n", i, dim_rho);
-    if ( !isEssential(i, mastereq->nlevels, mastereq->nessential) ) {
+    // if ( !isEssential(i, mastereq->nlevels, mastereq->nessential) ) {
+    if ( isGuardLevel(i, mastereq->nlevels) ) {
+      // printf("isGuard: %d / %d\n", i, dim_rho);
       int vecID_re = getIndexReal(getVecID(i,i,dim_rho));
       int vecID_im = getIndexImag(getVecID(i,i,dim_rho));
       VecGetValues(x, 1, &vecID_re, &x_re);
@@ -166,7 +168,8 @@ void TimeStepper::penaltyIntegral_diff(double time, const Vec x, Vec xbar, doubl
 
   double x_re, x_im;
   for (int i=0; i<dim_rho; i++) {
-    if ( !isEssential(i, mastereq->nlevels, mastereq->nessential) ) {
+    // if ( !isEssential(i, mastereq->nlevels, mastereq->nessential) ) {
+    if ( isGuardLevel(i, mastereq->nlevels) ) {
       int vecID_re = getIndexReal(getVecID(i,i,dim_rho));
       int vecID_im = getIndexImag(getVecID(i,i,dim_rho));
       VecGetValues(x, 1, &vecID_re, &x_re);

@@ -18,6 +18,9 @@ int mapEssToFull(const int i, const std::vector<int> &nlevels, const std::vector
 /* Test if a certain row/column i of the full density matrix corresponds to an essential level */
 int isEssential(const int i, const std::vector<int> &nlevels, const std::vector<int> &nessential);
 
+/* Test if a certain row/column i of the full density matrix corresponds to a guard level. A Guard level is the LAST energy level of an oscillator */
+int isGuardLevel(const int i, const std::vector<int> &nlevels);
+
 /* Kronecker product : Id \kron A, where Id is the Identitymatrix 
  * Mat Out must be allocated with nonzerosA * dimI
  * Input: mat A       Matrix that is multiplied

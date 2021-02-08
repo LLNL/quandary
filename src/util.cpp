@@ -60,6 +60,28 @@ int isEssential(const int i, const std::vector<int> &nlevels, const std::vector<
   return isEss; 
 }
 
+int isGuardLevel(const int i, const std::vector<int> &nlevels){
+  int isGuard =  0;
+  int index = i;
+  for (int iosc = 0; iosc < nlevels.size()-1; iosc++){
+
+    int postdim = 1;
+    for (int j = iosc+1; j<nlevels.size(); j++){
+      postdim *= nlevels[j];
+    }
+    int itest = (int) index / postdim;   // floor(i/n_post)
+    index = index % postdim;
+    // test if this is a guard level for this oscillator
+    if (itest == nlevels[iosc] - 1) {  // last energy level for system 'iosc'
+      isGuard = 1;
+      break;
+    }
+    // test if guard level for last oscillator
+    if (index == nlevels[nlevels.size()-1] - 1) isGuard = 1;
+  }
+
+  return isGuard;
+}
 
 PetscErrorCode Ikron(const Mat A,const  int dimI, const double alpha, Mat *Out, InsertMode insert_mode){
 
