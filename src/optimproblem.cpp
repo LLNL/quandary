@@ -586,6 +586,7 @@ PetscErrorCode TaoMonitor(Tao tao,void*ptr){
      int ninit_local_org = ctx->ninit_local;
      int ninit_org = ctx->ninit;
      ctx->initcond_type = BASIS;
+     /* TODO: GENERALIZE! parallel initial conditions! */
      ctx->ninit_local = 16;
      ctx->ninit= 16;
      ctx->objective_type = GATE_TRACE;
