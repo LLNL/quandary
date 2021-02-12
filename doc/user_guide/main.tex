@@ -157,22 +157,22 @@ desired system behavior.
 These control functions are in the \textit{rotating frame}. To convert them back
 to the \textit{Lab frame}, Quandary uses
 \begin{align}
-  f^k(t) = 2 \sum_{l=0}^{L-1} B_l(t) \sum_{f=0}^{N_f^k-1} \beta_{l,f}^k \cos(w_k t +
-  \Omega_f^k t + \theta_{l,f}) \quad \forall k=0,\dots Q-1
+  f^k(t) = 2 \sum_{l=0}^{L-1} B_l(t) \sum_{f=0}^{N_f^k-1} \beta_{l,f}^k \cos(\omega_k^{\text{rot}} t +
+  \Omega_f^k t + \theta_{l,f}) \ \forall\  k=0,\dots Q-1
 \end{align}
 where $\beta_{l,f}^k$ and $\theta_{l,f}$ are computed from
 \begin{align}
   \alpha_{l,f}^{k(0)} = \beta_{l,f}^k \cos(\theta_{l,f}) \quad \text{and} \quad
   \alpha_{l,f}^{k(1)} = \beta_{l,f}^k \sin(\theta_{l,f})
 \end{align}
-and $w_k$ are the fundamental resonance frequencies of subsystems $k$. Using
+and $\omega_k^{\text{rot}}$ is the angular frequency of rotation in subsystem $k$. Using
 trigonometric equalities, the Lab-frame controls can be expressed as
 \begin{align}
-  f^k(t) &= 2 \sum_{l=1}^L B_l(t) \sum_{f=1}^{N_f^k} \alpha_{l,f}^{k(0)} \cos((w_k
-  + \Omega_f^k) t) - \alpha_{l,f}^{k(1)}\sin((w_k + \Omega_f^k) t) \quad \forall
+  f^k(t) &= 2 \sum_{l=1}^L B_l(t) \sum_{f=1}^{N_f^k} \alpha_{l,f}^{k(0)} \cos((\omega_k^{\text{rot}}
+  + \Omega_f^k) t) - \alpha_{l,f}^{k(1)}\sin((\omega_k^{\text{rot}} + \Omega_f^k) t) \ \forall\ %
   k=0,\dots Q-1 \\
-         &= 2 p^k(\vec{\alpha}^k, t) \cos(w_k t) - 2 q^k(\vec{\alpha}^k,
-         t)\sin(w_k t) \\
+         &= 2 p^k(\vec{\alpha}^k, t) \cos(\omega_k^{\text{rot}} t) - 2 q^k(\vec{\alpha}^k,
+         t)\sin(\omega_k^{\text{rot}} t) \\
 \end{align}
 
 
@@ -181,7 +181,7 @@ In the most general form, Quandary can solve the following optimization problem
 \begin{align}
   \min_{\boldsymbol{\alpha}} \frac{1}{ninit} \sum_{i=1}^{ninit} \beta_i J(\rho_i(T))  + R(\boldsymbol{\alpha})
 \end{align}
-where $\rho_i(T)$ solves the master equation \eqref{mastereq} for initial conditions $\rho_i(0)$, as explained below. Specific choices of $J$ and initial conditions $\rho_i(0)$ are given below, as well as regularization and penalty terms denoted by $R$ above. 
+where $\rho_i(T)$ satisfies the master equation \eqref{mastereq} subject to the initial condition $\rho_i(0)$, as explained below. Specific choices of $J$ and initial conditions $\rho_i(0)$ are given below, as well as regularization and penalty terms denoted by $R$ above. 
 
 \subsection{Ground-state optimization aka optimal
 reset}\label{sec:groundstate-obj}
