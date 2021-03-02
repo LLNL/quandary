@@ -593,8 +593,8 @@ PetscErrorCode TaoMonitor(Tao tao,void*ptr){
      int ninit_org = ctx->ninit;
      ctx->initcond_type = BASIS;
      /* TODO: GENERALIZE! parallel initial conditions! */
-     ctx->ninit_local = 16;
      ctx->ninit= 16;
+     ctx->ninit_local = ctx->ninit/ctx->mpisize_init;
      ctx->objective_type = GATE_TRACE;
      double obj = ctx->evalF(params);    // this sets ctx->obj_cost
      // double F_avg = 1.0 - ctx->obj_cost;
