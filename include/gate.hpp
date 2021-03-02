@@ -11,7 +11,7 @@
 class Gate {
   protected:
     Mat Va, Vb;        /* Input: Real and imaginary part of V_target, non-vectorized */
-    Mat PxP;           /* Vectorized projection matrix P\kron P to map between essential levels and full system */
+    Vec rotA, rotB;    /* Input: Diagonal elements of real and imaginary rotational matrices */
 
     std::vector<int> nessential;
     std::vector<int> nlevels;
@@ -21,6 +21,7 @@ class Gate {
     int dim_rho;   /* Dimension of system matrix rho (non-vectorized), all levels */
 
   private:
+    Mat PxP;           /* Vectorized projection matrix P\kron P to map between essential levels and full system */
     Mat ReG, ImG;           /* Real and imaginary part of \bar V \kron V */
     Vec ufinal_e, vfinal_e; /* auxiliary, holding final state projected onto essential levels */
     Vec u0_e, v0_e;         /* auxiliary, holding final state projected onto essential levels */
@@ -31,6 +32,10 @@ class Gate {
     Gate();
     Gate(std::vector<int> nlevels_, std::vector<int> nessential_);
     virtual ~Gate();
+
+    /* Assemble gate rotation matrices */
+    void assembleGateRotation1x2(double time, std::vector<double> gate_rot_freq);
+    void assembleGateRotation2x2(double time, std::vector<double> gate_rot_freq);
 
     /* Assemble ReG = Re(\bar V \kron V) and ImG = Im(\bar V \kron V) */
     void assembleGate();
@@ -50,7 +55,7 @@ class Gate {
  */
 class XGate : public Gate {
   public:
-    XGate(std::vector<int> nlevels_, std::vector<int> nessential_);
+    XGate(std::vector<int> nlevels_, std::vector<int> nessential_, double time, std::vector<double> rotation_frequencies_);
     ~XGate();
 };
 
@@ -60,7 +65,7 @@ class XGate : public Gate {
  */
 class YGate : public Gate {
   public:
-    YGate(std::vector<int> nlevels_, std::vector<int> nessential_);
+    YGate(std::vector<int> nlevels_, std::vector<int> nessential_, double time, std::vector<double> rotation_frequencies_);
     ~YGate();
 };
 
@@ -70,7 +75,7 @@ class YGate : public Gate {
  */
 class ZGate : public Gate {
   public:
-    ZGate(std::vector<int> nlevels_, std::vector<int> nessential_);
+    ZGate(std::vector<int> nlevels_, std::vector<int> nessential_, double time, std::vector<double> rotation_frequencies_);
     ~ZGate();
 };
 
@@ -80,7 +85,7 @@ class ZGate : public Gate {
  */
 class HadamardGate : public Gate {
   public:
-    HadamardGate(std::vector<int> nlevels_, std::vector<int> nessential_);
+    HadamardGate(std::vector<int> nlevels_, std::vector<int> nessential_, double time, std::vector<double> rotation_frequencies_);
     ~HadamardGate();
 };
 
@@ -92,7 +97,7 @@ class HadamardGate : public Gate {
  */
 class CNOT : public Gate {
     public:
-    CNOT(std::vector<int> nlevels_, std::vector<int> nessential_);
+    CNOT(std::vector<int> nlevels_, std::vector<int> nessential_, double time, std::vector<double> rotation_frequencies_);
     ~CNOT();
 };
 
@@ -104,7 +109,7 @@ class CNOT : public Gate {
  */
 class SWAP: public Gate {
     public:
-    SWAP(std::vector<int> nlevels_, std::vector<int> nessential_);
+    SWAP(std::vector<int> nlevels_, std::vector<int> nessential_, double time, std::vector<double> rotation_frequencies_);
     ~SWAP();
 };
 
