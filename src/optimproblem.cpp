@@ -238,8 +238,11 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
     config.GetVecDoubleParam(key, carrier_freq, 0.0);
     bounds[iosc] = bounds[iosc] / ( sqrt(2) * carrier_freq.size()) ;
     for (int i=0; i<timestepper->mastereq->getOscillator(iosc)->getNParams(); i++){
-      VecSetValue(xupper, col, bounds[iosc], INSERT_VALUES);
-      VecSetValue(xlower, col, -1. * bounds[iosc], INSERT_VALUES);
+      double bound = bounds[iosc];
+      /* set first and last two coefficients to zero to ensure spline is zero at beginning and end of time interval */
+      if (i <= 1 || i >= timestepper->mastereq->getOscillator(iosc)->getNParams() - 2) bound = 0.0;
+      VecSetValue(xupper, col, bound, INSERT_VALUES);
+      VecSetValue(xlower, col, -1. * bound, INSERT_VALUES);
       col++;
     }
   }
