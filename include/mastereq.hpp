@@ -17,6 +17,7 @@ typedef struct {
   std::vector<double> xi;
   std::vector<double> detuning_freq;
   std::vector<double> collapse_time;
+  bool addT1, addT2;
   std::vector<double> control_Re, control_Im;
   Mat** Ac_vec;
   Mat** Bc_vec;
@@ -54,6 +55,7 @@ class MasterEq{
     std::vector<double> xi;             // Constants for frequencies of drift Hamiltonian
     std::vector<double> detuning_freq;  // detuning frequencies of drift Hamiltonian
     std::vector<double> collapse_time;  // Time-constants for decay and dephase operators
+    bool addT1, addT2;                  // flags for including Lindblad collapse operators T1-decay and/or T2-dephasing
 
     /* Auxiliary stuff */
     int mpirank_petsc;   // Rank of Petsc's communicator
@@ -76,7 +78,7 @@ class MasterEq{
     ~MasterEq();
 
     /* initialize matrices needed for applying sparse-mat solver */
-    void initSparseMatSolver(LindbladType lindbladtype);
+    void initSparseMatSolver();
 
     /* Return the i-th oscillator */
     Oscillator* getOscillator(const int i);
