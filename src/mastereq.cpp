@@ -17,7 +17,7 @@ MasterEq::MasterEq(){
 }
 
 
-MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Oscillator** oscil_vec_, const std::vector<double> xi_, const std::vector<double> eta_, const std::vector<double> detuning_freq_, LindbladType lindbladtype, const std::vector<double> collapse_time_, bool usematfree_) {
+MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Oscillator** oscil_vec_, const std::vector<double> xi_, const std::vector<double> Jkl_, const std::vector<double> eta_, const std::vector<double> detuning_freq_, LindbladType lindbladtype, const std::vector<double> collapse_time_, bool usematfree_) {
   int ierr;
 
   nlevels = nlevels_;
@@ -25,10 +25,12 @@ MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Osci
   noscillators = nlevels.size();
   oscil_vec = oscil_vec_;
   xi = xi_;
+  Jkl = Jkl_;
   eta = eta_;
   detuning_freq = detuning_freq_;
   collapse_time = collapse_time_;
   assert(xi.size() >= (noscillators+1) * noscillators / 2);
+  assert(Jkl.size() >= (noscillators-1) * noscillators / 2);
   if (lindbladtype != NONE) assert(collapse_time.size() >= 2*noscillators);
   usematfree = usematfree_;
 
@@ -86,6 +88,7 @@ MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Osci
   RHSctx.isu = &isu;
   RHSctx.isv = &isv;
   RHSctx.xi = xi;
+  RHSctx.Jkl = Jkl;
   RHSctx.eta = eta;
   RHSctx.detuning_freq = detuning_freq;
   RHSctx.collapse_time = collapse_time;
@@ -265,6 +268,7 @@ void MasterEq::initSparseMatSolver(LindbladType lindbladtype){
   MatSetUp(Bd);
   MatSetFromOptions(Bd);
   int xi_id = 0;
+  int Jkl_id = 0;
   for (int iosc = 0; iosc < noscillators; iosc++) {
     Mat tmp, tmp_T;
     Mat numberOPj;
@@ -289,21 +293,19 @@ void MasterEq::initSparseMatSolver(LindbladType lindbladtype){
     MatDestroy(&tmp);
     MatDestroy(&tmp_T);
 
-    // /* Previously: Cross term -xi * 2 * PI * (N_i*N_j) for j > i */
-    // Now only skipping over the coupling elements in xi
-    // IBM cross terms are time-dependent and added when applied.
+    /* Cross term -xi * 2 * PI * (N_i*N_j) for j > i */
     for (int josc = iosc+1; josc < noscillators; josc++) {
-    //   numberOPj = oscil_vec[josc]->getNumberOP((bool) mpirank_petsc);
-    //   MatMatMult(numberOP, numberOPj, MAT_INITIAL_MATRIX, PETSC_DEFAULT, &tmp);
-    //   MatScale(tmp, -xi[xi_id] * 2.0 * M_PI);
+      numberOPj = oscil_vec[josc]->getNumberOP((bool) mpirank_petsc);
+      MatMatMult(numberOP, numberOPj, MAT_INITIAL_MATRIX, PETSC_DEFAULT, &tmp);
+      MatScale(tmp, -xi[xi_id] * 2.0 * M_PI);
       xi_id++;
-    //
-    //   MatTranspose(tmp, MAT_INITIAL_MATRIX, &tmp_T);
-    //   Ikron(tmp,   dimmat, -1.0, &Bd, ADD_VALUES);
-    //   kronI(tmp_T, dimmat,  1.0, &Bd, ADD_VALUES);
-    //
-    //   MatDestroy(&tmp);
-    //   MatDestroy(&tmp_T);
+    
+      MatTranspose(tmp, MAT_INITIAL_MATRIX, &tmp_T);
+      Ikron(tmp,   dimmat, -1.0, &Bd, ADD_VALUES);
+      kronI(tmp_T, dimmat,  1.0, &Bd, ADD_VALUES);
+    
+      MatDestroy(&tmp);
+      MatDestroy(&tmp_T);
     }
   }
   MatAssemblyBegin(Bd, MAT_FINAL_ASSEMBLY);
@@ -1033,9 +1035,8 @@ int myMatMult_sparsemat(Mat RHS, Vec x, Vec y){
   MatMultAdd(*shellctx->Bd, u, vout, vout);
 
 
-  /* Control and coupling terms */
+  /* Control, and IBM coupling terms */
   int id_kl = 0; // index for accessing Ad_kl inside Ad_vec
-  int id_xi = 0;  // index for accessing xi_kl inside xi
   for (int iosc = 0; iosc < shellctx->nlevels.size(); iosc++) {
 
     /* Get controls */
@@ -1055,15 +1056,13 @@ int myMatMult_sparsemat(Mat RHS, Vec x, Vec y){
     MatMult((*(shellctx->Bc_vec))[iosc], u, *shellctx->Bcu);
     VecAXPY(vout, p, *shellctx->Bcu);
 
-    id_xi++;
-
     // Coupling terms
     for (int josc=iosc+1; josc<shellctx->nlevels.size(); josc++){
 
       double etakl = shellctx->eta[id_kl];
       double coskl = cos(etakl*2*M_PI * shellctx->time);
       double sinkl = sin(etakl*2*M_PI * shellctx->time);
-      double Jkl = shellctx->xi[id_xi]*2*M_PI; 
+      double Jkl = shellctx->Jkl[id_kl]*2*M_PI; 
       // uout += J_kl*sin*Adklu
       MatMult((*(shellctx->Ad_vec))[id_kl], u, *shellctx->Adklu);
       VecAXPY(uout, Jkl*sinkl, *shellctx->Adklu);
@@ -1077,7 +1076,6 @@ int myMatMult_sparsemat(Mat RHS, Vec x, Vec y){
       MatMult((*(shellctx->Ad_vec))[id_kl], v, *shellctx->Adklv);
       VecAXPY(vout, Jkl*sinkl, *shellctx->Adklv);
       id_kl++;
-      id_xi++;
     }
   }
 
@@ -1125,7 +1123,6 @@ int myMatMultTranspose_sparsemat(Mat RHS, Vec x, Vec y) {
 
   /* Control and coupling term */
   int id_kl = 0; // index for accessing Ad_kl inside Ad_vec
-  int id_xi = 0;  // index for accessing xi_kl inside xi
   for (int iosc = 0; iosc < shellctx->nlevels.size(); iosc++) {
     /* Get controls */
     double p = shellctx->control_Re[iosc];
@@ -1144,15 +1141,13 @@ int myMatMultTranspose_sparsemat(Mat RHS, Vec x, Vec y) {
     MatMultTranspose((*(shellctx->Bc_vec))[iosc], u, *shellctx->Bcu);
     VecAXPY(vout, -1.*p, *shellctx->Bcu);
 
-    id_xi++;
-
     // Coupling terms
     for (int josc=iosc+1; josc<shellctx->nlevels.size(); josc++){
 
       double etakl = shellctx->eta[id_kl];
       double coskl = cos(etakl*2*M_PI * shellctx->time);
       double sinkl = sin(etakl*2*M_PI * shellctx->time);
-      double Jkl = shellctx->xi[id_xi]*2*M_PI; 
+      double Jkl = shellctx->Jkl[id_kl]*2*M_PI; 
       // uout += J_kl*sin*Adklu^T
       MatMultTranspose((*(shellctx->Ad_vec))[id_kl], u, *shellctx->Adklu);
       VecAXPY(uout, Jkl*sinkl, *shellctx->Adklu);
@@ -1166,7 +1161,6 @@ int myMatMultTranspose_sparsemat(Mat RHS, Vec x, Vec y) {
       MatMultTranspose((*(shellctx->Ad_vec))[id_kl], v, *shellctx->Adklv);
       VecAXPY(vout, Jkl*sinkl, *shellctx->Adklv);
       id_kl++;
-      id_xi++;
     }
 
   }
@@ -1200,8 +1194,9 @@ int myMatMult_matfree(Mat RHS, Vec x, Vec y){
 
   /* Evaluate coefficients */
   double xi0  = shellctx->xi[0];
-  double xi01 = shellctx->xi[1]*2*M_PI; // This is J_01 in the IBM Hamiltonian!
-  double xi1  = shellctx->xi[2];
+  double xi01 = shellctx->xi[1];  // zz-coupling
+  double xi1  = shellctx->xi[2];   
+  double J01  = shellctx->Jkl[0]*2.*M_PI;  // IBM dipole-dipole coupling
   double eta01 = shellctx->eta[0];
   double detuning_freq0 = shellctx->detuning_freq[0];
   double detuning_freq1 = shellctx->detuning_freq[1];
@@ -1244,9 +1239,11 @@ int myMatMult_matfree(Mat RHS, Vec x, Vec y){
           // drift Hamiltonian: uout = ( hd(ik) - hd(ik'))*vin
           //                    vout = (-hd(ik) + hd(ik'))*uin
           double hd  = H_detune(detuning_freq0, detuning_freq1, i0, i1)
-                     + H_selfkerr(xi0, xi1, i0, i1);
+                     + H_selfkerr(xi0, xi1, i0, i1)
+                     + H_crosskerr(xi01, i0, i1);
           double hdp = H_detune(detuning_freq0, detuning_freq1, i0p, i1p)
-                     + H_selfkerr(xi0, xi1, i0p, i1p);
+                     + H_selfkerr(xi0, xi1, i0p, i1p)
+                     + H_crosskerr(xi01, i0p, i1p);
           double yre = ( hd - hdp ) * xim;
           double yim = (-hd + hdp ) * xre;
           // Decay l1, diagonal part: xout += l1diag xin
@@ -1265,8 +1262,8 @@ int myMatMult_matfree(Mat RHS, Vec x, Vec y){
             double xim = xptr[2 * itx + 1];
             double sq = sqrt(i0 * (i1 + 1));
             // sin u + cos v + i ( -cos u + sin v)
-            yre += xi01 * sq * (   cos01 * xim + sin01 * xre);
-            yim += xi01 * sq * ( - cos01 * xre + sin01 * xim);
+            yre += J01 * sq * (   cos01 * xim + sin01 * xre);
+            yim += J01 * sq * ( - cos01 * xre + sin01 * xim);
           }
           // 2) J_kl (−icos − sin)sqrt(il*(ik +1)) ρ_{E+k−li,i′}
           if (i0 < n0-1 && i1 > 0) {
@@ -1275,8 +1272,8 @@ int myMatMult_matfree(Mat RHS, Vec x, Vec y){
             double xim = xptr[2 * itx + 1];
             double sq = sqrt(i1 * (i0 + 1)); // sqrt( il*(ik+1))
             // -sin u + cos v + i (-cos u - sin v)
-            yre += xi01 * sq * (   cos01 * xim - sin01 * xre);
-            yim += xi01 * sq * ( - cos01 * xre - sin01 * xim);
+            yre += J01 * sq * (   cos01 * xim - sin01 * xre);
+            yim += J01 * sq * ( - cos01 * xre - sin01 * xim);
           }
           // 3) J_kl ( icos + sin)sqrt(ik'*(il' +1)) ρ_{i,E-k+li'}
           if (i0p > 0 && i1p < n1-1) {
@@ -1285,8 +1282,8 @@ int myMatMult_matfree(Mat RHS, Vec x, Vec y){
             double xim = xptr[2 * itx + 1];
             double sq = sqrt(i0p * (i1p + 1)); // sqrt( ik'*(il'+1))
             //  sin u - cos v + i ( cos u + sin v)
-            yre += xi01 * sq * ( - cos01 * xim + sin01 * xre);
-            yim += xi01 * sq * (   cos01 * xre + sin01 * xim);
+            yre += J01 * sq * ( - cos01 * xim + sin01 * xre);
+            yim += J01 * sq * (   cos01 * xre + sin01 * xim);
           }
           // 4) J_kl ( icos - sin)sqrt(il'*(ik' +1)) ρ_{i,E+k-li'}
           if (i0p < n0-1 && i1p > 0) {
@@ -1295,8 +1292,8 @@ int myMatMult_matfree(Mat RHS, Vec x, Vec y){
             double xim = xptr[2 * itx + 1];
             double sq = sqrt(i1p * (i0p + 1)); // sqrt( il'*(ik'+1))
             // - sin u - cos v + i ( cos u - sin v)
-            yre += xi01 * sq * ( - cos01 * xim - sin01 * xre);
-            yim += xi01 * sq * (   cos01 * xre - sin01 * xim);
+            yre += J01 * sq * ( - cos01 * xim - sin01 * xre);
+            yim += J01 * sq * (   cos01 * xre - sin01 * xim);
           }
 
 
@@ -1430,8 +1427,9 @@ int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
 
   /* Evaluate coefficients */
   double xi0  = shellctx->xi[0];
-  double xi01 = shellctx->xi[1]*2*M_PI;  // This is J_kl in IBM Hamiltonian
+  double xi01 = shellctx->xi[1];  // Cross-ker
   double xi1  = shellctx->xi[2];
+  double J01 = shellctx->Jkl[0]*2.*M_PI;   // IBM dipole-dipole coupling
   double eta01 = shellctx->eta[0];
   double detuning_freq0 = shellctx->detuning_freq[0];
   double detuning_freq1 = shellctx->detuning_freq[1];
@@ -1475,9 +1473,11 @@ int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
           // drift Hamiltonian Hd^T: uout = ( hd(ik) - hd(ik'))*vin
           //                         vout = (-hd(ik) + hd(ik'))*uin
           double hd  = H_detune(detuning_freq0, detuning_freq1, i0, i1)
-                     + H_selfkerr(xi0, xi1, i0, i1);
+                     + H_selfkerr(xi0, xi1, i0, i1)
+                     + H_crosskerr(xi01, i0, i1);
           double hdp = H_detune(detuning_freq0, detuning_freq1, i0p, i1p)
-                     + H_selfkerr(xi0, xi1, i0p, i1p);
+                     + H_selfkerr(xi0, xi1, i0p, i1p)
+                     + H_crosskerr(xi01, i0p, i1p);
           double yre = (-hd + hdp ) * xim;
           double yim = ( hd - hdp ) * xre;
           // Decay l1^T, diagonal part: xout += l1diag xin
@@ -1494,8 +1494,8 @@ int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
             double xre = xptr[2 * itx];
             double xim = xptr[2 * itx + 1];
             double sq = sqrt(i1 * (i0 + 1));
-            yre += xi01 * sq * ( - cos01 * xim + sin01 * xre);
-            yim += xi01 * sq * ( + cos01 * xre + sin01 * xim);
+            yre += J01 * sq * ( - cos01 * xim + sin01 * xre);
+            yim += J01 * sq * ( + cos01 * xre + sin01 * xim);
           }
           // 2) J_kl (−icos − sin)sqrt(ik*(il +1)) \bar y_{E-k+li,i′}
           if (i0 > 0 && i1 < n1-1) {
@@ -1503,8 +1503,8 @@ int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
             double xre = xptr[2 * itx];
             double xim = xptr[2 * itx + 1];
             double sq = sqrt(i0 * (i1 + 1)); // sqrt( ik*(il+1))
-            yre += xi01 * sq * ( - cos01 * xim - sin01 * xre);
-            yim += xi01 * sq * ( + cos01 * xre - sin01 * xim);
+            yre += J01 * sq * ( - cos01 * xim - sin01 * xre);
+            yim += J01 * sq * ( + cos01 * xre - sin01 * xim);
           }
           // 3) J_kl ( icos + sin)sqrt(il'*(ik' +1)) \bar y_{i,E+k-li'}
           if (i0p < n0-1 && i1p > 0) {
@@ -1512,8 +1512,8 @@ int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
             double xre = xptr[2 * itx];
             double xim = xptr[2 * itx + 1];
             double sq = sqrt(i1p * (i0p + 1)); // sqrt( il'*(ik'+1))
-            yre += xi01 * sq * (   cos01 * xim + sin01 * xre);
-            yim += xi01 * sq * ( - cos01 * xre + sin01 * xim);
+            yre += J01 * sq * (   cos01 * xim + sin01 * xre);
+            yim += J01 * sq * ( - cos01 * xre + sin01 * xim);
           }
           // 4) J_kl ( icos - sin)sqrt(ik'*(il' +1)) \bar y_{i,E-k+li'}
           if (i0p > 0 && i1p < n1-1) {
@@ -1521,8 +1521,8 @@ int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
             double xre = xptr[2 * itx];
             double xim = xptr[2 * itx + 1];
             double sq = sqrt(i0p * (i1p + 1)); // sqrt( ik'*(il'+1))
-            yre += xi01 * sq * (   cos01 * xim - sin01 * xre);
-            yim += xi01 * sq * ( - cos01 * xre - sin01 * xim);
+            yre += J01 * sq * (   cos01 * xim - sin01 * xre);
+            yim += J01 * sq * ( - cos01 * xre - sin01 * xim);
           }
 
           /* --- Offdiagonal part of decay L1^T */

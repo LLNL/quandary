@@ -222,9 +222,10 @@ int main(int argc,char **argv)
   }
 
   /* --- Initialize the Master Equation  --- */
-  std::vector<double> xi, t_collapse;
-  config.GetVecDoubleParam("xi", xi, 2.0);
-  // Get coupling eta_ij = w_i - w_j
+  std::vector<double> xi, t_collapse, Jkl;
+  config.GetVecDoubleParam("xi", xi, 2.0);   // self and cross ker
+  config.GetVecDoubleParam("Jkl", Jkl, 2.0); // dipole-dipole coupling (IBM)
+  // Compute coupling rotation frequencies eta_ij = w^r_i - w^r_j
   std::vector<double> eta(nlevels.size()*(nlevels.size()-1)/2.);
   int idx = 0;
   for (int iosc=0; iosc<nlevels.size(); iosc++){
@@ -257,7 +258,7 @@ int main(int argc,char **argv)
     printf("ERROR: No Petsc-parallel version for the matrix free solver available!");
     exit(1);
   }
-  MasterEq* mastereq = new MasterEq(nlevels, nessential, oscil_vec, xi, eta, detuning_freq, lindbladtype, t_collapse, usematfree);
+  MasterEq* mastereq = new MasterEq(nlevels, nessential, oscil_vec, xi, Jkl, eta, detuning_freq, lindbladtype, t_collapse, usematfree);
 
 
   /* Output */
