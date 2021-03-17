@@ -41,6 +41,7 @@ MasterEq::MasterEq(std::vector<int> nlevels_, Oscillator** oscil_vec_, const std
     dim *= oscil_vec[iosc]->getNLevels();
   }
   dim = dim*dim; // density matrix: N \times N -> vectorized: N^2
+  if (mpirank_petsc == 0) printf("System dimension (complex) N^2 = %d\n",dim);
 
   /* Sanity check for parallel petsc */
   if (dim % mpisize_petsc != 0) {
@@ -55,8 +56,29 @@ MasterEq::MasterEq(std::vector<int> nlevels_, Oscillator** oscil_vec_, const std
   MatSetFromOptions(RHS); MatSetUp(RHS);
   MatAssemblyBegin(RHS,MAT_FINAL_ASSEMBLY); MatAssemblyEnd(RHS,MAT_FINAL_ASSEMBLY);
 
+  /* Check Lindblad collapse operator configuration */
+  switch (lindbladtype)  {
+    case NONE:
+      break;
+    case DECAY: 
+      addT1 = true;
+      addT2 = false;
+      break;
+    case DEPHASE:
+      addT1 = false;
+      addT2 = true;
+      break;
+    case BOTH:
+      addT1 = true;
+      addT2 = true;
+      break;
+    default:
+      printf("ERROR! Wrong lindblad type: %d\n", lindbladtype);
+      exit(1);
+  } 
+
   if (!usematfree) {
-    initSparseMatSolver(lindbladtype);
+    initSparseMatSolver();
   }
 
   /* Create vector strides for accessing Re and Im part in x */
@@ -85,6 +107,8 @@ MasterEq::MasterEq(std::vector<int> nlevels_, Oscillator** oscil_vec_, const std
   RHSctx.xi = xi;
   RHSctx.detuning_freq = detuning_freq;
   RHSctx.collapse_time = collapse_time;
+  RHSctx.addT1 = addT1;
+  RHSctx.addT2 = addT2;
   if (!usematfree){
     RHSctx.Ac_vec = &Ac_vec;
     RHSctx.Bc_vec = &Bc_vec;
@@ -144,10 +168,7 @@ MasterEq::~MasterEq(){
 }
 
 
-void MasterEq::initSparseMatSolver(LindbladType lindbladtype){
-
-  Mat loweringOP, loweringOP_T;
-  Mat numberOP;
+void MasterEq::initSparseMatSolver(){
 
   /* Allocate time-varying building blocks */
   Ac_vec = new Mat[noscillators];
@@ -155,146 +176,245 @@ void MasterEq::initSparseMatSolver(LindbladType lindbladtype){
 
   int dimmat = (int) sqrt(dim);
 
-  /* Compute building blocks */
+  int ilow, iupp;
+  int r1,r2, r1a, r2a, r1b, r2b;
+  int col1, col2;
+  double val;
+  // double val1, val2;
+
+  /* Set up control Hamiltonian building blocks Ac, Bc */
   for (int iosc = 0; iosc < noscillators; iosc++) {
 
-    /* Get lowering operator a = I_(n_1) \kron ... \kron a^(n_k) \kron ... \kron I_(n_q) */
-    loweringOP = oscil_vec[iosc]->getLoweringOP((bool)mpirank_petsc);
-    MatTranspose(loweringOP, MAT_INITIAL_MATRIX, &loweringOP_T);
+    /* Get dimensions */
+    int nk     = oscil_vec[iosc]->nlevels;
+    int nprek  = oscil_vec[iosc]->dim_preOsc;
+    int npostk = oscil_vec[iosc]->dim_postOsc;
 
     /* Compute Ac = I_N \kron (a - a^T) - (a - a^T)^T \kron I_N */
     MatCreate(PETSC_COMM_WORLD, &Ac_vec[iosc]);
+    MatSetType(Ac_vec[iosc], MATMPIAIJ);
     MatSetSizes(Ac_vec[iosc], PETSC_DECIDE, PETSC_DECIDE, dim, dim);
+    MatMPIAIJSetPreallocation(Ac_vec[iosc], 4, NULL, 4, NULL);
     MatSetUp(Ac_vec[iosc]);
     MatSetFromOptions(Ac_vec[iosc]);
-    Ikron(loweringOP,   dimmat,  1.0, &Ac_vec[iosc], ADD_VALUES);
-    Ikron(loweringOP_T, dimmat, -1.0, &Ac_vec[iosc], ADD_VALUES);
-    kronI(loweringOP_T, dimmat, -1.0, &Ac_vec[iosc], ADD_VALUES);
-    kronI(loweringOP,   dimmat,  1.0, &Ac_vec[iosc], ADD_VALUES);
+    MatGetOwnershipRange(Ac_vec[iosc], &ilow, &iupp);
+
+    /* Iterate over local rows of Ac_vec */
+    for (int row = ilow; row<iupp; row++){
+      // I_n \kron A_c 
+      col1 = row + npostk;
+      col2 = row - npostk;
+      r1 = row % dimmat;
+      r1 = r1 % (nk*npostk);
+      r1 = r1 / npostk;
+      if (r1 < nk-1) {
+        val = sqrt(r1+1);
+        if (fabs(val)>1e-14) MatSetValue(Ac_vec[iosc], row, col1, val, ADD_VALUES);
+      }
+      if (r1 > 0) {
+        val = -sqrt(r1);
+        if (fabs(val)>1e-14) MatSetValue(Ac_vec[iosc], row, col2, val, ADD_VALUES);
+      } 
+      //- A_c \kron I_N
+      col1 = row + npostk*dimmat;
+      col2 = row - npostk*dimmat;
+      r1 = row % (dimmat * nk * npostk);
+      r1 = r1 / (dimmat * npostk);
+      if (r1 < nk-1) {
+        val =  sqrt(r1+1);
+        if (fabs(val)>1e-14) MatSetValue(Ac_vec[iosc], row, col1, val, ADD_VALUES);
+      }
+      if (r1 > 0) {
+        val = -sqrt(r1);
+        if (fabs(val)>1e-14) MatSetValue(Ac_vec[iosc], row, col2, val, ADD_VALUES);
+      }   
+    }
     MatAssemblyBegin(Ac_vec[iosc], MAT_FINAL_ASSEMBLY);
     MatAssemblyEnd(Ac_vec[iosc], MAT_FINAL_ASSEMBLY);
     
     /* Compute Bc = - I_N \kron (a + a^T) + (a + a^T)^T \kron I_N */
     MatCreate(PETSC_COMM_WORLD, &Bc_vec[iosc]);
+    MatSetType(Bc_vec[iosc], MATMPIAIJ);
     MatSetSizes(Bc_vec[iosc], PETSC_DECIDE, PETSC_DECIDE, dim, dim);
+    MatMPIAIJSetPreallocation(Bc_vec[iosc], 4, NULL, 4, NULL);
     MatSetUp(Bc_vec[iosc]);
     MatSetFromOptions(Bc_vec[iosc]);
-    Ikron(loweringOP,   dimmat, -1.0, &Bc_vec[iosc], ADD_VALUES);
-    Ikron(loweringOP_T, dimmat, -1.0, &Bc_vec[iosc], ADD_VALUES);
-    kronI(loweringOP_T, dimmat,  1.0, &Bc_vec[iosc], ADD_VALUES);
-    kronI(loweringOP,   dimmat,  1.0, &Bc_vec[iosc], ADD_VALUES);
+    MatGetOwnershipRange(Bc_vec[iosc], &ilow, &iupp);
+    /* Iterate over local rows of Bc_vec */
+    for (int row = ilow; row<iupp; row++){
+      // - I_n \kron B_c 
+      col1 = row + npostk;
+      col2 = row - npostk;
+      r1 = row % dimmat;
+      r1 = r1 % (nk*npostk);
+      r1 = r1 / npostk;
+      if (r1 < nk-1) {
+        val = -sqrt(r1+1);
+        if (fabs(val)>1e-14) MatSetValue(Bc_vec[iosc], row, col1, val, ADD_VALUES);
+      }
+      if (r1 > 0) {
+        val = -sqrt(r1);
+        if (fabs(val)>1e-14) MatSetValue(Bc_vec[iosc], row, col2, val, ADD_VALUES);
+      } 
+      //+ B_c \kron I_N
+      col1 = row + npostk*dimmat;
+      col2 = row - npostk*dimmat;
+      r1 = row % (dimmat * nk * npostk);
+      r1 = r1 / (dimmat * npostk);
+      if (r1 < nk-1) {
+        val =  sqrt(r1+1);
+        if (fabs(val)>1e-14) MatSetValue(Bc_vec[iosc], row, col1, val, ADD_VALUES);
+      }
+      if (r1 > 0) {
+        val = sqrt(r1);
+        if (fabs(val)>1e-14) MatSetValue(Bc_vec[iosc], row, col2, val, ADD_VALUES);
+      }   
+    }
     MatAssemblyBegin(Bc_vec[iosc], MAT_FINAL_ASSEMBLY);
     MatAssemblyEnd(Bc_vec[iosc], MAT_FINAL_ASSEMBLY);
-
-    MatDestroy(&loweringOP_T);
   }
 
   /* Allocate and compute imag drift part Bd = Hd */
   MatCreate(PETSC_COMM_WORLD, &Bd);
+  MatSetType(Bd, MATMPIAIJ);
   MatSetSizes(Bd, PETSC_DECIDE, PETSC_DECIDE, dim, dim);
+  MatMPIAIJSetPreallocation(Bd, 1, NULL, 1, NULL);
   MatSetUp(Bd);
   MatSetFromOptions(Bd);
+  MatGetOwnershipRange(Bd, &ilow, &iupp);
   int xi_id = 0;
   for (int iosc = 0; iosc < noscillators; iosc++) {
-    Mat tmp, tmp_T;
-    Mat numberOPj;
-    
-    /* Get the number operator */
-    // Zero mat on all but the first petsc procs */
-    numberOP = oscil_vec[iosc]->getNumberOP((bool) mpirank_petsc);
 
-    /* Diagonal term - 2* PI * xi/2 *(N_i^2 - N_i) */
-    MatMatMult(numberOP, numberOP, MAT_INITIAL_MATRIX, PETSC_DEFAULT, &tmp);
-    MatAXPY(tmp, -1.0, numberOP, SAME_NONZERO_PATTERN);
-    MatScale(tmp, -xi[xi_id] * M_PI);
+    int nk     = oscil_vec[iosc]->nlevels;
+    int nprek  = oscil_vec[iosc]->dim_preOsc;
+    int npostk = oscil_vec[iosc]->dim_postOsc;
+    double xik = xi[xi_id] * 2. * M_PI;
     xi_id++;
+    double detunek = detuning_freq[iosc] * 2. * M_PI;
 
-    /* add detuning term: 2 * PI * detuning_freq * N_i  */
-    MatAXPY(tmp, detuning_freq[iosc] * 2.0 * M_PI, numberOP, SAME_NONZERO_PATTERN);
+    /* Diagonal: detuning and anharmonicity  */
+    /* Iterate over local rows of Bd */
+    for (int row = ilow; row<iupp; row++){
 
-    MatTranspose(tmp, MAT_INITIAL_MATRIX, &tmp_T);
-    Ikron(tmp,   dimmat, -1.0, &Bd, ADD_VALUES);
-    kronI(tmp_T, dimmat,  1.0, &Bd, ADD_VALUES);
+      // Indices for -I_N \kron B_d
+      r1 = row % dimmat;
+      r1 = r1 % (nk * npostk);
+      r1 = (int) r1 / npostk;
+      // Indices for B_d \kron I_N
+      r2 = (int) row / dimmat;
+      r2 = r2 % (nk * npostk);
+      r2 = (int) r2 / npostk;
 
-    MatDestroy(&tmp);
-    MatDestroy(&tmp_T);
-
-    /* Mixed term -xi * 2 * PI * (N_i*N_j) for j > i */
-    for (int josc = iosc+1; josc < noscillators; josc++) {
-      numberOPj = oscil_vec[josc]->getNumberOP((bool) mpirank_petsc);
-      MatMatMult(numberOP, numberOPj, MAT_INITIAL_MATRIX, PETSC_DEFAULT, &tmp);
-      MatScale(tmp, -xi[xi_id] * 2.0 * M_PI);
-      xi_id++;
-
-      MatTranspose(tmp, MAT_INITIAL_MATRIX, &tmp_T);
-      Ikron(tmp,   dimmat, -1.0, &Bd, ADD_VALUES);
-      kronI(tmp_T, dimmat,  1.0, &Bd, ADD_VALUES);
-
-      MatDestroy(&tmp);
-      MatDestroy(&tmp_T);
+      // -I_N \kron B_d + B_d \kron I_N
+      val  = - ( detunek * r1 - xik / 2. * (r1*r1 - r1) );
+      val +=     detunek * r2 - xik / 2. * (r2*r2 - r2)  ;
+      if (fabs(val)>1e-14) MatSetValue(Bd, row, row, val, ADD_VALUES);
     }
+
+    /* Mixed term: cross ker  -xi * 2 * PI * (N_i*N_j) for j > i */
+    for (int josc = iosc+1; josc < noscillators; josc++) {
+      int nj     = oscil_vec[josc]->nlevels;
+      int npostj = oscil_vec[josc]->dim_postOsc;
+      double xikj = xi[xi_id] * 2. * M_PI;
+      xi_id++;
+        
+      for (int row = ilow; row<iupp; row++){
+        r1 = row % dimmat;
+        r1 = r1 % (nk * npostk);
+        r1a = r1 / npostk;
+        r1b = r1 % npostk;
+        r1b = r1b % (nj*npostj);
+        r1b = r1b / npostj;
+
+        r2 = (int) row / dimmat;
+        r2 = r2 % (nk * npostk);
+        r2a = r2 / npostk;
+        r2b = r2 % npostk;
+        r2b = r2b % (nj*npostj);
+        r2b = r2b / npostj;
+
+        // -I_N \kron B_d + B_d \kron I_N
+        val =  xikj * r1a * r1b  - xikj * r2a * r2b;
+        if (fabs(val)>1e-14) MatSetValue(Bd, row, row, val, ADD_VALUES);
+      }
+    }
+
   }
   MatAssemblyBegin(Bd, MAT_FINAL_ASSEMBLY);
   MatAssemblyEnd(Bd, MAT_FINAL_ASSEMBLY);
 
   /* Allocate and compute real drift part Ad = Lindblad */
-  Mat L1, L2, tmp;
-  bool addT1, addT2;
   MatCreate(PETSC_COMM_WORLD, &Ad);
   MatSetSizes(Ad, PETSC_DECIDE, PETSC_DECIDE, dim, dim);
+  if (addT1 || addT2) { // if Lindblad terms, preallocate matrix. Otherwise, leave zero matrix
+    MatSetType(Ad, MATMPIAIJ);
+    MatMPIAIJSetPreallocation(Ad, noscillators+5, NULL, noscillators+5, NULL);
+  }
   MatSetFromOptions(Ad);
   MatSetUp(Ad);
-  for (int iosc = 0; iosc < noscillators; iosc++) {
-  
-    switch (lindbladtype)  {
-      case NONE:
-        continue;
-        break;
-      case DECAY: 
-        L1 = oscil_vec[iosc]->getLoweringOP((bool)mpirank_petsc);
-        addT1 = true;
-        addT2 = false;
-        break;
-      case DEPHASE:
-        L2 = oscil_vec[iosc]->getNumberOP((bool)mpirank_petsc);
-        addT1 = false;
-        addT2 = true;
-        break;
-      case BOTH:
-        L1 = oscil_vec[iosc]->getLoweringOP((bool)mpirank_petsc);
-        L2 = oscil_vec[iosc]->getNumberOP((bool)mpirank_petsc);
-        addT1 = true;
-        addT2 = true;
-        break;
-      default:
-        printf("ERROR! Wrong lindblad type: %d\n", lindbladtype);
-        exit(1);
-    }
+  MatGetOwnershipRange(Ad, &ilow, &iupp);
 
-    /* --- Adding T1-DECAY (L1 = a_j) for oscillator j --- */
-    if (addT1 && collapse_time[iosc*2] > 1e-14) { 
-      double gamma = 1./(collapse_time[iosc*2]);
-      /* Ad += gamma_j * L \kron L */
-      AkronB(dimmat, L1, L1, gamma, &Ad, ADD_VALUES);
-      /* Ad += - gamma_j/2  I_n  \kron L^TL  */
-      /* Ad += - gamma_j/2  L^TL \kron I_n */
-      MatTransposeMatMult(L1, L1, MAT_INITIAL_MATRIX, PETSC_DEFAULT, &tmp);
-      Ikron(tmp, dimmat, -gamma/2, &Ad, ADD_VALUES);
-      kronI(tmp, dimmat, -gamma/2, &Ad, ADD_VALUES);
-      MatDestroy(&tmp);
-    }
+  if (addT1 || addT2) {  // leave matrix empty if no T1 or T2 decay
+    for (int iosc = 0; iosc < noscillators; iosc++) {
 
-    /* --- Adding T2-Dephasing (L2 = a_j^\dag a_j) for oscillator j --- */
-    if (addT2 && collapse_time[iosc*2+1] > 1e-14) { 
-      double gamma = 1./(collapse_time[iosc*2+1]);
-      /* Ad += 1./gamma_j * L \kron L */
-      AkronB(dimmat, L2, L2, gamma, &Ad, ADD_VALUES);
-      /* Ad += - gamma_j/2  I_n  \kron L^TL  */
-      /* Ad += - gamma_j/2  L^TL \kron I_n */
-      MatTransposeMatMult(L2, L2, MAT_INITIAL_MATRIX, PETSC_DEFAULT, &tmp);
-      Ikron(tmp, dimmat, -gamma/2, &Ad, ADD_VALUES);
-      kronI(tmp, dimmat, -gamma/2, &Ad, ADD_VALUES);
-      MatDestroy(&tmp);
+      /* Get T1, T2 times */
+      double gammaT1 = 0.0;
+      double gammaT2 = 0.0;
+      if (collapse_time[iosc*2]   > 1e-14) gammaT1 = 1./(collapse_time[iosc*2]);
+      if (collapse_time[iosc*2+1] > 1e-14) gammaT2 = 1./(collapse_time[iosc*2+1]);
+
+      // Dimensions 
+      int nk     = oscil_vec[iosc]->nlevels;
+      int nprek  = oscil_vec[iosc]->dim_preOsc;
+      int npostk = oscil_vec[iosc]->dim_postOsc;
+
+      /* Iterate over local rows of Ad */
+      for (int row = ilow; row<iupp; row++){
+
+        /* Add Ad += gamma_j * L \kron L */
+        r1 = row % (dimmat*nk*npostk);
+        r1a = r1 / (dimmat*npostk);
+        r1b = r1 % (npostk*dimmat);
+        r1b = r1b % (nk*npostk);
+        r1b = r1b / npostk;
+        // T1  decay (L1 = a_j)
+        if (addT1) { 
+          if (r1a < nk-1 && r1b < nk-1) {
+            val = gammaT1 * sqrt( (r1a+1) * (r1b+1) );
+            col1 = row + npostk * dimmat + npostk;
+            if (fabs(val)>1e-14) MatSetValue(Ad, row, col1, val, ADD_VALUES);
+          }
+        }
+        // T2  dephasing (L1 = a_j^Ta_j)
+        if (addT2) { 
+          val = gammaT2 * r1a * r1b ;
+          if (fabs(val)>1e-14) MatSetValue(Ad, row, row, val, ADD_VALUES);
+        }
+
+        /* Add Ad += - gamma_j/2  I_n  \kron L^TL  */
+        r1 = row % (nk*npostk);
+        r1 = r1 / npostk;
+        if (addT1) {
+          val = - gammaT1/2. * r1;
+          if (fabs(val)>1e-14) MatSetValue(Ad, row, row, val, ADD_VALUES);
+        }
+        if (addT2) {
+          val = -gammaT2/2. * r1*r1;
+          if (fabs(val)>1e-14) MatSetValue(Ad, row, row, val, ADD_VALUES);
+        }
+
+        /* Add Ad += - gamma_j/2  L^TL \kron I_n */
+        r1 = row % (nk*npostk*dimmat);
+        r1 = r1 / (npostk*dimmat);
+        if (addT1) {
+          val = -gammaT1/2. * r1;
+          if (fabs(val)>1e-14) MatSetValue(Ad, row, row, val, ADD_VALUES);
+        }
+        if (addT2) {
+          val = -gammaT2/2. * r1*r1;
+          if (fabs(val)>1e-14) MatSetValue(Ad, row, row, val, ADD_VALUES);
+        }
+      }
     }
   }
   MatAssemblyBegin(Ad, MAT_FINAL_ASSEMBLY);
@@ -1046,13 +1166,13 @@ int myMatMult_matfree(Mat RHS, Vec x, Vec y){
   double decay1 = 0.0;
   double dephase0= 0.0;
   double dephase1= 0.0;
-  if (shellctx->collapse_time[0] > 1e-14)
+  if (shellctx->collapse_time[0] > 1e-14 && shellctx->addT1)
     decay0 = 1./shellctx->collapse_time[0];
-  if (shellctx->collapse_time[1] > 1e-14)
+  if (shellctx->collapse_time[1] > 1e-14 && shellctx->addT2)
     dephase0 = 1./shellctx->collapse_time[1];
-  if (shellctx->collapse_time[2] > 1e-14)
+  if (shellctx->collapse_time[2] > 1e-14 && shellctx->addT1)
     decay1= 1./shellctx->collapse_time[2];
-  if (shellctx->collapse_time[3] > 1e-14)
+  if (shellctx->collapse_time[3] > 1e-14 && shellctx->addT2)
     dephase1 = 1./shellctx->collapse_time[3];
   double pt0 = shellctx->control_Re[0];
   double qt0 = shellctx->control_Im[0];
@@ -1227,13 +1347,13 @@ int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
   double decay1 = 0.0;
   double dephase0= 0.0;
   double dephase1= 0.0;
-  if (shellctx->collapse_time[0] > 1e-14)
+  if (shellctx->collapse_time[0] > 1e-14 && shellctx->addT1)
     decay0 = 1./shellctx->collapse_time[0];
-  if (shellctx->collapse_time[1] > 1e-14)
+  if (shellctx->collapse_time[1] > 1e-14 && shellctx->addT2)
     dephase0 = 1./shellctx->collapse_time[1];
-  if (shellctx->collapse_time[2] > 1e-14)
+  if (shellctx->collapse_time[2] > 1e-14 && shellctx->addT1)
     decay1= 1./shellctx->collapse_time[2];
-  if (shellctx->collapse_time[3] > 1e-14)
+  if (shellctx->collapse_time[3] > 1e-14 && shellctx->addT2)
     dephase1 = 1./shellctx->collapse_time[3];
   double pt0 = shellctx->control_Re[0];
   double qt0 = shellctx->control_Im[0];

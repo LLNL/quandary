@@ -382,10 +382,12 @@ int main(int argc,char **argv)
 
   /* Average fidelity */
   double F_avg = 1. - optimctx->obj_cost;
-  printf("F_avg = %f \n", F_avg);
-  if (optimctx->initcond_type != BASIS ||
-      optimctx->objective_type != GATE_TRACE) {
-    printf("Warning: Average gate fidelity only defined for gates using trace distance, and using a basis of initial conditions.\n Recomupte the average fidelity if needed, using all basis elements as initial conditions, and setting GATE_TRACE as objective function.\n");
+  if (mpirank_world == 0){
+    printf("F_avg = %f \n", F_avg);
+    if (optimctx->initcond_type != BASIS ||
+        optimctx->objective_type != GATE_TRACE) {
+      printf("Warning: Average gate fidelity only defined for gates using trace distance, and using a basis of initial conditions.\n Recomupte the average fidelity if needed, using all basis elements as initial conditions, and setting GATE_TRACE as objective function.\n");
+    }
   }
 
   /* --- Finalize --- */
