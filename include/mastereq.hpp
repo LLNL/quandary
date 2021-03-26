@@ -104,10 +104,10 @@ class MasterEq{
      */
     void computedRHSdp(const double t,const Vec x,const Vec x_bar, const double alpha, Vec grad);
 
-    /* Compute reduced density operator for a sub-system defined by IDs in the oscilIDs vector */
-    void createReducedDensity(const Vec rho, Vec *reduced, const std::vector<int>& oscilIDs);
-    /* Derivative of reduced density computation */
-    void createReducedDensity_diff(Vec rhobar, const Vec reducedbar, const std::vector<int>& oscilIDs);
+    // /* Compute reduced density operator for a sub-system defined by IDs in the oscilIDs vector */
+    // void createReducedDensity(const Vec rho, Vec *reduced, const std::vector<int>& oscilIDs);
+    // /* Derivative of reduced density computation */
+    // void createReducedDensity_diff(Vec rhobar, const Vec reducedbar, const std::vector<int>& oscilIDs);
 
     /* Set the oscillators control function parameters from global design vector x */
     void setControlAmplitudes(const Vec x);

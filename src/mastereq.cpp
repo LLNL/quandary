@@ -456,149 +456,149 @@ int MasterEq::assemble_RHS(const double t){
 Mat MasterEq::getRHS() { return RHS; }
 
 
-void MasterEq::createReducedDensity(const Vec rho, Vec *reduced, const std::vector<int>& oscilIDs) {
+// void MasterEq::createReducedDensity(const Vec rho, Vec *reduced, const std::vector<int>& oscilIDs) {
 
-  Vec red;
+//   Vec red;
 
-  /* Get dimensions of preceding and following subsystem */
-  int dim_pre  = 1; 
-  int dim_post = 1;
-  for (int iosc = 0; iosc < oscilIDs[0]; iosc++) 
-    dim_pre  *= getOscillator(iosc)->getNLevels();
-  for (int iosc = oscilIDs[oscilIDs.size()-1]+1; iosc < getNOscillators(); iosc++) 
-    dim_post *= getOscillator(iosc)->getNLevels();
+//   /* Get dimensions of preceding and following subsystem */
+//   int dim_pre  = 1; 
+//   int dim_post = 1;
+//   for (int iosc = 0; iosc < oscilIDs[0]; iosc++) 
+//     dim_pre  *= getOscillator(iosc)->getNLevels();
+//   for (int iosc = oscilIDs[oscilIDs.size()-1]+1; iosc < getNOscillators(); iosc++) 
+//     dim_post *= getOscillator(iosc)->getNLevels();
 
-  int dim_reduced = 1;
-  for (int i = 0; i < oscilIDs.size();i++) {
-    dim_reduced *= getOscillator(oscilIDs[i])->getNLevels();
-  }
+//   int dim_reduced = 1;
+//   for (int i = 0; i < oscilIDs.size();i++) {
+//     dim_reduced *= getOscillator(oscilIDs[i])->getNLevels();
+//   }
 
-  /* sanity test */
-  int dimmat = dim_pre * dim_reduced * dim_post;
-  assert ( (int) pow(dimmat,2) == dim);
+//   /* sanity test */
+//   int dimmat = dim_pre * dim_reduced * dim_post;
+//   assert ( (int) pow(dimmat,2) == dim);
 
-  /* Get local ownership of incoming full density matrix */
-  int ilow, iupp;
-  VecGetOwnershipRange(rho, &ilow, &iupp);
+//   /* Get local ownership of incoming full density matrix */
+//   int ilow, iupp;
+//   VecGetOwnershipRange(rho, &ilow, &iupp);
 
-  /* Create reduced density matrix, sequential */
-  VecCreateSeq(PETSC_COMM_SELF, 2*dim_reduced*dim_reduced, &red);
-  VecSetFromOptions(red);
+//   /* Create reduced density matrix, sequential */
+//   VecCreateSeq(PETSC_COMM_SELF, 2*dim_reduced*dim_reduced, &red);
+//   VecSetFromOptions(red);
 
-  /* Iterate over reduced density matrix elements */
-  for (int i=0; i<dim_reduced; i++) {
-    for (int j=0; j<dim_reduced; j++) {
-      double sum_re = 0.0;
-      double sum_im = 0.0;
-      /* Iterate over all dim_pre blocks of size n_k * dim_post */
-      for (int l = 0; l < dim_pre; l++) {
-        int blockstartID = l * dim_reduced * dim_post; // Go to beginning of block 
-        /* iterate over elements in this block */
-        for (int m=0; m<dim_post; m++) {
-          int rho_row = blockstartID + i * dim_post + m;
-          int rho_col = blockstartID + j * dim_post + m;
-          int rho_vecID_re = getIndexReal(getVecID(rho_row, rho_col, dimmat));
-          int rho_vecID_im = getIndexImag(getVecID(rho_row, rho_col, dimmat));
-          /* Get real and imaginary part from full density matrix */
-          double re = 0.0;
-          double im = 0.0;
-          if (ilow <= rho_vecID_re && rho_vecID_re < iupp) {
-            VecGetValues(rho, 1, &rho_vecID_re, &re);
-            VecGetValues(rho, 1, &rho_vecID_im, &im);
-          } 
-          /* add to partial trace */
-          sum_re += re;
-          sum_im += im;
-        }
-      }
-      /* Set real and imaginary part of element (i,j) of the reduced density matrix */
-      int out_vecID_re = getIndexReal(getVecID(i, j, dim_reduced));
-      int out_vecID_im = getIndexImag(getVecID(i, j, dim_reduced));
-      VecSetValues( red, 1, &out_vecID_re, &sum_re, INSERT_VALUES);
-      VecSetValues( red, 1, &out_vecID_im, &sum_im, INSERT_VALUES);
-    }
-  }
-  VecAssemblyBegin(red);
-  VecAssemblyEnd(red);
+//   /* Iterate over reduced density matrix elements */
+//   for (int i=0; i<dim_reduced; i++) {
+//     for (int j=0; j<dim_reduced; j++) {
+//       double sum_re = 0.0;
+//       double sum_im = 0.0;
+//       /* Iterate over all dim_pre blocks of size n_k * dim_post */
+//       for (int l = 0; l < dim_pre; l++) {
+//         int blockstartID = l * dim_reduced * dim_post; // Go to beginning of block 
+//         /* iterate over elements in this block */
+//         for (int m=0; m<dim_post; m++) {
+//           int rho_row = blockstartID + i * dim_post + m;
+//           int rho_col = blockstartID + j * dim_post + m;
+//           int rho_vecID_re = getIndexReal(getVecID(rho_row, rho_col, dimmat));
+//           int rho_vecID_im = getIndexImag(getVecID(rho_row, rho_col, dimmat));
+//           /* Get real and imaginary part from full density matrix */
+//           double re = 0.0;
+//           double im = 0.0;
+//           if (ilow <= rho_vecID_re && rho_vecID_re < iupp) {
+//             VecGetValues(rho, 1, &rho_vecID_re, &re);
+//             VecGetValues(rho, 1, &rho_vecID_im, &im);
+//           } 
+//           /* add to partial trace */
+//           sum_re += re;
+//           sum_im += im;
+//         }
+//       }
+//       /* Set real and imaginary part of element (i,j) of the reduced density matrix */
+//       int out_vecID_re = getIndexReal(getVecID(i, j, dim_reduced));
+//       int out_vecID_im = getIndexImag(getVecID(i, j, dim_reduced));
+//       VecSetValues( red, 1, &out_vecID_re, &sum_re, INSERT_VALUES);
+//       VecSetValues( red, 1, &out_vecID_im, &sum_im, INSERT_VALUES);
+//     }
+//   }
+//   VecAssemblyBegin(red);
+//   VecAssemblyEnd(red);
 
-  /* Sum up from all petsc cores. This is not at all a good solution. TODO: Change this! */
-  double* dataptr;
-  int size = 2*dim_reduced*dim_reduced;
-  double* mydata = new double[size];
-  VecGetArray(red, &dataptr);
-  for (int i=0; i<size; i++) {
-    mydata[i] = dataptr[i];
-  }
-  MPI_Allreduce(mydata, dataptr, size, MPI_DOUBLE, MPI_SUM, PETSC_COMM_WORLD);
-  VecRestoreArray(red, &dataptr);
-  delete [] mydata;
+//   /* Sum up from all petsc cores. This is not at all a good solution. TODO: Change this! */
+//   double* dataptr;
+//   int size = 2*dim_reduced*dim_reduced;
+//   double* mydata = new double[size];
+//   VecGetArray(red, &dataptr);
+//   for (int i=0; i<size; i++) {
+//     mydata[i] = dataptr[i];
+//   }
+//   MPI_Allreduce(mydata, dataptr, size, MPI_DOUBLE, MPI_SUM, PETSC_COMM_WORLD);
+//   VecRestoreArray(red, &dataptr);
+//   delete [] mydata;
 
-  /* Set output */
-  *reduced = red;
-}
+//   /* Set output */
+//   *reduced = red;
+// }
 
 
-void MasterEq::createReducedDensity_diff(Vec rhobar, const Vec reducedbar,const std::vector<int>& oscilIDs) {
+// void MasterEq::createReducedDensity_diff(Vec rhobar, const Vec reducedbar,const std::vector<int>& oscilIDs) {
 
-  /* Get dimensions of preceding and following subsystem */
-  int dim_pre  = 1; 
-  int dim_post = 1;
-  for (int iosc = 0; iosc < oscilIDs[0]; iosc++) 
-    dim_pre  *= getOscillator(iosc)->getNLevels();
-  for (int iosc = oscilIDs[oscilIDs.size()-1]+1; iosc < getNOscillators(); iosc++) 
-    dim_post *= getOscillator(iosc)->getNLevels();
+//   /* Get dimensions of preceding and following subsystem */
+//   int dim_pre  = 1; 
+//   int dim_post = 1;
+//   for (int iosc = 0; iosc < oscilIDs[0]; iosc++) 
+//     dim_pre  *= getOscillator(iosc)->getNLevels();
+//   for (int iosc = oscilIDs[oscilIDs.size()-1]+1; iosc < getNOscillators(); iosc++) 
+//     dim_post *= getOscillator(iosc)->getNLevels();
 
-  int dim_reduced = 1;
-  for (int i = 0; i < oscilIDs.size();i++) {
-    dim_reduced *= getOscillator(oscilIDs[i])->getNLevels();
-  }
+//   int dim_reduced = 1;
+//   for (int i = 0; i < oscilIDs.size();i++) {
+//     dim_reduced *= getOscillator(oscilIDs[i])->getNLevels();
+//   }
 
-  /* Get local ownership of full density rhobar */
-  int ilow, iupp;
-  VecGetOwnershipRange(rhobar, &ilow, &iupp);
+//   /* Get local ownership of full density rhobar */
+//   int ilow, iupp;
+//   VecGetOwnershipRange(rhobar, &ilow, &iupp);
 
-  /* Get local ownership of reduced density bar*/
-  int ilow_red, iupp_red;
-  VecGetOwnershipRange(reducedbar, &ilow_red, &iupp_red);
+//   /* Get local ownership of reduced density bar*/
+//   int ilow_red, iupp_red;
+//   VecGetOwnershipRange(reducedbar, &ilow_red, &iupp_red);
 
-  /* sanity test */
-  int dimmat = dim_pre * dim_reduced * dim_post;
-  assert ( (int) pow(dimmat,2) == dim);
+//   /* sanity test */
+//   int dimmat = dim_pre * dim_reduced * dim_post;
+//   assert ( (int) pow(dimmat,2) == dim);
 
- /* Iterate over reduced density matrix elements */
-  for (int i=0; i<dim_reduced; i++) {
-    for (int j=0; j<dim_reduced; j++) {
-      /* Get value from reducedbar */
-      int vecID_re = getIndexReal(getVecID(i, j, dim_reduced));
-      int vecID_im = getIndexImag(getVecID(i, j, dim_reduced));
-      double re = 0.0;
-      double im = 0.0;
-      VecGetValues( reducedbar, 1, &vecID_re, &re);
-      VecGetValues( reducedbar, 1, &vecID_im, &im);
+//  /* Iterate over reduced density matrix elements */
+//   for (int i=0; i<dim_reduced; i++) {
+//     for (int j=0; j<dim_reduced; j++) {
+//       /* Get value from reducedbar */
+//       int vecID_re = getIndexReal(getVecID(i, j, dim_reduced));
+//       int vecID_im = getIndexImag(getVecID(i, j, dim_reduced));
+//       double re = 0.0;
+//       double im = 0.0;
+//       VecGetValues( reducedbar, 1, &vecID_re, &re);
+//       VecGetValues( reducedbar, 1, &vecID_im, &im);
 
-      /* Iterate over all dim_pre blocks of size n_k * dim_post */
-      for (int l = 0; l < dim_pre; l++) {
-        int blockstartID = l * dim_reduced * dim_post; // Go to beginning of block 
-        /* iterate over elements in this block */
-        for (int m=0; m<dim_post; m++) {
-          /* Set values into rhobar */
-          int rho_row = blockstartID + i * dim_post + m;
-          int rho_col = blockstartID + j * dim_post + m;
-          int rho_vecID_re = getIndexReal(getVecID(rho_row, rho_col, dimmat));
-          int rho_vecID_im = getIndexImag(getVecID(rho_row, rho_col, dimmat));
+//       /* Iterate over all dim_pre blocks of size n_k * dim_post */
+//       for (int l = 0; l < dim_pre; l++) {
+//         int blockstartID = l * dim_reduced * dim_post; // Go to beginning of block 
+//         /* iterate over elements in this block */
+//         for (int m=0; m<dim_post; m++) {
+//           /* Set values into rhobar */
+//           int rho_row = blockstartID + i * dim_post + m;
+//           int rho_col = blockstartID + j * dim_post + m;
+//           int rho_vecID_re = getIndexReal(getVecID(rho_row, rho_col, dimmat));
+//           int rho_vecID_im = getIndexImag(getVecID(rho_row, rho_col, dimmat));
 
-          /* Set derivative */
-          if (ilow <= rho_vecID_re && rho_vecID_re < iupp) {
-            VecSetValues(rhobar, 1, &rho_vecID_re, &re, ADD_VALUES);
-            VecSetValues(rhobar, 1, &rho_vecID_im, &im, ADD_VALUES);
-          }
-        }
-      }
-    }
-  }
-  VecAssemblyBegin(rhobar); VecAssemblyEnd(rhobar);
+//           /* Set derivative */
+//           if (ilow <= rho_vecID_re && rho_vecID_re < iupp) {
+//             VecSetValues(rhobar, 1, &rho_vecID_re, &re, ADD_VALUES);
+//             VecSetValues(rhobar, 1, &rho_vecID_im, &im, ADD_VALUES);
+//           }
+//         }
+//       }
+//     }
+//   }
+//   VecAssemblyBegin(rhobar); VecAssemblyEnd(rhobar);
 
-}
+// }
 
 /* grad += alpha * RHS(x)^T * xbar  */
 void MasterEq::computedRHSdp(const double t, const Vec x, const Vec xbar, const double alpha, Vec grad) {
