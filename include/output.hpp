@@ -10,8 +10,9 @@ class Output{
 
   int mpirank_world;  /* Rank of processor of MPI_COMM_WORLD */
   int mpirank_petsc;  /* Rank of processor for parallelizing Petsc */
+  int mpisize_petsc;  /* Size of communicator for parallelizing Petsc */
   int mpirank_init;   /* Rank of processor for parallelizing initial conditions */
-  int mpirank_braid;  /* Rank of processor for parallelizing XBraid, or zero if compiling without XBraid */
+  int mpirank_braid;  /* Rank of processor for parallelizing XBraid, or -1 if compiling without XBraid */
   
   FILE* optimfile;      /* Output file to log optimization progress */
   int optim_monitor_freq; /* Write output files every <num> optimization iterations */
@@ -33,8 +34,8 @@ class Output{
 
   public:
     Output();
-    Output(MapParam& config, int mpirank_petsc, int mpirank_init);
-    Output(MapParam& config, int mpirank_petsc, int mpirank_init, int mpirank_braid);
+    Output(MapParam& config, MPI_Comm comm_petsc, MPI_Comm comm_init);
+    Output(MapParam& config, MPI_Comm comm_petsc, MPI_Comm comm_init, MPI_Comm comm_braid);
     ~Output();
 
     /* Write to optimization history file in every optim iteration */
@@ -47,7 +48,7 @@ class Output{
     void writeGradient(Vec grad);
 
     /* Open, write and close files for fullstate and expected energy levels over time */
-    void openDataFiles(std::string prefix, int initid, int rank);
+    void openDataFiles(std::string prefix, int initid);
     void writeDataFiles(int timestep, double time, const Vec state, MasterEq* mastereq);
     void closeDataFiles();
 

@@ -1,7 +1,7 @@
 #include "optimproblem.hpp"
 
 #ifdef WITH_BRAID
-OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, MPI_Comm comm_hiop_, MPI_Comm comm_init_, int ninit_, Output* output_) : OptimProblem(config, timestepper_, comm_hiop_, comm_init_, ninit_, output_) {
+OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, MPI_Comm comm_init_, int ninit_, Output* output_) : OptimProblem(config, timestepper_, comm_init_, ninit_, output_) {
   primalbraidapp  = primalbraidapp_;
   adjointbraidapp = adjointbraidapp_;
   MPI_Comm_rank(primalbraidapp->comm_braid, &mpirank_braid);
@@ -9,11 +9,10 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, myBraidAp
 }
 #endif
 
-OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm comm_hiop_, MPI_Comm comm_init_, int ninit_, Output* output_){
+OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm comm_init_, int ninit_, Output* output_){
 
   timestepper = timestepper_;
   ninit = ninit_;
-  comm_hiop = comm_hiop_;
   comm_init = comm_init_;
   output = output_;
 
@@ -22,8 +21,6 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   MPI_Comm_size(MPI_COMM_WORLD, &mpisize_world);
   MPI_Comm_rank(PETSC_COMM_WORLD, &mpirank_space);
   MPI_Comm_size(PETSC_COMM_WORLD, &mpisize_space);
-  MPI_Comm_rank(comm_hiop, &mpirank_optim);
-  MPI_Comm_size(comm_hiop, &mpisize_optim);
   MPI_Comm_rank(comm_init, &mpirank_init);
   MPI_Comm_size(comm_init, &mpisize_init);
   mpirank_braid = 0;

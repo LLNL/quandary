@@ -407,7 +407,7 @@ void myBraidApp::PreProcess(int iinit, const Vec rho_t0, double jbar){
   Jbar = jbar;
 
   /* Open output files */
-  if (accesslevel > 0 ) output->openDataFiles("rho", iinit, mpirank_braid);
+  if (accesslevel > 0 ) output->openDataFiles("rho", iinit);
 }
 
 
@@ -576,7 +576,7 @@ void myAdjointBraidApp::PreProcess(int iinit, const Vec rho_t0_bar, double jbar)
   VecZeroEntries(timestepper->redgrad); 
 
   /* Open output files for adjoint */
-  // if (accesslevel > 0) output->openDataFiles("rho_adj", iinit, mpirank_braid);
+  // if (accesslevel > 0) output->openDataFiles("rho_adj", iinit);
 }
 
 
