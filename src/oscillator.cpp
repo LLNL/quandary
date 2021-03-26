@@ -149,14 +149,13 @@ double Oscillator::expectedEnergy(const Vec x) {
     int num_diag = i % (nlevels*dim_postOsc);
     num_diag = num_diag / dim_postOsc;
     /* Get diagonal element in rho (real) */
-    int idx_diag = i * dimmat + i;
-    idx_diag = 2*idx_diag;
+    int idx_diag = getIndexReal(getVecID(i,i,dimmat));
     if (ilow <= idx_diag && idx_diag < iupp) VecGetValues(x, 1, &idx_diag, &xdiag);
     else xdiag = 0.0;
     expected += num_diag * xdiag;
   }
   
-  /* Sum up from all processors */
+  /* Sum up from all Petsc processors */
   double myexp = expected;
   MPI_Allreduce(&myexp, &expected, 1, MPI_DOUBLE, MPI_SUM, PETSC_COMM_WORLD);
 
@@ -180,7 +179,7 @@ void Oscillator::expectedEnergy_diff(const Vec x, Vec x_bar, const double obj_ba
     num_diag = num_diag / dim_postOsc;
     int idx_diag = getIndexReal(getVecID(i, i, dimmat));
     double val = num_diag * obj_bar;
-    if (ilow < idx_diag && idx_diag < iupp) VecSetValues(x_bar, 1, &idx_diag, &val, ADD_VALUES);
+    if (ilow <= idx_diag && idx_diag < iupp) VecSetValues(x_bar, 1, &idx_diag, &val, ADD_VALUES);
   }
   VecAssemblyBegin(x_bar); VecAssemblyEnd(x_bar);
 
@@ -193,11 +192,11 @@ void Oscillator::population(const Vec x, std::vector<double> &pop) {
 
   assert (pop.size() == nlevels);
 
+  std::vector<double> mypop(nlevels, 0.0);
+
   /* Get locally owned portion of x */
   int ilow, iupp;
   VecGetOwnershipRange(x, &ilow, &iupp);
-
-  /* TODO: Check parallel layout of x! */
 
   /* Iterate over diagonal elements of the reduced density matrix for this oscillator */
   for (int i=0; i < nlevels; i++) {
@@ -210,12 +209,15 @@ void Oscillator::population(const Vec x, std::vector<double> &pop) {
       for (int l=0; l < dim_postOsc; l++) {
         /* Get diagonal element */
         int rhoID = blockstartID + identitystartID + l; // Diagonal element of rho
-        int diagID = 2*(rhoID * dimN + rhoID);                // Position in vectorized rho
-        double val;
-        VecGetValues(x, 1, &diagID, &val);
+        int diagID = getIndexReal(getVecID(rhoID, rhoID, dimN));  // Position in vectorized rho
+        double val = 0.0;
+        if (ilow <= diagID && diagID < iupp)  VecGetValues(x, 1, &diagID, &val);
         sum += val;
       }
     }
-    pop[i] = sum;
+    mypop[i] = sum;
   } 
+
+  /* Gather poppulation from all Petsc processors */
+  MPI_Allreduce(mypop.data(), pop.data(), nlevels, MPI_DOUBLE, MPI_SUM, PETSC_COMM_WORLD);
 }
