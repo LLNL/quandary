@@ -585,23 +585,27 @@ PetscErrorCode TaoMonitor(Tao tao,void*ptr){
   /* Pass current iteration number to output manager */
   ctx->output->optim_iter = iter;
 
-  /* Compute average fidelity */
+  /* If average fidelity is not the objective function, it can be computed at each optimization iteration here. 
+   * However, this involves the entire basis be propagated forward. We omit it here to save compute time during optimization. 
+   * Average fidelity can be computed AFTER optimization has finished by propagating the the basis and evaluating the Gate_trace.
+   */
   if (ctx->objective_type == GATE_FROBENIUS ||
       (ctx->objective_type == GATE_TRACE && ctx->initcond_type != BASIS) ){
-    InitialConditionType inittype_org = ctx->initcond_type; 
-    ObjectiveType objtype_org = ctx->objective_type; 
-    int ninit_local_org = ctx->ninit_local;
-    int ninit_org = ctx->ninit;
-    ctx->initcond_type = BASIS;
-    ctx->ninit_local = 16;
-    ctx->ninit= 16;
-    ctx->objective_type = GATE_TRACE;
-    double obj = ctx->evalF(params);    // this sets ctx->obj_cost
-    // double F_avg = 1.0 - ctx->obj_cost;
-    ctx->initcond_type = inittype_org;
-    ctx->objective_type = objtype_org;
-    ctx->ninit_local = ninit_local_org;
-    ctx->ninit = ninit_org;
+       ctx->obj_cost = -1.0;  // -1 is used to indicate that average fidelity is not computed
+  //   InitialConditionType inittype_org = ctx->initcond_type; 
+  //   ObjectiveType objtype_org = ctx->objective_type; 
+  //   int ninit_local_org = ctx->ninit_local;
+  //   int ninit_org = ctx->ninit;
+  //   ctx->initcond_type = BASIS;
+  //   ctx->ninit_local = 16;
+  //   ctx->ninit= 16;
+  //   ctx->objective_type = GATE_TRACE;
+  //   double obj = ctx->evalF(params);    // this sets ctx->obj_cost
+  //   // double F_avg = 1.0 - ctx->obj_cost;
+  //   ctx->initcond_type = inittype_org;
+  //   ctx->objective_type = objtype_org;
+  //   ctx->ninit_local = ninit_local_org;
+  //   ctx->ninit = ninit_org;
   }
 
   /* Print to optimization file */
