@@ -76,6 +76,7 @@ hesitate to direct any questions to guenther5@llnl.gov. For installation instruc
 look at the README.md document in the \verb+quandary+ directory.
 
 \section{Model equation}
+%TODO: Include lab-frame equations, then transform to rotating frame
 Quandary models open quantum systems with $Q$ subsystems with $n_k$ levels for the
 $k$-th subsystem, $k=0,\dots,Q-1$. The time-evolution of the open quantum system is modeled by Lindblad's master equation:
 \begin{align}\label{mastereq}
@@ -85,21 +86,24 @@ $k$-th subsystem, $k=0,\dots,Q-1$. The time-evolution of the open quantum system
   \rho(t) + \rho(t)\Ell_{lk}^{\dagger} \Ell_{lk}\right) \right)
 \end{align}
 for the density matrix $\rho(t)\in \C^{N\times N}$ with dimension $N :=
-\prod_{k=0}^{Q-1} n_k$. The Hamiltonian $H(t)$ consists of a constant \textit{drift}
-part, and a time-varying \textit{control} part. For the computational
-\textit{rotating frame} with fundamental frequencies $\omega_k$ and rotation
-frequency $\omega_k^{\text{rot}}$, these are computed from
+\prod_{k=0}^{Q-1} n_k$. 
+The Hamiltonian $H(t)$ consists of a \textit{drift}
+part, and a \textit{control} part. 
+In the computational
+\textit{rotating frame} with rotational
+frequencies $\omega_k^{\text{rot}}$, the Hamiltonian is given by 
 \begin{align}
-  H(t) &= H_d + H_c(t) \\
-  \text{with} \quad H_d &:= \sum_{k=0}^{Q-1} \left(\left(\omega_k -                                 
-  \omega_k^{\text{rot}}\right)a_k^{\dagger}a_k- \frac{\xi_k}{2}
-  a_k^{\dagger}a_k^{\dagger}a_k a_k - \sum_{l> k} \xi_{lk}
-  a_{k}^{\dagger}a_{k}
-  a_{l}^{\dagger} a_{l} \right) \\
+  H(t) &= H_d(t) + H_c(t) \\
+  \text{with} \quad H_d(t) &:= \sum_{k=0}^{Q-1} \left(\omega_k -                                 \omega_k^{\text{rot}}\right)a_k^{\dagger}a_k- \frac{\xi_k}{2}
+  a_k^{\dagger}a_k^{\dagger}a_k a_k  
+   - \sum_{l> k} \xi_{lk} a_{k}^{\dagger}a_{k}   a_{l}^{\dagger} a_{l} \\
+   & + \sum_{k=0}^{Q-1}\sum_{l>k} J_{kl} \left(\cos(\eta_{kl}t) \left(a_k^\dagger a_l + a_k a_l^\dagger\right) + i\sin(\eta_{kl}t)\left(a_k^\dagger a_l - a_k a_l^\dagger\right) \right)  \\
    H_c(t) &:= \sum_{k=0}^{Q-1} \left( p^k(\vec{\alpha}^k,t) (a_k +
    a_k^{\dagger}) + i q^k(\vec{\alpha}^k,t)(a_k - a_k^{\dagger})
    \right)
-\end{align}
+\end{align} 
+where $\omega_k$ denotes the transition frequencies, $\xi_k, \xi_{kl}$ denote the self- and cross-Kers, respectively, $J_{kl}$ are dipole-dipole coupling coefficients, and $\eta_{kl} := \omega_k^{\text{rot}} - \omega_l^{\text{rot}}$ are the differences in rotational frequencies between oscillators. Note, that if one chooses the rotational frequencies to be the same for each oscillator, e.g. $w_k^{\text{rot}} = w_{avg} \, \forall \, k$ with $\omega_{avg} := \sum_k w_k$, then the dipole-dipole coupling term and hence the drift Hamiltonian $H_d$ is time-independent. 
+
 Here, $a_k$ denotes the lowering operator:
 \begin{align}
   \begin{array}{rl}
@@ -429,8 +433,10 @@ A specific initial condition can be read from file ($\Rightarrow ninit=1$ with u
     \left( \Ell_{lk}\otimes \Ell_{lk} - \frac 1 2 \left( I_N\otimes
     \Ell^T_{lk}\Ell_{lk} + \Ell^T_{lk}\Ell_{lk} \otimes I_N \right) \right)
   \end{align}
+   with $M(t) \in \C^{N^2\times N^2}$. 
 
-  \subsection{Real-valued system}
+
+  \subsection{Real-valued, vectorized system}
    Quandary solves the vectorized master equation \eqref{mastereq_vectorized} in
    real-valued variables with $q(t) = u(t) + iv(t)$, evolving the real-valued
    states $u(t), v(t)\in \R^{N^2}$ with
@@ -440,72 +446,8 @@ A specific initial condition can be read from file ($\Rightarrow ninit=1$ with u
    \begin{pmatrix} u(t) \\ v(t) \end{pmatrix} 
    \label{realvaluedODE}
    \end{align}
-   where $M(t) = A(t) + i B(t)$, $A(t), B(t)\in \R^{N^2\times N^2}$. To assemble
-   $A = Re(M)$ and $B = Im(M)$ consider
-   \begin{align}
-     -i(I_N \otimes H - H^T \otimes I_N) &= -I_N \otimes \left(iH_d +
-     iH_c(t)\right) + \left(iH_d + iH_c(t)\right)^T \otimes I_N \\
-     \text{and} \quad iH_d + iH_c(t) &= i H_d + i\left( \sum_k
-     p^k(\vec{\alpha}^k,t)(a_k + a_k^{\dagger}) + iq^k(\vec{\alpha}^k,t)(a_k -
-     a_k^{\dagger})\right) \\
-                    &= - \sum_k q^k(\alpha^k,t)(a_k - a_k^{\dagger}) + i\left(
-                    H_d + \sum_k p^k(\alpha^k,t)(a_k+a_k^{\dagger}) \right) 
-   \end{align}
-   Hence $A$ and $B$ consist of a constant part $A_d, B_d$ and a time-varying
-   part $A_c(t), B_c(t)$ with the following:
-   \begin{align}
-     A_d &=  \sum_{l,k}\gamma_{lk} \left( \Ell_{lk}\otimes\Ell_{lk} -
-     \frac 1 2 \left(I_N \otimes \Ell_{lk}^T\Ell_{lk} +
-     \Ell_{lk}^T\Ell_{lk}\otimes I_N\right) \right)\\
-     B_d &= -I_N \otimes H_d + H_d^T \otimes I_N \\
-     A_c(t) &= \sum_k q^k(\vec{\alpha}^k,t) \underbrace{\left( I_N \otimes
-     \left(a_k - a_k^{\dagger}\right) - \left(a_k -
-     a_k^{\dagger}\right)^T\otimes I_N \right)}_{=:A_c^k} \\
-     B_c(t) &= \sum_k p^k(\vec{\alpha}^k,t) \underbrace{\left( - I_N \otimes
-     \left(a_k + a_k^{\dagger}\right) + \left(a_k +
-     a_k^{\dagger}\right)^T\otimes I_N \right)}_{=:B_c^k} 
-   \end{align}
 
-   \subsection{Sparse-matrix vs. matrix-free solver}
-
-   In Quandary, two versions to evaluate the right hand side of Lindblad's
-   equation, $M(t)q(t)$, of the vectorized real-valued system are available:
-   \begin{itemize}
-     \item \textit{Sparse-matrix solver:}
-      The sparse-matrix solver initializes and stores the constant matrices
-       $A_d,B_d, A_c^k, B_c^k$ using Petsc's sparse-matrix format. They are used
-       as building blocks to evaluate the sparse system matrix $M(t)$ with 
-     \begin{align}
-       A(t) &= Re(M(t)) = A_d + \sum_kq^k(\alpha^k, t)A_c^k \\
-       B(t) &= Im(M(t)) = B_d + \sum_k p^k(\alpha^k, t)B_c^k
-     \end{align}
-   at each time $t$. $M(t)$ is then multiplied to the vectorized density matrix
-       $q(t)$ using Petsc's sparse MatVec implementation. 
-
-   \item \textit{Matrix-free solver using tensor contractions:}
-     Then tensor-contraction code is matrix-free, i.e. the matrices $A_d,B_d,
-       A_c^k, B_c^k$ and hence $M(t)$ are not stored explicitly, but instead
-       their action on a vector $q(t)$ is evaluated at each time step $t$. The
-       action of those matrices to the system vector is implemented using
-       tensor-contractions applied to the corresponding dimension of the density
-       matrix. 
-
-     \textbf{Notes}:
-     \begin{itemize}
-       \item For our current test cases, the matrix-free solver is much faster
-         than the sparse-matrix solver (about 10x). However the matrix-free solver
-         is currently only implemented for systems consisting of \textbf{two}
-         subsystems with $n_1 \otimes n_2$ levels. Future development will
-         extend the approach to more than two subsystem. 
-       \item The matrix-free solver currently does not parallelize across the
-         system dimension (i.e. no parallel Petsc!).
-     \end{itemize}
-
-
-   \end{itemize}
-
-  \subsection{Colocated storage of real and imaginary part}
-  The real and imaginary parts of $q(t)$ are stored in a colocated manner: For
+The real and imaginary parts of $q(t)$ are stored in a colocated manner: For
   $q = u+iv$ with $u,v\in\R^{N^2}$, a vector of size $2N^2$ is stored that
   staggers real and imaginary parts behind each other for each component:
   \begin{align*}
@@ -524,7 +466,75 @@ A specific initial condition can be read from file ($\Rightarrow ninit=1$ with u
   $q$, one has to access the elements of $q_{store}$ at index $2i$ and $2i+1$,
   respectively. 
 
-  \subsection{Time-stepping}
+
+   To assemble (evaluate) 
+   $A(t) = Re(M(t))$ and $B(t) = Im(M(t))$, consider
+   \begin{align}
+    iH &= iH_d(t) + iH_c(t) \\
+      &= i\left( \sum_k (\omega_k - \omega_k^{\text{rot}}) a_k^\dagger a_k - \frac{\xi}{2}a_k^\dagger a_k^\dagger a_k a_k  - \sum_{l>k}  \xi_{kl} a_k^\dagger a_k a_l^\dagger a_l +  \sum_{l>k} J_{kl} \cos(\eta_{kl}t)\left(a_k^\dagger a_l + a_ka_l^\dagger \right)
+       \right.\\
+      & \left. \quad \quad + \sum_k p^k(\vec{\alpha}^k,t) \left(a_k + a_k^\dagger\right) \right)\\
+      &+ \left( \sum_k \sum_{kl} - J_{kl} \sin(\eta_{kl}t) \left(a_k^\dagger a_l - a_ka_l^\dagger\right)  - \sum_k q^k(\vec{\alpha}^k, t)\left(a_k - a_k^\dagger\right)\right)
+   \end{align}
+   Hence $A(t)$ and $B(t)$ are given by 
+   \begin{align}
+    A(t) &= A_d + \sum_k  q^k(\vec{\alpha}^k,t) A_c^k + \sum_{l>k} J_{kl} \sin(\eta_{kl}t)  A_d^{kl} \\
+   \text{with} \quad  A_d &:= \sum_k \sum_{j=1,2} \gamma_{jk} \left( \Ell_{jk}\otimes\Ell_{jk} - \frac 1 2 \left(I_N \otimes \Ell_{jk}^T\Ell_{jk} + \Ell_{jk}^T\Ell_{jk}\otimes I_N\right) \right)\\
+    A_c^k &:=  I_N \otimes \left(a_k - a_k^\dagger\right) - \left(a_k - a_k^\dagger\right)^T\otimes I_N \\
+    A_d^{kl} &:=  I_N\otimes \left(a_k^\dagger a_l - a_k a_l^\dagger\right) - \left(a_k^\dagger a_l - a_k a_l^\dagger\right)^T\otimes I_N 
+   \end{align}
+   and
+   \begin{align}
+     B(t) &=  B_d + \sum_k p^k(\vec{\alpha}^k,t) B_c^k + \sum_{kl} J_{kl} \cos(\eta_{kl}t)B_d^{kl}\\
+     \text{with} \quad B_d &:= \sum_k (\omega_k - \omega_k^{\text{rot}}) \left(-I_N \otimes a_k^\dagger a_k + (a_k^\dagger a_k)^T \otimes I_N \right) - \frac{\xi_k}{2}\left(- I_N \otimes a_k^\dagger a_k^\dagger a_k a_k + (a_k^\dagger a_k^\dagger a_k a_k )^T\otimes I_N\right)  \\
+       &\quad - \sum_{l>k}  \xi_{kl} \left(-I_N \otimes a_k^\dagger a_k a_l^\dagger a_l + (a_k^\dagger a_k a_l^\dagger a_l)^T \otimes I_N \right)\\
+       B_c^k &:=  - I_N \otimes \left(a_k + a_k^\dagger\right) + \left(a_k + a_k^\dagger\right)^T\otimes I_N \\
+       B_d^{kl} &:=  - I_N\otimes \left(a_k^\dagger a_l + a_k a_l^\dagger\right) + \left(a_k^\dagger a_l + a_k a_l^\dagger\right)^T\otimes I_N \\
+   \end{align}
+
+
+
+
+
+ \subsection{Sparse-matrix vs. matrix-free solver}
+
+   In Quandary, two versions to evaluate the right hand side of Lindblad's
+   equation, $M(t)q(t)$, of the vectorized real-valued system are available:
+   \begin{itemize}
+     \item \textit{Sparse-matrix solver:}
+      The sparse-matrix solver initializes and stores the constant matrices
+       $A_d, A_d^{kl}, A_c^k, B_d, B_d^{kl}, B_c^k$ using Petsc's sparse-matrix format. They are used
+       as building blocks to evaluate the sparse system matrix $M(t)$ with 
+     \begin{align}
+       A(t) &= Re(M(t)) = A_d + \sum_k q^k(\alpha^k, t)A_c^k + \sum_{l>k} J_{kl} \sin(\eta_{kl}t) A_d^{kl}\\
+       B(t) &= Im(M(t)) = B_d + \sum_k p^k(\alpha^k, t)B_c^k + \sum_{kl} J_{kl} \cos(\eta_{kl}t) B_d^{kl}
+     \end{align}
+   at each time $t$. $M(t)$ is then multiplied to the vectorized density matrix
+       $q(t)$ using Petsc's sparse MatVec implementation. 
+
+   \item \textit{Matrix-free solver using tensor contractions:}
+     As an alternative to the sparse-matrix implementation, a matrix-free tensor-contraction solver is available. In this approach, the matrices $A_d,B_d,
+       A_c^k, B_c^k$, etc. and hence $M(t)$ are not stored explicitly, but instead
+       their action on a vector $q(t)$ is evaluated. The
+       action of those matrices to the system vector is implemented using
+       tensor-contractions applied to the corresponding dimension of the density
+       matrix. 
+
+     \textbf{Notes}:
+     \begin{itemize}
+       \item For our current test cases, the matrix-free solver is much faster
+         than the sparse-matrix solver (about 10x). However the matrix-free solver
+         is currently only implemented for systems consisting of \textbf{two}
+         subsystems with $n_1 \otimes n_2$ levels. Future development will
+         extend the approach to more than two subsystem. 
+       \item The matrix-free solver currently does not parallelize across the
+         system dimension (i.e. no parallel Petsc!).
+     \end{itemize}
+
+
+   \end{itemize}
+
+    \subsection{Time-stepping}
     To solve the vectorized master equation \eqref{mastereq_vectorized}, $\dot
     q(t) = M(t) q(t)$ for $t\in [0,T]$, Quandary applies a time-stepping integration
     scheme on a uniform time discretization grid $0=t_0 < \dots t_{N} = T$, with
