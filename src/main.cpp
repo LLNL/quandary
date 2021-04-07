@@ -224,7 +224,7 @@ int main(int argc,char **argv)
   /* --- Initialize the Master Equation  --- */
   std::vector<double> xi, t_collapse, Jkl;
   config.GetVecDoubleParam("xi", xi, 2.0);   // self and cross ker
-  config.GetVecDoubleParam("Jkl", Jkl, 2.0); // dipole-dipole coupling (IBM)
+  config.GetVecDoubleParam("Jkl", Jkl, 2.0); // dipole-dipole coupling
   // Compute coupling rotation frequencies eta_ij = w^r_i - w^r_j
   std::vector<double> eta(nlevels.size()*(nlevels.size()-1)/2.);
   int idx = 0;

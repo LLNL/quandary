@@ -1035,7 +1035,7 @@ int myMatMult_sparsemat(Mat RHS, Vec x, Vec y){
   MatMultAdd(*shellctx->Bd, u, vout, vout);
 
 
-  /* Control, and IBM coupling terms */
+  /* Control terms and dipole-dipole coupling terms */
   int id_kl = 0; // index for accessing Ad_kl inside Ad_vec
   for (int iosc = 0; iosc < shellctx->nlevels.size(); iosc++) {
 
@@ -1196,7 +1196,7 @@ int myMatMult_matfree(Mat RHS, Vec x, Vec y){
   double xi0  = shellctx->xi[0];
   double xi01 = shellctx->xi[1];  // zz-coupling
   double xi1  = shellctx->xi[2];   
-  double J01  = shellctx->Jkl[0]*2.*M_PI;  // IBM dipole-dipole coupling
+  double J01  = shellctx->Jkl[0]*2.*M_PI;  // dipole-dipole coupling
   double eta01 = shellctx->eta[0];
   double detuning_freq0 = shellctx->detuning_freq[0];
   double detuning_freq1 = shellctx->detuning_freq[1];
@@ -1427,9 +1427,9 @@ int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
 
   /* Evaluate coefficients */
   double xi0  = shellctx->xi[0];
-  double xi01 = shellctx->xi[1];  // Cross-ker
+  double xi01 = shellctx->xi[1];  // zz-coupling 
   double xi1  = shellctx->xi[2];
-  double J01 = shellctx->Jkl[0]*2.*M_PI;   // IBM dipole-dipole coupling
+  double J01 = shellctx->Jkl[0]*2.*M_PI;   // dipole-dipole coupling
   double eta01 = shellctx->eta[0];
   double detuning_freq0 = shellctx->detuning_freq[0];
   double detuning_freq1 = shellctx->detuning_freq[1];

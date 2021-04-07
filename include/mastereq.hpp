@@ -56,12 +56,12 @@ class MasterEq{
     Mat* Ac_vec;  // Vector of constant mats for time-varying control term (real)
     Mat* Bc_vec;  // Vector of constant mats for time-varying control term (imag)
     Mat  Ad, Bd;  // Real and imaginary part of constant system matrix
-    Mat* Ad_vec;  // Vector of constant mats for IBM coupling term in drift Hamiltonian (real)
-    Mat* Bd_vec;  // Vector of constant mats for IBM coupling term in drift Hamiltonian (imag)
+    Mat* Ad_vec;  // Vector of constant mats for dipole-dipole coupling term in drift Hamiltonian (real)
+    Mat* Bd_vec;  // Vector of constant mats for dipole-dipole coupling term in drift Hamiltonian (imag)
 
     std::vector<double> xi;             // Self- and cross kerrs in drift Hamiltonian
-    std::vector<double> Jkl;             // Coefficient for IBM coupling terms
-    std::vector<double> eta;             // Frequencies for IBM coupling terms
+    std::vector<double> Jkl;             // Coefficient for dipole-dipole coupling terms
+    std::vector<double> eta;             // Frequencies for dipole-dipole coupling terms
     std::vector<double> detuning_freq;  // detuning frequencies of drift Hamiltonian
     std::vector<double> collapse_time;  // Time-constants for decay and dephase operators
 
