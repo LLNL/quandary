@@ -36,7 +36,8 @@
 \title{Quandary: Optimal Control for Quantum Systems}
 \author{Stefanie G{\"u}nther\thanks{Center for Applied Scientific Computing, Lawrence Livermore
     National Laboratory, Livermore, CA, USA.} \and N. Anders Petersson$^*$} 
-\date{December 29, 2020}
+% \date{April 7, 2021}
+\date{last updated \today}
 
 \begin{document}
 \maketitle
@@ -64,35 +65,20 @@ hesitate to direct any questions to guenther5@llnl.gov. For installation instruc
 look at the README.md document in the \verb+quandary+ directory.
 
 \section{Model equation}
-%TODO: Include lab-frame equations, then transform to rotating frame
 Quandary models open quantum systems with $Q$ subsystems with $n_k$ levels for the
 $k$-th subsystem, $k=0,\dots,Q-1$. The time-evolution of the open quantum system is modeled by Lindblad's master equation:
 \begin{align}\label{mastereq}
-  \dot \rho(t) = &-i(H(t)\rho(t) - \rho(t)H(t)) \notag \\
-  &+ \sum_{l=1}^2 \sum_{k=0}^{Q-1} \gamma_{lk} \left( \Ell_{lk} \rho(t)
-  \Ell_{lk}^{\dagger} - \frac 1 2 \left( \Ell_{lk}^{\dagger}\Ell_{lk}
-  \rho(t) + \rho(t)\Ell_{lk}^{\dagger} \Ell_{lk}\right) \right)
+  \dot \rho(t) = &-i(H(t)\rho(t) - \rho(t)H(t)) + \Ell(\rho(t))
 \end{align}
 for the density matrix $\rho(t)\in \C^{N\times N}$ with dimension $N :=
-\prod_{k=0}^{Q-1} n_k$. 
-The Hamiltonian $H(t)$ consists of a \textit{drift}
-part, and a \textit{control} part. 
-In the computational
-\textit{rotating frame} with rotational
-frequencies $\omega_k^{\text{rot}}$, the Hamiltonian is given by 
-\begin{align}
-  H(t) &= H_d(t) + H_c(t) \\
-  \text{with} \quad H_d(t) &:= \sum_{k=0}^{Q-1} \left(\omega_k -                                 \omega_k^{\text{rot}}\right)a_k^{\dagger}a_k- \frac{\xi_k}{2}
-  a_k^{\dagger}a_k^{\dagger}a_k a_k  
-   - \sum_{l> k} \xi_{lk} a_{k}^{\dagger}a_{k}   a_{l}^{\dagger} a_{l} \\
-   & + \sum_{k=0}^{Q-1}\sum_{l>k} J_{kl} \left(\cos(\eta_{kl}t) \left(a_k^\dagger a_l + a_k a_l^\dagger\right) + i\sin(\eta_{kl}t)\left(a_k^\dagger a_l - a_k a_l^\dagger\right) \right)  \\
-   H_c(t) &:= \sum_{k=0}^{Q-1} \left( p^k(\vec{\alpha}^k,t) (a_k +
-   a_k^{\dagger}) + i q^k(\vec{\alpha}^k,t)(a_k - a_k^{\dagger})
-   \right)
-\end{align} 
-where $\omega_k$ denotes the transition frequencies, $\xi_k, \xi_{kl}$ denote the self- and cross-Kers, respectively, $J_{kl}$ are dipole-dipole coupling coefficients, and $\eta_{kl} := \omega_k^{\text{rot}} - \omega_l^{\text{rot}}$ are the differences in rotational frequencies between oscillators. Note, that if one chooses the rotational frequencies to be the same for each oscillator, e.g. $w_k^{\text{rot}} = w_{avg} \, \forall \, k$ with $\omega_{avg} := \sum_k w_k$, then the dipole-dipole coupling term and hence the drift Hamiltonian $H_d$ is time-independent. 
+\prod_{k=0}^{Q-1} n_k$, where $H(t)$ denotes the Hamiltonian describing the system and control and $\Ell(\rho(t))$ denotes the Lindbladian operator that models system-environment interactions as specified below.
 
-Here, $a_k$ denotes the lowering operator:
+The Hamiltonian $H(t)$ is decomposed into a time-independent system part $H_d$ and a time-varying control part ($H_c(t)$) that employs the external control fields: $H(t) = H_d + H_c(t)$. The system Hamiltonian is modeld as 
+\begin{align}
+  H_d &:= \sum_{k=0}^{Q-1} \left(\omega_k a_k^{\dagger}a_k- \frac{\xi_k}{2} a_k^{\dagger}a_k^{\dagger}a_k a_k  + \sum_{l> k} \left(  J_{kl} \left( a_k^\dagger a_l + a_k a_l^\dagger \right) -\xi_{kl} a_{k}^{\dagger}a_{k}   a_{l}^{\dagger} a_{l} \right)\right)
+\end{align}
+Here, $\omega_k>0$ denotes the $0 \rightarrow 1$ transition frequency and $\xi_k>0$ is the self-Kerr coefficient of subsystem $k$. The cross resonance coefficients are $J_{kl}>0$ (``dipole-dipole interaction'') and $\xi_{kl}>0$ (``zz-coupling''). Further,
+$a_k\in \C^{N\times N}$ denotes the lowering operator acting on subsystem $k$, which is defined as
 \begin{align}
   \begin{array}{rl}
   a_0 &:= a^{(n_0)} \otimes I_{n_1} \otimes \dots \otimes
@@ -112,59 +98,82 @@ Here, $a_k$ denotes the lowering operator:
      &   &          &         & 0   
  \end{pmatrix} \in \R^{n_k \times n_k}
 \end{align}
-and $I_{n_k}$ denotes the identity matrix in $\R^{n_k \times n_k}$.
+where $I_{n_k} \in \R^{n_k \times n_k}$ is the identity matrix.
 
-\subsection{Collapse operators}
-The collapse operators $\Ell_{lk}$ in the Lindblad terms of the master equation
-\eqref{mastereq} can be of the following type:
-\begin{itemize}
-  \item ``T1'' -- Decay: $\Ell_{1k} = a_k$
-  \item ``T2'' -- Dephasing: $\Ell_{2k} = a_k^{\dagger}a_k$
-\end{itemize}
-for each subsystem $k$. The constants $\gamma_{lk}$ are the inverse half-life
-for the corresponding collapse process $l$: $\gamma_{lk} = {\frac{1}{T_l}}$.
-Typical T1 decay time is between $10-100$ microseconds (us). T2
-dephasing time is typically about half of T1 decay time. Decay then behaves
-like $\exp(-t/{T_1})$. 
+The action of external control fields on the quantum system is modelled through the control Hamiltonian 
+\begin{align}
+  H_c(t) &:= \sum_{k=0}^Q f^k(\vec{\alpha}^k,t) \left(a_k + a_k^\dagger \right)
+\end{align}
+where $f^k(\vec{\alpha}^k,t)$ are real-valued, time-dependent control functions that are parameterized by real-valued parameters $\vec{\alpha}^k\in \R^d$, which are to be determined through optimization. 
+
+The Lindbladian operator $\Ell(\rho(t))$ is assumed to be of the form 
+\begin{align}
+  \Ell(\rho(t)) = \sum_{k=0}^{Q-1} \sum_{l=1}^2 \Ell_{lk} \rho(t)
+  \Ell_{lk}^{\dagger} - \frac 1 2 \left( \Ell_{lk}^{\dagger}\Ell_{lk}
+  \rho(t) + \rho(t)\Ell_{lk}^{\dagger} \Ell_{lk}\right).
+\end{align}
+Here, the collapse operators $\Ell_{lk}$ model decay and dephasing processes in the subsystem with $\Ell_{1k} = \frac{1}{\sqrt{T_1^k}} a_k$ (``T1'' -- decay) and $\Ell_{2k} = \frac{1}{\sqrt{T_2^k}} a_k^{\dagger}a_k$ (``T2'' -- dephasing) for each subsystem $k$. The constants $T_l^k>0$ correspond to the half-life of process $l$ on subsystem $k$. Typical T1 decay time is between $10-100$ microseconds (us). T2 dephasing time is typically about half of T1 decay time. Decay processes typically behaves like $\exp(-t/{T_1})$.
+
+
+
+\subsection{Rotational frame approximation}
+In order to slow down the time-scales in the solution of Lindblad's master equations, the rotating wave approximation is applied. To that end, the real-valued laboratory frame control functions is written as 
+\begin{align}
+  f^k(\vec{\alpha}^k,t) = 2\mbox{Re}\left(d^k(\vec{\alpha}^k,t)e^{i\omega_k^r t}\right), \quad d^k(\vec{\alpha}^k,t) = p^k(\vec{\alpha}^k,t) + i q^k(\vec{\alpha}^k,t)
+\end{align}
+for real-valued rotating-frame control functions $p^k(\vec{\alpha}^k,t)$ and $q^k(\vec{\alpha}^k,t)$, using rotating-frame frequencies $\omega_k^r$. Under the rotating frame wave approximation, the Hamiltonians are transformed to 
+\begin{align} 
+  \tilde H_d(t) &:= \sum_{k=0}^{Q-1} \left(\omega_k - \omega_k^{r}\right)a_k^{\dagger}a_k- \frac{\xi_k}{2}
+  a_k^{\dagger}a_k^{\dagger}a_k a_k  
+   - \sum_{l> k} \xi_{kl} a_{k}^{\dagger}a_{k}   a_{l}^{\dagger} a_{l} \notag \\
+   & + \sum_{k=0}^{Q-1}\sum_{l>k} J_{kl} \left(\cos(\eta_{kl}t) \left(a_k^\dagger a_l + a_k a_l^\dagger\right) + i\sin(\eta_{kl}t)\left(a_k^\dagger a_l - a_k a_l^\dagger\right) \right) \label{eq:Hd_rotating} \\
+   %
+   \tilde H_c(t) &:= \sum_{k=0}^{Q-1} \left( p^k(\vec{\alpha}^k,t) (a_k +
+   a_k^{\dagger}) + i q^k(\vec{\alpha}^k,t)(a_k - a_k^{\dagger})
+   \right)  \label{eq:Hc_rotating}
+\end{align} 
+where $\eta_{kl} := \omega_k^{r} - \omega_l^{r}$ are the differences in rotational frequencies between subsystems. When $\omega_k >> \xi_k > \xi_{kl}$ and $|d^k|_{\infty} << 1$, the spectrum of the Hamiltonian in the laboratory frame is dominated by the terms $\omega_ka_k^\dagger a_k$. In this case, the eigenvalues of the rotating frame Hamiltonian become significantly smaller in magnitude by choosing $\omega_k^r \approx \omega_k$, thus slowing down the time variation of the state evolution. We remark that the rotating wave approximation ignores terms in the control Hamiltonian that oscillate with frequencies $\pm 2\omega_k^r$. 
+
+In the remainder of this document, we drop the tildes on $\tilde H_d$ and $\tilde H_c$ and use the rotating frame definition of the Hamiltonians to model the system evolution in time. 
+
+Note, that in the general case the system Hamiltonian in the rotational frame is now time-dependent. However, if one chooses the rotational frequencies to be the same for each subsystem, for example choosing $\omega_k^{r} = \omega_{avg} \, \forall \, k$ with $\omega_{avg} := \frac 1Q \sum_k \omega_k$, the rotational-frame system Hamiltonian $H_d$ becomes time-independent again since $\eta_{kl} = 0$. 
 
 \subsection{Control pulses} \label{subsec:controlpulses}
-The time-dependent control functions $p^k(\vec{\alpha}^k,t),
-q^k(\vec{\alpha}^k,t)$ are real-valued. They are discretized using piecewise quadratic B-spline basis functions with
-carrier waves: 
+The time-dependent rotating-frame control functions $d^k(\vec{\alpha}^k,t)$ are parameterized using $N_s$ piecewise quadratic B-spline basis functions $B_s(t)$ acting as envelope for $N_f^k$ carrier waves:
 \begin{align}
-  p^k(\vec{\alpha}^k,t) &= \sum_{l=0}^{L-1} B_l(t)
-  \sum_{f=0}^{N_f^k-1} \left(\alpha^{k
-  (0)}_{l,f} \cos(\Omega_f^k t) - \alpha^{k (1)}_{l,f} \sin(\Omega_f^k t)
+  d^k(\vec{\alpha}^k,t) = \sum_{f=1}^{N_f^k} \sum_{s=1}^{N_s} \alpha_{s,f}^k B_s(t) e^{i\Omega_k^ft}, \quad \alpha_{s,f}^k = \alpha_{s,f}^{k(1)} + i \alpha_{s,f}^{k(2)} \in \C
+\end{align}
+The amplitudes $\alpha_{s,f}^{k(1)}, \alpha_{s,f}^{k(2)} \in \R$ are the control
+parameters (\textit{design} variables) that Quandary can optimize in order to realize a
+desired system behavior, giving a total number of $2N_s\sum_kN_f^k$ real-valued optimization variables. Further, $\Omega_k^f \in \R$ denote the carrier wave frequencies in the rotating frame which can be choosen to trigger certain system frequencies. The corresponding Lab-frame carrier frequencies become $\omega_k^r + \Omega_k^f$. Those frequencies can be chosen to match the transition frequencies in the lab-frame system Hamiltonian. For example, when $\xi_{kl} << \xi_k$, the transition frequencies satisfy $\omega_k - n\xi_k$. Thus by choosing $\Omega_k^f = \omega_k-\omega_k^r - n \xi_k$, one triggers transition between energy levels $n$ and $n+1$ in subsystem $k$. 
+
+Using trigonometric identities, the real and imaginary part of the rotating-frame control $d^k(\vec{\alpha}^k,t) = p^k(\vec{\alpha}^k,t) + iq^k(\vec{\alpha}^k,t)$ are given by
+\begin{align}
+  p^k(\vec{\alpha}^k,t) &= \sum_{f=1}^{N_f^k} \sum_{s=1}^{N_s} B_s(t)
+  \left(\alpha^{k
+  (1)}_{s,f} \cos(\Omega_f^k t) - \alpha^{k (2)}_{lsf} \sin(\Omega_f^k t)
   \right) \\
-  q^k(\vec{\alpha}^k,t) &= \sum_{l=0}^{L-1} B_l(t)
-  \sum_{f=0}^{N_f^k-1} \left( \alpha^{k
-  (0)}_{l,f} \sin(\Omega_f^k t) + \alpha^{k (1)}_{l,f} \cos(\Omega_f^k t)
+  q^k(\vec{\alpha}^k,t) &= \sum_{f=1}^{N_f^k} \sum_{s=1}^{N_s} B_s(t)\left( \alpha^{k
+  (1)}_{s,f} \sin(\Omega_f^k t) + \alpha^{k (2)}_{s,f} \cos(\Omega_f^k t)
   \right)
 \end{align}
-for $L$ B-Spline functions $B_l(t)$, and $N_f^k$ carrier wave frequencies
-$\Omega_f^k$ per oscillator. The amplitudes $\vec{\alpha}^k \in \R^{2LN_f^k}$ are the control
-parameters (\textit{design} variables) that Quandary can optimize in order to realize a
-desired system behavior. 
-
-These control functions are in the \textit{rotating frame}. To convert them back
-to the \textit{Lab frame}, Quandary uses
+Those relate to the Lab-frame control $f^k(\vec{\alpha}^k,t)$ through
+% \begin{align}
+%   f^k(t) = 2 \sum_{l=0}^{L-1} B_l(t) \sum_{f=0}^{N_f^k-1} \beta_{l,f}^k \cos(\omega_k^{\text{rot}} t +
+%   \Omega_f^k t + \theta_{l,f}) \ \forall\  k=0,\dots Q-1
+% \end{align}
+% where $\beta_{l,f}^k$ and $\theta_{l,f}$ are computed from
+% \begin{align}
+%   \alpha_{l,f}^{k(0)} = \beta_{l,f}^k \cos(\theta_{l,f}) \quad \text{and} \quad
+%   \alpha_{l,f}^{k(1)} = \beta_{l,f}^k \sin(\theta_{l,f})
+% \end{align}
+% and $\omega_k^{\text{rot}}$ is the angular frequency of rotation in subsystem $k$. Using
+% trigonometric equalities, the Lab-frame controls can be expressed as
 \begin{align}
-  f^k(t) = 2 \sum_{l=0}^{L-1} B_l(t) \sum_{f=0}^{N_f^k-1} \beta_{l,f}^k \cos(\omega_k^{\text{rot}} t +
-  \Omega_f^k t + \theta_{l,f}) \ \forall\  k=0,\dots Q-1
-\end{align}
-where $\beta_{l,f}^k$ and $\theta_{l,f}$ are computed from
-\begin{align}
-  \alpha_{l,f}^{k(0)} = \beta_{l,f}^k \cos(\theta_{l,f}) \quad \text{and} \quad
-  \alpha_{l,f}^{k(1)} = \beta_{l,f}^k \sin(\theta_{l,f})
-\end{align}
-and $\omega_k^{\text{rot}}$ is the angular frequency of rotation in subsystem $k$. Using
-trigonometric equalities, the Lab-frame controls can be expressed as
-\begin{align}
-  f^k(t) &= 2 \sum_{l=1}^L B_l(t) \sum_{f=1}^{N_f^k} \alpha_{l,f}^{k(0)} \cos((\omega_k^{\text{rot}}
-  + \Omega_f^k) t) - \alpha_{l,f}^{k(1)}\sin((\omega_k^{\text{rot}} + \Omega_f^k) t) \ \forall\ %
-  k=0,\dots Q-1 \\
-         &= 2 p^k(\vec{\alpha}^k, t) \cos(\omega_k^{\text{rot}} t) - 2 q^k(\vec{\alpha}^k,
-         t)\sin(\omega_k^{\text{rot}} t) \\
+  f^k(t) &=  2\sum_{f=1}^{N_f^k} \sum_{s=1}^{N_s} B_s(t) \left(\alpha_{s,f}^{k(1)} \cos((\omega_k^{r} + \Omega_f^k) t) - \alpha_{s,f}^{k(2)}\sin((\omega_k^{r} + \Omega_f^k) t) \right) \\
+         &= 2 p^k(\vec{\alpha}^k, t) \cos(\omega_k^{r} t) - 2 q^k(\vec{\alpha}^k,
+         t)\sin(\omega_k^{r} t) \\
+         &= 2\mbox{Re}\left( d^k(\vec{\alpha}^k,t)e^{i\omega_k^r t} \right)
 \end{align}
 
 
@@ -173,7 +182,7 @@ In the most general form, Quandary can solve the following optimization problem
 \begin{align}
   \min_{\boldsymbol{\alpha}} \frac{1}{n_{init}} \sum_{i=1}^{n_{init}} \beta_i J(\rho_i(T))  + R(\boldsymbol{\alpha})
 \end{align}
-where $\rho_i(T)$ satisfies the master equation \eqref{mastereq} subject to the initial condition $\rho_i(0)$, as explained below. Specific choices of $J$ and initial conditions $\rho_i(0)$ are given below, as well as regularization and penalty terms denoted by $R$ above. 
+where $\rho_i(T)$ solves Lindblad's master equation \eqref{mastereq} in the rotating frame subject to the initial condition $\rho_i(0)$, as explained below, and $\boldsymbol{\alpha} = \left(\vec{\alpha}^0, \dots, \vec{\alpha}^{Q-1}\right)$ denotes the control parameters. Specific choices of $J$ and initial conditions $\rho_i(0)$ are given below, as well as regularization and penalty terms denoted by $R$ above. 
 
 \subsection{Ground-state optimization aka optimal
 reset}\label{sec:groundstate-obj}
@@ -252,22 +261,27 @@ Target gates that are currently implemented are
                                0  & 1 & 0 & 0 \\ 
                                0  & 0 & 0 & 1 \\ 
                                0  & 0 & 1 & 0 \\ 
-                \end{bmatrix}
+                \end{bmatrix} \quad 
+  V_{SWAP} := \begin{bmatrix}
+    1 & 0 & 0 & 0 \\
+    0 & 0 & 1 & 0 \\
+    0 & 1 & 0 & 0 \\
+    0 & 0 & 0 & 1 \\
+  \end{bmatrix}
 \end{align}
 
-An average gate fidelity is computed from 
+As a measure of optimization success, Quandary reports on the average gate fidelity computed from 
 \begin{align}
   F_{avg} = \frac{1}{N^2} \sum_{i=1}^{N^2} \mbox{Tr}\left(V\rho_i(0)V^{\dagger}\rho_i(T) \right) 
 \end{align}
-where $\rho_i(0) = B^{k(i), j(i)}$ are the basis initial states and $\rho_i(T)$ their corresponding propagated final time states.
+where $\rho_i(0) = B^{k(i), j(i)}$ are the initial basis matrices as defined in \eqref{eq:basismats} and $\rho_i(T)$ their corresponding propagated final time states.
 
 \subsection{Penalty and regularization term}
 In order to stabilize the optimization problem, a Tikhonov regularization term can be added to the objective function:
 \begin{align}
  \frac{\gamma_1}{2} \| \boldsymbol{\alpha} \|^2_2
 \end{align}
-with Tikhonov parameter $\gamma_1 > 0$, where $\boldsymbol{\alpha}$ denotes the vector of design parameters as in section \ref{subsec:controlpulses}.
-
+with Tikhonov parameter $\gamma_1 > 0$.
 
 In addition, when considering ground-state optimization in
 Section~\ref{sec:groundstate-obj}, an integral penalty term can be added to the objective function that discourages non-zero energy states over time:
@@ -307,7 +321,7 @@ therefore define a basis for all initial density matrices and aim to minimize
 the average of the above measure over those matrix basis elements. The basis
 matrices are defined as follows:
 
-\begin{align}
+\begin{align}\label{eq:basismats}
 B^{kj} := \frac 12 \left( E_{kk} + E_{jj}\right) +  \begin{cases} 
           0 & \text{if} \, k=j \\ 
         \frac 12 \left( E_{kj} + E_{jk}\right) & \text{if} \, k<j \\
@@ -417,11 +431,11 @@ A specific initial condition can be read from file ($\Rightarrow n_{init}=1$ wit
   form of the Lindblad master equation:
   \begin{align}\label{mastereq_vectorized}
     &\dot q(t) = M(t) q(t) \quad  \text{where} \\
-    &M(t) := -i(I_N\otimes H - H^T \otimes I_N) + \sum_{k=0}^{Q-1}\sum_{l=1}^2 \gamma_{lk}
+    &M(t) := -i(I_N\otimes H(t) - H(t)^T \otimes I_N) + \sum_{k=0}^{Q-1}\sum_{l=1}^2 \gamma_{lk}
     \left( \Ell_{lk}\otimes \Ell_{lk} - \frac 1 2 \left( I_N\otimes
     \Ell^T_{lk}\Ell_{lk} + \Ell^T_{lk}\Ell_{lk} \otimes I_N \right) \right)
   \end{align}
-   with $M(t) \in \C^{N^2\times N^2}$. 
+   with $M(t) \in \C^{N^2\times N^2}$, and $H(t) = H_d(t) + H_c(t)$ being the rotating frame system and control Hamiltonians as in \eqref{eq:Hd_rotating} and \eqref{eq:Hc_rotating}, respectively.
 
 
   \subsection{Real-valued, vectorized system}
@@ -434,6 +448,7 @@ A specific initial condition can be read from file ($\Rightarrow n_{init}=1$ wit
    \begin{pmatrix} u(t) \\ v(t) \end{pmatrix} 
    \label{realvaluedODE}
    \end{align}
+   for real and imaginary parts $A(t) = \mbox{Re} \left(M(t)\right)$ and $B(t) = \mbox{Im}\left(M(t)\right)$. 
 
 The real and imaginary parts of $q(t)$ are stored in a colocated manner: For
   $q = u+iv$ with $u,v\in\R^{N^2}$, a vector of size $2N^2$ is stored that
@@ -492,13 +507,12 @@ The real and imaginary parts of $q(t)$ are stored in a colocated manner: For
      \item \textit{Sparse-matrix solver:}
       The sparse-matrix solver initializes and stores the constant matrices
        $A_d, A_d^{kl}, A_c^k, B_d, B_d^{kl}, B_c^k$ using Petsc's sparse-matrix format. They are used
-       as building blocks to evaluate the sparse system matrix $M(t)$ with 
+       as building blocks to evaluate the blocks in the system matrix $M(t)$ with 
      \begin{align}
        A(t) &= Re(M(t)) = A_d + \sum_k q^k(\alpha^k, t)A_c^k + \sum_{l>k} J_{kl} \sin(\eta_{kl}t) A_d^{kl}\\
        B(t) &= Im(M(t)) = B_d + \sum_k p^k(\alpha^k, t)B_c^k + \sum_{kl} J_{kl} \cos(\eta_{kl}t) B_d^{kl}
      \end{align}
-   at each time $t$. $M(t)$ is then multiplied to the vectorized density matrix
-       $q(t)$ using Petsc's sparse MatVec implementation. 
+   at each time $t$, which are applied to the vectorized, real-valued density matrix using Petsc's sparse MatVec implementation. 
 
    \item \textit{Matrix-free solver using tensor contractions:}
      As an alternative to the sparse-matrix implementation, a matrix-free tensor-contraction solver is available. In this approach, the matrices $A_d,B_d,
@@ -547,22 +561,6 @@ The real and imaginary parts of $q(t)$ are stored in a colocated manner: For
     first solve a linear equation to get the stage variable $k_1$, then use it
     to update $q^{n+1}$. 
 
-    The consistent discrete adjoint (backwards) time-integration step for
-    adjoint variables $\bar q^{n+1}, \bar q^n$, and the gradient update for this
-    step are given by
-    \begin{align}
-      \bar q^{n} = \bar q^{n+1} + \delta t \left(M^{n+1/2}\right)^T \bar k_1
-      \quad \text{where} \, \bar k_1 \, \text{solves} \quad \left(
-      I-\frac{\delta t}{2} M^{n+1/2}\right)^T  \bar k_1 = \bar q^{n+1} 
-    \end{align}
-    The contribution to the reduced gradient $\nabla J$ for each time step is
-    then given by
-    \begin{align}
-      \nabla J += \delta t \left( \frac{\partial M^{n+1/2}}{\partial z}
-      \left(q^n + \frac{\delta t}{2} k_1\right) \right)^T\bar k_1
-    \end{align}
-
-
     \subsubsection{Other integrators}
     The code offers the possibility to apply any time-stepping integrators
     provided by the Petsc software package (class TS). Implementation needs to
@@ -610,38 +608,57 @@ The real and imaginary parts of $q(t)$ are stored in a colocated manner: For
 
 \subsubsection{Optimization variables and bounds}
 
-Design parameters (optimization variables) are stored in the Quandary code in the following order: List oscillators first $(\vec{\alpha}^1, \dots, \vec{\alpha}^Q)$, then for each $\vec{\alpha}^k \in
-\R^{2LN_f^k}$ iterate over $L$ splines: $\vec{\alpha}^k =
-(\alpha^k_1,\dots, \alpha^k_{L})$ with $\alpha^k_l \in \R^{2N_f^k}$, then each
-$\alpha^k_l$ iterates over carrier waves and for each carrier wave lists
-the two components: $\alpha^k_l = \alpha^{k(1)}_{l,1}, \alpha^{k(2)}_{l,1},
-\dots \alpha^{k(1)}_{l,N_f^k}, \alpha^{k(2)}_{l,N_f^k}$. Hence there are a total of $2QL\sum_k N_f^k$ optimization parameters, which are stored in the following order:
+Design parameters (optimization variables) are stored in the Quandary code in the following order: List oscillators first $(\vec{\alpha}^0, \dots, \vec{\alpha}^{Q-1})$, then for each $\vec{\alpha}^k \in
+\R^{2N_sN_f^k}$, iterate over $N_s$ splines: $\vec{\alpha}^k =
+(\alpha^k_1,\dots, \alpha^k_{N_s})$ with $\alpha^k_s \in \R^{2N_f^k}$, then each
+$\alpha^k_s$ iterates over carrier waves and for each carrier wave lists
+the real and imaginary components: $\alpha^k_s = \alpha^{k(1)}_{s,1}, \alpha^{k(2)}_{s,1},
+\dots \alpha^{k(1)}_{s,N_f^k}, \alpha^{k(2)}_{s,N_f^k}$. Hence there are a total of $2N_s\sum_k N_f^k$ real-valued optimization parameters, which are stored in the following order:
   \begin{align}
-    \boldsymbol{\alpha} &:= \left( \vec{\alpha}^1, \dots, \vec{\alpha}^Q \right), \in
-    \mathds{R}^{2QL\sum_k N_f^k} \quad \text{where}\\
+    \boldsymbol{\alpha} &:= \left( \vec{\alpha}^0, \dots, \vec{\alpha}^{Q-1} \right), \in
+    \mathds{R}^{2N_s\sum_k N_f^k} \quad \text{where}\\
     \vec{\alpha}^k &= \left( \alpha_{1,1}^k,\dots, \alpha_{1,N_f^k}^k, \dots,
-    \alpha_{L,1}^{k}, \dots, \alpha_{L,N_f^k}^k \right), \quad \text{with} \quad
-    \alpha_{l,f}^k = \left(\alpha_{l,f}^{k(1)}, \alpha_{l,f}^{k(2)} \right) \in
+    \alpha_{N_s,1}^{k}, \dots, \alpha_{N_s,N_f^k}^k \right), \quad \text{with} \quad
+    \alpha_{s,f}^k = \left(\alpha_{s,f}^{k(1)}, \alpha_{s,f}^{k(2)} \right) \in
     \R^2,
   \end{align}
-  iterating over $Q$ subsystems first, then $L$ splines, then $N_f^k$ carrier wave
+  iterating over $Q$ subsystems first, then $N_s$ splines, then $N_f^k$ carrier wave
   frequencies. 
 
   In order to guarantee that the optimizer yields control pulses that are
-  bounded with $|p_k(t)| \leq c^k_{max}$, $|q_k(t)| \leq c^k_{max}$ for all
-  subsystems $k=1,\dots, Q$, we impose box constraints on the control
+  bounded with $|p^k(t)| \leq c^k_{max}$, $|q^k(t)| \leq c^k_{max}$ for all
+  subsystems $k=0,\dots, Q-1$, we impose box constraints on the control
   parameters:
    \begin{align}
-     | \alpha_{l,f}^{k(1)}| \leq \frac{c^k_{max}}{N_f^k} \quad \text{and} \quad |
-     \alpha_{l,f}^{k(2)} | \leq \frac{c^k_{max}}{N_f^k}
+     | \alpha_{s,f}^{k(1)}| \leq \frac{c^k_{max}}{N_f^k} \quad \text{and} \quad |
+     \alpha_{s,f}^{k(2)} | \leq \frac{c^k_{max}}{N_f^k}
    \end{align}
-   where $N_f^k$ is the number of carrier wave frequencies.
+   where $N_f^k$ is the number of carrier wave frequencies for subsystem $k$. 
+
+  
+  \subsection{Gradient computation via discrete adjoint backpropagation}
+   Quandary computes the gradients of the objective function with respect to the design variables $\boldsymbol{\alpha}$ using the discrete adjoint method. The discrete adjoint approach yields exact and consistent gradients on the algorithmic level, at costs that are independent of the number of design variables.    
+   To that end, the adjoint approach propagates local sensitivities backwards through the time-domain while concatenating contributions to the gradient using the chain-rule.
+
+  The consistent discrete adjoint time-integration step for
+    adjoint variables denoted by $\bar q^{n}$ is given by
+   \begin{align}
+      \bar q^{n} = \bar q^{n+1} + \delta t \left(M^{n+1/2}\right)^T \bar k_1
+      \quad \text{where} \, \bar k_1 \, \text{solves} \quad \left(
+      I-\frac{\delta t}{2} M^{n+1/2}\right)^T  \bar k_1 = \bar q^{n+1} 
+    \end{align}
+  The contribution to the gradient $\nabla J$ for each time step is
+    \begin{align}\label{eq:gradient}
+      \nabla J += \delta t \left( \frac{\partial M^{n+1/2}}{\partial z}
+      \left(q^n + \frac{\delta t}{2} k_1\right) \right)^T\bar k_1
+    \end{align}
+  
+    Each evaluation of the gradient $\nabla J$ involes a forward solve of $n_{init}$ initial quantum states to evaluate the objective function at final time $T$, as well as $n_{init}$ backward solves to compute the adjoint states and the contributions to the gradient. Note that the gradient computation \eqref{eq:gradient} requires the states and adjoint states at each time step, hence the states $q^n$ need to be stored during forward propagation. 
+
+
 
   \subsubsection{Optimization algorithm}
-    Quandary use Petsc's \textit{Tao} optimization package for solving
-    the vectorized version of the optimal control problem. It uses the nonlinear Quasi-Newton
-    optimization method that applies iterative preconditioned gradient steps using L-BFGS updates to approximate the Hessian. A projected line-search is applied to ensure that the control parameters stay within the prescribed box constraints and that the objective function yields sufficient decrease per iteration.
-
+    Quandary utilized Petsc's \textit{Tao} optimization package to apply gradient-based iterative updates to the control variables. The \textit{Tao} optimization interface takes routines to evaluate the objective function as well as the gradient computation. In the current setting in Quandary, Tao applies a nonlinear Quasi-Newton optimization scheme using a preconditioned gradient based on L-BFGS updates to approximate the Hessian of the objective function. A projected line-search is applied to ensure that the objective function yields sufficient decrease per optimization iteration while keeping the control parameters within the prescribed box-constraints. 
 
 
     \subsection{Parallelization}
