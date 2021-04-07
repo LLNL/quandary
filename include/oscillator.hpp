@@ -20,21 +20,18 @@ struct PiPulse {
 
 class Oscillator {
   protected:
-    int nlevels;                   // Number of levels for this the oscillator 
     double ground_freq;            // Ground frequency of this oscillator
     std::vector<double> params;    // control parameters 
     double Tfinal;                 // final time
     ControlBasis *basisfunctions;  // Control discretization using Bsplines + carrier waves
-    Mat NumberOP;                  // Stores the number operator
-    Mat LoweringOP;                // Stores the lowering operator
-    int dim_preOsc;                // Dimension of coupled subsystems preceding this oscillator
-    int dim_postOsc;               // Dimension of coupled subsystem following this oscillator
 
-    Mat zeromat;                   // auxiliary matrix with zero entries
     int mpirank_petsc;             // rank of Petsc's communicator
 
   public:
     PiPulse pipulse;  // Store a dummy pipulse that does nothing
+    int nlevels;                   // Number of levels for this the oscillator 
+    int dim_preOsc;                // Dimension of coupled subsystems preceding this oscillator
+    int dim_postOsc;               // Dimension of coupled subsystem following this oscillator
 
 
   public:
@@ -48,16 +45,6 @@ class Oscillator {
 
     /* Copy x into the control parameter vector */
     void setParams(const double* x);
-
-    /* Compute lowering operator a_k = I_n1 \kron ... \kron a^(nk) \kron ... \kron I_nQ */
-    int createLoweringOP(const int dim_prekron, const int dim_postkron, Mat* loweringOP);
-    /* Returns the lowering operator, unless dummy is true, then return a zero matrix */
-    Mat getLoweringOP(bool dummy);
-
-    /* Compute number operator N_k = a_k^T a_k */
-    int createNumberOP(const int dim_prekron, const int dim_postcron, Mat* numberOP);
-    /* Returns the number operator, unless dummy is true, then return a zero matrix */
-    Mat getNumberOP(bool dummy);
 
     /* Evaluates rotating frame control functions Re = p(t), Im = q(t) */
     int evalControl(const double t, double* Re_ptr, double* Im_ptr);

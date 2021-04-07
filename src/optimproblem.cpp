@@ -1,7 +1,7 @@
 #include "optimproblem.hpp"
 
 #ifdef WITH_BRAID
-OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, MPI_Comm comm_hiop_, MPI_Comm comm_init_, int ninit_, Output* output_) : OptimProblem(config, timestepper_, comm_hiop_, comm_init_, ninit_, output_) {
+OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, MPI_Comm comm_init_, int ninit_, Output* output_) : OptimProblem(config, timestepper_, comm_init_, ninit_, output_) {
   primalbraidapp  = primalbraidapp_;
   adjointbraidapp = adjointbraidapp_;
   MPI_Comm_rank(primalbraidapp->comm_braid, &mpirank_braid);
@@ -9,11 +9,10 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, myBraidAp
 }
 #endif
 
-OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm comm_hiop_, MPI_Comm comm_init_, int ninit_, Output* output_){
+OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm comm_init_, int ninit_, Output* output_){
 
   timestepper = timestepper_;
   ninit = ninit_;
-  comm_hiop = comm_hiop_;
   comm_init = comm_init_;
   output = output_;
 
@@ -22,8 +21,6 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   MPI_Comm_size(MPI_COMM_WORLD, &mpisize_world);
   MPI_Comm_rank(PETSC_COMM_WORLD, &mpirank_space);
   MPI_Comm_size(PETSC_COMM_WORLD, &mpisize_space);
-  MPI_Comm_rank(comm_hiop, &mpirank_optim);
-  MPI_Comm_size(comm_hiop, &mpisize_optim);
   MPI_Comm_rank(comm_init, &mpirank_init);
   MPI_Comm_size(comm_init, &mpisize_init);
   mpirank_braid = 0;
@@ -587,25 +584,28 @@ PetscErrorCode TaoMonitor(Tao tao,void*ptr){
   /* Pass current iteration number to output manager */
   ctx->output->optim_iter = iter;
 
-   /* Compute average fidelity */
-   if (ctx->objective_type == GATE_FROBENIUS ||
-       (ctx->objective_type == GATE_TRACE && ctx->initcond_type != BASIS) ){
-     InitialConditionType inittype_org = ctx->initcond_type; 
-     ObjectiveType objtype_org = ctx->objective_type; 
-     int ninit_local_org = ctx->ninit_local;
-     int ninit_org = ctx->ninit;
-     ctx->initcond_type = BASIS;
-     /* TODO: GENERALIZE! parallel initial conditions! */
-     ctx->ninit= 16;
-     ctx->ninit_local = ctx->ninit/ctx->mpisize_init;
-     ctx->objective_type = GATE_TRACE;
-     double obj = ctx->evalF(params);    // this sets ctx->obj_cost
-     // double F_avg = 1.0 - ctx->obj_cost;
-     ctx->initcond_type = inittype_org;
-     ctx->objective_type = objtype_org;
-     ctx->ninit_local = ninit_local_org;
-     ctx->ninit = ninit_org;
-   }
+  /* If average fidelity is not the objective function, it can be computed at each optimization iteration here. 
+   * However, this involves the entire basis be propagated forward. We omit it here to save compute time during optimization. 
+   * Average fidelity can be computed AFTER optimization has finished by propagating the the basis and evaluating the Gate_trace.
+   */
+  if (ctx->objective_type == GATE_FROBENIUS ||
+      (ctx->objective_type == GATE_TRACE && ctx->initcond_type != BASIS) ){
+       ctx->obj_cost = -1.0;  // -1 is used to indicate that average fidelity is not computed
+  //   InitialConditionType inittype_org = ctx->initcond_type; 
+  //   ObjectiveType objtype_org = ctx->objective_type; 
+  //   int ninit_local_org = ctx->ninit_local;
+  //   int ninit_org = ctx->ninit;
+  //   ctx->initcond_type = BASIS;
+  //   ctx->ninit_local = 16;
+  //   ctx->ninit= 16;
+  //   ctx->objective_type = GATE_TRACE;
+  //   double obj = ctx->evalF(params);    // this sets ctx->obj_cost
+  //   // double F_avg = 1.0 - ctx->obj_cost;
+  //   ctx->initcond_type = inittype_org;
+  //   ctx->objective_type = objtype_org;
+  //   ctx->ninit_local = ninit_local_org;
+  //   ctx->ninit = ninit_org;
+  }
 
   /* Print to optimization file */
   ctx->output->writeOptimFile(f, gnorm, deltax, ctx->obj_cost, ctx->obj_regul, ctx->obj_penal);

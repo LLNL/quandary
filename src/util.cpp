@@ -237,7 +237,7 @@ PetscErrorCode StateIsHermitian(Vec x, PetscReal tol, PetscBool *flag) {
   int ierr;
   int i, j;
 
-  /* TODO: MAKE THIS WORK IN PARALLEL */
+  /* TODO: Either make this work in Petsc-parallel, or add error exit if this runs in parallel. */
   
   /* Get u and v from x */
   int dim;
