@@ -12,8 +12,10 @@ int getIndexImag(const int i); // Return storage index of Im(x[i]) (colocated: x
 /* Return the index of vectorized matrix element (row,col) with matrix dimension dim x dim */
 int getVecID(const int row, const int col, const int dim);
 
-/* Map an index i in essential level state to the corresponding index in full-dimension state */
+/* Map an index i in essential level system to the corresponding index in full-dimension system */
 int mapEssToFull(const int i, const std::vector<int> &nlevels, const std::vector<int> &nessential);
+/* Map an index i in full dimension to the corresponding index in essential dimensions */
+int mapFullToEss(const int i, const std::vector<int> &nlevels, const std::vector<int> &nessential);
 
 /* Test if a certain row/column i of the full density matrix corresponds to an essential level */
 int isEssential(const int i, const std::vector<int> &nlevels, const std::vector<int> &nessential);

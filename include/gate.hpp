@@ -10,7 +10,7 @@
 
 class Gate {
   protected:
-    Mat Va, Vb;        /* Input: Real and imaginary part of V_target, non-vectorized */
+    Mat Va, Vb;        /* Input: Real and imaginary part of V_target, non-vectorized, essential levels only */
     Vec rotA, rotB;    /* Input: Diagonal elements of real and imaginary rotational matrices */
 
     std::vector<int> nessential;
@@ -18,15 +18,11 @@ class Gate {
     int mpirank_petsc;
 
     int dim_ess;   /* Dimension of target Gate matrix (non-vectorized), essential levels only */
-    int dim_rho;   /* Dimension of system matrix rho (non-vectorized), all levels */
+    int dim_rho;   /* Dimension of system matrix rho (non-vectorized), all levels, N */
 
   private:
-    Mat PxP;           /* Vectorized projection matrix P\kron P to map between essential levels and full system */
     Mat ReG, ImG;           /* Real and imaginary part of \bar V \kron V */
-    Vec ufinal_e, vfinal_e; /* auxiliary, holding final state projected onto essential levels */
-    Vec u0_e, v0_e;         /* auxiliary, holding final state projected onto essential levels */
-    Vec x_full;          /* auxiliary vecs */
-    Vec x_e;        /* auxiliary vecs */
+    Vec x;                  /* auxiliary */
 
   public:
     Gate();
