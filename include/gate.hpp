@@ -10,7 +10,7 @@
 
 class Gate {
   protected:
-    Mat Va, Vb;        /* Input: Real and imaginary part of V_target, non-vectorized, essential levels only */
+    Mat V_re, V_im;    /* Input: Real and imaginary part of V_target, non-vectorized, essential levels only */
     Vec rotA, rotB;    /* Input: Diagonal elements of real and imaginary rotational matrices */
 
     std::vector<int> nessential;
@@ -21,7 +21,7 @@ class Gate {
     int dim_rho;   /* Dimension of system matrix rho (non-vectorized), all levels, N */
 
   private:
-    Mat ReG, ImG;           /* Real and imaginary part of \bar V \kron V */
+    Mat VxV_re, VxV_im;     /* Real and imaginary part of vectorized Gate G=\bar V \kron V */
     Vec x;                  /* auxiliary */
 
   public:
@@ -33,7 +33,7 @@ class Gate {
     void assembleGateRotation1x2(double time, std::vector<double> gate_rot_freq);
     void assembleGateRotation2x2(double time, std::vector<double> gate_rot_freq);
 
-    /* Assemble ReG = Re(\bar V \kron V) and ImG = Im(\bar V \kron V) */
+    /* Assemble VxV_re = Re(\bar V \kron V) and VxV_im = Im(\bar V \kron V) */
     void assembleGate();
     
     /* compare the final state to gate-transformed initialcondition in Frobenius norm 1/2 * || q(T) - V\kronV q(0)||^2 */
