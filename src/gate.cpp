@@ -24,7 +24,7 @@ Gate::Gate(std::vector<int> nlevels_, std::vector<int> nessential_){
     dim_rho *= nlevels[i];
   }
 
-  /* Allocate V_re, V_im, in essential level dimension, sequential matrix, copied on all processors */
+  /* Allocate input Gate in essential level dimension, sequential matrix (real and imaginary parts), copied on all processors */
   MatCreateSeqDense(PETSC_COMM_SELF, dim_ess, dim_ess, NULL, &V_re);
   MatCreateSeqDense(PETSC_COMM_SELF, dim_ess, dim_ess, NULL, &V_im);
   MatSetUp(V_re);
@@ -46,7 +46,8 @@ Gate::Gate(std::vector<int> nlevels_, std::vector<int> nessential_){
   // VecAssemblyBegin(rotA); VecAssemblyEnd(rotA);
   // VecAssemblyBegin(rotB); VecAssemblyEnd(rotB);
 
-  /* Allocate VxV_re (FULL) = Re(\bar V \kron V), VxV_im = Im(\bar V \kron V), parallel, essential levels dimension */
+  /* Allocate vectorized Gate in full dimensions G = VxV, where V is the full-dimension gate (inserting zero rows and colums for all non-essential levels) */ 
+  // parallel matrix, essential levels dimension TODO: PREALLOCATE!
   MatCreate(PETSC_COMM_WORLD, &VxV_re);
   MatCreate(PETSC_COMM_WORLD, &VxV_im);
   MatSetSizes(VxV_re, PETSC_DECIDE, PETSC_DECIDE, dim_rho*dim_rho, dim_rho*dim_rho);
@@ -58,6 +59,7 @@ Gate::Gate(std::vector<int> nlevels_, std::vector<int> nessential_){
   MatAssemblyBegin(VxV_im, MAT_FINAL_ASSEMBLY);
   MatAssemblyEnd(VxV_im, MAT_FINAL_ASSEMBLY);
 
+  /* Allocate auxiliare vectors */
   MatCreateVecs(VxV_re, &x, NULL);
 }
 
@@ -112,24 +114,23 @@ void Gate::assembleGateRotation1x2(double T, std::vector<double>gate_rot_freq){
 
 void Gate::assembleGate(){
 
-/************************************************/
-// Compute ReG_f, ImG_f =  V\kron V. Parallel matrix 
-
-  // MatView(V_re, NULL);
-  
   int ilow, iupp;
   double val;
   MatGetOwnershipRange(VxV_re, &ilow, &iupp);
-  // iterate over local rows in VxV_re, ImGf
+
+  /* Assemble vectorized gate V\kron V from essential level gate input. */
+  /* Each element in V\kron V is a product V(r1,c1)*V(r2,c2), for rows and columns r1,r2,c1,c2. */
+  // iterate over local rows in VxV_re, VxV_im
   for (int i = ilow; i<iupp; i++) {
+    // Rows for the first and second factors
     const int r1 = (int) i / dim_rho;
     const int r2 = i % dim_rho;
     // iterate over columns in G
     for (int j=0; j<dim_rho*dim_rho; j++){
+      // Columns for the first and second factors
       const int c1 = (int) j / dim_rho;
       const int c2 = j % dim_rho;
-      // Get values Va_r1c1, Va_r2C2, Vb_r1c1, Vbr2c2
-      // first map from full to essential dimension
+      // Map rows and columns from full to essential dimension
       int r1e = mapFullToEss(r1, nlevels, nessential);
       int r2e = mapFullToEss(r2, nlevels, nessential);
       int c1e = mapFullToEss(c1, nlevels, nessential);
@@ -138,11 +139,12 @@ void Gate::assembleGate(){
       double va2=0.0;
       double vb1=0.0;
       double vb2=0.0;
-      int ierr;
-      ierr = MatGetValues(V_re, 1, &r1e, 1, &c1e, &va1); 
-      ierr = MatGetValues(V_re, 1, &r2e, 1, &c2e, &va2); 
-      ierr = MatGetValues(V_im, 1, &r1e, 1, &c1e, &vb1); 
-      ierr = MatGetValues(V_im, 1, &r2e, 1, &c2e, &vb2); 
+      // Get values V(r1,c1), V(r2,c2) from essential-level gate
+      MatGetValues(V_re, 1, &r1e, 1, &c1e, &va1); 
+      MatGetValues(V_re, 1, &r2e, 1, &c2e, &va2); 
+      MatGetValues(V_im, 1, &r1e, 1, &c1e, &vb1); 
+      MatGetValues(V_im, 1, &r2e, 1, &c2e, &vb2); 
+      // Kronecker product for real and imaginar part
       val = va1*va2 + vb1*vb2;
       if (fabs(val) > 1e-14) MatSetValue(VxV_re, i,j, val, INSERT_VALUES);
       val = va1*vb2 - vb1*va2;
@@ -154,129 +156,24 @@ void Gate::assembleGate(){
   MatAssemblyEnd(VxV_re, MAT_FINAL_ASSEMBLY);
   MatAssemblyBegin(VxV_im, MAT_FINAL_ASSEMBLY);
   MatAssemblyEnd(VxV_im, MAT_FINAL_ASSEMBLY);
-
-  // std::cout<<"VxV_re new \n";
-  // MatView(VxV_re, NULL);
-
-
-/************************************************/
-
-
-// /**************************************/
-//   /* PRoject A and B onto full levels */
-//   Mat Af, Bf;
-//   int ncols, nrowsA;
-//   const int *cols;
-//   const double *vals;
-//   MatCreate(PETSC_COMM_WORLD, &Af);
-//   MatCreate(PETSC_COMM_WORLD, &Bf);
-//   MatSetSizes(Af, PETSC_DECIDE, PETSC_DECIDE, dim_rho, dim_rho);
-//   MatSetSizes(Bf, PETSC_DECIDE, PETSC_DECIDE, dim_rho, dim_rho);
-//   MatSetUp(Af);
-//   MatSetUp(Bf);
-//   MatGetSize(A, &nrowsA, NULL);
-//   for (int i = 0; i < nrowsA; i++){
-//     MatGetRow(A, i, &ncols, &cols, &vals);
-//     for (int j=0; j<ncols; j++){
-//       int rowF = mapEssToFull(i, nlevels, nessential);
-//       int colF = mapEssToFull(j, nlevels, nessential);
-//       MatSetValue(Af, rowF, colF, vals[j], INSERT_VALUES);  // Todo: locally!
-//     }
-//     MatGetRow(B, i, &ncols, &cols, &vals);
-//     for (int j=0; j<ncols; j++){
-//       int rowF = mapEssToFull(i, nlevels, nessential);
-//       int colF = mapEssToFull(j, nlevels, nessential);
-//       MatSetValue(Bf, rowF, colF, vals[j], INSERT_VALUES);  // Todo: locally!
-//     }
-//   }
-
-//   /* Compute ReImGf = V \kron V  */
-//   AkronB(Af, Af,  1.0, &ReGf, ADD_VALUES);
-//   AkronB(Bf, Bf,  1.0, &ReGf, ADD_VALUES);
-//   AkronB(Af, Bf,  1.0, &ImGf, ADD_VALUES);
-//   AkronB(Bf, Af, -1.0, &ImGf, ADD_VALUES);
-
-//   MatAssemblyBegin(ReGf, MAT_FINAL_ASSEMBLY);
-//   MatAssemblyEnd(ReGf, MAT_FINAL_ASSEMBLY);
-//   MatAssemblyBegin(ImGf, MAT_FINAL_ASSEMBLY);
-//   MatAssemblyEnd(ImGf, MAT_FINAL_ASSEMBLY);
-
-//   MatView(VxV_re, NULL);
-//   MatView(ReGf, NULL);
-
-// /**************************************/
-
-
-  // MatDestroy(&tmp);
-  // MatDestroy(&A);
-  // MatDestroy(&B);
 }
 
 
 void Gate::compare_frobenius(const Vec finalstate, const Vec rho0, double& frob){
   frob = 0.0;
 
-
   /* Exit, if this is a dummy gate */
   if (dim_rho == 0) {
     return;
   }
 
-  /* Create vector strides for accessing real and imaginary part of co-located state */
-  int ilow, iupp;
-  VecGetOwnershipRange(finalstate, &ilow, &iupp);
-  int dimis = (iupp - ilow)/2;
-  IS isu, isv;
-  ISCreateStride(PETSC_COMM_WORLD, dimis, ilow, 2, &isu);
-  ISCreateStride(PETSC_COMM_WORLD, dimis, ilow+1, 2, &isv);
-
-//   /* Get real and imag part of final state and initial state */
-//   Vec ufinal_full, vfinal_full, u0_full, v0_full;
-//   VecGetSubVector(finalstate, isu, &ufinal_full);
-//   VecGetSubVector(finalstate, isv, &vfinal_full);
-//   VecGetSubVector(rho0, isu, &u0_full);
-//   VecGetSubVector(rho0, isv, &v0_full);
-
-//   /* Project final and initial states onto essential levels */
-//   MatMult(PxP, ufinal_full, ufinal_e);
-//   MatMult(PxP, vfinal_full, vfinal_e);
-//   MatMult(PxP, u0_full, u0_e);
-//   MatMult(PxP, v0_full, v0_e);
-
-//   /* Add real part of frobenius norm || u - VxV_re*u0 + VxV_im*v0 ||^2 */
-//   MatMult(VxV_re, u0_e, x_e);            // x = VxV_re*u0
-//   VecAYPX(x_e, -1.0, ufinal_e);       // x = ufinal - VxV_re*u0 
-//   MatMultAdd(VxV_im, v0_e, x_e, x_e);      // x = ufinal - VxV_re*u0 + VxV_im*v0
-//   double norm;
-//   VecNorm(x_e, NORM_2, &norm);
-//   frob = pow(norm,2.0);           // frob = || x ||^2
-
-//   /* Add imaginary part of frobenius norm || v - VxV_re*v0 - VxV_im*u0 ||^2 */
-//   MatMult(VxV_re, v0_e, x_e);         // x = VxV_re*v0
-//   MatMultAdd(VxV_im, u0_e, x_e, x_e);   // x = VxV_re*v0 + VxV_im*u0
-//   VecAYPX(x_e, -1.0, vfinal_e);     // x = vfinal - (VxV_re*v0 + VxV_im*u0)
-//   VecNorm(x_e, NORM_2, &norm);
-//   frob += pow(norm, 2.0);      // frob += ||x||^2
-
-//   /* obj = 1/2 * || finalstate - gate*rho(0) ||^2 */
-//   frob *= 1./2.;
-
-//   /* Restore vectors from index set */
-//   VecRestoreSubVector(finalstate, isu, &ufinal_full);
-//   VecRestoreSubVector(finalstate, isv, &vfinal_full);
-//   VecRestoreSubVector(rho0, isu, &u0_full);
-//   VecRestoreSubVector(rho0, isv, &v0_full);
-
-// /* ---------------------------------------*/
-//   printf("Frobenius previous: %1.14e\n", frob);
-//   // MatView(VxV_re, NULL);
-
-
-  /* First, project full dimension system to essential levels only: */
+  /* First, project full dimension state to essential levels only by zero'ing out rows and columns */
   /* iterate over rows of system matrix, check if it corresponds to an essential level, and if not, set this row and colum to zero */
   int reID, imID;
+  int ilow, iupp;
+  VecGetOwnershipRange(finalstate, &ilow, &iupp);
   for (int i=0; i<dim_rho; i++) {
-    if (!isEssential(i, nlevels, nessential)) { // if not essential, zero out row and colum
+    if (!isEssential(i, nlevels, nessential)) {
       for (int j=0; j<dim_rho; j++) {
         // zero out row
         reID = getIndexReal(getVecID(i,j,dim_rho));
@@ -293,6 +190,12 @@ void Gate::compare_frobenius(const Vec finalstate, const Vec rho0, double& frob)
   }
   VecAssemblyBegin(finalstate);
   VecAssemblyEnd(finalstate);
+
+  /* Create vector strides for accessing real and imaginary part of co-located state */
+  int dimis = (iupp - ilow)/2;
+  IS isu, isv;
+  ISCreateStride(PETSC_COMM_WORLD, dimis, ilow, 2, &isu);
+  ISCreateStride(PETSC_COMM_WORLD, dimis, ilow+1, 2, &isv);
 
   /* Get real and imag part of final state and initial state */
   Vec ufinal, vfinal, u0, v0;
@@ -324,8 +227,6 @@ void Gate::compare_frobenius(const Vec finalstate, const Vec rho0, double& frob)
   VecRestoreSubVector(finalstate, isv, &vfinal);
   VecRestoreSubVector(rho0, isu, &u0);
   VecRestoreSubVector(rho0, isv, &v0);
-
-/* ---------------------------------------*/
 
   /* Free index strides */
   ISDestroy(&isu);
@@ -688,32 +589,20 @@ CNOT::~CNOT(){}
 SWAP::SWAP(std::vector<int> nlevels_, std::vector<int> nessential_, double time, std::vector<double> gate_rot_freq) : Gate(nlevels_, nessential_) {
   assert(dim_ess == 4);
 
-/************************************/
   /* Fill lab-frame swap gate in essential dimension system V_re = Re(V), V_im = Im(V) = 0 */
+  MatSetValue(V_re, 0, 0, 1.0, INSERT_VALUES);
+  MatSetValue(V_re, 1, 2, 1.0, INSERT_VALUES);
+  MatSetValue(V_re, 2, 1, 1.0, INSERT_VALUES);
+  MatSetValue(V_re, 3, 3, 1.0, INSERT_VALUES);
 
-  // copy on all processors //
-
-  int row, col;
-  // if (mpirank_petsc == 0) {
-    MatSetValue(V_re, 0, 0, 1.0, INSERT_VALUES);
-    MatSetValue(V_re, 1, 2, 1.0, INSERT_VALUES);
-    MatSetValue(V_re, 2, 1, 1.0, INSERT_VALUES);
-    MatSetValue(V_re, 3, 3, 1.0, INSERT_VALUES);
-  // }
   MatAssemblyBegin(V_re, MAT_FINAL_ASSEMBLY);
   MatAssemblyBegin(V_im, MAT_FINAL_ASSEMBLY);
   MatAssemblyEnd(V_re, MAT_FINAL_ASSEMBLY);
   MatAssemblyEnd(V_im, MAT_FINAL_ASSEMBLY);
-/************************************/
 
-
-  // printf("Fuck!\n");
-  // MatView(V_re, NULL);
-  // MatView(V_im, NULL);
-  // exit(1);
-
-
-  /* Rotate... */
+  /* Set up gate rotation rotA, rotB */
+  // TODO: ROTATE!
+  // assembleGateRotation2x2(time, gate_rot_freq);
 
   /* assemble V = \bar V \kron V */
   assembleGate();
