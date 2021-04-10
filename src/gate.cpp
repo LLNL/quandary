@@ -178,29 +178,8 @@ void Gate::compare_frobenius(const Vec finalstate, const Vec rho0, double& frob)
     return;
   }
 
-  /* First, project full dimension state to essential levels only by zero'ing out rows and columns */
-  /* iterate over rows of system matrix, check if it corresponds to an essential level, and if not, set this row and colum to zero */
-  int reID, imID;
-  int ilow, iupp;
-  VecGetOwnershipRange(finalstate, &ilow, &iupp);
-  for (int i=0; i<dim_rho; i++) {
-    if (!isEssential(i, nlevels, nessential)) {
-      for (int j=0; j<dim_rho; j++) {
-        // zero out row
-        reID = getIndexReal(getVecID(i,j,dim_rho));
-        imID = getIndexImag(getVecID(i,j,dim_rho));
-        if (ilow <= reID && reID < iupp) VecSetValue(finalstate, reID, 0.0, INSERT_VALUES);
-        if (ilow <= imID && imID < iupp) VecSetValue(finalstate, imID, 0.0, INSERT_VALUES);
-        // zero out colum
-        reID = getIndexReal(getVecID(j,i,dim_rho));
-        imID = getIndexImag(getVecID(j,i,dim_rho));
-        if (ilow <= reID && reID < iupp) VecSetValue(finalstate, reID, 0.0, INSERT_VALUES);
-        if (ilow <= imID && imID < iupp) VecSetValue(finalstate, imID, 0.0, INSERT_VALUES);
-      }
-    } 
-  }
-  VecAssemblyBegin(finalstate);
-  VecAssemblyEnd(finalstate);
+  /* First, project full dimension state to essential levels by zero'ing out rows and columns */
+  projectToEss(finalstate, nlevels, nessential);
 
   /* Get real and imag part of final state and initial state */
   Vec ufinal, vfinal, u0, v0;
