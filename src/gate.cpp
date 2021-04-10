@@ -261,164 +261,131 @@ void Gate::compare_frobenius_diff(const Vec finalstate, const Vec rho0, Vec rho0
 void Gate::compare_trace(const Vec finalstate, const Vec rho0, double& obj){
   obj = 0.0;
 
-//   /* Exit, if this is a dummy gate */
-//   if (dim_rho== 0) {
-//     return;
-//   }
+  /* Exit, if this is a dummy gate */
+  if (dim_rho== 0) {
+    return;
+  }
 
-//   /* Create vector strides for accessing real and imaginary part of co-located x */
-//   int ilow, iupp;
-//   VecGetOwnershipRange(finalstate, &ilow, &iupp);
-//   int dimis = (iupp - ilow)/2;
-//   IS isu, isv;
-//   ISCreateStride(PETSC_COMM_WORLD, dimis, ilow, 2, &isu);
-//   ISCreateStride(PETSC_COMM_WORLD, dimis, ilow+1, 2, &isv);
+  /* Get real and imag part of final state and initial state */
+  Vec ufinal, vfinal, u0, v0;
+  VecGetSubVector(finalstate, isu, &ufinal);
+  VecGetSubVector(finalstate, isv, &vfinal);
+  VecGetSubVector(rho0, isu, &u0);
+  VecGetSubVector(rho0, isv, &v0);
 
-//   /* Get real and imag part of final state and initial state */
-//   Vec ufinal_full, vfinal_full, u0_full, v0_full;
-//   VecGetSubVector(finalstate, isu, &ufinal_full);
-//   VecGetSubVector(finalstate, isv, &vfinal_full);
-//   VecGetSubVector(rho0, isu, &u0_full);
-//   VecGetSubVector(rho0, isv, &v0_full);
+  /* Project final state onto essential levels (zero out rows and columns) */
+  projectToEss(finalstate, nlevels, nessential);
 
-//   /* Project final and initial states onto essential levels */
-//   MatMult(PxP, ufinal_full, ufinal_e);
-//   MatMult(PxP, vfinal_full, vfinal_e);
-//   MatMult(PxP, u0_full, u0_e);
-//   MatMult(PxP, v0_full, v0_e);
+  /* trace overlap: (VxV_re*u0 - VxV_im*v0)^T u + (VxV_re*v0 + VxV_im*u0)^Tv
+              [ + i (VxV_re*u0 - VxV_im*v0)^T v - (VxV_re*v0 + VxV_im*u0)^Tu ]   <- this should be zero!
+  */
+  double dot;
+  double trace = 0.0;
 
-
-//   /* trace overlap: (VxV_re*u0 - VxV_im*v0)^T u + (VxV_re*v0 + VxV_im*u0)^Tv
-//               [ + i (VxV_re*u0 - VxV_im*v0)^T v - (VxV_re*v0 + VxV_im*u0)^Tu ]   <- this should be zero!
-//   */
-//   double dot;
-//   double trace = 0.0;
-
-//   // first term: (VxV_re*u0 - VxV_im*v0)^T u
-//   MatMult(VxV_im, v0_e, x_e);      
-//   VecScale(x_e, -1.0);                // x = - VxV_im*v0
-//   MatMultAdd(VxV_re, u0_e, x_e, x_e);  // x = VxV_re*u0 - VxV_im*v0
-//   VecTDot(x_e, ufinal_e, &dot);       // dot = (VxV_re*u0 - VxV_im*v0)^T u    
-//   trace += dot;
+  // first term: (VxV_re*u0 - VxV_im*v0)^T u
+  MatMult(VxV_im, v0, x);      
+  VecScale(x, -1.0);                // x = - VxV_im*v0
+  MatMultAdd(VxV_re, u0, x, x);     // x = VxV_re*u0 - VxV_im*v0
+  VecTDot(x, ufinal, &dot);         // dot = (VxV_re*u0 - VxV_im*v0)^T u    
+  trace += dot;
   
-//   // second term: (VxV_re*v0 + VxV_im*u0)^Tv
-//   MatMult(VxV_im, u0_e, x_e);         // x = VxV_im*u0
-//   MatMultAdd(VxV_re, v0_e, x_e, x_e); // x = VxV_re*v0 + VxV_im*u0
-//   VecTDot(x_e, vfinal_e, &dot);      // dot = (VxV_re*v0 + VxV_im*u0)^T v    
-//   trace += dot;
+  // second term: (VxV_re*v0 + VxV_im*u0)^Tv
+  MatMult(VxV_im, u0, x);         // x = VxV_im*u0
+  MatMultAdd(VxV_re, v0, x, x); // x = VxV_re*v0 + VxV_im*u0
+  VecTDot(x, vfinal, &dot);      // dot = (VxV_re*v0 + VxV_im*u0)^T v    
+  trace += dot;
 
-//   /* Objective J = 1.0 - Trace(...) */
-//   obj = 1.0 - trace;
-//   // obj = - trace;
+  /* Objective J = 1.0 - Trace(...) */
+  obj = 1.0 - trace;
+  // obj = - trace;
  
-//   // // Test: compute purity of rho(T): 1/2*Tr(rho^2)
-//   // double purity_rhoT = 0.0;
-//   // VecNorm(ufinal, NORM_2, &dot);
-//   // purity_rhoT += dot*dot;
-//   // VecNorm(vfinal, NORM_2, &dot);
-//   // purity_rhoT += dot*dot;
-//   // // Test: compute constant term  1/2*Tr((Vrho0V^dag)^2)
-//   // double purity_VrhoV = 0.0;
-//   // MatMult(VxV_im, v0, x);      
-//   // VecScale(x, -1.0);           // x = - VxV_im*v0
-//   // MatMultAdd(VxV_re, u0, x, x);   // x = VxV_re*u0 - VxV_im*v0
-//   // VecNorm(x, NORM_2, &dot);
-//   // purity_VrhoV += dot*dot;
-//   // MatMult(VxV_im, u0, x);         // x = VxV_im*u0
-//   // MatMultAdd(VxV_re, v0, x, x);   // x = VxV_re*v0 + VxV_im*u0
-//   // VecNorm(x, NORM_2, &dot);
-//   // purity_VrhoV += dot*dot;
-//   // double J_dist = purity_rhoT/2. - trace + purity_VrhoV/2.;
-//   // printf("J_dist = 1/2 * %f - %f + 1/2 * %f = %1.14e\n", purity_rhoT, trace, purity_VrhoV, J_dist);
+  // // Test: compute purity of rho(T): 1/2*Tr(rho^2)
+  // double purity_rhoT = 0.0;
+  // VecNorm(ufinal, NORM_2, &dot);
+  // purity_rhoT += dot*dot;
+  // VecNorm(vfinal, NORM_2, &dot);
+  // purity_rhoT += dot*dot;
+  // // Test: compute constant term  1/2*Tr((Vrho0V^dag)^2)
+  // double purity_VrhoV = 0.0;
+  // MatMult(VxV_im, v0, x);      
+  // VecScale(x, -1.0);           // x = - VxV_im*v0
+  // MatMultAdd(VxV_re, u0, x, x);   // x = VxV_re*u0 - VxV_im*v0
+  // VecNorm(x, NORM_2, &dot);
+  // purity_VrhoV += dot*dot;
+  // MatMult(VxV_im, u0, x);         // x = VxV_im*u0
+  // MatMultAdd(VxV_re, v0, x, x);   // x = VxV_re*v0 + VxV_im*u0
+  // VecNorm(x, NORM_2, &dot);
+  // purity_VrhoV += dot*dot;
+  // double J_dist = purity_rhoT/2. - trace + purity_VrhoV/2.;
+  // printf("J_dist = 1/2 * %f - %f + 1/2 * %f = %1.14e\n", purity_rhoT, trace, purity_VrhoV, J_dist);
 
-//   // // obj = obj + purity_rhoT / 2. - 0.5;
+  // obj = obj + purity_rhoT / 2. - 0.5;
 
-//   /* Restore vectors from index set */
-//   VecRestoreSubVector(finalstate, isu, &ufinal_full);
-//   VecRestoreSubVector(finalstate, isv, &vfinal_full);
-//   VecRestoreSubVector(rho0, isu, &u0_full);
-//   VecRestoreSubVector(rho0, isv, &v0_full);
+  /* Restore vectors from index set */
+  VecRestoreSubVector(finalstate, isu, &ufinal);
+  VecRestoreSubVector(finalstate, isv, &vfinal);
+  VecRestoreSubVector(rho0, isu, &u0);
+  VecRestoreSubVector(rho0, isv, &v0);
 
-//   /* Free index strides */
-//   ISDestroy(&isu);
-//   ISDestroy(&isv);
+  // /* Verify trace overlap */
+  // double Jdist = 0.0;
+  // compare_frobenius(finalstate, rho0, Jdist);
+  // test = test + 1. + Jdist;
 
-//   // /* Verify trace overlap */
-//   // double Jdist = 0.0;
-//   // compare_frobenius(finalstate, rho0, Jdist);
-//   // test = test + 1. + Jdist;
-
-//   // printf("\n");
-//   // printf(" J_T:   %1.14e\n", obj);
-//   // printf(" test:  %1.14e\n", test);
-
+  // printf("\n");
+  // printf(" J_T:   %1.14e\n", obj);
+  // printf(" test:  %1.14e\n", test);
 }
 
 
 void Gate::compare_trace_diff(const Vec finalstate, const Vec rho0, Vec rho0_bar, const double obj_bar){
 
-  // /* Exit, if this is a dummy gate */
-  // if (dim_rho== 0) {
-  //   return;
-  // }
+  /* Exit, if this is a dummy gate */
+  if (dim_rho== 0) {
+    return;
+  }
 
-  // /* Create vector strides for accessing real and imaginary part of co-located x */
-  // int ilow, iupp;
-  // VecGetOwnershipRange(finalstate, &ilow, &iupp);
-  // int dimis = (iupp - ilow)/2;
-  // IS isu, isv;
-  // ISCreateStride(PETSC_COMM_WORLD, dimis, ilow, 2, &isu);
-  // ISCreateStride(PETSC_COMM_WORLD, dimis, ilow+1, 2, &isv);
+  /* Get real and imag part of final state and initial state */
+  Vec ufinal, vfinal, u0, v0;
+  VecGetSubVector(finalstate, isu, &ufinal);
+  VecGetSubVector(finalstate, isv, &vfinal);
+  VecGetSubVector(rho0, isu, &u0);
+  VecGetSubVector(rho0, isv, &v0);
 
-  // /* Get real and imag part of final state and initial state */
-  // Vec ufinal_full, vfinal_full, u0_full, v0_full;
-  // VecGetSubVector(finalstate, isu, &ufinal_full);
-  // VecGetSubVector(finalstate, isv, &vfinal_full);
-  // VecGetSubVector(rho0, isu, &u0_full);
-  // VecGetSubVector(rho0, isv, &v0_full);
+  /* First, project full dimension state to essential levels by zero'ing out rows and columns */
+  projectToEss(finalstate, nlevels, nessential);
 
-  // /* Project final and initial states onto essential levels */
-  // MatMult(PxP, ufinal_full, ufinal_e);
-  // MatMult(PxP, vfinal_full, vfinal_e);
-  // MatMult(PxP, u0_full, u0_e);
-  // MatMult(PxP, v0_full, v0_e);
+  /* Derivative of 1-trace */
+  double dfb = -1.0 * obj_bar;
 
-  // /* Derivative of 1-trace */
-  // double dfb = -1.0 * obj_bar;
+  // Derivative of first term: -(VxV_re*u0 - VxV_im*v0)*obj_bar
+  MatMult(VxV_im, v0, x);      
+  VecScale(x, -1.0);              // x = - VxV_im*v0
+  MatMultAdd(VxV_re, u0, x, x);  // x = VxV_re*u0 - VxV_im*v0
+  VecScale(x, dfb);                 // x = -(VxV_re*u0 - VxV_im*v0)*obj_bar
 
-  // // Derivative of first term: -(VxV_re*u0 - VxV_im*v0)*obj_bar
-  // MatMult(VxV_im, v0_e, x_e);      
-  // VecScale(x_e, -1.0);              // x = - VxV_im*v0
-  // MatMultAdd(VxV_re, u0_e, x_e, x_e);  // x = VxV_re*u0 - VxV_im*v0
-  // VecScale(x_e, dfb);                 // x = -(VxV_re*u0 - VxV_im*v0)*obj_bar
-
-  // /* Derivative of purity */
-  // // VecAXPY(x, obj_bar, ufinal);
-
-  // MatMultTranspose(PxP, x_e, x_full);
-  // VecISCopy(rho0_bar, isu, SCATTER_FORWARD, x_full);  // set real part in rho0bar
+  /* Derivative of purity */
+  // VecAXPY(x, obj_bar, ufinal);
   
-  // // Derivative of second term: -(VxV_re*v0 + VxV_im*u0)*obj_bar
-  // MatMult(VxV_im, u0_e, x_e);         // x = VxV_im*u0
-  // MatMultAdd(VxV_re, v0_e, x_e, x_e); // x = VxV_re*v0 + VxV_im*u0
-  // VecScale(x_e, dfb);               // x = -(VxV_re*v0 + VxV_im*u0)*obj_bar
+  /* set real part in rho0bar */
+  VecISCopy(rho0_bar, isu, SCATTER_FORWARD, x); 
+  
+  // Derivative of second term: -(VxV_re*v0 + VxV_im*u0)*obj_bar
+  MatMult(VxV_im, u0, x);         // x = VxV_im*u0
+  MatMultAdd(VxV_re, v0, x, x); // x = VxV_re*v0 + VxV_im*u0
+  VecScale(x, dfb);               // x = -(VxV_re*v0 + VxV_im*u0)*obj_bar
 
-  // /* Derivative of purity */
-  // // VecAXPY(x, obj_bar, vfinal);
+  /* Derivative of purity */
+  // VecAXPY(x, obj_bar, vfinal);
 
-  // MatMultTranspose(PxP, x_e, x_full);
-  // VecISCopy(rho0_bar, isv, SCATTER_FORWARD, x_full);  // set imaginary part in rho0bar
+  /* set imaginary part in rho0bar */
+  VecISCopy(rho0_bar, isv, SCATTER_FORWARD, x);  
 
-
-  // /* Restore final, initial and adjoint state */
-  // VecRestoreSubVector(finalstate, isu, &ufinal_full);
-  // VecRestoreSubVector(finalstate, isv, &vfinal_full);
-  // VecRestoreSubVector(rho0, isu, &u0_full);
-  // VecRestoreSubVector(rho0, isv, &v0_full);
-
-  // /* Free vindex strides */
-  // ISDestroy(&isu);
-  // ISDestroy(&isv);
+  /* Restore final, initial and adjoint state */
+  VecRestoreSubVector(finalstate, isu, &ufinal);
+  VecRestoreSubVector(finalstate, isv, &vfinal);
+  VecRestoreSubVector(rho0, isu, &u0);
+  VecRestoreSubVector(rho0, isv, &v0);
 }
 
 
