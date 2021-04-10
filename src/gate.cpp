@@ -228,6 +228,9 @@ void Gate::compare_frobenius_diff(const Vec finalstate, const Vec rho0, Vec rho0
   VecGetSubVector(rho0, isu, &u0);
   VecGetSubVector(rho0, isv, &v0);
 
+  /* Project final state onto essential levels (zero out rows and columns) */
+  projectToEss(finalstate, nlevels, nessential);
+
   /* Derivative of 1/2 * J */
   double dfb = 1./2. * frob_bar;
 
@@ -236,7 +239,6 @@ void Gate::compare_frobenius_diff(const Vec finalstate, const Vec rho0, Vec rho0
   VecAYPX(x, -1.0, ufinal);          // x = ufinal - VxV_re*u0 
   MatMultAdd(VxV_im, v0, x, x);      // x = ufinal - VxV_re*u0 + VxV_im*v0
   VecScale(x, 2*dfb);              // x = 2*(ufinal - VxV_re*u0 + VxV_im*v0)*dfb
-  // TODO: Zero out rows and columns that belong to guard levels
   // set real part in rho0bar
   VecISCopy(rho0_bar, isu, SCATTER_FORWARD, x);
 
@@ -245,7 +247,6 @@ void Gate::compare_frobenius_diff(const Vec finalstate, const Vec rho0, Vec rho0
   MatMultAdd(VxV_im, u0, x, x);   // x = VxV_re*v0 + VxV_im*u0
   VecAYPX(x, -1.0, vfinal);     // x = vfinal - (VxV_re*v0 + VxV_im*u0)
   VecScale(x, 2*dfb);          // x = 2*(vfinal - (VxV_re*v0 + VxV_im*u0)*dfb
-  // TODO: Zero out rows and columns that belong to guard levels
   // set imaginary part in rho0bar
   VecISCopy(rho0_bar, isv, SCATTER_FORWARD, x);  
 
