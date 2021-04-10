@@ -23,6 +23,7 @@ class Gate {
   private:
     Mat VxV_re, VxV_im;     /* Real and imaginary part of vectorized Gate G=\bar V \kron V */
     Vec x;                  /* auxiliary */
+    IS isu, isv;            /* Vector strides for accessing real and imaginary part of the state */
 
   public:
     Gate();
@@ -35,7 +36,7 @@ class Gate {
 
     /* Assemble VxV_re = Re(\bar V \kron V) and VxV_im = Im(\bar V \kron V) */
     void assembleGate();
-    
+
     /* compare the final state to gate-transformed initialcondition in Frobenius norm 1/2 * || q(T) - V\kronV q(0)||^2 */
     void compare_frobenius(const Vec finalstate, const Vec rho0, double& obj);
     void compare_frobenius_diff(const Vec finalstate, const Vec rho0, Vec rho0bar, const double delta_bar);

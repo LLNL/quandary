@@ -61,6 +61,15 @@ Gate::Gate(std::vector<int> nlevels_, std::vector<int> nessential_){
 
   /* Allocate auxiliare vectors */
   MatCreateVecs(VxV_re, &x, NULL);
+
+
+  /* Create vector strides for accessing real and imaginary part of co-located state */
+  int ilow, iupp;
+  MatGetOwnershipRange(VxV_re, &ilow, &iupp);
+  int dimis = iupp - ilow;
+  ISCreateStride(PETSC_COMM_WORLD, dimis, 2*ilow, 2, &isu);
+  ISCreateStride(PETSC_COMM_WORLD, dimis, 2*ilow+1, 2, &isv);
+ 
 }
 
 Gate::~Gate(){
@@ -70,6 +79,8 @@ Gate::~Gate(){
   MatDestroy(&V_re);
   MatDestroy(&V_im);
   VecDestroy(&x);
+  ISDestroy(&isu);
+  ISDestroy(&isv);
 }
 
 
@@ -191,12 +202,6 @@ void Gate::compare_frobenius(const Vec finalstate, const Vec rho0, double& frob)
   VecAssemblyBegin(finalstate);
   VecAssemblyEnd(finalstate);
 
-  /* Create vector strides for accessing real and imaginary part of co-located state */
-  int dimis = (iupp - ilow)/2;
-  IS isu, isv;
-  ISCreateStride(PETSC_COMM_WORLD, dimis, ilow, 2, &isu);
-  ISCreateStride(PETSC_COMM_WORLD, dimis, ilow+1, 2, &isv);
-
   /* Get real and imag part of final state and initial state */
   Vec ufinal, vfinal, u0, v0;
   VecGetSubVector(finalstate, isu, &ufinal);
@@ -228,9 +233,6 @@ void Gate::compare_frobenius(const Vec finalstate, const Vec rho0, double& frob)
   VecRestoreSubVector(rho0, isu, &u0);
   VecRestoreSubVector(rho0, isv, &v0);
 
-  /* Free index strides */
-  ISDestroy(&isu);
-  ISDestroy(&isv);
 }
 
 void Gate::compare_frobenius_diff(const Vec finalstate, const Vec rho0, Vec rho0_bar, const double frob_bar){
@@ -239,14 +241,6 @@ void Gate::compare_frobenius_diff(const Vec finalstate, const Vec rho0, Vec rho0
   if (dim_rho == 0) {
     return;
   }
-
-  /* Create vector strides for accessing real and imaginary part of co-located x */
-  int ilow, iupp;
-  VecGetOwnershipRange(finalstate, &ilow, &iupp);
-  int dimis = (iupp - ilow)/2;
-  IS isu, isv;
-  ISCreateStride(PETSC_COMM_WORLD, dimis, ilow, 2, &isu);
-  ISCreateStride(PETSC_COMM_WORLD, dimis, ilow+1, 2, &isv);
 
   /* Get real and imag part of final state, initial state, and adjoint */
   Vec ufinal, vfinal, u0, v0;
@@ -282,9 +276,6 @@ void Gate::compare_frobenius_diff(const Vec finalstate, const Vec rho0, Vec rho0
   VecRestoreSubVector(rho0, isu, &u0);
   VecRestoreSubVector(rho0, isv, &v0);
 
-  /* Free vindex strides */
-  ISDestroy(&isu);
-  ISDestroy(&isv);
 }
 
 void Gate::compare_trace(const Vec finalstate, const Vec rho0, double& obj){
