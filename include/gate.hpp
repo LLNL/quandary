@@ -20,6 +20,9 @@ class Gate {
     int dim_ess;   /* Dimension of target Gate matrix (non-vectorized), essential levels only */
     int dim_rho;   /* Dimension of system matrix rho (non-vectorized), all levels, N */
 
+    double final_time;  /* Final time T. Time of gate rotation. */
+    std::vector<double> gate_rot_freq; /* Frequencies of gate rotation. Often same as rotational frequencies. */
+
   private:
     Mat VxV_re, VxV_im;     /* Real and imaginary part of vectorized Gate G=\bar V \kron V */
     Vec x;                  /* auxiliary */
@@ -27,7 +30,7 @@ class Gate {
 
   public:
     Gate();
-    Gate(std::vector<int> nlevels_, std::vector<int> nessential_);
+    Gate(std::vector<int> nlevels_, std::vector<int> nessential_, double time_, std::vector<double> gate_rot_freq);
     virtual ~Gate();
 
     /* Assemble gate rotation matrices */

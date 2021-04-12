@@ -5,12 +5,14 @@ Gate::Gate(){
   dim_rho = 0;
 }
 
-Gate::Gate(std::vector<int> nlevels_, std::vector<int> nessential_){
+Gate::Gate(std::vector<int> nlevels_, std::vector<int> nessential_, double time_, std::vector<double> gate_rot_freq_){
 
   MPI_Comm_rank(PETSC_COMM_WORLD, &mpirank_petsc);
 
   nessential = nessential_;
   nlevels = nlevels_;
+  final_time = time_;
+  gate_rot_freq = gate_rot_freq_;
 
   /* Dimension of gate = \prod_j nessential_j */
   dim_ess = 1;
@@ -125,12 +127,61 @@ void Gate::assembleGateRotation1x2(double T, std::vector<double>gate_rot_freq){
 
 void Gate::assembleGate(){
 
-  int ilow, iupp;
-  double val;
-  MatGetOwnershipRange(VxV_re, &ilow, &iupp);
+  /* Rorate the gate */
+  const PetscScalar* vals_vre, *vals_vim;
+  PetscScalar *out_re, *out_im;
+  int *cols;
+  PetscMalloc1(dim_ess, &out_re); 
+  PetscMalloc1(dim_ess, &out_im); 
+  PetscMalloc1(dim_ess, &cols); 
+  // get the frequency of the diagonal scaling e^{iwt} for each row rotation matrix R=R1\otimes R2\otimes...
+  for (int row=0; row<dim_ess; row++){
+    int r = row;
+    double freq = 0.0;
+    for (int iosc=0; iosc<nlevels.size(); iosc++){
+      // compute dimension of essential levels of all following subsystems 
+      int dim_post = 1;
+      for (int josc=iosc+1; josc<nlevels.size();josc++) {
+        dim_post *= nessential[josc];
+      }
+      // compute the frequency 
+      int rk = (int) r / dim_post;
+      freq = freq + rk * gate_rot_freq[iosc]*2.*M_PI;
+      r = r % dim_post;
+    }
+    double ra = cos(freq*final_time);
+    double rb = sin(freq*final_time);
+    /* Get row in V that is to be scaled by the rotation */
+    MatGetRow(V_re, row, NULL, NULL, &vals_vre);  // V_re, V_im is stored dense , so ncols = dim_ess*dim_ess!
+    MatGetRow(V_im, row, NULL, NULL, &vals_vim);
+    // Compute the rotated real and imaginary part
+    for (int c=0; c<dim_ess; c++){        
+      out_re[c] = ra * vals_vre[c] - rb * vals_vim[c];
+      out_im[c] = ra * vals_vim[c] + rb * vals_vre[c];
+      cols[c] = c;
+    }
+    MatRestoreRow(V_re, row, NULL, NULL, &vals_vre);
+    MatRestoreRow(V_im, row, NULL, NULL, &vals_vim);
+    // Insert the new values
+    printf("Setting row %d, %f\n", row, out_re[1]);
+    MatSetValues(V_re, 1, &row, dim_ess, cols, out_re, INSERT_VALUES);
+    MatSetValues(V_im, 1, &row, dim_ess, cols, out_im, INSERT_VALUES);
+    printf("row=%d\n", row);
+    MatAssemblyBegin(V_re, MAT_FINAL_ASSEMBLY);
+    MatAssemblyBegin(V_im, MAT_FINAL_ASSEMBLY);
+    MatAssemblyEnd(V_re, MAT_FINAL_ASSEMBLY);
+    MatAssemblyEnd(V_im, MAT_FINAL_ASSEMBLY);
+  }
+  // clean up
+  PetscFree(out_re);
+  PetscFree(out_im);
+  PetscFree(cols);
 
   /* Assemble vectorized gate V\kron V from essential level gate input. */
   /* Each element in V\kron V is a product V(r1,c1)*V(r2,c2), for rows and columns r1,r2,c1,c2. */
+  int ilow, iupp;
+  double val;
+  MatGetOwnershipRange(VxV_re, &ilow, &iupp);
   // iterate over local rows in VxV_re, VxV_im
   for (int i = ilow; i<iupp; i++) {
     // Rows for the first and second factors
@@ -389,7 +440,7 @@ void Gate::compare_trace_diff(const Vec finalstate, const Vec rho0, Vec rho0_bar
 }
 
 
-  XGate::XGate(std::vector<int> nlevels, std::vector<int> nessential, double time, std::vector<double> gate_rot_freq) : Gate(nlevels, nessential) {
+  XGate::XGate(std::vector<int> nlevels, std::vector<int> nessential, double time, std::vector<double> gate_rot_freq) : Gate(nlevels, nessential, time, gate_rot_freq) {
 
   assert(dim_ess == 2);
 
@@ -405,7 +456,7 @@ void Gate::compare_trace_diff(const Vec finalstate, const Vec rho0, Vec rho0_bar
   }
 
   /* Set up gate rotation rotA, rotB */
-  assembleGateRotation1x2(time, gate_rot_freq);
+  // assembleGateRotation1x2(time, gate_rot_freq);
 
   /* Assemble vectorized target gate \bar VP \kron VP from  V = V_re + i V_im */
   assembleGate();
@@ -413,7 +464,7 @@ void Gate::compare_trace_diff(const Vec finalstate, const Vec rho0, Vec rho0_bar
 
 XGate::~XGate() {}
 
-YGate::YGate(std::vector<int> nlevels, std::vector<int> nessential, double time, std::vector<double> gate_rot_freq ) : Gate(nlevels, nessential) {
+YGate::YGate(std::vector<int> nlevels, std::vector<int> nessential, double time, std::vector<double> gate_rot_freq ) : Gate(nlevels, nessential, time, gate_rot_freq) {
 
   assert(dim_ess == 2);
   
@@ -429,14 +480,14 @@ YGate::YGate(std::vector<int> nlevels, std::vector<int> nessential, double time,
   }
 
   /* Set up gate rotation rotA, rotB */
-  assembleGateRotation1x2(time, gate_rot_freq);
+  // assembleGateRotation1x2(time, gate_rot_freq);
 
   /* Assemble vectorized target gate \bar VP \kron VP from  V = V_re + i V_im*/
   assembleGate();
 }
 YGate::~YGate() {}
 
-ZGate::ZGate(std::vector<int> nlevels, std::vector<int> nessential, double time, std::vector<double> gate_rot_freq ) : Gate(nlevels, nessential) {
+ZGate::ZGate(std::vector<int> nlevels, std::vector<int> nessential, double time, std::vector<double> gate_rot_freq ) : Gate(nlevels, nessential, time, gate_rot_freq) {
 
   assert(dim_ess == 2);
 
@@ -452,7 +503,7 @@ ZGate::ZGate(std::vector<int> nlevels, std::vector<int> nessential, double time,
   }
 
   /* Set up gate rotation rotA, rotB */
-  assembleGateRotation1x2(time, gate_rot_freq);
+  // assembleGateRotation1x2(time, gate_rot_freq);
 
   /* Assemble target gate \bar V \kron V from  V = V_re + i V_im*/
   assembleGate();
@@ -460,7 +511,7 @@ ZGate::ZGate(std::vector<int> nlevels, std::vector<int> nessential, double time,
 
 ZGate::~ZGate() {}
 
-HadamardGate::HadamardGate(std::vector<int> nlevels, std::vector<int> nessential, double time, std::vector<double> gate_rot_freq ) : Gate(nlevels, nessential) {
+HadamardGate::HadamardGate(std::vector<int> nlevels, std::vector<int> nessential, double time, std::vector<double> gate_rot_freq ) : Gate(nlevels, nessential, time, gate_rot_freq) {
 
   assert(dim_ess == 2);
 
@@ -479,7 +530,7 @@ HadamardGate::HadamardGate(std::vector<int> nlevels, std::vector<int> nessential
   }
 
   /* Set up gate rotation rotA, rotB */
-  assembleGateRotation1x2(time, gate_rot_freq);
+  // assembleGateRotation1x2(time, gate_rot_freq);
 
   /* Assemble target gate \bar V \kron V from  V = V_re + i V_im*/
   assembleGate();
@@ -488,7 +539,7 @@ HadamardGate::~HadamardGate() {}
 
 
 
-CNOT::CNOT(std::vector<int> nlevels, std::vector<int> nessential, double time, std::vector<double> gate_rot_freq) : Gate(nlevels, nessential) {
+CNOT::CNOT(std::vector<int> nlevels, std::vector<int> nessential, double time, std::vector<double> gate_rot_freq) : Gate(nlevels, nessential,time, gate_rot_freq) {
 
   assert(dim_ess == 4);
 
@@ -507,7 +558,7 @@ CNOT::CNOT(std::vector<int> nlevels, std::vector<int> nessential, double time, s
   }
 
   /* Set up gate rotation rotA, rotB */
-  assembleGateRotation2x2(time, gate_rot_freq);
+  // assembleGateRotation2x2(time, gate_rot_freq_);
 
   /* assemble V = \bar V \kron V */
   assembleGate();
@@ -516,7 +567,7 @@ CNOT::CNOT(std::vector<int> nlevels, std::vector<int> nessential, double time, s
 CNOT::~CNOT(){}
 
 
-SWAP::SWAP(std::vector<int> nlevels_, std::vector<int> nessential_, double time, std::vector<double> gate_rot_freq) : Gate(nlevels_, nessential_) {
+SWAP::SWAP(std::vector<int> nlevels_, std::vector<int> nessential_, double time_, std::vector<double> gate_rot_freq_) : Gate(nlevels_, nessential_, time_, gate_rot_freq_) {
   assert(dim_ess == 4);
 
   /* Fill lab-frame swap gate in essential dimension system V_re = Re(V), V_im = Im(V) = 0 */
