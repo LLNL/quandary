@@ -187,8 +187,6 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
     int dim_ess = timestepper->mastereq->getDimEss();
     int dim_rho = timestepper->mastereq->getDimRho();
     double * vec = new double[2*dim_ess*dim_ess];
-    std::vector<std::string> initcondstr;
-    config.GetVecStrParam("initialcondition", initcondstr);
     if (mpirank_world == 0) {
       assert (initcondstr.size()==2);
       std::string filename = initcondstr[1];
