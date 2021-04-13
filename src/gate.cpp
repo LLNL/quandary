@@ -36,20 +36,8 @@ Gate::Gate(std::vector<int> nlevels_, std::vector<int> nessential_, double time_
   MatAssemblyEnd(V_re, MAT_FINAL_ASSEMBLY);
   MatAssemblyEnd(V_im, MAT_FINAL_ASSEMBLY);
 
-  // /* TODO: Test rotation! Allocate real and imaginary rotation */
-  // MatCreateVecs(V_re, &rotA, NULL);
-  // MatCreateVecs(V_im, &rotB, NULL);
-  // // default: rotA = I, rotB = 0
-  // int nrot;
-  // VecGetSize(rotA, &nrot);
-  // for (int irow =0; irow<nrot; irow++){
-  //   VecSetValue(rotA, irow, 1.0, INSERT_VALUES);
-  // }
-  // VecAssemblyBegin(rotA); VecAssemblyEnd(rotA);
-  // VecAssemblyBegin(rotB); VecAssemblyEnd(rotB);
-
   /* Allocate vectorized Gate in full dimensions G = VxV, where V is the full-dimension gate (inserting zero rows and colums for all non-essential levels) */ 
-  // parallel matrix, essential levels dimension TODO: PREALLOCATE!
+  // parallel matrix, essential levels dimension TODO: Preallocate!
   MatCreate(PETSC_COMM_WORLD, &VxV_re);
   MatCreate(PETSC_COMM_WORLD, &VxV_im);
   MatSetSizes(VxV_re, PETSC_DECIDE, PETSC_DECIDE, dim_rho*dim_rho, dim_rho*dim_rho);
@@ -85,49 +73,9 @@ Gate::~Gate(){
   ISDestroy(&isv);
 }
 
-
-void Gate::assembleGateRotation2x2(double T, std::vector<double>gate_rot_freq){
-
-  /* Get frequencies */
-  double f0 = 0.0;
-  double f1 = 0.0;
-  if (gate_rot_freq.size() >= 2) {
-    f0 = gate_rot_freq[0];
-    f1 = gate_rot_freq[1];
-  }
-
-  /* Assemble diagonal rotation matrices, stored as vectors */
-  // RotA = Real(R^1\otimes R^2),  RotB = Imag(R^1\otimes R^2)
-  VecSetValue(rotA, 0, 1.0, INSERT_VALUES);
-  VecSetValue(rotB, 0, 0.0, INSERT_VALUES);
-  VecSetValue(rotA, 1, cos(2.*M_PI*f1*T), INSERT_VALUES);
-  VecSetValue(rotB, 1, sin(2.*M_PI*f1*T), INSERT_VALUES);
-  VecSetValue(rotA, 2, cos(2.*M_PI*f0*T), INSERT_VALUES);
-  VecSetValue(rotB, 2, sin(2.*M_PI*f0*T), INSERT_VALUES);
-  VecSetValue(rotA, 3, cos(2.*M_PI*(f0+f1)*T), INSERT_VALUES);
-  VecSetValue(rotB, 3, sin(2.*M_PI*(f0+f1)*T), INSERT_VALUES);
-  VecAssemblyBegin(rotA); VecAssemblyEnd(rotA);
-  VecAssemblyBegin(rotB); VecAssemblyEnd(rotB);
-}
-
-
-void Gate::assembleGateRotation1x2(double T, std::vector<double>gate_rot_freq){
-  // RotA = Real(R^1)
-  // RotB = Imag(R^1)
-  // diagonal matrix, stored as vectors
-  assert(gate_rot_freq.size() >= 1);
-  VecSetValue(rotA, 0, 1.0, INSERT_VALUES);
-  VecSetValue(rotB, 0, 0.0, INSERT_VALUES);
-  VecSetValue(rotA, 1, cos(2.*M_PI*gate_rot_freq[0]*T), INSERT_VALUES);
-  VecSetValue(rotB, 1, sin(2.*M_PI*gate_rot_freq[0]*T), INSERT_VALUES);
-  VecAssemblyBegin(rotA); VecAssemblyEnd(rotA);
-  VecAssemblyBegin(rotB); VecAssemblyEnd(rotB);
-
-}
-
 void Gate::assembleGate(){
 
-  /* Rorate the gate */
+  /* Rorate the gate to rotational frame. */
   const PetscScalar* vals_vre, *vals_vim;
   PetscScalar *out_re, *out_im;
   int *cols;
@@ -152,7 +100,7 @@ void Gate::assembleGate(){
     double ra = cos(freq*final_time);
     double rb = sin(freq*final_time);
     /* Get row in V that is to be scaled by the rotation */
-    MatGetRow(V_re, row, NULL, NULL, &vals_vre);  // V_re, V_im is stored dense , so ncols = dim_ess*dim_ess!
+    MatGetRow(V_re, row, NULL, NULL, &vals_vre);  // V_re, V_im is stored dense , so ncols = dim_ess!
     MatGetRow(V_im, row, NULL, NULL, &vals_vim);
     // Compute the rotated real and imaginary part
     for (int c=0; c<dim_ess; c++){        
@@ -163,10 +111,8 @@ void Gate::assembleGate(){
     MatRestoreRow(V_re, row, NULL, NULL, &vals_vre);
     MatRestoreRow(V_im, row, NULL, NULL, &vals_vim);
     // Insert the new values
-    printf("Setting row %d, %f\n", row, out_re[1]);
     MatSetValues(V_re, 1, &row, dim_ess, cols, out_re, INSERT_VALUES);
     MatSetValues(V_im, 1, &row, dim_ess, cols, out_im, INSERT_VALUES);
-    printf("row=%d\n", row);
     MatAssemblyBegin(V_re, MAT_FINAL_ASSEMBLY);
     MatAssemblyBegin(V_im, MAT_FINAL_ASSEMBLY);
     MatAssemblyEnd(V_re, MAT_FINAL_ASSEMBLY);
@@ -455,10 +401,7 @@ void Gate::compare_trace_diff(const Vec finalstate, const Vec rho0, Vec rho0_bar
     MatAssemblyEnd(V_re, MAT_FINAL_ASSEMBLY);
   }
 
-  /* Set up gate rotation rotA, rotB */
-  // assembleGateRotation1x2(time, gate_rot_freq);
-
-  /* Assemble vectorized target gate \bar VP \kron VP from  V = V_re + i V_im */
+  /* Assemble vectorized rotated target gate \bar VP \kron VP from  V = V_re + i V_im */
   assembleGate();
 }
 
@@ -479,10 +422,7 @@ YGate::YGate(std::vector<int> nlevels, std::vector<int> nessential, double time,
     MatAssemblyEnd(V_im, MAT_FINAL_ASSEMBLY);
   }
 
-  /* Set up gate rotation rotA, rotB */
-  // assembleGateRotation1x2(time, gate_rot_freq);
-
-  /* Assemble vectorized target gate \bar VP \kron VP from  V = V_re + i V_im*/
+  /* Assemble vectorized rotated arget gate \bar VP \kron VP from  V = V_re + i V_im*/
   assembleGate();
 }
 YGate::~YGate() {}
@@ -502,10 +442,7 @@ ZGate::ZGate(std::vector<int> nlevels, std::vector<int> nessential, double time,
     MatAssemblyEnd(V_im, MAT_FINAL_ASSEMBLY);
   }
 
-  /* Set up gate rotation rotA, rotB */
-  // assembleGateRotation1x2(time, gate_rot_freq);
-
-  /* Assemble target gate \bar V \kron V from  V = V_re + i V_im*/
+  /* Assemble vectorized rotated target gate \bar VP \kron VP from  V = V_re + i V_im*/
   assembleGate();
 }
 
@@ -529,10 +466,7 @@ HadamardGate::HadamardGate(std::vector<int> nlevels, std::vector<int> nessential
     MatAssemblyEnd(V_re, MAT_FINAL_ASSEMBLY);
   }
 
-  /* Set up gate rotation rotA, rotB */
-  // assembleGateRotation1x2(time, gate_rot_freq);
-
-  /* Assemble target gate \bar V \kron V from  V = V_re + i V_im*/
+  /* Assemble vectorized rotated target gate \bar VP \kron VP from  V = V_re + i V_im*/
   assembleGate();
 }
 HadamardGate::~HadamardGate() {}
@@ -557,10 +491,7 @@ CNOT::CNOT(std::vector<int> nlevels, std::vector<int> nessential, double time, s
     MatAssemblyEnd(V_re, MAT_FINAL_ASSEMBLY);
   }
 
-  /* Set up gate rotation rotA, rotB */
-  // assembleGateRotation2x2(time, gate_rot_freq_);
-
-  /* assemble V = \bar V \kron V */
+  /* assemble vectorized rotated target gate \bar VP \kron VP from V=V_re + i V_im */
   assembleGate();
 }
 
@@ -581,16 +512,10 @@ SWAP::SWAP(std::vector<int> nlevels_, std::vector<int> nessential_, double time_
   MatAssemblyEnd(V_re, MAT_FINAL_ASSEMBLY);
   MatAssemblyEnd(V_im, MAT_FINAL_ASSEMBLY);
 
-  /* Set up gate rotation rotA, rotB */
-  // TODO: ROTATE!
-  // assembleGateRotation2x2(time, gate_rot_freq);
-
-  /* assemble V = \bar V \kron V */
+  /* assemble vectorized rotated target gate \bar VP \kron VP from V=V_re + i V_im */
   assembleGate();
 
 }
 
 SWAP::~SWAP(){}
-
-
 

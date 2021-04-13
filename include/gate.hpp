@@ -33,10 +33,6 @@ class Gate {
     Gate(std::vector<int> nlevels_, std::vector<int> nessential_, double time_, std::vector<double> gate_rot_freq);
     virtual ~Gate();
 
-    /* Assemble gate rotation matrices */
-    void assembleGateRotation1x2(double time, std::vector<double> gate_rot_freq);
-    void assembleGateRotation2x2(double time, std::vector<double> gate_rot_freq);
-
     /* Assemble VxV_re = Re(\bar V \kron V) and VxV_im = Im(\bar V \kron V) */
     void assembleGate();
 
