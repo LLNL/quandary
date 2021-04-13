@@ -74,7 +74,7 @@ Vec TimeStepper::getState(int tindex){
 Vec TimeStepper::solveODE(int initid, Vec rho_t0){
 
   /* Open output files */
-  output->openDataFiles("rho", initid, 0);
+  output->openDataFiles("rho", initid);
 
   /* Set initial condition  */
   VecCopy(rho_t0, x);

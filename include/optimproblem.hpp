@@ -32,10 +32,9 @@ class OptimProblem {
   TimeStepper* timestepper;
 
   /* MPI stuff */
-  MPI_Comm comm_hiop, comm_init;
+  MPI_Comm comm_init;
   int mpirank_braid, mpisize_braid;
   int mpirank_space, mpisize_space;
-  int mpirank_optim, mpisize_optim;
   int mpirank_world, mpisize_world;
   int mpirank_init, mpisize_init;
 
@@ -66,9 +65,9 @@ class OptimProblem {
   Output* output;
 
   /* Constructor */
-  OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm comm_hiop_, MPI_Comm comm_init_, int ninit_, Output* output_);
+  OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm comm_init_, int ninit_, Output* output_);
 #ifdef WITH_BRAID
-  OptimProblem(MapParam config, TimeStepper* timestepper_, myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, MPI_Comm comm_hiop_, MPI_Comm comm_init_, int ninit_, Output* output_);
+  OptimProblem(MapParam config, TimeStepper* timestepper_, myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, MPI_Comm comm_init_, int ninit_, Output* output_);
 #endif
   ~OptimProblem();
 

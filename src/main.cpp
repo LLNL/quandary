@@ -88,14 +88,11 @@ int main(int argc,char **argv)
     exit(1);
   }
 
-  /* --- Split communicators for distributed initial conditions, distributed linear algebra, time-parallel braid (and parallel optimizer, if HiOp) --- */
+  /* --- Split communicators for distributed initial conditions, distributed linear algebra, time-parallel braid --- */
   int mpirank_init, mpisize_init;
   int mpirank_braid, mpisize_braid;
   int mpirank_petsc, mpisize_petsc;
-  MPI_Comm comm_braid, comm_init, comm_petsc, comm_hiop;
-
-  /* Split aside communicator for hiop. Size 1 for now */  
-  MPI_Comm_split(MPI_COMM_WORLD, mpirank_world, mpirank_world, &comm_hiop);
+  MPI_Comm comm_braid, comm_init, comm_petsc;
 
   /* Get the size of communicators  */
 #ifdef WITH_BRAID
@@ -248,7 +245,11 @@ int main(int argc,char **argv)
 
 
   /* Output */
-  Output* output = new Output(config, mpirank_petsc, mpirank_init, mpirank_braid);
+#ifdef WITH_BRAID
+  Output* output = new Output(config, comm_petsc, comm_init, comm_braid);
+#else 
+  Output* output = new Output(config, comm_petsc, comm_init);
+#endif
 
   // Some screen output 
   if (mpirank_world == 0) {
@@ -313,9 +314,9 @@ int main(int argc,char **argv)
 
   /* --- Initialize optimization --- */
 #ifdef WITH_BRAID
-  OptimProblem* optimctx = new OptimProblem(config, mytimestepper, primalbraidapp, adjointbraidapp, comm_hiop, comm_init, ninit, output);
+  OptimProblem* optimctx = new OptimProblem(config, mytimestepper, primalbraidapp, adjointbraidapp, comm_init, ninit, output);
 #else 
-  OptimProblem* optimctx = new OptimProblem(config, mytimestepper, comm_hiop, comm_init, ninit, output);
+  OptimProblem* optimctx = new OptimProblem(config, mytimestepper, comm_init, ninit, output);
 #endif
 
   /* Set upt solution and gradient vector */
@@ -382,10 +383,12 @@ int main(int argc,char **argv)
 
   /* Average fidelity */
   double F_avg = 1. - optimctx->obj_cost;
-  printf("F_avg = %f \n", F_avg);
-  if (optimctx->initcond_type != BASIS ||
-      optimctx->objective_type != GATE_TRACE) {
-    printf("Warning: Average gate fidelity only defined for gates using trace distance, and using a basis of initial conditions.\n Recomupte the average fidelity if needed, using all basis elements as initial conditions, and setting GATE_TRACE as objective function.\n");
+  if (mpirank_world == 0){
+    printf("F_avg = %f \n", F_avg);
+    if (optimctx->initcond_type != BASIS ||
+        optimctx->objective_type != GATE_TRACE) {
+      printf("Warning: Average gate fidelity only defined for gates using trace distance, and using a basis of initial conditions.\n Recomupte the average fidelity if needed, using all basis elements as initial conditions, and setting GATE_TRACE as objective function.\n");
+    }
   }
 
   /* --- Finalize --- */
