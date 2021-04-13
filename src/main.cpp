@@ -399,6 +399,7 @@ int main(int argc,char **argv)
   double StartTime = MPI_Wtime();
 
   double objective;
+  double gnorm = 0.0;
   /* --- Solve primal --- */
   if (runtype == primal) {
     optimctx->getStartingPoint(xinit);
@@ -406,12 +407,10 @@ int main(int argc,char **argv)
     objective = optimctx->evalF(xinit);
     if (mpirank_world == 0) printf("\nTotal objective = %1.14e, \n", objective);
     optimctx->getSolution(&opt);
-    optimctx->output->writeOptimFile(optimctx->objective, 0.0, 0.0, optimctx->obj_cost, optimctx->obj_regul, optimctx->obj_penal);
   } 
   
   /* --- Solve adjoint --- */
   if (runtype == adjoint) {
-    double gnorm = 0.0;
     optimctx->getStartingPoint(xinit);
     if (mpirank_world == 0) printf("\nStarting adjoint solver...\n");
     optimctx->evalGradF(xinit, grad);
@@ -420,7 +419,6 @@ int main(int argc,char **argv)
     if (mpirank_world == 0) {
       printf("\nGradient norm: %1.14e\n", gnorm);
     }
-    optimctx->output->writeOptimFile(optimctx->objective, optimctx->gnorm, 0.0, optimctx->obj_cost, optimctx->obj_regul, optimctx->obj_penal);
     optimctx->output->writeGradient(grad);
   }
 
@@ -433,15 +431,28 @@ int main(int argc,char **argv)
     optimctx->getSolution(&opt);
   }
 
-  /* Average fidelity */
-  double F_avg = 1. - optimctx->obj_cost;
-  if (mpirank_world == 0){
-    printf("F_avg = %f \n", F_avg);
-    if (optimctx->initcond_type != BASIS ||
-        optimctx->objective_type != GATE_TRACE) {
-      printf("Warning: Average gate fidelity only defined for gates using trace distance, and using a basis of initial conditions.\n Recomupte the average fidelity if needed, using all basis elements as initial conditions, and setting GATE_TRACE as objective function.\n");
+  /* Report average fidelity */
+  double F_avg = -1.0;
+  if (optimctx->initcond_type == BASIS && optimctx->objective_type == GATE_TRACE) {
+    F_avg = 1. - optimctx->obj_cost;
+    if (mpirank_world == 0) printf("F_avg = %f \n", F_avg);
+  } else if (optimctx->objective_type == EXPECTEDENERGY ||
+             optimctx->objective_type == EXPECTEDENERGYa ||
+             optimctx->objective_type == EXPECTEDENERGYb ||
+             optimctx->objective_type == EXPECTEDENERGYc ) {
+    F_avg = optimctx->obj_cost;
+    if (mpirank_world == 0) printf("F_avg = %f \n", F_avg);
+  } else {
+    if (mpirank_world == 0) {
+      printf("Warning: Average not reported.\n");
+      printf(" For gates: Recomupte the average fidelity if needed by setting GATE_TRACE as objective function and BASIS as initial conditions.\n");
+      printf(" For groundstate optimization, recompute average fidelity if needed by setting EXPECTEDENERGY as objective function.\n");
     }
   }
+
+  /* Output */
+  if (runtype != optimization) optimctx->output->writeOptimFile(optimctx->objective, gnorm, 0.0, F_avg, optimctx->obj_cost, optimctx->obj_regul, optimctx->obj_penal);
+
 
   /* --- Finalize --- */
 

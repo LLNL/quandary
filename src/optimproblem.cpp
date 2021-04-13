@@ -569,13 +569,23 @@ PetscErrorCode TaoMonitor(Tao tao,void*ptr){
   /* Pass current iteration number to output manager */
   ctx->output->optim_iter = iter;
 
+  /* Average fidelity. */
+  /* For gates, this is 1.-\sum_ij Tr(V \rho_ij(0) V^\dagger \rho_ij(T)) */
+  /* For groundstate optimization, this is the objective function value */
+  double F_avg = -1.0;
+  if (ctx->initcond_type == BASIS && ctx->objective_type == GATE_TRACE) F_avg = 1. - ctx->obj_cost;
+  if (ctx->objective_type == EXPECTEDENERGY ||
+      ctx->objective_type == EXPECTEDENERGYa ||
+      ctx->objective_type == EXPECTEDENERGYb ||
+      ctx->objective_type == EXPECTEDENERGYc ) F_avg = ctx->obj_cost;
+
   /* If average fidelity is not the objective function, it can be computed at each optimization iteration here. 
    * However, this involves the entire basis be propagated forward. We omit it here to save compute time during optimization. 
    * Average fidelity can be computed AFTER optimization has finished by propagating the the basis and evaluating the Gate_trace.
    */
-  if (ctx->objective_type == GATE_FROBENIUS ||
-      (ctx->objective_type == GATE_TRACE && ctx->initcond_type != BASIS) ){
-       ctx->obj_cost = -1.0;  // -1 is used to indicate that average fidelity is not computed
+  // if (ctx->initcond_type != BASIS)  ctx->obj_cost = -1.0;  // -1 is used to indicate that average fidelity has not been computed
+  // if (ctx->objective_type == GATE_FROBENIUS ||
+      // (ctx->objective_type == GATE_TRACE && ctx->initcond_type != BASIS) ){
   //   InitialConditionType inittype_org = ctx->initcond_type; 
   //   ObjectiveType objtype_org = ctx->objective_type; 
   //   int ninit_local_org = ctx->ninit_local;
@@ -590,10 +600,10 @@ PetscErrorCode TaoMonitor(Tao tao,void*ptr){
   //   ctx->objective_type = objtype_org;
   //   ctx->ninit_local = ninit_local_org;
   //   ctx->ninit = ninit_org;
-  }
+  // }
 
   /* Print to optimization file */
-  ctx->output->writeOptimFile(f, gnorm, deltax, ctx->obj_cost, ctx->obj_regul, ctx->obj_penal);
+  ctx->output->writeOptimFile(f, gnorm, deltax, F_avg, ctx->obj_cost, ctx->obj_regul, ctx->obj_penal);
 
   /* Print parameters and controls to file */
   ctx->output->writeControls(params, ctx->timestepper->mastereq, ctx->timestepper->ntime, ctx->timestepper->dt);

@@ -20,9 +20,9 @@ set xlabel "iteration"
 p \
     datafile u 2 axis x1y1 w l t 'J', \
     datafile u 3 axis x1y1  w l t '||Pr(gradient)||', \
-    datafile u 5 axis x1y1  w l t '1-Favg', \
-#    datafile u 6 axis x1y1  w l t 'tikhonov', \
-#    datafile u 7 axis x1y1  w l t 'penalty', \
+    datafile u 5 axis x1y1  w l t 'Favg', \
+#    datafile u 7 axis x1y1  w l t 'tikhonov', \
+#    datafile u 8 axis x1y1  w l t 'penalty', \
 
 pause -1 "Plot 'out.png' written. Hit any key to continue"
 
