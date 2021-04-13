@@ -1,7 +1,7 @@
 #include "optimproblem.hpp"
 
 #ifdef WITH_BRAID
-OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, MPI_Comm comm_init_, int ninit_, Output* output_) : OptimProblem(config, timestepper_, comm_init_, ninit_, output_) {
+OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, MPI_Comm comm_init_, int ninit_, std::vector<double> gate_rot_freq, Output* output_) : OptimProblem(config, timestepper_, comm_init_, ninit_, gate_rot_freq, output_) {
   primalbraidapp  = primalbraidapp_;
   adjointbraidapp = adjointbraidapp_;
   MPI_Comm_rank(primalbraidapp->comm_braid, &mpirank_braid);
@@ -9,12 +9,14 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, myBraidAp
 }
 #endif
 
-OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm comm_init_, int ninit_, Output* output_){
+OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm comm_init_, int ninit_, std::vector<double> gate_rot_freq, Output* output_){
 
   timestepper = timestepper_;
   ninit = ninit_;
   comm_init = comm_init_;
   output = output_;
+  /* Reset */
+  objective = 0.0;
 
   /* Store ranks and sizes of communicators */
   MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
@@ -44,18 +46,21 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   maxiter = config.GetIntParam("optim_maxiter", 200);
   initguess_type = config.GetStrParam("optim_init", "zero");
   config.GetVecDoubleParam("optim_init_ampl", initguess_amplitudes, 0.0);
-
-  /* Reset */
-  objective = 0.0;
+  // sanity check
+  if (initguess_type.compare("constant") == 0 || 
+      initguess_type.compare("random")    == 0 ||
+      initguess_type.compare("random_seed") == 0)  {
+      if (initguess_amplitudes.size() < timestepper->mastereq->getNOscillators()) {
+         printf("ERROR reading config file: List of initial optimization parameter amplitudes must equal the number of oscillators!\n");
+         exit(1);
+      }
+  }
 
   /* Store objective function type */
   std::vector<std::string> objective_str;
   config.GetVecStrParam("optim_objective", objective_str);
   targetgate = NULL;
   if ( objective_str[0].compare("gate") ==0 ) {
-    /* Get frequencies for gate rotation */
-    std::vector<double> gate_rot_freq;
-    config.GetVecDoubleParam("gate_rot_freq", gate_rot_freq, 0.0); 
     /* Read and initialize the targetgate */
     assert ( objective_str.size() >=2 );
     if      (objective_str[1].compare("none") == 0)  targetgate = new Gate(); // dummy gate. do nothing
@@ -64,7 +69,6 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
     else if (objective_str[1].compare("zgate") == 0) targetgate = new ZGate(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, timestepper->total_time, gate_rot_freq);
     else if (objective_str[1].compare("hadamard") == 0) targetgate = new HadamardGate(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, timestepper->total_time, gate_rot_freq);
     else if (objective_str[1].compare("cnot") == 0) targetgate = new CNOT(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, timestepper->total_time, gate_rot_freq); 
-    // else if (objective_str[1].compare("swap") == 0) targetgate = new SWAP(timestepper->mastereq->nlevels, timestepper->mastereq->nessential); 
     else if (objective_str[1].compare("swap") == 0) {
       targetgate = new SWAP(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, timestepper->total_time, gate_rot_freq); 
     }
@@ -479,11 +483,6 @@ void OptimProblem::getStartingPoint(Vec xinit){
   MasterEq* mastereq = timestepper->mastereq;
 
   if (initguess_type.compare("constant") == 0 ){ // set constant initial design
-    // sanity check
-    if (initguess_amplitudes.size() < timestepper->mastereq->getNOscillators()) {
-      printf("ERROR reading config file: List of initial optimization parameter amplitudes is too short!\n");
-      exit(1);
-    }
     // set values
     int j = 0;
     for (int ioscil = 0; ioscil < mastereq->getNOscillators(); ioscil++) {
@@ -495,11 +494,6 @@ void OptimProblem::getStartingPoint(Vec xinit){
     }
   } else if ( initguess_type.compare("random")      == 0 ||       // init random, fixed seed
               initguess_type.compare("random_seed") == 0)  { // init random with new seed
-    // sanity check
-    if (initguess_amplitudes.size() < timestepper->mastereq->getNOscillators()) {
-      printf("ERROR reading config file: List of initial optimization parameter amplitudes is too short!\n");
-      exit(1);
-    }
     /* Create vector with random elements between [-1:1] */
     if ( initguess_type.compare("random") == 0) srand(1);  // fixed seed
     else srand(time(0)); // random seed

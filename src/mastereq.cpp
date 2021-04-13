@@ -29,9 +29,6 @@ MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Osci
   eta = eta_;
   detuning_freq = detuning_freq_;
   collapse_time = collapse_time_;
-  assert(xi.size() >= (noscillators+1) * noscillators / 2);
-  assert(Jkl.size() >= (noscillators-1) * noscillators / 2);
-  if (lindbladtype != NONE) assert(collapse_time.size() >= 2*noscillators);
   usematfree = usematfree_;
 
   int mpisize_petsc;

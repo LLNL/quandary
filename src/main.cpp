@@ -176,10 +176,7 @@ int main(int argc,char **argv)
     printf("Error: Number of given rotation frequencies (%lu) is smaller than the the number of oscillators (%lu)\n", rot_freq.size(), nlevels.size());
     exit(1);
   } 
-  std::vector<double> detuning_freq(rot_freq.size());
-  for(int i=0; i<rot_freq.size(); i++) {
-    detuning_freq[i] = fundamental_freq[i] - rot_freq[i];
-  }
+
   // Create the oscillators 
   for (int i = 0; i < nlevels.size(); i++){
     std::vector<double> carrier_freq;
@@ -220,17 +217,13 @@ int main(int argc,char **argv)
 
   /* --- Initialize the Master Equation  --- */
   std::vector<double> xi, t_collapse, Jkl;
-  config.GetVecDoubleParam("xi", xi, 2.0);   // self and cross ker
-  config.GetVecDoubleParam("Jkl", Jkl, 2.0); // dipole-dipole coupling
-  // Compute coupling rotation frequencies eta_ij = w^r_i - w^r_j
-  std::vector<double> eta(nlevels.size()*(nlevels.size()-1)/2.);
-  int idx = 0;
-  for (int iosc=0; iosc<nlevels.size(); iosc++){
-    for (int josc=iosc+1; josc<nlevels.size(); josc++){
-      eta[idx] = rot_freq[iosc] - rot_freq[josc];
-      idx++;
-    }
-  }
+  // Get self and cross kers and coupling terms 
+  config.GetVecDoubleParam("xi", xi, 0.0);   // self and cross ker
+  config.GetVecDoubleParam("Jkl", Jkl, 0.0); // dipole-dipole coupling
+  // TODO: Fill up with zeros. For now, just check if enough elements are given
+  int noscillators = nlevels.size();
+  assert(xi.size() >= (noscillators+1) * noscillators / 2);
+  assert(Jkl.size() >= (noscillators-1) * noscillators / 2);
   // Get lindblad type
   config.GetVecDoubleParam("lindblad_collapsetime", t_collapse, 0.0);
   std::string lindblad = config.GetStrParam("lindblad_type", "none");
@@ -244,9 +237,9 @@ int main(int argc,char **argv)
     printf(" Choose either 'none', 'decay', 'dephase', or 'both'\n");
     exit(1);
   }
-  bool usematfree;
-  usematfree = config.GetBoolParam("usematfree", false);
-  // Sanity check
+  if (lindbladtype != NONE) assert(t_collapse.size() >= 2*noscillators);
+  // Sanity check for matrix free solver
+  bool usematfree = config.GetBoolParam("usematfree", false);
   if (usematfree && nlevels.size() != 2 ){
     printf("ERROR: Matrix free solver is only implemented for systems with TWO oscillators!\n");
     exit(1);
@@ -254,6 +247,20 @@ int main(int argc,char **argv)
   if (usematfree && mpisize_petsc > 1) {
     printf("ERROR: No Petsc-parallel version for the matrix free solver available!");
     exit(1);
+  }
+  // Compute coupling rotation frequencies eta_ij = w^r_i - w^r_j
+  std::vector<double> eta(nlevels.size()*(nlevels.size()-1)/2.);
+  int idx = 0;
+  for (int iosc=0; iosc<nlevels.size(); iosc++){
+    for (int josc=iosc+1; josc<nlevels.size(); josc++){
+      eta[idx] = rot_freq[iosc] - rot_freq[josc];
+      idx++;
+    }
+  }
+  // Compute detuning frequency w_k - w_k^rot
+  std::vector<double> detuning_freq(rot_freq.size());
+  for(int i=0; i<rot_freq.size(); i++) {
+    detuning_freq[i] = fundamental_freq[i] - rot_freq[i];
   }
   MasterEq* mastereq = new MasterEq(nlevels, nessential, oscil_vec, xi, Jkl, eta, detuning_freq, lindbladtype, t_collapse, usematfree);
 
@@ -332,10 +339,24 @@ int main(int argc,char **argv)
 #endif
 
   /* --- Initialize optimization --- */
+  /* Get gate rotation frequencies. Default: use rotational frequencies for the gate. */
+  std::vector<double> gate_rot_freq(noscillators); 
+  for (int iosc=0; iosc<noscillators; iosc++) gate_rot_freq[iosc] = rot_freq[iosc];
+  /* If gat_rot_freq option is given in config file, overwrite them with input */
+  std::vector<double> read_gate_rot;
+  config.GetVecDoubleParam("gate_rot_freq", read_gate_rot, 1e20); 
+  if (read_gate_rot[0] < 1e20) { // the config option exists
+    for (int iosc=0; iosc<noscillators; iosc++) {
+      if (iosc < read_gate_rot.size() ) 
+            gate_rot_freq[iosc] = read_gate_rot[iosc];
+      else  gate_rot_freq[iosc] = read_gate_rot[read_gate_rot.size()-1]; // if not enough elements are given, copy the last one
+    }
+  }
+
 #ifdef WITH_BRAID
-  OptimProblem* optimctx = new OptimProblem(config, mytimestepper, primalbraidapp, adjointbraidapp, comm_init, ninit, output);
+  OptimProblem* optimctx = new OptimProblem(config, mytimestepper, primalbraidapp, adjointbraidapp, comm_init, ninit, gate_rot_freq, output);
 #else 
-  OptimProblem* optimctx = new OptimProblem(config, mytimestepper, comm_init, ninit, output);
+  OptimProblem* optimctx = new OptimProblem(config, mytimestepper, comm_init, ninit, gate_rot_freq, output);
 #endif
 
   /* Set upt solution and gradient vector */
