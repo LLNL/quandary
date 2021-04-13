@@ -46,10 +46,7 @@ int main(int argc,char **argv)
 
   /* --- Get some options from the config file --- */
   std::vector<int> nlevels;
-  std::vector<int> nessential;
   config.GetVecIntParam("nlevels", nlevels, 0);
-  config.GetVecIntParam("nessential", nessential, 0);
-  assert(nlevels.size() <= nessential.size());
   int ntime = config.GetIntParam("ntime", 1000);
   double dt    = config.GetDoubleParam("dt", 0.01);
   int nspline = config.GetIntParam("nspline", 10);
@@ -63,6 +60,21 @@ int main(int argc,char **argv)
     printf("\n\n WARNING: Unknown runtype: %s.\n\n", runtypestr.c_str());
     runtype = none;
   }
+
+  /* Get the number of essential levels per oscillator. 
+   * Default: same as number of levels */  
+  std::vector<int> nessential(nlevels.size());
+  for (int iosc = 0; iosc<nlevels.size(); iosc++) nessential[iosc] = nlevels[iosc];
+  /* Overwrite if config option is given */
+  std::vector<int> read_nessential;
+  config.GetVecIntParam("nessential", read_nessential, -1);
+  if (read_nessential[0] > -1) {
+    for (int iosc = 0; iosc<nlevels.size(); iosc++){
+      if (iosc < read_nessential.size()) nessential[iosc] = read_nessential[iosc];
+      else                               nessential[iosc] = read_nessential[read_nessential.size()-1];
+    }
+  }
+
 
   /* Get type and the total number of initial conditions */
   int ninit = 1;
@@ -342,7 +354,7 @@ int main(int argc,char **argv)
   /* Get gate rotation frequencies. Default: use rotational frequencies for the gate. */
   std::vector<double> gate_rot_freq(noscillators); 
   for (int iosc=0; iosc<noscillators; iosc++) gate_rot_freq[iosc] = rot_freq[iosc];
-  /* If gat_rot_freq option is given in config file, overwrite them with input */
+  /* If gate_rot_freq option is given in config file, overwrite them with input */
   std::vector<double> read_gate_rot;
   config.GetVecDoubleParam("gate_rot_freq", read_gate_rot, 1e20); 
   if (read_gate_rot[0] < 1e20) { // the config option exists
