@@ -1057,8 +1057,6 @@ int MasterEq::getRhoT0(const int iinit, const int ninit, const InitialConditionT
       /* Set initial conditon ID */
       initID = iinit * ninit + iinit;
 
-      printf("Initial condition %d:\n", initID);
-
       break;
 
     case BASIS:
@@ -1102,10 +1100,10 @@ int MasterEq::getRhoT0(const int iinit, const int ninit, const InitialConditionT
         double* vals = new double[4];
 
         /* Get storage index of Re(x) */
-        rows[0] = getIndexReal(getVecID(k * dim_post, k * dim_post, dim_rho)); // (k,k)
-        rows[1] = getIndexReal(getVecID(j * dim_post, j * dim_post, dim_rho)); // (j,j)
-        rows[2] = getIndexReal(getVecID(k * dim_post, j * dim_post, dim_rho)); // (k,j)
-        rows[3] = getIndexReal(getVecID(j * dim_post, k * dim_post, dim_rho)); // (j,k)
+        rows[0] = getIndexReal(getVecID(k, k, dim_rho)); // (k,k)
+        rows[1] = getIndexReal(getVecID(j, j, dim_rho)); // (j,j)
+        rows[2] = getIndexReal(getVecID(k, j, dim_rho)); // (k,j)
+        rows[3] = getIndexReal(getVecID(j, k, dim_rho)); // (j,k)
 
         if (k < j) { // B_{kj} = 1/2(E_kk + E_jj) + 1/2(E_kj + E_jk)
           vals[0] = 0.5;
