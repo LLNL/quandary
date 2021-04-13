@@ -25,6 +25,8 @@
 \newcommand{\Ell}{\mathcal{L}}
 \newcommand{\R}{\mathds{R}}
 \newcommand{\C}{\mathds{C}}
+\newcommand{\bfa}{\boldsymbol{\alpha}}
+
 
 \newcommand\blfootnote[1]{%
   \begingroup
@@ -37,7 +39,7 @@
 \author{Stefanie G{\"u}nther\thanks{Center for Applied Scientific Computing, Lawrence Livermore
     National Laboratory, Livermore, CA, USA.} \and N. Anders Petersson$^*$} 
 % \date{April 7, 2021}
-\date{last updated \today}
+\date{last updated April 12, 2021}
 
 \begin{document}
 \maketitle
@@ -180,9 +182,14 @@ Those relate to the Lab-frame control $f^k(\vec{\alpha}^k,t)$ through
 \section{Optimization problem}
 In the most general form, Quandary can solve the following optimization problem
 \begin{align}
-  \min_{\boldsymbol{\alpha}} \frac{1}{n_{init}} \sum_{i=1}^{n_{init}} \beta_i J(\rho_i(T))  + R(\boldsymbol{\alpha})
+  \min_{\boldsymbol{\alpha}} \frac{1}{n_{init}} \sum_{i=1}^{n_{init}} \beta_i J(\rho_i(T))  + \gamma_1 \| \bfa \|^2_2 + \gamma_2 \int_0^T P\left(\rho_i(t)\right) \, \mathrm{d} t
 \end{align}
-where $\rho_i(T)$ solves Lindblad's master equation \eqref{mastereq} in the rotating frame subject to the initial condition $\rho_i(0)$, as explained below, and $\boldsymbol{\alpha} = \left(\vec{\alpha}^0, \dots, \vec{\alpha}^{Q-1}\right)$ denotes the control parameters. Specific choices of $J$ and initial conditions $\rho_i(0)$ are given below, as well as regularization and penalty terms denoted by $R$ above. 
+where $\rho_i(T)$ solves Lindblad's master equation \eqref{mastereq} in the rotating frame subject to the initial condition $\rho_i(0)$, as explained below, and $\boldsymbol{\alpha} = \left(\vec{\alpha}^0, \dots, \vec{\alpha}^{Q-1}\right)$ denotes the control parameters. Specific choices of $J$ and initial conditions $\rho_i(0)$ are given below. 
+
+The second term in the objective is a Tikhonov regularization term that can be added with parameter $\gamma_1\geq 0$ in order to regularize the optimizatin problem (stabilize optimization convergence) by favoring solutions with small norm. 
+
+The third term in the objective function serves as a penalty term that can be added with $\gamma_2 \geq 0$ in oder to achieve a desired behavior of the quantum system over the entire time-domain $0\leq t\leq T$, see below. 
+
 
 \subsection{Ground-state optimization aka optimal
 reset}\label{sec:groundstate-obj}
@@ -237,6 +244,16 @@ norm, or minimizes a weighted average of the expected energy level over each sub
     where the Frobenius norm is defined as $\|A\|^2_F = \Tr(A^{\dagger}A)$.
 \end{enumerate}
 
+\subsubsection{Penalty term for ground-state optimization}
+The penalty term for ground-state optimization can be added with parameter $\gamma_2 \geq 0$ in order to discourages non-zero energy states over time:
+\begin{align}
+  % \int_0^T w(t) J(\rho(t)) \, \mathrm{d}t, \quad \text{where} \quad w(t) =
+  % \left(\frac{t}{T}\right)^p, p \geq 1
+  \gamma_2 \int_0^T P(\rho(t)) \mathrm{d}t = \gamma_2 \int_0^T w(t) J\left(\rho(t)\right) \, \mathrm{d}t, \quad \text{where} \quad w(t) =
+  \frac{1}{a} e^{ -\left(\frac{t-T}{a} \right)^2},
+\end{align}
+for a parameter $0 < a \leq 1$. Note, that as $a\to 0$, the weight $w(t)$ converges to the Dirac delta distribution with peak at final time $T$, hence reducing $a$ leads to more emphasis on the final time $T$ while larger $a$ penalize non-zero energy states at earlier times $t\leq T$. 
+
 \subsection{Target gate optimization}
 
 Here, the goal is to find control pulses that realize a certain logical gate
@@ -276,24 +293,20 @@ As a measure of optimization success, Quandary reports on the average gate fidel
 \end{align}
 where $\rho_i(0) = B^{k(i), j(i)}$ are the initial basis matrices as defined in \eqref{eq:basismats} and $\rho_i(T)$ their corresponding propagated final time states.
 
-\subsection{Penalty and regularization term}
-In order to stabilize the optimization problem, a Tikhonov regularization term can be added to the objective function:
-\begin{align}
- \frac{\gamma_1}{2} \| \boldsymbol{\alpha} \|^2_2
-\end{align}
-with Tikhonov parameter $\gamma_1 > 0$.
 
-In addition, when considering ground-state optimization in
-Section~\ref{sec:groundstate-obj}, an integral penalty term can be added to the objective function that discourages non-zero energy states over time:
+\subsubsection{Essential and guard levels for gate optimization}
+It is often useful, to model the quantum system with more energy levels than the number of levels that the target gate is defined on. For example when optimizing for a swap gate transformation with $V_{SWAP}\in\C^{2\times 2}$, one might want to model the quantum system state for each qubit with more than two energy levels in order to (a) model the (infinite dimensional) system with more accuracy by including more levels and (b) allow the system to transition through higher energy levels in order to achieve the target at final time $T$. 
+To this end, Quandary provides the option to specify the number of \textit{essential} energy levels $n_k^e \, \forall k=0,\dots,Q-1$, in addition to the number of energy levels $n_k$ as above, with $n_k^e \leq n_k$. In that case, the gate dimensions will operate on the essential level dimensions only $N^e = \prod_{k=0}^{Q-1}$ with $V_{gate} \in \C^{N^e \times N^e}$, while the quantum dynamics are modelled with (more) energy levels with $N=\prod_k n_k$ and $\rho(t)\in \C^{N\times N}$. 
+To compute the objective function at final time T, the full density matrix is projected onto the essential levels first, before the respective gate measure is applied in the essential level dimensions $N^e \times N^e$. 
+This projection is implemented by zero'ing out those rows and columns of the full-dimension density matrix that correspond to non-essential levels for each subsystem. 
+Similarly, the initial conditions considered during the optimization $\rho_i(0)\in\C^{N^e \times N^e}$ are spanned and defined in the essential level system dimensions only, and get projected upwards onto the full dimension system $\rho(t)\in \C^{N \times N}$ by inserting (zero) rows and columns for all non-essential levels at time $t=0$, before the full-dimension density matrix is evolved in time. 
+
+Non-essential are often considered to be so-called \textit{guard levels}. Typically, the occupation of those higher energy levels (all levels $m$ with $n_k^e < m \leq n_k$), and in particular the highest energy level that is modelled ($m=n_k$ for each $k$), should be avoided to prevent leakage into higher levels that are not modelled by the finite-dimensional approximation to the infinite dimensional Hamiltonian. During gate optimization, one can add an integral penalty term to the objective function that penalizes occupation of the last energy level per oscillator:
 \begin{align}
-  % \int_0^T w(t) J(\rho(t)) \, \mathrm{d}t, \quad \text{where} \quad w(t) =
-  % \left(\frac{t}{T}\right)^p, p \geq 1
-  \gamma_2 \int_0^T w(t) J\left(\rho(t)\right) \, \mathrm{d}t, \quad \text{where} \quad w(t) =
-  \frac{1}{a} e^{ -\left(\frac{t-T}{a} \right)^2},
+  \gamma_2 \int_0^T P(\rho(t)) \mathrm{d}t = \gamma_2 \int_0^T \sum_{r} a\| \rho(t)_{rr} \|^2_2 \, \mathrm{d}t
 \end{align}
-for a penalty parameter $\gamma_2 > 0$, and parameter $0 < a \leq 1$. 
-Note, that as $a\to 0$, the weight $w(t)$ converges to the Dirac delta
-distribution with peak at final time $T$. 
+for a (currently fixed) parameter $a>0$. Here $\rho(t)_{rr}$ denotes the diagonal element at $(r,r)$ inside $\rho(t)\in \C^{N\times N}$ and $r$ iterates over all indices of $\rho$ that correspond to a guard level (last energy level) of at least one of the subsystems. Future implementations will include not only the last but all guard levels in the penalty term, weighted with different paramters $a_{m}$ for each guard level. 
+
 
 
 
@@ -413,6 +426,8 @@ According to Koch et al. it is sufficient to utilize only three initial conditio
 
 \subsection{Reading an initial condition from file}
 A specific initial condition can be read from file ($\Rightarrow n_{init}=1$ with unique identifier $-1$). Format: one column being the vectorized density matrix, first all real parts, then all imaginary parts. 
+
+
 
 \section{Implementation}
 
