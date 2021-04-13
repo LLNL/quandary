@@ -978,12 +978,6 @@ int MasterEq::getRhoT0(const int iinit, const int ninit, const InitialConditionT
 
     case THREESTATES:
 
-      /* TODO Generalize for guard levels! */
-      if (dim_ess < dim_rho) {
-        printf("ERROR: three-states initialization using guard levels not implemented yet.\n");
-        exit(1);
-      }
-
       /* Reset the initial conditions */
       VecZeroEntries(rho0);
 
@@ -995,20 +989,23 @@ int MasterEq::getRhoT0(const int iinit, const int ninit, const InitialConditionT
         // 1st initial state: rho(0)_IJ = 2(N-i+1)/(N(N+1)) Delta_IJ
         initID = 1;
 
-        /* Iterate over diagonal elements */
-        for (int i = 0; i<dim_rho; i++) {
-          int diagID = getIndexReal(getVecID(i,i,dim_rho));
-          double val = 2.*(dim_rho - i) / (dim_rho * (dim_rho + 1));
+        /* Iterate over diagonal elements of essential-level system */
+        for (int i = 0; i<dim_ess; i++) {
+          int i_full = mapEssToFull(i, nlevels, nessential);
+          int diagID = getIndexReal(getVecID(i_full,i_full,dim_rho));
+          double val = 2.*(dim_ess - i) / (dim_ess * (dim_ess + 1));
           if (ilow <= diagID && diagID < iupp) VecSetValue(rho0, diagID, val, INSERT_VALUES);
         }
 
       } else if (iinit == 1) {
         // 2nd initial state: rho(0)_IJ = 1/d
         initID = 2;
-        for (int i = 0; i<dim_rho; i++) {
-          for (int j = 0; j<dim_rho; j++) {
-            double val = 1./dim_rho;
-            int index = getIndexReal(getVecID(i,j,dim_rho));   // Re(rho_ij)
+        for (int i = 0; i<dim_ess; i++) {
+          int i_full = mapEssToFull(i,nlevels, nessential);
+          for (int j = 0; j<dim_ess; j++) {
+            double val = 1./dim_ess;
+            int j_full = mapEssToFull(j,nlevels, nessential);
+            int index = getIndexReal(getVecID(i_full,j_full,dim_rho));   // Re(rho_ij)
             VecSetValue(rho0, index, val, INSERT_VALUES); 
           }
         }
@@ -1018,9 +1015,10 @@ int MasterEq::getRhoT0(const int iinit, const int ninit, const InitialConditionT
         initID = 3;
 
         /* Iterate over diagonal elements */
-        for (int i = 0; i<dim_rho; i++) {
-          int diagID = getIndexReal(getVecID(i,i,dim_rho));
-          double val = 1./ dim_rho;
+        for (int i = 0; i<dim_ess; i++) {
+          int i_full = mapEssToFull(i,nlevels, nessential);
+          int diagID = getIndexReal(getVecID(i_full,i_full,dim_rho));
+          double val = 1./ dim_ess;
           if (ilow <= diagID && diagID < iupp) VecSetValue(rho0, diagID, val, INSERT_VALUES);
         }
 
