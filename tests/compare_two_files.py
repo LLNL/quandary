@@ -1,6 +1,7 @@
 import sys
+import numpy as np
 
-def compare_two_files(basefile, currentfile):
+def compare_two_files(basefile, currentfile, tolerance):
 
     def extract_data(filename):                                                        
         infile = open(filename, 'r')                                                   
@@ -24,17 +25,49 @@ def compare_two_files(basefile, currentfile):
     nrow, ncol, base_values = extract_data(basefile)                                    
     nrow2, ncol2, current_values = extract_data(currentfile)                             
 
-    #compute relative difference for the first column
-    for j in range(ncol):
-        for i in range(nrow):
-            if abs(base_values[i][j]) > 10e-15:
-                error = abs(base_values[i][j] - current_values[i][j])/abs(base_values[i][j])
+    isPointWise = False
+
+    if isPointWise:
+        #compute relative difference pointwise 
+        for j in range(ncol):
+            for i in range(nrow):
+                if abs(base_values[i][j]) > 1e-15:
+                    error = abs(base_values[i][j] - current_values[i][j])/abs(base_values[i][j])
+                else:
+                    error = abs(base_values[i][j] - current_values[i][j])
+           
+                if error > 1.0e-3:
+                    return sys.exit(1)
+        return sys.exit(0)
+    else:
+        #compute relative difference as whole 
+        difference = 0.0
+        base = 0.0
+        overall_error = 0.0
+        for j in range(ncol):
+            for i in range(nrow):
+                base = base + base_values[i][j]*base_values[i][j]
+                diff_comp = base_values[i][j] - current_values[i][j]
+                difference = difference + diff_comp*diff_comp
+            sqrt_base = np.sqrt(base)
+            sqrt_difference = np.sqrt(difference)
+            error = 0.0
+            if abs(sqrt_base) > 1e-15:
+                error = sqrt_difference/sqrt_base #relative error
             else:
-                error = abs(base_values[i][j] - current_values[i][j])
-       
-            if error > 1.0e-3:
+                error = sqrt_difference
+
+            difference = 0.0
+            base = 0.0
+
+            if error > float(tolerance):
+                print("-- Error is too big ", error)
                 return sys.exit(1)
-    return sys.exit(0)
+            else:
+                overall_error = np.maximum(overall_error, error)
+        print("-- Test passed! error is ", overall_error)
+        return sys.exit(0)
+
 
 if __name__ == '__main__':
     # Map command line arguments to function arguments.

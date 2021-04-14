@@ -32,7 +32,11 @@ The script will perform regression test
 
 ./runRegressionTests.sh -d -> Run all tests, but do not do comparisons. Failures only occur if the simulations do not run successfully.
 
+./runRegressionTests.sh -t 1.0e-17 -> Run all tests, using the user defined tolerance, i.e., 1.0e-17
+
 ./runRegressionTests.sh -i  "AxC qubit" -> Run AxC and qubit.
+
+./runRegressionTests.sh -i  "AxC qubit" -t 1.0e-5 -> Run AxC and qubit, using the user defined tolerance, i.e., 1.0e-5
 
 ./runRegressionTests.sh -i "qubit" -r -> Run qubit and rebase the reference solution of qubit.
 
