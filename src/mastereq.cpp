@@ -17,14 +17,15 @@ MasterEq::MasterEq(){
 }
 
 
-MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Oscillator** oscil_vec_, const std::vector<double> xi_, const std::vector<double> Jkl_, const std::vector<double> eta_, const std::vector<double> detuning_freq_, LindbladType lindbladtype, const std::vector<double> collapse_time_, bool usematfree_) {
+MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Oscillator** oscil_vec_, const std::vector<double> selfker_, const std::vector<double> crossker_, const std::vector<double> Jkl_, const std::vector<double> eta_, const std::vector<double> detuning_freq_, LindbladType lindbladtype, const std::vector<double> collapse_time_, bool usematfree_) {
   int ierr;
 
   nlevels = nlevels_;
   nessential = nessential_;
   noscillators = nlevels.size();
   oscil_vec = oscil_vec_;
-  xi = xi_;
+  selfker = selfker_;
+  crossker = crossker_;
   Jkl = Jkl_;
   eta = eta_;
   detuning_freq = detuning_freq_;
@@ -106,7 +107,8 @@ MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Osci
   /* Allocate MatShell context for applying RHS */
   RHSctx.isu = &isu;
   RHSctx.isv = &isv;
-  RHSctx.xi = xi;
+  RHSctx.selfker = selfker;
+  RHSctx.crossker = crossker;
   RHSctx.Jkl = Jkl;
   RHSctx.eta = eta;
   RHSctx.detuning_freq = detuning_freq;
@@ -382,15 +384,13 @@ void MasterEq::initSparseMatSolver(){
   MatSetUp(Bd);
   MatSetFromOptions(Bd);
   MatGetOwnershipRange(Bd, &ilow, &iupp);
-  int xi_id = 0;
-  int Jkl_id = 0;
+  int coupling_id = 0;
   for (int iosc = 0; iosc < noscillators; iosc++) {
 
     int nk     = oscil_vec[iosc]->nlevels;
     int nprek  = oscil_vec[iosc]->dim_preOsc;
     int npostk = oscil_vec[iosc]->dim_postOsc;
-    double xik = xi[xi_id] * 2. * M_PI;
-    xi_id++;
+    double xik = selfker[iosc] * 2. * M_PI;
     double detunek = detuning_freq[iosc] * 2. * M_PI;
 
     /* Diagonal: detuning and anharmonicity  */
@@ -412,12 +412,12 @@ void MasterEq::initSparseMatSolver(){
       if (fabs(val)>1e-14) MatSetValue(Bd, row, row, val, ADD_VALUES);
     }
 
-    /* zz-coupling term  -xi * 2 * PI * (N_i*N_j) for j > i */
+    /* zz-coupling term  -xi_ij * 2 * PI * (N_i*N_j) for j > i */
     for (int josc = iosc+1; josc < noscillators; josc++) {
       int nj     = oscil_vec[josc]->nlevels;
       int npostj = oscil_vec[josc]->dim_postOsc;
-      double xikj = xi[xi_id] * 2. * M_PI;
-      xi_id++;
+      double xikj = crossker[coupling_id] * 2. * M_PI;
+      coupling_id++;
         
       for (int row = ilow; row<iupp; row++){
         r1 = row % dimmat;
@@ -1336,9 +1336,9 @@ int myMatMult_matfree(Mat RHS, Vec x, Vec y){
 
 
   /* Evaluate coefficients */
-  double xi0  = shellctx->xi[0];
-  double xi01 = shellctx->xi[1];  // zz-coupling
-  double xi1  = shellctx->xi[2];   
+  double xi0  = shellctx->selfker[0];
+  double xi1  = shellctx->selfker[1];   
+  double xi01 = shellctx->crossker[0];  // zz-coupling
   double J01  = shellctx->Jkl[0]*2.*M_PI;  // dipole-dipole coupling
   double eta01 = shellctx->eta[0];
   double detuning_freq0 = shellctx->detuning_freq[0];
@@ -1569,9 +1569,9 @@ int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
   VecGetArray(y, &yptr);
 
   /* Evaluate coefficients */
-  double xi0  = shellctx->xi[0];
-  double xi01 = shellctx->xi[1];  // zz-coupling 
-  double xi1  = shellctx->xi[2];
+  double xi0  = shellctx->selfker[0];
+  double xi1  = shellctx->selfker[1];
+  double xi01 = shellctx->crossker[0];  // zz-coupling 
   double J01 = shellctx->Jkl[0]*2.*M_PI;   // dipole-dipole coupling
   double eta01 = shellctx->eta[0];
   double detuning_freq0 = shellctx->detuning_freq[0];

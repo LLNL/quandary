@@ -228,13 +228,15 @@ int main(int argc,char **argv)
   }
 
   /* --- Initialize the Master Equation  --- */
-  std::vector<double> xi, t_collapse, Jkl;
+  std::vector<double> selfker, crossker, t_collapse, Jkl;
   // Get self and cross kers and coupling terms 
-  config.GetVecDoubleParam("xi", xi, 0.0);   // self and cross ker
+  config.GetVecDoubleParam("selfker", selfker, 0.0);   // self ker \xi_k 
+  config.GetVecDoubleParam("crossker", crossker, 0.0);   // cross ker \xi_{kl}, zz-coupling
   config.GetVecDoubleParam("Jkl", Jkl, 0.0); // dipole-dipole coupling
   // TODO: Fill up with zeros. For now, just check if enough elements are given
   int noscillators = nlevels.size();
-  assert(xi.size() >= (noscillators+1) * noscillators / 2);
+  assert(selfker.size() >= noscillators);
+  assert(crossker.size() >= (noscillators-1) * noscillators / 2);
   assert(Jkl.size() >= (noscillators-1) * noscillators / 2);
   // Get lindblad type
   config.GetVecDoubleParam("lindblad_collapsetime", t_collapse, 0.0);
@@ -274,7 +276,7 @@ int main(int argc,char **argv)
   for(int i=0; i<rot_freq.size(); i++) {
     detuning_freq[i] = fundamental_freq[i] - rot_freq[i];
   }
-  MasterEq* mastereq = new MasterEq(nlevels, nessential, oscil_vec, xi, Jkl, eta, detuning_freq, lindbladtype, t_collapse, usematfree);
+  MasterEq* mastereq = new MasterEq(nlevels, nessential, oscil_vec, selfker, crossker, Jkl, eta, detuning_freq, lindbladtype, t_collapse, usematfree);
 
 
   /* Output */
