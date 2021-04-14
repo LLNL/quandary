@@ -34,6 +34,8 @@ The script will perform regression test
 
 ./runRegressionTests.sh -t 1.0e-17 -> Run all tests, using the user defined tolerance, i.e., 1.0e-17
 
+./runRegressionTests.sh -p -> Run all tests, using the pointwise comparison
+
 ./runRegressionTests.sh -i  "AxC qubit" -> Run AxC and qubit.
 
 ./runRegressionTests.sh -i  "AxC qubit" -t 1.0e-5 -> Run AxC and qubit, using the user defined tolerance, i.e., 1.0e-5
