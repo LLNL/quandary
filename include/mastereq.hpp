@@ -14,8 +14,8 @@ typedef struct {
   std::vector<int> nlevels;
   IS *isu, *isv;
   Oscillator*** oscil_vec;
-  std::vector<double> selfker;
-  std::vector<double> crossker;
+  std::vector<double> selfkerr;
+  std::vector<double> crosskerr;
   std::vector<double> Jkl;
   std::vector<double> eta;
   std::vector<double> detuning_freq;
@@ -58,13 +58,13 @@ class MasterEq{
     Mat* Ac_vec;  // Vector of constant mats for time-varying control term (real)
     Mat* Bc_vec;  // Vector of constant mats for time-varying control term (imag)
     Mat  Ad, Bd;  // Real and imaginary part of constant system matrix
-    Mat* Ad_vec;  // Vector of constant mats for dipole-dipole coupling term in drift Hamiltonian (real)
-    Mat* Bd_vec;  // Vector of constant mats for dipole-dipole coupling term in drift Hamiltonian (imag)
+    Mat* Ad_vec;  // Vector of constant mats for Jaynes-Cummings coupling term in drift Hamiltonian (real)
+    Mat* Bd_vec;  // Vector of constant mats for Jaynes-Cummings coupling term in drift Hamiltonian (imag)
 
-    std::vector<double> selfker;        // Self-ker coefficients $\xi_k$ in drift Hamiltonian. Multiplies ak^d ak^d ak ak
-    std::vector<double> crossker;       // Cross ker coefficients $\xi_{kl} in drift Hamiltonian. Multiplies zz-coupling ak^d ak al^d al
-    std::vector<double> Jkl;            // Coefficients for dipole-dipole coupling terms in drift Hamiltonian. Multiplies ak^d al + ak al^d
-    std::vector<double> eta;            // Delta in rotational frame frequencies. Used for dipole-dipole coupling terms in rotating frame
+    std::vector<double> selfkerr;        // Self-kerr coefficients $\xi_k$ in drift Hamiltonian. Multiplies ak^d ak^d ak ak
+    std::vector<double> crosskerr;       // Cross ker coefficients $\xi_{kl} in drift Hamiltonian. Multiplies zz-coupling ak^d ak al^d al
+    std::vector<double> Jkl;            // Coefficients for Jaynes-Cummings coupling terms in drift Hamiltonian. Multiplies ak^d al + ak al^d
+    std::vector<double> eta;            // Delta in rotational frame frequencies. Used for Jaynes-Cummings coupling terms in rotating frame
     std::vector<double> detuning_freq;  // Detuning frequencies of drift Hamiltonian. Multiplies ak^d ak in rotating frame
     std::vector<double> collapse_time;  // Time-constants for decay and dephase operators
     bool addT1, addT2;                  // flags for including Lindblad collapse operators T1-decay and/or T2-dephasing
@@ -88,7 +88,7 @@ class MasterEq{
 
   public:
     MasterEq();
-    MasterEq(std::vector<int> nlevels, std::vector<int> nessential, Oscillator** oscil_vec_, const std::vector<double> selfker_, const std::vector<double> crossker_, const std::vector<double> Jkl_, const std::vector<double> eta_, std::vector<double> detuning_freq_, LindbladType lindbladtype_, const std::vector<double> collapse_time_, bool usematfree_);
+    MasterEq(std::vector<int> nlevels, std::vector<int> nessential, Oscillator** oscil_vec_, const std::vector<double> selfkerr_, const std::vector<double> crosskerr_, const std::vector<double> Jkl_, const std::vector<double> eta_, std::vector<double> detuning_freq_, LindbladType lindbladtype_, const std::vector<double> collapse_time_, bool usematfree_);
     ~MasterEq();
 
     /* initialize matrices needed for applying sparse-mat solver */

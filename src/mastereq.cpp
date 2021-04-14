@@ -17,15 +17,15 @@ MasterEq::MasterEq(){
 }
 
 
-MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Oscillator** oscil_vec_, const std::vector<double> selfker_, const std::vector<double> crossker_, const std::vector<double> Jkl_, const std::vector<double> eta_, const std::vector<double> detuning_freq_, LindbladType lindbladtype, const std::vector<double> collapse_time_, bool usematfree_) {
+MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Oscillator** oscil_vec_, const std::vector<double> selfkerr_, const std::vector<double> crosskerr_, const std::vector<double> Jkl_, const std::vector<double> eta_, const std::vector<double> detuning_freq_, LindbladType lindbladtype, const std::vector<double> collapse_time_, bool usematfree_) {
   int ierr;
 
   nlevels = nlevels_;
   nessential = nessential_;
   noscillators = nlevels.size();
   oscil_vec = oscil_vec_;
-  selfker = selfker_;
-  crossker = crossker_;
+  selfkerr = selfkerr_;
+  crosskerr = crosskerr_;
   Jkl = Jkl_;
   eta = eta_;
   detuning_freq = detuning_freq_;
@@ -107,8 +107,8 @@ MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Osci
   /* Allocate MatShell context for applying RHS */
   RHSctx.isu = &isu;
   RHSctx.isv = &isv;
-  RHSctx.selfker = selfker;
-  RHSctx.crossker = crossker;
+  RHSctx.selfkerr = selfkerr;
+  RHSctx.crosskerr = crosskerr;
   RHSctx.Jkl = Jkl;
   RHSctx.eta = eta;
   RHSctx.detuning_freq = detuning_freq;
@@ -301,7 +301,7 @@ void MasterEq::initSparseMatSolver(){
     MatAssemblyEnd(Bc_vec[iosc], MAT_FINAL_ASSEMBLY);
 
 
-    /* Compute dipole-dipole coupling building blocks */
+    /* Compute Jaynes-Cummings coupling building blocks */
     /* Ad_kl(t) =  I_N \kron (ak^Tal − akal^T) − (al^Tak − alak^T) \kron IN */
     /* Bd_kl(t) = -I_N \kron (ak^Tal + akal^T) + (al^Tak + alak_T) \kron IN */
     for (int josc=iosc+1; josc<noscillators; josc++){
@@ -390,7 +390,7 @@ void MasterEq::initSparseMatSolver(){
     int nk     = oscil_vec[iosc]->nlevels;
     int nprek  = oscil_vec[iosc]->dim_preOsc;
     int npostk = oscil_vec[iosc]->dim_postOsc;
-    double xik = selfker[iosc] * 2. * M_PI;
+    double xik = selfkerr[iosc] * 2. * M_PI;
     double detunek = detuning_freq[iosc] * 2. * M_PI;
 
     /* Diagonal: detuning and anharmonicity  */
@@ -416,7 +416,7 @@ void MasterEq::initSparseMatSolver(){
     for (int josc = iosc+1; josc < noscillators; josc++) {
       int nj     = oscil_vec[josc]->nlevels;
       int npostj = oscil_vec[josc]->dim_postOsc;
-      double xikj = crossker[coupling_id] * 2. * M_PI;
+      double xikj = crosskerr[coupling_id] * 2. * M_PI;
       coupling_id++;
         
       for (int row = ilow; row<iupp; row++){
@@ -1178,7 +1178,7 @@ int myMatMult_sparsemat(Mat RHS, Vec x, Vec y){
   MatMultAdd(*shellctx->Bd, u, vout, vout);
 
 
-  /* Control terms and dipole-dipole coupling terms */
+  /* Control terms and Jaynes-Cummings coupling terms */
   int id_kl = 0; // index for accessing Ad_kl inside Ad_vec
   for (int iosc = 0; iosc < shellctx->nlevels.size(); iosc++) {
 
@@ -1336,10 +1336,10 @@ int myMatMult_matfree(Mat RHS, Vec x, Vec y){
 
 
   /* Evaluate coefficients */
-  double xi0  = shellctx->selfker[0];
-  double xi1  = shellctx->selfker[1];   
-  double xi01 = shellctx->crossker[0];  // zz-coupling
-  double J01  = shellctx->Jkl[0]*2.*M_PI;  // dipole-dipole coupling
+  double xi0  = shellctx->selfkerr[0];
+  double xi1  = shellctx->selfkerr[1];   
+  double xi01 = shellctx->crosskerr[0];  // zz-coupling
+  double J01  = shellctx->Jkl[0]*2.*M_PI;  // Jaynes-Cummings coupling
   double eta01 = shellctx->eta[0];
   double detuning_freq0 = shellctx->detuning_freq[0];
   double detuning_freq1 = shellctx->detuning_freq[1];
@@ -1569,10 +1569,10 @@ int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
   VecGetArray(y, &yptr);
 
   /* Evaluate coefficients */
-  double xi0  = shellctx->selfker[0];
-  double xi1  = shellctx->selfker[1];
-  double xi01 = shellctx->crossker[0];  // zz-coupling 
-  double J01 = shellctx->Jkl[0]*2.*M_PI;   // dipole-dipole coupling
+  double xi0  = shellctx->selfkerr[0];
+  double xi1  = shellctx->selfkerr[1];
+  double xi01 = shellctx->crosskerr[0];  // zz-coupling 
+  double J01 = shellctx->Jkl[0]*2.*M_PI;   // Jaynes-Cummings coupling
   double eta01 = shellctx->eta[0];
   double detuning_freq0 = shellctx->detuning_freq[0];
   double detuning_freq1 = shellctx->detuning_freq[1];
