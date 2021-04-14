@@ -72,6 +72,9 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
     else if (objective_str[1].compare("swap") == 0) {
       targetgate = new SWAP(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, timestepper->total_time, gate_rot_freq); 
     }
+    else if (objective_str[1].compare("swap02") == 0) {
+      targetgate = new SWAP_02(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, timestepper->total_time, gate_rot_freq); 
+    }
     else {
       printf("\n\n ERROR: Unnown gate type: %s.\n", objective_str[1].c_str());
       printf(" Available gates are 'none', 'xgate', 'ygate', 'zgate', 'hadamard', 'cnot', 'swap'.\n");
