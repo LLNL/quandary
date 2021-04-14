@@ -19,11 +19,12 @@ stopAtFailure=false
 dryRun=false
 rebase=false
 tolerance=1.0e-7
+isPointWise=0
 
 # Skip setup (git pull, make))
 ${skipSetup:=false}
 # Get options
-while getopts ":t:i:e:rh:dh:fh" o;
+while getopts ":t:i:e:rh:dh:fh:ph" o;
 do
 	case "${o}" in
     t)
@@ -43,6 +44,9 @@ do
 			;;
 		f)
 			stopAtFailure=true
+			;;
+		p)
+			isPointWise=1
 			;;
     *)
       usage
@@ -272,7 +276,7 @@ do
               if [[ "$fileName" == "grad.dat" ]] || [[ "$fileName" == "optim_history.dat" ]]; then
                 cd ${DIR}
                 echo "- comparing $fileName" 
-                python3 compare_two_files.py "${simulation}/base/$fileName" "${simulation}/data_out/$fileName" $tolerance
+                python3 compare_two_files.py "${simulation}/base/$fileName" "${simulation}/data_out/$fileName" $tolerance $isPointWise
                 if [[ $? -eq 1 ]]; then
                   echo "The $baseOutput files are different from the baseline." >> $simulationLogFile 2>&1
                   testFailed=true

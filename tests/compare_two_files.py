@@ -1,7 +1,7 @@
 import sys
 import numpy as np
 
-def compare_two_files(basefile, currentfile, tolerance):
+def compare_two_files(basefile, currentfile, tolerance, isPointWiseStr):
 
     def extract_data(filename):                                                        
         infile = open(filename, 'r')                                                   
@@ -23,12 +23,12 @@ def compare_two_files(basefile, currentfile, tolerance):
         return nrow, n, numarray                                                                 
 
     nrow, ncol, base_values = extract_data(basefile)                                    
-    nrow2, ncol2, current_values = extract_data(currentfile)                             
-
-    isPointWise = False
+    nrow2, ncol2, current_values = extract_data(currentfile)
+    isPointWise = int(isPointWiseStr)
 
     if isPointWise:
         #compute relative difference pointwise 
+        overall_error = 0.0
         for j in range(ncol):
             for i in range(nrow):
                 if abs(base_values[i][j]) > 1e-15:
@@ -36,8 +36,13 @@ def compare_two_files(basefile, currentfile, tolerance):
                 else:
                     error = abs(base_values[i][j] - current_values[i][j])
            
-                if error > 1.0e-3:
+                if error > float(tolerance):
+                    print("-- Error is too big ", error)
                     return sys.exit(1)
+                else:
+                    overall_error = np.maximum(overall_error, error)
+
+        print("-- Test passed! error is ", overall_error)
         return sys.exit(0)
     else:
         #compute relative difference as whole 
