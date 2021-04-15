@@ -1004,7 +1004,7 @@ int MasterEq::getRhoT0(const int iinit, const int ninit, const InitialConditionT
             double val = 1./dim_ess;
             int j_full = mapEssToFull(j,nlevels, nessential);
             int index = getIndexReal(getVecID(i_full,j_full,dim_rho));   // Re(rho_ij)
-            VecSetValue(rho0, index, val, INSERT_VALUES); 
+            if (ilow <= index && index < iupp) VecSetValue(rho0, index, val, INSERT_VALUES); 
           }
         }
 
