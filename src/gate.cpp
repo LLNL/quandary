@@ -544,6 +544,6 @@ SWAP_02::SWAP_02(std::vector<int> nlevels_, std::vector<int> nessential_, double
 
 }
 
-SWAP::~SWAP(){}
+SWAP_02::~SWAP_02(){}
 
 
