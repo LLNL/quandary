@@ -526,10 +526,10 @@ void MasterEq::initSparseMatSolver(){
   MatCreateVecs(Ac_vec[0], &Acv, NULL);
   MatCreateVecs(Bc_vec[0], &Bcu, NULL);
   MatCreateVecs(Bc_vec[0], &Bcv, NULL);
-  MatCreateVecs(Ad_vec[0], &Adklu, NULL);
-  MatCreateVecs(Ad_vec[0], &Adklv, NULL);
-  MatCreateVecs(Bd_vec[0], &Bdklu, NULL);
-  MatCreateVecs(Bd_vec[0], &Bdklv, NULL);
+  MatCreateVecs(Ac_vec[0], &Adklu, NULL);
+  MatCreateVecs(Ac_vec[0], &Adklv, NULL);
+  MatCreateVecs(Bc_vec[0], &Bdklu, NULL);
+  MatCreateVecs(Bc_vec[0], &Bdklv, NULL);
 
  }
 
