@@ -111,7 +111,7 @@ class SWAP: public Gate {
 
 
 
-/* SWAP qubit 0<->2, spanning three qubits. 
+/* SWAP for three qubits, swapping 0<->2. 
  * V = 1 0 0 0 0 0 0 0
  *     0 0 0 0 1 0 0 0 
  *     0 0 1 0 0 0 0 0 
@@ -125,4 +125,12 @@ class SWAP_02: public Gate {
     public:
     SWAP_02(std::vector<int> nlevels_, std::vector<int> nessential_, double time, std::vector<double> rotation_frequencies_);
     ~SWAP_02();
+};
+
+
+/* SWAP for four qubits, swapping 0<->3 */
+class SWAP_03: public Gate {
+    public:
+    SWAP_03(std::vector<int> nlevels_, std::vector<int> nessential_, double time, std::vector<double> rotation_frequencies_);
+    ~SWAP_03();
 };
