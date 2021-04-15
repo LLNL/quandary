@@ -1,5 +1,5 @@
 # run from command line with
-# > gnuplot -e "datafile='data.dat'" plot_diag.plt
+# > gnuplot -e "datafile='data.dat'" plot_control.plt
 
 reset
 set grid

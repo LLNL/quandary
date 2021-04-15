@@ -1,2 +1,2 @@
-#iter    Objective           ||Pr(grad)||           LS step           1-F_avg         Tikhonov-regul      Penalty-term
-00000  1.03289631597380e+00  9.83451813761259e-04  0.00000000  1.00476867359207e+00  8.10000000000000e-03  2.00276423817317e-02
+#iter    Objective           ||Pr(grad)||           LS step           F_avg           Terminal cost       Tikhonov-regul      Penalty-term
+00000  1.03289631597380e+00  9.83451813761259e-04  0.00000000  1.00476867359207e+00  1.00476867359207e+00  8.10000000000000e-03  2.00276423817317e-02

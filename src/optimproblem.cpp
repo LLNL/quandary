@@ -1,7 +1,7 @@
 #include "optimproblem.hpp"
 
 #ifdef WITH_BRAID
-OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, MPI_Comm comm_init_, int ninit_, Output* output_) : OptimProblem(config, timestepper_, comm_init_, ninit_, output_) {
+OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, MPI_Comm comm_init_, int ninit_, std::vector<double> gate_rot_freq, Output* output_) : OptimProblem(config, timestepper_, comm_init_, ninit_, gate_rot_freq, output_) {
   primalbraidapp  = primalbraidapp_;
   adjointbraidapp = adjointbraidapp_;
   MPI_Comm_rank(primalbraidapp->comm_braid, &mpirank_braid);
@@ -9,12 +9,14 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, myBraidAp
 }
 #endif
 
-OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm comm_init_, int ninit_, Output* output_){
+OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm comm_init_, int ninit_, std::vector<double> gate_rot_freq, Output* output_){
 
   timestepper = timestepper_;
   ninit = ninit_;
   comm_init = comm_init_;
   output = output_;
+  /* Reset */
+  objective = 0.0;
 
   /* Store ranks and sizes of communicators */
   MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
@@ -44,9 +46,15 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   maxiter = config.GetIntParam("optim_maxiter", 200);
   initguess_type = config.GetStrParam("optim_init", "zero");
   config.GetVecDoubleParam("optim_init_ampl", initguess_amplitudes, 0.0);
-
-  /* Reset */
-  objective = 0.0;
+  // sanity check
+  if (initguess_type.compare("constant") == 0 || 
+      initguess_type.compare("random")    == 0 ||
+      initguess_type.compare("random_seed") == 0)  {
+      if (initguess_amplitudes.size() < timestepper->mastereq->getNOscillators()) {
+         printf("ERROR reading config file: List of initial optimization parameter amplitudes must equal the number of oscillators!\n");
+         exit(1);
+      }
+  }
 
   /* Store objective function type */
   std::vector<std::string> objective_str;
@@ -56,18 +64,20 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
     /* Read and initialize the targetgate */
     assert ( objective_str.size() >=2 );
     if      (objective_str[1].compare("none") == 0)  targetgate = new Gate(); // dummy gate. do nothing
-    else if (objective_str[1].compare("xgate") == 0) targetgate = new XGate(); 
-    else if (objective_str[1].compare("ygate") == 0) targetgate = new YGate(); 
-    else if (objective_str[1].compare("zgate") == 0) targetgate = new ZGate();
-    else if (objective_str[1].compare("hadamard") == 0) targetgate = new HadamardGate();
-    else if (objective_str[1].compare("cnot") == 0) targetgate = new CNOT(); 
-    else if (objective_str[1].compare("swap") == 0) targetgate = new SWAP(); 
+    else if (objective_str[1].compare("xgate") == 0) targetgate = new XGate(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, timestepper->total_time, gate_rot_freq); 
+    else if (objective_str[1].compare("ygate") == 0) targetgate = new YGate(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, timestepper->total_time, gate_rot_freq); 
+    else if (objective_str[1].compare("zgate") == 0) targetgate = new ZGate(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, timestepper->total_time, gate_rot_freq);
+    else if (objective_str[1].compare("hadamard") == 0) targetgate = new HadamardGate(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, timestepper->total_time, gate_rot_freq);
+    else if (objective_str[1].compare("cnot") == 0) targetgate = new CNOT(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, timestepper->total_time, gate_rot_freq); 
+    else if (objective_str[1].compare("swap") == 0) {
+      targetgate = new SWAP(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, timestepper->total_time, gate_rot_freq); 
+    }
     else {
       printf("\n\n ERROR: Unnown gate type: %s.\n", objective_str[1].c_str());
       printf(" Available gates are 'none', 'xgate', 'ygate', 'zgate', 'hadamard', 'cnot', 'swap'.\n");
       exit(1);
     }
-    /* Get gate type */
+    /* Get gate measure */
     std::string gate_measure = config.GetStrParam("gate_measure", "frobenius");
     if (gate_measure.compare("frobenius")==0) objective_type = GATE_FROBENIUS;
     else if (gate_measure.compare("trace")==0) objective_type = GATE_TRACE;
@@ -125,43 +135,15 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   timestepper->penalty_weightparam = penalty_weightparam;
   timestepper->penalty_coeff = penalty_coeff;
 
-  // check if implemented:
-  if ( (objective_type == GATE_FROBENIUS || objective_type == GATE_TRACE ) && penalty_coeff > 1e-13) {
-        printf("ERROR: Penalty integral for Gate objective is currently not implemented.\n");
-        exit(1);
-  }
-
-
   /* Get initial condition type and involved oscillators */
   std::vector<std::string> initcondstr;
   config.GetVecStrParam("initialcondition", initcondstr);
   for (int i=1; i<initcondstr.size(); i++) initcond_IDs.push_back(atoi(initcondstr[i].c_str()));
-  ninit = 1;
-  if (initcondstr[0].compare("file") == 0 )      initcond_type = FROMFILE;
-  else if (initcondstr[0].compare("pure") == 0 ) initcond_type = PURE;
-  else if (initcondstr[0].compare("3states") == 0 ) {
-    initcond_type = THREESTATES;
-    ninit = 3;
-  }
-  else if (initcondstr[0].compare("diagonal") == 0 ) {
-    initcond_type = DIAGONAL;
-    /* Compute ninit = dim(subsystem defined by initcond_IDs) */
-    ninit = 1;
-    for (int i = 1; i<initcondstr.size(); i++){
-      int oscilID = atoi(initcondstr[i].c_str());
-      ninit *= timestepper->mastereq->getOscillator(oscilID)->getNLevels();
-    }
-  }
-  else if (initcondstr[0].compare("basis")    == 0 ) {
-    initcond_type = BASIS;
-    /* Compute ninit = dim(subsystem defined by obj_oscilIDs)^2 */
-    ninit = 1;
-    for (int i = 1; i<initcondstr.size(); i++){
-      int oscilID = atoi(initcondstr[i].c_str());
-      ninit *= timestepper->mastereq->getOscillator(oscilID)->getNLevels();
-    }
-    ninit = (int) pow(ninit, 2);
-  }
+  if (initcondstr[0].compare("file") == 0 )          initcond_type = FROMFILE;
+  else if (initcondstr[0].compare("pure") == 0 )     initcond_type = PURE;
+  else if (initcondstr[0].compare("3states") == 0 )  initcond_type = THREESTATES;
+  else if (initcondstr[0].compare("diagonal") == 0 ) initcond_type = DIAGONAL;
+  else if (initcondstr[0].compare("basis")    == 0 ) initcond_type = BASIS;
   else {
     printf("\n\n ERROR: Wrong setting for initial condition.\n");
     exit(1);
@@ -201,19 +183,28 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   else if (initcond_type == FROMFILE) { 
     /* Read initial condition from file */
     
-    int dim = timestepper->mastereq->getDim();
-    double * vec = new double[2*dim];
-    std::vector<std::string> initcondstr;
-    config.GetVecStrParam("initialcondition", initcondstr);
+    // int dim = timestepper->mastereq->getDim();
+    int dim_ess = timestepper->mastereq->getDimEss();
+    int dim_rho = timestepper->mastereq->getDimRho();
+    double * vec = new double[2*dim_ess*dim_ess];
     if (mpirank_world == 0) {
       assert (initcondstr.size()==2);
       std::string filename = initcondstr[1];
-      read_vector(filename.c_str(), vec, 2*dim);
+      read_vector(filename.c_str(), vec, 2*dim_ess*dim_ess);
     }
-    MPI_Bcast(vec, 2*dim, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-    for (int i = 0; i < dim; i++) {
-      VecSetValue(rho_t0, getIndexReal(i), vec[i], INSERT_VALUES);        // RealPart
-      VecSetValue(rho_t0, getIndexImag(i), vec[i + dim ], INSERT_VALUES); // Imaginary Part
+    MPI_Bcast(vec, 2*dim_ess*dim_ess, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    for (int i = 0; i < dim_ess*dim_ess; i++) {
+      int k = i % dim_ess;
+      int j = (int) i / dim_ess;
+      // printf("k=%d, j=%d (orig)  ", k,j);
+      if (dim_ess*dim_ess < timestepper->mastereq->getDim()) {
+        k = mapEssToFull(k, timestepper->mastereq->nlevels, timestepper->mastereq->nessential);
+        j = mapEssToFull(j, timestepper->mastereq->nlevels, timestepper->mastereq->nessential);
+      }
+      int elemid = getVecID(k, j, dim_rho);
+      VecSetValue(rho_t0, getIndexReal(elemid), vec[i], INSERT_VALUES);        // RealPart
+      VecSetValue(rho_t0, getIndexImag(elemid), vec[i + dim_ess*dim_ess], INSERT_VALUES); // Imaginary Part
+      // printf("  -> k=%d j=%d, elemid=%d vals=%1.4e, %1.4e\n", k, j, elemid, vec[i], vec[i+dim_ess*dim_ess]);
     }
     delete [] vec;
   }
@@ -239,8 +230,11 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
     config.GetVecDoubleParam(key, carrier_freq, 0.0);
     bounds[iosc] = bounds[iosc] / ( sqrt(2) * carrier_freq.size()) ;
     for (int i=0; i<timestepper->mastereq->getOscillator(iosc)->getNParams(); i++){
-      VecSetValue(xupper, col, bounds[iosc], INSERT_VALUES);
-      VecSetValue(xlower, col, -1. * bounds[iosc], INSERT_VALUES);
+      double bound = bounds[iosc];
+      /* set first and last two coefficients to zero to ensure spline is zero at beginning and end of time interval */
+      if (i <= 1 || i >= timestepper->mastereq->getOscillator(iosc)->getNParams() - 2) bound = 0.0;
+      VecSetValue(xupper, col, bound, INSERT_VALUES);
+      VecSetValue(xlower, col, -1. * bound, INSERT_VALUES);
       col++;
     }
   }
@@ -487,11 +481,6 @@ void OptimProblem::getStartingPoint(Vec xinit){
   MasterEq* mastereq = timestepper->mastereq;
 
   if (initguess_type.compare("constant") == 0 ){ // set constant initial design
-    // sanity check
-    if (initguess_amplitudes.size() < timestepper->mastereq->getNOscillators()) {
-      printf("ERROR reading config file: List of initial optimization parameter amplitudes is too short!\n");
-      exit(1);
-    }
     // set values
     int j = 0;
     for (int ioscil = 0; ioscil < mastereq->getNOscillators(); ioscil++) {
@@ -503,11 +492,6 @@ void OptimProblem::getStartingPoint(Vec xinit){
     }
   } else if ( initguess_type.compare("random")      == 0 ||       // init random, fixed seed
               initguess_type.compare("random_seed") == 0)  { // init random with new seed
-    // sanity check
-    if (initguess_amplitudes.size() < timestepper->mastereq->getNOscillators()) {
-      printf("ERROR reading config file: List of initial optimization parameter amplitudes is too short!\n");
-      exit(1);
-    }
     /* Create vector with random elements between [-1:1] */
     if ( initguess_type.compare("random") == 0) srand(1);  // fixed seed
     else srand(time(0)); // random seed
@@ -585,13 +569,23 @@ PetscErrorCode TaoMonitor(Tao tao,void*ptr){
   /* Pass current iteration number to output manager */
   ctx->output->optim_iter = iter;
 
+  /* Average fidelity. */
+  /* For gates, this is 1.-\sum_ij Tr(V \rho_ij(0) V^\dagger \rho_ij(T)) */
+  /* For groundstate optimization, this is the objective function value */
+  double F_avg = -1.0;
+  if (ctx->initcond_type == BASIS && ctx->objective_type == GATE_TRACE) F_avg = 1. - ctx->obj_cost;
+  if (ctx->objective_type == EXPECTEDENERGY ||
+      ctx->objective_type == EXPECTEDENERGYa ||
+      ctx->objective_type == EXPECTEDENERGYb ||
+      ctx->objective_type == EXPECTEDENERGYc ) F_avg = ctx->obj_cost;
+
   /* If average fidelity is not the objective function, it can be computed at each optimization iteration here. 
    * However, this involves the entire basis be propagated forward. We omit it here to save compute time during optimization. 
    * Average fidelity can be computed AFTER optimization has finished by propagating the the basis and evaluating the Gate_trace.
    */
-  if (ctx->objective_type == GATE_FROBENIUS ||
-      (ctx->objective_type == GATE_TRACE && ctx->initcond_type != BASIS) ){
-       ctx->obj_cost = -1.0;  // -1 is used to indicate that average fidelity is not computed
+  // if (ctx->initcond_type != BASIS)  ctx->obj_cost = -1.0;  // -1 is used to indicate that average fidelity has not been computed
+  // if (ctx->objective_type == GATE_FROBENIUS ||
+      // (ctx->objective_type == GATE_TRACE && ctx->initcond_type != BASIS) ){
   //   InitialConditionType inittype_org = ctx->initcond_type; 
   //   ObjectiveType objtype_org = ctx->objective_type; 
   //   int ninit_local_org = ctx->ninit_local;
@@ -606,10 +600,10 @@ PetscErrorCode TaoMonitor(Tao tao,void*ptr){
   //   ctx->objective_type = objtype_org;
   //   ctx->ninit_local = ninit_local_org;
   //   ctx->ninit = ninit_org;
-  }
+  // }
 
   /* Print to optimization file */
-  ctx->output->writeOptimFile(f, gnorm, deltax, ctx->obj_cost, ctx->obj_regul, ctx->obj_penal);
+  ctx->output->writeOptimFile(f, gnorm, deltax, F_avg, ctx->obj_cost, ctx->obj_regul, ctx->obj_penal);
 
   /* Print parameters and controls to file */
   ctx->output->writeControls(params, ctx->timestepper->mastereq, ctx->timestepper->ntime, ctx->timestepper->dt);

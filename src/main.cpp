@@ -18,7 +18,7 @@
 #define TEST_FD_GRAD 0    // Run Finite Differences gradient test
 #define TEST_FD_HESS 0    // Run Finite Differences Hessian test
 #define HESSIAN_DECOMPOSITION 0 // Run eigenvalue analysis for Hessian
-#define EPS 1e-8          // Epsilon for Finite Differences
+#define EPS 1e-5          // Epsilon for Finite Differences
 
 int main(int argc,char **argv)
 {
@@ -61,6 +61,21 @@ int main(int argc,char **argv)
     runtype = none;
   }
 
+  /* Get the number of essential levels per oscillator. 
+   * Default: same as number of levels */  
+  std::vector<int> nessential(nlevels.size());
+  for (int iosc = 0; iosc<nlevels.size(); iosc++) nessential[iosc] = nlevels[iosc];
+  /* Overwrite if config option is given */
+  std::vector<int> read_nessential;
+  config.GetVecIntParam("nessential", read_nessential, -1);
+  if (read_nessential[0] > -1) {
+    for (int iosc = 0; iosc<nlevels.size(); iosc++){
+      if (iosc < read_nessential.size()) nessential[iosc] = read_nessential[iosc];
+      else                               nessential[iosc] = read_nessential[read_nessential.size()-1];
+    }
+  }
+
+
   /* Get type and the total number of initial conditions */
   int ninit = 1;
   std::vector<std::string> initcondstr;
@@ -79,7 +94,7 @@ int main(int argc,char **argv)
     }
     for (int i = 1; i<initcondstr.size(); i++){
       int oscilID = atoi(initcondstr[i].c_str());
-      ninit *= nlevels[oscilID];
+      ninit *= nessential[oscilID];
     }
     if (initcondstr[0].compare("basis") == 0  ) ninit = (int) pow(ninit,2.0);
   }
@@ -173,10 +188,7 @@ int main(int argc,char **argv)
     printf("Error: Number of given rotation frequencies (%lu) is smaller than the the number of oscillators (%lu)\n", rot_freq.size(), nlevels.size());
     exit(1);
   } 
-  std::vector<double> detuning_freq(rot_freq.size());
-  for(int i=0; i<rot_freq.size(); i++) {
-    detuning_freq[i] = fundamental_freq[i] - rot_freq[i];
-  }
+
   // Create the oscillators 
   for (int i = 0; i < nlevels.size(); i++){
     std::vector<double> carrier_freq;
@@ -216,8 +228,15 @@ int main(int argc,char **argv)
   }
 
   /* --- Initialize the Master Equation  --- */
-  std::vector<double> xi, t_collapse;
-  config.GetVecDoubleParam("xi", xi, 2.0);
+  std::vector<double> xi, t_collapse, Jkl;
+  // Get self and cross kers and coupling terms 
+  config.GetVecDoubleParam("xi", xi, 0.0);   // self and cross ker
+  config.GetVecDoubleParam("Jkl", Jkl, 0.0); // dipole-dipole coupling
+  // TODO: Fill up with zeros. For now, just check if enough elements are given
+  int noscillators = nlevels.size();
+  assert(xi.size() >= (noscillators+1) * noscillators / 2);
+  assert(Jkl.size() >= (noscillators-1) * noscillators / 2);
+  // Get lindblad type
   config.GetVecDoubleParam("lindblad_collapsetime", t_collapse, 0.0);
   std::string lindblad = config.GetStrParam("lindblad_type", "none");
   LindbladType lindbladtype;
@@ -230,9 +249,9 @@ int main(int argc,char **argv)
     printf(" Choose either 'none', 'decay', 'dephase', or 'both'\n");
     exit(1);
   }
-  bool usematfree;
-  usematfree = config.GetBoolParam("usematfree", false);
-  // Sanity check
+  if (lindbladtype != NONE) assert(t_collapse.size() >= 2*noscillators);
+  // Sanity check for matrix free solver
+  bool usematfree = config.GetBoolParam("usematfree", false);
   if (usematfree && nlevels.size() != 2 ){
     printf("ERROR: Matrix free solver is only implemented for systems with TWO oscillators!\n");
     exit(1);
@@ -241,7 +260,21 @@ int main(int argc,char **argv)
     printf("ERROR: No Petsc-parallel version for the matrix free solver available!");
     exit(1);
   }
-  MasterEq* mastereq = new MasterEq(nlevels, oscil_vec, xi, detuning_freq, lindbladtype, t_collapse, usematfree);
+  // Compute coupling rotation frequencies eta_ij = w^r_i - w^r_j
+  std::vector<double> eta(nlevels.size()*(nlevels.size()-1)/2.);
+  int idx = 0;
+  for (int iosc=0; iosc<nlevels.size(); iosc++){
+    for (int josc=iosc+1; josc<nlevels.size(); josc++){
+      eta[idx] = rot_freq[iosc] - rot_freq[josc];
+      idx++;
+    }
+  }
+  // Compute detuning frequency w_k - w_k^rot
+  std::vector<double> detuning_freq(rot_freq.size());
+  for(int i=0; i<rot_freq.size(); i++) {
+    detuning_freq[i] = fundamental_freq[i] - rot_freq[i];
+  }
+  MasterEq* mastereq = new MasterEq(nlevels, nessential, oscil_vec, xi, Jkl, eta, detuning_freq, lindbladtype, t_collapse, usematfree);
 
 
   /* Output */
@@ -260,7 +293,12 @@ int main(int argc,char **argv)
       std::cout<< nlevels[i];
       if (i < nlevels.size()-1) std::cout<< "x";
     }
-    std::cout << "\nT1/T2 times: ";
+    std::cout<<"  (essential levels: ";
+    for (int i=0; i<nlevels.size(); i++) {
+      std::cout<< nessential[i];
+      if (i < nlevels.size()-1) std::cout<< "x";
+    }
+    std::cout << ")\nT1/T2 times: ";
     for (int i=0; i<t_collapse.size(); i++) {
       std::cout << t_collapse[i];
       if ((i+1)%2 == 0 && i < t_collapse.size()-1) std::cout<< ",";
@@ -313,10 +351,24 @@ int main(int argc,char **argv)
 #endif
 
   /* --- Initialize optimization --- */
+  /* Get gate rotation frequencies. Default: use rotational frequencies for the gate. */
+  std::vector<double> gate_rot_freq(noscillators); 
+  for (int iosc=0; iosc<noscillators; iosc++) gate_rot_freq[iosc] = rot_freq[iosc];
+  /* If gate_rot_freq option is given in config file, overwrite them with input */
+  std::vector<double> read_gate_rot;
+  config.GetVecDoubleParam("gate_rot_freq", read_gate_rot, 1e20); 
+  if (read_gate_rot[0] < 1e20) { // the config option exists
+    for (int iosc=0; iosc<noscillators; iosc++) {
+      if (iosc < read_gate_rot.size() ) 
+            gate_rot_freq[iosc] = read_gate_rot[iosc];
+      else  gate_rot_freq[iosc] = read_gate_rot[read_gate_rot.size()-1]; // if not enough elements are given, copy the last one
+    }
+  }
+
 #ifdef WITH_BRAID
-  OptimProblem* optimctx = new OptimProblem(config, mytimestepper, primalbraidapp, adjointbraidapp, comm_init, ninit, output);
+  OptimProblem* optimctx = new OptimProblem(config, mytimestepper, primalbraidapp, adjointbraidapp, comm_init, ninit, gate_rot_freq, output);
 #else 
-  OptimProblem* optimctx = new OptimProblem(config, mytimestepper, comm_init, ninit, output);
+  OptimProblem* optimctx = new OptimProblem(config, mytimestepper, comm_init, ninit, gate_rot_freq, output);
 #endif
 
   /* Set upt solution and gradient vector */
@@ -347,6 +399,7 @@ int main(int argc,char **argv)
   double StartTime = MPI_Wtime();
 
   double objective;
+  double gnorm = 0.0;
   /* --- Solve primal --- */
   if (runtype == primal) {
     optimctx->getStartingPoint(xinit);
@@ -354,12 +407,10 @@ int main(int argc,char **argv)
     objective = optimctx->evalF(xinit);
     if (mpirank_world == 0) printf("\nTotal objective = %1.14e, \n", objective);
     optimctx->getSolution(&opt);
-    optimctx->output->writeOptimFile(optimctx->objective, 0.0, 0.0, optimctx->obj_cost, optimctx->obj_regul, optimctx->obj_penal);
   } 
   
   /* --- Solve adjoint --- */
   if (runtype == adjoint) {
-    double gnorm = 0.0;
     optimctx->getStartingPoint(xinit);
     if (mpirank_world == 0) printf("\nStarting adjoint solver...\n");
     optimctx->evalGradF(xinit, grad);
@@ -368,7 +419,6 @@ int main(int argc,char **argv)
     if (mpirank_world == 0) {
       printf("\nGradient norm: %1.14e\n", gnorm);
     }
-    optimctx->output->writeOptimFile(optimctx->objective, optimctx->gnorm, 0.0, optimctx->obj_cost, optimctx->obj_regul, optimctx->obj_penal);
     optimctx->output->writeGradient(grad);
   }
 
@@ -381,15 +431,28 @@ int main(int argc,char **argv)
     optimctx->getSolution(&opt);
   }
 
-  /* Average fidelity */
-  double F_avg = 1. - optimctx->obj_cost;
-  if (mpirank_world == 0){
-    printf("F_avg = %f \n", F_avg);
-    if (optimctx->initcond_type != BASIS ||
-        optimctx->objective_type != GATE_TRACE) {
-      printf("Warning: Average gate fidelity only defined for gates using trace distance, and using a basis of initial conditions.\n Recomupte the average fidelity if needed, using all basis elements as initial conditions, and setting GATE_TRACE as objective function.\n");
+  /* Report average fidelity */
+  double F_avg = -1.0;
+  if (optimctx->initcond_type == BASIS && optimctx->objective_type == GATE_TRACE) {
+    F_avg = 1. - optimctx->obj_cost;
+    if (mpirank_world == 0) printf("F_avg = %f \n", F_avg);
+  } else if (optimctx->objective_type == EXPECTEDENERGY ||
+             optimctx->objective_type == EXPECTEDENERGYa ||
+             optimctx->objective_type == EXPECTEDENERGYb ||
+             optimctx->objective_type == EXPECTEDENERGYc ) {
+    F_avg = optimctx->obj_cost;
+    if (mpirank_world == 0) printf("F_avg = %f \n", F_avg);
+  } else {
+    if (mpirank_world == 0) {
+      printf("Warning: Average not reported.\n");
+      printf(" For gates: Recomupte the average fidelity if needed by setting GATE_TRACE as objective function and BASIS as initial conditions.\n");
+      printf(" For groundstate optimization, recompute average fidelity if needed by setting EXPECTEDENERGY as objective function.\n");
     }
   }
+
+  /* Output */
+  if (runtype != optimization) optimctx->output->writeOptimFile(optimctx->objective, gnorm, 0.0, F_avg, optimctx->obj_cost, optimctx->obj_regul, optimctx->obj_penal);
+
 
   /* --- Finalize --- */
 

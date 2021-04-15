@@ -15,6 +15,8 @@ typedef struct {
   IS *isu, *isv;
   Oscillator*** oscil_vec;
   std::vector<double> xi;
+  std::vector<double> Jkl;
+  std::vector<double> eta;
   std::vector<double> detuning_freq;
   std::vector<double> collapse_time;
   bool addT1, addT2;
@@ -22,7 +24,10 @@ typedef struct {
   Mat** Ac_vec;
   Mat** Bc_vec;
   Mat *Ad, *Bd;
+  Mat** Ad_vec;
+  Mat** Bd_vec;
   Vec *Acu, *Acv, *Bcu, *Bcv;
+  Vec *Adklu, *Adklv, *Bdklu, *Bdklv;
   double time;
 } MatShellCtx;
 
@@ -40,19 +45,24 @@ int myMatMultTranspose_sparsemat(Mat RHS, Vec x, Vec y);
 class MasterEq{
 
   protected:
-    int dim;                 // Dimension of vectorized system = N^2
-    int noscillators;        // Number of oscillators
-    std::vector<int> nlevels; 
-    Oscillator** oscil_vec;  // Vector storing pointers to the oscillators
+    int dim;                   // Dimension of full vectorized system = N^2
+    int dim_rho;               // Dimension of full system = N
+    int dim_ess;               // Dimension of system of essential levels = N_e
+    int noscillators;          // Number of oscillators
+    Oscillator** oscil_vec;    // Vector storing pointers to the oscillators
 
     Mat RHS;                // Realvalued, vectorized systemmatrix (2N^2 x 2N^2)
     MatShellCtx RHSctx;     // MatShell context that contains data needed to apply the RHS
 
-    Mat* Ac_vec;  // Vector of constant mats for time-varying Hamiltonian (real) 
-    Mat* Bc_vec;  // Vector of constant mats for time-varying Hamiltonian (imag) 
+    Mat* Ac_vec;  // Vector of constant mats for time-varying control term (real)
+    Mat* Bc_vec;  // Vector of constant mats for time-varying control term (imag)
     Mat  Ad, Bd;  // Real and imaginary part of constant system matrix
+    Mat* Ad_vec;  // Vector of constant mats for dipole-dipole coupling term in drift Hamiltonian (real)
+    Mat* Bd_vec;  // Vector of constant mats for dipole-dipole coupling term in drift Hamiltonian (imag)
 
-    std::vector<double> xi;             // Constants for frequencies of drift Hamiltonian
+    std::vector<double> xi;             // Self- and cross kerrs in drift Hamiltonian
+    std::vector<double> Jkl;             // Coefficient for dipole-dipole coupling terms
+    std::vector<double> eta;             // Frequencies for dipole-dipole coupling terms
     std::vector<double> detuning_freq;  // detuning frequencies of drift Hamiltonian
     std::vector<double> collapse_time;  // Time-constants for decay and dephase operators
     bool addT1, addT2;                  // flags for including Lindblad collapse operators T1-decay and/or T2-dephasing
@@ -65,16 +75,18 @@ class MasterEq{
     double *dRedp;
     double *dImdp;
     Vec Acu, Acv, Bcu, Bcv;
+    Vec Adklu, Adklv, Bdklu, Bdklv;
     int* cols;           // holding columns when evaluating dRHSdp
     PetscScalar* vals;   // holding values when evaluating dRHSdp
  
   public:
+    std::vector<int> nlevels;  // Number of levels per oscillator
+    std::vector<int> nessential; // Number of essential levels per oscillator
     bool usematfree;  // Flag for using matrix free solver
 
   public:
     MasterEq();
-    MasterEq(std::vector<int> nlevels, Oscillator** oscil_vec_, const std::vector<double> xi_, std::vector<double> detuning_freq_,
-             LindbladType lindbladtype_, const std::vector<double> collapse_time_, bool usematfree_);
+    MasterEq(std::vector<int> nlevels, std::vector<int> nessential, Oscillator** oscil_vec_, const std::vector<double> xi_, const std::vector<double> Jkl_, const std::vector<double> eta_, std::vector<double> detuning_freq_, LindbladType lindbladtype_, const std::vector<double> collapse_time_, bool usematfree_);
     ~MasterEq();
 
     /* initialize matrices needed for applying sparse-mat solver */
@@ -86,8 +98,14 @@ class MasterEq{
     /* Return number of oscillators */
     int getNOscillators();
 
-    /* Return dimension of vectorized system */
+    /* Return dimension of vectorized system N^2 */
     int getDim();
+
+    /* Return dimension of essential level system: N_e */
+    int getDimEss();
+    
+    /* Return dimension of system matrix rho: N */
+    int getDimRho();
 
     /* 
      * Uses Re and Im to build the vectorized Hamiltonian operator M = vec(-i(Hq-qH)+Lindblad). 
@@ -125,8 +143,16 @@ class MasterEq{
 };
 
 
-inline double Hd(const double xi0, const double xi01, const double xi1, const double detuning0, const double detuning1, const int a, const int b) {
-  return - xi0*M_PI * a * (a-1) - xi01*M_PI*2 * a * b - xi1*M_PI * b * (b-1) + detuning0*2*M_PI*a + detuning1*2*M_PI*b; 
+inline double H_detune(const double detuning0, const double detuning1, const int a, const int b) {
+  return detuning0*2*M_PI*a + detuning1*2*M_PI*b;
+};
+
+inline double H_selfkerr(const double xi0, const double xi1, const int a, const int b) {
+  return - xi0*M_PI * a * (a-1) - xi1*M_PI * b * (b-1);
+};
+
+inline double H_crosskerr(const double xi01, const int a, const int b) {
+  return - xi01*M_PI*2. * a * b;
 };
 
 inline double L2(double dephase0, double dephase1, const int i0, const int i1, const int i0p, const int i1p){

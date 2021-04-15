@@ -31,6 +31,7 @@ class TimeStepper{
     Vec redgrad;                   /* Reduced gradient */
 
     /* Stuff for objective function penalty integral term */
+    // TODO: pass those through the timestepper constructor. Currently, they are set manually inside optimproblem constructor. 
     double penalty_integral;
     ObjectiveType objective_type;
     std::vector<int> obj_oscilIDs;
