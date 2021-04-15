@@ -132,7 +132,6 @@ int Oscillator::evalControl_Labframe(const double t, double* f){
 
 double Oscillator::expectedEnergy(const Vec x) {
  
-  double xdiag;
   int dim;
   VecGetSize(x, &dim);
   int dimmat = (int) sqrt(dim/2);
@@ -150,8 +149,8 @@ double Oscillator::expectedEnergy(const Vec x) {
     num_diag = num_diag / dim_postOsc;
     /* Get diagonal element in rho (real) */
     int idx_diag = getIndexReal(getVecID(i,i,dimmat));
+    double xdiag = 0.0;
     if (ilow <= idx_diag && idx_diag < iupp) VecGetValues(x, 1, &idx_diag, &xdiag);
-    else xdiag = 0.0;
     expected += num_diag * xdiag;
   }
   
