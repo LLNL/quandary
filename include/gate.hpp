@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <iostream> 
 #include <math.h>
 #include <assert.h>
 #include <petscmat.h>
@@ -9,26 +10,32 @@
 
 class Gate {
   protected:
-    int dim_v;        /* Input: dimension of target gate (non-vectorized) */
-    Mat Va, Vb;       /* Input: Real and imaginary part of V_target, non-vectorized */
+    Mat V_re, V_im;    /* Input: Real and imaginary part of V_target, non-vectorized, essential levels only */
+    Vec rotA, rotB;    /* Input: Diagonal elements of real and imaginary rotational matrices */
+
+    std::vector<int> nessential;
+    std::vector<int> nlevels;
+    int mpirank_petsc;
+
+    int dim_ess;   /* Dimension of target Gate matrix (non-vectorized), essential levels only */
+    int dim_rho;   /* Dimension of system matrix rho (non-vectorized), all levels, N */
+
+    double final_time;  /* Final time T. Time of gate rotation. */
+    std::vector<double> gate_rot_freq; /* Frequencies of gate rotation. Often same as rotational frequencies. */
 
   private:
-    Mat ReG, ImG;     /* Real and imaginary part of \bar V \kron V */
-
-    Vec x;             /* auxiliary vectors */
-  protected:
-    int dim_vec;      /* dimension of vectorized system dim_vec = dim_v^2 */
-
-    int mpirank_petsc;
+    Mat VxV_re, VxV_im;     /* Real and imaginary part of vectorized Gate G=\bar V \kron V */
+    Vec x;                  /* auxiliary */
+    IS isu, isv;            /* Vector strides for accessing real and imaginary part of the state */
 
   public:
     Gate();
-    Gate(int dim_V_);
+    Gate(std::vector<int> nlevels_, std::vector<int> nessential_, double time_, std::vector<double> gate_rot_freq);
     virtual ~Gate();
 
-    /* Assemble ReG = Re(\bar V \kron V) and ImG = Im(\bar V \kron V) */
+    /* Assemble VxV_re = Re(\bar V \kron V) and VxV_im = Im(\bar V \kron V) */
     void assembleGate();
-    
+
     /* compare the final state to gate-transformed initialcondition in Frobenius norm 1/2 * || q(T) - V\kronV q(0)||^2 */
     void compare_frobenius(const Vec finalstate, const Vec rho0, double& obj);
     void compare_frobenius_diff(const Vec finalstate, const Vec rho0, Vec rho0bar, const double delta_bar);
@@ -44,7 +51,7 @@ class Gate {
  */
 class XGate : public Gate {
   public:
-    XGate();
+    XGate(std::vector<int> nlevels_, std::vector<int> nessential_, double time, std::vector<double> rotation_frequencies_);
     ~XGate();
 };
 
@@ -54,7 +61,7 @@ class XGate : public Gate {
  */
 class YGate : public Gate {
   public:
-    YGate();
+    YGate(std::vector<int> nlevels_, std::vector<int> nessential_, double time, std::vector<double> rotation_frequencies_);
     ~YGate();
 };
 
@@ -64,7 +71,7 @@ class YGate : public Gate {
  */
 class ZGate : public Gate {
   public:
-    ZGate();
+    ZGate(std::vector<int> nlevels_, std::vector<int> nessential_, double time, std::vector<double> rotation_frequencies_);
     ~ZGate();
 };
 
@@ -74,7 +81,7 @@ class ZGate : public Gate {
  */
 class HadamardGate : public Gate {
   public:
-    HadamardGate();
+    HadamardGate(std::vector<int> nlevels_, std::vector<int> nessential_, double time, std::vector<double> rotation_frequencies_);
     ~HadamardGate();
 };
 
@@ -86,7 +93,7 @@ class HadamardGate : public Gate {
  */
 class CNOT : public Gate {
     public:
-    CNOT();
+    CNOT(std::vector<int> nlevels_, std::vector<int> nessential_, double time, std::vector<double> rotation_frequencies_);
     ~CNOT();
 };
 
@@ -98,7 +105,7 @@ class CNOT : public Gate {
  */
 class SWAP: public Gate {
     public:
-    SWAP();
+    SWAP(std::vector<int> nlevels_, std::vector<int> nessential_, double time, std::vector<double> rotation_frequencies_);
     ~SWAP();
 };
 

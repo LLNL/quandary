@@ -97,6 +97,11 @@ Vec TimeStepper::solveODE(int initid, Vec rho_t0){
     /* Take one time step */
     evolveFWD(tstart, tstop, x);
 
+
+#ifdef SANITY_CHECK
+    SanityTests(x, tstart);
+#endif
+
   }
 
   /* Store last time step */
@@ -135,19 +140,80 @@ void TimeStepper::solveAdjointODE(int initid, Vec rho_t0_bar, double Jbar) {
 
 
 double TimeStepper::penaltyIntegral(double time, const Vec x){
+  double penalty = 0.0;
+  int dim_rho = (int)sqrt(dim/2);  // dim = 2*N^2 vectorized system. dim_rho = N = dimension of matrix system
+  double x_re, x_im;
 
-  double expected = objectiveT(mastereq, objective_type, obj_oscilIDs, x, NULL, NULL);
-  // double weight = pow( (time) / total_time, penalty_weightparam);  
-  double weight = 1./penalty_weightparam * exp(- pow((time - total_time)/penalty_weightparam, 2));
-    
-  return dt * weight * expected;
+  switch(objective_type) {
+    /* If gate optimization (frobenius or trace measure): penalize the LAST energy level per oscillator (guard-level) */
+    case GATE_FROBENIUS:
+    case GATE_TRACE:
+      /* Sum over all diagonal elements that correspond to a guard level. 
+       * A guard level is the LAST energy level of an oscillator */
+      for (int i=0; i<dim_rho; i++) {
+        if ( isGuardLevel(i, mastereq->nlevels) ) {
+          // printf("isGuard: %d / %d\n", i, dim_rho);
+          int vecID_re = getIndexReal(getVecID(i,i,dim_rho));
+          int vecID_im = getIndexImag(getVecID(i,i,dim_rho));
+          VecGetValues(x, 1, &vecID_re, &x_re);
+          VecGetValues(x, 1, &vecID_im, &x_im);  // those should be zero!? 
+          penalty += penalty_weightparam * (x_re * x_re + x_im * x_im);
+        }
+      }
+    break;
+
+    /* If groundstate optimization (expected energy or groundstate norm): penalize weighted objective function */
+    case EXPECTEDENERGY:
+    case EXPECTEDENERGYa:
+    case EXPECTEDENERGYb:
+    case EXPECTEDENERGYc:
+    case GROUNDSTATE:
+      double expected = objectiveT(mastereq, objective_type, obj_oscilIDs, x, NULL, NULL);
+      double weight = 1./penalty_weightparam * exp(- pow((time - total_time)/penalty_weightparam, 2));
+      penalty = weight * expected;
+    break;
+  }
+
+  return dt*penalty;
 }
 
 void TimeStepper::penaltyIntegral_diff(double time, const Vec x, Vec xbar, double penaltybar){
+  double penalty = 0.0;
+  int dim_rho = (int)sqrt(dim/2);  // dim = 2*N^2 vectorized system. dim_rho = N = dimension of matrix system
+  double x_re, x_im;
 
-  // double weight = pow(time/ total_time, penalty_weightparam);  
-  double weight = 1./penalty_weightparam * exp(- pow((time - total_time)/penalty_weightparam, 2));
-  objectiveT_diff(mastereq, objective_type, obj_oscilIDs, x, xbar, NULL, dt*weight*penaltybar, NULL);
+  switch(objective_type) {
+    /* If gate optimization (frobenius or trace measure): penalize the LAST energy level per oscillator (guard-level) */
+    case GATE_FROBENIUS:
+    case GATE_TRACE:
+      for (int i=0; i<dim_rho; i++) {
+        if ( isGuardLevel(i, mastereq->nlevels) ) {
+          int vecID_re = getIndexReal(getVecID(i,i,dim_rho));
+          int vecID_im = getIndexImag(getVecID(i,i,dim_rho));
+          VecGetValues(x, 1, &vecID_re, &x_re);
+          VecGetValues(x, 1, &vecID_im, &x_im);
+          // Derivative: 2 * rho(i,i) * weights * penalbar * dt
+          VecSetValue(xbar, vecID_re, 2.*x_re*penalty_weightparam*dt*penaltybar, ADD_VALUES);
+          VecSetValue(xbar, vecID_im, 2.*x_im*penalty_weightparam*dt*penaltybar, ADD_VALUES);
+        }
+        VecAssemblyBegin(xbar);
+        VecAssemblyEnd(xbar);
+      }
+    break;
+
+
+    /* If groundstate optimization (expected energy or groundstate norm): penalize weighted objective function */
+    case EXPECTEDENERGY:
+    case EXPECTEDENERGYa:
+    case EXPECTEDENERGYb:
+    case EXPECTEDENERGYc:
+    case GROUNDSTATE:
+      // double weight = pow(time/ total_time, penalty_weightparam);  
+      double weight = 1./penalty_weightparam * exp(- pow((time - total_time)/penalty_weightparam, 2));
+      objectiveT_diff(mastereq, objective_type, obj_oscilIDs, x, xbar, NULL, dt*weight*penaltybar, NULL);
+    break;
+  }
+    
 }
 
 void TimeStepper::evolveBWD(const double tstart, const double tstop, const Vec x_stop, Vec x_adj, Vec grad, bool compute_gradient){}

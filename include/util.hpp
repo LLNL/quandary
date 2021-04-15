@@ -12,6 +12,19 @@ int getIndexImag(const int i); // Return storage index of Im(x[i]) (colocated: x
 /* Return the index of vectorized matrix element (row,col) with matrix dimension dim x dim */
 int getVecID(const int row, const int col, const int dim);
 
+/* Map an index i in essential level system to the corresponding index in full-dimension system */
+int mapEssToFull(const int i, const std::vector<int> &nlevels, const std::vector<int> &nessential);
+/* Map an index i in full dimension to the corresponding index in essential dimensions */
+int mapFullToEss(const int i, const std::vector<int> &nlevels, const std::vector<int> &nessential);
+
+/* Test if a certain row/column i of the full density matrix corresponds to an essential level */
+int isEssential(const int i, const std::vector<int> &nlevels, const std::vector<int> &nessential);
+
+/* Test if a certain row/column i of the full density matrix corresponds to a guard level. A Guard level is the LAST energy level of an oscillator */
+int isGuardLevel(const int i, const std::vector<int> &nlevels);
+
+/* Project a state vector onto essential levels by zero'ing out elements that belong to guard-levels. */
+void projectToEss(Vec state,const std::vector<int> &nlevels, const std::vector<int> &nessential);
 
 /* Kronecker product : Id \kron A, where Id is the Identitymatrix 
  * Mat Out must be allocated with nonzerosA * dimI
@@ -31,10 +44,10 @@ PetscErrorCode Ikron(const Mat A, const int dimI, const double alpha, Mat *Out, 
  */
 PetscErrorCode kronI(const Mat A, const int dimI, const double alpha, Mat *Out, InsertMode insert_mode);
 
-/* Computes kronecker product A \kron B for SQUARE matrices A,B \in \R^{dim \times dim} */
+/* Computes kronecker product A \kron B for matrices A,B */
 /* This works in PETSC SERIAL only. */
-/* The output matrix has to be allocated before with size dim*dim \times dim*dim */
-PetscErrorCode AkronB(const int dim, const Mat A, const Mat B, const double alpha, Mat *Out, InsertMode insert_mode);
+/* The output matrix has to be allocated before with matching sizes and should to be assembles afterwards, if neccessary. */
+PetscErrorCode AkronB(const Mat A, const Mat B, const double alpha, Mat *Out, InsertMode insert_mode);
 
 /* Tests if a matrix A is anti-symmetric (A^T=-A) */
 PetscErrorCode MatIsAntiSymmetric(Mat A, PetscReal tol, PetscBool *flag);
@@ -49,6 +62,8 @@ PetscErrorCode StateIsHermitian(Vec x, PetscReal tol, PetscBool *flag);
 /* Test if vectorized state vector x=[u,v] represent matrix with Trace 1 */
 PetscErrorCode StateHasTrace1(Vec x, PetscReal tol, PetscBool *flag);
 
+/* All sanity tests */
+PetscErrorCode SanityTests(Vec x, PetscReal time);
 
 /**
  * Read data from file

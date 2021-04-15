@@ -12,6 +12,136 @@ int getVecID(const int row, const int col, const int dim){
   return row + col * dim;  
 } 
 
+
+int mapEssToFull(const int i, const std::vector<int> &nlevels, const std::vector<int> &nessential){
+
+  int id = 0;
+  int index = i;
+  for (int iosc = 0; iosc<nlevels.size()-1; iosc++){
+    int postdim = 1;
+    int postdim_ess = 1;
+    for (int j = iosc+1; j<nlevels.size(); j++){
+      postdim *= nlevels[j];
+      postdim_ess *= nessential[j];
+    }
+    int iblock = (int) index / postdim_ess;
+    index = index % postdim_ess;
+    // move id to that block
+    id += iblock * postdim;  
+  }
+  // move to index in last block
+  id += index;
+
+  return id;
+}
+
+int mapFullToEss(const int i, const std::vector<int> &nlevels, const std::vector<int> &nessential){
+
+  int id = 0;
+  int index = i;
+  for (int iosc = 0; iosc<nlevels.size(); iosc++){
+    int postdim = 1;
+    int postdim_ess = 1;
+    for (int j = iosc+1; j<nlevels.size(); j++){
+      postdim *= nlevels[j];
+      postdim_ess *= nessential[j];
+    }
+    int iblock = (int) index / postdim;
+    index = index % postdim;
+    if (iblock >= nessential[iosc]) return -1; // this row/col belongs to a guard level, no mapping defined. 
+    // move id to that block
+    id += iblock * postdim_ess;  
+  }
+
+  return id;
+}
+
+
+
+void projectToEss(Vec state,const std::vector<int> &nlevels, const std::vector<int> &nessential){
+
+  /* Get dimensions */
+  int dim_rho = 1;
+  for (int i=0; i<nlevels.size(); i++){
+    dim_rho *=nlevels[i];
+  }
+
+  /* Get local ownership of the state */
+  int ilow, iupp;
+  VecGetOwnershipRange(state, &ilow, &iupp);
+
+  /* Iterate over rows of system matrix, check if it corresponds to an essential level, and if not, set this row and colum to zero */
+  int reID, imID;
+  for (int i=0; i<dim_rho; i++) {
+    // zero out row and column if this does not belong to an essential level
+    if (!isEssential(i, nlevels, nessential)) { 
+      for (int j=0; j<dim_rho; j++) {
+        // zero out row
+        reID = getIndexReal(getVecID(i,j,dim_rho));
+        imID = getIndexImag(getVecID(i,j,dim_rho));
+        if (ilow <= reID && reID < iupp) VecSetValue(state, reID, 0.0, INSERT_VALUES);
+        if (ilow <= imID && imID < iupp) VecSetValue(state, imID, 0.0, INSERT_VALUES);
+        // zero out colum
+        reID = getIndexReal(getVecID(j,i,dim_rho));
+        imID = getIndexImag(getVecID(j,i,dim_rho));
+        if (ilow <= reID && reID < iupp) VecSetValue(state, reID, 0.0, INSERT_VALUES);
+        if (ilow <= imID && imID < iupp) VecSetValue(state, imID, 0.0, INSERT_VALUES);
+      }
+    } 
+  }
+  VecAssemblyBegin(state);
+  VecAssemblyEnd(state);
+
+
+}
+
+int isEssential(const int i, const std::vector<int> &nlevels, const std::vector<int> &nessential) {
+
+  int isEss = 1;
+  int index = i;
+  for (int iosc = 0; iosc < nlevels.size()-1; iosc++){
+
+    int postdim = 1;
+    for (int j = iosc+1; j<nlevels.size(); j++){
+      postdim *= nlevels[j];
+    }
+    int itest = (int) index / postdim;
+    index = index % postdim;
+    // test if essential for this oscillator
+    if (itest >= nessential[iosc]) {
+      isEss = 0;
+      break;
+    }
+    // test if essential for last oscillator
+    if (index >= nessential[nlevels.size()-1]) isEss=0;
+  }
+
+  return isEss; 
+}
+
+int isGuardLevel(const int i, const std::vector<int> &nlevels){
+  int isGuard =  0;
+  int index = i;
+  for (int iosc = 0; iosc < nlevels.size()-1; iosc++){
+
+    int postdim = 1;
+    for (int j = iosc+1; j<nlevels.size(); j++){
+      postdim *= nlevels[j];
+    }
+    int itest = (int) index / postdim;   // floor(i/n_post)
+    index = index % postdim;
+    // test if this is a guard level for this oscillator
+    if (itest == nlevels[iosc] - 1) {  // last energy level for system 'iosc'
+      isGuard = 1;
+      break;
+    }
+    // test if guard level for last oscillator
+    if (index == nlevels[nlevels.size()-1] - 1) isGuard = 1;
+  }
+
+  return isGuard;
+}
+
 PetscErrorCode Ikron(const Mat A,const  int dimI, const double alpha, Mat *Out, InsertMode insert_mode){
 
     int ierr;
@@ -103,31 +233,32 @@ PetscErrorCode kronI(const Mat A, const int dimI, const double alpha, Mat *Out, 
 
 
 
-PetscErrorCode AkronB(const int dim, const Mat A, const Mat B, const double alpha, Mat *Out, InsertMode insert_mode){
+PetscErrorCode AkronB(const Mat A, const Mat B, const double alpha, Mat *Out, InsertMode insert_mode){
+    int Adim1, Adim2, Bdim1, Bdim2;
+    MatGetSize(A, &Adim1, &Adim2);
+    MatGetSize(B, &Bdim1, &Bdim2);
 
-    int dimOut = dim*dim;  // this variable is not used.
-
-    int ncolsA,ncolsB;
+    int ncolsA, ncolsB;
     const int *colsA, *colsB;
     const double *valsA, *valsB;
     // Iterate over rows of A 
-    for (int irowA = 0; irowA < dim; irowA++){
+    for (int irowA = 0; irowA < Adim1; irowA++){
         // Iterate over non-zero columns in this row of A
         MatGetRow(A, irowA, &ncolsA, &colsA, &valsA);
         for (int j=0; j<ncolsA; j++) {
             int icolA = colsA[j];
             double valA = valsA[j];
-            /* put a B-block at position (irowA*dim, icolA*dim): */
+            /* put a B-block at position (irowA*Bdim1, icolA*Bdim2): */
             // Iterate over rows of B 
-            for (int irowB = 0; irowB < dim; irowB++){
+            for (int irowB = 0; irowB < Bdim1; irowB++){
                 // Iterate over non-zero columns in this B-row
                 MatGetRow(B, irowB, &ncolsB, &colsB, &valsB);
                 for (int k=0; k< ncolsB; k++) {
                     int icolB = colsB[k];
                     double valB = valsB[k];
                     /* Insert values in Out */
-                    int rowOut = irowA*dim + irowB;
-                    int colOut = icolA*dim + icolB;
+                    int rowOut = irowA*Bdim1 + irowB;
+                    int colOut = icolA*Bdim2 + icolB;
                     double valOut = valA * valB * alpha; 
                     MatSetValue(*Out, rowOut, colOut, valOut, insert_mode);
                 }
@@ -173,8 +304,10 @@ PetscErrorCode StateIsHermitian(Vec x, PetscReal tol, PetscBool *flag) {
   dim = dim/2;
   Vec u, v;
   IS isu, isv;
-  ierr = ISCreateStride(PETSC_COMM_WORLD, dim, 0, 1, &isu); CHKERRQ(ierr);
-  ierr = ISCreateStride(PETSC_COMM_WORLD, dim, dim, 1, &isv); CHKERRQ(ierr);
+
+  int dimis = dim;
+  ierr = ISCreateStride(PETSC_COMM_WORLD, dimis, 0, 2, &isu); CHKERRQ(ierr);
+  ierr = ISCreateStride(PETSC_COMM_WORLD, dimis, 1, 2, &isv); CHKERRQ(ierr);
   ierr = VecGetSubVector(x, isu, &u); CHKERRQ(ierr);
   ierr = VecGetSubVector(x, isv, &v); CHKERRQ(ierr);
 
@@ -264,6 +397,34 @@ PetscErrorCode StateHasTrace1(Vec x, PetscReal tol, PetscBool *flag) {
 
 
   return ierr;
+}
+
+
+
+PetscErrorCode SanityTests(Vec x, double time){
+
+  /* Sanity check. Be careful: This is costly! */
+  printf("Trace check %f ...\n", time);
+  PetscBool check;
+  double tol = 1e-10;
+  StateIsHermitian(x, tol, &check);
+  if (!check) {
+    printf("WARNING at t=%f: rho is not hermitian!\n", time);
+    printf("\n rho :\n");
+    VecView(x, PETSC_VIEWER_STDOUT_WORLD);
+    exit(1);
+  }
+  else printf("IsHermitian check passed.\n");
+  StateHasTrace1(x, tol, &check);
+  if (!check) {
+    printf("WARNING at t=%f: Tr(rho) is NOT one!\n", time);
+    printf("\n rho :\n");
+    VecView(x, PETSC_VIEWER_STDOUT_WORLD);
+    exit(1);
+  }
+  else printf("Trace1 check passed.\n");
+
+  return 0;
 }
 
 
