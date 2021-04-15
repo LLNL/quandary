@@ -34,6 +34,7 @@ MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Osci
   int mpisize_petsc;
   MPI_Comm_size(PETSC_COMM_WORLD, &mpisize_petsc);
   MPI_Comm_rank(PETSC_COMM_WORLD, &mpirank_petsc);
+  MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
 
   /* Get dimensions */
   dim_rho = 1;
@@ -43,7 +44,7 @@ MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Osci
     dim_ess *= nessential[iosc];
   }
   dim = dim_rho*dim_rho; // density matrix: N \times N -> vectorized: N^2
-  if (mpirank_petsc == 0) printf("System dimension (complex) N^2 = %d\n",dim);
+  if (mpirank_world == 0) printf("System dimension (complex) N^2 = %d\n",dim);
 
   /* Sanity check for parallel petsc */
   if (dim % mpisize_petsc != 0) {

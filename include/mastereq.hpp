@@ -69,6 +69,7 @@ class MasterEq{
 
     /* Auxiliary stuff */
     int mpirank_petsc;   // Rank of Petsc's communicator
+    int mpirank_world;   // Rank of global communicator
     int nparams_max;     // Maximum number of design parameters per oscilator 
     IS isu, isv;         // Vector strides for accessing u=Re(x), v=Im(x) 
 

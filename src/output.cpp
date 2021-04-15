@@ -66,7 +66,7 @@ Output::Output(MapParam& config, MPI_Comm comm_petsc, MPI_Comm comm_init, MPI_Co
 
 
 Output::~Output(){
-  printf("Output directory: %s\n", datadir.c_str());
+  if (mpirank_world == 0) printf("Output directory: %s\n", datadir.c_str());
   if (mpirank_world == 0) fclose(optimfile);
 }
 
