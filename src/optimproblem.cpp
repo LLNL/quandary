@@ -109,10 +109,9 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   int nfill = 0;
   if (obj_weights.size() < ninit) nfill = ninit - obj_weights.size();
   double val = obj_weights[obj_weights.size()-1];
-  // printf("nfill %d, ninit %d, size %d\n", nfill, ninit, obj_weights.size());
   if (obj_weights.size() < ninit){
     for (int i = 0; i < nfill; i++) 
-      obj_weights.push_back(1.0);
+      obj_weights.push_back(val);
   }
   assert(obj_weights.size() >= ninit);
   /* Sanity check for oscillator IDs */
@@ -307,11 +306,27 @@ double OptimProblem::evalF(const Vec x) {
       finalstate = timestepper->solveODE(initid, rho_t0);
 #endif
 
-    /* Add integral penalty term to objective */
+    /* Add to integral penalty term */
     obj_penal += penalty_coeff * timestepper->penalty_integral;
 
-    /* Add final-time cost */
+    /* Compute final-time cost */
     double obj_iinit = objectiveT(timestepper->mastereq, objective_type, obj_oscilIDs, finalstate, rho_t0, targetgate);
+
+    /* IF 3-state initialization: Scale by the purity of rho(0) */
+    double purity = 1.0;
+    if (initcond_type == THREESTATES) {
+      int Ne = timestepper->mastereq->getDimEss();
+      if (initid == 1) { // rho(0)_ij = 2(N-i+1)/(N(N+1)) \delta_ij -> Tr(rho(0)^2) = 2*(2N+1)/(3N(N+1))
+        purity = 2.*(2.*Ne + 1.) / (3.*Ne*(Ne+1));
+      } else if (initid == 2) { // rho(0)_ij = 1/d -> Tr(rho(0)^2) = 1.0
+        purity = 1.0;
+      } else if (initid == 3) { // rho(0)_ij = 1/N delta_ij -> Tr(rho(0)^2) = 1/N
+        purity = 1.0 / Ne;
+      }
+    }
+    obj_iinit = obj_iinit / purity;
+
+    // Add final-time cost to objective function 
     obj_cost +=  obj_weights[iinit] * obj_iinit;
     obj_cost_max = std::max(obj_cost_max, obj_iinit);
     // printf("%d, %d: iinit objective: %1.14e\n", mpirank_world, mpirank_init, obj_iinit);
@@ -390,13 +405,30 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
       finalstate = timestepper->solveODE(initid, rho_t0);
 #endif
 
-    /* Add integral penalty term to objective */
+    /* Add to integral penalty term */
     obj_penal += penalty_coeff * timestepper->penalty_integral;
 
-    /* Add final-time cost */
+    /* Compute final-time cost */
     double obj_iinit = objectiveT(timestepper->mastereq, objective_type, obj_oscilIDs, finalstate, rho_t0, targetgate);
+
+    /* IF 3-state initialization: Scale by the purity of rho(0) */
+    double purity = 1.0;
+    if (initcond_type == THREESTATES) {
+      int Ne = timestepper->mastereq->getDimEss();
+      if (initid == 1) { // rho(0)_ij = 2(N-i+1)/(N(N+1)) \delta_ij -> Tr(rho(0)^2) = 2*(2N+1)/(3N(N+1))
+        purity = 2.*(2.*Ne + 1.) / (3.*Ne*(Ne+1));
+      } else if (initid == 2) { // rho(0)_ij = 1/d -> Tr(rho(0)^2) = 1.0
+        purity = 1.0;
+      } else if (initid == 3) { // rho(0)_ij = 1/N delta_ij -> Tr(rho(0)^2) = 1/N
+        purity = 1.0 / Ne;
+      }
+    }
+    obj_iinit = obj_iinit / purity;
+    
+    // Add final-time cost to objective function
     obj_cost += obj_weights[iinit] * obj_iinit;
     // if (mpirank_braid == 0) printf("%d: iinit objective: %1.14e\n", mpirank_init, obj_iinit);
+
 
     /* --- Solve adjoint --- */
     // if (mpirank_braid == 0) printf("%d: %d BWD.", mpirank_init, initid);
@@ -405,7 +437,7 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
     VecZeroEntries(rho_t0_bar);
 
     /* Derivative of average over initial conditions */
-    double Jbar = 1.0 / ninit * obj_weights[iinit];
+    double Jbar = 1.0 / ninit * obj_weights[iinit] / purity;
 
     /* Derivative of final time objective */
     objectiveT_diff(timestepper->mastereq, objective_type, obj_oscilIDs, finalstate, rho_t0_bar, rho_t0, Jbar, targetgate);
