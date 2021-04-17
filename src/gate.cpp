@@ -294,16 +294,16 @@ void Gate::compare_trace(const Vec finalstate, const Vec rho0, double& obj){
   VecTDot(x, vfinal, &dot);      // dot = (VxV_re*v0 + VxV_im*u0)^T v    
   trace += dot;
 
+  // compute purity of rho(0): Tr(rho(0)^2)
+  double purity_rho0 = 0.0;
+  VecNorm(u0, NORM_2, &dot);
+  purity_rho0 += dot*dot;
+  VecNorm(v0, NORM_2, &dot);
+  purity_rho0 += dot*dot;
+
   /* Objective J = 1.0 - Trace(...) */
-  obj = 1.0 - trace;
-  // obj = - trace;
+  obj = 1.0 - trace / purity_rho0;
  
-  // // Test: compute purity of rho(T): 1/2*Tr(rho^2)
-  // double purity_rhoT = 0.0;
-  // VecNorm(ufinal, NORM_2, &dot);
-  // purity_rhoT += dot*dot;
-  // VecNorm(vfinal, NORM_2, &dot);
-  // purity_rhoT += dot*dot;
   // // Test: compute constant term  1/2*Tr((Vrho0V^dag)^2)
   // double purity_VrhoV = 0.0;
   // MatMult(VxV_im, v0, x);      
@@ -343,6 +343,7 @@ void Gate::compare_trace_diff(const Vec finalstate, const Vec rho0, Vec rho0_bar
   if (dim_rho== 0) {
     return;
   }
+  double dot;
 
   /* Get real and imag part of final state and initial state */
   Vec ufinal, vfinal, u0, v0;
@@ -354,8 +355,15 @@ void Gate::compare_trace_diff(const Vec finalstate, const Vec rho0, Vec rho0_bar
   /* First, project full dimension state to essential levels by zero'ing out rows and columns */
   projectToEss(finalstate, nlevels, nessential);
 
-  /* Derivative of 1-trace */
+  /* Derivative of 1-trace/purity */
   double dfb = -1.0 * obj_bar;
+  // compute purity of rho(0): Tr(rho(0)^2)
+  double purity_rho0 = 0.0;
+  VecNorm(u0, NORM_2, &dot);
+  purity_rho0 += dot*dot;
+  VecNorm(v0, NORM_2, &dot);
+  purity_rho0 += dot*dot;
+  dfb = dfb / purity_rho0;
 
   // Derivative of first term: -(VxV_re*u0 - VxV_im*v0)*obj_bar
   MatMult(VxV_im, v0, x);      
@@ -363,9 +371,6 @@ void Gate::compare_trace_diff(const Vec finalstate, const Vec rho0, Vec rho0_bar
   MatMultAdd(VxV_re, u0, x, x);  // x = VxV_re*u0 - VxV_im*v0
   VecScale(x, dfb);                 // x = -(VxV_re*u0 - VxV_im*v0)*obj_bar
 
-  /* Derivative of purity */
-  // VecAXPY(x, obj_bar, ufinal);
-  
   /* set real part in rho0bar */
   VecISCopy(rho0_bar, isu, SCATTER_FORWARD, x); 
   
@@ -373,9 +378,6 @@ void Gate::compare_trace_diff(const Vec finalstate, const Vec rho0, Vec rho0_bar
   MatMult(VxV_im, u0, x);         // x = VxV_im*u0
   MatMultAdd(VxV_re, v0, x, x); // x = VxV_re*v0 + VxV_im*u0
   VecScale(x, dfb);               // x = -(VxV_re*v0 + VxV_im*u0)*obj_bar
-
-  /* Derivative of purity */
-  // VecAXPY(x, obj_bar, vfinal);
 
   /* set imaginary part in rho0bar */
   VecISCopy(rho0_bar, isv, SCATTER_FORWARD, x);  
