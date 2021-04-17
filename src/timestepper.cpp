@@ -151,10 +151,10 @@ double TimeStepper::penaltyIntegral(double time, const Vec x){
     /* If gate optimization (frobenius or trace measure): penalize the LAST energy level per oscillator (guard-level) */
     case GATE_FROBENIUS:
     case GATE_TRACE:
-      /* Sum over all diagonal elements that correspond to a guard level. 
-       * A guard level is the LAST energy level of an oscillator */
+      /* Sum over all diagonal elements that correspond to a non-essential guard level. 
+       * A guard level is the LAST NON-ESSENTIAL energy level of an oscillator */
       for (int i=0; i<dim_rho; i++) {
-        if ( isGuardLevel(i, mastereq->nlevels) ) {
+        if ( isGuardLevel(i, mastereq->nlevels, mastereq->nessential) ) {
           // printf("isGuard: %d / %d\n", i, dim_rho);
           int vecID_re = getIndexReal(getVecID(i,i,dim_rho));
           int vecID_im = getIndexImag(getVecID(i,i,dim_rho));
@@ -194,7 +194,7 @@ void TimeStepper::penaltyIntegral_diff(double time, const Vec x, Vec xbar, doubl
     case GATE_FROBENIUS:
     case GATE_TRACE:
       for (int i=0; i<dim_rho; i++) {
-        if ( isGuardLevel(i, mastereq->nlevels) ) {
+        if ( isGuardLevel(i, mastereq->nlevels, mastereq->nessential) ) {
           int vecID_re = getIndexReal(getVecID(i,i,dim_rho));
           int vecID_im = getIndexImag(getVecID(i,i,dim_rho));
           x_re = 0.0; x_im = 0.0;
