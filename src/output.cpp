@@ -162,7 +162,7 @@ void Output::openDataFiles(std::string prefix, int initid){
   if (mpirank_braid >= 0) sprintf(postchar, ".braidrank%04d", mpirank_braid);
 
   /* Open files for state vector */
-  if (mpirank_world == 0 && writefullstate && write_this_iter) {
+  if (mpirank_petsc == 0 && writefullstate && write_this_iter) {
     sprintf(filename, "%s/%s_Re.iinit%04d%s.dat", datadir.c_str(), prefix.c_str(), initid, postchar);
     ufile = fopen(filename, "w");
     sprintf(filename, "%s/%s_Im.iinit%04d%s.dat", datadir.c_str(), prefix.c_str(), initid, postchar);
@@ -170,7 +170,7 @@ void Output::openDataFiles(std::string prefix, int initid){
   }
 
   /* Open files for expected energy */
-  if (mpirank_world == 0 && write_this_iter) {
+  if (mpirank_petsc == 0 && write_this_iter) {
     for (int i=0; i<outputstr.size(); i++) {
       for (int j=0; j<outputstr[i].size(); j++) {
         if (outputstr[i][j].compare("expectedEnergy") == 0) {
