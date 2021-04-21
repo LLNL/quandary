@@ -987,36 +987,32 @@ int MasterEq::getRhoT0(const int iinit, const int ninit, const InitialConditionT
         // 1st initial state: rho(0)_IJ = 2(N-i+1)/(N(N+1)) Delta_IJ
         initID = 1;
 
-        /* Iterate over diagonal elements of essential-level system */
-        for (int i = 0; i<dim_ess; i++) {
-          int i_full = mapEssToFull(i, nlevels, nessential);
+        /* Iterate over diagonal elements of full-dimension system */
+        for (int i_full = 0; i_full<dim_rho; i_full++) {
           int diagID = getIndexReal(getVecID(i_full,i_full,dim_rho));
-          double val = 2.*(dim_ess - i) / (dim_ess * (dim_ess + 1));
+          double val = 2.*(dim_rho - i_full) / (dim_rho * (dim_rho + 1));
           if (ilow <= diagID && diagID < iupp) VecSetValue(rho0, diagID, val, INSERT_VALUES);
         }
 
       } else if (iinit == 1) {
-        // 2nd initial state: rho(0)_IJ = 1/d
+        // 2nd initial state: rho(0)_IJ = 1/N
         initID = 2;
-        for (int i = 0; i<dim_ess; i++) {
-          int i_full = mapEssToFull(i,nlevels, nessential);
-          for (int j = 0; j<dim_ess; j++) {
-            double val = 1./dim_ess;
-            int j_full = mapEssToFull(j,nlevels, nessential);
+        for (int i_full = 0; i_full<dim_rho; i_full++) {
+          for (int j_full = 0; j_full<dim_ess; j_full++) {
+            double val = 1./dim_rho;
             int index = getIndexReal(getVecID(i_full,j_full,dim_rho));   // Re(rho_ij)
             if (ilow <= index && index < iupp) VecSetValue(rho0, index, val, INSERT_VALUES); 
           }
         }
 
       } else if (iinit == 2) {
-        // 3rd initial state: rho(0)_IJ = 1/d Delta_IJ
+        // 3rd initial state: rho(0)_IJ = 1/N Delta_IJ
         initID = 3;
 
         /* Iterate over diagonal elements */
-        for (int i = 0; i<dim_ess; i++) {
-          int i_full = mapEssToFull(i,nlevels, nessential);
+        for (int i_full = 0; i_full<dim_rho; i_full++) {
           int diagID = getIndexReal(getVecID(i_full,i_full,dim_rho));
-          double val = 1./ dim_ess;
+          double val = 1./ dim_rho;
           if (ilow <= diagID && diagID < iupp) VecSetValue(rho0, diagID, val, INSERT_VALUES);
         }
 
