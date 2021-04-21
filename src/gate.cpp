@@ -204,6 +204,16 @@ void Gate::compare_frobenius(const Vec finalstate, const Vec rho0, double& frob)
 
   /* obj = 1/2 * || finalstate - gate*rho(0) ||^2 */
   frob *= 1./2.;
+  
+  // scale by purity of rho(0)
+  double purity_rho0 = 0.0;
+  double dot = 0.0;
+  VecNorm(u0, NORM_2, &dot);
+  purity_rho0 += dot*dot;
+  VecNorm(v0, NORM_2, &dot);
+  purity_rho0 += dot*dot;
+  frob = frob / purity_rho0;
+
 
   /* Restore vectors from index set */
   VecRestoreSubVector(finalstate, isu, &ufinal);
@@ -232,6 +242,14 @@ void Gate::compare_frobenius_diff(const Vec finalstate, const Vec rho0, Vec rho0
 
   /* Derivative of 1/2 * J */
   double dfb = 1./2. * frob_bar;
+  // Derivative of purity scaling 
+  double purity_rho0 = 0.0;
+  double dot = 0.0;
+  VecNorm(u0, NORM_2, &dot);
+  purity_rho0 += dot*dot;
+  VecNorm(v0, NORM_2, &dot);
+  purity_rho0 += dot*dot;
+  dfb = dfb / purity_rho0;
 
   /* Derivative of real part of frobenius norm: 2 * (u - VxV_re*u0 + VxV_im*v0) * dfb */
   MatMult(VxV_re, u0, x);            // x = VxV_re*u0
