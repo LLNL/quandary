@@ -214,9 +214,6 @@ void Gate::compare_frobenius(const Vec finalstate, const Vec rho0, double& frob)
     return;
   }
 
-  /* First, project full dimension state to essential levels by zero'ing out rows and columns */
-  projectToEss(finalstate, nlevels, nessential);
-
   /* Get real and imag part of final state and initial state */
   Vec ufinal, vfinal, u0, v0;
   VecGetSubVector(finalstate, isu, &ufinal);
@@ -274,9 +271,6 @@ void Gate::compare_frobenius_diff(const Vec finalstate, const Vec rho0, Vec rho0
   VecGetSubVector(rho0, isu, &u0);
   VecGetSubVector(rho0, isv, &v0);
 
-  /* Project final state onto essential levels (zero out rows and columns) */
-  projectToEss(finalstate, nlevels, nessential);
-
   /* Derivative of 1/2 * J */
   double dfb = 1./2. * frob_bar;
   // Derivative of purity scaling 
@@ -326,9 +320,6 @@ void Gate::compare_trace(const Vec finalstate, const Vec rho0, double& obj){
   VecGetSubVector(finalstate, isv, &vfinal);
   VecGetSubVector(rho0, isu, &u0);
   VecGetSubVector(rho0, isv, &v0);
-
-  /* Project final state onto essential levels (zero out rows and columns) */
-  projectToEss(finalstate, nlevels, nessential);
 
   /* trace overlap: (VxV_re*u0 - VxV_im*v0)^T u + (VxV_re*v0 + VxV_im*u0)^Tv
               [ + i (VxV_re*u0 - VxV_im*v0)^T v - (VxV_re*v0 + VxV_im*u0)^Tu ]   <- this should be zero!
@@ -406,9 +397,6 @@ void Gate::compare_trace_diff(const Vec finalstate, const Vec rho0, Vec rho0_bar
   VecGetSubVector(finalstate, isv, &vfinal);
   VecGetSubVector(rho0, isu, &u0);
   VecGetSubVector(rho0, isv, &v0);
-
-  /* First, project full dimension state to essential levels by zero'ing out rows and columns */
-  projectToEss(finalstate, nlevels, nessential);
 
   /* Derivative of 1-trace/purity */
   double dfb = -1.0 * obj_bar;
