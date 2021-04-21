@@ -24,10 +24,10 @@ p \
 #    datafile u 7 axis x1y1  w l t 'tikhonov', \
 #    datafile u 8 axis x1y1  w l t 'penalty', \
 
-pause -1 "Plot 'out.png' written. Hit any key to continue"
+pause -1 "Plot 'out.ps' written. Hit any key to continue"
 
-set term png
-set output 'out.png'
+set term postscript dashed color
+set output 'out.ps'
 replot
 #set term x11
 #replot
