@@ -123,7 +123,7 @@ void Gate::assembleGate(){
   PetscFree(out_im);
   PetscFree(cols);
 
-  /* Assemble vectorized gate G=V\kron V where V = PV_eP^T for essential dimension gate V_e (user input) and projection P lifting V_e to the full dimension by inserting zero rows and columns. */
+  /* Assemble vectorized gate G=V\kron V where V = PV_eP^T for essential dimension gate V_e (user input) and projection P lifting V_e to the full dimension by inserting identity blocks for non-essential levels. */
   // Each element in V\kron V is a product V(i,j)*V(r,c), for rows and columns i,j,r,c!
   int ilow, iupp;
   MatGetOwnershipRange(VxV_re, &ilow, &iupp);
@@ -131,32 +131,69 @@ void Gate::assembleGate(){
   double vre_ij, vim_ij;
   double vre_rc, vim_rc;
   // iterate over rows of V_e (essential dimension gate)
-  for (int i=0;i<dim_ess; i++) {
-    // iterate over columns in this row
-    for (int j=0; j<dim_ess; j++) {
-      vre_ij = 0.0; vim_ij = 0.0;
-      MatGetValues(V_re, 1, &i, 1, &j, &vre_ij);
-      MatGetValues(V_im, 1, &i, 1, &j, &vim_ij);
-      // for all nonzeros in this row, place block \bar Ve_{i,j} * (V_e) at starting position G[a,b]
-      if (fabs(vre_ij) > 1e-14 || fabs(vim_ij) > 1e-14 ) {
-        int a = mapEssToFull(i, nlevels, nessential) * dim_rho;
-        int b = mapEssToFull(j, nlevels, nessential) * dim_rho;
-        // iterate over rows in V_e
-        for (int r=0; r<dim_ess; r++) {
-          int rowout = a + mapEssToFull(r, nlevels, nessential);  // row in G
-          // if this row is stored on this proc, set \bar Ve_{i,j} * Ve_{r,c} inside G
-          if (ilow <= rowout && rowout < iupp) {
-            for (int c=0; c<dim_ess; c++) {
-              int colout = b + mapEssToFull(c, nlevels, nessential); // column in G
-              vre_rc = 0.0; vim_rc = 0.0;
-              MatGetValues(V_re, 1, &r, 1, &c, &vre_rc);
-              MatGetValues(V_im, 1, &r, 1, &c, &vim_rc);
-              val = vre_ij*vre_rc + vim_ij*vim_rc;
-              if (fabs(val) > 1e-14) MatSetValue(VxV_re, rowout, colout, val, INSERT_VALUES);
-              val = vre_ij*vim_rc - vim_ij*vre_rc;
-              if (fabs(val) > 1e-14) MatSetValue(VxV_im, rowout, colout, val, INSERT_VALUES);
+  for (int row_f=0;row_f<dim_rho; row_f++) {
+    if (isEssential(row_f, nlevels, nessential)) { // place \bar v_xx*V_f blocks for all cols in V_e[row_e]
+      int row_e = mapFullToEss(row_f, nlevels, nessential);
+      assert(row_f == mapEssToFull(row_e, nlevels, nessential));
+      // iterate over columns in this row_e
+      for (int col_e=0; col_e<dim_ess; col_e++) {
+        vre_ij = 0.0; vim_ij = 0.0;
+        MatGetValues(V_re, 1, &row_e, 1, &col_e, &vre_ij);
+        MatGetValues(V_im, 1, &row_e, 1, &col_e, &vim_ij);
+        // for all nonzeros in this row, place block \bar Ve_{i,j} * (V_f) at starting position G[a,b]
+        if (fabs(vre_ij) > 1e-14 || fabs(vim_ij) > 1e-14 ) {
+          int a = row_f * dim_rho;
+          int b = mapEssToFull(col_e, nlevels, nessential) * dim_rho;
+          // iterate over rows in V_f
+          for (int r=0; r<dim_rho; r++) {
+            int rowout = a + r;  // row in G
+            if (ilow <= rowout && rowout < iupp) {
+              if (isEssential(r, nlevels, nessential)){ // place ve_ij*ve_rc at G[a+r, b+map(ce)]
+                int re = mapFullToEss(r, nlevels, nessential);
+                for (int ce=0; ce<dim_ess; ce++) {
+                  int colout = b + mapEssToFull(ce, nlevels, nessential); // column in G
+                  vre_rc = 0.0; vim_rc = 0.0;
+                  MatGetValues(V_re, 1, &re, 1, &ce, &vre_rc);
+                  MatGetValues(V_im, 1, &re, 1, &ce, &vim_rc);
+                  val = vre_ij*vre_rc + vim_ij*vim_rc;
+                  if (fabs(val) > 1e-14) MatSetValue(VxV_re, rowout, colout, val, INSERT_VALUES);
+                  val = vre_ij*vim_rc - vim_ij*vre_rc;
+                  if (fabs(val) > 1e-14) MatSetValue(VxV_im, rowout, colout, val, INSERT_VALUES);
+                }  
+              } else { // place ve_ij*1.0 at G[a+row, a+row]
+              int colout = b + r;
+                  val = vre_ij;
+                  if (fabs(val) > 1e-14) MatSetValue(VxV_re, rowout, colout, val, INSERT_VALUES);
+                  val = vim_rc;
+                  if (fabs(val) > 1e-14) MatSetValue(VxV_im, rowout, colout, val, INSERT_VALUES);
+              }              
             }
           }
+        }
+      }
+    } else { // place Vf block starting at G[a,a], a=row_f * N
+      int a = row_f * dim_rho;
+      // iterate over rows in V_f
+      for (int r=0; r<dim_rho; r++) {
+        int rowout = a + r;  // row in G
+        if (ilow <= rowout && rowout < iupp) {
+          if (isEssential(r, nlevels, nessential)){ // place ve_rc at G[a+r, a+map(ce)]
+            int re = mapFullToEss(r, nlevels, nessential);
+            for (int ce=0; ce<dim_ess; ce++) {
+              int colout = a + mapEssToFull(ce, nlevels, nessential); // column in G
+              vre_rc = 0.0; vim_rc = 0.0;
+              MatGetValues(V_re, 1, &re, 1, &ce, &vre_rc);
+              MatGetValues(V_im, 1, &re, 1, &ce, &vim_rc);
+              val = vre_rc;
+              if (fabs(val) > 1e-14) MatSetValue(VxV_re, rowout, colout, val, INSERT_VALUES);
+              val = vim_rc;
+              if (fabs(val) > 1e-14) MatSetValue(VxV_im, rowout, colout, val, INSERT_VALUES);
+            }  
+          } else { // place 1.0 at G[a+r, a+r]
+              int colout = a + r;
+              val = 1.0;
+              if (fabs(val) > 1e-14) MatSetValue(VxV_re, rowout, colout, val, INSERT_VALUES);
+          }              
         }
       }
     }
