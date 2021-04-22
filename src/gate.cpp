@@ -595,6 +595,33 @@ SWAP::~SWAP(){}
 
 
 
+SWAP_02::SWAP_02(std::vector<int> nlevels_, std::vector<int> nessential_, double time_, std::vector<double> gate_rot_freq_) : Gate(nlevels_, nessential_, time_, gate_rot_freq_) {
+  assert(dim_ess == 8);
+
+  /* Fill lab-frame swap 0<-> 2gate in essential dimension system V_re = Re(V), V_im = Im(V) = 0 */
+  MatSetValue(V_re, 0, 0, 1.0, INSERT_VALUES);
+  MatSetValue(V_re, 1, 4, 1.0, INSERT_VALUES);
+  MatSetValue(V_re, 2, 2, 1.0, INSERT_VALUES);
+  MatSetValue(V_re, 3, 6, 1.0, INSERT_VALUES);
+  MatSetValue(V_re, 4, 1, 1.0, INSERT_VALUES);
+  MatSetValue(V_re, 5, 5, 1.0, INSERT_VALUES);
+  MatSetValue(V_re, 6, 3, 1.0, INSERT_VALUES);
+  MatSetValue(V_re, 7, 7, 1.0, INSERT_VALUES);
+
+  MatAssemblyBegin(V_re, MAT_FINAL_ASSEMBLY);
+  MatAssemblyBegin(V_im, MAT_FINAL_ASSEMBLY);
+  MatAssemblyEnd(V_re, MAT_FINAL_ASSEMBLY);
+  MatAssemblyEnd(V_im, MAT_FINAL_ASSEMBLY);
+
+  /* assemble vectorized rotated target gate \bar VP \kron VP from V=V_re + i V_im */
+  assembleGate();
+
+}
+
+SWAP_02::~SWAP_02(){}
+
+
+
 
 SWAP_03::SWAP_03(std::vector<int> nlevels_, std::vector<int> nessential_, double time_, std::vector<double> gate_rot_freq_) : Gate(nlevels_, nessential_, time_, gate_rot_freq_) {
   assert(dim_ess == 16);
