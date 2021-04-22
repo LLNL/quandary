@@ -1,7 +1,7 @@
 # Set location of PETSC
 #PETSC_DIR=/usr/workspace/wsa/wave/petsc-3.13
 #PETSC_ARCH=arch-linux-c-debug
-#include user.mk
+include user.mk
 
 # Choose to link with XBraid, set the location if true
 WITH_XBRAID = false
