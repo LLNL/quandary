@@ -629,3 +629,35 @@ SWAP_03::SWAP_03(std::vector<int> nlevels_, std::vector<int> nessential_, double
 
 SWAP_03::~SWAP_03(){}
 
+
+C7NOT::C7NOT(std::vector<int> nlevels_, std::vector<int> nessential_, double time_, std::vector<double> gate_rot_freq_) : Gate(nlevels_, nessential_, time_, gate_rot_freq_) {
+
+  // gate dimensions: 2^8 x 2^8 = 256 x 256
+  assert(dim_ess == 256);
+
+  /* Fill lab-frame C7NOT gate in essential dimension system V_re = Re(V), V_im = Im(V) = 0 */
+  /* V = [1 0 0 ...
+          0 1 0 ...
+          0 0 1 ...
+          ..........
+                 0 1
+                 1 0 ]
+  */
+  for (int k=0; k<254; k++) { 
+    // 
+    MatSetValue(V_re, k, k, 1.0, INSERT_VALUES);
+  }
+  MatSetValue(V_re, 254, 255, 1.0, INSERT_VALUES);
+  MatSetValue(V_re, 255, 254, 1.0, INSERT_VALUES);
+
+  MatAssemblyBegin(V_re, MAT_FINAL_ASSEMBLY);
+  MatAssemblyBegin(V_im, MAT_FINAL_ASSEMBLY);
+  MatAssemblyEnd(V_re, MAT_FINAL_ASSEMBLY);
+  MatAssemblyEnd(V_im, MAT_FINAL_ASSEMBLY);
+
+  /* assemble vectorized rotated target gate \bar VP \kron VP from V=V_re + i V_im */
+  assembleGate();
+}
+
+
+C7NOT::~C7NOT(){}

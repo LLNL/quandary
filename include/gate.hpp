@@ -134,3 +134,12 @@ class SWAP_03: public Gate {
     SWAP_03(std::vector<int> nlevels_, std::vector<int> nessential_, double time, std::vector<double> rotation_frequencies_);
     ~SWAP_03();
 };
+
+
+/* C7NOT for four 8 qubits NOT on qubit 8, controlled by qubits 1,...,7 */
+class C7NOT: public Gate {
+    public:
+    C7NOT(std::vector<int> nlevels_, std::vector<int> nessential_, double time, std::vector<double> rotation_frequencies_);
+    ~C7NOT();
+};
+
