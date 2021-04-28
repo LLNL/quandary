@@ -123,40 +123,42 @@ void Gate::assembleGate(){
   PetscFree(out_im);
   PetscFree(cols);
 
-  /* Assemble vectorized gate V\kron V from essential level gate input. */
-  /* Each element in V\kron V is a product V(r1,c1)*V(r2,c2), for rows and columns r1,r2,c1,c2. */
+  /* Assemble vectorized gate G=V\kron V where V = PV_eP^T for essential dimension gate V_e (user input) and projection P lifting V_e to the full dimension by inserting zero rows and columns. */
+  // Each element in V\kron V is a product V(i,j)*V(r,c), for rows and columns i,j,r,c!
   int ilow, iupp;
-  double val;
   MatGetOwnershipRange(VxV_re, &ilow, &iupp);
-  // iterate over local rows in VxV_re, VxV_im
-  for (int i = ilow; i<iupp; i++) {
-    // Rows for the first and second factors
-    const int r1 = (int) i / dim_rho;
-    const int r2 = i % dim_rho;
-    // iterate over columns in G
-    for (int j=0; j<dim_rho*dim_rho; j++){
-      // Columns for the first and second factors
-      const int c1 = (int) j / dim_rho;
-      const int c2 = j % dim_rho;
-      // Map rows and columns from full to essential dimension
-      int r1e = mapFullToEss(r1, nlevels, nessential);
-      int r2e = mapFullToEss(r2, nlevels, nessential);
-      int c1e = mapFullToEss(c1, nlevels, nessential);
-      int c2e = mapFullToEss(c2, nlevels, nessential);
-      double va1=0.0;
-      double va2=0.0;
-      double vb1=0.0;
-      double vb2=0.0;
-      // Get values V(r1,c1), V(r2,c2) from essential-level gate
-      MatGetValues(V_re, 1, &r1e, 1, &c1e, &va1); 
-      MatGetValues(V_re, 1, &r2e, 1, &c2e, &va2); 
-      MatGetValues(V_im, 1, &r1e, 1, &c1e, &vb1); 
-      MatGetValues(V_im, 1, &r2e, 1, &c2e, &vb2); 
-      // Kronecker product for real and imaginar part
-      val = va1*va2 + vb1*vb2;
-      if (fabs(val) > 1e-14) MatSetValue(VxV_re, i,j, val, INSERT_VALUES);
-      val = va1*vb2 - vb1*va2;
-      if (fabs(val) > 1e-14) MatSetValue(VxV_im, i,j, val, INSERT_VALUES);
+  double val;
+  double vre_ij, vim_ij;
+  double vre_rc, vim_rc;
+  // iterate over rows of V_e (essential dimension gate)
+  for (int i=0;i<dim_ess; i++) {
+    // iterate over columns in this row
+    for (int j=0; j<dim_ess; j++) {
+      vre_ij = 0.0; vim_ij = 0.0;
+      MatGetValues(V_re, 1, &i, 1, &j, &vre_ij);
+      MatGetValues(V_im, 1, &i, 1, &j, &vim_ij);
+      // for all nonzeros in this row, place block \bar Ve_{i,j} * (V_e) at starting position G[a,b]
+      if (fabs(vre_ij) > 1e-14 || fabs(vim_ij) > 1e-14 ) {
+        int a = mapEssToFull(i, nlevels, nessential) * dim_rho;
+        int b = mapEssToFull(j, nlevels, nessential) * dim_rho;
+        // iterate over rows in V_e
+        for (int r=0; r<dim_ess; r++) {
+          int rowout = a + mapEssToFull(r, nlevels, nessential);  // row in G
+          // if this row is stored on this proc, set \bar Ve_{i,j} * Ve_{r,c} inside G
+          if (ilow <= rowout && rowout < iupp) {
+            for (int c=0; c<dim_ess; c++) {
+              int colout = b + mapEssToFull(c, nlevels, nessential); // column in G
+              vre_rc = 0.0; vim_rc = 0.0;
+              MatGetValues(V_re, 1, &r, 1, &c, &vre_rc);
+              MatGetValues(V_im, 1, &r, 1, &c, &vim_rc);
+              val = vre_ij*vre_rc + vim_ij*vim_rc;
+              if (fabs(val) > 1e-14) MatSetValue(VxV_re, rowout, colout, val, INSERT_VALUES);
+              val = vre_ij*vim_rc - vim_ij*vre_rc;
+              if (fabs(val) > 1e-14) MatSetValue(VxV_im, rowout, colout, val, INSERT_VALUES);
+            }
+          }
+        }
+      }
     }
   }
 
@@ -202,6 +204,16 @@ void Gate::compare_frobenius(const Vec finalstate, const Vec rho0, double& frob)
 
   /* obj = 1/2 * || finalstate - gate*rho(0) ||^2 */
   frob *= 1./2.;
+  
+  // scale by purity of rho(0)
+  double purity_rho0 = 0.0;
+  double dot = 0.0;
+  VecNorm(u0, NORM_2, &dot);
+  purity_rho0 += dot*dot;
+  VecNorm(v0, NORM_2, &dot);
+  purity_rho0 += dot*dot;
+  frob = frob / purity_rho0;
+
 
   /* Restore vectors from index set */
   VecRestoreSubVector(finalstate, isu, &ufinal);
@@ -230,6 +242,14 @@ void Gate::compare_frobenius_diff(const Vec finalstate, const Vec rho0, Vec rho0
 
   /* Derivative of 1/2 * J */
   double dfb = 1./2. * frob_bar;
+  // Derivative of purity scaling 
+  double purity_rho0 = 0.0;
+  double dot = 0.0;
+  VecNorm(u0, NORM_2, &dot);
+  purity_rho0 += dot*dot;
+  VecNorm(v0, NORM_2, &dot);
+  purity_rho0 += dot*dot;
+  dfb = dfb / purity_rho0;
 
   /* Derivative of real part of frobenius norm: 2 * (u - VxV_re*u0 + VxV_im*v0) * dfb */
   MatMult(VxV_re, u0, x);            // x = VxV_re*u0
@@ -292,16 +312,16 @@ void Gate::compare_trace(const Vec finalstate, const Vec rho0, double& obj){
   VecTDot(x, vfinal, &dot);      // dot = (VxV_re*v0 + VxV_im*u0)^T v    
   trace += dot;
 
+  // compute purity of rho(0): Tr(rho(0)^2)
+  double purity_rho0 = 0.0;
+  VecNorm(u0, NORM_2, &dot);
+  purity_rho0 += dot*dot;
+  VecNorm(v0, NORM_2, &dot);
+  purity_rho0 += dot*dot;
+
   /* Objective J = 1.0 - Trace(...) */
-  obj = 1.0 - trace;
-  // obj = - trace;
+  obj = 1.0 - trace / purity_rho0;
  
-  // // Test: compute purity of rho(T): 1/2*Tr(rho^2)
-  // double purity_rhoT = 0.0;
-  // VecNorm(ufinal, NORM_2, &dot);
-  // purity_rhoT += dot*dot;
-  // VecNorm(vfinal, NORM_2, &dot);
-  // purity_rhoT += dot*dot;
   // // Test: compute constant term  1/2*Tr((Vrho0V^dag)^2)
   // double purity_VrhoV = 0.0;
   // MatMult(VxV_im, v0, x);      
@@ -341,6 +361,7 @@ void Gate::compare_trace_diff(const Vec finalstate, const Vec rho0, Vec rho0_bar
   if (dim_rho== 0) {
     return;
   }
+  double dot;
 
   /* Get real and imag part of final state and initial state */
   Vec ufinal, vfinal, u0, v0;
@@ -352,8 +373,15 @@ void Gate::compare_trace_diff(const Vec finalstate, const Vec rho0, Vec rho0_bar
   /* First, project full dimension state to essential levels by zero'ing out rows and columns */
   projectToEss(finalstate, nlevels, nessential);
 
-  /* Derivative of 1-trace */
+  /* Derivative of 1-trace/purity */
   double dfb = -1.0 * obj_bar;
+  // compute purity of rho(0): Tr(rho(0)^2)
+  double purity_rho0 = 0.0;
+  VecNorm(u0, NORM_2, &dot);
+  purity_rho0 += dot*dot;
+  VecNorm(v0, NORM_2, &dot);
+  purity_rho0 += dot*dot;
+  dfb = dfb / purity_rho0;
 
   // Derivative of first term: -(VxV_re*u0 - VxV_im*v0)*obj_bar
   MatMult(VxV_im, v0, x);      
@@ -361,9 +389,6 @@ void Gate::compare_trace_diff(const Vec finalstate, const Vec rho0, Vec rho0_bar
   MatMultAdd(VxV_re, u0, x, x);  // x = VxV_re*u0 - VxV_im*v0
   VecScale(x, dfb);                 // x = -(VxV_re*u0 - VxV_im*v0)*obj_bar
 
-  /* Derivative of purity */
-  // VecAXPY(x, obj_bar, ufinal);
-  
   /* set real part in rho0bar */
   VecISCopy(rho0_bar, isu, SCATTER_FORWARD, x); 
   
@@ -371,9 +396,6 @@ void Gate::compare_trace_diff(const Vec finalstate, const Vec rho0, Vec rho0_bar
   MatMult(VxV_im, u0, x);         // x = VxV_im*u0
   MatMultAdd(VxV_re, v0, x, x); // x = VxV_re*v0 + VxV_im*u0
   VecScale(x, dfb);               // x = -(VxV_re*v0 + VxV_im*u0)*obj_bar
-
-  /* Derivative of purity */
-  // VecAXPY(x, obj_bar, vfinal);
 
   /* set imaginary part in rho0bar */
   VecISCopy(rho0_bar, isv, SCATTER_FORWARD, x);  

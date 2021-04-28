@@ -99,44 +99,40 @@ int isEssential(const int i, const std::vector<int> &nlevels, const std::vector<
 
   int isEss = 1;
   int index = i;
-  for (int iosc = 0; iosc < nlevels.size()-1; iosc++){
+  for (int iosc = 0; iosc < nlevels.size(); iosc++){
 
     int postdim = 1;
     for (int j = iosc+1; j<nlevels.size(); j++){
       postdim *= nlevels[j];
     }
     int itest = (int) index / postdim;
-    index = index % postdim;
     // test if essential for this oscillator
     if (itest >= nessential[iosc]) {
       isEss = 0;
       break;
     }
-    // test if essential for last oscillator
-    if (index >= nessential[nlevels.size()-1]) isEss=0;
+    index = index % postdim;
   }
 
   return isEss; 
 }
 
-int isGuardLevel(const int i, const std::vector<int> &nlevels){
+int isGuardLevel(const int i, const std::vector<int> &nlevels, const std::vector<int> &nessential){
   int isGuard =  0;
   int index = i;
-  for (int iosc = 0; iosc < nlevels.size()-1; iosc++){
+  for (int iosc = 0; iosc < nlevels.size(); iosc++){
 
     int postdim = 1;
     for (int j = iosc+1; j<nlevels.size(); j++){
       postdim *= nlevels[j];
     }
     int itest = (int) index / postdim;   // floor(i/n_post)
-    index = index % postdim;
     // test if this is a guard level for this oscillator
-    if (itest == nlevels[iosc] - 1) {  // last energy level for system 'iosc'
+    if (itest == nlevels[iosc] - 1 && itest >= nessential[iosc]) {  // last energy level for system 'iosc'
       isGuard = 1;
       break;
     }
-    // test if guard level for last oscillator
-    if (index == nlevels[nlevels.size()-1] - 1) isGuard = 1;
+    index = index % postdim;
   }
 
   return isGuard;

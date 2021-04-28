@@ -21,7 +21,7 @@ int mapFullToEss(const int i, const std::vector<int> &nlevels, const std::vector
 int isEssential(const int i, const std::vector<int> &nlevels, const std::vector<int> &nessential);
 
 /* Test if a certain row/column i of the full density matrix corresponds to a guard level. A Guard level is the LAST energy level of an oscillator */
-int isGuardLevel(const int i, const std::vector<int> &nlevels);
+int isGuardLevel(const int i, const std::vector<int> &nlevels, const std::vector<int> &nessential);
 
 /* Project a state vector onto essential levels by zero'ing out elements that belong to guard-levels. */
 void projectToEss(Vec state,const std::vector<int> &nlevels, const std::vector<int> &nessential);

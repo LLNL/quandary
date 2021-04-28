@@ -109,10 +109,9 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   int nfill = 0;
   if (obj_weights.size() < ninit) nfill = ninit - obj_weights.size();
   double val = obj_weights[obj_weights.size()-1];
-  // printf("nfill %d, ninit %d, size %d\n", nfill, ninit, obj_weights.size());
   if (obj_weights.size() < ninit){
     for (int i = 0; i < nfill; i++) 
-      obj_weights.push_back(1.0);
+      obj_weights.push_back(val);
   }
   assert(obj_weights.size() >= ninit);
   /* Sanity check for oscillator IDs */
@@ -153,6 +152,8 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   VecCreate(PETSC_COMM_WORLD, &rho_t0); 
   VecSetSizes(rho_t0,PETSC_DECIDE,2*timestepper->mastereq->getDim());
   VecSetFromOptions(rho_t0);
+  int ilow, iupp;
+  VecGetOwnershipRange(rho_t0, &ilow, &iupp);
 
   /* If PURE or FROMFILE initialization, store them here. Otherwise they are set inside evalF */
   if (initcond_type == PURE) { 
@@ -178,7 +179,7 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
     }
     int ndim = (int)sqrt(timestepper->mastereq->getDim());
     int vec_id = getIndexReal(getVecID( diag_id, diag_id, ndim )); // Real part of x
-    VecSetValue(rho_t0, vec_id, 1.0, INSERT_VALUES);
+    if (ilow <= vec_id && vec_id < iupp) VecSetValue(rho_t0, vec_id, 1.0, INSERT_VALUES);
   }
   else if (initcond_type == FROMFILE) { 
     /* Read initial condition from file */
@@ -196,14 +197,14 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
     for (int i = 0; i < dim_ess*dim_ess; i++) {
       int k = i % dim_ess;
       int j = (int) i / dim_ess;
-      // printf("k=%d, j=%d (orig)  ", k,j);
       if (dim_ess*dim_ess < timestepper->mastereq->getDim()) {
         k = mapEssToFull(k, timestepper->mastereq->nlevels, timestepper->mastereq->nessential);
         j = mapEssToFull(j, timestepper->mastereq->nlevels, timestepper->mastereq->nessential);
       }
-      int elemid = getVecID(k, j, dim_rho);
-      VecSetValue(rho_t0, getIndexReal(elemid), vec[i], INSERT_VALUES);        // RealPart
-      VecSetValue(rho_t0, getIndexImag(elemid), vec[i + dim_ess*dim_ess], INSERT_VALUES); // Imaginary Part
+      int elemid_re = getIndexReal(getVecID(k,j,dim_rho));
+      int elemid_im = getIndexImag(getVecID(k,j,dim_rho));
+      if (ilow <= elemid_re && elemid_re < iupp) VecSetValue(rho_t0, elemid_re, vec[i], INSERT_VALUES);        // RealPart
+      if (ilow <= elemid_im && elemid_im < iupp) VecSetValue(rho_t0, elemid_im, vec[i + dim_ess*dim_ess], INSERT_VALUES); // Imaginary Part
       // printf("  -> k=%d j=%d, elemid=%d vals=%1.4e, %1.4e\n", k, j, elemid, vec[i], vec[i+dim_ess*dim_ess]);
     }
     delete [] vec;
@@ -305,10 +306,10 @@ double OptimProblem::evalF(const Vec x) {
       finalstate = timestepper->solveODE(initid, rho_t0);
 #endif
 
-    /* Add integral penalty term to objective */
+    /* Add to integral penalty term */
     obj_penal += penalty_coeff * timestepper->penalty_integral;
 
-    /* Add final-time cost */
+    /* Compute and add final-time cost */
     double obj_iinit = objectiveT(timestepper->mastereq, objective_type, obj_oscilIDs, finalstate, rho_t0, targetgate);
     obj_cost +=  obj_weights[iinit] * obj_iinit;
     obj_cost_max = std::max(obj_cost_max, obj_iinit);
@@ -388,10 +389,10 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
       finalstate = timestepper->solveODE(initid, rho_t0);
 #endif
 
-    /* Add integral penalty term to objective */
+    /* Add to integral penalty term */
     obj_penal += penalty_coeff * timestepper->penalty_integral;
 
-    /* Add final-time cost */
+    /* Compute and add final-time cost */
     double obj_iinit = objectiveT(timestepper->mastereq, objective_type, obj_oscilIDs, finalstate, rho_t0, targetgate);
     obj_cost += obj_weights[iinit] * obj_iinit;
     // if (mpirank_braid == 0) printf("%d: iinit objective: %1.14e\n", mpirank_init, obj_iinit);

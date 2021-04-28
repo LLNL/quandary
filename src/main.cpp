@@ -435,7 +435,8 @@ int main(int argc,char **argv)
 
   /* Report average fidelity */
   double F_avg = -1.0;
-  if (optimctx->initcond_type == BASIS && optimctx->objective_type == GATE_TRACE) {
+  if ( (optimctx->initcond_type == BASIS && optimctx->objective_type == GATE_TRACE) ||
+       (optimctx->initcond_type == DIAGONAL && optimctx->objective_type == GATE_TRACE) ) {
     F_avg = 1. - optimctx->obj_cost;
     if (mpirank_world == 0) printf("F_avg = %f \n", F_avg);
   } else if (optimctx->objective_type == EXPECTEDENERGY ||
@@ -446,7 +447,7 @@ int main(int argc,char **argv)
     if (mpirank_world == 0) printf("F_avg = %f \n", F_avg);
   } else {
     if (mpirank_world == 0) {
-      printf("Warning: Average not reported.\n");
+      printf("Warning: Average fidelity not reported.\n");
       printf(" For gates: Recomupte the average fidelity if needed by setting GATE_TRACE as objective function and BASIS as initial conditions.\n");
       printf(" For groundstate optimization, recompute average fidelity if needed by setting EXPECTEDENERGY as objective function.\n");
     }
