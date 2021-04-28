@@ -266,7 +266,7 @@ do
                 mv "${simulation}/data_out/$fileName" "${simulation}/base/$fileName"
               fi
               if [[ "$simulation" == "AxC" ]] || [[ "$simulation" == "pipulse" ]] || [[ "$simulation" == "cnot" ]] || [[ "$simulation" == "xgate" ]]; then
-                if [[ "$fileName" == "rho"*".dat" ]]; then
+                if [[ "$fileName" == "rho"*".dat" ]] || [[ "$fileName" == "population"*".dat" ]]; then
                   mv "${simulation}/data_out/$fileName" "${simulation}/base/$fileName"
                 fi
               fi
@@ -287,7 +287,7 @@ do
                 fi
               fi
               if [[ "${simulation}" == "AxC" ]] || [[ "${simulation}" == "pipulse" ]] || [[ "${simulation}" == "cnot" ]] || [[ "${simulation}" == "xgate" ]]; then
-                if [[ "$fileName" == "rho"*".dat" ]]; then
+                if [[ "$fileName" == "rho"*".dat" ]] || [[ "$fileName" == "population"*".dat" ]]; then
                   cd ${DIR}
                   echo "- comparing $fileName" 
                   python3 compare_two_files.py "${simulation}/base/$fileName" "${simulation}/data_out/$fileName" $tolerance $isPointWise
