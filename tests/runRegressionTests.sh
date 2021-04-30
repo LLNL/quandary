@@ -76,7 +76,6 @@ testsToInclude=( $i )
 testsToExclude=( $e )
 if [[ ${#testsToInclude[@]} -eq 0 ]];
 then
-	echo "Running all tests"
 	for file in $DIR/*;
 	do
 		fileName="$(basename "$file")"
@@ -119,6 +118,14 @@ rm -rf ${RESULTS_DIR}/*.log
 # RUN TESTS
 ###############################################################################
 
+# Print out which tests will be performed
+echo "Running the following tests: "
+for simulation in "${testsToInclude[@]}"
+do
+    echo $simulation
+done
+echo 
+
 # Check machine
 case "$(uname -s)" in
     Linux*)
@@ -139,7 +146,7 @@ testNumRebase=0
 # Run all tests
 for simulation in "${testsToInclude[@]}"
 do
-	echo "$simulation"
+	echo "Test $simulation..."
 
 	# Run every script in each test directory
 	for script in ${DIR}/${simulation}/*;
