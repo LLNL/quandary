@@ -259,13 +259,16 @@ do
             do
               fileName="$(basename "$baseOutput")"
               cd ${DIR}
-              if [[ "$fileName" == "grad.dat" ]] || [[ "$fileName" == "optim_history.dat" ]]; then
-                mv  "${simulation}/data_out/$fileName" "${simulation}/base/$fileName"  
-              elif [[ "$fileName" == "params.dat" ]]; then
+              if [[ "$fileName" == "grad.dat" ]] || [[ "$fileName" == "optim_history.dat" ]] || [[ "$fileName" == "params.dat" ]]; then
                 mv  "${simulation}/data_out/$fileName" "${simulation}/base/$fileName"  
               fi
               if [[ "$testName" == "primal" ]] && [[ "$fileName" == "rho"*".dat" ]]; then
                 mv "${simulation}/data_out/$fileName" "${simulation}/base/$fileName"
+              fi
+              if [[ "$simulation" == "AxC" ]] || [[ "$simulation" == "pipulse" ]] || [[ "$simulation" == "cnot" ]] || [[ "$simulation" == "xgate" ]]; then
+                if [[ "$fileName" == "rho"*".dat" ]] || [[ "$fileName" == "population"*".dat" ]]; then
+                  mv "${simulation}/data_out/$fileName" "${simulation}/base/$fileName"
+                fi
               fi
             done
             set_rebase 
@@ -281,6 +284,18 @@ do
                   echo "The $baseOutput files are different from the baseline." >> $simulationLogFile 2>&1
                   testFailed=true
                   continue 1
+                fi
+              fi
+              if [[ "${simulation}" == "AxC" ]] || [[ "${simulation}" == "pipulse" ]] || [[ "${simulation}" == "cnot" ]] || [[ "${simulation}" == "xgate" ]]; then
+                if [[ "$fileName" == "rho"*".dat" ]] || [[ "$fileName" == "population"*".dat" ]]; then
+                  cd ${DIR}
+                  echo "- comparing $fileName" 
+                  python3 compare_two_files.py "${simulation}/base/$fileName" "${simulation}/data_out/$fileName" $tolerance $isPointWise
+                  if [[ $? -eq 1 ]]; then
+                    echo "The $baseOutput files are different from the baseline." >> $simulationLogFile 2>&1
+                    testFailed=true
+                    continue 1
+                  fi
                 fi
               fi
             done

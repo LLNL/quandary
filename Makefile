@@ -6,9 +6,10 @@ include user.mk
 # Choose to link with XBraid, set the location if true
 WITH_XBRAID = false
 #BRAID_DIR = ${HOME}/Numerics/xbraid_solveadjointwithxbraid
-#
-# Set location of SLEPC
-# SLEPC_DIR=${HOME}/Software/slepc-3.13.3
+
+# Choose to link with the SLEPC library, set the location if true
+WITH_SLEPC = false
+#SLEPC_DIR=${HOME}/Software/slepc-3.13.3
 
 # Choose to run sanity tests
 SANITY_CHECK = false
@@ -17,7 +18,7 @@ SANITY_CHECK = false
 # Typically no need to change anything below
 
 # Add optional Slepc
-ifdef SLEPC_DIR
+ifeq ($(WITH_SLEPC), true)
 CXX_OPT = -DWITH_SLEPC
 LDFLAGS_OPT = -L${SLEPC_DIR}/lib -L${SLEPC_DIR}/${PETSC_ARCH}/lib -lslepc 
 INC_OPT = -I${SLEPC_DIR}/${PETSC_ARCH}/include -I${SLEPC_DIR}/include

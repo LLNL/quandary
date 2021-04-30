@@ -526,10 +526,10 @@ void MasterEq::initSparseMatSolver(){
   MatCreateVecs(Ac_vec[0], &Acv, NULL);
   MatCreateVecs(Bc_vec[0], &Bcu, NULL);
   MatCreateVecs(Bc_vec[0], &Bcv, NULL);
-  MatCreateVecs(Ad_vec[0], &Adklu, NULL);
-  MatCreateVecs(Ad_vec[0], &Adklv, NULL);
-  MatCreateVecs(Bd_vec[0], &Bdklu, NULL);
-  MatCreateVecs(Bd_vec[0], &Bdklv, NULL);
+  MatCreateVecs(Ac_vec[0], &Adklu, NULL);
+  MatCreateVecs(Ac_vec[0], &Adklv, NULL);
+  MatCreateVecs(Bc_vec[0], &Bdklu, NULL);
+  MatCreateVecs(Bc_vec[0], &Bdklv, NULL);
 
  }
 
@@ -958,7 +958,7 @@ int MasterEq::getRhoT0(const int iinit, const int ninit, const InitialConditionT
   int ilow, iupp, elemID;
   double val;
   int dim_post;
-  int initID = -1;    // Output: ID for this initial condition */
+  int initID = 1;    // Output: ID for this initial condition */
   int dim_rho = (int) sqrt(dim); // N
 
 
