@@ -959,7 +959,7 @@ int MasterEq::getRhoT0(const int iinit, const int ninit, const InitialConditionT
   int ilow, iupp, elemID;
   double val;
   int dim_post;
-  int initID = -1;    // Output: ID for this initial condition */
+  int initID = 1;    // Output: ID for this initial condition */
   int dim_rho = (int) sqrt(dim); // N
 
 
