@@ -230,10 +230,16 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
     std::string key = "carrier_frequency" + std::to_string(iosc);
     config.GetVecDoubleParam(key, carrier_freq, 0.0);
     bounds[iosc] = bounds[iosc] / ( sqrt(2) * carrier_freq.size()) ;
+    // set bounds for all parameters in this oscillator
     for (int i=0; i<timestepper->mastereq->getOscillator(iosc)->getNParams(); i++){
       double bound = bounds[iosc];
-      /* set first and last two coefficients to zero to ensure spline is zero at beginning and end of time interval */
-      if (i <= 1 || i >= timestepper->mastereq->getOscillator(iosc)->getNParams() - 2) bound = 0.0;
+
+      /* for the first and last two splines, overwrite the bound with zero to ensure that control at t=0 and t=T is zero. */
+      int ibegin = 2*2*carrier_freq.size();
+      int iend = (timestepper->mastereq->getOscillator(iosc)->getNSplines()-2)*2*carrier_freq.size();
+      if (i < ibegin || i >= iend) bound = 0.0;
+
+      // set the bound
       VecSetValue(xupper, col, bound, INSERT_VALUES);
       VecSetValue(xlower, col, -1. * bound, INSERT_VALUES);
       col++;
