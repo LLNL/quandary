@@ -19,7 +19,7 @@ stopAtFailure=false
 dryRun=false
 rebase=false
 tolerance=1.0e-7
-isPointWise=0
+isBitWise=0
 
 # Skip setup (git pull, make))
 ${skipSetup:=false}
@@ -46,7 +46,7 @@ do
 			stopAtFailure=true
 			;;
 		p)
-			isPointWise=1
+			isBitWise=1
 			;;
     *)
       usage
@@ -286,7 +286,7 @@ do
               if [[ "$fileName" == "grad.dat" ]] || [[ "$fileName" == "optim_history.dat" ]]; then
                 cd ${DIR}
                 echo "- comparing $fileName" 
-                python3 compare_two_files.py "${simulation}/base/$fileName" "${simulation}/data_out/$fileName" $tolerance $isPointWise
+                python3 compare_two_files.py "${simulation}/base/$fileName" "${simulation}/data_out/$fileName" $tolerance $isBitWise
                 if [[ $? -eq 1 ]]; then
                   echo "The $baseOutput files are different from the baseline." >> $simulationLogFile 2>&1
                   testFailed=true
@@ -297,7 +297,7 @@ do
                 if [[ "$fileName" == "rho"*".dat" ]] || [[ "$fileName" == "population"*".dat" ]]; then
                   cd ${DIR}
                   echo "- comparing $fileName" 
-                  python3 compare_two_files.py "${simulation}/base/$fileName" "${simulation}/data_out/$fileName" $tolerance $isPointWise
+                  python3 compare_two_files.py "${simulation}/base/$fileName" "${simulation}/data_out/$fileName" $tolerance $isBitWise
                   if [[ $? -eq 1 ]]; then
                     echo "The $baseOutput files are different from the baseline." >> $simulationLogFile 2>&1
                     testFailed=true

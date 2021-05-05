@@ -1,7 +1,7 @@
 import sys
 import numpy as np
 
-def compare_two_files(basefile, currentfile, tolerance, isPointWiseStr):
+def compare_two_files(basefile, currentfile, tolerance, isBitWiseStr):
 
     def extract_data(filename):                                                        
         infile = open(filename, 'r')                                                   
@@ -24,19 +24,15 @@ def compare_two_files(basefile, currentfile, tolerance, isPointWiseStr):
 
     nrow, ncol, base_values = extract_data(basefile)                                    
     nrow2, ncol2, current_values = extract_data(currentfile)
-    isPointWise = int(isPointWiseStr)
+    isBitWise = int(isBitWiseStr)
 
-    if isPointWise:
-        #compute relative difference pointwise 
+    if isBitWise:
+        #compute relative difference bitwise 
         overall_error = 0.0
         for j in range(ncol):
             for i in range(nrow):
-                if abs(base_values[i][j]) > 1e-15:
-                    error = abs(base_values[i][j] - current_values[i][j])/abs(base_values[i][j])
-                else:
-                    error = abs(base_values[i][j] - current_values[i][j])
-           
-                if error > float(tolerance):
+                error = abs(base_values[i][j] - current_values[i][j])
+                if error > 0.0:
                     print("-- Error is too big ", error)
                     return sys.exit(1)
                 else:
