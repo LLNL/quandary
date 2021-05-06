@@ -24,6 +24,11 @@ The script will perform regression test
 4. Name your tests in testNames.
 5. Create an appropriate input file in your test directory and name it same as the test directory, but with .cfg extension.
 
+## Types of comparisons
+
+1. Default: l2 norm comparison, no command line option is required
+2. bitwise: zero tolerance comparison. compares every single digits. to activate, use -p command line option. Please see the example below.
+
 ## Here are some example runs and results:
 
 ./runRegressionTests.sh -> Run all tests.
@@ -32,7 +37,13 @@ The script will perform regression test
 
 ./runRegressionTests.sh -d -> Run all tests, but do not do comparisons. Failures only occur if the simulations do not run successfully.
 
+./runRegressionTests.sh -t 1.0e-17 -> Run all tests, using the user defined tolerance, i.e., 1.0e-17
+
+./runRegressionTests.sh -p -> Run all tests, using the bitwise comparison
+
 ./runRegressionTests.sh -i  "AxC qubit" -> Run AxC and qubit.
+
+./runRegressionTests.sh -i  "AxC qubit" -t 1.0e-5 -> Run AxC and qubit, using the user defined tolerance, i.e., 1.0e-5
 
 ./runRegressionTests.sh -i "qubit" -r -> Run qubit and rebase the reference solution of qubit.
 

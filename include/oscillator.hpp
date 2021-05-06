@@ -42,6 +42,7 @@ class Oscillator {
     /* Return the constants */
     int getNParams() { return params.size(); };
     int getNLevels() { return nlevels; };
+    int getNSplines() { return basisfunctions->getNSplines(); };
 
     /* Copy x into the control parameter vector */
     void setParams(const double* x);

@@ -26,6 +26,9 @@ class ControlBasis{
         ControlBasis(int NBasis, double T, std::vector<double> carrier_freq_);
         ~ControlBasis();
 
+        /* Return the number of basis functions */
+        int getNSplines() { return nbasis; };
+
         /* Evaluate the spline at time t using the coefficients coeff. */
         double evaluate(const double t, const std::vector<double>& coeff, const double ground_freq, const ControlType controltype);
 
