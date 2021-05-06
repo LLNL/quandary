@@ -177,10 +177,10 @@ int main(int argc,char **argv)
   /* --- Initialize the Oscillators --- */
   Oscillator** oscil_vec = new Oscillator*[nlevels.size()];
   // Get fundamental and rotation frequencies from config file 
-  std::vector<double> fundamental_freq, rot_freq;
-  config.GetVecDoubleParam("transfreq", fundamental_freq, 1e20);
-  if (fundamental_freq.size() < nlevels.size()) {
-    printf("Error: Number of given fundamental frequencies (%lu) is smaller than the the number of oscillators (%lu)\n", fundamental_freq.size(), nlevels.size());
+  std::vector<double> trans_freq, rot_freq;
+  config.GetVecDoubleParam("transfreq", trans_freq, 1e20);
+  if (trans_freq.size() < nlevels.size()) {
+    printf("Error: Number of given fundamental frequencies (%lu) is smaller than the the number of oscillators (%lu)\n", trans_freq.size(), nlevels.size());
     exit(1);
   } 
   config.GetVecDoubleParam("rotfreq", rot_freq, 1e20);
@@ -188,13 +188,36 @@ int main(int argc,char **argv)
     printf("Error: Number of given rotation frequencies (%lu) is smaller than the the number of oscillators (%lu)\n", rot_freq.size(), nlevels.size());
     exit(1);
   } 
+  // Get self kerr coefficient
+  std::vector<double> selfkerr;
+  config.GetVecDoubleParam("selfkerr", selfkerr, 0.0);   // self ker \xi_k 
+  assert(selfkerr.size() >= nlevels.size());
+  // Get lindblad type and collapse times
+  std::string lindblad = config.GetStrParam("collapse_type", "none");
+  std::vector<double> decay_time, dephase_time;
+  config.GetVecDoubleParam("decay_time", decay_time, 0.0);
+  config.GetVecDoubleParam("dephase_time", dephase_time, 0.0);
+  LindbladType lindbladtype;
+  if      (lindblad.compare("none")      == 0 ) lindbladtype = NONE;
+  else if (lindblad.compare("decay")     == 0 ) lindbladtype = DECAY;
+  else if (lindblad.compare("dephase")   == 0 ) lindbladtype = DEPHASE;
+  else if (lindblad.compare("both")      == 0 ) lindbladtype = BOTH;
+  else {
+    printf("\n\n ERROR: Unnown lindblad type: %s.\n", lindblad.c_str());
+    printf(" Choose either 'none', 'decay', 'dephase', or 'both'\n");
+    exit(1);
+  }
+  if (lindbladtype != NONE) {
+    assert(decay_time.size() >= nlevels.size());
+    assert(dephase_time.size() >= nlevels.size());
+  }
 
   // Create the oscillators 
   for (int i = 0; i < nlevels.size(); i++){
     std::vector<double> carrier_freq;
     std::string key = "carrier_frequency" + std::to_string(i);
     config.GetVecDoubleParam(key, carrier_freq, 0.0);
-    oscil_vec[i] = new Oscillator(i, nlevels, nspline, fundamental_freq[i], carrier_freq, total_time);
+    oscil_vec[i] = new Oscillator(i, nlevels, nspline, trans_freq[i], selfkerr[i], rot_freq[i], decay_time[i], dephase_time[i], carrier_freq, total_time);
   }
 
   // Get pi-pulses, if any
@@ -228,30 +251,14 @@ int main(int argc,char **argv)
   }
 
   /* --- Initialize the Master Equation  --- */
-  std::vector<double> selfkerr, crosskerr, t_collapse, Jkl;
   // Get self and cross kers and coupling terms 
-  config.GetVecDoubleParam("selfkerr", selfkerr, 0.0);   // self ker \xi_k 
+  std::vector<double> crosskerr, Jkl;
   config.GetVecDoubleParam("crosskerr", crosskerr, 0.0);   // cross ker \xi_{kl}, zz-coupling
   config.GetVecDoubleParam("Jkl", Jkl, 0.0); // Jaynes-Cummings coupling
   // TODO: Fill up with zeros. For now, just check if enough elements are given
   int noscillators = nlevels.size();
-  assert(selfkerr.size() >= noscillators);
   assert(crosskerr.size() >= (noscillators-1) * noscillators / 2);
   assert(Jkl.size() >= (noscillators-1) * noscillators / 2);
-  // Get lindblad type
-  config.GetVecDoubleParam("lindblad_collapsetime", t_collapse, 0.0);
-  std::string lindblad = config.GetStrParam("lindblad_type", "none");
-  LindbladType lindbladtype;
-  if      (lindblad.compare("none")      == 0 ) lindbladtype = NONE;
-  else if (lindblad.compare("decay")     == 0 ) lindbladtype = DECAY;
-  else if (lindblad.compare("dephase")   == 0 ) lindbladtype = DEPHASE;
-  else if (lindblad.compare("both")      == 0 ) lindbladtype = BOTH;
-  else {
-    printf("\n\n ERROR: Unnown lindblad type: %s.\n", lindblad.c_str());
-    printf(" Choose either 'none', 'decay', 'dephase', or 'both'\n");
-    exit(1);
-  }
-  if (lindbladtype != NONE) assert(t_collapse.size() >= 2*noscillators);
   // Sanity check for matrix free solver
   bool usematfree = config.GetBoolParam("usematfree", false);
   if (usematfree && nlevels.size() != 2 ){
@@ -271,12 +278,7 @@ int main(int argc,char **argv)
       idx++;
     }
   }
-  // Compute detuning frequency w_k - w_k^rot
-  std::vector<double> detuning_freq(rot_freq.size());
-  for(int i=0; i<rot_freq.size(); i++) {
-    detuning_freq[i] = fundamental_freq[i] - rot_freq[i];
-  }
-  MasterEq* mastereq = new MasterEq(nlevels, nessential, oscil_vec, selfkerr, crosskerr, Jkl, eta, detuning_freq, lindbladtype, t_collapse, usematfree);
+  MasterEq* mastereq = new MasterEq(nlevels, nessential, oscil_vec, crosskerr, Jkl, eta, lindbladtype, usematfree);
 
 
   /* Output */
@@ -299,12 +301,6 @@ int main(int argc,char **argv)
     for (int i=0; i<nlevels.size(); i++) {
       std::cout<< nessential[i];
       if (i < nlevels.size()-1) std::cout<< "x";
-    }
-    std::cout << ")\nT1/T2 times: ";
-    for (int i=0; i<t_collapse.size(); i++) {
-      std::cout << t_collapse[i];
-      if ((i+1)%2 == 0 && i < t_collapse.size()-1) std::cout<< ",";
-      std::cout<< " ";
     }
     std::cout << std::endl;
   }

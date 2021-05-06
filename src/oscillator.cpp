@@ -7,10 +7,16 @@ Oscillator::Oscillator(){
   ground_freq = 0.0;
 }
 
-Oscillator::Oscillator(int id, std::vector<int> nlevels_all_, int nbasis_, double ground_freq_, std::vector<double> carrier_freq_, double Tfinal_){
+Oscillator::Oscillator(int id, std::vector<int> nlevels_all_, int nbasis_, double ground_freq_, double selfkerr_, double rotational_freq_, double decay_time_, double dephase_time_, std::vector<double> carrier_freq_, double Tfinal_){
+
   nlevels = nlevels_all_[id];
   Tfinal = Tfinal_;
-  ground_freq = ground_freq_;
+  ground_freq = ground_freq_*2.0*M_PI;
+  selfkerr = selfkerr_*2.0*M_PI;
+  detuning_freq = 2.0*M_PI*(ground_freq_ - rotational_freq_);
+  decay_time = decay_time_;
+  dephase_time = dephase_time_;
+
   MPI_Comm_rank(PETSC_COMM_WORLD, &mpirank_petsc);
   int mpirank_world;
   MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
@@ -122,8 +128,7 @@ int Oscillator::evalControl_Labframe(const double t, double* f){
     if (pipulse.tstart[ipulse] <= t && t <= pipulse.tstop[ipulse]) {
       double p = pipulse.amp[ipulse] / sqrt(2.0);
       double q = pipulse.amp[ipulse] / sqrt(2.0);
-      double lab_freq = 2.0*M_PI*ground_freq;
-      *f = 2.0 * p * cos(lab_freq*t) - 2.0 * q * sin(lab_freq*t);
+      *f = 2.0 * p * cos(ground_freq*t) - 2.0 * q * sin(ground_freq*t);
     }
   }
 
