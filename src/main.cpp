@@ -33,7 +33,7 @@ int main(int argc,char **argv)
   if (mpirank_world == 0) printf("Running on %d cores.\n", mpisize_world);
 
   /* Read config file */
-  if (argc != 2) {
+  if (argc < 2) {
     if (mpirank_world == 0) {
       printf("\nUSAGE: ./main </path/to/configfile> \n");
     }
