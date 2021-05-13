@@ -90,6 +90,7 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   else if (objective_str[0].compare("expectedEnergya")==0) objective_type = EXPECTEDENERGYa;
   else if (objective_str[0].compare("expectedEnergyb")==0) objective_type = EXPECTEDENERGYb;
   else if (objective_str[0].compare("expectedEnergyc")==0) objective_type = EXPECTEDENERGYc;
+  else if (objective_str[0].compare("pure1")==0)           objective_type = PURE1;
   else if (objective_str[0].compare("groundstate")   ==0) objective_type = GROUNDSTATE;
   else {
       printf("\n\n ERROR: Unknown objective function: %s\n", objective_str[0].c_str());
@@ -649,7 +650,8 @@ PetscErrorCode TaoEvalGradient(Tao tao, Vec x, Vec G, void*ptr){
 
 double objectiveT(MasterEq* mastereq, ObjectiveType objective_type, const std::vector<int>& obj_oscilIDs, const Vec state, const Vec rho_t0, Gate* targetgate) {
   double obj_local = 0.0;
-  double sum;
+  double sum, mine;
+  int ilo, ihi;
 
   if (state != NULL) {
 
@@ -703,6 +705,28 @@ double objectiveT(MasterEq* mastereq, ObjectiveType objective_type, const std::v
         obj_local = sum / obj_oscilIDs.size();
         break;
 
+      case PURE1:
+        /* 1/(N-1) (rho00 + rho22 + ... + rhoNN) */
+        int dim;
+        VecGetSize(state, &dim);
+        dim = (int) sqrt(dim/2.0);  // dim = N with \rho \in C^{N\times N}
+        VecGetOwnershipRange(state, &ilo, &ihi);
+        // iterate over diagonal elements 
+        sum = 0.0;
+        for (int i=0; i<dim; i++){
+          if (i != mastereq->getOscillator(0)->dim_postOsc) { // pure 1 state of the first oscillator
+            int diagID = getIndexReal(getVecID(i,i,dim));
+            double rhoii = 0.0;
+            if (ilo <= i && i < ihi) VecGetValues(state, 1, &diagID, &rhoii);
+            sum += rhoii;
+          }
+        }
+        mine = sum;
+        MPI_Allreduce(&mine, &sum, 1, MPI_DOUBLE, MPI_SUM, PETSC_COMM_WORLD);
+        obj_local = sum / (dim-1.);
+        break;
+        
+
       case GROUNDSTATE:
         /* compare full state to groundstate */
 
@@ -713,7 +737,6 @@ double objectiveT(MasterEq* mastereq, ObjectiveType objective_type, const std::v
         }
 
         /* Compute frobenius norm: frob = 1/2|| q(T) - e_0 ||^2 */
-        int ilo, ihi;
         VecGetOwnershipRange(state, &ilo, &ihi);
         if (ilo <= 0 && 0 < ihi) VecSetValue(state, 0, -1.0, ADD_VALUES); // substract 1.0 from (0,0) element
         VecNorm(state, NORM_2, &obj_local);
@@ -730,6 +753,7 @@ double objectiveT(MasterEq* mastereq, ObjectiveType objective_type, const std::v
 
 
 void objectiveT_diff(MasterEq* mastereq, ObjectiveType objective_type, const std::vector<int>& obj_oscilIDs, Vec state, Vec statebar, const Vec rho_t0, const double obj_bar, Gate* targetgate){
+  int ilo, ihi;
 
   if (state != NULL) {
     switch (objective_type) {
@@ -777,8 +801,22 @@ void objectiveT_diff(MasterEq* mastereq, ObjectiveType objective_type, const std
         }
         break;
 
+      case PURE1:
+        int dim;
+        VecGetSize(state, &dim);
+        dim = (int) sqrt(dim/2.0);  // dim = N with \rho \in C^{N\times N}
+        VecGetOwnershipRange(state, &ilo, &ihi);
+        // iterate over diagonal elements 
+        for (int i=0; i<dim; i++){
+          if (i != mastereq->getOscillator(0)->dim_postOsc) { // pure 1 state of the first oscillator
+            int diagID = getIndexReal(getVecID(i,i,dim));
+            double val = 1./(dim-1.)*obj_bar;
+            if (ilo <= i && i < ihi) VecSetValue(statebar, diagID, val, ADD_VALUES);
+          }
+        }
+        break;
+
     case GROUNDSTATE:
-      int ilo, ihi;
       VecGetOwnershipRange(statebar, &ilo, &ihi);
 
       /* Derivative of frobenius norm: (q(T) - e_0) * frob_bar */
