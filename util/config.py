@@ -181,16 +181,21 @@ def read_config(filename):
                case("optim_atol") or \
                case("optim_rtol") or \
                case("optim_penalty") or \
+               case("optim_penalty_param") or \
                case("optim_regul") :
                data_dict[this_param] = float(this_value)
                break
 
             # Put all STRING option here
             if case("nlevels") or \
+               case("nessential") or \
                case("xi") or \
-               case("frequencies") or \
+               case("Jkl") or \
+               case("transfreq") or \
+               case("rotfreq") or \
                case("carrier_frequency0") or \
                case("carrier_frequency1") or \
+               case("carrier_frequency2") or \
                case("lindblad_type") or \
                case("lindblad_collapsetime") or \
                case("initialcondition") or \
@@ -205,6 +210,7 @@ def read_config(filename):
                case("datadir") or \
                case("output0") or \
                case("output1") or \
+               case("output2") or \
                case("runtype") or \
                case("usematfree") or \
                case("usepetscts") or \
