@@ -71,3 +71,24 @@ function write_mat_to_file(S, filename)
         writedlm(io, x)
     end
 end
+
+# N=2: for all possible z-coefficients, tests if the linear combination of basis mats is positive definite
+function test_N2_coeffs(coeffs_filename)
+
+    N2_coeffs = readdlm(coeffs_filename)    
+    B = create_basis_mats(2)
+
+    test_passed = true
+    for i = 1:size(N2_coeffs)[1]
+        eig_i = eigvals(transpose(N2_coeffs[i,:])*B)
+        if minimum(eigs) < 0
+           test_passed=false
+        end
+    end
+
+    if test_passed
+        print("Yay! Test passed: All linear combinations are positive definite\n")
+    else
+        print("Mehhhh... some eigenvalues are negative!")
+    end
+end
