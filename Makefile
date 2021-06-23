@@ -1,15 +1,14 @@
 # Set location of PETSC
-#PETSC_DIR=/usr/workspace/wsa/wave/petsc-3.13
+#PETSC_DIR=/path/to/petsc
 #PETSC_ARCH=arch-linux-c-debug
-include user.mk
 
-# Choose to link with XBraid, set the location if true
+# Choose to link with XBraid and set the location
 WITH_XBRAID = false
-#BRAID_DIR = ${HOME}/Numerics/xbraid_solveadjointwithxbraid
+#BRAID_DIR = /path/to/xbraid_solveadjointwithxbraid
 
-# Choose to link with the SLEPC library, set the location if true
+# Choose to link with the SLEPC library and set the location
 WITH_SLEPC = false
-#SLEPC_DIR=${HOME}/Software/slepc-3.13.3
+#SLEPC_DIR=/path/to/slepc-3.13.3
 
 # Choose to run sanity tests
 SANITY_CHECK = false
