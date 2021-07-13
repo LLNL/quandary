@@ -630,6 +630,37 @@ SWAP_03::SWAP_03(std::vector<int> nlevels_, std::vector<int> nessential_, double
 SWAP_03::~SWAP_03(){}
 
 
+
+SWAP_0Q::SWAP_0Q(std::vector<int> nlevels_, std::vector<int> nessential_, int Q, double time_, std::vector<double> gate_rot_freq_) : Gate(nlevels_, nessential_, time_, gate_rot_freq_) {
+
+  /* Fill lab-frame swap 0<->Q-1 gate in essential dimension system V_re = Re(V), V_im = Im(V) = 0 */
+
+  // diagonal elements. don't swap on states |0xx0> and |1xx1>
+  for (int i=0; i< (int) pow(2, Q-2); i++) {
+    MatSetValue(V_re, 2*i, 2*i, 1.0, INSERT_VALUES);
+  }
+  for (int i=(int) pow(2, Q-2); i< pow(2, Q-1); i++) {
+    MatSetValue(V_re, 2*i+1, 2*i+1, 1.0, INSERT_VALUES);
+  }
+  // off-diagonal elements, swap on |0xx1> and |1xx0>
+  for (int i=0; i< pow(2, Q-2); i++) {
+    MatSetValue(V_re, 2*i + 1, 2*i + (int) pow(2,Q-1), 1.0, INSERT_VALUES);
+    MatSetValue(V_re, 2*i + (int) pow(2,Q-1), 2*i + 1, 1.0, INSERT_VALUES);
+  }
+
+  MatAssemblyBegin(V_re, MAT_FINAL_ASSEMBLY);
+  MatAssemblyBegin(V_im, MAT_FINAL_ASSEMBLY);
+  MatAssemblyEnd(V_re, MAT_FINAL_ASSEMBLY);
+  MatAssemblyEnd(V_im, MAT_FINAL_ASSEMBLY);
+
+  /* assemble vectorized rotated target gate \bar VP \kron VP from V=V_re + i V_im */
+  assembleGate();
+
+}
+
+SWAP_0Q::~SWAP_0Q(){}
+
+
 C7NOT::C7NOT(std::vector<int> nlevels_, std::vector<int> nessential_, double time_, std::vector<double> gate_rot_freq_) : Gate(nlevels_, nessential_, time_, gate_rot_freq_) {
 
   // gate dimensions: 2^8 x 2^8 = 256 x 256

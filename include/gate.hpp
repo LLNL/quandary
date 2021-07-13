@@ -135,6 +135,12 @@ class SWAP_03: public Gate {
     ~SWAP_03();
 };
 
+/* SWAP for general Q qubits, swapping 0 <-> Q-1 while leaving other in their state */
+class SWAP_0Q: public Gate {
+    public:
+    SWAP_0Q(std::vector<int> nlevels_, std::vector<int> nessential_, int Q, double time, std::vector<double> rotation_frequencies_);
+    ~SWAP_0Q();
+};
 
 /* C7NOT for four 8 qubits NOT on qubit 8, controlled by qubits 1,...,7 */
 class C7NOT: public Gate {
