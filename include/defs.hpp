@@ -4,7 +4,7 @@
 enum LindbladType {NONE, DECAY, DEPHASE, BOTH};
 
 /* Available types of initial conditions */
-enum InitialConditionType {FROMFILE, PURE, DIAGONAL, BASIS, THREESTATES};
+enum InitialConditionType {FROMFILE, PURE, DIAGONAL, BASIS, THREESTATES, NPLUSONE};
 
 /* Typye of objective functions */
 enum ObjectiveType {GATE_FROBENIUS,    // Compare final state to linear gate transformation of initial cond. Frobenius norm: 1/2 || Vrho(0)V - rho(T)||^2

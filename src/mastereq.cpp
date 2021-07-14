@@ -1026,6 +1026,34 @@ int MasterEq::getRhoT0(const int iinit, const int ninit, const InitialConditionT
 
       break;
 
+    case NPLUSONE:
+      VecGetOwnershipRange(rho0, &ilow, &iupp);
+
+      if (iinit < dim_rho) {// Diagonal e_j e_j^\dag
+        VecZeroEntries(rho0);
+        int elemID = getIndexReal(getVecID(iinit, iinit, dim_rho));
+        val = 1.0;
+        if (ilow <= elemID && elemID < iupp) VecSetValues(rho0, 1, &elemID, &val, INSERT_VALUES);
+        VecAssemblyBegin(rho0); VecAssemblyEnd(rho0);
+      }
+      else if (iinit == dim_rho) { // fully rotated 1/d*Ones(d)
+        for (int i=0; i<dim_rho; i++){
+          for (int j=0; j<dim_rho; j++){
+            int elemID = getIndexReal(getVecID(i,j,dim_rho));
+            val = 1.0 / dim_rho;
+            if (ilow <= elemID && elemID < iupp) VecSetValues(rho0, 1, &elemID, &val, INSERT_VALUES);
+            VecAssemblyBegin(rho0); VecAssemblyEnd(rho0);
+          }
+        }
+      }
+      else {
+        printf("Wrong initial condition index. Should never happen!\n");
+        exit(1);
+      }
+      initID = iinit;
+
+      break;
+
 
     case DIAGONAL:
       int row, diagelem;

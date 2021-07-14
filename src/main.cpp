@@ -84,6 +84,14 @@ int main(int argc,char **argv)
   if      (initcondstr[0].compare("file") == 0 ) ninit = 1;
   else if (initcondstr[0].compare("pure") == 0 ) ninit = 1;
   else if (initcondstr[0].compare("3states") == 0 ) ninit = 3;
+  else if (initcondstr[0].compare("Nplus1") == 0 )  {
+    // compute system dimension N 
+    ninit = 1;
+    for (int i=0; i<nlevels.size(); i++){
+      ninit *= nlevels[i];
+    }
+    ninit +=1;
+  }
   else if ( initcondstr[0].compare("diagonal") == 0 ||
             initcondstr[0].compare("basis")    == 0  ) {
     /* Compute ninit = dim(subsystem defined by list of oscil IDs) */

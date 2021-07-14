@@ -146,6 +146,7 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   if (initcondstr[0].compare("file") == 0 )          initcond_type = FROMFILE;
   else if (initcondstr[0].compare("pure") == 0 )     initcond_type = PURE;
   else if (initcondstr[0].compare("3states") == 0 )  initcond_type = THREESTATES;
+  else if (initcondstr[0].compare("Nplus1") == 0 )   initcond_type = NPLUSONE;
   else if (initcondstr[0].compare("diagonal") == 0 ) initcond_type = DIAGONAL;
   else if (initcondstr[0].compare("basis")    == 0 ) initcond_type = BASIS;
   else {
