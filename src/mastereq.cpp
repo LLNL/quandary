@@ -998,7 +998,7 @@ int MasterEq::getRhoT0(const int iinit, const int ninit, const InitialConditionT
         // 2nd initial state: rho(0)_IJ = 1/N
         initID = 2;
         for (int i_full = 0; i_full<dim_rho; i_full++) {
-          for (int j_full = 0; j_full<dim_ess; j_full++) {
+          for (int j_full = 0; j_full<dim_rho; j_full++) {
             double val = 1./dim_rho;
             int index = getIndexReal(getVecID(i_full,j_full,dim_rho));   // Re(rho_ij)
             if (ilow <= index && index < iupp) VecSetValue(rho0, index, val, INSERT_VALUES); 
