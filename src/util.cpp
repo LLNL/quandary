@@ -507,3 +507,39 @@ int nconv = 0;
 #endif
   return nconv;
 }
+
+// test if A+iB is a unitary matrix: (A+iB)^\dag (A+iB) = I!
+bool isUnitary(const Mat V_re, const Mat V_im){
+  Mat C, D;
+  double norm;
+  bool isunitary = true;
+
+  // test: C=V_re^T V_re + Vim^TVim should be the identity!
+  MatTransposeMatMult(V_re, V_re, MAT_INITIAL_MATRIX, PETSC_DEFAULT, &C);
+  MatTransposeMatMult(V_im, V_im, MAT_INITIAL_MATRIX, PETSC_DEFAULT, &D);
+  MatAXPY(C, 1.0, D, DIFFERENT_NONZERO_PATTERN); 
+  MatShift(C, -1.0);
+  MatNorm(C, NORM_FROBENIUS, &norm);
+  if (norm > 1e-14) {
+    printf("ERROR: V_re^TVre+Vim^TVim is not identity! %f\n", norm);
+    // MatView(C, NULL);
+    isunitary = false;
+  } 
+  MatDestroy(&C);
+  MatDestroy(&D);
+
+  // test: C=V_re^T V_im - Vre^TVim should be zero!
+  MatTransposeMatMult(V_re, V_im, MAT_INITIAL_MATRIX, PETSC_DEFAULT, &C);
+  MatTransposeMatMult(V_im, V_re, MAT_INITIAL_MATRIX, PETSC_DEFAULT, &D);
+  MatAXPY(C, -1.0, D, DIFFERENT_NONZERO_PATTERN); 
+  MatNorm(C, NORM_FROBENIUS, &norm);
+  if (norm > 1e-14) {
+    printf("ERROR: Vre^TVim - Vim^TVre is not zero! %f\n", norm);
+    // MatView(C,NULL);
+    isunitary = false;
+  }
+  MatDestroy(&C);
+  MatDestroy(&D);
+
+  return isunitary;
+}

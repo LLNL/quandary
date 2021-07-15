@@ -123,6 +123,14 @@ void Gate::assembleGate(){
   PetscFree(out_im);
   PetscFree(cols);
 
+  bool isunitary = isUnitary(V_re, V_im);
+  if (!isunitary) {
+    printf("ERROR: Rotated Gate is not unitary!\n");
+    exit(1);
+  } 
+  // else printf("Rotated Gate is unitary.\n");
+
+
   /* Assemble vectorized gate G=V\kron V where V = PV_eP^T for essential dimension gate V_e (user input) and projection P lifting V_e to the full dimension by inserting identity blocks for non-essential levels. */
   // Each element in V\kron V is a product V(i,j)*V(r,c), for rows and columns i,j,r,c!
   int ilow, iupp;
@@ -647,11 +655,20 @@ SWAP_0Q::SWAP_0Q(std::vector<int> nlevels_, std::vector<int> nessential_, int Q,
     MatSetValue(V_re, 2*i + 1, 2*i + (int) pow(2,Q-1), 1.0, INSERT_VALUES);
     MatSetValue(V_re, 2*i + (int) pow(2,Q-1), 2*i + 1, 1.0, INSERT_VALUES);
   }
+ 
 
   MatAssemblyBegin(V_re, MAT_FINAL_ASSEMBLY);
   MatAssemblyBegin(V_im, MAT_FINAL_ASSEMBLY);
   MatAssemblyEnd(V_re, MAT_FINAL_ASSEMBLY);
   MatAssemblyEnd(V_im, MAT_FINAL_ASSEMBLY);
+
+
+  bool isunitary = isUnitary(V_re, V_im);
+  if (!isunitary) {
+    printf("ERROR: Gate is not unitary!\n");
+    exit(1);
+  }
+
 
   /* assemble vectorized rotated target gate \bar VP \kron VP from V=V_re + i V_im */
   assembleGate();
