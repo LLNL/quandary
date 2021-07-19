@@ -33,6 +33,8 @@ class Gate {
     Gate(std::vector<int> nlevels_, std::vector<int> nessential_, double time_, std::vector<double> gate_rot_freq);
     virtual ~Gate();
 
+    int getDimRho() { return dim_rho; };
+
     /* Assemble VxV_re = Re(\bar V \kron V) and VxV_im = Im(\bar V \kron V) */
     void assembleGate();
 
