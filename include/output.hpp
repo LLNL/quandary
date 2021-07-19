@@ -15,7 +15,6 @@ class Output{
   int mpirank_braid;  /* Rank of processor for parallelizing XBraid, or -1 if compiling without XBraid */
   
   FILE* optimfile;      /* Output file to log optimization progress */
-  int optim_monitor_freq; /* Write output files every <num> optimization iterations */
   int output_frequency;   /* Output frequency in time domain: write output at every <num> time step. */
   std::vector<std::vector<std::string> > outputstr; // List of outputs for each oscillator
 
@@ -31,6 +30,7 @@ class Output{
   public:
     std::string datadir;
     int optim_iter;       /* Current optimization iteration */
+    int optim_monitor_freq; /* Write output files every <num> optimization iterations */
 
   public:
     Output();

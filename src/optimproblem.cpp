@@ -614,41 +614,43 @@ PetscErrorCode TaoMonitor(Tao tao,void*ptr){
   double obj_penal = ctx->obj_penal;
 
  /* Estimate Favg by propagating a Basis, or N+1 initial states */
+   double Favg_Nplus1 = -1.0;
+   double Favg_basis= -1.0;
+   if (iter % ctx->output->optim_monitor_freq == 0) {
+    InitialConditionType inittype_org = ctx->initcond_type; 
+    ObjectiveType objtype_org = ctx->objective_type; 
+    int ninit_local_org = ctx->ninit_local;
+    int ninit_org = ctx->ninit;
+
+    ctx->objective_type = GATE_TRACE;
+    ctx->initcond_type = BASIS;
+    ctx->ninit_local = (int) pow(ctx->targetgate->getDimRho(), 2);
+    ctx->ninit= ctx->ninit_local;
+
+    if (ctx->obj_weights.size() < ctx->ninit){
+      for (int i=ctx->obj_weights.size()-1; i < ctx->ninit; i++){
+         ctx->obj_weights.push_back(1.0); 
+      }
+    }
+    printf("\n Monitor Favg(basis):\n");
+    ctx->evalF(params);    // this sets ctx->obj_cost
+ //    // double F_avg = 1.0 - ctx->obj_cost;
+    Favg_basis = ctx->obj_cost;
+
+    ctx->objective_type = GATE_TRACE;
+    ctx->initcond_type = NPLUSONE;
+    ctx->ninit_local = ctx->targetgate->getDimRho() + 1;
+    ctx->ninit= ctx->ninit_local;
+    printf("\n Monitor Favg(Nplus1):\n");
+    ctx->evalF(params);    // this sets ctx->obj_cost
+    Favg_Nplus1 = ctx->obj_cost;
 
 
-   InitialConditionType inittype_org = ctx->initcond_type; 
-   ObjectiveType objtype_org = ctx->objective_type; 
-   int ninit_local_org = ctx->ninit_local;
-   int ninit_org = ctx->ninit;
-
-   ctx->objective_type = GATE_TRACE;
-   ctx->initcond_type = BASIS;
-   ctx->ninit_local = (int) pow(ctx->targetgate->getDimRho(), 2);
-   ctx->ninit= ctx->ninit_local;
-
-   if (ctx->obj_weights.size() < ctx->ninit){
-     for (int i=ctx->obj_weights.size()-1; i < ctx->ninit; i++){
-        ctx->obj_weights.push_back(1.0); 
-     }
+    ctx->initcond_type = inittype_org;
+    ctx->objective_type = objtype_org;
+    ctx->ninit_local = ninit_local_org;
+    ctx->ninit = ninit_org;
    }
-   printf("\n Monitor Favg(basis):\n");
-   ctx->evalF(params);    // this sets ctx->obj_cost
- //   // double F_avg = 1.0 - ctx->obj_cost;
-   double Favg_basis = ctx->obj_cost;
-
-   ctx->objective_type = GATE_TRACE;
-   ctx->initcond_type = NPLUSONE;
-   ctx->ninit_local = ctx->targetgate->getDimRho() + 1;
-   ctx->ninit= ctx->ninit_local;
-   printf("\n Monitor Favg(Nplus1):\n");
-   ctx->evalF(params);    // this sets ctx->obj_cost
-   double Favg_Nplus1 = ctx->obj_cost;
-
-
-   ctx->initcond_type = inittype_org;
-   ctx->objective_type = objtype_org;
-   ctx->ninit_local = ninit_local_org;
-   ctx->ninit = ninit_org;
 
 
   /* Print to optimization file */
