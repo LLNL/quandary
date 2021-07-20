@@ -136,7 +136,7 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
 
   /* Get initial condition type and involved oscillators */
   std::vector<std::string> initcondstr;
-  config.GetVecStrParam("initialcondition", initcondstr);
+  config.GetVecStrParam("initialcondition", initcondstr, "none", false);
   for (int i=1; i<initcondstr.size(); i++) initcond_IDs.push_back(atoi(initcondstr[i].c_str()));
   if (initcondstr[0].compare("file") == 0 )          initcond_type = FROMFILE;
   else if (initcondstr[0].compare("pure") == 0 )     initcond_type = PURE;
@@ -228,7 +228,7 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
     // Scale bounds by 1/sqrt(2) * (number of carrier waves) */
     std::vector<double> carrier_freq;
     std::string key = "carrier_frequency" + std::to_string(iosc);
-    config.GetVecDoubleParam(key, carrier_freq, 0.0);
+    config.GetVecDoubleParam(key, carrier_freq, 0.0, false);
     bounds[iosc] = bounds[iosc] / ( sqrt(2) * carrier_freq.size()) ;
     // set bounds for all parameters in this oscillator
     for (int i=0; i<timestepper->mastereq->getOscillator(iosc)->getNParams(); i++){

@@ -74,9 +74,8 @@ void MapParam::ReadFile(string filename)
   file.close();
 }
 
-void MapParam::GetVecDoubleParam(string key, vector<double> &fillme, double default_val) const 
+void MapParam::GetVecDoubleParam(string key, vector<double> &fillme, double default_val, bool exportme) const 
 {
-  string lineexport;
   map<string, string>::const_iterator it_value = this->find(key);
   if (it_value == this->end())
   {
@@ -93,10 +92,8 @@ void MapParam::GetVecDoubleParam(string key, vector<double> &fillme, double defa
     { 
         fillme.push_back(atof(intermediate.c_str()));
     } 
-    lineexport = line.str();
+    if (exportme) export_param(mpi_rank, *log, key, line.str());
   }
-
-  export_param(mpi_rank, *log, key, lineexport);
 }
 
 double MapParam::GetDoubleParam(string key, double default_val) const
@@ -201,7 +198,7 @@ void MapParam::GetVecIntParam(std::string key, std::vector<int> &fillme, int def
 }
 
 
-void MapParam::GetVecStrParam(std::string key, std::vector<std::string> &fillme, std::string default_val) const
+void MapParam::GetVecStrParam(std::string key, std::vector<std::string> &fillme, std::string default_val, bool exportme) const
 {
   map<string, string>::const_iterator it_value = this->find(key);
   string lineexp;
@@ -221,6 +218,6 @@ void MapParam::GetVecStrParam(std::string key, std::vector<std::string> &fillme,
         fillme.push_back(intermediate);
     } 
     lineexp = line.str();
-    export_param(mpi_rank, *log, key, lineexp);  
+    if (exportme) export_param(mpi_rank, *log, key, lineexp);  
   }
 }

@@ -79,7 +79,7 @@ int main(int argc,char **argv)
   /* Get type and the total number of initial conditions */
   int ninit = 1;
   std::vector<std::string> initcondstr;
-  config.GetVecStrParam("initialcondition", initcondstr, "basis");
+  config.GetVecStrParam("initialcondition", initcondstr, "none");
   assert (initcondstr.size() >= 1);
   if      (initcondstr[0].compare("file") == 0 ) ninit = 1;
   else if (initcondstr[0].compare("pure") == 0 ) ninit = 1;
@@ -283,9 +283,9 @@ int main(int argc,char **argv)
 
   /* Output */
 #ifdef WITH_BRAID
-  Output* output = new Output(config, comm_petsc, comm_init, comm_braid);
+  Output* output = new Output(config, comm_petsc, comm_init, comm_braid, noscillators);
 #else 
-  Output* output = new Output(config, comm_petsc, comm_init);
+  Output* output = new Output(config, comm_petsc, comm_init, noscillators);
 #endif
 
   // Some screen output 
