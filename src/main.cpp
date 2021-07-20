@@ -356,10 +356,12 @@ int main(int argc,char **argv)
   std::vector<double> read_gate_rot;
   config.GetVecDoubleParam("gate_rot_freq", read_gate_rot, 1e20); 
   if (read_gate_rot[0] < 1e20) { // the config option exists
+    if (read_gate_rot.size() < noscillators ){
+      printf("ERROR: Config option 'gate_rot_freq' should contain at least %d elements!\n", noscillators);
+      exit(1);
+    }
     for (int iosc=0; iosc<noscillators; iosc++) {
-      if (iosc < read_gate_rot.size() ) 
-            gate_rot_freq[iosc] = read_gate_rot[iosc];
-      else  gate_rot_freq[iosc] = read_gate_rot[read_gate_rot.size()-1]; // if not enough elements are given, copy the last one
+      gate_rot_freq[iosc] = read_gate_rot[iosc];
     }
   }
 
