@@ -706,7 +706,7 @@ double objectiveT(MasterEq* mastereq, ObjectiveType objective_type, const std::v
         break;
 
       case PURE1:
-        /* 1/(N-1) (rho00 + rho22 + ... + rhoNN) */
+        /* (\lambda_0*rho00 + \lambda_2*rho22 + ... + \lambda_N*rhoNN) of the first oscillator. */
         int dim;
         VecGetSize(state, &dim);
         dim = (int) sqrt(dim/2.0);  // dim = N with \rho \in C^{N\times N}
@@ -716,14 +716,15 @@ double objectiveT(MasterEq* mastereq, ObjectiveType objective_type, const std::v
         for (int i=0; i<dim; i++){
           if (i != mastereq->getOscillator(0)->dim_postOsc) { // pure 1 state of the first oscillator
             int diagID = getIndexReal(getVecID(i,i,dim));
+            double lambdai = fabs(i - mastereq->getOscillator(0)->dim_postOsc);
             double rhoii = 0.0;
             if (ilo <= i && i < ihi) VecGetValues(state, 1, &diagID, &rhoii);
-            sum += rhoii;
+            sum += lambdai * rhoii;
           }
         }
         mine = sum;
         MPI_Allreduce(&mine, &sum, 1, MPI_DOUBLE, MPI_SUM, PETSC_COMM_WORLD);
-        obj_local = sum / (dim-1.);
+        obj_local = sum;
         break;
         
 
@@ -810,7 +811,8 @@ void objectiveT_diff(MasterEq* mastereq, ObjectiveType objective_type, const std
         for (int i=0; i<dim; i++){
           if (i != mastereq->getOscillator(0)->dim_postOsc) { // pure 1 state of the first oscillator
             int diagID = getIndexReal(getVecID(i,i,dim));
-            double val = 1./(dim-1.)*obj_bar;
+            double lambdai = fabs(i - mastereq->getOscillator(0)->dim_postOsc);
+            double val = lambdai * obj_bar;
             if (ilo <= i && i < ihi) VecSetValue(statebar, diagID, val, ADD_VALUES);
           }
         }
