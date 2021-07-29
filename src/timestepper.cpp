@@ -166,11 +166,12 @@ double TimeStepper::penaltyIntegral(double time, const Vec x){
       }
     break;
 
-    /* If groundstate optimization (expected energy or groundstate norm): penalize weighted objective function */
+    /* If groundstate optimization (expected energy or groundstate norm), or if pure1 optim: penalize weighted objective function */
     case EXPECTEDENERGY:
     case EXPECTEDENERGYa:
     case EXPECTEDENERGYb:
     case EXPECTEDENERGYc:
+    case PURE1:
     case GROUNDSTATE:
       double expected = objectiveT(mastereq, objective_type, obj_oscilIDs, x, NULL, NULL);
       double weight = 1./penalty_weightparam * exp(- pow((time - total_time)/penalty_weightparam, 2));
@@ -215,6 +216,7 @@ void TimeStepper::penaltyIntegral_diff(double time, const Vec x, Vec xbar, doubl
     case EXPECTEDENERGYa:
     case EXPECTEDENERGYb:
     case EXPECTEDENERGYc:
+    case PURE1:
     case GROUNDSTATE:
       // double weight = pow(time/ total_time, penalty_weightparam);  
       double weight = 1./penalty_weightparam * exp(- pow((time - total_time)/penalty_weightparam, 2));
