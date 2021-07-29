@@ -150,7 +150,6 @@ double TimeStepper::penaltyIntegral(double time, const Vec x){
   switch(objective_type) {
     /* If gate optimization (frobenius or trace measure): penalize the LAST energy level per oscillator (guard-level) */
     case GATE_FROBENIUS:
-      break;
     case GATE_TRACE:
       /* Sum over all diagonal elements that correspond to a non-essential guard level. 
        * A guard level is the LAST NON-ESSENTIAL energy level of an oscillator */
@@ -169,15 +168,9 @@ double TimeStepper::penaltyIntegral(double time, const Vec x){
 
     /* If groundstate optimization (expected energy or groundstate norm): penalize weighted objective function */
     case EXPECTEDENERGY:
-      break;
     case EXPECTEDENERGYa:
-      break;
     case EXPECTEDENERGYb:
-      break;
     case EXPECTEDENERGYc:
-      break;
-    case PURE1:
-      break;
     case GROUNDSTATE:
       double expected = objectiveT(mastereq, objective_type, obj_oscilIDs, x, NULL, NULL);
       double weight = 1./penalty_weightparam * exp(- pow((time - total_time)/penalty_weightparam, 2));
@@ -199,7 +192,6 @@ void TimeStepper::penaltyIntegral_diff(double time, const Vec x, Vec xbar, doubl
   switch(objective_type) {
     /* If gate optimization (frobenius or trace measure): penalize the LAST energy level per oscillator (guard-level) */
     case GATE_FROBENIUS:
-    break;
     case GATE_TRACE:
       for (int i=0; i<dim_rho; i++) {
         if ( isGuardLevel(i, mastereq->nlevels, mastereq->nessential) ) {
@@ -220,15 +212,9 @@ void TimeStepper::penaltyIntegral_diff(double time, const Vec x, Vec xbar, doubl
 
     /* If groundstate optimization (expected energy or groundstate norm): penalize weighted objective function */
     case EXPECTEDENERGY:
-      break;
     case EXPECTEDENERGYa:
-      break;
     case EXPECTEDENERGYb:
-      break;
     case EXPECTEDENERGYc:
-      break;
-    case PURE1:
-      break;
     case GROUNDSTATE:
       // double weight = pow(time/ total_time, penalty_weightparam);  
       double weight = 1./penalty_weightparam * exp(- pow((time - total_time)/penalty_weightparam, 2));
