@@ -716,7 +716,8 @@ double objectiveT(MasterEq* mastereq, ObjectiveType objective_type, const std::v
         for (int i=0; i<dim; i++){
           if (i != mastereq->getOscillator(0)->dim_postOsc) { // pure 1 state of the first oscillator
             int diagID = getIndexReal(getVecID(i,i,dim));
-            double lambdai = fabs(i - mastereq->getOscillator(0)->dim_postOsc);
+            //double lambdai = fabs(i - mastereq->getOscillator(0)->dim_postOsc);
+            double lambdai = pow(i - mastereq->getOscillator(0)->dim_postOsc, 2);
             double rhoii = 0.0;
             if (ilo <= i && i < ihi) VecGetValues(state, 1, &diagID, &rhoii);
             sum += lambdai * rhoii;
@@ -811,7 +812,8 @@ void objectiveT_diff(MasterEq* mastereq, ObjectiveType objective_type, const std
         for (int i=0; i<dim; i++){
           if (i != mastereq->getOscillator(0)->dim_postOsc) { // pure 1 state of the first oscillator
             int diagID = getIndexReal(getVecID(i,i,dim));
-            double lambdai = fabs(i - mastereq->getOscillator(0)->dim_postOsc);
+            //double lambdai = fabs(i - mastereq->getOscillator(0)->dim_postOsc);
+            double lambdai = pow(i - mastereq->getOscillator(0)->dim_postOsc, 2);
             double val = lambdai * obj_bar;
             if (ilo <= i && i < ihi) VecSetValue(statebar, diagID, val, ADD_VALUES);
           }
