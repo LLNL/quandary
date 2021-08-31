@@ -110,42 +110,17 @@ class SWAP: public Gate {
 };
 
 
-
-/* SWAP for three qubits, swapping 0<->2. 
- * V = 1 0 0 0 0 0 0 0
- *     0 0 0 0 1 0 0 0 
- *     0 0 1 0 0 0 0 0 
- *     0 0 0 0 0 0 1 0 
- *     0 1 0 0 0 0 0 0 
- *     0 0 0 0 0 1 0 0 
- *     0 0 0 1 0 0 0 0 
- *     0 0 0 0 0 0 0 1 
- */
-class SWAP_02: public Gate {
-    public:
-    SWAP_02(std::vector<int> nlevels_, std::vector<int> nessential_, double time, std::vector<double> rotation_frequencies_);
-    ~SWAP_02();
-};
-
-
-/* SWAP for four qubits, swapping 0<->3 */
-class SWAP_03: public Gate {
-    public:
-    SWAP_03(std::vector<int> nlevels_, std::vector<int> nessential_, double time, std::vector<double> rotation_frequencies_);
-    ~SWAP_03();
-};
-
-/* SWAP for general Q qubits, swapping 0 <-> Q-1 while leaving other in their state */
+/* SWAP gate for Q qubits, swapping qubit 0 <-> Q-1 while leaving all others in their state */
 class SWAP_0Q: public Gate {
     public:
     SWAP_0Q(std::vector<int> nlevels_, std::vector<int> nessential_, int Q, double time, std::vector<double> rotation_frequencies_);
     ~SWAP_0Q();
 };
 
-/* C7NOT for four 8 qubits NOT on qubit 8, controlled by qubits 1,...,7 */
-class C7NOT: public Gate {
+/* CQNOT gate spanning Q qubits: NOT operation on qubit Q-1 controlled by all other qubits */
+class CQNOT: public Gate {
     public:
-    C7NOT(std::vector<int> nlevels_, std::vector<int> nessential_, double time, std::vector<double> rotation_frequencies_);
-    ~C7NOT();
+    CQNOT(std::vector<int> nlevels_, std::vector<int> nessential_, double time, std::vector<double> rotation_frequencies_);
+    ~CQNOT();
 };
 
