@@ -17,19 +17,27 @@ MasterEq::MasterEq(){
 }
 
 
-MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Oscillator** oscil_vec_, const std::vector<double> xi_, const std::vector<double> Jkl_, const std::vector<double> eta_, const std::vector<double> detuning_freq_, LindbladType lindbladtype, const std::vector<double> collapse_time_, bool usematfree_) {
+MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Oscillator** oscil_vec_, const std::vector<double> crosskerr_, const std::vector<double> Jkl_, const std::vector<double> eta_, LindbladType lindbladtype, bool usematfree_) {
   int ierr;
 
   nlevels = nlevels_;
   nessential = nessential_;
   noscillators = nlevels.size();
   oscil_vec = oscil_vec_;
-  xi = xi_;
+  crosskerr = crosskerr_;
   Jkl = Jkl_;
   eta = eta_;
-  detuning_freq = detuning_freq_;
-  collapse_time = collapse_time_;
   usematfree = usematfree_;
+
+  for (int i=0; i<crosskerr.size(); i++){
+    crosskerr[i] *= 2.*M_PI;
+  }
+  for (int i=0; i<Jkl.size(); i++){
+    Jkl[i] *= 2.*M_PI;
+  }
+  for (int i=0; i<eta.size(); i++){
+    eta[i] *= 2.*M_PI;
+  }
 
   int mpisize_petsc;
   MPI_Comm_size(PETSC_COMM_WORLD, &mpisize_petsc);
@@ -107,11 +115,9 @@ MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Osci
   /* Allocate MatShell context for applying RHS */
   RHSctx.isu = &isu;
   RHSctx.isv = &isv;
-  RHSctx.xi = xi;
+  RHSctx.crosskerr = crosskerr;
   RHSctx.Jkl = Jkl;
   RHSctx.eta = eta;
-  RHSctx.detuning_freq = detuning_freq;
-  RHSctx.collapse_time = collapse_time;
   RHSctx.addT1 = addT1;
   RHSctx.addT2 = addT2;
   if (!usematfree){
@@ -131,7 +137,7 @@ MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Osci
     RHSctx.Bdklv = &Bdklv;
   }
   RHSctx.nlevels = nlevels;
-  RHSctx.oscil_vec = &oscil_vec;
+  RHSctx.oscil_vec = oscil_vec;
   RHSctx.time = 0.0;
   for (int iosc = 0; iosc < noscillators; iosc++) {
     RHSctx.control_Re.push_back(0.0);
@@ -212,7 +218,7 @@ void MasterEq::initSparseMatSolver(){
   for (int iosc = 0; iosc < noscillators; iosc++) {
 
     /* Get dimensions */
-    int nk     = oscil_vec[iosc]->nlevels;
+    int nk     = oscil_vec[iosc]->getNLevels();
     int nprek  = oscil_vec[iosc]->dim_preOsc;
     int npostk = oscil_vec[iosc]->dim_postOsc;
 
@@ -300,7 +306,7 @@ void MasterEq::initSparseMatSolver(){
     MatAssemblyEnd(Bc_vec[iosc], MAT_FINAL_ASSEMBLY);
 
 
-    /* Compute dipole-dipole coupling building blocks */
+    /* Compute Jaynes-Cummings coupling building blocks */
     /* Ad_kl(t) =  I_N \kron (ak^Tal − akal^T) − (al^Tak − alak^T) \kron IN */
     /* Bd_kl(t) = -I_N \kron (ak^Tal + akal^T) + (al^Tak + alak_T) \kron IN */
     for (int josc=iosc+1; josc<noscillators; josc++){
@@ -321,7 +327,7 @@ void MasterEq::initSparseMatSolver(){
       MatGetOwnershipRange(Ad_vec[id_kl], &ilow, &iupp);
 
       // Dimensions of joscillator
-      int nj     = oscil_vec[josc]->nlevels;
+      int nj     = oscil_vec[josc]->getNLevels();
       int nprej  = oscil_vec[josc]->dim_preOsc;
       int npostj = oscil_vec[josc]->dim_postOsc;
 
@@ -383,16 +389,14 @@ void MasterEq::initSparseMatSolver(){
   MatSetUp(Bd);
   MatSetFromOptions(Bd);
   MatGetOwnershipRange(Bd, &ilow, &iupp);
-  int xi_id = 0;
-  int Jkl_id = 0;
+  int coupling_id = 0;
   for (int iosc = 0; iosc < noscillators; iosc++) {
 
-    int nk     = oscil_vec[iosc]->nlevels;
+    int nk     = oscil_vec[iosc]->getNLevels();
     int nprek  = oscil_vec[iosc]->dim_preOsc;
     int npostk = oscil_vec[iosc]->dim_postOsc;
-    double xik = xi[xi_id] * 2. * M_PI;
-    xi_id++;
-    double detunek = detuning_freq[iosc] * 2. * M_PI;
+    double xik = oscil_vec[iosc]->getSelfkerr();
+    double detunek = oscil_vec[iosc]->getDetuning();
 
     /* Diagonal: detuning and anharmonicity  */
     /* Iterate over local rows of Bd */
@@ -413,12 +417,12 @@ void MasterEq::initSparseMatSolver(){
       if (fabs(val)>1e-14) MatSetValue(Bd, row, row, val, ADD_VALUES);
     }
 
-    /* zz-coupling term  -xi * 2 * PI * (N_i*N_j) for j > i */
+    /* zz-coupling term  -xi_ij * 2 * PI * (N_i*N_j) for j > i */
     for (int josc = iosc+1; josc < noscillators; josc++) {
-      int nj     = oscil_vec[josc]->nlevels;
+      int nj     = oscil_vec[josc]->getNLevels();
       int npostj = oscil_vec[josc]->dim_postOsc;
-      double xikj = xi[xi_id] * 2. * M_PI;
-      xi_id++;
+      double xikj = crosskerr[coupling_id];
+      coupling_id++;
         
       for (int row = ilow; row<iupp; row++){
         r1 = row % dimmat;
@@ -462,11 +466,11 @@ void MasterEq::initSparseMatSolver(){
       /* Get T1, T2 times */
       double gammaT1 = 0.0;
       double gammaT2 = 0.0;
-      if (collapse_time[iosc*2]   > 1e-14) gammaT1 = 1./(collapse_time[iosc*2]);
-      if (collapse_time[iosc*2+1] > 1e-14) gammaT2 = 1./(collapse_time[iosc*2+1]);
+      if (oscil_vec[iosc]->getDecayTime()   > 1e-14) gammaT1 = 1./(oscil_vec[iosc]->getDecayTime());
+      if (oscil_vec[iosc]->getDephaseTime() > 1e-14) gammaT2 = 1./(oscil_vec[iosc]->getDephaseTime());
 
       // Dimensions 
-      int nk     = oscil_vec[iosc]->nlevels;
+      int nk     = oscil_vec[iosc]->getNLevels();
       int nprek  = oscil_vec[iosc]->dim_preOsc;
       int npostk = oscil_vec[iosc]->dim_postOsc;
 
@@ -959,7 +963,7 @@ int MasterEq::getRhoT0(const int iinit, const int ninit, const InitialConditionT
   int ilow, iupp, elemID;
   double val;
   int dim_post;
-  int initID = -1;    // Output: ID for this initial condition */
+  int initID = 1;    // Output: ID for this initial condition */
   int dim_rho = (int) sqrt(dim); // N
 
   /* Switch over type of initial condition */
@@ -1202,7 +1206,7 @@ int myMatMult_sparsemat(Mat RHS, Vec x, Vec y){
   MatMultAdd(*shellctx->Bd, u, vout, vout);
 
 
-  /* Control terms and dipole-dipole coupling terms */
+  /* Control terms and Jaynes-Cummings coupling terms */
   int id_kl = 0; // index for accessing Ad_kl inside Ad_vec
   for (int iosc = 0; iosc < shellctx->nlevels.size(); iosc++) {
 
@@ -1227,9 +1231,9 @@ int myMatMult_sparsemat(Mat RHS, Vec x, Vec y){
     for (int josc=iosc+1; josc<shellctx->nlevels.size(); josc++){
 
       double etakl = shellctx->eta[id_kl];
-      double coskl = cos(etakl*2*M_PI * shellctx->time);
-      double sinkl = sin(etakl*2*M_PI * shellctx->time);
-      double Jkl = shellctx->Jkl[id_kl]*2*M_PI; 
+      double coskl = cos(etakl * shellctx->time);
+      double sinkl = sin(etakl * shellctx->time);
+      double Jkl = shellctx->Jkl[id_kl]; 
       // uout += J_kl*sin*Adklu
       MatMult((*(shellctx->Ad_vec))[id_kl], u, *shellctx->Adklu);
       VecAXPY(uout, Jkl*sinkl, *shellctx->Adklu);
@@ -1312,9 +1316,9 @@ int myMatMultTranspose_sparsemat(Mat RHS, Vec x, Vec y) {
     for (int josc=iosc+1; josc<shellctx->nlevels.size(); josc++){
 
       double etakl = shellctx->eta[id_kl];
-      double coskl = cos(etakl*2*M_PI * shellctx->time);
-      double sinkl = sin(etakl*2*M_PI * shellctx->time);
-      double Jkl = shellctx->Jkl[id_kl]*2*M_PI; 
+      double coskl = cos(etakl * shellctx->time);
+      double sinkl = sin(etakl * shellctx->time);
+      double Jkl = shellctx->Jkl[id_kl]; 
       // uout += J_kl*sin*Adklu^T
       MatMultTranspose((*(shellctx->Ad_vec))[id_kl], u, *shellctx->Adklu);
       VecAXPY(uout, Jkl*sinkl, *shellctx->Adklu);
@@ -1360,31 +1364,31 @@ int myMatMult_matfree(Mat RHS, Vec x, Vec y){
 
 
   /* Evaluate coefficients */
-  double xi0  = shellctx->xi[0];
-  double xi01 = shellctx->xi[1];  // zz-coupling
-  double xi1  = shellctx->xi[2];   
-  double J01  = shellctx->Jkl[0]*2.*M_PI;  // dipole-dipole coupling
+  double xi0  = shellctx->oscil_vec[0]->getSelfkerr();
+  double xi1  = shellctx->oscil_vec[1]->getSelfkerr();   
+  double xi01 = shellctx->crosskerr[0];  // zz-coupling
+  double J01  = shellctx->Jkl[0];  // Jaynes-Cummings coupling
   double eta01 = shellctx->eta[0];
-  double detuning_freq0 = shellctx->detuning_freq[0];
-  double detuning_freq1 = shellctx->detuning_freq[1];
+  double detuning_freq0 = shellctx->oscil_vec[0]->getDetuning();
+  double detuning_freq1 = shellctx->oscil_vec[1]->getDetuning();
   double decay0 = 0.0;
   double decay1 = 0.0;
   double dephase0= 0.0;
   double dephase1= 0.0;
-  if (shellctx->collapse_time[0] > 1e-14 && shellctx->addT1)
-    decay0 = 1./shellctx->collapse_time[0];
-  if (shellctx->collapse_time[1] > 1e-14 && shellctx->addT2)
-    dephase0 = 1./shellctx->collapse_time[1];
-  if (shellctx->collapse_time[2] > 1e-14 && shellctx->addT1)
-    decay1= 1./shellctx->collapse_time[2];
-  if (shellctx->collapse_time[3] > 1e-14 && shellctx->addT2)
-    dephase1 = 1./shellctx->collapse_time[3];
+  if (shellctx->oscil_vec[0]->getDecayTime() > 1e-14 && shellctx->addT1)
+    decay0 = 1./shellctx->oscil_vec[0]->getDecayTime();
+  if (shellctx->oscil_vec[0]->getDephaseTime() > 1e-14 && shellctx->addT2)
+    dephase0 = 1./shellctx->oscil_vec[0]->getDephaseTime();
+  if (shellctx->oscil_vec[1]->getDecayTime() > 1e-14 && shellctx->addT1)
+    decay1= 1./shellctx->oscil_vec[1]->getDecayTime();
+  if (shellctx->oscil_vec[1]->getDephaseTime() > 1e-14 && shellctx->addT2)
+    dephase1 = 1./shellctx->oscil_vec[1]->getDephaseTime();
   double pt0 = shellctx->control_Re[0];
   double qt0 = shellctx->control_Im[0];
   double pt1 = shellctx->control_Re[1];
   double qt1 = shellctx->control_Im[1];
-  double cos01 = cos(eta01*2*M_PI * shellctx->time);
-  double sin01 = sin(eta01*2*M_PI * shellctx->time);
+  double cos01 = cos(eta01 * shellctx->time);
+  double sin01 = sin(eta01 * shellctx->time);
 
   /* compute strides for accessing x at i0+1, i0-1, i0p+1, i0p-1, i1+1, i1-1, i1p+1, i1p-1: */
   int stridei0  = TensorGetIndex(n0,n1, 1,0,0,0);
@@ -1593,31 +1597,31 @@ int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
   VecGetArray(y, &yptr);
 
   /* Evaluate coefficients */
-  double xi0  = shellctx->xi[0];
-  double xi01 = shellctx->xi[1];  // zz-coupling 
-  double xi1  = shellctx->xi[2];
-  double J01 = shellctx->Jkl[0]*2.*M_PI;   // dipole-dipole coupling
+  double xi0  = shellctx->oscil_vec[0]->getSelfkerr();
+  double xi1  = shellctx->oscil_vec[1]->getSelfkerr();
+  double xi01 = shellctx->crosskerr[0];  // zz-coupling 
+  double J01 = shellctx->Jkl[0];   // Jaynes-Cummings coupling
   double eta01 = shellctx->eta[0];
-  double detuning_freq0 = shellctx->detuning_freq[0];
-  double detuning_freq1 = shellctx->detuning_freq[1];
+  double detuning_freq0 = shellctx->oscil_vec[0]->getDetuning();
+  double detuning_freq1 = shellctx->oscil_vec[1]->getDetuning();
   double decay0 = 0.0;
   double decay1 = 0.0;
   double dephase0= 0.0;
   double dephase1= 0.0;
-  if (shellctx->collapse_time[0] > 1e-14 && shellctx->addT1)
-    decay0 = 1./shellctx->collapse_time[0];
-  if (shellctx->collapse_time[1] > 1e-14 && shellctx->addT2)
-    dephase0 = 1./shellctx->collapse_time[1];
-  if (shellctx->collapse_time[2] > 1e-14 && shellctx->addT1)
-    decay1= 1./shellctx->collapse_time[2];
-  if (shellctx->collapse_time[3] > 1e-14 && shellctx->addT2)
-    dephase1 = 1./shellctx->collapse_time[3];
+  if (shellctx->oscil_vec[0]->getDecayTime() > 1e-14 && shellctx->addT1)
+    decay0 = 1./shellctx->oscil_vec[0]->getDecayTime();
+  if (shellctx->oscil_vec[0]->getDephaseTime() > 1e-14 && shellctx->addT2)
+    dephase0 = 1./shellctx->oscil_vec[0]->getDephaseTime();
+  if (shellctx->oscil_vec[1]->getDecayTime() > 1e-14 && shellctx->addT1)
+    decay1= 1./shellctx->oscil_vec[1]->getDecayTime();
+  if (shellctx->oscil_vec[1]->getDephaseTime() > 1e-14 && shellctx->addT2)
+    dephase1 = 1./shellctx->oscil_vec[1]->getDephaseTime();
   double pt0 = shellctx->control_Re[0];
   double qt0 = shellctx->control_Im[0];
   double pt1 = shellctx->control_Re[1];
   double qt1 = shellctx->control_Im[1];
-  double cos01 = cos(eta01*2*M_PI * shellctx->time);
-  double sin01 = sin(eta01*2*M_PI * shellctx->time);
+  double cos01 = cos(eta01 * shellctx->time);
+  double sin01 = sin(eta01 * shellctx->time);
 
   /* compute strides for accessing x at i0+1, i0-1, i0p+1, i0p-1, i1+1, i1-1, i1p+1, i1p-1: */
   int stridei0  = TensorGetIndex(n0,n1, 1,0,0,0);

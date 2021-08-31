@@ -13,6 +13,9 @@ Gate::Gate(std::vector<int> nlevels_, std::vector<int> nessential_, double time_
   nlevels = nlevels_;
   final_time = time_;
   gate_rot_freq = gate_rot_freq_;
+  for (int i=0; i<gate_rot_freq.size(); i++){
+    gate_rot_freq[i] *= 2.*M_PI;
+  }
 
   /* Dimension of gate = \prod_j nessential_j */
   dim_ess = 1;
@@ -94,7 +97,7 @@ void Gate::assembleGate(){
       }
       // compute the frequency 
       int rk = (int) r / dim_post;
-      freq = freq + rk * gate_rot_freq[iosc]*2.*M_PI;
+      freq = freq + rk * gate_rot_freq[iosc];
       r = r % dim_post;
     }
     double ra = cos(freq*final_time);

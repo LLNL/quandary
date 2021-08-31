@@ -20,7 +20,14 @@ struct PiPulse {
 
 class Oscillator {
   protected:
-    double ground_freq;            // Ground frequency of this oscillator
+    int nlevels;                   // Number of levels for this the oscillator 
+    double ground_freq;            // Fundamental transition frequency of this oscillator
+    double selfkerr;               // Self-kerr frequency $\xi_k$. Multiplies ak^d ak^d ak ak
+
+    double detuning_freq;              // Detuning frequency (rad/time) for this oscillator. Multiplies ak^d ak in rotating frame: detuning = ground_freq - rotational_freq
+    double decay_time;              // Time of decay collapse operations 
+    double dephase_time;           // Time of dephasing dephasing collapse operations 
+
     std::vector<double> params;    // control parameters 
     double Tfinal;                 // final time
     ControlBasis *basisfunctions;  // Control discretization using Bsplines + carrier waves
@@ -29,19 +36,23 @@ class Oscillator {
 
   public:
     PiPulse pipulse;  // Store a dummy pipulse that does nothing
-    int nlevels;                   // Number of levels for this the oscillator 
     int dim_preOsc;                // Dimension of coupled subsystems preceding this oscillator
     int dim_postOsc;               // Dimension of coupled subsystem following this oscillator
 
 
   public:
     Oscillator();
-    Oscillator(int id, std::vector<int> nlevels_all_, int nbasis_, double ground_freq_, std::vector<double> carrier_freq_, double Tfinal_);
+    Oscillator(int id, std::vector<int> nlevels_all_, int nbasis_, double ground_freq_, double selfkerr_, double rotational_freq_, double decay_time_, double dephase_time_, std::vector<double> carrier_freq_, double Tfinal_);
     virtual ~Oscillator();
 
     /* Return the constants */
     int getNParams() { return params.size(); };
     int getNLevels() { return nlevels; };
+    int getNSplines() { return basisfunctions->getNSplines(); };
+    double getSelfkerr() { return selfkerr; }; 
+    double getDetuning() { return detuning_freq; }; 
+    double getDecayTime() {return decay_time; };
+    double getDephaseTime() {return dephase_time; };
 
     /* Copy x into the control parameter vector */
     void setParams(const double* x);

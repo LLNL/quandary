@@ -34,8 +34,8 @@ class Output{
 
   public:
     Output();
-    Output(MapParam& config, MPI_Comm comm_petsc, MPI_Comm comm_init);
-    Output(MapParam& config, MPI_Comm comm_petsc, MPI_Comm comm_init, MPI_Comm comm_braid);
+    Output(MapParam& config, MPI_Comm comm_petsc, MPI_Comm comm_init, int noscillators);
+    Output(MapParam& config, MPI_Comm comm_petsc, MPI_Comm comm_init, MPI_Comm comm_braid, int noscillators);
     ~Output();
 
     /* Write to optimization history file in every optim iteration */

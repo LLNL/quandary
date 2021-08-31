@@ -640,7 +640,10 @@ the real and imaginary components: $\alpha^k_s = \alpha^{k(1)}_{s,1}, \alpha^{k(
     \R^2,
   \end{align}
   iterating over $Q$ subsystems first, then $N_s$ splines, then $N_f^k$ carrier wave
-  frequencies. 
+  frequencies. To access an element $\alpha_{s,f}^{k(i)}$, $i=0,1$, from storage $\bfa$:
+  \begin{align}
+    \alpha_{s,f}^{k(i)} = \bfa[ \left(\sum_{j=0}^{k-1} 2N_sN_f^j\right) + s*2N_f^k + f*2 + i ],
+  \end{align}
 
   In order to guarantee that the optimizer yields control pulses that are
   bounded with $|p^k(t)| \leq c^k_{max}$, $|q^k(t)| \leq c^k_{max}$ for all

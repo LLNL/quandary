@@ -13,12 +13,10 @@
 typedef struct {
   std::vector<int> nlevels;
   IS *isu, *isv;
-  Oscillator*** oscil_vec;
-  std::vector<double> xi;
+  Oscillator** oscil_vec;
+  std::vector<double> crosskerr;
   std::vector<double> Jkl;
   std::vector<double> eta;
-  std::vector<double> detuning_freq;
-  std::vector<double> collapse_time;
   bool addT1, addT2;
   std::vector<double> control_Re, control_Im;
   Mat** Ac_vec;
@@ -57,15 +55,13 @@ class MasterEq{
     Mat* Ac_vec;  // Vector of constant mats for time-varying control term (real)
     Mat* Bc_vec;  // Vector of constant mats for time-varying control term (imag)
     Mat  Ad, Bd;  // Real and imaginary part of constant system matrix
-    Mat* Ad_vec;  // Vector of constant mats for dipole-dipole coupling term in drift Hamiltonian (real)
-    Mat* Bd_vec;  // Vector of constant mats for dipole-dipole coupling term in drift Hamiltonian (imag)
+    Mat* Ad_vec;  // Vector of constant mats for Jaynes-Cummings coupling term in drift Hamiltonian (real)
+    Mat* Bd_vec;  // Vector of constant mats for Jaynes-Cummings coupling term in drift Hamiltonian (imag)
 
-    std::vector<double> xi;             // Self- and cross kerrs in drift Hamiltonian
-    std::vector<double> Jkl;             // Coefficient for dipole-dipole coupling terms
-    std::vector<double> eta;             // Frequencies for dipole-dipole coupling terms
-    std::vector<double> detuning_freq;  // detuning frequencies of drift Hamiltonian
-    std::vector<double> collapse_time;  // Time-constants for decay and dephase operators
-    bool addT1, addT2;                  // flags for including Lindblad collapse operators T1-decay and/or T2-dephasing
+    std::vector<double> crosskerr;    // Cross ker coefficients (rad/time) $\xi_{kl} for zz-coupling ak^d ak al^d al
+    std::vector<double> Jkl;          // Jaynes-Cummings coupling coefficient (rad/time), multiplies ak^d al + ak al^d
+    std::vector<double> eta;          // Delta in rotational frame frequencies (rad/time). Used for Jaynes-Cummings coupling terms in rotating frame
+    bool addT1, addT2;                // flags for including Lindblad collapse operators T1-decay and/or T2-dephasing
 
     /* Auxiliary stuff */
     int mpirank_petsc;   // Rank of Petsc's communicator
@@ -87,7 +83,7 @@ class MasterEq{
 
   public:
     MasterEq();
-    MasterEq(std::vector<int> nlevels, std::vector<int> nessential, Oscillator** oscil_vec_, const std::vector<double> xi_, const std::vector<double> Jkl_, const std::vector<double> eta_, std::vector<double> detuning_freq_, LindbladType lindbladtype_, const std::vector<double> collapse_time_, bool usematfree_);
+    MasterEq(std::vector<int> nlevels, std::vector<int> nessential, Oscillator** oscil_vec_, const std::vector<double> crosskerr_, const std::vector<double> Jkl_, const std::vector<double> eta_, LindbladType lindbladtype_, bool usematfree_);
     ~MasterEq();
 
     /* initialize matrices needed for applying sparse-mat solver */
@@ -145,15 +141,15 @@ class MasterEq{
 
 
 inline double H_detune(const double detuning0, const double detuning1, const int a, const int b) {
-  return detuning0*2*M_PI*a + detuning1*2*M_PI*b;
+  return detuning0*a + detuning1*b;
 };
 
 inline double H_selfkerr(const double xi0, const double xi1, const int a, const int b) {
-  return - xi0*M_PI * a * (a-1) - xi1*M_PI * b * (b-1);
+  return - xi0 / 2.0 * a * (a-1) - xi1 / 2.0 * b * (b-1);
 };
 
 inline double H_crosskerr(const double xi01, const int a, const int b) {
-  return - xi01*M_PI*2. * a * b;
+  return - xi01 * a * b;
 };
 
 inline double L2(double dephase0, double dephase1, const int i0, const int i1, const int i0p, const int i1p){
