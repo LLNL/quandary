@@ -166,8 +166,6 @@ def read_config(filename):
                 case("braid_maxiter") or \
                 case("braid_accesslevel") or \
                 case("optim_maxiter") or \
-                case("optim_printlevel") or \
-                case("optim_penalty_exponent") or \
                 case("linearsolver_maxiter") or \
                 case("output_frequency") or \
                 case("optim_monitor_frequency") :
@@ -181,22 +179,34 @@ def read_config(filename):
                case("optim_atol") or \
                case("optim_rtol") or \
                case("optim_penalty") or \
+               case("optim_penalty_param") or \
                case("optim_regul") :
                data_dict[this_param] = float(this_value)
                break
 
             # Put all STRING option here
             if case("nlevels") or \
-               case("xi") or \
-               case("frequencies") or \
+               case("nessential") or \
+               case("selfkerr") or \
+               case("crosskerr") or \
+               case("Jkl") or \
+               case("transfreq") or \
+               case("rotfreq") or \
                case("carrier_frequency0") or \
                case("carrier_frequency1") or \
-               case("lindblad_type") or \
-               case("lindblad_collapsetime") or \
+               case("carrier_frequency2") or \
+               case("carrier_frequency3") or \
+               case("carrier_frequency4") or \
+               case("carrier_frequency5") or \
+               case("collapse_type") or \
+               case("decay_time") or \
+               case("dephase_time") or \
                case("initialcondition") or \
                case("braid_fmg") or \
                case("braid_skip") or \
                case("optim_objective") or \
+               case("gate_measure") or \
+               case("gate_rot_freq") or \
                case("optim_oscillators") or \
                case("optim_weights") or \
                case("optim_init") or \
@@ -205,6 +215,10 @@ def read_config(filename):
                case("datadir") or \
                case("output0") or \
                case("output1") or \
+               case("output2") or \
+               case("output3") or \
+               case("output4") or \
+               case("output5") or \
                case("runtype") or \
                case("usematfree") or \
                case("usepetscts") or \

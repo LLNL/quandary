@@ -18,13 +18,18 @@ usage() {
 stopAtFailure=false
 dryRun=false
 rebase=false
+tolerance=1.0e-7
+isBitWise=0
 
 # Skip setup (git pull, make))
 ${skipSetup:=false}
 # Get options
-while getopts ":i:e:rh:dh:fh" o;
+while getopts ":t:i:e:rh:dh:fh:ph" o;
 do
 	case "${o}" in
+    t)
+      tolerance=${OPTARG}
+      ;;
 		i)
 			i=${OPTARG}
       ;;
@@ -39,6 +44,9 @@ do
 			;;
 		f)
 			stopAtFailure=true
+			;;
+		p)
+			isBitWise=1
 			;;
     *)
       usage
@@ -68,7 +76,6 @@ testsToInclude=( $i )
 testsToExclude=( $e )
 if [[ ${#testsToInclude[@]} -eq 0 ]];
 then
-	echo "Running all tests"
 	for file in $DIR/*;
 	do
 		fileName="$(basename "$file")"
@@ -111,6 +118,14 @@ rm -rf ${RESULTS_DIR}/*.log
 # RUN TESTS
 ###############################################################################
 
+# Print out which tests will be performed
+echo "Running the following tests: "
+for simulation in "${testsToInclude[@]}"
+do
+    echo $simulation
+done
+echo 
+
 # Check machine
 case "$(uname -s)" in
     Linux*)
@@ -131,7 +146,7 @@ testNumRebase=0
 # Run all tests
 for simulation in "${testsToInclude[@]}"
 do
-	echo "$simulation"
+	echo "Test $simulation..."
 
 	# Run every script in each test directory
 	for script in ${DIR}/${simulation}/*;
@@ -251,13 +266,16 @@ do
             do
               fileName="$(basename "$baseOutput")"
               cd ${DIR}
-              if [[ "$fileName" == "grad.dat" ]] || [[ "$fileName" == "optim_history.dat" ]]; then
-                mv  "${simulation}/data_out/$fileName" "${simulation}/base/$fileName"  
-              elif [[ "$fileName" == "params.dat" ]]; then
+              if [[ "$fileName" == "grad.dat" ]] || [[ "$fileName" == "optim_history.dat" ]] || [[ "$fileName" == "params.dat" ]]; then
                 mv  "${simulation}/data_out/$fileName" "${simulation}/base/$fileName"  
               fi
               if [[ "$testName" == "primal" ]] && [[ "$fileName" == "rho"*".dat" ]]; then
                 mv "${simulation}/data_out/$fileName" "${simulation}/base/$fileName"
+              fi
+              if [[ "$simulation" == "AxC" ]] || [[ "$simulation" == "pipulse" ]] || [[ "$simulation" == "cnot" ]] || [[ "$simulation" == "xgate" ]]; then
+                if [[ "$fileName" == "rho"*".dat" ]] || [[ "$fileName" == "population"*".dat" ]]; then
+                  mv "${simulation}/data_out/$fileName" "${simulation}/base/$fileName"
+                fi
               fi
             done
             set_rebase 
@@ -267,11 +285,24 @@ do
               fileName="$(basename "$baseOutput")"
               if [[ "$fileName" == "grad.dat" ]] || [[ "$fileName" == "optim_history.dat" ]]; then
                 cd ${DIR}
-                python3 compare_two_files.py "${simulation}/base/$fileName" "${simulation}/data_out/$fileName"
+                echo "- comparing $fileName" 
+                python3 compare_two_files.py "${simulation}/base/$fileName" "${simulation}/data_out/$fileName" $tolerance $isBitWise
                 if [[ $? -eq 1 ]]; then
                   echo "The $baseOutput files are different from the baseline." >> $simulationLogFile 2>&1
                   testFailed=true
                   continue 1
+                fi
+              fi
+              if [[ "${simulation}" == "AxC" ]] || [[ "${simulation}" == "pipulse" ]] || [[ "${simulation}" == "cnot" ]] || [[ "${simulation}" == "xgate" ]]; then
+                if [[ "$fileName" == "rho"*".dat" ]] || [[ "$fileName" == "population"*".dat" ]]; then
+                  cd ${DIR}
+                  echo "- comparing $fileName" 
+                  python3 compare_two_files.py "${simulation}/base/$fileName" "${simulation}/data_out/$fileName" $tolerance $isBitWise
+                  if [[ $? -eq 1 ]]; then
+                    echo "The $baseOutput files are different from the baseline." >> $simulationLogFile 2>&1
+                    testFailed=true
+                    continue 1
+                  fi
                 fi
               fi
             done

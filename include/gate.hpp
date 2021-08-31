@@ -21,7 +21,7 @@ class Gate {
     int dim_rho;   /* Dimension of system matrix rho (non-vectorized), all levels, N */
 
     double final_time;  /* Final time T. Time of gate rotation. */
-    std::vector<double> gate_rot_freq; /* Frequencies of gate rotation. Often same as rotational frequencies. */
+    std::vector<double> gate_rot_freq; /* Frequencies of gate rotation (rad/time). Often same as rotational frequencies. */
 
   private:
     Mat VxV_re, VxV_im;     /* Real and imaginary part of vectorized Gate G=\bar V \kron V */

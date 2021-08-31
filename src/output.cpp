@@ -10,7 +10,7 @@ Output::Output(){
   optim_iter = 0;
 }
 
-Output::Output(MapParam& config, MPI_Comm comm_petsc, MPI_Comm comm_init) : Output() {
+Output::Output(MapParam& config, MPI_Comm comm_petsc, MPI_Comm comm_init, int noscillators) : Output() {
 
   /* Get communicator ranks */
   MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
@@ -36,9 +36,7 @@ Output::Output(MapParam& config, MPI_Comm comm_petsc, MPI_Comm comm_init) : Outp
   } 
 
   /* Read from config what output is desired */
-  std::vector<int> nlevels;
-  config.GetVecIntParam("nlevels", nlevels);
-  for (int i = 0; i < nlevels.size(); i++){
+  for (int i = 0; i < noscillators; i++){
     std::vector<std::string> fillme;
     config.GetVecStrParam("output" + std::to_string(i), fillme, "none");
     outputstr.push_back(fillme);
@@ -60,7 +58,7 @@ Output::Output(MapParam& config, MPI_Comm comm_petsc, MPI_Comm comm_init) : Outp
 
 }
 
-Output::Output(MapParam& config, MPI_Comm comm_petsc, MPI_Comm comm_init, MPI_Comm comm_braid) : Output(config, comm_petsc, comm_init) {
+Output::Output(MapParam& config, MPI_Comm comm_petsc, MPI_Comm comm_init, MPI_Comm comm_braid, int noscillators) : Output(config, comm_petsc, comm_init, noscillators) {
   MPI_Comm_rank(comm_braid, &mpirank_braid);
 }
 
