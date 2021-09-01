@@ -323,7 +323,7 @@ double OptimProblem::evalF(const Vec x) {
     double obj_iinit = objectiveT(timestepper->mastereq, objective_type, obj_oscilIDs, finalstate, rho_t0, targetgate);
     obj_cost +=  obj_weights[iinit] * obj_iinit;
     obj_cost_max = std::max(obj_cost_max, obj_iinit);
-    printf("%d, %d: iinit objective: %f * %1.14e\n", mpirank_world, mpirank_init, obj_weights[iinit], obj_iinit);
+    // printf("%d, %d: iinit objective: %f * %1.14e\n", mpirank_world, mpirank_init, obj_weights[iinit], obj_iinit);
   }
 
 #ifdef WITH_BRAID
@@ -580,6 +580,12 @@ PetscErrorCode TaoMonitor(Tao tao,void*ptr){
   /* Pass current iteration number to output manager */
   ctx->output->optim_iter = iter;
 
+  /* Grab some output stuff */
+  double obj_cost = ctx->obj_cost;
+  double obj_regul = ctx->obj_regul;
+  double obj_penal = ctx->obj_penal;
+
+
   /* Average fidelity. */
   /* For gates, this is 1.-\sum_ij Tr(V \rho_ij(0) V^\dagger \rho_ij(T)) */
   /* For groundstate optimization, this is the objective function value */
@@ -591,8 +597,8 @@ PetscErrorCode TaoMonitor(Tao tao,void*ptr){
       ctx->objective_type == EXPECTEDENERGYc ) F_avg = ctx->obj_cost;
 
   /* If average fidelity is not the objective function, it can be computed at each optimization iteration here. 
-   * However, this involves the entire basis be propagated forward. We omit it here to save compute time during optimization. 
-   * Average fidelity can be computed AFTER optimization has finished by propagating the the basis and evaluating the Gate_trace.
+   * However, this involves the entire basis be propagated forward (or at last the N+1 states from Koch's paper). We omit it here to save compute time during optimization. 
+   * Average fidelity can be computed AFTER optimization has finished by propagating the the basis and evaluating the Gate_trace. The commented code below needs to be checked before use!
    */
   // if (ctx->initcond_type != BASIS)  ctx->obj_cost = -1.0;  // -1 is used to indicate that average fidelity has not been computed
   // if (ctx->objective_type == GATE_FROBENIUS ||
@@ -613,50 +619,45 @@ PetscErrorCode TaoMonitor(Tao tao,void*ptr){
   //   ctx->ninit = ninit_org;
   // }
 
-  double obj_cost = ctx->obj_cost;
-  double obj_regul = ctx->obj_regul;
-  double obj_penal = ctx->obj_penal;
+  // /* Estimate Favg by propagating N+1 initial states */
+  // if (iter % ctx->output->optim_monitor_freq == 0) {
 
- /* Estimate Favg by propagating N+1 initial states */
-  double Favg_Nplus1 = -1.0;
-  if (iter % ctx->output->optim_monitor_freq == 0) {
+  //   // save original optimization setting
+  //   InitialConditionType inittype_org = ctx->initcond_type; 
+  //   ObjectiveType objtype_org = ctx->objective_type; 
+  //   int ninit_local_org = ctx->ninit_local;
+  //   int ninit_org = ctx->ninit;
+  //   std::vector<double> obj_weights_org;
+  //   for (int i=0; i<ctx->obj_weights.size(); i++){
+  //     obj_weights_org.push_back(ctx->obj_weights[i]);
+  //   }
 
-    // save original optimization setting
-    InitialConditionType inittype_org = ctx->initcond_type; 
-    ObjectiveType objtype_org = ctx->objective_type; 
-    int ninit_local_org = ctx->ninit_local;
-    int ninit_org = ctx->ninit;
-    std::vector<double> obj_weights_org;
-    for (int i=0; i<ctx->obj_weights.size(); i++){
-      obj_weights_org.push_back(ctx->obj_weights[i]);
-    }
+  //   // setting for propagating N+1 initial states
+  //   ctx->objective_type = GATE_TRACE;
+  //   ctx->initcond_type = NPLUSONE;
+  //   ctx->ninit_local = ctx->targetgate->getDimRho() + 1; // N+1
+  //   ctx->ninit= ctx->ninit_local;
+  //   // Make sure obj_weights is long enough and all weights are 1.0
+  //   for (int i=0; i < ctx->ninit; i++){
+  //     if (i < ctx->obj_weights.size()) ctx->obj_weights[i] = 1.0;
+  //     else                             ctx->obj_weights.push_back(1.0); 
+  //   }
+  //   printf("\n Monitor: Eval Favg(Nplus1)...\n");
+  //   ctx->evalF(params);    // this sets ctx->obj_cost
+  //   F_avg = ctx->obj_cost;
 
-    // setting for propagating N+1 initial states
-    ctx->objective_type = GATE_TRACE;
-    ctx->initcond_type = NPLUSONE;
-    ctx->ninit_local = ctx->targetgate->getDimRho() + 1; // N+1
-    ctx->ninit= ctx->ninit_local;
-    // Make sure obj_weights is long enough and all weights are 1.0
-    for (int i=0; i < ctx->ninit; i++){
-      if (i < ctx->obj_weights.size()) ctx->obj_weights[i] = 1.0;
-      else                             ctx->obj_weights.push_back(1.0); 
-    }
-    printf("\n Monitor: Eval Favg(Nplus1)...\n");
-    ctx->evalF(params);    // this sets ctx->obj_cost
-    Favg_Nplus1 = ctx->obj_cost;
-
-    // Reset to original setting
-    ctx->initcond_type = inittype_org;
-    ctx->objective_type = objtype_org;
-    ctx->ninit_local = ninit_local_org;
-    ctx->ninit = ninit_org;
-    for (int i=0; i < obj_weights_org.size(); i++){
-      ctx->obj_weights[i] = obj_weights_org[i];
-    }
-  }
+  //   // Reset to original setting
+  //   ctx->initcond_type = inittype_org;
+  //   ctx->objective_type = objtype_org;
+  //   ctx->ninit_local = ninit_local_org;
+  //   ctx->ninit = ninit_org;
+  //   for (int i=0; i < obj_weights_org.size(); i++){
+  //     ctx->obj_weights[i] = obj_weights_org[i];
+  //   }
+  // }
 
   /* Print to optimization file */
-  ctx->output->writeOptimFile(f, gnorm, deltax, Favg_Nplus1, obj_cost, obj_regul, obj_penal);
+  ctx->output->writeOptimFile(f, gnorm, deltax, F_avg, obj_cost, obj_regul, obj_penal);
 
   /* Print parameters and controls to file */
   ctx->output->writeControls(params, ctx->timestepper->mastereq, ctx->timestepper->ntime, ctx->timestepper->dt);

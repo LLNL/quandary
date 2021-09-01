@@ -1096,10 +1096,10 @@ int MasterEq::getRhoT0(const int iinit, const int ninit, const InitialConditionT
       VecGetOwnershipRange(rho0, &ilow, &iupp);
 
       /* Get dimension of partial system behind last oscillator ID (essential levels only) */
-      dim_post = 1; // all oscillators for now...
-      // for (int k = oscilIDs[oscilIDs.size()-1] + 1; k < getNOscillators(); k++) {
-        // dim_post *= nessential[k];
-      // }
+      dim_post = 1;
+      for (int k = oscilIDs[oscilIDs.size()-1] + 1; k < getNOscillators(); k++) {
+        dim_post *= nessential[k];
+      }
 
       /* Get index (k,j) of basis element B_{k,j} for this initial condition index iinit */
       int k, j;
