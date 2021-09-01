@@ -286,6 +286,7 @@ Target gates that are currently implemented are
     0 & 0 & 0 & 1 \\
   \end{bmatrix}
 \end{align}
+Further, a generalization of the SWAP and the CNOT gate for general $Q$ subsystems is available: The SWAP-0Q gate swaps the state of the first and the last qubit, while leaving all other oscillators in their respective initial state, and the CQNOT gate performs a NOT operation on the last qubit if all other qubits are in the one-state.
 
 As a measure of optimization success, Quandary reports on the average gate fidelity computed from 
 \begin{align}
@@ -295,11 +296,13 @@ where $\rho_i(0) = B^{k(i), j(i)}$ are the initial basis matrices as defined in 
 
 
 \subsubsection{Essential and guard levels for gate optimization}
-It is often useful, to model the quantum system with more energy levels than the number of levels that the target gate is defined on. For example when optimizing for a swap gate transformation with $V_{SWAP}\in\C^{2\times 2}$, one might want to model the quantum system state for each qubit with more than two energy levels in order to (a) model the (infinite dimensional) system with more accuracy by including more levels and (b) allow the system to transition through higher energy levels in order to achieve the target at final time $T$. 
-To this end, Quandary provides the option to specify the number of \textit{essential} energy levels $n_k^e \, \forall k=0,\dots,Q-1$, in addition to the number of energy levels $n_k$ as above, with $n_k^e \leq n_k$. In that case, the gate dimensions will operate on the essential level dimensions only $N^e = \prod_{k=0}^{Q-1}$ with $V_{gate} \in \C^{N^e \times N^e}$, while the quantum dynamics are modelled with (more) energy levels with $N=\prod_k n_k$ and $\rho(t)\in \C^{N\times N}$. 
-To compute the objective function at final time T, the full density matrix is projected onto the essential levels first, before the respective gate measure is applied in the essential level dimensions $N^e \times N^e$. 
-This projection is implemented by zero'ing out those rows and columns of the full-dimension density matrix that correspond to non-essential levels for each subsystem. 
-Similarly, the initial conditions considered during the optimization $\rho_i(0)\in\C^{N^e \times N^e}$ are spanned and defined in the essential level system dimensions only, and get projected upwards onto the full dimension system $\rho(t)\in \C^{N \times N}$ by inserting (zero) rows and columns for all non-essential levels at time $t=0$, before the full-dimension density matrix is evolved in time. 
+It is often useful, to model the quantum system with more energy levels than the number of levels that the target gate is defined on. For example when optimizing for a swap gate transformation with $V_{SWAP}\in\C^{4\times 4}$, one might want to model the quantum system state for each qubit with more than two energy levels in order to (a) model the (infinite dimensional) system with more accuracy by including more levels and (b) allow the system to transition through higher energy levels in order to achieve the target at final time $T$. 
+To this end, Quandary provides the option to specify the number of \textit{essential} energy levels $n_k^e \, \forall k=0,\dots,Q-1$, in addition to the number of energy levels $n_k$ as above, with $n_k^e \leq n_k$. In that case, the quantum dynamics are modelled with (more) energy levels with $N=\prod_k n_k$ and $\rho(t)\in \C^{N\times N}$ while the gate is defined in the essential level dimensions $V\in C^{N_e \times N_e}, N_e=\prod_k n_k^e$. 
+
+To compute the objective function at final time T, the essential-dimensional gate is projected upwards to the full dimensions $\tilde V \in N\times N$ by inserting identiy blocks for rows/columns that correspond to a non-essential level of either of the subsystems. Hence, a realization of the gate $\tilde V$ will not alter the occupation of higher (non-essential) energy level compared to their initial occupation at $t=0$. 
+
+When only the three states as initial conditions are considered (see below), those three initial states will be spanned in the full dimensional system. On the other hand, when the basis of initial states is considered, or their diagonals only, those initial states will be spanned only in the essential level dimensions and zero rows and columns will be inserted for all non-essential levels. Hence, the gate will be realized for any initial state that is spanned in the essential level dimensions, and occupations of non-essential levels at $T=0$ are avoided. 
+ 
 
 Non-essential are often considered to be so-called \textit{guard levels}. Typically, the occupation of those higher energy levels (all levels $m$ with $n_k^e < m \leq n_k$), and in particular the highest energy level that is modelled ($m=n_k$ for each $k$), should be avoided to prevent leakage into higher levels that are not modelled by the finite-dimensional approximation to the infinite dimensional Hamiltonian. During gate optimization, one can add an integral penalty term to the objective function that penalizes occupation of the last energy level per oscillator:
 \begin{align}
@@ -415,14 +418,16 @@ initial conditions at the final time $T$ ($\Rightarrow n_{init} = N$).
 % \end{align}
 % which is called the \textit{infidelity}, and the trace-term is the \textit{fidelity}. However, since we include the Lindblad terms, $\rho(T)$ is not unitary, and the above equation is not valid anymore. For defining a fidelity we consider $F(z) := 1 - J(z)$. Note, however, that if the optimized objective is in the order $O(\delta)$, then the error $\epsilon_i$ of a final state component $i$ from the gate is rather of the order $O(\sqrt{\delta})$, since $J$ represents the average squared error $J = \frac{1}{N^2}\sum_i \epsilon_i^2$ and so $\epsilon_i^2 \sim O(\delta)$ on average.
 
-\subsection{Three-state initialization}
-According to Koch et al. it is sufficient to utilize only three initial condition to describe a unitary gate, independent of the dimension $N$. Therefore, if one optimizes for realizing a unitary gate, the following three initial states can be chosen to be considered in Quandary:
+\subsection{Three initial states for gate optimization}
+When considering gate optimization, it has been shown that it is sufficient to utilize only three sprecific initial condition during optimization (see e.g. M.H. Goerz, D.M. Reich, C.P. Koch: "Optimal control theory for a unitary operation under dissipative evolution", New Journal of Physics, Volume 16, 2014). Those initial states are constructed such that they can distinguish any two unitary matrices in the considered Hilberspace, independent of the dimension $N$. If one optimizes for realizing a unitary gate, the following three initial states can therefore be chosen to be considered in Quandary:
 \begin{align}
     \rho(0)_0 &= \sum_{i=0}^{N-1} \frac{2(N-i+1)}{N(N+1)} |i\rangle\langle i|\\
     \rho(0)_1 &= \sum_{ij=0}^{N-1} \frac{1}{N} |i\rangle\langle j|\\
     \rho(0)_2 &= \frac{1}{N} I_N
 \end{align}
 
+\subsection{$N+1$ initial states for gate optimization}
+The three initial states from above do not suffice to estimate an average fidelity of the realized gate. Therefore, it is suggested in that same paper (M.H. Goerz, D.M. Reich and C.P. Koch "Optimal control theory for a unitary operation under dissipative evolution", New Journal of Physics, Volume 16, 2014) to choose $N+1$ initial states to compute an average fidelity. Those $N+1$ initial states consist of the $N$ pure states in the Hilbertspace of dimension $N$, as well as the totally rotated state $\rho(0)_1$ from above.
 
 \subsection{Reading an initial condition from file}
 A specific initial condition can be read from file ($\Rightarrow n_{init}=1$ with unique identifier $-1$). Format: one column being the vectorized density matrix, first all real parts, then all imaginary parts. 

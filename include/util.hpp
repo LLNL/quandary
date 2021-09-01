@@ -75,3 +75,10 @@ void read_vector(const char *filename, double *var, int dim);
  * Compute <neigvals> eigenvalues of A
  */
 int getEigvals(const Mat A, const int neigvals, std::vector<double>& eigvals, std::vector<Vec>& eigvecs);
+
+
+
+/* 
+ * Test if A+iB is unitary (A and B should be real-valued!)
+ */
+bool isUnitary(const Mat A, const Mat B);

@@ -21,7 +21,7 @@ class Gate {
     int dim_rho;   /* Dimension of system matrix rho (non-vectorized), all levels, N */
 
     double final_time;  /* Final time T. Time of gate rotation. */
-    std::vector<double> gate_rot_freq; /* Frequencies of gate rotation. Often same as rotational frequencies. */
+    std::vector<double> gate_rot_freq; /* Frequencies of gate rotation (rad/time). Often same as rotational frequencies. */
 
   private:
     Mat VxV_re, VxV_im;     /* Real and imaginary part of vectorized Gate G=\bar V \kron V */
@@ -32,6 +32,8 @@ class Gate {
     Gate();
     Gate(std::vector<int> nlevels_, std::vector<int> nessential_, double time_, std::vector<double> gate_rot_freq);
     virtual ~Gate();
+
+    int getDimRho() { return dim_rho; };
 
     /* Assemble VxV_re = Re(\bar V \kron V) and VxV_im = Im(\bar V \kron V) */
     void assembleGate();
@@ -109,4 +111,18 @@ class SWAP: public Gate {
     ~SWAP();
 };
 
+
+/* SWAP gate for Q qubits, swapping qubit 0 <-> Q-1 while leaving all others in their state */
+class SWAP_0Q: public Gate {
+    public:
+    SWAP_0Q(std::vector<int> nlevels_, std::vector<int> nessential_, int Q, double time, std::vector<double> rotation_frequencies_);
+    ~SWAP_0Q();
+};
+
+/* CQNOT gate spanning Q qubits: NOT operation on qubit Q-1 controlled by all other qubits */
+class CQNOT: public Gate {
+    public:
+    CQNOT(std::vector<int> nlevels_, std::vector<int> nessential_, double time, std::vector<double> rotation_frequencies_);
+    ~CQNOT();
+};
 
