@@ -126,12 +126,14 @@ void Gate::assembleGate(){
   PetscFree(out_im);
   PetscFree(cols);
 
+#ifdef SANITY_CHECK
   bool isunitary = isUnitary(V_re, V_im);
   if (!isunitary) {
     printf("ERROR: Rotated Gate is not unitary!\n");
     exit(1);
   } 
-  // else printf("Rotated Gate is unitary.\n");
+  else printf("Rotated Gate is unitary.\n");
+#endif
 
 
   /* Assemble vectorized gate G=V\kron V where V = PV_eP^T for essential dimension gate V_e (user input) and projection P lifting V_e to the full dimension by inserting identity blocks for non-essential levels. */
@@ -214,6 +216,7 @@ void Gate::assembleGate(){
   MatAssemblyEnd(VxV_re, MAT_FINAL_ASSEMBLY);
   MatAssemblyBegin(VxV_im, MAT_FINAL_ASSEMBLY);
   MatAssemblyEnd(VxV_im, MAT_FINAL_ASSEMBLY);
+
 }
 
 
@@ -575,72 +578,7 @@ SWAP::SWAP(std::vector<int> nlevels_, std::vector<int> nessential_, double time_
 
 }
 
-SWAP_02::~SWAP_02(){}
-
-
-
-SWAP_02::SWAP_02(std::vector<int> nlevels_, std::vector<int> nessential_, double time_, std::vector<double> gate_rot_freq_) : Gate(nlevels_, nessential_, time_, gate_rot_freq_) {
-  assert(dim_ess == 8);
-
-  /* Fill lab-frame swap 0<-> 2gate in essential dimension system V_re = Re(V), V_im = Im(V) = 0 */
-  MatSetValue(V_re, 0, 0, 1.0, INSERT_VALUES);
-  MatSetValue(V_re, 1, 4, 1.0, INSERT_VALUES);
-  MatSetValue(V_re, 2, 2, 1.0, INSERT_VALUES);
-  MatSetValue(V_re, 3, 6, 1.0, INSERT_VALUES);
-  MatSetValue(V_re, 4, 1, 1.0, INSERT_VALUES);
-  MatSetValue(V_re, 5, 5, 1.0, INSERT_VALUES);
-  MatSetValue(V_re, 6, 3, 1.0, INSERT_VALUES);
-  MatSetValue(V_re, 7, 7, 1.0, INSERT_VALUES);
-
-  MatAssemblyBegin(V_re, MAT_FINAL_ASSEMBLY);
-  MatAssemblyBegin(V_im, MAT_FINAL_ASSEMBLY);
-  MatAssemblyEnd(V_re, MAT_FINAL_ASSEMBLY);
-  MatAssemblyEnd(V_im, MAT_FINAL_ASSEMBLY);
-
-  /* assemble vectorized rotated target gate \bar VP \kron VP from V=V_re + i V_im */
-  assembleGate();
-
-}
-
 SWAP::~SWAP(){}
-
-
-SWAP_03::SWAP_03(std::vector<int> nlevels_, std::vector<int> nessential_, double time_, std::vector<double> gate_rot_freq_) : Gate(nlevels_, nessential_, time_, gate_rot_freq_) {
-  assert(dim_ess == 16);
-
-  /* Fill lab-frame swap 0<->3 gate in essential dimension system V_re = Re(V), V_im = Im(V) = 0 */
-  // diagonal elements. don't swap on states |0xx0> and |1xx1>
-  MatSetValue(V_re, 0, 0, 1.0, INSERT_VALUES);
-  MatSetValue(V_re, 2, 2, 1.0, INSERT_VALUES);
-  MatSetValue(V_re, 4, 4, 1.0, INSERT_VALUES);
-  MatSetValue(V_re, 6, 6, 1.0, INSERT_VALUES);
-  MatSetValue(V_re, 9, 9, 1.0, INSERT_VALUES);
-  MatSetValue(V_re, 11, 11, 1.0, INSERT_VALUES);
-  MatSetValue(V_re, 13, 13, 1.0, INSERT_VALUES);
-  MatSetValue(V_re, 15, 15, 1.0, INSERT_VALUES);
-  // off-diagonal elements, swap on |0xx1> and |1xx0>
-  MatSetValue(V_re, 1, 8, 1.0, INSERT_VALUES);
-  MatSetValue(V_re, 8, 1, 1.0, INSERT_VALUES);
-  MatSetValue(V_re, 3, 10, 1.0, INSERT_VALUES);
-  MatSetValue(V_re, 10, 3, 1.0, INSERT_VALUES);
-  MatSetValue(V_re, 5, 12, 1.0, INSERT_VALUES);
-  MatSetValue(V_re, 12, 5, 1.0, INSERT_VALUES);
-  MatSetValue(V_re, 7, 14, 1.0, INSERT_VALUES);
-  MatSetValue(V_re, 14, 7, 1.0, INSERT_VALUES);
-
-  MatAssemblyBegin(V_re, MAT_FINAL_ASSEMBLY);
-  MatAssemblyBegin(V_im, MAT_FINAL_ASSEMBLY);
-  MatAssemblyEnd(V_re, MAT_FINAL_ASSEMBLY);
-  MatAssemblyEnd(V_im, MAT_FINAL_ASSEMBLY);
-
-  /* assemble vectorized rotated target gate \bar VP \kron VP from V=V_re + i V_im */
-  assembleGate();
-
-}
-
-SWAP_03::~SWAP_03(){}
-
-
 
 SWAP_0Q::SWAP_0Q(std::vector<int> nlevels_, std::vector<int> nessential_, int Q, double time_, std::vector<double> gate_rot_freq_) : Gate(nlevels_, nessential_, time_, gate_rot_freq_) {
 
@@ -681,12 +619,9 @@ SWAP_0Q::SWAP_0Q(std::vector<int> nlevels_, std::vector<int> nessential_, int Q,
 SWAP_0Q::~SWAP_0Q(){}
 
 
-C7NOT::C7NOT(std::vector<int> nlevels_, std::vector<int> nessential_, double time_, std::vector<double> gate_rot_freq_) : Gate(nlevels_, nessential_, time_, gate_rot_freq_) {
+CQNOT::CQNOT(std::vector<int> nlevels_, std::vector<int> nessential_, double time_, std::vector<double> gate_rot_freq_) : Gate(nlevels_, nessential_, time_, gate_rot_freq_) {
 
-  // gate dimensions: 2^8 x 2^8 = 256 x 256
-  assert(dim_ess == 256);
-
-  /* Fill lab-frame C7NOT gate in essential dimension system V_re = Re(V), V_im = Im(V) = 0 */
+  /* Fill lab-frame CQNOT gate in essential dimension system V_re = Re(V), V_im = Im(V) = 0 */
   /* V = [1 0 0 ...
           0 1 0 ...
           0 0 1 ...
@@ -694,12 +629,11 @@ C7NOT::C7NOT(std::vector<int> nlevels_, std::vector<int> nessential_, double tim
                  0 1
                  1 0 ]
   */
-  for (int k=0; k<254; k++) { 
-    // 
+  for (int k=0; k<dim_ess-2; k++) { 
     MatSetValue(V_re, k, k, 1.0, INSERT_VALUES);
   }
-  MatSetValue(V_re, 254, 255, 1.0, INSERT_VALUES);
-  MatSetValue(V_re, 255, 254, 1.0, INSERT_VALUES);
+  MatSetValue(V_re, dim_ess-2, dim_ess-1, 1.0, INSERT_VALUES);
+  MatSetValue(V_re, dim_ess-1, dim_ess-2, 1.0, INSERT_VALUES);
 
   MatAssemblyBegin(V_re, MAT_FINAL_ASSEMBLY);
   MatAssemblyBegin(V_im, MAT_FINAL_ASSEMBLY);
@@ -711,4 +645,4 @@ C7NOT::C7NOT(std::vector<int> nlevels_, std::vector<int> nessential_, double tim
 }
 
 
-C7NOT::~C7NOT(){}
+CQNOT::~CQNOT(){}
