@@ -112,8 +112,6 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   printf("Objective function (JFrob, JHS, JPure) = %d\n", objective_type);
   printf("Pure-state ID = %d\n", purestateID);
 
-  exit(1);
-
   /* Get the IDs of oscillators that are considered in the objective function and corresponding weights */
   std::vector<std::string> oscilIDstr;
   config.GetVecStrParam("optim_oscillators", oscilIDstr);
