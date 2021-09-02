@@ -103,7 +103,7 @@ PetscErrorCode TaoEvalGradient(Tao tao, Vec x, Vec G, void*ptr);
 PetscErrorCode TaoEvalObjectiveAndGradient(Tao tao, Vec x, PetscReal *f, Vec G, void*ptr);
 
 /* Compute local objective function J(rho(t)) */
-double objectiveT(MasterEq* mastereq, OptimTarget optim_target, ObjectiveType objective_type, const Vec state, const Vec rho_t0, Gate* targetgate);
+double objectiveT(MasterEq* mastereq, OptimTarget optim_target, ObjectiveType objective_type, const Vec state, const Vec rho_t0, Gate* targetgate, int purestateID);
 
 /* Derivative of local objective function times obj_bar */
-void objectiveT_diff(MasterEq* mastereq, OptimTarget optim_target, ObjectiveType objective_type, Vec state, Vec state_bar, const Vec rho_t0, const double obj_bar, Gate* targetgate);
+void objectiveT_diff(MasterEq* mastereq, OptimTarget optim_target, ObjectiveType objective_type, Vec state, Vec state_bar, const Vec rho_t0, const double obj_bar, Gate* targetgate, int purestateID);

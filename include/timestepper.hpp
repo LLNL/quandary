@@ -9,8 +9,8 @@
 #pragma once
 
 // define as extern here, they are needed for penalty integral term, implemented in optimproble.cpp
-extern double objectiveT(MasterEq* mastereq, OptimTarget optim_target, ObjectiveType objective_type, const Vec state, const Vec rho_t0, Gate* targetgate);
-extern void objectiveT_diff(MasterEq* mastereq, OptimTarget optim_target, ObjectiveType objective_type, Vec state, Vec state_bar, const Vec rho_t0, const double obj_bar, Gate* targetgate);
+extern double objectiveT(MasterEq* mastereq, OptimTarget optim_target, ObjectiveType objective_type, const Vec state, const Vec rho_t0, Gate* targetgate, int purestateID);
+extern void objectiveT_diff(MasterEq* mastereq, OptimTarget optim_target, ObjectiveType objective_type, Vec state, Vec state_bar, const Vec rho_t0, const double obj_bar, Gate* targetgate, int purestateID);
 
 
 

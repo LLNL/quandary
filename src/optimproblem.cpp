@@ -318,7 +318,7 @@ double OptimProblem::evalF(const Vec x) {
     obj_penal += penalty_coeff * timestepper->penalty_integral;
 
     /* Compute and add final-time cost */
-    double obj_iinit = objectiveT(timestepper->mastereq, optim_target, objective_type, finalstate, rho_t0, targetgate);
+    double obj_iinit = objectiveT(timestepper->mastereq, optim_target, objective_type, finalstate, rho_t0, targetgate, purestateID);
     obj_cost +=  obj_weights[iinit] * obj_iinit;
     obj_cost_max = std::max(obj_cost_max, obj_iinit);
     // printf("%d, %d: iinit objective: %f * %1.14e\n", mpirank_world, mpirank_init, obj_weights[iinit], obj_iinit);
@@ -401,7 +401,7 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
     obj_penal += penalty_coeff * timestepper->penalty_integral;
 
     /* Compute and add final-time cost */
-    double obj_iinit = objectiveT(timestepper->mastereq, optim_target, objective_type, finalstate, rho_t0, targetgate);
+    double obj_iinit = objectiveT(timestepper->mastereq, optim_target, objective_type, finalstate, rho_t0, targetgate, purestateID);
     obj_cost += obj_weights[iinit] * obj_iinit;
     // if (mpirank_braid == 0) printf("%d: iinit objective: %1.14e\n", mpirank_init, obj_iinit);
 
@@ -415,7 +415,7 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
     double Jbar = 1.0 / ninit * obj_weights[iinit];
 
     /* Derivative of final time objective */
-    objectiveT_diff(timestepper->mastereq, optim_target, objective_type, finalstate, rho_t0_bar, rho_t0, Jbar, targetgate);
+    objectiveT_diff(timestepper->mastereq, optim_target, objective_type, finalstate, rho_t0_bar, rho_t0, Jbar, targetgate, purestateID);
 
     /* Derivative of time-stepping */
 #ifdef WITH_BRAID
@@ -692,9 +692,10 @@ PetscErrorCode TaoEvalGradient(Tao tao, Vec x, Vec G, void*ptr){
 
 
 
-double objectiveT(MasterEq* mastereq, OptimTarget optim_target, ObjectiveType objective_type, const Vec state, const Vec rho_t0, Gate* targetgate) {
+double objectiveT(MasterEq* mastereq, OptimTarget optim_target, ObjectiveType objective_type, const Vec state, const Vec rho_t0, Gate* targetgate, int purestateID) {
   double obj_local = 0.0;
-  double sum, mine;
+  int diagID;
+  double sum, mine, rhoii, lambdai, norm;
   int ilo, ihi;
 
   if (state != NULL) {
@@ -719,41 +720,49 @@ double objectiveT(MasterEq* mastereq, OptimTarget optim_target, ObjectiveType ob
         break; // case gate
 
       case PUREM:
-        /* TODO: CHECK FOR GENERAL PURE_M and in particular ground-state. Also check for sub-oscillators! */
+
+        int dim;
+        VecGetSize(state, &dim);
+        dim = (int) sqrt(dim/2.0);  // dim = N with \rho \in C^{N\times N}
+        VecGetOwnershipRange(state, &ilo, &ihi);
 
         switch(objective_type) {
+
           case JMEASURE:
-            /* (\lambda_0*rho00 + \lambda_2*rho22 + ... + \lambda_N*rhoNN) of the first oscillator. */
-            int dim;
-            VecGetSize(state, &dim);
-            dim = (int) sqrt(dim/2.0);  // dim = N with \rho \in C^{N\times N}
-            VecGetOwnershipRange(state, &ilo, &ihi);
+            /* J_T = Tr(O_m rho(T)) = \sum_i |i-m| rho_ii(T) */
             // iterate over diagonal elements 
             sum = 0.0;
             for (int i=0; i<dim; i++){
-              if (i != mastereq->getOscillator(0)->dim_postOsc) { // pure 1 state of the first oscillator
-                int diagID = getIndexReal(getVecID(i,i,dim));
-                //double lambdai = fabs(i - mastereq->getOscillator(0)->dim_postOsc);
-                double lambdai = pow(i - mastereq->getOscillator(0)->dim_postOsc, 2);
-                double rhoii = 0.0;
-                if (ilo <= i && i < ihi) VecGetValues(state, 1, &diagID, &rhoii);
-                sum += lambdai * rhoii;
-              }
+              diagID = getIndexReal(getVecID(i,i,dim));
+              rhoii = 0.0;
+              if (ilo <= diagID && diagID < ihi) VecGetValues(state, 1, &diagID, &rhoii);
+              lambdai = fabs(i - purestateID);
+              sum += lambdai * rhoii;
             }
             mine = sum;
             MPI_Allreduce(&mine, &sum, 1, MPI_DOUBLE, MPI_SUM, PETSC_COMM_WORLD);
             obj_local = sum;
-          break;
+            break;
             
           case JFROBENIUS:
-            // TODO!
-            printf("TODO.\n"); exit(1);
-          break;
+            /* J_T = 1/2 * || rho(T) - e_m e_m^\dagger||_F^2 */
+            // substract 1.0 from m-th diagonal element then take the vector norm 
+            diagID = getIndexReal(getVecID(purestateID,purestateID,dim));
+            if (ilo <= diagID && diagID < ihi) VecSetValue(state, diagID, -1.0, ADD_VALUES);
+            norm = 0.0;
+            VecNorm(state, NORM_2, &norm);
+            obj_local = pow(norm, 2.0) / 2.0;
+            if (ilo <= diagID && diagID < ihi) VecSetValue(state, diagID, +1.0, ADD_VALUES); // restore original state!
+            break;
             
           case JHS:
-            // TODO!
-            printf("TODO.\n"); exit(1);
-          break;
+            /* J_T = 1 - Tr(e_m e_m^\dagger \rho(T)) = 1 - rho_mm(T) */
+            diagID = getIndexReal(getVecID(purestateID,purestateID,dim));
+            rhoii = 0.0;
+            if (ilo <= diagID && diagID < ihi) VecGetValues(state, 1, &diagID, &rhoii);
+            mine = 1. - rhoii;
+            MPI_Allreduce(&mine, &obj_local, 1, MPI_DOUBLE, MPI_SUM, PETSC_COMM_WORLD);
+            break;
         } 
       break; // break pure1
     }
@@ -763,8 +772,10 @@ double objectiveT(MasterEq* mastereq, OptimTarget optim_target, ObjectiveType ob
 
 
 
-void objectiveT_diff(MasterEq* mastereq, OptimTarget optim_target, ObjectiveType objective_type, Vec state, Vec statebar, const Vec rho_t0, const double obj_bar, Gate* targetgate){
+void objectiveT_diff(MasterEq* mastereq, OptimTarget optim_target, ObjectiveType objective_type, Vec state, Vec statebar, const Vec rho_t0, const double obj_bar, Gate* targetgate, int purestateID){
   int ilo, ihi;
+  double lambdai, val;
+  int diagID;
 
   if (state != NULL) {
 
@@ -785,32 +796,35 @@ void objectiveT_diff(MasterEq* mastereq, OptimTarget optim_target, ObjectiveType
         break; // case gate
 
       case PUREM:
+        int dim;
+        VecGetSize(state, &dim);
+        dim = (int) sqrt(dim/2.0);  // dim = N with \rho \in C^{N\times N}
+        VecGetOwnershipRange(state, &ilo, &ihi);
+
         switch (objective_type) {
 
           case JMEASURE:
-
-            int dim;
-            VecGetSize(state, &dim);
-            dim = (int) sqrt(dim/2.0);  // dim = N with \rho \in C^{N\times N}
-            VecGetOwnershipRange(state, &ilo, &ihi);
             // iterate over diagonal elements 
             for (int i=0; i<dim; i++){
-              if (i != mastereq->getOscillator(0)->dim_postOsc) { // pure 1 state of the first oscillator
-                int diagID = getIndexReal(getVecID(i,i,dim));
-                //double lambdai = fabs(i - mastereq->getOscillator(0)->dim_postOsc);
-                double lambdai = pow(i - mastereq->getOscillator(0)->dim_postOsc, 2);
-                double val = lambdai * obj_bar;
-                if (ilo <= i && i < ihi) VecSetValue(statebar, diagID, val, ADD_VALUES);
-              }
+              lambdai = fabs(i - purestateID);
+              diagID = getIndexReal(getVecID(i,i,dim));
+              val = lambdai * obj_bar;
+              if (ilo <= diagID && diagID < ihi) VecSetValue(statebar, diagID, val, ADD_VALUES);
             }
             break;
 
           case JFROBENIUS:
-            // TODO.
+            // Derivative of J = 1/2||x||^2 is xbar += x * Jbar, where x = rho(t) - E_mm
+            VecAXPY(statebar, obj_bar, state);
+            // now substract 1.0*obj_bar from m-th diagonal element
+            diagID = getIndexReal(getVecID(purestateID,purestateID,dim));
+            if (ilo <= diagID && diagID < ihi) VecSetValue(statebar, diagID, -1.0*obj_bar, ADD_VALUES);
             break;
 
           case JHS:
-            // TODO.
+            diagID = getIndexReal(getVecID(purestateID,purestateID,dim));
+            val = -1. * obj_bar;
+            if (ilo <= diagID && diagID < ihi) VecSetValue(statebar, diagID, val, ADD_VALUES);
             break;
         }
         break; // case pure1
