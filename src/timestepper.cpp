@@ -174,7 +174,7 @@ double TimeStepper::penaltyIntegral(double time, const Vec x){
   //   case EXPECTEDENERGYc:
   //   case PUREM:
   //   case GROUNDSTATE:
-  //     double expected = objectiveT(mastereq, objective_type, obj_oscilIDs, x, NULL, NULL);
+  //     double expected = objectiveT(mastereq, objective_type, x, NULL, NULL);
   //     double weight = 1./penalty_weightparam * exp(- pow((time - total_time)/penalty_weightparam, 2));
   //     penalty = weight * expected;
   //   break;
@@ -222,7 +222,7 @@ void TimeStepper::penaltyIntegral_diff(double time, const Vec x, Vec xbar, doubl
   //   case GROUNDSTATE:
   //     // double weight = pow(time/ total_time, penalty_weightparam);  
   //     double weight = 1./penalty_weightparam * exp(- pow((time - total_time)/penalty_weightparam, 2));
-  //     objectiveT_diff(mastereq, objective_type, obj_oscilIDs, x, xbar, NULL, dt*weight*penaltybar, NULL);
+  //     objectiveT_diff(mastereq, objective_type, x, xbar, NULL, dt*weight*penaltybar, NULL);
   //   break;
   // }
     

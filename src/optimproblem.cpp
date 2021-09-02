@@ -112,15 +112,7 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   printf("Objective function (JFrob, JHS, JPure) = %d\n", objective_type);
   printf("Pure-state ID = %d\n", purestateID);
 
-  /* Get the IDs of oscillators that are considered in the objective function and corresponding weights */
-  std::vector<std::string> oscilIDstr;
-  config.GetVecStrParam("optim_oscillators", oscilIDstr);
-  if (oscilIDstr[0].compare("all") == 0) {
-    for (int iosc = 0; iosc < timestepper->mastereq->getNOscillators(); iosc++) 
-      obj_oscilIDs.push_back(iosc);
-  } else {
-    config.GetVecIntParam("optim_oscillators", obj_oscilIDs, 0);
-  }
+  /* Get weights for the objective function (weighting the different initial conditions */
   config.GetVecDoubleParam("optim_weights", obj_weights, 1.0);
   int nfill = 0;
   if (obj_weights.size() < ninit) nfill = ninit - obj_weights.size();
@@ -130,23 +122,11 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
       obj_weights.push_back(val);
   }
   assert(obj_weights.size() >= ninit);
-  /* Sanity check for oscillator IDs */
-  bool err = false;
-  assert(obj_oscilIDs.size() > 0);
-  for (int i=0; i<obj_oscilIDs.size(); i++){
-    if ( obj_oscilIDs[i] >= timestepper->mastereq->getNOscillators() ) err = true;
-    if ( i>0 &&  ( obj_oscilIDs[i] != obj_oscilIDs[i-1] + 1 ) ) err = true;
-  }
-  if (err) {
-    printf("ERROR: List of oscillator IDs for objective function invalid\n"); 
-    exit(1);
-  }
 
   /* Pass information on objective function to the time stepper needed for penalty objective function */
   penalty_coeff = config.GetDoubleParam("optim_penalty", 1e-4);
   penalty_weightparam = config.GetDoubleParam("optim_penalty_param", 0.5);
   timestepper->objective_type = objective_type;
-  timestepper->obj_oscilIDs = obj_oscilIDs;
   timestepper->penalty_weightparam = penalty_weightparam;
   timestepper->penalty_coeff = penalty_coeff;
 
@@ -333,7 +313,7 @@ double OptimProblem::evalF(const Vec x) {
     obj_penal += penalty_coeff * timestepper->penalty_integral;
 
     /* Compute and add final-time cost */
-    double obj_iinit = objectiveT(timestepper->mastereq, optim_target, objective_type, obj_oscilIDs, finalstate, rho_t0, targetgate);
+    double obj_iinit = objectiveT(timestepper->mastereq, optim_target, objective_type, finalstate, rho_t0, targetgate);
     obj_cost +=  obj_weights[iinit] * obj_iinit;
     obj_cost_max = std::max(obj_cost_max, obj_iinit);
     // printf("%d, %d: iinit objective: %f * %1.14e\n", mpirank_world, mpirank_init, obj_weights[iinit], obj_iinit);
@@ -416,7 +396,7 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
     obj_penal += penalty_coeff * timestepper->penalty_integral;
 
     /* Compute and add final-time cost */
-    double obj_iinit = objectiveT(timestepper->mastereq, optim_target, objective_type, obj_oscilIDs, finalstate, rho_t0, targetgate);
+    double obj_iinit = objectiveT(timestepper->mastereq, optim_target, objective_type, finalstate, rho_t0, targetgate);
     obj_cost += obj_weights[iinit] * obj_iinit;
     // if (mpirank_braid == 0) printf("%d: iinit objective: %1.14e\n", mpirank_init, obj_iinit);
 
@@ -430,7 +410,7 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
     double Jbar = 1.0 / ninit * obj_weights[iinit];
 
     /* Derivative of final time objective */
-    objectiveT_diff(timestepper->mastereq, optim_target, objective_type, obj_oscilIDs, finalstate, rho_t0_bar, rho_t0, Jbar, targetgate);
+    objectiveT_diff(timestepper->mastereq, optim_target, objective_type, finalstate, rho_t0_bar, rho_t0, Jbar, targetgate);
 
     /* Derivative of time-stepping */
 #ifdef WITH_BRAID
@@ -707,7 +687,7 @@ PetscErrorCode TaoEvalGradient(Tao tao, Vec x, Vec G, void*ptr){
 
 
 
-double objectiveT(MasterEq* mastereq, OptimTarget optim_target, ObjectiveType objective_type, const std::vector<int>& obj_oscilIDs, const Vec state, const Vec rho_t0, Gate* targetgate) {
+double objectiveT(MasterEq* mastereq, OptimTarget optim_target, ObjectiveType objective_type, const Vec state, const Vec rho_t0, Gate* targetgate) {
   double obj_local = 0.0;
   double sum, mine;
   int ilo, ihi;
@@ -778,7 +758,7 @@ double objectiveT(MasterEq* mastereq, OptimTarget optim_target, ObjectiveType ob
 
 
 
-void objectiveT_diff(MasterEq* mastereq, OptimTarget optim_target, ObjectiveType objective_type, const std::vector<int>& obj_oscilIDs, Vec state, Vec statebar, const Vec rho_t0, const double obj_bar, Gate* targetgate){
+void objectiveT_diff(MasterEq* mastereq, OptimTarget optim_target, ObjectiveType objective_type, Vec state, Vec statebar, const Vec rho_t0, const double obj_bar, Gate* targetgate){
   int ilo, ihi;
 
   if (state != NULL) {
