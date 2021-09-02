@@ -40,7 +40,7 @@ class OptimProblem {
 
   /* Optimization stuff */
   OptimTarget optim_target;        /* Type of optimization (e.g. gate optim or pure-state prep.) */
-  int purestateID;                 /* For pure-state preparation, this is <m> for preparing e_m e_m^\dagger */
+  int purestateID;                 /* For pure-state preparation, this is <m> for preparing e_m e_m^\dagger in R^N (the full dimensions). */
   ObjectiveType objective_type;    /* Type of objective function (e.g. frobenius norm, Hilber-Schmidt ...) */
   std::vector<double> obj_weights; /* List of weights for averaging expected value objective */
   Gate  *targetgate;               /* Target gate */

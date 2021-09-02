@@ -86,12 +86,21 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   }  
   else if (target_str[0].compare("pure")==0) {
     optim_target = PUREM;
+    purestateID = 0;
     if (target_str.size() < 2) {
-      printf("# Warning: You want to prepare a pure state, but didn't specify which one. Taking default: ground-state (0)\n");
-      purestateID = 0;
+      printf("# Warning: You want to prepare a pure state, but didn't specify which one. Taking default: ground-state |0...0> \n");
     } else {
-      purestateID = atoi(target_str[1].c_str());  // ID <m> for preparing the pure state e_m e_m^\dagger
+      /* Compute the index m for preparing e_m e_m^\dagger. Note that the input is given for pure states PER OSCILLATOR such as |m_1 m_2 ... m_Q> and hence m = m_1 * dimPost(oscil 1) + m_2 * dimPost(oscil 2) + ... + m_Q */
+      if (target_str.size() - 1 < timestepper->mastereq->getNOscillators()) {
+        printf("ERROR: List of ID's for pure-state preparation must contain %d elements! Check config option 'optim_target'.\n", timestepper->mastereq->getNOscillators());
+        exit(1);
+      }
+      for (int i=0; i < timestepper->mastereq->getNOscillators(); i++) {
+        int Qi_state = atoi(target_str[i+1].c_str());
+        purestateID += Qi_state * timestepper->mastereq->getOscillator(i)->dim_postOsc;
+      }
     }
+    // printf("Preparing the state e_%d\n", purestateID);
   }
   else {
       printf("\n\n ERROR: Unknown optimization target: %s\n", target_str[0].c_str());
@@ -107,10 +116,6 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
     printf("\n\n ERROR: Unknown objective function: %s\n", objective_str.c_str());
     exit(1);
   }
-
-  printf("Optimization target (Gate or pure) = %d\n", optim_target);
-  printf("Objective function (JFrob, JHS, JPure) = %d\n", objective_type);
-  printf("Pure-state ID = %d\n", purestateID);
 
   /* Get weights for the objective function (weighting the different initial conditions */
   config.GetVecDoubleParam("optim_weights", obj_weights, 1.0);
@@ -161,7 +166,7 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
       printf("ERROR during pure-state initialization: List of IDs must contain %d elements!\n", timestepper->mastereq->getNOscillators());
       exit(1);
     }
-    int diag_id = 0.0;
+    int diag_id = 0;
     for (int k=0; k < initcond_IDs.size(); k++) {
       if (initcond_IDs[k] > timestepper->mastereq->getOscillator(k)->getNLevels()-1){
         printf("ERROR in config setting. The requested pure state initialization |%d> exceeds the number of allowed levels for that oscillator (%d).\n", initcond_IDs[k], timestepper->mastereq->getOscillator(k)->getNLevels());
