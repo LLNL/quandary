@@ -39,7 +39,9 @@ class OptimProblem {
   int mpirank_init, mpisize_init;
 
   /* Optimization stuff */
-  ObjectiveType objective_type;    /* Type of objective function (Gate, <N>, Groundstate, ... ) */
+  OptimTarget optim_target;        /* Type of optimization (e.g. gate optim or pure-state prep.) */
+  int purestateID;                 /* For pure-state preparation, this is <m> for preparing e_m e_m^\dagger */
+  ObjectiveType objective_type;    /* Type of objective function (e.g. frobenius norm, Hilber-Schmidt ...) */
   std::vector<int> obj_oscilIDs;   /* List of oscillator IDs that are considered for the optimizer */
   std::vector<double> obj_weights; /* List of weights for averaging expected value objective */
   Gate  *targetgate;               /* Target gate */
@@ -101,9 +103,8 @@ PetscErrorCode TaoEvalGradient(Tao tao, Vec x, Vec G, void*ptr);
 /* Petsc's Tao interface routine for evaluating the gradient g = \nabla f(x) */
 PetscErrorCode TaoEvalObjectiveAndGradient(Tao tao, Vec x, PetscReal *f, Vec G, void*ptr);
 
-
 /* Compute local objective function J(rho(t)) */
-double objectiveT(MasterEq* mastereq, ObjectiveType objective_type, const std::vector<int>& obj_oscilIDs, const Vec state, const Vec rho_t0, Gate* targetgate);
+double objectiveT(MasterEq* mastereq, OptimTarget optim_target, ObjectiveType objective_type, const std::vector<int>& obj_oscilIDs, const Vec state, const Vec rho_t0, Gate* targetgate);
 
 /* Derivative of local objective function times obj_bar */
-void objectiveT_diff(MasterEq* mastereq, ObjectiveType objective_type, const std::vector<int>& obj_oscilIDs, Vec state, Vec state_bar, const Vec rho_t0, const double obj_bar, Gate* targetgate);
+void objectiveT_diff(MasterEq* mastereq, OptimTarget optim_target, ObjectiveType objective_type, const std::vector<int>& obj_oscilIDs, Vec state, Vec state_bar, const Vec rho_t0, const double obj_bar, Gate* targetgate);

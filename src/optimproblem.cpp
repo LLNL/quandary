@@ -17,6 +17,8 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   output = output_;
   /* Reset */
   objective = 0.0;
+  targetgate = NULL;
+  purestateID = -1;
 
   /* Store ranks and sizes of communicators */
   MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
@@ -56,49 +58,61 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
       }
   }
 
-  /* Store objective function type */
-  std::vector<std::string> objective_str;
-  config.GetVecStrParam("optim_objective", objective_str);
+  /* Store the optimization target */
+  std::vector<std::string> target_str;
+  config.GetVecStrParam("optim_target", target_str, "pure");
   targetgate = NULL;
-  if ( objective_str[0].compare("gate") ==0 ) {
+  if ( target_str[0].compare("gate") ==0 ) {
+    optim_target = GATE;
     /* Read and initialize the targetgate */
-    assert ( objective_str.size() >=2 );
-    if      (objective_str[1].compare("none") == 0)  targetgate = new Gate(); // dummy gate. do nothing
-    else if (objective_str[1].compare("xgate") == 0) targetgate = new XGate(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, timestepper->total_time, gate_rot_freq); 
-    else if (objective_str[1].compare("ygate") == 0) targetgate = new YGate(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, timestepper->total_time, gate_rot_freq); 
-    else if (objective_str[1].compare("zgate") == 0) targetgate = new ZGate(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, timestepper->total_time, gate_rot_freq);
-    else if (objective_str[1].compare("hadamard") == 0) targetgate = new HadamardGate(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, timestepper->total_time, gate_rot_freq);
-    else if (objective_str[1].compare("cnot") == 0) targetgate = new CNOT(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, timestepper->total_time, gate_rot_freq); 
-    else if (objective_str[1].compare("swap") == 0) targetgate = new SWAP(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, timestepper->total_time, gate_rot_freq); 
-    else if (objective_str[1].compare("swap0q") == 0) {
-      assert(objective_str.size() >= 3);
-      targetgate = new SWAP_0Q(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, stoi(objective_str[2]), timestepper->total_time, gate_rot_freq); 
+    if ( target_str.size() < 2 ) {
+      printf("ERROR: You want to optimize for a gate, but didn't specify which one. Check your config for 'optim_target'!\n");
+      exit(1);
     }
-    else if (objective_str[1].compare("cqnot") == 0) targetgate = new CQNOT(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, timestepper->total_time, gate_rot_freq); 
+    if      (target_str[1].compare("none") == 0)  targetgate = new Gate(); // dummy gate. do nothing
+    else if (target_str[1].compare("xgate") == 0) targetgate = new XGate(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, timestepper->total_time, gate_rot_freq); 
+    else if (target_str[1].compare("ygate") == 0) targetgate = new YGate(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, timestepper->total_time, gate_rot_freq); 
+    else if (target_str[1].compare("zgate") == 0) targetgate = new ZGate(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, timestepper->total_time, gate_rot_freq);
+    else if (target_str[1].compare("hadamard") == 0) targetgate = new HadamardGate(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, timestepper->total_time, gate_rot_freq);
+    else if (target_str[1].compare("cnot") == 0) targetgate = new CNOT(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, timestepper->total_time, gate_rot_freq); 
+    else if (target_str[1].compare("swap") == 0) targetgate = new SWAP(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, timestepper->total_time, gate_rot_freq); 
+    else if (target_str[1].compare("swap0q") == 0) targetgate = new SWAP_0Q(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, timestepper->total_time, gate_rot_freq); 
+    else if (target_str[1].compare("cqnot") == 0) targetgate = new CQNOT(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, timestepper->total_time, gate_rot_freq); 
     else {
-      printf("\n\n ERROR: Unnown gate type: %s.\n", objective_str[1].c_str());
+      printf("\n\n ERROR: Unnown gate type: %s.\n", target_str[1].c_str());
       printf(" Available gates are 'none', 'xgate', 'ygate', 'zgate', 'hadamard', 'cnot', 'swap', 'swap0q', 'cqnot'.\n");
       exit(1);
-    }
-    /* Get gate measure */
-    std::string gate_measure = config.GetStrParam("gate_measure", "frobenius");
-    if (gate_measure.compare("frobenius")==0) objective_type = GATE_FROBENIUS;
-    else if (gate_measure.compare("trace")==0) objective_type = GATE_TRACE;
-    else  {
-      printf("\n\n ERROR: Unknown gate measure: %s\n", gate_measure.c_str());
-      exit(1);
-    }
+    } 
   }  
-  else if (objective_str[0].compare("expectedEnergy")==0) objective_type = EXPECTEDENERGY;
-  else if (objective_str[0].compare("expectedEnergya")==0) objective_type = EXPECTEDENERGYa;
-  else if (objective_str[0].compare("expectedEnergyb")==0) objective_type = EXPECTEDENERGYb;
-  else if (objective_str[0].compare("expectedEnergyc")==0) objective_type = EXPECTEDENERGYc;
-  else if (objective_str[0].compare("pure1")==0)           objective_type = PURE1;
-  else if (objective_str[0].compare("groundstate")   ==0) objective_type = GROUNDSTATE;
+  else if (target_str[0].compare("pure")==0) {
+    optim_target = PUREM;
+    if (target_str.size() < 2) {
+      printf("# Warning: You want to prepare a pure state, but didn't specify which one. Taking default: ground-state (0)\n");
+      purestateID = 0;
+    } else {
+      purestateID = atoi(target_str[1].c_str());  // ID <m> for preparing the pure state e_m e_m^\dagger
+    }
+  }
   else {
-      printf("\n\n ERROR: Unknown objective function: %s\n", objective_str[0].c_str());
+      printf("\n\n ERROR: Unknown optimization target: %s\n", target_str[0].c_str());
       exit(1);
   }
+
+  /* Get the objective function */
+  std::string objective_str = config.GetStrParam("optim_objective", "Jfrobenius");
+  if (objective_str.compare("Jfrobenius")==0)           objective_type = JFROBENIUS;
+  else if (objective_str.compare("Jhilbertschmidt")==0) objective_type = JHS;
+  else if (objective_str.compare("Jpure")==0)           objective_type = JMEASURE;
+  else  {
+    printf("\n\n ERROR: Unknown objective function: %s\n", objective_str.c_str());
+    exit(1);
+  }
+
+  printf("Optimization target (Gate or pure) = %d\n", optim_target);
+  printf("Objective function (JFrob, JHS, JPure) = %d\n", objective_type);
+  printf("Pure-state ID = %d\n", purestateID);
+
+  exit(1);
 
   /* Get the IDs of oscillators that are considered in the objective function and corresponding weights */
   std::vector<std::string> oscilIDstr;
@@ -321,7 +335,7 @@ double OptimProblem::evalF(const Vec x) {
     obj_penal += penalty_coeff * timestepper->penalty_integral;
 
     /* Compute and add final-time cost */
-    double obj_iinit = objectiveT(timestepper->mastereq, objective_type, obj_oscilIDs, finalstate, rho_t0, targetgate);
+    double obj_iinit = objectiveT(timestepper->mastereq, optim_target, objective_type, obj_oscilIDs, finalstate, rho_t0, targetgate);
     obj_cost +=  obj_weights[iinit] * obj_iinit;
     obj_cost_max = std::max(obj_cost_max, obj_iinit);
     // printf("%d, %d: iinit objective: %f * %1.14e\n", mpirank_world, mpirank_init, obj_weights[iinit], obj_iinit);
@@ -404,7 +418,7 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
     obj_penal += penalty_coeff * timestepper->penalty_integral;
 
     /* Compute and add final-time cost */
-    double obj_iinit = objectiveT(timestepper->mastereq, objective_type, obj_oscilIDs, finalstate, rho_t0, targetgate);
+    double obj_iinit = objectiveT(timestepper->mastereq, optim_target, objective_type, obj_oscilIDs, finalstate, rho_t0, targetgate);
     obj_cost += obj_weights[iinit] * obj_iinit;
     // if (mpirank_braid == 0) printf("%d: iinit objective: %1.14e\n", mpirank_init, obj_iinit);
 
@@ -418,7 +432,7 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
     double Jbar = 1.0 / ninit * obj_weights[iinit];
 
     /* Derivative of final time objective */
-    objectiveT_diff(timestepper->mastereq, objective_type, obj_oscilIDs, finalstate, rho_t0_bar, rho_t0, Jbar, targetgate);
+    objectiveT_diff(timestepper->mastereq, optim_target, objective_type, obj_oscilIDs, finalstate, rho_t0_bar, rho_t0, Jbar, targetgate);
 
     /* Derivative of time-stepping */
 #ifdef WITH_BRAID
@@ -565,7 +579,6 @@ void OptimProblem::getSolution(Vec* param_ptr){
   *param_ptr = params;
 }
 
-
 PetscErrorCode TaoMonitor(Tao tao,void*ptr){
   OptimProblem* ctx = (OptimProblem*) ptr;
 
@@ -590,12 +603,13 @@ PetscErrorCode TaoMonitor(Tao tao,void*ptr){
   /* Average fidelity. */
   /* For gates, this is 1.-\sum_ij Tr(V \rho_ij(0) V^\dagger \rho_ij(T)) */
   /* For groundstate optimization, this is the objective function value */
+  /* SG: TODO!! */
   double F_avg = -1.0;
-  if (ctx->initcond_type == BASIS && ctx->objective_type == GATE_TRACE) F_avg = 1. - ctx->obj_cost;
-  if (ctx->objective_type == EXPECTEDENERGY ||
-      ctx->objective_type == EXPECTEDENERGYa ||
-      ctx->objective_type == EXPECTEDENERGYb ||
-      ctx->objective_type == EXPECTEDENERGYc ) F_avg = ctx->obj_cost;
+  // if (ctx->initcond_type == BASIS && ctx->objective_type == GATE_TRACE) F_avg = 1. - ctx->obj_cost;
+  // if (ctx->objective_type == EXPECTEDENERGY ||
+  //     ctx->objective_type == EXPECTEDENERGYa ||
+  //     ctx->objective_type == EXPECTEDENERGYb ||
+  //     ctx->objective_type == EXPECTEDENERGYc ) F_avg = ctx->obj_cost;
 
   /* If average fidelity is not the objective function, it can be computed at each optimization iteration here. 
    * However, this involves the entire basis be propagated forward (or at last the N+1 states from Koch's paper). We omit it here to save compute time during optimization. 
@@ -695,105 +709,70 @@ PetscErrorCode TaoEvalGradient(Tao tao, Vec x, Vec G, void*ptr){
 
 
 
-double objectiveT(MasterEq* mastereq, ObjectiveType objective_type, const std::vector<int>& obj_oscilIDs, const Vec state, const Vec rho_t0, Gate* targetgate) {
+double objectiveT(MasterEq* mastereq, OptimTarget optim_target, ObjectiveType objective_type, const std::vector<int>& obj_oscilIDs, const Vec state, const Vec rho_t0, Gate* targetgate) {
   double obj_local = 0.0;
   double sum, mine;
   int ilo, ihi;
 
   if (state != NULL) {
 
-    switch (objective_type) {
-      case GATE_FROBENIUS:
-        /* compare state to linear transformation of initial conditions using Frobenius norm */
-        /* J_T = 1/2 || rho(T) - Vrho(0)V^d||^2 */
-        targetgate->compare_frobenius(state, rho_t0, obj_local);
-        break;
-
-      case GATE_TRACE:
-        /* compare state to linear transformation of initial conditions using Trace overlap */
-        /* J_T = 1 - Tr[Vrho(0)V^d rho(T)] */
-        targetgate->compare_trace(state, rho_t0, obj_local);
-        break;
-
-      case EXPECTEDENERGY:
-        /* Weighted sum of expected energy levels */
-        obj_local = 0.0;
-        for (int i=0; i<obj_oscilIDs.size(); i++) {
-          obj_local += mastereq->getOscillator(obj_oscilIDs[i])->expectedEnergy(state);
-        }
-        break;
-
-      case EXPECTEDENERGYa:
-        /* Squared average of expected energy level f = ( sum_{k=0}^Q < N_k(rho(T)) > )^2 */
-        sum = 0.0;
-        for (int i=0; i<obj_oscilIDs.size(); i++) {
-          sum += mastereq->getOscillator(obj_oscilIDs[i])->expectedEnergy(state);
-        }
-        obj_local = pow(sum / obj_oscilIDs.size(), 2.0);
-        break;
-
-      case EXPECTEDENERGYb:
-        /* average of Squared expected energy level f = 1/Q sum_{k=0}^Q < N_k(rho(T))>^2 */
-        double g;
-        sum = 0.0;
-        for (int i=0; i<obj_oscilIDs.size(); i++) {
-          g = mastereq->getOscillator(obj_oscilIDs[i])->expectedEnergy(state);
-          sum += pow(g,2.0);
-        }
-        obj_local = sum / obj_oscilIDs.size();
-        break;
-
-      case EXPECTEDENERGYc:
-        /* average of expected energy level f = 1/Q sum_{k=0}^Q < N_k(rho(T))> */
-        sum = 0.0;
-        for (int i=0; i<obj_oscilIDs.size(); i++) {
-          sum += mastereq->getOscillator(obj_oscilIDs[i])->expectedEnergy(state);
-        }
-        obj_local = sum / obj_oscilIDs.size();
-        break;
-
-      case PURE1:
-        /* (\lambda_0*rho00 + \lambda_2*rho22 + ... + \lambda_N*rhoNN) of the first oscillator. */
-        int dim;
-        VecGetSize(state, &dim);
-        dim = (int) sqrt(dim/2.0);  // dim = N with \rho \in C^{N\times N}
-        VecGetOwnershipRange(state, &ilo, &ihi);
-        // iterate over diagonal elements 
-        sum = 0.0;
-        for (int i=0; i<dim; i++){
-          if (i != mastereq->getOscillator(0)->dim_postOsc) { // pure 1 state of the first oscillator
-            int diagID = getIndexReal(getVecID(i,i,dim));
-            //double lambdai = fabs(i - mastereq->getOscillator(0)->dim_postOsc);
-            double lambdai = pow(i - mastereq->getOscillator(0)->dim_postOsc, 2);
-            double rhoii = 0.0;
-            if (ilo <= i && i < ihi) VecGetValues(state, 1, &diagID, &rhoii);
-            sum += lambdai * rhoii;
-          }
-        }
-        mine = sum;
-        MPI_Allreduce(&mine, &sum, 1, MPI_DOUBLE, MPI_SUM, PETSC_COMM_WORLD);
-        obj_local = sum;
-        break;
+    switch (optim_target) {
+      case GATE: // Gate optimization: Target \rho_target = V\rho(0)V^\dagger
         
-
-      case GROUNDSTATE:
-        /* compare full state to groundstate */
-
-        /* If sub-system is requested, compute reduced density operator first */
-        if (obj_oscilIDs.size() < mastereq->getNOscillators()) { 
-          printf("ERROR: Computing reduced density matrix is currently not available and needs testing!\n");
-          exit(1);
+        switch(objective_type) {
+          case JFROBENIUS:
+            /* J_T = 1/2 * 1/purity * || rho_target - rho(T)||^2_F  */
+            targetgate->compare_frobenius(state, rho_t0, obj_local);
+            break;
+          case JHS:
+            /* J_T = 1 - 1/purity * Tr(rho_target^\dagger * rho(T)) */
+            targetgate->compare_trace(state, rho_t0, obj_local);
+            break;
+          case JMEASURE: // JMEASURE is only for pure-state preparation!
+            printf("ERROR: Check settings for optim_target and optim_objective.\n");
+            exit(1);
+            break;
         }
+        break; // case gate
 
-        /* Compute frobenius norm: frob = 1/2|| q(T) - e_0 ||^2 */
-        VecGetOwnershipRange(state, &ilo, &ihi);
-        if (ilo <= 0 && 0 < ihi) VecSetValue(state, 0, -1.0, ADD_VALUES); // substract 1.0 from (0,0) element
-        VecNorm(state, NORM_2, &obj_local);
-        obj_local = 0.5*pow(obj_local, 2.0);
-        if (ilo <= 0 && 0 < ihi) VecSetValue(state, 0, 1.0, ADD_VALUES); // restore state 
-        VecAssemblyBegin(state);
-        VecAssemblyEnd(state);
-        break;
+      case PUREM:
+        /* TODO: CHECK FOR GENERAL PURE_M and in particular ground-state. Also check for sub-oscillators! */
+
+        switch(objective_type) {
+          case JMEASURE:
+            /* (\lambda_0*rho00 + \lambda_2*rho22 + ... + \lambda_N*rhoNN) of the first oscillator. */
+            int dim;
+            VecGetSize(state, &dim);
+            dim = (int) sqrt(dim/2.0);  // dim = N with \rho \in C^{N\times N}
+            VecGetOwnershipRange(state, &ilo, &ihi);
+            // iterate over diagonal elements 
+            sum = 0.0;
+            for (int i=0; i<dim; i++){
+              if (i != mastereq->getOscillator(0)->dim_postOsc) { // pure 1 state of the first oscillator
+                int diagID = getIndexReal(getVecID(i,i,dim));
+                //double lambdai = fabs(i - mastereq->getOscillator(0)->dim_postOsc);
+                double lambdai = pow(i - mastereq->getOscillator(0)->dim_postOsc, 2);
+                double rhoii = 0.0;
+                if (ilo <= i && i < ihi) VecGetValues(state, 1, &diagID, &rhoii);
+                sum += lambdai * rhoii;
+              }
+            }
+            mine = sum;
+            MPI_Allreduce(&mine, &sum, 1, MPI_DOUBLE, MPI_SUM, PETSC_COMM_WORLD);
+            obj_local = sum;
+          break;
+            
+          case JFROBENIUS:
+            // TODO!
+            printf("TODO.\n"); exit(1);
+          break;
+            
+          case JHS:
+            // TODO!
+            printf("TODO.\n"); exit(1);
+          break;
+        } 
+      break; // break pure1
     }
   }
   return obj_local;
@@ -801,80 +780,57 @@ double objectiveT(MasterEq* mastereq, ObjectiveType objective_type, const std::v
 
 
 
-void objectiveT_diff(MasterEq* mastereq, ObjectiveType objective_type, const std::vector<int>& obj_oscilIDs, Vec state, Vec statebar, const Vec rho_t0, const double obj_bar, Gate* targetgate){
+void objectiveT_diff(MasterEq* mastereq, OptimTarget optim_target, ObjectiveType objective_type, const std::vector<int>& obj_oscilIDs, Vec state, Vec statebar, const Vec rho_t0, const double obj_bar, Gate* targetgate){
   int ilo, ihi;
 
   if (state != NULL) {
-    switch (objective_type) {
 
-      case GATE_FROBENIUS:
-        targetgate->compare_frobenius_diff(state, rho_t0, statebar, obj_bar);
-        break;
-
-      case GATE_TRACE:
-        targetgate->compare_trace_diff(state, rho_t0, statebar, obj_bar);
-        break;
-
-      case EXPECTEDENERGY:
-        for (int i=0; i<obj_oscilIDs.size(); i++) {
-          mastereq->getOscillator(obj_oscilIDs[i])->expectedEnergy_diff(state, statebar, obj_bar);
+    switch (optim_target) {
+      case GATE:
+        switch (objective_type) {
+          case JFROBENIUS:
+            targetgate->compare_frobenius_diff(state, rho_t0, statebar, obj_bar);
+            break;
+          case JHS:
+            targetgate->compare_trace_diff(state, rho_t0, statebar, obj_bar);
+            break;
+          case JMEASURE: // Will never happen
+            printf("ERROR: Check settings for optim_target and optim_objective.\n");
+            exit(1);
+            break;
         }
-        break;
+        break; // case gate
 
-      case EXPECTEDENERGYa:
-        double Jbar, sum;
-        // Recompute sum over energy levels 
-        sum = 0.0;
-        for (int i=0; i<obj_oscilIDs.size(); i++) {
-          sum += mastereq->getOscillator(obj_oscilIDs[i])->expectedEnergy(state);
-        } 
-        sum = sum / obj_oscilIDs.size();
-        // Derivative of expected energy levels 
-        Jbar = 2. * sum * obj_bar / obj_oscilIDs.size();
-        for (int i=0; i<obj_oscilIDs.size(); i++) {
-          mastereq->getOscillator(obj_oscilIDs[i])->expectedEnergy_diff(state, statebar, Jbar);
+      case PUREM:
+        switch (objective_type) {
+
+          case JMEASURE:
+
+            int dim;
+            VecGetSize(state, &dim);
+            dim = (int) sqrt(dim/2.0);  // dim = N with \rho \in C^{N\times N}
+            VecGetOwnershipRange(state, &ilo, &ihi);
+            // iterate over diagonal elements 
+            for (int i=0; i<dim; i++){
+              if (i != mastereq->getOscillator(0)->dim_postOsc) { // pure 1 state of the first oscillator
+                int diagID = getIndexReal(getVecID(i,i,dim));
+                //double lambdai = fabs(i - mastereq->getOscillator(0)->dim_postOsc);
+                double lambdai = pow(i - mastereq->getOscillator(0)->dim_postOsc, 2);
+                double val = lambdai * obj_bar;
+                if (ilo <= i && i < ihi) VecSetValue(statebar, diagID, val, ADD_VALUES);
+              }
+            }
+            break;
+
+          case JFROBENIUS:
+            // TODO.
+            break;
+
+          case JHS:
+            // TODO.
+            break;
         }
-        break;
-
-      case EXPECTEDENERGYb:
-        for (int i=0; i<obj_oscilIDs.size(); i++) {
-          Jbar = 2. / obj_oscilIDs.size() * mastereq->getOscillator(obj_oscilIDs[i])->expectedEnergy(state) * obj_bar;
-          mastereq->getOscillator(obj_oscilIDs[i])->expectedEnergy_diff(state, statebar, Jbar);
-        }
-        break;
-
-      case EXPECTEDENERGYc:
-        Jbar = obj_bar / obj_oscilIDs.size();
-        for (int i=0; i<obj_oscilIDs.size(); i++) {
-          mastereq->getOscillator(obj_oscilIDs[i])->expectedEnergy_diff(state, statebar, Jbar);
-        }
-        break;
-
-      case PURE1:
-        int dim;
-        VecGetSize(state, &dim);
-        dim = (int) sqrt(dim/2.0);  // dim = N with \rho \in C^{N\times N}
-        VecGetOwnershipRange(state, &ilo, &ihi);
-        // iterate over diagonal elements 
-        for (int i=0; i<dim; i++){
-          if (i != mastereq->getOscillator(0)->dim_postOsc) { // pure 1 state of the first oscillator
-            int diagID = getIndexReal(getVecID(i,i,dim));
-            //double lambdai = fabs(i - mastereq->getOscillator(0)->dim_postOsc);
-            double lambdai = pow(i - mastereq->getOscillator(0)->dim_postOsc, 2);
-            double val = lambdai * obj_bar;
-            if (ilo <= i && i < ihi) VecSetValue(statebar, diagID, val, ADD_VALUES);
-          }
-        }
-        break;
-
-    case GROUNDSTATE:
-      VecGetOwnershipRange(statebar, &ilo, &ihi);
-
-      /* Derivative of frobenius norm: (q(T) - e_0) * frob_bar */
-      VecAXPY(statebar, obj_bar, state);
-      if (ilo <= 0 && 0 < ihi) VecSetValue(statebar, 0, -1.0*obj_bar, ADD_VALUES);
-      VecAssemblyBegin(statebar); VecAssemblyEnd(statebar);
-      break;
+        break; // case pure1
     }
   }
 }

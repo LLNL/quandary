@@ -580,7 +580,8 @@ SWAP::SWAP(std::vector<int> nlevels_, std::vector<int> nessential_, double time_
 
 SWAP::~SWAP(){}
 
-SWAP_0Q::SWAP_0Q(std::vector<int> nlevels_, std::vector<int> nessential_, int Q, double time_, std::vector<double> gate_rot_freq_) : Gate(nlevels_, nessential_, time_, gate_rot_freq_) {
+SWAP_0Q::SWAP_0Q(std::vector<int> nlevels_, std::vector<int> nessential_, double time_, std::vector<double> gate_rot_freq_) : Gate(nlevels_, nessential_, time_, gate_rot_freq_) {
+  int Q = nlevels.size();  // Number of total oscillators 
 
   /* Fill lab-frame swap 0<->Q-1 gate in essential dimension system V_re = Re(V), V_im = Im(V) = 0 */
 

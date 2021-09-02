@@ -205,7 +205,7 @@ def read_config(filename):
                case("braid_fmg") or \
                case("braid_skip") or \
                case("optim_objective") or \
-               case("gate_measure") or \
+               case("optim_target") or \
                case("gate_rot_freq") or \
                case("optim_oscillators") or \
                case("optim_weights") or \

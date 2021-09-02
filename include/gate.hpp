@@ -115,7 +115,7 @@ class SWAP: public Gate {
 /* SWAP gate for Q qubits, swapping qubit 0 <-> Q-1 while leaving all others in their state */
 class SWAP_0Q: public Gate {
     public:
-    SWAP_0Q(std::vector<int> nlevels_, std::vector<int> nessential_, int Q, double time, std::vector<double> rotation_frequencies_);
+    SWAP_0Q(std::vector<int> nlevels_, std::vector<int> nessential_, double time, std::vector<double> rotation_frequencies_);
     ~SWAP_0Q();
 };
 

@@ -147,37 +147,38 @@ double TimeStepper::penaltyIntegral(double time, const Vec x){
   int ilow, iupp;
   VecGetOwnershipRange(x, &ilow, &iupp);
 
-  switch(objective_type) {
-    /* If gate optimization (frobenius or trace measure): penalize the LAST energy level per oscillator (guard-level) */
-    case GATE_FROBENIUS:
-    case GATE_TRACE:
-      /* Sum over all diagonal elements that correspond to a non-essential guard level. 
-       * A guard level is the LAST NON-ESSENTIAL energy level of an oscillator */
-      for (int i=0; i<dim_rho; i++) {
-        if ( isGuardLevel(i, mastereq->nlevels, mastereq->nessential) ) {
-          // printf("isGuard: %d / %d\n", i, dim_rho);
-          int vecID_re = getIndexReal(getVecID(i,i,dim_rho));
-          int vecID_im = getIndexImag(getVecID(i,i,dim_rho));
-          x_re = 0.0; x_im = 0.0;
-          if (ilow <= vecID_re && vecID_re < iupp) VecGetValues(x, 1, &vecID_re, &x_re);
-          if (ilow <= vecID_im && vecID_im < iupp) VecGetValues(x, 1, &vecID_im, &x_im);  // those should be zero!? 
-          penalty += penalty_weightparam * (x_re * x_re + x_im * x_im);
-        }
-      }
-    break;
+  // TODO!!
+  // switch(objective_type) {
+  //   /* If gate optimization (frobenius or trace measure): penalize the LAST energy level per oscillator (guard-level) */
+  //   case GATE_FROBENIUS:
+  //   case GATE_TRACE:
+  //     /* Sum over all diagonal elements that correspond to a non-essential guard level. 
+  //      * A guard level is the LAST NON-ESSENTIAL energy level of an oscillator */
+  //     for (int i=0; i<dim_rho; i++) {
+  //       if ( isGuardLevel(i, mastereq->nlevels, mastereq->nessential) ) {
+  //         // printf("isGuard: %d / %d\n", i, dim_rho);
+  //         int vecID_re = getIndexReal(getVecID(i,i,dim_rho));
+  //         int vecID_im = getIndexImag(getVecID(i,i,dim_rho));
+  //         x_re = 0.0; x_im = 0.0;
+  //         if (ilow <= vecID_re && vecID_re < iupp) VecGetValues(x, 1, &vecID_re, &x_re);
+  //         if (ilow <= vecID_im && vecID_im < iupp) VecGetValues(x, 1, &vecID_im, &x_im);  // those should be zero!? 
+  //         penalty += penalty_weightparam * (x_re * x_re + x_im * x_im);
+  //       }
+  //     }
+  //   break;
 
-    /* If groundstate optimization (expected energy or groundstate norm), or if pure1 optim: penalize weighted objective function */
-    case EXPECTEDENERGY:
-    case EXPECTEDENERGYa:
-    case EXPECTEDENERGYb:
-    case EXPECTEDENERGYc:
-    case PURE1:
-    case GROUNDSTATE:
-      double expected = objectiveT(mastereq, objective_type, obj_oscilIDs, x, NULL, NULL);
-      double weight = 1./penalty_weightparam * exp(- pow((time - total_time)/penalty_weightparam, 2));
-      penalty = weight * expected;
-    break;
-  }
+  //   /* If groundstate optimization (expected energy or groundstate norm), or if pure1 optim: penalize weighted objective function */
+  //   case EXPECTEDENERGY:
+  //   case EXPECTEDENERGYa:
+  //   case EXPECTEDENERGYb:
+  //   case EXPECTEDENERGYc:
+  //   case PUREM:
+  //   case GROUNDSTATE:
+  //     double expected = objectiveT(mastereq, objective_type, obj_oscilIDs, x, NULL, NULL);
+  //     double weight = 1./penalty_weightparam * exp(- pow((time - total_time)/penalty_weightparam, 2));
+  //     penalty = weight * expected;
+  //   break;
+  // }
 
   return dt*penalty;
 }
@@ -190,39 +191,40 @@ void TimeStepper::penaltyIntegral_diff(double time, const Vec x, Vec xbar, doubl
   int ilow, iupp;
   VecGetOwnershipRange(x, &ilow, &iupp);
 
-  switch(objective_type) {
-    /* If gate optimization (frobenius or trace measure): penalize the LAST energy level per oscillator (guard-level) */
-    case GATE_FROBENIUS:
-    case GATE_TRACE:
-      for (int i=0; i<dim_rho; i++) {
-        if ( isGuardLevel(i, mastereq->nlevels, mastereq->nessential) ) {
-          int vecID_re = getIndexReal(getVecID(i,i,dim_rho));
-          int vecID_im = getIndexImag(getVecID(i,i,dim_rho));
-          x_re = 0.0; x_im = 0.0;
-          if (ilow <= vecID_re && vecID_re < iupp) VecGetValues(x, 1, &vecID_re, &x_re);
-          if (ilow <= vecID_im && vecID_im < iupp) VecGetValues(x, 1, &vecID_im, &x_im);
-          // Derivative: 2 * rho(i,i) * weights * penalbar * dt
-          if (ilow <= vecID_re && vecID_re < iupp) VecSetValue(xbar, vecID_re, 2.*x_re*penalty_weightparam*dt*penaltybar, ADD_VALUES);
-          if (ilow <= vecID_im && vecID_im < iupp) VecSetValue(xbar, vecID_im, 2.*x_im*penalty_weightparam*dt*penaltybar, ADD_VALUES);
-        }
-        VecAssemblyBegin(xbar);
-        VecAssemblyEnd(xbar);
-      }
-    break;
+  // TODO!
+  // switch(objective_type) {
+  //   /* If gate optimization (frobenius or trace measure): penalize the LAST energy level per oscillator (guard-level) */
+  //   case GATE_FROBENIUS:
+  //   case GATE_TRACE:
+  //     for (int i=0; i<dim_rho; i++) {
+  //       if ( isGuardLevel(i, mastereq->nlevels, mastereq->nessential) ) {
+  //         int vecID_re = getIndexReal(getVecID(i,i,dim_rho));
+  //         int vecID_im = getIndexImag(getVecID(i,i,dim_rho));
+  //         x_re = 0.0; x_im = 0.0;
+  //         if (ilow <= vecID_re && vecID_re < iupp) VecGetValues(x, 1, &vecID_re, &x_re);
+  //         if (ilow <= vecID_im && vecID_im < iupp) VecGetValues(x, 1, &vecID_im, &x_im);
+  //         // Derivative: 2 * rho(i,i) * weights * penalbar * dt
+  //         if (ilow <= vecID_re && vecID_re < iupp) VecSetValue(xbar, vecID_re, 2.*x_re*penalty_weightparam*dt*penaltybar, ADD_VALUES);
+  //         if (ilow <= vecID_im && vecID_im < iupp) VecSetValue(xbar, vecID_im, 2.*x_im*penalty_weightparam*dt*penaltybar, ADD_VALUES);
+  //       }
+  //       VecAssemblyBegin(xbar);
+  //       VecAssemblyEnd(xbar);
+  //     }
+  //   break;
 
 
-    /* If groundstate optimization (expected energy or groundstate norm): penalize weighted objective function */
-    case EXPECTEDENERGY:
-    case EXPECTEDENERGYa:
-    case EXPECTEDENERGYb:
-    case EXPECTEDENERGYc:
-    case PURE1:
-    case GROUNDSTATE:
-      // double weight = pow(time/ total_time, penalty_weightparam);  
-      double weight = 1./penalty_weightparam * exp(- pow((time - total_time)/penalty_weightparam, 2));
-      objectiveT_diff(mastereq, objective_type, obj_oscilIDs, x, xbar, NULL, dt*weight*penaltybar, NULL);
-    break;
-  }
+  //   /* If groundstate optimization (expected energy or groundstate norm): penalize weighted objective function */
+  //   case EXPECTEDENERGY:
+  //   case EXPECTEDENERGYa:
+  //   case EXPECTEDENERGYb:
+  //   case EXPECTEDENERGYc:
+  //   case PUREM:
+  //   case GROUNDSTATE:
+  //     // double weight = pow(time/ total_time, penalty_weightparam);  
+  //     double weight = 1./penalty_weightparam * exp(- pow((time - total_time)/penalty_weightparam, 2));
+  //     objectiveT_diff(mastereq, objective_type, obj_oscilIDs, x, xbar, NULL, dt*weight*penaltybar, NULL);
+  //   break;
+  // }
     
 }
 
