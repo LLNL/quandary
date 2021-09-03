@@ -220,10 +220,8 @@ def read_config(filename):
                case("output5") or \
                case("runtype") or \
                case("usematfree") or \
-               case("usepetscts") or \
                case("linearsolver_type") or \
-               case("apply_pipulse") or \
-               case("monitor") :
+               case("apply_pipulse") :
                data_dict[this_param] = this_value
                break
 

@@ -50,7 +50,6 @@ int main(int argc,char **argv)
   int ntime = config.GetIntParam("ntime", 1000);
   double dt    = config.GetDoubleParam("dt", 0.01);
   int nspline = config.GetIntParam("nspline", 10);
-  PetscBool monitor = (PetscBool) config.GetBoolParam("monitor", false);
   RunType runtype;
   std::string runtypestr = config.GetStrParam("runtype", "primal");
   if      (runtypestr.compare("primal")      == 0) runtype = primal;
@@ -335,12 +334,12 @@ int main(int argc,char **argv)
   TimeStepper *mytimestepper = new ImplMidpoint(mastereq, ntime, total_time, linsolvetype, linsolve_maxiter, output, storeFWD);
   // TimeStepper *mytimestepper = new ExplEuler(mastereq, ntime, total_time, output, storeFWD);
 
-  /* Petsc's Time-stepper */
-  TS ts;
-  Vec x;
-  TSCreate(PETSC_COMM_WORLD,&ts);CHKERRQ(ierr);
-  MatCreateVecs(mastereq->getRHS(), &x, NULL);
-  TSInit(ts, mastereq, ntime, dt, total_time, x, monitor);
+  // /* Petsc's Time-stepper */
+  // Vec x;
+  // MatCreateVecs(mastereq->getRHS(), &x, NULL);
+  // TS ts;
+  // TSCreate(PETSC_COMM_WORLD,&ts);CHKERRQ(ierr);
+  // TSInit(ts, mastereq, ntime, dt, total_time, x, false);
    
 
 #ifdef WITH_BRAID

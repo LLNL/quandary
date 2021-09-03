@@ -37,8 +37,6 @@ myBraidApp::myBraidApp(MPI_Comm comm_braid_, double total_time_, int ntime_, TS 
   MPI_Comm_rank(PETSC_COMM_WORLD, &mpirank_petsc);
   MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
 
-  usepetscts = config->GetBoolParam("usepetscts", false);
-
   /* Init Braid core */
   core = new BraidCore(comm_braid_, this);
 
@@ -201,7 +199,7 @@ braid_Int myBraidApp::Step(braid_Vector u_, braid_Vector ustop_, braid_Vector fs
     }
 #endif
 
-  if (usepetscts) {
+  if (false) {
     /* -------------------------------------------------------------*/
     /* --- PETSC timestepper --- */
     /* -------------------------------------------------------------*/
@@ -509,7 +507,7 @@ braid_Int myAdjointBraidApp::Step(braid_Vector u_, braid_Vector ustop_, braid_Ve
   double dt = tstop - tstart;
   // printf("\n %d: Braid %d %f->%f, dt=%f \n", mpirank, tindex, tstart, tstop, dt);
 
-  if (usepetscts) {
+  if (false) {
     printf("Error: Adjoint Time stepping with PETSC is not implemented.\n");
     exit(1);
     

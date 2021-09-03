@@ -29,7 +29,6 @@ class myBraidApp : public BraidApp {
     Output* output;            /* Managing output */
 
     /* MPI stuff */
-    bool usepetscts;
     int mpirank_petsc;
     int mpirank_braid;
     int mpirank_world;
