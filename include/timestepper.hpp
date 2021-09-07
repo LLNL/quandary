@@ -30,10 +30,13 @@ class TimeStepper{
 
     Vec redgrad;                   /* Reduced gradient */
 
-    /* Stuff for objective function penalty integral term */
+    /* Stuff needed to evaluate objectiveT during penalty integral computation */
     // TODO: pass those through the timestepper constructor. Currently, they are set manually inside optimproblem constructor. 
-    double penalty_integral;
-    ObjectiveType objective_type;
+    double penalty_integral;        // output, holds the integral term
+    OptimTarget optim_target;
+    ObjectiveType objective_type;   
+    Gate* targetgate;
+    int purestateID;
     double penalty_weightparam;
     double penalty_coeff;
 

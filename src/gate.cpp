@@ -300,17 +300,17 @@ void Gate::compare_frobenius_diff(const Vec finalstate, const Vec rho0, Vec rho0
   MatMult(VxV_re, u0, x);            // x = VxV_re*u0
   VecAYPX(x, -1.0, ufinal);          // x = ufinal - VxV_re*u0 
   MatMultAdd(VxV_im, v0, x, x);      // x = ufinal - VxV_re*u0 + VxV_im*v0
-  VecScale(x, 2*dfb);              // x = 2*(ufinal - VxV_re*u0 + VxV_im*v0)*dfb
-  // set real part in rho0bar
-  VecISCopy(rho0_bar, isu, SCATTER_FORWARD, x);
+
+  // add real part in rho0bar, scaled by 2*dfb
+  VecISAXPY(rho0_bar, isu, 2.0*dfb, x); 
 
   /* Derivative of imaginary part of frobenius norm 2 * (v - VxV_re*v0 - VxV_im*u0) * dfb */
   MatMult(VxV_re, v0, x);         // x = VxV_re*v0
   MatMultAdd(VxV_im, u0, x, x);   // x = VxV_re*v0 + VxV_im*u0
   VecAYPX(x, -1.0, vfinal);     // x = vfinal - (VxV_re*v0 + VxV_im*u0)
-  VecScale(x, 2*dfb);          // x = 2*(vfinal - (VxV_re*v0 + VxV_im*u0)*dfb
-  // set imaginary part in rho0bar
-  VecISCopy(rho0_bar, isv, SCATTER_FORWARD, x);  
+
+  // add imaginary part in rho0bar, scaled by 2*dfb
+  VecISAXPY(rho0_bar, isv, 2.0*dfb, x); 
 
   /* Restore final, initial and adjoint state */
   VecRestoreSubVector(finalstate, isu, &ufinal);
@@ -426,18 +426,17 @@ void Gate::compare_trace_diff(const Vec finalstate, const Vec rho0, Vec rho0_bar
   MatMult(VxV_im, v0, x);      
   VecScale(x, -1.0);              // x = - VxV_im*v0
   MatMultAdd(VxV_re, u0, x, x);  // x = VxV_re*u0 - VxV_im*v0
-  VecScale(x, dfb);                 // x = -(VxV_re*u0 - VxV_im*v0)*obj_bar
 
-  /* set real part in rho0bar */
-  VecISCopy(rho0_bar, isu, SCATTER_FORWARD, x); 
+  /* add real part in rho0bar, scaled by dfb */
+  VecISAXPY(rho0_bar, isu, dfb, x); 
   
   // Derivative of second term: -(VxV_re*v0 + VxV_im*u0)*obj_bar
   MatMult(VxV_im, u0, x);         // x = VxV_im*u0
   MatMultAdd(VxV_re, v0, x, x); // x = VxV_re*v0 + VxV_im*u0
-  VecScale(x, dfb);               // x = -(VxV_re*v0 + VxV_im*u0)*obj_bar
+  // VecScale(x, dfb);               // x = -(VxV_re*v0 + VxV_im*u0)*obj_bar
 
-  /* set imaginary part in rho0bar */
-  VecISCopy(rho0_bar, isv, SCATTER_FORWARD, x);  
+  /* add imaginary part in rho0bar, scaled by dfb */
+  VecISAXPY(rho0_bar, isv, dfb, x);  
 
   /* Restore final, initial and adjoint state */
   VecRestoreSubVector(finalstate, isu, &ufinal);
