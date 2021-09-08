@@ -11,7 +11,7 @@
 
 // define as extern here, they are needed for penalty integral term, implemented in optimproble.cpp
 extern double objectiveT(OptimTarget* optim_target, MasterEq* mastereq, const Vec state, const Vec rho_t0);
-extern void objectiveT_diff(OptimTarget* optim_target, MasterEq* mastereq, const Vec state, Vec state_bar, const Vec rho_t0, const double obj_bar);
+extern void objectiveT_diff(OptimTarget* optim_target, MasterEq* mastereq, const Vec state, const Vec state_bar, const Vec rho_t0, const double obj_bar);
 
 
 

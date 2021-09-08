@@ -719,7 +719,7 @@ double objectiveT(OptimTarget* optim_target, MasterEq* mastereq, const Vec state
 
 
 
-void objectiveT_diff(OptimTarget *optim_target, MasterEq* mastereq, const Vec state, Vec statebar, const Vec rho_t0, const double obj_bar){
+void objectiveT_diff(OptimTarget *optim_target, MasterEq* mastereq, const Vec state, const Vec statebar, const Vec rho_t0, const double obj_bar){
   int ilo, ihi;
   double lambdai, val;
   int diagID;

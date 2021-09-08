@@ -106,4 +106,4 @@ PetscErrorCode TaoEvalObjectiveAndGradient(Tao tao, Vec x, PetscReal *f, Vec G, 
 double objectiveT(OptimTarget* optim_target, MasterEq* mastereq,  const Vec state, const Vec rho_t0);
 
 /* Derivative of local objective function times obj_bar */
-void objectiveT_diff(OptimTarget* optim_target, MasterEq* mastereq, const Vec state, Vec state_bar, const Vec rho_t0, const double obj_bar);
+void objectiveT_diff(OptimTarget* optim_target, MasterEq* mastereq, const Vec state, const Vec state_bar, const Vec rho_t0, const double obj_bar);
