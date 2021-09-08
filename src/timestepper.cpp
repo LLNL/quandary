@@ -101,7 +101,7 @@ Vec TimeStepper::solveODE(int initid, Vec rho_t0){
     evolveFWD(tstart, tstop, x);
 
     /* Add to penalty objective term */
-    if (penalty_coeff > 1e-13) penalty_integral += penaltyIntegral(tstop, x);
+    if (gamma_penalty > 1e-13) penalty_integral += penaltyIntegral(tstop, x);
 
 #ifdef SANITY_CHECK
     SanityTests(x, tstart);
@@ -134,7 +134,7 @@ void TimeStepper::solveAdjointODE(int initid, Vec rho_t0_bar, double Jbar) {
     double tstart = (n-1) * dt;
 
     /* Derivative of penalty objective term */
-    if (penalty_coeff > 1e-13) penaltyIntegral_diff(tstop, getState(n), x, Jbar);
+    if (gamma_penalty > 1e-13) penaltyIntegral_diff(tstop, getState(n), x, Jbar);
 
     /* Take one time step backwards */
     evolveBWD(tstop, tstart, getState(n-1), x, redgrad, true);
@@ -149,7 +149,7 @@ double TimeStepper::penaltyIntegral(double time, const Vec x){
   double x_re, x_im;
 
   /* weighted integral of the objective function */
-  double weight = 1./penalty_weightparam * exp(- pow((time - total_time)/penalty_weightparam, 2));
+  double weight = 1./penalty_param * exp(- pow((time - total_time)/penalty_param, 2));
   double obj = objectiveT(mastereq, optim_target, objective_type, x, getState(0), targetgate, purestateID);
   penalty = weight * obj * dt;
 
@@ -166,7 +166,7 @@ double TimeStepper::penaltyIntegral(double time, const Vec x){
           x_re = 0.0; x_im = 0.0;
           if (ilow <= vecID_re && vecID_re < iupp) VecGetValues(x, 1, &vecID_re, &x_re);
           if (ilow <= vecID_im && vecID_im < iupp) VecGetValues(x, 1, &vecID_im, &x_im);  // those should be zero!? 
-          penalty += dt * penalty_weightparam * (x_re * x_re + x_im * x_im);
+          penalty += dt * penalty_param * (x_re * x_re + x_im * x_im);
         }
       }
       double mine = penalty;
@@ -180,7 +180,7 @@ void TimeStepper::penaltyIntegral_diff(double time, const Vec x, Vec xbar, doubl
   int dim_rho = (int)sqrt(dim/2);  // dim = 2*N^2 vectorized system. dim_rho = N = dimension of matrix system
 
   /* Derivative of weighted integral of the objective function */
-  double weight = 1./penalty_weightparam * exp(- pow((time - total_time)/penalty_weightparam, 2));
+  double weight = 1./penalty_param * exp(- pow((time - total_time)/penalty_param, 2));
   objectiveT_diff(mastereq, optim_target, objective_type, x, xbar, getState(0), weight*penaltybar*dt, targetgate, purestateID);
 
   /* If gate optimization: Derivative of adding guard-level occupation */
@@ -196,8 +196,8 @@ void TimeStepper::penaltyIntegral_diff(double time, const Vec x, Vec xbar, doubl
         if (ilow <= vecID_re && vecID_re < iupp) VecGetValues(x, 1, &vecID_re, &x_re);
         if (ilow <= vecID_im && vecID_im < iupp) VecGetValues(x, 1, &vecID_im, &x_im);
         // Derivative: 2 * rho(i,i) * weights * penalbar * dt
-        if (ilow <= vecID_re && vecID_re < iupp) VecSetValue(xbar, vecID_re, 2.*x_re*penalty_weightparam*dt*penaltybar, ADD_VALUES);
-        if (ilow <= vecID_im && vecID_im < iupp) VecSetValue(xbar, vecID_im, 2.*x_im*penalty_weightparam*dt*penaltybar, ADD_VALUES);
+        if (ilow <= vecID_re && vecID_re < iupp) VecSetValue(xbar, vecID_re, 2.*x_re*penalty_param*dt*penaltybar, ADD_VALUES);
+        if (ilow <= vecID_im && vecID_im < iupp) VecSetValue(xbar, vecID_im, 2.*x_im*penalty_param*dt*penaltybar, ADD_VALUES);
       }
       VecAssemblyBegin(xbar);
       VecAssemblyEnd(xbar);

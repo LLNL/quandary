@@ -27,7 +27,7 @@ class OptimProblem {
   Vec rho_t0;                            /* Storage for initial condition of the ODE */
   Vec rho_t0_bar;                        /* Adjoint of ODE initial condition */
   InitialConditionType initcond_type;    /* Type of initial conditions */
-  std::vector<int> initcond_IDs;         /* IDs of subsystem oscillators considered for initial conditions */
+  std::vector<int> initcond_IDs;         /* Integer list for pure-state initialization */
 
   TimeStepper* timestepper;
 
@@ -41,22 +41,22 @@ class OptimProblem {
   /* Optimization stuff */
   OptimTarget optim_target;        /* Type of optimization (e.g. gate optim or pure-state prep.) */
   int purestateID;                 /* For pure-state preparation, this is <m> for preparing e_m e_m^\dagger in R^N (the full dimensions). */
-  ObjectiveType objective_type;    /* Type of objective function (e.g. frobenius norm, Hilber-Schmidt ...) */
-  std::vector<double> obj_weights; /* List of weights for averaging expected value objective */
+  ObjectiveType objective_type;    /* Type of objective function (e.g. frobenius norm, Hilber-Schmidt, Jmeasure) */
+  std::vector<double> obj_weights; /* List of weights for weighting the average objective over initial conditions  */
   Gate  *targetgate;               /* Target gate */
   int ndesign;                     /* Number of global design parameters */
   double objective;                /* Holds current objective function value */
-  double obj_cost;                 /* Cost function term in objective */
+  double obj_cost;                 /* Final-time term J(T) in objective */
   double obj_regul;                /* Regularization term in objective */
   double obj_penal;                /* Penalty term in objective */
   double gnorm;                    /* Holds current norm of gradient */
   double gamma_tik;                /* Parameter for tikhonov regularization */
-  double penalty_coeff;            /* Parameter multiplying integral penalty term */
-  double penalty_weightparam;      /* Parameter inside integral penalty term w(t) (Gaussian variance) */
+  double gamma_penalty;            /* Parameter multiplying integral penalty term */
+  double penalty_param;            /* Parameter inside integral penalty term w(t) (Gaussian variance) */
   double gatol;                    /* Stopping criterion based on absolute gradient norm */
   double grtol;                    /* Stopping criterion based on relative gradient norm */
   int maxiter;                     /* Stopping criterion based on maximum number of iterations */
-  Tao tao;                        /* Petsc's Optimization solver */
+  Tao tao;                         /* Petsc's Optimization solver */
   Vec xlower, xupper;              /* Optimization bounds */
   std::string initguess_type;      /* Type of initial guess */
   std::vector<double> initguess_amplitudes; /* Initial amplitudes of controles, or NULL */

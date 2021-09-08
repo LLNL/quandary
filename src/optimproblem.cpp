@@ -129,14 +129,14 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   assert(obj_weights.size() >= ninit);
 
   /* Pass information on objective function to the time stepper needed for penalty objective function */
-  penalty_coeff = config.GetDoubleParam("optim_penalty", 1e-4);
-  penalty_weightparam = config.GetDoubleParam("optim_penalty_param", 0.5);
+  gamma_penalty = config.GetDoubleParam("optim_penalty", 1e-4);
+  penalty_param = config.GetDoubleParam("optim_penalty_param", 0.5);
   timestepper->optim_target = optim_target;
   timestepper->objective_type = objective_type;
   timestepper->targetgate = targetgate;
   timestepper->purestateID = purestateID;
-  timestepper->penalty_weightparam = penalty_weightparam;
-  timestepper->penalty_coeff = penalty_coeff;
+  timestepper->penalty_param = penalty_param;
+  timestepper->gamma_penalty = gamma_penalty;
 
   /* Get initial condition type and involved oscillators */
   std::vector<std::string> initcondstr;
@@ -318,7 +318,7 @@ double OptimProblem::evalF(const Vec x) {
 #endif
 
     /* Add to integral penalty term */
-    obj_penal += penalty_coeff * timestepper->penalty_integral;
+    obj_penal += gamma_penalty * timestepper->penalty_integral;
 
     /* Compute and add final-time cost */
     double obj_iinit = objectiveT(timestepper->mastereq, optim_target, objective_type, finalstate, rho_t0, targetgate, purestateID);
@@ -401,7 +401,7 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
 #endif
 
     /* Add to integral penalty term */
-    obj_penal += penalty_coeff * timestepper->penalty_integral;
+    obj_penal += gamma_penalty * timestepper->penalty_integral;
 
     /* Compute and add final-time cost */
     double obj_iinit = objectiveT(timestepper->mastereq, optim_target, objective_type, finalstate, rho_t0, targetgate, purestateID);
@@ -422,11 +422,11 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
 
     /* Derivative of time-stepping */
 #ifdef WITH_BRAID
-      adjointbraidapp->PreProcess(initid, rho_t0_bar, Jbar*penalty_coeff);
+      adjointbraidapp->PreProcess(initid, rho_t0_bar, Jbar*gamma_penalty);
       adjointbraidapp->Drive();
       adjointbraidapp->PostProcess();
 #else
-      timestepper->solveAdjointODE(initid, rho_t0_bar, Jbar*penalty_coeff);
+      timestepper->solveAdjointODE(initid, rho_t0_bar, Jbar*gamma_penalty);
 #endif
 
     /* Add to optimizers's gradient */

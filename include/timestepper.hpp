@@ -37,8 +37,8 @@ class TimeStepper{
     ObjectiveType objective_type;   
     Gate* targetgate;
     int purestateID;
-    double penalty_weightparam;
-    double penalty_coeff;
+    double penalty_param;
+    double gamma_penalty;
 
     /* Output */
     Output* output;

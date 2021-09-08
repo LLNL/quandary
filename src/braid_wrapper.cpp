@@ -214,7 +214,7 @@ braid_Int myBraidApp::Step(braid_Vector u_, braid_Vector ustop_, braid_Vector fs
     /* -------------------------------------------------------------*/
 
     /* Add penalty term */
-    if (_braid_CoreElt(core->GetCore(), max_levels) == 1 && timestepper->penalty_coeff > 1e-13) {
+    if (_braid_CoreElt(core->GetCore(), max_levels) == 1 && timestepper->gamma_penalty > 1e-13) {
 
       timestepper->penalty_integral += timestepper->penaltyIntegral(tstart, u->x);
       // printf("%f %.8f %.8f\n", tstart, weight, penalty_integral); 
@@ -535,7 +535,7 @@ braid_Int myAdjointBraidApp::Step(braid_Vector u_, braid_Vector ustop_, braid_Ve
     timestepper->evolveBWD(tstop_orig, tstart_orig, uprimal_tstop->x, u->x, timestepper->redgrad, compute_gradient);
 
     /* Derivative of penalty objective */
-    if (_braid_CoreElt(core->GetCore(), max_levels) == 1 && timestepper->penalty_coeff > 1e-13) {
+    if (_braid_CoreElt(core->GetCore(), max_levels) == 1 && timestepper->gamma_penalty > 1e-13) {
       timestepper->penaltyIntegral_diff(tstop_orig, uprimal_tstop->x, u->x, Jbar);
     }
   }
