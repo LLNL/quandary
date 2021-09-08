@@ -49,6 +49,7 @@ class OptimProblem {
   double obj_cost;                 /* Final-time term J(T) in objective */
   double obj_regul;                /* Regularization term in objective */
   double obj_penal;                /* Penalty term in objective */
+  double fidelity;                 /* Sum of final-time fidelities (summed over initial conditions) */
   double gnorm;                    /* Holds current norm of gradient */
   double gamma_tik;                /* Parameter for tikhonov regularization */
   double gamma_penalty;            /* Parameter multiplying integral penalty term */
@@ -87,7 +88,8 @@ class OptimProblem {
   /* Call this after TaoSolve() has finished to print out some information */
   void getSolution(Vec* opt);
 
-  static void integral_penalty();
+  /* Return the fidelity 1 - Tr(rho_target^\dagger * rho(T)) */
+  double getFidelity(const Vec finalstate);
 };
 
 /* Monitor the optimization progress. This routine is called in each iteration of TaoSolve() */

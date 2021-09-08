@@ -298,9 +298,10 @@ double OptimProblem::evalF(const Vec x) {
 
   /*  Iterate over initial condition */
   obj_cost  = 0.0;
-  double obj_cost_max = 0.0;
   obj_regul = 0.0;
   obj_penal = 0.0;
+  fidelity = 0.0;
+  double obj_cost_max = 0.0;
   for (int iinit = 0; iinit < ninit_local; iinit++) {
       
     /* Prepare the initial condition in [rank * ninit_local, ... , (rank+1) * ninit_local - 1] */
@@ -325,6 +326,9 @@ double OptimProblem::evalF(const Vec x) {
     obj_cost +=  obj_weights[iinit] * obj_iinit;
     obj_cost_max = std::max(obj_cost_max, obj_iinit);
     // printf("%d, %d: iinit objective: %f * %1.14e\n", mpirank_world, mpirank_init, obj_weights[iinit], obj_iinit);
+
+    /* Add to final-time fidelity */
+    fidelity += getFidelity(finalstate);
   }
 
 #ifdef WITH_BRAID
@@ -337,9 +341,10 @@ double OptimProblem::evalF(const Vec x) {
   /* Average over initial conditions processors */
   double mypen = 1./ninit * obj_penal;
   double mycost = 1./ninit * obj_cost;
+  double myfidelity = 1./ninit * fidelity;
   MPI_Allreduce(&mypen, &obj_penal, 1, MPI_DOUBLE, MPI_SUM, comm_init);
   MPI_Allreduce(&mycost, &obj_cost, 1, MPI_DOUBLE, MPI_SUM, comm_init);
-  // if (mpirank_init == 0) printf("%d: global sum objective: %1.14e\n\n", mpirank_init, obj);
+  MPI_Allreduce(&myfidelity, &fidelity, 1, MPI_DOUBLE, MPI_SUM, comm_init);
 
   /* Evaluate regularization objective += gamma/2 * ||x||^2*/
   double xnorm;
@@ -352,7 +357,8 @@ double OptimProblem::evalF(const Vec x) {
   /* Output */
   if (mpirank_world == 0) {
     std::cout<< "Objective = " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal << std::endl;
-    std::cout<< "Max. costT = " << obj_cost_max << std::endl;
+    std::cout<< "[Fidelity = " << fidelity << "]" << std::endl;
+    // std::cout<< "Max. costT = " << obj_cost_max << std::endl;
   }
 
   return objective;
@@ -382,6 +388,7 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
   obj_cost = 0.0;
   obj_regul = 0.0;
   obj_penal = 0.0;
+  fidelity = 0.0;
   for (int iinit = 0; iinit < ninit_local; iinit++) {
 
     /* Prepare the initial condition */
@@ -407,6 +414,9 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
     double obj_iinit = objectiveT(timestepper->mastereq, optim_target, objective_type, finalstate, rho_t0, targetgate, purestateID);
     obj_cost += obj_weights[iinit] * obj_iinit;
     // if (mpirank_braid == 0) printf("%d: iinit objective: %1.14e\n", mpirank_init, obj_iinit);
+
+    /* Add to final-time fidelity */
+    fidelity += getFidelity(finalstate);
 
     /* --- Solve adjoint --- */
     // if (mpirank_braid == 0) printf("%d: %d BWD.", mpirank_init, initid);
@@ -443,9 +453,10 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
   /* Average over initial conditions processors */
   double mypen = 1./ninit * obj_penal;
   double mycost = 1./ninit * obj_cost;
+  double myfidelity = 1./ninit * fidelity;
   MPI_Allreduce(&mypen, &obj_penal, 1, MPI_DOUBLE, MPI_SUM, comm_init);
   MPI_Allreduce(&mycost, &obj_cost, 1, MPI_DOUBLE, MPI_SUM, comm_init);
-  // if (mpirank_init == 0) printf("%d: global sum objective: %1.14e\n\n", mpirank_init, obj);
+  MPI_Allreduce(&myfidelity, &fidelity, 1, MPI_DOUBLE, MPI_SUM, comm_init);
 
   /* Evaluate regularization gamma/2 * ||x||^2*/
   double xnorm;
@@ -480,6 +491,7 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
   /* Output */
   if (mpirank_world == 0) {
     std::cout<< "Objective = " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal << std::endl;
+    std::cout<< "[Fidelity = " << fidelity << "]" << std::endl;
   }
 }
 
@@ -584,30 +596,16 @@ PetscErrorCode TaoMonitor(Tao tao,void*ptr){
   double obj_cost = ctx->obj_cost;
   double obj_regul = ctx->obj_regul;
   double obj_penal = ctx->obj_penal;
+  double F_avg = ctx->fidelity;
 
+  /* If the average fidelity is not the objective function, it can be computed at each optimization iteration here. However, this involves the entire basis be propagated forward (or at last the N+1 states from Koch's paper). We omit it here to save compute time during optimization. Average fidelity can be computed AFTER optimization has finished by propagating the the basis and evaluating the Gate_trace. */ 
 
-  /* Average fidelity. */
-  /* For gates, this is 1.-\sum_ij Tr(V \rho_ij(0) V^\dagger \rho_ij(T)) */
-  /* For groundstate optimization, this is the objective function value */
-  /* SG: TODO!! */
-  double F_avg = -1.0;
-  // if (ctx->initcond_type == BASIS && ctx->objective_type == GATE_TRACE) F_avg = 1. - ctx->obj_cost;
-  // if (ctx->objective_type == EXPECTEDENERGY ||
-  //     ctx->objective_type == EXPECTEDENERGYa ||
-  //     ctx->objective_type == EXPECTEDENERGYb ||
-  //     ctx->objective_type == EXPECTEDENERGYc ) F_avg = ctx->obj_cost;
+  // TODO: Change the below comment...
 
-  /* If average fidelity is not the objective function, it can be computed at each optimization iteration here. 
-   * However, this involves the entire basis be propagated forward (or at last the N+1 states from Koch's paper). We omit it here to save compute time during optimization. 
-   * Average fidelity can be computed AFTER optimization has finished by propagating the the basis and evaluating the Gate_trace. The commented code below needs to be checked before use!
-   */
-  // if (ctx->initcond_type != BASIS)  ctx->obj_cost = -1.0;  // -1 is used to indicate that average fidelity has not been computed
+    // if (ctx->initcond_type != BASIS)  ctx->obj_cost = -1.0;  // -1 is used to indicate that average fidelity has not been computed
   // if (ctx->objective_type == GATE_FROBENIUS ||
       // (ctx->objective_type == GATE_TRACE && ctx->initcond_type != BASIS) ){
   //   InitialConditionType inittype_org = ctx->initcond_type; 
-  //   ObjectiveType objtype_org = ctx->objective_type; 
-  //   int ninit_local_org = ctx->ninit_local;
-  //   int ninit_org = ctx->ninit;
   //   ctx->initcond_type = BASIS;
   //   ctx->ninit_local = 16;
   //   ctx->ninit= 16;
@@ -621,13 +619,8 @@ PetscErrorCode TaoMonitor(Tao tao,void*ptr){
   // }
 
   // /* Estimate Favg by propagating N+1 initial states */
-  // if (iter % ctx->output->optim_monitor_freq == 0) {
 
   //   // save original optimization setting
-  //   InitialConditionType inittype_org = ctx->initcond_type; 
-  //   ObjectiveType objtype_org = ctx->objective_type; 
-  //   int ninit_local_org = ctx->ninit_local;
-  //   int ninit_org = ctx->ninit;
   //   std::vector<double> obj_weights_org;
   //   for (int i=0; i<ctx->obj_weights.size(); i++){
   //     obj_weights_org.push_back(ctx->obj_weights[i]);
@@ -833,4 +826,31 @@ void objectiveT_diff(MasterEq* mastereq, OptimTarget optim_target, ObjectiveType
         break; // case pure1
     }
   }
+}
+
+
+double OptimProblem::getFidelity(const Vec finalstate){
+  double fidel = 0.0;
+  int dimrho = timestepper->mastereq->getDimRho(); // N
+  int vecID, ihi, ilo;
+  double rho_mm, mine;
+
+  switch(optim_target){
+    case PUREM: // fidelity = 1 - rho(T)_mm
+      vecID = getIndexReal(getVecID(purestateID, purestateID, dimrho));
+      VecGetOwnershipRange(finalstate, &ilo, &ihi);
+      rho_mm = 0.0;
+      if (ilo <= vecID && vecID < ihi) VecGetValues(finalstate, 1, &vecID, &rho_mm); // local!
+      fidel = 1.0 - rho_mm;
+      // Communicate over all petsc processors.
+      mine = fidel;
+      MPI_Allreduce(&mine, &fidel, 1, MPI_DOUBLE, MPI_SUM, PETSC_COMM_WORLD);
+    break;
+
+    case GATE: // fidelity = 1 - Tr(Vrho(0)V^\dagger \rho(T))
+      targetgate->compare_trace(finalstate, rho_t0, fidel);  // TODO: This is scaled by the purity. Remove!
+    break;
+  }
+ 
+  return fidel;
 }
