@@ -17,15 +17,17 @@ struct OptimTarget{
     targetgate = targetgate_;
     purestateID = purestateID_;
 
-    int dim_rho = targetgate->getDimRho();
-    VecCreate(PETSC_COMM_WORLD, &aux); 
-    VecSetSizes(aux,PETSC_DECIDE, dim_rho*dim_rho);
-    VecSetFromOptions(aux);
+    if (targetgate != NULL) {
+      int dim_rho = targetgate->getDimRho();
+      VecCreate(PETSC_COMM_WORLD, &aux); 
+      VecSetSizes(aux,PETSC_DECIDE, dim_rho*dim_rho);
+      VecSetFromOptions(aux);
+    }
   };
 
   /* Destructor */
   ~OptimTarget(){
-    VecDestroy(&aux);
+    if (targetgate != NULL) VecDestroy(&aux);
   };
 };
 
