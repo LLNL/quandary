@@ -357,7 +357,7 @@ double OptimProblem::evalF(const Vec x) {
   /* Output */
   if (mpirank_world == 0) {
     std::cout<< "Objective = " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal << std::endl;
-    std::cout<< "[Fidelity = " << fidelity << "]" << std::endl;
+    std::cout<< "Fidelity = " << fidelity  << std::endl;
     // std::cout<< "Max. costT = " << obj_cost_max << std::endl;
   }
 
@@ -491,7 +491,7 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
   /* Output */
   if (mpirank_world == 0) {
     std::cout<< "Objective = " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal << std::endl;
-    std::cout<< "[Fidelity = " << fidelity << "]" << std::endl;
+    std::cout<< "Fidelity = " << fidelity << std::endl;
   }
 }
 
@@ -598,58 +598,6 @@ PetscErrorCode TaoMonitor(Tao tao,void*ptr){
   double obj_penal = ctx->obj_penal;
   double F_avg = ctx->fidelity;
 
-  /* If the average fidelity is not the objective function, it can be computed at each optimization iteration here. However, this involves the entire basis be propagated forward (or at last the N+1 states from Koch's paper). We omit it here to save compute time during optimization. Average fidelity can be computed AFTER optimization has finished by propagating the the basis and evaluating the Gate_trace. */ 
-
-  // TODO: Change the below comment...
-
-    // if (ctx->initcond_type != BASIS)  ctx->obj_cost = -1.0;  // -1 is used to indicate that average fidelity has not been computed
-  // if (ctx->objective_type == GATE_FROBENIUS ||
-      // (ctx->objective_type == GATE_TRACE && ctx->initcond_type != BASIS) ){
-  //   InitialConditionType inittype_org = ctx->initcond_type; 
-  //   ctx->initcond_type = BASIS;
-  //   ctx->ninit_local = 16;
-  //   ctx->ninit= 16;
-  //   ctx->objective_type = GATE_TRACE;
-  //   double obj = ctx->evalF(params);    // this sets ctx->obj_cost
-  //   // double F_avg = 1.0 - ctx->obj_cost;
-  //   ctx->initcond_type = inittype_org;
-  //   ctx->objective_type = objtype_org;
-  //   ctx->ninit_local = ninit_local_org;
-  //   ctx->ninit = ninit_org;
-  // }
-
-  // /* Estimate Favg by propagating N+1 initial states */
-
-  //   // save original optimization setting
-  //   std::vector<double> obj_weights_org;
-  //   for (int i=0; i<ctx->obj_weights.size(); i++){
-  //     obj_weights_org.push_back(ctx->obj_weights[i]);
-  //   }
-
-  //   // setting for propagating N+1 initial states
-  //   ctx->objective_type = GATE_TRACE;
-  //   ctx->initcond_type = NPLUSONE;
-  //   ctx->ninit_local = ctx->targetgate->getDimRho() + 1; // N+1
-  //   ctx->ninit= ctx->ninit_local;
-  //   // Make sure obj_weights is long enough and all weights are 1.0
-  //   for (int i=0; i < ctx->ninit; i++){
-  //     if (i < ctx->obj_weights.size()) ctx->obj_weights[i] = 1.0;
-  //     else                             ctx->obj_weights.push_back(1.0); 
-  //   }
-  //   printf("\n Monitor: Eval Favg(Nplus1)...\n");
-  //   ctx->evalF(params);    // this sets ctx->obj_cost
-  //   F_avg = ctx->obj_cost;
-
-  //   // Reset to original setting
-  //   ctx->initcond_type = inittype_org;
-  //   ctx->objective_type = objtype_org;
-  //   ctx->ninit_local = ninit_local_org;
-  //   ctx->ninit = ninit_org;
-  //   for (int i=0; i < obj_weights_org.size(); i++){
-  //     ctx->obj_weights[i] = obj_weights_org[i];
-  //   }
-  // }
-
   /* Print to optimization file */
   ctx->output->writeOptimFile(f, gnorm, deltax, F_avg, obj_cost, obj_regul, obj_penal);
 
@@ -706,7 +654,7 @@ double objectiveT(MasterEq* mastereq, OptimTarget optim_target, ObjectiveType ob
             break;
           case JHS:
             /* J_T = 1 - 1/purity * Tr(rho_target^\dagger * rho(T)) */
-            targetgate->compare_trace(state, rho_t0, obj_local);
+            targetgate->compare_trace(state, rho_t0, obj_local, true);
             break;
           case JMEASURE: // JMEASURE is only for pure-state preparation!
             printf("ERROR: Check settings for optim_target and optim_objective.\n");
@@ -782,7 +730,7 @@ void objectiveT_diff(MasterEq* mastereq, OptimTarget optim_target, ObjectiveType
             targetgate->compare_frobenius_diff(state, rho_t0, statebar, obj_bar);
             break;
           case JHS:
-            targetgate->compare_trace_diff(state, rho_t0, statebar, obj_bar);
+            targetgate->compare_trace_diff(state, rho_t0, statebar, obj_bar, true);
             break;
           case JMEASURE: // Will never happen
             printf("ERROR: Check settings for optim_target and optim_objective.\n");
@@ -848,7 +796,7 @@ double OptimProblem::getFidelity(const Vec finalstate){
     break;
 
     case GATE: // fidelity = 1 - Tr(Vrho(0)V^\dagger \rho(T))
-      targetgate->compare_trace(finalstate, rho_t0, fidel);  // TODO: This is scaled by the purity. Remove!
+      targetgate->compare_trace(finalstate, rho_t0, fidel, false);
     break;
   }
  

@@ -253,14 +253,14 @@ void Gate::compare_frobenius(const Vec finalstate, const Vec rho0, double& frob)
   /* obj = 1/2 * || finalstate - gate*rho(0) ||^2 */
   frob *= 1./2.;
   
-  // scale by purity of rho(0)
-  double purity_rho0 = 0.0;
-  double dot = 0.0;
-  VecNorm(u0, NORM_2, &dot);
-  purity_rho0 += dot*dot;
-  VecNorm(v0, NORM_2, &dot);
-  purity_rho0 += dot*dot;
-  frob = frob / purity_rho0;
+  // // scale by purity of rho(0)
+  // double purity_rho0 = 0.0;
+  // double dot = 0.0;
+  // VecNorm(u0, NORM_2, &dot);
+  // purity_rho0 += dot*dot;
+  // VecNorm(v0, NORM_2, &dot);
+  // purity_rho0 += dot*dot;
+  // frob = frob / purity_rho0;
 
 
   /* Restore vectors from index set */
@@ -287,14 +287,14 @@ void Gate::compare_frobenius_diff(const Vec finalstate, const Vec rho0, Vec rho0
 
   /* Derivative of 1/2 * J */
   double dfb = 1./2. * frob_bar;
-  // Derivative of purity scaling 
-  double purity_rho0 = 0.0;
-  double dot = 0.0;
-  VecNorm(u0, NORM_2, &dot);
-  purity_rho0 += dot*dot;
-  VecNorm(v0, NORM_2, &dot);
-  purity_rho0 += dot*dot;
-  dfb = dfb / purity_rho0;
+  // // Derivative of purity scaling 
+  // double purity_rho0 = 0.0;
+  // double dot = 0.0;
+  // VecNorm(u0, NORM_2, &dot);
+  // purity_rho0 += dot*dot;
+  // VecNorm(v0, NORM_2, &dot);
+  // purity_rho0 += dot*dot;
+  // dfb = dfb / purity_rho0;
 
   /* Derivative of real part of frobenius norm: 2 * (u - VxV_re*u0 + VxV_im*v0) * dfb */
   MatMult(VxV_re, u0, x);            // x = VxV_re*u0
@@ -320,7 +320,7 @@ void Gate::compare_frobenius_diff(const Vec finalstate, const Vec rho0, Vec rho0
 
 }
 
-void Gate::compare_trace(const Vec finalstate, const Vec rho0, double& obj){
+void Gate::compare_trace(const Vec finalstate, const Vec rho0, double& obj, bool scalebypurity){
   obj = 0.0;
 
   /* Exit, if this is a dummy gate */
@@ -354,15 +354,17 @@ void Gate::compare_trace(const Vec finalstate, const Vec rho0, double& obj){
   VecTDot(x, vfinal, &dot);      // dot = (VxV_re*v0 + VxV_im*u0)^T v    
   trace += dot;
 
-  // compute purity of rho(0): Tr(rho(0)^2)
-  double purity_rho0 = 0.0;
-  VecNorm(u0, NORM_2, &dot);
-  purity_rho0 += dot*dot;
-  VecNorm(v0, NORM_2, &dot);
-  purity_rho0 += dot*dot;
+  double scale = 1.0;
+  if (scalebypurity){
+    // compute purity of rho(0): Tr(rho(0)^2)
+    VecNorm(u0, NORM_2, &dot);
+    scale = dot*dot;
+    VecNorm(v0, NORM_2, &dot);
+    scale += dot*dot;
+  }
 
   /* Objective J = 1.0 - Trace(...) */
-  obj = 1.0 - trace / purity_rho0;
+  obj = 1.0 - trace / scale;
  
   // // Test: compute constant term  1/2*Tr((Vrho0V^dag)^2)
   // double purity_VrhoV = 0.0;
@@ -397,7 +399,7 @@ void Gate::compare_trace(const Vec finalstate, const Vec rho0, double& obj){
 }
 
 
-void Gate::compare_trace_diff(const Vec finalstate, const Vec rho0, Vec rho0_bar, const double obj_bar){
+void Gate::compare_trace_diff(const Vec finalstate, const Vec rho0, Vec rho0_bar, const double obj_bar, bool scalebypurity){
 
   /* Exit, if this is a dummy gate */
   if (dim_rho== 0) {
@@ -414,13 +416,16 @@ void Gate::compare_trace_diff(const Vec finalstate, const Vec rho0, Vec rho0_bar
 
   /* Derivative of 1-trace/purity */
   double dfb = -1.0 * obj_bar;
+
   // compute purity of rho(0): Tr(rho(0)^2)
-  double purity_rho0 = 0.0;
-  VecNorm(u0, NORM_2, &dot);
-  purity_rho0 += dot*dot;
-  VecNorm(v0, NORM_2, &dot);
-  purity_rho0 += dot*dot;
-  dfb = dfb / purity_rho0;
+  if (scalebypurity) {
+    double purity_rho0 = 0.0;
+    VecNorm(u0, NORM_2, &dot);
+    purity_rho0 += dot*dot;
+    VecNorm(v0, NORM_2, &dot);
+    purity_rho0 += dot*dot;
+    dfb = dfb / purity_rho0;
+  }
 
   // Derivative of first term: -(VxV_re*u0 - VxV_im*v0)*obj_bar
   MatMult(VxV_im, v0, x);      
