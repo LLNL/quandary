@@ -111,7 +111,7 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   std::string objective_str = config.GetStrParam("optim_objective", "Jfrobenius");
   if (objective_str.compare("Jfrobenius")==0)           objective_type = JFROBENIUS;
   else if (objective_str.compare("Jhilbertschmidt")==0) objective_type = JHS;
-  else if (objective_str.compare("Jpure")==0)           objective_type = JMEASURE;
+  else if (objective_str.compare("Jmeasure")==0)        objective_type = JMEASURE;
   else  {
     printf("\n\n ERROR: Unknown objective function: %s\n", objective_str.c_str());
     exit(1);
