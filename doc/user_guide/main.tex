@@ -327,7 +327,7 @@ unique index $i \in \{0,\dots, N^2-1\}$ is assigned to each basis state with
 \subsubsection{Diagonal basis matrices (aka all pure states)}
 One can choose to propagate only those basis elements that correspond to pure states of the form $\boldsymbol{e}_k\boldsymbol{e}_k^\dagger$, i.e. propagating only $B^{kk}$ for $k=0,\dots, N-1$, and then $n_{init}=N$.
 
-\subsubsection{Three initial states for gate optimization}
+\subsubsection{Three initial states for gate optimization}\label{subsec:threeinitcond}
 When considering gate optimization, it has been shown in \cite{goerz2014optimal} that it is enough to consider only three specific initial states during optimization ($n_{init}=3$), independent of the Hilber space dimension. Those three initial states are implemented in Quandary, and are given by
 \begin{align}
     \rho(0)_0 &= \sum_{i=0}^{N-1} \frac{2(N-i+1)}{N(N+1)} \bs{e}_i\bs{e}_i^\dagger \\
@@ -348,6 +348,8 @@ In the standard setting, the following penalty term is currently implemented (ea
 \end{align}
 for a penalty parameter $0 < a \leq 1$. Note, that as $a\to 0$, the weighting function $w(t)$ converges to the Dirac delta distribution with peak at final time $T$, hence reducing $a$ leads to more emphasis on the final time $T$ while larger $a$ penalize non-zero energy states at earlier times $t\leq T$. Both $\gamma_1$ as well as $a$ can be tuned in the configuration options. 
 
+Be aware the adding an integral penalty term requires to evaluate the objective $J$ at \textit{each} time-step within the time-domain $[0,T]$, instead of only the last one. This can be quite expensive, in particular when considering gate optimization, and should hence be turned of if possible (choosing $\gamma_1=0$ will skip the extra computation!).
+
 \textit{For gate optimization with (non-)essential levels:} When the essential levels for gate optimization are smaller than the number of modelled levels ($n_k^e < n_k$ for at least one $k$), an additional term is added as a penalty in order to prevent leakage into higher levels that are not modelled by the finite-dimensional approximation to the infinite dimensional Hamiltonian. In that case, the occupation of all guard levels (i.e. the last modelled energy levels of each of the subsystems) is penalized: 
 \begin{align}
   \gamma_1 \int_0^T \sum_{r} \| \rho(t)_{rr} \|^2_2 \, \mathrm{d}t
@@ -355,13 +357,14 @@ for a penalty parameter $0 < a \leq 1$. Note, that as $a\to 0$, the weighting fu
 where $\rho(t)_{rr}$ denotes the diagonal element at $(r,r)$ inside $\rho(t)\in \C^{N\times N}$ and $r$ iterates over all indices that correspond to a guard level (last non-essential energy level) of at least one of the subsystems.
 
 
-\subsection{Average Fidelity}
-As a measure of optimization success, Quandary can report on the average fidelity computed from 
+\subsection{Fidelity}
+As a measure of optimization success, Quandary reports on the fidelity computed from 
 \begin{align}
-  F_{avg} = \frac{1}{N^2} \sum_{i=1}^{N^2} \mbox{Tr}\left(\left(\rho^{target}_i\right)^\dagger\rho_i(T) \right) 
+  F = 1 - \frac{1}{n_{init}} \sum_{i=1}^{n_{init}} \mbox{Tr}\left(\left(\rho^{target}_i\right)^\dagger\rho_i(T) \right). 
 \end{align}
-where $\rho_i(0) = B^{k(i), j(i)}$ are the basis states as defined in \eqref{eq:basismats} and $\rho_i(T)$ their corresponding propagated final time states. Consider that $N^2$ initial states need to be propagated, so this will be quite expensive to compute. Alternatively, $N+1$ states can be used to get an estimate on the fidelity, compare \cite{goerz2014optimal}. Since this is still computationally expensive, it is advised to run the optimization without reporting on any average Fidelity, and instead compute it only after the optimization has finished.
+Note that this fidelity is averaged over the chosen initial conditions, so the user should be careful how to interpret this number. E.g. if one optimizes for a logical gate while chosing the three initial condition as in Section \ref{subsec:threeinitcond}, the reported fidelity will be averaged over those three initial states, which is not sufficient to estimate the actual average fidelity over the entire space of potential intial states. In that case, it is advised to recompute the average fidelity after optimization has finished, e.g. by propagating $N^2$ basis states $B_{kj}$ to final time $T$ using the optimized control parameter, or by propagating only $N+1$ initial states to get an estimate thereof.
 
+Note that for pure-state preparation, we have $\rho^{target} = \boldsymbol{e}_m \boldsymbol{e}_m^\dagger$ and therefor the fidelity can be computed from $F = 1 - \frac{1}{n_{init}} \sum_i \left[\rho_i(T)\right]_{mm}$, for the $m$-th diagonal element of the final states $\rho_i(T)$. 
 
 \section{Implementation}
 
