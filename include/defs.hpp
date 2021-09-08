@@ -7,8 +7,8 @@ enum LindbladType {NONE, DECAY, DEPHASE, BOTH};
 enum InitialConditionType {FROMFILE, PURE, DIAGONAL, BASIS, THREESTATES, NPLUSONE};
 
 /* Types of optimization targets: Either gate optimization or pure state preparation */
-enum OptimTarget {GATE,     // \rho_target = V\rho(0) V^\dagger
-                  PUREM};    // \rho_target = e_m e_m^\dagger for some integer m
+enum TargetType {GATE,     // \rho_target = V\rho(0) V^\dagger
+                 PUREM};    // \rho_target = e_m e_m^\dagger for some integer m
 
 /* Typye of objective functions */
 enum ObjectiveType {JFROBENIUS,    // weighted Frobenius norm: 1/2 * ||\rho_target - rho(T)||^2_F / w, where w = purity of \rho_target

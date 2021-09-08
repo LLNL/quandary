@@ -5,6 +5,7 @@
 #include "timestepper.hpp"
 #include <iostream>
 #include <algorithm>
+#include "optimtarget.hpp"
 #ifdef WITH_BRAID
   #include "braid_wrapper.hpp"
 #endif
@@ -29,7 +30,8 @@ class OptimProblem {
   InitialConditionType initcond_type;    /* Type of initial conditions */
   std::vector<int> initcond_IDs;         /* Integer list for pure-state initialization */
 
-  TimeStepper* timestepper;
+  TimeStepper* timestepper;       /* A reference to the time-stepping scheme */
+  OptimTarget* optim_target;      /* Storing the optimization goal */
 
   /* MPI stuff */
   MPI_Comm comm_init;
@@ -39,11 +41,7 @@ class OptimProblem {
   int mpirank_init, mpisize_init;
 
   /* Optimization stuff */
-  OptimTarget optim_target;        /* Type of optimization (e.g. gate optim or pure-state prep.) */
-  int purestateID;                 /* For pure-state preparation, this is <m> for preparing e_m e_m^\dagger in R^N (the full dimensions). */
-  ObjectiveType objective_type;    /* Type of objective function (e.g. frobenius norm, Hilber-Schmidt, Jmeasure) */
   std::vector<double> obj_weights; /* List of weights for weighting the average objective over initial conditions  */
-  Gate  *targetgate;               /* Target gate */
   int ndesign;                     /* Number of global design parameters */
   double objective;                /* Holds current objective function value */
   double obj_cost;                 /* Final-time term J(T) in objective */
@@ -105,7 +103,7 @@ PetscErrorCode TaoEvalGradient(Tao tao, Vec x, Vec G, void*ptr);
 PetscErrorCode TaoEvalObjectiveAndGradient(Tao tao, Vec x, PetscReal *f, Vec G, void*ptr);
 
 /* Compute local objective function J(rho(t)) */
-double objectiveT(MasterEq* mastereq, OptimTarget optim_target, ObjectiveType objective_type, const Vec state, const Vec rho_t0, Gate* targetgate, int purestateID);
+double objectiveT(OptimTarget* optim_target, MasterEq* mastereq,  const Vec state, const Vec rho_t0);
 
 /* Derivative of local objective function times obj_bar */
-void objectiveT_diff(MasterEq* mastereq, OptimTarget optim_target, ObjectiveType objective_type, Vec state, Vec state_bar, const Vec rho_t0, const double obj_bar, Gate* targetgate, int purestateID);
+void objectiveT_diff(OptimTarget* optim_target, MasterEq* mastereq, const Vec state, Vec state_bar, const Vec rho_t0, const double obj_bar);

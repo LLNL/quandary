@@ -17,8 +17,6 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   output = output_;
   /* Reset */
   objective = 0.0;
-  targetgate = NULL;
-  purestateID = -1;
 
   /* Store ranks and sizes of communicators */
   MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
@@ -60,11 +58,14 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
 
   /* Store the optimization target */
   std::vector<std::string> target_str;
+  Gate* targetgate=NULL;
+  int purestateID = -1;
+  TargetType target_type;
+  // Read from config file 
   config.GetVecStrParam("optim_target", target_str, "pure");
-  targetgate = NULL;
   if ( target_str[0].compare("gate") ==0 ) {
-    optim_target = GATE;
-    /* Read and initialize the targetgate */
+    target_type = GATE;
+    /* Initialize the targetgate */
     if ( target_str.size() < 2 ) {
       printf("ERROR: You want to optimize for a gate, but didn't specify which one. Check your config for 'optim_target'!\n");
       exit(1);
@@ -85,7 +86,7 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
     } 
   }  
   else if (target_str[0].compare("pure")==0) {
-    optim_target = PUREM;
+    target_type = PUREM;
     purestateID = 0;
     if (target_str.size() < 2) {
       printf("# Warning: You want to prepare a pure state, but didn't specify which one. Taking default: ground-state |0...0> \n");
@@ -108,6 +109,7 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   }
 
   /* Get the objective function */
+  ObjectiveType objective_type;
   std::string objective_str = config.GetStrParam("optim_objective", "Jfrobenius");
   if (objective_str.compare("Jfrobenius")==0)           objective_type = JFROBENIUS;
   else if (objective_str.compare("Jhilbertschmidt")==0) objective_type = JHS;
@@ -116,6 +118,9 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
     printf("\n\n ERROR: Unknown objective function: %s\n", objective_str.c_str());
     exit(1);
   }
+
+  /* Finally initialize the optimization target struct */
+  optim_target = new OptimTarget(purestateID, target_type, objective_type, targetgate);
 
   /* Get weights for the objective function (weighting the different initial conditions */
   config.GetVecDoubleParam("optim_weights", obj_weights, 1.0);
@@ -131,12 +136,9 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   /* Pass information on objective function to the time stepper needed for penalty objective function */
   gamma_penalty = config.GetDoubleParam("optim_penalty", 1e-4);
   penalty_param = config.GetDoubleParam("optim_penalty_param", 0.5);
-  timestepper->optim_target = optim_target;
-  timestepper->objective_type = objective_type;
-  timestepper->targetgate = targetgate;
-  timestepper->purestateID = purestateID;
   timestepper->penalty_param = penalty_param;
   timestepper->gamma_penalty = gamma_penalty;
+  timestepper->optim_target = optim_target;
 
   /* Get initial condition type and involved oscillators */
   std::vector<std::string> initcondstr;
@@ -274,6 +276,7 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
 
 OptimProblem::~OptimProblem() {
   delete [] mygrad;
+  delete optim_target;
   VecDestroy(&rho_t0);
   VecDestroy(&rho_t0_bar);
 
@@ -322,7 +325,7 @@ double OptimProblem::evalF(const Vec x) {
     obj_penal += gamma_penalty * timestepper->penalty_integral;
 
     /* Compute and add final-time cost */
-    double obj_iinit = objectiveT(timestepper->mastereq, optim_target, objective_type, finalstate, rho_t0, targetgate, purestateID);
+    double obj_iinit = objectiveT(optim_target, timestepper->mastereq, finalstate, rho_t0);
     obj_cost +=  obj_weights[iinit] * obj_iinit;
     obj_cost_max = std::max(obj_cost_max, obj_iinit);
     // printf("%d, %d: iinit objective: %f * %1.14e\n", mpirank_world, mpirank_init, obj_weights[iinit], obj_iinit);
@@ -411,7 +414,7 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
     obj_penal += gamma_penalty * timestepper->penalty_integral;
 
     /* Compute and add final-time cost */
-    double obj_iinit = objectiveT(timestepper->mastereq, optim_target, objective_type, finalstate, rho_t0, targetgate, purestateID);
+    double obj_iinit = objectiveT(optim_target, timestepper->mastereq, finalstate, rho_t0);
     obj_cost += obj_weights[iinit] * obj_iinit;
     // if (mpirank_braid == 0) printf("%d: iinit objective: %1.14e\n", mpirank_init, obj_iinit);
 
@@ -428,7 +431,7 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
     double Jbar = 1.0 / ninit * obj_weights[iinit];
 
     /* Derivative of final time objective */
-    objectiveT_diff(timestepper->mastereq, optim_target, objective_type, finalstate, rho_t0_bar, rho_t0, Jbar, targetgate, purestateID);
+    objectiveT_diff(optim_target, timestepper->mastereq, finalstate, rho_t0_bar, rho_t0, Jbar);
 
     /* Derivative of time-stepping */
 #ifdef WITH_BRAID
@@ -636,7 +639,7 @@ PetscErrorCode TaoEvalGradient(Tao tao, Vec x, Vec G, void*ptr){
 
 
 
-double objectiveT(MasterEq* mastereq, OptimTarget optim_target, ObjectiveType objective_type, const Vec state, const Vec rho_t0, Gate* targetgate, int purestateID) {
+double objectiveT(OptimTarget* optim_target, MasterEq* mastereq, const Vec state, const Vec rho_t0) {
   double obj_local = 0.0;
   int diagID;
   double sum, mine, rhoii, lambdai, norm;
@@ -644,17 +647,17 @@ double objectiveT(MasterEq* mastereq, OptimTarget optim_target, ObjectiveType ob
 
   if (state != NULL) {
 
-    switch (optim_target) {
+    switch (optim_target->target_type) {
       case GATE: // Gate optimization: Target \rho_target = V\rho(0)V^\dagger
         
-        switch(objective_type) {
+        switch(optim_target->objective_type) {
           case JFROBENIUS:
-            /* J_T = 1/2 * 1/purity * || rho_target - rho(T)||^2_F  */
-            targetgate->compare_frobenius(state, rho_t0, obj_local);
+            /* J_T = 1/2 * || rho_target - rho(T)||^2_F  */
+            optim_target->targetgate->compare_frobenius(state, rho_t0, obj_local);
             break;
           case JHS:
             /* J_T = 1 - 1/purity * Tr(rho_target^\dagger * rho(T)) */
-            targetgate->compare_trace(state, rho_t0, obj_local, true);
+            optim_target->targetgate->compare_trace(state, rho_t0, obj_local, true);
             break;
           case JMEASURE: // JMEASURE is only for pure-state preparation!
             printf("ERROR: Check settings for optim_target and optim_objective.\n");
@@ -670,7 +673,7 @@ double objectiveT(MasterEq* mastereq, OptimTarget optim_target, ObjectiveType ob
         dim = (int) sqrt(dim/2.0);  // dim = N with \rho \in C^{N\times N}
         VecGetOwnershipRange(state, &ilo, &ihi);
 
-        switch(objective_type) {
+        switch(optim_target->objective_type) {
 
           case JMEASURE:
             /* J_T = Tr(O_m rho(T)) = \sum_i |i-m| rho_ii(T) */
@@ -680,7 +683,7 @@ double objectiveT(MasterEq* mastereq, OptimTarget optim_target, ObjectiveType ob
               diagID = getIndexReal(getVecID(i,i,dim));
               rhoii = 0.0;
               if (ilo <= diagID && diagID < ihi) VecGetValues(state, 1, &diagID, &rhoii);
-              lambdai = fabs(i - purestateID);
+              lambdai = fabs(i - optim_target->purestateID);
               sum += lambdai * rhoii;
             }
             mine = sum;
@@ -691,7 +694,7 @@ double objectiveT(MasterEq* mastereq, OptimTarget optim_target, ObjectiveType ob
           case JFROBENIUS:
             /* J_T = 1/2 * || rho(T) - e_m e_m^\dagger||_F^2 */
             // substract 1.0 from m-th diagonal element then take the vector norm 
-            diagID = getIndexReal(getVecID(purestateID,purestateID,dim));
+            diagID = getIndexReal(getVecID(optim_target->purestateID,optim_target->purestateID,dim));
             if (ilo <= diagID && diagID < ihi) VecSetValue(state, diagID, -1.0, ADD_VALUES);
             norm = 0.0;
             VecNorm(state, NORM_2, &norm);
@@ -701,7 +704,7 @@ double objectiveT(MasterEq* mastereq, OptimTarget optim_target, ObjectiveType ob
             
           case JHS:
             /* J_T = 1 - Tr(e_m e_m^\dagger \rho(T)) = 1 - rho_mm(T) */
-            diagID = getIndexReal(getVecID(purestateID,purestateID,dim));
+            diagID = getIndexReal(getVecID(optim_target->purestateID,optim_target->purestateID,dim));
             rhoii = 0.0;
             if (ilo <= diagID && diagID < ihi) VecGetValues(state, 1, &diagID, &rhoii);
             mine = 1. - rhoii;
@@ -716,21 +719,21 @@ double objectiveT(MasterEq* mastereq, OptimTarget optim_target, ObjectiveType ob
 
 
 
-void objectiveT_diff(MasterEq* mastereq, OptimTarget optim_target, ObjectiveType objective_type, Vec state, Vec statebar, const Vec rho_t0, const double obj_bar, Gate* targetgate, int purestateID){
+void objectiveT_diff(OptimTarget *optim_target, MasterEq* mastereq, const Vec state, Vec statebar, const Vec rho_t0, const double obj_bar){
   int ilo, ihi;
   double lambdai, val;
   int diagID;
 
   if (state != NULL) {
 
-    switch (optim_target) {
+    switch (optim_target->target_type) {
       case GATE:
-        switch (objective_type) {
+        switch (optim_target->objective_type) {
           case JFROBENIUS:
-            targetgate->compare_frobenius_diff(state, rho_t0, statebar, obj_bar);
+            optim_target->targetgate->compare_frobenius_diff(state, rho_t0, statebar, obj_bar);
             break;
           case JHS:
-            targetgate->compare_trace_diff(state, rho_t0, statebar, obj_bar, true);
+            optim_target->targetgate->compare_trace_diff(state, rho_t0, statebar, obj_bar, true);
             break;
           case JMEASURE: // Will never happen
             printf("ERROR: Check settings for optim_target and optim_objective.\n");
@@ -745,12 +748,12 @@ void objectiveT_diff(MasterEq* mastereq, OptimTarget optim_target, ObjectiveType
         dim = (int) sqrt(dim/2.0);  // dim = N with \rho \in C^{N\times N}
         VecGetOwnershipRange(state, &ilo, &ihi);
 
-        switch (objective_type) {
+        switch (optim_target->objective_type) {
 
           case JMEASURE:
             // iterate over diagonal elements 
             for (int i=0; i<dim; i++){
-              lambdai = fabs(i - purestateID);
+              lambdai = fabs(i - optim_target->purestateID);
               diagID = getIndexReal(getVecID(i,i,dim));
               val = lambdai * obj_bar;
               if (ilo <= diagID && diagID < ihi) VecSetValue(statebar, diagID, val, ADD_VALUES);
@@ -761,12 +764,12 @@ void objectiveT_diff(MasterEq* mastereq, OptimTarget optim_target, ObjectiveType
             // Derivative of J = 1/2||x||^2 is xbar += x * Jbar, where x = rho(t) - E_mm
             VecAXPY(statebar, obj_bar, state);
             // now substract 1.0*obj_bar from m-th diagonal element
-            diagID = getIndexReal(getVecID(purestateID,purestateID,dim));
+            diagID = getIndexReal(getVecID(optim_target->purestateID,optim_target->purestateID,dim));
             if (ilo <= diagID && diagID < ihi) VecSetValue(statebar, diagID, -1.0*obj_bar, ADD_VALUES);
             break;
 
           case JHS:
-            diagID = getIndexReal(getVecID(purestateID,purestateID,dim));
+            diagID = getIndexReal(getVecID(optim_target->purestateID,optim_target->purestateID,dim));
             val = -1. * obj_bar;
             if (ilo <= diagID && diagID < ihi) VecSetValue(statebar, diagID, val, ADD_VALUES);
             break;
@@ -783,9 +786,9 @@ double OptimProblem::getFidelity(const Vec finalstate){
   int vecID, ihi, ilo;
   double rho_mm, mine;
 
-  switch(optim_target){
+  switch(optim_target->target_type){
     case PUREM: // fidelity = rho(T)_mm
-      vecID = getIndexReal(getVecID(purestateID, purestateID, dimrho));
+      vecID = getIndexReal(getVecID(optim_target->purestateID, optim_target->purestateID, dimrho));
       VecGetOwnershipRange(finalstate, &ilo, &ihi);
       rho_mm = 0.0;
       if (ilo <= vecID && vecID < ihi) VecGetValues(finalstate, 1, &vecID, &rho_mm); // local!
@@ -796,7 +799,7 @@ double OptimProblem::getFidelity(const Vec finalstate){
     break;
 
     case GATE: // fidelity = Tr(Vrho(0)V^\dagger \rho(T))
-      targetgate->compare_trace(finalstate, rho_t0, fidel, false);
+      optim_target->targetgate->compare_trace(finalstate, rho_t0, fidel, false);
       fidel = 1. - fidel; // because compare_trace computes infidelity 1-x and we want x.
     break;
   }

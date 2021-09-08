@@ -6,11 +6,12 @@
 #include <iostream> 
 #include "defs.hpp"
 #include "output.hpp"
+#include "optimtarget.hpp"
 #pragma once
 
 // define as extern here, they are needed for penalty integral term, implemented in optimproble.cpp
-extern double objectiveT(MasterEq* mastereq, OptimTarget optim_target, ObjectiveType objective_type, const Vec state, const Vec rho_t0, Gate* targetgate, int purestateID);
-extern void objectiveT_diff(MasterEq* mastereq, OptimTarget optim_target, ObjectiveType objective_type, Vec state, Vec state_bar, const Vec rho_t0, const double obj_bar, Gate* targetgate, int purestateID);
+extern double objectiveT(OptimTarget* optim_target, MasterEq* mastereq, const Vec state, const Vec rho_t0);
+extern void objectiveT_diff(OptimTarget* optim_target, MasterEq* mastereq, const Vec state, Vec state_bar, const Vec rho_t0, const double obj_bar);
 
 
 
@@ -33,12 +34,9 @@ class TimeStepper{
     /* Stuff needed to evaluate objectiveT during penalty integral computation */
     // TODO: pass those through the timestepper constructor. Currently, they are set manually inside optimproblem constructor. 
     double penalty_integral;        // output, holds the integral term
-    OptimTarget optim_target;
-    ObjectiveType objective_type;   
-    Gate* targetgate;
-    int purestateID;
     double penalty_param;
     double gamma_penalty;
+    OptimTarget* optim_target;
 
     /* Output */
     Output* output;
