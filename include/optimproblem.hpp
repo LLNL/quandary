@@ -88,7 +88,7 @@ class OptimProblem {
   /* Call this after TaoSolve() has finished to print out some information */
   void getSolution(Vec* opt);
 
-  /* Return the fidelity 1 - Tr(rho_target^\dagger * rho(T)) */
+  /* Return the fidelity Tr(rho_target^\dagger * rho(T)) */
   double getFidelity(const Vec finalstate);
 };
 

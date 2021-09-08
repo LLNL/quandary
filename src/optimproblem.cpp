@@ -784,19 +784,20 @@ double OptimProblem::getFidelity(const Vec finalstate){
   double rho_mm, mine;
 
   switch(optim_target){
-    case PUREM: // fidelity = 1 - rho(T)_mm
+    case PUREM: // fidelity = rho(T)_mm
       vecID = getIndexReal(getVecID(purestateID, purestateID, dimrho));
       VecGetOwnershipRange(finalstate, &ilo, &ihi);
       rho_mm = 0.0;
       if (ilo <= vecID && vecID < ihi) VecGetValues(finalstate, 1, &vecID, &rho_mm); // local!
-      fidel = 1.0 - rho_mm;
+      fidel = rho_mm;
       // Communicate over all petsc processors.
       mine = fidel;
       MPI_Allreduce(&mine, &fidel, 1, MPI_DOUBLE, MPI_SUM, PETSC_COMM_WORLD);
     break;
 
-    case GATE: // fidelity = 1 - Tr(Vrho(0)V^\dagger \rho(T))
+    case GATE: // fidelity = Tr(Vrho(0)V^\dagger \rho(T))
       targetgate->compare_trace(finalstate, rho_t0, fidel, false);
+      fidel = 1. - fidel; // because compare_trace computes infidelity 1-x and we want x.
     break;
   }
  
