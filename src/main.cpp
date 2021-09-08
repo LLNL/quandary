@@ -51,13 +51,13 @@ int main(int argc,char **argv)
   double dt    = config.GetDoubleParam("dt", 0.01);
   int nspline = config.GetIntParam("nspline", 10);
   RunType runtype;
-  std::string runtypestr = config.GetStrParam("runtype", "primal");
-  if      (runtypestr.compare("primal")      == 0) runtype = primal;
-  else if (runtypestr.compare("adjoint")     == 0) runtype = adjoint;
-  else if (runtypestr.compare("optimization")== 0) runtype = optimization;
+  std::string runtypestr = config.GetStrParam("runtype", "simulation");
+  if      (runtypestr.compare("simulation")      == 0) runtype = SIMULATION;
+  else if (runtypestr.compare("gradient")     == 0) runtype = GRADIENT;
+  else if (runtypestr.compare("optimization")== 0) runtype = OPTIMIZATION;
   else {
     printf("\n\n WARNING: Unknown runtype: %s.\n\n", runtypestr.c_str());
-    runtype = none;
+    runtype = NOTHING;
   }
 
   /* Get the number of essential levels per oscillator. 
@@ -324,7 +324,7 @@ int main(int argc,char **argv)
   }
   /* My time stepper */
   bool storeFWD = false;
-  if (runtype == adjoint || runtype == optimization) storeFWD = true;
+  if (runtype == GRADIENT || runtype == OPTIMIZATION) storeFWD = true;
 #if TEST_FD_GRAD
   storeFWD = true;
 #endif
@@ -348,10 +348,10 @@ int main(int argc,char **argv)
   myAdjointBraidApp *adjointbraidapp = NULL;
   // Create primal app always, adjoint only if runtype is adjoint or optimization 
   primalbraidapp = new myBraidApp(comm_braid, total_time, ntime, ts, mytimestepper, mastereq, &config, output);
-  if (runtype == adjoint || runtype == optimization) adjointbraidapp = new myAdjointBraidApp(comm_braid, total_time, ntime, ts, mytimestepper, mastereq, &config, primalbraidapp->getCore(), output);
+  if (runtype == GRADIENT || runtype == OPTIMIZATION) adjointbraidapp = new myAdjointBraidApp(comm_braid, total_time, ntime, ts, mytimestepper, mastereq, &config, primalbraidapp->getCore(), output);
   // Initialize the braid time-grids. Warning: initGrids for primal app depends on initialization of adjoint! Do not move this line up!
   primalbraidapp->InitGrids();
-  if (runtype == adjoint || runtype == optimization) adjointbraidapp->InitGrids();
+  if (runtype == GRADIENT || runtype == OPTIMIZATION) adjointbraidapp->InitGrids();
   
 #endif
 
@@ -405,7 +405,7 @@ int main(int argc,char **argv)
   double objective;
   double gnorm = 0.0;
   /* --- Solve primal --- */
-  if (runtype == primal) {
+  if (runtype == SIMULATION) {
     optimctx->getStartingPoint(xinit);
     if (mpirank_world == 0) printf("\nStarting primal solver... \n");
     objective = optimctx->evalF(xinit);
@@ -414,7 +414,7 @@ int main(int argc,char **argv)
   } 
   
   /* --- Solve adjoint --- */
-  if (runtype == adjoint) {
+  if (runtype == GRADIENT) {
     optimctx->getStartingPoint(xinit);
     if (mpirank_world == 0) printf("\nStarting adjoint solver...\n");
     optimctx->evalGradF(xinit, grad);
@@ -427,7 +427,7 @@ int main(int argc,char **argv)
   }
 
   /* --- Solve the optimization  --- */
-  if (runtype == optimization) {
+  if (runtype == OPTIMIZATION) {
     /* Set initial starting point */
     optimctx->getStartingPoint(xinit);
     if (mpirank_world == 0) printf("\nStarting Optimization solver ... \n");
@@ -436,7 +436,7 @@ int main(int argc,char **argv)
   }
 
   /* Output */
-  if (runtype != optimization) optimctx->output->writeOptimFile(optimctx->objective, gnorm, 0.0, optimctx->fidelity, optimctx->obj_cost, optimctx->obj_regul, optimctx->obj_penal);
+  if (runtype != OPTIMIZATION) optimctx->output->writeOptimFile(optimctx->objective, gnorm, 0.0, optimctx->fidelity, optimctx->obj_cost, optimctx->obj_regul, optimctx->obj_penal);
 
 
   /* --- Finalize --- */
@@ -709,7 +709,7 @@ int main(int argc,char **argv)
   delete mytimestepper;
 #ifdef WITH_BRAID
   delete primalbraidapp;
-  if (runtype == primal || runtype == adjoint) delete adjointbraidapp;
+  if (runtype == SIMULATION || runtype == GRADIENT) delete adjointbraidapp;
 #endif
   delete optimctx;
   delete output;

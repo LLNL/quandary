@@ -26,9 +26,9 @@ enum LinearSolverType{
 
 /* Solver run type */
 enum RunType {
-  primal,            // Runs one objective function evaluation (forward)
-  adjoint,           // Runs one gradient computation (forward & backward)
-  optimization,      // Run optimization 
-  none               // Don't run anything.
+  SIMULATION,        // Runs one simulation to compute the objective function (forward)
+  GRADIENT,          // Runs a simulation followed by the adjoint for gradient computation (forward & backward)
+  OPTIMIZATION,      // Runs optimization iterations
+  NOTHING            // Don't run anything.
 };
 
