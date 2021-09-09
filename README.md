@@ -30,16 +30,24 @@ This project relies on Petsc [https://www.mcs.anl.gov/petsc/] to handle linear a
     * Read the docs here: [https://slepc.upv.es/documentation/slepc.pdf]
  
 ###  Petsc on LLNL's LC
-Petc is already installed on LLNL LC machines, see here [https://hpc.llnl.gov/software/mathematical-software/petsc]
+Petc is already installed on LLNL LC machines, see here [https://hpc.llnl.gov/software/mathematical-software/petsc]. 
+
+To use it, load the following modules
+    * `module load gcc/8.1.0`
+    * `module load mvapich2/2.3`
+* Set the `PETSC_DIR` variable to point to the Petsc folder and add it to the `LD_LIBRARY_PATH`:
+    * `export PETSC_DIR=/usr/tce/packages/petsc/petsc-3.12.4-mvapich2-2.3-gcc-4.8-redhat`
+    * `export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$PETSC_DIR`
+
 
 ## Installation
-In the main directory of this project, adapt the beginning of the Makefile to set the path to your Petsc (and possibly XBraid and/or Slepsc) installation.
-* `make cleanup` to clean the build directory
-* `make -j main` to build the code
+Adapt the beginning of the 'Makefile' to set the path to your Petsc (and possibly XBraid and/or Slepsc) installation. Then,
+* `make cleanup` to clean the build directory. (Note the *up* in *cleanup*.)
+* `make -j main` to build the code (using 'j' threads)
 
 
 ## Running
-The code builds into the executable `main`. It takes one argument being the name of the test-case's configuration file. The file `config_template.cfg`, lists all possible configuration options. It is currently set to simulate a bipartite system with 3x20 levels (Alice - cavity testcase "AxC"). 
+The code builds into the executable `main`. It takes one argument being the name of the test-case's configuration file. The file `config_template.cfg`, lists all possible configuration options. It is currently set to simulate a bipartite system with 3x20 levels (Alice - cavity testcase "AxC"). The configuration file is filled with comments that should help users set up their test case and match the options to the description in the user guide.
 * `./main config_template.cfg`
 
 
