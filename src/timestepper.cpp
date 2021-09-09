@@ -150,7 +150,7 @@ double TimeStepper::penaltyIntegral(double time, const Vec x){
 
   /* weighted integral of the objective function */
   double weight = 1./penalty_param * exp(- pow((time - total_time)/penalty_param, 2));
-  double obj = objectiveT(optim_target, mastereq, x, getState(0));
+  double obj = optim_target->evalJ(x);
   penalty = weight * obj * dt;
 
   /* If gate optimization: Add guard-level occupation to prevent leakage. A guard level is the LAST NON-ESSENTIAL energy level of an oscillator */
@@ -181,7 +181,7 @@ void TimeStepper::penaltyIntegral_diff(double time, const Vec x, Vec xbar, doubl
 
   /* Derivative of weighted integral of the objective function */
   double weight = 1./penalty_param * exp(- pow((time - total_time)/penalty_param, 2));
-  objectiveT_diff(optim_target, mastereq, x, xbar, getState(0), weight*penaltybar*dt);
+  optim_target->evalJ_diff(x, xbar, weight*penaltybar*dt);
 
   /* If gate optimization: Derivative of adding guard-level occupation */
   if (optim_target->getType() == GATE) { 

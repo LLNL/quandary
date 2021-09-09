@@ -9,11 +9,6 @@
 #include "optimtarget.hpp"
 #pragma once
 
-// define as extern here, they are needed for penalty integral term, implemented in optimproble.cpp
-extern double objectiveT(OptimTarget* optim_target, MasterEq* mastereq, const Vec state, const Vec rho_t0);
-extern void objectiveT_diff(OptimTarget* optim_target, MasterEq* mastereq, const Vec state, const Vec state_bar, const Vec rho_t0, const double obj_bar);
-
-
 
 /* Base class for time steppers */
 class TimeStepper{
@@ -31,8 +26,8 @@ class TimeStepper{
 
     Vec redgrad;                   /* Reduced gradient */
 
-    /* Stuff needed to evaluate objectiveT during penalty integral computation */
-    // TODO: pass those through the timestepper constructor. Currently, they are set manually inside optimproblem constructor. 
+    /* Stuff needed for the penalty integral term */
+    // TODO: pass those through the timestepper constructor (currently, they are set manually inside optimproblem constructor), or add up the penalty within the optim_target.
     double penalty_integral;        // output, holds the integral term
     double penalty_param;
     double gamma_penalty;

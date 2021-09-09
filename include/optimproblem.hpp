@@ -85,9 +85,6 @@ class OptimProblem {
 
   /* Call this after TaoSolve() has finished to print out some information */
   void getSolution(Vec* opt);
-
-  /* Return the fidelity Tr(rho_target^\dagger * rho(T)) */
-  double getFidelity(const Vec finalstate);
 };
 
 /* Monitor the optimization progress. This routine is called in each iteration of TaoSolve() */
@@ -101,9 +98,3 @@ PetscErrorCode TaoEvalGradient(Tao tao, Vec x, Vec G, void*ptr);
 
 /* Petsc's Tao interface routine for evaluating the gradient g = \nabla f(x) */
 PetscErrorCode TaoEvalObjectiveAndGradient(Tao tao, Vec x, PetscReal *f, Vec G, void*ptr);
-
-/* Compute local objective function J(rho(t)) */
-double objectiveT(OptimTarget* optim_target, MasterEq* mastereq,  const Vec state, const Vec rho_t0);
-
-/* Derivative of local objective function times obj_bar */
-void objectiveT_diff(OptimTarget* optim_target, MasterEq* mastereq, const Vec state, const Vec state_bar, const Vec rho_t0, const double obj_bar);
