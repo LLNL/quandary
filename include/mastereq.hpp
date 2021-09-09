@@ -24,8 +24,7 @@ typedef struct {
   Mat *Ad, *Bd;
   Mat** Ad_vec;
   Mat** Bd_vec;
-  Vec *x;
-  Vec *Adklu, *Adklv, *Bdklu, *Bdklv;
+  Vec *Acu;
   double time;
 } MatShellCtx;
 
@@ -71,8 +70,7 @@ class MasterEq{
 
     double *dRedp;
     double *dImdp;
-    Vec x;              // auxiliary vector 
-    Vec Adklu, Adklv, Bdklu, Bdklv;
+    Vec Acu;              // auxiliary vector 
     int* cols;           // holding columns when evaluating dRHSdp
     PetscScalar* vals;   // holding values when evaluating dRHSdp
  
