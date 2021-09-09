@@ -154,7 +154,7 @@ double TimeStepper::penaltyIntegral(double time, const Vec x){
   penalty = weight * obj * dt;
 
   /* If gate optimization: Add guard-level occupation to prevent leakage. A guard level is the LAST NON-ESSENTIAL energy level of an oscillator */
-  if (optim_target->target_type == GATE) { 
+  if (optim_target->getType() == GATE) { 
       int ilow, iupp;
       VecGetOwnershipRange(x, &ilow, &iupp);
       /* Sum over all diagonal elements that correspond to a non-essential guard level. */
@@ -184,7 +184,7 @@ void TimeStepper::penaltyIntegral_diff(double time, const Vec x, Vec xbar, doubl
   objectiveT_diff(optim_target, mastereq, x, xbar, getState(0), weight*penaltybar*dt);
 
   /* If gate optimization: Derivative of adding guard-level occupation */
-  if (optim_target->target_type == GATE) { 
+  if (optim_target->getType() == GATE) { 
     int ilow, iupp;
     VecGetOwnershipRange(x, &ilow, &iupp);
     double x_re, x_im;

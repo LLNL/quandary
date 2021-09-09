@@ -313,7 +313,7 @@ double OptimProblem::evalF(const Vec x) {
     if (mpirank_braid == 0) printf("%d: Initial condition id=%d ...\n", mpirank_init, initid);
 
     /* If gate optimiztion, compute the target state rho^target = Vrho(0)V^dagger */
-    if (optim_target->target_type == GATE) optim_target->targetgate->applyGate(rho_t0, optim_target->VrhoV);
+    if (optim_target->getType() == GATE) optim_target->getGate()->applyGate(rho_t0, optim_target->VrhoV);
 
     /* Run forward with initial condition initid */
 #ifdef WITH_BRAID
@@ -402,7 +402,7 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
     int initid = timestepper->mastereq->getRhoT0(iinit_global, ninit, initcond_type, initcond_IDs, rho_t0);
 
     /* If gate optimiztion, compute the target state rho^target = Vrho(0)V^dagger */
-    if (optim_target->target_type == GATE) optim_target->targetgate->applyGate(rho_t0, optim_target->VrhoV);
+    if (optim_target->getType() == GATE) optim_target->getGate()->applyGate(rho_t0, optim_target->VrhoV);
 
     /* --- Solve primal --- */
     // if (mpirank_braid == 0) printf("%d: %d FWD. ", mpirank_init, initid);
@@ -653,10 +653,10 @@ double objectiveT(OptimTarget* optim_target, MasterEq* mastereq, const Vec state
 
   if (state != NULL) {
 
-    switch (optim_target->target_type) {
+    switch (optim_target->getType()) {
       case GATE: /* Gate optimization: target state \rho_target = Vrho(0)V^\dagger, stored in optim_target */
         
-        switch(optim_target->objective_type) {
+        switch(optim_target->getObjective()) {
           case JFROBENIUS:
             /* J_T = 1/2 * || rho_target - rho(T)||^2_F  */
             obj_local = optim_target->FrobeniusDistance(state) / 2.0;
@@ -679,7 +679,7 @@ double objectiveT(OptimTarget* optim_target, MasterEq* mastereq, const Vec state
         dim = (int) sqrt(dim/2.0);  // dim = N with \rho \in C^{N\times N}
         VecGetOwnershipRange(state, &ilo, &ihi);
 
-        switch(optim_target->objective_type) {
+        switch(optim_target->getObjective()) {
 
           case JMEASURE:
             /* J_T = Tr(O_m rho(T)) = \sum_i |i-m| rho_ii(T) */
@@ -689,7 +689,7 @@ double objectiveT(OptimTarget* optim_target, MasterEq* mastereq, const Vec state
               diagID = getIndexReal(getVecID(i,i,dim));
               rhoii = 0.0;
               if (ilo <= diagID && diagID < ihi) VecGetValues(state, 1, &diagID, &rhoii);
-              lambdai = fabs(i - optim_target->purestateID);
+              lambdai = fabs(i - optim_target->getPureID());
               sum += lambdai * rhoii;
             }
             mine = sum;
@@ -700,7 +700,7 @@ double objectiveT(OptimTarget* optim_target, MasterEq* mastereq, const Vec state
           case JFROBENIUS:
             /* J_T = 1/2 * || rho(T) - e_m e_m^\dagger||_F^2 */
             // substract 1.0 from m-th diagonal element then take the vector norm 
-            diagID = getIndexReal(getVecID(optim_target->purestateID,optim_target->purestateID,dim));
+            diagID = getIndexReal(getVecID(optim_target->getPureID(),optim_target->getPureID(),dim));
             if (ilo <= diagID && diagID < ihi) VecSetValue(state, diagID, -1.0, ADD_VALUES);
             norm = 0.0;
             VecNorm(state, NORM_2, &norm);
@@ -710,7 +710,7 @@ double objectiveT(OptimTarget* optim_target, MasterEq* mastereq, const Vec state
             
           case JHS:
             /* J_T = 1 - Tr(e_m e_m^\dagger \rho(T)) = 1 - rho_mm(T) */
-            diagID = getIndexReal(getVecID(optim_target->purestateID,optim_target->purestateID,dim));
+            diagID = getIndexReal(getVecID(optim_target->getPureID(),optim_target->getPureID(),dim));
             rhoii = 0.0;
             if (ilo <= diagID && diagID < ihi) VecGetValues(state, 1, &diagID, &rhoii);
             mine = 1. - rhoii;
@@ -732,9 +732,9 @@ void objectiveT_diff(OptimTarget *optim_target, MasterEq* mastereq, const Vec st
 
   if (state != NULL) {
 
-    switch (optim_target->target_type) {
+    switch (optim_target->getType()) {
       case GATE:
-        switch (optim_target->objective_type) {
+        switch (optim_target->getObjective()) {
           case JFROBENIUS:
             optim_target->FrobeniusDistance_diff(state, statebar, obj_bar / 2.0);
             break;
@@ -754,12 +754,12 @@ void objectiveT_diff(OptimTarget *optim_target, MasterEq* mastereq, const Vec st
         dim = (int) sqrt(dim/2.0);  // dim = N with \rho \in C^{N\times N}
         VecGetOwnershipRange(state, &ilo, &ihi);
 
-        switch (optim_target->objective_type) {
+        switch (optim_target->getObjective()) {
 
           case JMEASURE:
             // iterate over diagonal elements 
             for (int i=0; i<dim; i++){
-              lambdai = fabs(i - optim_target->purestateID);
+              lambdai = fabs(i - optim_target->getPureID());
               diagID = getIndexReal(getVecID(i,i,dim));
               val = lambdai * obj_bar;
               if (ilo <= diagID && diagID < ihi) VecSetValue(statebar, diagID, val, ADD_VALUES);
@@ -770,12 +770,12 @@ void objectiveT_diff(OptimTarget *optim_target, MasterEq* mastereq, const Vec st
             // Derivative of J = 1/2||x||^2 is xbar += x * Jbar, where x = rho(t) - E_mm
             VecAXPY(statebar, obj_bar, state);
             // now substract 1.0*obj_bar from m-th diagonal element
-            diagID = getIndexReal(getVecID(optim_target->purestateID,optim_target->purestateID,dim));
+            diagID = getIndexReal(getVecID(optim_target->getPureID(),optim_target->getPureID(),dim));
             if (ilo <= diagID && diagID < ihi) VecSetValue(statebar, diagID, -1.0*obj_bar, ADD_VALUES);
             break;
 
           case JHS:
-            diagID = getIndexReal(getVecID(optim_target->purestateID,optim_target->purestateID,dim));
+            diagID = getIndexReal(getVecID(optim_target->getPureID(),optim_target->getPureID(),dim));
             val = -1. * obj_bar;
             if (ilo <= diagID && diagID < ihi) VecSetValue(statebar, diagID, val, ADD_VALUES);
             break;
@@ -792,9 +792,9 @@ double OptimProblem::getFidelity(const Vec finalstate){
   int vecID, ihi, ilo;
   double rho_mm, mine;
 
-  switch(optim_target->target_type){
+  switch(optim_target->getType()){
     case PUREM: // fidelity = rho(T)_mm
-      vecID = getIndexReal(getVecID(optim_target->purestateID, optim_target->purestateID, dimrho));
+      vecID = getIndexReal(getVecID(optim_target->getPureID(), optim_target->getPureID(), dimrho));
       VecGetOwnershipRange(finalstate, &ilo, &ihi);
       rho_mm = 0.0;
       if (ilo <= vecID && vecID < ihi) VecGetValues(finalstate, 1, &vecID, &rho_mm); // local!
