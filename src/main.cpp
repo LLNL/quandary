@@ -377,10 +377,10 @@ int main(int argc,char **argv)
 
   /* Set upt solution and gradient vector */
   Vec xinit;
-  VecCreateSeq(PETSC_COMM_SELF, optimctx->ndesign, &xinit);
+  VecCreateSeq(PETSC_COMM_SELF, optimctx->getNdesign(), &xinit);
   VecSetFromOptions(xinit);
   Vec grad;
-  VecCreateSeq(PETSC_COMM_SELF, optimctx->ndesign, &grad);
+  VecCreateSeq(PETSC_COMM_SELF, optimctx->getNdesign(), &grad);
   VecSetUp(grad);
   VecZeroEntries(grad);
   Vec opt;
@@ -436,7 +436,7 @@ int main(int argc,char **argv)
   }
 
   /* Output */
-  if (runtype != OPTIMIZATION) optimctx->output->writeOptimFile(optimctx->objective, gnorm, 0.0, optimctx->fidelity, optimctx->obj_cost, optimctx->obj_regul, optimctx->obj_penal);
+  if (runtype != OPTIMIZATION) optimctx->output->writeOptimFile(optimctx->getObjective(), gnorm, 0.0, optimctx->getFidelity(), optimctx->getCostT(), optimctx->getRegul(), optimctx->getPenalty());
 
 
   /* --- Finalize --- */
@@ -494,7 +494,7 @@ int main(int argc,char **argv)
 
   /* --- Finite Differences --- */
   if (mpirank_world == 0) printf("\nFD...\n");
-  for (int i=0; i<optimctx->ndesign; i++){
+  for (int i=0; i<optimctx->getNdesign(); i++){
   // {int i=0;
 
     /* Evaluate f(p+eps)*/
@@ -531,7 +531,7 @@ int main(int argc,char **argv)
   /* Figure out which parameters are hitting bounds */
   double bound_tol = 1e-3;
   std::vector<int> Ihess; // Index set for all elements that do NOT hit a bound
-  for (int i=0; i<optimctx->ndesign; i++){
+  for (int i=0; i<optimctx->getNdesign(); i++){
     // get x_i and bounds for x_i
     double xi, blower, bupper;
     VecGetValues(xinit, 1, &i, &xi);
@@ -642,16 +642,16 @@ int main(int argc,char **argv)
   printf("#########################\n\n");
 
   /* Load Hessian from file */
-  // Mat Hess;
+  Mat Hess;
   MatCreate(PETSC_COMM_SELF, &Hess);
   sprintf(filename, "%s/hessian_bin.dat", output->datadir.c_str());
   printf("Reading file: %s\n", filename);
-  // PetscViewer viewer;
+  PetscViewer viewer;
   PetscViewerCreate(MPI_COMM_WORLD, &viewer);
   PetscViewerSetType(viewer, PETSCVIEWERBINARY);
   PetscViewerFileSetMode(viewer, FILE_MODE_READ);
   PetscViewerFileSetName(viewer, filename);
-  // PetscViewerPushFormat(viewer, PETSC_VIEWER_ASCII_DENSE);
+  PetscViewerPushFormat(viewer, PETSC_VIEWER_ASCII_DENSE);
   MatLoad(Hess, viewer);
   PetscViewerPopFormat(viewer);
   PetscViewerDestroy(&viewer);

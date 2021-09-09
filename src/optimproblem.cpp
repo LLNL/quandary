@@ -602,10 +602,10 @@ PetscErrorCode TaoMonitor(Tao tao,void*ptr){
   ctx->output->optim_iter = iter;
 
   /* Grab some output stuff */
-  double obj_cost = ctx->obj_cost;
-  double obj_regul = ctx->obj_regul;
-  double obj_penal = ctx->obj_penal;
-  double F_avg = ctx->fidelity;
+  double obj_cost = ctx->getCostT();
+  double obj_regul = ctx->getRegul();
+  double obj_penal = ctx->getPenalty();
+  double F_avg = ctx->getFidelity();
 
   /* Print to optimization file */
   ctx->output->writeOptimFile(f, gnorm, deltax, F_avg, obj_cost, obj_regul, obj_penal);
@@ -621,7 +621,7 @@ PetscErrorCode TaoEvalObjectiveAndGradient(Tao tao, Vec x, PetscReal *f, Vec G, 
 
   TaoEvalGradient(tao, x, G, ptr);
   OptimProblem* ctx = (OptimProblem*) ptr;
-  *f = ctx->objective;
+  *f = ctx->getObjective();
 
   return 0;
 }

@@ -9,14 +9,9 @@
 #ifdef WITH_BRAID
   #include "braid_wrapper.hpp"
 #endif
-
 #pragma once
 
-
-
 class OptimProblem {
-
-  public: 
 
   /* ODE stuff */
 #ifdef WITH_BRAID
@@ -30,7 +25,6 @@ class OptimProblem {
   InitialConditionType initcond_type;    /* Type of initial conditions */
   std::vector<int> initcond_IDs;         /* Integer list for pure-state initialization */
 
-  TimeStepper* timestepper;       /* A reference to the time-stepping scheme */
   OptimTarget* optim_target;      /* Storing the optimization goal */
 
   /* MPI stuff */
@@ -56,13 +50,14 @@ class OptimProblem {
   double grtol;                    /* Stopping criterion based on relative gradient norm */
   int maxiter;                     /* Stopping criterion based on maximum number of iterations */
   Tao tao;                         /* Petsc's Optimization solver */
-  Vec xlower, xupper;              /* Optimization bounds */
   std::string initguess_type;      /* Type of initial guess */
   std::vector<double> initguess_amplitudes; /* Initial amplitudes of controles, or NULL */
   double* mygrad;  /* Auxiliary */
   
-  /* Output */
-  Output* output;
+  public: 
+    Output* output;                 /* Store a reference to the output */
+    TimeStepper* timestepper;       /* Store a reference to the time-stepping scheme */
+    Vec xlower, xupper;              /* Optimization bounds */
 
   /* Constructor */
   OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm comm_init_, int ninit_, std::vector<double> gate_rot_freq, Output* output_);
@@ -70,6 +65,16 @@ class OptimProblem {
   OptimProblem(MapParam config, TimeStepper* timestepper_, myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, MPI_Comm comm_init_, int ninit_, std::vector<double> gate_rot_freq, Output* output_);
 #endif
   ~OptimProblem();
+
+  /* Return the number of design variables */
+  int getNdesign(){ return ndesign; };
+
+  /* Return the overall objective, final-time costs, regularization and penalty terms */
+  double getObjective(){ return objective; };
+  double getCostT()    { return obj_cost; };
+  double getRegul()    { return obj_regul; };
+  double getPenalty()  { return obj_penal; };
+  double getFidelity() { return fidelity; };
 
   /* Evaluate the objective function F(x) */
   double evalF(const Vec x);
