@@ -220,105 +220,33 @@ void Gate::assembleGate(){
 }
 
 
-void Gate::compare_frobenius(const Vec finalstate, const Vec rho0, double& frob){
-  frob = 0.0;
 
+void Gate::applyGate(const Vec state, Vec VrhoV){
   /* Exit, if this is a dummy gate */
-  if (dim_rho == 0) {
-    return;
-  }
+  if (dim_rho == 0) return;
 
-  /* Get real and imag part of final state and initial state */
-  Vec ufinal, vfinal, u0, v0;
-  VecGetSubVector(finalstate, isu, &ufinal);
-  VecGetSubVector(finalstate, isv, &vfinal);
-  VecGetSubVector(rho0, isu, &u0);
-  VecGetSubVector(rho0, isv, &v0);
+  /* Get real and imag part of the state q = u + iv */
+  Vec u, v;
+  VecGetSubVector(state, isu, &u);
+  VecGetSubVector(state, isv, &v);
 
-  /* Add real part of frobenius norm || u - VxV_re*u0 + VxV_im*v0 ||^2 */
-  double norm;
-  MatMult(VxV_re, u0, x);            // x = VxV_re*u0
-  VecAYPX(x, -1.0, ufinal);       // x = ufinal - VxV_re*u0 
-  MatMultAdd(VxV_im, v0, x, x);      // x = ufinal - VxV_re*u0 + VxV_im*v0
-  VecNorm(x, NORM_2, &norm);
-  frob = pow(norm,2.0);           // frob = || x ||^2
+  /* (a) Real part Re(VxV q) = VxV_re u - VxV_im v */
+  MatMult(VxV_im, v, x);            // 
+  VecScale(x, -1.0);                // x = -VxV_im * v 
+  MatMultAdd(VxV_re, u, x, x);      // x += VxV_re * u
+  VecISCopy(VrhoV, isu, SCATTER_FORWARD, x); 
 
-  /* Add imaginary part of frobenius norm || v - VxV_re*v0 - VxV_im*u0 ||^2 */
-  MatMult(VxV_re, v0, x);         // x = VxV_re*v0
-  MatMultAdd(VxV_im, u0, x, x);   // x = VxV_re*v0 + VxV_im*u0
-  VecAYPX(x, -1.0, vfinal);     // x = vfinal - (VxV_re*v0 + VxV_im*u0)
-  VecNorm(x, NORM_2, &norm);
-  frob += pow(norm, 2.0);      // frob += ||x||^2
+  /* (b) Imaginary part Im(VxV q) = VxV_re v + VxV_im u */
+  MatMult(VxV_re, v, x);            // x  = VxV_re * v
+  MatMultAdd(VxV_im, u, x, x);      // x += VxV_im * u
+  VecISCopy(VrhoV, isv, SCATTER_FORWARD, x); 
 
-  /* obj = 1/2 * || finalstate - gate*rho(0) ||^2 */
-  frob *= 1./2.;
-  
-  // // scale by purity of rho(0)
-  // double purity_rho0 = 0.0;
-  // double dot = 0.0;
-  // VecNorm(u0, NORM_2, &dot);
-  // purity_rho0 += dot*dot;
-  // VecNorm(v0, NORM_2, &dot);
-  // purity_rho0 += dot*dot;
-  // frob = frob / purity_rho0;
-
-
-  /* Restore vectors from index set */
-  VecRestoreSubVector(finalstate, isu, &ufinal);
-  VecRestoreSubVector(finalstate, isv, &vfinal);
-  VecRestoreSubVector(rho0, isu, &u0);
-  VecRestoreSubVector(rho0, isv, &v0);
-
+  /* Restore state from index set */
+  VecRestoreSubVector(state, isu, &u);
+  VecRestoreSubVector(state, isv, &v);
 }
 
-void Gate::compare_frobenius_diff(const Vec finalstate, const Vec rho0, Vec rho0_bar, const double frob_bar){
 
-  /* Exit, if this is a dummy gate */
-  if (dim_rho == 0) {
-    return;
-  }
-
-  /* Get real and imag part of final state, initial state, and adjoint */
-  Vec ufinal, vfinal, u0, v0;
-  VecGetSubVector(finalstate, isu, &ufinal);
-  VecGetSubVector(finalstate, isv, &vfinal);
-  VecGetSubVector(rho0, isu, &u0);
-  VecGetSubVector(rho0, isv, &v0);
-
-  /* Derivative of 1/2 * J */
-  double dfb = 1./2. * frob_bar;
-  // // Derivative of purity scaling 
-  // double purity_rho0 = 0.0;
-  // double dot = 0.0;
-  // VecNorm(u0, NORM_2, &dot);
-  // purity_rho0 += dot*dot;
-  // VecNorm(v0, NORM_2, &dot);
-  // purity_rho0 += dot*dot;
-  // dfb = dfb / purity_rho0;
-
-  /* Derivative of real part of frobenius norm: 2 * (u - VxV_re*u0 + VxV_im*v0) * dfb */
-  MatMult(VxV_re, u0, x);            // x = VxV_re*u0
-  VecAYPX(x, -1.0, ufinal);          // x = ufinal - VxV_re*u0 
-  MatMultAdd(VxV_im, v0, x, x);      // x = ufinal - VxV_re*u0 + VxV_im*v0
-
-  // add real part in rho0bar, scaled by 2*dfb
-  VecISAXPY(rho0_bar, isu, 2.0*dfb, x); 
-
-  /* Derivative of imaginary part of frobenius norm 2 * (v - VxV_re*v0 - VxV_im*u0) * dfb */
-  MatMult(VxV_re, v0, x);         // x = VxV_re*v0
-  MatMultAdd(VxV_im, u0, x, x);   // x = VxV_re*v0 + VxV_im*u0
-  VecAYPX(x, -1.0, vfinal);     // x = vfinal - (VxV_re*v0 + VxV_im*u0)
-
-  // add imaginary part in rho0bar, scaled by 2*dfb
-  VecISAXPY(rho0_bar, isv, 2.0*dfb, x); 
-
-  /* Restore final, initial and adjoint state */
-  VecRestoreSubVector(finalstate, isu, &ufinal);
-  VecRestoreSubVector(finalstate, isv, &vfinal);
-  VecRestoreSubVector(rho0, isu, &u0);
-  VecRestoreSubVector(rho0, isv, &v0);
-
-}
 
 void Gate::compare_trace(const Vec finalstate, const Vec rho0, double& obj, bool scalebypurity){
   obj = 0.0;

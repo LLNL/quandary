@@ -312,6 +312,9 @@ double OptimProblem::evalF(const Vec x) {
     int initid = timestepper->mastereq->getRhoT0(iinit_global, ninit, initcond_type, initcond_IDs, rho_t0);
     if (mpirank_braid == 0) printf("%d: Initial condition id=%d ...\n", mpirank_init, initid);
 
+    /* If gate optimiztion, compute the target state rho^target = Vrho(0)V^dagger */
+    optim_target->targetgate->applyGate(rho_t0, optim_target->VrhoV);
+
     /* Run forward with initial condition initid */
 #ifdef WITH_BRAID
       primalbraidapp->PreProcess(initid, rho_t0, 0.0);
@@ -397,6 +400,9 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
     /* Prepare the initial condition */
     int iinit_global = mpirank_init * ninit_local + iinit;
     int initid = timestepper->mastereq->getRhoT0(iinit_global, ninit, initcond_type, initcond_IDs, rho_t0);
+
+    /* If gate optimiztion, compute the target state rho^target = Vrho(0)V^dagger */
+    optim_target->targetgate->applyGate(rho_t0, optim_target->VrhoV);
 
     /* --- Solve primal --- */
     // if (mpirank_braid == 0) printf("%d: %d FWD. ", mpirank_init, initid);
@@ -648,12 +654,12 @@ double objectiveT(OptimTarget* optim_target, MasterEq* mastereq, const Vec state
   if (state != NULL) {
 
     switch (optim_target->target_type) {
-      case GATE: // Gate optimization: Target \rho_target = V\rho(0)V^\dagger
+      case GATE: /* Gate optimization: target state \rho_target = Vrho(0)V^\dagger, stored in optim_target */
         
         switch(optim_target->objective_type) {
           case JFROBENIUS:
             /* J_T = 1/2 * || rho_target - rho(T)||^2_F  */
-            optim_target->targetgate->compare_frobenius(state, rho_t0, obj_local);
+            obj_local = optim_target->FrobeniusDistance(state);
             break;
           case JHS:
             /* J_T = 1 - 1/purity * Tr(rho_target^\dagger * rho(T)) */
@@ -730,7 +736,8 @@ void objectiveT_diff(OptimTarget *optim_target, MasterEq* mastereq, const Vec st
       case GATE:
         switch (optim_target->objective_type) {
           case JFROBENIUS:
-            optim_target->targetgate->compare_frobenius_diff(state, rho_t0, statebar, obj_bar);
+            // Derivative of frobenius norm: statebar += (VrhoV - state) * (-1) * Jbar 
+            optim_target->FrobeniusDistance_diff(state, statebar, obj_bar);
             break;
           case JHS:
             optim_target->targetgate->compare_trace_diff(state, rho_t0, statebar, obj_bar, true);
