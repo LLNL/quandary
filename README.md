@@ -30,15 +30,13 @@ This project relies on Petsc [https://www.mcs.anl.gov/petsc/] to handle linear a
     * Read the docs here: [https://slepc.upv.es/documentation/slepc.pdf]
  
 ###  Petsc on LLNL's LC
-Petc is already installed on LLNL LC machines, see here [https://hpc.llnl.gov/software/mathematical-software/petsc]. 
+Petc is already installed on LLNL LC machines, see here [https://hpc.llnl.gov/software/mathematical-software/petsc]. To use it, first load the following modules:
+* `module load gcc/8.1.0`
+* `module load mvapich2/2.3`
 
-To use it, load the following modules
-    * `module load gcc/8.1.0`
-    * `module load mvapich2/2.3`
-* Set the `PETSC_DIR` variable to point to the Petsc folder and add it to the `LD_LIBRARY_PATH`:
-    * `export PETSC_DIR=/usr/tce/packages/petsc/petsc-3.12.4-mvapich2-2.3-gcc-4.8-redhat`
-    * `export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$PETSC_DIR`
-
+Then set the `PETSC_DIR` variable to point to the Petsc folder and add it to the `LD_LIBRARY_PATH`:
+* `export PETSC_DIR=/usr/tce/packages/petsc/petsc-3.12.4-mvapich2-2.3-gcc-4.8-redhat`
+* `export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$PETSC_DIR`
 
 ## Installation
 Adapt the beginning of the 'Makefile' to set the path to your Petsc (and possibly XBraid and/or Slepsc) installation. Then,
@@ -56,7 +54,7 @@ The code builds into the executable `main`. It takes one argument being the name
 Quandary is an open source project that is under heavy development. Contributions in all forms are very welcome, and can be anything from new features to bugfixes, documentation, or even discussions. Contributing is easy, work on your branch, create a pull request to master when you're good to go and the regression tests in 'tests/' pass.
 
 ## Publications
-* S. Guenther, N.A. Petersson, J.L. DuBois: "Efficient Numerical Optimal Control for Ground-State Reset of Open Quantum Systems", arXiv preprint <https://arxiv.org/abs/2106.09148> (2021)
+* S. Guenther, N.A. Petersson, J.L. DuBois: "Quantum Optimal Control for Pure-State Preparation Using One Initial State", arXiv preprint <https://arxiv.org/abs/2106.09148> (2021)
 
 ## License
 
