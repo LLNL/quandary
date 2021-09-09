@@ -313,7 +313,7 @@ double OptimProblem::evalF(const Vec x) {
     if (mpirank_braid == 0) printf("%d: Initial condition id=%d ...\n", mpirank_init, initid);
 
     /* If gate optimiztion, compute the target state rho^target = Vrho(0)V^dagger */
-    optim_target->targetgate->applyGate(rho_t0, optim_target->VrhoV);
+    if (optim_target->target_type == GATE) optim_target->targetgate->applyGate(rho_t0, optim_target->VrhoV);
 
     /* Run forward with initial condition initid */
 #ifdef WITH_BRAID
@@ -402,7 +402,7 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
     int initid = timestepper->mastereq->getRhoT0(iinit_global, ninit, initcond_type, initcond_IDs, rho_t0);
 
     /* If gate optimiztion, compute the target state rho^target = Vrho(0)V^dagger */
-    optim_target->targetgate->applyGate(rho_t0, optim_target->VrhoV);
+    if (optim_target->target_type == GATE) optim_target->targetgate->applyGate(rho_t0, optim_target->VrhoV);
 
     /* --- Solve primal --- */
     // if (mpirank_braid == 0) printf("%d: %d FWD. ", mpirank_init, initid);
