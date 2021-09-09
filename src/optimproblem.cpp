@@ -659,7 +659,7 @@ double objectiveT(OptimTarget* optim_target, MasterEq* mastereq, const Vec state
         switch(optim_target->objective_type) {
           case JFROBENIUS:
             /* J_T = 1/2 * || rho_target - rho(T)||^2_F  */
-            obj_local = optim_target->FrobeniusDistance(state);
+            obj_local = optim_target->FrobeniusDistance(state) / 2.0;
             break;
           case JHS:
             /* J_T = 1 - 1/purity * Tr(rho_target^\dagger * rho(T)) */
@@ -736,7 +736,7 @@ void objectiveT_diff(OptimTarget *optim_target, MasterEq* mastereq, const Vec st
       case GATE:
         switch (optim_target->objective_type) {
           case JFROBENIUS:
-            optim_target->FrobeniusDistance_diff(state, statebar, obj_bar);
+            optim_target->FrobeniusDistance_diff(state, statebar, obj_bar / 2.0);
             break;
           case JHS:
             optim_target->HilbertSchmidtOverlap_diff(state, statebar, -1.0 * obj_bar, true);
