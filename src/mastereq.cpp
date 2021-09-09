@@ -1312,8 +1312,6 @@ int myMatMultTranspose_sparsemat(Mat RHS, Vec x, Vec y) {
 
   }
 
-
-
   /* Restore */
   VecRestoreSubVector(x, *shellctx->isu, &u);
   VecRestoreSubVector(x, *shellctx->isv, &v);
