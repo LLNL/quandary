@@ -276,7 +276,7 @@ Target gates that are currently implemented are
 Further, a generalization of the SWAP and the CNOT gate for general $Q$ subsystems is available: The SWAP-0Q gate swaps the state of the first and the last qubit, while leaving all other oscillators in their respective initial state, and the CQNOT gate performs a NOT operation on the last qubit if all other qubits are in the one-state.
 New, user-defined gates can be easily added to the code by extending the \texttt{Gate} class in the corresponding \texttt{.cpp} and \texttt{.hpp} files. 
 
-For gate optimization, the first two objective function $J_{Frobenius}$ and $J_{Hilbert-Schmidt}$ are appropriate. Since \textit{any} initial quantum state should be transformed by the control pulses, again typically a basis for the initial states should be considered ($n_{init}=N^2$). However, it has been shown in \cite{goerz2014optimal} that it is enough to optimize with only three specific initial states ($n_{init} = 3$), independent of the Hilbert space dimension $N$. Those three states are set up in such a way that they can distinguish between any two unitaries in that Hilbert space. The three initial states are readily available in Quandary, see Section \ref{subsec:initcond}. Note that when optimizing with only those three initial states, it turns out that the choice of the weights $\beta_i$ that weight the contribution from each initial state in the overall objective function is rather important. We refer to \cite{goerz2014optimal} for more details. 
+For gate optimization, the first two objective function $J_{Frobenius}$ and $J_{Hilbert-Schmidt}$ are appropriate. Since \textit{any} initial quantum state should be transformed by the control pulses, again typically a basis for the initial states should be considered ($n_{init}=N^2$). However, it has been shown in \cite{goerz2014optimal} that it is enough to optimize with only three specific initial states ($n_{init} = 3$), independent of the Hilbert space dimension $N$. Those three states are set up in such a way that they can distinguish between any two unitaries in that Hilbert space. The three initial states are readily available in Quandary, see Section \ref{subsec:initcond}. Note that when optimizing with only those three initial states, it turns out that the choice of the weights $\beta_i$ that weight the contribution from each initial state in the overall objective function strongly influences the optimization convergence. For faster convergence, it is often benefitial to emphasize on the first of the three initial conditions ($\rho_1(0)$ in Section \ref{subsec:threeinitcond}), hence choosing $\beta_1$ (much) bigger than $\beta_2$ and $\beta_3$ (e.g. $\beta = \{20,1,1\}$ often works better than $\beta = \{1,1,1\}$, try it yourself). We refer to \cite{goerz2014optimal} for details. 
 
 \subsubsection{Essential and non-essential levels}
 It is often useful, to model the quantum system with more energy levels than the number of levels that the target gate is defined on. For example when optimizing for a SWAP gate on two qubits, with $V_{SWAP}\in\C^{4\times 4}$, one might want to model each qubit with more than two energy levels in order to (a) model the (infinite dimensional) system with more accuracy by including more levels and (b) allow the system to transition through higher energy levels in order to achieve the target at final time $T$. In that case, the \textit{essential} levels denote the levels that the target gate is defined on.
@@ -328,16 +328,16 @@ unique index $i \in \{0,\dots, N^2-1\}$ is assigned to each basis state with
 One can choose to propagate only those basis elements that correspond to pure states of the form $\boldsymbol{e}_k\boldsymbol{e}_k^\dagger$, i.e. propagating only $B^{kk}$ for $k=0,\dots, N-1$, and then $n_{init}=N$.
 
 \subsubsection{Three initial states for gate optimization}\label{subsec:threeinitcond}
-When considering gate optimization, it has been shown in \cite{goerz2014optimal} that it is enough to consider only three specific initial states during optimization ($n_{init}=3$), independent of the Hilber space dimension. Those three initial states are implemented in Quandary, and are given by
+When considering gate optimization, it has been shown in \cite{goerz2014optimal} that it is enough to consider only three specific initial states during optimization ($n_{init}=3$), independent of the Hilber space dimension. Those three initial states are given by
 \begin{align}
-    \rho(0)_0 &= \sum_{i=0}^{N-1} \frac{2(N-i+1)}{N(N+1)} \bs{e}_i\bs{e}_i^\dagger \\
-    \rho(0)_1 &= \sum_{ij=0}^{N-1} \frac{1}{N} \bs{e}_i\bs{e}_j^\dagger\\
-    \rho(0)_2 &= \frac{1}{N} I_N
+    \rho(0)_1 &= \sum_{i=0}^{N-1} \frac{2(N-i+1)}{N(N+1)} \bs{e}_i\bs{e}_i^\dagger \\
+    \rho(0)_2 &= \sum_{ij=0}^{N-1} \frac{1}{N} \bs{e}_i\bs{e}_j^\dagger\\
+    \rho(0)_3 &= \frac{1}{N} I_N
 \end{align}
-where $I_N\in R^{N\times N}$ is the identity matrix. 
+where $I_N\in R^{N\times N}$ is the identity matrix. They are readily implemented in Quandary. Note that it is important to choose the weights $\beta_i, i=1,2,3$ in the objective function appropriately to achieve fast convergence. 
 
 \subsubsection{$N+1$ initial states for gate optimization}
-The three initial states from above do not suffice to estimate an average fidelity of the realized gate (compare \cite{goerz2014optimal}). Instead, it is suggested in that same paper to choose $N+1$ initial states to compute an average fidelity. Those $N+1$ initial states consist of the $N$ diagonal states $B^{kk}$ in the Hilbertspace of dimension $N$, as well as the totally rotated state $\rho(0)_1$ from above. Quandary offers the choice to simulate (or optimize) using those initial states, then $n_{init} = N+1$.
+The three initial states from above do not suffice to estimate an average fidelity of the realized gate (compare \cite{goerz2014optimal}). Instead, it is suggested in that same paper to choose $N+1$ initial states to compute an average fidelity. Those $N+1$ initial states consist of the $N$ diagonal states $B^{kk}$ in the Hilbertspace of dimension $N$, as well as the totally rotated state $\rho(0)_2$ from above. Quandary offers the choice to simulate (or optimize) using those initial states, then $n_{init} = N+1$.
 
 \subsection{Penalty term}
 The penalty term can be added with parameter $\gamma_1 \geq 0$ in order to achieve a desired behavior at earlier times other than the final time $T$.
@@ -360,11 +360,11 @@ where $\rho(t)_{rr}$ denotes the diagonal element at $(r,r)$ inside $\rho(t)\in 
 \subsection{Fidelity}
 As a measure of optimization success, Quandary reports on the fidelity computed from 
 \begin{align}
-  F = 1 - \frac{1}{n_{init}} \sum_{i=1}^{n_{init}} \mbox{Tr}\left(\left(\rho^{target}_i\right)^\dagger\rho_i(T) \right). 
+  F = \frac{1}{n_{init}} \sum_{i=1}^{n_{init}} \mbox{Tr}\left(\left(\rho^{target}_i\right)^\dagger\rho_i(T) \right). 
 \end{align}
-Note that this fidelity is averaged over the chosen initial conditions, so the user should be careful how to interpret this number. E.g. if one optimizes for a logical gate while chosing the three initial condition as in Section \ref{subsec:threeinitcond}, the reported fidelity will be averaged over those three initial states, which is not sufficient to estimate the actual average fidelity over the entire space of potential intial states. In that case, it is advised to recompute the average fidelity after optimization has finished, e.g. by propagating $N^2$ basis states $B_{kj}$ to final time $T$ using the optimized control parameter, or by propagating only $N+1$ initial states to get an estimate thereof.
+Note that this fidelity is averaged over the chosen initial conditions, so the user should be careful how to interpret this number. E.g. if one optimizes for a logical gate while choosing the three initial condition as in Section \ref{subsec:threeinitcond}, the fidelity that is reported during optimization will be averaged over those three initial states, which is not sufficient to estimate the actual average fidelity over the entire space of potential intial states. It is advised to recompute the average fidelity \textbf{after} optimization has finished, e.g. by propagating the $N^2$ basis states $B_{kj}$ to final time $T$ using the optimized control parameter, or by propagating only $N+1$ initial states to get an estimate thereof.
 
-Note that for pure-state preparation, we have $\rho^{target} = \boldsymbol{e}_m \boldsymbol{e}_m^\dagger$ and therefor the fidelity can be computed from $F = 1 - \frac{1}{n_{init}} \sum_i \left[\rho_i(T)\right]_{mm}$, for the $m$-th diagonal element of the final states $\rho_i(T)$. 
+Note that for pure-state preparation, we have $\rho^{target} = \boldsymbol{e}_m \boldsymbol{e}_m^\dagger$ and therefor the fidelity can be computed from $F = \frac{1}{n_{init}} \sum_i \left[\rho_i(T)\right]_{mm}$, for the $m$-th diagonal element of the final states $\rho_i(T)$. 
 
 \section{Implementation}
 
@@ -502,8 +502,7 @@ The real and imaginary parts of $q(t)$ are stored in a colocated manner: For
     Each evaluation of the gradient $\nabla J$ involes a forward solve of $n_{init}$ initial quantum states to evaluate the objective function at final time $T$, as well as $n_{init}$ backward solves to compute the adjoint states and the contributions to the gradient. Note that the gradient computation \eqref{eq:gradient} requires the states and adjoint states at each time step, hence the states $q^n$ need to be stored during forward propagation. 
 
 
-
-  \subsubsection{Optimization algorithm}
+  \subsection{Optimization algorithm}
     Quandary utilized Petsc's \texttt{Tao} optimization package to apply gradient-based iterative updates to the control variables. The \texttt{Tao} optimization interface takes routines to evaluate the objective function as well as the gradient computation. In the current setting in Quandary, \texttt{Tao} applies a nonlinear Quasi-Newton optimization scheme using a preconditioned gradient based on L-BFGS updates to approximate the Hessian of the objective function. A projected line-search is applied to ensure that the objective function yields sufficient decrease per optimization iteration while keeping the control parameters within the prescribed box-constraints. 
 
 
@@ -547,7 +546,7 @@ The real and imaginary parts of $q(t)$ are stored in a colocated manner: For
       state.
     \end{itemize}
 
-\section{Regression tests}
+\subsection{Regression tests}
 Quandary has a set of regression tests. Please take a look at the
 REGRESSIONTEST.md document in the \verb+quandary/tests+ directory for 
 instruction on how to run the regression tests. 
