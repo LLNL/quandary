@@ -663,7 +663,7 @@ double objectiveT(OptimTarget* optim_target, MasterEq* mastereq, const Vec state
             break;
           case JHS:
             /* J_T = 1 - 1/purity * Tr(rho_target^\dagger * rho(T)) */
-            optim_target->targetgate->compare_trace(state, rho_t0, obj_local, true);
+            obj_local = 1.0 - optim_target->HilbertSchmidtOverlap(state, true);
             break;
           case JMEASURE: // JMEASURE is only for pure-state preparation!
             printf("ERROR: Check settings for optim_target and optim_objective.\n");
@@ -736,11 +736,10 @@ void objectiveT_diff(OptimTarget *optim_target, MasterEq* mastereq, const Vec st
       case GATE:
         switch (optim_target->objective_type) {
           case JFROBENIUS:
-            // Derivative of frobenius norm: statebar += (VrhoV - state) * (-1) * Jbar 
             optim_target->FrobeniusDistance_diff(state, statebar, obj_bar);
             break;
           case JHS:
-            optim_target->targetgate->compare_trace_diff(state, rho_t0, statebar, obj_bar, true);
+            optim_target->HilbertSchmidtOverlap_diff(state, statebar, -1.0 * obj_bar, true);
             break;
           case JMEASURE: // Will never happen
             printf("ERROR: Check settings for optim_target and optim_objective.\n");
@@ -805,9 +804,8 @@ double OptimProblem::getFidelity(const Vec finalstate){
       MPI_Allreduce(&mine, &fidel, 1, MPI_DOUBLE, MPI_SUM, PETSC_COMM_WORLD);
     break;
 
-    case GATE: // fidelity = Tr(Vrho(0)V^\dagger \rho(T))
-      optim_target->targetgate->compare_trace(finalstate, rho_t0, fidel, false);
-      fidel = 1. - fidel; // because compare_trace computes infidelity 1-x and we want x.
+    case GATE: // fidelity = Tr(Vrho(0)V^\dagger \rho)
+      fidel = optim_target->HilbertSchmidtOverlap(finalstate, false);
     break;
   }
  

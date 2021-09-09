@@ -31,14 +31,15 @@ struct OptimTarget{
     }
   };
 
+  /* Frobenius distance F = 1/2 || VrhoV - state ||^2_F */
   double FrobeniusDistance(const Vec state){
-    /* Frobenius distance F = 1/2 || VrhoV - state ||^2_F */
     double norm;
     VecAYPX(aux, 0.0, VrhoV);    // aux = VrhoV
     VecAXPY(aux, -1.0, state);   // aux = VrhoV - state
     VecNorm(aux, NORM_2, &norm);
+    double J = norm * norm / 2.0;
 
-    return norm * norm / 2.0;
+    return J;
   };
 
   void FrobeniusDistance_diff(const Vec state, Vec statebar, const double Jbar){
@@ -46,6 +47,31 @@ struct OptimTarget{
     VecAXPY(statebar,  1.0*Jbar, state);
     VecAXPY(statebar, -1.0*Jbar, VrhoV);  
   };
+
+  /* Hilber-Schmidt overlap Tr(VrhoV^\dagger * state), potentially scaled by purity of VrhoV */
+  double HilbertSchmidtOverlap(const Vec state, bool scalebypurity) {
+    // Tr(VrhoV*state) = vec(VrhoV)^dagger vec(state) 
+    double J = 0.0;
+    VecTDot(VrhoV, state, &J);
+    // scale by purity Tr(VrhoV^2) = || vec(VrhoV)||^2_2
+    if (scalebypurity){
+      double dot;
+      VecNorm(VrhoV, NORM_2, &dot);
+      J = J / (dot*dot);
+    }
+    return J;
+  };
+
+  void HilbertSchmidtOverlap_diff(const Vec state, Vec statebar, const double Jbar, bool scalebypurity){
+    // Derivative of Trace: statebar += VrhoV^\dagger Jbar / scale
+    double scale = 1.0;
+    if (scalebypurity){
+      double dot;
+      VecNorm(VrhoV, NORM_2, &dot);
+      scale = dot*dot;
+    }
+    VecAXPY(statebar, Jbar/scale, VrhoV);
+  }
 
   /* Destructor */
   ~OptimTarget(){

@@ -38,13 +38,8 @@ class Gate {
     /* Assemble VxV_re = Re(\bar V \kron V) and VxV_im = Im(\bar V \kron V) */
     void assembleGate();
 
-    /* apply the gate transformation  VrhoV =  V \rho V^\dagger */
-    // VrhoV must be allocated elsewhere! 
+    /* apply the gate transformation  VrhoV =  V \rho V^\dagger. The output vector VrhoV must be allocated! */
     void applyGate(const Vec state, Vec VrhoV);
-
-    /* compare the final state to gate-transformed initialcondition using trace distance overlap 1 - Tr(V\rho(0)V^d \rho(T))  * 1/purity_of_rho(0) */
-    void compare_trace(const Vec finalstate, const Vec rho0, double& obj, bool scalebypurity);
-    void compare_trace_diff(const Vec finalstate, const Vec rho0, Vec rho0bar, const double delta_bar, bool scalebypurity);
 };
 
 /* X Gate, spanning one qubit. 
