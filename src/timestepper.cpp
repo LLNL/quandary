@@ -22,14 +22,8 @@ TimeStepper::TimeStepper(MasterEq* mastereq_, int ntime_, double total_time_, Ou
   dt = total_time / ntime;
 
   /* Allocate storage of primal state */
-  // always store the initial state at t=0!
-  Vec rho0state;
-  VecCreate(PETSC_COMM_WORLD, &rho0state);
-  VecSetSizes(rho0state, PETSC_DECIDE, dim);
-  VecSetFromOptions(rho0state);
-  store_states.push_back(rho0state);
-  if (storeFWD) {  // all other states only if adjoint or optimization run
-    for (int n = 1; n <=ntime; n++) {
+  if (storeFWD) { 
+    for (int n = 0; n <=ntime; n++) {
       Vec state;
       VecCreate(PETSC_COMM_WORLD, &state);
       VecSetSizes(state, PETSC_DECIDE, dim);
@@ -93,8 +87,8 @@ Vec TimeStepper::solveODE(int initid, Vec rho_t0){
     double tstart = n * dt;
     double tstop  = (n+1) * dt;
 
-    /* store and write current state. Always store rho(0), because it's needed for penalty integral */
-    if (storeFWD || n==0) VecCopy(x, store_states[n]);
+    /* store and write current state. */
+    if (storeFWD) VecCopy(x, store_states[n]);
     output->writeDataFiles(n, tstart, x, mastereq);
 
     /* Take one time step */
