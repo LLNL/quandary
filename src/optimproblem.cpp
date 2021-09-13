@@ -146,6 +146,7 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   for (int i=1; i<initcondstr.size(); i++) initcond_IDs.push_back(atoi(initcondstr[i].c_str()));
   if (initcondstr[0].compare("file") == 0 )          initcond_type = FROMFILE;
   else if (initcondstr[0].compare("pure") == 0 )     initcond_type = PURE;
+  else if (initcondstr[0].compare("ensemble") == 0 ) initcond_type = ENSEMBLE;
   else if (initcondstr[0].compare("3states") == 0 )  initcond_type = THREESTATES;
   else if (initcondstr[0].compare("Nplus1") == 0 )   initcond_type = NPLUSONE;
   else if (initcondstr[0].compare("diagonal") == 0 ) initcond_type = DIAGONAL;
@@ -162,7 +163,7 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   int ilow, iupp;
   VecGetOwnershipRange(rho_t0, &ilow, &iupp);
 
-  /* If PURE or FROMFILE initialization, store them here. Otherwise they are set inside evalF */
+  /* If PURE or FROMFILE or ENSEMBLE initialization, store them here. Otherwise they are set inside evalF */
   if (initcond_type == PURE) { 
     /* Initialize with tensor product of unit vectors. */
 
@@ -215,6 +216,37 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
       // printf("  -> k=%d j=%d, elemid=%d vals=%1.4e, %1.4e\n", k, j, elemid, vec[i], vec[i+dim_ess*dim_ess]);
     }
     delete [] vec;
+  } else if (initcond_type == ENSEMBLE) {
+    // Sanity check for the list in initcond_IDs!
+    assert(initcond_IDs.size() >= 1); // at least one element 
+    assert(initcond_IDs[initcond_IDs.size()-1] < timestepper->mastereq->getNOscillators()); // last element can't exceed total number of oscillators
+    for (int i=0; i < initcond_IDs.size()-1; i++){ // list should be consecutive!
+      if (initcond_IDs[i]+1 != initcond_IDs[i+1]) {
+        printf("ERROR: List of oscillators for ensemble initialization should be consecutive!\n");
+        exit(1);
+      }
+    }
+
+    // Output. TODO: remove!
+    printf("Will initialize with ensemble state in the oscillators ");
+    for (int id=0; id < initcond_IDs.size(); id++){
+      printf(" %d", initcond_IDs[id]);
+    }
+    printf("\n");
+
+    // get dimension of subsystems *before* the first oscillator, and *behind* the last oscillator
+    int dimpre  = timestepper->mastereq->getOscillator(initcond_IDs[0])->dim_preOsc;
+    int dimpost = timestepper->mastereq->getOscillator(initcond_IDs[initcond_IDs.size()-1])->dim_postOsc;
+
+    // get dimension of subsystems defined by initcond_IDs
+    int dimsub = 1;
+    for (int i=0; i<initcond_IDs.size(); i++){
+      dimsub *= timestepper->mastereq->getOscillator(initcond_IDs[i])->getNLevels();  
+    }
+    printf("dimpre %d sub %d post %d \n", dimpre, dimsub, dimpost);
+    assert(dimsub == (int) ( timestepper->mastereq->getDimRho() / dimpre / dimpost) );
+
+    exit(1);
   }
   VecAssemblyBegin(rho_t0); VecAssemblyEnd(rho_t0);
 

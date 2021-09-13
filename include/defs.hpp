@@ -4,7 +4,7 @@
 enum LindbladType {NONE, DECAY, DEPHASE, BOTH};
 
 /* Available types of initial conditions */
-enum InitialConditionType {FROMFILE, PURE, DIAGONAL, BASIS, THREESTATES, NPLUSONE};
+enum InitialConditionType {FROMFILE, PURE, ENSEMBLE, DIAGONAL, BASIS, THREESTATES, NPLUSONE};
 
 /* Types of optimization targets: Either gate optimization or pure state preparation */
 enum TargetType {GATE,     // \rho_target = V\rho(0) V^\dagger
