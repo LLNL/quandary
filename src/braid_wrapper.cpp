@@ -23,12 +23,11 @@ myBraidVector::~myBraidVector() {
 
 
 
-myBraidApp::myBraidApp(MPI_Comm comm_braid_, double total_time_, int ntime_, TS ts_petsc_, TimeStepper* mytimestepper_, MasterEq* ham_, MapParam* config, Output* output_) 
+myBraidApp::myBraidApp(MPI_Comm comm_braid_, double total_time_, int ntime_, TimeStepper* mytimestepper_, MasterEq* ham_, MapParam* config, Output* output_) 
           : BraidApp(comm_braid_, 0.0, total_time_, ntime_) {
 
   ntime = ntime_;
   total_time = total_time_;
-  ts_petsc = ts_petsc_;
   timestepper = mytimestepper_;
   mastereq = ham_;
   comm_braid = comm_braid_;
@@ -165,7 +164,7 @@ braid_Int myBraidApp::Step(braid_Vector u_, braid_Vector ustop_, braid_Vector fs
     myBraidVector *u = (myBraidVector *)u_;
 
 
-    /* Grab current time from XBraid and pass it to Petsc time-stepper */
+    /* Grab current time from XBraid */
     pstatus.GetTstartTstop(&tstart, &tstop);
     pstatus.GetTIndex(&tindex);
     pstatus.GetDone(&done); 
@@ -199,19 +198,7 @@ braid_Int myBraidApp::Step(braid_Vector u_, braid_Vector ustop_, braid_Vector fs
     }
 #endif
 
-  if (false) {
-    /* -------------------------------------------------------------*/
-    /* --- PETSC timestepper --- */
-    /* -------------------------------------------------------------*/
-    TSSetTime(ts_petsc, tstart);
-    TSSetTimeStep(ts_petsc, tstop - tstart);
-    TSSetStepNumber(ts_petsc, 0);
-    TSSetMaxSteps(ts_petsc, 1);
-    TSSolve(ts_petsc, u->x);
-  } else {
-    /* -------------------------------------------------------------*/
-    /* --- my timestepper --- */
-    /* -------------------------------------------------------------*/
+    /* Timestepper  */
 
     /* Add penalty term */
     if (_braid_CoreElt(core->GetCore(), max_levels) == 1 && timestepper->gamma_penalty > 1e-13) {
@@ -222,7 +209,6 @@ braid_Int myBraidApp::Step(braid_Vector u_, braid_Vector ustop_, braid_Vector fs
 
     /* Evolve solution forward from tstart to tstop */
     timestepper->evolveFWD(tstart, tstop, u->x);
-  }
 
   return 0;
 }
@@ -453,8 +439,8 @@ double myBraidApp::Drive() {
 /* ================================================================*/
 
 
-myAdjointBraidApp::myAdjointBraidApp(MPI_Comm comm_braid_, double total_time_, int ntime_, TS ts_, TimeStepper* mytimestepper_, MasterEq* ham_, MapParam* config, BraidCore *Primalcoreptr_, Output* output_)
-        : myBraidApp(comm_braid_, total_time_, ntime_, ts_, mytimestepper_, ham_, config, output_) {
+myAdjointBraidApp::myAdjointBraidApp(MPI_Comm comm_braid_, double total_time_, int ntime_, TimeStepper* mytimestepper_, MasterEq* ham_, MapParam* config, BraidCore *Primalcoreptr_, Output* output_)
+        : myBraidApp(comm_braid_, total_time_, ntime_, mytimestepper_, ham_, config, output_) {
 
   /* Store the primal core */
   primalcore = Primalcoreptr_;
@@ -500,44 +486,36 @@ braid_Int myAdjointBraidApp::Step(braid_Vector u_, braid_Vector ustop_, braid_Ve
     compute_gradient = false;
   }
 
-  /* Grab current time from XBraid and pass it to Petsc time-stepper */
+  /* Grab current time from XBraid  */
   pstatus.GetTstartTstop(&tstart, &tstop);
   pstatus.GetTIndex(&tindex);
 
   double dt = tstop - tstart;
   // printf("\n %d: Braid %d %f->%f, dt=%f \n", mpirank, tindex, tstart, tstop, dt);
 
-  if (false) {
-    printf("Error: Adjoint Time stepping with PETSC is not implemented.\n");
-    exit(1);
-    
-  } else {
-    /* --------------------------------------------------------------------------*/
-    /* --- New timestepper --- */
-    /* --------------------------------------------------------------------------*/
+  /* Timestepper */
 
-    /* Get original time */
-    double tstart_orig = total_time - tstart;
-    double tstop_orig  = total_time - tstop;
+  /* Get original time */
+  double tstart_orig = total_time - tstart;
+  double tstop_orig  = total_time - tstop;
 
-    /* Get uprimal at tstop_orig */
-    myBraidVector *uprimal_tstop;
-    braid_BaseVector ubaseprimal_tstop;
-    int tstop_orig_id  = getTimeStepIndex(tstop_orig, total_time/ntime);
-    _braid_UGetVectorRef(primalcore->GetCore(), 0, tstop_orig_id, &ubaseprimal_tstop);
-    if (ubaseprimal_tstop == NULL) printf("ubaseprimal_tstop is null!\n");
-    uprimal_tstop  = (myBraidVector*) ubaseprimal_tstop->userVector;
+  /* Get uprimal at tstop_orig */
+  myBraidVector *uprimal_tstop;
+  braid_BaseVector ubaseprimal_tstop;
+  int tstop_orig_id  = getTimeStepIndex(tstop_orig, total_time/ntime);
+  _braid_UGetVectorRef(primalcore->GetCore(), 0, tstop_orig_id, &ubaseprimal_tstop);
+  if (ubaseprimal_tstop == NULL) printf("ubaseprimal_tstop is null!\n");
+  uprimal_tstop  = (myBraidVector*) ubaseprimal_tstop->userVector;
 
-    /* Reset gradient, if neccessary */
-    if (!done) VecZeroEntries(timestepper->redgrad);
+  /* Reset gradient, if neccessary */
+  if (!done) VecZeroEntries(timestepper->redgrad);
 
-    /* Evolve u backwards in time and update gradient */
-    timestepper->evolveBWD(tstop_orig, tstart_orig, uprimal_tstop->x, u->x, timestepper->redgrad, compute_gradient);
+  /* Evolve u backwards in time and update gradient */
+  timestepper->evolveBWD(tstop_orig, tstart_orig, uprimal_tstop->x, u->x, timestepper->redgrad, compute_gradient);
 
-    /* Derivative of penalty objective */
-    if (_braid_CoreElt(core->GetCore(), max_levels) == 1 && timestepper->gamma_penalty > 1e-13) {
-      timestepper->penaltyIntegral_diff(tstop_orig, uprimal_tstop->x, u->x, Jbar);
-    }
+  /* Derivative of penalty objective */
+  if (_braid_CoreElt(core->GetCore(), max_levels) == 1 && timestepper->gamma_penalty > 1e-13) {
+    timestepper->penaltyIntegral_diff(tstop_orig, uprimal_tstop->x, u->x, Jbar);
   }
 
 

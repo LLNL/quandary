@@ -347,8 +347,8 @@ int main(int argc,char **argv)
   myBraidApp* primalbraidapp = NULL;
   myAdjointBraidApp *adjointbraidapp = NULL;
   // Create primal app always, adjoint only if runtype is adjoint or optimization 
-  primalbraidapp = new myBraidApp(comm_braid, total_time, ntime, ts, mytimestepper, mastereq, &config, output);
-  if (runtype == GRADIENT || runtype == OPTIMIZATION) adjointbraidapp = new myAdjointBraidApp(comm_braid, total_time, ntime, ts, mytimestepper, mastereq, &config, primalbraidapp->getCore(), output);
+  primalbraidapp = new myBraidApp(comm_braid, total_time, ntime, mytimestepper, mastereq, &config, output);
+  if (runtype == GRADIENT || runtype == OPTIMIZATION) adjointbraidapp = new myAdjointBraidApp(comm_braid, total_time, ntime, mytimestepper, mastereq, &config, primalbraidapp->getCore(), output);
   // Initialize the braid time-grids. Warning: initGrids for primal app depends on initialization of adjoint! Do not move this line up!
   primalbraidapp->InitGrids();
   if (runtype == GRADIENT || runtype == OPTIMIZATION) adjointbraidapp->InitGrids();

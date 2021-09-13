@@ -23,7 +23,6 @@ class myBraidVector {
 
 class myBraidApp : public BraidApp {
   protected: 
-    TS ts_petsc;               /* Petsc Time-stepper struct (not used) */
     TimeStepper *timestepper;  /* My new time-stepper */
     BraidCore *core;           /* Braid core for running PinT simulation */
     Output* output;            /* Managing output */
@@ -45,7 +44,7 @@ class myBraidApp : public BraidApp {
 
   public:
 
-  myBraidApp(MPI_Comm comm_braid_, double total_time_, int ntime_, TS ts_petsc_, TimeStepper* mytimestepper_, MasterEq* ham_, MapParam* config, Output* output);
+  myBraidApp(MPI_Comm comm_braid_, double total_time_, int ntime_, TimeStepper* mytimestepper_, MasterEq* ham_, MapParam* config, Output* output);
   ~myBraidApp();
 
     /* Dumps xbraid's convergence history to a file */
@@ -122,7 +121,7 @@ class myAdjointBraidApp : public myBraidApp {
   
   public:
 
-    myAdjointBraidApp(MPI_Comm comm_braid_, double total_time_, int ntime_, TS ts_petsc_,TimeStepper* mytimestepper_, MasterEq* ham_, MapParam* config, BraidCore *Primalcoreptr_, Output* output);
+    myAdjointBraidApp(MPI_Comm comm_braid_, double total_time_, int ntime_, TimeStepper* mytimestepper_, MasterEq* ham_, MapParam* config, BraidCore *Primalcoreptr_, Output* output);
     ~myAdjointBraidApp();
 
     /* Get the storage index of primal (reversed) time point index of a certain time t, on the grid created with spacing dt  */
