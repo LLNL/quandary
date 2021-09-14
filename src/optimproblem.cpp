@@ -480,19 +480,16 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
     /* Reset adjoint */
     VecZeroEntries(rho_t0_bar);
 
-    /* Derivative of average over initial conditions */
-    double Jbar = 1.0 / ninit * obj_weights[iinit];
-
     /* Derivative of final time objective J */
-    optim_target->evalJ_diff(finalstate, rho_t0_bar, Jbar);
+    optim_target->evalJ_diff(finalstate, rho_t0_bar, 1.0 / ninit * obj_weights[iinit]);
 
     /* Derivative of time-stepping */
 #ifdef WITH_BRAID
-      adjointbraidapp->PreProcess(initid, rho_t0_bar, Jbar*gamma_penalty);
+      adjointbraidapp->PreProcess(initid, rho_t0_bar, 1.0 / ninit * gamma_penalty);
       adjointbraidapp->Drive();
       adjointbraidapp->PostProcess();
 #else
-      timestepper->solveAdjointODE(initid, rho_t0_bar, Jbar*gamma_penalty);
+      timestepper->solveAdjointODE(initid, rho_t0_bar, 1.0 / ninit * gamma_penalty);
 #endif
 
     /* Add to optimizers's gradient */
