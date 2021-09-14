@@ -953,6 +953,10 @@ int MasterEq::getRhoT0(const int iinit, const int ninit, const InitialConditionT
       /* Do nothing. Init cond is already stored */
       break;
 
+    case ENSEMBLE:
+      /* Do nothing. Init cond is already stored */
+      break;
+
     case THREESTATES:
 
       /* Reset the initial conditions */

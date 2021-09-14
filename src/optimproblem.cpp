@@ -243,12 +243,36 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
     for (int i=0; i<initcond_IDs.size(); i++){
       dimsub *= timestepper->mastereq->getOscillator(initcond_IDs[i])->getNLevels();  
     }
-    printf("dimpre %d sub %d post %d \n", dimpre, dimsub, dimpost);
-    assert(dimsub == (int) ( timestepper->mastereq->getDimRho() / dimpre / dimpost) );
+    // printf("dimpre %d sub %d post %d \n", dimpre, dimsub, dimpost);
+    int dimrho = timestepper->mastereq->getDimRho();
+    assert(dimsub == (int) ( dimrho / dimpre / dimpost) );
 
-    exit(1);
+    for (int i=0; i < dimsub; i++){
+      for (int j=i; j < dimsub; j++){
+        int ifull = i * dimpost;
+        int jfull = j * dimpost;
+        // printf(" i=%d j=%d ifull %d, jfull %d\n", i, j, ifull, jfull);
+        if (i == j) { // diagonal element: 1/N_sub
+          int elemid_re = getIndexReal(getVecID(ifull, jfull, dimrho));
+          if (ilow <= elemid_re && elemid_re < iupp) VecSetValue(rho_t0, elemid_re, 1./dimsub, INSERT_VALUES);
+        } else {
+          // upper diagonal (0.5 + 0.5*i) / (N_sub^2)
+          int elemid_re = getIndexReal(getVecID(ifull, jfull, dimrho));
+          int elemid_im = getIndexImag(getVecID(ifull, jfull, dimrho));
+          if (ilow <= elemid_re && elemid_re < iupp) VecSetValue(rho_t0, elemid_re, 0.5/(dimsub*dimsub), INSERT_VALUES);
+          if (ilow <= elemid_im && elemid_im < iupp) VecSetValue(rho_t0, elemid_im, 0.5/(dimsub*dimsub), INSERT_VALUES);
+          // lower diagonal (0.5 - 0.5*i) / (N_sub^2)
+          elemid_re = getIndexReal(getVecID(jfull, ifull, dimrho));
+          elemid_im = getIndexImag(getVecID(jfull, ifull, dimrho));
+          if (ilow <= elemid_re && elemid_re < iupp) VecSetValue(rho_t0, elemid_re,  0.5/(dimsub*dimsub), INSERT_VALUES);
+          if (ilow <= elemid_im && elemid_im < iupp) VecSetValue(rho_t0, elemid_im, -0.5/(dimsub*dimsub), INSERT_VALUES);
+        } 
+      }
+    }
   }
   VecAssemblyBegin(rho_t0); VecAssemblyEnd(rho_t0);
+  VecView(rho_t0, NULL);
+  exit(1);
 
   /* Initialize adjoint */
   VecDuplicate(rho_t0, &rho_t0_bar);
