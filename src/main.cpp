@@ -270,7 +270,7 @@ int main(int argc,char **argv)
   // Sanity check for matrix free solver
   bool usematfree = config.GetBoolParam("usematfree", false);
   if (usematfree && nlevels.size() != 2 ){
-    printf("ERROR: Matrix free solver is only implemented for systems with TWO oscillators!\n");
+    printf("ERROR: Matrix free solver is only implemented for systems with TWO oscillators. Run with option 'usematfree=false'!\n");
     exit(1);
   }
   if (usematfree && mpisize_petsc > 1) {

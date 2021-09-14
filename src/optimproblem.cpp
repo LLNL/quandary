@@ -227,13 +227,6 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
       }
     }
 
-    // Output. TODO: remove!
-    printf("Will initialize with ensemble state in the oscillators ");
-    for (int id=0; id < initcond_IDs.size(); id++){
-      printf(" %d", initcond_IDs[id]);
-    }
-    printf("\n");
-
     // get dimension of subsystems *before* the first oscillator, and *behind* the last oscillator
     int dimpre  = timestepper->mastereq->getOscillator(initcond_IDs[0])->dim_preOsc;
     int dimpost = timestepper->mastereq->getOscillator(initcond_IDs[initcond_IDs.size()-1])->dim_postOsc;
