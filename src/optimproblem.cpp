@@ -264,8 +264,6 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
     }
   }
   VecAssemblyBegin(rho_t0); VecAssemblyEnd(rho_t0);
-  VecView(rho_t0, NULL);
-  exit(1);
 
   /* Initialize adjoint */
   VecDuplicate(rho_t0, &rho_t0_bar);
