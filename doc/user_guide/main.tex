@@ -234,7 +234,7 @@ State preparation aims to drive the system from either one specific or from any 
 \end{align}
 where $\boldsymbol{e}_m$ denotes the $m$-th unit vector in $\R^N$. We note that considering pure states of that specific form ($\boldsymbol{e}_m\boldsymbol{e}_m^\dagger$) is not a restriction, because any other pure target state can be transformed to this representation using a unitary change of coordinates (compare the Appendix in \cite{guenther2021quantum} for a more detailed description). For $m=0$, the target state represents the ground state of the system under consideration, which has important applications for quantum reset as well as quantum error correction. 
 
-Depending on the choice for the initial conditions, optimization towards a pure target state can be used to realize either a simple state-to-state transfer (choosing one specific initial condition, $n_{init}=1$), or to realize the more complex task of state preparation that drives \textit{any} initial state to a common pure target state, and then $n_{init} > 1$. In the latter case, typically a full basis of initial conditions needs to be considered during the optimization ($n_{init}=N^2$). However, it is shown in \cite{guenther2021quantum}, that if one chooses the objective function $J_{measure}$ with corresponding measurement operator $N_m$ (see eq. \eqref{eq:Jmeasure}), one can reduce the number of initial condition needed to only \textit{one}, being an ensemble of all basis states, and hence $n_{init}=1$ independent of the system dimension $N$. Compare \cite{guenther2021quantum} for details.
+Depending on the choice for the initial conditions, optimization towards a pure target state can be used to realize either a simple state-to-state transfer (choosing one specific initial condition, $n_{init}=1$), or to realize the more complex task of state preparation that drives \textit{any} initial state to a common pure target state, and then $n_{init} > 1$. In the latter case, typically a full basis of initial conditions needs to be considered during the optimization ($n_{init}=N^2$). However, it is shown in \cite{guenther2021quantum}, that if one chooses the objective function $J_{measure}$ with corresponding measurement operator $N_m$ (see eq. \eqref{eq:Jmeasure}), one can reduce the number of initial conditions to only \textit{one} being an ensemble of all basis states, and hence $n_{init}=1$ independent of the system dimension $N$. Compare \cite{guenther2021quantum} for details, and Section \ref{sec:ensemblestate}
 
 Note that the above $m$ refers to the $|m\rangle$-th state of the entire system under consideration with dimension $N$, which can be a composite of $Q$ subsystems. 
 In Quandary this pure target state is specified by defining the desired pure target for \textit{each} of the subsystems individally. For a composite system of $Q$ subsystems with $n_k$ levels each, a composite target pure state is specified by a list of integers $m_k$ with $0\leq m_k < n_k$ representing the pure target state in each subsystem $k$. The composite pure target is state is then
@@ -289,7 +289,7 @@ To compute the objective function at final time T, the essential-dimensional gat
 
 
 \subsection{Initial conditions}\label{subsec:initcond}
-Quandary offers various choices to set the initial conditions for simulation and optimization in order to accomodate for different simulation and optimization needs. Below is a list of available inputs for setting the initial states (configuration option \texttt{initialcondition}). 
+Quandary offers various choices to set the initial conditions for simulation and optimization in order to accomodate for different simulation and optimization needs. Below is a list of available options for the initial states (configuration option \texttt{initialcondition}). 
 
 \subsubsection{Pure-state initialization}
 One can choose to simulate and optimize for only one specific pure initial state (then $n_{init} = 1$). The initial density matrix is then composed of Kronecker products of pure states for each of the subsystems. E.g. for a bipartite system with $n_1
@@ -298,11 +298,6 @@ One can choose to simulate and optimize for only one specific pure initial state
   \rho(0)  = |m_1\rangle \langle m_1| \otimes |m_2\rangle \langle m_2| \quad \text{for} \quad m_1 \in \{0,\dots, n_1-1\}, m_2\in \{0,\dots, n_2-1\}
 \end{align}
 Note that, again, in this notation $|m_1\rangle = \boldsymbol{e}_{m_1} \in \R^{n_1}$. The configuration input takes a list of the integers $m_k$ for each subsystem. 
-
-\subsubsection{Reading an initial state from file}
-A specific initial state $\rho(0)$ can also be read from file ($\Rightarrow n_{init}=1$). Format: one column being the vectorized density matrix (vectorization is columnwise), first all real parts, then all imaginary parts (i.e. number of lines is $2N^2$, with one value per line). 
-
-This option is useful for example if one wants to propagate a single \textit{non-pure} initial state (e.g. when considering the ensemble of basis state for pure-state preparation). In that case, one first has to generate a datafile storing that state (e.g. by simulating a system and storing the output, or by using the scripts under \texttt{util/} to generate the ensemble of basis states for a given system dimension $N$.). This data file can then be read in as the initial condition that is to be used for simulation and/or optimization.  
 
 \subsubsection{Basis of density matrices}
 To span any possible initial state, an entire basis of states can be used as initial conditions, and then $n_{init} = N^2$. Quandary implements the basis states as defined in \cite{guenther2021quantum}:
@@ -327,6 +322,19 @@ unique index $i \in \{0,\dots, N^2-1\}$ is assigned to each basis state with
 \subsubsection{Diagonal basis matrices (aka all pure states)}
 One can choose to propagate only those basis elements that correspond to pure states of the form $\boldsymbol{e}_k\boldsymbol{e}_k^\dagger$, i.e. propagating only $B^{kk}$ for $k=0,\dots, N-1$, and then $n_{init}=N$.
 
+\subsubsection{Ensemble state for pure-state optimization}
+For pure-state optimization using the objective function $J_{measure}$ \eqref{eq:Jmeasure}, one can use the ensemble state 
+\begin{align}\label{eq:ensemblestate}
+  \rho_s(0) = \frac{1}{N^2}\sum_{i,j=0}^{N-1} B^{kj}
+\end{align}
+as the only initial condition for optimization or simulation ($\Rightarrow n_{init}=1$). Since Lindblad's master equation is linear in the initial condition, and $J_{measure}$ is linear in the final state, propagating this single initial state yields the same target value as if one propagates all basis states spanning that space and averages their measure at final time $T$ (compare \cite{guenther2021quantum}). To specify the ensemble state in Quandary for composite quantum systems with multiple subsystems, on can provide a list of integer ID's that determine in which of the subsystems the ensemble state should be spanned. Other subsystems will be initialized in the ground state. 
+
+To be precise: the user specifies a list of consecutive ID's $<k_0>, \dots, <k_m>$ with $0 \leq k_j \leq Q-1$ and $k_{j+1} = k_j+1$, the ensemble state $\rho_s(0)$ will be spanned in the dimension given by those subsystems, $N_s = \prod_{j=0}^{m} n_{k_j}$ and $\rho_s(0) \in \C^{N_s\times N_s}$ with basis matrices $B^{kj}$ spanned in $\C^{N_s\times N_s}$. The initial state that Quandary propagates is then given by 
+\begin{align}
+  \rho(0) = \bs{e}_0\bs{e}_0^\dagger \otimes \underbrace{\rho_s(0)}_{\in \C^{N_s\times N_s}} \otimes \, \bs{e}_0 \bs{e}_0^\dagger
+\end{align}
+where the first $\bs{e}_0$ (before the kronecker product) is the first unit vector in $\R^{\prod_{k=0}^{k_0-1}}$ (i.e. ground state in all preceding subsystems), and the second $\bs{e}_0$ (behind the kronecker products) is the first unit vector in the dimension of all subsequent systems, $\R^{\prod_{k=k_m+1}^{Q-1}}$. 
+
 \subsubsection{Three initial states for gate optimization}\label{subsec:threeinitcond}
 When considering gate optimization, it has been shown in \cite{goerz2014optimal} that it is enough to consider only three specific initial states during optimization ($n_{init}=3$), independent of the Hilber space dimension. Those three initial states are given by
 \begin{align}
@@ -338,6 +346,12 @@ where $I_N\in R^{N\times N}$ is the identity matrix. They are readily implemente
 
 \subsubsection{$N+1$ initial states for gate optimization}
 The three initial states from above do not suffice to estimate an average fidelity of the realized gate (compare \cite{goerz2014optimal}). Instead, it is suggested in that same paper to choose $N+1$ initial states to compute an average fidelity. Those $N+1$ initial states consist of the $N$ diagonal states $B^{kk}$ in the Hilbertspace of dimension $N$, as well as the totally rotated state $\rho(0)_2$ from above. Quandary offers the choice to simulate (or optimize) using those initial states, then $n_{init} = N+1$.
+
+\subsubsection{Reading an initial state from file}
+A specific initial state $\rho(0)$ can also be read from file ($\Rightarrow n_{init}=1$). Format: one column being the vectorized density matrix (vectorization is columnwise), first all real parts, then all imaginary parts (i.e. number of lines is $2N^2$, with one value per line). 
+
+This option is useful for example if one wants to propagate a specific \textit{non-pure} initial state. In that case, one first has to generate a datafile storing that state (e.g. by simulating a system and storing the output), which can then be read in as initial condition. 
+
 
 \subsection{Penalty term}
 The penalty term can be added with parameter $\gamma_1 \geq 0$ in order to achieve a desired behavior at earlier times other than the final time $T$.
