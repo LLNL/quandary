@@ -133,10 +133,12 @@ double OptimTarget::evalJ(const Vec state){
           // substract 1.0 from m-th diagonal element then take the vector norm 
           diagID = getIndexReal(getVecID(purestateID,purestateID,dim));
           if (ilo <= diagID && diagID < ihi) VecSetValue(state, diagID, -1.0, ADD_VALUES);
+          VecAssemblyBegin(state); VecAssemblyEnd(state);
           norm = 0.0;
           VecNorm(state, NORM_2, &norm);
           objective = pow(norm, 2.0) / 2.0;
           if (ilo <= diagID && diagID < ihi) VecSetValue(state, diagID, +1.0, ADD_VALUES); // restore original state!
+          VecAssemblyBegin(state); VecAssemblyEnd(state);
           break;
           
         case JHS:
@@ -209,6 +211,8 @@ void OptimTarget::evalJ_diff(const Vec state, Vec statebar, const double Jbar){
       }
       break; // case pure1
   }
+
+  VecAssemblyBegin(statebar); VecAssemblyEnd(statebar);
 }
 
 
