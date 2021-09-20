@@ -123,8 +123,8 @@ MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Osci
   if (!usematfree){
     RHSctx.Ac_vec = &Ac_vec;
     RHSctx.Bc_vec = &Bc_vec;
-    RHSctx.Ad_vec = &Ad_vec;
-    RHSctx.Bd_vec = &Bd_vec;
+    // RHSctx.Ad_vec = &Ad_vec;
+    // RHSctx.Bd_vec = &Bd_vec;
     RHSctx.Ad = &Ad;
     RHSctx.Bd = &Bd;
     RHSctx.aux = &aux;
@@ -160,15 +160,15 @@ MasterEq::~MasterEq(){
         MatDestroy(&Ac_vec[iosc]);
         MatDestroy(&Bc_vec[iosc]);
       }
-      for (int i= 0; i < noscillators*(noscillators-1)/2; i++) {
-        MatDestroy(&Ad_vec[i]);
-        MatDestroy(&Bd_vec[i]);
-      }
+      // for (int i= 0; i < noscillators*(noscillators-1)/2; i++) {
+        // MatDestroy(&Ad_vec[i]);
+        // MatDestroy(&Bd_vec[i]);
+      // }
       VecDestroy(&aux);
       delete [] Ac_vec;
       delete [] Bc_vec;
-      delete [] Ad_vec;
-      delete [] Bd_vec;
+      // delete [] Ad_vec;
+      // delete [] Bd_vec;
     }
     delete [] dRedp;
     delete [] dImdp;
@@ -188,8 +188,8 @@ void MasterEq::initSparseMatSolver(){
   Ac_vec = new Mat[noscillators];
   Bc_vec = new Mat[noscillators];
   // coupling terms
-  Ad_vec = new Mat[noscillators*(noscillators-1)/2];
-  Bd_vec = new Mat[noscillators*(noscillators-1)/2];
+  // Ad_vec = new Mat[noscillators*(noscillators-1)/2];
+  // Bd_vec = new Mat[noscillators*(noscillators-1)/2];
 
   int dimmat = (int) sqrt(dim);
 
@@ -295,76 +295,76 @@ void MasterEq::initSparseMatSolver(){
     /* Compute Jaynes-Cummings coupling building blocks */
     /* Ad_kl(t) =  I_N \kron (ak^Tal − akal^T) − (al^Tak − alak^T) \kron IN */
     /* Bd_kl(t) = -I_N \kron (ak^Tal + akal^T) + (al^Tak + alak_T) \kron IN */
-    for (int josc=iosc+1; josc<noscillators; josc++){
+    // for (int josc=iosc+1; josc<noscillators; josc++){
 
-      /* Allocate Ad_kl, Bd_kl matrices, 4 nonzeros per kl-coupling per row. */
-      MatCreate(PETSC_COMM_WORLD, &Ad_vec[id_kl]);
-      MatCreate(PETSC_COMM_WORLD, &Bd_vec[id_kl]);
-      MatSetType(Ad_vec[id_kl], MATMPIAIJ);
-      MatSetType(Bd_vec[id_kl], MATMPIAIJ);
-      MatSetSizes(Ad_vec[id_kl], PETSC_DECIDE, PETSC_DECIDE, dim, dim);
-      MatSetSizes(Bd_vec[id_kl], PETSC_DECIDE, PETSC_DECIDE, dim, dim);
-      MatMPIAIJSetPreallocation(Ad_vec[id_kl], 4, NULL, 4, NULL);
-      MatMPIAIJSetPreallocation(Bd_vec[id_kl], 4, NULL, 4, NULL);
-      MatSetUp(Ad_vec[id_kl]);
-      MatSetUp(Bd_vec[id_kl]);
-      MatSetFromOptions(Ad_vec[id_kl]);
-      MatSetFromOptions(Bd_vec[id_kl]);
-      MatGetOwnershipRange(Ad_vec[id_kl], &ilow, &iupp);
+    //   /* Allocate Ad_kl, Bd_kl matrices, 4 nonzeros per kl-coupling per row. */
+    //   MatCreate(PETSC_COMM_WORLD, &Ad_vec[id_kl]);
+    //   MatCreate(PETSC_COMM_WORLD, &Bd_vec[id_kl]);
+    //   MatSetType(Ad_vec[id_kl], MATMPIAIJ);
+    //   MatSetType(Bd_vec[id_kl], MATMPIAIJ);
+    //   MatSetSizes(Ad_vec[id_kl], PETSC_DECIDE, PETSC_DECIDE, dim, dim);
+    //   MatSetSizes(Bd_vec[id_kl], PETSC_DECIDE, PETSC_DECIDE, dim, dim);
+    //   MatMPIAIJSetPreallocation(Ad_vec[id_kl], 4, NULL, 4, NULL);
+    //   MatMPIAIJSetPreallocation(Bd_vec[id_kl], 4, NULL, 4, NULL);
+    //   MatSetUp(Ad_vec[id_kl]);
+    //   MatSetUp(Bd_vec[id_kl]);
+    //   MatSetFromOptions(Ad_vec[id_kl]);
+    //   MatSetFromOptions(Bd_vec[id_kl]);
+    //   MatGetOwnershipRange(Ad_vec[id_kl], &ilow, &iupp);
 
-      // Dimensions of joscillator
-      int nj     = oscil_vec[josc]->getNLevels();
-      int nprej  = oscil_vec[josc]->dim_preOsc;
-      int npostj = oscil_vec[josc]->dim_postOsc;
+    //   // Dimensions of joscillator
+    //   int nj     = oscil_vec[josc]->getNLevels();
+    //   int nprej  = oscil_vec[josc]->dim_preOsc;
+    //   int npostj = oscil_vec[josc]->dim_postOsc;
 
 
-      /* Iterate over local rows of Ad_vec / Bd_vec */
-      for (int row = ilow; row<iupp; row++){
-        // Add +/- I_N \kron (ak^Tal -/+ akal^T)
-        r1 = row % (dimmat / nprek);
-        r1a = (int) r1 / npostk;
-        r1b = r1 % (nj*npostj);
-        r1b = r1b % (nj*npostj);
-        r1b = (int) r1b / npostj;
-        if (r1a > 0 && r1b < nj-1) {
-          val = sqrt(r1a * (r1b+1));
-          col = row - npostk + npostj;
-           if (fabs(val)>1e-14) MatSetValue(Ad_vec[id_kl], row, col,  val, ADD_VALUES);
-           if (fabs(val)>1e-14) MatSetValue(Bd_vec[id_kl], row, col, -val, ADD_VALUES);
-        }
-        if (r1a < nk-1  && r1b > 0) {
-          val = sqrt((r1a+1) * r1b);
-          col = row + npostk - npostj;
-          if (fabs(val)>1e-14) MatSetValue(Ad_vec[id_kl], row, col, -val, ADD_VALUES);
-          if (fabs(val)>1e-14) MatSetValue(Bd_vec[id_kl], row, col, -val, ADD_VALUES);
-        }
+    //   /* Iterate over local rows of Ad_vec / Bd_vec */
+    //   for (int row = ilow; row<iupp; row++){
+    //     // Add +/- I_N \kron (ak^Tal -/+ akal^T)
+    //     r1 = row % (dimmat / nprek);
+    //     r1a = (int) r1 / npostk;
+    //     r1b = r1 % (nj*npostj);
+    //     r1b = r1b % (nj*npostj);
+    //     r1b = (int) r1b / npostj;
+    //     if (r1a > 0 && r1b < nj-1) {
+    //       val = sqrt(r1a * (r1b+1));
+    //       col = row - npostk + npostj;
+    //        if (fabs(val)>1e-14) MatSetValue(Ad_vec[id_kl], row, col,  val, ADD_VALUES);
+    //        if (fabs(val)>1e-14) MatSetValue(Bd_vec[id_kl], row, col, -val, ADD_VALUES);
+    //     }
+    //     if (r1a < nk-1  && r1b > 0) {
+    //       val = sqrt((r1a+1) * r1b);
+    //       col = row + npostk - npostj;
+    //       if (fabs(val)>1e-14) MatSetValue(Ad_vec[id_kl], row, col, -val, ADD_VALUES);
+    //       if (fabs(val)>1e-14) MatSetValue(Bd_vec[id_kl], row, col, -val, ADD_VALUES);
+    //     }
 
-        // Add -/+ (al^Tak -/+ alak^T) \kron I
-        r1 = row % (dimmat * dimmat / nprek );
-        r1a = (int) r1 / (npostk*dimmat);
-        r1b = r1 % (npostk*dimmat);
-        r1b = r1b % (nj*npostj*dimmat);
-        r1b = (int) r1b / (npostj*dimmat);
-        if (r1a < nk-1 && r1b > 0) {
-          val = sqrt((r1a+1) * r1b);
-          col = row + npostk*dimmat - npostj*dimmat;
-          if (fabs(val)>1e-14) MatSetValue(Ad_vec[id_kl], row, col, -val, ADD_VALUES);
-          if (fabs(val)>1e-14) MatSetValue(Bd_vec[id_kl], row, col, +val, ADD_VALUES);
-        }
-        if (r1a > 0 && r1b < nj-1) {
-          val = sqrt(r1a * (r1b+1));
-          col = row - npostk*dimmat + npostj*dimmat;
-          if (fabs(val)>1e-14) MatSetValue(Ad_vec[id_kl], row, col, val, ADD_VALUES);
-          if (fabs(val)>1e-14) MatSetValue(Bd_vec[id_kl], row, col, val, ADD_VALUES);
-        }
-      }
-      MatAssemblyBegin(Ad_vec[id_kl], MAT_FINAL_ASSEMBLY);
-      MatAssemblyBegin(Bd_vec[id_kl], MAT_FINAL_ASSEMBLY);
-      MatAssemblyEnd(Ad_vec[id_kl], MAT_FINAL_ASSEMBLY);
-      MatAssemblyEnd(Bd_vec[id_kl], MAT_FINAL_ASSEMBLY);
+    //     // Add -/+ (al^Tak -/+ alak^T) \kron I
+    //     r1 = row % (dimmat * dimmat / nprek );
+    //     r1a = (int) r1 / (npostk*dimmat);
+    //     r1b = r1 % (npostk*dimmat);
+    //     r1b = r1b % (nj*npostj*dimmat);
+    //     r1b = (int) r1b / (npostj*dimmat);
+    //     if (r1a < nk-1 && r1b > 0) {
+    //       val = sqrt((r1a+1) * r1b);
+    //       col = row + npostk*dimmat - npostj*dimmat;
+    //       if (fabs(val)>1e-14) MatSetValue(Ad_vec[id_kl], row, col, -val, ADD_VALUES);
+    //       if (fabs(val)>1e-14) MatSetValue(Bd_vec[id_kl], row, col, +val, ADD_VALUES);
+    //     }
+    //     if (r1a > 0 && r1b < nj-1) {
+    //       val = sqrt(r1a * (r1b+1));
+    //       col = row - npostk*dimmat + npostj*dimmat;
+    //       if (fabs(val)>1e-14) MatSetValue(Ad_vec[id_kl], row, col, val, ADD_VALUES);
+    //       if (fabs(val)>1e-14) MatSetValue(Bd_vec[id_kl], row, col, val, ADD_VALUES);
+    //     }
+    //   }
+    //   MatAssemblyBegin(Ad_vec[id_kl], MAT_FINAL_ASSEMBLY);
+    //   MatAssemblyBegin(Bd_vec[id_kl], MAT_FINAL_ASSEMBLY);
+    //   MatAssemblyEnd(Ad_vec[id_kl], MAT_FINAL_ASSEMBLY);
+    //   MatAssemblyEnd(Bd_vec[id_kl], MAT_FINAL_ASSEMBLY);
 
-      id_kl++;
-    }
+    //   id_kl++;
+    // }
   }
 
   /* Allocate and compute imag drift part Bd = Hd */
@@ -1207,27 +1207,27 @@ int myMatMult_sparsemat(Mat RHS, Vec x, Vec y){
     MatMult((*(shellctx->Bc_vec))[iosc], u, *shellctx->aux);
     VecAXPY(vout, p, *shellctx->aux);
 
-    // Coupling terms
-    for (int josc=iosc+1; josc<shellctx->nlevels.size(); josc++){
+    // // Coupling terms
+    // for (int josc=iosc+1; josc<shellctx->nlevels.size(); josc++){
 
-      double etakl = shellctx->eta[id_kl];
-      double coskl = cos(etakl * shellctx->time);
-      double sinkl = sin(etakl * shellctx->time);
-      double Jkl = shellctx->Jkl[id_kl]; 
-      // uout += J_kl*sin*Adklu
-      MatMult((*(shellctx->Ad_vec))[id_kl], u, *shellctx->aux);
-      VecAXPY(uout, Jkl*sinkl, *shellctx->aux);
-      // uout += -Jkl*cos*Bdklv
-      MatMult((*(shellctx->Bd_vec))[id_kl], v, *shellctx->aux);
-      VecAXPY(uout, -Jkl*coskl, *shellctx->aux);
-      // vout += Jkl*cos*Bdklu
-      MatMult((*(shellctx->Bd_vec))[id_kl], u, *shellctx->aux);
-      VecAXPY(vout, Jkl*coskl, *shellctx->aux);
-      //vout += Jkl*sin*Adklv
-      MatMult((*(shellctx->Ad_vec))[id_kl], v, *shellctx->aux);
-      VecAXPY(vout, Jkl*sinkl, *shellctx->aux);
-      id_kl++;
-    }
+    //   double etakl = shellctx->eta[id_kl];
+    //   double coskl = cos(etakl * shellctx->time);
+    //   double sinkl = sin(etakl * shellctx->time);
+    //   double Jkl = shellctx->Jkl[id_kl]; 
+    //   // uout += J_kl*sin*Adklu
+    //   MatMult((*(shellctx->Ad_vec))[id_kl], u, *shellctx->aux);
+    //   VecAXPY(uout, Jkl*sinkl, *shellctx->aux);
+    //   // uout += -Jkl*cos*Bdklv
+    //   MatMult((*(shellctx->Bd_vec))[id_kl], v, *shellctx->aux);
+    //   VecAXPY(uout, -Jkl*coskl, *shellctx->aux);
+    //   // vout += Jkl*cos*Bdklu
+    //   MatMult((*(shellctx->Bd_vec))[id_kl], u, *shellctx->aux);
+    //   VecAXPY(vout, Jkl*coskl, *shellctx->aux);
+    //   //vout += Jkl*sin*Adklv
+    //   MatMult((*(shellctx->Ad_vec))[id_kl], v, *shellctx->aux);
+    //   VecAXPY(vout, Jkl*sinkl, *shellctx->aux);
+    //   id_kl++;
+    // }
   }
 
   /* Restore */
@@ -1292,27 +1292,27 @@ int myMatMultTranspose_sparsemat(Mat RHS, Vec x, Vec y) {
     MatMultTranspose((*(shellctx->Bc_vec))[iosc], u, *shellctx->aux);
     VecAXPY(vout, -1.*p, *shellctx->aux);
 
-    // Coupling terms
-    for (int josc=iosc+1; josc<shellctx->nlevels.size(); josc++){
+    // // Coupling terms
+    // for (int josc=iosc+1; josc<shellctx->nlevels.size(); josc++){
 
-      double etakl = shellctx->eta[id_kl];
-      double coskl = cos(etakl * shellctx->time);
-      double sinkl = sin(etakl * shellctx->time);
-      double Jkl = shellctx->Jkl[id_kl]; 
-      // uout += J_kl*sin*Adklu^T
-      MatMultTranspose((*(shellctx->Ad_vec))[id_kl], u, *shellctx->aux);
-      VecAXPY(uout, Jkl*sinkl, *shellctx->aux);
-      // uout += +Jkl*cos*Bdklv^T
-      MatMultTranspose((*(shellctx->Bd_vec))[id_kl], v, *shellctx->aux);
-      VecAXPY(uout,  Jkl*coskl, *shellctx->aux);
-      // vout += - Jkl*cos*Bdklu^T
-      MatMultTranspose((*(shellctx->Bd_vec))[id_kl], u, *shellctx->aux);
-      VecAXPY(vout, - Jkl*coskl, *shellctx->aux);
-      //vout += Jkl*sin*Adklv^T
-      MatMultTranspose((*(shellctx->Ad_vec))[id_kl], v, *shellctx->aux);
-      VecAXPY(vout, Jkl*sinkl, *shellctx->aux);
-      id_kl++;
-    }
+    //   double etakl = shellctx->eta[id_kl];
+    //   double coskl = cos(etakl * shellctx->time);
+    //   double sinkl = sin(etakl * shellctx->time);
+    //   double Jkl = shellctx->Jkl[id_kl]; 
+    //   // uout += J_kl*sin*Adklu^T
+    //   MatMultTranspose((*(shellctx->Ad_vec))[id_kl], u, *shellctx->aux);
+    //   VecAXPY(uout, Jkl*sinkl, *shellctx->aux);
+    //   // uout += +Jkl*cos*Bdklv^T
+    //   MatMultTranspose((*(shellctx->Bd_vec))[id_kl], v, *shellctx->aux);
+    //   VecAXPY(uout,  Jkl*coskl, *shellctx->aux);
+    //   // vout += - Jkl*cos*Bdklu^T
+    //   MatMultTranspose((*(shellctx->Bd_vec))[id_kl], u, *shellctx->aux);
+    //   VecAXPY(vout, - Jkl*coskl, *shellctx->aux);
+    //   //vout += Jkl*sin*Adklv^T
+    //   MatMultTranspose((*(shellctx->Ad_vec))[id_kl], v, *shellctx->aux);
+    //   VecAXPY(vout, Jkl*sinkl, *shellctx->aux);
+    //   id_kl++;
+    // }
 
   }
 
