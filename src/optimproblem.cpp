@@ -276,7 +276,7 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   VecDuplicate(xlower, &xupper);
   std::vector<double> bounds;
   config.GetVecDoubleParam("optim_bounds", bounds, 1e20);
-  assert (bounds.size() >= timestepper->mastereq->getNOscillators());
+  for (int i = bounds.size(); i < timestepper->mastereq->getNOscillators(); i++) bounds.push_back(1e+12); // fill up with zeros
   int col = 0;
   for (int iosc = 0; iosc < timestepper->mastereq->getNOscillators(); iosc++){
     // Scale bounds by 1/sqrt(2) * (number of carrier waves) */

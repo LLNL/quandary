@@ -263,10 +263,10 @@ int main(int argc,char **argv)
   std::vector<double> crosskerr, Jkl;
   config.GetVecDoubleParam("crosskerr", crosskerr, 0.0);   // cross ker \xi_{kl}, zz-coupling
   config.GetVecDoubleParam("Jkl", Jkl, 0.0); // Jaynes-Cummings coupling
-  // TODO: Fill up with zeros. For now, just check if enough elements are given
+  // If not enough elements are given, fill up with zeros!
   int noscillators = nlevels.size();
-  assert(crosskerr.size() >= (noscillators-1) * noscillators / 2);
-  assert(Jkl.size() >= (noscillators-1) * noscillators / 2);
+  for (int i = crosskerr.size(); i < (noscillators-1) * noscillators / 2; i++)  crosskerr.push_back(0.0);
+  for (int i = Jkl.size(); i < (noscillators-1) * noscillators / 2; i++) Jkl.push_back(0.0);
   // Sanity check for matrix free solver
   bool usematfree = config.GetBoolParam("usematfree", false);
   if (usematfree && nlevels.size() != 2 ){
