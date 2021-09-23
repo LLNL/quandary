@@ -63,8 +63,8 @@ int Oscillator::evalControl(const double t, double* Re_ptr, double* Im_ptr){
   }
 
   /* Evaluate the spline at time t */
-  *Re_ptr = basisfunctions->evaluate(t, params, ground_freq, RE);
-  *Im_ptr = basisfunctions->evaluate(t, params, ground_freq, IM);
+  *Re_ptr = basisfunctions->evaluate(t, params, ground_freq, ControlType::RE);
+  *Im_ptr = basisfunctions->evaluate(t, params, ground_freq, ControlType::IM);
 
   /* If pipulse: Overwrite controls by constant amplitude */
   for (int ipulse=0; ipulse< pipulse.tstart.size(); ipulse++){
@@ -89,8 +89,8 @@ int Oscillator::evalControl_diff(const double t, double* dRedp, double* dImdp) {
   /* Evaluate derivative of spline basis at time t */
   double Rebar = 1.0;
   double Imbar = 1.0;
-  basisfunctions->derivative(t, dRedp, Rebar, RE);
-  basisfunctions->derivative(t, dImdp, Imbar, IM);
+  basisfunctions->derivative(t, dRedp, Rebar, ControlType::RE);
+  basisfunctions->derivative(t, dImdp, Imbar, ControlType::IM);
 
   /* TODO: Derivative of pipulse? */
   for (int ipulse=0; ipulse< pipulse.tstart.size(); ipulse++){
@@ -112,12 +112,12 @@ int Oscillator::evalControl_Labframe(const double t, double* f){
   }
 
   /* Evaluate the spline at time t */
-  *f = basisfunctions->evaluate(t, params, ground_freq, LAB);
+  *f = basisfunctions->evaluate(t, params, ground_freq, ControlType::LAB);
 
   // Test implementation of lab frame controls. 
   // double forig = *f;
-  // double p = basisfunctions->evaluate(t, params, ground_freq, RE);
-  // double q = basisfunctions->evaluate(t, params, ground_freq, IM);
+  // double p = basisfunctions->evaluate(t, params, ground_freq, ControlType::RE);
+  // double q = basisfunctions->evaluate(t, params, ground_freq, ControlType::IM);
   // double arg = 2.0*M_PI*ground_freq*t;
   // double ftest = 2.0*p*cos(arg) - 2.0*q*sin(arg);
   // double err = fabs(forig-ftest);

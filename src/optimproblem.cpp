@@ -64,7 +64,7 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   // Read from config file 
   config.GetVecStrParam("optim_target", target_str, "pure");
   if ( target_str[0].compare("gate") ==0 ) {
-    target_type = GATE;
+    target_type = TargetType::GATE;
     /* Initialize the targetgate */
     if ( target_str.size() < 2 ) {
       printf("ERROR: You want to optimize for a gate, but didn't specify which one. Check your config for 'optim_target'!\n");
@@ -86,7 +86,7 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
     } 
   }  
   else if (target_str[0].compare("pure")==0) {
-    target_type = PUREM;
+    target_type = TargetType::PURE;
     purestateID = 0;
     if (target_str.size() < 2) {
       printf("# Warning: You want to prepare a pure state, but didn't specify which one. Taking default: ground-state |0...0> \n");
@@ -111,9 +111,9 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   /* Get the objective function */
   ObjectiveType objective_type;
   std::string objective_str = config.GetStrParam("optim_objective", "Jfrobenius");
-  if (objective_str.compare("Jfrobenius")==0)           objective_type = JFROBENIUS;
-  else if (objective_str.compare("Jhilbertschmidt")==0) objective_type = JHS;
-  else if (objective_str.compare("Jmeasure")==0)        objective_type = JMEASURE;
+  if (objective_str.compare("Jfrobenius")==0)           objective_type = ObjectiveType::JFROBENIUS;
+  else if (objective_str.compare("Jhilbertschmidt")==0) objective_type = ObjectiveType::JHS;
+  else if (objective_str.compare("Jmeasure")==0)        objective_type = ObjectiveType::JMEASURE;
   else  {
     printf("\n\n ERROR: Unknown objective function: %s\n", objective_str.c_str());
     exit(1);
@@ -144,13 +144,13 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   std::vector<std::string> initcondstr;
   config.GetVecStrParam("initialcondition", initcondstr, "none", false);
   for (int i=1; i<initcondstr.size(); i++) initcond_IDs.push_back(atoi(initcondstr[i].c_str()));
-  if (initcondstr[0].compare("file") == 0 )          initcond_type = FROMFILE;
-  else if (initcondstr[0].compare("pure") == 0 )     initcond_type = PURE;
-  else if (initcondstr[0].compare("ensemble") == 0 ) initcond_type = ENSEMBLE;
-  else if (initcondstr[0].compare("3states") == 0 )  initcond_type = THREESTATES;
-  else if (initcondstr[0].compare("Nplus1") == 0 )   initcond_type = NPLUSONE;
-  else if (initcondstr[0].compare("diagonal") == 0 ) initcond_type = DIAGONAL;
-  else if (initcondstr[0].compare("basis")    == 0 ) initcond_type = BASIS;
+  if (initcondstr[0].compare("file") == 0 )          initcond_type = InitialConditionType::FROMFILE;
+  else if (initcondstr[0].compare("pure") == 0 )     initcond_type = InitialConditionType::PURE;
+  else if (initcondstr[0].compare("ensemble") == 0 ) initcond_type = InitialConditionType::ENSEMBLE;
+  else if (initcondstr[0].compare("3states") == 0 )  initcond_type = InitialConditionType::THREESTATES;
+  else if (initcondstr[0].compare("Nplus1") == 0 )   initcond_type = InitialConditionType::NPLUSONE;
+  else if (initcondstr[0].compare("diagonal") == 0 ) initcond_type = InitialConditionType::DIAGONAL;
+  else if (initcondstr[0].compare("basis")    == 0 ) initcond_type = InitialConditionType::BASIS;
   else {
     printf("\n\n ERROR: Wrong setting for initial condition.\n");
     exit(1);
@@ -164,7 +164,7 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   VecGetOwnershipRange(rho_t0, &ilow, &iupp);
 
   /* If PURE or FROMFILE or ENSEMBLE initialization, store them here. Otherwise they are set inside evalF */
-  if (initcond_type == PURE) { 
+  if (initcond_type == InitialConditionType::PURE) { 
     /* Initialize with tensor product of unit vectors. */
 
     // Compute index of diagonal elements that is one.
@@ -189,7 +189,7 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
     int vec_id = getIndexReal(getVecID( diag_id, diag_id, ndim )); // Real part of x
     if (ilow <= vec_id && vec_id < iupp) VecSetValue(rho_t0, vec_id, 1.0, INSERT_VALUES);
   }
-  else if (initcond_type == FROMFILE) { 
+  else if (initcond_type == InitialConditionType::FROMFILE) { 
     /* Read initial condition from file */
     
     // int dim = timestepper->mastereq->getDim();
@@ -216,7 +216,7 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
       // printf("  -> k=%d j=%d, elemid=%d vals=%1.4e, %1.4e\n", k, j, elemid, vec[i], vec[i+dim_ess*dim_ess]);
     }
     delete [] vec;
-  } else if (initcond_type == ENSEMBLE) {
+  } else if (initcond_type == InitialConditionType::ENSEMBLE) {
     // Sanity check for the list in initcond_IDs!
     assert(initcond_IDs.size() >= 1); // at least one element 
     assert(initcond_IDs[initcond_IDs.size()-1] < timestepper->mastereq->getNOscillators()); // last element can't exceed total number of oscillators

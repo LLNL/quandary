@@ -52,12 +52,12 @@ int main(int argc,char **argv)
   int nspline = config.GetIntParam("nspline", 10);
   RunType runtype;
   std::string runtypestr = config.GetStrParam("runtype", "simulation");
-  if      (runtypestr.compare("simulation")      == 0) runtype = SIMULATION;
-  else if (runtypestr.compare("gradient")     == 0) runtype = GRADIENT;
-  else if (runtypestr.compare("optimization")== 0) runtype = OPTIMIZATION;
+  if      (runtypestr.compare("simulation")      == 0) runtype = RunType::SIMULATION;
+  else if (runtypestr.compare("gradient")     == 0)    runtype = RunType::GRADIENT;
+  else if (runtypestr.compare("optimization")== 0)     runtype = RunType::OPTIMIZATION;
   else {
     printf("\n\n WARNING: Unknown runtype: %s.\n\n", runtypestr.c_str());
-    runtype = NOTHING;
+    runtype = RunType::NONE;
   }
 
   /* Get the number of essential levels per oscillator. 
@@ -206,16 +206,16 @@ int main(int argc,char **argv)
   config.GetVecDoubleParam("decay_time", decay_time, 0.0);
   config.GetVecDoubleParam("dephase_time", dephase_time, 0.0);
   LindbladType lindbladtype;
-  if      (lindblad.compare("none")      == 0 ) lindbladtype = NONE;
-  else if (lindblad.compare("decay")     == 0 ) lindbladtype = DECAY;
-  else if (lindblad.compare("dephase")   == 0 ) lindbladtype = DEPHASE;
-  else if (lindblad.compare("both")      == 0 ) lindbladtype = BOTH;
+  if      (lindblad.compare("none")      == 0 ) lindbladtype = LindbladType::NONE;
+  else if (lindblad.compare("decay")     == 0 ) lindbladtype = LindbladType::DECAY;
+  else if (lindblad.compare("dephase")   == 0 ) lindbladtype = LindbladType::DEPHASE;
+  else if (lindblad.compare("both")      == 0 ) lindbladtype = LindbladType::BOTH;
   else {
     printf("\n\n ERROR: Unnown lindblad type: %s.\n", lindblad.c_str());
     printf(" Choose either 'none', 'decay', 'dephase', or 'both'\n");
     exit(1);
   }
-  if (lindbladtype != NONE) {
+  if (lindbladtype != LindbladType::NONE) {
     assert(decay_time.size() >= nlevels.size());
     assert(dephase_time.size() >= nlevels.size());
   }
@@ -317,15 +317,15 @@ int main(int argc,char **argv)
   LinearSolverType linsolvetype;
   std::string linsolvestr = config.GetStrParam("linearsolver_type", "gmres");
   int linsolve_maxiter = config.GetIntParam("linearsolver_maxiter", 10);
-  if      (linsolvestr.compare("gmres")   == 0) linsolvetype = GMRES;
-  else if (linsolvestr.compare("neumann") == 0) linsolvetype = NEUMANN;
+  if      (linsolvestr.compare("gmres")   == 0) linsolvetype = LinearSolverType::GMRES;
+  else if (linsolvestr.compare("neumann") == 0) linsolvetype = LinearSolverType::NEUMANN;
   else {
     printf("\n\n ERROR: Unknown linear solver type: %s.\n\n", linsolvestr.c_str());
     exit(1);
   }
   /* My time stepper */
   bool storeFWD = false;
-  if (runtype == GRADIENT || runtype == OPTIMIZATION) storeFWD = true;
+  if (runtype == RunType::GRADIENT || runtype == RunType::OPTIMIZATION) storeFWD = true;
 #if TEST_FD_GRAD
   storeFWD = true;
 #endif
@@ -349,10 +349,10 @@ int main(int argc,char **argv)
   myAdjointBraidApp *adjointbraidapp = NULL;
   // Create primal app always, adjoint only if runtype is adjoint or optimization 
   primalbraidapp = new myBraidApp(comm_braid, total_time, ntime, mytimestepper, mastereq, &config, output);
-  if (runtype == GRADIENT || runtype == OPTIMIZATION) adjointbraidapp = new myAdjointBraidApp(comm_braid, total_time, ntime, mytimestepper, mastereq, &config, primalbraidapp->getCore(), output);
+  if (runtype == RunType::GRADIENT || runtype == RunType::OPTIMIZATION) adjointbraidapp = new myAdjointBraidApp(comm_braid, total_time, ntime, mytimestepper, mastereq, &config, primalbraidapp->getCore(), output);
   // Initialize the braid time-grids. Warning: initGrids for primal app depends on initialization of adjoint! Do not move this line up!
   primalbraidapp->InitGrids();
-  if (runtype == GRADIENT || runtype == OPTIMIZATION) adjointbraidapp->InitGrids();
+  if (runtype == RunType::GRADIENT || runtype == RunType::OPTIMIZATION) adjointbraidapp->InitGrids();
   
 #endif
 
@@ -406,7 +406,7 @@ int main(int argc,char **argv)
   double objective;
   double gnorm = 0.0;
   /* --- Solve primal --- */
-  if (runtype == SIMULATION) {
+  if (runtype == RunType::SIMULATION) {
     optimctx->getStartingPoint(xinit);
     if (mpirank_world == 0) printf("\nStarting primal solver... \n");
     objective = optimctx->evalF(xinit);
@@ -415,7 +415,7 @@ int main(int argc,char **argv)
   } 
   
   /* --- Solve adjoint --- */
-  if (runtype == GRADIENT) {
+  if (runtype == RunType::GRADIENT) {
     optimctx->getStartingPoint(xinit);
     if (mpirank_world == 0) printf("\nStarting adjoint solver...\n");
     optimctx->evalGradF(xinit, grad);
@@ -428,7 +428,7 @@ int main(int argc,char **argv)
   }
 
   /* --- Solve the optimization  --- */
-  if (runtype == OPTIMIZATION) {
+  if (runtype == RunType::OPTIMIZATION) {
     /* Set initial starting point */
     optimctx->getStartingPoint(xinit);
     if (mpirank_world == 0) printf("\nStarting Optimization solver ... \n");
@@ -437,7 +437,7 @@ int main(int argc,char **argv)
   }
 
   /* Output */
-  if (runtype != OPTIMIZATION) optimctx->output->writeOptimFile(optimctx->getObjective(), gnorm, 0.0, optimctx->getFidelity(), optimctx->getCostT(), optimctx->getRegul(), optimctx->getPenalty());
+  if (runtype != RunType::OPTIMIZATION) optimctx->output->writeOptimFile(optimctx->getObjective(), gnorm, 0.0, optimctx->getFidelity(), optimctx->getCostT(), optimctx->getRegul(), optimctx->getPenalty());
 
 
   /* --- Finalize --- */
@@ -710,7 +710,7 @@ int main(int argc,char **argv)
   delete mytimestepper;
 #ifdef WITH_BRAID
   delete primalbraidapp;
-  if (runtype == SIMULATION || runtype == GRADIENT) delete adjointbraidapp;
+  if (runtype == RunType::SIMULATION || runtype == RunType::GRADIENT) delete adjointbraidapp;
 #endif
   delete optimctx;
   delete output;

@@ -148,7 +148,7 @@ double TimeStepper::penaltyIntegral(double time, const Vec x){
   penalty = weight * obj * dt;
 
   /* If gate optimization: Add guard-level occupation to prevent leakage. A guard level is the LAST NON-ESSENTIAL energy level of an oscillator */
-  if (optim_target->getType() == GATE) { 
+  if (optim_target->getType() == TargetType::GATE) { 
       int ilow, iupp;
       VecGetOwnershipRange(x, &ilow, &iupp);
       /* Sum over all diagonal elements that correspond to a non-essential guard level. */
@@ -178,7 +178,7 @@ void TimeStepper::penaltyIntegral_diff(double time, const Vec x, Vec xbar, doubl
   optim_target->evalJ_diff(x, xbar, weight*penaltybar*dt);
 
   /* If gate optimization: Derivative of adding guard-level occupation */
-  if (optim_target->getType() == GATE) { 
+  if (optim_target->getType() == TargetType::GATE) { 
     int ilow, iupp;
     VecGetOwnershipRange(x, &ilow, &iupp);
     double x_re, x_im;
@@ -259,7 +259,7 @@ ImplMidpoint::ImplMidpoint(MasterEq* mastereq_, int ntime_, double total_time_, 
   linsolve_counter = 0;
   linsolve_error_avg = 0.0;
 
-  if (linsolve_type == GMRES) {
+  if (linsolve_type == LinearSolverType::GMRES) {
     /* Create Petsc's linear solver */
     KSPCreate(PETSC_COMM_WORLD, &ksp);
     KSPGetPC(ksp, &preconditioner);
@@ -287,7 +287,7 @@ ImplMidpoint::~ImplMidpoint(){
   // if (myrank == 0) printf("Linear solver type %d: Average iterations = %d, average error = %1.2e\n", linsolve_type, linsolve_iterstaken_avg, linsolve_error_avg);
 
   /* Free up Petsc's linear solver */
-  if (linsolve_type == GMRES) {
+  if (linsolve_type == LinearSolverType::GMRES) {
     KSPDestroy(&ksp);
   } else {
     VecDestroy(&tmp);
@@ -316,7 +316,7 @@ void ImplMidpoint::evolveFWD(const double tstart,const  double tstop, Vec x) {
 
   /* Solve for the stage variable (I-dt/2 A) k1 = Ax */
   switch (linsolve_type) {
-    case GMRES:
+    case LinearSolverType::GMRES:
       /* Set up I-dt/2 A, then solve */
       MatScale(A, - dt/2.0);
       MatShift(A, 1.0);  
@@ -336,7 +336,7 @@ void ImplMidpoint::evolveFWD(const double tstart,const  double tstop, Vec x) {
       MatAssemblyEnd(A, MAT_FINAL_ASSEMBLY);
       break;
 
-    case NEUMANN:
+    case LinearSolverType::NEUMANN:
       linsolve_iterstaken_avg += NeumannSolve(A, rhs, stage, dt/2.0, false);
       break;
   }
@@ -364,7 +364,7 @@ void ImplMidpoint::evolveBWD(const double tstop, const double tstart, const Vec 
 
   /* Solve for adjoint stage variable */
   switch (linsolve_type) {
-    case GMRES:
+    case LinearSolverType::GMRES:
       MatScale(A, - dt/2.0);
       MatShift(A, 1.0);  // WARNING: this can be very slow if some diagonal elements are missing.
       KSPSolveTranspose(ksp, x_adj, stage_adj);
@@ -373,7 +373,7 @@ void ImplMidpoint::evolveBWD(const double tstop, const double tstart, const Vec 
       if (rnorm > 1e-3)  printf("Residual norm: %1.5e\n", rnorm);
       break;
 
-    case NEUMANN: 
+    case LinearSolverType::NEUMANN: 
       NeumannSolve(A, x_adj, stage_adj, dt/2.0, true);
       break;
   }
@@ -384,10 +384,10 @@ void ImplMidpoint::evolveBWD(const double tstop, const double tstart, const Vec 
   /* Add to reduced gradient */
   if (compute_gradient) {
     switch (linsolve_type) {
-      case GMRES: 
+      case LinearSolverType::GMRES: 
         KSPSolve(ksp, rhs, stage);
         break;
-      case NEUMANN:
+      case LinearSolverType::NEUMANN:
         NeumannSolve(A, rhs, stage, dt/2.0, false);
         break;
     }
@@ -397,7 +397,7 @@ void ImplMidpoint::evolveBWD(const double tstop, const double tstart, const Vec 
 
   /* Revert changes to RHS from above, if gmres solver */
   A = mastereq->getRHS();
-  if (linsolve_type == GMRES) {
+  if (linsolve_type == LinearSolverType::GMRES) {
     MatAssemblyBegin(A, MAT_FINAL_ASSEMBLY);
     MatAssemblyEnd(A, MAT_FINAL_ASSEMBLY);
   }

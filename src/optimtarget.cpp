@@ -75,7 +75,7 @@ void OptimTarget::HilbertSchmidtOverlap_diff(const Vec state, Vec statebar, cons
 
 void OptimTarget::prepare(const Vec rho_t0){
   // If gate optimization, apply the gate and store targetstate for later use. Else, do nothing.
-  if (target_type == GATE) targetgate->applyGate(rho_t0, targetstate);
+  if (target_type == TargetType::GATE) targetgate->applyGate(rho_t0, targetstate);
 }
 
 
@@ -87,25 +87,25 @@ double OptimTarget::evalJ(const Vec state){
   int ilo, ihi;
 
   switch (target_type) {
-    case GATE: /* target state \rho_target = Vrho(0)V^\dagger is stored in targetstate */
+    case TargetType::GATE: /* target state \rho_target = Vrho(0)V^\dagger is stored in targetstate */
       
       switch(objective_type) {
-        case JFROBENIUS:
+        case ObjectiveType::JFROBENIUS:
           /* J_T = 1/2 * || rho_target - rho(T)||^2_F  */
           objective = FrobeniusDistance(state) / 2.0;
           break;
-        case JHS:
+        case ObjectiveType::JHS:
           /* J_T = 1 - 1/purity * Tr(rho_target^\dagger * rho(T)) */
           objective = 1.0 - HilbertSchmidtOverlap(state, true);
           break;
-        case JMEASURE: // JMEASURE is only for pure-state preparation!
+        case ObjectiveType::JMEASURE: // JMEASURE is only for pure-state preparation!
           printf("ERROR: Check settings for optim_target and optim_objective.\n");
           exit(1);
           break;
       }
       break; // case gate
 
-    case PUREM:
+    case TargetType::PURE:
 
       int dim;
       VecGetSize(state, &dim);
@@ -114,7 +114,7 @@ double OptimTarget::evalJ(const Vec state){
 
       switch(objective_type) {
 
-        case JMEASURE:
+        case ObjectiveType::JMEASURE:
           /* J_T = Tr(O_m rho(T)) = \sum_i |i-m| rho_ii(T) */
           // iterate over diagonal elements 
           sum = 0.0;
@@ -128,7 +128,7 @@ double OptimTarget::evalJ(const Vec state){
           MPI_Allreduce(&sum, &objective, 1, MPI_DOUBLE, MPI_SUM, PETSC_COMM_WORLD);
           break;
           
-        case JFROBENIUS:
+        case ObjectiveType::JFROBENIUS:
           /* J_T = 1/2 * || rho(T) - e_m e_m^\dagger||_F^2 */
           // substract 1.0 from m-th diagonal element then take the vector norm 
           diagID = getIndexReal(getVecID(purestateID,purestateID,dim));
@@ -141,7 +141,7 @@ double OptimTarget::evalJ(const Vec state){
           VecAssemblyBegin(state); VecAssemblyEnd(state);
           break;
           
-        case JHS:
+        case ObjectiveType::JHS:
           /* J_T = 1 - Tr(e_m e_m^\dagger \rho(T)) = 1 - rho_mm(T) */
           diagID = getIndexReal(getVecID(purestateID,purestateID,dim));
           rhoii = 0.0;
@@ -162,22 +162,22 @@ void OptimTarget::evalJ_diff(const Vec state, Vec statebar, const double Jbar){
   int diagID;
 
   switch (target_type) {
-    case GATE:
+    case TargetType::GATE:
       switch (objective_type) {
-        case JFROBENIUS:
+        case ObjectiveType::JFROBENIUS:
           FrobeniusDistance_diff(state, statebar, Jbar/ 2.0);
           break;
-        case JHS:
+        case ObjectiveType::JHS:
           HilbertSchmidtOverlap_diff(state, statebar, -1.0 * Jbar, true);
           break;
-        case JMEASURE: // Will never happen
+        case ObjectiveType::JMEASURE: // Will never happen
           printf("ERROR: Check settings for optim_target and optim_objective.\n");
           exit(1);
           break;
       }
       break; // case gate
 
-    case PUREM:
+    case TargetType::PURE:
       int dim;
       VecGetSize(state, &dim);
       dim = (int) sqrt(dim/2.0);  // dim = N with \rho \in C^{N\times N}
@@ -185,7 +185,7 @@ void OptimTarget::evalJ_diff(const Vec state, Vec statebar, const double Jbar){
 
       switch (objective_type) {
 
-        case JMEASURE:
+        case ObjectiveType::JMEASURE:
           // iterate over diagonal elements 
           for (int i=0; i<dim; i++){
             lambdai = fabs(i - purestateID);
@@ -195,7 +195,7 @@ void OptimTarget::evalJ_diff(const Vec state, Vec statebar, const double Jbar){
           }
           break;
 
-        case JFROBENIUS:
+        case ObjectiveType::JFROBENIUS:
           // Derivative of J = 1/2||x||^2 is xbar += x * Jbar, where x = rho(t) - E_mm
           VecAXPY(statebar, Jbar, state);
           // now substract 1.0*Jbar from m-th diagonal element
@@ -203,7 +203,7 @@ void OptimTarget::evalJ_diff(const Vec state, Vec statebar, const double Jbar){
           if (ilo <= diagID && diagID < ihi) VecSetValue(statebar, diagID, -1.0*Jbar, ADD_VALUES);
           break;
 
-        case JHS:
+        case ObjectiveType::JHS:
           diagID = getIndexReal(getVecID(purestateID,purestateID,dim));
           val = -1. * Jbar;
           if (ilo <= diagID && diagID < ihi) VecSetValue(statebar, diagID, val, ADD_VALUES);
@@ -227,7 +227,7 @@ double OptimTarget::evalFidelity(const Vec state){
   double rho_mm;
 
   switch(target_type){
-    case PUREM: // fidelity = rho(T)_mm
+    case TargetType::PURE: // fidelity = rho(T)_mm
       vecID = getIndexReal(getVecID(purestateID, purestateID, dim));
       VecGetOwnershipRange(state, &ilo, &ihi);
       rho_mm = 0.0;
@@ -236,7 +236,7 @@ double OptimTarget::evalFidelity(const Vec state){
       MPI_Allreduce(&rho_mm, &fidel, 1, MPI_DOUBLE, MPI_SUM, PETSC_COMM_WORLD);
       break;
 
-    case GATE: // fidelity = Tr(Vrho(0)V^\dagger \rho)
+    case TargetType::GATE: // fidelity = Tr(Vrho(0)V^\dagger \rho)
       fidel = HilbertSchmidtOverlap(state, false);
       break;
   }

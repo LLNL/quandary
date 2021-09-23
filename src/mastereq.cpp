@@ -69,17 +69,17 @@ MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Osci
 
   /* Check Lindblad collapse operator configuration */
   switch (lindbladtype)  {
-    case NONE:
+    case LindbladType::NONE:
       break;
-    case DECAY: 
+    case LindbladType::DECAY: 
       addT1 = true;
       addT2 = false;
       break;
-    case DEPHASE:
+    case LindbladType::DEPHASE:
       addT1 = false;
       addT2 = true;
       break;
-    case BOTH:
+    case LindbladType::BOTH:
       addT1 = true;
       addT2 = true;
       break;
@@ -949,19 +949,19 @@ int MasterEq::getRhoT0(const int iinit, const int ninit, const InitialConditionT
   /* Switch over type of initial condition */
   switch (initcond_type) {
 
-    case FROMFILE:
+    case InitialConditionType::FROMFILE:
       /* Do nothing. Init cond is already stored */
       break;
 
-    case PURE:
+    case InitialConditionType::PURE:
       /* Do nothing. Init cond is already stored */
       break;
 
-    case ENSEMBLE:
+    case InitialConditionType::ENSEMBLE:
       /* Do nothing. Init cond is already stored */
       break;
 
-    case THREESTATES:
+    case InitialConditionType::THREESTATES:
 
       /* Reset the initial conditions */
       VecZeroEntries(rho0);
@@ -1013,7 +1013,7 @@ int MasterEq::getRhoT0(const int iinit, const int ninit, const InitialConditionT
 
       break;
 
-    case NPLUSONE:
+    case InitialConditionType::NPLUSONE:
       VecGetOwnershipRange(rho0, &ilow, &iupp);
 
       if (iinit < dim_rho) {// Diagonal e_j e_j^\dag
@@ -1042,7 +1042,7 @@ int MasterEq::getRhoT0(const int iinit, const int ninit, const InitialConditionT
       break;
 
 
-    case DIAGONAL:
+    case InitialConditionType::DIAGONAL:
       int row, diagelem;
 
       /* Reset the initial conditions */
@@ -1071,7 +1071,7 @@ int MasterEq::getRhoT0(const int iinit, const int ninit, const InitialConditionT
 
       break;
 
-    case BASIS:
+    case InitialConditionType::BASIS:
 
       /* Reset the initial conditions */
       VecZeroEntries(rho0);
