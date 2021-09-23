@@ -9,13 +9,16 @@ class OptimTarget{
     ObjectiveType objective_type;  /* Type of the bjective function */
     Gate *targetgate;              /* The target gate (if any) */
     int purestateID;               /* For pure-state preparation, this is the integer m for preparing e_m e_m^\dagger */
-    Vec targetstate;   	           /* For gate optimization: holds the transformed state VrhoV^\dagger */
+    std::string target_filename;   /* If a target is read from file, this holds it's filename. */
+    Vec targetstate;   	           /* Holds the target state (unless its a pure one in which case this is NULL). 
+                                      If target is a gate, this holds the transformed state VrhoV^\dagger.
+                                      If target is read from file, this holds the target density matrix from that file. */
 
     Vec aux;      /* auxiliary vector needed when computing the objective for gate optimization */
 
   public:
 
-    OptimTarget(int purestateID_, TargetType target_type_, ObjectiveType objective_type_, Gate* targetgate_);
+    OptimTarget(int dim, int purestateID_, TargetType target_type_, ObjectiveType objective_type_, Gate* targetgate_, std::string target_filename_);
     ~OptimTarget();
 
     /* Get information on the type of optimization target */

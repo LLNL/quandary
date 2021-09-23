@@ -7,8 +7,9 @@ enum class LindbladType {NONE, DECAY, DEPHASE, BOTH};
 enum class InitialConditionType {FROMFILE, PURE, ENSEMBLE, DIAGONAL, BASIS, THREESTATES, NPLUSONE};
 
 /* Types of optimization targets: Either gate optimization or pure state preparation */
-enum class TargetType {GATE,     // \rho_target = V\rho(0) V^\dagger
-                       PURE};    // \rho_target = e_m e_m^\dagger for some integer m
+enum class TargetType {GATE,      // \rho_target = V\rho(0) V^\dagger
+                       PURE,      // \rho_target = e_m e_m^\dagger for some integer m
+                       FROMFILE}; // \rho_target will be read from file. Format same as initial condition (one column with vectorized density matrix, fist all real then all imaginary parts)
 
 /* Typye of objective functions */
 enum class ObjectiveType {JFROBENIUS,    // weighted Frobenius norm: 1/2 * ||\rho_target - rho(T)||^2_F / w, where w = purity of \rho_target

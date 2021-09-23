@@ -60,6 +60,7 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   std::vector<std::string> target_str;
   Gate* targetgate=NULL;
   int purestateID = -1;
+  std::string target_filename = "";
   TargetType target_type;
   // Read from config file 
   config.GetVecStrParam("optim_target", target_str, "pure");
@@ -102,6 +103,12 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
       }
     }
     // printf("Preparing the state e_%d\n", purestateID);
+  } 
+  else if (target_str[0].compare("file")==0) { 
+    // Get the name of the file and pass it to the OptimTarget class later.
+    target_type = TargetType::FROMFILE;
+    assert(target_str.size() >= 2);
+    target_filename = target_str[1];
   }
   else {
       printf("\n\n ERROR: Unknown optimization target: %s\n", target_str[0].c_str());
@@ -120,7 +127,7 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   }
 
   /* Finally initialize the optimization target struct */
-  optim_target = new OptimTarget(purestateID, target_type, objective_type, targetgate);
+  optim_target = new OptimTarget(timestepper->mastereq->getDim(), purestateID, target_type, objective_type, targetgate, target_filename);
 
   /* Get weights for the objective function (weighting the different initial conditions */
   config.GetVecDoubleParam("optim_weights", obj_weights, 1.0);

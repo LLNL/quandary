@@ -250,6 +250,8 @@ with unit vectors $\boldsymbol{e}_{m_k} \in \R^{n_k}$. The composite-system inde
 For example, assume one considers a composite system consisting of a qubit modelled with $n_0=2$ levels coupled to a readout cavity modelled with $n_1=10$ levels, and one wants to drive the qubit to the $|1\rangle$ state and the cavity to the ground state. The target pure state input for Quandary is hence $m_0=1, m_1=0$ (i.e. the $|10\rangle$ state in the composite system), which corresonds $m=1\cdot10+0 = 10$ in the composite system of dimension $N=2\cdot 10 = 20$. 
 
 
+\subsubsection{Read a target state from file}
+A specific target state $\rho^{target}$ can also be read from file. This can be useful when considering non-pure target states. File format: The vectorized density matrix (columnwise vectorization), one number per line, first list all real parts, then list all imaginary parts (hence $2N^2$ lines with one number each). 
  
 \subsubsection{Gate optimization}
 
@@ -286,7 +288,6 @@ To compute the objective function at final time T, the essential-dimensional gat
 
 % When only the three states as initial conditions are considered (see below), those three initial states will be spanned in the full dimensional system. On the other hand, when the basis of initial states is considered, or their diagonals only, those initial states will be spanned only in the essential level dimensions and zero rows and columns will be inserted for all non-essential levels. Hence, the gate will be realized for any initial state that is spanned in the essential level dimensions, and occupations of non-essential levels at $T=0$ are avoided. 
  
-
 
 \subsection{Initial conditions}\label{subsec:initcond}
 Quandary offers various choices to set the initial conditions for simulation and optimization in order to accomodate for different simulation and optimization needs. Below is a list of available options for the initial states (configuration option \texttt{initialcondition}). 
