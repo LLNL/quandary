@@ -4,24 +4,45 @@
 # set a default file 
 if (!exists("datafile")) datafile='optim_history.dat'
 
+#reset
+#datafile='data_out/optim_history.dat'
+
 set grid
 set logscale y
-set format y "%g"
-#set y2tics
-#set ytics nomirror
-#set y2range[0:1.1]
+set format y '$10^{%T}$'
+set y2tics
+set ytics nomirror
+set y2range[0:1.05]
+set yrange [1e-7:1]
+set xrange [0:85]
 
-set xlabel "iteration"
-#set y2label "objective"
-#set ylabel "||Pr(gradient)||"
+#set key at 78, 0.1
+set key bottom left
+
+
+set xlabel 'iteration'
+set y2label 'Fidelity'
+set ylabel '$J, \|\nabla J\|$'
 
 plot \
-    datafile u 2 axis x1y1 w l t 'J', \
-    datafile u 3 axis x1y1  w l t '||Pr(gradient)||', \
-#    datafile u 5 axis x1y1  w l t 'Favg', \
-#    datafile u 7 axis x1y1  w l t 'tikhonov', \
+    datafile u 2 axis x1y1 w l t '$J$', \
+    datafile u 3 axis x1y1  w l t '$\|\nabla J\|$', \
+    datafile u 5 axis x1y2  w l t 'Fidelity', \
+#    datafile u 7 axis x1y1  w l t '\gamma_2||\alpha||', \
 #    datafile u 8 axis x1y1  w l t 'penalty', \
 
+
+set term epslatex color size 15.5cm, 8cm
+set output 'optim_history.tex'
+replot
+
+
+set term epslatex color size 12.5cm, 8cm standalone 
+set output 'optim_history_standalone.tex'
+replot
+
+set term qt
+replot
 
 #set term postscript dashed color
 #set output 'out.ps'
