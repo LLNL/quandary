@@ -139,7 +139,7 @@ MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Osci
 
   /* Set the MatMult routine for applying the RHS to a vector x */
   if (usematfree) {
-    MatShellSetOperation(RHS, MATOP_MULT, (void(*)(void)) myMatMult_matfree_2osc);
+    MatShellSetOperation(RHS, MATOP_MULT, (void(*)(void)) myMatMult_matfree_2Osc);
     MatShellSetOperation(RHS, MATOP_MULT_TRANSPOSE, (void(*)(void)) myMatMultTranspose_matfree_2Osc);
   }
   else {
@@ -1798,7 +1798,7 @@ int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
 }
 
 
-int myMatMult_matfree_2osc(Mat RHS, Vec x, Vec y){
+int myMatMult_matfree_2Osc(Mat RHS, Vec x, Vec y){
   /* Get the shell context */
   MatShellCtx *shellctx;
   MatShellGetContext(RHS, (void**) &shellctx);
