@@ -1427,45 +1427,47 @@ int myMatMult_matfree(Mat RHS, Vec x, Vec y){
 
 
           /* --- Offdiagonal: coupling term, oscil 0<->1 --- */
-          //  1) J_kl (-icos + sin) * ρ_{E−k+l i, i′}
-          if (i0 > 0 && i1 < n1-1) {
-            int itx = it - stridei0 + stridei1;
-            double xre = xptr[2 * itx];
-            double xim = xptr[2 * itx + 1];
-            double sq = sqrt(i0 * (i1 + 1));
-            // sin u + cos v + i ( -cos u + sin v)
-            yre += J01 * sq * (   cos01 * xim + sin01 * xre);
-            yim += J01 * sq * ( - cos01 * xre + sin01 * xim);
-          }
-          // 2) J_kl (−icos − sin)sqrt(il*(ik +1)) ρ_{E+k−li,i′}
-          if (i0 < n0-1 && i1 > 0) {
-            int itx = it + stridei0 - stridei1;  // E+k-l i, i'
-            double xre = xptr[2 * itx];
-            double xim = xptr[2 * itx + 1];
-            double sq = sqrt(i1 * (i0 + 1)); // sqrt( il*(ik+1))
-            // -sin u + cos v + i (-cos u - sin v)
-            yre += J01 * sq * (   cos01 * xim - sin01 * xre);
-            yim += J01 * sq * ( - cos01 * xre - sin01 * xim);
-          }
-          // 3) J_kl ( icos + sin)sqrt(ik'*(il' +1)) ρ_{i,E-k+li'}
-          if (i0p > 0 && i1p < n1-1) {
-            int itx = it - stridei0p + stridei1p;  // i, E-k+l i'
-            double xre = xptr[2 * itx];
-            double xim = xptr[2 * itx + 1];
-            double sq = sqrt(i0p * (i1p + 1)); // sqrt( ik'*(il'+1))
-            //  sin u - cos v + i ( cos u + sin v)
-            yre += J01 * sq * ( - cos01 * xim + sin01 * xre);
-            yim += J01 * sq * (   cos01 * xre + sin01 * xim);
-          }
-          // 4) J_kl ( icos - sin)sqrt(il'*(ik' +1)) ρ_{i,E+k-li'}
-          if (i0p < n0-1 && i1p > 0) {
-            int itx = it + stridei0p - stridei1p;  // i, E+k-l i'
-            double xre = xptr[2 * itx];
-            double xim = xptr[2 * itx + 1];
-            double sq = sqrt(i1p * (i0p + 1)); // sqrt( il'*(ik'+1))
-            // - sin u - cos v + i ( cos u - sin v)
-            yre += J01 * sq * ( - cos01 * xim - sin01 * xre);
-            yim += J01 * sq * (   cos01 * xre - sin01 * xim);
+          if (fabs(J01)>1e-10) {
+            //  1) J_kl (-icos + sin) * ρ_{E−k+l i, i′}
+            if (i0 > 0 && i1 < n1-1) {
+              int itx = it - stridei0 + stridei1;
+              double xre = xptr[2 * itx];
+              double xim = xptr[2 * itx + 1];
+              double sq = sqrt(i0 * (i1 + 1));
+              // sin u + cos v + i ( -cos u + sin v)
+              yre += J01 * sq * (   cos01 * xim + sin01 * xre);
+              yim += J01 * sq * ( - cos01 * xre + sin01 * xim);
+            }
+            // 2) J_kl (−icos − sin)sqrt(il*(ik +1)) ρ_{E+k−li,i′}
+            if (i0 < n0-1 && i1 > 0) {
+              int itx = it + stridei0 - stridei1;  // E+k-l i, i'
+              double xre = xptr[2 * itx];
+              double xim = xptr[2 * itx + 1];
+              double sq = sqrt(i1 * (i0 + 1)); // sqrt( il*(ik+1))
+              // -sin u + cos v + i (-cos u - sin v)
+              yre += J01 * sq * (   cos01 * xim - sin01 * xre);
+              yim += J01 * sq * ( - cos01 * xre - sin01 * xim);
+            }
+            // 3) J_kl ( icos + sin)sqrt(ik'*(il' +1)) ρ_{i,E-k+li'}
+            if (i0p > 0 && i1p < n1-1) {
+              int itx = it - stridei0p + stridei1p;  // i, E-k+l i'
+              double xre = xptr[2 * itx];
+              double xim = xptr[2 * itx + 1];
+              double sq = sqrt(i0p * (i1p + 1)); // sqrt( ik'*(il'+1))
+              //  sin u - cos v + i ( cos u + sin v)
+              yre += J01 * sq * ( - cos01 * xim + sin01 * xre);
+              yim += J01 * sq * (   cos01 * xre + sin01 * xim);
+            }
+            // 4) J_kl ( icos - sin)sqrt(il'*(ik' +1)) ρ_{i,E+k-li'}
+            if (i0p < n0-1 && i1p > 0) {
+              int itx = it + stridei0p - stridei1p;  // i, E+k-l i'
+              double xre = xptr[2 * itx];
+              double xim = xptr[2 * itx + 1];
+              double sq = sqrt(i1p * (i0p + 1)); // sqrt( il'*(ik'+1))
+              // - sin u - cos v + i ( cos u - sin v)
+              yre += J01 * sq * ( - cos01 * xim - sin01 * xre);
+              yim += J01 * sq * (   cos01 * xre - sin01 * xim);
+            }
           }
 
 
@@ -1661,41 +1663,43 @@ int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
           yim += (l2 + l1diag) * xim;
 
           /* --- Offdiagonal coupling term J_01, oscil 0<->1 --- */
-          //  1) [...] * \bar y_{E+k-l i, i′}
-          if (i0 < n0-1 && i1 > 0) {
-            int itx = it + stridei0 - stridei1;
-            double xre = xptr[2 * itx];
-            double xim = xptr[2 * itx + 1];
-            double sq = sqrt(i1 * (i0 + 1));
-            yre += J01 * sq * ( - cos01 * xim + sin01 * xre);
-            yim += J01 * sq * ( + cos01 * xre + sin01 * xim);
-          }
-          // 2) J_kl (−icos − sin)sqrt(ik*(il +1)) \bar y_{E-k+li,i′}
-          if (i0 > 0 && i1 < n1-1) {
-            int itx = it - stridei0 + stridei1;  // E-k+l i, i'
-            double xre = xptr[2 * itx];
-            double xim = xptr[2 * itx + 1];
-            double sq = sqrt(i0 * (i1 + 1)); // sqrt( ik*(il+1))
-            yre += J01 * sq * ( - cos01 * xim - sin01 * xre);
-            yim += J01 * sq * ( + cos01 * xre - sin01 * xim);
-          }
-          // 3) J_kl ( icos + sin)sqrt(il'*(ik' +1)) \bar y_{i,E+k-li'}
-          if (i0p < n0-1 && i1p > 0) {
-            int itx = it + stridei0p - stridei1p;  // i, E+k-l i'
-            double xre = xptr[2 * itx];
-            double xim = xptr[2 * itx + 1];
-            double sq = sqrt(i1p * (i0p + 1)); // sqrt( il'*(ik'+1))
-            yre += J01 * sq * (   cos01 * xim + sin01 * xre);
-            yim += J01 * sq * ( - cos01 * xre + sin01 * xim);
-          }
-          // 4) J_kl ( icos - sin)sqrt(ik'*(il' +1)) \bar y_{i,E-k+li'}
-          if (i0p > 0 && i1p < n1-1) {
-            int itx = it - stridei0p + stridei1p;  // i, E-k+l i'
-            double xre = xptr[2 * itx];
-            double xim = xptr[2 * itx + 1];
-            double sq = sqrt(i0p * (i1p + 1)); // sqrt( ik'*(il'+1))
-            yre += J01 * sq * (   cos01 * xim - sin01 * xre);
-            yim += J01 * sq * ( - cos01 * xre - sin01 * xim);
+          if (fabs(J01)>1e-10) {
+            //  1) [...] * \bar y_{E+k-l i, i′}
+            if (i0 < n0-1 && i1 > 0) {
+              int itx = it + stridei0 - stridei1;
+              double xre = xptr[2 * itx];
+              double xim = xptr[2 * itx + 1];
+              double sq = sqrt(i1 * (i0 + 1));
+              yre += J01 * sq * ( - cos01 * xim + sin01 * xre);
+              yim += J01 * sq * ( + cos01 * xre + sin01 * xim);
+            }
+            // 2) J_kl (−icos − sin)sqrt(ik*(il +1)) \bar y_{E-k+li,i′}
+            if (i0 > 0 && i1 < n1-1) {
+              int itx = it - stridei0 + stridei1;  // E-k+l i, i'
+              double xre = xptr[2 * itx];
+              double xim = xptr[2 * itx + 1];
+              double sq = sqrt(i0 * (i1 + 1)); // sqrt( ik*(il+1))
+              yre += J01 * sq * ( - cos01 * xim - sin01 * xre);
+              yim += J01 * sq * ( + cos01 * xre - sin01 * xim);
+            }
+            // 3) J_kl ( icos + sin)sqrt(il'*(ik' +1)) \bar y_{i,E+k-li'}
+            if (i0p < n0-1 && i1p > 0) {
+              int itx = it + stridei0p - stridei1p;  // i, E+k-l i'
+              double xre = xptr[2 * itx];
+              double xim = xptr[2 * itx + 1];
+              double sq = sqrt(i1p * (i0p + 1)); // sqrt( il'*(ik'+1))
+              yre += J01 * sq * (   cos01 * xim + sin01 * xre);
+              yim += J01 * sq * ( - cos01 * xre + sin01 * xim);
+            }
+            // 4) J_kl ( icos - sin)sqrt(ik'*(il' +1)) \bar y_{i,E-k+li'}
+            if (i0p > 0 && i1p < n1-1) {
+              int itx = it - stridei0p + stridei1p;  // i, E-k+l i'
+              double xre = xptr[2 * itx];
+              double xim = xptr[2 * itx + 1];
+              double sq = sqrt(i0p * (i1p + 1)); // sqrt( ik'*(il'+1))
+              yre += J01 * sq * (   cos01 * xim - sin01 * xre);
+              yim += J01 * sq * ( - cos01 * xre - sin01 * xim);
+            }
           }
 
           /* --- Offdiagonal part of decay L1^T */
