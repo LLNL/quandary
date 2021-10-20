@@ -1817,15 +1817,116 @@ int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
 /* Matfree-solver for 3 Oscillators: Define the action of RHS on a vector x */
 template <int n0, int n1, int n2>
 int myMatMult_matfree(Mat RHS, Vec x, Vec y){
-  printf("To be implemented\n");
+
+   /* Get the shell context */
+  MatShellCtx *shellctx;
+  MatShellGetContext(RHS, (void**) &shellctx);
+
+  /* Get access to x and y */
+  const double* xptr;
+  double* yptr;
+  VecGetArrayRead(x, &xptr);
+  VecGetArray(y, &yptr);
+
+  /* Evaluate coefficients */
+  double xi0  = shellctx->oscil_vec[0]->getSelfkerr();
+  double xi1  = shellctx->oscil_vec[1]->getSelfkerr();   
+  double xi2  = shellctx->oscil_vec[2]->getSelfkerr();   
+  double xi01 = shellctx->crosskerr[0];  // zz-coupling
+  double xi02 = shellctx->crosskerr[1];  // zz-coupling
+  double xi12 = shellctx->crosskerr[2];  // zz-coupling
+  double J01  = shellctx->Jkl[0];  // Jaynes-Cummings coupling
+  double J02  = shellctx->Jkl[1];  // Jaynes-Cummings coupling
+  double J12  = shellctx->Jkl[2];  // Jaynes-Cummings coupling
+  double eta01 = shellctx->eta[0];
+  double eta02 = shellctx->eta[1];
+  double eta12 = shellctx->eta[2];
+  double detuning_freq0 = shellctx->oscil_vec[0]->getDetuning();
+  double detuning_freq1 = shellctx->oscil_vec[1]->getDetuning();
+  double detuning_freq2 = shellctx->oscil_vec[2]->getDetuning();
+  double decay0 = 0.0;
+  double decay1 = 0.0;
+  double decay2 = 0.0;
+  double dephase0= 0.0;
+  double dephase1= 0.0;
+  double dephase2= 0.0;
+  if (shellctx->oscil_vec[0]->getDecayTime() > 1e-14 && shellctx->addT1)   decay0 = 1./shellctx->oscil_vec[0]->getDecayTime();
+  if (shellctx->oscil_vec[0]->getDephaseTime() > 1e-14 && shellctx->addT2) dephase0 = 1./shellctx->oscil_vec[0]->getDephaseTime();
+  if (shellctx->oscil_vec[1]->getDecayTime() > 1e-14 && shellctx->addT1)   decay1= 1./shellctx->oscil_vec[1]->getDecayTime();
+  if (shellctx->oscil_vec[1]->getDephaseTime() > 1e-14 && shellctx->addT2) dephase1 = 1./shellctx->oscil_vec[1]->getDephaseTime();
+  if (shellctx->oscil_vec[2]->getDecayTime() > 1e-14 && shellctx->addT1)   decay2= 1./shellctx->oscil_vec[2]->getDecayTime();
+  if (shellctx->oscil_vec[2]->getDephaseTime() > 1e-14 && shellctx->addT2) dephase2 = 1./shellctx->oscil_vec[2]->getDephaseTime();
+  double pt0 = shellctx->control_Re[0];
+  double qt0 = shellctx->control_Im[0];
+  double pt1 = shellctx->control_Re[1];
+  double qt1 = shellctx->control_Im[1];
+  double pt2 = shellctx->control_Re[2];
+  double qt2 = shellctx->control_Im[2];
+  double cos01 = cos(eta01 * shellctx->time);
+  double cos02 = cos(eta02 * shellctx->time);
+  double cos12 = cos(eta12 * shellctx->time);
+  double sin01 = sin(eta01 * shellctx->time);
+  double sin02 = sin(eta02 * shellctx->time);
+  double sin12 = sin(eta12 * shellctx->time);
+
+  /* compute strides for accessing x at i0+1, i0-1, i0p+1, i0p-1, i1+1, i1-1, i1p+1, i1p-1: */
+  int stridei0  = TensorGetIndex(n0,n1,n2, 1,0,0,0,0,0);
+  int stridei1  = TensorGetIndex(n0,n1,n2, 0,1,0,0,0,0);
+  int stridei2  = TensorGetIndex(n0,n1,n2, 0,0,1,0,0,0);
+  int stridei0p = TensorGetIndex(n0,n1,n2, 0,0,0,1,0,0);
+  int stridei1p = TensorGetIndex(n0,n1,n2, 0,0,0,0,1,0);
+  int stridei2p = TensorGetIndex(n0,n1,n2, 0,0,0,0,0,1);
+
+   /* Iterate over indices of output vector y */
+  int it = 0;
+  for (int i0p = 0; i0p < n0; i0p++)  {
+    for (int i1p = 0; i1p < n1; i1p++)  {
+      for (int i2p = 0; i2p < n2; i2p++)  {
+        for (int i0 = 0; i0 < n0; i0++)  {
+          for (int i1 = 0; i1 < n1; i1++)  {
+            for (int i2 = 0; i2 < n2; i2++)  {
+
+              /* --- Diagonal part ---*/
+              //Get input x values
+              double xre = xptr[2 * it];
+              double xim = xptr[2 * it + 1];
+              // drift Hamiltonian: uout = ( hd(ik) - hd(ik'))*vin
+              //                    vout = (-hd(ik) + hd(ik'))*uin
+              double hd  = H_detune(detuning_freq0, detuning_freq1, detuning_freq2, i0, i1, i2)
+                         + H_selfkerr(xi0, xi1, xi2, i0, i1, i2)
+                         + H_crosskerr(xi01, xi02, xi12, i0, i1, i2);
+              double hdp = H_detune(detuning_freq0, detuning_freq1, detuning_freq2, i0p, i1p, i2p)
+                         + H_selfkerr(xi0, xi1, xi2, i0p, i1p, i2p)
+                         + H_crosskerr(xi01, xi02, xi12, i0p, i1p, i2p);
+              double yre = ( hd - hdp ) * xim;
+              double yim = (-hd + hdp ) * xre;
+              // Decay l1, diagonal part: xout += l1diag xin
+              // Dephasing l2: xout += l2(ik, ikp) xin
+              double l1diag = L1diag(decay0, decay1, decay2, i0, i1, i2, i0p, i1p, i2p);
+              double l2 = L2(dephase0, dephase1, dephase2, i0, i1, i2, i0p, i1p, i2p);
+              yre += (l2 + l1diag) * xre;
+              yim += (l2 + l1diag) * xim;
+
+
+  // TODO
+  printf("TODO: To be implemented\n");
   exit(1);
+
+            }
+          }
+        }
+      }
+    }
+  }
+
   return 0;
 }
 
 /* Define the action of RHS^T on a vector x */
 template <int n0, int n1, int n2>
 int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
-  printf("To be implemented\n");
+  // TODO
+  printf("TODO: To be implemented\n");
   exit(1);
   return 0;
 }
