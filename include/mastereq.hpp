@@ -140,7 +140,7 @@ class MasterEq{
 };
 
 
-// Matfree solver inlines for 2 oscillator
+// Mat-free solver inlines for 2 oscillator
 inline double H_detune(const double detuning0, const double detuning1, const int a, const int b) {
   return detuning0*a + detuning1*b;
 };
@@ -184,3 +184,59 @@ inline double L1diag(const double decay0, const double decay1, const double deca
 inline int TensorGetIndex(const int nlevels0, const int nlevels1, const int nlevels2, const  int i0, const int i1, const int i2, const int i0p, const int i1p, const int i2p){
   return i0*nlevels1*nlevels2 + i1*nlevels2 + i2 + (nlevels0 * nlevels1 * nlevels2) * ( i0p * nlevels1*nlevels2 + i1p*nlevels2 + i2p);
 };
+
+
+
+// Coefficients for gradient updates for oscillator i
+inline void dRHSdp_getcoeffs(const int it, const int n, const int i, const int ip, const int stridei, const int strideip, const double* xptr, double* res_p_re, double* res_p_im, double* res_q_re, double* res_q_im) {
+
+  *res_p_re = 0.0;
+  *res_p_im = 0.0;
+  *res_q_re = 0.0;
+  *res_q_im = 0.0;
+
+  /* ik+1..,ik'.. term */
+  if (i < n-1) {
+    int itx = it + stridei;
+    double xre = xptr[2 * itx];
+    double xim = xptr[2 * itx + 1];
+    double sq = sqrt(i + 1);
+    *res_p_re +=   sq * xim;
+    *res_p_im += - sq * xre;
+    *res_q_re +=   sq * xre;
+    *res_q_im +=   sq * xim;
+  }
+  /* \rho(ik..,ik'+1..) */
+  if (ip < n-1) {
+    int itx = it + strideip;
+    double xre = xptr[2 * itx];
+    double xim = xptr[2 * itx + 1];
+    double sq = sqrt(ip + 1);
+    *res_p_re += - sq * xim;
+    *res_p_im += + sq * xre;
+    *res_q_re +=   sq * xre;
+    *res_q_im +=   sq * xim;
+  }
+  /* \rho(ik-1..,ik'..) */
+  if (i > 0) {
+    int itx = it - stridei;
+    double xre = xptr[2 * itx];
+    double xim = xptr[2 * itx + 1];
+    double sq = sqrt(i);
+    *res_p_re += + sq * xim;
+    *res_p_im += - sq * xre;
+    *res_q_re += - sq * xre;
+    *res_q_im += - sq * xim;
+  }
+  /* \rho(ik..,ik'-1..) */
+  if (ip > 0) {
+    int itx = it - strideip;
+    double xre = xptr[2 * itx];
+    double xim = xptr[2 * itx + 1];
+    double sq = sqrt(ip);
+    *res_p_re += - sq * xim;
+    *res_p_im += + sq * xre;
+    *res_q_re += - sq * xre;
+    *res_q_im += - sq * xim;
+  }
+}

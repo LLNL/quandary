@@ -708,6 +708,7 @@ void MasterEq::computedRHSdp(const double t, const Vec x, const Vec xbar, const 
 
 
   if (usematfree && noscillators == 2) { // matrix free solver for 2 oscillators
+    double res_p_re,  res_p_im, res_q_re, res_q_im;
 
     const double* xptr, *xbarptr;
     VecGetArrayRead(x, &xptr);
@@ -721,10 +722,10 @@ void MasterEq::computedRHSdp(const double t, const Vec x, const Vec xbar, const 
     int stridei0p = TensorGetIndex(n0,n1, 0,0,1,0);
     int stridei1p = TensorGetIndex(n0,n1, 0,0,0,1);
 
-    /* Collect coefficients for gradient  */
-    double coeff_p_osc0 = 0.0;
-    double coeff_q_osc0 = 0.0;
-    double coeff_p_osc1 = 0.0;
+    /* --- Collect coefficients for gradient --- */
+    double coeff_p_osc0 = 0.0; 
+    double coeff_q_osc0 = 0.0; 
+    double coeff_p_osc1 = 0.0; 
     double coeff_q_osc1 = 0.0;
     int it = 0;
     // Iterate over indices of xbar
@@ -738,109 +739,15 @@ void MasterEq::computedRHSdp(const double t, const Vec x, const Vec xbar, const 
             double xbarim = xbarptr[2*it+1];
 
             /* --- Oscillator 0 --- */
-            double res_p_re = 0.0;
-            double res_p_im = 0.0;
-            double res_q_re = 0.0;
-            double res_q_im = 0.0;
-            /* ik+1..,ik'.. term */
-            if (i0 < n0-1) {
-              int itx = it + stridei0;
-              double xre = xptr[2 * itx];
-              double xim = xptr[2 * itx + 1];
-              double sq = sqrt(i0 + 1);
-              res_p_re +=   sq * xim;
-              res_p_im += - sq * xre;
-              res_q_re +=   sq * xre;
-              res_q_im +=   sq * xim;
-            }
-            /* \rho(ik..,ik'+1..) */
-            if (i0p < n0-1) {
-              int itx = it + stridei0p;
-              double xre = xptr[2 * itx];
-              double xim = xptr[2 * itx + 1];
-              double sq = sqrt(i0p + 1);
-              res_p_re += - sq * xim;
-              res_p_im += + sq * xre;
-              res_q_re +=   sq * xre;
-              res_q_im +=   sq * xim;
-            }
-            /* \rho(ik-1..,ik'..) */
-            if (i0 > 0) {
-              int itx = it - stridei0;
-              double xre = xptr[2 * itx];
-              double xim = xptr[2 * itx + 1];
-              double sq = sqrt(i0);
-              res_p_re += + sq * xim;
-              res_p_im += - sq * xre;
-              res_q_re += - sq * xre;
-              res_q_im += - sq * xim;
-            }
-            /* \rho(ik..,ik'-1..) */
-            if (i0p > 0) {
-              int itx = it - stridei0p;
-              double xre = xptr[2 * itx];
-              double xim = xptr[2 * itx + 1];
-              double sq = sqrt(i0p);
-              res_p_re += - sq * xim;
-              res_p_im += + sq * xre;
-              res_q_re += - sq * xre;
-              res_q_im += - sq * xim;
-            }
-            /* Update the coefficients */
+            dRHSdp_getcoeffs(it, n0, i0, i0p, stridei0, stridei0p, xptr, &res_p_re, &res_p_im, &res_q_re, &res_q_im);
             coeff_p_osc0 += res_p_re * xbarre + res_p_im * xbarim;
             coeff_q_osc0 += res_q_re * xbarre + res_q_im * xbarim;
 
             /* --- Oscillator 1 --- */
-            res_p_re = 0.0;
-            res_p_im = 0.0;
-            res_q_re = 0.0;
-            res_q_im = 0.0;
-            /* ik+1..,ik'.. term */
-            if (i1 < n1-1) {
-              int itx = it + stridei1;
-              double xre = xptr[2 * itx];
-              double xim = xptr[2 * itx + 1];
-              double sq = sqrt(i1 + 1);
-              res_p_re +=   sq * xim;
-              res_p_im += - sq * xre;
-              res_q_re +=   sq * xre;
-              res_q_im +=   sq * xim;
-            }
-            /* \rho(ik..,ik'+1..) */
-            if (i1p < n1-1) {
-              int itx = it + stridei1p;
-              double xre = xptr[2 * itx];
-              double xim = xptr[2 * itx + 1];
-              double sq = sqrt(i1p + 1);
-              res_p_re += - sq * xim;
-              res_p_im += + sq * xre;
-              res_q_re +=   sq * xre;
-              res_q_im +=   sq * xim;
-            }
-            /* \rho(ik-1..,ik'..) */
-            if (i1 > 0) {
-              int itx = it - stridei1;
-              double xre = xptr[2 * itx];
-              double xim = xptr[2 * itx + 1];
-              double sq = sqrt(i1);
-              res_p_re += + sq * xim;
-              res_p_im += - sq * xre;
-              res_q_re += - sq * xre;
-              res_q_im += - sq * xim;
-            }
-            /* \rho(ik..,ik'-1..) */
-            if (i1p > 0) {
-              int itx = it - stridei1p;
-              double xre = xptr[2 * itx];
-              double xim = xptr[2 * itx + 1];
-              double sq = sqrt(i1p);
-              res_p_re += - sq * xim;
-              res_p_im += + sq * xre;
-              res_q_re += - sq * xre;
-              res_q_im += - sq * xim;
-            }
+            dRHSdp_getcoeffs(it, n1, i1, i1p, stridei1, stridei1p, xptr, &res_p_re, &res_p_im, &res_q_re, &res_q_im);
             coeff_p_osc1 += res_p_re * xbarre + res_p_im * xbarim;
             coeff_q_osc1 += res_q_re * xbarre + res_q_im * xbarim;
+
             it++;
           }
         }
@@ -874,10 +781,13 @@ void MasterEq::computedRHSdp(const double t, const Vec x, const Vec xbar, const 
       cols[iparam] = iparam + nparam0;
     }
     VecSetValues(grad, nparam1, cols, vals, ADD_VALUES);
+
+    //Assemble gradient
     VecAssemblyBegin(grad);
     VecAssemblyEnd(grad);
 
   } else if (usematfree && noscillators == 3) {  // matrix-free solver for 3 oscillators 
+    double res_p_re,  res_p_im, res_q_re, res_q_im;
 
     const double* xptr, *xbarptr;
     VecGetArrayRead(x, &xptr);
@@ -915,159 +825,17 @@ void MasterEq::computedRHSdp(const double t, const Vec x, const Vec xbar, const 
                 double xbarim = xbarptr[2*it+1];
 
                 /* --- Oscillator 0 --- */
-                double res_p_re = 0.0;
-                double res_p_im = 0.0;
-                double res_q_re = 0.0;
-                double res_q_im = 0.0;
-                /* ik+1..,ik'.. term */
-                if (i0 < n0-1) {
-                  int itx = it + stridei0;
-                  double xre = xptr[2 * itx];
-                  double xim = xptr[2 * itx + 1];
-                  double sq = sqrt(i0 + 1);
-                  res_p_re +=   sq * xim;
-                  res_p_im += - sq * xre;
-                  res_q_re +=   sq * xre;
-                  res_q_im +=   sq * xim;
-                }
-                /* \rho(ik..,ik'+1..) */
-                if (i0p < n0-1) {
-                  int itx = it + stridei0p;
-                  double xre = xptr[2 * itx];
-                  double xim = xptr[2 * itx + 1];
-                  double sq = sqrt(i0p + 1);
-                  res_p_re += - sq * xim;
-                  res_p_im += + sq * xre;
-                  res_q_re +=   sq * xre;
-                  res_q_im +=   sq * xim;
-                }
-                /* \rho(ik-1..,ik'..) */
-                if (i0 > 0) {
-                  int itx = it - stridei0;
-                  double xre = xptr[2 * itx];
-                  double xim = xptr[2 * itx + 1];
-                  double sq = sqrt(i0);
-                  res_p_re += + sq * xim;
-                  res_p_im += - sq * xre;
-                  res_q_re += - sq * xre;
-                  res_q_im += - sq * xim;
-                }
-                /* \rho(ik..,ik'-1..) */
-                if (i0p > 0) {
-                  int itx = it - stridei0p;
-                  double xre = xptr[2 * itx];
-                  double xim = xptr[2 * itx + 1];
-                  double sq = sqrt(i0p);
-                  res_p_re += - sq * xim;
-                  res_p_im += + sq * xre;
-                  res_q_re += - sq * xre;
-                  res_q_im += - sq * xim;
-                }
-                /* Update the coefficients */
+                dRHSdp_getcoeffs(it, n0, i0, i0p, stridei0, stridei0p, xptr, &res_p_re, &res_p_im, &res_q_re, &res_q_im);
                 coeff_p_osc0 += res_p_re * xbarre + res_p_im * xbarim;
                 coeff_q_osc0 += res_q_re * xbarre + res_q_im * xbarim;
 
                 /* --- Oscillator 1 --- */
-                res_p_re = 0.0;
-                res_p_im = 0.0;
-                res_q_re = 0.0;
-                res_q_im = 0.0;
-                /* ik+1..,ik'.. term */
-                if (i1 < n1-1) {
-                  int itx = it + stridei1;
-                  double xre = xptr[2 * itx];
-                  double xim = xptr[2 * itx + 1];
-                  double sq = sqrt(i1 + 1);
-                  res_p_re +=   sq * xim;
-                  res_p_im += - sq * xre;
-                  res_q_re +=   sq * xre;
-                  res_q_im +=   sq * xim;
-                }
-                /* \rho(ik..,ik'+1..) */
-                if (i1p < n1-1) {
-                  int itx = it + stridei1p;
-                  double xre = xptr[2 * itx];
-                  double xim = xptr[2 * itx + 1];
-                  double sq = sqrt(i1p + 1);
-                  res_p_re += - sq * xim;
-                  res_p_im += + sq * xre;
-                  res_q_re +=   sq * xre;
-                  res_q_im +=   sq * xim;
-                }
-                /* \rho(ik-1..,ik'..) */
-                if (i1 > 0) {
-                  int itx = it - stridei1;
-                  double xre = xptr[2 * itx];
-                  double xim = xptr[2 * itx + 1];
-                  double sq = sqrt(i1);
-                  res_p_re += + sq * xim;
-                  res_p_im += - sq * xre;
-                  res_q_re += - sq * xre;
-                  res_q_im += - sq * xim;
-                }
-                /* \rho(ik..,ik'-1..) */
-                if (i1p > 0) {
-                  int itx = it - stridei1p;
-                  double xre = xptr[2 * itx];
-                  double xim = xptr[2 * itx + 1];
-                  double sq = sqrt(i1p);
-                  res_p_re += - sq * xim;
-                  res_p_im += + sq * xre;
-                  res_q_re += - sq * xre;
-                  res_q_im += - sq * xim;
-                }
+                dRHSdp_getcoeffs(it, n1, i1, i1p, stridei1, stridei1p, xptr, &res_p_re, &res_p_im, &res_q_re, &res_q_im);
                 coeff_p_osc1 += res_p_re * xbarre + res_p_im * xbarim;
                 coeff_q_osc1 += res_q_re * xbarre + res_q_im * xbarim;
                 
                 /* --- Oscillator 2 --- */
-                res_p_re = 0.0;
-                res_p_im = 0.0;
-                res_q_re = 0.0;
-                res_q_im = 0.0;
-                /* ik+1..,ik'.. term */
-                if (i2 < n2-1) {
-                  int itx = it + stridei2;
-                  double xre = xptr[2 * itx];
-                  double xim = xptr[2 * itx + 1];
-                  double sq = sqrt(i2 + 1);
-                  res_p_re +=   sq * xim;
-                  res_p_im += - sq * xre;
-                  res_q_re +=   sq * xre;
-                  res_q_im +=   sq * xim;
-                }
-                /* \rho(ik..,ik'+1..) */
-                if (i2p < n2-1) {
-                  int itx = it + stridei2p;
-                  double xre = xptr[2 * itx];
-                  double xim = xptr[2 * itx + 1];
-                  double sq = sqrt(i2p + 1);
-                  res_p_re += - sq * xim;
-                  res_p_im += + sq * xre;
-                  res_q_re +=   sq * xre;
-                  res_q_im +=   sq * xim;
-                }
-                /* \rho(ik-1..,ik'..) */
-                if (i2 > 0) {
-                  int itx = it - stridei2;
-                  double xre = xptr[2 * itx];
-                  double xim = xptr[2 * itx + 1];
-                  double sq = sqrt(i2);
-                  res_p_re += + sq * xim;
-                  res_p_im += - sq * xre;
-                  res_q_re += - sq * xre;
-                  res_q_im += - sq * xim;
-                }
-                /* \rho(ik..,ik'-1..) */
-                if (i2p > 0) {
-                  int itx = it - stridei2p;
-                  double xre = xptr[2 * itx];
-                  double xim = xptr[2 * itx + 1];
-                  double sq = sqrt(i2p);
-                  res_p_re += - sq * xim;
-                  res_p_im += + sq * xre;
-                  res_q_re += - sq * xre;
-                  res_q_im += - sq * xim;
-                }
+                dRHSdp_getcoeffs(it, n2, i2, i2p, stridei2, stridei2p, xptr, &res_p_re, &res_p_im, &res_q_re, &res_q_im);
                 coeff_p_osc2 += res_p_re * xbarre + res_p_im * xbarim;
                 coeff_q_osc2 += res_q_re * xbarre + res_q_im * xbarim;
 
@@ -1120,6 +888,7 @@ void MasterEq::computedRHSdp(const double t, const Vec x, const Vec xbar, const 
     VecSetValues(grad, nparam2, cols, vals, ADD_VALUES);
 
 
+    /* Assemble gradient */
     VecAssemblyBegin(grad);
     VecAssemblyEnd(grad);
 
