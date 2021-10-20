@@ -271,8 +271,8 @@ int main(int argc,char **argv)
   bool usematfree = config.GetBoolParam("usematfree", false);
   if ( (usematfree && nlevels.size() < 2) ||   
        (usematfree && nlevels.size() > 3)   ){
-    printf("ERROR: Matrix free solver is only implemented for systems with TWO or THREE oscillators. Run with option 'usematfree=false'!\n");
-    exit(1);
+        printf("Warning: Matrix free solver is only implemented for systems with TWO or THREE oscillators. Switching to sparse-matrix solver.\n");
+        usematfree = false;
   }
   if (usematfree && mpisize_petsc > 1) {
     printf("ERROR: No Petsc-parallel version for the matrix free solver available!");
