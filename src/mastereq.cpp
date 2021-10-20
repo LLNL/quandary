@@ -138,11 +138,19 @@ MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Osci
   }
 
   /* Set the MatMult routine for applying the RHS to a vector x */
-  if (usematfree) {
-    MatShellSetOperation(RHS, MATOP_MULT, (void(*)(void)) myMatMult_matfree_2Osc);
-    MatShellSetOperation(RHS, MATOP_MULT_TRANSPOSE, (void(*)(void)) myMatMultTranspose_matfree_2Osc);
+  if (usematfree) { // matrix-free solver
+    if (noscillators == 2) {
+      MatShellSetOperation(RHS, MATOP_MULT, (void(*)(void)) myMatMult_matfree_2Osc);
+      MatShellSetOperation(RHS, MATOP_MULT_TRANSPOSE, (void(*)(void)) myMatMultTranspose_matfree_2Osc);
+    } else if (noscillators == 3) {
+      MatShellSetOperation(RHS, MATOP_MULT, (void(*)(void)) myMatMult_matfree_3Osc);
+      MatShellSetOperation(RHS, MATOP_MULT_TRANSPOSE, (void(*)(void)) myMatMultTranspose_matfree_3Osc);
+    } else {
+      printf("ERROR. Matfree solver only for 2 or 3 oscillators. This should never happen!\n");
+      exit(1);
+    }
   }
-  else {
+  else { // sparse-matrix solver
     MatShellSetOperation(RHS, MATOP_MULT, (void(*)(void)) myMatMult_sparsemat);
     MatShellSetOperation(RHS, MATOP_MULT_TRANSPOSE, (void(*)(void)) myMatMultTranspose_sparsemat);
   }
@@ -699,7 +707,8 @@ Mat MasterEq::getRHS() { return RHS; }
 void MasterEq::computedRHSdp(const double t, const Vec x, const Vec xbar, const double alpha, Vec grad) {
 
 
-  if (usematfree) { // matrix free solver
+  if (usematfree && noscillators == 2) { // matrix free solver for 2 oscillators
+
     const double* xptr, *xbarptr;
     VecGetArrayRead(x, &xptr);
     VecGetArrayRead(xbar, &xbarptr);
@@ -867,6 +876,11 @@ void MasterEq::computedRHSdp(const double t, const Vec x, const Vec xbar, const 
     VecSetValues(grad, nparam1, cols, vals, ADD_VALUES);
     VecAssemblyBegin(grad);
     VecAssemblyEnd(grad);
+
+  } else if (usematfree && noscillators == 3) {  // matrix-free solver for 3 oscillators 
+    // TODO!
+    printf("TODO! Implement computedRHSdp for 3 oscillators!\n");
+    exit(1);
 
   } else {  // sparse matrix solver
 
@@ -1157,7 +1171,7 @@ int MasterEq::getRhoT0(const int iinit, const int ninit, const InitialConditionT
 }
 
 
-/* Define the action of RHS on a vector x */
+/* Sparse matrix solver: Define the action of RHS on a vector x */
 int myMatMult_sparsemat(Mat RHS, Vec x, Vec y){
 
   /* Get the shell context */
@@ -1247,7 +1261,7 @@ int myMatMult_sparsemat(Mat RHS, Vec x, Vec y){
 }
 
 
-/* Define the action of RHS^T on a vector x */
+/* Sparse-matrix solver: Define the action of RHS^T on a vector x */
 int myMatMultTranspose_sparsemat(Mat RHS, Vec x, Vec y) {
 
   /* Get time from shell context */
@@ -1334,7 +1348,8 @@ int myMatMultTranspose_sparsemat(Mat RHS, Vec x, Vec y) {
 }
 
 
-/* Define the action of RHS on a vector x */
+
+/* Matfree-solver for 2 Oscillators: Define the action of RHS on a vector x */
 template <int n0, int n1>
 int myMatMult_matfree(Mat RHS, Vec x, Vec y){
 
@@ -1568,7 +1583,8 @@ int myMatMult_matfree(Mat RHS, Vec x, Vec y){
   return 0;
 }
 
-/* Define the action of RHS^T on a vector x */
+
+/* Matrix-free solver for 2 Oscillators: Define the action of RHS^T on a vector x */
 template <int n0, int n1>
 int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
 
@@ -1798,6 +1814,24 @@ int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
 }
 
 
+/* Matfree-solver for 3 Oscillators: Define the action of RHS on a vector x */
+template <int n0, int n1, int n2>
+int myMatMult_matfree(Mat RHS, Vec x, Vec y){
+  printf("To be implemented\n");
+  exit(1);
+  return 0;
+}
+
+/* Define the action of RHS^T on a vector x */
+template <int n0, int n1, int n2>
+int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
+  printf("To be implemented\n");
+  exit(1);
+  return 0;
+}
+
+
+
 int myMatMult_matfree_2Osc(Mat RHS, Vec x, Vec y){
   /* Get the shell context */
   MatShellCtx *shellctx;
@@ -1806,21 +1840,14 @@ int myMatMult_matfree_2Osc(Mat RHS, Vec x, Vec y){
 
   int n0 = shellctx->nlevels[0];
   int n1 = shellctx->nlevels[1];
-  if(n0==3 && n1==20){
-    return myMatMult_matfree<3,20>(RHS, x, y);
-  } else if(n0==3 && n1==10){
-    return myMatMult_matfree<3,10>(RHS, x, y);
-  } else if(n0==4 && n1==4){
-    return myMatMult_matfree<4,4>(RHS, x, y);
-  } else if(n0==1 && n1==1){
-    return myMatMult_matfree<1,1>(RHS, x, y);
-  } else if(n0==2 && n1==2){
-    return myMatMult_matfree<2,2>(RHS, x, y);
-  } else if(n0==3 && n1==3){
-    return myMatMult_matfree<3,3>(RHS, x, y);
-  } else if(n0==20 && n1==20){
-    return myMatMult_matfree<20,20>(RHS, x, y);
-  } else {
+  if      (n0==3 && n1==20)  return myMatMult_matfree<3,20>(RHS, x, y);
+  else if (n0==3 && n1==10)  return myMatMult_matfree<3,10>(RHS, x, y);
+  else if (n0==4 && n1==4)   return myMatMult_matfree<4,4>(RHS, x, y);
+  else if (n0==1 && n1==1)   return myMatMult_matfree<1,1>(RHS, x, y);
+  else if (n0==2 && n1==2)   return myMatMult_matfree<2,2>(RHS, x, y);
+  else if (n0==3 && n1==3)   return myMatMult_matfree<3,3>(RHS, x, y);
+  else if (n0==20 && n1==20) return myMatMult_matfree<20,20>(RHS, x, y);
+  else {
     printf("ERROR: In order to run this case, add a line at the end of mastereq.cpp with the corresponding number of levels!\n");
     exit(1);
   }
@@ -1834,21 +1861,48 @@ int myMatMultTranspose_matfree_2Osc(Mat RHS, Vec x, Vec y){
 
   int n0 = shellctx->nlevels[0];
   int n1 = shellctx->nlevels[1];
-  if(n0==3 && n1==20){
-    return myMatMultTranspose_matfree<3,20>(RHS, x, y);
-  } else if(n0==3 && n1==10){
-    return myMatMultTranspose_matfree<3,10>(RHS, x, y);
-  } else if(n0==4 && n1==4){
-    return myMatMultTranspose_matfree<4,4>(RHS, x, y);
-  } else if(n0==1 && n1==1){
-    return myMatMultTranspose_matfree<1,1>(RHS, x, y);
-  } else if(n0==2 && n1==2){
-    return myMatMultTranspose_matfree<2,2>(RHS, x, y);
-  } else if(n0==3 && n1==3){
-    return myMatMultTranspose_matfree<3,3>(RHS, x, y);
-  } else if(n0==20 && n1==20){
-    return myMatMultTranspose_matfree<20,20>(RHS, x, y);
-  } else {
+  if      (n0==3 && n1==20)  return myMatMultTranspose_matfree<3,20>(RHS, x, y);
+  else if (n0==3 && n1==10)  return myMatMultTranspose_matfree<3,10>(RHS, x, y);
+  else if (n0==4 && n1==4)   return myMatMultTranspose_matfree<4,4>(RHS, x, y);
+  else if (n0==1 && n1==1)   return myMatMultTranspose_matfree<1,1>(RHS, x, y);
+  else if (n0==2 && n1==2)   return myMatMultTranspose_matfree<2,2>(RHS, x, y);
+  else if (n0==3 && n1==3)   return myMatMultTranspose_matfree<3,3>(RHS, x, y);
+  else if (n0==20 && n1==20) return myMatMultTranspose_matfree<20,20>(RHS, x, y);
+  else {
+    printf("ERROR: In order to run this case, add a line at the end of mastereq.cpp with the corresponding number of levels!\n");
+    exit(1);
+  }
+}
+
+
+int myMatMult_matfree_3Osc(Mat RHS, Vec x, Vec y){
+  /* Get the shell context */
+  MatShellCtx *shellctx;
+  MatShellGetContext(RHS, (void**) &shellctx);
+
+  int n0 = shellctx->nlevels[0];
+  int n1 = shellctx->nlevels[1];
+  int n2 = shellctx->nlevels[2];
+  if      (n0==2 && n1==2 && n2==2) return myMatMult_matfree<2,2,2>(RHS, x, y);
+  else if (n0==2 && n1==3 && n2==4) return myMatMult_matfree<2,3,4>(RHS, x, y);
+  else {
+    printf("ERROR: In order to run this case, add a line at the end of mastereq.cpp with the corresponding number of levels!\n");
+    exit(1);
+  }
+}
+
+
+int myMatMultTranspose_matfree_3Osc(Mat RHS, Vec x, Vec y){
+ /* Get the shell context */
+  MatShellCtx *shellctx;
+  MatShellGetContext(RHS, (void**) &shellctx);
+
+  int n0 = shellctx->nlevels[0];
+  int n1 = shellctx->nlevels[1];
+  int n2 = shellctx->nlevels[2];
+  if      (n0==2 && n1==2 && n2==2)  return myMatMultTranspose_matfree<2,2,2>(RHS, x, y);
+  else if (n0==2 && n1==3 && n2==4)  return myMatMultTranspose_matfree<2,3,4>(RHS, x, y);
+  else {
     printf("ERROR: In order to run this case, add a line at the end of mastereq.cpp with the corresponding number of levels!\n");
     exit(1);
   }

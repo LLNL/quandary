@@ -30,8 +30,10 @@ typedef struct {
 
 
 /* Define the Matrix-Vector products for the RHS MatShell */
-int myMatMult_matfree_2Osc(Mat RHS, Vec x, Vec y);              // Matrix free solver, currently only for 2 oscillators 
+int myMatMult_matfree_2Osc(Mat RHS, Vec x, Vec y);              // Matrix free solver for 2 oscillators 
 int myMatMultTranspose_matfree_2Osc(Mat RHS, Vec x, Vec y);
+int myMatMult_matfree_3Osc(Mat RHS, Vec x, Vec y);              // Matrix free solver for 3 oscillators 
+int myMatMultTranspose_matfree_3Osc(Mat RHS, Vec x, Vec y);
 int myMatMult_sparsemat(Mat RHS, Vec x, Vec y);                 // Sparse matrix solver
 int myMatMultTranspose_sparsemat(Mat RHS, Vec x, Vec y);
 
@@ -138,31 +140,47 @@ class MasterEq{
 };
 
 
+// Matfree solver inlines for 2 oscillator
 inline double H_detune(const double detuning0, const double detuning1, const int a, const int b) {
   return detuning0*a + detuning1*b;
 };
-
 inline double H_selfkerr(const double xi0, const double xi1, const int a, const int b) {
   return - xi0 / 2.0 * a * (a-1) - xi1 / 2.0 * b * (b-1);
 };
-
 inline double H_crosskerr(const double xi01, const int a, const int b) {
   return - xi01 * a * b;
 };
-
-inline double L2(double dephase0, double dephase1, const int i0, const int i1, const int i0p, const int i1p){
+inline double L2(const double dephase0, const double dephase1, const int i0, const int i1, const int i0p, const int i1p){
   return dephase0 * ( i0*i0p - 1./2. * (i0*i0 + i0p*i0p) ) + dephase1 * ( i1*i1p - 1./2. * (i1*i1 + i1p*i1p) );
 };
-
-
-
-inline double L1diag(double decay0, double decay1, const int i0, const int i1, const int i0p, const int i1p){
+inline double L1diag(const double decay0, const double decay1, const int i0, const int i1, const int i0p, const int i1p){
   return - decay0 / 2.0 * ( i0 + i0p ) - decay1 / 2.0 * ( i1 + i1p );
 };
-
-
-inline int TensorGetIndex(const int nlevels0, const int nlevels1,const  int i0, const int i1, int i0p, const int i1p){
+inline int TensorGetIndex(const int nlevels0, const int nlevels1,const  int i0, const int i1, const int i0p, const int i1p){
   return i0*nlevels1 + i1 + (nlevels0 * nlevels1) * ( i0p * nlevels1 + i1p);
 };
 
 
+// Matfree solver inlines for 3 oscillator
+inline double H_detune(const double detuning0, const double detuning1, const double detuning2, const int i0, const int i1, const int i2) {
+  return detuning0*i0 + detuning1*i1 + detuning2*i2;
+};
+inline double H_selfkerr(const double xi0, const double xi1, const double xi2, const int i0, const int i1, const int i2) {
+  return - xi0 / 2.0 * i0 * (i0-1) - xi1 / 2.0 * i1 * (i1-1) - xi2 / 2.0 * i2 * (i2-1);
+};
+inline double H_crosskerr(const double xi01, const double xi02, const double xi12, const int i0, const int i1, const int i2) {
+  return - xi01 * i0 * i1 - xi02 * i0 * i2 - xi12 * i1 * i2;
+};
+inline double L2(const double dephase0, const double dephase1, const double dephase2, const int i0, const int i1, const int i2, const int i0p, const int i1p, const int i2p){
+  return dephase0 * ( i0*i0p - 1./2. * (i0*i0 + i0p*i0p) ) 
+       + dephase1 * ( i1*i1p - 1./2. * (i1*i1 + i1p*i1p) )
+       + dephase2 * ( i2*i2p - 1./2. * (i2*i2 + i2p*i2p) );
+};
+inline double L1diag(const double decay0, const double decay1, const double decay2, const int i0, const int i1, const int i2, const int i0p, const int i1p, const int i2p){
+  return - decay0 / 2.0 * ( i0 + i0p ) 
+         - decay1 / 2.0 * ( i1 + i1p )
+         - decay2 / 2.0 * ( i2 + i2p );
+};
+inline int TensorGetIndex(const int nlevels0, const int nlevels1, const int nlevels2, const  int i0, const int i1, const int i2, const int i0p, const int i1p, const int i2p){
+  return i0*nlevels1*nlevels2 + i1*nlevels2 + i2 + (nlevels0 * nlevels1 * nlevels2) * ( i0p * nlevels1*nlevels2 + i1p*nlevels2 + i2p);
+};

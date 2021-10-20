@@ -269,8 +269,9 @@ int main(int argc,char **argv)
   for (int i = Jkl.size(); i < (noscillators-1) * noscillators / 2; i++) Jkl.push_back(0.0);
   // Sanity check for matrix free solver
   bool usematfree = config.GetBoolParam("usematfree", false);
-  if (usematfree && nlevels.size() != 2 ){
-    printf("ERROR: Matrix free solver is only implemented for systems with TWO oscillators. Run with option 'usematfree=false'!\n");
+  if ( (usematfree && nlevels.size() < 2) ||   
+       (usematfree && nlevels.size() > 3)   ){
+    printf("ERROR: Matrix free solver is only implemented for systems with TWO or THREE oscillators. Run with option 'usematfree=false'!\n");
     exit(1);
   }
   if (usematfree && mpisize_petsc > 1) {
