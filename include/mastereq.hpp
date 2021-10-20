@@ -187,7 +187,7 @@ inline int TensorGetIndex(const int nlevels0, const int nlevels1, const int nlev
 
 
 
-// Coefficients for gradient updates for oscillator i
+// Mat-free solver inline for gradient updates for oscillator i
 inline void dRHSdp_getcoeffs(const int it, const int n, const int i, const int ip, const int stridei, const int strideip, const double* xptr, double* res_p_re, double* res_p_im, double* res_q_re, double* res_q_im) {
 
   *res_p_re = 0.0;
@@ -238,5 +238,204 @@ inline void dRHSdp_getcoeffs(const int it, const int n, const int i, const int i
     *res_p_im += + sq * xre;
     *res_q_re += - sq * xre;
     *res_q_im += - sq * xim;
+  }
+}
+
+// Mat-free solver inline for Jkl coupling between oscillator i and oscillator j
+inline void Jkl_coupling(const int it, const int ni, const int nj, const int i, const int ip, const int j, const int jp, const int stridei, const int strideip, const int stridej, const int stridejp, const double* xptr, const double Jij, const double cosij, const double sinij, double* yre, double* yim) {
+  if (fabs(Jij)>1e-10) {
+    //  1) J_kl (-icos + sin) * ρ_{E−k+l i, i′}
+    if (i > 0 && j < nj-1) {
+      int itx = it - stridei + stridej;
+      double xre = xptr[2 * itx];
+      double xim = xptr[2 * itx + 1];
+      double sq = sqrt(i * (j + 1));
+      // sin u + cos v + i ( -cos u + sin v)
+      *yre += Jij * sq * (   cosij * xim + sinij * xre);
+      *yim += Jij * sq * ( - cosij * xre + sinij * xim);
+    }
+    // 2) J_kl (−icos − sin)sqrt(il*(ik +1)) ρ_{E+k−li,i′}
+    if (i < ni-1 && j > 0) {
+      int itx = it + stridei - stridej;  // E+k-l i, i'
+      double xre = xptr[2 * itx];
+      double xim = xptr[2 * itx + 1];
+      double sq = sqrt(j * (i + 1)); // sqrt( il*(ik+1))
+      // -sin u + cos v + i (-cos u - sin v)
+      *yre += Jij * sq * (   cosij * xim - sinij * xre);
+      *yim += Jij * sq * ( - cosij * xre - sinij * xim);
+    }
+    // 3) J_kl ( icos + sin)sqrt(ik'*(il' +1)) ρ_{i,E-k+li'}
+    if (ip > 0 && jp < nj-1) {
+      int itx = it - strideip + stridejp;  // i, E-k+l i'
+      double xre = xptr[2 * itx];
+      double xim = xptr[2 * itx + 1];
+      double sq = sqrt(ip * (jp + 1)); // sqrt( ik'*(il'+1))
+      //  sin u - cos v + i ( cos u + sin v)
+      *yre += Jij * sq * ( - cosij * xim + sinij * xre);
+      *yim += Jij * sq * (   cosij * xre + sinij * xim);
+    }
+    // 4) J_kl ( icos - sin)sqrt(il'*(ik' +1)) ρ_{i,E+k-li'}
+    if (ip < ni-1 && jp > 0) {
+      int itx = it + strideip - stridejp;  // i, E+k-l i'
+      double xre = xptr[2 * itx];
+      double xim = xptr[2 * itx + 1];
+      double sq = sqrt(jp * (ip + 1)); // sqrt( il'*(ik'+1))
+      // - sin u - cos v + i ( cos u - sin v)
+      *yre += Jij * sq * ( - cosij * xim - sinij * xre);
+      *yim += Jij * sq * (   cosij * xre - sinij * xim);
+    }
+  }
+}
+
+// transpose of Jkl coupling
+inline void Jkl_coupling_T(const int it, const int ni, const int nj, const int i, const int ip, const int j, const int jp, const int stridei, const int strideip, const int stridej, const int stridejp, const double* xptr, const double Jij, const double cosij, const double sinij, double* yre, double* yim) {
+  if (fabs(Jij)>1e-10) {
+    //  1) [...] * \bar y_{E+k-l i, i′}
+    if (i < ni-1 && j > 0) {
+      int itx = it + stridei - stridej;
+      double xre = xptr[2 * itx];
+      double xim = xptr[2 * itx + 1];
+      double sq = sqrt(j * (i + 1));
+      *yre += Jij * sq * ( - cosij * xim + sinij * xre);
+      *yim += Jij * sq * ( + cosij * xre + sinij * xim);
+    }
+    // 2) J_kl (−icos − sin)sqrt(ik*(il +1)) \bar y_{E-k+li,i′}
+    if (i > 0 && j < nj-1) {
+      int itx = it - stridei + stridej;  // E-k+l i, i'
+      double xre = xptr[2 * itx];
+      double xim = xptr[2 * itx + 1];
+      double sq = sqrt(i * (j + 1)); // sqrt( ik*(il+1))
+      *yre += Jij * sq * ( - cosij * xim - sinij * xre);
+      *yim += Jij * sq * ( + cosij * xre - sinij * xim);
+    }
+    // 3) J_kl ( icos + sin)sqrt(il'*(ik' +1)) \bar y_{i,E+k-li'}
+    if (ip < ni-1 && jp > 0) {
+      int itx = it + strideip - stridejp;  // i, E+k-l i'
+      double xre = xptr[2 * itx];
+      double xim = xptr[2 * itx + 1];
+      double sq = sqrt(jp * (ip + 1)); // sqrt( il'*(ik'+1))
+      *yre += Jij * sq * (   cosij * xim + sinij * xre);
+      *yim += Jij * sq * ( - cosij * xre + sinij * xim);
+    }
+    // 4) J_kl ( icos - sin)sqrt(ik'*(il' +1)) \bar y_{i,E-k+li'}
+    if (ip > 0 && jp < nj-1) {
+      int itx = it - strideip + stridejp;  // i, E-k+l i'
+      double xre = xptr[2 * itx];
+      double xim = xptr[2 * itx + 1];
+      double sq = sqrt(ip * (jp + 1)); // sqrt( ik'*(il'+1))
+      *yre += Jij * sq * (   cosij * xim - sinij * xre);
+      *yim += Jij * sq * ( - cosij * xre - sinij * xim);
+    }
+  }
+
+}
+
+// Mat-free solver inline for off-diagonal L1decay term
+inline void L1decay(const int it, const int n, const int i, const int ip, const int stridei, const int strideip, const double* xptr, const double decayi, double* yre, double* yim){
+  if  (fabs(decayi) > 1e-12) {
+    if (i < n-1 && ip < n-1) {
+      double l1off = decayi * sqrt((i+1)*(ip+1));
+      int itx = it + stridei + strideip;
+      double xre = xptr[2 * itx];
+      double xim = xptr[2 * itx + 1];
+      *yre += l1off * xre;
+      *yim += l1off * xim;
+    }
+  }
+}
+
+
+// Transpose of offdiagonal L1decay
+inline void L1decay_T(const int it, const int n, const int i, const int ip, const int stridei, const int strideip, const double* xptr, const double decayi, double* yre, double* yim){
+  if (fabs(decayi) > 1e-12) {
+      if (i > 0 && ip > 0) {
+        double l1off = decayi * sqrt(i*ip);
+        int itx = it - stridei - strideip;
+        double xre = xptr[2 * itx];
+        double xim = xptr[2 * itx + 1];
+        *yre += l1off * xre;
+        *yim += l1off * xim;
+      }
+    }
+}
+
+// Matfree solver inline for Control terms
+inline void control(const int it, const int n, const int i, const int ip, const int stridei, const int strideip, const double* xptr, const double pt, const double qt, double* yre, double* yim){
+  /* \rho(ik+1..,ik'..) term */
+  if (i < n-1) {
+      int itx = it + stridei;
+      double xre = xptr[2 * itx];
+      double xim = xptr[2 * itx + 1];
+      double sq = sqrt(i + 1);
+      *yre += sq * (   pt * xim + qt * xre);
+      *yim += sq * ( - pt * xre + qt * xim);
+    }
+    /* \rho(ik..,ik'+1..) */
+    if (ip < n-1) {
+      int itx = it + strideip;
+      double xre = xptr[2 * itx];
+      double xim = xptr[2 * itx + 1];
+      double sq = sqrt(ip + 1);
+      *yre += sq * ( -pt * xim + qt * xre);
+      *yim += sq * (  pt * xre + qt * xim);
+    }
+    /* \rho(ik-1..,ik'..) */
+    if (i > 0) {
+      int itx = it - stridei;
+      double xre = xptr[2 * itx];
+      double xim = xptr[2 * itx + 1];
+      double sq = sqrt(i);
+      *yre += sq * (  pt * xim - qt * xre);
+      *yim += sq * (- pt * xre - qt * xim);
+    }
+    /* \rho(ik..,ik'-1..) */
+    if (ip > 0) {
+      int itx = it - strideip;
+      double xre = xptr[2 * itx];
+      double xim = xptr[2 * itx + 1];
+      double sq = sqrt(ip);
+      *yre += sq * (- pt * xim - qt * xre);
+      *yim += sq * (  pt * xre - qt * xim);
+    }
+}
+
+
+// Transpose of control terms
+inline void control_T(const int it, const int n, const int i, const int ip, const int stridei, const int strideip, const double* xptr, const double pt, const double qt, double* yre, double* yim){
+  /* \rho(ik+1..,ik'..) term */
+  if (i > 0) {
+    int itx = it - stridei;
+    double xre = xptr[2 * itx];
+    double xim = xptr[2 * itx + 1];
+    double sq = sqrt(i);
+    *yre += sq * ( - pt * xim + qt * xre);
+    *yim += sq * (   pt * xre + qt * xim);
+  }
+  /* \rho(ik..,ik'+1..) */
+  if (ip > 0) {
+    int itx = it - strideip;
+    double xre = xptr[2 * itx];
+    double xim = xptr[2 * itx + 1];
+    double sq = sqrt(ip);
+    *yre += sq * (  pt * xim + qt * xre);
+    *yim += sq * ( -pt * xre + qt * xim);
+  }
+  /* \rho(ik-1..,ik'..) */
+  if (i < n-1) {
+    int itx = it + stridei;
+    double xre = xptr[2 * itx];
+    double xim = xptr[2 * itx + 1];
+    double sq = sqrt(i+1);
+    *yre += sq * (- pt * xim - qt * xre);
+    *yim += sq * (  pt * xre - qt * xim);
+  }
+  /* \rho(ik..,ik'-1..) */
+  if (ip < n-1) {
+    int itx = it + strideip;
+    double xre = xptr[2 * itx];
+    double xim = xptr[2 * itx + 1];
+    double sq = sqrt(ip+1);
+    *yre += sq * (+ pt * xim - qt * xre);
+    *yim += sq * (- pt * xre - qt * xim);
   }
 }

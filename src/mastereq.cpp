@@ -1437,146 +1437,21 @@ int myMatMult_matfree(Mat RHS, Vec x, Vec y){
           yim += (l2 + l1diag) * xim;
 
 
-          /* --- Offdiagonal: coupling term, oscil 0<->1 --- */
-          if (fabs(J01)>1e-10) {
-            //  1) J_kl (-icos + sin) * ρ_{E−k+l i, i′}
-            if (i0 > 0 && i1 < n1-1) {
-              int itx = it - stridei0 + stridei1;
-              double xre = xptr[2 * itx];
-              double xim = xptr[2 * itx + 1];
-              double sq = sqrt(i0 * (i1 + 1));
-              // sin u + cos v + i ( -cos u + sin v)
-              yre += J01 * sq * (   cos01 * xim + sin01 * xre);
-              yim += J01 * sq * ( - cos01 * xre + sin01 * xim);
-            }
-            // 2) J_kl (−icos − sin)sqrt(il*(ik +1)) ρ_{E+k−li,i′}
-            if (i0 < n0-1 && i1 > 0) {
-              int itx = it + stridei0 - stridei1;  // E+k-l i, i'
-              double xre = xptr[2 * itx];
-              double xim = xptr[2 * itx + 1];
-              double sq = sqrt(i1 * (i0 + 1)); // sqrt( il*(ik+1))
-              // -sin u + cos v + i (-cos u - sin v)
-              yre += J01 * sq * (   cos01 * xim - sin01 * xre);
-              yim += J01 * sq * ( - cos01 * xre - sin01 * xim);
-            }
-            // 3) J_kl ( icos + sin)sqrt(ik'*(il' +1)) ρ_{i,E-k+li'}
-            if (i0p > 0 && i1p < n1-1) {
-              int itx = it - stridei0p + stridei1p;  // i, E-k+l i'
-              double xre = xptr[2 * itx];
-              double xim = xptr[2 * itx + 1];
-              double sq = sqrt(i0p * (i1p + 1)); // sqrt( ik'*(il'+1))
-              //  sin u - cos v + i ( cos u + sin v)
-              yre += J01 * sq * ( - cos01 * xim + sin01 * xre);
-              yim += J01 * sq * (   cos01 * xre + sin01 * xim);
-            }
-            // 4) J_kl ( icos - sin)sqrt(il'*(ik' +1)) ρ_{i,E+k-li'}
-            if (i0p < n0-1 && i1p > 0) {
-              int itx = it + stridei0p - stridei1p;  // i, E+k-l i'
-              double xre = xptr[2 * itx];
-              double xim = xptr[2 * itx + 1];
-              double sq = sqrt(i1p * (i0p + 1)); // sqrt( il'*(ik'+1))
-              // - sin u - cos v + i ( cos u - sin v)
-              yre += J01 * sq * ( - cos01 * xim - sin01 * xre);
-              yim += J01 * sq * (   cos01 * xre - sin01 * xim);
-            }
-          }
-
+          /* --- Offdiagonal: Jkl coupling term --- */
+          // oscillator 0<->1 
+          Jkl_coupling(it, n0, n1, i0, i0p, i1, i1p, stridei0, stridei0p, stridei1, stridei1p, xptr, J01, cos01, sin01, &yre, &yim);
 
           /* --- Offdiagonal part of decay L1 */
           // Oscillators 0
-          if (i0 < n0-1 && i0p < n0-1) {
-            double l1off = decay0 * sqrt((i0+1)*(i0p+1));
-            int itx = it + stridei0 + stridei0p;
-            double xre = xptr[2 * itx];
-            double xim = xptr[2 * itx + 1];
-            yre += l1off * xre;
-            yim += l1off * xim;
-          }
+          L1decay(it, n0, i0, i0p, stridei0, stridei0p, xptr, decay0, &yre, &yim);
           // Oscillator 1
-          if (i1 < n1-1 && i1p < n1-1) {
-            double l1off = decay1 * sqrt((i1+1)*(i1p+1));
-            int itx = it + stridei1 + stridei1p;
-            double xre = xptr[2 * itx];
-            double xim = xptr[2 * itx + 1];
-            yre += l1off * xre;
-            yim += l1off * xim;
-          }
+          L1decay(it, n1, i1, i1p, stridei1, stridei1p, xptr, decay1, &yre, &yim);
 
-          /* --- Control hamiltonian --- Oscillator 0 --- */
-          /* \rho(ik+1..,ik'..) term */
-          if (i0 < n0-1) {
-            int itx = it + stridei0;
-            double xre = xptr[2 * itx];
-            double xim = xptr[2 * itx + 1];
-            double sq = sqrt(i0 + 1);
-            yre += sq * (   pt0 * xim + qt0 * xre);
-            yim += sq * ( - pt0 * xre + qt0 * xim);
-          }
-          /* \rho(ik..,ik'+1..) */
-          if (i0p < n0-1) {
-            int itx = it + stridei0p;
-            double xre = xptr[2 * itx];
-            double xim = xptr[2 * itx + 1];
-            double sq = sqrt(i0p + 1);
-            yre += sq * ( -pt0 * xim + qt0 * xre);
-            yim += sq * (  pt0 * xre + qt0 * xim);
-          }
-          /* \rho(ik-1..,ik'..) */
-          if (i0 > 0) {
-            int itx = it - stridei0;
-            double xre = xptr[2 * itx];
-            double xim = xptr[2 * itx + 1];
-            double sq = sqrt(i0);
-            yre += sq * (  pt0 * xim - qt0 * xre);
-            yim += sq * (- pt0 * xre - qt0 * xim);
-          }
-          /* \rho(ik..,ik'-1..) */
-          if (i0p > 0) {
-            int itx = it - stridei0p;
-            double xre = xptr[2 * itx];
-            double xim = xptr[2 * itx + 1];
-            double sq = sqrt(i0p);
-            yre += sq * (- pt0 * xim - qt0 * xre);
-            yim += sq * (  pt0 * xre - qt0 * xim);
-          }
-
-          /* --- Control hamiltonian --- Oscillator 1 --- */
-          /* \rho(ik+1..,ik'..) term */
-          if (i1 < n1-1) {
-            int itx = it + stridei1;
-            double xre = xptr[2 * itx];
-            double xim = xptr[2 * itx + 1];
-            double sq = sqrt(i1 + 1);
-            yre += sq * (   pt1 * xim + qt1 * xre);
-            yim += sq * ( - pt1 * xre + qt1 * xim);
-          }
-          /* \rho(ik..,ik'+1..) */
-          if (i1p < n1-1) {
-            int itx = it + stridei1p;
-            double xre = xptr[2 * itx];
-            double xim = xptr[2 * itx + 1];
-            double sq = sqrt(i1p + 1);
-            yre += sq * ( -pt1 * xim + qt1 * xre);
-            yim += sq * (  pt1 * xre + qt1 * xim);
-          }
-          /* \rho(ik-1..,ik'..) */
-          if (i1 > 0) {
-            int itx = it - stridei1;
-            double xre = xptr[2 * itx];
-            double xim = xptr[2 * itx + 1];
-            double sq = sqrt(i1);
-            yre += sq * (  pt1 * xim - qt1 * xre);
-            yim += sq * (- pt1 * xre - qt1 * xim);
-          }
-          /* \rho(ik..,ik'-1..) */
-          if (i1p > 0) {
-            int itx = it - stridei1p;
-            double xre = xptr[2 * itx];
-            double xim = xptr[2 * itx + 1];
-            double sq = sqrt(i1p);
-            yre += sq * (- pt1 * xim - qt1 * xre);
-            yim += sq * (  pt1 * xre - qt1 * xim);
-          }
+          /* --- Control hamiltonian --- */
+          // Oscillator 0 
+          control(it, n0, i0, i0p, stridei0, stridei0p, xptr, pt0, qt0, &yre, &yim);
+          // Oscillator 1
+          control(it, n1, i1, i1p, stridei1, stridei1p, xptr, pt1, qt1, &yre, &yim);
 
           /* Update */
           yptr[2*it]   = yre;
@@ -1672,142 +1547,22 @@ int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
           yre += (l2 + l1diag) * xre;
           yim += (l2 + l1diag) * xim;
 
-          /* --- Offdiagonal coupling term J_01, oscil 0<->1 --- */
-          if (fabs(J01)>1e-10) {
-            //  1) [...] * \bar y_{E+k-l i, i′}
-            if (i0 < n0-1 && i1 > 0) {
-              int itx = it + stridei0 - stridei1;
-              double xre = xptr[2 * itx];
-              double xim = xptr[2 * itx + 1];
-              double sq = sqrt(i1 * (i0 + 1));
-              yre += J01 * sq * ( - cos01 * xim + sin01 * xre);
-              yim += J01 * sq * ( + cos01 * xre + sin01 * xim);
-            }
-            // 2) J_kl (−icos − sin)sqrt(ik*(il +1)) \bar y_{E-k+li,i′}
-            if (i0 > 0 && i1 < n1-1) {
-              int itx = it - stridei0 + stridei1;  // E-k+l i, i'
-              double xre = xptr[2 * itx];
-              double xim = xptr[2 * itx + 1];
-              double sq = sqrt(i0 * (i1 + 1)); // sqrt( ik*(il+1))
-              yre += J01 * sq * ( - cos01 * xim - sin01 * xre);
-              yim += J01 * sq * ( + cos01 * xre - sin01 * xim);
-            }
-            // 3) J_kl ( icos + sin)sqrt(il'*(ik' +1)) \bar y_{i,E+k-li'}
-            if (i0p < n0-1 && i1p > 0) {
-              int itx = it + stridei0p - stridei1p;  // i, E+k-l i'
-              double xre = xptr[2 * itx];
-              double xim = xptr[2 * itx + 1];
-              double sq = sqrt(i1p * (i0p + 1)); // sqrt( il'*(ik'+1))
-              yre += J01 * sq * (   cos01 * xim + sin01 * xre);
-              yim += J01 * sq * ( - cos01 * xre + sin01 * xim);
-            }
-            // 4) J_kl ( icos - sin)sqrt(ik'*(il' +1)) \bar y_{i,E-k+li'}
-            if (i0p > 0 && i1p < n1-1) {
-              int itx = it - stridei0p + stridei1p;  // i, E-k+l i'
-              double xre = xptr[2 * itx];
-              double xim = xptr[2 * itx + 1];
-              double sq = sqrt(i0p * (i1p + 1)); // sqrt( ik'*(il'+1))
-              yre += J01 * sq * (   cos01 * xim - sin01 * xre);
-              yim += J01 * sq * ( - cos01 * xre - sin01 * xim);
-            }
-          }
-
+          /* --- Offdiagonal coupling term J_kl --- */
+          // oscillator 0<->1
+          Jkl_coupling_T(it, n0, n1, i0, i0p, i1, i1p, stridei0, stridei0p, stridei1, stridei1p, xptr, J01, cos01, sin01, &yre, &yim);
+ 
           /* --- Offdiagonal part of decay L1^T */
           // Oscillators 0
-          if (i0 > 0 && i0p > 0) {
-            double l1off = decay0 * sqrt(i0*i0p);
-            int itx = it - stridei0 - stridei0p;
-            double xre = xptr[2 * itx];
-            double xim = xptr[2 * itx + 1];
-            yre += l1off * xre;
-            yim += l1off * xim;
-          }
+          L1decay_T(it, n0, i0, i0p, stridei0, stridei0p, xptr, decay0, &yre, &yim);
           // Oscillator 1
-          if (i1 > 0 && i1p > 0) {
-            double l1off = decay1 * sqrt(i1*i1p);
-            int itx = it - stridei1 - stridei1p;
-            double xre = xptr[2 * itx];
-            double xim = xptr[2 * itx + 1];
-            yre += l1off * xre;
-            yim += l1off * xim;
-          }
+          L1decay_T(it, n1, i1, i1p, stridei1, stridei1p, xptr, decay1, &yre, &yim);
 
-          /* --- Control hamiltonian --- Oscillator 0 --- */
-          /* \rho(ik+1..,ik'..) term */
-          if (i0 > 0) {
-            int itx = it - stridei0;
-            double xre = xptr[2 * itx];
-            double xim = xptr[2 * itx + 1];
-            double sq = sqrt(i0);
-            yre += sq * ( - pt0 * xim + qt0 * xre);
-            yim += sq * (   pt0 * xre + qt0 * xim);
-          }
-          /* \rho(ik..,ik'+1..) */
-          if (i0p > 0) {
-            int itx = it - stridei0p;
-            double xre = xptr[2 * itx];
-            double xim = xptr[2 * itx + 1];
-            double sq = sqrt(i0p);
-            yre += sq * (  pt0 * xim + qt0 * xre);
-            yim += sq * ( -pt0 * xre + qt0 * xim);
-          }
-          /* \rho(ik-1..,ik'..) */
-          if (i0 < n0-1) {
-            int itx = it + stridei0;
-            double xre = xptr[2 * itx];
-            double xim = xptr[2 * itx + 1];
-            double sq = sqrt(i0+1);
-            yre += sq * (- pt0 * xim - qt0 * xre);
-            yim += sq * (  pt0 * xre - qt0 * xim);
-          }
-          /* \rho(ik..,ik'-1..) */
-          if (i0p < n0-1) {
-            int itx = it + stridei0p;
-            double xre = xptr[2 * itx];
-            double xim = xptr[2 * itx + 1];
-            double sq = sqrt(i0p+1);
-            yre += sq * (+ pt0 * xim - qt0 * xre);
-            yim += sq * (- pt0 * xre - qt0 * xim);
-          }
+          /* --- Control hamiltonian  --- */
+          // Oscillator 0
+          control_T(it, n0, i0, i0p, stridei0, stridei0p, xptr, pt0, qt0, &yre, &yim);
+          // Oscillator 1
+          control_T(it, n1, i1, i1p, stridei1, stridei1p, xptr, pt1, qt1, &yre, &yim);
 
-          /* --- Control hamiltonian --- Oscillator 1 --- */
-          /* \rho(ik+1..,ik'..) term */
-          if (i1 > 0) {
-            int itx = it - stridei1;
-            double xre = xptr[2 * itx];
-            double xim = xptr[2 * itx + 1];
-            double sq = sqrt(i1);
-            yre += sq * ( - pt1 * xim + qt1 * xre);
-            yim += sq * (   pt1 * xre + qt1 * xim);
-          }
-          /* \rho(ik..,ik'+1..) */
-          if (i1p > 0) {
-            int itx = it - stridei1p;
-            double xre = xptr[2 * itx];
-            double xim = xptr[2 * itx + 1];
-            double sq = sqrt(i1p);
-            yre += sq * (  pt1 * xim + qt1 * xre);
-            yim += sq * ( -pt1 * xre + qt1 * xim);
-          }
-          /* \rho(ik-1..,ik'..) */
-          if (i1 < n1-1) {
-            int itx = it + stridei1;
-            double xre = xptr[2 * itx];
-            double xim = xptr[2 * itx + 1];
-            double sq = sqrt(i1+1);
-            yre += sq * (- pt1 * xim - qt1 * xre);
-            yim += sq * (  pt1 * xre - qt1 * xim);
-          }
-          /* \rho(ik..,ik'-1..) */
-          if (i1p < n1-1) {
-            /* Get output index in vectorized, colocated y */
-            int itx = it + stridei1p;
-            double xre = xptr[2 * itx];
-            double xim = xptr[2 * itx + 1];
-            double sq = sqrt(i1p+1);
-            yre += sq * (  pt1 * xim - qt1 * xre);
-            yim += sq * (- pt1 * xre - qt1 * xim);
-          }
 
           /* Update */
           yptr[2*it]   = yre;
@@ -1922,287 +1677,31 @@ int myMatMult_matfree(Mat RHS, Vec x, Vec y){
               yim += (l2 + l1diag) * xim;
 
 
-              /* --- Offdiagonal: Jkl coupling, oscil 0<->1 --- */
-              if (fabs(J01)>1e-10) {
-                //  1) J_kl (-icos + sin) * ρ_{E−k+l i, i′}
-                if (i0 > 0 && i1 < n1-1) {
-                  int itx = it - stridei0 + stridei1;
-                  double xre = xptr[2 * itx];
-                  double xim = xptr[2 * itx + 1];
-                  double sq = sqrt(i0 * (i1 + 1));
-                  // sin u + cos v + i ( -cos u + sin v)
-                  yre += J01 * sq * (   cos01 * xim + sin01 * xre);
-                  yim += J01 * sq * ( - cos01 * xre + sin01 * xim);
-                }
-                // 2) J_kl (−icos − sin)sqrt(il*(ik +1)) ρ_{E+k−li,i′}
-                if (i0 < n0-1 && i1 > 0) {
-                  int itx = it + stridei0 - stridei1;  // E+k-l i, i'
-                  double xre = xptr[2 * itx];
-                  double xim = xptr[2 * itx + 1];
-                  double sq = sqrt(i1 * (i0 + 1)); // sqrt( il*(ik+1))
-                  // -sin u + cos v + i (-cos u - sin v)
-                  yre += J01 * sq * (   cos01 * xim - sin01 * xre);
-                  yim += J01 * sq * ( - cos01 * xre - sin01 * xim);
-                }
-                // 3) J_kl ( icos + sin)sqrt(ik'*(il' +1)) ρ_{i,E-k+li'}
-                if (i0p > 0 && i1p < n1-1) {
-                  int itx = it - stridei0p + stridei1p;  // i, E-k+l i'
-                  double xre = xptr[2 * itx];
-                  double xim = xptr[2 * itx + 1];
-                  double sq = sqrt(i0p * (i1p + 1)); // sqrt( ik'*(il'+1))
-                  //  sin u - cos v + i ( cos u + sin v)
-                  yre += J01 * sq * ( - cos01 * xim + sin01 * xre);
-                  yim += J01 * sq * (   cos01 * xre + sin01 * xim);
-                }
-                // 4) J_kl ( icos - sin)sqrt(il'*(ik' +1)) ρ_{i,E+k-li'}
-                if (i0p < n0-1 && i1p > 0) {
-                  int itx = it + stridei0p - stridei1p;  // i, E+k-l i'
-                  double xre = xptr[2 * itx];
-                  double xim = xptr[2 * itx + 1];
-                  double sq = sqrt(i1p * (i0p + 1)); // sqrt( il'*(ik'+1))
-                  // - sin u - cos v + i ( cos u - sin v)
-                  yre += J01 * sq * ( - cos01 * xim - sin01 * xre);
-                  yim += J01 * sq * (   cos01 * xre - sin01 * xim);
-                }
-              }
-
-               /* --- Offdiagonal: Jkl coupling, oscil 0<->2 --- */
-              if (fabs(J02)>1e-10) {
-                //  1) J_kl (-icos + sin) * ρ_{E−k+l i, i′}
-                if (i0 > 0 && i2 < n2-1) {
-                  int itx = it - stridei0 + stridei2;
-                  double xre = xptr[2 * itx];
-                  double xim = xptr[2 * itx + 1];
-                  double sq = sqrt(i0 * (i2 + 1));
-                  // sin u + cos v + i ( -cos u + sin v)
-                  yre += J02 * sq * (   cos02 * xim + sin02 * xre);
-                  yim += J02 * sq * ( - cos02 * xre + sin02 * xim);
-                }
-                // 2) J_kl (−icos − sin)sqrt(il*(ik +1)) ρ_{E+k−li,i′}
-                if (i0 < n0-1 && i2 > 0) {
-                  int itx = it + stridei0 - stridei2;  // E+k-l i, i'
-                  double xre = xptr[2 * itx];
-                  double xim = xptr[2 * itx + 1];
-                  double sq = sqrt(i2 * (i0 + 1)); // sqrt( il*(ik+1))
-                  // -sin u + cos v + i (-cos u - sin v)
-                  yre += J02 * sq * (   cos02 * xim - sin02 * xre);
-                  yim += J02 * sq * ( - cos02 * xre - sin02 * xim);
-                }
-                // 3) J_kl ( icos + sin)sqrt(ik'*(il' +1)) ρ_{i,E-k+li'}
-                if (i0p > 0 && i2p < n2-1) {
-                  int itx = it - stridei0p + stridei2p;  // i, E-k+l i'
-                  double xre = xptr[2 * itx];
-                  double xim = xptr[2 * itx + 1];
-                  double sq = sqrt(i0p * (i2p + 1)); // sqrt( ik'*(il'+1))
-                  //  sin u - cos v + i ( cos u + sin v)
-                  yre += J02 * sq * ( - cos02 * xim + sin02 * xre);
-                  yim += J02 * sq * (   cos02 * xre + sin02 * xim);
-                }
-                // 4) J_kl ( icos - sin)sqrt(il'*(ik' +1)) ρ_{i,E+k-li'}
-                if (i0p < n0-1 && i2p > 0) {
-                  int itx = it + stridei0p - stridei2p;  // i, E+k-l i'
-                  double xre = xptr[2 * itx];
-                  double xim = xptr[2 * itx + 1];
-                  double sq = sqrt(i2p * (i0p + 1)); // sqrt( il'*(ik'+1))
-                  // - sin u - cos v + i ( cos u - sin v)
-                  yre += J02 * sq * ( - cos02 * xim - sin02 * xre);
-                  yim += J02 * sq * (   cos02 * xre - sin02 * xim);
-                }
-              }
-
-              /* --- Offdiagonal: Jkl coupling, oscil 1<->2 --- */
-              if (fabs(J12)>1e-10) {
-                //  1) J_kl (-icos + sin) * ρ_{E−k+l i, i′}
-                if (i1 > 0 && i2 < n2-1) {
-                  int itx = it - stridei1 + stridei2;
-                  double xre = xptr[2 * itx];
-                  double xim = xptr[2 * itx + 1];
-                  double sq = sqrt(i1 * (i2 + 1));
-                  // sin u + cos v + i ( -cos u + sin v)
-                  yre += J12 * sq * (   cos12 * xim + sin12 * xre);
-                  yim += J12 * sq * ( - cos12 * xre + sin12 * xim);
-                }
-                // 2) J_kl (−icos − sin)sqrt(il*(ik +1)) ρ_{E+k−li,i′}
-                if (i1 < n1-1 && i2 > 0) {
-                  int itx = it + stridei1 - stridei2;  // E+k-l i, i'
-                  double xre = xptr[2 * itx];
-                  double xim = xptr[2 * itx + 1];
-                  double sq = sqrt(i2 * (i1 + 1)); // sqrt( il*(ik+1))
-                  // -sin u + cos v + i (-cos u - sin v)
-                  yre += J12 * sq * (   cos12 * xim - sin12 * xre);
-                  yim += J12 * sq * ( - cos12 * xre - sin12 * xim);
-                }
-                // 3) J_kl ( icos + sin)sqrt(ik'*(il' +1)) ρ_{i,E-k+li'}
-                if (i1p > 0 && i2p < n2-1) {
-                  int itx = it - stridei1p + stridei2p;  // i, E-k+l i'
-                  double xre = xptr[2 * itx];
-                  double xim = xptr[2 * itx + 1];
-                  double sq = sqrt(i1p * (i2p + 1)); // sqrt( ik'*(il'+1))
-                  //  sin u - cos v + i ( cos u + sin v)
-                  yre += J12 * sq * ( - cos12 * xim + sin12 * xre);
-                  yim += J12 * sq * (   cos12 * xre + sin12 * xim);
-                }
-                // 4) J_kl ( icos - sin)sqrt(il'*(ik' +1)) ρ_{i,E+k-li'}
-                if (i1p < n1-1 && i2p > 0) {
-                  int itx = it + stridei1p - stridei2p;  // i, E+k-l i'
-                  double xre = xptr[2 * itx];
-                  double xim = xptr[2 * itx + 1];
-                  double sq = sqrt(i2p * (i1p + 1)); // sqrt( il'*(ik'+1))
-                  // - sin u - cos v + i ( cos u - sin v)
-                  yre += J12 * sq * ( - cos12 * xim - sin12 * xre);
-                  yim += J12 * sq * (   cos12 * xre - sin12 * xim);
-                }
-              }
+              /* --- Offdiagonal: Jkl coupling  --- */
+              // oscillator 0<->1 
+              Jkl_coupling(it, n0, n1, i0, i0p, i1, i1p, stridei0, stridei0p, stridei1, stridei1p, xptr, J01, cos01, sin01, &yre, &yim);
+              // oscillator 0<->2
+              Jkl_coupling(it, n0, n2, i0, i0p, i2, i2p, stridei0, stridei0p, stridei2, stridei2p, xptr, J02, cos02, sin02, &yre, &yim);
+              // oscillator 1<->2
+              Jkl_coupling(it, n1, n2, i1, i1p, i2, i2p, stridei1, stridei1p, stridei2, stridei2p, xptr, J12, cos12, sin12, &yre, &yim);
 
               /* --- Offdiagonal part of decay L1 */
               // Oscillators 0
-              if  (fabs(decay0) > 1e-12) {
-                if (i0 < n0-1 && i0p < n0-1) {
-                  double l1off = decay0 * sqrt((i0+1)*(i0p+1));
-                  int itx = it + stridei0 + stridei0p;
-                  double xre = xptr[2 * itx];
-                  double xim = xptr[2 * itx + 1];
-                  yre += l1off * xre;
-                  yim += l1off * xim;
-                }
-              }
+              L1decay(it, n0, i0, i0p, stridei0, stridei0p, xptr, decay0, &yre, &yim);
               // Oscillator 1
-              if  (fabs(decay1) > 1e-12) {
-                if (i1 < n1-1 && i1p < n1-1) {
-                  double l1off = decay1 * sqrt((i1+1)*(i1p+1));
-                  int itx = it + stridei1 + stridei1p;
-                  double xre = xptr[2 * itx];
-                  double xim = xptr[2 * itx + 1];
-                  yre += l1off * xre;
-                  yim += l1off * xim;
-                }
-              }
+              L1decay(it, n1, i1, i1p, stridei1, stridei1p, xptr, decay1, &yre, &yim);
               // Oscillator 2
-              if  (fabs(decay2) > 1e-12) {
-                if (i2 < n2-1 && i2p < n2-1) {
-                  double l2off = decay2 * sqrt((i2+1)*(i2p+1));
-                  int itx = it + stridei2 + stridei2p;
-                  double xre = xptr[2 * itx];
-                  double xim = xptr[2 * itx + 1];
-                  yre += l2off * xre;
-                  yim += l2off * xim;
-                }
-              }
+              L1decay(it, n2, i2, i2p, stridei2, stridei2p, xptr, decay2, &yre, &yim);
+              
 
-              /* --- Control hamiltonian --- Oscillator 0 --- */
-              /* \rho(ik+1..,ik'..) term */
-              if (i0 < n0-1) {
-                int itx = it + stridei0;
-                double xre = xptr[2 * itx];
-                double xim = xptr[2 * itx + 1];
-                double sq = sqrt(i0 + 1);
-                yre += sq * (   pt0 * xim + qt0 * xre);
-                yim += sq * ( - pt0 * xre + qt0 * xim);
-              }
-              /* \rho(ik..,ik'+1..) */
-              if (i0p < n0-1) {
-                int itx = it + stridei0p;
-                double xre = xptr[2 * itx];
-                double xim = xptr[2 * itx + 1];
-                double sq = sqrt(i0p + 1);
-                yre += sq * ( -pt0 * xim + qt0 * xre);
-                yim += sq * (  pt0 * xre + qt0 * xim);
-              }
-              /* \rho(ik-1..,ik'..) */
-              if (i0 > 0) {
-                int itx = it - stridei0;
-                double xre = xptr[2 * itx];
-                double xim = xptr[2 * itx + 1];
-                double sq = sqrt(i0);
-                yre += sq * (  pt0 * xim - qt0 * xre);
-                yim += sq * (- pt0 * xre - qt0 * xim);
-              }
-              /* \rho(ik..,ik'-1..) */
-              if (i0p > 0) {
-                int itx = it - stridei0p;
-                double xre = xptr[2 * itx];
-                double xim = xptr[2 * itx + 1];
-                double sq = sqrt(i0p);
-                yre += sq * (- pt0 * xim - qt0 * xre);
-                yim += sq * (  pt0 * xre - qt0 * xim);
-              }
-
-              /* --- Control hamiltonian --- Oscillator 1 --- */
-              /* \rho(ik+1..,ik'..) term */
-              if (i1 < n1-1) {
-                int itx = it + stridei1;
-                double xre = xptr[2 * itx];
-                double xim = xptr[2 * itx + 1];
-                double sq = sqrt(i1 + 1);
-                yre += sq * (   pt1 * xim + qt1 * xre);
-                yim += sq * ( - pt1 * xre + qt1 * xim);
-              }
-              /* \rho(ik..,ik'+1..) */
-              if (i1p < n1-1) {
-                int itx = it + stridei1p;
-                double xre = xptr[2 * itx];
-                double xim = xptr[2 * itx + 1];
-                double sq = sqrt(i1p + 1);
-                yre += sq * ( -pt1 * xim + qt1 * xre);
-                yim += sq * (  pt1 * xre + qt1 * xim);
-              }
-              /* \rho(ik-1..,ik'..) */
-              if (i1 > 0) {
-                int itx = it - stridei1;
-                double xre = xptr[2 * itx];
-                double xim = xptr[2 * itx + 1];
-                double sq = sqrt(i1);
-                yre += sq * (  pt1 * xim - qt1 * xre);
-                yim += sq * (- pt1 * xre - qt1 * xim);
-              }
-              /* \rho(ik..,ik'-1..) */
-              if (i1p > 0) {
-                int itx = it - stridei1p;
-                double xre = xptr[2 * itx];
-                double xim = xptr[2 * itx + 1];
-                double sq = sqrt(i1p);
-                yre += sq * (- pt1 * xim - qt1 * xre);
-                yim += sq * (  pt1 * xre - qt1 * xim);
-              }
-
-              /* --- Control hamiltonian --- Oscillator 2 --- */
-              /* \rho(ik+1..,ik'..) term */
-              if (i2 < n2-1) {
-                int itx = it + stridei2;
-                double xre = xptr[2 * itx];
-                double xim = xptr[2 * itx + 1];
-                double sq = sqrt(i2 + 1);
-                yre += sq * (   pt2 * xim + qt2 * xre);
-                yim += sq * ( - pt2 * xre + qt2 * xim);
-              }
-              /* \rho(ik..,ik'+1..) */
-              if (i2p < n2-1) {
-                int itx = it + stridei2p;
-                double xre = xptr[2 * itx];
-                double xim = xptr[2 * itx + 1];
-                double sq = sqrt(i2p + 1);
-                yre += sq * ( -pt2 * xim + qt2 * xre);
-                yim += sq * (  pt2 * xre + qt2 * xim);
-              }
-              /* \rho(ik-1..,ik'..) */
-              if (i2 > 0) {
-                int itx = it - stridei2;
-                double xre = xptr[2 * itx];
-                double xim = xptr[2 * itx + 1];
-                double sq = sqrt(i2);
-                yre += sq * (  pt2 * xim - qt2 * xre);
-                yim += sq * (- pt2 * xre - qt2 * xim);
-              }
-              /* \rho(ik..,ik'-1..) */
-              if (i2p > 0) {
-                int itx = it - stridei2p;
-                double xre = xptr[2 * itx];
-                double xim = xptr[2 * itx + 1];
-                double sq = sqrt(i2p);
-                yre += sq * (- pt2 * xim - qt2 * xre);
-                yim += sq * (  pt2 * xre - qt2 * xim);
-              }
-
+              /* --- Control hamiltonian ---  */
+              // Oscillator 0 
+              control(it, n0, i0, i0p, stridei0, stridei0p, xptr, pt0, qt0, &yre, &yim);
+              // Oscillator 1
+              control(it, n1, i1, i1p, stridei1, stridei1p, xptr, pt1, qt1, &yre, &yim);
+              // Oscillator 1
+              control(it, n2, i2, i2p, stridei2, stridei2p, xptr, pt2, qt2, &yre, &yim);
+              
               /* --- Update --- */
               yptr[2*it]   = yre;
               yptr[2*it+1] = yim;
@@ -2315,276 +1814,30 @@ int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
               yre += (l2 + l1diag) * xre;
               yim += (l2 + l1diag) * xim;
 
-              /* --- Offdiagonal coupling term J_01, oscil 0<->1 --- */
-              if (fabs(J01)>1e-10) {
-                //  1) [...] * \bar y_{E+k-l i, i′}
-                if (i0 < n0-1 && i1 > 0) {
-                  int itx = it + stridei0 - stridei1;
-                  double xre = xptr[2 * itx];
-                  double xim = xptr[2 * itx + 1];
-                  double sq = sqrt(i1 * (i0 + 1));
-                  yre += J01 * sq * ( - cos01 * xim + sin01 * xre);
-                  yim += J01 * sq * ( + cos01 * xre + sin01 * xim);
-                }
-                // 2) J_kl (−icos − sin)sqrt(ik*(il +1)) \bar y_{E-k+li,i′}
-                if (i0 > 0 && i1 < n1-1) {
-                  int itx = it - stridei0 + stridei1;  // E-k+l i, i'
-                  double xre = xptr[2 * itx];
-                  double xim = xptr[2 * itx + 1];
-                  double sq = sqrt(i0 * (i1 + 1)); // sqrt( ik*(il+1))
-                  yre += J01 * sq * ( - cos01 * xim - sin01 * xre);
-                  yim += J01 * sq * ( + cos01 * xre - sin01 * xim);
-                }
-                // 3) J_kl ( icos + sin)sqrt(il'*(ik' +1)) \bar y_{i,E+k-li'}
-                if (i0p < n0-1 && i1p > 0) {
-                  int itx = it + stridei0p - stridei1p;  // i, E+k-l i'
-                  double xre = xptr[2 * itx];
-                  double xim = xptr[2 * itx + 1];
-                  double sq = sqrt(i1p * (i0p + 1)); // sqrt( il'*(ik'+1))
-                  yre += J01 * sq * (   cos01 * xim + sin01 * xre);
-                  yim += J01 * sq * ( - cos01 * xre + sin01 * xim);
-                }
-                // 4) J_kl ( icos - sin)sqrt(ik'*(il' +1)) \bar y_{i,E-k+li'}
-                if (i0p > 0 && i1p < n1-1) {
-                  int itx = it - stridei0p + stridei1p;  // i, E-k+l i'
-                  double xre = xptr[2 * itx];
-                  double xim = xptr[2 * itx + 1];
-                  double sq = sqrt(i0p * (i1p + 1)); // sqrt( ik'*(il'+1))
-                  yre += J01 * sq * (   cos01 * xim - sin01 * xre);
-                  yim += J01 * sq * ( - cos01 * xre - sin01 * xim);
-                }
-              }
-
-              /* --- Offdiagonal coupling term J_02, oscil 0<->2 --- */
-              if (fabs(J02)>1e-10) {
-                //  1) [...] * \bar y_{E+k-l i, i′}
-                if (i0 < n0-1 && i2 > 0) {
-                  int itx = it + stridei0 - stridei2;
-                  double xre = xptr[2 * itx];
-                  double xim = xptr[2 * itx + 1];
-                  double sq = sqrt(i2 * (i0 + 1));
-                  yre += J02 * sq * ( - cos02 * xim + sin02 * xre);
-                  yim += J02 * sq * ( + cos02 * xre + sin02 * xim);
-                }
-                // 2) J_kl (−icos − sin)sqrt(ik*(il +1)) \bar y_{E-k+li,i′}
-                if (i0 > 0 && i2 < n2-1) {
-                  int itx = it - stridei0 + stridei2;  // E-k+l i, i'
-                  double xre = xptr[2 * itx];
-                  double xim = xptr[2 * itx + 1];
-                  double sq = sqrt(i0 * (i2 + 1)); // sqrt( ik*(il+1))
-                  yre += J02 * sq * ( - cos02 * xim - sin02 * xre);
-                  yim += J02 * sq * ( + cos02 * xre - sin02 * xim);
-                }
-                // 3) J_kl ( icos + sin)sqrt(il'*(ik' +1)) \bar y_{i,E+k-li'}
-                if (i0p < n0-1 && i2p > 0) {
-                  int itx = it + stridei0p - stridei2p;  // i, E+k-l i'
-                  double xre = xptr[2 * itx];
-                  double xim = xptr[2 * itx + 1];
-                  double sq = sqrt(i2p * (i0p + 1)); // sqrt( il'*(ik'+1))
-                  yre += J02 * sq * (   cos02 * xim + sin02 * xre);
-                  yim += J02 * sq * ( - cos02 * xre + sin02 * xim);
-                }
-                // 4) J_kl ( icos - sin)sqrt(ik'*(il' +1)) \bar y_{i,E-k+li'}
-                if (i0p > 0 && i2p < n2-1) {
-                  int itx = it - stridei0p + stridei2p;  // i, E-k+l i'
-                  double xre = xptr[2 * itx];
-                  double xim = xptr[2 * itx + 1];
-                  double sq = sqrt(i0p * (i2p + 1)); // sqrt( ik'*(il'+1))
-                  yre += J02 * sq * (   cos02 * xim - sin02 * xre);
-                  yim += J02 * sq * ( - cos02 * xre - sin02 * xim);
-                }
-              }
-
-               /* --- Offdiagonal coupling term J_12, oscil 1<->2 --- */
-              if (fabs(J12)>1e-10) {
-                //  1) [...] * \bar y_{E+k-l i, i′}
-                if (i1 < n1-1 && i2 > 0) {
-                  int itx = it + stridei1 - stridei2;
-                  double xre = xptr[2 * itx];
-                  double xim = xptr[2 * itx + 1];
-                  double sq = sqrt(i2 * (i1 + 1));
-                  yre += J12 * sq * ( - cos12 * xim + sin12 * xre);
-                  yim += J12 * sq * ( + cos12 * xre + sin12 * xim);
-                }
-                // 2) J_kl (−icos − sin)sqrt(ik*(il +1)) \bar y_{E-k+li,i′}
-                if (i1 > 0 && i2 < n2-1) {
-                  int itx = it - stridei1 + stridei2;  // E-k+l i, i'
-                  double xre = xptr[2 * itx];
-                  double xim = xptr[2 * itx + 1];
-                  double sq = sqrt(i1 * (i2 + 1)); // sqrt( ik*(il+1))
-                  yre += J12 * sq * ( - cos12 * xim - sin12 * xre);
-                  yim += J12 * sq * ( + cos12 * xre - sin12 * xim);
-                }
-                // 3) J_kl ( icos + sin)sqrt(il'*(ik' +1)) \bar y_{i,E+k-li'}
-                if (i1p < n1-1 && i2p > 0) {
-                  int itx = it + stridei1p - stridei2p;  // i, E+k-l i'
-                  double xre = xptr[2 * itx];
-                  double xim = xptr[2 * itx + 1];
-                  double sq = sqrt(i2p * (i1p + 1)); // sqrt( il'*(ik'+1))
-                  yre += J12 * sq * (   cos12 * xim + sin12 * xre);
-                  yim += J12 * sq * ( - cos12 * xre + sin12 * xim);
-                }
-                // 4) J_kl ( icos - sin)sqrt(ik'*(il' +1)) \bar y_{i,E-k+li'}
-                if (i1p > 0 && i2p < n2-1) {
-                  int itx = it - stridei1p + stridei2p;  // i, E-k+l i'
-                  double xre = xptr[2 * itx];
-                  double xim = xptr[2 * itx + 1];
-                  double sq = sqrt(i1p * (i2p + 1)); // sqrt( ik'*(il'+1))
-                  yre += J12 * sq * (   cos12 * xim - sin12 * xre);
-                  yim += J12 * sq * ( - cos12 * xre - sin12 * xim);
-                }
-              }
+              /* --- Offdiagonal coupling term J_kl --- */
+              // oscillator 0<->1
+              Jkl_coupling_T(it, n0, n1, i0, i0p, i1, i1p, stridei0, stridei0p, stridei1, stridei1p, xptr, J01, cos01, sin01, &yre, &yim);
+              // oscillator 0<->2
+              Jkl_coupling_T(it, n0, n2, i0, i0p, i2, i2p, stridei0, stridei0p, stridei2, stridei2p, xptr, J02, cos02, sin02, &yre, &yim);
+              // oscillator 1<->2
+              Jkl_coupling_T(it, n1, n2, i1, i1p, i2, i2p, stridei1, stridei1p, stridei2, stridei2p, xptr, J12, cos12, sin12, &yre, &yim);
+              
 
               /* --- Offdiagonal part of decay L1^T */
               // Oscillators 0
-              if (fabs(decay0) > 1e-12) {
-                if (i0 > 0 && i0p > 0) {
-                  double l1off = decay0 * sqrt(i0*i0p);
-                  int itx = it - stridei0 - stridei0p;
-                  double xre = xptr[2 * itx];
-                  double xim = xptr[2 * itx + 1];
-                  yre += l1off * xre;
-                  yim += l1off * xim;
-                }
-              }
+              L1decay_T(it, n0, i0, i0p, stridei0, stridei0p, xptr, decay0, &yre, &yim);
               // Oscillator 1
-              if (fabs(decay1) > 1e-12) {
-                if (i1 > 0 && i1p > 0) {
-                  double l1off = decay1 * sqrt(i1*i1p);
-                  int itx = it - stridei1 - stridei1p;
-                  double xre = xptr[2 * itx];
-                  double xim = xptr[2 * itx + 1];
-                  yre += l1off * xre;
-                  yim += l1off * xim;
-                }
-              }
+              L1decay_T(it, n1, i1, i1p, stridei1, stridei1p, xptr, decay1, &yre, &yim);
+             // Oscillator 2
+              L1decay_T(it, n2, i2, i2p, stridei2, stridei2p, xptr, decay2, &yre, &yim);
+
+              /* --- Control hamiltonian  --- */
+              // Oscillator 0
+              control_T(it, n0, i0, i0p, stridei0, stridei0p, xptr, pt0, qt0, &yre, &yim);
+              // Oscillator 1
+              control_T(it, n1, i1, i1p, stridei1, stridei1p, xptr, pt1, qt1, &yre, &yim);
               // Oscillator 2
-              if (fabs(decay2) > 1e-12) {
-                if (i2 > 0 && i2p > 0) {
-                  double l1off = decay2 * sqrt(i2*i2p);
-                  int itx = it - stridei2 - stridei2p;
-                  double xre = xptr[2 * itx];
-                  double xim = xptr[2 * itx + 1];
-                  yre += l1off * xre;
-                  yim += l1off * xim;
-                }
-              }
-
-              /* --- Control hamiltonian --- Oscillator 0 --- */
-              /* \rho(ik+1..,ik'..) term */
-              if (i0 > 0) {
-                int itx = it - stridei0;
-                double xre = xptr[2 * itx];
-                double xim = xptr[2 * itx + 1];
-                double sq = sqrt(i0);
-                yre += sq * ( - pt0 * xim + qt0 * xre);
-                yim += sq * (   pt0 * xre + qt0 * xim);
-              }
-              /* \rho(ik..,ik'+1..) */
-              if (i0p > 0) {
-                int itx = it - stridei0p;
-                double xre = xptr[2 * itx];
-                double xim = xptr[2 * itx + 1];
-                double sq = sqrt(i0p);
-                yre += sq * (  pt0 * xim + qt0 * xre);
-                yim += sq * ( -pt0 * xre + qt0 * xim);
-              }
-              /* \rho(ik-1..,ik'..) */
-              if (i0 < n0-1) {
-                int itx = it + stridei0;
-                double xre = xptr[2 * itx];
-                double xim = xptr[2 * itx + 1];
-                double sq = sqrt(i0+1);
-                yre += sq * (- pt0 * xim - qt0 * xre);
-                yim += sq * (  pt0 * xre - qt0 * xim);
-              }
-              /* \rho(ik..,ik'-1..) */
-              if (i0p < n0-1) {
-                int itx = it + stridei0p;
-                double xre = xptr[2 * itx];
-                double xim = xptr[2 * itx + 1];
-                double sq = sqrt(i0p+1);
-                yre += sq * (+ pt0 * xim - qt0 * xre);
-                yim += sq * (- pt0 * xre - qt0 * xim);
-              }
-
-              /* --- Control hamiltonian --- Oscillator 1 --- */
-              /* \rho(ik+1..,ik'..) term */
-              if (i1 > 0) {
-                int itx = it - stridei1;
-                double xre = xptr[2 * itx];
-                double xim = xptr[2 * itx + 1];
-                double sq = sqrt(i1);
-                yre += sq * ( - pt1 * xim + qt1 * xre);
-                yim += sq * (   pt1 * xre + qt1 * xim);
-              }
-              /* \rho(ik..,ik'+1..) */
-              if (i1p > 0) {
-                int itx = it - stridei1p;
-                double xre = xptr[2 * itx];
-                double xim = xptr[2 * itx + 1];
-                double sq = sqrt(i1p);
-                yre += sq * (  pt1 * xim + qt1 * xre);
-                yim += sq * ( -pt1 * xre + qt1 * xim);
-              }
-              /* \rho(ik-1..,ik'..) */
-              if (i1 < n1-1) {
-                int itx = it + stridei1;
-                double xre = xptr[2 * itx];
-                double xim = xptr[2 * itx + 1];
-                double sq = sqrt(i1+1);
-                yre += sq * (- pt1 * xim - qt1 * xre);
-                yim += sq * (  pt1 * xre - qt1 * xim);
-              }
-              /* \rho(ik..,ik'-1..) */
-              if (i1p < n1-1) {
-                /* Get output index in vectorized, colocated y */
-                int itx = it + stridei1p;
-                double xre = xptr[2 * itx];
-                double xim = xptr[2 * itx + 1];
-                double sq = sqrt(i1p+1);
-                yre += sq * (  pt1 * xim - qt1 * xre);
-                yim += sq * (- pt1 * xre - qt1 * xim);
-              }
-
-              /* --- Control hamiltonian --- Oscillator 2 --- */
-              /* \rho(ik+1..,ik'..) term */
-              if (i2 > 0) {
-                int itx = it - stridei2;
-                double xre = xptr[2 * itx];
-                double xim = xptr[2 * itx + 1];
-                double sq = sqrt(i2);
-                yre += sq * ( - pt2 * xim + qt2 * xre);
-                yim += sq * (   pt2 * xre + qt2 * xim);
-              }
-              /* \rho(ik..,ik'+1..) */
-              if (i2p > 0) {
-                int itx = it - stridei2p;
-                double xre = xptr[2 * itx];
-                double xim = xptr[2 * itx + 1];
-                double sq = sqrt(i2p);
-                yre += sq * (  pt2 * xim + qt2 * xre);
-                yim += sq * ( -pt2 * xre + qt2 * xim);
-              }
-              /* \rho(ik-1..,ik'..) */
-              if (i2 < n2-1) {
-                int itx = it + stridei2;
-                double xre = xptr[2 * itx];
-                double xim = xptr[2 * itx + 1];
-                double sq = sqrt(i2+1);
-                yre += sq * (- pt2 * xim - qt2 * xre);
-                yim += sq * (  pt2 * xre - qt2 * xim);
-              }
-              /* \rho(ik..,ik'-1..) */
-              if (i2p < n2-1) {
-                /* Get output index in vectorized, colocated y */
-                int itx = it + stridei2p;
-                double xre = xptr[2 * itx];
-                double xim = xptr[2 * itx + 1];
-                double sq = sqrt(i2p+1);
-                yre += sq * (  pt2 * xim - qt2 * xre);
-                yim += sq * (- pt2 * xre - qt2 * xim);
-              }
+              control_T(it, n2, i2, i2p, stridei2, stridei2p, xptr, pt2, qt2, &yre, &yim);
 
               /* Update */
               yptr[2*it]   = yre;
