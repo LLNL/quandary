@@ -270,8 +270,8 @@ int main(int argc,char **argv)
   // Sanity check for matrix free solver
   bool usematfree = config.GetBoolParam("usematfree", false);
   if ( (usematfree && nlevels.size() < 2) ||   
-       (usematfree && nlevels.size() > 3)   ){
-        printf("Warning: Matrix free solver is only implemented for systems with TWO or THREE oscillators. Switching to sparse-matrix solver.\n");
+       (usematfree && nlevels.size() > 4)   ){
+        printf("Warning: Matrix free solver is only implemented for systems with TWO, THREE, or FOUR oscillators. Switching to sparse-matrix solver now.\n");
         usematfree = false;
   }
   if (usematfree && mpisize_petsc > 1) {
