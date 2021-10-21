@@ -5,8 +5,8 @@
 \usepackage{graphicx}
 \usepackage[utf8]{inputenc}
 \usepackage{xcolor}
-\usepackage{soul}
-\usepackage{authblk}
+% \usepackage{soul}
+% \usepackage{authblk}
 \usepackage{verbatim}
 % \usepackage[legalpaper, margin=2in]{geometry}
 \parindent0pt
@@ -39,14 +39,14 @@
 }
 
 \title{Quandary: Optimal Control for Open Quantum Systems}
-\author{Stefanie G{\"u}nther\thanks{Center for Applied Scientific Computing, Lawrence Livermore
-    National Laboratory, Livermore, CA, USA.} \and N. Anders Petersson$^*$} 
-% \date{April 7, 2021}
-\date{last updated September 9, 2021}
+\author{Stefanie G{\"u}nther\thanks{Center for Applied Scientific Computing, Lawrence Livermore National Laboratory, Livermore, CA, USA.} \and N. Anders Petersson$^*$} 
+% \author{Stefanie G{\"u}nther \and N. Anders Petersson} 
+\date{last updated \today}
 
 \begin{document}
 \maketitle
 
+\tableofcontents
 
 \section{Introduction}
 Quandary numerically simulates and optimizes the time evolution of open quantum systems. The
@@ -64,6 +64,7 @@ implementation in Quandary. For installation instructions and execution, please 
 look at the \texttt{README.md} file. Further, the configuration file \texttt{config\_template.cfg} is filled with comments that should help users and developers to set up new simulation and optimization runs, and match the input options to the equations found in this document.
 A full documentation is under development. In the meantime, don't
 hesitate to direct any questions to guenther5@llnl.gov. 
+We also refer to our publications \cite{guenther2021quandary, guenther2021quantum}.
 
 \section{Model equation}
 Quandary models composite quantum systems consisting of $Q$ subsystems, with $n_k$ energy levels for the
@@ -323,7 +324,7 @@ unique index $i \in \{0,\dots, N^2-1\}$ is assigned to each basis state with
 \subsubsection{Diagonal basis matrices (aka all pure states)}
 One can choose to propagate only those basis elements that correspond to pure states of the form $\boldsymbol{e}_k\boldsymbol{e}_k^\dagger$, i.e. propagating only $B^{kk}$ for $k=0,\dots, N-1$, and then $n_{init}=N$.
 
-\subsubsection{Ensemble state for pure-state optimization}
+\subsubsection{Ensemble state for pure-state optimization}\label{sec:ensemblestate}
 For pure-state optimization using the objective function $J_{measure}$ \eqref{eq:Jmeasure}, one can use the ensemble state 
 \begin{align}\label{eq:ensemblestate}
   \rho_s(0) = \frac{1}{N^2}\sum_{i,j=0}^{N-1} B^{kj}
@@ -442,9 +443,9 @@ The real and imaginary parts of $q(t)$ are stored in a colocated manner: For
 
      \item The \textit{matrix-free solver} considers the state density matrix $\rho\in C^{N\times N}$ to be a tensor of rank $2Q$ (one axis for each subsystems for each matrix dimension, hence $2\cdot Q$ axes). Instead of storing the matrices within $M(t)$, the matrix-free solver applies tensor contractions to realize the action of $A(t)$ and $B(t)$ on the state vectors. 
 
-    In our current test cases, the matrix-free solver is much faster than the sparse-matrix solver (about 10x), no surprise. However the matrix-free solver is currently only implemented for systems consisting of \textbf{two} subsystems with $n_1 \otimes n_2$ levels. Future development will extend the approach to more than two subsystem. Reach out if you are interested in contributing!
+    In our current test cases, the matrix-free solver is much faster than the sparse-matrix solver (about 10x), no surprise. However the matrix-free solver is currently only implemented for systems consisting of \textbf{2, 3, 4, or 5} subsystems. 
 
-    \textbf{Important note:} The matrix-free solver currently does not parallelize across the system dimension $N$, hence the state vector is \textbf{not} distributed (i.e. no parallel Petsc!). The reason why we did not implement that yet is that $Q$ can often be large (yielding a high-dimensional tensor) but each axis can be very short (e.g. $n_k=2$ for each subsystem while $Q=12$. In that case, the standard (?) approach of parallelizing the state tensor along the tensor axis will likey lead to very poor scalability due to high communication overhead. We have not found a satisfying solution yet - if you have ideas, please reach out, we are happy to collaborate! 
+    \textbf{Important note:} The matrix-free solver currently does not parallelize across the system dimension $N$, hence the state vector is \textbf{not} distributed (i.e. no parallel Petsc!). The reason why we did not implement that yet is that $Q$ can often be large while each axis can be very shor (e.g. modelling $Q=12$ qubits with $n_k=2$ energy levels per qubit), which yields a very high-dimensional tensor with very short axix. In that case, the standard (?) approach of parallelizing the tensor along its axes will likey lead to very poor scalability due to high communication overhead. We have not found a satisfying solution yet - if you have ideas, please reach out, we are happy to collaborate! 
    \end{itemize} 
 
 
@@ -530,6 +531,7 @@ The real and imaginary parts of $q(t)$ are stored in a colocated manner: For
       speedup depends on the test case and XBraid setting (experts only),
       configuration option is \texttt{np\_braid}
     \end{enumerate}
+    Strong scaling studies are presented in \cite{guenther2021quantum}.
 
     In the main code, the global communicator (MPI\_COMM\_WORLD) is split into
     three sub-communicator, one for each of the above. The total number of executing MPI
