@@ -148,6 +148,9 @@ MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Osci
     } else if (noscillators == 4) {
       MatShellSetOperation(RHS, MATOP_MULT, (void(*)(void)) myMatMult_matfree_4Osc);
       MatShellSetOperation(RHS, MATOP_MULT_TRANSPOSE, (void(*)(void)) myMatMultTranspose_matfree_4Osc);
+    } else if (noscillators == 5) {
+      MatShellSetOperation(RHS, MATOP_MULT, (void(*)(void)) myMatMult_matfree_5Osc);
+      MatShellSetOperation(RHS, MATOP_MULT_TRANSPOSE, (void(*)(void)) myMatMultTranspose_matfree_5Osc);
     } else {
       printf("ERROR. Matfree solver only for 2, 3 or 4 oscillators. This should never happen!\n");
       exit(1);
@@ -808,7 +811,7 @@ void MasterEq::computedRHSdp(const double t, const Vec x, const Vec xbar, const 
       int n0 = nlevels[0];
       int n1 = nlevels[1];
       int n2 = nlevels[2];
-      int n3 = nlevels[2];
+      int n3 = nlevels[3];
       int stridei0  = TensorGetIndex(n0,n1,n2,n3, 1,0,0,0,0,0,0,0);
       int stridei1  = TensorGetIndex(n0,n1,n2,n3, 0,1,0,0,0,0,0,0);
       int stridei2  = TensorGetIndex(n0,n1,n2,n3, 0,0,1,0,0,0,0,0);
@@ -859,7 +862,74 @@ void MasterEq::computedRHSdp(const double t, const Vec x, const Vec xbar, const 
           }
         }
       }
-    } else {  // matrix free solver, but noscillators is not 2,3 or 4!
+    } else if (noscillators == 5) {
+      /* compute strides for accessing x */
+      int n0 = nlevels[0];
+      int n1 = nlevels[1];
+      int n2 = nlevels[2];
+      int n3 = nlevels[3];
+      int n4 = nlevels[4];
+      int stridei0  = TensorGetIndex(n0,n1,n2,n3,n4, 1,0,0,0,0,0,0,0,0,0);
+      int stridei1  = TensorGetIndex(n0,n1,n2,n3,n4, 0,1,0,0,0,0,0,0,0,0);
+      int stridei2  = TensorGetIndex(n0,n1,n2,n3,n4, 0,0,1,0,0,0,0,0,0,0);
+      int stridei3  = TensorGetIndex(n0,n1,n2,n3,n4, 0,0,0,1,0,0,0,0,0,0);
+      int stridei4  = TensorGetIndex(n0,n1,n2,n3,n4, 0,0,0,0,1,0,0,0,0,0);
+      int stridei0p = TensorGetIndex(n0,n1,n2,n3,n4, 0,0,0,0,0,1,0,0,0,0);
+      int stridei1p = TensorGetIndex(n0,n1,n2,n3,n4, 0,0,0,0,0,0,1,0,0,0);
+      int stridei2p = TensorGetIndex(n0,n1,n2,n3,n4, 0,0,0,0,0,0,0,1,0,0);
+      int stridei3p = TensorGetIndex(n0,n1,n2,n3,n4, 0,0,0,0,0,0,0,0,1,0);
+      int stridei4p = TensorGetIndex(n0,n1,n2,n3,n4, 0,0,0,0,0,0,0,0,0,1);
+
+      /* --- Collect coefficients for gradient --- */
+      int it = 0;
+      // Iterate over indices of xbar
+      for (int i0p = 0; i0p < n0; i0p++)  {
+        for (int i1p = 0; i1p < n1; i1p++)  {
+          for (int i2p = 0; i2p < n2; i2p++)  {
+            for (int i3p = 0; i3p < n3; i3p++)  {
+              for (int i4p = 0; i4p < n4; i4p++)  {
+                for (int i0 = 0; i0 < n0; i0++)  {
+                  for (int i1 = 0; i1 < n1; i1++)  {
+                    for (int i2 = 0; i2 < n2; i2++)  {
+                      for (int i3 = 0; i3 < n3; i3++)  {
+                        for (int i4 = 0; i4 < n4; i4++)  {
+                          /* Get xbar */
+                          double xbarre = xbarptr[2*it];
+                          double xbarim = xbarptr[2*it+1];
+
+                          /* --- Oscillator 0 --- */
+                          dRHSdp_getcoeffs(it, n0, i0, i0p, stridei0, stridei0p, xptr, &res_p_re, &res_p_im, &res_q_re, &res_q_im);
+                          coeff_p[0] += res_p_re * xbarre + res_p_im * xbarim;
+                          coeff_q[0] += res_q_re * xbarre + res_q_im * xbarim;
+                          /* --- Oscillator 1 --- */
+                          dRHSdp_getcoeffs(it, n1, i1, i1p, stridei1, stridei1p, xptr, &res_p_re, &res_p_im, &res_q_re, &res_q_im);
+                          coeff_p[1] += res_p_re * xbarre + res_p_im * xbarim;
+                          coeff_q[1] += res_q_re * xbarre + res_q_im * xbarim;
+                          /* --- Oscillator 2 --- */
+                          dRHSdp_getcoeffs(it, n2, i2, i2p, stridei2, stridei2p, xptr, &res_p_re, &res_p_im, &res_q_re, &res_q_im);
+                          coeff_p[2] += res_p_re * xbarre + res_p_im * xbarim;
+                          coeff_q[2] += res_q_re * xbarre + res_q_im * xbarim;
+                          /* --- Oscillator 3 --- */
+                          dRHSdp_getcoeffs(it, n3, i3, i3p, stridei3, stridei3p, xptr, &res_p_re, &res_p_im, &res_q_re, &res_q_im);
+                          coeff_p[3] += res_p_re * xbarre + res_p_im * xbarim;
+                          coeff_q[3] += res_q_re * xbarre + res_q_im * xbarim;
+                          /* --- Oscillator 4 --- */
+                          dRHSdp_getcoeffs(it, n4, i4, i4p, stridei4, stridei4p, xptr, &res_p_re, &res_p_im, &res_q_re, &res_q_im);
+                          coeff_p[4] += res_p_re * xbarre + res_p_im * xbarim;
+                          coeff_q[4] += res_q_re * xbarre + res_q_im * xbarim;
+
+                          it++;
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    } else { 
       printf("This should never happen!\n"); 
       exit(1);
     }
@@ -2208,12 +2278,453 @@ int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
 }
 
 
-int myMatMult_matfree_2Osc(Mat RHS, Vec x, Vec y){
+/* Matfree-solver for 5 Oscillators: Define the action of RHS on a vector x */
+template <int n0, int n1, int n2, int n3, int n4>
+int myMatMult_matfree(Mat RHS, Vec x, Vec y){
+
   /* Get the shell context */
   MatShellCtx *shellctx;
   MatShellGetContext(RHS, (void**) &shellctx);
 
+  /* Get access to x and y */
+  const double* xptr;
+  double* yptr;
+  VecGetArrayRead(x, &xptr);
+  VecGetArray(y, &yptr); 
 
+  /* Evaluate coefficients */
+  double xi0  = shellctx->oscil_vec[0]->getSelfkerr();
+  double xi1  = shellctx->oscil_vec[1]->getSelfkerr();   
+  double xi2  = shellctx->oscil_vec[2]->getSelfkerr();   
+  double xi3  = shellctx->oscil_vec[3]->getSelfkerr();   
+  double xi4  = shellctx->oscil_vec[4]->getSelfkerr();   
+  double xi01 = shellctx->crosskerr[0];  // zz-coupling
+  double xi02 = shellctx->crosskerr[1];  // zz-coupling
+  double xi03 = shellctx->crosskerr[2];  // zz-coupling
+  double xi04 = shellctx->crosskerr[3];  // zz-coupling
+  double xi12 = shellctx->crosskerr[4];  // zz-coupling
+  double xi13 = shellctx->crosskerr[5];  // zz-coupling
+  double xi14 = shellctx->crosskerr[6];  // zz-coupling
+  double xi23 = shellctx->crosskerr[7];  // zz-coupling
+  double xi24 = shellctx->crosskerr[8];  // zz-coupling
+  double xi34 = shellctx->crosskerr[9];  // zz-coupling
+  double J01  = shellctx->Jkl[0];  // Jaynes-Cummings coupling
+  double J02  = shellctx->Jkl[1];  // Jaynes-Cummings coupling
+  double J03  = shellctx->Jkl[2];  // Jaynes-Cummings coupling
+  double J04  = shellctx->Jkl[3];  // Jaynes-Cummings coupling
+  double J12  = shellctx->Jkl[4];  // Jaynes-Cummings coupling
+  double J13  = shellctx->Jkl[5];  // Jaynes-Cummings coupling
+  double J14  = shellctx->Jkl[6];  // Jaynes-Cummings coupling
+  double J23  = shellctx->Jkl[7];  // Jaynes-Cummings coupling
+  double J24  = shellctx->Jkl[8];  // Jaynes-Cummings coupling
+  double J34  = shellctx->Jkl[9];  // Jaynes-Cummings coupling
+  double eta01 = shellctx->eta[0];
+  double eta02 = shellctx->eta[1];
+  double eta03 = shellctx->eta[2];
+  double eta04 = shellctx->eta[3];
+  double eta12 = shellctx->eta[4];
+  double eta13 = shellctx->eta[5];
+  double eta14 = shellctx->eta[6];
+  double eta23 = shellctx->eta[7];
+  double eta24 = shellctx->eta[8];
+  double eta34 = shellctx->eta[9];
+  double detuning_freq0 = shellctx->oscil_vec[0]->getDetuning();
+  double detuning_freq1 = shellctx->oscil_vec[1]->getDetuning();
+  double detuning_freq2 = shellctx->oscil_vec[2]->getDetuning();
+  double detuning_freq3 = shellctx->oscil_vec[3]->getDetuning();
+  double detuning_freq4 = shellctx->oscil_vec[4]->getDetuning();
+  double decay0 = 0.0;
+  double decay1 = 0.0;
+  double decay2 = 0.0;
+  double decay3 = 0.0;
+  double decay4 = 0.0;
+  double dephase0= 0.0;
+  double dephase1= 0.0;
+  double dephase2= 0.0;
+  double dephase3= 0.0;
+  double dephase4= 0.0;
+  if (shellctx->oscil_vec[0]->getDecayTime() > 1e-14 && shellctx->addT1)   decay0 = 1./shellctx->oscil_vec[0]->getDecayTime();
+  if (shellctx->oscil_vec[0]->getDephaseTime() > 1e-14 && shellctx->addT2) dephase0 = 1./shellctx->oscil_vec[0]->getDephaseTime();
+  if (shellctx->oscil_vec[1]->getDecayTime() > 1e-14 && shellctx->addT1)   decay1= 1./shellctx->oscil_vec[1]->getDecayTime();
+  if (shellctx->oscil_vec[1]->getDephaseTime() > 1e-14 && shellctx->addT2) dephase1 = 1./shellctx->oscil_vec[1]->getDephaseTime();
+  if (shellctx->oscil_vec[2]->getDecayTime() > 1e-14 && shellctx->addT1)   decay2= 1./shellctx->oscil_vec[2]->getDecayTime();
+  if (shellctx->oscil_vec[2]->getDephaseTime() > 1e-14 && shellctx->addT2) dephase2 = 1./shellctx->oscil_vec[2]->getDephaseTime();
+  if (shellctx->oscil_vec[3]->getDecayTime() > 1e-14 && shellctx->addT1)   decay3= 1./shellctx->oscil_vec[3]->getDecayTime();
+  if (shellctx->oscil_vec[3]->getDephaseTime() > 1e-14 && shellctx->addT2) dephase3 = 1./shellctx->oscil_vec[3]->getDephaseTime();
+  if (shellctx->oscil_vec[4]->getDecayTime() > 1e-14 && shellctx->addT1)   decay4= 1./shellctx->oscil_vec[4]->getDecayTime();
+  if (shellctx->oscil_vec[4]->getDephaseTime() > 1e-14 && shellctx->addT2) dephase4 = 1./shellctx->oscil_vec[4]->getDephaseTime();
+  double pt0 = shellctx->control_Re[0];
+  double qt0 = shellctx->control_Im[0];
+  double pt1 = shellctx->control_Re[1];
+  double qt1 = shellctx->control_Im[1];
+  double pt2 = shellctx->control_Re[2];
+  double qt2 = shellctx->control_Im[2];
+  double pt3 = shellctx->control_Re[3];
+  double qt3 = shellctx->control_Im[3];
+  double pt4 = shellctx->control_Re[4];
+  double qt4 = shellctx->control_Im[4];
+  double cos01 = cos(eta01 * shellctx->time);
+  double cos02 = cos(eta02 * shellctx->time);
+  double cos03 = cos(eta03 * shellctx->time);
+  double cos04 = cos(eta04 * shellctx->time);
+  double cos12 = cos(eta12 * shellctx->time);
+  double cos13 = cos(eta13 * shellctx->time);
+  double cos14 = cos(eta14 * shellctx->time);
+  double cos23 = cos(eta23 * shellctx->time);
+  double cos24 = cos(eta24 * shellctx->time);
+  double cos34 = cos(eta34 * shellctx->time);
+  double sin01 = sin(eta01 * shellctx->time);
+  double sin02 = sin(eta02 * shellctx->time);
+  double sin03 = sin(eta03 * shellctx->time);
+  double sin04 = sin(eta04 * shellctx->time);
+  double sin12 = sin(eta12 * shellctx->time);
+  double sin13 = sin(eta13 * shellctx->time);
+  double sin14 = sin(eta14 * shellctx->time);
+  double sin23 = sin(eta23 * shellctx->time);
+  double sin24 = sin(eta24 * shellctx->time);
+  double sin34 = sin(eta34 * shellctx->time);
+
+  /* compute strides for accessing x at i0+1, i0-1, i0p+1, i0p-1, i1+1, i1-1, i1p+1, i1p-1: */
+  int stridei0  = TensorGetIndex(n0,n1,n2,n3,n4, 1,0,0,0,0,0,0,0,0,0);
+  int stridei1  = TensorGetIndex(n0,n1,n2,n3,n4, 0,1,0,0,0,0,0,0,0,0);
+  int stridei2  = TensorGetIndex(n0,n1,n2,n3,n4, 0,0,1,0,0,0,0,0,0,0);
+  int stridei3  = TensorGetIndex(n0,n1,n2,n3,n4, 0,0,0,1,0,0,0,0,0,0);
+  int stridei4  = TensorGetIndex(n0,n1,n2,n3,n4, 0,0,0,0,1,0,0,0,0,0);
+  int stridei0p = TensorGetIndex(n0,n1,n2,n3,n4, 0,0,0,0,0,1,0,0,0,0);
+  int stridei1p = TensorGetIndex(n0,n1,n2,n3,n4, 0,0,0,0,0,0,1,0,0,0);
+  int stridei2p = TensorGetIndex(n0,n1,n2,n3,n4, 0,0,0,0,0,0,0,1,0,0);
+  int stridei3p = TensorGetIndex(n0,n1,n2,n3,n4, 0,0,0,0,0,0,0,0,1,0);
+  int stridei4p = TensorGetIndex(n0,n1,n2,n3,n4, 0,0,0,0,0,0,0,0,0,1);
+
+   /* Iterate over indices of output vector y */
+  int it = 0;
+  for (int i0p = 0; i0p < n0; i0p++)  {
+    for (int i1p = 0; i1p < n1; i1p++)  {
+      for (int i2p = 0; i2p < n2; i2p++)  {
+        for (int i3p = 0; i3p < n3; i3p++)  {
+          for (int i4p = 0; i4p < n4; i4p++)  {
+            for (int i0 = 0; i0 < n0; i0++)  {
+              for (int i1 = 0; i1 < n1; i1++)  {
+                for (int i2 = 0; i2 < n2; i2++)  {
+                  for (int i3 = 0; i3 < n3; i3++)  {
+                    for (int i4 = 0; i4 < n4; i4++)  {
+
+                      /* --- Diagonal part ---*/
+                      double xre = xptr[2 * it];
+                      double xim = xptr[2 * it + 1];
+                      // drift Hamiltonian: uout = ( hd(ik) - hd(ik'))*vin
+                      //                    vout = (-hd(ik) + hd(ik'))*uin
+                      double hd  = H_detune(detuning_freq0, detuning_freq1, detuning_freq2, detuning_freq3, detuning_freq4, i0, i1, i2, i3, i4)
+                                 + H_selfkerr(xi0, xi1, xi2, xi3, xi4, i0, i1, i2, i3, i4)
+                                 + H_crosskerr(xi01, xi02, xi03, xi04, xi12, xi13, xi14, xi23, xi24, xi34, i0, i1, i2, i3, i4);
+                      double hdp = H_detune(detuning_freq0, detuning_freq1, detuning_freq2, detuning_freq3, detuning_freq4, i0p, i1p, i2p, i3p, i4p)
+                                 + H_selfkerr(xi0, xi1, xi2, xi3, xi4, i0p, i1p, i2p, i3p, i4p)
+                                 + H_crosskerr(xi01, xi02, xi03, xi04, xi12, xi13, xi14, xi23, xi24, xi34, i0p, i1p, i2p, i3p, i4p);
+                      double yre = ( hd - hdp ) * xim;
+                      double yim = (-hd + hdp ) * xre;
+                      // Decay l1, diagonal part: xout += l1diag xin
+                      // Dephasing l2: xout += l2(ik, ikp) xin
+                      double l1diag = L1diag(decay0, decay1, decay2, decay3, decay4, i0, i1, i2, i3, i4, i0p, i1p, i2p, i3p, i4p);
+                      double l2 = L2(dephase0, dephase1, dephase2, dephase3, dephase4, i0, i1, i2, i3, i4, i0p, i1p, i2p, i3p, i4p);
+                      yre += (l2 + l1diag) * xre;
+                      yim += (l2 + l1diag) * xim;
+
+
+                      /* --- Offdiagonal: Jkl coupling  --- */
+                      // oscillator 0<->1 
+                      Jkl_coupling(it, n0, n1, i0, i0p, i1, i1p, stridei0, stridei0p, stridei1, stridei1p, xptr, J01, cos01, sin01, &yre, &yim);
+                      // oscillator 0<->2
+                      Jkl_coupling(it, n0, n2, i0, i0p, i2, i2p, stridei0, stridei0p, stridei2, stridei2p, xptr, J02, cos02, sin02, &yre, &yim);
+                      // oscillator 0<->3
+                      Jkl_coupling(it, n0, n3, i0, i0p, i3, i3p, stridei0, stridei0p, stridei3, stridei3p, xptr, J03, cos03, sin03, &yre, &yim);
+                      // oscillator 0<->4
+                      Jkl_coupling(it, n0, n4, i0, i0p, i4, i4p, stridei0, stridei0p, stridei4, stridei4p, xptr, J04, cos04, sin04, &yre, &yim);
+                      // oscillator 1<->2
+                      Jkl_coupling(it, n1, n2, i1, i1p, i2, i2p, stridei1, stridei1p, stridei2, stridei2p, xptr, J12, cos12, sin12, &yre, &yim);
+                      // oscillator 1<->3
+                      Jkl_coupling(it, n1, n3, i1, i1p, i3, i3p, stridei1, stridei1p, stridei3, stridei3p, xptr, J13, cos13, sin13, &yre, &yim);
+                      // oscillator 1<->4
+                      Jkl_coupling(it, n1, n4, i1, i1p, i4, i4p, stridei1, stridei1p, stridei4, stridei4p, xptr, J14, cos14, sin14, &yre, &yim);
+                      // oscillator 2<->3
+                      Jkl_coupling(it, n2, n3, i2, i2p, i3, i3p, stridei2, stridei2p, stridei3, stridei3p, xptr, J23, cos23, sin23, &yre, &yim);
+                      // oscillator 2<->4
+                      Jkl_coupling(it, n2, n4, i2, i2p, i4, i4p, stridei2, stridei2p, stridei4, stridei4p, xptr, J24, cos24, sin24, &yre, &yim);
+                      // oscillator 3<->4
+                      Jkl_coupling(it, n3, n4, i3, i3p, i4, i4p, stridei3, stridei3p, stridei4, stridei4p, xptr, J34, cos34, sin34, &yre, &yim);
+
+                      /* --- Offdiagonal part of decay L1 */
+                      // Oscillator 0
+                      L1decay(it, n0, i0, i0p, stridei0, stridei0p, xptr, decay0, &yre, &yim);
+                      // Oscillator 1
+                      L1decay(it, n1, i1, i1p, stridei1, stridei1p, xptr, decay1, &yre, &yim);
+                      // Oscillator 2
+                      L1decay(it, n2, i2, i2p, stridei2, stridei2p, xptr, decay2, &yre, &yim);
+                      // Oscillator 3
+                      L1decay(it, n3, i3, i3p, stridei3, stridei3p, xptr, decay3, &yre, &yim);
+                      // Oscillator 4
+                      L1decay(it, n4, i4, i4p, stridei4, stridei4p, xptr, decay4, &yre, &yim);
+              
+
+                      /* --- Control hamiltonian ---  */
+                      // Oscillator 0 
+                      control(it, n0, i0, i0p, stridei0, stridei0p, xptr, pt0, qt0, &yre, &yim);
+                      // Oscillator 1
+                      control(it, n1, i1, i1p, stridei1, stridei1p, xptr, pt1, qt1, &yre, &yim);
+                      // Oscillator 2
+                      control(it, n2, i2, i2p, stridei2, stridei2p, xptr, pt2, qt2, &yre, &yim);
+                      // Oscillator 3
+                      control(it, n3, i3, i3p, stridei3, stridei3p, xptr, pt3, qt3, &yre, &yim);
+                      // Oscillator 4
+                      control(it, n4, i4, i4p, stridei4, stridei4p, xptr, pt4, qt4, &yre, &yim);
+              
+                      /* --- Update --- */
+                      yptr[2*it]   = yre;
+                      yptr[2*it+1] = yim;
+                      it++;
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  /* Restore x and y */
+  VecRestoreArrayRead(x, &xptr);
+  VecRestoreArray(y, &yptr);
+
+  return 0;
+}
+
+
+/* Matfree-solver for 5 Oscillators: Define the action of RHS^T on a vector x */
+template <int n0, int n1, int n2, int n3, int n4>
+int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
+
+  /* Get the shell context */
+  MatShellCtx *shellctx;
+  MatShellGetContext(RHS, (void**) &shellctx);
+
+  /* Get access to x and y */
+  const double* xptr;
+  double* yptr;
+  VecGetArrayRead(x, &xptr);
+  VecGetArray(y, &yptr);
+
+  /* Evaluate coefficients */
+  double xi0  = shellctx->oscil_vec[0]->getSelfkerr();
+  double xi1  = shellctx->oscil_vec[1]->getSelfkerr();   
+  double xi2  = shellctx->oscil_vec[2]->getSelfkerr();   
+  double xi3  = shellctx->oscil_vec[3]->getSelfkerr();   
+  double xi4  = shellctx->oscil_vec[4]->getSelfkerr();   
+  double xi01 = shellctx->crosskerr[0];  // zz-coupling
+  double xi02 = shellctx->crosskerr[1];  // zz-coupling
+  double xi03 = shellctx->crosskerr[2];  // zz-coupling
+  double xi04 = shellctx->crosskerr[3];  // zz-coupling
+  double xi12 = shellctx->crosskerr[4];  // zz-coupling
+  double xi13 = shellctx->crosskerr[5];  // zz-coupling
+  double xi14 = shellctx->crosskerr[6];  // zz-coupling
+  double xi23 = shellctx->crosskerr[7];  // zz-coupling
+  double xi24 = shellctx->crosskerr[8];  // zz-coupling
+  double xi34 = shellctx->crosskerr[9];  // zz-coupling
+  double J01  = shellctx->Jkl[0];  // Jaynes-Cummings coupling
+  double J02  = shellctx->Jkl[1];  // Jaynes-Cummings coupling
+  double J03  = shellctx->Jkl[2];  // Jaynes-Cummings coupling
+  double J04  = shellctx->Jkl[3];  // Jaynes-Cummings coupling
+  double J12  = shellctx->Jkl[4];  // Jaynes-Cummings coupling
+  double J13  = shellctx->Jkl[5];  // Jaynes-Cummings coupling
+  double J14  = shellctx->Jkl[6];  // Jaynes-Cummings coupling
+  double J23  = shellctx->Jkl[7];  // Jaynes-Cummings coupling
+  double J24  = shellctx->Jkl[8];  // Jaynes-Cummings coupling
+  double J34  = shellctx->Jkl[9];  // Jaynes-Cummings coupling
+  double eta01 = shellctx->eta[0];
+  double eta02 = shellctx->eta[1];
+  double eta03 = shellctx->eta[2];
+  double eta04 = shellctx->eta[3];
+  double eta12 = shellctx->eta[4];
+  double eta13 = shellctx->eta[5];
+  double eta14 = shellctx->eta[6];
+  double eta23 = shellctx->eta[7];
+  double eta24 = shellctx->eta[8];
+  double eta34 = shellctx->eta[9];
+  double detuning_freq0 = shellctx->oscil_vec[0]->getDetuning();
+  double detuning_freq1 = shellctx->oscil_vec[1]->getDetuning();
+  double detuning_freq2 = shellctx->oscil_vec[2]->getDetuning();
+  double detuning_freq3 = shellctx->oscil_vec[3]->getDetuning();
+  double detuning_freq4 = shellctx->oscil_vec[4]->getDetuning();
+  double decay0 = 0.0;
+  double decay1 = 0.0;
+  double decay2 = 0.0;
+  double decay3 = 0.0;
+  double decay4 = 0.0;
+  double dephase0= 0.0;
+  double dephase1= 0.0;
+  double dephase2= 0.0;
+  double dephase3= 0.0;
+  double dephase4= 0.0;
+  if (shellctx->oscil_vec[0]->getDecayTime() > 1e-14 && shellctx->addT1)   decay0 = 1./shellctx->oscil_vec[0]->getDecayTime();
+  if (shellctx->oscil_vec[0]->getDephaseTime() > 1e-14 && shellctx->addT2) dephase0 = 1./shellctx->oscil_vec[0]->getDephaseTime();
+  if (shellctx->oscil_vec[1]->getDecayTime() > 1e-14 && shellctx->addT1)   decay1= 1./shellctx->oscil_vec[1]->getDecayTime();
+  if (shellctx->oscil_vec[1]->getDephaseTime() > 1e-14 && shellctx->addT2) dephase1 = 1./shellctx->oscil_vec[1]->getDephaseTime();
+  if (shellctx->oscil_vec[2]->getDecayTime() > 1e-14 && shellctx->addT1)   decay2= 1./shellctx->oscil_vec[2]->getDecayTime();
+  if (shellctx->oscil_vec[2]->getDephaseTime() > 1e-14 && shellctx->addT2) dephase2 = 1./shellctx->oscil_vec[2]->getDephaseTime();
+  if (shellctx->oscil_vec[3]->getDecayTime() > 1e-14 && shellctx->addT1)   decay3= 1./shellctx->oscil_vec[3]->getDecayTime();
+  if (shellctx->oscil_vec[3]->getDephaseTime() > 1e-14 && shellctx->addT2) dephase3 = 1./shellctx->oscil_vec[3]->getDephaseTime();
+  if (shellctx->oscil_vec[4]->getDecayTime() > 1e-14 && shellctx->addT1)   decay4= 1./shellctx->oscil_vec[4]->getDecayTime();
+  if (shellctx->oscil_vec[4]->getDephaseTime() > 1e-14 && shellctx->addT2) dephase4 = 1./shellctx->oscil_vec[4]->getDephaseTime();
+  double pt0 = shellctx->control_Re[0];
+  double qt0 = shellctx->control_Im[0];
+  double pt1 = shellctx->control_Re[1];
+  double qt1 = shellctx->control_Im[1];
+  double pt2 = shellctx->control_Re[2];
+  double qt2 = shellctx->control_Im[2];
+  double pt3 = shellctx->control_Re[3];
+  double qt3 = shellctx->control_Im[3];
+  double pt4 = shellctx->control_Re[4];
+  double qt4 = shellctx->control_Im[4];
+  double cos01 = cos(eta01 * shellctx->time);
+  double cos02 = cos(eta02 * shellctx->time);
+  double cos03 = cos(eta03 * shellctx->time);
+  double cos04 = cos(eta04 * shellctx->time);
+  double cos12 = cos(eta12 * shellctx->time);
+  double cos13 = cos(eta13 * shellctx->time);
+  double cos14 = cos(eta14 * shellctx->time);
+  double cos23 = cos(eta23 * shellctx->time);
+  double cos24 = cos(eta24 * shellctx->time);
+  double cos34 = cos(eta34 * shellctx->time);
+  double sin01 = sin(eta01 * shellctx->time);
+  double sin02 = sin(eta02 * shellctx->time);
+  double sin03 = sin(eta03 * shellctx->time);
+  double sin04 = sin(eta04 * shellctx->time);
+  double sin12 = sin(eta12 * shellctx->time);
+  double sin13 = sin(eta13 * shellctx->time);
+  double sin14 = sin(eta14 * shellctx->time);
+  double sin23 = sin(eta23 * shellctx->time);
+  double sin24 = sin(eta24 * shellctx->time);
+  double sin34 = sin(eta34 * shellctx->time);
+
+  /* compute strides for accessing x at i0+1, i0-1, i0p+1, i0p-1, i1+1, i1-1, i1p+1, i1p-1: */
+  int stridei0  = TensorGetIndex(n0,n1,n2,n3,n4, 1,0,0,0,0,0,0,0,0,0);
+  int stridei1  = TensorGetIndex(n0,n1,n2,n3,n4, 0,1,0,0,0,0,0,0,0,0);
+  int stridei2  = TensorGetIndex(n0,n1,n2,n3,n4, 0,0,1,0,0,0,0,0,0,0);
+  int stridei3  = TensorGetIndex(n0,n1,n2,n3,n4, 0,0,0,1,0,0,0,0,0,0);
+  int stridei4  = TensorGetIndex(n0,n1,n2,n3,n4, 0,0,0,0,1,0,0,0,0,0);
+  int stridei0p = TensorGetIndex(n0,n1,n2,n3,n4, 0,0,0,0,0,1,0,0,0,0);
+  int stridei1p = TensorGetIndex(n0,n1,n2,n3,n4, 0,0,0,0,0,0,1,0,0,0);
+  int stridei2p = TensorGetIndex(n0,n1,n2,n3,n4, 0,0,0,0,0,0,0,1,0,0);
+  int stridei3p = TensorGetIndex(n0,n1,n2,n3,n4, 0,0,0,0,0,0,0,0,1,0);
+  int stridei4p = TensorGetIndex(n0,n1,n2,n3,n4, 0,0,0,0,0,0,0,0,0,1);
+
+   /* Iterate over indices of output vector y */
+  int it = 0;
+  for (int i0p = 0; i0p < n0; i0p++)  {
+    for (int i1p = 0; i1p < n1; i1p++)  {
+      for (int i2p = 0; i2p < n2; i2p++)  {
+        for (int i3p = 0; i3p < n3; i3p++)  {
+          for (int i4p = 0; i4p < n4; i4p++)  {
+            for (int i0 = 0; i0 < n0; i0++)  {
+              for (int i1 = 0; i1 < n1; i1++)  {
+                for (int i2 = 0; i2 < n2; i2++)  {
+                  for (int i3 = 0; i3 < n3; i3++)  {
+                    for (int i4 = 0; i4 < n4; i4++)  {
+
+                      double xre = xptr[2 * it];
+                      double xim = xptr[2 * it + 1];
+
+                      /* --- Diagonal part ---*/
+                      // drift Hamiltonian Hd^T: uout = ( hd(ik) - hd(ik'))*vin
+                      //                         vout = (-hd(ik) + hd(ik'))*uin
+                      double hd  = H_detune(detuning_freq0, detuning_freq1, detuning_freq2, detuning_freq3, detuning_freq4, i0, i1, i2, i3, i4)
+                                 + H_selfkerr(xi0, xi1, xi2, xi3, xi4, i0, i1, i2, i3, i4)
+                                 + H_crosskerr(xi01, xi02, xi03, xi04, xi12, xi13, xi14, xi23, xi24, xi34,i0, i1, i2, i3, i4);
+                      double hdp = H_detune(detuning_freq0, detuning_freq1, detuning_freq2, detuning_freq3, detuning_freq4, i0p, i1p, i2p, i3p, i4p)
+                                 + H_selfkerr(xi0, xi1, xi2, xi3, xi4, i0p, i1p, i2p, i3p, i4p)
+                                 + H_crosskerr(xi01, xi02, xi03, xi04, xi12, xi13, xi14, xi23, xi24, xi34, i0p, i1p, i2p, i3p, i4p);
+                      double yre = (-hd + hdp ) * xim;
+                      double yim = ( hd - hdp ) * xre;
+                      // Decay l1^T, diagonal part: xout += l1diag xin
+                      // Dephasing l2^T: xout += l2(ik, ikp) xin
+                      double l1diag = L1diag(decay0, decay1, decay2, decay3, decay4, i0, i1, i2, i3, i4, i0p, i1p, i2p, i3p, i4p);
+                      double l2 = L2(dephase0, dephase1, dephase2, dephase3, dephase4, i0, i1, i2, i3, i4, i0p, i1p, i2p, i3p, i4p);
+                      yre += (l2 + l1diag) * xre;
+                      yim += (l2 + l1diag) * xim;
+
+                      /* --- Offdiagonal coupling term J_kl --- */
+                      // oscillator 0<->1
+                      Jkl_coupling_T(it, n0, n1, i0, i0p, i1, i1p, stridei0, stridei0p, stridei1, stridei1p, xptr, J01, cos01, sin01, &yre, &yim);
+                      // oscillator 0<->2
+                      Jkl_coupling_T(it, n0, n2, i0, i0p, i2, i2p, stridei0, stridei0p, stridei2, stridei2p, xptr, J02, cos02, sin02, &yre, &yim);
+                      // oscillator 0<->3
+                      Jkl_coupling_T(it, n0, n3, i0, i0p, i3, i3p, stridei0, stridei0p, stridei3, stridei3p, xptr, J03, cos03, sin03, &yre, &yim);
+                      // oscillator 0<->4
+                      Jkl_coupling_T(it, n0, n4, i0, i0p, i4, i4p, stridei0, stridei0p, stridei4, stridei4p, xptr, J04, cos04, sin04, &yre, &yim);
+                      // oscillator 1<->2
+                      Jkl_coupling_T(it, n1, n2, i1, i1p, i2, i2p, stridei1, stridei1p, stridei2, stridei2p, xptr, J12, cos12, sin12, &yre, &yim);
+                      // oscillator 1<->3
+                      Jkl_coupling_T(it, n1, n3, i1, i1p, i3, i3p, stridei1, stridei1p, stridei3, stridei3p, xptr, J13, cos13, sin13, &yre, &yim);
+                      // oscillator 1<->4
+                      Jkl_coupling_T(it, n1, n4, i1, i1p, i4, i4p, stridei1, stridei1p, stridei4, stridei4p, xptr, J14, cos14, sin14, &yre, &yim);
+                      // oscillator 2<->3
+                      Jkl_coupling_T(it, n2, n3, i2, i2p, i3, i3p, stridei2, stridei2p, stridei3, stridei3p, xptr, J23, cos23, sin23, &yre, &yim);
+                      // oscillator 2<->4
+                      Jkl_coupling_T(it, n2, n4, i2, i2p, i4, i4p, stridei2, stridei2p, stridei4, stridei4p, xptr, J24, cos24, sin24, &yre, &yim);
+                      // oscillator 3<->4
+                      Jkl_coupling_T(it, n3, n4, i3, i3p, i4, i4p, stridei3, stridei3p, stridei4, stridei4p, xptr, J34, cos34, sin34, &yre, &yim);
+              
+                      /* --- Offdiagonal part of decay L1^T */
+                      // Oscillators 0
+                      L1decay_T(it, n0, i0, i0p, stridei0, stridei0p, xptr, decay0, &yre, &yim);
+                      // Oscillator 1
+                      L1decay_T(it, n1, i1, i1p, stridei1, stridei1p, xptr, decay1, &yre, &yim);
+                      // Oscillator 2
+                      L1decay_T(it, n2, i2, i2p, stridei2, stridei2p, xptr, decay2, &yre, &yim);
+                      // Oscillator 3
+                      L1decay_T(it, n3, i3, i3p, stridei3, stridei3p, xptr, decay3, &yre, &yim);
+                      // Oscillator 4
+                      L1decay_T(it, n4, i4, i4p, stridei4, stridei4p, xptr, decay4, &yre, &yim);
+
+                      /* --- Control hamiltonian  --- */
+                      // Oscillator 0
+                      control_T(it, n0, i0, i0p, stridei0, stridei0p, xptr, pt0, qt0, &yre, &yim);
+                      // Oscillator 1
+                      control_T(it, n1, i1, i1p, stridei1, stridei1p, xptr, pt1, qt1, &yre, &yim);
+                      // Oscillator 2
+                      control_T(it, n2, i2, i2p, stridei2, stridei2p, xptr, pt2, qt2, &yre, &yim);
+                      // Oscillator 3
+                      control_T(it, n3, i3, i3p, stridei3, stridei3p, xptr, pt3, qt3, &yre, &yim);
+                      // Oscillator 4
+                      control_T(it, n4, i4, i4p, stridei4, stridei4p, xptr, pt4, qt4, &yre, &yim);
+
+                      /* Update */
+                      yptr[2*it]   = yre;
+                      yptr[2*it+1] = yim;
+                      it++;
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  /* Restore x and y */
+  VecRestoreArrayRead(x, &xptr);
+  VecRestoreArray(y, &yptr);
+
+  return 0;
+}
+
+/* --- 2 Oscillator cases --- */
+int myMatMult_matfree_2Osc(Mat RHS, Vec x, Vec y){
+  /* Get the shell context */
+  MatShellCtx *shellctx;
+  MatShellGetContext(RHS, (void**) &shellctx);
   int n0 = shellctx->nlevels[0];
   int n1 = shellctx->nlevels[1];
   if      (n0==3 && n1==20)  return myMatMult_matfree<3,20>(RHS, x, y);
@@ -2228,13 +2739,10 @@ int myMatMult_matfree_2Osc(Mat RHS, Vec x, Vec y){
     exit(1);
   }
 }
-
-
 int myMatMultTranspose_matfree_2Osc(Mat RHS, Vec x, Vec y){
  /* Get the shell context */
   MatShellCtx *shellctx;
   MatShellGetContext(RHS, (void**) &shellctx);
-
   int n0 = shellctx->nlevels[0];
   int n1 = shellctx->nlevels[1];
   if      (n0==3 && n1==20)  return myMatMultTranspose_matfree<3,20>(RHS, x, y);
@@ -2251,11 +2759,11 @@ int myMatMultTranspose_matfree_2Osc(Mat RHS, Vec x, Vec y){
 }
 
 
+/* --- 3 Oscillator cases --- */
 int myMatMult_matfree_3Osc(Mat RHS, Vec x, Vec y){
   /* Get the shell context */
   MatShellCtx *shellctx;
   MatShellGetContext(RHS, (void**) &shellctx);
-
   int n0 = shellctx->nlevels[0];
   int n1 = shellctx->nlevels[1];
   int n2 = shellctx->nlevels[2];
@@ -2266,13 +2774,10 @@ int myMatMult_matfree_3Osc(Mat RHS, Vec x, Vec y){
     exit(1);
   }
 }
-
-
 int myMatMultTranspose_matfree_3Osc(Mat RHS, Vec x, Vec y){
  /* Get the shell context */
   MatShellCtx *shellctx;
   MatShellGetContext(RHS, (void**) &shellctx);
-
   int n0 = shellctx->nlevels[0];
   int n1 = shellctx->nlevels[1];
   int n2 = shellctx->nlevels[2];
@@ -2285,11 +2790,11 @@ int myMatMultTranspose_matfree_3Osc(Mat RHS, Vec x, Vec y){
 }
 
 
+/* --- 4 Oscillator cases --- */
 int myMatMult_matfree_4Osc(Mat RHS, Vec x, Vec y){
   /* Get the shell context */
   MatShellCtx *shellctx;
   MatShellGetContext(RHS, (void**) &shellctx);
-
   int n0 = shellctx->nlevels[0];
   int n1 = shellctx->nlevels[1];
   int n2 = shellctx->nlevels[2];
@@ -2300,8 +2805,6 @@ int myMatMult_matfree_4Osc(Mat RHS, Vec x, Vec y){
     exit(1);
   }
 }
-
-
 int myMatMultTranspose_matfree_4Osc(Mat RHS, Vec x, Vec y){
  /* Get the shell context */
   MatShellCtx *shellctx;
@@ -2317,3 +2820,38 @@ int myMatMultTranspose_matfree_4Osc(Mat RHS, Vec x, Vec y){
     exit(1);
   }
 }
+
+
+/* --- 5 Oscillator cases --- */
+int myMatMult_matfree_5Osc(Mat RHS, Vec x, Vec y){
+  /* Get the shell context */
+  MatShellCtx *shellctx;
+  MatShellGetContext(RHS, (void**) &shellctx);
+  int n0 = shellctx->nlevels[0];
+  int n1 = shellctx->nlevels[1];
+  int n2 = shellctx->nlevels[2];
+  int n3 = shellctx->nlevels[3];
+  int n4 = shellctx->nlevels[4];
+  if      (n0==2 && n1==2 && n2==2 && n3 == 2 && n4 == 2) return myMatMult_matfree<2,2,2,2,2>(RHS, x, y);
+  else {
+    printf("ERROR: In order to run this case, add a line at the end of mastereq.cpp with the corresponding number of levels!\n");
+    exit(1);
+  }
+}
+int myMatMultTranspose_matfree_5Osc(Mat RHS, Vec x, Vec y){
+ /* Get the shell context */
+  MatShellCtx *shellctx;
+  MatShellGetContext(RHS, (void**) &shellctx);
+
+  int n0 = shellctx->nlevels[0];
+  int n1 = shellctx->nlevels[1];
+  int n2 = shellctx->nlevels[2];
+  int n3 = shellctx->nlevels[3];
+  int n4 = shellctx->nlevels[4];
+  if      (n0==2 && n1==2 && n2==2 && n3==2 && n4==2)  return myMatMultTranspose_matfree<2,2,2,2,2>(RHS, x, y);
+  else {
+    printf("ERROR: In order to run this case, add a line at the end of mastereq.cpp with the corresponding number of levels!\n");
+    exit(1);
+  }
+}
+
