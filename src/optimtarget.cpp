@@ -25,7 +25,7 @@ OptimTarget::OptimTarget(int dim, int purestateID_, TargetType target_type_, Obj
     if (mpirank_world == 0) read_vector(target_filename.c_str(), vec, 2*dim);
     MPI_Bcast(vec, 2*dim, MPI_DOUBLE, 0, MPI_COMM_WORLD);
     // pass vec into the targetstate
-    int ilow, iupp;
+    PetscInt ilow, iupp;
     VecGetOwnershipRange(targetstate, &ilow, &iupp);
     for (int i = 0; i < dim; i++) { // iterates up to N^2
       int elemid_re = getIndexReal(i);
@@ -103,11 +103,11 @@ void OptimTarget::prepare(const Vec rho_t0){
 
 double OptimTarget::evalJ(const Vec state){
   double objective = 0.0;
-  int diagID;
+  PetscInt diagID;
   double sum, mine, rhoii, lambdai, norm;
-  int ilo, ihi;
+  PetscInt ilo, ihi;
 
-  int dim;
+  PetscInt dim;
   VecGetSize(state, &dim);
   dim = (int) sqrt(dim/2.0);  // dim = N with \rho \in C^{N\times N}
 
@@ -183,11 +183,11 @@ double OptimTarget::evalJ(const Vec state){
 
 
 void OptimTarget::evalJ_diff(const Vec state, Vec statebar, const double Jbar){
-  int ilo, ihi;
+  PetscInt ilo, ihi;
   double lambdai, val;
-  int diagID;
+  PetscInt diagID;
 
-  int dim;
+  PetscInt dim;
   VecGetSize(state, &dim);
   dim = (int) sqrt(dim/2.0);  // dim = N with \rho \in C^{N\times N}
 
@@ -242,11 +242,11 @@ void OptimTarget::evalJ_diff(const Vec state, Vec statebar, const double Jbar){
 
 
 double OptimTarget::evalFidelity(const Vec state){
-  int dim;
+  PetscInt dim;
   VecGetSize(state, &dim);
   dim = (int) sqrt(dim/2.0);  // dim = N with \rho \in C^{N\times N}
 
-  int vecID, ihi, ilo;
+  PetscInt vecID, ihi, ilo;
   double rho_mm;
 
   /* Evaluate the Fidelity = Tr(targetstate^\dagger \rho) */

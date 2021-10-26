@@ -264,7 +264,7 @@ braid_Int myBraidApp::Sum(braid_Real alpha, braid_Vector x_, braid_Real beta, br
     const PetscScalar *x_ptr;
     PetscScalar *y_ptr;
 
-    int ilow, iupp;
+    PetscInt ilow, iupp;
     VecGetOwnershipRange(x->x, &ilow, &iupp);
 
     VecGetArrayRead(x->x, &x_ptr);
@@ -329,11 +329,11 @@ braid_Int myBraidApp::BufPack(braid_Vector u_, void *buffer, BraidBufferStatus &
   double* dbuffer = (double*) buffer;
 
   /* Get locally owned range */
-  int xlo, xhi;
+  PetscInt xlo, xhi;
   VecGetOwnershipRange(u->x, &xlo, &xhi);
 
   /* Copy real and imaginary values into the buffer */
-  for (int i=0; i < 2*mastereq->getDim(); i++)
+  for (PetscInt i=0; i < 2*mastereq->getDim(); i++)
   {
     if (xlo <= i && i < xhi) { // if stored on this proc
       double val;
@@ -360,7 +360,7 @@ braid_Int myBraidApp::BufUnpack(void *buffer, braid_Vector *u_ptr, BraidBufferSt
   myBraidVector *u = new myBraidVector(dim);
 
   /* Get locally owned range */
-  int xlo, xhi;
+  PetscInt xlo, xhi;
   VecGetOwnershipRange(u->x, &xlo, &xhi);
 
   /* Copy real and imaginary values from the buffer */

@@ -77,7 +77,7 @@ class MasterEq{
     double *dRedp;
     double *dImdp;
     Vec aux;              // auxiliary vector 
-    int* cols;           // holding columns when evaluating dRHSdp
+    PetscInt* cols;           // holding columns when evaluating dRHSdp
     PetscScalar* vals;   // holding values when evaluating dRHSdp
  
   public:

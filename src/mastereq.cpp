@@ -93,7 +93,7 @@ MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Osci
   }
 
   /* Create vector strides for accessing Re and Im part in x */
-  int ilow, iupp;
+  PetscInt ilow, iupp;
   MatGetOwnershipRange(RHS, &ilow, &iupp);
   int dimis = (iupp - ilow)/2;
   ISCreateStride(PETSC_COMM_WORLD, dimis, ilow, 2, &isu);
@@ -109,8 +109,8 @@ MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Osci
   /* Allocate some auxiliary vectors */
   dRedp = new double[nparams_max];
   dImdp = new double[nparams_max];
-  cols = new int[nparams_max];
-  vals = new double [nparams_max];
+  cols = new PetscInt[nparams_max];
+  vals = new PetscScalar[nparams_max];
 
   /* Allocate MatShell context for applying RHS */
   RHSctx.isu = &isu;
@@ -210,7 +210,7 @@ void MasterEq::initSparseMatSolver(){
   int dimmat = (int) sqrt(dim);
 
   int id_kl=0;  // index for accessing Ad_kl in Ad_vec
-  int ilow, iupp;
+  PetscInt ilow, iupp;
   int r1,r2, r1a, r2a, r1b, r2b;
   int col, col1, col2;
   double val;
@@ -946,7 +946,7 @@ void MasterEq::computedRHSdp(const double t, const Vec x, const Vec xbar, const 
       }
       oscil_vec[iosc]->evalControl_diff(t, dRedp, dImdp);
 
-      int nparam = getOscillator(iosc)->getNParams();
+      PetscInt nparam = getOscillator(iosc)->getNParams();
       for (int iparam=0; iparam < nparam; iparam++) {
         vals[iparam] = alpha * (coeff_p[iosc] * dRedp[iparam] + coeff_q[iosc] * dImdp[iparam]);
         cols[iparam] = iparam + shift;
@@ -1033,7 +1033,8 @@ void MasterEq::setControlAmplitudes(const Vec x) {
 
 int MasterEq::getRhoT0(const int iinit, const int ninit, const InitialConditionType initcond_type, const std::vector<int>& oscilIDs, Vec rho0){
 
-  int ilow, iupp, elemID;
+  PetscInt ilow, iupp; 
+  PetscInt elemID;
   double val;
   int dim_post;
   int initID = 1;    // Output: ID for this initial condition */
@@ -1111,7 +1112,7 @@ int MasterEq::getRhoT0(const int iinit, const int ninit, const InitialConditionT
 
       if (iinit < dim_rho) {// Diagonal e_j e_j^\dag
         VecZeroEntries(rho0);
-        int elemID = getIndexReal(getVecID(iinit, iinit, dim_rho));
+        elemID = getIndexReal(getVecID(iinit, iinit, dim_rho));
         val = 1.0;
         if (ilow <= elemID && elemID < iupp) VecSetValues(rho0, 1, &elemID, &val, INSERT_VALUES);
         VecAssemblyBegin(rho0); VecAssemblyEnd(rho0);
@@ -1119,7 +1120,7 @@ int MasterEq::getRhoT0(const int iinit, const int ninit, const InitialConditionT
       else if (iinit == dim_rho) { // fully rotated 1/d*Ones(d)
         for (int i=0; i<dim_rho; i++){
           for (int j=0; j<dim_rho; j++){
-            int elemID = getIndexReal(getVecID(i,j,dim_rho));
+            elemID = getIndexReal(getVecID(i,j,dim_rho));
             val = 1.0 / dim_rho;
             if (ilow <= elemID && elemID < iupp) VecSetValues(rho0, 1, &elemID, &val, INSERT_VALUES);
             VecAssemblyBegin(rho0); VecAssemblyEnd(rho0);
@@ -1196,13 +1197,13 @@ int MasterEq::getRhoT0(const int iinit, const int ninit, const InitialConditionT
 
       if (k == j) {
         /* B_{kk} = E_{kk} -> set only one element at (k,k) */
-        int elemID = getIndexReal(getVecID(k, k, dim_rho)); // real part in vectorized system
+        elemID = getIndexReal(getVecID(k, k, dim_rho)); // real part in vectorized system
         double val = 1.0;
         if (ilow <= elemID && elemID < iupp) VecSetValues(rho0, 1, &elemID, &val, INSERT_VALUES);
       } else {
       //   /* B_{kj} contains four non-zeros, two per row */
-        int* rows = new int[4];
-        double* vals = new double[4];
+        PetscInt* rows = new PetscInt[4];
+        PetscScalar* vals = new PetscScalar[4];
 
         /* Get storage index of Re(x) */
         rows[0] = getIndexReal(getVecID(k, k, dim_rho)); // (k,k)

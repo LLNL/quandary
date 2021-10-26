@@ -149,14 +149,14 @@ double TimeStepper::penaltyIntegral(double time, const Vec x){
 
   /* If gate optimization: Add guard-level occupation to prevent leakage. A guard level is the LAST NON-ESSENTIAL energy level of an oscillator */
   if (optim_target->getType() == TargetType::GATE) { 
-      int ilow, iupp;
+      PetscInt ilow, iupp;
       VecGetOwnershipRange(x, &ilow, &iupp);
       /* Sum over all diagonal elements that correspond to a non-essential guard level. */
       for (int i=0; i<dim_rho; i++) {
         if ( isGuardLevel(i, mastereq->nlevels, mastereq->nessential) ) {
           // printf("isGuard: %d / %d\n", i, dim_rho);
-          int vecID_re = getIndexReal(getVecID(i,i,dim_rho));
-          int vecID_im = getIndexImag(getVecID(i,i,dim_rho));
+          PetscInt vecID_re = getIndexReal(getVecID(i,i,dim_rho));
+          PetscInt vecID_im = getIndexImag(getVecID(i,i,dim_rho));
           x_re = 0.0; x_im = 0.0;
           if (ilow <= vecID_re && vecID_re < iupp) VecGetValues(x, 1, &vecID_re, &x_re);
           if (ilow <= vecID_im && vecID_im < iupp) VecGetValues(x, 1, &vecID_im, &x_im);  // those should be zero!? 
@@ -179,13 +179,13 @@ void TimeStepper::penaltyIntegral_diff(double time, const Vec x, Vec xbar, doubl
 
   /* If gate optimization: Derivative of adding guard-level occupation */
   if (optim_target->getType() == TargetType::GATE) { 
-    int ilow, iupp;
+    PetscInt ilow, iupp;
     VecGetOwnershipRange(x, &ilow, &iupp);
     double x_re, x_im;
     for (int i=0; i<dim_rho; i++) {
       if ( isGuardLevel(i, mastereq->nlevels, mastereq->nessential) ) {
-        int vecID_re = getIndexReal(getVecID(i,i,dim_rho));
-        int vecID_im = getIndexImag(getVecID(i,i,dim_rho));
+        PetscInt vecID_re = getIndexReal(getVecID(i,i,dim_rho));
+        PetscInt vecID_im = getIndexImag(getVecID(i,i,dim_rho));
         x_re = 0.0; x_im = 0.0;
         if (ilow <= vecID_re && vecID_re < iupp) VecGetValues(x, 1, &vecID_re, &x_re);
         if (ilow <= vecID_im && vecID_im < iupp) VecGetValues(x, 1, &vecID_im, &x_im);
@@ -324,7 +324,7 @@ void ImplMidpoint::evolveFWD(const double tstart,const  double tstop, Vec x) {
 
       /* Monitor error */
       double rnorm;
-      int iters_taken;
+      PetscInt iters_taken;
       KSPGetResidualNorm(ksp, &rnorm);
       KSPGetIterationNumber(ksp, &iters_taken);
       //printf("Residual norm %d: %1.5e\n", iters_taken, rnorm);

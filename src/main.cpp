@@ -496,7 +496,7 @@ int main(int argc,char **argv)
 
   /* --- Finite Differences --- */
   if (mpirank_world == 0) printf("\nFD...\n");
-  for (int i=0; i<optimctx->getNdesign(); i++){
+  for (PetscInt i=0; i<optimctx->getNdesign(); i++){
   // {int i=0;
 
     /* Evaluate f(p+eps)*/
@@ -533,7 +533,7 @@ int main(int argc,char **argv)
   /* Figure out which parameters are hitting bounds */
   double bound_tol = 1e-3;
   std::vector<int> Ihess; // Index set for all elements that do NOT hit a bound
-  for (int i=0; i<optimctx->getNdesign(); i++){
+  for (PetscInt i=0; i<optimctx->getNdesign(); i++){
     // get x_i and bounds for x_i
     double xi, blower, bupper;
     VecGetValues(xinit, 1, &i, &xi);
@@ -561,8 +561,8 @@ int main(int argc,char **argv)
 
 
   /* Iterate over all params that do not hit a bound */
-  for (int k=0; k< Ihess.size(); k++){
-    int j = Ihess[k];
+  for (PetscInt k=0; k< Ihess.size(); k++){
+    PetscInt j = Ihess[k];
     printf("Computing column %d\n", j);
 
     /* Evaluate \nabla_x J(x + eps * e_j) */
@@ -575,8 +575,8 @@ int main(int argc,char **argv)
     optimctx->evalGradF(xinit, grad);
     VecCopy(grad, grad2);
 
-    for (int l=0; l<Ihess.size(); l++){
-      int i = Ihess[l];
+    for (PetscInt l=0; l<Ihess.size(); l++){
+      PetscInt i = Ihess[l];
 
       /* Get the derivative wrt parameter i */
       VecGetValues(grad1, 1, &i, &grad_pert1);   // \nabla_x_i J(x+eps*e_j)
@@ -684,8 +684,8 @@ int main(int argc,char **argv)
   /* Print eigenvectors to file. Columns wise */
   sprintf(filename, "%s/eigvecs.dat", output->datadir.c_str());
   file =fopen(filename,"w");
-  for (int j=0; j<nrows; j++){  // rows
-    for (int i=0; i<eigvals.size(); i++){
+  for (PetscInt j=0; j<nrows; j++){  // rows
+    for (PetscInt i=0; i<eigvals.size(); i++){
       double val;
       VecGetValues(eigvecs[i], 1, &j, &val); // j-th row of eigenvalue i
       fprintf(file, "% 1.8e  ", val);  

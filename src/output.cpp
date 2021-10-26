@@ -80,7 +80,7 @@ void Output::writeOptimFile(double objective, double gnorm, double stepsize, dou
 
 void Output::writeGradient(Vec grad){
   char filename[255];  
-  int ngrad;
+  PetscInt ngrad;
   VecGetSize(grad, &ngrad);
 
   /* Print current gradients to file */
@@ -105,7 +105,7 @@ void Output::writeControls(Vec params, MasterEq* mastereq, int ntime, double dt)
   if ( mpirank_world == 0 && optim_iter % optim_monitor_freq == 0 ) { 
 
     char filename[255];
-    int ndesign;
+    PetscInt ndesign;
     VecGetSize(params, &ndesign);
 
     /* Print current parameters to file */

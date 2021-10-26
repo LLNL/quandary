@@ -57,9 +57,9 @@ Gate::Gate(std::vector<int> nlevels_, std::vector<int> nessential_, double time_
 
 
   /* Create vector strides for accessing real and imaginary part of co-located state */
-  int ilow, iupp;
+  PetscInt ilow, iupp;
   MatGetOwnershipRange(VxV_re, &ilow, &iupp);
-  int dimis = iupp - ilow;
+  PetscInt dimis = iupp - ilow;
   ISCreateStride(PETSC_COMM_WORLD, dimis, 2*ilow, 2, &isu);
   ISCreateStride(PETSC_COMM_WORLD, dimis, 2*ilow+1, 2, &isv);
  
@@ -81,12 +81,12 @@ void Gate::assembleGate(){
   /* Rorate the gate to rotational frame. */
   const PetscScalar* vals_vre, *vals_vim;
   PetscScalar *out_re, *out_im;
-  int *cols;
+  PetscInt *cols;
   PetscMalloc1(dim_ess, &out_re); 
   PetscMalloc1(dim_ess, &out_im); 
   PetscMalloc1(dim_ess, &cols); 
   // get the frequency of the diagonal scaling e^{iwt} for each row rotation matrix R=R1\otimes R2\otimes...
-  for (int row=0; row<dim_ess; row++){
+  for (PetscInt row=0; row<dim_ess; row++){
     int r = row;
     double freq = 0.0;
     for (int iosc=0; iosc<nlevels.size(); iosc++){
@@ -138,18 +138,18 @@ void Gate::assembleGate(){
 
   /* Assemble vectorized gate G=V\kron V where V = PV_eP^T for essential dimension gate V_e (user input) and projection P lifting V_e to the full dimension by inserting identity blocks for non-essential levels. */
   // Each element in V\kron V is a product V(i,j)*V(r,c), for rows and columns i,j,r,c!
-  int ilow, iupp;
+  PetscInt ilow, iupp;
   MatGetOwnershipRange(VxV_re, &ilow, &iupp);
   double val;
   double vre_ij, vim_ij;
   double vre_rc, vim_rc;
   // iterate over rows of V_e (essential dimension gate)
-  for (int row_f=0;row_f<dim_rho; row_f++) {
+  for (PetscInt row_f=0;row_f<dim_rho; row_f++) {
     if (isEssential(row_f, nlevels, nessential)) { // place \bar v_xx*V_f blocks for all cols in V_e[row_e]
-      int row_e = mapFullToEss(row_f, nlevels, nessential);
+      PetscInt row_e = mapFullToEss(row_f, nlevels, nessential);
       assert(row_f == mapEssToFull(row_e, nlevels, nessential));
       // iterate over columns in this row_e
-      for (int col_e=0; col_e<dim_ess; col_e++) {
+      for (PetscInt col_e=0; col_e<dim_ess; col_e++) {
         vre_ij = 0.0; vim_ij = 0.0;
         MatGetValues(V_re, 1, &row_e, 1, &col_e, &vre_ij);
         MatGetValues(V_im, 1, &row_e, 1, &col_e, &vim_ij);
@@ -158,13 +158,13 @@ void Gate::assembleGate(){
           int a = row_f * dim_rho;
           int b = mapEssToFull(col_e, nlevels, nessential) * dim_rho;
           // iterate over rows in V_f
-          for (int r=0; r<dim_rho; r++) {
-            int rowout = a + r;  // row in G
+          for (PetscInt r=0; r<dim_rho; r++) {
+            PetscInt rowout = a + r;  // row in G
             if (ilow <= rowout && rowout < iupp) {
               if (isEssential(r, nlevels, nessential)){ // place ve_ij*ve_rc at G[a+r, b+map(ce)]
-                int re = mapFullToEss(r, nlevels, nessential);
-                for (int ce=0; ce<dim_ess; ce++) {
-                  int colout = b + mapEssToFull(ce, nlevels, nessential); // column in G
+                PetscInt re = mapFullToEss(r, nlevels, nessential);
+                for (PetscInt ce=0; ce<dim_ess; ce++) {
+                  PetscInt colout = b + mapEssToFull(ce, nlevels, nessential); // column in G
                   vre_rc = 0.0; vim_rc = 0.0;
                   MatGetValues(V_re, 1, &re, 1, &ce, &vre_rc);
                   MatGetValues(V_im, 1, &re, 1, &ce, &vim_rc);
@@ -174,7 +174,7 @@ void Gate::assembleGate(){
                   if (fabs(val) > 1e-14) MatSetValue(VxV_im, rowout, colout, val, INSERT_VALUES);
                 }  
               } else { // place ve_ij*1.0 at G[a+row, a+row]
-              int colout = b + r;
+              PetscInt colout = b + r;
                   val = vre_ij;
                   if (fabs(val) > 1e-14) MatSetValue(VxV_re, rowout, colout, val, INSERT_VALUES);
                   val = vim_rc;
@@ -188,12 +188,12 @@ void Gate::assembleGate(){
       int a = row_f * dim_rho;
       // iterate over rows in V_f
       for (int r=0; r<dim_rho; r++) {
-        int rowout = a + r;  // row in G
+        PetscInt rowout = a + r;  // row in G
         if (ilow <= rowout && rowout < iupp) {
           if (isEssential(r, nlevels, nessential)){ // place ve_rc at G[a+r, a+map(ce)]
-            int re = mapFullToEss(r, nlevels, nessential);
-            for (int ce=0; ce<dim_ess; ce++) {
-              int colout = a + mapEssToFull(ce, nlevels, nessential); // column in G
+            PetscInt re = mapFullToEss(r, nlevels, nessential);
+            for (PetscInt ce=0; ce<dim_ess; ce++) {
+              PetscInt colout = a + mapEssToFull(ce, nlevels, nessential); // column in G
               vre_rc = 0.0; vim_rc = 0.0;
               MatGetValues(V_re, 1, &re, 1, &ce, &vre_rc);
               MatGetValues(V_im, 1, &re, 1, &ce, &vim_rc);
@@ -203,7 +203,7 @@ void Gate::assembleGate(){
               if (fabs(val) > 1e-14) MatSetValue(VxV_im, rowout, colout, val, INSERT_VALUES);
             }  
           } else { // place 1.0 at G[a+r, a+r]
-              int colout = a + r;
+              PetscInt colout = a + r;
               val = 1.0;
               if (fabs(val) > 1e-14) MatSetValue(VxV_re, rowout, colout, val, INSERT_VALUES);
           }              

@@ -67,7 +67,7 @@ void projectToEss(Vec state,const std::vector<int> &nlevels, const std::vector<i
   }
 
   /* Get local ownership of the state */
-  int ilow, iupp;
+  PetscInt ilow, iupp;
   VecGetOwnershipRange(state, &ilow, &iupp);
 
   /* Iterate over rows of system matrix, check if it corresponds to an essential level, and if not, set this row and colum to zero */
@@ -140,16 +140,16 @@ int isGuardLevel(const int i, const std::vector<int> &nlevels, const std::vector
 
 PetscErrorCode Ikron(const Mat A,const  int dimI, const double alpha, Mat *Out, InsertMode insert_mode){
 
-    int ierr;
-    int ncols;
+    PetscInt ierr;
+    PetscInt ncols;
     const PetscInt* cols; 
     const PetscScalar* Avals;
     PetscInt* shiftcols;
     PetscScalar* vals;
-    int dimA;
-    int dimOut;
-    int nonzeroOut;
-    int rowID;
+    PetscInt dimA;
+    PetscInt dimOut;
+    PetscInt nonzeroOut;
+    PetscInt rowID;
 
     MatGetSize(A, &dimA, NULL);
 
@@ -157,10 +157,10 @@ PetscErrorCode Ikron(const Mat A,const  int dimI, const double alpha, Mat *Out, 
     ierr = PetscMalloc1(dimA, &vals); CHKERRQ(ierr);
 
     /* Loop over dimension of I */
-    for (int i = 0; i < dimI; i++){
+    for (PetscInt i = 0; i < dimI; i++){
 
         /* Set the diagonal block (i*dimA)::(i+1)*dimA */
-        for (int j=0; j<dimA; j++){
+        for (PetscInt j=0; j<dimA; j++){
             MatGetRow(A, j, &ncols, &cols, &Avals);
             rowID = i*dimA + j;
             for (int k=0; k<ncols; k++){
@@ -182,16 +182,16 @@ PetscErrorCode Ikron(const Mat A,const  int dimI, const double alpha, Mat *Out, 
 
 PetscErrorCode kronI(const Mat A, const int dimI, const double alpha, Mat *Out, InsertMode insert_mode){
     
-    int ierr;
-    int dimA;
+    PetscInt ierr;
+    PetscInt dimA;
     const PetscInt* cols; 
     const PetscScalar* Avals;
-    int rowid;
-    int colid;
-    double insertval;
-    int dimOut;
-    int nonzeroOut;
-    int ncols;
+    PetscInt rowid;
+    PetscInt colid;
+    PetscScalar insertval;
+    PetscInt dimOut;
+    PetscInt nonzeroOut;
+    PetscInt ncols;
     MatInfo Ainfo;
     MatGetSize(A, &dimA, NULL);
 
@@ -199,11 +199,11 @@ PetscErrorCode kronI(const Mat A, const int dimI, const double alpha, Mat *Out, 
     ierr = PetscMalloc1(dimA, &Avals);
 
     /* Loop over rows in A */
-    for (int i = 0; i < dimA; i++){
+    for (PetscInt i = 0; i < dimA; i++){
         MatGetRow(A, i, &ncols, &cols, &Avals);
 
         /* Loop over non negative columns in row i */
-        for (int j = 0; j < ncols; j++){
+        for (PetscInt j = 0; j < ncols; j++){
             //printf("A: row = %d, col = %d, val = %f\n", i, cols[j], Avals[j]);
             
             // dimI rows. global row indices: i, i+dimI
@@ -230,32 +230,32 @@ PetscErrorCode kronI(const Mat A, const int dimI, const double alpha, Mat *Out, 
 
 
 PetscErrorCode AkronB(const Mat A, const Mat B, const double alpha, Mat *Out, InsertMode insert_mode){
-    int Adim1, Adim2, Bdim1, Bdim2;
+    PetscInt Adim1, Adim2, Bdim1, Bdim2;
     MatGetSize(A, &Adim1, &Adim2);
     MatGetSize(B, &Bdim1, &Bdim2);
 
-    int ncolsA, ncolsB;
-    const int *colsA, *colsB;
+    PetscInt ncolsA, ncolsB;
+    const PetscInt *colsA, *colsB;
     const double *valsA, *valsB;
     // Iterate over rows of A 
-    for (int irowA = 0; irowA < Adim1; irowA++){
+    for (PetscInt irowA = 0; irowA < Adim1; irowA++){
         // Iterate over non-zero columns in this row of A
         MatGetRow(A, irowA, &ncolsA, &colsA, &valsA);
-        for (int j=0; j<ncolsA; j++) {
-            int icolA = colsA[j];
-            double valA = valsA[j];
+        for (PetscInt j=0; j<ncolsA; j++) {
+            PetscInt icolA = colsA[j];
+            PetscScalar valA = valsA[j];
             /* put a B-block at position (irowA*Bdim1, icolA*Bdim2): */
             // Iterate over rows of B 
-            for (int irowB = 0; irowB < Bdim1; irowB++){
+            for (PetscInt irowB = 0; irowB < Bdim1; irowB++){
                 // Iterate over non-zero columns in this B-row
                 MatGetRow(B, irowB, &ncolsB, &colsB, &valsB);
-                for (int k=0; k< ncolsB; k++) {
-                    int icolB = colsB[k];
-                    double valB = valsB[k];
+                for (PetscInt k=0; k< ncolsB; k++) {
+                    PetscInt icolB = colsB[k];
+                    PetscScalar valB = valsB[k];
                     /* Insert values in Out */
-                    int rowOut = irowA*Bdim1 + irowB;
-                    int colOut = icolA*Bdim2 + icolB;
-                    double valOut = valA * valB * alpha; 
+                    PetscInt rowOut = irowA*Bdim1 + irowB;
+                    PetscInt colOut = icolA*Bdim2 + icolB;
+                    PetscScalar valOut = valA * valB * alpha; 
                     MatSetValue(*Out, rowOut, colOut, valOut, insert_mode);
                 }
                 MatRestoreRow(B, irowB, &ncolsB, &colsB, &valsB);
@@ -295,7 +295,7 @@ PetscErrorCode StateIsHermitian(Vec x, PetscReal tol, PetscBool *flag) {
   /* TODO: Either make this work in Petsc-parallel, or add error exit if this runs in parallel. */
   
   /* Get u and v from x */
-  int dim;
+  PetscInt dim;
   ierr = VecGetSize(x, &dim); CHKERRQ(ierr);
   dim = dim/2;
   Vec u, v;
@@ -346,7 +346,7 @@ PetscErrorCode StateHasTrace1(Vec x, PetscReal tol, PetscBool *flag) {
   int i;
 
   /* Get u and v from x */
-  int dim;
+  PetscInt dim;
   ierr = VecGetSize(x, &dim); CHKERRQ(ierr);
   int dimis = dim/2;
   Vec u, v;

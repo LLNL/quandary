@@ -167,7 +167,7 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   VecCreate(PETSC_COMM_WORLD, &rho_t0); 
   VecSetSizes(rho_t0,PETSC_DECIDE,2*timestepper->mastereq->getDim());
   VecSetFromOptions(rho_t0);
-  int ilow, iupp;
+  PetscInt ilow, iupp;
   VecGetOwnershipRange(rho_t0, &ilow, &iupp);
 
   /* If PURE or FROMFILE or ENSEMBLE initialization, store them here. Otherwise they are set inside evalF */
@@ -641,11 +641,11 @@ PetscErrorCode TaoMonitor(Tao tao,void*ptr){
   OptimProblem* ctx = (OptimProblem*) ptr;
 
   /* Get information from Tao optimization */
-  int iter;
-  double deltax;
+  PetscInt iter;
+  PetscScalar deltax;
   Vec params;
   TaoConvergedReason reason;
-  double f, gnorm;
+  PetscScalar f, gnorm;
   TaoGetSolutionStatus(tao, &iter, &f, &gnorm, NULL, &deltax, &reason);
   TaoGetSolutionVector(tao, &params);
 

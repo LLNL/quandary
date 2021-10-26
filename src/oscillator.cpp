@@ -137,12 +137,12 @@ int Oscillator::evalControl_Labframe(const double t, double* f){
 
 double Oscillator::expectedEnergy(const Vec x) {
  
-  int dim;
+  PetscInt dim;
   VecGetSize(x, &dim);
   int dimmat = (int) sqrt(dim/2);
 
   /* Get locally owned portion of x */
-  int ilow, iupp;
+  PetscInt ilow, iupp;
   VecGetOwnershipRange(x, &ilow, &iupp);
 
   /* Iterate over diagonal elements to add up expected energy level */
@@ -153,7 +153,7 @@ double Oscillator::expectedEnergy(const Vec x) {
     int num_diag = i % (nlevels*dim_postOsc);
     num_diag = num_diag / dim_postOsc;
     /* Get diagonal element in rho (real) */
-    int idx_diag = getIndexReal(getVecID(i,i,dimmat));
+    PetscInt idx_diag = getIndexReal(getVecID(i,i,dimmat));
     double xdiag = 0.0;
     if (ilow <= idx_diag && idx_diag < iupp) VecGetValues(x, 1, &idx_diag, &xdiag);
     expected += num_diag * xdiag;
@@ -168,20 +168,20 @@ double Oscillator::expectedEnergy(const Vec x) {
 
 
 void Oscillator::expectedEnergy_diff(const Vec x, Vec x_bar, const double obj_bar) {
-  int dim;
+  PetscInt dim;
   VecGetSize(x, &dim);
   int dimmat = (int) sqrt(dim/2);
   double num_diag;
 
   /* Get locally owned portion of x */
-  int ilow, iupp;
+  PetscInt ilow, iupp;
   VecGetOwnershipRange(x, &ilow, &iupp);
 
   /* Derivative of projective measure */
   for (int i=0; i<dimmat; i++) {
     int num_diag = i % (nlevels*dim_postOsc);
     num_diag = num_diag / dim_postOsc;
-    int idx_diag = getIndexReal(getVecID(i, i, dimmat));
+    PetscInt idx_diag = getIndexReal(getVecID(i, i, dimmat));
     double val = num_diag * obj_bar;
     if (ilow <= idx_diag && idx_diag < iupp) VecSetValues(x_bar, 1, &idx_diag, &val, ADD_VALUES);
   }
@@ -199,7 +199,7 @@ void Oscillator::population(const Vec x, std::vector<double> &pop) {
   std::vector<double> mypop(nlevels, 0.0);
 
   /* Get locally owned portion of x */
-  int ilow, iupp;
+  PetscInt ilow, iupp;
   VecGetOwnershipRange(x, &ilow, &iupp);
 
   /* Iterate over diagonal elements of the reduced density matrix for this oscillator */
@@ -213,7 +213,7 @@ void Oscillator::population(const Vec x, std::vector<double> &pop) {
       for (int l=0; l < dim_postOsc; l++) {
         /* Get diagonal element */
         int rhoID = blockstartID + identitystartID + l; // Diagonal element of rho
-        int diagID = getIndexReal(getVecID(rhoID, rhoID, dimN));  // Position in vectorized rho
+        PetscInt diagID = getIndexReal(getVecID(rhoID, rhoID, dimN));  // Position in vectorized rho
         double val = 0.0;
         if (ilow <= diagID && diagID < iupp)  VecGetValues(x, 1, &diagID, &val);
         sum += val;
