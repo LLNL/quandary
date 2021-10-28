@@ -358,19 +358,22 @@ This option is useful for example if one wants to propagate a specific \textit{n
 \subsection{Penalty term}
 The penalty term can be added with parameter $\gamma_1 \geq 0$ in order to achieve a desired behavior at earlier times other than the final time $T$.
 In the standard setting, the following penalty term is currently implemented (easily extendable for developers in the \texttt{TimeStepper} class.):
-\begin{align}
+\begin{align}\label{eq:penaltyterm}
  \gamma_1 \int_0^T P(\rho(t)) \mathrm{d}t = \gamma_1\int_0^T w(t) J\left(\rho(t)\right) \, \mathrm{d}t, \quad \text{where} \quad w(t) =
   \frac{1}{a} e^{ -\left(\frac{t-T}{a} \right)^2},
 \end{align}
 for a penalty parameter $0 < a \leq 1$. Note, that as $a\to 0$, the weighting function $w(t)$ converges to the Dirac delta distribution with peak at final time $T$, hence reducing $a$ leads to more emphasis on the final time $T$ while larger $a$ penalize non-zero energy states at earlier times $t\leq T$. Both $\gamma_1$ as well as $a$ can be tuned in the configuration options. 
 
-Be aware the adding an integral penalty term requires to evaluate the objective $J$ at \textit{each} time-step within the time-domain $[0,T]$, instead of only the last one. This can be quite expensive, in particular when considering gate optimization, and should hence be turned of if possible (choosing $\gamma_1=0$ will skip the extra computation!).
+Be aware the adding an integral penalty term requires to evaluate the objective $J$ at \textit{each} time-step within the time-domain $[0,T]$, instead of only the last one. This can be quite expensive, in particular when considering gate optimization, and should hence be turned of if possible (choosing $\gamma_1=0$ and/or $a=0$ will skip the extra computation).
 
 \textit{For gate optimization with (non-)essential levels:} When the essential levels for gate optimization are smaller than the number of modelled levels ($n_k^e < n_k$ for at least one $k$), an additional term is added as a penalty in order to prevent leakage into higher levels that are not modelled by the finite-dimensional approximation to the infinite dimensional Hamiltonian. In that case, the occupation of all guard levels (i.e. the last modelled energy levels of each of the subsystems) is penalized: 
-\begin{align}
-  \gamma_1 \int_0^T \sum_{r} \| \rho(t)_{rr} \|^2_2 \, \mathrm{d}t
+\begin{align}\label{eq:leakprevention}
+  \gamma_1\int_0^T \sum_{r} \| \rho(t)_{rr} \|^2_2 \, \mathrm{d}t
 \end{align}
-where $\rho(t)_{rr}$ denotes the diagonal element at $(r,r)$ inside $\rho(t)\in \C^{N\times N}$ and $r$ iterates over all indices that correspond to a guard level (last non-essential energy level) of at least one of the subsystems.
+where $\rho(t)_{rr}$ denotes the diagonal element at $(r,r)$ inside $\rho(t)\in \C^{N\times N}$ and $r$ iterates over all indices that correspond to a guard level (last non-essential energy level) of at least one of the subsystems. 
+
+Note that if you want to include this leakage-preventing term, but do \textit{not} want to include the above penalty term \eqref{eq:penaltyterm} (e.g. for efficiency reasons), you can choose $\gamma_1>0$ while $a=0$, which will skip the computation of \eqref{eq:penaltyterm} but will include the term \eqref{eq:leakprevention}. 
+
 
 
 \subsection{Fidelity}

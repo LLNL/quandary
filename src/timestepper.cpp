@@ -143,9 +143,11 @@ double TimeStepper::penaltyIntegral(double time, const Vec x){
   double x_re, x_im;
 
   /* weighted integral of the objective function */
-  double weight = 1./penalty_param * exp(- pow((time - total_time)/penalty_param, 2));
-  double obj = optim_target->evalJ(x);
-  penalty = weight * obj * dt;
+  if (penalty_param > 1e-13) {
+    double weight = 1./penalty_param * exp(- pow((time - total_time)/penalty_param, 2));
+    double obj = optim_target->evalJ(x);
+    penalty = weight * obj * dt;
+  }
 
   /* If gate optimization: Add guard-level occupation to prevent leakage. A guard level is the LAST NON-ESSENTIAL energy level of an oscillator */
   if (optim_target->getType() == TargetType::GATE) { 
@@ -160,7 +162,7 @@ double TimeStepper::penaltyIntegral(double time, const Vec x){
           x_re = 0.0; x_im = 0.0;
           if (ilow <= vecID_re && vecID_re < iupp) VecGetValues(x, 1, &vecID_re, &x_re);
           if (ilow <= vecID_im && vecID_im < iupp) VecGetValues(x, 1, &vecID_im, &x_im);  // those should be zero!? 
-          penalty += dt * penalty_param * (x_re * x_re + x_im * x_im);
+          penalty += dt * (x_re * x_re + x_im * x_im);
         }
       }
       double mine = penalty;
@@ -174,8 +176,10 @@ void TimeStepper::penaltyIntegral_diff(double time, const Vec x, Vec xbar, doubl
   int dim_rho = (int)sqrt(dim/2);  // dim = 2*N^2 vectorized system. dim_rho = N = dimension of matrix system
 
   /* Derivative of weighted integral of the objective function */
-  double weight = 1./penalty_param * exp(- pow((time - total_time)/penalty_param, 2));
-  optim_target->evalJ_diff(x, xbar, weight*penaltybar*dt);
+  if (penalty_param > 1e-13){
+    double weight = 1./penalty_param * exp(- pow((time - total_time)/penalty_param, 2));
+    optim_target->evalJ_diff(x, xbar, weight*penaltybar*dt);
+  }
 
   /* If gate optimization: Derivative of adding guard-level occupation */
   if (optim_target->getType() == TargetType::GATE) { 
@@ -190,8 +194,8 @@ void TimeStepper::penaltyIntegral_diff(double time, const Vec x, Vec xbar, doubl
         if (ilow <= vecID_re && vecID_re < iupp) VecGetValues(x, 1, &vecID_re, &x_re);
         if (ilow <= vecID_im && vecID_im < iupp) VecGetValues(x, 1, &vecID_im, &x_im);
         // Derivative: 2 * rho(i,i) * weights * penalbar * dt
-        if (ilow <= vecID_re && vecID_re < iupp) VecSetValue(xbar, vecID_re, 2.*x_re*penalty_param*dt*penaltybar, ADD_VALUES);
-        if (ilow <= vecID_im && vecID_im < iupp) VecSetValue(xbar, vecID_im, 2.*x_im*penalty_param*dt*penaltybar, ADD_VALUES);
+        if (ilow <= vecID_re && vecID_re < iupp) VecSetValue(xbar, vecID_re, 2.*x_re*dt*penaltybar, ADD_VALUES);
+        if (ilow <= vecID_im && vecID_im < iupp) VecSetValue(xbar, vecID_im, 2.*x_im*dt*penaltybar, ADD_VALUES);
       }
       VecAssemblyBegin(xbar);
       VecAssemblyEnd(xbar);
