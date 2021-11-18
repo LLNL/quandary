@@ -261,7 +261,7 @@ double OptimTarget::evalFidelity(const Vec state){
       MPI_Allreduce(&rho_mm, &fidel, 1, MPI_DOUBLE, MPI_SUM, PETSC_COMM_WORLD);
   } else {
     assert(target_type == TargetType::FROMFILE || target_type == TargetType::GATE);
-    fidel = HilbertSchmidtOverlap(state, false);   // don't scale by purity.
+    fidel = HilbertSchmidtOverlap(state, true);   // scale by purity.
   }
 
   return fidel;
