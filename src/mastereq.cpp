@@ -1065,7 +1065,7 @@ int MasterEq::getRhoT0(const int iinit, const int ninit, const InitialConditionT
 
       /* Set the <iinit>'th initial state */
       if (iinit == 0) {
-        // 1st initial state: rho(0)_IJ = 2(N-i+1)/(N(N+1)) Delta_IJ
+        // 1st initial state: rho(0)_IJ = 2(N-i)/(N(N+1)) Delta_IJ
         initID = 1;
 
         /* Iterate over diagonal elements of full-dimension system */

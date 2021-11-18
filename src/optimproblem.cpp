@@ -139,6 +139,15 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
       obj_weights.push_back(val);
   }
   assert(obj_weights.size() >= ninit);
+  double sendbuf[obj_weights.size()];
+  double recvbuf[obj_weights.size()];
+  for (int i = 0; i < obj_weights.size(); i++) sendbuf[i] = obj_weights[i];
+  // Distribute over mpi_init processes 
+  int nscatter = ninit_local;
+  MPI_Scatter(sendbuf, nscatter, MPI_DOUBLE, recvbuf, nscatter,  MPI_DOUBLE, 0, comm_init);
+  for (int i = 0; i < nscatter; i++) obj_weights[i] = recvbuf[i];
+  for (int i=nscatter; i < obj_weights.size(); i++) obj_weights[i] = 0.0;
+
 
   /* Pass information on objective function to the time stepper needed for penalty objective function */
   gamma_penalty = config.GetDoubleParam("optim_penalty", 1e-4);
