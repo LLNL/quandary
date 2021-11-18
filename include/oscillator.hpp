@@ -49,6 +49,7 @@ class Oscillator {
     int getNParams() { return params.size(); };
     int getNLevels() { return nlevels; };
     int getNSplines() { return basisfunctions->getNSplines(); };
+    int getNCarrierwaves() {return basisfunctions->getNCarrierwaves(); };
     double getSelfkerr() { return selfkerr; }; 
     double getDetuning() { return detuning_freq; }; 
     double getDecayTime() {return decay_time; };
