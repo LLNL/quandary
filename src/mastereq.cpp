@@ -544,6 +544,43 @@ int MasterEq::getNOscillators() { return noscillators; }
 
 Oscillator* MasterEq::getOscillator(const int i) { return oscil_vec[i]; }
 
+
+double MasterEq::getCrosskerr(int k, int l){
+  assert(k < l);
+  assert(k < noscillators-1);
+  assert(l < noscillators);
+  // Get element id in the crosskerr vector
+  int id = 0;
+  for (int j=1; j<k+1; j++) {
+    id += noscillators - j;
+  }
+  id += l-1-k;
+  printf("xi_[%d, %d]  id %d is %f\n", k,l, id, crosskerr[id]);
+  assert (0 <= id);
+  assert (id < noscillators*(noscillators-1)/2);
+
+  return crosskerr[id];
+}
+
+void MasterEq::setCrosskerr(int k, int l, double val){
+  assert(k < l);
+  assert(k < noscillators);
+  assert(l < noscillators);
+
+  // Get element id in the crosskerr vector
+  int id = 0;
+  for (int j=1; j<k+1; j++) {
+    id += noscillators - j;
+  }
+  id += l-1-k;
+  assert (0 <= id);
+  assert (id < noscillators*(noscillators-1)/2);
+
+  // set the crosskerr value in mastereq as well as in the RHSctx struct
+  crosskerr[id] = val;
+  RHSctx.crosskerr[id] = val;
+}
+
 int MasterEq::assemble_RHS(const double t){
   int ierr;
 

@@ -108,6 +108,11 @@ class MasterEq{
     /* Return dimension of system matrix rho: N */
     int getDimRho();
 
+    // Set the crosskerr coefficient xi_{kl} for zz-coupling of system k and l
+    void setCrosskerr(int k, int l, double val);
+    // Get the crosskerr coefficient between oscillator k and l
+    double getCrosskerr(int k, int l);
+
     /* 
      * Uses Re and Im to build the vectorized Hamiltonian operator M = vec(-i(Hq-qH)+Lindblad). 
      * This should always be called before applying the RHS matrix.
