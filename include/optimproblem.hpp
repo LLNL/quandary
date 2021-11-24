@@ -5,6 +5,7 @@
 #include "timestepper.hpp"
 #include <iostream>
 #include <algorithm>
+#include "sampler.hpp"
 #include "optimtarget.hpp"
 #ifdef WITH_BRAID
   #include "braid_wrapper.hpp"
@@ -56,17 +57,16 @@ class OptimProblem {
   
   public: 
     Tao tao;                         /* Petsc's Optimization solver */
-    bool robust; 
     Output* output;                 /* Store a reference to the output */
     TimeStepper* timestepper;       /* Store a reference to the time-stepping scheme */
     Vec xlower, xupper;              /* Optimization bounds */
     
-    std::vector<double> perturb;   // Perturbation bounds for robust optimization
+    Sampler* sampler;               /* Random sampler for robust optimization */
 
   /* Constructor */
-  OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm comm_init_, int ninit_, std::vector<double> gate_rot_freq, Output* output_, bool robust_);
+  OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm comm_init_, int ninit_, std::vector<double> gate_rot_freq, Output* output_);
 #ifdef WITH_BRAID
-  OptimProblem(MapParam config, TimeStepper* timestepper_, myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, MPI_Comm comm_init_, int ninit_, std::vector<double> gate_rot_freq, Output* output_, bool robust_);
+  OptimProblem(MapParam config, TimeStepper* timestepper_, myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, MPI_Comm comm_init_, int ninit_, std::vector<double> gate_rot_freq, Output* output_);
 #endif
   ~OptimProblem();
 

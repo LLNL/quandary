@@ -1,7 +1,7 @@
 #include "optimproblem.hpp"
 
 #ifdef WITH_BRAID
-OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, MPI_Comm comm_init_, int ninit_, std::vector<double> gate_rot_freq, Output* output_, bool robust_) : OptimProblem(config, timestepper_, comm_init_, ninit_, gate_rot_freq, output_, robust_) {
+OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, MPI_Comm comm_init_, int ninit_, std::vector<double> gate_rot_freq, Output* output_) : OptimProblem(config, timestepper_, comm_init_, ninit_, gate_rot_freq, output_) {
   primalbraidapp  = primalbraidapp_;
   adjointbraidapp = adjointbraidapp_;
   MPI_Comm_rank(primalbraidapp->comm_braid, &mpirank_braid);
@@ -9,13 +9,12 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, myBraidAp
 }
 #endif
 
-OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm comm_init_, int ninit_, std::vector<double> gate_rot_freq, Output* output_, bool robust_){
+OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm comm_init_, int ninit_, std::vector<double> gate_rot_freq, Output* output_){
 
   timestepper = timestepper_;
   ninit = ninit_;
   comm_init = comm_init_;
   output = output_;
-  robust = robust_;
   mute = false;
 
   /* Reset */
@@ -59,8 +58,11 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
       }
   }
 
-  /* Get perturbation for robust optimization */
-  if (robust) config.GetVecDoubleParam("perturb", perturb, 0.0);   // cross ker \xi_{kl}, zz-coupling
+  /* Get robust optimization  specifics */
+  std::vector<std::string> optim_robust_str;
+  config.GetVecStrParam("optim_robust", optim_robust_str, "none");   // cross ker \xi_{kl}, zz-coupling
+  if (optim_robust_str[0].compare("uniform") == 0) sampler = new Uniform(optim_robust_str);
+  else sampler = NULL;
 
   /* Store the optimization target */
   std::vector<std::string> target_str;
@@ -334,7 +336,7 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   TaoSetVariableBounds(tao, xlower, xupper);
   TaoSetFromOptions(tao);
   /* Set user-defined objective and gradient evaluation routines */
-  if (!robust) {
+  if (sampler == NULL) { // not a robust optimization problem 
     TaoSetObjectiveRoutine(tao, TaoEvalObjective, (void *)this);
     TaoSetGradientRoutine(tao, TaoEvalGradient,(void *)this);
     printf("Setting NOT robust\n");
@@ -710,8 +712,8 @@ PetscErrorCode TaoEvalObjectiveAndGradient(Tao tao, Vec x, PetscReal *f, Vec G, 
 
   printf("TaoEvalObjectiveAndGradient \n");
   OptimProblem* ctx = (OptimProblem*) ptr;
-  if (ctx->robust) TaoEvalGradientRobust(tao, x, G, ptr);
-  else             TaoEvalGradient(tao, x, G, ptr);
+  if (ctx->sampler == NULL) TaoEvalGradient(tao, x, G, ptr);
+  else                      TaoEvalGradientRobust(tao, x, G, ptr);
   *f = ctx->getObjective();
 
   return 0;
@@ -732,19 +734,10 @@ PetscErrorCode TaoEvalObjectiveRobust(Tao tao, Vec x, PetscReal *f, void*ptr){
   int k = 0; 
   int l = 1;
 
-  /* Get the range of uncertainty */
-  double pstart = ctx->perturb[0];  // GHz! 
-  double pstop  = ctx->perturb[1];  // GHz! 
-  double deltap = ctx->perturb[2];  // GHz! 
-
-  // Get the crosskerr samples */
-  std::vector<double> samples;
-  int nsamples = (int) ( (pstop - pstart) / deltap );
-  nsamples +=1;
-  for (int i=0; i < nsamples; i++) {
-    samples.push_back( (pstart + i*deltap) * 2. * M_PI );
-  }
-  // printf("Ho nsample %d", nsamples);
+  // Get the crosskerr samples and weights */
+  std::vector<double> samples = ctx->sampler->samples;
+  std::vector<double> weights = ctx->sampler->weights;
+  int nsamples = samples.size();
 
   /* Evaluate the expected objective functions */
   double Eobj = 0.0;
@@ -753,15 +746,11 @@ PetscErrorCode TaoEvalObjectiveRobust(Tao tao, Vec x, PetscReal *f, void*ptr){
   for (int isample = 0; isample < nsamples; isample++){
     ctx->timestepper->mastereq->setCrosskerr(k,l, samples[isample]);
     // mastereq->initsparsematsolver!
-    Eobj += ctx->evalF(x);
-    Efidelity += ctx->getFidelity();
-    Ecost += ctx->getCostT();
+    Eobj += ctx->evalF(x) * weights[isample];
+    Efidelity += ctx->getFidelity() * weights[isample];
+    Ecost += ctx->getCostT() * weights[isample];
     printf("%d: sample xi_kl = %f: Cost = %1.14e, Fidelity = %1.14e\n", isample, samples[isample]/(2.*M_PI), ctx->getCostT(), ctx->getFidelity());
   }
-
-  Eobj = Eobj / nsamples;
-  Efidelity = Efidelity / nsamples;
-  Ecost += Ecost / nsamples;
 
   // Overwrite  optimproblem's objective function values so that 'TaoMonitor' prints them to 'optim_hostory.dat'
   ctx->setObjective(Eobj);
@@ -791,18 +780,10 @@ PetscErrorCode TaoEvalGradientRobust(Tao tao, Vec x, Vec G, void*ptr){
   int k = 0; 
   int l = 1;
 
-  /* Get the range of uncertainty */
-  double pstart = ctx->perturb[0];  // GHz! 
-  double pstop  = ctx->perturb[1];  // GHz! 
-  double deltap = ctx->perturb[2];  // GHz! 
-
-  // Get the crosskerr samples */
-  std::vector<double> samples;
-  int nsamples = (int) ( (pstop - pstart) / deltap );
-  nsamples +=1;
-  for (int i=0; i < nsamples; i++) {
-    samples.push_back( (pstart + i*deltap) * 2. * M_PI );
-  }
+// Get the crosskerr samples and weights */
+  std::vector<double> samples = ctx->sampler->samples;
+  std::vector<double> weights = ctx->sampler->weights;
+  int nsamples = samples.size();
 
   /* Evaluate the gradient for each sample */
   Vec grad_i;
@@ -821,10 +802,10 @@ PetscErrorCode TaoEvalGradientRobust(Tao tao, Vec x, Vec G, void*ptr){
     // printf("%d: sample xi_kl = %f: Cost = %1.14e, Fidelity = %1.14e\n", isample, samples[isample]/(2.*M_PI), ctx->getCostT(), ctx->getFidelity());
 
     // Add to expected values and gradient 
-    Eobj += ctx->getObjective() / nsamples;
-    EcostT += ctx->getCostT() / nsamples;
-    Efidelity += ctx->getFidelity() / nsamples;
-    VecAXPY(G, 1./nsamples, grad_i);
+    Eobj += ctx->getObjective() * weights[isample];
+    EcostT += ctx->getCostT() * weights[isample];
+    Efidelity += ctx->getFidelity() * weights[isample];
+    VecAXPY(G, weights[isample], grad_i);
 
     // Pass vars back to the optimproblem 
     ctx->setObjective(Eobj);

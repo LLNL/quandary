@@ -59,8 +59,6 @@ int main(int argc,char **argv)
     printf("\n\n WARNING: Unknown runtype: %s.\n\n", runtypestr.c_str());
     runtype = RunType::NONE;
   }
-  /* Check if robust optimization or not */
-  bool robust = (PetscBool) config.GetBoolParam("robust", false);
 
   /* Get the number of essential levels per oscillator. 
    * Default: same as number of levels */  
@@ -374,9 +372,9 @@ int main(int argc,char **argv)
   }
 
 #ifdef WITH_BRAID
-  OptimProblem* optimctx = new OptimProblem(config, mytimestepper, primalbraidapp, adjointbraidapp, comm_init, ninit, gate_rot_freq, output, robust);
+  OptimProblem* optimctx = new OptimProblem(config, mytimestepper, primalbraidapp, adjointbraidapp, comm_init, ninit, gate_rot_freq, output);
 #else 
-  OptimProblem* optimctx = new OptimProblem(config, mytimestepper, comm_init, ninit, gate_rot_freq, output, robust);
+  OptimProblem* optimctx = new OptimProblem(config, mytimestepper, comm_init, ninit, gate_rot_freq, output);
 #endif
 
   /* Set upt solution and gradient vector */
