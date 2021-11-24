@@ -26,6 +26,7 @@ class OptimProblem {
   std::vector<int> initcond_IDs;         /* Integer list for pure-state initialization */
 
   OptimTarget* optim_target;      /* Storing the optimization goal */
+  bool mute; 
 
   /* MPI stuff */
   MPI_Comm comm_init;
@@ -49,20 +50,23 @@ class OptimProblem {
   double gatol;                    /* Stopping criterion based on absolute gradient norm */
   double grtol;                    /* Stopping criterion based on relative gradient norm */
   int maxiter;                     /* Stopping criterion based on maximum number of iterations */
-  Tao tao;                         /* Petsc's Optimization solver */
   std::string initguess_type;      /* Type of initial guess */
   std::vector<double> initguess_amplitudes; /* Initial amplitudes of controles, or NULL */
   double* mygrad;  /* Auxiliary */
   
   public: 
+    Tao tao;                         /* Petsc's Optimization solver */
+    bool robust; 
     Output* output;                 /* Store a reference to the output */
     TimeStepper* timestepper;       /* Store a reference to the time-stepping scheme */
     Vec xlower, xupper;              /* Optimization bounds */
+    
+    std::vector<double> perturb;   // Perturbation bounds for robust optimization
 
   /* Constructor */
-  OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm comm_init_, int ninit_, std::vector<double> gate_rot_freq, Output* output_);
+  OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm comm_init_, int ninit_, std::vector<double> gate_rot_freq, Output* output_, bool robust_);
 #ifdef WITH_BRAID
-  OptimProblem(MapParam config, TimeStepper* timestepper_, myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, MPI_Comm comm_init_, int ninit_, std::vector<double> gate_rot_freq, Output* output_);
+  OptimProblem(MapParam config, TimeStepper* timestepper_, myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, MPI_Comm comm_init_, int ninit_, std::vector<double> gate_rot_freq, Output* output_, bool robust_);
 #endif
   ~OptimProblem();
 
@@ -75,6 +79,9 @@ class OptimProblem {
   double getRegul()    { return obj_regul; };
   double getPenalty()  { return obj_penal; };
   double getFidelity() { return fidelity; };
+  void setObjective(double val){ objective=val; };
+  void setCostT(double val)    { obj_cost = val; };
+  void setFidelity(double val) { fidelity = val; };
 
   /* Evaluate the objective function F(x) */
   double evalF(const Vec x);
@@ -97,9 +104,11 @@ PetscErrorCode TaoMonitor(Tao tao,void*ptr);
 
 /* Petsc's Tao interface routine for evaluating the objective function f = f(x) */
 PetscErrorCode TaoEvalObjective(Tao tao, Vec x, PetscReal *f, void*ptr);
+PetscErrorCode TaoEvalObjectiveRobust(Tao tao, Vec x, PetscReal *f, void*ptr);
 
 /* Petsc's Tao interface routine for evaluating the gradient g = \nabla f(x) */
 PetscErrorCode TaoEvalGradient(Tao tao, Vec x, Vec G, void*ptr);
+PetscErrorCode TaoEvalGradientRobust(Tao tao, Vec x, Vec G, void*ptr);
 
 /* Petsc's Tao interface routine for evaluating the gradient g = \nabla f(x) */
 PetscErrorCode TaoEvalObjectiveAndGradient(Tao tao, Vec x, PetscReal *f, Vec G, void*ptr);

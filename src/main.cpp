@@ -59,6 +59,8 @@ int main(int argc,char **argv)
     printf("\n\n WARNING: Unknown runtype: %s.\n\n", runtypestr.c_str());
     runtype = RunType::NONE;
   }
+  /* Check if robust optimization or not */
+  bool robust = (PetscBool) config.GetBoolParam("robust", false);
 
   /* Get the number of essential levels per oscillator. 
    * Default: same as number of levels */  
@@ -372,9 +374,9 @@ int main(int argc,char **argv)
   }
 
 #ifdef WITH_BRAID
-  OptimProblem* optimctx = new OptimProblem(config, mytimestepper, primalbraidapp, adjointbraidapp, comm_init, ninit, gate_rot_freq, output);
+  OptimProblem* optimctx = new OptimProblem(config, mytimestepper, primalbraidapp, adjointbraidapp, comm_init, ninit, gate_rot_freq, output, robust);
 #else 
-  OptimProblem* optimctx = new OptimProblem(config, mytimestepper, comm_init, ninit, gate_rot_freq, output);
+  OptimProblem* optimctx = new OptimProblem(config, mytimestepper, comm_init, ninit, gate_rot_freq, output, robust);
 #endif
 
   /* Set upt solution and gradient vector */
@@ -410,7 +412,8 @@ int main(int argc,char **argv)
   if (runtype == RunType::SIMULATION) {
     optimctx->getStartingPoint(xinit);
     if (mpirank_world == 0) printf("\nStarting primal solver... \n");
-    objective = optimctx->evalF(xinit);
+    // objective = optimctx->evalF(xinit);
+    TaoComputeObjective(optimctx->tao, xinit, &objective);
     if (mpirank_world == 0) printf("\nTotal objective = %1.14e, \n", objective);
     optimctx->getSolution(&opt);
   } 
@@ -419,7 +422,8 @@ int main(int argc,char **argv)
   if (runtype == RunType::GRADIENT) {
     optimctx->getStartingPoint(xinit);
     if (mpirank_world == 0) printf("\nStarting adjoint solver...\n");
-    optimctx->evalGradF(xinit, grad);
+    // optimctx->evalGradF(xinit, grad);
+    TaoComputeGradient(optimctx->tao, xinit, grad);
     VecNorm(grad, NORM_2, &gnorm);
     // VecView(grad, PETSC_VIEWER_STDOUT_WORLD);
     if (mpirank_world == 0) {
@@ -485,12 +489,14 @@ int main(int argc,char **argv)
 
   /* --- Solve primal --- */
   if (mpirank_world == 0) printf("\nRunning optimizer eval_f... ");
-  obj_org = optimctx->evalF(xinit);
+  // obj_org = optimctx->evalF(xinit);
+  TaoComputeObjective(optimctx->tao, xinit, &obj_org);
   if (mpirank_world == 0) printf(" Obj_orig %1.14e\n", obj_org);
 
   /* --- Solve adjoint --- */
   if (mpirank_world == 0) printf("\nRunning optimizer eval_grad_f...\n");
-  optimctx->evalGradF(xinit, grad);
+  // optimctx->evalGradF(xinit, grad);
+  TaoComputeGradient(optimctx->tao, xinit, grad);
   VecView(grad, PETSC_VIEWER_STDOUT_WORLD);
   
 
@@ -501,11 +507,13 @@ int main(int argc,char **argv)
 
     /* Evaluate f(p+eps)*/
     VecSetValue(xinit, i, EPS, ADD_VALUES);
-    obj_pert1 = optimctx->evalF(xinit);
+    // obj_pert1 = optimctx->evalF(xinit);
+    TaoComputeObjective(optimctx->tao, xinit, &obj_pert1);
 
     /* Evaluate f(p-eps)*/
     VecSetValue(xinit, i, -2*EPS, ADD_VALUES);
-    obj_pert2 = optimctx->evalF(xinit);
+    // obj_pert2 = optimctx->evalF(xinit);
+    TaoComputeObjective(optimctx->tao, xinit, &obj_pert2);
 
     /* Eval FD and error */
     double fd = (obj_pert1 - obj_pert2) / (2.*EPS);
@@ -567,12 +575,14 @@ int main(int argc,char **argv)
 
     /* Evaluate \nabla_x J(x + eps * e_j) */
     VecSetValue(xinit, j, EPS, ADD_VALUES); 
-    optimctx->evalGradF(xinit, grad);        
+    // optimctx->evalGradF(xinit, grad);        
+    TaoComputeGradient(optimctx->tao, xinit, grad);
     VecCopy(grad, grad1);
 
     /* Evaluate \nabla_x J(x - eps * e_j) */
     VecSetValue(xinit, j, -2.*EPS, ADD_VALUES); 
-    optimctx->evalGradF(xinit, grad);
+    // optimctx->evalGradF(xinit, grad);
+    TaoComputeGradient(optimctx->tao, xinit, grad);
     VecCopy(grad, grad2);
 
     for (PetscInt l=0; l<Ihess.size(); l++){
