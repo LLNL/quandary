@@ -28,3 +28,14 @@ class Uniform : public Sampler {
     Uniform(std::vector<std::string>& inputstring);
     ~Uniform();
 };
+
+class Normal : public Sampler {
+  protected:
+    double mu;     // Expected values
+    double sigma;  // standard deviation
+
+    public:
+      Normal(std::vector<std::string>& inputstring);
+      ~Normal();
+};
+
