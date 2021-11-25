@@ -44,7 +44,7 @@ double Uniform_Trapez::evalPDF(double x){
 
 
 
-Normal::Normal(std::vector<std::string>& inputstring) : Sampler(inputstring) {
+Normal_GaussHermit::Normal_GaussHermit(std::vector<std::string>& inputstring) : Sampler(inputstring) {
   if (inputstring.size() < 3 ) {
     printf("Error: Input for config option 'optim_robust' invalid\n");
     exit(1);
@@ -54,13 +54,35 @@ Normal::Normal(std::vector<std::string>& inputstring) : Sampler(inputstring) {
   mu    = atof(inputstring[2].c_str());  // GHz!
   sigma = atof(inputstring[3].c_str());  // GHz!
 
+  if (nsamples != 5 && nsamples !=10 && nsamples !=15 && nsamples !=20) {
+    printf("WARNING: Gauss-Hermite quadrature points only available for nsamples 5,10,15, or 20. Switching to nsamples=10 now.\n");
+    nsamples = 10;
+  }
 
   /* Set the samples and double xweights as N(mu,sigma) */
   // https://jblevins.org/notes/quadrature
+  double *abs_ptr, *w_ptr;
+  if      (nsamples == 5)  { abs_ptr = abs5;  w_ptr = w5; } 
+  else if (nsamples == 10) { abs_ptr = abs10; w_ptr = w10; } 
+  else if (nsamples == 15) { abs_ptr = abs15; w_ptr = w15; } 
+  else if (nsamples == 20) { abs_ptr = abs20; w_ptr = w20; } 
+
+  for (int i=0; i<nsamples; i++) {
+    double val = w_ptr[1] / sqrt(M_PI) ;
+    samples.push_back( mu + sqrt(2) * sigma * abs_ptr[i]); 
+    coeffs.push_back( w_ptr[i] / sqrt(M_PI) );
+  }
+
+  /* Set coefficients according to GaussHermite quadrature w_i / sqrt(pi) */
+ 
+  for (int i=0; i<nsamples; i++){
+    printf("%d, x=%f, w=%f\n",i, samples[i], coeffs[i]);
+  }
+  exit(1);
+
 }
 
-double Normal::evalPDF(double x) {
-  // TODO.
-  return 0.0;
+double Normal_GaussHermit::evalPDF(double x) {
+  return 1./(sqrt(2.*M_PI)*sigma) * exp( -1./2. * pow( (x - mu) / sigma , 2) );
 }
 

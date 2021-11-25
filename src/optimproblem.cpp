@@ -62,7 +62,7 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   std::vector<std::string> optim_robust_str;
   config.GetVecStrParam("optim_robust", optim_robust_str, "none");   // cross ker \xi_{kl}, zz-coupling
   if (optim_robust_str[0].compare("uniform") == 0) sampler = new Uniform_Trapez(optim_robust_str);
-  else if (optim_robust_str[0].compare("normal") == 0) sampler = new Uniform_Trapez(optim_robust_str);
+  else if (optim_robust_str[0].compare("normal") == 0) sampler = new Normal_GaussHermit(optim_robust_str);
   else sampler = NULL;
 
   /* Store the optimization target */
