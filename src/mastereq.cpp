@@ -555,11 +555,11 @@ double MasterEq::getCrosskerr(int k, int l){
     id += noscillators - j;
   }
   id += l-1-k;
-  printf("xi_[%d, %d]  id %d is %f\n", k,l, id, crosskerr[id]);
+  // printf("xi_[%d, %d]  id %d is %f\n", k,l, id, crosskerr[id]);
   assert (0 <= id);
   assert (id < noscillators*(noscillators-1)/2);
 
-  return crosskerr[id];
+  return crosskerr[id] / (2.*M_PI);
 }
 
 void MasterEq::setCrosskerr(int k, int l, double val){
@@ -577,8 +577,8 @@ void MasterEq::setCrosskerr(int k, int l, double val){
   assert (id < noscillators*(noscillators-1)/2);
 
   // set the crosskerr value in mastereq as well as in the RHSctx struct
-  crosskerr[id] = val;
-  RHSctx.crosskerr[id] = val;
+  crosskerr[id] = val * 2. * M_PI;
+  RHSctx.crosskerr[id] = val * 2. * M_PI;
 }
 
 int MasterEq::assemble_RHS(const double t){

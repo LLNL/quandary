@@ -61,8 +61,8 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   /* Get robust optimization  specifics */
   std::vector<std::string> optim_robust_str;
   config.GetVecStrParam("optim_robust", optim_robust_str, "none");   // cross ker \xi_{kl}, zz-coupling
-  if (optim_robust_str[0].compare("uniform") == 0) sampler = new Uniform(optim_robust_str);
-  else if (optim_robust_str[0].compare("normal") == 0) sampler = new Uniform(optim_robust_str);
+  if (optim_robust_str[0].compare("uniform") == 0) sampler = new Uniform_Trapez(optim_robust_str);
+  else if (optim_robust_str[0].compare("normal") == 0) sampler = new Uniform_Trapez(optim_robust_str);
   else sampler = NULL;
 
   /* Store the optimization target */
@@ -735,9 +735,9 @@ PetscErrorCode TaoEvalObjectiveRobust(Tao tao, Vec x, PetscReal *f, void*ptr){
   int k = 0; 
   int l = 1;
 
-  // Get the crosskerr samples and weights */
+  // Get the crosskerr samples and coefficients */
   std::vector<double> samples = ctx->sampler->samples;
-  std::vector<double> weights = ctx->sampler->weights;
+  std::vector<double> coeffs = ctx->sampler->coeffs;
   int nsamples = samples.size();
 
   /* Evaluate the expected objective functions */
@@ -747,10 +747,10 @@ PetscErrorCode TaoEvalObjectiveRobust(Tao tao, Vec x, PetscReal *f, void*ptr){
   for (int isample = 0; isample < nsamples; isample++){
     ctx->timestepper->mastereq->setCrosskerr(k,l, samples[isample]);
     // mastereq->initsparsematsolver!
-    Eobj += ctx->evalF(x) * weights[isample];
-    Efidelity += ctx->getFidelity() * weights[isample];
-    Ecost += ctx->getCostT() * weights[isample];
-    printf("%d: sample xi_kl = %f: Cost = %1.14e, Fidelity = %1.14e\n", isample, samples[isample]/(2.*M_PI), ctx->getCostT(), ctx->getFidelity());
+    Eobj += ctx->evalF(x) * coeffs[isample];
+    Efidelity += ctx->getFidelity() * coeffs[isample];
+    Ecost += ctx->getCostT() * coeffs[isample];
+    printf("%d: sample xi_kl = %f: Cost = %1.14e, Fidelity = %1.14e\n", isample, samples[isample], ctx->getCostT(), ctx->getFidelity());
   }
 
   // Overwrite  optimproblem's objective function values so that 'TaoMonitor' prints them to 'optim_hostory.dat'
@@ -781,9 +781,9 @@ PetscErrorCode TaoEvalGradientRobust(Tao tao, Vec x, Vec G, void*ptr){
   int k = 0; 
   int l = 1;
 
-// Get the crosskerr samples and weights */
+// Get the crosskerr samples and coeffs */
   std::vector<double> samples = ctx->sampler->samples;
-  std::vector<double> weights = ctx->sampler->weights;
+  std::vector<double> coeffs = ctx->sampler->coeffs;
   int nsamples = samples.size();
 
   /* Evaluate the gradient for each sample */
@@ -800,13 +800,13 @@ PetscErrorCode TaoEvalGradientRobust(Tao tao, Vec x, Vec G, void*ptr){
     // mastereq->initsparsematsolver?
 
     ctx->evalGradF(x, grad_i);
-    // printf("%d: sample xi_kl = %f: Cost = %1.14e, Fidelity = %1.14e\n", isample, samples[isample]/(2.*M_PI), ctx->getCostT(), ctx->getFidelity());
+    // printf("%d: sample xi_kl = %f: Cost = %1.14e, Fidelity = %1.14e\n", isample, samples[isample], ctx->getCostT(), ctx->getFidelity());
 
     // Add to expected values and gradient 
-    Eobj += ctx->getObjective() * weights[isample];
-    EcostT += ctx->getCostT() * weights[isample];
-    Efidelity += ctx->getFidelity() * weights[isample];
-    VecAXPY(G, weights[isample], grad_i);
+    Eobj += ctx->getObjective() * coeffs[isample];
+    EcostT += ctx->getCostT() * coeffs[isample];
+    Efidelity += ctx->getFidelity() * coeffs[isample];
+    VecAXPY(G, coeffs[isample], grad_i);
 
     // Pass vars back to the optimproblem 
     ctx->setObjective(Eobj);

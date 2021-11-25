@@ -13,20 +13,26 @@ class Sampler {
 
   public:
     std::vector<double> samples;
-    std::vector<double> weights;
+    std::vector<double> coeffs;
 
     Sampler();
+    Sampler(std::vector<std::string>& inputstring);
     ~Sampler();
 
+    double evalPDF(double x);
 };
 
-class Uniform : public Sampler {
+/* Uniform distribution, Trapez rule for quadrature of expected value integral */
+class Uniform_Trapez : public Sampler {
   protected:
-    double pstart, pstop, deltap;
+    double xstart, xstop, deltax;
 
   public:
-    Uniform(std::vector<std::string>& inputstring);
-    ~Uniform();
+    Uniform_Trapez(std::vector<std::string>& inputstring);
+    ~Uniform_Trapez();
+
+    /* Evaluate the probability density function */
+    double evalPDF(double x);
 };
 
 class Normal : public Sampler {
@@ -37,5 +43,7 @@ class Normal : public Sampler {
     public:
       Normal(std::vector<std::string>& inputstring);
       ~Normal();
-};
 
+      /* Evaluate the probability density function */
+      double evalPDF(double x);
+};
