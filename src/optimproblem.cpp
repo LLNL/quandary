@@ -747,10 +747,11 @@ PetscErrorCode TaoEvalObjectiveRobust(Tao tao, Vec x, PetscReal *f, void*ptr){
   for (int isample = 0; isample < nsamples; isample++){
     ctx->timestepper->mastereq->setCrosskerr(k,l, samples[isample]);
     // mastereq->initsparsematsolver!
-    Eobj += ctx->evalF(x) * coeffs[isample];
+    double thisobj = ctx->evalF(x);
+    Eobj += thisobj * coeffs[isample];
     Efidelity += ctx->getFidelity() * coeffs[isample];
     Ecost += ctx->getCostT() * coeffs[isample];
-    printf("%d: sample xi_kl = %f: Cost = %1.14e, Fidelity = %1.14e\n", isample, samples[isample], ctx->getCostT(), ctx->getFidelity());
+    printf("%d: sample xi_kl = %f: Objective = %1.14e, Fidelity = %1.14e, Cost = %1.14e, \n", isample, samples[isample], thisobj,  ctx->getFidelity(), ctx->getCostT());
   }
 
   // Overwrite  optimproblem's objective function values so that 'TaoMonitor' prints them to 'optim_hostory.dat'
@@ -813,6 +814,9 @@ PetscErrorCode TaoEvalGradientRobust(Tao tao, Vec x, Vec G, void*ptr){
     ctx->setCostT(EcostT);
     ctx->setFidelity(Efidelity);
   }
+
+  // TODO: Allocate and destroy the grad_i vector somewhere outside this routine
+  VecDestroy(&grad_i);
 
   /* Output */
   std::cout<< "Robust Objective = " << std::scientific<<std::setprecision(14) << EcostT << " + " << ctx->getRegul() << std::endl;

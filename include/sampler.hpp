@@ -18,11 +18,9 @@ class Sampler {
     Sampler();
     Sampler(std::vector<std::string>& inputstring);
     ~Sampler();
-
-    double evalPDF(double x);
 };
 
-/* Uniform distribution, Trapez rule for quadrature of expected value integral */
+/* Uniform distribution with Trapez rule for quadrature of expected value integral */
 class Uniform_Trapez : public Sampler {
   protected:
     double xstart, xstop, deltax;
@@ -31,16 +29,16 @@ class Uniform_Trapez : public Sampler {
     Uniform_Trapez(std::vector<std::string>& inputstring);
     ~Uniform_Trapez();
 
-    /* Evaluate the probability density function */
-    double evalPDF(double x);
 };
 
+/* Normal distribution N(mu, sigma) with Gauss-Hermite quadrature rule for expected value integral */
 class Normal_GaussHermit : public Sampler {
   protected:
-    double mu;     // Expected values
-    double sigma;  // standard deviation
+    double mu;     // mean
+    double sigma;  // standard deviation 
     
-    //
+    // Store weights and abscisses of Gauss-Hermite quadrature 
+    // Here so far only for nsamples = 5, 10, 15, 20, but can easily be extended by adding the corresponding arrays here and modifying the constructor in sampler.cpp
     // https://dlmf.nist.gov/3.5#v
     double abs5[5] = {-2.02018,-0.958572,0.0,0.958572,2.02018};
     double   w5[5] = {0.019953,0.39361,0.94530,0.39361,0.019953};
@@ -56,6 +54,4 @@ class Normal_GaussHermit : public Sampler {
       Normal_GaussHermit(std::vector<std::string>& inputstring);
       ~Normal_GaussHermit();
 
-      /* Evaluate the probability density function */
-      double evalPDF(double x);
 };
