@@ -395,8 +395,8 @@ where $p(\mathcal{X})$ is the probability density function, and $w_i, \mathcal{X
 
 Quandary currently offers robust optimization for the cross-Kerr coefficient $\xi_{kl}$ on two oscillators. Two different probability distributions are available:
 \begin{itemize}
-  \item Uniform distribution $\xi_{kl} \sim U(a,b)$ for interval bounds $0\leq a<b$, with probability density function $p(\mathcal{X}) = \frac{1}{b-a}$. In this case, we approximate the integral in the objective function by the Trapezoidal quadrature rule. 
-  \item Normal distribution $\xi_{kl} \sim N(\mu, \sigma)$ for mean $\mu$ and standard deviation $\sigma$, and probability density function $p(\mathcal{X}) = \frac{1}{\sqrt{2\pi}}\exp\left( -\frac 12 \left(\frac{\mathcal{X} - \mu}{\sigma} \right)^2 \right)$ 
+  \item Uniform distribution $\xi_{kl} \sim U(a,b)$ for interval bounds $0\leq a<b$, with probability density function $p(\mathcal{X}) = \frac{1}{b-a}$. In this case, Quandary uses the Trapezoidal rule to approximate the integral in the objective function. 
+  \item Normal distribution $\xi_{kl} \sim N(\mu, \sigma)$ for mean $\mu$ and standard deviation $\sigma$, and probability density function $p(\mathcal{X}) = \frac{1}{\sqrt{2\pi}\sigma}\exp\left( -\frac 12 \left(\frac{\mathcal{X} - \mu}{\sigma} \right)^2 \right)$. In this case, Quandary uses the Gauss-Hermite quadrature rule to approximate the integral term. 
 \end{itemize}
 
 \section{Implementation}
