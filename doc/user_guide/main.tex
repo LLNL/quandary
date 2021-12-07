@@ -385,6 +385,20 @@ Note that this fidelity is averaged over the chosen initial conditions, so the u
 
 Note that for pure-state preparation, we have $\rho^{target} = \boldsymbol{e}_m \boldsymbol{e}_m^\dagger$ and therefor the fidelity can be computed from $F = \frac{1}{n_{init}} \sum_i \left[\rho_i(T)\right]_{mm}$, for the $m$-th diagonal element of the final states $\rho_i(T)$. 
 
+\subsection{Robust optimization}
+Assume an uncertain system parameter $\mathcal{X}$, drawn from a certain probability distribution. The goal of robust optimization is to minimize the expected value of the objective function under this uncertain variable:
+\begin{align}
+  \min \, \mathds{E}(J(\mathcal{X})) &= \min \int_{\Omega} J(\mathcal{X}) \,\mathrm{d}P(\mathcal{X}) = \min \int_{\Omega} J(\mathcal{X}) p(\mathcal{X}) \,\mathrm{d}\mathcal{X} \\
+  &\approx \sum_{i=1}^{n_s} w_i J(\mathcal{X}_i) p(\mathcal{X}_i)
+\end{align}
+where $p(\mathcal{X})$ is the probability density function, and $w_i, \mathcal{X}_i$ are weights and abscisses for a quadrature rule to approximate the integral term. 
+
+Quandary currently offers robust optimization for the cross-Kerr coefficient $\xi_{kl}$ on two oscillators. Two different probability distributions are available:
+\begin{itemize}
+  \item Uniform distribution $\xi_{kl} \sim U(a,b)$ for interval bounds $0\leq a<b$, with probability density function $p(\mathcal{X}) = \frac{1}{b-a}$. In this case, we approximate the integral in the objective function by the Trapezoidal quadrature rule. 
+  \item Normal distribution $\xi_{kl} \sim N(\mu, \sigma)$ for mean $\mu$ and standard deviation $\sigma$, and probability density function $p(\mathcal{X}) = \frac{1}{\sqrt{2\pi}}\exp\left( -\frac 12 \left(\frac{\mathcal{X} - \mu}{\sigma} \right)^2 \right)$ 
+\end{itemize}
+
 \section{Implementation}
 
   \subsection{Vectorization}
