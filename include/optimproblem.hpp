@@ -40,10 +40,12 @@ class OptimProblem {
   double objective;                /* Holds current objective function value */
   double obj_cost;                 /* Final-time term J(T) in objective */
   double obj_regul;                /* Regularization term in objective */
+  double obj_regul_tv;                /* Regularization term in objective */
   double obj_penal;                /* Penalty term in objective */
   double fidelity;                 /* Sum of final-time fidelities (summed over initial conditions) */
   double gnorm;                    /* Holds current norm of gradient */
   double gamma_tik;                /* Parameter for tikhonov regularization */
+  double gamma_tv;                 /* Parameter for total variation regularization */
   double gamma_penalty;            /* Parameter multiplying integral penalty term */
   double penalty_param;            /* Parameter inside integral penalty term w(t) (Gaussian variance) */
   double gatol;                    /* Stopping criterion based on absolute gradient norm */

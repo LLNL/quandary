@@ -225,3 +225,25 @@ void Oscillator::population(const Vec x, std::vector<double> &pop) {
   /* Gather poppulation from all Petsc processors */
   MPI_Allreduce(mypop.data(), pop.data(), nlevels, MPI_DOUBLE, MPI_SUM, PETSC_COMM_WORLD);
 }
+
+
+
+double Oscillator::computeRegulTV(){
+  double regul = 0.0;
+
+  int nsplines = basisfunctions->getNSplines();
+  int ncarrier = basisfunctions->getNCarrierwaves();
+
+  for (int f=0;f<ncarrier; f++){
+    for (int s=0; s<nsplines; s++){
+      // add up alpha_s^f(i) - alpha_{s+1}^f(i)
+      int alphas_re = params[s*ncarrier*2 + f*2];
+      int alphas_im = params[s*ncarrier*2 + f*2 + 1];
+      int alphasp1_re = params[(s+1)*ncarrier*2 + f*2];
+      int alphasp1_im = params[(s+1)*ncarrier*2 + f*2 + 1];
+      regul += pow(alphas_re - alphasp1_re, 2) + pow(alphas_im - alphasp1_im, 2);
+    }
+  }
+
+  return regul;
+}

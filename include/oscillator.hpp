@@ -58,6 +58,9 @@ class Oscillator {
     /* Copy x into the control parameter vector */
     void setParams(const double* x);
 
+    /* Compute total variation of the control parameters */
+    double computeRegulTV();
+
     /* Evaluates rotating frame control functions Re = p(t), Im = q(t) */
     int evalControl(const double t, double* Re_ptr, double* Im_ptr);
     /* Compute derivatives of the p(t) and q(t) control function wrt the parameters */

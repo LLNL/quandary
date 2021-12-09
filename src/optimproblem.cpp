@@ -41,6 +41,7 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
 
   /* Store other optimization parameters */
   gamma_tik = config.GetDoubleParam("optim_regul", 1e-4);
+  gamma_tv  = config.GetDoubleParam("optim_regul_tv", 1e-4);
   gatol = config.GetDoubleParam("optim_atol", 1e-8);
   grtol = config.GetDoubleParam("optim_rtol", 1e-4);
   maxiter = config.GetIntParam("optim_maxiter", 200);
@@ -365,6 +366,7 @@ double OptimProblem::evalF(const Vec x) {
   /*  Iterate over initial condition */
   obj_cost  = 0.0;
   obj_regul = 0.0;
+  obj_regul_tv = 0.0;
   obj_penal = 0.0;
   fidelity = 0.0;
   double obj_cost_max = 0.0;
@@ -419,6 +421,11 @@ double OptimProblem::evalF(const Vec x) {
   double xnorm;
   VecNorm(x, NORM_2, &xnorm);
   obj_regul = gamma_tik / 2. * pow(xnorm,2.0);
+
+  /* Evaluate total variation on alpha */
+  for (int iosc = 0; iosc < timestepper->mastereq->getNOscillators(); iosc++){
+    obj_regul_tv += gamma_tv * timestepper->mastereq->getOscillator(iosc)->computeRegulTV();
+  }
 
   /* Sum, store and return objective value */
   objective = obj_cost + obj_regul + obj_penal;
