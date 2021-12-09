@@ -229,21 +229,65 @@ void Oscillator::population(const Vec x, std::vector<double> &pop) {
 
 
 double Oscillator::computeRegulTV(){
-  double regul = 0.0;
 
   int nsplines = basisfunctions->getNSplines();
   int ncarrier = basisfunctions->getNCarrierwaves();
+  double alphas_re, alphas_im, alphasp1_re, alphasp1_im;
 
+  double regul = 0.0;
   for (int f=0;f<ncarrier; f++){
-    for (int s=0; s<nsplines; s++){
+    for (int s=0; s<nsplines-1; s++){
       // add up alpha_s^f(i) - alpha_{s+1}^f(i)
-      int alphas_re = params[s*ncarrier*2 + f*2];
-      int alphas_im = params[s*ncarrier*2 + f*2 + 1];
-      int alphasp1_re = params[(s+1)*ncarrier*2 + f*2];
-      int alphasp1_im = params[(s+1)*ncarrier*2 + f*2 + 1];
+      alphas_re = params[s*ncarrier*2 + f*2];
+      alphas_im = params[s*ncarrier*2 + f*2 + 1];
+      alphasp1_re = params[(s+1)*ncarrier*2 + f*2];
+      alphasp1_im = params[(s+1)*ncarrier*2 + f*2 + 1];
       regul += pow(alphas_re - alphasp1_re, 2) + pow(alphas_im - alphasp1_im, 2);
     }
   }
 
-  return regul;
+  return regul/2.;
+}
+
+
+void Oscillator::computeRegulTV_diff(const double gamma, double* grad_ptr){
+
+  int nsplines = basisfunctions->getNSplines();
+  int ncarrier = basisfunctions->getNCarrierwaves();
+
+  double alphas_re, alphas_im, alphasp1_re, alphasp1_im, alphasm1_re, alphasm1_im;
+  int s;
+
+  for (int f=0; f<ncarrier; f++ ) {
+    // fist one (s=0)
+    s=0;
+    alphas_re = params[s*ncarrier*2 + f*2];
+    alphas_im = params[s*ncarrier*2 + f*2 + 1];
+    alphasp1_re = params[(s+1)*ncarrier*2 + f*2];
+    alphasp1_im = params[(s+1)*ncarrier*2 + f*2 + 1];
+    grad_ptr[s*ncarrier*2 + f*2]   += gamma * (alphas_re - alphasp1_re);
+    grad_ptr[s*ncarrier*2 + f*2+1] += gamma * (alphas_im - alphasp1_im);
+    // last one
+    s = nsplines-1;
+    alphas_re = params[s*ncarrier*2 + f*2];
+    alphas_im = params[s*ncarrier*2 + f*2 + 1];
+    alphasm1_re = params[(s-1)*ncarrier*2 + f*2];
+    alphasm1_im = params[(s-1)*ncarrier*2 + f*2 + 1];
+    grad_ptr[s*ncarrier*2 + f*2]   += - gamma * (alphasm1_re - alphas_re);
+    grad_ptr[s*ncarrier*2 + f*2+1] += - gamma * (alphasm1_im - alphas_im);
+
+     // all middle ones.
+    for (s=1; s<nsplines-1; s++){
+      alphas_re = params[s*ncarrier*2 + f*2];
+      alphas_im = params[s*ncarrier*2 + f*2 + 1];
+      alphasp1_re = params[(s+1)*ncarrier*2 + f*2];
+      alphasp1_im = params[(s+1)*ncarrier*2 + f*2 + 1];
+      alphasm1_re = params[(s-1)*ncarrier*2 + f*2];
+      alphasm1_im = params[(s-1)*ncarrier*2 + f*2 + 1];
+
+      grad_ptr[s*ncarrier*2 + f*2]   += gamma * (-alphasm1_re + 2.*alphas_re - alphasp1_re);
+      grad_ptr[s*ncarrier*2 + f*2+1] += gamma * (-alphasm1_im + 2.*alphas_im - alphasp1_im);
+    }
+  }
+
 }

@@ -428,11 +428,11 @@ double OptimProblem::evalF(const Vec x) {
   }
 
   /* Sum, store and return objective value */
-  objective = obj_cost + obj_regul + obj_penal;
+  objective = obj_cost + obj_regul + obj_regul_tv + obj_penal;
 
   /* Output */
   if (mpirank_world == 0) {
-    std::cout<< "Objective = " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal << std::endl;
+    std::cout<< "Objective = " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_regul_tv << " + " << obj_penal << std::endl;
     std::cout<< "Fidelity = " << fidelity  << std::endl;
     // std::cout<< "Max. costT = " << obj_cost_max << std::endl;
   }
@@ -459,10 +459,23 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
   if (mpirank_init == 0 && mpirank_braid == 0) {
     VecAXPY(G, gamma_tik, x);
   }
+  
+  /* Derivative of total variation term */
+  double* Gptr;
+  VecGetArray(G, &Gptr);
+  int shift = 0;
+  if (mpirank_init == 0 && mpirank_braid == 0) {
+    for (int iosc = 0; iosc < timestepper->mastereq->getNOscillators(); iosc++){
+      timestepper->mastereq->getOscillator(iosc)->computeRegulTV_diff(gamma_tv, Gptr + shift);
+      shift += timestepper->mastereq->getOscillator(iosc)->getNParams();
+    }
+  }
+  VecRestoreArray(G, &Gptr);
 
   /*  Iterate over initial condition */
   obj_cost = 0.0;
   obj_regul = 0.0;
+  obj_regul_tv = 0.0;
   obj_penal = 0.0;
   fidelity = 0.0;
   for (int iinit = 0; iinit < ninit_local; iinit++) {
@@ -539,8 +552,13 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
   VecNorm(x, NORM_2, &xnorm);
   obj_regul = gamma_tik / 2. * pow(xnorm,2.0);
 
+  /* Evaluate total variation on alpha */
+  for (int iosc = 0; iosc < timestepper->mastereq->getNOscillators(); iosc++){
+    obj_regul_tv += gamma_tv * timestepper->mastereq->getOscillator(iosc)->computeRegulTV();
+  }
+
   /* Sum, store and return objective function value*/
-  objective = obj_cost + obj_regul + obj_penal;
+  objective = obj_cost + obj_regul + obj_regul_tv + obj_penal;
 
   /* Sum up the gradient from all initial condition processors */
   PetscScalar* grad; 
@@ -566,7 +584,7 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
 
   /* Output */
   if (mpirank_world == 0) {
-    std::cout<< "Objective = " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal << std::endl;
+    std::cout<< "Objective = " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_regul_tv << " + " << obj_penal << std::endl;
     std::cout<< "Fidelity = " << fidelity << std::endl;
   }
 }
