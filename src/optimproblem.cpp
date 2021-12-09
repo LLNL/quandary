@@ -394,10 +394,12 @@ double OptimProblem::evalF(const Vec x) {
     double obj_iinit = optim_target->evalJ(finalstate);
     obj_cost +=  obj_weights[iinit] * obj_iinit;
     obj_cost_max = std::max(obj_cost_max, obj_iinit);
-    // printf("%d, %d: iinit objective: %f * %1.14e\n", mpirank_world, mpirank_init, obj_weights[iinit], obj_iinit);
 
     /* Add to final-time fidelity */
-    fidelity += optim_target->evalFidelity(finalstate);
+    double fidelity_iinit = optim_target->evalFidelity(finalstate);
+    fidelity += fidelity_iinit;
+
+    // printf("%d, %d: iinit objective: %f * %1.14e, Fid=%1.14e\n", mpirank_world, mpirank_init, obj_weights[iinit], obj_iinit, fidelity_iinit);
   }
 
 #ifdef WITH_BRAID
