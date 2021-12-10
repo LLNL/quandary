@@ -28,6 +28,7 @@ class Oscillator {
     double detuning_freq;              // Detuning frequency (rad/time) for this oscillator. Multiplies ak^d ak in rotating frame: detuning = ground_freq - rotational_freq
     double decay_time;              // Time of decay collapse operations 
     double dephase_time;           // Time of dephasing dephasing collapse operations 
+    std::vector<double> carrier_freq; // Frequencies of the carrier waves
 
     std::vector<double> params;    // control parameters 
     double Tfinal;                 // final time
@@ -50,7 +51,7 @@ class Oscillator {
     int getNParams() { return params.size(); };
     int getNLevels() { return nlevels; };
     int getNSplines() { return basisfunctions->getNSplines(); };
-    int getNCarrierwaves() {return basisfunctions->getNCarrierwaves(); };
+    int getNCarrierwaves() {return carrier_freq.size(); };
     double getSelfkerr() { return selfkerr; }; 
     double getDetuning() { return detuning_freq; }; 
     double getDecayTime() {return decay_time; };

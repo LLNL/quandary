@@ -17,25 +17,23 @@ class ControlBasis{
         double dtknot;                    // spacing of time knot vector    
         double *tcenter;                  // vector of basis function center positions
         double width;                     // support of each basis function (m*dtknot)
-        std::vector<double> carrier_freq; // Frequencies of the carrier waves
 
         /* Evaluate the bspline basis functions B_l(tau_l(t)) */
         double basisfunction(int id, double t);
 
     public:
-        ControlBasis(int NBasis, double T, std::vector<double> carrier_freq_);
+        ControlBasis(int NBasis, double T);
         ~ControlBasis();
 
         /* Return the number of basis functions */
         int getNSplines() { return nbasis; };
-        int getNCarrierwaves() { return carrier_freq.size(); };
 
         /* Evaluate the spline at time t using the coefficients coeff. */
-        double evaluate(const double t, const std::vector<double>& coeff, const double ground_freq, const ControlType controltype);
+        double evaluate(const double t, const std::vector<double>& coeff, const double ground_freq, std::vector<double>& carrier_freq, const ControlType controltype);
 
         /* Evaluates the derivative at time t, multiplied with fbar. */
-        void derivative(const double t, double* coeff_diff, const double fbar, const ControlType controltype);
+        void derivative(const double t, double* coeff_diff, const double fbar, std::vector<double>& carrier_freq, const ControlType controltype);
 
         /* For debugging: evaluate spline number s at time t */
-        double evalSpline_Re(int s, double t, const std::vector<double>& coeff);
+        double evalSpline_Re(int s, double t, const std::vector<double>& coeff, std::vector<double>& carrier_freq);
 };

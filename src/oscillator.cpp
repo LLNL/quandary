@@ -18,12 +18,17 @@ Oscillator::Oscillator(int id, std::vector<int> nlevels_all_, int nbasis_, doubl
   decay_time = decay_time_;
   dephase_time = dephase_time_;
 
+  carrier_freq = carrier_freq_;
+  for (int i=0; i<carrier_freq.size(); i++) {
+      carrier_freq[i] *= 2.*M_PI;
+  }
+
   MPI_Comm_rank(PETSC_COMM_WORLD, &mpirank_petsc);
   int mpirank_world;
   MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
 
   /* Create control basis functions */
-  basisfunctions = new ControlBasis(nbasis_, Tfinal_, carrier_freq_);
+  basisfunctions = new ControlBasis(nbasis_, Tfinal_);
 
   /* Initialize control parameters */
   int nparam = 2 * nbasis_ * carrier_freq_.size();
@@ -64,8 +69,8 @@ int Oscillator::evalControl(const double t, double* Re_ptr, double* Im_ptr){
   }
 
   /* Evaluate the spline at time t */
-  *Re_ptr = basisfunctions->evaluate(t, params, ground_freq, ControlType::RE);
-  *Im_ptr = basisfunctions->evaluate(t, params, ground_freq, ControlType::IM);
+  *Re_ptr = basisfunctions->evaluate(t, params, ground_freq, carrier_freq, ControlType::RE);
+  *Im_ptr = basisfunctions->evaluate(t, params, ground_freq, carrier_freq, ControlType::IM);
 
   /* If pipulse: Overwrite controls by constant amplitude */
   for (int ipulse=0; ipulse< pipulse.tstart.size(); ipulse++){
@@ -90,8 +95,8 @@ int Oscillator::evalControl_diff(const double t, double* dRedp, double* dImdp) {
   /* Evaluate derivative of spline basis at time t */
   double Rebar = 1.0;
   double Imbar = 1.0;
-  basisfunctions->derivative(t, dRedp, Rebar, ControlType::RE);
-  basisfunctions->derivative(t, dImdp, Imbar, ControlType::IM);
+  basisfunctions->derivative(t, dRedp, Rebar, carrier_freq, ControlType::RE);
+  basisfunctions->derivative(t, dImdp, Imbar, carrier_freq, ControlType::IM);
 
   /* TODO: Derivative of pipulse? */
   for (int ipulse=0; ipulse< pipulse.tstart.size(); ipulse++){
@@ -113,7 +118,7 @@ int Oscillator::evalControl_Labframe(const double t, double* f){
   }
 
   /* Evaluate the spline at time t */
-  *f = basisfunctions->evaluate(t, params, ground_freq, ControlType::LAB);
+  *f = basisfunctions->evaluate(t, params, ground_freq, carrier_freq, ControlType::LAB);
 
   // Test implementation of lab frame controls. 
   // double forig = *f;
@@ -243,7 +248,7 @@ void Oscillator::writeSplines(double ntime, double dt, const char* datadir){
 
           /* Iterate over basis functions */
           for (int s=0; s<basisfunctions->getNSplines(); s++){
-            splines.push_back(basisfunctions->evalSpline_Re(s,time, params));
+            splines.push_back(basisfunctions->evalSpline_Re(s,time, params, carrier_freq));
           }
 
           fprintf(file, "%1.6f", time);

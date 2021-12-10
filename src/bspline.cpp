@@ -1,11 +1,8 @@
 #include "bspline.hpp"
 
-ControlBasis::ControlBasis(int NBasis, double T, std::vector<double> carrier_freq_){
+ControlBasis::ControlBasis(int NBasis, double T){
     nbasis = NBasis;
-    carrier_freq = carrier_freq_;
-    for (int i=0; i<carrier_freq.size(); i++) {
-        carrier_freq[i] *= 2.*M_PI;
-    }
+    
 
     dtknot = T / (double)(nbasis - 2);
 	width = 3.0*dtknot;
@@ -24,7 +21,7 @@ ControlBasis::~ControlBasis(){
 }
 
 
-double ControlBasis::evaluate(const double t, const std::vector<double>& coeff, const double ground_freq, const ControlType controltype){
+double ControlBasis::evaluate(const double t, const std::vector<double>& coeff, const double ground_freq, std::vector<double>& carrier_freq, const ControlType controltype){
 
     double sum = 0.0;
     /* Sum over basis function */
@@ -57,7 +54,7 @@ double ControlBasis::evaluate(const double t, const std::vector<double>& coeff, 
     return sum;
 }
 
-void ControlBasis::derivative(const double t, double* coeff_diff, const double valbar, const ControlType controltype) {
+void ControlBasis::derivative(const double t, double* coeff_diff, const double valbar, std::vector<double>& carrier_freq, const ControlType controltype) {
 
     /* Iterate over basis function */
     for (int l=0; l<nbasis; l++) {
@@ -96,7 +93,7 @@ double ControlBasis::basisfunction(int id, double t){
 
 
 
-double ControlBasis::evalSpline_Re(int l, double t, const std::vector<double>& coeff){
+double ControlBasis::evalSpline_Re(int l, double t, const std::vector<double>& coeff, std::vector<double>& carrier_freq){
 
     // Evaluate B-spline number l at time t
     double Blt = basisfunction(l,t);
