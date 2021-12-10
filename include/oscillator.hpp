@@ -20,6 +20,7 @@ struct PiPulse {
 
 class Oscillator {
   protected:
+    int myid;
     int nlevels;                   // Number of levels for this the oscillator 
     double ground_freq;            // Fundamental transition frequency of this oscillator
     double selfkerr;               // Self-kerr frequency $\xi_k$. Multiplies ak^d ak^d ak ak
@@ -73,6 +74,9 @@ class Oscillator {
 
     /* Compute population (=diagonal elements) for this oscillators reduced system */
     void population(const Vec x, std::vector<double> &pop); 
+
+    /* For debuggiing: Write each basis function multiplied by amplitudes and carrier waves to a file */
+    void writeSplines(double ntime, double dt, const char* datadir); 
 };
 
 

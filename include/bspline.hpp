@@ -35,4 +35,7 @@ class ControlBasis{
 
         /* Evaluates the derivative at time t, multiplied with fbar. */
         void derivative(const double t, double* coeff_diff, const double fbar, const ControlType controltype);
+
+        /* For debugging: evaluate spline number s at time t */
+        double evalSpline_Re(int s, double t, const std::vector<double>& coeff);
 };

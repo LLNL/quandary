@@ -404,6 +404,15 @@ int main(int argc,char **argv)
   /* Start timer */
   double StartTime = MPI_Wtime();
 
+
+  // Debugging: Write bsplines to a file 
+  optimctx->getStartingPoint(xinit);
+  mastereq->setControlAmplitudes(xinit);
+  for (int ios = 0; ios < noscillators; ios++){
+    mastereq->getOscillator(ios)->writeSplines(ntime, dt, output->datadir.c_str());
+  }
+  exit(1);
+
   double objective;
   double gnorm = 0.0;
   /* --- Solve primal --- */

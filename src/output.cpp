@@ -142,7 +142,6 @@ void Output::writeControls(Vec params, MasterEq* mastereq, int ntime, double dt)
       fclose(file);
       printf("File written: %s\n", filename);
     }
-
   }
 }
 
@@ -267,3 +266,5 @@ void Output::closeDataFiles(){
     }
   }
 }
+
+

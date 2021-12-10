@@ -93,3 +93,26 @@ double ControlBasis::basisfunction(int id, double t){
 
     return val;
 }
+
+
+
+double ControlBasis::evalSpline_Re(int l, double t, const std::vector<double>& coeff){
+
+    // Evaluate B-spline number l at time t
+    double Blt = basisfunction(l,t);
+
+    // Iterate over carrier wave frequencies and multiply
+    double Blt_alpha_omega = 0.0;
+    for (int f=0; f < carrier_freq.size(); f++) {
+        double alpha1 = coeff[l*carrier_freq.size()*2 + f*2];
+        double alpha2 = coeff[l*carrier_freq.size()*2 + f*2 + 1];
+        double cos_omt = cos(carrier_freq[f]*t);
+        double sin_omt = sin(carrier_freq[f]*t);
+        Blt_alpha_omega += alpha1 * cos_omt * Blt; 
+        Blt_alpha_omega -= alpha2 * sin_omt * Blt;
+    }
+
+    return Blt_alpha_omega;
+}
+
+

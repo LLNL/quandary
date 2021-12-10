@@ -9,6 +9,7 @@ Oscillator::Oscillator(){
 
 Oscillator::Oscillator(int id, std::vector<int> nlevels_all_, int nbasis_, double ground_freq_, double selfkerr_, double rotational_freq_, double decay_time_, double dephase_time_, std::vector<double> carrier_freq_, double Tfinal_){
 
+  myid = id;
   nlevels = nlevels_all_[id];
   Tfinal = Tfinal_;
   ground_freq = ground_freq_*2.0*M_PI;
@@ -224,4 +225,35 @@ void Oscillator::population(const Vec x, std::vector<double> &pop) {
 
   /* Gather poppulation from all Petsc processors */
   MPI_Allreduce(mypop.data(), pop.data(), nlevels, MPI_DOUBLE, MPI_SUM, PETSC_COMM_WORLD);
+}
+
+
+void Oscillator::writeSplines(double ntime, double dt, const char* datadir){
+    char filename[255];
+    FILE* file;
+
+    /* Print every B-spline to a file */
+    sprintf(filename, "%s/bsplines%d.dat", datadir, myid);
+    file = fopen(filename, "w");
+
+      std::vector<double> splines;
+      /* Iterate over time */
+      for (int ts = 0; ts < ntime; ts++){
+          double time = ts*dt;
+
+          /* Iterate over basis functions */
+          for (int s=0; s<basisfunctions->getNSplines(); s++){
+            splines.push_back(basisfunctions->evalSpline_Re(s,time, params));
+          }
+
+          fprintf(file, "%1.6f", time);
+          for (int is = 0; is<splines.size(); is++){
+            fprintf(file, "  %1.14e", splines[is]);
+          }
+          fprintf(file, "\n");
+          splines.clear();  // remove all elements from spline vector
+      }
+ 
+      fclose(file);
+      printf("File written: %s\n", filename);
 }
