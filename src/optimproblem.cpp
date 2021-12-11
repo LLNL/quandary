@@ -397,9 +397,11 @@ void OptimProblem::refine(Vec& xinit){
   VecAssemblyEnd(xinit);
 
   // TODO:
-  // allocate new grad / mygrad!
-  // allocat new param bounds
-  // reset tao
+  // allocate new redgrad in timestepper
+  // reset nparams_max in mastereq and reallocate dRedp, dImdp, cols, vals
+  // allocate new mygrad in optimproblem? 
+  // allocate new param bounds in optimproblem
+  // reset tao to use the new vector size. 
 }
 
 double OptimProblem::evalF(const Vec x) {
