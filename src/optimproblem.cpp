@@ -349,7 +349,41 @@ OptimProblem::~OptimProblem() {
   TaoDestroy(&tao);
 }
 
+void OptimProblem::refine(Vec xinit){
+  // Pass xinit to the oscillators 
+  timestepper->mastereq->setControlAmplitudes(xinit);
 
+  int noscillators = timestepper->mastereq->getNOscillators();
+  double dt = timestepper->dt;
+  int ntime = timestepper->ntime;
+
+  for (int ios = 0; ios < noscillators; ios++){
+    timestepper->mastereq->getOscillator(ios)->writeSplines(ntime, dt, output->datadir.c_str(), false);
+  }
+  int nsplines_old = timestepper->mastereq->getOscillator(0)->getNSplines(); 
+  int ndesign_old = ndesign;
+
+  // For each oscillator, refine the control basis
+  for (int ios = 0; ios< timestepper->mastereq->getNOscillators(); ios++){
+    timestepper->mastereq->getOscillator(ios)->refine();
+    timestepper->mastereq->getOscillator(ios)->writeSplines(ntime, dt, output->datadir.c_str(), true);
+  }
+
+  // new number of design paramters
+  ndesign = 0.0;
+  for (int ios = 0; ios< timestepper->mastereq->getNOscillators(); ios++){
+    ndesign += timestepper->mastereq->getOscillator(ios)->getNParams();
+  }
+  printf("Refined number of paramters: %d->%d\n", ndesign_old, ndesign);
+
+  int nsplines = timestepper->mastereq->getOscillator(0)->getNSplines(); 
+  printf("Refined number of splines: %d->%d\n", nsplines_old, nsplines);
+
+  // TODO:
+  // allocate new mygrad!
+  // allocat new param bounds
+  // reset tao
+}
 
 double OptimProblem::evalF(const Vec x) {
 

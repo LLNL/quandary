@@ -90,6 +90,9 @@ class OptimProblem {
 
   /* Call this after TaoSolve() has finished to print out some information */
   void getSolution(Vec* opt);
+
+  /* refine the control parameters */
+  void refine(Vec x);
 };
 
 /* Monitor the optimization progress. This routine is called in each iteration of TaoSolve() */

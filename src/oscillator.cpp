@@ -233,32 +233,81 @@ void Oscillator::population(const Vec x, std::vector<double> &pop) {
 }
 
 
-void Oscillator::writeSplines(double ntime, double dt, const char* datadir){
+void Oscillator::writeSplines(double ntime, double dt, const char* datadir, bool refined){
     char filename[255];
     FILE* file;
 
     /* Print every B-spline to a file */
     sprintf(filename, "%s/bsplines%d.dat", datadir, myid);
+    if (refined) sprintf(filename, "%s/bsplines%d_refined.dat", datadir, myid);
     file = fopen(filename, "w");
 
-      std::vector<double> splines;
-      /* Iterate over time */
-      for (int ts = 0; ts < ntime; ts++){
-          double time = ts*dt;
+    std::vector<double> splines;
+    /* Iterate over time */
+    for (int ts = 0; ts < ntime; ts++){
+      double time = ts*dt;
 
-          /* Iterate over basis functions */
-          for (int s=0; s<basisfunctions->getNSplines(); s++){
-            splines.push_back(basisfunctions->evalSpline_Re(s,time, params, carrier_freq));
-          }
-
-          fprintf(file, "%1.6f", time);
-          for (int is = 0; is<splines.size(); is++){
-            fprintf(file, "  %1.14e", splines[is]);
-          }
-          fprintf(file, "\n");
-          splines.clear();  // remove all elements from spline vector
+      /* Iterate over basis functions */
+      for (int s=0; s<basisfunctions->getNSplines(); s++){
+        splines.push_back(basisfunctions->evalSpline_Re(s,time, params, carrier_freq));
       }
+
+      fprintf(file, "%1.6f", time);
+      for (int is = 0; is<splines.size(); is++){
+        fprintf(file, "  %1.14e", splines[is]);
+      }
+      fprintf(file, "\n");
+      splines.clear();  // remove all elements from spline vector
+    }
  
-      fclose(file);
-      printf("File written: %s\n", filename);
+    fclose(file);
+    printf("File written: %s\n", filename);
+}
+
+
+
+void Oscillator::refine(){
+  // new number of splines 
+  int nbasis_coarse = basisfunctions->getNSplines();
+  int nbasis_fine = 2 * nbasis_coarse - 2;
+
+  // Copy parameters into coarse vector
+  std::vector<double> params_coarse;
+  for (int i=0; i<params.size(); i++) params_coarse.push_back(params[i]);
+
+  // Initialize new parameter vector with zero
+  params.clear();
+  int nparams = 2 * nbasis_fine * carrier_freq.size();
+  for (int i=0; i<nparams; i++){
+    params.push_back(0.0);
+  }
+  printf("nparams %d->%d\n", params_coarse.size(), params.size());
+  // Update the coefficients. 
+  for (int scoar=0; scoar<nbasis_coarse-1; scoar++){
+    int sfine = 2*scoar;      // first child
+    printf("Coarse %d->%d\n", scoar, sfine);
+
+    int f=0; // this is where the carrier frequency should be iterationed. TODO. 
+    // update alpha_{sfine}^f
+    int idfine = sfine * carrier_freq.size()*2 + f*2;
+    int idcoar_s = scoar * carrier_freq.size()*2 + f*2;
+    int idcoar_sp1 = (scoar+1) * carrier_freq.size()*2 + f*2;
+    // Real and imaginary part
+    params[idfine]   = 3./4.*params_coarse[idcoar_s]   + 1./4.*params_coarse[idcoar_sp1];
+    params[idfine+1] = 3./4.*params_coarse[idcoar_s+1] + 1./4.*params_coarse[idcoar_sp1+1];
+
+    sfine = 2*scoar + 1;  // second child
+    printf("Coarse %d->%d\n", scoar, sfine);
+    idfine = sfine * carrier_freq.size()*2 + f*2;
+    idcoar_s   = scoar * carrier_freq.size()*2 + f*2;
+    idcoar_sp1 = (scoar+1) * carrier_freq.size()*2 + f*2;
+    // Real and imaginary part
+    params[idfine]   = 1./4.*params_coarse[idcoar_s]   + 3./4.*params_coarse[idcoar_sp1];
+    params[idfine+1] = 1./4.*params_coarse[idcoar_s+1] + 3./4.*params_coarse[idcoar_sp1+1];
+  }
+
+  // store new basis in oscillator.
+  delete basisfunctions;
+  basisfunctions = new ControlBasis(nbasis_fine, Tfinal);
+  printf("done\n");
 }

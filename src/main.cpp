@@ -405,12 +405,10 @@ int main(int argc,char **argv)
   double StartTime = MPI_Wtime();
 
 
-  // Debugging: Write bsplines to a file 
+  // Refinement
   optimctx->getStartingPoint(xinit);
-  mastereq->setControlAmplitudes(xinit);
-  for (int ios = 0; ios < noscillators; ios++){
-    mastereq->getOscillator(ios)->writeSplines(ntime, dt, output->datadir.c_str());
-  }
+  printf("Refining now!!\n");
+  optimctx->refine(xinit);
   exit(1);
 
   double objective;

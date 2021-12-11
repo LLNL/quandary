@@ -77,7 +77,10 @@ class Oscillator {
     void population(const Vec x, std::vector<double> &pop); 
 
     /* For debuggiing: Write each basis function multiplied by amplitudes and carrier waves to a file */
-    void writeSplines(double ntime, double dt, const char* datadir); 
+    void writeSplines(double ntime, double dt, const char* datadir, bool refined); 
+
+    /* Refine */
+    void refine();
 };
 
 
