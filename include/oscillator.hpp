@@ -59,6 +59,8 @@ class Oscillator {
 
     /* Copy x into the control parameter vector */
     void setParams(const double* x);
+    // Return the 
+    double* getParams() {return params.data();};
 
     /* Evaluates rotating frame control functions Re = p(t), Im = q(t) */
     int evalControl(const double t, double* Re_ptr, double* Im_ptr);

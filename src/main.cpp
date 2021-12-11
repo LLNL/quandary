@@ -405,10 +405,14 @@ int main(int argc,char **argv)
   double StartTime = MPI_Wtime();
 
 
-  // Refinement
+  /* --- Testing Refinement --- */
   optimctx->getStartingPoint(xinit);
+  double obj_org = optimctx->evalF(xinit);
+
   printf("Refining now!!\n");
   optimctx->refine(xinit);
+  double obj_refine = optimctx->evalF(xinit);
+  output->writeControls(xinit, mastereq, ntime, dt);
   exit(1);
 
   double objective;

@@ -281,11 +281,10 @@ void Oscillator::refine(){
   for (int i=0; i<nparams; i++){
     params.push_back(0.0);
   }
-  printf("nparams %d->%d\n", params_coarse.size(), params.size());
   // Update the coefficients. 
   for (int scoar=0; scoar<nbasis_coarse-1; scoar++){
-    int sfine = 2*scoar;      // first child
-    printf("Coarse %d->%d\n", scoar, sfine);
+    // first child
+    int sfine = 2*scoar; 
 
     int f=0; // this is where the carrier frequency should be iterationed. TODO. 
     // update alpha_{sfine}^f
@@ -296,8 +295,8 @@ void Oscillator::refine(){
     params[idfine]   = 3./4.*params_coarse[idcoar_s]   + 1./4.*params_coarse[idcoar_sp1];
     params[idfine+1] = 3./4.*params_coarse[idcoar_s+1] + 1./4.*params_coarse[idcoar_sp1+1];
 
-    sfine = 2*scoar + 1;  // second child
-    printf("Coarse %d->%d\n", scoar, sfine);
+    // second child
+    sfine = 2*scoar + 1;
     idfine = sfine * carrier_freq.size()*2 + f*2;
     idcoar_s   = scoar * carrier_freq.size()*2 + f*2;
     idcoar_sp1 = (scoar+1) * carrier_freq.size()*2 + f*2;
@@ -309,5 +308,4 @@ void Oscillator::refine(){
   // store new basis in oscillator.
   delete basisfunctions;
   basisfunctions = new ControlBasis(nbasis_fine, Tfinal);
-  printf("done\n");
 }

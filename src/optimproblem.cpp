@@ -349,38 +349,55 @@ OptimProblem::~OptimProblem() {
   TaoDestroy(&tao);
 }
 
-void OptimProblem::refine(Vec xinit){
+void OptimProblem::refine(Vec& xinit){
   // Pass xinit to the oscillators 
   timestepper->mastereq->setControlAmplitudes(xinit);
 
   int noscillators = timestepper->mastereq->getNOscillators();
   double dt = timestepper->dt;
   int ntime = timestepper->ntime;
+  int nsplines_coarse = timestepper->mastereq->getOscillator(0)->getNSplines(); 
+  int ndesign_coarse = ndesign;
 
-  for (int ios = 0; ios < noscillators; ios++){
-    timestepper->mastereq->getOscillator(ios)->writeSplines(ntime, dt, output->datadir.c_str(), false);
-  }
-  int nsplines_old = timestepper->mastereq->getOscillator(0)->getNSplines(); 
-  int ndesign_old = ndesign;
+  // write non-refined splines to file
+  // for (int ios = 0; ios < noscillators; ios++){
+  //   timestepper->mastereq->getOscillator(ios)->writeSplines(ntime, dt, output->datadir.c_str(), false);
+  // }
 
   // For each oscillator, refine the control basis
   for (int ios = 0; ios< timestepper->mastereq->getNOscillators(); ios++){
     timestepper->mastereq->getOscillator(ios)->refine();
-    timestepper->mastereq->getOscillator(ios)->writeSplines(ntime, dt, output->datadir.c_str(), true);
+    // timestepper->mastereq->getOscillator(ios)->writeSplines(ntime, dt, output->datadir.c_str(), true);
   }
 
-  // new number of design paramters
+  // Get and store the new number of design paramters
   ndesign = 0.0;
   for (int ios = 0; ios< timestepper->mastereq->getNOscillators(); ios++){
     ndesign += timestepper->mastereq->getOscillator(ios)->getNParams();
   }
-  printf("Refined number of paramters: %d->%d\n", ndesign_old, ndesign);
-
   int nsplines = timestepper->mastereq->getOscillator(0)->getNSplines(); 
-  printf("Refined number of splines: %d->%d\n", nsplines_old, nsplines);
+  printf("Refined number of splines: %d->%d\n", nsplines_coarse, nsplines);
+  printf("Refined number of paramters: %d->%d\n", ndesign_coarse, ndesign);
+
+  // Resize the Petsc's vector x and fill with new design parameters
+  VecDestroy(&xinit);
+  VecCreateSeq(PETSC_COMM_SELF, ndesign, &xinit);
+  VecSetFromOptions(xinit);
+  int shift = 0;
+  for (int ios = 0; ios< timestepper->mastereq->getNOscillators(); ios++){
+    int nparams_iosc = timestepper->mastereq->getOscillator(ios)->getNParams();
+    int* idx = new int[nparams_iosc];
+    for (int i=0; i<nparams_iosc; i++) idx[i] = shift + i;
+    const double* params_iosc = timestepper->mastereq->getOscillator(ios)->getParams();
+    VecSetValues(xinit, nparams_iosc, idx, params_iosc, INSERT_VALUES);
+    shift += nparams_iosc;
+    delete [] idx;
+  }
+  VecAssemblyBegin(xinit);
+  VecAssemblyEnd(xinit);
 
   // TODO:
-  // allocate new mygrad!
+  // allocate new grad / mygrad!
   // allocat new param bounds
   // reset tao
 }
