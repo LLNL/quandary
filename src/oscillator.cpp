@@ -283,26 +283,28 @@ void Oscillator::refine(){
   }
   // Update the coefficients. 
   for (int scoar=0; scoar<nbasis_coarse-1; scoar++){
-    // first child
-    int sfine = 2*scoar; 
+    // int f=0; // this is where the carrier frequency should be iterationed. TODO. 
+    for (int f=0; f<carrier_freq.size(); f++){
+      // first child
+      int sfine = 2*scoar; 
+      int idfine = sfine * carrier_freq.size()*2 + f*2;
+      int idcoar_s = scoar * carrier_freq.size()*2 + f*2;
+      int idcoar_sp1 = (scoar+1) * carrier_freq.size()*2 + f*2;
+      // Real and imaginary part
+      params[idfine]   = 3./4.*params_coarse[idcoar_s]   + 1./4.*params_coarse[idcoar_sp1];
+      params[idfine+1] = 3./4.*params_coarse[idcoar_s+1] + 1./4.*params_coarse[idcoar_sp1+1];
+      printf("alpha_%d^%d -> beta_%d^%d at %d\n", scoar, f, sfine, f, idfine);
 
-    int f=0; // this is where the carrier frequency should be iterationed. TODO. 
-    // update alpha_{sfine}^f
-    int idfine = sfine * carrier_freq.size()*2 + f*2;
-    int idcoar_s = scoar * carrier_freq.size()*2 + f*2;
-    int idcoar_sp1 = (scoar+1) * carrier_freq.size()*2 + f*2;
-    // Real and imaginary part
-    params[idfine]   = 3./4.*params_coarse[idcoar_s]   + 1./4.*params_coarse[idcoar_sp1];
-    params[idfine+1] = 3./4.*params_coarse[idcoar_s+1] + 1./4.*params_coarse[idcoar_sp1+1];
-
-    // second child
-    sfine = 2*scoar + 1;
-    idfine = sfine * carrier_freq.size()*2 + f*2;
-    idcoar_s   = scoar * carrier_freq.size()*2 + f*2;
-    idcoar_sp1 = (scoar+1) * carrier_freq.size()*2 + f*2;
-    // Real and imaginary part
-    params[idfine]   = 1./4.*params_coarse[idcoar_s]   + 3./4.*params_coarse[idcoar_sp1];
-    params[idfine+1] = 1./4.*params_coarse[idcoar_s+1] + 3./4.*params_coarse[idcoar_sp1+1];
+      // second child
+      sfine = 2*scoar + 1;
+      idfine = sfine * carrier_freq.size()*2 + f*2;
+      idcoar_s   = scoar * carrier_freq.size()*2 + f*2;
+      idcoar_sp1 = (scoar+1) * carrier_freq.size()*2 + f*2;
+      // Real and imaginary part
+      params[idfine]   = 1./4.*params_coarse[idcoar_s]   + 3./4.*params_coarse[idcoar_sp1];
+      params[idfine+1] = 1./4.*params_coarse[idcoar_s+1] + 3./4.*params_coarse[idcoar_sp1+1];
+      printf("alpha_%d^%d -> beta_%d^%d at %d\n", scoar, f, sfine, f, idfine);
+    }
   }
 
   // store new basis in oscillator.
