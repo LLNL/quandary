@@ -15,6 +15,7 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   ninit = ninit_;
   comm_init = comm_init_;
   output = output_;
+  refine_from_file = false;
   /* Reset */
   objective = 0.0;
 
@@ -44,12 +45,13 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   gatol = config.GetDoubleParam("optim_atol", 1e-8);
   grtol = config.GetDoubleParam("optim_rtol", 1e-4);
   maxiter = config.GetIntParam("optim_maxiter", 200);
-  initguess_type = config.GetStrParam("optim_init", "zero");
+  config.GetVecStrParam("optim_init", initguess_type, "random");
+  if (initguess_type[0].compare("refine")== 0) refine_from_file=true;
   config.GetVecDoubleParam("optim_init_ampl", initguess_amplitudes, 0.0);
   // sanity check
-  if (initguess_type.compare("constant") == 0 || 
-      initguess_type.compare("random")    == 0 ||
-      initguess_type.compare("random_seed") == 0)  {
+  if (initguess_type[0].compare("constant") == 0 || 
+      initguess_type[0].compare("random")    == 0 ||
+      initguess_type[0].compare("random_seed") == 0)  {
       if (initguess_amplitudes.size() < timestepper->mastereq->getNOscillators()) {
          printf("ERROR reading config file: List of initial optimization parameter amplitudes must equal the number of oscillators!\n");
          exit(1);
@@ -290,7 +292,6 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   VecCreateSeq(PETSC_COMM_SELF, ndesign, &xlower);
   VecSetFromOptions(xlower);
   VecDuplicate(xlower, &xupper);
-  std::vector<double> bounds;
   config.GetVecDoubleParam("optim_bounds", bounds, 1e20);
   for (int i = bounds.size(); i < timestepper->mastereq->getNOscillators(); i++) bounds.push_back(1e+12); // fill up with zeros
   int col = 0;
@@ -396,12 +397,45 @@ void OptimProblem::refine(Vec& xinit){
   VecAssemblyBegin(xinit);
   VecAssemblyEnd(xinit);
 
-  // TODO:
-  // allocate new redgrad in timestepper
-  // reset nparams_max in mastereq and reallocate dRedp, dImdp, cols, vals
-  // allocate new mygrad in optimproblem? 
-  // allocate new param bounds in optimproblem
-  // reset tao to use the new vector size. 
+  /* Resize the optimization bounds */
+  VecDestroy(&xlower);
+  VecDestroy(&xupper);
+  VecCreateSeq(PETSC_COMM_SELF, ndesign, &xlower);
+  VecSetFromOptions(xlower);
+  VecDuplicate(xlower, &xupper);
+  int col=0;
+  for (int iosc = 0; iosc < timestepper->mastereq->getNOscillators(); iosc++){
+    for (int i=0; i<timestepper->mastereq->getOscillator(iosc)->getNParams(); i++){
+      double boundi = bounds[iosc]; // Original bound for this oscillator
+
+      /* for the first and last two splines, overwrite the bound with zero to ensure that control at t=0 and t=T is zero. */
+      int ibegin = 2*2* timestepper->mastereq->getOscillator(iosc)->getNCarrierwaves();
+      int iend = (timestepper->mastereq->getOscillator(iosc)->getNSplines()-2)*2*timestepper->mastereq->getOscillator(iosc)->getNCarrierwaves();
+      if (i < ibegin || i >= iend) {
+        boundi = 0.0;
+      }
+
+      // set the bound for this oscillator
+      VecSetValue(xupper, col, boundi, INSERT_VALUES);
+      VecSetValue(xlower, col, -1. * boundi, INSERT_VALUES);
+      col++;
+    }
+  }
+  VecAssemblyBegin(xlower); VecAssemblyEnd(xlower);
+  VecAssemblyBegin(xupper); VecAssemblyEnd(xupper);
+ 
+  /* Resize the gradient and aux vectors needed to compute the gradient */
+  VecDestroy(&(timestepper->redgrad));
+  VecCreateSeq(PETSC_COMM_SELF, ndesign, &(timestepper->redgrad));
+  VecSetFromOptions(timestepper->redgrad);
+  VecAssemblyBegin(timestepper->redgrad);
+  VecAssemblyEnd(timestepper->redgrad);
+  timestepper->mastereq->initGrad(true); // reset nparams_max in mastereq and reallocate dRedp, dImdp, cols, vals
+  delete [] mygrad;
+  mygrad = new double[ndesign];
+
+  /* Reset the Tao optimizer (?) */
+  TaoSetVariableBounds(tao, xlower, xupper);
 }
 
 double OptimProblem::evalF(const Vec x) {
@@ -625,10 +659,10 @@ void OptimProblem::solve(Vec xinit) {
   TaoSolve(tao);
 }
 
-void OptimProblem::getStartingPoint(Vec xinit){
+void OptimProblem::getStartingPoint(Vec& xinit){
   MasterEq* mastereq = timestepper->mastereq;
 
-  if (initguess_type.compare("constant") == 0 ){ // set constant initial design
+  if (initguess_type[0].compare("constant") == 0 ){ // set constant initial design
     // set values
     int j = 0;
     for (int ioscil = 0; ioscil < mastereq->getNOscillators(); ioscil++) {
@@ -638,10 +672,10 @@ void OptimProblem::getStartingPoint(Vec xinit){
         j++;
       }
     }
-  } else if ( initguess_type.compare("random")      == 0 ||       // init random, fixed seed
-              initguess_type.compare("random_seed") == 0)  { // init random with new seed
+  } else if ( initguess_type[0].compare("random")      == 0 ||       // init random, fixed seed
+              initguess_type[0].compare("random_seed") == 0)  { // init random with new seed
     /* Create vector with random elements between [-1:1] */
-    if ( initguess_type.compare("random") == 0) srand(1);  // fixed seed
+    if ( initguess_type[0].compare("random") == 0) srand(1);  // fixed seed
     else srand(time(0)); // random seed
     double* randvec = new double[ndesign];
     for (int i=0; i<ndesign; i++) {
@@ -668,9 +702,16 @@ void OptimProblem::getStartingPoint(Vec xinit){
     delete [] randvec;
 
   }  else { // Read from file 
+    char readfilename[255];
+    sprintf(readfilename, "%s", initguess_type[0].c_str());
+    // if refined, get the name of the parameter file to refine from 
+    if (refine_from_file) {
+      printf("Will refine from file %s\n", initguess_type[1].c_str());
+      sprintf(readfilename, "%s", initguess_type[1].c_str());
+    }
     double* vecread = new double[ndesign];
 
-    if (mpirank_world == 0) read_vector(initguess_type.c_str(), vecread, ndesign);
+    if (mpirank_world == 0) read_vector(readfilename, vecread, ndesign);
     MPI_Bcast(vecread, ndesign, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
     /* Set the initial guess */
@@ -678,6 +719,9 @@ void OptimProblem::getStartingPoint(Vec xinit){
       VecSetValue(xinit, i, vecread[i], INSERT_VALUES);
     }
     delete [] vecread;
+
+    // Refine the initial guess 
+    if (refine_from_file) refine(xinit);
   }
 
   /* for the first and last two splines, overwrite the parameters with zero to ensure that control at t=0 and t=T is zero. */
@@ -707,13 +751,6 @@ void OptimProblem::getStartingPoint(Vec xinit){
 }
 
 
-void OptimProblem::getSolution(Vec* param_ptr){
-  
-  /* Get ref to optimized parameters */
-  Vec params;
-  TaoGetSolutionVector(tao, &params);
-  *param_ptr = params;
-}
 
 PetscErrorCode TaoMonitor(Tao tao,void*ptr){
   OptimProblem* ctx = (OptimProblem*) ptr;

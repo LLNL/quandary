@@ -78,7 +78,7 @@ void Output::writeOptimFile(double objective, double gnorm, double stepsize, dou
 
 }
 
-void Output::writeGradient(Vec grad){
+void Output::writeGradient(Vec grad, bool refined){
   char filename[255];  
   PetscInt ngrad;
   VecGetSize(grad, &ngrad);
@@ -87,6 +87,7 @@ void Output::writeGradient(Vec grad){
   FILE *file;
   // sprintf(filename, "%s/grad_iter%04d.dat", datadir.c_str(), optim_iter);
   sprintf(filename, "%s/grad.dat", datadir.c_str());
+  if (refined) sprintf(filename, "%s/grad_refined.dat", datadir.c_str());
   file = fopen(filename, "w");
 
   const PetscScalar* grad_ptr;
@@ -99,7 +100,7 @@ void Output::writeGradient(Vec grad){
   printf("File written: %s\n", filename);
 }
 
-void Output::writeControls(Vec params, MasterEq* mastereq, int ntime, double dt){
+void Output::writeControls(Vec params, MasterEq* mastereq, int ntime, double dt, bool refined){
 
   /* Write controls every <outfreq> iterations */
   if ( mpirank_world == 0 && optim_iter % optim_monitor_freq == 0 ) { 
@@ -112,6 +113,7 @@ void Output::writeControls(Vec params, MasterEq* mastereq, int ntime, double dt)
     FILE *file;
     // sprintf(filename, "%s/params_iter%04d.dat", datadir.c_str(), optim_iter);
     sprintf(filename, "%s/params.dat", datadir.c_str());
+    if (refined) sprintf(filename, "%s/params_refined.dat", datadir.c_str());
     file = fopen(filename, "w");
 
     const PetscScalar* params_ptr;
@@ -127,6 +129,7 @@ void Output::writeControls(Vec params, MasterEq* mastereq, int ntime, double dt)
     mastereq->setControlAmplitudes(params);
     for (int ioscil = 0; ioscil < mastereq->getNOscillators(); ioscil++) {
       sprintf(filename, "%s/control%d.dat", datadir.c_str(), ioscil);
+      if (refined) sprintf(filename, "%s/control%d_refined.dat", datadir.c_str(), ioscil);
       file = fopen(filename, "w");
       fprintf(file, "# time         p(t) (rotating)          q(t) (rotating)        f(t) (labframe) \n");
 

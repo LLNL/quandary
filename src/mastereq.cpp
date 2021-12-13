@@ -13,6 +13,8 @@ MasterEq::MasterEq(){
   Bc_vec = NULL;
   dRedp = NULL;
   dImdp = NULL;
+  cols = NULL;
+  vals = NULL;
   usematfree = false;
 }
 
@@ -99,18 +101,8 @@ MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Osci
   ISCreateStride(PETSC_COMM_WORLD, dimis, ilow, 2, &isu);
   ISCreateStride(PETSC_COMM_WORLD, dimis, ilow+1, 2, &isv);
 
-  /* Compute maximum number of design parameters over all oscillators */
-  nparams_max = 0;
-  for (int ioscil = 0; ioscil < getNOscillators(); ioscil++) {
-      int n = getOscillator(ioscil)->getNParams();
-      if (n > nparams_max) nparams_max = n;
-  }
-
-  /* Allocate some auxiliary vectors */
-  dRedp = new double[nparams_max];
-  dImdp = new double[nparams_max];
-  cols = new PetscInt[nparams_max];
-  vals = new PetscScalar[nparams_max];
+  /* initialize vectors neede for gradient computation */
+  initGrad();
 
   /* Allocate MatShell context for applying RHS */
   RHSctx.isu = &isu;
@@ -532,6 +524,25 @@ void MasterEq::initSparseMatSolver(){
 
   /* Allocate some auxiliary vectors */
   MatCreateVecs(Ac_vec[0], &aux, NULL);
+}
+
+void MasterEq::initGrad(bool refined){
+  /* Compute maximum number of design parameters over all oscillators */
+  nparams_max = 0;
+  for (int ioscil = 0; ioscil < getNOscillators(); ioscil++) {
+      int n = getOscillator(ioscil)->getNParams();
+      if (n > nparams_max) nparams_max = n;
+  }
+
+  /* Allocate some auxiliary vectors */
+  if (refined) delete [] dRedp;
+  if (refined) delete [] dImdp;
+  if (refined) delete [] cols;
+  if (refined) delete [] vals;
+  dRedp = new double[nparams_max];
+  dImdp = new double[nparams_max];
+  cols = new PetscInt[nparams_max];
+  vals = new PetscScalar[nparams_max];
 }
 
 int MasterEq::getDim(){ return dim; }

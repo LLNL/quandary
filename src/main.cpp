@@ -377,15 +377,10 @@ int main(int argc,char **argv)
   OptimProblem* optimctx = new OptimProblem(config, mytimestepper, comm_init, ninit, gate_rot_freq, output);
 #endif
 
-  /* Set upt solution and gradient vector */
+  /* Set up solution vector */
   Vec xinit;
   VecCreateSeq(PETSC_COMM_SELF, optimctx->getNdesign(), &xinit);
   VecSetFromOptions(xinit);
-  Vec grad;
-  VecCreateSeq(PETSC_COMM_SELF, optimctx->getNdesign(), &grad);
-  VecSetUp(grad);
-  VecZeroEntries(grad);
-  Vec opt;
 
   /* Some output */
   if (mpirank_world == 0)
@@ -404,48 +399,43 @@ int main(int argc,char **argv)
   /* Start timer */
   double StartTime = MPI_Wtime();
 
-
-  /* --- Testing Refinement --- */
-  optimctx->getStartingPoint(xinit);
-  double obj_org = optimctx->evalF(xinit);
-
-  printf("Refining now!!\n");
-  optimctx->refine(xinit);
-  double obj_refine = optimctx->evalF(xinit);
-  output->writeControls(xinit, mastereq, ntime, dt);
-  exit(1);
-
   double objective;
+  Vec x_opt;
+  Vec grad;
   double gnorm = 0.0;
+
   /* --- Solve primal --- */
   if (runtype == RunType::SIMULATION) {
+    // Set the iniital guess, could be refined
     optimctx->getStartingPoint(xinit);
     if (mpirank_world == 0) printf("\nStarting primal solver... \n");
+    // Solve forward equation to evaluate objective function
     objective = optimctx->evalF(xinit);
     if (mpirank_world == 0) printf("\nTotal objective = %1.14e, \n", objective);
-    optimctx->getSolution(&opt);
   } 
   
   /* --- Solve adjoint --- */
   if (runtype == RunType::GRADIENT) {
+    // Set the iniital guess, could be refined
     optimctx->getStartingPoint(xinit);
+    VecDuplicate(xinit, &grad);
+    // Solve backward equation to evaluate gradient
     if (mpirank_world == 0) printf("\nStarting adjoint solver...\n");
     optimctx->evalGradF(xinit, grad);
     VecNorm(grad, NORM_2, &gnorm);
-    // VecView(grad, PETSC_VIEWER_STDOUT_WORLD);
-    if (mpirank_world == 0) {
-      printf("\nGradient norm: %1.14e\n", gnorm);
-    }
+    if (mpirank_world == 0) printf("\nGradient norm: %1.14e\n", gnorm);
     optimctx->output->writeGradient(grad);
   }
 
   /* --- Solve the optimization  --- */
   if (runtype == RunType::OPTIMIZATION) {
-    /* Set initial starting point */
+    // Set the iniital guess, could be refined
     optimctx->getStartingPoint(xinit);
+    // Solve the optimization problem 
     if (mpirank_world == 0) printf("\nStarting Optimization solver ... \n");
     optimctx->solve(xinit);
-    optimctx->getSolution(&opt);
+    // Get the solution
+    TaoGetSolutionVector(optimctx->tao, &x_opt);
   }
 
   /* Output */
@@ -493,6 +483,7 @@ int main(int argc,char **argv)
   double obj_pert1, obj_pert2;
 
   optimctx->getStartingPoint(xinit);
+  VecDuplicate(xinit, &grad);
 
   /* --- Solve primal --- */
   if (mpirank_world == 0) printf("\nRunning optimizer eval_f... ");
@@ -540,6 +531,7 @@ int main(int argc,char **argv)
     printf("#########################\n\n");
   }
   optimctx->getStartingPoint(xinit);
+  VecDuplicate(xinit, &grad);
 
   /* Figure out which parameters are hitting bounds */
   double bound_tol = 1e-3;
