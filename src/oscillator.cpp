@@ -293,7 +293,7 @@ void Oscillator::refine(){
       // Real and imaginary part
       params[idfine]   = 3./4.*params_coarse[idcoar_s]   + 1./4.*params_coarse[idcoar_sp1];
       params[idfine+1] = 3./4.*params_coarse[idcoar_s+1] + 1./4.*params_coarse[idcoar_sp1+1];
-      printf("alpha_%d^%d -> beta_%d^%d at %d\n", scoar, f, sfine, f, idfine);
+      // printf("alpha_%d^%d -> beta_%d^%d at %d\n", scoar, f, sfine, f, idfine);
 
       // second child
       sfine = 2*scoar + 1;
@@ -303,7 +303,7 @@ void Oscillator::refine(){
       // Real and imaginary part
       params[idfine]   = 1./4.*params_coarse[idcoar_s]   + 3./4.*params_coarse[idcoar_sp1];
       params[idfine+1] = 1./4.*params_coarse[idcoar_s+1] + 3./4.*params_coarse[idcoar_sp1+1];
-      printf("alpha_%d^%d -> beta_%d^%d at %d\n", scoar, f, sfine, f, idfine);
+      // printf("alpha_%d^%d -> beta_%d^%d at %d\n", scoar, f, sfine, f, idfine);
     }
   }
 
