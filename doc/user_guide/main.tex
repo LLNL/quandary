@@ -148,7 +148,17 @@ The time-dependent rotating-frame control functions $d^k(\vec{\alpha}^k,t)$ are 
 \end{align}
 The amplitudes $\alpha_{s,f}^{k(1)}, \alpha_{s,f}^{k(2)} \in \R$ are the control
 parameters (\textit{design} variables) that Quandary can optimize in order to realize a
-desired system behavior, giving a total number of $2N_s\sum_kN_f^k$ real-valued optimization variables. Further, $\Omega_k^f \in \R$ denote the carrier wave frequencies in the rotating frame which can be choosen to trigger certain system frequencies. The corresponding Lab-frame carrier frequencies become $\omega_k^r + \Omega_k^f$. Those frequencies can be chosen to match the transition frequencies in the lab-frame system Hamiltonian. For example, when $\xi_{kl} << \xi_k$, the transition frequencies satisfy $\omega_k - n\xi_k$. Thus by choosing $\Omega_k^f = \omega_k-\omega_k^r - n \xi_k$, one triggers transition between energy levels $n$ and $n+1$ in subsystem $k$. 
+desired system behavior. In order to ensure that the resulting control pulse starts and ends at zero, Quandary always resets the amplitudes of the first and last two basis functions to zero. 
+Figure \ref{fig:bsplines} shows the B-spline basis functions for $N_s=10$ with constant amplitudes. 
+
+The carrier wave frequencies $\Omega_k^f \in \R$ can be choosen to trigger certain system frequencies. They are provided in the rotating frame, such that the corresponding Lab-frame carrier frequencies become $\omega_k^r + \Omega_k^f$. Those frequencies can be chosen to match the transition frequencies in the lab-frame system Hamiltonian. For example, when $\xi_{kl} << \xi_k$, the transition frequencies satisfy $\omega_k - n\xi_k$. Thus by choosing $\Omega_k^f = \omega_k-\omega_k^r - n \xi_k$, one triggers transition between energy levels $n$ and $n+1$ in subsystem $k$. 
+
+\begin{figure}[ht]
+  \centering
+  \includegraphics[width=0.6\textwidth]{figures/splines_nsp10.png}
+  \caption{$N_s=10$ piecewise quadratic B-spline basis functions for constant amplitudes. Note that the first two and last two B-spline amplitudes are always set to zero such that the resulting pulse starts and ends at zero (hence splines 1,2 and 9,10 are not visible in the plot).}
+  \label{fig:bsplines}
+\end{figure}
 
 Using trigonometric identities, the real and imaginary part of the rotating-frame control $d^k(\vec{\alpha}^k,t) = p^k(\vec{\alpha}^k,t) + iq^k(\vec{\alpha}^k,t)$ are given by
 \begin{align}
@@ -384,6 +394,20 @@ As a measure of optimization success, Quandary reports on the fidelity computed 
 Note that this fidelity is averaged over the chosen initial conditions, so the user should be careful how to interpret this number. E.g. if one optimizes for a logical gate while choosing the three initial condition as in Section \ref{subsec:threeinitcond}, the fidelity that is reported during optimization will be averaged over those three initial states, which is not sufficient to estimate the actual average fidelity over the entire space of potential intial states. It is advised to recompute the average fidelity \textbf{after} optimization has finished, e.g. by propagating the $N^2$ basis states $B_{kj}$ to final time $T$ using the optimized control parameter, or by propagating only $N+1$ initial states to get an estimate thereof.
 
 Note that for pure-state preparation, we have $\rho^{target} = \boldsymbol{e}_m \boldsymbol{e}_m^\dagger$ and therefor the fidelity can be computed from $F = \frac{1}{n_{init}} \sum_i \left[\rho_i(T)\right]_{mm}$, for the $m$-th diagonal element of the final states $\rho_i(T)$. 
+
+\subsection{Multi-level initialization: B-spline refinement}
+Quandary offers the possibility to progressively refine the B-spline basis functions between optimization runs. This is a useful feature that can tackle the overparameterization problem by starting the optimizer with very few B-splines per oscillator (e.g. with the minimum $N_s=5$), and successively refine the number of basis functions when the optimizer stalls out or stops at a local minimum. During refinement, each 
+B-spline basis function splits into 4 children, compare Figure \ref{fig:bspline-refinement}. Note neighbouring mother B-splines share two of the child splines since they overlap, and two child splines will be entirely outside of [0,T]. Therefore, the number of splines $N_s$ will refine into $2(N_s-1)$ B-spline basis functions during refinement. Due to the hierarchical structure of the B-splines, the refined splines with corresponding refined parameters will produce the exact same control pulse as the non-refined splines. However it provides more degrees of freedom for the optimizer (more control parameters), such that further optimization on the refined parameters (hopefully) results in a better minimum than the non-refined paramter. 
+\begin{figure}[ht]
+  \centering
+   \includegraphics[width=0.5\textwidth]{figures/spline_refinement_nsp5.png}
+  \caption{B-spline refinement: Each B-spline basis function (dashed) splits into 4 children wavelets (colors), with weights $[\frac 14, \frac 34, \frac 34, \frac 14]$. The number of total splines during refinement increases from $N_s$ to $2(N_s-2)$ due to overlapping child splines 2 child splines being outside of [0,T].}
+  \label{fig:bspline-refinement}
+\end{figure}
+
+Refinement can be enabled through the configuration option \texttt{optim\_init} (take a look at the \texttt{config\_template.cfg} file). If enabled, Quandary will read in the provided parameter file, and will refine each B-spline basis function before starting the optimization run (refinement is happening during the optimizer initialization phase, when setting the initial guess for the optimization parameters). Pay attention to the screen output log to see the refined number of splines and number of optimizaiton paramters.
+
+Be careful when setting up the configuration for refinement: Make sure that the configuration option \texttt{nspline} reflects the number of splines that had been used to generate the provided parameter file that is beeing red in (i.e. provide the number $N_s$, \textit{pre-}refinement, rather than the number $2(N_s-1)$ that are to used \textit{post-} refinement). You you verify, that the refined splines and refined paramter file results in the same control pulses that were generated from the non-refined splines. (If it doesn't, it's likely that the configuration options are not set up correctly: did you use the correct number of splines, number of carrierwaves, correct parameter file? Reach out if you can't get it to work.)
 
 \section{Implementation}
 

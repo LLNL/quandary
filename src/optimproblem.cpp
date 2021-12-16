@@ -360,7 +360,7 @@ void OptimProblem::refine(Vec& xinit){
   int nsplines_coarse = timestepper->mastereq->getOscillator(0)->getNSplines(); 
   int ndesign_coarse = ndesign;
 
-  // write non-refined splines to file
+  // // write non-refined splines to file
   // for (int ios = 0; ios < noscillators; ios++){
   //   timestepper->mastereq->getOscillator(ios)->writeSplines(ntime, dt, output->datadir.c_str(), false);
   // }
