@@ -53,7 +53,7 @@ class OptimProblem {
   std::vector<std::string> initguess_type;      /* Type of initial guess */
   std::vector<double> initguess_amplitudes; /* Initial amplitudes of controles, or NULL */
   double* mygrad;  /* Auxiliary */
-  bool refine_from_file;
+  bool refine_from_file;            /* Flag to determine if the initial guess will be refined after read from file, or not */
   
   public: 
     Output* output;                 /* Store a reference to the output */
@@ -90,7 +90,7 @@ class OptimProblem {
   /* Compute initial guess for optimization variables */
   void getStartingPoint(Vec& x);
 
-  /* refine the control parameters */
+  /* Refine the control parameters using hierarchical Bspline refinement */
   void refine(Vec& x);
 };
 

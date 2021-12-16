@@ -266,8 +266,10 @@ void Oscillator::writeSplines(double ntime, double dt, const char* datadir, bool
 
 
 
-void Oscillator::refine(){
-  // new number of splines 
+void Oscillator::refineBsplines(){
+  /* Refine each Bspline basis function into 4 children splines with weights [0.25, 0.75, 0.75, 0.25]. Note that due to overlapping basis functions, two of the 4 children splines are shared with the neighboring spline. Also, two children splines lie outside of [0,T]. */
+
+  // new number of Bspline basis functions N_s -> 2(N_s-1)
   int nbasis_coarse = basisfunctions->getNSplines();
   int nbasis_fine = 2 * nbasis_coarse - 2;
 
@@ -281,9 +283,9 @@ void Oscillator::refine(){
   for (int i=0; i<nparams; i++){
     params.push_back(0.0);
   }
-  // Update the coefficients. 
+
+  /* Update the refined coefficients. */
   for (int scoar=0; scoar<nbasis_coarse-1; scoar++){
-    // int f=0; // this is where the carrier frequency should be iterationed. TODO. 
     for (int f=0; f<carrier_freq.size(); f++){
       // first child
       int sfine = 2*scoar; 

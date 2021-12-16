@@ -351,6 +351,8 @@ OptimProblem::~OptimProblem() {
 }
 
 void OptimProblem::refine(Vec& xinit){
+  printf("Refining the control paramters now... \n");
+
   // Pass xinit to the oscillators 
   timestepper->mastereq->setControlAmplitudes(xinit);
 
@@ -365,9 +367,9 @@ void OptimProblem::refine(Vec& xinit){
   //   timestepper->mastereq->getOscillator(ios)->writeSplines(ntime, dt, output->datadir.c_str(), false);
   // }
 
-  // For each oscillator, refine the control basis
+  /* For each oscillator, refine the control basis and paramters */
   for (int ios = 0; ios< timestepper->mastereq->getNOscillators(); ios++){
-    timestepper->mastereq->getOscillator(ios)->refine();
+    timestepper->mastereq->getOscillator(ios)->refineBsplines();
     // timestepper->mastereq->getOscillator(ios)->writeSplines(ntime, dt, output->datadir.c_str(), true);
   }
 
@@ -380,7 +382,7 @@ void OptimProblem::refine(Vec& xinit){
   printf("Refined number of splines: %d->%d\n", nsplines_coarse, nsplines);
   printf("Refined number of paramters: %d->%d\n", ndesign_coarse, ndesign);
 
-  // Resize the Petsc's vector x and fill with new design parameters
+  // Resize Petsc's parameter vector x and fill with new design parameters
   VecDestroy(&xinit);
   VecCreateSeq(PETSC_COMM_SELF, ndesign, &xinit);
   VecSetFromOptions(xinit);
@@ -423,6 +425,8 @@ void OptimProblem::refine(Vec& xinit){
   }
   VecAssemblyBegin(xlower); VecAssemblyEnd(xlower);
   VecAssemblyBegin(xupper); VecAssemblyEnd(xupper);
+  /* Pass bounds to the Tao optimization solver */
+  TaoSetVariableBounds(tao, xlower, xupper);
  
   /* Resize the gradient and aux vectors needed to compute the gradient */
   VecDestroy(&(timestepper->redgrad));
@@ -434,8 +438,6 @@ void OptimProblem::refine(Vec& xinit){
   delete [] mygrad;
   mygrad = new double[ndesign];
 
-  /* Reset the Tao optimizer (?) */
-  TaoSetVariableBounds(tao, xlower, xupper);
 }
 
 double OptimProblem::evalF(const Vec x) {

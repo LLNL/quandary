@@ -269,5 +269,3 @@ void Output::closeDataFiles(){
     }
   }
 }
-
-

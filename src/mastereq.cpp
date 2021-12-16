@@ -527,7 +527,7 @@ void MasterEq::initSparseMatSolver(){
 }
 
 void MasterEq::initGrad(bool refined){
-  /* Compute maximum number of design parameters over all oscillators */
+  /* Compute and store maximum number of design parameters over all oscillators */
   nparams_max = 0;
   for (int ioscil = 0; ioscil < getNOscillators(); ioscil++) {
       int n = getOscillator(ioscil)->getNParams();

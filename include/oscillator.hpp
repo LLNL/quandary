@@ -59,7 +59,7 @@ class Oscillator {
 
     /* Copy x into the control parameter vector */
     void setParams(const double* x);
-    // Return the 
+    // Return a pointer to the parameters for this oscillator
     double* getParams() {return params.data();};
 
     /* Evaluates rotating frame control functions Re = p(t), Im = q(t) */
@@ -81,8 +81,8 @@ class Oscillator {
     /* For debuggiing: Write each basis function multiplied by amplitudes and carrier waves to a file */
     void writeSplines(double ntime, double dt, const char* datadir, bool refined); 
 
-    /* Refine */
-    void refine();
+    /* Refine the bspline coefficients. Hierarchical refinement: Each Bspline splits into 4 children with weights [0.25, 0.75, 0.75, 0.25]. */
+    void refineBsplines();
 };
 
 
