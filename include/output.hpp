@@ -42,10 +42,10 @@ class Output{
     void writeOptimFile(double objective, double gnorm, double stepsize, double Favg, double cost, double tikh_regul,  double penalty);
 
     /* Write current controls and parameters every <optim_monitor_freq> iterations */
-    void writeControls(Vec params, MasterEq* mastereq, int ntime, double dt);
+    void writeControls(Vec params, MasterEq* mastereq, int ntime, double dt, bool refined=false);
 
     /* Write gradient for adjoint mode */
-    void writeGradient(Vec grad);
+    void writeGradient(Vec grad, bool refined=false);
 
     /* Open, write and close files for fullstate and expected energy levels over time */
     void openDataFiles(std::string prefix, int initid);

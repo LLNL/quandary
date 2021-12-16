@@ -20,6 +20,7 @@ struct PiPulse {
 
 class Oscillator {
   protected:
+    int myid;
     int nlevels;                   // Number of levels for this the oscillator 
     double ground_freq;            // Fundamental transition frequency of this oscillator
     double selfkerr;               // Self-kerr frequency $\xi_k$. Multiplies ak^d ak^d ak ak
@@ -27,6 +28,7 @@ class Oscillator {
     double detuning_freq;              // Detuning frequency (rad/time) for this oscillator. Multiplies ak^d ak in rotating frame: detuning = ground_freq - rotational_freq
     double decay_time;              // Time of decay collapse operations 
     double dephase_time;           // Time of dephasing dephasing collapse operations 
+    std::vector<double> carrier_freq; // Frequencies of the carrier waves
 
     std::vector<double> params;    // control parameters 
     double Tfinal;                 // final time
@@ -49,7 +51,7 @@ class Oscillator {
     int getNParams() { return params.size(); };
     int getNLevels() { return nlevels; };
     int getNSplines() { return basisfunctions->getNSplines(); };
-    int getNCarrierwaves() {return basisfunctions->getNCarrierwaves(); };
+    int getNCarrierwaves() {return carrier_freq.size(); };
     double getSelfkerr() { return selfkerr; }; 
     double getDetuning() { return detuning_freq; }; 
     double getDecayTime() {return decay_time; };
@@ -57,6 +59,8 @@ class Oscillator {
 
     /* Copy x into the control parameter vector */
     void setParams(const double* x);
+    // Return a pointer to the parameters for this oscillator
+    double* getParams() {return params.data();};
 
     /* Evaluates rotating frame control functions Re = p(t), Im = q(t) */
     int evalControl(const double t, double* Re_ptr, double* Im_ptr);
@@ -73,6 +77,12 @@ class Oscillator {
 
     /* Compute population (=diagonal elements) for this oscillators reduced system */
     void population(const Vec x, std::vector<double> &pop); 
+
+    /* For debuggiing: Write each basis function multiplied by amplitudes and carrier waves to a file */
+    void writeSplines(double ntime, double dt, const char* datadir, bool refined); 
+
+    /* Refine the bspline coefficients. Hierarchical refinement: Each Bspline splits into 4 children with weights [0.25, 0.75, 0.75, 0.25]. */
+    void refineBsplines();
 };
 
 

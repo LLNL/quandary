@@ -49,15 +49,17 @@ class OptimProblem {
   double gatol;                    /* Stopping criterion based on absolute gradient norm */
   double grtol;                    /* Stopping criterion based on relative gradient norm */
   int maxiter;                     /* Stopping criterion based on maximum number of iterations */
-  Tao tao;                         /* Petsc's Optimization solver */
-  std::string initguess_type;      /* Type of initial guess */
+  std::vector<double> bounds;      /* Stores optimization bounds (one number per oscillator) */
+  std::vector<std::string> initguess_type;      /* Type of initial guess */
   std::vector<double> initguess_amplitudes; /* Initial amplitudes of controles, or NULL */
   double* mygrad;  /* Auxiliary */
+  bool refine_from_file;            /* Flag to determine if the initial guess will be refined after read from file, or not */
   
   public: 
     Output* output;                 /* Store a reference to the output */
     TimeStepper* timestepper;       /* Store a reference to the time-stepping scheme */
     Vec xlower, xupper;              /* Optimization bounds */
+    Tao tao;                         /* Petsc's Optimization solver */
 
   /* Constructor */
   OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm comm_init_, int ninit_, std::vector<double> gate_rot_freq, Output* output_);
@@ -86,10 +88,10 @@ class OptimProblem {
   void solve(Vec xinit);
 
   /* Compute initial guess for optimization variables */
-  void getStartingPoint(Vec x);
+  void getStartingPoint(Vec& x);
 
-  /* Call this after TaoSolve() has finished to print out some information */
-  void getSolution(Vec* opt);
+  /* Refine the control parameters using hierarchical Bspline refinement */
+  void refine(Vec& x);
 };
 
 /* Monitor the optimization progress. This routine is called in each iteration of TaoSolve() */

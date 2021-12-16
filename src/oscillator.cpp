@@ -9,6 +9,7 @@ Oscillator::Oscillator(){
 
 Oscillator::Oscillator(int id, std::vector<int> nlevels_all_, int nbasis_, double ground_freq_, double selfkerr_, double rotational_freq_, double decay_time_, double dephase_time_, std::vector<double> carrier_freq_, double Tfinal_){
 
+  myid = id;
   nlevels = nlevels_all_[id];
   Tfinal = Tfinal_;
   ground_freq = ground_freq_*2.0*M_PI;
@@ -17,12 +18,17 @@ Oscillator::Oscillator(int id, std::vector<int> nlevels_all_, int nbasis_, doubl
   decay_time = decay_time_;
   dephase_time = dephase_time_;
 
+  carrier_freq = carrier_freq_;
+  for (int i=0; i<carrier_freq.size(); i++) {
+      carrier_freq[i] *= 2.*M_PI;
+  }
+
   MPI_Comm_rank(PETSC_COMM_WORLD, &mpirank_petsc);
   int mpirank_world;
   MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
 
   /* Create control basis functions */
-  basisfunctions = new ControlBasis(nbasis_, Tfinal_, carrier_freq_);
+  basisfunctions = new ControlBasis(nbasis_, Tfinal_);
 
   /* Initialize control parameters */
   int nparam = 2 * nbasis_ * carrier_freq_.size();
@@ -63,8 +69,8 @@ int Oscillator::evalControl(const double t, double* Re_ptr, double* Im_ptr){
   }
 
   /* Evaluate the spline at time t */
-  *Re_ptr = basisfunctions->evaluate(t, params, ground_freq, ControlType::RE);
-  *Im_ptr = basisfunctions->evaluate(t, params, ground_freq, ControlType::IM);
+  *Re_ptr = basisfunctions->evaluate(t, params, ground_freq, carrier_freq, ControlType::RE);
+  *Im_ptr = basisfunctions->evaluate(t, params, ground_freq, carrier_freq, ControlType::IM);
 
   /* If pipulse: Overwrite controls by constant amplitude */
   for (int ipulse=0; ipulse< pipulse.tstart.size(); ipulse++){
@@ -89,8 +95,8 @@ int Oscillator::evalControl_diff(const double t, double* dRedp, double* dImdp) {
   /* Evaluate derivative of spline basis at time t */
   double Rebar = 1.0;
   double Imbar = 1.0;
-  basisfunctions->derivative(t, dRedp, Rebar, ControlType::RE);
-  basisfunctions->derivative(t, dImdp, Imbar, ControlType::IM);
+  basisfunctions->derivative(t, dRedp, Rebar, carrier_freq, ControlType::RE);
+  basisfunctions->derivative(t, dImdp, Imbar, carrier_freq, ControlType::IM);
 
   /* TODO: Derivative of pipulse? */
   for (int ipulse=0; ipulse< pipulse.tstart.size(); ipulse++){
@@ -112,7 +118,7 @@ int Oscillator::evalControl_Labframe(const double t, double* f){
   }
 
   /* Evaluate the spline at time t */
-  *f = basisfunctions->evaluate(t, params, ground_freq, ControlType::LAB);
+  *f = basisfunctions->evaluate(t, params, ground_freq, carrier_freq, ControlType::LAB);
 
   // Test implementation of lab frame controls. 
   // double forig = *f;
@@ -224,4 +230,86 @@ void Oscillator::population(const Vec x, std::vector<double> &pop) {
 
   /* Gather poppulation from all Petsc processors */
   MPI_Allreduce(mypop.data(), pop.data(), nlevels, MPI_DOUBLE, MPI_SUM, PETSC_COMM_WORLD);
+}
+
+
+void Oscillator::writeSplines(double ntime, double dt, const char* datadir, bool refined){
+    char filename[255];
+    FILE* file;
+
+    /* Print every B-spline to a file */
+    sprintf(filename, "%s/bsplines%d.dat", datadir, myid);
+    if (refined) sprintf(filename, "%s/bsplines%d_refined.dat", datadir, myid);
+    file = fopen(filename, "w");
+
+    std::vector<double> splines;
+    /* Iterate over time */
+    for (int ts = 0; ts < ntime; ts++){
+      double time = ts*dt;
+
+      /* Iterate over basis functions */
+      for (int s=0; s<basisfunctions->getNSplines(); s++){
+        splines.push_back(basisfunctions->evalSpline_Re(s,time, params, carrier_freq));
+      }
+
+      fprintf(file, "%1.6f", time);
+      for (int is = 0; is<splines.size(); is++){
+        fprintf(file, "  %1.14e", splines[is]);
+      }
+      fprintf(file, "\n");
+      splines.clear();  // remove all elements from spline vector
+    }
+ 
+    fclose(file);
+    printf("File written: %s\n", filename);
+}
+
+
+
+void Oscillator::refineBsplines(){
+  /* Refine each Bspline basis function into 4 children splines with weights [0.25, 0.75, 0.75, 0.25]. Note that due to overlapping basis functions, two of the 4 children splines are shared with the neighboring spline. Also, two children splines lie outside of [0,T]. */
+
+  // new number of Bspline basis functions N_s -> 2(N_s-1)
+  int nbasis_coarse = basisfunctions->getNSplines();
+  int nbasis_fine = 2 * nbasis_coarse - 2;
+
+  // Copy parameters into coarse vector
+  std::vector<double> params_coarse;
+  for (int i=0; i<params.size(); i++) params_coarse.push_back(params[i]);
+
+  // Initialize new parameter vector with zero
+  params.clear();
+  int nparams = 2 * nbasis_fine * carrier_freq.size();
+  for (int i=0; i<nparams; i++){
+    params.push_back(0.0);
+  }
+
+  /* Update the refined coefficients. */
+  for (int scoar=0; scoar<nbasis_coarse-1; scoar++){
+    for (int f=0; f<carrier_freq.size(); f++){
+      // first child
+      int sfine = 2*scoar; 
+      int idfine = sfine * carrier_freq.size()*2 + f*2;
+      int idcoar_s = scoar * carrier_freq.size()*2 + f*2;
+      int idcoar_sp1 = (scoar+1) * carrier_freq.size()*2 + f*2;
+      // Real and imaginary part
+      params[idfine]   = 3./4.*params_coarse[idcoar_s]   + 1./4.*params_coarse[idcoar_sp1];
+      params[idfine+1] = 3./4.*params_coarse[idcoar_s+1] + 1./4.*params_coarse[idcoar_sp1+1];
+      // printf("alpha_%d^%d -> beta_%d^%d at %d\n", scoar, f, sfine, f, idfine);
+
+      // second child
+      sfine = 2*scoar + 1;
+      idfine = sfine * carrier_freq.size()*2 + f*2;
+      idcoar_s   = scoar * carrier_freq.size()*2 + f*2;
+      idcoar_sp1 = (scoar+1) * carrier_freq.size()*2 + f*2;
+      // Real and imaginary part
+      params[idfine]   = 1./4.*params_coarse[idcoar_s]   + 3./4.*params_coarse[idcoar_sp1];
+      params[idfine+1] = 1./4.*params_coarse[idcoar_s+1] + 3./4.*params_coarse[idcoar_sp1+1];
+      // printf("alpha_%d^%d -> beta_%d^%d at %d\n", scoar, f, sfine, f, idfine);
+    }
+  }
+
+  // store new basis in oscillator.
+  delete basisfunctions;
+  basisfunctions = new ControlBasis(nbasis_fine, Tfinal);
 }

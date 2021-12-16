@@ -93,6 +93,10 @@ class MasterEq{
     /* initialize matrices needed for applying sparse-mat solver */
     void initSparseMatSolver();
 
+
+    /* Initialize some vectors needed for gradient computation */
+    void initGrad(bool refined=false);
+
     /* Return the i-th oscillator */
     Oscillator* getOscillator(const int i);
 
