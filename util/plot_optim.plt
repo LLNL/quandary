@@ -13,10 +13,10 @@ set format y '$10^{%T}$'
 set y2tics
 set ytics nomirror
 set y2range[0:1.05]
-set yrange [1e-7:1]
-set xrange [0:85]
+#set yrange [1e-7:1]
+#set xrange [0:85]
 
-#set key at 78, 0.1
+#set key at 190, 40.0
 set key bottom left
 
 
@@ -25,10 +25,11 @@ set y2label 'Fidelity'
 set ylabel '$J, \|\nabla J\|$'
 
 plot \
-    datafile u 2 axis x1y1 w l t '$J$', \
-    datafile u 3 axis x1y1  w l t '$\|\nabla J\|$', \
-    datafile u 5 axis x1y2  w l t 'Fidelity', \
-#    datafile u 7 axis x1y1  w l t '\gamma_2||\alpha||', \
+    datafile u 2 axis x1y1  w l lw 3 t '$J$', \
+    datafile u 3 axis x1y1  w l lw 3 t '$\|\nabla J\|$', \
+    datafile u 5 axis x1y2  w l lw 3 t 'Fidelity', \
+    datafile u 6 axis x1y1  w l lw 3 t 'Cost', \
+    datafile u 7 axis x1y1  w l lw 3 t '$\gamma_2||\alpha||$', \
 #    datafile u 8 axis x1y1  w l t 'penalty', \
 
 
