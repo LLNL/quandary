@@ -291,13 +291,16 @@ New, user-defined gates can be easily added to the code by extending the \texttt
 
 For gate optimization, the first two objective function $J_{Frobenius}$ and $J_{Hilbert-Schmidt}$ are appropriate. Since \textit{any} initial quantum state should be transformed by the control pulses, again typically a basis for the initial states should be considered ($n_{init}=N^2$). However, it has been shown in \cite{goerz2014optimal} that it is enough to optimize with only three specific initial states ($n_{init} = 3$), independent of the Hilbert space dimension $N$. Those three states are set up in such a way that they can distinguish between any two unitaries in that Hilbert space. The three initial states are readily available in Quandary, see Section \ref{subsec:initcond}. Note that when optimizing with only those three initial states, it turns out that the choice of the weights $\beta_i$ that weight the contribution from each initial state in the overall objective function strongly influences the optimization convergence. For faster convergence, it is often benefitial to emphasize on the first of the three initial conditions ($\rho_1(0)$ in Section \ref{subsec:threeinitcond}), hence choosing $\beta_1$ (much) bigger than $\beta_2$ and $\beta_3$ (e.g. $\beta = \{20,1,1\}$ often works better than $\beta = \{1,1,1\}$, try it yourself). We refer to \cite{goerz2014optimal} for details. 
 
-\subsubsection{Essential and non-essential levels}
-It is often useful, to model the quantum system with more energy levels than the number of levels that the target gate is defined on. For example when optimizing for a SWAP gate on two qubits, with $V_{SWAP}\in\C^{4\times 4}$, one might want to model each qubit with more than two energy levels in order to (a) model the (infinite dimensional) system with more accuracy by including more levels and (b) allow the system to transition through higher energy levels in order to achieve the target at final time $T$. In that case, the \textit{essential} levels denote the levels that the target gate is defined on.
-To this end, Quandary provides the option to specify the number of essential energy levels $n_k^e$ in addition to the number of energy levels $n_k$, where $n_k^e \leq n_k$ for each subsystem $k$. The quantum dynamics are then modelled with (more) energy levels with $N=\prod_k n_k$ and $\rho(t)\in \C^{N\times N}$, while the gate is defined in the essential level dimensions only: $V\in C^{N_e \times N_e}, N_e=\prod_k n_k^e$. In the example above, $n^e_0=n^e_1=2$ and hence $V_{SWAP}\in \C^{4\times 4}$, but one can choose the number of energy levels $n_0$ and $n_1$ to be bigger than $2$ to when modelling the system dynamics. 
+\subsubsection{Essential and non-essential levels, guard levels}\label{sec:essential}
+It is often useful, to model the quantum system with more energy levels than the number of levels that the target gate is defined on. For example when optimizing for a SWAP gate on two qubits, with $V_{SWAP}\in\C^{4\times 4}$, one might want to model each qubit with more than two energy levels in order to (a) model the (infinite dimensional) system with more accuracy by including more levels and (b) allow the system to transition through higher energy levels in order to achieve the target at final time $T$. In that case, the \textit{essential} levels denote the levels that the target gate is defined on (or the levels that we actually care about for the optimization target and the initial states.)
+
+To this end, Quandary provides the option to specify the number of \textit{essential} energy levels $n_k^e$ in addition to the number of (total) energy levels $n_k$, where $n_k^e \leq n_k$ for each subsystem $k$. The quantum dynamics are then modelled with (more) energy levels with $N=\prod_k n_k$ and $\rho(t)\in \C^{N\times N}$, while the gate is defined in the essential level dimensions only: $V\in C^{N_e \times N_e}, N_e=\prod_k n_k^e$. In the example above, $n^e_0=n^e_1=2$ and hence $V_{SWAP}\in \C^{4\times 4}$, but one can choose the number of energy levels $n_0$ and $n_1$ to be bigger than $2$ to when modelling the system dynamics. 
  
 To compute the objective function at final time T, the essential-dimensional gate is projected upwards to the full dimensions $\tilde V \in N\times N$ by inserting identiy blocks for rows/columns that correspond to a non-essential level of either of the subsystems. Hence, a realization of the gate $\tilde V$ will not alter the occupation of higher (non-essential) energy level compared to their initial occupation at $t=0$. 
 
-% When only the three states as initial conditions are considered (see below), those three initial states will be spanned in the full dimensional system. On the other hand, when the basis of initial states is considered, or their diagonals only, those initial states will be spanned only in the essential level dimensions and zero rows and columns will be inserted for all non-essential levels. Hence, the gate will be realized for any initial state that is spanned in the essential level dimensions, and occupations of non-essential levels at $T=0$ are avoided. 
+When only the three states as initial conditions are considered (see below), those three initial states will be spanned in the full dimensional system. On the other hand, when the basis of initial states is considered, or their diagonals only, those initial states will be spanned only in the essential level dimensions and zero rows and columns will be inserted for all non-essential levels. Hence, the gate will be realized for any initial state that is spanned in the essential level dimensions, and occupations of non-essential levels at $T=0$ are avoided. 
+
+The occupation of the last non-essential level (the guard-level) per oscillator is penalized throughout the optimization in order to prevent leakage, see section \ref{sec:penalty}.
  
 
 \subsection{Initial conditions}\label{subsec:initcond}
@@ -331,21 +334,35 @@ unique index $i \in \{0,\dots, N^2-1\}$ is assigned to each basis state with
 \end{align*}
 (columnwise vectorization of a matrix of matrices $B^{kj}$). 
 
+
+The user can specify a list of integers that identify those subsystems in which the basis should be spanned in. Other oscillators will be initialized with the ground state. 
+To be precise: the user specifies a list of consecutive ID's $<k_0>, \dots, <k_m>$ with $0 \leq k_j \leq Q-1$ and $k_{j+1} = k_j+1$, the basis states $B^{kj}$ will then spanned in the dimension given by those subsystems, $N_s = \prod_{j=0}^{m} n_{k_j}$ and $\rho_s(0) \in \C^{N_s\times N_s}$. The initial states that Quandary propagates are then given by 
+\begin{align}
+  \rho(0) = \bs{e}_0\bs{e}_0^\dagger \otimes \underbrace{B^{kj}}_{\in \C^{N_s\times N_s}} \otimes \, \bs{e}_0 \bs{e}_0^\dagger
+\end{align}
+where the first $\bs{e}_0$ (before the kronecker product) is the first unit vector in $\R^{\prod_{k=0}^{k_0-1}}$ (i.e. ground state in all preceding subsystems), and the second $\bs{e}_0$ (behind the kronecker products) is the first unit vector in the dimension of all subsequent systems, $\R^{\prod_{k=k_m+1}^{Q-1}}$. 
+
+\textit{Note}: The basis matrices are spanned in the dimension defined by the \textit{essential} levels, $N_e$, if different for the full dimensional system, compare section \ref{sec:essential}. They are they lifted up the full-dimension system by inserting rows and columns of zeros at the corresponding positions for each non-essential level. 
+
+
 \subsubsection{Diagonal basis matrices (aka all pure states)}
 One can choose to propagate only those basis elements that correspond to pure states of the form $\boldsymbol{e}_k\boldsymbol{e}_k^\dagger$, i.e. propagating only $B^{kk}$ for $k=0,\dots, N-1$, and then $n_{init}=N$.
+
+Similar to the previous section, a list of ID's can be specified in order to identify in which subsystems the diagonal should be spanned, other subsystems will be initialize in the ground state. 
+
+\textit{Note}: The diagonal basis matrices are spanned in the dimension defined by the \textit{essential} levels, $N_e$, if different for the full dimensional system, compare section \ref{sec:essential}. They are they lifted up the full-dimension system by inserting rows and columns of zeros at the corresponding positions for each non-essential level. 
 
 \subsubsection{Ensemble state for pure-state optimization}\label{sec:ensemblestate}
 For pure-state optimization using the objective function $J_{measure}$ \eqref{eq:Jmeasure}, one can use the ensemble state 
 \begin{align}\label{eq:ensemblestate}
   \rho_s(0) = \frac{1}{N^2}\sum_{i,j=0}^{N-1} B^{kj}
 \end{align}
-as the only initial condition for optimization or simulation ($\Rightarrow n_{init}=1$). Since Lindblad's master equation is linear in the initial condition, and $J_{measure}$ is linear in the final state, propagating this single initial state yields the same target value as if one propagates all basis states spanning that space and averages their measure at final time $T$ (compare \cite{guenther2021quantum}). To specify the ensemble state in Quandary for composite quantum systems with multiple subsystems, on can provide a list of integer ID's that determine in which of the subsystems the ensemble state should be spanned. Other subsystems will be initialized in the ground state. 
+as the only initial condition for optimization or simulation ($\Rightarrow n_{init}=1$). Since Lindblad's master equation is linear in the initial condition, and $J_{measure}$ is linear in the final state, propagating this single initial state yields the same target value as if one propagates all basis states spanning that space and averages their measure at final time $T$ (compare \cite{guenther2021quantum}). 
 
-To be precise: the user specifies a list of consecutive ID's $<k_0>, \dots, <k_m>$ with $0 \leq k_j \leq Q-1$ and $k_{j+1} = k_j+1$, the ensemble state $\rho_s(0)$ will be spanned in the dimension given by those subsystems, $N_s = \prod_{j=0}^{m} n_{k_j}$ and $\rho_s(0) \in \C^{N_s\times N_s}$ with basis matrices $B^{kj}$ spanned in $\C^{N_s\times N_s}$. The initial state that Quandary propagates is then given by 
-\begin{align}
-  \rho(0) = \bs{e}_0\bs{e}_0^\dagger \otimes \underbrace{\rho_s(0)}_{\in \C^{N_s\times N_s}} \otimes \, \bs{e}_0 \bs{e}_0^\dagger
-\end{align}
-where the first $\bs{e}_0$ (before the kronecker product) is the first unit vector in $\R^{\prod_{k=0}^{k_0-1}}$ (i.e. ground state in all preceding subsystems), and the second $\bs{e}_0$ (behind the kronecker products) is the first unit vector in the dimension of all subsequent systems, $\R^{\prod_{k=k_m+1}^{Q-1}}$. 
+Similar to the previous two sections, the user can provide a list of integer ID's that determine in which of the subsystems the ensemble state should be spanned. Other subsystems will be initialized in the ground state. 
+
+
+\textit{Note}: In contrast to the other choices for initial conditions, the ensemble state is currently always spanned in the full dimensional system $N$ (or the full dimensions of the subsystem defined by the IDs), rather than the essential levels. Implementation to operate on essential levels only for the ensemble state is currently missing, sorry!
 
 \subsubsection{Three initial states for gate optimization}\label{subsec:threeinitcond}
 When considering gate optimization, it has been shown in \cite{goerz2014optimal} that it is enough to consider only three specific initial states during optimization ($n_{init}=3$), independent of the Hilber space dimension. Those three initial states are given by
@@ -356,16 +373,22 @@ When considering gate optimization, it has been shown in \cite{goerz2014optimal}
 \end{align}
 where $I_N\in R^{N\times N}$ is the identity matrix. They are readily implemented in Quandary. Note that it is important to choose the weights $\beta_i, i=1,2,3$ in the objective function appropriately to achieve fast convergence. 
 
+\textit{Note}: The three initial states is spanned in the dimension defined by the \textit{essential} levels, $N_e$, if different for the full dimensional system, compare section \ref{sec:essential}. They are then lifted up the full-dimension system by inserting rows and columns of zeros at the corresponding positions for each non-essential level. 
+
 \subsubsection{$N+1$ initial states for gate optimization}
 The three initial states from above do not suffice to estimate an average fidelity of the realized gate (compare \cite{goerz2014optimal}). Instead, it is suggested in that same paper to choose $N+1$ initial states to compute an average fidelity. Those $N+1$ initial states consist of the $N$ diagonal states $B^{kk}$ in the Hilbertspace of dimension $N$, as well as the totally rotated state $\rho(0)_2$ from above. Quandary offers the choice to simulate (or optimize) using those initial states, then $n_{init} = N+1$.
 
+\textit{Note}: The $N+1$ initial states are spanned in the dimension defined by the \textit{essential} levels, $N_e$, if different for the full dimensional system, compare section \ref{sec:essential}. They are then lifted up the full-dimension system by inserting rows and columns of zeros at the corresponding positions for each non-essential level. 
+
 \subsubsection{Reading an initial state from file}
-A specific initial state $\rho(0)$ can also be read from file ($\Rightarrow n_{init}=1$). Format: one column being the vectorized density matrix (vectorization is columnwise), first all real parts, then all imaginary parts (i.e. number of lines is $2N^2$, with one value per line). 
+A specific initial state $\rho(0)$ can also be read from file ($\Rightarrow n_{init}=1$). Format: one column being the vectorized density matrix (vectorization is columnwise), first all real parts, then all imaginary parts (i.e. number of lines is $2N_e^2$, with one value per line). 
 
-This option is useful for example if one wants to propagate a specific \textit{non-pure} initial state. In that case, one first has to generate a datafile storing that state (e.g. by simulating a system and storing the output), which can then be read in as initial condition. 
+Note that $N_e$ is the dimension corresponding to the \textit{essential} levels. Ofen, $N_e=N$, but it could be smaller, see Section \ref{sec:essential}). If you wish to provide the to-be-read initial state in the \textit{full} dimensions $N$, you'd have to change that in the source code, inside the constructor of \texttt{optimproblem.cpp} (easy).
+
+The option of reading a state from file is useful for example if one wants to propagate a specific \textit{non-pure} initial state. In that case, one first has to generate a datafile storing that state (e.g. by simulating a system and storing and reformating the output), which can then be read in as initial condition. 
 
 
-\subsection{Penalty term}
+\subsection{Penalty term}\label{sec:penalty}
 The penalty term can be added with parameter $\gamma_1 \geq 0$ in order to achieve a desired behavior at earlier times other than the final time $T$.
 In the standard setting, the following penalty term is currently implemented (easily extendable for developers in the \texttt{TimeStepper} class.):
 \begin{align}\label{eq:penaltyterm}

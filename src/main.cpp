@@ -85,10 +85,10 @@ int main(int argc,char **argv)
   else if (initcondstr[0].compare("ensemble") == 0 ) ninit = 1;
   else if (initcondstr[0].compare("3states") == 0 ) ninit = 3;
   else if (initcondstr[0].compare("Nplus1") == 0 )  {
-    // compute system dimension N 
+    // compute system dimension N. Essential levels only
     ninit = 1;
-    for (int i=0; i<nlevels.size(); i++){
-      ninit *= nlevels[i];
+    for (int i=0; i<nessential.size(); i++){
+      ninit *= nessential[i];
     }
     ninit +=1;
   }
@@ -96,13 +96,15 @@ int main(int argc,char **argv)
             initcondstr[0].compare("basis")    == 0  ) {
     /* Compute ninit = dim(subsystem defined by list of oscil IDs) */
     ninit = 1;
+    // sanity check for input string
     if (initcondstr.size() < 2) {
       printf("ERROR for initial condition option: If choosing 'basis' or 'diagonal', specify the list oscillator IDs!\n");
       exit(1);
     }
     for (int i = 1; i<initcondstr.size(); i++){
       int oscilID = atoi(initcondstr[i].c_str());
-      ninit *= nessential[oscilID];
+      assert(oscilID < nessential.size());
+      ninit *= nessential[oscilID]; // essential levels only
     }
     if (initcondstr[0].compare("basis") == 0  ) ninit = (int) pow(ninit,2.0);
   }

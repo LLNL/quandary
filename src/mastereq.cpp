@@ -1076,35 +1076,51 @@ int MasterEq::getRhoT0(const int iinit, const int ninit, const InitialConditionT
 
       /* Set the <iinit>'th initial state */
       if (iinit == 0) {
-        // 1st initial state: rho(0)_IJ = 2(N-i)/(N(N+1)) Delta_IJ
         initID = 1;
 
-        /* Iterate over diagonal elements of full-dimension system */
-        for (int i_full = 0; i_full<dim_rho; i_full++) {
-          int diagID = getIndexReal(getVecID(i_full,i_full,dim_rho));
-          double val = 2.*(dim_rho - i_full) / (dim_rho * (dim_rho + 1));
+        // 1st initial state: rho(0)_IJ = 2(N-i)/(N(N+1)) Delta_IJ
+        // in essential dimensions only. Lift up to full dimensions by inserting 0's
+
+        /* Iterate over diagonal elements of essential-dimension system */
+        for (int i_ess= 0; i_ess<dim_ess; i_ess++) {
+          int diagelem = i_ess;
+          double val = 2.*(dim_ess - i_ess) / (dim_ess * (dim_ess + 1));
+
+          if (dim_ess < dim_rho) diagelem = mapEssToFull(diagelem, nlevels, nessential);
+          int diagID = getIndexReal(getVecID(diagelem,diagelem,dim_rho));
+
           if (ilow <= diagID && diagID < iupp) VecSetValue(rho0, diagID, val, INSERT_VALUES);
         }
 
       } else if (iinit == 1) {
-        // 2nd initial state: rho(0)_IJ = 1/N
         initID = 2;
-        for (int i_full = 0; i_full<dim_rho; i_full++) {
-          for (int j_full = 0; j_full<dim_rho; j_full++) {
-            double val = 1./dim_rho;
+        // 2nd initial state: rho(0)_IJ = 1/Nessential
+        // in essential dimensions only. Lift up to full dimensions by inserting 0's
+        for (int i_ess  = 0; i_ess <dim_ess; i_ess++) {
+          for (int j_ess = 0; j_ess <dim_ess; j_ess++) {
+            double val = 1./dim_ess;
+            int i_full = i_ess;
+            int j_full = j_ess;
+            if (dim_ess < dim_rho) {
+              i_full = mapEssToFull(i_ess, nlevels, nessential);
+              j_full = mapEssToFull(j_ess, nlevels, nessential);
+            }
             int index = getIndexReal(getVecID(i_full,j_full,dim_rho));   // Re(rho_ij)
             if (ilow <= index && index < iupp) VecSetValue(rho0, index, val, INSERT_VALUES); 
           }
         }
 
       } else if (iinit == 2) {
-        // 3rd initial state: rho(0)_IJ = 1/N Delta_IJ
         initID = 3;
+        // 3rd initial state: rho(0)_IJ = 1/N Delta_IJ
+        // in essential dimensions only. Lift up to full dimensions by inserting 0's
 
         /* Iterate over diagonal elements */
-        for (int i_full = 0; i_full<dim_rho; i_full++) {
-          int diagID = getIndexReal(getVecID(i_full,i_full,dim_rho));
-          double val = 1./ dim_rho;
+        for (int i_ess = 0; i_ess <dim_ess; i_ess++) {
+          double val = 1./ dim_ess;
+          int diagelem = i_ess;
+          if (dim_ess < dim_rho) diagelem = mapEssToFull(diagelem, nlevels, nessential);
+          int diagID = getIndexReal(getVecID(diagelem,diagelem,dim_rho));
           if (ilow <= diagID && diagID < iupp) VecSetValue(rho0, diagID, val, INSERT_VALUES);
         }
 
@@ -1115,24 +1131,33 @@ int MasterEq::getRhoT0(const int iinit, const int ninit, const InitialConditionT
 
       /* Assemble rho0 */
       VecAssemblyBegin(rho0); VecAssemblyEnd(rho0);
-
       break;
 
     case InitialConditionType::NPLUSONE:
       VecGetOwnershipRange(rho0, &ilow, &iupp);
 
-      if (iinit < dim_rho) {// Diagonal e_j e_j^\dag
+      if (iinit < dim_ess) {
+        // First N elements are the Diagonal e_j e_j^\dag.
+        // In essential dimensions. Lift up to full dimensions by inserting 0's. 
         VecZeroEntries(rho0);
-        elemID = getIndexReal(getVecID(iinit, iinit, dim_rho));
+        elemID = iinit;
+        if (dim_ess < dim_rho) elemID = mapEssToFull(elemID, nlevels, nessential);
+        elemID = getIndexReal(getVecID(elemID, elemID, dim_rho));
         val = 1.0;
         if (ilow <= elemID && elemID < iupp) VecSetValues(rho0, 1, &elemID, &val, INSERT_VALUES);
         VecAssemblyBegin(rho0); VecAssemblyEnd(rho0);
       }
-      else if (iinit == dim_rho) { // fully rotated 1/d*Ones(d)
-        for (int i=0; i<dim_rho; i++){
-          for (int j=0; j<dim_rho; j++){
-            elemID = getIndexReal(getVecID(i,j,dim_rho));
-            val = 1.0 / dim_rho;
+      else if (iinit == dim_ess) { 
+        // fully rotated 1/Ness*Ones(Ness)
+        // In essential dimensions. Lift up to full dimensions by inserting 0's. 
+        for (int i=0; i<dim_ess; i++){
+          for (int j=0; j<dim_ess; j++){
+            val = 1.0 / dim_ess;
+            int i_full = i;
+            int j_full = j;
+            if (dim_ess < dim_rho) i_full = mapEssToFull(i, nlevels, nessential);
+            if (dim_ess < dim_rho) j_full = mapEssToFull(j, nlevels, nessential);
+            elemID = getIndexReal(getVecID(i_full,j_full,dim_rho));
             if (ilow <= elemID && elemID < iupp) VecSetValues(rho0, 1, &elemID, &val, INSERT_VALUES);
             VecAssemblyBegin(rho0); VecAssemblyEnd(rho0);
           }

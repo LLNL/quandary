@@ -174,6 +174,21 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
     exit(1);
   }
 
+  // sanity check for initcondIDs:
+  if (initcond_type == InitialConditionType::ENSEMBLE ||
+      initcond_type == InitialConditionType::DIAGONAL ||
+      initcond_type == InitialConditionType::BASIS ) {
+
+    assert(initcond_IDs.size() >= 1); // at least one element 
+    assert(initcond_IDs[initcond_IDs.size()-1] < timestepper->mastereq->getNOscillators()); // last element can't exceed total number of oscillators
+    for (int i=0; i < initcond_IDs.size()-1; i++){ // list should be consecutive!
+      if (initcond_IDs[i]+1 != initcond_IDs[i+1]) {
+        printf("ERROR in initial condition configuration: List of oscillators for this type of initialization should be consecutive!\n");
+        exit(1);
+      }
+    }
+  }
+
   /* Allocate the initial condition vector */
   VecCreate(PETSC_COMM_WORLD, &rho_t0); 
   VecSetSizes(rho_t0,PETSC_DECIDE,2*timestepper->mastereq->getDim());
@@ -235,15 +250,6 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
     }
     delete [] vec;
   } else if (initcond_type == InitialConditionType::ENSEMBLE) {
-    // Sanity check for the list in initcond_IDs!
-    assert(initcond_IDs.size() >= 1); // at least one element 
-    assert(initcond_IDs[initcond_IDs.size()-1] < timestepper->mastereq->getNOscillators()); // last element can't exceed total number of oscillators
-    for (int i=0; i < initcond_IDs.size()-1; i++){ // list should be consecutive!
-      if (initcond_IDs[i]+1 != initcond_IDs[i+1]) {
-        printf("ERROR: List of oscillators for ensemble initialization should be consecutive!\n");
-        exit(1);
-      }
-    }
 
     // get dimension of subsystems *before* the first oscillator, and *behind* the last oscillator
     int dimpre  = timestepper->mastereq->getOscillator(initcond_IDs[0])->dim_preOsc;
