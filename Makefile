@@ -75,6 +75,12 @@ $(BUILD_DIR)/%.o : $(SRC_DIR)/%.cpp
 	$(CXX) -c $(CXXFLAGS) $< -o $@ $(INC) 
 	@$(CXX) -MM $< -MP -MT $@ -MF $(@:.o=.d) $(INC) 
 
+# Rule for building and linking main-tensor:
+main-tensor: 
+	mpicxx -c -std=gnu++14 -fPIC  -DPATH_MAX=4096 -Wno-attributes -DNO_GPU -DEXATN_SERVICE src-tensor/main-tensor.cpp -o src-tensor/main-tensor.o -Iinclude  -I/home/guenther5/.exatn/include/exatn -I/home/guenther5/.exatn/include -I/home/guenther5/.exatn/include/cppmicroservices4
+	mpicxx -o main-tensor src-tensor/main-tensor.o -rdynamic -Wl,-rpath,/home/guenther5/.exatn/lib -L /home/guenther5/.exatn/lib -lCppMicroServices -ltalsh -lexatn -lexatn-numerics -lexatn-runtime -lexatn-runtime-graph -lexatn-utils -ldl -lpthread /usr/lib64/mpich/lib/libmpicxx.so /usr/lib64/mpich/lib/libmpi.so /usr/lib64/libblas.so /usr/lib/gcc/x86_64-redhat-linux/10/libgomp.so /usr/lib64/libpthread.so /usr/lib/gcc/x86_64-redhat-linux/10/libgomp.so /usr/lib64/libpthread.so -lgfortran /usr/lib64/liblapack.so -L/home/guenther5/Software/petsc/linux-gnu-c-debug/lib
+
+
 
 .PHONY: all cleanup clean-regtest
 
@@ -82,11 +88,18 @@ $(BUILD_DIR)/%.o : $(SRC_DIR)/%.cpp
 cleanup:
 	rm -fr $(BUILD_DIR) 
 	rm -f  main 
+	rm -f  src-tensor/*.o
+	rm -f  main-tensor
 
 # use 'make clean-regtest' to remove tests/results
 clean-regtest:
 	rm -rf tests/results/*
 	rm -rf tests/*/data_out
+
+# Rule for cleaning up tensor
+clean-tensor:
+	rm -f  src-tensor/*.o
+	rm -f  main-tensor
 
 # include the dependency files
 -include $(OBJ_FILES:.o=.d)
