@@ -13,6 +13,9 @@ WITH_SLEPC = false
 # Choose to run sanity tests
 SANITY_CHECK = false
 
+# ExaTN directory
+EXATN_DIR = $(HOME)/.exatn
+
 #######################################################
 # Typically no need to change anything below
 
@@ -69,9 +72,8 @@ CXXFLAGS= -O3 -std=c++11 -lstdc++ $(CXX_OPT)
 
 # Flags and includes for linking to exaTN:
 EXA_CXXFLAGS = -std=gnu++14 -fPIC  -DPATH_MAX=4096 -Wno-attributes -DNO_GPU -DEXATN_SERVICE
-EXA_INC = -I/home/steffi/.exatn/include/exatn -I/home/steffi/.exatn/include -I/home/steffi/.exatn/include/cppmicroservices4
-EXA_LDFLAGS = -rdynamic -Wl,-rpath,/home/steffi/.exatn/lib -L /home/steffi/.exatn/lib -lCppMicroServices -ltalsh -lexatn -lexatn-numerics -lexatn-runtime -lexatn-runtime-graph -lexatn-utils -ldl -lpthread /usr/lib/openmpi/lib/libmpi_cxx.so /usr/lib/openmpi/lib/libmpi.so /usr/lib/libblas.so /usr/lib/gcc/x86_64-linux-gnu/8/libgomp.so /usr/lib/x86_64-linux-gnu/libpthread.so /usr/lib/gcc/x86_64-linux-gnu/8/libgomp.so /usr/lib/x86_64-linux-gnu/libpthread.so -lgfortran /usr/lib/liblapack.so
-
+EXA_INC = -I$(EXATN_DIR)/include/exatn -I$(EXATN_DIR)/include -I$(EXATN_DIR)/include/cppmicroservices4
+EXA_LDFLAGS = -rdynamic -Wl,-rpath,$(EXATN_DIR)/lib -L $(EXATN_DIR)/lib -lCppMicroServices -ltalsh -lexatn -lexatn-numerics -lexatn-runtime -lexatn-runtime-graph -lexatn-utils -ldl -lpthread /usr/lib64/mpich/lib/libmpicxx.so /usr/lib64/mpich/lib/libmpi.so /usr/lib64/libblas.so /usr/lib/gcc/x86_64-redhat-linux/10/libgomp.so /usr/lib64/libpthread.so /usr/lib/gcc/x86_64-redhat-linux/10/libgomp.so /usr/lib64/libpthread.so -lgfortran /usr/lib64/liblapack.so
 
 
 # Rule for linking main
@@ -116,3 +118,4 @@ clean-tensor:
 
 # include the dependency files
 -include $(OBJ_COMMON:.o=.d)
+
