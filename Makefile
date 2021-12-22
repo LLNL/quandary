@@ -48,10 +48,13 @@ SRC_DIR   = src
 INC_DIR   = include
 BUILD_DIR = build
 
-# list all source and object files
-SRC_FILES  = $(wildcard $(SRC_DIR)/*.cpp)
-SRC_FILES += $(wildcard $(SRC_DIR)/*/*.cpp)
-OBJ_FILES  = $(patsubst $(SRC_DIR)/%.cpp,$(BUILD_DIR)/%.o,$(SRC_FILES))
+# List all common sources, excluding main.cpp or main-tensor.cpp
+SRC_MAIN := $(SRC_DIR)/main.cpp
+SRC_TENS := $(SRC_DIR)/main-tensor.cpp
+SRC_COMMON  = $(filter-out $(SRC_MAIN) $(SRC_TENS),$(wildcard $(SRC_DIR)/*.cpp))
+OBJ_COMMON  = $(patsubst $(SRC_DIR)/%.cpp,$(BUILD_DIR)/%.o,$(SRC_COMMON))
+OBJ_MAIN  = $(patsubst $(SRC_DIR)/%.cpp,$(BUILD_DIR)/%.o,$(SRC_MAIN))
+OBJ_TENS  = $(patsubst $(SRC_DIR)/%.cpp,$(BUILD_DIR)/%.o,$(SRC_TENS))
 
 # set include directory
 INC = -I$(INC_DIR) -I${PETSC_DIR}/include -I${PETSC_DIR}/${PETSC_ARCH}/include ${INC_OPT}
@@ -64,22 +67,32 @@ LDFLAGS = -lpetsc -lm  -L${PETSC_DIR}/${PETSC_ARCH}/lib -lblas -llapack ${LDFLAG
 CXX=mpicxx
 CXXFLAGS= -O3 -std=c++11 -lstdc++ $(CXX_OPT)
 
+# Flags and includes for linking to exaTN:
+EXA_CXXFLAGS = -std=gnu++14 -fPIC  -DPATH_MAX=4096 -Wno-attributes -DNO_GPU -DEXATN_SERVICE
+EXA_INC = -I/home/steffi/.exatn/include/exatn -I/home/steffi/.exatn/include -I/home/steffi/.exatn/include/cppmicroservices4
+EXA_LDFLAGS = -rdynamic -Wl,-rpath,/home/steffi/.exatn/lib -L /home/steffi/.exatn/lib -lCppMicroServices -ltalsh -lexatn -lexatn-numerics -lexatn-runtime -lexatn-runtime-graph -lexatn-utils -ldl -lpthread /usr/lib/openmpi/lib/libmpi_cxx.so /usr/lib/openmpi/lib/libmpi.so /usr/lib/libblas.so /usr/lib/gcc/x86_64-linux-gnu/8/libgomp.so /usr/lib/x86_64-linux-gnu/libpthread.so /usr/lib/gcc/x86_64-linux-gnu/8/libgomp.so /usr/lib/x86_64-linux-gnu/libpthread.so -lgfortran /usr/lib/liblapack.so
+
+
 
 # Rule for linking main
-main: $(OBJ_FILES)
-	$(CXX) -o $@ $(OBJ_FILES) $(LDFLAGS) -L$(LDPATH)
+main: $(OBJ_MAIN) $(OBJ_COMMON)
+	$(CXX) -o $@ $(OBJ_MAIN) $(OBJ_COMMON) $(LDFLAGS) -L$(LDPATH)
 
-# Rule for building all src files
+# Rule for building all common src files
 $(BUILD_DIR)/%.o : $(SRC_DIR)/%.cpp
 	@mkdir -p $(@D)
 	$(CXX) -c $(CXXFLAGS) $< -o $@ $(INC) 
 	@$(CXX) -MM $< -MP -MT $@ -MF $(@:.o=.d) $(INC) 
 
-# Rule for building and linking main-tensor:
-main-tensor: 
-	mpicxx -c -std=gnu++14 -fPIC  -DPATH_MAX=4096 -Wno-attributes -DNO_GPU -DEXATN_SERVICE src-tensor/main-tensor.cpp -o src-tensor/main-tensor.o -Iinclude  -I/home/guenther5/.exatn/include/exatn -I/home/guenther5/.exatn/include -I/home/guenther5/.exatn/include/cppmicroservices4
-	mpicxx -o main-tensor src-tensor/main-tensor.o -rdynamic -Wl,-rpath,/home/guenther5/.exatn/lib -L /home/guenther5/.exatn/lib -lCppMicroServices -ltalsh -lexatn -lexatn-numerics -lexatn-runtime -lexatn-runtime-graph -lexatn-utils -ldl -lpthread /usr/lib64/mpich/lib/libmpicxx.so /usr/lib64/mpich/lib/libmpi.so /usr/lib64/libblas.so /usr/lib/gcc/x86_64-redhat-linux/10/libgomp.so /usr/lib64/libpthread.so /usr/lib/gcc/x86_64-redhat-linux/10/libgomp.so /usr/lib64/libpthread.so -lgfortran /usr/lib64/liblapack.so -L/home/guenther5/Software/petsc/linux-gnu-c-debug/lib
+# RUle for linking main-tensor
+main-tensor: $(OBJ_TENS) $(OBJ_COMMON)
+	$(CXX) -o $@ $(OBJ_TENS) $(OBJ_COMMON) $(EXA_LDFLAGS) $(LDFLAGS) -L$(LDPATH)
 
+# Rule for building main-tensor
+$(BUILD_DIR)/main-tensor.o : $(SRC_TENS) 
+	@mkdir -p $(@D)
+	$(CXX) -c $(EXA_CXXFLAGS) $< -o $@ $(EXA_INC) $(INC)
+	@$(CXX) -MM $(EXA_CXXFLAGS) $< -MP -MT $@ -MF $(@:.o=.d) $(EXA_INC) $(INC)
 
 
 .PHONY: all cleanup clean-regtest
@@ -102,4 +115,4 @@ clean-tensor:
 	rm -f  main-tensor
 
 # include the dependency files
--include $(OBJ_FILES:.o=.d)
+-include $(OBJ_COMMON:.o=.d)
