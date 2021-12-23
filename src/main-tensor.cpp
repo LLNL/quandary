@@ -145,7 +145,7 @@ int main(int argc, char ** argv)
   VecSetSizes(vec_rho_in,PETSC_DECIDE,2*mastereq->getDim());
   VecSetFromOptions(vec_rho_in);
   for (int i=0; i<mastereq->getDim(); i++){
-    VecSetValue(vec_rho_in, getIndexReal(i),  1.0*i, INSERT_VALUES);
+    VecSetValue(vec_rho_in, getIndexReal(i),  1.0*i +1.0, INSERT_VALUES);
     VecSetValue(vec_rho_in, getIndexImag(i),  0.0, INSERT_VALUES);
   }
   //VecView(vec_rho_in, NULL);
@@ -189,32 +189,37 @@ int main(int argc, char ** argv)
 
   /* Input and output density matrix */
   // Declare tensors
-  //std::vector<std::size_t> dm_rho; 
-  //for (int i=0; i<nlevels.size(); i++) dm_rho.push_back(nlevels[i]);
-  //for (int i=0; i<nlevels.size(); i++) dm_rho.push_back(nlevels[i]);  // do it two times because rho \in C^{prod_i n_i} x {prod_i n_i}, so once for each dimension of the matrix rho.
-  std::vector<std::size_t> dm_rho(4,2); 
-  auto rho_in = exatn::makeSharedTensor("RhoIn",TensorShape(dm_rho));
-  auto rho_out= exatn::makeSharedTensor("RhoOut",TensorShape(dm_rho));
+  std::vector<std::size_t> dm_rho; 
+  for (int i=0; i<nlevels.size(); i++) dm_rho.push_back(nlevels[i]);
+  for (int i=0; i<nlevels.size(); i++) dm_rho.push_back(nlevels[i]);  // do it two times because rho \in C^{prod_i n_i} x {prod_i n_i}, so once for each dimension of the matrix rho.
+  //for (int i=0; i<dm_rho.size(); i++) std::cout<< dm_rho[i] << "  " << std::endl;
+  auto rho_in_re = exatn::makeSharedTensor("RhoInRe",TensorShape(dm_rho));
+  auto rho_in_im = exatn::makeSharedTensor("RhoInIm",TensorShape(dm_rho));
+  auto rho_out_re= exatn::makeSharedTensor("RhoOutRe",TensorShape(dm_rho));
+  auto rho_out_im= exatn::makeSharedTensor("RhoOutIm",TensorShape(dm_rho));
   // Create tensors
-  success = exatn::createTensor(rho_in,TENS_ELEM_TYPE); assert(success);
-  success = exatn::createTensor(rho_out,TENS_ELEM_TYPE); assert(success);
+  success = exatn::createTensor(rho_in_re,TENS_ELEM_TYPE); assert(success);
+  success = exatn::createTensor(rho_in_im,TENS_ELEM_TYPE); assert(success);
+  success = exatn::createTensor(rho_out_re,TENS_ELEM_TYPE); assert(success);
+  success = exatn::createTensor(rho_out_im,TENS_ELEM_TYPE); assert(success);
   // Initialize tensors
-  success = exatn::initTensor("RhoOut",0.0); assert(success); // Initialize output with zero
+  success = exatn::initTensor("RhoOutRe",0.0); assert(success);
+  success = exatn::initTensor("RhoOutIm",0.0); assert(success); 
+  success = exatn::initTensor("RhoInIm",0.0); assert(success); 
   std::vector<double> rho_in_data;
-  for (int i=0; i<16; i++){
+  for (int i=0; i<mastereq->getDim(); i++){
     rho_in_data.push_back(1.0*i+1.0);
   }
-  success = exatn::initTensorData("RhoIn",rho_in_data); assert(success); // Initialize input with data.
-  //success = exatn::initTensor("RhoIn",22.0); assert(success); 
+  success = exatn::initTensorData("RhoInRe",rho_in_data); assert(success); // Initialize input with data.
 
   // Print Tensor
-  std::cout<<"Input: " << std::endl;
-  exatn::printTensor("RhoIn");
+  std::cout<<"Exa input: " << std::endl;
+  exatn::printTensor("RhoInRe");
 
 
   /* Operators */
   // Number operator
-  std::vector<std::size_t> dim_q(2,2);
+  std::vector<std::size_t> dim_q{2,2};
   auto numberOP = makeSharedTensor("NumberOP", TensorShape(dim_q));
   success = createTensor(numberOP, TensorElementType::REAL64); assert(success);
   success = initTensor("NumberOP", 0.0); assert(success);
@@ -232,20 +237,28 @@ int main(int argc, char ** argv)
   double omega0 = oscil_vec[0]->detuning_freq;
   double omega1 = oscil_vec[1]->detuning_freq;
   printf("detuning %f %f\n", omega0, omega1);
-  // from left H\rho
-  success = exatn::contractTensors("RhoOut(i1,i2,i3,i4)+=RhoIn(i1,j2,i3,i4)*NumberOP(i2,j2)",omega0); assert(success); // 1st qubit
-  success = exatn::contractTensors("RhoOut(i1,i2,i3,i4)+=RhoIn(j1,i2,i3,i4)*NumberOP(i1,j1)",omega1); assert(success); // 2nd qubit
+  
+  // real part
+  // from left: H\rho
+  success = exatn::contractTensors("RhoOutRe(i1,i2,i3,i4)+=RhoInIm(i1,j2,i3,i4)*NumberOP(i2,j2)",omega0); assert(success); // 1st qubit
+  success = exatn::contractTensors("RhoOutRe(i1,i2,i3,i4)+=RhoInIm(j1,i2,i3,i4)*NumberOP(i1,j1)",omega1); assert(success); // 2nd qubit
   // from right -\rhoH
-  success = exatn::contractTensors("RhoOut(i1,i2,i3,i4)+=RhoIn(i1,i2,i3,j4)*NumberOP(j4,i4)",-omega0); assert(success); // 1st qubit
-  success = exatn::contractTensors("RhoOut(i1,i2,i3,i4)+=RhoIn(i1,i2,j3,i4)*NumberOP(j3,i3)",-omega1); assert(success); // 2nd qubit
-
+  success = exatn::contractTensors("RhoOutRe(i1,i2,i3,i4)+=RhoInIm(i1,i2,i3,j4)*NumberOP(j4,i4)",-omega0); assert(success); // 1st qubit
+  success = exatn::contractTensors("RhoOutRe(i1,i2,i3,i4)+=RhoInIm(i1,i2,j3,i4)*NumberOP(j3,i3)",-omega1); assert(success); // 2nd qubit
+  // imag part
+  // from left -H\rho
+  success = exatn::contractTensors("RhoOutIm(i1,i2,i3,i4)+=RhoInRe(i1,j2,i3,i4)*NumberOP(i2,j2)",-omega0); assert(success); // 1st qubit
+  success = exatn::contractTensors("RhoOutIm(i1,i2,i3,i4)+=RhoInRe(j1,i2,i3,i4)*NumberOP(i1,j1)",-omega1); assert(success); // 2nd qubit
+  // from right +\rhoH
+  success = exatn::contractTensors("RhoOutIm(i1,i2,i3,i4)+=RhoInRe(i1,i2,i3,j4)*NumberOP(j4,i4)",+omega0); assert(success); // 1st qubit
+  success = exatn::contractTensors("RhoOutIm(i1,i2,i3,i4)+=RhoInRe(i1,i2,j3,i4)*NumberOP(j3,i3)",+omega1); assert(success); // 2nd qubit
 
   success = exatn::sync(); assert(success);
-  printTensor("RhoOut");
 
 
   std::cout<<"Output:" << std::endl;
-  printTensor("RhoOut");
+  printTensor("RhoOutRe");
+  printTensor("RhoOutIm");
 
 
 
