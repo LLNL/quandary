@@ -6,6 +6,8 @@
 #include "talshxx.hpp"
 #include "config.hpp"
 #include "defs.hpp"
+#include "mastereq.hpp"
+#include <petscmat.h>
 
 #ifdef MPI_ENABLED
 #include "mpi.h"
@@ -30,6 +32,140 @@ int main(int argc, char ** argv)
  using exatn::TensorExpansion;
  using exatn::TensorElementType;
 
+  PetscErrorCode ierr;
+  ierr = PetscInitialize(&argc,&argv,(char*)0,NULL);if (ierr) return ierr;
+  
+  /* Read config file */
+  if (argc < 2) {
+   printf("\nUSAGE: ./main </path/to/configfile> \n");
+   exit(1);
+   return 0;
+  }
+  std::stringstream log;
+  MapParam config(MPI_COMM_WORLD, log);
+  config.ReadFile(argv[1]);
+
+  /* --- Get stuff from config file --- */
+  std::vector<int> nlevels;
+  config.GetVecIntParam("nlevels", nlevels, 0);
+  int ntime = config.GetIntParam("ntime", 1000);
+  int nspline = config.GetIntParam("nspline", 10);
+  double dt    = config.GetDoubleParam("dt", 0.01);
+  double total_time = ntime * dt;
+  std::vector<int> nessential(nlevels.size());
+  for (int iosc = 0; iosc<nlevels.size(); iosc++) nessential[iosc] = nlevels[iosc];
+  /* Overwrite if config option is given */
+  std::vector<int> read_nessential;
+  config.GetVecIntParam("nessential", read_nessential, -1);
+  if (read_nessential[0] > -1) {
+    for (int iosc = 0; iosc<nlevels.size(); iosc++){
+      if (iosc < read_nessential.size()) nessential[iosc] = read_nessential[iosc];
+      else                               nessential[iosc] = read_nessential[read_nessential.size()-1];
+    }
+  }
+  /* --- Initialize the Oscillators --- */
+  Oscillator** oscil_vec = new Oscillator*[nlevels.size()];
+  // Get fundamental and rotation frequencies from config file
+  std::vector<double> trans_freq, rot_freq;
+  config.GetVecDoubleParam("transfreq", trans_freq, 1e20);
+  if (trans_freq.size() < nlevels.size()) {
+    printf("Error: Number of given fundamental frequencies (%lu) is smaller than the the number of oscillators (%lu)\n", trans_freq.size(), nlevels.size());
+    exit(1);
+  }
+  config.GetVecDoubleParam("rotfreq", rot_freq, 1e20);
+  if (rot_freq.size() < nlevels.size()) {
+    printf("Error: Number of given rotation frequencies (%lu) is smaller than the the number of oscillators (%lu)\n", rot_freq.size(), nlevels.size());
+    exit(1);
+  }
+  // Get self kerr coefficient
+  std::vector<double> selfkerr;
+  config.GetVecDoubleParam("selfkerr", selfkerr, 0.0);   // self ker \xi_k
+  assert(selfkerr.size() >= nlevels.size());
+  // Get lindblad type and collapse times
+  std::string lindblad = config.GetStrParam("collapse_type", "none");
+  std::vector<double> decay_time, dephase_time;
+  config.GetVecDoubleParam("decay_time", decay_time, 0.0);
+  config.GetVecDoubleParam("dephase_time", dephase_time, 0.0);
+  LindbladType lindbladtype;
+  if      (lindblad.compare("none")      == 0 ) lindbladtype = LindbladType::NONE;
+  else if (lindblad.compare("decay")     == 0 ) lindbladtype = LindbladType::DECAY;
+  else if (lindblad.compare("dephase")   == 0 ) lindbladtype = LindbladType::DEPHASE;
+  else if (lindblad.compare("both")      == 0 ) lindbladtype = LindbladType::BOTH;
+  else {
+    printf("\n\n ERROR: Unnown lindblad type: %s.\n", lindblad.c_str());
+    printf(" Choose either 'none', 'decay', 'dephase', or 'both'\n");
+    exit(1);
+  }
+  if (lindbladtype != LindbladType::NONE) {
+    assert(decay_time.size() >= nlevels.size());
+    assert(dephase_time.size() >= nlevels.size());
+  }
+
+  // Create the oscillators
+  for (int i = 0; i < nlevels.size(); i++){
+    std::vector<double> carrier_freq;
+    std::string key = "carrier_frequency" + std::to_string(i);
+    config.GetVecDoubleParam(key, carrier_freq, 0.0);
+    oscil_vec[i] = new Oscillator(i, nlevels, nspline, trans_freq[i], selfkerr[i], rot_freq[i], decay_time[i], dephase_time[i], carrier_freq, total_time);
+  }
+
+
+
+  /* --- Initialize the Master Equation  --- */
+  // Get self and cross kers and coupling terms 
+  std::vector<double> crosskerr, Jkl;
+  config.GetVecDoubleParam("crosskerr", crosskerr, 0.0);   // cross ker \xi_{kl}, zz-coupling
+  config.GetVecDoubleParam("Jkl", Jkl, 0.0); // Jaynes-Cummings coupling
+  // If not enough elements are given, fill up with zeros!
+  int noscillators = nlevels.size();
+  for (int i = crosskerr.size(); i < (noscillators-1) * noscillators / 2; i++)  crosskerr.push_back(0.0);
+  for (int i = Jkl.size(); i < (noscillators-1) * noscillators / 2; i++) Jkl.push_back(0.0);
+  // Sanity check for matrix free solver
+  bool usematfree = config.GetBoolParam("usematfree", false);
+  if ( (usematfree && nlevels.size() < 2) ||   
+       (usematfree && nlevels.size() > 5)   ){
+        printf("Warning: Matrix free solver is only implemented for systems with 2, 3, 4, or 5 oscillators. Switching to sparse-matrix solver now.\n");
+        usematfree = false;
+  }
+  // Compute coupling rotation frequencies eta_ij = w^r_i - w^r_j
+  std::vector<double> eta(nlevels.size()*(nlevels.size()-1)/2.);
+  int idx = 0;
+  for (int iosc=0; iosc<nlevels.size(); iosc++){
+    for (int josc=iosc+1; josc<nlevels.size(); josc++){
+      eta[idx] = rot_freq[iosc] - rot_freq[josc];
+      idx++;
+    }
+  }
+  MasterEq* mastereq = new MasterEq(nlevels, nessential, oscil_vec, crosskerr, Jkl, eta, lindbladtype, usematfree);
+
+
+  /* Create rho_in */
+  Vec vec_rho_in;
+  VecCreate(PETSC_COMM_WORLD, &vec_rho_in);
+  VecSetSizes(vec_rho_in,PETSC_DECIDE,2*mastereq->getDim());
+  VecSetFromOptions(vec_rho_in);
+  for (int i=0; i<mastereq->getDim(); i++){
+    VecSetValue(vec_rho_in, getIndexReal(i),  1.0*i, INSERT_VALUES);
+    VecSetValue(vec_rho_in, getIndexImag(i),  0.0, INSERT_VALUES);
+  }
+  //VecView(vec_rho_in, NULL);
+  // Initialize rho_out
+  Vec vec_rho_out;
+  VecDuplicate(vec_rho_in, &vec_rho_out);
+
+  /* Evaluate M(0) */
+  Mat RHS = mastereq->getRHS();
+  mastereq->assemble_RHS(0.0);
+  Mat M = mastereq->getRHS();
+
+  /* matmult y = Mx */
+  MatMult(M, vec_rho_in, vec_rho_out);
+
+  std::cout<<" PETSC results" << std::endl;
+  VecView(vec_rho_out, NULL);
+
+
+  /*----- EXATN ----- */
  // Some ExaTN stuff
  exatn::ParamConf exatn_parameters;
  //Set the available CPU Host RAM size to be used by ExaTN:
@@ -47,28 +183,9 @@ int main(int argc, char ** argv)
  const auto TENS_ELEM_TYPE = TensorElementType::REAL64;
  //const auto TENS_ELEM_TYPE = TensorElementType::COMPLEX64;
 
-  ///* Read config file */
-  //if (argc < 2) {
-  // printf("\nUSAGE: ./main </path/to/configfile> \n");
-  // exit(1);
-  // return 0;
-  //}
-  //std::stringstream log;
-  //MapParam config(MPI_COMM_WORLD, log);
-  //config.ReadFile(argv[1]);
-
-  ///* --- Get number of levels from the config file --- */
-  //std::vector<int> nlevels;
-  //config.GetVecIntParam("nlevels", nlevels, 0);
-  //// dimension of Hilbertspace
-  //int dim_H = 1;
-  //for (int i=0; i<nlevels.size(); i++){
-  //  dim_H *= nlevels[i];
-  //}
-  //assert (dim_H == 4);
-
  { // scope for exatn
   auto success = true;
+
 
   /* Input and output density matrix */
   // Declare tensors
@@ -112,8 +229,9 @@ int main(int argc, char ** argv)
   /* --- Hamiltonian -i(Hrho - rhoH) --- */
 
   /* Detuning */
-  double omega0 = 10.0;
-  double omega1 = 100.0;
+  double omega0 = oscil_vec[0]->detuning_freq;
+  double omega1 = oscil_vec[1]->detuning_freq;
+  printf("detuning %f %f\n", omega0, omega1);
   // from left H\rho
   success = exatn::contractTensors("RhoOut(i1,i2,i3,i4)+=RhoIn(i1,j2,i3,i4)*NumberOP(i2,j2)",omega0); assert(success); // 1st qubit
   success = exatn::contractTensors("RhoOut(i1,i2,i3,i4)+=RhoIn(j1,i2,i3,i4)*NumberOP(i1,j1)",omega1); assert(success); // 2nd qubit
