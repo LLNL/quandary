@@ -107,36 +107,50 @@ int main(int argc, char ** argv)
   success = createTensor(lowering, TensorElementType::REAL64); assert(success);
   success = initTensor("Lowering", 0.0); assert(success);
   success = initTensorData("Lowering", std::vector<double>{0.0, 0.0, 1.0, 0.0}); assert(success);
+  //printTensor("Lowering");
 
-  printTensor("Lowering");
+  /* --- Hamiltonian -i(Hrho - rhoH) --- */
 
-  double omega0 = 5.0;
-  /* apply lowering operation */
-  // LEFT
-  //success = exatn::contractTensors("RhoOut(i1,i2,i3,i4)=RhoIn(i1,j2,i3,i4)*Lowering(i2,j2)",1.0); assert(success); // 1st qubit
-  //success = exatn::contractTensors("RhoOut(i1,i2,i3,i4)=RhoIn(j1,i2,i3,i4)*Lowering(i1,j1)",1.0); assert(success); // 2nd qubit
-  // RIGHT
-  //success = exatn::contractTensors("RhoOut(i1,i2,i3,i4)=RhoIn(i1,i2,i3,j4)*Lowering(j4,i4)",1.0); assert(success); // 1st qubit
-  //success = exatn::contractTensors("RhoOut(i1,i2,i3,i4)=RhoIn(i1,i2,j3,i4)*Lowering(j3,i3)",1.0); assert(success); // 2nd qubit
+  /* Detuning */
+  double omega0 = 10.0;
+  double omega1 = 100.0;
+  // from left H\rho
+  success = exatn::contractTensors("RhoOut(i1,i2,i3,i4)+=RhoIn(i1,j2,i3,i4)*NumberOP(i2,j2)",omega0); assert(success); // 1st qubit
+  success = exatn::contractTensors("RhoOut(i1,i2,i3,i4)+=RhoIn(j1,i2,i3,i4)*NumberOP(i1,j1)",omega1); assert(success); // 2nd qubit
+  // from right -\rhoH
+  success = exatn::contractTensors("RhoOut(i1,i2,i3,i4)+=RhoIn(i1,i2,i3,j4)*NumberOP(j4,i4)",-omega0); assert(success); // 1st qubit
+  success = exatn::contractTensors("RhoOut(i1,i2,i3,i4)+=RhoIn(i1,i2,j3,i4)*NumberOP(j3,i3)",-omega1); assert(success); // 2nd qubit
 
-  /* apply raising operation */
-  // LEFT
-  //success = exatn::contractTensors("RhoOut(i1,i2,i3,i4)=RhoIn(i1,j2,i3,i4)*Lowering(j2,i2)",1.0); assert(success); // 1st qubit
-  //success = exatn::contractTensors("RhoOut(i1,i2,i3,i4)=RhoIn(j1,i2,i3,i4)*Lowering(j1,i1)",1.0); assert(success); // 2nd qubit
-  // RIGHT
-  //success = exatn::contractTensors("RhoOut(i1,i2,i3,i4)=RhoIn(i1,i2,i3,j4)*Lowering(i4,j4)",1.0); assert(success); // 1st qubit
-  success = exatn::contractTensors("RhoOut(i1,i2,i3,i4)=RhoIn(i1,i2,j3,i4)*Lowering(i3,j3)",1.0); assert(success); // 2nd qubit
-  
-  //printTensor("RhoOut");
 
-  
   success = exatn::sync(); assert(success);
+  printTensor("RhoOut");
+
 
   std::cout<<"Output:" << std::endl;
   printTensor("RhoOut");
 
 
- /* TEMPLATES */
+
+ /*******************************/
+ /* EXATN TEMPLATES */
+  /* apply lowering operation */
+  // LEFT
+  //success = exatn::contractTensors("RhoOut(i1,i2,i3,i4)+=RhoIn(i1,j2,i3,i4)*Lowering(i2,j2)",1.0); assert(success); // 1st qubit
+  //success = exatn::contractTensors("RhoOut(i1,i2,i3,i4)+=RhoIn(j1,i2,i3,i4)*Lowering(i1,j1)",1.0); assert(success); // 2nd qubit
+  // RIGHT
+  //success = exatn::contractTensors("RhoOut(i1,i2,i3,i4)+=RhoIn(i1,i2,i3,j4)*Lowering(j4,i4)",1.0); assert(success); // 1st qubit
+  //success = exatn::contractTensors("RhoOut(i1,i2,i3,i4)+=RhoIn(i1,i2,j3,i4)*Lowering(j3,i3)",1.0); assert(success); // 2nd qubit
+
+  /* apply raising operation */
+  // LEFT
+  //success = exatn::contractTensors("RhoOut(i1,i2,i3,i4)+=RhoIn(i1,j2,i3,i4)*Lowering(j2,i2)",1.0); assert(success); // 1st qubit
+  //success = exatn::contractTensors("RhoOut(i1,i2,i3,i4)+=RhoIn(j1,i2,i3,i4)*Lowering(j1,i1)",1.0); assert(success); // 2nd qubit
+  // RIGHT
+  //success = exatn::contractTensors("RhoOut(i1,i2,i3,i4)+=RhoIn(i1,i2,i3,j4)*Lowering(i4,j4)",1.0); assert(success); // 1st qubit
+  //success = exatn::contractTensors("RhoOut(i1,i2,i3,i4)+=RhoIn(i1,i2,j3,i4)*Lowering(i3,j3)",1.0); assert(success); // 2nd qubit
+  
+  //printTensor("RhoOut");
+
 
   ////Declare tensors:
   //std::vector<std::size_t> dm_extents(4,2);
@@ -159,6 +173,24 @@ int main(int argc, char ** argv)
   //                                std::vector<double>{0.0, 1.0, 0.0, 0.0}); assert(success);
   //success = exatn::initTensorData("Raising",
   //                                std::vector<double>{0.0, 0.0, 1.0, 0.0}); assert(success);
+
+  /* apply lowering operation */
+  // LEFT
+  //success = exatn::contractTensors("RhoOut(i1,i2,i3,i4)=RhoIn(i1,j2,i3,i4)*Lowering(i2,j2)",1.0); assert(success); // 1st qubit
+  //success = exatn::contractTensors("RhoOut(i1,i2,i3,i4)=RhoIn(j1,i2,i3,i4)*Lowering(i1,j1)",1.0); assert(success); // 2nd qubit
+  // RIGHT
+  //success = exatn::contractTensors("RhoOut(i1,i2,i3,i4)=RhoIn(i1,i2,i3,j4)*Lowering(j4,i4)",1.0); assert(success); // 1st qubit
+  //success = exatn::contractTensors("RhoOut(i1,i2,i3,i4)=RhoIn(i1,i2,j3,i4)*Lowering(j3,i3)",1.0); assert(success); // 2nd qubit
+
+  /* apply raising operation */
+  // LEFT
+  //success = exatn::contractTensors("RhoOut(i1,i2,i3,i4)=RhoIn(i1,j2,i3,i4)*Lowering(j2,i2)",1.0); assert(success); // 1st qubit
+  //success = exatn::contractTensors("RhoOut(i1,i2,i3,i4)=RhoIn(j1,i2,i3,i4)*Lowering(j1,i1)",1.0); assert(success); // 2nd qubit
+  // RIGHT
+  //success = exatn::contractTensors("RhoOut(i1,i2,i3,i4)=RhoIn(i1,i2,i3,j4)*Lowering(i4,j4)",1.0); assert(success); // 1st qubit
+  //success = exatn::contractTensors("RhoOut(i1,i2,i3,i4)=RhoIn(i1,i2,j3,i4)*Lowering(i3,j3)",1.0); assert(success); // 2nd qubit
+  
+
 
   ////Apply raising to the 2nd ket qubit in the density matrix:
   //success = exatn::contractTensors("ResultMatrix(i1,i2,i3,i4)+=DensityMatrix(i1,j1,i3,i4)*Raising(j1,i2)",1.0); assert(success);
