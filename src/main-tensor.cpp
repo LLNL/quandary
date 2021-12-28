@@ -227,10 +227,12 @@ int main(int argc, char ** argv)
 
   /* Operators */
   std::vector<double> op_data;
+ 
   // Number operator, same size for all oscillators
   auto numberOP = makeSharedTensor("NumberOP", TensorShape(dim_q));
   success = createTensor(numberOP, TensorElementType::REAL64); assert(success);
   success = initTensor("NumberOP", 0.0); assert(success);
+  op_data.clear();
   for (int i=0; i<n0; i++){
     for (int j=0; j<n0; j++){
       double val = 0.0;
@@ -239,13 +241,29 @@ int main(int argc, char ** argv)
     }
   }
   success = initTensorData("NumberOP", op_data); assert(success);
-  op_data.clear();
   //printTensor("NumberOP");
+  
+  // Selfkerr operator, same size for all oscillators
+  auto selfkerrOP = makeSharedTensor("SelfKerrOP", TensorShape(dim_q));
+  success = createTensor(selfkerrOP, TensorElementType::REAL64); assert(success);
+  success = initTensor("SelfKerrOP", 0.0); assert(success);
+  op_data.clear();
+  for (int i=0; i<n0; i++){
+    for (int j=0; j<n0; j++){
+      double val = 0.0;
+      if (i == j) val = i*i - i;
+      op_data.push_back(val);
+    }
+  }
+  success = initTensorData("SelfKerrOP", op_data); assert(success);
+  printTensor("SelfKerrOP");
+ 
   
   //Lowering operator
   auto loweringOP = makeSharedTensor("LoweringOP", TensorShape(dim_q));
   success = createTensor(loweringOP, TensorElementType::REAL64); assert(success);
   success = initTensor("LoweringOP", 0.0); assert(success);
+  op_data.clear();
   for (int i=0; i<n0; i++){
     for (int j=0; j<n0; j++){
       double val = 0.0;
@@ -255,7 +273,6 @@ int main(int argc, char ** argv)
   }  
   //success = initTensorData("LoweringOP", std::vector<double>{0.0, 0.0, 1.0, 0.0}); assert(success);
   success = initTensorData("LoweringOP", op_data); assert(success);
-  op_data.clear();
   //printTensor("LoweringOP");
 
   /* --- Hamiltonian -i(Hrho - rhoH) --- */
@@ -264,7 +281,6 @@ int main(int argc, char ** argv)
   double omega0 = oscil_vec[0]->getDetuning();
   double omega1 = oscil_vec[1]->getDetuning();
   printf("detuning %f %f\n", omega0, omega1);
-  
   // real part
   success = exatn::contractTensors("RhoOutRe(i1,i2,i3,i4)+=RhoInIm(i1,j2,i3,i4)*NumberOP(i2,j2)",+omega0); assert(success); // 1st qubit left: + H\rho
   success = exatn::contractTensors("RhoOutRe(i1,i2,i3,i4)+=RhoInIm(j1,i2,i3,i4)*NumberOP(i1,j1)",+omega1); assert(success); // 2nd qubit left: + H\rho
@@ -275,6 +291,23 @@ int main(int argc, char ** argv)
   success = exatn::contractTensors("RhoOutIm(i1,i2,i3,i4)+=RhoInRe(j1,i2,i3,i4)*NumberOP(i1,j1)",-omega1); assert(success); // 2nd qubit left: - H\rho
   success = exatn::contractTensors("RhoOutIm(i1,i2,i3,i4)+=RhoInRe(i1,i2,i3,j4)*NumberOP(j4,i4)",+omega0); assert(success); // 1st qubit right: +\rho H
   success = exatn::contractTensors("RhoOutIm(i1,i2,i3,i4)+=RhoInRe(i1,i2,j3,i4)*NumberOP(j3,i3)",+omega1); assert(success); // 2nd qubit right: +\rho H
+
+  /* SelfKerr */
+  double xi0 = oscil_vec[0]->getSelfkerr();
+  double xi1 = oscil_vec[1]->getSelfkerr();
+  printf("selfkerr %f %f\n", xi0, xi1);
+  // real part
+  success = exatn::contractTensors("RhoOutRe(i1,i2,i3,i4)+=RhoInIm(i1,j2,i3,i4)*SelfKerrOP(i2,j2)",-xi0/2.); assert(success); // 1st qubit left: - H\rho
+  success = exatn::contractTensors("RhoOutRe(i1,i2,i3,i4)+=RhoInIm(j1,i2,i3,i4)*SelfKerrOP(i1,j1)",-xi1/2.); assert(success); // 2nd qubit left: - H\rho
+  success = exatn::contractTensors("RhoOutRe(i1,i2,i3,i4)+=RhoInIm(i1,i2,i3,j4)*SelfKerrOP(j4,i4)",+xi0/2.); assert(success); // 1st qubit right + \rho H
+  success = exatn::contractTensors("RhoOutRe(i1,i2,i3,i4)+=RhoInIm(i1,i2,j3,i4)*SelfKerrOP(j3,i3)",+xi1/2.); assert(success); // 2nd qubit right + \rho H
+  // imag part
+  success = exatn::contractTensors("RhoOutIm(i1,i2,i3,i4)+=RhoInRe(i1,j2,i3,i4)*SelfKerrOP(i2,j2)",+xi0/2.); assert(success); // 1st qubit left: + H\rho
+  success = exatn::contractTensors("RhoOutIm(i1,i2,i3,i4)+=RhoInRe(j1,i2,i3,i4)*SelfKerrOP(i1,j1)",+xi1/2.); assert(success); // 2nd qubit left: + H\rho
+  success = exatn::contractTensors("RhoOutIm(i1,i2,i3,i4)+=RhoInRe(i1,i2,i3,j4)*SelfKerrOP(j4,i4)",-xi0/2.); assert(success); // 1st qubit right: -\rho H
+  success = exatn::contractTensors("RhoOutIm(i1,i2,i3,i4)+=RhoInRe(i1,i2,j3,i4)*SelfKerrOP(j3,i3)",-xi1/2.); assert(success); // 2nd qubit right: -\rho H
+
+
 
   success = exatn::sync(); assert(success);
 
