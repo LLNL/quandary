@@ -200,14 +200,17 @@ int main(int argc, char ** argv)
   auto rho_in_im = exatn::makeSharedTensor("RhoInIm",TensorShape(dm_rho));
   auto rho_out_re= exatn::makeSharedTensor("RhoOutRe",TensorShape(dm_rho));
   auto rho_out_im= exatn::makeSharedTensor("RhoOutIm",TensorShape(dm_rho));
+  auto rho_aux = exatn::makeSharedTensor("RhoAux",TensorShape(dm_rho));
   // Create tensors
   success = exatn::createTensor(rho_in_re,TENS_ELEM_TYPE); assert(success);
   success = exatn::createTensor(rho_in_im,TENS_ELEM_TYPE); assert(success);
   success = exatn::createTensor(rho_out_re,TENS_ELEM_TYPE); assert(success);
   success = exatn::createTensor(rho_out_im,TENS_ELEM_TYPE); assert(success);
+  success = exatn::createTensor(rho_aux,TENS_ELEM_TYPE); assert(success);
   // Initialize tensors
   success = exatn::initTensor("RhoOutRe",0.0); assert(success);
   success = exatn::initTensor("RhoOutIm",0.0); assert(success); 
+  success = exatn::initTensor("RhoAux",0.0); assert(success); 
   // Input vector
   std::vector<double> rho_in_data;
   for (int i=0; i<mastereq->getDim(); i++){ // dim = N^2
@@ -260,7 +263,7 @@ int main(int argc, char ** argv)
     }
   }
   success = initTensorData("SelfKerrOP", op_data); assert(success);
-  printTensor("SelfKerrOP");
+  //printTensor("SelfKerrOP");
  
   
   //Lowering operator
@@ -312,9 +315,33 @@ int main(int argc, char ** argv)
   success = exatn::contractTensors("RhoOutIm(i1,i2,i3,i4)+=RhoInRe(i1,i2,j3,i4)*SelfKerrOP(j3,i3)",-xi1/2.); assert(success); // 2nd qubit right: -\rho H
 
 
+  /* CrossKerr 0<->1 */
+  double xi01 = mastereq->getCrossKerr()[0];
+  printf("crosskerr %f\n", xi01);
+  // real part
+  // left
+  success = exatn::initTensor("RhoAux",0.0); assert(success); // reset rho_aux
+  success = exatn::contractTensors("RhoAux(i1,i2,i3,i4)+=RhoInIm(j1,i2,i3,i4)*NumberOP(i1,j1)",1.0); assert(success);
+  success = exatn::contractTensors("RhoOutRe(i1,i2,i3,i4)+=RhoAux(i1,j2,i3,i4)*NumberOP(i2,j2)",-xi01); assert(success);
+  // right 
+  success = exatn::initTensor("RhoAux",0.0); assert(success); // reset rho_aux
+  success = exatn::contractTensors("RhoAux(i1,i2,i3,i4)+=RhoInIm(i1,i2,j3,i4)*NumberOP(j3,i3)",1.0); assert(success); 
+  success = exatn::contractTensors("RhoOutRe(i1,i2,i3,i4)+=RhoAux(i1,i2,i3,j4)*NumberOP(j4,i4)",+xi01); assert(success);
 
+  // imag part
+  // left
+  success = exatn::initTensor("RhoAux",0.0); assert(success); // reset rho_aux
+  success = exatn::contractTensors("RhoAux(i1,i2,i3,i4)+=RhoInRe(j1,i2,i3,i4)*NumberOP(i1,j1)",1.0); assert(success);
+  success = exatn::contractTensors("RhoOutIm(i1,i2,i3,i4)+=RhoAux(i1,j2,i3,i4)*NumberOP(i2,j2)",+xi01); assert(success);
+  // right 
+  success = exatn::initTensor("RhoAux",0.0); assert(success); // reset rho_aux
+  success = exatn::contractTensors("RhoAux(i1,i2,i3,i4)+=RhoInRe(i1,i2,j3,i4)*NumberOP(j3,i3)",1.0); assert(success); 
+  success = exatn::contractTensors("RhoOutIm(i1,i2,i3,i4)+=RhoAux(i1,i2,i3,j4)*NumberOP(j4,i4)",-xi01); assert(success);
+
+
+
+  // Synchronize for some reason
   success = exatn::sync(); assert(success);
-
 
   //std::cout<<" ######## ExaTN result ########" << std::endl;
   //printTensor("RhoOutRe");
@@ -330,7 +357,8 @@ int main(int argc, char ** argv)
   auto tensor_view_Re = local_copy_Re->getSliceView<exatn::TensorDataType<TENS_ELEM_TYPE>::value>(); //full tensor view
   auto tensor_view_Im = local_copy_Im->getSliceView<exatn::TensorDataType<TENS_ELEM_TYPE>::value>(); //full tensor view
 
-  double err = 0.0;
+  double err_re = 0.0;
+  double err_im = 0.0;
   for (int i0=0; i0<nlevels[0]; i0++){
     for (int i1=0; i1<nlevels[1]; i1++){
       for (int i0p=0; i0p<nlevels[0]; i0p++){
@@ -353,14 +381,15 @@ int main(int argc, char ** argv)
             //std::cout << "PetscIm = " << val_Petsc << std::endl;
             
             // error
-            err += pow(valRe_exaTN - valRe_Petsc, 2.0);
-            err += pow(valIm_exaTN - valIm_Petsc, 2.0);
+            err_re += pow(valRe_exaTN - valRe_Petsc, 2.0);
+            err_im += pow(valIm_exaTN - valIm_Petsc, 2.0);
         }
       }
     }
   }
-  err = sqrt(err);
-  std::cout<< std::endl << "Error(PetscVsExaTN) = " << err << std::endl << std::endl;
+  err_re = sqrt(err_re);
+  err_im = sqrt(err_im);
+  std::cout<< std::endl << "Error(PetscVsExaTN) = " << err_re << " + i " << err_im << std::endl << std::endl;
 
   local_copy_Re.reset();
   local_copy_Im.reset();

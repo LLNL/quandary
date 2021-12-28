@@ -108,6 +108,9 @@ class MasterEq{
     /* Return dimension of system matrix rho: N */
     int getDimRho();
 
+    /* return cross kerr */
+    std::vector<double> getCrossKerr() {return crosskerr;};
+
     /* 
      * Uses Re and Im to build the vectorized Hamiltonian operator M = vec(-i(Hq-qH)+Lindblad). 
      * This should always be called before applying the RHS matrix.
