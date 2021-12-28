@@ -136,7 +136,9 @@ int main(int argc, char ** argv)
       idx++;
     }
   }
+
   MasterEq* mastereq = new MasterEq(nlevels, nessential, oscil_vec, crosskerr, Jkl, eta, lindbladtype, usematfree);
+
 
 
   /* Create rho_in */
@@ -158,11 +160,12 @@ int main(int argc, char ** argv)
   mastereq->assemble_RHS(0.0);
   Mat M = mastereq->getRHS();
 
+
   /* matmult y = Mx */
   MatMult(M, vec_rho_in, vec_rho_out);
 
-  std::cout<<" PETSC results" << std::endl;
-  VecView(vec_rho_out, NULL);
+  //std::cout<<" ######## PETSC result ########" << std::endl;
+  //VecView(vec_rho_out, NULL);
 
 
   /*----- EXATN ----- */
@@ -213,8 +216,8 @@ int main(int argc, char ** argv)
   success = exatn::initTensorData("RhoInRe",rho_in_data); assert(success); // Initialize input with data.
 
   // Print Tensor
-  std::cout<<"Exa input: " << std::endl;
-  exatn::printTensor("RhoInRe");
+  //std::cout<<"Exa input: " << std::endl;
+  //exatn::printTensor("RhoInRe");
 
 
   /* Operators */
@@ -256,11 +259,54 @@ int main(int argc, char ** argv)
   success = exatn::sync(); assert(success);
 
 
-  std::cout<<"Output:" << std::endl;
-  printTensor("RhoOutRe");
-  printTensor("RhoOutIm");
+  //std::cout<<" ######## ExaTN result ########" << std::endl;
+  //printTensor("RhoOutRe");
+  //printTensor("RhoOutIm");
 
 
+  
+  /*****  Compare Petsc and ExaTn results */
+  char tensornameRe[] = "RhoOutRe";
+  char tensornameIm[] = "RhoOutIm";
+  auto local_copy_Re = exatn::getLocalTensor(tensornameRe); assert(local_copy_Re); //type = talsh::Tensor
+  auto local_copy_Im = exatn::getLocalTensor(tensornameIm); assert(local_copy_Im); //type = talsh::Tensor
+  auto tensor_view_Re = local_copy_Re->getSliceView<exatn::TensorDataType<TENS_ELEM_TYPE>::value>(); //full tensor view
+  auto tensor_view_Im = local_copy_Im->getSliceView<exatn::TensorDataType<TENS_ELEM_TYPE>::value>(); //full tensor view
+
+  double err = 0.0;
+  for (int i0=0; i0<nlevels[0]; i0++){
+    for (int i1=0; i1<nlevels[1]; i1++){
+      for (int i0p=0; i0p<nlevels[0]; i0p++){
+        for (int i1p=0; i1p<nlevels[1]; i1p++){
+            // ExaTN values
+            //std::cout << "RhoIm["<< i0 << "," << i1 << "," << i0p << "," << i1p << "] = " << tensor_view[{i0,i1, i0p, i1p}] << std::endl;
+            double valRe_exaTN = tensor_view_Re[{i0,i1, i0p, i1p}];
+            double valIm_exaTN = tensor_view_Im[{i0,i1, i0p, i1p}];
+
+            // PETSC values
+            int i = i0 + i1 * nlevels[1];
+            int j = i0p + i1p * nlevels[1];
+            int vecID = getVecID(i,j,nlevels[0]*nlevels[1]);
+            int vecID_re = getIndexReal(vecID);
+            int vecID_im = getIndexImag(vecID);
+            double valRe_Petsc = 0.0;
+            double valIm_Petsc = 0.0;
+            VecGetValues(vec_rho_out, 1, &vecID_re, &valRe_Petsc);
+            VecGetValues(vec_rho_out, 1, &vecID_im, &valIm_Petsc);
+            //std::cout << "PetscIm = " << val_Petsc << std::endl;
+            
+            // error
+            err += pow(valRe_exaTN - valRe_Petsc, 2.0);
+            err += pow(valIm_exaTN - valIm_Petsc, 2.0);
+        }
+      }
+    }
+  }
+  err = sqrt(err);
+  std::cout<< std::endl << "Error(PetscVsExaTN) = " << err << std::endl << std::endl;
+
+  local_copy_Re.reset();
+  local_copy_Im.reset();
 
  /*******************************/
  /* EXATN TEMPLATES */
