@@ -226,23 +226,43 @@ int main(int argc, char ** argv)
   std::vector<std::size_t> dim_q{n0,n0}; // TODO: Generalize for oscillators with different numbers of levels
 
   /* Operators */
+  std::vector<double> op_data;
   // Number operator, same size for all oscillators
   auto numberOP = makeSharedTensor("NumberOP", TensorShape(dim_q));
   success = createTensor(numberOP, TensorElementType::REAL64); assert(success);
   success = initTensor("NumberOP", 0.0); assert(success);
-  success = initTensorData("NumberOP", std::vector<double>{0.0, 0.0, 0.0, 1.0}); assert(success);
+  for (int i=0; i<n0; i++){
+    for (int j=0; j<n0; j++){
+      double val = 0.0;
+      if (i == j) val = i;
+      op_data.push_back(val);
+    }
+  }
+  success = initTensorData("NumberOP", op_data); assert(success);
+  op_data.clear();
+  //printTensor("NumberOP");
+  
   //Lowering operator
-  auto lowering = makeSharedTensor("Lowering", TensorShape(dim_q));
-  success = createTensor(lowering, TensorElementType::REAL64); assert(success);
-  success = initTensor("Lowering", 0.0); assert(success);
-  success = initTensorData("Lowering", std::vector<double>{0.0, 0.0, 1.0, 0.0}); assert(success);
-  //printTensor("Lowering");
+  auto loweringOP = makeSharedTensor("LoweringOP", TensorShape(dim_q));
+  success = createTensor(loweringOP, TensorElementType::REAL64); assert(success);
+  success = initTensor("LoweringOP", 0.0); assert(success);
+  for (int i=0; i<n0; i++){
+    for (int j=0; j<n0; j++){
+      double val = 0.0;
+      if (i == j+1) val = sqrt(i);
+      op_data.push_back(val);
+    }
+  }  
+  //success = initTensorData("LoweringOP", std::vector<double>{0.0, 0.0, 1.0, 0.0}); assert(success);
+  success = initTensorData("LoweringOP", op_data); assert(success);
+  op_data.clear();
+  //printTensor("LoweringOP");
 
   /* --- Hamiltonian -i(Hrho - rhoH) --- */
 
   /* Detuning */
-  double omega0 = oscil_vec[0]->detuning_freq;
-  double omega1 = oscil_vec[1]->detuning_freq;
+  double omega0 = oscil_vec[0]->getDetuning();
+  double omega1 = oscil_vec[1]->getDetuning();
   printf("detuning %f %f\n", omega0, omega1);
   
   // real part

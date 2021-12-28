@@ -19,7 +19,7 @@ struct PiPulse {
 };
 
 class Oscillator {
-  public:
+  protected:
     int nlevels;                   // Number of levels for this the oscillator 
     double ground_freq;            // Fundamental transition frequency of this oscillator
     double selfkerr;               // Self-kerr frequency $\xi_k$. Multiplies ak^d ak^d ak ak
