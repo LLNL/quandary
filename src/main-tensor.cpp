@@ -209,20 +209,24 @@ int main(int argc, char ** argv)
   success = exatn::initTensor("RhoOutRe",0.0); assert(success);
   success = exatn::initTensor("RhoOutIm",0.0); assert(success); 
   success = exatn::initTensor("RhoInIm",0.0); assert(success); 
+  // Input vector
   std::vector<double> rho_in_data;
-  for (int i=0; i<mastereq->getDim(); i++){
+  for (int i=0; i<mastereq->getDim(); i++){ // dim = N^2
     rho_in_data.push_back(1.0*i+1.0);
   }
-  success = exatn::initTensorData("RhoInRe",rho_in_data); assert(success); // Initialize input with data.
+  success = exatn::initTensorData("RhoInRe",rho_in_data); assert(success);
 
   // Print Tensor
   //std::cout<<"Exa input: " << std::endl;
   //exatn::printTensor("RhoInRe");
 
+  // Dimensions
+  long unsigned int n0 = nlevels[0];
+  long unsigned int n1 = nlevels[1];
+  std::vector<std::size_t> dim_q{n0,n0}; // TODO: Generalize for oscillators with different numbers of levels
 
   /* Operators */
-  // Number operator
-  std::vector<std::size_t> dim_q{2,2};
+  // Number operator, same size for all oscillators
   auto numberOP = makeSharedTensor("NumberOP", TensorShape(dim_q));
   success = createTensor(numberOP, TensorElementType::REAL64); assert(success);
   success = initTensor("NumberOP", 0.0); assert(success);
@@ -242,19 +246,15 @@ int main(int argc, char ** argv)
   printf("detuning %f %f\n", omega0, omega1);
   
   // real part
-  // from left: H\rho
-  success = exatn::contractTensors("RhoOutRe(i1,i2,i3,i4)+=RhoInIm(i1,j2,i3,i4)*NumberOP(i2,j2)",omega0); assert(success); // 1st qubit
-  success = exatn::contractTensors("RhoOutRe(i1,i2,i3,i4)+=RhoInIm(j1,i2,i3,i4)*NumberOP(i1,j1)",omega1); assert(success); // 2nd qubit
-  // from right -\rhoH
-  success = exatn::contractTensors("RhoOutRe(i1,i2,i3,i4)+=RhoInIm(i1,i2,i3,j4)*NumberOP(j4,i4)",-omega0); assert(success); // 1st qubit
-  success = exatn::contractTensors("RhoOutRe(i1,i2,i3,i4)+=RhoInIm(i1,i2,j3,i4)*NumberOP(j3,i3)",-omega1); assert(success); // 2nd qubit
+  success = exatn::contractTensors("RhoOutRe(i1,i2,i3,i4)+=RhoInIm(i1,j2,i3,i4)*NumberOP(i2,j2)",+omega0); assert(success); // 1st qubit left: + H\rho
+  success = exatn::contractTensors("RhoOutRe(i1,i2,i3,i4)+=RhoInIm(j1,i2,i3,i4)*NumberOP(i1,j1)",+omega1); assert(success); // 2nd qubit left: + H\rho
+  success = exatn::contractTensors("RhoOutRe(i1,i2,i3,i4)+=RhoInIm(i1,i2,i3,j4)*NumberOP(j4,i4)",-omega0); assert(success); // 1st qubit right - \rho H
+  success = exatn::contractTensors("RhoOutRe(i1,i2,i3,i4)+=RhoInIm(i1,i2,j3,i4)*NumberOP(j3,i3)",-omega1); assert(success); // 2nd qubit right - \rho H
   // imag part
-  // from left -H\rho
-  success = exatn::contractTensors("RhoOutIm(i1,i2,i3,i4)+=RhoInRe(i1,j2,i3,i4)*NumberOP(i2,j2)",-omega0); assert(success); // 1st qubit
-  success = exatn::contractTensors("RhoOutIm(i1,i2,i3,i4)+=RhoInRe(j1,i2,i3,i4)*NumberOP(i1,j1)",-omega1); assert(success); // 2nd qubit
-  // from right +\rhoH
-  success = exatn::contractTensors("RhoOutIm(i1,i2,i3,i4)+=RhoInRe(i1,i2,i3,j4)*NumberOP(j4,i4)",+omega0); assert(success); // 1st qubit
-  success = exatn::contractTensors("RhoOutIm(i1,i2,i3,i4)+=RhoInRe(i1,i2,j3,i4)*NumberOP(j3,i3)",+omega1); assert(success); // 2nd qubit
+  success = exatn::contractTensors("RhoOutIm(i1,i2,i3,i4)+=RhoInRe(i1,j2,i3,i4)*NumberOP(i2,j2)",-omega0); assert(success); // 1st qubit left: - H\rho
+  success = exatn::contractTensors("RhoOutIm(i1,i2,i3,i4)+=RhoInRe(j1,i2,i3,i4)*NumberOP(i1,j1)",-omega1); assert(success); // 2nd qubit left: - H\rho
+  success = exatn::contractTensors("RhoOutIm(i1,i2,i3,i4)+=RhoInRe(i1,i2,i3,j4)*NumberOP(j4,i4)",+omega0); assert(success); // 1st qubit right: +\rho H
+  success = exatn::contractTensors("RhoOutIm(i1,i2,i3,i4)+=RhoInRe(i1,i2,j3,i4)*NumberOP(j3,i3)",+omega1); assert(success); // 2nd qubit right: +\rho H
 
   success = exatn::sync(); assert(success);
 
