@@ -148,7 +148,7 @@ int main(int argc, char ** argv)
   VecSetFromOptions(vec_rho_in);
   for (int i=0; i<mastereq->getDim(); i++){
     VecSetValue(vec_rho_in, getIndexReal(i),  1.0*i +1.0, INSERT_VALUES);
-    VecSetValue(vec_rho_in, getIndexImag(i),  0.0, INSERT_VALUES);
+    VecSetValue(vec_rho_in, getIndexImag(i),  10.0*i + 10.0, INSERT_VALUES);
   }
   //VecView(vec_rho_in, NULL);
   // Initialize rho_out
@@ -208,13 +208,17 @@ int main(int argc, char ** argv)
   // Initialize tensors
   success = exatn::initTensor("RhoOutRe",0.0); assert(success);
   success = exatn::initTensor("RhoOutIm",0.0); assert(success); 
-  success = exatn::initTensor("RhoInIm",0.0); assert(success); 
   // Input vector
   std::vector<double> rho_in_data;
   for (int i=0; i<mastereq->getDim(); i++){ // dim = N^2
     rho_in_data.push_back(1.0*i+1.0);
   }
-  success = exatn::initTensorData("RhoInRe",rho_in_data); assert(success);
+  success = exatn::initTensorData("RhoInRe",rho_in_data); assert(success);  // rho_in_real 
+  rho_in_data.clear();
+  for (int i=0; i<mastereq->getDim(); i++){ 
+    rho_in_data.push_back(10.0*i+10.0);
+  }
+  success = exatn::initTensorData("RhoInIm",rho_in_data); assert(success);  // rho_in_imal
 
   // Print Tensor
   //std::cout<<"Exa input: " << std::endl;
