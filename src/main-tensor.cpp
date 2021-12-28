@@ -32,6 +32,26 @@ int main(int argc, char ** argv)
  using exatn::TensorExpansion;
  using exatn::TensorElementType;
 
+ // Some ExaTN stuff
+ exatn::ParamConf exatn_parameters;
+ //Set the available CPU Host RAM size to be used by ExaTN:
+ exatn_parameters.setParameter("host_memory_buffer_size",4L*1024L*1024L*1024L);
+#ifdef MPI_ENABLED
+ int thread_provided;
+ int mpi_error = MPI_Init_thread(&argc, &argv, MPI_THREAD_MULTIPLE, &thread_provided);
+ assert(mpi_error == MPI_SUCCESS);
+ assert(thread_provided == MPI_THREAD_MULTIPLE);
+ exatn::initialize(exatn::MPICommProxy(MPI_COMM_WORLD),exatn_parameters,"lazy-dag-executor");
+#else
+ exatn::initialize(exatn_parameters,"lazy-dag-executor");
+#endif
+
+ const auto TENS_ELEM_TYPE = TensorElementType::REAL64;
+ //const auto TENS_ELEM_TYPE = TensorElementType::COMPLEX64;
+
+ { // scope for exatn
+  auto success = true;
+
   PetscErrorCode ierr;
   ierr = PetscInitialize(&argc,&argv,(char*)0,NULL);if (ierr) return ierr;
   
@@ -140,20 +160,25 @@ int main(int argc, char ** argv)
   MasterEq* mastereq = new MasterEq(nlevels, nessential, oscil_vec, crosskerr, Jkl, eta, lindbladtype, usematfree);
 
 
-
-  /* Create rho_in */
-  Vec vec_rho_in;
-  VecCreate(PETSC_COMM_WORLD, &vec_rho_in);
-  VecSetSizes(vec_rho_in,PETSC_DECIDE,2*mastereq->getDim());
-  VecSetFromOptions(vec_rho_in);
-  for (int i=0; i<mastereq->getDim(); i++){
-    VecSetValue(vec_rho_in, getIndexReal(i),  1.0*i +1.0, INSERT_VALUES);
-    VecSetValue(vec_rho_in, getIndexImag(i),  10.0*i + 10.0, INSERT_VALUES);
+  // Initial rho data (input)
+  std::vector<double> rho_in_re_data;
+  std::vector<double> rho_in_im_data;
+  for (int i=0; i<mastereq->getDim(); i++){ 
+    rho_in_re_data.push_back(1.0*i+1.0);
+    rho_in_im_data.push_back(10.0*i+10.0);
   }
-  //VecView(vec_rho_in, NULL);
-  // Initialize rho_out
-  Vec vec_rho_out;
-  VecDuplicate(vec_rho_in, &vec_rho_out);
+
+  /* Create Petsc Vectors */
+  Vec rho_in_petsc;
+  Vec rho_out_petsc;
+  VecCreate(PETSC_COMM_WORLD, &rho_in_petsc);
+  VecSetSizes(rho_in_petsc,PETSC_DECIDE,2*mastereq->getDim());
+  VecSetFromOptions(rho_in_petsc);
+  for (int i=0; i<mastereq->getDim(); i++){
+    VecSetValue(rho_in_petsc, getIndexReal(i),  rho_in_re_data[i], INSERT_VALUES);
+    VecSetValue(rho_in_petsc, getIndexImag(i),  rho_in_im_data[i], INSERT_VALUES);
+  }
+  VecDuplicate(rho_in_petsc, &rho_out_petsc);
 
   /* Evaluate M(0) */
   Mat RHS = mastereq->getRHS();
@@ -161,37 +186,9 @@ int main(int argc, char ** argv)
   Mat M = mastereq->getRHS();
 
 
-  /* matmult y = Mx */
-  MatMult(M, vec_rho_in, vec_rho_out);
-
-  //std::cout<<" ######## PETSC result ########" << std::endl;
-  //VecView(vec_rho_out, NULL);
 
 
-  /*----- EXATN ----- */
- // Some ExaTN stuff
- exatn::ParamConf exatn_parameters;
- //Set the available CPU Host RAM size to be used by ExaTN:
- exatn_parameters.setParameter("host_memory_buffer_size",4L*1024L*1024L*1024L);
-#ifdef MPI_ENABLED
- int thread_provided;
- int mpi_error = MPI_Init_thread(&argc, &argv, MPI_THREAD_MULTIPLE, &thread_provided);
- assert(mpi_error == MPI_SUCCESS);
- assert(thread_provided == MPI_THREAD_MULTIPLE);
- exatn::initialize(exatn::MPICommProxy(MPI_COMM_WORLD),exatn_parameters,"lazy-dag-executor");
-#else
- exatn::initialize(exatn_parameters,"lazy-dag-executor");
-#endif
-
- const auto TENS_ELEM_TYPE = TensorElementType::REAL64;
- //const auto TENS_ELEM_TYPE = TensorElementType::COMPLEX64;
-
- { // scope for exatn
-  auto success = true;
-
-
-  /* Input and output density matrix */
-  // Declare tensors
+  // Declare ExaTN tensors
   std::vector<std::size_t> dm_rho; 
   for (int i=0; i<nlevels.size(); i++) dm_rho.push_back(nlevels[i]);
   for (int i=0; i<nlevels.size(); i++) dm_rho.push_back(nlevels[i]);  // do it two times because rho \in C^{prod_i n_i} x {prod_i n_i}, so once for each dimension of the matrix rho.
@@ -211,17 +208,8 @@ int main(int argc, char ** argv)
   success = exatn::initTensor("RhoOutRe",0.0); assert(success);
   success = exatn::initTensor("RhoOutIm",0.0); assert(success); 
   success = exatn::initTensor("RhoAux",0.0); assert(success); 
-  // Input vector
-  std::vector<double> rho_in_data;
-  for (int i=0; i<mastereq->getDim(); i++){ // dim = N^2
-    rho_in_data.push_back(1.0*i+1.0);
-  }
-  success = exatn::initTensorData("RhoInRe",rho_in_data); assert(success);  // rho_in_real 
-  rho_in_data.clear();
-  for (int i=0; i<mastereq->getDim(); i++){ 
-    rho_in_data.push_back(10.0*i+10.0);
-  }
-  success = exatn::initTensorData("RhoInIm",rho_in_data); assert(success);  // rho_in_imal
+  success = exatn::initTensorData("RhoInRe",rho_in_re_data); assert(success);   
+  success = exatn::initTensorData("RhoInIm",rho_in_im_data); assert(success);  
 
   // Print Tensor
   //std::cout<<"Exa input: " << std::endl;
@@ -282,7 +270,9 @@ int main(int argc, char ** argv)
   success = initTensorData("LoweringOP", op_data); assert(success);
   //printTensor("LoweringOP");
 
-  /* --- Hamiltonian -i(Hrho - rhoH) --- */
+  /* ------------------------------------------------------------------*/
+  /* --- ExaTN Contractions for system Hamiltonian -i(Hrho - rhoH) --- */
+  /* ------------------------------------------------------------------*/
 
   /* Detuning */
   double omega0 = oscil_vec[0]->getDetuning();
@@ -314,7 +304,6 @@ int main(int argc, char ** argv)
   success = exatn::contractTensors("RhoOutIm(i1,i2,i3,i4)+=RhoInRe(i1,i2,i3,j4)*SelfKerrOP(j4,i4)",-xi0/2.); assert(success); // 1st qubit right: -\rho H
   success = exatn::contractTensors("RhoOutIm(i1,i2,i3,i4)+=RhoInRe(i1,i2,j3,i4)*SelfKerrOP(j3,i3)",-xi1/2.); assert(success); // 2nd qubit right: -\rho H
 
-
   /* CrossKerr 0<->1 */
   double xi01 = mastereq->getCrossKerr()[0];
   printf("crosskerr %f\n", xi01);
@@ -339,21 +328,34 @@ int main(int argc, char ** argv)
   success = exatn::contractTensors("RhoOutIm(i1,i2,i3,i4)+=RhoAux(i1,i2,i3,j4)*NumberOP(j4,i4)",-xi01); assert(success);
 
 
-
   // Synchronize for some reason
   success = exatn::sync(); assert(success);
+
 
   //std::cout<<" ######## ExaTN result ########" << std::endl;
   //printTensor("RhoOutRe");
   //printTensor("RhoOutIm");
 
 
+  /* ----------------------------------------------------------------------------------*/
+  /* --- PETSC Matrix vector multiplication for system Hamiltonian -i(Hrho - rhoH) --- */
+  /* ----------------------------------------------------------------------------------*/
+
+
+  /* matmult y = Mx */
+  MatMult(M, rho_in_petsc, rho_out_petsc);
+
+  //std::cout<<" ######## PETSC result ########" << std::endl;
+  //VecView(rho_out_petsc, NULL);
+
+
   
-  /*****  Compare Petsc and ExaTn results */
-  char tensornameRe[] = "RhoOutRe";
-  char tensornameIm[] = "RhoOutIm";
-  auto local_copy_Re = exatn::getLocalTensor(tensornameRe); assert(local_copy_Re); //type = talsh::Tensor
-  auto local_copy_Im = exatn::getLocalTensor(tensornameIm); assert(local_copy_Im); //type = talsh::Tensor
+  /* ----------------------------------------*/
+  /* --- Compare Petsc and ExaTn results --- */
+  /* ----------------------------------------*/
+
+  auto local_copy_Re = exatn::getLocalTensor("RhoOutRe"); assert(local_copy_Re); //type = talsh::Tensor
+  auto local_copy_Im = exatn::getLocalTensor("RhoOutIm"); assert(local_copy_Im); //type = talsh::Tensor
   auto tensor_view_Re = local_copy_Re->getSliceView<exatn::TensorDataType<TENS_ELEM_TYPE>::value>(); //full tensor view
   auto tensor_view_Im = local_copy_Im->getSliceView<exatn::TensorDataType<TENS_ELEM_TYPE>::value>(); //full tensor view
 
@@ -376,8 +378,8 @@ int main(int argc, char ** argv)
             int vecID_im = getIndexImag(vecID);
             double valRe_Petsc = 0.0;
             double valIm_Petsc = 0.0;
-            VecGetValues(vec_rho_out, 1, &vecID_re, &valRe_Petsc);
-            VecGetValues(vec_rho_out, 1, &vecID_im, &valIm_Petsc);
+            VecGetValues(rho_out_petsc, 1, &vecID_re, &valRe_Petsc);
+            VecGetValues(rho_out_petsc, 1, &vecID_im, &valIm_Petsc);
             //std::cout << "PetscIm = " << val_Petsc << std::endl;
             
             // error
