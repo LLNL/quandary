@@ -270,83 +270,119 @@ int main(int argc, char ** argv)
   success = initTensorData("LoweringOP", op_data); assert(success);
   //printTensor("LoweringOP");
 
-  /* ------------------------------------------------------------------*/
-  /* --- ExaTN Contractions for system Hamiltonian -i(Hrho - rhoH) --- */
-  /* ------------------------------------------------------------------*/
-
-  /* Detuning */
-  double omega0 = oscil_vec[0]->getDetuning();
-  double omega1 = oscil_vec[1]->getDetuning();
-  printf("detuning %f %f\n", omega0, omega1);
-  // real part
-  success = exatn::contractTensors("RhoOutRe(i1,i2,i3,i4)+=RhoInIm(i1,j2,i3,i4)*NumberOP(i2,j2)",+omega0); assert(success); // 1st qubit left: + H\rho
-  success = exatn::contractTensors("RhoOutRe(i1,i2,i3,i4)+=RhoInIm(j1,i2,i3,i4)*NumberOP(i1,j1)",+omega1); assert(success); // 2nd qubit left: + H\rho
-  success = exatn::contractTensors("RhoOutRe(i1,i2,i3,i4)+=RhoInIm(i1,i2,i3,j4)*NumberOP(j4,i4)",-omega0); assert(success); // 1st qubit right - \rho H
-  success = exatn::contractTensors("RhoOutRe(i1,i2,i3,i4)+=RhoInIm(i1,i2,j3,i4)*NumberOP(j3,i3)",-omega1); assert(success); // 2nd qubit right - \rho H
-  // imag part
-  success = exatn::contractTensors("RhoOutIm(i1,i2,i3,i4)+=RhoInRe(i1,j2,i3,i4)*NumberOP(i2,j2)",-omega0); assert(success); // 1st qubit left: - H\rho
-  success = exatn::contractTensors("RhoOutIm(i1,i2,i3,i4)+=RhoInRe(j1,i2,i3,i4)*NumberOP(i1,j1)",-omega1); assert(success); // 2nd qubit left: - H\rho
-  success = exatn::contractTensors("RhoOutIm(i1,i2,i3,i4)+=RhoInRe(i1,i2,i3,j4)*NumberOP(j4,i4)",+omega0); assert(success); // 1st qubit right: +\rho H
-  success = exatn::contractTensors("RhoOutIm(i1,i2,i3,i4)+=RhoInRe(i1,i2,j3,i4)*NumberOP(j3,i3)",+omega1); assert(success); // 2nd qubit right: +\rho H
-
-  /* SelfKerr */
-  double xi0 = oscil_vec[0]->getSelfkerr();
-  double xi1 = oscil_vec[1]->getSelfkerr();
-  printf("selfkerr %f %f\n", xi0, xi1);
-  // real part
-  success = exatn::contractTensors("RhoOutRe(i1,i2,i3,i4)+=RhoInIm(i1,j2,i3,i4)*SelfKerrOP(i2,j2)",-xi0/2.); assert(success); // 1st qubit left: - H\rho
-  success = exatn::contractTensors("RhoOutRe(i1,i2,i3,i4)+=RhoInIm(j1,i2,i3,i4)*SelfKerrOP(i1,j1)",-xi1/2.); assert(success); // 2nd qubit left: - H\rho
-  success = exatn::contractTensors("RhoOutRe(i1,i2,i3,i4)+=RhoInIm(i1,i2,i3,j4)*SelfKerrOP(j4,i4)",+xi0/2.); assert(success); // 1st qubit right + \rho H
-  success = exatn::contractTensors("RhoOutRe(i1,i2,i3,i4)+=RhoInIm(i1,i2,j3,i4)*SelfKerrOP(j3,i3)",+xi1/2.); assert(success); // 2nd qubit right + \rho H
-  // imag part
-  success = exatn::contractTensors("RhoOutIm(i1,i2,i3,i4)+=RhoInRe(i1,j2,i3,i4)*SelfKerrOP(i2,j2)",+xi0/2.); assert(success); // 1st qubit left: + H\rho
-  success = exatn::contractTensors("RhoOutIm(i1,i2,i3,i4)+=RhoInRe(j1,i2,i3,i4)*SelfKerrOP(i1,j1)",+xi1/2.); assert(success); // 2nd qubit left: + H\rho
-  success = exatn::contractTensors("RhoOutIm(i1,i2,i3,i4)+=RhoInRe(i1,i2,i3,j4)*SelfKerrOP(j4,i4)",-xi0/2.); assert(success); // 1st qubit right: -\rho H
-  success = exatn::contractTensors("RhoOutIm(i1,i2,i3,i4)+=RhoInRe(i1,i2,j3,i4)*SelfKerrOP(j3,i3)",-xi1/2.); assert(success); // 2nd qubit right: -\rho H
-
-  /* CrossKerr 0<->1 */
-  double xi01 = mastereq->getCrossKerr()[0];
-  printf("crosskerr %f\n", xi01);
-  // real part
-  // left
-  success = exatn::initTensor("RhoAux",0.0); assert(success); // reset rho_aux
-  success = exatn::contractTensors("RhoAux(i1,i2,i3,i4)+=RhoInIm(j1,i2,i3,i4)*NumberOP(i1,j1)",1.0); assert(success);
-  success = exatn::contractTensors("RhoOutRe(i1,i2,i3,i4)+=RhoAux(i1,j2,i3,i4)*NumberOP(i2,j2)",-xi01); assert(success);
-  // right 
-  success = exatn::initTensor("RhoAux",0.0); assert(success); // reset rho_aux
-  success = exatn::contractTensors("RhoAux(i1,i2,i3,i4)+=RhoInIm(i1,i2,j3,i4)*NumberOP(j3,i3)",1.0); assert(success); 
-  success = exatn::contractTensors("RhoOutRe(i1,i2,i3,i4)+=RhoAux(i1,i2,i3,j4)*NumberOP(j4,i4)",+xi01); assert(success);
-
-  // imag part
-  // left
-  success = exatn::initTensor("RhoAux",0.0); assert(success); // reset rho_aux
-  success = exatn::contractTensors("RhoAux(i1,i2,i3,i4)+=RhoInRe(j1,i2,i3,i4)*NumberOP(i1,j1)",1.0); assert(success);
-  success = exatn::contractTensors("RhoOutIm(i1,i2,i3,i4)+=RhoAux(i1,j2,i3,i4)*NumberOP(i2,j2)",+xi01); assert(success);
-  // right 
-  success = exatn::initTensor("RhoAux",0.0); assert(success); // reset rho_aux
-  success = exatn::contractTensors("RhoAux(i1,i2,i3,i4)+=RhoInRe(i1,i2,j3,i4)*NumberOP(j3,i3)",1.0); assert(success); 
-  success = exatn::contractTensors("RhoOutIm(i1,i2,i3,i4)+=RhoAux(i1,i2,i3,j4)*NumberOP(j4,i4)",-xi01); assert(success);
 
 
-  // Synchronize for some reason
-  success = exatn::sync(); assert(success);
-
-
-  //std::cout<<" ######## ExaTN result ########" << std::endl;
-  //printTensor("RhoOutRe");
-  //printTensor("RhoOutIm");
-
+  // Run <nexe> matrix-vector multiplications
+  int nexe = 1;
 
   /* ----------------------------------------------------------------------------------*/
   /* --- PETSC Matrix vector multiplication for system Hamiltonian -i(Hrho - rhoH) --- */
   /* ----------------------------------------------------------------------------------*/
 
+  /* Start timer */
+  double TimePetscStart = MPI_Wtime();
+  double Timecurr = TimePetscStart;
 
-  /* matmult y = Mx */
-  MatMult(M, rho_in_petsc, rho_out_petsc);
+  std::cout<<"Petsc: ";
+  for (int iexe = 0; iexe < nexe; iexe++){
+    std::cout<<" " << iexe;
+
+    /* Petsc matrix vector product y = Mx */
+    MatMult(M, rho_in_petsc, rho_out_petsc);
+
+
+    std::cout<< "("<< MPI_Wtime() - Timecurr << ")";
+    Timecurr = MPI_Wtime();
+  }
+  std::cout<<std::endl;
+
 
   //std::cout<<" ######## PETSC result ########" << std::endl;
   //VecView(rho_out_petsc, NULL);
+
+  /* Get time */
+  double TimePetscStop = MPI_Wtime();
+
+
+
+
+  /* ------------------------------------------------------------------*/
+  /* --- ExaTN Contractions for system Hamiltonian -i(Hrho - rhoH) --- */
+  /* ------------------------------------------------------------------*/
+  double omega0 = oscil_vec[0]->getDetuning();
+  double omega1 = oscil_vec[1]->getDetuning();
+  //printf("detuning %f %f\n", omega0, omega1);
+  double xi0 = oscil_vec[0]->getSelfkerr();
+  double xi1 = oscil_vec[1]->getSelfkerr();
+  //printf("selfkerr %f %f\n", xi0, xi1);
+  double xi01 = mastereq->getCrossKerr()[0];
+  //printf("crosskerr %f\n", xi01);
+
+  /* Start timer */
+  double TimeExaStart = MPI_Wtime();
+  Timecurr = TimeExaStart;
+
+  std::cout<<"ExaTN: " ;
+  for (int iexe = 0; iexe < nexe; iexe++){
+    std::cout<<" " << iexe;
+
+    /* Detuning */
+    // real part
+    success = exatn::contractTensors("RhoOutRe(i1,i2,i3,i4)+=RhoInIm(i1,j2,i3,i4)*NumberOP(i2,j2)",+omega0); assert(success); // 1st qubit left: + H\rho
+    success = exatn::contractTensors("RhoOutRe(i1,i2,i3,i4)+=RhoInIm(j1,i2,i3,i4)*NumberOP(i1,j1)",+omega1); assert(success); // 2nd qubit left: + H\rho
+    success = exatn::contractTensors("RhoOutRe(i1,i2,i3,i4)+=RhoInIm(i1,i2,i3,j4)*NumberOP(j4,i4)",-omega0); assert(success); // 1st qubit right - \rho H
+    success = exatn::contractTensors("RhoOutRe(i1,i2,i3,i4)+=RhoInIm(i1,i2,j3,i4)*NumberOP(j3,i3)",-omega1); assert(success); // 2nd qubit right - \rho H
+    // imag part
+    success = exatn::contractTensors("RhoOutIm(i1,i2,i3,i4)+=RhoInRe(i1,j2,i3,i4)*NumberOP(i2,j2)",-omega0); assert(success); // 1st qubit left: - H\rho
+    success = exatn::contractTensors("RhoOutIm(i1,i2,i3,i4)+=RhoInRe(j1,i2,i3,i4)*NumberOP(i1,j1)",-omega1); assert(success); // 2nd qubit left: - H\rho
+    success = exatn::contractTensors("RhoOutIm(i1,i2,i3,i4)+=RhoInRe(i1,i2,i3,j4)*NumberOP(j4,i4)",+omega0); assert(success); // 1st qubit right: +\rho H
+    success = exatn::contractTensors("RhoOutIm(i1,i2,i3,i4)+=RhoInRe(i1,i2,j3,i4)*NumberOP(j3,i3)",+omega1); assert(success); // 2nd qubit right: +\rho H
+
+    /* SelfKerr */
+    // real part
+    success = exatn::contractTensors("RhoOutRe(i1,i2,i3,i4)+=RhoInIm(i1,j2,i3,i4)*SelfKerrOP(i2,j2)",-xi0/2.); assert(success); // 1st qubit left: - H\rho
+    success = exatn::contractTensors("RhoOutRe(i1,i2,i3,i4)+=RhoInIm(j1,i2,i3,i4)*SelfKerrOP(i1,j1)",-xi1/2.); assert(success); // 2nd qubit left: - H\rho
+    success = exatn::contractTensors("RhoOutRe(i1,i2,i3,i4)+=RhoInIm(i1,i2,i3,j4)*SelfKerrOP(j4,i4)",+xi0/2.); assert(success); // 1st qubit right + \rho H
+    success = exatn::contractTensors("RhoOutRe(i1,i2,i3,i4)+=RhoInIm(i1,i2,j3,i4)*SelfKerrOP(j3,i3)",+xi1/2.); assert(success); // 2nd qubit right + \rho H
+    // imag part
+    success = exatn::contractTensors("RhoOutIm(i1,i2,i3,i4)+=RhoInRe(i1,j2,i3,i4)*SelfKerrOP(i2,j2)",+xi0/2.); assert(success); // 1st qubit left: + H\rho
+    success = exatn::contractTensors("RhoOutIm(i1,i2,i3,i4)+=RhoInRe(j1,i2,i3,i4)*SelfKerrOP(i1,j1)",+xi1/2.); assert(success); // 2nd qubit left: + H\rho
+    success = exatn::contractTensors("RhoOutIm(i1,i2,i3,i4)+=RhoInRe(i1,i2,i3,j4)*SelfKerrOP(j4,i4)",-xi0/2.); assert(success); // 1st qubit right: -\rho H
+    success = exatn::contractTensors("RhoOutIm(i1,i2,i3,i4)+=RhoInRe(i1,i2,j3,i4)*SelfKerrOP(j3,i3)",-xi1/2.); assert(success); // 2nd qubit right: -\rho H
+
+    /* CrossKerr 0<->1 */
+    // real part
+    // left
+    success = exatn::initTensor("RhoAux",0.0); assert(success); // reset rho_aux
+    success = exatn::contractTensors("RhoAux(i1,i2,i3,i4)+=RhoInIm(j1,i2,i3,i4)*NumberOP(i1,j1)",1.0); assert(success);
+    success = exatn::contractTensors("RhoOutRe(i1,i2,i3,i4)+=RhoAux(i1,j2,i3,i4)*NumberOP(i2,j2)",-xi01); assert(success);
+    // right 
+    success = exatn::initTensor("RhoAux",0.0); assert(success); // reset rho_aux
+    success = exatn::contractTensors("RhoAux(i1,i2,i3,i4)+=RhoInIm(i1,i2,j3,i4)*NumberOP(j3,i3)",1.0); assert(success); 
+    success = exatn::contractTensors("RhoOutRe(i1,i2,i3,i4)+=RhoAux(i1,i2,i3,j4)*NumberOP(j4,i4)",+xi01); assert(success);
+    // imag part
+    // left
+    success = exatn::initTensor("RhoAux",0.0); assert(success); // reset rho_aux
+    success = exatn::contractTensors("RhoAux(i1,i2,i3,i4)+=RhoInRe(j1,i2,i3,i4)*NumberOP(i1,j1)",1.0); assert(success);
+    success = exatn::contractTensors("RhoOutIm(i1,i2,i3,i4)+=RhoAux(i1,j2,i3,i4)*NumberOP(i2,j2)",+xi01); assert(success);
+    // right 
+    success = exatn::initTensor("RhoAux",0.0); assert(success); // reset rho_aux
+    success = exatn::contractTensors("RhoAux(i1,i2,i3,i4)+=RhoInRe(i1,i2,j3,i4)*NumberOP(j3,i3)",1.0); assert(success); 
+    success = exatn::contractTensors("RhoOutIm(i1,i2,i3,i4)+=RhoAux(i1,i2,i3,j4)*NumberOP(j4,i4)",-xi01); assert(success);
+
+    // Synchronize for some reason (when?)
+    success = exatn::sync(); assert(success);
+
+    std::cout<< "("<< MPI_Wtime() - Timecurr << ")";
+    Timecurr = MPI_Wtime();
+  } // end of iexe loop
+
+  // Get time
+  double TimeExaStop = MPI_Wtime();
+
+  //std::cout<<" ######## ExaTN result ########" << std::endl;
+  //printTensor("RhoOutRe");
+  //printTensor("RhoOutIm");
 
 
   
@@ -361,6 +397,7 @@ int main(int argc, char ** argv)
 
   double err_re = 0.0;
   double err_im = 0.0;
+  double norm_petsc = 0.0;
   for (int i0=0; i0<nlevels[0]; i0++){
     for (int i1=0; i1<nlevels[1]; i1++){
       for (int i0p=0; i0p<nlevels[0]; i0p++){
@@ -381,7 +418,9 @@ int main(int argc, char ** argv)
             VecGetValues(rho_out_petsc, 1, &vecID_re, &valRe_Petsc);
             VecGetValues(rho_out_petsc, 1, &vecID_im, &valIm_Petsc);
             //std::cout << "PetscIm = " << val_Petsc << std::endl;
-            
+            norm_petsc += pow(valRe_Petsc, 2.0);
+            norm_petsc += pow(valIm_Petsc, 2.0);
+
             // error
             err_re += pow(valRe_exaTN - valRe_Petsc, 2.0);
             err_im += pow(valIm_exaTN - valIm_Petsc, 2.0);
@@ -389,12 +428,20 @@ int main(int argc, char ** argv)
       }
     }
   }
-  err_re = sqrt(err_re);
-  err_im = sqrt(err_im);
+  norm_petsc = sqrt(norm_petsc);
+  err_re = sqrt(err_re)/norm_petsc;
+  err_im = sqrt(err_im)/norm_petsc;
   std::cout<< std::endl << "Error(PetscVsExaTN) = " << err_re << " + i " << err_im << std::endl << std::endl;
 
   local_copy_Re.reset();
   local_copy_Im.reset();
+
+
+  /* Print timing */
+  double TimeExa   = TimeExaStop - TimeExaStart;
+  double TimePetsc = TimePetscStop - TimePetscStart ;
+  std::cout<< "average time ExaTN ( "<< nexe << "exec) : " << TimeExa   << " sec" << std::endl;
+  std::cout<< "average time PetsC ( "<< nexe << "exec) : " << TimePetsc << " sec" << std::endl;
 
  /*******************************/
  /* EXATN TEMPLATES */
