@@ -29,10 +29,10 @@ class OptimTarget{
 
     /* Evaluate the objective J */
     /* Note that J depends on the target state which itself can depend on the initial state. Therefor, the targetstate should be computed within 'prepare' routine! */
-    double evalJ(const Vec state);
+    double evalJ(const Vec state, LindbladType lindbladtype);
 
     /* Evaluate the fidelity Tr(rhotarget^\dagger rho) */
-    double evalFidelity(const Vec state);
+    double evalFidelity(const Vec state, LindbladType lindbladtype);
 
     /* Derivative of evalJ. This updates the adjoint initial condition statebar */
     void evalJ_diff(const Vec state, Vec statebar, const double Jbar);

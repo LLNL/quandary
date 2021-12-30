@@ -12,7 +12,7 @@ TimeStepper::TimeStepper() {
 
 TimeStepper::TimeStepper(MasterEq* mastereq_, int ntime_, double total_time_, Output* output_, bool storeFWD_) : TimeStepper() {
   mastereq = mastereq_;
-  dim = 2*mastereq->getDim();
+  dim = 2*mastereq->getDim(); // will be either N^2 (Lindblad) or N (Schroedinger)
   ntime = ntime_;
   total_time = total_time_;
   output = output_;
@@ -139,13 +139,14 @@ void TimeStepper::solveAdjointODE(int initid, Vec rho_t0_bar, double Jbar) {
 
 double TimeStepper::penaltyIntegral(double time, const Vec x){
   double penalty = 0.0;
-  int dim_rho = (int)sqrt(dim/2);  // dim = 2*N^2 vectorized system. dim_rho = N = dimension of matrix system
+  int dim_rho = mastereq->getDimRho(); // N
   double x_re, x_im;
+  PetscInt vecID_re, vecID_im;
 
   /* weighted integral of the objective function */
   if (penalty_param > 1e-13) {
     double weight = 1./penalty_param * exp(- pow((time - total_time)/penalty_param, 2));
-    double obj = optim_target->evalJ(x);
+    double obj = optim_target->evalJ(x, mastereq->lindbladtype);
     penalty = weight * obj * dt;
   }
 
@@ -157,11 +158,16 @@ double TimeStepper::penaltyIntegral(double time, const Vec x){
       for (int i=0; i<dim_rho; i++) {
         if ( isGuardLevel(i, mastereq->nlevels, mastereq->nessential) ) {
           // printf("isGuard: %d / %d\n", i, dim_rho);
-          PetscInt vecID_re = getIndexReal(getVecID(i,i,dim_rho));
-          PetscInt vecID_im = getIndexImag(getVecID(i,i,dim_rho));
+          if (mastereq->lindbladtype != LindbladType::NONE) {
+            vecID_re = getIndexReal(getVecID(i,i,dim_rho));
+            vecID_im = getIndexImag(getVecID(i,i,dim_rho));
+          } else {
+            vecID_re = getIndexReal(i);
+            vecID_im = getIndexImag(i);
+          }
           x_re = 0.0; x_im = 0.0;
           if (ilow <= vecID_re && vecID_re < iupp) VecGetValues(x, 1, &vecID_re, &x_re);
-          if (ilow <= vecID_im && vecID_im < iupp) VecGetValues(x, 1, &vecID_im, &x_im);  // those should be zero!? 
+          if (ilow <= vecID_im && vecID_im < iupp) VecGetValues(x, 1, &vecID_im, &x_im); 
           penalty += dt * (x_re * x_re + x_im * x_im);
         }
       }
@@ -173,7 +179,8 @@ double TimeStepper::penaltyIntegral(double time, const Vec x){
 }
 
 void TimeStepper::penaltyIntegral_diff(double time, const Vec x, Vec xbar, double penaltybar){
-  int dim_rho = (int)sqrt(dim/2);  // dim = 2*N^2 vectorized system. dim_rho = N = dimension of matrix system
+  int dim_rho = mastereq->getDimRho();  // N
+  PetscInt vecID_re, vecID_im;
 
   /* Derivative of weighted integral of the objective function */
   if (penalty_param > 1e-13){
@@ -188,8 +195,13 @@ void TimeStepper::penaltyIntegral_diff(double time, const Vec x, Vec xbar, doubl
     double x_re, x_im;
     for (int i=0; i<dim_rho; i++) {
       if ( isGuardLevel(i, mastereq->nlevels, mastereq->nessential) ) {
-        PetscInt vecID_re = getIndexReal(getVecID(i,i,dim_rho));
-        PetscInt vecID_im = getIndexImag(getVecID(i,i,dim_rho));
+        if (mastereq->lindbladtype != LindbladType::NONE){ 
+          vecID_re = getIndexReal(getVecID(i,i,dim_rho));
+          vecID_im = getIndexImag(getVecID(i,i,dim_rho));
+        } else {
+          vecID_re = getIndexReal(i);
+          vecID_im = getIndexImag(i);
+        }
         x_re = 0.0; x_im = 0.0;
         if (ilow <= vecID_re && vecID_re < iupp) VecGetValues(x, 1, &vecID_re, &x_re);
         if (ilow <= vecID_im && vecID_im < iupp) VecGetValues(x, 1, &vecID_im, &x_im);

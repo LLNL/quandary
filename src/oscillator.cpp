@@ -7,7 +7,7 @@ Oscillator::Oscillator(){
   ground_freq = 0.0;
 }
 
-Oscillator::Oscillator(int id, std::vector<int> nlevels_all_, int nbasis_, double ground_freq_, double selfkerr_, double rotational_freq_, double decay_time_, double dephase_time_, std::vector<double> carrier_freq_, double Tfinal_){
+Oscillator::Oscillator(int id, std::vector<int> nlevels_all_, int nbasis_, double ground_freq_, double selfkerr_, double rotational_freq_, double decay_time_, double dephase_time_, std::vector<double> carrier_freq_, double Tfinal_, LindbladType lindbladtype_){
 
   nlevels = nlevels_all_[id];
   Tfinal = Tfinal_;
@@ -16,6 +16,7 @@ Oscillator::Oscillator(int id, std::vector<int> nlevels_all_, int nbasis_, doubl
   detuning_freq = 2.0*M_PI*(ground_freq_ - rotational_freq_);
   decay_time = decay_time_;
   dephase_time = dephase_time_;
+  lindbladtype = lindbladtype_;
 
   MPI_Comm_rank(PETSC_COMM_WORLD, &mpirank_petsc);
   int mpirank_world;
@@ -139,10 +140,12 @@ double Oscillator::expectedEnergy(const Vec x) {
  
   PetscInt dim;
   VecGetSize(x, &dim);
-  int dimmat = (int) sqrt(dim/2);
+  int dimmat;
+  if (lindbladtype != LindbladType::NONE)  dimmat = (int) sqrt(dim/2);
+  else dimmat = (int) dim/2;
 
   /* Get locally owned portion of x */
-  PetscInt ilow, iupp;
+  PetscInt ilow, iupp, idx_diag_re, idx_diag_im;
   VecGetOwnershipRange(x, &ilow, &iupp);
 
   /* Iterate over diagonal elements to add up expected energy level */
@@ -153,10 +156,23 @@ double Oscillator::expectedEnergy(const Vec x) {
     int num_diag = i % (nlevels*dim_postOsc);
     num_diag = num_diag / dim_postOsc;
     /* Get diagonal element in rho (real) */
-    PetscInt idx_diag = getIndexReal(getVecID(i,i,dimmat));
+    if (lindbladtype != LindbladType::NONE) idx_diag_re = getIndexReal(getVecID(i,i,dimmat));
+    else {
+      idx_diag_re = getIndexReal(i);
+      idx_diag_im = getIndexImag(i);
+    }
+    
     double xdiag = 0.0;
-    if (ilow <= idx_diag && idx_diag < iupp) VecGetValues(x, 1, &idx_diag, &xdiag);
-    expected += num_diag * xdiag;
+    if (lindbladtype != LindbladType::NONE){ // Lindblad solver: += i * rho_ii
+      if (ilow <= idx_diag_re && idx_diag_re < iupp) VecGetValues(x, 1, &idx_diag_re, &xdiag);
+      expected += num_diag * xdiag;
+    }
+    else { // Schoedinger solver: += i * | psi_i |^2
+      if (ilow <= idx_diag_re && idx_diag_re < iupp) VecGetValues(x, 1, &idx_diag_re, &xdiag);
+      expected += num_diag * xdiag * xdiag;
+      if (ilow <= idx_diag_im && idx_diag_im < iupp) VecGetValues(x, 1, &idx_diag_im, &xdiag);
+      expected += num_diag * xdiag * xdiag;
+    }
   }
   
   /* Sum up from all Petsc processors */
@@ -170,20 +186,38 @@ double Oscillator::expectedEnergy(const Vec x) {
 void Oscillator::expectedEnergy_diff(const Vec x, Vec x_bar, const double obj_bar) {
   PetscInt dim;
   VecGetSize(x, &dim);
-  int dimmat = (int) sqrt(dim/2);
-  double num_diag;
+  int dimmat;
+  if (lindbladtype != LindbladType::NONE) dimmat = (int) sqrt(dim/2);
+  else dimmat = (int) dim/2;
+  double num_diag, xdiag, val;
 
   /* Get locally owned portion of x */
-  PetscInt ilow, iupp;
+  PetscInt ilow, iupp, idx_diag_re, idx_diag_im;
   VecGetOwnershipRange(x, &ilow, &iupp);
 
   /* Derivative of projective measure */
   for (int i=0; i<dimmat; i++) {
     int num_diag = i % (nlevels*dim_postOsc);
     num_diag = num_diag / dim_postOsc;
-    PetscInt idx_diag = getIndexReal(getVecID(i, i, dimmat));
-    double val = num_diag * obj_bar;
-    if (ilow <= idx_diag && idx_diag < iupp) VecSetValues(x_bar, 1, &idx_diag, &val, ADD_VALUES);
+    if (lindbladtype != LindbladType::NONE) { // Lindblas solver
+      val = num_diag * obj_bar;
+      idx_diag_re = getIndexReal(getVecID(i, i, dimmat));
+      if (ilow <= idx_diag_re && idx_diag_re < iupp) VecSetValues(x_bar, 1, &idx_diag_re, &val, ADD_VALUES);
+    }
+    else {
+      // Real part
+      idx_diag_re = getIndexReal(i);
+      xdiag = 0.0;
+      if (ilow <= idx_diag_re && idx_diag_re < iupp) VecGetValues(x, 1, &idx_diag_re, &xdiag);
+      val = num_diag * xdiag * obj_bar;
+      if (ilow <= idx_diag_re && idx_diag_re < iupp) VecSetValues(x_bar, 1, &idx_diag_re, &val, ADD_VALUES);
+      // Imaginary part
+      idx_diag_im = getIndexImag(i);
+      xdiag = 0.0;
+      if (ilow <= idx_diag_im && idx_diag_im < iupp) VecGetValues(x, 1, &idx_diag_im, &xdiag);
+      val = - num_diag * xdiag * obj_bar; // TODO: Is this a minus or a plus?? 
+      if (ilow <= idx_diag_im && idx_diag_im < iupp) VecSetValues(x_bar, 1, &idx_diag_im, &val, ADD_VALUES);
+    }
   }
   VecAssemblyBegin(x_bar); VecAssemblyEnd(x_bar);
 
@@ -193,6 +227,7 @@ void Oscillator::expectedEnergy_diff(const Vec x, Vec x_bar, const double obj_ba
 void Oscillator::population(const Vec x, std::vector<double> &pop) {
 
   int dimN = dim_preOsc * nlevels * dim_postOsc;
+  double val;
 
   assert (pop.size() == nlevels);
 
@@ -213,10 +248,21 @@ void Oscillator::population(const Vec x, std::vector<double> &pop) {
       for (int l=0; l < dim_postOsc; l++) {
         /* Get diagonal element */
         int rhoID = blockstartID + identitystartID + l; // Diagonal element of rho
-        PetscInt diagID = getIndexReal(getVecID(rhoID, rhoID, dimN));  // Position in vectorized rho
-        double val = 0.0;
-        if (ilow <= diagID && diagID < iupp)  VecGetValues(x, 1, &diagID, &val);
-        sum += val;
+        if (lindbladtype != LindbladType::NONE) { // Lindblad solver
+          PetscInt diagID = getIndexReal(getVecID(rhoID, rhoID, dimN));  // Position in vectorized rho
+          double val = 0.0;
+          if (ilow <= diagID && diagID < iupp)  VecGetValues(x, 1, &diagID, &val);
+          sum += val;
+        } else {
+          PetscInt diagID_re = getIndexReal(rhoID);
+          PetscInt diagID_im = getIndexImag(rhoID);
+          val = 0.0;
+          if (ilow <= diagID_re && diagID_re < iupp)  VecGetValues(x, 1, &diagID_re, &val);
+          sum += val * val;
+          val = 0.0;
+          if (ilow <= diagID_im && diagID_im < iupp)  VecGetValues(x, 1, &diagID_im, &val);
+          sum += val * val;
+        }
       }
     }
     mypop[i] = sum;

@@ -172,6 +172,17 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
     exit(1);
   }
 
+  /* Sanity check for Schrodinger solver initial conditions */
+  if (timestepper->mastereq->lindbladtype == LindbladType::NONE){
+    if (initcond_type == InitialConditionType::ENSEMBLE ||
+        initcond_type == InitialConditionType::THREESTATES ||
+        initcond_type == InitialConditionType::NPLUSONE ||
+        initcond_type == InitialConditionType::BASIS ) {
+          printf("\n\n ERROR for initial condition setting: \n When running Schroedingers solver (collapse_type == NONE), the initial condition needs to be either 'pure' or 'from file' or 'diagonal'. Note that 'diagonal' here refers to all basis states in the Schroedinger case.\n\n");
+          exit(1);
+        }
+  }
+
   /* Allocate the initial condition vector */
   VecCreate(PETSC_COMM_WORLD, &rho_t0); 
   VecSetSizes(rho_t0,PETSC_DECIDE,2*timestepper->mastereq->getDim());
@@ -201,8 +212,10 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
       }
       diag_id += initcond_IDs[k] * dim_postkron;
     }
-    int ndim = (int)sqrt(timestepper->mastereq->getDim());
-    int vec_id = getIndexReal(getVecID( diag_id, diag_id, ndim )); // Real part of x
+    int ndim = timestepper->mastereq->getDimRho();
+    int vec_id = -1;
+    if (timestepper->mastereq->lindbladtype != LindbladType::NONE) vec_id = getIndexReal(getVecID( diag_id, diag_id, ndim )); // Real part of x
+    else vec_id = getIndexReal(diag_id);
     if (ilow <= vec_id && vec_id < iupp) VecSetValue(rho_t0, vec_id, 1.0, INSERT_VALUES);
   }
   else if (initcond_type == InitialConditionType::FROMFILE) { 
@@ -211,25 +224,40 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
     // int dim = timestepper->mastereq->getDim();
     int dim_ess = timestepper->mastereq->getDimEss();
     int dim_rho = timestepper->mastereq->getDimRho();
-    double * vec = new double[2*dim_ess*dim_ess];
+    int nelems = 0;
+    if (timestepper->mastereq->lindbladtype != LindbladType::NONE) nelems = 2*dim_ess*dim_ess;
+    else nelems = 2 * dim_ess;
+    double * vec = new double[nelems];
     if (mpirank_world == 0) {
       assert (initcondstr.size()==2);
       std::string filename = initcondstr[1];
-      read_vector(filename.c_str(), vec, 2*dim_ess*dim_ess);
+      read_vector(filename.c_str(), vec, nelems);
     }
-    MPI_Bcast(vec, 2*dim_ess*dim_ess, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-    for (int i = 0; i < dim_ess*dim_ess; i++) {
-      int k = i % dim_ess;
-      int j = (int) i / dim_ess;
-      if (dim_ess*dim_ess < timestepper->mastereq->getDim()) {
-        k = mapEssToFull(k, timestepper->mastereq->nlevels, timestepper->mastereq->nessential);
-        j = mapEssToFull(j, timestepper->mastereq->nlevels, timestepper->mastereq->nessential);
+    MPI_Bcast(vec, nelems, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    if (timestepper->mastereq->lindbladtype != LindbladType::NONE) { // Lindblad solver, fill density matrix
+      for (int i = 0; i < dim_ess*dim_ess; i++) {
+        int k = i % dim_ess;
+        int j = (int) i / dim_ess;
+        if (dim_ess*dim_ess < timestepper->mastereq->getDim()) {
+          k = mapEssToFull(k, timestepper->mastereq->nlevels, timestepper->mastereq->nessential);
+          j = mapEssToFull(j, timestepper->mastereq->nlevels, timestepper->mastereq->nessential);
+        }
+        int elemid_re = getIndexReal(getVecID(k,j,dim_rho));
+        int elemid_im = getIndexImag(getVecID(k,j,dim_rho));
+        if (ilow <= elemid_re && elemid_re < iupp) VecSetValue(rho_t0, elemid_re, vec[i], INSERT_VALUES);        // RealPart
+        if (ilow <= elemid_im && elemid_im < iupp) VecSetValue(rho_t0, elemid_im, vec[i + dim_ess*dim_ess], INSERT_VALUES); // Imaginary Part
+        // printf("  -> k=%d j=%d, elemid=%d vals=%1.4e, %1.4e\n", k, j, elemid, vec[i], vec[i+dim_ess*dim_ess]);
       }
-      int elemid_re = getIndexReal(getVecID(k,j,dim_rho));
-      int elemid_im = getIndexImag(getVecID(k,j,dim_rho));
-      if (ilow <= elemid_re && elemid_re < iupp) VecSetValue(rho_t0, elemid_re, vec[i], INSERT_VALUES);        // RealPart
-      if (ilow <= elemid_im && elemid_im < iupp) VecSetValue(rho_t0, elemid_im, vec[i + dim_ess*dim_ess], INSERT_VALUES); // Imaginary Part
-      // printf("  -> k=%d j=%d, elemid=%d vals=%1.4e, %1.4e\n", k, j, elemid, vec[i], vec[i+dim_ess*dim_ess]);
+    } else { // Schroedinger solver, fill vector 
+      for (int i = 0; i < dim_ess; i++) {
+        int k = i;
+        if (dim_ess < timestepper->mastereq->getDim()) 
+          k = mapEssToFull(i, timestepper->mastereq->nlevels, timestepper->mastereq->nessential);
+        int elemid_re = getIndexReal(k);
+        int elemid_im = getIndexImag(k);
+        if (ilow <= elemid_re && elemid_re < iupp) VecSetValue(rho_t0, elemid_re, vec[i], INSERT_VALUES);        // RealPart
+        if (ilow <= elemid_im && elemid_im < iupp) VecSetValue(rho_t0, elemid_im, vec[i + dim_ess], INSERT_VALUES); // Imaginary Part
+      }
     }
     delete [] vec;
   } else if (initcond_type == InitialConditionType::ENSEMBLE) {
@@ -391,12 +419,12 @@ double OptimProblem::evalF(const Vec x) {
     obj_penal += gamma_penalty * timestepper->penalty_integral;
 
     /* Evaluate J(finalstate) and add to final-time cost */
-    double obj_iinit = optim_target->evalJ(finalstate);
+    double obj_iinit = optim_target->evalJ(finalstate, timestepper->mastereq->lindbladtype);
     obj_cost +=  obj_weights[iinit] * obj_iinit;
     obj_cost_max = std::max(obj_cost_max, obj_iinit);
 
     /* Add to final-time fidelity */
-    double fidelity_iinit = optim_target->evalFidelity(finalstate);
+    double fidelity_iinit = optim_target->evalFidelity(finalstate, timestepper->mastereq->lindbladtype);
     fidelity += fidelity_iinit;
 
     // printf("%d, %d: iinit objective: %f * %1.14e, Fid=%1.14e\n", mpirank_world, mpirank_init, obj_weights[iinit], obj_iinit, fidelity_iinit);
@@ -485,12 +513,12 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
     obj_penal += gamma_penalty * timestepper->penalty_integral;
 
     /* Evaluate J(finalstate) and add to final-time cost */
-    double obj_iinit = optim_target->evalJ(finalstate);
+    double obj_iinit = optim_target->evalJ(finalstate, timestepper->mastereq->lindbladtype);
     obj_cost += obj_weights[iinit] * obj_iinit;
     // if (mpirank_braid == 0) printf("%d: iinit objective: %1.14e\n", mpirank_init, obj_iinit);
 
     /* Add to final-time fidelity */
-    fidelity += optim_target->evalFidelity(finalstate);
+    fidelity += optim_target->evalFidelity(finalstate, timestepper->mastereq->lindbladtype);
 
     /* --- Solve adjoint --- */
     // if (mpirank_braid == 0) printf("%d: %d BWD.", mpirank_init, initid);

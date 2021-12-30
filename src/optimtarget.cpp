@@ -13,7 +13,7 @@ OptimTarget::OptimTarget(int dim, int purestateID_, TargetType target_type_, Obj
   /* Allocate target state, if it is read from file, of if target is a gate transformation VrhoV */
   if (target_type == TargetType::GATE || target_type == TargetType::FROMFILE) {
     VecCreate(PETSC_COMM_WORLD, &targetstate); 
-    VecSetSizes(targetstate,PETSC_DECIDE, 2*dim);   // input dim is the dimension of the vectorized system: dim=N^2
+    VecSetSizes(targetstate,PETSC_DECIDE, 2*dim);   // input dim is either N^2 (lindblad eq) or N (schroedinger eq)
     VecSetFromOptions(targetstate);
   }
 
@@ -27,7 +27,7 @@ OptimTarget::OptimTarget(int dim, int purestateID_, TargetType target_type_, Obj
     // pass vec into the targetstate
     PetscInt ilow, iupp;
     VecGetOwnershipRange(targetstate, &ilow, &iupp);
-    for (int i = 0; i < dim; i++) { // iterates up to N^2
+    for (int i = 0; i < dim; i++) { 
       int elemid_re = getIndexReal(i);
       int elemid_im = getIndexImag(i);
       if (ilow <= elemid_re && elemid_re < iupp) VecSetValue(targetstate, elemid_re, vec[i],       INSERT_VALUES); // RealPart
@@ -101,11 +101,16 @@ void OptimTarget::prepare(const Vec rho_t0){
 
 
 
-double OptimTarget::evalJ(const Vec state){
+double OptimTarget::evalJ(const Vec state, LindbladType lindbladtype){
   double objective = 0.0;
   PetscInt diagID;
   double sum, mine, rhoii, lambdai, norm;
   PetscInt ilo, ihi;
+
+  if (lindbladtype == LindbladType::NONE) {
+    printf("\n\n\n WARNING: OptimTarget::EvalJ Not yet implemented for Schroedingers solver! Return 0.0.\n\n");
+    return 0.0;
+  }
 
   PetscInt dim;
   VecGetSize(state, &dim);
@@ -241,7 +246,13 @@ void OptimTarget::evalJ_diff(const Vec state, Vec statebar, const double Jbar){
 }
 
 
-double OptimTarget::evalFidelity(const Vec state){
+double OptimTarget::evalFidelity(const Vec state, LindbladType lindbladtype){
+  if (lindbladtype == LindbladType::NONE) {
+    printf("\n\n\n WARNING: OptimTarget::evalFidelity is not yet implemented for Schroedingers solver! Return 0.0.\n\n");
+    return 0.0;
+  }
+
+
   PetscInt dim;
   VecGetSize(state, &dim);
   dim = (int) sqrt(dim/2.0);  // dim = N with \rho \in C^{N\times N}
