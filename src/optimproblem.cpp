@@ -127,7 +127,7 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   }
 
   /* Finally initialize the optimization target struct */
-  optim_target = new OptimTarget(timestepper->mastereq->getDim(), purestateID, target_type, objective_type, targetgate, target_filename);
+  optim_target = new OptimTarget(timestepper->mastereq->getDim(), purestateID, target_type, objective_type, targetgate, target_filename, timestepper->mastereq->lindbladtype);
 
   /* Get weights for the objective function (weighting the different initial conditions */
   config.GetVecDoubleParam("optim_weights", obj_weights, 1.0);
@@ -419,12 +419,12 @@ double OptimProblem::evalF(const Vec x) {
     obj_penal += gamma_penalty * timestepper->penalty_integral;
 
     /* Evaluate J(finalstate) and add to final-time cost */
-    double obj_iinit = optim_target->evalJ(finalstate, timestepper->mastereq->lindbladtype);
+    double obj_iinit = optim_target->evalJ(finalstate);
     obj_cost +=  obj_weights[iinit] * obj_iinit;
     obj_cost_max = std::max(obj_cost_max, obj_iinit);
 
     /* Add to final-time fidelity */
-    double fidelity_iinit = optim_target->evalFidelity(finalstate, timestepper->mastereq->lindbladtype);
+    double fidelity_iinit = optim_target->evalFidelity(finalstate);
     fidelity += fidelity_iinit;
 
     // printf("%d, %d: iinit objective: %f * %1.14e, Fid=%1.14e\n", mpirank_world, mpirank_init, obj_weights[iinit], obj_iinit, fidelity_iinit);
@@ -513,12 +513,12 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
     obj_penal += gamma_penalty * timestepper->penalty_integral;
 
     /* Evaluate J(finalstate) and add to final-time cost */
-    double obj_iinit = optim_target->evalJ(finalstate, timestepper->mastereq->lindbladtype);
+    double obj_iinit = optim_target->evalJ(finalstate);
     obj_cost += obj_weights[iinit] * obj_iinit;
     // if (mpirank_braid == 0) printf("%d: iinit objective: %1.14e\n", mpirank_init, obj_iinit);
 
     /* Add to final-time fidelity */
-    fidelity += optim_target->evalFidelity(finalstate, timestepper->mastereq->lindbladtype);
+    fidelity += optim_target->evalFidelity(finalstate);
 
     /* --- Solve adjoint --- */
     // if (mpirank_braid == 0) printf("%d: %d BWD.", mpirank_init, initid);

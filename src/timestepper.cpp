@@ -146,7 +146,7 @@ double TimeStepper::penaltyIntegral(double time, const Vec x){
   /* weighted integral of the objective function */
   if (penalty_param > 1e-13) {
     double weight = 1./penalty_param * exp(- pow((time - total_time)/penalty_param, 2));
-    double obj = optim_target->evalJ(x, mastereq->lindbladtype);
+    double obj = optim_target->evalJ(x);
     penalty = weight * obj * dt;
   }
 

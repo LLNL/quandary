@@ -1,14 +1,16 @@
 #include "optimtarget.hpp"
 
 
-OptimTarget::OptimTarget(int dim, int purestateID_, TargetType target_type_, ObjectiveType objective_type_, Gate* targetgate_, std::string target_filename_){
+OptimTarget::OptimTarget(int dim_, int purestateID_, TargetType target_type_, ObjectiveType objective_type_, Gate* targetgate_, std::string target_filename_, LindbladType lindbladtype_){
 
   // initialize
+  dim = dim_;
   target_type = target_type_;
   objective_type = objective_type_;
   targetgate = targetgate_;
   purestateID = purestateID_;
   target_filename = target_filename_;
+  lindbladtype = lindbladtype_;
 
   /* Allocate target state, if it is read from file, of if target is a gate transformation VrhoV */
   if (target_type == TargetType::GATE || target_type == TargetType::FROMFILE) {
@@ -101,21 +103,11 @@ void OptimTarget::prepare(const Vec rho_t0){
 
 
 
-double OptimTarget::evalJ(const Vec state, LindbladType lindbladtype){
+double OptimTarget::evalJ(const Vec state){
   double objective = 0.0;
   PetscInt diagID;
   double sum, mine, rhoii, lambdai, norm;
   PetscInt ilo, ihi;
-
-  if (lindbladtype == LindbladType::NONE) {
-    printf("\n\n\n WARNING: OptimTarget::EvalJ Not yet implemented for Schroedingers solver! Return 0.0.\n\n");
-    return 0.0;
-  }
-
-  PetscInt dim;
-  VecGetSize(state, &dim);
-  dim = (int) sqrt(dim/2.0);  // dim = N with \rho \in C^{N\times N}
-
 
   switch(objective_type) {
 
@@ -126,10 +118,11 @@ double OptimTarget::evalJ(const Vec state, LindbladType lindbladtype){
         // target state is already set. Either \rho_target = Vrho(0)V^\dagger or read from file. Just eval norm.
         objective = FrobeniusDistance(state) / 2.0;
       } 
-      else {  // target = e_me_m^\dagger
+      else {  // target = e_me_m^\dagger ( or target = e_m for Schroedinger)
         assert(target_type == TargetType::PURE);
         // substract 1.0 from m-th diagonal element then take the vector norm 
-        diagID = getIndexReal(getVecID(purestateID,purestateID,dim));
+        if (lindbladtype != LindbladType::NONE) diagID = getIndexReal(getVecID(purestateID,purestateID,dim));
+        else diagID = getIndexReal(purestateID);
         VecGetOwnershipRange(state, &ilo, &ihi);
         if (ilo <= diagID && diagID < ihi) VecSetValue(state, diagID, -1.0, ADD_VALUES);
         VecAssemblyBegin(state); VecAssemblyEnd(state);
@@ -143,6 +136,11 @@ double OptimTarget::evalJ(const Vec state, LindbladType lindbladtype){
 
     /* J_HS = 1 - 1/purity * Tr(rho_target^\dagger * rho(T)) */
     case ObjectiveType::JHS:
+
+      if (lindbladtype == LindbladType::NONE) {
+        printf("\n\n\n WARNING: OptimTarget::EvalJ Not yet implemented for Schroedingers solver! Return 0.0.\n\n");
+        return 0.0;
+      }
 
       if (target_type == TargetType::GATE || target_type == TargetType::FROMFILE ) {
         // target state is already set. Either \rho_target = Vrho(0)V^\dagger or read from file. Just eval Trace.
@@ -207,7 +205,8 @@ void OptimTarget::evalJ_diff(const Vec state, Vec statebar, const double Jbar){
         // Derivative of J = 1/2||x||^2 is xbar += x * Jbar, where x = rho(t) - E_mm
         VecAXPY(statebar, Jbar, state);
         // now substract 1.0*Jbar from m-th diagonal element
-        diagID = getIndexReal(getVecID(purestateID,purestateID,dim));
+        if (lindbladtype != LindbladType::NONE) diagID = getIndexReal(getVecID(purestateID,purestateID,dim));
+        else diagID = getIndexReal(purestateID);
         VecGetOwnershipRange(state, &ilo, &ihi);
         if (ilo <= diagID && diagID < ihi) VecSetValue(statebar, diagID, -1.0*Jbar, ADD_VALUES);
       }
@@ -246,7 +245,7 @@ void OptimTarget::evalJ_diff(const Vec state, Vec statebar, const double Jbar){
 }
 
 
-double OptimTarget::evalFidelity(const Vec state, LindbladType lindbladtype){
+double OptimTarget::evalFidelity(const Vec state){
   if (lindbladtype == LindbladType::NONE) {
     printf("\n\n\n WARNING: OptimTarget::evalFidelity is not yet implemented for Schroedingers solver! Return 0.0.\n\n");
     return 0.0;

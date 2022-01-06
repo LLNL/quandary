@@ -5,6 +5,7 @@
 /* Collects stuff specifying the optimization target */
 class OptimTarget{
 
+    int dim;                       /* State dimension: either N^2 (if Lindblad solver), or N (if Schroedinger solver) */
     TargetType target_type;        /* Type of the optimization (pure-state preparation, or gate optimization) */
     ObjectiveType objective_type;  /* Type of the bjective function */
     Gate *targetgate;              /* The target gate (if any) */
@@ -15,10 +16,11 @@ class OptimTarget{
                                       If target is read from file, this holds the target density matrix from that file. */
 
     Vec aux;      /* auxiliary vector needed when computing the objective for gate optimization */
+    LindbladType lindbladtype;
 
   public:
 
-    OptimTarget(int dim, int purestateID_, TargetType target_type_, ObjectiveType objective_type_, Gate* targetgate_, std::string target_filename_);
+    OptimTarget(int dim, int purestateID_, TargetType target_type_, ObjectiveType objective_type_, Gate* targetgate_, std::string target_filename_, LindbladType lindbladtype_);
     ~OptimTarget();
 
     /* Get information on the type of optimization target */
@@ -29,10 +31,10 @@ class OptimTarget{
 
     /* Evaluate the objective J */
     /* Note that J depends on the target state which itself can depend on the initial state. Therefor, the targetstate should be computed within 'prepare' routine! */
-    double evalJ(const Vec state, LindbladType lindbladtype);
+    double evalJ(const Vec state);
 
     /* Evaluate the fidelity Tr(rhotarget^\dagger rho) */
-    double evalFidelity(const Vec state, LindbladType lindbladtype);
+    double evalFidelity(const Vec state);
 
     /* Derivative of evalJ. This updates the adjoint initial condition statebar */
     void evalJ_diff(const Vec state, Vec statebar, const double Jbar);
