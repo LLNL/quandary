@@ -71,9 +71,9 @@ CXX=mpicxx
 CXXFLAGS= -O3 -std=c++11 -lstdc++ $(CXX_OPT)
 
 # Flags and includes for linking to exaTN:
-EXA_CXXFLAGS = -std=gnu++14 -fPIC  -DPATH_MAX=4096 -Wno-attributes -DNO_GPU -DEXATN_SERVICE
-EXA_INC = -I$(EXATN_DIR)/include/exatn -I$(EXATN_DIR)/include -I$(EXATN_DIR)/include/cppmicroservices4
-EXA_LDFLAGS = -rdynamic -Wl,-rpath,$(EXATN_DIR)/lib -L $(EXATN_DIR)/lib -lCppMicroServices -ltalsh -lexatn -lexatn-numerics -lexatn-runtime -lexatn-runtime-graph -lexatn-utils -ldl -lpthread /usr/lib64/mpich/lib/libmpicxx.so /usr/lib64/mpich/lib/libmpi.so /usr/lib64/libblas.so /usr/lib/gcc/x86_64-redhat-linux/10/libgomp.so /usr/lib64/libpthread.so /usr/lib/gcc/x86_64-redhat-linux/10/libgomp.so /usr/lib64/libpthread.so -lgfortran /usr/lib64/liblapack.so
+EXA_CXXFLAGS = -g `$(EXATN_DIR)/bin/exatn-config --cxxflags` 
+EXA_INC = `$(EXATN_DIR)/bin/exatn-config --includes`
+EXA_LDFLAGS = -g `$(EXATN_DIR)/bin/exatn-config --libs` -lm
 
 
 # Rule for linking main
@@ -88,7 +88,7 @@ $(BUILD_DIR)/%.o : $(SRC_DIR)/%.cpp
 
 # RUle for linking main-tensor
 main-tensor: $(OBJ_TENS) $(OBJ_COMMON)
-	$(CXX) -o $@ $(OBJ_TENS) $(OBJ_COMMON) $(EXA_LDFLAGS) $(LDFLAGS) -L$(LDPATH)
+	$(CXX) $(EXA_CXXFLAGS) -o $@ $(OBJ_TENS) $(OBJ_COMMON) $(EXA_LDFLAGS) $(LDFLAGS) -L$(LDPATH)
 
 # Rule for building main-tensor
 $(BUILD_DIR)/main-tensor.o : $(SRC_TENS) 

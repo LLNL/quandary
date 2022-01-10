@@ -21,6 +21,7 @@
 #include <thread>
 
 using namespace exatn;
+using namespace std::chrono;
 
 int main(int argc, char ** argv)
 {
@@ -185,14 +186,16 @@ int main(int argc, char ** argv)
   mastereq->assemble_RHS(0.0);
   Mat M = mastereq->getRHS();
 
-
-
-
-  // Declare ExaTN tensors
+  /* Get dimensions */
+  long unsigned int n0 = nlevels[0];
+  long unsigned int n1 = nlevels[1];
+  std::vector<std::size_t> dm_op{n0,n0}; // TODO: Generalize for oscillators with different numbers of levels
   std::vector<std::size_t> dm_rho; 
   for (int i=0; i<nlevels.size(); i++) dm_rho.push_back(nlevels[i]);
   for (int i=0; i<nlevels.size(); i++) dm_rho.push_back(nlevels[i]);  // do it two times because rho \in C^{prod_i n_i} x {prod_i n_i}, so once for each dimension of the matrix rho.
-  //for (int i=0; i<dm_rho.size(); i++) std::cout<< dm_rho[i] << "  " << std::endl;
+
+
+  // Declare ExaTN tensors
   auto rho_in_re = exatn::makeSharedTensor("RhoInRe",TensorShape(dm_rho));
   auto rho_in_im = exatn::makeSharedTensor("RhoInIm",TensorShape(dm_rho));
   auto rho_out_re= exatn::makeSharedTensor("RhoOutRe",TensorShape(dm_rho));
@@ -215,16 +218,11 @@ int main(int argc, char ** argv)
   //std::cout<<"Exa input: " << std::endl;
   //exatn::printTensor("RhoInRe");
 
-  // Dimensions
-  long unsigned int n0 = nlevels[0];
-  long unsigned int n1 = nlevels[1];
-  std::vector<std::size_t> dim_q{n0,n0}; // TODO: Generalize for oscillators with different numbers of levels
-
-  /* Operators */
+  /* --- Define the Operators --- */
   std::vector<double> op_data;
  
   // Number operator, same size for all oscillators
-  auto numberOP = makeSharedTensor("NumberOP", TensorShape(dim_q));
+  auto numberOP = makeSharedTensor("NumberOP", TensorShape(dm_op));
   success = createTensor(numberOP, TensorElementType::REAL64); assert(success);
   success = initTensor("NumberOP", 0.0); assert(success);
   op_data.clear();
@@ -239,7 +237,7 @@ int main(int argc, char ** argv)
   //printTensor("NumberOP");
   
   // Selfkerr operator, same size for all oscillators
-  auto selfkerrOP = makeSharedTensor("SelfKerrOP", TensorShape(dim_q));
+  auto selfkerrOP = makeSharedTensor("SelfKerrOP", TensorShape(dm_op));
   success = createTensor(selfkerrOP, TensorElementType::REAL64); assert(success);
   success = initTensor("SelfKerrOP", 0.0); assert(success);
   op_data.clear();
@@ -255,7 +253,7 @@ int main(int argc, char ** argv)
  
   
   //Lowering operator
-  auto loweringOP = makeSharedTensor("LoweringOP", TensorShape(dim_q));
+  auto loweringOP = makeSharedTensor("LoweringOP", TensorShape(dm_op));
   success = createTensor(loweringOP, TensorElementType::REAL64); assert(success);
   success = initTensor("LoweringOP", 0.0); assert(success);
   op_data.clear();
@@ -272,7 +270,7 @@ int main(int argc, char ** argv)
 
 
 
-  // Run <nexe> matrix-vector multiplications
+  // Run <nexec> matrix-vector multiplications
   int nexec = 20;
 
   /* ----------------------------------------------------------------------------------*/
@@ -280,8 +278,8 @@ int main(int argc, char ** argv)
   /* ----------------------------------------------------------------------------------*/
 
   /* Start timer */
-  double TimePetscStart = MPI_Wtime();
-  double Timecurr = TimePetscStart;
+  auto TimePetscStart = high_resolution_clock::now();
+  auto TimePetscCurr = TimePetscStart;
 
   std::cout<<"Petsc: ";
   for (int iexec = 0; iexec < nexec; iexec++){
@@ -291,8 +289,11 @@ int main(int argc, char ** argv)
     MatMult(M, rho_in_petsc, rho_out_petsc);
 
 
-    std::cout<< "("<< MPI_Wtime() - Timecurr << " sec)";
-    Timecurr = MPI_Wtime();
+    /* Update timer */
+    auto TimePetscThis = duration_cast<microseconds>(high_resolution_clock::now() - TimePetscCurr);
+    std::cout<< "("<< TimePetscThis.count()/1000000. << " sec)";
+    TimePetscCurr = high_resolution_clock::now();
+    std::cout<<std::flush;
   }
   std::cout<<std::endl;
 
@@ -301,8 +302,7 @@ int main(int argc, char ** argv)
   //VecView(rho_out_petsc, NULL);
 
   /* Get time */
-  double TimePetscStop = MPI_Wtime();
-
+  auto TimePetscStop = high_resolution_clock::now();
 
 
 
@@ -318,15 +318,20 @@ int main(int argc, char ** argv)
   double xi01 = mastereq->getCrossKerr()[0];
   //printf("crosskerr %f\n", xi01);
 
+  // First sync to finish up initialization 
+  success=exatn::sync(); assert(success);
+ 
   /* Start timer */
-  double TimeExaStart = MPI_Wtime();
-  Timecurr = TimeExaStart;
+  auto TimeExaStart = high_resolution_clock::now();
+  auto TimeExaCurr = TimeExaStart;
 
+  /* Loop over number of executions */
   std::cout<<"ExaTN: " ;
   for (int iexec = 0; iexec < nexec; iexec++){
+
     std::cout<<" " << iexec;
-    success = exatn::initTensor("RhoOutRe",0.0); assert(success); // reset output
-    success = exatn::initTensor("RhoOutIm",0.0); assert(success); // reset output
+    success = exatn::initTensor("RhoOutRe",0.0); assert(success); // reset output re
+    success = exatn::initTensor("RhoOutIm",0.0); assert(success); // reset output im
 
     /* Detuning  H = omega0 N \kron Id + omega1 Id \kron N */
     // first term, apply N to first qubit from left and right 
@@ -372,18 +377,19 @@ int main(int argc, char ** argv)
     success = exatn::contractTensors("RhoAux(i1,i2,i3,i4)+=RhoInRe(i1,i2,j3,i4)*NumberOP(j3,i3)",1.0); assert(success); 
     success = exatn::contractTensors("RhoOutIm(i1,i2,i3,i4)+=RhoAux(i1,i2,i3,j4)*NumberOP(j4,i4)",-xi01); assert(success);
 
-     std::cout<< "("<< MPI_Wtime() - Timecurr << " sec)";
-    Timecurr = MPI_Wtime();
+    success = exatn::sync(); assert(success);
+
+    // Update timer 
+    auto TimeExaThis = duration_cast<microseconds>(high_resolution_clock::now() - TimeExaCurr);
+    std::cout<< "("<< TimeExaThis.count()/1000000.0 << " sec)";
+    TimeExaCurr = high_resolution_clock::now();
+     
+    std::cout<<std::flush;
+
   } // end of iexec loop
  
   // Get time
-  double TimeExaStop = MPI_Wtime();
-
- // Synchronize for some reason (when? should this be in the loop above?) This is slow...
- std::cout<< "\nSyncing ExaTN... ";
- success = exatn::sync(); assert(success);
- double TimeExaSync = MPI_Wtime() - Timecurr;
- std::cout<< "Done ("<< TimeExaSync << " sec)." << std::endl;
+  auto TimeExaStop = high_resolution_clock::now();
 
 
   //std::cout<<" ######## ExaTN result ########" << std::endl;
@@ -442,10 +448,10 @@ int main(int argc, char ** argv)
 
 
   /* Print timing */
-  double TimeExa   = (TimeExaStop - TimeExaStart)/nexec;
-  double TimePetsc = (TimePetscStop - TimePetscStart)/nexec ;
-  std::cout<< "average time ExaTN ("<< nexec << " exec) : " << TimeExa   << " sec" << "  (+ Sync " << TimeExaSync << " sec) "<< std::endl;
-  std::cout<< "average time PetsC ("<< nexec << " exec) : " << TimePetsc << " sec" << std::endl;
+  auto TimeExa   = duration_cast<microseconds>(TimeExaStop - TimeExaStart);
+  auto TimePetsc = duration_cast<microseconds>(TimePetscStop - TimePetscStart);
+  std::cout<< "Average time ExaTN ("<< nexec << " exec) : " << TimeExa.count()/1000000./nexec << " sec" << std::endl;
+  std::cout<< "Average time PetsC ("<< nexec << " exec) : " << TimePetsc.count()/1000000./nexec << " sec" << std::endl;
   std::cout<<std::endl;
 
  }
