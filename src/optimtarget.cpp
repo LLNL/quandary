@@ -72,11 +72,42 @@ void OptimTarget::FrobeniusDistance_diff(const Vec state, Vec statebar, const do
 }
 
 double OptimTarget::HilbertSchmidtOverlap(const Vec state, bool scalebypurity) {
-  // Tr(targetstate*state) = vec(targetstate)^dagger vec(state) 
+  /* Lindblas solver: Tr(targetstate*state) = vec(targetstate)^dagger vec(state), will be real!
+   * Schroedinger:    | targetstate^\dagger state |^2  */
   double J = 0.0;
-  VecTDot(targetstate, state, &J);
-  // scale by purity Tr(targetstate^2) = || vec(targetstate)||^2_2
-  if (scalebypurity){
+  if (lindbladtype != LindbladType::NONE) // Lindblad solver. Tr(target*state).
+    VecTDot(targetstate, state, &J);
+  else {  // Schroedinger solver. |target^dagger state|^2
+    const PetscScalar* target_ptr;
+    const PetscScalar* state_ptr;
+    VecGetArrayRead(targetstate, &target_ptr); // these should be local vectors.
+    VecGetArrayRead(state, &state_ptr);
+    int ilo, ihi;
+    VecGetOwnershipRange(state, &ilo, &ihi);
+    double u=0.0;
+    double v=0.0;
+    for (int i=0; i<dim; i++){
+      int ia = getIndexReal(i);
+      int ib = getIndexImag(i);
+      if (ilo <= ia && ia < ihi) {
+        int idre = ia - ilo;
+        int idim = ib - ilo;
+        u +=  target_ptr[idre]*state_ptr[idre] + target_ptr[idim]*state_ptr[idim];
+        v += -target_ptr[idim]*state_ptr[idre] + target_ptr[idre]*state_ptr[idim];
+      }
+    } 
+    VecRestoreArrayRead(targetstate, &target_ptr);
+    VecRestoreArrayRead(state, &state_ptr);
+    // The above computation was local, so have to sum up here.
+    double Jre=0.0;
+    double Jim=0.0;
+    MPI_Allreduce(&u, &Jre, 1, MPI_DOUBLE, MPI_SUM, PETSC_COMM_WORLD);
+    MPI_Allreduce(&v, &Jim, 1, MPI_DOUBLE, MPI_SUM, PETSC_COMM_WORLD);
+    J = pow(Jre, 2.0) + pow(Jim, 2.0);
+  }
+
+  // scale by purity Tr(targetstate^2) = || vec(targetstate)||^2_2. Will be 1.0 in Schroedinger case.
+  if (scalebypurity){ 
     double dot;
     VecNorm(targetstate, NORM_2, &dot);
     J = J / (dot*dot);
@@ -92,7 +123,49 @@ void OptimTarget::HilbertSchmidtOverlap_diff(const Vec state, Vec statebar, cons
     VecNorm(targetstate, NORM_2, &dot);
     scale = dot*dot;
   }
-  VecAXPY(statebar, Jbar/scale, targetstate);
+  if (lindbladtype != LindbladType::NONE)
+    VecAXPY(statebar, Jbar/scale, targetstate);
+  else {
+    const PetscScalar* target_ptr;
+    const PetscScalar* state_ptr;
+    PetscScalar* statebar_ptr;
+    VecGetArrayRead(targetstate, &target_ptr); 
+    VecGetArrayRead(state, &state_ptr);
+    VecGetArray(statebar, &statebar_ptr);
+    int ilo, ihi;
+    VecGetOwnershipRange(state, &ilo, &ihi);
+    // First recompute Jre, Jim
+    double u = 0.0;
+    double v = 0.0;
+    for (int i=0; i<dim; i++){
+      int ia = getIndexReal(i);
+      int ib = getIndexImag(i);
+      if (ilo <= ia && ia < ihi) {
+        int idre = ia - ilo;
+        int idim = ib - ilo;
+        u +=  target_ptr[idre]*state_ptr[idre] + target_ptr[idim]*state_ptr[idim];
+        v += -target_ptr[idim]*state_ptr[idre] + target_ptr[idre]*state_ptr[idim];
+      }
+    } 
+    double Jre=0.0;
+    double Jim=0.0;
+    MPI_Allreduce(&u, &Jre, 1, MPI_DOUBLE, MPI_SUM, PETSC_COMM_WORLD);
+    MPI_Allreduce(&v, &Jim, 1, MPI_DOUBLE, MPI_SUM, PETSC_COMM_WORLD);
+    // Then update adjoint variable 
+    for (int i=0; i<dim; i++){
+      int ia = getIndexReal(i);
+      int ib = getIndexImag(i);
+      if (ilo <= ia && ia < ihi) {
+        int idre = ia - ilo;
+        int idim = ib - ilo;
+        statebar_ptr[idre] += 2.0*Jbar/scale * ( target_ptr[idre] * Jre  - target_ptr[idim] * Jim );
+        statebar_ptr[idim] += 2.0*Jbar/scale * ( target_ptr[idim] * Jre  + target_ptr[idre] * Jim );
+      }
+    }
+    VecRestoreArrayRead(targetstate, &target_ptr);
+    VecRestoreArrayRead(state, &state_ptr);
+    VecRestoreArray(statebar, &statebar_ptr);
+  }
 }
 
 
@@ -246,29 +319,35 @@ void OptimTarget::evalJ_diff(const Vec state, Vec statebar, const double Jbar){
 
 
 double OptimTarget::evalFidelity(const Vec state){
-  if (lindbladtype == LindbladType::NONE) {
-    printf("\n\n\n WARNING: OptimTarget::evalFidelity is not yet implemented for Schroedingers solver! Return 0.0.\n\n");
-    return 0.0;
-  }
 
+  PetscInt vecID_re, vecID_im, ihi, ilo;
+  double rho_mm_re, rho_mm_im;
 
-  PetscInt dim;
-  VecGetSize(state, &dim);
-  dim = (int) sqrt(dim/2.0);  // dim = N with \rho \in C^{N\times N}
-
-  PetscInt vecID, ihi, ilo;
-  double rho_mm;
-
-  /* Evaluate the Fidelity = Tr(targetstate^\dagger \rho) */
+  /* Evaluate the Fidelity  
+   * Lindblad:     Fidelity = Tr(targetstate^\dagger \rho) 
+   * Schroedinger: Fidelity = |phi_target^\dagger phi|^2  */
   double fidel = 0.0;
+  double myfidel = 0.0;
   if (target_type == TargetType::PURE) {
-    // if Pure target, then fidelity = rho(T)_mm
-      vecID = getIndexReal(getVecID(purestateID, purestateID, dim));
+  // if Pure target, then fidelity = rho(T)_mm, or |phi_m|^2
       VecGetOwnershipRange(state, &ilo, &ihi);
-      rho_mm = 0.0;
-      if (ilo <= vecID && vecID < ihi) VecGetValues(state, 1, &vecID, &rho_mm); // local!
+      rho_mm_re = 0.0;
+      rho_mm_im = 0.0;
+
+      if (lindbladtype != LindbladType::NONE) { // Lindblad solver
+        vecID_re = getIndexReal(getVecID(purestateID, purestateID, dim));
+        if (ilo <= vecID_re && vecID_re < ihi) VecGetValues(state, 1, &vecID_re, &rho_mm_re); // local!
+        myfidel = rho_mm_re; // rho_mm is real
+      }
+      else { // Schroedinger solver
+        vecID_re = getIndexReal(purestateID);
+        vecID_im = getIndexImag(purestateID);
+        if (ilo <= vecID_re && vecID_re < ihi) VecGetValues(state, 1, &vecID_re, &rho_mm_re); // local!
+        if (ilo <= vecID_im && vecID_im < ihi) VecGetValues(state, 1, &vecID_im, &rho_mm_im); // local!
+        myfidel = pow(rho_mm_re,2.0) + pow(rho_mm_im, 2.0); // |phi_m|^2
+      }
       // Communicate over all petsc processors.
-      MPI_Allreduce(&rho_mm, &fidel, 1, MPI_DOUBLE, MPI_SUM, PETSC_COMM_WORLD);
+      MPI_Allreduce(&myfidel, &fidel, 1, MPI_DOUBLE, MPI_SUM, PETSC_COMM_WORLD);
   } else {
     assert(target_type == TargetType::FROMFILE || target_type == TargetType::GATE);
     fidel = HilbertSchmidtOverlap(state, true);   // scale by purity.
