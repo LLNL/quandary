@@ -178,8 +178,8 @@ void OptimTarget::prepare(const Vec rho_t0){
 
 double OptimTarget::evalJ(const Vec state){
   double objective = 0.0;
-  PetscInt diagID;
-  double sum, mine, rhoii, lambdai, norm;
+  PetscInt diagID, diagID_re, diagID_im;
+  double sum, mine, rhoii, rhoii_re, rhoii_im, lambdai, norm;
   PetscInt ilo, ihi;
 
   switch(objective_type) {
@@ -194,7 +194,7 @@ double OptimTarget::evalJ(const Vec state){
       else {  // target = e_me_m^\dagger ( or target = e_m for Schroedinger)
         assert(target_type == TargetType::PURE);
         // substract 1.0 from m-th diagonal element then take the vector norm 
-        if (lindbladtype != LindbladType::NONE) diagID = getIndexReal(getVecID(purestateID,purestateID,dim));
+        if (lindbladtype != LindbladType::NONE) diagID = getIndexReal(getVecID(purestateID,purestateID,(int)sqrt(dim)));
         else diagID = getIndexReal(purestateID);
         VecGetOwnershipRange(state, &ilo, &ihi);
         if (ilo <= diagID && diagID < ihi) VecSetValue(state, diagID, -1.0, ADD_VALUES);
@@ -210,47 +210,47 @@ double OptimTarget::evalJ(const Vec state){
     /* J_HS = 1 - 1/purity * Tr(rho_target^\dagger * rho(T)) */
     case ObjectiveType::JHS:
 
-      if (lindbladtype == LindbladType::NONE) {
-        printf("\n\n\n WARNING: OptimTarget::EvalJ Not yet implemented for Schroedingers solver! Return 0.0.\n\n");
-        return 0.0;
-      }
-
       if (target_type == TargetType::GATE || target_type == TargetType::FROMFILE ) {
         // target state is already set. Either \rho_target = Vrho(0)V^\dagger or read from file. Just eval Trace.
         objective = 1.0 - HilbertSchmidtOverlap(state, true);
       }
       else { // target = e_m e_m^\dagger
-        /* -> J_HS = 1 - Tr(e_m e_m^\dagger \rho(T)) = 1 - rho_mm(T) */
+        /* -> J_HS = 1 - Tr(e_m e_m^\dagger \rho(T)) = 1 - rho_mm(T) or 1 - |phi_m|^2 */
         assert(target_type == TargetType::PURE);
-        diagID = getIndexReal(getVecID(purestateID,purestateID,dim));
-        rhoii = 0.0;
         VecGetOwnershipRange(state, &ilo, &ihi);
-        if (ilo <= diagID && diagID < ihi) VecGetValues(state, 1, &diagID, &rhoii);
-        mine = 1. - rhoii;
+        if (lindbladtype != LindbladType::NONE) { // Lindblad
+          diagID = getIndexReal(getVecID(purestateID,purestateID,(int)sqrt(dim)));
+          rhoii = 0.0;
+          if (ilo <= diagID && diagID < ihi) VecGetValues(state, 1, &diagID, &rhoii);
+          mine = 1. - rhoii;
+        } else { // Schroedinger 
+          diagID_re = getIndexReal(purestateID);
+          diagID_im = getIndexImag(purestateID);
+          rhoii_re = 0.0;
+          rhoii_im = 0.0;
+          if (ilo <= diagID_re && diagID_re < ihi) VecGetValues(state, 1, &diagID_re, &rhoii_re);
+          if (ilo <= diagID_im && diagID_im < ihi) VecGetValues(state, 1, &diagID_im, &rhoii_im);
+          mine = 1. - ( pow(rhoii_re, 2.0) + pow(rhoii_im, 2.0));
+        }
         MPI_Allreduce(&mine, &objective, 1, MPI_DOUBLE, MPI_SUM, PETSC_COMM_WORLD);
       }
       break; // case J_HS
 
     /* J_T = Tr(O_m rho(T)) = \sum_i |i-m| rho_ii(T) */
     case ObjectiveType::JMEASURE:
-      if (target_type == TargetType::GATE || target_type == TargetType::FROMFILE ) {
-        printf("ERROR: Check settings for optim_target and optim_objective.\n");
-        exit(1);
+      assert(target_type == TargetType::PURE);
+      assert(lindbladtype != LindbladType::NONE); // Jmeasure not available for Schrodinger solver
+      // iterate over diagonal elements 
+      sum = 0.0;
+      for (int i=0; i<(int)sqrt(dim); i++){
+        diagID = getIndexReal(getVecID(i,i,(int)sqrt(dim)));
+        rhoii = 0.0;
+        VecGetOwnershipRange(state, &ilo, &ihi);
+        if (ilo <= diagID && diagID < ihi) VecGetValues(state, 1, &diagID, &rhoii);
+        lambdai = fabs(i - purestateID);
+        sum += lambdai * rhoii;
       }
-      else {
-        assert(target_type == TargetType::PURE);
-        // iterate over diagonal elements 
-        sum = 0.0;
-        for (int i=0; i<dim; i++){
-          diagID = getIndexReal(getVecID(i,i,dim));
-          rhoii = 0.0;
-          VecGetOwnershipRange(state, &ilo, &ihi);
-          if (ilo <= diagID && diagID < ihi) VecGetValues(state, 1, &diagID, &rhoii);
-          lambdai = fabs(i - purestateID);
-          sum += lambdai * rhoii;
-        }
-        MPI_Allreduce(&sum, &objective, 1, MPI_DOUBLE, MPI_SUM, PETSC_COMM_WORLD);
-      }
+      MPI_Allreduce(&sum, &objective, 1, MPI_DOUBLE, MPI_SUM, PETSC_COMM_WORLD);
       break; // case J_MEASURE
   }
 
