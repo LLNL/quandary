@@ -260,12 +260,8 @@ double OptimTarget::evalJ(const Vec state){
 
 void OptimTarget::evalJ_diff(const Vec state, Vec statebar, const double Jbar){
   PetscInt ilo, ihi;
-  double lambdai, val;
-  PetscInt diagID;
-
-  PetscInt dim;
-  VecGetSize(state, &dim);
-  dim = (int) sqrt(dim/2.0);  // dim = N with \rho \in C^{N\times N}
+  double lambdai, val, val_re, val_im, rhoii_re, rhoii_im;
+  PetscInt diagID, diagID_re, diagID_im;
 
   switch (objective_type) {
 
@@ -278,7 +274,7 @@ void OptimTarget::evalJ_diff(const Vec state, Vec statebar, const double Jbar){
         // Derivative of J = 1/2||x||^2 is xbar += x * Jbar, where x = rho(t) - E_mm
         VecAXPY(statebar, Jbar, state);
         // now substract 1.0*Jbar from m-th diagonal element
-        if (lindbladtype != LindbladType::NONE) diagID = getIndexReal(getVecID(purestateID,purestateID,dim));
+        if (lindbladtype != LindbladType::NONE) diagID = getIndexReal(getVecID(purestateID,purestateID,(int)sqrt(dim)));
         else diagID = getIndexReal(purestateID);
         VecGetOwnershipRange(state, &ilo, &ihi);
         if (ilo <= diagID && diagID < ihi) VecSetValue(statebar, diagID, -1.0*Jbar, ADD_VALUES);
@@ -290,27 +286,35 @@ void OptimTarget::evalJ_diff(const Vec state, Vec statebar, const double Jbar){
           HilbertSchmidtOverlap_diff(state, statebar, -1.0 * Jbar, true);
       } else {
         assert(target_type == TargetType::PURE);         
-        diagID = getIndexReal(getVecID(purestateID,purestateID,dim));
-        val = -1. * Jbar;
         VecGetOwnershipRange(state, &ilo, &ihi);
-        if (ilo <= diagID && diagID < ihi) VecSetValue(statebar, diagID, val, ADD_VALUES);
+        if (lindbladtype != LindbladType::NONE) { // Lindblad
+          diagID = getIndexReal(getVecID(purestateID,purestateID,(int)sqrt(dim)));
+          val = -1. * Jbar;
+          if (ilo <= diagID && diagID < ihi) VecSetValue(statebar, diagID, val, ADD_VALUES);
+        } else { // Schroedinger
+          diagID_re = getIndexReal(purestateID);
+          diagID_im = getIndexImag(purestateID);
+          rhoii_re = 0.0;
+          rhoii_im = 0.0;
+          if (ilo <= diagID_re && diagID_re < ihi) VecGetValues(state, 1, &diagID_re, &rhoii_re);
+          if (ilo <= diagID_im && diagID_im < ihi) VecGetValues(state, 1, &diagID_im, &rhoii_im);
+          val = -1. * Jbar;
+          if (ilo <= diagID_re && diagID_re < ihi) VecSetValue(statebar, diagID_re, -2.*Jbar*rhoii_re, ADD_VALUES);
+          if (ilo <= diagID_im && diagID_im < ihi) VecSetValue(statebar, diagID_im, -2.*Jbar*rhoii_im, ADD_VALUES);
+        }
       }
     break;
 
     case ObjectiveType::JMEASURE:
-      if (target_type == TargetType::GATE || target_type == TargetType::FROMFILE ) {
-        printf("ERROR: Check settings for optim_target and optim_objective.\n");
-        exit(1);
-      } else {
-        assert(target_type == TargetType::PURE);         
-        // iterate over diagonal elements 
-        for (int i=0; i<dim; i++){
-          lambdai = fabs(i - purestateID);
-          diagID = getIndexReal(getVecID(i,i,dim));
-          val = lambdai * Jbar;
-          VecGetOwnershipRange(state, &ilo, &ihi);
-          if (ilo <= diagID && diagID < ihi) VecSetValue(statebar, diagID, val, ADD_VALUES);
-        }
+      assert(lindbladtype != LindbladType::NONE);
+      assert(target_type == TargetType::PURE);         
+      // iterate over diagonal elements 
+      for (int i=0; i<(int)sqrt(dim); i++){
+        lambdai = fabs(i - purestateID);
+        diagID = getIndexReal(getVecID(i,i,(int)sqrt(dim)));
+        val = lambdai * Jbar;
+        VecGetOwnershipRange(state, &ilo, &ihi);
+        if (ilo <= diagID && diagID < ihi) VecSetValue(statebar, diagID, val, ADD_VALUES);
       }
     break;
   }
@@ -335,7 +339,7 @@ double OptimTarget::evalFidelity(const Vec state){
       rho_mm_im = 0.0;
 
       if (lindbladtype != LindbladType::NONE) { // Lindblad solver
-        vecID_re = getIndexReal(getVecID(purestateID, purestateID, dim));
+        vecID_re = getIndexReal(getVecID(purestateID, purestateID, (int)sqrt(dim)));
         if (ilo <= vecID_re && vecID_re < ihi) VecGetValues(state, 1, &vecID_re, &rho_mm_re); // local!
         myfidel = rho_mm_re; // rho_mm is real
       }
