@@ -70,6 +70,8 @@ MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Osci
   /* Check Lindblad collapse operator configuration */
   switch (lindbladtype)  {
     case LindbladType::NONE:
+      addT1 = false;
+      addT2 = false;
       break;
     case LindbladType::DECAY: 
       addT1 = true;
