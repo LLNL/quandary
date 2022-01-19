@@ -30,6 +30,12 @@ MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Osci
   usematfree = usematfree_;
   lindbladtype = lindbladtype_;
 
+  // Sanity check. TODO: Modify matfree version. 
+  if (lindbladtype == LindbladType::NONE && usematfree) {
+    printf("ERROR: Matfree version currently not available for Schroedinger solver. Choose usematfree=false\n");
+    exit(1);
+  }
+
   for (int i=0; i<crosskerr.size(); i++){
     crosskerr[i] *= 2.*M_PI;
   }
