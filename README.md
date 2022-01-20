@@ -1,5 +1,5 @@
-# Quandary - Optimal control for open quantum systems
-Quandary implements an optimization solver for quantum control. The underlying quantum dynamics model open quantum systems, using the Lindblad master equation to evolve a density matrix in time. The control problem aims to find control pulses that drive the system to a desired target state.
+# Quandary - Optimal control for open and closed quantum systems
+Quandary implements an optimization solver for quantum control. The underlying quantum dynamics model open or closed quantum systems, using either Schroedinger's equation for a state vector (closed), or Lindblad master equation for a density matrix (open). The control problem aims to find control pulses that drive the system to a desired target state.
 
 A documentation is under development. In the meantime, refer to the user guide in the `doc/` folder for information on the underlying mathematical models as well as details on their implementation in Quandary. 
 
@@ -62,3 +62,12 @@ Quandary is an open source project that is under heavy development. Contribution
 Quandary is distributed under the terms of the MIT license. All new contributions must be made under this license. See LICENSE, and NOTICE, for details. 
 
 SPDX-License-Identifier: MIT
+
+
+## Changelog
+### v1.
+* Solve \textit{either} Schroedinger's equation for the state vector (closed systems) \textit{or} Lindblad's equation for the density matrix (open systems)
+* Rename config option for objective function: Previously `Jhilbertschmidt`, now `Jtrace`
+
+### v0. 
+Initial version. Simulating and optimizing with Lindblad's master equation for open systems. 
