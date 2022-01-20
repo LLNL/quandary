@@ -181,6 +181,7 @@ double OptimTarget::evalJ(const Vec state){
   PetscInt diagID, diagID_re, diagID_im;
   double sum, mine, rhoii, rhoii_re, rhoii_im, lambdai, norm;
   PetscInt ilo, ihi;
+  int dimsq;
 
   switch(objective_type) {
 
@@ -207,15 +208,15 @@ double OptimTarget::evalJ(const Vec state){
       }
       break;  // case Frobenius
 
-    /* J_HS = 1 - 1/purity * Tr(rho_target^\dagger * rho(T)) */
-    case ObjectiveType::JHS:
+    /* J_Trace = 1 - 1/purity * Tr(rho_target^\dagger * rho(T)) */
+    case ObjectiveType::JTRACE:
 
       if (target_type == TargetType::GATE || target_type == TargetType::FROMFILE ) {
         // target state is already set. Either \rho_target = Vrho(0)V^\dagger or read from file. Just eval Trace.
         objective = 1.0 - HilbertSchmidtOverlap(state, true);
       }
       else { // target = e_m e_m^\dagger
-        /* -> J_HS = 1 - Tr(e_m e_m^\dagger \rho(T)) = 1 - rho_mm(T) or 1 - |phi_m|^2 */
+        /* -> J_Trace = 1 - Tr(e_m e_m^\dagger \rho(T)) = 1 - rho_mm(T) or 1 - |phi_m|^2 */
         assert(target_type == TargetType::PURE);
         VecGetOwnershipRange(state, &ilo, &ihi);
         if (lindbladtype != LindbladType::NONE) { // Lindblad
@@ -234,19 +235,32 @@ double OptimTarget::evalJ(const Vec state){
         }
         MPI_Allreduce(&mine, &objective, 1, MPI_DOUBLE, MPI_SUM, PETSC_COMM_WORLD);
       }
-      break; // case J_HS
+      break; // case J_Trace
 
     /* J_T = Tr(O_m rho(T)) = \sum_i |i-m| rho_ii(T) */
     case ObjectiveType::JMEASURE:
       assert(target_type == TargetType::PURE);
-      assert(lindbladtype != LindbladType::NONE); // Jmeasure not available for Schrodinger solver
+
+      if (lindbladtype != LindbladType::NONE) dimsq = (int)sqrt(dim); // Lindblad solver: dim = N^2
+      else dimsq = dim;   // Schroedinger solver: dim = N
+
+      VecGetOwnershipRange(state, &ilo, &ihi);
       // iterate over diagonal elements 
       sum = 0.0;
-      for (int i=0; i<(int)sqrt(dim); i++){
-        diagID = getIndexReal(getVecID(i,i,(int)sqrt(dim)));
-        rhoii = 0.0;
-        VecGetOwnershipRange(state, &ilo, &ihi);
-        if (ilo <= diagID && diagID < ihi) VecGetValues(state, 1, &diagID, &rhoii);
+      for (int i=0; i<dimsq; i++){
+        if (lindbladtype != LindbladType::NONE) {
+          diagID = getIndexReal(getVecID(i,i,dimsq));
+          rhoii = 0.0;
+          if (ilo <= diagID && diagID < ihi) VecGetValues(state, 1, &diagID, &rhoii);
+        } else  {
+          diagID_re = getIndexReal(i);
+          diagID_im = getIndexImag(i);
+          rhoii_re = 0.0;
+          rhoii_im = 0.0;
+          if (ilo <= diagID_re && diagID_re < ihi) VecGetValues(state, 1, &diagID_re, &rhoii_re);
+          if (ilo <= diagID_im && diagID_im < ihi) VecGetValues(state, 1, &diagID_im, &rhoii_im);
+          rhoii = pow(rhoii_re, 2.0) + pow(rhoii_im, 2.0);
+        }
         lambdai = fabs(i - purestateID);
         sum += lambdai * rhoii;
       }
@@ -261,7 +275,7 @@ double OptimTarget::evalJ(const Vec state){
 void OptimTarget::evalJ_diff(const Vec state, Vec statebar, const double Jbar){
   PetscInt ilo, ihi;
   double lambdai, val, val_re, val_im, rhoii_re, rhoii_im;
-  PetscInt diagID, diagID_re, diagID_im;
+  PetscInt diagID, diagID_re, diagID_im, dimsq;
 
   switch (objective_type) {
 
@@ -281,7 +295,7 @@ void OptimTarget::evalJ_diff(const Vec state, Vec statebar, const double Jbar){
       }
       break; // case JFROBENIUS
 
-    case ObjectiveType::JHS:
+    case ObjectiveType::JTRACE:
       if (target_type == TargetType::GATE || target_type == TargetType::FROMFILE ) {
           HilbertSchmidtOverlap_diff(state, statebar, -1.0 * Jbar, true);
       } else {
@@ -298,7 +312,6 @@ void OptimTarget::evalJ_diff(const Vec state, Vec statebar, const double Jbar){
           rhoii_im = 0.0;
           if (ilo <= diagID_re && diagID_re < ihi) VecGetValues(state, 1, &diagID_re, &rhoii_re);
           if (ilo <= diagID_im && diagID_im < ihi) VecGetValues(state, 1, &diagID_im, &rhoii_im);
-          val = -1. * Jbar;
           if (ilo <= diagID_re && diagID_re < ihi) VecSetValue(statebar, diagID_re, -2.*Jbar*rhoii_re, ADD_VALUES);
           if (ilo <= diagID_im && diagID_im < ihi) VecSetValue(statebar, diagID_im, -2.*Jbar*rhoii_im, ADD_VALUES);
         }
@@ -306,15 +319,29 @@ void OptimTarget::evalJ_diff(const Vec state, Vec statebar, const double Jbar){
     break;
 
     case ObjectiveType::JMEASURE:
-      assert(lindbladtype != LindbladType::NONE);
       assert(target_type == TargetType::PURE);         
+
+      if (lindbladtype != LindbladType::NONE) dimsq = (int)sqrt(dim); // Lindblad solver: dim = N^2
+      else dimsq = dim;   // Schroedinger solver: dim = N
+
       // iterate over diagonal elements 
-      for (int i=0; i<(int)sqrt(dim); i++){
+      for (int i=0; i<dimsq; i++){
         lambdai = fabs(i - purestateID);
-        diagID = getIndexReal(getVecID(i,i,(int)sqrt(dim)));
-        val = lambdai * Jbar;
-        VecGetOwnershipRange(state, &ilo, &ihi);
-        if (ilo <= diagID && diagID < ihi) VecSetValue(statebar, diagID, val, ADD_VALUES);
+        if (lindbladtype != LindbladType::NONE) {
+          diagID = getIndexReal(getVecID(i,i,dimsq));
+          val = lambdai * Jbar;
+          VecGetOwnershipRange(state, &ilo, &ihi);
+          if (ilo <= diagID && diagID < ihi) VecSetValue(statebar, diagID, val, ADD_VALUES);
+        } else {
+          diagID_re = getIndexReal(i);
+          diagID_im = getIndexImag(i);
+          rhoii_re = 0.0;
+          rhoii_im = 0.0;
+          if (ilo <= diagID_re && diagID_re < ihi) VecGetValues(state, 1, &diagID_re, &rhoii_re);
+          if (ilo <= diagID_im && diagID_im < ihi) VecGetValues(state, 1, &diagID_im, &rhoii_im);
+          if (ilo <= diagID_re && diagID_re < ihi) VecSetValue(statebar, diagID_re, 2.*Jbar*lambdai*rhoii_re, ADD_VALUES);
+          if (ilo <= diagID_im && diagID_im < ihi) VecSetValue(statebar, diagID_im, 2.*Jbar*lambdai*rhoii_im, ADD_VALUES);
+        }
       }
     break;
   }
