@@ -1086,7 +1086,8 @@ int MasterEq::getRhoT0(const int iinit, const int ninit, const InitialConditionT
   double val;
   int dim_post;
   int initID = 1;    // Output: ID for this initial condition */
-  int dim_rho = (int) sqrt(dim); // N
+  int dim_rho = dim; // can be N^2 or N
+  if (lindbladtype != LindbladType::NONE) dim_rho = (int) sqrt(dim); // now dim_rho = N always.
 
   /* Switch over type of initial condition */
   switch (initcond_type) {
