@@ -71,6 +71,7 @@ int main(int argc,char **argv)
     for (int iosc = 0; iosc<nlevels.size(); iosc++){
       if (iosc < read_nessential.size()) nessential[iosc] = read_nessential[iosc];
       else                               nessential[iosc] = read_nessential[read_nessential.size()-1];
+      if (nessential[iosc] > nlevels[iosc]) nessential[iosc] = nlevels[iosc];
     }
   }
 

@@ -99,10 +99,13 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
       }
       for (int i=0; i < timestepper->mastereq->getNOscillators(); i++) {
         int Qi_state = atoi(target_str[i+1].c_str());
+        if (Qi_state >= timestepper->mastereq->getOscillator(i)->getNLevels()) {
+          printf("ERROR in config setting. The requested pure state target |%d> exceeds the number of modeled levels for that oscillator (%d).\n", Qi_state, timestepper->mastereq->getOscillator(i)->getNLevels());
+          exit(1);
+        }
         purestateID += Qi_state * timestepper->mastereq->getOscillator(i)->dim_postOsc;
       }
     }
-    // printf("Preparing the state e_%d\n", purestateID);
   } 
   else if (target_str[0].compare("file")==0) { 
     // Get the name of the file and pass it to the OptimTarget class later.
