@@ -12,15 +12,15 @@ OptimTarget::OptimTarget(int dim_, int purestateID_, TargetType target_type_, Ob
   target_filename = target_filename_;
   lindbladtype = lindbladtype_;
 
-  /* Allocate target state, if it is read from file, of if target is a gate transformation VrhoV */
+  /* Allocate target state, if it is read from file, of if target is a gate transformation VrhoV. If pure target, only store the ID. */
   if (target_type == TargetType::GATE || target_type == TargetType::FROMFILE) {
     VecCreate(PETSC_COMM_WORLD, &targetstate); 
     VecSetSizes(targetstate,PETSC_DECIDE, 2*dim);   // input dim is either N^2 (lindblad eq) or N (schroedinger eq)
     VecSetFromOptions(targetstate);
   }
 
+  /* Read the target state from file into vec */
   if (target_type == TargetType::FROMFILE) {
-    // Read the target state from file into vec
     int mpirank_world;
     MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
     double* vec = new double[2*dim];

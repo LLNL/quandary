@@ -1219,7 +1219,7 @@ int MasterEq::getRhoT0(const int iinit, const int ninit, const InitialConditionT
       break;
 
     case InitialConditionType::BASIS:
-      assert(lindbladtype != LindbladType::NONE);
+      assert(lindbladtype != LindbladType::NONE); // should never happen. For Schroedinger: BASIS equals DIAGONAL, and should go into the above switch case. 
 
       /* Reset the initial conditions */
       VecZeroEntries(rho0);

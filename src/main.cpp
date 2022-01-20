@@ -104,7 +104,12 @@ int main(int argc,char **argv)
       int oscilID = atoi(initcondstr[i].c_str());
       ninit *= nessential[oscilID];
     }
-    if (initcondstr[0].compare("basis") == 0  ) ninit = (int) pow(ninit,2.0);
+    if (initcondstr[0].compare("basis") == 0  ) {
+      // if Schroedinger solver: ninit = N, do nothing.
+      // else Lindblad solver: ninit = N^2
+      std::string tmpstr = config.GetStrParam("collapse_type", "none", false);
+      if (tmpstr.compare("none") != 0 ) ninit = (int) pow(ninit,2.0);
+    }
   }
   else {
     printf("\n\n ERROR: Wrong setting for initial condition.\n");
@@ -311,7 +316,7 @@ int main(int argc,char **argv)
       std::cout<< nessential[i];
       if (i < nlevels.size()-1) std::cout<< "x";
     }
-    std::cout << std::endl;
+    std::cout << ") " << std::endl;
   }
 
   /* --- Initialize the time-stepper --- */

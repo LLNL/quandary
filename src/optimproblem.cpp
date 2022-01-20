@@ -176,11 +176,13 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   if (timestepper->mastereq->lindbladtype == LindbladType::NONE){
     if (initcond_type == InitialConditionType::ENSEMBLE ||
         initcond_type == InitialConditionType::THREESTATES ||
-        initcond_type == InitialConditionType::NPLUSONE ||
-        initcond_type == InitialConditionType::BASIS ) {
-          printf("\n\n ERROR for initial condition setting: \n When running Schroedingers solver (collapse_type == NONE), the initial condition needs to be either 'pure' or 'from file' or 'diagonal'. Note that 'diagonal' here refers to all basis states in the Schroedinger case.\n\n");
+        initcond_type == InitialConditionType::NPLUSONE ){
+          printf("\n\n ERROR for initial condition setting: \n When running Schroedingers solver (collapse_type == NONE), the initial condition needs to be either 'pure' or 'from file' or 'diagonal' or 'basis'. Note that 'diagonal' and 'basis' in the Schroedinger case are the same (all unit vectors).\n\n");
           exit(1);
-        }
+    } else if (initcond_type == InitialConditionType::BASIS) {
+      // DIAGONAL and BASIS initial conditions in the Schroedinger case are the same. Overwrite it to DIAGONAL
+      initcond_type = InitialConditionType::DIAGONAL;  
+    }
   }
 
   /* Allocate the initial condition vector */

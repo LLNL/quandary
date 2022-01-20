@@ -96,6 +96,7 @@ $a_k\in \C^{N\times N}$ denotes the lowering operator acting on subsystem $k$, w
 where $I_{n_k} \in \R^{n_k \times n_k}$ is the identity matrix.
 
 
+
 The action of external control fields on the quantum system is modelled through the control Hamiltonian 
 \begin{align}
   H_c(t) &:= \sum_{k=0}^{Q-1} f^k(\vec{\alpha}^k,t) \left(a_k + a_k^\dagger \right)
@@ -324,11 +325,10 @@ One can choose to simulate and optimize for only one specific pure initial state
 \end{align}
 Note that, again, in this notation $|m_1\rangle = \boldsymbol{e}_{m_1} \in \R^{n_1}$. The configuration input takes a list of the integers $m_k$ for each subsystem. 
 
-\subsubsection{Basis of density matrices}
+\subsubsection{Basis states}
 
-\textcolor{red}{TODO: For Schroedinger, BASIS and DIAGONAL should both propagate $B^{kk}$. Currently, only DIAGONAL does that, and BASIS throws an error in the Schroedinger case.}
 
-To span any possible initial state, an entire basis of states can be used as initial conditions, and then $n_{init} = N^2$. Quandary implements the basis states as defined in \cite{guenther2021quantum}:
+To span any possible initial state, an entire basis of states can be used as initial conditions. For open systems using the density matrix representation (Lindblad solver), the $n_{init}=N^2$ basis states as defined in \cite{guenther2021quantum} are implemented:
 \begin{align}\label{eq:basismats}
 B^{kj} := \frac 12 \left(\bs{e}_k\bs{e}_k^\dagger + \bs{e}_j\bs{e}_j^\dagger\right) +  \begin{cases} 
           0 & \text{if} \, k=j \\ 
@@ -337,22 +337,20 @@ B^{kj} := \frac 12 \left(\bs{e}_k\bs{e}_k^\dagger + \bs{e}_j\bs{e}_j^\dagger\rig
       \end{cases} 
 \end{align}
 for all $k,j\in\{0,\dots, N-1\}$.
-These density matrices represent $N^2$ pure states that span the space of all quantum states in this Hilberspace. 
-
+These density matrices represent $N^2$ pure, linear independent states that span the space of all density matrices in this Hilberspace. 
 In order to uniquely identify the different initial conditions in the Quandary code and in the output files, a
 unique index $i \in \{0,\dots, N^2-1\}$ is assigned to each basis state with 
 \begin{align*}
   B^i := B^{k(i), j(i)}, \quad \text{with} \quad k(i) := i \,\mbox{mod}\, N,
   \quad \text{and} \quad j(i) := \left\lfloor \frac{i}{N} \right\rfloor
 \end{align*}
-(columnwise vectorization of a matrix of matrices $B^{kj}$). 
+(columnwise vectorization of a matrix of matrices $\left\{B^{kj}\right\}_{kj}$). 
 
+For closed systems using the state vector representation (Schroedinger's solver), the basis states are the unit vector in $\C^{N}$, hence $n_{init} = N$ initial states $\boldsymbol{e}_i \in \C^N, i=0,\dots N$. 
 
-\subsubsection{Diagonal basis matrices (aka all pure states)}
+\subsubsection{Diagonal density matrices (aka all pure states)}
 
-\textcolor{red}{TODO: For Schroedinger, BASIS and DIAGONAL should both propagate $B^{kk}$. Currently, only DIAGONAL does that, and BASIS throws an error in the Schroedinger case.}
-
-One can choose to propagate only those basis elements that correspond to pure states of the form $\boldsymbol{e}_k\boldsymbol{e}_k^\dagger$, i.e. propagating only $B^{kk}$ for $k=0,\dots, N-1$, and then $n_{init}=N$.
+For density matrices (Lindblad solver), one can choose to propagate only those basis states that correspond to pure states of the form $\boldsymbol{e}_k\boldsymbol{e}_k^\dagger$, i.e. propagating only $B^{kk}$ for $k=0,\dots, N-1$, and then $n_{init}=N$. For the Schroedinger solver, this is equivalent to all basis states. 
 
 \subsubsection{Ensemble state for pure-state optimization}\label{sec:ensemblestate}
 \textit{Only valid for the density matrix version, solving Lindblad's master equation.}
