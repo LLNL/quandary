@@ -17,7 +17,7 @@ MasterEq::MasterEq(){
 }
 
 
-MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Oscillator** oscil_vec_, const std::vector<double> crosskerr_, const std::vector<double> Jkl_, const std::vector<double> eta_, LindbladType lindbladtype, bool usematfree_) {
+MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Oscillator** oscil_vec_, const std::vector<double> crosskerr_, const std::vector<double> Jkl_, const std::vector<double> eta_, LindbladType lindbladtype, bool usematfree_, std::string python_file) {
   int ierr;
 
   nlevels = nlevels_;
@@ -91,8 +91,8 @@ MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Osci
   } 
 
   if (!usematfree) {
-    initSparseMatSolver();
-  }
+    initSparseMatSolver(python_file);
+  } 
 
   /* Create vector strides for accessing Re and Im part in x */
   PetscInt ilow, iupp;
@@ -199,7 +199,7 @@ MasterEq::~MasterEq(){
 }
 
 
-void MasterEq::initSparseMatSolver(){
+void MasterEq::initSparseMatSolver(std::string python_file){
 
   /* Allocate time-varying building blocks */
   // control terms
@@ -531,6 +531,70 @@ void MasterEq::initSparseMatSolver(){
   }
   MatAssemblyBegin(Ad, MAT_FINAL_ASSEMBLY);
   MatAssemblyEnd(Ad, MAT_FINAL_ASSEMBLY);
+
+#ifdef WITH_PYTHON
+  // Overwrite the matrices with those read from file. 
+  if (python_file.compare("none") != 0 ) {
+    printf("\n# Reading Hamiltonian model from python file %s.\n\n", python_file.c_str());
+
+    // Set PYTHONPATH to working directory . TODO: CHECK if that's what you want!!
+    setenv("PYTHONPATH", ".",1);
+
+    // Initialize Python interpreter
+    Py_Initialize();
+
+    // Remove the ".py" from the file name to get the module name
+    if (python_file.find(".py") != std::string::npos) python_file.erase(python_file.find(".py"), 3);
+
+    // Import the python script as a module
+    PyObject *pModuleName =  PyString_FromString(python_file.c_str());
+    PyObject *pModule = PyImport_Import(pModuleName);
+    PyErr_Print();
+    Py_DECREF(pModuleName); // TODO: Read about decrementing py_pointers (borrowed) and check if this is correct!
+
+    if (pModule != NULL) {
+
+      // Get a reference to the system Hamiltonian function 
+      PyObject* pFunc_getHd = PyObject_GetAttrString(pModule, (char*)"getHd");
+
+      // Call the python function. Return a python object
+      PyObject *pResult;
+      if (pFunc_getHd && PyCallable_Check(pFunc_getHd)) {
+        pResult = PyObject_CallObject(pFunc_getHd, NULL); // NULL: no input to getHd().
+        PyErr_Print();
+      } else PyErr_Print();
+
+      // convert the result from python object to double vector
+      // getHd() MUST return a python LIST for this to work!
+      int length = 0;
+      if (PyList_Check(pResult)) {
+        length = PyList_Size(pResult);
+        PyErr_Print();
+      }
+      printf("Got a list of length = %d: ", length);
+      std::vector<double> vals;
+      std::vector<int> ids;
+      for (Py_ssize_t i=0; i<length; i++){
+        PyObject* value = PyList_GetItem(pResult,i);  // TODO: Does this need a Py_DECREF inside the loop?
+        PyErr_Print();
+        double val = PyFloat_AsDouble(value);
+        PyErr_Print();
+        if (fabs(val) > 1e-14) { 
+          vals.push_back(val);
+          ids.push_back(i);
+        }
+      }
+      // print vals 
+      for (int i=0; i<vals.size(); i++) printf("%d %f, ", ids[i], vals[i]);
+      printf("\n");
+
+    } else {
+      printf("\n ERROR: Can't import python module %s. Probably, the file does not exist in this working directory... \n", python_file.c_str());
+      exit(1);
+    }
+  }
+#endif
+
 
   /* Allocate some auxiliary vectors */
   MatCreateVecs(Ac_vec[0], &aux, NULL);

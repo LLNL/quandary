@@ -6,8 +6,13 @@
 #include <assert.h>
 #include <iostream> 
 #include "gate.hpp"
-#pragma once
 
+#ifdef WITH_PYTHON
+#define PY_SSIZE_T_CLEAN
+#include "Python/Python.h"
+#endif
+
+#pragma once
 
 /* Define a matshell context containing pointers to data needed for applying the RHS matrix to a vector */
 typedef struct {
@@ -87,11 +92,11 @@ class MasterEq{
 
   public:
     MasterEq();
-    MasterEq(std::vector<int> nlevels, std::vector<int> nessential, Oscillator** oscil_vec_, const std::vector<double> crosskerr_, const std::vector<double> Jkl_, const std::vector<double> eta_, LindbladType lindbladtype_, bool usematfree_);
+    MasterEq(std::vector<int> nlevels, std::vector<int> nessential, Oscillator** oscil_vec_, const std::vector<double> crosskerr_, const std::vector<double> Jkl_, const std::vector<double> eta_, LindbladType lindbladtype_, bool usematfree_, std::string python_file);
     ~MasterEq();
 
     /* initialize matrices needed for applying sparse-mat solver */
-    void initSparseMatSolver();
+    void initSparseMatSolver(std::string python_file="none");
 
     /* Return the i-th oscillator */
     Oscillator* getOscillator(const int i);

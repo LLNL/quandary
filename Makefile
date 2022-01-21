@@ -10,6 +10,9 @@ WITH_XBRAID = false
 WITH_SLEPC = false
 #SLEPC_DIR=/path/to/slepc-3.13.3
 
+# Link to python
+WITH_PYTHON = true
+
 # Choose to run sanity tests
 SANITY_CHECK = false
 
@@ -31,6 +34,11 @@ BRAID_LIB_FILE = $(BRAID_DIR)/braid/libbraid.a
 CXX_OPT += -DWITH_BRAID
 INC_OPT += -I${BRAID_INC_DIR}
 LDFLAGS_OPT += ${BRAID_LIB_FILE}
+endif
+
+ifeq ($(WITH_PYTHON), true)
+LDFLAGS_OPT += -lpython
+CXX_OPT += -DWITH_PYTHON
 endif
 
 # Add sanity check to compiler option
