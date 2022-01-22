@@ -537,6 +537,8 @@ void MasterEq::initSparseMatSolver(std::string python_file){
   if (python_file.compare("none") != 0 ) {
     printf("\n# Reading Hamiltonian model from python file %s.\n\n", python_file.c_str());
 
+    // TODO: Reading the file should probably be done by one processor only? 
+
     // Set PYTHONPATH to working directory . TODO: CHECK if that's what you want!!
     setenv("PYTHONPATH", ".",1);
 
@@ -579,7 +581,7 @@ void MasterEq::initSparseMatSolver(std::string python_file){
         PyErr_Print();
         double val = PyFloat_AsDouble(value);
         PyErr_Print();
-        if (fabs(val) > 1e-14) { 
+        if (fabs(val) > 1e-14) {  // store only nonzeros
           vals.push_back(val);
           ids.push_back(i);
         }
@@ -587,6 +589,62 @@ void MasterEq::initSparseMatSolver(std::string python_file){
       // print vals 
       for (int i=0; i<vals.size(); i++) printf("%d %f, ", ids[i], vals[i]);
       printf("\n");
+
+      /* Write system Hamiltonian into sparse Petsc matrix Bd. */
+      // Bd is a diagonal was allocated with 1 non-zero per row, but reading from file could make this matrix denser, so destroy and reallocate it here. 
+      MatDestroy(&Bd);
+      MatCreate(PETSC_COMM_WORLD, &Bd);
+      MatSetType(Bd, MATMPIAIJ);
+      MatSetSizes(Bd, PETSC_DECIDE, PETSC_DECIDE, dim, dim); // dim = N^2 for Lindblad
+      // MatMPIAIJSetPreallocation(Bd, 1, NULL, 1, NULL); // TODO: Should preallocate Bd!!
+      MatSetUp(Bd);
+      MatSetFromOptions(Bd);
+      MatGetOwnershipRange(Bd, &ilow, &iupp);
+
+      int sqdim = (int) sqrt(dim); // sqdim = N
+
+      // // TEST: Print out B_d without the I\kron Bd stuff
+      // Mat Bd_test;
+      // MatCreate(PETSC_COMM_WORLD, &Bd_test);
+      // MatSetType(Bd_test, MATMPIAIJ);
+      // MatSetSizes(Bd_test, PETSC_DECIDE, PETSC_DECIDE, sqdim, sqdim); 
+      // MatSetUp(Bd_test);
+      // MatSetFromOptions(Bd_test);
+
+      // Iterate over nonzero elements
+      for (int i = 0; i<ids.size(); i++) {
+        // Get position in the Bd matrix
+        int row = ids[i] % sqdim;
+        int col = ids[i] / sqdim;
+        // MatSetValue(Bd_test, row, col, vals[i], INSERT_VALUES);
+
+        // Assemble -I_N \kron B_d + B_d \kron I_N 
+        for (int k=0; k<sqdim; k++){
+          // first place all -v_ij in the -I_N\kron B_d term:
+          int rowk = row + sqdim * k;
+          int colk = col + sqdim * k;
+          double val = -1.*vals[i];
+          if (ilow <= rowk && rowk < iupp) MatSetValue(Bd, rowk, colk, val, ADD_VALUES);
+          // Then add v_ij in the B_d \kron I_N term:
+          rowk = row*sqdim + k;
+          colk = col*sqdim + k;
+          val = vals[i];
+          if (ilow <= rowk && rowk < iupp) MatSetValue(Bd, rowk, colk, val, ADD_VALUES);
+        }
+      }
+      MatAssemblyBegin(Bd, MAT_FINAL_ASSEMBLY);
+      MatAssemblyEnd(Bd, MAT_FINAL_ASSEMBLY);
+      // MatAssemblyBegin(Bd_test, MAT_FINAL_ASSEMBLY);
+      // MatAssemblyEnd(Bd_test, MAT_FINAL_ASSEMBLY);
+
+      // // Write the test matrix to a file
+      // PetscViewer viewer;
+      // PetscViewerCreate(PETSC_COMM_SELF, &viewer); 
+      // PetscViewerSetType(viewer, PETSCVIEWERASCII); 
+      // PetscViewerFileSetMode(viewer, FILE_MODE_WRITE); 
+      // PetscViewerFileSetName(viewer, "Bd_test.txt");
+      // PetscViewerPushFormat(viewer, PETSC_VIEWER_ASCII_DENSE);
+      // MatView(Bd_test, viewer);
 
     } else {
       printf("\n ERROR: Can't import python module %s. Probably, the file does not exist in this working directory... \n", python_file.c_str());
