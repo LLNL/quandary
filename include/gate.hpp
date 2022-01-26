@@ -4,6 +4,7 @@
 #include <assert.h>
 #include <petscmat.h>
 #include <vector>
+#include "defs.hpp"
 #include "util.hpp"
 #pragma once
 
@@ -23,6 +24,9 @@ class Gate {
     double final_time;  /* Final time T. Time of gate rotation. */
     std::vector<double> gate_rot_freq; /* Frequencies of gate rotation (rad/time). Often same as rotational frequencies. */
 
+    LindbladType lindbladtype;
+
+
   private:
     Mat VxV_re, VxV_im;     /* Real and imaginary part of vectorized Gate G=\bar V \kron V */
     Vec x;                  /* auxiliary */
@@ -30,7 +34,7 @@ class Gate {
 
   public:
     Gate();
-    Gate(std::vector<int> nlevels_, std::vector<int> nessential_, double time_, std::vector<double> gate_rot_freq);
+    Gate(std::vector<int> nlevels_, std::vector<int> nessential_, double time_, std::vector<double> gate_rot_freq, LindbladType lindbladtype_);
     virtual ~Gate();
 
     int getDimRho() { return dim_rho; };
@@ -48,7 +52,7 @@ class Gate {
  */
 class XGate : public Gate {
   public:
-    XGate(std::vector<int> nlevels_, std::vector<int> nessential_, double time, std::vector<double> rotation_frequencies_);
+    XGate(std::vector<int> nlevels_, std::vector<int> nessential_, double time, std::vector<double> rotation_frequencies_, LindbladType lindbladtype_);
     ~XGate();
 };
 
@@ -58,7 +62,7 @@ class XGate : public Gate {
  */
 class YGate : public Gate {
   public:
-    YGate(std::vector<int> nlevels_, std::vector<int> nessential_, double time, std::vector<double> rotation_frequencies_);
+    YGate(std::vector<int> nlevels_, std::vector<int> nessential_, double time, std::vector<double> rotation_frequencies_, LindbladType lindbladtype_);
     ~YGate();
 };
 
@@ -68,7 +72,7 @@ class YGate : public Gate {
  */
 class ZGate : public Gate {
   public:
-    ZGate(std::vector<int> nlevels_, std::vector<int> nessential_, double time, std::vector<double> rotation_frequencies_);
+    ZGate(std::vector<int> nlevels_, std::vector<int> nessential_, double time, std::vector<double> rotation_frequencies_, LindbladType lindbladtype_);
     ~ZGate();
 };
 
@@ -78,7 +82,7 @@ class ZGate : public Gate {
  */
 class HadamardGate : public Gate {
   public:
-    HadamardGate(std::vector<int> nlevels_, std::vector<int> nessential_, double time, std::vector<double> rotation_frequencies_);
+    HadamardGate(std::vector<int> nlevels_, std::vector<int> nessential_, double time, std::vector<double> rotation_frequencies_, LindbladType lindbladtype_);
     ~HadamardGate();
 };
 
@@ -90,7 +94,7 @@ class HadamardGate : public Gate {
  */
 class CNOT : public Gate {
     public:
-    CNOT(std::vector<int> nlevels_, std::vector<int> nessential_, double time, std::vector<double> rotation_frequencies_);
+    CNOT(std::vector<int> nlevels_, std::vector<int> nessential_, double time, std::vector<double> rotation_frequencies_, LindbladType lindbladtype_);
     ~CNOT();
 };
 
@@ -102,7 +106,7 @@ class CNOT : public Gate {
  */
 class SWAP: public Gate {
     public:
-    SWAP(std::vector<int> nlevels_, std::vector<int> nessential_, double time, std::vector<double> rotation_frequencies_);
+    SWAP(std::vector<int> nlevels_, std::vector<int> nessential_, double time, std::vector<double> rotation_frequencies_, LindbladType lindbladtype_);
     ~SWAP();
 };
 
@@ -110,14 +114,14 @@ class SWAP: public Gate {
 /* SWAP gate for Q qubits, swapping qubit 0 <-> Q-1 while leaving all others in their state */
 class SWAP_0Q: public Gate {
     public:
-    SWAP_0Q(std::vector<int> nlevels_, std::vector<int> nessential_, double time, std::vector<double> rotation_frequencies_);
+    SWAP_0Q(std::vector<int> nlevels_, std::vector<int> nessential_, double time, std::vector<double> rotation_frequencies_, LindbladType lindbladtype_);
     ~SWAP_0Q();
 };
 
 /* CQNOT gate spanning Q qubits: NOT operation on qubit Q-1 controlled by all other qubits */
 class CQNOT: public Gate {
     public:
-    CQNOT(std::vector<int> nlevels_, std::vector<int> nessential_, double time, std::vector<double> rotation_frequencies_);
+    CQNOT(std::vector<int> nlevels_, std::vector<int> nessential_, double time, std::vector<double> rotation_frequencies_, LindbladType lindbladtype_);
     ~CQNOT();
 };
 

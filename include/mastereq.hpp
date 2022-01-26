@@ -17,6 +17,7 @@ typedef struct {
   std::vector<double> crosskerr;
   std::vector<double> Jkl;
   std::vector<double> eta;
+  LindbladType lindbladtype;
   bool addT1, addT2;
   std::vector<double> control_Re, control_Im;
   Mat** Ac_vec;
@@ -48,8 +49,8 @@ int myMatMultTranspose_sparsemat(Mat RHS, Vec x, Vec y);
 class MasterEq{
 
   protected:
-    int dim;                   // Dimension of full vectorized system = N^2
-    int dim_rho;               // Dimension of full system = N
+    int dim;                   // Dimension of full vectorized system: either N^2 if Lindblad, or N if Schrodinger
+    int dim_rho;               // Dimension of Hilbertspace = N
     int dim_ess;               // Dimension of system of essential levels = N_e
     int noscillators;          // Number of oscillators
     Oscillator** oscil_vec;    // Vector storing pointers to the oscillators
@@ -84,6 +85,7 @@ class MasterEq{
     std::vector<int> nlevels;  // Number of levels per oscillator
     std::vector<int> nessential; // Number of essential levels per oscillator
     bool usematfree;  // Flag for using matrix free solver
+    LindbladType lindbladtype;        // Flag that determines which lindblad terms are added. if NONE, than Schroedingers eq. is solved
 
   public:
     MasterEq();
@@ -99,7 +101,7 @@ class MasterEq{
     /* Return number of oscillators */
     int getNOscillators();
 
-    /* Return dimension of vectorized system N^2 */
+    /* Return dimension of vectorized system N^2 (for Lindblad solver) or N (for Schroedinger solver) */
     int getDim();
 
     /* Return dimension of essential level system: N_e */

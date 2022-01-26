@@ -5,7 +5,7 @@ Gate::Gate(){
   dim_rho = 0;
 }
 
-Gate::Gate(std::vector<int> nlevels_, std::vector<int> nessential_, double time_, std::vector<double> gate_rot_freq_){
+Gate::Gate(std::vector<int> nlevels_, std::vector<int> nessential_, double time_, std::vector<double> gate_rot_freq_, LindbladType lindbladtype_){
 
   MPI_Comm_rank(PETSC_COMM_WORLD, &mpirank_petsc);
 
@@ -13,6 +13,7 @@ Gate::Gate(std::vector<int> nlevels_, std::vector<int> nessential_, double time_
   nlevels = nlevels_;
   final_time = time_;
   gate_rot_freq = gate_rot_freq_;
+  lindbladtype = lindbladtype_;
   for (int i=0; i<gate_rot_freq.size(); i++){
     gate_rot_freq[i] *= 2.*M_PI;
   }
@@ -39,12 +40,17 @@ Gate::Gate(std::vector<int> nlevels_, std::vector<int> nessential_, double time_
   MatAssemblyEnd(V_re, MAT_FINAL_ASSEMBLY);
   MatAssemblyEnd(V_im, MAT_FINAL_ASSEMBLY);
 
-  /* Allocate vectorized Gate in full dimensions G = VxV, where V is the full-dimension gate (inserting zero rows and colums for all non-essential levels) */ 
-  // parallel matrix, essential levels dimension TODO: Preallocate!
+  /* Allocate vectorized Gate in full dimensions */
+  /* If Lindblad solver: Gate G = V_full x V_full, where V is the full-dimension gate (inserting identities for all non-essential levels) */ 
+  /* Else Schroedinger solver: Gate G = V_full */
+  int dim_gate;
+  if (lindbladtype != LindbladType::NONE) dim_gate = dim_rho*dim_rho;
+  else dim_gate = dim_rho;
   MatCreate(PETSC_COMM_WORLD, &VxV_re);
   MatCreate(PETSC_COMM_WORLD, &VxV_im);
-  MatSetSizes(VxV_re, PETSC_DECIDE, PETSC_DECIDE, dim_rho*dim_rho, dim_rho*dim_rho);
-  MatSetSizes(VxV_im, PETSC_DECIDE, PETSC_DECIDE, dim_rho*dim_rho, dim_rho*dim_rho);
+  // parallel matrix, TODO: Preallocate!
+  MatSetSizes(VxV_re, PETSC_DECIDE, PETSC_DECIDE, dim_gate, dim_gate);
+  MatSetSizes(VxV_im, PETSC_DECIDE, PETSC_DECIDE, dim_gate, dim_gate);
   MatSetUp(VxV_re);
   MatSetUp(VxV_im);
   MatAssemblyBegin(VxV_re, MAT_FINAL_ASSEMBLY);
@@ -136,6 +142,7 @@ void Gate::assembleGate(){
 #endif
 
 
+ if (lindbladtype != LindbladType::NONE){ // Lindblad solver. Gate is G = V\kron V
   /* Assemble vectorized gate G=V\kron V where V = PV_eP^T for essential dimension gate V_e (user input) and projection P lifting V_e to the full dimension by inserting identity blocks for non-essential levels. */
   // Each element in V\kron V is a product V(i,j)*V(r,c), for rows and columns i,j,r,c!
   PetscInt ilow, iupp;
@@ -143,7 +150,7 @@ void Gate::assembleGate(){
   double val;
   double vre_ij, vim_ij;
   double vre_rc, vim_rc;
-  // iterate over rows of V_e (essential dimension gate)
+  // iterate over rows of V_f (full dimension gate)
   for (PetscInt row_f=0;row_f<dim_rho; row_f++) {
     if (isEssential(row_f, nlevels, nessential)) { // place \bar v_xx*V_f blocks for all cols in V_e[row_e]
       PetscInt row_e = mapFullToEss(row_f, nlevels, nessential);
@@ -211,7 +218,33 @@ void Gate::assembleGate(){
       }
     }
   }
-
+ } else { // Schroedinger solver. Gate is V_full
+  PetscInt ilow, iupp;
+  MatGetOwnershipRange(VxV_re, &ilow, &iupp);
+  double vre_ij, vim_ij;
+  // iterate over rows of V_f (full dimension gate)
+  for (PetscInt row_f=0;row_f<dim_rho; row_f++) {
+    if (isEssential(row_f, nlevels, nessential)) {  // place V_e(r_e, c_e) at V_f(r_f,c_e) for all cols c_e in V_e[r_e]
+      PetscInt row_e = mapFullToEss(row_f, nlevels, nessential);
+      assert(row_f == mapEssToFull(row_e, nlevels, nessential));
+      if (ilow <= row_f && row_f < iupp) {
+        // iterate over columns in this row_e
+        for (PetscInt col_e=0; col_e<dim_ess; col_e++) {
+          vre_ij = 0.0; vim_ij = 0.0;
+          MatGetValues(V_re, 1, &row_e, 1, &col_e, &vre_ij);
+          MatGetValues(V_im, 1, &row_e, 1, &col_e, &vim_ij);
+          // for all nonzeros in this row, place Ve_{i,j} at G[row_f,mapEssToFull(coll_e)]
+          int col_f = mapEssToFull(col_e, nlevels, nessential);
+          if (fabs(vre_ij) > 1e-14) MatSetValue(VxV_re, row_f, col_f, vre_ij, INSERT_VALUES);
+          if (fabs(vim_ij) > 1e-14) MatSetValue(VxV_re, row_f, col_f, vim_ij, INSERT_VALUES);
+        }
+      }
+    } else { // place 1.0 at diagonal
+      if (ilow <= row_f && row_f < iupp) MatSetValue(VxV_re, row_f, row_f, 1.0, INSERT_VALUES);
+    }
+  }
+ }
+ 
   MatAssemblyBegin(VxV_re, MAT_FINAL_ASSEMBLY);
   MatAssemblyEnd(VxV_re, MAT_FINAL_ASSEMBLY);
   MatAssemblyBegin(VxV_im, MAT_FINAL_ASSEMBLY);
@@ -247,7 +280,7 @@ void Gate::applyGate(const Vec state, Vec VrhoV){
 }
 
 
-XGate::XGate(std::vector<int> nlevels, std::vector<int> nessential, double time, std::vector<double> gate_rot_freq) : Gate(nlevels, nessential, time, gate_rot_freq) {
+XGate::XGate(std::vector<int> nlevels, std::vector<int> nessential, double time, std::vector<double> gate_rot_freq, LindbladType lindbladtype_) : Gate(nlevels, nessential, time, gate_rot_freq, lindbladtype_) {
 
   assert(dim_ess == 2);
 
@@ -268,7 +301,7 @@ XGate::XGate(std::vector<int> nlevels, std::vector<int> nessential, double time,
 
 XGate::~XGate() {}
 
-YGate::YGate(std::vector<int> nlevels, std::vector<int> nessential, double time, std::vector<double> gate_rot_freq ) : Gate(nlevels, nessential, time, gate_rot_freq) {
+YGate::YGate(std::vector<int> nlevels, std::vector<int> nessential, double time, std::vector<double> gate_rot_freq, LindbladType lindbladtype_) : Gate(nlevels, nessential, time, gate_rot_freq, lindbladtype_) {
 
   assert(dim_ess == 2);
   
@@ -288,7 +321,7 @@ YGate::YGate(std::vector<int> nlevels, std::vector<int> nessential, double time,
 }
 YGate::~YGate() {}
 
-ZGate::ZGate(std::vector<int> nlevels, std::vector<int> nessential, double time, std::vector<double> gate_rot_freq ) : Gate(nlevels, nessential, time, gate_rot_freq) {
+ZGate::ZGate(std::vector<int> nlevels, std::vector<int> nessential, double time, std::vector<double> gate_rot_freq, LindbladType lindbladtype_ ) : Gate(nlevels, nessential, time, gate_rot_freq, lindbladtype_) {
 
   assert(dim_ess == 2);
 
@@ -309,7 +342,7 @@ ZGate::ZGate(std::vector<int> nlevels, std::vector<int> nessential, double time,
 
 ZGate::~ZGate() {}
 
-HadamardGate::HadamardGate(std::vector<int> nlevels, std::vector<int> nessential, double time, std::vector<double> gate_rot_freq ) : Gate(nlevels, nessential, time, gate_rot_freq) {
+HadamardGate::HadamardGate(std::vector<int> nlevels, std::vector<int> nessential, double time, std::vector<double> gate_rot_freq, LindbladType lindbladtype_ ) : Gate(nlevels, nessential, time, gate_rot_freq, lindbladtype_) {
 
   assert(dim_ess == 2);
 
@@ -334,7 +367,7 @@ HadamardGate::~HadamardGate() {}
 
 
 
-CNOT::CNOT(std::vector<int> nlevels, std::vector<int> nessential, double time, std::vector<double> gate_rot_freq) : Gate(nlevels, nessential,time, gate_rot_freq) {
+CNOT::CNOT(std::vector<int> nlevels, std::vector<int> nessential, double time, std::vector<double> gate_rot_freq, LindbladType lindbladtype_) : Gate(nlevels, nessential,time, gate_rot_freq, lindbladtype_) {
 
   assert(dim_ess == 4);
 
@@ -359,7 +392,7 @@ CNOT::CNOT(std::vector<int> nlevels, std::vector<int> nessential, double time, s
 CNOT::~CNOT(){}
 
 
-SWAP::SWAP(std::vector<int> nlevels_, std::vector<int> nessential_, double time_, std::vector<double> gate_rot_freq_) : Gate(nlevels_, nessential_, time_, gate_rot_freq_) {
+SWAP::SWAP(std::vector<int> nlevels_, std::vector<int> nessential_, double time_, std::vector<double> gate_rot_freq_, LindbladType lindbladtype_) : Gate(nlevels_, nessential_, time_, gate_rot_freq_, lindbladtype_) {
   assert(dim_ess == 4);
 
   /* Fill lab-frame swap gate in essential dimension system V_re = Re(V), V_im = Im(V) = 0 */
@@ -380,7 +413,7 @@ SWAP::SWAP(std::vector<int> nlevels_, std::vector<int> nessential_, double time_
 
 SWAP::~SWAP(){}
 
-SWAP_0Q::SWAP_0Q(std::vector<int> nlevels_, std::vector<int> nessential_, double time_, std::vector<double> gate_rot_freq_) : Gate(nlevels_, nessential_, time_, gate_rot_freq_) {
+SWAP_0Q::SWAP_0Q(std::vector<int> nlevels_, std::vector<int> nessential_, double time_, std::vector<double> gate_rot_freq_, LindbladType lindbladtype_) : Gate(nlevels_, nessential_, time_, gate_rot_freq_, lindbladtype_) {
   int Q = nlevels.size();  // Number of total oscillators 
 
   /* Fill lab-frame swap 0<->Q-1 gate in essential dimension system V_re = Re(V), V_im = Im(V) = 0 */
@@ -420,7 +453,7 @@ SWAP_0Q::SWAP_0Q(std::vector<int> nlevels_, std::vector<int> nessential_, double
 SWAP_0Q::~SWAP_0Q(){}
 
 
-CQNOT::CQNOT(std::vector<int> nlevels_, std::vector<int> nessential_, double time_, std::vector<double> gate_rot_freq_) : Gate(nlevels_, nessential_, time_, gate_rot_freq_) {
+CQNOT::CQNOT(std::vector<int> nlevels_, std::vector<int> nessential_, double time_, std::vector<double> gate_rot_freq_, LindbladType lindbladtype_) : Gate(nlevels_, nessential_, time_, gate_rot_freq_, lindbladtype_) {
 
   /* Fill lab-frame CQNOT gate in essential dimension system V_re = Re(V), V_im = Im(V) = 0 */
   /* V = [1 0 0 ...

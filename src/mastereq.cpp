@@ -17,7 +17,7 @@ MasterEq::MasterEq(){
 }
 
 
-MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Oscillator** oscil_vec_, const std::vector<double> crosskerr_, const std::vector<double> Jkl_, const std::vector<double> eta_, LindbladType lindbladtype, bool usematfree_) {
+MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Oscillator** oscil_vec_, const std::vector<double> crosskerr_, const std::vector<double> Jkl_, const std::vector<double> eta_, LindbladType lindbladtype_, bool usematfree_) {
   int ierr;
 
   nlevels = nlevels_;
@@ -28,6 +28,13 @@ MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Osci
   Jkl = Jkl_;
   eta = eta_;
   usematfree = usematfree_;
+  lindbladtype = lindbladtype_;
+
+  // Sanity check. TODO: Modify matfree version. 
+  if (lindbladtype == LindbladType::NONE && usematfree) {
+    printf("ERROR: Matfree version currently not available for Schroedinger solver. Choose usematfree=false\n");
+    exit(1);
+  }
 
   for (int i=0; i<crosskerr.size(); i++){
     crosskerr[i] *= 2.*M_PI;
@@ -51,12 +58,23 @@ MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Osci
     dim_rho *= oscil_vec[iosc]->getNLevels();
     dim_ess *= nessential[iosc];
   }
-  dim = dim_rho*dim_rho; // density matrix: N \times N -> vectorized: N^2
-  if (mpirank_world == 0) printf("System dimension (complex) N^2 = %d\n",dim);
+  if (lindbladtype != LindbladType::NONE) {  // Solve Lindblads equation, dim = N^2
+    dim = dim_rho*dim_rho; 
+    if (mpirank_world == 0) {
+      printf("Solving Lindblads master equation (state is a density matrix).\n");
+      printf("State dimension (complex) N^2 = %d\n",dim);
+    }
+  } else { // Solve Schroedingers equation. dim = N
+    dim = dim_rho; 
+    if (mpirank_world == 0) {
+      printf("Solving Schroedingers equation (state is a vector).\n");
+      printf("State dimension (complex) N = %d\n",dim);
+    }
+  }
 
   /* Sanity check for parallel petsc */
   if (dim % mpisize_petsc != 0) {
-    printf("\n ERROR in parallel distribution: Petsc's communicator size (%d) must be integer multiple of system dimension N^2=%d\n", mpisize_petsc, dim);
+    printf("\n ERROR in parallel distribution: Petsc's communicator size (%d) must be integer multiple of system dimension (%d)\n", mpisize_petsc, dim);
     exit(1);
   }
 
@@ -122,6 +140,7 @@ MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Osci
   RHSctx.eta = eta;
   RHSctx.addT1 = addT1;
   RHSctx.addT2 = addT2;
+  RHSctx.lindbladtype = lindbladtype;
   if (!usematfree){
     RHSctx.Ac_vec = &Ac_vec;
     RHSctx.Bc_vec = &Bc_vec;
@@ -162,7 +181,6 @@ MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Osci
     MatShellSetOperation(RHS, MATOP_MULT, (void(*)(void)) myMatMult_sparsemat);
     MatShellSetOperation(RHS, MATOP_MULT_TRANSPOSE, (void(*)(void)) myMatMultTranspose_sparsemat);
   }
-
 }
 
 
@@ -209,7 +227,7 @@ void MasterEq::initSparseMatSolver(){
   Ad_vec = new Mat[noscillators*(noscillators-1)/2];
   Bd_vec = new Mat[noscillators*(noscillators-1)/2];
 
-  int dimmat = (int) sqrt(dim);
+  int dimmat = dim_rho; // this is N!
 
   int id_kl=0;  // index for accessing Ad_kl in Ad_vec
   PetscInt ilow, iupp;
@@ -226,21 +244,25 @@ void MasterEq::initSparseMatSolver(){
     int nprek  = oscil_vec[iosc]->dim_preOsc;
     int npostk = oscil_vec[iosc]->dim_postOsc;
 
-    /* Compute Ac = I_N \kron (a - a^T) - (a - a^T)^T \kron I_N */
+    /* Compute Ac */
+    /* Lindblad solver:     Ac = I_N \kron (a - a^T) - (a - a^T)^T \kron I_N   \in C^{N^2 x N^2}*/
+    /* Schroedinger solver: Ac = a - a^T   \in C^{N x N}  */
     MatCreate(PETSC_COMM_WORLD, &Ac_vec[iosc]);
     MatSetType(Ac_vec[iosc], MATMPIAIJ);
-    MatSetSizes(Ac_vec[iosc], PETSC_DECIDE, PETSC_DECIDE, dim, dim);
-    MatMPIAIJSetPreallocation(Ac_vec[iosc], 4, NULL, 4, NULL);
+    MatSetSizes(Ac_vec[iosc], PETSC_DECIDE, PETSC_DECIDE, dim, dim);  // dim = N^2 (Lindblad) or N (Schroedinger)
+    if (lindbladtype != LindbladType::NONE) MatMPIAIJSetPreallocation(Ac_vec[iosc], 4, NULL, 4, NULL);
+    else MatMPIAIJSetPreallocation(Ac_vec[iosc], 2, NULL, 2, NULL);
     MatSetUp(Ac_vec[iosc]);
     MatSetFromOptions(Ac_vec[iosc]);
     MatGetOwnershipRange(Ac_vec[iosc], &ilow, &iupp);
 
     /* Iterate over local rows of Ac_vec */
     for (int row = ilow; row<iupp; row++){
-      // I_n \kron A_c 
+      // A_c or I_N \kron A_c
       col1 = row + npostk;
       col2 = row - npostk;
-      r1 = row % dimmat;
+      if (lindbladtype != LindbladType::NONE) r1 = row % dimmat;   // I_N \kron A_c 
+      else r1 = row;   // A_c
       r1 = r1 % (nk*npostk);
       r1 = r1 / npostk;
       if (r1 < nk-1) {
@@ -251,37 +273,43 @@ void MasterEq::initSparseMatSolver(){
         val = -sqrt(r1);
         if (fabs(val)>1e-14) MatSetValue(Ac_vec[iosc], row, col2, val, ADD_VALUES);
       } 
-      //- A_c \kron I_N
-      col1 = row + npostk*dimmat;
-      col2 = row - npostk*dimmat;
-      r1 = row % (dimmat * nk * npostk);
-      r1 = r1 / (dimmat * npostk);
-      if (r1 < nk-1) {
-        val =  sqrt(r1+1);
-        if (fabs(val)>1e-14) MatSetValue(Ac_vec[iosc], row, col1, val, ADD_VALUES);
+      if (lindbladtype != LindbladType::NONE){
+        //- A_c \kron I_N
+        col1 = row + npostk*dimmat;
+        col2 = row - npostk*dimmat;
+        r1 = row % (dimmat * nk * npostk);
+        r1 = r1 / (dimmat * npostk);
+        if (r1 < nk-1) {
+          val =  sqrt(r1+1);
+          if (fabs(val)>1e-14) MatSetValue(Ac_vec[iosc], row, col1, val, ADD_VALUES);
+        }
+        if (r1 > 0) {
+          val = -sqrt(r1);
+          if (fabs(val)>1e-14) MatSetValue(Ac_vec[iosc], row, col2, val, ADD_VALUES);
+        }
       }
-      if (r1 > 0) {
-        val = -sqrt(r1);
-        if (fabs(val)>1e-14) MatSetValue(Ac_vec[iosc], row, col2, val, ADD_VALUES);
-      }   
     }
     MatAssemblyBegin(Ac_vec[iosc], MAT_FINAL_ASSEMBLY);
     MatAssemblyEnd(Ac_vec[iosc], MAT_FINAL_ASSEMBLY);
 
-    /* Compute Bc = - I_N \kron (a + a^T) + (a + a^T)^T \kron I_N */
+    /* Compute Bc */
+    /* Lindblas solver Bc = - I_N \kron (a + a^T) + (a + a^T)^T \kron I_N */
+    /* Schroedinger solver: Bc = -(a+a^T) */
     MatCreate(PETSC_COMM_WORLD, &Bc_vec[iosc]);
     MatSetType(Bc_vec[iosc], MATMPIAIJ);
     MatSetSizes(Bc_vec[iosc], PETSC_DECIDE, PETSC_DECIDE, dim, dim);
-    MatMPIAIJSetPreallocation(Bc_vec[iosc], 4, NULL, 4, NULL);
+    if (lindbladtype != LindbladType::NONE) MatMPIAIJSetPreallocation(Bc_vec[iosc], 4, NULL, 4, NULL);
+    else MatMPIAIJSetPreallocation(Bc_vec[iosc], 2, NULL, 2, NULL);
     MatSetUp(Bc_vec[iosc]);
     MatSetFromOptions(Bc_vec[iosc]);
     MatGetOwnershipRange(Bc_vec[iosc], &ilow, &iupp);
     /* Iterate over local rows of Bc_vec */
     for (int row = ilow; row<iupp; row++){
-      // - I_n \kron B_c 
+      // B_c or  I_n \kron B_c 
       col1 = row + npostk;
       col2 = row - npostk;
-      r1 = row % dimmat;
+      if (lindbladtype != LindbladType::NONE) r1 = row % dimmat; // I_n \kron B_c
+      else r1 = row;  // -Bc
       r1 = r1 % (nk*npostk);
       r1 = r1 / npostk;
       if (r1 < nk-1) {
@@ -292,27 +320,33 @@ void MasterEq::initSparseMatSolver(){
         val = -sqrt(r1);
         if (fabs(val)>1e-14) MatSetValue(Bc_vec[iosc], row, col2, val, ADD_VALUES);
       } 
-      //+ B_c \kron I_N
-      col1 = row + npostk*dimmat;
-      col2 = row - npostk*dimmat;
-      r1 = row % (dimmat * nk * npostk);
-      r1 = r1 / (dimmat * npostk);
-      if (r1 < nk-1) {
-        val =  sqrt(r1+1);
-        if (fabs(val)>1e-14) MatSetValue(Bc_vec[iosc], row, col1, val, ADD_VALUES);
+      if (lindbladtype != LindbladType::NONE){
+        //+ B_c \kron I_N
+        col1 = row + npostk*dimmat;
+        col2 = row - npostk*dimmat;
+        r1 = row % (dimmat * nk * npostk);
+        r1 = r1 / (dimmat * npostk);
+        if (r1 < nk-1) {
+          val =  sqrt(r1+1);
+          if (fabs(val)>1e-14) MatSetValue(Bc_vec[iosc], row, col1, val, ADD_VALUES);
+        }
+        if (r1 > 0) {
+          val = sqrt(r1);
+          if (fabs(val)>1e-14) MatSetValue(Bc_vec[iosc], row, col2, val, ADD_VALUES);
+        }   
       }
-      if (r1 > 0) {
-        val = sqrt(r1);
-        if (fabs(val)>1e-14) MatSetValue(Bc_vec[iosc], row, col2, val, ADD_VALUES);
-      }   
     }
     MatAssemblyBegin(Bc_vec[iosc], MAT_FINAL_ASSEMBLY);
     MatAssemblyEnd(Bc_vec[iosc], MAT_FINAL_ASSEMBLY);
 
 
     /* Compute Jaynes-Cummings coupling building blocks */
-    /* Ad_kl(t) =  I_N \kron (ak^Tal − akal^T) − (al^Tak − alak^T) \kron IN */
-    /* Bd_kl(t) = -I_N \kron (ak^Tal + akal^T) + (al^Tak + alak_T) \kron IN */
+    /* Lindblad solver: 
+     * Ad_kl(t) =  I_N \kron (ak^Tal − akal^T) − (al^Tak − alak^T) \kron IN 
+     * Bd_kl(t) = -I_N \kron (ak^Tal + akal^T) + (al^Tak + alak_T) \kron IN */
+    /* Schrodinger solver:
+       Ad_kl(t) =  (ak^Tal - akal^T)
+       Bd_kl(t) = -(ak^Tal + akal^T)  */
     for (int josc=iosc+1; josc<noscillators; josc++){
 
       if (fabs(Jkl[id_kl]) > 1e-12) { // only allocate if coefficient is non-zero to save memory.
@@ -324,8 +358,13 @@ void MasterEq::initSparseMatSolver(){
         MatSetType(Bd_vec[id_kl], MATMPIAIJ);
         MatSetSizes(Ad_vec[id_kl], PETSC_DECIDE, PETSC_DECIDE, dim, dim);
         MatSetSizes(Bd_vec[id_kl], PETSC_DECIDE, PETSC_DECIDE, dim, dim);
-        MatMPIAIJSetPreallocation(Ad_vec[id_kl], 4, NULL, 4, NULL);
-        MatMPIAIJSetPreallocation(Bd_vec[id_kl], 4, NULL, 4, NULL);
+        if (lindbladtype != LindbladType::NONE) {
+          MatMPIAIJSetPreallocation(Ad_vec[id_kl], 4, NULL, 4, NULL);
+          MatMPIAIJSetPreallocation(Bd_vec[id_kl], 4, NULL, 4, NULL);
+        } else {
+          MatMPIAIJSetPreallocation(Ad_vec[id_kl], 2, NULL, 2, NULL);
+          MatMPIAIJSetPreallocation(Bd_vec[id_kl], 2, NULL, 2, NULL);
+        }
         MatSetUp(Ad_vec[id_kl]);
         MatSetUp(Bd_vec[id_kl]);
         MatSetFromOptions(Ad_vec[id_kl]);
@@ -340,7 +379,8 @@ void MasterEq::initSparseMatSolver(){
 
         /* Iterate over local rows of Ad_vec / Bd_vec */
         for (int row = ilow; row<iupp; row++){
-          // Add +/- I_N \kron (ak^Tal -/+ akal^T)
+          // Add +/- I_N \kron (ak^Tal -/+ akal^T) (Lindblad)
+          // or  +/- (ak^Tal -/+ akal^T) (Schrodinger)
           r1 = row % (dimmat / nprek);
           r1a = (int) r1 / npostk;
           r1b = r1 % (nj*npostj);
@@ -359,23 +399,25 @@ void MasterEq::initSparseMatSolver(){
             if (fabs(val)>1e-14) MatSetValue(Bd_vec[id_kl], row, col, -val, ADD_VALUES);
           }
 
-          // Add -/+ (al^Tak -/+ alak^T) \kron I
-          r1 = row % (dimmat * dimmat / nprek );
-          r1a = (int) r1 / (npostk*dimmat);
-          r1b = r1 % (npostk*dimmat);
-          r1b = r1b % (nj*npostj*dimmat);
-          r1b = (int) r1b / (npostj*dimmat);
-          if (r1a < nk-1 && r1b > 0) {
-            val = sqrt((r1a+1) * r1b);
-            col = row + npostk*dimmat - npostj*dimmat;
-            if (fabs(val)>1e-14) MatSetValue(Ad_vec[id_kl], row, col, -val, ADD_VALUES);
-            if (fabs(val)>1e-14) MatSetValue(Bd_vec[id_kl], row, col, +val, ADD_VALUES);
-          }
-          if (r1a > 0 && r1b < nj-1) {
-            val = sqrt(r1a * (r1b+1));
-            col = row - npostk*dimmat + npostj*dimmat;
-            if (fabs(val)>1e-14) MatSetValue(Ad_vec[id_kl], row, col, val, ADD_VALUES);
-            if (fabs(val)>1e-14) MatSetValue(Bd_vec[id_kl], row, col, val, ADD_VALUES);
+          if (lindbladtype != LindbladType::NONE) {
+            // Add -/+ (al^Tak -/+ alak^T) \kron I
+            r1 = row % (dimmat * dimmat / nprek );
+            r1a = (int) r1 / (npostk*dimmat);
+            r1b = r1 % (npostk*dimmat);
+            r1b = r1b % (nj*npostj*dimmat);
+            r1b = (int) r1b / (npostj*dimmat);
+            if (r1a < nk-1 && r1b > 0) {
+              val = sqrt((r1a+1) * r1b);
+              col = row + npostk*dimmat - npostj*dimmat;
+              if (fabs(val)>1e-14) MatSetValue(Ad_vec[id_kl], row, col, -val, ADD_VALUES);
+              if (fabs(val)>1e-14) MatSetValue(Bd_vec[id_kl], row, col, +val, ADD_VALUES);
+            }
+            if (r1a > 0 && r1b < nj-1) {
+              val = sqrt(r1a * (r1b+1));
+              col = row - npostk*dimmat + npostj*dimmat;
+              if (fabs(val)>1e-14) MatSetValue(Ad_vec[id_kl], row, col, val, ADD_VALUES);
+              if (fabs(val)>1e-14) MatSetValue(Bd_vec[id_kl], row, col, val, ADD_VALUES);
+            }
           }
         }
         MatAssemblyBegin(Ad_vec[id_kl], MAT_FINAL_ASSEMBLY);
@@ -409,15 +451,17 @@ void MasterEq::initSparseMatSolver(){
     for (int row = ilow; row<iupp; row++){
 
       // Indices for -I_N \kron B_d
-      r1 = row % dimmat;
+      if (lindbladtype != LindbladType::NONE) r1 = row % dimmat;
+      else r1 = row;
       r1 = r1 % (nk * npostk);
       r1 = (int) r1 / npostk;
       // Indices for B_d \kron I_N
       r2 = (int) row / dimmat;
       r2 = r2 % (nk * npostk);
       r2 = (int) r2 / npostk;
+      if (lindbladtype == LindbladType::NONE) r2 = 0;
 
-      // -I_N \kron B_d + B_d \kron I_N
+      // -Bd, or -I_N \kron B_d + B_d \kron I_N
       val  = - ( detunek * r1 - xik / 2. * (r1*r1 - r1) );
       val +=     detunek * r2 - xik / 2. * (r2*r2 - r2)  ;
       if (fabs(val)>1e-14) MatSetValue(Bd, row, row, val, ADD_VALUES);
@@ -431,7 +475,8 @@ void MasterEq::initSparseMatSolver(){
       coupling_id++;
         
       for (int row = ilow; row<iupp; row++){
-        r1 = row % dimmat;
+        if (lindbladtype != LindbladType::NONE) r1 = row % dimmat;
+        else r1 = row;
         r1 = r1 % (nk * npostk);
         r1a = r1 / npostk;
         r1b = r1 % npostk;
@@ -444,13 +489,14 @@ void MasterEq::initSparseMatSolver(){
         r2b = r2 % npostk;
         r2b = r2b % (nj*npostj);
         r2b = r2b / npostj;
+        if (lindbladtype == LindbladType::NONE) r2a = 0;
+        if (lindbladtype == LindbladType::NONE) r2b = 0;
 
         // -I_N \kron B_d + B_d \kron I_N
         val =  xikj * r1a * r1b  - xikj * r2a * r2b;
         if (fabs(val)>1e-14) MatSetValue(Bd, row, row, val, ADD_VALUES);
       }
     }
-
   }
   MatAssemblyBegin(Bd, MAT_FINAL_ASSEMBLY);
   MatAssemblyEnd(Bd, MAT_FINAL_ASSEMBLY);
@@ -458,7 +504,7 @@ void MasterEq::initSparseMatSolver(){
   /* Allocate and compute real drift part Ad = Lindblad */
   MatCreate(PETSC_COMM_WORLD, &Ad);
   MatSetSizes(Ad, PETSC_DECIDE, PETSC_DECIDE, dim, dim);
-  if (addT1 || addT2) { // if Lindblad terms, preallocate matrix. Otherwise, leave zero matrix
+  if (addT1 || addT2) { // if Lindblad solver , preallocate matrix. Otherwise, leave zero matrix
     MatSetType(Ad, MATMPIAIJ);
     MatMPIAIJSetPreallocation(Ad, noscillators+5, NULL, noscillators+5, NULL);
   }
@@ -1040,7 +1086,8 @@ int MasterEq::getRhoT0(const int iinit, const int ninit, const InitialConditionT
   double val;
   int dim_post;
   int initID = 1;    // Output: ID for this initial condition */
-  int dim_rho = (int) sqrt(dim); // N
+  int dim_rho = dim; // can be N^2 or N
+  if (lindbladtype != LindbladType::NONE) dim_rho = (int) sqrt(dim); // now dim_rho = N always.
 
   /* Switch over type of initial condition */
   switch (initcond_type) {
@@ -1058,6 +1105,7 @@ int MasterEq::getRhoT0(const int iinit, const int ninit, const InitialConditionT
       break;
 
     case InitialConditionType::THREESTATES:
+      assert(lindbladtype != LindbladType::NONE);
 
       /* Reset the initial conditions */
       VecZeroEntries(rho0);
@@ -1110,6 +1158,7 @@ int MasterEq::getRhoT0(const int iinit, const int ninit, const InitialConditionT
       break;
 
     case InitialConditionType::NPLUSONE:
+      assert(lindbladtype != LindbladType::NONE);
       VecGetOwnershipRange(rho0, &ilow, &iupp);
 
       if (iinit < dim_rho) {// Diagonal e_j e_j^\dag
@@ -1156,18 +1205,21 @@ int MasterEq::getRhoT0(const int iinit, const int ninit, const InitialConditionT
       if (dim_ess < dim_rho)  diagelem = mapEssToFull(diagelem, nlevels, nessential);
 
       /* Set B_{mm} */
-      elemID = getIndexReal(getVecID(diagelem, diagelem, dim_rho)); // real part in vectorized system
+      if (lindbladtype != LindbladType::NONE) elemID = getIndexReal(getVecID(diagelem, diagelem, dim_rho)); // density matrix
+      else  elemID = getIndexReal(diagelem); 
       val = 1.0;
       VecGetOwnershipRange(rho0, &ilow, &iupp);
       if (ilow <= elemID && elemID < iupp) VecSetValues(rho0, 1, &elemID, &val, INSERT_VALUES);
       VecAssemblyBegin(rho0); VecAssemblyEnd(rho0);
 
       /* Set initial conditon ID */
-      initID = iinit * ninit + iinit;
+      if (lindbladtype != LindbladType::NONE) initID = iinit * ninit + iinit;
+      else initID = iinit;
 
       break;
 
     case InitialConditionType::BASIS:
+      assert(lindbladtype != LindbladType::NONE); // should never happen. For Schroedinger: BASIS equals DIAGONAL, and should go into the above switch case. 
 
       /* Reset the initial conditions */
       VecZeroEntries(rho0);

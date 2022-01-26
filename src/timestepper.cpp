@@ -12,11 +12,17 @@ TimeStepper::TimeStepper() {
 
 TimeStepper::TimeStepper(MasterEq* mastereq_, int ntime_, double total_time_, Output* output_, bool storeFWD_) : TimeStepper() {
   mastereq = mastereq_;
-  dim = 2*mastereq->getDim();
+  dim = 2*mastereq->getDim(); // will be either N^2 (Lindblad) or N (Schroedinger)
   ntime = ntime_;
   total_time = total_time_;
   output = output_;
   storeFWD = storeFWD_;
+
+  /* Check if leakage term is added: Only if nessential is smaller than nlevels for at least one oscillator */
+  addLeakagePrevent = false; 
+  for (int i=0; i<mastereq->getNOscillators(); i++){
+    if (mastereq->nessential[i] < mastereq->nlevels[i]) addLeakagePrevent = true;
+  }
 
   /* Set the time-step size */
   dt = total_time / ntime;
@@ -139,8 +145,9 @@ void TimeStepper::solveAdjointODE(int initid, Vec rho_t0_bar, double Jbar) {
 
 double TimeStepper::penaltyIntegral(double time, const Vec x){
   double penalty = 0.0;
-  int dim_rho = (int)sqrt(dim/2);  // dim = 2*N^2 vectorized system. dim_rho = N = dimension of matrix system
+  int dim_rho = mastereq->getDimRho(); // N
   double x_re, x_im;
+  PetscInt vecID_re, vecID_im;
 
   /* weighted integral of the objective function */
   if (penalty_param > 1e-13) {
@@ -149,33 +156,39 @@ double TimeStepper::penaltyIntegral(double time, const Vec x){
     penalty = weight * obj * dt;
   }
 
-  /* If gate optimization: Add guard-level occupation to prevent leakage. A guard level is the LAST NON-ESSENTIAL energy level of an oscillator */
-  if (optim_target->getType() == TargetType::GATE) { 
-      double leakage = 0.0;
-      PetscInt ilow, iupp;
-      VecGetOwnershipRange(x, &ilow, &iupp);
-      /* Sum over all diagonal elements that correspond to a non-essential guard level. */
-      for (int i=0; i<dim_rho; i++) {
-        if ( isGuardLevel(i, mastereq->nlevels, mastereq->nessential) ) {
-          // printf("isGuard: %d / %d\n", i, dim_rho);
-          PetscInt vecID_re = getIndexReal(getVecID(i,i,dim_rho));
-          PetscInt vecID_im = getIndexImag(getVecID(i,i,dim_rho));
-          x_re = 0.0; x_im = 0.0;
-          if (ilow <= vecID_re && vecID_re < iupp) VecGetValues(x, 1, &vecID_re, &x_re);
-          if (ilow <= vecID_im && vecID_im < iupp) VecGetValues(x, 1, &vecID_im, &x_im);  // those should be zero!? 
-          leakage += x_re * x_re + x_im * x_im;
+  /* Add guard-level occupation to prevent leakage. A guard level is the LAST NON-ESSENTIAL energy level of an oscillator */
+  if (addLeakagePrevent) {
+    double leakage = 0.0;
+    PetscInt ilow, iupp;
+    VecGetOwnershipRange(x, &ilow, &iupp);
+    /* Sum over all diagonal elements that correspond to a non-essential guard level. */
+    for (int i=0; i<dim_rho; i++) {
+      if ( isGuardLevel(i, mastereq->nlevels, mastereq->nessential) ) {
+          // printf("%f: isGuard: %d / %d\n", time, i, dim_rho);
+        if (mastereq->lindbladtype != LindbladType::NONE) {
+          vecID_re = getIndexReal(getVecID(i,i,dim_rho));
+          vecID_im = getIndexImag(getVecID(i,i,dim_rho));
+        } else {
+          vecID_re = getIndexReal(i);
+          vecID_im = getIndexImag(i);
         }
+        x_re = 0.0; x_im = 0.0;
+        if (ilow <= vecID_re && vecID_re < iupp) VecGetValues(x, 1, &vecID_re, &x_re);
+        if (ilow <= vecID_im && vecID_im < iupp) VecGetValues(x, 1, &vecID_im, &x_im); 
+        leakage += x_re * x_re + x_im * x_im;
       }
-      double mine = leakage;
-      MPI_Allreduce(&mine, &leakage, 1, MPI_DOUBLE, MPI_SUM, PETSC_COMM_WORLD);
-      penalty += dt * leakage;
+    }
+    double mine = leakage;
+    MPI_Allreduce(&mine, &leakage, 1, MPI_DOUBLE, MPI_SUM, PETSC_COMM_WORLD);
+    penalty += dt * leakage;
   }
 
   return penalty;
 }
 
 void TimeStepper::penaltyIntegral_diff(double time, const Vec x, Vec xbar, double penaltybar){
-  int dim_rho = (int)sqrt(dim/2);  // dim = 2*N^2 vectorized system. dim_rho = N = dimension of matrix system
+  int dim_rho = mastereq->getDimRho();  // N
+  PetscInt vecID_re, vecID_im;
 
   /* Derivative of weighted integral of the objective function */
   if (penalty_param > 1e-13){
@@ -184,14 +197,19 @@ void TimeStepper::penaltyIntegral_diff(double time, const Vec x, Vec xbar, doubl
   }
 
   /* If gate optimization: Derivative of adding guard-level occupation */
-  if (optim_target->getType() == TargetType::GATE) { 
+  if (addLeakagePrevent) {
     PetscInt ilow, iupp;
     VecGetOwnershipRange(x, &ilow, &iupp);
     double x_re, x_im;
     for (int i=0; i<dim_rho; i++) {
       if ( isGuardLevel(i, mastereq->nlevels, mastereq->nessential) ) {
-        PetscInt vecID_re = getIndexReal(getVecID(i,i,dim_rho));
-        PetscInt vecID_im = getIndexImag(getVecID(i,i,dim_rho));
+        if (mastereq->lindbladtype != LindbladType::NONE){ 
+          vecID_re = getIndexReal(getVecID(i,i,dim_rho));
+          vecID_im = getIndexImag(getVecID(i,i,dim_rho));
+        } else {
+          vecID_re = getIndexReal(i);
+          vecID_im = getIndexImag(i);
+        }
         x_re = 0.0; x_im = 0.0;
         if (ilow <= vecID_re && vecID_re < iupp) VecGetValues(x, 1, &vecID_re, &x_re);
         if (ilow <= vecID_im && vecID_im < iupp) VecGetValues(x, 1, &vecID_im, &x_im);
