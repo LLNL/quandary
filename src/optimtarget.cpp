@@ -149,9 +149,10 @@ double OptimTarget::evalJ(const Vec state){
         diagID = getIndexReal(getVecID(purestateID,purestateID,dim));
         rhoii = 0.0;
         VecGetOwnershipRange(state, &ilo, &ihi);
-        if (ilo <= diagID && diagID < ihi) VecGetValues(state, 1, &diagID, &rhoii);
-        mine = 1. - rhoii;
-        MPI_Allreduce(&mine, &objective, 1, MPI_DOUBLE, MPI_SUM, PETSC_COMM_WORLD);
+        if (ilo <= diagID && diagID < ihi) VecGetValues(state, 1, &diagID, &rhoii); // local!
+        mine = rhoii;
+        MPI_Allreduce(&mine, &rhoii, 1, MPI_DOUBLE, MPI_SUM, PETSC_COMM_WORLD);
+        objective = 1. - rhoii;
       }
       break; // case J_HS
 
