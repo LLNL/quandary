@@ -65,8 +65,8 @@ MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Osci
       printf("State dimension (complex) N^2 = %d\n",dim);
     }
   } else { // Solve Schroedingers equation. dim = N
+    dim = dim_rho; 
     if (mpirank_world == 0) {
-      dim = dim_rho; 
       printf("Solving Schroedingers equation (state is a vector).\n");
       printf("State dimension (complex) N = %d\n",dim);
     }
