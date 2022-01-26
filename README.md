@@ -6,7 +6,7 @@ A documentation is under development. In the meantime, refer to the user guide i
 For questions, feel free to reach out to Stefanie Guenther [guenther5@llnl.gov].
 
 ## Dependencies
-This project relies on Petsc [https://www.mcs.anl.gov/petsc/] to handle (parallel) linear algebra. Optionally, XBraid [https://github.com/XBraid/xbraid] can be linked to realize time-parallelization, and Slepsc [https://slepc.upv.es] can be used to solve some eigenvalue problems if desired (e.g. for the Hessian...)
+This project relies on Petsc [https://petsc.org/release/] to handle (parallel) linear algebra. Optionally, XBraid [https://github.com/XBraid/xbraid] can be linked to realize time-parallelization, and Slepsc [https://slepc.upv.es] can be used to solve some eigenvalue problems if desired (e.g. for the Hessian...)
 * **Required:** Install Petsc:
     You can try the below, but make sure to also check [https://petsc.org/release/] for the newest installation guide. (On MacOS, you can also `brew install petsc`.)
     * `git clone -b release https://gitlab.com/petsc/petsc.git petsc`
@@ -62,4 +62,3 @@ Quandary is an open source project that is under heavy development. Contribution
 Quandary is distributed under the terms of the MIT license. All new contributions must be made under this license. See LICENSE, and NOTICE, for details. 
 
 SPDX-License-Identifier: MIT
-

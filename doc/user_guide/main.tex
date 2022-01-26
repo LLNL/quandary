@@ -46,7 +46,7 @@
   \endgroup
 }
 
-\title{Quandary: Optimal Control for Quantum Systems}
+\title{Quandary: Optimal Control for Open and Closed Quantum Systems}
 \author{Stefanie G{\"u}nther\thanks{Center for Applied Scientific Computing, Lawrence Livermore National Laboratory, Livermore, CA, USA.} \and N. Anders Petersson$^*$} 
 % \author{Stefanie G{\"u}nther \and N. Anders Petersson} 
 \date{last updated \today}
@@ -135,9 +135,9 @@ The constants $T_l^k>0$ correspond to the half-life of process $l$ on subsystem 
 % Decay processes typically behave like $\exp(-t/{T_1})$.
 
 All the above constants and system parameters can be specified in the first part of the configuration file that Quandary's executable takes as an input, compare \texttt{config\_template.cfg}. 
-Note that the main choice here is which equation should be solved for and which representation of the quantum state will be used (either Schroedinger with a state vector $\psi \in \C^N$, or Lindblad's equation for a density matrix $\rho \in \C^{N\times N}$). In the configuration file, this choice is determined through the option \texttt{collapse\_type}, where \texttt{none} will result in Schroedinger's equation and any other choice will result in Lindblad's equation being solved for. Further note, that choosing \texttt{collapse\_type} $\neq$ \texttt{none}, together with a collapse time $T_{l}^k = 0.0$ will omit the evaluation of the corresponding term in the Lindblad operator \eqref{eq:collapseop}.
+Note that the main choice here is which equation should be solved for and which representation of the quantum state will be used (either Schroedinger with a state vector $\psi \in \C^N$, or Lindblad's equation for a density matrix $\rho \in \C^{N\times N}$). In the configuration file, this choice is determined through the option \texttt{collapse\_type}, where \texttt{none} will result in Schroedinger's equation and any other choice will result in Lindblad's equation being solved for. Further note, that choosing \texttt{collapse\_type} $\neq$ \texttt{none}, together with a collapse time $T_{l}^k = 0.0$ will omit the evaluation of the corresponding term in the Lindblad operator \eqref{eq:collapseop} (but will still solve Lindblad's equation for the density matrix).
 
-Note: \textit{In the remainder of this document, the quantum state will mostly be denoted by $\rho$, independent of which equation is solved for. So $\rho$ can be seen as placeholder for either the density matrix $\rho\in \C^{N\times N}$, or the state vector $\psi\in \C^N$. A clear distinction between the two will only be made explicit if necessary.}
+\textit{Note:} In the remainder of this document, the quantum state will mostly be denoted by $\rho$, independent of which equation is solved for. Depending on the context, $\rho$ can then either denotes the density matrix $\rho\in \C^{N\times N}$, or the state vector $\psi\in \C^N$. A clear distinction between the two will only be made explicit if necessary.
 
 \subsection{Rotational frame approximation}
 Quandary uses the rotating wave approximation in order to slow down the time scales in the solution of Schroedinger's or Lindblad's master equations. To that end, the user can specify the rotation frequencies $\omega_k^r$ for each oscillator. Under the rotating frame wave approximation, the Hamiltonians are transformed to 
@@ -238,18 +238,18 @@ The third term is a Tikhonov regularization that can be added with parameter $\g
 \subsection{Objective function}
 The following choices for $J$ are implemented
 \begin{align}
- J_{Frobenius} &= \frac 12 \| \rho^{target} - \rho(T)||^2_F \\ 
- J_{Trace} &= 1 - \frac 1w \mbox{Tr}\left((\rho^{target})^\dagger\rho(T)\right), \quad \text{where} \quad w=\mbox{Tr}(\rho(0)^2)\\
- J_{Measure} &= \mbox{Tr} \left( N_m \rho(T) \right), \label{eq:Jmeasure}
+ J_{frobenius} &= \frac 12 \| \rho^{target} - \rho(T)||^2_F \\ 
+ J_{trace} &= 1 - \frac 1w \mbox{Tr}\left((\rho^{target})^\dagger\rho(T)\right), \quad \text{where} \quad w=\mbox{Tr}(\rho(0)^2)\\
+ J_{measure} &= \mbox{Tr} \left( N_m \rho(T) \right), \label{eq:Jmeasure}
 \end{align}
 where $N_m\in \R^{N\times N}$ is a diagonal matrix with diagonal elements $\lambda_k = |k-m|\, \forall k=0,\dots, N-1$ for a given integer $m$ with $0\leq m < N$. The first two measures are mostly common for gate optimization, $J_{measure}$ is useful when considering pure-state optimization, see below. 
 In Quandary, the objective function can be specified with the configuration option \texttt{optim\_objective}.
 
-Note that those measures apply to either the density matrix version solving Lindblad's equation (compare Section \ref{sec:model}), or the state vector version solving Schroedinger's equation. In the latter case, naturally with $\rho = \psi\psi^\dagger$, the objective measures applied to state vectors are
+Note that the above measures apply to either the density matrix version solving Lindblad's equation (compare Section \ref{sec:model}), or the state vector version solving Schroedinger's equation. In the latter case, naturally with $\rho = \psi\psi^\dagger$, the objective measures applied to state vectors are
 \begin{align}
-  J_{Frobenius} &= \frac 12 \| \psi^{target} - \psi(T)\|_2^2\\
-  J_{Trace} &= 1 - |(\psi^{target})^\dagger\psi(T)|^2 \\
-  J_{Measure} &= \psi(T)^\dagger N_m \psi(T).
+  J_{frobenius} &= \frac 12 \| \psi^{target} - \psi(T)\|_2^2\\
+  J_{trace} &= 1 - |(\psi^{target})^\dagger\psi(T)|^2 \\
+  J_{measure} &= \psi(T)^\dagger N_m \psi(T).
 \end{align}
 
 
@@ -265,21 +265,22 @@ State preparation aims to drive the system from either one specific or from any 
 \begin{align}
  \psi^{target} = \boldsymbol{e}_m \quad \text{or} \quad \rho^{target} = \boldsymbol{e}_m \boldsymbol{e}_m^\dagger, \quad \text{for}\quad m\in \N_0\quad \text{with}\quad 0\leq m < N
 \end{align}
-where $\boldsymbol{e}_m$ denotes the $m$-th unit vector in $\R^N$. We note that considering pure states of that specific form ($\boldsymbol{e}_m$ or $\boldsymbol{e}_m\boldsymbol{e}_m^\dagger$) is not a restriction, because any other pure target state can be transformed to this representation using a unitary change of coordinates (compare the Appendix in \cite{guenther2021quantum} for a more detailed description). For $m=0$, the target state represents the ground state of the system under consideration, which has important applications for quantum reset as well as quantum error correction. 
-
-Depending on the choice for the initial conditions, optimization towards a pure target state can be used to realize either a simple state-to-state transfer (choosing one specific initial condition, $n_{init}=1$), or to realize the more complex task of state preparation that drives \textit{any} initial state to a common pure target state. Driving \textit{any} initial state to a common target will require to couple to a dissipative bath, which should be accounted for in the model setup. In the latter case, typically a full basis of initial conditions needs to be considered during the optimization ($n_{init}=N^2$ for density matrices). However, it is shown in \cite{guenther2021quantum}, that if one chooses the objective function $J_{measure}$ with corresponding measurement operator $N_m$ (see eq. \eqref{eq:Jmeasure}), one can reduce the number of initial conditions to only \textit{one} being an ensemble of all basis states, and hence $n_{init}=1$ independent of the system dimension $N$. Compare \cite{guenther2021quantum} for details, and Section \ref{sec:ensemblestate}
-
-Note that the above $m$ refers to the $|m\rangle$-th state of the entire system under consideration with dimension $N$, which can be a composite of $Q$ subsystems. 
-In Quandary this pure target state is specified by defining the desired pure target for \textit{each} of the subsystems individally. For a composite system of $Q$ subsystems with $n_k$ levels each, a composite target pure state is specified by a list of integers $m_k$ with $0\leq m_k < n_k$ representing the pure target state in each subsystem $k$. The composite pure target is state is then
+where $\boldsymbol{e}_m$ denotes the $m$-th unit vector in $\R^N$. 
+\footnote{We note that considering pure states of that specific form ($\boldsymbol{e}_m$ or $\boldsymbol{e}_m\boldsymbol{e}_m^\dagger$) is not a restriction, because any other pure target state can be transformed to this representation using a unitary change of coordinates (compare the Appendix in \cite{guenther2021quantum} for a more detailed description).}
+The integer $m$ refers to the $|m\rangle$-th state of the entire system under consideration with dimension $N$, which can be a composite of $Q$ subsystems. 
+In the configuration file however, the pure target state is specified by defining the desired pure target for \textit{each} of the subsystems individally. For a composite system of $Q$ subsystems with $n_k$ levels each, a composite target pure state is specified by a list of integers $m_k$ with $0\leq m_k < n_k$ representing the pure target state in each subsystem $k$. The composite pure target state is then
 \begin{align}
   \psi^{target} = |m_0 m_1 m_2 \dots m_{Q-1} \rangle \quad \text{aka} \quad  \psi^{target} = \boldsymbol{e}_{m_0}\otimes  \boldsymbol{e}_{m_1}\otimes  \dots \otimes\boldsymbol{e}_{m_{Q-1}} 
 \end{align}
-for unit vectors $\boldsymbol{e}_{m_k} \in \R^{n_k}$ (and $\rho^{target} = \psi^{target} (\psi^{target})^\dagger$ for the density matrix). The composite-system index $m$ is then computed inside Quandary, from 
+for unit vectors $\boldsymbol{e}_{m_k} \in \R^{n_k}$, and $\rho^{target} = \psi^{target} (\psi^{target})^\dagger$ for the density matrix. The composite-system index $m$ is computed inside Quandary, from 
 \begin{align}
   m = m_0 \frac{N}{n_0} + m_1 \frac{N}{n_0n_1} + m_2 \frac{N}{n_0n_1n_2} + \dots + m_{Q-1}
 \end{align}
 
-For example, assume one considers a composite system consisting of a qubit modelled with $n_0=2$ levels coupled to a readout cavity modelled with $n_1=10$ levels, and one wants to drive the qubit to the $|1\rangle$ state and the cavity to the ground state. The target pure state input for Quandary is hence $m_0=1, m_1=0$ (i.e. the $|10\rangle$ state in the composite system), which corresonds $m=1\cdot10+0 = 10$ in the composite system of dimension $N=2\cdot 10 = 20$. 
+Depending on the choice for the initial conditions, optimization towards a pure target state can be used to realize either a simple state-to-state transfer (choosing one specific initial condition, $n_{init}=1$), or to realize the more complex task of state preparation that drives \textit{any} initial state to a common pure target state. 
+For $m=0$, the target state represents the ground state of the system under consideration, which has important applications for quantum reset as well as quantum error correction. Driving \textit{any} initial state to a common target will require to couple to a dissipative bath, which should be accounted for in the model setup. In the latter case, typically a full basis of initial conditions needs to be considered during the optimization ($n_{init}=N^2$ for density matrices). However, it is shown in \cite{guenther2021quantum}, that if one chooses the objective function $J_{measure}$ with corresponding measurement operator $N_m$ (see eq. \eqref{eq:Jmeasure}), one can reduce the number of initial conditions to only \textit{one} being an ensemble of all basis states, and hence $n_{init}=1$ independent of the system dimension $N$. Compare \cite{guenther2021quantum} for details, and Section \ref{sec:ensemblestate}. 
+
+% For example, assume one considers a composite system consisting of a qubit modelled with $n_0=2$ levels coupled to a readout cavity modelled with $n_1=10$ levels, and one wants to drive the qubit to the $|1\rangle$ state and the cavity to the ground state. The target pure state input for Quandary is hence $m_0=1, m_1=0$ (i.e. the $|10\rangle$ state in the composite system), which corresonds $m=1\cdot10+0 = 10$ in the composite system of dimension $N=2\cdot 10 = 20$. 
 
 
 \subsubsection{Read a target state from file}
@@ -310,11 +311,11 @@ Target gates that are currently implemented are
 Further, a generalization of the SWAP and the CNOT gate for general $Q$ subsystems is available: The SWAP-0Q gate swaps the state of the first and the last qubit, while leaving all other oscillators in their respective initial state, and the CQNOT gate performs a NOT operation on the last qubit if all other qubits are in the one-state.
 New, user-defined gates can be easily added to the code by extending the \texttt{Gate} class in the corresponding \texttt{.cpp} and \texttt{.hpp} files. 
 
-For gate optimization, the first two objective function $J_{Frobenius}$ and $J_{Hilbert-Schmidt}$ are appropriate. Since \textit{any} initial quantum state should be transformed by the control pulses, again typically a basis for the initial states should be considered ($n_{init} = N$ for Schroedinger solver, and $n_{init}=N^2$ for Lindblad solver). In the Lindblad solver case, it has however been shown in \cite{goerz2014optimal} that it is enough to optimize with only three specific initial states ($n_{init} = 3$), independent of the Hilbert space dimension $N$. Those three states are set up in such a way that they can distinguish between any two unitaries in that Hilbert space. The three initial states are readily available in Quandary, see Section \ref{subsec:initcond}. Note that when optimizing with only those three initial states, it turns out that the choice of the weights $\beta_i$ that weight the contribution from each initial state in the overall objective function strongly influences the optimization convergence. For faster convergence, it is often benefitial to emphasize on the first of the three initial conditions ($\rho_1(0)$ in Section \ref{subsec:threeinitcond}), hence choosing $\beta_1$ (much) bigger than $\beta_2$ and $\beta_3$ (e.g. $\beta = \{20,1,1\}$ often works better than $\beta = \{1,1,1\}$, try it yourself). We refer to \cite{goerz2014optimal} for details. 
+For gate optimization, the first two objective function $J_{frobenius}$ and $J_{trace}$ are appropriate. Since \textit{any} initial quantum state should be transformed by the control pulses, typically a basis for the initial states should be considered ($n_{init} = N$ for Schroedinger solver, and $n_{init}=N^2$ for Lindblad solver). In the Lindblad solver case, it has however been shown in \cite{goerz2014optimal} that it is enough to optimize with only three specific initial states ($n_{init} = 3$), independent of the Hilbert space dimension $N$. Those three states are set up in such a way that they can distinguish between any two unitaries in that Hilbert space. The three initial states are readily available in Quandary, see Section \ref{subsec:initcond}. Note that when optimizing with only those three initial states, it turns out that the choice of the weights $\beta_i$ that weight the contribution from each initial state in the overall objective function strongly influences the optimization convergence. For faster convergence, it is often benefitial to emphasize on the first of the three initial conditions ($\rho_1(0)$ in Section \ref{subsec:threeinitcond}), hence choosing $\beta_1$ (much) bigger than $\beta_2$ and $\beta_3$ (e.g. $\beta = \{20,1,1\}$ often works better than $\beta = \{1,1,1\}$, try it yourself). We refer to \cite{goerz2014optimal} for details. 
 
 \subsubsection{Essential and non-essential levels} \label{sec:essentiallevels}
 It is often useful, to model the quantum system with more energy levels than the number of levels that the target gate is defined on. For example when optimizing for a SWAP gate on two qubits, with $V_{SWAP}\in\C^{4\times 4}$, one might want to model each qubit with more than two energy levels in order to (a) model the (infinite dimensional) system with more accuracy by including more levels and (b) allow the system to transition through higher energy levels in order to achieve the target at final time $T$. In that case, the \textit{essential} levels denote the levels that the target gate is defined on.
-To this end, Quandary provides the option to specify the number of essential energy levels $n_k^e$ in addition to the number of energy levels $n_k$, where $n_k^e \leq n_k$ for each subsystem $k$. The quantum dynamics are then modelled with (more) energy levels with $N=\prod_k n_k$ and $\rho(t)\in \C^{N\times N}$, while the gate is defined in the essential level dimensions only: $V\in \C^{N_e \times N_e}, N_e=\prod_k n_k^e$. In the example above, $n^e_0=n^e_1=2$ and hence $V_{SWAP}\in \C^{4\times 4}$, but one can choose the number of energy levels $n_0$ and $n_1$ to be bigger than $2$ to when modelling the system dynamics. 
+To this end, Quandary provides the option to specify the number of essential energy levels $n_k^e$ in addition to the number of energy levels $n_k$, where $n_k^e \leq n_k$ for each subsystem $k$. The quantum dynamics are then modelled with (more) energy levels with $N=\prod_k n_k$ and $\rho(t)\in \C^{N\times N}$ (or $\psi\in\C^N$), while the gate is defined in the essential level dimensions only: $V\in \C^{N_e \times N_e}, N_e=\prod_k n_k^e$. In the example above, $n^e_0=n^e_1=2$ and hence $V_{SWAP}\in \C^{4\times 4}$, but one can choose the number of energy levels $n_0$ and $n_1$ to be bigger than $2$ to when modelling the system dynamics. 
  
 To compute the objective function at final time T, the essential-dimensional gate is projected upwards to the full dimensions $\tilde V \in \C^{N\times N}$ by inserting identiy blocks for rows/columns that correspond to a non-essential level of either of the subsystems. Hence, a realization of the gate $\tilde V$ will not alter the occupation of higher (non-essential) energy level compared to their initial occupation at $t=0$. 
 
@@ -354,11 +355,11 @@ unique index $i \in \{0,\dots, N^2-1\}$ is assigned to each basis state with
 \end{align*}
 (columnwise vectorization of a matrix of matrices $\left\{B^{kj}\right\}_{kj}$). 
 
-For closed systems using the state vector representation (Schroedinger's solver), the basis states are the unit vector in $\C^{N}$, hence $n_{init} = N$ initial states $\boldsymbol{e}_i \in \C^N, i=0,\dots N$. 
+For closed systems using the state vector representation (Schroedinger's solver), the basis states are the unit vector in $\C^{N}$, hence $n_{init} = N$ initial states $\boldsymbol{e}_i \in \R^N, i=0,\dots N-1$. 
 
 \subsubsection{Diagonal density matrices (aka all pure states)}
 
-For density matrices (Lindblad solver), one can choose to propagate only those basis states that correspond to pure states of the form $\boldsymbol{e}_k\boldsymbol{e}_k^\dagger$, i.e. propagating only $B^{kk}$ for $k=0,\dots, N-1$, and then $n_{init}=N$. For the Schroedinger solver, this is equivalent to all basis states. 
+For density matrices (Lindblad solver), one can choose to propagate only those basis states that correspond to pure states of the form $\boldsymbol{e}_k\boldsymbol{e}_k^\dagger$, i.e. propagating only the $B^{kk}$ in \eqref{eq:basismats} for $k=0,\dots, N-1$, and then $n_{init}=N$. For the Schroedinger solver, this is equivalent to all basis states. 
 
 \subsubsection{Ensemble state for pure-state optimization}\label{sec:ensemblestate}
 \textit{Only valid for the density matrix version, solving Lindblad's master equation.}
@@ -497,12 +498,12 @@ The real and imaginary parts of $q(t)$ are stored in a colocated manner: For
 
      \item The \textit{matrix-free solver} considers the state density matrix $\rho\in C^{N\times N}$ to be a tensor of rank $2Q$ (one axis for each subsystems for each matrix dimension, hence $2\cdot Q$ axes). Instead of storing the matrices within $M(t)$, the matrix-free solver applies tensor contractions to realize the action of $A(t)$ and $B(t)$ on the state vectors. 
 
-    In our current test cases, the matrix-free solver is much faster than the sparse-matrix solver (about 10x), no surprise. However the matrix-free solver is currently only implemented for systems consisting of \textbf{2, 3, 4, or 5} subsystems. 
+    In our current test cases, the matrix-free solver is much faster than the sparse-matrix solver (about 10x), no surprise. However the matrix-free solver is currently only implemented for composite systems consisting of \textbf{2, 3, 4, or 5} subsystems. 
 
     \textbf{Restrictions:} 
     \begin{itemize}
-      \item The matrix-free solver currently does not parallelize across the system dimension $N$, hence the state vector is \textbf{not} distributed (i.e. no parallel Petsc!). The reason why we did not implement that yet is that $Q$ can often be large while each axis can be very shor (e.g. modelling $Q=12$ qubits with $n_k=2$ energy levels per qubit), which yields a very high-dimensional tensor with very short axix. In that case, the standard (?) approach of parallelizing the tensor along its axes will likey lead to very poor scalability due to high communication overhead. We have not found a satisfying solution yet - if you have ideas, please reach out, we are happy to collaborate! 
-      \item \textcolor{red}{TODO: The matrix-free solver is currently not available when solving Schroedingers equation.}
+      \item The matrix-free solver currently does not parallelize across the system dimension $N$, hence the state vector is \textbf{not} distributed (i.e. no parallel Petsc!). The reason why we did not implement that yet is that $Q$ can often be large while each axis can be very short (e.g. modelling $Q=12$ qubits with $n_k=2$ energy levels per qubit), which yields a very high-dimensional tensor with very short axix. In that case, the standard (?) approach of parallelizing the tensor along its axes will likey lead to very poor scalability due to high communication overhead. We have not found a satisfying solution yet - if you have ideas, please reach out, we are happy to collaborate! 
+      \item {The matrix-free solver is currently not available when solving Schroedingers equation.}
     \end{itemize}
    \end{enumerate} 
 
@@ -589,7 +590,7 @@ The real and imaginary parts of $q(t)$ are stored in a colocated manner: For
       speedup depends on the test case and XBraid setting (experts only),
       configuration option is \texttt{np\_braid}
     \end{enumerate}
-    Strong scaling studies are presented in \cite{guenther2021quantum}.
+    Strong and weak scaling studies are presented in \cite{guenther2021quantum}.
 
     In the main code, the global communicator (MPI\_COMM\_WORLD) is split into
     three sub-communicator, one for each of the above. The total number of executing MPI
@@ -634,17 +635,17 @@ The real and imaginary parts of $q(t)$ are stored in a colocated manner: For
 This work was performed under the auspices of the U.S. Department of Energy by Lawrence
 Livermore National Laboratory under Contract DE-AC52-07NA27344. LLNL-SM-818073. 
 
-This document was prepared as an account of work sponsored by an agency of the United States
-government. Neither the United States government nor Lawrence Livermore National Security, LLC,
-nor any of their employees makes any warranty, expressed or implied, or assumes any legal
-liability or responsibility for the accuracy, completeness, or usefulness of any information,
-apparatus, product, or process disclosed, or represents that its use would not infringe
-privately owned rights. Reference herein to any specific commercial product, process, or service
-by trade name, trademark, manufacturer, or otherwise does not necessarily constitute or imply
-its endorsement, recommendation, or favoring by the United States government or Lawrence
-Livermore National Security, LLC. The views and opinions of authors expressed herein do not
-necessarily state or reflect those of the United States government or Lawrence Livermore
-National Security, LLC, and shall not be used for advertising or product endorsement purposes.
+% This document was prepared as an account of work sponsored by an agency of the United States
+% government. Neither the United States government nor Lawrence Livermore National Security, LLC,
+% nor any of their employees makes any warranty, expressed or implied, or assumes any legal
+% liability or responsibility for the accuracy, completeness, or usefulness of any information,
+% apparatus, product, or process disclosed, or represents that its use would not infringe
+% privately owned rights. Reference herein to any specific commercial product, process, or service
+% by trade name, trademark, manufacturer, or otherwise does not necessarily constitute or imply
+% its endorsement, recommendation, or favoring by the United States government or Lawrence
+% Livermore National Security, LLC. The views and opinions of authors expressed herein do not
+% necessarily state or reflect those of the United States government or Lawrence Livermore
+% National Security, LLC, and shall not be used for advertising or product endorsement purposes.
 
 
 \bibliographystyle{plain}
