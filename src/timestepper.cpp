@@ -18,6 +18,12 @@ TimeStepper::TimeStepper(MasterEq* mastereq_, int ntime_, double total_time_, Ou
   output = output_;
   storeFWD = storeFWD_;
 
+  /* Check if leakage term is added: Only if nessential is smaller than nlevels for at least one oscillator */
+  addLeakagePrevent = false; 
+  for (int i=0; i<mastereq->getNOscillators(); i++){
+    if (mastereq->nessential[i] < mastereq->nlevels[i]) addLeakagePrevent = true;
+  }
+
   /* Set the time-step size */
   dt = total_time / ntime;
 
@@ -150,29 +156,30 @@ double TimeStepper::penaltyIntegral(double time, const Vec x){
     penalty = weight * obj * dt;
   }
 
-  /* If gate optimization: Add guard-level occupation to prevent leakage. A guard level is the LAST NON-ESSENTIAL energy level of an oscillator */
-  if (optim_target->getType() == TargetType::GATE) { 
-      PetscInt ilow, iupp;
-      VecGetOwnershipRange(x, &ilow, &iupp);
-      /* Sum over all diagonal elements that correspond to a non-essential guard level. */
-      for (int i=0; i<dim_rho; i++) {
-        if ( isGuardLevel(i, mastereq->nlevels, mastereq->nessential) ) {
-          // printf("isGuard: %d / %d\n", i, dim_rho);
-          if (mastereq->lindbladtype != LindbladType::NONE) {
-            vecID_re = getIndexReal(getVecID(i,i,dim_rho));
-            vecID_im = getIndexImag(getVecID(i,i,dim_rho));
-          } else {
-            vecID_re = getIndexReal(i);
-            vecID_im = getIndexImag(i);
-          }
-          x_re = 0.0; x_im = 0.0;
-          if (ilow <= vecID_re && vecID_re < iupp) VecGetValues(x, 1, &vecID_re, &x_re);
-          if (ilow <= vecID_im && vecID_im < iupp) VecGetValues(x, 1, &vecID_im, &x_im); 
-          penalty += dt * (x_re * x_re + x_im * x_im);
+  /* Add guard-level occupation to prevent leakage. A guard level is the LAST NON-ESSENTIAL energy level of an oscillator */
+  if (addLeakagePrevent) {
+    PetscInt ilow, iupp;
+    VecGetOwnershipRange(x, &ilow, &iupp);
+    /* Sum over all diagonal elements that correspond to a non-essential guard level. */
+    for (int i=0; i<dim_rho; i++) {
+      if ( isGuardLevel(i, mastereq->nlevels, mastereq->nessential) ) {
+          // printf("%f: isGuard: %d / %d\n", time, i, dim_rho);
+        if (mastereq->lindbladtype != LindbladType::NONE) {
+          vecID_re = getIndexReal(getVecID(i,i,dim_rho));
+          vecID_im = getIndexImag(getVecID(i,i,dim_rho));
+        } else {
+          vecID_re = getIndexReal(i);
+          vecID_im = getIndexImag(i);
         }
+        x_re = 0.0; x_im = 0.0;
+        if (ilow <= vecID_re && vecID_re < iupp) VecGetValues(x, 1, &vecID_re, &x_re);
+        if (ilow <= vecID_im && vecID_im < iupp) VecGetValues(x, 1, &vecID_im, &x_im); 
+        double tmp = x_re * x_re + x_im * x_im;
+        penalty += dt * tmp;
       }
-      double mine = penalty;
-      MPI_Allreduce(&mine, &penalty, 1, MPI_DOUBLE, MPI_SUM, PETSC_COMM_WORLD);
+    }
+    double mine = penalty;
+    MPI_Allreduce(&mine, &penalty, 1, MPI_DOUBLE, MPI_SUM, PETSC_COMM_WORLD);
   }
 
   return penalty;
@@ -189,7 +196,7 @@ void TimeStepper::penaltyIntegral_diff(double time, const Vec x, Vec xbar, doubl
   }
 
   /* If gate optimization: Derivative of adding guard-level occupation */
-  if (optim_target->getType() == TargetType::GATE) { 
+  if (addLeakagePrevent) {
     PetscInt ilow, iupp;
     VecGetOwnershipRange(x, &ilow, &iupp);
     double x_re, x_im;
