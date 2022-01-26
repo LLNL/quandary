@@ -151,6 +151,7 @@ double TimeStepper::penaltyIntegral(double time, const Vec x){
 
   /* If gate optimization: Add guard-level occupation to prevent leakage. A guard level is the LAST NON-ESSENTIAL energy level of an oscillator */
   if (optim_target->getType() == TargetType::GATE) { 
+      double leakage = 0.0;
       PetscInt ilow, iupp;
       VecGetOwnershipRange(x, &ilow, &iupp);
       /* Sum over all diagonal elements that correspond to a non-essential guard level. */
@@ -162,11 +163,12 @@ double TimeStepper::penaltyIntegral(double time, const Vec x){
           x_re = 0.0; x_im = 0.0;
           if (ilow <= vecID_re && vecID_re < iupp) VecGetValues(x, 1, &vecID_re, &x_re);
           if (ilow <= vecID_im && vecID_im < iupp) VecGetValues(x, 1, &vecID_im, &x_im);  // those should be zero!? 
-          penalty += dt * (x_re * x_re + x_im * x_im);
+          leakage += x_re * x_re + x_im * x_im;
         }
       }
-      double mine = penalty;
-      MPI_Allreduce(&mine, &penalty, 1, MPI_DOUBLE, MPI_SUM, PETSC_COMM_WORLD);
+      double mine = leakage;
+      MPI_Allreduce(&mine, &leakage, 1, MPI_DOUBLE, MPI_SUM, PETSC_COMM_WORLD);
+      penalty += dt * leakage;
   }
 
   return penalty;
