@@ -223,7 +223,7 @@ double OptimTarget::evalJ(const Vec state){
           diagID = getIndexReal(getVecID(purestateID,purestateID,(int)sqrt(dim)));
           rhoii = 0.0;
           if (ilo <= diagID && diagID < ihi) VecGetValues(state, 1, &diagID, &rhoii);
-          mine = 1. - rhoii;
+          mine = rhoii;
         } else { // Schroedinger 
           diagID_re = getIndexReal(purestateID);
           diagID_im = getIndexImag(purestateID);
@@ -231,9 +231,10 @@ double OptimTarget::evalJ(const Vec state){
           rhoii_im = 0.0;
           if (ilo <= diagID_re && diagID_re < ihi) VecGetValues(state, 1, &diagID_re, &rhoii_re);
           if (ilo <= diagID_im && diagID_im < ihi) VecGetValues(state, 1, &diagID_im, &rhoii_im);
-          mine = 1. - ( pow(rhoii_re, 2.0) + pow(rhoii_im, 2.0));
+          mine =  pow(rhoii_re, 2.0) + pow(rhoii_im, 2.0);
         }
-        MPI_Allreduce(&mine, &objective, 1, MPI_DOUBLE, MPI_SUM, PETSC_COMM_WORLD);
+        MPI_Allreduce(&mine, &rhoii, 1, MPI_DOUBLE, MPI_SUM, PETSC_COMM_WORLD);
+        objective = 1. - rhoii;
       }
       break; // case J_Trace
 
