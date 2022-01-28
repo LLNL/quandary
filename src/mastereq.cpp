@@ -646,6 +646,35 @@ void MasterEq::initSparseMatSolver(std::string python_file){
       // PetscViewerPushFormat(viewer, PETSC_VIEWER_ASCII_DENSE);
       // MatView(Bd_test, viewer);
 
+
+      /* Reset Ad_vec and Bd_vec the they had been allocated. */
+      for (int i= 0; i < noscillators*(noscillators-1)/2; i++) {
+        if (fabs(Jkl[i]) > 1e-12 )  {
+          MatDestroy(&Ad_vec[i]);
+          MatDestroy(&Bd_vec[i]);
+          /* Allocate Ad_kl, Bd_kl matrices, 4 nonzeros per kl-coupling per row. */
+          MatCreate(PETSC_COMM_WORLD, &Ad_vec[i]);
+          MatCreate(PETSC_COMM_WORLD, &Bd_vec[i]);
+          MatSetType(Ad_vec[i], MATMPIAIJ);
+          MatSetType(Bd_vec[i], MATMPIAIJ);
+          MatSetSizes(Ad_vec[i], PETSC_DECIDE, PETSC_DECIDE, dim, dim);
+          MatSetSizes(Bd_vec[i], PETSC_DECIDE, PETSC_DECIDE, dim, dim);
+          MatSetUp(Ad_vec[i]);
+          MatSetUp(Bd_vec[i]);
+          MatSetFromOptions(Ad_vec[i]);
+          MatSetFromOptions(Bd_vec[i]);
+          MatAssemblyBegin(Ad_vec[i], MAT_FINAL_ASSEMBLY);
+          MatAssemblyBegin(Bd_vec[i], MAT_FINAL_ASSEMBLY);
+          MatAssemblyEnd(Ad_vec[i], MAT_FINAL_ASSEMBLY);
+          MatAssemblyEnd(Ad_vec[i], MAT_FINAL_ASSEMBLY);
+        }
+      }
+      
+
+      // Cleanup
+      Py_XDECREF(pFunc_getHd);  // pointer to getHd function
+      Py_Finalize();
+
     } else {
       printf("\n ERROR: Can't import python module %s. Probably, the file does not exist in this working directory... \n", python_file.c_str());
       exit(1);
