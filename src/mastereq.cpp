@@ -563,28 +563,31 @@ void MasterEq::initSparseMatSolver(std::string python_file){
 
     if (pModule != NULL) {
 
-      // Get a reference to the system Hamiltonian function 
-      PyObject* pFunc_getHd = PyObject_GetAttrString(pModule, (char*)"getHd");
+      // Get a reference to the Hamiltonian functions
+      PyObject* pFunc_getHd = PyObject_GetAttrString(pModule, (char*)"getHd");  // system Hamiltonian
+      PyObject* pFunc_getHc = PyObject_GetAttrString(pModule, (char*)"getHc");  // control Hamiltonians
 
-      // Call the python function. Return a python object
-      PyObject *pResult;
+      /* --- Get the system Hamiltonian --- */
+
+      // Call the python function. Returns python objects
+      PyObject *pHd, *pHc;
       if (pFunc_getHd && PyCallable_Check(pFunc_getHd)) {
-        pResult = PyObject_CallObject(pFunc_getHd, NULL); // NULL: no input to getHd().
+        pHd = PyObject_CallObject(pFunc_getHd, NULL); // NULL: no input to getHd().
         PyErr_Print();
       } else PyErr_Print();
 
-      // convert the result from python object to double vector
-      // getHd() MUST return a python LIST for this to work!
+      /* System Hamiltonian: convert the result from python object to double vector */
+      // getHd() MUST return a python LIST of float elements for this to work!
       int length = 0;
-      if (PyList_Check(pResult)) {
-        length = PyList_Size(pResult);
+      if (PyList_Check(pHd)) {
+        length = PyList_Size(pHd);
         PyErr_Print();
       }
-      printf("Got a list of length = %d: ", length);
+      printf("getHd(): Received a list of length = %d: ", length);
       std::vector<double> vals;
       std::vector<int> ids;
       for (Py_ssize_t i=0; i<length; i++){
-        PyObject* value = PyList_GetItem(pResult,i);  // TODO: Does this need a Py_DECREF inside the loop?
+        PyObject* value = PyList_GetItem(pHd,i);  // TODO: Does this need a Py_DECREF at some point?
         PyErr_Print();
         double val = PyFloat_AsDouble(value);
         PyErr_Print();
@@ -596,6 +599,7 @@ void MasterEq::initSparseMatSolver(std::string python_file){
       // print vals 
       for (int i=0; i<vals.size(); i++) printf("%d %f, ", ids[i], vals[i]);
       printf("\n");
+
 
       /* Write system Hamiltonian into sparse Petsc matrix Bd. */
       // Bd is a diagonal was allocated with 1 non-zero per row, but reading from file could make this matrix denser, so destroy and reallocate it here. 
@@ -654,6 +658,72 @@ void MasterEq::initSparseMatSolver(std::string python_file){
       // MatView(Bd_test, viewer);
 
 
+      /* --- Control Hamiltonians --- */
+
+      // Call the python function 
+      if (pFunc_getHc && PyCallable_Check(pFunc_getHc)) {
+        pHc = PyObject_CallObject(pFunc_getHc, NULL); // NULL: no input to getHc().
+        PyErr_Print();
+      } else PyErr_Print();
+
+      // Parse the result 
+      // getHc() MUST return a python list of lists of lists of float elements for this to work:
+      // for each oscillator k=0...Q-1: for each control term i=0...C^k-1: a list containing the flattened Hamiltonian Hc^k_i
+      int Q = 0;
+      if (PyList_Check(pHc)) {
+        Q = PyList_Size(pHc); 
+        PyErr_Print();
+      }
+      // Sanity check: the outer loop should have Q == noscillators elements (each one being a list of Hamiltonians)
+      if (Q != noscillators) {
+        printf("Error parsing python function getHc(): It should contain an (outer) list of length %d, but did return a list of length %d.\n", noscillators, Q);
+        exit(1);
+      }
+      printf("getHc(): Received an (outer) list of length %d\n", Q);
+
+      // Iterate over oscillators
+      for (Py_ssize_t k=0; k<Q; k++){
+        // Check number of control terms for this oscillator
+        int Ck = 0;
+        PyObject* pHck = PyList_GetItem(pHc,k); // Get list of Hamiltonians for oscillator k
+        PyErr_Print();
+        if (PyList_Check(pHck)) { 
+          Ck = PyList_Size(pHck); 
+          PyErr_Print();
+        } else PyErr_Print();
+        printf("getHc(): For oscillator %d, received %d number of control Hamiltonians.\n", (int)k, Ck);
+
+        // Iterate over control terms for this oscillator 
+        for (Py_ssize_t i=0; i<Ck; i++){
+          PyObject* pHcki = PyList_GetItem(pHck,i); // Get the Hamiltonian Hcki
+          PyErr_Print();
+
+          int Hcki_size = 0;
+          if (PyList_Check(pHcki)) {
+            Hcki_size = PyList_Size(pHcki);
+            PyErr_Print();
+          }
+          printf("getHc(): Oscillator %d, term %i: Received a list of length = %d: ", (int)k,(int)i,Hcki_size);
+          std::vector<double> Hcki_vals;
+          std::vector<int> Hcki_ids;
+          for (Py_ssize_t l=0; l<Hcki_size; l++){ // Iterate over elements
+            PyObject* pval = PyList_GetItem(pHcki,l);
+            PyErr_Print();
+            double Hcki_val = PyFloat_AsDouble(pval);
+            PyErr_Print();
+            if (fabs(Hcki_val) > 1e-14) {  // store only nonzeros
+              Hcki_vals.push_back(Hcki_val);
+              Hcki_ids.push_back(l);
+            }
+          }
+          // print vals 
+          for (int i=0; i<Hcki_vals.size(); i++) printf("%d %f, ", Hcki_ids[i], Hcki_vals[i]);
+          printf("\n");
+        }
+      }
+ 
+
+
       /* Reset Ad_vec and Bd_vec the they had been allocated. */
       for (int i= 0; i < noscillators*(noscillators-1)/2; i++) {
         if (fabs(Jkl[i]) > 1e-12 )  {
@@ -680,6 +750,7 @@ void MasterEq::initSparseMatSolver(std::string python_file){
 
       // Cleanup
       Py_XDECREF(pFunc_getHd);  // pointer to getHd function
+      Py_XDECREF(pFunc_getHc);  // pointer to getHc function
       Py_Finalize();
 
     } else {

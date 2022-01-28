@@ -31,7 +31,7 @@ def evalHd_mat():
     return Hd
 
 
-## THIS IS THE FUNCTION THAT QUANDARY CALLS! ##
+## THIS IS A FUNCTION THAT QUANDARY REQUIRES to get the system Hamiltonian Hd! ##
 # Return the vectorized Hamiltonian, column major vectorization (order='F')
 # Quandary requires a *list* of elements. Therefore, need to cast to an array, than flatten it, then cast to a list.
 def getHd():
@@ -41,35 +41,57 @@ def getHd():
     return Hdlist
 
 
+## THIS IS A FUNCTION THAT QUANDARY REQUIRES to get the control Hamiltonians Hc! ##
+# Returns a list of lists of lists: 
+# for each oscillator k=0,...Q-1:
+#   for each control term i=0,...,C^k
+#       Hc^k_i: control Hamiltonian stored as a flattened list.
+def getHc():
+
+    # Set up Hc^k_i 
+    a = getLoweringOperators()
+    # Qubit 0: no controls -> C^0 = 0 
+    # Qubit 1: 2 controls -> C^1 = 2
+    Hc10 = a[1].getH() * a[1]   # first conrol: Hc^1_0 = a^\dag a
+    Hc11 = a[1].getH() * a[1].getH() * a[1] * a[1]   # first conrol: Hc^1_0 = a^\dag a^\dag a a
+
+    # flatten Hc10 and Hc11 into lists
+    Hc10list = list(np.array(Hc10).flatten(order='F'))
+    Hc11list = list(np.array(Hc11).flatten(order='F'))
+
+    # Set up return list
+    Hclist = [ [], [Hc10list, Hc11list] ]  # Qubit 0: No control, Qubit 1: two controls Hc10 and Hc11
+    print("Hc10=",Hc10)
+    print("Hc11=",Hc11)
+
+    return Hclist 
 
 def main():
-    Hd = evalHd()
+    Hclist = getHc();
+    #print(Hclist)
 
-    with open('Bd_test.txt', 'r') as f:
-        l = [[float(num) for num in line.split()] for line in f]
-    #print(l)
-    Bd_test = np.matrix(l)
-    print("Bd_test =", Bd_test)
 
-    for i in range(9):
-        for j in range(9):
-            Hd[i,j] = round(Hd[i,j], 4)
-    print("Hd=", Hd)
+    #Hd = evalHd_mat()
 
-    # test -In \kron Hd + Hd \kron In
-    #idn = np.eye(9)
-    #Hd = - np.kron(idn, Hd) + np.kron(Hd, idn)
+    #with open('Bd_test.txt', 'r') as f:
+    #    l = [[float(num) for num in line.split()] for line in f]
+    ##print(l)
+    #Bd_test = np.matrix(l)
+    #print("Bd_test =", Bd_test)
+
+    #for i in range(9):
+    #    for j in range(9):
+    #        Hd[i,j] = round(Hd[i,j], 4)
+    #print("Hd=", Hd)
+
+    ## test -In \kron Hd + Hd \kron In
+    ##idn = np.eye(9)
+    ##Hd = - np.kron(idn, Hd) + np.kron(Hd, idn)
+    #
+    #err = np.linalg.norm(Hd- Bd_test)
+    #print("ERROR = ",err);
+    #print("Diff = ",Hd-Bd_test)
     
-    err = np.linalg.norm(Hd- Bd_test)
-    print("ERROR = ",err);
-    print("Diff = ",Hd-Bd_test)
-    
-    ### Time-dependent Hamiltonian terms Hc ###
-    # Qubit 0: No controls, no time-dependent terms
-    # Qubit 1: 
-    #Put matrices for time-dependent terms into a vector of matrices.
-    #Hc = [N1, - (N1*N1 - N1)]
-
 def omega1(flux):
     # magic function. TODO.
     return np.sin(flux)
