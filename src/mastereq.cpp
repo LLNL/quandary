@@ -172,10 +172,6 @@ MasterEq::~MasterEq(){
     if (!usematfree){
       MatDestroy(&Ad);
       MatDestroy(&Bd);
-      for (int iosc = 0; iosc < noscillators; iosc++) {
-        MatDestroy(&Ac_vec[iosc]);
-        MatDestroy(&Bc_vec[iosc]);
-      }
       for (int i= 0; i < noscillators*(noscillators-1)/2; i++) {
         if (fabs(Jkl[i]) > 1e-12 )  {
           MatDestroy(&Ad_vec[i]);
@@ -183,6 +179,12 @@ MasterEq::~MasterEq(){
         }
       }
       VecDestroy(&aux);
+      for (int i=0; i<noscillators; i++){
+        MatDestroy(&(Ac_vec[i][0])); // TODO: Destroy potentially more, if python interface!
+        MatDestroy(&(Bc_vec[i][0]));
+        delete [] Ac_vec[i];
+        delete [] Bc_vec[i];
+      }
       delete [] Ac_vec;
       delete [] Bc_vec;
       delete [] Ad_vec;
@@ -202,9 +204,14 @@ MasterEq::~MasterEq(){
 void MasterEq::initSparseMatSolver(std::string python_file){
 
   /* Allocate time-varying building blocks */
-  // control terms
-  Ac_vec = new Mat[noscillators];
-  Bc_vec = new Mat[noscillators];
+  // control terms. One vector per oscillator
+  Ac_vec = new Mat*[noscillators];
+  Bc_vec = new Mat*[noscillators];
+  for (int i=0; i<noscillators; i++){
+    // Default setting: one element per oscillator. If pyhthon interface: There could be more, see below.
+    Ac_vec[i] = new Mat[1];
+    Bc_vec[i] = new Mat[1];
+  }
   // coupling terms
   Ad_vec = new Mat[noscillators*(noscillators-1)/2];
   Bd_vec = new Mat[noscillators*(noscillators-1)/2];
@@ -227,13 +234,13 @@ void MasterEq::initSparseMatSolver(std::string python_file){
     int npostk = oscil_vec[iosc]->dim_postOsc;
 
     /* Compute Ac = I_N \kron (a - a^T) - (a - a^T)^T \kron I_N */
-    MatCreate(PETSC_COMM_WORLD, &Ac_vec[iosc]);
-    MatSetType(Ac_vec[iosc], MATMPIAIJ);
-    MatSetSizes(Ac_vec[iosc], PETSC_DECIDE, PETSC_DECIDE, dim, dim);
-    MatMPIAIJSetPreallocation(Ac_vec[iosc], 4, NULL, 4, NULL);
-    MatSetUp(Ac_vec[iosc]);
-    MatSetFromOptions(Ac_vec[iosc]);
-    MatGetOwnershipRange(Ac_vec[iosc], &ilow, &iupp);
+    MatCreate(PETSC_COMM_WORLD, &(Ac_vec[iosc][0]));
+    MatSetType(Ac_vec[iosc][0], MATMPIAIJ);
+    MatSetSizes(Ac_vec[iosc][0], PETSC_DECIDE, PETSC_DECIDE, dim, dim);
+    MatMPIAIJSetPreallocation(Ac_vec[iosc][0], 4, NULL, 4, NULL);
+    MatSetUp(Ac_vec[iosc][0]);
+    MatSetFromOptions(Ac_vec[iosc][0]);
+    MatGetOwnershipRange(Ac_vec[iosc][0], &ilow, &iupp);
 
     /* Iterate over local rows of Ac_vec */
     for (int row = ilow; row<iupp; row++){
@@ -245,11 +252,11 @@ void MasterEq::initSparseMatSolver(std::string python_file){
       r1 = r1 / npostk;
       if (r1 < nk-1) {
         val = sqrt(r1+1);
-        if (fabs(val)>1e-14) MatSetValue(Ac_vec[iosc], row, col1, val, ADD_VALUES);
+        if (fabs(val)>1e-14) MatSetValue(Ac_vec[iosc][0], row, col1, val, ADD_VALUES);
       }
       if (r1 > 0) {
         val = -sqrt(r1);
-        if (fabs(val)>1e-14) MatSetValue(Ac_vec[iosc], row, col2, val, ADD_VALUES);
+        if (fabs(val)>1e-14) MatSetValue(Ac_vec[iosc][0], row, col2, val, ADD_VALUES);
       } 
       //- A_c \kron I_N
       col1 = row + npostk*dimmat;
@@ -258,24 +265,24 @@ void MasterEq::initSparseMatSolver(std::string python_file){
       r1 = r1 / (dimmat * npostk);
       if (r1 < nk-1) {
         val =  sqrt(r1+1);
-        if (fabs(val)>1e-14) MatSetValue(Ac_vec[iosc], row, col1, val, ADD_VALUES);
+        if (fabs(val)>1e-14) MatSetValue(Ac_vec[iosc][0], row, col1, val, ADD_VALUES);
       }
       if (r1 > 0) {
         val = -sqrt(r1);
-        if (fabs(val)>1e-14) MatSetValue(Ac_vec[iosc], row, col2, val, ADD_VALUES);
+        if (fabs(val)>1e-14) MatSetValue(Ac_vec[iosc][0], row, col2, val, ADD_VALUES);
       }   
     }
-    MatAssemblyBegin(Ac_vec[iosc], MAT_FINAL_ASSEMBLY);
-    MatAssemblyEnd(Ac_vec[iosc], MAT_FINAL_ASSEMBLY);
+    MatAssemblyBegin(Ac_vec[iosc][0], MAT_FINAL_ASSEMBLY);
+    MatAssemblyEnd(Ac_vec[iosc][0], MAT_FINAL_ASSEMBLY);
 
     /* Compute Bc = - I_N \kron (a + a^T) + (a + a^T)^T \kron I_N */
-    MatCreate(PETSC_COMM_WORLD, &Bc_vec[iosc]);
-    MatSetType(Bc_vec[iosc], MATMPIAIJ);
-    MatSetSizes(Bc_vec[iosc], PETSC_DECIDE, PETSC_DECIDE, dim, dim);
-    MatMPIAIJSetPreallocation(Bc_vec[iosc], 4, NULL, 4, NULL);
-    MatSetUp(Bc_vec[iosc]);
-    MatSetFromOptions(Bc_vec[iosc]);
-    MatGetOwnershipRange(Bc_vec[iosc], &ilow, &iupp);
+    MatCreate(PETSC_COMM_WORLD, &(Bc_vec[iosc][0]));
+    MatSetType(Bc_vec[iosc][0], MATMPIAIJ);
+    MatSetSizes(Bc_vec[iosc][0], PETSC_DECIDE, PETSC_DECIDE, dim, dim);
+    MatMPIAIJSetPreallocation(Bc_vec[iosc][0], 4, NULL, 4, NULL);
+    MatSetUp(Bc_vec[iosc][0]);
+    MatSetFromOptions(Bc_vec[iosc][0]);
+    MatGetOwnershipRange(Bc_vec[iosc][0], &ilow, &iupp);
     /* Iterate over local rows of Bc_vec */
     for (int row = ilow; row<iupp; row++){
       // - I_n \kron B_c 
@@ -286,11 +293,11 @@ void MasterEq::initSparseMatSolver(std::string python_file){
       r1 = r1 / npostk;
       if (r1 < nk-1) {
         val = -sqrt(r1+1);
-        if (fabs(val)>1e-14) MatSetValue(Bc_vec[iosc], row, col1, val, ADD_VALUES);
+        if (fabs(val)>1e-14) MatSetValue(Bc_vec[iosc][0], row, col1, val, ADD_VALUES);
       }
       if (r1 > 0) {
         val = -sqrt(r1);
-        if (fabs(val)>1e-14) MatSetValue(Bc_vec[iosc], row, col2, val, ADD_VALUES);
+        if (fabs(val)>1e-14) MatSetValue(Bc_vec[iosc][0], row, col2, val, ADD_VALUES);
       } 
       //+ B_c \kron I_N
       col1 = row + npostk*dimmat;
@@ -299,15 +306,15 @@ void MasterEq::initSparseMatSolver(std::string python_file){
       r1 = r1 / (dimmat * npostk);
       if (r1 < nk-1) {
         val =  sqrt(r1+1);
-        if (fabs(val)>1e-14) MatSetValue(Bc_vec[iosc], row, col1, val, ADD_VALUES);
+        if (fabs(val)>1e-14) MatSetValue(Bc_vec[iosc][0], row, col1, val, ADD_VALUES);
       }
       if (r1 > 0) {
         val = sqrt(r1);
-        if (fabs(val)>1e-14) MatSetValue(Bc_vec[iosc], row, col2, val, ADD_VALUES);
+        if (fabs(val)>1e-14) MatSetValue(Bc_vec[iosc][0], row, col2, val, ADD_VALUES);
       }   
     }
-    MatAssemblyBegin(Bc_vec[iosc], MAT_FINAL_ASSEMBLY);
-    MatAssemblyEnd(Bc_vec[iosc], MAT_FINAL_ASSEMBLY);
+    MatAssemblyBegin(Bc_vec[iosc][0], MAT_FINAL_ASSEMBLY);
+    MatAssemblyEnd(Bc_vec[iosc][0], MAT_FINAL_ASSEMBLY);
 
 
     /* Compute Jaynes-Cummings coupling building blocks */
@@ -684,7 +691,7 @@ void MasterEq::initSparseMatSolver(std::string python_file){
 
 
   /* Allocate some auxiliary vectors */
-  MatCreateVecs(Ac_vec[0], &aux, NULL);
+  MatCreateVecs(Ac_vec[0][0], &aux, NULL);
 }
 
 int MasterEq::getDim(){ return dim; }
@@ -1136,13 +1143,13 @@ void MasterEq::computedRHSdp(const double t, const Vec x, const Vec xbar, const 
 
     /* Compute terms in RHS(x)^T xbar */
     double uAubar, vAvbar, vBubar, uBvbar;
-    MatMult(Ac_vec[iosc], u, aux);
+    MatMult(Ac_vec[iosc][0], u, aux);
     VecDot(aux, ubar, &uAubar);
-    MatMult(Ac_vec[iosc], v, aux);
+    MatMult(Ac_vec[iosc][0], v, aux);
     VecDot(aux, vbar, &vAvbar);
-    MatMult(Bc_vec[iosc], u, aux);
+    MatMult(Bc_vec[iosc][0], u, aux);
     VecDot(aux, vbar, &uBvbar);
-    MatMult(Bc_vec[iosc], v, aux);
+    MatMult(Bc_vec[iosc][0], v, aux);
     VecDot(aux, ubar, &vBubar);
 
     /* Number of parameters for this oscillator */
@@ -1446,16 +1453,16 @@ int myMatMult_sparsemat(Mat RHS, Vec x, Vec y){
     double q = shellctx->control_Im[iosc];
 
     // uout += q^k*Acu
-    MatMult((*(shellctx->Ac_vec))[iosc], u, *shellctx->aux);
+    MatMult((*(shellctx->Ac_vec))[iosc][0], u, *shellctx->aux);
     VecAXPY(uout, q, *shellctx->aux);
     // uout -= p^kBcv
-    MatMult((*(shellctx->Bc_vec))[iosc], v, *shellctx->aux);
+    MatMult((*(shellctx->Bc_vec))[iosc][0], v, *shellctx->aux);
     VecAXPY(uout, -1.*p, *shellctx->aux);
     // vout += q^kAcv
-    MatMult((*(shellctx->Ac_vec))[iosc], v, *shellctx->aux);
+    MatMult((*(shellctx->Ac_vec))[iosc][0], v, *shellctx->aux);
     VecAXPY(vout, q, *shellctx->aux);
     // vout += p^kBcu
-    MatMult((*(shellctx->Bc_vec))[iosc], u, *shellctx->aux);
+    MatMult((*(shellctx->Bc_vec))[iosc][0], u, *shellctx->aux);
     VecAXPY(vout, p, *shellctx->aux);
 
     // Coupling terms
@@ -1534,16 +1541,16 @@ int myMatMultTranspose_sparsemat(Mat RHS, Vec x, Vec y) {
     double q = shellctx->control_Im[iosc];
 
     // uout += q^k*Ac^Tu
-    MatMultTranspose((*(shellctx->Ac_vec))[iosc], u, *shellctx->aux);
+    MatMultTranspose((*(shellctx->Ac_vec))[iosc][0], u, *shellctx->aux);
     VecAXPY(uout, q, *shellctx->aux);
     // uout += p^kBc^Tv
-    MatMultTranspose((*(shellctx->Bc_vec))[iosc], v, *shellctx->aux);
+    MatMultTranspose((*(shellctx->Bc_vec))[iosc][0], v, *shellctx->aux);
     VecAXPY(uout, p, *shellctx->aux);
     // vout += q^kAc^Tv
-    MatMultTranspose((*(shellctx->Ac_vec))[iosc], v, *shellctx->aux);
+    MatMultTranspose((*(shellctx->Ac_vec))[iosc][0], v, *shellctx->aux);
     VecAXPY(vout, q, *shellctx->aux);
     // vout -= p^kBc^Tu
-    MatMultTranspose((*(shellctx->Bc_vec))[iosc], u, *shellctx->aux);
+    MatMultTranspose((*(shellctx->Bc_vec))[iosc][0], u, *shellctx->aux);
     VecAXPY(vout, -1.*p, *shellctx->aux);
 
     // Coupling terms
