@@ -23,7 +23,8 @@ typedef struct {
   std::vector<double> Jkl;
   std::vector<double> eta;
   bool addT1, addT2;
-  std::vector<double> control_Re, control_Im;
+  std::vector<std::vector<double>> control_Re;
+  std::vector<std::vector<double>> control_Im;
   Mat*** Ac_vec;
   Mat*** Bc_vec;
   std::vector<int> ncontrolterms; 

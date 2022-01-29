@@ -139,8 +139,14 @@ MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Osci
   RHSctx.oscil_vec = oscil_vec;
   RHSctx.time = 0.0;
   for (int iosc = 0; iosc < noscillators; iosc++) {
-    RHSctx.control_Re.push_back(0.0);
-    RHSctx.control_Im.push_back(0.0);
+    std::vector<double> controlRek;
+    std::vector<double> controlImk;
+    for (int icon=0; icon<max(ncontrolterms[iosc],1); icon++){
+     controlRek.push_back(0.0);
+     controlImk.push_back(0.0);
+    }
+    RHSctx.control_Re.push_back(controlRek);
+    RHSctx.control_Im.push_back(controlImk);
   }
 
   /* Set the MatMult routine for applying the RHS to a vector x */
@@ -883,10 +889,21 @@ int MasterEq::assemble_RHS(const double t){
   RHSctx.time = t;
 
   for (int iosc = 0; iosc < noscillators; iosc++) {
+
+
     double p, q;
-    oscil_vec[iosc]->evalControl(t, &p, &q);
-    RHSctx.control_Re[iosc] = p;
-    RHSctx.control_Im[iosc] = q;
+    oscil_vec[iosc]->evalControl(t, &p, &q);  // Evaluates the B-spline basis functions. 
+
+    /* TODO: Loop over all control Hamiltonian terms for this oscillator */
+    // Again only real-valued. So only u^k_i(p(t)) to multiply Bc^k_i */
+    // for (int icon=0/1; icon<ncontrolterms[iosc]; icon++;){        
+      // transfer function pyFunc[iosc] gives u^k_i(p)
+      // RHSctx.control_Re[iosc][icon] = u^k_i(p)
+      // RHSctx.control_Im[iosc][icon] = u^k_i(q)  // they wont multiply anything!
+    // }
+
+    RHSctx.control_Re[iosc][0] = p;
+    RHSctx.control_Im[iosc][0] = q;
   }
 
   return 0;
@@ -1627,8 +1644,8 @@ int myMatMult_sparsemat(Mat RHS, Vec x, Vec y){
     /* -- Control Terms -- */
 
     /* Get controls */
-    double p = shellctx->control_Re[iosc];
-    double q = shellctx->control_Im[iosc];
+    double p = shellctx->control_Re[iosc][0];
+    double q = shellctx->control_Im[iosc][0];
 
     // always do the first one.  // Why? TODO!
 
@@ -1728,8 +1745,8 @@ int myMatMultTranspose_sparsemat(Mat RHS, Vec x, Vec y) {
   int id_kl = 0; // index for accessing Ad_kl inside Ad_vec
   for (int iosc = 0; iosc < shellctx->nlevels.size(); iosc++) {
     /* Get controls */
-    double p = shellctx->control_Re[iosc];
-    double q = shellctx->control_Im[iosc];
+    double p = shellctx->control_Re[iosc][0];
+    double q = shellctx->control_Im[iosc][0];
 
     // uout += q^k*Ac^Tu
     MatMultTranspose((*(shellctx->Ac_vec))[iosc][0], u, *shellctx->aux);
@@ -1826,10 +1843,10 @@ int myMatMult_matfree(Mat RHS, Vec x, Vec y){
     decay1= 1./shellctx->oscil_vec[1]->getDecayTime();
   if (shellctx->oscil_vec[1]->getDephaseTime() > 1e-14 && shellctx->addT2)
     dephase1 = 1./shellctx->oscil_vec[1]->getDephaseTime();
-  double pt0 = shellctx->control_Re[0];
-  double qt0 = shellctx->control_Im[0];
-  double pt1 = shellctx->control_Re[1];
-  double qt1 = shellctx->control_Im[1];
+  double pt0 = shellctx->control_Re[0][0];
+  double qt0 = shellctx->control_Im[0][0];
+  double pt1 = shellctx->control_Re[1][0];
+  double qt1 = shellctx->control_Im[1][0];
   double cos01 = cos(eta01 * shellctx->time);
   double sin01 = sin(eta01 * shellctx->time);
 
@@ -1936,10 +1953,10 @@ int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
     decay1= 1./shellctx->oscil_vec[1]->getDecayTime();
   if (shellctx->oscil_vec[1]->getDephaseTime() > 1e-14 && shellctx->addT2)
     dephase1 = 1./shellctx->oscil_vec[1]->getDephaseTime();
-  double pt0 = shellctx->control_Re[0];
-  double qt0 = shellctx->control_Im[0];
-  double pt1 = shellctx->control_Re[1];
-  double qt1 = shellctx->control_Im[1];
+  double pt0 = shellctx->control_Re[0][0];
+  double qt0 = shellctx->control_Im[0][0];
+  double pt1 = shellctx->control_Re[1][0];
+  double qt1 = shellctx->control_Im[1][0];
   double cos01 = cos(eta01 * shellctx->time);
   double sin01 = sin(eta01 * shellctx->time);
 
@@ -2055,12 +2072,12 @@ int myMatMult_matfree(Mat RHS, Vec x, Vec y){
   if (shellctx->oscil_vec[1]->getDephaseTime() > 1e-14 && shellctx->addT2) dephase1 = 1./shellctx->oscil_vec[1]->getDephaseTime();
   if (shellctx->oscil_vec[2]->getDecayTime() > 1e-14 && shellctx->addT1)   decay2= 1./shellctx->oscil_vec[2]->getDecayTime();
   if (shellctx->oscil_vec[2]->getDephaseTime() > 1e-14 && shellctx->addT2) dephase2 = 1./shellctx->oscil_vec[2]->getDephaseTime();
-  double pt0 = shellctx->control_Re[0];
-  double qt0 = shellctx->control_Im[0];
-  double pt1 = shellctx->control_Re[1];
-  double qt1 = shellctx->control_Im[1];
-  double pt2 = shellctx->control_Re[2];
-  double qt2 = shellctx->control_Im[2];
+  double pt0 = shellctx->control_Re[0][0];
+  double qt0 = shellctx->control_Im[0][0];
+  double pt1 = shellctx->control_Re[1][0];
+  double qt1 = shellctx->control_Im[1][0];
+  double pt2 = shellctx->control_Re[2][0];
+  double qt2 = shellctx->control_Im[2][0];
   double cos01 = cos(eta01 * shellctx->time);
   double cos02 = cos(eta02 * shellctx->time);
   double cos12 = cos(eta12 * shellctx->time);
@@ -2193,12 +2210,12 @@ int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
   if (shellctx->oscil_vec[1]->getDephaseTime() > 1e-14 && shellctx->addT2) dephase1 = 1./shellctx->oscil_vec[1]->getDephaseTime();
   if (shellctx->oscil_vec[2]->getDecayTime() > 1e-14 && shellctx->addT1)   decay2= 1./shellctx->oscil_vec[2]->getDecayTime();
   if (shellctx->oscil_vec[2]->getDephaseTime() > 1e-14 && shellctx->addT2) dephase2 = 1./shellctx->oscil_vec[2]->getDephaseTime();
-  double pt0 = shellctx->control_Re[0];
-  double qt0 = shellctx->control_Im[0];
-  double pt1 = shellctx->control_Re[1];
-  double qt1 = shellctx->control_Im[1];
-  double pt2 = shellctx->control_Re[2];
-  double qt2 = shellctx->control_Im[2];
+  double pt0 = shellctx->control_Re[0][0];
+  double qt0 = shellctx->control_Im[0][0];
+  double pt1 = shellctx->control_Re[1][0];
+  double qt1 = shellctx->control_Im[1][0];
+  double pt2 = shellctx->control_Re[2][0];
+  double qt2 = shellctx->control_Im[2][0];
   double cos01 = cos(eta01 * shellctx->time);
   double cos02 = cos(eta02 * shellctx->time);
   double cos12 = cos(eta12 * shellctx->time);
@@ -2346,14 +2363,14 @@ int myMatMult_matfree(Mat RHS, Vec x, Vec y){
   if (shellctx->oscil_vec[2]->getDephaseTime() > 1e-14 && shellctx->addT2) dephase2 = 1./shellctx->oscil_vec[2]->getDephaseTime();
   if (shellctx->oscil_vec[3]->getDecayTime() > 1e-14 && shellctx->addT1)   decay3= 1./shellctx->oscil_vec[3]->getDecayTime();
   if (shellctx->oscil_vec[3]->getDephaseTime() > 1e-14 && shellctx->addT2) dephase3 = 1./shellctx->oscil_vec[3]->getDephaseTime();
-  double pt0 = shellctx->control_Re[0];
-  double qt0 = shellctx->control_Im[0];
-  double pt1 = shellctx->control_Re[1];
-  double qt1 = shellctx->control_Im[1];
-  double pt2 = shellctx->control_Re[2];
-  double qt2 = shellctx->control_Im[2];
-  double pt3 = shellctx->control_Re[3];
-  double qt3 = shellctx->control_Im[3];
+  double pt0 = shellctx->control_Re[0][0];
+  double qt0 = shellctx->control_Im[0][0];
+  double pt1 = shellctx->control_Re[1][0];
+  double qt1 = shellctx->control_Im[1][0];
+  double pt2 = shellctx->control_Re[2][0];
+  double qt2 = shellctx->control_Im[2][0];
+  double pt3 = shellctx->control_Re[3][0];
+  double qt3 = shellctx->control_Im[3][0];
   double cos01 = cos(eta01 * shellctx->time);
   double cos02 = cos(eta02 * shellctx->time);
   double cos03 = cos(eta03 * shellctx->time);
@@ -2522,14 +2539,14 @@ int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
   if (shellctx->oscil_vec[2]->getDephaseTime() > 1e-14 && shellctx->addT2) dephase2 = 1./shellctx->oscil_vec[2]->getDephaseTime();
   if (shellctx->oscil_vec[3]->getDecayTime() > 1e-14 && shellctx->addT1)   decay3= 1./shellctx->oscil_vec[3]->getDecayTime();
   if (shellctx->oscil_vec[3]->getDephaseTime() > 1e-14 && shellctx->addT2) dephase3 = 1./shellctx->oscil_vec[3]->getDephaseTime();
-  double pt0 = shellctx->control_Re[0];
-  double qt0 = shellctx->control_Im[0];
-  double pt1 = shellctx->control_Re[1];
-  double qt1 = shellctx->control_Im[1];
-  double pt2 = shellctx->control_Re[2];
-  double qt2 = shellctx->control_Im[2];
-  double pt3 = shellctx->control_Re[3];
-  double qt3 = shellctx->control_Im[3];
+  double pt0 = shellctx->control_Re[0][0];
+  double qt0 = shellctx->control_Im[0][0];
+  double pt1 = shellctx->control_Re[1][0];
+  double qt1 = shellctx->control_Im[1][0];
+  double pt2 = shellctx->control_Re[2][0];
+  double qt2 = shellctx->control_Im[2][0];
+  double pt3 = shellctx->control_Re[3][0];
+  double qt3 = shellctx->control_Im[3][0];
   double cos01 = cos(eta01 * shellctx->time);
   double cos02 = cos(eta02 * shellctx->time);
   double cos03 = cos(eta03 * shellctx->time);
@@ -2716,16 +2733,16 @@ int myMatMult_matfree(Mat RHS, Vec x, Vec y){
   if (shellctx->oscil_vec[3]->getDephaseTime() > 1e-14 && shellctx->addT2) dephase3 = 1./shellctx->oscil_vec[3]->getDephaseTime();
   if (shellctx->oscil_vec[4]->getDecayTime() > 1e-14 && shellctx->addT1)   decay4= 1./shellctx->oscil_vec[4]->getDecayTime();
   if (shellctx->oscil_vec[4]->getDephaseTime() > 1e-14 && shellctx->addT2) dephase4 = 1./shellctx->oscil_vec[4]->getDephaseTime();
-  double pt0 = shellctx->control_Re[0];
-  double qt0 = shellctx->control_Im[0];
-  double pt1 = shellctx->control_Re[1];
-  double qt1 = shellctx->control_Im[1];
-  double pt2 = shellctx->control_Re[2];
-  double qt2 = shellctx->control_Im[2];
-  double pt3 = shellctx->control_Re[3];
-  double qt3 = shellctx->control_Im[3];
-  double pt4 = shellctx->control_Re[4];
-  double qt4 = shellctx->control_Im[4];
+  double pt0 = shellctx->control_Re[0][0];
+  double qt0 = shellctx->control_Im[0][0];
+  double pt1 = shellctx->control_Re[1][0];
+  double qt1 = shellctx->control_Im[1][0];
+  double pt2 = shellctx->control_Re[2][0];
+  double qt2 = shellctx->control_Im[2][0];
+  double pt3 = shellctx->control_Re[3][0];
+  double qt3 = shellctx->control_Im[3][0];
+  double pt4 = shellctx->control_Re[4][0];
+  double qt4 = shellctx->control_Im[4][0];
   double cos01 = cos(eta01 * shellctx->time);
   double cos02 = cos(eta02 * shellctx->time);
   double cos03 = cos(eta03 * shellctx->time);
@@ -2938,16 +2955,16 @@ int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
   if (shellctx->oscil_vec[3]->getDephaseTime() > 1e-14 && shellctx->addT2) dephase3 = 1./shellctx->oscil_vec[3]->getDephaseTime();
   if (shellctx->oscil_vec[4]->getDecayTime() > 1e-14 && shellctx->addT1)   decay4= 1./shellctx->oscil_vec[4]->getDecayTime();
   if (shellctx->oscil_vec[4]->getDephaseTime() > 1e-14 && shellctx->addT2) dephase4 = 1./shellctx->oscil_vec[4]->getDephaseTime();
-  double pt0 = shellctx->control_Re[0];
-  double qt0 = shellctx->control_Im[0];
-  double pt1 = shellctx->control_Re[1];
-  double qt1 = shellctx->control_Im[1];
-  double pt2 = shellctx->control_Re[2];
-  double qt2 = shellctx->control_Im[2];
-  double pt3 = shellctx->control_Re[3];
-  double qt3 = shellctx->control_Im[3];
-  double pt4 = shellctx->control_Re[4];
-  double qt4 = shellctx->control_Im[4];
+  double pt0 = shellctx->control_Re[0][0];
+  double qt0 = shellctx->control_Im[0][0];
+  double pt1 = shellctx->control_Re[1][0];
+  double qt1 = shellctx->control_Im[1][0];
+  double pt2 = shellctx->control_Re[2][0];
+  double qt2 = shellctx->control_Im[2][0];
+  double pt3 = shellctx->control_Re[3][0];
+  double qt3 = shellctx->control_Im[3][0];
+  double pt4 = shellctx->control_Re[4][0];
+  double qt4 = shellctx->control_Im[4][0];
   double cos01 = cos(eta01 * shellctx->time);
   double cos02 = cos(eta02 * shellctx->time);
   double cos03 = cos(eta03 * shellctx->time);
