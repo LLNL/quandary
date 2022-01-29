@@ -28,6 +28,9 @@ MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Osci
   Jkl = Jkl_;
   eta = eta_;
   usematfree = usematfree_;
+  for (int k=0; k<noscillators; k++){
+    ncontrolterms.push_back(1); // Default: one control term per oscillator
+  }
 
   for (int i=0; i<crosskerr.size(); i++){
     crosskerr[i] *= 2.*M_PI;
@@ -214,7 +217,6 @@ void MasterEq::initSparseMatSolver(std::string python_file){
     // Default setting: one element per oscillator. If pyhthon interface: There could be more, see below.
     Ac_vec[k] = new Mat[1];
     Bc_vec[k] = new Mat[1];
-    ncontrolterms.push_back(1);
   }
   // coupling terms
   Ad_vec = new Mat[noscillators*(noscillators-1)/2];
