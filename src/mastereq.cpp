@@ -575,9 +575,10 @@ void MasterEq::initSparseMatSolver(std::string python_file){
 
     if (pModule != NULL) {
 
-      // Get a reference to the Hamiltonian functions
+      // Get a reference to the required python functions
       PyObject* pFunc_getHd = PyObject_GetAttrString(pModule, (char*)"getHd");  // system Hamiltonian
       PyObject* pFunc_getHc = PyObject_GetAttrString(pModule, (char*)"getHc");  // control Hamiltonians
+      PyObject *pFunc_getTr = PyObject_GetAttrString(pModule, (char*)"getTransfer");  // transfer functions
 
       /* --- Get the system Hamiltonian --- */
 
@@ -846,11 +847,68 @@ void MasterEq::initSparseMatSolver(std::string python_file){
           MatAssemblyEnd(Ad_vec[i], MAT_FINAL_ASSEMBLY);
         }
       }
-      
+
+      /* --- Get and store the transfer functions --- */
+      PyObject* pTr;
+      if (pFunc_getTr && PyCallable_Check(pFunc_getTr)) {
+        pTr = PyObject_CallObject(pFunc_getTr, NULL); // NULL: no input to getTransfer().
+        PyErr_Print();
+      } else PyErr_Print();
+
+      // getTransfer() MUST return a python list of lists of Functions:
+      // for each oscillator k=0...Q-1: for each control term i=0...C^k-1: a transfer function u^k_i(x) (real-valued)
+      Q = 0;
+      if (PyList_Check(pHc)) {
+        Q = PyList_Size(pHc); 
+        PyErr_Print();
+      }
+      // Sanity check 
+      if (Q != noscillators) {
+        printf("Error parsing python function getTr(): It should contain an (outer) list of length %d, but did return a list of length %d.\n", noscillators, Q);
+        exit(1);
+      }
+
+      // Iterate over oscillators
+      for (Py_ssize_t k=0; k<Q; k++){
+        // Check number of control terms for this oscillator
+        int Ck = 0;
+        PyObject* pTrk = PyList_GetItem(pTr,k); // Get list of Function for oscillator k
+        PyErr_Print();
+        if (PyList_Check(pTrk)) { 
+          Ck = PyList_Size(pTrk); 
+          PyErr_Print();
+        } else PyErr_Print();
+        printf("getTr(): For oscillator %d, received %d transfer functions.\n", (int)k, ncontrolterms[k]);
+        assert(Ck == ncontrolterms[k]);
+
+        // Iterate over control terms for this oscillator 
+        std::vector<PyObject*> puk;
+        for (Py_ssize_t i=0; i<ncontrolterms[k]; i++){
+          PyObject* pTrki = PyList_GetItem(pTrk,i); // Get transfer function u^k_i(x)
+          PyErr_Print();
+
+          // pTrki should be a function and should be callable! TODO: Test it and then store it away. 
+          if (pTrki && PyCallable_Check(pTrki)) {
+            printf("Transfer function oscil %d control %d: Can call it.\n",(int) k,(int)i);
+            puk.push_back(pTrki);
+          } else printf("Can't call transfer function %d %d.", (int)k,(int)i);
+        } // end of control term i for this oscillator k
+          
+        // Push to a vector or somehow store it. 
+        pFunc_transfer.push_back(puk);
+
+      } // end of oscillator k
+
+
+
+
+
+
 
       // Cleanup
       Py_XDECREF(pFunc_getHd);  // pointer to getHd function
       Py_XDECREF(pFunc_getHc);  // pointer to getHc function
+      Py_XDECREF(pFunc_getTr);  // pointer to getHc function
       Py_Finalize();
 
     } else {
@@ -896,10 +954,11 @@ int MasterEq::assemble_RHS(const double t){
 
     /* TODO: Loop over all control Hamiltonian terms for this oscillator */
     // Again only real-valued. So only u^k_i(p(t)) to multiply Bc^k_i */
-    // for (int icon=0/1; icon<ncontrolterms[iosc]; icon++;){        
+    // #ifdef WITH_PYTHON...
+    // for (int icon=1; icon<ncontrolterms[iosc]; icon++;){        
       // transfer function pyFunc[iosc] gives u^k_i(p)
-      // RHSctx.control_Re[iosc][icon] = u^k_i(p)
-      // RHSctx.control_Im[iosc][icon] = u^k_i(q)  // they wont multiply anything!
+      // RHSctx.control_Re[iosc][icon] = u^k_i(p) // stored in pFunc_Transfer[id][:]
+      // RHSctx.control_Im[iosc][icon] = u^k_i(q)  
     // }
 
     RHSctx.control_Re[iosc][0] = p;

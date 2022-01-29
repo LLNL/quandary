@@ -71,6 +71,10 @@ class MasterEq{
     Mat* Ad_vec;  // Vector of constant mats for Jaynes-Cummings coupling term in drift Hamiltonian (real)
     Mat* Bd_vec;  // Vector of constant mats for Jaynes-Cummings coupling term in drift Hamiltonian (imag)
 
+#ifdef WITH_PYTHON
+  std::vector<std::vector<PyObject*>> pFunc_transfer;  // Store pointers to the transfer functions for each oscillator, for each control term
+#endif
+
     std::vector<double> crosskerr;    // Cross ker coefficients (rad/time) $\xi_{kl} for zz-coupling ak^d ak al^d al
     std::vector<double> Jkl;          // Jaynes-Cummings coupling coefficient (rad/time), multiplies ak^d al + ak al^d
     std::vector<double> eta;          // Delta in rotational frame frequencies (rad/time). Used for Jaynes-Cummings coupling terms in rotating frame

@@ -44,7 +44,7 @@ def getHd():
 
 ## THIS IS A FUNCTION THAT QUANDARY REQUIRES to get the control Hamiltonians Hc! ##
 # For now, the Hamiltonians here should be real valued!
-# Returns a list of lists of lists: 
+# Returns a list of lists of flattened Hamiltonians (also lists): 
 # for each oscillator k=0,...Q-1:
 #   for each control term i=0,...,C^k
 #       Hc^k_i: control Hamiltonian stored as a flattened list.
@@ -67,6 +67,22 @@ def getHc():
     #print("Hc11=",Hc11)
 
     return Hclist 
+
+
+## THIS IS A FUNCTION THAT QUANDARY REQUIRES to get the transfer functions per control Hamiltonian! ##
+# Should return a list of lists of functions, matching to the list of lists of flattened Hamiltonians in getHc
+def getTransfer():
+    
+    # Qubit1: omega_1(x)
+    def omega1(flux):
+        return flux
+
+    # Qubit1: xi_1(x)
+    def xi1(flux):
+        return flux
+
+    return [ [], [omega1, xi1] ]
+
 
 def main():
     Hclist = getHc();
@@ -94,16 +110,5 @@ def main():
     #print("ERROR = ",err);
     #print("Diff = ",Hd-Bd_test)
     
-def omega1(flux):
-    # magic function. TODO.
-    return np.sin(flux)
-
-def xi1(flux):
-    # magic function. TODO.
-    return np.cos(flux)
-
-
-
-
 if __name__ == "__main__":
     main()
