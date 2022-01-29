@@ -64,6 +64,7 @@ class MasterEq{
 
     Mat** Ac_vec;  // Vector of vector of constant mats for time-varying control term (real). One vector of mats for each oscillators. 
     Mat** Bc_vec;  // Vector of vector of constant mats for time-varying control term (imag). One vector of mats for each oscillators. 
+    std::vector<int> ncontrolterms; // Stores the number of control Hamiltonians per oscillator
     Mat  Ad, Bd;  // Real and imaginary part of constant system matrix
     Mat* Ad_vec;  // Vector of constant mats for Jaynes-Cummings coupling term in drift Hamiltonian (real)
     Mat* Bd_vec;  // Vector of constant mats for Jaynes-Cummings coupling term in drift Hamiltonian (imag)

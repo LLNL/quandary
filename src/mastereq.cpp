@@ -207,10 +207,11 @@ void MasterEq::initSparseMatSolver(std::string python_file){
   // control terms. One vector per oscillator
   Ac_vec = new Mat*[noscillators];
   Bc_vec = new Mat*[noscillators];
-  for (int i=0; i<noscillators; i++){
+  for (int k=0; k<noscillators; k++){
     // Default setting: one element per oscillator. If pyhthon interface: There could be more, see below.
-    Ac_vec[i] = new Mat[1];
-    Bc_vec[i] = new Mat[1];
+    Ac_vec[k] = new Mat[1];
+    Bc_vec[k] = new Mat[1];
+    ncontrolterms.push_back(1);
   }
   // coupling terms
   Ad_vec = new Mat[noscillators*(noscillators-1)/2];
@@ -601,7 +602,7 @@ void MasterEq::initSparseMatSolver(std::string python_file){
       printf("\n");
 
 
-      /* Write system Hamiltonian into sparse Petsc matrix Bd. */
+      /* Write system Hamiltonian into sparse Petsc matrix Bd: -I_N \kron B_d + B_d \kron I_N. */
       // Bd is a diagonal was allocated with 1 non-zero per row, but reading from file could make this matrix denser, so destroy and reallocate it here. 
       MatDestroy(&Bd);
       MatCreate(PETSC_COMM_WORLD, &Bd);
@@ -679,9 +680,11 @@ void MasterEq::initSparseMatSolver(std::string python_file){
         printf("Error parsing python function getHc(): It should contain an (outer) list of length %d, but did return a list of length %d.\n", noscillators, Q);
         exit(1);
       }
-      printf("getHc(): Received an (outer) list of length %d\n", Q);
+      // printf("getHc(): Received an (outer) list of length %d\n", Q);
 
       // Iterate over oscillators
+      std::vector<std::vector<double>> Hc_vals; // vector of vector of Hamiltonian values
+      std::vector<std::vector<int>> Hc_ids;  // vector of vector of Hamiltonian id
       for (Py_ssize_t k=0; k<Q; k++){
         // Check number of control terms for this oscillator
         int Ck = 0;
@@ -691,10 +694,11 @@ void MasterEq::initSparseMatSolver(std::string python_file){
           Ck = PyList_Size(pHck); 
           PyErr_Print();
         } else PyErr_Print();
-        printf("getHc(): For oscillator %d, received %d number of control Hamiltonians.\n", (int)k, Ck);
+        ncontrolterms[k] = Ck;
+        // printf("getHc(): For oscillator %d, received %d control Hamiltonians.\n", (int)k, ncontrolterms[k]);
 
         // Iterate over control terms for this oscillator 
-        for (Py_ssize_t i=0; i<Ck; i++){
+        for (Py_ssize_t i=0; i<ncontrolterms[k]; i++){
           PyObject* pHcki = PyList_GetItem(pHck,i); // Get the Hamiltonian Hcki
           PyErr_Print();
 
@@ -703,7 +707,7 @@ void MasterEq::initSparseMatSolver(std::string python_file){
             Hcki_size = PyList_Size(pHcki);
             PyErr_Print();
           }
-          printf("getHc(): Oscillator %d, term %i: Received a list of length = %d: ", (int)k,(int)i,Hcki_size);
+          // printf("getHc(): Oscillator %d, term %i: Received a list of length = %d: ", (int)k,(int)i,Hcki_size);
           std::vector<double> Hcki_vals;
           std::vector<int> Hcki_ids;
           for (Py_ssize_t l=0; l<Hcki_size; l++){ // Iterate over elements
@@ -716,12 +720,97 @@ void MasterEq::initSparseMatSolver(std::string python_file){
               Hcki_ids.push_back(l);
             }
           }
-          // print vals 
-          for (int i=0; i<Hcki_vals.size(); i++) printf("%d %f, ", Hcki_ids[i], Hcki_vals[i]);
+          Hc_vals.push_back(Hcki_vals);
+          Hc_ids.push_back(Hcki_ids);
+        } // end of control term i for this oscillator k
+      } // end of oscillator k
+
+      // print out what we received from python 
+      int id = 0;
+      for (int k=0; k<noscillators; k++){
+        printf("getHc(): Oscillator %d: %d control terms: \n", k, ncontrolterms[k]);
+        for (int i=0; i<ncontrolterms[k]; i++){
+          printf("  %dth control: \n", i);
+          for (int l=0; l < Hc_vals[id].size(); l++){
+            printf("(%d,%f) ", Hc_ids[id][l], Hc_vals[id][l]);
+          }
+          id++;
           printf("\n");
         }
       }
- 
+
+      /* Write control Hamiltonians into sparse matrices -I\kron Hc + Hc \kron I  */
+      id = 0;
+      for (int k=0; k<noscillators; k++){
+        // The first one has been allocated for default sparse mat setting, so need to destroy first. 
+        MatDestroy(&(Ac_vec[k][0])); 
+        MatDestroy(&(Bc_vec[k][0]));
+        delete [] Ac_vec[k];
+        delete [] Bc_vec[k];
+
+        // Create new mats for this oscillator, minimum one. If ncontrolterms==0, we still create one but it will be empty. 
+        int nHams = max(ncontrolterms[k], 1);
+        printf("Creating %d Mats for oscillator %d\n", nHams, k);
+        Ac_vec[k] = new Mat[nHams];
+        Bc_vec[k] = new Mat[nHams];
+        // Always create the first Hamiltonian (might be empty.)
+        MatCreate(PETSC_COMM_WORLD, &(Ac_vec[k][0]));
+        MatCreate(PETSC_COMM_WORLD, &(Bc_vec[k][0]));
+        MatSetType(Ac_vec[k][0], MATMPIAIJ);
+        MatSetType(Bc_vec[k][0], MATMPIAIJ);
+        MatSetSizes(Ac_vec[k][0], PETSC_DECIDE, PETSC_DECIDE, dim, dim);
+        MatSetSizes(Bc_vec[k][0], PETSC_DECIDE, PETSC_DECIDE, dim, dim);
+        MatSetUp(Ac_vec[k][0]);
+        MatSetUp(Bc_vec[k][0]);
+        MatSetFromOptions(Ac_vec[k][0]);
+        MatSetFromOptions(Bc_vec[k][0]);
+        // Create remaining matrices for this oscillator
+        for (int i=1; i<ncontrolterms[k]; i++){
+          MatCreate(PETSC_COMM_WORLD, &(Bc_vec[k][i]));
+          MatSetType(Bc_vec[k][i], MATMPIAIJ);
+          MatSetSizes(Bc_vec[k][i], PETSC_DECIDE, PETSC_DECIDE, dim, dim);
+          MatSetUp(Bc_vec[k][i]);
+          MatSetFromOptions(Bc_vec[k][i]);
+        }
+
+        // Set values for each control terms for this oscillator
+        for (int i=0; i<ncontrolterms[k]; i++){
+          // Assemble -I_N \kron Hc^k_i + Hc^k_i \kron I_N
+          // vals are in Hc_vals[id][:]
+          // Iterate over nonzero elements in Hc^k_i
+          for (int l = 0; l<Hc_ids[id].size(); l++) {
+            // Get position in the Bc matrix
+            int row = Hc_ids[id][l] % sqdim;
+            int col = Hc_ids[id][l] / sqdim;
+
+            // Assemble -I_N \kron B_c + B_c \kron I_N 
+            for (int m=0; m<sqdim; m++){
+              // first place all -v_ij in the -I_N\kron B_c term:
+              int rowm = row + sqdim * m;
+              int colm = col + sqdim * m;
+              double val = -1.*Hc_vals[id][l];
+              if (ilow <= rowm && rowm < iupp) MatSetValue(Bc_vec[k][i], rowm, colm, val, ADD_VALUES);
+              // Then add v_ij in the B_d \kron I_N term:
+              rowm = row*sqdim + m;
+              colm = col*sqdim + m;
+              val = Hc_vals[id][l];
+              if (ilow <= rowm && rowm < iupp) MatSetValue(Bc_vec[k][i], rowm, colm, val, ADD_VALUES);
+            }
+          } // end of elements in Hc^k_i
+          id++;
+        } // end of i loop for control terms
+
+        // Always assemble the first matrix for this oscillator (might be empty)
+        MatAssemblyBegin(Ac_vec[k][0], MAT_FINAL_ASSEMBLY);
+        MatAssemblyEnd(Ac_vec[k][0], MAT_FINAL_ASSEMBLY);
+        MatAssemblyBegin(Bc_vec[k][0], MAT_FINAL_ASSEMBLY);
+        MatAssemblyEnd(Bc_vec[k][0], MAT_FINAL_ASSEMBLY);
+        // Assemble the other ones for this oscillator
+        for (int i=1; i<ncontrolterms[k]; i++){
+          MatAssemblyBegin(Bc_vec[k][i], MAT_FINAL_ASSEMBLY);
+          MatAssemblyEnd(Bc_vec[k][i], MAT_FINAL_ASSEMBLY);
+        }
+      } // end of k loop for oscillators
 
 
       /* Reset Ad_vec and Bd_vec the they had been allocated. */
@@ -760,6 +849,14 @@ void MasterEq::initSparseMatSolver(std::string python_file){
   }
 #endif
 
+  // Test: Print out the control Hamiltonian terms.
+  for (int k=0; k<noscillators; k++){
+    for (int i=0; i<ncontrolterms[k]; i++){
+      printf("Oscil %d, control term %d:\n", k, i);
+      MatView(Bc_vec[k][i], NULL);
+    }
+  }
+  exit(1);
 
   /* Allocate some auxiliary vectors */
   MatCreateVecs(Ac_vec[0][0], &aux, NULL);
