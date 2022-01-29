@@ -26,6 +26,7 @@ typedef struct {
   std::vector<double> control_Re, control_Im;
   Mat*** Ac_vec;
   Mat*** Bc_vec;
+  std::vector<int> ncontrolterms; 
   Mat *Ad, *Bd;
   Mat** Ad_vec;
   Mat** Bd_vec;

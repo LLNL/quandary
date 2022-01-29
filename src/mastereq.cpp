@@ -122,6 +122,7 @@ MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Osci
   RHSctx.eta = eta;
   RHSctx.addT1 = addT1;
   RHSctx.addT2 = addT2;
+  RHSctx.ncontrolterms = ncontrolterms;
   if (!usematfree){
     RHSctx.Ac_vec = &Ac_vec;
     RHSctx.Bc_vec = &Bc_vec;
@@ -180,8 +181,10 @@ MasterEq::~MasterEq(){
       }
       VecDestroy(&aux);
       for (int i=0; i<noscillators; i++){
-        MatDestroy(&(Ac_vec[i][0])); // TODO: Destroy potentially more, if python interface!
+        MatDestroy(&(Ac_vec[i][0]));
         MatDestroy(&(Bc_vec[i][0]));
+        for (int icon=1; icon<ncontrolterms[i]; icon++)  
+          MatDestroy(&(Bc_vec[i][icon]));
         delete [] Ac_vec[i];
         delete [] Bc_vec[i];
       }
@@ -748,9 +751,9 @@ void MasterEq::initSparseMatSolver(std::string python_file){
         delete [] Ac_vec[k];
         delete [] Bc_vec[k];
 
-        // Create new mats for this oscillator, minimum one. If ncontrolterms==0, we still create one but it will be empty. 
+        // Create new mats for this oscillator, minimum one. If ncontrolterms==0, we still create one but it will be empty. // Why? TODO.
         int nHams = max(ncontrolterms[k], 1);
-        printf("Creating %d Mats for oscillator %d\n", nHams, k);
+        printf("Creating %d control Mats for oscillator %d\n", nHams, k);
         Ac_vec[k] = new Mat[nHams];
         Bc_vec[k] = new Mat[nHams];
         // Always create the first Hamiltonian (might be empty.)
@@ -849,14 +852,13 @@ void MasterEq::initSparseMatSolver(std::string python_file){
   }
 #endif
 
-  // Test: Print out the control Hamiltonian terms.
-  for (int k=0; k<noscillators; k++){
-    for (int i=0; i<ncontrolterms[k]; i++){
-      printf("Oscil %d, control term %d:\n", k, i);
-      MatView(Bc_vec[k][i], NULL);
-    }
-  }
-  exit(1);
+  // // Test: Print out the control Hamiltonian terms.
+  // for (int k=0; k<noscillators; k++){
+  //   for (int i=0; i<ncontrolterms[k]; i++){
+  //     printf("Oscil %d, control term %d:\n", k, i);
+  //     MatView(Bc_vec[k][i], NULL);
+  //   }
+  // }
 
   /* Allocate some auxiliary vectors */
   MatCreateVecs(Ac_vec[0][0], &aux, NULL);
@@ -1289,6 +1291,7 @@ void MasterEq::computedRHSdp(const double t, const Vec x, const Vec xbar, const 
 
     delete [] coeff_p;
     delete [] coeff_q;
+
   } else {  // sparse matrix solver
 
   /* Get real and imaginary part from x and x_bar */
@@ -1310,15 +1313,18 @@ void MasterEq::computedRHSdp(const double t, const Vec x, const Vec xbar, const 
     oscil_vec[iosc]->evalControl_diff(t, dRedp, dImdp);
 
     /* Compute terms in RHS(x)^T xbar */
+    //zero's control term always. 
     double uAubar, vAvbar, vBubar, uBvbar;
-    MatMult(Ac_vec[iosc][0], u, aux);
-    VecDot(aux, ubar, &uAubar);
-    MatMult(Ac_vec[iosc][0], v, aux);
-    VecDot(aux, vbar, &vAvbar);
-    MatMult(Bc_vec[iosc][0], u, aux);
-    VecDot(aux, vbar, &uBvbar);
-    MatMult(Bc_vec[iosc][0], v, aux);
-    VecDot(aux, ubar, &vBubar);
+    MatMult(Ac_vec[iosc][0], u, aux); VecDot(aux, ubar, &uAubar); // TODO: Use MatAXPY
+    MatMult(Ac_vec[iosc][0], v, aux); VecDot(aux, vbar, &vAvbar);
+    MatMult(Bc_vec[iosc][0], u, aux); VecDot(aux, vbar, &uBvbar);
+    MatMult(Bc_vec[iosc][0], v, aux); VecDot(aux, ubar, &vBubar);
+    // Other control terms
+    for (int icon=1; icon<ncontrolterms[iosc]; icon++){
+      double dot;
+      MatMult(Bc_vec[iosc][icon], u, aux); VecDot(aux, vbar, &dot); uBvbar += dot;
+      MatMult(Bc_vec[iosc][icon], v, aux); VecDot(aux, ubar, &dot); vBubar += dot;
+    }
 
     /* Number of parameters for this oscillator */
     int nparams_iosc = getOscillator(iosc)->getNParams();
@@ -1616,13 +1622,17 @@ int myMatMult_sparsemat(Mat RHS, Vec x, Vec y){
   int id_kl = 0; // index for accessing Ad_kl inside Ad_vec
   for (int iosc = 0; iosc < shellctx->nlevels.size(); iosc++) {
 
+    /* -- Control Terms -- */
+
     /* Get controls */
     double p = shellctx->control_Re[iosc];
     double q = shellctx->control_Im[iosc];
 
+    // always do the first one.  // Why? TODO!
+
     // uout += q^k*Acu
     MatMult((*(shellctx->Ac_vec))[iosc][0], u, *shellctx->aux);
-    VecAXPY(uout, q, *shellctx->aux);
+    VecAXPY(uout, q, *shellctx->aux); // Should use MatAXPY! TODO.
     // uout -= p^kBcv
     MatMult((*(shellctx->Bc_vec))[iosc][0], v, *shellctx->aux);
     VecAXPY(uout, -1.*p, *shellctx->aux);
@@ -1633,7 +1643,18 @@ int myMatMult_sparsemat(Mat RHS, Vec x, Vec y){
     MatMult((*(shellctx->Bc_vec))[iosc][0], u, *shellctx->aux);
     VecAXPY(vout, p, *shellctx->aux);
 
-    // Coupling terms
+    // Then do all others. 
+    // For those, Ac_vec doesn't exist, because currently the python interface only works for *real-valued* Hamiltonians. TODO.
+    for (int icon=1; icon<shellctx->ncontrolterms[iosc]; icon++){
+      // uout -= p^kBcv
+      MatMult((*(shellctx->Bc_vec))[iosc][icon], v, *shellctx->aux);
+      VecAXPY(uout, -1.*p, *shellctx->aux);
+      // vout += p^kBcu
+      MatMult((*(shellctx->Bc_vec))[iosc][icon], u, *shellctx->aux);
+      VecAXPY(vout, p, *shellctx->aux);
+    }
+
+    /* --- Coupling terms --- */
     for (int josc=iosc+1; josc<shellctx->nlevels.size(); josc++){
 
       double Jkl = shellctx->Jkl[id_kl]; 
@@ -1720,6 +1741,17 @@ int myMatMultTranspose_sparsemat(Mat RHS, Vec x, Vec y) {
     // vout -= p^kBc^Tu
     MatMultTranspose((*(shellctx->Bc_vec))[iosc][0], u, *shellctx->aux);
     VecAXPY(vout, -1.*p, *shellctx->aux);
+
+    // All other control terms
+    for (int icon=1; icon>shellctx->ncontrolterms[iosc]; icon++){
+      // uout += p^kBc^Tv
+      MatMultTranspose((*(shellctx->Bc_vec))[iosc][icon], v, *shellctx->aux);
+      VecAXPY(uout, p, *shellctx->aux);
+      // vout -= p^kBc^Tu
+      MatMultTranspose((*(shellctx->Bc_vec))[iosc][icon], u, *shellctx->aux);
+      VecAXPY(vout, -1.*p, *shellctx->aux);
+    }
+
 
     // Coupling terms
     for (int josc=iosc+1; josc<shellctx->nlevels.size(); josc++){

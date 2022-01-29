@@ -32,6 +32,7 @@ def evalHd_mat():
 
 
 ## THIS IS A FUNCTION THAT QUANDARY REQUIRES to get the system Hamiltonian Hd! ##
+# For now, the Hamiltonians here should be real valued!
 # Return the vectorized Hamiltonian, column major vectorization (order='F')
 # Quandary requires a *list* of elements. Therefore, need to cast to an array, than flatten it, then cast to a list.
 def getHd():
@@ -42,6 +43,7 @@ def getHd():
 
 
 ## THIS IS A FUNCTION THAT QUANDARY REQUIRES to get the control Hamiltonians Hc! ##
+# For now, the Hamiltonians here should be real valued!
 # Returns a list of lists of lists: 
 # for each oscillator k=0,...Q-1:
 #   for each control term i=0,...,C^k
@@ -61,8 +63,8 @@ def getHc():
 
     # Set up return list
     Hclist = [ [], [Hc10list, Hc11list] ]  # Qubit 0: No control, Qubit 1: two controls Hc10 and Hc11
-    print("Hc10=",Hc10)
-    print("Hc11=",Hc11)
+    #print("Hc10=",Hc10)
+    #print("Hc11=",Hc11)
 
     return Hclist 
 
