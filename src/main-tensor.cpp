@@ -400,6 +400,7 @@ int main(int argc, char ** argv)
   
   /* ----------------------------------------*/
   /* --- Compare Petsc and ExaTn results --- */
+  /* This probably won't work in parallel!   */
   /* ----------------------------------------*/
 
   auto local_copy_Re = exatn::getLocalTensor("RhoOutRe"); assert(local_copy_Re); //type = talsh::Tensor
