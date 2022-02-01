@@ -2734,6 +2734,11 @@ int myMatMult_matfree_2Osc(Mat RHS, Vec x, Vec y){
   else if (n0==1 && n1==1)   return myMatMult_matfree<1,1>(RHS, x, y);
   else if (n0==2 && n1==2)   return myMatMult_matfree<2,2>(RHS, x, y);
   else if (n0==3 && n1==3)   return myMatMult_matfree<3,3>(RHS, x, y);
+  else if (n0==4 && n1==4)   return myMatMult_matfree<4,4>(RHS, x, y);
+  else if (n0==8 && n1==8)   return myMatMult_matfree<8,8>(RHS, x, y);
+  else if (n0==16 && n1==16)   return myMatMult_matfree<16,16>(RHS, x, y);
+  else if (n0==32 && n1==32)   return myMatMult_matfree<32,32>(RHS, x, y);
+  else if (n0==64 && n1==64)   return myMatMult_matfree<64,64>(RHS, x, y);
   else if (n0==20 && n1==20) return myMatMult_matfree<20,20>(RHS, x, y);
   else {
     printf("ERROR: In order to run this case, add a line at the end of mastereq.cpp with the corresponding number of levels!\n");
@@ -2752,6 +2757,11 @@ int myMatMultTranspose_matfree_2Osc(Mat RHS, Vec x, Vec y){
   else if (n0==1 && n1==1)   return myMatMultTranspose_matfree<1,1>(RHS, x, y);
   else if (n0==2 && n1==2)   return myMatMultTranspose_matfree<2,2>(RHS, x, y);
   else if (n0==3 && n1==3)   return myMatMultTranspose_matfree<3,3>(RHS, x, y);
+  else if (n0==4 && n1==4)   return myMatMultTranspose_matfree<4,4>(RHS, x, y);
+  else if (n0==8 && n1==8)   return myMatMultTranspose_matfree<8,8>(RHS, x, y);
+  else if (n0==16 && n1==16)   return myMatMultTranspose_matfree<16,16>(RHS, x, y);
+  else if (n0==32 && n1==32)   return myMatMultTranspose_matfree<32,32>(RHS, x, y);
+  else if (n0==64 && n1==64)   return myMatMultTranspose_matfree<64,64>(RHS, x, y);
   else if (n0==20 && n1==20) return myMatMultTranspose_matfree<20,20>(RHS, x, y);
   else {
     printf("ERROR: In order to run this case, add a line at the end of mastereq.cpp with the corresponding number of levels!\n");
