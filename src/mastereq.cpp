@@ -17,7 +17,7 @@ MasterEq::MasterEq(){
 }
 
 
-MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Oscillator** oscil_vec_, const std::vector<double> crosskerr_, const std::vector<double> Jkl_, const std::vector<double> eta_, LindbladType lindbladtype, bool usematfree_, std::string python_file) {
+MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Oscillator** oscil_vec_, const std::vector<double> crosskerr_, const std::vector<double> Jkl_, const std::vector<double> eta_, LindbladType lindbladtype, bool usematfree_, std::string python_file_) {
   int ierr;
 
   nlevels = nlevels_;
@@ -31,6 +31,7 @@ MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Osci
   for (int k=0; k<noscillators; k++){
     ncontrolterms.push_back(1); // Default: one control term per oscillator
   }
+  python_file = python_file_;
 
   for (int i=0; i<crosskerr.size(); i++){
     crosskerr[i] *= 2.*M_PI;
@@ -94,7 +95,7 @@ MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Osci
   } 
 
   if (!usematfree) {
-    initSparseMatSolver(python_file);
+    initSparseMatSolver();
   } 
 
   /* Create vector strides for accessing Re and Im part in x */
@@ -141,7 +142,7 @@ MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Osci
   for (int iosc = 0; iosc < noscillators; iosc++) {
     std::vector<double> controlRek;
     std::vector<double> controlImk;
-    for (int icon=0; icon<max(ncontrolterms[iosc],1); icon++){
+    for (int icon=0; icon<max(ncontrolterms[iosc],1); icon++){  // at least one for each, might be 0.0
      controlRek.push_back(0.0);
      controlImk.push_back(0.0);
     }
@@ -210,10 +211,15 @@ MasterEq::~MasterEq(){
     ISDestroy(&isu);
     ISDestroy(&isv);
   }
+
+
+#ifdef WITH_PYTHON
+  Py_Finalize();
+#endif
 }
 
 
-void MasterEq::initSparseMatSolver(std::string python_file){
+void MasterEq::initSparseMatSolver(){
 
   /* Allocate time-varying building blocks */
   // control terms. One vector per oscillator
@@ -825,7 +831,7 @@ void MasterEq::initSparseMatSolver(std::string python_file){
       } // end of k loop for oscillators
 
 
-      /* Reset Ad_vec and Bd_vec the they had been allocated. */
+      /* Reset Ad_vec and Bd_vec. Those terms should be in Hd. */
       for (int i= 0; i < noscillators*(noscillators-1)/2; i++) {
         if (fabs(Jkl[i]) > 1e-12 )  {
           MatDestroy(&Ad_vec[i]);
@@ -889,7 +895,6 @@ void MasterEq::initSparseMatSolver(std::string python_file){
 
           // pTrki should be a function and should be callable! TODO: Test it and then store it away. 
           if (pTrki && PyCallable_Check(pTrki)) {
-            printf("Transfer function oscil %d control %d: Can call it.\n",(int) k,(int)i);
             puk.push_back(pTrki);
           } else printf("Can't call transfer function %d %d.", (int)k,(int)i);
         } // end of control term i for this oscillator k
@@ -900,16 +905,10 @@ void MasterEq::initSparseMatSolver(std::string python_file){
       } // end of oscillator k
 
 
-
-
-
-
-
       // Cleanup
       Py_XDECREF(pFunc_getHd);  // pointer to getHd function
       Py_XDECREF(pFunc_getHc);  // pointer to getHc function
       Py_XDECREF(pFunc_getTr);  // pointer to getHc function
-      Py_Finalize();
 
     } else {
       printf("\n ERROR: Can't import python module %s. Probably, the file does not exist in this working directory... \n", python_file.c_str());
@@ -948,22 +947,48 @@ int MasterEq::assemble_RHS(const double t){
 
   for (int iosc = 0; iosc < noscillators; iosc++) {
 
-
     double p, q;
-    oscil_vec[iosc]->evalControl(t, &p, &q);  // Evaluates the B-spline basis functions. 
+    oscil_vec[iosc]->evalControl(t, &p, &q);  // Evaluates the B-spline basis functions -> p(t,alpha), q(t,alpha)
 
-    /* TODO: Loop over all control Hamiltonian terms for this oscillator */
-    // Again only real-valued. So only u^k_i(p(t)) to multiply Bc^k_i */
-    // #ifdef WITH_PYTHON...
-    // for (int icon=1; icon<ncontrolterms[iosc]; icon++;){        
-      // transfer function pyFunc[iosc] gives u^k_i(p)
-      // RHSctx.control_Re[iosc][icon] = u^k_i(p) // stored in pFunc_Transfer[id][:]
-      // RHSctx.control_Im[iosc][icon] = u^k_i(q)  
-    // }
-
+    // Default: set the first control term.
     RHSctx.control_Re[iosc][0] = p;
     RHSctx.control_Im[iosc][0] = q;
-  }
+
+#ifdef WITH_PYTHON
+    // Overwrite the controls by calling python functions, if the file is given.
+    if (python_file.compare("none") != 0 ) {
+    // Only real-valued controls for now. So only u^k_i(p(t)) to multiply Bc^k_i. TODO: Add imaginary.
+
+      // Get transfer functions u^k_i(p) from python for this oscillators k
+      for (int icon=0; icon<ncontrolterms[iosc]; icon++){
+        // call transfer function  u^k_i(p) which is stored in pFunc_transfer[iosc][icon]
+
+        PyObject* pResult;
+        if (pFunc_transfer[iosc][icon] && PyCallable_Check(pFunc_transfer[iosc][icon])) {
+          PyObject* pInput = PyTuple_Pack(1,PyFloat_FromDouble(p)); 
+          pResult = PyObject_CallObject(pFunc_transfer[iosc][icon], pInput); // call u(p)
+          PyErr_Print();
+        } else {
+          printf("Can't call transfer function for oscillator %d control term %d\n", iosc, icon);
+          PyErr_Print();
+        }
+        // get result and store it in control_Re
+        double ukip = 1.0;
+        if (pResult != NULL) {
+          ukip = PyFloat_AsDouble(pResult);
+          PyErr_Print();
+          // Py_DECREF(pResult);  // TODO: Needed?
+        }
+        // printf("t=%f: transfer function u[oscil=%d][controlterm=%d](input=%f) = output %f\n", t, iosc, icon, p, ukip);
+
+        // Set the controls (only real for now)
+        RHSctx.control_Re[iosc][icon] = ukip; 
+        RHSctx.control_Im[iosc][icon] = 0.0;
+      } // end of control term
+    } 
+#endif
+
+  } // end of oscillator loop
 
   return 0;
 }
@@ -1665,6 +1690,7 @@ int MasterEq::getRhoT0(const int iinit, const int ninit, const InitialConditionT
 
 /* Sparse matrix solver: Define the action of RHS on a vector x */
 int myMatMult_sparsemat(Mat RHS, Vec x, Vec y){
+  double p,q;
 
   /* Get the shell context */
   MatShellCtx *shellctx;
@@ -1702,11 +1728,11 @@ int myMatMult_sparsemat(Mat RHS, Vec x, Vec y){
 
     /* -- Control Terms -- */
 
-    /* Get controls */
-    double p = shellctx->control_Re[iosc][0];
-    double q = shellctx->control_Im[iosc][0];
-
     // always do the first one.  // Why? TODO!
+
+    /* Get controls */
+    p = shellctx->control_Re[iosc][0];
+    q = shellctx->control_Im[iosc][0];
 
     // uout += q^k*Acu
     MatMult((*(shellctx->Ac_vec))[iosc][0], u, *shellctx->aux);
@@ -1724,6 +1750,10 @@ int myMatMult_sparsemat(Mat RHS, Vec x, Vec y){
     // Then do all others. 
     // For those, Ac_vec doesn't exist, because currently the python interface only works for *real-valued* Hamiltonians. TODO.
     for (int icon=1; icon<shellctx->ncontrolterms[iosc]; icon++){
+
+      // Get control
+      p = shellctx->control_Re[iosc][icon];
+
       // uout -= p^kBcv
       MatMult((*(shellctx->Bc_vec))[iosc][icon], v, *shellctx->aux);
       VecAXPY(uout, -1.*p, *shellctx->aux);
@@ -1770,6 +1800,7 @@ int myMatMult_sparsemat(Mat RHS, Vec x, Vec y){
 
 /* Sparse-matrix solver: Define the action of RHS^T on a vector x */
 int myMatMultTranspose_sparsemat(Mat RHS, Vec x, Vec y) {
+  double p,q;
 
   /* Get time from shell context */
   MatShellCtx *shellctx;
@@ -1803,9 +1834,14 @@ int myMatMultTranspose_sparsemat(Mat RHS, Vec x, Vec y) {
   /* Control and coupling term */
   int id_kl = 0; // index for accessing Ad_kl inside Ad_vec
   for (int iosc = 0; iosc < shellctx->nlevels.size(); iosc++) {
-    /* Get controls */
-    double p = shellctx->control_Re[iosc][0];
-    double q = shellctx->control_Im[iosc][0];
+
+    /* Control Terms */
+
+    // always do the first term. 
+
+    // Control for first term 
+    p = shellctx->control_Re[iosc][0];
+    q = shellctx->control_Im[iosc][0];
 
     // uout += q^k*Ac^Tu
     MatMultTranspose((*(shellctx->Ac_vec))[iosc][0], u, *shellctx->aux);
@@ -1822,6 +1858,9 @@ int myMatMultTranspose_sparsemat(Mat RHS, Vec x, Vec y) {
 
     // All other control terms
     for (int icon=1; icon>shellctx->ncontrolterms[iosc]; icon++){
+      // control for other terms
+      p = shellctx->control_Re[iosc][icon];
+
       // uout += p^kBc^Tv
       MatMultTranspose((*(shellctx->Bc_vec))[iosc][icon], v, *shellctx->aux);
       VecAXPY(uout, p, *shellctx->aux);

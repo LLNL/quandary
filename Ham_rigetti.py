@@ -75,11 +75,15 @@ def getTransfer():
     
     # Qubit1: omega_1(x)
     def omega1(flux):
-        return flux
+        out = 2.0 * flux; # TODO 
+        # print("Inside omega1(", flux, ")");
+        return out
 
     # Qubit1: xi_1(x)
     def xi1(flux):
-        return flux
+        out = 3.0*flux  # TODO 
+        # print("Inside xi1(", flux, ")");
+        return out
 
     return [ [], [omega1, xi1] ]
 
