@@ -75,13 +75,13 @@ def getTransfer():
     
     # Qubit1: omega_1(x)
     def omega1(flux):
-        out = 2.0 * flux; # TODO 
+        out = 0.444*np.sin(2.0*np.pi*(flux+0.25))+4.826 # sin fit
         # print("Inside omega1(", flux, ")");
         return out
 
     # Qubit1: xi_1(x)
     def xi1(flux):
-        out = 3.0*flux  # TODO 
+        out = 0.00194*np.sin(2.0*np.pi*(flux+0.25)) - 0.19904
         # print("Inside xi1(", flux, ")");
         return out
 
