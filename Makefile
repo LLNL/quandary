@@ -2,6 +2,10 @@
 #PETSC_DIR=/path/to/petsc
 #PETSC_ARCH=arch-linux-c-debug
 
+# Set location of FITPACK
+FITPACK_INCDIR=${HOME}/Software/fitpackpp/fitpackpp
+FITPACK_LIBDIR=${HOME}/Software/fitpackpp/build
+
 # Choose to link with XBraid and set the location
 WITH_XBRAID = false
 #BRAID_DIR = /path/to/xbraid_solveadjointwithxbraid
@@ -18,7 +22,7 @@ SANITY_CHECK = false
 
 #######################################################
 # Typically no need to change anything below
-
+#
 # Add optional Slepc
 ifeq ($(WITH_SLEPC), true)
 CXX_OPT = -DWITH_SLEPC
@@ -40,6 +44,13 @@ ifeq ($(WITH_PYTHON), true)
 LDFLAGS_OPT += -lpython
 CXX_OPT += -DWITH_PYTHON
 endif
+
+
+# Add FITPACK
+INC_OPT += -I${FITPACK_INCDIR}
+LDFLAGS_OPT += -L${FITPACK_LIBDIR} -lfitpack -lfitpackpp
+
+
 
 # Add sanity check to compiler option
 ifeq ($(SANITY_CHECK), true)

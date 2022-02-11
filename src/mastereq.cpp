@@ -616,8 +616,8 @@ void MasterEq::initSparseMatSolver(){
         }
       }
       // print vals 
-      for (int i=0; i<vals.size(); i++) printf("%d %f, ", ids[i], vals[i]);
-      printf("\n");
+      // for (int i=0; i<vals.size(); i++) printf("%d %f, ", ids[i], vals[i]);
+      // printf("\n");
 
 
       /* Write system Hamiltonian into sparse Petsc matrix Bd: -I_N \kron B_d + B_d \kron I_N. */
@@ -855,14 +855,15 @@ void MasterEq::initSparseMatSolver(){
       }
 
       /* --- Get and store the transfer functions --- */
+
       PyObject* pTr;
       if (pFunc_getTr && PyCallable_Check(pFunc_getTr)) {
         pTr = PyObject_CallObject(pFunc_getTr, NULL); // NULL: no input to getTransfer().
         PyErr_Print();
       } else PyErr_Print();
 
-      // getTransfer() MUST return a python list of lists of Functions:
-      // for each oscillator k=0...Q-1: for each control term i=0...C^k-1: a transfer function u^k_i(x) (real-valued)
+      // getTransfer() MUST return a python list of lists of [splines knots, and coeffs, and order]:
+      // for each oscillator k=0...Q-1: for each control term i=0...C^k-1: one transfer function u^k_i(x) (real-valued) given in terms of spline knots (list), coefficients(list) and order (int)
       Q = 0;
       if (PyList_Check(pHc)) {
         Q = PyList_Size(pHc); 
@@ -888,22 +889,44 @@ void MasterEq::initSparseMatSolver(){
         assert(Ck == ncontrolterms[k]);
 
         // Iterate over control terms for this oscillator 
-        std::vector<PyObject*> puk;
+        std::vector<fitpackpp::BSplineCurve*> transfer_k;
+        // std::vector<int> transfer_k;
+        PyObject* pTrki, *pOrder_ki, *pknots_ki, *pcoefs_ki, *pTrki_knot, *pTrki_coef;
         for (Py_ssize_t i=0; i<ncontrolterms[k]; i++){
-          PyObject* pTrki = PyList_GetItem(pTrk,i); // Get transfer function u^k_i(x)
+          pTrki = PyList_GetItem(pTrk,i); // Get spline for u^k_i(x). Returns [knots, coeffs, order]
           PyErr_Print();
 
-          // pTrki should be a function and should be callable! TODO: Test it and then store it away. 
-          if (pTrki && PyCallable_Check(pTrki)) {
-            puk.push_back(pTrki);
-          } else printf("Can't call transfer function %d %d.", (int)k,(int)i);
+          std::vector<double> uki_knots, uki_coefs;
+          int uki_order=0;
+          if (PyList_Check(pTrki)) {  // pTrki = [knots, coeffs, order]
+            assert(PyList_Size(pTrki) == 3); 
+            // Get order
+            pOrder_ki = PyList_GetItem(pTrki,2); 
+            uki_order = PyInt_AsLong(pOrder_ki);
+
+            // Get knots coeffs and order for spline u^k_i(x)
+            pknots_ki = PyList_GetItem(pTrki,0); 
+            pcoefs_ki = PyList_GetItem(pTrki,1); 
+            if (PyList_Check(pknots_ki) && PyList_Check(pcoefs_ki)) {  // pTrki = [knots, coeffs, order]
+              for (Py_ssize_t l=0; l<PyList_Size(pknots_ki); l++) {
+                pTrki_knot = PyList_GetItem(pknots_ki, l);
+                double val = PyFloat_AsDouble(pTrki_knot);
+                uki_knots.push_back( val );
+                pTrki_coef = PyList_GetItem(pcoefs_ki, l);
+                val = PyFloat_AsDouble(pTrki_coef);
+                uki_coefs.push_back( val );
+              }
+            } else PyErr_Print();
+          } else PyErr_Print();
+
+          // Create the spline for u^k_i and store it
+          fitpackpp::BSplineCurve* transfer_ki = new fitpackpp::BSplineCurve(uki_knots, uki_coefs, uki_order);
+          transfer_k.push_back(transfer_ki);
         } // end of control term i for this oscillator k
           
-        // Push to a vector or somehow store it. 
-        pFunc_transfer.push_back(puk);
-
+        // Store the transfer splines for each oscillator in the master equation
+        transfer_func.push_back(transfer_k);
       } // end of oscillator k
-
 
       // Cleanup
       Py_XDECREF(pFunc_getHd);  // pointer to getHd function
@@ -954,36 +977,18 @@ int MasterEq::assemble_RHS(const double t){
     RHSctx.control_Re[iosc][0] = p;
     RHSctx.control_Im[iosc][0] = q;
 
-#ifdef WITH_PYTHON
     // Evaluate transfer function from python, if the file is given.
     if (python_file.compare("none") != 0 ) {
     // Only real-valued controls for now. So only u^k_i(p(t)) to multiply Bc^k_i. TODO: Add imaginary.
 
-
-      // Set tozero if no transfer function is given. 
+      // Set to zero if no transfer function is given. 
       RHSctx.control_Re[iosc][0] = 0.0; 
       RHSctx.control_Im[iosc][0] = 0.0;
 
       // Get transfer functions u^k_i(p) from python for this oscillators k
       for (int icon=0; icon<ncontrolterms[iosc]; icon++){
-        // call transfer function  u^k_i(p) which is stored in pFunc_transfer[iosc][icon]
-
-        PyObject* pResult;
-        if (pFunc_transfer[iosc][icon] && PyCallable_Check(pFunc_transfer[iosc][icon])) {
-          PyObject* pInput = PyTuple_Pack(1,PyFloat_FromDouble(p)); 
-          pResult = PyObject_CallObject(pFunc_transfer[iosc][icon], pInput); // call u(p)
-          PyErr_Print();
-        } else {
-          printf("Can't call transfer function for oscillator %d control term %d\n", iosc, icon);
-          PyErr_Print();
-        }
-        // get result and store it in control_Re
-        double ukip = 1.0;
-        if (pResult != NULL) {
-          ukip = PyFloat_AsDouble(pResult);
-          PyErr_Print();
-          // Py_DECREF(pResult);  // TODO: Needed?
-        }
+        // Evaluate the spline transfer function  u^k_i(p) which is stored in transfer_func[iosc][icon]
+        double ukip = transfer_func[iosc][icon]->eval(p);
         // printf("t=%f: transfer function u[oscil=%d][controlterm=%d](input=%f) = output %f\n", t, iosc, icon, p, ukip);
 
         // Set the controls (only real for now)
@@ -991,8 +996,6 @@ int MasterEq::assemble_RHS(const double t){
         RHSctx.control_Im[iosc][icon] = 0.0;
       } // end of control term
     } 
-#endif
-
   } // end of oscillator loop
 
   return 0;

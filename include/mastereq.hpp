@@ -12,6 +12,8 @@
 #include "Python/Python.h"
 #endif
 
+#include "BSplineCurve.h"
+
 #pragma once
 
 /* Define a matshell context containing pointers to data needed for applying the RHS matrix to a vector */
@@ -86,15 +88,13 @@ class MasterEq{
     Vec aux;              // auxiliary vector 
     PetscInt* cols;           // holding columns when evaluating dRHSdp
     PetscScalar* vals;   // holding values when evaluating dRHSdp
- 
+
   public:
     std::vector<int> nlevels;  // Number of levels per oscillator
     std::vector<int> nessential; // Number of essential levels per oscillator
     bool usematfree;  // Flag for using matrix free solver
 
-#ifdef WITH_PYTHON
-    std::vector<std::vector<PyObject*>> pFunc_transfer;  // Store pointers to the transfer functions for each oscillator, for each control term
-#endif
+    std::vector<std::vector<fitpackpp::BSplineCurve*>> transfer_func;
     std::vector<int> ncontrolterms; // Stores the number of control Hamiltonians per oscillator
     std::string python_file; // either 'none' or name of python script to read Hamiltonian from 
 

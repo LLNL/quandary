@@ -1,4 +1,12 @@
 import numpy as np
+from scipy import interpolate
+
+def read_file(filename):
+    x = []
+    file_in = open(filename, 'r')
+    for y in file_in.readlines():
+       x.append(float(y.split()[0]))
+    return x
 
 
 def getLoweringOperators():
@@ -72,20 +80,23 @@ def getHc():
 ## THIS IS A FUNCTION THAT QUANDARY REQUIRES to get the transfer functions per control Hamiltonian! ##
 # Should return a list of lists of functions, matching to the list of lists of flattened Hamiltonians in getHc
 def getTransfer():
-    
-    # Qubit1: omega_1(x)
-    def omega1(flux):
-        #out = 0.444*np.sin(2.0*np.pi*(flux+0.25))+4.826 # sin fit
-        out = flux # identity for now
-        # print("Inside omega1(", flux, ")");
-        return out
 
-    # Qubit1: xi_1(x)
-    def xi1(flux):
-        #out = 0.00194*np.sin(2.0*np.pi*(flux+0.25)) - 0.19904
-        out = flux  # identity for now
-        # print("Inside xi1(", flux, ")");
-        return out
+    # Transfer functions for oscillator 0: none
+    # Transfer functions for oscillator 1: two function
+
+    # read in x and y values to approximate omega and xi for Oscillator 1
+    x     = read_file("./RigettiMatching/splinefit/x.dat")
+    yfreq = read_file("./RigettiMatching/splinefit/omega.dat")
+    yanha = read_file("./RigettiMatching/splinefit/xi.dat")
+    
+    # create splines
+    order = 2
+    tck_freq = interpolate.splrep(x, yfreq, s=0, k=order);
+    tck_anha = interpolate.splrep(x, yanha, s=0, k=order);
+
+
+    omega1 = [list(tck_freq[0]), list(tck_freq[1]), tck_freq[2]]
+    xi1    = [list(tck_anha[0]), list(tck_anha[1]), tck_anha[2]]
 
     return [ [], [omega1, xi1] ]
 
@@ -94,27 +105,11 @@ def main():
     Hclist = getHc();
     #print(Hclist)
 
+    transfer_func = getTransfer()
+    print("Transfer functions for oscil0:", transfer_func[0])
+    print("Transfer functions for oscil1:", transfer_func[1])
 
-    #Hd = evalHd_mat()
 
-    #with open('Bd_test.txt', 'r') as f:
-    #    l = [[float(num) for num in line.split()] for line in f]
-    ##print(l)
-    #Bd_test = np.matrix(l)
-    #print("Bd_test =", Bd_test)
-
-    #for i in range(9):
-    #    for j in range(9):
-    #        Hd[i,j] = round(Hd[i,j], 4)
-    #print("Hd=", Hd)
-
-    ## test -In \kron Hd + Hd \kron In
-    ##idn = np.eye(9)
-    ##Hd = - np.kron(idn, Hd) + np.kron(Hd, idn)
-    #
-    #err = np.linalg.norm(Hd- Bd_test)
-    #print("ERROR = ",err);
-    #print("Diff = ",Hd-Bd_test)
-    
+   
 if __name__ == "__main__":
     main()

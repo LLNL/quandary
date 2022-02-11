@@ -141,36 +141,16 @@ void Output::writeControls(Vec params, MasterEq* mastereq, int ntime, double dt)
         Im.push_back(ImI);
         Lab.push_back(LabI);
 
-#ifdef WITH_PYTHON
         // Evaluate transfer function from python, if the file is given.
         if (mastereq->python_file.compare("none") != 0 ) {
-
-          // Set tozero if no transfer function is given. 
+          // Set to zero if no transfer function is given. 
           Re[0] = 0.0; 
           Im[0] = 0.0;
           Lab[0] = 0.0;
-
           // Get transfer functions u^k_i(p) from python for this oscillators k
           for (int icon=0; icon<mastereq->ncontrolterms[ioscil]; icon++){
-            // call transfer function  u^k_i(p) which is stored in pFunc_transfer[iosc][icon]
-            PyObject* pResult;
-            if (mastereq->pFunc_transfer[ioscil][icon] && PyCallable_Check(mastereq->pFunc_transfer[ioscil][icon])) {
-              PyObject* pInput = PyTuple_Pack(1,PyFloat_FromDouble(ReI)); 
-              pResult = PyObject_CallObject(mastereq->pFunc_transfer[ioscil][icon], pInput); // call u(p)
-              PyErr_Print();
-            } else {
-              printf("Can't call transfer function for oscillator %d control term %d\n", ioscil, icon);
-              PyErr_Print();
-            }
-            // get result and store it in control_Re
-            double ukip = 1.0;
-            if (pResult != NULL) {
-              ukip = PyFloat_AsDouble(pResult);
-              PyErr_Print();
-              // Py_DECREF(pResult);  // TODO: Needed?
-            }
-            // printf("t=%f: transfer function u[oscil=%d][controlterm=%d](input=%f) = output %f\n", t, iosc, icon, p, ukip);
-
+            // Evaluate the spline transfer function  u^k_i(p) which is stored in transfer_func[iosc][icon]
+            double ukip = mastereq->transfer_func[ioscil][icon]->eval(ReI);
             // Set the controls (only real for now)
             if (icon == 0){
               Re[0]=ukip; 
@@ -181,18 +161,15 @@ void Output::writeControls(Vec params, MasterEq* mastereq, int ntime, double dt)
               Im.push_back(0.0);
               Lab.push_back(0.0);
             }
-          } // end of control term
+          } // end of control term loop
         } 
-#endif
-
-        // fprintf(file, "% 1.8f   % 1.14e   % 1.14e   % 1.14e \n", time, Re, Im, Lab);
+        // Print controls for time-step, for this oscillator
         fprintf(file, "% 1.8f   ", time);
         for (int icontrol=0; icontrol < Re.size(); icontrol++){
           fprintf(file, "% 1.14e   % 1.14e   % 1.14e   ", Re[icontrol], Im[icontrol], Lab[icontrol]);
         }
         fprintf(file, "\n");
-        
-      }
+      } // end of oscillator loop
 
       fclose(file);
       printf("File written: %s\n", filename);
