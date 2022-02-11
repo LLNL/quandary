@@ -955,9 +955,14 @@ int MasterEq::assemble_RHS(const double t){
     RHSctx.control_Im[iosc][0] = q;
 
 #ifdef WITH_PYTHON
-    // Overwrite the controls by calling python functions, if the file is given.
+    // Evaluate transfer function from python, if the file is given.
     if (python_file.compare("none") != 0 ) {
     // Only real-valued controls for now. So only u^k_i(p(t)) to multiply Bc^k_i. TODO: Add imaginary.
+
+
+      // Set tozero if no transfer function is given. 
+      RHSctx.control_Re[iosc][0] = 0.0; 
+      RHSctx.control_Im[iosc][0] = 0.0;
 
       // Get transfer functions u^k_i(p) from python for this oscillators k
       for (int icon=0; icon<ncontrolterms[iosc]; icon++){
