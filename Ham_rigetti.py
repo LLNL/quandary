@@ -62,8 +62,8 @@ def getHc():
     a = getLoweringOperators()
     # Qubit 0: no controls -> C^0 = 0 
     # Qubit 1: 2 controls -> C^1 = 2
-    Hc10 = a[1].getH() * a[1]   # first conrol: Hc^1_0 = a^\dag a
-    Hc11 = a[1].getH() * a[1].getH() * a[1] * a[1]   # first conrol: Hc^1_0 = a^\dag a^\dag a a
+    Hc10 = 2.*np.pi* ( a[1].getH() * a[1] )  # first conrol: Hc^1_0 = a^\dag a
+    Hc11 = 2.*np.pi* ( a[1].getH() * a[1].getH() * a[1] * a[1] )  # first conrol: Hc^1_0 = a^\dag a^\dag a a
 
     # flatten Hc10 and Hc11 into lists
     Hc10list = list(np.array(Hc10).flatten(order='F'))
