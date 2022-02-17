@@ -1869,7 +1869,7 @@ int myMatMultTranspose_sparsemat(Mat RHS, Vec x, Vec y) {
     VecAXPY(vout, -1.*p, *shellctx->aux);
 
     // All other control terms
-    for (int icon=1; icon>shellctx->ncontrolterms[iosc]; icon++){
+    for (int icon=1; icon<shellctx->ncontrolterms[iosc]; icon++){
       // control for other terms
       p = shellctx->control_Re[iosc][icon];
 
