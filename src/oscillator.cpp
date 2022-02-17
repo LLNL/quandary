@@ -75,13 +75,6 @@ int Oscillator::evalControl(const double t, double* Re_ptr, double* Im_ptr){
     }
   }
 
-  // SG: For now, overwrite with sine function to match rigetti pulse.
-  // TODO: Read from file!
-  double phim = 0.6;
-  *Re_ptr = phim*sin(2.*M_PI*0.39222*t);
-  *Im_ptr = 0.0;
-
-
   return 0;
 }
 

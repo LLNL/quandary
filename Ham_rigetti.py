@@ -78,7 +78,8 @@ def getHc():
 
 
 ## THIS IS A FUNCTION THAT QUANDARY REQUIRES to get the transfer functions per control Hamiltonian! ##
-# Should return a list of lists of functions, matching to the list of lists of flattened Hamiltonians in getHc
+# Should return a list of lists of spline definitions, matching to the list of lists of flattened Hamiltonians in getHc
+# Each spline definition has the format [knots, coefficients, order]
 def getTransfer():
 
     # Transfer functions for oscillator 0: none

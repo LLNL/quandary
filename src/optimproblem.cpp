@@ -628,12 +628,14 @@ void OptimProblem::getStartingPoint(Vec xinit){
     delete [] vecread;
   }
 
-  /* for the first and last two splines, overwrite the parameters with zero to ensure that control at t=0 and t=T is zero. */
+  /* for the first and last <x> splines, overwrite the parameters with zero to ensure that control at t=0 and t=T is zero. */
+  // TODO: This is hardcoded for x = .. splines
   PetscInt col = 0.0;
   for (int iosc = 0; iosc < timestepper->mastereq->getNOscillators(); iosc++){
     int ncarrier = timestepper->mastereq->getOscillator(iosc)->getNCarrierwaves();
-    PetscInt ibegin = 2*2*ncarrier;
-    PetscInt iend = (timestepper->mastereq->getOscillator(iosc)->getNSplines()-2)*2*ncarrier;
+    int x = 5;
+    PetscInt ibegin = x*2*ncarrier;
+    PetscInt iend = (timestepper->mastereq->getOscillator(iosc)->getNSplines()-x)*2*ncarrier;
 
     for (int i = 0; i < timestepper->mastereq->getOscillator(iosc)->getNParams(); i++) {
       if (i < ibegin || i >= iend) VecSetValue(xinit, col, 0.0, INSERT_VALUES);
