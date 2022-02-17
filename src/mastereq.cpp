@@ -988,6 +988,10 @@ int MasterEq::assemble_RHS(const double t){
       // Get transfer functions u^k_i(p) from python for this oscillators k
       for (int icon=0; icon<ncontrolterms[iosc]; icon++){
         // Evaluate the spline transfer function  u^k_i(p) which is stored in transfer_func[iosc][icon]
+
+        //TODO
+        // These are hardcoded bounds for the spline, do prevent it from doing bad extrapolations where no data was given. Here, the spline was generated in the interval [-1.5,1.5]
+        if (p < -1.5 || p > 1.5) printf("\n WARNING: Extrapolating the transfer function spline can lead to large errors.\n\n");
         double ukip = transfer_func[iosc][icon]->eval(p);
         // printf("t=%f: transfer function u[oscil=%d][controlterm=%d](input=%f) = output %f\n", t, iosc, icon, p, ukip);
 
