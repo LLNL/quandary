@@ -121,3 +121,15 @@ class CQNOT: public Gate {
     ~CQNOT();
 };
 
+/* iSWAP Gate, spanning two qubits. 
+ * V = 1 0 0 0
+ *     0 0 i 0 
+ *     0 i 0 1
+ *     0 0 0 1 
+ */
+class iSWAP: public Gate {
+    public:
+    iSWAP(std::vector<int> nlevels_, std::vector<int> nessential_, double time, std::vector<double> rotation_frequencies_);
+    ~iSWAP();
+};
+

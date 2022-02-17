@@ -380,6 +380,30 @@ SWAP::SWAP(std::vector<int> nlevels_, std::vector<int> nessential_, double time_
 
 SWAP::~SWAP(){}
 
+iSWAP::iSWAP(std::vector<int> nlevels_, std::vector<int> nessential_, double time_, std::vector<double> gate_rot_freq_) : Gate(nlevels_, nessential_, time_, gate_rot_freq_) {
+  assert(dim_ess == 4);
+
+  /* Fill lab-frame iswap gate in essential dimension system V_re = Re(V), V_im = Im(V) = 0 */
+  MatSetValue(V_im, 0, 0, 1.0, INSERT_VALUES);
+  MatSetValue(V_im, 1, 2, 1.0, INSERT_VALUES);
+  MatSetValue(V_im, 2, 1, 1.0, INSERT_VALUES);
+  MatSetValue(V_im, 3, 3, 1.0, INSERT_VALUES);
+
+  MatAssemblyBegin(V_re, MAT_FINAL_ASSEMBLY);
+  MatAssemblyBegin(V_im, MAT_FINAL_ASSEMBLY);
+  MatAssemblyEnd(V_re, MAT_FINAL_ASSEMBLY);
+  MatAssemblyEnd(V_im, MAT_FINAL_ASSEMBLY);
+
+  /* assemble vectorized rotated target gate \bar VP \kron VP from V=V_re + i V_im */
+  assembleGate();
+
+}
+
+iSWAP::~iSWAP(){}
+
+
+
+
 SWAP_0Q::SWAP_0Q(std::vector<int> nlevels_, std::vector<int> nessential_, double time_, std::vector<double> gate_rot_freq_) : Gate(nlevels_, nessential_, time_, gate_rot_freq_) {
   int Q = nlevels.size();  // Number of total oscillators 
 
