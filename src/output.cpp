@@ -105,11 +105,12 @@ void Output::writeControls(Vec params, MasterEq* mastereq, int ntime, double dt)
   if ( mpirank_world == 0 && optim_iter % optim_monitor_freq == 0 ) { 
 
     char filename[255];
+    char filename_transfer[255];
     PetscInt ndesign;
     VecGetSize(params, &ndesign);
 
     /* Print current parameters to file */
-    FILE *file;
+    FILE *file, *file_c, *file_t;
     // sprintf(filename, "%s/params_iter%04d.dat", datadir.c_str(), optim_iter);
     sprintf(filename, "%s/params.dat", datadir.c_str());
     file = fopen(filename, "w");
@@ -123,20 +124,27 @@ void Output::writeControls(Vec params, MasterEq* mastereq, int ntime, double dt)
     VecRestoreArrayRead(params, &params_ptr);
     printf("File written: %s\n", filename);
 
-    /* Print control functions to file */
+    /* Print control p(t) and transfer u_i(p(t)) to file for each oscillator */
     mastereq->setControlAmplitudes(params);
     for (int ioscil = 0; ioscil < mastereq->getNOscillators(); ioscil++) {
       sprintf(filename, "%s/control%d.dat", datadir.c_str(), ioscil);
-      file = fopen(filename, "w");
-      fprintf(file, "# time         p(t) (rotating)          q(t) (rotating)        f(t) (labframe) \n");
+      sprintf(filename_transfer, "%s/transfer_control%d.dat", datadir.c_str(), ioscil);
+      file_c = fopen(filename, "w");
+      file_t = fopen(filename_transfer, "w");
+      fprintf(file_c, "# time         p(t) (rotating)          q(t) (rotating)        f(t) (labframe) \n");
+      fprintf(file_t, "# time         u_1(p(t))                u_2(p(t))     ... \n");
 
       /* Write every <num> timestep to file */
       for (int i=0; i<=ntime; i+=output_frequency) {
         double time = i*dt; 
+
         std::vector<double> Re, Im, Lab; // make it a vector because we can have multiple control terms 
         double ReI, ImI, LabI;
         mastereq->getOscillator(ioscil)->evalControl(time, &ReI, &ImI);
         mastereq->getOscillator(ioscil)->evalControl_Labframe(time, &LabI);
+        // Write control drives
+        fprintf(file_c, "% 1.8f   % 1.14e   % 1.14e   % 1.14e \n", time, ReI, ImI, LabI);
+        
         Re.push_back(ReI);
         Im.push_back(ImI);
         Lab.push_back(LabI);
@@ -163,16 +171,18 @@ void Output::writeControls(Vec params, MasterEq* mastereq, int ntime, double dt)
             }
           } // end of control term loop
         } 
-        // Print controls for time-step, for this oscillator
-        fprintf(file, "% 1.8f   ", time);
+        // Write transfer u_i(p(t)) for this oscillator
+        fprintf(file_t, "% 1.8f   ", time);
         for (int icontrol=0; icontrol < Re.size(); icontrol++){
-          fprintf(file, "% 1.14e   % 1.14e   % 1.14e   ", Re[icontrol], Im[icontrol], Lab[icontrol]);
+          fprintf(file_t, "% 1.14e   ", Re[icontrol]);
         }
-        fprintf(file, "\n");
+        fprintf(file_t, "\n");
       } // end of oscillator loop
 
-      fclose(file);
+      fclose(file_c);
+      fclose(file_t);
       printf("File written: %s\n", filename);
+      printf("File written: %s\n", filename_transfer);
     }
 
   }
