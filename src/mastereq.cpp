@@ -1427,18 +1427,32 @@ void MasterEq::computedRHSdp(const double t, const Vec x, const Vec xbar, const 
     }
     oscil_vec[iosc]->evalControl_diff(t, dRedp, dImdp);
 
+    // Derivative of transfer functions u^k_i(p). TODO: Add imaginary part!
+    std::vector<double> dukidp;
+    dukidp.push_back(1.0);  // always do first one, assume identity otherwise will be overwritten in the following loop
+    if (python_file.compare("none") != 0 ) {
+      double p, q;
+      oscil_vec[iosc]->evalControl(t, &p, &q);  // Evaluates the B-spline basis functions -> p(t,alpha), q(t,alpha)
+      for (int icon=0; icon<ncontrolterms[iosc]; icon++){
+        double dukidp_tmp = transfer_func[iosc][icon]->der(p); // dudp(p)
+        if (icon == 0) dukidp[icon] = dukidp_tmp;
+        else dukidp.push_back(dukidp_tmp);
+      }
+    }
+    
+
     /* Compute terms in RHS(x)^T xbar */
     //zero's control term always. 
     double uAubar, vAvbar, vBubar, uBvbar;
-    MatMult(Ac_vec[iosc][0], u, aux); VecDot(aux, ubar, &uAubar); // TODO: Use MatAXPY
+    MatMult(Ac_vec[iosc][0], u, aux); VecDot(aux, ubar, &uAubar);  // for now, no transfer on imaginary control
     MatMult(Ac_vec[iosc][0], v, aux); VecDot(aux, vbar, &vAvbar);
-    MatMult(Bc_vec[iosc][0], u, aux); VecDot(aux, vbar, &uBvbar);
-    MatMult(Bc_vec[iosc][0], v, aux); VecDot(aux, ubar, &vBubar);
+    MatMult(Bc_vec[iosc][0], u, aux); VecDot(aux, vbar, &uBvbar); uBvbar *= dukidp[0];
+    MatMult(Bc_vec[iosc][0], v, aux); VecDot(aux, ubar, &vBubar); vBubar *= dukidp[0];
     // Other control terms
     for (int icon=1; icon<ncontrolterms[iosc]; icon++){
       double dot;
-      MatMult(Bc_vec[iosc][icon], u, aux); VecDot(aux, vbar, &dot); uBvbar += dot;
-      MatMult(Bc_vec[iosc][icon], v, aux); VecDot(aux, ubar, &dot); vBubar += dot;
+      MatMult(Bc_vec[iosc][icon], u, aux); VecDot(aux, vbar, &dot); uBvbar += dot * dukidp[icon];
+      MatMult(Bc_vec[iosc][icon], v, aux); VecDot(aux, ubar, &dot); vBubar += dot * dukidp[icon];
     }
 
     /* Number of parameters for this oscillator */
