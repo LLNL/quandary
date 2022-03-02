@@ -642,6 +642,9 @@ void OptimProblem::getStartingPoint(Vec xinit){
       col++;
     }
   }
+  // Overwrite the q-parameters withzero.
+  // TODO: This is hardcoded for the pythoninterface where no q values are there. 
+  // TODO: Should probably rather make the design vector smaller?
 
 
   /* Assemble initial guess */
