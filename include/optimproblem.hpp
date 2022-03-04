@@ -24,6 +24,7 @@ class OptimProblem {
   Vec rho_t0_bar;                        /* Adjoint of ODE initial condition */
   InitialConditionType initcond_type;    /* Type of initial conditions */
   std::vector<int> initcond_IDs;         /* Integer list for pure-state initialization */
+  std::vector<Vec> store_finalstates;    /* Storage for last time steps for each initial condition */
 
   OptimTarget* optim_target;      /* Storing the optimization goal */
 
@@ -41,7 +42,7 @@ class OptimProblem {
   double obj_cost;                 /* Final-time term J(T) in objective */
   double obj_regul;                /* Regularization term in objective */
   double obj_penal;                /* Penalty term in objective */
-  double fidelity;                 /* Sum of final-time fidelities (summed over initial conditions) */
+  double fidelity;                 /* Final-time fidelity: 1/ninit \sum_iinit Tr(rhotarget^\dag rho(T)) for Lindblad, or |1/ninit \sum_iinit phitarget^dagger phi |^2 for Schroedinger */
   double gnorm;                    /* Holds current norm of gradient */
   double gamma_tik;                /* Parameter for tikhonov regularization */
   double gamma_penalty;            /* Parameter multiplying integral penalty term */
