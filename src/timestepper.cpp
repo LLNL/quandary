@@ -162,15 +162,12 @@ double TimeStepper::penaltyIntegral(double time, const Vec x){
   /* weighted integral of the objective function */
   if (penalty_param > 1e-13) {
     double weight = 1./penalty_param * exp(- pow((time - total_time)/penalty_param, 2));
-    // TODO: CHECK! 
-    printf("TODO Penalty Integral for Jtrace in Schroedinger case!\n");
-    exit(1);
+
     double obj_re = 0.0;
     double obj_im = 0.0;
     optim_target->evalJ(x, &obj_re, &obj_im);
-    double obj = obj_re;
-    if (fabs(obj_im) > 1e-14) obj = 1.-(pow(obj_re, 2.0) + pow(obj_im,2.0));  //Jtrace and Schroedinger case
-    penalty = weight * obj * dt;
+    double obj_cost = optim_target->finalizeJ(obj_re, obj_im);
+    penalty = weight * obj_cost * dt;
   }
 
   /* Add guard-level occupation to prevent leakage. A guard level is the LAST NON-ESSENTIAL energy level of an oscillator */
@@ -210,9 +207,15 @@ void TimeStepper::penaltyIntegral_diff(double time, const Vec x, Vec xbar, doubl
   /* Derivative of weighted integral of the objective function */
   if (penalty_param > 1e-13){
     double weight = 1./penalty_param * exp(- pow((time - total_time)/penalty_param, 2));
-    printf("TODO: Derivative of penalty term!\n");
-    exit(1);
-    // optim_target->evalJ_diff(x, xbar, weight*penaltybar*dt);
+    
+    double obj_cost_re = 0.0;
+    double obj_cost_im = 0.0;
+    optim_target->evalJ(x, &obj_cost_re, &obj_cost_im);
+
+    double obj_cost_re_bar = 0.0; 
+    double obj_cost_im_bar = 0.0;
+    optim_target->finalizeJ_diff(obj_cost_re, obj_cost_im, &obj_cost_re_bar, &obj_cost_im_bar);
+    optim_target->evalJ_diff(x, xbar, weight*obj_cost_re_bar*penaltybar*dt, weight*obj_cost_im_bar*penaltybar*dt);
   }
 
   /* If gate optimization: Derivative of adding guard-level occupation */

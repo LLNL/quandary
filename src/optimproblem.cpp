@@ -442,7 +442,7 @@ double OptimProblem::evalF(const Vec x) {
 #endif
 
     /* Add to integral penalty term */
-    obj_penal += gamma_penalty * timestepper->penalty_integral;
+    obj_penal += obj_weights[iinit] * gamma_penalty * timestepper->penalty_integral;
 
     /* Evaluate J(finalstate) and add to final-time cost */
     double obj_iinit_re = 0.0;
@@ -561,7 +561,7 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
     if (timestepper->mastereq->lindbladtype == LindbladType::NONE) VecCopy(finalstate, store_finalstates[iinit]);
 
     /* Add to integral penalty term */
-    obj_penal += gamma_penalty * timestepper->penalty_integral;
+    obj_penal += obj_weights[iinit] * gamma_penalty * timestepper->penalty_integral;
 
     /* Evaluate J(finalstate) and add to final-time cost */
     double obj_iinit_re = 0.0;
@@ -591,11 +591,11 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
 
       /* Derivative of time-stepping */
   #ifdef WITH_BRAID
-        adjointbraidapp->PreProcess(initid, rho_t0_bar, gamma_penalty);
+        adjointbraidapp->PreProcess(initid, rho_t0_bar, obj_weights[iinit] * gamma_penalty);
         adjointbraidapp->Drive();
         adjointbraidapp->PostProcess();
   #else
-        timestepper->solveAdjointODE(initid, rho_t0_bar, finalstate, gamma_penalty);
+        timestepper->solveAdjointODE(initid, rho_t0_bar, finalstate, obj_weights[iinit] * gamma_penalty);
   #endif
 
       /* Add to optimizers's gradient */
@@ -648,7 +648,7 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
     for (int iinit = 0; iinit < ninit_local; iinit++) {
       int iinit_global = mpirank_init * ninit_local + iinit;
 
-      /* Recompute the initial state and the target */
+      /* Recompute the initial state and target */
       int initid = timestepper->mastereq->getRhoT0(iinit_global, ninit, initcond_type, initcond_IDs, rho_t0);
       optim_target->prepare(rho_t0);
      
@@ -665,11 +665,11 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
 
       /* Derivative of time-stepping */
   #ifdef WITH_BRAID
-      adjointbraidapp->PreProcess(initid, rho_t0_bar, gamma_penalty);
+      adjointbraidapp->PreProcess(initid, rho_t0_bar, obj_weights[iinit] * gamma_penalty);
       adjointbraidapp->Drive();
       adjointbraidapp->PostProcess();
   #else
-      timestepper->solveAdjointODE(initid, rho_t0_bar, finalstate, gamma_penalty);
+      timestepper->solveAdjointODE(initid, rho_t0_bar, finalstate, obj_weights[iinit] * gamma_penalty);
   #endif
 
       /* Add to optimizers's gradient */
