@@ -288,12 +288,10 @@ XGate::XGate(std::vector<int> nlevels, std::vector<int> nessential, double time,
   /* V_re = 0 1    V_im = 0 0
    *      1 0         0 0
    */
-  if (mpirank_petsc == 0) {
-    MatSetValue(V_re, 0, 1, 1.0, INSERT_VALUES);
-    MatSetValue(V_re, 1, 0, 1.0, INSERT_VALUES);
-    MatAssemblyBegin(V_re, MAT_FINAL_ASSEMBLY);
-    MatAssemblyEnd(V_re, MAT_FINAL_ASSEMBLY);
-  }
+  MatSetValue(V_re, 0, 1, 1.0, INSERT_VALUES);
+  MatSetValue(V_re, 1, 0, 1.0, INSERT_VALUES);
+  MatAssemblyBegin(V_re, MAT_FINAL_ASSEMBLY);
+  MatAssemblyEnd(V_re, MAT_FINAL_ASSEMBLY);
 
   /* Assemble vectorized rotated target gate \bar VP \kron VP from  V = V_re + i V_im */
   assembleGate();
@@ -309,12 +307,10 @@ YGate::YGate(std::vector<int> nlevels, std::vector<int> nessential, double time,
   /* A = 0 0    B = 0 -1
    *     0 0        1  0
    */
-  if (mpirank_petsc == 0) {
-    MatSetValue(V_im, 0, 1, -1.0, INSERT_VALUES);
-    MatSetValue(V_im, 1, 0,  1.0, INSERT_VALUES);
-    MatAssemblyBegin(V_im, MAT_FINAL_ASSEMBLY);
-    MatAssemblyEnd(V_im, MAT_FINAL_ASSEMBLY);
-  }
+  MatSetValue(V_im, 0, 1, -1.0, INSERT_VALUES);
+  MatSetValue(V_im, 1, 0,  1.0, INSERT_VALUES);
+  MatAssemblyBegin(V_im, MAT_FINAL_ASSEMBLY);
+  MatAssemblyEnd(V_im, MAT_FINAL_ASSEMBLY);
 
   /* Assemble vectorized rotated arget gate \bar VP \kron VP from  V = V_re + i V_im*/
   assembleGate();
@@ -329,12 +325,10 @@ ZGate::ZGate(std::vector<int> nlevels, std::vector<int> nessential, double time,
   /* A =  1  0     B = 0 0
    *      0 -1         0 0
    */
-  if (mpirank_petsc == 0) {
-    MatSetValue(V_im, 0, 0,  1.0, INSERT_VALUES);
-    MatSetValue(V_im, 1, 1, -1.0, INSERT_VALUES);
-    MatAssemblyBegin(V_im, MAT_FINAL_ASSEMBLY);
-    MatAssemblyEnd(V_im, MAT_FINAL_ASSEMBLY);
-  }
+  MatSetValue(V_im, 0, 0,  1.0, INSERT_VALUES);
+  MatSetValue(V_im, 1, 1, -1.0, INSERT_VALUES);
+  MatAssemblyBegin(V_im, MAT_FINAL_ASSEMBLY);
+  MatAssemblyEnd(V_im, MAT_FINAL_ASSEMBLY);
 
   /* Assemble vectorized rotated target gate \bar VP \kron VP from  V = V_re + i V_im*/
   assembleGate();
@@ -350,15 +344,13 @@ HadamardGate::HadamardGate(std::vector<int> nlevels, std::vector<int> nessential
   /* A =  1  0     B = 0 0
    *      0 -1         0 0
    */
-  if (mpirank_petsc == 0) {
-    double val = 1./sqrt(2);
-    MatSetValue(V_re, 0, 0,  val, INSERT_VALUES);
-    MatSetValue(V_re, 0, 1,  val, INSERT_VALUES);
-    MatSetValue(V_re, 1, 0,  val, INSERT_VALUES);
-    MatSetValue(V_re, 1, 1, -val, INSERT_VALUES);
-    MatAssemblyBegin(V_re, MAT_FINAL_ASSEMBLY);
-    MatAssemblyEnd(V_re, MAT_FINAL_ASSEMBLY);
-  }
+  double val = 1./sqrt(2);
+  MatSetValue(V_re, 0, 0,  val, INSERT_VALUES);
+  MatSetValue(V_re, 0, 1,  val, INSERT_VALUES);
+  MatSetValue(V_re, 1, 0,  val, INSERT_VALUES);
+  MatSetValue(V_re, 1, 1, -val, INSERT_VALUES);
+  MatAssemblyBegin(V_re, MAT_FINAL_ASSEMBLY);
+  MatAssemblyEnd(V_re, MAT_FINAL_ASSEMBLY);
 
   /* Assemble vectorized rotated target gate \bar VP \kron VP from  V = V_re + i V_im*/
   assembleGate();
@@ -376,14 +368,14 @@ CNOT::CNOT(std::vector<int> nlevels, std::vector<int> nessential, double time, s
    *      0 1 0 0       0 0 0 0
    *      0 0 0 1       0 0 0 0
    *      0 0 1 0       0 0 0 0
-   */  if (mpirank_petsc == 0) {
-    MatSetValue(V_re, 0, 0, 1.0, INSERT_VALUES);
-    MatSetValue(V_re, 1, 1, 1.0, INSERT_VALUES);
-    MatSetValue(V_re, 2, 3, 1.0, INSERT_VALUES);
-    MatSetValue(V_re, 3, 2, 1.0, INSERT_VALUES);
-    MatAssemblyBegin(V_re, MAT_FINAL_ASSEMBLY);
-    MatAssemblyEnd(V_re, MAT_FINAL_ASSEMBLY);
-  }
+  */
+  MatSetValue(V_re, 0, 0, 1.0, INSERT_VALUES);
+  MatSetValue(V_re, 1, 1, 1.0, INSERT_VALUES);
+  MatSetValue(V_re, 2, 3, 1.0, INSERT_VALUES);
+  MatSetValue(V_re, 3, 2, 1.0, INSERT_VALUES);
+  MatAssemblyBegin(V_re, MAT_FINAL_ASSEMBLY);
+  MatAssemblyEnd(V_re, MAT_FINAL_ASSEMBLY);
+
 
   /* assemble vectorized rotated target gate \bar VP \kron VP from V=V_re + i V_im */
   assembleGate();
