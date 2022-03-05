@@ -168,12 +168,11 @@ int main(int argc,char **argv)
   MPI_Comm_rank(comm_petsc, &mpirank_petsc);
   MPI_Comm_size(comm_petsc, &mpisize_petsc);
 
-  std::cout<< "Parallel distribution: " << "init " << mpirank_init << "/" << mpisize_init;
-  std::cout<< ", petsc " << mpirank_petsc << "/" << mpisize_petsc;
+  if (mpirank_world == 0)  std::cout<< "Parallel distribution: " << mpisize_init << " np_init  X  " << mpisize_petsc<< " np_petsc";
 #ifdef WITH_BRAID
-  std::cout<< ", braid " << mpirank_braid << "/" << mpisize_braid;
+  std::cout<< "  X  " << mpisize_braid  << "np_braid" << std::endl;
 #endif
-  std::cout<< std::endl;
+  if (mpirank_world == 0) std::cout<<std::endl;
 
   /* Initialize Petsc using petsc's communicator */
   PETSC_COMM_WORLD = comm_petsc;
