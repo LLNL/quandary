@@ -11,6 +11,8 @@ OptimTarget::OptimTarget(int dim_, int purestateID_, TargetType target_type_, Ob
   purestateID = purestateID_;
   target_filename = target_filename_;
   lindbladtype = lindbladtype_;
+  purity_rho0 = 1.0;
+ 
 
   /* Allocate target state, if it is read from file, of if target is a gate transformation VrhoV. If pure target, only store the ID. */
   if (target_type == TargetType::GATE || target_type == TargetType::FROMFILE) {
@@ -128,11 +130,9 @@ void OptimTarget::HilbertSchmidtOverlap(const Vec state, const bool scalebypurit
     }
   }
 
-  // scale by purity Tr(targetstate^2) = || vec(targetstate)||^2_2. Will be 1.0 in Schroedinger case.
-  if (scalebypurity && target_type != TargetType::PURE){ 
-    double dot;
-    VecNorm(targetstate, NORM_2, &dot);
-    HS_re = HS_re / (dot*dot);
+  // scale by purity Tr(rho(0)^2). 
+  if (scalebypurity){ 
+    HS_re = HS_re / purity_rho0;
   }
 
   // return
@@ -143,10 +143,8 @@ void OptimTarget::HilbertSchmidtOverlap(const Vec state, const bool scalebypurit
 void OptimTarget::HilbertSchmidtOverlap_diff(const Vec state, Vec statebar, bool scalebypurity, const double HS_re_bar, const double HS_im_bar){
 
   double scale = 1.0;
-  if (scalebypurity && target_type != TargetType::PURE){ 
-    double dot;
-    VecNorm(targetstate, NORM_2, &dot);
-    scale = dot*dot;
+  if (scalebypurity){ 
+    scale = 1./purity_rho0;
   }
 
   // Simplified computation if target is pure 
@@ -157,13 +155,13 @@ void OptimTarget::HilbertSchmidtOverlap_diff(const Vec state, Vec statebar, bool
     if (lindbladtype != LindbladType::NONE) idm = getVecID(purestateID, purestateID, (int)sqrt(dim));
     int idm_re = getIndexReal(idm);
     int idm_im = getIndexImag(idm);
-    if (ilo <= idm_re && idm_re < ihi) VecSetValue(statebar, idm_re, HS_re_bar/scale, ADD_VALUES);
+    if (ilo <= idm_re && idm_re < ihi) VecSetValue(statebar, idm_re, HS_re_bar*scale, ADD_VALUES);
     if (ilo <= idm_im && idm_im < ihi) VecSetValue(statebar, idm_im, HS_im_bar, ADD_VALUES);
 
   } else { // Target is not of the form e_m or e_m*e_m^\dagger 
 
     if (lindbladtype != LindbladType::NONE)
-      VecAXPY(statebar, HS_re_bar/scale, targetstate);
+      VecAXPY(statebar, HS_re_bar*scale, targetstate);
     else {
       const PetscScalar* target_ptr;
       PetscScalar* statebar_ptr;
@@ -177,8 +175,8 @@ void OptimTarget::HilbertSchmidtOverlap_diff(const Vec state, Vec statebar, bool
         if (ilo <= ia && ia < ihi) {
           int idre = ia - ilo;
           int idim = ib - ilo;
-          statebar_ptr[idre] += target_ptr[idre] * HS_re_bar/scale  - target_ptr[idim] * HS_im_bar;
-          statebar_ptr[idim] += target_ptr[idim] * HS_re_bar/scale  + target_ptr[idre] * HS_im_bar;
+          statebar_ptr[idre] += target_ptr[idre] * HS_re_bar*scale  - target_ptr[idim] * HS_im_bar;
+          statebar_ptr[idim] += target_ptr[idim] * HS_re_bar*scale  + target_ptr[idre] * HS_im_bar;
         }
       }
       VecRestoreArrayRead(targetstate, &target_ptr);
@@ -191,6 +189,10 @@ void OptimTarget::HilbertSchmidtOverlap_diff(const Vec state, Vec statebar, bool
 void OptimTarget::prepare(const Vec rho_t0){
   // If gate optimization, apply the gate and store targetstate for later use. Else, do nothing.
   if (target_type == TargetType::GATE) targetgate->applyGate(rho_t0, targetstate);
+
+  /* Compute and store the purity of rho(0), Tr(rho(0)^2), so that it can be used by JTrace (HS overlap) */
+  VecNorm(rho_t0, NORM_2, &purity_rho0);
+  purity_rho0 = purity_rho0 * purity_rho0;
 }
 
 

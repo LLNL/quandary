@@ -454,8 +454,7 @@ double OptimProblem::evalF(const Vec x) {
     /* Add to final-time fidelity */
     double fidelity_iinit_re = 0.0;
     double fidelity_iinit_im = 0.0;
-    bool scale = true;
-    optim_target->HilbertSchmidtOverlap(finalstate, scale, &fidelity_iinit_re, &fidelity_iinit_im);
+    optim_target->HilbertSchmidtOverlap(finalstate, false, &fidelity_iinit_re, &fidelity_iinit_im);
     fidelity_re += 1./ ninit * fidelity_iinit_re;
     fidelity_im += 1./ ninit * fidelity_iinit_im;
 
@@ -574,8 +573,7 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
     /* Add to final-time fidelity */
     double fidelity_iinit_re = 0.0;
     double fidelity_iinit_im = 0.0;
-    bool scale = true;
-    optim_target->HilbertSchmidtOverlap(finalstate, scale, &fidelity_iinit_re, &fidelity_iinit_im);
+    optim_target->HilbertSchmidtOverlap(finalstate, false, &fidelity_iinit_re, &fidelity_iinit_im);
     fidelity_re += 1./ ninit * fidelity_iinit_re;
     fidelity_im += 1./ ninit * fidelity_iinit_im;
 
@@ -650,7 +648,7 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
     for (int iinit = 0; iinit < ninit_local; iinit++) {
       int iinit_global = mpirank_init * ninit_local + iinit;
 
-      /* Recompute the target */
+      /* Recompute the initial state and the target */
       int initid = timestepper->mastereq->getRhoT0(iinit_global, ninit, initcond_type, initcond_IDs, rho_t0);
       optim_target->prepare(rho_t0);
      

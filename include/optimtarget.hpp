@@ -9,6 +9,7 @@ class OptimTarget{
     TargetType target_type;        /* Type of the optimization (pure-state preparation, or gate optimization) */
     ObjectiveType objective_type;  /* Type of the bjective function */
     Gate *targetgate;              /* The target gate (if any) */
+    double purity_rho0;            /* Holds the purity of the initial state Tr(rho(0)^2) */
     int purestateID;               /* For pure-state preparation, this is the integer m for preparing e_m e_m^\dagger */
     std::string target_filename;   /* If a target is read from file, this holds it's filename. */
     Vec targetstate;   	           /* Holds the target state (unless its a pure one in which case this is NULL). 
@@ -27,7 +28,7 @@ class OptimTarget{
     TargetType getTargetType(){ return target_type; };
     ObjectiveType getObjectiveType(){ return objective_type; };
 
-    /* If gate optimization, this routine prepares the rotated target state VrhoV for a given initial state rho */
+    /* If gate optimization, this routine prepares the rotated target state VrhoV for a given initial state rho. Further, it stores the purity of rho(0) because it will be used to scale the Hilbertschmidt overlap for the JTrace objective function. */
     void prepare(const Vec rho);
 
     /* Evaluate the objective J. Note that J depends on the target state, which should be stored and ready before calling evalJ. The target state can be set with the 'prepare' routine. */
