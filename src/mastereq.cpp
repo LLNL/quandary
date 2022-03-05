@@ -74,7 +74,7 @@ MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Osci
 
   /* Sanity check for parallel petsc */
   if (dim % mpisize_petsc != 0) {
-    printf("\n ERROR in parallel distribution: Petsc's communicator size (%d) must be integer multiple of system dimension (%d)\n", mpisize_petsc, dim);
+    printf("\n ERROR in parallel distribution: Petsc's communicator size (%d) must be integer divisor of system dimension (%d).\n", mpisize_petsc, dim);
     exit(1);
   }
 
