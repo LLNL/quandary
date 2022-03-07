@@ -248,7 +248,7 @@ inline int TensorGetIndex(const int nlevels0, const int nlevels1, const int nlev
 
 
 // Mat-free solver inline for gradient updates for oscillator i
-inline void dRHSdp_getcoeffs(const int it, const int n, const int i, const int ip, const int stridei, const int strideip, const double* xptr, double* res_p_re, double* res_p_im, double* res_q_re, double* res_q_im) {
+inline void dRHSdp_getcoeffs(const int it, const int n, const int np, const int i, const int ip, const int stridei, const int strideip, const double* xptr, double* res_p_re, double* res_p_im, double* res_q_re, double* res_q_im) {
 
   *res_p_re = 0.0;
   *res_p_im = 0.0;
@@ -267,7 +267,7 @@ inline void dRHSdp_getcoeffs(const int it, const int n, const int i, const int i
     *res_q_im +=   sq * xim;
   }
   /* \rho(ik..,ik'+1..) */
-  if (ip < n-1) {
+  if (ip < np-1) {
     int itx = it + strideip;
     double xre = xptr[2 * itx];
     double xim = xptr[2 * itx + 1];
@@ -302,7 +302,7 @@ inline void dRHSdp_getcoeffs(const int it, const int n, const int i, const int i
 }
 
 // Mat-free solver inline for Jkl coupling between oscillator i and oscillator j
-inline void Jkl_coupling(const int it, const int ni, const int nj, const int i, const int ip, const int j, const int jp, const int stridei, const int strideip, const int stridej, const int stridejp, const double* xptr, const double Jij, const double cosij, const double sinij, double* yre, double* yim) {
+inline void Jkl_coupling(const int it, const int ni, const int nj, const int nip, const int njp, const int i, const int ip, const int j, const int jp, const int stridei, const int strideip, const int stridej, const int stridejp, const double* xptr, const double Jij, const double cosij, const double sinij, double* yre, double* yim) {
   if (fabs(Jij)>1e-10) {
     //  1) J_kl (-icos + sin) * ρ_{E−k+l i, i′}
     if (i > 0 && j < nj-1) {
@@ -325,7 +325,7 @@ inline void Jkl_coupling(const int it, const int ni, const int nj, const int i, 
       *yim += Jij * sq * ( - cosij * xre - sinij * xim);
     }
     // 3) J_kl ( icos + sin)sqrt(ik'*(il' +1)) ρ_{i,E-k+li'}
-    if (ip > 0 && jp < nj-1) {
+    if (ip > 0 && jp < njp-1) {
       int itx = it - strideip + stridejp;  // i, E-k+l i'
       double xre = xptr[2 * itx];
       double xim = xptr[2 * itx + 1];
@@ -335,7 +335,7 @@ inline void Jkl_coupling(const int it, const int ni, const int nj, const int i, 
       *yim += Jij * sq * (   cosij * xre + sinij * xim);
     }
     // 4) J_kl ( icos - sin)sqrt(il'*(ik' +1)) ρ_{i,E+k-li'}
-    if (ip < ni-1 && jp > 0) {
+    if (ip < nip-1 && jp > 0) {
       int itx = it + strideip - stridejp;  // i, E+k-l i'
       double xre = xptr[2 * itx];
       double xim = xptr[2 * itx + 1];
@@ -348,7 +348,7 @@ inline void Jkl_coupling(const int it, const int ni, const int nj, const int i, 
 }
 
 // transpose of Jkl coupling
-inline void Jkl_coupling_T(const int it, const int ni, const int nj, const int i, const int ip, const int j, const int jp, const int stridei, const int strideip, const int stridej, const int stridejp, const double* xptr, const double Jij, const double cosij, const double sinij, double* yre, double* yim) {
+inline void Jkl_coupling_T(const int it, const int ni, const int nj, const int nip, const int njp, const int i, const int ip, const int j, const int jp, const int stridei, const int strideip, const int stridej, const int stridejp, const double* xptr, const double Jij, const double cosij, const double sinij, double* yre, double* yim) {
   if (fabs(Jij)>1e-10) {
     //  1) [...] * \bar y_{E+k-l i, i′}
     if (i < ni-1 && j > 0) {
@@ -369,7 +369,7 @@ inline void Jkl_coupling_T(const int it, const int ni, const int nj, const int i
       *yim += Jij * sq * ( + cosij * xre - sinij * xim);
     }
     // 3) J_kl ( icos + sin)sqrt(il'*(ik' +1)) \bar y_{i,E+k-li'}
-    if (ip < ni-1 && jp > 0) {
+    if (ip < nip-1 && jp > 0) {
       int itx = it + strideip - stridejp;  // i, E+k-l i'
       double xre = xptr[2 * itx];
       double xim = xptr[2 * itx + 1];
@@ -378,7 +378,7 @@ inline void Jkl_coupling_T(const int it, const int ni, const int nj, const int i
       *yim += Jij * sq * ( - cosij * xre + sinij * xim);
     }
     // 4) J_kl ( icos - sin)sqrt(ik'*(il' +1)) \bar y_{i,E-k+li'}
-    if (ip > 0 && jp < nj-1) {
+    if (ip > 0 && jp < njp-1) {
       int itx = it - strideip + stridejp;  // i, E-k+l i'
       double xre = xptr[2 * itx];
       double xim = xptr[2 * itx + 1];
@@ -420,7 +420,7 @@ inline void L1decay_T(const int it, const int n, const int i, const int ip, cons
 }
 
 // Matfree solver inline for Control terms
-inline void control(const int it, const int n, const int i, const int ip, const int stridei, const int strideip, const double* xptr, const double pt, const double qt, double* yre, double* yim){
+inline void control(const int it, const int n, const int i, const int np, const int ip, const int stridei, const int strideip, const double* xptr, const double pt, const double qt, double* yre, double* yim){
   /* \rho(ik+1..,ik'..) term */
   if (i < n-1) {
       int itx = it + stridei;
@@ -431,7 +431,7 @@ inline void control(const int it, const int n, const int i, const int ip, const 
       *yim += sq * ( - pt * xre + qt * xim);
     }
     /* \rho(ik..,ik'+1..) */
-    if (ip < n-1) {
+    if (ip < np-1) {
       int itx = it + strideip;
       double xre = xptr[2 * itx];
       double xim = xptr[2 * itx + 1];
@@ -461,7 +461,7 @@ inline void control(const int it, const int n, const int i, const int ip, const 
 
 
 // Transpose of control terms
-inline void control_T(const int it, const int n, const int i, const int ip, const int stridei, const int strideip, const double* xptr, const double pt, const double qt, double* yre, double* yim){
+inline void control_T(const int it, const int n, const int i, const int np, const int ip, const int stridei, const int strideip, const double* xptr, const double pt, const double qt, double* yre, double* yim){
   /* \rho(ik+1..,ik'..) term */
   if (i > 0) {
     int itx = it - stridei;
@@ -490,7 +490,7 @@ inline void control_T(const int it, const int n, const int i, const int ip, cons
     *yim += sq * (  pt * xre - qt * xim);
   }
   /* \rho(ik..,ik'-1..) */
-  if (ip < n-1) {
+  if (ip < np-1) {
     int itx = it + strideip;
     double xre = xptr[2 * itx];
     double xim = xptr[2 * itx + 1];
