@@ -376,6 +376,8 @@ To be precise: the user specifies a list of consecutive ID's $<k_0>, \dots, <k_m
 \end{align}
 where the first $\bs{e}_0$ (before the kronecker product) is the first unit vector in $\R^{\prod_{k=0}^{k_0-1}}$ (i.e. ground state in all preceding subsystems), and the second $\bs{e}_0$ (behind the kronecker products) is the first unit vector in the dimension of all subsequent systems, $\R^{\prod_{k=k_m+1}^{Q-1}}$. 
 
+Note: The ensemble state will be spanned in the \textit{essential} levels of the (sub)system, if applicable, and will then be lifted up to the full dimesion by inserting zero rows and columns. 
+
 \subsubsection{Three initial states for gate optimization}\label{subsec:threeinitcond}
 \textit{Only valid for the density matrix version, solving Lindblad's master equation.}
 
