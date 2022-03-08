@@ -233,7 +233,7 @@ inline double L2(const double dephase0, const double dephase1, const double deph
        + dephase1 * ( i1*i1p - 1./2. * (i1*i1 + i1p*i1p) )
        + dephase2 * ( i2*i2p - 1./2. * (i2*i2 + i2p*i2p) )
        + dephase3 * ( i3*i3p - 1./2. * (i3*i3 + i3p*i3p) )
-       + dephase4 * ( i3*i3p - 1./2. * (i4*i4 + i4p*i4p) );
+       + dephase4 * ( i4*i4p - 1./2. * (i4*i4 + i4p*i4p) );
 };
 inline double L1diag(const double decay0, const double decay1, const double decay2, const double decay3, const double decay4, const int i0, const int i1, const int i2, const int i3, const int i4, const int i0p, const int i1p, const int i2p, const int i3p, const int i4p){
   return - decay0 / 2.0 * ( i0 + i0p ) 
