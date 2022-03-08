@@ -501,11 +501,7 @@ The real and imaginary parts of $q(t)$ are stored in a colocated manner: For
 
     In our current test cases, the matrix-free solver is much faster than the sparse-matrix solver (about 10x), no surprise. However the matrix-free solver is currently only implemented for composite systems consisting of \textbf{2, 3, 4, or 5} subsystems. 
 
-    \textbf{Restrictions:} 
-    \begin{itemize}
-      \item The matrix-free solver currently does not parallelize across the system dimension $N$, hence the state vector is \textbf{not} distributed (i.e. no parallel Petsc!). The reason why we did not implement that yet is that $Q$ can often be large while each axis can be very short (e.g. modelling $Q=12$ qubits with $n_k=2$ energy levels per qubit), which yields a very high-dimensional tensor with very short axix. In that case, the standard (?) approach of parallelizing the tensor along its axes will likey lead to very poor scalability due to high communication overhead. We have not found a satisfying solution yet - if you have ideas, please reach out, we are happy to collaborate! 
-      \item {The matrix-free solver is currently not available when solving Schroedingers equation.}
-    \end{itemize}
+    \textbf{The matrix-free solver currently does not parallelize across the system dimension $N$}, hence the state vector is \textbf{not} distributed (i.e. no parallel Petsc!). The reason why we did not implement that yet is that $Q$ can often be large while each axis can be very short (e.g. modelling $Q=12$ qubits with $n_k=2$ energy levels per qubit), which yields a very high-dimensional tensor with very short axix. In that case, the standard (?) approach of parallelizing the tensor along its axes will likey lead to very poor scalability due to high communication overhead. We have not found a satisfying solution yet - if you have ideas, please reach out, we are happy to collaborate! 
    \end{enumerate} 
 
 

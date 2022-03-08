@@ -30,11 +30,6 @@ MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Osci
   usematfree = usematfree_;
   lindbladtype = lindbladtype_;
 
-  // Sanity check. TODO: Modify matfree version. 
-  if (lindbladtype == LindbladType::NONE && usematfree) {
-    printf("ERROR: Matfree version currently not available for Schroedinger solver. Choose usematfree=false\n");
-    exit(1);
-  }
 
   for (int i=0; i<crosskerr.size(); i++){
     crosskerr[i] *= 2.*M_PI;
@@ -783,12 +778,19 @@ void MasterEq::computedRHSdp(const double t, const Vec x, const Vec xbar, const 
       int stridei1  = TensorGetIndex(n0,n1, 0,1,0,0);
       int stridei0p = TensorGetIndex(n0,n1, 0,0,1,0);
       int stridei1p = TensorGetIndex(n0,n1, 0,0,0,1);
+      /* Switch for Lindblad vs Schroedinger solver */
+      int n0p = n0;
+      int n1p = n1;
+      if (lindbladtype == LindbladType::NONE) { // Schroedinger
+        n0p = 1; // Cut down so that below loop has i0p=0 and i1p=0/
+        n1p = 1;
+      }
 
       /* --- Collect coefficients for gradient --- */
       int it = 0;
       // Iterate over indices of xbar
-      for (int i0p = 0; i0p < n0; i0p++)  {
-        for (int i1p = 0; i1p < n1; i1p++)  {
+      for (int i0p = 0; i0p < n0p; i0p++)  {
+        for (int i1p = 0; i1p < n1p; i1p++)  {
           for (int i0 = 0; i0 < n0; i0++)  {
             for (int i1 = 0; i1 < n1; i1++)  {
               /* Get xbar */
@@ -796,11 +798,11 @@ void MasterEq::computedRHSdp(const double t, const Vec x, const Vec xbar, const 
               double xbarim = xbarptr[2*it+1];
 
               /* --- Oscillator 0 --- */
-              dRHSdp_getcoeffs(it, n0, i0, i0p, stridei0, stridei0p, xptr, &res_p_re, &res_p_im, &res_q_re, &res_q_im);
+              dRHSdp_getcoeffs(it, n0, n0p, i0, i0p, stridei0, stridei0p, xptr, &res_p_re, &res_p_im, &res_q_re, &res_q_im);
               coeff_p[0] += res_p_re * xbarre + res_p_im * xbarim;
               coeff_q[0] += res_q_re * xbarre + res_q_im * xbarim;
               /* --- Oscillator 1 --- */
-              dRHSdp_getcoeffs(it, n1, i1, i1p, stridei1, stridei1p, xptr, &res_p_re, &res_p_im, &res_q_re, &res_q_im);
+              dRHSdp_getcoeffs(it, n1, n1p, i1, i1p, stridei1, stridei1p, xptr, &res_p_re, &res_p_im, &res_q_re, &res_q_im);
               coeff_p[1] += res_p_re * xbarre + res_p_im * xbarim;
               coeff_q[1] += res_q_re * xbarre + res_q_im * xbarim;
 
@@ -820,13 +822,21 @@ void MasterEq::computedRHSdp(const double t, const Vec x, const Vec xbar, const 
       int stridei0p = TensorGetIndex(n0,n1,n2, 0,0,0,1,0,0);
       int stridei1p = TensorGetIndex(n0,n1,n2, 0,0,0,0,1,0);
       int stridei2p = TensorGetIndex(n0,n1,n2, 0,0,0,0,0,1);
-
+      /* Switch for Lindblad vs Schroedinger solver */
+      int n0p = n0;
+      int n1p = n1;
+      int n2p = n2;
+      if (lindbladtype == LindbladType::NONE) { // Schroedinger
+        n0p = 1; // Cut down so that below loop has i0p=0 and i1p=0/
+        n1p = 1;
+        n2p = 1;
+      }
       /* --- Collect coefficients for gradient --- */
       int it = 0;
       // Iterate over indices of xbar
-      for (int i0p = 0; i0p < n0; i0p++)  {
-        for (int i1p = 0; i1p < n1; i1p++)  {
-          for (int i2p = 0; i2p < n2; i2p++)  {
+      for (int i0p = 0; i0p < n0p; i0p++)  {
+        for (int i1p = 0; i1p < n1p; i1p++)  {
+          for (int i2p = 0; i2p < n2p; i2p++)  {
             for (int i0 = 0; i0 < n0; i0++)  {
               for (int i1 = 0; i1 < n1; i1++)  {
                 for (int i2 = 0; i2 < n2; i2++)  {
@@ -835,15 +845,15 @@ void MasterEq::computedRHSdp(const double t, const Vec x, const Vec xbar, const 
                   double xbarim = xbarptr[2*it+1];
 
                   /* --- Oscillator 0 --- */
-                  dRHSdp_getcoeffs(it, n0, i0, i0p, stridei0, stridei0p, xptr, &res_p_re, &res_p_im, &res_q_re, &res_q_im);
+                  dRHSdp_getcoeffs(it, n0, n0p, i0, i0p, stridei0, stridei0p, xptr, &res_p_re, &res_p_im, &res_q_re, &res_q_im);
                   coeff_p[0] += res_p_re * xbarre + res_p_im * xbarim;
                   coeff_q[0] += res_q_re * xbarre + res_q_im * xbarim;
                   /* --- Oscillator 1 --- */
-                  dRHSdp_getcoeffs(it, n1, i1, i1p, stridei1, stridei1p, xptr, &res_p_re, &res_p_im, &res_q_re, &res_q_im);
+                  dRHSdp_getcoeffs(it, n1, n1p, i1, i1p, stridei1, stridei1p, xptr, &res_p_re, &res_p_im, &res_q_re, &res_q_im);
                   coeff_p[1] += res_p_re * xbarre + res_p_im * xbarim;
                   coeff_q[1] += res_q_re * xbarre + res_q_im * xbarim;
                   /* --- Oscillator 2 --- */
-                  dRHSdp_getcoeffs(it, n2, i2, i2p, stridei2, stridei2p, xptr, &res_p_re, &res_p_im, &res_q_re, &res_q_im);
+                  dRHSdp_getcoeffs(it, n2, n2p, i2, i2p, stridei2, stridei2p, xptr, &res_p_re, &res_p_im, &res_q_re, &res_q_im);
                   coeff_p[2] += res_p_re * xbarre + res_p_im * xbarim;
                   coeff_q[2] += res_q_re * xbarre + res_q_im * xbarim;
 
@@ -868,14 +878,24 @@ void MasterEq::computedRHSdp(const double t, const Vec x, const Vec xbar, const 
       int stridei1p = TensorGetIndex(n0,n1,n2,n3, 0,0,0,0,0,1,0,0);
       int stridei2p = TensorGetIndex(n0,n1,n2,n3, 0,0,0,0,0,0,1,0);
       int stridei3p = TensorGetIndex(n0,n1,n2,n3, 0,0,0,0,0,0,0,1);
-
+      /* Switch for Lindblad vs Schroedinger solver */
+      int n0p = n0;
+      int n1p = n1;
+      int n2p = n2;
+      int n3p = n3;
+      if (lindbladtype == LindbladType::NONE) { // Schroedinger
+        n0p = 1; // Cut down so that below loop has i0p=0 and i1p=0/
+        n1p = 1;
+        n2p = 1;
+        n3p = 1;
+      }
       /* --- Collect coefficients for gradient --- */
       int it = 0;
       // Iterate over indices of xbar
-      for (int i0p = 0; i0p < n0; i0p++)  {
-        for (int i1p = 0; i1p < n1; i1p++)  {
-          for (int i2p = 0; i2p < n2; i2p++)  {
-            for (int i3p = 0; i3p < n3; i3p++)  {
+      for (int i0p = 0; i0p < n0p; i0p++)  {
+        for (int i1p = 0; i1p < n1p; i1p++)  {
+          for (int i2p = 0; i2p < n2p; i2p++)  {
+            for (int i3p = 0; i3p < n3p; i3p++)  {
               for (int i0 = 0; i0 < n0; i0++)  {
                 for (int i1 = 0; i1 < n1; i1++)  {
                   for (int i2 = 0; i2 < n2; i2++)  {
@@ -885,19 +905,19 @@ void MasterEq::computedRHSdp(const double t, const Vec x, const Vec xbar, const 
                       double xbarim = xbarptr[2*it+1];
 
                       /* --- Oscillator 0 --- */
-                      dRHSdp_getcoeffs(it, n0, i0, i0p, stridei0, stridei0p, xptr, &res_p_re, &res_p_im, &res_q_re, &res_q_im);
+                      dRHSdp_getcoeffs(it, n0, n0p, i0, i0p, stridei0, stridei0p, xptr, &res_p_re, &res_p_im, &res_q_re, &res_q_im);
                       coeff_p[0] += res_p_re * xbarre + res_p_im * xbarim;
                       coeff_q[0] += res_q_re * xbarre + res_q_im * xbarim;
                       /* --- Oscillator 1 --- */
-                      dRHSdp_getcoeffs(it, n1, i1, i1p, stridei1, stridei1p, xptr, &res_p_re, &res_p_im, &res_q_re, &res_q_im);
+                      dRHSdp_getcoeffs(it, n1, n1p, i1, i1p, stridei1, stridei1p, xptr, &res_p_re, &res_p_im, &res_q_re, &res_q_im);
                       coeff_p[1] += res_p_re * xbarre + res_p_im * xbarim;
                       coeff_q[1] += res_q_re * xbarre + res_q_im * xbarim;
                       /* --- Oscillator 2 --- */
-                      dRHSdp_getcoeffs(it, n2, i2, i2p, stridei2, stridei2p, xptr, &res_p_re, &res_p_im, &res_q_re, &res_q_im);
+                      dRHSdp_getcoeffs(it, n2, n2p, i2, i2p, stridei2, stridei2p, xptr, &res_p_re, &res_p_im, &res_q_re, &res_q_im);
                       coeff_p[2] += res_p_re * xbarre + res_p_im * xbarim;
                       coeff_q[2] += res_q_re * xbarre + res_q_im * xbarim;
                       /* --- Oscillator 3 --- */
-                      dRHSdp_getcoeffs(it, n3, i3, i3p, stridei3, stridei3p, xptr, &res_p_re, &res_p_im, &res_q_re, &res_q_im);
+                      dRHSdp_getcoeffs(it, n3, n3p, i3, i3p, stridei3, stridei3p, xptr, &res_p_re, &res_p_im, &res_q_re, &res_q_im);
                       coeff_p[3] += res_p_re * xbarre + res_p_im * xbarim;
                       coeff_q[3] += res_q_re * xbarre + res_q_im * xbarim;
 
@@ -927,15 +947,27 @@ void MasterEq::computedRHSdp(const double t, const Vec x, const Vec xbar, const 
       int stridei2p = TensorGetIndex(n0,n1,n2,n3,n4, 0,0,0,0,0,0,0,1,0,0);
       int stridei3p = TensorGetIndex(n0,n1,n2,n3,n4, 0,0,0,0,0,0,0,0,1,0);
       int stridei4p = TensorGetIndex(n0,n1,n2,n3,n4, 0,0,0,0,0,0,0,0,0,1);
-
+      /* Switch for Lindblad vs Schroedinger solver */
+      int n0p = n0;
+      int n1p = n1;
+      int n2p = n2;
+      int n3p = n3;
+      int n4p = n4;
+      if (lindbladtype == LindbladType::NONE) { // Schroedinger
+        n0p = 1; // Cut down so that below loop has i0p=0 and i1p=0/
+        n1p = 1;
+        n2p = 1;
+        n3p = 1;
+        n4p = 1;
+      }
       /* --- Collect coefficients for gradient --- */
       int it = 0;
       // Iterate over indices of xbar
-      for (int i0p = 0; i0p < n0; i0p++)  {
-        for (int i1p = 0; i1p < n1; i1p++)  {
-          for (int i2p = 0; i2p < n2; i2p++)  {
-            for (int i3p = 0; i3p < n3; i3p++)  {
-              for (int i4p = 0; i4p < n4; i4p++)  {
+      for (int i0p = 0; i0p < n0p; i0p++)  {
+        for (int i1p = 0; i1p < n1p; i1p++)  {
+          for (int i2p = 0; i2p < n2p; i2p++)  {
+            for (int i3p = 0; i3p < n3p; i3p++)  {
+              for (int i4p = 0; i4p < n4p; i4p++)  {
                 for (int i0 = 0; i0 < n0; i0++)  {
                   for (int i1 = 0; i1 < n1; i1++)  {
                     for (int i2 = 0; i2 < n2; i2++)  {
@@ -946,23 +978,23 @@ void MasterEq::computedRHSdp(const double t, const Vec x, const Vec xbar, const 
                           double xbarim = xbarptr[2*it+1];
 
                           /* --- Oscillator 0 --- */
-                          dRHSdp_getcoeffs(it, n0, i0, i0p, stridei0, stridei0p, xptr, &res_p_re, &res_p_im, &res_q_re, &res_q_im);
+                          dRHSdp_getcoeffs(it, n0, n0p, i0, i0p, stridei0, stridei0p, xptr, &res_p_re, &res_p_im, &res_q_re, &res_q_im);
                           coeff_p[0] += res_p_re * xbarre + res_p_im * xbarim;
                           coeff_q[0] += res_q_re * xbarre + res_q_im * xbarim;
                           /* --- Oscillator 1 --- */
-                          dRHSdp_getcoeffs(it, n1, i1, i1p, stridei1, stridei1p, xptr, &res_p_re, &res_p_im, &res_q_re, &res_q_im);
+                          dRHSdp_getcoeffs(it, n1, n1p, i1, i1p, stridei1, stridei1p, xptr, &res_p_re, &res_p_im, &res_q_re, &res_q_im);
                           coeff_p[1] += res_p_re * xbarre + res_p_im * xbarim;
                           coeff_q[1] += res_q_re * xbarre + res_q_im * xbarim;
                           /* --- Oscillator 2 --- */
-                          dRHSdp_getcoeffs(it, n2, i2, i2p, stridei2, stridei2p, xptr, &res_p_re, &res_p_im, &res_q_re, &res_q_im);
+                          dRHSdp_getcoeffs(it, n2, n2p, i2, i2p, stridei2, stridei2p, xptr, &res_p_re, &res_p_im, &res_q_re, &res_q_im);
                           coeff_p[2] += res_p_re * xbarre + res_p_im * xbarim;
                           coeff_q[2] += res_q_re * xbarre + res_q_im * xbarim;
                           /* --- Oscillator 3 --- */
-                          dRHSdp_getcoeffs(it, n3, i3, i3p, stridei3, stridei3p, xptr, &res_p_re, &res_p_im, &res_q_re, &res_q_im);
+                          dRHSdp_getcoeffs(it, n3, n3p, i3, i3p, stridei3, stridei3p, xptr, &res_p_re, &res_p_im, &res_q_re, &res_q_im);
                           coeff_p[3] += res_p_re * xbarre + res_p_im * xbarim;
                           coeff_q[3] += res_q_re * xbarre + res_q_im * xbarim;
                           /* --- Oscillator 4 --- */
-                          dRHSdp_getcoeffs(it, n4, i4, i4p, stridei4, stridei4p, xptr, &res_p_re, &res_p_im, &res_q_re, &res_q_im);
+                          dRHSdp_getcoeffs(it, n4, n4p, i4, i4p, stridei4, stridei4p, xptr, &res_p_re, &res_p_im, &res_q_re, &res_q_im);
                           coeff_p[4] += res_p_re * xbarre + res_p_im * xbarim;
                           coeff_q[4] += res_q_re * xbarre + res_q_im * xbarim;
 
@@ -1531,10 +1563,18 @@ int myMatMult_matfree(Mat RHS, Vec x, Vec y){
   int stridei0p = TensorGetIndex(n0,n1, 0,0,1,0);
   int stridei1p = TensorGetIndex(n0,n1, 0,0,0,1);
 
+  /* Switch for Lindblad vs Schroedinger solver */
+  int n0p = n0;
+  int n1p = n1;
+  if (shellctx->lindbladtype == LindbladType::NONE) { // Schroedinger
+    n0p = 1; // Cut down so that below loop has i0p=0 and i1p=0/
+    n1p = 1;
+  }
+
   /* Iterate over indices of output vector y */
   int it = 0;
-  for (int i0p = 0; i0p < n0; i0p++)  {
-    for (int i1p = 0; i1p < n1; i1p++)  {
+  for (int i0p = 0; i0p < n0p; i0p++)  {
+    for (int i1p = 0; i1p < n1p; i1p++)  {
       for (int i0 = 0; i0 < n0; i0++)  {
         for (int i1 = 0; i1 < n1; i1++)  {
 
@@ -1547,34 +1587,41 @@ int myMatMult_matfree(Mat RHS, Vec x, Vec y){
           double hd  = H_detune(detuning_freq0, detuning_freq1, i0, i1)
                      + H_selfkerr(xi0, xi1, i0, i1)
                      + H_crosskerr(xi01, i0, i1);
-          double hdp = H_detune(detuning_freq0, detuning_freq1, i0p, i1p)
-                     + H_selfkerr(xi0, xi1, i0p, i1p)
-                     + H_crosskerr(xi01, i0p, i1p);
+          double hdp = 0.0;
+          if (shellctx->lindbladtype != LindbladType::NONE) {
+            hdp = H_detune(detuning_freq0, detuning_freq1, i0p, i1p)
+                + H_selfkerr(xi0, xi1, i0p, i1p)
+                + H_crosskerr(xi01, i0p, i1p);
+          }
           double yre = ( hd - hdp ) * xim;
           double yim = (-hd + hdp ) * xre;
+
           // Decay l1, diagonal part: xout += l1diag xin
           // Dephasing l2: xout += l2(ik, ikp) xin
-          double l1diag = L1diag(decay0, decay1, i0, i1, i0p, i1p);
-          double l2 = L2(dephase0, dephase1, i0, i1, i0p, i1p);
-          yre += (l2 + l1diag) * xre;
-          yim += (l2 + l1diag) * xim;
-
+          if (shellctx->lindbladtype != LindbladType::NONE) {
+            double l1diag = L1diag(decay0, decay1, i0, i1, i0p, i1p);
+            double l2 = L2(dephase0, dephase1, i0, i1, i0p, i1p);
+            yre += (l2 + l1diag) * xre;
+            yim += (l2 + l1diag) * xim;
+          }
 
           /* --- Offdiagonal: Jkl coupling term --- */
           // oscillator 0<->1 
-          Jkl_coupling(it, n0, n1, i0, i0p, i1, i1p, stridei0, stridei0p, stridei1, stridei1p, xptr, J01, cos01, sin01, &yre, &yim);
+          Jkl_coupling(it, n0, n1, n0p, n1p, i0, i0p, i1, i1p, stridei0, stridei0p, stridei1, stridei1p, xptr, J01, cos01, sin01, &yre, &yim);
 
           /* --- Offdiagonal part of decay L1 */
-          // Oscillators 0
-          L1decay(it, n0, i0, i0p, stridei0, stridei0p, xptr, decay0, &yre, &yim);
-          // Oscillator 1
-          L1decay(it, n1, i1, i1p, stridei1, stridei1p, xptr, decay1, &yre, &yim);
+          if (shellctx->lindbladtype != LindbladType::NONE) {
+            // Oscillators 0
+            L1decay(it, n0, i0, i0p, stridei0, stridei0p, xptr, decay0, &yre, &yim);
+            // Oscillator 1
+            L1decay(it, n1, i1, i1p, stridei1, stridei1p, xptr, decay1, &yre, &yim);
+          }
 
           /* --- Control hamiltonian --- */
           // Oscillator 0 
-          control(it, n0, i0, i0p, stridei0, stridei0p, xptr, pt0, qt0, &yre, &yim);
+          control(it, n0, i0, n0p, i0p, stridei0, stridei0p, xptr, pt0, qt0, &yre, &yim);
           // Oscillator 1
-          control(it, n1, i1, i1p, stridei1, stridei1p, xptr, pt1, qt1, &yre, &yim);
+          control(it, n1, i1, n1p, i1p, stridei1, stridei1p, xptr, pt1, qt1, &yre, &yim);
 
           /* Update */
           yptr[2*it]   = yre;
@@ -1588,7 +1635,6 @@ int myMatMult_matfree(Mat RHS, Vec x, Vec y){
   /* Restore x and y */
   VecRestoreArrayRead(x, &xptr);
   VecRestoreArray(y, &yptr);
-
 
   return 0;
 }
@@ -1641,11 +1687,18 @@ int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
   int stridei0p = TensorGetIndex(n0,n1, 0,0,1,0);
   int stridei1p = TensorGetIndex(n0,n1, 0,0,0,1);
 
+  /* Switch for Lindblad vs Schroedinger solver */
+  int n0p = n0;
+  int n1p = n1;
+  if (shellctx->lindbladtype == LindbladType::NONE) { // Schroedinger
+    n0p = 1; // Cut down so that below loop has i0p=0 and i1p=0/
+    n1p = 1;
+  }
 
   /* Iterate over indices of output vector y */
   int it = 0;
-  for (int i0p = 0; i0p < n0; i0p++)  {
-    for (int i1p = 0; i1p < n1; i1p++)  {
+  for (int i0p = 0; i0p < n0p; i0p++)  {
+    for (int i1p = 0; i1p < n1p; i1p++)  {
       for (int i0 = 0; i0 < n0; i0++)  {
         for (int i1 = 0; i1 < n1; i1++)  {
 
@@ -1658,34 +1711,41 @@ int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
           double hd  = H_detune(detuning_freq0, detuning_freq1, i0, i1)
                      + H_selfkerr(xi0, xi1, i0, i1)
                      + H_crosskerr(xi01, i0, i1);
-          double hdp = H_detune(detuning_freq0, detuning_freq1, i0p, i1p)
-                     + H_selfkerr(xi0, xi1, i0p, i1p)
-                     + H_crosskerr(xi01, i0p, i1p);
+          double hdp = 0.0;
+          if (shellctx->lindbladtype != LindbladType::NONE) {
+            hdp = H_detune(detuning_freq0, detuning_freq1, i0p, i1p)
+                  + H_selfkerr(xi0, xi1, i0p, i1p)
+                  + H_crosskerr(xi01, i0p, i1p);
+          }
           double yre = (-hd + hdp ) * xim;
           double yim = ( hd - hdp ) * xre;
+
           // Decay l1^T, diagonal part: xout += l1diag xin
           // Dephasing l2^T: xout += l2(ik, ikp) xin
-          double l1diag = L1diag(decay0, decay1, i0, i1, i0p, i1p);
-          double l2 = L2(dephase0, dephase1, i0, i1, i0p, i1p);
-          yre += (l2 + l1diag) * xre;
-          yim += (l2 + l1diag) * xim;
+          if (shellctx->lindbladtype != LindbladType::NONE) {
+            double l1diag = L1diag(decay0, decay1, i0, i1, i0p, i1p);
+            double l2 = L2(dephase0, dephase1, i0, i1, i0p, i1p);
+            yre += (l2 + l1diag) * xre;
+            yim += (l2 + l1diag) * xim;
+          }
 
           /* --- Offdiagonal coupling term J_kl --- */
           // oscillator 0<->1
-          Jkl_coupling_T(it, n0, n1, i0, i0p, i1, i1p, stridei0, stridei0p, stridei1, stridei1p, xptr, J01, cos01, sin01, &yre, &yim);
+          Jkl_coupling_T(it, n0, n1, n0p, n1p, i0, i0p, i1, i1p, stridei0, stridei0p, stridei1, stridei1p, xptr, J01, cos01, sin01, &yre, &yim);
  
           /* --- Offdiagonal part of decay L1^T */
-          // Oscillators 0
-          L1decay_T(it, n0, i0, i0p, stridei0, stridei0p, xptr, decay0, &yre, &yim);
-          // Oscillator 1
-          L1decay_T(it, n1, i1, i1p, stridei1, stridei1p, xptr, decay1, &yre, &yim);
+          if (shellctx->lindbladtype != LindbladType::NONE) {
+            // Oscillators 0
+            L1decay_T(it, n0, i0, i0p, stridei0, stridei0p, xptr, decay0, &yre, &yim);
+            // Oscillator 1
+            L1decay_T(it, n1, i1, i1p, stridei1, stridei1p, xptr, decay1, &yre, &yim);
+          }
 
           /* --- Control hamiltonian  --- */
           // Oscillator 0
-          control_T(it, n0, i0, i0p, stridei0, stridei0p, xptr, pt0, qt0, &yre, &yim);
+          control_T(it, n0, i0, n0p, i0p, stridei0, stridei0p, xptr, pt0, qt0, &yre, &yim);
           // Oscillator 1
-          control_T(it, n1, i1, i1p, stridei1, stridei1p, xptr, pt1, qt1, &yre, &yim);
-
+          control_T(it, n1, i1, n1p, i1p, stridei1, stridei1p, xptr, pt1, qt1, &yre, &yim);
 
           /* Update */
           yptr[2*it]   = yre;
@@ -1695,8 +1755,6 @@ int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
       }
     }
   }
-
-
 
   /* Restore x and y */
   VecRestoreArrayRead(x, &xptr);
@@ -1768,11 +1826,21 @@ int myMatMult_matfree(Mat RHS, Vec x, Vec y){
   int stridei1p = TensorGetIndex(n0,n1,n2, 0,0,0,0,1,0);
   int stridei2p = TensorGetIndex(n0,n1,n2, 0,0,0,0,0,1);
 
-   /* Iterate over indices of output vector y */
+  /* Switch for Lindblad vs Schroedinger solver */
+  int n0p = n0;
+  int n1p = n1;
+  int n2p = n2;
+  if (shellctx->lindbladtype == LindbladType::NONE) { // Schroedinger
+    n0p = 1; // Cut down so that below loop has i0p=0 and i1p=0/
+    n1p = 1;
+    n2p = 1;
+  }
+
+  /* Iterate over indices of output vector y */
   int it = 0;
-  for (int i0p = 0; i0p < n0; i0p++)  {
-    for (int i1p = 0; i1p < n1; i1p++)  {
-      for (int i2p = 0; i2p < n2; i2p++)  {
+  for (int i0p = 0; i0p < n0p; i0p++)  {
+    for (int i1p = 0; i1p < n1p; i1p++)  {
+      for (int i2p = 0; i2p < n2p; i2p++)  {
         for (int i0 = 0; i0 < n0; i0++)  {
           for (int i1 = 0; i1 < n1; i1++)  {
             for (int i2 = 0; i2 < n2; i2++)  {
@@ -1786,43 +1854,49 @@ int myMatMult_matfree(Mat RHS, Vec x, Vec y){
               double hd  = H_detune(detuning_freq0, detuning_freq1, detuning_freq2, i0, i1, i2)
                          + H_selfkerr(xi0, xi1, xi2, i0, i1, i2)
                          + H_crosskerr(xi01, xi02, xi12, i0, i1, i2);
-              double hdp = H_detune(detuning_freq0, detuning_freq1, detuning_freq2, i0p, i1p, i2p)
-                         + H_selfkerr(xi0, xi1, xi2, i0p, i1p, i2p)
-                         + H_crosskerr(xi01, xi02, xi12, i0p, i1p, i2p);
+              double hdp =0.0;
+              if (shellctx->lindbladtype != LindbladType::NONE) {
+                hdp = H_detune(detuning_freq0, detuning_freq1, detuning_freq2, i0p, i1p, i2p)
+                      + H_selfkerr(xi0, xi1, xi2, i0p, i1p, i2p)
+                      + H_crosskerr(xi01, xi02, xi12, i0p, i1p, i2p);
+              }
               double yre = ( hd - hdp ) * xim;
               double yim = (-hd + hdp ) * xre;
+
               // Decay l1, diagonal part: xout += l1diag xin
               // Dephasing l2: xout += l2(ik, ikp) xin
-              double l1diag = L1diag(decay0, decay1, decay2, i0, i1, i2, i0p, i1p, i2p);
-              double l2 = L2(dephase0, dephase1, dephase2, i0, i1, i2, i0p, i1p, i2p);
-              yre += (l2 + l1diag) * xre;
-              yim += (l2 + l1diag) * xim;
-
+              if (shellctx->lindbladtype != LindbladType::NONE) {
+                double l1diag = L1diag(decay0, decay1, decay2, i0, i1, i2, i0p, i1p, i2p);
+                double l2 = L2(dephase0, dephase1, dephase2, i0, i1, i2, i0p, i1p, i2p);
+                yre += (l2 + l1diag) * xre;
+                yim += (l2 + l1diag) * xim;
+              }
 
               /* --- Offdiagonal: Jkl coupling  --- */
               // oscillator 0<->1 
-              Jkl_coupling(it, n0, n1, i0, i0p, i1, i1p, stridei0, stridei0p, stridei1, stridei1p, xptr, J01, cos01, sin01, &yre, &yim);
+              Jkl_coupling(it, n0, n1, n0p, n1p, i0, i0p, i1, i1p, stridei0, stridei0p, stridei1, stridei1p, xptr, J01, cos01, sin01, &yre, &yim);
               // oscillator 0<->2
-              Jkl_coupling(it, n0, n2, i0, i0p, i2, i2p, stridei0, stridei0p, stridei2, stridei2p, xptr, J02, cos02, sin02, &yre, &yim);
+              Jkl_coupling(it, n0, n2, n0p, n2p, i0, i0p, i2, i2p, stridei0, stridei0p, stridei2, stridei2p, xptr, J02, cos02, sin02, &yre, &yim);
               // oscillator 1<->2
-              Jkl_coupling(it, n1, n2, i1, i1p, i2, i2p, stridei1, stridei1p, stridei2, stridei2p, xptr, J12, cos12, sin12, &yre, &yim);
+              Jkl_coupling(it, n1, n2, n1p, n2p, i1, i1p, i2, i2p, stridei1, stridei1p, stridei2, stridei2p, xptr, J12, cos12, sin12, &yre, &yim);
 
               /* --- Offdiagonal part of decay L1 */
-              // Oscillators 0
-              L1decay(it, n0, i0, i0p, stridei0, stridei0p, xptr, decay0, &yre, &yim);
-              // Oscillator 1
-              L1decay(it, n1, i1, i1p, stridei1, stridei1p, xptr, decay1, &yre, &yim);
-              // Oscillator 2
-              L1decay(it, n2, i2, i2p, stridei2, stridei2p, xptr, decay2, &yre, &yim);
-              
+              if (shellctx->lindbladtype != LindbladType::NONE) {
+                // Oscillators 0
+                L1decay(it, n0, i0, i0p, stridei0, stridei0p, xptr, decay0, &yre, &yim);
+                // Oscillator 1
+                L1decay(it, n1, i1, i1p, stridei1, stridei1p, xptr, decay1, &yre, &yim);
+                // Oscillator 2
+                L1decay(it, n2, i2, i2p, stridei2, stridei2p, xptr, decay2, &yre, &yim);
+              }
 
               /* --- Control hamiltonian ---  */
               // Oscillator 0 
-              control(it, n0, i0, i0p, stridei0, stridei0p, xptr, pt0, qt0, &yre, &yim);
+              control(it, n0, i0, n0p, i0p, stridei0, stridei0p, xptr, pt0, qt0, &yre, &yim);
               // Oscillator 1
-              control(it, n1, i1, i1p, stridei1, stridei1p, xptr, pt1, qt1, &yre, &yim);
+              control(it, n1, i1, n1p, i1p, stridei1, stridei1p, xptr, pt1, qt1, &yre, &yim);
               // Oscillator 1
-              control(it, n2, i2, i2p, stridei2, stridei2p, xptr, pt2, qt2, &yre, &yim);
+              control(it, n2, i2, n2p, i2p, stridei2, stridei2p, xptr, pt2, qt2, &yre, &yim);
               
               /* --- Update --- */
               yptr[2*it]   = yre;
@@ -1906,11 +1980,21 @@ int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
   int stridei1p = TensorGetIndex(n0,n1,n2, 0,0,0,0,1,0);
   int stridei2p = TensorGetIndex(n0,n1,n2, 0,0,0,0,0,1);
 
-   /* Iterate over indices of output vector y */
+  /* Switch for Lindblad vs Schroedinger solver */
+  int n0p = n0;
+  int n1p = n1;
+  int n2p = n2;
+  if (shellctx->lindbladtype == LindbladType::NONE) { // Schroedinger
+    n0p = 1; // Cut down so that below loop has i0p=0 and i1p=0/
+    n1p = 1;
+    n2p = 1;
+  }
+
+  /* Iterate over indices of output vector y */
   int it = 0;
-  for (int i0p = 0; i0p < n0; i0p++)  {
-    for (int i1p = 0; i1p < n1; i1p++)  {
-      for (int i2p = 0; i2p < n2; i2p++)  {
+  for (int i0p = 0; i0p < n0p; i0p++)  {
+    for (int i1p = 0; i1p < n1p; i1p++)  {
+      for (int i2p = 0; i2p < n2p; i2p++)  {
         for (int i0 = 0; i0 < n0; i0++)  {
           for (int i1 = 0; i1 < n1; i1++)  {
             for (int i2 = 0; i2 < n2; i2++)  {
@@ -1924,42 +2008,50 @@ int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
               double hd  = H_detune(detuning_freq0, detuning_freq1, detuning_freq2, i0, i1, i2)
                          + H_selfkerr(xi0, xi1, xi2, i0, i1, i2)
                          + H_crosskerr(xi01, xi02, xi12, i0, i1, i2);
-              double hdp = H_detune(detuning_freq0, detuning_freq1, detuning_freq2, i0p, i1p, i2p)
-                         + H_selfkerr(xi0, xi1, xi2, i0p, i1p, i2p)
-                         + H_crosskerr(xi01, xi02, xi12, i0p, i1p, i2p);
+              double hdp = 0.0;
+              if (shellctx->lindbladtype != LindbladType::NONE) {
+                hdp = H_detune(detuning_freq0, detuning_freq1, detuning_freq2, i0p, i1p, i2p)
+                    + H_selfkerr(xi0, xi1, xi2, i0p, i1p, i2p)
+                    + H_crosskerr(xi01, xi02, xi12, i0p, i1p, i2p);
+              }
               double yre = (-hd + hdp ) * xim;
               double yim = ( hd - hdp ) * xre;
+
               // Decay l1^T, diagonal part: xout += l1diag xin
               // Dephasing l2^T: xout += l2(ik, ikp) xin
-              double l1diag = L1diag(decay0, decay1, decay2, i0, i1, i2, i0p, i1p, i2p);
-              double l2 = L2(dephase0, dephase1, dephase2, i0, i1, i2, i0p, i1p, i2p);
-              yre += (l2 + l1diag) * xre;
-              yim += (l2 + l1diag) * xim;
+              if (shellctx->lindbladtype != LindbladType::NONE) {
+                double l1diag = L1diag(decay0, decay1, decay2, i0, i1, i2, i0p, i1p, i2p);
+                double l2 = L2(dephase0, dephase1, dephase2, i0, i1, i2, i0p, i1p, i2p);
+                yre += (l2 + l1diag) * xre;
+                yim += (l2 + l1diag) * xim;
+              }
 
               /* --- Offdiagonal coupling term J_kl --- */
               // oscillator 0<->1
-              Jkl_coupling_T(it, n0, n1, i0, i0p, i1, i1p, stridei0, stridei0p, stridei1, stridei1p, xptr, J01, cos01, sin01, &yre, &yim);
+              Jkl_coupling_T(it, n0, n1, n0p, n1p, i0, i0p, i1, i1p, stridei0, stridei0p, stridei1, stridei1p, xptr, J01, cos01, sin01, &yre, &yim);
               // oscillator 0<->2
-              Jkl_coupling_T(it, n0, n2, i0, i0p, i2, i2p, stridei0, stridei0p, stridei2, stridei2p, xptr, J02, cos02, sin02, &yre, &yim);
+              Jkl_coupling_T(it, n0, n2, n0p, n2p, i0, i0p, i2, i2p, stridei0, stridei0p, stridei2, stridei2p, xptr, J02, cos02, sin02, &yre, &yim);
               // oscillator 1<->2
-              Jkl_coupling_T(it, n1, n2, i1, i1p, i2, i2p, stridei1, stridei1p, stridei2, stridei2p, xptr, J12, cos12, sin12, &yre, &yim);
+              Jkl_coupling_T(it, n1, n2, n1p, n2p, i1, i1p, i2, i2p, stridei1, stridei1p, stridei2, stridei2p, xptr, J12, cos12, sin12, &yre, &yim);
               
 
               /* --- Offdiagonal part of decay L1^T */
-              // Oscillators 0
-              L1decay_T(it, n0, i0, i0p, stridei0, stridei0p, xptr, decay0, &yre, &yim);
-              // Oscillator 1
-              L1decay_T(it, n1, i1, i1p, stridei1, stridei1p, xptr, decay1, &yre, &yim);
-             // Oscillator 2
-              L1decay_T(it, n2, i2, i2p, stridei2, stridei2p, xptr, decay2, &yre, &yim);
+              if (shellctx->lindbladtype != LindbladType::NONE) {
+                // Oscillators 0
+                L1decay_T(it, n0, i0, i0p, stridei0, stridei0p, xptr, decay0, &yre, &yim);
+                // Oscillator 1
+                L1decay_T(it, n1, i1, i1p, stridei1, stridei1p, xptr, decay1, &yre, &yim);
+                // Oscillator 2
+                L1decay_T(it, n2, i2, i2p, stridei2, stridei2p, xptr, decay2, &yre, &yim);
+              }
 
               /* --- Control hamiltonian  --- */
               // Oscillator 0
-              control_T(it, n0, i0, i0p, stridei0, stridei0p, xptr, pt0, qt0, &yre, &yim);
+              control_T(it, n0, i0, n0p, i0p, stridei0, stridei0p, xptr, pt0, qt0, &yre, &yim);
               // Oscillator 1
-              control_T(it, n1, i1, i1p, stridei1, stridei1p, xptr, pt1, qt1, &yre, &yim);
+              control_T(it, n1, i1, n1p, i1p, stridei1, stridei1p, xptr, pt1, qt1, &yre, &yim);
               // Oscillator 2
-              control_T(it, n2, i2, i2p, stridei2, stridei2p, xptr, pt2, qt2, &yre, &yim);
+              control_T(it, n2, i2, n2p, i2p, stridei2, stridei2p, xptr, pt2, qt2, &yre, &yim);
 
               /* Update */
               yptr[2*it]   = yre;
@@ -2069,12 +2161,24 @@ int myMatMult_matfree(Mat RHS, Vec x, Vec y){
   int stridei2p = TensorGetIndex(n0,n1,n2,n3, 0,0,0,0,0,0,1,0);
   int stridei3p = TensorGetIndex(n0,n1,n2,n3, 0,0,0,0,0,0,0,1);
 
-   /* Iterate over indices of output vector y */
+  /* Switch for Lindblad vs Schroedinger solver */
+  int n0p = n0;
+  int n1p = n1;
+  int n2p = n2;
+  int n3p = n3;
+  if (shellctx->lindbladtype == LindbladType::NONE) { // Schroedinger
+    n0p = 1; // Cut down so that below loop has i0p=0 and i1p=0/
+    n1p = 1;
+    n2p = 1;
+    n3p = 1;
+  }
+
+  /* Iterate over indices of output vector y */
   int it = 0;
-  for (int i0p = 0; i0p < n0; i0p++)  {
-    for (int i1p = 0; i1p < n1; i1p++)  {
-      for (int i2p = 0; i2p < n2; i2p++)  {
-        for (int i3p = 0; i3p < n3; i3p++)  {
+  for (int i0p = 0; i0p < n0p; i0p++)  {
+    for (int i1p = 0; i1p < n1p; i1p++)  {
+      for (int i2p = 0; i2p < n2p; i2p++)  {
+        for (int i3p = 0; i3p < n3p; i3p++)  {
           for (int i0 = 0; i0 < n0; i0++)  {
             for (int i1 = 0; i1 < n1; i1++)  {
               for (int i2 = 0; i2 < n2; i2++)  {
@@ -2088,53 +2192,59 @@ int myMatMult_matfree(Mat RHS, Vec x, Vec y){
                   double hd  = H_detune(detuning_freq0, detuning_freq1, detuning_freq2, detuning_freq3, i0, i1, i2, i3)
                              + H_selfkerr(xi0, xi1, xi2, xi3, i0, i1, i2, i3)
                              + H_crosskerr(xi01, xi02, xi03, xi12, xi13, xi23, i0, i1, i2, i3);
-                  double hdp = H_detune(detuning_freq0, detuning_freq1, detuning_freq2, detuning_freq3, i0p, i1p, i2p, i3p)
-                             + H_selfkerr(xi0, xi1, xi2, xi3, i0p, i1p, i2p, i3p)
-                             + H_crosskerr(xi01, xi02, xi03, xi12, xi13, xi23, i0p, i1p, i2p, i3p);
+                  double hdp = 0.0;
+                  if (shellctx->lindbladtype != LindbladType::NONE) {
+                    hdp = H_detune(detuning_freq0, detuning_freq1, detuning_freq2, detuning_freq3, i0p, i1p, i2p, i3p)
+                          + H_selfkerr(xi0, xi1, xi2, xi3, i0p, i1p, i2p, i3p)
+                          + H_crosskerr(xi01, xi02, xi03, xi12, xi13, xi23, i0p, i1p, i2p, i3p);
+                  }
                   double yre = ( hd - hdp ) * xim;
                   double yim = (-hd + hdp ) * xre;
-                  // Decay l1, diagonal part: xout += l1diag xin
-                  // Dephasing l2: xout += l2(ik, ikp) xin
-                  double l1diag = L1diag(decay0, decay1, decay2, decay3, i0, i1, i2, i3, i0p, i1p, i2p, i3p);
-                  double l2 = L2(dephase0, dephase1, dephase2, dephase3, i0, i1, i2, i3, i0p, i1p, i2p, i3p);
-                  yre += (l2 + l1diag) * xre;
-                  yim += (l2 + l1diag) * xim;
 
+                  if (shellctx->lindbladtype != LindbladType::NONE) {
+                    // Decay l1, diagonal part: xout += l1diag xin
+                    // Dephasing l2: xout += l2(ik, ikp) xin
+                    double l1diag = L1diag(decay0, decay1, decay2, decay3, i0, i1, i2, i3, i0p, i1p, i2p, i3p);
+                    double l2 = L2(dephase0, dephase1, dephase2, dephase3, i0, i1, i2, i3, i0p, i1p, i2p, i3p);
+                    yre += (l2 + l1diag) * xre;
+                    yim += (l2 + l1diag) * xim;
+                  }
 
                   /* --- Offdiagonal: Jkl coupling  --- */
                   // oscillator 0<->1 
-                  Jkl_coupling(it, n0, n1, i0, i0p, i1, i1p, stridei0, stridei0p, stridei1, stridei1p, xptr, J01, cos01, sin01, &yre, &yim);
+                  Jkl_coupling(it, n0, n1, n0p, n1p, i0, i0p, i1, i1p, stridei0, stridei0p, stridei1, stridei1p, xptr, J01, cos01, sin01, &yre, &yim);
                   // oscillator 0<->2
-                  Jkl_coupling(it, n0, n2, i0, i0p, i2, i2p, stridei0, stridei0p, stridei2, stridei2p, xptr, J02, cos02, sin02, &yre, &yim);
+                  Jkl_coupling(it, n0, n2, n0p, n2p, i0, i0p, i2, i2p, stridei0, stridei0p, stridei2, stridei2p, xptr, J02, cos02, sin02, &yre, &yim);
                   // oscillator 0<->3
-                  Jkl_coupling(it, n0, n3, i0, i0p, i3, i3p, stridei0, stridei0p, stridei3, stridei3p, xptr, J03, cos03, sin03, &yre, &yim);
+                  Jkl_coupling(it, n0, n3, n0p, n3p, i0, i0p, i3, i3p, stridei0, stridei0p, stridei3, stridei3p, xptr, J03, cos03, sin03, &yre, &yim);
                   // oscillator 1<->2
-                  Jkl_coupling(it, n1, n2, i1, i1p, i2, i2p, stridei1, stridei1p, stridei2, stridei2p, xptr, J12, cos12, sin12, &yre, &yim);
+                  Jkl_coupling(it, n1, n2, n1p, n2p, i1, i1p, i2, i2p, stridei1, stridei1p, stridei2, stridei2p, xptr, J12, cos12, sin12, &yre, &yim);
                   // oscillator 1<->3
-                  Jkl_coupling(it, n1, n3, i1, i1p, i3, i3p, stridei1, stridei1p, stridei3, stridei3p, xptr, J13, cos13, sin13, &yre, &yim);
+                  Jkl_coupling(it, n1, n3, n1p, n3p, i1, i1p, i3, i3p, stridei1, stridei1p, stridei3, stridei3p, xptr, J13, cos13, sin13, &yre, &yim);
                   // oscillator 2<->3
-                  Jkl_coupling(it, n2, n3, i2, i2p, i3, i3p, stridei2, stridei2p, stridei3, stridei3p, xptr, J23, cos23, sin23, &yre, &yim);
+                  Jkl_coupling(it, n2, n3, n2p, n3p, i2, i2p, i3, i3p, stridei2, stridei2p, stridei3, stridei3p, xptr, J23, cos23, sin23, &yre, &yim);
 
                   /* --- Offdiagonal part of decay L1 */
-                  // Oscillators 0
-                  L1decay(it, n0, i0, i0p, stridei0, stridei0p, xptr, decay0, &yre, &yim);
-                  // Oscillator 1
-                  L1decay(it, n1, i1, i1p, stridei1, stridei1p, xptr, decay1, &yre, &yim);
-                  // Oscillator 2
-                  L1decay(it, n2, i2, i2p, stridei2, stridei2p, xptr, decay2, &yre, &yim);
-                  // Oscillator 3
-                  L1decay(it, n3, i3, i3p, stridei3, stridei3p, xptr, decay3, &yre, &yim);
+                  if (shellctx->lindbladtype != LindbladType::NONE) {
+                    // Oscillators 0
+                    L1decay(it, n0, i0, i0p, stridei0, stridei0p, xptr, decay0, &yre, &yim);
+                    // Oscillator 1
+                    L1decay(it, n1, i1, i1p, stridei1, stridei1p, xptr, decay1, &yre, &yim);
+                    // Oscillator 2
+                    L1decay(it, n2, i2, i2p, stridei2, stridei2p, xptr, decay2, &yre, &yim);
+                    // Oscillator 3
+                    L1decay(it, n3, i3, i3p, stridei3, stridei3p, xptr, decay3, &yre, &yim);
+                  }
               
-
                   /* --- Control hamiltonian ---  */
                   // Oscillator 0 
-                  control(it, n0, i0, i0p, stridei0, stridei0p, xptr, pt0, qt0, &yre, &yim);
+                  control(it, n0, i0, n0p, i0p, stridei0, stridei0p, xptr, pt0, qt0, &yre, &yim);
                   // Oscillator 1
-                  control(it, n1, i1, i1p, stridei1, stridei1p, xptr, pt1, qt1, &yre, &yim);
+                  control(it, n1, i1, n1p, i1p, stridei1, stridei1p, xptr, pt1, qt1, &yre, &yim);
                   // Oscillator 2
-                  control(it, n2, i2, i2p, stridei2, stridei2p, xptr, pt2, qt2, &yre, &yim);
+                  control(it, n2, i2, n2p, i2p, stridei2, stridei2p, xptr, pt2, qt2, &yre, &yim);
                   // Oscillator 2
-                  control(it, n3, i3, i3p, stridei3, stridei3p, xptr, pt3, qt3, &yre, &yim);
+                  control(it, n3, i3, n3p, i3p, stridei3, stridei3p, xptr, pt3, qt3, &yre, &yim);
               
                   /* --- Update --- */
                   yptr[2*it]   = yre;
@@ -2245,13 +2355,25 @@ int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
   int stridei2p = TensorGetIndex(n0,n1,n2,n3, 0,0,0,0,0,0,1,0);
   int stridei3p = TensorGetIndex(n0,n1,n2,n3, 0,0,0,0,0,0,0,1);
 
+  /* Switch for Lindblad vs Schroedinger solver */
+  int n0p = n0;
+  int n1p = n1;
+  int n2p = n2;
+  int n3p = n3;
+  if (shellctx->lindbladtype == LindbladType::NONE) { // Schroedinger
+    n0p = 1; // Cut down so that below loop has i0p=0 and i1p=0/
+    n1p = 1;
+    n2p = 1;
+    n3p = 1;
+  }
+
 
    /* Iterate over indices of output vector y */
   int it = 0;
-  for (int i0p = 0; i0p < n0; i0p++)  {
-    for (int i1p = 0; i1p < n1; i1p++)  {
-      for (int i2p = 0; i2p < n2; i2p++)  {
-        for (int i3p = 0; i3p < n3; i3p++)  {
+  for (int i0p = 0; i0p < n0p; i0p++)  {
+    for (int i1p = 0; i1p < n1p; i1p++)  {
+      for (int i2p = 0; i2p < n2p; i2p++)  {
+        for (int i3p = 0; i3p < n3p; i3p++)  {
           for (int i0 = 0; i0 < n0; i0++)  {
             for (int i1 = 0; i1 < n1; i1++)  {
               for (int i2 = 0; i2 < n2; i2++)  {
@@ -2265,52 +2387,60 @@ int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
                   double hd  = H_detune(detuning_freq0, detuning_freq1, detuning_freq2, detuning_freq3, i0, i1, i2, i3)
                              + H_selfkerr(xi0, xi1, xi2, xi3, i0, i1, i2, i3)
                              + H_crosskerr(xi01, xi02, xi03, xi12, xi13, xi23, i0, i1, i2, i3);
-                  double hdp = H_detune(detuning_freq0, detuning_freq1, detuning_freq2, detuning_freq3, i0p, i1p, i2p, i3p)
+                  double hdp = 0.0;
+                  if (shellctx->lindbladtype != LindbladType::NONE) {
+                    hdp = H_detune(detuning_freq0, detuning_freq1, detuning_freq2, detuning_freq3, i0p, i1p, i2p, i3p)
                              + H_selfkerr(xi0, xi1, xi2, xi3, i0p, i1p, i2p, i3p)
                              + H_crosskerr(xi01, xi02, xi03, xi12, xi13, xi23, i0p, i1p, i2p, i3p);
+                  }
                   double yre = (-hd + hdp ) * xim;
                   double yim = ( hd - hdp ) * xre;
+
                   // Decay l1^T, diagonal part: xout += l1diag xin
                   // Dephasing l2^T: xout += l2(ik, ikp) xin
-                  double l1diag = L1diag(decay0, decay1, decay2, decay3, i0, i1, i2, i3, i0p, i1p, i2p, i3p);
-                  double l2 = L2(dephase0, dephase1, dephase2, dephase3, i0, i1, i2, i3, i0p, i1p, i2p, i3p);
-                  yre += (l2 + l1diag) * xre;
-                  yim += (l2 + l1diag) * xim;
+                  if (shellctx->lindbladtype != LindbladType::NONE) {
+                    double l1diag = L1diag(decay0, decay1, decay2, decay3, i0, i1, i2, i3, i0p, i1p, i2p, i3p);
+                    double l2 = L2(dephase0, dephase1, dephase2, dephase3, i0, i1, i2, i3, i0p, i1p, i2p, i3p);
+                    yre += (l2 + l1diag) * xre;
+                    yim += (l2 + l1diag) * xim;
+                  }
 
                   /* --- Offdiagonal coupling term J_kl --- */
                   // oscillator 0<->1
-                  Jkl_coupling_T(it, n0, n1, i0, i0p, i1, i1p, stridei0, stridei0p, stridei1, stridei1p, xptr, J01, cos01, sin01, &yre, &yim);
+                  Jkl_coupling_T(it, n0, n1, n0p, n1p, i0, i0p, i1, i1p, stridei0, stridei0p, stridei1, stridei1p, xptr, J01, cos01, sin01, &yre, &yim);
                   // oscillator 0<->2
-                  Jkl_coupling_T(it, n0, n2, i0, i0p, i2, i2p, stridei0, stridei0p, stridei2, stridei2p, xptr, J02, cos02, sin02, &yre, &yim);
+                  Jkl_coupling_T(it, n0, n2, n0p, n2p, i0, i0p, i2, i2p, stridei0, stridei0p, stridei2, stridei2p, xptr, J02, cos02, sin02, &yre, &yim);
                   // oscillator 0<->3
-                  Jkl_coupling_T(it, n0, n3, i0, i0p, i3, i3p, stridei0, stridei0p, stridei3, stridei3p, xptr, J03, cos03, sin03, &yre, &yim);
+                  Jkl_coupling_T(it, n0, n3, n0p, n3p, i0, i0p, i3, i3p, stridei0, stridei0p, stridei3, stridei3p, xptr, J03, cos03, sin03, &yre, &yim);
                   // oscillator 1<->2
-                  Jkl_coupling_T(it, n1, n2, i1, i1p, i2, i2p, stridei1, stridei1p, stridei2, stridei2p, xptr, J12, cos12, sin12, &yre, &yim);
+                  Jkl_coupling_T(it, n1, n2, n1p, n2p, i1, i1p, i2, i2p, stridei1, stridei1p, stridei2, stridei2p, xptr, J12, cos12, sin12, &yre, &yim);
                   // oscillator 1<->3
-                  Jkl_coupling_T(it, n1, n3, i1, i1p, i3, i3p, stridei1, stridei1p, stridei3, stridei3p, xptr, J13, cos13, sin13, &yre, &yim);
+                  Jkl_coupling_T(it, n1, n3, n1p, n3p, i1, i1p, i3, i3p, stridei1, stridei1p, stridei3, stridei3p, xptr, J13, cos13, sin13, &yre, &yim);
                   // oscillator 2<->3
-                  Jkl_coupling_T(it, n2, n3, i2, i2p, i3, i3p, stridei2, stridei2p, stridei3, stridei3p, xptr, J23, cos23, sin23, &yre, &yim);
+                  Jkl_coupling_T(it, n2, n3, n2p, n3p, i2, i2p, i3, i3p, stridei2, stridei2p, stridei3, stridei3p, xptr, J23, cos23, sin23, &yre, &yim);
               
 
                   /* --- Offdiagonal part of decay L1^T */
-                  // Oscillators 0
-                  L1decay_T(it, n0, i0, i0p, stridei0, stridei0p, xptr, decay0, &yre, &yim);
-                  // Oscillator 1
-                  L1decay_T(it, n1, i1, i1p, stridei1, stridei1p, xptr, decay1, &yre, &yim);
-                  // Oscillator 2
-                  L1decay_T(it, n2, i2, i2p, stridei2, stridei2p, xptr, decay2, &yre, &yim);
-                  // Oscillator 3
-                  L1decay_T(it, n3, i3, i3p, stridei3, stridei3p, xptr, decay3, &yre, &yim);
+                  if (shellctx->lindbladtype != LindbladType::NONE) {
+                    // Oscillators 0
+                    L1decay_T(it, n0, i0, i0p, stridei0, stridei0p, xptr, decay0, &yre, &yim);
+                    // Oscillator 1
+                    L1decay_T(it, n1, i1, i1p, stridei1, stridei1p, xptr, decay1, &yre, &yim);
+                    // Oscillator 2
+                    L1decay_T(it, n2, i2, i2p, stridei2, stridei2p, xptr, decay2, &yre, &yim);
+                    // Oscillator 3
+                    L1decay_T(it, n3, i3, i3p, stridei3, stridei3p, xptr, decay3, &yre, &yim);
+                  }
 
                   /* --- Control hamiltonian  --- */
                   // Oscillator 0
-                  control_T(it, n0, i0, i0p, stridei0, stridei0p, xptr, pt0, qt0, &yre, &yim);
+                  control_T(it, n0, i0, n0p, i0p, stridei0, stridei0p, xptr, pt0, qt0, &yre, &yim);
                   // Oscillator 1
-                  control_T(it, n1, i1, i1p, stridei1, stridei1p, xptr, pt1, qt1, &yre, &yim);
+                  control_T(it, n1, i1, n1p, i1p, stridei1, stridei1p, xptr, pt1, qt1, &yre, &yim);
                   // Oscillator 2
-                  control_T(it, n2, i2, i2p, stridei2, stridei2p, xptr, pt2, qt2, &yre, &yim);
+                  control_T(it, n2, i2, n2p, i2p, stridei2, stridei2p, xptr, pt2, qt2, &yre, &yim);
                   // Oscillator 3
-                  control_T(it, n3, i3, i3p, stridei3, stridei3p, xptr, pt3, qt3, &yre, &yim);
+                  control_T(it, n3, i3, n3p, i3p, stridei3, stridei3p, xptr, pt3, qt3, &yre, &yim);
 
                   /* Update */
                   yptr[2*it]   = yre;
@@ -2451,13 +2581,27 @@ int myMatMult_matfree(Mat RHS, Vec x, Vec y){
   int stridei3p = TensorGetIndex(n0,n1,n2,n3,n4, 0,0,0,0,0,0,0,0,1,0);
   int stridei4p = TensorGetIndex(n0,n1,n2,n3,n4, 0,0,0,0,0,0,0,0,0,1);
 
-   /* Iterate over indices of output vector y */
+  /* Switch for Lindblad vs Schroedinger solver */
+  int n0p = n0;
+  int n1p = n1;
+  int n2p = n2;
+  int n3p = n3;
+  int n4p = n4;
+  if (shellctx->lindbladtype == LindbladType::NONE) { // Schroedinger
+    n0p = 1; // Cut down so that below loop has i0p=0 and i1p=0/
+    n1p = 1;
+    n2p = 1;
+    n3p = 1;
+    n4p = 1;
+  }
+
+  /* Iterate over indices of output vector y */
   int it = 0;
-  for (int i0p = 0; i0p < n0; i0p++)  {
-    for (int i1p = 0; i1p < n1; i1p++)  {
-      for (int i2p = 0; i2p < n2; i2p++)  {
-        for (int i3p = 0; i3p < n3; i3p++)  {
-          for (int i4p = 0; i4p < n4; i4p++)  {
+  for (int i0p = 0; i0p < n0p; i0p++)  {
+    for (int i1p = 0; i1p < n1p; i1p++)  {
+      for (int i2p = 0; i2p < n2p; i2p++)  {
+        for (int i3p = 0; i3p < n3p; i3p++)  {
+          for (int i4p = 0; i4p < n4p; i4p++)  {
             for (int i0 = 0; i0 < n0; i0++)  {
               for (int i1 = 0; i1 < n1; i1++)  {
                 for (int i2 = 0; i2 < n2; i2++)  {
@@ -2472,65 +2616,71 @@ int myMatMult_matfree(Mat RHS, Vec x, Vec y){
                       double hd  = H_detune(detuning_freq0, detuning_freq1, detuning_freq2, detuning_freq3, detuning_freq4, i0, i1, i2, i3, i4)
                                  + H_selfkerr(xi0, xi1, xi2, xi3, xi4, i0, i1, i2, i3, i4)
                                  + H_crosskerr(xi01, xi02, xi03, xi04, xi12, xi13, xi14, xi23, xi24, xi34, i0, i1, i2, i3, i4);
-                      double hdp = H_detune(detuning_freq0, detuning_freq1, detuning_freq2, detuning_freq3, detuning_freq4, i0p, i1p, i2p, i3p, i4p)
+                      double hdp = 0.0;
+                      if (shellctx->lindbladtype != LindbladType::NONE) {
+                        hdp = H_detune(detuning_freq0, detuning_freq1, detuning_freq2, detuning_freq3, detuning_freq4, i0p, i1p, i2p, i3p, i4p)
                                  + H_selfkerr(xi0, xi1, xi2, xi3, xi4, i0p, i1p, i2p, i3p, i4p)
                                  + H_crosskerr(xi01, xi02, xi03, xi04, xi12, xi13, xi14, xi23, xi24, xi34, i0p, i1p, i2p, i3p, i4p);
+                      }
                       double yre = ( hd - hdp ) * xim;
                       double yim = (-hd + hdp ) * xre;
-                      // Decay l1, diagonal part: xout += l1diag xin
-                      // Dephasing l2: xout += l2(ik, ikp) xin
-                      double l1diag = L1diag(decay0, decay1, decay2, decay3, decay4, i0, i1, i2, i3, i4, i0p, i1p, i2p, i3p, i4p);
-                      double l2 = L2(dephase0, dephase1, dephase2, dephase3, dephase4, i0, i1, i2, i3, i4, i0p, i1p, i2p, i3p, i4p);
-                      yre += (l2 + l1diag) * xre;
-                      yim += (l2 + l1diag) * xim;
 
+                      if (shellctx->lindbladtype != LindbladType::NONE) {
+                        // Decay l1, diagonal part: xout += l1diag xin
+                        // Dephasing l2: xout += l2(ik, ikp) xin
+                        double l1diag = L1diag(decay0, decay1, decay2, decay3, decay4, i0, i1, i2, i3, i4, i0p, i1p, i2p, i3p, i4p);
+                        double l2 = L2(dephase0, dephase1, dephase2, dephase3, dephase4, i0, i1, i2, i3, i4, i0p, i1p, i2p, i3p, i4p);
+                        yre += (l2 + l1diag) * xre;
+                        yim += (l2 + l1diag) * xim;
+                      }
 
                       /* --- Offdiagonal: Jkl coupling  --- */
                       // oscillator 0<->1 
-                      Jkl_coupling(it, n0, n1, i0, i0p, i1, i1p, stridei0, stridei0p, stridei1, stridei1p, xptr, J01, cos01, sin01, &yre, &yim);
+                      Jkl_coupling(it, n0, n1, n0p, n1p, i0, i0p, i1, i1p, stridei0, stridei0p, stridei1, stridei1p, xptr, J01, cos01, sin01, &yre, &yim);
                       // oscillator 0<->2
-                      Jkl_coupling(it, n0, n2, i0, i0p, i2, i2p, stridei0, stridei0p, stridei2, stridei2p, xptr, J02, cos02, sin02, &yre, &yim);
+                      Jkl_coupling(it, n0, n2, n0p, n2p, i0, i0p, i2, i2p, stridei0, stridei0p, stridei2, stridei2p, xptr, J02, cos02, sin02, &yre, &yim);
                       // oscillator 0<->3
-                      Jkl_coupling(it, n0, n3, i0, i0p, i3, i3p, stridei0, stridei0p, stridei3, stridei3p, xptr, J03, cos03, sin03, &yre, &yim);
+                      Jkl_coupling(it, n0, n3, n0p, n3p, i0, i0p, i3, i3p, stridei0, stridei0p, stridei3, stridei3p, xptr, J03, cos03, sin03, &yre, &yim);
                       // oscillator 0<->4
-                      Jkl_coupling(it, n0, n4, i0, i0p, i4, i4p, stridei0, stridei0p, stridei4, stridei4p, xptr, J04, cos04, sin04, &yre, &yim);
+                      Jkl_coupling(it, n0, n4, n0p, n4p, i0, i0p, i4, i4p, stridei0, stridei0p, stridei4, stridei4p, xptr, J04, cos04, sin04, &yre, &yim);
                       // oscillator 1<->2
-                      Jkl_coupling(it, n1, n2, i1, i1p, i2, i2p, stridei1, stridei1p, stridei2, stridei2p, xptr, J12, cos12, sin12, &yre, &yim);
+                      Jkl_coupling(it, n1, n2, n1p, n2p, i1, i1p, i2, i2p, stridei1, stridei1p, stridei2, stridei2p, xptr, J12, cos12, sin12, &yre, &yim);
                       // oscillator 1<->3
-                      Jkl_coupling(it, n1, n3, i1, i1p, i3, i3p, stridei1, stridei1p, stridei3, stridei3p, xptr, J13, cos13, sin13, &yre, &yim);
+                      Jkl_coupling(it, n1, n3, n1p, n3p, i1, i1p, i3, i3p, stridei1, stridei1p, stridei3, stridei3p, xptr, J13, cos13, sin13, &yre, &yim);
                       // oscillator 1<->4
-                      Jkl_coupling(it, n1, n4, i1, i1p, i4, i4p, stridei1, stridei1p, stridei4, stridei4p, xptr, J14, cos14, sin14, &yre, &yim);
+                      Jkl_coupling(it, n1, n4, n1p, n4p, i1, i1p, i4, i4p, stridei1, stridei1p, stridei4, stridei4p, xptr, J14, cos14, sin14, &yre, &yim);
                       // oscillator 2<->3
-                      Jkl_coupling(it, n2, n3, i2, i2p, i3, i3p, stridei2, stridei2p, stridei3, stridei3p, xptr, J23, cos23, sin23, &yre, &yim);
+                      Jkl_coupling(it, n2, n3, n2p, n3p, i2, i2p, i3, i3p, stridei2, stridei2p, stridei3, stridei3p, xptr, J23, cos23, sin23, &yre, &yim);
                       // oscillator 2<->4
-                      Jkl_coupling(it, n2, n4, i2, i2p, i4, i4p, stridei2, stridei2p, stridei4, stridei4p, xptr, J24, cos24, sin24, &yre, &yim);
+                      Jkl_coupling(it, n2, n4, n2p, n4p, i2, i2p, i4, i4p, stridei2, stridei2p, stridei4, stridei4p, xptr, J24, cos24, sin24, &yre, &yim);
                       // oscillator 3<->4
-                      Jkl_coupling(it, n3, n4, i3, i3p, i4, i4p, stridei3, stridei3p, stridei4, stridei4p, xptr, J34, cos34, sin34, &yre, &yim);
+                      Jkl_coupling(it, n3, n4, n3p, n4p, i3, i3p, i4, i4p, stridei3, stridei3p, stridei4, stridei4p, xptr, J34, cos34, sin34, &yre, &yim);
 
                       /* --- Offdiagonal part of decay L1 */
-                      // Oscillator 0
-                      L1decay(it, n0, i0, i0p, stridei0, stridei0p, xptr, decay0, &yre, &yim);
-                      // Oscillator 1
-                      L1decay(it, n1, i1, i1p, stridei1, stridei1p, xptr, decay1, &yre, &yim);
-                      // Oscillator 2
-                      L1decay(it, n2, i2, i2p, stridei2, stridei2p, xptr, decay2, &yre, &yim);
-                      // Oscillator 3
-                      L1decay(it, n3, i3, i3p, stridei3, stridei3p, xptr, decay3, &yre, &yim);
-                      // Oscillator 4
-                      L1decay(it, n4, i4, i4p, stridei4, stridei4p, xptr, decay4, &yre, &yim);
-              
+                      if (shellctx->lindbladtype != LindbladType::NONE) {
+                        // Oscillator 0
+                        L1decay(it, n0, i0, i0p, stridei0, stridei0p, xptr, decay0, &yre, &yim);
+                        // Oscillator 1
+                        L1decay(it, n1, i1, i1p, stridei1, stridei1p, xptr, decay1, &yre, &yim);
+                        // Oscillator 2
+                        L1decay(it, n2, i2, i2p, stridei2, stridei2p, xptr, decay2, &yre, &yim);
+                        // Oscillator 3
+                        L1decay(it, n3, i3, i3p, stridei3, stridei3p, xptr, decay3, &yre, &yim);
+                        // Oscillator 4
+                        L1decay(it, n4, i4, i4p, stridei4, stridei4p, xptr, decay4, &yre, &yim);
+                      }
 
                       /* --- Control hamiltonian ---  */
                       // Oscillator 0 
-                      control(it, n0, i0, i0p, stridei0, stridei0p, xptr, pt0, qt0, &yre, &yim);
+                      control(it, n0, i0, n0p, i0p, stridei0, stridei0p, xptr, pt0, qt0, &yre, &yim);
                       // Oscillator 1
-                      control(it, n1, i1, i1p, stridei1, stridei1p, xptr, pt1, qt1, &yre, &yim);
+                      control(it, n1, i1, n1p, i1p, stridei1, stridei1p, xptr, pt1, qt1, &yre, &yim);
                       // Oscillator 2
-                      control(it, n2, i2, i2p, stridei2, stridei2p, xptr, pt2, qt2, &yre, &yim);
+                      control(it, n2, i2, n2p, i2p, stridei2, stridei2p, xptr, pt2, qt2, &yre, &yim);
                       // Oscillator 3
-                      control(it, n3, i3, i3p, stridei3, stridei3p, xptr, pt3, qt3, &yre, &yim);
+                      control(it, n3, i3, n3p, i3p, stridei3, stridei3p, xptr, pt3, qt3, &yre, &yim);
                       // Oscillator 4
-                      control(it, n4, i4, i4p, stridei4, stridei4p, xptr, pt4, qt4, &yre, &yim);
+                      control(it, n4, i4, n4p, i4p, stridei4, stridei4p, xptr, pt4, qt4, &yre, &yim);
               
                       /* --- Update --- */
                       yptr[2*it]   = yre;
@@ -2673,13 +2823,27 @@ int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
   int stridei3p = TensorGetIndex(n0,n1,n2,n3,n4, 0,0,0,0,0,0,0,0,1,0);
   int stridei4p = TensorGetIndex(n0,n1,n2,n3,n4, 0,0,0,0,0,0,0,0,0,1);
 
-   /* Iterate over indices of output vector y */
+  /* Switch for Lindblad vs Schroedinger solver */
+  int n0p = n0;
+  int n1p = n1;
+  int n2p = n2;
+  int n3p = n3;
+  int n4p = n4;
+  if (shellctx->lindbladtype == LindbladType::NONE) { // Schroedinger
+    n0p = 1; // Cut down so that below loop has i0p=0 and i1p=0/
+    n1p = 1;
+    n2p = 1;
+    n3p = 1;
+    n4p = 1;
+  }
+
+  /* Iterate over indices of output vector y */
   int it = 0;
-  for (int i0p = 0; i0p < n0; i0p++)  {
-    for (int i1p = 0; i1p < n1; i1p++)  {
-      for (int i2p = 0; i2p < n2; i2p++)  {
-        for (int i3p = 0; i3p < n3; i3p++)  {
-          for (int i4p = 0; i4p < n4; i4p++)  {
+  for (int i0p = 0; i0p < n0p; i0p++)  {
+    for (int i1p = 0; i1p < n1p; i1p++)  {
+      for (int i2p = 0; i2p < n2p; i2p++)  {
+        for (int i3p = 0; i3p < n3p; i3p++)  {
+          for (int i4p = 0; i4p < n4p; i4p++)  {
             for (int i0 = 0; i0 < n0; i0++)  {
               for (int i1 = 0; i1 < n1; i1++)  {
                 for (int i2 = 0; i2 < n2; i2++)  {
@@ -2695,63 +2859,71 @@ int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
                       double hd  = H_detune(detuning_freq0, detuning_freq1, detuning_freq2, detuning_freq3, detuning_freq4, i0, i1, i2, i3, i4)
                                  + H_selfkerr(xi0, xi1, xi2, xi3, xi4, i0, i1, i2, i3, i4)
                                  + H_crosskerr(xi01, xi02, xi03, xi04, xi12, xi13, xi14, xi23, xi24, xi34,i0, i1, i2, i3, i4);
-                      double hdp = H_detune(detuning_freq0, detuning_freq1, detuning_freq2, detuning_freq3, detuning_freq4, i0p, i1p, i2p, i3p, i4p)
+                      double hdp = 0.0;
+                      if (shellctx->lindbladtype != LindbladType::NONE) { 
+                        hdp = H_detune(detuning_freq0, detuning_freq1, detuning_freq2, detuning_freq3, detuning_freq4, i0p, i1p, i2p, i3p, i4p)
                                  + H_selfkerr(xi0, xi1, xi2, xi3, xi4, i0p, i1p, i2p, i3p, i4p)
                                  + H_crosskerr(xi01, xi02, xi03, xi04, xi12, xi13, xi14, xi23, xi24, xi34, i0p, i1p, i2p, i3p, i4p);
+                      }
                       double yre = (-hd + hdp ) * xim;
                       double yim = ( hd - hdp ) * xre;
+
                       // Decay l1^T, diagonal part: xout += l1diag xin
                       // Dephasing l2^T: xout += l2(ik, ikp) xin
-                      double l1diag = L1diag(decay0, decay1, decay2, decay3, decay4, i0, i1, i2, i3, i4, i0p, i1p, i2p, i3p, i4p);
-                      double l2 = L2(dephase0, dephase1, dephase2, dephase3, dephase4, i0, i1, i2, i3, i4, i0p, i1p, i2p, i3p, i4p);
-                      yre += (l2 + l1diag) * xre;
-                      yim += (l2 + l1diag) * xim;
+                      if (shellctx->lindbladtype != LindbladType::NONE) {
+                        double l1diag = L1diag(decay0, decay1, decay2, decay3, decay4, i0, i1, i2, i3, i4, i0p, i1p, i2p, i3p, i4p);
+                        double l2 = L2(dephase0, dephase1, dephase2, dephase3, dephase4, i0, i1, i2, i3, i4, i0p, i1p, i2p, i3p, i4p);
+                        yre += (l2 + l1diag) * xre;
+                        yim += (l2 + l1diag) * xim;
+                      }
 
                       /* --- Offdiagonal coupling term J_kl --- */
                       // oscillator 0<->1
-                      Jkl_coupling_T(it, n0, n1, i0, i0p, i1, i1p, stridei0, stridei0p, stridei1, stridei1p, xptr, J01, cos01, sin01, &yre, &yim);
+                      Jkl_coupling_T(it, n0, n1, n0p, n1p, i0, i0p, i1, i1p, stridei0, stridei0p, stridei1, stridei1p, xptr, J01, cos01, sin01, &yre, &yim);
                       // oscillator 0<->2
-                      Jkl_coupling_T(it, n0, n2, i0, i0p, i2, i2p, stridei0, stridei0p, stridei2, stridei2p, xptr, J02, cos02, sin02, &yre, &yim);
+                      Jkl_coupling_T(it, n0, n2, n0p, n2p, i0, i0p, i2, i2p, stridei0, stridei0p, stridei2, stridei2p, xptr, J02, cos02, sin02, &yre, &yim);
                       // oscillator 0<->3
-                      Jkl_coupling_T(it, n0, n3, i0, i0p, i3, i3p, stridei0, stridei0p, stridei3, stridei3p, xptr, J03, cos03, sin03, &yre, &yim);
+                      Jkl_coupling_T(it, n0, n3, n0p, n3p, i0, i0p, i3, i3p, stridei0, stridei0p, stridei3, stridei3p, xptr, J03, cos03, sin03, &yre, &yim);
                       // oscillator 0<->4
-                      Jkl_coupling_T(it, n0, n4, i0, i0p, i4, i4p, stridei0, stridei0p, stridei4, stridei4p, xptr, J04, cos04, sin04, &yre, &yim);
+                      Jkl_coupling_T(it, n0, n4, n0p, n4p, i0, i0p, i4, i4p, stridei0, stridei0p, stridei4, stridei4p, xptr, J04, cos04, sin04, &yre, &yim);
                       // oscillator 1<->2
-                      Jkl_coupling_T(it, n1, n2, i1, i1p, i2, i2p, stridei1, stridei1p, stridei2, stridei2p, xptr, J12, cos12, sin12, &yre, &yim);
+                      Jkl_coupling_T(it, n1, n2, n1p, n2p, i1, i1p, i2, i2p, stridei1, stridei1p, stridei2, stridei2p, xptr, J12, cos12, sin12, &yre, &yim);
                       // oscillator 1<->3
-                      Jkl_coupling_T(it, n1, n3, i1, i1p, i3, i3p, stridei1, stridei1p, stridei3, stridei3p, xptr, J13, cos13, sin13, &yre, &yim);
+                      Jkl_coupling_T(it, n1, n3, n1p, n3p, i1, i1p, i3, i3p, stridei1, stridei1p, stridei3, stridei3p, xptr, J13, cos13, sin13, &yre, &yim);
                       // oscillator 1<->4
-                      Jkl_coupling_T(it, n1, n4, i1, i1p, i4, i4p, stridei1, stridei1p, stridei4, stridei4p, xptr, J14, cos14, sin14, &yre, &yim);
+                      Jkl_coupling_T(it, n1, n4, n1p, n4p, i1, i1p, i4, i4p, stridei1, stridei1p, stridei4, stridei4p, xptr, J14, cos14, sin14, &yre, &yim);
                       // oscillator 2<->3
-                      Jkl_coupling_T(it, n2, n3, i2, i2p, i3, i3p, stridei2, stridei2p, stridei3, stridei3p, xptr, J23, cos23, sin23, &yre, &yim);
+                      Jkl_coupling_T(it, n2, n3, n2p, n3p, i2, i2p, i3, i3p, stridei2, stridei2p, stridei3, stridei3p, xptr, J23, cos23, sin23, &yre, &yim);
                       // oscillator 2<->4
-                      Jkl_coupling_T(it, n2, n4, i2, i2p, i4, i4p, stridei2, stridei2p, stridei4, stridei4p, xptr, J24, cos24, sin24, &yre, &yim);
+                      Jkl_coupling_T(it, n2, n4, n2p, n4p, i2, i2p, i4, i4p, stridei2, stridei2p, stridei4, stridei4p, xptr, J24, cos24, sin24, &yre, &yim);
                       // oscillator 3<->4
-                      Jkl_coupling_T(it, n3, n4, i3, i3p, i4, i4p, stridei3, stridei3p, stridei4, stridei4p, xptr, J34, cos34, sin34, &yre, &yim);
+                      Jkl_coupling_T(it, n3, n4, n3p, n4p, i3, i3p, i4, i4p, stridei3, stridei3p, stridei4, stridei4p, xptr, J34, cos34, sin34, &yre, &yim);
               
                       /* --- Offdiagonal part of decay L1^T */
-                      // Oscillators 0
-                      L1decay_T(it, n0, i0, i0p, stridei0, stridei0p, xptr, decay0, &yre, &yim);
-                      // Oscillator 1
-                      L1decay_T(it, n1, i1, i1p, stridei1, stridei1p, xptr, decay1, &yre, &yim);
-                      // Oscillator 2
-                      L1decay_T(it, n2, i2, i2p, stridei2, stridei2p, xptr, decay2, &yre, &yim);
-                      // Oscillator 3
-                      L1decay_T(it, n3, i3, i3p, stridei3, stridei3p, xptr, decay3, &yre, &yim);
-                      // Oscillator 4
-                      L1decay_T(it, n4, i4, i4p, stridei4, stridei4p, xptr, decay4, &yre, &yim);
+                      if (shellctx->lindbladtype != LindbladType::NONE) { 
+                        // Oscillators 0
+                        L1decay_T(it, n0, i0, i0p, stridei0, stridei0p, xptr, decay0, &yre, &yim);
+                        // Oscillator 1
+                        L1decay_T(it, n1, i1, i1p, stridei1, stridei1p, xptr, decay1, &yre, &yim);
+                        // Oscillator 2
+                        L1decay_T(it, n2, i2, i2p, stridei2, stridei2p, xptr, decay2, &yre, &yim);
+                        // Oscillator 3
+                        L1decay_T(it, n3, i3, i3p, stridei3, stridei3p, xptr, decay3, &yre, &yim);
+                        // Oscillator 4
+                        L1decay_T(it, n4, i4, i4p, stridei4, stridei4p, xptr, decay4, &yre, &yim);
+                      }
 
                       /* --- Control hamiltonian  --- */
                       // Oscillator 0
-                      control_T(it, n0, i0, i0p, stridei0, stridei0p, xptr, pt0, qt0, &yre, &yim);
+                      control_T(it, n0, n0p, i0, i0p, stridei0, stridei0p, xptr, pt0, qt0, &yre, &yim);
                       // Oscillator 1
-                      control_T(it, n1, i1, i1p, stridei1, stridei1p, xptr, pt1, qt1, &yre, &yim);
+                      control_T(it, n1, n1p, i1, i1p, stridei1, stridei1p, xptr, pt1, qt1, &yre, &yim);
                       // Oscillator 2
-                      control_T(it, n2, i2, i2p, stridei2, stridei2p, xptr, pt2, qt2, &yre, &yim);
+                      control_T(it, n2, n2p, i2, i2p, stridei2, stridei2p, xptr, pt2, qt2, &yre, &yim);
                       // Oscillator 3
-                      control_T(it, n3, i3, i3p, stridei3, stridei3p, xptr, pt3, qt3, &yre, &yim);
+                      control_T(it, n3, n3p, i3, i3p, stridei3, stridei3p, xptr, pt3, qt3, &yre, &yim);
                       // Oscillator 4
-                      control_T(it, n4, i4, i4p, stridei4, stridei4p, xptr, pt4, qt4, &yre, &yim);
+                      control_T(it, n4, n4p, i4, i4p, stridei4, stridei4p, xptr, pt4, qt4, &yre, &yim);
 
                       /* Update */
                       yptr[2*it]   = yre;

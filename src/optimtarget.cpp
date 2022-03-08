@@ -313,10 +313,10 @@ void OptimTarget::evalJ_diff(const Vec state, Vec statebar, const double J_re_ba
       // iterate over diagonal elements 
       for (int i=0; i<dimsq; i++){
         lambdai = fabs(i - purestateID);
+        VecGetOwnershipRange(state, &ilo, &ihi);
         if (lindbladtype != LindbladType::NONE) {
           diagID = getIndexReal(getVecID(i,i,dimsq));
           val = lambdai * J_re_bar;
-          VecGetOwnershipRange(state, &ilo, &ihi);
           if (ilo <= diagID && diagID < ihi) VecSetValue(statebar, diagID, val, ADD_VALUES);
         } else {
           diagID_re = getIndexReal(i);
