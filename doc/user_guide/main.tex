@@ -346,7 +346,12 @@ B^{kj} := \frac 12 \left(\bs{e}_k\bs{e}_k^\dagger + \bs{e}_j\bs{e}_j^\dagger\rig
       \end{cases} 
 \end{align}
 for all $k,j\in\{0,\dots, N-1\}$.
-These density matrices represent $N^2$ pure, linear independent states that span the space of all density matrices in this Hilberspace. 
+These density matrices represent $N^2$ pure, linear independent states that span the space of all density matrices in this Hilberspace. For closed systems using the state vector representation (Schroedinger's solver), the basis states are the unit vector in $\C^{N}$, hence $n_{init} = N$ initial states $\boldsymbol{e}_i \in \R^N, i=0,\dots N-1$. 
+
+When composite systems of multiple subsystems are considered, the user can provide a consecutive list of integer ID's to determine in which of the subsystems the basis states should be spanned. Other subsystems will then be initialized in the ground state.
+
+\textit{Note:} The basis states are spanned in the \textit{essential dimensions} of the system, if applicable. 
+
 In order to uniquely identify the different initial conditions in the Quandary code and in the output files, a
 unique index $i \in \{0,\dots, N^2-1\}$ is assigned to each basis state with 
 \begin{align*}
@@ -355,11 +360,17 @@ unique index $i \in \{0,\dots, N^2-1\}$ is assigned to each basis state with
 \end{align*}
 (columnwise vectorization of a matrix of matrices $\left\{B^{kj}\right\}_{kj}$). 
 
-For closed systems using the state vector representation (Schroedinger's solver), the basis states are the unit vector in $\C^{N}$, hence $n_{init} = N$ initial states $\boldsymbol{e}_i \in \R^N, i=0,\dots N-1$. 
+
 
 \subsubsection{Diagonal density matrices (aka all pure states)}
 
 For density matrices (Lindblad solver), one can choose to propagate only those basis states that correspond to pure states of the form $\boldsymbol{e}_k\boldsymbol{e}_k^\dagger$, i.e. propagating only the $B^{kk}$ in \eqref{eq:basismats} for $k=0,\dots, N-1$, and then $n_{init}=N$. For the Schroedinger solver, this is equivalent to all basis states. 
+
+Again, when composite systems of multiple subsystems are considered, the user can provide a consecutive list of integer ID's to determine in which of the subsystems the diagonal states should be spanned. Other subsystems will then be initialized in the ground state.
+
+\textit{Note:} The diagonal states are spanned in the \textit{essential dimensions} of the system, if applicable. 
+
+
 
 \subsubsection{Ensemble state for pure-state optimization}\label{sec:ensemblestate}
 \textit{Only valid for the density matrix version, solving Lindblad's master equation.}
@@ -389,11 +400,15 @@ When considering gate optimization, it has been shown in \cite{goerz2014optimal}
 \end{align}
 where $I_N\in R^{N\times N}$ is the identity matrix. They are readily implemented in Quandary. Note that it is important to choose the weights $\beta_i, i=1,2,3$ in the objective function appropriately to achieve fast convergence. 
 
+Note: The three initial states are spanned in the \textit{full} dimension of the system, including non-essential levels. The theory for gate optimization with three initial states had been developed for considering \textit{only} essential levels (the gate is defined in the same dimension as the system state evolution), and at this point we are not certain if the theory generalizes to the case when non-essential levels are present. It is advised to optimize on the full basis if non-essential levels are present (or work on the theory, and let us know what you find.). The same holds for $N+1$ initial states below. 
+
 \subsubsection{$N+1$ initial states for gate optimization}
 \textit{Only valid for the density matrix version, solving Lindblad's master equation.}
 
 
 The three initial states from above do not suffice to estimate an average fidelity of the realized gate (compare \cite{goerz2014optimal}). Instead, it is suggested in that same paper to choose $N+1$ initial states to compute an average fidelity. Those $N+1$ initial states consist of the $N$ diagonal states $B^{kk}$ in the Hilbertspace of dimension $N$, as well as the totally rotated state $\rho(0)_2$ from above. Quandary offers the choice to simulate (or optimize) using those initial states, then $n_{init} = N+1$.
+
+Note: The $N+1$ initial states are spanned in the \textit{full} dimension of the system, including non-essential levels, see above for 3-state initialization. 
 
 \subsubsection{Reading an initial state from file}
 A specific initial state can also be read from file ($\Rightarrow n_{init}=1$). Format: one column being the vectorized density matrix (vectorization is columnwise), or the state vector, first all real parts, then all imaginary parts (i.e. number of lines is $2N^2$ or $2N$, with one real-valued number per line). 
