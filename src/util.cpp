@@ -58,42 +58,42 @@ int mapFullToEss(const int i, const std::vector<int> &nlevels, const std::vector
 
 
 
-void projectToEss(Vec state,const std::vector<int> &nlevels, const std::vector<int> &nessential){
+// void projectToEss(Vec state,const std::vector<int> &nlevels, const std::vector<int> &nessential){
 
-  /* Get dimensions */
-  int dim_rho = 1;
-  for (int i=0; i<nlevels.size(); i++){
-    dim_rho *=nlevels[i];
-  }
+//   /* Get dimensions */
+//   int dim_rho = 1;
+//   for (int i=0; i<nlevels.size(); i++){
+//     dim_rho *=nlevels[i];
+//   }
 
-  /* Get local ownership of the state */
-  PetscInt ilow, iupp;
-  VecGetOwnershipRange(state, &ilow, &iupp);
+//   /* Get local ownership of the state */
+//   PetscInt ilow, iupp;
+//   VecGetOwnershipRange(state, &ilow, &iupp);
 
-  /* Iterate over rows of system matrix, check if it corresponds to an essential level, and if not, set this row and colum to zero */
-  int reID, imID;
-  for (int i=0; i<dim_rho; i++) {
-    // zero out row and column if this does not belong to an essential level
-    if (!isEssential(i, nlevels, nessential)) { 
-      for (int j=0; j<dim_rho; j++) {
-        // zero out row
-        reID = getIndexReal(getVecID(i,j,dim_rho));
-        imID = getIndexImag(getVecID(i,j,dim_rho));
-        if (ilow <= reID && reID < iupp) VecSetValue(state, reID, 0.0, INSERT_VALUES);
-        if (ilow <= imID && imID < iupp) VecSetValue(state, imID, 0.0, INSERT_VALUES);
-        // zero out colum
-        reID = getIndexReal(getVecID(j,i,dim_rho));
-        imID = getIndexImag(getVecID(j,i,dim_rho));
-        if (ilow <= reID && reID < iupp) VecSetValue(state, reID, 0.0, INSERT_VALUES);
-        if (ilow <= imID && imID < iupp) VecSetValue(state, imID, 0.0, INSERT_VALUES);
-      }
-    } 
-  }
-  VecAssemblyBegin(state);
-  VecAssemblyEnd(state);
+//   /* Iterate over rows of system matrix, check if it corresponds to an essential level, and if not, set this row and colum to zero */
+//   int reID, imID;
+//   for (int i=0; i<dim_rho; i++) {
+//     // zero out row and column if this does not belong to an essential level
+//     if (!isEssential(i, nlevels, nessential)) { 
+//       for (int j=0; j<dim_rho; j++) {
+//         // zero out row
+//         reID = getIndexReal(getVecID(i,j,dim_rho));
+//         imID = getIndexImag(getVecID(i,j,dim_rho));
+//         if (ilow <= reID && reID < iupp) VecSetValue(state, reID, 0.0, INSERT_VALUES);
+//         if (ilow <= imID && imID < iupp) VecSetValue(state, imID, 0.0, INSERT_VALUES);
+//         // zero out colum
+//         reID = getIndexReal(getVecID(j,i,dim_rho));
+//         imID = getIndexImag(getVecID(j,i,dim_rho));
+//         if (ilow <= reID && reID < iupp) VecSetValue(state, reID, 0.0, INSERT_VALUES);
+//         if (ilow <= imID && imID < iupp) VecSetValue(state, imID, 0.0, INSERT_VALUES);
+//       }
+//     } 
+//   }
+//   VecAssemblyBegin(state);
+//   VecAssemblyEnd(state);
 
 
-}
+// }
 
 int isEssential(const int i, const std::vector<int> &nlevels, const std::vector<int> &nessential) {
 

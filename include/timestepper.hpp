@@ -17,6 +17,7 @@ class TimeStepper{
     Vec x;               // auxiliary vector needed for time stepping
     bool storeFWD;       /* Flag that determines if primal states should be stored during forward evaluation */
     std::vector<Vec> store_states; /* Storage for primal states */
+    bool addLeakagePrevent;   /* flag to determine if Leakage preventing term is added to penalty.  */
 
   public:
     MasterEq* mastereq;  // Lindblad master equation

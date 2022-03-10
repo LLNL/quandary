@@ -24,6 +24,7 @@ typedef struct {
   std::vector<double> crosskerr;
   std::vector<double> Jkl;
   std::vector<double> eta;
+  LindbladType lindbladtype;
   bool addT1, addT2;
   std::vector<std::vector<double>> control_Re;
   std::vector<std::vector<double>> control_Im;
@@ -57,8 +58,8 @@ int myMatMultTranspose_sparsemat(Mat RHS, Vec x, Vec y);
 class MasterEq{
 
   protected:
-    int dim;                   // Dimension of full vectorized system = N^2
-    int dim_rho;               // Dimension of full system = N
+    int dim;                   // Dimension of full vectorized system: either N^2 if Lindblad, or N if Schrodinger
+    int dim_rho;               // Dimension of Hilbertspace = N
     int dim_ess;               // Dimension of system of essential levels = N_e
     int noscillators;          // Number of oscillators
     Oscillator** oscil_vec;    // Vector storing pointers to the oscillators
@@ -93,6 +94,7 @@ class MasterEq{
     std::vector<int> nlevels;  // Number of levels per oscillator
     std::vector<int> nessential; // Number of essential levels per oscillator
     bool usematfree;  // Flag for using matrix free solver
+    LindbladType lindbladtype;        // Flag that determines which lindblad terms are added. if NONE, than Schroedingers eq. is solved
 
     std::vector<std::vector<fitpackpp::BSplineCurve*>> transfer_func;
     std::vector<int> ncontrolterms; // Stores the number of control Hamiltonians per oscillator
@@ -113,7 +115,7 @@ class MasterEq{
     /* Return number of oscillators */
     int getNOscillators();
 
-    /* Return dimension of vectorized system N^2 */
+    /* Return dimension of vectorized system N^2 (for Lindblad solver) or N (for Schroedinger solver) */
     int getDim();
 
     /* Return dimension of essential level system: N_e */
@@ -245,7 +247,7 @@ inline double L2(const double dephase0, const double dephase1, const double deph
        + dephase1 * ( i1*i1p - 1./2. * (i1*i1 + i1p*i1p) )
        + dephase2 * ( i2*i2p - 1./2. * (i2*i2 + i2p*i2p) )
        + dephase3 * ( i3*i3p - 1./2. * (i3*i3 + i3p*i3p) )
-       + dephase4 * ( i3*i3p - 1./2. * (i4*i4 + i4p*i4p) );
+       + dephase4 * ( i4*i4p - 1./2. * (i4*i4 + i4p*i4p) );
 };
 inline double L1diag(const double decay0, const double decay1, const double decay2, const double decay3, const double decay4, const int i0, const int i1, const int i2, const int i3, const int i4, const int i0p, const int i1p, const int i2p, const int i3p, const int i4p){
   return - decay0 / 2.0 * ( i0 + i0p ) 
@@ -260,7 +262,7 @@ inline int TensorGetIndex(const int nlevels0, const int nlevels1, const int nlev
 
 
 // Mat-free solver inline for gradient updates for oscillator i
-inline void dRHSdp_getcoeffs(const int it, const int n, const int i, const int ip, const int stridei, const int strideip, const double* xptr, double* res_p_re, double* res_p_im, double* res_q_re, double* res_q_im) {
+inline void dRHSdp_getcoeffs(const int it, const int n, const int np, const int i, const int ip, const int stridei, const int strideip, const double* xptr, double* res_p_re, double* res_p_im, double* res_q_re, double* res_q_im) {
 
   *res_p_re = 0.0;
   *res_p_im = 0.0;
@@ -279,7 +281,7 @@ inline void dRHSdp_getcoeffs(const int it, const int n, const int i, const int i
     *res_q_im +=   sq * xim;
   }
   /* \rho(ik..,ik'+1..) */
-  if (ip < n-1) {
+  if (ip < np-1) {
     int itx = it + strideip;
     double xre = xptr[2 * itx];
     double xim = xptr[2 * itx + 1];
@@ -314,7 +316,7 @@ inline void dRHSdp_getcoeffs(const int it, const int n, const int i, const int i
 }
 
 // Mat-free solver inline for Jkl coupling between oscillator i and oscillator j
-inline void Jkl_coupling(const int it, const int ni, const int nj, const int i, const int ip, const int j, const int jp, const int stridei, const int strideip, const int stridej, const int stridejp, const double* xptr, const double Jij, const double cosij, const double sinij, double* yre, double* yim) {
+inline void Jkl_coupling(const int it, const int ni, const int nj, const int nip, const int njp, const int i, const int ip, const int j, const int jp, const int stridei, const int strideip, const int stridej, const int stridejp, const double* xptr, const double Jij, const double cosij, const double sinij, double* yre, double* yim) {
   if (fabs(Jij)>1e-10) {
     //  1) J_kl (-icos + sin) * ρ_{E−k+l i, i′}
     if (i > 0 && j < nj-1) {
@@ -337,7 +339,7 @@ inline void Jkl_coupling(const int it, const int ni, const int nj, const int i, 
       *yim += Jij * sq * ( - cosij * xre - sinij * xim);
     }
     // 3) J_kl ( icos + sin)sqrt(ik'*(il' +1)) ρ_{i,E-k+li'}
-    if (ip > 0 && jp < nj-1) {
+    if (ip > 0 && jp < njp-1) {
       int itx = it - strideip + stridejp;  // i, E-k+l i'
       double xre = xptr[2 * itx];
       double xim = xptr[2 * itx + 1];
@@ -347,7 +349,7 @@ inline void Jkl_coupling(const int it, const int ni, const int nj, const int i, 
       *yim += Jij * sq * (   cosij * xre + sinij * xim);
     }
     // 4) J_kl ( icos - sin)sqrt(il'*(ik' +1)) ρ_{i,E+k-li'}
-    if (ip < ni-1 && jp > 0) {
+    if (ip < nip-1 && jp > 0) {
       int itx = it + strideip - stridejp;  // i, E+k-l i'
       double xre = xptr[2 * itx];
       double xim = xptr[2 * itx + 1];
@@ -360,7 +362,7 @@ inline void Jkl_coupling(const int it, const int ni, const int nj, const int i, 
 }
 
 // transpose of Jkl coupling
-inline void Jkl_coupling_T(const int it, const int ni, const int nj, const int i, const int ip, const int j, const int jp, const int stridei, const int strideip, const int stridej, const int stridejp, const double* xptr, const double Jij, const double cosij, const double sinij, double* yre, double* yim) {
+inline void Jkl_coupling_T(const int it, const int ni, const int nj, const int nip, const int njp, const int i, const int ip, const int j, const int jp, const int stridei, const int strideip, const int stridej, const int stridejp, const double* xptr, const double Jij, const double cosij, const double sinij, double* yre, double* yim) {
   if (fabs(Jij)>1e-10) {
     //  1) [...] * \bar y_{E+k-l i, i′}
     if (i < ni-1 && j > 0) {
@@ -381,7 +383,7 @@ inline void Jkl_coupling_T(const int it, const int ni, const int nj, const int i
       *yim += Jij * sq * ( + cosij * xre - sinij * xim);
     }
     // 3) J_kl ( icos + sin)sqrt(il'*(ik' +1)) \bar y_{i,E+k-li'}
-    if (ip < ni-1 && jp > 0) {
+    if (ip < nip-1 && jp > 0) {
       int itx = it + strideip - stridejp;  // i, E+k-l i'
       double xre = xptr[2 * itx];
       double xim = xptr[2 * itx + 1];
@@ -390,7 +392,7 @@ inline void Jkl_coupling_T(const int it, const int ni, const int nj, const int i
       *yim += Jij * sq * ( - cosij * xre + sinij * xim);
     }
     // 4) J_kl ( icos - sin)sqrt(ik'*(il' +1)) \bar y_{i,E-k+li'}
-    if (ip > 0 && jp < nj-1) {
+    if (ip > 0 && jp < njp-1) {
       int itx = it - strideip + stridejp;  // i, E-k+l i'
       double xre = xptr[2 * itx];
       double xim = xptr[2 * itx + 1];
@@ -432,7 +434,7 @@ inline void L1decay_T(const int it, const int n, const int i, const int ip, cons
 }
 
 // Matfree solver inline for Control terms
-inline void control(const int it, const int n, const int i, const int ip, const int stridei, const int strideip, const double* xptr, const double pt, const double qt, double* yre, double* yim){
+inline void control(const int it, const int n, const int i, const int np, const int ip, const int stridei, const int strideip, const double* xptr, const double pt, const double qt, double* yre, double* yim){
   /* \rho(ik+1..,ik'..) term */
   if (i < n-1) {
       int itx = it + stridei;
@@ -443,7 +445,7 @@ inline void control(const int it, const int n, const int i, const int ip, const 
       *yim += sq * ( - pt * xre + qt * xim);
     }
     /* \rho(ik..,ik'+1..) */
-    if (ip < n-1) {
+    if (ip < np-1) {
       int itx = it + strideip;
       double xre = xptr[2 * itx];
       double xim = xptr[2 * itx + 1];
@@ -473,7 +475,7 @@ inline void control(const int it, const int n, const int i, const int ip, const 
 
 
 // Transpose of control terms
-inline void control_T(const int it, const int n, const int i, const int ip, const int stridei, const int strideip, const double* xptr, const double pt, const double qt, double* yre, double* yim){
+inline void control_T(const int it, const int n, const int i, const int np, const int ip, const int stridei, const int strideip, const double* xptr, const double pt, const double qt, double* yre, double* yim){
   /* \rho(ik+1..,ik'..) term */
   if (i > 0) {
     int itx = it - stridei;
@@ -502,7 +504,7 @@ inline void control_T(const int it, const int n, const int i, const int ip, cons
     *yim += sq * (  pt * xre - qt * xim);
   }
   /* \rho(ik..,ik'-1..) */
-  if (ip < n-1) {
+  if (ip < np-1) {
     int itx = it + strideip;
     double xre = xptr[2 * itx];
     double xim = xptr[2 * itx + 1];

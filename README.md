@@ -1,22 +1,22 @@
-# Quandary - Optimal control for open quantum systems
-Quandary implements an optimization solver for quantum control. The underlying quantum dynamics model open quantum systems, using the Lindblad master equation to evolve a density matrix in time. The control problem aims to find control pulses that drive the system to a desired target state.
+# Quandary - Optimal control for open and closed quantum systems
+Quandary implements an optimization solver for open and closed optimal quantum control. The underlying quantum dynamics model open or closed quantum systems, using either Schroedinger's equation for a state vector (closed), or Lindblad master equation for a density matrix (open). The control problem aims to find control pulses that drive the system to a desired target state. Quandary targets deployment on High-Performance Computing platforms, offering various levels for parallelization using the message passing paradigm. 
 
-A documentation is under development. In the meantime, refer to the user guide in the `doc/` folder for information on the underlying mathematical models as well as details on their implementation in Quandary. 
+A documentation is under development. In the meantime, refer to the user guide in the `doc/` folder for information on the underlying mathematical models as well as details on their implementation in Quandary, and parallel distribution.
 
 For questions, feel free to reach out to Stefanie Guenther [guenther5@llnl.gov].
 
 ## Dependencies
-This project relies on Petsc [https://www.mcs.anl.gov/petsc/] to handle linear algebra. Optionally, XBraid [https://github.com/XBraid/xbraid] can be linked to realize time-parallelization, and Slepsc [https://slepc.upv.es] can be used to solve some eigenvalue problems (e.g. for the Hessian...)
+This project relies on Petsc [https://petsc.org/release/] to handle (parallel) linear algebra. Optionally, XBraid [https://github.com/XBraid/xbraid] can be linked to realize time-parallelization, and Slepsc [https://slepc.upv.es] can be used to solve some eigenvalue problems if desired (e.g. for the Hessian...)
 * **Required:** Install Petsc:
-    You can try the below, but make sure to also check [https://www.mcs.anl.gov/petsc/] for the newest installation guide. 
+    You can try the below, but make sure to also check [https://petsc.org/release/] for the newest installation guide. (On MacOS, you can also `brew install petsc`.)
     * `git clone -b release https://gitlab.com/petsc/petsc.git petsc`
     * `cd petsc`
-    * Configure Petsc with `./configure`, check [https://www.mcs.anl.gov/petsc/download/index.html] for optional arguments. Petsc compiles in debug mode by default. To configure petsc with compiler optimization, consider configuration such as
+    * Configure Petsc with `./configure`, check [https://petsc.org/release/install/install_tutorial] for optional arguments. Note that Petsc compiles in debug mode by default. To configure petsc with compiler optimization, consider configuration such as
         `./configure --prefix=/YOUR/INSTALL/DIR --with-debugging=0 --with-fc=0 --with-cxx=mpicxx --with-cc=mpicc COPTFLAGS='-O3' CXXOPTFLAGS='-O3'`
     * The output of `./configure` reports on how to set the `PETSC_DIR` and `PETSC_ARCH` variables
         * `export PETSC_DIR=/YOUR/INSTALL/DIR`
         * `export PETSC_ARCH=/YOUR/ARCH/PREFIX`
-    * Compile petsc with `make all test`
+    * Compile petsc with `make all check'
     * Append Petsc directory to the `LD_LIBRARY_PATH`:
         * `export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$PETSC_DIR/$PETSC_ARCH`
 

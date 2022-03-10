@@ -72,16 +72,16 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
       exit(1);
     }
     if      (target_str[1].compare("none") == 0)  targetgate = new Gate(); // dummy gate. do nothing
-    else if (target_str[1].compare("xgate") == 0) targetgate = new XGate(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, timestepper->total_time, gate_rot_freq); 
-    else if (target_str[1].compare("ygate") == 0) targetgate = new YGate(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, timestepper->total_time, gate_rot_freq); 
-    else if (target_str[1].compare("zgate") == 0) targetgate = new ZGate(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, timestepper->total_time, gate_rot_freq);
-    else if (target_str[1].compare("hadamard") == 0) targetgate = new HadamardGate(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, timestepper->total_time, gate_rot_freq);
-    else if (target_str[1].compare("cnot") == 0) targetgate = new CNOT(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, timestepper->total_time, gate_rot_freq); 
-    else if (target_str[1].compare("swap") == 0) targetgate = new SWAP(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, timestepper->total_time, gate_rot_freq); 
-    else if (target_str[1].compare("iswap") == 0) targetgate = new iSWAP(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, timestepper->total_time, gate_rot_freq); 
-    else if (target_str[1].compare("threewave") == 0) targetgate = new ThreeWave(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, timestepper->total_time, gate_rot_freq); 
-    else if (target_str[1].compare("swap0q") == 0) targetgate = new SWAP_0Q(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, timestepper->total_time, gate_rot_freq); 
-    else if (target_str[1].compare("cqnot") == 0) targetgate = new CQNOT(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, timestepper->total_time, gate_rot_freq); 
+    else if (target_str[1].compare("xgate") == 0) targetgate = new XGate(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, timestepper->total_time, gate_rot_freq, timestepper->mastereq->lindbladtype); 
+    else if (target_str[1].compare("ygate") == 0) targetgate = new YGate(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, timestepper->total_time, gate_rot_freq, timestepper->mastereq->lindbladtype); 
+    else if (target_str[1].compare("zgate") == 0) targetgate = new ZGate(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, timestepper->total_time, gate_rot_freq, timestepper->mastereq->lindbladtype);
+    else if (target_str[1].compare("hadamard") == 0) targetgate = new HadamardGate(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, timestepper->total_time, gate_rot_freq, timestepper->mastereq->lindbladtype);
+    else if (target_str[1].compare("cnot") == 0) targetgate = new CNOT(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, timestepper->total_time, gate_rot_freq, timestepper->mastereq->lindbladtype); 
+    else if (target_str[1].compare("swap") == 0) targetgate = new SWAP(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, timestepper->total_time, gate_rot_freq, timestepper->mastereq->lindbladtype); 
+    else if (target_str[1].compare("iswap") == 0) targetgate = new iSWAP(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, timestepper->total_time, gate_rot_freq, timestepper->mastereq->lindbladtype); 
+    else if (target_str[1].compare("threewave") == 0) targetgate = new ThreeWave(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, timestepper->total_time, gate_rot_freq, timestepper->mastereq->lindbladtype); 
+    else if (target_str[1].compare("swap0q") == 0) targetgate = new SWAP_0Q(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, timestepper->total_time, gate_rot_freq, timestepper->mastereq->lindbladtype); 
+    else if (target_str[1].compare("cqnot") == 0) targetgate = new CQNOT(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, timestepper->total_time, gate_rot_freq, timestepper->mastereq->lindbladtype); 
     else {
       printf("\n\n ERROR: Unnown gate type: %s.\n", target_str[1].c_str());
       printf(" Available gates are 'none', 'xgate', 'ygate', 'zgate', 'hadamard', 'cnot', 'iswap', 'threewave', 'swap', 'swap0q', 'cqnot'.\n");
@@ -101,10 +101,13 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
       }
       for (int i=0; i < timestepper->mastereq->getNOscillators(); i++) {
         int Qi_state = atoi(target_str[i+1].c_str());
+        if (Qi_state >= timestepper->mastereq->getOscillator(i)->getNLevels()) {
+          printf("ERROR in config setting. The requested pure state target |%d> exceeds the number of modeled levels for that oscillator (%d).\n", Qi_state, timestepper->mastereq->getOscillator(i)->getNLevels());
+          exit(1);
+        }
         purestateID += Qi_state * timestepper->mastereq->getOscillator(i)->dim_postOsc;
       }
     }
-    // printf("Preparing the state e_%d\n", purestateID);
   } 
   else if (target_str[0].compare("file")==0) { 
     // Get the name of the file and pass it to the OptimTarget class later.
@@ -120,16 +123,16 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   /* Get the objective function */
   ObjectiveType objective_type;
   std::string objective_str = config.GetStrParam("optim_objective", "Jfrobenius");
-  if (objective_str.compare("Jfrobenius")==0)           objective_type = ObjectiveType::JFROBENIUS;
-  else if (objective_str.compare("Jhilbertschmidt")==0) objective_type = ObjectiveType::JHS;
-  else if (objective_str.compare("Jmeasure")==0)        objective_type = ObjectiveType::JMEASURE;
+  if (objective_str.compare("Jfrobenius")==0)     objective_type = ObjectiveType::JFROBENIUS;
+  else if (objective_str.compare("Jtrace")==0)    objective_type = ObjectiveType::JTRACE;
+  else if (objective_str.compare("Jmeasure")==0)  objective_type = ObjectiveType::JMEASURE;
   else  {
     printf("\n\n ERROR: Unknown objective function: %s\n", objective_str.c_str());
     exit(1);
   }
 
   /* Finally initialize the optimization target struct */
-  optim_target = new OptimTarget(timestepper->mastereq->getDim(), purestateID, target_type, objective_type, targetgate, target_filename);
+  optim_target = new OptimTarget(timestepper->mastereq->getDim(), purestateID, target_type, objective_type, targetgate, target_filename, timestepper->mastereq->lindbladtype);
 
   /* Get weights for the objective function (weighting the different initial conditions */
   config.GetVecDoubleParam("optim_weights", obj_weights, 1.0);
@@ -174,6 +177,19 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
     exit(1);
   }
 
+  /* Sanity check for Schrodinger solver initial conditions */
+  if (timestepper->mastereq->lindbladtype == LindbladType::NONE){
+    if (initcond_type == InitialConditionType::ENSEMBLE ||
+        initcond_type == InitialConditionType::THREESTATES ||
+        initcond_type == InitialConditionType::NPLUSONE ){
+          printf("\n\n ERROR for initial condition setting: \n When running Schroedingers solver (collapse_type == NONE), the initial condition needs to be either 'pure' or 'from file' or 'diagonal' or 'basis'. Note that 'diagonal' and 'basis' in the Schroedinger case are the same (all unit vectors).\n\n");
+          exit(1);
+    } else if (initcond_type == InitialConditionType::BASIS) {
+      // DIAGONAL and BASIS initial conditions in the Schroedinger case are the same. Overwrite it to DIAGONAL
+      initcond_type = InitialConditionType::DIAGONAL;  
+    }
+  }
+
   /* Allocate the initial condition vector */
   VecCreate(PETSC_COMM_WORLD, &rho_t0); 
   VecSetSizes(rho_t0,PETSC_DECIDE,2*timestepper->mastereq->getDim());
@@ -203,8 +219,10 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
       }
       diag_id += initcond_IDs[k] * dim_postkron;
     }
-    int ndim = (int)sqrt(timestepper->mastereq->getDim());
-    int vec_id = getIndexReal(getVecID( diag_id, diag_id, ndim )); // Real part of x
+    int ndim = timestepper->mastereq->getDimRho();
+    int vec_id = -1;
+    if (timestepper->mastereq->lindbladtype != LindbladType::NONE) vec_id = getIndexReal(getVecID( diag_id, diag_id, ndim )); // Real part of x
+    else vec_id = getIndexReal(diag_id);
     if (ilow <= vec_id && vec_id < iupp) VecSetValue(rho_t0, vec_id, 1.0, INSERT_VALUES);
   }
   else if (initcond_type == InitialConditionType::FROMFILE) { 
@@ -213,25 +231,40 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
     // int dim = timestepper->mastereq->getDim();
     int dim_ess = timestepper->mastereq->getDimEss();
     int dim_rho = timestepper->mastereq->getDimRho();
-    double * vec = new double[2*dim_ess*dim_ess];
+    int nelems = 0;
+    if (timestepper->mastereq->lindbladtype != LindbladType::NONE) nelems = 2*dim_ess*dim_ess;
+    else nelems = 2 * dim_ess;
+    double * vec = new double[nelems];
     if (mpirank_world == 0) {
       assert (initcondstr.size()==2);
       std::string filename = initcondstr[1];
-      read_vector(filename.c_str(), vec, 2*dim_ess*dim_ess);
+      read_vector(filename.c_str(), vec, nelems);
     }
-    MPI_Bcast(vec, 2*dim_ess*dim_ess, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-    for (int i = 0; i < dim_ess*dim_ess; i++) {
-      int k = i % dim_ess;
-      int j = (int) i / dim_ess;
-      if (dim_ess*dim_ess < timestepper->mastereq->getDim()) {
-        k = mapEssToFull(k, timestepper->mastereq->nlevels, timestepper->mastereq->nessential);
-        j = mapEssToFull(j, timestepper->mastereq->nlevels, timestepper->mastereq->nessential);
+    MPI_Bcast(vec, nelems, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    if (timestepper->mastereq->lindbladtype != LindbladType::NONE) { // Lindblad solver, fill density matrix
+      for (int i = 0; i < dim_ess*dim_ess; i++) {
+        int k = i % dim_ess;
+        int j = (int) i / dim_ess;
+        if (dim_ess*dim_ess < timestepper->mastereq->getDim()) {
+          k = mapEssToFull(k, timestepper->mastereq->nlevels, timestepper->mastereq->nessential);
+          j = mapEssToFull(j, timestepper->mastereq->nlevels, timestepper->mastereq->nessential);
+        }
+        int elemid_re = getIndexReal(getVecID(k,j,dim_rho));
+        int elemid_im = getIndexImag(getVecID(k,j,dim_rho));
+        if (ilow <= elemid_re && elemid_re < iupp) VecSetValue(rho_t0, elemid_re, vec[i], INSERT_VALUES);        // RealPart
+        if (ilow <= elemid_im && elemid_im < iupp) VecSetValue(rho_t0, elemid_im, vec[i + dim_ess*dim_ess], INSERT_VALUES); // Imaginary Part
+        // printf("  -> k=%d j=%d, elemid=%d vals=%1.4e, %1.4e\n", k, j, elemid, vec[i], vec[i+dim_ess*dim_ess]);
       }
-      int elemid_re = getIndexReal(getVecID(k,j,dim_rho));
-      int elemid_im = getIndexImag(getVecID(k,j,dim_rho));
-      if (ilow <= elemid_re && elemid_re < iupp) VecSetValue(rho_t0, elemid_re, vec[i], INSERT_VALUES);        // RealPart
-      if (ilow <= elemid_im && elemid_im < iupp) VecSetValue(rho_t0, elemid_im, vec[i + dim_ess*dim_ess], INSERT_VALUES); // Imaginary Part
-      // printf("  -> k=%d j=%d, elemid=%d vals=%1.4e, %1.4e\n", k, j, elemid, vec[i], vec[i+dim_ess*dim_ess]);
+    } else { // Schroedinger solver, fill vector 
+      for (int i = 0; i < dim_ess; i++) {
+        int k = i;
+        if (dim_ess < timestepper->mastereq->getDim()) 
+          k = mapEssToFull(i, timestepper->mastereq->nlevels, timestepper->mastereq->nessential);
+        int elemid_re = getIndexReal(k);
+        int elemid_im = getIndexImag(k);
+        if (ilow <= elemid_re && elemid_re < iupp) VecSetValue(rho_t0, elemid_re, vec[i], INSERT_VALUES);        // RealPart
+        if (ilow <= elemid_im && elemid_im < iupp) VecSetValue(rho_t0, elemid_im, vec[i + dim_ess], INSERT_VALUES); // Imaginary Part
+      }
     }
     delete [] vec;
   } else if (initcond_type == InitialConditionType::ENSEMBLE) {
@@ -245,25 +278,28 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
       }
     }
 
-    // get dimension of subsystems *before* the first oscillator, and *behind* the last oscillator
-    int dimpre  = timestepper->mastereq->getOscillator(initcond_IDs[0])->dim_preOsc;
-    int dimpost = timestepper->mastereq->getOscillator(initcond_IDs[initcond_IDs.size()-1])->dim_postOsc;
-
-    // get dimension of subsystems defined by initcond_IDs
+    // get dimension of subsystems defined by initcond_IDs, as well as the one before and after. Span in essential levels only.
+    int dimpre = 1;
+    int dimpost = 1;
     int dimsub = 1;
-    for (int i=0; i<initcond_IDs.size(); i++){
-      dimsub *= timestepper->mastereq->getOscillator(initcond_IDs[i])->getNLevels();  
+    for (int i=0; i<timestepper->mastereq->getNOscillators(); i++){
+      if (i < initcond_IDs[0]) dimpre *= timestepper->mastereq->nessential[i];
+      else if (initcond_IDs[0] <= i && i <= initcond_IDs[initcond_IDs.size()-1]) dimsub *= timestepper->mastereq->nessential[i];
+      else dimpost *= timestepper->mastereq->nessential[i];
     }
-    // printf("dimpre %d sub %d post %d \n", dimpre, dimsub, dimpost);
     int dimrho = timestepper->mastereq->getDimRho();
-    assert(dimsub == (int) ( dimrho / dimpre / dimpost) );
+    int dimrhoess = timestepper->mastereq->getDimEss();
 
+    // Loop over ensemble state elements in essential level dimensions of the subsystem defined by the initcond_ids:
     for (int i=0; i < dimsub; i++){
       for (int j=i; j < dimsub; j++){
-        int ifull = i * dimpost;
+        int ifull = i * dimpost; // account for the system behind
         int jfull = j * dimpost;
+        if (dimrhoess < dimrho) ifull = mapEssToFull(ifull, timestepper->mastereq->nlevels, timestepper->mastereq->nessential);
+        if (dimrhoess < dimrho) jfull = mapEssToFull(jfull, timestepper->mastereq->nlevels, timestepper->mastereq->nessential);
         // printf(" i=%d j=%d ifull %d, jfull %d\n", i, j, ifull, jfull);
-        if (i == j) { // diagonal element: 1/N_sub
+        if (i == j) { 
+          // diagonal element: 1/N_sub
           int elemid_re = getIndexReal(getVecID(ifull, jfull, dimrho));
           if (ilow <= elemid_re && elemid_re < iupp) VecSetValue(rho_t0, elemid_re, 1./dimsub, INSERT_VALUES);
         } else {

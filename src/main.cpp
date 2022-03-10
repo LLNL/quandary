@@ -71,6 +71,7 @@ int main(int argc,char **argv)
     for (int iosc = 0; iosc<nlevels.size(); iosc++){
       if (iosc < read_nessential.size()) nessential[iosc] = read_nessential[iosc];
       else                               nessential[iosc] = read_nessential[read_nessential.size()-1];
+      if (nessential[iosc] > nlevels[iosc]) nessential[iosc] = nlevels[iosc];
     }
   }
 
@@ -104,7 +105,12 @@ int main(int argc,char **argv)
       int oscilID = atoi(initcondstr[i].c_str());
       ninit *= nessential[oscilID];
     }
-    if (initcondstr[0].compare("basis") == 0  ) ninit = (int) pow(ninit,2.0);
+    if (initcondstr[0].compare("basis") == 0  ) {
+      // if Schroedinger solver: ninit = N, do nothing.
+      // else Lindblad solver: ninit = N^2
+      std::string tmpstr = config.GetStrParam("collapse_type", "none", false);
+      if (tmpstr.compare("none") != 0 ) ninit = (int) pow(ninit,2.0);
+    }
   }
   else {
     printf("\n\n ERROR: Wrong setting for initial condition.\n");
@@ -162,12 +168,11 @@ int main(int argc,char **argv)
   MPI_Comm_rank(comm_petsc, &mpirank_petsc);
   MPI_Comm_size(comm_petsc, &mpisize_petsc);
 
-  std::cout<< "Parallel distribution: " << "init " << mpirank_init << "/" << mpisize_init;
-  std::cout<< ", petsc " << mpirank_petsc << "/" << mpisize_petsc;
+  if (mpirank_world == 0)  std::cout<< "Parallel distribution: " << mpisize_init << " np_init  X  " << mpisize_petsc<< " np_petsc";
 #ifdef WITH_BRAID
-  std::cout<< ", braid " << mpirank_braid << "/" << mpisize_braid;
+  std::cout<< "  X  " << mpisize_braid  << "np_braid" << std::endl;
 #endif
-  std::cout<< std::endl;
+  if (mpirank_world == 0) std::cout<<std::endl;
 
   /* Initialize Petsc using petsc's communicator */
   PETSC_COMM_WORLD = comm_petsc;
@@ -225,7 +230,7 @@ int main(int argc,char **argv)
     std::vector<double> carrier_freq;
     std::string key = "carrier_frequency" + std::to_string(i);
     config.GetVecDoubleParam(key, carrier_freq, 0.0);
-    oscil_vec[i] = new Oscillator(i, nlevels, nspline, trans_freq[i], selfkerr[i], rot_freq[i], decay_time[i], dephase_time[i], carrier_freq, total_time);
+    oscil_vec[i] = new Oscillator(i, nlevels, nspline, trans_freq[i], selfkerr[i], rot_freq[i], decay_time[i], dephase_time[i], carrier_freq, total_time, lindbladtype);
   }
 
   // Get pi-pulses, if any
@@ -318,7 +323,7 @@ int main(int argc,char **argv)
       std::cout<< nessential[i];
       if (i < nlevels.size()-1) std::cout<< "x";
     }
-    std::cout << std::endl;
+    std::cout << ") " << std::endl;
   }
 
   /* --- Initialize the time-stepper --- */

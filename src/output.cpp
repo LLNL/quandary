@@ -83,20 +83,22 @@ void Output::writeGradient(Vec grad){
   PetscInt ngrad;
   VecGetSize(grad, &ngrad);
 
-  /* Print current gradients to file */
-  FILE *file;
-  // sprintf(filename, "%s/grad_iter%04d.dat", datadir.c_str(), optim_iter);
-  sprintf(filename, "%s/grad.dat", datadir.c_str());
-  file = fopen(filename, "w");
+  if (mpirank_world == 0) {
+    /* Print current gradients to file */
+    FILE *file;
+    // sprintf(filename, "%s/grad_iter%04d.dat", datadir.c_str(), optim_iter);
+    sprintf(filename, "%s/grad.dat", datadir.c_str());
+    file = fopen(filename, "w");
 
-  const PetscScalar* grad_ptr;
-  VecGetArrayRead(grad, &grad_ptr);
-  for (int i=0; i<ngrad; i++){
-    fprintf(file, "%1.14e\n", grad_ptr[i]);
+    const PetscScalar* grad_ptr;
+    VecGetArrayRead(grad, &grad_ptr);
+    for (int i=0; i<ngrad; i++){
+      fprintf(file, "%1.14e\n", grad_ptr[i]);
+    }
+    fclose(file);
+    VecRestoreArrayRead(grad, &grad_ptr);
+    printf("File written: %s\n", filename);
   }
-  fclose(file);
-  VecRestoreArrayRead(grad, &grad_ptr);
-  printf("File written: %s\n", filename);
 }
 
 void Output::writeControls(Vec params, MasterEq* mastereq, int ntime, double dt){
