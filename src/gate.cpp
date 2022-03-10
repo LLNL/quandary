@@ -383,11 +383,12 @@ SWAP::~SWAP(){}
 iSWAP::iSWAP(std::vector<int> nlevels_, std::vector<int> nessential_, double time_, std::vector<double> gate_rot_freq_) : Gate(nlevels_, nessential_, time_, gate_rot_freq_) {
   assert(dim_ess == 4);
 
-  /* Fill lab-frame iswap gate in essential dimension system V_re = Re(V), V_im = Im(V) = 0 */
-  MatSetValue(V_im, 0, 0, 1.0, INSERT_VALUES);
+  /* Fill lab-frame iswap gate in essential dimension system V_re = Re(V), V_im = Im(V)  */
+  MatSetValue(V_re, 0, 0, 1.0, INSERT_VALUES);
+  MatSetValue(V_re, 3, 3, 1.0, INSERT_VALUES);
+
   MatSetValue(V_im, 1, 2, 1.0, INSERT_VALUES);
   MatSetValue(V_im, 2, 1, 1.0, INSERT_VALUES);
-  MatSetValue(V_im, 3, 3, 1.0, INSERT_VALUES);
 
   MatAssemblyBegin(V_re, MAT_FINAL_ASSEMBLY);
   MatAssemblyBegin(V_im, MAT_FINAL_ASSEMBLY);
@@ -471,3 +472,42 @@ CQNOT::CQNOT(std::vector<int> nlevels_, std::vector<int> nessential_, double tim
 
 
 CQNOT::~CQNOT(){}
+
+ThreeWave::ThreeWave(std::vector<int> nlevels_, std::vector<int> nessential_, double time_, std::vector<double> gate_rot_freq_) : Gate(nlevels_, nessential_, time_, gate_rot_freq_) {
+  assert(dim_ess == 4);
+
+  /* Fill lab-frame 3-wave gate in essential dimension system V_re = Re(V), V_im = Im(V) = 0 */
+  double vre00 = 0.983699; 
+  double vre01 = 0.178337;
+  double vre02 =  0.0230526;
+  double vre10 = -0.178337;
+  double vre11 = 0.951098;
+  double vre12 =  0.252207;
+  double vre20 = 0.0230526;
+  double vre21 =  -0.252207;
+  double vre22 = 0.967399;
+  double vre33 = 1.0;
+  MatSetValue(V_re, 0, 0, vre00, INSERT_VALUES);
+  MatSetValue(V_re, 0, 1, vre01, INSERT_VALUES);
+  MatSetValue(V_re, 0, 2, vre02, INSERT_VALUES);
+  MatSetValue(V_re, 1, 0, vre10, INSERT_VALUES);
+  MatSetValue(V_re, 1, 1, vre11, INSERT_VALUES);
+  MatSetValue(V_re, 1, 2, vre12, INSERT_VALUES);
+  MatSetValue(V_re, 2, 0, vre20, INSERT_VALUES);
+  MatSetValue(V_re, 2, 1, vre21, INSERT_VALUES);
+  MatSetValue(V_re, 2, 2, vre22, INSERT_VALUES);
+  MatSetValue(V_re, 3, 3, vre33, INSERT_VALUES);
+
+  MatAssemblyBegin(V_re, MAT_FINAL_ASSEMBLY);
+  MatAssemblyBegin(V_im, MAT_FINAL_ASSEMBLY);
+  MatAssemblyEnd(V_re, MAT_FINAL_ASSEMBLY);
+  MatAssemblyEnd(V_im, MAT_FINAL_ASSEMBLY);
+
+  /* assemble vectorized rotated target gate \bar VP \kron VP from V=V_re + i V_im */
+  assembleGate();
+
+}
+
+ThreeWave::~ThreeWave(){}
+
+

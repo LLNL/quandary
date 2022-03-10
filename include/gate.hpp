@@ -133,3 +133,11 @@ class iSWAP: public Gate {
     ~iSWAP();
 };
 
+
+class ThreeWave: public Gate {
+    public:
+    ThreeWave(std::vector<int> nlevels_, std::vector<int> nessential_, double time, std::vector<double> rotation_frequencies_);
+    ~ThreeWave();
+};
+
+
