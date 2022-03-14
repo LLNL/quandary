@@ -3464,6 +3464,51 @@ int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
   return 0;
 }
 
+
+
+double MasterEq::expectedEnergy(const Vec x){
+ 
+  PetscInt dim;
+  VecGetSize(x, &dim);
+  int dimmat = dim_rho; // N 
+
+  /* Get locally owned portion of x */
+  PetscInt ilow, iupp, idx_diag_re, idx_diag_im;
+  VecGetOwnershipRange(x, &ilow, &iupp);
+  double xdiag;
+
+  /* Iterate over diagonal elements to add up expected energy level */
+  double expected = 0.0;
+  for (int i=0; i<dimmat; i++) {
+    /* Get diagonal element in number operator */
+    int num_diag = i ;
+
+    /* Get diagonal element in rho (real) and sum up */
+    if (lindbladtype != LindbladType::NONE){ // Lindblad solver: += i * rho_ii
+      idx_diag_re = getIndexReal(getVecID(i,i,dimmat));
+      xdiag = 0.0;
+      if (ilow <= idx_diag_re && idx_diag_re < iupp) VecGetValues(x, 1, &idx_diag_re, &xdiag);
+      expected += num_diag * xdiag;
+    }
+    else { // Schoedinger solver: += i * | psi_i |^2
+      idx_diag_re = getIndexReal(i);
+      xdiag = 0.0;
+      if (ilow <= idx_diag_re && idx_diag_re < iupp) VecGetValues(x, 1, &idx_diag_re, &xdiag);
+      expected += num_diag * xdiag * xdiag;
+      idx_diag_im = getIndexImag(i);
+      xdiag = 0.0;
+      if (ilow <= idx_diag_im && idx_diag_im < iupp) VecGetValues(x, 1, &idx_diag_im, &xdiag);
+      expected += num_diag * xdiag * xdiag;
+    }
+  }
+  
+  /* Sum up from all Petsc processors */
+  double myexp = expected;
+  MPI_Allreduce(&myexp, &expected, 1, MPI_DOUBLE, MPI_SUM, PETSC_COMM_WORLD);
+
+  return expected;
+}
+
 /* --- 2 Oscillator cases --- */
 int myMatMult_matfree_2Osc(Mat RHS, Vec x, Vec y){
   /* Get the shell context */

@@ -157,6 +157,10 @@ class MasterEq{
      */
     int getRhoT0(const int iinit, const int ninit, const InitialConditionType initcond_type, const std::vector<int>& oscilIDs, Vec rho0);
 
+
+    // Get expected energy of the full composite system.
+    double expectedEnergy(const Vec x);
+
 };
 
 
