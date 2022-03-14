@@ -500,16 +500,62 @@ ThreeWave::ThreeWave(std::vector<int> nlevels_, std::vector<int> nessential_, do
   assert(dim_ess == 4);
 
   /* Fill lab-frame 3-wave gate in essential dimension system V_re = Re(V), V_im = Im(V) = 0 */
-  double vre00 = 0.983699; 
-  double vre01 = 0.178337;
-  double vre02 =  0.0230526;
-  double vre10 = -0.178337;
-  double vre11 = 0.951098;
-  double vre12 =  0.252207;
-  double vre20 = 0.0230526;
-  double vre21 =  -0.252207;
-  double vre22 = 0.967399;
-  double vre33 = 1.0;
+  double vre00, vre01, vre02, vre10, vre11, vre12, vre20, vre21, vre22, vre33, vim33;
+
+  double scale = 1.0;
+
+  if (scale == 1.0) {
+    // dt = 0.2564/2 * 1
+    vre00 = 0.983699; 
+    vre01 = 0.178337;
+    vre02 =  0.0230526;
+    vre10 = -0.178337;
+    vre11 = 0.951098;
+    vre12 =  0.252207;
+    vre20 = 0.0230526;
+    vre21 =  -0.252207;
+    vre22 = 0.967399;
+    vre33 = 0.991794;
+    vim33 = -0.127849;
+    // vre33 = 1.0;
+    // vim33 = 0.0;
+  } 
+
+  else if (scale == 2.0) {
+    // dt = 0.2564/2 * 2
+    vre00 = 0.936392;
+    vre01 = 0.339232;
+    vre02 = 0.0899556;
+    vre10 = - 0.339232;
+    vre11 = 0.809175;
+    vre12 = 0.479747;
+    vre20 = 0.0899556;
+    vre21 = -0.479747;
+    vre22 = 0.872784;  
+    vre33 = 0.967309;
+    vim33 =  -0.2536;
+    // vre33 = 1.0;
+    // vim33 = 0.0;
+  }
+
+  else if (scale == 3.0) {
+
+    // dt = 0.2564/2 * 3
+    vre00 = 0.862704;  
+    vre01 = 0.466949;
+    vre02 =  0.194166;
+    vre10 = -0.466949;
+    vre11 = 0.588112;
+    vre12 = 0.660366;
+    vre20 = 0.194166;
+    vre21 = -0.660366;
+    vre22 = 0.725408;
+    vre33 = 0.926949;
+    vim33 = -0.375188;
+    // vre33 = 1.0;
+    // vim33 = 0.0;
+  }
+
   MatSetValue(V_re, 0, 0, vre00, INSERT_VALUES);
   MatSetValue(V_re, 0, 1, vre01, INSERT_VALUES);
   MatSetValue(V_re, 0, 2, vre02, INSERT_VALUES);
@@ -520,6 +566,7 @@ ThreeWave::ThreeWave(std::vector<int> nlevels_, std::vector<int> nessential_, do
   MatSetValue(V_re, 2, 1, vre21, INSERT_VALUES);
   MatSetValue(V_re, 2, 2, vre22, INSERT_VALUES);
   MatSetValue(V_re, 3, 3, vre33, INSERT_VALUES);
+  MatSetValue(V_im, 3, 3, vim33, INSERT_VALUES);
 
   MatAssemblyBegin(V_re, MAT_FINAL_ASSEMBLY);
   MatAssemblyBegin(V_im, MAT_FINAL_ASSEMBLY);
