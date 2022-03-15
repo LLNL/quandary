@@ -910,9 +910,9 @@ void MasterEq::initSparseMatSolver(){
                 int colm = col + sqdim * m;
                 double val = -1.*Hc_re_vals[id][l];
                 if (ilow <= rowm && rowm < iupp) MatSetValue(Bc_vec[k][i], rowm, colm, val, ADD_VALUES);
-                // Then add v_ij in the B_d \kron I_N term:
-                rowm = row*sqdim + m;
-                colm = col*sqdim + m;
+                // Then add v_ij in the B_d^T \kron I_N term:
+                rowm = col*sqdim + m;   // transpose!
+                colm = row*sqdim + m;
                 val = Hc_re_vals[id][l];
                 if (ilow <= rowm && rowm < iupp) MatSetValue(Bc_vec[k][i], rowm, colm, val, ADD_VALUES);
               }
@@ -921,28 +921,28 @@ void MasterEq::initSparseMatSolver(){
           /* IMAGINARY part */
           // Iterate over nonzero elements in Hc^k_i
           for (int l = 0; l<Hc_im_ids[id].size(); l++) {
-            // Get position in the Bc matrix
+            // Get position in the Ac matrix
             int row = Hc_im_ids[id][l] % sqdim;
             int col = Hc_im_ids[id][l] / sqdim;
 
             if (lindbladtype == LindbladType::NONE){
               // Schroedinger
-              // Assemble - A_c  
-              double val = -1.*Hc_im_vals[id][l];
+              // Assemble A_c  
+              double val = Hc_im_vals[id][l];
               if (ilow <= row && row < iupp) MatSetValue(Ac_vec[k][i], row, col, val, ADD_VALUES);
             } else {
               // Lindblad
-              // Assemble -I_N \kron A_c + A_c \kron I_N 
+              // Assemble I_N \kron A_c - A_c^T \kron I_N 
               for (int m=0; m<sqdim; m++){
-                // first place all -v_ij in the -I_N\kron A_c term:
+                // first place all v_ij in the I_N\kron A_c term:
                 int rowm = row + sqdim * m;
                 int colm = col + sqdim * m;
-                double val = -1.*Hc_im_vals[id][l];
+                double val = Hc_im_vals[id][l];
                 if (ilow <= rowm && rowm < iupp) MatSetValue(Ac_vec[k][i], rowm, colm, val, ADD_VALUES);
-                // Then add v_ij in the A_d \kron I_N term:
-                rowm = row*sqdim + m;
-                colm = col*sqdim + m;
-                val = Hc_im_vals[id][l];
+                // Then add -v_ij in the -A_c^T \kron I_N term:
+                rowm = col*sqdim + m; // transpose !
+                colm = row*sqdim + m;
+                val = -1.*Hc_im_vals[id][l];
                 if (ilow <= rowm && rowm < iupp) MatSetValue(Ac_vec[k][i], rowm, colm, val, ADD_VALUES);
               }
             }

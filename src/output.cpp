@@ -134,7 +134,7 @@ void Output::writeControls(Vec params, MasterEq* mastereq, int ntime, double dt)
       file_c = fopen(filename, "w");
       file_t = fopen(filename_transfer, "w");
       fprintf(file_c, "# time         p(t) (rotating)          q(t) (rotating)        f(t) (labframe) \n");
-      fprintf(file_t, "# time         u_1(p(t))                u_2(p(t))     ... \n");
+      fprintf(file_t, "# time         u^r_1(p(t))                u^i_1(q(t))     ... \n");
 
       /* Write every <num> timestep to file */
       for (int i=0; i<=ntime; i+=output_frequency) {
