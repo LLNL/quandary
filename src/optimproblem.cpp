@@ -670,7 +670,7 @@ void OptimProblem::getStartingPoint(Vec xinit){
   PetscInt col = 0.0;
   for (int iosc = 0; iosc < timestepper->mastereq->getNOscillators(); iosc++){
     int ncarrier = timestepper->mastereq->getOscillator(iosc)->getNCarrierwaves();
-    int x = 5;
+    int x = 2;
     PetscInt ibegin = x*2*ncarrier;
     PetscInt iend = (timestepper->mastereq->getOscillator(iosc)->getNSplines()-x)*2*ncarrier;
 
@@ -679,10 +679,6 @@ void OptimProblem::getStartingPoint(Vec xinit){
       col++;
     }
   }
-  // Overwrite the q-parameters withzero.
-  // TODO: This is hardcoded for the pythoninterface where no q values are there. 
-  // TODO: Should probably rather make the design vector smaller?
-
 
   /* Assemble initial guess */
   VecAssemblyBegin(xinit);

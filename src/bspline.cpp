@@ -38,17 +38,17 @@ double ControlBasis::evaluate(const double t, const std::vector<double>& coeff, 
             double sin_omt = sin(carrier_freq[f]*t);
             switch (controltype) {
                 case ControlType::RE:
-                    // sum += alpha1 * cos_omt * Blt; 
-                    // sum -= alpha2 * sin_omt * Blt;
-                    sum += alpha1 * Blt * sin(carrier_freq[f]*t); // Match rigetti case
+                    sum += alpha1 * cos_omt * Blt; 
+                    sum -= alpha2 * sin_omt * Blt;
+                    // sum += alpha1 * Blt * sin(carrier_freq[f]*t); // Match rigetti case
                     break;
                 case ControlType::IM:
-                    // sum += alpha1 * sin_omt * Blt;
-                    // sum += alpha2 * cos_omt * Blt;
+                    sum += alpha1 * sin_omt * Blt;
+                    sum += alpha2 * cos_omt * Blt;
                     break;
                 case ControlType::LAB:
-                    // sum += 2. * alpha1 * Blt * cos((ground_freq + carrier_freq[f])*t);
-                    // sum -= 2. * alpha2 * Blt * sin((ground_freq + carrier_freq[f])*t);
+                    sum += 2. * alpha1 * Blt * cos((ground_freq + carrier_freq[f])*t);
+                    sum -= 2. * alpha2 * Blt * sin((ground_freq + carrier_freq[f])*t);
                     break;
             }   
         }
@@ -67,12 +67,12 @@ void ControlBasis::derivative(const double t, double* coeff_diff, const double v
             double freq = carrier_freq[f] * t;
             int coeff_id = l * carrier_freq.size() * 2 + f * 2;
             if (controltype == ControlType::RE) {
-                // coeff_diff[coeff_id]     +=   basis * cos(freq) * valbar; // alpha1
-                // coeff_diff[coeff_id + 1] += - basis * sin(freq) * valbar; // alpha2
-                coeff_diff[coeff_id]     +=   basis * sin(freq) * valbar;
+                coeff_diff[coeff_id]     +=   basis * cos(freq) * valbar; // alpha1
+                coeff_diff[coeff_id + 1] += - basis * sin(freq) * valbar; // alpha2
+                // coeff_diff[coeff_id]     +=   basis * sin(freq) * valbar;
             } else {
-                // coeff_diff[coeff_id]     += basis * sin(freq) * valbar;
-                // coeff_diff[coeff_id + 1] += basis * cos(freq) * valbar;
+                coeff_diff[coeff_id]     += basis * sin(freq) * valbar;
+                coeff_diff[coeff_id + 1] += basis * cos(freq) * valbar;
             }
         }
     }

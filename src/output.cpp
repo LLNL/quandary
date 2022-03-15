@@ -160,15 +160,16 @@ void Output::writeControls(Vec params, MasterEq* mastereq, int ntime, double dt)
           // Get transfer functions u^k_i(p) from python for this oscillators k
           for (int icon=0; icon<mastereq->ncontrolterms[ioscil]; icon++){
             // Evaluate the spline transfer function  u^k_i(p) which is stored in transfer_func[iosc][icon]
-            double ukip = mastereq->transfer_func[ioscil][icon]->eval(ReI);
+            double ukip = mastereq->transfer_func_re[ioscil][icon]->eval(ReI);
+            double ukiq = mastereq->transfer_func_im[ioscil][icon]->eval(ImI);
             // Set the controls (only real for now)
             if (icon == 0){
               Re[0]=ukip; 
-              Im[0]=0.0;
+              Im[0]=ukiq;
               Lab[0]=0.0;
             } else {
               Re.push_back(ukip); 
-              Im.push_back(0.0);
+              Im.push_back(ukiq);
               Lab.push_back(0.0);
             }
           } // end of control term loop
@@ -176,7 +177,7 @@ void Output::writeControls(Vec params, MasterEq* mastereq, int ntime, double dt)
         // Write transfer u_i(p(t)) for this oscillator
         fprintf(file_t, "% 1.8f   ", time);
         for (int icontrol=0; icontrol < Re.size(); icontrol++){
-          fprintf(file_t, "% 1.14e   ", Re[icontrol]);
+          fprintf(file_t, "% 1.14e   %1.14e", Re[icontrol], Im[icontrol]);
         }
         fprintf(file_t, "\n");
       } // end of oscillator loop

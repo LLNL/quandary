@@ -26,7 +26,6 @@ Oscillator::Oscillator(int id, std::vector<int> nlevels_all_, int nbasis_, doubl
   basisfunctions = new ControlBasis(nbasis_, Tfinal_, carrier_freq_);
 
   /* Initialize control parameters */
-  // TODO: Don't use the q values! 
   int nparam = 2 * nbasis_ * carrier_freq_.size();
   for (int i=0; i<nparam; i++) {
     params.push_back(0.0);

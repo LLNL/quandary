@@ -624,13 +624,15 @@ void MasterEq::initSparseMatSolver(){
 
       // Get a reference to the required python functions
       PyObject* pFunc_getHd = PyObject_GetAttrString(pModule, (char*)"getHd");  // system Hamiltonian
-      PyObject* pFunc_getHc = PyObject_GetAttrString(pModule, (char*)"getHc");  // control Hamiltonians
-      PyObject *pFunc_getTr = PyObject_GetAttrString(pModule, (char*)"getTransfer");  // transfer functions
+      PyObject* pFunc_getHc_real = PyObject_GetAttrString(pModule, (char*)"getHc_real");  // real control Hamiltonians
+      PyObject* pFunc_getHc_imag = PyObject_GetAttrString(pModule, (char*)"getHc_imag");  // imag control Hamiltonians
+      PyObject *pFunc_getTr_real = PyObject_GetAttrString(pModule, (char*)"getTransfer_real");  // transfer functions
+      PyObject *pFunc_getTr_imag = PyObject_GetAttrString(pModule, (char*)"getTransfer_imag");  // transfer functions
 
       /* --- Get the system Hamiltonian --- */
 
       // Call the python function. Returns python objects
-      PyObject *pHd, *pHc;
+      PyObject *pHd, *pHc_real, *pHc_imag;
       if (pFunc_getHd && PyCallable_Check(pFunc_getHd)) {
         pHd = PyObject_CallObject(pFunc_getHd, NULL); // NULL: no input to getHd().
         PyErr_Print();
@@ -643,7 +645,7 @@ void MasterEq::initSparseMatSolver(){
         length = PyList_Size(pHd);
         PyErr_Print();
       }
-      printf("getHd(): Received a list of length = %d: ", length);
+      printf("getHd(): Received a list of length = %d \n", length);
       std::vector<double> vals;
       std::vector<int> ids;
       for (Py_ssize_t i=0; i<length; i++){
@@ -728,19 +730,30 @@ void MasterEq::initSparseMatSolver(){
       /* --- Control Hamiltonians --- */
 
       // Call the python function 
-      if (pFunc_getHc && PyCallable_Check(pFunc_getHc)) {
-        pHc = PyObject_CallObject(pFunc_getHc, NULL); // NULL: no input to getHc().
+      if (pFunc_getHc_real && PyCallable_Check(pFunc_getHc_real)) {
+        pHc_real = PyObject_CallObject(pFunc_getHc_real, NULL); // NULL: no input to getHc().
+        PyErr_Print();
+      } else PyErr_Print();
+      if (pFunc_getHc_imag && PyCallable_Check(pFunc_getHc_imag)) {
+        pHc_imag = PyObject_CallObject(pFunc_getHc_imag, NULL); // NULL: no input to getHc().
         PyErr_Print();
       } else PyErr_Print();
 
       // Parse the result 
       // getHc() MUST return a python list of lists of lists of float elements for this to work:
       // for each oscillator k=0...Q-1: for each control term i=0...C^k-1: a list containing the flattened Hamiltonian Hc^k_i
-      int Q = 0;
-      if (PyList_Check(pHc)) {
-        Q = PyList_Size(pHc); 
+      int Q_r = 0;
+      int Q_i = 0;
+      if (PyList_Check(pHc_real)) {
+        Q_r = PyList_Size(pHc_real); 
         PyErr_Print();
       }
+      if (PyList_Check(pHc_imag)) {
+        Q_i = PyList_Size(pHc_imag); 
+        PyErr_Print();
+      }
+      assert(Q_r == Q_i);
+      int Q = Q_r;
       // Sanity check: the outer loop should have Q == noscillators elements (each one being a list of Hamiltonians)
       if (Q != noscillators) {
         printf("Error parsing python function getHc(): It should contain an (outer) list of length %d, but did return a list of length %d.\n", noscillators, Q);
@@ -749,45 +762,72 @@ void MasterEq::initSparseMatSolver(){
       // printf("getHc(): Received an (outer) list of length %d\n", Q);
 
       // Iterate over oscillators
-      std::vector<std::vector<double>> Hc_vals; // vector of vector of Hamiltonian values
-      std::vector<std::vector<int>> Hc_ids;  // vector of vector of Hamiltonian id
+      std::vector<std::vector<double>> Hc_re_vals; // vector of vector of Hamiltonian values
+      std::vector<std::vector<double>> Hc_im_vals; // vector of vector of Hamiltonian values
+      std::vector<std::vector<int>> Hc_re_ids;  // vector of vector of Hamiltonian id
+      std::vector<std::vector<int>> Hc_im_ids;  // vector of vector of Hamiltonian id
       for (Py_ssize_t k=0; k<Q; k++){
         // Check number of control terms for this oscillator
-        int Ck = 0;
-        PyObject* pHck = PyList_GetItem(pHc,k); // Get list of Hamiltonians for oscillator k
+        int Ck_r = 0;
+        int Ck_i = 0;
+        PyObject* pHck_real = PyList_GetItem(pHc_real,k); // Get list of Hamiltonians for oscillator k
+        PyObject* pHck_imag = PyList_GetItem(pHc_imag,k); // Get list of Hamiltonians for oscillator k
         PyErr_Print();
-        if (PyList_Check(pHck)) { 
-          Ck = PyList_Size(pHck); 
+        if (PyList_Check(pHck_real)) { 
+          Ck_r = PyList_Size(pHck_real); 
           PyErr_Print();
         } else PyErr_Print();
-        ncontrolterms[k] = Ck;
+        if (PyList_Check(pHck_imag)) { 
+          Ck_i = PyList_Size(pHck_imag); 
+          PyErr_Print();
+        } else PyErr_Print();
+        assert(Ck_i == Ck_r);
+        ncontrolterms[k] = Ck_r;
         // printf("getHc(): For oscillator %d, received %d control Hamiltonians.\n", (int)k, ncontrolterms[k]);
 
         // Iterate over control terms for this oscillator 
         for (Py_ssize_t i=0; i<ncontrolterms[k]; i++){
-          PyObject* pHcki = PyList_GetItem(pHck,i); // Get the Hamiltonian Hcki
+          PyObject* pHcki_real = PyList_GetItem(pHck_real,i); // Get the Hamiltonian Hcki
+          PyObject* pHcki_imag = PyList_GetItem(pHck_imag,i); // Get the Hamiltonian Hcki
           PyErr_Print();
 
-          int Hcki_size = 0;
-          if (PyList_Check(pHcki)) {
-            Hcki_size = PyList_Size(pHcki);
+          int Hcki_size_re = 0;
+          int Hcki_size_im = 0;
+          if (PyList_Check(pHcki_real)) {
+            Hcki_size_re = PyList_Size(pHcki_real);
             PyErr_Print();
           }
+          if (PyList_Check(pHcki_imag)) {
+            Hcki_size_im = PyList_Size(pHcki_imag);
+            PyErr_Print();
+          }
+          assert(Hcki_size_re == Hcki_size_im);
+          int Hcki_size = Hcki_size_re;
           // printf("getHc(): Oscillator %d, term %i: Received a list of length = %d: ", (int)k,(int)i,Hcki_size);
-          std::vector<double> Hcki_vals;
-          std::vector<int> Hcki_ids;
+          std::vector<double> Hcki_re_vals;
+          std::vector<double> Hcki_im_vals;
+          std::vector<int> Hcki_re_ids;
+          std::vector<int> Hcki_im_ids;
           for (Py_ssize_t l=0; l<Hcki_size; l++){ // Iterate over elements
-            PyObject* pval = PyList_GetItem(pHcki,l);
+            PyObject* pval_re = PyList_GetItem(pHcki_real,l);
+            PyObject* pval_im = PyList_GetItem(pHcki_imag,l);
             PyErr_Print();
-            double Hcki_val = PyFloat_AsDouble(pval);
+            double Hcki_re_val = PyFloat_AsDouble(pval_re);
+            double Hcki_im_val = PyFloat_AsDouble(pval_im);
             PyErr_Print();
-            if (fabs(Hcki_val) > 1e-14) {  // store only nonzeros
-              Hcki_vals.push_back(Hcki_val);
-              Hcki_ids.push_back(l);
+            if (fabs(Hcki_re_val) > 1e-14) {  // store only nonzeros
+              Hcki_re_vals.push_back(Hcki_re_val);
+              Hcki_re_ids.push_back(l);
+            }
+            if (fabs(Hcki_im_val) > 1e-14) {  // store only nonzeros
+              Hcki_im_vals.push_back(Hcki_im_val);
+              Hcki_im_ids.push_back(l);
             }
           }
-          Hc_vals.push_back(Hcki_vals);
-          Hc_ids.push_back(Hcki_ids);
+          Hc_re_vals.push_back(Hcki_re_vals);
+          Hc_re_ids.push_back(Hcki_re_ids);
+          Hc_im_vals.push_back(Hcki_im_vals);
+          Hc_im_ids.push_back(Hcki_im_ids);
         } // end of control term i for this oscillator k
       } // end of oscillator k
 
@@ -797,11 +837,17 @@ void MasterEq::initSparseMatSolver(){
         printf("getHc(): Oscillator %d: %d control terms: \n", k, ncontrolterms[k]);
         for (int i=0; i<ncontrolterms[k]; i++){
           printf("  %dth control: \n", i);
-          for (int l=0; l < Hc_vals[id].size(); l++){
-            printf("(%d,%f) ", Hc_ids[id][l], Hc_vals[id][l]);
+          for (int l=0; l < Hc_re_vals[id].size(); l++){
+            printf("(%d,%f) ", Hc_re_ids[id][l], Hc_re_vals[id][l]);
+          }
+          printf("\n");
+          printf("  + im * \n");
+          for (int l=0; l < Hc_im_vals[id].size(); l++){
+            printf("(%d,%f) ", Hc_im_ids[id][l], Hc_im_vals[id][l]);
           }
           id++;
           printf("\n");
+
         }
       }
 
@@ -843,16 +889,17 @@ void MasterEq::initSparseMatSolver(){
         for (int i=0; i<ncontrolterms[k]; i++){
           // Assemble -I_N \kron Hc^k_i + Hc^k_i \kron I_N (Lindblad) or -Hc^k_i (Schroedinger)
           // vals are in Hc_vals[id][:]
+          /* REAL part */
           // Iterate over nonzero elements in Hc^k_i
-          for (int l = 0; l<Hc_ids[id].size(); l++) {
+          for (int l = 0; l<Hc_re_ids[id].size(); l++) {
             // Get position in the Bc matrix
-            int row = Hc_ids[id][l] % sqdim;
-            int col = Hc_ids[id][l] / sqdim;
+            int row = Hc_re_ids[id][l] % sqdim;
+            int col = Hc_re_ids[id][l] / sqdim;
 
             if (lindbladtype == LindbladType::NONE){
               // Schroedinger
               // Assemble - B_c  
-              double val = -1.*Hc_vals[id][l];
+              double val = -1.*Hc_re_vals[id][l];
               if (ilow <= row && row < iupp) MatSetValue(Bc_vec[k][i], row, col, val, ADD_VALUES);
             } else {
               // Lindblad
@@ -861,16 +908,45 @@ void MasterEq::initSparseMatSolver(){
                 // first place all -v_ij in the -I_N\kron B_c term:
                 int rowm = row + sqdim * m;
                 int colm = col + sqdim * m;
-                double val = -1.*Hc_vals[id][l];
+                double val = -1.*Hc_re_vals[id][l];
                 if (ilow <= rowm && rowm < iupp) MatSetValue(Bc_vec[k][i], rowm, colm, val, ADD_VALUES);
                 // Then add v_ij in the B_d \kron I_N term:
                 rowm = row*sqdim + m;
                 colm = col*sqdim + m;
-                val = Hc_vals[id][l];
+                val = Hc_re_vals[id][l];
                 if (ilow <= rowm && rowm < iupp) MatSetValue(Bc_vec[k][i], rowm, colm, val, ADD_VALUES);
               }
             }
           } // end of elements in Hc^k_i
+          /* IMAGINARY part */
+          // Iterate over nonzero elements in Hc^k_i
+          for (int l = 0; l<Hc_im_ids[id].size(); l++) {
+            // Get position in the Bc matrix
+            int row = Hc_im_ids[id][l] % sqdim;
+            int col = Hc_im_ids[id][l] / sqdim;
+
+            if (lindbladtype == LindbladType::NONE){
+              // Schroedinger
+              // Assemble - A_c  
+              double val = -1.*Hc_im_vals[id][l];
+              if (ilow <= row && row < iupp) MatSetValue(Ac_vec[k][i], row, col, val, ADD_VALUES);
+            } else {
+              // Lindblad
+              // Assemble -I_N \kron A_c + A_c \kron I_N 
+              for (int m=0; m<sqdim; m++){
+                // first place all -v_ij in the -I_N\kron A_c term:
+                int rowm = row + sqdim * m;
+                int colm = col + sqdim * m;
+                double val = -1.*Hc_im_vals[id][l];
+                if (ilow <= rowm && rowm < iupp) MatSetValue(Ac_vec[k][i], rowm, colm, val, ADD_VALUES);
+                // Then add v_ij in the A_d \kron I_N term:
+                rowm = row*sqdim + m;
+                colm = col*sqdim + m;
+                val = Hc_im_vals[id][l];
+                if (ilow <= rowm && rowm < iupp) MatSetValue(Ac_vec[k][i], rowm, colm, val, ADD_VALUES);
+              }
+            }
+          }
           id++;
         } // end of i loop for control terms
 
@@ -883,6 +959,8 @@ void MasterEq::initSparseMatSolver(){
         for (int i=1; i<ncontrolterms[k]; i++){
           MatAssemblyBegin(Bc_vec[k][i], MAT_FINAL_ASSEMBLY);
           MatAssemblyEnd(Bc_vec[k][i], MAT_FINAL_ASSEMBLY);
+          MatAssemblyBegin(Ac_vec[k][i], MAT_FINAL_ASSEMBLY);
+          MatAssemblyEnd(Ac_vec[k][i], MAT_FINAL_ASSEMBLY);
         }
       } // end of k loop for oscillators
 
@@ -912,19 +990,30 @@ void MasterEq::initSparseMatSolver(){
 
       /* --- Get and store the transfer functions --- */
 
-      PyObject* pTr;
-      if (pFunc_getTr && PyCallable_Check(pFunc_getTr)) {
-        pTr = PyObject_CallObject(pFunc_getTr, NULL); // NULL: no input to getTransfer().
+      PyObject* pTr_real, *pTr_imag;
+      if (pFunc_getTr_real && PyCallable_Check(pFunc_getTr_real)) {
+        pTr_real = PyObject_CallObject(pFunc_getTr_real, NULL); // NULL: no input to getTransfer().
+        PyErr_Print();
+      } else PyErr_Print();
+      if (pFunc_getTr_imag && PyCallable_Check(pFunc_getTr_imag)) {
+        pTr_imag = PyObject_CallObject(pFunc_getTr_imag, NULL); // NULL: no input to getTransfer().
         PyErr_Print();
       } else PyErr_Print();
 
       // getTransfer() MUST return a python list of lists of [splines knots, and coeffs, and order]:
       // for each oscillator k=0...Q-1: for each control term i=0...C^k-1: one transfer function u^k_i(x) (real-valued) given in terms of spline knots (list), coefficients(list) and order (int)
-      Q = 0;
-      if (PyList_Check(pHc)) {
-        Q = PyList_Size(pHc); 
+      Q_r = 0;
+      Q_i = 0;
+      if (PyList_Check(pTr_real)) {
+        Q_r = PyList_Size(pTr_real); 
         PyErr_Print();
       }
+      if (PyList_Check(pTr_imag)) {
+        Q_i = PyList_Size(pTr_imag); 
+        PyErr_Print();
+      }
+      assert(Q_r == Q_i);
+      Q = Q_r;
       // Sanity check 
       if (Q != noscillators) {
         printf("Error parsing python function getTr(): It should contain an (outer) list of length %d, but did return a list of length %d.\n", noscillators, Q);
@@ -934,60 +1023,92 @@ void MasterEq::initSparseMatSolver(){
       // Iterate over oscillators
       for (Py_ssize_t k=0; k<Q; k++){
         // Check number of control terms for this oscillator
-        int Ck = 0;
-        PyObject* pTrk = PyList_GetItem(pTr,k); // Get list of Function for oscillator k
+        int Ck_r = 0;
+        PyObject* pTrk_real = PyList_GetItem(pTr_real,k); // Get list of Function for oscillator k
         PyErr_Print();
-        if (PyList_Check(pTrk)) { 
-          Ck = PyList_Size(pTrk); 
+        if (PyList_Check(pTrk_real)) { 
+          Ck_r = PyList_Size(pTrk_real); 
+          PyErr_Print();
+        } else PyErr_Print();
+        int Ck_i = 0;
+        PyObject* pTrk_imag = PyList_GetItem(pTr_imag,k); // Get list of Function for oscillator k
+        PyErr_Print();
+        if (PyList_Check(pTrk_imag)) { 
+          Ck_i = PyList_Size(pTrk_imag); 
           PyErr_Print();
         } else PyErr_Print();
         printf("getTr(): For oscillator %d, received %d transfer functions.\n", (int)k, ncontrolterms[k]);
+        int Ck = Ck_r;
+        assert(Ck_r == Ck_i);
         assert(Ck == ncontrolterms[k]);
 
         // Iterate over control terms for this oscillator 
-        std::vector<fitpackpp::BSplineCurve*> transfer_k;
-        // std::vector<int> transfer_k;
-        PyObject* pTrki, *pOrder_ki, *pknots_ki, *pcoefs_ki, *pTrki_knot, *pTrki_coef;
+        std::vector<fitpackpp::BSplineCurve*> transfer_k_re;
+        std::vector<fitpackpp::BSplineCurve*> transfer_k_im;
+        PyObject* pTrki_real, *pTrki_imag, *pOrder_ki_real,* pOrder_ki_imag, *pknots_ki_real,*pknots_ki_imag, *pcoefs_ki_real, *pcoefs_ki_imag, *pTrki_knot_real, *pTrki_knot_imag, *pTrki_coef_real,*pTrki_coef_imag;
         for (Py_ssize_t i=0; i<ncontrolterms[k]; i++){
-          pTrki = PyList_GetItem(pTrk,i); // Get spline for u^k_i(x). Returns [knots, coeffs, order]
+          pTrki_real = PyList_GetItem(pTrk_real,i); // Get spline for u^k_i(x). Returns [knots, coeffs, order]
+          pTrki_imag = PyList_GetItem(pTrk_imag,i); // Get spline for u^k_i(x). Returns [knots, coeffs, order]
           PyErr_Print();
 
-          std::vector<double> uki_knots, uki_coefs;
-          int uki_order=0;
-          if (PyList_Check(pTrki)) {  // pTrki = [knots, coeffs, order]
-            assert(PyList_Size(pTrki) == 3); 
+          std::vector<double> uki_re_knots, uki_re_coefs;
+          std::vector<double> uki_im_knots, uki_im_coefs;
+          int uki_re_order=0;
+          int uki_im_order=0;
+          if (PyList_Check(pTrki_real)) {  // pTrki = [knots, coeffs, order]
+            assert(PyList_Size(pTrki_real) == 3); 
             // Get order
-            pOrder_ki = PyList_GetItem(pTrki,2); 
-            uki_order = PyInt_AsLong(pOrder_ki);
+            pOrder_ki_real = PyList_GetItem(pTrki_real,2); 
+            pOrder_ki_imag = PyList_GetItem(pTrki_imag,2); 
+            uki_re_order = PyInt_AsLong(pOrder_ki_real);
+            uki_im_order = PyInt_AsLong(pOrder_ki_imag);
 
             // Get knots coeffs and order for spline u^k_i(x)
-            pknots_ki = PyList_GetItem(pTrki,0); 
-            pcoefs_ki = PyList_GetItem(pTrki,1); 
-            if (PyList_Check(pknots_ki) && PyList_Check(pcoefs_ki)) {  // pTrki = [knots, coeffs, order]
-              for (Py_ssize_t l=0; l<PyList_Size(pknots_ki); l++) {
-                pTrki_knot = PyList_GetItem(pknots_ki, l);
-                double val = PyFloat_AsDouble(pTrki_knot);
-                uki_knots.push_back( val );
-                pTrki_coef = PyList_GetItem(pcoefs_ki, l);
-                val = PyFloat_AsDouble(pTrki_coef);
-                uki_coefs.push_back( val );
+            pknots_ki_real = PyList_GetItem(pTrki_real,0); 
+            pknots_ki_imag = PyList_GetItem(pTrki_imag,0); 
+            pcoefs_ki_real = PyList_GetItem(pTrki_real,1); 
+            pcoefs_ki_imag = PyList_GetItem(pTrki_imag,1); 
+            if (PyList_Check(pknots_ki_real) && PyList_Check(pcoefs_ki_real)) {  // pTrki = [knots, coeffs, order]
+              for (Py_ssize_t l=0; l<PyList_Size(pknots_ki_real); l++) {
+                pTrki_knot_real = PyList_GetItem(pknots_ki_real, l);
+                double val = PyFloat_AsDouble(pTrki_knot_real);
+                uki_re_knots.push_back( val );
+                pTrki_coef_real = PyList_GetItem(pcoefs_ki_real, l);
+                val = PyFloat_AsDouble(pTrki_coef_real);
+                uki_re_coefs.push_back( val );
               }
             } else PyErr_Print();
+            if (PyList_Check(pknots_ki_imag) && PyList_Check(pcoefs_ki_imag)) {  // pTrki = [knots, coeffs, order]
+              for (Py_ssize_t l=0; l<PyList_Size(pknots_ki_imag); l++) {
+                pTrki_knot_imag = PyList_GetItem(pknots_ki_imag, l);
+                double val = PyFloat_AsDouble(pTrki_knot_imag);
+                uki_im_knots.push_back( val );
+                pTrki_coef_imag = PyList_GetItem(pcoefs_ki_imag, l);
+                val = PyFloat_AsDouble(pTrki_coef_imag);
+                uki_im_coefs.push_back( val );
+              }
+            } else PyErr_Print();
+
           } else PyErr_Print();
 
           // Create the spline for u^k_i and store it
-          fitpackpp::BSplineCurve* transfer_ki = new fitpackpp::BSplineCurve(uki_knots, uki_coefs, uki_order);
-          transfer_k.push_back(transfer_ki);
+          fitpackpp::BSplineCurve* transfer_ki_real = new fitpackpp::BSplineCurve(uki_re_knots, uki_re_coefs, uki_re_order);
+          fitpackpp::BSplineCurve* transfer_ki_imag = new fitpackpp::BSplineCurve(uki_im_knots, uki_im_coefs, uki_im_order);
+          transfer_k_re.push_back(transfer_ki_real);
+          transfer_k_im.push_back(transfer_ki_imag);
         } // end of control term i for this oscillator k
           
         // Store the transfer splines for each oscillator in the master equation
-        transfer_func.push_back(transfer_k);
+        transfer_func_re.push_back(transfer_k_re);
+        transfer_func_im.push_back(transfer_k_im);
       } // end of oscillator k
 
       // Cleanup
       Py_XDECREF(pFunc_getHd);  // pointer to getHd function
-      Py_XDECREF(pFunc_getHc);  // pointer to getHc function
-      Py_XDECREF(pFunc_getTr);  // pointer to getHc function
+      Py_XDECREF(pFunc_getHc_real);  // pointer to getHc function
+      Py_XDECREF(pFunc_getHc_imag);  // pointer to getHc function
+      Py_XDECREF(pFunc_getTr_real);  // pointer to getHc function
+      Py_XDECREF(pFunc_getTr_imag);  // pointer to getHc function
 
     } else {
       printf("\n ERROR: Can't import python module %s. Probably, the file does not exist in this working directory... \n", python_file.c_str());
@@ -1036,7 +1157,6 @@ int MasterEq::assemble_RHS(const double t){
 
     // Evaluate transfer function from python, if the file is given.
     if (python_file.compare("none") != 0 ) {
-    // Only real-valued controls for now. So only u^k_i(p(t)) to multiply Bc^k_i. TODO: Add imaginary.
 
       // Set to zero if no transfer function is given. 
       RHSctx.control_Re[iosc][0] = 0.0; 
@@ -1048,13 +1168,14 @@ int MasterEq::assemble_RHS(const double t){
 
         //TODO
         // These are hardcoded bounds for the spline, do prevent it from doing bad extrapolations where no data was given. Here, the spline was generated in the interval [-1.5,1.5]
-        if (p < -1.5 || p > 1.5) printf("\n WARNING: Extrapolating the transfer function spline can lead to large errors.\n\n");
-        double ukip = transfer_func[iosc][icon]->eval(p);
+        // if (p < -1.5 || p > 1.5) printf("\n WARNING: Extrapolating the transfer function spline can lead to large errors.\n\n");
+        double ukip = transfer_func_re[iosc][icon]->eval(p);
+        double ukiq = transfer_func_im[iosc][icon]->eval(q);
         // printf("t=%f: transfer function u[oscil=%d][controlterm=%d](input=%f) = output %f\n", t, iosc, icon, p, ukip);
 
         // Set the controls (only real for now)
         RHSctx.control_Re[iosc][icon] = ukip; 
-        RHSctx.control_Im[iosc][icon] = 0.0;
+        RHSctx.control_Im[iosc][icon] = ukiq;
       } // end of control term
     } 
   } // end of oscillator loop
@@ -1521,16 +1642,21 @@ void MasterEq::computedRHSdp(const double t, const Vec x, const Vec xbar, const 
     }
     oscil_vec[iosc]->evalControl_diff(t, dRedp, dImdp);
 
-    // Derivative of transfer functions u^k_i(p). TODO: Add imaginary part!
+    // Derivative of transfer functions u^k_i(p). 
     std::vector<double> dukidp;
+    std::vector<double> dukidq;
     dukidp.push_back(1.0);  // always do first one, assume identity otherwise will be overwritten in the following loop
+    dukidq.push_back(1.0);  // always do first one, assume identity otherwise will be overwritten in the following loop
     if (python_file.compare("none") != 0 ) {
       double p, q;
       oscil_vec[iosc]->evalControl(t, &p, &q);  // Evaluates the B-spline basis functions -> p(t,alpha), q(t,alpha)
       for (int icon=0; icon<ncontrolterms[iosc]; icon++){
-        double dukidp_tmp = transfer_func[iosc][icon]->der(p); // dudp(p)
+        double dukidp_tmp = transfer_func_re[iosc][icon]->der(p); // dudp(p)
+        double dukidq_tmp = transfer_func_im[iosc][icon]->der(q); // dudp(p)
         if (icon == 0) dukidp[icon] = dukidp_tmp;
         else dukidp.push_back(dukidp_tmp);
+        if (icon == 0) dukidq[icon] = dukidq_tmp;
+        else dukidq.push_back(dukidq_tmp);
       }
     }
     
@@ -1538,13 +1664,15 @@ void MasterEq::computedRHSdp(const double t, const Vec x, const Vec xbar, const 
     /* Compute terms in RHS(x)^T xbar */
     //zero's control term always. 
     double uAubar, vAvbar, vBubar, uBvbar;
-    MatMult(Ac_vec[iosc][0], u, aux); VecDot(aux, ubar, &uAubar);  // for now, no transfer on imaginary control
-    MatMult(Ac_vec[iosc][0], v, aux); VecDot(aux, vbar, &vAvbar);
+    MatMult(Ac_vec[iosc][0], u, aux); VecDot(aux, ubar, &uAubar); uAubar *= dukidq[0]; 
+    MatMult(Ac_vec[iosc][0], v, aux); VecDot(aux, vbar, &vAvbar); vAvbar *= dukidq[0];
     MatMult(Bc_vec[iosc][0], u, aux); VecDot(aux, vbar, &uBvbar); uBvbar *= dukidp[0];
     MatMult(Bc_vec[iosc][0], v, aux); VecDot(aux, ubar, &vBubar); vBubar *= dukidp[0];
     // Other control terms
     for (int icon=1; icon<ncontrolterms[iosc]; icon++){
       double dot;
+      MatMult(Ac_vec[iosc][icon], u, aux); VecDot(aux, ubar, &dot); uAubar += dot * dukidq[icon];
+      MatMult(Ac_vec[iosc][icon], v, aux); VecDot(aux, vbar, &dot); vAvbar += dot * dukidq[icon];
       MatMult(Bc_vec[iosc][icon], u, aux); VecDot(aux, vbar, &dot); uBvbar += dot * dukidp[icon];
       MatMult(Bc_vec[iosc][icon], v, aux); VecDot(aux, ubar, &dot); vBubar += dot * dukidp[icon];
     }
@@ -1874,15 +2002,21 @@ int myMatMult_sparsemat(Mat RHS, Vec x, Vec y){
     VecAXPY(vout, p, *shellctx->aux);
 
     // Then do all others. 
-    // For those, Ac_vec doesn't exist, because currently the python interface only works for *real-valued* Hamiltonians. TODO.
     for (int icon=1; icon<shellctx->ncontrolterms[iosc]; icon++){
 
       // Get control
       p = shellctx->control_Re[iosc][icon];
+      q = shellctx->control_Im[iosc][icon];
 
+      // uout += q^k*Acu
+      MatMult((*(shellctx->Ac_vec))[iosc][icon], u, *shellctx->aux);
+      VecAXPY(uout, q, *shellctx->aux); // Should use MatAXPY! TODO.
       // uout -= p^kBcv
       MatMult((*(shellctx->Bc_vec))[iosc][icon], v, *shellctx->aux);
       VecAXPY(uout, -1.*p, *shellctx->aux);
+      // vout += q^kAcv
+      MatMult((*(shellctx->Ac_vec))[iosc][icon], v, *shellctx->aux);
+      VecAXPY(vout, q, *shellctx->aux);
       // vout += p^kBcu
       MatMult((*(shellctx->Bc_vec))[iosc][icon], u, *shellctx->aux);
       VecAXPY(vout, p, *shellctx->aux);
@@ -1987,9 +2121,15 @@ int myMatMultTranspose_sparsemat(Mat RHS, Vec x, Vec y) {
       // control for other terms
       p = shellctx->control_Re[iosc][icon];
 
+      // uout += q^k*Ac^Tu
+      MatMultTranspose((*(shellctx->Ac_vec))[iosc][icon], u, *shellctx->aux);
+      VecAXPY(uout, q, *shellctx->aux);
       // uout += p^kBc^Tv
       MatMultTranspose((*(shellctx->Bc_vec))[iosc][icon], v, *shellctx->aux);
       VecAXPY(uout, p, *shellctx->aux);
+      // vout += q^kAc^Tv
+      MatMultTranspose((*(shellctx->Ac_vec))[iosc][icon], v, *shellctx->aux);
+      VecAXPY(vout, q, *shellctx->aux);
       // vout -= p^kBc^Tu
       MatMultTranspose((*(shellctx->Bc_vec))[iosc][icon], u, *shellctx->aux);
       VecAXPY(vout, -1.*p, *shellctx->aux);
