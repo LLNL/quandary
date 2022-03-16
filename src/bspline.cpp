@@ -99,43 +99,29 @@ double ControlBasis::basisfunction(int id, double t){
 TransferFunction::TransferFunction(){}
 TransferFunction::~TransferFunction(){}
 
-double TransferFunction::eval_re(double p) {
+double TransferFunction::eval(double p) {
     return p;
 }
 
-double TransferFunction::eval_im(double q) {
-    return q;
-}
 
-
-double TransferFunction::der_re(double p){
-    return 1.0;
-}
-double TransferFunction::der_im(double q){
+double TransferFunction::der(double p){
     return 1.0;
 }
 
-SplineTransferFunction::SplineTransferFunction(int order_re, std::vector<double>knots_re, std::vector<double>coeffs_re, int order_im, std::vector<double>knots_im, std::vector<double>coeffs_im) : TransferFunction() {
 
-    transfer_func_re = new fitpackpp::BSplineCurve(knots_re, coeffs_re, order_re);
-    transfer_func_im = new fitpackpp::BSplineCurve(knots_im, coeffs_im, order_im);
+SplineTransferFunction::SplineTransferFunction(int order_re, std::vector<double>knots_re, std::vector<double>coeffs_re) : TransferFunction() {
+
+    transfer_func = new fitpackpp::BSplineCurve(knots_re, coeffs_re, order_re);
 }
 
 SplineTransferFunction::~SplineTransferFunction() {}
 
-double SplineTransferFunction::eval_re(double p) {
-    double out = transfer_func_re->eval(p);
+double SplineTransferFunction::eval(double p) {
+    double out = transfer_func->eval(p);
     return out;
 }
 
-double SplineTransferFunction::eval_im(double q) {
-    double out = transfer_func_im->eval(q);
-    return out;
-}
 
-double SplineTransferFunction::der_re(double p){
-    return transfer_func_re->der(p);
-}
-double SplineTransferFunction::der_im(double q){
-    return transfer_func_im->der(q);
+double SplineTransferFunction::der(double p){
+    return transfer_func->der(p);
 }

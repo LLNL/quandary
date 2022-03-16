@@ -40,35 +40,30 @@ class ControlBasis{
 
 
 /* 
- * Class to represent transfer functions that act on the controls: evaluate u(p(t)) and v(q(t)).
+ * Class to represent transfer functions that act on the controls: evaluate u(p(t)), or v(q(t)).
  * Default: u = v = identity. 
- * Otherwise: u and v are splines, read from the python interface. */
+ * Otherwise: u is a spline, read from the python interface. */
 class TransferFunction{
     public:
         TransferFunction();
         ~TransferFunction();
 
-        // Default: these are the identity functions
-        double eval_re(double p);
-        double eval_im(double q);
+        // Default: this is the identity function
+        double eval(double p);
         // Derivative
-        double der_re(double p);
-        double der_im(double q);
+        double der(double p);
 };
 
 class SplineTransferFunction : public TransferFunction {
     protected:
-        fitpackpp::BSplineCurve* transfer_func_re;
-        fitpackpp::BSplineCurve* transfer_func_im;
+        fitpackpp::BSplineCurve* transfer_func;
     public:
-        SplineTransferFunction(int order_re, std::vector<double>knots_re, std::vector<double>coeffs_re, int order_im, std::vector<double>knots_im, std::vector<double>coeffs_im);
+        SplineTransferFunction(int order, std::vector<double>knots, std::vector<double>coeffs);
         ~SplineTransferFunction();
 
-        // Evaluate the splines
-        double eval_re(double p);
-        double eval_im(double q);
+        // Evaluate the spline
+        double eval(double p);
 
         // Derivative
-        double der_re(double p);
-        double der_im(double q);
+        double der(double p);
 };

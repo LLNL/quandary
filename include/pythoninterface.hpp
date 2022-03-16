@@ -49,5 +49,5 @@ class PythonInterface{
   //   for each oscillator k=0...Q-1: 
   //       for each control term i=0...C^k-1: 
   //            one transfer function u^k_i(x) (given in terms of spline knots (list), coefficients(list) and order (int)
-  void receiveTransfer(int noscillators,std::vector<std::vector<TransferFunction*>>& transfer_func);
+  void receiveTransfer(int noscillators,std::vector<std::vector<TransferFunction*>>& transfer_func_re, std::vector<std::vector<TransferFunction*>>& transfer_func_im);
 };

@@ -426,135 +426,188 @@ void PythonInterface::receiveHc(int noscillators, Mat** Ac_vec, Mat** Bc_vec, st
 }
 
 
-void PythonInterface::receiveTransfer(int noscillators,std::vector<std::vector<TransferFunction*>>& transfer_func){
+void PythonInterface::receiveTransfer(int noscillators,std::vector<std::vector<TransferFunction*>>& transfer_func_re,std::vector<std::vector<TransferFunction*>>& transfer_func_im){
 #ifdef WITH_PYTHON
 
   printf("Receiving transfer functions...\n");
 
   /* First empty out the transfer_func vector */
   for (int i=0; i<noscillators; i++){
-    transfer_func[i].clear();
+    transfer_func_re[i].clear();
+    transfer_func_im[i].clear();
   }
-  transfer_func.clear();
+  transfer_func_re.clear();
+  transfer_func_im.clear();
+
+  /* Transfer function u(p(t)) for REAL part */
 
   // Get a reference to the required python functions
-  PyObject *pFunc_getTr_real = PyObject_GetAttrString(pModule, (char*)"getTransfer_real");  // transfer functions
-  PyObject *pFunc_getTr_imag = PyObject_GetAttrString(pModule, (char*)"getTransfer_imag");  // transfer functions
+  PyObject *pFunc_getTr_real = pFunc_getTr_real = PyObject_GetAttrString(pModule, (char*)"getTransfer_real");  // transfer functions
 
-
-  // Call the functions 
-  PyObject* pTr_real, *pTr_imag;
-  if (pFunc_getTr_real && PyCallable_Check(pFunc_getTr_real)) {
-    pTr_real = PyObject_CallObject(pFunc_getTr_real, NULL); // NULL: no input to getTransfer().
-    PyErr_Print();
+  // Call the functions
+  PyObject* pTr_real;
+  bool called_real=false;
+  if (pFunc_getTr_real) {
+    if (PyCallable_Check(pFunc_getTr_real)) {
+      pTr_real = PyObject_CallObject(pFunc_getTr_real, NULL); // NULL: no input to getTransfer().
+      PyErr_Print();
+      called_real = true;
+      if (PyList_Check(pTr_real)) assert(PyList_Size(pTr_real) == noscillators);
+    } else PyErr_Print();
   } else PyErr_Print();
-  if (pFunc_getTr_imag && PyCallable_Check(pFunc_getTr_imag)) {
-    pTr_imag = PyObject_CallObject(pFunc_getTr_imag, NULL); // NULL: no input to getTransfer().
-    PyErr_Print();
-  } else PyErr_Print();
-
-  // getTransfer() MUST return a python list of lists of [splines knots, and coeffs, and order]:
-  // for each oscillator k=0...Q-1: for each control term i=0...C^k-1: one transfer function u^k_i(x) (real-valued) given in terms of spline knots (list), coefficients(list) and order (int)
-  int Q_r = 0;
-  int Q_i = 0;
-  if (PyList_Check(pTr_real)) {
-    Q_r = PyList_Size(pTr_real); 
-    PyErr_Print();
-  }
-  if (PyList_Check(pTr_imag)) {
-    Q_i = PyList_Size(pTr_imag); 
-    PyErr_Print();
-  }
-  assert(Q_r == Q_i);
-  int Q = Q_r;
-  // Sanity check 
-  if (Q != noscillators) {
-    printf("Error parsing python function getTr(): It should contain an (outer) list of length %d, but did return a list of length %d.\n", noscillators, Q);
-    exit(1);
-  }
 
   // Iterate over oscillators
-  for (Py_ssize_t k=0; k<Q; k++){
-    // Check number of control terms for this oscillator
-    int Ck_r = 0;
-    PyObject* pTrk_real = PyList_GetItem(pTr_real,k); // Get list of Function for oscillator k
-    PyErr_Print();
-    if (PyList_Check(pTrk_real)) { 
-      Ck_r = PyList_Size(pTrk_real); 
+  for (Py_ssize_t k=0; k<noscillators; k++){
+    std::vector<TransferFunction*> transfer_k_re; // Container for transfer function for this oscillator 
+
+    // Get number of given transfer functions for this oscillator
+    if (!called_real || !PyList_Check(pTr_real)){
+      // Default: If we can't find the python function "getTranfer_real", use identities for each control Hamiltonian term
+      printf("# Warning: Could not find transfer function 'getTransfer_real'. Using identity instead. \n");
+      for (Py_ssize_t i=0; i<ncontrolterms_store[k]; i++){
+        TransferFunction *transfer_ki =  new TransferFunction();
+        transfer_k_re.push_back(transfer_ki);
+      }
+    } else { 
+      // If 'getTransfer_real' exists, get all transfer functions from python in terms of spline knots and coefs. 
+
+      // Check size of list for this oscillator
+      PyObject* pTrk_real = PyList_GetItem(pTr_real,k); // Get list of Function for oscillator k
       PyErr_Print();
-    } else PyErr_Print();
-    int Ck_i = 0;
-    PyObject* pTrk_imag = PyList_GetItem(pTr_imag,k); // Get list of Function for oscillator k
-    PyErr_Print();
-    if (PyList_Check(pTrk_imag)) { 
-      Ck_i = PyList_Size(pTrk_imag); 
-      PyErr_Print();
-    } else PyErr_Print();
-    // printf("getTr(): For oscillator %d, received %d transfer functions.\n", (int)k, ncontrolterms[k]);
-    int Ck = Ck_r;
-    assert(Ck_r == Ck_i);
-    assert(Ck == ncontrolterms_store[k]);
-
-    // Iterate over control terms for this oscillator 
-    std::vector<TransferFunction*> transfer_k;
-    PyObject* pTrki_real, *pTrki_imag, *pOrder_ki_real,* pOrder_ki_imag, *pknots_ki_real,*pknots_ki_imag, *pcoefs_ki_real, *pcoefs_ki_imag, *pTrki_knot_real, *pTrki_knot_imag, *pTrki_coef_real,*pTrki_coef_imag;
-    for (Py_ssize_t i=0; i<ncontrolterms_store[k]; i++){
-      pTrki_real = PyList_GetItem(pTrk_real,i); // Get spline for u^k_i(x). Returns [knots, coeffs, order]
-      pTrki_imag = PyList_GetItem(pTrk_imag,i); // Get spline for u^k_i(x). Returns [knots, coeffs, order]
-      PyErr_Print();
-
-      std::vector<double> uki_re_knots, uki_re_coefs;
-      std::vector<double> uki_im_knots, uki_im_coefs;
-      int uki_re_order=0;
-      int uki_im_order=0;
-      if (PyList_Check(pTrki_real)) {  // pTrki = [knots, coeffs, order]
-        assert(PyList_Size(pTrki_real) == 3); 
-        // Get order
-        pOrder_ki_real = PyList_GetItem(pTrki_real,2); 
-        pOrder_ki_imag = PyList_GetItem(pTrki_imag,2); 
-        uki_re_order = PyInt_AsLong(pOrder_ki_real);
-        uki_im_order = PyInt_AsLong(pOrder_ki_imag);
-
-        // Get knots coeffs and order for spline u^k_i(x)
-        pknots_ki_real = PyList_GetItem(pTrki_real,0); 
-        pknots_ki_imag = PyList_GetItem(pTrki_imag,0); 
-        pcoefs_ki_real = PyList_GetItem(pTrki_real,1); 
-        pcoefs_ki_imag = PyList_GetItem(pTrki_imag,1); 
-        if (PyList_Check(pknots_ki_real) && PyList_Check(pcoefs_ki_real)) {  // pTrki = [knots, coeffs, order]
-          for (Py_ssize_t l=0; l<PyList_Size(pknots_ki_real); l++) {
-            pTrki_knot_real = PyList_GetItem(pknots_ki_real, l);
-            double val = PyFloat_AsDouble(pTrki_knot_real);
-            uki_re_knots.push_back( val );
-            pTrki_coef_real = PyList_GetItem(pcoefs_ki_real, l);
-            val = PyFloat_AsDouble(pTrki_coef_real);
-            uki_re_coefs.push_back( val );
-          }
-        } else PyErr_Print();
-        if (PyList_Check(pknots_ki_imag) && PyList_Check(pcoefs_ki_imag)) {  // pTrki = [knots, coeffs, order]
-          for (Py_ssize_t l=0; l<PyList_Size(pknots_ki_imag); l++) {
-            pTrki_knot_imag = PyList_GetItem(pknots_ki_imag, l);
-            double val = PyFloat_AsDouble(pTrki_knot_imag);
-            uki_im_knots.push_back( val );
-            pTrki_coef_imag = PyList_GetItem(pcoefs_ki_imag, l);
-            val = PyFloat_AsDouble(pTrki_coef_imag);
-            uki_im_coefs.push_back( val );
-          }
-        } else PyErr_Print();
-
+      int Ck_r = 0;
+      if (PyList_Check(pTrk_real)) { 
+        Ck_r = PyList_Size(pTrk_real); 
+        PyErr_Print();
       } else PyErr_Print();
+      assert(Ck_r == ncontrolterms_store[k]);
 
-      // Create the transfer spline for u^k_i and store it
-      SplineTransferFunction *transfer_ki = new SplineTransferFunction(uki_re_order, uki_re_knots, uki_re_coefs, uki_im_order, uki_im_knots, uki_im_coefs);
-      transfer_k.push_back(transfer_ki);
-    } // end of control term i for this oscillator k
-      
-    // Store the vector of transfer splines for each oscillator in the master equation
-    transfer_func.push_back(transfer_k);
+      // Iterate over list for this oscillator 
+      PyObject* pTrki, *pOrder_ki, *pknots_ki, *pcoefs_ki, *pTrki_knot, *pTrki_coef;
+      for (Py_ssize_t i=0; i<ncontrolterms_store[k]; i++){
+        pTrki = PyList_GetItem(pTrk_real,i); // Get spline for u^k_i(x). Returns [knots, coeffs, order]
+        PyErr_Print();
+
+        // Get knots, coeffs and order of the spline
+        int uki_order=0;
+        std::vector<double> uki_knots, uki_coefs;
+        if (PyList_Check(pTrki)) {  // pTrki = [knots, coeffs, order]
+          assert(PyList_Size(pTrki) == 3); 
+          // Get order
+          pOrder_ki = PyList_GetItem(pTrki,2); 
+          uki_order = PyInt_AsLong(pOrder_ki);
+
+          // Get knots coeffs and order for spline u^k_i(x)
+          pknots_ki = PyList_GetItem(pTrki,0); 
+          pcoefs_ki = PyList_GetItem(pTrki,1); 
+          if (PyList_Check(pknots_ki) && PyList_Check(pcoefs_ki)) {  // pTrki = [knots, coeffs, order]
+            for (Py_ssize_t l=0; l<PyList_Size(pknots_ki); l++) {
+              pTrki_knot= PyList_GetItem(pknots_ki, l);
+              double val = PyFloat_AsDouble(pTrki_knot);
+              uki_knots.push_back( val );
+              pTrki_coef= PyList_GetItem(pcoefs_ki, l);
+              val = PyFloat_AsDouble(pTrki_coef);
+              uki_coefs.push_back( val );
+            }
+          } else PyErr_Print();
+        } else PyErr_Print();
+
+        // Create the transfer spline for u^k_i and store it
+        SplineTransferFunction *transfer_ki = new SplineTransferFunction(uki_order, uki_knots, uki_coefs);
+        transfer_k_re.push_back(transfer_ki);
+      } // end of control term i for this oscillator k
+    }
+    // Store the vector of transfer splines for this oscillator
+    transfer_func_re.push_back(transfer_k_re);
   } // end of oscillator k
 
   // Cleanup
-  Py_XDECREF(pFunc_getTr_real);  // pointer to getHc function
-  Py_XDECREF(pFunc_getTr_imag);  // pointer to getHc function
+  if (pFunc_getTr_real) Py_XDECREF(pFunc_getTr_real);  // pointer to getHc function
+
+
+
+  /* Transfer function u(p(t)) for IMAGINARY part */
+
+  // Get a reference to the required python functions
+  PyObject *pFunc_getTr_imag = pFunc_getTr_imag= PyObject_GetAttrString(pModule, (char*)"getTransfer_imag");  // transfer functions
+
+  // Call the functions
+  PyObject* pTr_imag;
+  bool called_imag=false;
+  if (pFunc_getTr_imag) {
+    if (PyCallable_Check(pFunc_getTr_imag)) {
+      pTr_imag= PyObject_CallObject(pFunc_getTr_imag, NULL); // NULL: no input to getTransfer().
+      PyErr_Print();
+      called_imag= true;
+      if (PyList_Check(pTr_imag)) assert(PyList_Size(pTr_imag) == noscillators);
+    } else PyErr_Print();
+  } else PyErr_Print();
+
+  // Iterate over oscillators
+  for (Py_ssize_t k=0; k<noscillators; k++){
+    std::vector<TransferFunction*> transfer_k_im; // Container for transfer function for this oscillator 
+
+    // Get number of given transfer functions for this oscillator
+    if (!called_imag|| !PyList_Check(pTr_imag)){
+      // Default: If we can't find the python function "getTranfer_imag", use identities for each control Hamiltonian term
+      printf("# Warning: Could not find transfer function 'getTransfer_imag'. Using identity instead. \n");
+      for (Py_ssize_t i=0; i<ncontrolterms_store[k]; i++){
+        TransferFunction *transfer_ki =  new TransferFunction();
+        transfer_k_im.push_back(transfer_ki);
+      }
+    } else { 
+      // If 'getTransfer_imag' exists, get all transfer functions from python in terms of spline knots and coefs. 
+
+      // Check size of list for this oscillator
+      PyObject* pTrk_imag= PyList_GetItem(pTr_imag,k); // Get list of Function for oscillator k
+      PyErr_Print();
+      int Ck_r = 0;
+      if (PyList_Check(pTrk_imag)) { 
+        Ck_r = PyList_Size(pTrk_imag); 
+        PyErr_Print();
+      } else PyErr_Print();
+      assert(Ck_r == ncontrolterms_store[k]);
+
+      // Iterate over list for this oscillator 
+      PyObject* pTrki, *pOrder_ki, *pknots_ki, *pcoefs_ki, *pTrki_knot, *pTrki_coef;
+      for (Py_ssize_t i=0; i<ncontrolterms_store[k]; i++){
+        pTrki = PyList_GetItem(pTrk_imag,i); // Get spline for u^k_i(x). Returns [knots, coeffs, order]
+        PyErr_Print();
+
+        // Get knots, coeffs and order of the spline
+        int uki_order=0;
+        std::vector<double> uki_knots, uki_coefs;
+        if (PyList_Check(pTrki)) {  // pTrki = [knots, coeffs, order]
+          assert(PyList_Size(pTrki) == 3); 
+          // Get order
+          pOrder_ki = PyList_GetItem(pTrki,2); 
+          uki_order = PyInt_AsLong(pOrder_ki);
+
+          // Get knots coeffs and order for spline u^k_i(x)
+          pknots_ki = PyList_GetItem(pTrki,0); 
+          pcoefs_ki = PyList_GetItem(pTrki,1); 
+          if (PyList_Check(pknots_ki) && PyList_Check(pcoefs_ki)) {  // pTrki = [knots, coeffs, order]
+            for (Py_ssize_t l=0; l<PyList_Size(pknots_ki); l++) {
+              pTrki_knot= PyList_GetItem(pknots_ki, l);
+              double val = PyFloat_AsDouble(pTrki_knot);
+              uki_knots.push_back( val );
+              pTrki_coef= PyList_GetItem(pcoefs_ki, l);
+              val = PyFloat_AsDouble(pTrki_coef);
+              uki_coefs.push_back( val );
+            }
+          } else PyErr_Print();
+        } else PyErr_Print();
+
+        // Create the transfer spline for u^k_i and store it
+        SplineTransferFunction *transfer_ki = new SplineTransferFunction(uki_order, uki_knots, uki_coefs);
+        transfer_k_im.push_back(transfer_ki);
+      } // end of control term i for this oscillator k
+    }
+    // Store the vector of transfer splines for this oscillator
+    transfer_func_im.push_back(transfer_k_im);
+  } // end of oscillator k
+
+  // Cleanup
+  if (pFunc_getTr_imag) Py_XDECREF(pFunc_getTr_imag);  // pointer to getHc function
 
 #endif
 }

@@ -98,7 +98,8 @@ class MasterEq{
     LindbladType lindbladtype;        // Flag that determines which lindblad terms are added. if NONE, than Schroedingers eq. is solved
 
     std::vector<int> ncontrolterms; // Stores the number of control Hamiltonians per oscillator
-    std::vector<std::vector<TransferFunction*>> transfer_func; // Stores the transfer functions for each control term for each oscillator
+    std::vector<std::vector<TransferFunction*>> transfer_func_re; // Stores the transfer functions for each control term for each oscillator
+    std::vector<std::vector<TransferFunction*>> transfer_func_im; // Stores the transfer functions for each control term for each oscillator
     std::string python_file; // either 'none' or name of python script to read Hamiltonian from 
 
 
