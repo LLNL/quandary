@@ -6,6 +6,7 @@
 #include <assert.h>
 #include <iostream> 
 #include "gate.hpp"
+#include "pythoninterface.hpp"
 
 #ifdef WITH_PYTHON
 #define PY_SSIZE_T_CLEAN
