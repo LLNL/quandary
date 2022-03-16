@@ -444,7 +444,7 @@ void PythonInterface::receiveTransfer(int noscillators,std::vector<std::vector<T
   // Get a reference to the required python functions
   PyObject *pFunc_getTr_real = pFunc_getTr_real = PyObject_GetAttrString(pModule, (char*)"getTransfer_real");  // transfer functions
 
-  // Call the functions
+  // Call the function
   PyObject* pTr_real;
   bool called_real=false;
   if (pFunc_getTr_real) {

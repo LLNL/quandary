@@ -9,7 +9,6 @@
 #define PY_SSIZE_T_CLEAN
 #include "Python/Python.h"
 #endif
-#include "BSplineCurve.h"
 #pragma once
 
 class PythonInterface{

@@ -3,7 +3,9 @@
 #include <stdlib.h>
 #include <math.h>
 #include <vector>
+#ifdef WITH_FITPACK
 #include "BSplineCurve.h"
+#endif
 #pragma once
 
 /* 
@@ -56,7 +58,9 @@ class TransferFunction{
 
 class SplineTransferFunction : public TransferFunction {
     protected:
+#ifdef WITH_FITPACK
         fitpackpp::BSplineCurve* transfer_func;
+#endif
     public:
         SplineTransferFunction(int order, std::vector<double>knots, std::vector<double>coeffs);
         ~SplineTransferFunction();

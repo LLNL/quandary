@@ -111,17 +111,28 @@ double TransferFunction::der(double p){
 
 SplineTransferFunction::SplineTransferFunction(int order_re, std::vector<double>knots_re, std::vector<double>coeffs_re) : TransferFunction() {
 
+#ifdef WITH_FITPACK
     transfer_func = new fitpackpp::BSplineCurve(knots_re, coeffs_re, order_re);
+#else
+    printf("# Warning: Can not process spline transfer function from python interface, because you didn't link to the FITPACK package. Check your Makefile for WITH_FITPACK=true, if you want to use this feature. Using identity transfer function now.\n");
+#endif
 }
 
 SplineTransferFunction::~SplineTransferFunction() {}
 
 double SplineTransferFunction::eval(double p) {
-    double out = transfer_func->eval(p);
-    return out;
+#ifdef WITH_FITPACK
+    return transfer_func->eval(p);
+#else 
+    return p;
+#endif
 }
 
 
 double SplineTransferFunction::der(double p){
+#ifdef WITH_FITPACK
     return transfer_func->der(p);
+#else 
+    return 1.0;
+#endif
 }

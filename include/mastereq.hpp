@@ -13,8 +13,6 @@
 #include "Python/Python.h"
 #endif
 
-#include "BSplineCurve.h"
-
 #pragma once
 
 /* Define a matshell context containing pointers to data needed for applying the RHS matrix to a vector */
