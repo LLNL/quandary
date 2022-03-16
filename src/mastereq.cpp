@@ -229,6 +229,13 @@ MasterEq::~MasterEq(){
 
 void MasterEq::initSparseMatSolver(){
 
+  /* Create transfer functions, default: one per oscillator being the identity. If python interface: could be more */
+  for (int k=0; k<noscillators; k++){
+    TransferFunction* mytransfer = new TransferFunction();
+    std::vector<TransferFunction*> myvec{mytransfer};
+    transfer_func.push_back(myvec);
+  }
+
   /* Allocate time-varying building blocks */
   // control terms. One vector per oscillator
   Ac_vec = new Mat*[noscillators];
@@ -595,7 +602,11 @@ void MasterEq::initSparseMatSolver(){
 
   /* If a Python file is given, overwrite the matrices with those read from file. */ 
   if (python_file.compare("none") != 0 ) {
+#ifdef WITH_PYTHON
     printf("\n# Reading Hamiltonian model from python file %s.\n\n", python_file.c_str());
+#else
+    printf("ERROR: Requested to read Hamiltonian from python interface, but you didn't link with python. Check your Makefile for WITH_PYTHON=true to use this feature.\n");
+#endif
 
     PythonInterface* py = new PythonInterface(python_file, lindbladtype);
 
@@ -603,7 +614,7 @@ void MasterEq::initSparseMatSolver(){
     py->receiveHd(Bd);
     py->receiveHdt(noscillators, Ad_vec, Bd_vec);
     py->receiveHc(noscillators, Ac_vec, Bc_vec, ncontrolterms);
-    py->receiveTransfer(noscillators, transfer_func_re, transfer_func_im);
+    py->receiveTransfer(noscillators, transfer_func);
   }
 
   // // Test: Print out the control Hamiltonian terms.
@@ -658,8 +669,8 @@ int MasterEq::assemble_RHS(const double t){
         //TODO
         // These are hardcoded bounds for the spline, do prevent it from doing bad extrapolations where no data was given. Here, the spline was generated in the interval [-1.5,1.5]
         // if (p < -1.5 || p > 1.5) printf("\n WARNING: Extrapolating the transfer function spline can lead to large errors.\n\n");
-        double ukip = transfer_func_re[iosc][icon]->eval(p);
-        double ukiq = transfer_func_im[iosc][icon]->eval(q);
+        double ukip = transfer_func[iosc][icon]->eval_re(p);
+        double ukiq = transfer_func[iosc][icon]->eval_im(q);
         // printf("t=%f: transfer function u[oscil=%d][controlterm=%d](input=%f) = output %f\n", t, iosc, icon, p, ukip);
 
         // Set the controls (only real for now)
@@ -1140,8 +1151,8 @@ void MasterEq::computedRHSdp(const double t, const Vec x, const Vec xbar, const 
       double p, q;
       oscil_vec[iosc]->evalControl(t, &p, &q);  // Evaluates the B-spline basis functions -> p(t,alpha), q(t,alpha)
       for (int icon=0; icon<ncontrolterms[iosc]; icon++){
-        double dukidp_tmp = transfer_func_re[iosc][icon]->der(p); // dudp(p)
-        double dukidq_tmp = transfer_func_im[iosc][icon]->der(q); // dudp(p)
+        double dukidp_tmp = transfer_func[iosc][icon]->der_re(p); // dudp(p)
+        double dukidq_tmp = transfer_func[iosc][icon]->der_im(q); // dvdq(q)
         if (icon == 0) dukidp[icon] = dukidp_tmp;
         else dukidp.push_back(dukidp_tmp);
         if (icon == 0) dukidq[icon] = dukidq_tmp;

@@ -426,10 +426,16 @@ void PythonInterface::receiveHc(int noscillators, Mat** Ac_vec, Mat** Bc_vec, st
 }
 
 
-void PythonInterface::receiveTransfer(int noscillators,std::vector<std::vector<fitpackpp::BSplineCurve*>>& transfer_func_re, std::vector<std::vector<fitpackpp::BSplineCurve*>>& transfer_func_im){
+void PythonInterface::receiveTransfer(int noscillators,std::vector<std::vector<TransferFunction*>>& transfer_func){
 #ifdef WITH_PYTHON
 
   printf("Receiving transfer functions...\n");
+
+  /* First empty out the transfer_func vector */
+  for (int i=0; i<noscillators; i++){
+    transfer_func[i].clear();
+  }
+  transfer_func.clear();
 
   // Get a reference to the required python functions
   PyObject *pFunc_getTr_real = PyObject_GetAttrString(pModule, (char*)"getTransfer_real");  // transfer functions
@@ -490,8 +496,7 @@ void PythonInterface::receiveTransfer(int noscillators,std::vector<std::vector<f
     assert(Ck == ncontrolterms_store[k]);
 
     // Iterate over control terms for this oscillator 
-    std::vector<fitpackpp::BSplineCurve*> transfer_k_re;
-    std::vector<fitpackpp::BSplineCurve*> transfer_k_im;
+    std::vector<TransferFunction*> transfer_k;
     PyObject* pTrki_real, *pTrki_imag, *pOrder_ki_real,* pOrder_ki_imag, *pknots_ki_real,*pknots_ki_imag, *pcoefs_ki_real, *pcoefs_ki_imag, *pTrki_knot_real, *pTrki_knot_imag, *pTrki_coef_real,*pTrki_coef_imag;
     for (Py_ssize_t i=0; i<ncontrolterms_store[k]; i++){
       pTrki_real = PyList_GetItem(pTrk_real,i); // Get spline for u^k_i(x). Returns [knots, coeffs, order]
@@ -538,16 +543,13 @@ void PythonInterface::receiveTransfer(int noscillators,std::vector<std::vector<f
 
       } else PyErr_Print();
 
-      // Create the spline for u^k_i and store it
-      fitpackpp::BSplineCurve* transfer_ki_real = new fitpackpp::BSplineCurve(uki_re_knots, uki_re_coefs, uki_re_order);
-      fitpackpp::BSplineCurve* transfer_ki_imag = new fitpackpp::BSplineCurve(uki_im_knots, uki_im_coefs, uki_im_order);
-      transfer_k_re.push_back(transfer_ki_real);
-      transfer_k_im.push_back(transfer_ki_imag);
+      // Create the transfer spline for u^k_i and store it
+      SplineTransferFunction *transfer_ki = new SplineTransferFunction(uki_re_order, uki_re_knots, uki_re_coefs, uki_im_order, uki_im_knots, uki_im_coefs);
+      transfer_k.push_back(transfer_ki);
     } // end of control term i for this oscillator k
       
-    // Store the transfer splines for each oscillator in the master equation
-    transfer_func_re.push_back(transfer_k_re);
-    transfer_func_im.push_back(transfer_k_im);
+    // Store the vector of transfer splines for each oscillator in the master equation
+    transfer_func.push_back(transfer_k);
   } // end of oscillator k
 
   // Cleanup

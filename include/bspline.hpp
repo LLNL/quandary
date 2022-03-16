@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include <vector>
+#include "BSplineCurve.h"
 #pragma once
 
 /* 
@@ -35,4 +36,39 @@ class ControlBasis{
 
         /* Evaluates the derivative at time t, multiplied with fbar. */
         void derivative(const double t, double* coeff_diff, const double fbar, const ControlType controltype);
+};
+
+
+/* 
+ * Class to represent transfer functions that act on the controls: evaluate u(p(t)) and v(q(t)).
+ * Default: u = v = identity. 
+ * Otherwise: u and v are splines, read from the python interface. */
+class TransferFunction{
+    public:
+        TransferFunction();
+        ~TransferFunction();
+
+        // Default: these are the identity functions
+        double eval_re(double p);
+        double eval_im(double q);
+        // Derivative
+        double der_re(double p);
+        double der_im(double q);
+};
+
+class SplineTransferFunction : public TransferFunction {
+    protected:
+        fitpackpp::BSplineCurve* transfer_func_re;
+        fitpackpp::BSplineCurve* transfer_func_im;
+    public:
+        SplineTransferFunction(int order_re, std::vector<double>knots_re, std::vector<double>coeffs_re, int order_im, std::vector<double>knots_im, std::vector<double>coeffs_im);
+        ~SplineTransferFunction();
+
+        // Evaluate the splines
+        double eval_re(double p);
+        double eval_im(double q);
+
+        // Derivative
+        double der_re(double p);
+        double der_im(double q);
 };
