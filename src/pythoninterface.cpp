@@ -426,7 +426,7 @@ void PythonInterface::receiveHc(int noscillators, Mat** Ac_vec, Mat** Bc_vec, st
 }
 
 
-void PythonInterface::receiveTransfer(int noscillators,std::vector<std::vector<TransferFunction*>>& transfer_func_re,std::vector<std::vector<TransferFunction*>>& transfer_func_im){
+void PythonInterface::receiveTransferHc(int noscillators,std::vector<std::vector<TransferFunction*>>& transfer_func_re,std::vector<std::vector<TransferFunction*>>& transfer_func_im){
 #ifdef WITH_PYTHON
 
   printf("Receiving transfer functions...\n");
@@ -619,15 +619,16 @@ void PythonInterface::receiveHdt(int noscillators, Mat* Ad_vec, Mat* Bd_vec){
 
   printf("Receiving time-dependent system Hamiltonians...\n");
 
-  /* Reset Ad_vec and Bd_vec. TODO: Fill in from python. */
-  for (int i= 0; i < noscillators*(noscillators-1)/2; i++) {
+  int dim = 0;
+  int nterms = noscillators*(noscillators-1)/2; // TODO: Generalize
+
+  /* Reset Ad_vec and Bd_vec. And also get the matrix dimension */
+  for (int i= 0; i < nterms; i++) {
     if (Ad_vec[i] != NULL )  {
-      int dim = 0;
       MatGetSize(Ad_vec[i], &dim, NULL);
 
       MatDestroy(&Ad_vec[i]);
       MatDestroy(&Bd_vec[i]);
-
 
       MatCreate(PETSC_COMM_WORLD, &Ad_vec[i]);
       MatCreate(PETSC_COMM_WORLD, &Bd_vec[i]);
@@ -639,13 +640,240 @@ void PythonInterface::receiveHdt(int noscillators, Mat* Ad_vec, Mat* Bd_vec){
       MatSetUp(Bd_vec[i]);
       MatSetFromOptions(Ad_vec[i]);
       MatSetFromOptions(Bd_vec[i]);
+    } else return; // If Ad_vec[0] does not exist (only happens if Jkl=0), none of them exists. Do do nothing. TODO: CHANGE THIS!!
+  }
+
+  int sqdim = dim; // could be N^2 or N
+  if (lindbladtype != LindbladType::NONE) sqdim = (int) sqrt(dim); // sqdim = N 
+
+
+  /* REAL part */
+
+  // Receive and store Hamiltonian values and ids from python
+  std::vector<std::vector<double>> Hdt_re_vals; // vector Hamiltonian values (one vector per coupling)
+  std::vector<std::vector<int>> Hdt_re_ids;  // vector Hamiltonian id
+
+  // Get a reference to the required python functions "getHdt_real"
+  PyObject *pFunc_getHdt_real  = PyObject_GetAttrString(pModule, (char*)"getHdt_real");
+  // Call the function
+  PyObject* pHdt_real;
+  bool called_real=false;
+  if (pFunc_getHdt_real) {
+    if (PyCallable_Check(pFunc_getHdt_real)) {
+      pHdt_real = PyObject_CallObject(pFunc_getHdt_real, NULL); // NULL: no input
+      PyErr_Print();
+      called_real = true;
+      // Make sure the list contains <nterms> Hamiltonians
+      if (PyList_Check(pHdt_real)) assert(PyList_Size(pHdt_real) == nterms);
+    } else PyErr_Print();
+  } else PyErr_Print();
+  // Now we have pHdt_real: [ H01, H02,... ,H12, H13,... ] length = nterms = Q*(Q-1)/2
+
+  if (!called_real || !PyList_Check(pHdt_real)){
+    printf("# No time-dependent real Hamiltonian received. \n");
+    // If none given, leave the matrix empty. 
+  } else { 
+    // Iterate over terms
+    for (Py_ssize_t k=0; k<nterms; k++){
+
+      // Get an item from the outer list (next Hamiltonian item)
+      PyObject* pHdtk_real = PyList_GetItem(pHdt_real,k);
+      PyErr_Print();
+      int Hdtk_size= 0;
+      if (PyList_Check(pHdtk_real)) {
+        Hdtk_size = PyList_Size(pHdtk_real);
+        PyErr_Print();
+      }
+      printf("Hdtk_ze=%d, sqdim=%d\n", Hdtk_size, sqdim);
+      assert(Hdtk_size == sqdim*sqdim);
+
+      // Iterate over the item and receive values and ids
+      std::vector<double> Hdtk_vals;
+      std::vector<int> Hdtk_ids;
+      for (Py_ssize_t l=0; l<Hdtk_size; l++){ // Iterate over elements
+        PyObject* pval_re = PyList_GetItem(pHdtk_real,l);
+        double Hdtk_re_val = PyFloat_AsDouble(pval_re);
+        PyErr_Print();
+        if (fabs(Hdtk_re_val) > 1e-14) {  // store only nonzeros
+          Hdtk_vals.push_back(Hdtk_re_val);
+          Hdtk_ids.push_back(l);
+        }
+      } // end iterating over innter list
+      Hdt_re_vals.push_back(Hdtk_vals);
+      Hdt_re_ids.push_back(Hdtk_ids);
+    } // end of out list of terms
+    // Now we have Hdt_re_vals and Hdt_re_ids
+
+    // print out what we received from python 
+    for (int k=0; k<nterms; k++){
+      printf("getHdt(): real(term %d): \n", k);
+      for (int l=0; l < Hdt_re_vals[k].size(); l++){
+        printf("(%d,%f) ", Hdt_re_ids[k][l], Hdt_re_vals[k][l]);
+      }
+      printf("\n");
+    }
+
+    /* Now place values into Bd_vec */
+    // Iterate over terms
+    for (int k=0; k<nterms; k++){
       
+      if (Bd_vec[k] == NULL )  continue;
+
+      PetscInt ilow, iupp;
+      MatGetOwnershipRange(Bd_vec[k], &ilow, &iupp);
+
+      // Iterate over elements in Hdtk
+      for (int l = 0; l<Hdt_re_ids[k].size(); l++) {
+        // Get position in the Bd matrix
+        int row = Hdt_re_ids[k][l] % sqdim;
+        int col = Hdt_re_ids[k][l] / sqdim;
+
+        if (lindbladtype == LindbladType::NONE){
+          // Schroedinger
+          // Assemble - Bd  
+          double val = -1.*Hdt_re_vals[k][l];
+          if (ilow <= row && row < iupp) MatSetValue(Bd_vec[k], row, col, val, ADD_VALUES);
+        } else {
+          // Lindblad
+          // Assemble -I_N \kron B_c + B_c \kron I_N 
+          for (int m=0; m<sqdim; m++){
+            // first place all -v_ij in the -I_N\kron B_c term:
+            int rowm = row + sqdim * m;
+            int colm = col + sqdim * m;
+            double val = -1.*Hdt_re_vals[k][l];
+            if (ilow <= rowm && rowm < iupp) MatSetValue(Bd_vec[k], rowm, colm, val, ADD_VALUES);
+            // Then add v_ij in the B_d^T \kron I_N term:
+            rowm = col*sqdim + m;   // transpose!
+            colm = row*sqdim + m;
+            val = Hdt_re_vals[k][l];
+            if (ilow <= rowm && rowm < iupp) MatSetValue(Bd_vec[k], rowm, colm, val, ADD_VALUES);
+          }
+        }
+      } // end of elements in Hdtk
+    } // end of loop over terms
+  } // End of setting the REAL valued Hamiltonian
+
+
+  /* IMAGINARY part */
+
+  // Receive and store Hamiltonian values and ids from python
+  std::vector<std::vector<double>> Hdt_im_vals; // vector Hamiltonian values (one vector per coupling)
+  std::vector<std::vector<int>> Hdt_im_ids;  // vector Hamiltonian id
+
+  // Get a reference to the required python functions "getHdt_imag"
+  PyObject *pFunc_getHdt_imag = PyObject_GetAttrString(pModule, (char*)"getHdt_imag");
+  // Call the function
+  PyObject* pHdt_imag;
+  bool called_imag=false;
+  if (pFunc_getHdt_imag) {
+    if (PyCallable_Check(pFunc_getHdt_imag)) {
+      pHdt_imag= PyObject_CallObject(pFunc_getHdt_imag, NULL); // NULL: no input
+      PyErr_Print();
+      called_imag= true;
+      // Make sure the list contains <nterms> Hamiltonians
+      if (PyList_Check(pHdt_imag)) assert(PyList_Size(pHdt_imag) == nterms);
+    } else PyErr_Print();
+  } else PyErr_Print();
+  // Now we have pHdt_imag: [ H01, H02,... ,H12, H13,... ] length = nterms = Q*(Q-1)/2
+
+  if (!called_imag|| !PyList_Check(pHdt_imag)){
+    printf("# No time-dependent imag Hamiltonian received. \n");
+    // If none given, leave the matrix empty. 
+  } else { 
+    // Iterate over terms
+    for (Py_ssize_t k=0; k<nterms; k++){
+
+      // Get an item from the outer list (next Hamiltonian item)
+      PyObject* pHdtk_imag = PyList_GetItem(pHdt_imag,k);
+      PyErr_Print();
+      int Hdtk_size= 0;
+      if (PyList_Check(pHdtk_imag)) {
+        Hdtk_size = PyList_Size(pHdtk_imag);
+        PyErr_Print();
+      }
+      assert(Hdtk_size == sqdim*sqdim);
+
+      // Iterate over the item and receive values and ids
+      std::vector<double> Hdtk_vals;
+      std::vector<int> Hdtk_ids;
+      for (Py_ssize_t l=0; l<Hdtk_size; l++){ // Iterate over elements
+        PyObject* pval_im = PyList_GetItem(pHdtk_imag,l);
+        double Hdtk_im_val = PyFloat_AsDouble(pval_im);
+        PyErr_Print();
+        if (fabs(Hdtk_im_val) > 1e-14) {  // store only nonzeros
+          Hdtk_vals.push_back(Hdtk_im_val);
+          Hdtk_ids.push_back(l);
+        }
+      } // end iterating over innter list
+      Hdt_im_vals.push_back(Hdtk_vals);
+      Hdt_im_ids.push_back(Hdtk_ids);
+    } // end of out list of terms
+    // Now we have Hdt_im_vals and Hdt_im_ids
+
+    // print out what we received from python 
+    for (int k=0; k<nterms; k++){
+      printf("getHdt(): imag(term %d): \n", k);
+      for (int l=0; l < Hdt_im_vals[k].size(); l++){
+        printf("(%d,%f) ", Hdt_im_ids[k][l], Hdt_im_vals[k][l]);
+      }
+      printf("\n");
+    }
+
+    /* Now place values into Ad_vec */
+
+    // Iterate over terms
+    for (int k=0; k<nterms; k++){
+
+      if (Ad_vec[k] == NULL )  continue;
+
+      PetscInt ilow, iupp;
+      MatGetOwnershipRange(Ad_vec[k], &ilow, &iupp);
+
+      // Iterate over elements in Hdtk
+      for (int l = 0; l<Hdt_im_ids[k].size(); l++) {
+        // Get position in the Bd matrix
+        int row = Hdt_im_ids[k][l] % sqdim;
+        int col = Hdt_im_ids[k][l] / sqdim;
+
+        if (lindbladtype == LindbladType::NONE){
+          // Schroedinger
+          // Assemble Ad
+          double val = -1.*Hdt_im_vals[k][l];
+          if (ilow <= row && row < iupp) MatSetValue(Ad_vec[k], row, col, val, ADD_VALUES);
+        } else {
+          // Lindblad
+          // Assemble I_N \kron A_d + A_d^T \kron I_N 
+          for (int m=0; m<sqdim; m++){
+            // first place all v_ij in the I_N\kron A_d term:
+            int rowm = row + sqdim * m;
+            int colm = col + sqdim * m;
+            double val = Hdt_im_vals[k][l];
+            if (ilow <= rowm && rowm < iupp) MatSetValue(Ad_vec[k], rowm, colm, val, ADD_VALUES);
+            // Then add -v_ij in the -A_d^T \kron I_N term:
+            rowm = col*sqdim + m;   // transpose!
+            colm = row*sqdim + m;
+            val = -1.*Hdt_im_vals[k][l];
+            if (ilow <= rowm && rowm < iupp) MatSetValue(Ad_vec[k], rowm, colm, val, ADD_VALUES);
+          }
+        }
+      } // end of elements in Hdtk
+    } // end of loop over terms
+  } // End of setting the IMAG valued Hamiltonian
+
+  // Assemble the matrices. 
+  for (int i=0; i<nterms; i++){
+    if (Ad_vec[i] != NULL ) {
       MatAssemblyBegin(Ad_vec[i], MAT_FINAL_ASSEMBLY);
+      MatAssemblyEnd(Ad_vec[i], MAT_FINAL_ASSEMBLY);
+    }
+    if (Bd_vec[i] != NULL ) {
       MatAssemblyBegin(Bd_vec[i], MAT_FINAL_ASSEMBLY);
-      MatAssemblyEnd(Ad_vec[i], MAT_FINAL_ASSEMBLY);
-      MatAssemblyEnd(Ad_vec[i], MAT_FINAL_ASSEMBLY);
+      MatAssemblyEnd(Bd_vec[i], MAT_FINAL_ASSEMBLY);
     }
   }
 
+  // Clean up
+  if (pFunc_getHdt_real) Py_XDECREF(pFunc_getHdt_real);  
+  if (pFunc_getHdt_imag) Py_XDECREF(pFunc_getHdt_imag);  
 #endif
 }

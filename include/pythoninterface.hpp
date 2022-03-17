@@ -32,7 +32,10 @@ class PythonInterface{
   void receiveHd(Mat& Bd);
 
   /* Receive the time-varying system Hamiltonian part from "getHdt_real" and "getHdt_imag" */
-  // The python function MUST return a LIST of floats!
+  // These are Q*(Q+1)/2 Hamiltonians that will be applied as 
+  //   J_kl cos(eta_kl t) * Hdt_real + i J_kl sin(eta_kl t) * Hdt_imag
+  // TODO: Generalize for transfer functions u(t) and v(t) (receiveTransferHd, TODO.) 
+  // The python function MUST return a LIST (length Q*(Q-1)/2) of LISTS (length dim^2) of floats!
   void receiveHdt(int noscillators, Mat* Ad_vec, Mat* Bd_vec);
 
   /* Receive control terms from "getHc_real" and "getHc_imag" */
@@ -48,5 +51,6 @@ class PythonInterface{
   //   for each oscillator k=0...Q-1: 
   //       for each control term i=0...C^k-1: 
   //            one transfer function u^k_i(x) (given in terms of spline knots (list), coefficients(list) and order (int)
-  void receiveTransfer(int noscillators,std::vector<std::vector<TransferFunction*>>& transfer_func_re, std::vector<std::vector<TransferFunction*>>& transfer_func_im);
+  void receiveTransferHc(int noscillators,std::vector<std::vector<TransferFunction*>>& transfer_func_re, std::vector<std::vector<TransferFunction*>>& transfer_func_im);
+
 };

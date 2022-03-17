@@ -624,15 +624,20 @@ void MasterEq::initSparseMatSolver(){
     py->receiveHd(Bd);
     py->receiveHdt(noscillators, Ad_vec, Bd_vec);
     py->receiveHc(noscillators, Ac_vec, Bc_vec, ncontrolterms);
-    py->receiveTransfer(noscillators, transfer_func_re, transfer_func_im);
+    py->receiveTransferHc(noscillators, transfer_func_re, transfer_func_im);
   }
 
-  // // Test: Print out the control Hamiltonian terms.
+  // // Test: Print out Hamiltonian terms.
   // for (int k=0; k<noscillators; k++){
   //   for (int i=0; i<ncontrolterms[k]; i++){
   //     printf("Oscil %d, control term %d:\n", k, i);
   //     MatView(Bc_vec[k][i], NULL);
   //   }
+  // }
+  // for (int kl=0; kl<noscillators*(noscillators-1)/2; kl++) {
+  //   printf("Ad_vec[%d]=\n", kl);
+  //   // MatView(Bd_vec[kl], NULL);
+  //   MatView(Ad_vec[kl], NULL);
   // }
   // exit(1);
 
