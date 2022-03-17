@@ -4,9 +4,10 @@ PythonInterface::PythonInterface(){
 }
 
 
-PythonInterface::PythonInterface(std::string python_file, LindbladType lindbladtype_) {
+PythonInterface::PythonInterface(std::string python_file, LindbladType lindbladtype_, int dim_rho_) {
 
   lindbladtype = lindbladtype_;
+  dim_rho = dim_rho_;
 
 #ifdef WITH_PYTHON
 
@@ -614,38 +615,25 @@ void PythonInterface::receiveTransferHc(int noscillators,std::vector<std::vector
 
 
 
-void PythonInterface::receiveHdt(int noscillators, Mat* Ad_vec, Mat* Bd_vec){
+void PythonInterface::receiveHdt(int noscillators, std::vector<Mat>& Ad_vec, std::vector<Mat>& Bd_vec){
 #ifdef WITH_PYTHON
 
   printf("Receiving time-dependent system Hamiltonians...\n");
 
-  int dim = 0;
-  int nterms = noscillators*(noscillators-1)/2; // TODO: Generalize
-
-  /* Reset Ad_vec and Bd_vec. And also get the matrix dimension */
-  for (int i= 0; i < nterms; i++) {
-    if (Ad_vec[i] != NULL )  {
-      MatGetSize(Ad_vec[i], &dim, NULL);
-
-      MatDestroy(&Ad_vec[i]);
-      MatDestroy(&Bd_vec[i]);
-
-      MatCreate(PETSC_COMM_WORLD, &Ad_vec[i]);
-      MatCreate(PETSC_COMM_WORLD, &Bd_vec[i]);
-      MatSetType(Ad_vec[i], MATMPIAIJ);
-      MatSetType(Bd_vec[i], MATMPIAIJ);
-      MatSetSizes(Ad_vec[i], PETSC_DECIDE, PETSC_DECIDE, dim, dim);
-      MatSetSizes(Bd_vec[i], PETSC_DECIDE, PETSC_DECIDE, dim, dim);
-      MatSetUp(Ad_vec[i]);
-      MatSetUp(Bd_vec[i]);
-      MatSetFromOptions(Ad_vec[i]);
-      MatSetFromOptions(Bd_vec[i]);
-    } else return; // If Ad_vec[0] does not exist (only happens if Jkl=0), none of them exists. Do do nothing. TODO: CHANGE THIS!!
+  /* Reset Ad_vec and Bd_vec.  */
+  for (int i= 0; i < Ad_vec.size(); i++) {
+    if (Ad_vec[i] != NULL ) MatDestroy(&Ad_vec[i]);
   }
+  Ad_vec.clear();
+  for (int i= 0; i < Bd_vec.size(); i++) {
+    if (Bd_vec[i] != NULL ) MatDestroy(&Bd_vec[i]);
+  }
+  Bd_vec.clear();
 
-  int sqdim = dim; // could be N^2 or N
-  if (lindbladtype != LindbladType::NONE) sqdim = (int) sqrt(dim); // sqdim = N 
-
+  int sqdim = dim_rho; //  N!
+  int dim = dim_rho;
+  if (lindbladtype !=LindbladType::NONE) dim = dim_rho*dim_rho;
+  int nterms = noscillators*(noscillators-1)/2; // TODO: Generalize
 
   /* REAL part */
 
@@ -684,7 +672,7 @@ void PythonInterface::receiveHdt(int noscillators, Mat* Ad_vec, Mat* Bd_vec){
         Hdtk_size = PyList_Size(pHdtk_real);
         PyErr_Print();
       }
-      printf("Hdtk_ze=%d, sqdim=%d\n", Hdtk_size, sqdim);
+      // printf("Hdtk_size=%d, sqdim=%d\n", Hdtk_size, sqdim);
       assert(Hdtk_size == sqdim*sqdim);
 
       // Iterate over the item and receive values and ids
@@ -704,20 +692,27 @@ void PythonInterface::receiveHdt(int noscillators, Mat* Ad_vec, Mat* Bd_vec){
     } // end of out list of terms
     // Now we have Hdt_re_vals and Hdt_re_ids
 
-    // print out what we received from python 
-    for (int k=0; k<nterms; k++){
-      printf("getHdt(): real(term %d): \n", k);
-      for (int l=0; l < Hdt_re_vals[k].size(); l++){
-        printf("(%d,%f) ", Hdt_re_ids[k][l], Hdt_re_vals[k][l]);
-      }
-      printf("\n");
-    }
+    // // print out what we received from python 
+    // for (int k=0; k<nterms; k++){
+    //   printf("getHdt(): real(term %d): \n", k);
+    //   for (int l=0; l < Hdt_re_vals[k].size(); l++){
+    //     printf("(%d,%f) ", Hdt_re_ids[k][l], Hdt_re_vals[k][l]);
+    //   }
+    //   printf("\n");
+    // }
 
     /* Now place values into Bd_vec */
+
     // Iterate over terms
     for (int k=0; k<nterms; k++){
-      
-      if (Bd_vec[k] == NULL )  continue;
+      // First create the matrix 
+      Mat myMat;
+      Bd_vec.push_back(myMat);
+      MatCreate(PETSC_COMM_WORLD, &(Bd_vec[k]));
+      MatSetType(Bd_vec[k], MATMPIAIJ);
+      MatSetSizes(Bd_vec[k], PETSC_DECIDE, PETSC_DECIDE, dim, dim);
+      MatSetUp(Bd_vec[k]);
+      MatSetFromOptions(Bd_vec[k]);
 
       PetscInt ilow, iupp;
       MatGetOwnershipRange(Bd_vec[k], &ilow, &iupp);
@@ -750,6 +745,8 @@ void PythonInterface::receiveHdt(int noscillators, Mat* Ad_vec, Mat* Bd_vec){
           }
         }
       } // end of elements in Hdtk
+      MatAssemblyBegin(Bd_vec[k], MAT_FINAL_ASSEMBLY);
+      MatAssemblyEnd(Bd_vec[k], MAT_FINAL_ASSEMBLY);
     } // end of loop over terms
   } // End of setting the REAL valued Hamiltonian
 
@@ -823,8 +820,14 @@ void PythonInterface::receiveHdt(int noscillators, Mat* Ad_vec, Mat* Bd_vec){
 
     // Iterate over terms
     for (int k=0; k<nterms; k++){
-
-      if (Ad_vec[k] == NULL )  continue;
+      // First create the matrix 
+      Mat myMat;
+      Ad_vec.push_back(myMat);
+      MatCreate(PETSC_COMM_WORLD, &(Ad_vec[k]));
+      MatSetType(Ad_vec[k], MATMPIAIJ);
+      MatSetSizes(Ad_vec[k], PETSC_DECIDE, PETSC_DECIDE, dim, dim);
+      MatSetUp(Ad_vec[k]);
+      MatSetFromOptions(Ad_vec[k]);
 
       PetscInt ilow, iupp;
       MatGetOwnershipRange(Ad_vec[k], &ilow, &iupp);
@@ -857,20 +860,10 @@ void PythonInterface::receiveHdt(int noscillators, Mat* Ad_vec, Mat* Bd_vec){
           }
         }
       } // end of elements in Hdtk
+      MatAssemblyBegin(Ad_vec[k], MAT_FINAL_ASSEMBLY);
+      MatAssemblyEnd(Ad_vec[k], MAT_FINAL_ASSEMBLY);
     } // end of loop over terms
   } // End of setting the IMAG valued Hamiltonian
-
-  // Assemble the matrices. 
-  for (int i=0; i<nterms; i++){
-    if (Ad_vec[i] != NULL ) {
-      MatAssemblyBegin(Ad_vec[i], MAT_FINAL_ASSEMBLY);
-      MatAssemblyEnd(Ad_vec[i], MAT_FINAL_ASSEMBLY);
-    }
-    if (Bd_vec[i] != NULL ) {
-      MatAssemblyBegin(Bd_vec[i], MAT_FINAL_ASSEMBLY);
-      MatAssemblyEnd(Bd_vec[i], MAT_FINAL_ASSEMBLY);
-    }
-  }
 
   // Clean up
   if (pFunc_getHdt_real) Py_XDECREF(pFunc_getHdt_real);  

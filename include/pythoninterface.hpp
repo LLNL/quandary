@@ -18,12 +18,13 @@ class PythonInterface{
 #ifdef WITH_PYTHON
     PyObject *pModule;  // The python module from which the Hamiltonian will be read
 #endif
-    LindbladType lindbladtype;  // Storing whether Lindblas solver or Schroedinger solver
-    std::vector<int> ncontrolterms_store;
+    LindbladType lindbladtype;            // Storing whether Lindblas solver or Schroedinger solver
+    std::vector<int> ncontrolterms_store; // Storing the number of control terms per oscillator
+    int dim_rho;                          // Dimension of the Hilbertspace. N!
 
 	public:
     PythonInterface();
-    PythonInterface(std::string python_file_, LindbladType lindbladtype_);
+    PythonInterface(std::string python_file_, LindbladType lindbladtype_, int dim_rho_);
     ~PythonInterface();
 
   /* Receive the constant system Hamiltonian from "getHd" */
@@ -36,7 +37,7 @@ class PythonInterface{
   //   J_kl cos(eta_kl t) * Hdt_real + i J_kl sin(eta_kl t) * Hdt_imag
   // TODO: Generalize for transfer functions u(t) and v(t) (receiveTransferHd, TODO.) 
   // The python function MUST return a LIST (length Q*(Q-1)/2) of LISTS (length dim^2) of floats!
-  void receiveHdt(int noscillators, Mat* Ad_vec, Mat* Bd_vec);
+  void receiveHdt(int noscillators, std::vector<Mat>& Ad_vec, std::vector<Mat>& Bd_vec);
 
   /* Receive control terms from "getHc_real" and "getHc_imag" */
   /* Fills up Ac_vec and Bc_vec, and return the number of control terms per oscillator in ncontrolterms */ 

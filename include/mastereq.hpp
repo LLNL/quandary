@@ -31,8 +31,8 @@ typedef struct {
   Mat*** Bc_vec;
   std::vector<int> ncontrolterms; 
   Mat *Ad, *Bd;
-  Mat** Ad_vec;
-  Mat** Bd_vec;
+  std::vector<Mat> Ad_vec;
+  std::vector<Mat> Bd_vec;
   Vec *aux;
   double time;
 } MatShellCtx;
@@ -69,8 +69,8 @@ class MasterEq{
     Mat** Ac_vec;  // Vector of vector of constant mats for time-varying control term (real). One vector of mats for each oscillators. 
     Mat** Bc_vec;  // Vector of vector of constant mats for time-varying control term (imag). One vector of mats for each oscillators. 
     Mat  Ad, Bd;  // Real and imaginary part of constant system matrix
-    Mat* Ad_vec;  // Vector of constant mats for Jaynes-Cummings coupling term in drift Hamiltonian (real)
-    Mat* Bd_vec;  // Vector of constant mats for Jaynes-Cummings coupling term in drift Hamiltonian (imag)
+    std::vector<Mat> Ad_vec;  // Vector of constant mats for Jaynes-Cummings coupling term in drift Hamiltonian (real)
+    std::vector<Mat> Bd_vec;  // Vector of constant mats for Jaynes-Cummings coupling term in drift Hamiltonian (imag)
 
     std::vector<double> crosskerr;    // Cross ker coefficients (rad/time) $\xi_{kl} for zz-coupling ak^d ak al^d al
     std::vector<double> Jkl;          // Jaynes-Cummings coupling coefficient (rad/time), multiplies ak^d al + ak al^d

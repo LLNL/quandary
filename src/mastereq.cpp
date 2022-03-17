@@ -144,8 +144,8 @@ MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Osci
   if (!usematfree){
     RHSctx.Ac_vec = &Ac_vec;
     RHSctx.Bc_vec = &Bc_vec;
-    RHSctx.Ad_vec = &Ad_vec;
-    RHSctx.Bd_vec = &Bd_vec;
+    RHSctx.Ad_vec = Ad_vec;
+    RHSctx.Bd_vec = Bd_vec;
     RHSctx.Ad = &Ad;
     RHSctx.Bd = &Bd;
     RHSctx.aux = &aux;
@@ -196,11 +196,12 @@ MasterEq::~MasterEq(){
     if (!usematfree){
       MatDestroy(&Ad);
       MatDestroy(&Bd);
-      for (int i= 0; i < noscillators*(noscillators-1)/2; i++) {
-        if (fabs(Jkl[i]) > 1e-12 )  {
-          MatDestroy(&Ad_vec[i]);
-          MatDestroy(&Bd_vec[i]);
-        }
+      // for (int i= 0; i < noscillators*(noscillators-1)/2; i++) {
+      for (int k=0; k<Ad_vec.size(); k++) {
+        if (Ad_vec[k] != NULL) MatDestroy(&(Ad_vec[k]));
+      }
+      for (int k=0; k<Bd_vec.size(); k++) {
+        if (Bd_vec[k] != NULL) MatDestroy(&(Bd_vec[k]));
       }
       VecDestroy(&aux);
       for (int i=0; i<noscillators; i++){
@@ -213,8 +214,6 @@ MasterEq::~MasterEq(){
       }
       delete [] Ac_vec;
       delete [] Bc_vec;
-      delete [] Ad_vec;
-      delete [] Bd_vec;
       // Clean out transfer functions
       for (int k=0; k<noscillators; k++){
         for (int l=0; l<max(1,ncontrolterms[k]); l++){ // at least one will be there
@@ -255,9 +254,6 @@ void MasterEq::initSparseMatSolver(){
     Ac_vec[k] = new Mat[1];
     Bc_vec[k] = new Mat[1];
   }
-  // coupling terms
-  Ad_vec = new Mat[noscillators*(noscillators-1)/2];
-  Bd_vec = new Mat[noscillators*(noscillators-1)/2];
 
   int dimmat = dim_rho; // this is N!
 
@@ -384,6 +380,9 @@ void MasterEq::initSparseMatSolver(){
       if (fabs(Jkl[id_kl]) > 1e-12) { // only allocate if coefficient is non-zero to save memory.
 
         /* Allocate Ad_kl, Bd_kl matrices, 4 nonzeros per kl-coupling per row. */
+        Mat myAdkl, myBdkl;
+        Ad_vec.push_back(myAdkl);
+        Bd_vec.push_back(myAdkl);
         MatCreate(PETSC_COMM_WORLD, &Ad_vec[id_kl]);
         MatCreate(PETSC_COMM_WORLD, &Bd_vec[id_kl]);
         MatSetType(Ad_vec[id_kl], MATMPIAIJ);
@@ -618,7 +617,7 @@ void MasterEq::initSparseMatSolver(){
     printf("ERROR: Requested to read Hamiltonian from python interface, but you didn't link with python. Check your Makefile for WITH_PYTHON=true to use this feature.\n");
 #endif
 
-    PythonInterface* py = new PythonInterface(python_file, lindbladtype);
+    PythonInterface* py = new PythonInterface(python_file, lindbladtype, dim_rho);
 
     /* Read Hamiltonians from python interface */
     py->receiveHd(Bd);
@@ -1491,11 +1490,8 @@ int myMatMult_sparsemat(Mat RHS, Vec x, Vec y){
   MatMultAdd(*shellctx->Bd, u, vout, vout);
 
 
-  /* Control terms and Jaynes-Cummings coupling terms */
-  int id_kl = 0; // index for accessing Ad_kl inside Ad_vec
+  /* -- Control Terms -- */
   for (int iosc = 0; iosc < shellctx->nlevels.size(); iosc++) {
-
-    /* -- Control Terms -- */
 
     // always do the first one.  // Why? TODO!
 
@@ -1536,32 +1532,33 @@ int myMatMult_sparsemat(Mat RHS, Vec x, Vec y){
       MatMult((*(shellctx->Bc_vec))[iosc][icon], u, *shellctx->aux);
       VecAXPY(vout, p, *shellctx->aux);
     }
+  }
 
-    /* --- Coupling terms --- */
-    for (int josc=iosc+1; josc<shellctx->nlevels.size(); josc++){
+  /* --- Apply time-dependent system Hamiltonian --- */
+  /* By default (no python interface), these are the Jayes-Cumming coupling terms */
+  for (int id_kl = 0; id_kl<shellctx->Ad_vec.size(); id_kl++){
 
-      double Jkl = shellctx->Jkl[id_kl]; 
-      if (fabs(Jkl) > 1e-12) {
+    double Jkl = shellctx->Jkl[id_kl];  // TODO: Transfer function for Hdt!
+    if (fabs(Jkl) > 1e-12) {
 
-        double etakl = shellctx->eta[id_kl];
-        double coskl = cos(etakl * shellctx->time);
-        double sinkl = sin(etakl * shellctx->time);
-        // uout += J_kl*sin*Adklu
-        MatMult((*(shellctx->Ad_vec))[id_kl], u, *shellctx->aux);
-        VecAXPY(uout, Jkl*sinkl, *shellctx->aux);
-        // uout += -Jkl*cos*Bdklv
-        MatMult((*(shellctx->Bd_vec))[id_kl], v, *shellctx->aux);
-        VecAXPY(uout, -Jkl*coskl, *shellctx->aux);
-        // vout += Jkl*cos*Bdklu
-        MatMult((*(shellctx->Bd_vec))[id_kl], u, *shellctx->aux);
-        VecAXPY(vout, Jkl*coskl, *shellctx->aux);
-        //vout += Jkl*sin*Adklv
-        MatMult((*(shellctx->Ad_vec))[id_kl], v, *shellctx->aux);
-        VecAXPY(vout, Jkl*sinkl, *shellctx->aux);
-      }
-      id_kl++;
+      double etakl = shellctx->eta[id_kl];
+      double coskl = cos(etakl * shellctx->time);
+      double sinkl = sin(etakl * shellctx->time);
+      // uout += J_kl*sin*Adklu
+      MatMult(shellctx->Ad_vec[id_kl], u, *shellctx->aux);
+      VecAXPY(uout, Jkl*sinkl, *shellctx->aux);
+      // uout += -Jkl*cos*Bdklv
+      MatMult(shellctx->Bd_vec[id_kl], v, *shellctx->aux);
+      VecAXPY(uout, -Jkl*coskl, *shellctx->aux);
+      // vout += Jkl*cos*Bdklu
+      MatMult(shellctx->Bd_vec[id_kl], u, *shellctx->aux);
+      VecAXPY(vout, Jkl*coskl, *shellctx->aux);
+      //vout += Jkl*sin*Adklv
+      MatMult(shellctx->Ad_vec[id_kl], v, *shellctx->aux);
+      VecAXPY(vout, Jkl*sinkl, *shellctx->aux);
     }
   }
+
 
   /* Restore */
   VecRestoreSubVector(x, *shellctx->isu, &u);
@@ -1606,13 +1603,10 @@ int myMatMultTranspose_sparsemat(Mat RHS, Vec x, Vec y) {
   VecScale(vout, -1.0);
   MatMultTransposeAdd(*shellctx->Ad, v, vout, vout);
 
-  /* Control and coupling term */
-  int id_kl = 0; // index for accessing Ad_kl inside Ad_vec
+  /* Time-dependent control term */
   for (int iosc = 0; iosc < shellctx->nlevels.size(); iosc++) {
 
-    /* Control Terms */
-
-    // always do the first term. 
+    // always do the first term.  Why?
 
     // Control for first term 
     p = shellctx->control_Re[iosc][0];
@@ -1649,30 +1643,29 @@ int myMatMultTranspose_sparsemat(Mat RHS, Vec x, Vec y) {
       MatMultTranspose((*(shellctx->Bc_vec))[iosc][icon], u, *shellctx->aux);
       VecAXPY(vout, -1.*p, *shellctx->aux);
     }
+  }
 
 
-    // Coupling terms
-    for (int josc=iosc+1; josc<shellctx->nlevels.size(); josc++){
-      double Jkl = shellctx->Jkl[id_kl]; 
+  /* Time-dependent system part (Default: Jayes-Cumming coupling) */
+  for (int id_kl=0; id_kl < shellctx->Ad_vec.size(); id_kl++){
+    double Jkl = shellctx->Jkl[id_kl]; 
 
-      if (fabs(Jkl) > 1e-12) {
-        double etakl = shellctx->eta[id_kl];
-        double coskl = cos(etakl * shellctx->time);
-        double sinkl = sin(etakl * shellctx->time);
-        // uout += J_kl*sin*Adklu^T
-        MatMultTranspose((*(shellctx->Ad_vec))[id_kl], u, *shellctx->aux);
-        VecAXPY(uout, Jkl*sinkl, *shellctx->aux);
-        // uout += +Jkl*cos*Bdklv^T
-        MatMultTranspose((*(shellctx->Bd_vec))[id_kl], v, *shellctx->aux);
-        VecAXPY(uout,  Jkl*coskl, *shellctx->aux);
-        // vout += - Jkl*cos*Bdklu^T
-        MatMultTranspose((*(shellctx->Bd_vec))[id_kl], u, *shellctx->aux);
-        VecAXPY(vout, - Jkl*coskl, *shellctx->aux);
-        //vout += Jkl*sin*Adklv^T
-        MatMultTranspose((*(shellctx->Ad_vec))[id_kl], v, *shellctx->aux);
-        VecAXPY(vout, Jkl*sinkl, *shellctx->aux);
-      }
-      id_kl++;
+    if (fabs(Jkl) > 1e-12) {
+      double etakl = shellctx->eta[id_kl];   // TODO: Transfer for Hdt
+      double coskl = cos(etakl * shellctx->time);
+      double sinkl = sin(etakl * shellctx->time);
+      // uout += J_kl*sin*Adklu^T
+      MatMultTranspose(shellctx->Ad_vec[id_kl], u, *shellctx->aux);
+      VecAXPY(uout, Jkl*sinkl, *shellctx->aux);
+      // uout += +Jkl*cos*Bdklv^T
+      MatMultTranspose(shellctx->Bd_vec[id_kl], v, *shellctx->aux);
+      VecAXPY(uout,  Jkl*coskl, *shellctx->aux);
+      // vout += - Jkl*cos*Bdklu^T
+      MatMultTranspose(shellctx->Bd_vec[id_kl], u, *shellctx->aux);
+      VecAXPY(vout, - Jkl*coskl, *shellctx->aux);
+      //vout += Jkl*sin*Adklv^T
+      MatMultTranspose(shellctx->Ad_vec[id_kl], v, *shellctx->aux);
+      VecAXPY(vout, Jkl*sinkl, *shellctx->aux);
     }
   }
 
