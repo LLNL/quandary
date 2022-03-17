@@ -431,13 +431,18 @@ void PythonInterface::receiveTransfer(int noscillators,std::vector<std::vector<T
 
   printf("Receiving transfer functions...\n");
 
-  /* First empty out the transfer_func vector */
-  for (int i=0; i<noscillators; i++){
-    transfer_func_re[i].clear();
-    transfer_func_im[i].clear();
+  /* First empty out the transfer_func vectors for each oscillator and create empty vectors of the correct size */
+  for (int k=0; k<noscillators; k++){
+    delete transfer_func_re[k][0];
+    delete transfer_func_im[k][0];
+    transfer_func_re[k].clear();
+    transfer_func_im[k].clear();
+
+    for (int icontrol = 0; icontrol<ncontrolterms_store[k]; icontrol++){
+      transfer_func_re[k].push_back(NULL);
+      transfer_func_im[k].push_back(NULL);
+    } 
   }
-  transfer_func_re.clear();
-  transfer_func_im.clear();
 
   /* Transfer function u(p(t)) for REAL part */
 
@@ -458,15 +463,15 @@ void PythonInterface::receiveTransfer(int noscillators,std::vector<std::vector<T
 
   // Iterate over oscillators
   for (Py_ssize_t k=0; k<noscillators; k++){
-    std::vector<TransferFunction*> transfer_k_re; // Container for transfer function for this oscillator 
 
     // Get number of given transfer functions for this oscillator
     if (!called_real || !PyList_Check(pTr_real)){
       // Default: If we can't find the python function "getTranfer_real", use identities for each control Hamiltonian term
       printf("# Warning: Could not find transfer function 'getTransfer_real'. Using identity instead. \n");
+
       for (Py_ssize_t i=0; i<ncontrolterms_store[k]; i++){
-        TransferFunction *transfer_ki =  new TransferFunction();
-        transfer_k_re.push_back(transfer_ki);
+        IdentityTransferFunction *transfer_ki =  new IdentityTransferFunction();
+        transfer_func_re[k][i] = transfer_ki;
       }
     } else { 
       // If 'getTransfer_real' exists, get all transfer functions from python in terms of spline knots and coefs. 
@@ -513,11 +518,9 @@ void PythonInterface::receiveTransfer(int noscillators,std::vector<std::vector<T
 
         // Create the transfer spline for u^k_i and store it
         SplineTransferFunction *transfer_ki = new SplineTransferFunction(uki_order, uki_knots, uki_coefs);
-        transfer_k_re.push_back(transfer_ki);
+        transfer_func_re[k][i] = transfer_ki;
       } // end of control term i for this oscillator k
     }
-    // Store the vector of transfer splines for this oscillator
-    transfer_func_re.push_back(transfer_k_re);
   } // end of oscillator k
 
   // Cleanup
@@ -544,15 +547,14 @@ void PythonInterface::receiveTransfer(int noscillators,std::vector<std::vector<T
 
   // Iterate over oscillators
   for (Py_ssize_t k=0; k<noscillators; k++){
-    std::vector<TransferFunction*> transfer_k_im; // Container for transfer function for this oscillator 
 
     // Get number of given transfer functions for this oscillator
     if (!called_imag|| !PyList_Check(pTr_imag)){
       // Default: If we can't find the python function "getTranfer_imag", use identities for each control Hamiltonian term
       printf("# Warning: Could not find transfer function 'getTransfer_imag'. Using identity instead. \n");
       for (Py_ssize_t i=0; i<ncontrolterms_store[k]; i++){
-        TransferFunction *transfer_ki =  new TransferFunction();
-        transfer_k_im.push_back(transfer_ki);
+        IdentityTransferFunction *transfer_ki =  new IdentityTransferFunction();
+        transfer_func_im[k][i] = transfer_ki;
       }
     } else { 
       // If 'getTransfer_imag' exists, get all transfer functions from python in terms of spline knots and coefs. 
@@ -599,11 +601,9 @@ void PythonInterface::receiveTransfer(int noscillators,std::vector<std::vector<T
 
         // Create the transfer spline for u^k_i and store it
         SplineTransferFunction *transfer_ki = new SplineTransferFunction(uki_order, uki_knots, uki_coefs);
-        transfer_k_im.push_back(transfer_ki);
+        transfer_func_im[k][i] = transfer_ki;
       } // end of control term i for this oscillator k
     }
-    // Store the vector of transfer splines for this oscillator
-    transfer_func_im.push_back(transfer_k_im);
   } // end of oscillator k
 
   // Cleanup

@@ -177,7 +177,7 @@ void Output::writeControls(Vec params, MasterEq* mastereq, int ntime, double dt)
         // Write transfer u_i(p(t)) for this oscillator
         fprintf(file_t, "% 1.8f   ", time);
         for (int icontrol=0; icontrol < Re.size(); icontrol++){
-          fprintf(file_t, "% 1.14e   %1.14e", Re[icontrol], Im[icontrol]);
+          fprintf(file_t, "% 1.14e   %1.14e   ", Re[icontrol], Im[icontrol]);
         }
         fprintf(file_t, "\n");
       } // end of oscillator loop

@@ -42,17 +42,25 @@ class ControlBasis{
 
 
 /* 
- * Class to represent transfer functions that act on the controls: evaluate u(p(t)), or v(q(t)).
- * Default: u = v = identity. 
- * Otherwise: u is a spline, read from the python interface. */
+ * Abstract class to represent transfer functions that act on the controls: evaluate u(p(t)), or v(q(t)).
+ * Default: u = v = IdentityTransferFunctions. 
+ * Otherwise: u=v are splineTransferFunction, read from the python interface. */
 class TransferFunction{
     public:
         TransferFunction();
-        ~TransferFunction();
+        virtual ~TransferFunction();
 
-        // Default: this is the identity function
+        virtual double eval(double p) =0;
+        virtual double der(double p) =0;
+};
+
+class IdentityTransferFunction : public TransferFunction {
+    public:
+        IdentityTransferFunction();
+        ~IdentityTransferFunction();
+        // This is the identity function
         double eval(double p);
-        // Derivative
+        // Derivative = 1.0
         double der(double p);
 };
 
@@ -64,10 +72,8 @@ class SplineTransferFunction : public TransferFunction {
     public:
         SplineTransferFunction(int order, std::vector<double>knots, std::vector<double>coeffs);
         ~SplineTransferFunction();
-
         // Evaluate the spline
         double eval(double p);
-
         // Derivative
         double der(double p);
 };

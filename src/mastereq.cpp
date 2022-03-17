@@ -215,6 +215,13 @@ MasterEq::~MasterEq(){
       delete [] Bc_vec;
       delete [] Ad_vec;
       delete [] Bd_vec;
+      // Clean out transfer functions
+      for (int k=0; k<noscillators; k++){
+        for (int l=0; l<max(1,ncontrolterms[k]); l++){ // at least one will be there
+          delete transfer_func_re[k][l];
+          delete transfer_func_im[k][l];
+        }
+      }
     }
     delete [] dRedp;
     delete [] dImdp;
@@ -231,8 +238,8 @@ void MasterEq::initSparseMatSolver(){
 
   /* Create transfer functions, default: one per oscillator being the identity. If python interface: could be more */
   for (int k=0; k<noscillators; k++){
-    TransferFunction* mytransfer_re = new TransferFunction();
-    TransferFunction* mytransfer_im = new TransferFunction();
+    IdentityTransferFunction* mytransfer_re = new IdentityTransferFunction();
+    IdentityTransferFunction* mytransfer_im = new IdentityTransferFunction();
     std::vector<TransferFunction*> myvec_re{mytransfer_re};
     std::vector<TransferFunction*> myvec_im{mytransfer_im};
     transfer_func_re.push_back(myvec_re);

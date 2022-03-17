@@ -97,32 +97,39 @@ double ControlBasis::basisfunction(int id, double t){
 
 
 TransferFunction::TransferFunction(){}
-TransferFunction::~TransferFunction(){}
+TransferFunction::~TransferFunction() {}
 
-double TransferFunction::eval(double p) {
+
+IdentityTransferFunction::IdentityTransferFunction() : TransferFunction() {}
+IdentityTransferFunction::~IdentityTransferFunction() {}
+
+double IdentityTransferFunction::eval(double p) {
     return p;
 }
 
-
-double TransferFunction::der(double p){
+double IdentityTransferFunction::der(double p){
     return 1.0;
 }
 
-
-SplineTransferFunction::SplineTransferFunction(int order_re, std::vector<double>knots_re, std::vector<double>coeffs_re) : TransferFunction() {
+SplineTransferFunction::SplineTransferFunction(int order, std::vector<double>knots, std::vector<double>coeffs) : TransferFunction() {
 
 #ifdef WITH_FITPACK
-    transfer_func = new fitpackpp::BSplineCurve(knots_re, coeffs_re, order_re);
+    transfer_func = new fitpackpp::BSplineCurve(knots, coeffs, order);
 #else
     printf("# Warning: Can not process spline transfer function from python interface, because you didn't link to the FITPACK package. Check your Makefile for WITH_FITPACK=true, if you want to use this feature. Using identity transfer function now.\n");
 #endif
 }
 
-SplineTransferFunction::~SplineTransferFunction() {}
+SplineTransferFunction::~SplineTransferFunction() {
+#ifdef WITH_FITPACK
+    delete transfer_func;
+#endif
+}
 
 double SplineTransferFunction::eval(double p) {
 #ifdef WITH_FITPACK
-    return transfer_func->eval(p);
+    double out = transfer_func->eval(p); 
+    return out;
 #else 
     return p;
 #endif
