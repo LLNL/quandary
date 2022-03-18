@@ -77,3 +77,29 @@ class SplineTransferFunction : public TransferFunction {
         // Derivative
         double der(double p);
 };
+
+
+class CosineTransferFunction : public TransferFunction {
+    protected:
+        double freq;
+        double amp;
+    public:
+        CosineTransferFunction(double amp, double freq);
+        ~CosineTransferFunction();
+        // This is amp*cos(freq*t)
+        double eval(double p);
+        double der(double p);
+};
+
+class SineTransferFunction : public TransferFunction {
+    protected:
+        double freq;
+        double amp;
+    public:
+        SineTransferFunction(double amp, double freq);
+        ~SineTransferFunction();
+        // This is amp*sin(freq*t)
+        double eval(double p);
+        double der(double p);
+};
+

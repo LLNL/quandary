@@ -143,3 +143,33 @@ double SplineTransferFunction::der(double p){
     return 1.0;
 #endif
 }
+
+CosineTransferFunction::CosineTransferFunction(double amp_, double freq_) : TransferFunction() {
+    freq = freq_;
+    amp = amp_;
+}
+
+CosineTransferFunction::~CosineTransferFunction(){}
+
+double CosineTransferFunction::eval(double t){
+    return amp*cos(freq*t);
+}
+
+double CosineTransferFunction::der(double t){
+    return amp*freq*sin(freq*t);
+}
+
+SineTransferFunction::SineTransferFunction(double amp_, double freq_) : TransferFunction() {
+    freq = freq_;
+    amp = amp_;
+}
+
+SineTransferFunction::~SineTransferFunction(){}
+
+double SineTransferFunction::eval(double t){
+    return amp*sin(freq*t);
+}
+
+double SineTransferFunction::der(double t){
+    return -1.*amp*freq*cos(freq*t);
+}

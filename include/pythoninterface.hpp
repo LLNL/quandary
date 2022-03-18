@@ -33,11 +33,17 @@ class PythonInterface{
   void receiveHd(Mat& Bd);
 
   /* Receive the time-varying system Hamiltonian part from "getHdt_real" and "getHdt_imag" */
-  // These are Q*(Q+1)/2 Hamiltonians that will be applied as 
-  //   J_kl cos(eta_kl t) * Hdt_real + i J_kl sin(eta_kl t) * Hdt_imag
-  // TODO: Generalize for transfer functions u(t) and v(t) (receiveTransferHd, TODO.) 
-  // The python function MUST return a LIST (length Q*(Q-1)/2) of LISTS (length dim^2) of floats!
+  // These are <L> Hamiltonians that will be applied as 
+  //   u(t) * Hdt_real + i v(t) * Hdt_imag
+  // for transfer functions u(t) and v(t) from receiveHdtTransfer 
+  // The python function MUST return a LIST of LISTS of floats!
   void receiveHdt(int noscillators, std::vector<Mat>& Ad_vec, std::vector<Mat>& Bd_vec);
+
+  /* Receive transfer functions from "getHdtTransfer_real" and "getHdtTransfer_imag" */
+  // getTransfer() MUST return a python list of lists of [splines knots, and coeffs, and order]:
+  //   for each Hdt term : 
+  //            one transfer function u^k_i(x) (given in terms of spline knots (list), coefficients(list) and order (int)
+  void receiveHdtTransfer(int noscillators,std::vector<TransferFunction*>& transfer_Hc_re, std::vector<TransferFunction*>& transfer_Hc_im);
 
   /* Receive control terms from "getHc_real" and "getHc_imag" */
   /* Fills up Ac_vec and Bc_vec, and return the number of control terms per oscillator in ncontrolterms */ 
@@ -47,11 +53,11 @@ class PythonInterface{
   //           a list containing the flattened Hamiltonian Hc^k_i
   void receiveHc(int noscillators, Mat** Ac_vec, Mat** Bc_vec, std::vector<int>& ncontrolterms);
 
-  /* Receive transfer functions from "getTransfer_real" and "getTransfer_imag" */
+  /* Receive transfer functions from "getHcTransfer_real" and "getHcTransfer_imag" */
   // getTransfer() MUST return a python list of lists of [splines knots, and coeffs, and order]:
   //   for each oscillator k=0...Q-1: 
   //       for each control term i=0...C^k-1: 
   //            one transfer function u^k_i(x) (given in terms of spline knots (list), coefficients(list) and order (int)
-  void receiveTransferHc(int noscillators,std::vector<std::vector<TransferFunction*>>& transfer_func_re, std::vector<std::vector<TransferFunction*>>& transfer_func_im);
+  void receiveHcTransfer(int noscillators,std::vector<std::vector<TransferFunction*>>& transfer_Hdt_re, std::vector<std::vector<TransferFunction*>>& transfer_Hdt_im);
 
 };

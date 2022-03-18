@@ -27,6 +27,8 @@ typedef struct {
   bool addT1, addT2;
   std::vector<std::vector<double>> control_Re;
   std::vector<std::vector<double>> control_Im;
+  std::vector<TransferFunction*> transfer_Hdt_re;
+  std::vector<TransferFunction*> transfer_Hdt_im;
   Mat*** Ac_vec;
   Mat*** Bc_vec;
   std::vector<int> ncontrolterms; 
@@ -96,8 +98,10 @@ class MasterEq{
     LindbladType lindbladtype;        // Flag that determines which lindblad terms are added. if NONE, than Schroedingers eq. is solved
 
     std::vector<int> ncontrolterms; // Stores the number of control Hamiltonians per oscillator
-    std::vector<std::vector<TransferFunction*>> transfer_func_re; // Stores the transfer functions for each control term for each oscillator
-    std::vector<std::vector<TransferFunction*>> transfer_func_im; // Stores the transfer functions for each control term for each oscillator
+    std::vector<std::vector<TransferFunction*>> transfer_Hc_re; // Stores the transfer functions for each control term for each oscillator
+    std::vector<std::vector<TransferFunction*>> transfer_Hc_im; // Stores the transfer functions for each control term for each oscillator
+    std::vector<TransferFunction*> transfer_Hdt_re; // Stores the transfer functions for each control term for each oscillator
+    std::vector<TransferFunction*> transfer_Hdt_im; // Stores the transfer functions for each time-varying system Hamiltonian term  
     std::string python_file; // either 'none' or name of python script to read Hamiltonian from 
 
 

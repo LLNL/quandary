@@ -427,28 +427,28 @@ void PythonInterface::receiveHc(int noscillators, Mat** Ac_vec, Mat** Bc_vec, st
 }
 
 
-void PythonInterface::receiveTransferHc(int noscillators,std::vector<std::vector<TransferFunction*>>& transfer_func_re,std::vector<std::vector<TransferFunction*>>& transfer_func_im){
+void PythonInterface::receiveHcTransfer(int noscillators,std::vector<std::vector<TransferFunction*>>& transfer_Hc_re,std::vector<std::vector<TransferFunction*>>& transfer_Hc_im){
 #ifdef WITH_PYTHON
 
   printf("Receiving transfer functions...\n");
 
   /* First empty out the transfer_func vectors for each oscillator and create empty vectors of the correct size */
   for (int k=0; k<noscillators; k++){
-    delete transfer_func_re[k][0];
-    delete transfer_func_im[k][0];
-    transfer_func_re[k].clear();
-    transfer_func_im[k].clear();
+    delete transfer_Hc_re[k][0];
+    delete transfer_Hc_im[k][0];
+    transfer_Hc_re[k].clear();
+    transfer_Hc_im[k].clear();
 
     for (int icontrol = 0; icontrol<ncontrolterms_store[k]; icontrol++){
-      transfer_func_re[k].push_back(NULL);
-      transfer_func_im[k].push_back(NULL);
+      transfer_Hc_re[k].push_back(NULL);
+      transfer_Hc_im[k].push_back(NULL);
     } 
   }
 
   /* Transfer function u(p(t)) for REAL part */
 
   // Get a reference to the required python functions
-  PyObject *pFunc_getTr_real = pFunc_getTr_real = PyObject_GetAttrString(pModule, (char*)"getTransfer_real");  // transfer functions
+  PyObject *pFunc_getTr_real = pFunc_getTr_real = PyObject_GetAttrString(pModule, (char*)"getHcTransfer_real");  // transfer functions
 
   // Call the function
   PyObject* pTr_real;
@@ -468,14 +468,14 @@ void PythonInterface::receiveTransferHc(int noscillators,std::vector<std::vector
     // Get number of given transfer functions for this oscillator
     if (!called_real || !PyList_Check(pTr_real)){
       // Default: If we can't find the python function "getTranfer_real", use identities for each control Hamiltonian term
-      printf("# Warning: Could not find transfer function 'getTransfer_real'. Using identity instead. \n");
+      printf("# Warning: Could not find transfer function 'getHcTransfer_real'. Using identity instead. \n");
 
       for (Py_ssize_t i=0; i<ncontrolterms_store[k]; i++){
         IdentityTransferFunction *transfer_ki =  new IdentityTransferFunction();
-        transfer_func_re[k][i] = transfer_ki;
+        transfer_Hc_re[k][i] = transfer_ki;
       }
     } else { 
-      // If 'getTransfer_real' exists, get all transfer functions from python in terms of spline knots and coefs. 
+      // If 'getHcTransfer_real' exists, get all transfer functions from python in terms of spline knots and coefs. 
 
       // Check size of list for this oscillator
       PyObject* pTrk_real = PyList_GetItem(pTr_real,k); // Get list of Function for oscillator k
@@ -519,7 +519,7 @@ void PythonInterface::receiveTransferHc(int noscillators,std::vector<std::vector
 
         // Create the transfer spline for u^k_i and store it
         SplineTransferFunction *transfer_ki = new SplineTransferFunction(uki_order, uki_knots, uki_coefs);
-        transfer_func_re[k][i] = transfer_ki;
+        transfer_Hc_re[k][i] = transfer_ki;
       } // end of control term i for this oscillator k
     }
   } // end of oscillator k
@@ -532,7 +532,7 @@ void PythonInterface::receiveTransferHc(int noscillators,std::vector<std::vector
   /* Transfer function u(p(t)) for IMAGINARY part */
 
   // Get a reference to the required python functions
-  PyObject *pFunc_getTr_imag = pFunc_getTr_imag= PyObject_GetAttrString(pModule, (char*)"getTransfer_imag");  // transfer functions
+  PyObject *pFunc_getTr_imag = pFunc_getTr_imag= PyObject_GetAttrString(pModule, (char*)"getHcTransfer_imag");  // transfer functions
 
   // Call the functions
   PyObject* pTr_imag;
@@ -552,13 +552,13 @@ void PythonInterface::receiveTransferHc(int noscillators,std::vector<std::vector
     // Get number of given transfer functions for this oscillator
     if (!called_imag|| !PyList_Check(pTr_imag)){
       // Default: If we can't find the python function "getTranfer_imag", use identities for each control Hamiltonian term
-      printf("# Warning: Could not find transfer function 'getTransfer_imag'. Using identity instead. \n");
+      printf("# Warning: Could not find transfer function 'getHcTransfer_imag'. Using identity instead. \n");
       for (Py_ssize_t i=0; i<ncontrolterms_store[k]; i++){
         IdentityTransferFunction *transfer_ki =  new IdentityTransferFunction();
-        transfer_func_im[k][i] = transfer_ki;
+        transfer_Hc_im[k][i] = transfer_ki;
       }
     } else { 
-      // If 'getTransfer_imag' exists, get all transfer functions from python in terms of spline knots and coefs. 
+      // If 'getHcTransfer_imag' exists, get all transfer functions from python in terms of spline knots and coefs. 
 
       // Check size of list for this oscillator
       PyObject* pTrk_imag= PyList_GetItem(pTr_imag,k); // Get list of Function for oscillator k
@@ -602,7 +602,7 @@ void PythonInterface::receiveTransferHc(int noscillators,std::vector<std::vector
 
         // Create the transfer spline for u^k_i and store it
         SplineTransferFunction *transfer_ki = new SplineTransferFunction(uki_order, uki_knots, uki_coefs);
-        transfer_func_im[k][i] = transfer_ki;
+        transfer_Hc_im[k][i] = transfer_ki;
       } // end of control term i for this oscillator k
     }
   } // end of oscillator k
@@ -807,14 +807,14 @@ void PythonInterface::receiveHdt(int noscillators, std::vector<Mat>& Ad_vec, std
     } // end of out list of terms
     // Now we have Hdt_im_vals and Hdt_im_ids
 
-    // print out what we received from python 
-    for (int k=0; k<nterms; k++){
-      printf("getHdt(): imag(term %d): \n", k);
-      for (int l=0; l < Hdt_im_vals[k].size(); l++){
-        printf("(%d,%f) ", Hdt_im_ids[k][l], Hdt_im_vals[k][l]);
-      }
-      printf("\n");
-    }
+    // // print out what we received from python 
+    // for (int k=0; k<nterms; k++){
+    //   printf("getHdt(): imag(term %d): \n", k);
+    //   for (int l=0; l < Hdt_im_vals[k].size(); l++){
+    //     printf("(%d,%f) ", Hdt_im_ids[k][l], Hdt_im_vals[k][l]);
+    //   }
+    //   printf("\n");
+    // }
 
     /* Now place values into Ad_vec */
 
@@ -868,5 +868,12 @@ void PythonInterface::receiveHdt(int noscillators, std::vector<Mat>& Ad_vec, std
   // Clean up
   if (pFunc_getHdt_real) Py_XDECREF(pFunc_getHdt_real);  
   if (pFunc_getHdt_imag) Py_XDECREF(pFunc_getHdt_imag);  
+#endif
+}
+
+
+void PythonInterface::receiveHdtTransfer(int noscillators,std::vector<TransferFunction*>& transfer_Hdt_re, std::vector<TransferFunction*>& transfer_Hdt_im){
+#ifdef WITH_PYTHON
+
 #endif
 }

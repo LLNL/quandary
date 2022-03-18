@@ -163,6 +163,8 @@ MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Osci
     RHSctx.control_Re.push_back(controlRek);
     RHSctx.control_Im.push_back(controlImk);
   }
+  RHSctx.transfer_Hdt_re = transfer_Hdt_re;
+  RHSctx.transfer_Hdt_im = transfer_Hdt_im;
 
   /* Set the MatMult routine for applying the RHS to a vector x */
   if (usematfree) { // matrix-free solver
@@ -196,9 +198,10 @@ MasterEq::~MasterEq(){
     if (!usematfree){
       MatDestroy(&Ad);
       MatDestroy(&Bd);
-      // for (int i= 0; i < noscillators*(noscillators-1)/2; i++) {
       for (int k=0; k<Ad_vec.size(); k++) {
         if (Ad_vec[k] != NULL) MatDestroy(&(Ad_vec[k]));
+        delete transfer_Hdt_re[k];
+        delete transfer_Hdt_im[k];
       }
       for (int k=0; k<Bd_vec.size(); k++) {
         if (Bd_vec[k] != NULL) MatDestroy(&(Bd_vec[k]));
@@ -217,8 +220,8 @@ MasterEq::~MasterEq(){
       // Clean out transfer functions
       for (int k=0; k<noscillators; k++){
         for (int l=0; l<max(1,ncontrolterms[k]); l++){ // at least one will be there
-          delete transfer_func_re[k][l];
-          delete transfer_func_im[k][l];
+          delete transfer_Hc_re[k][l];
+          delete transfer_Hc_im[k][l];
         }
       }
     }
@@ -235,14 +238,23 @@ MasterEq::~MasterEq(){
 
 void MasterEq::initSparseMatSolver(){
 
-  /* Create transfer functions, default: one per oscillator being the identity. If python interface: could be more */
+  /* Create transfer functions for controls, default: one per oscillator being the identity. If python interface: could be more */
   for (int k=0; k<noscillators; k++){
     IdentityTransferFunction* mytransfer_re = new IdentityTransferFunction();
     IdentityTransferFunction* mytransfer_im = new IdentityTransferFunction();
     std::vector<TransferFunction*> myvec_re{mytransfer_re};
     std::vector<TransferFunction*> myvec_im{mytransfer_im};
-    transfer_func_re.push_back(myvec_re);
-    transfer_func_im.push_back(myvec_im);
+    transfer_Hc_re.push_back(myvec_re);
+    transfer_Hc_im.push_back(myvec_im);
+  }
+  /* Create transfer functions for time-varying system Hamiltonian */
+  // By default, these are for the Jaynes Cumming coupling: Jkl*cos(eta*t)(a+adag) - i Jkl*sin(eta*t)(a-adag)
+  // If python interface, they can be different
+  for (int k=0; k<noscillators*(noscillators-1)/2; k++){
+    CosineTransferFunction* mytransfer_re = new CosineTransferFunction(Jkl[k], eta[k]);
+    SineTransferFunction* mytransfer_im = new SineTransferFunction(Jkl[k], eta[k]);
+    transfer_Hdt_re.push_back(mytransfer_re);
+    transfer_Hdt_im.push_back(mytransfer_im);
   }
 
   /* Allocate time-varying building blocks */
@@ -623,7 +635,8 @@ void MasterEq::initSparseMatSolver(){
     py->receiveHd(Bd);
     py->receiveHdt(noscillators, Ad_vec, Bd_vec);
     py->receiveHc(noscillators, Ac_vec, Bc_vec, ncontrolterms);
-    py->receiveTransferHc(noscillators, transfer_func_re, transfer_func_im);
+    py->receiveHcTransfer(noscillators, transfer_Hc_re, transfer_Hc_im);
+    py->receiveHdtTransfer(noscillators, transfer_Hdt_re, transfer_Hdt_im);
   }
 
   // // Test: Print out Hamiltonian terms.
@@ -683,8 +696,8 @@ int MasterEq::assemble_RHS(const double t){
         //TODO
         // These are hardcoded bounds for the spline, do prevent it from doing bad extrapolations where no data was given. Here, the spline was generated in the interval [-1.5,1.5]
         // if (p < -1.5 || p > 1.5) printf("\n WARNING: Extrapolating the transfer function spline can lead to large errors.\n\n");
-        double ukip = transfer_func_re[iosc][icon]->eval(p);
-        double ukiq = transfer_func_im[iosc][icon]->eval(q);
+        double ukip = transfer_Hc_re[iosc][icon]->eval(p);
+        double ukiq = transfer_Hc_im[iosc][icon]->eval(q);
         // printf("t=%f: transfer function u[oscil=%d][controlterm=%d](input=%f) = output %f\n", t, iosc, icon, p, ukip);
 
         // Set the controls (only real for now)
@@ -1165,8 +1178,8 @@ void MasterEq::computedRHSdp(const double t, const Vec x, const Vec xbar, const 
       double p, q;
       oscil_vec[iosc]->evalControl(t, &p, &q);  // Evaluates the B-spline basis functions -> p(t,alpha), q(t,alpha)
       for (int icon=0; icon<ncontrolterms[iosc]; icon++){
-        double dukidp_tmp = transfer_func_re[iosc][icon]->der(p); // dudp(p)
-        double dukidq_tmp = transfer_func_im[iosc][icon]->der(q); // dvdq(q)
+        double dukidp_tmp = transfer_Hc_re[iosc][icon]->der(p); // dudp(p)
+        double dukidq_tmp = transfer_Hc_im[iosc][icon]->der(q); // dvdq(q)
         if (icon == 0) dukidp[icon] = dukidp_tmp;
         else dukidp.push_back(dukidp_tmp);
         if (icon == 0) dukidq[icon] = dukidq_tmp;
@@ -1538,27 +1551,26 @@ int myMatMult_sparsemat(Mat RHS, Vec x, Vec y){
   /* By default (no python interface), these are the Jayes-Cumming coupling terms */
   for (int id_kl = 0; id_kl<shellctx->Ad_vec.size(); id_kl++){
 
-    double Jkl = shellctx->Jkl[id_kl];  // TODO: Transfer function for Hdt!
-    if (fabs(Jkl) > 1e-12) {
-
-      double etakl = shellctx->eta[id_kl];
-      double coskl = cos(etakl * shellctx->time);
-      double sinkl = sin(etakl * shellctx->time);
-      // uout += J_kl*sin*Adklu
-      MatMult(shellctx->Ad_vec[id_kl], u, *shellctx->aux);
-      VecAXPY(uout, Jkl*sinkl, *shellctx->aux);
+    double trans_re = shellctx->transfer_Hdt_re[id_kl]->eval(shellctx->time);
+    double trans_im = shellctx->transfer_Hdt_im[id_kl]->eval(shellctx->time);
+    // printf("coskl=%f, sinkl=%f, shellctx->time=%f\n", trans_re, trans_im, shellctx->time);
+    if (fabs(trans_re) > 1e-12) {
       // uout += -Jkl*cos*Bdklv
       MatMult(shellctx->Bd_vec[id_kl], v, *shellctx->aux);
-      VecAXPY(uout, -Jkl*coskl, *shellctx->aux);
+      VecAXPY(uout, -trans_re, *shellctx->aux);
       // vout += Jkl*cos*Bdklu
       MatMult(shellctx->Bd_vec[id_kl], u, *shellctx->aux);
-      VecAXPY(vout, Jkl*coskl, *shellctx->aux);
+      VecAXPY(vout, trans_re, *shellctx->aux);
+    }
+    if (fabs(trans_im) > 1e-12) {
+      // uout += J_kl*sin*Adklu
+      MatMult(shellctx->Ad_vec[id_kl], u, *shellctx->aux);
+      VecAXPY(uout, trans_im, *shellctx->aux);
       //vout += Jkl*sin*Adklv
       MatMult(shellctx->Ad_vec[id_kl], v, *shellctx->aux);
-      VecAXPY(vout, Jkl*sinkl, *shellctx->aux);
+      VecAXPY(vout, trans_im, *shellctx->aux);
     }
   }
-
 
   /* Restore */
   VecRestoreSubVector(x, *shellctx->isu, &u);
@@ -1650,22 +1662,25 @@ int myMatMultTranspose_sparsemat(Mat RHS, Vec x, Vec y) {
   for (int id_kl=0; id_kl < shellctx->Ad_vec.size(); id_kl++){
     double Jkl = shellctx->Jkl[id_kl]; 
 
-    if (fabs(Jkl) > 1e-12) {
-      double etakl = shellctx->eta[id_kl];   // TODO: Transfer for Hdt
-      double coskl = cos(etakl * shellctx->time);
-      double sinkl = sin(etakl * shellctx->time);
-      // uout += J_kl*sin*Adklu^T
-      MatMultTranspose(shellctx->Ad_vec[id_kl], u, *shellctx->aux);
-      VecAXPY(uout, Jkl*sinkl, *shellctx->aux);
+    double trans_re = shellctx->transfer_Hdt_re[id_kl]->eval(shellctx->time);
+    double trans_im = shellctx->transfer_Hdt_im[id_kl]->eval(shellctx->time);
+
+    if (fabs(trans_re) > 1e-12) {
       // uout += +Jkl*cos*Bdklv^T
       MatMultTranspose(shellctx->Bd_vec[id_kl], v, *shellctx->aux);
-      VecAXPY(uout,  Jkl*coskl, *shellctx->aux);
+      VecAXPY(uout,  trans_re, *shellctx->aux);
       // vout += - Jkl*cos*Bdklu^T
       MatMultTranspose(shellctx->Bd_vec[id_kl], u, *shellctx->aux);
-      VecAXPY(vout, - Jkl*coskl, *shellctx->aux);
+      VecAXPY(vout, - trans_re, *shellctx->aux);
+    }
+
+    if (fabs(trans_im) > 1e-12) {
+      // uout += J_kl*sin*Adklu^T
+      MatMultTranspose(shellctx->Ad_vec[id_kl], u, *shellctx->aux);
+      VecAXPY(uout, trans_im, *shellctx->aux);
       //vout += Jkl*sin*Adklv^T
       MatMultTranspose(shellctx->Ad_vec[id_kl], v, *shellctx->aux);
-      VecAXPY(vout, Jkl*sinkl, *shellctx->aux);
+      VecAXPY(vout, trans_im, *shellctx->aux);
     }
   }
 
