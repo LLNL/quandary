@@ -253,6 +253,7 @@ void MasterEq::initSparseMatSolver(){
   for (int k=0; k<noscillators*(noscillators-1)/2; k++){
     CosineTransferFunction* mytransfer_re = new CosineTransferFunction(Jkl[k], eta[k]);
     SineTransferFunction* mytransfer_im = new SineTransferFunction(Jkl[k], eta[k]);
+
     transfer_Hdt_re.push_back(mytransfer_re);
     transfer_Hdt_im.push_back(mytransfer_im);
   }
@@ -394,7 +395,7 @@ void MasterEq::initSparseMatSolver(){
         /* Allocate Ad_kl, Bd_kl matrices, 4 nonzeros per kl-coupling per row. */
         Mat myAdkl, myBdkl;
         Ad_vec.push_back(myAdkl);
-        Bd_vec.push_back(myAdkl);
+        Bd_vec.push_back(myBdkl);
         MatCreate(PETSC_COMM_WORLD, &Ad_vec[id_kl]);
         MatCreate(PETSC_COMM_WORLD, &Bd_vec[id_kl]);
         MatSetType(Ad_vec[id_kl], MATMPIAIJ);
@@ -626,17 +627,20 @@ void MasterEq::initSparseMatSolver(){
 #ifdef WITH_PYTHON
     printf("\n# Reading Hamiltonian model from python file %s.\n\n", python_file.c_str());
 #else
-    printf("ERROR: Requested to read Hamiltonian from python interface, but you didn't link with python. Check your Makefile for WITH_PYTHON=true to use this feature.\n");
+    printf("ERROR: Requested to read Hamiltonian from python interface, but you didn't link with python. Check your Makefile for WITH_PYTHON=true to use this feature.\n\n");
 #endif
 
     PythonInterface* py = new PythonInterface(python_file, lindbladtype, dim_rho);
 
     /* Read Hamiltonians from python interface */
-    py->receiveHd(Bd);
-    py->receiveHdt(noscillators, Ad_vec, Bd_vec);
-    py->receiveHc(noscillators, Ac_vec, Bc_vec, ncontrolterms);
+    py->receiveHd(Bd);  // receiving Bd
+    py->receiveHc(noscillators, Ac_vec, Bc_vec, ncontrolterms); 
     py->receiveHcTransfer(noscillators, transfer_Hc_re, transfer_Hc_im);
-    py->receiveHdtTransfer(noscillators, transfer_Hdt_re, transfer_Hdt_im);
+    py->receiveHdt(noscillators, Ad_vec, Bd_vec);
+    py->receiveHdtTransfer(Ad_vec.size(), transfer_Hdt_re, transfer_Hdt_im);
+
+    printf("\n");
+
   }
 
   // // Test: Print out Hamiltonian terms.
@@ -1553,7 +1557,8 @@ int myMatMult_sparsemat(Mat RHS, Vec x, Vec y){
 
     double trans_re = shellctx->transfer_Hdt_re[id_kl]->eval(shellctx->time);
     double trans_im = shellctx->transfer_Hdt_im[id_kl]->eval(shellctx->time);
-    // printf("coskl=%f, sinkl=%f, shellctx->time=%f\n", trans_re, trans_im, shellctx->time);
+
+    // printf("%f %f %f\n", shellctx->time, trans_re, trans_im);
     if (fabs(trans_re) > 1e-12) {
       // uout += -Jkl*cos*Bdklv
       MatMult(shellctx->Bd_vec[id_kl], v, *shellctx->aux);
@@ -1660,7 +1665,6 @@ int myMatMultTranspose_sparsemat(Mat RHS, Vec x, Vec y) {
 
   /* Time-dependent system part (Default: Jayes-Cumming coupling) */
   for (int id_kl=0; id_kl < shellctx->Ad_vec.size(); id_kl++){
-    double Jkl = shellctx->Jkl[id_kl]; 
 
     double trans_re = shellctx->transfer_Hdt_re[id_kl]->eval(shellctx->time);
     double trans_im = shellctx->transfer_Hdt_im[id_kl]->eval(shellctx->time);

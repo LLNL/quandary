@@ -43,7 +43,7 @@ class PythonInterface{
   // getTransfer() MUST return a python list of lists of [splines knots, and coeffs, and order]:
   //   for each Hdt term : 
   //            one transfer function u^k_i(x) (given in terms of spline knots (list), coefficients(list) and order (int)
-  void receiveHdtTransfer(int noscillators,std::vector<TransferFunction*>& transfer_Hc_re, std::vector<TransferFunction*>& transfer_Hc_im);
+  void receiveHdtTransfer(int nterms, std::vector<TransferFunction*>& transfer_Hdt_re, std::vector<TransferFunction*>& transfer_Hdt_im);
 
   /* Receive control terms from "getHc_real" and "getHc_imag" */
   /* Fills up Ac_vec and Bc_vec, and return the number of control terms per oscillator in ncontrolterms */ 
@@ -58,6 +58,5 @@ class PythonInterface{
   //   for each oscillator k=0...Q-1: 
   //       for each control term i=0...C^k-1: 
   //            one transfer function u^k_i(x) (given in terms of spline knots (list), coefficients(list) and order (int)
-  void receiveHcTransfer(int noscillators,std::vector<std::vector<TransferFunction*>>& transfer_Hdt_re, std::vector<std::vector<TransferFunction*>>& transfer_Hdt_im);
-
+  void receiveHcTransfer(int noscillators,std::vector<std::vector<TransferFunction*>>& transfer_Hc_re,std::vector<std::vector<TransferFunction*>>& transfer_Hc_im);
 };
