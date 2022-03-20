@@ -112,6 +112,8 @@ double IdentityTransferFunction::der(double p){
 }
 
 SplineTransferFunction::SplineTransferFunction(int order, std::vector<double>knots, std::vector<double>coeffs) : TransferFunction() {
+    knot_min = knots[0];
+    knot_max = knots[knots.size()-1];
 
 #ifdef WITH_FITPACK
     transfer_func = new fitpackpp::BSplineCurve(knots, coeffs, order);
@@ -127,7 +129,8 @@ SplineTransferFunction::~SplineTransferFunction() {
 }
 
 double SplineTransferFunction::eval(double p) {
-#ifdef WITH_FITPACK
+#ifdef WITH_FITPACK               
+    checkBounds(p);
     double out = transfer_func->eval(p); 
     return out;
 #else 
@@ -138,10 +141,17 @@ double SplineTransferFunction::eval(double p) {
 
 double SplineTransferFunction::der(double p){
 #ifdef WITH_FITPACK
+    checkBounds(p);
     return transfer_func->der(p);
 #else 
     return 1.0;
 #endif
+}
+
+void SplineTransferFunction::checkBounds(double p) {
+    if (p < knot_min || p > knot_max) {
+        printf("# WARNING! Attempt to evaluate Spline(%f), but spline bounds are [%f, %f]. Extrapolation might lead to unexpected behavior! Check if this is what you want.\n", p, knot_min, knot_max);
+    }
 }
 
 CosineTransferFunction::CosineTransferFunction(double amp_, double freq_) : TransferFunction() {

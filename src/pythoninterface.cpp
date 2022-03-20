@@ -90,7 +90,6 @@ void PythonInterface::receiveHd(Mat& Bd){
   MatCreate(PETSC_COMM_WORLD, &Bd);
   MatSetType(Bd, MATMPIAIJ);
   MatSetSizes(Bd, PETSC_DECIDE, PETSC_DECIDE, dim, dim); // dim = N^2 for Lindblad, N for Schroedinger
-  // MatMPIAIJSetPreallocation(Bd, 1, NULL, 1, NULL); // TODO: Should preallocate Bd?
   MatSetUp(Bd);
   MatSetFromOptions(Bd);
   PetscInt ilow, iupp;
@@ -658,7 +657,7 @@ void PythonInterface::receiveHdt(int noscillators, std::vector<Mat>& Ad_vec, std
   if (!called_real || !PyList_Check(pHdt_real)){
     printf("# No time-dependent real Hamiltonian received. \n");
     nterms = 0;
-    // If none given, leave the matrix empty.  TODO: DO I HAVE TO PUT NULL INTO ADVEC?
+    // If none given, leave the matrix empty.
   } else { 
     // Iterate over terms
     nterms = PyList_Size(pHdt_real);
@@ -879,7 +878,6 @@ void PythonInterface::receiveHdtTransfer(int nterms, std::vector<TransferFunctio
  printf("Receiving transfer functions for time-dependent system Hamiltonians Hd(t)...\n");
 
   /* First empty out the transfer_func vectors for each oscillator and create empty vectors of the correct size */
-  // TODO: Is this calling the correct TransferFunction destructor?
   transfer_Hdt_re.clear();
   transfer_Hdt_im.clear();
 

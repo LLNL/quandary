@@ -66,6 +66,8 @@ class IdentityTransferFunction : public TransferFunction {
 
 class SplineTransferFunction : public TransferFunction {
     protected:
+        double knot_min;  // Lower bound for spline evaluation 
+        double knot_max;  // Upper bound for spline evaluation
 #ifdef WITH_FITPACK
         fitpackpp::BSplineCurve* transfer_func;
 #endif
@@ -76,7 +78,11 @@ class SplineTransferFunction : public TransferFunction {
         double eval(double p);
         // Derivative
         double der(double p);
+
+        // Check if evaluation point is inside bounds [tmin, tmax]. Prints a warning otherwise. 
+        void checkBounds(double p);
 };
+
 
 
 class CosineTransferFunction : public TransferFunction {
