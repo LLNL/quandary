@@ -163,8 +163,8 @@ MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Osci
     RHSctx.control_Re.push_back(controlRek);
     RHSctx.control_Im.push_back(controlImk);
   }
-  RHSctx.transfer_Hdt_re = transfer_Hdt_re;
-  RHSctx.transfer_Hdt_im = transfer_Hdt_im;
+  for (int kl = 0; kl<Bd_vec.size(); kl++) RHSctx.eval_transfer_Hdt_re.push_back(0.0);
+  for (int kl = 0; kl<Ad_vec.size(); kl++) RHSctx.eval_transfer_Hdt_im.push_back(0.0);
 
   /* Set the MatMult routine for applying the RHS to a vector x */
   if (usematfree) { // matrix-free solver
@@ -673,10 +673,12 @@ Oscillator* MasterEq::getOscillator(const int i) { return oscil_vec[i]; }
 
 int MasterEq::assemble_RHS(const double t){
   int ierr;
-
   /* Prepare the matrix shell to perform the action of RHS on a vector */
+
+  // Set the time
   RHSctx.time = t;
 
+  // Evaluate and store the controls and transfer for each oscillator and each controlterm
   for (int iosc = 0; iosc < noscillators; iosc++) {
 
     double p, q;
@@ -710,6 +712,14 @@ int MasterEq::assemble_RHS(const double t){
       } // end of control term
     } 
   } // end of oscillator loop
+
+  // Evaluate and store transfer for time-dependent system term
+  for (int kl=0; kl<RHSctx.Bd_vec.size(); kl++)
+    // REAL part: Default trans_re = Jkl*cos(etakl*t) , or from python interface
+    RHSctx.eval_transfer_Hdt_re[kl] = transfer_Hdt_re[kl]->eval(t); 
+  for (int kl=0; kl<RHSctx.Ad_vec.size(); kl++)
+    // IMAG part: Default trans_im = Jkl*sin(etakl*t)
+    RHSctx.eval_transfer_Hdt_im[kl] = transfer_Hdt_im[kl]->eval(t); 
 
   return 0;
 }
@@ -1553,10 +1563,9 @@ int myMatMult_sparsemat(Mat RHS, Vec x, Vec y){
 
   /* --- Apply time-dependent system Hamiltonian --- */
   /* By default (no python interface), these are the Jayes-Cumming coupling terms */
-  for (int id_kl = 0; id_kl<shellctx->Ad_vec.size(); id_kl++){
-
-    double trans_re = shellctx->transfer_Hdt_re[id_kl]->eval(shellctx->time);
-    double trans_im = shellctx->transfer_Hdt_im[id_kl]->eval(shellctx->time);
+  // REAL
+  for (int id_kl = 0; id_kl<shellctx->Bd_vec.size(); id_kl++){
+    double trans_re = shellctx->eval_transfer_Hdt_re[id_kl]; // Default: trans_re = Jkl*cos(etakl*t) 
 
     // printf("%f %f %f\n", shellctx->time, trans_re, trans_im);
     if (fabs(trans_re) > 1e-12) {
@@ -1567,6 +1576,12 @@ int myMatMult_sparsemat(Mat RHS, Vec x, Vec y){
       MatMult(shellctx->Bd_vec[id_kl], u, *shellctx->aux);
       VecAXPY(vout, trans_re, *shellctx->aux);
     }
+  }
+  // IMAG
+  for (int id_kl = 0; id_kl<shellctx->Ad_vec.size(); id_kl++){
+    // Get transfer function
+    double trans_im = shellctx->eval_transfer_Hdt_im[id_kl]; // Default: trans_im = Jkl*sin(etakl*t)
+
     if (fabs(trans_im) > 1e-12) {
       // uout += J_kl*sin*Adklu
       MatMult(shellctx->Ad_vec[id_kl], u, *shellctx->aux);
@@ -1663,12 +1678,11 @@ int myMatMultTranspose_sparsemat(Mat RHS, Vec x, Vec y) {
   }
 
 
-  /* Time-dependent system part (Default: Jayes-Cumming coupling) */
-  for (int id_kl=0; id_kl < shellctx->Ad_vec.size(); id_kl++){
-
-    double trans_re = shellctx->transfer_Hdt_re[id_kl]->eval(shellctx->time);
-    double trans_im = shellctx->transfer_Hdt_im[id_kl]->eval(shellctx->time);
-
+  /* --- Apply time-dependent system Hamiltonian --- */
+  /* By default (no python interface), these are the Jayes-Cumming coupling terms */
+  // REAL
+  for (int id_kl = 0; id_kl<shellctx->Bd_vec.size(); id_kl++){
+    double trans_re = shellctx->eval_transfer_Hdt_re[id_kl]; // Default: trans_re = Jkl*cos(etakl*t) 
     if (fabs(trans_re) > 1e-12) {
       // uout += +Jkl*cos*Bdklv^T
       MatMultTranspose(shellctx->Bd_vec[id_kl], v, *shellctx->aux);
@@ -1677,6 +1691,11 @@ int myMatMultTranspose_sparsemat(Mat RHS, Vec x, Vec y) {
       MatMultTranspose(shellctx->Bd_vec[id_kl], u, *shellctx->aux);
       VecAXPY(vout, - trans_re, *shellctx->aux);
     }
+  }
+  // IMAG
+  for (int id_kl = 0; id_kl<shellctx->Ad_vec.size(); id_kl++){
+    // Get transfer function
+    double trans_im = shellctx->eval_transfer_Hdt_im[id_kl]; // Default: trans_im = Jkl*sin(etakl*t)
 
     if (fabs(trans_im) > 1e-12) {
       // uout += J_kl*sin*Adklu^T

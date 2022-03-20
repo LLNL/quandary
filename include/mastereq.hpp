@@ -27,8 +27,8 @@ typedef struct {
   bool addT1, addT2;
   std::vector<std::vector<double>> control_Re;
   std::vector<std::vector<double>> control_Im;
-  std::vector<TransferFunction*> transfer_Hdt_re;
-  std::vector<TransferFunction*> transfer_Hdt_im;
+  std::vector<double> eval_transfer_Hdt_re;
+  std::vector<double> eval_transfer_Hdt_im;
   Mat*** Ac_vec;
   Mat*** Bc_vec;
   std::vector<int> ncontrolterms; 
