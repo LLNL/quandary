@@ -165,6 +165,8 @@ class MasterEq{
     // Get expected energy of the full composite system.
     double expectedEnergy(const Vec x);
 
+    // Get population of the full composite system.
+    void population(const Vec x, std::vector<double> &population_com);
 };
 
 

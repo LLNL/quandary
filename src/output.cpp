@@ -231,6 +231,9 @@ void Output::openDataFiles(std::string prefix, int initid){
     sprintf(filename, "%s/expected_composite.iinit%04d%s.dat", datadir.c_str(), initid, postchar);
     expectedfile_comp = fopen(filename, "w");
     fprintf(expectedfile_comp, "# time      expected energy level\n");
+    sprintf(filename, "%s/population_composite.iinit%04d%s.dat", datadir.c_str(), initid, postchar);
+    populationfile_comp = fopen(filename, "w");
+    fprintf(populationfile_comp, "# time      population \n");
 
   }
 
@@ -262,6 +265,17 @@ void Output::writeDataFiles(int timestep, double time, const Vec state, MasterEq
         }
         fprintf(populationfile[iosc], "\n");
       }
+    }
+
+
+    std::vector<double> population_comp; 
+    mastereq->population(state, population_comp);
+    if (populationfile_comp != NULL) {
+      fprintf(populationfile_comp, "%.8f  ", time);
+      for (int i=0; i<population_comp.size(); i++){
+        fprintf(populationfile_comp, "%1.14e  ", population_comp[i]);
+      }
+      fprintf(populationfile_comp, "\n");
     }
 
     /* Write full state to file */
@@ -319,4 +333,5 @@ void Output::closeDataFiles(){
       populationfile[i] = NULL;
     }
   }
+  fclose(populationfile_comp);
 }

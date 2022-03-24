@@ -3194,6 +3194,48 @@ double MasterEq::expectedEnergy(const Vec x){
   return expected;
 }
 
+
+void MasterEq::population(const Vec x, std::vector<double> &pop){
+
+  pop.clear();
+  for (int k=0; k<dim_rho; k++){
+    pop.push_back(0.0);
+  }
+  assert (pop.size() == dim_rho);
+
+  std::vector<double> mypop(dim_rho, 0.0);
+
+  /* Get locally owned portion of x */
+  PetscInt ilow, iupp;
+  VecGetOwnershipRange(x, &ilow, &iupp);
+
+  /* Iterate over diagonal elements of the density matrix */
+  for (int idiag=0; idiag < dim_rho; idiag++) {
+    double popi = 0.0;
+    /* Get the diagonal element */
+    if (lindbladtype != LindbladType::NONE) { // Lindblad solver
+      PetscInt diagID = getIndexReal(getVecID(idiag, idiag, dim_rho));  // Position in vectorized rho
+      double val = 0.0;
+      if (ilow <= diagID && diagID < iupp)  VecGetValues(x, 1, &diagID, &val);
+      popi = val;
+    } else {
+      PetscInt diagID_re = getIndexReal(idiag);
+      PetscInt diagID_im = getIndexImag(idiag);
+      double val = 0.0;
+      if (ilow <= diagID_re && diagID_re < iupp)  VecGetValues(x, 1, &diagID_re, &val);
+      popi = val * val;
+      val = 0.0;
+      if (ilow <= diagID_im && diagID_im < iupp)  VecGetValues(x, 1, &diagID_im, &val);
+      popi += val * val;
+    }
+    mypop[idiag] = popi;
+  } 
+
+  /* Gather poppulation from all Petsc processors */
+  MPI_Allreduce(mypop.data(), pop.data(), dim_rho, MPI_DOUBLE, MPI_SUM, PETSC_COMM_WORLD);
+}
+
+
 /* --- 2 Oscillator cases --- */
 int myMatMult_matfree_2Osc(Mat RHS, Vec x, Vec y){
   /* Get the shell context */
