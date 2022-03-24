@@ -201,17 +201,19 @@ MasterEq::~MasterEq(){
       for (int k=0; k<Ad_vec.size(); k++) {
         if (Ad_vec[k] != NULL) MatDestroy(&(Ad_vec[k]));
         delete transfer_Hdt_re[k];
-        delete transfer_Hdt_im[k];
       }
       for (int k=0; k<Bd_vec.size(); k++) {
         if (Bd_vec[k] != NULL) MatDestroy(&(Bd_vec[k]));
+        delete transfer_Hdt_im[k];
       }
       VecDestroy(&aux);
       for (int i=0; i<noscillators; i++){
         MatDestroy(&(Ac_vec[i][0]));
         MatDestroy(&(Bc_vec[i][0]));
-        for (int icon=1; icon<ncontrolterms[i]; icon++)  
+        for (int icon=1; icon<ncontrolterms[i]; icon++)  {
+          MatDestroy(&(Ac_vec[i][icon]));
           MatDestroy(&(Bc_vec[i][icon]));
+        }
         delete [] Ac_vec[i];
         delete [] Bc_vec[i];
       }
@@ -219,7 +221,7 @@ MasterEq::~MasterEq(){
       delete [] Bc_vec;
       // Clean out transfer functions
       for (int k=0; k<noscillators; k++){
-        for (int l=0; l<max(1,ncontrolterms[k]); l++){ // at least one will be there
+        for (int l=0; l<ncontrolterms[k]; l++){ // at least one will be there
           delete transfer_Hc_re[k][l];
           delete transfer_Hc_im[k][l];
         }

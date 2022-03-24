@@ -840,11 +840,11 @@ void PythonInterface::receiveHdt(int noscillators, std::vector<Mat>& Ad_vec, std
         if (lindbladtype == LindbladType::NONE){
           // Schroedinger
           // Assemble Ad
-          double val = -1.*Hdt_im_vals[k][l];
+          double val = Hdt_im_vals[k][l];
           if (ilow <= row && row < iupp) MatSetValue(Ad_vec[k], row, col, val, ADD_VALUES);
         } else {
           // Lindblad
-          // Assemble I_N \kron A_d + A_d^T \kron I_N 
+          // Assemble I_N \kron A_d - A_d^T \kron I_N 
           for (int m=0; m<sqdim; m++){
             // first place all v_ij in the I_N\kron A_d term:
             int rowm = row + sqdim * m;
