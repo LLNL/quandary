@@ -54,14 +54,30 @@ class TransferFunction{
         virtual double der(double p) =0;
 };
 
+/* 
+ * Transfer function that is constant: u(x) = const, u'(x) = 0.0
+ */
+class ConstantTransferFunction : public TransferFunction {
+    double constant;
+    public:
+        ConstantTransferFunction();
+        ConstantTransferFunction(double constant_);
+        ~ConstantTransferFunction();
+
+        double eval(double x) {return constant; }; 
+        double der(double x) {return 0.0; }; 
+};
+
+/*
+ * Transfer function that is the identity u(x) = x, u'(x) = 1.0
+ */
 class IdentityTransferFunction : public TransferFunction {
     public:
         IdentityTransferFunction();
         ~IdentityTransferFunction();
-        // This is the identity function
-        double eval(double p);
-        // Derivative = 1.0
-        double der(double p);
+
+        double eval(double x) {return x; };
+        double der(double x) {return 1.0; };
 };
 
 class SplineTransferFunction : public TransferFunction {
@@ -93,8 +109,8 @@ class CosineTransferFunction : public TransferFunction {
         CosineTransferFunction(double amp, double freq);
         ~CosineTransferFunction();
         // This is amp*cos(freq*t)
-        double eval(double p);
-        double der(double p);
+        double eval(double x){ return amp*cos(freq*x); };
+        double der(double x) { return amp*freq*sin(freq*x); };
 };
 
 class SineTransferFunction : public TransferFunction {
@@ -105,7 +121,7 @@ class SineTransferFunction : public TransferFunction {
         SineTransferFunction(double amp, double freq);
         ~SineTransferFunction();
         // This is amp*sin(freq*t)
-        double eval(double p);
-        double der(double p);
+        double eval(double x) { return amp*sin(freq*x); };
+        double der(double x) { return -1.0*amp*freq*cos(freq*x); };
 };
 

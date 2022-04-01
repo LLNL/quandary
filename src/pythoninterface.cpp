@@ -904,8 +904,8 @@ void PythonInterface::receiveHdtTransfer(int nterms, std::vector<TransferFunctio
     // Get number of given transfer functions for this oscillator
     if (!called_real || !PyList_Check(pTr_real)){
       // Default: If we can't find the python function "getTranfer_real", use identity
-      printf("# Warning: Could not find transfer function 'getHdtTransfer_real'. Using identity instead. \n");
-      IdentityTransferFunction *transfer_k =  new IdentityTransferFunction();
+      printf("# Warning: Could not find transfer function 'getHdtTransfer_real'. Using constant u=1.0 instead. \n");
+      ConstantTransferFunction *transfer_k =  new ConstantTransferFunction(1.0);
       transfer_Hdt_re.push_back(transfer_k);
     } else { 
       // If 'getHdtTransfer_real' exists, get all transfer functions from python in terms of spline knots and coefs. 
@@ -973,8 +973,8 @@ void PythonInterface::receiveHdtTransfer(int nterms, std::vector<TransferFunctio
     // Get number of given transfer functions for this oscillator
     if (!called_imag || !PyList_Check(pTr_imag)){
       // Default: If we can't find the python function "getTranfer_imag", use identity
-      printf("# Warning: Could not find transfer function 'getHdtTransfer_imag'. Using identity instead. \n");
-      IdentityTransferFunction *transfer_k =  new IdentityTransferFunction();
+      printf("# Warning: Could not find transfer function 'getHdtTransfer_imag'. Using constant u=1.0 instead. \n");
+      ConstantTransferFunction *transfer_k =  new ConstantTransferFunction(1.0);
       transfer_Hdt_im.push_back( transfer_k);
     } else { 
       // If 'getHdtTransfer_imag' exists, get all transfer functions from python in terms of spline knots and coefs. 
