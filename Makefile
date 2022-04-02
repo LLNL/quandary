@@ -10,10 +10,10 @@ WITH_XBRAID = false
 WITH_SLEPC = false
 #SLEPC_DIR=/path/to/slepc-3.13.3
 
-# Link to python
+# Enable the python interface.
 WITH_PYTHON = true
 
-# Link with Fitpack
+# If using the python interface, link with Fitpack to enable spline-based transfer functions. Otherwise, the identity will be used for transfer functions. 
 WITH_FITPACK = true
 # Set location of FITPACK
 FITPACK_DIR=${HOME}/Software/fitpackpp
