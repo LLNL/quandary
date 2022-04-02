@@ -641,7 +641,7 @@ void MasterEq::initSparseMatSolver(){
     py->receiveHdt(noscillators, Ad_vec, Bd_vec);
     py->receiveHdtTransfer(Ad_vec.size(), transfer_Hdt_re, transfer_Hdt_im);
 
-    printf("\n");
+    printf("Done. \n\n");
 
   }
 
@@ -1574,6 +1574,11 @@ int myMatMult_sparsemat(Mat RHS, Vec x, Vec y){
       // vout += Jkl*cos*Bdklu
       MatMult(shellctx->Bd_vec[id_kl], u, *shellctx->aux);
       VecAXPY(vout, trans_re, *shellctx->aux);
+      
+      // if (shellctx->time >= 1.0){
+      //   printf("trans_re %f  %.8f\n", shellctx->time, trans_re);
+      //   MatView(shellctx->Bd_vec[id_kl], NULL);
+      // }
     }
   }
   // IMAG
@@ -1588,6 +1593,11 @@ int myMatMult_sparsemat(Mat RHS, Vec x, Vec y){
       //vout += Jkl*sin*Adklv
       MatMult(shellctx->Ad_vec[id_kl], v, *shellctx->aux);
       VecAXPY(vout, trans_im, *shellctx->aux);
+
+      // if (shellctx->time >= 1.0) {
+      //   printf("trans_im %f  %.8f\n", shellctx->time, trans_im);
+      //   MatView(shellctx->Ad_vec[id_kl], NULL);
+      // }
     }
   }
 
