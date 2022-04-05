@@ -63,9 +63,14 @@ int Oscillator::evalControl(const double t, double* Re_ptr, double* Im_ptr){
     exit(1);
   }
 
-  /* Evaluate the spline at time t */
-  *Re_ptr = basisfunctions->evaluate(t, params, ground_freq, ControlType::RE);
-  *Im_ptr = basisfunctions->evaluate(t, params, ground_freq, ControlType::IM);
+  /* Evaluate the spline at time t, if this oscillator is controllable */
+  if (params.size()>0) {
+    *Re_ptr = basisfunctions->evaluate(t, params, ground_freq, ControlType::RE);
+    *Im_ptr = basisfunctions->evaluate(t, params, ground_freq, ControlType::IM);
+  } else {
+    *Re_ptr = 0.0;
+    *Im_ptr = 0.0;
+  }
 
   /* If pipulse: Overwrite controls by constant amplitude */
   for (int ipulse=0; ipulse< pipulse.tstart.size(); ipulse++){
@@ -90,13 +95,15 @@ int Oscillator::evalControl_diff(const double t, double* dRedp, double* dImdp) {
   /* Evaluate derivative of spline basis at time t */
   double Rebar = 1.0;
   double Imbar = 1.0;
-  basisfunctions->derivative(t, dRedp, Rebar, ControlType::RE);
-  basisfunctions->derivative(t, dImdp, Imbar, ControlType::IM);
+  if (params.size()>0) {
+    basisfunctions->derivative(t, dRedp, Rebar, ControlType::RE);
+    basisfunctions->derivative(t, dImdp, Imbar, ControlType::IM);
+  }
 
   /* TODO: Derivative of pipulse? */
   for (int ipulse=0; ipulse< pipulse.tstart.size(); ipulse++){
     if (pipulse.tstart[ipulse] <= t && t <= pipulse.tstop[ipulse]) {
-      printf("ERROR: Derivative of pipulse not implemented. Sorry!\n");
+      printf("ERROR: Derivative of pipulse not implemented. Sorry! But also, this should never happen!\n");
       exit(1);
     }
   }
@@ -113,16 +120,11 @@ int Oscillator::evalControl_Labframe(const double t, double* f){
   }
 
   /* Evaluate the spline at time t */
-  *f = basisfunctions->evaluate(t, params, ground_freq, ControlType::LAB);
-
-  // Test implementation of lab frame controls. 
-  // double forig = *f;
-  // double p = basisfunctions->evaluate(t, params, ground_freq, ControlType::RE);
-  // double q = basisfunctions->evaluate(t, params, ground_freq, ControlType::IM);
-  // double arg = 2.0*M_PI*ground_freq*t;
-  // double ftest = 2.0*p*cos(arg) - 2.0*q*sin(arg);
-  // double err = fabs(forig-ftest);
-  // if (err > 1e-13) printf("err %f\n", err);
+  if (params.size()>0) {
+    *f = basisfunctions->evaluate(t, params, ground_freq, ControlType::LAB);
+  } else {
+    *f = 0.0;
+  }
 
   /* If inside a pipulse, overwrite lab control */
   for (int ipulse=0; ipulse< pipulse.tstart.size(); ipulse++){

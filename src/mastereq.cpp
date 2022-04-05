@@ -156,7 +156,7 @@ MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Osci
   for (int iosc = 0; iosc < noscillators; iosc++) {
     std::vector<double> controlRek;
     std::vector<double> controlImk;
-    for (int icon=0; icon<max(ncontrolterms[iosc],1); icon++){  // at least one for each, might be 0.0
+    for (int icon=0; icon<ncontrolterms[iosc]; icon++){ 
      controlRek.push_back(0.0);
      controlImk.push_back(0.0);
     }
@@ -208,9 +208,7 @@ MasterEq::~MasterEq(){
       }
       VecDestroy(&aux);
       for (int i=0; i<noscillators; i++){
-        MatDestroy(&(Ac_vec[i][0]));
-        MatDestroy(&(Bc_vec[i][0]));
-        for (int icon=1; icon<ncontrolterms[i]; icon++)  {
+        for (int icon=0; icon<ncontrolterms[i]; icon++)  {
           MatDestroy(&(Ac_vec[i][icon]));
           MatDestroy(&(Bc_vec[i][icon]));
         }
@@ -221,7 +219,7 @@ MasterEq::~MasterEq(){
       delete [] Bc_vec;
       // Clean out transfer functions
       for (int k=0; k<noscillators; k++){
-        for (int l=0; l<ncontrolterms[k]; l++){ // at least one will be there
+        for (int l=0; l<ncontrolterms[k]; l++){
           delete transfer_Hc_re[k][l];
           delete transfer_Hc_im[k][l];
         }
@@ -261,11 +259,11 @@ void MasterEq::initSparseMatSolver(){
   }
 
   /* Allocate time-varying building blocks */
-  // control terms. One vector per oscillator
+  // control terms. One vector per oscillator TODO: THIS SHOULD BE A STD::VECTOR!
   Ac_vec = new Mat*[noscillators];
   Bc_vec = new Mat*[noscillators];
   for (int k=0; k<noscillators; k++){
-    // Default setting: one element per oscillator. If pyhthon interface: There could be more, see below.
+    // Default setting: one element per oscillator. If pyhthon interface: There could be more (or less).
     Ac_vec[k] = new Mat[1];
     Bc_vec[k] = new Mat[1];
   }
@@ -643,6 +641,11 @@ void MasterEq::initSparseMatSolver(){
 
     printf("Done. \n\n");
 
+    // Remove control parameters for those oscillators that are non-controllable
+    for (int k=0; k<nlevels.size(); k++){
+      if (ncontrolterms[k] == 0) getOscillator(k)->clearParams();
+    }
+
   }
 
   // // Test: Print out Hamiltonian terms.
@@ -660,7 +663,7 @@ void MasterEq::initSparseMatSolver(){
   // exit(1);
 
   /* Allocate some auxiliary vectors */
-  MatCreateVecs(Ac_vec[0][0], &aux, NULL);
+  MatCreateVecs(Bd, &aux, NULL);
 }
 
 int MasterEq::getDim(){ return dim; }
@@ -686,30 +689,18 @@ int MasterEq::assemble_RHS(const double t){
     double p, q;
     oscil_vec[iosc]->evalControl(t, &p, &q);  // Evaluates the B-spline basis functions -> p(t,alpha), q(t,alpha)
 
-    // Default: set the first control term.
-    RHSctx.control_Re[iosc][0] = p;
-    RHSctx.control_Im[iosc][0] = q;
 
-    // Evaluate transfer function from python, if the file is given.
-    if (python_file.compare("none") != 0 ) {
+    // Iterate over control terms for this oscillator
+    for (int icon=0; icon<ncontrolterms[iosc]; icon++){
+      // Get transfer functions u^k_i(p) (Default: Identity. But could be different if python interface)
+      double ukip = transfer_Hc_re[iosc][icon]->eval(p);
+      double ukiq = transfer_Hc_im[iosc][icon]->eval(q);
+      // printf("t=%f: transfer function u[oscil=%d][controlterm=%d](input=%f) = output %f\n", t, iosc, icon, p, ukip);
 
-      // Set to zero if no transfer function is given. 
-      RHSctx.control_Re[iosc][0] = 0.0; 
-      RHSctx.control_Im[iosc][0] = 0.0;
-
-      // Get transfer functions u^k_i(p) from python for this oscillators k
-      for (int icon=0; icon<ncontrolterms[iosc]; icon++){
-        // Evaluate the spline transfer function  u^k_i(p) which is stored in transfer_func[iosc][icon]
-
-        double ukip = transfer_Hc_re[iosc][icon]->eval(p);
-        double ukiq = transfer_Hc_im[iosc][icon]->eval(q);
-        // printf("t=%f: transfer function u[oscil=%d][controlterm=%d](input=%f) = output %f\n", t, iosc, icon, p, ukip);
-
-        // Set the controls (only real for now)
-        RHSctx.control_Re[iosc][icon] = ukip; 
-        RHSctx.control_Im[iosc][icon] = ukiq;
-      } // end of control term
-    } 
+      // Set the controls
+      RHSctx.control_Re[iosc][icon] = ukip; 
+      RHSctx.control_Im[iosc][icon] = ukiq;
+    } // end of control term
   } // end of oscillator loop
 
   // Evaluate and store transfer for time-dependent system term
@@ -1182,34 +1173,25 @@ void MasterEq::computedRHSdp(const double t, const Vec x, const Vec xbar, const 
     }
     oscil_vec[iosc]->evalControl_diff(t, dRedp, dImdp);
 
-    // Derivative of transfer functions u^k_i(p). 
+    // Derivative of transfer functions u^k_i(p), v^k_i(q) for all control terms i=0,..., ncontrol[k]-1
     std::vector<double> dukidp;
     std::vector<double> dukidq;
-    dukidp.push_back(1.0);  // always do first one, assume identity otherwise will be overwritten in the following loop
-    dukidq.push_back(1.0);  // always do first one, assume identity otherwise will be overwritten in the following loop
-    if (python_file.compare("none") != 0 ) {
-      double p, q;
-      oscil_vec[iosc]->evalControl(t, &p, &q);  // Evaluates the B-spline basis functions -> p(t,alpha), q(t,alpha)
-      for (int icon=0; icon<ncontrolterms[iosc]; icon++){
-        double dukidp_tmp = transfer_Hc_re[iosc][icon]->der(p); // dudp(p)
-        double dukidq_tmp = transfer_Hc_im[iosc][icon]->der(q); // dvdq(q)
-        if (icon == 0) dukidp[icon] = dukidp_tmp;
-        else dukidp.push_back(dukidp_tmp);
-        if (icon == 0) dukidq[icon] = dukidq_tmp;
-        else dukidq.push_back(dukidq_tmp);
-      }
+    double p, q;
+    oscil_vec[iosc]->evalControl(t, &p, &q);  // Evaluates the B-spline basis functions -> p(t,alpha), q(t,alpha)
+    for (int icon=0; icon<ncontrolterms[iosc]; icon++){ // Now evaluate the derivative of transfer functions for each control term
+      double dukidp_tmp = transfer_Hc_re[iosc][icon]->der(p); // dudp(p)
+      double dukidq_tmp = transfer_Hc_im[iosc][icon]->der(q); // dvdq(q)
+      dukidp.push_back(dukidp_tmp);
+      dukidq.push_back(dukidq_tmp);
     }
     
 
     /* Compute terms in RHS(x)^T xbar */
-    //zero's control term always. 
-    double uAubar, vAvbar, vBubar, uBvbar;
-    MatMult(Ac_vec[iosc][0], u, aux); VecDot(aux, ubar, &uAubar); uAubar *= dukidq[0]; 
-    MatMult(Ac_vec[iosc][0], v, aux); VecDot(aux, vbar, &vAvbar); vAvbar *= dukidq[0];
-    MatMult(Bc_vec[iosc][0], u, aux); VecDot(aux, vbar, &uBvbar); uBvbar *= dukidp[0];
-    MatMult(Bc_vec[iosc][0], v, aux); VecDot(aux, ubar, &vBubar); vBubar *= dukidp[0];
-    // Other control terms
-    for (int icon=1; icon<ncontrolterms[iosc]; icon++){
+    double uAubar = 0.0; 
+    double vAvbar = 0.0;
+    double vBubar = 0.0;
+    double uBvbar = 0.0;
+    for (int icon=0; icon<ncontrolterms[iosc]; icon++){
       double dot;
       MatMult(Ac_vec[iosc][icon], u, aux); VecDot(aux, ubar, &dot); uAubar += dot * dukidq[icon];
       MatMult(Ac_vec[iosc][icon], v, aux); VecDot(aux, vbar, &dot); vAvbar += dot * dukidq[icon];
@@ -1519,27 +1501,8 @@ int myMatMult_sparsemat(Mat RHS, Vec x, Vec y){
   /* -- Control Terms -- */
   for (int iosc = 0; iosc < shellctx->nlevels.size(); iosc++) {
 
-    // always do the first one.  // Why? TODO!
-
-    /* Get controls */
-    p = shellctx->control_Re[iosc][0];
-    q = shellctx->control_Im[iosc][0];
-
-    // uout += q^k*Acu
-    MatMult((*(shellctx->Ac_vec))[iosc][0], u, *shellctx->aux);
-    VecAXPY(uout, q, *shellctx->aux); // Should use MatAXPY! TODO.
-    // uout -= p^kBcv
-    MatMult((*(shellctx->Bc_vec))[iosc][0], v, *shellctx->aux);
-    VecAXPY(uout, -1.*p, *shellctx->aux);
-    // vout += q^kAcv
-    MatMult((*(shellctx->Ac_vec))[iosc][0], v, *shellctx->aux);
-    VecAXPY(vout, q, *shellctx->aux);
-    // vout += p^kBcu
-    MatMult((*(shellctx->Bc_vec))[iosc][0], u, *shellctx->aux);
-    VecAXPY(vout, p, *shellctx->aux);
-
-    // Then do all others. 
-    for (int icon=1; icon<shellctx->ncontrolterms[iosc]; icon++){
+    // Iterate over control terms for this oscillator
+    for (int icon=0; icon<shellctx->ncontrolterms[iosc]; icon++){
 
       // Get control
       p = shellctx->control_Re[iosc][icon];
@@ -1647,29 +1610,11 @@ int myMatMultTranspose_sparsemat(Mat RHS, Vec x, Vec y) {
   /* Time-dependent control term */
   for (int iosc = 0; iosc < shellctx->nlevels.size(); iosc++) {
 
-    // always do the first term.  Why?
-
-    // Control for first term 
-    p = shellctx->control_Re[iosc][0];
-    q = shellctx->control_Im[iosc][0];
-
-    // uout += q^k*Ac^Tu
-    MatMultTranspose((*(shellctx->Ac_vec))[iosc][0], u, *shellctx->aux);
-    VecAXPY(uout, q, *shellctx->aux);
-    // uout += p^kBc^Tv
-    MatMultTranspose((*(shellctx->Bc_vec))[iosc][0], v, *shellctx->aux);
-    VecAXPY(uout, p, *shellctx->aux);
-    // vout += q^kAc^Tv
-    MatMultTranspose((*(shellctx->Ac_vec))[iosc][0], v, *shellctx->aux);
-    VecAXPY(vout, q, *shellctx->aux);
-    // vout -= p^kBc^Tu
-    MatMultTranspose((*(shellctx->Bc_vec))[iosc][0], u, *shellctx->aux);
-    VecAXPY(vout, -1.*p, *shellctx->aux);
-
-    // All other control terms
-    for (int icon=1; icon<shellctx->ncontrolterms[iosc]; icon++){
+    // Iterate over control terms for this oscillator
+    for (int icon=0; icon<shellctx->ncontrolterms[iosc]; icon++){
       // control for other terms
       p = shellctx->control_Re[iosc][icon];
+      q = shellctx->control_Im[iosc][icon];
 
       // uout += q^k*Ac^Tu
       MatMultTranspose((*(shellctx->Ac_vec))[iosc][icon], u, *shellctx->aux);

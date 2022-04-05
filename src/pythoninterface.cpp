@@ -309,24 +309,12 @@ void PythonInterface::receiveHc(int noscillators, Mat** Ac_vec, Mat** Bc_vec, st
     delete [] Ac_vec[k];
     delete [] Bc_vec[k];
 
-    // Create new mats for this oscillator, minimum one. If ncontrolterms==0, we still create one but it will be empty. // Why? TODO.
-    int nHams = std::max(ncontrolterms[k], 1);
+    // Create new control mats for this oscillator. If ncontrolterms==0, we will have to clear out the control parameters in the oscillator (in mastereq)
+    int nHams = ncontrolterms[k];
     printf("Creating %d control Mats for oscillator %d\n", nHams, k);
     Ac_vec[k] = new Mat[nHams];
     Bc_vec[k] = new Mat[nHams];
-    // Always create the first Hamiltonian (might be empty.)
-    MatCreate(PETSC_COMM_WORLD, &(Ac_vec[k][0]));
-    MatCreate(PETSC_COMM_WORLD, &(Bc_vec[k][0]));
-    MatSetType(Ac_vec[k][0], MATMPIAIJ);
-    MatSetType(Bc_vec[k][0], MATMPIAIJ);
-    MatSetSizes(Ac_vec[k][0], PETSC_DECIDE, PETSC_DECIDE, dim, dim); // dim = N^2 for Lindblad, dim=N for Schroedinger
-    MatSetSizes(Bc_vec[k][0], PETSC_DECIDE, PETSC_DECIDE, dim, dim);
-    MatSetUp(Ac_vec[k][0]);
-    MatSetUp(Bc_vec[k][0]);
-    MatSetFromOptions(Ac_vec[k][0]);
-    MatSetFromOptions(Bc_vec[k][0]);
-    // Create remaining matrices for this oscillator
-    for (int i=1; i<ncontrolterms[k]; i++){
+    for (int i=0; i<ncontrolterms[k]; i++){
       MatCreate(PETSC_COMM_WORLD, &(Bc_vec[k][i]));
       MatCreate(PETSC_COMM_WORLD, &(Ac_vec[k][i]));
       MatSetType(Bc_vec[k][i], MATMPIAIJ);
@@ -408,13 +396,8 @@ void PythonInterface::receiveHc(int noscillators, Mat** Ac_vec, Mat** Bc_vec, st
       ioscil++;
     } // end of i loop for control terms
 
-    // Always assemble the first matrix for this oscillator (might be empty)
-    MatAssemblyBegin(Ac_vec[k][0], MAT_FINAL_ASSEMBLY);
-    MatAssemblyEnd(Ac_vec[k][0], MAT_FINAL_ASSEMBLY);
-    MatAssemblyBegin(Bc_vec[k][0], MAT_FINAL_ASSEMBLY);
-    MatAssemblyEnd(Bc_vec[k][0], MAT_FINAL_ASSEMBLY);
-    // Assemble the other ones for this oscillator
-    for (int i=1; i<ncontrolterms[k]; i++){
+    // Assemble the matrices for this oscillator
+    for (int i=0; i<ncontrolterms[k]; i++){
       MatAssemblyBegin(Bc_vec[k][i], MAT_FINAL_ASSEMBLY);
       MatAssemblyEnd(Bc_vec[k][i], MAT_FINAL_ASSEMBLY);
       MatAssemblyBegin(Ac_vec[k][i], MAT_FINAL_ASSEMBLY);

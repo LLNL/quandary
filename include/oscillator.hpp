@@ -56,6 +56,9 @@ class Oscillator {
     double getDecayTime() {return decay_time; };
     double getDephaseTime() {return dephase_time; };
 
+    /* Remove all elements from the control parameters (making this oscillator non-controllable) */
+    void clearParams() { params.clear(); };
+
     /* Copy x into the control parameter vector */
     void setParams(const double* x);
 
