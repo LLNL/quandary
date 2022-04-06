@@ -19,8 +19,9 @@ class PythonInterface{
     PyObject *pModule;  // The python module from which the Hamiltonian will be read
 #endif
     LindbladType lindbladtype;            // Storing whether Lindblas solver or Schroedinger solver
-    std::vector<int> ncontrolterms_store; // Storing the number of control terms per oscillator
     int dim_rho;                          // Dimension of the Hilbertspace. N!
+    std::vector<int>ncontrol_real;
+    std::vector<int>ncontrol_imag;
 
 	public:
     PythonInterface();
@@ -37,7 +38,7 @@ class PythonInterface{
   //   u(t) * Hdt_real + i v(t) * Hdt_imag
   // for transfer functions u(t) and v(t) from receiveHdtTransfer 
   // The python function MUST return a LIST of LISTS of floats!
-  void receiveHdt(int noscillators, std::vector<Mat>& Ad_vec, std::vector<Mat>& Bd_vec);
+  void receiveHdt(std::vector<Mat>& Ad_vec, std::vector<Mat>& Bd_vec);
 
   /* Receive transfer functions from "getHdtTransfer_real" and "getHdtTransfer_imag" */
   // getTransfer() MUST return a python list of lists of [splines knots, and coeffs, and order]:
@@ -46,12 +47,11 @@ class PythonInterface{
   void receiveHdtTransfer(int nterms, std::vector<TransferFunction*>& transfer_Hdt_re, std::vector<TransferFunction*>& transfer_Hdt_im);
 
   /* Receive control terms from "getHc_real" and "getHc_imag" */
-  /* Fills up Ac_vec and Bc_vec, and return the number of control terms per oscillator in ncontrolterms */ 
   // getHc_re/im() MUST return a python list of lists of lists of float elements:
   //   for each oscillator k=0...Q-1: 
   //       for each control term i=0...C^k-1: 
   //           a list containing the flattened Hamiltonian Hc^k_i
-  void receiveHc(int noscillators, Mat** Ac_vec, Mat** Bc_vec, std::vector<int>& ncontrolterms);
+  void receiveHc(int noscillators, std::vector<std::vector<Mat>>& Ac_vec, std::vector<std::vector<Mat>>& Bc_vec);
 
   /* Receive transfer functions from "getHcTransfer_real" and "getHcTransfer_imag" */
   // getTransfer() MUST return a python list of lists of [splines knots, and coeffs, and order]:

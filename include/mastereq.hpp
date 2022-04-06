@@ -29,9 +29,8 @@ typedef struct {
   std::vector<std::vector<double>> control_Im;
   std::vector<double> eval_transfer_Hdt_re;
   std::vector<double> eval_transfer_Hdt_im;
-  Mat*** Ac_vec;
-  Mat*** Bc_vec;
-  std::vector<int> ncontrolterms; 
+  std::vector<std::vector<Mat>> Ac_vec;
+  std::vector<std::vector<Mat>> Bc_vec;
   Mat *Ad, *Bd;
   std::vector<Mat> Ad_vec;
   std::vector<Mat> Bd_vec;
@@ -68,8 +67,8 @@ class MasterEq{
     Mat RHS;                // Realvalued, vectorized systemmatrix (2N^2 x 2N^2)
     MatShellCtx RHSctx;     // MatShell context that contains data needed to apply the RHS
 
-    Mat** Ac_vec;  // Vector of vector of constant mats for time-varying control term (real). One vector of mats for each oscillators. 
-    Mat** Bc_vec;  // Vector of vector of constant mats for time-varying control term (imag). One vector of mats for each oscillators. 
+    std::vector<std::vector<Mat>> Ac_vec;  // Vector of vector of constant mats for time-varying control term (real). One vector of mats for each oscillators. 
+    std::vector<std::vector<Mat>> Bc_vec;  // Vector of vector of constant mats for time-varying control term (imag). One vector of mats for each oscillators. 
     Mat  Ad, Bd;  // Real and imaginary part of constant system matrix
     std::vector<Mat> Ad_vec;  // Vector of constant mats for Jaynes-Cummings coupling term in drift Hamiltonian (real)
     std::vector<Mat> Bd_vec;  // Vector of constant mats for Jaynes-Cummings coupling term in drift Hamiltonian (imag)
@@ -97,7 +96,6 @@ class MasterEq{
     bool usematfree;  // Flag for using matrix free solver
     LindbladType lindbladtype;        // Flag that determines which lindblad terms are added. if NONE, than Schroedingers eq. is solved
 
-    std::vector<int> ncontrolterms; // Stores the number of control Hamiltonians per oscillator
     std::vector<std::vector<TransferFunction*>> transfer_Hc_re; // Stores the transfer functions for each control term for each oscillator
     std::vector<std::vector<TransferFunction*>> transfer_Hc_im; // Stores the transfer functions for each control term for each oscillator
     std::vector<TransferFunction*> transfer_Hdt_re; // Stores the transfer functions for each control term for each oscillator

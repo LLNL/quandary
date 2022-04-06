@@ -151,260 +151,326 @@ void PythonInterface::receiveHd(Mat& Bd){
 
 
 
-void PythonInterface::receiveHc(int noscillators, Mat** Ac_vec, Mat** Bc_vec, std::vector<int>& ncontrolterms){
+void PythonInterface::receiveHc(int noscillators, std::vector<std::vector<Mat>>& Ac_vec, std::vector<std::vector<Mat>>& Bc_vec){
 #ifdef WITH_PYTHON
 
   printf("Receiving control Hamiltonian terms...\n");
 
-  // Get a reference to the python function "getHc_real" and "getHc_imag"
+  /* Reset Ac_vec and Bc_vec (Keeping the outer vector intact) */
+  for (int k=0; k<Ac_vec.size(); k++){
+    for (int l=0; l<Ac_vec[k].size(); l++){
+      if (Ac_vec[k][l] != NULL) MatDestroy(&(Ac_vec[k][l]));
+    }
+    Ac_vec[k].clear();
+  }
+  for (int k=0; k<Bc_vec.size(); k++){
+    for (int l=0; l<Bc_vec[k].size(); l++){
+      if (Bc_vec[k][l] != NULL) MatDestroy(&(Bc_vec[k][l]));
+    }
+    Bc_vec[k].clear();
+  }
+
+  /* Get the dimensions right */
+  int sqdim = dim_rho; //  N!
+  int dim = dim_rho;
+  if (lindbladtype !=LindbladType::NONE) dim = dim_rho*dim_rho;
+
+  /* REAL PART */
+  ncontrol_real.push_back(0);
+
+  // Get a reference to the python function "getHc_real"
   PyObject* pFunc_getHc_real = PyObject_GetAttrString(pModule, (char*)"getHc_real");
+  // Call the python function
+  PyObject *pHc_real;
+  bool called_real = false;
+  if (pFunc_getHc_real){
+    if (PyCallable_Check(pFunc_getHc_real)) {
+      pHc_real = PyObject_CallObject(pFunc_getHc_real, NULL); // NULL: no input to getHc().
+      PyErr_Print();
+      called_real = true;
+    } else PyErr_Print();
+  } else PyErr_Print();
+
+  if (!called_real || !PyList_Check(pHc_real)) {
+    printf("# No real control Hamiltonian received. \n");
+  } else {
+
+    // Parse the result 
+    // getHc() MUST return a python list of lists of lists of float elements for this to work:
+    // for each oscillator k=0...Q-1: for each control term i=0...C^k-1: a list containing the flattened Hamiltonian Hc^k_i
+
+    // Sanity check: the outer list should have Q == noscillators elements (each one being a list of Hamiltonians)
+    int Q = 0;
+    if (PyList_Check(pHc_real)) {
+      Q = PyList_Size(pHc_real); 
+      PyErr_Print();
+    }
+    if (Q != noscillators) {
+     printf("Error parsing python function getHc_real(): It should contain an (outer) list of length %d, but did return a list of length %d.\n", noscillators, Q);
+     exit(1);
+    }
+    // printf("getHc(): Received an (outer) list of length %d\n", Q);
+
+    // Receive and store Hamiltonian values
+    std::vector<std::vector<double>> Hc_re_vals; // vector of vector of Hamiltonian values
+    std::vector<std::vector<int>> Hc_re_ids;  // vector of vector of Hamiltonian id
+
+    // Iterate over oscillators
+    for (Py_ssize_t k=0; k<noscillators; k++){
+
+      // Check number of control terms for this oscillator
+      int ncontrol = 0;
+      PyObject* pHck_real = PyList_GetItem(pHc_real,k); // Get list of Hamiltonians for oscillator k
+      PyErr_Print();
+      if (PyList_Check(pHck_real)) { 
+        ncontrol = PyList_Size(pHck_real); 
+        PyErr_Print();
+      } else PyErr_Print();
+      ncontrol_real[k] = ncontrol;
+      // printf("getHc_real(): For oscillator %d, received %d control Hamiltonians Re(Hc^k).\n", (int)k, ncontrol_real[k]);
+
+      // Iterate over control terms for this oscillator 
+      for (Py_ssize_t i=0; i<ncontrol_real[k]; i++){
+        PyObject* pHcki_real = PyList_GetItem(pHck_real,i); // Get the Hamiltonian Hcki
+        PyErr_Print();
+
+        int Hcki_size_re = 0;
+        if (PyList_Check(pHcki_real)) {
+          Hcki_size_re = PyList_Size(pHcki_real);
+          PyErr_Print();
+        }
+        int Hcki_size = Hcki_size_re;
+        // printf("getHc(): Oscillator %d, term %i: Received a list of length = %d: ", (int)k,(int)i,Hcki_size);
+        std::vector<double> Hcki_re_vals;
+        std::vector<int> Hcki_re_ids;
+        for (Py_ssize_t l=0; l<Hcki_size; l++){ // Iterate over elements
+          PyObject* pval_re = PyList_GetItem(pHcki_real,l);
+          PyErr_Print();
+          double Hcki_re_val = PyFloat_AsDouble(pval_re);
+          PyErr_Print();
+          if (fabs(Hcki_re_val) > 1e-14) {  // store only nonzeros
+            Hcki_re_vals.push_back(Hcki_re_val);
+            Hcki_re_ids.push_back(l);
+          }
+        }
+        Hc_re_vals.push_back(Hcki_re_vals);
+        Hc_re_ids.push_back(Hcki_re_ids);
+      } // end of control term i for this oscillator k
+    } // end of oscillator k
+
+    /* Now place values into Bc_vec[k][l] for all oscillators k and all control terms l */
+
+    int ioscil = 0;  // index for accessing Hamiltonian values inside Hc_re_vals/ids
+    for (int k=0; k<noscillators; k++){
+
+      printf("Creating %d control Mats for oscillator %d\n", ncontrol_real[k], k);
+
+      // Iterate over control terms for this oscillator
+      for (int i=0; i<ncontrol_real[k]; i++){
+
+        // Create a new control matrix
+        Mat myBcMat_kl;
+        Bc_vec[k].push_back(myBcMat_kl);
+
+        MatCreate(PETSC_COMM_WORLD, &(Bc_vec[k][i]));
+        MatSetType(Bc_vec[k][i], MATMPIAIJ);
+        MatSetSizes(Bc_vec[k][i], PETSC_DECIDE, PETSC_DECIDE, dim, dim);
+        MatSetUp(Bc_vec[k][i]);
+        MatSetFromOptions(Bc_vec[k][i]);
+
+        PetscInt ilow, iupp;
+        MatGetOwnershipRange(Bc_vec[k][i], &ilow, &iupp);
+
+        // Assemble -I_N \kron Hc^k_i + Hc^k_i \kron I_N (Lindblad) or -Hc^k_i (Schroedinger)
+        // vals are in Hc_vals[ioscil][:]
+        // Iterate over nonzero elements in Hc^k_i
+        for (int l = 0; l<Hc_re_ids[ioscil].size(); l++) {
+          // Get position in the Bc matrix
+          int row = Hc_re_ids[ioscil][l] % sqdim;
+          int col = Hc_re_ids[ioscil][l] / sqdim;
+
+          if (lindbladtype == LindbladType::NONE){
+            // Schroedinger
+            // Assemble - B_c  
+            double val = -1.*Hc_re_vals[ioscil][l];
+            if (ilow <= row && row < iupp) MatSetValue(Bc_vec[k][i], row, col, val, ADD_VALUES);
+          } else {
+            // Lindblad
+            // Assemble -I_N \kron B_c + B_c \kron I_N 
+            for (int m=0; m<sqdim; m++){
+              // first place all -v_ij in the -I_N\kron B_c term:
+              int rowm = row + sqdim * m;
+              int colm = col + sqdim * m;
+              double val = -1.*Hc_re_vals[ioscil][l];
+              if (ilow <= rowm && rowm < iupp) MatSetValue(Bc_vec[k][i], rowm, colm, val, ADD_VALUES);
+              // Then add v_ij in the B_d^T \kron I_N term:
+              rowm = col*sqdim + m;   // transpose!
+              colm = row*sqdim + m;
+              val = Hc_re_vals[ioscil][l];
+              if (ilow <= rowm && rowm < iupp) MatSetValue(Bc_vec[k][i], rowm, colm, val, ADD_VALUES);
+            }
+          }
+        } // end of elements in Hc^k_i
+        ioscil++;
+      } // end of i loop for control terms
+
+      // Assemble the matrices for this oscillator
+      for (int i=0; i<ncontrol_real[k]; i++){
+        MatAssemblyBegin(Bc_vec[k][i], MAT_FINAL_ASSEMBLY);
+        MatAssemblyEnd(Bc_vec[k][i], MAT_FINAL_ASSEMBLY);
+      }
+    } // end of k loop for oscillators for REAL Hamiltonian
+  } // end of reading real part from python
+
+  /* IMAGINARY PART */
+  ncontrol_imag.push_back(0);
+
+  // Get a reference to the python function "getHc_imag"
   PyObject* pFunc_getHc_imag = PyObject_GetAttrString(pModule, (char*)"getHc_imag");
-
-  // Call the python functions
-  PyObject *pHc_real, *pHc_imag;
-  if (pFunc_getHc_real && PyCallable_Check(pFunc_getHc_real)) {
-    pHc_real = PyObject_CallObject(pFunc_getHc_real, NULL); // NULL: no input to getHc().
-    PyErr_Print();
-  } else PyErr_Print();
-  if (pFunc_getHc_imag && PyCallable_Check(pFunc_getHc_imag)) {
-    pHc_imag = PyObject_CallObject(pFunc_getHc_imag, NULL); // NULL: no input to getHc().
-    PyErr_Print();
-  } else PyErr_Print();
-
-  // Parse the result 
-  // getHc() MUST return a python list of lists of lists of float elements for this to work:
-  // for each oscillator k=0...Q-1: for each control term i=0...C^k-1: a list containing the flattened Hamiltonian Hc^k_i
-  int Q_r = 0;
-  if (PyList_Check(pHc_real)) {
-    Q_r = PyList_Size(pHc_real); 
-    PyErr_Print();
-  }
-  int Q_i = 0;
-  if (PyList_Check(pHc_imag)) {
-    Q_i = PyList_Size(pHc_imag); 
-    PyErr_Print();
-  }
-  assert(Q_r == Q_i);
-  int Q = Q_r;
-  // Sanity check: the outer loop should have Q == noscillators elements (each one being a list of Hamiltonians)
-  if (Q != noscillators) {
-    printf("Error parsing python function getHc(): It should contain an (outer) list of length %d, but did return a list of length %d.\n", noscillators, Q);
-    exit(1);
-  }
-  // printf("getHc(): Received an (outer) list of length %d\n", Q);
-
-  std::vector<std::vector<double>> Hc_re_vals; // vector of vector of Hamiltonian values
-  std::vector<std::vector<double>> Hc_im_vals; // vector of vector of Hamiltonian values
-  std::vector<std::vector<int>> Hc_re_ids;  // vector of vector of Hamiltonian id
-  std::vector<std::vector<int>> Hc_im_ids;  // vector of vector of Hamiltonian id
-
-  // Iterate over oscillators
-  for (Py_ssize_t k=0; k<Q; k++){
-
-    // Check number of control terms for this oscillator
-    int Ck_r = 0;
-    int Ck_i = 0;
-    PyObject* pHck_real = PyList_GetItem(pHc_real,k); // Get list of Hamiltonians for oscillator k
-    PyObject* pHck_imag = PyList_GetItem(pHc_imag,k); // Get list of Hamiltonians for oscillator k
-    PyErr_Print();
-    if (PyList_Check(pHck_real)) { 
-      Ck_r = PyList_Size(pHck_real); 
+  // Call the python function
+  PyObject *pHc_imag;
+  bool called_imag= false;
+  if (pFunc_getHc_imag){
+    if (PyCallable_Check(pFunc_getHc_imag)) {
+      pHc_imag= PyObject_CallObject(pFunc_getHc_imag, NULL); // NULL: no input to getHc().
       PyErr_Print();
+      called_imag= true;
     } else PyErr_Print();
-    if (PyList_Check(pHck_imag)) { 
-      Ck_i = PyList_Size(pHck_imag); 
+  } else PyErr_Print();
+
+  if (!called_imag || !PyList_Check(pHc_imag)) {
+    printf("# No imag control Hamiltonian received. \n");
+  } else {
+
+    // Parse the result 
+    // getHc() MUST return a python list of lists of lists of float elements for this to work:
+    // for each oscillator k=0...Q-1: for each control term i=0...C^k-1: a list containing the flattened Hamiltonian Hc^k_i
+
+    // Sanity check: the outer list should have Q == noscillators elements (each one being a list of Hamiltonians)
+    int Q = 0;
+    if (PyList_Check(pHc_imag)) {
+      Q = PyList_Size(pHc_imag); 
       PyErr_Print();
-    } else PyErr_Print();
-    assert(Ck_i == Ck_r);
-    ncontrolterms[k] = Ck_r;
-    // printf("getHc(): For oscillator %d, received %d control Hamiltonians.\n", (int)k, ncontrolterms[k]);
+    }
+    if (Q != noscillators) {
+     printf("Error parsing python function getHc_imag(): It should contain an (outer) list of length %d, but did return a list of length %d.\n", noscillators, Q);
+     exit(1);
+    }
+    // printf("getHc(): Received an (outer) list of length %d\n", Q);
 
-    // Iterate over control terms for this oscillator 
-    for (Py_ssize_t i=0; i<ncontrolterms[k]; i++){
-      PyObject* pHcki_real = PyList_GetItem(pHck_real,i); // Get the Hamiltonian Hcki
-      PyObject* pHcki_imag = PyList_GetItem(pHck_imag,i); // Get the Hamiltonian Hcki
+    // Receive and store Hamiltonian values
+    std::vector<std::vector<double>> Hc_im_vals; // vector of vector of Hamiltonian values
+    std::vector<std::vector<int>> Hc_im_ids;  // vector of vector of Hamiltonian id
+
+    // Iterate over oscillators
+    for (Py_ssize_t k=0; k<noscillators; k++){
+
+      // Check number of control terms for this oscillator
+      int ncontrol = 0;
+      PyObject* pHck_imag= PyList_GetItem(pHc_imag,k); // Get list of Hamiltonians for oscillator k
       PyErr_Print();
+      if (PyList_Check(pHck_imag)) { 
+        ncontrol = PyList_Size(pHck_imag); 
+        PyErr_Print();
+      } else PyErr_Print();
+      ncontrol_imag[k] = ncontrol;
+      // printf("getHc(): For oscillator %d, received %d control Hamiltonians.\n", (int)k, ncontrol);
 
-      int Hcki_size_re = 0;
-      int Hcki_size_im = 0;
-      if (PyList_Check(pHcki_real)) {
-        Hcki_size_re = PyList_Size(pHcki_real);
+      // Iterate over control terms for this oscillator 
+      for (Py_ssize_t i=0; i<ncontrol_imag[k]; i++){
+        PyObject* pHcki_imag= PyList_GetItem(pHck_imag,i); // Get the Hamiltonian Hcki
         PyErr_Print();
-      }
-      if (PyList_Check(pHcki_imag)) {
-        Hcki_size_im = PyList_Size(pHcki_imag);
-        PyErr_Print();
-      }
-      assert(Hcki_size_re == Hcki_size_im);
-      int Hcki_size = Hcki_size_re;
-      // printf("getHc(): Oscillator %d, term %i: Received a list of length = %d: ", (int)k,(int)i,Hcki_size);
-      std::vector<double> Hcki_re_vals;
-      std::vector<double> Hcki_im_vals;
-      std::vector<int> Hcki_re_ids;
-      std::vector<int> Hcki_im_ids;
-      for (Py_ssize_t l=0; l<Hcki_size; l++){ // Iterate over elements
-        PyObject* pval_re = PyList_GetItem(pHcki_real,l);
-        PyObject* pval_im = PyList_GetItem(pHcki_imag,l);
-        PyErr_Print();
-        double Hcki_re_val = PyFloat_AsDouble(pval_re);
-        double Hcki_im_val = PyFloat_AsDouble(pval_im);
-        PyErr_Print();
-        if (fabs(Hcki_re_val) > 1e-14) {  // store only nonzeros
-          Hcki_re_vals.push_back(Hcki_re_val);
-          Hcki_re_ids.push_back(l);
-        }
-        if (fabs(Hcki_im_val) > 1e-14) {  // store only nonzeros
-          Hcki_im_vals.push_back(Hcki_im_val);
-          Hcki_im_ids.push_back(l);
-        }
-      }
-      Hc_re_vals.push_back(Hcki_re_vals);
-      Hc_re_ids.push_back(Hcki_re_ids);
-      Hc_im_vals.push_back(Hcki_im_vals);
-      Hc_im_ids.push_back(Hcki_im_ids);
-    } // end of control term i for this oscillator k
-  } // end of oscillator k
 
-  // // print out what we received from python 
-  // int id = 0;
-  // for (int k=0; k<noscillators; k++){
-  //   printf("getHc(): Oscillator %d: %d control terms: \n", k, ncontrolterms[k]);
-  //   for (int i=0; i<ncontrolterms[k]; i++){
-  //     printf("  %dth control: \n", i);
-  //     for (int l=0; l < Hc_re_vals[id].size(); l++){
-  //       printf("(%d,%f) ", Hc_re_ids[id][l], Hc_re_vals[id][l]);
-  //     }
-  //     printf("\n");
-  //     printf("  + im * \n");
-  //     for (int l=0; l < Hc_im_vals[id].size(); l++){
-  //       printf("(%d,%f) ", Hc_im_ids[id][l], Hc_im_vals[id][l]);
-  //     }
-  //     id++;
-  //     printf("\n");
-  //   }
-  // }
+        int Hcki_size_im = 0;
+        if (PyList_Check(pHcki_imag)) {
+          Hcki_size_im = PyList_Size(pHcki_imag);
+          PyErr_Print();
+        }
+        int Hcki_size = Hcki_size_im;
+        // printf("getHc(): Oscillator %d, term %i: Received a list of length = %d: ", (int)k,(int)i,Hcki_size);
+        std::vector<double> Hcki_im_vals;
+        std::vector<int> Hcki_im_ids;
+        for (Py_ssize_t l=0; l<Hcki_size; l++){ // Iterate over elements
+          PyObject* pval_im = PyList_GetItem(pHcki_imag,l);
+          PyErr_Print();
+          double Hcki_im_val = PyFloat_AsDouble(pval_im);
+          PyErr_Print();
+          if (fabs(Hcki_im_val) > 1e-14) {  // store only nonzeros
+            Hcki_im_vals.push_back(Hcki_im_val);
+            Hcki_im_ids.push_back(l);
+          }
+        }
+        Hc_im_vals.push_back(Hcki_im_vals);
+        Hc_im_ids.push_back(Hcki_im_ids);
+      } // end of control term i for this oscillator k
+    } // end of oscillator k
+
+    /* Now place values into Ac_vec[k][l] for all oscillators k and all control terms l */
+
+    int ioscil = 0;  // index for accessing Hamiltonian values inside Hc_im_vals/ids
+    // Iterate over oscillators
+    for (int k=0; k<noscillators; k++){
+
+      // Iterate over control terms for this oscillator
+      for (int i=0; i<ncontrol_imag[k]; i++){
+
+        // Create a new control matrix
+        Mat myAcMat_kl;
+        Ac_vec[k].push_back(myAcMat_kl);
+
+        MatCreate(PETSC_COMM_WORLD, &(Ac_vec[k][i]));
+        MatSetType(Ac_vec[k][i], MATMPIAIJ);
+        MatSetSizes(Ac_vec[k][i], PETSC_DECIDE, PETSC_DECIDE, dim, dim);
+        MatSetUp(Ac_vec[k][i]);
+        MatSetFromOptions(Ac_vec[k][i]);
+
+        PetscInt ilow, iupp;
+        MatGetOwnershipRange(Ac_vec[k][i], &ilow, &iupp);
+
+        // Assemble -I_N \kron Hc^k_i + Hc^k_i \kron I_N (Lindblad) or -Hc^k_i (Schroedinger)
+        // vals are in Hc_vals[ioscil][:]
+        // Iterate over nonzero elements in Hc^k_i
+        for (int l = 0; l<Hc_im_ids[ioscil].size(); l++) {
+          // Get position in the Bc matrix
+          int row = Hc_im_ids[ioscil][l] % sqdim;
+          int col = Hc_im_ids[ioscil][l] / sqdim;
+
+          if (lindbladtype == LindbladType::NONE){
+            // Schroedinger
+            // Assemble - B_c  
+            double val = -1.*Hc_im_vals[ioscil][l];
+            if (ilow <= row && row < iupp) MatSetValue(Ac_vec[k][i], row, col, val, ADD_VALUES);
+          } else {
+            // Lindblad
+            // Assemble -I_N \kron B_c + B_c \kron I_N 
+            for (int m=0; m<sqdim; m++){
+              // first place all -v_ij in the -I_N\kron B_c term:
+              int rowm = row + sqdim * m;
+              int colm = col + sqdim * m;
+              double val = -1.*Hc_im_vals[ioscil][l];
+              if (ilow <= rowm && rowm < iupp) MatSetValue(Ac_vec[k][i], rowm, colm, val, ADD_VALUES);
+              // Then add v_ij in the B_d^T \kron I_N term:
+              rowm = col*sqdim + m;   // transpose!
+              colm = row*sqdim + m;
+              val = Hc_im_vals[ioscil][l];
+              if (ilow <= rowm && rowm < iupp) MatSetValue(Ac_vec[k][i], rowm, colm, val, ADD_VALUES);
+            }
+          }
+        } // end of elements in Hc^k_i
+        ioscil++;
+      } // end of i loop for control terms
+
+      // Assemble the matrices for this oscillator
+      for (int i=0; i<ncontrol_imag[k]; i++){
+        MatAssemblyBegin(Ac_vec[k][i], MAT_FINAL_ASSEMBLY);
+        MatAssemblyEnd(Ac_vec[k][i], MAT_FINAL_ASSEMBLY);
+      }
+    } // end of k loop for oscillators for IMAG Hamiltonian
+  } // end of imag part reading from python
 
   // Clean up
-  Py_XDECREF(pFunc_getHc_real);  // pointer to getHc function
-  Py_XDECREF(pFunc_getHc_imag);  // pointer to getHc function
-
-
-  // Store number of control terms
-  ncontrolterms_store = ncontrolterms;
-
-
-  /* Write control Hamiltonians into sparse matrices -I\kron Hc + Hc \kron I (if Lindblad), or -Hc if Schroedinger */
-  int ioscil = 0;
-  for (int k=0; k<noscillators; k++){
-
-    /* Get matrix size */ 
-    PetscInt dim = 0;
-    MatGetSize(Ac_vec[k][0], &dim, NULL); // could be N^2 or N
-    PetscInt ilow, iupp;
-    MatGetOwnershipRange(Ac_vec[k][0], &ilow, &iupp);
-
-    // The first one has been allocated for default sparse mat setting, so need to destroy first. 
-    MatDestroy(&(Ac_vec[k][0])); 
-    MatDestroy(&(Bc_vec[k][0]));
-    delete [] Ac_vec[k];
-    delete [] Bc_vec[k];
-
-    // Create new control mats for this oscillator. If ncontrolterms==0, we will have to clear out the control parameters in the oscillator (in mastereq)
-    int nHams = ncontrolterms[k];
-    printf("Creating %d control Mats for oscillator %d\n", nHams, k);
-    Ac_vec[k] = new Mat[nHams];
-    Bc_vec[k] = new Mat[nHams];
-    for (int i=0; i<ncontrolterms[k]; i++){
-      MatCreate(PETSC_COMM_WORLD, &(Bc_vec[k][i]));
-      MatCreate(PETSC_COMM_WORLD, &(Ac_vec[k][i]));
-      MatSetType(Bc_vec[k][i], MATMPIAIJ);
-      MatSetType(Ac_vec[k][i], MATMPIAIJ);
-      MatSetSizes(Bc_vec[k][i], PETSC_DECIDE, PETSC_DECIDE, dim, dim);
-      MatSetSizes(Ac_vec[k][i], PETSC_DECIDE, PETSC_DECIDE, dim, dim);
-      MatSetUp(Bc_vec[k][i]);
-      MatSetUp(Ac_vec[k][i]);
-      MatSetFromOptions(Bc_vec[k][i]);
-      MatSetFromOptions(Ac_vec[k][i]);
-    }
-
-
-    int sqdim = dim; // could be N^2 or N
-    if (lindbladtype != LindbladType::NONE) sqdim = (int) sqrt(dim); // sqdim = N 
-
-    // Set values for each control terms for this oscillator
-    for (int i=0; i<ncontrolterms[k]; i++){
-      // Assemble -I_N \kron Hc^k_i + Hc^k_i \kron I_N (Lindblad) or -Hc^k_i (Schroedinger)
-      // vals are in Hc_vals[ioscil][:]
-      /* REAL part */
-      // Iterate over nonzero elements in Hc^k_i
-      for (int l = 0; l<Hc_re_ids[ioscil].size(); l++) {
-        // Get position in the Bc matrix
-        int row = Hc_re_ids[ioscil][l] % sqdim;
-        int col = Hc_re_ids[ioscil][l] / sqdim;
-
-        if (lindbladtype == LindbladType::NONE){
-          // Schroedinger
-          // Assemble - B_c  
-          double val = -1.*Hc_re_vals[ioscil][l];
-          if (ilow <= row && row < iupp) MatSetValue(Bc_vec[k][i], row, col, val, ADD_VALUES);
-        } else {
-          // Lindblad
-          // Assemble -I_N \kron B_c + B_c \kron I_N 
-          for (int m=0; m<sqdim; m++){
-            // first place all -v_ij in the -I_N\kron B_c term:
-            int rowm = row + sqdim * m;
-            int colm = col + sqdim * m;
-            double val = -1.*Hc_re_vals[ioscil][l];
-            if (ilow <= rowm && rowm < iupp) MatSetValue(Bc_vec[k][i], rowm, colm, val, ADD_VALUES);
-            // Then add v_ij in the B_d^T \kron I_N term:
-            rowm = col*sqdim + m;   // transpose!
-            colm = row*sqdim + m;
-            val = Hc_re_vals[ioscil][l];
-            if (ilow <= rowm && rowm < iupp) MatSetValue(Bc_vec[k][i], rowm, colm, val, ADD_VALUES);
-          }
-        }
-      } // end of elements in Hc^k_i
-      /* IMAGINARY part */
-      // Iterate over nonzero elements in Hc^k_i
-      for (int l = 0; l<Hc_im_ids[ioscil].size(); l++) {
-        // Get position in the Ac matrix
-        int row = Hc_im_ids[ioscil][l] % sqdim;
-        int col = Hc_im_ids[ioscil][l] / sqdim;
-
-        if (lindbladtype == LindbladType::NONE){
-          // Schroedinger
-          // Assemble A_c  
-          double val = Hc_im_vals[ioscil][l];
-          if (ilow <= row && row < iupp) MatSetValue(Ac_vec[k][i], row, col, val, ADD_VALUES);
-        } else {
-          // Lindblad
-          // Assemble I_N \kron A_c - A_c^T \kron I_N 
-          for (int m=0; m<sqdim; m++){
-            // first place all v_ij in the I_N\kron A_c term:
-            int rowm = row + sqdim * m;
-            int colm = col + sqdim * m;
-            double val = Hc_im_vals[ioscil][l];
-            if (ilow <= rowm && rowm < iupp) MatSetValue(Ac_vec[k][i], rowm, colm, val, ADD_VALUES);
-            // Then add -v_ij in the -A_c^T \kron I_N term:
-            rowm = col*sqdim + m; // transpose !
-            colm = row*sqdim + m;
-            val = -1.*Hc_im_vals[ioscil][l];
-            if (ilow <= rowm && rowm < iupp) MatSetValue(Ac_vec[k][i], rowm, colm, val, ADD_VALUES);
-          }
-        }
-      }
-      ioscil++;
-    } // end of i loop for control terms
-
-    // Assemble the matrices for this oscillator
-    for (int i=0; i<ncontrolterms[k]; i++){
-      MatAssemblyBegin(Bc_vec[k][i], MAT_FINAL_ASSEMBLY);
-      MatAssemblyEnd(Bc_vec[k][i], MAT_FINAL_ASSEMBLY);
-      MatAssemblyBegin(Ac_vec[k][i], MAT_FINAL_ASSEMBLY);
-      MatAssemblyEnd(Ac_vec[k][i], MAT_FINAL_ASSEMBLY);
-    }
-  } // end of k loop for oscillators
-
+  if (pFunc_getHc_real) Py_XDECREF(pFunc_getHc_real);  
+  if (pFunc_getHc_imag) Py_XDECREF(pFunc_getHc_imag);  
 #endif
 }
 
@@ -421,11 +487,14 @@ void PythonInterface::receiveHcTransfer(int noscillators,std::vector<std::vector
     transfer_Hc_re[k].clear();
     transfer_Hc_im[k].clear();
 
-    for (int icontrol = 0; icontrol<ncontrolterms_store[k]; icontrol++){
+    for (int icontrol = 0; icontrol<ncontrol_real[k]; icontrol++){
       transfer_Hc_re[k].push_back(NULL);
+    }
+    for (int icontrol = 0; icontrol<ncontrol_imag[k]; icontrol++){
       transfer_Hc_im[k].push_back(NULL);
     } 
   }
+
 
   /* Transfer function u(p(t)) for REAL part */
 
@@ -451,7 +520,7 @@ void PythonInterface::receiveHcTransfer(int noscillators,std::vector<std::vector
       // Default: If we can't find the python function "getTranfer_real", use identities for each control Hamiltonian term
       printf("# Warning: Could not find transfer function 'getHcTransfer_real'. Using identity for oscillator %zd instead. \n",k);
 
-      for (Py_ssize_t i=0; i<ncontrolterms_store[k]; i++){
+      for (Py_ssize_t i=0; i<ncontrol_real[k]; i++){
         IdentityTransferFunction *transfer_ki =  new IdentityTransferFunction();
         transfer_Hc_re[k][i] = transfer_ki;
       }
@@ -466,11 +535,11 @@ void PythonInterface::receiveHcTransfer(int noscillators,std::vector<std::vector
         Ck_r = PyList_Size(pTrk_real); 
         PyErr_Print();
       } else PyErr_Print();
-      assert(Ck_r == ncontrolterms_store[k]);
+      assert(Ck_r == ncontrol_real[k]);
 
       // Iterate over list for this oscillator 
       PyObject* pTrki, *pOrder_ki, *pknots_ki, *pcoefs_ki, *pTrki_knot, *pTrki_coef;
-      for (Py_ssize_t i=0; i<ncontrolterms_store[k]; i++){
+      for (Py_ssize_t i=0; i<ncontrol_real[k]; i++){
         pTrki = PyList_GetItem(pTrk_real,i); // Get spline for u^k_i(x). Returns [knots, coeffs, order]
         PyErr_Print();
 
@@ -534,7 +603,7 @@ void PythonInterface::receiveHcTransfer(int noscillators,std::vector<std::vector
     if (!called_imag|| !PyList_Check(pTr_imag)){
       // Default: If we can't find the python function "getTranfer_imag", use identities for each control Hamiltonian term
       printf("# Warning: Could not find transfer function 'getHcTransfer_imag'. Using identity for oscillator %zd instead. \n", k);
-      for (Py_ssize_t i=0; i<ncontrolterms_store[k]; i++){
+      for (Py_ssize_t i=0; i<ncontrol_imag[k]; i++){
         IdentityTransferFunction *transfer_ki =  new IdentityTransferFunction();
         transfer_Hc_im[k][i] = transfer_ki;
       }
@@ -549,11 +618,11 @@ void PythonInterface::receiveHcTransfer(int noscillators,std::vector<std::vector
         Ck_r = PyList_Size(pTrk_imag); 
         PyErr_Print();
       } else PyErr_Print();
-      assert(Ck_r == ncontrolterms_store[k]);
+      assert(Ck_r == ncontrol_imag[k]);
 
       // Iterate over list for this oscillator 
       PyObject* pTrki, *pOrder_ki, *pknots_ki, *pcoefs_ki, *pTrki_knot, *pTrki_coef;
-      for (Py_ssize_t i=0; i<ncontrolterms_store[k]; i++){
+      for (Py_ssize_t i=0; i<ncontrol_imag[k]; i++){
         pTrki = PyList_GetItem(pTrk_imag,i); // Get spline for u^k_i(x). Returns [knots, coeffs, order]
         PyErr_Print();
 
@@ -596,7 +665,7 @@ void PythonInterface::receiveHcTransfer(int noscillators,std::vector<std::vector
 
 
 
-void PythonInterface::receiveHdt(int noscillators, std::vector<Mat>& Ad_vec, std::vector<Mat>& Bd_vec){
+void PythonInterface::receiveHdt(std::vector<Mat>& Ad_vec, std::vector<Mat>& Bd_vec){
 #ifdef WITH_PYTHON
 
   printf("Receiving time-dependent system Hamiltonians...\n");
@@ -632,10 +701,8 @@ void PythonInterface::receiveHdt(int noscillators, std::vector<Mat>& Ad_vec, std
       pHdt_real = PyObject_CallObject(pFunc_getHdt_real, NULL); // NULL: no input
       PyErr_Print();
       called_real = true;
-      // Make sure the list contains <nterms> Hamiltonians
     } else PyErr_Print();
   } else PyErr_Print();
-  // Now we have pHdt_real: [ H01, H02,... ,H12, H13,... ] length = nterms = Q*(Q-1)/2
 
   if (!called_real || !PyList_Check(pHdt_real)){
     printf("# No time-dependent real Hamiltonian received. \n");

@@ -134,60 +134,37 @@ void Output::writeControls(Vec params, MasterEq* mastereq, int ntime, double dt)
       file_c = fopen(filename, "w");
       file_t = fopen(filename_transfer, "w");
       fprintf(file_c, "# time         p(t) (rotating)          q(t) (rotating)        f(t) (labframe) \n");
-      fprintf(file_t, "# time         u^r_1(p(t))                u^i_1(q(t))     ... \n");
+      fprintf(file_t, "# time     u^k_1(p(t))     u^k_2(p(t))    ...      v^k_1(q(t))     v^k_2(q(t))     ...\n");
 
       /* Write every <num> timestep to file */
       for (int i=0; i<=ntime; i+=output_frequency) {
         double time = i*dt; 
 
-        std::vector<double> Re, Im, Lab; // make it a vector because we can have multiple control terms 
         double ReI, ImI, LabI;
         mastereq->getOscillator(ioscil)->evalControl(time, &ReI, &ImI);
         mastereq->getOscillator(ioscil)->evalControl_Labframe(time, &LabI);
         // Write control drives
         fprintf(file_c, "% 1.8f   % 1.14e   % 1.14e   % 1.14e \n", time, ReI, ImI, LabI);
         
-        Re.push_back(ReI);
-        Im.push_back(ImI);
-        Lab.push_back(LabI);
-
-        // Evaluate transfer function from python, if the file is given.
-        if (mastereq->python_file.compare("none") != 0 ) {
-          // Set to zero if no transfer function is given. 
-          Re[0] = 0.0; 
-          Im[0] = 0.0;
-          Lab[0] = 0.0;
-          // Get transfer functions u^k_i(p) from python for this oscillators k
-          for (int icon=0; icon<mastereq->ncontrolterms[ioscil]; icon++){
-            // Evaluate the spline transfer function  u^k_i(p) which is stored in transfer_func[iosc][icon]
-            double ukip = mastereq->transfer_Hc_re[ioscil][icon]->eval(ReI);
-            double ukiq = mastereq->transfer_Hc_im[ioscil][icon]->eval(ImI);
-            // Set the controls (only real for now)
-            if (icon == 0){
-              Re[0]=ukip; 
-              Im[0]=ukiq;
-              Lab[0]=0.0;
-            } else {
-              Re.push_back(ukip); 
-              Im.push_back(ukiq);
-              Lab.push_back(0.0);
-            }
-          } // end of control term loop
-        } 
-        // Write transfer u_i(p(t)) for this oscillator
+        // Evaluate and write transfer functions u_i(p(t)), v_i(q(t)) for this oscillator
         fprintf(file_t, "% 1.8f   ", time);
-        for (int icontrol=0; icontrol < Re.size(); icontrol++){
-          fprintf(file_t, "% 1.14e   %1.14e   ", Re[icontrol], Im[icontrol]);
+        for (int icon=0; icon<mastereq->transfer_Hc_re[ioscil].size(); icon++){
+          double ukip = mastereq->transfer_Hc_re[ioscil][icon]->eval(ReI);
+          fprintf(file_t, "% 1.14e   ", ukip);
         }
+        // Get transfer functions v^k_i(q) for this oscillators k
+        for (int icon=0; icon<mastereq->transfer_Hc_im[ioscil].size(); icon++){
+          double ukiq = mastereq->transfer_Hc_im[ioscil][icon]->eval(ImI);
+          fprintf(file_t, "% 1.14e   ", ukiq);
+        } 
         fprintf(file_t, "\n");
-      } // end of oscillator loop
+      } // end of time loop 
 
       fclose(file_c);
       fclose(file_t);
       printf("File written: %s\n", filename);
       printf("File written: %s\n", filename_transfer);
-    }
-
+    } // end of oscillator loop
   }
 }
 
