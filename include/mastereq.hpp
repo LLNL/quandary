@@ -8,11 +8,6 @@
 #include "gate.hpp"
 #include "pythoninterface.hpp"
 
-#ifdef WITH_PYTHON
-#define PY_SSIZE_T_CLEAN
-#include "Python/Python.h"
-#endif
-
 #pragma once
 
 /* Define a matshell context containing pointers to data needed for applying the RHS matrix to a vector */

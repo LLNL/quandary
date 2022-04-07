@@ -7,8 +7,16 @@
 #include <bspline.hpp>
 #ifdef WITH_PYTHON
 #define PY_SSIZE_T_CLEAN
-#include "Python/Python.h"
+#include "Python.h"
 #endif
+
+#if PY_MAJOR_VERSION >= 3
+  #define PyInt_FromLong               PyLong_FromLong
+  #define PyInt_AsLong                 PyLong_AsLong
+  #define PyInt_AS_LONG                PyLong_AS_LONG
+  #define PyString_FromString          PyUnicode_FromString
+#endif
+
 #pragma once
 
 class PythonInterface{

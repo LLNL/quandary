@@ -12,6 +12,10 @@ WITH_SLEPC = false
 
 # Enable the python interface.
 WITH_PYTHON = true
+PYTHON_INCDIR = /usr/local/Caskroom/miniconda/base/envs/numpy-env/include/python3.9/  # location of Python.h. Try "python<version>-config --includes" to find it.
+PYTHON_LIBDIR = /usr/local/Caskroom/miniconda/base/envs/numpy-env/lib/     # location of libpython<version>.so or libpython<version>.dylib (Mac). Try "python<version>-config --ldflags" to find it.
+PYTHON_VERSION = 3.9   # Set the python version. This is not be needed if the libpython.so / libpython.dylib links to the correct version library libpython<version>.so
+# You'll have to set the LD_LIBRARY_PATH to include the PYTHON_LIBDIR!, e.g. export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/Caskroom/miniconda/base/envs/numpy-env/lib 
 
 # If using the python interface, link with Fitpack to enable spline-based transfer functions. Otherwise, the identity will be used for transfer functions. 
 WITH_FITPACK = true
@@ -43,12 +47,13 @@ endif
 
 # Add optional Python interface
 ifeq ($(WITH_PYTHON), true)
-LDFLAGS_OPT += -lpython
+INC_OPT += -I${PYTHON_INCDIR}
+LDFLAGS_OPT += -L${PYTHON_LIBDIR} -lpython${PYTHON_VERSION}
 CXX_OPT += -DWITH_PYTHON
 endif
 
 
-# Add FITPACK
+# Add optional FITPACKPP for spline interpolation
 ifeq ($(WITH_FITPACK), true)
 INC_OPT += -I${FITPACK_DIR}/fitpackpp
 LDFLAGS_OPT += -L${FITPACK_DIR}/build -lfitpack -lfitpackpp
