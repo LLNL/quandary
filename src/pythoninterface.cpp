@@ -330,7 +330,6 @@ void PythonInterface::receiveHc(int noscillators, std::vector<std::vector<Mat>>&
   } // end of reading real part from python
 
   /* IMAGINARY PART */
-  ncontrol_imag.push_back(0);
 
   // Get a reference to the python function "getHc_imag"
   PyObject* pFunc_getHc_imag = PyObject_GetAttrString(pModule, (char*)"getHc_imag");
