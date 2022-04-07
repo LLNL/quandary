@@ -502,7 +502,7 @@ ThreeWave::ThreeWave(std::vector<int> nlevels_, std::vector<int> nessential_, do
   /* Fill lab-frame 3-wave gate in essential dimension system V_re = Re(V), V_im = Im(V) = 0 */
   double vre00, vre01, vre02, vre10, vre11, vre12, vre20, vre21, vre22, vre33, vim33;
 
-  double scale = 1.0;
+  double scale = 10.0;
 
   if (scale == 1.0) {
     // dt = 0.2564/2 * 1
@@ -554,6 +554,20 @@ ThreeWave::ThreeWave(std::vector<int> nlevels_, std::vector<int> nessential_, do
     vim33 = -0.375188;
     // vre33 = 1.0;
     // vim33 = 0.0;
+  }
+
+  else if (scale == 10.0) { // This is the target unitary with maximum deviation on the diagonals
+    vre00 = 0.33333;
+    vre01 = 0.000777577;
+    vre02 = 0.942809;
+    vre10 = -0.000777577;
+    vre11 = -0.999999;
+    vre12 = 0.00109966;
+    vre20 = 0.942809;
+    vre21 = -0.00109966;
+    vre22 = -0.333333;
+    vre33 = 0.284799;
+    vim33 = -0.958587;
   }
 
   MatSetValue(V_re, 0, 0, vre00, INSERT_VALUES);
