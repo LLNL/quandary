@@ -98,7 +98,7 @@ class MasterEq{
 
     std::vector<std::vector<TransferFunction*>> transfer_Hc_re; // Stores the transfer functions for each control term for each oscillator
     std::vector<std::vector<TransferFunction*>> transfer_Hc_im; // Stores the transfer functions for each control term for each oscillator
-    std::vector<TransferFunction*> transfer_Hdt_re; // Stores the transfer functions for each control term for each oscillator
+    std::vector<TransferFunction*> transfer_Hdt_re; // Stores the transfer functions for each time-varying system hamiltonian term  
     std::vector<TransferFunction*> transfer_Hdt_im; // Stores the transfer functions for each time-varying system Hamiltonian term  
     std::string python_file; // either 'none' or name of python script to read Hamiltonian from 
 

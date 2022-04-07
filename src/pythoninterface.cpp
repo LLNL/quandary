@@ -170,13 +170,20 @@ void PythonInterface::receiveHc(int noscillators, std::vector<std::vector<Mat>>&
     Bc_vec[k].clear();
   }
 
+  // Set the number of control terms for each oscillator to zero here. Overwrite later below, if we receive control terms. 
+  ncontrol_real.clear();
+  ncontrol_imag.clear();
+  for (int k=0; k<noscillators;k++){
+    ncontrol_real.push_back(0);
+    ncontrol_imag.push_back(0);
+  }
+
   /* Get the dimensions right */
   int sqdim = dim_rho; //  N!
   int dim = dim_rho;
   if (lindbladtype !=LindbladType::NONE) dim = dim_rho*dim_rho;
 
   /* REAL PART */
-  ncontrol_real.push_back(0);
 
   // Get a reference to the python function "getHc_real"
   PyObject* pFunc_getHc_real = PyObject_GetAttrString(pModule, (char*)"getHc_real");

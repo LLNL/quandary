@@ -190,43 +190,36 @@ MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Osci
 
 MasterEq::~MasterEq(){
   if (dim > 0){
-    printf("Inside ~mastereq.\n");
     MatDestroy(&RHS);
     if (!usematfree){
       MatDestroy(&Ad);
       MatDestroy(&Bd);
-      printf("Now destroy Ad_vec and transfer.\n");
       for (int k=0; k<Ad_vec.size(); k++) {
         if (Ad_vec[k] != NULL) {
           MatDestroy(&(Ad_vec[k]));
-          delete transfer_Hdt_re[k];
-        }
-      }
-      printf("Now destroy Bd_vec and transfer.\n");
-      for (int k=0; k<Bd_vec.size(); k++) {
-        if (Bd_vec[k] != NULL) {
-          MatDestroy(&(Bd_vec[k]));
           delete transfer_Hdt_im[k];
         }
       }
+      for (int k=0; k<Bd_vec.size(); k++) {
+        if (Bd_vec[k] != NULL) {
+          MatDestroy(&(Bd_vec[k]));
+          delete transfer_Hdt_re[k];
+        }
+      }
       VecDestroy(&aux);
-      printf("Now destroy Ac_vec and transfer.\n");
       for (int i=0; i<Ac_vec.size(); i++){
         for (int icon=0; icon<Ac_vec[i].size(); icon++)  {
           if (Ac_vec[i][icon] != NULL) {
             MatDestroy(&(Ac_vec[i][icon]));
-            delete transfer_Hc_re[i][icon];
+            delete transfer_Hc_im[i][icon];
           }
         }
       }
-      printf("Now destroy Bc_vec and transfer.\n");
       for (int i=0; i<Bc_vec.size(); i++){
-        printf("iosc = %d: Bc_vec[i].size()=%d\n", i, Bc_vec[i].size());
         for (int icon=0; icon<Bc_vec[i].size(); icon++)  {
-          printf("iosc = %d, icon= %d\n", i, icon);
           if (Bc_vec[i][icon] != NULL) {
             MatDestroy(&(Bc_vec[i][icon]));
-            delete transfer_Hc_im[i][icon];
+            delete transfer_Hc_re[i][icon];
           }
         }
       }
@@ -239,7 +232,6 @@ MasterEq::~MasterEq(){
     ISDestroy(&isu);
     ISDestroy(&isv);
 
-    printf("Done  inside ~mastereq.\n");
   }
 }
 
@@ -646,6 +638,7 @@ void MasterEq::initSparseMatSolver(){
     py->receiveHcTransfer(noscillators, transfer_Hc_re, transfer_Hc_im);
     py->receiveHdt(Ad_vec, Bd_vec);
     py->receiveHdtTransfer(Ad_vec.size(), transfer_Hdt_re, transfer_Hdt_im);
+    // TODO: Pass both Ad.size and also Bd.size, since they might be different!.
 
     printf("Done. \n\n");
 
