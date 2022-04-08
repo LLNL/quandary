@@ -211,7 +211,8 @@ the real and imaginary components: $\alpha^k_s = \alpha^{k(1)}_{s,1}, \alpha^{k(
     \alpha_{s,f}^{k(i)} = \bfa[ \left(\sum_{j=0}^{k-1} 2N_sN_f^j\right) + s*2N_f^k + f*2 + i ],
   \end{align}
 
-  When executing Quandary, the control parameter $\boldsymbol{\alpha}$ can be either specified (e.g. a constant pulse, a pi-pulse, or pulses whose parameters are read from a given file), or can be optimized for (Section \ref{sec:optim}). 
+  When executing Quandary, the control parameter $\boldsymbol{\alpha}$ can be either specified (e.g. a constant pulse, a pi-pulse, or 
+  pulses whose parameters are read from a given file), or can be optimized for (Section \ref{sec:optim}). 
   
   In order to guarantee that the optimizer yields control pulses that are
   bounded with $|p^k(t)| \leq c^k_{max}$, $|q^k(t)| \leq c^k_{max}$ for given bounds $c^k_{max}$ for each  
@@ -228,11 +229,16 @@ In the most general form, Quandary can solve the following optimization problem
 \begin{align}\label{eq:minproblem}
   \min_{\boldsymbol{\alpha}} \frac{1}{n_{init}} \sum_{i=1}^{n_{init}} \beta_i J(\rho^{target}_i, \rho_i(T)) + \gamma_1 \int_0^T P\left(\rho_i(t)\right) \, \mathrm{d} t + \gamma_2 \| \bfa \|^2_2
 \end{align}
-where $\rho_i(T)$ denotes the quantum state evaluated at a final time $T>0$, which solves either Lindblad's master equation \eqref{mastereq} or Schroedinger's equation \eqref{eq:schroedinger} in the rotating frame for an initial condition $\rho_i(0)$, as specified below. (Note again that in the Schroedinger case $\rho$ denotes the state vector rather than a density matrix, compare Section \ref{sec:model}).
+where $\rho_i(T)$ denotes the quantum state evaluated at a final time $T>0$, which solves either Lindblad's master equation \eqref{mastereq} 
+or Schroedinger's equation \eqref{eq:schroedinger} in the rotating frame for an initial condition $\rho_i(0)$, as specified below. (Note again 
+that in the Schroedinger case $\rho$ denotes the state vector rather than a density matrix, compare Section \ref{sec:model}).
 
-The first term in \eqref{eq:minproblem} minimizes (a weighted average of) an objective function $J$ that quantifies the discrepancy between a desired target state $\rho^{target}_i$ and the realized state $\rho_i(T)$ at final time $T$ driven by the current control $\boldsymbol{\alpha}$. 
-The second term serves as a penalty that can be added with $\gamma_1 \geq 0$ in oder to achieve a desired behavior of the quantum system over the entire time-domain $0\leq t\leq T$, see below. 
-The third term is a Tikhonov regularization that can be added with parameter $\gamma_2\geq 0$ in order to regularize the optimization problem (stabilize optimization convergence) by favoring solutions with small norm. 
+The first term in \eqref{eq:minproblem} minimizes (a weighted average of) an objective function $J$ that quantifies the discrepancy between a 
+desired target state $\rho^{target}_i$ and the realized state $\rho_i(T)$ at final time $T$ driven by the current control $\boldsymbol{\alpha}$. 
+The second term serves as a penalty that can be added with $\gamma_1 \geq 0$ in oder to achieve a desired behavior of the quantum system over 
+the entire time-domain $0\leq t\leq T$, see below. 
+The third term is a Tikhonov regularization that can be added with parameter $\gamma_2\geq 0$ in order to regularize the optimization problem 
+(stabilize optimization convergence) by favoring solutions with small norm. 
 
 
 \subsection{Objective function}
@@ -418,7 +424,7 @@ This option is useful for example if one wants to propagate a specific \textit{n
 
 \subsection{Integral penalty term and leakage}
 In order to achieve a desired behavior at earlier times other than the final time $T$, an integral penalty term can be added to the objective with parameter $\gamma_1 \geq 0$ :
-\begin{align}\label{eq:penaltyterm}
+\begin{align}\label{eq:penaltyterm0}
  \gamma_1 \int_0^T P(\rho(t)) \mathrm{d}t
 \end{align}
 In the standard setting, the following penalty term is currently implemented (can be extended in the \texttt{TimeStepper} class.):
