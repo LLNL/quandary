@@ -106,6 +106,9 @@ class MasterEq{
     /* initialize matrices needed for applying sparse-mat solver */
     void initSparseMatSolver();
 
+    /* Pass lists of time points that determin when which transfer functions is active. This is for the rigetti threewave multi gate */
+    void setTransferOnOffTimes(std::vector<double> tlist);
+
     /* Return the i-th oscillator */
     Oscillator* getOscillator(const int i);
 

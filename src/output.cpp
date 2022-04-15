@@ -149,12 +149,12 @@ void Output::writeControls(Vec params, MasterEq* mastereq, int ntime, double dt)
         // Evaluate and write transfer functions u_i(p(t)), v_i(q(t)) for this oscillator
         fprintf(file_t, "% 1.8f   ", time);
         for (int icon=0; icon<mastereq->transfer_Hc_re[ioscil].size(); icon++){
-          double ukip = mastereq->transfer_Hc_re[ioscil][icon]->eval(ReI);
+          double ukip = mastereq->transfer_Hc_re[ioscil][icon]->eval(ReI, time);
           fprintf(file_t, "% 1.14e   ", ukip);
         }
         // Get transfer functions v^k_i(q) for this oscillators k
         for (int icon=0; icon<mastereq->transfer_Hc_im[ioscil].size(); icon++){
-          double ukiq = mastereq->transfer_Hc_im[ioscil][icon]->eval(ImI);
+          double ukiq = mastereq->transfer_Hc_im[ioscil][icon]->eval(ImI, time);
           fprintf(file_t, "% 1.14e   ", ukiq);
         } 
         fprintf(file_t, "\n");

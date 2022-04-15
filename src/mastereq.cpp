@@ -693,11 +693,11 @@ int MasterEq::assemble_RHS(const double t){
     // Iterate over control terms for this oscillator
     for (int icon=0; icon<Bc_vec[iosc].size(); icon++){
       // Get transfer functions u^k_i(p) (Default: Identity. But could be different if python interface)
-      double ukip = transfer_Hc_re[iosc][icon]->eval(p);
+      double ukip = transfer_Hc_re[iosc][icon]->eval(p, t);
       RHSctx.control_Re[iosc][icon] = ukip; 
     } 
     for (int icon=0; icon<Ac_vec[iosc].size(); icon++){
-      double ukiq = transfer_Hc_im[iosc][icon]->eval(q);
+      double ukiq = transfer_Hc_im[iosc][icon]->eval(q, t);
       RHSctx.control_Im[iosc][icon] = ukiq;
     } 
   } 
@@ -705,10 +705,10 @@ int MasterEq::assemble_RHS(const double t){
   // Evaluate and store transfer for time-dependent system term
   for (int kl=0; kl<RHSctx.Bd_vec.size(); kl++)
     // REAL part: Default trans_re = Jkl*cos(etakl*t) , or from python interface
-    RHSctx.eval_transfer_Hdt_re[kl] = transfer_Hdt_re[kl]->eval(t); 
+    RHSctx.eval_transfer_Hdt_re[kl] = transfer_Hdt_re[kl]->eval(t, t); 
   for (int kl=0; kl<RHSctx.Ad_vec.size(); kl++)
     // IMAG part: Default trans_im = Jkl*sin(etakl*t)
-    RHSctx.eval_transfer_Hdt_im[kl] = transfer_Hdt_im[kl]->eval(t); 
+    RHSctx.eval_transfer_Hdt_im[kl] = transfer_Hdt_im[kl]->eval(t, t); 
 
   return 0;
 }
@@ -1178,11 +1178,11 @@ void MasterEq::computedRHSdp(const double t, const Vec x, const Vec xbar, const 
     double p, q;
     oscil_vec[iosc]->evalControl(t, &p, &q);  // Evaluates the B-spline basis functions -> p(t,alpha), q(t,alpha)
     for (int icon=0; icon<Bc_vec[iosc].size(); icon++){ // Now evaluate the derivative of transfer functions for each control term
-      double dukidp_tmp = transfer_Hc_re[iosc][icon]->der(p); // dudp(p)
+      double dukidp_tmp = transfer_Hc_re[iosc][icon]->der(p, t); // dudp(p)
       dukidp.push_back(dukidp_tmp);
     }
     for (int icon=0; icon<Ac_vec[iosc].size(); icon++){ 
-      double dukidq_tmp = transfer_Hc_im[iosc][icon]->der(q); // dvdq(q)
+      double dukidq_tmp = transfer_Hc_im[iosc][icon]->der(q, t); // dvdq(q)
       dukidq.push_back(dukidq_tmp);
     }
 
