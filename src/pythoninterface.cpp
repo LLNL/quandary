@@ -488,8 +488,8 @@ void PythonInterface::receiveHcTransfer(int noscillators,std::vector<std::vector
 
   /* First empty out the transfer_func vectors for each oscillator and create empty vectors of the correct size */
   for (int k=0; k<noscillators; k++){
-    delete transfer_Hc_re[k][0];
-    delete transfer_Hc_im[k][0];
+    for (int icon = 0; icon < transfer_Hc_re[k].size(); icon++) delete transfer_Hc_re[k][icon];
+    for (int icon = 0; icon < transfer_Hc_im[k].size(); icon++) delete transfer_Hc_im[k][icon];
     transfer_Hc_re[k].clear();
     transfer_Hc_im[k].clear();
 

@@ -102,6 +102,29 @@ MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Osci
       exit(1);
   } 
 
+
+  /* Create transfer functions for controls, default: one per oscillator being the identity. If python interface: could be more */
+  for (int k=0; k<noscillators; k++){
+    IdentityTransferFunction* mytransfer_re = new IdentityTransferFunction();
+    IdentityTransferFunction* mytransfer_im = new IdentityTransferFunction();
+    std::vector<TransferFunction*> myvec_re{mytransfer_re};
+    std::vector<TransferFunction*> myvec_im{mytransfer_im};
+    transfer_Hc_re.push_back(myvec_re);
+    transfer_Hc_im.push_back(myvec_im);
+  }
+
+  /* Create transfer functions for time-varying system Hamiltonian */
+  // By default, these are for the Jaynes Cumming coupling: Jkl*cos(eta*t)(a+adag) - i Jkl*sin(eta*t)(a-adag)
+  // If python interface, they can be different
+  for (int k=0; k<noscillators*(noscillators-1)/2; k++){
+    CosineTransferFunction* mytransfer_re = new CosineTransferFunction(Jkl[k], eta[k]);
+    SineTransferFunction* mytransfer_im = new SineTransferFunction(Jkl[k], eta[k]);
+
+    transfer_Hdt_re.push_back(mytransfer_re);
+    transfer_Hdt_im.push_back(mytransfer_im);
+  }
+
+  /* Initialize Hamiltonian matrices */
   if (!usematfree) {
     initSparseMatSolver();
   } 
@@ -149,18 +172,18 @@ MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Osci
   RHSctx.time = 0.0;
   for (int iosc = 0; iosc < noscillators; iosc++) {
     std::vector<double> controlRek;
-    for (int icon=0; icon<Bc_vec[iosc].size(); icon++){ 
+    for (int icon=0; icon<transfer_Hc_re[iosc].size(); icon++){ 
      controlRek.push_back(0.0);
     }
     RHSctx.control_Re.push_back(controlRek);
     std::vector<double> controlImk;
-    for (int icon=0; icon<Ac_vec[iosc].size(); icon++){ 
+    for (int icon=0; icon<transfer_Hc_im[iosc].size(); icon++){ 
      controlImk.push_back(0.0);
     }
     RHSctx.control_Im.push_back(controlImk);
   }
-  for (int kl = 0; kl<Bd_vec.size(); kl++) RHSctx.eval_transfer_Hdt_re.push_back(0.0);
-  for (int kl = 0; kl<Ad_vec.size(); kl++) RHSctx.eval_transfer_Hdt_im.push_back(0.0);
+  for (int kl = 0; kl<transfer_Hdt_re.size(); kl++) RHSctx.eval_transfer_Hdt_re.push_back(0.0);
+  for (int kl = 0; kl<transfer_Hdt_im.size(); kl++) RHSctx.eval_transfer_Hdt_im.push_back(0.0);
 
   /* Set the MatMult routine for applying the RHS to a vector x */
   if (usematfree) { // matrix-free solver
@@ -197,13 +220,11 @@ MasterEq::~MasterEq(){
       for (int k=0; k<Ad_vec.size(); k++) {
         if (Ad_vec[k] != NULL) {
           MatDestroy(&(Ad_vec[k]));
-          delete transfer_Hdt_im[k];
         }
       }
       for (int k=0; k<Bd_vec.size(); k++) {
         if (Bd_vec[k] != NULL) {
           MatDestroy(&(Bd_vec[k]));
-          delete transfer_Hdt_re[k];
         }
       }
       VecDestroy(&aux);
@@ -211,7 +232,6 @@ MasterEq::~MasterEq(){
         for (int icon=0; icon<Ac_vec[i].size(); icon++)  {
           if (Ac_vec[i][icon] != NULL) {
             MatDestroy(&(Ac_vec[i][icon]));
-            delete transfer_Hc_im[i][icon];
           }
         }
       }
@@ -219,10 +239,17 @@ MasterEq::~MasterEq(){
         for (int icon=0; icon<Bc_vec[i].size(); icon++)  {
           if (Bc_vec[i][icon] != NULL) {
             MatDestroy(&(Bc_vec[i][icon]));
-            delete transfer_Hc_re[i][icon];
           }
         }
       }
+    }
+    for (int i=0; i<transfer_Hdt_re.size(); i++) delete transfer_Hdt_re[i];
+    for (int i=0; i<transfer_Hdt_im.size(); i++) delete transfer_Hdt_im[i];
+    for (int i=0; i<transfer_Hc_re.size(); i++) {
+      for (int icon=0; icon<transfer_Hc_re[i].size(); icon++) delete transfer_Hc_re[i][icon];
+    }
+    for (int i=0; i<transfer_Hc_im.size(); i++) {
+      for (int icon=0; icon<transfer_Hc_im[i].size(); icon++) delete transfer_Hc_im[i][icon];
     }
     delete [] dRedp;
     delete [] dImdp;
@@ -238,25 +265,6 @@ MasterEq::~MasterEq(){
 
 void MasterEq::initSparseMatSolver(){
 
-  /* Create transfer functions for controls, default: one per oscillator being the identity. If python interface: could be more */
-  for (int k=0; k<noscillators; k++){
-    IdentityTransferFunction* mytransfer_re = new IdentityTransferFunction();
-    IdentityTransferFunction* mytransfer_im = new IdentityTransferFunction();
-    std::vector<TransferFunction*> myvec_re{mytransfer_re};
-    std::vector<TransferFunction*> myvec_im{mytransfer_im};
-    transfer_Hc_re.push_back(myvec_re);
-    transfer_Hc_im.push_back(myvec_im);
-  }
-  /* Create transfer functions for time-varying system Hamiltonian */
-  // By default, these are for the Jaynes Cumming coupling: Jkl*cos(eta*t)(a+adag) - i Jkl*sin(eta*t)(a-adag)
-  // If python interface, they can be different
-  for (int k=0; k<noscillators*(noscillators-1)/2; k++){
-    CosineTransferFunction* mytransfer_re = new CosineTransferFunction(Jkl[k], eta[k]);
-    SineTransferFunction* mytransfer_im = new SineTransferFunction(Jkl[k], eta[k]);
-
-    transfer_Hdt_re.push_back(mytransfer_re);
-    transfer_Hdt_im.push_back(mytransfer_im);
-  }
 
   /* Allocate vector of vector of control Hamiltonians */
   // By default, one control term per oscillator: a +/- a^\dag
@@ -691,22 +699,22 @@ int MasterEq::assemble_RHS(const double t){
     oscil_vec[iosc]->evalControl(t, &p, &q);  // Evaluates the B-spline basis functions -> p(t,alpha), q(t,alpha)
 
     // Iterate over control terms for this oscillator
-    for (int icon=0; icon<Bc_vec[iosc].size(); icon++){
+    for (int icon=0; icon<transfer_Hc_re[iosc].size(); icon++){
       // Get transfer functions u^k_i(p) (Default: Identity. But could be different if python interface)
       double ukip = transfer_Hc_re[iosc][icon]->eval(p, t);
       RHSctx.control_Re[iosc][icon] = ukip; 
     } 
-    for (int icon=0; icon<Ac_vec[iosc].size(); icon++){
+    for (int icon=0; icon<transfer_Hc_im[iosc].size(); icon++){
       double ukiq = transfer_Hc_im[iosc][icon]->eval(q, t);
       RHSctx.control_Im[iosc][icon] = ukiq;
     } 
   } 
 
   // Evaluate and store transfer for time-dependent system term
-  for (int kl=0; kl<RHSctx.Bd_vec.size(); kl++)
+  for (int kl=0; kl<transfer_Hdt_re.size(); kl++)
     // REAL part: Default trans_re = Jkl*cos(etakl*t) , or from python interface
     RHSctx.eval_transfer_Hdt_re[kl] = transfer_Hdt_re[kl]->eval(t, t); 
-  for (int kl=0; kl<RHSctx.Ad_vec.size(); kl++)
+  for (int kl=0; kl<transfer_Hdt_im.size(); kl++)
     // IMAG part: Default trans_im = Jkl*sin(etakl*t)
     RHSctx.eval_transfer_Hdt_im[kl] = transfer_Hdt_im[kl]->eval(t, t); 
 
