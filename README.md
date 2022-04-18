@@ -9,8 +9,6 @@ For questions, feel free to reach out to Stefanie Guenther [guenther5@llnl.gov].
 This project relies on Petsc [https://petsc.org/release/] to handle (parallel) linear algebra. Optionally, XBraid [https://github.com/XBraid/xbraid] can be linked to realize time-parallelization, and Slepsc [https://slepc.upv.es] can be used to solve some eigenvalue problems if desired (e.g. for the Hessian...)
 * **Required:** Install Petsc:
 
-    *Note: Use Petsc version <= 3.16! The newest release Petsc 3.17 (March 2022) is currently not compatible with Quandary - we will fix this soon.*
-
     Check out [https://petsc.org/release/] for the latest installation guide. On MacOS, you can also `brew install petsc`. As a quick start, you can also try the below:
     * Download tarball for Petsc 3.16 here [https://ftp.mcs.anl.gov/pub/petsc/release-snapshots/]
     * `tar -xf petsc-3.16.tar.gz`

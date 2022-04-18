@@ -364,9 +364,9 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   TaoSetVariableBounds(tao, xlower, xupper);
   TaoSetFromOptions(tao);
   /* Set user-defined objective and gradient evaluation routines */
-  TaoSetObjectiveRoutine(tao, TaoEvalObjective, (void *)this);
-  TaoSetGradientRoutine(tao, TaoEvalGradient,(void *)this);
-  TaoSetObjectiveAndGradientRoutine(tao, TaoEvalObjectiveAndGradient, (void*) this);
+  TaoSetObjective(tao, TaoEvalObjective, (void *)this);
+  TaoSetGradient(tao, NULL, TaoEvalGradient,(void *)this);
+  TaoSetObjectiveAndGradient(tao, NULL, TaoEvalObjectiveAndGradient, (void*) this);
 
   /* Allocate auxiliary vector */
   mygrad = new double[ndesign];
@@ -604,7 +604,7 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
 
 
 void OptimProblem::solve(Vec xinit) {
-  TaoSetInitialVector(tao, xinit);
+  TaoSetSolution(tao, xinit);
   TaoSolve(tao);
 }
 
@@ -694,7 +694,7 @@ void OptimProblem::getSolution(Vec* param_ptr){
   
   /* Get ref to optimized parameters */
   Vec params;
-  TaoGetSolutionVector(tao, &params);
+  TaoGetSolution(tao, &params);
   *param_ptr = params;
 }
 
@@ -708,7 +708,7 @@ PetscErrorCode TaoMonitor(Tao tao,void*ptr){
   TaoConvergedReason reason;
   PetscScalar f, gnorm;
   TaoGetSolutionStatus(tao, &iter, &f, &gnorm, NULL, &deltax, &reason);
-  TaoGetSolutionVector(tao, &params);
+  TaoGetSolution(tao, &params);
 
   /* Pass current iteration number to output manager */
   ctx->output->optim_iter = iter;
