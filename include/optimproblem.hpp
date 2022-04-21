@@ -11,6 +11,15 @@
 #endif
 #pragma once
 
+/* if Petsc version < 3.17: Change interface for Tao Optimizer */
+#if PETSC_VERSION_MAJOR<4 && PETSC_VERSION_MINOR<17
+#define TaoSetObjective TaoSetObjectiveRoutine
+#define TaoSetGradient(tao, NULL, TaoEvalGradient,this)  TaoSetGradientRoutine(tao, TaoEvalGradient,this) 
+#define TaoSetObjectiveAndGradient(tao, NULL, TaoEvalObjectiveAndGradient,this) TaoSetObjectiveAndGradientRoutine(tao, TaoEvalObjectiveAndGradient,this)
+#define TaoSetSolution(tao, xinit) TaoSetInitialVector(tao, xinit)
+#define TaoGetSolution(tao, params) TaoGetSolutionVector(tao, params) 
+#endif
+
 class OptimProblem {
 
   /* ODE stuff */

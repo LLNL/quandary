@@ -8,9 +8,11 @@ For questions, feel free to reach out to Stefanie Guenther [guenther5@llnl.gov].
 ## Dependencies
 This project relies on Petsc [https://petsc.org/release/] to handle (parallel) linear algebra. Optionally, XBraid [https://github.com/XBraid/xbraid] can be linked to realize time-parallelization, and Slepsc [https://slepc.upv.es] can be used to solve some eigenvalue problems if desired (e.g. for the Hessian...)
 * **Required:** Install Petsc:
-    You can try the below, but make sure to also check [https://petsc.org/release/] for the newest installation guide. (On MacOS, you can also `brew install petsc`.)
-    * `git clone -b release https://gitlab.com/petsc/petsc.git petsc`
-    * `cd petsc`
+
+    Check out [https://petsc.org/release/] for the latest installation guide. On MacOS, you can also `brew install petsc`. As a quick start, you can also try the below:
+    * Download tarball for Petsc 3.16 here [https://ftp.mcs.anl.gov/pub/petsc/release-snapshots/]
+    * `tar -xf petsc-3.16.tar.gz`
+    * `cd petsc-3.16`
     * Configure Petsc with `./configure`, check [https://petsc.org/release/install/install_tutorial] for optional arguments. Note that Petsc compiles in debug mode by default. To configure petsc with compiler optimization, consider configuration such as
         `./configure --prefix=/YOUR/INSTALL/DIR --with-debugging=0 --with-fc=0 --with-cxx=mpicxx --with-cc=mpicc COPTFLAGS='-O3' CXXOPTFLAGS='-O3'`
     * The output of `./configure` reports on how to set the `PETSC_DIR` and `PETSC_ARCH` variables
