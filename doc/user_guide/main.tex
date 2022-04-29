@@ -169,7 +169,7 @@ The time-dependent rotating-frame control functions $d^k(\vec{\alpha}^k,t)$ are 
 \end{align}
 The amplitudes $\alpha_{s,f}^{k(1)}, \alpha_{s,f}^{k(2)} \in \R$ are the control
 parameters (\textit{design} variables) that Quandary can optimize in order to realize a
-desired system behavior, giving a total number of $2N_s\sum_kN_f^k$ real-valued optimization variables. Further, $\Omega_k^f \in \R$ denote the carrier wave frequencies in the rotating frame which can be choosen to trigger certain system frequencies. The corresponding Lab-frame carrier frequencies become $\omega_k^r + \Omega_k^f$. Those frequencies can be chosen to match the transition frequencies in the lab-frame system Hamiltonian. For example, when $\xi_{kl} << \xi_k$, the transition frequencies satisfy $\omega_k - n\xi_k$. Thus by choosing $\Omega_k^f = \omega_k-\omega_k^r - n \xi_k$, one triggers transition between energy levels $n$ and $n+1$ in subsystem $k$. 
+desired system behavior, giving a total number of $2N_s\sum_kN_f^k$ real-valued optimization variables. Further, $\Omega_k^f \in \R$ denote the carrier wave frequencies in the rotating frame which can be choosen to trigger certain system frequencies. The corresponding Lab-frame carrier frequencies become $\omega_k^r + \Omega_k^f$. Those frequencies can be chosen to match the transition frequencies in the lab-frame system Hamiltonian. For example, when $\xi_{kl} << \xi_k$, the transition frequencies satisfy $\omega_k - n\xi_k$. Thus by choosing $\Omega_k^f = \omega_k-\omega_k^r - n \xi_k$, one triggers transition between energy levels $n$ and $n+1$ in subsystem $k$. Choosing effective carrier wave frequencies is quite important for optimization performance. We recommend to have a look at \cite{petersson2021optimal} for details on how to choose them.
 
 Using trigonometric identities, the real and imaginary part of the rotating-frame control $d^k(\vec{\alpha}^k,t) = p^k(\vec{\alpha}^k,t) + iq^k(\vec{\alpha}^k,t)$ are given by
 \begin{align}
@@ -211,7 +211,8 @@ the real and imaginary components: $\alpha^k_s = \alpha^{k(1)}_{s,1}, \alpha^{k(
     \alpha_{s,f}^{k(i)} = \bfa[ \left(\sum_{j=0}^{k-1} 2N_sN_f^j\right) + s*2N_f^k + f*2 + i ],
   \end{align}
 
-  When executing Quandary, the control parameter $\boldsymbol{\alpha}$ can be either specified (e.g. a constant pulse, a pi-pulse, or pulses whose parameters are read from a given file), or can be optimized for (Section \ref{sec:optim}). 
+  When executing Quandary, the control parameter $\boldsymbol{\alpha}$ can be either specified (e.g. a constant pulse, a pi-pulse, or 
+  pulses whose parameters are read from a given file), or can be optimized for (Section \ref{sec:optim}). 
   
   In order to guarantee that the optimizer yields control pulses that are
   bounded with $|p^k(t)| \leq c^k_{max}$, $|q^k(t)| \leq c^k_{max}$ for given bounds $c^k_{max}$ for each  
@@ -356,7 +357,12 @@ B^{kj} := \frac 12 \left(\bs{e}_k\bs{e}_k^\dagger + \bs{e}_j\bs{e}_j^\dagger\rig
       \end{cases} 
 \end{align}
 for all $k,j\in\{0,\dots, N-1\}$.
-These density matrices represent $N^2$ pure, linear independent states that span the space of all density matrices in this Hilberspace. 
+These density matrices represent $N^2$ pure, linear independent states that span the space of all density matrices in this Hilberspace. For closed systems using the state vector representation (Schroedinger's solver), the basis states are the unit vector in $\C^{N}$, hence $n_{init} = N$ initial states $\boldsymbol{e}_i \in \R^N, i=0,\dots N-1$. 
+
+When composite systems of multiple subsystems are considered, the user can provide a consecutive list of integer ID's to determine in which of the subsystems the basis states should be spanned. Other subsystems will then be initialized in the ground state.
+
+\textit{Note:} The basis states are spanned in the \textit{essential dimensions} of the system, if applicable. 
+
 In order to uniquely identify the different initial conditions in the Quandary code and in the output files, a
 unique index $i \in \{0,\dots, N^2-1\}$ is assigned to each basis state with 
 \begin{align*}
@@ -365,11 +371,17 @@ unique index $i \in \{0,\dots, N^2-1\}$ is assigned to each basis state with
 \end{align*}
 (columnwise vectorization of a matrix of matrices $\left\{B^{kj}\right\}_{kj}$). 
 
-For closed systems using the state vector representation (Schroedinger's solver), the basis states are the unit vector in $\C^{N}$, hence $n_{init} = N$ initial states $\boldsymbol{e}_i \in \R^N, i=0,\dots N-1$. 
+
 
 \subsubsection{Diagonal density matrices (aka all pure states)}
 
 For density matrices (Lindblad solver), one can choose to propagate only those basis states that correspond to pure states of the form $\boldsymbol{e}_k\boldsymbol{e}_k^\dagger$, i.e. propagating only the $B^{kk}$ in \eqref{eq:basismats} for $k=0,\dots, N-1$, and then $n_{init}=N$. For the Schroedinger solver, this is equivalent to all basis states. 
+
+Again, when composite systems of multiple subsystems are considered, the user can provide a consecutive list of integer ID's to determine in which of the subsystems the diagonal states should be spanned. Other subsystems will then be initialized in the ground state.
+
+\textit{Note:} the diagonal states are spanned in the \textit{essential dimensions} of the system, if applicable. 
+
+
 
 \subsubsection{Ensemble state for pure-state optimization}\label{sec:ensemblestate}
 \textit{Only valid for the density matrix version, solving Lindblad's master equation.}
@@ -386,6 +398,8 @@ To be precise: the user specifies a list of consecutive ID's $<k_0>, \dots, <k_m
 \end{align}
 where the first $\bs{e}_0$ (before the kronecker product) is the first unit vector in $\R^{\prod_{k=0}^{k_0-1}}$ (i.e. ground state in all preceding subsystems), and the second $\bs{e}_0$ (behind the kronecker products) is the first unit vector in the dimension of all subsequent systems, $\R^{\prod_{k=k_m+1}^{Q-1}}$. 
 
+Note: The ensemble state will be spanned in the \textit{essential} levels of the (sub)system, if applicable, and will then be lifted up to the full dimesion by inserting zero rows and columns. 
+
 \subsubsection{Three initial states for gate optimization}\label{subsec:threeinitcond}
 \textit{Only valid for the density matrix version, solving Lindblad's master equation.}
 
@@ -397,11 +411,15 @@ When considering gate optimization, it has been shown in \cite{goerz2014optimal}
 \end{align}
 where $I_N\in R^{N\times N}$ is the identity matrix. They are readily implemented in Quandary. Note that it is important to choose the weights $\beta_i, i=1,2,3$ in the objective function appropriately to achieve fast convergence. 
 
+Note: The three initial states are spanned in the \textit{full} dimension of the system, including non-essential levels. The theory for gate optimization with three initial states had been developed for considering \textit{only} essential levels (the gate is defined in the same dimension as the system state evolution), and at this point we are not certain if the theory generalizes to the case when non-essential levels are present. It is advised to optimize on the full basis if non-essential levels are present (or work on the theory, and let us know what you find.). The same holds for $N+1$ initial states below. 
+
 \subsubsection{$N+1$ initial states for gate optimization}
 \textit{Only valid for the density matrix version, solving Lindblad's master equation.}
 
 
 The three initial states from above do not suffice to estimate the fidelity of the realized gate (compare \cite{goerz2014optimal}). Instead, it is suggested in that same paper to choose $N+1$ initial states to compute the fidelity. Those $N+1$ initial states consist of the $N$ diagonal states $B^{kk}$ in the Hilbertspace of dimension $N$, as well as the totally rotated state $\rho(0)_2$ from above. Quandary offers the choice to simulate (or optimize) using those initial states, then $n_{init} = N+1$.
+
+Note: The $N+1$ initial states are spanned in the \textit{full} dimension of the system, including non-essential levels, see above for 3-state initialization. 
 
 \subsubsection{Reading an initial state from file}
 A specific initial state can also be read from file ($\Rightarrow n_{init}=1$). Format: one column being the vectorized density matrix (vectorization is columnwise), or the state vector, first all real parts, then all imaginary parts (i.e. number of lines is $2N^2$ or $2N$, with one real-valued number per line). 
@@ -412,7 +430,7 @@ This option is useful for example if one wants to propagate a specific \textit{n
 
 \subsection{Integral penalty term and leakage}\label{sec:penalty}
 In order to achieve a desired behavior at earlier times other than the final time $T$, an integral penalty term can be added to the objective with parameter $\gamma_1 \geq 0$ :
-\begin{align}\label{eq:penaltyterm}
+\begin{align}\label{eq:penaltyterm0}
  \gamma_1 \int_0^T P(\rho(t)) \mathrm{d}t
 \end{align}
 In the standard setting, the following penalty term is currently implemented (can be extended in the \texttt{TimeStepper} class.):
@@ -578,7 +596,7 @@ The real and imaginary parts of $q(t)$ are stored in a colocated manner: For
     Quandary utilized Petsc's \texttt{Tao} optimization package to apply gradient-based iterative updates to the control variables. The \texttt{Tao} optimization interface takes routines to evaluate the objective function as well as the gradient computation. In the current setting in Quandary, \texttt{Tao} applies a nonlinear Quasi-Newton optimization scheme using a preconditioned gradient based on L-BFGS updates to approximate the Hessian of the objective function. A projected line-search is applied to ensure that the objective function yields sufficient decrease per optimization iteration while keeping the control parameters within the prescribed box-constraints. 
 
 
-    \subsection{Parallelization}
+    \section{Parallelization}
     Quandary offers three levels of parallelization using MPI. 
     \begin{enumerate}
     \item Parallelization over initial conditions: The $n_{init}$ initial conditions $\rho_i(0)$ can be distributed over \texttt{np\_init} compute units. Since initial condition are propagated through the time-domain for solving Lindblad's or Schroedinger's equation independently from each other, speedup from distributed initial conditions is ideal. 
@@ -614,8 +632,40 @@ The real and imaginary parts of $q(t)$ are stored in a colocated manner: For
       colocated storage of the real and imaginary parts of the vectorized
       state.
     \end{itemize}
+ 
+\section{Output and plotting the results}
+Quandary generates various output files for system evolution of the current (optimized) controls as well as the optimization progress. All data files will be dumped into a user-specified folder through the config option \texttt{datadir}. 
 
-\subsection{Testing}
+\subsection{Output options with regard to state evolution}
+For each subsystem $k$, the user can specify the desired state evolution output through the config option \texttt{output<k>}:
+\begin{itemize}
+  \item \texttt{expectedEnergy}: This option prints the time evolution of the expected energy level of subsystem $k$ into files with naming convention \texttt{expected<k>.iinit<m>.dat}, where $m=1,\dots,n_{init}$ denotes the unique identifier for each initial condition $\rho_m(0)$ that was propagated through (see Section \ref{subsec:initcond}). This file contains two columns, the first row being the time values, the second one being the expectation value of the energy level of subsystem $k$ at that time point, computed from 
+  \begin{align}
+    \langle N^{(n_k)}\rangle = \mbox{Tr}\left(N^{(n_k)} \rho^k(t)\right)
+  \end{align}
+  where $N^{(n_k)} = \left(a^{(n_k)}\right)^\dagger \left(a^{(n_k)}\right)$ denotes the number operator in subsystem $k$ and $\rho^k$ denotes the reduced density matrix for subsystem $k$, each with dimension $n_k\times n_k$. Note that this equivalent to $\mbox{Tr}\left(N_k \rho(t)\right)$ with $N_k = I_{n_1} \otimes \dots \otimes I_{n_{k-1}} \otimes N^{(n_k)} \otimes I_{n_{k+1}}\otimes \dots \otimes I_Q$ and the full state $\rho(t)$ in the full dimensions $N\times N$.
+  \item \texttt{population}: This option prints the time evolution of the population of subsystem $k$ into files named \texttt{population<k>.iinit<m>.dat} for each initial condition $m=1,\dots, n_{init}$. The files contain $n_k+1$ columns, the first one being the time values, the remaining $n_k$ columns correspond to the population of each level $l=0,\dots,n_k-1$ of the reduced density matrix $\rho^k(t)$ at that time point. For Lindblad's solver, these are the diagonal elements of the reduced density matrix ($\rho_{ll}^k(t), l=0,\dots n_k-1$), for Schroedinger's solver it's the absolute values of the reduced state vector elements $|\psi^k_l(t)|^2, l=0,\dots n_k-1$. Note that the reduction to the subsystem $k$ induces a sum over all oscillators to collect contributions to the reduced state. 
+  \item \texttt{fullstate}: Probably only relevant for debugging or very small systems, one can print out the full state $\rho(t)$ or $\psi(t)$ for each time point into the files \texttt{rho\_Re.iinit<m>.dat} and \texttt{rho\_Im.iinit<m>.dat}, for the real and imaginary parts of the state, respectively. These files contain $N^2 +1$ (Lindblad) or $N+1$ (Schroedinger) columns the first one being the time point value and the remaining ones contain the vectorized density matrix (Lindblad, $N^2$ elements) or the state vector (Schroedinger, $N$ elements) for each time step. Note that these file become very big very quickly -- use with care!
+\end{itemize}
+
+The user can change the frequency of output in time (printing only every $j$-th time point) through the option \texttt{output\_frequency}. This is particularly important when doing performance tests, as computing the reduced states for output requires extra computation and communication that might skew performance tests. 
+
+\subsection{Output with regard to simulation and optimzation}
+\begin{itemize}
+  \item \texttt{config\_log.dat} contains all configuration options that had been used for the current run. 
+  \item \texttt{params.dat} contains the control parameters $\bfa$ that had been used to determine the current control pulses. This file contains one column containing all parameters, ordered as stored, see Section \ref{subsec:controlpulses}.
+  \item \texttt{control<k>.dat} contain the resulting control pulses applied to subsystem $k$ over time. It contains four columns, the first one being the time, second and third being $p^k(t)$ and $q^k(t)$ (rotating frame controls), and the last one is the corresponding lab-frame pulse $f^k(t)$.
+  \item \texttt{optim\_history.dat} contains information about the optimization progress in terms of the overall objective function and contribution from each term (cost at final time $T$ and contribution from the tikhonov regularization and the penalty term), as well the norm of the gradient and the fidelity, for each iteration of the optimization. If only a forward simulation is performed, this file still prints out the objective function and fidelity for the forward simulation. 
+\end{itemize}
+Quandary always prints the current paramters and control pulses at the beginning of a simulation or optimization, and in addition at every $l$-th optimization iteration determined from the \texttt{optim\_monitor\_frequency} configuration option. 
+
+\subsection{Plotting}
+The format of all output files are very well suited for plotting with \href{http://www.gnuplot.info}{Gnuplot}, which is a command-line based plotting program that can output directly to screen, or into many other formats such as png, eps, or even tex. As an example, from within a Gnuplot session, you can plot e.g. the expected energy level of subsystem $k=0$ for initial condition $m=0$ by the simple command\newline
+\texttt{gnuplot> plot 'expected0.iinit0000.dat' using 1:2 with lines title 'expected energy subsystem 0'} 
+\\
+which plots the first against the second column of the file 'expected0.iinit0000.dat' to screen, connecting each point with a line. Additional lines (and files) can be added to the same plot by extending the above command with another file separated by comma (only omit the 'plot' keyword for the second command). There are many example scripts for plotting with gnuplot online, and as a starting point I recommend looking into some scripts in the 'quandary/util/' folder.
+
+\section{Testing}
   \begin{itemize}
     \item Quandary has a set of regression tests. Please take a look at the REGRESSIONTEST.md document in the \verb+quandary/tests+ directory for instruction on how to run the regression tests. 
     \item In order to check if the gradient implementation is correct, one can choose to run a Central Finite Difference test. Let the overall objective function be denoted by $F(\boldsymbol{\alpha})$. The Central Finite Difference test compares each element of the gradient $\nabla F(\boldsymbol{\alpha})$ with the following (second-order accurate) estimate:

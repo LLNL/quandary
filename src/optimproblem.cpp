@@ -291,25 +291,28 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
       }
     }
 
-    // get dimension of subsystems *before* the first oscillator, and *behind* the last oscillator
-    int dimpre  = timestepper->mastereq->getOscillator(initcond_IDs[0])->dim_preOsc;
-    int dimpost = timestepper->mastereq->getOscillator(initcond_IDs[initcond_IDs.size()-1])->dim_postOsc;
-
-    // get dimension of subsystems defined by initcond_IDs
+    // get dimension of subsystems defined by initcond_IDs, as well as the one before and after. Span in essential levels only.
+    int dimpre = 1;
+    int dimpost = 1;
     int dimsub = 1;
-    for (int i=0; i<initcond_IDs.size(); i++){
-      dimsub *= timestepper->mastereq->getOscillator(initcond_IDs[i])->getNLevels();  
+    for (int i=0; i<timestepper->mastereq->getNOscillators(); i++){
+      if (i < initcond_IDs[0]) dimpre *= timestepper->mastereq->nessential[i];
+      else if (initcond_IDs[0] <= i && i <= initcond_IDs[initcond_IDs.size()-1]) dimsub *= timestepper->mastereq->nessential[i];
+      else dimpost *= timestepper->mastereq->nessential[i];
     }
-    // printf("dimpre %d sub %d post %d \n", dimpre, dimsub, dimpost);
     int dimrho = timestepper->mastereq->getDimRho();
-    assert(dimsub == (int) ( dimrho / dimpre / dimpost) );
+    int dimrhoess = timestepper->mastereq->getDimEss();
 
+    // Loop over ensemble state elements in essential level dimensions of the subsystem defined by the initcond_ids:
     for (int i=0; i < dimsub; i++){
       for (int j=i; j < dimsub; j++){
-        int ifull = i * dimpost;
+        int ifull = i * dimpost; // account for the system behind
         int jfull = j * dimpost;
+        if (dimrhoess < dimrho) ifull = mapEssToFull(ifull, timestepper->mastereq->nlevels, timestepper->mastereq->nessential);
+        if (dimrhoess < dimrho) jfull = mapEssToFull(jfull, timestepper->mastereq->nlevels, timestepper->mastereq->nessential);
         // printf(" i=%d j=%d ifull %d, jfull %d\n", i, j, ifull, jfull);
-        if (i == j) { // diagonal element: 1/N_sub
+        if (i == j) { 
+          // diagonal element: 1/N_sub
           int elemid_re = getIndexReal(getVecID(ifull, jfull, dimrho));
           if (ilow <= elemid_re && elemid_re < iupp) VecSetValue(rho_t0, elemid_re, 1./dimsub, INSERT_VALUES);
         } else {
@@ -376,9 +379,9 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   TaoSetVariableBounds(tao, xlower, xupper);
   TaoSetFromOptions(tao);
   /* Set user-defined objective and gradient evaluation routines */
-  TaoSetObjectiveRoutine(tao, TaoEvalObjective, (void *)this);
-  TaoSetGradientRoutine(tao, TaoEvalGradient,(void *)this);
-  TaoSetObjectiveAndGradientRoutine(tao, TaoEvalObjectiveAndGradient, (void*) this);
+  TaoSetObjective(tao, TaoEvalObjective, (void *)this);
+  TaoSetGradient(tao, NULL, TaoEvalGradient,(void *)this);
+  TaoSetObjectiveAndGradient(tao, NULL, TaoEvalObjectiveAndGradient, (void*) this);
 
   /* Allocate auxiliary vector */
   mygrad = new double[ndesign];
@@ -708,7 +711,7 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
 
 
 void OptimProblem::solve(Vec xinit) {
-  TaoSetInitialVector(tao, xinit);
+  TaoSetSolution(tao, xinit);
   TaoSolve(tao);
 }
 
@@ -798,7 +801,7 @@ void OptimProblem::getSolution(Vec* param_ptr){
   
   /* Get ref to optimized parameters */
   Vec params;
-  TaoGetSolutionVector(tao, &params);
+  TaoGetSolution(tao, &params);
   *param_ptr = params;
 }
 
@@ -812,7 +815,7 @@ PetscErrorCode TaoMonitor(Tao tao,void*ptr){
   TaoConvergedReason reason;
   PetscScalar f, gnorm;
   TaoGetSolutionStatus(tao, &iter, &f, &gnorm, NULL, &deltax, &reason);
-  TaoGetSolutionVector(tao, &params);
+  TaoGetSolution(tao, &params);
 
   /* Pass current iteration number to output manager */
   ctx->output->optim_iter = iter;
