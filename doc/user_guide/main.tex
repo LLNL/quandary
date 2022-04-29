@@ -323,42 +323,46 @@ Similar to using the default Hamiltonian model, when using user-defined Hamilton
 \section{The Optimal Control Problem} \label{sec:optim}
 In the most general form, Quandary can solve the following optimization problem
 \begin{align}\label{eq:minproblem}
-  \min_{\boldsymbol{\alpha}} \frac{1}{n_{init}} \sum_{i=1}^{n_{init}} \beta_i J(\rho^{target}_i, \rho_i(T)) + \gamma_1 \int_0^T P\left(\rho_i(t)\right) \, \mathrm{d} t + \gamma_2 \| \bfa \|^2_2
+  % \min_{\boldsymbol{\alpha}} \frac{1}{n_{init}} \sum_{i=1}^{n_{init}} \beta_i J(\rho^{target}_i, \rho_i(T)) + \gamma_1 \int_0^T P\left(\rho_i(t)\right) \, \mathrm{d} t + \gamma_2 \| \bfa \|^2_2
+  \min_{\boldsymbol{\alpha}} J(\{\rho^{target}_i, \rho_i(T) \}) + \gamma_1 \int_0^T P\left(\{\rho_i(t)\}\right) \, \mathrm{d} t + \gamma_2 \| \bfa \|^2_2
 \end{align}
-where $\rho_i(T)$ denotes the quantum state evaluated at a final time $T>0$, which solves either Lindblad's master equation \eqref{mastereq} 
-or Schroedinger's equation \eqref{eq:schroedinger} in the rotating frame for an initial condition $\rho_i(0)$, as specified below. (Note again 
-that in the Schroedinger case $\rho$ denotes the state vector rather than a density matrix, compare Section \ref{sec:model}).
+where $\rho_i(T)$ denotes one or multiple quantum states evaluated at a final time $T>0$, which solve either Lindblad's master equation \eqref{mastereq} or Schroedinger's equation \eqref{eq:schroedinger} in the rotating frame for initial conditions $\rho_i(0)$, as specified in Section \ref{subsec:initcond}, $i=1,\dots, n_{init}$. The first term in \eqref{eq:minproblem} minimizes an objective function $J$ (see Section \ref{sec:objectivefunctionals}) that quantifies the discrepancy between the realized states $\rho_i(T)$ at final time $T$ driven by the current control $\boldsymbol{\alpha}$ and the desired target $\rho^{target}_i$, see Section \ref{sec:targets}. 
+The second term serves as a penalty that can be added with $\gamma_1 \geq 0$ in oder to achieve a desired behavior of the quantum system over the entire time-domain $0\leq t\leq T$, see Section \ref{sec:penalty}. 
+The third term is a Tikhonov regularization that can be added with parameter $\gamma_2\geq 0$ in order to regularize the optimization problem (stabilize optimization convergence) by favoring solutions with small norm. 
 
-The first term in \eqref{eq:minproblem} minimizes (a weighted average of) an objective function $J$ that quantifies the discrepancy between a 
-desired target state $\rho^{target}_i$ and the realized state $\rho_i(T)$ at final time $T$ driven by the current control $\boldsymbol{\alpha}$. 
-The second term serves as a penalty that can be added with $\gamma_1 \geq 0$ in oder to achieve a desired behavior of the quantum system over 
-the entire time-domain $0\leq t\leq T$, see below. 
-The third term is a Tikhonov regularization that can be added with parameter $\gamma_2\geq 0$ in order to regularize the optimization problem 
-(stabilize optimization convergence) by favoring solutions with small norm. 
+\subsection{Fidelity}\label{sec:fidelity}
+
+As a measure of optimization success, Quandary reports on the fidelity computed from 
+\begin{align}\label{eq:fidelity}
+  F = \begin{cases}
+    \frac{1}{n_{init}} \sum_{i=1}^{n_{init}} \mbox{Tr}\left(\left(\rho^{target}_i\right)^\dagger\rho_i(T) \right) & \text{if Lindblad} \\
+    \left|\frac{1}{n_{init}} \sum_{i=1}^{n_{init}} (\psi^{target}_i)^\dagger \psi_i(T) \right|^2 & \text{if Schroedinger}
+  \end{cases}
+\end{align}
+The fidelity is an average of Hilbert-Schmidt overlaps of the target states and the evolved states: for the density matrix, the Hilbert-Schmidt overlap is $\langle \rho^{target}, \rho(t)\rangle = \mbox{Tr}\left(\left(\rho^{target}\right)^\dagger\rho(T)\right)$, which is \textit{real} if both states are density matrices (which is always the case in Quandary, see definition of basis matrices). For the state vector (and Schroedingers solver), the Hilbert-Schmidt overlap is $\langle \psi^{target}, \psi(T)\rangle = (\psi^{target})^{\dagger}\psi $, which is complex. Note that in the fidelity above (and also in the corresponding objective function $J_{trace}$, the absolute value is taken \textit{outside} of the sum, hence relative phases are taken into account. 
+
+Further note that this fidelity is averaged over the chosen initial conditions, so the user should be careful how to interpret this number. E.g. if one optimizes for a logical gate while choosing the three initial condition as in Section \ref{subsec:threeinitcond}, the fidelity that is reported during optimization will be averaged over those three initial states, which is not sufficient to estimate the actual average fidelity over the entire space of potential intial states. It is advised to recompute the average fidelity \textbf{after} optimization has finished by propagating all basis states $B_{kj}$ to final time $T$ using the optimized control parameter, or by propagating only $N+1$ initial states to get an estimate thereof.
 
 
-\subsection{Objective function}
-The following choices for $J$ are implemented
+\subsection{Objective function}\label{sec:objectivefunctionals}
+The following objective functions can be used for optimization in Quandary (config option \texttt{optim\_objective}):
 \begin{align}
- J_{frobenius} &= \frac 12 \| \rho^{target} - \rho(T)||^2_F \\ 
- J_{trace} &= 1 - \frac 1w \mbox{Tr}\left((\rho^{target})^\dagger\rho(T)\right), \quad \text{where} \quad w=\mbox{Tr}(\rho(0)^2)\\
- J_{measure} &= \mbox{Tr} \left( N_m \rho(T) \right), \label{eq:Jmeasure}
+ J_{frobenius} &= \sum_{i=1}^{n_{init}} \frac{\beta_i}{2} \left\| \rho^{target}_i - \rho_i(T)\right\|^2_F \\ 
+ J_{trace} &= 
+\begin{cases} 
+ 1 - \sum_{i=1}^{n_{init}} \frac{\beta_i}{w_i} \mbox{Tr}\left((\rho^{target}_i)^\dagger\rho_i(T)\right) & \text{if Lindblad}\\
+ 1 - \left|\sum_{i=1}^{n_{init}} \beta_i (\psi^{target}_i)^\dagger\psi_i(T)\right|^2 & \text{if Schroedinger}
+\end{cases}\\
+ J_{measure} &= \sum_{i=1}^{n_{init}} \beta_i \mbox{Tr} \left( N_m \rho(T) \right) \label{eq:Jmeasure} 
 \end{align}
-where $N_m\in \R^{N\times N}$ is a diagonal matrix with diagonal elements $\lambda_k = |k-m|\, \forall k=0,\dots, N-1$ for a given integer $m$ with $0\leq m < N$. The first two measures are mostly common for gate optimization, $J_{measure}$ is useful when considering pure-state optimization, see below. 
-In Quandary, the objective function can be specified with the configuration option \texttt{optim\_objective}.
+Here, $\beta_i$ denote weights with $\sum_{i=1}^{n_{init}} \beta _i = 1$ that can be used to scale the contribution of each initial/target state $i$ (default $\beta_i = 1/n_{init}$). 
+$J_{Frobenius}$ measures (weighted average of) the frobenius norm between target and final states. $J_{Trace}$ measures the (weighted) infidelity in terms of the Hilbert-Schmidt overlap, compare the definition of fidelity in eq. \eqref{eq:fidelity}. Here, $w_i = \mbox{Tr}\left(\rho_i(0)^2\right)$ is the purity of the initial state. Both those measures are common for optimization towards a unitary gate transformation, for example. $J_{measure}$ is (only) useful when considering pure-state optimization, see Section \ref{sec:statepreparation}. Here, $m\in\N$ is a given integer, and $N_m$ is a diagonal matrix with diagonal elements being $|k-m|, k=0,\dots N-1$ 
 
-Note that the above measures apply to either the density matrix version solving Lindblad's equation (compare Section \ref{sec:model}), or the state vector version solving Schroedinger's equation. In the latter case, naturally with $\rho = \psi\psi^\dagger$, the objective measures applied to state vectors are
-\begin{align}
-  J_{frobenius} &= \frac 12 \| \psi^{target} - \psi(T)\|_2^2\\
-  J_{trace} &= 1 - |(\psi^{target})^\dagger\psi(T)|^2 \\
-  J_{measure} &= \psi(T)^\dagger N_m \psi(T).
-\end{align}
+The distinction for Lindblad vs. Schroedingers solver is made explicit for $J_{trace}$ above. The other two measures apply naturally to either the density matrix version solving Lindblad's equation, or the state vector version solving Schroedinger's equation with $ \|\rho^{target} - \rho(T)\| = \|\psi^{target} - \psi(T)\|$ and $\mbox{Tr}\left(N_m\rho(T)\right) = \psi(T)^\dagger N_m \psi(T)$. 
 
 
 
-
-
-\subsection{Optimization targets}
+\subsection{Optimization targets} \label{sec:targets}
 Here we describe the target states $\rho^{target}$ that are realized in Quandary. Two cases are considered: State preparation, where the target state is the same for all initial conditions, and gate optimization, where the target state is a unitary transformation of the initial condition. The type of the optimization target can be specified in the configuration option \texttt{optim\_target}. 
 
 
@@ -413,7 +417,7 @@ Target gates that are currently implemented are
 Further, a generalization of the SWAP and the CNOT gate for general $Q$ subsystems is available: The SWAP-0Q gate swaps the state of the first and the last qubit, while leaving all other oscillators in their respective initial state, and the CQNOT gate performs a NOT operation on the last qubit if all other qubits are in the one-state.
 New, user-defined gates can be easily added to the code by extending the \texttt{Gate} class in the corresponding \texttt{.cpp} and \texttt{.hpp} files. 
 
-For gate optimization, the first two objective function $J_{frobenius}$ and $J_{trace}$ are appropriate. Since \textit{any} initial quantum state should be transformed by the control pulses, typically a basis for the initial states should be considered ($n_{init} = N$ for Schroedinger solver, and $n_{init}=N^2$ for Lindblad solver). In the Lindblad solver case, it has however been shown in \cite{goerz2014optimal} that it is enough to optimize with only three specific initial states ($n_{init} = 3$), independent of the Hilbert space dimension $N$. Those three states are set up in such a way that they can distinguish between any two unitaries in that Hilbert space. The three initial states are readily available in Quandary, see Section \ref{subsec:initcond}. Note that when optimizing with only those three initial states, it turns out that the choice of the weights $\beta_i$ that weight the contribution from each initial state in the overall objective function strongly influences the optimization convergence. For faster convergence, it is often benefitial to emphasize on the first of the three initial conditions ($\rho_1(0)$ in Section \ref{subsec:threeinitcond}), hence choosing $\beta_1$ (much) bigger than $\beta_2$ and $\beta_3$ (e.g. $\beta = \{20,1,1\}$ often works better than $\beta = \{1,1,1\}$, try it yourself). We refer to \cite{goerz2014optimal} for details. 
+For gate optimization, the first two objective function $J_{frobenius}$ and $J_{trace}$ are appropriate. Since \textit{any} initial quantum state should be transformed by the control pulses, typically a basis for the initial states should be considered ($n_{init} = N$ for Schroedinger solver, and $n_{init}=N^2$ for Lindblad solver). In the Lindblad solver case, it has however been shown in \cite{goerz2014optimal} that it is enough to optimize with only three specific initial states ($n_{init} = 3$), independent of the Hilbert space dimension $N$. Those three states are set up in such a way that they can distinguish between any two unitaries in that Hilbert space. The three initial states are readily available in Quandary, see Section \ref{subsec:initcond}. Note that when optimizing with only those three initial states, it turns out that the choice of the weights $\beta_i$ that weight the contribution from each initial state in the overall objective function strongly influences the optimization convergence. For faster convergence, it is often benefitial to emphasize on the first of the three initial conditions ($\rho_1(0)$ in Section \ref{subsec:threeinitcond}), hence choosing $\beta_1$ (much) bigger than $\beta_2$ and $\beta_3$ (e.g. $\beta = \{20,1,1\}$ often works better than $\beta = \{1,1,1\}$, try it yourself). We refer to \cite{goerz2014optimal} for details. Note that the weights will be scaled internally such that $\sum_i \beta_i = 1$.
 
 \subsubsection{Essential and non-essential levels} \label{sec:essentiallevels}
 It is often useful, to model the quantum system with more energy levels than the number of levels that the target gate is defined on. For example when optimizing for a SWAP gate on two qubits, with $V_{SWAP}\in\C^{4\times 4}$, one might want to model each qubit with more than two energy levels in order to (a) model the (infinite dimensional) system with more accuracy by including more levels and (b) allow the system to transition through higher energy levels in order to achieve the target at final time $T$. In that case, the \textit{essential} levels denote the levels that the target gate is defined on.
@@ -424,8 +428,9 @@ To compute the objective function at final time T, the essential-dimensional gat
 % When only the three states as initial conditions are considered (see below), those three initial states will be spanned in the full dimensional system. On the other hand, when the basis of initial states is considered, or their diagonals only, those initial states will be spanned only in the essential level dimensions and zero rows and columns will be inserted for all non-essential levels. Hence, the gate will be realized for any initial state that is spanned in the essential level dimensions, and occupations of non-essential levels at $T=0$ are avoided. 
  
 
+
 \subsection{Initial conditions}\label{subsec:initcond}
-Quandary offers various choices to set the initial conditions for simulation and optimization in order to accomodate for different simulation and optimization needs. Below is a list of available options for the initial states (configuration option \texttt{initialcondition}). 
+The initial states $\rho_i(0)$ which are accounted for during optimization in eq. \eqref{eq:minproblem} can be specified with the configuration option \texttt{initialcondition}. Below are the available choices. 
 
 \subsubsection{Pure-state initialization}
 One can choose to simulate and optimize for only one specific pure initial state (then $n_{init} = 1$). The initial density matrix is then composed of Kronecker products of pure states for each of the subsystems. E.g. for a bipartite system with $n_1
@@ -508,7 +513,7 @@ Note: The three initial states are spanned in the \textit{full} dimension of the
 \textit{Only valid for the density matrix version, solving Lindblad's master equation.}
 
 
-The three initial states from above do not suffice to estimate an average fidelity of the realized gate (compare \cite{goerz2014optimal}). Instead, it is suggested in that same paper to choose $N+1$ initial states to compute an average fidelity. Those $N+1$ initial states consist of the $N$ diagonal states $B^{kk}$ in the Hilbertspace of dimension $N$, as well as the totally rotated state $\rho(0)_2$ from above. Quandary offers the choice to simulate (or optimize) using those initial states, then $n_{init} = N+1$.
+The three initial states from above do not suffice to estimate the fidelity of the realized gate (compare \cite{goerz2014optimal}). Instead, it is suggested in that same paper to choose $N+1$ initial states to compute the fidelity. Those $N+1$ initial states consist of the $N$ diagonal states $B^{kk}$ in the Hilbertspace of dimension $N$, as well as the totally rotated state $\rho(0)_2$ from above. Quandary offers the choice to simulate (or optimize) using those initial states, then $n_{init} = N+1$.
 
 Note: The $N+1$ initial states are spanned in the \textit{full} dimension of the system, including non-essential levels, see above for 3-state initialization. 
 
@@ -518,7 +523,8 @@ A specific initial state can also be read from file ($\Rightarrow n_{init}=1$). 
 This option is useful for example if one wants to propagate a specific \textit{non-pure} initial state. In that case, one first has to generate a datafile storing that state (e.g. by simulating a system and storing the output), which can then be read in as initial condition. 
 
 
-\subsection{Integral penalty term and leakage}
+
+\subsection{Integral penalty term and leakage}\label{sec:penalty}
 In order to achieve a desired behavior at earlier times other than the final time $T$, an integral penalty term can be added to the objective with parameter $\gamma_1 \geq 0$ :
 \begin{align}\label{eq:penaltyterm0}
  \gamma_1 \int_0^T P(\rho(t)) \mathrm{d}t
@@ -544,16 +550,6 @@ Note that if you want to include this leakage-preventing term, but do \textit{no
 
 
 
-\subsection{Fidelity}
-As a measure of optimization success, Quandary reports on the fidelity computed from 
-\begin{align}
-  F = \frac{1}{n_{init}} \sum_{i=1}^{n_{init}} \mbox{Tr}\left(\left(\rho^{target}_i\right)^\dagger\rho_i(T) \right). 
-\end{align}
-Note that in the Schroedinger case, where the state is a vector rather than a matrix, we naturally get $F = 1/ n_{init} \sum_i \left|\left(\psi_i^{target}\right)^\dagger \psi_i(t)\right|^2$. 
-
-Further note that this fidelity is averaged over the chosen initial conditions, so the user should be careful how to interpret this number. E.g. if one optimizes for a logical gate while choosing the three initial condition as in Section \ref{subsec:threeinitcond}, the fidelity that is reported during optimization will be averaged over those three initial states, which is not sufficient to estimate the actual average fidelity over the entire space of potential intial states. It is advised to recompute the average fidelity \textbf{after} optimization has finished, e.g. by propagating all basis states $B_{kj}$ to final time $T$ using the optimized control parameter, or by propagating only $N+1$ initial states to get an estimate thereof.
-
-% Note that for pure-state preparation, we have $\rho^{target} = \boldsymbol{e}_m \boldsymbol{e}_m^\dagger$ and therefor the fidelity can be computed from $F = \frac{1}{n_{init}} \sum_i \left[\rho_i(T)\right]_{mm}$, for the $m$-th diagonal element of the final states $\rho_i(T)$. 
 
 \section{Implementation}
 
@@ -689,7 +685,7 @@ The real and imaginary parts of $q(t)$ are stored in a colocated manner: For
       \left(q^n + \frac{\delta t}{2} k_1\right) \right)^T\bar k_1
     \end{align}
   
-    Each evaluation of the gradient $\nabla J$ involes a forward solve of $n_{init}$ initial quantum states to evaluate the objective function at final time $T$, as well as $n_{init}$ backward solves to compute the adjoint states and the contributions to the gradient. Note that the gradient computation \eqref{eq:gradient} requires the states and adjoint states at each time step, therefore the states $q^n$ are stored during forward propagation. 
+    Each evaluation of the gradient $\nabla J$ involes a forward solve of $n_{init}$ initial quantum states to evaluate the objective function at final time $T$, as well as $n_{init}$ backward solves to compute the adjoint states and the contributions to the gradient. Note that the gradient computation \eqref{eq:gradient} requires the states and adjoint states at each time step. For the Schroedinger solver, the primal states are recomputed by integrating Schroedinger's equation backwards in time, alongside the adjoint computation. For the Lindblad solver, the states $q^n$ are stored during forward propagation, and taken from storage during adjoint backpropagation (since we can't recompute it in case of Lindblad solver, due to dissipation). 
 
 
   \subsection{Optimization algorithm}

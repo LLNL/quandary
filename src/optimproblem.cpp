@@ -31,6 +31,17 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   /* Store number of initial conditions per init-processor group */
   ninit_local = ninit / mpisize_init; 
 
+  /*  If Schroedingers solver, allocate storage for the final states at time T for each initial condition. Schroedinger's solver does not store the time-trajectories during forward ODE solve, but instead recomputes the primal states during the adjoint solve. Therefore we need to store the terminal condition for the backwards primal solve. Be aware that the final states stored here will be overwritten during backwards computation!! */
+  if (timestepper->mastereq->lindbladtype == LindbladType::NONE) {
+    for (int i = 0; i < ninit_local; i++) {
+      Vec state;
+      VecCreate(PETSC_COMM_WORLD, &state);
+      VecSetSizes(state, PETSC_DECIDE, 2*timestepper->mastereq->getDim());
+      VecSetFromOptions(state);
+      store_finalstates.push_back(state);
+    }
+  }
+
   /* Store number of design parameters */
   int n = 0;
   for (int ioscil = 0; ioscil < timestepper->mastereq->getNOscillators(); ioscil++) {
@@ -144,10 +155,14 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
       obj_weights.push_back(val);
   }
   assert(obj_weights.size() >= ninit);
+  // Scale the weights such that they sum up to one: beta_i <- beta_i / (\sum_i beta_i)
+  double scaleweights = 0.0;
+  for (int i=0; i<ninit; i++) scaleweights += obj_weights[i];
+  for (int i=0; i<ninit; i++) obj_weights[i] = obj_weights[i] / scaleweights;
+  // Distribute over mpi_init processes 
   double sendbuf[obj_weights.size()];
   double recvbuf[obj_weights.size()];
   for (int i = 0; i < obj_weights.size(); i++) sendbuf[i] = obj_weights[i];
-  // Distribute over mpi_init processes 
   int nscatter = ninit_local;
   MPI_Scatter(sendbuf, nscatter, MPI_DOUBLE, recvbuf, nscatter,  MPI_DOUBLE, 0, comm_init);
   for (int i = 0; i < nscatter; i++) obj_weights[i] = recvbuf[i];
@@ -384,6 +399,10 @@ OptimProblem::~OptimProblem() {
   VecDestroy(&xlower);
   VecDestroy(&xupper);
 
+  for (int i = 0; i < store_finalstates.size(); i++) {
+    VecDestroy(&(store_finalstates[i]));
+  }
+
   TaoDestroy(&tao);
 }
 
@@ -391,7 +410,6 @@ OptimProblem::~OptimProblem() {
 
 double OptimProblem::evalF(const Vec x) {
 
-  // OptimProblem* ctx = (OptimProblem*) ptr;
   MasterEq* mastereq = timestepper->mastereq;
 
   if (mpirank_world == 0) printf("EVAL F... \n");
@@ -405,7 +423,10 @@ double OptimProblem::evalF(const Vec x) {
   obj_regul = 0.0;
   obj_penal = 0.0;
   fidelity = 0.0;
-  double obj_cost_max = 0.0;
+  double obj_cost_re = 0.0;
+  double obj_cost_im = 0.0;
+  double fidelity_re = 0.0;
+  double fidelity_im = 0.0;
   for (int iinit = 0; iinit < ninit_local; iinit++) {
       
     /* Prepare the initial condition in [rank * ninit_local, ... , (rank+1) * ninit_local - 1] */
@@ -426,19 +447,46 @@ double OptimProblem::evalF(const Vec x) {
 #endif
 
     /* Add to integral penalty term */
-    obj_penal += gamma_penalty * timestepper->penalty_integral;
+    obj_penal += obj_weights[iinit] * gamma_penalty * timestepper->penalty_integral;
 
     /* Evaluate J(finalstate) and add to final-time cost */
-    double obj_iinit = optim_target->evalJ(finalstate);
-    obj_cost +=  obj_weights[iinit] * obj_iinit;
-    obj_cost_max = std::max(obj_cost_max, obj_iinit);
+    double obj_iinit_re = 0.0;
+    double obj_iinit_im = 0.0;
+    optim_target->evalJ(finalstate,  &obj_iinit_re, &obj_iinit_im);
+    obj_cost_re += obj_weights[iinit] * obj_iinit_re;
+    obj_cost_im += obj_weights[iinit] * obj_iinit_im;
 
     /* Add to final-time fidelity */
-    double fidelity_iinit = optim_target->evalFidelity(finalstate);
-    fidelity += fidelity_iinit;
+    double fidelity_iinit_re = 0.0;
+    double fidelity_iinit_im = 0.0;
+    optim_target->HilbertSchmidtOverlap(finalstate, false, &fidelity_iinit_re, &fidelity_iinit_im);
+    fidelity_re += 1./ ninit * fidelity_iinit_re;
+    fidelity_im += 1./ ninit * fidelity_iinit_im;
 
-    // printf("%d, %d: iinit objective: %f * %1.14e, Fid=%1.14e\n", mpirank_world, mpirank_init, obj_weights[iinit], obj_iinit, fidelity_iinit);
+    // printf("%d, %d: iinit obj_iinit: %f * (%1.14e + i %1.14e, Overlap=%1.14e + i %1.14e\n", mpirank_world, mpirank_init, obj_weights[iinit], obj_iinit_re, obj_iinit_im, fidelity_iinit_re, fidelity_iinit_im);
   }
+
+  /* Sum up from initial conditions processors */
+  double mypen = obj_penal;
+  double mycost_re = obj_cost_re;
+  double mycost_im = obj_cost_im;
+  double myfidelity_re = fidelity_re;
+  double myfidelity_im = fidelity_im;
+  MPI_Allreduce(&mypen, &obj_penal, 1, MPI_DOUBLE, MPI_SUM, comm_init);
+  MPI_Allreduce(&mycost_re, &obj_cost_re, 1, MPI_DOUBLE, MPI_SUM, comm_init);
+  MPI_Allreduce(&mycost_im, &obj_cost_im, 1, MPI_DOUBLE, MPI_SUM, comm_init);
+  MPI_Allreduce(&myfidelity_re, &fidelity_re, 1, MPI_DOUBLE, MPI_SUM, comm_init);
+  MPI_Allreduce(&myfidelity_im, &fidelity_im, 1, MPI_DOUBLE, MPI_SUM, comm_init);
+
+  /* Set the fidelity: If Schroedinger, need to compute the absolute value: Fid= |\sum_i \phi^\dagger \phi_target|^2 */
+  if (timestepper->mastereq->lindbladtype == LindbladType::NONE) {
+    fidelity = pow(fidelity_re, 2.0) + pow(fidelity_im, 2.0);
+  } else {
+    fidelity = fidelity_re; 
+  }
+ 
+  /* Finalize the objective function */
+  obj_cost = optim_target->finalizeJ(obj_cost_re, obj_cost_im);
 
 #ifdef WITH_BRAID
   /* Communicate over braid processors: Sum up penalty, broadcast final time cost */
@@ -446,14 +494,6 @@ double OptimProblem::evalF(const Vec x) {
   MPI_Allreduce(&mine, &obj_penal, 1, MPI_DOUBLE, MPI_SUM, primalbraidapp->comm_braid);
   MPI_Bcast(&obj_cost, 1, MPI_DOUBLE, mpisize_braid-1, primalbraidapp->comm_braid);
 #endif
-
-  /* Average over initial conditions processors */
-  double mypen = 1./ninit * obj_penal;
-  double mycost = 1./ninit * obj_cost;
-  double myfidelity = 1./ninit * fidelity;
-  MPI_Allreduce(&mypen, &obj_penal, 1, MPI_DOUBLE, MPI_SUM, comm_init);
-  MPI_Allreduce(&mycost, &obj_cost, 1, MPI_DOUBLE, MPI_SUM, comm_init);
-  MPI_Allreduce(&myfidelity, &fidelity, 1, MPI_DOUBLE, MPI_SUM, comm_init);
 
   /* Evaluate regularization objective += gamma/2 * ||x||^2*/
   double xnorm;
@@ -467,7 +507,6 @@ double OptimProblem::evalF(const Vec x) {
   if (mpirank_world == 0) {
     std::cout<< "Objective = " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal << std::endl;
     std::cout<< "Fidelity = " << fidelity  << std::endl;
-    // std::cout<< "Max. costT = " << obj_cost_max << std::endl;
   }
 
   return objective;
@@ -498,6 +537,10 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
   obj_regul = 0.0;
   obj_penal = 0.0;
   fidelity = 0.0;
+  double obj_cost_re = 0.0;
+  double obj_cost_im = 0.0;
+  double fidelity_re = 0.0;
+  double fidelity_im = 0.0;
   for (int iinit = 0; iinit < ninit_local; iinit++) {
 
     /* Prepare the initial condition */
@@ -519,61 +562,125 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
       finalstate = timestepper->solveODE(initid, rho_t0);
 #endif
 
+    /* Store the final state for the Schroedinger solver */
+    if (timestepper->mastereq->lindbladtype == LindbladType::NONE) VecCopy(finalstate, store_finalstates[iinit]);
+
     /* Add to integral penalty term */
-    obj_penal += gamma_penalty * timestepper->penalty_integral;
+    obj_penal += obj_weights[iinit] * gamma_penalty * timestepper->penalty_integral;
 
     /* Evaluate J(finalstate) and add to final-time cost */
-    double obj_iinit = optim_target->evalJ(finalstate);
-    obj_cost += obj_weights[iinit] * obj_iinit;
-    // if (mpirank_braid == 0) printf("%d: iinit objective: %1.14e\n", mpirank_init, obj_iinit);
+    double obj_iinit_re = 0.0;
+    double obj_iinit_im = 0.0;
+    optim_target->evalJ(finalstate,  &obj_iinit_re, &obj_iinit_im);
+    obj_cost_re += obj_weights[iinit] * obj_iinit_re;
+    obj_cost_im += obj_weights[iinit] * obj_iinit_im;
 
     /* Add to final-time fidelity */
-    fidelity += optim_target->evalFidelity(finalstate);
+    double fidelity_iinit_re = 0.0;
+    double fidelity_iinit_im = 0.0;
+    optim_target->HilbertSchmidtOverlap(finalstate, false, &fidelity_iinit_re, &fidelity_iinit_im);
+    fidelity_re += 1./ ninit * fidelity_iinit_re;
+    fidelity_im += 1./ ninit * fidelity_iinit_im;
 
-    /* --- Solve adjoint --- */
-    // if (mpirank_braid == 0) printf("%d: %d BWD.", mpirank_init, initid);
+    /* If Lindblas solver, compute adjoint for this initial condition. Otherwise (Schroedinger solver), compute adjoint only after all initial conditions have been propagated through (separate loop below) */
+    if (timestepper->mastereq->lindbladtype != LindbladType::NONE) {
+      // if (mpirank_braid == 0) printf("%d: %d BWD.", mpirank_init, initid);
 
-    /* Reset adjoint */
-    VecZeroEntries(rho_t0_bar);
+      /* Reset adjoint */
+      VecZeroEntries(rho_t0_bar);
 
-    /* Derivative of final time objective J */
-    optim_target->evalJ_diff(finalstate, rho_t0_bar, 1.0 / ninit * obj_weights[iinit]);
+      /* Terminal condition for adjoint variable: Derivative of final time objective J */
+      double obj_cost_re_bar, obj_cost_im_bar;
+      optim_target->finalizeJ_diff(obj_cost_re, obj_cost_im, &obj_cost_re_bar, &obj_cost_im_bar);
+      optim_target->evalJ_diff(finalstate, rho_t0_bar, obj_weights[iinit]*obj_cost_re_bar, obj_weights[iinit]*obj_cost_im_bar);
 
-    /* Derivative of time-stepping */
-#ifdef WITH_BRAID
-      adjointbraidapp->PreProcess(initid, rho_t0_bar, 1.0 / ninit * gamma_penalty);
-      adjointbraidapp->Drive();
-      adjointbraidapp->PostProcess();
-#else
-      timestepper->solveAdjointODE(initid, rho_t0_bar, 1.0 / ninit * gamma_penalty);
-#endif
+      /* Derivative of time-stepping */
+  #ifdef WITH_BRAID
+        adjointbraidapp->PreProcess(initid, rho_t0_bar, obj_weights[iinit] * gamma_penalty);
+        adjointbraidapp->Drive();
+        adjointbraidapp->PostProcess();
+  #else
+        timestepper->solveAdjointODE(initid, rho_t0_bar, finalstate, obj_weights[iinit] * gamma_penalty);
+  #endif
 
-    /* Add to optimizers's gradient */
-    VecAXPY(G, 1.0, timestepper->redgrad);
+      /* Add to optimizers's gradient */
+      VecAXPY(G, 1.0, timestepper->redgrad);
+    }
   }
+
+  /* Sum up from initial conditions processors */
+  double mypen = obj_penal;
+  double mycost_re = obj_cost_re;
+  double mycost_im = obj_cost_im;
+  double myfidelity_re = fidelity_re;
+  double myfidelity_im = fidelity_im;
+  MPI_Allreduce(&mypen, &obj_penal, 1, MPI_DOUBLE, MPI_SUM, comm_init);
+  MPI_Allreduce(&mycost_re, &obj_cost_re, 1, MPI_DOUBLE, MPI_SUM, comm_init);
+  MPI_Allreduce(&mycost_im, &obj_cost_im, 1, MPI_DOUBLE, MPI_SUM, comm_init);
+  MPI_Allreduce(&myfidelity_re, &fidelity_re, 1, MPI_DOUBLE, MPI_SUM, comm_init);
+  MPI_Allreduce(&myfidelity_im, &fidelity_im, 1, MPI_DOUBLE, MPI_SUM, comm_init);
+
+  /* Set the fidelity: If Schroedinger, need to compute the absolute value: Fid= |\sum_i \phi^\dagger \phi_target|^2 */
+  if (timestepper->mastereq->lindbladtype == LindbladType::NONE) {
+    fidelity = pow(fidelity_re, 2.0) + pow(fidelity_im, 2.0);
+  } else {
+    fidelity = fidelity_re; 
+  }
+ 
+  /* Finalize the objective function Jtrace to get the infidelity. 
+     If Schroedingers solver, need to take the absolute value */
+  obj_cost = optim_target->finalizeJ(obj_cost_re, obj_cost_im);
 
 #ifdef WITH_BRAID
   /* Communicate over braid processors: Sum up penalty, broadcast final time cost */
   double mine = obj_penal;
   MPI_Allreduce(&mine, &obj_penal, 1, MPI_DOUBLE, MPI_SUM, primalbraidapp->comm_braid);
   MPI_Bcast(&obj_cost, 1, MPI_DOUBLE, mpisize_braid-1, primalbraidapp->comm_braid);
-  #endif
+#endif
 
-  /* Average over initial conditions processors */
-  double mypen = 1./ninit * obj_penal;
-  double mycost = 1./ninit * obj_cost;
-  double myfidelity = 1./ninit * fidelity;
-  MPI_Allreduce(&mypen, &obj_penal, 1, MPI_DOUBLE, MPI_SUM, comm_init);
-  MPI_Allreduce(&mycost, &obj_cost, 1, MPI_DOUBLE, MPI_SUM, comm_init);
-  MPI_Allreduce(&myfidelity, &fidelity, 1, MPI_DOUBLE, MPI_SUM, comm_init);
-
-  /* Evaluate regularization gamma/2 * ||x||^2*/
+  /* Evaluate regularization objective += gamma/2 * ||x||^2*/
   double xnorm;
   VecNorm(x, NORM_2, &xnorm);
   obj_regul = gamma_tik / 2. * pow(xnorm,2.0);
 
-  /* Sum, store and return objective function value*/
+  /* Sum, store and return objective value */
   objective = obj_cost + obj_regul + obj_penal;
+
+  /* For Schroedinger solver: Solve adjoint equations for all initial conditions here. */
+  if (timestepper->mastereq->lindbladtype == LindbladType::NONE) {
+
+    // Iterate over all initial conditions 
+    for (int iinit = 0; iinit < ninit_local; iinit++) {
+      int iinit_global = mpirank_init * ninit_local + iinit;
+
+      /* Recompute the initial state and target */
+      int initid = timestepper->mastereq->getRhoT0(iinit_global, ninit, initcond_type, initcond_IDs, rho_t0);
+      optim_target->prepare(rho_t0);
+     
+      /* Get the last time step (finalstate) */
+      finalstate = store_finalstates[iinit];
+
+      /* Reset adjoint */
+      VecZeroEntries(rho_t0_bar);
+
+      /* Terminal condition for adjoint variable: Derivative of final time objective J */
+      double obj_cost_re_bar, obj_cost_im_bar;
+      optim_target->finalizeJ_diff(obj_cost_re, obj_cost_im, &obj_cost_re_bar, &obj_cost_im_bar);
+      optim_target->evalJ_diff(finalstate, rho_t0_bar, obj_weights[iinit]*obj_cost_re_bar, obj_weights[iinit]*obj_cost_im_bar);
+
+      /* Derivative of time-stepping */
+  #ifdef WITH_BRAID
+      adjointbraidapp->PreProcess(initid, rho_t0_bar, obj_weights[iinit] * gamma_penalty);
+      adjointbraidapp->Drive();
+      adjointbraidapp->PostProcess();
+  #else
+      timestepper->solveAdjointODE(initid, rho_t0_bar, finalstate, obj_weights[iinit] * gamma_penalty);
+  #endif
+
+      /* Add to optimizers's gradient */
+      VecAXPY(G, 1.0, timestepper->redgrad);
+    } // end of initial condition loop 
+  } // end of adjoint for Schroedinger
 
   /* Sum up the gradient from all initial condition processors */
   PetscScalar* grad; 

@@ -10,9 +10,9 @@ This project relies on Petsc [https://petsc.org/release/] to handle (parallel) l
 * **Required:** Install Petsc:
 
     Check out [https://petsc.org/release/] for the latest installation guide. On MacOS, you can also `brew install petsc`. As a quick start, you can also try the below:
-    * Download tarball for Petsc 3.16 here [https://ftp.mcs.anl.gov/pub/petsc/release-snapshots/]
-    * `tar -xf petsc-3.16.tar.gz`
-    * `cd petsc-3.16`
+    * Download tarball for Petsc here [https://ftp.mcs.anl.gov/pub/petsc/release-snapshots/]. Recommended version is petsc-3.17, currently.  
+    * `tar -xf petsc-<version>.tar.gz`
+    * `cd petsc-<version>`
     * Configure Petsc with `./configure`, check [https://petsc.org/release/install/install_tutorial] for optional arguments. Note that Petsc compiles in debug mode by default. To configure petsc with compiler optimization, consider configuration such as
         `./configure --prefix=/YOUR/INSTALL/DIR --with-debugging=0 --with-fc=0 --with-cxx=mpicxx --with-cc=mpicc COPTFLAGS='-O3' CXXOPTFLAGS='-O3'`
     * The output of `./configure` reports on how to set the `PETSC_DIR` and `PETSC_ARCH` variables
