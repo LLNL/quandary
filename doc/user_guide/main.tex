@@ -589,7 +589,7 @@ The real and imaginary parts of $q(t)$ are stored in a colocated manner: For
       \left(q^n + \frac{\delta t}{2} k_1\right) \right)^T\bar k_1
     \end{align}
   
-    Each evaluation of the gradient $\nabla J$ involes a forward solve of $n_{init}$ initial quantum states to evaluate the objective function at final time $T$, as well as $n_{init}$ backward solves to compute the adjoint states and the contributions to the gradient. Note that the gradient computation \eqref{eq:gradient} requires the states and adjoint states at each time step, therefore the states $q^n$ are stored during forward propagation. 
+    Each evaluation of the gradient $\nabla J$ involes a forward solve of $n_{init}$ initial quantum states to evaluate the objective function at final time $T$, as well as $n_{init}$ backward solves to compute the adjoint states and the contributions to the gradient. Note that the gradient computation \eqref{eq:gradient} requires the states and adjoint states at each time step. For the Schroedinger solver, the primal states are recomputed by integrating Schroedinger's equation backwards in time, alongside the adjoint computation. For the Lindblad solver, the states $q^n$ are stored during forward propagation, and taken from storage during adjoint backpropagation (since we can't recompute it in case of Lindblad solver, due to dissipation). 
 
 
   \subsection{Optimization algorithm}
