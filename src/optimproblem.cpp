@@ -61,10 +61,7 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   if (initguess_type.compare("constant") == 0 || 
       initguess_type.compare("random")    == 0 ||
       initguess_type.compare("random_seed") == 0)  {
-      if (initguess_amplitudes.size() < timestepper->mastereq->getNOscillators()) {
-         printf("ERROR reading config file: List of initial optimization parameter amplitudes must equal the number of oscillators!\n");
-         exit(1);
-      }
+      copyLast(initguess_amplitudes, timestepper->mastereq->getNOscillators());
   }
 
   /* Store the optimization target */
@@ -105,8 +102,7 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
     } else {
       /* Compute the index m for preparing e_m e_m^\dagger. Note that the input is given for pure states PER OSCILLATOR such as |m_1 m_2 ... m_Q> and hence m = m_1 * dimPost(oscil 1) + m_2 * dimPost(oscil 2) + ... + m_Q */
       if (target_str.size() - 1 < timestepper->mastereq->getNOscillators()) {
-        printf("ERROR: List of ID's for pure-state preparation must contain %d elements! Check config option 'optim_target'.\n", timestepper->mastereq->getNOscillators());
-        exit(1);
+        copyLast(target_str, timestepper->mastereq->getNOscillators()+1);
       }
       for (int i=0; i < timestepper->mastereq->getNOscillators(); i++) {
         int Qi_state = atoi(target_str[i+1].c_str());
