@@ -10,9 +10,13 @@
 #include <sys/resource.h>
 #include "optimproblem.hpp"
 #include "output.hpp"
+#include <chrono>
 #ifdef WITH_SLEPC
 #include <slepceps.h>
 #endif
+
+
+using namespace std::chrono;
 
 
 #define TEST_FD_GRAD 0    // Run Finite Differences gradient test
@@ -192,19 +196,14 @@ int main(int argc,char **argv)
   // Get fundamental and rotation frequencies from config file 
   std::vector<double> trans_freq, rot_freq;
   config.GetVecDoubleParam("transfreq", trans_freq, 1e20);
-  if (trans_freq.size() < nlevels.size()) {
-    printf("Error: Number of given fundamental frequencies (%lu) is smaller than the the number of oscillators (%lu)\n", trans_freq.size(), nlevels.size());
-    exit(1);
-  } 
+  copyLast(trans_freq, nlevels.size());
+
   config.GetVecDoubleParam("rotfreq", rot_freq, 1e20);
-  if (rot_freq.size() < nlevels.size()) {
-    printf("Error: Number of given rotation frequencies (%lu) is smaller than the the number of oscillators (%lu)\n", rot_freq.size(), nlevels.size());
-    exit(1);
-  } 
+  copyLast(rot_freq, nlevels.size());
   // Get self kerr coefficient
   std::vector<double> selfkerr;
   config.GetVecDoubleParam("selfkerr", selfkerr, 0.0);   // self ker \xi_k 
-  assert(selfkerr.size() >= nlevels.size());
+  copyLast(selfkerr, nlevels.size());
   // Get lindblad type and collapse times
   std::string lindblad = config.GetStrParam("collapse_type", "none");
   std::vector<double> decay_time, dephase_time;
@@ -221,8 +220,8 @@ int main(int argc,char **argv)
     exit(1);
   }
   if (lindbladtype != LindbladType::NONE) {
-    assert(decay_time.size() >= nlevels.size());
-    assert(dephase_time.size() >= nlevels.size());
+    copyLast(decay_time, nlevels.size());
+    copyLast(dephase_time, nlevels.size());
   }
 
   // Create the oscillators 
@@ -268,10 +267,11 @@ int main(int argc,char **argv)
   std::vector<double> crosskerr, Jkl;
   config.GetVecDoubleParam("crosskerr", crosskerr, 0.0);   // cross ker \xi_{kl}, zz-coupling
   config.GetVecDoubleParam("Jkl", Jkl, 0.0); // Jaynes-Cummings coupling
+  copyLast(crosskerr, (nlevels.size()-1) * nlevels.size()/ 2);
+  copyLast(Jkl, (nlevels.size()-1) * nlevels.size()/ 2);
   // If not enough elements are given, fill up with zeros!
-  int noscillators = nlevels.size();
-  for (int i = crosskerr.size(); i < (noscillators-1) * noscillators / 2; i++)  crosskerr.push_back(0.0);
-  for (int i = Jkl.size(); i < (noscillators-1) * noscillators / 2; i++) Jkl.push_back(0.0);
+  // for (int i = crosskerr.size(); i < (noscillators-1) * noscillators / 2; i++)  crosskerr.push_back(0.0);
+  // for (int i = Jkl.size(); i < (noscillators-1) * noscillators / 2; i++) Jkl.push_back(0.0);
   // Sanity check for matrix free solver
   bool usematfree = config.GetBoolParam("usematfree", false);
   if ( (usematfree && nlevels.size() < 2) ||   
@@ -297,9 +297,9 @@ int main(int argc,char **argv)
 
   /* Output */
 #ifdef WITH_BRAID
-  Output* output = new Output(config, comm_petsc, comm_init, comm_braid, noscillators);
+  Output* output = new Output(config, comm_petsc, comm_init, comm_braid, nlevels.size());
 #else 
-  Output* output = new Output(config, comm_petsc, comm_init, noscillators);
+  Output* output = new Output(config, comm_petsc, comm_init, nlevels.size());
 #endif
 
   // Some screen output 
@@ -364,16 +364,15 @@ int main(int argc,char **argv)
 
   /* --- Initialize optimization --- */
   /* Get gate rotation frequencies. Default: use rotational frequencies for the gate. */
+  int noscillators = nlevels.size();
   std::vector<double> gate_rot_freq(noscillators); 
   for (int iosc=0; iosc<noscillators; iosc++) gate_rot_freq[iosc] = rot_freq[iosc];
   /* If gate_rot_freq option is given in config file, overwrite them with input */
   std::vector<double> read_gate_rot;
   config.GetVecDoubleParam("gate_rot_freq", read_gate_rot, 1e20); 
+  copyLast(read_gate_rot, noscillators);
   if (read_gate_rot[0] < 1e20) { // the config option exists
-    for (int i=0; i<noscillators; i++) {
-      if (i < read_gate_rot.size()) gate_rot_freq[i] = read_gate_rot[i];
-      else gate_rot_freq[i] = read_gate_rot[read_gate_rot.size()-1]; // using the last element for all remaining ones
-    }
+    for (int i=0; i<noscillators; i++)  gate_rot_freq[i] = read_gate_rot[i];
   }
 
 #ifdef WITH_BRAID

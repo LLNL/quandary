@@ -1,4 +1,5 @@
 #include <petscmat.h>
+#include <iostream>
 #include <vector>
 #ifdef WITH_SLEPC
 #include <slepceps.h>
@@ -82,3 +83,17 @@ int getEigvals(const Mat A, const int neigvals, std::vector<double>& eigvals, st
  * Test if A+iB is unitary (A and B should be real-valued!)
  */
 bool isUnitary(const Mat A, const Mat B);
+
+template <typename Tval>
+void copyLast(std::vector<Tval>& fillme, int tosize){
+    // int norg = fillme.size();
+
+    for (int i=fillme.size(); i<tosize; i++) 
+      fillme.push_back(fillme[fillme.size()-1]);
+
+    // if (norg < tosize) {
+      // std::cout<< "I filled this: ";
+      // for (int i=0; i<fillme.size(); i++) std::cout<< " " << fillme[i];
+      // std::cout<<std::endl;
+    // }
+};
