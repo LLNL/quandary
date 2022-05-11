@@ -54,6 +54,7 @@ int main(int argc,char **argv)
   std::string runtypestr = config.GetStrParam("runtype", "simulation");
   if      (runtypestr.compare("simulation")      == 0) runtype = RunType::SIMULATION;
   else if (runtypestr.compare("gradient")     == 0)    runtype = RunType::GRADIENT;
+  else if (runtypestr.compare("performance")     == 0)    runtype = RunType::PERFORMANCE;
   else if (runtypestr.compare("optimization")== 0)     runtype = RunType::OPTIMIZATION;
   else {
     printf("\n\n WARNING: Unknown runtype: %s.\n\n", runtypestr.c_str());
@@ -83,6 +84,7 @@ int main(int argc,char **argv)
   assert (initcondstr.size() >= 1);
   if      (initcondstr[0].compare("file") == 0 ) ninit = 1;
   else if (initcondstr[0].compare("pure") == 0 ) ninit = 1;
+  else if (initcondstr[0].compare("performance") == 0 ) ninit = 1;
   else if (initcondstr[0].compare("ensemble") == 0 ) ninit = 1;
   else if (initcondstr[0].compare("3states") == 0 ) ninit = 3;
   else if (initcondstr[0].compare("Nplus1") == 0 )  {
@@ -408,6 +410,8 @@ int main(int argc,char **argv)
 
   /* Start timer */
   double StartTime = MPI_Wtime();
+  double EndTime = StartTime;
+  int nexec = 1;
 
   double objective;
   double gnorm = 0.0;
@@ -442,14 +446,61 @@ int main(int argc,char **argv)
     optimctx->getSolution(&opt);
   }
 
+  EndTime = MPI_Wtime();
+
   /* Output */
-  if (runtype != RunType::OPTIMIZATION) optimctx->output->writeOptimFile(optimctx->getObjective(), gnorm, 0.0, optimctx->getFidelity(), optimctx->getCostT(), optimctx->getRegul(), optimctx->getPenalty());
+  if (runtype == RunType::SIMULATION ||
+      runtype == RunType::GRADIENT )
+        optimctx->output->writeOptimFile(optimctx->getObjective(), gnorm, 0.0, optimctx->getFidelity(), optimctx->getCostT(), optimctx->getRegul(), optimctx->getPenalty());
 
 
-  /* --- Finalize --- */
+
+  /* ---- Performance measurement for MatVec ---- */
+  if (runtype == RunType::PERFORMANCE) {
+    Vec u, v;
+
+    int N = mastereq->getDim();
+    int dim = 2*N;
+
+    // Allocate input and output state
+    Vec psi_in, psi_out;
+    VecCreate(PETSC_COMM_WORLD, &psi_in);
+    VecCreate(PETSC_COMM_WORLD, &psi_out);
+    VecSetSizes(psi_in, PETSC_DECIDE, dim);
+    VecSetSizes(psi_out, PETSC_DECIDE, dim);
+    VecSetFromOptions(psi_in);
+    VecSetFromOptions(psi_out);
+
+    // Get the input state for performance testing
+    mastereq->getRhoT0(0, 0, InitialConditionType::PERFORMANCE, std::vector<int>(), psi_in);
+    // Print input to screen
+    VecGetSubVector(psi_in, mastereq->isu, &u);
+    VecGetSubVector(psi_in, mastereq->isv, &v);
+    printf("uin= \n"); VecView(u, NULL);
+    printf("vin= \n"); VecView(v, NULL);
+
+    // Assemble and get Hamiltonian matrix (shell)
+    mastereq->assemble_RHS(-1.0);
+    Mat H = mastereq->getRHS(); 
+
+    /* Perform matrix vector products */
+    nexec = 5000;
+    StartTime = MPI_Wtime();
+    for (int iexec = 0; iexec<nexec; iexec++){
+      /* MatVec y = Hx */
+      MatMult(H, psi_in, psi_out);
+    }
+    EndTime = MPI_Wtime();
+
+    // Print output 
+    VecGetSubVector(psi_out, mastereq->isu, &u);
+    VecGetSubVector(psi_out, mastereq->isv, &v);
+    printf("uout = \n"); VecView(u, NULL);
+    printf("vout = \n"); VecView(v, NULL);
+  }
 
   /* Get timings */
-  double UsedTime = MPI_Wtime() - StartTime;
+  double UsedTime = (EndTime - StartTime)/nexec;
   /* Get memory usage */
   struct rusage r_usage;
   getrusage(RUSAGE_SELF, &r_usage);

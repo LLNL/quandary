@@ -4,7 +4,7 @@
 enum class LindbladType {NONE, DECAY, DEPHASE, BOTH};
 
 /* Available types of initial conditions */
-enum class InitialConditionType {FROMFILE, PURE, ENSEMBLE, DIAGONAL, BASIS, THREESTATES, NPLUSONE};
+enum class InitialConditionType {FROMFILE, PURE, ENSEMBLE, DIAGONAL, BASIS, THREESTATES, NPLUSONE, PERFORMANCE};
 
 /* Types of optimization targets: Either gate optimization or pure state preparation */
 enum class TargetType {GATE,      // \rho_target = V\rho(0) V^\dagger
@@ -30,6 +30,7 @@ enum class RunType {
   SIMULATION,        // Runs one simulation to compute the objective function (forward)
   GRADIENT,          // Runs a simulation followed by the adjoint for gradient computation (forward & backward)
   OPTIMIZATION,      // Runs optimization iterations
+  PERFORMANCE,       // Runs mat-vec performance tests 
   NONE               // Don't run anything.
 };
 

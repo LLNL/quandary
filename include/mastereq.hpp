@@ -73,7 +73,6 @@ class MasterEq{
     int mpirank_petsc;   // Rank of Petsc's communicator
     int mpirank_world;   // Rank of global communicator
     int nparams_max;     // Maximum number of design parameters per oscilator 
-    IS isu, isv;         // Vector strides for accessing u=Re(x), v=Im(x) 
 
     double *dRedp;
     double *dImdp;
@@ -86,6 +85,7 @@ class MasterEq{
     std::vector<int> nessential; // Number of essential levels per oscillator
     bool usematfree;  // Flag for using matrix free solver
     LindbladType lindbladtype;        // Flag that determines which lindblad terms are added. if NONE, than Schroedingers eq. is solved
+    IS isu, isv;         // Vector strides for accessing u=Re(x), v=Im(x) 
 
   public:
     MasterEq();

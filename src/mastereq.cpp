@@ -595,10 +595,15 @@ int MasterEq::assemble_RHS(const double t){
 
   for (int iosc = 0; iosc < noscillators; iosc++) {
     double p, q;
-    oscil_vec[iosc]->evalControl(t, &p, &q);
+    if (t>=0) oscil_vec[iosc]->evalControl(t, &p, &q);
+    else {
+      p = 0.1;
+      q = 0.1;
+    }
     RHSctx.control_Re[iosc] = p;
     RHSctx.control_Im[iosc] = q;
   }
+
 
   return 0;
 }
@@ -1123,6 +1128,20 @@ int MasterEq::getRhoT0(const int iinit, const int ninit, const InitialConditionT
 
   /* Switch over type of initial condition */
   switch (initcond_type) {
+
+    case InitialConditionType::PERFORMANCE:
+      /* Set up Input state psi = 1/sqrt(2N) */
+      assert(lindbladtype == LindbladType::NONE);
+      VecZeroEntries(rho0);
+      VecGetOwnershipRange(rho0, &ilow, &iupp);
+      for (int i=0; i<dim_rho; i++){
+        int elem_re = getIndexReal(i);
+        int elem_im = getIndexImag(i);
+        double val = 1./ sqrt(2.*dim_rho);
+        if (ilow <= elem_re && elem_re < iupp) VecSetValue(rho0, elem_re, val, INSERT_VALUES);
+        if (ilow <= elem_im && elem_im < iupp) VecSetValue(rho0, elem_im, val, INSERT_VALUES);
+      }
+      break;
 
     case InitialConditionType::FROMFILE:
       /* Do nothing. Init cond is already stored */
