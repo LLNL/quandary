@@ -472,58 +472,70 @@ int main(int argc,char **argv)
 
     // Get the input state for performance testing
     mastereq->getRhoT0(0, 0, InitialConditionType::PERFORMANCE, std::vector<int>(), psi_in);
-    // Print input to screen
-    VecGetSubVector(psi_in, mastereq->isu, &u);
-    VecGetSubVector(psi_in, mastereq->isv, &v);
-    printf("uin= \n"); VecView(u, NULL);
-    printf("vin= \n"); VecView(v, NULL);
+    // // Print input to screen
+    // VecGetSubVector(psi_in, mastereq->isu, &u);
+    // VecGetSubVector(psi_in, mastereq->isv, &v);
+    // printf("uin= \n"); VecView(u, NULL);
+    // printf("vin= \n"); VecView(v, NULL);
 
     // Assemble and get Hamiltonian matrix (shell)
     mastereq->assemble_RHS(-1.0);
     Mat H = mastereq->getRHS(); 
 
     /* Perform matrix vector products */
-    nexec = 5000;
-    StartTime = MPI_Wtime();
+    nexec = 50;
+    auto TimeMatVecStart = high_resolution_clock::now();
     for (int iexec = 0; iexec<nexec; iexec++){
       /* MatVec y = Hx */
       MatMult(H, psi_in, psi_out);
     }
-    EndTime = MPI_Wtime();
+    auto TimeMatVecStop = high_resolution_clock::now();
+    auto TimeMatVec = duration_cast<microseconds>(TimeMatVecStop - TimeMatVecStart);
+    auto TimeMatVecSecs = TimeMatVec.count()/1000000.;
 
-    // Print output 
-    VecGetSubVector(psi_out, mastereq->isu, &u);
-    VecGetSubVector(psi_out, mastereq->isv, &v);
-    printf("uout = \n"); VecView(u, NULL);
-    printf("vout = \n"); VecView(v, NULL);
+    // // Print output 
+    // VecGetSubVector(psi_out, mastereq->isu, &u);
+    // VecGetSubVector(psi_out, mastereq->isv, &v);
+    // printf("uout = \n"); VecView(u, NULL);
+    // printf("vout = \n"); VecView(v, NULL);
+
+    // Print timing 
+    std::cout<< "\n -> MatVec time averaged over " <<nexec << " exec.: " << TimeMatVecSecs/nexec << " (sec)\n" <<std::endl;
+
+    if (mpirank_world == 0) {
+      sprintf(filename, "%s/timing.dat", output->datadir.c_str());
+      FILE* timefile = fopen(filename, "w");
+      fprintf(timefile, "%d  %d  %1.8e\n", mastereq->getDim(), mpisize_world, TimeMatVecSecs/nexec);
+      fclose(timefile);
+    }
   }
 
-  /* Get timings */
-  double UsedTime = (EndTime - StartTime)/nexec;
-  /* Get memory usage */
-  struct rusage r_usage;
-  getrusage(RUSAGE_SELF, &r_usage);
-  double myMB = (double)r_usage.ru_maxrss / 1024.0;
-  double globalMB;
-  MPI_Allreduce(&myMB, &globalMB, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  // /* Get timings */
+  // double UsedTime = (EndTime - StartTime)/nexec;
+  // /* Get memory usage */
+  // struct rusage r_usage;
+  // getrusage(RUSAGE_SELF, &r_usage);
+  // double myMB = (double)r_usage.ru_maxrss / 1024.0;
+  // double globalMB;
+  // MPI_Allreduce(&myMB, &globalMB, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 
-  /* Print statistics */
-  if (mpirank_world == 0) {
-    printf("\n");
-    printf(" Used Time:        %.2f seconds\n", UsedTime);
-    printf(" Global Memory:    %.2f MB\n", globalMB);
-    printf(" Processors used:  %d\n", mpisize_world);
-    printf("\n");
-  }
+  // /* Print statistics */
+  // if (mpirank_world == 0) {
+  //   printf("\n");
+  //   printf(" Used Time:        %.2f seconds\n", UsedTime);
+  //   printf(" Global Memory:    %.2f MB\n", globalMB);
+  //   printf(" Processors used:  %d\n", mpisize_world);
+  //   printf("\n");
+  // }
   // printf("Rank %d: %.2fMB\n", mpirank_world, myMB );
 
-  /* Print timing to file */
-  if (mpirank_world == 0) {
-    sprintf(filename, "%s/timing.dat", output->datadir.c_str());
-    FILE* timefile = fopen(filename, "w");
-    fprintf(timefile, "%d  %1.8e\n", mpisize_world, UsedTime);
-    fclose(timefile);
-  }
+  // /* Print timing to file */
+  // if (mpirank_world == 0) {
+  //   sprintf(filename, "%s/timing.dat", output->datadir.c_str());
+  //   FILE* timefile = fopen(filename, "w");
+  //   fprintf(timefile, "%d  %d  %1.8e\n", mastereq->getDim(), mpisize_world, UsedTime);
+  //   fclose(timefile);
+  // }
 
 
 #if TEST_FD_GRAD
