@@ -10,13 +10,11 @@
 #include <sys/resource.h>
 #include "optimproblem.hpp"
 #include "output.hpp"
-#include <chrono>
 #ifdef WITH_SLEPC
 #include <slepceps.h>
 #endif
 
 
-using namespace std::chrono;
 
 
 #define TEST_FD_GRAD 0    // Run Finite Differences gradient test
@@ -484,14 +482,17 @@ int main(int argc,char **argv)
 
     /* Perform matrix vector products */
     nexec = 50;
-    auto TimeMatVecStart = high_resolution_clock::now();
+    // auto TimeMatVecStart = high_resolution_clock::now();
+    StartTime = MPI_Wtime();
     for (int iexec = 0; iexec<nexec; iexec++){
       /* MatVec y = Hx */
       MatMult(H, psi_in, psi_out);
     }
-    auto TimeMatVecStop = high_resolution_clock::now();
-    auto TimeMatVec = duration_cast<microseconds>(TimeMatVecStop - TimeMatVecStart);
-    auto TimeMatVecSecs = TimeMatVec.count()/1000000.;
+    // auto TimeMatVecStop = high_resolution_clock::now();
+    // auto TimeMatVec = duration_cast<microseconds>(TimeMatVecStop - TimeMatVecStart);
+    // auto TimeMatVecSecs = TimeMatVec.count()/1000000.;
+    EndTime = MPI_Wtime();
+    double TimeMatVecSecs = (EndTime - StartTime)/nexec;
 
     // // Print output 
     // VecGetSubVector(psi_out, mastereq->isu, &u);
@@ -500,12 +501,12 @@ int main(int argc,char **argv)
     // printf("vout = \n"); VecView(v, NULL);
 
     // Print timing 
-    std::cout<< "\n -> MatVec time averaged over " <<nexec << " exec.: " << TimeMatVecSecs/nexec << " (sec)\n" <<std::endl;
+    std::cout<< "\n -> MatVec time averaged over " <<nexec << " exec.: " << TimeMatVecSecs << " (sec)\n" <<std::endl;
 
     if (mpirank_world == 0) {
       sprintf(filename, "%s/timing.dat", output->datadir.c_str());
       FILE* timefile = fopen(filename, "w");
-      fprintf(timefile, "%d  %d  %1.8e\n", mastereq->getDim(), mpisize_world, TimeMatVecSecs/nexec);
+      fprintf(timefile, "%d  %d  %1.8e\n", mastereq->getDim(), mpisize_world, TimeMatVecSecs);
       fclose(timefile);
     }
   }
