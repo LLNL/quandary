@@ -87,6 +87,7 @@ int main(int argc,char **argv)
   assert (initcondstr.size() >= 1);
   if      (initcondstr[0].compare("file") == 0 ) ninit = 1;
   else if (initcondstr[0].compare("pure") == 0 ) ninit = 1;
+  else if (initcondstr[0].compare("performance") == 0 ) ninit = 1;
   else if (initcondstr[0].compare("ensemble") == 0 ) ninit = 1;
   else if (initcondstr[0].compare("3states") == 0 ) ninit = 3;
   else if (initcondstr[0].compare("Nplus1") == 0 )  {
