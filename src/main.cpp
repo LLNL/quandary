@@ -10,13 +10,9 @@
 #include <sys/resource.h>
 #include "optimproblem.hpp"
 #include "output.hpp"
-#include <chrono>
 #ifdef WITH_SLEPC
 #include <slepceps.h>
 #endif
-
-
-using namespace std::chrono;
 
 
 #define TEST_FD_GRAD 0    // Run Finite Differences gradient test
