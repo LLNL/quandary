@@ -1,5 +1,6 @@
 import os, sys, shutil, copy
 import subprocess
+import math
 from config import Config
 
 
@@ -37,13 +38,16 @@ def submit_job(jobname, runcommand, ntasks, time_limit, executable, arguments, a
     
 
     command =  runcommand  + " " + str(ntasks) + " " + executable + " " + arguments
+
+    nnodes = int(math.ceil(ntasks / 36.0))
+
     scriptname = jobname+".batch"
-    assemble_batch_script(scriptname, command, batch_args)
+    assemble_batch_script(scriptname, command, batch_args, nnodes)
 
     if run:
       subprocess.call("sbatch " + jobname + ".batch", shell=True)
 
-def assemble_batch_script(name, run_command, args):
+def assemble_batch_script(name, run_command, args, nnodes):
     
     outfile = open(name, 'w')
 
@@ -51,6 +55,9 @@ def assemble_batch_script(name, run_command, args):
 
     for arg,value in args.iteritems():
         outfile.write("#SBATCH " + arg + "=" + str(value) + "\n")
+
+    outfile.write("#SBATCH --exclusive\n")
+    outfile.write("#SBATCH --nodes="+str(nnodes)+"\n")
 
     outfile.write(run_command)
     outfile.close()

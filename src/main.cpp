@@ -481,7 +481,7 @@ int main(int argc,char **argv)
     Mat H = mastereq->getRHS(); 
 
     /* Perform matrix vector products */
-    nexec = 50;
+    nexec = 1e+4;
     // auto TimeMatVecStart = high_resolution_clock::now();
     StartTime = MPI_Wtime();
     for (int iexec = 0; iexec<nexec; iexec++){
@@ -501,7 +501,7 @@ int main(int argc,char **argv)
     // printf("vout = \n"); VecView(v, NULL);
 
     // Print timing 
-    std::cout<< "\n -> MatVec time averaged over " <<nexec << " exec.: " << TimeMatVecSecs << " (sec)\n" <<std::endl;
+    if (mpirank_world == 0) std::cout<< "\n -> MatVec time averaged over " <<nexec << " exec.: " << TimeMatVecSecs << " (sec)\n" <<std::endl;
 
     if (mpirank_world == 0) {
       sprintf(filename, "%s/timing.dat", output->datadir.c_str());
