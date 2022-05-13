@@ -1125,16 +1125,21 @@ int MasterEq::getRhoT0(const int iinit, const int ninit, const InitialConditionT
   switch (initcond_type) {
 
     case InitialConditionType::PERFORMANCE:
-      /* Set up Input state psi = 1/sqrt(2N) */
-      assert(lindbladtype == LindbladType::NONE);
+      /* Set up Input state psi = 1/sqrt(2N)*(Ones(N) + im*Ones(N)) or rho = psi*psi^\dag */
       VecZeroEntries(rho0);
       VecGetOwnershipRange(rho0, &ilow, &iupp);
       for (int i=0; i<dim_rho; i++){
-        int elem_re = getIndexReal(i);
-        int elem_im = getIndexImag(i);
-        double val = 1./ sqrt(2.*dim_rho);
-        if (ilow <= elem_re && elem_re < iupp) VecSetValue(rho0, elem_re, val, INSERT_VALUES);
-        if (ilow <= elem_im && elem_im < iupp) VecSetValue(rho0, elem_im, val, INSERT_VALUES);
+        if (lindbladtype == LindbladType::NONE) {
+          int elem_re = getIndexReal(i);
+          int elem_im = getIndexImag(i);
+          double val = 1./ sqrt(2.*dim_rho);
+          if (ilow <= elem_re && elem_re < iupp) VecSetValue(rho0, elem_re, val, INSERT_VALUES);
+          if (ilow <= elem_im && elem_im < iupp) VecSetValue(rho0, elem_im, val, INSERT_VALUES);
+        } else {
+          int elem_re = getIndexReal(getVecID(i, i, dim_rho));
+          double val = 1./ dim_rho;
+          if (ilow <= elem_re && elem_re < iupp) VecSetValue(rho0, elem_re, val, INSERT_VALUES);
+        }
       }
       break;
 
