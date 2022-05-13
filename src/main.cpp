@@ -481,7 +481,7 @@ int main(int argc,char **argv)
     Mat H = mastereq->getRHS(); 
 
     /* Perform matrix vector products */
-    nexec = 50;
+    nexec = 1e4;
     // auto TimeMatVecStart = high_resolution_clock::now();
     StartTime = MPI_Wtime();
     for (int iexec = 0; iexec<nexec; iexec++){
