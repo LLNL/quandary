@@ -487,7 +487,7 @@ int main(int argc,char **argv)
     for (int iexec = 0; iexec<nexec; iexec++){
       /* MatVec y = Hx */
       MatMult(H, psi_in, psi_out);
-      VecAXPY(psi_out, 1.0, psi_in);
+      //VecAXPY(psi_out, 1.0, psi_in);
     }
     // auto TimeMatVecStop = high_resolution_clock::now();
     // auto TimeMatVec = duration_cast<microseconds>(TimeMatVecStop - TimeMatVecStart);
