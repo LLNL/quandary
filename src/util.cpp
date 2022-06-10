@@ -1,5 +1,29 @@
 #include "util.hpp"
 
+
+double sigmoid(double width, double x){
+  return 1.0 / ( 1.0 + exp(-width*x) );
+}
+
+
+double getRampFactor(const double time, const double tstart, const double tstop, const double tramp){
+
+    double eps = 1e-4; // Cutoff for sigmoid ramp 
+    double steep = log(1./eps - 1.) * 2. / tramp; // steepness of sigmoid such that ramp(x) small for x < - tramp/2
+
+    double rampfactor = 1.0;
+    if (time <= tstart + tramp) { // ramp up
+        double center = tstart + tramp/2.0;
+        rampfactor = sigmoid(steep, time - center);
+    }
+    else if (time >= tstop - tramp) { // down
+        double center = tstop - tramp/2.0;
+        rampfactor = sigmoid(steep, -(time - center));
+    }
+
+    return rampfactor;
+}
+
 int getIndexReal(const int i) {
   return 2*i;
 }

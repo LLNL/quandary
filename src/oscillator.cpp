@@ -32,16 +32,22 @@ Oscillator::Oscillator(int id, std::vector<int> nlevels_all_, std::vector<std::s
 
     if (controlsegments[idstr].compare("step") == 0) {
       idstr++;
-      assert (controlsegments.size()>idstr);
-      double step_amp = atof(controlsegments[idstr].c_str()); idstr++;
+      if (controlsegments.size() <= idstr+2){
+        printf("ERROR: Wrong setting for control segments: Step Amplitudes or tramp not found.\n");
+        exit(1);
+      }
+      double step_amp_p = atof(controlsegments[idstr].c_str()); idstr++;
+      double step_amp_q = atof(controlsegments[idstr].c_str()); idstr++;
+      double tramp = atof(controlsegments[idstr].c_str()); idstr++;
+
       double tstart = 0.0;
       double tstop = Tfinal;
       if (controlsegments.size()>=idstr+2){
         tstart = atof(controlsegments[idstr].c_str()); idstr++;
         tstop = atof(controlsegments[idstr].c_str()); idstr++;
       }
-      printf("Implement step control");
-      exit(1);
+      printf("Creating step basis with amplitude (%f, %f) (tramp %f) in control segment [%f, %f]\n", step_amp_p, step_amp_q, tramp, tstart, tstop);
+      basisfunctions.push_back(new Step(step_amp_p, step_amp_q, tstart, tstop, tramp));
     } else { // Default: splines. Format in string: spline, nsplines, tstart, tstop
       idstr++;
       if (controlsegments.size() <= idstr){

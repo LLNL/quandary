@@ -79,16 +79,19 @@ double BSpline2nd::basisfunction(int id, double t){
     return val;
 }
 
-Step::Step(double step_amp_, double t0, double t1) : ControlBasis(1, t0, t1) { // one basis function
-    step_amp = step_amp_;
+Step::Step(double step_amp_p_, double step_amp_q_, double t0, double t1, double tramp_) : ControlBasis(1, t0, t1) { // one basis function
+    step_amp_p = step_amp_p_;
+    step_amp_q = step_amp_q_;
+    tramp = tramp_;
 }
 
 Step::~Step(){}
 
-
 void Step::evaluate(const double t, const std::vector<double>& coeff, int carrier_freq_size, int carrier_freq_id, double* Blt1, double*Blt2){
-    double ramp = 1.0; // TODO
-    // return step_amp * ramp;
+    double ramp = getRampFactor(t, tstart, tstop, tramp);
+
+    *Blt1 = ramp*step_amp_p;
+    *Blt2 = ramp*step_amp_q;
 }
 
 void Step::derivative(const double t, double* coeff_diff, const double valbar1, const double valbar2, int carrier_freq_size, int carrier_freq_id) {

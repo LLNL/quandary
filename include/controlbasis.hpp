@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include <vector>
+#include "util.hpp"
 #pragma once
 
 
@@ -23,7 +24,6 @@ class ControlBasis {
         double getTstart() {return tstart; };
         double getTstop() {return tstop; };
         void setSkip(int skip_) {skip = skip_;};
-
 
         /* Evaluate the Basis(alpha, t) at time t using the coefficients coeff. */
         virtual void evaluate(const double t, const std::vector<double>& coeff, int carrier_freq_size, int carrier_freq_id, double* Blt1, double*Blt2) = 0;
@@ -63,10 +63,12 @@ class BSpline2nd : public ControlBasis {
  */
 class Step : public ControlBasis {
     protected:
-        double step_amp;
+        double step_amp_p;
+        double step_amp_q;
+        double tramp;
 
     public: 
-        Step(double step_amp_, double t0, double t1);
+        Step(double step_amp_p_, double step_amp_q_, double t0, double t1, double tramp);
         ~Step();
 
        /* Evaluate the spline at time t using the coefficients coeff. */
