@@ -7,6 +7,7 @@
 #include <vector>
 #include <assert.h>
 #include "util.hpp"
+#include <stdlib.h> 
 
 #pragma once
 
@@ -31,7 +32,8 @@ class Oscillator {
 
     std::vector<double> params;    // control parameters 
     double Tfinal;                 // final time
-    ControlBasis *basisfunctions;  // Control discretization using Bsplines + carrier waves
+    std::vector<ControlBasis *> basisfunctions;  // Vector of control parameterization basis functions. One basis for each time segment (default one segment [0,T])
+    std::vector<double> carrier_freq; // Frequencies of the carrier waves
 
     int mpirank_petsc;             // rank of Petsc's communicator
 
@@ -41,16 +43,14 @@ class Oscillator {
     int dim_postOsc;               // Dimension of coupled subsystem following this oscillator
 
 
-  public:
+      public:
     Oscillator();
-    Oscillator(int id, std::vector<int> nlevels_all_, int nbasis_, double ground_freq_, double selfkerr_, double rotational_freq_, double decay_time_, double dephase_time_, std::vector<double> carrier_freq_, double Tfinal_, LindbladType lindbladtype_);
+    Oscillator(int id, std::vector<int> nlevels_all_, std::vector<std::string>& controlsegments, double ground_freq_, double selfkerr_, double rotational_freq_, double decay_time_, double dephase_time_, std::vector<double> carrier_freq_, double Tfinal_, LindbladType lindbladtype_);
     virtual ~Oscillator();
 
     /* Return the constants */
     int getNParams() { return params.size(); };
     int getNLevels() { return nlevels; };
-    int getNSplines() { return basisfunctions->getNSplines(); };
-    int getNCarrierwaves() {return basisfunctions->getNCarrierwaves(); };
     double getSelfkerr() { return selfkerr; }; 
     double getDetuning() { return detuning_freq; }; 
     double getDecayTime() {return decay_time; };

@@ -206,7 +206,14 @@ void MapParam::GetVecStrParam(std::string key, std::vector<std::string> &fillme,
   {
     if (mpi_rank == 0)
       cerr << "# Warning: parameter " << key << " not found ! Taking default = " << default_val << endl;
-      fillme.push_back(default_val);
+
+      /* Parse the string line w.r.t. comma separator */
+      string intermediate; 
+      stringstream line(default_val); 
+      while(getline(line, intermediate, ',')) 
+      { 
+          fillme.push_back(intermediate);
+      }
   }
   else 
   {

@@ -16,9 +16,6 @@ enum class ObjectiveType {JFROBENIUS,    // weighted Frobenius norm: 1/2 * ||\rh
                           JTRACE,        // weighted Hilber-Schmidt overlap: 1 - Tr(\rho_target^\dagger rho(T)) / w, where w = purity of \rho_target
                           JMEASURE};     // Measure a pure state: Tr(O_m \rho(T)) for observable O_m
 
-/* Type of control fucntion evaluation: Rotating frame Real p(t), rotating frame imaginary q(t), or Lab frame f(t) */
-enum class ControlType {RE, IM, LAB};   
-
 /* Linear solver */
 enum class LinearSolverType{
   GMRES,   // uses Petsc's GMRES solver

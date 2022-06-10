@@ -3,17 +3,20 @@
 Oscillator::Oscillator(){
   nlevels = 0;
   Tfinal = 0;
-  basisfunctions = NULL;
   ground_freq = 0.0;
 }
 
-Oscillator::Oscillator(int id, std::vector<int> nlevels_all_, int nbasis_, double ground_freq_, double selfkerr_, double rotational_freq_, double decay_time_, double dephase_time_, std::vector<double> carrier_freq_, double Tfinal_, LindbladType lindbladtype_){
+Oscillator::Oscillator(int id, std::vector<int> nlevels_all_, std::vector<std::string>& controlsegments, double ground_freq_, double selfkerr_, double rotational_freq_, double decay_time_, double dephase_time_, std::vector<double> carrier_freq_, double Tfinal_, LindbladType lindbladtype_){
 
   nlevels = nlevels_all_[id];
   Tfinal = Tfinal_;
   ground_freq = ground_freq_*2.0*M_PI;
   selfkerr = selfkerr_*2.0*M_PI;
   detuning_freq = 2.0*M_PI*(ground_freq_ - rotational_freq_);
+  carrier_freq = carrier_freq_;
+  for (int i=0; i<carrier_freq.size(); i++) {
+    carrier_freq[i] *= 2.0*M_PI;
+  }
   decay_time = decay_time_;
   dephase_time = dephase_time_;
   lindbladtype = lindbladtype_;
@@ -22,11 +25,47 @@ Oscillator::Oscillator(int id, std::vector<int> nlevels_all_, int nbasis_, doubl
   int mpirank_world;
   MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
 
-  /* Create control basis functions */
-  basisfunctions = new ControlBasis(nbasis_, Tfinal_, carrier_freq_);
+
+  // Parse for control segments
+  int idstr = 0;
+  while (idstr < controlsegments.size()) {
+
+    if (controlsegments[idstr].compare("step") == 0) {
+      idstr++;
+      assert (controlsegments.size()>idstr);
+      double step_amp = atof(controlsegments[idstr].c_str()); idstr++;
+      double tstart = 0.0;
+      double tstop = Tfinal;
+      if (controlsegments.size()>=idstr+2){
+        tstart = atof(controlsegments[idstr].c_str()); idstr++;
+        tstop = atof(controlsegments[idstr].c_str()); idstr++;
+      }
+      printf("Implement step control");
+      exit(1);
+    } else { // Default: splines. Format in string: spline, nsplines, tstart, tstop
+      idstr++;
+      if (controlsegments.size() <= idstr){
+        printf("ERROR: Wrong setting for control segments: Number of splines not found.\n");
+        exit(1);
+      }
+      int nspline = atoi(controlsegments[idstr].c_str()); idstr++;
+      double tstart = 0.0;
+      double tstop = Tfinal;
+      if (controlsegments.size()>=idstr+2){
+        tstart = atof(controlsegments[idstr].c_str()); idstr++;
+        tstop = atof(controlsegments[idstr].c_str()); idstr++;
+      }
+      printf("Creating %d-spline basis in control segment [%f, %f]\n", nspline,tstart, tstop);
+      basisfunctions.push_back(new BSpline2nd(nspline, tstart, tstop));
+    }
+  }
 
   /* Initialize control parameters */
-  int nparam = 2 * nbasis_ * carrier_freq_.size();
+  int nparam = 0;
+  for (int i=0; i<basisfunctions.size(); i++){
+    basisfunctions[i]->setSkip(nparam);
+    nparam += basisfunctions[i]->getNBasis() * 2 * carrier_freq.size();
+  }
   for (int i=0; i<nparam; i++) {
     params.push_back(0.0);
   }
@@ -44,7 +83,8 @@ Oscillator::Oscillator(int id, std::vector<int> nlevels_all_, int nbasis_, doubl
 
 Oscillator::~Oscillator(){
   if (params.size() > 0) {
-    delete basisfunctions;
+    for (int i=0; i<basisfunctions.size(); i++) 
+      delete basisfunctions[i];
   }
 }
 
@@ -63,9 +103,34 @@ int Oscillator::evalControl(const double t, double* Re_ptr, double* Im_ptr){
     exit(1);
   }
 
-  /* Evaluate the spline at time t */
-  *Re_ptr = basisfunctions->evaluate(t, params, ground_freq, ControlType::RE);
-  *Im_ptr = basisfunctions->evaluate(t, params, ground_freq, ControlType::IM);
+  // Default: Non controllable oscillator. Will typically be overwritten below. 
+  *Re_ptr = 0.0;
+  *Im_ptr = 0.0;
+
+  /* Evaluate p(t) and q(t) using the parameters */
+  if (params.size()>0) {
+    // Iterate over basis parameterizations. Only one will be used, see the break-statement. 
+    for (int bs = 0; bs < basisfunctions.size(); bs++){
+      if (basisfunctions[bs]->getTstart() <= t && 
+          basisfunctions[bs]->getTstop() >= t ) {
+        /* Iterate over carrier frequencies */
+        double sum_p = 0.0;
+        double sum_q = 0.0;
+        for (int f=0; f < carrier_freq.size(); f++) {
+          double cos_omt = cos(carrier_freq[f]*t);
+          double sin_omt = sin(carrier_freq[f]*t);
+          double Blt1 = 0.0; 
+          double Blt2 = 0.0;
+          basisfunctions[bs]->evaluate(t, params, carrier_freq.size(), f, &Blt1, &Blt2);
+          sum_p += cos_omt * Blt1 - sin_omt * Blt2; 
+          sum_q += sin_omt * Blt1 + cos_omt * Blt2;
+        }
+        *Re_ptr = sum_p;
+        *Im_ptr = sum_q;
+        break;
+      }
+    }
+  } 
 
   /* If pipulse: Overwrite controls by constant amplitude */
   for (int ipulse=0; ipulse< pipulse.tstart.size(); ipulse++){
@@ -87,16 +152,28 @@ int Oscillator::evalControl_diff(const double t, double* dRedp, double* dImdp) {
     exit(1);
   } 
 
-  /* Evaluate derivative of spline basis at time t */
-  double Rebar = 1.0;
-  double Imbar = 1.0;
-  basisfunctions->derivative(t, dRedp, Rebar, ControlType::RE);
-  basisfunctions->derivative(t, dImdp, Imbar, ControlType::IM);
+
+  if (params.size()>0) {
+    // Iterate over basis parameterizations
+    for (int bs = 0; bs < basisfunctions.size(); bs++){
+      if (basisfunctions[bs]->getTstart() <= t && 
+          basisfunctions[bs]->getTstop() >= t ) {
+        /* Iterate over carrier frequencies */
+        for (int f=0; f < carrier_freq.size(); f++) {
+          double cos_omt = cos(carrier_freq[f]*t);
+          double sin_omt = sin(carrier_freq[f]*t);
+          basisfunctions[bs]->derivative(t, dRedp, cos_omt, -sin_omt, carrier_freq.size(), f);
+          basisfunctions[bs]->derivative(t, dImdp, sin_omt, cos_omt, carrier_freq.size(), f);
+        }
+        break;
+      }
+    }
+  } 
 
   /* TODO: Derivative of pipulse? */
   for (int ipulse=0; ipulse< pipulse.tstart.size(); ipulse++){
     if (pipulse.tstart[ipulse] <= t && t <= pipulse.tstop[ipulse]) {
-      printf("ERROR: Derivative of pipulse not implemented. Sorry!\n");
+      printf("ERROR: Derivative of pipulse not implemented. Sorry! But also, this should never happen!\n");
       exit(1);
     }
   }
@@ -112,17 +189,32 @@ int Oscillator::evalControl_Labframe(const double t, double* f){
     exit(1);
   }
 
-  /* Evaluate the spline at time t */
-  *f = basisfunctions->evaluate(t, params, ground_freq, ControlType::LAB);
+  /* Evaluate the spline at time t  */
+  *f = 0.0;
+  if (params.size()>0) {
+    // Iterate over basis parameterizations
+    for (int bs = 0; bs < basisfunctions.size(); bs++){
+      if (basisfunctions[bs]->getTstart() <= t && 
+          basisfunctions[bs]->getTstop() >= t ) {
+        /* Iterate over carrier frequencies multiply with basisfunction of index k0 */
+        double sum_p = 0.0;
+        double sum_q = 0.0;
+        for (int f=0; f < carrier_freq.size(); f++) {
+          double cos_omt = cos(carrier_freq[f]*t);
+          double sin_omt = sin(carrier_freq[f]*t);
+          double Blt1 = 0.0; 
+          double Blt2 = 0.0;
+          basisfunctions[bs]->evaluate(t, params, carrier_freq.size(), f, &Blt1, &Blt2);
+          sum_p += cos_omt * Blt1 - sin_omt * Blt2; 
+          sum_q += sin_omt * Blt1 + cos_omt * Blt2;
+        }
+        *f = 2. * (sum_p * cos(ground_freq*t) - sum_q * sin(ground_freq*t));
+        break;
+      }
+    }
+  } 
 
-  // Test implementation of lab frame controls. 
-  // double forig = *f;
-  // double p = basisfunctions->evaluate(t, params, ground_freq, ControlType::RE);
-  // double q = basisfunctions->evaluate(t, params, ground_freq, ControlType::IM);
-  // double arg = 2.0*M_PI*ground_freq*t;
-  // double ftest = 2.0*p*cos(arg) - 2.0*q*sin(arg);
-  // double err = fabs(forig-ftest);
-  // if (err > 1e-13) printf("err %f\n", err);
+
 
   /* If inside a pipulse, overwrite lab control */
   for (int ipulse=0; ipulse< pipulse.tstart.size(); ipulse++){

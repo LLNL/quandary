@@ -351,13 +351,6 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
     // set bounds for all parameters in this oscillator
     for (int i=0; i<timestepper->mastereq->getOscillator(iosc)->getNParams(); i++){
       double bound = bounds[iosc];
-
-      /* for the first and last two splines, overwrite the bound with zero to ensure that control at t=0 and t=T is zero. */
-      int ibegin = 2*2*carrier_freq.size();
-      int iend = (timestepper->mastereq->getOscillator(iosc)->getNSplines()-2)*2*carrier_freq.size();
-      if (i < ibegin || i >= iend) bound = 0.0;
-
-      // set the bound
       VecSetValue(xupper, col, bound, INSERT_VALUES);
       VecSetValue(xlower, col, -1. * bound, INSERT_VALUES);
       col++;
@@ -765,19 +758,6 @@ void OptimProblem::getStartingPoint(Vec xinit){
       VecSetValue(xinit, i, vecread[i], INSERT_VALUES);
     }
     delete [] vecread;
-  }
-
-  /* for the first and last two splines, overwrite the parameters with zero to ensure that control at t=0 and t=T is zero. */
-  PetscInt col = 0.0;
-  for (int iosc = 0; iosc < timestepper->mastereq->getNOscillators(); iosc++){
-    int ncarrier = timestepper->mastereq->getOscillator(iosc)->getNCarrierwaves();
-    PetscInt ibegin = 2*2*ncarrier;
-    PetscInt iend = (timestepper->mastereq->getOscillator(iosc)->getNSplines()-2)*2*ncarrier;
-
-    for (int i = 0; i < timestepper->mastereq->getOscillator(iosc)->getNParams(); i++) {
-      if (i < ibegin || i >= iend) VecSetValue(xinit, col, 0.0, INSERT_VALUES);
-      col++;
-    }
   }
 
 

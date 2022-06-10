@@ -49,7 +49,6 @@ int main(int argc,char **argv)
   config.GetVecIntParam("nlevels", nlevels, 0);
   int ntime = config.GetIntParam("ntime", 1000);
   double dt    = config.GetDoubleParam("dt", 0.01);
-  int nspline = config.GetIntParam("nspline", 10);
   RunType runtype;
   std::string runtypestr = config.GetStrParam("runtype", "simulation");
   if      (runtypestr.compare("simulation")      == 0) runtype = RunType::SIMULATION;
@@ -222,11 +221,21 @@ int main(int argc,char **argv)
   }
 
   // Create the oscillators 
+  string default_str = "spline, 10, 0.0, "+std::to_string(total_time); // Default for first oscillator control
   for (int i = 0; i < nlevels.size(); i++){
+    // Get carrier wave frequencies 
     std::vector<double> carrier_freq;
     std::string key = "carrier_frequency" + std::to_string(i);
     config.GetVecDoubleParam(key, carrier_freq, 0.0);
-    oscil_vec[i] = new Oscillator(i, nlevels, nspline, trans_freq[i], selfkerr[i], rot_freq[i], decay_time[i], dephase_time[i], carrier_freq, total_time, lindbladtype);
+
+    // Get control type. Default for second or larger oscillator is the previous one
+    std::vector<std::string> controltype_str;
+    config.GetVecStrParam("control_segments" + std::to_string(i), controltype_str,default_str);
+    oscil_vec[i] = new Oscillator(i, nlevels, controltype_str, trans_freq[i], selfkerr[i], rot_freq[i], decay_time[i], dephase_time[i], carrier_freq, total_time, lindbladtype);
+
+    // Update the default
+    default_str = "";
+    for (int l = 0; l<controltype_str.size(); l++) default_str += controltype_str[l];
   }
 
   // Get pi-pulses, if any
