@@ -1,4 +1,4 @@
-#include "bspline.hpp"
+#include "controlbasis.hpp"
 
 
 ControlBasis::ControlBasis() {

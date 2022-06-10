@@ -1,5 +1,5 @@
 #include <stdio.h>
-#include "bspline.hpp"
+#include "controlbasis.hpp"
 #include <fstream>
 #include <iostream> 
 #include <iomanip>

@@ -2,7 +2,6 @@
 #include "braid_wrapper.hpp"
 #endif
 #include "timestepper.hpp"
-#include "bspline.hpp"
 #include "oscillator.hpp" 
 #include "mastereq.hpp"
 #include "config.hpp"
