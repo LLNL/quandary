@@ -56,6 +56,10 @@ class Oscillator {
     double getDetuning() { return detuning_freq; }; 
     double getDecayTime() {return decay_time; };
     double getDephaseTime() {return dephase_time; };
+    int getNSegments() {return basisfunctions.size(); };
+
+    /* Return the number of parameters for the k-th segment */
+    int getNSegParams(int segmentID);
 
     /* Copy x into the control parameter vector */
     void setParams(const double* x);

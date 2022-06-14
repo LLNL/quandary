@@ -330,22 +330,19 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   VecCreateSeq(PETSC_COMM_SELF, ndesign, &xlower);
   VecSetFromOptions(xlower);
   VecDuplicate(xlower, &xupper);
-  std::vector<double> bounds;
-  config.GetVecDoubleParam("optim_bounds", bounds, 1e20);
-  for (int i = bounds.size(); i < timestepper->mastereq->getNOscillators(); i++) bounds.push_back(1e+12); // fill up with zeros
   int col = 0;
   for (int iosc = 0; iosc < timestepper->mastereq->getNOscillators(); iosc++){
-    // Scale bounds by 1/sqrt(2) * (number of carrier waves) */
-    std::vector<double> carrier_freq;
-    std::string key = "carrier_frequency" + std::to_string(iosc);
-    config.GetVecDoubleParam(key, carrier_freq, 0.0, false);
-    bounds[iosc] = bounds[iosc] / ( sqrt(2) * carrier_freq.size()) ;
-    // set bounds for all parameters in this oscillator
-    for (int i=0; i<timestepper->mastereq->getOscillator(iosc)->getNParams(); i++){
-      double bound = bounds[iosc];
-      VecSetValue(xupper, col, bound, INSERT_VALUES);
-      VecSetValue(xlower, col, -1. * bound, INSERT_VALUES);
-      col++;
+    std::vector<std::string> bound_str;
+    config.GetVecStrParam("control_bounds" + std::to_string(iosc), bound_str, "0.0");
+    for (int iseg = 0; iseg < timestepper->mastereq->getOscillator(iosc)->getNSegments(); iseg++){
+      double boundval = atof(bound_str[iseg].c_str());
+      // Scale bounds by 1/sqrt(2) * (number of carrier waves) */
+      // boundval = boundval / ( sqrt(2) * carrier_freq.size()) ;
+      for (int i=0; i<timestepper->mastereq->getOscillator(iosc)->getNSegParams(iseg); i++){
+        VecSetValue(xupper, col, boundval, INSERT_VALUES);
+        VecSetValue(xlower, col, -1. * boundval, INSERT_VALUES);
+        col++;
+      }
     }
   }
   VecAssemblyBegin(xlower); VecAssemblyEnd(xlower);
