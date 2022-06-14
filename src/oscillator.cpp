@@ -92,10 +92,8 @@ Oscillator::Oscillator(int id, std::vector<int> nlevels_all_, std::vector<std::s
       for (int i=0; i<basisfunctions[seg]->getNparams(); i++){
         params.push_back(initval);
       }
-    } else if (controlinitializations[idini].compare("random") == 0 || 
-             controlinitializations[idini].compare("random_seed") == 0) {
-      if ( controlinitializations[idini].compare("random") == 0) srand(1);  // fixed seed
-      else srand(time(0)); // random seed
+
+    } else if (controlinitializations[idini].compare("random") == 0) {
 
       for (int i=0; i<basisfunctions[seg]->getNparams(); i++){
         double randval = (double) rand() / ((double)RAND_MAX);  // random in [0,1]

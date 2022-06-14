@@ -21,6 +21,11 @@
 
 int main(int argc,char **argv)
 {
+
+  // Initialize random number generator 
+  srand(1);  // fixed seed
+  // srand(time(0));  // random seed
+
   char filename[255];
   PetscErrorCode ierr;
 
