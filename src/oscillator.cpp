@@ -78,10 +78,18 @@ Oscillator::Oscillator(int id, std::vector<int> nlevels_all_, std::vector<std::s
     }
   }
 
-  //Initialization of the control parameters
+  //Initialization of the control parameters for each segment
   int idini = 0;
   for (int seg = 0; seg < basisfunctions.size(); seg++) {
-    assert(controlinitializations.size() >= seg+2);
+    // Set a default if initialization string is not given for this segment
+    if (controlinitializations.size() < idini+2) {
+      controlinitializations.push_back("constant");
+      if (basisfunctions[seg]->getType() == ControlType::STEP)
+        controlinitializations.push_back("1.0");
+      else 
+        controlinitializations.push_back("0.0");
+    }
+    // Check config option for 'constant' or 'random' initialization
     if (controlinitializations[idini].compare("constant") == 0 ) {
       double initval = atof(controlinitializations[idini+1].c_str());
       // If STEP: scale to [0,1]

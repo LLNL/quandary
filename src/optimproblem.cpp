@@ -333,9 +333,11 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   int col = 0;
   for (int iosc = 0; iosc < timestepper->mastereq->getNOscillators(); iosc++){
     std::vector<std::string> bound_str;
-    config.GetVecStrParam("control_bounds" + std::to_string(iosc), bound_str, "0.0");
+    config.GetVecStrParam("control_bounds" + std::to_string(iosc), bound_str, "10000.0");
     for (int iseg = 0; iseg < timestepper->mastereq->getOscillator(iosc)->getNSegments(); iseg++){
-      double boundval = atof(bound_str[iseg].c_str());
+      double boundval = 0.0;
+      if (bound_str.size() <= iseg) boundval =  atof(bound_str[bound_str.size()-1].c_str());
+      else boundval = atof(bound_str[iseg].c_str());
       // Scale bounds by 1/sqrt(2) * (number of carrier waves) */
       // boundval = boundval / ( sqrt(2) * carrier_freq.size()) ;
       for (int i=0; i<timestepper->mastereq->getOscillator(iosc)->getNSegParams(iseg); i++){
