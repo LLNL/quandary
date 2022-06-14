@@ -30,3 +30,7 @@ enum class RunType {
   NONE               // Don't run anything.
 };
 
+enum class ControlType {
+  BSPLINE, 
+  STEP
+};

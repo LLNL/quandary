@@ -6,7 +6,7 @@ Oscillator::Oscillator(){
   ground_freq = 0.0;
 }
 
-Oscillator::Oscillator(int id, std::vector<int> nlevels_all_, std::vector<std::string>& controlsegments, double ground_freq_, double selfkerr_, double rotational_freq_, double decay_time_, double dephase_time_, std::vector<double> carrier_freq_, double Tfinal_, LindbladType lindbladtype_){
+Oscillator::Oscillator(int id, std::vector<int> nlevels_all_, std::vector<std::string>& controlsegments, std::vector<std::string>& controlinitializations, double ground_freq_, double selfkerr_, double rotational_freq_, double decay_time_, double dephase_time_, std::vector<double> carrier_freq_, double Tfinal_, LindbladType lindbladtype_){
 
   myid = id;
   nlevels = nlevels_all_[id];
@@ -27,8 +27,12 @@ Oscillator::Oscillator(int id, std::vector<int> nlevels_all_, std::vector<std::s
   MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
 
 
+  // for (int idstr = 0; idstr < controlsegments.size(); idstr++) printf("%s ", controlsegments[idstr].c_str());
+  // printf("\n");
+
   // Parse for control segments
   int idstr = 0;
+  int nparams = 0;
   while (idstr < controlsegments.size()) {
 
     if (controlsegments[idstr].compare("step") == 0) {
@@ -48,8 +52,11 @@ Oscillator::Oscillator(int id, std::vector<int> nlevels_all_, std::vector<std::s
         tstop = atof(controlsegments[idstr].c_str()); idstr++;
       }
       printf("%d: Creating step basis with amplitude (%f, %f) (tramp %f) in control segment [%f, %f]\n", myid, step_amp1, step_amp2, tramp, tstart, tstop);
-      basisfunctions.push_back(new Step(step_amp1, step_amp2, tstart, tstop, tramp));
-
+      ControlBasis* mystep = new Step(step_amp1, step_amp2, tstart, tstop, tramp);
+      mystep->setSkip(nparams);
+      nparams += mystep->getNparams() * carrier_freq.size();
+      basisfunctions.push_back(mystep);
+      
     } else { // Default: splines. Format in string: spline, nsplines, tstart, tstop
       idstr++;
       if (controlsegments.size() <= idstr){
@@ -64,19 +71,59 @@ Oscillator::Oscillator(int id, std::vector<int> nlevels_all_, std::vector<std::s
         tstop = atof(controlsegments[idstr].c_str()); idstr++;
       }
       printf("%d: Creating %d-spline basis in control segment [%f, %f]\n", myid, nspline,tstart, tstop);
-      basisfunctions.push_back(new BSpline2nd(nspline, tstart, tstop));
+      ControlBasis* mysplinebasis = new BSpline2nd(nspline, tstart, tstop);
+      mysplinebasis->setSkip(nparams);
+      nparams += mysplinebasis->getNparams() * carrier_freq.size();
+      basisfunctions.push_back(mysplinebasis);
     }
   }
 
-  /* Initialize control parameters */
-  int nparam = 0;
-  for (int i=0; i<basisfunctions.size(); i++){
-    basisfunctions[i]->setSkip(nparam);
-    nparam += basisfunctions[i]->getNparams() * carrier_freq.size();
+  //Initialization of the control parameters
+  int idini = 0;
+  for (int seg = 0; seg < basisfunctions.size(); seg++) {
+    assert(controlinitializations.size() >= seg+2);
+    if (controlinitializations[idini].compare("constant") == 0 ) {
+      double initval = atof(controlinitializations[idini+1].c_str());
+      // If STEP: scale to [0,1]
+      if (basisfunctions[seg]->getType() == ControlType::STEP){
+        initval = max(0.0, initval);  
+        initval = min(1.0, initval); 
+      }
+      for (int i=0; i<basisfunctions[seg]->getNparams(); i++){
+        params.push_back(initval);
+      }
+    } else if (controlinitializations[idini].compare("random") == 0 || 
+             controlinitializations[idini].compare("random_seed") == 0) {
+      if ( controlinitializations[idini].compare("random") == 0) srand(1);  // fixed seed
+      else srand(time(0)); // random seed
+
+      for (int i=0; i<basisfunctions[seg]->getNparams(); i++){
+        double randval = (double) rand() / ((double)RAND_MAX);  // random in [0,1]
+        MPI_Bcast(&randval, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+        // scale to chosen amplitude 
+        double maxval = atof(controlinitializations[idini+1].c_str());
+        double initval = maxval*randval;
+
+        // If STEP: scale to [0,1] else scale to [-a,a]
+        if (basisfunctions[seg]->getType() == ControlType::STEP){
+          initval = max(0.0, initval);  
+          initval = min(1.0, initval); 
+        } else {
+          initval = 2*initval - maxval;
+        }
+        params.push_back(initval);
+      }
+    } else {
+      for (int i=0; i<basisfunctions[seg]->getNparams(); i++){
+        params.push_back(0.0);
+      }
+    }
+    idini += 2; 
   }
-  for (int i=0; i<nparam; i++) {
-    params.push_back(0.0);
-  }
+
+
+
+
 
   /* Compute and store dimension of preceding and following oscillators */
   dim_preOsc = 1;
@@ -99,6 +146,13 @@ Oscillator::~Oscillator(){
 void Oscillator::setParams(const double* x){
   for (int i=0; i<params.size(); i++) {
     params[i] = x[i]; 
+  }
+}
+
+
+void Oscillator::getParams(double* x){
+  for (int i=0; i<params.size(); i++) {
+    x[i] = params[i]; 
   }
 }
 

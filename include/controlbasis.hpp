@@ -14,6 +14,7 @@ class ControlBasis {
         double tstart;         // Interval [tstart,tstop] where this control basis is applied in
         double tstop;           
         int skip;              // Constant to skip to the starting location for this basis inside the (global) control vector. 
+        ControlType controltype;
 
     public: 
         ControlBasis();
@@ -23,6 +24,7 @@ class ControlBasis {
         int getNparams() {return nparams; };
         double getTstart() {return tstart; };
         double getTstop() {return tstop; };
+        ControlType getType() {return controltype;};
         void setSkip(int skip_) {skip = skip_;};
 
         /* Evaluate the Basis(alpha, t) at time t using the coefficients coeff. */

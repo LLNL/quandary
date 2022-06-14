@@ -46,7 +46,7 @@ class Oscillator {
 
       public:
     Oscillator();
-    Oscillator(int id, std::vector<int> nlevels_all_, std::vector<std::string>& controlsegments, double ground_freq_, double selfkerr_, double rotational_freq_, double decay_time_, double dephase_time_, std::vector<double> carrier_freq_, double Tfinal_, LindbladType lindbladtype_);
+    Oscillator(int id, std::vector<int> nlevels_all_, std::vector<std::string>& controlsegments, std::vector<std::string>& controlinitializations, double ground_freq_, double selfkerr_, double rotational_freq_, double decay_time_, double dephase_time_, std::vector<double> carrier_freq_, double Tfinal_, LindbladType lindbladtype_);
     virtual ~Oscillator();
 
     /* Return the constants */
@@ -59,6 +59,8 @@ class Oscillator {
 
     /* Copy x into the control parameter vector */
     void setParams(const double* x);
+    /* Copy params into the vector x */
+    void getParams(double* x);
 
     /* Evaluates rotating frame control functions Re = p(t), Im = q(t) */
     int evalControl(const double t, double* Re_ptr, double* Im_ptr);

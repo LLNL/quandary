@@ -4,6 +4,7 @@
 ControlBasis::ControlBasis() {
     nparams= 0;
     skip = 0;
+    controltype = ControlType::BSPLINE;
 }
 
 ControlBasis::ControlBasis(int nparams_, double tstart_, double tstop_) : ControlBasis() {
@@ -16,6 +17,7 @@ ControlBasis::~ControlBasis(){}
 
 BSpline2nd::BSpline2nd(int nsplines_, double t0, double T) : ControlBasis(2*nsplines_, t0, T){
     nsplines = nsplines_;
+    controltype = ControlType::BSPLINE;
 
     dtknot = (T-t0) / (double)(nsplines - 2);
 	width = 3.0*dtknot;
@@ -84,6 +86,7 @@ Step::Step(double step_amp1_, double step_amp2_, double t0, double t1, double tr
     step_amp1 = step_amp1_;
     step_amp2 = step_amp2_;
     tramp = tramp_;
+    controltype = ControlType::STEP;
 }
 
 Step::~Step(){}

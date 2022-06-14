@@ -60,8 +60,7 @@ class OptimProblem {
   double grtol;                    /* Stopping criterion based on relative gradient norm */
   int maxiter;                     /* Stopping criterion based on maximum number of iterations */
   Tao tao;                         /* Petsc's Optimization solver */
-  std::string initguess_type;      /* Type of initial guess */
-  std::vector<double> initguess_amplitudes; /* Initial amplitudes of controles, or NULL */
+  std::vector<double> initguess_fromfile;      /* Stores the initial guess, if read from file */
   double* mygrad;  /* Auxiliary */
   
   public: 

@@ -55,16 +55,8 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   gatol = config.GetDoubleParam("optim_atol", 1e-8);
   grtol = config.GetDoubleParam("optim_rtol", 1e-4);
   maxiter = config.GetIntParam("optim_maxiter", 200);
-  initguess_type = config.GetStrParam("optim_init", "zero");
-  config.GetVecDoubleParam("optim_init_ampl", initguess_amplitudes, 0.0);
-  // sanity check
-  if (initguess_type.compare("constant") == 0 || 
-      initguess_type.compare("random")    == 0 ||
-      initguess_type.compare("random_seed") == 0)  {
-      copyLast(initguess_amplitudes, timestepper->mastereq->getNOscillators());
-  }
-
-  /* Store the optimization target */
+  
+    /* Store the optimization target */
   std::vector<std::string> target_str;
   Gate* targetgate=NULL;
   int purestateID = -1;
@@ -358,6 +350,16 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   }
   VecAssemblyBegin(xlower); VecAssemblyEnd(xlower);
   VecAssemblyBegin(xupper); VecAssemblyEnd(xupper);
+
+  /* Store the initial guess if read from file */
+  std::vector<std::string> controlinit_str;
+  config.GetVecStrParam("control_initialization0", controlinit_str, "constant, 0.0");
+  if ( controlinit_str[0].compare("file") == 0 ) {
+    assert(controlinit_str.size() >=2);
+    for (int i=0; i<ndesign; i++) initguess_fromfile.push_back(0.0);
+    if (mpirank_world == 0) read_vector(controlinit_str[1].c_str(), initguess_fromfile.data(), ndesign);
+    MPI_Bcast(initguess_fromfile.data(), ndesign, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+  }
  
   /* Create Petsc's optimization solver */
   TaoCreate(PETSC_COMM_WORLD, &tao);
@@ -708,58 +710,22 @@ void OptimProblem::solve(Vec xinit) {
 void OptimProblem::getStartingPoint(Vec xinit){
   MasterEq* mastereq = timestepper->mastereq;
 
-  if (initguess_type.compare("constant") == 0 ){ // set constant initial design
-    // set values
-    int j = 0;
-    for (int ioscil = 0; ioscil < mastereq->getNOscillators(); ioscil++) {
-      int nparam = mastereq->getOscillator(ioscil)->getNParams();
-      for (int i = 0; i < nparam; i++) {
-        VecSetValue(xinit, j, initguess_amplitudes[ioscil], INSERT_VALUES);
-        j++;
-      }
+  if (initguess_fromfile.size() > 0) {
+    /* Set the initial guess from file */
+    for (int i=0; i<initguess_fromfile.size(); i++) {
+      VecSetValue(xinit, i, initguess_fromfile[i], INSERT_VALUES);
     }
-  } else if ( initguess_type.compare("random")      == 0 ||       // init random, fixed seed
-              initguess_type.compare("random_seed") == 0)  { // init random with new seed
-    /* Create vector with random elements between [-1:1] */
-    if ( initguess_type.compare("random") == 0) srand(1);  // fixed seed
-    else srand(time(0)); // random seed
-    double* randvec = new double[ndesign];
-    for (int i=0; i<ndesign; i++) {
-      randvec[i] = (double) rand() / ((double)RAND_MAX);
-      randvec[i] = 2.*randvec[i] - 1.;
-    }
-    /* Broadcast random vector from rank 0 to all, so that all have the same starting point (necessary?) */
-    MPI_Bcast(randvec, ndesign, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
-    /* Scale vector by the initial amplitudes */
+  } else { // copy from initialization in oscillators contructor
+    PetscScalar* xptr;
+    VecGetArray(xinit, &xptr);
     int shift = 0;
-    for (int ioscil = 0; ioscil < mastereq->getNOscillators(); ioscil++) {
-      int nparam_iosc = mastereq->getOscillator(ioscil)->getNParams();
-      for (int i=0; i<nparam_iosc; i++) {
-        randvec[shift + i] *= initguess_amplitudes[ioscil];
-      }
-      shift+= nparam_iosc;
+    for (int ioscil = 0; ioscil<mastereq->getNOscillators(); ioscil++){
+      mastereq->getOscillator(ioscil)->getParams(xptr + shift);
+      shift += mastereq->getOscillator(ioscil)->getNParams();
     }
-
-    /* Set the initial guess */
-    for (int i=0; i<ndesign; i++) {
-      VecSetValue(xinit, i, randvec[i], INSERT_VALUES);
-    }
-    delete [] randvec;
-
-  }  else { // Read from file 
-    double* vecread = new double[ndesign];
-
-    if (mpirank_world == 0) read_vector(initguess_type.c_str(), vecread, ndesign);
-    MPI_Bcast(vecread, ndesign, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-
-    /* Set the initial guess */
-    for (int i=0; i<ndesign; i++) {
-      VecSetValue(xinit, i, vecread[i], INSERT_VALUES);
-    }
-    delete [] vecread;
+    VecRestoreArray(xinit, &xptr);
   }
-
 
   /* Assemble initial guess */
   VecAssemblyBegin(xinit);
