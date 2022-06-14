@@ -8,6 +8,7 @@ Oscillator::Oscillator(){
 
 Oscillator::Oscillator(int id, std::vector<int> nlevels_all_, std::vector<std::string>& controlsegments, double ground_freq_, double selfkerr_, double rotational_freq_, double decay_time_, double dephase_time_, std::vector<double> carrier_freq_, double Tfinal_, LindbladType lindbladtype_){
 
+  myid = id;
   nlevels = nlevels_all_[id];
   Tfinal = Tfinal_;
   ground_freq = ground_freq_*2.0*M_PI;
@@ -36,8 +37,8 @@ Oscillator::Oscillator(int id, std::vector<int> nlevels_all_, std::vector<std::s
         printf("ERROR: Wrong setting for control segments: Step Amplitudes or tramp not found.\n");
         exit(1);
       }
-      double step_amp_p = atof(controlsegments[idstr].c_str()); idstr++;
-      double step_amp_q = atof(controlsegments[idstr].c_str()); idstr++;
+      double step_amp1 = atof(controlsegments[idstr].c_str()); idstr++;
+      double step_amp2 = atof(controlsegments[idstr].c_str()); idstr++;
       double tramp = atof(controlsegments[idstr].c_str()); idstr++;
 
       double tstart = 0.0;
@@ -46,8 +47,9 @@ Oscillator::Oscillator(int id, std::vector<int> nlevels_all_, std::vector<std::s
         tstart = atof(controlsegments[idstr].c_str()); idstr++;
         tstop = atof(controlsegments[idstr].c_str()); idstr++;
       }
-      printf("Creating step basis with amplitude (%f, %f) (tramp %f) in control segment [%f, %f]\n", step_amp_p, step_amp_q, tramp, tstart, tstop);
-      basisfunctions.push_back(new Step(step_amp_p, step_amp_q, tstart, tstop, tramp));
+      printf("%d: Creating step basis with amplitude (%f, %f) (tramp %f) in control segment [%f, %f]\n", myid, step_amp1, step_amp2, tramp, tstart, tstop);
+      basisfunctions.push_back(new Step(step_amp1, step_amp2, tstart, tstop, tramp));
+
     } else { // Default: splines. Format in string: spline, nsplines, tstart, tstop
       idstr++;
       if (controlsegments.size() <= idstr){
@@ -61,7 +63,7 @@ Oscillator::Oscillator(int id, std::vector<int> nlevels_all_, std::vector<std::s
         tstart = atof(controlsegments[idstr].c_str()); idstr++;
         tstop = atof(controlsegments[idstr].c_str()); idstr++;
       }
-      printf("Creating %d-spline basis in control segment [%f, %f]\n", nspline,tstart, tstop);
+      printf("%d: Creating %d-spline basis in control segment [%f, %f]\n", myid, nspline,tstart, tstop);
       basisfunctions.push_back(new BSpline2nd(nspline, tstart, tstop));
     }
   }
@@ -70,7 +72,7 @@ Oscillator::Oscillator(int id, std::vector<int> nlevels_all_, std::vector<std::s
   int nparam = 0;
   for (int i=0; i<basisfunctions.size(); i++){
     basisfunctions[i]->setSkip(nparam);
-    nparam += basisfunctions[i]->getNBasis() * 2 * carrier_freq.size();
+    nparam += basisfunctions[i]->getNparams() * carrier_freq.size();
   }
   for (int i=0; i<nparam; i++) {
     params.push_back(0.0);
@@ -168,8 +170,8 @@ int Oscillator::evalControl_diff(const double t, double* dRedp, double* dImdp) {
         for (int f=0; f < carrier_freq.size(); f++) {
           double cos_omt = cos(carrier_freq[f]*t);
           double sin_omt = sin(carrier_freq[f]*t);
-          basisfunctions[bs]->derivative(t, dRedp, cos_omt, -sin_omt, carrier_freq.size(), f);
-          basisfunctions[bs]->derivative(t, dImdp, sin_omt, cos_omt, carrier_freq.size(), f);
+          basisfunctions[bs]->derivative(t, params, dRedp, cos_omt, -sin_omt, carrier_freq.size(), f);
+          basisfunctions[bs]->derivative(t, params, dImdp, sin_omt, cos_omt, carrier_freq.size(), f);
         }
         break;
       }

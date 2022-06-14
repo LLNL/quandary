@@ -10,17 +10,17 @@
 /* Abstract base class */
 class ControlBasis {
     protected:
-        int nbasis;            // number of basis functions
+        int nparams;            // number of parameters that define the controls 
         double tstart;         // Interval [tstart,tstop] where this control basis is applied in
         double tstop;           
         int skip;              // Constant to skip to the starting location for this basis inside the (global) control vector. 
 
     public: 
         ControlBasis();
-        ControlBasis(int nbasis_, double tstart, double tstop);
+        ControlBasis(int nparams_, double tstart, double tstop);
         virtual ~ControlBasis();
 
-        int getNBasis() {return nbasis; };
+        int getNparams() {return nparams; };
         double getTstart() {return tstart; };
         double getTstop() {return tstop; };
         void setSkip(int skip_) {skip = skip_;};
@@ -29,7 +29,7 @@ class ControlBasis {
         virtual void evaluate(const double t, const std::vector<double>& coeff, int carrier_freq_size, int carrier_freq_id, double* Blt1, double*Blt2) = 0;
 
         /* Evaluates the derivative at time t, multiplied with fbar. */
-        virtual void derivative(const double t, double* coeff_diff, const double valbar1, const double valbar2, int carrier_freq_size, int carrier_freq_id)= 0;
+        virtual void derivative(const double t, const std::vector<double>& coeff, double* coeff_diff, const double valbar1, const double valbar2, int carrier_freq_size, int carrier_freq_id)= 0;
 };
 
 /* 
@@ -39,6 +39,7 @@ class ControlBasis {
  */
 class BSpline2nd : public ControlBasis {
     protected:
+        int nsplines;                     // Number of splines
         double dtknot;                    // spacing of time knot vector    
         double *tcenter;                  // vector of basis function center positions
         double width;                     // support of each basis function (m*dtknot)
@@ -47,7 +48,7 @@ class BSpline2nd : public ControlBasis {
         double basisfunction(int id, double t);
 
     public:
-        BSpline2nd(int NBasis, double tstart, double tstop);
+        BSpline2nd(int nsplines, double tstart, double tstop);
         ~BSpline2nd();
 
 
@@ -55,7 +56,7 @@ class BSpline2nd : public ControlBasis {
         void evaluate(const double t, const std::vector<double>& coeff, int carrier_freq_size, int carrier_freq_id, double* Blt1_ptr, double* Blt2_ptr);
 
         /* Evaluates the derivative at time t, multiplied with fbar. */
-        void derivative(const double t, double* coeff_diff, const double valbar1, const double valbar2, int carrier_freq_size, int carrier_freq_id);
+        void derivative(const double t, const std::vector<double>& coeff, double* coeff_diff, const double valbar1, const double valbar2, int carrier_freq_size, int carrier_freq_id);
 };
 
 /* 
@@ -63,17 +64,17 @@ class BSpline2nd : public ControlBasis {
  */
 class Step : public ControlBasis {
     protected:
-        double step_amp_p;
-        double step_amp_q;
+        double step_amp1;
+        double step_amp2;
         double tramp;
 
     public: 
-        Step(double step_amp_p_, double step_amp_q_, double t0, double t1, double tramp);
+        Step(double step_amp1_, double step_amp2_, double t0, double t1, double tramp);
         ~Step();
 
        /* Evaluate the spline at time t using the coefficients coeff. */
         void evaluate(const double t, const std::vector<double>& coeff, int carrier_freq_size, int carrier_freq_id, double* Blt1, double*Blt2);
 
         /* Evaluates the derivative at time t, multiplied with fbar. */
-        void derivative(const double t, double* coeff_diff, const double valbar1, const double valbar2, int carrier_freq_size, int carrier_freq_id);
+        void derivative(const double t, const std::vector<double>& coeff, double* coeff_diff, const double valbar1, const double valbar2, int carrier_freq_size, int carrier_freq_id);
 };

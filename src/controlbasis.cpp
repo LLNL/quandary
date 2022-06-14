@@ -2,26 +2,27 @@
 
 
 ControlBasis::ControlBasis() {
-    nbasis = 0;
+    nparams= 0;
     skip = 0;
 }
 
-ControlBasis::ControlBasis(int nbasis_, double tstart_, double tstop_) : ControlBasis() {
-    nbasis = nbasis_;
+ControlBasis::ControlBasis(int nparams_, double tstart_, double tstop_) : ControlBasis() {
+    nparams = nparams_;
     tstart = tstart_;
     tstop = tstop_;
 }
 ControlBasis::~ControlBasis(){}
 
 
-BSpline2nd::BSpline2nd(int NBasis, double t0, double T) : ControlBasis(NBasis, t0, T){
+BSpline2nd::BSpline2nd(int nsplines_, double t0, double T) : ControlBasis(2*nsplines_, t0, T){
+    nsplines = nsplines_;
 
-    dtknot = (T-t0) / (double)(nbasis - 2);
+    dtknot = (T-t0) / (double)(nsplines - 2);
 	width = 3.0*dtknot;
 
     /* Compute center points of the splines */
-    tcenter = new double[nbasis];
-    for (int i = 0; i < nbasis; i++){
+    tcenter = new double[nsplines];
+    for (int i = 0; i < nsplines; i++){
         tcenter[i] = t0 + dtknot * ( (i+1) - 1.5 );
     }
 
@@ -38,8 +39,8 @@ void BSpline2nd::evaluate(const double t, const std::vector<double>& coeff, int 
     double sum1 = 0.0;
     double sum2 = 0.0;
     /* Sum over basis function */
-    for (int l=0; l<nbasis; l++) {
-        if (l<=1 || l >= nbasis - 2) continue; // skip first and last two splines (set to zero) so that spline starts and ends at zero 
+    for (int l=0; l<nsplines; l++) {
+        if (l<=1 || l >= nsplines- 2) continue; // skip first and last two splines (set to zero) so that spline starts and ends at zero 
         double Blt = basisfunction(l,t);
         double alpha1 = coeff[skip + l*carrier_freq_size*2 + carrier_freq_id*2];
         double alpha2 = coeff[skip + l*carrier_freq_size*2 + carrier_freq_id*2 + 1];
@@ -51,11 +52,11 @@ void BSpline2nd::evaluate(const double t, const std::vector<double>& coeff, int 
 
 }
 
-void BSpline2nd::derivative(const double t, double* coeff_diff, const double valbar1, const double valbar2, int carrier_freq_size, int carrier_freq_id) {
+void BSpline2nd::derivative(const double t, const std::vector<double>& coeff, double* coeff_diff, const double valbar1, const double valbar2, int carrier_freq_size, int carrier_freq_id) {
 
     /* Iterate over basis function */
-    for (int l=0; l<nbasis; l++) {
-        if (l<=1 || l >= nbasis - 2) continue; // skip first and last two splines (set to zero) so that spline starts and ends at zero       
+    for (int l=0; l<nsplines; l++) {
+        if (l<=1 || l >= nsplines- 2) continue; // skip first and last two splines (set to zero) so that spline starts and ends at zero       
         double Blt = basisfunction(l, t); 
         coeff_diff[skip + l * carrier_freq_size *2 + carrier_freq_id*2] += Blt * valbar1;
         coeff_diff[skip + l * carrier_freq_size *2 + carrier_freq_id*2+1] += Blt * valbar2;
@@ -79,23 +80,36 @@ double BSpline2nd::basisfunction(int id, double t){
     return val;
 }
 
-Step::Step(double step_amp_p_, double step_amp_q_, double t0, double t1, double tramp_) : ControlBasis(1, t0, t1) { // one basis function
-    step_amp_p = step_amp_p_;
-    step_amp_q = step_amp_q_;
+Step::Step(double step_amp1_, double step_amp2_, double t0, double t1, double tramp_) : ControlBasis(1, t0, t1) {
+    step_amp1 = step_amp1_;
+    step_amp2 = step_amp2_;
     tramp = tramp_;
 }
 
 Step::~Step(){}
 
 void Step::evaluate(const double t, const std::vector<double>& coeff, int carrier_freq_size, int carrier_freq_id, double* Blt1, double*Blt2){
-    double ramp = getRampFactor(t, tstart, tstop, tramp);
+    // Access the control
+    double alpha = coeff[skip + carrier_freq_id*2];
 
-    *Blt1 = ramp*step_amp_p;
-    *Blt2 = ramp*step_amp_q;
+    // The control enters as tstop for the ramping function
+    double tstepend = tstart + alpha*(tstop - tstart);
+    double ramp = getRampFactor(t, tstart, tstepend, tramp);
+
+    *Blt1 = ramp*step_amp1;
+    *Blt2 = ramp*step_amp2;
 }
 
-void Step::derivative(const double t, double* coeff_diff, const double valbar1, const double valbar2, int carrier_freq_size, int carrier_freq_id) {
-    // TODO
-    printf("Derivative of Step basis: TODO\n");
-    exit(1);
+void Step::derivative(const double t, const std::vector<double>& coeff, double* coeff_diff, const double valbar1, const double valbar2, int carrier_freq_size, int carrier_freq_id) {
+
+    double alpha = coeff[skip + carrier_freq_id*2];    
+    double tstepend = tstart + alpha*(tstop - tstart);
+
+    double rbar = 0.0;
+    rbar += step_amp1 * valbar1;
+    rbar += step_amp2 * valbar2;
+
+    double tstependbar = getRampFactor_diff(t, tstart, tstepend, tramp) * rbar;
+
+    coeff_diff[skip + carrier_freq_id*2] += (tstop - tstart) * tstependbar; 
 }

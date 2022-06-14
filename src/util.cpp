@@ -5,23 +5,57 @@ double sigmoid(double width, double x){
   return 1.0 / ( 1.0 + exp(-width*x) );
 }
 
+double sigmoid_diff(double width, double x){
+  return sigmoid(width, x) * (1.0 - sigmoid(width, x)) * width;
+}
 
 double getRampFactor(const double time, const double tstart, const double tstop, const double tramp){
 
     double eps = 1e-4; // Cutoff for sigmoid ramp 
     double steep = log(1./eps - 1.) * 2. / tramp; // steepness of sigmoid such that ramp(x) small for x < - tramp/2
 
-    double rampfactor = 1.0;
+    double rampfactor = 0.0;
     if (time <= tstart + tramp) { // ramp up
-        double center = tstart + tramp/2.0;
-        rampfactor = sigmoid(steep, time - center);
+      double center = tstart + tramp/2.0;
+      rampfactor = sigmoid(steep, time - center);
+    }
+    else if (tstart + tramp <= time && 
+            time <= tstop - tramp) { // center
+      rampfactor = 1.0;
     }
     else if (time >= tstop - tramp) { // down
-        double center = tstop - tramp/2.0;
-        rampfactor = sigmoid(steep, -(time - center));
+      double center = tstop - tramp/2.0;
+      rampfactor = sigmoid(steep, -(time - center));
     }
 
+    // If ramp time is larger than total amount of time, turn off control:
+    if (tstop < tstart + 2*tramp) rampfactor = 0.0;
+
     return rampfactor;
+}
+
+double getRampFactor_diff(const double time, const double tstart, const double tstop, const double tramp){
+
+    double eps = 1e-4; // Cutoff for sigmoid ramp 
+    double steep = log(1./eps - 1.) * 2. / tramp; // steepness of sigmoid such that ramp(x) small for x < - tramp/2
+
+    double dramp_dtstop= 0.0;
+    if (time <= tstart + tramp) { // ramp up
+      dramp_dtstop = 0.0;
+    }
+    else if (tstart + tramp <= time && 
+            time <= tstop - tramp) { // center
+      dramp_dtstop = 0.0;
+    }
+    else if (time >= tstop - tramp) { // down
+      double center = tstop - tramp/2.0;
+      dramp_dtstop = sigmoid_diff(steep, -(time - center));
+    }
+    
+    // If ramp time is larger than total amount of time, turn off control:
+    if (tstop < tstart + 2*tramp) dramp_dtstop= 0.0;
+
+    return dramp_dtstop;
 }
 
 int getIndexReal(const int i) {
