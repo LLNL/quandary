@@ -57,7 +57,7 @@ Oscillator::Oscillator(int id, std::vector<int> nlevels_all_, std::vector<std::s
       nparams += mystep->getNparams() * carrier_freq.size();
       basisfunctions.push_back(mystep);
       
-    } else { // Default: splines. Format in string: spline, nsplines, tstart, tstop
+    } else if (controlsegments[idstr].compare("spline") == 0) { // Default: splines. Format in string: spline, nsplines, tstart, tstop
       idstr++;
       if (controlsegments.size() <= idstr){
         printf("ERROR: Wrong setting for control segments: Number of splines not found.\n");
@@ -75,6 +75,9 @@ Oscillator::Oscillator(int id, std::vector<int> nlevels_all_, std::vector<std::s
       mysplinebasis->setSkip(nparams);
       nparams += mysplinebasis->getNparams() * carrier_freq.size();
       basisfunctions.push_back(mysplinebasis);
+    } else {
+      printf("%d: Non-controllable.\n", myid);
+      idstr++;
     }
   }
 

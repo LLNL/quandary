@@ -4,7 +4,7 @@
 ControlBasis::ControlBasis() {
     nparams= 0;
     skip = 0;
-    controltype = ControlType::BSPLINE;
+    controltype = ControlType::NONE;
 }
 
 ControlBasis::ControlBasis(int nparams_, double tstart_, double tstop_) : ControlBasis() {
