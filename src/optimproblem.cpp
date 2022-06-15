@@ -353,7 +353,7 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   /* Store the initial guess if read from file */
   std::vector<std::string> controlinit_str;
   config.GetVecStrParam("control_initialization0", controlinit_str, "constant, 0.0");
-  if ( controlinit_str[0].compare("file") == 0 ) {
+  if ( controlinit_str.size() > 0 && controlinit_str[0].compare("file") == 0 ) {
     assert(controlinit_str.size() >=2);
     for (int i=0; i<ndesign; i++) initguess_fromfile.push_back(0.0);
     if (mpirank_world == 0) read_vector(controlinit_str[1].c_str(), initguess_fromfile.data(), ndesign);
