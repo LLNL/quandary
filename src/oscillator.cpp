@@ -163,9 +163,14 @@ void Oscillator::getParams(double* x){
 }
 
 int Oscillator::getNSegParams(int segmentID){
-  assert(basisfunctions.size() > segmentID);
-  return basisfunctions[segmentID]->getNparams();
+  int n = 0;
+  if (params.size()>0) {
+    assert(basisfunctions.size() > segmentID);
+    n = basisfunctions[segmentID]->getNparams();
+  }
+  return n; 
 }
+
 
 int Oscillator::evalControl(const double t, double* Re_ptr, double* Im_ptr){
 
