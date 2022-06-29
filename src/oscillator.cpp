@@ -100,13 +100,13 @@ Oscillator::Oscillator(int id, std::vector<int> nlevels_all_, std::vector<std::s
         initval = max(0.0, initval);  
         initval = min(1.0, initval); 
       }
-      for (int i=0; i<basisfunctions[seg]->getNparams(); i++){
+      for (int i=0; i<basisfunctions[seg]->getNparams() * carrier_freq.size(); i++){
         params.push_back(initval);
       }
 
     } else if (controlinitializations[idini].compare("random") == 0) {
 
-      for (int i=0; i<basisfunctions[seg]->getNparams(); i++){
+      for (int i=0; i<basisfunctions[seg]->getNparams() * carrier_freq.size(); i++){
         double randval = (double) rand() / ((double)RAND_MAX);  // random in [0,1]
         MPI_Bcast(&randval, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
         // scale to chosen amplitude 
@@ -123,7 +123,7 @@ Oscillator::Oscillator(int id, std::vector<int> nlevels_all_, std::vector<std::s
         params.push_back(initval);
       }
     } else {
-      for (int i=0; i<basisfunctions[seg]->getNparams(); i++){
+      for (int i=0; i<basisfunctions[seg]->getNparams() * carrier_freq.size(); i++){
         params.push_back(0.0);
       }
     }
