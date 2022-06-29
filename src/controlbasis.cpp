@@ -108,11 +108,7 @@ void Step::derivative(const double t, const std::vector<double>& coeff, double* 
     double alpha = coeff[skip + carrier_freq_id*2];    
     double tstepend = tstart + alpha*(tstop - tstart);
 
-    double rbar = 0.0;
-    rbar += step_amp1 * valbar1;
-    rbar += step_amp2 * valbar2;
-
-    double tstependbar = getRampFactor_diff(t, tstart, tstepend, tramp) * rbar;
-
-    coeff_diff[skip + carrier_freq_id*2] += (tstop - tstart) * tstependbar; 
+    double dramp = getRampFactor_diff(t, tstart, tstepend, tramp);
+    coeff_diff[skip + carrier_freq_id*2] += step_amp1*valbar1 * dramp * (tstop - tstart); 
+    coeff_diff[skip + carrier_freq_id*2] += step_amp2*valbar2 * dramp * (tstop - tstart); 
 }
