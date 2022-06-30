@@ -468,6 +468,16 @@ int main(int argc,char **argv)
     VecSetFromOptions(psi_in);
     VecSetFromOptions(psi_out);
 
+    /* Allocate input and output using PetscVector */
+    printf("Create a petsc vector through linalg.\n");
+    Vector* vecmpi_in = new Vec_MPI(dim);
+    Vector* vecmpi_out = new Vec_MPI(dim);
+    vecmpi_in->setZero();
+    vecmpi_out->setZero();
+
+    // Get the input state for performance testing
+    mastereq->getRhoT0(0, 0, InitialConditionType::PERFORMANCE, std::vector<int>(), vecmpi_in);
+
     // Get the input state for performance testing
     mastereq->getRhoT0(0, 0, InitialConditionType::PERFORMANCE, std::vector<int>(), psi_in);
     // // Print input to screen
@@ -475,6 +485,14 @@ int main(int argc,char **argv)
     // VecGetSubVector(psi_in, mastereq->isv, &v);
     // printf("uin= \n"); VecView(u, NULL);
     // printf("vin= \n"); VecView(v, NULL);
+
+    // Print the vectors
+    vecmpi_in->view();
+    // VecView(psi_in, NULL);
+
+    /* Free up vectors */
+    delete vecmpi_in;
+    exit(1);
 
     // Assemble and get Hamiltonian matrix (shell)
     mastereq->assemble_RHS(-1.0);

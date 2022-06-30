@@ -105,6 +105,7 @@ MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Osci
 
   if (!usematfree) {
     initSparseMatSolver();
+    initSparseMatSolver_LA();
   }
 
   /* Create vector strides for accessing Re and Im part in x */
@@ -209,8 +210,119 @@ MasterEq::~MasterEq(){
     ISDestroy(&isu);
     ISDestroy(&isv);
   }
+
+  /* Destroy new LA mats */
+  delete Ad_LA; 
+  delete Bd_LA; 
+  for (int i=0; i<Ad_LA_vec.size(); i++) delete Ad_LA_vec[i];
+  for (int i=0; i<Bd_LA_vec.size(); i++) delete Bd_LA_vec[i];
+  for (int i=0; i<Ac_LA_vec.size(); i++) delete Ac_LA_vec[i];
+  for (int i=0; i<Bc_LA_vec.size(); i++) delete Bc_LA_vec[i];
 }
 
+/* New linear algebra */
+void MasterEq::initSparseMatSolver_LA(){
+
+  int dimmat = dim_rho; // this is N!
+
+  /* Allocate the time-constant system Hamiltonian */
+  int prealloc_per_row = 1;
+  SparseMatrix* Bd_LA = new Mat_MPI(dimmat, prealloc_per_row);
+  if (addT1 || addT2) { // if Lindblad solver , preallocate memory.
+    prealloc_per_row = noscillators+5;
+  } 
+  else prealloc_per_row = 0;  // Otherwise, leave matrix empty
+  SparseMatrix* Ad_LA = new Mat_MPI(dimmat, prealloc_per_row);
+
+  /* Allocate the time-dependent control terms, one for each oscillator */
+  if (lindbladtype != LindbladType::NONE) prealloc_per_row = 4;
+  else prealloc_per_row = 2;
+  for (int iosc=0; iosc < noscillators; iosc++){
+    SparseMatrix* myspmatAc = new Mat_MPI(dimmat, prealloc_per_row);
+    Ac_LA_vec.push_back(myspmatAc);
+    SparseMatrix* myspmatBc = new Mat_MPI(dimmat, prealloc_per_row);
+    Bc_LA_vec.push_back(myspmatBc);
+  }
+  /* Allocate the time-dependent coupling terms: (n*(n-1)/2) many */
+  if (lindbladtype != LindbladType::NONE) prealloc_per_row = 4;
+  else prealloc_per_row = 2;
+  for (int iosc=0; iosc < noscillators*(noscillators-1)/2; iosc++){
+    SparseMatrix* myspmatAd = new Mat_MPI(dimmat, prealloc_per_row);
+    Ad_LA_vec.push_back(myspmatAd);
+    SparseMatrix* myspmatBd = new Mat_MPI(dimmat, prealloc_per_row);
+    Bd_LA_vec.push_back(myspmatBd);
+  }
+
+  std::vector<int> rows;
+  std::vector<int> cols;
+  std::vector<double> vals;
+  rows.push_back(0);
+  cols.push_back(0);
+  vals.push_back(11.0);
+  Bd_LA->setValues(rows, cols, vals);
+  Bd_LA->view();
+
+  // /* Set up the system Hamiltonian Bd = Imag(iH_system). This includes all time-independent Hamiltonian terms, i.e. detuning, anharmonicity and zz-coupling */
+  int r1,r2, r1a, r2a, r1b, r2b;
+  int col, col1, col2;
+  double val;
+  for (int iosc = 0; iosc < noscillators; iosc++) {
+    // Iterate over local rows of Bd
+    int ilow, iupp;
+    Bd_LA->getDistribution(&ilow, &iupp); // by default, this is 0 & N, unless MPI. 
+    for (int row = ilow; row<iupp; row++){
+  //     // Indices for -I_N \kron B_d
+  //     if (lindbladtype != LindbladType::NONE) r1 = row % dimmat;
+  //     else r1 = row;
+  //     r1 = r1 % (nk * npostk);
+  //     r1 = (int) r1 / npostk;
+  //     // Indices for B_d \kron I_N
+  //     r2 = (int) row / dimmat;
+  //     r2 = r2 % (nk * npostk);
+  //     r2 = (int) r2 / npostk;
+  //     if (lindbladtype == LindbladType::NONE) r2 = 0;
+
+  //     // -Bd, or -I_N \kron B_d + B_d \kron I_N
+  //     val  = - ( detunek * r1 - xik / 2. * (r1*r1 - r1) );
+  //     val +=     detunek * r2 - xik / 2. * (r2*r2 - r2)  ;
+  //     if (fabs(val)>1e-14) MatSetValue(Bd, row, row, val, ADD_VALUES);
+  //   }
+
+  //   /* zz-coupling term  -xi_ij * 2 * PI * (N_i*N_j) for j > i */
+  //   for (int josc = iosc+1; josc < noscillators; josc++) {
+  //     int nj     = oscil_vec[josc]->getNLevels();
+  //     int npostj = oscil_vec[josc]->dim_postOsc;
+  //     double xikj = crosskerr[coupling_id];
+  //     coupling_id++;
+        
+  //     for (int row = ilow; row<iupp; row++){
+  //       if (lindbladtype != LindbladType::NONE) r1 = row % dimmat;
+  //       else r1 = row;
+  //       r1 = r1 % (nk * npostk);
+  //       r1a = r1 / npostk;
+  //       r1b = r1 % npostk;
+  //       r1b = r1b % (nj*npostj);
+  //       r1b = r1b / npostj;
+
+  //       r2 = (int) row / dimmat;
+  //       r2 = r2 % (nk * npostk);
+  //       r2a = r2 / npostk;
+  //       r2b = r2 % npostk;
+  //       r2b = r2b % (nj*npostj);
+  //       r2b = r2b / npostj;
+  //       if (lindbladtype == LindbladType::NONE) r2a = 0;
+  //       if (lindbladtype == LindbladType::NONE) r2b = 0;
+
+  //       // -I_N \kron B_d + B_d \kron I_N
+  //       val =  xikj * r1a * r1b  - xikj * r2a * r2b;
+  //       if (fabs(val)>1e-14) MatSetValue(Bd, row, row, val, ADD_VALUES);
+  //     }
+    }
+  }
+ 
+
+
+}
 
 void MasterEq::initSparseMatSolver(){
 
@@ -218,7 +330,7 @@ void MasterEq::initSparseMatSolver(){
   // control terms
   Ac_vec = new Mat[noscillators];
   Bc_vec = new Mat[noscillators];
-  // coupling terms
+  // time-dependent coupling terms
   Ad_vec = new Mat[noscillators*(noscillators-1)/2];
   Bd_vec = new Mat[noscillators*(noscillators-1)/2];
 
@@ -586,6 +698,7 @@ int MasterEq::getDimRho(){ return dim_rho; }
 int MasterEq::getNOscillators() { return noscillators; }
 
 Oscillator* MasterEq::getOscillator(const int i) { return oscil_vec[i]; }
+
 
 int MasterEq::assemble_RHS(const double t){
   int ierr;
@@ -1113,6 +1226,49 @@ void MasterEq::setControlAmplitudes(const Vec x) {
     shift += getOscillator(ioscil)->getNParams();
   }
   VecRestoreArrayRead(x, &ptr);
+}
+
+
+/* Using the new linear algebra type */
+int MasterEq::getRhoT0(const int iinit, const int ninit, const InitialConditionType initcond_type, const std::vector<int>& oscilIDs, Vector* rho0){
+
+  std::vector<int> indices;
+  std::vector<double> vals;
+
+  switch (initcond_type) {
+    case InitialConditionType::PERFORMANCE:
+
+      // Reset the vector 
+      rho0->setZero();
+
+      for (int i=0; i<dim_rho; i++){
+        if (lindbladtype == LindbladType::NONE) { // Lindblad solver
+          double val = 1./ sqrt(2.*dim_rho);
+          // real part
+          int elem_re = getIndexReal(i);
+          indices.push_back(elem_re);
+          vals.push_back(val);
+          // imaginary part
+          int elem_im = getIndexImag(i);
+          indices.push_back(elem_im);
+          vals.push_back(val);
+        } else {
+          double val = 1./ dim_rho;
+          int elem_re = getIndexReal(getVecID(i, i, dim_rho));
+          indices.push_back(elem_re);
+          vals.push_back(val);
+        }
+        rho0->setValues(indices, vals);
+      }
+
+    break;
+
+
+    default:
+      printf("ERROR. getRhoT0 is currently only implemented for performance testing.\n");
+      exit(1);
+  }
+  return 0;
 }
 
 

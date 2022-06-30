@@ -6,6 +6,7 @@
 #include <assert.h>
 #include <iostream> 
 #include "gate.hpp"
+#include "linalg.hpp"
 #pragma once
 
 
@@ -58,6 +59,16 @@ class MasterEq{
     Mat RHS;                // Realvalued, vectorized systemmatrix (2N^2 x 2N^2)
     MatShellCtx RHSctx;     // MatShell context that contains data needed to apply the RHS
 
+    /* New format for Hamiltonian and Lindblad matrices Store pointers to the matrices, or vector of matrices */
+    // SparseMatrix RHS_LA; // Shell?
+    SparseMatrix* Ad_LA; 
+    SparseMatrix* Bd_LA;
+    std::vector<SparseMatrix*> Ac_LA_vec;
+    std::vector<SparseMatrix*> Bc_LA_vec;
+    std::vector<SparseMatrix*> Ad_LA_vec;
+    std::vector<SparseMatrix*> Bd_LA_vec;
+
+    /* Previous matrices */
     Mat* Ac_vec;  // Vector of constant mats for time-varying control term (real)
     Mat* Bc_vec;  // Vector of constant mats for time-varying control term (imag)
     Mat  Ad, Bd;  // Real and imaginary part of constant system matrix
@@ -94,6 +105,7 @@ class MasterEq{
 
     /* initialize matrices needed for applying sparse-mat solver */
     void initSparseMatSolver();
+    void initSparseMatSolver_LA();
 
     /* Return the i-th oscillator */
     Oscillator* getOscillator(const int i);
@@ -142,6 +154,9 @@ class MasterEq{
      *       rho0 -- Vector for setting initial condition 
      */
     int getRhoT0(const int iinit, const int ninit, const InitialConditionType initcond_type, const std::vector<int>& oscilIDs, Vec rho0);
+
+    /* Same as above, but for the new linalg interface for either MPI or OpenMP parallelization */
+    int getRhoT0(const int iinit, const int ninit, const InitialConditionType initcond_type, const std::vector<int>& oscilIDs, Vector* rho0);
 
 };
 
