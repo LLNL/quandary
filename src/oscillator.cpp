@@ -169,7 +169,7 @@ int Oscillator::getNSegParams(int segmentID){
   int n = 0;
   if (params.size()>0) {
     assert(basisfunctions.size() > segmentID);
-    n = basisfunctions[segmentID]->getNparams();
+    n = basisfunctions[segmentID]->getNparams()*carrier_freq.size();
   }
   return n; 
 }
