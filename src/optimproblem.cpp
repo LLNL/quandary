@@ -338,8 +338,9 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
       double boundval = 0.0;
       if (bound_str.size() <= iseg) boundval =  atof(bound_str[bound_str.size()-1].c_str());
       else boundval = atof(bound_str[iseg].c_str());
-      // Scale bounds by 1/sqrt(2) * (number of carrier waves) */
-      boundval = boundval / ( sqrt(2) * timestepper->mastereq->getOscillator(iosc)->getNCarrierfrequencies()) ;
+      // If spline controls: Scale bounds by 1/sqrt(2) * (number of carrier waves) */
+      if (timestepper->mastereq->getOscillator(iosc)->getNParams()>1)
+        boundval = boundval / ( sqrt(2) * timestepper->mastereq->getOscillator(iosc)->getNCarrierfrequencies()) ;
       for (int i=0; i<timestepper->mastereq->getOscillator(iosc)->getNSegParams(iseg); i++){
         VecSetValue(xupper, col, boundval, INSERT_VALUES);
         VecSetValue(xlower, col, -1. * boundval, INSERT_VALUES);
