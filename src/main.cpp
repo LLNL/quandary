@@ -283,6 +283,7 @@ int main(int argc,char **argv)
     printf("ERROR: No Petsc-parallel version for the matrix free solver available!");
     exit(1);
   }
+  if (runtype == RunType::PERFORMANCE) usematfree = false;
   // Compute coupling rotation frequencies eta_ij = w^r_i - w^r_j
   std::vector<double> eta(nlevels.size()*(nlevels.size()-1)/2.);
   int idx = 0;
