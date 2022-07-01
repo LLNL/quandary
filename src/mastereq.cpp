@@ -222,6 +222,10 @@ MasterEq::~MasterEq(){
 
 /* New linear algebra */
 void MasterEq::initSparseMatSolver_LA(){
+  int r1,r2, r1a, r2a, r1b, r2b;
+  int col, col1, col2;
+  int ilow, iupp;
+  double val;
 
   int dimmat = dim_rho; // this is N!
 
@@ -243,85 +247,320 @@ void MasterEq::initSparseMatSolver_LA(){
     SparseMatrix* myspmatBc = new Mat_MPI(dimmat, prealloc_per_row);
     Bc_LA_vec.push_back(myspmatBc);
   }
-  /* Allocate the time-dependent coupling terms: (n*(n-1)/2) many */
-  if (lindbladtype != LindbladType::NONE) prealloc_per_row = 4;
-  else prealloc_per_row = 2;
-  for (int iosc=0; iosc < noscillators*(noscillators-1)/2; iosc++){
-    SparseMatrix* myspmatAd = new Mat_MPI(dimmat, prealloc_per_row);
-    Ad_LA_vec.push_back(myspmatAd);
-    SparseMatrix* myspmatBd = new Mat_MPI(dimmat, prealloc_per_row);
-    Bd_LA_vec.push_back(myspmatBd);
-  }
 
-  std::vector<int> rows;
-  std::vector<int> cols;
-  std::vector<double> vals;
-  rows.push_back(0);
-  cols.push_back(0);
-  vals.push_back(11.0);
-  Bd_LA->setValues(rows, cols, vals);
-  Bd_LA->view();
-
-  // /* Set up the system Hamiltonian Bd = Imag(iH_system). This includes all time-independent Hamiltonian terms, i.e. detuning, anharmonicity and zz-coupling */
-  int r1,r2, r1a, r2a, r1b, r2b;
-  int col, col1, col2;
-  double val;
-  for (int iosc = 0; iosc < noscillators; iosc++) {
-    // Iterate over local rows of Bd
-    int ilow, iupp;
-    Bd_LA->getDistribution(&ilow, &iupp); // by default, this is 0 & N, unless MPI. 
-    for (int row = ilow; row<iupp; row++){
-  //     // Indices for -I_N \kron B_d
-  //     if (lindbladtype != LindbladType::NONE) r1 = row % dimmat;
-  //     else r1 = row;
-  //     r1 = r1 % (nk * npostk);
-  //     r1 = (int) r1 / npostk;
-  //     // Indices for B_d \kron I_N
-  //     r2 = (int) row / dimmat;
-  //     r2 = r2 % (nk * npostk);
-  //     r2 = (int) r2 / npostk;
-  //     if (lindbladtype == LindbladType::NONE) r2 = 0;
-
-  //     // -Bd, or -I_N \kron B_d + B_d \kron I_N
-  //     val  = - ( detunek * r1 - xik / 2. * (r1*r1 - r1) );
-  //     val +=     detunek * r2 - xik / 2. * (r2*r2 - r2)  ;
-  //     if (fabs(val)>1e-14) MatSetValue(Bd, row, row, val, ADD_VALUES);
-  //   }
-
-  //   /* zz-coupling term  -xi_ij * 2 * PI * (N_i*N_j) for j > i */
-  //   for (int josc = iosc+1; josc < noscillators; josc++) {
-  //     int nj     = oscil_vec[josc]->getNLevels();
-  //     int npostj = oscil_vec[josc]->dim_postOsc;
-  //     double xikj = crosskerr[coupling_id];
-  //     coupling_id++;
-        
-  //     for (int row = ilow; row<iupp; row++){
-  //       if (lindbladtype != LindbladType::NONE) r1 = row % dimmat;
-  //       else r1 = row;
-  //       r1 = r1 % (nk * npostk);
-  //       r1a = r1 / npostk;
-  //       r1b = r1 % npostk;
-  //       r1b = r1b % (nj*npostj);
-  //       r1b = r1b / npostj;
-
-  //       r2 = (int) row / dimmat;
-  //       r2 = r2 % (nk * npostk);
-  //       r2a = r2 / npostk;
-  //       r2b = r2 % npostk;
-  //       r2b = r2b % (nj*npostj);
-  //       r2b = r2b / npostj;
-  //       if (lindbladtype == LindbladType::NONE) r2a = 0;
-  //       if (lindbladtype == LindbladType::NONE) r2b = 0;
-
-  //       // -I_N \kron B_d + B_d \kron I_N
-  //       val =  xikj * r1a * r1b  - xikj * r2a * r2b;
-  //       if (fabs(val)>1e-14) MatSetValue(Bd, row, row, val, ADD_VALUES);
-  //     }
+  for (int iosc=0; iosc < noscillators; iosc++){
+    for (int josc=iosc+1; josc < noscillators; josc++){
+      /* Allocate the time-dependent coupling terms: (n*(n-1)/2) many */
+      if (lindbladtype != LindbladType::NONE) prealloc_per_row = 4;
+      else prealloc_per_row = 2;
+      SparseMatrix* myspmatAd = new Mat_MPI(dimmat, prealloc_per_row);
+      Ad_LA_vec.push_back(myspmatAd);
+      SparseMatrix* myspmatBd = new Mat_MPI(dimmat, prealloc_per_row);
+      Bd_LA_vec.push_back(myspmatBd);
     }
   }
- 
 
+  
+  /* Set up the system Hamiltonian Bd = Imag(iH_system). This includes all time-independent Hamiltonian terms, i.e. detuning, anharmonicity and zz-coupling */
+  int coupling_id = 0;
+  for (int iosc = 0; iosc < noscillators; iosc++) {
 
+    int nk     = oscil_vec[iosc]->getNLevels();
+    int nprek  = oscil_vec[iosc]->dim_preOsc;
+    int npostk = oscil_vec[iosc]->dim_postOsc;
+    double xik = oscil_vec[iosc]->getSelfkerr();
+    double detunek = oscil_vec[iosc]->getDetuning();
+
+    /* Iterate over local rows of Bd */
+    Bd_LA->getDistribution(&ilow, &iupp);
+    for (int row = ilow; row<iupp; row++){
+
+      /* Diagonal: detuning and anharmonicity  */
+      // Indices for -I_N \kron B_d
+      if (lindbladtype != LindbladType::NONE) r1 = row % dimmat;
+      else r1 = row;
+      r1 = r1 % (nk * npostk);
+      r1 = (int) r1 / npostk;
+      // Indices for B_d \kron I_N
+      r2 = (int) row / dimmat;
+      r2 = r2 % (nk * npostk);
+      r2 = (int) r2 / npostk;
+      if (lindbladtype == LindbladType::NONE) r2 = 0;
+      // -Bd, or -I_N \kron B_d + B_d \kron I_N
+      val  = - ( detunek * r1 - xik / 2. * (r1*r1 - r1) );
+      val +=     detunek * r2 - xik / 2. * (r2*r2 - r2)  ;
+      bool add = true;
+      if (fabs(val)>1e-14) Bd_LA->setValue(row, row, val, add);
+    }
+
+    /* zz-coupling term  -xi_ij * 2 * PI * (N_i*N_j) for j > i */
+    for (int josc = iosc+1; josc < noscillators; josc++) {
+      int nj     = oscil_vec[josc]->getNLevels();
+      int npostj = oscil_vec[josc]->dim_postOsc;
+      double xikj = crosskerr[coupling_id];
+      coupling_id++;
+        
+      for (int row = ilow; row<iupp; row++){
+        if (lindbladtype != LindbladType::NONE) r1 = row % dimmat;
+        else r1 = row;
+        r1 = r1 % (nk * npostk);
+        r1a = r1 / npostk;
+        r1b = r1 % npostk;
+        r1b = r1b % (nj*npostj);
+        r1b = r1b / npostj;
+
+        r2 = (int) row / dimmat;
+        r2 = r2 % (nk * npostk);
+        r2a = r2 / npostk;
+        r2b = r2 % npostk;
+        r2b = r2b % (nj*npostj);
+        r2b = r2b / npostj;
+        if (lindbladtype == LindbladType::NONE) r2a = 0;
+        if (lindbladtype == LindbladType::NONE) r2b = 0;
+
+        // -I_N \kron B_d + B_d \kron I_N
+        val =  xikj * r1a * r1b  - xikj * r2a * r2b;
+        bool add = true;
+        if (fabs(val)>1e-14) Bd_LA->setValue(row, row, val, add);
+      }
+    }
+  }
+  Bd_LA->assemble();
+  Bd_LA->view();
+
+  /* Set up the system matrix Ad = Real(iH_system + Lindblad). Since the default Hamiltonian is real-valued, iH is purely imaginary, so Ad contains only Lindblad terms */
+  if (addT1 || addT2) {  // leave matrix empty if no T1 or T2 decay
+    for (int iosc = 0; iosc < noscillators; iosc++) {
+
+      /* Get T1, T2 times */
+      double gammaT1 = 0.0;
+      double gammaT2 = 0.0;
+      if (oscil_vec[iosc]->getDecayTime()   > 1e-14) gammaT1 = 1./(oscil_vec[iosc]->getDecayTime());
+      if (oscil_vec[iosc]->getDephaseTime() > 1e-14) gammaT2 = 1./(oscil_vec[iosc]->getDephaseTime());
+
+      // Dimensions 
+      int nk     = oscil_vec[iosc]->getNLevels();
+      int nprek  = oscil_vec[iosc]->dim_preOsc;
+      int npostk = oscil_vec[iosc]->dim_postOsc;
+
+      /* Iterate over local rows of Ad */
+      Ad_LA->getDistribution(&ilow, &iupp);
+      for (int row = ilow; row<iupp; row++){
+
+        /* Add Ad += gamma_j * L \kron L */
+        r1 = row % (dimmat*nk*npostk);
+        r1a = r1 / (dimmat*npostk);
+        r1b = r1 % (npostk*dimmat);
+        r1b = r1b % (nk*npostk);
+        r1b = r1b / npostk;
+        // T1  decay (L1 = a_j)
+        if (addT1) { 
+          if (r1a < nk-1 && r1b < nk-1) {
+            val = gammaT1 * sqrt( (r1a+1) * (r1b+1) );
+            col1 = row + npostk * dimmat + npostk;
+            bool add = true;
+            if (fabs(val)>1e-14) Ad_LA->setValue(row, col1, val, add);
+          }
+        }
+        // T2  dephasing (L1 = a_j^Ta_j)
+        if (addT2) { 
+          val = gammaT2 * r1a * r1b ;
+          bool add = true;
+          if (fabs(val)>1e-14) Ad_LA->setValue(row, row, val, add);
+        }
+
+        /* Add Ad += - gamma_j/2  I_n  \kron L^TL  */
+        r1 = row % (nk*npostk);
+        r1 = r1 / npostk;
+        if (addT1) {
+          val = - gammaT1/2. * r1;
+          bool add = true;
+          if (fabs(val)>1e-14) Ad_LA->setValue(row, row, val, add); // THIS IS A BUG? SHOULD BE r1? TODO!
+        }
+        if (addT2) {
+          val = -gammaT2/2. * r1*r1;
+          bool add = true;
+          if (fabs(val)>1e-14) Ad_LA->setValue(row, row, val, add);
+        }
+
+        /* Add Ad += - gamma_j/2  L^TL \kron I_n */
+        r1 = row % (nk*npostk*dimmat);
+        r1 = r1 / (npostk*dimmat);
+        if (addT1) {
+          val = -gammaT1/2. * r1;
+          bool add = true;
+          if (fabs(val)>1e-14) Ad_LA->setValue(row, row, val, add);
+        }
+        if (addT2) {
+          val = -gammaT2/2. * r1*r1;
+          bool add = true;
+          if (fabs(val)>1e-14) Ad_LA->setValue(row, row, val, add);
+        }
+      }
+    }
+  }
+  Ad_LA->assemble();
+
+  /* Set up the control matrices Bc = Real(iH_control ).  */
+  /* Lindblas solver Bc = - I_N \kron (a + a^T) + (a + a^T)^T \kron I_N */
+  /* Schroedinger solver: Bc = -(a+a^T) */    
+  for (int iosc = 0; iosc < Bc_LA_vec.size(); iosc++) {
+    int nk     = oscil_vec[iosc]->getNLevels();
+    int nprek  = oscil_vec[iosc]->dim_preOsc;
+    int npostk = oscil_vec[iosc]->dim_postOsc;
+    bool add = true;
+
+    /* Iterate over local rows of Bc_vec */
+    Bc_LA_vec[iosc]->getDistribution(&ilow, &iupp);
+    for (int row = ilow; row<iupp; row++){
+      // B_c or  I_n \kron B_c 
+      col1 = row + npostk;
+      col2 = row - npostk;
+      if (lindbladtype != LindbladType::NONE) r1 = row % dimmat; // I_n \kron B_c
+      else r1 = row;  // -Bc
+      r1 = r1 % (nk*npostk);
+      r1 = r1 / npostk;
+      if (r1 < nk-1) {
+        val = -sqrt(r1+1);
+        if (fabs(val)>1e-14) Bc_LA_vec[iosc]->setValue(row, col1, val, add);
+      }
+      if (r1 > 0) {
+        val = -sqrt(r1);
+        if (fabs(val)>1e-14) Bc_LA_vec[iosc]->setValue(row, col2, val, add);
+      } 
+      if (lindbladtype != LindbladType::NONE){
+        //+ B_c \kron I_N
+        col1 = row + npostk*dimmat;
+        col2 = row - npostk*dimmat;
+        r1 = row % (dimmat * nk * npostk);
+        r1 = r1 / (dimmat * npostk);
+        if (r1 < nk-1) {
+          val =  sqrt(r1+1);
+          if (fabs(val)>1e-14) Bc_LA_vec[iosc]->setValue(row, col1, val, add);
+        }
+        if (r1 > 0) {
+          val = sqrt(r1);
+          if (fabs(val)>1e-14) Bc_LA_vec[iosc]->setValue(row, col2, val, add);
+        }   
+      }
+    }
+    Bc_LA_vec[iosc]->assemble();
+  }
+
+  /* Set up the control matrices Ac = Imag(iH_control ).  */
+  /* Lindblad solver:     Ac = I_N \kron (a - a^T) - (a - a^T)^T \kron I_N   \in C^{N^2 x N^2}*/
+  /* Schroedinger solver: Ac = a - a^T   \in C^{N x N}  */
+  for (int iosc = 0; iosc < Bc_LA_vec.size(); iosc++) {
+    int nk     = oscil_vec[iosc]->getNLevels();
+    int nprek  = oscil_vec[iosc]->dim_preOsc;
+    int npostk = oscil_vec[iosc]->dim_postOsc;
+    bool add = true;
+    /* Iterate over local rows of Ac_vec */
+    Ac_LA_vec[iosc]->getDistribution(&ilow, &iupp);
+    for (int row = ilow; row<iupp; row++){
+      // A_c or I_N \kron A_c
+      col1 = row + npostk;
+      col2 = row - npostk;
+      if (lindbladtype != LindbladType::NONE) r1 = row % dimmat;   // I_N \kron A_c 
+      else r1 = row;   // A_c
+      r1 = r1 % (nk*npostk);
+      r1 = r1 / npostk;
+      if (r1 < nk-1) {
+        val = sqrt(r1+1);
+        if (fabs(val)>1e-14) Ac_LA_vec[iosc]->setValue(row, col1, val);
+      }
+      if (r1 > 0) {
+        val = -sqrt(r1);
+        if (fabs(val)>1e-14) Ac_LA_vec[iosc]->setValue(row, col2, val);
+      } 
+      if (lindbladtype != LindbladType::NONE){
+        //- A_c \kron I_N
+        col1 = row + npostk*dimmat;
+        col2 = row - npostk*dimmat;
+        r1 = row % (dimmat * nk * npostk);
+        r1 = r1 / (dimmat * npostk);
+        if (r1 < nk-1) {
+          val =  sqrt(r1+1);
+          if (fabs(val)>1e-14) Ac_LA_vec[iosc]->setValue(row, col1, val, add);
+        }
+        if (r1 > 0) {
+          val = -sqrt(r1);
+          if (fabs(val)>1e-14) Ac_LA_vec[iosc]->setValue(row, col2, val, add);
+        }
+      }
+    }
+    Ac_LA_vec[iosc]->assemble();
+  }
+
+  /* Set up the time-dependent Jaynes-Cummings coupling building blocks */
+  /* Lindblad solver: 
+    * Ad_kl(t) =  I_N \kron (ak^Tal − akal^T) − (al^Tak − alak^T) \kron IN 
+    * Bd_kl(t) = -I_N \kron (ak^Tal + akal^T) + (al^Tak + alak_T) \kron IN */
+  /* Schrodinger solver:
+    Ad_kl(t) =  (ak^Tal - akal^T)
+    Bd_kl(t) = -(ak^Tal + akal^T)  */
+  int id_kl = 0;
+  for (int iosc=0; iosc<noscillators; iosc++){
+    int nk     = oscil_vec[iosc]->getNLevels();
+    int nprek  = oscil_vec[iosc]->dim_preOsc;
+    int npostk = oscil_vec[iosc]->dim_postOsc;
+    bool add = true;
+
+    for (int josc=iosc+1; josc<noscillators; josc++){
+      int nj     = oscil_vec[josc]->getNLevels();
+      int nprej  = oscil_vec[josc]->dim_preOsc;
+      int npostj = oscil_vec[josc]->dim_postOsc;
+
+      /* Iterate over local rows of Ad_vec / Bd_vec */
+      Bd_LA_vec[id_kl]->getDistribution(&ilow, &iupp);
+      for (int row = ilow; row<iupp; row++){
+        // Add +/- I_N \kron (ak^Tal -/+ akal^T) (Lindblad)
+        // or  +/- (ak^Tal -/+ akal^T) (Schrodinger)
+        r1 = row % (dimmat / nprek);
+        r1a = (int) r1 / npostk;
+        r1b = r1 % (nj*npostj);
+        r1b = r1b % (nj*npostj);
+        r1b = (int) r1b / npostj;
+        if (r1a > 0 && r1b < nj-1) {
+          val = sqrt(r1a * (r1b+1));
+          col = row - npostk + npostj;
+          printf("MPI_MAT: set %f at (%d, %d)\n", val, row, col);
+           if (fabs(val)>1e-14) Ad_LA_vec[id_kl]->setValue(row, col,  val, add);
+           if (fabs(val)>1e-14) Ad_LA_vec[id_kl]->setValue(row, col,  val, add);
+        }
+        if (r1a < nk-1  && r1b > 0) {
+          val = sqrt((r1a+1) * r1b);
+          col = row + npostk - npostj;
+          if (fabs(val)>1e-14) Ad_LA_vec[id_kl]->setValue(row, col, -val, add);
+          if (fabs(val)>1e-14) Bd_LA_vec[id_kl]->setValue(row, col, -val, add);
+        }
+
+        if (lindbladtype != LindbladType::NONE) {
+          // Add -/+ (al^Tak -/+ alak^T) \kron I
+          r1 = row % (dimmat * dimmat / nprek );
+          r1a = (int) r1 / (npostk*dimmat);
+          r1b = r1 % (npostk*dimmat);
+          r1b = r1b % (nj*npostj*dimmat);
+          r1b = (int) r1b / (npostj*dimmat);
+          if (r1a < nk-1 && r1b > 0) {
+              val = sqrt((r1a+1) * r1b);
+              col = row + npostk*dimmat - npostj*dimmat;
+              if (fabs(val)>1e-14) Ad_LA_vec[id_kl]->setValue(row, col, -val, add);
+              if (fabs(val)>1e-14) Bd_LA_vec[id_kl]->setValue(row, col, +val, add);
+          }
+          if (r1a > 0 && r1b < nj-1) {
+              val = sqrt(r1a * (r1b+1));
+              col = row - npostk*dimmat + npostj*dimmat;
+              if (fabs(val)>1e-14) Ad_LA_vec[id_kl]->setValue(row, col, val, add);
+              if (fabs(val)>1e-14) Bd_LA_vec[id_kl]->setValue(row, col, val, add);
+          }
+        }
+      }
+      Ad_LA_vec[id_kl]->assemble();
+      Bd_LA_vec[id_kl]->assemble();
+      id_kl++;
+    }
+  }
 }
 
 void MasterEq::initSparseMatSolver(){
