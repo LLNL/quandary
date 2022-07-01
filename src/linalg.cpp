@@ -47,10 +47,24 @@ void Vec_MPI::setZero() {
   VecZeroEntries(petscvec);
 }
 
+double Vec_MPI::normsq(){
+  double pnorm=0.0;
+  VecNorm(petscvec, NORM_2, &pnorm);
+  return pow(pnorm, 2.0);
+}
 
 void Vec_MPI::view() {
   printf("Viewing the Vec_MPI vector:\n");
   VecView(petscvec, NULL);
+}
+
+void Vec_MPI::add(double a, Vector* y){
+  Vec* pvec = (Vec*) y->getData();
+  VecAXPY(petscvec, a, *pvec);
+}
+
+void Vec_MPI::scale(double a){
+  VecScale(petscvec, a);
 }
 
 Vec_MPI::~Vec_MPI() {
@@ -66,6 +80,9 @@ Vec_OpenMP::Vec_OpenMP() : Vector() {}
 Vec_OpenMP::~Vec_OpenMP() {}
 void Vec_OpenMP::view() {}
 void Vec_OpenMP::setZero() {}
+void Vec_OpenMP::add(double a, Vector* y){}
+void Vec_OpenMP::scale(double a){}
+double Vec_OpenMP::normsq(){return 0.0;}
 
 
 /* ------------------*/
@@ -92,9 +109,16 @@ Mat_MPI::Mat_MPI(int dim, int preallocate_per_row) : SparseMatrix(dim) {
     MatSetUp(PetscMat);
     MatSetFromOptions(PetscMat);
     MatGetOwnershipRange(PetscMat, &ilow, &iupp);
-
-
 }
+
+void Mat_MPI::mult(Vector* xin, Vector* xout, bool add){
+
+  Vec* pin  = (Vec*) xin->getData();
+  Vec* pout = (Vec*) xout->getData();
+  if (add)  MatMultAdd(PetscMat, *pin, *pout, *pout);
+  else MatMult(PetscMat, *pin, *pout);
+}
+
 
 void Mat_MPI::setValue(int row, int col, double val, bool add){
   InsertMode mode = INSERT_VALUES;
@@ -130,10 +154,11 @@ Mat_MPI::~Mat_MPI()  {
 }
 
 /*----------------*/
+// TODO 
 
 Mat_OpenMP::Mat_OpenMP() : SparseMatrix() {}
 Mat_OpenMP::~Mat_OpenMP() {}
-
 void Mat_OpenMP::view() {}
-
+void Mat_OpenMP::mult(Vector* xin, Vector* xout, bool add){}
 void Mat_OpenMP::setValues(std::vector<int>& rows, std::vector<int>& cols, std::vector<double>& vals){}
+void Mat_OpenMP::add(double a, Vector* y){}

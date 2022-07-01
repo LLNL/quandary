@@ -456,10 +456,10 @@ int main(int argc,char **argv)
   if (runtype == RunType::PERFORMANCE) {
     Vec u, v;
 
-    int N = mastereq->getDim();
-    int dim = 2*N;
+    int N = mastereq->getDim(); // either N or N^2!
+    int dim = 2*N;              // complex valued
 
-    // Allocate input and output state
+    // Allocate input and output state from original linalg
     Vec psi_in, psi_out;
     VecCreate(PETSC_COMM_WORLD, &psi_in);
     VecCreate(PETSC_COMM_WORLD, &psi_out);
@@ -468,35 +468,67 @@ int main(int argc,char **argv)
     VecSetFromOptions(psi_in);
     VecSetFromOptions(psi_out);
 
-    /* Allocate input and output using PetscVector */
-    printf("Create a petsc vector through linalg.\n");
-    Vector* vecmpi_in = new Vec_MPI(dim);
-    Vector* vecmpi_out = new Vec_MPI(dim);
-    vecmpi_in->setZero();
-    vecmpi_out->setZero();
+    /* Allocate input and output using new linalg */
+    Vector* vecmpi_in_re = new Vec_MPI(dim/2);
+    Vector* vecmpi_in_im = new Vec_MPI(dim/2);
+    Vector* vecmpi_out_re = new Vec_MPI(dim/2);
+    Vector* vecmpi_out_im = new Vec_MPI(dim/2);
+    vecmpi_in_re->setZero();
+    vecmpi_in_im->setZero();
+    vecmpi_out_re->setZero();
+    vecmpi_out_im->setZero();
 
     // Get the input state for performance testing
-    mastereq->getRhoT0(0, 0, InitialConditionType::PERFORMANCE, std::vector<int>(), vecmpi_in);
+    mastereq->getRhoT0(0, 0, InitialConditionType::PERFORMANCE, std::vector<int>(), vecmpi_in_re, vecmpi_in_im);
 
     // Get the input state for performance testing
     mastereq->getRhoT0(0, 0, InitialConditionType::PERFORMANCE, std::vector<int>(), psi_in);
+
     // // Print input to screen
     // VecGetSubVector(psi_in, mastereq->isu, &u);
     // VecGetSubVector(psi_in, mastereq->isv, &v);
     // printf("uin= \n"); VecView(u, NULL);
     // printf("vin= \n"); VecView(v, NULL);
 
-    // Print the vectors
-    vecmpi_in->view();
+    // // Print the vectors
+    // printf("INPUT:\n");
+    // vecmpi_in_re->view();
+    // vecmpi_in_im->view();
     // VecView(psi_in, NULL);
+    // exit(1);
 
-    /* Free up vectors */
-    delete vecmpi_in;
-    exit(1);
-
-    // Assemble and get Hamiltonian matrix (shell)
+    // LA Matmult
+    mastereq->applyRHS(-1.0, vecmpi_in_re, vecmpi_in_im, vecmpi_out_re, vecmpi_out_im);
+    // Petsc Matmult 
     mastereq->assemble_RHS(-1.0);
     Mat H = mastereq->getRHS(); 
+    MatMult(H, psi_in, psi_out);
+
+    // printf("LA output\n");
+    // vecmpi_out_re->view();
+    // vecmpi_out_im->view();
+    // printf("Petsc output\n");
+    // VecView(psi_out, NULL);
+
+    // Compare norms 
+    double psi_out_normsq;
+    VecNorm(psi_out, NORM_2, &psi_out_normsq);
+    psi_out_normsq = pow(psi_out_normsq, 2.0);
+    double sq_re = vecmpi_out_re->normsq();
+    double sq_im = vecmpi_out_im->normsq();
+    double vecmpi_out_normsq = sq_re + sq_im;
+
+    printf(" -> Output Norms: orig=%1.14e, LA=%1.14e\n", psi_out_normsq, vecmpi_out_normsq);
+    double err = pow(psi_out_normsq - vecmpi_out_normsq, 2.0)/pow(psi_out_normsq, 2.0);
+    printf("  -> rel. Error: %1.14e\n", err);
+
+    /* Free up vectors */
+    delete vecmpi_in_re;
+    delete vecmpi_in_im;
+    delete vecmpi_out_re;
+    delete vecmpi_out_im;
+    exit(1);
+
 
     /* Perform matrix vector products */
     nexec = 1e+4;

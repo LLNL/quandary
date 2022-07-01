@@ -67,6 +67,7 @@ class MasterEq{
     std::vector<SparseMatrix*> Bc_LA_vec;
     std::vector<SparseMatrix*> Ad_LA_vec;
     std::vector<SparseMatrix*> Bd_LA_vec;
+    Vector* aux_LA;  
 
     /* Previous matrices */
     Mat* Ac_vec;  // Vector of constant mats for time-varying control term (real)
@@ -131,6 +132,8 @@ class MasterEq{
     /* Access the right-hand-side matrix */
     Mat getRHS();
 
+    void applyRHS(double t, Vector* in_re, Vector* in_im, Vector* out_re, Vector* out_im);
+
     /* 
      * Compute gradient of RHS wrt control parameters:
      * grad += alpha * RHS(x)^T * x_bar  
@@ -156,7 +159,7 @@ class MasterEq{
     int getRhoT0(const int iinit, const int ninit, const InitialConditionType initcond_type, const std::vector<int>& oscilIDs, Vec rho0);
 
     /* Same as above, but for the new linalg interface for either MPI or OpenMP parallelization */
-    int getRhoT0(const int iinit, const int ninit, const InitialConditionType initcond_type, const std::vector<int>& oscilIDs, Vector* rho0);
+    int getRhoT0(const int iinit, const int ninit, const InitialConditionType initcond_type, const std::vector<int>& oscilIDs, Vector* rho0_re, Vector* rho0_im);
 
 };
 

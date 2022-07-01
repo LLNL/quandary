@@ -17,36 +17,38 @@ class Vector {
     Vector(int dim);
     virtual ~Vector();
 
-    /* Print the vector to screen */
+    int getSize(){return dim;};
+
     virtual void view() =0;
-    /* Reset the vector to zero */
     virtual void setZero()=0;  
-
+    virtual void* getData() {return NULL;};
+    virtual double normsq() {return 0.0;};  // squared norm: ||x||^2 
     virtual void getDistribution(int* ilow_ptr, int* iupp_ptr);
-
     /* Insert values into the vector at given index locations */
     virtual void setValues(std::vector<int>& indices, std::vector<double>& vals)=0;
+    virtual void add(double a, Vector* y)=0;  /* Addition: x += ay */
+    virtual void scale(double a)=0;            /* x = a*x */
 };
 
 /* Vector based on Petsc's MPI Vec */
 class Vec_MPI : public Vector {
   Vec petscvec;        /* petsc vector */
-  int ilow, iupp;  /* indices of vector elements that belong to this processor (excluding iupper) */
+  int ilow, iupp;  /* indices of vector elements that belong to this processor (excluding iupp) */
 
   public:
     Vec_MPI();
     Vec_MPI(int size);
     ~Vec_MPI();
 
-    /* Print the vector to screen */
+    void* getData() {return &petscvec;};
+
     void view();
-    /* Reset the vector to zero */
     void setZero();  
-
+    double normsq();
     void getDistribution(int* ilow_ptr, int* iupp_ptr);
-
-    /* Insert values into the vector */
     void setValues(std::vector<int>& indices, std::vector<double>& vals);
+    void add(double a, Vector* y);
+    void scale(double a);
 };
 
 /* Vector based on Bjorn's handcoded OpenMP parallelization */
@@ -57,6 +59,9 @@ class Vec_OpenMP : public Vector {
 
     void view();
     void setZero();  
+    double normsq();
+    void add(double a, Vector* y);
+    void scale(double a);
 };
 
 /* Abstract base class for sparse Matrix representation */
@@ -68,18 +73,17 @@ class SparseMatrix {
     SparseMatrix(int dim);
     virtual ~SparseMatrix();
 
-    /* Print the vector to screen */
+    virtual void* getData() {return NULL;};
     virtual void view() =0;
-
+    /* Matrix vector multiplication */
+    virtual void mult(Vector* xin, Vector* xout, bool add=false)=0;     // xout (+)= Mat*xin 
     /* Insert matrix values at given index locations */
     virtual void setValues(std::vector<int>& rows, std::vector<int>& cols, std::vector<double>& vals)=0;
-
     /* Insert or add one value at location (row, col) */
-    virtual void setValue(int row, int col, double vals, bool add=false) {};
+    virtual void setValue(int row, int col, double vals, bool add) {};
 
     /* Return distribution. Default: return 0,dim */
     virtual void getDistribution(int* ilow_ptr, int* iupp_ptr);
-
     /* Assembly of the matrix. Default: Do nothing */
     virtual void assemble() {};
 };
@@ -95,15 +99,14 @@ class Mat_MPI: public SparseMatrix {
     ~Mat_MPI();
 
     void view();
+    void* getData() {return PetscMat;};
 
     void setValues(std::vector<int>& rows, std::vector<int>& cols, std::vector<double>& vals);
-
     /* Insert or add one value at location (row, col). This call MUST be followed by an assembly! */
-    void setValue(int row, int col, double val, bool add=false);
-
-    void getDistribution(int* ilow_ptr, int* iupp_ptr);
-
+    void setValue(int row, int col, double val, bool add);
     void assemble();
+    void getDistribution(int* ilow_ptr, int* iupp_ptr);
+    void mult(Vector* xin, Vector* xout, bool add=false);
 };
 
 /* Sparse Matrix using Bjorn's handcoded matrices and OpenMP parallelization */
@@ -114,5 +117,7 @@ class Mat_OpenMP : public SparseMatrix {
 
     void view();
     void setValues(std::vector<int>& rows, std::vector<int>& cols, std::vector<double>& vals);
+    void add(double a, Vector* y);
+    void mult(Vector* xin, Vector* xout, bool add=false);
 };
 

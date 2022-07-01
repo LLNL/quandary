@@ -218,6 +218,7 @@ MasterEq::~MasterEq(){
   for (int i=0; i<Bd_LA_vec.size(); i++) delete Bd_LA_vec[i];
   for (int i=0; i<Ac_LA_vec.size(); i++) delete Ac_LA_vec[i];
   for (int i=0; i<Bc_LA_vec.size(); i++) delete Bc_LA_vec[i];
+  delete aux_LA;
 }
 
 /* New linear algebra */
@@ -230,32 +231,33 @@ void MasterEq::initSparseMatSolver_LA(){
   int dimmat = dim_rho; // this is N!
 
   /* Allocate the time-constant system Hamiltonian */
+  // NOTE: Dimension of matrices is either N (Schroedinger), or N^2 (Lindblad). Stored in the variable 'dim'. 
   int prealloc_per_row = 1;
-  SparseMatrix* Bd_LA = new Mat_MPI(dimmat, prealloc_per_row);
-  if (addT1 || addT2) { // if Lindblad solver , preallocate memory.
-    prealloc_per_row = noscillators+5;
+  Bd_LA = new Mat_MPI(dim, prealloc_per_row); 
+  if (addT1 || addT2) { 
+    prealloc_per_row = noscillators+5;  // preallocate Ad only if Lindblad
   } 
-  else prealloc_per_row = 0;  // Otherwise, leave matrix empty
-  SparseMatrix* Ad_LA = new Mat_MPI(dimmat, prealloc_per_row);
+  else prealloc_per_row = 0; 
+  Ad_LA = new Mat_MPI(dim, prealloc_per_row);
 
   /* Allocate the time-dependent control terms, one for each oscillator */
   if (lindbladtype != LindbladType::NONE) prealloc_per_row = 4;
   else prealloc_per_row = 2;
   for (int iosc=0; iosc < noscillators; iosc++){
-    SparseMatrix* myspmatAc = new Mat_MPI(dimmat, prealloc_per_row);
+    SparseMatrix* myspmatAc = new Mat_MPI(dim, prealloc_per_row);
     Ac_LA_vec.push_back(myspmatAc);
-    SparseMatrix* myspmatBc = new Mat_MPI(dimmat, prealloc_per_row);
+    SparseMatrix* myspmatBc = new Mat_MPI(dim, prealloc_per_row);
     Bc_LA_vec.push_back(myspmatBc);
   }
 
+  /* Allocate the time-dependent coupling terms: (n*(n-1)/2) many */
   for (int iosc=0; iosc < noscillators; iosc++){
     for (int josc=iosc+1; josc < noscillators; josc++){
-      /* Allocate the time-dependent coupling terms: (n*(n-1)/2) many */
       if (lindbladtype != LindbladType::NONE) prealloc_per_row = 4;
       else prealloc_per_row = 2;
-      SparseMatrix* myspmatAd = new Mat_MPI(dimmat, prealloc_per_row);
+      SparseMatrix* myspmatAd = new Mat_MPI(dim, prealloc_per_row);
       Ad_LA_vec.push_back(myspmatAd);
-      SparseMatrix* myspmatBd = new Mat_MPI(dimmat, prealloc_per_row);
+      SparseMatrix* myspmatBd = new Mat_MPI(dim, prealloc_per_row);
       Bd_LA_vec.push_back(myspmatBd);
     }
   }
@@ -326,7 +328,6 @@ void MasterEq::initSparseMatSolver_LA(){
     }
   }
   Bd_LA->assemble();
-  Bd_LA->view();
 
   /* Set up the system matrix Ad = Real(iH_system + Lindblad). Since the default Hamiltonian is real-valued, iH is purely imaginary, so Ad contains only Lindblad terms */
   if (addT1 || addT2) {  // leave matrix empty if no T1 or T2 decay
@@ -450,7 +451,7 @@ void MasterEq::initSparseMatSolver_LA(){
   /* Set up the control matrices Ac = Imag(iH_control ).  */
   /* Lindblad solver:     Ac = I_N \kron (a - a^T) - (a - a^T)^T \kron I_N   \in C^{N^2 x N^2}*/
   /* Schroedinger solver: Ac = a - a^T   \in C^{N x N}  */
-  for (int iosc = 0; iosc < Bc_LA_vec.size(); iosc++) {
+  for (int iosc = 0; iosc < Ac_LA_vec.size(); iosc++) {
     int nk     = oscil_vec[iosc]->getNLevels();
     int nprek  = oscil_vec[iosc]->dim_preOsc;
     int npostk = oscil_vec[iosc]->dim_postOsc;
@@ -467,11 +468,11 @@ void MasterEq::initSparseMatSolver_LA(){
       r1 = r1 / npostk;
       if (r1 < nk-1) {
         val = sqrt(r1+1);
-        if (fabs(val)>1e-14) Ac_LA_vec[iosc]->setValue(row, col1, val);
+        if (fabs(val)>1e-14) Ac_LA_vec[iosc]->setValue(row, col1, val, add);
       }
       if (r1 > 0) {
         val = -sqrt(r1);
-        if (fabs(val)>1e-14) Ac_LA_vec[iosc]->setValue(row, col2, val);
+        if (fabs(val)>1e-14) Ac_LA_vec[iosc]->setValue(row, col2, val, add);
       } 
       if (lindbladtype != LindbladType::NONE){
         //- A_c \kron I_N
@@ -524,9 +525,8 @@ void MasterEq::initSparseMatSolver_LA(){
         if (r1a > 0 && r1b < nj-1) {
           val = sqrt(r1a * (r1b+1));
           col = row - npostk + npostj;
-          printf("MPI_MAT: set %f at (%d, %d)\n", val, row, col);
            if (fabs(val)>1e-14) Ad_LA_vec[id_kl]->setValue(row, col,  val, add);
-           if (fabs(val)>1e-14) Ad_LA_vec[id_kl]->setValue(row, col,  val, add);
+           if (fabs(val)>1e-14) Bd_LA_vec[id_kl]->setValue(row, col,  -val, add);
         }
         if (r1a < nk-1  && r1b > 0) {
           val = sqrt((r1a+1) * r1b);
@@ -561,6 +561,9 @@ void MasterEq::initSparseMatSolver_LA(){
       id_kl++;
     }
   }
+
+  /* Create auxiliary vector */
+  aux_LA = new Vec_MPI(dim);
 }
 
 void MasterEq::initSparseMatSolver(){
@@ -1469,35 +1472,39 @@ void MasterEq::setControlAmplitudes(const Vec x) {
 
 
 /* Using the new linear algebra type */
-int MasterEq::getRhoT0(const int iinit, const int ninit, const InitialConditionType initcond_type, const std::vector<int>& oscilIDs, Vector* rho0){
+int MasterEq::getRhoT0(const int iinit, const int ninit, const InitialConditionType initcond_type, const std::vector<int>& oscilIDs, Vector* rho0_re, Vector* rho0_im){
 
   std::vector<int> indices;
   std::vector<double> vals;
+  int size = rho0_re->getSize();
 
   switch (initcond_type) {
     case InitialConditionType::PERFORMANCE:
 
       // Reset the vector 
-      rho0->setZero();
+      rho0_re->setZero();
+      rho0_im->setZero();
 
-      for (int i=0; i<dim_rho; i++){
-        if (lindbladtype == LindbladType::NONE) { // Lindblad solver
-          double val = 1./ sqrt(2.*dim_rho);
-          // real part
-          int elem_re = getIndexReal(i);
-          indices.push_back(elem_re);
-          vals.push_back(val);
-          // imaginary part
-          int elem_im = getIndexImag(i);
-          indices.push_back(elem_im);
-          vals.push_back(val);
-        } else {
-          double val = 1./ dim_rho;
-          int elem_re = getIndexReal(getVecID(i, i, dim_rho));
-          indices.push_back(elem_re);
+      if (lindbladtype == LindbladType::NONE) { //Schroedinger
+        for (int i=0; i<size; i++){
+          double val = 1./ sqrt(2.*size);
+          indices.push_back(i);
           vals.push_back(val);
         }
-        rho0->setValues(indices, vals);
+        rho0_re->setValues(indices, vals);
+        rho0_im->setValues(indices, vals);
+      } else {  // Lindblad
+        for (int i=0; i<size; i++){
+          for (int j=0; j<size; j++){
+            double val = 1./ dim_rho;
+            // int elem = getVecID(i, i, dim_rho);
+            int elem = getVecID(i, j, dim_rho);
+            indices.push_back(elem);
+            vals.push_back(val);
+          }
+        }
+        rho0_re->setValues(indices, vals);
+        rho0_im->setValues(indices, vals);
       }
 
     break;
@@ -1536,9 +1543,13 @@ int MasterEq::getRhoT0(const int iinit, const int ninit, const InitialConditionT
           if (ilow <= elem_re && elem_re < iupp) VecSetValue(rho0, elem_re, val, INSERT_VALUES);
           if (ilow <= elem_im && elem_im < iupp) VecSetValue(rho0, elem_im, val, INSERT_VALUES);
         } else {
-          int elem_re = getIndexReal(getVecID(i, i, dim_rho));
-          double val = 1./ dim_rho;
-          if (ilow <= elem_re && elem_re < iupp) VecSetValue(rho0, elem_re, val, INSERT_VALUES);
+          for (int j=0; j<dim_rho; j++){
+            int elem_re = getIndexReal(getVecID(i, j, dim_rho));
+            int elem_im = getIndexImag(getVecID(i, j, dim_rho));
+            double val = 1./ dim_rho;
+            if (ilow <= elem_re && elem_re < iupp) VecSetValue(rho0, elem_re, val, INSERT_VALUES);
+            if (ilow <= elem_im && elem_im < iupp) VecSetValue(rho0, elem_im, val, INSERT_VALUES);
+          }
         }
       }
       break;
@@ -1755,6 +1766,77 @@ int MasterEq::getRhoT0(const int iinit, const int ninit, const InitialConditionT
   return initID;
 }
 
+
+void MasterEq::applyRHS(double t, Vector* u, Vector* v, Vector* uout, Vector* vout){
+
+  // uout = Re*u - Im*v
+  //      = (Ad +  sum_k q_kA_k)*u - (Bd + sum_k p_kB_k)*v
+          // + sum_kl J_kl*sin(eta_kl*t) * Ad_kl * u
+          //         -J_kl*cos(eta_kl*t) * Bd_kl * v  ]   cross terms
+  // vout = Im*u + Re*v
+  //      = (Bd + sum_k p_kB_k)*u + (Ad + sum_k q_kA_k)*v
+        // + sum_kl J_kl*cos(eta_kl*t) * Bd_kl * u
+        //        + J_kl*sin(eta_kl*t) * Ad_kl * v  ]   cross terms
+
+  // Constant part uout = Adu - Bdv
+  Bd_LA->mult(v, uout);
+  uout->scale(-1.0);
+  Ad_LA->mult(u, uout, true);
+  // Constant part vout = Adv + Bdu
+  Ad_LA->mult(v, vout);
+  Bd_LA->mult(u, vout, true);
+
+  /* Control terms and Jaynes-Cummings coupling terms */
+  int id_kl = 0; // index for accessing Ad_kl inside Ad_vec
+  for (int iosc = 0; iosc < nlevels.size(); iosc++) {
+
+    /* Get controls */
+    double p, q;
+     if (t>=0) oscil_vec[iosc]->evalControl(t, &p, &q);
+     else {
+       p = 0.1;
+       q = 0.1;
+     }
+
+    // uout += q^k*Acu
+    Ac_LA_vec[iosc]->mult(u, aux_LA);
+    uout->add(q, aux_LA);
+    // uout -= p^kBcv
+    Bc_LA_vec[iosc]->mult(v, aux_LA);
+    uout->add(-1.*p, aux_LA);
+    // vout += q^kAcv
+    Ac_LA_vec[iosc]->mult(v, aux_LA);
+    vout->add(q, aux_LA);
+    // vout += p^kBcu
+    Bc_LA_vec[iosc]->mult(u, aux_LA);
+    vout->add(p, aux_LA);
+
+    // Coupling terms
+    for (int josc=iosc+1; josc<nlevels.size(); josc++){
+      double Jkli = Jkl[id_kl]; 
+      if (fabs(Jkli) > 1e-12) {
+
+        double etakl = eta[id_kl];
+        double coskl = cos(etakl * t);
+        double sinkl = sin(etakl * t);
+        // uout += J_kl*sin*Adklu
+        Ad_LA_vec[id_kl]->mult(u, aux_LA);
+        uout->add(Jkli*sinkl, aux_LA);
+        // uout += -Jkl*cos*Bdklv
+        Bd_LA_vec[id_kl]->mult(v, aux_LA);
+        uout->add(-Jkli*coskl, aux_LA);
+        // vout += Jkl*cos*Bdklu
+        Bd_LA_vec[id_kl]->mult(u, aux_LA);
+        vout->add(Jkli*coskl, aux_LA);
+        //vout += Jkl*sin*Adklv
+        Ad_LA_vec[id_kl]->mult(v, aux_LA);
+        vout->add(Jkli*sinkl, aux_LA);
+      }
+      id_kl++;
+    }
+  }
+
+}
 
 /* Sparse matrix solver: Define the action of RHS on a vector x */
 int myMatMult_sparsemat(Mat RHS, Vec x, Vec y){
