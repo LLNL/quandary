@@ -21,11 +21,9 @@ class Vector {
 
     virtual void view() =0;
     virtual void setZero()=0;  
-    virtual void* getData() {return NULL;};
     virtual double normsq() {return 0.0;};  // squared norm: ||x||^2 
-    virtual void getDistribution(int* ilow_ptr, int* iupp_ptr);
-    /* Insert values into the vector at given index locations */
-    virtual void setValues(std::vector<int>& indices, std::vector<double>& vals)=0;
+    virtual void getDistribution(int* ilow_ptr, int* iupp_ptr); // Default return 0, dim. MPI vector will overwrite this. 
+    virtual void setValues(std::vector<int>& indices, std::vector<double>& vals)=0; // Insert values at given index locations
     virtual void add(double a, Vector* y)=0;  /* Addition: x += ay */
     virtual void scale(double a)=0;            /* x = a*x */
 };
@@ -40,7 +38,7 @@ class Vec_MPI : public Vector {
     Vec_MPI(int size);
     ~Vec_MPI();
 
-    void* getData() {return &petscvec;};
+    Vec getData() {return petscvec;};
 
     void view();
     void setZero();  
@@ -73,7 +71,6 @@ class SparseMatrix {
     SparseMatrix(int dim);
     virtual ~SparseMatrix();
 
-    virtual void* getData() {return NULL;};
     virtual void view() =0;
     /* Matrix vector multiplication */
     virtual void mult(Vector* xin, Vector* xout, bool add=false)=0;     // xout (+)= Mat*xin 
@@ -99,7 +96,6 @@ class Mat_MPI: public SparseMatrix {
     ~Mat_MPI();
 
     void view();
-    void* getData() {return PetscMat;};
 
     void setValues(std::vector<int>& rows, std::vector<int>& cols, std::vector<double>& vals);
     /* Insert or add one value at location (row, col). This call MUST be followed by an assembly! */

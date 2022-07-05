@@ -59,8 +59,8 @@ void Vec_MPI::view() {
 }
 
 void Vec_MPI::add(double a, Vector* y){
-  Vec* pvec = (Vec*) y->getData();
-  VecAXPY(petscvec, a, *pvec);
+  Vec_MPI* vecy = (Vec_MPI*) y;
+  VecAXPY(petscvec, a, vecy->getData());
 }
 
 void Vec_MPI::scale(double a){
@@ -113,10 +113,13 @@ Mat_MPI::Mat_MPI(int dim, int preallocate_per_row) : SparseMatrix(dim) {
 
 void Mat_MPI::mult(Vector* xin, Vector* xout, bool add){
 
-  Vec* pin  = (Vec*) xin->getData();
-  Vec* pout = (Vec*) xout->getData();
-  if (add)  MatMultAdd(PetscMat, *pin, *pout, *pout);
-  else MatMult(PetscMat, *pin, *pout);
+
+  Vec_MPI* vecxin = (Vec_MPI*) xin;
+  Vec_MPI* vecxout = (Vec_MPI*) xout;
+  Vec pin  = vecxin->getData();
+  Vec pout = vecxout->getData();
+  if (add)  MatMultAdd(PetscMat, pin, pout, pout);
+  else MatMult(PetscMat, pin, pout);
 }
 
 
