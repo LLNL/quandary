@@ -8,6 +8,7 @@ PythonInterface::PythonInterface(std::string python_file, LindbladType lindbladt
 
   lindbladtype = lindbladtype_;
   dim_rho = dim_rho_;
+  MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
 
 #ifdef WITH_PYTHON
 
@@ -42,7 +43,7 @@ PythonInterface::~PythonInterface(){
 void PythonInterface::receiveHd(Mat& Bd){
 #ifdef WITH_PYTHON
 
-  printf("Receiving system Hamiltonian...\n");
+  if (mpirank_world == 0) printf("Receiving system Hamiltonian...\n");
 
   // Get a pointer to the python function "getHd"
   PyObject* pFunc_getHd = PyObject_GetAttrString(pModule, (char*)"getHd"); 
@@ -154,7 +155,7 @@ void PythonInterface::receiveHd(Mat& Bd){
 void PythonInterface::receiveHc(int noscillators, std::vector<std::vector<Mat>>& Ac_vec, std::vector<std::vector<Mat>>& Bc_vec){
 #ifdef WITH_PYTHON
 
-  printf("Receiving control Hamiltonian terms...\n");
+  if (mpirank_world == 0) printf("Receiving control Hamiltonian terms...\n");
 
   /* Reset Ac_vec and Bc_vec (Keeping the outer vector intact) */
   for (int k=0; k<Ac_vec.size(); k++){
@@ -199,7 +200,7 @@ void PythonInterface::receiveHc(int noscillators, std::vector<std::vector<Mat>>&
   } else PyErr_Print();
 
   if (!called_real || !PyList_Check(pHc_real)) {
-    printf("# No real control Hamiltonian received. \n");
+    if (mpirank_world == 0) printf("# No real control Hamiltonian received. \n");
   } else {
 
     // Parse the result 
@@ -270,7 +271,7 @@ void PythonInterface::receiveHc(int noscillators, std::vector<std::vector<Mat>>&
     int ioscil = 0;  // index for accessing Hamiltonian values inside Hc_re_vals/ids
     for (int k=0; k<noscillators; k++){
 
-      printf("Creating %d control Mats for oscillator %d\n", ncontrol_real[k], k);
+      if (mpirank_world == 0) printf("Creating %d control Mats for oscillator %d\n", ncontrol_real[k], k);
 
       // Iterate over control terms for this oscillator
       for (int i=0; i<ncontrol_real[k]; i++){
@@ -345,7 +346,7 @@ void PythonInterface::receiveHc(int noscillators, std::vector<std::vector<Mat>>&
   } else PyErr_Print();
 
   if (!called_imag || !PyList_Check(pHc_imag)) {
-    printf("# No imag control Hamiltonian received. \n");
+    if (mpirank_world == 0) printf("# No imag control Hamiltonian received. \n");
   } else {
 
     // Parse the result 
@@ -484,7 +485,7 @@ void PythonInterface::receiveHc(int noscillators, std::vector<std::vector<Mat>>&
 void PythonInterface::receiveHcTransfer(int noscillators,std::vector<std::vector<TransferFunction*>>& transfer_Hc_re,std::vector<std::vector<TransferFunction*>>& transfer_Hc_im){
 #ifdef WITH_PYTHON
 
-  printf("Receiving transfer functions for control Hamiltonians Hc(t)...\n");
+  if (mpirank_world == 0) printf("Receiving transfer functions for control Hamiltonians Hc(t)...\n");
 
   /* First empty out the transfer_func vectors for each oscillator and create empty vectors of the correct size */
   for (int k=0; k<noscillators; k++){
@@ -524,7 +525,7 @@ void PythonInterface::receiveHcTransfer(int noscillators,std::vector<std::vector
 
     if (!called_real || !PyList_Check(pTr_real)){
       // Default: If we can't find the python function "getTranfer_real", use identities for each control Hamiltonian term
-      printf("# Warning: Could not find transfer function 'getHcTransfer_real'. Using identity for oscillator %zd instead. \n",k);
+      // printf("# Warning: Could not find transfer function 'getHcTransfer_real'. Using identity for oscillator %zd instead. \n",k);
 
       for (Py_ssize_t i=0; i<ncontrol_real[k]; i++){
         IdentityTransferFunction *transfer_ki =  new IdentityTransferFunction();
@@ -608,7 +609,7 @@ void PythonInterface::receiveHcTransfer(int noscillators,std::vector<std::vector
     // Get number of given transfer functions for this oscillator
     if (!called_imag|| !PyList_Check(pTr_imag)){
       // Default: If we can't find the python function "getTranfer_imag", use identities for each control Hamiltonian term
-      printf("# Warning: Could not find transfer function 'getHcTransfer_imag'. Using identity for oscillator %zd instead. \n", k);
+      // printf("# Warning: Could not find transfer function 'getHcTransfer_imag'. Using identity for oscillator %zd instead. \n", k);
       for (Py_ssize_t i=0; i<ncontrol_imag[k]; i++){
         IdentityTransferFunction *transfer_ki =  new IdentityTransferFunction();
         transfer_Hc_im[k][i] = transfer_ki;
@@ -674,7 +675,7 @@ void PythonInterface::receiveHcTransfer(int noscillators,std::vector<std::vector
 void PythonInterface::receiveHdt(std::vector<Mat>& Ad_vec, std::vector<Mat>& Bd_vec){
 #ifdef WITH_PYTHON
 
-  printf("Receiving time-dependent system Hamiltonians...\n");
+  if (mpirank_world == 0) printf("Receiving time-dependent system Hamiltonians...\n");
 
   /* Reset Ad_vec and Bd_vec.  */
   for (int i= 0; i < Ad_vec.size(); i++) {
@@ -711,7 +712,7 @@ void PythonInterface::receiveHdt(std::vector<Mat>& Ad_vec, std::vector<Mat>& Bd_
   } else PyErr_Print();
 
   if (!called_real || !PyList_Check(pHdt_real)){
-    printf("# No time-dependent real Hamiltonian received. \n");
+    if (mpirank_world == 0) printf("# No time-dependent real Hamiltonian received. \n");
     nterms = 0;
     // If none given, leave the matrix empty.
   } else { 
@@ -829,7 +830,7 @@ void PythonInterface::receiveHdt(std::vector<Mat>& Ad_vec, std::vector<Mat>& Bd_
   // Now we have pHdt_imag: [ H01, H02,... ,H12, H13,... ] length = nterms = Q*(Q-1)/2
 
   if (!called_imag|| !PyList_Check(pHdt_imag)){
-    printf("# No time-dependent imag Hamiltonian received. \n");
+    if (mpirank_world == 0) printf("# No time-dependent imag Hamiltonian received. \n");
     // If none given, leave the matrix empty. 
   } else { 
     // Iterate over terms
@@ -931,7 +932,7 @@ void PythonInterface::receiveHdtTransfer(int nterms, std::vector<TransferFunctio
 #ifdef WITH_PYTHON
 
 
- printf("Receiving transfer functions for time-dependent system Hamiltonians Hd(t)...\n");
+ if (mpirank_world == 0) printf("Receiving transfer functions for time-dependent system Hamiltonians Hd(t)...\n");
 
   /* First empty out the transfer_func vectors for each oscillator and create empty vectors of the correct size */
   transfer_Hdt_re.clear();
@@ -960,7 +961,7 @@ void PythonInterface::receiveHdtTransfer(int nterms, std::vector<TransferFunctio
     // Get number of given transfer functions for this oscillator
     if (!called_real || !PyList_Check(pTr_real)){
       // Default: If we can't find the python function "getTranfer_real", use identity
-      printf("# Warning: Could not find transfer function 'getHdtTransfer_real'. Using constant u=1.0 instead. \n");
+      // printf("# Warning: Could not find transfer function 'getHdtTransfer_real'. Using constant u=1.0 instead. \n");
       ConstantTransferFunction *transfer_k =  new ConstantTransferFunction(1.0);
       transfer_Hdt_re.push_back(transfer_k);
     } else { 
@@ -1029,7 +1030,7 @@ void PythonInterface::receiveHdtTransfer(int nterms, std::vector<TransferFunctio
     // Get number of given transfer functions for this oscillator
     if (!called_imag || !PyList_Check(pTr_imag)){
       // Default: If we can't find the python function "getTranfer_imag", use identity
-      printf("# Warning: Could not find transfer function 'getHdtTransfer_imag'. Using constant u=1.0 instead. \n");
+      // printf("# Warning: Could not find transfer function 'getHdtTransfer_imag'. Using constant u=1.0 instead. \n");
       ConstantTransferFunction *transfer_k =  new ConstantTransferFunction(1.0);
       transfer_Hdt_im.push_back( transfer_k);
     } else { 

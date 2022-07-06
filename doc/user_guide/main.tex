@@ -224,7 +224,7 @@ the real and imaginary components: $\alpha^k_s = \alpha^{k(1)}_{s,1}, \alpha^{k(
 
 
 \subsection{Python interface for general Hamiltonian systems}
-The Python interface for Quandary allows to simulate and optimize with user-defined Hamiltonians. To that end, the user defines (arbitrary) system and control Hamiltonian terms in a python script (see below), and Quandary then replace the Hamiltonian model in \eqref{eq:Hd_rotating} (system Hamiltonian) and \eqref{eq:Hc_rotating} (control Hamiltonian) by the Hamiltonians defined in the script. 
+The Python interface for Quandary allows to simulate and optimize with user-defined Hamiltonians. To that end, the user defines (arbitrary) system and control Hamiltonian operators in a python script (see below), and Quandary then replace the Hamiltonian model in \eqref{eq:Hd_rotating} (system Hamiltonian) and \eqref{eq:Hc_rotating} (control Hamiltonian) by the Hamiltonians defined in the script. 
 
 To enable the python interface for Quandary, use the configuration option \texttt{python\_file} to pass the name of the python script to Quandary. (Note: Make sure that the beginning of the configuration file (\texttt{nlevels}) matches the dimension of the Hamiltonians defined in the python file.)
 During Quandary's initialization phase, the python script will be parsed for functions of specific names that return the corresponding Hamiltonians. A description of the interface functions is given below. A good place to start is by having a look at the example in \texttt{quandary/results/python\_interface\_example/}. There, the python script \texttt{Hamiltonian.py} provides the interface functions that reproduce the (default) Hamiltonian model and control as in \eqref{eq:Hd_rotating}, \eqref{eq:Hc_rotating} for a system of two coupled qudits, applying a constant control pulse of a certain duration and amplitude to qudit 0 (a non-perfect pi-pulse).
@@ -236,8 +236,8 @@ The python interface allows for general Hamiltonians that are composed of a cons
 The time-dependency is realized through real-valued transfer functions that multiply constant matrices, see below. 
 
 \begin{itemize}
-  \item \textbf{Constant system Hamiltonian $H_d$:}\\
-  The constant system Hamiltonian is assumed to be real-valued (for now): $H_d \in \R^{N\times N}$. It contains the time-independent (non-controllable) system Hamiltonian terms (detuning, anharmonicity, etc. and coupling terms, if they are constant). 
+  \item \textbf{Time-independent system Hamiltonian $H_d$} (required)\\
+  The constant system Hamiltonian is assumed to be real-valued (for now): $H_d \in \R^{N\times N}$. It contains the time-independent (non-controllable) system Hamiltonian terms (detuning, anharmonicity, etc. and coupling terms, if they are time-constant). 
   Quandary parses the python script for a function \texttt{\textbf{getHd}}, which must return a list of floats containing the vectorized matrix $H_d$ (column-major).
 
   \textbf{python function}\\
@@ -245,7 +245,7 @@ The time-dependency is realized through real-valued transfer functions that mult
   \indent\hspace{1cm}\texttt{[...]}  \\
   \indent\hspace{1cm}\texttt{return} vec($H_d$) 
 
-  \item \textbf{Time-dependent system Hamiltonians $H_d(t)$:} \\
+  \item \textbf{Time-dependent system Hamiltonians $H_d(t)$} (optional) \\
   Multiple time-dependent system Hamiltonian terms can be defined through these interface functions (e.g. such as the Jaynes-Cummings coupling terms in the rotating frame). Each term, $H_d^l(t) \in \C^{N\times N}, l=0,1,\dots$ is complex, and their real and imaginary parts are composed of real-valued (transfer) functions $u^l(t), v^l(t)$ multiplying constant real and imaginary parts of the Hamiltonian matrix $\mbox{Re}(H_d^l)$, $\mbox{Im}(H_d^l)$: 
   \begin{align}
    H_d^l(t) = u^l(t) \mbox{Re}\left(H_d^l\right) + i v^l(t) \mbox{Im}\left(H_d^l\right)
@@ -278,7 +278,7 @@ The time-dependency is realized through real-valued transfer functions that mult
 
 
 
- \item \textbf{Time-dependent control Hamiltonians $H_c(t)$:} \\
+ \item \textbf{Time-dependent control Hamiltonians $H_c(t)$:} (optional) \\
  For each modeled subsystem $k=0,\dots, Q-1$, a number of control Hamiltonians can be applied. Each control Hamiltonian is driven with a separate set of control pulses $p^k(t)$, $q^k(t)$, which Quandary optimizes for. The control pulses can be applied to \textit{multiple} control Hamiltonian matrices per subsystem $k$: $H_c^{k,l}\in \C^{N\times N}$ for $l=0,\dots, C^k-1$, where the number of control Hamiltonians $C^k$ can be different amongst the oscillators $k$. Real-valued transfer functions can optionally be applied to the control pulses before multiplying the constant control matrices:
   \begin{align}
   H_{c}^{k,l}(t) =  u^{k,l}\left(p^k(t)\right) \mbox{Re}\left(H_{c}^{k,l}\right)

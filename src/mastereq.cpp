@@ -633,9 +633,9 @@ void MasterEq::initSparseMatSolver(){
   /* If a Python file is given, overwrite the matrices with those read from file. */ 
   if (python_file.compare("none") != 0 ) {
 #ifdef WITH_PYTHON
-    printf("\n# Reading Hamiltonian model from python file %s.\n\n", python_file.c_str());
+    if (mpirank_world==0) printf("\n# Reading Hamiltonian model from python file %s.\n\n", python_file.c_str());
 #else
-    printf("ERROR: Requested to read Hamiltonian from python interface, but you didn't link with python. Check your Makefile for WITH_PYTHON=true to use this feature.\n\n");
+    printf("# Warning: You requested to read the Hamiltonians from the python file %s, but you didn't link Quandary with python. Check your Makefile for WITH_PYTHON=true to use this feature. Using default Hamiltonian now.\n", python_file.c_str());
 #endif
 
     PythonInterface* py = new PythonInterface(python_file, lindbladtype, dim_rho);
@@ -648,7 +648,7 @@ void MasterEq::initSparseMatSolver(){
     py->receiveHdtTransfer(Ad_vec.size(), transfer_Hdt_re, transfer_Hdt_im);
     // TODO: Pass both Ad.size and also Bd.size, since they might be different!.
 
-    printf("Done. \n\n");
+    if (mpirank_world==0) printf("# Done. \n\n");
 
     // Remove control parameters for those oscillators that are non-controllable
     for (int k=0; k<nlevels.size(); k++){

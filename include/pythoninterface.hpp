@@ -30,6 +30,7 @@ class PythonInterface{
     int dim_rho;                          // Dimension of the Hilbertspace. N!
     std::vector<int>ncontrol_real;
     std::vector<int>ncontrol_imag;
+    int mpirank_world;   // Rank of global communicator
 
 	public:
     PythonInterface();

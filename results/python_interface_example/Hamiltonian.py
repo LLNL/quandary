@@ -1,7 +1,7 @@
 import numpy as np
 from scipy import interpolate
 
-# Utility function to set up the lowering operators a0 and a1 for a system of 2 qudits modelled with 3 levels)
+# Utility function to set up the lowering operators a0 and a1 for a system of 2 qudits modelled with 3 levels
 # returns [a0, a1] where a0 = lowering0 \kron I and  a1 = I \kron lowering1
 def getLoweringOperators():
 
@@ -18,13 +18,11 @@ def getLoweringOperators():
     
     return a
 
-## This is a function that Quandary REQUIRES to get the system Hamiltonian Hd! ##
+## This is a function that Quandary REQUIRES to get the (time-independent) system Hamiltonian ##
 # Return the vectorized Hamiltonian, column major vectorization (order='F')
 def getHd():
 
-    a = getLoweringOperators()
-
-    # System parameters. (Here choose arbitrary for debugging, those numbers don't make much sense)
+    # System parameters. (Here chosen arbitrarily for debugging, those numbers don't make much sense)
     omega0 = 4.0 *2*np.pi
     omega1 = 5.0 *2*np.pi
     rot0 = 3.9   *2*np.pi
@@ -33,7 +31,8 @@ def getHd():
     xi1 = 0.3   *2*np.pi  
     g01 = 0.01  *2*np.pi
 
-    # constant Hamiltonian Hd in full dimension 9x9:
+    # Set up the constant system Hamiltonian Hd in full dimension 9x9:
+    a = getLoweringOperators()  # These are the lowering operators in the full dimensions 9x9
     Hd = \
         + (omega0-rot0) * ( a[0].getH() * a[0] ) - xi0/2.0 * (a[0].getH() * a[0].getH() * a[0] * a[0]) \
         + (omega1-rot1) * ( a[1].getH() * a[1] ) - xi1/2.0 * (a[1].getH() * a[1].getH() * a[1] * a[1])  \
@@ -151,16 +150,16 @@ def getHc_imag():
 #   Each spline representation has the format [knots, coefficients, order]
 def getHcTransfer_real():
 
-    # Here, we don't have transfer functions on the control terms (we apply p(t) directly to Hc). However, I'm setting them up here as an example use. 
+    # Here, we don't have transfer functions on the control terms (we apply p(t) directly to Hc). However, I'm setting them up here as an example use, using the identity as a transfer function. 
     x = np.arange(-10,10) # Make sure this range is big enough to cover all possible input values p(t)
-    y = x
+    y = x   # Here, the identity
 
     # create splines using scipy's interpolate module
     order = 2
-    tck_freq = interpolate.splrep(x, y, s=0, k=order);    # return [knots, coeffs, order], but need to make them lists. 
+    tck_freq = interpolate.splrep(x, y, s=0, k=order);    # returns [knots, coeffs, order], but need to make them lists. 
 
     iden = [list(tck_freq[0]), list(tck_freq[1]), tck_freq[2]]
-    return [ [ iden ], [ iden ] ]  # See how this matches to the return list of lists in line 91!
+    return [ [ iden ], [ iden ] ]  # See how this matches to the return list of lists in getHc_real()
 
 def getHcTransfer_imag():
 
@@ -173,7 +172,7 @@ def getHcTransfer_imag():
     tck_freq = interpolate.splrep(x, y, s=0, k=order);
 
     iden = [list(tck_freq[0]), list(tck_freq[1]), tck_freq[2]]
-    return [ [ iden ], [ iden ] ]  # See how this matches to the return list of lists in line 105!
+    return [ [ iden ], [ iden ] ]  # See how this matches to the return list of lists in getHc_imag
 
 
 

@@ -49,7 +49,7 @@ Then set the `PETSC_DIR` variable to point to the Petsc folder and add it to the
 * `export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$PETSC_DIR`
 
 ## Installation
-Adapt the beginning of the 'Makefile' to set the path to your Petsc (and possibly XBraid, Slepsc, python path, and fitpack) installation. Then, in the main Quandary directory:
+Adapt the beginning of the 'Makefile' to set the path to your Petsc (and possibly XBraid, Slepsc, python path, and fitpackpp) installation. Then, in the main Quandary directory:
 * `make cleanup` to clean the build directory. (Note the *up* in *cleanup*.)
 * `make -j main` to build the code (using 'j' threads)
 
