@@ -11,6 +11,15 @@
 #endif
 #pragma once
 
+/* if Petsc version < 3.17: Change interface for Tao Optimizer */
+#if PETSC_VERSION_MAJOR<4 && PETSC_VERSION_MINOR<17
+#define TaoSetObjective TaoSetObjectiveRoutine
+#define TaoSetGradient(tao, NULL, TaoEvalGradient,this)  TaoSetGradientRoutine(tao, TaoEvalGradient,this) 
+#define TaoSetObjectiveAndGradient(tao, NULL, TaoEvalObjectiveAndGradient,this) TaoSetObjectiveAndGradientRoutine(tao, TaoEvalObjectiveAndGradient,this)
+#define TaoSetSolution(tao, xinit) TaoSetInitialVector(tao, xinit)
+#define TaoGetSolution(tao, params) TaoGetSolutionVector(tao, params) 
+#endif
+
 class OptimProblem {
 
   /* ODE stuff */
@@ -24,6 +33,7 @@ class OptimProblem {
   Vec rho_t0_bar;                        /* Adjoint of ODE initial condition */
   InitialConditionType initcond_type;    /* Type of initial conditions */
   std::vector<int> initcond_IDs;         /* Integer list for pure-state initialization */
+  std::vector<Vec> store_finalstates;    /* Storage for last time steps for each initial condition */
 
   OptimTarget* optim_target;      /* Storing the optimization goal */
 
@@ -41,7 +51,7 @@ class OptimProblem {
   double obj_cost;                 /* Final-time term J(T) in objective */
   double obj_regul;                /* Regularization term in objective */
   double obj_penal;                /* Penalty term in objective */
-  double fidelity;                 /* Sum of final-time fidelities (summed over initial conditions) */
+  double fidelity;                 /* Final-time fidelity: 1/ninit \sum_iinit Tr(rhotarget^\dag rho(T)) for Lindblad, or |1/ninit \sum_iinit phitarget^dagger phi |^2 for Schroedinger */
   double gnorm;                    /* Holds current norm of gradient */
   double gamma_tik;                /* Parameter for tikhonov regularization */
   double gamma_penalty;            /* Parameter multiplying integral penalty term */
@@ -88,7 +98,10 @@ class OptimProblem {
   void solve(Vec xinit);
 
   /* Compute initial guess for optimization variables */
-  void getStartingPoint(Vec& x);
+  void getStartingPoint(Vec x);
+
+  /* Call this after TaoSolve() has finished to print out some information */
+  void getSolution(Vec* opt);
 
   /* Refine the control parameters using hierarchical Bspline refinement */
   void refine(Vec& x);

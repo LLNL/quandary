@@ -1,4 +1,5 @@
 #include <petscmat.h>
+#include <iostream>
 #include <vector>
 #ifdef WITH_SLEPC
 #include <slepceps.h>
@@ -23,8 +24,8 @@ int isEssential(const int i, const std::vector<int> &nlevels, const std::vector<
 /* Test if a certain row/column i of the full density matrix corresponds to a guard level. A Guard level is the LAST energy level of an oscillator */
 int isGuardLevel(const int i, const std::vector<int> &nlevels, const std::vector<int> &nessential);
 
-/* Project a state vector onto essential levels by zero'ing out elements that belong to guard-levels. */
-void projectToEss(Vec state,const std::vector<int> &nlevels, const std::vector<int> &nessential);
+// /* Project a state vector onto essential levels by zero'ing out elements that belong to guard-levels. */
+// void projectToEss(Vec state,const std::vector<int> &nlevels, const std::vector<int> &nessential);
 
 /* Kronecker product : Id \kron A, where Id is the Identitymatrix 
  * Mat Out must be allocated with nonzerosA * dimI
@@ -82,3 +83,17 @@ int getEigvals(const Mat A, const int neigvals, std::vector<double>& eigvals, st
  * Test if A+iB is unitary (A and B should be real-valued!)
  */
 bool isUnitary(const Mat A, const Mat B);
+
+template <typename Tval>
+void copyLast(std::vector<Tval>& fillme, int tosize){
+    // int norg = fillme.size();
+
+    for (int i=fillme.size(); i<tosize; i++) 
+      fillme.push_back(fillme[fillme.size()-1]);
+
+    // if (norg < tosize) {
+      // std::cout<< "I filled this: ";
+      // for (int i=0; i<fillme.size(); i++) std::cout<< " " << fillme[i];
+      // std::cout<<std::endl;
+    // }
+};

@@ -71,6 +71,7 @@ int main(int argc,char **argv)
     for (int iosc = 0; iosc<nlevels.size(); iosc++){
       if (iosc < read_nessential.size()) nessential[iosc] = read_nessential[iosc];
       else                               nessential[iosc] = read_nessential[read_nessential.size()-1];
+      if (nessential[iosc] > nlevels[iosc]) nessential[iosc] = nlevels[iosc];
     }
   }
 
@@ -82,13 +83,14 @@ int main(int argc,char **argv)
   assert (initcondstr.size() >= 1);
   if      (initcondstr[0].compare("file") == 0 ) ninit = 1;
   else if (initcondstr[0].compare("pure") == 0 ) ninit = 1;
+  else if (initcondstr[0].compare("performance") == 0 ) ninit = 1;
   else if (initcondstr[0].compare("ensemble") == 0 ) ninit = 1;
   else if (initcondstr[0].compare("3states") == 0 ) ninit = 3;
   else if (initcondstr[0].compare("Nplus1") == 0 )  {
-    // compute system dimension N. Essential levels only
+    // compute system dimension N
     ninit = 1;
-    for (int i=0; i<nessential.size(); i++){
-      ninit *= nessential[i];
+    for (int i=0; i<nlevels.size(); i++){
+      ninit *= nlevels[i];
     }
     ninit +=1;
   }
@@ -96,17 +98,20 @@ int main(int argc,char **argv)
             initcondstr[0].compare("basis")    == 0  ) {
     /* Compute ninit = dim(subsystem defined by list of oscil IDs) */
     ninit = 1;
-    // sanity check for input string
     if (initcondstr.size() < 2) {
       printf("ERROR for initial condition option: If choosing 'basis' or 'diagonal', specify the list oscillator IDs!\n");
       exit(1);
     }
     for (int i = 1; i<initcondstr.size(); i++){
       int oscilID = atoi(initcondstr[i].c_str());
-      assert(oscilID < nessential.size());
       ninit *= nessential[oscilID]; // essential levels only
     }
-    if (initcondstr[0].compare("basis") == 0  ) ninit = (int) pow(ninit,2.0);
+    if (initcondstr[0].compare("basis") == 0  ) {
+      // if Schroedinger solver: ninit = N, do nothing.
+      // else Lindblad solver: ninit = N^2
+      std::string tmpstr = config.GetStrParam("collapse_type", "none", false);
+      if (tmpstr.compare("none") != 0 ) ninit = (int) pow(ninit,2.0);
+    }
   }
   else {
     printf("\n\n ERROR: Wrong setting for initial condition.\n");
@@ -164,12 +169,11 @@ int main(int argc,char **argv)
   MPI_Comm_rank(comm_petsc, &mpirank_petsc);
   MPI_Comm_size(comm_petsc, &mpisize_petsc);
 
-  std::cout<< "Parallel distribution: " << "init " << mpirank_init << "/" << mpisize_init;
-  std::cout<< ", petsc " << mpirank_petsc << "/" << mpisize_petsc;
+  if (mpirank_world == 0)  std::cout<< "Parallel distribution: " << mpisize_init << " np_init  X  " << mpisize_petsc<< " np_petsc";
 #ifdef WITH_BRAID
-  std::cout<< ", braid " << mpirank_braid << "/" << mpisize_braid;
+  std::cout<< "  X  " << mpisize_braid  << "np_braid" << std::endl;
 #endif
-  std::cout<< std::endl;
+  if (mpirank_world == 0) std::cout<<std::endl;
 
   /* Initialize Petsc using petsc's communicator */
   PETSC_COMM_WORLD = comm_petsc;
@@ -189,19 +193,14 @@ int main(int argc,char **argv)
   // Get fundamental and rotation frequencies from config file 
   std::vector<double> trans_freq, rot_freq;
   config.GetVecDoubleParam("transfreq", trans_freq, 1e20);
-  if (trans_freq.size() < nlevels.size()) {
-    printf("Error: Number of given fundamental frequencies (%lu) is smaller than the the number of oscillators (%lu)\n", trans_freq.size(), nlevels.size());
-    exit(1);
-  } 
+  copyLast(trans_freq, nlevels.size());
+
   config.GetVecDoubleParam("rotfreq", rot_freq, 1e20);
-  if (rot_freq.size() < nlevels.size()) {
-    printf("Error: Number of given rotation frequencies (%lu) is smaller than the the number of oscillators (%lu)\n", rot_freq.size(), nlevels.size());
-    exit(1);
-  } 
+  copyLast(rot_freq, nlevels.size());
   // Get self kerr coefficient
   std::vector<double> selfkerr;
   config.GetVecDoubleParam("selfkerr", selfkerr, 0.0);   // self ker \xi_k 
-  assert(selfkerr.size() >= nlevels.size());
+  copyLast(selfkerr, nlevels.size());
   // Get lindblad type and collapse times
   std::string lindblad = config.GetStrParam("collapse_type", "none");
   std::vector<double> decay_time, dephase_time;
@@ -218,8 +217,8 @@ int main(int argc,char **argv)
     exit(1);
   }
   if (lindbladtype != LindbladType::NONE) {
-    assert(decay_time.size() >= nlevels.size());
-    assert(dephase_time.size() >= nlevels.size());
+    copyLast(decay_time, nlevels.size());
+    copyLast(dephase_time, nlevels.size());
   }
 
   // Create the oscillators 
@@ -227,7 +226,7 @@ int main(int argc,char **argv)
     std::vector<double> carrier_freq;
     std::string key = "carrier_frequency" + std::to_string(i);
     config.GetVecDoubleParam(key, carrier_freq, 0.0);
-    oscil_vec[i] = new Oscillator(i, nlevels, nspline, trans_freq[i], selfkerr[i], rot_freq[i], decay_time[i], dephase_time[i], carrier_freq, total_time);
+    oscil_vec[i] = new Oscillator(i, nlevels, nspline, trans_freq[i], selfkerr[i], rot_freq[i], decay_time[i], dephase_time[i], carrier_freq, total_time, lindbladtype);
   }
 
   // Get pi-pulses, if any
@@ -265,10 +264,11 @@ int main(int argc,char **argv)
   std::vector<double> crosskerr, Jkl;
   config.GetVecDoubleParam("crosskerr", crosskerr, 0.0);   // cross ker \xi_{kl}, zz-coupling
   config.GetVecDoubleParam("Jkl", Jkl, 0.0); // Jaynes-Cummings coupling
+  copyLast(crosskerr, (nlevels.size()-1) * nlevels.size()/ 2);
+  copyLast(Jkl, (nlevels.size()-1) * nlevels.size()/ 2);
   // If not enough elements are given, fill up with zeros!
-  int noscillators = nlevels.size();
-  for (int i = crosskerr.size(); i < (noscillators-1) * noscillators / 2; i++)  crosskerr.push_back(0.0);
-  for (int i = Jkl.size(); i < (noscillators-1) * noscillators / 2; i++) Jkl.push_back(0.0);
+  // for (int i = crosskerr.size(); i < (noscillators-1) * noscillators / 2; i++)  crosskerr.push_back(0.0);
+  // for (int i = Jkl.size(); i < (noscillators-1) * noscillators / 2; i++) Jkl.push_back(0.0);
   // Sanity check for matrix free solver
   bool usematfree = config.GetBoolParam("usematfree", false);
   if ( (usematfree && nlevels.size() < 2) ||   
@@ -294,9 +294,9 @@ int main(int argc,char **argv)
 
   /* Output */
 #ifdef WITH_BRAID
-  Output* output = new Output(config, comm_petsc, comm_init, comm_braid, noscillators);
+  Output* output = new Output(config, comm_petsc, comm_init, comm_braid, nlevels.size());
 #else 
-  Output* output = new Output(config, comm_petsc, comm_init, noscillators);
+  Output* output = new Output(config, comm_petsc, comm_init, nlevels.size());
 #endif
 
   // Some screen output 
@@ -313,7 +313,7 @@ int main(int argc,char **argv)
       std::cout<< nessential[i];
       if (i < nlevels.size()-1) std::cout<< "x";
     }
-    std::cout << std::endl;
+    std::cout << ") " << std::endl;
   }
 
   /* --- Initialize the time-stepper --- */
@@ -361,16 +361,15 @@ int main(int argc,char **argv)
 
   /* --- Initialize optimization --- */
   /* Get gate rotation frequencies. Default: use rotational frequencies for the gate. */
+  int noscillators = nlevels.size();
   std::vector<double> gate_rot_freq(noscillators); 
   for (int iosc=0; iosc<noscillators; iosc++) gate_rot_freq[iosc] = rot_freq[iosc];
   /* If gate_rot_freq option is given in config file, overwrite them with input */
   std::vector<double> read_gate_rot;
   config.GetVecDoubleParam("gate_rot_freq", read_gate_rot, 1e20); 
+  copyLast(read_gate_rot, noscillators);
   if (read_gate_rot[0] < 1e20) { // the config option exists
-    for (int i=0; i<noscillators; i++) {
-      if (i < read_gate_rot.size()) gate_rot_freq[i] = read_gate_rot[i];
-      else gate_rot_freq[i] = read_gate_rot[read_gate_rot.size()-1]; // using the last element for all remaining ones
-    }
+    for (int i=0; i<noscillators; i++)  gate_rot_freq[i] = read_gate_rot[i];
   }
 
 #ifdef WITH_BRAID
@@ -404,6 +403,7 @@ int main(int argc,char **argv)
   double objective;
   Vec x_opt;
   Vec grad;
+  Vec opt;
   double gnorm = 0.0;
 
   /* --- Solve primal --- */
@@ -414,6 +414,7 @@ int main(int argc,char **argv)
     // Solve forward equation to evaluate objective function
     objective = optimctx->evalF(xinit);
     if (mpirank_world == 0) printf("\nTotal objective = %1.14e, \n", objective);
+    optimctx->getSolution(&opt);
   } 
   
   /* --- Solve adjoint --- */
@@ -431,13 +432,10 @@ int main(int argc,char **argv)
 
   /* --- Solve the optimization  --- */
   if (runtype == RunType::OPTIMIZATION) {
-    // Set the iniital guess, could be refined
     optimctx->getStartingPoint(xinit);
-    // Solve the optimization problem 
     if (mpirank_world == 0) printf("\nStarting Optimization solver ... \n");
     optimctx->solve(xinit);
-    // Get the solution
-    TaoGetSolutionVector(optimctx->tao, &x_opt);
+    optimctx->getSolution(&opt);
   }
 
   /* Output */

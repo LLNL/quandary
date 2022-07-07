@@ -34,7 +34,7 @@ public:
   /* Get config options (double, int, string, bool) */
   double GetDoubleParam(std::string key, double default_val = -1.) const;
   int GetIntParam(std::string key, int default_val = -1) const;
-  std::string GetStrParam(std::string key, std::string default_val = "") const;
+  std::string GetStrParam(std::string key, std::string default_val = "", bool exportme = true) const;
   bool GetBoolParam(std::string key, bool default_val = false) const;
   void GetVecDoubleParam(std::string key, std::vector<double> &fillme, double default_val = 1e20, bool exportme = true) const;
   void GetVecIntParam(std::string key, std::vector<int> &fillme, int default_val = -1) const;

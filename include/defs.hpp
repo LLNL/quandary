@@ -4,7 +4,7 @@
 enum class LindbladType {NONE, DECAY, DEPHASE, BOTH};
 
 /* Available types of initial conditions */
-enum class InitialConditionType {FROMFILE, PURE, ENSEMBLE, DIAGONAL, BASIS, THREESTATES, NPLUSONE};
+enum class InitialConditionType {FROMFILE, PURE, ENSEMBLE, DIAGONAL, BASIS, THREESTATES, NPLUSONE, PERFORMANCE};
 
 /* Types of optimization targets: Either gate optimization or pure state preparation */
 enum class TargetType {GATE,      // \rho_target = V\rho(0) V^\dagger
@@ -13,7 +13,7 @@ enum class TargetType {GATE,      // \rho_target = V\rho(0) V^\dagger
 
 /* Typye of objective functions */
 enum class ObjectiveType {JFROBENIUS,    // weighted Frobenius norm: 1/2 * ||\rho_target - rho(T)||^2_F / w, where w = purity of \rho_target
-                          JHS,           // weighted Hilber-Schmidt overlap: 1 - Tr(\rho_target^\dagger rho(T)) / w, where w = purity of \rho_target
+                          JTRACE,        // weighted Hilber-Schmidt overlap: 1 - Tr(\rho_target^\dagger rho(T)) / w, where w = purity of \rho_target
                           JMEASURE};     // Measure a pure state: Tr(O_m \rho(T)) for observable O_m
 
 /* Type of control fucntion evaluation: Rotating frame Real p(t), rotating frame imaginary q(t), or Lab frame f(t) */

@@ -1,13 +1,13 @@
 #!/usr/bin/env python
 import sys
+# Set path to utility folder (so that python finds config.py, ordered_bunch.py...)
+sys.path.append('/Users/guenther5/Numerics/quandary/util/')
+
 import os
 import copy
 from batch_job import submit_job
 from config import *
 from util import *
-
-# Set path to utility folder (so that python finds config.py, ordered_bunch.py...)
-sys.path.append('../util/')
 
 # Specify runcommand for the cluster ("srun -n" on quartz or "mpirun -np" on elwe)
 runcommand = "srun -n"
@@ -16,25 +16,22 @@ runcommand = "srun -n"
 configfile = Config("AxC.cfg")
 
 # Specify the varying parameters
-cfactor = [2, 5, 10]
+nlevels = ["2,2", "4,4", "8,8"]    # nlevels is handled as a string option in util/config.py. Other options might be handled as floats or ints, check the util/config.py file.
 
 # Specify number of cores
-npt = [2,4,8,16,32,64,128, 256, 512, 1024]
+npt = [2,4,8]
 
 # Submit a job for each parameter setup
-for cf in range(len(cfactor)):
-
-    for np in range(len(npt)):
+for i in range(len(nlevels)):
 
         # Copy config file and set new config file options
         konfig = copy.deepcopy(configfile)
-        konfig.braid_cfactor = cfactor[cf]
-        konfig.np_braid = npt[np]
+        konfig.nlevels = nlevels[i]   
 
         # Specify jobname 
         jobname =  \
-                  "cf"  + str(konfig.braid_cfactor)  +\
-                  "npt"  + str(konfig.np_braid) 
+                  "nlevels"  + konfig.nlevels  +\
+                  "npt"  + str(npt[i]) 
 
         # create folder for the job
         if os.path.exists(jobname):
@@ -48,7 +45,8 @@ for cf in range(len(cfactor)):
 
         # submit the job
         os.chdir(jobname)
-        submit_job(jobname, runcommand, npt[np], "00:02:00", "../main", newconfigfile, "sqoc", False)
+        submit_job(jobname, runcommand, npt[i], "00:02:00", "../main", newconfigfile, "sqoc", False) # sqoc is the slurm account name. check util/batch_job.py for this function!
+        #submit_job(jobname, runcommand, npt[i], "00:02:00", "../main", newconfigfile, "sqoc", True) 
         os.chdir("../")
 
 

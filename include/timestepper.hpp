@@ -17,6 +17,7 @@ class TimeStepper{
     Vec x;               // auxiliary vector needed for time stepping
     bool storeFWD;       /* Flag that determines if primal states should be stored during forward evaluation */
     std::vector<Vec> store_states; /* Storage for primal states */
+    bool addLeakagePrevent;   /* flag to determine if Leakage preventing term is added to penalty.  */
 
   public:
     MasterEq* mastereq;  // Lindblad master equation
@@ -47,8 +48,8 @@ class TimeStepper{
     /* Solve the ODE forward in time with initial condition rho_t0. Return state at final time step */
     Vec solveODE(int initid, Vec rho_t0);
 
-    /* Solve the adjoint ODE backwards in time with terminal condition rho_t0_bar */
-    void solveAdjointODE(int initid, Vec rho_t0_bar, double Jbar);
+    /* Solve the adjoint ODE backwards in time from terminal condition rho_t0_bar */
+    void solveAdjointODE(int initid, Vec rho_t0_bar, Vec finalstate, double Jbar);
 
     /* evaluate the penalty integral term */
     double penaltyIntegral(double time, const Vec x);

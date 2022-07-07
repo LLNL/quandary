@@ -26,6 +26,7 @@ class Oscillator {
     double selfkerr;               // Self-kerr frequency $\xi_k$. Multiplies ak^d ak^d ak ak
 
     double detuning_freq;              // Detuning frequency (rad/time) for this oscillator. Multiplies ak^d ak in rotating frame: detuning = ground_freq - rotational_freq
+    LindbladType lindbladtype;
     double decay_time;              // Time of decay collapse operations 
     double dephase_time;           // Time of dephasing dephasing collapse operations 
     std::vector<double> carrier_freq; // Frequencies of the carrier waves
@@ -44,7 +45,7 @@ class Oscillator {
 
   public:
     Oscillator();
-    Oscillator(int id, std::vector<int> nlevels_all_, int nbasis_, double ground_freq_, double selfkerr_, double rotational_freq_, double decay_time_, double dephase_time_, std::vector<double> carrier_freq_, double Tfinal_);
+    Oscillator(int id, std::vector<int> nlevels_all_, int nbasis_, double ground_freq_, double selfkerr_, double rotational_freq_, double decay_time_, double dephase_time_, std::vector<double> carrier_freq_, double Tfinal_, LindbladType lindbladtype_);
     virtual ~Oscillator();
 
     /* Return the constants */
