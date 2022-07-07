@@ -55,6 +55,8 @@ Output::Output(MapParam& config, MPI_Comm comm_petsc, MPI_Comm comm_init, int no
   vfile = NULL;
   for (int i=0; i< outputstr.size(); i++) expectedfile.push_back (NULL);
   for (int i=0; i< outputstr.size(); i++) populationfile.push_back (NULL);
+  expectedfile_comp=NULL;
+  populationfile_comp=NULL;
 
 }
 
@@ -303,7 +305,7 @@ void Output::closeDataFiles(){
       expectedfile[i] = NULL;
     }
   }
-  fclose(expectedfile_comp);
+  if (expectedfile_comp != NULL) fclose(expectedfile_comp);
   expectedfile_comp = NULL;
   for (int i=0; i< populationfile.size(); i++) {
     if (populationfile[i] != NULL) {
@@ -311,6 +313,6 @@ void Output::closeDataFiles(){
       populationfile[i] = NULL;
     }
   }
-  fclose(populationfile_comp);
+  if (populationfile_comp != NULL) fclose(populationfile_comp);
   populationfile_comp = NULL;
 }
