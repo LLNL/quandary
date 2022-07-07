@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include <vector>
+#include <cassert>
 #ifdef WITH_FITPACK
 #include "BSplineCurve.h"
 #endif
