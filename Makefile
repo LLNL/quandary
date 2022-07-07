@@ -56,7 +56,7 @@ endif
 # Add optional FITPACKPP for spline interpolation
 ifeq ($(WITH_FITPACK), true)
 INC_OPT += -I${FITPACK_DIR}/fitpackpp
-LDFLAGS_OPT += -L${FITPACK_DIR}/build -lfitpack -lfitpackpp
+LDFLAGS_OPT += -L${FITPACK_DIR}/build -lfitpackpp -lfitpack 
 CXX_OPT += -DWITH_FITPACK
 endif
 
