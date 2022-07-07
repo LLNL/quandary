@@ -304,6 +304,7 @@ void Output::closeDataFiles(){
     }
   }
   fclose(expectedfile_comp);
+  expectedfile_comp = NULL;
   for (int i=0; i< populationfile.size(); i++) {
     if (populationfile[i] != NULL) {
       fclose(populationfile[i]);
@@ -311,4 +312,5 @@ void Output::closeDataFiles(){
     }
   }
   fclose(populationfile_comp);
+  populationfile_comp = NULL;
 }
