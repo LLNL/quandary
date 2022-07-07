@@ -326,6 +326,7 @@ ImplMidpoint::ImplMidpoint(MasterEq* mastereq_, int ntime_, double total_time_, 
 ImplMidpoint::~ImplMidpoint(){
 
   /* Print linear solver statistics */
+  if (linsolve_counter <= 0) linsolve_counter = 1;
   linsolve_iterstaken_avg = (int) linsolve_iterstaken_avg / linsolve_counter;
   linsolve_error_avg = linsolve_error_avg / linsolve_counter;
   int myrank;
