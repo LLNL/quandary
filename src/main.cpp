@@ -99,12 +99,11 @@ int main(int argc,char **argv)
     /* Compute ninit = dim(subsystem defined by list of oscil IDs) */
     ninit = 1;
     if (initcondstr.size() < 2) {
-      printf("ERROR for initial condition option: If choosing 'basis' or 'diagonal', specify the list oscillator IDs!\n");
-      exit(1);
+      for (int j=0; j<nlevels.size(); j++)  initcondstr.push_back(std::to_string(j));
     }
     for (int i = 1; i<initcondstr.size(); i++){
       int oscilID = atoi(initcondstr[i].c_str());
-      ninit *= nessential[oscilID];
+      if (oscilID < nessential.size()) ninit *= nessential[oscilID];
     }
     if (initcondstr[0].compare("basis") == 0  ) {
       // if Schroedinger solver: ninit = N, do nothing.

@@ -173,6 +173,7 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   /* Get initial condition type and involved oscillators */
   std::vector<std::string> initcondstr;
   config.GetVecStrParam("initialcondition", initcondstr, "none", false);
+  if (initcondstr.size() < 2) for (int j=0; j<timestepper->mastereq->getNOscillators(); j++)  initcondstr.push_back(std::to_string(j));
   for (int i=1; i<initcondstr.size(); i++) initcond_IDs.push_back(atoi(initcondstr[i].c_str()));
   if (initcondstr[0].compare("file") == 0 )          initcond_type = InitialConditionType::FROMFILE;
   else if (initcondstr[0].compare("pure") == 0 )     initcond_type = InitialConditionType::PURE;
