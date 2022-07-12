@@ -125,3 +125,9 @@ class CQNOT: public Gate {
     ~CQNOT();
 };
 
+class FromFile: public Gate {
+  public:
+    FromFile(std::vector<int> nlevels_, std::vector<int> nessential_, double time, std::vector<double> rotation_frequencies_, LindbladType lindbladtype_, std::string filename);
+    ~FromFile();
+};
+
