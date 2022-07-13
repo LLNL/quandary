@@ -12,7 +12,6 @@ class Output{
   int mpirank_petsc;  /* Rank of processor for parallelizing Petsc */
   int mpisize_petsc;  /* Size of communicator for parallelizing Petsc */
   int mpirank_init;   /* Rank of processor for parallelizing initial conditions */
-  int mpirank_braid;  /* Rank of processor for parallelizing XBraid, or -1 if compiling without XBraid */
   
   FILE* optimfile;      /* Output file to log optimization progress */
   int output_frequency;   /* Output frequency in time domain: write output at every <num> time step. */
@@ -35,7 +34,6 @@ class Output{
   public:
     Output();
     Output(MapParam& config, MPI_Comm comm_petsc, MPI_Comm comm_init, int noscillators);
-    Output(MapParam& config, MPI_Comm comm_petsc, MPI_Comm comm_init, MPI_Comm comm_braid, int noscillators);
     ~Output();
 
     /* Write to optimization history file in every optim iteration */

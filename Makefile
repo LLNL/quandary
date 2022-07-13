@@ -2,10 +2,6 @@
 #PETSC_DIR=/path/to/petsc
 #PETSC_ARCH=arch-linux-c-debug
 
-# Choose to link with XBraid and set the location
-WITH_XBRAID = false
-#BRAID_DIR = /path/to/xbraid_solveadjointwithxbraid
-
 # Choose to link with the SLEPC library and set the location
 WITH_SLEPC = false
 #SLEPC_DIR=/path/to/slepc-3.13.3
@@ -23,15 +19,6 @@ LDFLAGS_OPT = -L${SLEPC_DIR}/lib -L${SLEPC_DIR}/${PETSC_ARCH}/lib -lslepc
 INC_OPT = -I${SLEPC_DIR}/${PETSC_ARCH}/include -I${SLEPC_DIR}/include
 endif
 
-
-# Add optional Braid include and library location
-ifeq ($(WITH_XBRAID), true)
-BRAID_INC_DIR  = $(BRAID_DIR)/braid
-BRAID_LIB_FILE = $(BRAID_DIR)/braid/libbraid.a
-CXX_OPT += -DWITH_BRAID
-INC_OPT += -I${BRAID_INC_DIR}
-LDFLAGS_OPT += ${BRAID_LIB_FILE}
-endif
 
 # Add sanity check to compiler option
 ifeq ($(SANITY_CHECK), true)

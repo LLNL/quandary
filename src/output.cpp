@@ -4,7 +4,6 @@ Output::Output(){
   mpirank_world = -1;
   mpirank_petsc = -1;
   mpirank_init  = -1;
-  mpirank_braid = -1;
   optim_monitor_freq = 0;
   output_frequency = 0;
   optim_iter = 0;
@@ -56,10 +55,6 @@ Output::Output(MapParam& config, MPI_Comm comm_petsc, MPI_Comm comm_init, int no
   for (int i=0; i< outputstr.size(); i++) expectedfile.push_back (NULL);
   for (int i=0; i< outputstr.size(); i++) populationfile.push_back (NULL);
 
-}
-
-Output::Output(MapParam& config, MPI_Comm comm_petsc, MPI_Comm comm_init, MPI_Comm comm_braid, int noscillators) : Output(config, comm_petsc, comm_init, noscillators) {
-  MPI_Comm_rank(comm_braid, &mpirank_braid);
 }
 
 
@@ -156,16 +151,11 @@ void Output::openDataFiles(std::string prefix, int initid){
   bool write_this_iter = false;
   if (optim_iter % optim_monitor_freq == 0) write_this_iter = true;
 
-  /* Check if Xbraid is running in parallel and prepare output names if it is.*/
-  char postchar[255];
-  sprintf(postchar,"");
-  if (mpirank_braid >= 0) sprintf(postchar, ".braidrank%04d", mpirank_braid);
-
   /* Open files for state vector */
   if (mpirank_petsc == 0 && writefullstate && write_this_iter) {
-    sprintf(filename, "%s/%s_Re.iinit%04d%s.dat", datadir.c_str(), prefix.c_str(), initid, postchar);
+    sprintf(filename, "%s/%s_Re.iinit%04d.dat", datadir.c_str(), prefix.c_str(), initid);
     ufile = fopen(filename, "w");
-    sprintf(filename, "%s/%s_Im.iinit%04d%s.dat", datadir.c_str(), prefix.c_str(), initid, postchar);
+    sprintf(filename, "%s/%s_Im.iinit%04d.dat", datadir.c_str(), prefix.c_str(), initid);
     vfile = fopen(filename, "w"); 
   }
 
@@ -174,12 +164,12 @@ void Output::openDataFiles(std::string prefix, int initid){
     for (int i=0; i<outputstr.size(); i++) {
       for (int j=0; j<outputstr[i].size(); j++) {
         if (outputstr[i][j].compare("expectedEnergy") == 0) {
-          sprintf(filename, "%s/expected%d.iinit%04d%s.dat", datadir.c_str(), i, initid, postchar);
+          sprintf(filename, "%s/expected%d.iinit%04d.dat", datadir.c_str(), i, initid);
           expectedfile[i] = fopen(filename, "w");
           fprintf(expectedfile[i], "# time      expected energy level\n");
         }
         if (outputstr[i][j].compare("population") == 0) {
-          sprintf(filename, "%s/population%d.iinit%04d%s.dat", datadir.c_str(), i, initid, postchar);
+          sprintf(filename, "%s/population%d.iinit%04d.dat", datadir.c_str(), i, initid);
           populationfile[i] = fopen(filename, "w");
           fprintf(populationfile[i], "# time      diagonal of the density matrix \n");
         }

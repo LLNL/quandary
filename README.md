@@ -6,7 +6,7 @@ A documentation is under development. In the meantime, refer to the user guide i
 For questions, feel free to reach out to Stefanie Guenther [guenther5@llnl.gov].
 
 ## Dependencies
-This project relies on Petsc [https://petsc.org/release/] to handle (parallel) linear algebra. Optionally, XBraid [https://github.com/XBraid/xbraid] can be linked to realize time-parallelization, and Slepsc [https://slepc.upv.es] can be used to solve some eigenvalue problems if desired (e.g. for the Hessian...)
+This project relies on Petsc [https://petsc.org/release/] to handle (parallel) linear algebra. Optionally Slepsc [https://slepc.upv.es] can be used to solve some eigenvalue problems if desired (e.g. for the Hessian...)
 * **Required:** Install Petsc:
 
     Check out [https://petsc.org/release/] for the latest installation guide. On MacOS, you can also `brew install petsc`. As a quick start, you can also try the below:
@@ -22,12 +22,6 @@ This project relies on Petsc [https://petsc.org/release/] to handle (parallel) l
     * Append Petsc directory to the `LD_LIBRARY_PATH`:
         * `export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$PETSC_DIR/$PETSC_ARCH`
 
-* **Optional:** Install XBraid, using the branch 'solveadjointwithxbraid': 
-    - git clone https://github.com/XBraid/xbraid.git
-    - cd xbraid
-    - git checkout solveadjointwithxbraid
-    - make braid
-
 * **Optional:** Install Slepsc
     * Read the docs here: [https://slepc.upv.es/documentation/slepc.pdf]
  
@@ -41,7 +35,7 @@ Then set the `PETSC_DIR` variable to point to the Petsc folder and add it to the
 * `export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$PETSC_DIR`
 
 ## Installation
-Adapt the beginning of the 'Makefile' to set the path to your Petsc (and possibly XBraid and/or Slepsc) installation. Then,
+Adapt the beginning of the 'Makefile' to set the path to your Petsc (and possibly Slepsc) installation. Then,
 * `make cleanup` to clean the build directory. (Note the *up* in *cleanup*.)
 * `make -j main` to build the code (using 'j' threads)
 

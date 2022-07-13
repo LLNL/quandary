@@ -1,19 +1,11 @@
 #include "optimproblem.hpp"
 
-#ifdef WITH_BRAID
-OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, MPI_Comm comm_init_, int ninit_, std::vector<double> gate_rot_freq, Output* output_) : OptimProblem(config, timestepper_, comm_init_, ninit_, gate_rot_freq, output_) {
-  primalbraidapp  = primalbraidapp_;
-  adjointbraidapp = adjointbraidapp_;
-  MPI_Comm_rank(primalbraidapp->comm_braid, &mpirank_braid);
-  MPI_Comm_size(primalbraidapp->comm_braid, &mpisize_braid);
-}
-#endif
-
-OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm comm_init_, int ninit_, std::vector<double> gate_rot_freq, Output* output_){
+OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm comm_init_, MPI_Comm comm_optim_, int ninit_, std::vector<double> gate_rot_freq, Output* output_){
 
   timestepper = timestepper_;
   ninit = ninit_;
   comm_init = comm_init_;
+  comm_optim = comm_optim_;
   output = output_;
   /* Reset */
   objective = 0.0;
@@ -25,8 +17,8 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   MPI_Comm_size(PETSC_COMM_WORLD, &mpisize_space);
   MPI_Comm_rank(comm_init, &mpirank_init);
   MPI_Comm_size(comm_init, &mpisize_init);
-  mpirank_braid = 0;
-  mpisize_braid = 1;
+  MPI_Comm_rank(comm_optim, &mpirank_optim);
+  MPI_Comm_size(comm_optim, &mpisize_optim);
 
   /* Store number of initial conditions per init-processor group */
   ninit_local = ninit / mpisize_init; 
@@ -428,19 +420,13 @@ double OptimProblem::evalF(const Vec x) {
     /* Prepare the initial condition in [rank * ninit_local, ... , (rank+1) * ninit_local - 1] */
     int iinit_global = mpirank_init * ninit_local + iinit;
     int initid = timestepper->mastereq->getRhoT0(iinit_global, ninit, initcond_type, initcond_IDs, rho_t0);
-    if (mpirank_braid == 0) printf("%d: Initial condition id=%d ...\n", mpirank_init, initid);
+    if (mpirank_optim == 0) printf("%d: Initial condition id=%d ...\n", mpirank_init, initid);
 
     /* If gate optimiztion, compute the target state rho^target = Vrho(0)V^dagger */
     optim_target->prepare(rho_t0);
 
     /* Run forward with initial condition initid */
-#ifdef WITH_BRAID
-      primalbraidapp->PreProcess(initid, rho_t0, 0.0);
-      primalbraidapp->Drive();
-      finalstate = primalbraidapp->PostProcess(); // this return NULL for all but the last time processor
-#else
-      finalstate = timestepper->solveODE(initid, rho_t0);
-#endif
+    finalstate = timestepper->solveODE(initid, rho_t0);
 
     /* Add to integral penalty term */
     obj_penal += obj_weights[iinit] * gamma_penalty * timestepper->penalty_integral;
@@ -484,13 +470,6 @@ double OptimProblem::evalF(const Vec x) {
   /* Finalize the objective function */
   obj_cost = optim_target->finalizeJ(obj_cost_re, obj_cost_im);
 
-#ifdef WITH_BRAID
-  /* Communicate over braid processors: Sum up penalty, broadcast final time cost */
-  double mine = obj_penal;
-  MPI_Allreduce(&mine, &obj_penal, 1, MPI_DOUBLE, MPI_SUM, primalbraidapp->comm_braid);
-  MPI_Bcast(&obj_cost, 1, MPI_DOUBLE, mpisize_braid-1, primalbraidapp->comm_braid);
-#endif
-
   /* Evaluate regularization objective += gamma/2 * ||x||^2*/
   double xnorm;
   VecNorm(x, NORM_2, &xnorm);
@@ -524,7 +503,8 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
   VecZeroEntries(G);
 
   /* Derivative of regulatization term gamma / 2 ||x||^2 (ADD ON ONE PROC ONLY!) */
-  if (mpirank_init == 0 && mpirank_braid == 0) {
+  // if (mpirank_init == 0 && mpirank_optim == 0) { // TODO: Which one?? 
+  if (mpirank_init == 0 ) {
     VecAXPY(G, gamma_tik, x);
   }
 
@@ -547,16 +527,10 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
     optim_target->prepare(rho_t0);
 
     /* --- Solve primal --- */
-    // if (mpirank_braid == 0) printf("%d: %d FWD. ", mpirank_init, initid);
+    // if (mpirank_optim == 0) printf("%d: %d FWD. ", mpirank_init, initid);
 
     /* Run forward with initial condition rho_t0 */
-#ifdef WITH_BRAID 
-      primalbraidapp->PreProcess(initid, rho_t0, 0.0);
-      primalbraidapp->Drive();
-      finalstate = primalbraidapp->PostProcess(); // this return NULL for all but the last time processor
-#else 
-      finalstate = timestepper->solveODE(initid, rho_t0);
-#endif
+    finalstate = timestepper->solveODE(initid, rho_t0);
 
     /* Store the final state for the Schroedinger solver */
     if (timestepper->mastereq->lindbladtype == LindbladType::NONE) VecCopy(finalstate, store_finalstates[iinit]);
@@ -580,7 +554,7 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
 
     /* If Lindblas solver, compute adjoint for this initial condition. Otherwise (Schroedinger solver), compute adjoint only after all initial conditions have been propagated through (separate loop below) */
     if (timestepper->mastereq->lindbladtype != LindbladType::NONE) {
-      // if (mpirank_braid == 0) printf("%d: %d BWD.", mpirank_init, initid);
+      // if (mpirank_optim == 0) printf("%d: %d BWD.", mpirank_init, initid);
 
       /* Reset adjoint */
       VecZeroEntries(rho_t0_bar);
@@ -591,13 +565,7 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
       optim_target->evalJ_diff(finalstate, rho_t0_bar, obj_weights[iinit]*obj_cost_re_bar, obj_weights[iinit]*obj_cost_im_bar);
 
       /* Derivative of time-stepping */
-  #ifdef WITH_BRAID
-        adjointbraidapp->PreProcess(initid, rho_t0_bar, obj_weights[iinit] * gamma_penalty);
-        adjointbraidapp->Drive();
-        adjointbraidapp->PostProcess();
-  #else
-        timestepper->solveAdjointODE(initid, rho_t0_bar, finalstate, obj_weights[iinit] * gamma_penalty);
-  #endif
+      timestepper->solveAdjointODE(initid, rho_t0_bar, finalstate, obj_weights[iinit] * gamma_penalty);
 
       /* Add to optimizers's gradient */
       VecAXPY(G, 1.0, timestepper->redgrad);
@@ -626,13 +594,6 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
   /* Finalize the objective function Jtrace to get the infidelity. 
      If Schroedingers solver, need to take the absolute value */
   obj_cost = optim_target->finalizeJ(obj_cost_re, obj_cost_im);
-
-#ifdef WITH_BRAID
-  /* Communicate over braid processors: Sum up penalty, broadcast final time cost */
-  double mine = obj_penal;
-  MPI_Allreduce(&mine, &obj_penal, 1, MPI_DOUBLE, MPI_SUM, primalbraidapp->comm_braid);
-  MPI_Bcast(&obj_cost, 1, MPI_DOUBLE, mpisize_braid-1, primalbraidapp->comm_braid);
-#endif
 
   /* Evaluate regularization objective += gamma/2 * ||x||^2*/
   double xnorm;
@@ -665,13 +626,7 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
       optim_target->evalJ_diff(finalstate, rho_t0_bar, obj_weights[iinit]*obj_cost_re_bar, obj_weights[iinit]*obj_cost_im_bar);
 
       /* Derivative of time-stepping */
-  #ifdef WITH_BRAID
-      adjointbraidapp->PreProcess(initid, rho_t0_bar, obj_weights[iinit] * gamma_penalty);
-      adjointbraidapp->Drive();
-      adjointbraidapp->PostProcess();
-  #else
       timestepper->solveAdjointODE(initid, rho_t0_bar, finalstate, obj_weights[iinit] * gamma_penalty);
-  #endif
 
       /* Add to optimizers's gradient */
       VecAXPY(G, 1.0, timestepper->redgrad);
@@ -686,16 +641,6 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
   }
   MPI_Allreduce(mygrad, grad, ndesign, MPI_DOUBLE, MPI_SUM, comm_init);
   VecRestoreArray(G, &grad);
-
-#ifdef WITH_BRAID
-  /* Sum up the gradient from all braid processors */
-  VecGetArray(G, &grad);
-  for (int i=0; i<ndesign; i++) {
-    mygrad[i] = grad[i];
-  }
-  MPI_Allreduce(mygrad, grad, ndesign, MPI_DOUBLE, MPI_SUM, primalbraidapp->comm_braid);
-  VecRestoreArray(G, &grad);
-#endif
 
   /* Compute and store gradient norm */
   VecNorm(G, NORM_2, &(gnorm));

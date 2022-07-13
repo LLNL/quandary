@@ -1,6 +1,3 @@
-#ifdef WITH_BRAID
-#include "braid_wrapper.hpp"
-#endif
 #include "timestepper.hpp"
 #include "bspline.hpp"
 #include "oscillator.hpp" 
@@ -117,50 +114,41 @@ int main(int argc,char **argv)
     exit(1);
   }
 
-  /* --- Split communicators for distributed initial conditions, distributed linear algebra, time-parallel braid --- */
+  /* --- Split communicators for distributed initial conditions, distributed linear algebra, parallel optimization --- */
   int mpirank_init, mpisize_init;
-  int mpirank_braid, mpisize_braid;
+  int mpirank_optim, mpisize_optim;
   int mpirank_petsc, mpisize_petsc;
-  MPI_Comm comm_braid, comm_init, comm_petsc;
+  MPI_Comm comm_optim, comm_init, comm_petsc;
 
   /* Get the size of communicators  */
-#ifdef WITH_BRAID
-  int np_braid = config.GetIntParam("np_braid", 1);
-  np_braid = min(np_braid, mpisize_world); 
-#else 
-  int np_braid = 1; 
-#endif
+  int np_optim= config.GetIntParam("np_optim", 1);
+  np_optim= min(np_optim, mpisize_world); 
   int np_init  = min(ninit, config.GetIntParam("np_init", 1)); 
   np_init  = min(np_init,  mpisize_world); 
-  int np_petsc = mpisize_world / (np_init * np_braid);
+  int np_petsc = mpisize_world / (np_init * np_optim);
 
   /* Sanity check for communicator sizes */ 
   if (ninit % np_init != 0){
     printf("ERROR: Wrong processor distribution! \n Size of communicator for distributing initial conditions (%d) must be integer divisor of the total number of initial conditions (%d)!!\n", np_init, ninit);
     exit(1);
   }
-  if (mpisize_world % (np_init * np_braid) != 0) {
-    printf("ERROR: Wrong number of threads! \n Total number of threads (%d) must be integer multiple of the product of communicator sizes for initial conditions and braid (%d * %d)!\n", mpisize_world, np_init, np_braid);
+  if (mpisize_world % (np_init * np_optim) != 0) {
+    printf("ERROR: Wrong number of threads! \n Total number of threads (%d) must be integer multiple of the product of communicator sizes for initial conditions and optimization (%d * %d)!\n", mpisize_world, np_init, np_optim);
     exit(1);
   }
 
   /* Split communicators */
   // Distributed initial conditions 
-  int color_init = mpirank_world % (np_petsc * np_braid);
+  int color_init = mpirank_world % (np_petsc * np_optim);
   MPI_Comm_split(MPI_COMM_WORLD, color_init, mpirank_world, &comm_init);
   MPI_Comm_rank(comm_init, &mpirank_init);
   MPI_Comm_size(comm_init, &mpisize_init);
 
-#ifdef WITH_BRAID
-  // Time-parallel Braid
-  int color_braid = mpirank_world % np_petsc + mpirank_init * np_petsc;
-  MPI_Comm_split(MPI_COMM_WORLD, color_braid, mpirank_world, &comm_braid);
-  MPI_Comm_rank(comm_braid, &mpirank_braid);
-  MPI_Comm_size(comm_braid, &mpisize_braid);
-#else 
-  mpirank_braid = 0;
-  mpisize_braid = 1;
-#endif
+  // Time-parallel Optimization
+  int color_optim = mpirank_world % np_petsc + mpirank_init * np_petsc;
+  MPI_Comm_split(MPI_COMM_WORLD, color_optim, mpirank_world, &comm_optim);
+  MPI_Comm_rank(comm_optim, &mpirank_optim);
+  MPI_Comm_size(comm_optim, &mpisize_optim);
 
   // Distributed Linear algebra: Petsc
   int color_petsc = mpirank_world / np_petsc;
@@ -168,11 +156,7 @@ int main(int argc,char **argv)
   MPI_Comm_rank(comm_petsc, &mpirank_petsc);
   MPI_Comm_size(comm_petsc, &mpisize_petsc);
 
-  if (mpirank_world == 0)  std::cout<< "Parallel distribution: " << mpisize_init << " np_init  X  " << mpisize_petsc<< " np_petsc";
-#ifdef WITH_BRAID
-  std::cout<< "  X  " << mpisize_braid  << "np_braid" << std::endl;
-#endif
-  if (mpirank_world == 0) std::cout<<std::endl;
+  if (mpirank_world == 0)  std::cout<< "Parallel distribution: " << mpisize_init << " np_init  X  " << mpisize_petsc<< " np_petsc  X  " << mpisize_optim << " np_optim " << std::endl;
 
   /* Initialize Petsc using petsc's communicator */
   PETSC_COMM_WORLD = comm_petsc;
@@ -292,11 +276,7 @@ int main(int argc,char **argv)
 
 
   /* Output */
-#ifdef WITH_BRAID
-  Output* output = new Output(config, comm_petsc, comm_init, comm_braid, nlevels.size());
-#else 
   Output* output = new Output(config, comm_petsc, comm_init, nlevels.size());
-#endif
 
   // Some screen output 
   if (mpirank_world == 0) {
@@ -345,19 +325,6 @@ int main(int argc,char **argv)
   // TSInit(ts, mastereq, ntime, dt, total_time, x, false);
    
 
-#ifdef WITH_BRAID
-  /* --- Create braid instances --- */
-  myBraidApp* primalbraidapp = NULL;
-  myAdjointBraidApp *adjointbraidapp = NULL;
-  // Create primal app always, adjoint only if runtype is adjoint or optimization 
-  primalbraidapp = new myBraidApp(comm_braid, total_time, ntime, mytimestepper, mastereq, &config, output);
-  if (runtype == RunType::GRADIENT || runtype == RunType::OPTIMIZATION) adjointbraidapp = new myAdjointBraidApp(comm_braid, total_time, ntime, mytimestepper, mastereq, &config, primalbraidapp->getCore(), output);
-  // Initialize the braid time-grids. Warning: initGrids for primal app depends on initialization of adjoint! Do not move this line up!
-  primalbraidapp->InitGrids();
-  if (runtype == RunType::GRADIENT || runtype == RunType::OPTIMIZATION) adjointbraidapp->InitGrids();
-  
-#endif
-
   /* --- Initialize optimization --- */
   /* Get gate rotation frequencies. Default: use rotational frequencies for the gate. */
   int noscillators = nlevels.size();
@@ -370,12 +337,7 @@ int main(int argc,char **argv)
   if (read_gate_rot[0] < 1e20) { // the config option exists
     for (int i=0; i<noscillators; i++)  gate_rot_freq[i] = read_gate_rot[i];
   }
-
-#ifdef WITH_BRAID
-  OptimProblem* optimctx = new OptimProblem(config, mytimestepper, primalbraidapp, adjointbraidapp, comm_init, ninit, gate_rot_freq, output);
-#else 
-  OptimProblem* optimctx = new OptimProblem(config, mytimestepper, comm_init, ninit, gate_rot_freq, output);
-#endif
+  OptimProblem* optimctx = new OptimProblem(config, mytimestepper, comm_init, comm_optim, ninit, gate_rot_freq, output);
 
   /* Set upt solution and gradient vector */
   Vec xinit;
@@ -709,10 +671,6 @@ int main(int argc,char **argv)
   delete [] oscil_vec;
   delete mastereq;
   delete mytimestepper;
-#ifdef WITH_BRAID
-  delete primalbraidapp;
-  if (runtype == RunType::SIMULATION || runtype == RunType::GRADIENT) delete adjointbraidapp;
-#endif
   delete optimctx;
   delete output;
 
