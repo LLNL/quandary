@@ -8,6 +8,7 @@ Gate::Gate(){
 Gate::Gate(std::vector<int> nlevels_, std::vector<int> nessential_, double time_, std::vector<double> gate_rot_freq_, LindbladType lindbladtype_){
 
   MPI_Comm_rank(PETSC_COMM_WORLD, &mpirank_petsc);
+  MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
 
   nessential = nessential_;
   nlevels = nlevels_;
@@ -476,12 +477,11 @@ CQNOT::~CQNOT(){}
 
 FromFile::FromFile(std::vector<int> nlevels_, std::vector<int> nessential_, double time_, std::vector<double> gate_rot_freq_, LindbladType lindbladtype_, std::string filename) : Gate(nlevels_, nessential_, time_, gate_rot_freq_, lindbladtype_){
 
-  // TODO: make it work in parallel
-
   // Read the gate from a file
   int nelems = 2*dim_ess*dim_ess;
   std::vector<double> vec (nelems);
-  read_vector(filename.c_str(), vec.data(), nelems);
+  if (mpirank_world == 0) read_vector(filename.c_str(), vec.data(), nelems);
+  MPI_Bcast(vec.data(), nelems, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
   // Set up the matrix
   for (int i=0; i<dim_ess*dim_ess; i++){
