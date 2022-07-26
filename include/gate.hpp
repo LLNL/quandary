@@ -17,6 +17,7 @@ class Gate {
     std::vector<int> nessential;
     std::vector<int> nlevels;
     int mpirank_petsc;
+    int mpirank_world;
 
     int dim_ess;   /* Dimension of target Gate matrix (non-vectorized), essential levels only */
     int dim_rho;   /* Dimension of system matrix rho (non-vectorized), all levels, N */
