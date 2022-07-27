@@ -8,6 +8,7 @@ Gate::Gate(){
 Gate::Gate(std::vector<int> nlevels_, std::vector<int> nessential_, double time_, std::vector<double> gate_rot_freq_, LindbladType lindbladtype_){
 
   MPI_Comm_rank(PETSC_COMM_WORLD, &mpirank_petsc);
+  MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
 
   nessential = nessential_;
   nlevels = nlevels_;
@@ -472,3 +473,33 @@ CQNOT::CQNOT(std::vector<int> nlevels_, std::vector<int> nessential_, double tim
 
 
 CQNOT::~CQNOT(){}
+
+
+FromFile::FromFile(std::vector<int> nlevels_, std::vector<int> nessential_, double time_, std::vector<double> gate_rot_freq_, LindbladType lindbladtype_, std::string filename) : Gate(nlevels_, nessential_, time_, gate_rot_freq_, lindbladtype_){
+
+  // Read the gate from a file
+  int nelems = 2*dim_ess*dim_ess;
+  std::vector<double> vec (nelems);
+  if (mpirank_world == 0) read_vector(filename.c_str(), vec.data(), nelems);
+  MPI_Bcast(vec.data(), nelems, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+
+  // Set up the matrix
+  for (int i=0; i<dim_ess*dim_ess; i++){
+    // Position in the matrix
+    int row = i % dim_ess;
+    int col = i/dim_ess; 
+    // Insert real and imaginary values
+    MatSetValue(V_re, row, col, vec[i], INSERT_VALUES);
+    MatSetValue(V_im, row, col, vec[i+dim_ess*dim_ess], INSERT_VALUES);
+  }
+
+  MatAssemblyBegin(V_re, MAT_FINAL_ASSEMBLY);
+  MatAssemblyBegin(V_im, MAT_FINAL_ASSEMBLY);
+  MatAssemblyEnd(V_re, MAT_FINAL_ASSEMBLY);
+  MatAssemblyEnd(V_im, MAT_FINAL_ASSEMBLY);
+
+  /* assemble vectorized rotated target gate \bar VP \kron VP from V=V_re + i V_im */
+  assembleGate();
+}
+
+FromFile::~FromFile(){}

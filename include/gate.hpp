@@ -17,6 +17,7 @@ class Gate {
     std::vector<int> nessential;
     std::vector<int> nlevels;
     int mpirank_petsc;
+    int mpirank_world;
 
     int dim_ess;   /* Dimension of target Gate matrix (non-vectorized), essential levels only */
     int dim_rho;   /* Dimension of system matrix rho (non-vectorized), all levels, N */
@@ -123,5 +124,11 @@ class CQNOT: public Gate {
     public:
     CQNOT(std::vector<int> nlevels_, std::vector<int> nessential_, double time, std::vector<double> rotation_frequencies_, LindbladType lindbladtype_);
     ~CQNOT();
+};
+
+class FromFile: public Gate {
+  public:
+    FromFile(std::vector<int> nlevels_, std::vector<int> nessential_, double time, std::vector<double> rotation_frequencies_, LindbladType lindbladtype_, std::string filename);
+    ~FromFile();
 };
 

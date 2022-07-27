@@ -505,7 +505,7 @@ void read_vector(const char *filename, double *var, int dim) {
       var[ix] = tmp;
     }
   } else {
-    printf("ERROR: Can't open initialization file %s\n", filename);
+    printf("ERROR: Can't open file %s\n", filename);
     exit(1);
   }
 
