@@ -163,13 +163,13 @@ where the rotational frequencies $\omega_k^r$ act as carrier waves to the rotati
 
 
 \subsection{Control pulses} \label{subsec:controlpulses}
-The time-dependent rotating-frame control functions $d^k(\vec{\alpha}^k,t)$ are parameterized using $N_s$ piecewise quadratic B-spline basis functions $B_s(t)$ acting as envelope for $N_f^k$ carrier waves:
+The time-dependent rotating-frame control functions $d^k(\vec{\alpha}^k,t)$ are parameterized using $N_s^k$ piecewise quadratic B-spline basis functions $B_s(t)$ acting as envelope for $N_f^k$ carrier waves:
 \begin{align}
-  d^k(\vec{\alpha}^k,t) = \sum_{f=1}^{N_f^k} \sum_{s=1}^{N_s} \alpha_{s,f}^k B_s(t) e^{i\Omega_k^ft}, \quad \alpha_{s,f}^k = \alpha_{s,f}^{k(1)} + i \alpha_{s,f}^{k(2)} \in \C
+  d^k(\vec{\alpha}^k,t) = \sum_{f=1}^{N_f^k} \sum_{s=1}^{N_s^k} \alpha_{s,f}^k B_s(t) e^{i\Omega_k^ft}, \quad \alpha_{s,f}^k = \alpha_{s,f}^{k(1)} + i \alpha_{s,f}^{k(2)} \in \C
 \end{align}
 The amplitudes $\alpha_{s,f}^{k(1)}, \alpha_{s,f}^{k(2)} \in \R$ are the control
 parameters (\textit{design} variables) that Quandary can optimize in order to realize a
-desired system behavior, giving a total number of $2N_s\sum_kN_f^k$ real-valued optimization variables. Further, $\Omega_k^f \in \R$ denote the carrier wave frequencies in the rotating frame which can be choosen to trigger certain system frequencies. The corresponding Lab-frame carrier frequencies become $\omega_k^r + \Omega_k^f$. Those frequencies can be chosen to match the transition frequencies in the lab-frame system Hamiltonian. For example, when $\xi_{kl} << \xi_k$, the transition frequencies satisfy $\omega_k - n\xi_k$. Thus by choosing $\Omega_k^f = \omega_k-\omega_k^r - n \xi_k$, one triggers transition between energy levels $n$ and $n+1$ in subsystem $k$. Choosing effective carrier wave frequencies is quite important for optimization performance. We recommend to have a look at \cite{petersson2021optimal} for details on how to choose them.
+desired system behavior, giving a total number of $2\sum_kN_s^kN_f^k$ real-valued optimization variables. (Note that the number of carrier wave frequencies $N_f^k$ as well as the number of spline basis functions $N_s^k$ can be different for each subsystem $k$.) $\Omega_k^f \in \R$ denote the carrier wave frequencies in the rotating frame which can be choosen to trigger certain system frequencies. The corresponding Lab-frame carrier frequencies become $\omega_k^r + \Omega_k^f$. Those frequencies can be chosen to match the transition frequencies in the lab-frame system Hamiltonian. For example, when $\xi_{kl} << \xi_k$, the transition frequencies satisfy $\omega_k - n\xi_k$. Thus by choosing $\Omega_k^f = \omega_k-\omega_k^r - n \xi_k$, one triggers transition between energy levels $n$ and $n+1$ in subsystem $k$. Choosing effective carrier wave frequencies is quite important for optimization performance. We recommend to have a look at \cite{petersson2021optimal} for details on how to choose them.
 
 Using trigonometric identities, the real and imaginary part of the rotating-frame control $d^k(\vec{\alpha}^k,t) = p^k(\vec{\alpha}^k,t) + iq^k(\vec{\alpha}^k,t)$ are given by
 \begin{align}
@@ -192,24 +192,21 @@ Those relate to the Lab-frame control $f^k(\vec{\alpha}^k,t)$ through
 \subsubsection{Storage of the control parameters}
 
 The control parameters $\bs{\alpha}$ are stored in the Quandary code in the following order: List oscillators first $(\vec{\alpha}^0, \dots, \vec{\alpha}^{Q-1})$, then for each $\vec{\alpha}^k \in
-\R^{2N_sN_f^k}$, iterate over $N_s$ splines: $\vec{\alpha}^k =
-(\alpha^k_1,\dots, \alpha^k_{N_s})$ with $\alpha^k_s \in \R^{2N_f^k}$, then each
-$\alpha^k_s$ iterates over carrier waves and for each carrier wave lists
-the real and imaginary components: $\alpha^k_s = \alpha^{k(1)}_{s,1}, \alpha^{k(2)}_{s,1},
-\dots \alpha^{k(1)}_{s,N_f^k}, \alpha^{k(2)}_{s,N_f^k}$. Hence there are a total of $2N_s\sum_k N_f^k$ real-valued optimization parameters, which are stored in the following order:
+\R^{2N_sN_f^k}$, iterate over all carrierwaves $\vec{\alpha}^k =
+(\alpha^k_1,\dots, \alpha^k_{N_f})$ with $\alpha^k_f \in \R^{2N_s^k}$, then each
+$\alpha^k_f$ iterates over spline basis functions listing first all real then all imaginary 
+components: $\alpha^k_f = \alpha^{k(1)}_{1,f}, \dots, \alpha^{k(1)}_{N_s^k,f}, \alpha^{k(2)}_{1,f}, \dots, \alpha^{k(2)}_{N_s^k,f}$. Hence there are a total of $2\sum_k N_s^kN_f^k$ real-valued optimization parameters, which are stored in the following order:
   \begin{align}
     \boldsymbol{\alpha} &:= \left( \vec{\alpha}^0, \dots, \vec{\alpha}^{Q-1} \right), \in
-    \mathds{R}^{2N_s\sum_k N_f^k} \quad \text{where}\\
-    \vec{\alpha}^k &= \left( \alpha_{1,1}^k,\dots, \alpha_{1,N_f^k}^k, \dots,
-    \alpha_{N_s,1}^{k}, \dots, \alpha_{N_s,N_f^k}^k \right), \quad \text{with} \quad
-    \alpha_{s,f}^k = \left(\alpha_{s,f}^{k(1)}, \alpha_{s,f}^{k(2)} \right) \in
-    \R^2,
+    \mathds{R}^{2\sum_k N_s^k N_f^k} \quad \text{where}\\
+    \vec{\alpha}^k = &\left( \alpha_{1,1}^{k(1)},\dots, \alpha_{N_s^k,1}^{k(1)}, \dots, \alpha_{1,N_f^k}^{k(1)}, \dots, \alpha_{N_s^k,N_f^k}^{k(1)} \right.\\
+                   &  \left. \alpha_{1,1}^{k(2)},\dots, \alpha_{N_s^k,1}^{k(2)}, \dots, \alpha_{1,N_f^k}^{k(2)}, \dots, \alpha_{N_s^k,N_f^k}^{k(2)} \right)
   \end{align}
-  iterating over $Q$ subsystems first, then $N_s$ splines, then $N_f^k$ carrier wave
-  frequencies. To access an element $\alpha_{s,f}^{k(i)}$, $i=0,1$, from storage $\bfa$:
+  iterating over $Q$ subsystems first, then $N_f^k$ carrier wave frequencies, then $N_s^k$ splines, listing first all real parts then all imaginary parts. To access an element $\alpha_{s,f}^{k(i)}$, $i=0,1$, from storage $\bfa$:
   \begin{align}
-    \alpha_{s,f}^{k(i)} = \bfa[ \left(\sum_{j=0}^{k-1} 2N_sN_f^j\right) + s*2N_f^k + f*2 + i ],
+    \alpha_{s,f}^{k(i)} = \bfa[ \left(\sum_{j=0}^{k-1} 2N_s^jN_f^j\right) + f*2N_s^k + s + i*N_s ],
   \end{align}
+  \textit{Note: this ordering of the controls is compatible with the order of control parameters in the Juqbox software \cite{petersson2021optimal}.}
 
   When executing Quandary, the control parameter $\boldsymbol{\alpha}$ can be either specified (e.g. a constant pulse, a pi-pulse, or 
   pulses whose parameters are read from a given file), or can be optimized for (Section \ref{sec:optim}). 
