@@ -157,14 +157,9 @@ def read_config(filename):
             
             # Put all INTEGER options here
             if case("np_init") or \
-                case("np_braid") or \
+                case("np_optim") or \
                 case("ntime") or \
                 case("nspline") or \
-                case("braid_maxlevels") or \
-                case("braid_cfactor") or \
-                case("braid_printlevel") or \
-                case("braid_maxiter") or \
-                case("braid_accesslevel") or \
                 case("optim_maxiter") or \
                 case("linearsolver_maxiter") or \
                 case("output_frequency") or \
@@ -174,8 +169,6 @@ def read_config(filename):
 
             # Put all FLOAT options here
             if case("dt") or \
-               case("braid_abstol") or \
-               case("braid_reltol") or \
                case("optim_atol") or \
                case("optim_rtol") or \
                case("optim_penalty") or \
@@ -202,8 +195,6 @@ def read_config(filename):
                case("decay_time") or \
                case("dephase_time") or \
                case("initialcondition") or \
-               case("braid_fmg") or \
-               case("braid_skip") or \
                case("optim_objective") or \
                case("optim_target") or \
                case("gate_rot_freq") or \
