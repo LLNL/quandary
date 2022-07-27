@@ -37,6 +37,7 @@ class Oscillator {
     std::vector<double> carrier_freq; // Frequencies of the carrier waves
 
     int mpirank_petsc;             // rank of Petsc's communicator
+    int mpirank_world;             // rank of MPI_COMM_WORLD
 
   public:
     PiPulse pipulse;  // Store a dummy pipulse that does nothing

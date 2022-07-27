@@ -23,7 +23,6 @@ Oscillator::Oscillator(int id, std::vector<int> nlevels_all_, std::vector<std::s
   lindbladtype = lindbladtype_;
 
   MPI_Comm_rank(PETSC_COMM_WORLD, &mpirank_petsc);
-  int mpirank_world;
   MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
 
 
@@ -51,7 +50,7 @@ Oscillator::Oscillator(int id, std::vector<int> nlevels_all_, std::vector<std::s
         tstart = atof(controlsegments[idstr].c_str()); idstr++;
         tstop = atof(controlsegments[idstr].c_str()); idstr++;
       }
-      printf("%d: Creating step basis with amplitude (%f, %f) (tramp %f) in control segment [%f, %f]\n", myid, step_amp1, step_amp2, tramp, tstart, tstop);
+      if (mpirank_world == 0) printf("%d: Creating step basis with amplitude (%f, %f) (tramp %f) in control segment [%f, %f]\n", myid, step_amp1, step_amp2, tramp, tstart, tstop);
       ControlBasis* mystep = new Step(step_amp1, step_amp2, tstart, tstop, tramp);
       mystep->setSkip(nparams);
       nparams += mystep->getNparams() * carrier_freq.size();
@@ -70,13 +69,13 @@ Oscillator::Oscillator(int id, std::vector<int> nlevels_all_, std::vector<std::s
         tstart = atof(controlsegments[idstr].c_str()); idstr++;
         tstop = atof(controlsegments[idstr].c_str()); idstr++;
       }
-      printf("%d: Creating %d-spline basis in control segment [%f, %f]\n", myid, nspline,tstart, tstop);
+      if (mpirank_world==0) printf("%d: Creating %d-spline basis in control segment [%f, %f]\n", myid, nspline,tstart, tstop);
       ControlBasis* mysplinebasis = new BSpline2nd(nspline, tstart, tstop);
       mysplinebasis->setSkip(nparams);
       nparams += mysplinebasis->getNparams() * carrier_freq.size();
       basisfunctions.push_back(mysplinebasis);
     } else {
-      printf("%d: Non-controllable.\n", myid);
+      if (mpirank_world==0) printf("%d: Non-controllable.\n", myid);
       idstr++;
     }
   }
