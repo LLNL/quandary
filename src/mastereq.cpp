@@ -1097,17 +1097,19 @@ void MasterEq::computedRHSdp(const double t, const Vec x, const Vec xbar, const 
 
 void MasterEq::setControlAmplitudes(const Vec x) {
 
-  const PetscScalar* ptr;
-  VecGetArrayRead(x, &ptr);
+  PetscScalar* ptr;
+  VecGetArray(x, &ptr);
 
   /* Pass design vector x to oscillators */
+  // Design storage: x = (params_oscil0, params_oscil2, ... ) 
   int shift=0;
   for (int ioscil = 0; ioscil < getNOscillators(); ioscil++) {
-    /* Design storage: x = (params_oscil0, params_oscil2, ... ) */
+    /* Copy x into the oscillators parameter array. */
+    // This potentially sets some of the parameters in x to zero in order to enforce the control boundaries. 
     getOscillator(ioscil)->setParams(ptr + shift);
     shift += getOscillator(ioscil)->getNParams();
   }
-  VecRestoreArrayRead(x, &ptr);
+  VecRestoreArray(x, &ptr);
 }
 
 

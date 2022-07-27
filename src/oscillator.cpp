@@ -152,10 +152,19 @@ Oscillator::~Oscillator(){
   }
 }
 
-void Oscillator::setParams(const double* x){
+void Oscillator::setParams(double* x){
+  // First, enforce the control boundaries, i.e. potentially set some parameters in x to zero. 
+  for (int bs = 0; bs < basisfunctions.size(); bs++){
+    for (int f=0; f < carrier_freq.size(); f++) {
+      basisfunctions[bs]->enforceBoundary(x, f);
+    }
+  }
+
+  // Now copy x into the oscillators parameter storage
   for (int i=0; i<params.size(); i++) {
     params[i] = x[i]; 
   }
+
 }
 
 

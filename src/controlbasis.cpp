@@ -35,6 +35,15 @@ BSpline2nd::~BSpline2nd(){
     delete [] tcenter;
 }
 
+void BSpline2nd::enforceBoundary(double* x, int carrier_id){
+    // set first and last two splines to zero so that spline starts and ends at zero 
+    for (int l=0; l<nsplines; l++) {
+        if (l<=1 || l >= nsplines- 2) {
+            x[skip + carrier_id*nsplines*2 + l] = 0.0;
+            x[skip + carrier_id*nsplines*2 + l + nsplines] = 0.0;
+        }
+    }
+}
 
 void BSpline2nd::evaluate(const double t, const std::vector<double>& coeff, int carrier_freq_id, double* Bl1_ptr, double* Bl2_ptr){
 
