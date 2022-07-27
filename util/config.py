@@ -192,6 +192,24 @@ def read_config(filename):
                case("Jkl") or \
                case("transfreq") or \
                case("rotfreq") or \
+               case("control_segments0") or \
+               case("control_segments1") or \
+               case("control_segments2") or \
+               case("control_segments3") or \
+               case("control_segments4") or \
+               case("control_segments5") or \
+               case("control_initialization0") or \
+               case("control_initialization1") or \
+               case("control_initialization2") or \
+               case("control_initialization3") or \
+               case("control_initialization4") or \
+               case("control_initialization5") or \
+               case("control_bounds0") or \
+               case("control_bounds1") or \
+               case("control_bounds2") or \
+               case("control_bounds3") or \
+               case("control_bounds4") or \
+               case("control_bounds5") or \
                case("carrier_frequency0") or \
                case("carrier_frequency1") or \
                case("carrier_frequency2") or \
@@ -208,9 +226,6 @@ def read_config(filename):
                case("optim_target") or \
                case("gate_rot_freq") or \
                case("optim_weights") or \
-               case("optim_init") or \
-               case("optim_init_ampl") or \
-               case("optim_bounds") or \
                case("datadir") or \
                case("output0") or \
                case("output1") or \
