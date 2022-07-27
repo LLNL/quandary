@@ -36,7 +36,7 @@ BSpline2nd::~BSpline2nd(){
 }
 
 
-void BSpline2nd::evaluate(const double t, const std::vector<double>& coeff, int carrier_freq_size, int carrier_freq_id, double* Bl1_ptr, double* Bl2_ptr){
+void BSpline2nd::evaluate(const double t, const std::vector<double>& coeff, int carrier_freq_id, double* Bl1_ptr, double* Bl2_ptr){
 
     double sum1 = 0.0;
     double sum2 = 0.0;
@@ -44,8 +44,8 @@ void BSpline2nd::evaluate(const double t, const std::vector<double>& coeff, int 
     for (int l=0; l<nsplines; l++) {
         if (l<=1 || l >= nsplines- 2) continue; // skip first and last two splines (set to zero) so that spline starts and ends at zero 
         double Blt = basisfunction(l,t);
-        double alpha1 = coeff[skip + l*carrier_freq_size*2 + carrier_freq_id*2];
-        double alpha2 = coeff[skip + l*carrier_freq_size*2 + carrier_freq_id*2 + 1];
+        double alpha1 = coeff[skip + carrier_freq_id*nsplines*2 + l];
+        double alpha2 = coeff[skip + carrier_freq_id*nsplines*2 + l + nsplines];
         sum1 += alpha1 * Blt;
         sum2 += alpha2 * Blt;
     }
@@ -54,14 +54,14 @@ void BSpline2nd::evaluate(const double t, const std::vector<double>& coeff, int 
 
 }
 
-void BSpline2nd::derivative(const double t, const std::vector<double>& coeff, double* coeff_diff, const double valbar1, const double valbar2, int carrier_freq_size, int carrier_freq_id) {
+void BSpline2nd::derivative(const double t, const std::vector<double>& coeff, double* coeff_diff, const double valbar1, const double valbar2, int carrier_freq_id) {
 
     /* Iterate over basis function */
     for (int l=0; l<nsplines; l++) {
         if (l<=1 || l >= nsplines- 2) continue; // skip first and last two splines (set to zero) so that spline starts and ends at zero       
         double Blt = basisfunction(l, t); 
-        coeff_diff[skip + l * carrier_freq_size *2 + carrier_freq_id*2] += Blt * valbar1;
-        coeff_diff[skip + l * carrier_freq_size *2 + carrier_freq_id*2+1] += Blt * valbar2;
+        coeff_diff[skip + carrier_freq_id*nsplines*2 + l]            += Blt * valbar1;
+        coeff_diff[skip + carrier_freq_id*nsplines*2 + l + nsplines] += Blt * valbar2;
     }
 }
 
@@ -91,7 +91,7 @@ Step::Step(double step_amp1_, double step_amp2_, double t0, double t1, double tr
 
 Step::~Step(){}
 
-void Step::evaluate(const double t, const std::vector<double>& coeff, int carrier_freq_size, int carrier_freq_id, double* Blt1, double*Blt2){
+void Step::evaluate(const double t, const std::vector<double>& coeff, int carrier_freq_id, double* Blt1, double*Blt2){
     // Access the control
     double alpha = coeff[skip + carrier_freq_id*2];
 
@@ -103,7 +103,7 @@ void Step::evaluate(const double t, const std::vector<double>& coeff, int carrie
     *Blt2 = ramp*step_amp2;
 }
 
-void Step::derivative(const double t, const std::vector<double>& coeff, double* coeff_diff, const double valbar1, const double valbar2, int carrier_freq_size, int carrier_freq_id) {
+void Step::derivative(const double t, const std::vector<double>& coeff, double* coeff_diff, const double valbar1, const double valbar2, int carrier_freq_id) {
 
     double alpha = coeff[skip + carrier_freq_id*2];    
     double tstepend = tstart + alpha*(tstop - tstart);

@@ -201,7 +201,7 @@ int Oscillator::evalControl(const double t, double* Re_ptr, double* Im_ptr){
           double sin_omt = sin(carrier_freq[f]*t);
           double Blt1 = 0.0; 
           double Blt2 = 0.0;
-          basisfunctions[bs]->evaluate(t, params, carrier_freq.size(), f, &Blt1, &Blt2);
+          basisfunctions[bs]->evaluate(t, params, f, &Blt1, &Blt2);
           sum_p += cos_omt * Blt1 - sin_omt * Blt2; 
           sum_q += sin_omt * Blt1 + cos_omt * Blt2;
         }
@@ -242,8 +242,8 @@ int Oscillator::evalControl_diff(const double t, double* dRedp, double* dImdp) {
         for (int f=0; f < carrier_freq.size(); f++) {
           double cos_omt = cos(carrier_freq[f]*t);
           double sin_omt = sin(carrier_freq[f]*t);
-          basisfunctions[bs]->derivative(t, params, dRedp, cos_omt, -sin_omt, carrier_freq.size(), f);
-          basisfunctions[bs]->derivative(t, params, dImdp, sin_omt, cos_omt, carrier_freq.size(), f);
+          basisfunctions[bs]->derivative(t, params, dRedp, cos_omt, -sin_omt, f);
+          basisfunctions[bs]->derivative(t, params, dImdp, sin_omt, cos_omt, f);
         }
         break;
       }
@@ -284,7 +284,7 @@ int Oscillator::evalControl_Labframe(const double t, double* f){
           double sin_omt = sin(carrier_freq[f]*t);
           double Blt1 = 0.0; 
           double Blt2 = 0.0;
-          basisfunctions[bs]->evaluate(t, params, carrier_freq.size(), f, &Blt1, &Blt2);
+          basisfunctions[bs]->evaluate(t, params, f, &Blt1, &Blt2);
           sum_p += cos_omt * Blt1 - sin_omt * Blt2; 
           sum_q += sin_omt * Blt1 + cos_omt * Blt2;
         }

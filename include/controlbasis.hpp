@@ -28,10 +28,10 @@ class ControlBasis {
         void setSkip(int skip_) {skip = skip_;};
 
         /* Evaluate the Basis(alpha, t) at time t using the coefficients coeff. */
-        virtual void evaluate(const double t, const std::vector<double>& coeff, int carrier_freq_size, int carrier_freq_id, double* Blt1, double*Blt2) = 0;
+        virtual void evaluate(const double t, const std::vector<double>& coeff, int carrier_freq_id, double* Blt1, double*Blt2) = 0;
 
         /* Evaluates the derivative at time t, multiplied with fbar. */
-        virtual void derivative(const double t, const std::vector<double>& coeff, double* coeff_diff, const double valbar1, const double valbar2, int carrier_freq_size, int carrier_freq_id)= 0;
+        virtual void derivative(const double t, const std::vector<double>& coeff, double* coeff_diff, const double valbar1, const double valbar2, int carrier_freq_id)= 0;
 };
 
 /* 
@@ -55,10 +55,10 @@ class BSpline2nd : public ControlBasis {
 
 
         /* Evaluate the spline at time t using the coefficients coeff. */
-        void evaluate(const double t, const std::vector<double>& coeff, int carrier_freq_size, int carrier_freq_id, double* Blt1_ptr, double* Blt2_ptr);
+        void evaluate(const double t, const std::vector<double>& coeff, int carrier_freq_id, double* Blt1_ptr, double* Blt2_ptr);
 
         /* Evaluates the derivative at time t, multiplied with fbar. */
-        void derivative(const double t, const std::vector<double>& coeff, double* coeff_diff, const double valbar1, const double valbar2, int carrier_freq_size, int carrier_freq_id);
+        void derivative(const double t, const std::vector<double>& coeff, double* coeff_diff, const double valbar1, const double valbar2, int carrier_freq_id);
 };
 
 /* 
@@ -75,8 +75,8 @@ class Step : public ControlBasis {
         ~Step();
 
        /* Evaluate the spline at time t using the coefficients coeff. */
-        void evaluate(const double t, const std::vector<double>& coeff, int carrier_freq_size, int carrier_freq_id, double* Blt1, double*Blt2);
+        void evaluate(const double t, const std::vector<double>& coeff, int carrier_freq_id, double* Blt1, double*Blt2);
 
         /* Evaluates the derivative at time t, multiplied with fbar. */
-        void derivative(const double t, const std::vector<double>& coeff, double* coeff_diff, const double valbar1, const double valbar2, int carrier_freq_size, int carrier_freq_id);
+        void derivative(const double t, const std::vector<double>& coeff, double* coeff_diff, const double valbar1, const double valbar2, int carrier_freq_id);
 };
