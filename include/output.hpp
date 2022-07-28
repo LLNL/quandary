@@ -20,7 +20,9 @@ class Output{
   bool writefullstate;  /* Flag to determin if full state vector should be written to file */
   FILE *ufile;          /* File for writing real part of solution vector */
   FILE *vfile;          /* File for writing imaginary part of solution vector */
-  std::vector<FILE *>expectedfile;    /* Files for writing expected energy levels over time */
+  std::vector<FILE *>expectedfile;    /* Files for writing the evolution of the expected energy levels per oscillator */
+  FILE *expectedfile_comp;    /* File for writing the evolution of the expected energy level of the composite system */
+  FILE *populationfile_comp;    /* File for writing the evolution of the population of the composite system */
   std::vector<FILE *>populationfile;  /* Files for writing population over time */
 
   // VecScatter scat;    /* Petsc's scatter context to communicate a state across petsc's cores */

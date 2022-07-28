@@ -6,8 +6,9 @@
 #include <assert.h>
 #include <iostream> 
 #include "gate.hpp"
-#pragma once
+#include "pythoninterface.hpp"
 
+#pragma once
 
 /* Define a matshell context containing pointers to data needed for applying the RHS matrix to a vector */
 typedef struct {
@@ -19,12 +20,15 @@ typedef struct {
   std::vector<double> eta;
   LindbladType lindbladtype;
   bool addT1, addT2;
-  std::vector<double> control_Re, control_Im;
-  Mat** Ac_vec;
-  Mat** Bc_vec;
+  std::vector<std::vector<double>> control_Re;
+  std::vector<std::vector<double>> control_Im;
+  std::vector<double> eval_transfer_Hdt_re;
+  std::vector<double> eval_transfer_Hdt_im;
+  std::vector<std::vector<Mat>> Ac_vec;
+  std::vector<std::vector<Mat>> Bc_vec;
   Mat *Ad, *Bd;
-  Mat** Ad_vec;
-  Mat** Bd_vec;
+  std::vector<Mat> Ad_vec;
+  std::vector<Mat> Bd_vec;
   Vec *aux;
   double time;
 } MatShellCtx;
@@ -58,11 +62,11 @@ class MasterEq{
     Mat RHS;                // Realvalued, vectorized systemmatrix (2N^2 x 2N^2)
     MatShellCtx RHSctx;     // MatShell context that contains data needed to apply the RHS
 
-    Mat* Ac_vec;  // Vector of constant mats for time-varying control term (real)
-    Mat* Bc_vec;  // Vector of constant mats for time-varying control term (imag)
+    std::vector<std::vector<Mat>> Ac_vec;  // Vector of vector of constant mats for time-varying control term (real). One vector of mats for each oscillators. 
+    std::vector<std::vector<Mat>> Bc_vec;  // Vector of vector of constant mats for time-varying control term (imag). One vector of mats for each oscillators. 
     Mat  Ad, Bd;  // Real and imaginary part of constant system matrix
-    Mat* Ad_vec;  // Vector of constant mats for Jaynes-Cummings coupling term in drift Hamiltonian (real)
-    Mat* Bd_vec;  // Vector of constant mats for Jaynes-Cummings coupling term in drift Hamiltonian (imag)
+    std::vector<Mat> Ad_vec;  // Vector of constant mats for Jaynes-Cummings coupling term in drift Hamiltonian (real)
+    std::vector<Mat> Bd_vec;  // Vector of constant mats for Jaynes-Cummings coupling term in drift Hamiltonian (imag)
 
     std::vector<double> crosskerr;    // Cross ker coefficients (rad/time) $\xi_{kl} for zz-coupling ak^d ak al^d al
     std::vector<double> Jkl;          // Jaynes-Cummings coupling coefficient (rad/time), multiplies ak^d al + ak al^d
@@ -80,20 +84,30 @@ class MasterEq{
     Vec aux;              // auxiliary vector 
     PetscInt* cols;           // holding columns when evaluating dRHSdp
     PetscScalar* vals;   // holding values when evaluating dRHSdp
- 
+
   public:
     std::vector<int> nlevels;  // Number of levels per oscillator
     std::vector<int> nessential; // Number of essential levels per oscillator
     bool usematfree;  // Flag for using matrix free solver
     LindbladType lindbladtype;        // Flag that determines which lindblad terms are added. if NONE, than Schroedingers eq. is solved
 
+    std::vector<std::vector<TransferFunction*>> transfer_Hc_re; // Stores the transfer functions for each control term for each oscillator
+    std::vector<std::vector<TransferFunction*>> transfer_Hc_im; // Stores the transfer functions for each control term for each oscillator
+    std::vector<TransferFunction*> transfer_Hdt_re; // Stores the transfer functions for each time-varying system hamiltonian term  
+    std::vector<TransferFunction*> transfer_Hdt_im; // Stores the transfer functions for each time-varying system Hamiltonian term  
+    std::string python_file; // either 'none' or name of python script to read Hamiltonian from 
+
+
   public:
     MasterEq();
-    MasterEq(std::vector<int> nlevels, std::vector<int> nessential, Oscillator** oscil_vec_, const std::vector<double> crosskerr_, const std::vector<double> Jkl_, const std::vector<double> eta_, LindbladType lindbladtype_, bool usematfree_);
+    MasterEq(std::vector<int> nlevels, std::vector<int> nessential, Oscillator** oscil_vec_, const std::vector<double> crosskerr_, const std::vector<double> Jkl_, const std::vector<double> eta_, LindbladType lindbladtype_, bool usematfree_, std::string python_file);
     ~MasterEq();
 
     /* initialize matrices needed for applying sparse-mat solver */
     void initSparseMatSolver();
+
+    /* Pass lists of time points that determin when which transfer functions is active. This is currently set for the rigetti threewave multi gate */
+    void setTransferOnOffTimes(std::vector<double> tlist);
 
     /* Return the i-th oscillator */
     Oscillator* getOscillator(const int i);
@@ -143,6 +157,12 @@ class MasterEq{
      */
     int getRhoT0(const int iinit, const int ninit, const InitialConditionType initcond_type, const std::vector<int>& oscilIDs, Vec rho0);
 
+
+    // Get expected energy of the full composite system.
+    double expectedEnergy(const Vec x);
+
+    // Get population of the full composite system.
+    void population(const Vec x, std::vector<double> &population_com);
 };
 
 

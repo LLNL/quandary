@@ -227,6 +227,7 @@ def read_config(filename):
                case("runtype") or \
                case("usematfree") or \
                case("linearsolver_type") or \
+               case("python_file") or \
                case("apply_pipulse") :
                data_dict[this_param] = this_value
                break

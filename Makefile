@@ -6,12 +6,24 @@
 WITH_SLEPC = false
 #SLEPC_DIR=/path/to/slepc-3.13.3
 
+# Enable the python interface.
+WITH_PYTHON = true
+PYTHON_INCDIR = /usr/local/Caskroom/miniconda/base/envs/numpy-env/include/python3.9/  # location of Python.h. Try "python<version>-config --includes" to find it.
+PYTHON_LIBDIR = /usr/local/Caskroom/miniconda/base/envs/numpy-env/lib/     # location of libpython<version>.so or libpython<version>.dylib (Mac). Try "python<version>-config --ldflags" to find it.
+PYTHON_VERSION = 3.9   # Set the python version. This is not be needed if the libpython.so / libpython.dylib links to the correct version library libpython<version>.so
+# You'll have to set the LD_LIBRARY_PATH to include the PYTHON_LIBDIR path!, e.g. "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/Caskroom/miniconda/base/envs/numpy-env/lib"
+
+# If using the python interface, link with Fitpack to enable spline-based transfer functions. Otherwise, the identity will be used for transfer functions. 
+WITH_FITPACK = true
+# Set location of FITPACK
+FITPACK_DIR=${HOME}/Software/fitpackpp
+
 # Choose to run sanity tests
 SANITY_CHECK = false
 
 #######################################################
 # Typically no need to change anything below
-
+#
 # Add optional Slepc
 ifeq ($(WITH_SLEPC), true)
 CXX_OPT = -DWITH_SLEPC
@@ -19,6 +31,21 @@ LDFLAGS_OPT = -L${SLEPC_DIR}/lib -L${SLEPC_DIR}/${PETSC_ARCH}/lib -lslepc
 INC_OPT = -I${SLEPC_DIR}/${PETSC_ARCH}/include -I${SLEPC_DIR}/include
 endif
 
+
+# Add optional Python interface
+ifeq ($(WITH_PYTHON), true)
+INC_OPT += -I${PYTHON_INCDIR}
+LDFLAGS_OPT += -L${PYTHON_LIBDIR} -lpython${PYTHON_VERSION}
+CXX_OPT += -DWITH_PYTHON
+endif
+
+
+# Add optional FITPACKPP for spline interpolation
+ifeq ($(WITH_FITPACK), true)
+INC_OPT += -I${FITPACK_DIR}/fitpackpp
+LDFLAGS_OPT += -L${FITPACK_DIR}/build -lfitpackpp -lfitpack 
+CXX_OPT += -DWITH_FITPACK
+endif
 
 # Add sanity check to compiler option
 ifeq ($(SANITY_CHECK), true)

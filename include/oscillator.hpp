@@ -65,8 +65,12 @@ class Oscillator {
 
     /* Copy x into the control parameter vector. This also checks the boundaries of the controls and potentially sets some parameters in x to zero.  */
     void setParams(double* x);
+
     /* Copy params into the vector x */
     void getParams(double* x);
+
+    /* Remove all elements from the control parameters (making this oscillator non-controllable) */
+    void clearParams() { params.clear(); };
 
     /* Evaluates rotating frame control functions Re = p(t), Im = q(t) */
     int evalControl(const double t, double* Re_ptr, double* Im_ptr);
