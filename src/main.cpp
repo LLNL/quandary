@@ -1,5 +1,4 @@
 #include "timestepper.hpp"
-#include "bspline.hpp"
 #include "oscillator.hpp" 
 #include "mastereq.hpp"
 #include "config.hpp"
@@ -19,6 +18,11 @@
 
 int main(int argc,char **argv)
 {
+
+  // Initialize random number generator 
+  srand(1);  // fixed seed
+  // srand(time(0));  // random seed
+
   char filename[255];
   PetscErrorCode ierr;
 
@@ -46,7 +50,6 @@ int main(int argc,char **argv)
   config.GetVecIntParam("nlevels", nlevels, 0);
   int ntime = config.GetIntParam("ntime", 1000);
   double dt    = config.GetDoubleParam("dt", 0.01);
-  int nspline = config.GetIntParam("nspline", 10);
   RunType runtype;
   std::string runtypestr = config.GetStrParam("runtype", "simulation");
   if      (runtypestr.compare("simulation")      == 0) runtype = RunType::SIMULATION;
@@ -204,12 +207,31 @@ int main(int argc,char **argv)
     copyLast(dephase_time, nlevels.size());
   }
 
-  // Create the oscillators 
+  // Get control segment types, carrierwaves and control initialization
+  string default_seg_str = "spline, 10, 0.0, "+std::to_string(total_time); // Default for first oscillator control segment
+  string default_init_str = "constant, 0.0";                               // Default for first oscillator initialization
   for (int i = 0; i < nlevels.size(); i++){
+    // Get carrier wave frequencies 
     std::vector<double> carrier_freq;
     std::string key = "carrier_frequency" + std::to_string(i);
     config.GetVecDoubleParam(key, carrier_freq, 0.0);
-    oscil_vec[i] = new Oscillator(i, nlevels, nspline, trans_freq[i], selfkerr[i], rot_freq[i], decay_time[i], dephase_time[i], carrier_freq, total_time, lindbladtype);
+
+    // Get control type. Default for second or larger oscillator is the previous one
+    std::vector<std::string> controltype_str;
+    config.GetVecStrParam("control_segments" + std::to_string(i), controltype_str,default_seg_str);
+
+    // Get control initialization
+    std::vector<std::string> controlinit_str;
+    config.GetVecStrParam("control_initialization" + std::to_string(i), controlinit_str, default_init_str);
+
+    // Create oscillator 
+    oscil_vec[i] = new Oscillator(i, nlevels, controltype_str, controlinit_str, trans_freq[i], selfkerr[i], rot_freq[i], decay_time[i], dephase_time[i], carrier_freq, total_time, lindbladtype);
+    
+    // Update the default for control type
+    default_seg_str = "";
+    default_init_str = "";
+    for (int l = 0; l<controltype_str.size(); l++) default_seg_str += controltype_str[l]+=", ";
+    for (int l = 0; l<controlinit_str.size(); l++) default_init_str += controlinit_str[l]+=", ";
   }
 
   // Get pi-pulses, if any

@@ -47,16 +47,8 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   gatol = config.GetDoubleParam("optim_atol", 1e-8);
   grtol = config.GetDoubleParam("optim_rtol", 1e-4);
   maxiter = config.GetIntParam("optim_maxiter", 200);
-  initguess_type = config.GetStrParam("optim_init", "zero");
-  config.GetVecDoubleParam("optim_init_ampl", initguess_amplitudes, 0.0);
-  // sanity check
-  if (initguess_type.compare("constant") == 0 || 
-      initguess_type.compare("random")    == 0 ||
-      initguess_type.compare("random_seed") == 0)  {
-      copyLast(initguess_amplitudes, timestepper->mastereq->getNOscillators());
-  }
-
-  /* Store the optimization target */
+  
+    /* Store the optimization target */
   std::vector<std::string> target_str;
   Gate* targetgate=NULL;
   int purestateID = -1;
@@ -332,33 +324,36 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   VecCreateSeq(PETSC_COMM_SELF, ndesign, &xlower);
   VecSetFromOptions(xlower);
   VecDuplicate(xlower, &xupper);
-  std::vector<double> bounds;
-  config.GetVecDoubleParam("optim_bounds", bounds, 1e20);
-  for (int i = bounds.size(); i < timestepper->mastereq->getNOscillators(); i++) bounds.push_back(1e+12); // fill up with zeros
   int col = 0;
   for (int iosc = 0; iosc < timestepper->mastereq->getNOscillators(); iosc++){
-    // Scale bounds by 1/sqrt(2) * (number of carrier waves) */
-    std::vector<double> carrier_freq;
-    std::string key = "carrier_frequency" + std::to_string(iosc);
-    config.GetVecDoubleParam(key, carrier_freq, 0.0, false);
-    bounds[iosc] = bounds[iosc] / ( sqrt(2) * carrier_freq.size()) ;
-    // set bounds for all parameters in this oscillator
-    for (int i=0; i<timestepper->mastereq->getOscillator(iosc)->getNParams(); i++){
-      double bound = bounds[iosc];
-
-      /* for the first and last two splines, overwrite the bound with zero to ensure that control at t=0 and t=T is zero. */
-      int ibegin = 2*2*carrier_freq.size();
-      int iend = (timestepper->mastereq->getOscillator(iosc)->getNSplines()-2)*2*carrier_freq.size();
-      if (i < ibegin || i >= iend) bound = 0.0;
-
-      // set the bound
-      VecSetValue(xupper, col, bound, INSERT_VALUES);
-      VecSetValue(xlower, col, -1. * bound, INSERT_VALUES);
-      col++;
+    std::vector<std::string> bound_str;
+    config.GetVecStrParam("control_bounds" + std::to_string(iosc), bound_str, "10000.0");
+    for (int iseg = 0; iseg < timestepper->mastereq->getOscillator(iosc)->getNSegments(); iseg++){
+      double boundval = 0.0;
+      if (bound_str.size() <= iseg) boundval =  atof(bound_str[bound_str.size()-1].c_str());
+      else boundval = atof(bound_str[iseg].c_str());
+      // If spline controls: Scale bounds by 1/sqrt(2) * (number of carrier waves) */
+      if (timestepper->mastereq->getOscillator(iosc)->getNParams()>1)
+        boundval = boundval / ( sqrt(2) * timestepper->mastereq->getOscillator(iosc)->getNCarrierfrequencies()) ;
+      for (int i=0; i<timestepper->mastereq->getOscillator(iosc)->getNSegParams(iseg); i++){
+        VecSetValue(xupper, col, boundval, INSERT_VALUES);
+        VecSetValue(xlower, col, -1. * boundval, INSERT_VALUES);
+        col++;
+      }
     }
   }
   VecAssemblyBegin(xlower); VecAssemblyEnd(xlower);
   VecAssemblyBegin(xupper); VecAssemblyEnd(xupper);
+
+  /* Store the initial guess if read from file */
+  std::vector<std::string> controlinit_str;
+  config.GetVecStrParam("control_initialization0", controlinit_str, "constant, 0.0");
+  if ( controlinit_str.size() > 0 && controlinit_str[0].compare("file") == 0 ) {
+    assert(controlinit_str.size() >=2);
+    for (int i=0; i<ndesign; i++) initguess_fromfile.push_back(0.0);
+    if (mpirank_world == 0) read_vector(controlinit_str[1].c_str(), initguess_fromfile.data(), ndesign);
+    MPI_Bcast(initguess_fromfile.data(), ndesign, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+  }
  
   /* Create Petsc's optimization solver */
   TaoCreate(PETSC_COMM_WORLD, &tao);
@@ -662,71 +657,22 @@ void OptimProblem::solve(Vec xinit) {
 void OptimProblem::getStartingPoint(Vec xinit){
   MasterEq* mastereq = timestepper->mastereq;
 
-  if (initguess_type.compare("constant") == 0 ){ // set constant initial design
-    // set values
-    int j = 0;
-    for (int ioscil = 0; ioscil < mastereq->getNOscillators(); ioscil++) {
-      int nparam = mastereq->getOscillator(ioscil)->getNParams();
-      for (int i = 0; i < nparam; i++) {
-        VecSetValue(xinit, j, initguess_amplitudes[ioscil], INSERT_VALUES);
-        j++;
-      }
+  if (initguess_fromfile.size() > 0) {
+    /* Set the initial guess from file */
+    for (int i=0; i<initguess_fromfile.size(); i++) {
+      VecSetValue(xinit, i, initguess_fromfile[i], INSERT_VALUES);
     }
-  } else if ( initguess_type.compare("random")      == 0 ||       // init random, fixed seed
-              initguess_type.compare("random_seed") == 0)  { // init random with new seed
-    /* Create vector with random elements between [-1:1] */
-    if ( initguess_type.compare("random") == 0) srand(1);  // fixed seed
-    else srand(time(0)); // random seed
-    double* randvec = new double[ndesign];
-    for (int i=0; i<ndesign; i++) {
-      randvec[i] = (double) rand() / ((double)RAND_MAX);
-      randvec[i] = 2.*randvec[i] - 1.;
-    }
-    /* Broadcast random vector from rank 0 to all, so that all have the same starting point (necessary?) */
-    MPI_Bcast(randvec, ndesign, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
-    /* Scale vector by the initial amplitudes */
+  } else { // copy from initialization in oscillators contructor
+    PetscScalar* xptr;
+    VecGetArray(xinit, &xptr);
     int shift = 0;
-    for (int ioscil = 0; ioscil < mastereq->getNOscillators(); ioscil++) {
-      int nparam_iosc = mastereq->getOscillator(ioscil)->getNParams();
-      for (int i=0; i<nparam_iosc; i++) {
-        randvec[shift + i] *= initguess_amplitudes[ioscil];
-      }
-      shift+= nparam_iosc;
+    for (int ioscil = 0; ioscil<mastereq->getNOscillators(); ioscil++){
+      mastereq->getOscillator(ioscil)->getParams(xptr + shift);
+      shift += mastereq->getOscillator(ioscil)->getNParams();
     }
-
-    /* Set the initial guess */
-    for (int i=0; i<ndesign; i++) {
-      VecSetValue(xinit, i, randvec[i], INSERT_VALUES);
-    }
-    delete [] randvec;
-
-  }  else { // Read from file 
-    double* vecread = new double[ndesign];
-
-    if (mpirank_world == 0) read_vector(initguess_type.c_str(), vecread, ndesign);
-    MPI_Bcast(vecread, ndesign, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-
-    /* Set the initial guess */
-    for (int i=0; i<ndesign; i++) {
-      VecSetValue(xinit, i, vecread[i], INSERT_VALUES);
-    }
-    delete [] vecread;
+    VecRestoreArray(xinit, &xptr);
   }
-
-  /* for the first and last two splines, overwrite the parameters with zero to ensure that control at t=0 and t=T is zero. */
-  PetscInt col = 0.0;
-  for (int iosc = 0; iosc < timestepper->mastereq->getNOscillators(); iosc++){
-    int ncarrier = timestepper->mastereq->getOscillator(iosc)->getNCarrierwaves();
-    PetscInt ibegin = 2*2*ncarrier;
-    PetscInt iend = (timestepper->mastereq->getOscillator(iosc)->getNSplines()-2)*2*ncarrier;
-
-    for (int i = 0; i < timestepper->mastereq->getOscillator(iosc)->getNParams(); i++) {
-      if (i < ibegin || i >= iend) VecSetValue(xinit, col, 0.0, INSERT_VALUES);
-      col++;
-    }
-  }
-
 
   /* Assemble initial guess */
   VecAssemblyBegin(xinit);
