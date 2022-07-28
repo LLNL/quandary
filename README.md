@@ -45,7 +45,7 @@ Then set the `PETSC_DIR` variable to point to the Petsc folder and add it to the
 ## Installation
 Adapt the beginning of the 'Makefile' to set the path to your Petsc (and possibly Slepsc, python path, and fitpackpp) installation. Then,
 * `make cleanup` to clean the build directory. (Note the *up* in *cleanup*.)
-* `make -j main` to build the code (using 'j' threads)
+* `make main` to build the code (or 'make -j main' for faster build using multiple threads)
 
 
 ## Running

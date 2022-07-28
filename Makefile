@@ -1,29 +1,30 @@
 # Set location of PETSC
-#PETSC_DIR=/path/to/petsc
+#PETSC_DIR=/path/to/petsc-<version>
 #PETSC_ARCH=arch-linux-c-debug
 
-# Choose to link with the SLEPC library and set the location
+# Optional: Link to SLEPC
 WITH_SLEPC = false
-#SLEPC_DIR=/path/to/slepc-3.13.3
+#SLEPC_DIR=/path/to/slepc-<version>
 
-# Enable the python interface.
-WITH_PYTHON = true
+# Optional: Enable the python interface
+WITH_PYTHON = false
 PYTHON_INCDIR = /usr/local/Caskroom/miniconda/base/envs/numpy-env/include/python3.9/  # location of Python.h. Try "python<version>-config --includes" to find it.
 PYTHON_LIBDIR = /usr/local/Caskroom/miniconda/base/envs/numpy-env/lib/     # location of libpython<version>.so or libpython<version>.dylib (Mac). Try "python<version>-config --ldflags" to find it.
 PYTHON_VERSION = 3.9   # Set the python version. This is not be needed if the libpython.so / libpython.dylib links to the correct version library libpython<version>.so
-# You'll have to set the LD_LIBRARY_PATH to include the PYTHON_LIBDIR path!, e.g. "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/Caskroom/miniconda/base/envs/numpy-env/lib"
+# Note: You'll have to set the environment variable LD_LIBRARY_PATH to include the PYTHON_LIBDIR path. For example: "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/Caskroom/miniconda/base/envs/numpy-env/lib"
 
-# If using the python interface, link with Fitpack to enable spline-based transfer functions. Otherwise, the identity will be used for transfer functions. 
-WITH_FITPACK = true
-# Set location of FITPACK
+# Optional: If using the python interface, you can link with FitpackPP to enable spline-based transfer functions (optional).
+WITH_FITPACK = false
 FITPACK_DIR=${HOME}/Software/fitpackpp
 
 # Choose to run sanity tests
 SANITY_CHECK = false
 
+
 #######################################################
 # Typically no need to change anything below
-#
+#######################################################
+
 # Add optional Slepc
 ifeq ($(WITH_SLEPC), true)
 CXX_OPT = -DWITH_SLEPC
