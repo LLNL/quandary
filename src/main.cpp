@@ -334,16 +334,15 @@ int main(int argc,char **argv)
 #if TEST_FD_HESS
   storeFWD = true;
 #endif
-  TimeStepper *mytimestepper = new ImplMidpoint(mastereq, ntime, total_time, linsolvetype, linsolve_maxiter, output, storeFWD);
-  // TimeStepper *mytimestepper = new ExplEuler(mastereq, ntime, total_time, output, storeFWD);
-
-  // /* Petsc's Time-stepper */
-  // Vec x;
-  // MatCreateVecs(mastereq->getRHS(), &x, NULL);
-  // TS ts;
-  // TSCreate(PETSC_COMM_WORLD,&ts);CHKERRQ(ierr);
-  // TSInit(ts, mastereq, ntime, dt, total_time, x, false);
-   
+  std::string timesteppertypestr = config.GetStrParam("timestepper", "IMR");
+  TimeStepper* mytimestepper;
+  if (timesteppertypestr.compare("IMR")==0) mytimestepper = new ImplMidpoint(mastereq, ntime, total_time, linsolvetype, linsolve_maxiter, output, storeFWD);
+  else if (timesteppertypestr.compare("IMR8")==0) mytimestepper = new CompositionalImplMidpoint(mastereq, ntime, total_time, linsolvetype, linsolve_maxiter, output, storeFWD);
+  else if (timesteppertypestr.compare("EE")==0) mytimestepper = new ExplEuler(mastereq, ntime, total_time, output, storeFWD);
+  else {
+    printf("\n\n ERROR: Unknow timestepping type: %s.\n\n", timesteppertypestr.c_str());
+    exit(1);
+  }
 
 #ifdef WITH_BRAID
   /* --- Create braid instances --- */
@@ -716,7 +715,6 @@ int main(int argc,char **argv)
   delete optimctx;
   delete output;
 
-  // TSDestroy(&ts);  /* TODO */
 
   /* Finallize Petsc */
 #ifdef WITH_SLEPC
@@ -729,5 +727,3 @@ int main(int argc,char **argv)
   MPI_Finalize();
   return ierr;
 }
-
-
