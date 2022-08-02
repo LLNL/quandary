@@ -622,7 +622,10 @@ The real and imaginary parts of $q(t)$ are stored in a colocated manner: For
     q(t) = M(t) q(t)$ for $t\in [0,T]$, Quandary applies a time-stepping integration
     scheme on a uniform time discretization grid $0=t_0 < \dots t_{N} = T$, with
     $t_n = n \delta t$ and $\delta t = \frac{T}{N}$, and approximates the
-    solution at each discrete time step $q^{n} \approx q(t_n)$. It is a second-order accurate, symplectic Runge-Kutta scheme tableau 
+    solution at each discrete time step $q^{n} \approx q(t_n)$. The time-stepping scheme can be chosen in Quandary through the configuration option \texttt{timestepper}
+    
+    \subsubsection{Implicit Midpoint Rule (\texttt{IMR})}
+    The implicit midpoint rule is a second-order accurate, symplectic time-stepping algorithm with Runge-Kutta scheme tableau 
     \begin{tabular}{ c | c }
       $1/2$ & $ 1/2$ \\
       \hline
@@ -634,11 +637,12 @@ The real and imaginary parts of $q(t)$ are stored in a colocated manner: For
       q^{n+1} = q^n + \delta t k_1 \quad \text{where} \, k_1 \, \text{solves}
       \quad \left( I-\frac{\delta t}{2} M^{n+1/2} \right) k_1 = M^{n+1/2}  q^n
     \end{align}
-    where $M^{n+1/2} := M(t_n + \frac{\delta t}{2})$. In each time-step, we
-    first solve a linear equation to get the stage variable $k_1$, then use it
+    where $M^{n+1/2} := M(t_n + \frac{\delta t}{2})$. In each time-step,
+    a linear equation is solved to get the stage variable $k_1$, which is then used it
     to update $q^{n+1}$. 
 
-    While the implicit midpoint rule is the default (and preferred) setting in Quandary, there is the possibility to apply any time-stepping integrators provided by PETSc (class \texttt{TS} within PETSc). However, implementation needs to be verified, and adjoint time-stepping with Petsc is currently not available. 
+    \subsubsection{Higher-order compositional IMR (\texttt{IMR8})}
+    A compositional version of the implicit midpoint rule is available that performs multiple IMR steps in each time step interval, which are composed in such a way that the resulting compositional step is of accuracy order 8. Compared to the standard IMR, this higher-order method can be very benefitial as it allows for much larger time-steps to be taken to reach a certain accuracy tolerance. Even though more work is done per timestep, the reduction in the number of time-steps needed can be several orders or magnitude and there is hence a tradeoff where the IMR8 outperforms the standard IMR scheme. 
 
     \subsubsection{Choice of the time-step size}
     In order to choose a time-step size $\delta t$, an eigenvalue analysis of
@@ -657,13 +661,16 @@ The real and imaginary parts of $q(t)$ are stored in a colocated manner: For
          \delta t = \frac{\tau_{min}}{p} = \frac{2\pi}{p\max_i\{|\lambda_i|\}}
        \end{align}
        Usually, for a first order scheme we would use something like $p=20$,
-       second order may use $p=10$. The above estimate provides a first idea on how big (small) the time-step size should be, and the user is advised to consider this estimate himself when running a test case. However, the estimate ignores contributions from the control Hamiltonian, where larger control amplitudes will require smaller and smaller time-steps in order to resolve (a) the time-varying controls themselves and (b) the dynamics induced by large control contributions. A standard $\Delta t$ test should be performed to varify if the time-step is small enough (testing for second order convergence of the error when reducing $\Delta t$). 
-
-       If one wants to include the time-varying Hamiltonian part $H = H_d +
-       H_c(t)$ in the analysis, one could use the constraints on the control
-       parameter amplitudes to remove the time-dependency using their large
-       value instead.       
-
+       second order may use $p=10$. The above estimate provides a first idea on how big (small) the time-step size should be, and the user is advised to consider this estimate when running a test case. However, the estimate ignores contributions from the control Hamiltonian, where larger control amplitudes will require smaller and smaller time-steps in order to resolve (a) the time-varying controls themselves and (b) the dynamics induced by large control contributions. A standard $\Delta t$ test should be performed in order to verify that the time-step is small enough. For example, one can compute the Richardson error estimator of the current approximation error to some true quantity $J^*$ from
+       \begin{align}
+         J^* - J^{\Delta t} = \frac{J^{\Delta t} - J^{\Delta t m}}{1-m^p} + O(\Delta t^{p+1})
+       \end{align}
+       where $p$ is the order of the timestepping scheme (i.e. $p=2$ for the IMR and $p=8$ for the compositional IMR8), and $J^{\Delta t}, J^{\Delta tm}$ denote approximations thereof using the time-stepping sizes $\Delta t$ and $\Delta t m$ for some factor $m$.        
+       
+      %  If one wants to include the time-varying Hamiltonian part $H = H_d +
+      %  H_c(t)$ in the analysis, one could use the constraints on the control
+      %  parameter amplitudes to remove the time-dependency using their large
+      %  value instead.       
 
   
   \subsection{Gradient computation via discrete adjoint backpropagation}

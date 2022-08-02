@@ -101,9 +101,9 @@ class ImplMidpoint : public TimeStepper {
 
 
     /* Evolve state forward from tstart to tstop */
-    void evolveFWD(const double tstart, const double tstop, Vec x);
+    virtual void evolveFWD(const double tstart, const double tstop, Vec x);
     /* Evolve adjoint backward from tstop to tstart and update reduced gradient */
-    void evolveBWD(const double tstart, const double tstop, const Vec x_stop, Vec x_adj, Vec grad, bool compute_gradient);
+    virtual void evolveBWD(const double tstart, const double tstop, const Vec x_stop, Vec x_adj, Vec grad, bool compute_gradient);
 
     /* Solve (I-alpha*A) * x = b using Neumann iterations */
     // bool transpose=true solves the transposed system (I-alpha A^T)x = b
@@ -112,61 +112,17 @@ class ImplMidpoint : public TimeStepper {
 };
 
 
+class CompositionalImplMidpoint : public ImplMidpoint {
 
-/*
- * Evaluate the right-hand side system Matrix (real, vectorized system matrix)
- * In: ts - time stepper
- *      t - current time
- *      u - solution vector x(t) 
- *      M - right hand side system Matrix
- *      P - ??
- *    ctx - system 
- */
-PetscErrorCode RHSJacobian(TS ts,PetscReal t,Vec u,Mat M,Mat P,void *ctx);
+  std::vector<double> gamma;    /* Coefficients for the compositional step sizes */
+  std::vector<Vec> x_stage;   /* Storage for primal states at stages */
+  Vec aux;
+  int order;
 
+  public:
+    CompositionalImplMidpoint(MasterEq* mastereq_, int ntime_, double total_time_, LinearSolverType linsolve_type_, int linsolve_maxiter_, Output* output_, bool storeFWD_);
+    ~CompositionalImplMidpoint();
 
-
-/* Dervative of RHS wrt control parameters */
-PetscErrorCode RHSJacobianP(TS ts, PetscReal t, Vec y, Mat A, void *ctx);
-
-/*
- * Create Petsc's time stepper 
- */
-PetscErrorCode TSInit(TS ts, MasterEq* mastereq, PetscInt NSteps, PetscReal Dt, PetscReal Tfinal, Vec x, bool monitor);
-
-/*
- * Monitor the time stepper 
- */
-PetscErrorCode Monitor(TS ts,PetscInt step,PetscReal t,Vec x,void *ctx);
-PetscErrorCode AdjointMonitor(TS ts,PetscInt step,PetscReal t,Vec x, PetscInt numcost, Vec* lambda, Vec* mu, void *ctx);
-
-
-/*
- * Routines for splitting Petsc's TSSolve() into individual time steps.
- * TSPreSolve needs to be called BEFORE the time step loop.
- * TSPostSolve needs to be called AFTER the time step loop.
- * A call to TSSetSolution(ts,x) is required before these routines!
- * Bool tj_store determines, if the trajectory at that step should be saved, or not. 
- */
-PetscErrorCode TSPreSolve(TS ts, bool tj_store);
-PetscErrorCode TSStepMod(TS ts, bool tj_store);
-PetscErrorCode TSPostSolve(TS ts);
-
-
-/*
- * Routines for splitting Petsc's TSAdjointSolve() into individual time steps.
- * TSAdjointPreSolve needs to be called BEFORE the time step loop.
- * TSAdjointPostSolve needs to be called AFTER the time step loop.
- * To run adjoint steps, a call to TSSetSaveTrajectory(ts) is required before the primal run!
- */
-PetscErrorCode TSAdjointPreSolve(TS ts);
-PetscErrorCode TSAdjointStepMod(TS ts, bool tj_store);
-PetscErrorCode TSAdjointPostSolve(TS ts, bool tj_store);
-
-
-
-/* 
- * This sets u to the ts->vec_sensi[0] and ts->vec_sensip[0], which hopefully is PETSC's adjoint variable and reduced gradient
- * This routine closely follows what is done in TSSetSolution. 
- */
-PetscErrorCode  TSSetAdjointSolution(TS ts,Vec lambda, Vec mu);
+    void evolveFWD(const double tstart, const double tstop, Vec x);
+    void evolveBWD(const double tstart, const double tstop, const Vec x_stop, Vec x_adj, Vec grad, bool compute_gradient);
+};
