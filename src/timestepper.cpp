@@ -271,7 +271,7 @@ void ExplEuler::evolveFWD(const double tstart,const  double tstop, Vec x) {
 }
 
 void ExplEuler::evolveBWD(const double tstop,const  double tstart,const  Vec x, Vec x_adj, Vec grad, bool compute_gradient){
-  double dt = fabs(tstop - tstart);
+  double dt = tstop - tstart;
 
   /* Add to reduced gradient */
   if (compute_gradient) {
@@ -397,7 +397,7 @@ void ImplMidpoint::evolveBWD(const double tstop, const double tstart, const Vec 
   Mat A;
 
   /* Compute time step size */
-  double dt = fabs(tstop - tstart);
+  double dt = tstop - tstart;
   double thalf = (tstart + tstop) / 2.0;
 
   /* Assemble RHS(t_1/2) */
@@ -509,9 +509,26 @@ CompositionalImplMidpoint::CompositionalImplMidpoint(MasterEq* mastereq_, int nt
   gamma.push_back(-0.40910082580003159399730010);
   gamma.push_back(0.74167036435061295344822780);
   // printf("Timestepper: Compositional Impl. Midpoint, order %d, %d stages\n", order, gamma.size());
+
+  // Allocate storage of stages for backward process 
+  for (int i = 0; i <gamma.size(); i++) {
+    Vec state;
+    VecCreate(PETSC_COMM_WORLD, &state);
+    VecSetSizes(state, PETSC_DECIDE, dim);
+    VecSetFromOptions(state);
+    x_stage.push_back(state);
+  }
+  VecCreate(PETSC_COMM_WORLD, &aux);
+  VecSetSizes(aux, PETSC_DECIDE, dim);
+  VecSetFromOptions(aux);
 }
 
-CompositionalImplMidpoint::~CompositionalImplMidpoint(){}
+CompositionalImplMidpoint::~CompositionalImplMidpoint(){
+  for (int i = 0; i <gamma.size(); i++) {
+    VecDestroy(&(x_stage[i]));
+  }
+  VecDestroy(&aux);
+}
 
 
 void CompositionalImplMidpoint::evolveFWD(const double tstart,const  double tstop, Vec x) {
@@ -535,7 +552,25 @@ void CompositionalImplMidpoint::evolveFWD(const double tstart,const  double tsto
 }
 
 void CompositionalImplMidpoint::evolveBWD(const double tstop, const double tstart, const Vec x, Vec x_adj, Vec grad, bool compute_gradient){
-  // TODO: Call Impli BWD
-  printf("TODO.\n");
-  exit(1);
+  
+  double dt = tstop - tstart;
+
+  // Run forward again to store the (primal) stages
+  double tcurr = tstart;
+  VecCopy(x, aux);
+  for (int istage = 0; istage < gamma.size(); istage++) {
+    VecCopy(aux, x_stage[istage]);
+    double dt_stage = gamma[istage] * dt;
+    ImplMidpoint::evolveFWD(tcurr, tcurr + dt_stage, aux);
+    tcurr = tcurr + dt_stage;
+  }
+  assert(fabs(tcurr - tstop) < 1e-12);
+
+  // Run backwards while updating adjoint and gradient
+  for (int istage = gamma.size()-1; istage >=0; istage--){
+    double dt_stage = gamma[istage] * dt;
+    ImplMidpoint::evolveBWD(tcurr, tcurr-dt_stage, x_stage[istage], x_adj, grad, compute_gradient);
+    tcurr = tcurr - gamma[istage]*dt;
+  }
+  assert(fabs(tcurr - tstart) < 1e-12);
 }

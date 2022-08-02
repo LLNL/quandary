@@ -114,7 +114,9 @@ class ImplMidpoint : public TimeStepper {
 
 class CompositionalImplMidpoint : public ImplMidpoint {
 
-  std::vector<double> gamma;
+  std::vector<double> gamma;    /* Coefficients for the compositional step sizes */
+  std::vector<Vec> x_stage;   /* Storage for primal states at stages */
+  Vec aux;
   int order;
 
   public:
