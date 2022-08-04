@@ -18,6 +18,7 @@ class TimeStepper{
     bool storeFWD;       /* Flag that determines if primal states should be stored during forward evaluation */
     std::vector<Vec> store_states; /* Storage for primal states */
     bool addLeakagePrevent;   /* flag to determine if Leakage preventing term is added to penalty.  */
+    int mpirank_world;
 
   public:
     MasterEq* mastereq;  // Lindblad master equation
@@ -120,7 +121,7 @@ class CompositionalImplMidpoint : public ImplMidpoint {
   int order;
 
   public:
-    CompositionalImplMidpoint(MasterEq* mastereq_, int ntime_, double total_time_, LinearSolverType linsolve_type_, int linsolve_maxiter_, Output* output_, bool storeFWD_);
+    CompositionalImplMidpoint(int order_, MasterEq* mastereq_, int ntime_, double total_time_, LinearSolverType linsolve_type_, int linsolve_maxiter_, Output* output_, bool storeFWD_);
     ~CompositionalImplMidpoint();
 
     void evolveFWD(const double tstart, const double tstop, Vec x);

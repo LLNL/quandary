@@ -8,6 +8,7 @@ TimeStepper::TimeStepper() {
   total_time = 0.0;
   dt = 0.0;
   storeFWD = false;
+  MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
 }
 
 TimeStepper::TimeStepper(MasterEq* mastereq_, int ntime_, double total_time_, Output* output_, bool storeFWD_) : TimeStepper() {
@@ -489,26 +490,35 @@ int ImplMidpoint::NeumannSolve(Mat A, Vec b, Vec y, double alpha, bool transpose
 
 
 
-CompositionalImplMidpoint::CompositionalImplMidpoint(MasterEq* mastereq_, int ntime_, double total_time_, LinearSolverType linsolve_type_, int linsolve_maxiter_, Output* output_, bool storeFWD_): ImplMidpoint(mastereq_, ntime_, total_time_, linsolve_type_, linsolve_maxiter_, output_, storeFWD_) {
+CompositionalImplMidpoint::CompositionalImplMidpoint(int order_, MasterEq* mastereq_, int ntime_, double total_time_, LinearSolverType linsolve_type_, int linsolve_maxiter_, Output* output_, bool storeFWD_): ImplMidpoint(mastereq_, ntime_, total_time_, linsolve_type_, linsolve_maxiter_, output_, storeFWD_) {
+
+  order = order_;
 
   // coefficients for order 8, stages s=15
-  order = 8;
-  gamma.push_back(0.74167036435061295344822780);
-  gamma.push_back(-0.40910082580003159399730010);
-  gamma.push_back(0.19075471029623837995387626);
-  gamma.push_back(-0.57386247111608226665638773);
-  gamma.push_back(0.29906418130365592384446354);
-  gamma.push_back(0.33462491824529818378495798);
-  gamma.push_back(0.31529309239676659663205666);
-  gamma.push_back(-0.79688793935291635401978884); // 8
-  gamma.push_back(0.31529309239676659663205666);
-  gamma.push_back(0.33462491824529818378495798);
-  gamma.push_back(0.29906418130365592384446354);
-  gamma.push_back(-0.57386247111608226665638773);
-  gamma.push_back(0.19075471029623837995387626);
-  gamma.push_back(-0.40910082580003159399730010);
-  gamma.push_back(0.74167036435061295344822780);
-  // printf("Timestepper: Compositional Impl. Midpoint, order %d, %d stages\n", order, gamma.size());
+  gamma.clear();
+  if (order == 8){
+    gamma.push_back(0.74167036435061295344822780);
+    gamma.push_back(-0.40910082580003159399730010);
+    gamma.push_back(0.19075471029623837995387626);
+    gamma.push_back(-0.57386247111608226665638773);
+    gamma.push_back(0.29906418130365592384446354);
+    gamma.push_back(0.33462491824529818378495798);
+    gamma.push_back(0.31529309239676659663205666);
+    gamma.push_back(-0.79688793935291635401978884); // 8
+    gamma.push_back(0.31529309239676659663205666);
+    gamma.push_back(0.33462491824529818378495798);
+    gamma.push_back(0.29906418130365592384446354);
+    gamma.push_back(-0.57386247111608226665638773);
+    gamma.push_back(0.19075471029623837995387626);
+    gamma.push_back(-0.40910082580003159399730010);
+    gamma.push_back(0.74167036435061295344822780);
+  } else if (order == 4) {
+    gamma.push_back(1./(2. - pow(2., 1./3.)));
+    gamma.push_back(- pow(2., 1./3.)*gamma[0] );
+    gamma.push_back(1./(2. - pow(2., 1./3.)));
+  }
+
+  if (mpirank_world == 0) printf("Timestepper: Compositional Impl. Midpoint, order %d, %lu stages\n", order, gamma.size());
 
   // Allocate storage of stages for backward process 
   for (int i = 0; i <gamma.size(); i++) {
