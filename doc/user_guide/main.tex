@@ -548,8 +548,10 @@ The real and imaginary parts of $q(t)$ are stored in a colocated manner: For
     a linear equation is solved to get the stage variable $k_1$, which is then used it
     to update $q^{n+1}$. 
 
-    \subsubsection{Higher-order compositional IMR (\texttt{IMR8})}
-    A compositional version of the implicit midpoint rule is available that performs multiple IMR steps in each time step interval, which are composed in such a way that the resulting compositional step is of accuracy order 8. Compared to the standard IMR, this higher-order method can be very benefitial as it allows for much larger time-steps to be taken to reach a certain accuracy tolerance. Even though more work is done per timestep, the reduction in the number of time-steps needed can be several orders or magnitude and there is hence a tradeoff where the IMR8 outperforms the standard IMR scheme. 
+    \subsubsection{Higher-order compositional IMR (\texttt{IMR4}, or \texttt{IMR8})}
+    A compositional version of the Implicit Midpoint Rule is available that performs multiple IMR steps in each time step interval, which are composed in such a way that the resulting compositional step is of higher order. Currently, Compared to the standard IMR, the higher-order methods can be very benefitial as it allows for much larger time-steps to be taken to reach a certain accuracy tolerance. Even though more work is done per timestep, the reduction in the number of time-steps needed can be several orders or magnitude and there is hence a tradeoff where the compositional methods outperform the standard IMR scheme.
+
+    Currently available is a compositional method of 4-th order that performs 3 sub-steps per time step (\texttt{IMR4}), and a compositional method of 8-th order performing 15 sub-steps per time step (\texttt{IMR8}).
 
     \subsubsection{Choice of the time-step size}
     In order to choose a time-step size $\delta t$, an eigenvalue analysis of
