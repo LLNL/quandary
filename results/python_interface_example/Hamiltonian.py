@@ -18,7 +18,7 @@ def getLoweringOperators():
     
     return a
 
-## This is a function that Quandary REQUIRES to get the (time-independent) system Hamiltonian ##
+## This is a function that Quandary REQUIRES to get the (time-independent) system Hamiltonian (real part) ##
 # Return the vectorized Hamiltonian, column major vectorization (order='F')
 def getHd():
 
@@ -43,6 +43,10 @@ def getHd():
     Hdlist = list(np.array(Hd).flatten(order='F'))
     return Hdlist
 
+
+## Optionally, one can specify the imaginary part. In this example, the system Hamiltonian is real, so we can scip this. 
+#def getHd_imag():
+#    return [0.0]
 
 
 ## These are two optional functions that Quandary uses to get the time-dependent coupling Hamiltonians : Re(Hd_l(t)), and Im(Hd_l(t))

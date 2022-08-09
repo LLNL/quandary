@@ -641,7 +641,7 @@ void MasterEq::initSparseMatSolver(){
     PythonInterface* py = new PythonInterface(python_file, lindbladtype, dim_rho);
 
     /* Read Hamiltonians from python interface */
-    py->receiveHd(Bd);  // receiving Bd
+    py->receiveHd(Ad, Bd);  // receiving Bd
     py->receiveHc(noscillators, Ac_vec, Bc_vec); 
     py->receiveHcTransfer(noscillators, transfer_Hc_re, transfer_Hc_im);
     py->receiveHdt(Ad_vec, Bd_vec);
