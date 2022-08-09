@@ -40,7 +40,7 @@ class PythonInterface{
   /* Receive the constant system Hamiltonian from "getHd" */
   // The python function "getHd" MUST return a LIST of floats!
   // Hd must be REAL valued!
-  void receiveHd(Mat& Bd);
+  void receiveHd(Mat& Ad, Mat& Bd);
 
   /* Receive the time-varying system Hamiltonian part from "getHdt_real" and "getHdt_imag" */
   // These are <L> Hamiltonians that will be applied as 

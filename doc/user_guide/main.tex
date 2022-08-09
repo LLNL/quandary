@@ -237,13 +237,15 @@ The time-dependency is realized through real-valued transfer functions that mult
 
 \begin{itemize}
   \item \textbf{Time-independent system Hamiltonian $H_d$} (required)\\
-  The constant system Hamiltonian is assumed to be real-valued (for now): $H_d \in \R^{N\times N}$. It contains the time-independent (non-controllable) system Hamiltonian terms (detuning, anharmonicity, etc. and coupling terms, if they are time-constant). 
-  Quandary parses the python script for a function \texttt{\textbf{getHd}}, which must return a list of floats containing the vectorized matrix $H_d$ (column-major).
+  The constant system Hamiltonian $H_d \in \C^{N\times N}$ contains the time-independent (non-controllable) system Hamiltonian terms (detuning, anharmonicity, etc. and coupling terms, if they are time-constant). Typically, this Hamiltonian term is real-valued, and this real-valued Hamiltonian is \textit{required} to be provided through the python interface. To this end, 
+  Quandary parses the python script for a function \texttt{\textbf{getHd}}, which must return a list of floats containing the \textit{real-valued} part of the vectorized matrix $H_d$ (column-major). 
 
   \textbf{python function}\\
   \texttt{def getHd():}\\
   \indent\hspace{1cm}\texttt{[...]}  \\
   \indent\hspace{1cm}\texttt{return} vec($H_d$) 
+
+  In order to specifying a non-zero imaginary part of the system Hamiltonian (uncommon), the user defines the function \texttt{def getHd\_imag()} in the same way as above, in addition to the function \texttt{def getHd()}. 
 
   \item \textbf{Time-dependent system Hamiltonians $H_d(t)$} (optional) \\
   Multiple time-dependent system Hamiltonian terms can be defined through these interface functions (e.g. such as the Jaynes-Cummings coupling terms in the rotating frame). Each term, $H_d^l(t) \in \C^{N\times N}, l=0,1,\dots$ is complex, and their real and imaginary parts are composed of real-valued (transfer) functions $u^l(t), v^l(t)$ multiplying constant real and imaginary parts of the Hamiltonian matrix $\mbox{Re}(H_d^l)$, $\mbox{Im}(H_d^l)$: 

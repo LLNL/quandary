@@ -40,18 +40,20 @@ PythonInterface::~PythonInterface(){
 #endif
 }
 
-void PythonInterface::receiveHd(Mat& Bd){
+void PythonInterface::receiveHd(Mat& Ad, Mat& Bd){
 #ifdef WITH_PYTHON
 
   if (mpirank_world == 0) printf("Receiving system Hamiltonian...\n");
 
+  /* ----- Real system matrix Hd_real, stored in Bd ---- */
+
   // Get a pointer to the python function "getHd"
-  PyObject* pFunc_getHd = PyObject_GetAttrString(pModule, (char*)"getHd"); 
+  PyObject* pFunc_getHd_real = PyObject_GetAttrString(pModule, (char*)"getHd"); 
 
   // Call the python function.
   PyObject *pHd;
-  if (pFunc_getHd && PyCallable_Check(pFunc_getHd)) {
-    pHd = PyObject_CallObject(pFunc_getHd, NULL); // NULL: no input to getHd().
+  if (pFunc_getHd_real && PyCallable_Check(pFunc_getHd_real)) {
+    pHd = PyObject_CallObject(pFunc_getHd_real, NULL); // NULL: no input to getHd().
     PyErr_Print();
   } else PyErr_Print();
 
@@ -79,7 +81,7 @@ void PythonInterface::receiveHd(Mat& Bd){
   // printf("\n");
 
   // Cleanup
-  Py_XDECREF(pFunc_getHd); 
+  Py_XDECREF(pFunc_getHd_real); 
 
   /* Get matrix size */ 
   PetscInt dim = 0;
@@ -147,6 +149,104 @@ void PythonInterface::receiveHd(Mat& Bd){
   // PetscViewerFileSetName(viewer, "Bd_test.txt");
   // PetscViewerPushFormat(viewer, PETSC_VIEWER_ASCII_DENSE);
   // MatView(Bd_test, viewer);
+
+
+  /* ----- Imaginary system matrix Hd_imag, stored in Ad.  ---- */
+  // Note: Need to ADD to Ad rather than resetting it, since it might contain the Lindblad terms
+
+  // Get a pointer to the python function "getHd_imag"
+  PyObject* pFunc_getHd_imag = PyObject_GetAttrString(pModule, (char*)"getHd_imag"); 
+  // Call the python function.
+  PyObject *pHd_imag;
+  bool called_imag = false;
+  if (pFunc_getHd_imag && PyCallable_Check(pFunc_getHd_imag)) {
+    pHd_imag = PyObject_CallObject(pFunc_getHd_imag, NULL); // NULL: no input to getHd().
+    called_imag = true;
+    PyErr_Print();
+  } else PyErr_Print();
+
+  if (!called_imag || !PyList_Check(pHd_imag)) {
+    if (mpirank_world == 0) printf("# No imaginary system Hamiltonian received. \n");
+  } else {
+
+    /* Convert the result from python object to double vector */
+    int length = 0;
+    if (PyList_Check(pHd_imag)) {
+      length = PyList_Size(pHd_imag);
+      PyErr_Print();
+    }
+    // printf("getHd_imag(): Received a list of length = %d \n", length);
+    std::vector<double> vals;
+    std::vector<int> ids;
+    for (Py_ssize_t i=0; i<length; i++){
+      PyObject* value = PyList_GetItem(pHd_imag,i);  // TODO: Does this need a Py_DECREF at some point?
+      PyErr_Print();
+      double val = PyFloat_AsDouble(value);
+      PyErr_Print();
+      if (fabs(val) > 1e-14) {  // store only nonzeros
+        vals.push_back(val);
+        ids.push_back(i);
+      }
+    }
+    // print vals 
+    // for (int i=0; i<vals.size(); i++) printf("%d %f, ", ids[i], vals[i]);
+    // printf("\n");
+
+    // Cleanup
+    Py_XDECREF(pFunc_getHd_imag); 
+
+    /* Write values into sparse Petsc matrix Ad. */
+    // Ad had been allocated before and potentially contains the Lindblad terms. Copy values into temporary matrix and add it later to what we read from the python file here. 
+    Mat Ad_copy;
+    MatDuplicate(Ad, MAT_COPY_VALUES, &Ad_copy);
+    MatDestroy(&Ad);
+    MatCreate(PETSC_COMM_WORLD, &Ad);
+    MatSetType(Ad, MATMPIAIJ);
+    MatSetSizes(Ad, PETSC_DECIDE, PETSC_DECIDE, dim, dim); // dim = N^2 for Lindblad, N for Schroedinger
+    MatSetUp(Ad);
+    MatSetFromOptions(Ad);
+    MatGetOwnershipRange(Ad, &ilow, &iupp);
+
+    sqdim = dim; // could be N^2 or N
+    if (lindbladtype != LindbladType::NONE) sqdim = (int) sqrt(dim); // sqdim = N 
+
+    // Iterate over nonzero elements
+    for (int i = 0; i<ids.size(); i++) {
+      // Get position in the Bd matrix
+      int row = ids[i] % sqdim;
+      int col = ids[i] / sqdim;
+      // MatSetValue(Bd_test, row, col, vals[i], INSERT_VALUES);
+
+      // If Schroedinger: Assemble -B_d 
+      if (lindbladtype == LindbladType::NONE) {
+        double val = -1.*vals[i];
+        if (ilow <= row && row < iupp) MatSetValue(Ad, row, col, val, ADD_VALUES);
+      } else {
+      // If Lindblad: Assemble -I_N \kron B_d + B_d \kron I_N
+        for (int k=0; k<sqdim; k++){
+          // first place all -v_ij in the -I_N \kron B_d term:
+          int rowk = row + sqdim * k;
+          int colk = col + sqdim * k;
+          double val = -1.*vals[i];
+          if (ilow <= rowk && rowk < iupp) MatSetValue(Ad, rowk, colk, val, ADD_VALUES);
+          // Then add v_ij in the B_d \kron I_N term:
+          rowk = row*sqdim + k;
+          colk = col*sqdim + k;
+          val = vals[i];
+          if (ilow <= rowk && rowk < iupp) MatSetValue(Ad, rowk, colk, val, ADD_VALUES);
+        }
+      } 
+    }
+    MatAssemblyBegin(Ad, MAT_FINAL_ASSEMBLY);
+    MatAssemblyEnd(Ad, MAT_FINAL_ASSEMBLY);
+
+    /* Potentially add Lindblad terms */
+    MatAXPY(Ad, 1.0, Ad_copy, DIFFERENT_NONZERO_PATTERN);
+    MatDestroy(&Ad_copy);
+  }
+
+
+
 #endif
 }
 
