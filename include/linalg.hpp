@@ -26,6 +26,8 @@ class Vector {
     virtual void setValues(std::vector<int>& indices, std::vector<double>& vals)=0; // Insert values at given index locations
     virtual void add(double a, Vector* y)=0;  /* Addition: x += ay */
     virtual void scale(double a)=0;            /* x = a*x */
+    virtual double* c_ptr()=0;
+    virtual void restore_ptr(double* ptr)=0;
 };
 
 /* Vector based on Petsc's MPI Vec */
@@ -47,19 +49,25 @@ class Vec_MPI : public Vector {
     void setValues(std::vector<int>& indices, std::vector<double>& vals);
     void add(double a, Vector* y);
     void scale(double a);
+    double* c_ptr();
+    void restore_ptr(double* ptr);
 };
 
 /* Vector based on Bjorn's handcoded OpenMP parallelization */
 class Vec_OpenMP : public Vector {
+   double* m_data;
+   int ilow, iupp;
   public:
     Vec_OpenMP();
+    Vec_OpenMP(int n);
     ~Vec_OpenMP();
-
     void view();
     void setZero();  
     double normsq();
     void add(double a, Vector* y);
     void scale(double a);
+    double* c_ptr();
+    void restore_ptr(double* ptr);
 };
 
 /* Abstract base class for sparse Matrix representation */
@@ -108,12 +116,19 @@ class Mat_MPI: public SparseMatrix {
 /* Sparse Matrix using Bjorn's handcoded matrices and OpenMP parallelization */
 class Mat_OpenMP : public SparseMatrix {
   public:
-    Mat_OpenMP(); 
+    Mat_OpenMP();
+    Mat_OpenMP(int dim);
     ~Mat_OpenMP(); 
 
+    int m_nrows, m_ncols;
+    int* m_rowstarts, *m_cols;
+    double* m_elements;
+
+    void setup( int sysnr, int offnr, std::vector<int> n, double* alpha, bool kmat );
+    void setupJ( std::vector<int> n, int k, double* alphak, int ok, 
+                int m, double* alpham, int om, bool re );
     void view();
     void setValues(std::vector<int>& rows, std::vector<int>& cols, std::vector<double>& vals);
-    void add(double a, Vector* y);
     void mult(Vector* xin, Vector* xout, bool add=false);
 };
 

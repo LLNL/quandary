@@ -1,5 +1,5 @@
 #include "mastereq.hpp"
-
+#include "hamiltonian.hpp"
 
 
 
@@ -14,10 +14,12 @@ MasterEq::MasterEq(){
   dRedp = NULL;
   dImdp = NULL;
   usematfree = false;
+  ham = NULL;
 }
 
 
 MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Oscillator** oscil_vec_, const std::vector<double> crosskerr_, const std::vector<double> Jkl_, const std::vector<double> eta_, LindbladType lindbladtype_, bool usematfree_) {
+  bool original_ham=false;
   int ierr;
 
   nlevels = nlevels_;
@@ -177,6 +179,11 @@ MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Osci
     MatShellSetOperation(RHS, MATOP_MULT, (void(*)(void)) myMatMult_sparsemat);
     MatShellSetOperation(RHS, MATOP_MULT_TRANSPOSE, (void(*)(void)) myMatMultTranspose_sparsemat);
   }
+
+  if( original_ham )
+     ham = new HamiltonianA(this);
+  else
+     ham = new HamiltonianB(this);
 }
 
 
@@ -941,6 +948,11 @@ int MasterEq::getNOscillators() { return noscillators; }
 
 Oscillator* MasterEq::getOscillator(const int i) { return oscil_vec[i]; }
 
+double MasterEq::getCrosskerr(int k) { return crosskerr[k];}
+
+double MasterEq::getEta(int k) { return eta[k];}
+
+double MasterEq::getJkl(int k) { return Jkl[k];}
 
 int MasterEq::assemble_RHS(const double t){
   int ierr;
@@ -1768,6 +1780,9 @@ int MasterEq::getRhoT0(const int iinit, const int ninit, const InitialConditionT
 
 
 void MasterEq::applyRHS(double t, Vector* u, Vector* v, Vector* uout, Vector* vout){
+   ham->apply(t,u,v,uout,vout);
+}
+void MasterEq::applyRHS0(double t, Vector* u, Vector* v, Vector* uout, Vector* vout){
 
   // uout = Re*u - Im*v
   //      = (Ad +  sum_k q_kA_k)*u - (Bd + sum_k p_kB_k)*v

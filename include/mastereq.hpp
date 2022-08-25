@@ -9,6 +9,7 @@
 #include "linalg.hpp"
 #pragma once
 
+class Hamiltonian;
 
 /* Define a matshell context containing pointers to data needed for applying the RHS matrix to a vector */
 typedef struct {
@@ -61,13 +62,13 @@ class MasterEq{
 
     /* New format for Hamiltonian and Lindblad matrices Store pointers to the matrices, or vector of matrices */
     // SparseMatrix RHS_LA; // Shell?
-    SparseMatrix* Ad_LA; 
-    SparseMatrix* Bd_LA;
-    std::vector<SparseMatrix*> Ac_LA_vec;
-    std::vector<SparseMatrix*> Bc_LA_vec;
-    std::vector<SparseMatrix*> Ad_LA_vec;
-    std::vector<SparseMatrix*> Bd_LA_vec;
-    Vector* aux_LA;  
+   //    SparseMatrix* Ad_LA; 
+   //    SparseMatrix* Bd_LA;
+   //    std::vector<SparseMatrix*> Ac_LA_vec;
+   //    std::vector<SparseMatrix*> Bc_LA_vec;
+   //    std::vector<SparseMatrix*> Ad_LA_vec;
+   //    std::vector<SparseMatrix*> Bd_LA_vec;
+   //    Vector* aux_LA;  
 
     /* Previous matrices */
     Mat* Ac_vec;  // Vector of constant mats for time-varying control term (real)
@@ -91,7 +92,8 @@ class MasterEq{
     Vec aux;              // auxiliary vector 
     PetscInt* cols;           // holding columns when evaluating dRHSdp
     PetscScalar* vals;   // holding values when evaluating dRHSdp
- 
+    
+    Hamiltonian* ham; 
   public:
     std::vector<int> nlevels;  // Number of levels per oscillator
     std::vector<int> nessential; // Number of essential levels per oscillator
@@ -100,6 +102,14 @@ class MasterEq{
     IS isu, isv;         // Vector strides for accessing u=Re(x), v=Im(x) 
 
   public:
+    SparseMatrix* Ad_LA; 
+    SparseMatrix* Bd_LA;
+    std::vector<SparseMatrix*> Ac_LA_vec;
+    std::vector<SparseMatrix*> Bc_LA_vec;
+    std::vector<SparseMatrix*> Ad_LA_vec;
+    std::vector<SparseMatrix*> Bd_LA_vec;
+    Vector* aux_LA;  
+
     MasterEq();
     MasterEq(std::vector<int> nlevels, std::vector<int> nessential, Oscillator** oscil_vec_, const std::vector<double> crosskerr_, const std::vector<double> Jkl_, const std::vector<double> eta_, LindbladType lindbladtype_, bool usematfree_);
     ~MasterEq();
@@ -110,6 +120,15 @@ class MasterEq{
 
     /* Return the i-th oscillator */
     Oscillator* getOscillator(const int i);
+
+    /* Return cross-kerr coefficient nr. k */
+    double getCrosskerr(int k);
+
+    /* Return eta frequency nr. k */
+    double getEta(int k);
+
+    /* Return Jkl coefficient nr. k */
+    double getJkl(int k);
 
     /* Return number of oscillators */
     int getNOscillators();
@@ -133,7 +152,7 @@ class MasterEq{
     Mat getRHS();
 
     void applyRHS(double t, Vector* in_re, Vector* in_im, Vector* out_re, Vector* out_im);
-
+    void applyRHS0(double t, Vector* in_re, Vector* in_im, Vector* out_re, Vector* out_im);
     /* 
      * Compute gradient of RHS wrt control parameters:
      * grad += alpha * RHS(x)^T * x_bar  

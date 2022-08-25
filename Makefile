@@ -1,6 +1,7 @@
 # Set location of PETSC
 #PETSC_DIR=/path/to/petsc
 #PETSC_ARCH=arch-linux-c-debug
+PETSC_DIR=/usr/workspace/wsa/wave/quartz
 
 # Choose to link with XBraid and set the location
 WITH_XBRAID = false
@@ -58,7 +59,7 @@ INC = -I$(INC_DIR) -I${PETSC_DIR}/include -I${PETSC_DIR}/${PETSC_ARCH}/include $
 
 # Set Library paths and flags
 LDPATH  = ${PETSC_DIR}/${PETSC_ARCH}/lib
-LDFLAGS = -lpetsc -lm  -L${PETSC_DIR}/${PETSC_ARCH}/lib -lblas -llapack ${LDFLAGS_OPT}
+LDFLAGS = -lpetsc -lm  -L${PETSC_DIR}/${PETSC_ARCH}/lib -lblas -llapack ${LDFLAGS_OPT} -Wl,-rpath=$(PETSC_DIR)/lib
 
 # Set compiler and flags 
 CXX=mpicxx
