@@ -3,7 +3,11 @@
   * T = 200ns, time step size = 0.1ns
   * run optimization from scratch (using random initial controls) with config file 'cnot.cfg', or 
   * run forward simulation of the optimized controls (params_optimized.dat) using 'cnot_FWD_optimized.cfg'
+  * Optimization in open system setting (density matrix) using three initial states a la C. Koch
 
+swap02:
+  * Considers one qutrid (3 levels, 1 guard level)
+  * Optimizes for a SWAP02 gate that swapps the |0> with the |1> state. 
 
 3x20_AliceCavity_cooling:
   * Models a qudit (3 levels, "Alice") coupled to a readout cavity (20 levels). System configuration for the 'Nut' resonator at LLNL.
