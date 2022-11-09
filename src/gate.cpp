@@ -498,6 +498,11 @@ FromFile::FromFile(std::vector<int> nlevels_, std::vector<int> nessential_, doub
   MatAssemblyEnd(V_re, MAT_FINAL_ASSEMBLY);
   MatAssemblyEnd(V_im, MAT_FINAL_ASSEMBLY);
 
+  printf("Target Gate: Re(V) = \n");
+  MatView(V_re, NULL);
+  printf("Target Gate: Im(V) = \n");
+  MatView(V_im, NULL);
+
   /* assemble vectorized rotated target gate \bar VP \kron VP from V=V_re + i V_im */
   assembleGate();
 }
