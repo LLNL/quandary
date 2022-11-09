@@ -53,6 +53,7 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   /* Store other optimization parameters */
   gamma_tik = config.GetDoubleParam("optim_regul", 1e-4);
   gatol = config.GetDoubleParam("optim_atol", 1e-8);
+  fatol = config.GetDoubleParam("optim_ftol", 1e-8);
   grtol = config.GetDoubleParam("optim_rtol", 1e-4);
   maxiter = config.GetIntParam("optim_maxiter", 200);
   initguess_type = config.GetStrParam("optim_init", "zero");
@@ -374,6 +375,7 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   TaoSetType(tao,TAOBQNLS);         // Optim type: taoblmvm vs BQNLS ??
   TaoSetMaximumIterations(tao, maxiter);
   TaoSetTolerances(tao, gatol, PETSC_DEFAULT, grtol);
+  TaoSetFunctionLowerBound(tao, fatol);
   TaoSetMonitor(tao, TaoMonitor, (void*)this, NULL);
   TaoSetVariableBounds(tao, xlower, xupper);
   TaoSetFromOptions(tao);
