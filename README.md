@@ -5,6 +5,8 @@ A documentation is under development. In the meantime, refer to the user guide i
 
 For questions, feel free to reach out to Stefanie Guenther [guenther5@llnl.gov].
 
+*For newest features, check out the 'develop' branch. In particular, we have added a python interface that enables arbitrary user-defined Hamiltonian systems.*
+
 ## Dependencies
 This project relies on Petsc [https://petsc.org/release/] to handle (parallel) linear algebra. Optionally, XBraid [https://github.com/XBraid/xbraid] can be linked to realize time-parallelization, and Slepsc [https://slepc.upv.es] can be used to solve some eigenvalue problems if desired (e.g. for the Hessian...)
 * **Required:** Install Petsc:
