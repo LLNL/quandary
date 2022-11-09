@@ -54,6 +54,7 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   gamma_tik = config.GetDoubleParam("optim_regul", 1e-4);
   gatol = config.GetDoubleParam("optim_atol", 1e-8);
   fatol = config.GetDoubleParam("optim_ftol", 1e-8);
+  inftol = config.GetDoubleParam("optim_inftol", 1e-5);
   grtol = config.GetDoubleParam("optim_rtol", 1e-4);
   maxiter = config.GetIntParam("optim_maxiter", 200);
   initguess_type = config.GetStrParam("optim_init", "zero");
@@ -375,7 +376,6 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   TaoSetType(tao,TAOBQNLS);         // Optim type: taoblmvm vs BQNLS ??
   TaoSetMaximumIterations(tao, maxiter);
   TaoSetTolerances(tao, gatol, PETSC_DEFAULT, grtol);
-  TaoSetFunctionLowerBound(tao, fatol);
   TaoSetMonitor(tao, TaoMonitor, (void*)this, NULL);
   TaoSetVariableBounds(tao, xlower, xupper);
   TaoSetFromOptions(tao);
@@ -832,6 +832,14 @@ PetscErrorCode TaoMonitor(Tao tao,void*ptr){
 
   /* Print parameters and controls to file */
   ctx->output->writeControls(params, ctx->timestepper->mastereq, ctx->timestepper->ntime, ctx->timestepper->dt);
+
+  if (1.0 - F_avg <= ctx->getInfTol()) {
+    printf("Optimization finished with small infidelity.\n");
+    TaoSetConvergedReason(tao, TAO_CONVERGED_USER);
+  } else if (obj_cost <= ctx->getFaTol()) {
+    printf("Optimization finished with small final time cost.\n");
+    TaoSetConvergedReason(tao, TAO_CONVERGED_USER);
+  }
 
   return 0;
 }

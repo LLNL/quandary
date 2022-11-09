@@ -58,6 +58,7 @@ class OptimProblem {
   double penalty_param;            /* Parameter inside integral penalty term w(t) (Gaussian variance) */
   double gatol;                    /* Stopping criterion based on absolute gradient norm */
   double fatol;                    /* Stopping criterion based on objective function value */
+  double inftol;                   /* Stopping criterion based on infidelity */
   double grtol;                    /* Stopping criterion based on relative gradient norm */
   int maxiter;                     /* Stopping criterion based on maximum number of iterations */
   Tao tao;                         /* Petsc's Optimization solver */
@@ -86,6 +87,8 @@ class OptimProblem {
   double getRegul()    { return obj_regul; };
   double getPenalty()  { return obj_penal; };
   double getFidelity() { return fidelity; };
+  double getFaTol()    { return fatol; };
+  double getInfTol()   { return inftol; };
 
   /* Evaluate the objective function F(x) */
   double evalF(const Vec x);
