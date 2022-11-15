@@ -46,18 +46,20 @@ Output::Output(MapParam& config, MPI_Comm comm_petsc, MPI_Comm comm_init, int no
   writefullstate = false;
   writenhalf = false;
   writemagnet= false;
+  writeexpected = false;
   for (int i=0; i<outputstr.size(); i++) {
     for (int j=0; j<outputstr[i].size(); j++) {
       if (outputstr[i][j].compare("fullstate") == 0 ) writefullstate = true;
       if (outputstr[i][j].compare("nhalf") == 0 ) writenhalf= true;
       if (outputstr[i][j].compare("magnetization") == 0 ) writemagnet= true;
+      if (outputstr[i][j].compare("expectedEnergy") == 0 ) writeexpected = true;
     }
   }
 
   /* Prepare data output files */
   ufile = NULL;
   vfile = NULL;
-  for (int i=0; i< outputstr.size(); i++) expectedfile.push_back (NULL);
+  expectedfile = NULL;
   for (int i=0; i< outputstr.size(); i++) populationfile.push_back (NULL);
   nhalffile = NULL;
   magnetfile = NULL;
@@ -187,16 +189,16 @@ void Output::openDataFiles(std::string prefix, int initid){
     magnetfile = fopen(filename, "w");
   }
 
+  /* Open file for excected energy level */
+  if (mpirank_petsc == 0 && writeexpected && write_this_iter) {
+    sprintf(filename, "%s/expectedEnergy.iinit%04d%s.dat", datadir.c_str(), initid, postchar);
+    expectedfile = fopen(filename, "w");
+  }
 
-  /* Open files for expected energy and population  */
+  /* Open files for population  */
   if (mpirank_petsc == 0 && write_this_iter) {
     for (int i=0; i<outputstr.size(); i++) {
       for (int j=0; j<outputstr[i].size(); j++) {
-        if (outputstr[i][j].compare("expectedEnergy") == 0) {
-          sprintf(filename, "%s/expected%d.iinit%04d%s.dat", datadir.c_str(), i, initid, postchar);
-          expectedfile[i] = fopen(filename, "w");
-          fprintf(expectedfile[i], "# time      expected energy level\n");
-        }
         if (outputstr[i][j].compare("population") == 0) {
           sprintf(filename, "%s/population%d.iinit%04d%s.dat", datadir.c_str(), i, initid, postchar);
           populationfile[i] = fopen(filename, "w");
@@ -213,11 +215,6 @@ void Output::writeDataFiles(int timestep, double time, const Vec state, MasterEq
   /* Write output only every <num> time-steps */
   if (timestep % output_frequency == 0) {
 
-    /* Write expected energy levels to file */
-    for (int iosc = 0; iosc < expectedfile.size(); iosc++) {
-      double expected = mastereq->getOscillator(iosc)->expectedEnergy(state);
-      if (expectedfile[iosc] != NULL) fprintf(expectedfile[iosc], "%.8f %1.14e\n", time, expected);
-    }
 
     /* Write nhalf to file */
     if (nhalffile != NULL) {
@@ -239,6 +236,18 @@ void Output::writeDataFiles(int timestep, double time, const Vec state, MasterEq
       }
       fprintf(magnetfile, "\n");
     }
+
+    /* Write expected energy to file */
+    if (expectedfile != NULL) {
+      fprintf(expectedfile, "%.8f ", time);
+      for (int iosc = 0; iosc < mastereq->getNOscillators(); iosc++) {
+        double expected = mastereq->getOscillator(iosc)->expectedEnergy(state);
+        fprintf(expectedfile, " %1.14e", expected);
+      }
+      fprintf(expectedfile, "\n");
+    }
+
+
 
     /* Write population to file */
     for (int iosc = 0; iosc < populationfile.size(); iosc++) {
@@ -304,11 +313,9 @@ void Output::closeDataFiles(){
     fclose(magnetfile);
     magnetfile= NULL;
   }
-  for (int i=0; i< expectedfile.size(); i++) {
-    if (expectedfile[i] != NULL) {
-      fclose(expectedfile[i]);
-      expectedfile[i] = NULL;
-    }
+  if (expectedfile != NULL) {
+    fclose(expectedfile);
+    expectedfile = NULL;
   }
   for (int i=0; i< populationfile.size(); i++) {
     if (populationfile[i] != NULL) {
