@@ -45,10 +45,12 @@ Output::Output(MapParam& config, MPI_Comm comm_petsc, MPI_Comm comm_init, int no
   /* Search through outputstrings to see if any oscillator contains "fullstate" */
   writefullstate = false;
   writenhalf = false;
+  writemagnet= false;
   for (int i=0; i<outputstr.size(); i++) {
     for (int j=0; j<outputstr[i].size(); j++) {
       if (outputstr[i][j].compare("fullstate") == 0 ) writefullstate = true;
       if (outputstr[i][j].compare("nhalf") == 0 ) writenhalf= true;
+      if (outputstr[i][j].compare("magnetization") == 0 ) writemagnet= true;
     }
   }
 
@@ -58,6 +60,7 @@ Output::Output(MapParam& config, MPI_Comm comm_petsc, MPI_Comm comm_init, int no
   for (int i=0; i< outputstr.size(); i++) expectedfile.push_back (NULL);
   for (int i=0; i< outputstr.size(); i++) populationfile.push_back (NULL);
   nhalffile = NULL;
+  magnetfile = NULL;
 
 }
 
@@ -178,6 +181,13 @@ void Output::openDataFiles(std::string prefix, int initid){
     nhalffile = fopen(filename, "w");
   }
 
+  /* Open file for magnetization */
+  if (mpirank_petsc == 0 && writemagnet&& write_this_iter) {
+    sprintf(filename, "%s/magnetization.iinit%04d%s.dat", datadir.c_str(), initid, postchar);
+    magnetfile = fopen(filename, "w");
+  }
+
+
   /* Open files for expected energy and population  */
   if (mpirank_petsc == 0 && write_this_iter) {
     for (int i=0; i<outputstr.size(); i++) {
@@ -209,7 +219,7 @@ void Output::writeDataFiles(int timestep, double time, const Vec state, MasterEq
       if (expectedfile[iosc] != NULL) fprintf(expectedfile[iosc], "%.8f %1.14e\n", time, expected);
     }
 
-    /* Write nhalf energy levels to file */
+    /* Write nhalf to file */
     if (nhalffile != NULL) {
       double sumnhalf = 0.0;
       for (int iosc = 0; iosc < mastereq->getNOscillators()/2; iosc++) {
@@ -218,6 +228,16 @@ void Output::writeDataFiles(int timestep, double time, const Vec state, MasterEq
       // printf("%f: nhalf = %1.2f + %d\n", time, sumnhalf, mastereq->getNOscillators()/2);
       sumnhalf = sumnhalf + mastereq->getNOscillators()/2.0;
       if (nhalffile != NULL) fprintf(nhalffile, "%.8f %1.14e\n", time, sumnhalf);
+    }
+
+    /* Write local magnetization to file */
+    if (magnetfile != NULL) {
+      fprintf(magnetfile, "%.8f ", time);
+      for (int iosc = 0; iosc < mastereq->getNOscillators(); iosc++) {
+        double expected = mastereq->getOscillator(iosc)->expectedEnergy(state);
+        fprintf(magnetfile, " %1.14e", -2.0*expected + 1.0);
+      }
+      fprintf(magnetfile, "\n");
     }
 
     /* Write population to file */
@@ -279,6 +299,10 @@ void Output::closeDataFiles(){
   if (nhalffile != NULL) {
     fclose(nhalffile);
     nhalffile = NULL;
+  }
+  if (magnetfile!= NULL) {
+    fclose(magnetfile);
+    magnetfile= NULL;
   }
   for (int i=0; i< expectedfile.size(); i++) {
     if (expectedfile[i] != NULL) {

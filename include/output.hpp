@@ -20,10 +20,12 @@ class Output{
 
   bool writefullstate;  /* Flag to determin if full state vector should be written to file */
   bool writenhalf;  /* Flag to determin if full state vector should be written to file */
+  bool writemagnet;  /* Flag to determin if full state vector should be written to file */
   FILE *ufile;          /* File for writing real part of solution vector */
   FILE *vfile;          /* File for writing imaginary part of solution vector */
   std::vector<FILE *>expectedfile;    /* Files for writing expected energy levels over time */
   FILE *nhalffile; 
+  FILE *magnetfile; 
   std::vector<FILE *>populationfile;  /* Files for writing population over time */
 
   // VecScatter scat;    /* Petsc's scatter context to communicate a state across petsc's cores */
