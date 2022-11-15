@@ -44,9 +44,11 @@ Output::Output(MapParam& config, MPI_Comm comm_petsc, MPI_Comm comm_init, int no
 
   /* Search through outputstrings to see if any oscillator contains "fullstate" */
   writefullstate = false;
+  writenhalf = false;
   for (int i=0; i<outputstr.size(); i++) {
     for (int j=0; j<outputstr[i].size(); j++) {
       if (outputstr[i][j].compare("fullstate") == 0 ) writefullstate = true;
+      if (outputstr[i][j].compare("nhalf") == 0 ) writenhalf= true;
     }
   }
 
@@ -55,6 +57,7 @@ Output::Output(MapParam& config, MPI_Comm comm_petsc, MPI_Comm comm_init, int no
   vfile = NULL;
   for (int i=0; i< outputstr.size(); i++) expectedfile.push_back (NULL);
   for (int i=0; i< outputstr.size(); i++) populationfile.push_back (NULL);
+  nhalffile = NULL;
 
 }
 
@@ -169,7 +172,13 @@ void Output::openDataFiles(std::string prefix, int initid){
     vfile = fopen(filename, "w"); 
   }
 
-  /* Open files for expected energy */
+  /* Open file for nhalf */
+  if (mpirank_petsc == 0 && writenhalf&& write_this_iter) {
+    sprintf(filename, "%s/nhalf.iinit%04d%s.dat", datadir.c_str(), initid, postchar);
+    nhalffile = fopen(filename, "w");
+  }
+
+  /* Open files for expected energy and population  */
   if (mpirank_petsc == 0 && write_this_iter) {
     for (int i=0; i<outputstr.size(); i++) {
       for (int j=0; j<outputstr[i].size(); j++) {
@@ -198,6 +207,17 @@ void Output::writeDataFiles(int timestep, double time, const Vec state, MasterEq
     for (int iosc = 0; iosc < expectedfile.size(); iosc++) {
       double expected = mastereq->getOscillator(iosc)->expectedEnergy(state);
       if (expectedfile[iosc] != NULL) fprintf(expectedfile[iosc], "%.8f %1.14e\n", time, expected);
+    }
+
+    /* Write nhalf energy levels to file */
+    if (nhalffile != NULL) {
+      double sumnhalf = 0.0;
+      for (int iosc = 0; iosc < mastereq->getNOscillators()/2; iosc++) {
+        sumnhalf -= mastereq->getOscillator(iosc)->expectedEnergy(state);
+      }
+      // printf("%f: nhalf = %1.2f + %d\n", time, sumnhalf, mastereq->getNOscillators()/2);
+      sumnhalf = sumnhalf + mastereq->getNOscillators()/2.0;
+      if (nhalffile != NULL) fprintf(nhalffile, "%.8f %1.14e\n", time, sumnhalf);
     }
 
     /* Write population to file */
@@ -255,6 +275,10 @@ void Output::closeDataFiles(){
   if (vfile != NULL) {
     fclose(vfile);
     vfile = NULL;
+  }
+  if (nhalffile != NULL) {
+    fclose(nhalffile);
+    nhalffile = NULL;
   }
   for (int i=0; i< expectedfile.size(); i++) {
     if (expectedfile[i] != NULL) {
