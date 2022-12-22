@@ -19,20 +19,20 @@ configfile = Config(inputname + ".cfg")
 # Location and name of the Quandary executable
 executable = "/Users/guenther5/Numerics/quandary/main"
 
-N = 8 # Number of spin sites
-
-# Specify h and J amplitudes (frequency domain, quandary multiplies by 2pi!)
-hamp = 1.0   # GHz?
-Jamp = 1.0   
+# Specify the number of spin sites
+N = 8 
 
 # Specify the initial condition. Here: domain wall |111...000>
 initstate= np.zeros(N)
 for i in range(int(N/2)):
    initstate[i] = 1.0 
 
-# Specify the number of samples for h
-nsamples = 1 # 10
+# Specify h and J amplitudes
+hamp = 1.0
+Jamp = 1.0   
 
+# Specify the number of samples for h
+nsamples = 10
 
 # Submit the job(s).
 for isample in range(nsamples):
@@ -65,7 +65,7 @@ for isample in range(nsamples):
         #print("target", targetstr)
 
         # Specify the jobname 
-        jobname =  inputname+str(N) +"_" + str(isample)
+        jobname =  inputname+str(N) + "_Lindblad_" + str(isample)
 
         # create folder for the job
         if os.path.exists(jobname):

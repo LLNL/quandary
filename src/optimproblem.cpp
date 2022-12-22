@@ -793,7 +793,7 @@ void OptimProblem::getStartingPoint(Vec xinit){
   timestepper->mastereq->setControlAmplitudes(xinit);
   
   /* Write initial control functions to file */
-  output->writeControls(xinit, timestepper->mastereq, timestepper->ntime, timestepper->dt);
+  // output->writeControls(xinit, timestepper->mastereq, timestepper->ntime, timestepper->dt);
 
 }
 
@@ -831,7 +831,7 @@ PetscErrorCode TaoMonitor(Tao tao,void*ptr){
   ctx->output->writeOptimFile(f, gnorm, deltax, F_avg, obj_cost, obj_regul, obj_penal);
 
   /* Print parameters and controls to file */
-  ctx->output->writeControls(params, ctx->timestepper->mastereq, ctx->timestepper->ntime, ctx->timestepper->dt);
+  // ctx->output->writeControls(params, ctx->timestepper->mastereq, ctx->timestepper->ntime, ctx->timestepper->dt);
 
   if (1.0 - F_avg <= ctx->getInfTol()) {
     printf("Optimization finished with small infidelity.\n");
