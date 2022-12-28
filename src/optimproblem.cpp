@@ -793,7 +793,7 @@ void OptimProblem::getStartingPoint(Vec xinit){
   timestepper->mastereq->setControlAmplitudes(xinit);
   
   /* Write initial control functions to file */
-  output->writeControls(xinit, timestepper->mastereq, timestepper->ntime, timestepper->dt);
+  //output->writeControls(xinit, timestepper->mastereq, timestepper->ntime, timestepper->dt);
 
 }
 
