@@ -504,8 +504,8 @@ FromFile::FromFile(std::vector<int> nlevels_, std::vector<int> nessential_, doub
   // MatView(V_im, NULL);
 
   bool isunitary = isUnitary(V_re, V_im);
-  if (!isunitary) {
-    printf("\n\n WARNING: Target Gate is *not* unitary!\n\n\n");
+  if (!isunitary && mpirank_world == 0) {
+    printf("\n WARNING: Target Gate is *not* unitary!\n\n");
     // exit(1);
   }
 
