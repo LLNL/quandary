@@ -43,6 +43,13 @@ def submit_job(jobname, runcommand, ntasks, time_limit, executable, arguments, a
     if run:
       subprocess.call("sbatch " + jobname + ".batch", shell=True)
 
+
+def submit_job_local(jobname, executable, arguments, run=True):
+
+    if run:
+      subprocess.call(executable + " " + arguments, shell=True)
+
+
 def assemble_batch_script(name, run_command, args):
     
     outfile = open(name, 'w')
