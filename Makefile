@@ -58,7 +58,7 @@ INC = -I$(INC_DIR) -I${PETSC_DIR}/include -I${PETSC_DIR}/${PETSC_ARCH}/include $
 
 # Set Library paths and flags
 LDPATH  = ${PETSC_DIR}/${PETSC_ARCH}/lib
-LDFLAGS = -lpetsc -lm  -L${PETSC_DIR}/${PETSC_ARCH}/lib -lblas -llapack ${LDFLAGS_OPT}
+LDFLAGS =  -lm  -L${PETSC_DIR}/${PETSC_ARCH}/lib -lblas -llapack ${LDFLAGS_OPT} -lpetsc
 
 # Set compiler and flags 
 CXX=mpicxx
