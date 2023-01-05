@@ -18,7 +18,7 @@ swap02:
   * Note that since many tiny time-steps are performed, this testcase takes a while to simulate (and hence to optimize)...
 
 
-3x20_pipulse_experiment:
+3x20_pipulse:
   * Same system configuration as for the alice-cavity cooling test case above.
   * The configuration file 'AxC.cfg' is set up to apply a pi-pulse to the qudit ("Alice") at ground frequency starting at T=2us$ for a total of 0.104us with amplitude 15.10381. No drive for the cavity.
 

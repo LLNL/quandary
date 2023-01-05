@@ -124,19 +124,18 @@ int main(int argc,char **argv)
   MPI_Comm comm_optim, comm_init, comm_petsc;
 
   /* Get the size of communicators  */
-  int np_optim= config.GetIntParam("np_optim", 1);
-  np_optim= min(np_optim, mpisize_world); 
-  int np_init  = min(ninit, config.GetIntParam("np_init", 1)); 
-  np_init  = min(np_init,  mpisize_world); 
+  // Number of cores for optimization. Under development, set to 1 for now. 
+  // int np_optim= config.GetIntParam("np_optim", 1);
+  // np_optim= min(np_optim, mpisize_world); 
+  int np_optim= 1;
+  // Number of cores for initial condition distribution. Since this gives perfect speedup, choose maximum.
+  int np_init = min(ninit, mpisize_world); 
+  // Number of cores for Petsc: All the remaining ones. 
   int np_petsc = mpisize_world / (np_init * np_optim);
 
   /* Sanity check for communicator sizes */ 
-  if (ninit % np_init != 0){
-    printf("ERROR: Wrong processor distribution! \n Size of communicator for distributing initial conditions (%d) must be integer divisor of the total number of initial conditions (%d)!!\n", np_init, ninit);
-    exit(1);
-  }
-  if (mpisize_world % (np_init * np_optim) != 0) {
-    printf("ERROR: Wrong number of threads! \n Total number of threads (%d) must be integer multiple of the product of communicator sizes for initial conditions and optimization (%d * %d)!\n", mpisize_world, np_init, np_optim);
+  if (mpisize_world % ninit != 0 && ninit % mpisize_world != 0) {
+    if (mpirank_world == 0) printf("ERROR: Number of threads (%d) must be integer multiplier or divisor of the number of initial conditions (%d)!\n", mpisize_world, ninit);
     exit(1);
   }
 
@@ -159,7 +158,7 @@ int main(int argc,char **argv)
   MPI_Comm_rank(comm_petsc, &mpirank_petsc);
   MPI_Comm_size(comm_petsc, &mpisize_petsc);
 
-  if (mpirank_world == 0)  std::cout<< "Parallel distribution: " << mpisize_init << " np_init  X  " << mpisize_petsc<< " np_petsc  X  " << mpisize_optim << " np_optim " << std::endl;
+  if (mpirank_world == 0)  std::cout<< "Parallel distribution: " << mpisize_init << " np_init  X  " << mpisize_petsc<< " np_petsc  " << std::endl;
 
   /* Initialize Petsc using petsc's communicator */
   PETSC_COMM_WORLD = comm_petsc;
@@ -282,7 +281,7 @@ int main(int argc,char **argv)
         usematfree = false;
   }
   if (usematfree && mpisize_petsc > 1) {
-    printf("ERROR: No Petsc-parallel version for the matrix free solver available!");
+    if (mpirank_world == 0) printf("ERROR: No Petsc-parallel version for the matrix free solver available!");
     exit(1);
   }
   // Compute coupling rotation frequencies eta_ij = w^r_i - w^r_j

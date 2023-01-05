@@ -702,39 +702,27 @@ The real and imaginary parts of $q(t)$ are stored in a colocated manner: For
 
 
     \section{Parallelization}
-    Quandary offers three levels of parallelization using MPI. 
+    Quandary offers two levels of parallelization using MPI. 
     \begin{enumerate}
     \item Parallelization over initial conditions: The $n_{init}$ initial conditions $\rho_i(0)$ can be distributed over \texttt{np\_init} compute units. Since initial condition are propagated through the time-domain for solving Lindblad's or Schroedinger's equation independently from each other, speedup from distributed initial conditions is ideal. 
     \item Parallel linear algebra with Petsc (sparse-matrix solver only): For the sparse-matrix solver, Quandary utilizes Petsc's parallel sparse matrix and vector storage to distribute the state vector onto \texttt{np\_petsc} compute units (spatial parallelization). To perform scaling results, make sure to disable code output (or reduce the output frequency to print only the last time-step), because writing the data files invokes additional MPI calls to gather data on the master node.
-    \item Parallel optimization schemes. Currently under development.      
     \end{enumerate}
     Strong and weak scaling studies are presented in \cite{guenther2021quantum}.
 
-    In the main code, the global communicator (MPI\_COMM\_WORLD) is split into
-    three sub-communicator, one for each of the above. The total number of executing MPI
-    processes ($np_{total}$) is split into three subgroups in such a way that 
+    Since those two levels of parallelism are orthogonal, Quandary splits the global communicator (MPI\_COMM\_WORLD) into
+    two sub-communicator such that the total number of executing MPI
+    processes ($np_{total}$) is split as
     \begin{align*}
-      np_{optim} * np_{init} * np_{petsc} = np_{total}.
+      np_{init} * np_{petsc} = np_{total}.
     \end{align*}
-    The user specifies the size of the communicator for distributing the
-    initial conditions ($np_{init}$) as well as parallelization for optimization
-    ($np_{optim}$) in the configuration file. The number of cores for parallel linear
-    algebra ($np_{petsc}$) is then computed from the above equation. The
-    following requirements for parallel distribution must be considered when
-    setting up parallel runs:
-    \begin{itemize}
-    \item $\frac{n_{init}}{np_{init}} \in \mathds{N}$, where $n_{init}$ is
-      the number of initial conditions that are considered. This requirement
-      ensures that each processor group owns the same number of initial
-      conditions.
-    \item $\frac{np_{total}}{np_{init}*np_{optim}} \in \mathds{N}$, so that
-      each processor group has the same number of cores for Petsc.
-    \item $\frac{M}{np_{petsc}} \in \mathds{N}$, for $M=N^2$ in the Lindblad case and $M=N$ in the Schroedinger case. Hence the system dimension must be an integer multiple of the number of cores used for
-      distributed linear algebra from Petsc. This constraint is a little
+    Since parallelization over different initial conditions is perfect, Quandary automatically sets $np_{init} = n_{init}$, i.e. the total number of cores for distributing initial conditions is the total number of initial conditions that are considered in this run, as specified by the configuration option \texttt{intialcondition}. The number of cores for distributed linear algebra with Petsc is then computed from the above equation.
+
+    It is currently required that the number of total cores for executing quandary is an integer divisor of multiplier of the number of initial conditions, such that each processor group owns the same number of initial conditions. 
+    
+    It is further required that the system dimension is an integer multiple of the number of cores used for distributed linear algebra from Petsc, i.e. it is required that $\frac{M}{np_{petsc}} \in \mathds{N}$ where $M=N^2$ in the Lindblad solver case and $M=N$ in the Schroedinger case. This requirement is a little
       annoying, however the current implementation requires this due to the
       colocated storage of the real and imaginary parts of the vectorized
       state.
-    \end{itemize}
  
 \section{Output and plotting the results}
 Quandary generates various output files for system evolution of the current (optimized) controls as well as the optimization progress. All data files will be dumped into a user-specified folder through the config option \texttt{datadir}. 
