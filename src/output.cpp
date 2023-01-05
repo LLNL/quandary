@@ -182,6 +182,8 @@ void Output::openDataFiles(std::string prefix, int initid){
   }
 
   /* Open files for expected energy */
+  bool writeExpComp = false;
+  bool writePopComp = false;
   if (mpirank_petsc == 0 && write_this_iter) {
     for (int i=0; i<outputstr.size(); i++) {
       for (int j=0; j<outputstr[i].size(); j++) {
@@ -190,19 +192,25 @@ void Output::openDataFiles(std::string prefix, int initid){
           expectedfile[i] = fopen(filename, "w");
           fprintf(expectedfile[i], "# time      expected energy level\n");
         }
+        if (outputstr[i][j].compare("expectedEnergyComposite") == 0) writeExpComp = true;
         if (outputstr[i][j].compare("population") == 0) {
           sprintf(filename, "%s/population%d.iinit%04d.dat", datadir.c_str(), i, initid);
           populationfile[i] = fopen(filename, "w");
           fprintf(populationfile[i], "# time      diagonal of the density matrix \n");
         }
+        if (outputstr[i][j].compare("populationComposite") == 0) writePopComp = true;
       }
     }
-    sprintf(filename, "%s/expected_composite.iinit%04d.dat", datadir.c_str(), initid);
-    expectedfile_comp = fopen(filename, "w");
-    fprintf(expectedfile_comp, "# time      expected energy level\n");
-    sprintf(filename, "%s/population_composite.iinit%04d.dat", datadir.c_str(), initid);
-    populationfile_comp = fopen(filename, "w");
-    fprintf(populationfile_comp, "# time      population \n");
+    if (writeExpComp){
+      sprintf(filename, "%s/expected_composite.iinit%04d.dat", datadir.c_str(), initid);
+      expectedfile_comp = fopen(filename, "w");
+      fprintf(expectedfile_comp, "# time      expected energy level\n");
+    }
+    if (writePopComp){
+      sprintf(filename, "%s/population_composite.iinit%04d.dat", datadir.c_str(), initid);
+      populationfile_comp = fopen(filename, "w");
+      fprintf(populationfile_comp, "# time      population \n");
+    }
 
   }
 
