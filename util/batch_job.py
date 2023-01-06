@@ -47,7 +47,15 @@ def submit_job(jobname, runcommand, ntasks, time_limit, executable, arguments, a
 def run_local(runcommand, ntasks, executable, arguments, run=True):
 
     if run:
-      subprocess.call(executable + " " + arguments, shell=True)
+        if ntasks == 1:
+            callme = executable + " " + arguments
+        else:
+            callme = runcommand + str(ntasks) + " " + executable + " " + arguments
+
+        # Execute the process
+        #print("Running Quadnary: ", callme)
+        subprocess.call(callme, shell=True)
+
 
 
 def assemble_batch_script(name, run_command, args):

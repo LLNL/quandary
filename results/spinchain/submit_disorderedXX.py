@@ -109,9 +109,9 @@ for icores in range(len(ncores)):
                         Jklstr += "0.0, "
     
             # Specify the jobname 
-            jobname =  inputname+str(N) +\
-                       "_sample" + str(isample) +\
-                       "_ncores" + str(ncores[icores])
+            jobname =  inputname+str(N) + "_sample" + str(isample)
+            if (len(ncores)>1):
+                       jobname += "_ncores" + str(ncores[icores])
     
             # create folder for the job
             if os.path.exists(jobname):
