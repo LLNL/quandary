@@ -40,7 +40,7 @@ Petc is already installed on LLNL LC machines, see here [https://hpc.llnl.gov/so
 
 Then set the `PETSC_DIR` variable to point to the Petsc folder and add it to the `LD_LIBRARY_PATH`:
 * `export PETSC_DIR=/usr/tce/packages/petsc/petsc-3.12.4-mvapich2-2.3-gcc-4.8-redhat`
-* `export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$PETSC_DIR`
+* `export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$PETSC_DIR/lib`
 
 ## Installation
 Adapt the beginning of the 'Makefile' to set the path to your Petsc (and possibly Slepsc, python path, and fitpackpp) installation. Then,
