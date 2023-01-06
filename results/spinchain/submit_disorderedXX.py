@@ -32,7 +32,7 @@ ntime = 3000
 T=10.0
 
 # Specify h and J amplitudes (frequency domain, quandary multiplies by 2pi!)
-hamp = 1.0   # GHz?
+hamp = 1.0  
 Jamp = 1.0   
 
 # Specify the initial condition. Here: domain wall |111...000>
@@ -40,9 +40,12 @@ initstate= np.zeros(N)
 for i in range(int(N/2)):
    initstate[i] = 1
 
-# Specify the number of samples for h
-nsamples = 1 # 10
+# Specify h and J amplitudes
+hamp = 1.0
+Jamp = 1.0   
 
+# Specify the number of samples for h
+nsamples = 10
 
 # Specify number of cores and runtime
 #npt = [1,2,4,8]
@@ -117,8 +120,6 @@ for inpt in range(len(npt)):
             # submit the job
             os.chdir(jobname)
             #print("Submitting job ", jobname)  #, ":  h / 2pi = ", h, ", J / 2pi = ", J)
-            submit_job(jobname, runcommand, npt[inpt], runtime[inpt], executable, newconfigfile, "qude", True) 
+            submit_job(jobname, runcommand, npt[inpt], runtime[inpt], executable, newconfigfile, "qude", True) # submit to LC
+            #submit_job_local(jobname, executable, newconfigfile, True) # Run locally in this terminal
             os.chdir("../")
-
-
-
