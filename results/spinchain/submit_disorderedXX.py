@@ -6,68 +6,87 @@ sys.path.append('/g/g90/guenther/Numerics/quandary/util/')
 import os
 import copy
 from batch_job import submit_job
-from batch_job import submit_job_local
+from batch_job import run_local
 from config import *
 from util import *
 import numpy as np
 import matplotlib.pyplot as plt
 
-# Specify the global config file 
+###############
+# This script samples h from Uniform distribution and executes Quandary for each sample, either locally in a terminal or submitting a batch job to LC. 
+# This script can also be used to perform a parallel scaling study on LC.
+###############
+
+# Specify the global configuration file for Quandary (each run copies global config options from this file, overwriting the relevant config options for the new h sample)
 inputname = "spinchain"
 configfile = Config(inputname + ".cfg")
 
-# Location and name of the Quandary executable
-executable = "../main"
-runcommand = "srun -n "
+# Specify the location of the Quandary executable
+executable = "/g/g90/guenther/Numerics/quandary/main"
 
-# Number of spin sites
-#N=8
-N=24
+# Specify the mpi runcommand
+runcommand = "srun -n "      # on LC Quartz 
+#runcommand = "mpirun -np "
 
-# Number of time steps
-#ntime = 1000 
-ntime = 3000
+# Choose to submit jobs to LC (do_submit_LC=True) rather than executing locally in this terminal (do_submit_LC=False). 
+do_submit_LC = False
 
-# Final time
+# If submitting to LC: Specify a bank
+bank = "qude"
+
+# Specify the number of spin sites
+N=8
+#N=12
+#N=16
+#N=20
+
+# Set the final time
 T=10.0
 
-# Specify h and J amplitudes (frequency domain, quandary multiplies by 2pi!)
-hamp = 1.0  
-Jamp = 1.0   
+# Set the Number of time steps
+ntime = 1000   # for N=8
+#ntime = 1500    # for N=12
+#ntime = 2000   # for N=16
+#ntime = 3500   # for N=20
 
-# Specify the initial condition. Here: domain wall |111...000>
+# Specify the initial state at time t=0. Here: domain wall |111...000>
 initstate= np.zeros(N)
 for i in range(int(N/2)):
    initstate[i] = 1
 
-# Specify h and J amplitudes
-hamp = 1.0
-Jamp = 1.0   
-
-# Specify the number of samples for h
+# Specify the number of samples for randomizing h
 nsamples = 10
 
-# Specify number of cores and runtime
-#npt = [1,2,4,8]
-#npt = [16,32,64, 128, 256, 512, 1024]   #N=20
-#npt = [1,2,4,8,16,32]
-npt = [32,64, 128, 256, 512, 1024, 2048, 4096]
-#npt = [1,2,4,8,16,32,64, 128, 256, 512, 1024, 2048]
-runtime = ["04:00:00","02:30:00","01:50:00","01:00:00","00:50:00","00:40:00","00:30:00","00:30:00"]
+# Specify h and J amplitudes (frequency domain)
+hamp = 1.0  
+Jamp = 1.0   
 
-# Submit job for each number of spacial processors
-for inpt in range(len(npt)):
+# Specify number of cores to run on, and potentially the corresponding runtime that is to be allocated when submitting this job to LC. 
+# Note: 'ncores' and 'runtime' should have the same length!
+# This script will submit <nsamples> jobs for each selected number of cores in the below 'ncores' variable.
+# To perform a parallel scaling study, set nsamples=1 and choose the number of cores and runtimes for the study. 
+# If not performing a scaling study, choose nsamples > 1, and ncores=[<x>] for x begin the number of cores to run on (length(ncores)=1)
+ncores = [1]                          # best for N=8
+#ncores = [32]                        # best for N=12
+#ncores = [1,2,4,8, 16, 32]           # scaling study for N=12
+#ncores = [16,32,64, 128, 256, 512]   # scaling study for N=20
+runtime = ["00:00:05"]       # for N=8 on 1 core
+#runtime = ["00:00:15"]      # for N=12 on 32 cores
+#runtime = ["00:01:00", "00:00:40", "00:00:30", "00:00:20","00:00:10", "00:00:10"]      # scaling study for N=12 (over-estimated)
 
-    # Submit job for each sample
+# Submit <nsample> jobs for each number of spacial processors
+for icores in range(len(ncores)):
+
+    # Submit one job for each sample
     for isample in range(nsamples):
     
             # Sample h uniform random, J fixed
-            #h = np.random.uniform(-hamp, hamp, N)
-            h = np.ones(N)
+            h = np.random.uniform(-hamp, hamp, N)
+            #h = np.ones(N)
             J = np.ones(N)
             for i in range(N):
-                h[i] = h[i] / np.pi
-                J[i] = J[i] / np.pi
+                h[i] = h[i] / np.pi   # Quandary multiplies by 2pi internally!
+                J[i] = Jamp*J[i] / np.pi
         
             # Set up configuration option strings
             nlevels = ""
@@ -88,14 +107,11 @@ for inpt in range(len(npt)):
                         Jklstr += str(J[i]) + ", "
                     else :
                         Jklstr += "0.0, "
-            #print("Jkl", Jklstr)
-            #print("transfreq", transfreqstr)
-            #print("target", targetstr)
     
             # Specify the jobname 
             jobname =  inputname+str(N) +\
                        "_sample" + str(isample) +\
-                       "_npt" + str(npt[inpt])
+                       "_ncores" + str(ncores[icores])
     
             # create folder for the job
             if os.path.exists(jobname):
@@ -117,9 +133,12 @@ for inpt in range(len(npt)):
             newconfigfile = jobname + ".cfg"
             konfig.dump(jobname + "/" + newconfigfile)
     
-            # submit the job
+            # Execute Quandary locally, or submit the job on LC
             os.chdir(jobname)
-            #print("Submitting job ", jobname)  #, ":  h / 2pi = ", h, ", J / 2pi = ", J)
-            submit_job(jobname, runcommand, npt[inpt], runtime[inpt], executable, newconfigfile, "qude", True) # submit to LC
-            #submit_job_local(jobname, executable, newconfigfile, True) # Run locally in this terminal
+            if do_submit_LC:
+                print("Submitting job ", jobname)
+                submit_job(jobname, runcommand, ncores[icores], runtime[icores], executable, newconfigfile, bank, True) # submit batch job
+            else:
+                print("Running Quandary: ", runcommand + str(ncores[icores]) + " " + executable + " " + newconfigfile)
+                run_local(runcommand, ncores[icores], executable, newconfigfile, True) # Run locally in this terminal
             os.chdir("../")

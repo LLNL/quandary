@@ -178,6 +178,8 @@ def read_config(filename):
                case("braid_reltol") or \
                case("optim_atol") or \
                case("optim_rtol") or \
+               case("optim_ftol") or \
+               case("optim_inftol") or \
                case("optim_penalty") or \
                case("optim_penalty_param") or \
                case("optim_regul") :
@@ -198,6 +200,9 @@ def read_config(filename):
                case("carrier_frequency3") or \
                case("carrier_frequency4") or \
                case("carrier_frequency5") or \
+               case("carrier_frequency6") or \
+               case("carrier_frequency7") or \
+               case("carrier_frequency8") or \
                case("collapse_type") or \
                case("decay_time") or \
                case("dephase_time") or \
@@ -218,6 +223,9 @@ def read_config(filename):
                case("output3") or \
                case("output4") or \
                case("output5") or \
+               case("output6") or \
+               case("output7") or \
+               case("output8") or \
                case("runtype") or \
                case("usematfree") or \
                case("linearsolver_type") or \

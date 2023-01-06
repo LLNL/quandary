@@ -44,7 +44,7 @@ def submit_job(jobname, runcommand, ntasks, time_limit, executable, arguments, a
       subprocess.call("sbatch " + jobname + ".batch", shell=True)
 
 
-def submit_job_local(jobname, executable, arguments, run=True):
+def run_local(runcommand, ntasks, executable, arguments, run=True):
 
     if run:
       subprocess.call(executable + " " + arguments, shell=True)
