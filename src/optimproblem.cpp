@@ -159,6 +159,7 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, int ninit
   double sendbuf[obj_weights.size()];
   double recvbuf[obj_weights.size()];
   for (int i = 0; i < obj_weights.size(); i++) sendbuf[i] = obj_weights[i];
+  for (int i = 0; i < obj_weights.size(); i++) recvbuf[i] = obj_weights[i];
   int nscatter = ninit_local;
 #ifndef NO_MPI
   MPI_Scatter(sendbuf, nscatter, MPI_DOUBLE, recvbuf, nscatter,  MPI_DOUBLE, 0, comm_init);

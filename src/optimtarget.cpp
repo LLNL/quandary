@@ -267,6 +267,7 @@ void OptimTarget::evalJ(const Vec state, double* J_re_ptr, double* J_im_ptr){
         lambdai = fabs(i - purestateID);
         sum += lambdai * rhoii;
       }
+      J_re = sum;
       MPI_Allreduce(&sum, &J_re, 1, MPI_DOUBLE, MPI_SUM, PETSC_COMM_WORLD);
       break; // case J_MEASURE
   }

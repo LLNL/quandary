@@ -3218,6 +3218,7 @@ void MasterEq::population(const Vec x, std::vector<double> &pop){
   } 
 
   /* Gather poppulation from all Petsc processors */
+  for (int i=0; i<mypop.size(); i++) {pop[i] = mypop[i];}
   MPI_Allreduce(mypop.data(), pop.data(), dim_rho, MPI_DOUBLE, MPI_SUM, PETSC_COMM_WORLD);
 }
 
