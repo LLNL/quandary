@@ -1,9 +1,9 @@
 #include <map>
 #include <string>
 #include <cstring>
-#ifndef NO_MPI
-#include "mpi.h"
-#endif
+// #ifndef NO_MPI
+// #include "mpi.h"
+// #endif
 #include <iostream>
 #include <fstream>
 #include <algorithm>

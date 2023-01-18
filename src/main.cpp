@@ -390,7 +390,11 @@ int main(int argc,char **argv)
   if (read_gate_rot[0] < 1e20) { // the config option exists
     for (int i=0; i<noscillators; i++)  gate_rot_freq[i] = read_gate_rot[i];
   }
+  #ifndef NO_MPI
   OptimProblem* optimctx = new OptimProblem(config, mytimestepper, comm_init, comm_optim, ninit, gate_rot_freq, output);
+  #else
+  OptimProblem* optimctx = new OptimProblem(config, mytimestepper, ninit, gate_rot_freq, output);
+  #endif
 
   /* Set upt solution and gradient vector */
   Vec xinit;

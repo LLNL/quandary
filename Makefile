@@ -1,6 +1,6 @@
 # Set location of PETSC
-#PETSC_DIR=/path/to/petsc-<version>
-#PETSC_ARCH=arch-linux-c-debug
+PETSC_DIR=${HOME}/Software/petsc3.18_nompi-install
+PETSC_ARCH=
 NO_MPI = true
 
 # Optional: Link to SLEPC
