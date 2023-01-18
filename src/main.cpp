@@ -6,6 +6,7 @@
 #include <sys/resource.h>
 #include "optimproblem.hpp"
 #include "output.hpp"
+#include "petsc.h"
 #ifdef WITH_SLEPC
 #include <slepceps.h>
 #endif
@@ -28,14 +29,9 @@ int main(int argc,char **argv)
 
   /* Initialize MPI */
   int mpisize_world, mpirank_world;
-  #ifndef NO_MPI
   MPI_Init(&argc, &argv);
   MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
   MPI_Comm_size(MPI_COMM_WORLD, &mpisize_world);
-  #else
-  mpirank_world=0;
-  mpisize_world=1;
-  #endif
   if (mpirank_world == 0) printf("Running on %d cores.\n", mpisize_world);
 
   /* Read config file */
@@ -43,17 +39,11 @@ int main(int argc,char **argv)
     if (mpirank_world == 0) {
       printf("\nUSAGE: ./main </path/to/configfile> \n");
     }
-#ifndef NO_MPI
     MPI_Finalize();
-#endif
     return 0;
   }
   std::stringstream log;
-#ifndef NO_MPI
   MapParam config(MPI_COMM_WORLD, log);
-#else
-  MapParam config(log);
-#endif
   config.ReadFile(argv[1]);
 
   /* --- Get some options from the config file --- */
@@ -132,7 +122,6 @@ int main(int argc,char **argv)
   int mpirank_init, mpisize_init;
   int mpirank_optim, mpisize_optim;
   int mpirank_petsc, mpisize_petsc;
-#ifndef NO_MPI
   MPI_Comm comm_optim, comm_init, comm_petsc;
 
   /* Get the size of communicators  */
@@ -172,14 +161,6 @@ int main(int argc,char **argv)
 
   /* Set Petsc using petsc's communicator */
   PETSC_COMM_WORLD = comm_petsc;
-#else
-  mpisize_petsc = 1;
-  mpisize_init  = 1;
-  mpisize_optim = 1;
-  mpirank_petsc = 0;
-  mpirank_init  = 0;
-  mpirank_optim = 0;
-#endif
 
   if (mpirank_world == 0)  std::cout<< "Parallel distribution: " << mpisize_init << " np_init  X  " << mpisize_petsc<< " np_petsc  " << std::endl;
 
@@ -325,11 +306,7 @@ int main(int argc,char **argv)
 
 
   /* Output */
-  #ifndef NO_MPI
   Output* output = new Output(config, comm_petsc, comm_init, nlevels.size());
-  #else
-  Output* output = new Output(config, nlevels.size());
-  #endif
 
   // Some screen output 
   if (mpirank_world == 0) {
@@ -390,11 +367,7 @@ int main(int argc,char **argv)
   if (read_gate_rot[0] < 1e20) { // the config option exists
     for (int i=0; i<noscillators; i++)  gate_rot_freq[i] = read_gate_rot[i];
   }
-  #ifndef NO_MPI
   OptimProblem* optimctx = new OptimProblem(config, mytimestepper, comm_init, comm_optim, ninit, gate_rot_freq, output);
-  #else
-  OptimProblem* optimctx = new OptimProblem(config, mytimestepper, ninit, gate_rot_freq, output);
-  #endif
 
   /* Set upt solution and gradient vector */
   Vec xinit;
@@ -421,12 +394,7 @@ int main(int argc,char **argv)
   }
 
   /* Start timer */
-#ifndef NO_MPI
   double StartTime = MPI_Wtime();
-#else 
-  double StartTime = 0.0; // TODO
-#endif
-
   double objective;
   double gnorm = 0.0;
   /* --- Solve primal --- */
@@ -467,19 +435,17 @@ int main(int argc,char **argv)
   /* --- Finalize --- */
 
   /* Get timings */
-  #ifndef NO_MPI
+  // #ifdef WITH_MPI
   double UsedTime = MPI_Wtime() - StartTime;
-  #else
-  double UsedTime = 0.0; // TODO
-  #endif
+  // #else
+  // double UsedTime = 0.0; // TODO
+  // #endif
   /* Get memory usage */
   struct rusage r_usage;
   getrusage(RUSAGE_SELF, &r_usage);
   double myMB = (double)r_usage.ru_maxrss / 1024.0;
   double globalMB = myMB;
-  #ifndef NO_MPI
   MPI_Allreduce(&myMB, &globalMB, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-  #endif
 
   /* Print statistics */
   if (mpirank_world == 0) {

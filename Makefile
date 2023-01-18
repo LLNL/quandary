@@ -1,7 +1,7 @@
 # Set location of PETSC
 PETSC_DIR=${HOME}/Software/petsc3.18_nompi-install
 PETSC_ARCH=
-NO_MPI = true
+WITH_MPI = false
 
 # Optional: Link to SLEPC
 WITH_SLEPC = false
@@ -33,9 +33,9 @@ LDFLAGS_OPT = -L${SLEPC_DIR}/lib -L${SLEPC_DIR}/${PETSC_ARCH}/lib -lslepc
 INC_OPT = -I${SLEPC_DIR}/${PETSC_ARCH}/include -I${SLEPC_DIR}/include
 endif
 
-# Remove MPI
-ifeq ($(NO_MPI), true)
-CXX_OPT = -DNO_MPI
+# Add MPI
+ifeq ($(WITH_MPI), true)
+CXX_OPT = -DWITH_MPI
 endif
 
 
@@ -82,10 +82,10 @@ LDPATH  = ${PETSC_DIR}/${PETSC_ARCH}/lib
 LDFLAGS =  -lm  -L${PETSC_DIR}/${PETSC_ARCH}/lib -lblas -llapack ${LDFLAGS_OPT} -lpetsc
 
 # Set compiler and flags 
-ifeq ($(NO_MPI), true)
-CXX=clang++
-else
+ifeq ($(WITH_MPI), true)
 CXX=mpicxx
+else
+CXX=clang++
 endif
 CXXFLAGS= -O3 -std=c++11 -lstdc++ $(CXX_OPT)
 

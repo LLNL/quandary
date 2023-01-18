@@ -9,19 +9,13 @@ Output::Output(){
   optim_iter = 0;
 }
 
-#ifndef NO_MPI
 Output::Output(MapParam& config, MPI_Comm comm_petsc, MPI_Comm comm_init, int noscillators) : Output() {
-#else
-Output::Output(MapParam& config, int noscillators) : Output() {
-#endif
 
-#ifndef NO_MPI
   /* Get communicator ranks */
   MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
   MPI_Comm_rank(comm_petsc, &mpirank_petsc);
   MPI_Comm_size(comm_petsc, &mpisize_petsc);
   MPI_Comm_rank(comm_init, &mpirank_init);
-#endif
 
 
   /* Create Data directory */

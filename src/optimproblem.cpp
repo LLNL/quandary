@@ -1,10 +1,6 @@
 #include "optimproblem.hpp"
 
-#ifndef NO_MPI
 OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm comm_init_, MPI_Comm comm_optim_, int ninit_, std::vector<double> gate_rot_freq, Output* output_){
-#else
-OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, int ninit_, std::vector<double> gate_rot_freq, Output* output_){
-#endif
 
   timestepper = timestepper_;
   ninit = ninit_;
@@ -12,7 +8,6 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, int ninit
   /* Reset */
   objective = 0.0;
 
-#ifndef NO_MPI
   comm_init = comm_init_;
   comm_optim = comm_optim_;
   /* Store ranks and sizes of communicators */
@@ -24,16 +19,6 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, int ninit
   MPI_Comm_size(comm_init, &mpisize_init);
   MPI_Comm_rank(comm_optim, &mpirank_optim);
   MPI_Comm_size(comm_optim, &mpisize_optim);
-#else
-  mpirank_world=0;
-  mpirank_space=0;
-  mpirank_init=0;
-  mpirank_optim=0;
-  mpisize_world=1;
-  mpisize_space=1;
-  mpisize_init=1;
-  mpisize_optim=1;
-#endif
 
   /* Store number of initial conditions per init-processor group */
   ninit_local = ninit / mpisize_init; 
@@ -161,9 +146,7 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, int ninit
   for (int i = 0; i < obj_weights.size(); i++) sendbuf[i] = obj_weights[i];
   for (int i = 0; i < obj_weights.size(); i++) recvbuf[i] = obj_weights[i];
   int nscatter = ninit_local;
-#ifndef NO_MPI
   MPI_Scatter(sendbuf, nscatter, MPI_DOUBLE, recvbuf, nscatter,  MPI_DOUBLE, 0, comm_init);
-#endif
   for (int i = 0; i < nscatter; i++) obj_weights[i] = recvbuf[i];
   for (int i=nscatter; i < obj_weights.size(); i++) obj_weights[i] = 0.0;
 
@@ -256,9 +239,7 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, int ninit
       std::string filename = initcondstr[1];
       read_vector(filename.c_str(), vec, nelems);
     }
-#ifndef NO_MPI
     MPI_Bcast(vec, nelems, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-#endif
     if (timestepper->mastereq->lindbladtype != LindbladType::NONE) { // Lindblad solver, fill density matrix
       for (int i = 0; i < dim_ess*dim_ess; i++) {
         int k = i % dim_ess;
@@ -374,9 +355,7 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, int ninit
     assert(controlinit_str.size() >=2);
     for (int i=0; i<ndesign; i++) initguess_fromfile.push_back(0.0);
     if (mpirank_world == 0) read_vector(controlinit_str[1].c_str(), initguess_fromfile.data(), ndesign);
-#ifndef NO_MPI
     MPI_Bcast(initguess_fromfile.data(), ndesign, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-#endif
   }
  
   /* Create Petsc's optimization solver */
@@ -468,7 +447,6 @@ double OptimProblem::evalF(const Vec x) {
     // printf("%d, %d: iinit obj_iinit: %f * (%1.14e + i %1.14e, Overlap=%1.14e + i %1.14e\n", mpirank_world, mpirank_init, obj_weights[iinit], obj_iinit_re, obj_iinit_im, fidelity_iinit_re, fidelity_iinit_im);
   }
 
-#ifndef NO_MPI
   /* Sum up from initial conditions processors */
   double mypen = obj_penal;
   double mycost_re = obj_cost_re;
@@ -480,7 +458,6 @@ double OptimProblem::evalF(const Vec x) {
   MPI_Allreduce(&mycost_im, &obj_cost_im, 1, MPI_DOUBLE, MPI_SUM, comm_init);
   MPI_Allreduce(&myfidelity_re, &fidelity_re, 1, MPI_DOUBLE, MPI_SUM, comm_init);
   MPI_Allreduce(&myfidelity_im, &fidelity_im, 1, MPI_DOUBLE, MPI_SUM, comm_init);
-#endif
 
   /* Set the fidelity: If Schroedinger, need to compute the absolute value: Fid= |\sum_i \phi^\dagger \phi_target|^2 */
   if (timestepper->mastereq->lindbladtype == LindbladType::NONE) {
@@ -594,7 +571,6 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
     }
   }
 
-#ifndef NO_MPI
   /* Sum up from initial conditions processors */
   double mypen = obj_penal;
   double mycost_re = obj_cost_re;
@@ -606,7 +582,6 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
   MPI_Allreduce(&mycost_im, &obj_cost_im, 1, MPI_DOUBLE, MPI_SUM, comm_init);
   MPI_Allreduce(&myfidelity_re, &fidelity_re, 1, MPI_DOUBLE, MPI_SUM, comm_init);
   MPI_Allreduce(&myfidelity_im, &fidelity_im, 1, MPI_DOUBLE, MPI_SUM, comm_init);
-#endif
 
   /* Set the fidelity: If Schroedinger, need to compute the absolute value: Fid= |\sum_i \phi^\dagger \phi_target|^2 */
   if (timestepper->mastereq->lindbladtype == LindbladType::NONE) {
@@ -657,7 +632,6 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
     } // end of initial condition loop 
   } // end of adjoint for Schroedinger
 
-#ifndef NO_MPI
   /* Sum up the gradient from all initial condition processors */
   PetscScalar* grad; 
   VecGetArray(G, &grad);
@@ -666,7 +640,6 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
   }
   MPI_Allreduce(mygrad, grad, ndesign, MPI_DOUBLE, MPI_SUM, comm_init);
   VecRestoreArray(G, &grad);
-#endif
 
   /* Compute and store gradient norm */
   VecNorm(G, NORM_2, &(gnorm));

@@ -31,10 +31,8 @@ class OptimProblem {
   OptimTarget* optim_target;      /* Storing the optimization goal */
 
   /* MPI stuff */
-#ifndef NO_MPI
   MPI_Comm comm_init;
   MPI_Comm comm_optim;
-#endif
   int mpirank_optim, mpisize_optim;
   int mpirank_space, mpisize_space;
   int mpirank_world, mpisize_world;
@@ -67,11 +65,7 @@ class OptimProblem {
     Vec xlower, xupper;              /* Optimization bounds */
 
   /* Constructor */
-#ifndef NO_MPI
   OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm comm_init_, MPI_Comm comm_optim, int ninit_, std::vector<double> gate_rot_freq, Output* output_);
-#else
-  OptimProblem(MapParam config, TimeStepper* timestepper_, int ninit_, std::vector<double> gate_rot_freq, Output* output_);
-#endif
   ~OptimProblem();
 
   /* Return the number of design variables */
