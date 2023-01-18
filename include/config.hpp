@@ -1,7 +1,9 @@
 #include <map>
 #include <string>
 #include <cstring>
+#ifndef NO_MPI
 #include "mpi.h"
+#endif
 #include <iostream>
 #include <fstream>
 #include <algorithm>
@@ -14,14 +16,20 @@
 
 class MapParam : public std::map<std::string, std::string>
 {
+#ifndef NO_MPI
   MPI_Comm comm;
+#endif
   int mpi_rank;
   std::stringstream* log;
 
 public:
   /* Constructor */
   MapParam();
+#ifdef NO_MPI
+  MapParam(std::stringstream& logstream);
+#else
   MapParam(MPI_Comm comm_, std::stringstream& logstream);
+#endif
   /* Destructor */
   ~MapParam();
   

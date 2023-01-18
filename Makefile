@@ -1,6 +1,7 @@
 # Set location of PETSC
 #PETSC_DIR=/path/to/petsc-<version>
 #PETSC_ARCH=arch-linux-c-debug
+NO_MPI = true
 
 # Optional: Link to SLEPC
 WITH_SLEPC = false
@@ -30,6 +31,11 @@ ifeq ($(WITH_SLEPC), true)
 CXX_OPT = -DWITH_SLEPC
 LDFLAGS_OPT = -L${SLEPC_DIR}/lib -L${SLEPC_DIR}/${PETSC_ARCH}/lib -lslepc 
 INC_OPT = -I${SLEPC_DIR}/${PETSC_ARCH}/include -I${SLEPC_DIR}/include
+endif
+
+# Remove MPI
+ifeq ($(NO_MPI), true)
+CXX_OPT = -DNO_MPI
 endif
 
 
@@ -76,7 +82,11 @@ LDPATH  = ${PETSC_DIR}/${PETSC_ARCH}/lib
 LDFLAGS =  -lm  -L${PETSC_DIR}/${PETSC_ARCH}/lib -lblas -llapack ${LDFLAGS_OPT} -lpetsc
 
 # Set compiler and flags 
+ifeq ($(NO_MPI), true)
+CXX=clang++
+else
 CXX=mpicxx
+endif
 CXXFLAGS= -O3 -std=c++11 -lstdc++ $(CXX_OPT)
 
 

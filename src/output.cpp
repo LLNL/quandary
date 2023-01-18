@@ -1,21 +1,27 @@
 #include "output.hpp"
 
 Output::Output(){
-  mpirank_world = -1;
-  mpirank_petsc = -1;
-  mpirank_init  = -1;
+  mpirank_world = 0;
+  mpirank_petsc = 0;
+  mpirank_init  = 0;
   optim_monitor_freq = 0;
   output_frequency = 0;
   optim_iter = 0;
 }
 
+#ifndef NO_MPI
 Output::Output(MapParam& config, MPI_Comm comm_petsc, MPI_Comm comm_init, int noscillators) : Output() {
+#else
+Output::Output(MapParam& config, int noscillators) : Output() {
+#endif
 
+#ifndef NO_MPI
   /* Get communicator ranks */
   MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
   MPI_Comm_rank(comm_petsc, &mpirank_petsc);
   MPI_Comm_size(comm_petsc, &mpisize_petsc);
   MPI_Comm_rank(comm_init, &mpirank_init);
+#endif
 
 
   /* Create Data directory */

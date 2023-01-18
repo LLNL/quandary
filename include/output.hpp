@@ -35,7 +35,11 @@ class Output{
 
   public:
     Output();
+#ifndef NO_MPI
     Output(MapParam& config, MPI_Comm comm_petsc, MPI_Comm comm_init, int noscillators);
+#else
+    Output(MapParam& config, int noscillators);
+#endif
     ~Output();
 
     /* Write to optimization history file in every optim iteration */

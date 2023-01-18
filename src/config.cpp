@@ -15,10 +15,16 @@ MapParam::MapParam() {
     mpi_rank = 0; 
 }
 
+#ifdef NO_MPI
+MapParam::MapParam(stringstream& logstream)
+{
+  mpi_rank = 0;
+#else
 MapParam::MapParam(MPI_Comm comm_, stringstream& logstream)
 {
   comm = comm_;
   MPI_Comm_rank(comm, &mpi_rank);
+#endif
   log = &logstream;
 }
 
