@@ -3306,6 +3306,7 @@ int myMatMult_matfree_4Osc(Mat RHS, Vec x, Vec y){
   int n2 = shellctx->nlevels[2];
   int n3 = shellctx->nlevels[3];
   if      (n0==2 && n1==2 && n2==2 && n3 == 2) return myMatMult_matfree<2,2,2,2>(RHS, x, y);
+  else if (n0==4 && n1==4 && n2==4 && n3 == 4) return myMatMult_matfree<4,4,4,4>(RHS, x, y);
   else {
     printf("ERROR: In order to run this case, add a line at the end of mastereq.cpp with the corresponding number of levels!\n");
     exit(1);
@@ -3321,6 +3322,7 @@ int myMatMultTranspose_matfree_4Osc(Mat RHS, Vec x, Vec y){
   int n2 = shellctx->nlevels[2];
   int n3 = shellctx->nlevels[3];
   if      (n0==2 && n1==2 && n2==2 && n3==2)  return myMatMultTranspose_matfree<2,2,2,2>(RHS, x, y);
+  else if (n0==4 && n1==4 && n2==4 && n3==4)  return myMatMultTranspose_matfree<4,4,4,4>(RHS, x, y);
   else {
     printf("ERROR: In order to run this case, add a line at the end of mastereq.cpp with the corresponding number of levels!\n");
     exit(1);
