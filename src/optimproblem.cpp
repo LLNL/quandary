@@ -153,9 +153,11 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   /* Pass information on objective function to the time stepper needed for penalty objective function */
   gamma_penalty = config.GetDoubleParam("optim_penalty", 1e-4);
   penalty_param = config.GetDoubleParam("optim_penalty_param", 0.5);
+  config.GetVecDoubleParam("optim_leakage_weights", leakage_weights, 1.0);
   timestepper->penalty_param = penalty_param;
   timestepper->gamma_penalty = gamma_penalty;
   timestepper->optim_target = optim_target;
+  timestepper->leakage_weights = leakage_weights;
 
   /* Get initial condition type and involved oscillators */
   std::vector<std::string> initcondstr;

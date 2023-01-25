@@ -33,6 +33,7 @@ class TimeStepper{
     double penalty_integral;        // output, holds the integral term
     double penalty_param;
     double gamma_penalty;
+    std::vector<double> leakage_weights;
     OptimTarget* optim_target;
 
     /* Output */
