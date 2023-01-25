@@ -19,9 +19,11 @@ class OptimTarget{
     Vec aux;      /* auxiliary vector needed when computing the objective for gate optimization */
     LindbladType lindbladtype;
 
+    bool quietmode;
+
   public:
 
-    OptimTarget(int dim, int purestateID_, TargetType target_type_, ObjectiveType objective_type_, Gate* targetgate_, std::string target_filename_, LindbladType lindbladtype_);
+    OptimTarget(int dim, int purestateID_, TargetType target_type_, ObjectiveType objective_type_, Gate* targetgate_, std::string target_filename_, LindbladType lindbladtype_, bool quietmode=false);
     ~OptimTarget();
 
     /* Get information on the type of optimization target */

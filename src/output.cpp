@@ -7,15 +7,19 @@ Output::Output(){
   optim_monitor_freq = 0;
   output_frequency = 0;
   optim_iter = 0;
+  quietmode = false;
 }
 
-Output::Output(MapParam& config, MPI_Comm comm_petsc, MPI_Comm comm_init, int noscillators) : Output() {
+Output::Output(MapParam& config, MPI_Comm comm_petsc, MPI_Comm comm_init, int noscillators, bool quietmode_) : Output() {
 
   /* Get communicator ranks */
   MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
   MPI_Comm_rank(comm_petsc, &mpirank_petsc);
   MPI_Comm_size(comm_petsc, &mpisize_petsc);
   MPI_Comm_rank(comm_init, &mpirank_init);
+
+  /* Reduced output */
+  quietmode = quietmode_;
 
 
   /* Create Data directory */
@@ -61,7 +65,7 @@ Output::Output(MapParam& config, MPI_Comm comm_petsc, MPI_Comm comm_init, int no
 
 
 Output::~Output(){
-  if (mpirank_world == 0) printf("Output directory: %s\n", datadir.c_str());
+  if (mpirank_world == 0 && !quietmode) printf("Output directory: %s\n", datadir.c_str());
   if (mpirank_world == 0) fclose(optimfile);
 }
 
@@ -94,7 +98,7 @@ void Output::writeGradient(Vec grad){
     }
     fclose(file);
     VecRestoreArrayRead(grad, &grad_ptr);
-    printf("File written: %s\n", filename);
+    if (!quietmode) printf("File written: %s\n", filename);
   }
 }
 
@@ -121,7 +125,7 @@ void Output::writeControls(Vec params, MasterEq* mastereq, int ntime, double dt)
     }
     fclose(file);
     VecRestoreArrayRead(params, &params_ptr);
-    printf("File written: %s\n", filename);
+    if (!quietmode) printf("File written: %s\n", filename);
 
     /* Print control p(t) and transfer u_i(p(t)) to file for each oscillator */
     mastereq->setControlAmplitudes(params);
@@ -159,8 +163,8 @@ void Output::writeControls(Vec params, MasterEq* mastereq, int ntime, double dt)
 
       fclose(file_c);
       fclose(file_t);
-      printf("File written: %s\n", filename);
-      printf("File written: %s\n", filename_transfer);
+      if (!quietmode) printf("File written: %s\n", filename);
+      if (!quietmode) printf("File written: %s\n", filename_transfer);
     } // end of oscillator loop
   }
 }

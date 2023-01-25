@@ -12,6 +12,8 @@ class Output{
   int mpirank_petsc;  /* Rank of processor for parallelizing Petsc */
   int mpisize_petsc;  /* Size of communicator for parallelizing Petsc */
   int mpirank_init;   /* Rank of processor for parallelizing initial conditions */
+
+  bool quietmode; /* Reduced screen output */
   
   FILE* optimfile;      /* Output file to log optimization progress */
   int output_frequency;   /* Output frequency in time domain: write output at every <num> time step. */
@@ -35,7 +37,7 @@ class Output{
 
   public:
     Output();
-    Output(MapParam& config, MPI_Comm comm_petsc, MPI_Comm comm_init, int noscillators);
+    Output(MapParam& config, MPI_Comm comm_petsc, MPI_Comm comm_init, int noscillators, bool quietmode=false);
     ~Output();
 
     /* Write to optimization history file in every optim iteration */

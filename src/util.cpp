@@ -490,7 +490,7 @@ PetscErrorCode SanityTests(Vec x, double time){
 }
 
 
-void read_vector(const char *filename, double *var, int dim) {
+void read_vector(const char *filename, double *var, int dim, bool quietmode) {
 
   FILE *file;
   double tmp;
@@ -499,7 +499,7 @@ void read_vector(const char *filename, double *var, int dim) {
   file = fopen(filename, "r");
   if (file != NULL) {
     /* Read data */
-    printf("Reading file %s\n", filename);
+    if (!quietmode) printf("Reading file %s\n", filename);
     for (int ix = 0; ix < dim; ix++) {
       fscanf(file, "%lf", &tmp);
       var[ix] = tmp;

@@ -12,10 +12,11 @@ MasterEq::MasterEq(){
   dRedp = NULL;
   dImdp = NULL;
   usematfree = false;
+  quietmode = false;
 }
 
 
-MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Oscillator** oscil_vec_, const std::vector<double> crosskerr_, const std::vector<double> Jkl_, const std::vector<double> eta_, LindbladType lindbladtype_, bool usematfree_, std::string python_file_) {
+MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Oscillator** oscil_vec_, const std::vector<double> crosskerr_, const std::vector<double> Jkl_, const std::vector<double> eta_, LindbladType lindbladtype_, bool usematfree_, std::string python_file_, bool quietmode_) {
   int ierr;
 
   nlevels = nlevels_;
@@ -28,6 +29,7 @@ MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Osci
   usematfree = usematfree_;
   lindbladtype = lindbladtype_;
   python_file = python_file_;
+  quietmode = quietmode_;
 
 
   for (int i=0; i<crosskerr.size(); i++){
@@ -54,13 +56,13 @@ MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Osci
   }
   if (lindbladtype != LindbladType::NONE) {  // Solve Lindblads equation, dim = N^2
     dim = dim_rho*dim_rho; 
-    if (mpirank_world == 0) {
+    if (mpirank_world == 0 && !quietmode) {
       printf("Solving Lindblads master equation (state is a density matrix).\n");
       printf("State dimension (complex) N^2 = %d\n",dim);
     }
   } else { // Solve Schroedingers equation. dim = N
     dim = dim_rho; 
-    if (mpirank_world == 0) {
+    if (mpirank_world == 0 && !quietmode) {
       printf("Solving Schroedingers equation (state is a vector).\n");
       printf("State dimension (complex) N = %d\n",dim);
     }
@@ -633,7 +635,7 @@ void MasterEq::initSparseMatSolver(){
   /* If a Python file is given, overwrite the matrices with those read from file. */ 
   if (python_file.compare("none") != 0 ) {
 #ifdef WITH_PYTHON
-    if (mpirank_world==0) printf("\n# Reading Hamiltonian model from python file %s.\n\n", python_file.c_str());
+    if (mpirank_world==0 && !quietmode) printf("\n# Reading Hamiltonian model from python file %s.\n\n", python_file.c_str());
 #else
     printf("# Warning: You requested to read the Hamiltonians from the python file %s, but you didn't link Quandary with python. Check your Makefile for WITH_PYTHON=true to use this feature. Using default Hamiltonian now.\n", python_file.c_str());
 #endif
@@ -648,7 +650,7 @@ void MasterEq::initSparseMatSolver(){
     py->receiveHdtTransfer(Ad_vec.size(), transfer_Hdt_re, transfer_Hdt_im);
     // TODO: Pass both Ad.size and also Bd.size, since they might be different!.
 
-    if (mpirank_world==0) printf("# Done. \n\n");
+    if (mpirank_world==0&& !quietmode) printf("# Done. \n\n");
 
     // Remove control parameters for those oscillators that are non-controllable
     for (int k=0; k<nlevels.size(); k++){

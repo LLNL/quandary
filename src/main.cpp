@@ -31,7 +31,18 @@ int main(int argc,char **argv)
   int mpisize_world, mpirank_world;
   MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
   MPI_Comm_size(MPI_COMM_WORLD, &mpisize_world);
-  if (mpirank_world == 0) printf("Running on %d cores.\n", mpisize_world);
+
+  /* Parse argument line for "--quiet" to enable reduced output mode */
+  bool quietmode = false;
+  if (argc > 2){
+    std::string quietstring = argv[2];
+    if (quietstring.substr(2,5).compare("quiet") == 0) {
+      quietmode = true;
+      // printf("quietmode =  %d\n", quietmode);
+    }
+  }
+
+  if (mpirank_world == 0 && !quietmode) printf("Running on %d cores.\n", mpisize_world);
 
   /* Read config file */
   if (argc < 2) {
@@ -42,7 +53,7 @@ int main(int argc,char **argv)
     return 0;
   }
   std::stringstream log;
-  MapParam config(MPI_COMM_WORLD, log);
+  MapParam config(MPI_COMM_WORLD, log, quietmode);
   config.ReadFile(argv[1]);
 
   /* --- Get some options from the config file --- */
@@ -158,7 +169,7 @@ int main(int argc,char **argv)
   MPI_Comm_rank(comm_petsc, &mpirank_petsc);
   MPI_Comm_size(comm_petsc, &mpisize_petsc);
 
-  if (mpirank_world == 0)  std::cout<< "Parallel distribution: " << mpisize_init << " np_init  X  " << mpisize_petsc<< " np_petsc  " << std::endl;
+  if (mpirank_world == 0 && !quietmode)  std::cout<< "Parallel distribution: " << mpisize_init << " np_init  X  " << mpisize_petsc<< " np_petsc  " << std::endl;
 
   /* Initialize Petsc using petsc's communicator */
   PETSC_COMM_WORLD = comm_petsc;
@@ -300,14 +311,14 @@ int main(int argc,char **argv)
     usematfree = false;
   }
   // Initialize Master equation
-  MasterEq* mastereq = new MasterEq(nlevels, nessential, oscil_vec, crosskerr, Jkl, eta, lindbladtype, usematfree, python_file);
+  MasterEq* mastereq = new MasterEq(nlevels, nessential, oscil_vec, crosskerr, Jkl, eta, lindbladtype, usematfree, python_file, quietmode);
 
 
   /* Output */
-  Output* output = new Output(config, comm_petsc, comm_init, nlevels.size());
+  Output* output = new Output(config, comm_petsc, comm_init, nlevels.size(), quietmode);
 
   // Some screen output 
-  if (mpirank_world == 0) {
+  if (mpirank_world == 0 && !quietmode) {
     std::cout << "Time: [0:" << total_time << "], ";
     std::cout << "N="<< ntime << ", dt=" << dt << std::endl;
     std::cout<< "System: ";
@@ -365,7 +376,7 @@ int main(int argc,char **argv)
   if (read_gate_rot[0] < 1e20) { // the config option exists
     for (int i=0; i<noscillators; i++)  gate_rot_freq[i] = read_gate_rot[i];
   }
-  OptimProblem* optimctx = new OptimProblem(config, mytimestepper, comm_init, comm_optim, ninit, gate_rot_freq, output);
+  OptimProblem* optimctx = new OptimProblem(config, mytimestepper, comm_init, comm_optim, ninit, gate_rot_freq, output, quietmode);
 
   /* Set upt solution and gradient vector */
   Vec xinit;
@@ -386,7 +397,7 @@ int main(int argc,char **argv)
     if (logfile.is_open()){
       logfile << log.str();
       logfile.close();
-      printf("File written: %s\n", filename);
+      if (!quietmode) printf("File written: %s\n", filename);
     }
     else std::cerr << "Unable to open " << filename;
   }
@@ -399,20 +410,20 @@ int main(int argc,char **argv)
   /* --- Solve primal --- */
   if (runtype == RunType::SIMULATION) {
     optimctx->getStartingPoint(xinit);
-    if (mpirank_world == 0) printf("\nStarting primal solver... \n");
+    if (mpirank_world == 0 && !quietmode) printf("\nStarting primal solver... \n");
     objective = optimctx->evalF(xinit);
-    if (mpirank_world == 0) printf("\nTotal objective = %1.14e, \n", objective);
+    if (mpirank_world == 0 && !quietmode) printf("\nTotal objective = %1.14e, \n", objective);
     optimctx->getSolution(&opt);
   } 
   
   /* --- Solve adjoint --- */
   if (runtype == RunType::GRADIENT) {
     optimctx->getStartingPoint(xinit);
-    if (mpirank_world == 0) printf("\nStarting adjoint solver...\n");
+    if (mpirank_world == 0 && !quietmode) printf("\nStarting adjoint solver...\n");
     optimctx->evalGradF(xinit, grad);
     VecNorm(grad, NORM_2, &gnorm);
     // VecView(grad, PETSC_VIEWER_STDOUT_WORLD);
-    if (mpirank_world == 0) {
+    if (mpirank_world == 0 && !quietmode) {
       printf("\nGradient norm: %1.14e\n", gnorm);
     }
     optimctx->output->writeGradient(grad);
@@ -422,7 +433,7 @@ int main(int argc,char **argv)
   if (runtype == RunType::OPTIMIZATION) {
     /* Set initial starting point */
     optimctx->getStartingPoint(xinit);
-    if (mpirank_world == 0) printf("\nStarting Optimization solver ... \n");
+    if (mpirank_world == 0 && !quietmode) printf("\nStarting Optimization solver ... \n");
     optimctx->solve(xinit);
     optimctx->getSolution(&opt);
   }
@@ -443,7 +454,7 @@ int main(int argc,char **argv)
   MPI_Allreduce(&myMB, &globalMB, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 
   /* Print statistics */
-  if (mpirank_world == 0) {
+  if (mpirank_world == 0 && !quietmode) {
     printf("\n");
     printf(" Used Time:        %.2f seconds\n", UsedTime);
     printf(" Global Memory:    %.2f MB\n", globalMB);
