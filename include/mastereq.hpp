@@ -85,6 +85,8 @@ class MasterEq{
     PetscInt* cols;           // holding columns when evaluating dRHSdp
     PetscScalar* vals;   // holding values when evaluating dRHSdp
 
+    bool quietmode;
+
   public:
     std::vector<int> nlevels;  // Number of levels per oscillator
     std::vector<int> nessential; // Number of essential levels per oscillator
@@ -100,7 +102,7 @@ class MasterEq{
 
   public:
     MasterEq();
-    MasterEq(std::vector<int> nlevels, std::vector<int> nessential, Oscillator** oscil_vec_, const std::vector<double> crosskerr_, const std::vector<double> Jkl_, const std::vector<double> eta_, LindbladType lindbladtype_, bool usematfree_, std::string python_file);
+    MasterEq(std::vector<int> nlevels, std::vector<int> nessential, Oscillator** oscil_vec_, const std::vector<double> crosskerr_, const std::vector<double> Jkl_, const std::vector<double> eta_, LindbladType lindbladtype_, bool usematfree_, std::string python_file, bool quietmode=false);
     ~MasterEq();
 
     /* initialize matrices needed for applying sparse-mat solver */

@@ -38,6 +38,8 @@ class OptimProblem {
   int mpirank_world, mpisize_world;
   int mpirank_init, mpisize_init;
 
+  bool quietmode;
+
   /* Optimization stuff */
   std::vector<double> obj_weights; /* List of weights for weighting the average objective over initial conditions  */
   int ndesign;                     /* Number of global design parameters */
@@ -65,7 +67,7 @@ class OptimProblem {
     Vec xlower, xupper;              /* Optimization bounds */
 
   /* Constructor */
-  OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm comm_init_, MPI_Comm comm_optim, int ninit_, std::vector<double> gate_rot_freq, Output* output_);
+  OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm comm_init_, MPI_Comm comm_optim, int ninit_, std::vector<double> gate_rot_freq, Output* output_, bool quietmode=false);
   ~OptimProblem();
 
   /* Return the number of design variables */
@@ -79,6 +81,7 @@ class OptimProblem {
   double getFidelity() { return fidelity; };
   double getFaTol()    { return fatol; };
   double getInfTol()   { return inftol; };
+  int getMPIrank_world() { return mpirank_world;};
 
   /* Evaluate the objective function F(x) */
   double evalF(const Vec x);
