@@ -728,7 +728,7 @@ PetscErrorCode TaoMonitor(Tao tao,void*ptr){
   ctx->output->writeControls(params, ctx->timestepper->mastereq, ctx->timestepper->ntime, ctx->timestepper->dt);
 
   /* Screen output */
-  if (ctx->getMPIrank_world() == 0) {
+  if (ctx->getMPIrank_world() == 0 && iter % ctx->output->optim_monitor_freq == 0) {
     std::cout<< iter <<  ": Objective = " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal;
     std::cout<< "  Fidelity = " << F_avg;
     std::cout<< "  ||Grad|| = " << gnorm;
@@ -736,10 +736,10 @@ PetscErrorCode TaoMonitor(Tao tao,void*ptr){
   }
 
   if (1.0 - F_avg <= ctx->getInfTol()) {
-    printf("Optimization finished with small infidelity.\n");
+    if (ctx->getMPIrank_world() == 0) printf("Optimization finished with small infidelity.\n");
     TaoSetConvergedReason(tao, TAO_CONVERGED_USER);
   } else if (obj_cost <= ctx->getFaTol()) {
-    printf("Optimization finished with small final time cost.\n");
+    if (ctx->getMPIrank_world() == 0) printf("Optimization finished with small final time cost.\n");
     TaoSetConvergedReason(tao, TAO_CONVERGED_USER);
   }
 
