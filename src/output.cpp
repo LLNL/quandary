@@ -79,10 +79,9 @@ void Output::writeOptimFile(double objective, double gnorm, double stepsize, dou
 
 }
 
-void Output::writeGradient(Vec grad){
+void Output::writeGradient(std::vector<double> &grad){
   char filename[255];  
-  PetscInt ngrad;
-  VecGetSize(grad, &ngrad);
+  int ngrad = grad.size();
 
   if (mpirank_world == 0) {
     /* Print current gradients to file */
@@ -91,13 +90,10 @@ void Output::writeGradient(Vec grad){
     sprintf(filename, "%s/grad.dat", datadir.c_str());
     file = fopen(filename, "w");
 
-    const PetscScalar* grad_ptr;
-    VecGetArrayRead(grad, &grad_ptr);
     for (int i=0; i<ngrad; i++){
-      fprintf(file, "%1.14e\n", grad_ptr[i]);
+      fprintf(file, "%1.14e\n", grad[i]);
     }
     fclose(file);
-    VecRestoreArrayRead(grad, &grad_ptr);
     if (!quietmode) printf("File written: %s\n", filename);
   }
 }

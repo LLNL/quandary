@@ -1,6 +1,6 @@
 #include "optimproblem.hpp"
 
-OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm comm_init_, MPI_Comm comm_optim_, int ninit_, std::vector<double> gate_rot_freq, Output* output_, bool quietmode_){
+OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm comm_init_, MPI_Comm comm_optim_, int ninit_, std::vector<double> gate_rot_freq, Output* output_, int npcof_global_, bool quietmode_){
 
   timestepper = timestepper_;
   ninit = ninit_;
@@ -8,6 +8,7 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   comm_optim = comm_optim_;
   output = output_;
   quietmode = quietmode_;
+  npcof_global= npcof_global_;
   /* Reset */
   objective = 0.0;
 
@@ -23,6 +24,9 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
 
   /* Store number of initial conditions per init-processor group */
   ninit_local = ninit / mpisize_init; 
+
+  /* Store number of pcof columns per optim processor group */
+  npcof_local = npcof_global / mpisize_optim;
 
   /*  If Schroedingers solver, allocate storage for the final states at time T for each initial condition. Schroedinger's solver does not store the time-trajectories during forward ODE solve, but instead recomputes the primal states during the adjoint solve. Therefore we need to store the terminal condition for the backwards primal solve. Be aware that the final states stored here will be overwritten during backwards computation!! */
   if (timestepper->mastereq->lindbladtype == LindbladType::NONE) {
@@ -355,9 +359,21 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   config.GetVecStrParam("control_initialization0", controlinit_str, "constant, 0.0");
   if ( controlinit_str.size() > 0 && controlinit_str[0].compare("file") == 0 ) {
     assert(controlinit_str.size() >=2);
-    for (int i=0; i<ndesign; i++) initguess_fromfile.push_back(0.0);
-    if (mpirank_world == 0) read_vector(controlinit_str[1].c_str(), initguess_fromfile.data(), ndesign, quietmode);
-    MPI_Bcast(initguess_fromfile.data(), ndesign, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    int nelems = ndesign*npcof_global;
+    std::vector<double> readall(nelems);
+    // Read all pcof columns from file on root
+    if (mpirank_world == 0){
+      read_vector(controlinit_str[1].c_str(), readall.data(), nelems, quietmode);
+    }
+    // Broadcast to all procs
+    MPI_Bcast(readall.data(), nelems, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    // Scatter into each processors initguess_fromfile vector
+    int startID = mpirank_optim * npcof_local*ndesign;
+    for (int ipcof = 0; ipcof<npcof_local; ipcof++){
+      for (int i=0; i<ndesign; i++){
+        initguess_fromfile.push_back(readall[i + ipcof*ndesign + startID]);
+      }
+    }
   }
  
   /* Create Petsc's optimization solver */
@@ -494,7 +510,7 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
 
   MasterEq* mastereq = timestepper->mastereq;
 
-  if (mpirank_world == 0 && !quietmode) std::cout<< "EVAL GRAD F... " << std::endl;
+  // if (mpirank_world == 0 && !quietmode) std::cout<< "EVAL GRAD F... " << std::endl;
   Vec finalstate = NULL;
 
   /* Pass design vector x to oscillators */
@@ -647,9 +663,9 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
   VecNorm(G, NORM_2, &(gnorm));
 
   /* Output */
-  if (mpirank_world == 0 && !quietmode) {
-    std::cout<< "Objective = " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal << std::endl;
-    std::cout<< "Fidelity = " << fidelity << std::endl;
+  if (mpirank_init == 0 && !quietmode) {
+    std::cout<< mpirank_optim << ": Objective = " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal << std::endl;
+    std::cout<< mpirank_optim << ": Fidelity = " << fidelity << std::endl;
   }
 }
 
@@ -659,13 +675,13 @@ void OptimProblem::solve(Vec xinit) {
   TaoSolve(tao);
 }
 
-void OptimProblem::getStartingPoint(Vec xinit){
+void OptimProblem::getStartingPoint(Vec xinit, int pcof_startID){
   MasterEq* mastereq = timestepper->mastereq;
 
   if (initguess_fromfile.size() > 0) {
     /* Set the initial guess from file */
-    for (int i=0; i<initguess_fromfile.size(); i++) {
-      VecSetValue(xinit, i, initguess_fromfile[i], INSERT_VALUES);
+    for (int i=0; i<ndesign; i++) {
+      VecSetValue(xinit, i, initguess_fromfile[i + pcof_startID], INSERT_VALUES);
     }
 
   } else { // copy from initialization in oscillators contructor
@@ -687,7 +703,7 @@ void OptimProblem::getStartingPoint(Vec xinit){
   timestepper->mastereq->setControlAmplitudes(xinit);
   
   /* Write initial control functions to file */
-  output->writeControls(xinit, timestepper->mastereq, timestepper->ntime, timestepper->dt);
+  // output->writeControls(xinit, timestepper->mastereq, timestepper->ntime, timestepper->dt);
 
 }
 
@@ -725,7 +741,7 @@ PetscErrorCode TaoMonitor(Tao tao,void*ptr){
   ctx->output->writeOptimFile(f, gnorm, deltax, F_avg, obj_cost, obj_regul, obj_penal);
 
   /* Print parameters and controls to file */
-  ctx->output->writeControls(params, ctx->timestepper->mastereq, ctx->timestepper->ntime, ctx->timestepper->dt);
+  // ctx->output->writeControls(params, ctx->timestepper->mastereq, ctx->timestepper->ntime, ctx->timestepper->dt);
 
   /* Screen output */
   if (ctx->getMPIrank_world() == 0 && iter % ctx->output->optim_monitor_freq == 0) {

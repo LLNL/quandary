@@ -47,7 +47,7 @@ class Output{
     void writeControls(Vec params, MasterEq* mastereq, int ntime, double dt);
 
     /* Write gradient for adjoint mode */
-    void writeGradient(Vec grad);
+    void writeGradient(std::vector<double> &grad);
 
     /* Open, write and close files for fullstate and expected energy levels over time */
     void openDataFiles(std::string prefix, int initid);

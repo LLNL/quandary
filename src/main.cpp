@@ -135,14 +135,24 @@ int main(int argc,char **argv)
   MPI_Comm comm_optim, comm_init, comm_petsc;
 
   /* Get the size of communicators  */
-  // Number of cores for optimization. Under development, set to 1 for now. 
-  // int np_optim= config.GetIntParam("np_optim", 1);
-  // np_optim= min(np_optim, mpisize_world); 
-  int np_optim= 1;
   // Number of cores for initial condition distribution. Since this gives perfect speedup, choose maximum.
   int np_init = min(ninit, mpisize_world); 
   // Number of cores for Petsc: All the remaining ones. 
-  int np_petsc = mpisize_world / (np_init * np_optim);
+  // int np_petsc = mpisize_world / (np_init * np_optim);
+  int np_petsc = 1; 
+  // Number of cores for optimization. Under development, set to 1 for now. 
+  // int np_optim= config.GetIntParam("np_optim", 1);
+  // np_optim= min(np_optim, mpisize_world); 
+  // int np_optim= 1;
+  // Number of cores for Optim: All the remaining ones. 
+  int np_optim = mpisize_world / (np_init * np_petsc);
+  // Number of columns within the pcof file
+  int npcof_global = config.GetIntParam("npcof_vecs", 1);
+  /* Sanity check */
+  if (npcof_global % np_optim != 0 ) {
+    if (mpirank_world==0) printf("ERROR: wrong number of threads (%d) for parallelizing over %d pcof columns.\n", np_optim, npcof_global);
+    exit(1);
+  }
 
   /* Sanity check for communicator sizes */ 
   if (mpisize_world % ninit != 0 && ninit % mpisize_world != 0) {
@@ -169,7 +179,8 @@ int main(int argc,char **argv)
   MPI_Comm_rank(comm_petsc, &mpirank_petsc);
   MPI_Comm_size(comm_petsc, &mpisize_petsc);
 
-  if (mpirank_world == 0 && !quietmode)  std::cout<< "Parallel distribution: " << mpisize_init << " np_init  X  " << mpisize_petsc<< " np_petsc  " << std::endl;
+  // if (mpirank_world == 0 && !quietmode)  std::cout<< "Parallel distribution: " << mpisize_init << " np_init  X  " << mpisize_petsc<< " np_petsc  " << std::endl;
+  if (mpirank_world == 0 && !quietmode)  std::cout<< "Parallel distribution: " << mpisize_init << " np_init  X  " << mpisize_petsc<< " np_petsc  X  " << mpisize_optim << " np_optim " <<  std::endl;
 
   /* Initialize Petsc using petsc's communicator */
   PETSC_COMM_WORLD = comm_petsc;
@@ -376,7 +387,8 @@ int main(int argc,char **argv)
   if (read_gate_rot[0] < 1e20) { // the config option exists
     for (int i=0; i<noscillators; i++)  gate_rot_freq[i] = read_gate_rot[i];
   }
-  OptimProblem* optimctx = new OptimProblem(config, mytimestepper, comm_init, comm_optim, ninit, gate_rot_freq, output, quietmode);
+
+  OptimProblem* optimctx = new OptimProblem(config, mytimestepper, comm_init, comm_optim, ninit, gate_rot_freq, output, npcof_global, quietmode);
 
   /* Set upt solution and gradient vector */
   Vec xinit;
@@ -409,7 +421,13 @@ int main(int argc,char **argv)
   double gnorm = 0.0;
   /* --- Solve primal --- */
   if (runtype == RunType::SIMULATION) {
-    optimctx->getStartingPoint(xinit);
+
+    if (mpisize_optim > 1) {
+      printf("\nERROR: Parallel treatment of pcof columns currently only implemented for gradient computation (runtype=gradient) !\n");
+      exit(1);
+    }
+
+    optimctx->getStartingPoint(xinit, 0); // TODO: MPI PARALLELIZATION
     if (mpirank_world == 0 && !quietmode) printf("\nStarting primal solver... \n");
     objective = optimctx->evalF(xinit);
     if (mpirank_world == 0 && !quietmode) printf("\nTotal objective = %1.14e, \n", objective);
@@ -418,21 +436,50 @@ int main(int argc,char **argv)
   
   /* --- Solve adjoint --- */
   if (runtype == RunType::GRADIENT) {
-    optimctx->getStartingPoint(xinit);
-    if (mpirank_world == 0 && !quietmode) printf("\nStarting adjoint solver...\n");
-    optimctx->evalGradF(xinit, grad);
-    VecNorm(grad, NORM_2, &gnorm);
-    // VecView(grad, PETSC_VIEWER_STDOUT_WORLD);
-    if (mpirank_world == 0 && !quietmode) {
-      printf("\nGradient norm: %1.14e\n", gnorm);
+
+    // Allocate gradient vector containing multiple pcof cols, on each rank
+    int npcof_local = npcof_global / mpisize_optim;
+    std::vector<double> grad_allpcofs_local(optimctx->getNdesign()*npcof_local);
+
+    // Iterate over columns of pcof
+    for (int ipcof = 0; ipcof<npcof_local; ipcof++){
+      
+      // Get starting point 
+      int pcof_startID = ipcof*optimctx->getNdesign();
+      optimctx->getStartingPoint(xinit, pcof_startID);
+
+      // Evaluate gradient
+      if (mpirank_init == 0 && !quietmode) printf("\n%d: Starting adjoint solver, pcof column %d...\n", mpirank_optim, ipcof+mpirank_optim*npcof_local);
+      optimctx->evalGradF(xinit, grad);
+      VecNorm(grad, NORM_2, &gnorm);
+      if (mpirank_init == 0 && !quietmode) {
+        printf("%d: Gradient norm pcof column %d: %1.14e\n", mpirank_optim, ipcof+mpirank_optim*npcof_local, gnorm);
+      }
+
+      // Store gradient in larger local gradient vector
+      PetscScalar* grad_ptr;
+      VecGetArray(grad, &grad_ptr);
+      for (int igrad=0; igrad<optimctx->getNdesign(); igrad++){
+        grad_allpcofs_local[igrad+pcof_startID] = grad_ptr[igrad];
+      }
+      VecRestoreArray(grad, &grad_ptr);
     }
-    optimctx->output->writeGradient(grad);
+
+    // Gather results from all processors and write to file
+    std::vector<double> grad_global(optimctx->getNdesign()*npcof_global);
+    MPI_Gather(grad_allpcofs_local.data(), grad_allpcofs_local.size(), MPI_DOUBLE, grad_global.data(), grad_allpcofs_local.size(), MPI_DOUBLE, 0, comm_optim);
+    if (mpirank_world==0) optimctx->output->writeGradient(grad_global);
   }
 
   /* --- Solve the optimization  --- */
   if (runtype == RunType::OPTIMIZATION) {
+    if (mpisize_optim > 1) {
+      printf("\nERROR: Parallel treatment of pcof columns currently only implemented for gradient computation (runtype=gradient) !\n");
+      exit(1);
+    }
+
     /* Set initial starting point */
-    optimctx->getStartingPoint(xinit);
+    optimctx->getStartingPoint(xinit, 0);  // TODO: MPI PARALLELIZATION
     if (mpirank_world == 0 && !quietmode) printf("\nStarting Optimization solver ... \n");
     optimctx->solve(xinit);
     optimctx->getSolution(&opt);

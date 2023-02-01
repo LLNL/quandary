@@ -39,6 +39,8 @@ class OptimProblem {
   int mpirank_init, mpisize_init;
 
   bool quietmode;
+  int npcof_global;
+  int npcof_local;
 
   /* Optimization stuff */
   std::vector<double> obj_weights; /* List of weights for weighting the average objective over initial conditions  */
@@ -68,7 +70,7 @@ class OptimProblem {
     Vec xlower, xupper;              /* Optimization bounds */
 
   /* Constructor */
-  OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm comm_init_, MPI_Comm comm_optim, int ninit_, std::vector<double> gate_rot_freq, Output* output_, bool quietmode=false);
+  OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm comm_init_, MPI_Comm comm_optim, int ninit_, std::vector<double> gate_rot_freq, Output* output_, int npcof_global, bool quietmode=false);
   ~OptimProblem();
 
   /* Return the number of design variables */
@@ -94,7 +96,7 @@ class OptimProblem {
   void solve(Vec xinit);
 
   /* Compute initial guess for optimization variables */
-  void getStartingPoint(Vec x);
+  void getStartingPoint(Vec x, int pcof_startID);
 
   /* Call this after TaoSolve() has finished to print out some information */
   void getSolution(Vec* opt);
