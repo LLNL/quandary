@@ -1,6 +1,7 @@
 # Set location of PETSC
 #PETSC_DIR=/path/to/petsc-<version>
 #PETSC_ARCH=arch-linux-c-debug
+PETSC_DIR=/usr/local/Cellar/petsc/3.18.5/
 
 # Optional: Link to SLEPC
 WITH_SLEPC = false

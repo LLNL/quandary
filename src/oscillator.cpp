@@ -4,9 +4,10 @@ Oscillator::Oscillator(){
   nlevels = 0;
   Tfinal = 0;
   ground_freq = 0.0;
+  control_enforceBC = true;
 }
 
-Oscillator::Oscillator(int id, std::vector<int> nlevels_all_, std::vector<std::string>& controlsegments, std::vector<std::string>& controlinitializations, double ground_freq_, double selfkerr_, double rotational_freq_, double decay_time_, double dephase_time_, std::vector<double> carrier_freq_, double Tfinal_, LindbladType lindbladtype_){
+Oscillator::Oscillator(MapParam config, int id, std::vector<int> nlevels_all_, std::vector<std::string>& controlsegments, std::vector<std::string>& controlinitializations, double ground_freq_, double selfkerr_, double rotational_freq_, double decay_time_, double dephase_time_, std::vector<double> carrier_freq_, double Tfinal_, LindbladType lindbladtype_){
 
   myid = id;
   nlevels = nlevels_all_[id];
@@ -130,8 +131,8 @@ Oscillator::Oscillator(int id, std::vector<int> nlevels_all_, std::vector<std::s
   }
 
 
-
-
+  /* Check if boundary conditions for controls should be enfored (default: yes). */
+  control_enforceBC = config.GetBoolParam("control_enforceBC", true);
 
   /* Compute and store dimension of preceding and following oscillators */
   dim_preOsc = 1;
@@ -152,10 +153,14 @@ Oscillator::~Oscillator(){
 }
 
 void Oscillator::setParams(double* x){
-  // First, enforce the control boundaries, i.e. potentially set some parameters in x to zero. 
-  for (int bs = 0; bs < basisfunctions.size(); bs++){
-    for (int f=0; f < carrier_freq.size(); f++) {
-      basisfunctions[bs]->enforceBoundary(x, f);
+
+  if (control_enforceBC){
+    printf("\n\n True! \n\n");
+    // First, enforce the control boundaries, i.e. potentially set some parameters in x to zero. 
+    for (int bs = 0; bs < basisfunctions.size(); bs++){
+      for (int f=0; f < carrier_freq.size(); f++) {
+        basisfunctions[bs]->enforceBoundary(x, f);
+      }
     }
   }
 
