@@ -255,10 +255,10 @@ void TimeStepper::penaltyIntegral_diff(double time, const Vec x, Vec xbar, doubl
         // Derivative: 2 * rho(i,i) * weights * penalbar * dt
         if (ilow <= vecID_re && vecID_re < iupp) VecSetValue(xbar, vecID_re, 2.*x_re*leakage_weights[i]*penaltybar/ntime, ADD_VALUES);
         if (ilow <= vecID_im && vecID_im < iupp) VecSetValue(xbar, vecID_im, 2.*x_im*leakage_weights[i]*penaltybar/ntime, ADD_VALUES);
-      // }
-      VecAssemblyBegin(xbar);
-      VecAssemblyEnd(xbar);
+    // }
     }
+    VecAssemblyBegin(xbar);
+    VecAssemblyEnd(xbar);
   }
 }
 
@@ -318,7 +318,6 @@ void TimeStepper::penaltyDpDm_diff(int n, Vec xbar, double Jbar){
     if (n < ntime)     xp1 = getState(n+1);
     if (n < ntime-1)   xp2 = getState(n+2);
 
-    VecGetArray(xbar, &xbarptr);
     VecGetArrayRead(x, &xptr);
     if (n > 0)        VecGetArrayRead(xm1, &xm1ptr);
     if (n > 1)        VecGetArrayRead(xm2, &xm2ptr);
@@ -345,26 +344,25 @@ void TimeStepper::penaltyDpDm_diff(int n, Vec xbar, double Jbar){
         if (n > 1) {
           // if (i==0) printf("DPDM BWD, update %d from on first f(%d %d %d) \n", n, n-2, n-1, n);
 
-          if (ilow <= vecID_re && vecID_re < iupp) xbarptr[vecID_re] += 2.0*(xm2ptr[vecID_re] - 2.0*xm1ptr[vecID_re] + xptr[vecID_re]) * dtinv * Jbar;
-          if (ilow <= vecID_im && vecID_im < iupp) xbarptr[vecID_im] += 2.0*(xm2ptr[vecID_im] - 2.0*xm1ptr[vecID_im] + xptr[vecID_im]) * dtinv * Jbar;
+          if (ilow <= vecID_re && vecID_re < iupp) VecSetValue(xbar,vecID_re, 2.0*(xm2ptr[vecID_re] - 2.0*xm1ptr[vecID_re] + xptr[vecID_re]) * dtinv * Jbar, ADD_VALUES);
+          if (ilow <= vecID_im && vecID_im < iupp) VecSetValue(xbar,vecID_im, 2.0*(xm2ptr[vecID_im] - 2.0*xm1ptr[vecID_im] + xptr[vecID_im]) * dtinv * Jbar, ADD_VALUES);
         }
 
         // center term
         if (n > 0 && n < ntime) {
             // if (i==0) printf("DPDM BWD, update %d from on second f(%d %d %d) \n", n, n-1, n, n+1);
-            if (ilow <= vecID_re && vecID_re < iupp) xbarptr[vecID_re] += - 4.0*(xm1ptr[vecID_re] - 2.0*xptr[vecID_re] + xp1ptr[vecID_re]) * dtinv * Jbar;
-            if (ilow <= vecID_im && vecID_im < iupp) xbarptr[vecID_im] += - 4.0*(xm1ptr[vecID_im] - 2.0*xptr[vecID_im] + xp1ptr[vecID_im]) * dtinv * Jbar;
+            if (ilow <= vecID_re && vecID_re < iupp) VecSetValue(xbar, vecID_re, - 4.0*(xm1ptr[vecID_re] - 2.0*xptr[vecID_re] + xp1ptr[vecID_re]) * dtinv * Jbar, ADD_VALUES);
+            if (ilow <= vecID_im && vecID_im < iupp) VecSetValue(xbar, vecID_im, - 4.0*(xm1ptr[vecID_im] - 2.0*xptr[vecID_im] + xp1ptr[vecID_im]) * dtinv * Jbar, ADD_VALUES);
         }
         
         // last term 
         if (n < ntime-1) {
             // if (i==0) printf("DPDM BWD, update %d from on third f(%d %d %d) \n", n, n, n+1, n+2);
-            if (ilow <= vecID_re && vecID_re < iupp) xbarptr[vecID_re] +=  2.0*(xptr[vecID_re] - 2.0*xp1ptr[vecID_re] + xp2ptr[vecID_re]) * dtinv * Jbar;
-            if (ilow <= vecID_im && vecID_im < iupp) xbarptr[vecID_im] +=  2.0*(xptr[vecID_im] - 2.0*xp1ptr[vecID_im] + xp2ptr[vecID_im]) * dtinv * Jbar;
+            if (ilow <= vecID_re && vecID_re < iupp) VecSetValue(xbar, vecID_re, 2.0*(xptr[vecID_re] - 2.0*xp1ptr[vecID_re] + xp2ptr[vecID_re]) * dtinv * Jbar, ADD_VALUES);
+            if (ilow <= vecID_im && vecID_im < iupp) VecSetValue(xbar, vecID_im, 2.0*(xptr[vecID_im] - 2.0*xp1ptr[vecID_im] + xp2ptr[vecID_im]) * dtinv * Jbar, ADD_VALUES);
         }
     }
 
-    VecRestoreArray(xbar, &xbarptr);
     VecRestoreArrayRead(x, &xptr);
     if (n > 0 )       VecRestoreArrayRead(xm1, &xm1ptr);
     if (n > 1)        VecRestoreArrayRead(xm2, &xm2ptr);
