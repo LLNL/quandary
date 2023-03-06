@@ -159,9 +159,12 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   gamma_penalty = config.GetDoubleParam("optim_penalty", 1e-4);
   penalty_param = config.GetDoubleParam("optim_penalty_param", 0.5);
   config.GetVecDoubleParam("optim_leakage_weights", leakage_weights, 1.0);
+  config.GetVecDoubleParam("optim_leakage_weights", leakage_weights, 1.0);
   timestepper->penalty_param = penalty_param;
   timestepper->gamma_penalty = gamma_penalty;
+  gamma_penalty_dpdm = timestepper->gamma_penalty_dpdm;
   timestepper->optim_target = optim_target;
+  timestepper->leakage_weights = leakage_weights;
   timestepper->leakage_weights = leakage_weights;
 
   /* Get initial condition type and involved oscillators */
@@ -427,6 +430,7 @@ double OptimProblem::evalF(const Vec x) {
   obj_cost  = 0.0;
   obj_regul = 0.0;
   obj_penal = 0.0;
+  obj_penal_dpdm = 0.0;
   fidelity = 0.0;
   double obj_cost_re = 0.0;
   double obj_cost_im = 0.0;
@@ -448,6 +452,9 @@ double OptimProblem::evalF(const Vec x) {
     /* Add to integral penalty term */
     obj_penal += obj_weights[iinit] * gamma_penalty * timestepper->penalty_integral;
 
+    /* Add to second derivative penalty term */
+    obj_penal_dpdm += obj_weights[iinit] * gamma_penalty_dpdm * timestepper->penalty_dpdm;
+
     /* Evaluate J(finalstate) and add to final-time cost */
     double obj_iinit_re = 0.0;
     double obj_iinit_im = 0.0;
@@ -467,11 +474,13 @@ double OptimProblem::evalF(const Vec x) {
 
   /* Sum up from initial conditions processors */
   double mypen = obj_penal;
+  double mypen_dpdm = obj_penal_dpdm;
   double mycost_re = obj_cost_re;
   double mycost_im = obj_cost_im;
   double myfidelity_re = fidelity_re;
   double myfidelity_im = fidelity_im;
   MPI_Allreduce(&mypen, &obj_penal, 1, MPI_DOUBLE, MPI_SUM, comm_init);
+  MPI_Allreduce(&mypen_dpdm, &obj_penal_dpdm, 1, MPI_DOUBLE, MPI_SUM, comm_init);
   MPI_Allreduce(&mycost_re, &obj_cost_re, 1, MPI_DOUBLE, MPI_SUM, comm_init);
   MPI_Allreduce(&mycost_im, &obj_cost_im, 1, MPI_DOUBLE, MPI_SUM, comm_init);
   MPI_Allreduce(&myfidelity_re, &fidelity_re, 1, MPI_DOUBLE, MPI_SUM, comm_init);
@@ -493,11 +502,11 @@ double OptimProblem::evalF(const Vec x) {
   obj_regul = gamma_tik / 2. * pow(xnorm,2.0);
 
   /* Sum, store and return objective value */
-  objective = obj_cost + obj_regul + obj_penal;
+  objective = obj_cost + obj_regul + obj_penal + obj_penal_dpdm;
 
   /* Output */
   if (mpirank_world == 0) {
-    std::cout<< "Objective = " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal << std::endl;
+    std::cout<< "Objective = " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal << " + " << obj_penal_dpdm << std::endl;
     std::cout<< "Fidelity = " << fidelity  << std::endl;
   }
 
@@ -529,6 +538,7 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
   obj_cost = 0.0;
   obj_regul = 0.0;
   obj_penal = 0.0;
+  obj_penal_dpdm = 0.0;
   fidelity = 0.0;
   double obj_cost_re = 0.0;
   double obj_cost_im = 0.0;
@@ -555,6 +565,8 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
     /* Add to integral penalty term */
     obj_penal += obj_weights[iinit] * gamma_penalty * timestepper->penalty_integral;
 
+    /* Add to second derivative dpdm integral penalty term */
+    obj_penal_dpdm += obj_weights[iinit] * gamma_penalty_dpdm * timestepper->penalty_dpdm;
     /* Evaluate J(finalstate) and add to final-time cost */
     double obj_iinit_re = 0.0;
     double obj_iinit_im = 0.0;
@@ -582,7 +594,7 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
       optim_target->evalJ_diff(finalstate, rho_t0_bar, obj_weights[iinit]*obj_cost_re_bar, obj_weights[iinit]*obj_cost_im_bar);
 
       /* Derivative of time-stepping */
-      timestepper->solveAdjointODE(initid, rho_t0_bar, finalstate, obj_weights[iinit] * gamma_penalty);
+      timestepper->solveAdjointODE(initid, rho_t0_bar, finalstate, obj_weights[iinit] * gamma_penalty, obj_weights[iinit]*gamma_penalty_dpdm);
 
       /* Add to optimizers's gradient */
       VecAXPY(G, 1.0, timestepper->redgrad);
@@ -591,11 +603,13 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
 
   /* Sum up from initial conditions processors */
   double mypen = obj_penal;
+  double mypen_dpdm = obj_penal_dpdm;
   double mycost_re = obj_cost_re;
   double mycost_im = obj_cost_im;
   double myfidelity_re = fidelity_re;
   double myfidelity_im = fidelity_im;
   MPI_Allreduce(&mypen, &obj_penal, 1, MPI_DOUBLE, MPI_SUM, comm_init);
+  MPI_Allreduce(&mypen_dpdm, &obj_penal_dpdm, 1, MPI_DOUBLE, MPI_SUM, comm_init);
   MPI_Allreduce(&mycost_re, &obj_cost_re, 1, MPI_DOUBLE, MPI_SUM, comm_init);
   MPI_Allreduce(&mycost_im, &obj_cost_im, 1, MPI_DOUBLE, MPI_SUM, comm_init);
   MPI_Allreduce(&myfidelity_re, &fidelity_re, 1, MPI_DOUBLE, MPI_SUM, comm_init);
@@ -618,7 +632,7 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
   obj_regul = gamma_tik / 2. * pow(xnorm,2.0);
 
   /* Sum, store and return objective value */
-  objective = obj_cost + obj_regul + obj_penal;
+  objective = obj_cost + obj_regul + obj_penal + obj_penal_dpdm;
 
   /* For Schroedinger solver: Solve adjoint equations for all initial conditions here. */
   if (timestepper->mastereq->lindbladtype == LindbladType::NONE) {
@@ -643,7 +657,7 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
       optim_target->evalJ_diff(finalstate, rho_t0_bar, obj_weights[iinit]*obj_cost_re_bar, obj_weights[iinit]*obj_cost_im_bar);
 
       /* Derivative of time-stepping */
-      timestepper->solveAdjointODE(initid, rho_t0_bar, finalstate, obj_weights[iinit] * gamma_penalty);
+      timestepper->solveAdjointODE(initid, rho_t0_bar, finalstate, obj_weights[iinit] * gamma_penalty, obj_weights[iinit]*gamma_penalty_dpdm);
 
       /* Add to optimizers's gradient */
       VecAXPY(G, 1.0, timestepper->redgrad);
@@ -663,9 +677,9 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
   VecNorm(G, NORM_2, &(gnorm));
 
   /* Output */
-  if (mpirank_init == 0 && !quietmode) {
-    std::cout<< mpirank_optim << ": Objective = " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal << std::endl;
-    std::cout<< mpirank_optim << ": Fidelity = " << fidelity << std::endl;
+  if (mpirank_world == 0 && !quietmode) {
+    std::cout<< "Objective = " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal << " + " << obj_penal_dpdm << std::endl;
+    std::cout<< "Fidelity = " << fidelity << std::endl;
   }
 }
 
@@ -735,17 +749,18 @@ PetscErrorCode TaoMonitor(Tao tao,void*ptr){
   double obj_cost = ctx->getCostT();
   double obj_regul = ctx->getRegul();
   double obj_penal = ctx->getPenalty();
+  double obj_penal_dpdm = ctx->getPenaltyDpDm();
   double F_avg = ctx->getFidelity();
 
   /* Print to optimization file */
-  ctx->output->writeOptimFile(f, gnorm, deltax, F_avg, obj_cost, obj_regul, obj_penal);
+  ctx->output->writeOptimFile(f, gnorm, deltax, F_avg, obj_cost, obj_regul, obj_penal, obj_penal_dpdm);
 
   /* Print parameters and controls to file */
   // ctx->output->writeControls(params, ctx->timestepper->mastereq, ctx->timestepper->ntime, ctx->timestepper->dt);
 
   /* Screen output */
   if (ctx->getMPIrank_world() == 0 && iter % ctx->output->optim_monitor_freq == 0) {
-    std::cout<< iter <<  ": Objective = " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal;
+    std::cout<< iter <<  ": Objective = " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal << " + " << obj_penal_dpdm;
     std::cout<< "  Fidelity = " << F_avg;
     std::cout<< "  ||Grad|| = " << gnorm;
     std::cout<< std::endl;

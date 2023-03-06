@@ -7,6 +7,7 @@
 #include <vector>
 #include <assert.h>
 #include "util.hpp"
+#include "config.hpp"
 #include <stdlib.h> 
 
 #pragma once
@@ -39,6 +40,8 @@ class Oscillator {
     int mpirank_petsc;             // rank of Petsc's communicator
     int mpirank_world;             // rank of MPI_COMM_WORLD
 
+    bool control_enforceBC;       // Flag to decide whether controls will have boundary conditions enforced.
+
   public:
     PiPulse pipulse;  // Store a dummy pipulse that does nothing
     int dim_preOsc;                // Dimension of coupled subsystems preceding this oscillator
@@ -47,7 +50,7 @@ class Oscillator {
 
       public:
     Oscillator();
-    Oscillator(int id, std::vector<int> nlevels_all_, std::vector<std::string>& controlsegments, std::vector<std::string>& controlinitializations, double ground_freq_, double selfkerr_, double rotational_freq_, double decay_time_, double dephase_time_, std::vector<double> carrier_freq_, double Tfinal_, LindbladType lindbladtype_);
+    Oscillator(MapParam config, int id, std::vector<int> nlevels_all_, std::vector<std::string>& controlsegments, std::vector<std::string>& controlinitializations, double ground_freq_, double selfkerr_, double rotational_freq_, double decay_time_, double dephase_time_, std::vector<double> carrier_freq_, double Tfinal_, LindbladType lindbladtype_);
     virtual ~Oscillator();
 
     /* Return the constants */

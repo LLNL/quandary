@@ -51,7 +51,7 @@ void BSpline2nd::evaluate(const double t, const std::vector<double>& coeff, int 
     double sum2 = 0.0;
     /* Sum over basis function */
     for (int l=0; l<nsplines; l++) {
-        if (l<=1 || l >= nsplines- 2) continue; // skip first and last two splines (set to zero) so that spline starts and ends at zero 
+        // if (l<=1 || l >= nsplines- 2) continue; // skip first and last two splines (set to zero) so that spline starts and ends at zero 
         double Blt = basisfunction(l,t);
         double alpha1 = coeff[skip + carrier_freq_id*nsplines*2 + l];
         double alpha2 = coeff[skip + carrier_freq_id*nsplines*2 + l + nsplines];
@@ -67,7 +67,7 @@ void BSpline2nd::derivative(const double t, const std::vector<double>& coeff, do
 
     /* Iterate over basis function */
     for (int l=0; l<nsplines; l++) {
-        if (l<=1 || l >= nsplines- 2) continue; // skip first and last two splines (set to zero) so that spline starts and ends at zero       
+        // if (l<=1 || l >= nsplines- 2) continue; // skip first and last two splines (set to zero) so that spline starts and ends at zero       
         double Blt = basisfunction(l, t); 
         coeff_diff[skip + carrier_freq_id*nsplines*2 + l]            += Blt * valbar1;
         coeff_diff[skip + carrier_freq_id*nsplines*2 + l + nsplines] += Blt * valbar2;
@@ -106,7 +106,8 @@ void Step::evaluate(const double t, const std::vector<double>& coeff, int carrie
 
     // The control enters as tstop for the ramping function
     double tstepend = tstart + alpha*(tstop - tstart);
-    double ramp = getRampFactor(t, tstart, tstepend, tramp);
+    double ramp = 1.0;
+    if (tramp > 1e-13) ramp = getRampFactor(t, tstart, tstepend, tramp);
 
     *Blt1 = ramp*step_amp1;
     *Blt2 = ramp*step_amp2;

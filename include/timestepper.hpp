@@ -15,7 +15,6 @@ class TimeStepper{
   protected:
     int dim;             /* State vector dimension */
     Vec x;               // auxiliary vector needed for time stepping
-    bool storeFWD;       /* Flag that determines if primal states should be stored during forward evaluation */
     std::vector<Vec> store_states; /* Storage for primal states */
     bool addLeakagePrevent;   /* flag to determine if Leakage preventing term is added to penalty.  */
     int mpirank_world;
@@ -31,8 +30,10 @@ class TimeStepper{
     /* Stuff needed for the penalty integral term */
     // TODO: pass those through the timestepper constructor (currently, they are set manually inside optimproblem constructor), or add up the penalty within the optim_target.
     double penalty_integral;        // output, holds the integral term
+    double penalty_dpdm;        // output, holds the integral term
     double penalty_param;
     double gamma_penalty;
+    double gamma_penalty_dpdm;
     std::vector<double> leakage_weights;
     OptimTarget* optim_target;
 
@@ -40,8 +41,10 @@ class TimeStepper{
     Output* output;
 
   public: 
+    bool storeFWD;       /* Flag that determines if primal states should be stored during forward evaluation */
+
     TimeStepper(); 
-    TimeStepper(MasterEq* mastereq_, int ntime_, double total_time_, Output* output_, bool storeFWD_); 
+    TimeStepper(MapParam config, MasterEq* mastereq_, int ntime_, double total_time_, Output* output_, bool storeFWD_); 
     virtual ~TimeStepper(); 
 
     /* Return the state at a certain time index */
@@ -51,11 +54,16 @@ class TimeStepper{
     Vec solveODE(int initid, Vec rho_t0);
 
     /* Solve the adjoint ODE backwards in time from terminal condition rho_t0_bar */
-    void solveAdjointODE(int initid, Vec rho_t0_bar, Vec finalstate, double Jbar);
+    void solveAdjointODE(int initid, Vec rho_t0_bar, Vec finalstate, double Jbar_penalty, double Jbar_penalty_dpdm);
 
     /* evaluate the penalty integral term */
     double penaltyIntegral(double time, const Vec x);
     void penaltyIntegral_diff(double time, const Vec x, Vec xbar, double Jbar);
+
+
+    /* evaluate the second derivative penalty for the state */
+    double penaltyDpDm(Vec x, Vec xm1, Vec xm2);
+    void penaltyDpDm_diff(int n, Vec xbar, double Jbar);
 
     /* Evolve state forward from tstart to tstop */
     virtual void evolveFWD(const double tstart, const double tstop, Vec x) = 0;
@@ -66,7 +74,7 @@ class TimeStepper{
 class ExplEuler : public TimeStepper {
   Vec stage;
   public:
-    ExplEuler(MasterEq* mastereq_, int ntime_, double total_time_, Output* output_, bool storeFWD_);
+    ExplEuler(MapParam config, MasterEq* mastereq_, int ntime_, double total_time_, Output* output_, bool storeFWD_);
     ~ExplEuler();
 
     /* Evolve state forward from tstart to tstop */
@@ -98,7 +106,7 @@ class ImplMidpoint : public TimeStepper {
   Vec tmp, err;                    /* Auxiliary vector for applying the neuman iterations */
 
   public:
-    ImplMidpoint(MasterEq* mastereq_, int ntime_, double total_time_, LinearSolverType linsolve_type_, int linsolve_maxiter_, Output* output_, bool storeFWD_);
+    ImplMidpoint(MapParam config, MasterEq* mastereq_, int ntime_, double total_time_, LinearSolverType linsolve_type_, int linsolve_maxiter_, Output* output_, bool storeFWD_);
     ~ImplMidpoint();
 
 
@@ -122,7 +130,7 @@ class CompositionalImplMidpoint : public ImplMidpoint {
   int order;
 
   public:
-    CompositionalImplMidpoint(int order_, MasterEq* mastereq_, int ntime_, double total_time_, LinearSolverType linsolve_type_, int linsolve_maxiter_, Output* output_, bool storeFWD_);
+    CompositionalImplMidpoint(MapParam config, int order_, MasterEq* mastereq_, int ntime_, double total_time_, LinearSolverType linsolve_type_, int linsolve_maxiter_, Output* output_, bool storeFWD_);
     ~CompositionalImplMidpoint();
 
     void evolveFWD(const double tstart, const double tstop, Vec x);
