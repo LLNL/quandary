@@ -323,11 +323,12 @@ Similar to using the default Hamiltonian model, when using user-defined Hamilton
 In the most general form, Quandary can solve the following optimization problem
 \begin{align}\label{eq:minproblem}
   % \min_{\boldsymbol{\alpha}} \frac{1}{n_{init}} \sum_{i=1}^{n_{init}} \beta_i J(\rho^{target}_i, \rho_i(T)) + \gamma_1 \int_0^T P\left(\rho_i(t)\right) \, \mathrm{d} t + \gamma_2 \| \bfa \|^2_2
-  \min_{\boldsymbol{\alpha}} J(\{\rho^{target}_i, \rho_i(T) \}) + \gamma_1 \int_0^T P\left(\{\rho_i(t)\}\right) \, \mathrm{d} t + \gamma_2 \| \bfa \|^2_2
+  \min_{\boldsymbol{\alpha}} J(\{\rho^{target}_i, \rho_i(T) \}) + \gamma_1 \int_0^T P\left(\{\rho_i(t)\}\right) \, \mathrm{d} t + \gamma_2 \| \bfa \|^2_2  + \gamma_3 /T \int_0^T \, \| \partial_{tt} \mbox{Pop}(\rho_i(t)) \|^2 \mathrm{d}t
 \end{align}
 where $\rho_i(T)$ denotes one or multiple quantum states evaluated at a final time $T>0$, which solve either Lindblad's master equation \eqref{mastereq} or Schroedinger's equation \eqref{eq:schroedinger} in the rotating frame for initial conditions $\rho_i(0)$, as specified in Section \ref{subsec:initcond}, $i=1,\dots, n_{init}$. The first term in \eqref{eq:minproblem} minimizes an objective function $J$ (see Section \ref{sec:objectivefunctionals}) that quantifies the discrepancy between the realized states $\rho_i(T)$ at final time $T$ driven by the current control $\boldsymbol{\alpha}$ and the desired target $\rho^{target}_i$, see Section \ref{sec:targets}. 
 The second term serves as a penalty that can be added with $\gamma_1 \geq 0$ in oder to achieve a desired behavior of the quantum system over the entire time-domain $0\leq t\leq T$, see Section \ref{sec:penalty}. 
 The third term is a Tikhonov regularization that can be added with parameter $\gamma_2\geq 0$ in order to regularize the optimization problem (stabilize optimization convergence) by favoring solutions with small norm. 
+The last term is a regularization term that penalizes the second derivative of the populations of the state. This can be used to encourage solutions whose population varies slowly in time. 
 
 \subsection{Fidelity}\label{sec:fidelity}
 

@@ -282,8 +282,7 @@ double TimeStepper::penaltyDpDm(Vec x, Vec xm1, Vec xm2){
     double dpdm = 0.0;
     VecGetOwnershipRange(x, &ilow, &iupp);
     for (int i=0; i<dim_rho; i++) {  
-        if (mastereq->lindbladtype != LindbladType::NONE) {  // TODO: NEEDS a double loop to access the offdiagonals
-            printf("WARNING: DpDm penalty for lindblad solver needs fixing!\n");
+        if (mastereq->lindbladtype != LindbladType::NONE) { 
           vecID_re = getIndexReal(getVecID(i,i,dim_rho));
           vecID_im = getIndexImag(getVecID(i,i,dim_rho));
         } else {
@@ -332,7 +331,7 @@ void TimeStepper::penaltyDpDm_diff(int n, Vec xbar, double Jbar){
 
     VecGetOwnershipRange(x, &ilow, &iupp);
     for (int i=0; i<dim_rho; i++) {  
-        if (mastereq->lindbladtype != LindbladType::NONE) {  // TODO: NEEDS a double loop to access the offdiagonals
+        if (mastereq->lindbladtype != LindbladType::NONE) { 
           vecID_re = getIndexReal(getVecID(i,i,dim_rho));
           vecID_im = getIndexImag(getVecID(i,i,dim_rho));
         } else {
