@@ -291,9 +291,9 @@ double TimeStepper::penaltyDpDm(Vec x, Vec xm1, Vec xm2){
           vecID_im = getIndexImag(i);
         }
 
-        if (ilow <= vecID_re && vecID_re < iupp) tmp1 = xptr[vecID_re] - 2.0*xm1ptr[vecID_re] + xm2ptr[vecID_re];
-        if (ilow <= vecID_im && vecID_im < iupp) tmp2 = xptr[vecID_im] - 2.0*xm1ptr[vecID_im] + xm2ptr[vecID_im];
-        dpdm += dtinv * (tmp1*tmp1 + tmp2*tmp2);
+        if (ilow <= vecID_re && vecID_re < iupp) tmp1 = xptr[vecID_re]*xptr[vecID_re] - 2.0*xm1ptr[vecID_re]*xm1ptr[vecID_re] + xm2ptr[vecID_re]*xm2ptr[vecID_re];
+        if (ilow <= vecID_im && vecID_im < iupp) tmp2 = xptr[vecID_im]*xptr[vecID_im] - 2.0*xm1ptr[vecID_im]*xm1ptr[vecID_im] + xm2ptr[vecID_im]*xm2ptr[vecID_im];
+        dpdm += dtinv * (tmp1 + tmp2)*(tmp1 + tmp2);
     }
 
     VecRestoreArrayRead(x, &xptr);
@@ -344,22 +344,43 @@ void TimeStepper::penaltyDpDm_diff(int n, Vec xbar, double Jbar){
         if (n > 1) {
           // if (i==0) printf("DPDM BWD, update %d from on first f(%d %d %d) \n", n, n-2, n-1, n);
 
-          if (ilow <= vecID_re && vecID_re < iupp) VecSetValue(xbar,vecID_re, 2.0*(xm2ptr[vecID_re] - 2.0*xm1ptr[vecID_re] + xptr[vecID_re]) * dtinv * Jbar, ADD_VALUES);
-          if (ilow <= vecID_im && vecID_im < iupp) VecSetValue(xbar,vecID_im, 2.0*(xm2ptr[vecID_im] - 2.0*xm1ptr[vecID_im] + xptr[vecID_im]) * dtinv * Jbar, ADD_VALUES);
+          if (ilow <= vecID_re && vecID_re < iupp) { // should be same as im. 
+            double tmp1 = xm2ptr[vecID_re]*xm2ptr[vecID_re] - 2.0*xm1ptr[vecID_re]*xm1ptr[vecID_re] + xptr[vecID_re]*xptr[vecID_re];
+            double tmp2 = xm2ptr[vecID_im]*xm2ptr[vecID_im] - 2.0*xm1ptr[vecID_im]*xm1ptr[vecID_im] + xptr[vecID_im]*xptr[vecID_im];
+            double pop = tmp1+tmp2;
+            double dpdphi_re = 2.0*xptr[vecID_re];
+            double dpdphi_im = 2.0*xptr[vecID_im];
+            VecSetValue(xbar,vecID_re,  2.0 * pop * dpdphi_re * dtinv * Jbar, ADD_VALUES);
+            VecSetValue(xbar,vecID_im,  2.0 * pop * dpdphi_im * dtinv * Jbar, ADD_VALUES);
+          }
         }
 
         // center term
         if (n > 0 && n < ntime) {
             // if (i==0) printf("DPDM BWD, update %d from on second f(%d %d %d) \n", n, n-1, n, n+1);
-            if (ilow <= vecID_re && vecID_re < iupp) VecSetValue(xbar, vecID_re, - 4.0*(xm1ptr[vecID_re] - 2.0*xptr[vecID_re] + xp1ptr[vecID_re]) * dtinv * Jbar, ADD_VALUES);
-            if (ilow <= vecID_im && vecID_im < iupp) VecSetValue(xbar, vecID_im, - 4.0*(xm1ptr[vecID_im] - 2.0*xptr[vecID_im] + xp1ptr[vecID_im]) * dtinv * Jbar, ADD_VALUES);
+            if (ilow <= vecID_re && vecID_re < iupp) {
+              double tmp1 = xm1ptr[vecID_re]*xm1ptr[vecID_re] - 2.0*xptr[vecID_re]*xptr[vecID_re] + xp1ptr[vecID_re]*xp1ptr[vecID_re];
+              double tmp2 = xm1ptr[vecID_im]*xm1ptr[vecID_im] - 2.0*xptr[vecID_im]*xptr[vecID_im] + xp1ptr[vecID_im]*xp1ptr[vecID_im];
+              double pop = tmp1 + tmp2;
+              double dpdphi_re = 2.0*xptr[vecID_re];
+              double dpdphi_im = 2.0*xptr[vecID_im];
+              VecSetValue(xbar, vecID_re, - 4.0 * pop * dpdphi_re * dtinv * Jbar, ADD_VALUES);
+              VecSetValue(xbar, vecID_im, - 4.0 * pop * dpdphi_im * dtinv * Jbar, ADD_VALUES);
+            }
         }
         
         // last term 
         if (n < ntime-1) {
             // if (i==0) printf("DPDM BWD, update %d from on third f(%d %d %d) \n", n, n, n+1, n+2);
-            if (ilow <= vecID_re && vecID_re < iupp) VecSetValue(xbar, vecID_re, 2.0*(xptr[vecID_re] - 2.0*xp1ptr[vecID_re] + xp2ptr[vecID_re]) * dtinv * Jbar, ADD_VALUES);
-            if (ilow <= vecID_im && vecID_im < iupp) VecSetValue(xbar, vecID_im, 2.0*(xptr[vecID_im] - 2.0*xp1ptr[vecID_im] + xp2ptr[vecID_im]) * dtinv * Jbar, ADD_VALUES);
+            if (ilow <= vecID_re && vecID_re < iupp) {
+              double tmp1 = xptr[vecID_re]*xptr[vecID_re] - 2.0*xp1ptr[vecID_re]*xp1ptr[vecID_re] + xp2ptr[vecID_re]*xp2ptr[vecID_re];
+              double tmp2 = xptr[vecID_im]*xptr[vecID_im] - 2.0*xp1ptr[vecID_im]*xp1ptr[vecID_im] + xp2ptr[vecID_im]*xp2ptr[vecID_im];
+              double pop = tmp1 + tmp2;
+              double dpdphi_re = 2.0*xptr[vecID_re];
+              double dpdphi_im = 2.0*xptr[vecID_im];
+              VecSetValue(xbar, vecID_re, 2.0* pop * dpdphi_re * dtinv * Jbar, ADD_VALUES);
+              VecSetValue(xbar, vecID_im, 2.0* pop * dpdphi_im * dtinv * Jbar, ADD_VALUES);
+            }
         }
     }
 
