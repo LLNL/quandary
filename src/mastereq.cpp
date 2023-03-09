@@ -119,11 +119,13 @@ MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Osci
   // By default, these are for the Jaynes Cumming coupling: Jkl*cos(eta*t)(a+adag) - i Jkl*sin(eta*t)(a-adag)
   // If python interface, they can be different
   for (int k=0; k<noscillators*(noscillators-1)/2; k++){
-    CosineTransferFunction* mytransfer_re = new CosineTransferFunction(Jkl[k], eta[k]);
-    SineTransferFunction* mytransfer_im = new SineTransferFunction(Jkl[k], eta[k]);
+    if (fabs(Jkl[k]) > 1e-12) {
+      CosineTransferFunction* mytransfer_re = new CosineTransferFunction(Jkl[k], eta[k]);
+      SineTransferFunction* mytransfer_im = new SineTransferFunction(Jkl[k], eta[k]);
 
-    transfer_Hdt_re.push_back(mytransfer_re);
-    transfer_Hdt_im.push_back(mytransfer_im);
+      transfer_Hdt_re.push_back(mytransfer_re);
+      transfer_Hdt_im.push_back(mytransfer_im);
+    }
   }
 
   /* Initialize Hamiltonian matrices */
@@ -406,24 +408,27 @@ void MasterEq::initSparseMatSolver(){
         Mat myAdkl, myBdkl;
         Ad_vec.push_back(myAdkl);
         Bd_vec.push_back(myBdkl);
-        MatCreate(PETSC_COMM_WORLD, &Ad_vec[id_kl]);
-        MatCreate(PETSC_COMM_WORLD, &Bd_vec[id_kl]);
-        MatSetType(Ad_vec[id_kl], MATMPIAIJ);
-        MatSetType(Bd_vec[id_kl], MATMPIAIJ);
-        MatSetSizes(Ad_vec[id_kl], PETSC_DECIDE, PETSC_DECIDE, dim, dim);
-        MatSetSizes(Bd_vec[id_kl], PETSC_DECIDE, PETSC_DECIDE, dim, dim);
+        int id = Ad_vec.size()-1;
+        MatCreate(PETSC_COMM_WORLD, &Ad_vec[id]);
+        MatCreate(PETSC_COMM_WORLD, &Bd_vec[id]);
+        MatSetType(Ad_vec[id], MATMPIAIJ);
+        MatSetType(Bd_vec[id], MATMPIAIJ);
+        MatSetSizes(Ad_vec[id], PETSC_DECIDE, PETSC_DECIDE, dim, dim);
+        MatSetSizes(Bd_vec[id], PETSC_DECIDE, PETSC_DECIDE, dim, dim);
+
         if (lindbladtype != LindbladType::NONE) {
-          MatMPIAIJSetPreallocation(Ad_vec[id_kl], 4, NULL, 4, NULL);
-          MatMPIAIJSetPreallocation(Bd_vec[id_kl], 4, NULL, 4, NULL);
+          MatMPIAIJSetPreallocation(Ad_vec[id], 4, NULL, 4, NULL);
+          MatMPIAIJSetPreallocation(Bd_vec[id], 4, NULL, 4, NULL);
         } else {
-          MatMPIAIJSetPreallocation(Ad_vec[id_kl], 2, NULL, 2, NULL);
-          MatMPIAIJSetPreallocation(Bd_vec[id_kl], 2, NULL, 2, NULL);
+          MatMPIAIJSetPreallocation(Ad_vec[id], 2, NULL, 2, NULL);
+          MatMPIAIJSetPreallocation(Bd_vec[id], 2, NULL, 2, NULL);
         }
-        MatSetUp(Ad_vec[id_kl]);
-        MatSetUp(Bd_vec[id_kl]);
-        MatSetFromOptions(Ad_vec[id_kl]);
-        MatSetFromOptions(Bd_vec[id_kl]);
-        MatGetOwnershipRange(Ad_vec[id_kl], &ilow, &iupp);
+        MatSetUp(Ad_vec[id]);
+        MatSetUp(Bd_vec[id]);
+        MatSetFromOptions(Ad_vec[id]);
+        MatSetFromOptions(Bd_vec[id]);
+        MatGetOwnershipRange(Ad_vec[id], &ilow, &iupp);
+
 
         // Dimensions of joscillator
         int nj     = oscil_vec[josc]->getNLevels();
@@ -443,14 +448,14 @@ void MasterEq::initSparseMatSolver(){
           if (r1a > 0 && r1b < nj-1) {
             val = sqrt(r1a * (r1b+1));
             col = row - npostk + npostj;
-             if (fabs(val)>1e-14) MatSetValue(Ad_vec[id_kl], row, col,  val, ADD_VALUES);
-             if (fabs(val)>1e-14) MatSetValue(Bd_vec[id_kl], row, col, -val, ADD_VALUES);
+             if (fabs(val)>1e-14) MatSetValue(Ad_vec[id], row, col,  val, ADD_VALUES);
+             if (fabs(val)>1e-14) MatSetValue(Bd_vec[id], row, col, -val, ADD_VALUES);
           }
           if (r1a < nk-1  && r1b > 0) {
             val = sqrt((r1a+1) * r1b);
             col = row + npostk - npostj;
-            if (fabs(val)>1e-14) MatSetValue(Ad_vec[id_kl], row, col, -val, ADD_VALUES);
-            if (fabs(val)>1e-14) MatSetValue(Bd_vec[id_kl], row, col, -val, ADD_VALUES);
+            if (fabs(val)>1e-14) MatSetValue(Ad_vec[id], row, col, -val, ADD_VALUES);
+            if (fabs(val)>1e-14) MatSetValue(Bd_vec[id], row, col, -val, ADD_VALUES);
           }
 
           if (lindbladtype != LindbladType::NONE) {
@@ -463,21 +468,22 @@ void MasterEq::initSparseMatSolver(){
             if (r1a < nk-1 && r1b > 0) {
               val = sqrt((r1a+1) * r1b);
               col = row + npostk*dimmat - npostj*dimmat;
-              if (fabs(val)>1e-14) MatSetValue(Ad_vec[id_kl], row, col, -val, ADD_VALUES);
-              if (fabs(val)>1e-14) MatSetValue(Bd_vec[id_kl], row, col, +val, ADD_VALUES);
+              if (fabs(val)>1e-14) MatSetValue(Ad_vec[id], row, col, -val, ADD_VALUES);
+              if (fabs(val)>1e-14) MatSetValue(Bd_vec[id], row, col, +val, ADD_VALUES);
             }
             if (r1a > 0 && r1b < nj-1) {
               val = sqrt(r1a * (r1b+1));
               col = row - npostk*dimmat + npostj*dimmat;
-              if (fabs(val)>1e-14) MatSetValue(Ad_vec[id_kl], row, col, val, ADD_VALUES);
-              if (fabs(val)>1e-14) MatSetValue(Bd_vec[id_kl], row, col, val, ADD_VALUES);
+              if (fabs(val)>1e-14) MatSetValue(Ad_vec[id], row, col, val, ADD_VALUES);
+              if (fabs(val)>1e-14) MatSetValue(Bd_vec[id], row, col, val, ADD_VALUES);
             }
           }
         }
-        MatAssemblyBegin(Ad_vec[id_kl], MAT_FINAL_ASSEMBLY);
-        MatAssemblyBegin(Bd_vec[id_kl], MAT_FINAL_ASSEMBLY);
-        MatAssemblyEnd(Ad_vec[id_kl], MAT_FINAL_ASSEMBLY);
-        MatAssemblyEnd(Bd_vec[id_kl], MAT_FINAL_ASSEMBLY);
+        MatAssemblyBegin(Ad_vec[id], MAT_FINAL_ASSEMBLY);
+        MatAssemblyBegin(Bd_vec[id], MAT_FINAL_ASSEMBLY);
+        MatAssemblyEnd(Ad_vec[id], MAT_FINAL_ASSEMBLY);
+        MatAssemblyEnd(Bd_vec[id], MAT_FINAL_ASSEMBLY);
+
       }
       id_kl++;
     }
@@ -666,12 +672,18 @@ void MasterEq::initSparseMatSolver(){
   //     MatView(Bc_vec[k][i], NULL);
   //   }
   // }
-  // for (int kl=0; kl<noscillators*(noscillators-1)/2; kl++) {
+  // for (int kl=0; kl<Ad_vec.size(); kl++) {
+  //   printf("Bd_vec[%d]=\n", kl);
+  //   MatView(Bd_vec[kl], NULL);
   //   printf("Ad_vec[%d]=\n", kl);
-  //   // MatView(Bd_vec[kl], NULL);
   //   MatView(Ad_vec[kl], NULL);
   // }
+  // printf("Ad=\n");
+  // MatView(Ad, NULL);
+  // printf("Bd=\n");
+  // MatView(Bd, NULL);
   // exit(1);
+
 
   /* Allocate some auxiliary vectors */
   MatCreateVecs(Bd, &aux, NULL);
