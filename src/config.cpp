@@ -75,12 +75,12 @@ void MapParam::ReadFile(string filename)
   file.close();
 }
 
-void MapParam::GetVecDoubleParam(string key, vector<double> &fillme, double default_val, bool exportme) const 
+void MapParam::GetVecDoubleParam(string key, vector<double> &fillme, double default_val, bool exportme, bool suppresswarning) const 
 {
   map<string, string>::const_iterator it_value = this->find(key);
   if (it_value == this->end())
   {
-    if (mpi_rank == 0 && !quietmode)
+    if (mpi_rank == 0 && !quietmode && !suppresswarning)
       cerr << "# Warning: parameter " << key << " not found ! Taking default = " << default_val << endl;
       fillme.push_back(default_val);
   }
@@ -131,13 +131,13 @@ int MapParam::GetIntParam(string key, int default_val) const
   return val;
 }
 
-string MapParam::GetStrParam(string key, string default_val, bool exportme) const
+string MapParam::GetStrParam(string key, string default_val, bool exportme, bool suppresswarning) const
 {
   map<string, string>::const_iterator it_value = this->find(key);
   string val;
   if (it_value == this->end())
   {
-    if (mpi_rank == 0 && !quietmode)
+    if (mpi_rank == 0 && !quietmode && !suppresswarning)
       cerr << "# Warning: parameter " << key << " not found ! Taking default = " << default_val << endl;
     val = default_val;
   }
@@ -199,13 +199,15 @@ void MapParam::GetVecIntParam(std::string key, std::vector<int> &fillme, int def
 }
 
 
-void MapParam::GetVecStrParam(std::string key, std::vector<std::string> &fillme, std::string default_val, bool exportme) const
+void MapParam::GetVecStrParam(std::string key, std::vector<std::string> &fillme, std::string default_val, bool exportme, bool suppresswarning) const
 {
+
+  fillme.clear();
   map<string, string>::const_iterator it_value = this->find(key);
   string lineexp;
   if (it_value == this->end())
   {
-    if (mpi_rank == 0 && !quietmode)
+    if (mpi_rank == 0 && !quietmode && !suppresswarning)
       cerr << "# Warning: parameter " << key << " not found ! Taking default = " << default_val << endl;
 
       /* Parse the string line w.r.t. comma separator */
@@ -215,6 +217,7 @@ void MapParam::GetVecStrParam(std::string key, std::vector<std::string> &fillme,
       { 
           fillme.push_back(intermediate);
       }
+      lineexp = line.str();
   }
   else 
   {
@@ -226,6 +229,6 @@ void MapParam::GetVecStrParam(std::string key, std::vector<std::string> &fillme,
         fillme.push_back(intermediate);
     } 
     lineexp = line.str();
-    if (exportme) export_param(mpi_rank, *log, key, lineexp);  
   }
+  if (exportme) export_param(mpi_rank, *log, key, lineexp);  
 }

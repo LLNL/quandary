@@ -224,15 +224,15 @@ int main(int argc,char **argv)
     // Get carrier wave frequencies 
     std::vector<double> carrier_freq;
     std::string key = "carrier_frequency" + std::to_string(i);
-    config.GetVecDoubleParam(key, carrier_freq, 0.0);
+    config.GetVecDoubleParam(key, carrier_freq, 0.0, true, true);
 
     // Get control type. Default for second or larger oscillator is the previous one
     std::vector<std::string> controltype_str;
-    config.GetVecStrParam("control_segments" + std::to_string(i), controltype_str,default_seg_str);
+    config.GetVecStrParam("control_segments" + std::to_string(i), controltype_str,default_seg_str, true, true);
 
     // Get control initialization
     std::vector<std::string> controlinit_str;
-    config.GetVecStrParam("control_initialization" + std::to_string(i), controlinit_str, default_init_str);
+    config.GetVecStrParam("control_initialization" + std::to_string(i), controlinit_str, default_init_str, true, true);
 
     // Create oscillator 
     oscil_vec[i] = new Oscillator(i, nlevels, controltype_str, controlinit_str, trans_freq[i], selfkerr[i], rot_freq[i], decay_time[i], dephase_time[i], carrier_freq, total_time, lindbladtype);
@@ -240,13 +240,14 @@ int main(int argc,char **argv)
     // Update the default for control type
     default_seg_str = "";
     default_init_str = "";
-    for (int l = 0; l<controltype_str.size(); l++) default_seg_str += controltype_str[l]+=", ";
-    for (int l = 0; l<controlinit_str.size(); l++) default_init_str += controlinit_str[l]+=", ";
+    for (int l = 0; l<controltype_str.size(); l++) { default_seg_str += controltype_str[l]; default_seg_str +=","; }
+    for (int l = 0; l<controlinit_str.size(); l++) { default_init_str += controlinit_str[l]; default_init_str +=","; }
+
   }
 
   // Get pi-pulses, if any
   std::vector<std::string> pipulse_str;
-  config.GetVecStrParam("apply_pipulse", pipulse_str, "none");
+  config.GetVecStrParam("apply_pipulse", pipulse_str, "none", true, true);
   if (pipulse_str[0].compare("none") != 0) { // There is at least one pipulse to be applied!
     // sanity check
     if (pipulse_str.size() % 4 != 0) {
@@ -305,7 +306,7 @@ int main(int argc,char **argv)
     }
   }
   // Check if Hamiltonian should be read from file
-  std::string python_file = config.GetStrParam("python_file", "none");
+  std::string python_file = config.GetStrParam("python_file", "none", true, true);
   if (python_file.compare("none") != 0 && usematfree) {
     printf("# Warning: Matrix-free solver can not be used when Hamiltonian is read fromfile. Switching to sparse-matrix version.\n");
     usematfree = false;
