@@ -7,6 +7,15 @@
 
 #pragma once
 
+
+double sigmoid(double width, double x);
+double sigmoid_diff(double width, double x);
+
+// Compute ramping factor for interval [tstart, tstop]. Sigmoid ramping with width tramp. 
+double getRampFactor(const double time, const double tstart, const double tstop, const double tramp);
+// Derivative of ramping factor with respect to tstop.
+double getRampFactor_diff(const double time, const double tstart, const double tstop, const double tramp);
+
 int getIndexReal(const int i); // Return storage index of Re(x[i]) (colocated: x[2*i], blocked: x[i])
 int getIndexImag(const int i); // Return storage index of Im(x[i]) (colocated: x[2*i+1], blocked: x[i+dim])
 
@@ -69,7 +78,7 @@ PetscErrorCode SanityTests(Vec x, PetscReal time);
 /**
  * Read data from file
  */
-void read_vector(const char *filename, double *var, int dim);
+void read_vector(const char *filename, double *var, int dim, bool quietmode=false);
 
 
 /* 

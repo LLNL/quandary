@@ -5,10 +5,8 @@ A documentation is under development. In the meantime, refer to the user guide i
 
 For questions, feel free to reach out to Stefanie Guenther [guenther5@llnl.gov].
 
-*For newest features, check out the 'develop' branch. In particular, we have added a python interface that enables arbitrary user-defined Hamiltonian systems.*
-
 ## Dependencies
-This project relies on Petsc [https://petsc.org/release/] to handle (parallel) linear algebra. Optionally, XBraid [https://github.com/XBraid/xbraid] can be linked to realize time-parallelization, and Slepsc [https://slepc.upv.es] can be used to solve some eigenvalue problems if desired (e.g. for the Hessian...)
+This project relies on Petsc [https://petsc.org/release/] to handle (parallel) linear algebra. Optionally Slepsc [https://slepc.upv.es] can be used to solve some eigenvalue problems if desired (e.g. for the Hessian...)
 * **Required:** Install Petsc:
 
     Check out [https://petsc.org/release/] for the latest installation guide. On MacOS, you can also `brew install petsc`. As a quick start, you can also try the below:
@@ -24,14 +22,16 @@ This project relies on Petsc [https://petsc.org/release/] to handle (parallel) l
     * Append Petsc directory to the `LD_LIBRARY_PATH`:
         * `export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$PETSC_DIR/$PETSC_ARCH`
 
-* **Optional:** Install XBraid, using the branch 'solveadjointwithxbraid': 
-    - git clone https://github.com/XBraid/xbraid.git
-    - cd xbraid
-    - git checkout solveadjointwithxbraid
-    - make braid
-
 * **Optional:** Install Slepsc
     * Read the docs here: [https://slepc.upv.es/documentation/slepc.pdf]
+
+* **Optional:** Enable the python interface:
+    - Have a working python interpreter and numpy installed, and set your `PYTHONPATH`
+    - If you want to use spline-based transfer functions within the python interface, you'll need to install fitpackpp (C++ bindings for FITPACK) from here: [https://github.com/jbaayen/fitpackpp]: In the fitpackpp installation directory:
+        * `mkdir build`
+        * `cd build`
+        * `cmake ..`
+        * `make`
  
 ###  Petsc on LLNL's LC
 Petc is already installed on LLNL LC machines, see here [https://hpc.llnl.gov/software/mathematical-software/petsc]. To use it, first load the following modules:
@@ -43,9 +43,9 @@ Then set the `PETSC_DIR` variable to point to the Petsc folder and add it to the
 * `export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$PETSC_DIR/lib`
 
 ## Installation
-Adapt the beginning of the 'Makefile' to set the path to your Petsc (and possibly XBraid and/or Slepsc) installation. Then,
+Adapt the beginning of the 'Makefile' to set the path to your Petsc (and possibly Slepsc, python path, and fitpackpp) installation. Then,
 * `make cleanup` to clean the build directory. (Note the *up* in *cleanup*.)
-* `make -j main` to build the code (using 'j' threads)
+* `make main` to build the code (or 'make -j main' for faster build using multiple threads)
 
 
 ## Running

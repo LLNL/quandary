@@ -6,9 +6,6 @@
 #include <iostream>
 #include <algorithm>
 #include "optimtarget.hpp"
-#ifdef WITH_BRAID
-  #include "braid_wrapper.hpp"
-#endif
 #pragma once
 
 /* if Petsc version < 3.17: Change interface for Tao Optimizer */
@@ -23,10 +20,6 @@
 class OptimProblem {
 
   /* ODE stuff */
-#ifdef WITH_BRAID
-  myBraidApp* primalbraidapp;         /* Primal BraidApp to carry out PinT forward sim.*/
-  myAdjointBraidApp* adjointbraidapp; /* Adjoint BraidApp to carry out PinT backward sim. */
-#endif
   int ninit;                            /* Number of initial conditions to be considered (N^2, N, or 1) */
   int ninit_local;                      /* Local number of initial conditions on this processor */
   Vec rho_t0;                            /* Storage for initial condition of the ODE */
@@ -39,10 +32,13 @@ class OptimProblem {
 
   /* MPI stuff */
   MPI_Comm comm_init;
-  int mpirank_braid, mpisize_braid;
+  MPI_Comm comm_optim;
+  int mpirank_optim, mpisize_optim;
   int mpirank_space, mpisize_space;
   int mpirank_world, mpisize_world;
   int mpirank_init, mpisize_init;
+
+  bool quietmode;
 
   /* Optimization stuff */
   std::vector<double> obj_weights; /* List of weights for weighting the average objective over initial conditions  */
@@ -62,8 +58,7 @@ class OptimProblem {
   double grtol;                    /* Stopping criterion based on relative gradient norm */
   int maxiter;                     /* Stopping criterion based on maximum number of iterations */
   Tao tao;                         /* Petsc's Optimization solver */
-  std::string initguess_type;      /* Type of initial guess */
-  std::vector<double> initguess_amplitudes; /* Initial amplitudes of controles, or NULL */
+  std::vector<double> initguess_fromfile;      /* Stores the initial guess, if read from file */
   double* mygrad;  /* Auxiliary */
   
   public: 
@@ -72,10 +67,7 @@ class OptimProblem {
     Vec xlower, xupper;              /* Optimization bounds */
 
   /* Constructor */
-  OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm comm_init_, int ninit_, std::vector<double> gate_rot_freq, Output* output_);
-#ifdef WITH_BRAID
-  OptimProblem(MapParam config, TimeStepper* timestepper_, myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, MPI_Comm comm_init_, int ninit_, std::vector<double> gate_rot_freq, Output* output_);
-#endif
+  OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm comm_init_, MPI_Comm comm_optim, int ninit_, std::vector<double> gate_rot_freq, Output* output_, bool quietmode=false);
   ~OptimProblem();
 
   /* Return the number of design variables */
@@ -89,6 +81,7 @@ class OptimProblem {
   double getFidelity() { return fidelity; };
   double getFaTol()    { return fatol; };
   double getInfTol()   { return inftol; };
+  int getMPIrank_world() { return mpirank_world;};
 
   /* Evaluate the objective function F(x) */
   double evalF(const Vec x);

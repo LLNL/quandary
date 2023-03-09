@@ -1,8 +1,4 @@
-#ifdef WITH_BRAID
-#include "braid_wrapper.hpp"
-#endif
 #include "timestepper.hpp"
-#include "bspline.hpp"
 #include "oscillator.hpp" 
 #include "mastereq.hpp"
 #include "config.hpp"
@@ -22,6 +18,11 @@
 
 int main(int argc,char **argv)
 {
+
+  // Initialize random number generator 
+  srand(1);  // fixed seed
+  // srand(time(0));  // random seed
+
   char filename[255];
   PetscErrorCode ierr;
 
@@ -30,7 +31,18 @@ int main(int argc,char **argv)
   int mpisize_world, mpirank_world;
   MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
   MPI_Comm_size(MPI_COMM_WORLD, &mpisize_world);
-  if (mpirank_world == 0) printf("Running on %d cores.\n", mpisize_world);
+
+  /* Parse argument line for "--quiet" to enable reduced output mode */
+  bool quietmode = false;
+  if (argc > 2){
+    std::string quietstring = argv[2];
+    if (quietstring.substr(2,5).compare("quiet") == 0) {
+      quietmode = true;
+      // printf("quietmode =  %d\n", quietmode);
+    }
+  }
+
+  if (mpirank_world == 0 && !quietmode) printf("Running on %d cores.\n", mpisize_world);
 
   /* Read config file */
   if (argc < 2) {
@@ -41,7 +53,7 @@ int main(int argc,char **argv)
     return 0;
   }
   std::stringstream log;
-  MapParam config(MPI_COMM_WORLD, log);
+  MapParam config(MPI_COMM_WORLD, log, quietmode);
   config.ReadFile(argv[1]);
 
   /* --- Get some options from the config file --- */
@@ -49,7 +61,6 @@ int main(int argc,char **argv)
   config.GetVecIntParam("nlevels", nlevels, 0);
   int ntime = config.GetIntParam("ntime", 1000);
   double dt    = config.GetDoubleParam("dt", 0.01);
-  int nspline = config.GetIntParam("nspline", 10);
   RunType runtype;
   std::string runtypestr = config.GetStrParam("runtype", "simulation");
   if      (runtypestr.compare("simulation")      == 0) runtype = RunType::SIMULATION;
@@ -117,50 +128,40 @@ int main(int argc,char **argv)
     exit(1);
   }
 
-  /* --- Split communicators for distributed initial conditions, distributed linear algebra, time-parallel braid --- */
+  /* --- Split communicators for distributed initial conditions, distributed linear algebra, parallel optimization --- */
   int mpirank_init, mpisize_init;
-  int mpirank_braid, mpisize_braid;
+  int mpirank_optim, mpisize_optim;
   int mpirank_petsc, mpisize_petsc;
-  MPI_Comm comm_braid, comm_init, comm_petsc;
+  MPI_Comm comm_optim, comm_init, comm_petsc;
 
   /* Get the size of communicators  */
-#ifdef WITH_BRAID
-  int np_braid = config.GetIntParam("np_braid", 1);
-  np_braid = min(np_braid, mpisize_world); 
-#else 
-  int np_braid = 1; 
-#endif
-  int np_init  = min(ninit, config.GetIntParam("np_init", 1)); 
-  np_init  = min(np_init,  mpisize_world); 
-  int np_petsc = mpisize_world / (np_init * np_braid);
+  // Number of cores for optimization. Under development, set to 1 for now. 
+  // int np_optim= config.GetIntParam("np_optim", 1);
+  // np_optim= min(np_optim, mpisize_world); 
+  int np_optim= 1;
+  // Number of cores for initial condition distribution. Since this gives perfect speedup, choose maximum.
+  int np_init = min(ninit, mpisize_world); 
+  // Number of cores for Petsc: All the remaining ones. 
+  int np_petsc = mpisize_world / (np_init * np_optim);
 
   /* Sanity check for communicator sizes */ 
-  if (ninit % np_init != 0){
-    printf("ERROR: Wrong processor distribution! \n Size of communicator for distributing initial conditions (%d) must be integer divisor of the total number of initial conditions (%d)!!\n", np_init, ninit);
-    exit(1);
-  }
-  if (mpisize_world % (np_init * np_braid) != 0) {
-    printf("ERROR: Wrong number of threads! \n Total number of threads (%d) must be integer multiple of the product of communicator sizes for initial conditions and braid (%d * %d)!\n", mpisize_world, np_init, np_braid);
+  if (mpisize_world % ninit != 0 && ninit % mpisize_world != 0) {
+    if (mpirank_world == 0) printf("ERROR: Number of threads (%d) must be integer multiplier or divisor of the number of initial conditions (%d)!\n", mpisize_world, ninit);
     exit(1);
   }
 
   /* Split communicators */
   // Distributed initial conditions 
-  int color_init = mpirank_world % (np_petsc * np_braid);
+  int color_init = mpirank_world % (np_petsc * np_optim);
   MPI_Comm_split(MPI_COMM_WORLD, color_init, mpirank_world, &comm_init);
   MPI_Comm_rank(comm_init, &mpirank_init);
   MPI_Comm_size(comm_init, &mpisize_init);
 
-#ifdef WITH_BRAID
-  // Time-parallel Braid
-  int color_braid = mpirank_world % np_petsc + mpirank_init * np_petsc;
-  MPI_Comm_split(MPI_COMM_WORLD, color_braid, mpirank_world, &comm_braid);
-  MPI_Comm_rank(comm_braid, &mpirank_braid);
-  MPI_Comm_size(comm_braid, &mpisize_braid);
-#else 
-  mpirank_braid = 0;
-  mpisize_braid = 1;
-#endif
+  // Time-parallel Optimization
+  int color_optim = mpirank_world % np_petsc + mpirank_init * np_petsc;
+  MPI_Comm_split(MPI_COMM_WORLD, color_optim, mpirank_world, &comm_optim);
+  MPI_Comm_rank(comm_optim, &mpirank_optim);
+  MPI_Comm_size(comm_optim, &mpisize_optim);
 
   // Distributed Linear algebra: Petsc
   int color_petsc = mpirank_world / np_petsc;
@@ -168,11 +169,7 @@ int main(int argc,char **argv)
   MPI_Comm_rank(comm_petsc, &mpirank_petsc);
   MPI_Comm_size(comm_petsc, &mpisize_petsc);
 
-  if (mpirank_world == 0)  std::cout<< "Parallel distribution: " << mpisize_init << " np_init  X  " << mpisize_petsc<< " np_petsc";
-#ifdef WITH_BRAID
-  std::cout<< "  X  " << mpisize_braid  << "np_braid" << std::endl;
-#endif
-  if (mpirank_world == 0) std::cout<<std::endl;
+  if (mpirank_world == 0 && !quietmode)  std::cout<< "Parallel distribution: " << mpisize_init << " np_init  X  " << mpisize_petsc<< " np_petsc  " << std::endl;
 
   /* Initialize Petsc using petsc's communicator */
   PETSC_COMM_WORLD = comm_petsc;
@@ -220,12 +217,31 @@ int main(int argc,char **argv)
     copyLast(dephase_time, nlevels.size());
   }
 
-  // Create the oscillators 
+  // Get control segment types, carrierwaves and control initialization
+  string default_seg_str = "spline, 10, 0.0, "+std::to_string(total_time); // Default for first oscillator control segment
+  string default_init_str = "constant, 0.0";                               // Default for first oscillator initialization
   for (int i = 0; i < nlevels.size(); i++){
+    // Get carrier wave frequencies 
     std::vector<double> carrier_freq;
     std::string key = "carrier_frequency" + std::to_string(i);
     config.GetVecDoubleParam(key, carrier_freq, 0.0);
-    oscil_vec[i] = new Oscillator(i, nlevels, nspline, trans_freq[i], selfkerr[i], rot_freq[i], decay_time[i], dephase_time[i], carrier_freq, total_time, lindbladtype);
+
+    // Get control type. Default for second or larger oscillator is the previous one
+    std::vector<std::string> controltype_str;
+    config.GetVecStrParam("control_segments" + std::to_string(i), controltype_str,default_seg_str);
+
+    // Get control initialization
+    std::vector<std::string> controlinit_str;
+    config.GetVecStrParam("control_initialization" + std::to_string(i), controlinit_str, default_init_str);
+
+    // Create oscillator 
+    oscil_vec[i] = new Oscillator(i, nlevels, controltype_str, controlinit_str, trans_freq[i], selfkerr[i], rot_freq[i], decay_time[i], dephase_time[i], carrier_freq, total_time, lindbladtype);
+    
+    // Update the default for control type
+    default_seg_str = "";
+    default_init_str = "";
+    for (int l = 0; l<controltype_str.size(); l++) default_seg_str += controltype_str[l]+=", ";
+    for (int l = 0; l<controlinit_str.size(); l++) default_init_str += controlinit_str[l]+=", ";
   }
 
   // Get pi-pulses, if any
@@ -276,7 +292,7 @@ int main(int argc,char **argv)
         usematfree = false;
   }
   if (usematfree && mpisize_petsc > 1) {
-    printf("ERROR: No Petsc-parallel version for the matrix free solver available!");
+    if (mpirank_world == 0) printf("ERROR: No Petsc-parallel version for the matrix free solver available!");
     exit(1);
   }
   // Compute coupling rotation frequencies eta_ij = w^r_i - w^r_j
@@ -288,18 +304,21 @@ int main(int argc,char **argv)
       idx++;
     }
   }
-  MasterEq* mastereq = new MasterEq(nlevels, nessential, oscil_vec, crosskerr, Jkl, eta, lindbladtype, usematfree);
+  // Check if Hamiltonian should be read from file
+  std::string python_file = config.GetStrParam("python_file", "none");
+  if (python_file.compare("none") != 0 && usematfree) {
+    printf("# Warning: Matrix-free solver can not be used when Hamiltonian is read fromfile. Switching to sparse-matrix version.\n");
+    usematfree = false;
+  }
+  // Initialize Master equation
+  MasterEq* mastereq = new MasterEq(nlevels, nessential, oscil_vec, crosskerr, Jkl, eta, lindbladtype, usematfree, python_file, quietmode);
 
 
   /* Output */
-#ifdef WITH_BRAID
-  Output* output = new Output(config, comm_petsc, comm_init, comm_braid, nlevels.size());
-#else 
-  Output* output = new Output(config, comm_petsc, comm_init, nlevels.size());
-#endif
+  Output* output = new Output(config, comm_petsc, comm_init, nlevels.size(), quietmode);
 
   // Some screen output 
-  if (mpirank_world == 0) {
+  if (mpirank_world == 0 && !quietmode) {
     std::cout << "Time: [0:" << total_time << "], ";
     std::cout << "N="<< ntime << ", dt=" << dt << std::endl;
     std::cout<< "System: ";
@@ -334,29 +353,16 @@ int main(int argc,char **argv)
 #if TEST_FD_HESS
   storeFWD = true;
 #endif
-  TimeStepper *mytimestepper = new ImplMidpoint(mastereq, ntime, total_time, linsolvetype, linsolve_maxiter, output, storeFWD);
-  // TimeStepper *mytimestepper = new ExplEuler(mastereq, ntime, total_time, output, storeFWD);
-
-  // /* Petsc's Time-stepper */
-  // Vec x;
-  // MatCreateVecs(mastereq->getRHS(), &x, NULL);
-  // TS ts;
-  // TSCreate(PETSC_COMM_WORLD,&ts);CHKERRQ(ierr);
-  // TSInit(ts, mastereq, ntime, dt, total_time, x, false);
-   
-
-#ifdef WITH_BRAID
-  /* --- Create braid instances --- */
-  myBraidApp* primalbraidapp = NULL;
-  myAdjointBraidApp *adjointbraidapp = NULL;
-  // Create primal app always, adjoint only if runtype is adjoint or optimization 
-  primalbraidapp = new myBraidApp(comm_braid, total_time, ntime, mytimestepper, mastereq, &config, output);
-  if (runtype == RunType::GRADIENT || runtype == RunType::OPTIMIZATION) adjointbraidapp = new myAdjointBraidApp(comm_braid, total_time, ntime, mytimestepper, mastereq, &config, primalbraidapp->getCore(), output);
-  // Initialize the braid time-grids. Warning: initGrids for primal app depends on initialization of adjoint! Do not move this line up!
-  primalbraidapp->InitGrids();
-  if (runtype == RunType::GRADIENT || runtype == RunType::OPTIMIZATION) adjointbraidapp->InitGrids();
-  
-#endif
+  std::string timesteppertypestr = config.GetStrParam("timestepper", "IMR");
+  TimeStepper* mytimestepper;
+  if (timesteppertypestr.compare("IMR")==0) mytimestepper = new ImplMidpoint(mastereq, ntime, total_time, linsolvetype, linsolve_maxiter, output, storeFWD);
+  else if (timesteppertypestr.compare("IMR4")==0) mytimestepper = new CompositionalImplMidpoint(4, mastereq, ntime, total_time, linsolvetype, linsolve_maxiter, output, storeFWD);
+  else if (timesteppertypestr.compare("IMR8")==0) mytimestepper = new CompositionalImplMidpoint(8, mastereq, ntime, total_time, linsolvetype, linsolve_maxiter, output, storeFWD);
+  else if (timesteppertypestr.compare("EE")==0) mytimestepper = new ExplEuler(mastereq, ntime, total_time, output, storeFWD);
+  else {
+    printf("\n\n ERROR: Unknow timestepping type: %s.\n\n", timesteppertypestr.c_str());
+    exit(1);
+  }
 
   /* --- Initialize optimization --- */
   /* Get gate rotation frequencies. Default: use rotational frequencies for the gate. */
@@ -370,12 +376,7 @@ int main(int argc,char **argv)
   if (read_gate_rot[0] < 1e20) { // the config option exists
     for (int i=0; i<noscillators; i++)  gate_rot_freq[i] = read_gate_rot[i];
   }
-
-#ifdef WITH_BRAID
-  OptimProblem* optimctx = new OptimProblem(config, mytimestepper, primalbraidapp, adjointbraidapp, comm_init, ninit, gate_rot_freq, output);
-#else 
-  OptimProblem* optimctx = new OptimProblem(config, mytimestepper, comm_init, ninit, gate_rot_freq, output);
-#endif
+  OptimProblem* optimctx = new OptimProblem(config, mytimestepper, comm_init, comm_optim, ninit, gate_rot_freq, output, quietmode);
 
   /* Set upt solution and gradient vector */
   Vec xinit;
@@ -396,7 +397,7 @@ int main(int argc,char **argv)
     if (logfile.is_open()){
       logfile << log.str();
       logfile.close();
-      printf("File written: %s\n", filename);
+      if (!quietmode) printf("File written: %s\n", filename);
     }
     else std::cerr << "Unable to open " << filename;
   }
@@ -409,20 +410,20 @@ int main(int argc,char **argv)
   /* --- Solve primal --- */
   if (runtype == RunType::SIMULATION) {
     optimctx->getStartingPoint(xinit);
-    if (mpirank_world == 0) printf("\nStarting primal solver... \n");
+    if (mpirank_world == 0 && !quietmode) printf("\nStarting primal solver... \n");
     objective = optimctx->evalF(xinit);
-    if (mpirank_world == 0) printf("\nTotal objective = %1.14e, \n", objective);
+    if (mpirank_world == 0 && !quietmode) printf("\nTotal objective = %1.14e, \n", objective);
     optimctx->getSolution(&opt);
   } 
   
   /* --- Solve adjoint --- */
   if (runtype == RunType::GRADIENT) {
     optimctx->getStartingPoint(xinit);
-    if (mpirank_world == 0) printf("\nStarting adjoint solver...\n");
+    if (mpirank_world == 0 && !quietmode) printf("\nStarting adjoint solver...\n");
     optimctx->evalGradF(xinit, grad);
     VecNorm(grad, NORM_2, &gnorm);
     // VecView(grad, PETSC_VIEWER_STDOUT_WORLD);
-    if (mpirank_world == 0) {
+    if (mpirank_world == 0 && !quietmode) {
       printf("\nGradient norm: %1.14e\n", gnorm);
     }
     optimctx->output->writeGradient(grad);
@@ -432,7 +433,7 @@ int main(int argc,char **argv)
   if (runtype == RunType::OPTIMIZATION) {
     /* Set initial starting point */
     optimctx->getStartingPoint(xinit);
-    if (mpirank_world == 0) printf("\nStarting Optimization solver ... \n");
+    if (mpirank_world == 0 && !quietmode) printf("\nStarting Optimization solver ... \n");
     optimctx->solve(xinit);
     optimctx->getSolution(&opt);
   }
@@ -453,7 +454,7 @@ int main(int argc,char **argv)
   MPI_Allreduce(&myMB, &globalMB, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 
   /* Print statistics */
-  if (mpirank_world == 0) {
+  if (mpirank_world == 0 && !quietmode) {
     printf("\n");
     printf(" Used Time:        %.2f seconds\n", UsedTime);
     printf(" Global Memory:    %.2f MB\n", globalMB);
@@ -709,14 +710,9 @@ int main(int argc,char **argv)
   delete [] oscil_vec;
   delete mastereq;
   delete mytimestepper;
-#ifdef WITH_BRAID
-  delete primalbraidapp;
-  if (runtype == RunType::SIMULATION || runtype == RunType::GRADIENT) delete adjointbraidapp;
-#endif
   delete optimctx;
   delete output;
 
-  // TSDestroy(&ts);  /* TODO */
 
   /* Finallize Petsc */
 #ifdef WITH_SLEPC
@@ -729,5 +725,3 @@ int main(int argc,char **argv)
   MPI_Finalize();
   return ierr;
 }
-
-

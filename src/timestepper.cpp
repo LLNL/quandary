@@ -8,6 +8,7 @@ TimeStepper::TimeStepper() {
   total_time = 0.0;
   dt = 0.0;
   storeFWD = false;
+  MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
 }
 
 TimeStepper::TimeStepper(MasterEq* mastereq_, int ntime_, double total_time_, Output* output_, bool storeFWD_) : TimeStepper() {
@@ -271,7 +272,7 @@ void ExplEuler::evolveFWD(const double tstart,const  double tstop, Vec x) {
 }
 
 void ExplEuler::evolveBWD(const double tstop,const  double tstart,const  Vec x, Vec x_adj, Vec grad, bool compute_gradient){
-  double dt = fabs(tstop - tstart);
+  double dt = tstop - tstart;
 
   /* Add to reduced gradient */
   if (compute_gradient) {
@@ -397,7 +398,7 @@ void ImplMidpoint::evolveBWD(const double tstop, const double tstart, const Vec 
   Mat A;
 
   /* Compute time step size */
-  double dt = fabs(tstop - tstart);
+  double dt = tstop - tstart;
   double thalf = (tstart + tstop) / 2.0;
 
   /* Assemble RHS(t_1/2) */
@@ -487,213 +488,99 @@ int ImplMidpoint::NeumannSolve(Mat A, Vec b, Vec y, double alpha, bool transpose
   return iter;
 }
 
-PetscErrorCode RHSJacobian(TS ts,PetscReal t,Vec u,Mat M,Mat P,void *ctx){
-
-  /* Cast ctx to equation pointer */
-  MasterEq *mastereq = (MasterEq*) ctx;
-
-  /* Assembling the Hamiltonian will set the matrix RHS from Re, Im */
-  mastereq->assemble_RHS(t);
-
-  /* Set the hamiltonian system matrix */
-  M = mastereq->getRHS();
-
-  return 0;
-}
-
-PetscErrorCode RHSJacobianP(TS ts, PetscReal t, Vec y, Mat A, void *ctx){
-
-  /* Cast ctx to Hamiltonian pointer */
-  MasterEq *mastereq= (MasterEq*) ctx;
-
-  /* Assembling the derivative of RHS with respect to the control parameters */
-  printf("THIS IS NOT IMPLEMENTED \n");
-  exit(1);
-  // mastereq->assemble_dRHSdp(t, y);
-
-  /* Set the derivative */
-  // A = mastereq->getdRHSdp();
-
-  return 0;
-}
 
 
-PetscErrorCode TSInit(TS ts, MasterEq* mastereq, PetscInt NSteps, PetscReal Dt, PetscReal Tfinal, Vec x, bool monitor){
-  int ierr;
+CompositionalImplMidpoint::CompositionalImplMidpoint(int order_, MasterEq* mastereq_, int ntime_, double total_time_, LinearSolverType linsolve_type_, int linsolve_maxiter_, Output* output_, bool storeFWD_): ImplMidpoint(mastereq_, ntime_, total_time_, linsolve_type_, linsolve_maxiter_, output_, storeFWD_) {
 
-  ierr = TSSetProblemType(ts,TS_LINEAR);CHKERRQ(ierr);
-  ierr = TSSetType(ts, TSTHETA); CHKERRQ(ierr);
-  ierr = TSThetaSetTheta(ts, 0.5); CHKERRQ(ierr);   // midpoint rule
-  ierr = TSSetRHSFunction(ts,NULL,TSComputeRHSFunctionLinear,mastereq);CHKERRQ(ierr);
-  ierr = TSSetRHSJacobian(ts,mastereq->getRHS(),mastereq->getRHS(),RHSJacobian,mastereq);CHKERRQ(ierr);
-  ierr = TSSetTimeStep(ts,Dt);CHKERRQ(ierr);
-  ierr = TSSetMaxSteps(ts,NSteps);CHKERRQ(ierr);
-  ierr = TSSetMaxTime(ts,Tfinal);CHKERRQ(ierr);
-  ierr = TSSetExactFinalTime(ts,TS_EXACTFINALTIME_STEPOVER);CHKERRQ(ierr);
-  if (monitor) {
-    ierr = TSMonitorSet(ts, Monitor, NULL, NULL); CHKERRQ(ierr);
+  order = order_;
+
+  // coefficients for order 8, stages s=15
+  gamma.clear();
+  if (order == 8){
+    gamma.push_back(0.74167036435061295344822780);
+    gamma.push_back(-0.40910082580003159399730010);
+    gamma.push_back(0.19075471029623837995387626);
+    gamma.push_back(-0.57386247111608226665638773);
+    gamma.push_back(0.29906418130365592384446354);
+    gamma.push_back(0.33462491824529818378495798);
+    gamma.push_back(0.31529309239676659663205666);
+    gamma.push_back(-0.79688793935291635401978884); // 8
+    gamma.push_back(0.31529309239676659663205666);
+    gamma.push_back(0.33462491824529818378495798);
+    gamma.push_back(0.29906418130365592384446354);
+    gamma.push_back(-0.57386247111608226665638773);
+    gamma.push_back(0.19075471029623837995387626);
+    gamma.push_back(-0.40910082580003159399730010);
+    gamma.push_back(0.74167036435061295344822780);
+  } else if (order == 4) {
+    gamma.push_back(1./(2. - pow(2., 1./3.)));
+    gamma.push_back(- pow(2., 1./3.)*gamma[0] );
+    gamma.push_back(1./(2. - pow(2., 1./3.)));
   }
-  ierr = TSSetFromOptions(ts);CHKERRQ(ierr);
-  ierr = TSSetSolution(ts, x); CHKERRQ(ierr);
 
+  if (mpirank_world == 0) printf("Timestepper: Compositional Impl. Midpoint, order %d, %lu stages\n", order, gamma.size());
 
-  return ierr;
-}
-
-
-
-PetscErrorCode Monitor(TS ts,PetscInt step,PetscReal t,Vec x,void *ctx) {
-  PetscErrorCode ierr;
-  PetscFunctionBeginUser;
-
-    // Vec *stage;
-    // int nr;
-    // TSGetStages(ts, &nr, &stage);
-
-  const PetscScalar *x_ptr;
-  ierr = VecGetArrayRead(x, &x_ptr);
-  printf("Monitor ->%d,%f, x[1]=%1.14e\n", step, t, x_ptr[1]);
-  ierr = VecRestoreArrayRead(x, &x_ptr);
-
-  PetscFunctionReturn(0);
-}
-
-PetscErrorCode AdjointMonitor(TS ts,PetscInt step,PetscReal t,Vec x, PetscInt numcost, Vec* lambda, Vec* mu, void *ctx) {
-  PetscErrorCode ierr;
-
-    // Vec *stage;
-    // int nr;
-    // TSGetStages(ts, &nr, &stage);
-
-  const PetscScalar *x_ptr;
-  const PetscScalar *lambda_ptr;
-  const PetscScalar *mu_ptr;
-  ierr = VecGetArrayRead(x, &x_ptr);
-  ierr = VecGetArrayRead(lambda[0], &lambda_ptr);
-  ierr = VecGetArrayRead(mu[0], &mu_ptr);
-  // ierr = VecGetArrayRead(stage[0], &x_ptr);
-  printf("AdjointMonitor %d: %f->, dt=%f  x[1]=%1.14e, lambda[0]=%1.14e, mu[0]=%1.14e\n", step, t, ts->time_step, x_ptr[1], lambda_ptr[0], mu_ptr[0] );
-  ierr = VecRestoreArrayRead(x, &x_ptr);
-  ierr = VecRestoreArrayRead(lambda[0], &lambda_ptr);
-  ierr = VecRestoreArrayRead(mu[0], &mu_ptr);
-
-  PetscFunctionReturn(0);
-}
-
-
-
-PetscErrorCode TSPreSolve(TS ts, bool tj_store){
-  int ierr; 
-
-  ierr = TSSetUp(ts); CHKERRQ(ierr);
-  if (tj_store) ierr = TSTrajectorySetUp(ts->trajectory,ts);CHKERRQ(ierr);
-
-  /* reset time step and iteration counters */
-  if (!ts->steps) {
-    ts->ksp_its           = 0;
-    ts->snes_its          = 0;
-    ts->num_snes_failures = 0;
-    ts->reject            = 0;
-    ts->steprestart       = PETSC_TRUE;
-    ts->steprollback      = PETSC_FALSE;
+  // Allocate storage of stages for backward process 
+  for (int i = 0; i <gamma.size(); i++) {
+    Vec state;
+    VecCreate(PETSC_COMM_WORLD, &state);
+    VecSetSizes(state, PETSC_DECIDE, dim);
+    VecSetFromOptions(state);
+    x_stage.push_back(state);
   }
-  ts->reason = TS_CONVERGED_ITERATING;
-  if (ts->steps >= ts->max_steps) ts->reason = TS_CONVERGED_ITS;
-  else if (ts->ptime >= ts->max_time) ts->reason = TS_CONVERGED_TIME;
+  VecCreate(PETSC_COMM_WORLD, &aux);
+  VecSetSizes(aux, PETSC_DECIDE, dim);
+  VecSetFromOptions(aux);
+}
 
-  if (!ts->steps && tj_store) {
-    ierr = TSTrajectorySet(ts->trajectory,ts,ts->steps,ts->ptime,ts->vec_sol);CHKERRQ(ierr);
+CompositionalImplMidpoint::~CompositionalImplMidpoint(){
+  for (int i = 0; i <gamma.size(); i++) {
+    VecDestroy(&(x_stage[i]));
   }
-  // ierr = TSMonitor(ts,ts->steps,ts->ptime,ts->vec_sol);CHKERRQ(ierr);
-
-  return ierr;
+  VecDestroy(&aux);
 }
 
 
-PetscErrorCode TSStepMod(TS ts, bool tj_store){
-  int ierr; 
+void CompositionalImplMidpoint::evolveFWD(const double tstart,const  double tstop, Vec x) {
 
-  ierr = TSMonitor(ts,ts->steps,ts->ptime,ts->vec_sol);CHKERRQ(ierr);
-  ierr = TSPreStep(ts);CHKERRQ(ierr);
-  ierr = TSStep(ts);CHKERRQ(ierr);
-  ierr = TSPostEvaluate(ts);CHKERRQ(ierr);
-  ierr = TSMonitor(ts,ts->steps,ts->ptime,ts->vec_sol);CHKERRQ(ierr);
+  double dt = tstop - tstart;
+  double tcurr = tstart;
 
-  if (tj_store) ierr = TSTrajectorySet(ts->trajectory,ts,ts->steps,ts->ptime,ts->vec_sol);CHKERRQ(ierr);
-  ierr = TSPostStep(ts);CHKERRQ(ierr);
+  // Loop over stages
+  for (int istage = 0; istage < gamma.size(); istage++) {
+    // time-step size and tstart,tstop for compositional step
+    double dt_stage = gamma[istage] * dt;
 
-  return ierr;
-}
+    // Evolve 'tcurr -> tcurr + gamma*dt' using ImpliMidpointrule
+    ImplMidpoint::evolveFWD(tcurr, tcurr + dt_stage, x);
 
-PetscErrorCode TSPostSolve(TS ts){
-  int ierr;
-  ts->solvetime = ts->ptime;
-  return ierr;
-}
-
-
-PetscErrorCode TSAdjointPreSolve(TS ts){
-  int ierr;
-
-  /* reset time step and iteration counters */
-  ts->adjoint_steps     = 0;
-  ts->ksp_its           = 0;
-  ts->snes_its          = 0;
-  ts->num_snes_failures = 0;
-  ts->reject            = 0;
-  ts->reason            = TS_CONVERGED_ITERATING;
-
-  if (!ts->adjoint_max_steps) ts->adjoint_max_steps = ts->steps;
-  if (ts->adjoint_steps >= ts->adjoint_max_steps) ts->reason = TS_CONVERGED_ITS;
-
-
-  return ierr;
-}
-
-
-PetscErrorCode TSAdjointStepMod(TS ts, bool tj_save) {
-  int ierr;
-
-
-  if (tj_save) ierr = TSTrajectoryGet(ts->trajectory,ts,ts->steps,&ts->ptime);CHKERRQ(ierr);
-
-  ierr = TSAdjointMonitor(ts,ts->steps,ts->ptime,ts->vec_sol,ts->numcost,ts->vecs_sensi,ts->vecs_sensip);CHKERRQ(ierr);
-
-  ierr = TSAdjointStep(ts);CHKERRQ(ierr);
-  if (ts->vec_costintegral && !ts->costintegralfwd) {
-    ierr = TSAdjointCostIntegral(ts);CHKERRQ(ierr);
+    // Update current time
+    tcurr = tcurr + dt_stage;
   }
-  ierr = TSAdjointMonitor(ts,ts->steps,ts->ptime,ts->vec_sol,ts->numcost,ts->vecs_sensi,ts->vecs_sensip);CHKERRQ(ierr);
+  assert(fabs(tcurr - tstop) < 1e-12);
 
-  return ierr;
 }
 
-PetscErrorCode TSAdjointPostSolve(TS ts, bool tj_save){
-  int ierr; 
-  if (tj_save) ierr = TSTrajectoryGet(ts->trajectory,ts,ts->steps,&ts->ptime);CHKERRQ(ierr);
-  ierr = TSAdjointMonitor(ts,ts->steps,ts->ptime,ts->vec_sol,ts->numcost,ts->vecs_sensi,ts->vecs_sensip);CHKERRQ(ierr);
-  ts->solvetime = ts->ptime;
-  if (tj_save) ierr = TSTrajectoryViewFromOptions(ts->trajectory,NULL,"-ts_trajectory_view");CHKERRQ(ierr);
-  ierr = VecViewFromOptions(ts->vecs_sensi[0],(PetscObject) ts, "-ts_adjoint_view_solution");CHKERRQ(ierr);
-  ts->adjoint_max_steps = 0;
+void CompositionalImplMidpoint::evolveBWD(const double tstop, const double tstart, const Vec x, Vec x_adj, Vec grad, bool compute_gradient){
+  
+  double dt = tstop - tstart;
 
-  return ierr;
+  // Run forward again to store the (primal) stages
+  double tcurr = tstart;
+  VecCopy(x, aux);
+  for (int istage = 0; istage < gamma.size(); istage++) {
+    VecCopy(aux, x_stage[istage]);
+    double dt_stage = gamma[istage] * dt;
+    ImplMidpoint::evolveFWD(tcurr, tcurr + dt_stage, aux);
+    tcurr = tcurr + dt_stage;
+  }
+  assert(fabs(tcurr - tstop) < 1e-12);
+
+  // Run backwards while updating adjoint and gradient
+  for (int istage = gamma.size()-1; istage >=0; istage--){
+    double dt_stage = gamma[istage] * dt;
+    ImplMidpoint::evolveBWD(tcurr, tcurr-dt_stage, x_stage[istage], x_adj, grad, compute_gradient);
+    tcurr = tcurr - gamma[istage]*dt;
+  }
+  assert(fabs(tcurr - tstart) < 1e-12);
 }
-
-
-PetscErrorCode  TSSetAdjointSolution(TS ts,Vec lambda, Vec mu)
-{
-  PetscErrorCode ierr;
-  PetscFunctionBegin;
-  PetscValidHeaderSpecific(ts,TS_CLASSID,1);
-  PetscValidHeaderSpecific(lambda,VEC_CLASSID,3);
-
-  ierr = PetscObjectReference((PetscObject)lambda);CHKERRQ(ierr);
-  if (ts->vecs_sensi[0]) ierr = VecDestroy(&ts->vecs_sensi[0]);CHKERRQ(ierr);
-  ts->vecs_sensi[0] = lambda;
-  // if (ts->vecs_sensip[0]) ierr = VecDestroy(&ts->vecs_sensip[0]);CHKERRQ(ierr);
-  ts->vecs_sensip[0] = mu;
-
-  PetscFunctionReturn(0);
-}
-

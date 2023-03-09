@@ -163,13 +163,13 @@ where the rotational frequencies $\omega_k^r$ act as carrier waves to the rotati
 
 
 \subsection{Control pulses} \label{subsec:controlpulses}
-The time-dependent rotating-frame control functions $d^k(\vec{\alpha}^k,t)$ are parameterized using $N_s$ piecewise quadratic B-spline basis functions $B_s(t)$ acting as envelope for $N_f^k$ carrier waves:
+The time-dependent rotating-frame control functions $d^k(\vec{\alpha}^k,t)$ are parameterized using $N_s^k$ piecewise quadratic B-spline basis functions $B_s(t)$ acting as envelope for $N_f^k$ carrier waves:
 \begin{align}
-  d^k(\vec{\alpha}^k,t) = \sum_{f=1}^{N_f^k} \sum_{s=1}^{N_s} \alpha_{s,f}^k B_s(t) e^{i\Omega_k^ft}, \quad \alpha_{s,f}^k = \alpha_{s,f}^{k(1)} + i \alpha_{s,f}^{k(2)} \in \C
+  d^k(\vec{\alpha}^k,t) = \sum_{f=1}^{N_f^k} \sum_{s=1}^{N_s^k} \alpha_{s,f}^k B_s(t) e^{i\Omega_k^ft}, \quad \alpha_{s,f}^k = \alpha_{s,f}^{k(1)} + i \alpha_{s,f}^{k(2)} \in \C
 \end{align}
 The amplitudes $\alpha_{s,f}^{k(1)}, \alpha_{s,f}^{k(2)} \in \R$ are the control
 parameters (\textit{design} variables) that Quandary can optimize in order to realize a
-desired system behavior, giving a total number of $2N_s\sum_kN_f^k$ real-valued optimization variables. Further, $\Omega_k^f \in \R$ denote the carrier wave frequencies in the rotating frame which can be choosen to trigger certain system frequencies. The corresponding Lab-frame carrier frequencies become $\omega_k^r + \Omega_k^f$. Those frequencies can be chosen to match the transition frequencies in the lab-frame system Hamiltonian. For example, when $\xi_{kl} << \xi_k$, the transition frequencies satisfy $\omega_k - n\xi_k$. Thus by choosing $\Omega_k^f = \omega_k-\omega_k^r - n \xi_k$, one triggers transition between energy levels $n$ and $n+1$ in subsystem $k$. Choosing effective carrier wave frequencies is quite important for optimization performance. We recommend to have a look at \cite{petersson2021optimal} for details on how to choose them.
+desired system behavior, giving a total number of $2\sum_kN_s^kN_f^k$ real-valued optimization variables. (Note that the number of carrier wave frequencies $N_f^k$ as well as the number of spline basis functions $N_s^k$ can be different for each subsystem $k$.) $\Omega_k^f \in \R$ denote the carrier wave frequencies in the rotating frame which can be choosen to trigger certain system frequencies. The corresponding Lab-frame carrier frequencies become $\omega_k^r + \Omega_k^f$. Those frequencies can be chosen to match the transition frequencies in the lab-frame system Hamiltonian. For example, when $\xi_{kl} << \xi_k$, the transition frequencies satisfy $\omega_k - n\xi_k$. Thus by choosing $\Omega_k^f = \omega_k-\omega_k^r - n \xi_k$, one triggers transition between energy levels $n$ and $n+1$ in subsystem $k$. Choosing effective carrier wave frequencies is quite important for optimization performance. We recommend to have a look at \cite{petersson2021optimal} for details on how to choose them.
 
 Using trigonometric identities, the real and imaginary part of the rotating-frame control $d^k(\vec{\alpha}^k,t) = p^k(\vec{\alpha}^k,t) + iq^k(\vec{\alpha}^k,t)$ are given by
 \begin{align}
@@ -192,24 +192,21 @@ Those relate to the Lab-frame control $f^k(\vec{\alpha}^k,t)$ through
 \subsubsection{Storage of the control parameters}
 
 The control parameters $\bs{\alpha}$ are stored in the Quandary code in the following order: List oscillators first $(\vec{\alpha}^0, \dots, \vec{\alpha}^{Q-1})$, then for each $\vec{\alpha}^k \in
-\R^{2N_sN_f^k}$, iterate over $N_s$ splines: $\vec{\alpha}^k =
-(\alpha^k_1,\dots, \alpha^k_{N_s})$ with $\alpha^k_s \in \R^{2N_f^k}$, then each
-$\alpha^k_s$ iterates over carrier waves and for each carrier wave lists
-the real and imaginary components: $\alpha^k_s = \alpha^{k(1)}_{s,1}, \alpha^{k(2)}_{s,1},
-\dots \alpha^{k(1)}_{s,N_f^k}, \alpha^{k(2)}_{s,N_f^k}$. Hence there are a total of $2N_s\sum_k N_f^k$ real-valued optimization parameters, which are stored in the following order:
+\R^{2N_sN_f^k}$, iterate over all carrierwaves $\vec{\alpha}^k =
+(\alpha^k_1,\dots, \alpha^k_{N_f})$ with $\alpha^k_f \in \R^{2N_s^k}$, then each
+$\alpha^k_f$ iterates over spline basis functions listing first all real then all imaginary 
+components: $\alpha^k_f = \alpha^{k(1)}_{1,f}, \dots, \alpha^{k(1)}_{N_s^k,f}, \alpha^{k(2)}_{1,f}, \dots, \alpha^{k(2)}_{N_s^k,f}$. Hence there are a total of $2\sum_k N_s^kN_f^k$ real-valued optimization parameters, which are stored in the following order:
   \begin{align}
     \boldsymbol{\alpha} &:= \left( \vec{\alpha}^0, \dots, \vec{\alpha}^{Q-1} \right), \in
-    \mathds{R}^{2N_s\sum_k N_f^k} \quad \text{where}\\
-    \vec{\alpha}^k &= \left( \alpha_{1,1}^k,\dots, \alpha_{1,N_f^k}^k, \dots,
-    \alpha_{N_s,1}^{k}, \dots, \alpha_{N_s,N_f^k}^k \right), \quad \text{with} \quad
-    \alpha_{s,f}^k = \left(\alpha_{s,f}^{k(1)}, \alpha_{s,f}^{k(2)} \right) \in
-    \R^2,
+    \mathds{R}^{2\sum_k N_s^k N_f^k} \quad \text{where}\\
+    \vec{\alpha}^k = &\left( \alpha_{1,1}^{k(1)},\dots, \alpha_{N_s^k,1}^{k(1)}, \dots, \alpha_{1,N_f^k}^{k(1)}, \dots, \alpha_{N_s^k,N_f^k}^{k(1)} \right.\\
+                   &  \left. \alpha_{1,1}^{k(2)},\dots, \alpha_{N_s^k,1}^{k(2)}, \dots, \alpha_{1,N_f^k}^{k(2)}, \dots, \alpha_{N_s^k,N_f^k}^{k(2)} \right)
   \end{align}
-  iterating over $Q$ subsystems first, then $N_s$ splines, then $N_f^k$ carrier wave
-  frequencies. To access an element $\alpha_{s,f}^{k(i)}$, $i=0,1$, from storage $\bfa$:
+  iterating over $Q$ subsystems first, then $N_f^k$ carrier wave frequencies, then $N_s^k$ splines, listing first all real parts then all imaginary parts. To access an element $\alpha_{s,f}^{k(i)}$, $i=0,1$, from storage $\bfa$:
   \begin{align}
-    \alpha_{s,f}^{k(i)} = \bfa[ \left(\sum_{j=0}^{k-1} 2N_sN_f^j\right) + s*2N_f^k + f*2 + i ],
+    \alpha_{s,f}^{k(i)} = \bfa[ \left(\sum_{j=0}^{k-1} 2N_s^jN_f^j\right) + f*2N_s^k + s + i*N_s ],
   \end{align}
+  \textit{Note: this ordering of the controls is compatible with the order of control parameters in the Juqbox.jl software \cite{petersson2021optimal}.}
 
   When executing Quandary, the control parameter $\boldsymbol{\alpha}$ can be either specified (e.g. a constant pulse, a pi-pulse, or 
   pulses whose parameters are read from a given file), or can be optimized for (Section \ref{sec:optim}). 
@@ -223,6 +220,104 @@ the real and imaginary components: $\alpha^k_s = \alpha^{k(1)}_{s,1}, \alpha^{k(
    \end{align}
 
 
+\subsection{Python interface for general Hamiltonian systems}
+The Python interface for Quandary allows to simulate and optimize with user-defined Hamiltonians. To that end, the user defines (arbitrary) system and control Hamiltonian operators in a python script (see below), and Quandary then replace the Hamiltonian model in \eqref{eq:Hd_rotating} (system Hamiltonian) and \eqref{eq:Hc_rotating} (control Hamiltonian) by the Hamiltonians defined in the script. 
+
+To enable the python interface for Quandary, use the configuration option \texttt{python\_file} to pass the name of the python script to Quandary. (Note: Make sure that the beginning of the configuration file (\texttt{nlevels}) matches the dimension of the Hamiltonians defined in the python file.)
+During Quandary's initialization phase, the python script will be parsed for functions of specific names that return the corresponding Hamiltonians. A description of the interface functions is given below. A good place to start is by having a look at the example in \texttt{quandary/results/python\_interface\_example/}. There, the python script \texttt{Hamiltonian.py} provides the interface functions that reproduce the (default) Hamiltonian model and control as in \eqref{eq:Hd_rotating}, \eqref{eq:Hc_rotating} for a system of two coupled qudits, applying a constant control pulse of a certain duration and amplitude to qudit 0 (a non-perfect pi-pulse).
+
+The python interface allows for general Hamiltonians that are composed of a constant (time-independent) system Hamiltonian $H_{d}$, (multiple) time-dependent system Hamiltonians $H_{d}(t)$ and (multiple) time-dependent control Hamiltonians $H_{c}(t)$: 
+\begin{align}
+    H(t) = H_{d} + H_{d}(t) + H_{c}(t) 
+\end{align}
+The time-dependency is realized through real-valued transfer functions that multiply constant matrices, see below. 
+
+\begin{itemize}
+  \item \textbf{Time-independent system Hamiltonian $H_d$} (required)\\
+  The constant system Hamiltonian $H_d \in \C^{N\times N}$ contains the time-independent (non-controllable) system Hamiltonian terms (detuning, anharmonicity, etc. and coupling terms, if they are time-constant). Typically, this Hamiltonian term is real-valued, and this real-valued Hamiltonian is \textit{required} to be provided through the python interface. To this end, 
+  Quandary parses the python script for a function \texttt{\textbf{getHd}}, which must return a list of floats containing the \textit{real-valued} part of the vectorized matrix $H_d$ (column-major). 
+
+  \textbf{python function}\\
+  \texttt{def getHd():}\\
+  \indent\hspace{1cm}\texttt{[...]}  \\
+  \indent\hspace{1cm}\texttt{return} vec($H_d$) 
+
+  In order to specifying a non-zero imaginary part of the system Hamiltonian (uncommon), the user defines the function \texttt{def getHd\_imag()} in the same way as above, in addition to the function \texttt{def getHd()}. 
+
+  \item \textbf{Time-dependent system Hamiltonians $H_d(t)$} (optional) \\
+  Multiple time-dependent system Hamiltonian terms can be defined through these interface functions (e.g. such as the Jaynes-Cummings coupling terms in the rotating frame). Each term, $H_d^l(t) \in \C^{N\times N}, l=0,1,\dots$ is complex, and their real and imaginary parts are composed of real-valued (transfer) functions $u^l(t), v^l(t)$ multiplying constant real and imaginary parts of the Hamiltonian matrix $\mbox{Re}(H_d^l)$, $\mbox{Im}(H_d^l)$: 
+  \begin{align}
+   H_d^l(t) = u^l(t) \mbox{Re}\left(H_d^l\right) + i v^l(t) \mbox{Im}\left(H_d^l\right)
+  \end{align}
+  for some arbitrary number of terms $l=0,1,\dots, L-1$. Providing time-dependent Hamiltonians is optional. 
+  
+  The real-valued and constant matrices $\mbox{Re}(H^l_{d}), \mbox{Im}(H^l_d)\in \R^{N\times N}$, are passed to Quandary throught the interface functions \texttt{getHdt\_real()} and \texttt{getHdt\_imag()}, respectively, which both return a list (of length $L$) of matrices. Similar to $H_d$, the matrices each are passed as lists of floats (column-wise vectorization of the matrix). (So the functions return a list of lists of floats).
+
+  \textbf{python functions}\\
+  \texttt{def getHdt\_real():}\\
+  \indent\hspace{1cm}\texttt{[...]}  \\
+  \indent\hspace{1cm}\texttt{return} [ vec(Re($H_d^{l=0}$)), vec(Re($H_d^{l=1}$)), \dots ]
+
+  \noindent \texttt{def getHdt\_imag():}\\
+  \indent\hspace{1cm}\texttt{[...]}  \\
+  \indent\hspace{1cm}\texttt{return} [ vec(Im($H_d^{l=0}$)), vec(Im($H_d^{l=1}$)), \dots ]
+
+
+  
+  The transfer functions are real-valued, $u^l,v^l\colon\R \to \R$. These are provided in terms of a spline representation. Quandary receives them through the interface functions \texttt{getHdtTransfer\_real()} for $u^l(t)$ and \texttt{getHdtTransfer\_imag()} for $v^l(t)$, which return a triple $\left[ \text{knots}, \text{coefficients}, \text{order} \right]$, for lists of spline knots and coefficients and an integer order.  These triples should be provided for each of the defined matrices $H_d^l$. Providing transfer functions for $H_d^l$ is optional. If an interface function \texttt{getHdtTransfer\_real/imag()} is not defined, even though the corresponding $H_d^l$ has been specified, then the transfer function will be constant $1.0$. (Note that the corresponding Hamiltonian term will be constant then, and could have gone into the time-independent system Hamiltonian $H_d$...) 
+
+  \textbf{python functions}\\
+  \texttt{def getHdtTransfer\_real():}\\
+  \indent\hspace{1cm}\texttt{[...]}  \\
+  \indent\hspace{1cm}\texttt{return} [ $\left[\text{knots}, \text{coeffs}, \text{order}\right]^{l=0}$,$\left[\text{knots}, \text{coeffs}, \text{order}\right]^{l=1}$ , \dots ]
+
+  \noindent \texttt{def getHdtTransfer\_imag():}\\
+  \indent\hspace{1cm}\texttt{[...]}  \\
+  \indent\hspace{1cm}\texttt{return} [ $\left[\text{knots}, \text{coeffs}, \text{order}\right]^{l=0}$,$\left[\text{knots}, \text{coeffs}, \text{order}\right]^{l=1}$ , \dots ]
+
+
+
+ \item \textbf{Time-dependent control Hamiltonians $H_c(t)$:} (optional) \\
+ For each modeled subsystem $k=0,\dots, Q-1$, a number of control Hamiltonians can be applied. Each control Hamiltonian is driven with a separate set of control pulses $p^k(t)$, $q^k(t)$, which Quandary optimizes for. The control pulses can be applied to \textit{multiple} control Hamiltonian matrices per subsystem $k$: $H_c^{k,l}\in \C^{N\times N}$ for $l=0,\dots, C^k-1$, where the number of control Hamiltonians $C^k$ can be different amongst the oscillators $k$. Real-valued transfer functions can optionally be applied to the control pulses before multiplying the constant control matrices:
+  \begin{align}
+  H_{c}^{k,l}(t) =  u^{k,l}\left(p^k(t)\right) \mbox{Re}\left(H_{c}^{k,l}\right)
+    + i v^{k,l}\left(q^k(t)\right) \mbox{Im}\left(H_{c}^{k,l}\right)
+  \end{align}
+  for $l=0,\dots, C^k-1$. Note that \textit{one} set of control pulses $p^k(t), q^k(t)$ is applied to \textit{all} terms $H_c^{k,l}, l=0,\dots, C^k-1$ for that subsystem $k$, however the corresponding transfer functions $u^{k,l}, v^{k,l}$ can be different amongst each control term $l$ (and each oscillator $k$).
+
+  The interface functions \texttt{getHc\_real()/imag()} return a list over oscillators, containing a list of control Hamiltonian matrices for each oscillator. Again, each matrix is passed as a list of floats containing the vectorized matrix elements (column-wise vectorization), so the return is a list (iterating over oscillators) of lists (iterating over control terms) of vectorized Hamiltonians
+
+ \textbf{python functions} \\
+  \texttt{def getHc\_real/imag():} \\
+  \indent\hspace{1cm}\texttt{[...]}   \\
+  \indent\hspace{1cm}\texttt{return} [ \, vec(Re/Im($H_c^{k=0,l=0}$)), vec(Re/Im($H_d^{k=0,l=1}$)), \dots,\\
+  \indent\hspace{17ex} \vdots    \\
+  \indent\hspace{16ex}  vec(Re/Im($H_c^{k=Q-1,l=0}$)), vec(Re/Im($H_d^{k=Q-1,l=1}$)), \dots \, ]
+  
+
+
+  
+  The corresponding transfer functions are provided in terms of their spline representation, i.e. a triple of spline knots, spline coefficients and order, for each given $H_c^{k,l}$. Transfer functions for the control terms are optional. If the transfer function interface is not defined, the identity will used instead (i.e. the controls will be applied 'raw': $p^k(t)\mbox{Re}(H_c^{k,l}) + iq^k(t)\mbox{Im}(H_c^{k,l})$).
+
+  \textbf{python functions}\\
+  \texttt{def getHcTransfer\_real/imag():}\\
+  \indent\hspace{1cm}\texttt{[...]}  \\
+  \indent\hspace{1cm}\texttt{return} [\, $\left[\text{knots}, \text{coeffs}, \text{order}\right]^{k=0,l=0}$, $\left[\text{knots}, \text{coeffs}, \text{order}\right]^{k=0, l=1}$ , \dots ,\\
+  \indent\hspace{18ex}\vdots \\
+  \indent\hspace{16ex} $\left[\text{knots}, \text{coeffs}, \text{order}\right]^{k=Q-1,l=0}$, $\left[\text{knots}, \text{coeffs}, \text{order}\right]^{k=Q-1, l=1}$ , \dots \,]
+
+
+
+\end{itemize}
+
+
+When defining Hamiltonian matrices in the python script, the units should be radian (multiply them $2\pi$). Again, note that all matrices will be passed to Quandary as lists of floats containing the column-wise vectorized matrix. Transfer functions are passed in terms of their spline representation (knots, coefficients and order). To generate spline representations within the python script, you can use for example SciPy's \texttt{interpolate} module. Quandary uses \href{https://github.com/jbaayen/fitpackpp}{FitpackPP} to recreate the spline representation for the transfer functions from provided knots, coefficients and order. Therefore, in order to use transfer functions, one needs to have fitpackpp installed and linked to Quandary (compare the Readme.md file). 
+
+After setting up a python script that provides the interface functions, the user has to set up the configuration file for Quandary, and provide the name of the python script with the config option \texttt{python\_file}. Further, the number of levels per subsystem (defining the system dimension) should match the definitions in the python script. Make sure to choose an appropriate time-step size in the configuration file, in order to resolve the resulting dynamics. Some of the configuration options will be overwritten (the parameters that define (default) the system and control Hamiltonians, such as transition frequencies, self-kerr, cross-ker, coupling coefficients), since those are included in the python interface Hamiltonians. Configuration options concerning the runtype, control pulse definitions, initial conditions, and optimization target and parameters, output etc. will still be valid and used to define the current simulation / optimization. 
+
+Similar to using the default Hamiltonian model, when using user-defined Hamiltonians one can still switch between the Schroedinger solver and the Lindblad solver by changing the configuration option \texttt{collapse\_type} (\texttt{=none} for Schroedinger, any other choise for Lindblad solver). For the Lindblad solver, the same collapse terms as defined in \eqref{eq:collapseop} will be added to the dynamical equation. 
+
+\textit{Note: the Python interface can only be used in conjuction with the sparse-matrix solver (not the matrix-free solver).}
 
 \section{The Optimal Control Problem} \label{sec:optim}
 In the most general form, Quandary can solve the following optimization problem
@@ -529,7 +624,10 @@ The real and imaginary parts of $q(t)$ are stored in a colocated manner: For
     q(t) = M(t) q(t)$ for $t\in [0,T]$, Quandary applies a time-stepping integration
     scheme on a uniform time discretization grid $0=t_0 < \dots t_{N} = T$, with
     $t_n = n \delta t$ and $\delta t = \frac{T}{N}$, and approximates the
-    solution at each discrete time step $q^{n} \approx q(t_n)$. It is a second-order accurate, symplectic Runge-Kutta scheme tableau 
+    solution at each discrete time step $q^{n} \approx q(t_n)$. The time-stepping scheme can be chosen in Quandary through the configuration option \texttt{timestepper}
+    
+    \subsubsection{Implicit Midpoint Rule (\texttt{IMR})}
+    The implicit midpoint rule is a second-order accurate, symplectic time-stepping algorithm with Runge-Kutta scheme tableau 
     \begin{tabular}{ c | c }
       $1/2$ & $ 1/2$ \\
       \hline
@@ -541,11 +639,14 @@ The real and imaginary parts of $q(t)$ are stored in a colocated manner: For
       q^{n+1} = q^n + \delta t k_1 \quad \text{where} \, k_1 \, \text{solves}
       \quad \left( I-\frac{\delta t}{2} M^{n+1/2} \right) k_1 = M^{n+1/2}  q^n
     \end{align}
-    where $M^{n+1/2} := M(t_n + \frac{\delta t}{2})$. In each time-step, we
-    first solve a linear equation to get the stage variable $k_1$, then use it
+    where $M^{n+1/2} := M(t_n + \frac{\delta t}{2})$. In each time-step,
+    a linear equation is solved to get the stage variable $k_1$, which is then used it
     to update $q^{n+1}$. 
 
-    While the implicit midpoint rule is the default (and preferred) setting in Quandary, there is the possibility to apply any time-stepping integrators provided by PETSc (class \texttt{TS} within PETSc). However, implementation needs to be verified, and adjoint time-stepping with Petsc is currently not available. 
+    \subsubsection{Higher-order compositional IMR (\texttt{IMR4}, or \texttt{IMR8})}
+    A compositional version of the Implicit Midpoint Rule is available that performs multiple IMR steps in each time step interval, which are composed in such a way that the resulting compositional step is of higher order. Currently, Compared to the standard IMR, the higher-order methods can be very benefitial as it allows for much larger time-steps to be taken to reach a certain accuracy tolerance. Even though more work is done per timestep, the reduction in the number of time-steps needed can be several orders or magnitude and there is hence a tradeoff where the compositional methods outperform the standard IMR scheme.
+
+    Currently available is a compositional method of 4-th order that performs 3 sub-steps per time step (\texttt{IMR4}), and a compositional method of 8-th order performing 15 sub-steps per time step (\texttt{IMR8}).
 
     \subsubsection{Choice of the time-step size}
     In order to choose a time-step size $\delta t$, an eigenvalue analysis of
@@ -564,13 +665,16 @@ The real and imaginary parts of $q(t)$ are stored in a colocated manner: For
          \delta t = \frac{\tau_{min}}{p} = \frac{2\pi}{p\max_i\{|\lambda_i|\}}
        \end{align}
        Usually, for a first order scheme we would use something like $p=20$,
-       second order may use $p=10$. The above estimate provides a first idea on how big (small) the time-step size should be, and the user is advised to consider this estimate himself when running a test case. However, the estimate ignores contributions from the control Hamiltonian, where larger control amplitudes will require smaller and smaller time-steps in order to resolve (a) the time-varying controls themselves and (b) the dynamics induced by large control contributions. A standard $\Delta t$ test should be performed to varify if the time-step is small enough (testing for second order convergence of the error when reducing $\Delta t$). 
-
-       If one wants to include the time-varying Hamiltonian part $H = H_d +
-       H_c(t)$ in the analysis, one could use the constraints on the control
-       parameter amplitudes to remove the time-dependency using their large
-       value instead.       
-
+       second order may use $p=10$. The above estimate provides a first idea on how big (small) the time-step size should be, and the user is advised to consider this estimate when running a test case. However, the estimate ignores contributions from the control Hamiltonian, where larger control amplitudes will require smaller and smaller time-steps in order to resolve (a) the time-varying controls themselves and (b) the dynamics induced by large control contributions. A standard $\Delta t$ test should be performed in order to verify that the time-step is small enough. For example, one can compute the Richardson error estimator of the current approximation error to some true quantity $J^*$ from
+       \begin{align}
+         J^* - J^{\Delta t} = \frac{J^{\Delta t} - J^{\Delta t m}}{1-m^p} + O(\Delta t^{p+1})
+       \end{align}
+       where $p$ is the order of the timestepping scheme (i.e. $p=2$ for the IMR and $p=8$ for the compositional IMR8), and $J^{\Delta t}, J^{\Delta tm}$ denote approximations thereof using the time-stepping sizes $\Delta t$ and $\Delta t m$ for some factor $m$.        
+       
+      %  If one wants to include the time-varying Hamiltonian part $H = H_d +
+      %  H_c(t)$ in the analysis, one could use the constraints on the control
+      %  parameter amplitudes to remove the time-dependency using their large
+      %  value instead.       
 
   
   \subsection{Gradient computation via discrete adjoint backpropagation}
@@ -598,41 +702,27 @@ The real and imaginary parts of $q(t)$ are stored in a colocated manner: For
 
 
     \section{Parallelization}
-    Quandary offers three levels of parallelization using MPI. 
+    Quandary offers two levels of parallelization using MPI. 
     \begin{enumerate}
     \item Parallelization over initial conditions: The $n_{init}$ initial conditions $\rho_i(0)$ can be distributed over \texttt{np\_init} compute units. Since initial condition are propagated through the time-domain for solving Lindblad's or Schroedinger's equation independently from each other, speedup from distributed initial conditions is ideal. 
     \item Parallel linear algebra with Petsc (sparse-matrix solver only): For the sparse-matrix solver, Quandary utilizes Petsc's parallel sparse matrix and vector storage to distribute the state vector onto \texttt{np\_petsc} compute units (spatial parallelization). To perform scaling results, make sure to disable code output (or reduce the output frequency to print only the last time-step), because writing the data files invokes additional MPI calls to gather data on the master node.
-    \item Time-parallelization via XBraid (experts only): working implementation, but
-      speedup depends on the test case and XBraid setting (experts only),
-      configuration option is \texttt{np\_braid}
     \end{enumerate}
     Strong and weak scaling studies are presented in \cite{guenther2021quantum}.
 
-    In the main code, the global communicator (MPI\_COMM\_WORLD) is split into
-    three sub-communicator, one for each of the above. The total number of executing MPI
-    processes ($np_{total}$) is split into three subgroups in such a way that 
+    Since those two levels of parallelism are orthogonal, Quandary splits the global communicator (MPI\_COMM\_WORLD) into
+    two sub-communicator such that the total number of executing MPI
+    processes ($np_{total}$) is split as
     \begin{align*}
-      np_{braid} * np_{init} * np_{petsc} = np_{total}.
+      np_{init} * np_{petsc} = np_{total}.
     \end{align*}
-    The user specifies the size of the communicator for distributing the
-    initial conditions ($np_{init}$) as well as time-parallelization
-    ($np_{braid}$) in the configuration file. The number of cores for parallel linear
-    algebra ($np_{petsc}$) is then computed from the above equation. The
-    following requirements for parallel distribution must be considered when
-    setting up parallel runs:
-    \begin{itemize}
-    \item $\frac{n_{init}}{np_{init}} \in \mathds{N}$, where $n_{init}$ is
-      the number of initial conditions that are considered. This requirement
-      ensures that each processor group owns the same number of initial
-      conditions.
-    \item $\frac{np_{total}}{np_{init}*np_{braid}} \in \mathds{N}$, so that
-      each processor group has the same number of cores for Petsc.
-    \item $\frac{M}{np_{petsc}} \in \mathds{N}$, for $M=N^2$ in the Lindblad case and $M=N$ in the Schroedinger case. Hence the system dimension must be an integer multiple of the number of cores used for
-      distributed linear algebra from Petsc. This constraint is a little
+    Since parallelization over different initial conditions is perfect, Quandary automatically sets $np_{init} = n_{init}$, i.e. the total number of cores for distributing initial conditions is the total number of initial conditions that are considered in this run, as specified by the configuration option \texttt{intialcondition}. The number of cores for distributed linear algebra with Petsc is then computed from the above equation.
+
+    It is currently required that the number of total cores for executing quandary is an integer divisor of multiplier of the number of initial conditions, such that each processor group owns the same number of initial conditions. 
+    
+    It is further required that the system dimension is an integer multiple of the number of cores used for distributed linear algebra from Petsc, i.e. it is required that $\frac{M}{np_{petsc}} \in \mathds{N}$ where $M=N^2$ in the Lindblad solver case and $M=N$ in the Schroedinger case. This requirement is a little
       annoying, however the current implementation requires this due to the
       colocated storage of the real and imaginary parts of the vectorized
       state.
-    \end{itemize}
  
 \section{Output and plotting the results}
 Quandary generates various output files for system evolution of the current (optimized) controls as well as the optimization progress. All data files will be dumped into a user-specified folder through the config option \texttt{datadir}. 
@@ -645,7 +735,9 @@ For each subsystem $k$, the user can specify the desired state evolution output 
     \langle N^{(n_k)}\rangle = \mbox{Tr}\left(N^{(n_k)} \rho^k(t)\right)
   \end{align}
   where $N^{(n_k)} = \left(a^{(n_k)}\right)^\dagger \left(a^{(n_k)}\right)$ denotes the number operator in subsystem $k$ and $\rho^k$ denotes the reduced density matrix for subsystem $k$, each with dimension $n_k\times n_k$. Note that this equivalent to $\mbox{Tr}\left(N_k \rho(t)\right)$ with $N_k = I_{n_1} \otimes \dots \otimes I_{n_{k-1}} \otimes N^{(n_k)} \otimes I_{n_{k+1}}\otimes \dots \otimes I_Q$ and the full state $\rho(t)$ in the full dimensions $N\times N$.
-  \item \texttt{population}: This option prints the time evolution of the population of subsystem $k$ into files named \texttt{population<k>.iinit<m>.dat} for each initial condition $m=1,\dots, n_{init}$. The files contain $n_k+1$ columns, the first one being the time values, the remaining $n_k$ columns correspond to the population of each level $l=0,\dots,n_k-1$ of the reduced density matrix $\rho^k(t)$ at that time point. For Lindblad's solver, these are the diagonal elements of the reduced density matrix ($\rho_{ll}^k(t), l=0,\dots n_k-1$), for Schroedinger's solver it's the absolute values of the reduced state vector elements $|\psi^k_l(t)|^2, l=0,\dots n_k-1$. Note that the reduction to the subsystem $k$ induces a sum over all oscillators to collect contributions to the reduced state. 
+  \item \texttt{expectedEnergyComposite} Prints the time evolution of the expected energy level of the entire (full-dimensional) system state into files (one for each initial condition, as above): $mbox{Tr}\left(N \rho(t)\right)$ for the number operator $N$ in the full dimensions. 
+  \item \texttt{population}: This option prints the time evolution of the state populations (diagonal of density matrix, state probabilities) of subsystem $k$ into files named \texttt{population<k>.iinit<m>.dat} for each initial condition $m=1,\dots, n_{init}$. The files contain $n_k+1$ columns, the first one being the time values, the remaining $n_k$ columns correspond to the population of each level $l=0,\dots,n_k-1$ of the reduced density matrix $\rho^k(t)$ at that time point. For Lindblad's solver, these are the diagonal elements of the reduced density matrix ($\rho_{ll}^k(t), l=0,\dots n_k-1$), for Schroedinger's solver it's the absolute values of the reduced state vector elements $|\psi^k_l(t)|^2, l=0,\dots n_k-1$. Note that the reduction to the subsystem $k$ induces a sum over all oscillators to collect contributions to the reduced state. 
+  \item \texttt{populationComposite}: Prints the time evolution of the state populations of the entire (full-dimensional) system into files (one for each initial condition, as above). 
   \item \texttt{fullstate}: Probably only relevant for debugging or very small systems, one can print out the full state $\rho(t)$ or $\psi(t)$ for each time point into the files \texttt{rho\_Re.iinit<m>.dat} and \texttt{rho\_Im.iinit<m>.dat}, for the real and imaginary parts of the state, respectively. These files contain $N^2 +1$ (Lindblad) or $N+1$ (Schroedinger) columns the first one being the time point value and the remaining ones contain the vectorized density matrix (Lindblad, $N^2$ elements) or the state vector (Schroedinger, $N$ elements) for each time step. Note that these file become very big very quickly -- use with care!
 \end{itemize}
 
@@ -656,6 +748,7 @@ The user can change the frequency of output in time (printing only every $j$-th 
   \item \texttt{config\_log.dat} contains all configuration options that had been used for the current run. 
   \item \texttt{params.dat} contains the control parameters $\bfa$ that had been used to determine the current control pulses. This file contains one column containing all parameters, ordered as stored, see Section \ref{subsec:controlpulses}.
   \item \texttt{control<k>.dat} contain the resulting control pulses applied to subsystem $k$ over time. It contains four columns, the first one being the time, second and third being $p^k(t)$ and $q^k(t)$ (rotating frame controls), and the last one is the corresponding lab-frame pulse $f^k(t)$.
+  \item \texttt{transfer\_control<k>.dat}: By default, those are the same as the control pulse files, since default transfer functions are the identity. However, in case the python interface is enabled, the user can specify different transfer functions, and this file contains the resulting (transferred) pulses. 
   \item \texttt{optim\_history.dat} contains information about the optimization progress in terms of the overall objective function and contribution from each term (cost at final time $T$ and contribution from the tikhonov regularization and the penalty term), as well the norm of the gradient and the fidelity, for each iteration of the optimization. If only a forward simulation is performed, this file still prints out the objective function and fidelity for the forward simulation. 
 \end{itemize}
 Quandary always prints the current paramters and control pulses at the beginning of a simulation or optimization, and in addition at every $l$-th optimization iteration determined from the \texttt{optim\_monitor\_frequency} configuration option. 

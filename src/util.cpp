@@ -1,5 +1,71 @@
 #include "util.hpp"
 
+
+double sigmoid(double width, double x){
+  return 1.0 / ( 1.0 + exp(-width*x) );
+}
+
+double sigmoid_diff(double width, double x){
+  return sigmoid(width, x) * (1.0 - sigmoid(width, x)) * width;
+}
+
+double getRampFactor(const double time, const double tstart, const double tstop, const double tramp){
+
+    double eps = 1e-4; // Cutoff for sigmoid ramp 
+    double steep = log(1./eps - 1.) * 2. / tramp; // steepness of sigmoid such that ramp(x) small for x < - tramp/2
+    // printf("steep eval %f\n", steep);
+
+    double rampfactor = 0.0;
+    if (time <= tstart + tramp) { // ramp up
+      double center = tstart + tramp/2.0;
+      // rampfactor = sigmoid(steep, time - center);
+      rampfactor =  1.0/tramp * time - tstart/ tramp;
+    }
+    else if (tstart + tramp <= time && 
+            time <= tstop - tramp) { // center
+      rampfactor = 1.0;
+    }
+    else if (time >= tstop - tramp && time <= tstop) { // down
+      double center = tstop - tramp/2.0;
+      // rampfactor = sigmoid(steep, -(time - center));
+      // steep = 1842.048073;
+      // steep = 1000.0;
+      rampfactor =  -1.0/tramp * time + tstop / tramp;
+    }
+
+    // If ramp time is larger than total amount of time, turn off control:
+    if (tstop < tstart + 2*tramp) rampfactor = 0.0;
+
+    return rampfactor;
+}
+
+double getRampFactor_diff(const double time, const double tstart, const double tstop, const double tramp){
+
+    double eps = 1e-4; // Cutoff for sigmoid ramp 
+    double steep = log(1./eps - 1.) * 2. / tramp; // steepness of sigmoid such that ramp(x) small for x < - tramp/2
+    // printf("steep der %f\n", steep);
+
+    double dramp_dtstop= 0.0;
+    if (time <= tstart + tramp) { // ramp up
+      dramp_dtstop = 0.0;
+    }
+    else if (tstart + tramp <= time && 
+            time <= tstop - tramp) { // center
+      dramp_dtstop = 0.0;
+    }
+    else if (time >= tstop - tramp && time <= tstop) { // down
+      double center = tstop - tramp/2.0;
+      // dramp_dtstop = sigmoid_diff(steep, -(time - center));
+      // steep = 1842.048073;
+      dramp_dtstop = 1.0/tramp;
+    }
+    
+    // If ramp time is larger than total amount of time, turn off control:
+    if (tstop < tstart + 2*tramp) dramp_dtstop= 0.0;
+
+    return dramp_dtstop;
+}
+
 int getIndexReal(const int i) {
   return 2*i;
 }
@@ -424,7 +490,7 @@ PetscErrorCode SanityTests(Vec x, double time){
 }
 
 
-void read_vector(const char *filename, double *var, int dim) {
+void read_vector(const char *filename, double *var, int dim, bool quietmode) {
 
   FILE *file;
   double tmp;
@@ -433,7 +499,7 @@ void read_vector(const char *filename, double *var, int dim) {
   file = fopen(filename, "r");
   if (file != NULL) {
     /* Read data */
-    printf("Reading file %s\n", filename);
+    if (!quietmode) printf("Reading file %s\n", filename);
     for (int ix = 0; ix < dim; ix++) {
       fscanf(file, "%lf", &tmp);
       var[ix] = tmp;
@@ -520,8 +586,8 @@ bool isUnitary(const Mat V_re, const Mat V_im){
   MatAXPY(C, 1.0, D, DIFFERENT_NONZERO_PATTERN); 
   MatShift(C, -1.0);
   MatNorm(C, NORM_FROBENIUS, &norm);
-  if (norm > 1e-14) {
-    printf("ERROR: V_re^TVre+Vim^TVim is not identity! %f\n", norm);
+  if (norm > 1e-12) {
+    printf("Unitary Test: V_re^TVre+Vim^TVim is not the identity! %1.14e\n", norm);
     // MatView(C, NULL);
     isunitary = false;
   } 
@@ -533,8 +599,8 @@ bool isUnitary(const Mat V_re, const Mat V_im){
   MatTransposeMatMult(V_im, V_re, MAT_INITIAL_MATRIX, PETSC_DEFAULT, &D);
   MatAXPY(C, -1.0, D, DIFFERENT_NONZERO_PATTERN); 
   MatNorm(C, NORM_FROBENIUS, &norm);
-  if (norm > 1e-14) {
-    printf("ERROR: Vre^TVim - Vim^TVre is not zero! %f\n", norm);
+  if (norm > 1e-12) {
+    printf("Unitary Test: Vre^TVim - Vim^TVre is not zero! %1.14e\n", norm);
     // MatView(C,NULL);
     isunitary = false;
   }

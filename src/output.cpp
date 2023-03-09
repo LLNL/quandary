@@ -4,19 +4,22 @@ Output::Output(){
   mpirank_world = -1;
   mpirank_petsc = -1;
   mpirank_init  = -1;
-  mpirank_braid = -1;
   optim_monitor_freq = 0;
   output_frequency = 0;
   optim_iter = 0;
+  quietmode = false;
 }
 
-Output::Output(MapParam& config, MPI_Comm comm_petsc, MPI_Comm comm_init, int noscillators) : Output() {
+Output::Output(MapParam& config, MPI_Comm comm_petsc, MPI_Comm comm_init, int noscillators, bool quietmode_) : Output() {
 
   /* Get communicator ranks */
   MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
   MPI_Comm_rank(comm_petsc, &mpirank_petsc);
   MPI_Comm_size(comm_petsc, &mpisize_petsc);
   MPI_Comm_rank(comm_init, &mpirank_init);
+
+  /* Reduced output */
+  quietmode = quietmode_;
 
 
   /* Create Data directory */
@@ -63,16 +66,14 @@ Output::Output(MapParam& config, MPI_Comm comm_petsc, MPI_Comm comm_init, int no
   for (int i=0; i< outputstr.size(); i++) populationfile.push_back (NULL);
   nhalffile = NULL;
   magnetfile = NULL;
+  expectedfile_comp=NULL;
+  populationfile_comp=NULL;
 
-}
-
-Output::Output(MapParam& config, MPI_Comm comm_petsc, MPI_Comm comm_init, MPI_Comm comm_braid, int noscillators) : Output(config, comm_petsc, comm_init, noscillators) {
-  MPI_Comm_rank(comm_braid, &mpirank_braid);
 }
 
 
 Output::~Output(){
-  if (mpirank_world == 0) printf("Output directory: %s\n", datadir.c_str());
+  if (mpirank_world == 0 && !quietmode) printf("Output directory: %s\n", datadir.c_str());
   if (mpirank_world == 0) fclose(optimfile);
 }
 
@@ -105,7 +106,7 @@ void Output::writeGradient(Vec grad){
     }
     fclose(file);
     VecRestoreArrayRead(grad, &grad_ptr);
-    printf("File written: %s\n", filename);
+    if (!quietmode) printf("File written: %s\n", filename);
   }
 }
 
@@ -115,11 +116,12 @@ void Output::writeControls(Vec params, MasterEq* mastereq, int ntime, double dt)
   if ( mpirank_world == 0 && optim_iter % optim_monitor_freq == 0 ) { 
 
     char filename[255];
+    char filename_transfer[255];
     PetscInt ndesign;
     VecGetSize(params, &ndesign);
 
     /* Print current parameters to file */
-    FILE *file;
+    FILE *file, *file_c, *file_t;
     // sprintf(filename, "%s/params_iter%04d.dat", datadir.c_str(), optim_iter);
     sprintf(filename, "%s/params.dat", datadir.c_str());
     file = fopen(filename, "w");
@@ -131,28 +133,47 @@ void Output::writeControls(Vec params, MasterEq* mastereq, int ntime, double dt)
     }
     fclose(file);
     VecRestoreArrayRead(params, &params_ptr);
-    printf("File written: %s\n", filename);
+    if (!quietmode) printf("File written: %s\n", filename);
 
-    /* Print control functions to file */
+    /* Print control p(t) and transfer u_i(p(t)) to file for each oscillator */
     mastereq->setControlAmplitudes(params);
     for (int ioscil = 0; ioscil < mastereq->getNOscillators(); ioscil++) {
       sprintf(filename, "%s/control%d.dat", datadir.c_str(), ioscil);
-      file = fopen(filename, "w");
-      fprintf(file, "# time         p(t) (rotating)          q(t) (rotating)        f(t) (labframe) \n");
+      sprintf(filename_transfer, "%s/transfer_control%d.dat", datadir.c_str(), ioscil);
+      file_c = fopen(filename, "w");
+      file_t = fopen(filename_transfer, "w");
+      fprintf(file_c, "# time         p(t) (rotating)          q(t) (rotating)        f(t) (labframe) \n");
+      fprintf(file_t, "# time     u^k_1(p(t))     u^k_2(p(t))    ...      v^k_1(q(t))     v^k_2(q(t))     ...\n");
 
       /* Write every <num> timestep to file */
       for (int i=0; i<=ntime; i+=output_frequency) {
         double time = i*dt; 
-        double Re, Im, Lab;
-        mastereq->getOscillator(ioscil)->evalControl(time, &Re, &Im);
-        mastereq->getOscillator(ioscil)->evalControl_Labframe(time, &Lab);
-        fprintf(file, "% 1.8f   % 1.14e   % 1.14e   % 1.14e \n", time, Re, Im, Lab);
-      }
 
-      fclose(file);
-      printf("File written: %s\n", filename);
-    }
+        double ReI, ImI, LabI;
+        mastereq->getOscillator(ioscil)->evalControl(time, &ReI, &ImI);
+        mastereq->getOscillator(ioscil)->evalControl_Labframe(time, &LabI);
+        // Write control drives
+        fprintf(file_c, "% 1.8f   % 1.14e   % 1.14e   % 1.14e \n", time, ReI, ImI, LabI);
+        
+        // Evaluate and write transfer functions u_i(p(t)), v_i(q(t)) for this oscillator
+        fprintf(file_t, "% 1.8f   ", time);
+        for (int icon=0; icon<mastereq->transfer_Hc_re[ioscil].size(); icon++){
+          double ukip = mastereq->transfer_Hc_re[ioscil][icon]->eval(ReI, time);
+          fprintf(file_t, "% 1.14e   ", ukip);
+        }
+        // Get transfer functions v^k_i(q) for this oscillators k
+        for (int icon=0; icon<mastereq->transfer_Hc_im[ioscil].size(); icon++){
+          double ukiq = mastereq->transfer_Hc_im[ioscil][icon]->eval(ImI, time);
+          fprintf(file_t, "% 1.14e   ", ukiq);
+        } 
+        fprintf(file_t, "\n");
+      } // end of time loop 
 
+      fclose(file_c);
+      fclose(file_t);
+      if (!quietmode) printf("File written: %s\n", filename);
+      if (!quietmode) printf("File written: %s\n", filename_transfer);
+    } // end of oscillator loop
   }
 }
 
@@ -164,48 +185,58 @@ void Output::openDataFiles(std::string prefix, int initid){
   bool write_this_iter = false;
   if (optim_iter % optim_monitor_freq == 0) write_this_iter = true;
 
-  /* Check if Xbraid is running in parallel and prepare output names if it is.*/
-  char postchar[255];
-  sprintf(postchar,"");
-  if (mpirank_braid >= 0) sprintf(postchar, ".braidrank%04d", mpirank_braid);
-
   /* Open files for state vector */
   if (mpirank_petsc == 0 && writefullstate && write_this_iter) {
-    sprintf(filename, "%s/%s_Re.iinit%04d%s.dat", datadir.c_str(), prefix.c_str(), initid, postchar);
+    sprintf(filename, "%s/%s_Re.iinit%04d.dat", datadir.c_str(), prefix.c_str(), initid);
     ufile = fopen(filename, "w");
-    sprintf(filename, "%s/%s_Im.iinit%04d%s.dat", datadir.c_str(), prefix.c_str(), initid, postchar);
+    sprintf(filename, "%s/%s_Im.iinit%04d.dat", datadir.c_str(), prefix.c_str(), initid);
     vfile = fopen(filename, "w"); 
   }
 
   /* Open file for nhalf */
   if (mpirank_petsc == 0 && writenhalf&& write_this_iter) {
-    sprintf(filename, "%s/nhalf.iinit%04d%s.dat", datadir.c_str(), initid, postchar);
+    sprintf(filename, "%s/nhalf.iinit%04d.dat", datadir.c_str(), initid);
     nhalffile = fopen(filename, "w");
   }
 
   /* Open file for magnetization */
   if (mpirank_petsc == 0 && writemagnet&& write_this_iter) {
-    sprintf(filename, "%s/magnetization.iinit%04d%s.dat", datadir.c_str(), initid, postchar);
+    sprintf(filename, "%s/magnetization.iinit%04d.dat", datadir.c_str(), initid);
     magnetfile = fopen(filename, "w");
   }
 
   /* Open file for excected energy level */
   if (mpirank_petsc == 0 && writeexpected && write_this_iter) {
-    sprintf(filename, "%s/expectedEnergy.iinit%04d%s.dat", datadir.c_str(), initid, postchar);
+    sprintf(filename, "%s/expectedEnergy.iinit%04d.dat", datadir.c_str(), initid);
     expectedfile = fopen(filename, "w");
   }
 
   /* Open files for population  */
+  bool writeExpComp = false;
+  bool writePopComp = false;
   if (mpirank_petsc == 0 && write_this_iter) {
     for (int i=0; i<outputstr.size(); i++) {
       for (int j=0; j<outputstr[i].size(); j++) {
+        if (outputstr[i][j].compare("expectedEnergyComposite") == 0) writeExpComp = true;
         if (outputstr[i][j].compare("population") == 0) {
-          sprintf(filename, "%s/population%d.iinit%04d%s.dat", datadir.c_str(), i, initid, postchar);
+          sprintf(filename, "%s/population%d.iinit%04d.dat", datadir.c_str(), i, initid);
           populationfile[i] = fopen(filename, "w");
           fprintf(populationfile[i], "# time      diagonal of the density matrix \n");
         }
+        if (outputstr[i][j].compare("populationComposite") == 0) writePopComp = true;
       }
     }
+    if (writeExpComp){
+      sprintf(filename, "%s/expected_composite.iinit%04d.dat", datadir.c_str(), initid);
+      expectedfile_comp = fopen(filename, "w");
+      fprintf(expectedfile_comp, "# time      expected energy level\n");
+    }
+    if (writePopComp){
+      sprintf(filename, "%s/population_composite.iinit%04d.dat", datadir.c_str(), initid);
+      populationfile_comp = fopen(filename, "w");
+      fprintf(populationfile_comp, "# time      population \n");
+    }
+
   }
 
 }
@@ -247,7 +278,8 @@ void Output::writeDataFiles(int timestep, double time, const Vec state, MasterEq
       fprintf(expectedfile, "\n");
     }
 
-
+    double expected_comp = mastereq->expectedEnergy(state);
+    if (expectedfile_comp != NULL) fprintf(expectedfile_comp, "%.8f %1.14e\n", time, expected_comp);
 
     /* Write population to file */
     for (int iosc = 0; iosc < populationfile.size(); iosc++) {
@@ -261,6 +293,17 @@ void Output::writeDataFiles(int timestep, double time, const Vec state, MasterEq
         }
         fprintf(populationfile[iosc], "\n");
       }
+    }
+
+
+    std::vector<double> population_comp; 
+    mastereq->population(state, population_comp);
+    if (populationfile_comp != NULL) {
+      fprintf(populationfile_comp, "%.8f  ", time);
+      for (int i=0; i<population_comp.size(); i++){
+        fprintf(populationfile_comp, "%1.14e  ", population_comp[i]);
+      }
+      fprintf(populationfile_comp, "\n");
     }
 
     /* Write full state to file */
@@ -317,10 +360,14 @@ void Output::closeDataFiles(){
     fclose(expectedfile);
     expectedfile = NULL;
   }
+  if (expectedfile_comp != NULL) fclose(expectedfile_comp);
+  expectedfile_comp = NULL;
   for (int i=0; i< populationfile.size(); i++) {
     if (populationfile[i] != NULL) {
       fclose(populationfile[i]);
       populationfile[i] = NULL;
     }
   }
+  if (populationfile_comp != NULL) fclose(populationfile_comp);
+  populationfile_comp = NULL;
 }

@@ -157,14 +157,9 @@ def read_config(filename):
             
             # Put all INTEGER options here
             if case("np_init") or \
-                case("np_braid") or \
+                case("np_optim") or \
                 case("ntime") or \
                 case("nspline") or \
-                case("braid_maxlevels") or \
-                case("braid_cfactor") or \
-                case("braid_printlevel") or \
-                case("braid_maxiter") or \
-                case("braid_accesslevel") or \
                 case("optim_maxiter") or \
                 case("linearsolver_maxiter") or \
                 case("output_frequency") or \
@@ -174,8 +169,6 @@ def read_config(filename):
 
             # Put all FLOAT options here
             if case("dt") or \
-               case("braid_abstol") or \
-               case("braid_reltol") or \
                case("optim_atol") or \
                case("optim_rtol") or \
                case("optim_ftol") or \
@@ -194,6 +187,24 @@ def read_config(filename):
                case("Jkl") or \
                case("transfreq") or \
                case("rotfreq") or \
+               case("control_segments0") or \
+               case("control_segments1") or \
+               case("control_segments2") or \
+               case("control_segments3") or \
+               case("control_segments4") or \
+               case("control_segments5") or \
+               case("control_initialization0") or \
+               case("control_initialization1") or \
+               case("control_initialization2") or \
+               case("control_initialization3") or \
+               case("control_initialization4") or \
+               case("control_initialization5") or \
+               case("control_bounds0") or \
+               case("control_bounds1") or \
+               case("control_bounds2") or \
+               case("control_bounds3") or \
+               case("control_bounds4") or \
+               case("control_bounds5") or \
                case("carrier_frequency0") or \
                case("carrier_frequency1") or \
                case("carrier_frequency2") or \
@@ -207,15 +218,10 @@ def read_config(filename):
                case("decay_time") or \
                case("dephase_time") or \
                case("initialcondition") or \
-               case("braid_fmg") or \
-               case("braid_skip") or \
                case("optim_objective") or \
                case("optim_target") or \
                case("gate_rot_freq") or \
                case("optim_weights") or \
-               case("optim_init") or \
-               case("optim_init_ampl") or \
-               case("optim_bounds") or \
                case("datadir") or \
                case("output0") or \
                case("output1") or \
@@ -229,6 +235,8 @@ def read_config(filename):
                case("runtype") or \
                case("usematfree") or \
                case("linearsolver_type") or \
+               case("python_file") or \
+               case("timestepper") or \
                case("apply_pipulse") :
                data_dict[this_param] = this_value
                break

@@ -3,12 +3,14 @@
 Gate::Gate(){
   dim_ess = 0;
   dim_rho = 0;
+  quietmode=false;
 }
 
-Gate::Gate(std::vector<int> nlevels_, std::vector<int> nessential_, double time_, std::vector<double> gate_rot_freq_, LindbladType lindbladtype_){
+Gate::Gate(std::vector<int> nlevels_, std::vector<int> nessential_, double time_, std::vector<double> gate_rot_freq_, LindbladType lindbladtype_, bool quietmode_){
 
   MPI_Comm_rank(PETSC_COMM_WORLD, &mpirank_petsc);
   MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
+  quietmode=quietmode_;
 
   nessential = nessential_;
   nlevels = nlevels_;
@@ -281,7 +283,7 @@ void Gate::applyGate(const Vec state, Vec VrhoV){
 }
 
 
-XGate::XGate(std::vector<int> nlevels, std::vector<int> nessential, double time, std::vector<double> gate_rot_freq, LindbladType lindbladtype_) : Gate(nlevels, nessential, time, gate_rot_freq, lindbladtype_) {
+XGate::XGate(std::vector<int> nlevels, std::vector<int> nessential, double time, std::vector<double> gate_rot_freq, LindbladType lindbladtype_, bool quietmode) : Gate(nlevels, nessential, time, gate_rot_freq, lindbladtype_, quietmode) {
 
   assert(dim_ess == 2);
 
@@ -300,7 +302,7 @@ XGate::XGate(std::vector<int> nlevels, std::vector<int> nessential, double time,
 
 XGate::~XGate() {}
 
-YGate::YGate(std::vector<int> nlevels, std::vector<int> nessential, double time, std::vector<double> gate_rot_freq, LindbladType lindbladtype_) : Gate(nlevels, nessential, time, gate_rot_freq, lindbladtype_) {
+YGate::YGate(std::vector<int> nlevels, std::vector<int> nessential, double time, std::vector<double> gate_rot_freq, LindbladType lindbladtype_, bool quietmode) : Gate(nlevels, nessential, time, gate_rot_freq, lindbladtype_, quietmode) {
 
   assert(dim_ess == 2);
   
@@ -318,7 +320,7 @@ YGate::YGate(std::vector<int> nlevels, std::vector<int> nessential, double time,
 }
 YGate::~YGate() {}
 
-ZGate::ZGate(std::vector<int> nlevels, std::vector<int> nessential, double time, std::vector<double> gate_rot_freq, LindbladType lindbladtype_ ) : Gate(nlevels, nessential, time, gate_rot_freq, lindbladtype_) {
+ZGate::ZGate(std::vector<int> nlevels, std::vector<int> nessential, double time, std::vector<double> gate_rot_freq, LindbladType lindbladtype_, bool quietmode) : Gate(nlevels, nessential, time, gate_rot_freq, lindbladtype_, quietmode) {
 
   assert(dim_ess == 2);
 
@@ -337,7 +339,7 @@ ZGate::ZGate(std::vector<int> nlevels, std::vector<int> nessential, double time,
 
 ZGate::~ZGate() {}
 
-HadamardGate::HadamardGate(std::vector<int> nlevels, std::vector<int> nessential, double time, std::vector<double> gate_rot_freq, LindbladType lindbladtype_ ) : Gate(nlevels, nessential, time, gate_rot_freq, lindbladtype_) {
+HadamardGate::HadamardGate(std::vector<int> nlevels, std::vector<int> nessential, double time, std::vector<double> gate_rot_freq, LindbladType lindbladtype_, bool quietmode) : Gate(nlevels, nessential, time, gate_rot_freq, lindbladtype_, quietmode) {
 
   assert(dim_ess == 2);
 
@@ -360,7 +362,7 @@ HadamardGate::~HadamardGate() {}
 
 
 
-CNOT::CNOT(std::vector<int> nlevels, std::vector<int> nessential, double time, std::vector<double> gate_rot_freq, LindbladType lindbladtype_) : Gate(nlevels, nessential,time, gate_rot_freq, lindbladtype_) {
+CNOT::CNOT(std::vector<int> nlevels, std::vector<int> nessential, double time, std::vector<double> gate_rot_freq, LindbladType lindbladtype_, bool quietmode) : Gate(nlevels, nessential,time, gate_rot_freq, lindbladtype_,  quietmode) {
 
   assert(dim_ess == 4);
 
@@ -385,7 +387,7 @@ CNOT::CNOT(std::vector<int> nlevels, std::vector<int> nessential, double time, s
 CNOT::~CNOT(){}
 
 
-SWAP::SWAP(std::vector<int> nlevels_, std::vector<int> nessential_, double time_, std::vector<double> gate_rot_freq_, LindbladType lindbladtype_) : Gate(nlevels_, nessential_, time_, gate_rot_freq_, lindbladtype_) {
+SWAP::SWAP(std::vector<int> nlevels_, std::vector<int> nessential_, double time_, std::vector<double> gate_rot_freq_, LindbladType lindbladtype_, bool quietmode) : Gate(nlevels_, nessential_, time_, gate_rot_freq_, lindbladtype_, quietmode) {
   assert(dim_ess == 4);
 
   /* Fill lab-frame swap gate in essential dimension system V_re = Re(V), V_im = Im(V) = 0 */
@@ -406,7 +408,7 @@ SWAP::SWAP(std::vector<int> nlevels_, std::vector<int> nessential_, double time_
 
 SWAP::~SWAP(){}
 
-SWAP_0Q::SWAP_0Q(std::vector<int> nlevels_, std::vector<int> nessential_, double time_, std::vector<double> gate_rot_freq_, LindbladType lindbladtype_) : Gate(nlevels_, nessential_, time_, gate_rot_freq_, lindbladtype_) {
+SWAP_0Q::SWAP_0Q(std::vector<int> nlevels_, std::vector<int> nessential_, double time_, std::vector<double> gate_rot_freq_, LindbladType lindbladtype_, bool quietmode) : Gate(nlevels_, nessential_, time_, gate_rot_freq_, lindbladtype_, quietmode) {
   int Q = nlevels.size();  // Number of total oscillators 
 
   /* Fill lab-frame swap 0<->Q-1 gate in essential dimension system V_re = Re(V), V_im = Im(V) = 0 */
@@ -446,7 +448,7 @@ SWAP_0Q::SWAP_0Q(std::vector<int> nlevels_, std::vector<int> nessential_, double
 SWAP_0Q::~SWAP_0Q(){}
 
 
-CQNOT::CQNOT(std::vector<int> nlevels_, std::vector<int> nessential_, double time_, std::vector<double> gate_rot_freq_, LindbladType lindbladtype_) : Gate(nlevels_, nessential_, time_, gate_rot_freq_, lindbladtype_) {
+CQNOT::CQNOT(std::vector<int> nlevels_, std::vector<int> nessential_, double time_, std::vector<double> gate_rot_freq_, LindbladType lindbladtype_, bool quietmode) : Gate(nlevels_, nessential_, time_, gate_rot_freq_, lindbladtype_, quietmode) {
 
   /* Fill lab-frame CQNOT gate in essential dimension system V_re = Re(V), V_im = Im(V) = 0 */
   /* V = [1 0 0 ...
@@ -475,12 +477,12 @@ CQNOT::CQNOT(std::vector<int> nlevels_, std::vector<int> nessential_, double tim
 CQNOT::~CQNOT(){}
 
 
-FromFile::FromFile(std::vector<int> nlevels_, std::vector<int> nessential_, double time_, std::vector<double> gate_rot_freq_, LindbladType lindbladtype_, std::string filename) : Gate(nlevels_, nessential_, time_, gate_rot_freq_, lindbladtype_){
+FromFile::FromFile(std::vector<int> nlevels_, std::vector<int> nessential_, double time_, std::vector<double> gate_rot_freq_, LindbladType lindbladtype_, std::string filename, bool quietmode) : Gate(nlevels_, nessential_, time_, gate_rot_freq_, lindbladtype_, quietmode){
 
   // Read the gate from a file
   int nelems = 2*dim_ess*dim_ess;
   std::vector<double> vec (nelems);
-  if (mpirank_world == 0) read_vector(filename.c_str(), vec.data(), nelems);
+  if (mpirank_world == 0) read_vector(filename.c_str(), vec.data(), nelems, quietmode);
   MPI_Bcast(vec.data(), nelems, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
   // Set up the matrix
@@ -498,10 +500,16 @@ FromFile::FromFile(std::vector<int> nlevels_, std::vector<int> nessential_, doub
   MatAssemblyEnd(V_re, MAT_FINAL_ASSEMBLY);
   MatAssemblyEnd(V_im, MAT_FINAL_ASSEMBLY);
 
-  printf("Target Gate: Re(V) = \n");
-  MatView(V_re, NULL);
-  printf("Target Gate: Im(V) = \n");
-  MatView(V_im, NULL);
+  // printf("Target Gate: Re(V) = \n");
+  // MatView(V_re, NULL);
+  // printf("Target Gate: Im(V) = \n");
+  // MatView(V_im, NULL);
+
+  bool isunitary = isUnitary(V_re, V_im);
+  if (!isunitary && mpirank_world == 0) {
+    printf("\n WARNING: Target Gate is *not* unitary!\n\n");
+    // exit(1);
+  }
 
   /* assemble vectorized rotated target gate \bar VP \kron VP from V=V_re + i V_im */
   assembleGate();

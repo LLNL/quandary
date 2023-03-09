@@ -1,20 +1,13 @@
 #include "optimproblem.hpp"
 
-#ifdef WITH_BRAID
-OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, myBraidApp* primalbraidapp_, myAdjointBraidApp* adjointbraidapp_, MPI_Comm comm_init_, int ninit_, std::vector<double> gate_rot_freq, Output* output_) : OptimProblem(config, timestepper_, comm_init_, ninit_, gate_rot_freq, output_) {
-  primalbraidapp  = primalbraidapp_;
-  adjointbraidapp = adjointbraidapp_;
-  MPI_Comm_rank(primalbraidapp->comm_braid, &mpirank_braid);
-  MPI_Comm_size(primalbraidapp->comm_braid, &mpisize_braid);
-}
-#endif
-
-OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm comm_init_, int ninit_, std::vector<double> gate_rot_freq, Output* output_){
+OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm comm_init_, MPI_Comm comm_optim_, int ninit_, std::vector<double> gate_rot_freq, Output* output_, bool quietmode_){
 
   timestepper = timestepper_;
   ninit = ninit_;
   comm_init = comm_init_;
+  comm_optim = comm_optim_;
   output = output_;
+  quietmode = quietmode_;
   /* Reset */
   objective = 0.0;
 
@@ -25,8 +18,8 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   MPI_Comm_size(PETSC_COMM_WORLD, &mpisize_space);
   MPI_Comm_rank(comm_init, &mpirank_init);
   MPI_Comm_size(comm_init, &mpisize_init);
-  mpirank_braid = 0;
-  mpisize_braid = 1;
+  MPI_Comm_rank(comm_optim, &mpirank_optim);
+  MPI_Comm_size(comm_optim, &mpisize_optim);
 
   /* Store number of initial conditions per init-processor group */
   ninit_local = ninit / mpisize_init; 
@@ -48,7 +41,7 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
       n += timestepper->mastereq->getOscillator(ioscil)->getNParams(); 
   }
   ndesign = n;
-  if (mpirank_world == 0) std::cout<< "ndesign = " << ndesign << std::endl;
+  if (mpirank_world == 0 && !quietmode) std::cout<< "ndesign = " << ndesign << std::endl;
 
   /* Store other optimization parameters */
   gamma_tik = config.GetDoubleParam("optim_regul", 1e-4);
@@ -57,16 +50,8 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   inftol = config.GetDoubleParam("optim_inftol", 1e-5);
   grtol = config.GetDoubleParam("optim_rtol", 1e-4);
   maxiter = config.GetIntParam("optim_maxiter", 200);
-  initguess_type = config.GetStrParam("optim_init", "zero");
-  config.GetVecDoubleParam("optim_init_ampl", initguess_amplitudes, 0.0);
-  // sanity check
-  if (initguess_type.compare("constant") == 0 || 
-      initguess_type.compare("random")    == 0 ||
-      initguess_type.compare("random_seed") == 0)  {
-      copyLast(initguess_amplitudes, timestepper->mastereq->getNOscillators());
-  }
-
-  /* Store the optimization target */
+  
+    /* Store the optimization target */
   std::vector<std::string> target_str;
   Gate* targetgate=NULL;
   int purestateID = -1;
@@ -82,15 +67,15 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
       exit(1);
     }
     if      (target_str[1].compare("none") == 0)  targetgate = new Gate(); // dummy gate. do nothing
-    else if (target_str[1].compare("xgate") == 0) targetgate = new XGate(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, timestepper->total_time, gate_rot_freq, timestepper->mastereq->lindbladtype); 
-    else if (target_str[1].compare("ygate") == 0) targetgate = new YGate(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, timestepper->total_time, gate_rot_freq, timestepper->mastereq->lindbladtype); 
-    else if (target_str[1].compare("zgate") == 0) targetgate = new ZGate(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, timestepper->total_time, gate_rot_freq, timestepper->mastereq->lindbladtype);
-    else if (target_str[1].compare("hadamard") == 0) targetgate = new HadamardGate(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, timestepper->total_time, gate_rot_freq, timestepper->mastereq->lindbladtype);
-    else if (target_str[1].compare("cnot") == 0) targetgate = new CNOT(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, timestepper->total_time, gate_rot_freq, timestepper->mastereq->lindbladtype); 
-    else if (target_str[1].compare("swap") == 0) targetgate = new SWAP(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, timestepper->total_time, gate_rot_freq, timestepper->mastereq->lindbladtype); 
-    else if (target_str[1].compare("swap0q") == 0) targetgate = new SWAP_0Q(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, timestepper->total_time, gate_rot_freq, timestepper->mastereq->lindbladtype); 
-    else if (target_str[1].compare("cqnot") == 0) targetgate = new CQNOT(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, timestepper->total_time, gate_rot_freq, timestepper->mastereq->lindbladtype); 
-    else if (target_str[1].compare("fromfile") == 0) targetgate = new FromFile(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, timestepper->total_time, gate_rot_freq, timestepper->mastereq->lindbladtype, target_str[2]); 
+    else if (target_str[1].compare("xgate") == 0) targetgate = new XGate(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, timestepper->total_time, gate_rot_freq, timestepper->mastereq->lindbladtype, quietmode); 
+    else if (target_str[1].compare("ygate") == 0) targetgate = new YGate(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, timestepper->total_time, gate_rot_freq, timestepper->mastereq->lindbladtype, quietmode); 
+    else if (target_str[1].compare("zgate") == 0) targetgate = new ZGate(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, timestepper->total_time, gate_rot_freq, timestepper->mastereq->lindbladtype, quietmode);
+    else if (target_str[1].compare("hadamard") == 0) targetgate = new HadamardGate(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, timestepper->total_time, gate_rot_freq, timestepper->mastereq->lindbladtype, quietmode);
+    else if (target_str[1].compare("cnot") == 0) targetgate = new CNOT(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, timestepper->total_time, gate_rot_freq, timestepper->mastereq->lindbladtype, quietmode); 
+    else if (target_str[1].compare("swap") == 0) targetgate = new SWAP(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, timestepper->total_time, gate_rot_freq, timestepper->mastereq->lindbladtype, quietmode); 
+    else if (target_str[1].compare("swap0q") == 0) targetgate = new SWAP_0Q(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, timestepper->total_time, gate_rot_freq, timestepper->mastereq->lindbladtype, quietmode); 
+    else if (target_str[1].compare("cqnot") == 0) targetgate = new CQNOT(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, timestepper->total_time, gate_rot_freq, timestepper->mastereq->lindbladtype, quietmode); 
+    else if (target_str[1].compare("fromfile") == 0) targetgate = new FromFile(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, timestepper->total_time, gate_rot_freq, timestepper->mastereq->lindbladtype, target_str[2], quietmode); 
     else {
       printf("\n\n ERROR: Unnown gate type: %s.\n", target_str[1].c_str());
       printf(" Available gates are 'none', 'xgate', 'ygate', 'zgate', 'hadamard', 'cnot', 'swap', 'swap0q', 'cqnot'.\n");
@@ -140,7 +125,7 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   }
 
   /* Finally initialize the optimization target struct */
-  optim_target = new OptimTarget(timestepper->mastereq->getDim(), purestateID, target_type, objective_type, targetgate, target_filename, timestepper->mastereq->lindbladtype);
+  optim_target = new OptimTarget(timestepper->mastereq->getDim(), purestateID, target_type, objective_type, targetgate, target_filename, timestepper->mastereq->lindbladtype, quietmode);
 
   /* Get weights for the objective function (weighting the different initial conditions */
   config.GetVecDoubleParam("optim_weights", obj_weights, 1.0);
@@ -252,7 +237,7 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
     if (mpirank_world == 0) {
       assert (initcondstr.size()==2);
       std::string filename = initcondstr[1];
-      read_vector(filename.c_str(), vec, nelems);
+      read_vector(filename.c_str(), vec, nelems, quietmode);
     }
     MPI_Bcast(vec, nelems, MPI_DOUBLE, 0, MPI_COMM_WORLD);
     if (timestepper->mastereq->lindbladtype != LindbladType::NONE) { // Lindblad solver, fill density matrix
@@ -342,33 +327,36 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   VecCreateSeq(PETSC_COMM_SELF, ndesign, &xlower);
   VecSetFromOptions(xlower);
   VecDuplicate(xlower, &xupper);
-  std::vector<double> bounds;
-  config.GetVecDoubleParam("optim_bounds", bounds, 1e20);
-  for (int i = bounds.size(); i < timestepper->mastereq->getNOscillators(); i++) bounds.push_back(1e+12); // fill up with zeros
   int col = 0;
   for (int iosc = 0; iosc < timestepper->mastereq->getNOscillators(); iosc++){
-    // Scale bounds by 1/sqrt(2) * (number of carrier waves) */
-    std::vector<double> carrier_freq;
-    std::string key = "carrier_frequency" + std::to_string(iosc);
-    config.GetVecDoubleParam(key, carrier_freq, 0.0, false);
-    bounds[iosc] = bounds[iosc] / ( sqrt(2) * carrier_freq.size()) ;
-    // set bounds for all parameters in this oscillator
-    for (int i=0; i<timestepper->mastereq->getOscillator(iosc)->getNParams(); i++){
-      double bound = bounds[iosc];
-
-      /* for the first and last two splines, overwrite the bound with zero to ensure that control at t=0 and t=T is zero. */
-      int ibegin = 2*2*carrier_freq.size();
-      int iend = (timestepper->mastereq->getOscillator(iosc)->getNSplines()-2)*2*carrier_freq.size();
-      if (i < ibegin || i >= iend) bound = 0.0;
-
-      // set the bound
-      VecSetValue(xupper, col, bound, INSERT_VALUES);
-      VecSetValue(xlower, col, -1. * bound, INSERT_VALUES);
-      col++;
+    std::vector<std::string> bound_str;
+    config.GetVecStrParam("control_bounds" + std::to_string(iosc), bound_str, "10000.0");
+    for (int iseg = 0; iseg < timestepper->mastereq->getOscillator(iosc)->getNSegments(); iseg++){
+      double boundval = 0.0;
+      if (bound_str.size() <= iseg) boundval =  atof(bound_str[bound_str.size()-1].c_str());
+      else boundval = atof(bound_str[iseg].c_str());
+      // If spline controls: Scale bounds by 1/sqrt(2) * (number of carrier waves) */
+      if (timestepper->mastereq->getOscillator(iosc)->getNParams()>1)
+        boundval = boundval / ( sqrt(2) * timestepper->mastereq->getOscillator(iosc)->getNCarrierfrequencies()) ;
+      for (int i=0; i<timestepper->mastereq->getOscillator(iosc)->getNSegParams(iseg); i++){
+        VecSetValue(xupper, col, boundval, INSERT_VALUES);
+        VecSetValue(xlower, col, -1. * boundval, INSERT_VALUES);
+        col++;
+      }
     }
   }
   VecAssemblyBegin(xlower); VecAssemblyEnd(xlower);
   VecAssemblyBegin(xupper); VecAssemblyEnd(xupper);
+
+  /* Store the initial guess if read from file */
+  std::vector<std::string> controlinit_str;
+  config.GetVecStrParam("control_initialization0", controlinit_str, "constant, 0.0");
+  if ( controlinit_str.size() > 0 && controlinit_str[0].compare("file") == 0 ) {
+    assert(controlinit_str.size() >=2);
+    for (int i=0; i<ndesign; i++) initguess_fromfile.push_back(0.0);
+    if (mpirank_world == 0) read_vector(controlinit_str[1].c_str(), initguess_fromfile.data(), ndesign, quietmode);
+    MPI_Bcast(initguess_fromfile.data(), ndesign, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+  }
  
   /* Create Petsc's optimization solver */
   TaoCreate(PETSC_COMM_WORLD, &tao);
@@ -411,7 +399,7 @@ double OptimProblem::evalF(const Vec x) {
 
   MasterEq* mastereq = timestepper->mastereq;
 
-  if (mpirank_world == 0) printf("EVAL F... \n");
+  if (mpirank_world == 0 && !quietmode) printf("EVAL F... \n");
   Vec finalstate = NULL;
 
   /* Pass design vector x to oscillators */
@@ -431,19 +419,13 @@ double OptimProblem::evalF(const Vec x) {
     /* Prepare the initial condition in [rank * ninit_local, ... , (rank+1) * ninit_local - 1] */
     int iinit_global = mpirank_init * ninit_local + iinit;
     int initid = timestepper->mastereq->getRhoT0(iinit_global, ninit, initcond_type, initcond_IDs, rho_t0);
-    if (mpirank_braid == 0) printf("%d: Initial condition id=%d ...\n", mpirank_init, initid);
+    if (mpirank_optim == 0 && !quietmode) printf("%d: Initial condition id=%d ...\n", mpirank_init, initid);
 
     /* If gate optimiztion, compute the target state rho^target = Vrho(0)V^dagger */
     optim_target->prepare(rho_t0);
 
     /* Run forward with initial condition initid */
-#ifdef WITH_BRAID
-      primalbraidapp->PreProcess(initid, rho_t0, 0.0);
-      primalbraidapp->Drive();
-      finalstate = primalbraidapp->PostProcess(); // this return NULL for all but the last time processor
-#else
-      finalstate = timestepper->solveODE(initid, rho_t0);
-#endif
+    finalstate = timestepper->solveODE(initid, rho_t0);
 
     /* Add to integral penalty term */
     obj_penal += obj_weights[iinit] * gamma_penalty * timestepper->penalty_integral;
@@ -487,13 +469,6 @@ double OptimProblem::evalF(const Vec x) {
   /* Finalize the objective function */
   obj_cost = optim_target->finalizeJ(obj_cost_re, obj_cost_im);
 
-#ifdef WITH_BRAID
-  /* Communicate over braid processors: Sum up penalty, broadcast final time cost */
-  double mine = obj_penal;
-  MPI_Allreduce(&mine, &obj_penal, 1, MPI_DOUBLE, MPI_SUM, primalbraidapp->comm_braid);
-  MPI_Bcast(&obj_cost, 1, MPI_DOUBLE, mpisize_braid-1, primalbraidapp->comm_braid);
-#endif
-
   /* Evaluate regularization objective += gamma/2 * ||x||^2*/
   double xnorm;
   VecNorm(x, NORM_2, &xnorm);
@@ -517,7 +492,7 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
 
   MasterEq* mastereq = timestepper->mastereq;
 
-  if (mpirank_world == 0) std::cout<< "EVAL GRAD F... " << std::endl;
+  if (mpirank_world == 0 && !quietmode) std::cout<< "EVAL GRAD F... " << std::endl;
   Vec finalstate = NULL;
 
   /* Pass design vector x to oscillators */
@@ -527,7 +502,8 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
   VecZeroEntries(G);
 
   /* Derivative of regulatization term gamma / 2 ||x||^2 (ADD ON ONE PROC ONLY!) */
-  if (mpirank_init == 0 && mpirank_braid == 0) {
+  // if (mpirank_init == 0 && mpirank_optim == 0) { // TODO: Which one?? 
+  if (mpirank_init == 0 ) {
     VecAXPY(G, gamma_tik, x);
   }
 
@@ -550,16 +526,10 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
     optim_target->prepare(rho_t0);
 
     /* --- Solve primal --- */
-    // if (mpirank_braid == 0) printf("%d: %d FWD. ", mpirank_init, initid);
+    // if (mpirank_optim == 0) printf("%d: %d FWD. ", mpirank_init, initid);
 
     /* Run forward with initial condition rho_t0 */
-#ifdef WITH_BRAID 
-      primalbraidapp->PreProcess(initid, rho_t0, 0.0);
-      primalbraidapp->Drive();
-      finalstate = primalbraidapp->PostProcess(); // this return NULL for all but the last time processor
-#else 
-      finalstate = timestepper->solveODE(initid, rho_t0);
-#endif
+    finalstate = timestepper->solveODE(initid, rho_t0);
 
     /* Store the final state for the Schroedinger solver */
     if (timestepper->mastereq->lindbladtype == LindbladType::NONE) VecCopy(finalstate, store_finalstates[iinit]);
@@ -583,7 +553,7 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
 
     /* If Lindblas solver, compute adjoint for this initial condition. Otherwise (Schroedinger solver), compute adjoint only after all initial conditions have been propagated through (separate loop below) */
     if (timestepper->mastereq->lindbladtype != LindbladType::NONE) {
-      // if (mpirank_braid == 0) printf("%d: %d BWD.", mpirank_init, initid);
+      // if (mpirank_optim == 0) printf("%d: %d BWD.", mpirank_init, initid);
 
       /* Reset adjoint */
       VecZeroEntries(rho_t0_bar);
@@ -594,13 +564,7 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
       optim_target->evalJ_diff(finalstate, rho_t0_bar, obj_weights[iinit]*obj_cost_re_bar, obj_weights[iinit]*obj_cost_im_bar);
 
       /* Derivative of time-stepping */
-  #ifdef WITH_BRAID
-        adjointbraidapp->PreProcess(initid, rho_t0_bar, obj_weights[iinit] * gamma_penalty);
-        adjointbraidapp->Drive();
-        adjointbraidapp->PostProcess();
-  #else
-        timestepper->solveAdjointODE(initid, rho_t0_bar, finalstate, obj_weights[iinit] * gamma_penalty);
-  #endif
+      timestepper->solveAdjointODE(initid, rho_t0_bar, finalstate, obj_weights[iinit] * gamma_penalty);
 
       /* Add to optimizers's gradient */
       VecAXPY(G, 1.0, timestepper->redgrad);
@@ -629,13 +593,6 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
   /* Finalize the objective function Jtrace to get the infidelity. 
      If Schroedingers solver, need to take the absolute value */
   obj_cost = optim_target->finalizeJ(obj_cost_re, obj_cost_im);
-
-#ifdef WITH_BRAID
-  /* Communicate over braid processors: Sum up penalty, broadcast final time cost */
-  double mine = obj_penal;
-  MPI_Allreduce(&mine, &obj_penal, 1, MPI_DOUBLE, MPI_SUM, primalbraidapp->comm_braid);
-  MPI_Bcast(&obj_cost, 1, MPI_DOUBLE, mpisize_braid-1, primalbraidapp->comm_braid);
-#endif
 
   /* Evaluate regularization objective += gamma/2 * ||x||^2*/
   double xnorm;
@@ -668,13 +625,7 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
       optim_target->evalJ_diff(finalstate, rho_t0_bar, obj_weights[iinit]*obj_cost_re_bar, obj_weights[iinit]*obj_cost_im_bar);
 
       /* Derivative of time-stepping */
-  #ifdef WITH_BRAID
-      adjointbraidapp->PreProcess(initid, rho_t0_bar, obj_weights[iinit] * gamma_penalty);
-      adjointbraidapp->Drive();
-      adjointbraidapp->PostProcess();
-  #else
       timestepper->solveAdjointODE(initid, rho_t0_bar, finalstate, obj_weights[iinit] * gamma_penalty);
-  #endif
 
       /* Add to optimizers's gradient */
       VecAXPY(G, 1.0, timestepper->redgrad);
@@ -690,21 +641,11 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
   MPI_Allreduce(mygrad, grad, ndesign, MPI_DOUBLE, MPI_SUM, comm_init);
   VecRestoreArray(G, &grad);
 
-#ifdef WITH_BRAID
-  /* Sum up the gradient from all braid processors */
-  VecGetArray(G, &grad);
-  for (int i=0; i<ndesign; i++) {
-    mygrad[i] = grad[i];
-  }
-  MPI_Allreduce(mygrad, grad, ndesign, MPI_DOUBLE, MPI_SUM, primalbraidapp->comm_braid);
-  VecRestoreArray(G, &grad);
-#endif
-
   /* Compute and store gradient norm */
   VecNorm(G, NORM_2, &(gnorm));
 
   /* Output */
-  if (mpirank_world == 0) {
+  if (mpirank_world == 0 && !quietmode) {
     std::cout<< "Objective = " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal << std::endl;
     std::cout<< "Fidelity = " << fidelity << std::endl;
   }
@@ -719,71 +660,22 @@ void OptimProblem::solve(Vec xinit) {
 void OptimProblem::getStartingPoint(Vec xinit){
   MasterEq* mastereq = timestepper->mastereq;
 
-  if (initguess_type.compare("constant") == 0 ){ // set constant initial design
-    // set values
-    int j = 0;
-    for (int ioscil = 0; ioscil < mastereq->getNOscillators(); ioscil++) {
-      int nparam = mastereq->getOscillator(ioscil)->getNParams();
-      for (int i = 0; i < nparam; i++) {
-        VecSetValue(xinit, j, initguess_amplitudes[ioscil], INSERT_VALUES);
-        j++;
-      }
+  if (initguess_fromfile.size() > 0) {
+    /* Set the initial guess from file */
+    for (int i=0; i<initguess_fromfile.size(); i++) {
+      VecSetValue(xinit, i, initguess_fromfile[i], INSERT_VALUES);
     }
-  } else if ( initguess_type.compare("random")      == 0 ||       // init random, fixed seed
-              initguess_type.compare("random_seed") == 0)  { // init random with new seed
-    /* Create vector with random elements between [-1:1] */
-    if ( initguess_type.compare("random") == 0) srand(1);  // fixed seed
-    else srand(time(0)); // random seed
-    double* randvec = new double[ndesign];
-    for (int i=0; i<ndesign; i++) {
-      randvec[i] = (double) rand() / ((double)RAND_MAX);
-      randvec[i] = 2.*randvec[i] - 1.;
-    }
-    /* Broadcast random vector from rank 0 to all, so that all have the same starting point (necessary?) */
-    MPI_Bcast(randvec, ndesign, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
-    /* Scale vector by the initial amplitudes */
+  } else { // copy from initialization in oscillators contructor
+    PetscScalar* xptr;
+    VecGetArray(xinit, &xptr);
     int shift = 0;
-    for (int ioscil = 0; ioscil < mastereq->getNOscillators(); ioscil++) {
-      int nparam_iosc = mastereq->getOscillator(ioscil)->getNParams();
-      for (int i=0; i<nparam_iosc; i++) {
-        randvec[shift + i] *= initguess_amplitudes[ioscil];
-      }
-      shift+= nparam_iosc;
+    for (int ioscil = 0; ioscil<mastereq->getNOscillators(); ioscil++){
+      mastereq->getOscillator(ioscil)->getParams(xptr + shift);
+      shift += mastereq->getOscillator(ioscil)->getNParams();
     }
-
-    /* Set the initial guess */
-    for (int i=0; i<ndesign; i++) {
-      VecSetValue(xinit, i, randvec[i], INSERT_VALUES);
-    }
-    delete [] randvec;
-
-  }  else { // Read from file 
-    double* vecread = new double[ndesign];
-
-    if (mpirank_world == 0) read_vector(initguess_type.c_str(), vecread, ndesign);
-    MPI_Bcast(vecread, ndesign, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-
-    /* Set the initial guess */
-    for (int i=0; i<ndesign; i++) {
-      VecSetValue(xinit, i, vecread[i], INSERT_VALUES);
-    }
-    delete [] vecread;
+    VecRestoreArray(xinit, &xptr);
   }
-
-  /* for the first and last two splines, overwrite the parameters with zero to ensure that control at t=0 and t=T is zero. */
-  PetscInt col = 0.0;
-  for (int iosc = 0; iosc < timestepper->mastereq->getNOscillators(); iosc++){
-    int ncarrier = timestepper->mastereq->getOscillator(iosc)->getNCarrierwaves();
-    PetscInt ibegin = 2*2*ncarrier;
-    PetscInt iend = (timestepper->mastereq->getOscillator(iosc)->getNSplines()-2)*2*ncarrier;
-
-    for (int i = 0; i < timestepper->mastereq->getOscillator(iosc)->getNParams(); i++) {
-      if (i < ibegin || i >= iend) VecSetValue(xinit, col, 0.0, INSERT_VALUES);
-      col++;
-    }
-  }
-
 
   /* Assemble initial guess */
   VecAssemblyBegin(xinit);
@@ -832,6 +724,14 @@ PetscErrorCode TaoMonitor(Tao tao,void*ptr){
 
   /* Print parameters and controls to file */
   // ctx->output->writeControls(params, ctx->timestepper->mastereq, ctx->timestepper->ntime, ctx->timestepper->dt);
+
+  /* Screen output */
+  if (ctx->getMPIrank_world() == 0) {
+    std::cout<< iter <<  ": Objective = " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal;
+    std::cout<< "  Fidelity = " << F_avg;
+    std::cout<< "  ||Grad|| = " << gnorm;
+    std::cout<< std::endl;
+  }
 
   if (1.0 - F_avg <= ctx->getInfTol()) {
     printf("Optimization finished with small infidelity.\n");
