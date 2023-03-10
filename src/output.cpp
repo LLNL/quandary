@@ -41,7 +41,7 @@ Output::Output(MapParam& config, MPI_Comm comm_petsc, MPI_Comm comm_init, int no
   /* Read from config what output is desired */
   for (int i = 0; i < noscillators; i++){
     std::vector<std::string> fillme;
-    config.GetVecStrParam("output" + std::to_string(i), fillme, "none");
+    config.GetVecStrParam("output" + std::to_string(i), fillme, "none", true, true);
     outputstr.push_back(fillme);
   }
 

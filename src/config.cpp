@@ -173,16 +173,16 @@ int MapParam::GetMpiRank() const {
 }
 
 
-void MapParam::GetVecIntParam(std::string key, std::vector<int> &fillme, int default_val) const 
+void MapParam::GetVecIntParam(std::string key, std::vector<int> &fillme, int default_val, bool suppresswarning) const 
 {
   map<string, string>::const_iterator it_value = this->find(key);
   string lineexp;
   double val;
   if (it_value == this->end())
   {
-    if (mpi_rank == 0 && !quietmode)
+    if (mpi_rank == 0 && !quietmode && !suppresswarning)
       cerr << "# Warning: parameter " << key << " not found ! Taking default = " << default_val << endl;
-      fillme.push_back(default_val);
+    fillme.push_back(default_val);
   }
   else 
   {

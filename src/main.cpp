@@ -77,7 +77,7 @@ int main(int argc,char **argv)
   for (int iosc = 0; iosc<nlevels.size(); iosc++) nessential[iosc] = nlevels[iosc];
   /* Overwrite if config option is given */
   std::vector<int> read_nessential;
-  config.GetVecIntParam("nessential", read_nessential, -1);
+  config.GetVecIntParam("nessential", read_nessential, -1, true);
   if (read_nessential[0] > -1) {
     for (int iosc = 0; iosc<nlevels.size(); iosc++){
       if (iosc < read_nessential.size()) nessential[iosc] = read_nessential[iosc];
