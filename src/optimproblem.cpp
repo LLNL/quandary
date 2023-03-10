@@ -109,8 +109,7 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
     target_filename = target_str[1];
   }
   else {
-      printf("\n\n ERROR: Unknown optimization target: %s\n", target_str[0].c_str());
-      exit(1);
+    target_type = TargetType::NONE;
   }
 
   /* Get the objective function */
