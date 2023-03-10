@@ -14,8 +14,8 @@ N=8
 nsamples=10
 
 # Specify the prefix and postfix of folder names where data is located
-folder_prefix  = "spinchain" + str(N)   # everything before _isample<x>
-folder_postfix = "/data_out"            # everything after _isample<x>, including path to sub-data folder
+folder_prefix  = "spinchain" + str(N)   # everything before _sample<x>
+folder_postfix = "/data_out"            # everything after _sample<x>, including path to sub-data folder
 #ncores = 1
 #folder_postfix = "_ncores" + str(ncores) + "/data_out"    
 
