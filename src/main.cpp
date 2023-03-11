@@ -344,8 +344,10 @@ int main(int argc,char **argv)
     printf("\n\n ERROR: Unknown linear solver type: %s.\n\n", linsolvestr.c_str());
     exit(1);
   }
+
   /* My time stepper */
   bool storeFWD = false;
+  int ninit_local = ninit / mpisize_init; 
   if (runtype == RunType::GRADIENT || runtype == RunType::OPTIMIZATION) storeFWD = true;
 #if TEST_FD_GRAD
   storeFWD = true;
@@ -355,10 +357,10 @@ int main(int argc,char **argv)
 #endif
   std::string timesteppertypestr = config.GetStrParam("timestepper", "IMR");
   TimeStepper* mytimestepper;
-  if (timesteppertypestr.compare("IMR")==0) mytimestepper = new ImplMidpoint(config, mastereq, ntime, total_time, linsolvetype, linsolve_maxiter, output, storeFWD);
-  else if (timesteppertypestr.compare("IMR4")==0) mytimestepper = new CompositionalImplMidpoint(config, 4, mastereq, ntime, total_time, linsolvetype, linsolve_maxiter, output, storeFWD);
-  else if (timesteppertypestr.compare("IMR8")==0) mytimestepper = new CompositionalImplMidpoint(config, 8, mastereq, ntime, total_time, linsolvetype, linsolve_maxiter, output, storeFWD);
-  else if (timesteppertypestr.compare("EE")==0) mytimestepper = new ExplEuler(config, mastereq, ntime, total_time, output, storeFWD);
+  if (timesteppertypestr.compare("IMR")==0) mytimestepper = new ImplMidpoint(config, ninit_local, mastereq, ntime, total_time, linsolvetype, linsolve_maxiter, output, storeFWD);
+  else if (timesteppertypestr.compare("IMR4")==0) mytimestepper = new CompositionalImplMidpoint(config, 4, ninit_local, mastereq, ntime, total_time, linsolvetype, linsolve_maxiter, output, storeFWD);
+  else if (timesteppertypestr.compare("IMR8")==0) mytimestepper = new CompositionalImplMidpoint(config, 8, ninit_local, mastereq, ntime, total_time, linsolvetype, linsolve_maxiter, output, storeFWD);
+  else if (timesteppertypestr.compare("EE")==0) mytimestepper = new ExplEuler(config, ninit_local, mastereq, ntime, total_time, output, storeFWD);
   else {
     printf("\n\n ERROR: Unknow timestepping type: %s.\n\n", timesteppertypestr.c_str());
     exit(1);
