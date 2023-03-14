@@ -47,10 +47,12 @@ class OptimProblem {
   double obj_cost;                 /* Final-time term J(T) in objective */
   double obj_regul;                /* Regularization term in objective */
   double obj_penal;                /* Penalty term in objective */
+  double obj_penal_energy;         /* Energy Penalty term in objective */
   double fidelity;                 /* Final-time fidelity: 1/ninit \sum_iinit Tr(rhotarget^\dag rho(T)) for Lindblad, or |1/ninit \sum_iinit phitarget^dagger phi |^2 for Schroedinger */
   double gnorm;                    /* Holds current norm of gradient */
   double gamma_tik;                /* Parameter for tikhonov regularization */
   double gamma_penalty;            /* Parameter multiplying integral penalty term */
+  double gamma_penalty_energy;     /* Parameter multiplying energy penalty */
   double penalty_param;            /* Parameter inside integral penalty term w(t) (Gaussian variance) */
   double gatol;                    /* Stopping criterion based on absolute gradient norm */
   double fatol;                    /* Stopping criterion based on objective function value */
@@ -78,6 +80,7 @@ class OptimProblem {
   double getCostT()    { return obj_cost; };
   double getRegul()    { return obj_regul; };
   double getPenalty()  { return obj_penal; };
+  double getPenaltyEnergy()  { return obj_penal_energy; };
   double getFidelity() { return fidelity; };
   double getFaTol()    { return fatol; };
   double getInfTol()   { return inftol; };

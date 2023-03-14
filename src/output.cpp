@@ -35,7 +35,7 @@ Output::Output(MapParam& config, MPI_Comm comm_petsc, MPI_Comm comm_init, int no
     char filename[255];
     sprintf(filename, "%s/optim_history.dat", datadir.c_str());
     optimfile = fopen(filename, "w");
-    fprintf(optimfile, "#iter    Objective           ||Pr(grad)||           LS step           F_avg           Terminal cost       Tikhonov-regul      Penalty-term\n");
+    fprintf(optimfile, "#iter    Objective           ||Pr(grad)||           LS step           F_avg           Terminal cost       Tikhonov-regul      Penalty-term      Energy-term\n");
   } 
 
   /* Read from config what output is desired */
@@ -70,10 +70,10 @@ Output::~Output(){
 }
 
 
-void Output::writeOptimFile(double objective, double gnorm, double stepsize, double Favg, double costT, double tikh_regul, double penalty){
+void Output::writeOptimFile(double objective, double gnorm, double stepsize, double Favg, double costT, double tikh_regul, double penalty, double penalty_energy){
 
   if (mpirank_world == 0){
-    fprintf(optimfile, "%05d  %1.14e  %1.14e  %.8f  %1.14e  %1.14e  %1.14e  %1.14e\n", optim_iter, objective, gnorm, stepsize, Favg, costT, tikh_regul, penalty);
+    fprintf(optimfile, "%05d  %1.14e  %1.14e  %.8f  %1.14e  %1.14e  %1.14e  %1.14e  %1.14e\n", optim_iter, objective, gnorm, stepsize, Favg, costT, tikh_regul, penalty, penalty_energy);
     fflush(optimfile);
   } 
 
