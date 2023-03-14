@@ -102,6 +102,7 @@ Vec TimeStepper::solveODE(int iinit, int initid, Vec rho_t0){
   /* --- Loop over time interval --- */
   penalty_integral = 0.0;
   penalty_dpdm = 0.0;
+  energy_penalty_integral = 0.0;
   for (int n = 0; n < ntime; n++){
 
     /* current time */
@@ -124,6 +125,9 @@ Vec TimeStepper::solveODE(int iinit, int initid, Vec rho_t0){
       penalty_dpdm += penaltyDpDm(x, store_states[iinit][n], store_states[iinit][n-1]);
     }
 
+    /* Add to energy penalty objective term */
+    if (gamma_penalty_energy > 1e-13) energy_penalty_integral += energyPenaltyIntegral(tstop);
+
 #ifdef SANITY_CHECK
     SanityTests(x, tstart);
 #endif
@@ -142,7 +146,7 @@ Vec TimeStepper::solveODE(int iinit, int initid, Vec rho_t0){
 }
 
 
-void TimeStepper::solveAdjointODE(int iinit, int initid, Vec rho_t0_bar, Vec finalstate, double Jbar_penalty, double Jbar_penalty_dpdm) {
+void TimeStepper::solveAdjointODE(int iinit, int initid, Vec rho_t0_bar, Vec finalstate, double Jbar_penalty, double Jbar_penalty_dpdm, double Jbar_energy_penalty) {
 
   /* Reset gradient */
   VecZeroEntries(redgrad);
@@ -158,6 +162,10 @@ void TimeStepper::solveAdjointODE(int iinit, int initid, Vec rho_t0_bar, Vec fin
     double tstop  = n * dt;
     double tstart = (n-1) * dt;
 
+    /* Derivative of energy penalty objective term */
+    if (gamma_penalty_energy > 1e-13) energyPenaltyIntegral_diff(tstop, Jbar_energy_penalty, redgrad);
+
+    /* Derivative of penalty term */
     if (gamma_penalty_dpdm > 1e-13) penaltyDpDm_diff(iinit, n, x, Jbar_penalty_dpdm/ntime);
 
     /* Derivative of penalty objective term */
@@ -395,6 +403,63 @@ void TimeStepper::penaltyDpDm_diff(int iinit, int n, Vec xbar, double Jbar){
     if (n < ntime)    VecRestoreArrayRead(xp1, &xp1ptr);
     if (n < ntime-1)  VecRestoreArrayRead(xp2, &xp2ptr);
  
+}
+
+double TimeStepper::energyPenaltyIntegral(double time){
+  double pen = 0.0;
+
+  /* Loop over oscillators */
+  for (int iosc = 0; iosc < mastereq->getNOscillators(); iosc++) {
+    double p,q;
+    mastereq->getOscillator(iosc)->evalControl(time, &p, &q); 
+    pen += (p*p + q*q) / ntime;
+  }
+
+  return pen;
+}
+
+
+void TimeStepper::energyPenaltyIntegral_diff(double time, double penaltybar, Vec redgrad){
+
+  int nparams_max = 0;
+  for (int ioscil = 0; ioscil < mastereq->getNOscillators(); ioscil++) {
+      int n = mastereq->getOscillator(ioscil)->getNParams();
+      if (n > nparams_max) nparams_max = n;
+  }
+  double* dRedp = new double[nparams_max];
+  double* dImdp = new double[nparams_max];
+
+  PetscInt* cols = new PetscInt[nparams_max];
+  PetscScalar* vals = new PetscScalar[nparams_max];
+
+  int shift = 0;
+  for (int iosc = 0; iosc < mastereq->getNOscillators(); iosc++){
+
+    /* Reevaluate the controls */
+    double p,q;
+    mastereq->getOscillator(iosc)->evalControl(time, &p, &q); 
+
+    /* Initialize derivative */
+    for (int i=0; i<nparams_max; i++){
+      dRedp[i] = 0.0;
+      dImdp[i] = 0.0;
+    }
+    mastereq->getOscillator(iosc)->evalControl_diff(time, dRedp, dImdp);
+
+    PetscInt nparam = mastereq->getOscillator(iosc)->getNParams();
+    for (int iparam=0; iparam < nparam; iparam++) {
+      vals[iparam] = penaltybar / ntime * 2.0 * ( p * dRedp[iparam] + q * dImdp[iparam]);
+      cols[iparam] = iparam + shift;
+    }
+    VecSetValues(redgrad, nparam, cols, vals, ADD_VALUES);
+    shift += nparam;
+  } 
+
+
+  delete [] dRedp;
+  delete [] dImdp;
+  delete [] vals;
+  delete [] cols;
 }
 
 void TimeStepper::evolveBWD(const double tstart, const double tstop, const Vec x_stop, Vec x_adj, Vec grad, bool compute_gradient){}

@@ -30,10 +30,13 @@ class TimeStepper{
     /* Stuff needed for the penalty integral term */
     // TODO: pass those through the timestepper constructor (currently, they are set manually inside optimproblem constructor), or add up the penalty within the optim_target.
     double penalty_integral;        // output, holds the integral term
-    double penalty_dpdm;        // output, holds the integral term
+    double energy_penalty_integral;        // output, holds the integral term
+    double penalty_dpdm;        
     double penalty_param;
     double gamma_penalty;
     double gamma_penalty_dpdm;
+    double gamma_penalty_energy;
+
     std::vector<double> leakage_weights;
     OptimTarget* optim_target;
 
@@ -54,7 +57,7 @@ class TimeStepper{
     Vec solveODE(int iinit, int initid, Vec rho_t0);
 
     /* Solve the adjoint ODE backwards in time from terminal condition rho_t0_bar */
-    void solveAdjointODE(int iinit, int initid, Vec rho_t0_bar, Vec finalstate, double Jbar_penalty, double Jbar_penalty_dpdm);
+    void solveAdjointODE(int iinit, int initid, Vec rho_t0_bar, Vec finalstate, double Jbar_penalty, double Jbar_penalty_dpdm, double Jbar_penalty_energy);
 
     /* evaluate the penalty integral term */
     double penaltyIntegral(double time, const Vec x);
@@ -64,6 +67,10 @@ class TimeStepper{
     /* evaluate the second derivative penalty for the state */
     double penaltyDpDm(Vec x, Vec xm1, Vec xm2);
     void penaltyDpDm_diff(int iinit, int n, Vec xbar, double Jbar);
+    
+    /* evaluate the energy penalty integral term */
+    double energyPenaltyIntegral(double time);
+    void energyPenaltyIntegral_diff(double time, double Jbar, Vec redgrad);
 
     /* Evolve state forward from tstart to tstop */
     virtual void evolveFWD(const double tstart, const double tstop, Vec x) = 0;
