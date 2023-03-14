@@ -172,6 +172,20 @@ void Oscillator::setParams(double* x){
 }
 
 
+void Oscillator::setParams_diff(double* xbar){
+
+  if (control_enforceBC){
+    //printf("\n\n True! \n\n");
+    // First, enforce the control boundaries, i.e. potentially set some parameters in x to zero. 
+    for (int bs = 0; bs < basisfunctions.size(); bs++){
+      for (int f=0; f < carrier_freq.size(); f++) {
+        basisfunctions[bs]->enforceBoundary(xbar, f);
+      }
+    }
+  }
+}
+
+
 void Oscillator::getParams(double* x){
   for (int i=0; i<params.size(); i++) {
     x[i] = params[i]; 

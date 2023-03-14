@@ -655,6 +655,9 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
   MPI_Allreduce(mygrad, grad, ndesign, MPI_DOUBLE, MPI_SUM, comm_init);
   VecRestoreArray(G, &grad);
 
+  
+  mastereq->setControlAmplitudes_diff(G);
+
   /* Compute and store gradient norm */
   VecNorm(G, NORM_2, &(gnorm));
 

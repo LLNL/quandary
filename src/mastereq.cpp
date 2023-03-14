@@ -1265,6 +1265,17 @@ void MasterEq::setControlAmplitudes(const Vec x) {
 }
 
 
+void MasterEq::setControlAmplitudes_diff(Vec xbar) {
+  PetscScalar* ptr;
+  VecGetArray(xbar, &ptr);
+  int shift=0;
+  for (int ioscil = 0; ioscil < getNOscillators(); ioscil++) {
+    getOscillator(ioscil)->setParams_diff(ptr + shift);
+  }
+  VecRestoreArray(xbar, &ptr);
+}
+
+
 int MasterEq::getRhoT0(const int iinit, const int ninit, const InitialConditionType initcond_type, const std::vector<int>& oscilIDs, Vec rho0){
 
   PetscInt ilow, iupp; 
