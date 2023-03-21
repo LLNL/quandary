@@ -20,6 +20,10 @@ TimeStepper::TimeStepper(MapParam config, int ninit_local, MasterEq* mastereq_, 
   storeFWD = storeFWD_;
 
   gamma_penalty_dpdm = config.GetDoubleParam("optim_regul_dpdm", 0.0);
+  if (gamma_penalty_dpdm > 1e-13 && mastereq->lindbladtype != LindbladType::NONE){
+    printf("Warning: Disabling DpDm penalty term because it is not implemented for the Lindblad solver.\n");
+    gamma_penalty_dpdm = 0.0;
+  }
 
   /* Store the forward state trajectory only for the Lindblad solver OR DpDm penalty term (TODO). Recompute it otherwise */
   if (mastereq->lindbladtype == LindbladType::NONE) storeFWD = false;
@@ -99,6 +103,13 @@ Vec TimeStepper::solveODE(int iinit, int initid, Vec rho_t0){
   /* Set initial condition  */
   VecCopy(rho_t0, x);
 
+
+  /* Store initial state for dpdm penalty */
+  Vec xcp;
+  VecDuplicate(x, &xcp);
+  VecCopy(x, xcp);
+  if (gamma_penalty_dpdm > 1e-13) store_states_dpdm.push_back(xcp);
+
   /* --- Loop over time interval --- */
   penalty_integral = 0.0;
   penalty_dpdm = 0.0;
@@ -119,9 +130,20 @@ Vec TimeStepper::solveODE(int iinit, int initid, Vec rho_t0){
     if (gamma_penalty > 1e-13) penalty_integral += penaltyIntegral(tstop, x);
 
     /* Add to penalty for second derivative */
-    if (gamma_penalty_dpdm > 1e-13 && n > 0) {
+    if (gamma_penalty_dpdm > 1e-13) {
       // printf("DPDM Forward, f(%d %d %d) \n", n+1, n, n-1);
-      penalty_dpdm += penaltyDpDm(x, store_states[iinit][n], store_states[iinit][n-1]);
+      // if (n > 0) penalty_dpdm += penaltyDpDm(x, store_states[iinit][n], store_states[iinit][n-1]);
+      if (n > 0) penalty_dpdm += penaltyDpDm(x, store_states_dpdm[1], store_states_dpdm[0]);  // uses x, x_n, x_n-1
+
+      // Update storage of primal states. Should build a history of 3 states.
+      VecDuplicate(x, &xcp);
+      VecCopy(x, xcp);
+      store_states_dpdm.push_back(xcp);
+      if (n > 0) {
+        xcp = store_states_dpdm.front();
+        VecDestroy(&xcp);
+        store_states_dpdm.pop_front();
+      }
     }
 
 #ifdef SANITY_CHECK
@@ -132,6 +154,13 @@ Vec TimeStepper::solveODE(int iinit, int initid, Vec rho_t0){
 
   /* Store last time step */
   if (storeFWD) VecCopy(x, store_states[iinit][ntime]);
+
+  /* Clear out dpdm storage */
+  while (store_states_dpdm.size()>0) {
+    xcp = store_states_dpdm.front();
+    VecDestroy(&xcp);
+    store_states_dpdm.pop_front();
+  }
 
   /* Write last time step and close files */
   output->writeDataFiles(ntime, ntime*dt, x, mastereq);
@@ -153,10 +182,27 @@ void TimeStepper::solveAdjointODE(int iinit, int initid, Vec rho_t0_bar, Vec fin
   /* Set terminal primal state */
   Vec xprimal = finalstate;
 
+  /* Store state at N, N-1, N-2 for dpdm penalty */
+  Vec xcp, xcp1, xcp2;
+  if (gamma_penalty_dpdm > 1e-13) {
+    VecDuplicate(xprimal, &xcp);
+    VecCopy(xprimal, xcp);
+    store_states_dpdm.push_front(xcp);
+    VecDuplicate(xcp, &xcp1);
+    VecCopy(xcp, xcp1);
+    evolveFWD(ntime*dt, (ntime-1)*dt, xcp1);
+    store_states_dpdm.push_front(xcp1);
+    VecDuplicate(xcp1, &xcp2);
+    VecCopy(xcp1, xcp2);
+    evolveFWD((ntime-1)*dt, (ntime-2)*dt, xcp2);
+    store_states_dpdm.push_front(xcp2);
+  }
+
   /* Loop over time interval */
   for (int n = ntime; n > 0; n--){
     double tstop  = n * dt;
     double tstart = (n-1) * dt;
+    // printf("Backwards %d -> %d ... ", n, n-1);
 
     if (gamma_penalty_dpdm > 1e-13) penaltyDpDm_diff(iinit, n, x, Jbar_penalty_dpdm/ntime);
 
@@ -172,7 +218,39 @@ void TimeStepper::solveAdjointODE(int iinit, int initid, Vec rho_t0_bar, Vec fin
     evolveBWD(tstop, tstart, xprimal, x, redgrad, true);
     // printf("Done\n");
 
+    /* Update dpdm storage */
+    if (gamma_penalty_dpdm > 1e-13 ) {
+      // Store next one
+      if (n > 2) {
+        VecDuplicate(store_states_dpdm.front(), &xcp2);
+        VecCopy(store_states_dpdm.front(), xcp2);
+        evolveFWD((n-2)*dt, (n-3)*dt, xcp2);
+      }
+      store_states_dpdm.push_front(xcp2);  // always push something, could be not allocated Vec
+
+      // pop last one
+      if (n < ntime -1) {
+        xcp1 = store_states_dpdm.back();
+        VecDestroy(&xcp1);
+        store_states_dpdm.pop_back();
+      }
+      // printf(" Size of deque %d\n", store_states_dpdm.size());
+    }
+
+
   }
+
+  if (gamma_penalty_dpdm > 1e-13) {
+    /* Clear out dpdm storage */
+    xcp = store_states_dpdm.back();  // storage at [4]
+    VecDestroy(&xcp);
+    store_states_dpdm.pop_back();
+    xcp = store_states_dpdm.back();  // storage at [3]
+    VecDestroy(&xcp);
+    store_states_dpdm.pop_back();
+    store_states_dpdm.clear();  // All others arezed. 
+  } 
+
 }
 
 
@@ -317,11 +395,16 @@ void TimeStepper::penaltyDpDm_diff(int iinit, int n, Vec xbar, double Jbar){
     PetscScalar *xbarptr;
     Vec x, xm1, xm2, xp1, xp2;
 
-    x = getState(iinit, n);
-    if (n > 0 )        xm1 = getState(iinit, n-1);
-    if (n > 1)         xm2 = getState(iinit, n-2);
-    if (n < ntime)     xp1 = getState(iinit, n+1);
-    if (n < ntime-1)   xp2 = getState(iinit, n+2);
+    // if (n > 1)         xm2 = getState(iinit, n-2);
+    // if (n > 0 )        xm1 = getState(iinit, n-1);
+    if (n > 0 )        xm1 = store_states_dpdm[1];
+    if (n > 1)         xm2 = store_states_dpdm[0];
+    // x = getState(iinit, n);
+    x = store_states_dpdm[2];
+    // if (n < ntime)     xp1 = getState(iinit, n+1);
+    // if (n < ntime-1)   xp2 = getState(iinit, n+2);
+    if (n < ntime)     xp1 = store_states_dpdm[3];
+    if (n < ntime-1)   xp2 = store_states_dpdm[4];
 
     VecGetArrayRead(x, &xptr);
     if (n > 0)        VecGetArrayRead(xm1, &xm1ptr);
