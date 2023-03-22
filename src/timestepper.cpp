@@ -25,9 +25,6 @@ TimeStepper::TimeStepper(MapParam config, MasterEq* mastereq_, int ntime_, doubl
     gamma_penalty_dpdm = 0.0;
   }
 
-  /* Store the forward state trajectory only for the Lindblad solver OR DpDm penalty term (TODO). Recompute it otherwise */
-  if (mastereq->lindbladtype == LindbladType::NONE) storeFWD = false;
-
   /* Check if leakage term is added: Only if nessential is smaller than nlevels for at least one oscillator */
   addLeakagePrevent = false; 
   for (int i=0; i<mastereq->getNOscillators(); i++){
