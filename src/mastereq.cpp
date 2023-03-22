@@ -1271,6 +1271,7 @@ void MasterEq::setControlAmplitudes_diff(Vec xbar) {
   int shift=0;
   for (int ioscil = 0; ioscil < getNOscillators(); ioscil++) {
     getOscillator(ioscil)->setParams_diff(ptr + shift);
+    shift += getOscillator(ioscil)->getNParams();
   }
   VecRestoreArray(xbar, &ptr);
 }
