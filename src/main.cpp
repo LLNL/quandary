@@ -457,8 +457,9 @@ int main(int argc,char **argv)
   if (mpirank_world == 0 && !quietmode) {
     printf("\n");
     printf(" Used Time:        %.2f seconds\n", UsedTime);
-    printf(" Global Memory:    %.2f MB\n", globalMB);
     printf(" Processors used:  %d\n", mpisize_world);
+    printf(" Global Memory:    %.2f MB    [~ %.2f MB per proc]\n", globalMB, globalMB / mpisize_world);
+    printf(" [NOTE: The memory unit is platform dependent. If you run on MacOS, the unit will likely be KB instead of MB.]\n");
     printf("\n");
   }
   // printf("Rank %d: %.2fMB\n", mpirank_world, myMB );
