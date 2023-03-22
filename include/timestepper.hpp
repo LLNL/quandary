@@ -17,7 +17,7 @@ class TimeStepper{
     int dim;             /* State vector dimension */
     Vec x;               // auxiliary vector needed for time stepping
     std::vector<Vec> store_states; /* Storage for primal states */
-    std::deque<Vec> store_states_dpdm;  /* storage of primal states needed for DpDm penalty term */
+    std::vector<Vec> dpdm_states;  /* storage of primal states needed for DpDm penalty term */
     bool addLeakagePrevent;   /* flag to determine if Leakage preventing term is added to penalty.  */
     int mpirank_world;
 
