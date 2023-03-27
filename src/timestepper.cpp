@@ -378,7 +378,13 @@ void ImplMidpoint::evolveFWD(const double tstart,const  double tstop, Vec x) {
       //printf("Residual norm %d: %1.5e\n", iters_taken, rnorm);
       linsolve_iterstaken_avg += iters_taken;
       linsolve_error_avg += rnorm;
-
+      if (rnorm > 1e-3)  {
+        printf("WARNING: Linear solver residual norm: %1.5e\n", rnorm);
+        printf("In evolveFWD(%f, %f)\n", tstart, tstop);
+        printf("Residual norm %d: %1.5e\n", iters_taken, rnorm);
+        exit(1);
+      }
+ 
       /* Revert the scaling and shifting if gmres solver */
       MatAssemblyBegin(A, MAT_FINAL_ASSEMBLY);
       MatAssemblyEnd(A, MAT_FINAL_ASSEMBLY);
@@ -418,7 +424,14 @@ void ImplMidpoint::evolveBWD(const double tstop, const double tstart, const Vec 
       KSPSolveTranspose(ksp, x_adj, stage_adj);
       double rnorm;
       KSPGetResidualNorm(ksp, &rnorm);
-      if (rnorm > 1e-3)  printf("Residual norm: %1.5e\n", rnorm);
+      PetscInt iters_taken;
+      KSPGetIterationNumber(ksp, &iters_taken);
+      if (rnorm > 1e-3)  {
+        printf("WARNING: Linear solver residual norm: %1.5e\n", rnorm);
+        printf("In evolveBWD(%f, %f)\n", tstop, tstart);
+        printf("Residual norm %d: %1.5e\n", iters_taken, rnorm);
+        exit(1);
+      }
       break;
 
     case LinearSolverType::NEUMANN: 
