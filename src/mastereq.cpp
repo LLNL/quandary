@@ -3129,15 +3129,15 @@ int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
 
                       /* --- Control hamiltonian  --- */
                       // Oscillator 0
-                      control_T(it, n0, n0p, i0, i0p, stridei0, stridei0p, xptr, pt0, qt0, &yre, &yim);
+                      control_T(it, n0, i0, n0p, i0p, stridei0, stridei0p, xptr, pt0, qt0, &yre, &yim);
                       // Oscillator 1
-                      control_T(it, n1, n1p, i1, i1p, stridei1, stridei1p, xptr, pt1, qt1, &yre, &yim);
+                      control_T(it, n1, i1, n1p, i1p, stridei1, stridei1p, xptr, pt1, qt1, &yre, &yim);
                       // Oscillator 2
-                      control_T(it, n2, n2p, i2, i2p, stridei2, stridei2p, xptr, pt2, qt2, &yre, &yim);
+                      control_T(it, n2, i2, n2p, i2p, stridei2, stridei2p, xptr, pt2, qt2, &yre, &yim);
                       // Oscillator 3
-                      control_T(it, n3, n3p, i3, i3p, stridei3, stridei3p, xptr, pt3, qt3, &yre, &yim);
+                      control_T(it, n3, i3, n3p, i3p, stridei3, stridei3p, xptr, pt3, qt3, &yre, &yim);
                       // Oscillator 4
-                      control_T(it, n4, n4p, i4, i4p, stridei4, stridei4p, xptr, pt4, qt4, &yre, &yim);
+                      control_T(it, n4, i4, n4p, i4p, stridei4, stridei4p, xptr, pt4, qt4, &yre, &yim);
 
                       /* Update */
                       yptr[2*it]   = yre;
