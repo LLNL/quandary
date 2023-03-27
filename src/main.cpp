@@ -212,11 +212,9 @@ int main(int argc,char **argv)
     printf(" Choose either 'none', 'decay', 'dephase', or 'both'\n");
     exit(1);
   }
-  if (lindbladtype != LindbladType::NONE) {
-    copyLast(decay_time, nlevels.size());
-    copyLast(dephase_time, nlevels.size());
-  }
-
+  copyLast(decay_time, nlevels.size());
+  copyLast(dephase_time, nlevels.size());
+  
   // Get control segment types, carrierwaves and control initialization
   string default_seg_str = "spline, 10, 0.0, "+std::to_string(total_time); // Default for first oscillator control segment
   string default_init_str = "constant, 0.0";                               // Default for first oscillator initialization
@@ -461,8 +459,9 @@ int main(int argc,char **argv)
   if (mpirank_world == 0 && !quietmode) {
     printf("\n");
     printf(" Used Time:        %.2f seconds\n", UsedTime);
-    printf(" Global Memory:    %.2f MB\n", globalMB);
     printf(" Processors used:  %d\n", mpisize_world);
+    printf(" Global Memory:    %.2f MB    [~ %.2f MB per proc]\n", globalMB, globalMB / mpisize_world);
+    printf(" [NOTE: The memory unit is platform dependent. If you run on MacOS, the unit will likely be KB instead of MB.]\n");
     printf("\n");
   }
   // printf("Rank %d: %.2fMB\n", mpirank_world, myMB );
