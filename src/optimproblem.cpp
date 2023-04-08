@@ -768,7 +768,7 @@ PetscErrorCode TaoMonitor(Tao tao,void*ptr){
 
   if (1.0 - F_avg <= ctx->getInfTol()) {
     if (ctx->getMPIrank_world() == 0) {
-      std::cout<< iter <<  ": Objective = " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal << " + " << obj_penal_dpdm;
+      std::cout<< iter <<  ": Objective = " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal << " + " << obj_penal_dpdm << " + " << obj_penal_energy;
       std::cout<< "  Fidelity = " << F_avg;
       std::cout<< "  ||Grad|| = " << gnorm;
       std::cout<< std::endl;
