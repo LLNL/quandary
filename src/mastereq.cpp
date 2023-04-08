@@ -191,7 +191,10 @@ MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Osci
 
   /* Set the MatMult routine for applying the RHS to a vector x */
   if (usematfree) { // matrix-free solver
-    if (noscillators == 2) {
+    if (noscillators == 1) {
+      MatShellSetOperation(RHS, MATOP_MULT, (void(*)(void)) myMatMult_matfree_1Osc);
+      MatShellSetOperation(RHS, MATOP_MULT_TRANSPOSE, (void(*)(void)) myMatMultTranspose_matfree_1Osc);
+    } else if (noscillators == 2) {
       MatShellSetOperation(RHS, MATOP_MULT, (void(*)(void)) myMatMult_matfree_2Osc);
       MatShellSetOperation(RHS, MATOP_MULT_TRANSPOSE, (void(*)(void)) myMatMultTranspose_matfree_2Osc);
     } else if (noscillators == 3) {
@@ -204,7 +207,7 @@ MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Osci
       MatShellSetOperation(RHS, MATOP_MULT, (void(*)(void)) myMatMult_matfree_5Osc);
       MatShellSetOperation(RHS, MATOP_MULT_TRANSPOSE, (void(*)(void)) myMatMultTranspose_matfree_5Osc);
     } else {
-      printf("ERROR. Matfree solver only for 2, 3 or 4 oscillators. This should never happen!\n");
+      printf("ERROR. Matfree solver only for up to 5 oscillators. This should never happen! %d\n", noscillators);
       exit(1);
     }
   }
@@ -902,7 +905,36 @@ void MasterEq::computedRHSdp(const double t, const Vec x, const Vec xbar, const 
       coeff_q[i] = 0.0;
     }
 
-    if (noscillators == 2) {
+    if (noscillators == 1) {
+    /* compute strides for accessing x at i0+1, i0-1, i0p+1, i0p-1, i1+1, i1-1, i1p+1, i1p-1: */
+      int n0 = nlevels[0];
+      int stridei0  = TensorGetIndex(n0, 1,0);
+      int stridei0p = TensorGetIndex(n0, 0,1);
+      /* Switch for Lindblad vs Schroedinger solver */
+      int n0p = n0;
+      if (lindbladtype == LindbladType::NONE) { // Schroedinger
+        n0p = 1; // Cut down so that below loop has i0p=0 and i1p=0/
+      }
+
+      /* --- Collect coefficients for gradient --- */
+      int it = 0;
+      // Iterate over indices of xbar
+      for (int i0p = 0; i0p < n0p; i0p++)  {
+          for (int i0 = 0; i0 < n0; i0++)  {
+              /* Get xbar */
+              double xbarre = xbarptr[2*it];
+              double xbarim = xbarptr[2*it+1];
+
+              /* --- Oscillator 0 --- */
+              dRHSdp_getcoeffs(it, n0, n0p, i0, i0p, stridei0, stridei0p, xptr, &res_p_re, &res_p_im, &res_q_re, &res_q_im);
+              coeff_p[0] += res_p_re * xbarre + res_p_im * xbarim;
+              coeff_q[0] += res_q_re * xbarre + res_q_im * xbarim;
+
+              it++;
+            }
+        }
+    }
+    else if (noscillators == 2) {
     /* compute strides for accessing x at i0+1, i0-1, i0p+1, i0p-1, i1+1, i1-1, i1p+1, i1p-1: */
       int n0 = nlevels[0];
       int n1 = nlevels[1];
@@ -1715,6 +1747,189 @@ int myMatMultTranspose_sparsemat(Mat RHS, Vec x, Vec y) {
   return 0;
 }
 
+/* Matfree-solver for 1 Oscillator: Define the action of RHS on a vector x */
+template <int n0>
+int myMatMult_matfree(Mat RHS, Vec x, Vec y){
+
+  /* Get the shell context */
+  MatShellCtx *shellctx;
+  MatShellGetContext(RHS, (void**) &shellctx);
+
+  /* Get access to x and y */
+  const double* xptr;
+  double* yptr;
+  VecGetArrayRead(x, &xptr);
+  VecGetArray(y, &yptr);
+
+
+  /* Evaluate coefficients */
+  double xi0  = shellctx->oscil_vec[0]->getSelfkerr();
+  double detuning_freq0 = shellctx->oscil_vec[0]->getDetuning();
+  double decay0 = 0.0;
+  double dephase0= 0.0;
+  if (shellctx->oscil_vec[0]->getDecayTime() > 1e-14 && shellctx->addT1)
+    decay0 = 1./shellctx->oscil_vec[0]->getDecayTime();
+  if (shellctx->oscil_vec[0]->getDephaseTime() > 1e-14 && shellctx->addT2)
+    dephase0 = 1./shellctx->oscil_vec[0]->getDephaseTime();
+  double pt0 = shellctx->control_Re[0][0];
+  double qt0 = shellctx->control_Im[0][0];
+
+  /* compute strides for accessing x at i0+1, i0-1, i0p+1, i0p-1, i1+1, i1-1, i1p+1, i1p-1: */
+  int stridei0  = TensorGetIndex(n0,1,0);
+  int stridei0p = TensorGetIndex(n0,0,1);
+
+  /* Switch for Lindblad vs Schroedinger solver */
+  int n0p = n0;
+  if (shellctx->lindbladtype == LindbladType::NONE) { // Schroedinger
+    n0p = 1; // Cut down so that below loop has i0p=0 and i1p=0/
+  }
+
+  /* Iterate over indices of output vector y */
+  int it = 0;
+  for (int i0p = 0; i0p < n0p; i0p++)  {
+      for (int i0 = 0; i0 < n0; i0++)  {
+
+          /* --- Diagonal part ---*/
+          //Get input x values
+          double xre = xptr[2 * it];
+          double xim = xptr[2 * it + 1];
+          // drift Hamiltonian: uout = ( hd(ik) - hd(ik'))*vin
+          //                    vout = (-hd(ik) + hd(ik'))*uin
+          double hd  = H_detune(detuning_freq0, i0)
+                     + H_selfkerr(xi0, i0);
+          double hdp = 0.0;
+          if (shellctx->lindbladtype != LindbladType::NONE) {
+            hdp = H_detune(detuning_freq0, i0p)
+                + H_selfkerr(xi0, i0p);
+          }
+          double yre = ( hd - hdp ) * xim;
+          double yim = (-hd + hdp ) * xre;
+
+          // Decay l1, diagonal part: xout += l1diag xin
+          // Dephasing l2: xout += l2(ik, ikp) xin
+          if (shellctx->lindbladtype != LindbladType::NONE) {
+            double l1diag = L1diag(decay0, i0, i0p);
+            double l2 = L2(dephase0, i0, i0p);
+            yre += (l2 + l1diag) * xre;
+            yim += (l2 + l1diag) * xim;
+          }
+
+          /* --- Offdiagonal: Jkl coupling term --- */
+
+          /* --- Offdiagonal part of decay L1 */
+          if (shellctx->lindbladtype != LindbladType::NONE) {
+            L1decay(it, n0, i0, i0p, stridei0, stridei0p, xptr, decay0, &yre, &yim);
+          }
+
+          /* --- Control hamiltonian --- */
+          // Oscillator 0 
+          control(it, n0, i0, n0p, i0p, stridei0, stridei0p, xptr, pt0, qt0, &yre, &yim);
+
+          /* Update */
+          yptr[2*it]   = yre;
+          yptr[2*it+1] = yim;
+          it++;
+      }
+  }
+
+  /* Restore x and y */
+  VecRestoreArrayRead(x, &xptr);
+  VecRestoreArray(y, &yptr);
+
+  return 0;
+}
+
+/* Matrix-free solver for 1 Oscillators: Define the action of RHS^T on a vector x */
+template <int n0>
+int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
+
+  /* Get the shell context */
+  MatShellCtx *shellctx;
+  MatShellGetContext(RHS, (void**) &shellctx);
+
+  /* Get access to x and y */
+  const double* xptr;
+  double* yptr;
+  VecGetArrayRead(x, &xptr);
+  VecGetArray(y, &yptr);
+
+  /* Evaluate coefficients */
+  double xi0  = shellctx->oscil_vec[0]->getSelfkerr();
+  double detuning_freq0 = shellctx->oscil_vec[0]->getDetuning();
+  double decay0 = 0.0;
+  double dephase0= 0.0;
+  if (shellctx->oscil_vec[0]->getDecayTime() > 1e-14 && shellctx->addT1)
+    decay0 = 1./shellctx->oscil_vec[0]->getDecayTime();
+  if (shellctx->oscil_vec[0]->getDephaseTime() > 1e-14 && shellctx->addT2)
+    dephase0 = 1./shellctx->oscil_vec[0]->getDephaseTime();
+  double pt0 = shellctx->control_Re[0][0];
+  double qt0 = shellctx->control_Im[0][0];
+
+  /* compute strides for accessing x at i0+1, i0-1, i0p+1, i0p-1, i1+1, i1-1, i1p+1, i1p-1: */
+  int stridei0  = TensorGetIndex(n0, 1,0);
+  int stridei0p = TensorGetIndex(n0, 0,1);
+
+  /* Switch for Lindblad vs Schroedinger solver */
+  int n0p = n0;
+  if (shellctx->lindbladtype == LindbladType::NONE) { // Schroedinger
+    n0p = 1; // Cut down so that below loop has i0p=0 and i1p=0/
+  }
+
+  /* Iterate over indices of output vector y */
+  int it = 0;
+  for (int i0p = 0; i0p < n0p; i0p++)  {
+      for (int i0 = 0; i0 < n0; i0++)  {
+
+          /* --- Diagonal part ---*/
+          //Get input x values
+          double xre = xptr[2 * it];
+          double xim = xptr[2 * it + 1];
+          // drift Hamiltonian Hd^T: uout = ( hd(ik) - hd(ik'))*vin
+          //                         vout = (-hd(ik) + hd(ik'))*uin
+          double hd  = H_detune(detuning_freq0, i0)
+                     + H_selfkerr(xi0, i0);
+          double hdp = 0.0;
+          if (shellctx->lindbladtype != LindbladType::NONE) {
+            hdp = H_detune(detuning_freq0, i0p)
+                  + H_selfkerr(xi0, i0p);
+          }
+          double yre = (-hd + hdp ) * xim;
+          double yim = ( hd - hdp ) * xre;
+
+          // Decay l1^T, diagonal part: xout += l1diag xin
+          // Dephasing l2^T: xout += l2(ik, ikp) xin
+          if (shellctx->lindbladtype != LindbladType::NONE) {
+            double l1diag = L1diag(decay0, i0, i0p);
+            double l2 = L2(dephase0, i0, i0p);
+            yre += (l2 + l1diag) * xre;
+            yim += (l2 + l1diag) * xim;
+          }
+
+          /* --- Offdiagonal coupling term J_kl --- */
+ 
+          /* --- Offdiagonal part of decay L1^T */
+          if (shellctx->lindbladtype != LindbladType::NONE) {
+            // Oscillators 0
+            L1decay_T(it, n0, i0, i0p, stridei0, stridei0p, xptr, decay0, &yre, &yim);
+          }
+
+          /* --- Control hamiltonian  --- */
+          // Oscillator 0
+          control_T(it, n0, i0, n0p, i0p, stridei0, stridei0p, xptr, pt0, qt0, &yre, &yim);
+
+          /* Update */
+          yptr[2*it]   = yre;
+          yptr[2*it+1] = yim;
+          it++;
+      }
+  }
+
+  /* Restore x and y */
+  VecRestoreArrayRead(x, &xptr);
+  VecRestoreArray(y, &yptr);
+
+  return 0;
+}
 
 
 /* Matfree-solver for 2 Oscillators: Define the action of RHS on a vector x */
@@ -3233,6 +3448,38 @@ void MasterEq::population(const Vec x, std::vector<double> &pop){
 
   /* Gather poppulation from all Petsc processors */
   MPI_Allreduce(mypop.data(), pop.data(), dim_rho, MPI_DOUBLE, MPI_SUM, PETSC_COMM_WORLD);
+}
+
+/* --- 1 Oscillator cases --- */
+int myMatMult_matfree_1Osc(Mat RHS, Vec x, Vec y){
+  /* Get the shell context */
+  MatShellCtx *shellctx;
+  MatShellGetContext(RHS, (void**) &shellctx);
+  int n0 = shellctx->nlevels[0];
+  if      (n0==2)  return myMatMult_matfree<2>(RHS, x, y);
+  else if (n0==3)  return myMatMult_matfree<3>(RHS, x, y);
+  else if (n0==4)  return myMatMult_matfree<4>(RHS, x, y);
+  else if (n0==5)  return myMatMult_matfree<5>(RHS, x, y);
+  else if (n0==6)  return myMatMult_matfree<6>(RHS, x, y);
+  else {
+    printf("ERROR: In order to run this case, add a line at the end of mastereq.cpp with the corresponding number of levels!\n");
+    exit(1);
+  }
+}
+int myMatMultTranspose_matfree_1Osc(Mat RHS, Vec x, Vec y){
+ /* Get the shell context */
+  MatShellCtx *shellctx;
+  MatShellGetContext(RHS, (void**) &shellctx);
+  int n0 = shellctx->nlevels[0];
+  if      (n0==2)  return myMatMultTranspose_matfree<2>(RHS, x, y);
+  else if (n0==3)  return myMatMultTranspose_matfree<3>(RHS, x, y);
+  else if (n0==4)  return myMatMultTranspose_matfree<4>(RHS, x, y);
+  else if (n0==5)  return myMatMultTranspose_matfree<5>(RHS, x, y);
+  else if (n0==6)  return myMatMultTranspose_matfree<6>(RHS, x, y);
+  else {
+    printf("ERROR: In order to run this case, add a line at the end of mastereq.cpp with the corresponding number of levels!\n");
+    exit(1);
+  }
 }
 
 

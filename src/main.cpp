@@ -284,8 +284,7 @@ int main(int argc,char **argv)
   // for (int i = Jkl.size(); i < (noscillators-1) * noscillators / 2; i++) Jkl.push_back(0.0);
   // Sanity check for matrix free solver
   bool usematfree = config.GetBoolParam("usematfree", false);
-  if ( (usematfree && nlevels.size() < 2) ||   
-       (usematfree && nlevels.size() > 5)   ){
+  if (usematfree && nlevels.size() > 5){
         printf("Warning: Matrix free solver is only implemented for systems with 2, 3, 4, or 5 oscillators. Switching to sparse-matrix solver now.\n");
         usematfree = false;
   }
