@@ -756,7 +756,9 @@ PetscErrorCode TaoMonitor(Tao tao,void*ptr){
   ctx->output->writeOptimFile(f, gnorm, deltax, F_avg, obj_cost, obj_regul, obj_penal, obj_penal_dpdm, obj_penal_energy);
 
   /* Print parameters and controls to file */
+  // if ( optim_iter % optim_monitor_freq == 0 ) {
   ctx->output->writeControls(params, ctx->timestepper->mastereq, ctx->timestepper->ntime, ctx->timestepper->dt);
+  // }
 
   /* Screen output */
   if (ctx->getMPIrank_world() == 0 && iter % ctx->output->optim_monitor_freq == 0) {

@@ -105,7 +105,7 @@ void Output::writeGradient(Vec grad){
 void Output::writeControls(Vec params, MasterEq* mastereq, int ntime, double dt){
 
   /* Write controls every <outfreq> iterations */
-  if ( mpirank_world == 0 && optim_iter % optim_monitor_freq == 0 ) { 
+  if ( mpirank_world == 0 ) { 
 
     char filename[255];
     char filename_transfer[255];
