@@ -59,6 +59,7 @@ class OptimProblem {
   std::vector<double> leakage_weights;  /* Weighting the contribution of leakage penalty term in the objective function */
   double gatol;                    /* Stopping criterion based on absolute gradient norm */
   double fatol;                    /* Stopping criterion based on objective function value */
+  double dxtol;                    /* Stopping criterion based on update of control parameters */
   double inftol;                   /* Stopping criterion based on infidelity */
   double grtol;                    /* Stopping criterion based on relative gradient norm */
   int maxiter;                     /* Stopping criterion based on maximum number of iterations */
@@ -70,6 +71,7 @@ class OptimProblem {
     Output* output;                 /* Store a reference to the output */
     TimeStepper* timestepper;       /* Store a reference to the time-stepping scheme */
     Vec xlower, xupper;              /* Optimization bounds */
+    Vec xprev;                       /* design vector at previous iteration */
 
   /* Constructor */
   OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm comm_init_, MPI_Comm comm_optim, int ninit_, std::vector<double> gate_rot_freq, Output* output_, bool quietmode=false);
@@ -87,6 +89,7 @@ class OptimProblem {
   double getPenaltyEnergy()  { return obj_penal_energy; };
   double getFidelity() { return fidelity; };
   double getFaTol()    { return fatol; };
+  double getDxTol()    { return dxtol; };
   double getInfTol()   { return inftol; };
   int getMPIrank_world() { return mpirank_world;};
 
