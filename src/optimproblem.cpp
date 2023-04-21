@@ -445,16 +445,9 @@ double OptimProblem::evalF(const Vec x) {
   mastereq->setControlAmplitudes(x); 
 
   /*  Iterate over initial condition */
-  obj_cost  = 0.0;
-  obj_regul = 0.0;
   obj_penal = 0.0;
   obj_penal_dpdm = 0.0;
   obj_penal_energy = 0.0;
-  fidelity = 0.0;
-  double obj_cost_re = 0.0;
-  double obj_cost_im = 0.0;
-  double fidelity_re = 0.0;
-  double fidelity_im = 0.0;
   for (int iinit = 0; iinit < ninit_local; iinit++) {
       
     /* Prepare the initial condition in [rank * ninit_local, ... , (rank+1) * ninit_local - 1] */
@@ -487,20 +480,6 @@ double OptimProblem::evalF(const Vec x) {
     
     /* Add to energy integral penalty term */
     obj_penal_energy += obj_weights[iinit] * gamma_penalty_energy* timestepper->energy_penalty_integral;
-
-    /* Evaluate J(finalstate) and add to final-time cost */
-    double obj_iinit_re = 0.0;
-    double obj_iinit_im = 0.0;
-    optim_target->evalJ(finalstate,  &obj_iinit_re, &obj_iinit_im);
-    obj_cost_re += obj_weights[iinit] * obj_iinit_re;
-    obj_cost_im += obj_weights[iinit] * obj_iinit_im;
-
-    /* Add to final-time fidelity */
-    double fidelity_iinit_re = 0.0;
-    double fidelity_iinit_im = 0.0;
-    optim_target->HilbertSchmidtOverlap(finalstate, false, &fidelity_iinit_re, &fidelity_iinit_im);
-    fidelity_re += 1./ ninit * fidelity_iinit_re;
-    fidelity_im += 1./ ninit * fidelity_iinit_im;
 
     // printf("%d, %d: iinit obj_iinit: %f * (%1.14e + i %1.14e, Overlap=%1.14e + i %1.14e\n", mpirank_world, mpirank_init, obj_weights[iinit], obj_iinit_re, obj_iinit_im, fidelity_iinit_re, fidelity_iinit_im);
   }
@@ -564,22 +543,53 @@ double OptimProblem::evalF(const Vec x) {
   // MPI_Finalize();
   // exit(1);
 
+  /* Evaluate final time cost J(finalstate) and fidelity */
+  double obj_cost_re = 0.0;
+  double obj_cost_im = 0.0;
+  double fidelity_re = 0.0;
+  double fidelity_im = 0.0;
+  if (mpirank_optim == rank_last) {
+    for (int iinit = 0; iinit < ninit; iinit++) {
+      double obj_iinit_re = 0.0;
+      double obj_iinit_im = 0.0;
+
+      Vec mycol_re, mycol_im;
+      MatDenseGetColumnVec(Usol_re, iinit, &mycol_re);
+      MatDenseGetColumnVec(Usol_im, iinit, &mycol_im);
+      VecISCopy(finalstate, timestepper->mastereq->isu, SCATTER_FORWARD, mycol_re);
+      VecISCopy(finalstate, timestepper->mastereq->isv, SCATTER_FORWARD, mycol_im);
+      MatDenseRestoreColumnVec(Usol_re, iinit, &mycol_re);
+      MatDenseRestoreColumnVec(Usol_im, iinit, &mycol_im);
+      optim_target->evalJ(finalstate,  &obj_iinit_re, &obj_iinit_im);
+      obj_cost_re += obj_weights[iinit] * obj_iinit_re;
+      obj_cost_im += obj_weights[iinit] * obj_iinit_im;
+
+      /* Add to final-time fidelity */
+      double fidelity_iinit_re = 0.0;
+      double fidelity_iinit_im = 0.0;
+      optim_target->HilbertSchmidtOverlap(finalstate, false, &fidelity_iinit_re, &fidelity_iinit_im);
+      fidelity_re += 1./ ninit * fidelity_iinit_re;
+      fidelity_im += 1./ ninit * fidelity_iinit_im;
+    }
+  }
+  /* Commuicate over comm_optim procs (last to all) */
+  MPI_Bcast(&obj_cost_re, 1, MPI_DOUBLE, rank_last, comm_optim);
+  MPI_Bcast(&obj_cost_im, 1, MPI_DOUBLE, rank_last, comm_optim);
+  MPI_Bcast(&fidelity_re, 1, MPI_DOUBLE, rank_last, comm_optim);
+  MPI_Bcast(&fidelity_im, 1, MPI_DOUBLE, rank_last, comm_optim);
+
+
+  /* TODO Probably need to communicate cost also over initial conditions and PEtsc? */
+ 
 
   /* Sum up from initial conditions processors */
+  // TODO: Change for PinT
   double mypen = obj_penal;
   double mypen_dpdm = obj_penal_dpdm;
   double mypenen = obj_penal_energy;
-  double mycost_re = obj_cost_re;
-  double mycost_im = obj_cost_im;
-  double myfidelity_re = fidelity_re;
-  double myfidelity_im = fidelity_im;
   MPI_Allreduce(&mypen, &obj_penal, 1, MPI_DOUBLE, MPI_SUM, comm_init);
   MPI_Allreduce(&mypen_dpdm, &obj_penal_dpdm, 1, MPI_DOUBLE, MPI_SUM, comm_init);
   MPI_Allreduce(&mypenen, &obj_penal_energy, 1, MPI_DOUBLE, MPI_SUM, comm_init);
-  MPI_Allreduce(&mycost_re, &obj_cost_re, 1, MPI_DOUBLE, MPI_SUM, comm_init);
-  MPI_Allreduce(&mycost_im, &obj_cost_im, 1, MPI_DOUBLE, MPI_SUM, comm_init);
-  MPI_Allreduce(&myfidelity_re, &fidelity_re, 1, MPI_DOUBLE, MPI_SUM, comm_init);
-  MPI_Allreduce(&myfidelity_im, &fidelity_im, 1, MPI_DOUBLE, MPI_SUM, comm_init);
 
   /* Set the fidelity: If Schroedinger, need to compute the absolute value: Fid= |\sum_i \phi^\dagger \phi_target|^2 */
   if (timestepper->mastereq->lindbladtype == LindbladType::NONE) {
