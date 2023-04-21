@@ -534,12 +534,14 @@ double OptimProblem::evalF(const Vec x) {
       MatCopy(Usol_tmp2_re, Usol_re, SAME_NONZERO_PATTERN);
     }
   }
-      MPI_Barrier(MPI_COMM_WORLD);
+
+  // MPI_Barrier(MPI_COMM_WORLD);
   // if (mpirank_optim == rank_last) {
   //   printf("\n %d Here is my solution operator:\n", mpirank_optim);
   //   MatView(Usol_re, NULL);
   //   MatView(Usol_im, NULL);
   // }
+  MPI_Barrier(MPI_COMM_WORLD);
   // MPI_Finalize();
   // exit(1);
 
@@ -550,9 +552,14 @@ double OptimProblem::evalF(const Vec x) {
   double fidelity_im = 0.0;
   if (mpirank_optim == rank_last) {
     for (int iinit = 0; iinit < ninit; iinit++) {
+
+      /* If gate optimiztion, recompute the target state rho^target = Vrho(0)V^dagger */
+      int initid = timestepper->mastereq->getRhoT0(iinit, ninit, initcond_type, initcond_IDs, rho_t0);
+      optim_target->prepare(rho_t0);
+      
+      /* Compute objective function for this initial condition  */
       double obj_iinit_re = 0.0;
       double obj_iinit_im = 0.0;
-
       Vec mycol_re, mycol_im;
       MatDenseGetColumnVec(Usol_re, iinit, &mycol_re);
       MatDenseGetColumnVec(Usol_im, iinit, &mycol_im);
@@ -560,9 +567,12 @@ double OptimProblem::evalF(const Vec x) {
       VecISCopy(finalstate, timestepper->mastereq->isv, SCATTER_FORWARD, mycol_im);
       MatDenseRestoreColumnVec(Usol_re, iinit, &mycol_re);
       MatDenseRestoreColumnVec(Usol_im, iinit, &mycol_im);
+
       optim_target->evalJ(finalstate,  &obj_iinit_re, &obj_iinit_im);
       obj_cost_re += obj_weights[iinit] * obj_iinit_re;
       obj_cost_im += obj_weights[iinit] * obj_iinit_im;
+      // printf("%d: Final state %1.14e \n", mpirank_optim, obj_iinit_re);
+      // VecView(finalstate, NULL);
 
       /* Add to final-time fidelity */
       double fidelity_iinit_re = 0.0;
