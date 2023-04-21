@@ -66,6 +66,12 @@ class OptimProblem {
   Tao tao;                         /* Petsc's Optimization solver */
   std::vector<double> initguess_fromfile;      /* Stores the initial guess, if read from file */
   double* mygrad;  /* Auxiliary */
+
+
+  // PinT stuff
+  Mat Usol_re, Usol_im; // Solution operator
+  Mat Usol_tmp_re, Usol_tmp_im; // Temporary storage for receiving the solution operator
+  Mat Usol_tmp2_re, Usol_tmp2_im; // Temporary storage for receiving the solution operator
   
   public: 
     Output* output;                 /* Store a reference to the output */

@@ -135,20 +135,28 @@ int main(int argc,char **argv)
   MPI_Comm comm_optim, comm_init, comm_petsc;
 
   /* Get the size of communicators  */
-  // Number of cores for optimization. Under development, set to 1 for now. 
-  // int np_optim= config.GetIntParam("np_optim", 1);
-  // np_optim= min(np_optim, mpisize_world); 
-  int np_optim= 1;
-  // Number of cores for initial condition distribution. Since this gives perfect speedup, choose maximum.
-  int np_init = min(ninit, mpisize_world); 
-  // Number of cores for Petsc: All the remaining ones. 
-  int np_petsc = mpisize_world / (np_init * np_optim);
+  // // Number of cores for optimization. Under development, set to 1 for now. 
+  // // int np_optim= config.GetIntParam("np_optim", 1);
+  // // np_optim= min(np_optim, mpisize_world); 
+  // int np_optim= 1;
+  // // Number of cores for initial condition distribution. Since this gives perfect speedup, choose maximum.
+  // int np_init = min(ninit, mpisize_world); 
+  // // Number of cores for Petsc: All the remaining ones. 
+  // int np_petsc = mpisize_world / (np_init * np_optim);
 
-  /* Sanity check for communicator sizes */ 
-  if (mpisize_world % ninit != 0 && ninit % mpisize_world != 0) {
-    if (mpirank_world == 0) printf("ERROR: Number of threads (%d) must be integer multiplier or divisor of the number of initial conditions (%d)!\n", mpisize_world, ninit);
-    exit(1);
-  }
+  // /* Sanity check for communicator sizes */ 
+  // if (mpisize_world % ninit != 0 && ninit % mpisize_world != 0) {
+  //   if (mpirank_world == 0) printf("ERROR: Number of threads (%d) must be integer multiplier or divisor of the number of initial conditions (%d)!\n", mpisize_world, ninit);
+  //   exit(1);
+  // }
+
+  // int np_optim= config.GetIntParam("np_optim", 1);
+  // int np_petsc= config.GetIntParam("np_petsc", 1);
+  // int np_init = config.GetIntParam("np_init", 1);
+  int np_init = 1;
+  int np_petsc= 1;
+  int np_optim = mpisize_world;
+
 
   /* Split communicators */
   // Distributed initial conditions 
@@ -169,7 +177,7 @@ int main(int argc,char **argv)
   MPI_Comm_rank(comm_petsc, &mpirank_petsc);
   MPI_Comm_size(comm_petsc, &mpisize_petsc);
 
-  if (mpirank_world == 0 && !quietmode)  std::cout<< "Parallel distribution: " << mpisize_init << " np_init  X  " << mpisize_petsc<< " np_petsc  " << std::endl;
+  if (mpirank_world == 0 && !quietmode)  std::cout<< "Parallel distribution: " << mpisize_init << " np_init  X  " << mpisize_petsc<< " np_petsc  X " << mpisize_optim << " np_optim" << std::endl;
 
   /* Initialize Petsc using petsc's communicator */
   PETSC_COMM_WORLD = comm_petsc;
@@ -356,10 +364,10 @@ int main(int argc,char **argv)
 #endif
   std::string timesteppertypestr = config.GetStrParam("timestepper", "IMR");
   TimeStepper* mytimestepper;
-  if (timesteppertypestr.compare("IMR")==0) mytimestepper = new ImplMidpoint(config, mastereq, ntime, total_time, linsolvetype, linsolve_maxiter, output, storeFWD);
-  else if (timesteppertypestr.compare("IMR4")==0) mytimestepper = new CompositionalImplMidpoint(config, 4, mastereq, ntime, total_time, linsolvetype, linsolve_maxiter, output, storeFWD);
-  else if (timesteppertypestr.compare("IMR8")==0) mytimestepper = new CompositionalImplMidpoint(config, 8, mastereq, ntime, total_time, linsolvetype, linsolve_maxiter, output, storeFWD);
-  else if (timesteppertypestr.compare("EE")==0) mytimestepper = new ExplEuler(config, mastereq, ntime, total_time, output, storeFWD);
+  if (timesteppertypestr.compare("IMR")==0) mytimestepper = new ImplMidpoint(config, mastereq, ntime, total_time, linsolvetype, linsolve_maxiter, output, storeFWD, comm_optim);
+  else if (timesteppertypestr.compare("IMR4")==0) mytimestepper = new CompositionalImplMidpoint(config, 4, mastereq, ntime, total_time, linsolvetype, linsolve_maxiter, output, storeFWD, comm_optim);
+  else if (timesteppertypestr.compare("IMR8")==0) mytimestepper = new CompositionalImplMidpoint(config, 8, mastereq, ntime, total_time, linsolvetype, linsolve_maxiter, output, storeFWD, comm_optim);
+  else if (timesteppertypestr.compare("EE")==0) mytimestepper = new ExplEuler(config, mastereq, ntime, total_time, output, storeFWD, comm_optim);
   else {
     printf("\n\n ERROR: Unknow timestepping type: %s.\n\n", timesteppertypestr.c_str());
     exit(1);

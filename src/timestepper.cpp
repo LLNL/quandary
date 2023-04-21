@@ -11,13 +11,14 @@ TimeStepper::TimeStepper() {
   MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
 }
 
-TimeStepper::TimeStepper(MapParam config, MasterEq* mastereq_, int ntime_, double total_time_, Output* output_, bool storeFWD_) : TimeStepper() {
+TimeStepper::TimeStepper(MapParam config, MasterEq* mastereq_, int ntime_, double total_time_, Output* output_, bool storeFWD_, MPI_Comm comm_optim_) : TimeStepper() {
   mastereq = mastereq_;
   dim = 2*mastereq->getDim(); // will be either N^2 (Lindblad) or N (Schroedinger)
   ntime = ntime_;
   total_time = total_time_;
   output = output_;
   storeFWD = storeFWD_;
+  comm_optim = comm_optim_;
 
   gamma_penalty_dpdm = config.GetDoubleParam("optim_regul_dpdm", 0.0);
   if (gamma_penalty_dpdm > 1e-13 && mastereq->lindbladtype != LindbladType::NONE){
@@ -60,6 +61,18 @@ TimeStepper::TimeStepper(MapParam config, MasterEq* mastereq_, int ntime_, doubl
   VecSetFromOptions(redgrad);
   VecAssemblyBegin(redgrad);
   VecAssemblyEnd(redgrad);
+
+
+
+  /* Time-parallel stuff */
+  MPI_Comm_rank(comm_optim, &mpirank_optim);
+  MPI_Comm_size(comm_optim, &mpisize_optim);
+  int ntime_local = ntime / mpisize_optim;
+  int ntime_rest = ntime % mpisize_optim;
+  n_start = mpirank_optim * ntime_local;
+  n_stop = (mpirank_optim+1) * ntime_local;
+  if (mpirank_optim == mpisize_optim -1) n_stop += ntime_rest;
+  printf("\n %d: Time-paralle solve in [%d, %d)\n", mpirank_optim, n_start, n_stop);
 
 }
 
@@ -109,7 +122,7 @@ Vec TimeStepper::solveODE(int initid, Vec rho_t0){
   penalty_integral = 0.0;
   penalty_dpdm = 0.0;
   energy_penalty_integral = 0.0;
-  for (int n = 0; n < ntime; n++){
+  for (int n = n_start; n < n_stop; n++){  // Local for each processor
 
     /* current time */
     double tstart = n * dt;
@@ -117,7 +130,7 @@ Vec TimeStepper::solveODE(int initid, Vec rho_t0){
 
     /* store and write current state. */
     if (storeFWD) VecCopy(x, store_states[n]);
-    output->writeDataFiles(n, tstart, x, mastereq);
+    // output->writeDataFiles(n, tstart, x, mastereq);  // TODO: This won't work in PinT probably.
 
     /* Take one time step */
     evolveFWD(tstart, tstop, x);
@@ -145,7 +158,7 @@ Vec TimeStepper::solveODE(int initid, Vec rho_t0){
   penalty_dpdm = penalty_dpdm/ntime;
 
   /* Store last time step */
-  if (storeFWD) VecCopy(x, store_states[ntime]);
+  // if (storeFWD) VecCopy(x, store_states[ntime]);   // TODO: This won't work in PinT.
 
   /* Clear out dpdm storage */
   if (gamma_penalty_dpdm > 1e-13) {
@@ -518,7 +531,7 @@ void TimeStepper::energyPenaltyIntegral_diff(double time, double penaltybar, Vec
 
 void TimeStepper::evolveBWD(const double tstart, const double tstop, const Vec x_stop, Vec x_adj, Vec grad, bool compute_gradient){}
 
-ExplEuler::ExplEuler(MapParam config, MasterEq* mastereq_, int ntime_, double total_time_, Output* output_, bool storeFWD_) : TimeStepper(config, mastereq_, ntime_, total_time_, output_, storeFWD_) {
+ExplEuler::ExplEuler(MapParam config, MasterEq* mastereq_, int ntime_, double total_time_, Output* output_, bool storeFWD_, MPI_Comm comm_optim_) : TimeStepper(config, mastereq_, ntime_, total_time_, output_, storeFWD_, comm_optim_) {
   MatCreateVecs(mastereq->getRHS(), &stage, NULL);
   VecZeroEntries(stage);
 }
@@ -557,7 +570,7 @@ void ExplEuler::evolveBWD(const double tstop,const  double tstart,const  Vec x, 
 
 }
 
-ImplMidpoint::ImplMidpoint(MapParam config,MasterEq* mastereq_, int ntime_, double total_time_, LinearSolverType linsolve_type_, int linsolve_maxiter_, Output* output_, bool storeFWD_) : TimeStepper(config, mastereq_, ntime_, total_time_, output_, storeFWD_) {
+ImplMidpoint::ImplMidpoint(MapParam config,MasterEq* mastereq_, int ntime_, double total_time_, LinearSolverType linsolve_type_, int linsolve_maxiter_, Output* output_, bool storeFWD_, MPI_Comm comm_optim_) : TimeStepper(config, mastereq_, ntime_, total_time_, output_, storeFWD_, comm_optim_) {
 
   /* Create and reset the intermediate vectors */
   MatCreateVecs(mastereq->getRHS(), &stage, NULL);
@@ -767,7 +780,7 @@ int ImplMidpoint::NeumannSolve(Mat A, Vec b, Vec y, double alpha, bool transpose
 
 
 
-CompositionalImplMidpoint::CompositionalImplMidpoint(MapParam config, int order_, MasterEq* mastereq_, int ntime_, double total_time_, LinearSolverType linsolve_type_, int linsolve_maxiter_, Output* output_, bool storeFWD_): ImplMidpoint(config, mastereq_, ntime_, total_time_, linsolve_type_, linsolve_maxiter_, output_, storeFWD_) {
+CompositionalImplMidpoint::CompositionalImplMidpoint(MapParam config, int order_, MasterEq* mastereq_, int ntime_, double total_time_, LinearSolverType linsolve_type_, int linsolve_maxiter_, Output* output_, bool storeFWD_, MPI_Comm comm_optim_): ImplMidpoint(config, mastereq_, ntime_, total_time_, linsolve_type_, linsolve_maxiter_, output_, storeFWD_, comm_optim_) {
 
   order = order_;
 

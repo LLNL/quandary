@@ -79,7 +79,6 @@ class MasterEq{
     int mpirank_petsc;   // Rank of Petsc's communicator
     int mpirank_world;   // Rank of global communicator
     int nparams_max;     // Maximum number of design parameters per oscilator 
-    IS isu, isv;         // Vector strides for accessing u=Re(x), v=Im(x) 
 
     double *dRedp;
     double *dImdp;
@@ -94,6 +93,7 @@ class MasterEq{
     std::vector<int> nessential; // Number of essential levels per oscillator
     bool usematfree;  // Flag for using matrix free solver
     LindbladType lindbladtype;        // Flag that determines which lindblad terms are added. if NONE, than Schroedingers eq. is solved
+    IS isu, isv;         // Vector strides for accessing u=Re(x), v=Im(x) 
 
     std::vector<std::vector<TransferFunction*>> transfer_Hc_re; // Stores the transfer functions for each control term for each oscillator
     std::vector<std::vector<TransferFunction*>> transfer_Hc_im; // Stores the transfer functions for each control term for each oscillator
@@ -114,19 +114,17 @@ class MasterEq{
     void setTransferOnOffTimes(std::vector<double> tlist);
 
     /* Return the i-th oscillator */
-    Oscillator* getOscillator(const int i);
+    Oscillator* getOscillator(const int i) { return oscil_vec[i]; };
 
     /* Return number of oscillators */
-    int getNOscillators();
-
+    int getNOscillators(){ return noscillators;};
     /* Return dimension of vectorized system N^2 (for Lindblad solver) or N (for Schroedinger solver) */
-    int getDim();
-
+    int getDim(){ return dim; };
     /* Return dimension of essential level system: N_e */
-    int getDimEss();
-    
+    int getDimEss(){ return dim_ess; };
     /* Return dimension of system matrix rho: N */
-    int getDimRho();
+    int getDimRho(){ return dim_rho; };
+
 
     /* 
      * Uses Re and Im to build the vectorized Hamiltonian operator M = vec(-i(Hq-qH)+Lindblad). 

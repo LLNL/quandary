@@ -385,6 +385,25 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   VecCreateSeq(PETSC_COMM_SELF, ndesign, &xprev);
   VecSetFromOptions(xprev);
   VecZeroEntries(xprev);
+
+
+  /* PinT: Matrix for storing the solution operator, each column contains state for one initial conditions */
+  MatCreateDense(PETSC_COMM_WORLD, PETSC_DECIDE, PETSC_DECIDE, timestepper->mastereq->getDim(), ninit_local, NULL, &Usol_re);
+  MatCreateDense(PETSC_COMM_WORLD, PETSC_DECIDE, PETSC_DECIDE, timestepper->mastereq->getDim(), ninit_local, NULL, &Usol_im);
+  MatSetFromOptions(Usol_re);
+  MatSetFromOptions(Usol_im);
+
+  // Alloc temporary storage to gather solution matrices on last rank 
+  if (mpirank_optim == mpisize_optim-1) {
+    MatCreateDense(PETSC_COMM_WORLD, PETSC_DECIDE, PETSC_DECIDE, timestepper->mastereq->getDim(), ninit_local, NULL, &Usol_tmp_re);
+    MatCreateDense(PETSC_COMM_WORLD, PETSC_DECIDE, PETSC_DECIDE, timestepper->mastereq->getDim(), ninit_local, NULL, &Usol_tmp_im);
+    MatSetFromOptions(Usol_tmp_re);
+    MatSetFromOptions(Usol_tmp_im);
+    MatCreateDense(PETSC_COMM_WORLD, PETSC_DECIDE, PETSC_DECIDE, timestepper->mastereq->getDim(), ninit_local, NULL, &Usol_tmp2_re);
+    MatCreateDense(PETSC_COMM_WORLD, PETSC_DECIDE, PETSC_DECIDE, timestepper->mastereq->getDim(), ninit_local, NULL, &Usol_tmp2_im);
+    MatSetFromOptions(Usol_tmp2_re);
+    MatSetFromOptions(Usol_tmp2_im);
+  }
 }
 
 
@@ -397,6 +416,14 @@ OptimProblem::~OptimProblem() {
   VecDestroy(&xlower);
   VecDestroy(&xupper);
   VecDestroy(&xprev);
+  MatDestroy(&Usol_re);
+  MatDestroy(&Usol_im);
+  if (mpirank_optim == mpisize_optim) {
+    MatDestroy(&Usol_tmp_re);
+    MatDestroy(&Usol_tmp_im);
+    MatDestroy(&Usol_tmp2_re);
+    MatDestroy(&Usol_tmp2_im);
+  }
 
   for (int i = 0; i < store_finalstates.size(); i++) {
     VecDestroy(&(store_finalstates[i]));
@@ -433,13 +460,24 @@ double OptimProblem::evalF(const Vec x) {
     /* Prepare the initial condition in [rank * ninit_local, ... , (rank+1) * ninit_local - 1] */
     int iinit_global = mpirank_init * ninit_local + iinit;
     int initid = timestepper->mastereq->getRhoT0(iinit_global, ninit, initcond_type, initcond_IDs, rho_t0);
-    if (mpirank_optim == 0 && !quietmode) printf("%d: Initial condition id=%d ...\n", mpirank_init, initid);
+    if (mpirank_world == 0 && !quietmode) printf("%d: Initial condition id=%d ...\n", mpirank_init, initid);
 
     /* If gate optimiztion, compute the target state rho^target = Vrho(0)V^dagger */
     optim_target->prepare(rho_t0);
 
     /* Run forward with initial condition initid */
     finalstate = timestepper->solveODE(initid, rho_t0);
+
+    // PinT Copy into the solution matrix
+    // if (mpisize_optim > 1) {
+      Vec mycol_re, mycol_im;
+      MatDenseGetColumnVec(Usol_re, iinit_global, &mycol_re);
+      MatDenseGetColumnVec(Usol_im, iinit_global, &mycol_im);
+      VecISCopy(finalstate, timestepper->mastereq->isu, SCATTER_REVERSE, mycol_re);
+      VecISCopy(finalstate, timestepper->mastereq->isv, SCATTER_REVERSE, mycol_im);
+      MatDenseRestoreColumnVec(Usol_re, iinit_global, &mycol_re);
+      MatDenseRestoreColumnVec(Usol_im, iinit_global, &mycol_im);
+    // }
 
     /* Add to integral penalty term */
     obj_penal += obj_weights[iinit] * gamma_penalty * timestepper->penalty_integral;
@@ -466,6 +504,66 @@ double OptimProblem::evalF(const Vec x) {
 
     // printf("%d, %d: iinit obj_iinit: %f * (%1.14e + i %1.14e, Overlap=%1.14e + i %1.14e\n", mpirank_world, mpirank_init, obj_weights[iinit], obj_iinit_re, obj_iinit_im, fidelity_iinit_re, fidelity_iinit_im);
   }
+
+  MPI_Barrier(MPI_COMM_WORLD);  // TODO: Necessary? 
+  // printf("\n\n %d DONE WITH ALL THE INITIAL CONDITIONS\n", mpirank_optim);
+
+  // /* PinT: Gather Solution operators for all procossors */
+  int ncols = ninit_local;
+  int nrows = timestepper->mastereq->getDim();
+  // All ranks sends their solution matrix to last rank
+  int rank_last = mpisize_optim - 1;
+  if (mpirank_optim < rank_last) {
+
+    PetscScalar *usol_re_ptr, *usol_im_ptr;
+    MatDenseGetArray(Usol_re, &usol_re_ptr); // column-wise vectorized . TODO: contiguous? 
+    MatDenseGetArray(Usol_im, &usol_im_ptr); // column-wise vectorized . TODO: contiguous? 
+
+    // printf("%d: Sending stuff to rank %d...\n", mpirank_optim, rank_last);
+    MPI_Send(usol_re_ptr, ncols*nrows, MPI_DOUBLE, rank_last, 1, comm_optim); 
+    MPI_Send(usol_im_ptr, ncols*nrows, MPI_DOUBLE, rank_last, 2, comm_optim); 
+    // printf("%d: Done. %1.14e\n", mpirank_optim, usol_array[1]);
+    MatDenseRestoreArray(Usol_re, &usol_re_ptr);
+    MatDenseRestoreArray(Usol_im, &usol_im_ptr);
+
+  }
+      // MPI_Barrier(MPI_COMM_WORLD);
+  // Last rank gathers matrices and multiplies them
+  if (mpirank_optim == rank_last && mpisize_optim > 0) {
+    for (int inp = rank_last-1; inp>=0; inp--) {
+
+      PetscScalar *tmp_re_ptr, *tmp_im_ptr;
+      MatDenseGetArray(Usol_tmp_re, &tmp_re_ptr); 
+      MatDenseGetArray(Usol_tmp_im, &tmp_im_ptr); 
+      MPI_Status status;
+      MPI_Recv(tmp_re_ptr, ncols*nrows, MPI_DOUBLE, inp, 1, comm_optim, &status);  // Receive from inp
+      MPI_Recv(tmp_im_ptr, ncols*nrows, MPI_DOUBLE, inp, 2, comm_optim, &status);  // Receive from inp
+      // printf("%d: Done. %1.14e\n", mpirank_optim, tmp_array[1]);
+      MatDenseRestoreArray(Usol_tmp_re, &tmp_re_ptr);
+      MatDenseRestoreArray(Usol_tmp_im, &tmp_im_ptr);
+
+      // printf("%d: Receiving stuff from rank %d...\n", mpirank_optim, inp);
+      // MatView(Usol_tmp_re, NULL);
+
+      // Multiply Usol with the received one and put result into Usol.
+      MatMatMult(Usol_re, Usol_tmp_re, MAT_REUSE_MATRIX, PETSC_DEFAULT, &Usol_tmp2_re);
+      MatMatMult(Usol_im, Usol_tmp_im, MAT_REUSE_MATRIX, PETSC_DEFAULT, &Usol_tmp2_im);
+      MatAXPY(Usol_tmp2_re, -1.0, Usol_tmp2_im, SAME_NONZERO_PATTERN);   // Usol_tmp2_re holds result for new Usol_re
+      MatMatMult(Usol_im, Usol_tmp_re, MAT_REUSE_MATRIX, PETSC_DEFAULT, &Usol_tmp2_im);
+      MatMatMult(Usol_re, Usol_tmp_im, MAT_REUSE_MATRIX, PETSC_DEFAULT, &Usol_im);
+      MatAXPY(Usol_im, 1.0, Usol_tmp2_im, SAME_NONZERO_PATTERN);
+      MatCopy(Usol_tmp2_re, Usol_re, SAME_NONZERO_PATTERN);
+    }
+  }
+      MPI_Barrier(MPI_COMM_WORLD);
+  // if (mpirank_optim == rank_last) {
+  //   printf("\n %d Here is my solution operator:\n", mpirank_optim);
+  //   MatView(Usol_re, NULL);
+  //   MatView(Usol_im, NULL);
+  // }
+  // MPI_Finalize();
+  // exit(1);
+
 
   /* Sum up from initial conditions processors */
   double mypen = obj_penal;
@@ -666,6 +764,10 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
       VecAXPY(G, 1.0, timestepper->redgrad);
     } // end of initial condition loop 
   } // end of adjoint for Schroedinger
+
+  // 
+
+
 
   /* Sum up the gradient from all initial condition processors */
   PetscScalar* grad; 
