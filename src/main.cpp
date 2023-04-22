@@ -34,13 +34,11 @@ int main(int argc,char **argv)
 
   /* Parse argument line for "--quiet" to enable reduced output mode */
   bool quietmode = false;
-  if (argc > 2){
-    for (int i=2; i<argc; i++) {
-      std::string quietstring = argv[i];
-      if (quietstring.substr(2,5).compare("quiet") == 0) {
-        quietmode = true;
-        // printf("quietmode =  %d\n", quietmode);
-      }
+  for (int i=2; i<argc; i++) {
+    std::string quietstring = argv[i];
+    if (quietstring.length()>2 && quietstring.substr(2,5).compare("quiet") == 0) {
+      quietmode = true;
+      // printf("quietmode =  %d\n", quietmode);
     }
   }
 
@@ -137,36 +135,35 @@ int main(int argc,char **argv)
   MPI_Comm comm_optim, comm_init, comm_petsc;
 
   /* Get the size of communicators  */
-  // // Number of cores for optimization. Under development, set to 1 for now. 
-  // // int np_optim= config.GetIntParam("np_optim", 1);
-  // // np_optim= min(np_optim, mpisize_world); 
-  // int np_optim= 1;
-  // // Number of cores for initial condition distribution. Since this gives perfect speedup, choose maximum.
-  // int np_init = min(ninit, mpisize_world); 
-  // // Number of cores for Petsc: All the remaining ones. 
-  // int np_petsc = mpisize_world / (np_init * np_optim);
-
-  // Number of cores for initial condition distribution. Since this gives perfect speedup, choose maximum.
+  // Number of cores for initial condition distribution: Default is to choose maximum since this gives perfect speedup. Can be overwritten by --np_init
   int np_init = min(ninit, mpisize_world); 
-  // Number of petsc cores, choose one for now due to PinT development
+ // Number of petsc cores, choose 1 for now due to time-parallel development
   int np_petsc= 1;
-  // // Number of cores for parallel in time: All the remaining ones. 
+  // Number of cores for parallel in time: Default is all the remaining ones
   int np_optim = mpisize_world / (np_init * np_petsc);
 
-  // int np_optim = config.GetIntParam("np_optim", 1);
-  // int np_init  = config.GetIntParam("np_init", 1);
-  // int np_petsc = 1;
+  // Parse argument line for "--np_init <x>" and "--np_pint <y>" to overwrite default distribution over initial conditions and time-parallel integration, respectively
+  for (int i=2; i<argc; i++) {
+    std::string mystring = argv[i];
+    if (mystring.length() > 2 && mystring.substr(2,7).compare("np_init") == 0) {
+      np_init = stoi(argv[i+1]);
+    }
+    if (mystring.length() > 2 && mystring.substr(2,8).compare("np_optim") == 0) {
+      np_optim = stoi(argv[i+1]);
+    }
+  }
 
   /* Sanity check for communicator sizes */ 
-  if ( (mpisize_world % ninit != 0 && ninit % mpisize_world != 0) ||
-     (np_init > 1 && ninit != np_init) ) {
-    if (mpirank_world == 0) printf("ERROR: Number of threads (%d) must be integer multiplier of the number of initial conditions (%d), or 1!\n", mpisize_world, ninit);
+  if (mpisize_world != np_init * np_optim ) {
+    if (mpirank_world == 0) printf("ERROR: Can't split %d cores onto processor grid of %d (initial conditions) x %d (time-parallel) \n", mpisize_world, np_init, np_optim);
     MPI_Finalize();
     exit(1);
   }
-
-  // Print out color coding. 
-  // printf("%d: rank_optim %d, rank_init %d\n", mpirank_world, mpirank_optim, mpirank_init);
+  if (ninit % np_init != 0) {
+    if (mpirank_world == 0) printf("ERROR: Number of initial conditions (%d) can not be evenly distributed amongst %d cores.\n", ninit, np_init);
+    MPI_Finalize();
+    exit(1);
+  }
 
   /* Split communicators */
   // Distributed initial conditions 
@@ -187,8 +184,11 @@ int main(int argc,char **argv)
   MPI_Comm_rank(comm_petsc, &mpirank_petsc);
   MPI_Comm_size(comm_petsc, &mpisize_petsc);
 
-
   if (mpirank_world == 0 && !quietmode)  std::cout<< "Parallel distribution: " << mpisize_init << " np_init  X  " << mpisize_petsc<< " np_petsc  X " << mpisize_optim << " np_optim" << std::endl;
+
+  // Print out color coding. 
+  // printf("%d: rank_optim %d, rank_init %d\n", mpirank_world, mpirank_optim, mpirank_init);
+
 
   /* Initialize Petsc using petsc's communicator */
   PETSC_COMM_WORLD = comm_petsc;
