@@ -35,10 +35,12 @@ int main(int argc,char **argv)
   /* Parse argument line for "--quiet" to enable reduced output mode */
   bool quietmode = false;
   if (argc > 2){
-    std::string quietstring = argv[2];
-    if (quietstring.substr(2,5).compare("quiet") == 0) {
-      quietmode = true;
-      // printf("quietmode =  %d\n", quietmode);
+    for (int i=2; i<argc; i++) {
+      std::string quietstring = argv[i];
+      if (quietstring.substr(2,5).compare("quiet") == 0) {
+        quietmode = true;
+        // printf("quietmode =  %d\n", quietmode);
+      }
     }
   }
 
