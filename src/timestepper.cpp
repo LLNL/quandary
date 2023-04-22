@@ -72,8 +72,9 @@ TimeStepper::TimeStepper(MapParam config, MasterEq* mastereq_, int ntime_, doubl
   n_start = mpirank_optim * ntime_local;
   n_stop = (mpirank_optim+1) * ntime_local;
   if (mpirank_optim == mpisize_optim -1) n_stop += ntime_rest;
-  printf("\n %d: Time-paralle solve in [%d, %d)\n", mpirank_optim, n_start, n_stop);
-
+  // if (mpisize_optim > 1) {
+  //   printf("%d, %d: Time-parallel solve in [%d, %d)\n", mpirank_optim, mpirank_world, n_start, n_stop);
+  // }
 }
 
 

@@ -144,19 +144,27 @@ int main(int argc,char **argv)
   // // Number of cores for Petsc: All the remaining ones. 
   // int np_petsc = mpisize_world / (np_init * np_optim);
 
-  // /* Sanity check for communicator sizes */ 
-  // if (mpisize_world % ninit != 0 && ninit % mpisize_world != 0) {
-  //   if (mpirank_world == 0) printf("ERROR: Number of threads (%d) must be integer multiplier or divisor of the number of initial conditions (%d)!\n", mpisize_world, ninit);
-  //   exit(1);
-  // }
-
-  // int np_optim= config.GetIntParam("np_optim", 1);
-  // int np_petsc= config.GetIntParam("np_petsc", 1);
-  // int np_init = config.GetIntParam("np_init", 1);
-  int np_init = 1;
+  // Number of cores for initial condition distribution. Since this gives perfect speedup, choose maximum.
+  int np_init = min(ninit, mpisize_world); 
+  // Number of petsc cores, choose one for now due to PinT development
   int np_petsc= 1;
-  int np_optim = mpisize_world;
+  // // Number of cores for parallel in time: All the remaining ones. 
+  int np_optim = mpisize_world / (np_init * np_petsc);
 
+  // int np_optim = config.GetIntParam("np_optim", 1);
+  // int np_init  = config.GetIntParam("np_init", 1);
+  // int np_petsc = 1;
+
+  /* Sanity check for communicator sizes */ 
+  if ( (mpisize_world % ninit != 0 && ninit % mpisize_world != 0) ||
+     (np_init > 1 && ninit != np_init) ) {
+    if (mpirank_world == 0) printf("ERROR: Number of threads (%d) must be integer multiplier of the number of initial conditions (%d), or 1!\n", mpisize_world, ninit);
+    MPI_Finalize();
+    exit(1);
+  }
+
+  // Print out color coding. 
+  // printf("%d: rank_optim %d, rank_init %d\n", mpirank_world, mpirank_optim, mpirank_init);
 
   /* Split communicators */
   // Distributed initial conditions 
@@ -176,6 +184,7 @@ int main(int argc,char **argv)
   MPI_Comm_split(MPI_COMM_WORLD, color_petsc, mpirank_world, &comm_petsc);
   MPI_Comm_rank(comm_petsc, &mpirank_petsc);
   MPI_Comm_size(comm_petsc, &mpisize_petsc);
+
 
   if (mpirank_world == 0 && !quietmode)  std::cout<< "Parallel distribution: " << mpisize_init << " np_init  X  " << mpisize_petsc<< " np_petsc  X " << mpisize_optim << " np_optim" << std::endl;
 
