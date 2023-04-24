@@ -34,13 +34,13 @@ This project relies on Petsc [https://petsc.org/release/] to handle (parallel) l
         * `make`
  
 ###  Petsc on LLNL's LC
-Petc is already installed on LLNL LC machines, see here [https://hpc.llnl.gov/software/mathematical-software/petsc]. To use it, first load the following modules:
-* `module load gcc/8.1.0`
-* `module load mvapich2/2.3`
-
-Then set the `PETSC_DIR` variable to point to the Petsc folder and add it to the `LD_LIBRARY_PATH`:
-* `export PETSC_DIR=/usr/tce/packages/petsc/petsc-3.12.4-mvapich2-2.3-gcc-4.8-redhat`
+Petc is already installed on LLNL LC machines, see here [https://hpc.llnl.gov/software/mathematical-software/petsc]. It is located at '/usr/tce/packages/petsc/<version>'. To use it, export the 'PETSC_DIR' variable to point to the Petsc folder, and add the 'lib' subfolder to the 'LD_LIBRARY_PATH` variable: 
+* `export PETSC_DIR=/usr/tce/packages/petsc/<version>` (check the folder name for version number)
 * `export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$PETSC_DIR/lib`
+The 'PETSC_ARCH' variable is not needed in this case. 
+
+Depending on your setup, you might need to load some additional modules, such as openmpi, e.g. as so:
+* `module load openmpi`
 
 ## Installation
 Adapt the beginning of the 'Makefile' to set the path to your Petsc (and possibly Slepsc, python path, and fitpackpp) installation. Then,
