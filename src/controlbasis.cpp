@@ -91,6 +91,88 @@ double BSpline2nd::basisfunction(int id, double t){
     return val;
 }
 
+
+BSpline2ndAmplitude::BSpline2ndAmplitude(int nsplines_, double scaling_, double t0, double T) : ControlBasis(nsplines_ + 1, t0, T){
+    nsplines = nsplines_;
+    scaling = scaling_;
+    controltype = ControlType::BSPLINEAMP;
+
+
+    dtknot = (T-t0) / (double)(nsplines - 2);
+	width = 3.0*dtknot;
+
+    /* Compute center points of the splines */
+    tcenter = new double[nsplines];
+    for (int i = 0; i < nsplines; i++){
+        tcenter[i] = t0 + dtknot * ( (i+1) - 1.5 );
+    }
+}
+
+BSpline2ndAmplitude::~BSpline2ndAmplitude(){
+    delete [] tcenter;
+}
+
+void BSpline2ndAmplitude::enforceBoundary(double* x, int carrier_id){
+    // set first and last two splines to zero so that spline starts and ends at zero 
+    for (int l=0; l<nsplines; l++) {
+        if (l<=1 || l >= nsplines- 2) {
+            x[skip + carrier_id*(nsplines+1) + l] = 0.0;
+        }
+    }
+}
+
+void BSpline2ndAmplitude::evaluate(const double t, const std::vector<double>& coeff, int carrier_freq_id, double* Bl1_ptr, double* Bl2_ptr){
+
+    /* Sum over basis function for amplitudes */
+    double ampsum = 0.0;
+    for (int l=0; l<nsplines; l++) {
+        double Blt = basisfunction(l,t);
+        double alpha1 = coeff[skip + carrier_freq_id*(nsplines+1) + l];
+        ampsum += alpha1 * Blt;
+    }
+    *Bl1_ptr = ampsum;
+    // last one is for the phase
+    *Bl2_ptr = scaling*coeff[skip + carrier_freq_id*(nsplines+1) + nsplines];  // last one is the phase
+}
+
+void BSpline2ndAmplitude::derivative(const double t, const std::vector<double>& coeff, double* coeff_diff, const double valbar1, const double valbar2, int carrier_freq_id) {
+    // valbar1 holds the current carrierfrequency. 
+    double cos_omt = cos(valbar1*t + scaling * coeff[skip + carrier_freq_id*(nsplines+1) + nsplines]);
+    double sin_omt = sin(valbar1*t + scaling * coeff[skip + carrier_freq_id*(nsplines+1) + nsplines]);
+
+    /* Iterate over basis function */
+    double ampsum = 0.0;
+    for (int l=0; l<nsplines; l++) {
+        double Blt = basisfunction(l, t); 
+        double alpha1 = coeff[skip + carrier_freq_id*(nsplines+1) + l];
+        ampsum += alpha1 * Blt;
+        // Update derivative for the amplitude splines
+        // valbar2 holds the flag whether this is p or q
+        if (valbar2 > 0.0) coeff_diff[skip + carrier_freq_id*(nsplines+1) + l] += Blt * cos_omt;
+        else               coeff_diff[skip + carrier_freq_id*(nsplines+1) + l] += Blt * sin_omt;
+    }
+    // Update derivate for phase
+    if (valbar2 > 0.0) coeff_diff[skip + carrier_freq_id*(nsplines+1) + nsplines] += -ampsum * scaling * sin_omt;
+    else               coeff_diff[skip + carrier_freq_id*(nsplines+1) + nsplines] +=  ampsum * scaling * cos_omt;
+}
+
+double BSpline2ndAmplitude::basisfunction(int id, double t){
+
+    /* compute scaled time tau = (t-tcenter[k])  */
+    double tau = (t - tcenter[id]) / width;
+
+    /* Return 0 if tau not in local support */
+    if ( tau < -1./2. || tau >= 1./2. ) return 0.0;
+
+    /* Evaluate basis function */
+    double val = 0.0;
+    if       (-1./2. <= tau && tau < -1./6.) val = 9./8. + 9./2. * tau + 9./2. * pow(tau,2);
+    else if  (-1./6. <= tau && tau <  1./6.) val = 3./4. - 9. * pow(tau,2);
+    else if  ( 1./6. <= tau && tau <  1./2.) val = 9./8. - 9./2. * tau + 9./2. * pow(tau,2);
+
+    return val;
+}
+
 Step::Step(double step_amp1_, double step_amp2_, double t0, double t1, double tramp_) : ControlBasis(1, t0, t1) {
     step_amp1 = step_amp1_;
     step_amp2 = step_amp2_;
