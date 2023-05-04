@@ -123,8 +123,11 @@ Oscillator::Oscillator(MapParam config, int id, std::vector<int> nlevels_all_, s
         for (int i=0; i<basisfunctions[seg]->getNparams(); i++){
           params.push_back(initval);
         }
-        // if BSPLINEAMP: Two values should be provided: First one for the amplitude (set above), second one for the phase (overwrite here) 
-        if (basisfunctions[seg]->getType() == ControlType::BSPLINEAMP) params[params.size()-1] = atof(controlinitializations[idini+2].c_str());
+        // if BSPLINEAMP: Two values can be provided: First one for the amplitude (set above), second one for the phase which otherwise is set to 0.0 (overwrite here)
+        if (basisfunctions[seg]->getType() == ControlType::BSPLINEAMP) {
+          if (controlinitializations.size() > idini+2) params[params.size()-1] = atof(controlinitializations[idini+2].c_str());
+          else params[params.size()-1] = 0.0;
+        }
       }
     } else if (controlinitializations[idini].compare("random") == 0) {
 
@@ -145,8 +148,11 @@ Oscillator::Oscillator(MapParam config, int id, std::vector<int> nlevels_all_, s
           }
           params.push_back(initval);
         }
-        // if BSPLINEAMP: Two values should be provided: First one for the amplitude (set above), second one for the phase (overwrite here) 
-        if (basisfunctions[seg]->getType() == ControlType::BSPLINEAMP) params[params.size()-1] = atof(controlinitializations[idini+2].c_str());
+        // if BSPLINEAMP: Two values can be provided: First one for the amplitude (set above), second one for the phase which otherwise is set to 0.0 (overwrite here)
+        if (basisfunctions[seg]->getType() == ControlType::BSPLINEAMP) {
+          if (controlinitializations.size() > idini+2) params[params.size()-1] = atof(controlinitializations[idini+2].c_str());
+          else params[params.size()-1] = 0.0;
+        }
       }
     } else {
       for (int i=0; i<basisfunctions[seg]->getNparams() * carrier_freq.size(); i++){
