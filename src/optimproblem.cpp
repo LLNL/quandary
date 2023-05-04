@@ -346,8 +346,19 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
         boundval = boundval / ( sqrt(2) * timestepper->mastereq->getOscillator(iosc)->getNCarrierfrequencies()) ;
       for (int i=0; i<timestepper->mastereq->getOscillator(iosc)->getNSegParams(iseg); i++){
         VecSetValue(xupper, col, boundval, INSERT_VALUES);
-        VecSetValue(xlower, col, -1. * boundval, INSERT_VALUES);
+        // If spline amplitude: Use only positive values
+        if (timestepper->mastereq->getOscillator(iosc)->getControlType() == ControlType::BSPLINEAMP) {
+          VecSetValue(xlower, col, 0.0, INSERT_VALUES);
+        } else {
+          VecSetValue(xlower, col, -1. * boundval, INSERT_VALUES);
+        }
         col++;
+      }
+      // Disable bound for the phase if this is spline_amplitude control
+      if (timestepper->mastereq->getOscillator(iosc)->getControlType() == ControlType::BSPLINEAMP) {
+        boundval = 1e+10;
+        VecSetValue(xupper, col-1, boundval, INSERT_VALUES);
+        VecSetValue(xlower, col-1, -1.*boundval, INSERT_VALUES);
       }
     }
   }
