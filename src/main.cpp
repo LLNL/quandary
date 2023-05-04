@@ -344,12 +344,7 @@ int main(int argc,char **argv)
   /* My time stepper */
   bool storeFWD = false;
   if (runtype == RunType::GRADIENT || runtype == RunType::OPTIMIZATION) storeFWD = true;
-#if TEST_FD_GRAD
-  storeFWD = true;
-#endif
-#if TEST_FD_HESS
-  storeFWD = true;
-#endif
+
   std::string timesteppertypestr = config.GetStrParam("timestepper", "IMR");
   TimeStepper* mytimestepper;
   if (timesteppertypestr.compare("IMR")==0) mytimestepper = new ImplMidpoint(mastereq, ntime, total_time, linsolvetype, linsolve_maxiter, output, storeFWD);
