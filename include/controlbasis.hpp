@@ -31,6 +31,8 @@ class ControlBasis {
         ControlType getType() {return controltype;};
         void setSkip(int skip_) {skip = skip_;};
 
+        virtual int getNSplines() {return 0;};
+
         /* Default: do nothing. For some control parameterizations, this can be used to enforce that the controls start and end at zero. E.g. the Splines will overwrite the parameters x of the first and last two splines by zero, so that the splines start and end at zero. */
         virtual void enforceBoundary(double* x, int carrier_id) {};
 
@@ -60,6 +62,7 @@ class BSpline2nd : public ControlBasis {
         BSpline2nd(int nsplines, double tstart, double tstop);
         ~BSpline2nd();
 
+        int getNSplines() {return nsplines;};
 
         /* Sets the first and last two spline coefficients in x to zero, so that the controls start and end at zero */
         void enforceBoundary(double* x, int carrier_id);
@@ -92,6 +95,7 @@ class BSpline2ndAmplitude : public ControlBasis {
         BSpline2ndAmplitude(int nsplines, double scaling, double tstart, double tstop);
         ~BSpline2ndAmplitude();
 
+        int getNSplines() {return nsplines;};
 
         /* Sets the first and last two spline coefficients in x to zero, so that the controls start and end at zero */
         void enforceBoundary(double* x, int carrier_id);

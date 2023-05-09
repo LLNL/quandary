@@ -63,6 +63,7 @@ class Oscillator {
     int getNSegments() {return basisfunctions.size(); };
     int getNCarrierfrequencies() {return carrier_freq.size(); };
     ControlType getControlType() {return basisfunctions[0]->getType(); };
+    int getNSplines() {return basisfunctions[0]->getNSplines();};
 
     /* Return the number of parameters for the k-th segment */
     int getNSegParams(int segmentID);

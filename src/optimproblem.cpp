@@ -342,24 +342,25 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
       if (bound_str.size() <= iseg) boundval =  atof(bound_str[bound_str.size()-1].c_str());
       else boundval = atof(bound_str[iseg].c_str());
       // If spline controls: Scale bounds by 1/sqrt(2) * (number of carrier waves) */
-      if (timestepper->mastereq->getOscillator(iosc)->getNParams()>1)
-        boundval = boundval / ( sqrt(2) * timestepper->mastereq->getOscillator(iosc)->getNCarrierfrequencies()) ;
+      if (timestepper->mastereq->getOscillator(iosc)->getControlType() == ControlType::BSPLINE)
+        boundval = boundval / (sqrt(2) * timestepper->mastereq->getOscillator(iosc)->getNCarrierfrequencies());
+      // If spline for amplitude only: Scale bounds by 1/sqrt(2) * (number of carrier waves) */
+      else if (timestepper->mastereq->getOscillator(iosc)->getControlType() == ControlType::BSPLINEAMP)
+        boundval = boundval / timestepper->mastereq->getOscillator(iosc)->getNCarrierfrequencies();
       for (int i=0; i<timestepper->mastereq->getOscillator(iosc)->getNSegParams(iseg); i++){
-        VecSetValue(xupper, col, boundval, INSERT_VALUES);
-        // If spline amplitude: Use only positive values
-        if (timestepper->mastereq->getOscillator(iosc)->getControlType() == ControlType::BSPLINEAMP) {
-          VecSetValue(xlower, col, 0.0, INSERT_VALUES);
-        } else {
-          VecSetValue(xlower, col, -1. * boundval, INSERT_VALUES);
-        }
-        col++;
+        VecSetValue(xupper, col + i, boundval, INSERT_VALUES);
+        VecSetValue(xlower, col + i, -1. * boundval, INSERT_VALUES);
       }
-      // Disable bound for the phase if this is spline_amplitude control
+      // Disable bound for phase if this is spline_amplitude control
       if (timestepper->mastereq->getOscillator(iosc)->getControlType() == ControlType::BSPLINEAMP) {
-        boundval = 1e+10;
-        VecSetValue(xupper, col-1, boundval, INSERT_VALUES);
-        VecSetValue(xlower, col-1, -1.*boundval, INSERT_VALUES);
+        for (int f = 0; f < timestepper->mastereq->getOscillator(iosc)->getNCarrierfrequencies(); f++){
+          int nsplines = timestepper->mastereq->getOscillator(iosc)->getNSplines();
+          boundval = 1e+10;
+          VecSetValue(xupper, col + f*(nsplines+1) + nsplines, boundval, INSERT_VALUES);
+          VecSetValue(xlower, col + f*(nsplines+1) + nsplines, -1.*boundval, INSERT_VALUES);
+        }
       }
+      col = col + timestepper->mastereq->getOscillator(iosc)->getNSegParams(iseg);
     }
   }
   VecAssemblyBegin(xlower); VecAssemblyEnd(xlower);
