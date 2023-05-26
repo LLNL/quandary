@@ -1,8 +1,8 @@
 import os
 import numpy as np
-from QuandaryPy import preprocess
-from QuandaryPy import init_control
-from QuandaryPy import quandary
+from quandary import preprocess
+from quandary import init_control
+from quandary import interface
 
 ## One qubit test case ##
 
@@ -36,7 +36,7 @@ maxctrl_MHz = [5.0]  # Will be divided by Nfreq internally
 amp_frac = 0.9
 initctrl_MHz = [amp_frac * maxctrl_MHz[i] for i in range(len(maxctrl_MHz))]
 
-# Directory for running quandary 
+# Directory for running interface 
 datadir = "."
 os.makedirs(datadir, exist_ok=True)
 
@@ -104,7 +104,7 @@ maxiter = 100
 
 # Write Quandary configuration file
 runtype = "simulation"
-config_filename = quandary.write_config(Ne=Ne, Ng=Ng, T=T, nsteps=nsteps, freq01=freq01, rotfreq=rotfreq, selfkerr=selfkerr, crosskerr=crosskerr, Jkl=Jkl, nsplines=nsplines, carrierfreq=carrierfreq, tol_infidelity=tol_infidelity, tol_costfunc=tol_costfunc, maxiter=maxiter, maxctrl_MHz=maxctrl_MHz, gamma_tik0=gamma_tik0, gamma_energy=gamma_energy, costfunction=costfunction, initialcondition=initialcondition, T1=T1, T2=T2, runtype=runtype, initialpcof_filename=initialpcof_filename, gatefilename=gatefilename)
+config_filename = interface.write_config(Ne=Ne, Ng=Ng, T=T, nsteps=nsteps, freq01=freq01, rotfreq=rotfreq, selfkerr=selfkerr, crosskerr=crosskerr, Jkl=Jkl, nsplines=nsplines, carrierfreq=carrierfreq, tol_infidelity=tol_infidelity, tol_costfunc=tol_costfunc, maxiter=maxiter, maxctrl_MHz=maxctrl_MHz, gamma_tik0=gamma_tik0, gamma_energy=gamma_energy, costfunction=costfunction, initialcondition=initialcondition, T1=T1, T2=T2, runtype=runtype, initialpcof_filename=initialpcof_filename, gatefilename=gatefilename)
 # other keyword arguments defaults:
 # print_frequency_iter = 1
 
@@ -112,18 +112,18 @@ config_filename = quandary.write_config(Ne=Ne, Ng=Ng, T=T, nsteps=nsteps, freq01
 # Call Quandary
 quandary_exec="./main"
 ncores = np.prod(Ne)
-quandary.execute(runtype=runtype, ncores=ncores, quandary_exec=quandary_exec, config_filename=config_filename)
+interface.execute(runtype=runtype, ncores=ncores, quandary_exec=quandary_exec, config_filename=config_filename)
 
 
-popt, infidelity, optim_hist = quandary.get_results(datadir)
+popt, infidelity, optim_hist = interface.get_results(datadir)
 print(f"{infidelity = }")
 
 # TODO:
 #   * Ubasis set up as matrix or specify via string 
-#   * Get results from quandary
+#   * Get results from interface
 #   * Gather configuration in a dictionary (or other struct) that contains all defaults and allows for changes. Pass that dictionary around
 #   * Test init_control loading from file
-#   * CHECK quandary branch to add dpdm!
+#   * CHECK interface branch to add dpdm!
 
 # Note: 
 #   * leakage_weights = [0.0, 0.0] is disabled.
