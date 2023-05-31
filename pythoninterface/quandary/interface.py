@@ -1,12 +1,16 @@
-import os
 from subprocess import run, PIPE
 import numpy as np
 
 
-def write_config(*, Ne=[2], Ng=[2], T=20.0, nsteps=100, freq01=[5.12], rotfreq=[5.12], selfkerr=[0.34], crosskerr=[], Jkl=[], nsplines=5, carrierfreq=[0.34], T1=[], T2=[], gatefilename="gatefile.dat", initialpcof_filename="params.dat", runtype="optimization",maxctrl_MHz=None, maxiter=1000,tol_infidelity=1e-3, tol_costfunc=1e-3, gamma_tik0=1e-4, gamma_dpdm=0.0, gamma_energy=0.0, costfunction="Jtrace", initialcondition="basis", datadir=".", configfilename="config.cfg", print_frequency_iter=1):
+def write_config(*, Ne, Ng, T, nsteps, freq01, rotfreq, selfkerr, crosskerr=[], Jkl=[], nsplines=5, carrierfreq, T1=[], T2=[], gatefilename="gatefile.dat", runtype="optimization",maxctrl_MHz=None, initctrl_MHz=None, randomize_init_ctrl=True, maxiter=1000,tol_infidelity=1e-3, tol_costfunc=1e-3, gamma_tik0=1e-4, gamma_dpdm=0.0, gamma_energy=0.0, costfunction="Jtrace", initialcondition="basis", datadir=".", configfilename="config.cfg", print_frequency_iter=1):
 
     if maxctrl_MHz is None:
         maxctrl_MHz = 1e+12*np.ones(len(Ne))
+
+    maxamp = np.zeros(len(Ne))
+    if initctrl_MHz is not None:
+        for q in range(len(Ne)):
+            maxamp[q] = initctrl_MHz[q] / np.sqrt(2) / len(carrierfreq[q])
 
     Nt = [Ne[i] + Ng[i] for i in range(len(Ng))]
     mystring = "nlevels = " + str(Nt)[1:-1] + "\n"
@@ -42,7 +46,7 @@ def write_config(*, Ne=[2], Ng=[2], T=20.0, nsteps=100, freq01=[5.12], rotfreq=[
     mystring += "initialcondition = " + str(initialcondition) + "\n"
     for iosc in range(len(Ne)):
         mystring += "control_segments" + str(iosc) + " = spline, " + str(nsplines) + "\n"
-        mystring += "control_initialization" + str(iosc) + " = file, ./" + initialpcof_filename + "\n"
+        mystring += "control_initialization" + str(iosc) + " = " + ("random, " if randomize_init_ctrl else "constant, ") + str(maxamp[iosc]) + "\n"
         mystring += "control_bounds" + str(iosc) + " = " + str(maxctrl_MHz[iosc]*2.0*np.pi/1000.0) + "\n"
         mystring += "carrier_frequency" + str(iosc) + " = "
         omi = carrierfreq[iosc]

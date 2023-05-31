@@ -45,7 +45,7 @@ def get_resonances(Ne, Hsys, Hc_re, Hc_im, *, cw_amp_thres=6e-2, cw_prox_thres=1
     resonances = []
     speed = []
     for q in range(nqubits):
-        Hctrl_ad = Hc_re[q] - Hc_im[q]   # SG: WHY? #TODO
+        Hctrl_ad = Hc_re[q] - Hc_im[q]   # divide by 2. Adjust the cw_amp_thres. 
         Hctrl_ad_trans = Utrans.T @ Hctrl_ad @ Utrans
 
         resonances_a = []
