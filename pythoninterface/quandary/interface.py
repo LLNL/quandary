@@ -1,8 +1,10 @@
-from subprocess import run, PIPE
+import os
+import shutil
 import numpy as np
+from subprocess import run, PIPE
 
 
-def write_config(*, Ne, Ng, T, nsteps, freq01, rotfreq, selfkerr, crosskerr=[], Jkl=[], nsplines=5, carrierfreq, T1=[], T2=[], gatefilename="gatefile.dat", runtype="optimization",maxctrl_MHz=None, initctrl_MHz=None, randomize_init_ctrl=True, maxiter=1000,tol_infidelity=1e-3, tol_costfunc=1e-3, gamma_tik0=1e-4, gamma_dpdm=0.0, gamma_energy=0.0, costfunction="Jtrace", initialcondition="basis", datadir=".", configfilename="config.cfg", print_frequency_iter=1):
+def write_config(*, Ne, Ng, T, nsteps, freq01, rotfreq, selfkerr, crosskerr=[], Jkl=[], nsplines=5, carrierfreq, T1=[], T2=[], gatefilename="./gatefile.dat", runtype="optimization",maxctrl_MHz=None, initctrl_MHz=None, randomize_init_ctrl=True, maxiter=1000,tol_infidelity=1e-3, tol_costfunc=1e-3, gamma_tik0=1e-4, gamma_dpdm=0.0, gamma_energy=0.0, costfunction="Jtrace", initialcondition="basis", datadir=".", configfilename="config.cfg", print_frequency_iter=1):
 
     if maxctrl_MHz is None:
         maxctrl_MHz = 1e+12*np.ones(len(Ne))
@@ -68,7 +70,7 @@ def write_config(*, Ne, Ng, T, nsteps, freq01, rotfreq, selfkerr, crosskerr=[], 
     ninitscale = np.prod(Ne)
     mystring += "optim_regul_dpdm= " + str(gamma_dpdm) + "\n"
     mystring += "optim_penalty_energy= " + str(gamma_energy) + "\n"
-    mystring += "datadir= " + datadir + "/data_out\n"
+    mystring += "datadir= ./data_out\n"
     for iosc in range(len(Ne)):
         mystring += "output" + str(iosc) + "=expectedEnergy, population, fullstate\n"
     mystring += "output_frequency = " + str(nsteps) + "\n"
@@ -81,22 +83,28 @@ def write_config(*, Ne, Ng, T, nsteps, freq01, rotfreq, selfkerr, crosskerr=[], 
     mystring += "linearsolver_type = gmres\n"
     mystring += "linearsolver_maxiter = 20\n"
 
+    # Write the file
     outpath = datadir+"/"+configfilename
     with open(outpath, "w") as file:
         file.write(mystring)
-
-    print("Quandary config file:", outpath)
+    print("Quandary config written to:", outpath)
 
     return configfilename
 
-def execute(*, runtype="simulation", ncores=1, quandary_exec="./main", config_filename="config.cfg"):
+def execute(*, runtype="simulation", ncores=1, quandary_exec="./main", config_filename="config.cfg", datadir="."):
+
+    # Enter data directory
+    dir_org = os.getcwd() 
+    os.chdir(datadir)
+
+    # Update executable path
+    quandary_exec = dir_org + "/" + quandary_exec
 
     # Set up the run command
     if ncores > 1:
         runcommand = f"mpirun -np {ncores} {quandary_exec} {config_filename} --quiet"
     else:
         runcommand = f"{quandary_exec} {config_filename} --quiet"
-
     # # If not optimizing: Pipe std output to file rather than screen
     # if runtype == "simulation" or runtype == "gradient":
     #     with open(os.path.join(datadir, "out.log"), "w") as stdout_file, \
@@ -107,7 +115,12 @@ def execute(*, runtype="simulation", ncores=1, quandary_exec="./main", config_fi
         exec = run(runcommand, shell=True, stderr=stderr_file)
 
     # Run Quandary
-    exec.check_returncode()
+    err = exec.check_returncode()
+
+    # Return to previous directory
+    os.chdir(dir_org)
+
+    return err
 
 def get_results(datadir="./"):
     # TODO: Output directory of quandary run. 
