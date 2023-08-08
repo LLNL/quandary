@@ -67,6 +67,7 @@ popt, infidelity, optim_hist = quandary.run(Ne, Ng, freq01, selfkerr, crosskerr,
 # TODO:
 #   * Initial conditions passed via string to quandary config
 #   * Don't set up pcof0, use Quandaries initialization instead
+#   * Set up target gate in *essential levels*, rather than full dimension as above. This requires a change in Quandary: Currently, if the target gate is read from a file, it needs to be the 'final' target gate (full dimensions, potentially rotated).
 #   * Test init_control loading from file
 #   * All function call arguments should be keyword only.  
 #   * Add dpdm regularization. Is that in the 'juqbox_interface' branch?
