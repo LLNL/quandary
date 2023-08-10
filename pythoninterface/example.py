@@ -50,13 +50,14 @@ maxiter = 100 		# Maximum number of optimization iterations
 
 # Quandary run options
 runtype = "simulation"  # "simulation", or "gradient", or "optimization"
+quandary_exec="/Users/guenther5/Numerics/quandary/main"
 # ncores = np.prod(Ne)  # Number of cores 
 ncores = 1
-datadir = "./quandary_data"  # Compute and output directory 
-verbose = True 
+datadir = "./run_dir"  # Compute and output directory 
+verbose = False
 
 # Execute quandary
-popt, infidelity, optim_hist = pulse_gen(Ne, Ng, freq01, selfkerr, crosskerr, Jkl, rotfreq, maxctrl_MHz, T, initctrl_MHz, rand_seed, randomize_init_ctrl, unitary,  dtau=dtau, Pmin=Pmin, datadir=datadir, tol_infidelity=tol_infidelity, tol_costfunc=tol_costfunc, maxiter=maxiter, gamma_tik0=gamma_tik0, gamma_energy=gamma_energy, costfunction=costfunction, initialcondition=initialcondition, T1=T1, T2=T2, runtype=runtype, ncores=ncores, verbose=True)
+popt, infidelity, optim_hist = pulse_gen(Ne, Ng, freq01, selfkerr, crosskerr, Jkl, rotfreq, maxctrl_MHz, T, initctrl_MHz, rand_seed, randomize_init_ctrl, unitary,  dtau=dtau, Pmin=Pmin, datadir=datadir, tol_infidelity=tol_infidelity, tol_costfunc=tol_costfunc, maxiter=maxiter, gamma_tik0=gamma_tik0, gamma_energy=gamma_energy, costfunction=costfunction, initialcondition=initialcondition, T1=T1, T2=T2, runtype=runtype, quandary_exec=quandary_exec, ncores=ncores, verbose=verbose)
 
 
-print(f"{infidelity}")
+print(f"Infidelity = {infidelity}")

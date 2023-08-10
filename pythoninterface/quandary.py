@@ -5,7 +5,7 @@ from subprocess import run, PIPE, Popen
 
 
 # Main interface function to create a pulse with Quandary. 
-def pulse_gen(Ne, Ng, freq01, selfkerr, crosskerr, Jkl, rotfreq, maxctrl_MHz, T, initctrl_MHz, rand_seed, randomize_init_ctrl, targetgate, *, dtau=3.33, Pmin=40, cw_amp_thres=6e-2, cw_prox_thres=1e-3, datadir=".", tol_infidelity=1e-3, tol_costfunc=1e-3, maxiter=100, gamma_tik0=1e-4, gamma_energy=1e-2, costfunction="Jtrace", initialcondition="basis", T1=None, T2=None, runtype="simulation", ncores=0, print_frequency_iter=1, verbose=False):
+def pulse_gen(Ne, Ng, freq01, selfkerr, crosskerr, Jkl, rotfreq, maxctrl_MHz, T, initctrl_MHz, rand_seed, randomize_init_ctrl, targetgate, *, dtau=3.33, Pmin=40, cw_amp_thres=6e-2, cw_prox_thres=1e-3, datadir=".", tol_infidelity=1e-3, tol_costfunc=1e-3, maxiter=100, gamma_tik0=1e-4, gamma_energy=1e-2, costfunction="Jtrace", initialcondition="basis", T1=None, T2=None, runtype="simulation", quandary_exec="/absolute/path/to/quandary/main", ncores=1, print_frequency_iter=1, verbose=False):
 
     # Create quandary data directory
     os.makedirs(datadir, exist_ok=True)
@@ -38,11 +38,11 @@ def pulse_gen(Ne, Ng, freq01, selfkerr, crosskerr, Jkl, rotfreq, maxctrl_MHz, T,
 
     # Write Quandary configuration file
     nsplines = int(np.max([np.ceil(T/dtau + 2), 5])) # 10
-    config_filename = write_config(Ne=Ne, Ng=Ng, T=T, nsteps=nsteps, freq01=freq01, rotfreq=rotfreq, selfkerr=selfkerr, crosskerr=crosskerr, Jkl=Jkl, nsplines=nsplines, carrierfreq=carrierfreq, tol_infidelity=tol_infidelity, tol_costfunc=tol_costfunc, maxiter=maxiter, maxctrl_MHz=maxctrl_MHz, initctrl_MHz=initctrl_MHz, randomize_init_ctrl=randomize_init_ctrl, gamma_tik0=gamma_tik0, gamma_energy=gamma_energy, costfunction=costfunction, initialcondition=initialcondition, T1=T1, T2=T2, runtype=runtype, gatefilename="./targetgate.dat", print_frequency_iter=print_frequency_iter, datadir=datadir)
+    config_filename = write_config(Ne=Ne, Ng=Ng, T=T, nsteps=nsteps, freq01=freq01, rotfreq=rotfreq, selfkerr=selfkerr, crosskerr=crosskerr, Jkl=Jkl, nsplines=nsplines, carrierfreq=carrierfreq, tol_infidelity=tol_infidelity, tol_costfunc=tol_costfunc, maxiter=maxiter, maxctrl_MHz=maxctrl_MHz, initctrl_MHz=initctrl_MHz, randomize_init_ctrl=randomize_init_ctrl, gamma_tik0=gamma_tik0, gamma_energy=gamma_energy, costfunction=costfunction, initialcondition=initialcondition, T1=T1, T2=T2, runtype=runtype, gatefilename="./targetgate.dat", print_frequency_iter=print_frequency_iter, datadir=datadir, verbose=verbose)
 
 
     # Call Quandary
-    err = execute(runtype=runtype, ncores=ncores, config_filename=config_filename, datadir=datadir)
+    err = execute(runtype=runtype, ncores=ncores, config_filename=config_filename, datadir=datadir, quandary_exec=quandary_exec, verbose=verbose)
 
     # Get results and return
     popt, infidelity, optim_hist = get_results(datadir)
@@ -51,7 +51,7 @@ def pulse_gen(Ne, Ng, freq01, selfkerr, crosskerr, Jkl, rotfreq, maxctrl_MHz, T,
 
 
 
-def execute(*, runtype="simulation", ncores=1, config_filename="config.cfg", datadir="."):
+def execute(*, runtype="simulation", ncores=1, config_filename="config.cfg", datadir=".", quandary_exec="/absolute/path/to/quandary/main", verbose=False):
 
     
     # result = run(["pwd"], shell=True, capture_output=True, text=True)
@@ -62,28 +62,50 @@ def execute(*, runtype="simulation", ncores=1, config_filename="config.cfg", dat
     dir_org = os.getcwd() 
     os.chdir(datadir)
     
-    result = run(["pwd"], shell=True, capture_output=True, text=True)
-    print("Running Quandary in directory ", result.stdout)
-    print("...\n")
+    # Set up the run command
+    runcommand = f"{quandary_exec} {config_filename}"
+    if not verbose:
+        runcommand += " --quiet"
+    if ncores > 1:
+        # prefix = f"mpirun -np {ncores}"
+        runcommand = f"mpirun -np {ncores} " + runcommand
+
+    if verbose:
+        result = run(["pwd"], shell=True, capture_output=True, text=True)
+        print("Running Quandary in directory ", result.stdout)
+        print("Executing '", runcommand, "'")
+        print("...\n")
+
 
     # Execute Quandary
-    p = Popen(r"C:/cygwin64/bin/bash.exe", stdin=PIPE, stdout=PIPE, stderr=PIPE)
-    p.stdin.write(b"/cygdrive/c/Users/scada-125/quandary/main.exe config.cfg") 
-    p.stdin.close()
+    # Pipe std output to file rather than screen
+    # with open(os.path.join(datadir, "out.log"), "w") as stdout_file, \
+    #      open(os.path.join(datadir, "err.log"), "w") as stderr_file:
+    #         exec = run(runcommand, shell=True, stdout=stdout_file, stderr=stderr_file)
+    exec = run(runcommand, shell=True)
 
-    # # Print stdout and stderr
-    print(p.stdout.read())
-    # print(p.stderr.read())
+    # Check return code
+    err = exec.check_returncode()
+
+    # # Execute Quandary on Windows through Cygwin
+    # p = Popen(r"C:/cygwin64/bin/bash.exe", stdin=PIPE, stdout=PIPE, stderr=PIPE)  
+    # p.stdin.write(b"/cygdrive/c/Users/scada-125/quandary/main.exe config.cfg") 
+    # p.stdin.close()
+    # # # Print stdout and stderr
+    # if verbose:
+    #     print(p.stdout.read())
+    #     print(p.stderr.read())
 
     # Return to previous directory
     os.chdir(dir_org)
     
-    print("DONE. \n")
+    if verbose: 
+        print("DONE. \n")
 
     return 1
 
 
-def write_config(*, Ne, Ng, T, nsteps, freq01, rotfreq, selfkerr, crosskerr=[], Jkl=[], nsplines=5, carrierfreq, T1=[], T2=[], gatefilename="./gatefile.dat", runtype="optimization",maxctrl_MHz=None, initctrl_MHz=None, randomize_init_ctrl=True, maxiter=1000,tol_infidelity=1e-3, tol_costfunc=1e-3, gamma_tik0=1e-4, gamma_dpdm=0.0, gamma_energy=0.0, costfunction="Jtrace", initialcondition="basis", datadir=".", configfilename="config.cfg", print_frequency_iter=1):
+def write_config(*, Ne, Ng, T, nsteps, freq01, rotfreq, selfkerr, crosskerr=[], Jkl=[], nsplines=5, carrierfreq, T1=[], T2=[], gatefilename="./gatefile.dat", runtype="optimization",maxctrl_MHz=None, initctrl_MHz=None, randomize_init_ctrl=True, maxiter=1000,tol_infidelity=1e-3, tol_costfunc=1e-3, gamma_tik0=1e-4, gamma_dpdm=0.0, gamma_energy=0.0, costfunction="Jtrace", initialcondition="basis", datadir=".", configfilename="config.cfg", print_frequency_iter=1, verbose=False):
 
     if maxctrl_MHz is None:
         maxctrl_MHz = 1e+12*np.ones(len(Ne))
@@ -166,7 +188,9 @@ def write_config(*, Ne, Ng, T, nsteps, freq01, rotfreq, selfkerr, crosskerr=[], 
     outpath = datadir+"/"+configfilename
     with open(outpath, "w") as file:
         file.write(mystring)
-    print("Quandary config written to:", outpath)
+
+    if verbose:
+        print("Quandary config written to:", outpath)
 
     return configfilename
 
