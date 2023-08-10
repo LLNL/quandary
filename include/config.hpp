@@ -17,11 +17,12 @@ class MapParam : public std::map<std::string, std::string>
   MPI_Comm comm;
   int mpi_rank;
   std::stringstream* log;
+  bool quietmode;
 
 public:
   /* Constructor */
   MapParam();
-  MapParam(MPI_Comm comm_, std::stringstream& logstream);
+  MapParam(MPI_Comm comm_, std::stringstream& logstream, bool quietmode=false);
   /* Destructor */
   ~MapParam();
   

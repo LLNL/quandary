@@ -1,7 +1,7 @@
 # Set location of PETSC
-PETSC_DIR=${HOME}/Software/petsc3.18_nompi-install
-PETSC_ARCH=
-WITH_MPI = false
+#PETSC_DIR=${HOME}/Software/petsc3.18_nompi-install
+#PETSC_ARCH=
+WITH_MPI = true
 
 # Optional: Link to SLEPC
 WITH_SLEPC = false

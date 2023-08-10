@@ -12,10 +12,11 @@ MasterEq::MasterEq(){
   dRedp = NULL;
   dImdp = NULL;
   usematfree = false;
+  quietmode = false;
 }
 
 
-MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Oscillator** oscil_vec_, const std::vector<double> crosskerr_, const std::vector<double> Jkl_, const std::vector<double> eta_, LindbladType lindbladtype_, bool usematfree_, std::string python_file_) {
+MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Oscillator** oscil_vec_, const std::vector<double> crosskerr_, const std::vector<double> Jkl_, const std::vector<double> eta_, LindbladType lindbladtype_, bool usematfree_, std::string python_file_, bool quietmode_) {
   int ierr;
 
   nlevels = nlevels_;
@@ -28,6 +29,7 @@ MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Osci
   usematfree = usematfree_;
   lindbladtype = lindbladtype_;
   python_file = python_file_;
+  quietmode = quietmode_;
 
 
   for (int i=0; i<crosskerr.size(); i++){
@@ -54,13 +56,13 @@ MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Osci
   }
   if (lindbladtype != LindbladType::NONE) {  // Solve Lindblads equation, dim = N^2
     dim = dim_rho*dim_rho; 
-    if (mpirank_world == 0) {
+    if (mpirank_world == 0 && !quietmode) {
       printf("Solving Lindblads master equation (state is a density matrix).\n");
       printf("State dimension (complex) N^2 = %d\n",dim);
     }
   } else { // Solve Schroedingers equation. dim = N
     dim = dim_rho; 
-    if (mpirank_world == 0) {
+    if (mpirank_world == 0 && !quietmode) {
       printf("Solving Schroedingers equation (state is a vector).\n");
       printf("State dimension (complex) N = %d\n",dim);
     }
@@ -117,11 +119,13 @@ MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Osci
   // By default, these are for the Jaynes Cumming coupling: Jkl*cos(eta*t)(a+adag) - i Jkl*sin(eta*t)(a-adag)
   // If python interface, they can be different
   for (int k=0; k<noscillators*(noscillators-1)/2; k++){
-    CosineTransferFunction* mytransfer_re = new CosineTransferFunction(Jkl[k], eta[k]);
-    SineTransferFunction* mytransfer_im = new SineTransferFunction(Jkl[k], eta[k]);
+    if (fabs(Jkl[k]) > 1e-12) {
+      CosineTransferFunction* mytransfer_re = new CosineTransferFunction(Jkl[k], eta[k]);
+      SineTransferFunction* mytransfer_im = new SineTransferFunction(Jkl[k], eta[k]);
 
-    transfer_Hdt_re.push_back(mytransfer_re);
-    transfer_Hdt_im.push_back(mytransfer_im);
+      transfer_Hdt_re.push_back(mytransfer_re);
+      transfer_Hdt_im.push_back(mytransfer_im);
+    }
   }
 
   /* Initialize Hamiltonian matrices */
@@ -187,7 +191,10 @@ MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Osci
 
   /* Set the MatMult routine for applying the RHS to a vector x */
   if (usematfree) { // matrix-free solver
-    if (noscillators == 2) {
+    if (noscillators == 1) {
+      MatShellSetOperation(RHS, MATOP_MULT, (void(*)(void)) myMatMult_matfree_1Osc);
+      MatShellSetOperation(RHS, MATOP_MULT_TRANSPOSE, (void(*)(void)) myMatMultTranspose_matfree_1Osc);
+    } else if (noscillators == 2) {
       MatShellSetOperation(RHS, MATOP_MULT, (void(*)(void)) myMatMult_matfree_2Osc);
       MatShellSetOperation(RHS, MATOP_MULT_TRANSPOSE, (void(*)(void)) myMatMultTranspose_matfree_2Osc);
     } else if (noscillators == 3) {
@@ -200,7 +207,7 @@ MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Osci
       MatShellSetOperation(RHS, MATOP_MULT, (void(*)(void)) myMatMult_matfree_5Osc);
       MatShellSetOperation(RHS, MATOP_MULT_TRANSPOSE, (void(*)(void)) myMatMultTranspose_matfree_5Osc);
     } else {
-      printf("ERROR. Matfree solver only for 2, 3 or 4 oscillators. This should never happen!\n");
+      printf("ERROR. Matfree solver only for up to 5 oscillators. This should never happen! %d\n", noscillators);
       exit(1);
     }
   }
@@ -404,24 +411,27 @@ void MasterEq::initSparseMatSolver(){
         Mat myAdkl, myBdkl;
         Ad_vec.push_back(myAdkl);
         Bd_vec.push_back(myBdkl);
-        MatCreate(PETSC_COMM_WORLD, &Ad_vec[id_kl]);
-        MatCreate(PETSC_COMM_WORLD, &Bd_vec[id_kl]);
-        MatSetType(Ad_vec[id_kl], MATMPIAIJ);
-        MatSetType(Bd_vec[id_kl], MATMPIAIJ);
-        MatSetSizes(Ad_vec[id_kl], PETSC_DECIDE, PETSC_DECIDE, dim, dim);
-        MatSetSizes(Bd_vec[id_kl], PETSC_DECIDE, PETSC_DECIDE, dim, dim);
+        int id = Ad_vec.size()-1;
+        MatCreate(PETSC_COMM_WORLD, &Ad_vec[id]);
+        MatCreate(PETSC_COMM_WORLD, &Bd_vec[id]);
+        MatSetType(Ad_vec[id], MATMPIAIJ);
+        MatSetType(Bd_vec[id], MATMPIAIJ);
+        MatSetSizes(Ad_vec[id], PETSC_DECIDE, PETSC_DECIDE, dim, dim);
+        MatSetSizes(Bd_vec[id], PETSC_DECIDE, PETSC_DECIDE, dim, dim);
+
         if (lindbladtype != LindbladType::NONE) {
-          MatMPIAIJSetPreallocation(Ad_vec[id_kl], 4, NULL, 4, NULL);
-          MatMPIAIJSetPreallocation(Bd_vec[id_kl], 4, NULL, 4, NULL);
+          MatMPIAIJSetPreallocation(Ad_vec[id], 4, NULL, 4, NULL);
+          MatMPIAIJSetPreallocation(Bd_vec[id], 4, NULL, 4, NULL);
         } else {
-          MatMPIAIJSetPreallocation(Ad_vec[id_kl], 2, NULL, 2, NULL);
-          MatMPIAIJSetPreallocation(Bd_vec[id_kl], 2, NULL, 2, NULL);
+          MatMPIAIJSetPreallocation(Ad_vec[id], 2, NULL, 2, NULL);
+          MatMPIAIJSetPreallocation(Bd_vec[id], 2, NULL, 2, NULL);
         }
-        MatSetUp(Ad_vec[id_kl]);
-        MatSetUp(Bd_vec[id_kl]);
-        MatSetFromOptions(Ad_vec[id_kl]);
-        MatSetFromOptions(Bd_vec[id_kl]);
-        MatGetOwnershipRange(Ad_vec[id_kl], &ilow, &iupp);
+        MatSetUp(Ad_vec[id]);
+        MatSetUp(Bd_vec[id]);
+        MatSetFromOptions(Ad_vec[id]);
+        MatSetFromOptions(Bd_vec[id]);
+        MatGetOwnershipRange(Ad_vec[id], &ilow, &iupp);
+
 
         // Dimensions of joscillator
         int nj     = oscil_vec[josc]->getNLevels();
@@ -441,14 +451,14 @@ void MasterEq::initSparseMatSolver(){
           if (r1a > 0 && r1b < nj-1) {
             val = sqrt(r1a * (r1b+1));
             col = row - npostk + npostj;
-             if (fabs(val)>1e-14) MatSetValue(Ad_vec[id_kl], row, col,  val, ADD_VALUES);
-             if (fabs(val)>1e-14) MatSetValue(Bd_vec[id_kl], row, col, -val, ADD_VALUES);
+             if (fabs(val)>1e-14) MatSetValue(Ad_vec[id], row, col,  val, ADD_VALUES);
+             if (fabs(val)>1e-14) MatSetValue(Bd_vec[id], row, col, -val, ADD_VALUES);
           }
           if (r1a < nk-1  && r1b > 0) {
             val = sqrt((r1a+1) * r1b);
             col = row + npostk - npostj;
-            if (fabs(val)>1e-14) MatSetValue(Ad_vec[id_kl], row, col, -val, ADD_VALUES);
-            if (fabs(val)>1e-14) MatSetValue(Bd_vec[id_kl], row, col, -val, ADD_VALUES);
+            if (fabs(val)>1e-14) MatSetValue(Ad_vec[id], row, col, -val, ADD_VALUES);
+            if (fabs(val)>1e-14) MatSetValue(Bd_vec[id], row, col, -val, ADD_VALUES);
           }
 
           if (lindbladtype != LindbladType::NONE) {
@@ -461,21 +471,22 @@ void MasterEq::initSparseMatSolver(){
             if (r1a < nk-1 && r1b > 0) {
               val = sqrt((r1a+1) * r1b);
               col = row + npostk*dimmat - npostj*dimmat;
-              if (fabs(val)>1e-14) MatSetValue(Ad_vec[id_kl], row, col, -val, ADD_VALUES);
-              if (fabs(val)>1e-14) MatSetValue(Bd_vec[id_kl], row, col, +val, ADD_VALUES);
+              if (fabs(val)>1e-14) MatSetValue(Ad_vec[id], row, col, -val, ADD_VALUES);
+              if (fabs(val)>1e-14) MatSetValue(Bd_vec[id], row, col, +val, ADD_VALUES);
             }
             if (r1a > 0 && r1b < nj-1) {
               val = sqrt(r1a * (r1b+1));
               col = row - npostk*dimmat + npostj*dimmat;
-              if (fabs(val)>1e-14) MatSetValue(Ad_vec[id_kl], row, col, val, ADD_VALUES);
-              if (fabs(val)>1e-14) MatSetValue(Bd_vec[id_kl], row, col, val, ADD_VALUES);
+              if (fabs(val)>1e-14) MatSetValue(Ad_vec[id], row, col, val, ADD_VALUES);
+              if (fabs(val)>1e-14) MatSetValue(Bd_vec[id], row, col, val, ADD_VALUES);
             }
           }
         }
-        MatAssemblyBegin(Ad_vec[id_kl], MAT_FINAL_ASSEMBLY);
-        MatAssemblyBegin(Bd_vec[id_kl], MAT_FINAL_ASSEMBLY);
-        MatAssemblyEnd(Ad_vec[id_kl], MAT_FINAL_ASSEMBLY);
-        MatAssemblyEnd(Bd_vec[id_kl], MAT_FINAL_ASSEMBLY);
+        MatAssemblyBegin(Ad_vec[id], MAT_FINAL_ASSEMBLY);
+        MatAssemblyBegin(Bd_vec[id], MAT_FINAL_ASSEMBLY);
+        MatAssemblyEnd(Ad_vec[id], MAT_FINAL_ASSEMBLY);
+        MatAssemblyEnd(Bd_vec[id], MAT_FINAL_ASSEMBLY);
+
       }
       id_kl++;
     }
@@ -633,7 +644,7 @@ void MasterEq::initSparseMatSolver(){
   /* If a Python file is given, overwrite the matrices with those read from file. */ 
   if (python_file.compare("none") != 0 ) {
 #ifdef WITH_PYTHON
-    if (mpirank_world==0) printf("\n# Reading Hamiltonian model from python file %s.\n\n", python_file.c_str());
+    if (mpirank_world==0 && !quietmode) printf("\n# Reading Hamiltonian model from python file %s.\n\n", python_file.c_str());
 #else
     printf("# Warning: You requested to read the Hamiltonians from the python file %s, but you didn't link Quandary with python. Check your Makefile for WITH_PYTHON=true to use this feature. Using default Hamiltonian now.\n", python_file.c_str());
 #endif
@@ -648,7 +659,7 @@ void MasterEq::initSparseMatSolver(){
     py->receiveHdtTransfer(Ad_vec.size(), transfer_Hdt_re, transfer_Hdt_im);
     // TODO: Pass both Ad.size and also Bd.size, since they might be different!.
 
-    if (mpirank_world==0) printf("# Done. \n\n");
+    if (mpirank_world==0&& !quietmode) printf("# Done. \n\n");
 
     // Remove control parameters for those oscillators that are non-controllable
     for (int k=0; k<nlevels.size(); k++){
@@ -664,12 +675,18 @@ void MasterEq::initSparseMatSolver(){
   //     MatView(Bc_vec[k][i], NULL);
   //   }
   // }
-  // for (int kl=0; kl<noscillators*(noscillators-1)/2; kl++) {
+  // for (int kl=0; kl<Ad_vec.size(); kl++) {
+  //   printf("Bd_vec[%d]=\n", kl);
+  //   MatView(Bd_vec[kl], NULL);
   //   printf("Ad_vec[%d]=\n", kl);
-  //   // MatView(Bd_vec[kl], NULL);
   //   MatView(Ad_vec[kl], NULL);
   // }
+  // printf("Ad=\n");
+  // MatView(Ad, NULL);
+  // printf("Bd=\n");
+  // MatView(Bd, NULL);
   // exit(1);
+
 
   /* Allocate some auxiliary vectors */
   MatCreateVecs(Bd, &aux, NULL);
@@ -888,7 +905,36 @@ void MasterEq::computedRHSdp(const double t, const Vec x, const Vec xbar, const 
       coeff_q[i] = 0.0;
     }
 
-    if (noscillators == 2) {
+    if (noscillators == 1) {
+    /* compute strides for accessing x at i0+1, i0-1, i0p+1, i0p-1, i1+1, i1-1, i1p+1, i1p-1: */
+      int n0 = nlevels[0];
+      int stridei0  = TensorGetIndex(n0, 1,0);
+      int stridei0p = TensorGetIndex(n0, 0,1);
+      /* Switch for Lindblad vs Schroedinger solver */
+      int n0p = n0;
+      if (lindbladtype == LindbladType::NONE) { // Schroedinger
+        n0p = 1; // Cut down so that below loop has i0p=0 and i1p=0/
+      }
+
+      /* --- Collect coefficients for gradient --- */
+      int it = 0;
+      // Iterate over indices of xbar
+      for (int i0p = 0; i0p < n0p; i0p++)  {
+          for (int i0 = 0; i0 < n0; i0++)  {
+              /* Get xbar */
+              double xbarre = xbarptr[2*it];
+              double xbarim = xbarptr[2*it+1];
+
+              /* --- Oscillator 0 --- */
+              dRHSdp_getcoeffs(it, n0, n0p, i0, i0p, stridei0, stridei0p, xptr, &res_p_re, &res_p_im, &res_q_re, &res_q_im);
+              coeff_p[0] += res_p_re * xbarre + res_p_im * xbarim;
+              coeff_q[0] += res_q_re * xbarre + res_q_im * xbarim;
+
+              it++;
+            }
+        }
+    }
+    else if (noscillators == 2) {
     /* compute strides for accessing x at i0+1, i0-1, i0p+1, i0p-1, i1+1, i1-1, i1p+1, i1p-1: */
       int n0 = nlevels[0];
       int n1 = nlevels[1];
@@ -1701,6 +1747,189 @@ int myMatMultTranspose_sparsemat(Mat RHS, Vec x, Vec y) {
   return 0;
 }
 
+/* Matfree-solver for 1 Oscillator: Define the action of RHS on a vector x */
+template <int n0>
+int myMatMult_matfree(Mat RHS, Vec x, Vec y){
+
+  /* Get the shell context */
+  MatShellCtx *shellctx;
+  MatShellGetContext(RHS, (void**) &shellctx);
+
+  /* Get access to x and y */
+  const double* xptr;
+  double* yptr;
+  VecGetArrayRead(x, &xptr);
+  VecGetArray(y, &yptr);
+
+
+  /* Evaluate coefficients */
+  double xi0  = shellctx->oscil_vec[0]->getSelfkerr();
+  double detuning_freq0 = shellctx->oscil_vec[0]->getDetuning();
+  double decay0 = 0.0;
+  double dephase0= 0.0;
+  if (shellctx->oscil_vec[0]->getDecayTime() > 1e-14 && shellctx->addT1)
+    decay0 = 1./shellctx->oscil_vec[0]->getDecayTime();
+  if (shellctx->oscil_vec[0]->getDephaseTime() > 1e-14 && shellctx->addT2)
+    dephase0 = 1./shellctx->oscil_vec[0]->getDephaseTime();
+  double pt0 = shellctx->control_Re[0][0];
+  double qt0 = shellctx->control_Im[0][0];
+
+  /* compute strides for accessing x at i0+1, i0-1, i0p+1, i0p-1, i1+1, i1-1, i1p+1, i1p-1: */
+  int stridei0  = TensorGetIndex(n0,1,0);
+  int stridei0p = TensorGetIndex(n0,0,1);
+
+  /* Switch for Lindblad vs Schroedinger solver */
+  int n0p = n0;
+  if (shellctx->lindbladtype == LindbladType::NONE) { // Schroedinger
+    n0p = 1; // Cut down so that below loop has i0p=0 and i1p=0/
+  }
+
+  /* Iterate over indices of output vector y */
+  int it = 0;
+  for (int i0p = 0; i0p < n0p; i0p++)  {
+      for (int i0 = 0; i0 < n0; i0++)  {
+
+          /* --- Diagonal part ---*/
+          //Get input x values
+          double xre = xptr[2 * it];
+          double xim = xptr[2 * it + 1];
+          // drift Hamiltonian: uout = ( hd(ik) - hd(ik'))*vin
+          //                    vout = (-hd(ik) + hd(ik'))*uin
+          double hd  = H_detune(detuning_freq0, i0)
+                     + H_selfkerr(xi0, i0);
+          double hdp = 0.0;
+          if (shellctx->lindbladtype != LindbladType::NONE) {
+            hdp = H_detune(detuning_freq0, i0p)
+                + H_selfkerr(xi0, i0p);
+          }
+          double yre = ( hd - hdp ) * xim;
+          double yim = (-hd + hdp ) * xre;
+
+          // Decay l1, diagonal part: xout += l1diag xin
+          // Dephasing l2: xout += l2(ik, ikp) xin
+          if (shellctx->lindbladtype != LindbladType::NONE) {
+            double l1diag = L1diag(decay0, i0, i0p);
+            double l2 = L2(dephase0, i0, i0p);
+            yre += (l2 + l1diag) * xre;
+            yim += (l2 + l1diag) * xim;
+          }
+
+          /* --- Offdiagonal: Jkl coupling term --- */
+
+          /* --- Offdiagonal part of decay L1 */
+          if (shellctx->lindbladtype != LindbladType::NONE) {
+            L1decay(it, n0, i0, i0p, stridei0, stridei0p, xptr, decay0, &yre, &yim);
+          }
+
+          /* --- Control hamiltonian --- */
+          // Oscillator 0 
+          control(it, n0, i0, n0p, i0p, stridei0, stridei0p, xptr, pt0, qt0, &yre, &yim);
+
+          /* Update */
+          yptr[2*it]   = yre;
+          yptr[2*it+1] = yim;
+          it++;
+      }
+  }
+
+  /* Restore x and y */
+  VecRestoreArrayRead(x, &xptr);
+  VecRestoreArray(y, &yptr);
+
+  return 0;
+}
+
+/* Matrix-free solver for 1 Oscillators: Define the action of RHS^T on a vector x */
+template <int n0>
+int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
+
+  /* Get the shell context */
+  MatShellCtx *shellctx;
+  MatShellGetContext(RHS, (void**) &shellctx);
+
+  /* Get access to x and y */
+  const double* xptr;
+  double* yptr;
+  VecGetArrayRead(x, &xptr);
+  VecGetArray(y, &yptr);
+
+  /* Evaluate coefficients */
+  double xi0  = shellctx->oscil_vec[0]->getSelfkerr();
+  double detuning_freq0 = shellctx->oscil_vec[0]->getDetuning();
+  double decay0 = 0.0;
+  double dephase0= 0.0;
+  if (shellctx->oscil_vec[0]->getDecayTime() > 1e-14 && shellctx->addT1)
+    decay0 = 1./shellctx->oscil_vec[0]->getDecayTime();
+  if (shellctx->oscil_vec[0]->getDephaseTime() > 1e-14 && shellctx->addT2)
+    dephase0 = 1./shellctx->oscil_vec[0]->getDephaseTime();
+  double pt0 = shellctx->control_Re[0][0];
+  double qt0 = shellctx->control_Im[0][0];
+
+  /* compute strides for accessing x at i0+1, i0-1, i0p+1, i0p-1, i1+1, i1-1, i1p+1, i1p-1: */
+  int stridei0  = TensorGetIndex(n0, 1,0);
+  int stridei0p = TensorGetIndex(n0, 0,1);
+
+  /* Switch for Lindblad vs Schroedinger solver */
+  int n0p = n0;
+  if (shellctx->lindbladtype == LindbladType::NONE) { // Schroedinger
+    n0p = 1; // Cut down so that below loop has i0p=0 and i1p=0/
+  }
+
+  /* Iterate over indices of output vector y */
+  int it = 0;
+  for (int i0p = 0; i0p < n0p; i0p++)  {
+      for (int i0 = 0; i0 < n0; i0++)  {
+
+          /* --- Diagonal part ---*/
+          //Get input x values
+          double xre = xptr[2 * it];
+          double xim = xptr[2 * it + 1];
+          // drift Hamiltonian Hd^T: uout = ( hd(ik) - hd(ik'))*vin
+          //                         vout = (-hd(ik) + hd(ik'))*uin
+          double hd  = H_detune(detuning_freq0, i0)
+                     + H_selfkerr(xi0, i0);
+          double hdp = 0.0;
+          if (shellctx->lindbladtype != LindbladType::NONE) {
+            hdp = H_detune(detuning_freq0, i0p)
+                  + H_selfkerr(xi0, i0p);
+          }
+          double yre = (-hd + hdp ) * xim;
+          double yim = ( hd - hdp ) * xre;
+
+          // Decay l1^T, diagonal part: xout += l1diag xin
+          // Dephasing l2^T: xout += l2(ik, ikp) xin
+          if (shellctx->lindbladtype != LindbladType::NONE) {
+            double l1diag = L1diag(decay0, i0, i0p);
+            double l2 = L2(dephase0, i0, i0p);
+            yre += (l2 + l1diag) * xre;
+            yim += (l2 + l1diag) * xim;
+          }
+
+          /* --- Offdiagonal coupling term J_kl --- */
+ 
+          /* --- Offdiagonal part of decay L1^T */
+          if (shellctx->lindbladtype != LindbladType::NONE) {
+            // Oscillators 0
+            L1decay_T(it, n0, i0, i0p, stridei0, stridei0p, xptr, decay0, &yre, &yim);
+          }
+
+          /* --- Control hamiltonian  --- */
+          // Oscillator 0
+          control_T(it, n0, i0, n0p, i0p, stridei0, stridei0p, xptr, pt0, qt0, &yre, &yim);
+
+          /* Update */
+          yptr[2*it]   = yre;
+          yptr[2*it+1] = yim;
+          it++;
+      }
+  }
+
+  /* Restore x and y */
+  VecRestoreArrayRead(x, &xptr);
+  VecRestoreArray(y, &yptr);
+
+  return 0;
+}
 
 
 /* Matfree-solver for 2 Oscillators: Define the action of RHS on a vector x */
@@ -3103,15 +3332,15 @@ int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
 
                       /* --- Control hamiltonian  --- */
                       // Oscillator 0
-                      control_T(it, n0, n0p, i0, i0p, stridei0, stridei0p, xptr, pt0, qt0, &yre, &yim);
+                      control_T(it, n0, i0, n0p, i0p, stridei0, stridei0p, xptr, pt0, qt0, &yre, &yim);
                       // Oscillator 1
-                      control_T(it, n1, n1p, i1, i1p, stridei1, stridei1p, xptr, pt1, qt1, &yre, &yim);
+                      control_T(it, n1, i1, n1p, i1p, stridei1, stridei1p, xptr, pt1, qt1, &yre, &yim);
                       // Oscillator 2
-                      control_T(it, n2, n2p, i2, i2p, stridei2, stridei2p, xptr, pt2, qt2, &yre, &yim);
+                      control_T(it, n2, i2, n2p, i2p, stridei2, stridei2p, xptr, pt2, qt2, &yre, &yim);
                       // Oscillator 3
-                      control_T(it, n3, n3p, i3, i3p, stridei3, stridei3p, xptr, pt3, qt3, &yre, &yim);
+                      control_T(it, n3, i3, n3p, i3p, stridei3, stridei3p, xptr, pt3, qt3, &yre, &yim);
                       // Oscillator 4
-                      control_T(it, n4, n4p, i4, i4p, stridei4, stridei4p, xptr, pt4, qt4, &yre, &yim);
+                      control_T(it, n4, i4, n4p, i4p, stridei4, stridei4p, xptr, pt4, qt4, &yre, &yim);
 
                       /* Update */
                       yptr[2*it]   = yre;
@@ -3222,6 +3451,38 @@ void MasterEq::population(const Vec x, std::vector<double> &pop){
   MPI_Allreduce(mypop.data(), pop.data(), dim_rho, MPI_DOUBLE, MPI_SUM, PETSC_COMM_WORLD);
 }
 
+/* --- 1 Oscillator cases --- */
+int myMatMult_matfree_1Osc(Mat RHS, Vec x, Vec y){
+  /* Get the shell context */
+  MatShellCtx *shellctx;
+  MatShellGetContext(RHS, (void**) &shellctx);
+  int n0 = shellctx->nlevels[0];
+  if      (n0==2)  return myMatMult_matfree<2>(RHS, x, y);
+  else if (n0==3)  return myMatMult_matfree<3>(RHS, x, y);
+  else if (n0==4)  return myMatMult_matfree<4>(RHS, x, y);
+  else if (n0==5)  return myMatMult_matfree<5>(RHS, x, y);
+  else if (n0==6)  return myMatMult_matfree<6>(RHS, x, y);
+  else {
+    printf("ERROR: In order to run this case, add a line at the end of mastereq.cpp with the corresponding number of levels!\n");
+    exit(1);
+  }
+}
+int myMatMultTranspose_matfree_1Osc(Mat RHS, Vec x, Vec y){
+ /* Get the shell context */
+  MatShellCtx *shellctx;
+  MatShellGetContext(RHS, (void**) &shellctx);
+  int n0 = shellctx->nlevels[0];
+  if      (n0==2)  return myMatMultTranspose_matfree<2>(RHS, x, y);
+  else if (n0==3)  return myMatMultTranspose_matfree<3>(RHS, x, y);
+  else if (n0==4)  return myMatMultTranspose_matfree<4>(RHS, x, y);
+  else if (n0==5)  return myMatMultTranspose_matfree<5>(RHS, x, y);
+  else if (n0==6)  return myMatMultTranspose_matfree<6>(RHS, x, y);
+  else {
+    printf("ERROR: In order to run this case, add a line at the end of mastereq.cpp with the corresponding number of levels!\n");
+    exit(1);
+  }
+}
+
 
 /* --- 2 Oscillator cases --- */
 int myMatMult_matfree_2Osc(Mat RHS, Vec x, Vec y){
@@ -3307,6 +3568,7 @@ int myMatMult_matfree_4Osc(Mat RHS, Vec x, Vec y){
   int n2 = shellctx->nlevels[2];
   int n3 = shellctx->nlevels[3];
   if      (n0==2 && n1==2 && n2==2 && n3 == 2) return myMatMult_matfree<2,2,2,2>(RHS, x, y);
+  else if (n0==4 && n1==4 && n2==4 && n3 == 4) return myMatMult_matfree<4,4,4,4>(RHS, x, y);
   else {
     printf("ERROR: In order to run this case, add a line at the end of mastereq.cpp with the corresponding number of levels!\n");
     exit(1);
@@ -3322,6 +3584,7 @@ int myMatMultTranspose_matfree_4Osc(Mat RHS, Vec x, Vec y){
   int n2 = shellctx->nlevels[2];
   int n3 = shellctx->nlevels[3];
   if      (n0==2 && n1==2 && n2==2 && n3==2)  return myMatMultTranspose_matfree<2,2,2,2>(RHS, x, y);
+  else if (n0==4 && n1==4 && n2==4 && n3==4)  return myMatMultTranspose_matfree<4,4,4,4>(RHS, x, y);
   else {
     printf("ERROR: In order to run this case, add a line at the end of mastereq.cpp with the corresponding number of levels!\n");
     exit(1);

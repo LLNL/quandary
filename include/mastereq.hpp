@@ -35,6 +35,8 @@ typedef struct {
 
 
 /* Define the Matrix-Vector products for the RHS MatShell */
+int myMatMult_matfree_1Osc(Mat RHS, Vec x, Vec y);              // Matrix free solver for 2 oscillators 
+int myMatMultTranspose_matfree_1Osc(Mat RHS, Vec x, Vec y);
 int myMatMult_matfree_2Osc(Mat RHS, Vec x, Vec y);              // Matrix free solver for 2 oscillators 
 int myMatMultTranspose_matfree_2Osc(Mat RHS, Vec x, Vec y);
 int myMatMult_matfree_3Osc(Mat RHS, Vec x, Vec y);              // Matrix free solver for 3 oscillators 
@@ -85,6 +87,8 @@ class MasterEq{
     PetscInt* cols;           // holding columns when evaluating dRHSdp
     PetscScalar* vals;   // holding values when evaluating dRHSdp
 
+    bool quietmode;
+
   public:
     std::vector<int> nlevels;  // Number of levels per oscillator
     std::vector<int> nessential; // Number of essential levels per oscillator
@@ -100,7 +104,7 @@ class MasterEq{
 
   public:
     MasterEq();
-    MasterEq(std::vector<int> nlevels, std::vector<int> nessential, Oscillator** oscil_vec_, const std::vector<double> crosskerr_, const std::vector<double> Jkl_, const std::vector<double> eta_, LindbladType lindbladtype_, bool usematfree_, std::string python_file);
+    MasterEq(std::vector<int> nlevels, std::vector<int> nessential, Oscillator** oscil_vec_, const std::vector<double> crosskerr_, const std::vector<double> Jkl_, const std::vector<double> eta_, LindbladType lindbladtype_, bool usematfree_, std::string python_file, bool quietmode=false);
     ~MasterEq();
 
     /* initialize matrices needed for applying sparse-mat solver */
@@ -164,6 +168,24 @@ class MasterEq{
     // Get population of the full composite system.
     void population(const Vec x, std::vector<double> &population_com);
 };
+
+// Mat-free solver inlines for 1 oscillator
+inline double H_detune(const double detuning0, const int a) {
+  return detuning0*a;
+};
+inline double H_selfkerr(const double xi0, const int a) {
+  return - xi0 / 2.0 * a * (a-1);
+};
+inline double L2(const double dephase0, const int i0, const int i0p){
+  return dephase0 * ( i0*i0p - 1./2. * (i0*i0 + i0p*i0p) );
+};
+inline double L1diag(const double decay0, const int i0, const int i0p){
+  return - decay0 / 2.0 * ( i0 + i0p ) ;
+};
+inline int TensorGetIndex(const int nlevels0, const  int i0, const int i0p){
+  return i0 + nlevels0 * i0p;
+};
+
 
 
 // Mat-free solver inlines for 2 oscillator

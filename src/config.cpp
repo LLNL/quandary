@@ -15,11 +15,12 @@ MapParam::MapParam() {
     mpi_rank = 0; 
 }
 
-MapParam::MapParam(MPI_Comm comm_, stringstream& logstream)
+MapParam::MapParam(MPI_Comm comm_, stringstream& logstream, bool quietmode_)
 {
   comm = comm_;
   MPI_Comm_rank(comm, &mpi_rank);
   log = &logstream;
+  quietmode = quietmode_;
 }
 
 MapParam::~MapParam(){}
@@ -65,7 +66,7 @@ void MapParam::ReadFile(string filename)
       }
       else
       {
-        if (mpi_rank == 0)
+        if (mpi_rank == 0 && !quietmode)
           cerr << "# Warning: existing param found : " << key << ", with new value " << value << ". Replacing" << endl;
         it_value->second = value;
       }
@@ -79,7 +80,7 @@ void MapParam::GetVecDoubleParam(string key, vector<double> &fillme, double defa
   map<string, string>::const_iterator it_value = this->find(key);
   if (it_value == this->end())
   {
-    if (mpi_rank == 0)
+    if (mpi_rank == 0 && !quietmode)
       cerr << "# Warning: parameter " << key << " not found ! Taking default = " << default_val << endl;
       fillme.push_back(default_val);
   }
@@ -102,7 +103,7 @@ double MapParam::GetDoubleParam(string key, double default_val) const
   double val;
   if (it_value == this->end())
   {
-    if (mpi_rank == 0)
+    if (mpi_rank == 0 && !quietmode)
       cerr << "# Warning: parameter " << key << " not found ! Taking default = " << default_val << endl;
     val = default_val;
   }
@@ -119,7 +120,7 @@ int MapParam::GetIntParam(string key, int default_val) const
   int val;
   if (it_value == this->end())
   {
-    if (mpi_rank == 0)
+    if (mpi_rank == 0 && !quietmode)
       cerr << "# Warning: parameter " << key << " not found ! Taking default = " << default_val << endl;
     val = default_val;
   }
@@ -136,7 +137,7 @@ string MapParam::GetStrParam(string key, string default_val, bool exportme) cons
   string val;
   if (it_value == this->end())
   {
-    if (mpi_rank == 0)
+    if (mpi_rank == 0 && !quietmode)
       cerr << "# Warning: parameter " << key << " not found ! Taking default = " << default_val << endl;
     val = default_val;
   }
@@ -153,7 +154,7 @@ bool MapParam::GetBoolParam(string key, bool default_val) const
   bool val;
   if (it_value == this->end())
   {
-    if (mpi_rank == 0)
+    if (mpi_rank == 0 && !quietmode)
       cerr << "# Warning: parameter " << key << " not found ! Taking default = " << default_val << endl;
     val = default_val;
   }
@@ -179,7 +180,7 @@ void MapParam::GetVecIntParam(std::string key, std::vector<int> &fillme, int def
   double val;
   if (it_value == this->end())
   {
-    if (mpi_rank == 0)
+    if (mpi_rank == 0 && !quietmode)
       cerr << "# Warning: parameter " << key << " not found ! Taking default = " << default_val << endl;
       fillme.push_back(default_val);
   }
@@ -204,7 +205,7 @@ void MapParam::GetVecStrParam(std::string key, std::vector<std::string> &fillme,
   string lineexp;
   if (it_value == this->end())
   {
-    if (mpi_rank == 0)
+    if (mpi_rank == 0 && !quietmode)
       cerr << "# Warning: parameter " << key << " not found ! Taking default = " << default_val << endl;
 
       /* Parse the string line w.r.t. comma separator */

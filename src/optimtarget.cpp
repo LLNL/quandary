@@ -1,7 +1,7 @@
 #include "optimtarget.hpp"
 
 
-OptimTarget::OptimTarget(int dim_, int purestateID_, TargetType target_type_, ObjectiveType objective_type_, Gate* targetgate_, std::string target_filename_, LindbladType lindbladtype_){
+OptimTarget::OptimTarget(int dim_, int purestateID_, TargetType target_type_, ObjectiveType objective_type_, Gate* targetgate_, std::string target_filename_, LindbladType lindbladtype_, bool quietmode_){
 
   // initialize
   dim = dim_;
@@ -12,6 +12,7 @@ OptimTarget::OptimTarget(int dim_, int purestateID_, TargetType target_type_, Ob
   target_filename = target_filename_;
   lindbladtype = lindbladtype_;
   purity_rho0 = 1.0;
+  quietmode = quietmode_;
  
 
   /* Allocate target state, if it is read from file, of if target is a gate transformation VrhoV. If pure target, only store the ID. */
@@ -26,7 +27,7 @@ OptimTarget::OptimTarget(int dim_, int purestateID_, TargetType target_type_, Ob
     int mpirank_world;
     MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
     double* vec = new double[2*dim];
-    if (mpirank_world == 0) read_vector(target_filename.c_str(), vec, 2*dim);
+    if (mpirank_world == 0) read_vector(target_filename.c_str(), vec, 2*dim, quietmode);
     MPI_Bcast(vec, 2*dim, MPI_DOUBLE, 0, MPI_COMM_WORLD);
     // pass vec into the targetstate
     PetscInt ilow, iupp;

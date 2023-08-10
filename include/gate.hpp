@@ -19,6 +19,8 @@ class Gate {
     int mpirank_petsc;
     int mpirank_world;
 
+    bool quietmode;
+
     int dim_ess;   /* Dimension of target Gate matrix (non-vectorized), essential levels only */
     int dim_rho;   /* Dimension of system matrix rho (non-vectorized), all levels, N */
 
@@ -35,7 +37,7 @@ class Gate {
 
   public:
     Gate();
-    Gate(std::vector<int> nlevels_, std::vector<int> nessential_, double time_, std::vector<double> gate_rot_freq, LindbladType lindbladtype_);
+    Gate(std::vector<int> nlevels_, std::vector<int> nessential_, double time_, std::vector<double> gate_rot_freq, LindbladType lindbladtype_, bool quietmode=false);
     virtual ~Gate();
 
     int getDimRho() { return dim_rho; };
@@ -53,7 +55,7 @@ class Gate {
  */
 class XGate : public Gate {
   public:
-    XGate(std::vector<int> nlevels_, std::vector<int> nessential_, double time, std::vector<double> rotation_frequencies_, LindbladType lindbladtype_);
+    XGate(std::vector<int> nlevels_, std::vector<int> nessential_, double time, std::vector<double> rotation_frequencies_, LindbladType lindbladtype_, bool quietmode=false);
     ~XGate();
 };
 
@@ -63,7 +65,7 @@ class XGate : public Gate {
  */
 class YGate : public Gate {
   public:
-    YGate(std::vector<int> nlevels_, std::vector<int> nessential_, double time, std::vector<double> rotation_frequencies_, LindbladType lindbladtype_);
+    YGate(std::vector<int> nlevels_, std::vector<int> nessential_, double time, std::vector<double> rotation_frequencies_, LindbladType lindbladtype_, bool quietmode=false);
     ~YGate();
 };
 
@@ -73,7 +75,7 @@ class YGate : public Gate {
  */
 class ZGate : public Gate {
   public:
-    ZGate(std::vector<int> nlevels_, std::vector<int> nessential_, double time, std::vector<double> rotation_frequencies_, LindbladType lindbladtype_);
+    ZGate(std::vector<int> nlevels_, std::vector<int> nessential_, double time, std::vector<double> rotation_frequencies_, LindbladType lindbladtype_, bool quietmode=false);
     ~ZGate();
 };
 
@@ -83,7 +85,7 @@ class ZGate : public Gate {
  */
 class HadamardGate : public Gate {
   public:
-    HadamardGate(std::vector<int> nlevels_, std::vector<int> nessential_, double time, std::vector<double> rotation_frequencies_, LindbladType lindbladtype_);
+    HadamardGate(std::vector<int> nlevels_, std::vector<int> nessential_, double time, std::vector<double> rotation_frequencies_, LindbladType lindbladtype_, bool quietmode=false);
     ~HadamardGate();
 };
 
@@ -95,7 +97,7 @@ class HadamardGate : public Gate {
  */
 class CNOT : public Gate {
     public:
-    CNOT(std::vector<int> nlevels_, std::vector<int> nessential_, double time, std::vector<double> rotation_frequencies_, LindbladType lindbladtype_);
+    CNOT(std::vector<int> nlevels_, std::vector<int> nessential_, double time, std::vector<double> rotation_frequencies_, LindbladType lindbladtype_, bool quietmode=false);
     ~CNOT();
 };
 
@@ -107,7 +109,7 @@ class CNOT : public Gate {
  */
 class SWAP: public Gate {
     public:
-    SWAP(std::vector<int> nlevels_, std::vector<int> nessential_, double time, std::vector<double> rotation_frequencies_, LindbladType lindbladtype_);
+    SWAP(std::vector<int> nlevels_, std::vector<int> nessential_, double time, std::vector<double> rotation_frequencies_, LindbladType lindbladtype_, bool quietmode=false);
     ~SWAP();
 };
 
@@ -115,20 +117,20 @@ class SWAP: public Gate {
 /* SWAP gate for Q qubits, swapping qubit 0 <-> Q-1 while leaving all others in their state */
 class SWAP_0Q: public Gate {
     public:
-    SWAP_0Q(std::vector<int> nlevels_, std::vector<int> nessential_, double time, std::vector<double> rotation_frequencies_, LindbladType lindbladtype_);
+    SWAP_0Q(std::vector<int> nlevels_, std::vector<int> nessential_, double time, std::vector<double> rotation_frequencies_, LindbladType lindbladtype_, bool quietmode=false);
     ~SWAP_0Q();
 };
 
 /* CQNOT gate spanning Q qubits: NOT operation on qubit Q-1 controlled by all other qubits */
 class CQNOT: public Gate {
     public:
-    CQNOT(std::vector<int> nlevels_, std::vector<int> nessential_, double time, std::vector<double> rotation_frequencies_, LindbladType lindbladtype_);
+    CQNOT(std::vector<int> nlevels_, std::vector<int> nessential_, double time, std::vector<double> rotation_frequencies_, LindbladType lindbladtype_, bool quietmode=false);
     ~CQNOT();
 };
 
 class FromFile: public Gate {
   public:
-    FromFile(std::vector<int> nlevels_, std::vector<int> nessential_, double time, std::vector<double> rotation_frequencies_, LindbladType lindbladtype_, std::string filename);
+    FromFile(std::vector<int> nlevels_, std::vector<int> nessential_, double time, std::vector<double> rotation_frequencies_, LindbladType lindbladtype_, std::string filename, bool quietmode=false);
     ~FromFile();
 };
 
