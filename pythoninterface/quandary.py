@@ -5,7 +5,7 @@ from subprocess import run, PIPE, Popen
 
 
 # Main interface function to create a pulse with Quandary. 
-def pulse_gen(Ne, Ng, freq01, selfkerr, crosskerr, Jkl, rotfreq, maxctrl_MHz, T, initctrl_MHz, rand_seed, randomize_init_ctrl, targetgate, *, dtau=3.33, Pmin=40, cw_amp_thres=6e-2, cw_prox_thres=1e-3, datadir=".", tol_infidelity=1e-3, tol_costfunc=1e-3, maxiter=100, gamma_tik0=1e-4, gamma_energy=1e-2, costfunction="Jtrace", initialcondition="basis", T1=None, T2=None, runtype="simulation", quandary_exec="/absolute/path/to/quandary/main", ncores=1, print_frequency_iter=1, verbose=False):
+def pulse_gen(Ne, Ng, freq01, selfkerr, crosskerr, Jkl, rotfreq, maxctrl_MHz, T, initctrl_MHz, rand_seed, randomize_init_ctrl, targetgate, *, dtau=3.33, Pmin=40, cw_amp_thres=6e-2, cw_prox_thres=1e-3, datadir=".", tol_infidelity=1e-3, tol_costfunc=1e-3, maxiter=100, gamma_tik0=1e-4, gamma_energy=1e-2, costfunction="Jtrace", initialcondition="basis", T1=None, T2=None, runtype="simulation", quandary_exec="/absolute/path/to/quandary/main", ncores=1, print_frequency_iter=1, verbose=False, pcof0=[]):
 
     # Create quandary data directory
     os.makedirs(datadir, exist_ok=True)
@@ -35,10 +35,18 @@ def pulse_gen(Ne, Ng, freq01, selfkerr, crosskerr, Jkl, rotfreq, maxctrl_MHz, T,
     if verbose:
         print("Target gate written to ", gatefilename)
 
+    # Write initial pcof0 to file, if given
+    if len(pcof0) > 0:
+        pcof0filename = datadir + "/pcof0.dat"
+        with open(pcof0filename, "w") as f:
+            for value in pcof0:
+                f.write("{:20.13e}\n".format(value))
+        if verbose:
+            print("Initial control parameters written to ", pcof0filename)
 
     # Write Quandary configuration file
     nsplines = int(np.max([np.ceil(T/dtau + 2), 5])) # 10
-    config_filename = write_config(Ne=Ne, Ng=Ng, T=T, nsteps=nsteps, freq01=freq01, rotfreq=rotfreq, selfkerr=selfkerr, crosskerr=crosskerr, Jkl=Jkl, nsplines=nsplines, carrierfreq=carrierfreq, tol_infidelity=tol_infidelity, tol_costfunc=tol_costfunc, maxiter=maxiter, maxctrl_MHz=maxctrl_MHz, initctrl_MHz=initctrl_MHz, randomize_init_ctrl=randomize_init_ctrl, gamma_tik0=gamma_tik0, gamma_energy=gamma_energy, costfunction=costfunction, initialcondition=initialcondition, T1=T1, T2=T2, runtype=runtype, gatefilename="./targetgate.dat", print_frequency_iter=print_frequency_iter, datadir=datadir, verbose=verbose)
+    config_filename = write_config(Ne=Ne, Ng=Ng, T=T, nsteps=nsteps, freq01=freq01, rotfreq=rotfreq, selfkerr=selfkerr, crosskerr=crosskerr, Jkl=Jkl, nsplines=nsplines, carrierfreq=carrierfreq, tol_infidelity=tol_infidelity, tol_costfunc=tol_costfunc, maxiter=maxiter, maxctrl_MHz=maxctrl_MHz, initctrl_MHz=initctrl_MHz, randomize_init_ctrl=randomize_init_ctrl, gamma_tik0=gamma_tik0, gamma_energy=gamma_energy, costfunction=costfunction, initialcondition=initialcondition, T1=T1, T2=T2, runtype=runtype, gatefilename="./targetgate.dat", print_frequency_iter=print_frequency_iter, datadir=datadir, verbose=verbose, pcof0filename="./pcof0.dat")
 
 
     # Call Quandary
@@ -105,15 +113,16 @@ def execute(*, runtype="simulation", ncores=1, config_filename="config.cfg", dat
     return 1
 
 
-def write_config(*, Ne, Ng, T, nsteps, freq01, rotfreq, selfkerr, crosskerr=[], Jkl=[], nsplines=5, carrierfreq, T1=[], T2=[], gatefilename="./gatefile.dat", runtype="optimization",maxctrl_MHz=None, initctrl_MHz=None, randomize_init_ctrl=True, maxiter=1000,tol_infidelity=1e-3, tol_costfunc=1e-3, gamma_tik0=1e-4, gamma_dpdm=0.0, gamma_energy=0.0, costfunction="Jtrace", initialcondition="basis", datadir=".", configfilename="config.cfg", print_frequency_iter=1, verbose=False):
+def write_config(*, Ne, Ng, T, nsteps, freq01, rotfreq, selfkerr, crosskerr=[], Jkl=[], nsplines=5, carrierfreq, T1=[], T2=[], gatefilename="./gatefile.dat", runtype="optimization",maxctrl_MHz=None, initctrl_MHz=None, randomize_init_ctrl=True, maxiter=1000,tol_infidelity=1e-3, tol_costfunc=1e-3, gamma_tik0=1e-4, gamma_dpdm=0.0, gamma_energy=0.0, costfunction="Jtrace", initialcondition="basis", datadir=".", configfilename="config.cfg", print_frequency_iter=1, pcof0filename="", verbose=False):
 
     if maxctrl_MHz is None:
         maxctrl_MHz = 1e+12*np.ones(len(Ne))
 
-    maxamp = np.zeros(len(Ne))
+    # Scale initial control amplitudes by the number of carrier waves
+    initamp = np.zeros(len(Ne))
     if initctrl_MHz is not None:
         for q in range(len(Ne)):
-            maxamp[q] = initctrl_MHz[q] / np.sqrt(2) / len(carrierfreq[q])
+            initamp[q] = initctrl_MHz[q] *2.0*np.pi / np.sqrt(2) / len(carrierfreq[q])
 
     Nt = [Ne[i] + Ng[i] for i in range(len(Ng))]
     mystring = "nlevels = " + str(Nt)[1:-1] + "\n"
@@ -149,7 +158,11 @@ def write_config(*, Ne, Ng, T, nsteps, freq01, rotfreq, selfkerr, crosskerr=[], 
     mystring += "initialcondition = " + str(initialcondition) + "\n"
     for iosc in range(len(Ne)):
         mystring += "control_segments" + str(iosc) + " = spline, " + str(nsplines) + "\n"
-        mystring += "control_initialization" + str(iosc) + " = " + ("random, " if randomize_init_ctrl else "constant, ") + str(maxamp[iosc]) + "\n"
+        if len(pcof0filename)>0:
+            initstring = "file, "+ pcof0filename+"\n"
+        else:
+            initstring = ("random, " if randomize_init_ctrl else "constant, ") + str(initamp[iosc]) + "\n"
+        mystring += "control_initialization" + str(iosc) + " = " + initstring
         mystring += "control_bounds" + str(iosc) + " = " + str(maxctrl_MHz[iosc]*2.0*np.pi/1000.0) + "\n"
         mystring += "carrier_frequency" + str(iosc) + " = "
         omi = carrierfreq[iosc]

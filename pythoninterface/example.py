@@ -56,8 +56,13 @@ ncores = np.prod(Ne)  # Number of cores
 datadir = "./run_dir"  # Compute and output directory 
 verbose = True
 
+# # Load pcof0 from file
+with open('./params.dat', 'r') as f:
+    pcof0 = [float(line.strip()) for line in f if line]
+# pcof0=[]
+
 # Execute quandary
-popt, infidelity, optim_hist = pulse_gen(Ne, Ng, freq01, selfkerr, crosskerr, Jkl, rotfreq, maxctrl_MHz, T, initctrl_MHz, rand_seed, randomize_init_ctrl, unitary,  dtau=dtau, Pmin=Pmin, datadir=datadir, tol_infidelity=tol_infidelity, tol_costfunc=tol_costfunc, maxiter=maxiter, gamma_tik0=gamma_tik0, gamma_energy=gamma_energy, costfunction=costfunction, initialcondition=initialcondition, T1=T1, T2=T2, runtype=runtype, quandary_exec=quandary_exec, ncores=ncores, verbose=verbose)
+popt, infidelity, optim_hist = pulse_gen(Ne, Ng, freq01, selfkerr, crosskerr, Jkl, rotfreq, maxctrl_MHz, T, initctrl_MHz, rand_seed, randomize_init_ctrl, unitary,  dtau=dtau, Pmin=Pmin, datadir=datadir, tol_infidelity=tol_infidelity, tol_costfunc=tol_costfunc, maxiter=maxiter, gamma_tik0=gamma_tik0, gamma_energy=gamma_energy, costfunction=costfunction, initialcondition=initialcondition, T1=T1, T2=T2, runtype=runtype, quandary_exec=quandary_exec, ncores=ncores, verbose=verbose, pcof0=pcof0)
 # Other keyword arg defaults
 # cw_amp_thres = 6e-2
 # cw_prox_thres = 1e-3
@@ -67,17 +72,14 @@ print(f"Fidelity = {1.0 - infidelity}")
 
 
 # TODO:
-#   * Initial conditions passed via string to quandary config
-#   * Don't set up pcof0, use Quandaries initialization instead
-#   * Set up target gate in *essential levels*, rather than full dimension as above. This requires a change in Quandary: Currently, if the target gate is read from a file, it needs to be the 'final' target gate (full dimensions, potentially rotated).
-#   * Test init_control loading from file
+#   * Check Quandary control initialization: Is the initial amplitude scaled inside quandary? 
+#   * Check quandary for target gate dimension (essential?) when reading from file. If the target gate is read from a file, it needs to be the 'final' target gate (full dimensions, potentially rotated).
 #   * All function call arguments should be keyword only.  
 #   * Add dpdm regularization. Is that in the 'juqbox_interface' branch?
-#   * Let user specify dtau or nsplines
 #   * Gather all configuration in a dictionary (or other struct) that contains all defaults and allows for changes.
 #   * Change quandary's leakage term scaling: Potentially use same scaling as in Juqbox (exponentially increasing)
 
 # Note: 
+#   * pcof0 uses Quandaries initialization
 #   * leakage_weights = [0.0, 0.0] is disabled.
 #   * "use_eigenbasis" disabled.
-#   * Init controls for standard control parameterization (no growthrate). Always use initctrl_MHz to specify the amplitude.
