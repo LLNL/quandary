@@ -3,7 +3,7 @@ from quandary import *
 
 ## One qubit test case ##
 Ne = [3]  # Number of essential energy levels
-Ng = [0]  # Number of extra guard levels
+Ng = [1]  # Number of extra guard levels
 
 # 01 transition frequencies [GHz]
 freq01 = [4.10595] 
@@ -25,7 +25,7 @@ Pmin = 40  # 60 # 40 # 80
 
 # Bounds on the control pulse (in rotational frame, p and q) 
 maxctrl_MHz = [10.0]  
-# Bspline spacing (ns)
+# Bspline spacing (ns). The number of Bsplines is T/dtau + 2.
 dtau = 3.33
 
 # Amplitude of initial (randomized) control vector
@@ -35,13 +35,12 @@ rand_seed = 1234
 randomize_init_ctrl = True
 
 # Set up a target gate 
-# TODO: Set up in ESSENTIAL rather than full dimensions
 unitary = [[0,0,1],[0,1,0],[1,0,0]]  # Swap first and last level
 # print(unitary)
 
 # Optimization options
 costfunction = "Jtrace"
-initialcondition = "basis"  # TODO? 
+initialcondition = "basis"  # "basis", "diagonal", "pure, 0,0,1,...", "file, /path/to/file" 
 gamma_tik0 = 1e-4 	# Tikhonov regularization
 gamma_energy = 0.01	# Penality: Integral over control pulse energy
 tol_infidelity = 1e-3   # Stopping tolerance based on the infidelity
@@ -49,7 +48,7 @@ tol_costfunc = 1e-3	# Stopping criterion based on the objective function
 maxiter = 100 		# Maximum number of optimization iterations
 
 # Quandary run options
-runtype = "optimization"  # "simulation", or "gradient", or "optimization"
+runtype = "simulation"  # "simulation", or "gradient", or "optimization"
 quandary_exec="/Users/guenther5/Numerics/quandary/main"
 ncores = np.prod(Ne)  # Number of cores 
 # ncores = 1

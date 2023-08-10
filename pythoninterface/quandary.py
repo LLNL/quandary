@@ -22,8 +22,8 @@ def pulse_gen(Ne, Ng, freq01, selfkerr, crosskerr, Jkl, rotfreq, maxctrl_MHz, T,
 
     # Estimate carrier wave frequencies
     carrierfreq, growth_rate = get_resonances(Ne, Hsys, Hc_re, Hc_im, verbose=verbose, cw_amp_thres=cw_amp_thres, cw_prox_thres=cw_prox_thres) 
-    if verbose:
-        print("Carrier frequencies: ", carrierfreq)
+    # if verbose:
+        # print("Carrier frequencies: ", carrierfreq)
 
 
     # Write target gate to file
