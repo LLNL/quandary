@@ -21,7 +21,7 @@ def pulse_gen(Ne, Ng, freq01, selfkerr, crosskerr, Jkl, rotfreq, maxctrl_MHz, T,
 
 
     # Estimate carrier wave frequencies
-    carrierfreq, growth_rate = get_resonances(Ne, Hsys, Hc_re, Hc_im, verbose=verbose) 
+    carrierfreq, growth_rate = get_resonances(Ne, Hsys, Hc_re, Hc_im, verbose=verbose, cw_amp_thres=cw_amp_thres, cw_prox_thres=cw_prox_thres) 
     if verbose:
         print("Carrier frequencies: ", carrierfreq)
 
@@ -427,7 +427,7 @@ def hamiltonians(Ne, freq01, selfkerr, crosskerr=[], Jkl = [], *, rotfreq=None, 
         domega_radns =  2.0*np.pi * (freq01[q] - rotfreq[q])
         selfkerr_radns = 2.0*np.pi * selfkerr[q]
         Hsys +=  domega_radns * Amat[q].T @ Amat[q]
-        Hsys -= selfkerr_radns/2 * Amat[q].T @ Amat[q].T @ Amat[q] * Amat[q]
+        Hsys -= selfkerr_radns/2.0 * Amat[q].T @ Amat[q].T @ Amat[q] @ Amat[q]
 
     # Add system Hamiltonian coupling terms
     if len(crosskerr)>0:
