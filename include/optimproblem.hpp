@@ -56,7 +56,6 @@ class OptimProblem {
   double gamma_penalty_dpdm;            /* Parameter multiplying integral penalty term */
   double gamma_penalty_energy;     /* Parameter multiplying energy penalty */
   double penalty_param;            /* Parameter inside integral penalty term w(t) (Gaussian variance) */
-  std::vector<double> leakage_weights;  /* Weighting the contribution of leakage penalty term in the objective function */
   double gatol;                    /* Stopping criterion based on absolute gradient norm */
   double fatol;                    /* Stopping criterion based on objective function value */
   double dxtol;                    /* Stopping criterion based on update of control parameters */

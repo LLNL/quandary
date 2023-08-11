@@ -39,7 +39,6 @@ class TimeStepper{
     double gamma_penalty_dpdm;
     double gamma_penalty_energy;
 
-    std::vector<double> leakage_weights;
     OptimTarget* optim_target;
 
     /* Output */

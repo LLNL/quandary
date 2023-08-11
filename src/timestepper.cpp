@@ -260,7 +260,7 @@ double TimeStepper::penaltyIntegral(double time, const Vec x){
     VecGetOwnershipRange(x, &ilow, &iupp);
     /* Sum over all diagonal elements that correspond to a non-essential guard level. */
     for (int i=0; i<dim_rho; i++) {
-      // if ( isGuardLevel(i, mastereq->nlevels, mastereq->nessential) ) {
+      if ( isGuardLevel(i, mastereq->nlevels, mastereq->nessential) ) {
           // printf("%f: isGuard: %d / %d\n", time, i, dim_rho);
         if (mastereq->lindbladtype != LindbladType::NONE) {
           vecID_re = getIndexReal(getVecID(i,i,dim_rho));
@@ -272,8 +272,8 @@ double TimeStepper::penaltyIntegral(double time, const Vec x){
         x_re = 0.0; x_im = 0.0;
         if (ilow <= vecID_re && vecID_re < iupp) VecGetValues(x, 1, &vecID_re, &x_re);
         if (ilow <= vecID_im && vecID_im < iupp) VecGetValues(x, 1, &vecID_im, &x_im); 
-        leakage += leakage_weights[i] * (x_re * x_re + x_im * x_im) / (dt*ntime);
-      // }
+        leakage += (x_re * x_re + x_im * x_im) / (dt*ntime);
+      }
     }
     double mine = leakage;
     MPI_Allreduce(&mine, &leakage, 1, MPI_DOUBLE, MPI_SUM, PETSC_COMM_WORLD);
@@ -307,7 +307,7 @@ void TimeStepper::penaltyIntegral_diff(double time, const Vec x, Vec xbar, doubl
     VecGetOwnershipRange(x, &ilow, &iupp);
     double x_re, x_im;
     for (int i=0; i<dim_rho; i++) {
-      // if ( isGuardLevel(i, mastereq->nlevels, mastereq->nessential) ) {
+      if ( isGuardLevel(i, mastereq->nlevels, mastereq->nessential) ) {
         if (mastereq->lindbladtype != LindbladType::NONE){ 
           vecID_re = getIndexReal(getVecID(i,i,dim_rho));
           vecID_im = getIndexImag(getVecID(i,i,dim_rho));
@@ -319,9 +319,9 @@ void TimeStepper::penaltyIntegral_diff(double time, const Vec x, Vec xbar, doubl
         if (ilow <= vecID_re && vecID_re < iupp) VecGetValues(x, 1, &vecID_re, &x_re);
         if (ilow <= vecID_im && vecID_im < iupp) VecGetValues(x, 1, &vecID_im, &x_im);
         // Derivative: 2 * rho(i,i) * weights * penalbar * dt
-        if (ilow <= vecID_re && vecID_re < iupp) VecSetValue(xbar, vecID_re, 2.*x_re*leakage_weights[i]*penaltybar/ntime, ADD_VALUES);
-        if (ilow <= vecID_im && vecID_im < iupp) VecSetValue(xbar, vecID_im, 2.*x_im*leakage_weights[i]*penaltybar/ntime, ADD_VALUES);
-    // }
+        if (ilow <= vecID_re && vecID_re < iupp) VecSetValue(xbar, vecID_re, 2.*x_re*penaltybar/ntime, ADD_VALUES);
+        if (ilow <= vecID_im && vecID_im < iupp) VecSetValue(xbar, vecID_im, 2.*x_im*penaltybar/ntime, ADD_VALUES);
+      }
     }
     VecAssemblyBegin(xbar);
     VecAssemblyEnd(xbar);
