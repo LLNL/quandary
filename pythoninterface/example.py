@@ -71,10 +71,8 @@ print(f"Fidelity = {1.0 - infidelity}")
 
 
 # TODO:
-#   * Check Quandary control initialization: Is the initial amplitude scaled inside quandary? 
-#   * Check quandary for target gate dimension (essential?) when reading from file. If the target gate is read from a file, it needs to be the 'final' target gate (full dimensions, potentially rotated).
 #   * All function call arguments should be keyword only.  
-#   * Add dpdm regularization. Is that in the 'juqbox_interface' branch?
+#   * Add dpdm regularization and energy integral penalty term. Those are in the 'juqbox_interface' branch.
 #   * Gather all configuration in a dictionary (or other struct) that contains all defaults and allows for changes.
 #   * Change quandary's leakage term scaling: Potentially use same scaling as in Juqbox (exponentially increasing)
 
