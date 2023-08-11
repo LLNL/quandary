@@ -10,7 +10,7 @@ def pulse_gen(Ne, Ng, freq01, selfkerr, crosskerr, Jkl, rotfreq, maxctrl_MHz, T,
     os.makedirs(datadir, exist_ok=True)
 
     # Set up Hamiltonians in essential levels only
-    Hsys, Hc_re, Hc_im = hamiltonians(Ne, freq01, selfkerr, crosskerr, Jkl, rotfreq=rotfreq)
+    Hsys, Hc_re, Hc_im = hamiltonians(Ne, freq01, selfkerr, crosskerr, Jkl, rotfreq=rotfreq, verbose=verbose)
 
     # Estimate number of time steps
     nsteps = estimate_timesteps(T, Hsys, Hc_re, Hc_im, maxctrl_MHz, Pmin=Pmin)
