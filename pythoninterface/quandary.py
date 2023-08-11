@@ -119,7 +119,7 @@ def write_config(*, Ne, Ng, T, nsteps, freq01, rotfreq, selfkerr, crosskerr=[], 
     initamp = np.zeros(len(Ne))
     if initctrl_MHz is not None:
         for q in range(len(Ne)):
-            initamp[q] = initctrl_MHz[q] *2.0*np.pi / np.sqrt(2) / len(carrierfreq[q])
+            initamp[q] = initctrl_MHz[q] *2.0*np.pi/1000.0 / np.sqrt(2) / len(carrierfreq[q])
 
     Nt = [Ne[i] + Ng[i] for i in range(len(Ng))]
     mystring = "nlevels = " + str(Nt)[1:-1] + "\n"
