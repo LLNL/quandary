@@ -6,6 +6,7 @@
 #include <sys/resource.h>
 #include "optimproblem.hpp"
 #include "output.hpp"
+#include "petsc.h"
 #ifdef WITH_SLEPC
 #include <slepceps.h>
 #endif
@@ -27,8 +28,8 @@ int main(int argc,char **argv)
   PetscErrorCode ierr;
 
   /* Initialize MPI */
-  MPI_Init(&argc, &argv);
   int mpisize_world, mpirank_world;
+  MPI_Init(&argc, &argv);
   MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
   MPI_Comm_size(MPI_COMM_WORLD, &mpisize_world);
 
@@ -171,10 +172,11 @@ int main(int argc,char **argv)
   MPI_Comm_rank(comm_petsc, &mpirank_petsc);
   MPI_Comm_size(comm_petsc, &mpisize_petsc);
 
+  /* Set Petsc using petsc's communicator */
+  PETSC_COMM_WORLD = comm_petsc;
+
   if (mpirank_world == 0 && !quietmode)  std::cout<< "Parallel distribution: " << mpisize_init << " np_init  X  " << mpisize_petsc<< " np_petsc  " << std::endl;
 
-  /* Initialize Petsc using petsc's communicator */
-  PETSC_COMM_WORLD = comm_petsc;
 #ifdef WITH_SLEPC
   ierr = SlepcInitialize(&argc, &argv, (char*)0, NULL);if (ierr) return ierr;
 #else
@@ -401,7 +403,6 @@ int main(int argc,char **argv)
 
   /* Start timer */
   double StartTime = MPI_Wtime();
-
   double objective;
   double gnorm = 0.0;
   /* --- Solve primal --- */
@@ -442,12 +443,16 @@ int main(int argc,char **argv)
   /* --- Finalize --- */
 
   /* Get timings */
+  // #ifdef WITH_MPI
   double UsedTime = MPI_Wtime() - StartTime;
+  // #else
+  // double UsedTime = 0.0; // TODO
+  // #endif
   /* Get memory usage */
   struct rusage r_usage;
   getrusage(RUSAGE_SELF, &r_usage);
   double myMB = (double)r_usage.ru_maxrss / 1024.0;
-  double globalMB;
+  double globalMB = myMB;
   MPI_Allreduce(&myMB, &globalMB, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 
   /* Print statistics */

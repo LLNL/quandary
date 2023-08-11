@@ -4,13 +4,13 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
 
   timestepper = timestepper_;
   ninit = ninit_;
-  comm_init = comm_init_;
-  comm_optim = comm_optim_;
   output = output_;
   quietmode = quietmode_;
   /* Reset */
   objective = 0.0;
 
+  comm_init = comm_init_;
+  comm_optim = comm_optim_;
   /* Store ranks and sizes of communicators */
   MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
   MPI_Comm_size(MPI_COMM_WORLD, &mpisize_world);
@@ -146,6 +146,7 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   double sendbuf[obj_weights.size()];
   double recvbuf[obj_weights.size()];
   for (int i = 0; i < obj_weights.size(); i++) sendbuf[i] = obj_weights[i];
+  for (int i = 0; i < obj_weights.size(); i++) recvbuf[i] = obj_weights[i];
   int nscatter = ninit_local;
   MPI_Scatter(sendbuf, nscatter, MPI_DOUBLE, recvbuf, nscatter,  MPI_DOUBLE, 0, comm_init);
   for (int i = 0; i < nscatter; i++) obj_weights[i] = recvbuf[i];

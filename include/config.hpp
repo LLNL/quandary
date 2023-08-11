@@ -1,7 +1,7 @@
 #include <map>
 #include <string>
 #include <cstring>
-#include "mpi.h"
+#include <petsc.h>
 #include <iostream>
 #include <fstream>
 #include <algorithm>
