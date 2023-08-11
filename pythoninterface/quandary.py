@@ -1,5 +1,4 @@
 import os
-import shutil
 import numpy as np
 from subprocess import run, PIPE, Popen
 
@@ -46,7 +45,7 @@ def pulse_gen(Ne, Ng, freq01, selfkerr, crosskerr, Jkl, rotfreq, maxctrl_MHz, T,
 
     # Write Quandary configuration file
     nsplines = int(np.max([np.ceil(T/dtau + 2), 5])) # 10
-    config_filename = write_config(Ne=Ne, Ng=Ng, T=T, nsteps=nsteps, freq01=freq01, rotfreq=rotfreq, selfkerr=selfkerr, crosskerr=crosskerr, Jkl=Jkl, nsplines=nsplines, carrierfreq=carrierfreq, tol_infidelity=tol_infidelity, tol_costfunc=tol_costfunc, maxiter=maxiter, maxctrl_MHz=maxctrl_MHz, initctrl_MHz=initctrl_MHz, randomize_init_ctrl=randomize_init_ctrl, gamma_tik0=gamma_tik0, gamma_energy=gamma_energy, costfunction=costfunction, initialcondition=initialcondition, T1=T1, T2=T2, runtype=runtype, gatefilename="./targetgate.dat", print_frequency_iter=print_frequency_iter, datadir=datadir, verbose=verbose, pcof0filename="./pcof0.dat")
+    config_filename = write_config(Ne=Ne, Ng=Ng, T=T, nsteps=nsteps, freq01=freq01, rotfreq=rotfreq, selfkerr=selfkerr, crosskerr=crosskerr, Jkl=Jkl, nsplines=nsplines, carrierfreq=carrierfreq, tol_infidelity=tol_infidelity, tol_costfunc=tol_costfunc, maxiter=maxiter, maxctrl_MHz=maxctrl_MHz, initctrl_MHz=initctrl_MHz, randomize_init_ctrl=randomize_init_ctrl, gamma_tik0=gamma_tik0, gamma_energy=gamma_energy, costfunction=costfunction, initialcondition=initialcondition, T1=T1, T2=T2, runtype=runtype, gatefilename="./targetgate.dat", print_frequency_iter=print_frequency_iter, datadir=datadir, verbose=verbose, pcof0=pcof0)
 
 
     # Call Quandary
@@ -81,28 +80,26 @@ def execute(*, runtype="simulation", ncores=1, config_filename="config.cfg", dat
     if verbose:
         result = run(["pwd"], shell=True, capture_output=True, text=True)
         print("Running Quandary in directory ", result.stdout)
-        print("Executing '", runcommand, "'")
-        print("...\n")
-
 
     # Execute Quandary
     # Pipe std output to file rather than screen
     # with open(os.path.join(datadir, "out.log"), "w") as stdout_file, \
     #      open(os.path.join(datadir, "err.log"), "w") as stderr_file:
     #         exec = run(runcommand, shell=True, stdout=stdout_file, stderr=stderr_file)
+    print("Executing '", runcommand, "' ...")
     exec = run(runcommand, shell=True)
-
     # Check return code
     err = exec.check_returncode()
 
     # # Execute Quandary on Windows through Cygwin
     # p = Popen(r"C:/cygwin64/bin/bash.exe", stdin=PIPE, stdout=PIPE, stderr=PIPE)  
-    # p.stdin.write(b"/cygdrive/c/Users/scada-125/quandary/main.exe config.cfg") 
+    # p.stdin.write(runcommand.encode('ASCII')) 
     # p.stdin.close()
-    # # # Print stdout and stderr
+    # std_out, std_err = p.communicate()
+    # # Print stdout and stderr
     # if verbose:
-    #     print(p.stdout.read())
-    #     print(p.stderr.read())
+    #     print(std_out.strip().decode('ascii'))
+    #     print(std_err)
 
     # Return to previous directory
     os.chdir(dir_org)
@@ -113,7 +110,7 @@ def execute(*, runtype="simulation", ncores=1, config_filename="config.cfg", dat
     return 1
 
 
-def write_config(*, Ne, Ng, T, nsteps, freq01, rotfreq, selfkerr, crosskerr=[], Jkl=[], nsplines=5, carrierfreq, T1=[], T2=[], gatefilename="./gatefile.dat", runtype="optimization",maxctrl_MHz=None, initctrl_MHz=None, randomize_init_ctrl=True, maxiter=1000,tol_infidelity=1e-3, tol_costfunc=1e-3, gamma_tik0=1e-4, gamma_dpdm=0.0, gamma_energy=0.0, costfunction="Jtrace", initialcondition="basis", datadir=".", configfilename="config.cfg", print_frequency_iter=1, pcof0filename="", verbose=False):
+def write_config(*, Ne, Ng, T, nsteps, freq01, rotfreq, selfkerr, crosskerr=[], Jkl=[], nsplines=5, carrierfreq, T1=[], T2=[], gatefilename="./gatefile.dat", runtype="optimization",maxctrl_MHz=None, initctrl_MHz=None, randomize_init_ctrl=True, maxiter=1000,tol_infidelity=1e-3, tol_costfunc=1e-3, gamma_tik0=1e-4, gamma_dpdm=0.0, gamma_energy=0.0, costfunction="Jtrace", initialcondition="basis", datadir=".", configfilename="config.cfg", print_frequency_iter=1, pcof0=[], verbose=False):
 
     if maxctrl_MHz is None:
         maxctrl_MHz = 1e+12*np.ones(len(Ne))
@@ -158,8 +155,8 @@ def write_config(*, Ne, Ng, T, nsteps, freq01, rotfreq, selfkerr, crosskerr=[], 
     mystring += "initialcondition = " + str(initialcondition) + "\n"
     for iosc in range(len(Ne)):
         mystring += "control_segments" + str(iosc) + " = spline, " + str(nsplines) + "\n"
-        if len(pcof0filename)>0:
-            initstring = "file, "+ pcof0filename+"\n"
+        if len(pcof0)>0:
+            initstring = "file, ./pcof0.dat\n"
         else:
             initstring = ("random, " if randomize_init_ctrl else "constant, ") + str(initamp[iosc]) + "\n"
         mystring += "control_initialization" + str(iosc) + " = " + initstring

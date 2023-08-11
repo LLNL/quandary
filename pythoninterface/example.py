@@ -53,7 +53,7 @@ quandary_exec="/Users/guenther5/Numerics/quandary/main"
 ncores = np.prod(Ne)  # Number of cores 
 # ncores = 1
 datadir = "./run_dir"  # Compute and output directory 
-verbose = True
+verbose = False
 
 # # Load pcof0 from file
 with open('./params.dat', 'r') as f:
