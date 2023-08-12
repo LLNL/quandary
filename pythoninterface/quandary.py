@@ -183,8 +183,8 @@ def write_config(*, Ne, Ng, T, nsteps, freq01, rotfreq, selfkerr, crosskerr=[], 
     mystring += "optim_penalty_energy= " + str(gamma_energy) + "\n"
     mystring += "datadir= ./\n"
     for iosc in range(len(Ne)):
-        mystring += "output" + str(iosc) + "=expectedEnergy, population, fullstate\n"
-    mystring += "output_frequency = " + str(nsteps) + "\n"
+        mystring += "output" + str(iosc) + "=expectedEnergy, population\n"
+    mystring += "output_frequency = 1\n"
     mystring += "optim_monitor_frequency = " + str(print_frequency_iter) + "\n"
     mystring += "runtype = " + runtype + "\n"
     if len(Ne) < 6:
