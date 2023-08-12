@@ -19,7 +19,7 @@ TimeStepper::TimeStepper(MapParam config, MasterEq* mastereq_, int ntime_, doubl
   output = output_;
   storeFWD = storeFWD_;
 
-  gamma_penalty_dpdm = config.GetDoubleParam("optim_regul_dpdm", 0.0);
+  gamma_penalty_dpdm = config.GetDoubleParam("optim_penalty_dpdm", 0.0);
   if (gamma_penalty_dpdm > 1e-13 && mastereq->lindbladtype != LindbladType::NONE){
     printf("Warning: Disabling DpDm penalty term because it is not implemented for the Lindblad solver.\n");
     gamma_penalty_dpdm = 0.0;
