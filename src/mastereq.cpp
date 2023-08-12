@@ -1297,6 +1297,18 @@ void MasterEq::setControlAmplitudes(const Vec x) {
 }
 
 
+void MasterEq::setControlAmplitudes_diff(Vec xbar) {
+  PetscScalar* ptr;
+  VecGetArray(xbar, &ptr);
+  int shift=0;
+  for (int ioscil = 0; ioscil < getNOscillators(); ioscil++) {
+    getOscillator(ioscil)->setParams_diff(ptr + shift);
+    shift += getOscillator(ioscil)->getNParams();
+  }
+  VecRestoreArray(xbar, &ptr);
+}
+
+
 int MasterEq::getRhoT0(const int iinit, const int ninit, const InitialConditionType initcond_type, const std::vector<int>& oscilIDs, Vec rho0){
 
   PetscInt ilow, iupp; 
@@ -3568,6 +3580,7 @@ int myMatMult_matfree_4Osc(Mat RHS, Vec x, Vec y){
   int n2 = shellctx->nlevels[2];
   int n3 = shellctx->nlevels[3];
   if      (n0==2 && n1==2 && n2==2 && n3 == 2) return myMatMult_matfree<2,2,2,2>(RHS, x, y);
+  else if (n0==3 && n1==3 && n2==3 && n3 == 3) return myMatMult_matfree<3,3,3,3>(RHS, x, y);
   else if (n0==4 && n1==4 && n2==4 && n3 == 4) return myMatMult_matfree<4,4,4,4>(RHS, x, y);
   else {
     printf("ERROR: In order to run this case, add a line at the end of mastereq.cpp with the corresponding number of levels!\n");
@@ -3584,6 +3597,7 @@ int myMatMultTranspose_matfree_4Osc(Mat RHS, Vec x, Vec y){
   int n2 = shellctx->nlevels[2];
   int n3 = shellctx->nlevels[3];
   if      (n0==2 && n1==2 && n2==2 && n3==2)  return myMatMultTranspose_matfree<2,2,2,2>(RHS, x, y);
+  else if (n0==3 && n1==3 && n2==3 && n3==3)  return myMatMultTranspose_matfree<3,3,3,3>(RHS, x, y);
   else if (n0==4 && n1==4 && n2==4 && n3==4)  return myMatMultTranspose_matfree<4,4,4,4>(RHS, x, y);
   else {
     printf("ERROR: In order to run this case, add a line at the end of mastereq.cpp with the corresponding number of levels!\n");

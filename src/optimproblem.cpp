@@ -47,6 +47,7 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   gamma_tik = config.GetDoubleParam("optim_regul", 1e-4);
   gatol = config.GetDoubleParam("optim_atol", 1e-8);
   fatol = config.GetDoubleParam("optim_ftol", 1e-8);
+  dxtol = config.GetDoubleParam("optim_dxtol", 1e-8);
   inftol = config.GetDoubleParam("optim_inftol", 1e-5);
   grtol = config.GetDoubleParam("optim_rtol", 1e-4);
   maxiter = config.GetIntParam("optim_maxiter", 200);
@@ -153,10 +154,13 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
 
 
   /* Pass information on objective function to the time stepper needed for penalty objective function */
-  gamma_penalty = config.GetDoubleParam("optim_penalty", 1e-4);
+  gamma_penalty_energy = config.GetDoubleParam("optim_penalty_energy", 0.0);
+  gamma_penalty = config.GetDoubleParam("optim_penalty", 0.0);
   penalty_param = config.GetDoubleParam("optim_penalty_param", 0.5);
   timestepper->penalty_param = penalty_param;
   timestepper->gamma_penalty = gamma_penalty;
+  gamma_penalty_dpdm = timestepper->gamma_penalty_dpdm;
+  timestepper->gamma_penalty_energy = gamma_penalty_energy;
   timestepper->optim_target = optim_target;
 
   /* Get initial condition type and involved oscillators */
@@ -337,13 +341,25 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
       if (bound_str.size() <= iseg) boundval =  atof(bound_str[bound_str.size()-1].c_str());
       else boundval = atof(bound_str[iseg].c_str());
       // If spline controls: Scale bounds by 1/sqrt(2) * (number of carrier waves) */
-      if (timestepper->mastereq->getOscillator(iosc)->getNParams()>1)
-        boundval = boundval / ( sqrt(2) * timestepper->mastereq->getOscillator(iosc)->getNCarrierfrequencies()) ;
+      if (timestepper->mastereq->getOscillator(iosc)->getControlType() == ControlType::BSPLINE)
+        boundval = boundval / (sqrt(2) * timestepper->mastereq->getOscillator(iosc)->getNCarrierfrequencies());
+      // If spline for amplitude only: Scale bounds by 1/sqrt(2) * (number of carrier waves) */
+      else if (timestepper->mastereq->getOscillator(iosc)->getControlType() == ControlType::BSPLINEAMP)
+        boundval = boundval / timestepper->mastereq->getOscillator(iosc)->getNCarrierfrequencies();
       for (int i=0; i<timestepper->mastereq->getOscillator(iosc)->getNSegParams(iseg); i++){
-        VecSetValue(xupper, col, boundval, INSERT_VALUES);
-        VecSetValue(xlower, col, -1. * boundval, INSERT_VALUES);
-        col++;
+        VecSetValue(xupper, col + i, boundval, INSERT_VALUES);
+        VecSetValue(xlower, col + i, -1. * boundval, INSERT_VALUES);
       }
+      // Disable bound for phase if this is spline_amplitude control
+      if (timestepper->mastereq->getOscillator(iosc)->getControlType() == ControlType::BSPLINEAMP) {
+        for (int f = 0; f < timestepper->mastereq->getOscillator(iosc)->getNCarrierfrequencies(); f++){
+          int nsplines = timestepper->mastereq->getOscillator(iosc)->getNSplines();
+          boundval = 1e+10;
+          VecSetValue(xupper, col + f*(nsplines+1) + nsplines, boundval, INSERT_VALUES);
+          VecSetValue(xlower, col + f*(nsplines+1) + nsplines, -1.*boundval, INSERT_VALUES);
+        }
+      }
+      col = col + timestepper->mastereq->getOscillator(iosc)->getNSegParams(iseg);
     }
   }
   VecAssemblyBegin(xlower); VecAssemblyEnd(xlower);
@@ -375,6 +391,11 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
 
   /* Allocate auxiliary vector */
   mygrad = new double[ndesign];
+
+  /* Allocat xprev */
+  VecCreateSeq(PETSC_COMM_SELF, ndesign, &xprev);
+  VecSetFromOptions(xprev);
+  VecZeroEntries(xprev);
 }
 
 
@@ -386,6 +407,7 @@ OptimProblem::~OptimProblem() {
 
   VecDestroy(&xlower);
   VecDestroy(&xupper);
+  VecDestroy(&xprev);
 
   for (int i = 0; i < store_finalstates.size(); i++) {
     VecDestroy(&(store_finalstates[i]));
@@ -410,6 +432,8 @@ double OptimProblem::evalF(const Vec x) {
   obj_cost  = 0.0;
   obj_regul = 0.0;
   obj_penal = 0.0;
+  obj_penal_dpdm = 0.0;
+  obj_penal_energy = 0.0;
   fidelity = 0.0;
   double obj_cost_re = 0.0;
   double obj_cost_im = 0.0;
@@ -431,6 +455,12 @@ double OptimProblem::evalF(const Vec x) {
     /* Add to integral penalty term */
     obj_penal += obj_weights[iinit] * gamma_penalty * timestepper->penalty_integral;
 
+    /* Add to second derivative penalty term */
+    obj_penal_dpdm += obj_weights[iinit] * gamma_penalty_dpdm * timestepper->penalty_dpdm;
+    
+    /* Add to energy integral penalty term */
+    obj_penal_energy += obj_weights[iinit] * gamma_penalty_energy* timestepper->energy_penalty_integral;
+
     /* Evaluate J(finalstate) and add to final-time cost */
     double obj_iinit_re = 0.0;
     double obj_iinit_im = 0.0;
@@ -450,11 +480,15 @@ double OptimProblem::evalF(const Vec x) {
 
   /* Sum up from initial conditions processors */
   double mypen = obj_penal;
+  double mypen_dpdm = obj_penal_dpdm;
+  double mypenen = obj_penal_energy;
   double mycost_re = obj_cost_re;
   double mycost_im = obj_cost_im;
   double myfidelity_re = fidelity_re;
   double myfidelity_im = fidelity_im;
   MPI_Allreduce(&mypen, &obj_penal, 1, MPI_DOUBLE, MPI_SUM, comm_init);
+  MPI_Allreduce(&mypen_dpdm, &obj_penal_dpdm, 1, MPI_DOUBLE, MPI_SUM, comm_init);
+  MPI_Allreduce(&mypenen, &obj_penal_energy, 1, MPI_DOUBLE, MPI_SUM, comm_init);
   MPI_Allreduce(&mycost_re, &obj_cost_re, 1, MPI_DOUBLE, MPI_SUM, comm_init);
   MPI_Allreduce(&mycost_im, &obj_cost_im, 1, MPI_DOUBLE, MPI_SUM, comm_init);
   MPI_Allreduce(&myfidelity_re, &fidelity_re, 1, MPI_DOUBLE, MPI_SUM, comm_init);
@@ -476,11 +510,11 @@ double OptimProblem::evalF(const Vec x) {
   obj_regul = gamma_tik / 2. * pow(xnorm,2.0);
 
   /* Sum, store and return objective value */
-  objective = obj_cost + obj_regul + obj_penal;
+  objective = obj_cost + obj_regul + obj_penal + obj_penal_dpdm + obj_penal_energy;
 
   /* Output */
   if (mpirank_world == 0) {
-    std::cout<< "Objective = " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal << std::endl;
+    std::cout<< "Objective = " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal << " + " << obj_penal_dpdm << " + " << obj_penal_energy << std::endl;
     std::cout<< "Fidelity = " << fidelity  << std::endl;
   }
 
@@ -512,6 +546,8 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
   obj_cost = 0.0;
   obj_regul = 0.0;
   obj_penal = 0.0;
+  obj_penal_dpdm = 0.0;
+  obj_penal_energy = 0.0;
   fidelity = 0.0;
   double obj_cost_re = 0.0;
   double obj_cost_im = 0.0;
@@ -537,6 +573,11 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
 
     /* Add to integral penalty term */
     obj_penal += obj_weights[iinit] * gamma_penalty * timestepper->penalty_integral;
+
+    /* Add to second derivative dpdm integral penalty term */
+    obj_penal_dpdm += obj_weights[iinit] * gamma_penalty_dpdm * timestepper->penalty_dpdm;
+    /* Add to energy integral penalty term */
+    obj_penal_energy += obj_weights[iinit] * gamma_penalty_energy * timestepper->energy_penalty_integral;
 
     /* Evaluate J(finalstate) and add to final-time cost */
     double obj_iinit_re = 0.0;
@@ -565,7 +606,7 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
       optim_target->evalJ_diff(finalstate, rho_t0_bar, obj_weights[iinit]*obj_cost_re_bar, obj_weights[iinit]*obj_cost_im_bar);
 
       /* Derivative of time-stepping */
-      timestepper->solveAdjointODE(initid, rho_t0_bar, finalstate, obj_weights[iinit] * gamma_penalty);
+      timestepper->solveAdjointODE(initid, rho_t0_bar, finalstate, obj_weights[iinit] * gamma_penalty, obj_weights[iinit]*gamma_penalty_dpdm, obj_weights[iinit]*gamma_penalty_energy);
 
       /* Add to optimizers's gradient */
       VecAXPY(G, 1.0, timestepper->redgrad);
@@ -574,11 +615,15 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
 
   /* Sum up from initial conditions processors */
   double mypen = obj_penal;
+  double mypen_dpdm = obj_penal_dpdm;
+  double mypenen = obj_penal_energy;
   double mycost_re = obj_cost_re;
   double mycost_im = obj_cost_im;
   double myfidelity_re = fidelity_re;
   double myfidelity_im = fidelity_im;
   MPI_Allreduce(&mypen, &obj_penal, 1, MPI_DOUBLE, MPI_SUM, comm_init);
+  MPI_Allreduce(&mypen_dpdm, &obj_penal_dpdm, 1, MPI_DOUBLE, MPI_SUM, comm_init);
+  MPI_Allreduce(&mypenen, &obj_penal_energy, 1, MPI_DOUBLE, MPI_SUM, comm_init);
   MPI_Allreduce(&mycost_re, &obj_cost_re, 1, MPI_DOUBLE, MPI_SUM, comm_init);
   MPI_Allreduce(&mycost_im, &obj_cost_im, 1, MPI_DOUBLE, MPI_SUM, comm_init);
   MPI_Allreduce(&myfidelity_re, &fidelity_re, 1, MPI_DOUBLE, MPI_SUM, comm_init);
@@ -601,7 +646,7 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
   obj_regul = gamma_tik / 2. * pow(xnorm,2.0);
 
   /* Sum, store and return objective value */
-  objective = obj_cost + obj_regul + obj_penal;
+  objective = obj_cost + obj_regul + obj_penal + obj_penal_dpdm + obj_penal_energy;
 
   /* For Schroedinger solver: Solve adjoint equations for all initial conditions here. */
   if (timestepper->mastereq->lindbladtype == LindbladType::NONE) {
@@ -626,7 +671,7 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
       optim_target->evalJ_diff(finalstate, rho_t0_bar, obj_weights[iinit]*obj_cost_re_bar, obj_weights[iinit]*obj_cost_im_bar);
 
       /* Derivative of time-stepping */
-      timestepper->solveAdjointODE(initid, rho_t0_bar, finalstate, obj_weights[iinit] * gamma_penalty);
+      timestepper->solveAdjointODE(initid, rho_t0_bar, finalstate, obj_weights[iinit] * gamma_penalty, obj_weights[iinit]*gamma_penalty_dpdm, obj_weights[iinit]*gamma_penalty_energy);
 
       /* Add to optimizers's gradient */
       VecAXPY(G, 1.0, timestepper->redgrad);
@@ -642,12 +687,15 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
   MPI_Allreduce(mygrad, grad, ndesign, MPI_DOUBLE, MPI_SUM, comm_init);
   VecRestoreArray(G, &grad);
 
+  
+  mastereq->setControlAmplitudes_diff(G);
+
   /* Compute and store gradient norm */
   VecNorm(G, NORM_2, &(gnorm));
 
   /* Output */
   if (mpirank_world == 0 && !quietmode) {
-    std::cout<< "Objective = " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal << std::endl;
+    std::cout<< "Objective = " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal << " + " << obj_penal_dpdm << " + " << obj_penal_energy << std::endl;
     std::cout<< "Fidelity = " << fidelity << std::endl;
   }
 }
@@ -718,29 +766,67 @@ PetscErrorCode TaoMonitor(Tao tao,void*ptr){
   double obj_cost = ctx->getCostT();
   double obj_regul = ctx->getRegul();
   double obj_penal = ctx->getPenalty();
+  double obj_penal_dpdm = ctx->getPenaltyDpDm();
+  double obj_penal_energy = ctx->getPenaltyEnergy();
   double F_avg = ctx->getFidelity();
 
   /* Print to optimization file */
-  ctx->output->writeOptimFile(f, gnorm, deltax, F_avg, obj_cost, obj_regul, obj_penal);
+  ctx->output->writeOptimFile(f, gnorm, deltax, F_avg, obj_cost, obj_regul, obj_penal, obj_penal_dpdm, obj_penal_energy);
 
   /* Print parameters and controls to file */
+  // if ( optim_iter % optim_monitor_freq == 0 ) {
   ctx->output->writeControls(params, ctx->timestepper->mastereq, ctx->timestepper->ntime, ctx->timestepper->dt);
+  // }
 
   /* Screen output */
-  if (ctx->getMPIrank_world() == 0) {
-    std::cout<< iter <<  ": Objective = " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal;
+  if (ctx->getMPIrank_world() == 0 && iter % ctx->output->optim_monitor_freq == 0) {
+    std::cout<< iter <<  ": Objective = " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal << " + " << obj_penal_dpdm << " + " << obj_penal_energy;
     std::cout<< "  Fidelity = " << F_avg;
     std::cout<< "  ||Grad|| = " << gnorm;
     std::cout<< std::endl;
   }
 
+  /* Additional Stopping criteria */
   if (1.0 - F_avg <= ctx->getInfTol()) {
-    printf("Optimization finished with small infidelity.\n");
+    if (ctx->getMPIrank_world() == 0) {
+      std::cout<< iter <<  ": Objective = " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal << " + " << obj_penal_dpdm << " + " << obj_penal_energy;
+      std::cout<< "  Fidelity = " << F_avg;
+      std::cout<< "  ||Grad|| = " << gnorm;
+      std::cout<< std::endl;
+      printf("Optimization finished with small infidelity.\n");
+    }
     TaoSetConvergedReason(tao, TAO_CONVERGED_USER);
   } else if (obj_cost <= ctx->getFaTol()) {
-    printf("Optimization finished with small final time cost.\n");
+    if (ctx->getMPIrank_world() == 0) {
+      std::cout<< iter <<  ": Objective = " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal << " + " << obj_penal_dpdm;
+      std::cout<< "  Fidelity = " << F_avg;
+      std::cout<< "  ||Grad|| = " << gnorm;
+      std::cout<< std::endl;
+      printf("Optimization finished with small final time cost.\n");
+    }
     TaoSetConvergedReason(tao, TAO_CONVERGED_USER);
+  } else if (iter > 1) { // Stop if delta x is smaller than tolerance (relative)
+    // Compute ||x - xprev||/||xprev||
+    double xnorm, dxnorm;
+    VecNorm(ctx->xprev, NORM_2, &xnorm);  // xnorm = ||x_k-1||
+    VecAXPY(ctx->xprev, -1.0, params);    // xprev =  x_k - x_k-1
+    VecNorm(ctx->xprev, NORM_2, &dxnorm);  // dxnorm = || x_k - x_k-1 ||
+    if (fabs(xnorm > 1e-15)) dxnorm = dxnorm / xnorm; 
+    // Stopping 
+    if (dxnorm <= ctx->getDxTol()) {
+      if (ctx->getMPIrank_world() == 0) {
+        std::cout<< iter <<  ": Objective = " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal << " + " << obj_penal_dpdm;
+        std::cout<< "  Fidelity = " << F_avg;
+        std::cout<< "  ||Grad|| = " << gnorm;
+        std::cout<< std::endl;
+        printf("Optimization finished with small parameter update (%1.4e rel. update).\n", dxnorm);
+      }
+      TaoSetConvergedReason(tao, TAO_CONVERGED_USER); 
+    }
   }
+
+  /* Update xprev for next iteration */
+  VecCopy(params, ctx->xprev);
 
   return 0;
 }

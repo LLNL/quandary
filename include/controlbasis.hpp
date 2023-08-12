@@ -31,6 +31,8 @@ class ControlBasis {
         ControlType getType() {return controltype;};
         void setSkip(int skip_) {skip = skip_;};
 
+        virtual int getNSplines() {return 0;};
+
         /* Default: do nothing. For some control parameterizations, this can be used to enforce that the controls start and end at zero. E.g. the Splines will overwrite the parameters x of the first and last two splines by zero, so that the splines start and end at zero. */
         virtual void enforceBoundary(double* x, int carrier_id) {};
 
@@ -60,6 +62,40 @@ class BSpline2nd : public ControlBasis {
         BSpline2nd(int nsplines, double tstart, double tstop);
         ~BSpline2nd();
 
+        int getNSplines() {return nsplines;};
+
+        /* Sets the first and last two spline coefficients in x to zero, so that the controls start and end at zero */
+        void enforceBoundary(double* x, int carrier_id);
+
+        /* Evaluate the spline at time t using the coefficients coeff. */
+        void evaluate(const double t, const std::vector<double>& coeff, int carrier_freq_id, double* Blt1_ptr, double* Blt2_ptr);
+
+        /* Evaluates the derivative at time t, multiplied with fbar. */
+        void derivative(const double t, const std::vector<double>& coeff, double* coeff_diff, const double valbar1, const double valbar2, int carrier_freq_id);
+};
+
+/* 
+ * Amplitude is parameterized by Bsplines, phase is time-independent.
+ * Discretization of the Controls using quadratic Bsplines ala Anders Petersson
+ * Bspline basis functions have local support with width = 3*dtknot, 
+ * where dtknot = T/(nsplines -2) is the time knot vector spacing.
+ */
+class BSpline2ndAmplitude : public ControlBasis {
+    protected:
+        int nsplines;                     // Number of splines
+        double dtknot;                    // spacing of time knot vector    
+        double *tcenter;                  // vector of basis function center positions
+        double width;                     // support of each basis function (m*dtknot)
+        double scaling;                   // scaling for the phase
+
+        /* Evaluate the bspline basis functions B_l(tau_l(t)) */
+        double basisfunction(int id, double t);
+
+    public:
+        BSpline2ndAmplitude(int nsplines, double scaling, double tstart, double tstop);
+        ~BSpline2ndAmplitude();
+
+        int getNSplines() {return nsplines;};
 
         /* Sets the first and last two spline coefficients in x to zero, so that the controls start and end at zero */
         void enforceBoundary(double* x, int carrier_id);

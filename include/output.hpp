@@ -41,7 +41,7 @@ class Output{
     ~Output();
 
     /* Write to optimization history file in every optim iteration */
-    void writeOptimFile(double objective, double gnorm, double stepsize, double Favg, double cost, double tikh_regul,  double penalty);
+    void writeOptimFile(double objective, double gnorm, double stepsize, double Favg, double cost, double tikh_regul,  double penalty, double penalty_dpdm, double penalty_energy);
 
     /* Write current controls and parameters every <optim_monitor_freq> iterations */
     void writeControls(Vec params, MasterEq* mastereq, int ntime, double dt);

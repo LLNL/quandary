@@ -47,13 +47,18 @@ class OptimProblem {
   double obj_cost;                 /* Final-time term J(T) in objective */
   double obj_regul;                /* Regularization term in objective */
   double obj_penal;                /* Penalty term in objective */
+  double obj_penal_dpdm;           /* Penalty term in objective for second order state */
+  double obj_penal_energy;         /* Energy Penalty term in objective */
   double fidelity;                 /* Final-time fidelity: 1/ninit \sum_iinit Tr(rhotarget^\dag rho(T)) for Lindblad, or |1/ninit \sum_iinit phitarget^dagger phi |^2 for Schroedinger */
   double gnorm;                    /* Holds current norm of gradient */
   double gamma_tik;                /* Parameter for tikhonov regularization */
   double gamma_penalty;            /* Parameter multiplying integral penalty term */
+  double gamma_penalty_dpdm;            /* Parameter multiplying integral penalty term */
+  double gamma_penalty_energy;     /* Parameter multiplying energy penalty */
   double penalty_param;            /* Parameter inside integral penalty term w(t) (Gaussian variance) */
   double gatol;                    /* Stopping criterion based on absolute gradient norm */
   double fatol;                    /* Stopping criterion based on objective function value */
+  double dxtol;                    /* Stopping criterion based on update of control parameters */
   double inftol;                   /* Stopping criterion based on infidelity */
   double grtol;                    /* Stopping criterion based on relative gradient norm */
   int maxiter;                     /* Stopping criterion based on maximum number of iterations */
@@ -65,6 +70,7 @@ class OptimProblem {
     Output* output;                 /* Store a reference to the output */
     TimeStepper* timestepper;       /* Store a reference to the time-stepping scheme */
     Vec xlower, xupper;              /* Optimization bounds */
+    Vec xprev;                       /* design vector at previous iteration */
 
   /* Constructor */
   OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm comm_init_, MPI_Comm comm_optim, int ninit_, std::vector<double> gate_rot_freq, Output* output_, bool quietmode=false);
@@ -78,8 +84,11 @@ class OptimProblem {
   double getCostT()    { return obj_cost; };
   double getRegul()    { return obj_regul; };
   double getPenalty()  { return obj_penal; };
+  double getPenaltyDpDm()  { return obj_penal_dpdm; };
+  double getPenaltyEnergy()  { return obj_penal_energy; };
   double getFidelity() { return fidelity; };
   double getFaTol()    { return fatol; };
+  double getDxTol()    { return dxtol; };
   double getInfTol()   { return inftol; };
   int getMPIrank_world() { return mpirank_world;};
 

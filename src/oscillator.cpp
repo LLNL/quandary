@@ -4,9 +4,10 @@ Oscillator::Oscillator(){
   nlevels = 0;
   Tfinal = 0;
   ground_freq = 0.0;
+  control_enforceBC = true;
 }
 
-Oscillator::Oscillator(int id, std::vector<int> nlevels_all_, std::vector<std::string>& controlsegments, std::vector<std::string>& controlinitializations, double ground_freq_, double selfkerr_, double rotational_freq_, double decay_time_, double dephase_time_, std::vector<double> carrier_freq_, double Tfinal_, LindbladType lindbladtype_){
+Oscillator::Oscillator(MapParam config, int id, std::vector<int> nlevels_all_, std::vector<std::string>& controlsegments, std::vector<std::string>& controlinitializations, double ground_freq_, double selfkerr_, double rotational_freq_, double decay_time_, double dephase_time_, std::vector<double> carrier_freq_, double Tfinal_, LindbladType lindbladtype_){
 
   myid = id;
   nlevels = nlevels_all_[id];
@@ -74,6 +75,25 @@ Oscillator::Oscillator(int id, std::vector<int> nlevels_all_, std::vector<std::s
       mysplinebasis->setSkip(nparams);
       nparams += mysplinebasis->getNparams() * carrier_freq.size();
       basisfunctions.push_back(mysplinebasis);
+    } else if (controlsegments[idstr].compare("spline_amplitude") == 0) { // Spline on amplitude only. Format in string: spline_amplitude, nsplines, tstart, tstop
+      idstr++;
+      if (controlsegments.size() <= idstr){
+        printf("ERROR: Wrong setting for control segments: Number of splines not found.\n");
+        exit(1);
+      }
+      int nspline = atoi(controlsegments[idstr].c_str()); idstr++;
+      double scaling = atof(controlsegments[idstr].c_str()); idstr++;
+      double tstart = 0.0;
+      double tstop = Tfinal;
+      if (controlsegments.size()>=idstr+2){
+        tstart = atof(controlsegments[idstr].c_str()); idstr++;
+        tstop = atof(controlsegments[idstr].c_str()); idstr++;
+      }
+      // if (mpirank_world==0) printf("%d: Creating %d-spline basis in control segment [%f, %f]\n", myid, nspline,tstart, tstop);
+      ControlBasis* mysplinebasis = new BSpline2ndAmplitude(nspline, scaling, tstart, tstop);
+      mysplinebasis->setSkip(nparams);
+      nparams += mysplinebasis->getNparams() * carrier_freq.size();
+      basisfunctions.push_back(mysplinebasis);
     } else {
       // if (mpirank_world==0) printf("%d: Non-controllable.\n", myid);
       idstr++;
@@ -99,27 +119,40 @@ Oscillator::Oscillator(int id, std::vector<int> nlevels_all_, std::vector<std::s
         initval = max(0.0, initval);  
         initval = min(1.0, initval); 
       }
-      for (int i=0; i<basisfunctions[seg]->getNparams() * carrier_freq.size(); i++){
-        params.push_back(initval);
+      for (int f = 0; f<carrier_freq.size(); f++) {
+        for (int i=0; i<basisfunctions[seg]->getNparams(); i++){
+          params.push_back(initval);
+        }
+        // if BSPLINEAMP: Two values can be provided: First one for the amplitude (set above), second one for the phase which otherwise is set to 0.0 (overwrite here)
+        if (basisfunctions[seg]->getType() == ControlType::BSPLINEAMP) {
+          if (controlinitializations.size() > idini+2) params[params.size()-1] = atof(controlinitializations[idini+2].c_str());
+          else params[params.size()-1] = 0.0;
+        }
       }
-
     } else if (controlinitializations[idini].compare("random") == 0) {
 
-      for (int i=0; i<basisfunctions[seg]->getNparams() * carrier_freq.size(); i++){
-        double randval = (double) rand() / ((double)RAND_MAX);  // random in [0,1]
-        MPI_Bcast(&randval, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-        // scale to chosen amplitude 
-        double maxval = atof(controlinitializations[idini+1].c_str());
-        double initval = maxval*randval;
+      for (int f = 0; f<carrier_freq.size(); f++) {
+        for (int i=0; i<basisfunctions[seg]->getNparams(); i++){
+          double randval = (double) rand() / ((double)RAND_MAX);  // random in [0,1]
+          MPI_Bcast(&randval, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+          // scale to chosen amplitude 
+          double maxval = atof(controlinitializations[idini+1].c_str());
+          double initval = maxval*randval;
 
-        // If STEP: scale to [0,1] else scale to [-a,a]
-        if (basisfunctions[seg]->getType() == ControlType::STEP){
-          initval = max(0.0, initval);  
-          initval = min(1.0, initval); 
-        } else {
-          initval = 2*initval - maxval;
+          // If STEP: scale to [0,1] else scale to [-a,a]
+          if (basisfunctions[seg]->getType() == ControlType::STEP){
+            initval = max(0.0, initval);  
+            initval = min(1.0, initval); 
+          } else {
+            initval = 2*initval - maxval;
+          }
+          params.push_back(initval);
         }
-        params.push_back(initval);
+        // if BSPLINEAMP: Two values can be provided: First one for the amplitude (set above), second one for the phase which otherwise is set to 0.0 (overwrite here)
+        if (basisfunctions[seg]->getType() == ControlType::BSPLINEAMP) {
+          if (controlinitializations.size() > idini+2) params[params.size()-1] = atof(controlinitializations[idini+2].c_str());
+          else params[params.size()-1] = 0.0;
+        }
       }
     } else {
       for (int i=0; i<basisfunctions[seg]->getNparams() * carrier_freq.size(); i++){
@@ -130,8 +163,8 @@ Oscillator::Oscillator(int id, std::vector<int> nlevels_all_, std::vector<std::s
   }
 
 
-
-
+  /* Check if boundary conditions for controls should be enfored (default: yes). */
+  control_enforceBC = config.GetBoolParam("control_enforceBC", true);
 
   /* Compute and store dimension of preceding and following oscillators */
   dim_preOsc = 1;
@@ -152,10 +185,14 @@ Oscillator::~Oscillator(){
 }
 
 void Oscillator::setParams(double* x){
-  // First, enforce the control boundaries, i.e. potentially set some parameters in x to zero. 
-  for (int bs = 0; bs < basisfunctions.size(); bs++){
-    for (int f=0; f < carrier_freq.size(); f++) {
-      basisfunctions[bs]->enforceBoundary(x, f);
+
+  if (control_enforceBC){
+    //printf("\n\n True! \n\n");
+    // First, enforce the control boundaries, i.e. potentially set some parameters in x to zero. 
+    for (int bs = 0; bs < basisfunctions.size(); bs++){
+      for (int f=0; f < carrier_freq.size(); f++) {
+        basisfunctions[bs]->enforceBoundary(x, f);
+      }
     }
   }
 
@@ -164,6 +201,20 @@ void Oscillator::setParams(double* x){
     params[i] = x[i]; 
   }
 
+}
+
+
+void Oscillator::setParams_diff(double* xbar){
+
+  if (control_enforceBC){
+    //printf("\n\n True! \n\n");
+    // First, enforce the control boundaries, i.e. potentially set some parameters in x to zero. 
+    for (int bs = 0; bs < basisfunctions.size(); bs++){
+      for (int f=0; f < carrier_freq.size(); f++) {
+        basisfunctions[bs]->enforceBoundary(xbar, f);
+      }
+    }
+  }
 }
 
 
@@ -205,13 +256,20 @@ int Oscillator::evalControl(const double t, double* Re_ptr, double* Im_ptr){
         double sum_p = 0.0;
         double sum_q = 0.0;
         for (int f=0; f < carrier_freq.size(); f++) {
-          double cos_omt = cos(carrier_freq[f]*t);
-          double sin_omt = sin(carrier_freq[f]*t);
           double Blt1 = 0.0; 
           double Blt2 = 0.0;
           basisfunctions[bs]->evaluate(t, params, f, &Blt1, &Blt2);
-          sum_p += cos_omt * Blt1 - sin_omt * Blt2; 
-          sum_q += sin_omt * Blt1 + cos_omt * Blt2;
+          if (basisfunctions[bs]->getType() == ControlType::BSPLINEAMP) {
+            double cos_omt = cos(carrier_freq[f]*t + Blt2);
+            double sin_omt = sin(carrier_freq[f]*t + Blt2);
+            sum_p += cos_omt * Blt1; 
+            sum_q += sin_omt * Blt1;
+          } else {
+            double cos_omt = cos(carrier_freq[f]*t);
+            double sin_omt = sin(carrier_freq[f]*t);
+            sum_p += cos_omt * Blt1 - sin_omt * Blt2; 
+            sum_q += sin_omt * Blt1 + cos_omt * Blt2;
+          }
         }
         *Re_ptr = sum_p;
         *Im_ptr = sum_q;
@@ -248,10 +306,16 @@ int Oscillator::evalControl_diff(const double t, double* dRedp, double* dImdp) {
           basisfunctions[bs]->getTstop() >= t ) {
         /* Iterate over carrier frequencies */
         for (int f=0; f < carrier_freq.size(); f++) {
-          double cos_omt = cos(carrier_freq[f]*t);
-          double sin_omt = sin(carrier_freq[f]*t);
-          basisfunctions[bs]->derivative(t, params, dRedp, cos_omt, -sin_omt, f);
-          basisfunctions[bs]->derivative(t, params, dImdp, sin_omt, cos_omt, f);
+
+          if (basisfunctions[bs]->getType() == ControlType::BSPLINEAMP) {
+            basisfunctions[bs]->derivative(t, params, dRedp, carrier_freq[f], 1.0, f);  // +/-1.0 is used as a flag inside Bsline2ndAmplitude->evaluate() to determine whether this is for p (1.0) or for q (-1.0)
+            basisfunctions[bs]->derivative(t, params, dImdp, carrier_freq[f], -1.0, f);
+          } else {
+            double cos_omt = cos(carrier_freq[f]*t);
+            double sin_omt = sin(carrier_freq[f]*t);
+            basisfunctions[bs]->derivative(t, params, dRedp, cos_omt, -sin_omt, f);
+            basisfunctions[bs]->derivative(t, params, dImdp, sin_omt, cos_omt, f);
+          }
         }
         break;
       }
