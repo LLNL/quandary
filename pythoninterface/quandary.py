@@ -4,7 +4,7 @@ from subprocess import run, PIPE, Popen
 
 
 # Main interface function to create a pulse with Quandary. 
-def pulse_gen(Ne, Ng, freq01, selfkerr, crosskerr, Jkl, rotfreq, maxctrl_MHz, T, initctrl_MHz, rand_seed, randomize_init_ctrl, targetgate, *, dtau=3.33, Pmin=40, cw_amp_thres=6e-2, cw_prox_thres=1e-3, datadir=".", tol_infidelity=1e-3, tol_costfunc=1e-3, maxiter=100, gamma_tik0=1e-4, gamma_energy=1e-2, costfunction="Jtrace", initialcondition="basis", T1=None, T2=None, runtype="simulation", quandary_exec="/absolute/path/to/quandary/main", ncores=1, print_frequency_iter=1, verbose=False, pcof0=[]):
+def pulse_gen(Ne, Ng, freq01, selfkerr, crosskerr, Jkl, rotfreq, maxctrl_MHz, T, initctrl_MHz, rand_seed, randomize_init_ctrl, targetgate, *, dtau=3.33, Pmin=40, cw_amp_thres=6e-2, cw_prox_thres=1e-3, datadir=".", tol_infidelity=1e-3, tol_costfunc=1e-3, maxiter=100, gamma_tik0=1e-4, gamma_energy=1e-2, gamma_dpdm=1e-2, costfunction="Jtrace", initialcondition="basis", T1=None, T2=None, runtype="simulation", quandary_exec="/absolute/path/to/quandary/main", ncores=1, print_frequency_iter=1, verbose=False, pcof0=[]):
 
     # Create quandary data directory
     os.makedirs(datadir, exist_ok=True)
@@ -45,7 +45,7 @@ def pulse_gen(Ne, Ng, freq01, selfkerr, crosskerr, Jkl, rotfreq, maxctrl_MHz, T,
 
     # Write Quandary configuration file
     nsplines = int(np.max([np.ceil(T/dtau + 2), 5])) # 10
-    config_filename = write_config(Ne=Ne, Ng=Ng, T=T, nsteps=nsteps, freq01=freq01, rotfreq=rotfreq, selfkerr=selfkerr, crosskerr=crosskerr, Jkl=Jkl, nsplines=nsplines, carrierfreq=carrierfreq, tol_infidelity=tol_infidelity, tol_costfunc=tol_costfunc, maxiter=maxiter, maxctrl_MHz=maxctrl_MHz, initctrl_MHz=initctrl_MHz, randomize_init_ctrl=randomize_init_ctrl, gamma_tik0=gamma_tik0, gamma_energy=gamma_energy, costfunction=costfunction, initialcondition=initialcondition, T1=T1, T2=T2, runtype=runtype, gatefilename="./targetgate.dat", print_frequency_iter=print_frequency_iter, datadir=datadir, verbose=verbose, pcof0=pcof0)
+    config_filename = write_config(Ne=Ne, Ng=Ng, T=T, nsteps=nsteps, freq01=freq01, rotfreq=rotfreq, selfkerr=selfkerr, crosskerr=crosskerr, Jkl=Jkl, nsplines=nsplines, carrierfreq=carrierfreq, tol_infidelity=tol_infidelity, tol_costfunc=tol_costfunc, maxiter=maxiter, maxctrl_MHz=maxctrl_MHz, initctrl_MHz=initctrl_MHz, randomize_init_ctrl=randomize_init_ctrl, gamma_tik0=gamma_tik0, gamma_energy=gamma_energy, gamma_dpdm=gamma_dpdm, costfunction=costfunction, initialcondition=initialcondition, T1=T1, T2=T2, runtype=runtype, gatefilename="./targetgate.dat", print_frequency_iter=print_frequency_iter, datadir=datadir, verbose=verbose, pcof0=pcof0)
 
 
     # Call Quandary
@@ -176,10 +176,10 @@ def write_config(*, Ne, Ng, T, nsteps, freq01, rotfreq, selfkerr, crosskerr=[], 
     mystring += "optim_inftol= " + str(tol_infidelity) + "\n"
     mystring += "optim_maxiter= " + str(maxiter) + "\n"
     mystring += "optim_regul= " + str(gamma_tik0) + "\n"
-    mystring += "optim_penalty= 1.0\n"
-    mystring += "optim_penalty_param= 0.0\n"
+    mystring += "optim_penalty= 0.0\n"
+    mystring += "optim_penalty_param= 0.1\n"
     ninitscale = np.prod(Ne)
-    mystring += "optim_regul_dpdm= " + str(gamma_dpdm) + "\n"
+    mystring += "optim_penalty_dpdm= " + str(gamma_dpdm) + "\n"
     mystring += "optim_penalty_energy= " + str(gamma_energy) + "\n"
     mystring += "datadir= ./\n"
     for iosc in range(len(Ne)):
@@ -220,8 +220,8 @@ def get_results(datadir="./"):
     else:
         optim_last = optim_hist
     infid_last = 1.0 - optim_last[4]
-    # tikhonov_last = optim_last[6]
-#     dpdm_penalty_last = optim_last[8]  # TODO: add dpdm penalty
+    tikhonov_last = optim_last[6]
+    dpdm_penalty_last = optim_last[8] 
 
     # # Get last time-step unitary
     # uT = np.zeros((np.prod(Nt), np.prod(Ne)), dtype=np.complex128)
