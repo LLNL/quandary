@@ -350,6 +350,8 @@ Three optional penalty terms can be added: The first penalty term can be added w
 The second penalty term can be added with parameter $\gamma_3 \geq 0$ to encourage solutions whose populations vary slowly in time by penalizing the second derivative of the populations of the state. 
 The third penalty term can be added with parameter $\gamma_4 \geq 0$ to encourage small control pulse amplitudes by penalizing the control pulse energy. 
 
+All regularization and penalty coefficients $\gamma_i$ should be chosen small enough so that they do not dominate the final-time objective function $J$. This might require some fine-tuning. It is recommended to always add $\gamma_1>0$, e.g. $\gamma_1 = 10^{-4}$, and add other penalties only if needed. 
+
 \subsection{Fidelity}\label{sec:fidelity}
 
 As a measure of optimization success, Quandary reports on the fidelity computed from 
