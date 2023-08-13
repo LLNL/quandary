@@ -51,6 +51,7 @@ maxiter = 100 		# Maximum number of optimization iterations
 # Quandary run options
 runtype = "optimization"  # "simulation", or "gradient", or "optimization"
 quandary_exec="/Users/guenther5/Numerics/quandary/main"
+# quandary_exec="/cygdrive/c/Users/scada-125/quandary/main.exe"
 ncores = np.prod(Ne)  # Number of cores 
 # ncores = 1
 datadir = "./run_dir"  # Compute and output directory 

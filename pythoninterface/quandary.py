@@ -58,7 +58,7 @@ def pulse_gen(Ne, Ng, freq01, selfkerr, crosskerr, Jkl, rotfreq, maxctrl_MHz, T,
 
 
 
-def execute(*, runtype="simulation", ncores=1, config_filename="config.cfg", datadir=".", quandary_exec="/absolute/path/to/quandary/main", verbose=False):
+def execute(*, runtype="simulation", ncores=1, config_filename="config.cfg", datadir=".", quandary_exec="/absolute/path/to/quandary/main", verbose=False, cygwin=False):
 
     
     # result = run(["pwd"], shell=True, capture_output=True, text=True)
@@ -77,29 +77,30 @@ def execute(*, runtype="simulation", ncores=1, config_filename="config.cfg", dat
         # prefix = f"mpirun -np {ncores}"
         runcommand = f"mpirun -np {ncores} " + runcommand
 
-    if verbose:
-        result = run(["pwd"], shell=True, capture_output=True, text=True)
-        print("Running Quandary in directory ", result.stdout)
+    # if verbose:
+        # result = run(["pwd"], shell=True, capture_output=True, text=True)
+    print("Running Quandary ... ")
 
     # Execute Quandary
-    # Pipe std output to file rather than screen
-    # with open(os.path.join(datadir, "out.log"), "w") as stdout_file, \
-    #      open(os.path.join(datadir, "err.log"), "w") as stderr_file:
-    #         exec = run(runcommand, shell=True, stdout=stdout_file, stderr=stderr_file)
-    print("Executing '", runcommand, "' ...")
-    exec = run(runcommand, shell=True)
-    # Check return code
-    err = exec.check_returncode()
-
-    # # Execute Quandary on Windows through Cygwin
-    # p = Popen(r"C:/cygwin64/bin/bash.exe", stdin=PIPE, stdout=PIPE, stderr=PIPE)  
-    # p.stdin.write(runcommand.encode('ASCII')) 
-    # p.stdin.close()
-    # std_out, std_err = p.communicate()
-    # # Print stdout and stderr
-    # if verbose:
-    #     print(std_out.strip().decode('ascii'))
-    #     print(std_err)
+    if not cygwin: # NOT on Windows through Cygwin. Should work on Mac, Linux.
+        # Pipe std output to file rather than screen
+        # with open(os.path.join(datadir, "out.log"), "w") as stdout_file, \
+        #      open(os.path.join(datadir, "err.log"), "w") as stderr_file:
+        #         exec = run(runcommand, shell=True, stdout=stdout_file, stderr=stderr_file)
+        print("Executing '", runcommand, "' ...")
+        exec = run(runcommand, shell=True)
+        # Check return code
+        err = exec.check_returncode()
+    else:
+        # Execute Quandary on Windows through Cygwin
+        p = Popen(r"C:/cygwin64/bin/bash.exe", stdin=PIPE, stdout=PIPE, stderr=PIPE)  
+        p.stdin.write(runcommand.encode('ASCII')) 
+        p.stdin.close()
+        std_out, std_err = p.communicate()
+        # Print stdout and stderr
+        if verbose:
+            print(std_out.strip().decode('ascii'))
+            print(std_err.strip().decode('ascii'))
 
     # Return to previous directory
     os.chdir(dir_org)
