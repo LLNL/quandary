@@ -1,18 +1,18 @@
 from quandary import * 
 
-
 ## One qubit test case ##
+
 Ne = [3]  # Number of essential energy levels
 Ng = [1]  # Number of extra guard levels
 
-# 01 transition frequencies [GHz]
+# 01 transition frequencies [GHz] per oscillator
 freq01 = [4.10595] 
-# Anharmonicities [GHz]
+# Anharmonicities [GHz] per oscillator
 selfkerr = [0.2198]
-# Coupling strength
+# Coupling strength [GHz] (Format [0<->1, 0<->2, ..., 1<->2, ... ])
 Jkl = []        # no Jaynes-Cummings coupling
 crosskerr = []  # no crossker coupling
-# Setup frequency of rotations for computational frame
+# Frequency of rotations for computational frame [GHz] per oscillator
 rotfreq = freq01
 # If Lindblad solver: Specify decay (T1) and dephasing (T2) [ns]
 T1 = [] # [100.0]
@@ -23,12 +23,12 @@ T = 100.0
 # Number of points to resolve the shortest period of the dynamics
 Pmin = 40  # 60 # 40 # 80
 
-# Bounds on the control pulse (in rotational frame, p and q) [MHz] 
+# Bounds on the control pulse (in rotational frame, p and q) [MHz] per oscillator
 maxctrl_MHz = [10.0]  
 # Bspline spacing (ns) for control pulse parameterization. // The number of Bspline basis functions is then T/dtau + 2.
 dtau = 3.33
 
-# Set the amplitude of initial (randomized) control vector
+# Set the amplitude of initial (randomized) control vector for each oscillator 
 amp_frac = 0.9
 initctrl_MHz = [amp_frac * maxctrl_MHz[i] for i in range(len(Ne))]
 rand_seed = 1234
