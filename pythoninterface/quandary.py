@@ -41,6 +41,9 @@ def pulse_gen(Ne, Ng, freq01, selfkerr, crosskerr, Jkl, rotfreq, maxctrl_MHz, T,
     if verbose:
         print("Final time: ",T,"ns, Number of timesteps: ", nsteps,", dt=", T/nsteps, "ns")
         print("Maximum control amplitudes: ", maxctrl_MHz, "MHz")
+        print("Hsys = ", Hsys)
+        print("Hc_real = ", Hc_re)
+        print("Hc_im = ", Hc_im)
 
 
     # Estimate carrier wave frequencies
@@ -135,7 +138,7 @@ def execute(*, runtype="simulation", ncores=1, config_filename="config.cfg", dat
     return 1
 
 
-def write_config(*, Ne, Ng, T, nsteps, freq01, rotfreq, selfkerr, crosskerr=[], Jkl=[], nsplines=5, carrierfreq, T1=[], T2=[], gatefilename="./gatefile.dat", runtype="optimization",maxctrl_MHz=None, initctrl_MHz=None, randomize_init_ctrl=True, maxiter=1000,tol_infidelity=1e-3, tol_costfunc=1e-3, gamma_tik0=1e-4, gamma_dpdm=0.0, gamma_energy=0.0, costfunction="Jtrace", initialcondition="basis", datadir=".", configfilename="config.cfg", print_frequency_iter=1, pcof0=[], verbose=False, standardmodel=True):
+def write_config(*, Ne, Ng, T, nsteps, freq01, rotfreq, selfkerr, crosskerr=[], Jkl=[], nsplines=5, carrierfreq, T1=[], T2=[], gatefilename="./gatefile.dat", runtype="optimization",maxctrl_MHz=None, initctrl_MHz=None, randomize_init_ctrl=True, maxiter=1000,tol_infidelity=1e-3, tol_costfunc=1e-3, gamma_tik0=1e-4, gamma_dpdm=0.0, gamma_energy=0.0, costfunction="Jtrace", initialcondition="basis", datadir=".", configfilename="config.cfg", print_frequency_iter=1, pcof0=[], control_enforce_BC=True, verbose=False, standardmodel=True):
 
     if maxctrl_MHz is None:
         maxctrl_MHz = 1e+12*np.ones(len(Ne))
@@ -191,6 +194,7 @@ def write_config(*, Ne, Ng, T, nsteps, freq01, rotfreq, selfkerr, crosskerr=[], 
         for j in range(len(omi)):
             mystring += str(omi[j]) + ", " 
         mystring += "\n"
+    mystring += "control_enforceBC = " + str(control_enforce_BC)+ "\n"
     mystring += "optim_target = gate, fromfile, " + gatefilename + "\n"
     mystring += "optim_objective = " + str(costfunction) + "\n"
     mystring += "gate_rot_freq = 0.0\n"
@@ -418,10 +422,6 @@ def get_resonances(Ne, Hsys, Hc_re, Hc_im, *, cw_amp_thres=6e-2, cw_prox_thres=1
     #     print("Ctrl Hamiltonian #", q, ",                   growth rate:", growth_rate[q], "[1/ns]")
 
 
-# Identity operator of dimension n
-def ident(n):
-    return np.diag(np.ones(n))
-
 # Lowering operator of dimension n
 def lowering(n):
     return np.diag(np.sqrt(np.arange(1, n)), k=1)
@@ -433,7 +433,7 @@ def number(n):
 
 # Create Hamiltonian operators.
 def hamiltonians(N, freq01, selfkerr, crosskerr=[], Jkl = [], *, rotfreq=None, verbose=True):
-    if rotfreq==None:
+    if rotfreq is None:
         rotfreq=np.zeros(len(N))
 
     nqubits = len(N)
@@ -452,11 +452,11 @@ def hamiltonians(N, freq01, selfkerr, crosskerr=[], Jkl = [], *, rotfreq=None, v
                 # predim*=N[j]
         ai = lowering(N[i])
         for j in range(i):
-            ai = np.kron(ident(N[j]), ai) 
+            ai = np.kron(np.identity(N[j]), ai) 
         # postdim = 1
         for j in range(i+1,len(N)):
                 # postdim*=N[j]
-            ai = np.kron(ai, ident(N[j])) 
+            ai = np.kron(ai, np.identity(N[j])) 
         # a.append(tensor(qeye(predim), lowering(N[i]), ident(postdim)))
         Amat.append(ai)
 
@@ -473,17 +473,19 @@ def hamiltonians(N, freq01, selfkerr, crosskerr=[], Jkl = [], *, rotfreq=None, v
         idkl = 0 
         for q in range(nqubits):
             for p in range(q + 1, nqubits):
-                crosskerr_radns = 2.0*np.pi * crosskerr[idkl]
-                Hsys -= crosskerr_radns * Amat[q].T @ Amat[q] @ Amat[p].T @ Amat[p]
-                idkl += 1
+                if abs(crosskerr[idkl]) > 1e-14:
+                    crosskerr_radns = 2.0*np.pi * crosskerr[idkl]
+                    Hsys -= crosskerr_radns * Amat[q].T @ Amat[q] @ Amat[p].T @ Amat[p]
+                    idkl += 1
     if len(Jkl)>0:
         idkl = 0 
         for q in range(nqubits):
             for p in range(q + 1, nqubits):
-                Jkl_radns  = 2.0*np.pi*Jkl[idkl]
-                Hsys += Jkl_radns * Amat[q].T @ Amat[p] + Amat[q] @ Amat[p].T
-                idkl += 1
-    
+                if abs(Jkl[idkl]) > 1e-14:
+                    Jkl_radns  = 2.0*np.pi*Jkl[idkl]
+                    Hsys += Jkl_radns * (Amat[q].T @ Amat[p] + Amat[q] @ Amat[p].T)
+                    idkl += 1
+
     # Set up control Hamiltonians
     Hc_re = [Amat[q] + Amat[q].T for q in range(nqubits)]
     Hc_im = [Amat[q] - Amat[q].T for q in range(nqubits)]

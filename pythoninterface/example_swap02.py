@@ -9,7 +9,7 @@ Ng = [0]  # Number of extra guard levels
 freq01 = [4.10595] 
 # Anharmonicities [GHz]
 selfkerr = [0.2198]
-# Coupling
+# Coupling strength
 Jkl = []        # no Jaynes-Cummings coupling
 crosskerr = []  # no crossker coupling
 # Setup frequency of rotations for computational frame
