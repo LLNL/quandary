@@ -302,6 +302,7 @@ def get_resonances(Ne, Hsys, Hc_re, Hc_im, *, cw_amp_thres=6e-2, cw_prox_thres=1
                     if not any(abs(delta_f - f) < cw_prox_thres for f in resonances_a):
                         resonances_a.append(delta_f)
                         speed_a.append(abs(Hctrl_ad_trans[i, j]))
+                    # TODO: Do not add non-essential levels!
 
                         if verbose:
                             print("    Resonance from =", j, "to =", i, ", frequency", delta_f, ", growth rate=", abs(Hctrl_ad_trans[i, j]))
@@ -403,32 +404,32 @@ def number(n):
     return np.diag(np.arange(n))
 
 
-# Create Hamiltonian operators. Essential levels ONLY!
-def hamiltonians(Ne, freq01, selfkerr, crosskerr=[], Jkl = [], *, rotfreq=None, verbose=True):
+# Create Hamiltonian operators.
+def hamiltonians(N, freq01, selfkerr, crosskerr=[], Jkl = [], *, rotfreq=None, verbose=True):
     if rotfreq==None:
-        rotfreq=np.zeros(len(Ne))
+        rotfreq=np.zeros(len(N))
 
-    nqubits = len(Ne)
+    nqubits = len(N)
     assert len(selfkerr) == nqubits
     assert len(freq01) == nqubits
     assert len(rotfreq) == nqubits
     assert len(selfkerr) == nqubits
 
-    n = np.prod(Ne)     # System size 
+    n = np.prod(N)     # System size 
 
     # Set up lowering operators in full dimension
     Amat = []
-    for i in range(len(Ne)):
+    for i in range(len(N)):
         # predim = 1
         # for j in range(i):
                 # predim*=N[j]
-        ai = lowering(Ne[i])
+        ai = lowering(N[i])
         for j in range(i):
-            ai = np.kron(ident(Ne[j]), ai) 
+            ai = np.kron(ident(N[j]), ai) 
         # postdim = 1
-        for j in range(i+1,len(Ne)):
+        for j in range(i+1,len(N)):
                 # postdim*=N[j]
-            ai = np.kron(ai, ident(Ne[j])) 
+            ai = np.kron(ai, ident(N[j])) 
         # a.append(tensor(qeye(predim), lowering(N[i]), ident(postdim)))
         Amat.append(ai)
 
