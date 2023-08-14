@@ -316,33 +316,51 @@ def get_resonances(Ne, Ng, Hsys, Hc_re, Hc_im, *, cw_amp_thres=6e-2, cw_prox_thr
     resonances = []
     speed = []
     for q in range(nqubits):
-        Hctrl_ad = Hc_re[q] - Hc_im[q]   # divide by 2. Adjust the cw_amp_thres. 
+        Hctrl_ad = Hc_re[q] - Hc_im[q]   # a' TODO: WHY ? 
+        # Hctrl_ad = Hc_re[q] + Hc_im[q]     # a 
+        # Hctrl_ad = Hc_re[q]               # a+a'
+        # Hctrl_ad = Hc_im[q]               # a-a'
         Hctrl_ad_trans = Utrans.T @ Hctrl_ad @ Utrans
 
         resonances_a = []
         speed_a = []
         if verbose:
             print("  Resonances in oscillator #", q)
+        # Iterate over non-zero elements in transformed control
         for i in range(n):
-            for j in range(i):
-                if abs(Hctrl_ad_trans[i, j]) >= cw_amp_thres:
-                    delta_f = Hsys_evals[i] - Hsys_evals[j]
-                    if abs(delta_f) < 1e-10:
-                        delta_f = 0.0
-                    if not any(abs(delta_f - f) < cw_prox_thres for f in resonances_a):
-                        # Ignore non-essential level transition
-                        ids_j = map_to_oscillators(j, Ne, Ng)
-                        ids_i = map_to_oscillators(i, Ne, Ng)
-                        if any(ids_i[k] > Ne[k]-1 for k in range(len(Ne))) or \
-                           any(ids_j[k] > Ne[k]-1 for k in range(len(Ne))):
-                           if verbose:
-                               print("    Skipping non-essential resonance from ", ids_j, "to ", ids_i)
-                        # Otherwise, add resonances
-                        else:
-                            resonances_a.append(delta_f)
-                            speed_a.append(abs(Hctrl_ad_trans[i, j]))
-                            if verbose:
-                                print("    Resonance from ", ids_j, "to ", ids_i, ", frequency", delta_f, ", growth rate=", abs(Hctrl_ad_trans[i, j]))
+            for j in range(n):
+                if abs(Hctrl_ad_trans[i,j])< 1e-14:
+                    continue
+                
+                # Get the resonance
+                delta_f = Hsys_evals[i] - Hsys_evals[j]
+                if abs(delta_f) < 1e-10:
+                    delta_f = 0.0
+
+                # Get involved oscillator levels
+                ids_j = map_to_oscillators(j, Ne, Ng)
+                ids_i = map_to_oscillators(i, Ne, Ng)
+
+                # Ignore resonance to non-essential levels
+                if any(ids_i[k] > Ne[k]-1 for k in range(len(Ne))) or \
+                   any(ids_j[k] > Ne[k]-1 for k in range(len(Ne))):
+                   if verbose:
+                       print("    Skipping non-essential resonance from ", ids_j, "to ", ids_i)
+                # Ignore resonance with small growth rate
+                elif abs(Hctrl_ad_trans[i, j]) < cw_amp_thres:
+                    if verbose:
+                        print("    Ignoring resonance from ", ids_j, "to ", ids_i, "due to small growth rate=", Hctrl_ad_trans[i,j])
+                # Ignore resonance too close to each other
+                elif any(abs(delta_f - f) < cw_prox_thres for f in resonances_a):
+                    #  any(abs(delta_f + f) < cw_prox_thres for f in resonances_a):
+                    if verbose:
+                        print("    Ignoring resonance from ", ids_j, "to ", ids_i, "being too close to one that already exists.")
+                # Otherwise, add resonance to the list
+                else:
+                    resonances_a.append(delta_f)
+                    speed_a.append(abs(Hctrl_ad_trans[i, j]))
+                    if verbose:
+                        print("    Resonance from ", ids_j, "to ", ids_i, ", frequency", delta_f, ", growth rate=", abs(Hctrl_ad_trans[i, j]))
         
         resonances.append(resonances_a)
         speed.append(speed_a)
