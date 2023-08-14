@@ -37,7 +37,7 @@ def pulse_gen(Ne, Ng, freq01, selfkerr, crosskerr, Jkl, rotfreq, maxctrl_MHz, T,
         Hsys, Hc_re, Hc_im = hamiltonians(Ntot, freq01, selfkerr, crosskerr, Jkl, rotfreq=rotfreq, verbose=verbose)
 
     # Estimate number of time steps
-    nsteps = estimate_timesteps(T, Hsys, Hc_re, Hc_im, maxctrl_MHz, Pmin=Pmin)
+    nsteps = estimate_timesteps(T=T, Hsys=Hsys, Hc_re=Hc_re, Hc_im=Hc_im, maxctrl_MHz=maxctrl_MHz, Pmin=Pmin)
     if verbose:
         print("Final time: ",T,"ns, Number of timesteps: ", nsteps,", dt=", T/nsteps, "ns")
         print("Maximum control amplitudes: ", maxctrl_MHz, "MHz")
@@ -276,11 +276,10 @@ def get_results(datadir="./"):
 
 # Estimates the number of time steps based on eigenvalues of the system Hamiltonian and maximum control Hamiltonians.
 # NOTE: The estimate does not account for quickly varying signals or a large number of splines. Double check that at least 2-3 points per spline are present to resolve control function. #TODO: Automate this
-def estimate_timesteps(T, Hsys, Hc_re=[], Hc_im=[], maxctrl_MHz=[], *, Pmin=40):
+def estimate_timesteps(*, T=1.0, Hsys=[], Hc_re=[], Hc_im=[], maxctrl_MHz=[], Pmin=40):
     assert len(maxctrl_MHz) >= len(Hc_re)
 
-
-    # Set up Hsys + maxctrl*Hcontrol
+    # Set up Hsys +  maxctrl*Hcontrol
     K1 = np.copy(Hsys) 
     for i in range(len(Hc_re)):
         max_radns = maxctrl_MHz[i]*2.0*np.pi/1e+3
@@ -488,7 +487,7 @@ def hamiltonians(N, freq01, selfkerr, crosskerr=[], Jkl = [], *, rotfreq=None, v
         Hsys +=  domega_radns * Amat[q].T @ Amat[q]
         Hsys -= selfkerr_radns/2.0 * Amat[q].T @ Amat[q].T @ Amat[q] @ Amat[q]
 
-    # Add system Hamiltonian coupling terms
+    # Add cross cerr coupling, if given
     if len(crosskerr)>0:
         idkl = 0 
         for q in range(nqubits):
@@ -497,6 +496,9 @@ def hamiltonians(N, freq01, selfkerr, crosskerr=[], Jkl = [], *, rotfreq=None, v
                     crosskerr_radns = 2.0*np.pi * crosskerr[idkl]
                     Hsys -= crosskerr_radns * Amat[q].T @ Amat[q] @ Amat[p].T @ Amat[p]
                     idkl += 1
+    
+    # Add Jkl coupling term. 
+    # Note that if the rotating frame frequencies are different amongst oscillators, then this is contributes to a *time-dependent* system Hamiltonian. Here, we treat this as time-independent, because this Hamiltonian here is *ONLY* used to compute the time-step size and resonances, and it is NOT passed to the quandary code. Quandary sets up the standard model with a time-dependent system Hamiltonian if the frequencies of rotation differ amongst oscillators.  
     if len(Jkl)>0:
         idkl = 0 
         for q in range(nqubits):
