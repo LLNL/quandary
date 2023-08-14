@@ -41,13 +41,13 @@ def pulse_gen(Ne, Ng, freq01, selfkerr, crosskerr, Jkl, rotfreq, maxctrl_MHz, T,
     if verbose:
         print("Final time: ",T,"ns, Number of timesteps: ", nsteps,", dt=", T/nsteps, "ns")
         print("Maximum control amplitudes: ", maxctrl_MHz, "MHz")
-        print("Hsys = ", Hsys)
-        print("Hc_real = ", Hc_re)
-        print("Hc_im = ", Hc_im)
+        # print("Hsys = ", Hsys)
+        # print("Hc_real = ", Hc_re)
+        # print("Hc_im = ", Hc_im)
 
 
     # Estimate carrier wave frequencies
-    carrierfreq, growth_rate = get_resonances(Ne, Hsys, Hc_re, Hc_im, verbose=verbose, cw_amp_thres=cw_amp_thres, cw_prox_thres=cw_prox_thres) 
+    carrierfreq, growth_rate = get_resonances(Ne, Ng, Hsys, Hc_re, Hc_im, verbose=verbose, cw_amp_thres=cw_amp_thres, cw_prox_thres=cw_prox_thres) 
     # if verbose:
         # print("Carrier frequencies: ", carrierfreq)
 
@@ -302,7 +302,7 @@ def estimate_timesteps(T, Hsys, Hc_re=[], Hc_im=[], maxctrl_MHz=[], *, Pmin=40):
 
 # Computes system resonances, to be used as carrier wave frequencies
 # Returns resonance frequencies in GHz and corresponding growth rates
-def get_resonances(Ne, Hsys, Hc_re, Hc_im, *, cw_amp_thres=6e-2, cw_prox_thres=1e-3, verbose=True):
+def get_resonances(Ne, Ng, Hsys, Hc_re, Hc_im, *, cw_amp_thres=6e-2, cw_prox_thres=1e-3, verbose=True):
     if verbose:
         print("\nget_resonances: Ignoring growth rate slower than:", cw_amp_thres, "and frequencies closer than:", cw_prox_thres, "[GHz]")
 
@@ -331,12 +331,19 @@ def get_resonances(Ne, Hsys, Hc_re, Hc_im, *, cw_amp_thres=6e-2, cw_prox_thres=1
                     if abs(delta_f) < 1e-10:
                         delta_f = 0.0
                     if not any(abs(delta_f - f) < cw_prox_thres for f in resonances_a):
-                        resonances_a.append(delta_f)
-                        speed_a.append(abs(Hctrl_ad_trans[i, j]))
-                    # TODO: Do not add non-essential levels!
-
-                        if verbose:
-                            print("    Resonance from =", j, "to =", i, ", frequency", delta_f, ", growth rate=", abs(Hctrl_ad_trans[i, j]))
+                        # Ignore non-essential level transition
+                        ids_j = map_to_oscillators(j, Ne, Ng)
+                        ids_i = map_to_oscillators(i, Ne, Ng)
+                        if any(ids_i[k] > Ne[k]-1 for k in range(len(Ne))) or \
+                           any(ids_j[k] > Ne[k]-1 for k in range(len(Ne))):
+                           if verbose:
+                               print("    Skipping non-essential resonance from ", ids_j, "to ", ids_i)
+                        # Otherwise, add resonances
+                        else:
+                            resonances_a.append(delta_f)
+                            speed_a.append(abs(Hctrl_ad_trans[i, j]))
+                            if verbose:
+                                print("    Resonance from ", ids_j, "to ", ids_i, ", frequency", delta_f, ", growth rate=", abs(Hctrl_ad_trans[i, j]))
         
         resonances.append(resonances_a)
         speed.append(speed_a)
@@ -430,6 +437,19 @@ def lowering(n):
 def number(n):
     return np.diag(np.arange(n))
 
+# Return the local energy level of each oscillator for a given global index id
+def map_to_oscillators(id, Ne, Ng):
+
+    nlevels = [Ne[i]+Ng[i] for i in range(len(Ne))]
+    localIDs = []
+
+    index = int(id)
+    for iosc in range(len(Ne)):
+        postdim = np.prod(nlevels[iosc+1:])
+        localIDs.append(int(index / postdim))
+        index = index % postdim 
+
+    return localIDs 
 
 # Create Hamiltonian operators.
 def hamiltonians(N, freq01, selfkerr, crosskerr=[], Jkl = [], *, rotfreq=None, verbose=True):
