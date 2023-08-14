@@ -308,7 +308,7 @@ int main(int argc,char **argv)
   // Check if Hamiltonian should be read from file
   std::string hamiltonian_file = config.GetStrParam("hamiltonian_file", "none");
   if (hamiltonian_file.compare("none") != 0 && usematfree) {
-    printf("# Warning: Matrix-free solver can not be used when Hamiltonian is read fromfile. Switching to sparse-matrix version.\n");
+    if (mpirank_world==0 && !quietmode) printf("# Warning: Matrix-free solver can not be used when Hamiltonian is read fromfile. Switching to sparse-matrix version.\n");
     usematfree = false;
   }
   // Initialize Master equation
