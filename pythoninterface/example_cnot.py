@@ -3,25 +3,25 @@ from quandary import *
 ## Two qubit test case ##
 
 Ne = [2,2]  # Number of essential energy levels
-Ng = [1,1]  # Number of extra guard levels
+Ng = [0,0]  # Number of extra guard levels
 
 # 01 transition frequencies [GHz] per oscillator
 freq01 = [4.10595, 4.8152] 
 # Anharmonicities [GHz] per oscillator
 selfkerr = [0.2198, 0.2252]
 # Coupling strength [GHz] (Format [0<->1, 0<->2, ..., 1<->2, ... ])
-Jkl = [0.0]        # no Jaynes-Cummings coupling
-crosskerr = [0.1]  # Crossker coupling of qubit 0<->1
+Jkl = [0.0]         # no Jaynes-Cummings coupling
+crosskerr = [0.01]  # Crossker coupling of qubit 0<->1
 # Frequency of rotations for computational frame [GHz] per oscillator
-# favg = sum(freq01)/len(freq01)
-# rotfreq = favg*np.ones(len(Ne))
-rotfreq = freq01
+favg = sum(freq01)/len(freq01)
+rotfreq = favg*np.ones(len(Ne))
+# rotfreq = freq01
 # If Lindblad solver: Specify decay (T1) and dephasing (T2) [ns]
 T1 = [] # [100.0, 110.0]
 T2 = [] # [80.0, 90.0]
 
 # Set the time duration (ns)
-T = 100.0
+T = 150.0
 # Number of points to resolve the shortest period of the dynamics
 Pmin = 40  # 60 # 40 # 80
 
@@ -31,7 +31,7 @@ maxctrl_MHz = 10.0*np.ones(len(Ne))
 dtau = 3.33
 
 # Set the amplitude of initial (randomized) control vector for each oscillator 
-amp_frac = 0.5
+amp_frac = 0.9
 initctrl_MHz = [amp_frac * maxctrl_MHz[i] for i in range(len(Ne))]
 rand_seed = 1234
 randomize_init_ctrl = True
@@ -56,12 +56,13 @@ tol_costfunc = 1e-3	# Stopping criterion based on the objective function
 maxiter = 100 		# Maximum number of optimization iterations
 
 # Quandary run options
-runtype = "simulation"  # "simulation", or "gradient", or "optimization"
+runtype = "optimization" # "simulation", or "gradient", or "optimization"
 quandary_exec="/Users/guenther5/Numerics/quandary/main"
 # quandary_exec="/cygdrive/c/Users/scada-125/quandary/main.exe"
 ncores = np.prod(Ne)  # Number of cores 
 # ncores = 1
-datadir = "./CNOT_run_dir"  # Compute and output directory 
+stdmodel=True
+datadir = "./CNOT_run_dir_stdmodel"+str(stdmodel)  # Compute and output directory 
 verbose = True
 
 # Potentially load initial control parameters from a file
@@ -70,7 +71,7 @@ verbose = True
 pcof0=[]
 
 # Execute quandary
-popt, infidelity, optim_hist = pulse_gen(Ne, Ng, freq01, selfkerr, crosskerr, Jkl, rotfreq, maxctrl_MHz, T, initctrl_MHz, rand_seed, randomize_init_ctrl, unitary,  dtau=dtau, Pmin=Pmin, datadir=datadir, tol_infidelity=tol_infidelity, tol_costfunc=tol_costfunc, maxiter=maxiter, gamma_tik0=gamma_tik0, gamma_energy=gamma_energy, gamma_dpdm=gamma_dpdm, costfunction=costfunction, initialcondition=initialcondition, T1=T1, T2=T2, runtype=runtype, quandary_exec=quandary_exec, ncores=ncores, verbose=verbose, pcof0=pcof0)
+popt, infidelity, optim_hist = pulse_gen(Ne, Ng, freq01, selfkerr, crosskerr, Jkl, rotfreq, maxctrl_MHz, T, initctrl_MHz, rand_seed, randomize_init_ctrl, unitary,  dtau=dtau, Pmin=Pmin, datadir=datadir, tol_infidelity=tol_infidelity, tol_costfunc=tol_costfunc, maxiter=maxiter, gamma_tik0=gamma_tik0, gamma_energy=gamma_energy, gamma_dpdm=gamma_dpdm, costfunction=costfunction, initialcondition=initialcondition, T1=T1, T2=T2, runtype=runtype, quandary_exec=quandary_exec, ncores=ncores, verbose=verbose, pcof0=pcof0, stdmodel=stdmodel)
 # Other keyword arg defaults
 # cw_amp_thres = 6e-2
 # cw_prox_thres = 1e-3

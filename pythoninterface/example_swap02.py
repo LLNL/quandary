@@ -80,6 +80,8 @@ print(f"Fidelity = {1.0 - infidelity}")
 #   * Change quandary's leakage term scaling: Potentially use same scaling as in Juqbox (exponentially increasing)
 #   * Change return of pulse_gen to match Tensorflow returns
 #   * Anders: Culled and sorted carrier waves, is that needed? 
+#   * Ander: Get resonances: Iterating over non-zeros of U'HcU, should be all elements? Previously it was only lower triangular matrix, but it is not hermitian, so this makes a difference!
+#   # CNOT case with Jkl coupling is not converging. 
 
 # Note: 
 #   * pcof0 uses Quandaries initialization
@@ -89,5 +91,5 @@ print(f"Fidelity = {1.0 - infidelity}")
 # Reading non-standard hamiltonian from file:
 #   * Hsys must be real
 #   * No transfer functions
-#   * No time-depended system Hamiltonian
+#   * No time-dependent system Hamiltonian
 #   * Only one control operator per oscillator (complex)
