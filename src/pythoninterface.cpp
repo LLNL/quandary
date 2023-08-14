@@ -42,7 +42,7 @@ void PythonInterface::receiveHsys(Mat& Bd){
   long int nelems = sqdim*sqdim;
   std::vector<double> vals (nelems);
   int skiplines=1;
-  if (mpirank_world == 0) read_vector(hamiltonian_file.c_str(), vals.data(), nelems, false, skiplines);
+  if (mpirank_world == 0) read_vector(hamiltonian_file.c_str(), vals.data(), nelems, true, skiplines);
   MPI_Bcast(vals.data(), nelems, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
   /* Place vars into Bd */
@@ -140,8 +140,13 @@ void PythonInterface::receiveHc(int noscillators, std::vector<std::vector<Mat>>&
 
       /* Read real part from file */
       std::vector<double> vals (nelems);
-      if (mpirank_world == 0) read_vector(hamiltonian_file.c_str(), vals.data(), nelems, false, skiplines);
+      if (mpirank_world == 0) read_vector(hamiltonian_file.c_str(), vals.data(), nelems, true, skiplines);
       MPI_Bcast(vals.data(), nelems, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+      skiplines += nelems+1;
+      // printf("Received ioscid %d, Hc_real = \n", k);
+      // for (int m=0; m<vals.size(); m++){
+      //   printf("%d %f\n", m, vals[m]);
+      // }
 
       /* Assemble -I_N \kron Hc^k_i + Hc^k_i \kron I_N (Lindblad) or -Hc^k_i (Schroedinger) */
 
@@ -194,9 +199,13 @@ void PythonInterface::receiveHc(int noscillators, std::vector<std::vector<Mat>>&
       MatGetOwnershipRange(Ac_vec[k][i], &ilow, &iupp);
 
       /* Read imaginary part from file */
-      skiplines+=nelems+1; // Skip system Hamiltonian and real Hc
-      if (mpirank_world == 0) read_vector(hamiltonian_file.c_str(), vals.data(), nelems, false, skiplines);
+      if (mpirank_world == 0) read_vector(hamiltonian_file.c_str(), vals.data(), nelems, true, skiplines);
       MPI_Bcast(vals.data(), nelems, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+      skiplines+=nelems+1; // Skip system Hamiltonian and real Hc
+      // printf("Received ioscid %d, Hc_imag = \n", k);
+      // for (int m=0; m<vals.size(); m++){
+      //   printf("%d %f\n", m, vals[m]);
+      // }
 
       // Assemble I_N \kron Hc^k_i - Hc^k_i \kron I_N (Lindblad) or Hc^k_i (Schroedinger)
 
