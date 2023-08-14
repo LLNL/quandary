@@ -108,12 +108,11 @@ void Output::writeControls(Vec params, MasterEq* mastereq, int ntime, double dt)
   if ( mpirank_world == 0 ) { 
 
     char filename[255];
-    char filename_transfer[255];
     PetscInt ndesign;
     VecGetSize(params, &ndesign);
 
     /* Print current parameters to file */
-    FILE *file, *file_c, *file_t;
+    FILE *file, *file_c;
     // sprintf(filename, "%s/params_iter%04d.dat", datadir.c_str(), optim_iter);
     sprintf(filename, "%s/params.dat", datadir.c_str());
     file = fopen(filename, "w");
@@ -127,15 +126,12 @@ void Output::writeControls(Vec params, MasterEq* mastereq, int ntime, double dt)
     VecRestoreArrayRead(params, &params_ptr);
     if (!quietmode) printf("File written: %s\n", filename);
 
-    /* Print control p(t) and transfer u_i(p(t)) to file for each oscillator */
+    /* Print control to file for each oscillator */
     mastereq->setControlAmplitudes(params);
     for (int ioscil = 0; ioscil < mastereq->getNOscillators(); ioscil++) {
       sprintf(filename, "%s/control%d.dat", datadir.c_str(), ioscil);
-      sprintf(filename_transfer, "%s/transfer_control%d.dat", datadir.c_str(), ioscil);
       file_c = fopen(filename, "w");
-      file_t = fopen(filename_transfer, "w");
       fprintf(file_c, "# time         p(t) (rotating)          q(t) (rotating)        f(t) (labframe) \n");
-      fprintf(file_t, "# time     u^k_1(p(t))     u^k_2(p(t))    ...      v^k_1(q(t))     v^k_2(q(t))     ...\n");
 
       /* Write every <num> timestep to file */
       for (int i=0; i<=ntime; i+=output_frequency) {
@@ -146,25 +142,10 @@ void Output::writeControls(Vec params, MasterEq* mastereq, int ntime, double dt)
         mastereq->getOscillator(ioscil)->evalControl_Labframe(time, &LabI);
         // Write control drives
         fprintf(file_c, "% 1.8f   % 1.14e   % 1.14e   % 1.14e \n", time, ReI, ImI, LabI);
-        
-        // Evaluate and write transfer functions u_i(p(t)), v_i(q(t)) for this oscillator
-        fprintf(file_t, "% 1.8f   ", time);
-        for (int icon=0; icon<mastereq->transfer_Hc_re[ioscil].size(); icon++){
-          double ukip = mastereq->transfer_Hc_re[ioscil][icon]->eval(ReI, time);
-          fprintf(file_t, "% 1.14e   ", ukip);
-        }
-        // Get transfer functions v^k_i(q) for this oscillators k
-        for (int icon=0; icon<mastereq->transfer_Hc_im[ioscil].size(); icon++){
-          double ukiq = mastereq->transfer_Hc_im[ioscil][icon]->eval(ImI, time);
-          fprintf(file_t, "% 1.14e   ", ukiq);
-        } 
-        fprintf(file_t, "\n");
-      } // end of time loop 
+     } // end of time loop 
 
       fclose(file_c);
-      fclose(file_t);
       if (!quietmode) printf("File written: %s\n", filename);
-      if (!quietmode) printf("File written: %s\n", filename_transfer);
     } // end of oscillator loop
   }
 }

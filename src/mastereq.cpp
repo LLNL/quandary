@@ -16,7 +16,7 @@ MasterEq::MasterEq(){
 }
 
 
-MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Oscillator** oscil_vec_, const std::vector<double> crosskerr_, const std::vector<double> Jkl_, const std::vector<double> eta_, LindbladType lindbladtype_, bool usematfree_, std::string python_file_, bool quietmode_) {
+MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Oscillator** oscil_vec_, const std::vector<double> crosskerr_, const std::vector<double> Jkl_, const std::vector<double> eta_, LindbladType lindbladtype_, bool usematfree_, std::string hamiltonian_file_, bool quietmode_) {
   int ierr;
 
   nlevels = nlevels_;
@@ -28,7 +28,7 @@ MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Osci
   eta = eta_;
   usematfree = usematfree_;
   lindbladtype = lindbladtype_;
-  python_file = python_file_;
+  hamiltonian_file = hamiltonian_file_;
   quietmode = quietmode_;
 
 
@@ -642,22 +642,14 @@ void MasterEq::initSparseMatSolver(){
   MatAssemblyEnd(Ad, MAT_FINAL_ASSEMBLY);
 
   /* If a Python file is given, overwrite the matrices with those read from file. */ 
-  if (python_file.compare("none") != 0 ) {
-#ifdef WITH_PYTHON
-    if (mpirank_world==0 && !quietmode) printf("\n# Reading Hamiltonian model from python file %s.\n\n", python_file.c_str());
-#else
-    printf("# Warning: You requested to read the Hamiltonians from the python file %s, but you didn't link Quandary with python. Check your Makefile for WITH_PYTHON=true to use this feature. Using default Hamiltonian now.\n", python_file.c_str());
-#endif
+  if (hamiltonian_file.compare("none") != 0 ) {
+    if (mpirank_world==0 && !quietmode) printf("\n# Reading Hamiltonian model from file %s.\n\n", hamiltonian_file.c_str());
 
-    PythonInterface* py = new PythonInterface(python_file, lindbladtype, dim_rho);
+    PythonInterface* py = new PythonInterface(hamiltonian_file, lindbladtype, dim_rho);
 
     /* Read Hamiltonians from python interface */
-    py->receiveHd(Ad, Bd);  // receiving Bd
+    py->receiveHsys(Bd);  // receiving Bd
     py->receiveHc(noscillators, Ac_vec, Bc_vec); 
-    py->receiveHcTransfer(noscillators, transfer_Hc_re, transfer_Hc_im);
-    py->receiveHdt(Ad_vec, Bd_vec);
-    py->receiveHdtTransfer(Ad_vec.size(), transfer_Hdt_re, transfer_Hdt_im);
-    // TODO: Pass both Ad.size and also Bd.size, since they might be different!.
 
     if (mpirank_world==0&& !quietmode) printf("# Done. \n\n");
 
@@ -673,6 +665,7 @@ void MasterEq::initSparseMatSolver(){
   //   for (int i=0; i<Bc_vec[k].size(); i++){
   //     printf("Oscil %d, control term %d:\n", k, i);
   //     MatView(Bc_vec[k][i], NULL);
+  //     MatView(Ac_vec[k][i], NULL);
   //   }
   // }
   // for (int kl=0; kl<Ad_vec.size(); kl++) {

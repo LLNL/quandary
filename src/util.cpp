@@ -490,19 +490,33 @@ PetscErrorCode SanityTests(Vec x, double time){
 }
 
 
-void read_vector(const char *filename, double *var, int dim, bool quietmode) {
+void read_vector(const char *filename, double *var, int dim, bool quietmode, int skiplines) {
 
   FILE *file;
   double tmp;
 
-  /* Open file */
   file = fopen(filename, "r");
+
   if (file != NULL) {
-    /* Read data */
     if (!quietmode) printf("Reading file %s\n", filename);
+
+    /* Scip first <skiplines> lines */
+    char buffer[50];
+    for (int ix = 0; ix < skiplines; ix++) {
+      fscanf(file, "%50[^\n]%*c", &buffer);
+      // printf("Skipping %d lines: %s \n:", skiplines, buffer);
+    }
+
+    /* Read <dim> lines from file */
     for (int ix = 0; ix < dim; ix++) {
-      fscanf(file, "%lf", &tmp);
-      var[ix] = tmp;
+      fscanf(file, "%50[^\n]%*c", &buffer);
+      // if (buffer[0]=='#') printf("IGNORING this:");
+      // printf("Read %d %s\n", ix, buffer);
+      if (buffer[0]=='#') {
+        ix -=1;
+      }
+      else var[ix] = atof(buffer);
+      // printf("vax[%d]=%f\n", ix, var[ix]);
     }
   } else {
     printf("ERROR: Can't open file %s\n", filename);

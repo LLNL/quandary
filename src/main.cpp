@@ -306,13 +306,13 @@ int main(int argc,char **argv)
     }
   }
   // Check if Hamiltonian should be read from file
-  std::string python_file = config.GetStrParam("python_file", "none");
-  if (python_file.compare("none") != 0 && usematfree) {
+  std::string hamiltonian_file = config.GetStrParam("hamiltonian_file", "none");
+  if (hamiltonian_file.compare("none") != 0 && usematfree) {
     printf("# Warning: Matrix-free solver can not be used when Hamiltonian is read fromfile. Switching to sparse-matrix version.\n");
     usematfree = false;
   }
   // Initialize Master equation
-  MasterEq* mastereq = new MasterEq(nlevels, nessential, oscil_vec, crosskerr, Jkl, eta, lindbladtype, usematfree, python_file, quietmode);
+  MasterEq* mastereq = new MasterEq(nlevels, nessential, oscil_vec, crosskerr, Jkl, eta, lindbladtype, usematfree, hamiltonian_file, quietmode);
 
 
   /* Output */

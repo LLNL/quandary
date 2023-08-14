@@ -99,12 +99,12 @@ class MasterEq{
     std::vector<std::vector<TransferFunction*>> transfer_Hc_im; // Stores the transfer functions for each control term for each oscillator
     std::vector<TransferFunction*> transfer_Hdt_re; // Stores the transfer functions for each time-varying system hamiltonian term  
     std::vector<TransferFunction*> transfer_Hdt_im; // Stores the transfer functions for each time-varying system Hamiltonian term  
-    std::string python_file; // either 'none' or name of python script to read Hamiltonian from 
+    std::string hamiltonian_file; // either 'none' or name of file to read Hamiltonian from 
 
 
   public:
     MasterEq();
-    MasterEq(std::vector<int> nlevels, std::vector<int> nessential, Oscillator** oscil_vec_, const std::vector<double> crosskerr_, const std::vector<double> Jkl_, const std::vector<double> eta_, LindbladType lindbladtype_, bool usematfree_, std::string python_file, bool quietmode=false);
+    MasterEq(std::vector<int> nlevels, std::vector<int> nessential, Oscillator** oscil_vec_, const std::vector<double> crosskerr_, const std::vector<double> Jkl_, const std::vector<double> eta_, LindbladType lindbladtype_, bool usematfree_, std::string hamiltonian_file, bool quietmode=false);
     ~MasterEq();
 
     /* initialize matrices needed for applying sparse-mat solver */

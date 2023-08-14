@@ -78,7 +78,7 @@ PetscErrorCode SanityTests(Vec x, PetscReal time);
 /**
  * Read data from file
  */
-void read_vector(const char *filename, double *var, int dim, bool quietmode=false);
+void read_vector(const char *filename, double *var, int dim, bool quietmode=false, int skiplines=0);
 
 
 /* 
