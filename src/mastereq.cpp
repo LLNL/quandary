@@ -120,8 +120,8 @@ MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Osci
   // If python interface, they can be different
   for (int k=0; k<noscillators*(noscillators-1)/2; k++){
     if (fabs(Jkl[k]) > 1e-12) {
-      CosineTransferFunction* mytransfer_re = new CosineTransferFunction(Jkl[k], eta[k]);
-      SineTransferFunction* mytransfer_im = new SineTransferFunction(Jkl[k], eta[k]);
+      CosineTransferFunction* mytransfer_re = new CosineTransferFunction(1.0, eta[k]);
+      SineTransferFunction* mytransfer_im = new SineTransferFunction(1.0, eta[k]);
 
       transfer_Hdt_re.push_back(mytransfer_re);
       transfer_Hdt_im.push_back(mytransfer_im);
@@ -449,13 +449,13 @@ void MasterEq::initSparseMatSolver(){
           r1b = r1b % (nj*npostj);
           r1b = (int) r1b / npostj;
           if (r1a > 0 && r1b < nj-1) {
-            val = sqrt(r1a * (r1b+1));
+            val = Jkl[id_kl] * sqrt(r1a * (r1b+1));
             col = row - npostk + npostj;
              if (fabs(val)>1e-14) MatSetValue(Ad_vec[id], row, col,  val, ADD_VALUES);
              if (fabs(val)>1e-14) MatSetValue(Bd_vec[id], row, col, -val, ADD_VALUES);
           }
           if (r1a < nk-1  && r1b > 0) {
-            val = sqrt((r1a+1) * r1b);
+            val = Jkl[id_kl] * sqrt((r1a+1) * r1b);
             col = row + npostk - npostj;
             if (fabs(val)>1e-14) MatSetValue(Ad_vec[id], row, col, -val, ADD_VALUES);
             if (fabs(val)>1e-14) MatSetValue(Bd_vec[id], row, col, -val, ADD_VALUES);
@@ -469,13 +469,13 @@ void MasterEq::initSparseMatSolver(){
             r1b = r1b % (nj*npostj*dimmat);
             r1b = (int) r1b / (npostj*dimmat);
             if (r1a < nk-1 && r1b > 0) {
-              val = sqrt((r1a+1) * r1b);
+              val = Jkl[id_kl] * sqrt((r1a+1) * r1b);
               col = row + npostk*dimmat - npostj*dimmat;
               if (fabs(val)>1e-14) MatSetValue(Ad_vec[id], row, col, -val, ADD_VALUES);
               if (fabs(val)>1e-14) MatSetValue(Bd_vec[id], row, col, +val, ADD_VALUES);
             }
             if (r1a > 0 && r1b < nj-1) {
-              val = sqrt(r1a * (r1b+1));
+              val = Jkl[id_kl] * sqrt(r1a * (r1b+1));
               col = row - npostk*dimmat + npostj*dimmat;
               if (fabs(val)>1e-14) MatSetValue(Ad_vec[id], row, col, val, ADD_VALUES);
               if (fabs(val)>1e-14) MatSetValue(Bd_vec[id], row, col, val, ADD_VALUES);
