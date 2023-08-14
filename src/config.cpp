@@ -158,7 +158,12 @@ bool MapParam::GetBoolParam(string key, bool default_val) const
       cerr << "# Warning: parameter " << key << " not found ! Taking default = " << default_val << endl;
     val = default_val;
   }
-  else if (!strcmp(it_value->second.c_str(), "yes") || !strcmp(it_value->second.c_str(), "true") || !strcmp(it_value->second.c_str(), "YES") || !strcmp(it_value->second.c_str(), "1"))
+  else if (!strcmp(it_value->second.c_str(), "yes") || 
+          !strcmp(it_value->second.c_str(), "true") || 
+          !strcmp(it_value->second.c_str(), "True") || 
+          !strcmp(it_value->second.c_str(), "TRUE") || 
+          !strcmp(it_value->second.c_str(), "YES")  || 
+          !strcmp(it_value->second.c_str(), "1"))
     val = true;
   else
     val = false;
