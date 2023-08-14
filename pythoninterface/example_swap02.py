@@ -3,7 +3,7 @@ from quandary import *
 
 ## One qubit test case ##
 Ne = [3]  # Number of essential energy levels
-Ng = [0]  # Number of extra guard levels
+Ng = [1]  # Number of extra guard levels
 
 # 01 transition frequencies [GHz]
 freq01 = [4.10595] 
@@ -78,7 +78,8 @@ print(f"Fidelity = {1.0 - infidelity}")
 #   * Add custom decoherence operators
 #   * Gather all configuration in a dictionary (or other struct) that contains all defaults and allows for changes.
 #   * Change quandary's leakage term scaling: Potentially use same scaling as in Juqbox (exponentially increasing)
-# get_resonance should remove non-essential level transitions!
+#   * Change return of pulse_gen to match Tensorflow returns
+#   * Anders: Culled and sorted carrier waves, is that needed? 
 
 # Note: 
 #   * pcof0 uses Quandaries initialization

@@ -3,7 +3,7 @@ from quandary import *
 
 ## One qubit test case ##
 Ne = [2,2]  # Number of essential energy levels
-Ng = [0,0]  # Number of extra guard levels
+Ng = [1,1]  # Number of extra guard levels
 
 # 01 transition frequencies [GHz]
 freq01 = [4.10595, 4.8152] 

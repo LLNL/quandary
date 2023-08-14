@@ -201,6 +201,7 @@ def write_config(*, Ne, Ng, T, nsteps, freq01, rotfreq, selfkerr, crosskerr=[], 
     mystring += "optim_weights= 1.0\n"
     mystring += "optim_atol= 1e-5\n"
     mystring += "optim_rtol= 1e-4\n"
+    mystring += "optim_dxtol = 1e-8\n"
     mystring += "optim_ftol= " + str(tol_costfunc) + "\n"
     mystring += "optim_inftol= " + str(tol_infidelity) + "\n"
     mystring += "optim_maxiter= " + str(maxiter) + "\n"
@@ -224,6 +225,7 @@ def write_config(*, Ne, Ng, T, nsteps, freq01, rotfreq, selfkerr, crosskerr=[], 
     mystring += "linearsolver_maxiter = 20\n"
     if not standardmodel:
         mystring += "hamiltonian_file= ./hamiltonian.dat\n"
+    mystring += "timestepper = IMR\n"
 
 
     # Write the file
@@ -238,7 +240,6 @@ def write_config(*, Ne, Ng, T, nsteps, freq01, rotfreq, selfkerr, crosskerr=[], 
 
 
 def get_results(datadir="./"):
-    # TODO: Output directory of quandary run. 
     dataout_dir = datadir + "/"
     
     # Get control parameters
@@ -274,8 +275,7 @@ def get_results(datadir="./"):
 
 
 # Estimates the number of time steps based on eigenvalues of the system Hamiltonian and maximum control Hamiltonians.
-# NOTE: The estimate does not account for quickly varying signals or a large number of splines. Double check that at least 2-3 points per spline are present to resolve control function.
-# TODO: Automate this!
+# NOTE: The estimate does not account for quickly varying signals or a large number of splines. Double check that at least 2-3 points per spline are present to resolve control function. #TODO: Automate this
 def estimate_timesteps(T, Hsys, Hc_re=[], Hc_im=[], maxctrl_MHz=[], *, Pmin=40):
     assert len(maxctrl_MHz) >= len(Hc_re)
 
