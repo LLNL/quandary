@@ -71,10 +71,11 @@ popt, infidelity, optim_hist = pulse_gen(Ne, Ng, freq01, selfkerr, crosskerr, Jk
 print(f"Fidelity = {1.0 - infidelity}")
 
 
-
 # TODO:
 #   * All function call arguments should be keyword only.  
-#   * Add dpdm regularization and energy integral penalty term. Those are in the 'juqbox_interface' branch.
+#   * Switch between standard model and self-created Hamiltonian operators -> modify pulse_gen arguments
+#   * Create high-level functions for pulse_gen vs simulation
+#   * Add custom decoherence operators
 #   * Gather all configuration in a dictionary (or other struct) that contains all defaults and allows for changes.
 #   * Change quandary's leakage term scaling: Potentially use same scaling as in Juqbox (exponentially increasing)
 # get_resonance should remove non-essential level transitions!
