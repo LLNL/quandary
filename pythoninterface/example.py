@@ -3,7 +3,7 @@ from quandary import *
 
 ## One qubit test case ##
 Ne = [3]  # Number of essential energy levels
-Ng = [1]  # Number of extra guard levels
+Ng = [0]  # Number of extra guard levels
 
 # 01 transition frequencies [GHz]
 freq01 = [4.10595] 
@@ -59,7 +59,7 @@ verbose = True
 
 # Potentially load initial control parameters from a file
 # with open('./params.dat', 'r') as f:
-#     pcof0 = [float(line.strip()) for line in f if line]
+    # pcof0 = [float(line.strip()) for line in f if line]
 pcof0=[]
 
 # Execute quandary
@@ -77,8 +77,15 @@ print(f"Fidelity = {1.0 - infidelity}")
 #   * Add dpdm regularization and energy integral penalty term. Those are in the 'juqbox_interface' branch.
 #   * Gather all configuration in a dictionary (or other struct) that contains all defaults and allows for changes.
 #   * Change quandary's leakage term scaling: Potentially use same scaling as in Juqbox (exponentially increasing)
+# get_resonance should remove non-essential level transitions!
 
 # Note: 
 #   * pcof0 uses Quandaries initialization
 #   * leakage_weights = [0.0, 0.0] is disabled.
 #   * "use_eigenbasis" disabled.
+
+# Reading non-standard hamiltonian from file:
+#   * Hsys must be real
+#   * No transfer functions
+#   * No time-depended system Hamiltonian
+#   * Only one control operator per oscillator (complex)

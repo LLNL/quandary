@@ -4,13 +4,37 @@ from subprocess import run, PIPE, Popen
 
 
 # Main interface function to create a pulse with Quandary. 
-def pulse_gen(Ne, Ng, freq01, selfkerr, crosskerr, Jkl, rotfreq, maxctrl_MHz, T, initctrl_MHz, rand_seed, randomize_init_ctrl, targetgate, *, dtau=3.33, Pmin=40, cw_amp_thres=6e-2, cw_prox_thres=1e-3, datadir=".", tol_infidelity=1e-3, tol_costfunc=1e-3, maxiter=100, gamma_tik0=1e-4, gamma_energy=1e-2, gamma_dpdm=1e-2, costfunction="Jtrace", initialcondition="basis", T1=None, T2=None, runtype="simulation", quandary_exec="/absolute/path/to/quandary/main", ncores=1, print_frequency_iter=1, verbose=False, pcof0=[]):
+def pulse_gen(Ne, Ng, freq01, selfkerr, crosskerr, Jkl, rotfreq, maxctrl_MHz, T, initctrl_MHz, rand_seed, randomize_init_ctrl, targetgate, *, dtau=3.33, Pmin=40, cw_amp_thres=6e-2, cw_prox_thres=1e-3, datadir=".", tol_infidelity=1e-3, tol_costfunc=1e-3, maxiter=100, gamma_tik0=1e-4, gamma_energy=1e-2, gamma_dpdm=1e-2, costfunction="Jtrace", initialcondition="basis", T1=None, T2=None, runtype="simulation", quandary_exec="/absolute/path/to/quandary/main", ncores=1, print_frequency_iter=1, verbose=False, pcof0=[], Hsys=[], Hc_re=[], Hc_im=[]):
 
     # Create quandary data directory
     os.makedirs(datadir, exist_ok=True)
 
-    # Set up Hamiltonians in essential levels only
-    Hsys, Hc_re, Hc_im = hamiltonians(Ne, freq01, selfkerr, crosskerr, Jkl, rotfreq=rotfreq, verbose=verbose)
+    # Hamiltonian operators: Either use the provided ones, or set up standar model. 
+    if len(Hsys) > 0 or len(Hc_re)>0 or len(Hc_im)> 0:
+        # Write provided Hamiltonians to file for Quandaries use
+        standardmodel=False
+        hamiltonianfilename = datadir + "/hamiltonian.dat"
+        with open(hamiltonianfilename, "w") as f:
+            f.write("# Hsys (real!) \n")
+            Hsyslist = list(np.array(Hsys).flatten(order='F'))
+            for value in Hsyslist:
+                f.write("{:20.13e}\n".format(value))
+
+            for iosc in range(len(Hc_re)):
+                Hcrelist = list(np.array(Hc_re[iosc]).flatten(order='F'))
+                f.write("# Oscillator {:d} Hc_real \n".format(iosc))
+                for value in Hcrelist:
+                    f.write("{:20.13e}\n".format(value))
+
+                Hcimlist = list(np.array(Hc_im[iosc]).flatten(order='F'))
+                f.write("# Oscillator {:d} Hc_imag \n".format(iosc))
+                for value in Hcimlist:
+                    f.write("{:20.13e}\n".format(value))
+    else:
+        # Set up standard Hamiltonian model
+        standardmodel=True
+        Ntot = [sum(x) for x in zip(Ne, Ng)]
+        Hsys, Hc_re, Hc_im = hamiltonians(Ntot, freq01, selfkerr, crosskerr, Jkl, rotfreq=rotfreq, verbose=verbose)
 
     # Estimate number of time steps
     nsteps = estimate_timesteps(T, Hsys, Hc_re, Hc_im, maxctrl_MHz, Pmin=Pmin)
@@ -45,7 +69,7 @@ def pulse_gen(Ne, Ng, freq01, selfkerr, crosskerr, Jkl, rotfreq, maxctrl_MHz, T,
 
     # Write Quandary configuration file
     nsplines = int(np.max([np.ceil(T/dtau + 2), 5])) # 10
-    config_filename = write_config(Ne=Ne, Ng=Ng, T=T, nsteps=nsteps, freq01=freq01, rotfreq=rotfreq, selfkerr=selfkerr, crosskerr=crosskerr, Jkl=Jkl, nsplines=nsplines, carrierfreq=carrierfreq, tol_infidelity=tol_infidelity, tol_costfunc=tol_costfunc, maxiter=maxiter, maxctrl_MHz=maxctrl_MHz, initctrl_MHz=initctrl_MHz, randomize_init_ctrl=randomize_init_ctrl, gamma_tik0=gamma_tik0, gamma_energy=gamma_energy, gamma_dpdm=gamma_dpdm, costfunction=costfunction, initialcondition=initialcondition, T1=T1, T2=T2, runtype=runtype, gatefilename="./targetgate.dat", print_frequency_iter=print_frequency_iter, datadir=datadir, verbose=verbose, pcof0=pcof0)
+    config_filename = write_config(Ne=Ne, Ng=Ng, T=T, nsteps=nsteps, freq01=freq01, rotfreq=rotfreq, selfkerr=selfkerr, crosskerr=crosskerr, Jkl=Jkl, nsplines=nsplines, carrierfreq=carrierfreq, tol_infidelity=tol_infidelity, tol_costfunc=tol_costfunc, maxiter=maxiter, maxctrl_MHz=maxctrl_MHz, initctrl_MHz=initctrl_MHz, randomize_init_ctrl=randomize_init_ctrl, gamma_tik0=gamma_tik0, gamma_energy=gamma_energy, gamma_dpdm=gamma_dpdm, costfunction=costfunction, initialcondition=initialcondition, T1=T1, T2=T2, runtype=runtype, gatefilename="./targetgate.dat", print_frequency_iter=print_frequency_iter, datadir=datadir, verbose=verbose, pcof0=pcof0, standardmodel=standardmodel)
 
 
     # Call Quandary
@@ -111,7 +135,7 @@ def execute(*, runtype="simulation", ncores=1, config_filename="config.cfg", dat
     return 1
 
 
-def write_config(*, Ne, Ng, T, nsteps, freq01, rotfreq, selfkerr, crosskerr=[], Jkl=[], nsplines=5, carrierfreq, T1=[], T2=[], gatefilename="./gatefile.dat", runtype="optimization",maxctrl_MHz=None, initctrl_MHz=None, randomize_init_ctrl=True, maxiter=1000,tol_infidelity=1e-3, tol_costfunc=1e-3, gamma_tik0=1e-4, gamma_dpdm=0.0, gamma_energy=0.0, costfunction="Jtrace", initialcondition="basis", datadir=".", configfilename="config.cfg", print_frequency_iter=1, pcof0=[], verbose=False):
+def write_config(*, Ne, Ng, T, nsteps, freq01, rotfreq, selfkerr, crosskerr=[], Jkl=[], nsplines=5, carrierfreq, T1=[], T2=[], gatefilename="./gatefile.dat", runtype="optimization",maxctrl_MHz=None, initctrl_MHz=None, randomize_init_ctrl=True, maxiter=1000,tol_infidelity=1e-3, tol_costfunc=1e-3, gamma_tik0=1e-4, gamma_dpdm=0.0, gamma_energy=0.0, costfunction="Jtrace", initialcondition="basis", datadir=".", configfilename="config.cfg", print_frequency_iter=1, pcof0=[], verbose=False, standardmodel=True):
 
     if maxctrl_MHz is None:
         maxctrl_MHz = 1e+12*np.ones(len(Ne))
@@ -194,6 +218,9 @@ def write_config(*, Ne, Ng, T, nsteps, freq01, rotfreq, selfkerr, crosskerr=[], 
         mystring += "usematfree = false\n"
     mystring += "linearsolver_type = gmres\n"
     mystring += "linearsolver_maxiter = 20\n"
+    if not standardmodel:
+        mystring += "hamiltonian_file= ./hamiltonian.dat\n"
+
 
     # Write the file
     outpath = datadir+"/"+configfilename
