@@ -14,8 +14,6 @@ class PythonInterface{
 
     LindbladType lindbladtype;            // Storing whether Lindblas solver or Schroedinger solver
     int dim_rho;                          // Dimension of the Hilbertspace. N!
-    std::vector<int>ncontrol_real;
-    std::vector<int>ncontrol_imag;
     std::string hamiltonian_file; // either 'none' or name of file to read Hamiltonian from 
     int mpirank_world;   // Rank of global communicator
 

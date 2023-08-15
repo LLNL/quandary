@@ -70,14 +70,6 @@ void PythonInterface::receiveHc(int noscillators, std::vector<std::vector<Mat>>&
 
   if (mpirank_world == 0) printf("Receiving control Hamiltonian terms...\n");
 
-  // Set the number of control terms for each oscillator to zero here. Overwrite later below, if we receive control terms. 
-  ncontrol_real.clear();
-  ncontrol_imag.clear();
-  for (int k=0; k<noscillators;k++){
-    ncontrol_real.push_back(0);
-    ncontrol_imag.push_back(0);
-  }
-
   /* Get the dimensions right */
   int sqdim = dim_rho; //  N!
   int dim = dim_rho;
@@ -90,92 +82,83 @@ void PythonInterface::receiveHc(int noscillators, std::vector<std::vector<Mat>>&
   /* Iterate over oscillators */
   for (int k=0; k<noscillators; k++){
 
-    // Check number of control terms for this oscillator
-    int ncontrol = 1; // Assume for one control term per oscillator (real and imag)
-    ncontrol_real[k] = ncontrol;
-    ncontrol_imag[k] = ncontrol;
+    /* Read real part from file */
+    std::vector<double> vals (nelems);
+    if (mpirank_world == 0) read_vector(hamiltonian_file.c_str(), vals.data(), nelems, true, skiplines);
+    MPI_Bcast(vals.data(), nelems, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    skiplines += nelems+1;
+    // printf("Received ioscid %d, Hc_real = \n", k);
+    // for (int m=0; m<vals.size(); m++){
+    //   printf("%d %f\n", m, vals[m]);
+    // }
 
-    // Iterate over control terms for this oscillator 
-    for (int i=0; i<ncontrol_real[k]; i++){
+    // Iterate over received elements and place into Bc_vec
+    MatGetOwnershipRange(Bc_vec[k][0], &ilow, &iupp);
+    for (int l = 0; l<vals.size(); l++) {
+      if (fabs(vals[l])<1e-14) continue; // Skip zeros
 
-      /* Read real part from file */
-      std::vector<double> vals (nelems);
-      if (mpirank_world == 0) read_vector(hamiltonian_file.c_str(), vals.data(), nelems, true, skiplines);
-      MPI_Bcast(vals.data(), nelems, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-      skiplines += nelems+1;
-      // printf("Received ioscid %d, Hc_real = \n", k);
-      // for (int m=0; m<vals.size(); m++){
-      //   printf("%d %f\n", m, vals[m]);
-      // }
+      // Get position in the Bc matrix
+      int row = l % sqdim;
+      int col = l / sqdim;
 
-      // Iterate over received elements and place into Bc_vec
-      MatGetOwnershipRange(Bc_vec[k][i], &ilow, &iupp);
-      for (int l = 0; l<vals.size(); l++) {
-        if (fabs(vals[l])<1e-14) continue; // Skip zeros
-
-        // Get position in the Bc matrix
-        int row = l % sqdim;
-        int col = l / sqdim;
-
-        if (lindbladtype == LindbladType::NONE){
-          // Schroedinger: Assemble - B_c  
+      if (lindbladtype == LindbladType::NONE){
+        // Schroedinger: Assemble - B_c  
+        double val = -1.*vals[l];
+        if (ilow <= row && row < iupp) MatSetValue(Bc_vec[k][0], row, col, val, ADD_VALUES);
+      } else {
+        // Lindblad: Assemble -I_N \kron B_c + B_c \kron I_N 
+        for (int m=0; m<sqdim; m++){
+          // first place all -v_ij in the -I_N\kron B_c term:
+          int rowm = row + sqdim * m;
+          int colm = col + sqdim * m;
           double val = -1.*vals[l];
-          if (ilow <= row && row < iupp) MatSetValue(Bc_vec[k][i], row, col, val, ADD_VALUES);
-        } else {
-          // Lindblad: Assemble -I_N \kron B_c + B_c \kron I_N 
-          for (int m=0; m<sqdim; m++){
-            // first place all -v_ij in the -I_N\kron B_c term:
-            int rowm = row + sqdim * m;
-            int colm = col + sqdim * m;
-            double val = -1.*vals[l];
-            if (ilow <= rowm && rowm < iupp) MatSetValue(Bc_vec[k][i], rowm, colm, val, ADD_VALUES);
-            // Then add v_ij in the B_d^T \kron I_N term:
-            rowm = col*sqdim + m;   // transpose!
-            colm = row*sqdim + m;
-            val = vals[l];
-            if (ilow <= rowm && rowm < iupp) MatSetValue(Bc_vec[k][i], rowm, colm, val, ADD_VALUES);
-          }
+          if (ilow <= rowm && rowm < iupp) MatSetValue(Bc_vec[k][0], rowm, colm, val, ADD_VALUES);
+          // Then add v_ij in the B_d^T \kron I_N term:
+          rowm = col*sqdim + m;   // transpose!
+          colm = row*sqdim + m;
+          val = vals[l];
+          if (ilow <= rowm && rowm < iupp) MatSetValue(Bc_vec[k][0], rowm, colm, val, ADD_VALUES);
         }
-      } // end of elements of Hc[k][i] real 
+      }
+    } // end of elements of Hc[k][i] real 
 
-      /* Read imaginary part from file */
-      if (mpirank_world == 0) read_vector(hamiltonian_file.c_str(), vals.data(), nelems, true, skiplines);
-      MPI_Bcast(vals.data(), nelems, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-      skiplines+=nelems+1; // Skip system Hamiltonian and real Hc
-      // printf("Received ioscid %d, Hc_imag = \n", k);
-      // for (int m=0; m<vals.size(); m++){
-      //   printf("%d %f\n", m, vals[m]);
-      // }
+    /* Read imaginary part from file */
+    if (mpirank_world == 0) read_vector(hamiltonian_file.c_str(), vals.data(), nelems, true, skiplines);
+    MPI_Bcast(vals.data(), nelems, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    skiplines+=nelems+1; // Skip system Hamiltonian and real Hc
+    // printf("Received ioscid %d, Hc_imag = \n", k);
+    // for (int m=0; m<vals.size(); m++){
+    //   printf("%d %f\n", m, vals[m]);
+    // }
 
-      // Iterate over received vals and place into Ac_vec
-      MatGetOwnershipRange(Ac_vec[k][i], &ilow, &iupp);
-      for (int l = 0; l<vals.size(); l++) {
-        if (fabs(vals[l])<1e-14) continue; // Skip zeros
+    // Iterate over received vals and place into Ac_vec
+    MatGetOwnershipRange(Ac_vec[k][0], &ilow, &iupp);
+    for (int l = 0; l<vals.size(); l++) {
+      if (fabs(vals[l])<1e-14) continue; // Skip zeros
 
-        // Get position in the Ac matrix
-        int row = l % sqdim;
-        int col = l / sqdim;
+      // Get position in the Ac matrix
+      int row = l % sqdim;
+      int col = l / sqdim;
 
-        if (lindbladtype == LindbladType::NONE){
-          // Schroedinger: Assemble A_c  
+      if (lindbladtype == LindbladType::NONE){
+        // Schroedinger: Assemble A_c  
+        double val = vals[l];
+        if (ilow <= row && row < iupp) MatSetValue(Ac_vec[k][0], row, col, val, ADD_VALUES);
+      } else {
+        // Lindblad: Assemble I_N \kron B_c - B_c \kron I_N 
+        for (int m=0; m<sqdim; m++){
+          // first place all -v_ij in the -I_N\kron B_c term:
+          int rowm = row + sqdim * m;
+          int colm = col + sqdim * m;
           double val = vals[l];
-          if (ilow <= row && row < iupp) MatSetValue(Ac_vec[k][i], row, col, val, ADD_VALUES);
-        } else {
-          // Lindblad: Assemble I_N \kron B_c - B_c \kron I_N 
-          for (int m=0; m<sqdim; m++){
-            // first place all -v_ij in the -I_N\kron B_c term:
-            int rowm = row + sqdim * m;
-            int colm = col + sqdim * m;
-            double val = vals[l];
-            if (ilow <= rowm && rowm < iupp) MatSetValue(Ac_vec[k][i], rowm, colm, val, ADD_VALUES);
-            // Then add v_ij in the B_d^T \kron I_N term:
-            rowm = col*sqdim + m;   // transpose!
-            colm = row*sqdim + m;
-            val = -1.0*vals[l];
-            if (ilow <= rowm && rowm < iupp) MatSetValue(Ac_vec[k][i], rowm, colm, val, ADD_VALUES);
-          }
+          if (ilow <= rowm && rowm < iupp) MatSetValue(Ac_vec[k][0], rowm, colm, val, ADD_VALUES);
+          // Then add v_ij in the B_d^T \kron I_N term:
+          rowm = col*sqdim + m;   // transpose!
+          colm = row*sqdim + m;
+          val = -1.0*vals[l];
+          if (ilow <= rowm && rowm < iupp) MatSetValue(Ac_vec[k][0], rowm, colm, val, ADD_VALUES);
         }
-      } // end of elements of Hc[k][i] imag
-    } // end of i loop for control terms
+      }
+    } // end of elements of Hc[k][i] imag
   } // end of k loop for oscillators
 }
