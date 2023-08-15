@@ -272,7 +272,7 @@ MasterEq::~MasterEq(){
 
 void MasterEq::initSparseMatSolver(){
 
-  /* Allocate system matrices  */
+  /* Allocate all system matrices */
 
   // Time-independent system Hamiltonian
   // Ad = real(-i Hsys) and Bd = imag(-i Hsys)
@@ -347,14 +347,13 @@ void MasterEq::initSparseMatSolver(){
 
   int dimmat = dim_rho; // this is N!
 
-  /* If a Hamiltonian file is given, read them from file. */ 
+  /* If a Hamiltonian file is given, read the system matrices from file. */ 
   if (hamiltonian_file.compare("none") != 0 ) {
     if (mpirank_world==0 && !quietmode) printf("\n# Reading Hamiltonian model from file %s.\n\n", hamiltonian_file.c_str());
 
+    /* Read Hamiltonians from file */
     PythonInterface* py = new PythonInterface(hamiltonian_file, lindbladtype, dim_rho);
-
-    /* Read Hamiltonians from python interface */
-    py->receiveHsys(Bd);  // receiving Bd
+    py->receiveHsys(Bd);
     py->receiveHc(noscillators, Ac_vec, Bc_vec); 
 
     if (mpirank_world==0&& !quietmode) printf("# Done. \n\n");
@@ -364,17 +363,14 @@ void MasterEq::initSparseMatSolver(){
       if (Ac_vec[k].size() == 0 && Bc_vec[k].size() == 0) getOscillator(k)->clearParams();
     }
 
-  /* Else: Initialize system matrices with default model */
+  /* Else: Initialize system matrices with standard Hamiltonian model */
   } else {
 
     PetscInt ilow, iupp;
     int r1,r2, r1a, r2a, r1b, r2b;
     int col, col1, col2;
     double val;
-    // double val1, val2;
 
-    /* Set up control Hamiltonian building blocks Ac, Bc */
-    id_kl=0;  // index for accessing Ad_kl in Ad_vec
     for (int iosc = 0; iosc < noscillators; iosc++) {
 
       /* Get dimensions */
@@ -382,11 +378,9 @@ void MasterEq::initSparseMatSolver(){
       int nprek  = oscil_vec[iosc]->dim_preOsc;
       int npostk = oscil_vec[iosc]->dim_postOsc;
 
-      /* Compute Ac */
+      /* Set control Hamiltonian system matrix real(-iHc) */
       /* Lindblad solver:     Ac = I_N \kron (a - a^T) - (a - a^T)^T \kron I_N   \in C^{N^2 x N^2}*/
       /* Schroedinger solver: Ac = a - a^T   \in C^{N x N}  */
-
-      /* Iterate over local rows of Ac_vec */
       MatGetOwnershipRange(Ac_vec[iosc][0], &ilow, &iupp);
       for (int row = ilow; row<iupp; row++){
         // A_c or I_N \kron A_c
@@ -421,7 +415,7 @@ void MasterEq::initSparseMatSolver(){
         }
       }
 
-      /* Compute Bc */
+      /* Set control Hamiltonian system matrix Bc=imag(-iHc) */
       /* Lindblas solver Bc = - I_N \kron (a + a^T) + (a + a^T)^T \kron I_N */
       /* Schroedinger solver: Bc = -(a+a^T) */
       /* Iterate over local rows of Bc_vec */
@@ -458,25 +452,31 @@ void MasterEq::initSparseMatSolver(){
           }   
         }
       }
+    }
 
+    /* Set Jaynes-Cummings coupling system Hamiltonian */
+    /* Lindblad solver: 
+     * Ad_kl(t) =  I_N \kron (ak^Tal − akal^T) − (al^Tak − alak^T) \kron IN 
+     * Bd_kl(t) = -I_N \kron (ak^Tal + akal^T) + (al^Tak + alak_T) \kron IN */
+    /* Schrodinger solver:
+       Ad_kl(t) =  (ak^Tal - akal^T)
+       Bd_kl(t) = -(ak^Tal + akal^T)  */
+    id_kl=0;
+    for (int iosc = 0; iosc < noscillators; iosc++) {
+      // Dimensions of ioscillator
+      int nk     = oscil_vec[iosc]->getNLevels();
+      int nprek  = oscil_vec[iosc]->dim_preOsc;
+      int npostk = oscil_vec[iosc]->dim_postOsc;
 
-      /* Compute Jaynes-Cummings coupling building blocks */
-      /* Lindblad solver: 
-       * Ad_kl(t) =  I_N \kron (ak^Tal − akal^T) − (al^Tak − alak^T) \kron IN 
-       * Bd_kl(t) = -I_N \kron (ak^Tal + akal^T) + (al^Tak + alak_T) \kron IN */
-      /* Schrodinger solver:
-         Ad_kl(t) =  (ak^Tal - akal^T)
-         Bd_kl(t) = -(ak^Tal + akal^T)  */
       for (int josc=iosc+1; josc<noscillators; josc++){
-
         if (fabs(Jkl[id_kl]) > 1e-12) { // only allocate if coefficient is non-zero to save memory.
-
           // Dimensions of joscillator
           int nj     = oscil_vec[josc]->getNLevels();
           int nprej  = oscil_vec[josc]->dim_preOsc;
           int npostj = oscil_vec[josc]->dim_postOsc;
 
           /* Iterate over local rows of Ad_vec / Bd_vec */
+          MatGetOwnershipRange(Ad_vec[id_kl], &ilow, &iupp);
           for (int row = ilow; row<iupp; row++){
             // Add +/- I_N \kron (ak^Tal -/+ akal^T) (Lindblad)
             // or  +/- (ak^Tal -/+ akal^T) (Schrodinger)
@@ -524,7 +524,7 @@ void MasterEq::initSparseMatSolver(){
       }
     }
 
-    /* Allocate and compute imag drift part Bd = Hd */
+    /* Set system Hamiltonian part Bd = imag(iHsys) */
     int coupling_id = 0;
     for (int iosc = 0; iosc < noscillators; iosc++) {
 
@@ -588,7 +588,7 @@ void MasterEq::initSparseMatSolver(){
       }
     }
 
-    /* Allocate and compute real drift part Ad = Lindblad */
+    /* Set Ad = Lindblad terms */
     if (addT1 || addT2) {  // leave matrix empty if no T1 or T2 decay
       for (int iosc = 0; iosc < noscillators; iosc++) {
 
@@ -655,7 +655,7 @@ void MasterEq::initSparseMatSolver(){
     }
   }
 
-  /* Assemble system matrices */
+  /* Assemble all system matrices */
   MatAssemblyBegin(Bd, MAT_FINAL_ASSEMBLY);
   MatAssemblyEnd(Bd, MAT_FINAL_ASSEMBLY);
   MatAssemblyBegin(Ad, MAT_FINAL_ASSEMBLY);
