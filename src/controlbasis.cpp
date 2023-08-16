@@ -261,60 +261,6 @@ ConstantTransferFunction::ConstantTransferFunction(double constant_, std::vector
 ConstantTransferFunction::~ConstantTransferFunction() {}
 
 
-SplineTransferFunction::SplineTransferFunction(int order, std::vector<double>knots, std::vector<double>coeffs) : TransferFunction() {
-    knot_min = knots[0];
-    knot_max = knots[knots.size()-1];
-
-#ifdef WITH_FITPACK
-    spline_func = new fitpackpp::BSplineCurve(knots, coeffs, order);
-#else
-    printf("# Warning: Can not process spline transfer function from python interface, because you didn't link to the FITPACK package. Check your Makefile for WITH_FITPACK=true, if you want to use this feature. Using identity transfer function now.\n");
-#endif
-}
-
-SplineTransferFunction::SplineTransferFunction(int order, std::vector<double>knots, std::vector<double>coeffs, std::vector<double> onofftimes) : TransferFunction(onofftimes) {
-    knot_min = knots[0];
-    knot_max = knots[knots.size()-1];
-
-#ifdef WITH_FITPACK
-    spline_func = new fitpackpp::BSplineCurve(knots, coeffs, order);
-#else
-    printf("# Warning: Can not process spline transfer function from python interface, because you didn't link to the FITPACK package. Check your Makefile for WITH_FITPACK=true, if you want to use this feature. Using identity transfer function now.\n");
-#endif
-}
-
-SplineTransferFunction::~SplineTransferFunction() {
-#ifdef WITH_FITPACK
-    delete spline_func;
-#endif
-}
-
-double SplineTransferFunction::eval(double p, double time) {
-#ifdef WITH_FITPACK               
-    checkBounds(p);
-    double out = spline_func->eval(p); 
-    return isOn(out, time);
-#else 
-    return isOn(p, time);
-#endif
-}
-
-
-double SplineTransferFunction::der(double p, double time){
-#ifdef WITH_FITPACK
-    checkBounds(p);
-    return isOn(spline_func->der(p),time);
-#else 
-    return isOn(1.0,time);
-#endif
-}
-
-void SplineTransferFunction::checkBounds(double p) {
-    if (p < knot_min || p > knot_max) {
-        printf("# WARNING! Attempt to evaluate Spline(%f), but spline bounds are [%f, %f]. Extrapolation might lead to unexpected behavior! Check if this is what you want.\n", p, knot_min, knot_max);
-    }
-}
-
 CosineTransferFunction::CosineTransferFunction(double amp_, double freq_) : TransferFunction() {
     freq = freq_;
     amp = amp_;

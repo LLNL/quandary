@@ -5,9 +5,6 @@
 #include <vector>
 #include <cassert>
 #include "util.hpp"
-#ifdef WITH_FITPACK
-#include "BSplineCurve.h"
-#endif
 #pragma once
 
 
@@ -177,27 +174,6 @@ class IdentityTransferFunction : public TransferFunction {
         double eval(double x, double time) {return isOn(x, time); };
         double der(double x, double time) {return isOn(1.0, time); };
 };
-
-class SplineTransferFunction : public TransferFunction {
-    protected:
-        double knot_min;  // Lower bound for spline evaluation 
-        double knot_max;  // Upper bound for spline evaluation
-#ifdef WITH_FITPACK
-        fitpackpp::BSplineCurve* spline_func;
-#endif
-    public:
-        SplineTransferFunction(int order, std::vector<double>knots, std::vector<double>coeffs);
-        SplineTransferFunction(int order, std::vector<double>knots, std::vector<double>coeffs, std::vector<double> onofftimes);
-        ~SplineTransferFunction();
-        // Evaluate the spline
-        double eval(double p, double time);
-        // Derivative
-        double der(double p, double time);
-
-        // Check if evaluation point is inside bounds [tmin, tmax]. Prints a warning otherwise. 
-        void checkBounds(double p);
-};
-
 
 
 class CosineTransferFunction : public TransferFunction {
