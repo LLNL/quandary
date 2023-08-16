@@ -234,104 +234,23 @@ components: $\alpha^k_f = \alpha^{k(1)}_{1,f}, \dots, \alpha^{k(1)}_{N_s^k,f}, \
   \end{align}
 
 
-\subsection{Python interface for general Hamiltonian systems}
-The Python interface for Quandary allows to simulate and optimize with user-defined Hamiltonians. To that end, the user defines (arbitrary) system and control Hamiltonian operators in a python script (see below), and Quandary then replace the Hamiltonian model in \eqref{eq:Hd_rotating} (system Hamiltonian) and \eqref{eq:Hc_rotating} (control Hamiltonian) by the Hamiltonians defined in the script. 
+\subsection{Python interface and user-provided Hamiltonian operators}
+The Python interface for Quandary allows to simulate and optimize from within a python environment. Python version $\geq 3$ is required.
+A good place to start is the example provided in \texttt{pythoninterface/example\_swap02.py}, which optimizes for a SWAP02 gate that swaps the state of the zero and the second energy level of a 3-level qudit. 
+The python interface imports the interface functions defined in \texttt{pythoninterface/quandary.py}, so you should either append your python path with the location of that file, or copy this file into your working directory.
+The python interface makes system calls to execute Quandary from shell by envoking a system subprocess, potentially on multiple cores, if given. Under the hood, it writes the required configuration file to the working directory, then makes the subprocess call to execute Quandary on that configuration file, and then load the results from Quandary's output files back into the python interpreter.
 
-To enable the python interface for Quandary, use the configuration option \texttt{python\_file} to pass the name of the python script to Quandary. (Note: Make sure that the beginning of the configuration file (\texttt{nlevels}) matches the dimension of the Hamiltonians defined in the python file.)
-During Quandary's initialization phase, the python script will be parsed for functions of specific names that return the corresponding Hamiltonians. A description of the interface functions is given below. A good place to start is by having a look at the example in \texttt{quandary/results/python\_interface\_example/}. There, the python script \texttt{Hamiltonian.py} provides the interface functions that reproduce the (default) Hamiltonian model and control as in \eqref{eq:Hd_rotating}, \eqref{eq:Hc_rotating} for a system of two coupled qudits, applying a constant control pulse of a certain duration and amplitude to qudit 0 (a non-perfect pi-pulse).
-
-The python interface allows for general Hamiltonians that are composed of a constant (time-independent) system Hamiltonian $H_{d}$, (multiple) time-dependent system Hamiltonians $H_{d}(t)$ and (multiple) time-dependent control Hamiltonians $H_{c}(t)$: 
-\begin{align}
-    H(t) = H_{d} + H_{d}(t) + H_{c}(t) 
-\end{align}
-The time-dependency is realized through real-valued transfer functions that multiply constant matrices, see below. 
-
+In addition to the standard Hamiltonian models as described above, the python interface further allows for user-defined Hamiltonian operators $H_d$ and $H_c$. Those are provided to Quandary through optional arguments to the python interface function. Internally, Quandary replaces the Hamiltonian operators in \eqref{eq:Hd_rotating} (system Hamiltonian) and \eqref{eq:Hc_rotating} (control Hamiltonian operators $a\pm a'$) by the provided matrices.
 \begin{itemize}
-  \item \textbf{Time-independent system Hamiltonian $H_d$} (required)\\
-  The constant system Hamiltonian $H_d \in \C^{N\times N}$ contains the time-independent (non-controllable) system Hamiltonian terms (detuning, anharmonicity, etc. and coupling terms, if they are time-constant). Typically, this Hamiltonian term is real-valued, and this real-valued Hamiltonian is \textit{required} to be provided through the python interface. To this end, 
-  Quandary parses the python script for a function \texttt{\textbf{getHd}}, which must return a list of floats containing the \textit{real-valued} part of the vectorized matrix $H_d$ (column-major). 
-
-  \textbf{python function}\\
-  \texttt{def getHd():}\\
-  \indent\hspace{1cm}\texttt{[...]}  \\
-  \indent\hspace{1cm}\texttt{return} vec($H_d$) 
-
-  In order to specifying a non-zero imaginary part of the system Hamiltonian (uncommon), the user defines the function \texttt{def getHd\_imag()} in the same way as above, in addition to the function \texttt{def getHd()}. 
-
-  \item \textbf{Time-dependent system Hamiltonians $H_d(t)$} (optional) \\
-  Multiple time-dependent system Hamiltonian terms can be defined through these interface functions (e.g. such as the Jaynes-Cummings coupling terms in the rotating frame). Each term, $H_d^l(t) \in \C^{N\times N}, l=0,1,\dots$ is complex, and their real and imaginary parts are composed of real-valued (transfer) functions $u^l(t), v^l(t)$ multiplying constant real and imaginary parts of the Hamiltonian matrix $\mbox{Re}(H_d^l)$, $\mbox{Im}(H_d^l)$: 
-  \begin{align}
-   H_d^l(t) = u^l(t) \mbox{Re}\left(H_d^l\right) + i v^l(t) \mbox{Im}\left(H_d^l\right)
-  \end{align}
-  for some arbitrary number of terms $l=0,1,\dots, L-1$. Providing time-dependent Hamiltonians is optional. 
-  
-  The real-valued and constant matrices $\mbox{Re}(H^l_{d}), \mbox{Im}(H^l_d)\in \R^{N\times N}$, are passed to Quandary throught the interface functions \texttt{getHdt\_real()} and \texttt{getHdt\_imag()}, respectively, which both return a list (of length $L$) of matrices. Similar to $H_d$, the matrices each are passed as lists of floats (column-wise vectorization of the matrix). (So the functions return a list of lists of floats).
-
-  \textbf{python functions}\\
-  \texttt{def getHdt\_real():}\\
-  \indent\hspace{1cm}\texttt{[...]}  \\
-  \indent\hspace{1cm}\texttt{return} [ vec(Re($H_d^{l=0}$)), vec(Re($H_d^{l=1}$)), \dots ]
-
-  \noindent \texttt{def getHdt\_imag():}\\
-  \indent\hspace{1cm}\texttt{[...]}  \\
-  \indent\hspace{1cm}\texttt{return} [ vec(Im($H_d^{l=0}$)), vec(Im($H_d^{l=1}$)), \dots ]
-
-
-  
-  The transfer functions are real-valued, $u^l,v^l\colon\R \to \R$. These are provided in terms of a spline representation. Quandary receives them through the interface functions \texttt{getHdtTransfer\_real()} for $u^l(t)$ and \texttt{getHdtTransfer\_imag()} for $v^l(t)$, which return a triple $\left[ \text{knots}, \text{coefficients}, \text{order} \right]$, for lists of spline knots and coefficients and an integer order.  These triples should be provided for each of the defined matrices $H_d^l$. Providing transfer functions for $H_d^l$ is optional. If an interface function \texttt{getHdtTransfer\_real/imag()} is not defined, even though the corresponding $H_d^l$ has been specified, then the transfer function will be constant $1.0$. (Note that the corresponding Hamiltonian term will be constant then, and could have gone into the time-independent system Hamiltonian $H_d$...) 
-
-  \textbf{python functions}\\
-  \texttt{def getHdtTransfer\_real():}\\
-  \indent\hspace{1cm}\texttt{[...]}  \\
-  \indent\hspace{1cm}\texttt{return} [ $\left[\text{knots}, \text{coeffs}, \text{order}\right]^{l=0}$,$\left[\text{knots}, \text{coeffs}, \text{order}\right]^{l=1}$ , \dots ]
-
-  \noindent \texttt{def getHdtTransfer\_imag():}\\
-  \indent\hspace{1cm}\texttt{[...]}  \\
-  \indent\hspace{1cm}\texttt{return} [ $\left[\text{knots}, \text{coeffs}, \text{order}\right]^{l=0}$,$\left[\text{knots}, \text{coeffs}, \text{order}\right]^{l=1}$ , \dots ]
-
-
-
- \item \textbf{Time-dependent control Hamiltonians $H_c(t)$:} (optional) \\
- For each modeled subsystem $k=0,\dots, Q-1$, a number of control Hamiltonians can be applied. Each control Hamiltonian is driven with a separate set of control pulses $p^k(t)$, $q^k(t)$, which Quandary optimizes for. The control pulses can be applied to \textit{multiple} control Hamiltonian matrices per subsystem $k$: $H_c^{k,l}\in \C^{N\times N}$ for $l=0,\dots, C^k-1$, where the number of control Hamiltonians $C^k$ can be different amongst the oscillators $k$. Real-valued transfer functions can optionally be applied to the control pulses before multiplying the constant control matrices:
-  \begin{align}
-  H_{c}^{k,l}(t) =  u^{k,l}\left(p^k(t)\right) \mbox{Re}\left(H_{c}^{k,l}\right)
-    + i v^{k,l}\left(q^k(t)\right) \mbox{Im}\left(H_{c}^{k,l}\right)
-  \end{align}
-  for $l=0,\dots, C^k-1$. Note that \textit{one} set of control pulses $p^k(t), q^k(t)$ is applied to \textit{all} terms $H_c^{k,l}, l=0,\dots, C^k-1$ for that subsystem $k$, however the corresponding transfer functions $u^{k,l}, v^{k,l}$ can be different amongst each control term $l$ (and each oscillator $k$).
-
-  The interface functions \texttt{getHc\_real()/imag()} return a list over oscillators, containing a list of control Hamiltonian matrices for each oscillator. Again, each matrix is passed as a list of floats containing the vectorized matrix elements (column-wise vectorization), so the return is a list (iterating over oscillators) of lists (iterating over control terms) of vectorized Hamiltonians
-
- \textbf{python functions} \\
-  \texttt{def getHc\_real/imag():} \\
-  \indent\hspace{1cm}\texttt{[...]}   \\
-  \indent\hspace{1cm}\texttt{return} [ \, vec(Re/Im($H_c^{k=0,l=0}$)), vec(Re/Im($H_d^{k=0,l=1}$)), \dots,\\
-  \indent\hspace{17ex} \vdots    \\
-  \indent\hspace{16ex}  vec(Re/Im($H_c^{k=Q-1,l=0}$)), vec(Re/Im($H_d^{k=Q-1,l=1}$)), \dots \, ]
-  
-
-
-  
-  The corresponding transfer functions are provided in terms of their spline representation, i.e. a triple of spline knots, spline coefficients and order, for each given $H_c^{k,l}$. Transfer functions for the control terms are optional. If the transfer function interface is not defined, the identity will used instead (i.e. the controls will be applied 'raw': $p^k(t)\mbox{Re}(H_c^{k,l}) + iq^k(t)\mbox{Im}(H_c^{k,l})$).
-
-  \textbf{python functions}\\
-  \texttt{def getHcTransfer\_real/imag():}\\
-  \indent\hspace{1cm}\texttt{[...]}  \\
-  \indent\hspace{1cm}\texttt{return} [\, $\left[\text{knots}, \text{coeffs}, \text{order}\right]^{k=0,l=0}$, $\left[\text{knots}, \text{coeffs}, \text{order}\right]^{k=0, l=1}$ , \dots ,\\
-  \indent\hspace{18ex}\vdots \\
-  \indent\hspace{16ex} $\left[\text{knots}, \text{coeffs}, \text{order}\right]^{k=Q-1,l=0}$, $\left[\text{knots}, \text{coeffs}, \text{order}\right]^{k=Q-1, l=1}$ , \dots \,]
-
-
-
+  \item The system Hamiltonian $H_d$ must be real-valued, and time-independent. The units of the system Hamiltonian should be angular frequency (multiply $2\pi$). 
+  \item For each oscillator, a maximum of one complex-valued control operator can be specified. Those should be provided in terms of their real and imaginary parts separately, e.g. the standard model control operators would be specified as $H_{c,k}^{re} = a_k+a_k^\dagger$ and $H_{c,k}^{im}=a_k-a_k^\dagger$, for each oscillator $k$. The real parts will be multiplied by the control pulses $p_k(t)$, while the imaginary parts will be multiplied by $iq_k(t)$ for each oscillator $k$, similar to the model in \eqref{eq:Hc_rotating}. Control Hamiltonian operators should be 'unit-free', since those units come in through the multiplied control pulses $p$ and $q$.
+  \item Note: While control Hamiltonian operators are optional, the system Hamiltonian is always required. (Set it to zero otherwise.)
+  \item Note: The matrix-free solver can not be used when custom Hamiltonians are provided. The code will therefore be slower. 
 \end{itemize}
 
+The python interface is set up such that it automatically compute the time-step size for discretizing the time domain, as well as the carrier wave frequencies that trigger system resonances. Note that the carrier wave frequency analysis assumes a standard model and those might need to be adapted when custom Hamiltonian operators are used. You can always check the written configuration file and log to see what frequencies are being used, and potentially modify them.
 
-When defining Hamiltonian matrices in the python script, the units should be radian (multiply them $2\pi$). Again, note that all matrices will be passed to Quandary as lists of floats containing the column-wise vectorized matrix. Transfer functions are passed in terms of their spline representation (knots, coefficients and order). To generate spline representations within the python script, you can use for example SciPy's \texttt{interpolate} module. Quandary uses \href{https://github.com/jbaayen/fitpackpp}{FitpackPP} to recreate the spline representation for the transfer functions from provided knots, coefficients and order. Therefore, in order to use transfer functions, one needs to have fitpackpp installed and linked to Quandary (compare the Readme.md file). 
-
-After setting up a python script that provides the interface functions, the user has to set up the configuration file for Quandary, and provide the name of the python script with the config option \texttt{python\_file}. Further, the number of levels per subsystem (defining the system dimension) should match the definitions in the python script. Make sure to choose an appropriate time-step size in the configuration file, in order to resolve the resulting dynamics. Some of the configuration options will be overwritten (the parameters that define (default) the system and control Hamiltonians, such as transition frequencies, self-kerr, cross-ker, coupling coefficients), since those are included in the python interface Hamiltonians. Configuration options concerning the runtype, control pulse definitions, initial conditions, and optimization target and parameters, output etc. will still be valid and used to define the current simulation / optimization. 
-
-Similar to using the default Hamiltonian model, when using user-defined Hamiltonians one can still switch between the Schroedinger solver and the Lindblad solver by changing the configuration option \texttt{collapse\_type} (\texttt{=none} for Schroedinger, any other choise for Lindblad solver). For the Lindblad solver, the same collapse terms as defined in \eqref{eq:collapseop} will be added to the dynamical equation. 
-
-\textit{Note: the Python interface can only be used in conjuction with the sparse-matrix solver (not the matrix-free solver).}
+To switch between the Schroedinger solver and the Lindblad solver, the optional $T_1$ decay and $T_2$ dephasing times can be passed to the python Quandary call. For the Lindblad solver, the same collapse terms as defined in \eqref{eq:collapseop} will be added to the dynamical equation. 
 
 \section{The Optimal Control Problem} \label{sec:optim}
 In the most general form, Quandary can solve the following optimization problem

@@ -99,10 +99,3 @@ print("\n Quandary data directory: ", datadir)
 #   * pcof0 uses Quandaries initialization
 #   * leakage_weights = [0.0, 0.0] is disabled.
 #   * "use_eigenbasis" disabled.
-
-# Pythoninterface with custom Hamiltonian operators:
-#   * Hsys must be real
-#   * No time-dependent system Hamiltonian
-#   * No transfer functions
-#   * Maximum of one control operator per oscillator (Hc_re and/or Hc_im)
-#   * Warning: Can NOT use the matrix-free solver for custom Hamiltonians. The code might be slower. 
