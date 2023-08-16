@@ -3,7 +3,7 @@ from quandary import *
 ## One qubit test case ##
 
 Ne = [3]  # Number of essential energy levels
-Ng = [1]  # Number of extra guard levels
+Ng = [0]  # Number of extra guard levels
 
 # 01 transition frequencies [GHz] per oscillator
 freq01 = [4.10595] 
@@ -49,7 +49,7 @@ tol_costfunc = 1e-3	# Stopping criterion based on the objective function
 maxiter = 100 		# Maximum number of optimization iterations
 
 # Quandary run options
-runtype = "optimization"  # "simulation", or "gradient", or "optimization"
+runtype = "simulation"  # "simulation", or "gradient", or "optimization"
 quandary_exec="/Users/guenther5/Numerics/quandary/main"
 # quandary_exec="/cygdrive/c/Users/scada-125/quandary/main.exe"
 ncores = np.prod(Ne)  # Number of cores 
@@ -58,38 +58,51 @@ datadir = "./run_dir"  # Compute and output directory
 verbose = True
 
 # Potentially load initial control parameters from a file
-# with open('./params.dat', 'r') as f:
-    # pcof0 = [float(line.strip()) for line in f if line]
-pcof0=[]
+with open('./swap02_params.dat', 'r') as f:
+    pcof0 = [float(line.strip()) for line in f if line]
+# pcof0=[]
+
+
+
+# Potentially create custom Hamiltonian model, if different from standard model
+# Ntotal = [sum(x) for x in zip(Ne, Ng)]
+# Hsys, Hc_re, Hc_im = hamiltonians(Ntotal, freq01, selfkerr, crosskerr, Jkl, rotfreq=rotfreq, verbose=verbose)
+Hsys = []
+Hc_re = []
+Hc_im = []
 
 # Execute quandary
-popt, infidelity, optim_hist = pulse_gen(Ne, Ng, freq01, selfkerr, crosskerr, Jkl, rotfreq, maxctrl_MHz, T, initctrl_MHz, rand_seed, randomize_init_ctrl, unitary,  dtau=dtau, Pmin=Pmin, datadir=datadir, tol_infidelity=tol_infidelity, tol_costfunc=tol_costfunc, maxiter=maxiter, gamma_tik0=gamma_tik0, gamma_energy=gamma_energy, gamma_dpdm=gamma_dpdm, costfunction=costfunction, initialcondition=initialcondition, T1=T1, T2=T2, runtype=runtype, quandary_exec=quandary_exec, ncores=ncores, verbose=verbose, pcof0=pcof0)
+popt, infidelity, optim_hist = quandary_run(Ne, Ng, freq01, selfkerr, crosskerr, Jkl, rotfreq, maxctrl_MHz, T, initctrl_MHz, rand_seed, randomize_init_ctrl, unitary,  dtau=dtau, Pmin=Pmin, datadir=datadir, tol_infidelity=tol_infidelity, tol_costfunc=tol_costfunc, maxiter=maxiter, gamma_tik0=gamma_tik0, gamma_energy=gamma_energy, gamma_dpdm=gamma_dpdm, costfunction=costfunction, initialcondition=initialcondition, T1=T1, T2=T2, runtype=runtype, quandary_exec=quandary_exec, ncores=ncores, verbose=verbose, pcof0=pcof0, Hsys=Hsys, Hc_re=Hc_re, Hc_im=Hc_im)
 # Other keyword arg defaults
 # cw_amp_thres = 6e-2
 # cw_prox_thres = 1e-3
 
 print(f"Fidelity = {1.0 - infidelity}")
+print("\n Quandary data directory: ", datadir)
 
 
 # TODO:
 #   * All function call arguments should be keyword only.  
 #   * Switch between standard model and self-created Hamiltonian operators -> modify pulse_gen arguments
 #   * Create high-level functions for pulse_gen vs simulation
-#   * Add custom decoherence operators
-#   * Gather all configuration in a dictionary (or other struct) that contains all defaults and allows for changes.
-#   * Change quandary's leakage term scaling: Potentially use same scaling as in Juqbox (exponentially increasing)
 #   * Change return of pulse_gen to match Tensorflow returns
-#   * Anders: Culled and sorted carrier waves, is that needed? 
 #   * Ander: Get resonances: Iterating over non-zeros of U'HcU, should be all elements? Previously it was only lower triangular matrix, but it is not hermitian, so this makes a difference!
-#   # CNOT case with Jkl coupling is not converging. 
+#   * Anders: Culled and sorted carrier waves, is that needed? 
+    #   # CNOT case with Jkl coupling is not converging!
+#   * Add custom decoherence operators to Quandary? 
+#   * Gather all configuration in a dictionary (or other struct) that contains all defaults and allows for changes. Dump it with 
+    # with open("config.cfg", 'w') as f:
+    #     for key, value in config_dict.items():
+    #         f.write('%s = %s' %(key, value))
 
 # Note: 
 #   * pcof0 uses Quandaries initialization
 #   * leakage_weights = [0.0, 0.0] is disabled.
 #   * "use_eigenbasis" disabled.
 
-# Reading non-standard hamiltonian from file:
+# Pythoninterface with custom Hamiltonian operators:
 #   * Hsys must be real
-#   * No transfer functions
 #   * No time-dependent system Hamiltonian
-#   * Only one control operator per oscillator (complex)
+#   * No transfer functions
+#   * Maximum of one control operator per oscillator (Hc_re and/or Hc_im)
+#   * Warning: Can NOT use the matrix-free solver for custom Hamiltonians. The code might be slower. 

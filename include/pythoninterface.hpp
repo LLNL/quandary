@@ -16,10 +16,11 @@ class PythonInterface{
     int dim_rho;                          // Dimension of the Hilbertspace. N!
     std::string hamiltonian_file; // either 'none' or name of file to read Hamiltonian from 
     int mpirank_world;   // Rank of global communicator
+    bool quietmode;
 
 	public:
     PythonInterface();
-    PythonInterface(std::string hamiltonian_file_, LindbladType lindbladtype_, int dim_rho_);
+    PythonInterface(std::string hamiltonian_file_, LindbladType lindbladtype_, int dim_rho_, bool quietmode_);
     ~PythonInterface();
 
   /* Read the constant system Hamiltonian from file */

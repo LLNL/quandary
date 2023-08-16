@@ -352,16 +352,11 @@ void MasterEq::initSparseMatSolver(){
     if (mpirank_world==0 && !quietmode) printf("\n# Reading Hamiltonian model from file %s.\n\n", hamiltonian_file.c_str());
 
     /* Read Hamiltonians from file */
-    PythonInterface* py = new PythonInterface(hamiltonian_file, lindbladtype, dim_rho);
+    PythonInterface* py = new PythonInterface(hamiltonian_file, lindbladtype, dim_rho, quietmode);
     py->receiveHsys(Bd);
     py->receiveHc(noscillators, Ac_vec, Bc_vec); 
 
     if (mpirank_world==0&& !quietmode) printf("# Done. \n\n");
-
-    // Remove control parameters for those oscillators that are non-controllable
-    for (int k=0; k<nlevels.size(); k++){
-      if (Ac_vec[k].size() == 0 && Bc_vec[k].size() == 0) getOscillator(k)->clearParams();
-    }
 
   /* Else: Initialize system matrices with standard Hamiltonian model */
   } else {
@@ -677,27 +672,48 @@ void MasterEq::initSparseMatSolver(){
     }
   }
 
-  // // Test: Print out Hamiltonian terms.
-  // printf("\n\n HEYHEY! Printing out the system matrices: \n\n");
-  // for (int k=0; k<noscillators; k++){
-  //   for (int i=0; i<Bc_vec[k].size(); i++){
-  //     printf("Oscil %d, control term Bc %d:\n", k, i);
-  //     MatView(Bc_vec[k][i], NULL);
-  //     printf("Oscil %d, control term Ac %d:\n", k, i);
-  //     MatView(Ac_vec[k][i], NULL);
-  //   }
-  // }
-  // for (int kl=0; kl<Ad_vec.size(); kl++) {
-  //   printf("Bd_vec[%d]=\n", kl);
-  //   MatView(Bd_vec[kl], NULL);
-  //   printf("Ad_vec[%d]=\n", kl);
-  //   MatView(Ad_vec[kl], NULL);
-  // }
-  // printf("Ad=\n");
-  // MatView(Ad, NULL);
-  // printf("Bd=\n");
-  // MatView(Bd, NULL);
-  // // exit(1);
+  // Remove control parameters for those oscillators that are non-controllable
+  for (int k=0; k<nlevels.size(); k++){
+    PetscScalar norm;
+    MatNorm(Ac_vec[k][0], NORM_FROBENIUS, &norm);
+    if (norm < 1e-14) {
+      MatDestroy(&(Ac_vec[k][0]));
+      Ac_vec[k].pop_back();
+    }
+    MatNorm(Bc_vec[k][0], NORM_FROBENIUS, &norm);
+    if (norm < 1e-14) {
+      MatDestroy(&(Bc_vec[k][0]));
+      Bc_vec[k].pop_back();
+    }
+     if (Ac_vec[k].size() == 0 && Bc_vec[k].size() == 0) getOscillator(k)->clearParams();
+  }
+
+
+
+
+//   // Test: Print out Hamiltonian terms.
+//   printf("\n\n HEYHEY! Printing out the system matrices: \n\n");
+//   printf("Ad=\n");
+//   MatView(Ad, NULL);
+//   printf("Bd=\n");
+//   MatView(Bd, NULL);
+//   for (int k=0; k<noscillators; k++){
+//     for (int i=0; i<Bc_vec[k].size(); i++){
+//       printf("Oscil %d, control term Bc %d:\n", k, i);
+//       MatView(Bc_vec[k][i], NULL);
+//     }
+//     for (int i=0; i<Ac_vec[k].size(); i++){
+//       printf("Oscil %d, control term Ac %d:\n", k, i);
+//       MatView(Ac_vec[k][i], NULL);
+//     }
+//   }
+//   for (int kl=0; kl<Ad_vec.size(); kl++) {
+//     printf("Bd_vec[%d]=\n", kl);
+//     MatView(Bd_vec[kl], NULL);
+//     printf("Ad_vec[%d]=\n", kl);
+//     MatView(Ad_vec[kl], NULL);
+//   }
+//  // exit(1);
 
 
   /* Allocate some auxiliary vectors */

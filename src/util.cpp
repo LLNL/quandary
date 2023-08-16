@@ -490,15 +490,16 @@ PetscErrorCode SanityTests(Vec x, double time){
 }
 
 
-void read_vector(const char *filename, double *var, int dim, bool quietmode, int skiplines) {
+int read_vector(const char *filename, double *var, int dim, bool quietmode, int skiplines, const std::string testheader) {
 
   FILE *file;
   double tmp;
+  int success = 0;
 
   file = fopen(filename, "r");
 
   if (file != NULL) {
-    if (!quietmode) printf("Reading file %s\n", filename);
+    if (!quietmode) printf("Reading file %s, starting from line %d.\n", filename, skiplines+1);
 
     /* Scip first <skiplines> lines */
     char buffer[50];
@@ -507,16 +508,39 @@ void read_vector(const char *filename, double *var, int dim, bool quietmode, int
       // printf("Skipping %d lines: %s \n:", skiplines, buffer);
     }
 
+    // Test the header, if given, and set vals to zero if header doesn't match.
+    if (testheader.size()>0) {
+      if (!quietmode) printf("Compare to Header '%s': ", testheader.c_str());
+      // read one (first) line
+      int ret = fscanf(file, "%50[^\n]%*c", &buffer);
+      std::string header = buffer;
+      // Compare to testheader, return if it doesn't match 
+      if (ret==EOF || header.compare(0,testheader.size(),testheader) != 0) {
+        // printf("Header not found: %s != %s\n", header.c_str(), testheader.c_str());
+        printf("Header not found.\n");
+        for (int ix = 0; ix < dim; ix++) var[ix] = 0.0;
+        fclose(file);
+        return success;
+      } else {
+        if (!quietmode) printf(" Header correct! Reading now.\n");
+      }
+    }
+ 
+    // printf("Either matching header, or no header given. Now reading lines \n");
+
     /* Read <dim> lines from file */
     for (int ix = 0; ix < dim; ix++) {
-      fscanf(file, "%50[^\n]%*c", &buffer);
-      // if (buffer[0]=='#') printf("IGNORING this:");
-      // printf("Read %d %s\n", ix, buffer);
-      if (buffer[0]=='#') {
-        ix -=1;
+      double myval = 0.0;
+      // read the next line
+      int ret = fscanf(file, "%lf", &myval); 
+      // if end of file, set remaining vars to zero
+      if (ret == EOF){ 
+        for (int j = ix; j<dim; j++) var[j] = 0.0;
+        break;
+      } else { // otherwise, set the value
+        var[ix] = myval;
       }
-      else var[ix] = atof(buffer);
-      // printf("vax[%d]=%f\n", ix, var[ix]);
+      success = 1;
     }
   } else {
     printf("ERROR: Can't open file %s\n", filename);
@@ -524,6 +548,7 @@ void read_vector(const char *filename, double *var, int dim, bool quietmode, int
   }
 
   fclose(file);
+  return success;
 }
 
 

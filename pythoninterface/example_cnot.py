@@ -56,13 +56,12 @@ tol_costfunc = 1e-3	# Stopping criterion based on the objective function
 maxiter = 100 		# Maximum number of optimization iterations
 
 # Quandary run options
-runtype = "optimization" # "simulation", or "gradient", or "optimization"
+runtype = "simulation" # "simulation", or "gradient", or "optimization"
 quandary_exec="/Users/guenther5/Numerics/quandary/main"
 # quandary_exec="/cygdrive/c/Users/scada-125/quandary/main.exe"
 ncores = np.prod(Ne)  # Number of cores 
 # ncores = 1
-stdmodel=True
-datadir = "./CNOT_run_dir_stdmodel"+str(stdmodel)  # Compute and output directory 
+datadir = "./CNOT_run_dir"  # Compute and output directory 
 verbose = True
 
 # Potentially load initial control parameters from a file
@@ -70,10 +69,15 @@ verbose = True
     # pcof0 = [float(line.strip()) for line in f if line]
 pcof0=[]
 
+# Potentially create custom Hamiltonian model, if different from standard model
+Ntotal = [sum(x) for x in zip(Ne, Ng)]
+Hsys, Hc_re, Hc_im = hamiltonians(Ntotal, freq01, selfkerr, crosskerr, Jkl, rotfreq=rotfreq, verbose=verbose)
+
 # Execute quandary
-popt, infidelity, optim_hist = pulse_gen(Ne, Ng, freq01, selfkerr, crosskerr, Jkl, rotfreq, maxctrl_MHz, T, initctrl_MHz, rand_seed, randomize_init_ctrl, unitary,  dtau=dtau, Pmin=Pmin, datadir=datadir, tol_infidelity=tol_infidelity, tol_costfunc=tol_costfunc, maxiter=maxiter, gamma_tik0=gamma_tik0, gamma_energy=gamma_energy, gamma_dpdm=gamma_dpdm, costfunction=costfunction, initialcondition=initialcondition, T1=T1, T2=T2, runtype=runtype, quandary_exec=quandary_exec, ncores=ncores, verbose=verbose, pcof0=pcof0, stdmodel=stdmodel)
+popt, infidelity, optim_hist = quandary_run(Ne, Ng, freq01, selfkerr, crosskerr, Jkl, rotfreq, maxctrl_MHz, T, initctrl_MHz, rand_seed, randomize_init_ctrl, unitary,  dtau=dtau, Pmin=Pmin, datadir=datadir, tol_infidelity=tol_infidelity, tol_costfunc=tol_costfunc, maxiter=maxiter, gamma_tik0=gamma_tik0, gamma_energy=gamma_energy, gamma_dpdm=gamma_dpdm, costfunction=costfunction, initialcondition=initialcondition, T1=T1, T2=T2, runtype=runtype, quandary_exec=quandary_exec, ncores=ncores, verbose=verbose, pcof0=pcof0,  Hsys=Hsys, Hc_im=Hc_im, Hc_re=Hc_re)
 # Other keyword arg defaults
 # cw_amp_thres = 6e-2
 # cw_prox_thres = 1e-3
 
 print(f"Fidelity = {1.0 - infidelity}")
+print("\n Quandary data directory: ", datadir)

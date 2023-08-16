@@ -186,7 +186,7 @@ Oscillator::~Oscillator(){
 
 void Oscillator::setParams(double* x){
 
-  if (control_enforceBC){
+  if (params.size() > 0 && control_enforceBC){
     //printf("\n\n True! \n\n");
     // First, enforce the control boundaries, i.e. potentially set some parameters in x to zero. 
     for (int bs = 0; bs < basisfunctions.size(); bs++){
@@ -206,7 +206,7 @@ void Oscillator::setParams(double* x){
 
 void Oscillator::setParams_diff(double* xbar){
 
-  if (control_enforceBC){
+  if (params.size() > 0 && control_enforceBC){
     //printf("\n\n True! \n\n");
     // First, enforce the control boundaries, i.e. potentially set some parameters in x to zero. 
     for (int bs = 0; bs < basisfunctions.size(); bs++){

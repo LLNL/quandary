@@ -4,37 +4,48 @@ from subprocess import run, PIPE, Popen
 
 
 # Main interface function to create a pulse with Quandary. 
-def pulse_gen(Ne, Ng, freq01, selfkerr, crosskerr, Jkl, rotfreq, maxctrl_MHz, T, initctrl_MHz, rand_seed, randomize_init_ctrl, targetgate, *, dtau=3.33, Pmin=40, cw_amp_thres=6e-2, cw_prox_thres=1e-3, datadir=".", tol_infidelity=1e-3, tol_costfunc=1e-3, maxiter=100, gamma_tik0=1e-4, gamma_energy=1e-2, gamma_dpdm=1e-2, costfunction="Jtrace", initialcondition="basis", T1=None, T2=None, runtype="simulation", quandary_exec="/absolute/path/to/quandary/main", ncores=1, print_frequency_iter=1, verbose=False, pcof0=[], Hsys=[], Hc_re=[], Hc_im=[]):
+def quandary_run(Ne, Ng, freq01, selfkerr, crosskerr, Jkl, rotfreq, maxctrl_MHz, T, initctrl_MHz, rand_seed, randomize_init_ctrl, targetgate, *, dtau=3.33, Pmin=40, cw_amp_thres=1e-2, cw_prox_thres=1e-3, datadir=".", tol_infidelity=1e-3, tol_costfunc=1e-3, maxiter=100, gamma_tik0=1e-4, gamma_energy=1e-2, gamma_dpdm=1e-2, costfunction="Jtrace", initialcondition="basis", T1=None, T2=None, runtype="simulation", quandary_exec="/absolute/path/to/quandary/main", ncores=1, print_frequency_iter=1, verbose=False, pcof0=[], Hsys=[], Hc_re=[], Hc_im=[]):
 
     # Create quandary data directory
     os.makedirs(datadir, exist_ok=True)
 
-    # Hamiltonian operators: Either use the provided ones, or set up standar model. 
-    if len(Hsys) > 0 or len(Hc_re)>0 or len(Hc_im)> 0:
-        # Write provided Hamiltonians to file for Quandaries use
-        standardmodel=False
-        hamiltonianfilename = datadir + "/hamiltonian.dat"
-        with open(hamiltonianfilename, "w") as f:
-            f.write("# Hsys (real!) \n")
-            Hsyslist = list(np.array(Hsys).flatten(order='F'))
-            for value in Hsyslist:
-                f.write("{:20.13e}\n".format(value))
-
-            for iosc in range(len(Hc_re)):
-                Hcrelist = list(np.array(Hc_re[iosc]).flatten(order='F'))
-                f.write("# Oscillator {:d} Hc_real \n".format(iosc))
-                for value in Hcrelist:
-                    f.write("{:20.13e}\n".format(value))
-
-                Hcimlist = list(np.array(Hc_im[iosc]).flatten(order='F'))
-                f.write("# Oscillator {:d} Hc_imag \n".format(iosc))
-                for value in Hcimlist:
-                    f.write("{:20.13e}\n".format(value))
-    else:
-        # Set up standard Hamiltonian model
+    # Hamiltonian operators: Either use the provided ones, or set up standard model. 
+    if len(Hsys) == 0:  # Using standard Hamiltonian model
         standardmodel=True
         Ntot = [sum(x) for x in zip(Ne, Ng)]
         Hsys, Hc_re, Hc_im = hamiltonians(Ntot, freq01, selfkerr, crosskerr, Jkl, rotfreq=rotfreq, verbose=verbose)
+ 
+    else: # Using provided Hamiltonians, write them to hamiltonian.dat
+        standardmodel=False   
+        hamiltonianfilename = datadir + "/hamiltonian.dat"
+
+        # Write system Hamiltonian to file  
+        with open(hamiltonianfilename, "w") as f:
+            f.write("# Hsys \n")
+            Hsyslist = list(np.array(Hsys).flatten(order='F'))
+            for value in Hsyslist:
+                f.write("{:20.13e}\n".format(value))
+        
+        # Write control Hamiltonians to file, if given (append to file)
+        for iosc in range(len(Ne)):
+            # Real part, if given
+            if len(Hc_re)>iosc and len(Hc_re[iosc])>0:
+                with open(hamiltonianfilename, "a") as f:
+                    Hcrelist = list(np.array(Hc_re[iosc]).flatten(order='F'))
+                    f.write("# Oscillator {:d} Hc_real \n".format(iosc))
+                    for value in Hcrelist:
+                        f.write("{:20.13e}\n".format(value))
+            # Imaginary part, if given
+            if len(Hc_im)>iosc and len(Hc_im[iosc])>0:
+                with open(hamiltonianfilename, "a") as f:
+                    Hcimlist = list(np.array(Hc_im[iosc]).flatten(order='F'))
+                    f.write("# Oscillator {:d} Hc_imag \n".format(iosc))
+                    for value in Hcimlist:
+                        f.write("{:20.13e}\n".format(value))
+   
+    # print("Hsys=", Hsys)
+    # print("Hc_re=", Hc_re)
+    # print("Hc_im=", Hc_im)
 
     # Estimate number of time steps
     nsteps = estimate_timesteps(T=T, Hsys=Hsys, Hc_re=Hc_re, Hc_im=Hc_im, maxctrl_MHz=maxctrl_MHz, Pmin=Pmin)
@@ -47,10 +58,10 @@ def pulse_gen(Ne, Ng, freq01, selfkerr, crosskerr, Jkl, rotfreq, maxctrl_MHz, T,
 
 
     # Estimate carrier wave frequencies
-    carrierfreq, growth_rate = get_resonances(Ne, Ng, Hsys, Hc_re, Hc_im, verbose=verbose, cw_amp_thres=cw_amp_thres, cw_prox_thres=cw_prox_thres) 
-    # if verbose:
-        # print("Carrier frequencies: ", carrierfreq)
+    carrierfreq, _ = get_resonances(Ne=Ne, Ng=Ng, Hsys=Hsys, Hc_re=Hc_re, Hc_im=Hc_im, verbose=verbose, cw_amp_thres=cw_amp_thres, cw_prox_thres=cw_prox_thres, stdmodel=standardmodel) 
 
+    if verbose:
+        print("Carrier frequencies: ", carrierfreq)
 
     # Write target gate to file
     gatefilename = datadir + "/targetgate.dat"
@@ -150,28 +161,28 @@ def write_config(*, Ne, Ng, T, nsteps, freq01, rotfreq, selfkerr, crosskerr=[], 
             initamp[q] = initctrl_MHz[q] *2.0*np.pi/1000.0 / np.sqrt(2) / len(carrierfreq[q])
 
     Nt = [Ne[i] + Ng[i] for i in range(len(Ng))]
-    mystring = "nlevels = " + str(Nt)[1:-1] + "\n"
-    mystring += "nessential= " + str(Ne)[1:-1] + "\n"
+    mystring = "nlevels = " + str(list(Nt))[1:-1] + "\n"
+    mystring += "nessential= " + str(list(Ne))[1:-1] + "\n"
     mystring += "ntime = " + str(nsteps) + "\n"
     mystring += "dt = " + str(T / nsteps) + "\n"
-    mystring += "transfreq = " + str(freq01)[1:-1] + "\n"
-    mystring += "rotfreq= " + str(rotfreq)[1:-1] + "\n"
-    mystring += "selfkerr = " + str(selfkerr)[1:-1] + "\n"
+    mystring += "transfreq = " + str(list(freq01))[1:-1] + "\n"
+    mystring += "rotfreq= " + str(list(rotfreq))[1:-1] + "\n"
+    mystring += "selfkerr = " + str(list(selfkerr))[1:-1] + "\n"
     if len(crosskerr)>0:
-        mystring += "crosskerr= " + str(crosskerr)[1:-1] + "\n"
+        mystring += "crosskerr= " + str(list(crosskerr))[1:-1] + "\n"
     else:
         mystring += "crosskerr= 0.0\n"
     if len(Jkl)>0:
-        mystring += "Jkl= " + str(Jkl)[1:-1] + "\n"
+        mystring += "Jkl= " + str(list(Jkl))[1:-1] + "\n"
     else:
         mystring += "Jkl= 0.0\n"
     decay = dephase = False
     if len(T1) > 0: 
         decay = True
-        mystring += "decay_time = " + str(T1)[1:-1] + "\n"
+        mystring += "decay_time = " + str(list(T1))[1:-1] + "\n"
     if len(T2) > 0:
         dephase = True
-        mystring += "dephase_time = " + str(T2)[1:-1] + "\n"
+        mystring += "dephase_time = " + str(list(T2))[1:-1] + "\n"
     if decay and dephase:
         mystring += "collapse_type = both\n"
     elif decay:
@@ -283,8 +294,12 @@ def estimate_timesteps(*, T=1.0, Hsys=[], Hc_re=[], Hc_im=[], maxctrl_MHz=[], Pm
     K1 = np.copy(Hsys) 
     for i in range(len(Hc_re)):
         max_radns = maxctrl_MHz[i]*2.0*np.pi/1e+3
-        K1 += max_radns * Hc_re[i] 
-        K1 = K1 + 1j * max_radns * Hc_im[i] # can't use += due to type!
+        if len(Hc_re[i])>0:
+            K1 += max_radns * Hc_re[i] 
+    for i in range(len(Hc_im)):
+        max_radns = maxctrl_MHz[i]*2.0*np.pi/1e+3
+        if len(Hc_im[i])>0:
+            K1 = K1 + 1j * max_radns * Hc_im[i] # can't use += due to type!
     
     # Estimate time step
     eigenvalues = np.linalg.eigvals(K1)
@@ -300,12 +315,12 @@ def estimate_timesteps(*, T=1.0, Hsys=[], Hc_re=[], Hc_im=[], maxctrl_MHz=[], Pm
 
 
 # Computes system resonances, to be used as carrier wave frequencies
-# Returns resonance frequencies in GHz and corresponding growth rates
-def get_resonances(Ne, Ng, Hsys, Hc_re, Hc_im, *, cw_amp_thres=6e-2, cw_prox_thres=1e-3, verbose=True):
+# Returns resonance frequencies in GHz and corresponding growth rates.
+def get_resonances(*, Ne, Ng, Hsys, Hc_re=[], Hc_im=[], cw_amp_thres=6e-2, cw_prox_thres=1e-3,verbose=True, stdmodel=True):
     if verbose:
         print("\nget_resonances: Ignoring growth rate slower than:", cw_amp_thres, "and frequencies closer than:", cw_prox_thres, "[GHz]")
 
-    nqubits = len(Hc_re)
+    nqubits = len(Ne)
     n = Hsys.shape[0]
 
     # Get eigenvalues of system Hamiltonian (GHz)
@@ -315,11 +330,20 @@ def get_resonances(Ne, Ng, Hsys, Hc_re, Hc_im, *, cw_amp_thres=6e-2, cw_prox_thr
 
     resonances = []
     speed = []
+
     for q in range(nqubits):
-        Hctrl_ad = Hc_re[q] - Hc_im[q]   # a' TODO: WHY ? 
-        # Hctrl_ad = Hc_re[q] + Hc_im[q]     # a 
-        # Hctrl_ad = Hc_re[q]               # a+a'
-        # Hctrl_ad = Hc_im[q]               # a-a'
+        if stdmodel: # If standard model, get resonances from non-zeros in U'a'U TODO: WHY?
+            Hctrl_ad = Hc_re[q] - Hc_im[q]  
+            # Hctrl_ad = Hc_re[q]
+            # Hctrl_ad = Hc_im[q]
+        else: # Get resonances from non-zeros in U'(Hc_re - Hc_im)U TODO: WHY?
+            Hctrl_ad =np.zeros(Hsys.shape)
+            if len(Hc_re) > q:
+                if len(Hc_re[q])> 0:
+                    Hctrl_ad += Hc_re[q]
+            if len(Hc_im) > q:
+                if len(Hc_im[q])> 0:
+                    Hctrl_ad -= Hc_im[q]
         Hctrl_ad_trans = Utrans.T @ Hctrl_ad @ Utrans
 
         resonances_a = []
@@ -365,11 +389,15 @@ def get_resonances(Ne, Ng, Hsys, Hc_re, Hc_im, *, cw_amp_thres=6e-2, cw_prox_thr
         resonances.append(resonances_a)
         speed.append(speed_a)
 
+    # print("nqubits ", nqubits)
     Nfreq = np.zeros(nqubits, dtype=int)
-    om = [[] for _ in range(nqubits)]
+    om = [[0.0] for _ in range(nqubits)]
     growth_rate = [[] for _ in range(nqubits)]
     
-    for q in range(nqubits):
+    # print("om = ", om)
+    # print("Nfreq = ", Nfreq )
+
+    for q in range(len(resonances)):
         Nfreq[q] = max(1, len(resonances[q]))  # at least one being 0.0
         om[q] = np.zeros(Nfreq[q])
         if len(resonances[q]) > 0:

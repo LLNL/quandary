@@ -4,11 +4,12 @@ PythonInterface::PythonInterface(){
 }
 
 
-PythonInterface::PythonInterface(std::string hamiltonian_file_, LindbladType lindbladtype_, int dim_rho_) {
+PythonInterface::PythonInterface(std::string hamiltonian_file_, LindbladType lindbladtype_, int dim_rho_, bool quietmode_) {
 
   lindbladtype = lindbladtype_;
   dim_rho = dim_rho_;
   hamiltonian_file = hamiltonian_file_;
+  quietmode=quietmode_;
   MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
 }
 
@@ -26,13 +27,24 @@ void PythonInterface::receiveHsys(Mat& Bd){
   if (lindbladtype != LindbladType::NONE) sqdim = (int) sqrt(dim); // sqdim = N 
 
   /* ----- Real system matrix Hd_real, write it into Bd ---- */
-  if (mpirank_world == 0) printf("Receiving system Hamiltonian...\n");
+  // if (mpirank_world == 0) printf("Receiving system Hamiltonian...\n");
+
+
+  MatSetOption(Bd, MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);
 
   // Read Hsys from file
   long int nelems = sqdim*sqdim;
   std::vector<double> vals (nelems);
-  int skiplines=1;
-  if (mpirank_world == 0) read_vector(hamiltonian_file.c_str(), vals.data(), nelems, true, skiplines);
+  int skiplines=0;
+  std::string testheader = "# Hsys ";
+  int success = 0;
+  if (mpirank_world == 0) {
+    success = read_vector(hamiltonian_file.c_str(), vals.data(), nelems, quietmode, skiplines, testheader);
+    if (success != 1){
+      printf("# ERROR: Did not receive system Hamiltonian.\n");
+      exit(1);
+    }
+  }
   MPI_Bcast(vals.data(), nelems, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
   /* Iterate over all elements*/
@@ -67,8 +79,10 @@ void PythonInterface::receiveHsys(Mat& Bd){
 
 void PythonInterface::receiveHc(int noscillators, std::vector<std::vector<Mat>>& Ac_vec, std::vector<std::vector<Mat>>& Bc_vec){
   PetscInt ilow, iupp;
+  int success;
+  std::string testheader;
 
-  if (mpirank_world == 0) printf("Receiving control Hamiltonian terms...\n");
+  // if (mpirank_world == 0) printf("Receiving control Hamiltonian terms...\n");
 
   /* Get the dimensions right */
   int sqdim = dim_rho; //  N!
@@ -77,16 +91,21 @@ void PythonInterface::receiveHc(int noscillators, std::vector<std::vector<Mat>>&
   int nelems = dim_rho*dim_rho;
 
   // Skip first Hd lines in the file
-  int skiplines = nelems+1; // +1 for the first comment line
+  int skiplines = nelems+1; // nelems for Hsys and +1 for the first comment line
 
   /* Iterate over oscillators */
   for (int k=0; k<noscillators; k++){
+    MatSetOption(Ac_vec[k][0], MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);
+    MatSetOption(Bc_vec[k][0], MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);
 
     /* Read real part from file */
     std::vector<double> vals (nelems);
-    if (mpirank_world == 0) read_vector(hamiltonian_file.c_str(), vals.data(), nelems, true, skiplines);
+    testheader = "# Oscillator " + std::to_string(k) + " Hc_real";
+    if (mpirank_world == 0) {
+      success = read_vector(hamiltonian_file.c_str(), vals.data(), nelems, quietmode, skiplines, testheader);
+      if (success==1) skiplines += nelems+1;
+    }
     MPI_Bcast(vals.data(), nelems, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-    skiplines += nelems+1;
     // printf("Received ioscid %d, Hc_real = \n", k);
     // for (int m=0; m<vals.size(); m++){
     //   printf("%d %f\n", m, vals[m]);
@@ -123,9 +142,12 @@ void PythonInterface::receiveHc(int noscillators, std::vector<std::vector<Mat>>&
     } // end of elements of Hc[k][i] real 
 
     /* Read imaginary part from file */
-    if (mpirank_world == 0) read_vector(hamiltonian_file.c_str(), vals.data(), nelems, true, skiplines);
+    testheader = "# Oscillator " + std::to_string(k) + " Hc_imag";
+    if (mpirank_world == 0) {
+      success = read_vector(hamiltonian_file.c_str(), vals.data(), nelems, quietmode, skiplines, testheader);
+      if (success==1) skiplines += nelems+1;
+    }
     MPI_Bcast(vals.data(), nelems, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-    skiplines+=nelems+1; // Skip system Hamiltonian and real Hc
     // printf("Received ioscid %d, Hc_imag = \n", k);
     // for (int m=0; m<vals.size(); m++){
     //   printf("%d %f\n", m, vals[m]);
