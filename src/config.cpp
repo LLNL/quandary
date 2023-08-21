@@ -63,7 +63,8 @@ void MapParam::ReadFile(std::string filename)
       int pos = line.find('=');
       std::string key = line.substr(0, pos);
       std::string value = line.substr(pos + 1);
-      map<std::string, std::string>::iterator it_value = this->find(key);
+      //value = value.substr(0, value.size()-1);
+      std::map<std::string, std::string>::iterator it_value = this->find(key);
       if (it_value == this->end())
       {
         this->insert(std::pair<std::string, std::string>(key, value));
@@ -82,7 +83,7 @@ void MapParam::ReadFile(std::string filename)
 
 void MapParam::GetVecDoubleParam(std::string key, std::vector<double> &fillme, double default_val, bool exportme) const 
 {
-  map<std::string, std::string>::const_iterator it_value = this->find(key);
+  std::map<std::string, std::string>::const_iterator it_value = this->find(key);
   if (it_value == this->end())
   {
     if (mpi_rank == 0 && !quietmode) {
@@ -99,18 +100,18 @@ void MapParam::GetVecDoubleParam(std::string key, std::vector<double> &fillme, d
     { 
         fillme.push_back(atof(intermediate.c_str()));
     } 
-    if (exportme) export_param(mpi_rank, *log, key, line.str());
+    if (exportme) { export_param(mpi_rank, *log, key, line.str());}
   }
 }
 
 double MapParam::GetDoubleParam(std::string key, double default_val) const
 {
-  map<std::string, std::string>::const_iterator it_value = this->find(key);
+  std::map<std::string, std::string>::const_iterator it_value = this->find(key);
   double val;
   if (it_value == this->end())
   {
     if (mpi_rank == 0 && !quietmode)
-      std::cerr << "# Warning: parameter " << key << " not found ! Taking default = " << default_val << std::endl;
+      { std::cerr << "# Warning: parameter " << key << " not found ! Taking default = " << default_val << std::endl; }
     val = default_val;
   }
   else
@@ -122,12 +123,12 @@ double MapParam::GetDoubleParam(std::string key, double default_val) const
 
 int MapParam::GetIntParam(std::string key, int default_val) const
 {
-  map<std::string, std::string>::const_iterator it_value = this->find(key);
+  std::map<std::string, std::string>::const_iterator it_value = this->find(key);
   int val;
   if (it_value == this->end())
   {
     if (mpi_rank == 0 && !quietmode)
-      std::cerr << "# Warning: parameter " << key << " not found ! Taking default = " << default_val << std::endl;
+      { std::cerr << "# Warning: parameter " << key << " not found ! Taking default = " << default_val << std::endl; }
     val = default_val;
   }
   else
@@ -139,29 +140,29 @@ int MapParam::GetIntParam(std::string key, int default_val) const
 
 std::string MapParam::GetStrParam(std::string key, std::string default_val, bool exportme) const
 {
-  map<std::string, std::string>::const_iterator it_value = this->find(key);
+  std::map<std::string, std::string>::const_iterator it_value = this->find(key);
   std::string val;
   if (it_value == this->end())
   {
     if (mpi_rank == 0 && !quietmode)
-      std::cerr << "# Warning: parameter " << key << " not found ! Taking default = " << default_val << std::endl;
+      { std::cerr << "# Warning: parameter " << key << " not found ! Taking default = " << default_val << std::endl; }
     val = default_val;
   }
   else
     val = it_value->second;
 
-  if (exportme) export_param(mpi_rank, *log, key, val);
+  if (exportme) { export_param(mpi_rank, *log, key, val); }
   return val;
 }
 
 bool MapParam::GetBoolParam(std::string key, bool default_val) const
 {
-  map<std::string, std::string>::const_iterator it_value = this->find(key);
+  std::map<std::string, std::string>::const_iterator it_value = this->find(key);
   bool val;
   if (it_value == this->end())
   {
     if (mpi_rank == 0 && !quietmode)
-      std::cerr << "# Warning: parameter " << key << " not found ! Taking default = " << default_val << std::endl;
+      { std::cerr << "# Warning: parameter " << key << " not found ! Taking default = " << default_val << std::endl; }
     val = default_val;
   }
   else if (!strcmp(it_value->second.c_str(), "yes") || 
@@ -170,9 +171,9 @@ bool MapParam::GetBoolParam(std::string key, bool default_val) const
           !strcmp(it_value->second.c_str(), "TRUE") || 
           !strcmp(it_value->second.c_str(), "YES")  || 
           !strcmp(it_value->second.c_str(), "1"))
-    val = true;
+    { val = true; }
   else
-    val = false;
+    { val = false; }
 
   export_param(mpi_rank, *log, key, val);
   return val;
@@ -186,13 +187,13 @@ int MapParam::GetMpiRank() const {
 
 void MapParam::GetVecIntParam(std::string key, std::vector<int> &fillme, int default_val) const 
 {
-  map<std::string, std::string>::const_iterator it_value = this->find(key);
+  std::map<std::string, std::string>::const_iterator it_value = this->find(key);
   std::string lineexp;
   double val;
   if (it_value == this->end())
   {
     if (mpi_rank == 0 && !quietmode)
-      std::cerr << "# Warning: parameter " << key << " not found ! Taking default = " << default_val << std::endl;
+      { std::cerr << "# Warning: parameter " << key << " not found ! Taking default = " << default_val << std::endl; }
       fillme.push_back(default_val);
   }
   else 
@@ -212,12 +213,12 @@ void MapParam::GetVecIntParam(std::string key, std::vector<int> &fillme, int def
 
 void MapParam::GetVecStrParam(std::string key, std::vector<std::string> &fillme, std::string default_val, bool exportme) const
 {
-  map<std::string, std::string>::const_iterator it_value = this->find(key);
+  std::map<std::string, std::string>::const_iterator it_value = this->find(key);
   std::string lineexp;
   if (it_value == this->end())
   {
     if (mpi_rank == 0 && !quietmode)
-      std::cerr << "# Warning: parameter " << key << " not found ! Taking default = " << default_val << std::endl;
+      { std::cerr << "# Warning: parameter " << key << " not found ! Taking default = " << default_val << std::endl; }
 
       /* Parse the string line w.r.t. comma separator */
       std::string intermediate; 
@@ -237,6 +238,6 @@ void MapParam::GetVecStrParam(std::string key, std::vector<std::string> &fillme,
         fillme.push_back(intermediate);
     } 
     lineexp = line.str();
-    if (exportme) export_param(mpi_rank, *log, key, lineexp);  
+    if (exportme) { export_param(mpi_rank, *log, key, lineexp);   }
   }
 }

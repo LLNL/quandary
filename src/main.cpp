@@ -6,6 +6,7 @@
 #include "config.hpp"
 #include <stdlib.h>
 #include <sys/resource.h>
+#include <cassert>
 #include "optimproblem.hpp"
 #include "output.hpp"
 #include "petsc.h"
