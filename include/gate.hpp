@@ -8,11 +8,6 @@
 #include "util.hpp"
 #pragma once
 
-#ifndef M_PI
-#define M_PI 3.14159265358979323846
-#endif
-
-
 class Gate {
   protected:
     Mat V_re, V_im;    /* Input: Real and imaginary part of V_target, non-vectorized, essential levels only */

@@ -1,4 +1,5 @@
 #include "timestepper.hpp"
+#include "defs.hpp"
 #include <string>
 #include "oscillator.hpp" 
 #include "mastereq.hpp"
@@ -11,11 +12,6 @@
 #ifdef WITH_SLEPC
 #include <slepceps.h>
 #endif
-
-#ifndef M_PI
-#define M_PI 3.14159265358979323846
-#endif
-
 
 #define TEST_FD_GRAD 0    // Run Finite Differences gradient test
 #define TEST_FD_HESS 0    // Run Finite Differences Hessian test
