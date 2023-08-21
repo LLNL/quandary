@@ -116,8 +116,8 @@ Oscillator::Oscillator(MapParam config, int id, std::vector<int> nlevels_all_, s
       double initval = atof(controlinitializations[idini+1].c_str());
       // If STEP: scale to [0,1]
       if (basisfunctions[seg]->getType() == ControlType::STEP){
-        initval = max(0.0, initval);  
-        initval = min(1.0, initval); 
+        initval = std::max(0.0, initval);  
+        initval = std::min(1.0, initval); 
       }
       for (int f = 0; f<carrier_freq.size(); f++) {
         for (int i=0; i<basisfunctions[seg]->getNparams(); i++){
@@ -141,8 +141,8 @@ Oscillator::Oscillator(MapParam config, int id, std::vector<int> nlevels_all_, s
 
           // If STEP: scale to [0,1] else scale to [-a,a]
           if (basisfunctions[seg]->getType() == ControlType::STEP){
-            initval = max(0.0, initval);  
-            initval = min(1.0, initval); 
+            initval = std::max(0.0, initval);  
+            initval = std::min(1.0, initval); 
           } else {
             initval = 2*initval - maxval;
           }

@@ -1,4 +1,5 @@
 #include "timestepper.hpp"
+#include <string>
 #include "oscillator.hpp" 
 #include "mastereq.hpp"
 #include "config.hpp"
@@ -9,6 +10,10 @@
 #include "petsc.h"
 #ifdef WITH_SLEPC
 #include <slepceps.h>
+#endif
+
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
 #endif
 
 
@@ -143,7 +148,7 @@ int main(int argc,char **argv)
   // np_optim= min(np_optim, mpisize_world); 
   int np_optim= 1;
   // Number of cores for initial condition distribution. Since this gives perfect speedup, choose maximum.
-  int np_init = min(ninit, mpisize_world); 
+  int np_init = std::min(ninit, mpisize_world); 
   // Number of cores for Petsc: All the remaining ones. 
   int np_petsc = mpisize_world / (np_init * np_optim);
 
@@ -220,8 +225,8 @@ int main(int argc,char **argv)
   copyLast(dephase_time, nlevels.size());
   
   // Get control segment types, carrierwaves and control initialization
-  string default_seg_str = "spline, 10, 0.0, "+std::to_string(total_time); // Default for first oscillator control segment
-  string default_init_str = "constant, 0.0";                               // Default for first oscillator initialization
+  std::string default_seg_str = "spline, 10, 0.0, "+std::to_string(total_time); // Default for first oscillator control segment
+  std::string default_init_str = "constant, 0.0";                               // Default for first oscillator initialization
   for (int i = 0; i < nlevels.size(); i++){
     // Get carrier wave frequencies 
     std::vector<double> carrier_freq;
@@ -392,7 +397,7 @@ int main(int argc,char **argv)
   {
     /* Print parameters to file */
     sprintf(filename, "%s/config_log.dat", output->datadir.c_str());
-    ofstream logfile(filename);
+    std::ofstream logfile(filename);
     if (logfile.is_open()){
       logfile << log.str();
       logfile.close();

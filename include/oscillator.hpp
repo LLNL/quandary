@@ -12,8 +12,6 @@
 
 #pragma once
 
-using namespace std;
-
 struct PiPulse {
   std::vector<double> tstart; 
   std::vector<double> tstop;
