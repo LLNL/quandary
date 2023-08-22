@@ -71,6 +71,7 @@ int main(int argc,char **argv)
   if      (runtypestr.compare("simulation")      == 0) runtype = RunType::SIMULATION;
   else if (runtypestr.compare("gradient")     == 0)    runtype = RunType::GRADIENT;
   else if (runtypestr.compare("optimization")== 0)     runtype = RunType::OPTIMIZATION;
+  else if (runtypestr.compare("evalcontrols")== 0)     runtype = RunType::EVALCONTROLS;
   else {
     printf("\n\n WARNING: Unknown runtype: %s.\n\n", runtypestr.c_str());
     runtype = RunType::NONE;
@@ -436,6 +437,14 @@ int main(int argc,char **argv)
     if (mpirank_world == 0 && !quietmode) printf("\nStarting Optimization solver ... \n");
     optimctx->solve(xinit);
     optimctx->getSolution(&opt);
+  }
+
+  /* Only evaluate and write control pulses (no propagation) */
+  if (runtype == RunType::EVALCONTROLS) {
+    std::vector<double> pt, qt;
+    optimctx->getStartingPoint(xinit);
+    if (mpirank_world == 0 && !quietmode) printf("\nEvaluating current controls ... \n");
+    output->writeControls(xinit, mastereq, ntime, dt);
   }
 
   /* Output */
