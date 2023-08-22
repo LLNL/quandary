@@ -72,13 +72,17 @@ Hc_re = []
 Hc_im = []
 
 # Execute quandary
-popt, infidelity, optim_hist = quandary_run(Ne, Ng, freq01, selfkerr, crosskerr, Jkl, rotfreq, maxctrl_MHz, T, initctrl_MHz, rand_seed, randomize_init_ctrl, unitary,  dtau=dtau, Pmin=Pmin, datadir=datadir, tol_infidelity=tol_infidelity, tol_costfunc=tol_costfunc, maxiter=maxiter, gamma_tik0=gamma_tik0, gamma_energy=gamma_energy, gamma_dpdm=gamma_dpdm, costfunction=costfunction, initialcondition=initialcondition, T1=T1, T2=T2, runtype=runtype, quandary_exec=quandary_exec, ncores=ncores, verbose=verbose, pcof0=pcof0, Hsys=Hsys, Hc_re=Hc_re, Hc_im=Hc_im)
+time, pt, qt, ft, expectedEnergy, popt, infidelity, optim_hist = quandary_run(Ne, Ng, freq01, selfkerr, crosskerr, Jkl, rotfreq, maxctrl_MHz, T, initctrl_MHz, rand_seed, randomize_init_ctrl, unitary,  dtau=dtau, Pmin=Pmin, datadir=datadir, tol_infidelity=tol_infidelity, tol_costfunc=tol_costfunc, maxiter=maxiter, gamma_tik0=gamma_tik0, gamma_energy=gamma_energy, gamma_dpdm=gamma_dpdm, costfunction=costfunction, initialcondition=initialcondition, T1=T1, T2=T2, runtype=runtype, quandary_exec=quandary_exec, ncores=ncores, verbose=verbose, pcof0=pcof0, Hsys=Hsys, Hc_re=Hc_re, Hc_im=Hc_im)
 # Other keyword arg defaults
 # cw_amp_thres = 6e-2
 # cw_prox_thres = 1e-3
 
-print(f"Fidelity = {1.0 - infidelity}")
-print("\n Quandary data directory: ", datadir)
+print(f"\nFidelity = {1.0 - infidelity}")
+print("\nQuandary data directory: ", datadir)
+
+# Plot the control pulse and expected energy level evolution
+plot_pulse(Ne, time, pt, qt)
+plot_expectedEnergy(Ne, time, expectedEnergy)
 
 
 # TODO:

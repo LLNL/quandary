@@ -1,6 +1,7 @@
 import os
 import numpy as np
 from subprocess import run, PIPE, Popen
+import matplotlib.pyplot as plt
 
 
 # Main interface function to create a pulse with Quandary. 
@@ -90,9 +91,9 @@ def quandary_run(Ne, Ng, freq01, selfkerr, crosskerr, Jkl, rotfreq, maxctrl_MHz,
     err = execute(runtype=runtype, ncores=ncores, config_filename=config_filename, datadir=datadir, quandary_exec=quandary_exec, verbose=verbose)
 
     # Get results and return
-    popt, infidelity, optim_hist = get_results(datadir)
+    time, pt, qt, ft, expectedEnergy , popt, infidelity, optim_hist= get_results(Ne=Ne, datadir=datadir)
 
-    return popt, infidelity, optim_hist
+    return time, pt, qt, ft, expectedEnergy, popt, infidelity, optim_hist
 
 
 
@@ -250,7 +251,7 @@ def write_config(*, Ne, Ng, T, nsteps, freq01, rotfreq, selfkerr, crosskerr=[], 
     return configfilename
 
 
-def get_results(datadir="./"):
+def get_results(*, Ne=[], datadir="./"):
     dataout_dir = datadir + "/"
     
     # Get control parameters
@@ -269,20 +270,31 @@ def get_results(datadir="./"):
 
     # # Get last time-step unitary
     # uT = np.zeros((np.prod(Nt), np.prod(Ne)), dtype=np.complex128)
-
     # for i in range(np.prod(Ne)):
     #     # Read from file
     #     xre = np.loadtxt(dataout_dir + "/rho_Re.iinit" + str(i).zfill(4) + ".dat")[-1, 1:]
     #     xim = np.loadtxt(dataout_dir + "/rho_Im.iinit" + str(i).zfill(4) + ".dat")[-1, 1:]
     #     uT[:, i] = xre + 1j * xim
 
-    # # grad = np.zeros(len(pcof))
-    # if runtype == "gradient":  # the grad.dat file is not created by the optimization mode
-    #     # chop up the long vector into individual column vectors for the result
-    #     grad = np.loadtxt(dataout_dir + "/grad.dat")[:, 0]
+    # Get the time-evolution of the expected energy for each qubit, for each initial condition
+    expectedEnergy = [[] for _ in range(len(Ne))]
+    for iosc in range(len(Ne)):
+        for iinit in range(np.prod(Ne)):
+            x = np.loadtxt(dataout_dir + "./expected"+str(iosc)+".iinit"+str(iinit).zfill(4)+".dat")
+            expectedEnergy[iosc].append(x[:,1])    # first column is time, second column is expected energy
 
-    # TODO:
-    return pcof, infid_last, optim_hist
+    # Get the control pulses for each qubit
+    pt = []
+    qt = []
+    ft = []
+    for iosc in range(len(Ne)):
+        x = np.loadtxt(dataout_dir + "./control"+str(iosc)+".dat")
+        time = x[:,0]   # Time domain
+        pt.append([x[n,1]/(2*np.pi)*1e+3 for n in range(len(x[:,0]))])     # Rot frame p(t), MHz
+        qt.append([x[n,2]/(2*np.pi)*1e+3 for n in range(len(x[:,0]))])     # Rot frame q(t), MHz
+        ft.append([x[n,3]/(2*np.pi)*1e+3 for n in range(len(x[:,0]))])     # Lab frame f(t)
+
+    return time, pt, qt, ft, expectedEnergy, pcof, infid_last, optim_hist
 
 
 # Estimates the number of time steps based on eigenvalues of the system Hamiltonian and maximum control Hamiltonians.
@@ -565,3 +577,63 @@ def hamiltonians(N, freq01, selfkerr, crosskerr=[], Jkl = [], *, rotfreq=None, v
         print("Coupling: X-Kerr=", crosskerr, ", J-C=", Jkl)
 
     return Hsys, Hc_re, Hc_im
+
+
+# Plot the control pulse for all qubits
+def plot_pulse(Ne, time, pt, qt):
+    fig = plt.figure()
+    # # Increase figure size if more than one oscillator will be plotted. 
+    # # Default size for one figure is [6.4, 4.8] -> Multiply by number of figures times 75%
+    # if len(Ne) > 1:
+    #     size_org = plt.rcParams['figure.figsize']
+    #     plt.rcParams['figure.figsize'] = [size*len(Ne)*0.75 for size in size_org] 
+    nrows = len(Ne)
+    ncols = 1
+    for iosc in range(len(Ne)):
+        plt.subplot(nrows, ncols, iosc+1)
+        plt.plot(time, pt[iosc], "r", label="p(t)")
+        plt.plot(time, qt[iosc], "b", label="q(t)")
+        plt.xlabel('time (ns)')
+        plt.ylabel('Drive strength [MHz]')
+        plt.title('Qubit '+str(iosc))
+        plt.legend(loc='lower right')
+        plt.xlim([0.0, time[-1]])
+    # plt.grid()
+    plt.subplots_adjust(hspace=0.6)
+    plt.draw()
+    print("\nPlotting control pulses.")
+    print("-> Press <enter> to proceed.")
+    plt.waitforbuttonpress(1); 
+    input(); 
+    plt.close(fig)
+
+# Plot evolution of expected energy levels
+def plot_expectedEnergy(Ne, time, expectedEnergy, densitymatrix_form=False):
+    nplots = np.prod(Ne)
+    ncols = 2 if nplots >= 4 else 1     # 2 rows if more than 3 plots
+    nrows = int(np.ceil(np.prod(Ne)/ncols))
+    figsizex = 6.4*nrows*0.75 
+    figsizey = 4.8*nrows*0.75 
+    fig = plt.figure(figsize=(figsizex,figsizey))
+    for iplot in range(nplots):
+        iinit = iplot if not densitymatrix_form else iplot*np.prod(Ne) + iplot
+        plt.subplot(nrows, ncols, iplot+1)
+        plt.figsize=(15, 15)
+        for iosc in range(len(Ne)):
+            label = 'Qubit '+str(iosc) if len(Ne)>0 else ''
+            plt.plot(time, expectedEnergy[iosc][iinit], label=label)
+        plt.xlabel('time (ns)')
+        plt.ylabel('expected energy')
+        plt.ylim([0.0-1e-2, Ne[0]-1.0 + 1e-2])
+        plt.xlim([0.0, time[-1]])
+        binary_ID = iinit if len(Ne) == 1 else bin(iinit).replace("0b", "").zfill(len(Ne))
+        plt.title("init |"+str(binary_ID)+">")
+        plt.legend(loc='lower right')
+    plt.subplots_adjust(hspace=0.5)
+    plt.subplots_adjust(wspace=0.5)
+    plt.draw()
+    print("\nPlotting expected energy of qubit ", iosc)
+    print("-> Press <enter> to proceed.")
+    plt.waitforbuttonpress(1); 
+    input(); 
+    plt.close(fig)
