@@ -2,96 +2,278 @@ import os
 import numpy as np
 from subprocess import run, PIPE, Popen
 import matplotlib.pyplot as plt
+from dataclasses import dataclass, field
+
+@dataclass
+class QuandaryConfig:
+
+    # Quantum system specifications
+    Ne:      list[int]         = field(default_factory=lambda: [3])
+    Ng:      list[int]         = field(default_factory=lambda: [0])
+    freq01              : list[float] = field(default_factory=lambda: [4.10595])
+    rotfreq             : list[float] = field(default_factory=list) 
+    selfkerr            : list[float] = field(default_factory=lambda: [0.2198])
+    Jkl                 : list[float] = field(default_factory=list)
+    crosskerr           : list[float] = field(default_factory=list) 
+    T1                  : list[float] = field(default_factory=list)
+    T2                  : list[float] = field(default_factory=list)
+
+    # Time duration and discretization options
+    T                   : float       = 100.0
+    nsteps              : int         = -1       # Will be computed in __post__init__
+    Pmin                : int         = 40
+    timestepper         : str         = "IMR"
+
+    # Hamiltonian model
+    standardmodel       : bool              = True
+    Hsys                : list[float]       = field(default_factory=list)
+    Hc_re               : list[list[float]] = field(default_factory=list)
+    Hc_im               : list[list[float]] = field(default_factory=list)
+
+    # Control parameterization options
+    maxctrl_MHz         : list[float] = field(default_factory=lambda: [10.0])
+    control_enforce_BC  : bool        = True
+    dtau                : float       = 3.33 
+    nsplines            : int         = -1      # will be set by __post__init__
+    randomize_init_ctrl : bool        = True
+    rand_seed           : int         = 1234
+    amp_frac            : float       = 0.9
+    initctrl_MHz        : list[float] = field(default_factory=list)
+    pcof0               : list[float] = field(default_factory=list)
+    pcof0_filename      : str         = ""
+    carrier_frequency   : list[list[float]] = field(default_factory=lambda: [0.0]) # will be set in __post_init
+    cw_amp_thres        : float       = 1e-2
+    cw_prox_thres       : float       = 1e-3
+
+    # Optimization options
+    costfunction        : str         = "Jtrace" # "Jtrace", "Jfrobenius"
+    optim_target        : str         = "gate"
+    targetgate          : list[list[float]] = field(default_factory=list)
+    initialcondition    : str         = "basis"  # "basis", "diagonal", "pure, 0,0,1,...", "file, /path/to/file" 
+    gamma_tik0          : float       = 1e-4 	# Tikhonov regularization
+    gamma_energy        : float       = 0.01	# Penality: Integral over control pulse energy
+    gamma_dpdm          : float       = 0.01	# Penality: Integral over second state derivative
+    tol_infidelity      : float       = 1e-3   # Stopping tolerance based on the infidelity
+    tol_costfunc        : float       = 1e-3	# Stopping criterion based on the objective function
+    maxiter             : int         = 100 		# Maximum number of optimization iterations
+
+    # Quandary run options
+    quandary_exec       : str         = "/Users/guenther5/Numerics/quandary/main"  
+    print_frequency_iter: int         = 1
+    usematfree          : bool        = True
+
+    # General options
+    verbose             : bool        = True
+
+    # Internal configuration. Should not be changed by user.
+    _hamiltonian_filename: str         = ""
+    _gatefilename        : str         = ""
 
 
-# Main interface function to create a pulse with Quandary. 
-def quandary_run(Ne, Ng, freq01, selfkerr, crosskerr, Jkl, rotfreq, maxctrl_MHz, T, initctrl_MHz, rand_seed, randomize_init_ctrl, targetgate, *, dtau=3.33, Pmin=40, cw_amp_thres=1e-2, cw_prox_thres=1e-3, datadir=".", tol_infidelity=1e-3, tol_costfunc=1e-3, maxiter=100, gamma_tik0=1e-4, gamma_energy=1e-2, gamma_dpdm=1e-2, costfunction="Jtrace", initialcondition="basis", T1=None, T2=None, runtype="simulation", quandary_exec="/absolute/path/to/quandary/main", ncores=1, print_frequency_iter=1, verbose=False, pcof0=[], Hsys=[], Hc_re=[], Hc_im=[]):
+    # Will be called right after self.__init__()
+    def __post_init__(self):
+        # Set default rotational frequency (=freq01), unless specified by user
+        if len(self.rotfreq) == 0:
+            self.rotfreq = self.freq01
+        # Set default number of splines for control parameterization, unless specified by user
+        if self.nsplines < 0:
+            self.nsplines = int(np.max([np.ceil(self.T/self.dtau + 2), 5])) # 10
+        # Set default initial control parameter amplitudes, unless specified by user
+        if len(self.initctrl_MHz) == 0:
+            self.initctrl_MHz = [self.amp_frac * self.maxctrl_MHz[i] for i in range(len(self.Ne))]
+
+        # Set default Hamiltonian operators, unless specified by user
+        if len(self.Hsys) == 0:  # Using standard Hamiltonian model
+            Ntot = [sum(x) for x in zip(self.Ne, self.Ng)]
+            self.Hsys, self.Hc_re, self.Hc_im = hamiltonians(Ntot, self.freq01, self.selfkerr, self.crosskerr, self.Jkl, rotfreq=self.rotfreq, verbose=self.verbose)
+            self.standardmodel=True
+    
+        else: # Using provided Hamiltonians, write them to hamiltonian.dat
+            self.standardmodel=False   
+
+        # Estimate number of time steps
+        self.nsteps = estimate_timesteps(T=self.T, Hsys=self.Hsys, Hc_re=self.Hc_re, Hc_im=self.Hc_im, maxctrl_MHz=self.maxctrl_MHz, Pmin=self.Pmin)
+        if self.verbose:
+            print("Final time: ",self.T,"ns, Number of timesteps: ", self.nsteps,", dt=", self.T/self.nsteps, "ns")
+            print("Maximum control amplitudes: ", self.maxctrl_MHz, "MHz")
+
+        # Estimate carrier wave frequencies
+        self.carrier_frequency, _ = get_resonances(Ne=self.Ne, Ng=self.Ng, Hsys=self.Hsys, Hc_re=self.Hc_re, Hc_im=self.Hc_im, verbose=self.verbose, cw_amp_thres=self.cw_amp_thres, cw_prox_thres=self.cw_prox_thres, stdmodel=self.standardmodel)
+
+        if self.verbose:
+            print("Carrier frequencies: ", self.carrier_frequency,"\n")
+
+
+    # Dump configuration into Quandary-readable config.cfg file
+    def dump(self, runtype="simulation", datadir="./run_dir"):
+
+        # If given, write the target gate to file
+        if len(self.targetgate) > 0:
+            gate_vectorized = np.concatenate((np.real(self.targetgate).ravel(), np.imag(self.targetgate).ravel()))
+            self._gatefilename = "./targetgate.dat"
+            with open(datadir+"/"+self._gatefilename, "w") as f:
+                for value in gate_vectorized:
+                    f.write("{:20.13e}\n".format(value))
+            if self.verbose:
+                print("Target gate written to ", datadir+"/"+self._gatefilename)
+
+        # If not standard Hamiltonian model, write provided Hamiltonians to a file
+        if not self.standardmodel:
+            # Write non-standard Hamiltonians to file  
+            self._hamiltonian_filename= "./hamiltonian.dat"
+            with open(datadir+"/" + self._hamiltonian_filename, "w") as f:
+                f.write("# Hsys \n")
+                Hsyslist = list(np.array(self.Hsys).flatten(order='F'))
+                for value in Hsyslist:
+                    f.write("{:20.13e}\n".format(value))
+
+            # Write control Hamiltonians to file, if given (append to file)
+            for iosc in range(len(self.Ne)):
+                # Real part, if given
+                if len(self.Hc_re)>iosc and len(self.Hc_re[iosc])>0:
+                    with open(datadir+"/" + self._hamiltonian_filename, "a") as f:
+                        Hcrelist = list(np.array(self.Hc_re[iosc]).flatten(order='F'))
+                        f.write("# Oscillator {:d} Hc_real \n".format(iosc))
+                        for value in Hcrelist:
+                            f.write("{:20.13e}\n".format(value))
+                # Imaginary part, if given
+                if len(self.Hc_im)>iosc and len(self.Hc_im[iosc])>0:
+                    with open(datadir+"/" + self._hamiltonian_filename, "a") as f:
+                        Hcimlist = list(np.array(self.Hc_im[iosc]).flatten(order='F'))
+                        f.write("# Oscillator {:d} Hc_imag \n".format(iosc))
+                        for value in Hcimlist:
+                            f.write("{:20.13e}\n".format(value))
+            if self.verbose:
+                print("Hamiltonian operators written to ", self._hamiltonian_filename)
+        
+        # If pcof0 is given, write it to a file 
+        if len(self.pcof0) > 0:
+            self.pcof0_filename = datadir+"/pcof0.dat"
+            with open(self.pcof0_filename, "w") as f:
+                for value in self.pcof0:
+                    f.write("{:20.13e}\n".format(value))
+            if self.verbose:
+                print("Initial control parameters written to ", self.pcof0_filename)
+
+        # Set up string for Quandaries config file
+        Nt = [self.Ne[i] + self.Ng[i] for i in range(len(self.Ng))]
+        mystring = "nlevels = " + str(list(Nt))[1:-1] + "\n"
+        mystring += "nessential= " + str(list(self.Ne))[1:-1] + "\n"
+        mystring += "ntime = " + str(self.nsteps) + "\n"
+        mystring += "dt = " + str(self.T / self.nsteps) + "\n"
+        mystring += "transfreq = " + str(list(self.freq01))[1:-1] + "\n"
+        mystring += "rotfreq= " + str(list(self.rotfreq))[1:-1] + "\n"
+        mystring += "selfkerr = " + str(list(self.selfkerr))[1:-1] + "\n"
+        if len(self.crosskerr)>0:
+            mystring += "crosskerr= " + str(list(self.crosskerr))[1:-1] + "\n"
+        else:
+            mystring += "crosskerr= 0.0\n"
+        if len(self.Jkl)>0:
+            mystring += "Jkl= " + str(list(self.Jkl))[1:-1] + "\n"
+        else:
+            mystring += "Jkl= 0.0\n"
+        decay = dephase = False
+        if len(self.T1) > 0: 
+            decay = True
+            mystring += "decay_time = " + str(list(self.T1))[1:-1] + "\n"
+        if len(self.T2) > 0:
+            dephase = True
+            mystring += "dephase_time = " + str(list(self.T2))[1:-1] + "\n"
+        if decay and dephase:
+            mystring += "collapse_type = both\n"
+        elif decay:
+            mystring += "collapse_type = decay\n"
+        elif dephase:
+            mystring += "collapse_type = dephase\n"
+        else:
+            mystring += "collapse_type = none\n"
+        mystring += "initialcondition = " + str(self.initialcondition) + "\n"
+        for iosc in range(len(self.Ne)):
+            mystring += "control_segments" + str(iosc) + " = spline, " + str(self.nsplines) + "\n"
+            if len(self.pcof0_filename)>0:
+                initstring = "file, "+str(self.pcof0_filename) + "\n"
+            else:
+                # Scale initial control amplitudes by the number of carrier waves and convert to rad/ns
+                initamp = self.initctrl_MHz[iosc] *2.0*np.pi/1000.0 / np.sqrt(2) / len(self.carrier_frequency[iosc])
+                initstring = ("random, " if self.randomize_init_ctrl else "constant, ") + str(initamp) + "\n"
+            mystring += "control_initialization" + str(iosc) + " = " + initstring 
+            if len(self.maxctrl_MHz) == 0: # Disable bounds, if not specified
+                initval = 1e+12*np.ones(len(self.Ne))
+            else:
+                initval = self.maxctrl_MHz[iosc]*2.0*np.pi/1000.0  # Scale to rad/ns
+            mystring += "control_bounds" + str(iosc) + " = " + str(initval) + "\n"
+            mystring += "carrier_frequency" + str(iosc) + " = "
+            omi = self.carrier_frequency[iosc]
+            for j in range(len(omi)):
+                mystring += str(omi[j]) + ", " 
+            mystring += "\n"
+        mystring += "control_enforceBC = " + str(self.control_enforce_BC)+ "\n"
+        if len(self._gatefilename) > 0:
+            mystring += "optim_target = gate, fromfile, " + self._gatefilename + "\n"
+        else: 
+            mystring += "optim_target = " + str(self.optim_target) + "\n"
+        mystring += "optim_objective = " + str(self.costfunction) + "\n"
+        mystring += "gate_rot_freq = 0.0\n"
+        mystring += "optim_weights= 1.0\n"
+        mystring += "optim_atol= 1e-5\n"
+        mystring += "optim_rtol= 1e-4\n"
+        mystring += "optim_dxtol = 1e-8\n"
+        mystring += "optim_ftol= " + str(self.tol_costfunc) + "\n"
+        mystring += "optim_inftol= " + str(self.tol_infidelity) + "\n"
+        mystring += "optim_maxiter= " + str(self.maxiter) + "\n"
+        mystring += "optim_regul= " + str(self.gamma_tik0) + "\n"
+        mystring += "optim_penalty= 0.0\n"
+        mystring += "optim_penalty_param= 0.0\n"
+        mystring += "optim_penalty_dpdm= " + str(self.gamma_dpdm) + "\n"
+        mystring += "optim_penalty_energy= " + str(self.gamma_energy) + "\n"
+        mystring += "datadir= ./\n"
+        for iosc in range(len(self.Ne)):
+            mystring += "output" + str(iosc) + "=expectedEnergy, population\n"
+        mystring += "output_frequency = 1\n"
+        mystring += "optim_monitor_frequency = " + str(self.print_frequency_iter) + "\n"
+        mystring += "runtype = " + runtype + "\n"
+        if len(self.Ne) < 6:
+            mystring += "usematfree = " + str(self.usematfree) + "\n"
+        else:
+            mystring += "usematfree = false\n"
+        mystring += "linearsolver_type = gmres\n"
+        mystring += "linearsolver_maxiter = 20\n"
+        if not self.standardmodel:
+            mystring += "hamiltonian_file= "+str(self._hamiltonian_filename)+"\n"
+        mystring += "timestepper = "+str(self.timestepper)+ "\n"
+
+        # Write the file
+        outpath = datadir+"/config.cfg"
+        with open(outpath, "w") as file:
+            file.write(mystring)
+
+        if self.verbose:
+            print("Quandary config file written to:", outpath)
+
+        return "./config.cfg"
+
+
+# Main interface function to run Quandary
+def quandary_run(config: QuandaryConfig, runtype="optimization", ncores=-1, datadir="./run_dir"):
 
     # Create quandary data directory
     os.makedirs(datadir, exist_ok=True)
 
-    # Hamiltonian operators: Either use the provided ones, or set up standard model. 
-    if len(Hsys) == 0:  # Using standard Hamiltonian model
-        standardmodel=True
-        Ntot = [sum(x) for x in zip(Ne, Ng)]
-        Hsys, Hc_re, Hc_im = hamiltonians(Ntot, freq01, selfkerr, crosskerr, Jkl, rotfreq=rotfreq, verbose=verbose)
- 
-    else: # Using provided Hamiltonians, write them to hamiltonian.dat
-        standardmodel=False   
-        hamiltonianfilename = datadir + "/hamiltonian.dat"
+    # Write the configuration to file
+    config_filename = config.dump(runtype=runtype, datadir=datadir)
 
-        # Write system Hamiltonian to file  
-        with open(hamiltonianfilename, "w") as f:
-            f.write("# Hsys \n")
-            Hsyslist = list(np.array(Hsys).flatten(order='F'))
-            for value in Hsyslist:
-                f.write("{:20.13e}\n".format(value))
-        
-        # Write control Hamiltonians to file, if given (append to file)
-        for iosc in range(len(Ne)):
-            # Real part, if given
-            if len(Hc_re)>iosc and len(Hc_re[iosc])>0:
-                with open(hamiltonianfilename, "a") as f:
-                    Hcrelist = list(np.array(Hc_re[iosc]).flatten(order='F'))
-                    f.write("# Oscillator {:d} Hc_real \n".format(iosc))
-                    for value in Hcrelist:
-                        f.write("{:20.13e}\n".format(value))
-            # Imaginary part, if given
-            if len(Hc_im)>iosc and len(Hc_im[iosc])>0:
-                with open(hamiltonianfilename, "a") as f:
-                    Hcimlist = list(np.array(Hc_im[iosc]).flatten(order='F'))
-                    f.write("# Oscillator {:d} Hc_imag \n".format(iosc))
-                    for value in Hcimlist:
-                        f.write("{:20.13e}\n".format(value))
-   
-    # print("Hsys=", Hsys)
-    # print("Hc_re=", Hc_re)
-    # print("Hc_im=", Hc_im)
+    # Set default number of cores to dim(H), unless otherwise specified
+    if ncores == -1:
+        ncores = np.prod(config.Ne) 
 
-    # Estimate number of time steps
-    nsteps = estimate_timesteps(T=T, Hsys=Hsys, Hc_re=Hc_re, Hc_im=Hc_im, maxctrl_MHz=maxctrl_MHz, Pmin=Pmin)
-    if verbose:
-        print("Final time: ",T,"ns, Number of timesteps: ", nsteps,", dt=", T/nsteps, "ns")
-        print("Maximum control amplitudes: ", maxctrl_MHz, "MHz")
-        # print("Hsys = ", Hsys)
-        # print("Hc_real = ", Hc_re)
-        # print("Hc_im = ", Hc_im)
+    # Execute subprocess to run Quandary
+    err = execute(runtype=runtype, ncores=ncores, config_filename=config_filename, datadir=datadir, quandary_exec=config.quandary_exec, verbose=config.verbose)
 
-
-    # Estimate carrier wave frequencies
-    carrierfreq, _ = get_resonances(Ne=Ne, Ng=Ng, Hsys=Hsys, Hc_re=Hc_re, Hc_im=Hc_im, verbose=verbose, cw_amp_thres=cw_amp_thres, cw_prox_thres=cw_prox_thres, stdmodel=standardmodel) 
-
-    if verbose:
-        print("Carrier frequencies: ", carrierfreq)
-
-    # Write target gate to file
-    gatefilename = datadir + "/targetgate.dat"
-    gate_vectorized = np.concatenate((np.real(targetgate).ravel(), np.imag(targetgate).ravel()))
-    with open(gatefilename, "w") as f:
-        for value in gate_vectorized:
-            f.write("{:20.13e}\n".format(value))
-    if verbose:
-        print("Target gate written to ", gatefilename)
-
-    # Write initial pcof0 to file, if given
-    if len(pcof0) > 0:
-        pcof0filename = datadir + "/pcof0.dat"
-        with open(pcof0filename, "w") as f:
-            for value in pcof0:
-                f.write("{:20.13e}\n".format(value))
-        if verbose:
-            print("Initial control parameters written to ", pcof0filename)
-
-    # Write Quandary configuration file
-    nsplines = int(np.max([np.ceil(T/dtau + 2), 5])) # 10
-    config_filename = write_config(Ne=Ne, Ng=Ng, T=T, nsteps=nsteps, freq01=freq01, rotfreq=rotfreq, selfkerr=selfkerr, crosskerr=crosskerr, Jkl=Jkl, nsplines=nsplines, carrierfreq=carrierfreq, tol_infidelity=tol_infidelity, tol_costfunc=tol_costfunc, maxiter=maxiter, maxctrl_MHz=maxctrl_MHz, initctrl_MHz=initctrl_MHz, randomize_init_ctrl=randomize_init_ctrl, gamma_tik0=gamma_tik0, gamma_energy=gamma_energy, gamma_dpdm=gamma_dpdm, costfunction=costfunction, initialcondition=initialcondition, T1=T1, T2=T2, runtype=runtype, gatefilename="./targetgate.dat", print_frequency_iter=print_frequency_iter, datadir=datadir, verbose=verbose, pcof0=pcof0, standardmodel=standardmodel)
-
-
-    # Call Quandary
-    err = execute(runtype=runtype, ncores=ncores, config_filename=config_filename, datadir=datadir, quandary_exec=quandary_exec, verbose=verbose)
+    if config.verbose:
+        print("Quandary data dir: ", datadir, "\n")
 
     # Get results and return
-    time, pt, qt, ft, expectedEnergy , popt, infidelity, optim_hist= get_results(Ne=Ne, datadir=datadir)
+    time, pt, qt, ft, expectedEnergy , popt, infidelity, optim_hist= get_results(Ne=config.Ne, datadir=datadir)
 
     return time, pt, qt, ft, expectedEnergy, popt, infidelity, optim_hist
 
@@ -118,7 +300,8 @@ def execute(*, runtype="simulation", ncores=1, config_filename="config.cfg", dat
 
     # if verbose:
         # result = run(["pwd"], shell=True, capture_output=True, text=True)
-    print("Running Quandary ... ")
+    if verbose:
+        print("Running Quandary ... ")
 
     # Execute Quandary
     if not cygwin: # NOT on Windows through Cygwin. Should work on Mac, Linux.
@@ -150,115 +333,20 @@ def execute(*, runtype="simulation", ncores=1, config_filename="config.cfg", dat
     return 1
 
 
-def write_config(*, Ne, Ng, T, nsteps, freq01, rotfreq, selfkerr, crosskerr=[], Jkl=[], nsplines=5, carrierfreq, T1=[], T2=[], gatefilename="./gatefile.dat", runtype="optimization",maxctrl_MHz=None, initctrl_MHz=None, randomize_init_ctrl=True, maxiter=1000,tol_infidelity=1e-3, tol_costfunc=1e-3, gamma_tik0=1e-4, gamma_dpdm=0.0, gamma_energy=0.0, costfunction="Jtrace", initialcondition="basis", datadir=".", configfilename="config.cfg", print_frequency_iter=1, pcof0=[], control_enforce_BC=True, verbose=False, standardmodel=True, usematfree=True):
-
-    if maxctrl_MHz is None:
-        maxctrl_MHz = 1e+12*np.ones(len(Ne))
-
-    # Scale initial control amplitudes by the number of carrier waves
-    initamp = np.zeros(len(Ne))
-    if initctrl_MHz is not None:
-        for q in range(len(Ne)):
-            initamp[q] = initctrl_MHz[q] *2.0*np.pi/1000.0 / np.sqrt(2) / len(carrierfreq[q])
-
-    Nt = [Ne[i] + Ng[i] for i in range(len(Ng))]
-    mystring = "nlevels = " + str(list(Nt))[1:-1] + "\n"
-    mystring += "nessential= " + str(list(Ne))[1:-1] + "\n"
-    mystring += "ntime = " + str(nsteps) + "\n"
-    mystring += "dt = " + str(T / nsteps) + "\n"
-    mystring += "transfreq = " + str(list(freq01))[1:-1] + "\n"
-    mystring += "rotfreq= " + str(list(rotfreq))[1:-1] + "\n"
-    mystring += "selfkerr = " + str(list(selfkerr))[1:-1] + "\n"
-    if len(crosskerr)>0:
-        mystring += "crosskerr= " + str(list(crosskerr))[1:-1] + "\n"
-    else:
-        mystring += "crosskerr= 0.0\n"
-    if len(Jkl)>0:
-        mystring += "Jkl= " + str(list(Jkl))[1:-1] + "\n"
-    else:
-        mystring += "Jkl= 0.0\n"
-    decay = dephase = False
-    if len(T1) > 0: 
-        decay = True
-        mystring += "decay_time = " + str(list(T1))[1:-1] + "\n"
-    if len(T2) > 0:
-        dephase = True
-        mystring += "dephase_time = " + str(list(T2))[1:-1] + "\n"
-    if decay and dephase:
-        mystring += "collapse_type = both\n"
-    elif decay:
-        mystring += "collapse_type = decay\n"
-    elif dephase:
-        mystring += "collapse_type = dephase\n"
-    else:
-        mystring += "collapse_type = none\n"
-    mystring += "initialcondition = " + str(initialcondition) + "\n"
-    for iosc in range(len(Ne)):
-        mystring += "control_segments" + str(iosc) + " = spline, " + str(nsplines) + "\n"
-        if len(pcof0)>0:
-            initstring = "file, ./pcof0.dat\n"
-        else:
-            initstring = ("random, " if randomize_init_ctrl else "constant, ") + str(initamp[iosc]) + "\n"
-        mystring += "control_initialization" + str(iosc) + " = " + initstring
-        mystring += "control_bounds" + str(iosc) + " = " + str(maxctrl_MHz[iosc]*2.0*np.pi/1000.0) + "\n"
-        mystring += "carrier_frequency" + str(iosc) + " = "
-        omi = carrierfreq[iosc]
-        for j in range(len(omi)):
-            mystring += str(omi[j]) + ", " 
-        mystring += "\n"
-    mystring += "control_enforceBC = " + str(control_enforce_BC)+ "\n"
-    mystring += "optim_target = gate, fromfile, " + gatefilename + "\n"
-    mystring += "optim_objective = " + str(costfunction) + "\n"
-    mystring += "gate_rot_freq = 0.0\n"
-    mystring += "optim_weights= 1.0\n"
-    mystring += "optim_atol= 1e-5\n"
-    mystring += "optim_rtol= 1e-4\n"
-    mystring += "optim_dxtol = 1e-8\n"
-    mystring += "optim_ftol= " + str(tol_costfunc) + "\n"
-    mystring += "optim_inftol= " + str(tol_infidelity) + "\n"
-    mystring += "optim_maxiter= " + str(maxiter) + "\n"
-    mystring += "optim_regul= " + str(gamma_tik0) + "\n"
-    mystring += "optim_penalty= 0.0\n"
-    mystring += "optim_penalty_param= 0.1\n"
-    ninitscale = np.prod(Ne)
-    mystring += "optim_penalty_dpdm= " + str(gamma_dpdm) + "\n"
-    mystring += "optim_penalty_energy= " + str(gamma_energy) + "\n"
-    mystring += "datadir= ./\n"
-    for iosc in range(len(Ne)):
-        mystring += "output" + str(iosc) + "=expectedEnergy, population\n"
-    mystring += "output_frequency = 1\n"
-    mystring += "optim_monitor_frequency = " + str(print_frequency_iter) + "\n"
-    mystring += "runtype = " + runtype + "\n"
-    if len(Ne) < 6:
-        mystring += "usematfree = " + str(usematfree) + "\n"
-    else:
-        mystring += "usematfree = false\n"
-    mystring += "linearsolver_type = gmres\n"
-    mystring += "linearsolver_maxiter = 20\n"
-    if not standardmodel:
-        mystring += "hamiltonian_file= ./hamiltonian.dat\n"
-    mystring += "timestepper = IMR\n"
-
-
-    # Write the file
-    outpath = datadir+"/"+configfilename
-    with open(outpath, "w") as file:
-        file.write(mystring)
-
-    if verbose:
-        print("Quandary config written to:", outpath)
-
-    return configfilename
-
-
 def get_results(*, Ne=[], datadir="./"):
     dataout_dir = datadir + "/"
     
     # Get control parameters
-    pcof = np.loadtxt(dataout_dir + "/params.dat").astype(float)
+    try:
+        pcof = np.loadtxt(dataout_dir + "/params.dat").astype(float)
+    except:
+        pcof=[]
 
     # Get optimization history information
-    optim_hist = np.loadtxt(dataout_dir + "/optim_history.dat")
+    try:
+        optim_hist = np.loadtxt(dataout_dir + "/optim_history.dat")
+    except:
+        optim_hist = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 
     if optim_hist.ndim == 2:
         optim_last = optim_hist[-1]
@@ -280,15 +368,23 @@ def get_results(*, Ne=[], datadir="./"):
     expectedEnergy = [[] for _ in range(len(Ne))]
     for iosc in range(len(Ne)):
         for iinit in range(np.prod(Ne)):
-            x = np.loadtxt(dataout_dir + "./expected"+str(iosc)+".iinit"+str(iinit).zfill(4)+".dat")
-            expectedEnergy[iosc].append(x[:,1])    # first column is time, second column is expected energy
+            try:
+                x = np.loadtxt(dataout_dir + "./expected"+str(iosc)+".iinit"+str(iinit).zfill(4)+".dat")
+                expectedEnergy[iosc].append(x[:,1])    # first column is time, second column is expected energy
+            except:
+                continue
 
     # Get the control pulses for each qubit
     pt = []
     qt = []
     ft = []
     for iosc in range(len(Ne)):
-        x = np.loadtxt(dataout_dir + "./control"+str(iosc)+".dat")
+        # Read the control pulse file
+        try:
+            x = np.loadtxt(dataout_dir + "./control"+str(iosc)+".dat")
+        except:
+            x = np.zeros((1,4))
+        # Extract the pulses 
         time = x[:,0]   # Time domain
         pt.append([x[n,1]/(2*np.pi)*1e+3 for n in range(len(x[:,0]))])     # Rot frame p(t), MHz
         qt.append([x[n,2]/(2*np.pi)*1e+3 for n in range(len(x[:,0]))])     # Rot frame q(t), MHz
@@ -325,12 +421,11 @@ def estimate_timesteps(*, T=1.0, Hsys=[], Hc_re=[], Hc_im=[], maxctrl_MHz=[], Pm
     return nsteps
 
 
-
 # Computes system resonances, to be used as carrier wave frequencies
 # Returns resonance frequencies in GHz and corresponding growth rates.
 def get_resonances(*, Ne, Ng, Hsys, Hc_re=[], Hc_im=[], cw_amp_thres=6e-2, cw_prox_thres=1e-3,verbose=True, stdmodel=True):
     if verbose:
-        print("\nget_resonances: Ignoring growth rate slower than:", cw_amp_thres, "and frequencies closer than:", cw_prox_thres, "[GHz]")
+        print("\nComputing carrier frequencies, ignoring growth rate slower than:", cw_amp_thres, "and frequencies closer than:", cw_prox_thres, "[GHz])")
 
     nqubits = len(Ne)
     n = Hsys.shape[0]
