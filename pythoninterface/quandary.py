@@ -58,7 +58,6 @@ class QuandaryConfig:
     maxiter             : int         = 100 		# Maximum number of optimization iterations
 
     # Quandary run options
-    quandary_exec       : str         = "/Users/guenther5/Numerics/quandary/main"  
     print_frequency_iter: int         = 1
     usematfree          : bool        = True
 
@@ -254,7 +253,7 @@ class QuandaryConfig:
 
 
 # Main interface function to run Quandary
-def quandary_run(config: QuandaryConfig, runtype="optimization", ncores=-1, datadir="./run_dir"):
+def quandary_run(config: QuandaryConfig, runtype="optimization", ncores=-1, datadir="./run_dir", quandary_exec="/absolute/path/to/quandary/main"):
 
     # Create quandary data directory
     os.makedirs(datadir, exist_ok=True)
@@ -267,7 +266,7 @@ def quandary_run(config: QuandaryConfig, runtype="optimization", ncores=-1, data
         ncores = np.prod(config.Ne) 
 
     # Execute subprocess to run Quandary
-    err = execute(runtype=runtype, ncores=ncores, config_filename=config_filename, datadir=datadir, quandary_exec=config.quandary_exec, verbose=config.verbose)
+    err = execute(runtype=runtype, ncores=ncores, config_filename=config_filename, datadir=datadir, quandary_exec=quandary_exec, verbose=config.verbose)
 
     if config.verbose:
         print("Quandary data dir: ", datadir, "\n")
