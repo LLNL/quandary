@@ -81,12 +81,12 @@ void MapParam::ReadFile(std::string filename)
   file.close();
 }
 
-void MapParam::GetVecDoubleParam(std::string key, std::vector<double> &fillme, double default_val, bool exportme) const 
+void MapParam::GetVecDoubleParam(std::string key, std::vector<double> &fillme, double default_val, bool exportme, bool warnme) const 
 {
   std::map<std::string, std::string>::const_iterator it_value = this->find(key);
   if (it_value == this->end())
   {
-    if (mpi_rank == 0 && !quietmode) {
+    if (mpi_rank == 0 && !quietmode && warnme) {
       std::cerr << "# Warning: parameter " << key << " not found ! Taking default = " << default_val << std::endl;
     }
     fillme.push_back(default_val);
@@ -104,13 +104,13 @@ void MapParam::GetVecDoubleParam(std::string key, std::vector<double> &fillme, d
   }
 }
 
-double MapParam::GetDoubleParam(std::string key, double default_val) const
+double MapParam::GetDoubleParam(std::string key, double default_val, bool warnme) const
 {
   std::map<std::string, std::string>::const_iterator it_value = this->find(key);
   double val;
   if (it_value == this->end())
   {
-    if (mpi_rank == 0 && !quietmode)
+    if (mpi_rank == 0 && !quietmode && warnme)
       { std::cerr << "# Warning: parameter " << key << " not found ! Taking default = " << default_val << std::endl; }
     val = default_val;
   }
@@ -121,13 +121,13 @@ double MapParam::GetDoubleParam(std::string key, double default_val) const
   return val;
 }
 
-int MapParam::GetIntParam(std::string key, int default_val) const
+int MapParam::GetIntParam(std::string key, int default_val, bool warnme) const
 {
   std::map<std::string, std::string>::const_iterator it_value = this->find(key);
   int val;
   if (it_value == this->end())
   {
-    if (mpi_rank == 0 && !quietmode)
+    if (mpi_rank == 0 && !quietmode && warnme)
       { std::cerr << "# Warning: parameter " << key << " not found ! Taking default = " << default_val << std::endl; }
     val = default_val;
   }
@@ -138,13 +138,13 @@ int MapParam::GetIntParam(std::string key, int default_val) const
   return val;
 }
 
-std::string MapParam::GetStrParam(std::string key, std::string default_val, bool exportme) const
+std::string MapParam::GetStrParam(std::string key, std::string default_val, bool exportme, bool warnme) const
 {
   std::map<std::string, std::string>::const_iterator it_value = this->find(key);
   std::string val;
   if (it_value == this->end())
   {
-    if (mpi_rank == 0 && !quietmode)
+    if (mpi_rank == 0 && !quietmode && warnme)
       { std::cerr << "# Warning: parameter " << key << " not found ! Taking default = " << default_val << std::endl; }
     val = default_val;
   }
@@ -155,13 +155,13 @@ std::string MapParam::GetStrParam(std::string key, std::string default_val, bool
   return val;
 }
 
-bool MapParam::GetBoolParam(std::string key, bool default_val) const
+bool MapParam::GetBoolParam(std::string key, bool default_val, bool warnme) const
 {
   std::map<std::string, std::string>::const_iterator it_value = this->find(key);
   bool val;
   if (it_value == this->end())
   {
-    if (mpi_rank == 0 && !quietmode)
+    if (mpi_rank == 0 && !quietmode && warnme)
       { std::cerr << "# Warning: parameter " << key << " not found ! Taking default = " << default_val << std::endl; }
     val = default_val;
   }
@@ -185,14 +185,14 @@ int MapParam::GetMpiRank() const {
 }
 
 
-void MapParam::GetVecIntParam(std::string key, std::vector<int> &fillme, int default_val) const 
+void MapParam::GetVecIntParam(std::string key, std::vector<int> &fillme, int default_val, bool warnme) const 
 {
   std::map<std::string, std::string>::const_iterator it_value = this->find(key);
   std::string lineexp;
   double val;
   if (it_value == this->end())
   {
-    if (mpi_rank == 0 && !quietmode)
+    if (mpi_rank == 0 && !quietmode && warnme)
       { std::cerr << "# Warning: parameter " << key << " not found ! Taking default = " << default_val << std::endl; }
       fillme.push_back(default_val);
   }
@@ -211,13 +211,13 @@ void MapParam::GetVecIntParam(std::string key, std::vector<int> &fillme, int def
 }
 
 
-void MapParam::GetVecStrParam(std::string key, std::vector<std::string> &fillme, std::string default_val, bool exportme) const
+void MapParam::GetVecStrParam(std::string key, std::vector<std::string> &fillme, std::string default_val, bool exportme, bool warnme) const
 {
   std::map<std::string, std::string>::const_iterator it_value = this->find(key);
   std::string lineexp;
   if (it_value == this->end())
   {
-    if (mpi_rank == 0 && !quietmode)
+    if (mpi_rank == 0 && !quietmode && warnme)
       { std::cerr << "# Warning: parameter " << key << " not found ! Taking default = " << default_val << std::endl; }
 
       /* Parse the string line w.r.t. comma separator */

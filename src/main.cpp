@@ -207,8 +207,8 @@ int main(int argc,char **argv)
   // Get lindblad type and collapse times
   std::string lindblad = config.GetStrParam("collapse_type", "none");
   std::vector<double> decay_time, dephase_time;
-  config.GetVecDoubleParam("decay_time", decay_time, 0.0);
-  config.GetVecDoubleParam("dephase_time", dephase_time, 0.0);
+  config.GetVecDoubleParam("decay_time", decay_time, 0.0, true, false);
+  config.GetVecDoubleParam("dephase_time", dephase_time, 0.0, true, false);
   LindbladType lindbladtype;
   if      (lindblad.compare("none")      == 0 ) lindbladtype = LindbladType::NONE;
   else if (lindblad.compare("decay")     == 0 ) lindbladtype = LindbladType::DECAY;
@@ -251,7 +251,7 @@ int main(int argc,char **argv)
 
   // Get pi-pulses, if any
   std::vector<std::string> pipulse_str;
-  config.GetVecStrParam("apply_pipulse", pipulse_str, "none");
+  config.GetVecStrParam("apply_pipulse", pipulse_str, "none", true, false);
   if (pipulse_str[0].compare("none") != 0) { // There is at least one pipulse to be applied!
     // sanity check
     if (pipulse_str.size() % 4 != 0) {
@@ -309,7 +309,7 @@ int main(int argc,char **argv)
     }
   }
   // Check if Hamiltonian should be read from file
-  std::string hamiltonian_file = config.GetStrParam("hamiltonian_file", "none");
+  std::string hamiltonian_file = config.GetStrParam("hamiltonian_file", "none", true, false);
   if (hamiltonian_file.compare("none") != 0 && usematfree) {
     if (mpirank_world==0 && !quietmode) printf("# Warning: Matrix-free solver can not be used when Hamiltonian is read fromfile. Switching to sparse-matrix version.\n");
     usematfree = false;
