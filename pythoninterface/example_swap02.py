@@ -47,6 +47,14 @@ if False:
     plot_expectedEnergy(myconfig.Ne, time, expectedEnergy)
 
 
+# You can change config options directly, without creating a new QuandaryConfig instance, however make sure to call config.update() afterwards to ensure that number of time steps and carrier wave frequencies are re-computed.
+# E.g. if you want to change the pulse length, this will work:
+#   myconfig.T = 200.0
+#   myconfig.update()
+# time, pt, qt, ft, expectedEnergy, popt, infidelity, optim_hist = quandary_run(myconfig, quandary_exec=quandary_exec, ncores=ncores, datadir=datadir)
+
+
+
 # TODO:
 #   * All function call arguments should be keyword only.  
 #   * Create high-level functions for pulse_gen vs simulation

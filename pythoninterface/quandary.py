@@ -4,6 +4,17 @@ from subprocess import run, PIPE, Popen
 import matplotlib.pyplot as plt
 from dataclasses import dataclass, field
 
+## 
+# This class collects configuration options to run quandary. The default values are set to optimize for the swap02 gate. Fields in this configuration file are set through the constructor
+#   > myconfig = QuandaryConfig(fieldname=mynewsetting, anotherfieldname=anothernewsetting, ...)
+# which sets the default values for those variables that are not set through those arguments. 
+# 
+# In addition to setting defaults, the constructor also computes the number of time-steps required to resolve the time-domain, as well as the resonant carrier wave frequencies. If you attempt to change options of the configuration *after* construction, e.g. through
+#   > myconfig.fieldname = mynewsetting
+# it is advised to call
+#  > myconfig.update()
+# which recomputes the number of time-steps and carrier waves given the new settings. 
+
 @dataclass
 class QuandaryConfig:
 
@@ -78,7 +89,7 @@ class QuandaryConfig:
     #   - <carrier_frequency> : carrier wave frequencies bases on system resonances
     ##
     def __post_init__(self):
-        # Set default rotational frequency (=freq01), unless specified by user
+        # Set default rotational frequency (default=freq01), unless specified by user
         if len(self.rotfreq) == 0:
             self.rotfreq = self.freq01
         # Set default number of splines for control parameterization, unless specified by user
@@ -91,12 +102,12 @@ class QuandaryConfig:
         if len(self.initctrl_MHz) == 0:
             self.initctrl_MHz = [9.0 for _ in range(len(self.Ne))]
         # Set default Hamiltonian operators, unless specified by user
-        if len(self.Hsys) == 0:  # Using standard Hamiltonian model
+        if len(self.Hsys) > 0 and not self.standardmodel: # User-provided Hamiltonian operators 
+            self.standardmodel=False   
+        else: # Using standard Hamiltonian model
             Ntot = [sum(x) for x in zip(self.Ne, self.Ng)]
             self.Hsys, self.Hc_re, self.Hc_im = hamiltonians(Ntot, self.freq01, self.selfkerr, self.crosskerr, self.Jkl, rotfreq=self.rotfreq, verbose=self.verbose)
             self.standardmodel=True
-        else: # Using provided Hamiltonians, write them to hamiltonian.dat
-            self.standardmodel=False   
 
         # Estimate number of time steps
         self.nsteps = estimate_timesteps(T=self.T, Hsys=self.Hsys, Hc_re=self.Hc_re, Hc_im=self.Hc_im, maxctrl_MHz=self.maxctrl_MHz, Pmin=self.Pmin)
@@ -109,6 +120,12 @@ class QuandaryConfig:
 
         if self.verbose:
             print("Carrier frequencies: ", self.carrier_frequency,"\n")
+
+    ##
+    # Call this function if you have changed a config option outside of the constructor, e.g. with "myconfig.variablename = new_variable". This will ensure that the number of time steps and carrier waves are re-computed, given the new setting. 
+    ## 
+    def update(self):
+        self.__post_init__()
 
 
     ##
@@ -154,7 +171,7 @@ class QuandaryConfig:
                         for value in Hcimlist:
                             f.write("{:20.13e}\n".format(value))
             if self.verbose:
-                print("Hamiltonian operators written to ", self._hamiltonian_filename)
+                print("Hamiltonian operators written to ", datadir+"/"+self._hamiltonian_filename)
         
         # If pcof0 is given, write it to a file 
         if len(self.pcof0) > 0:
