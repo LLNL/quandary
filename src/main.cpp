@@ -1,16 +1,18 @@
 #include "timestepper.hpp"
+#include "defs.hpp"
+#include <string>
 #include "oscillator.hpp" 
 #include "mastereq.hpp"
 #include "config.hpp"
 #include <stdlib.h>
 #include <sys/resource.h>
+#include <cassert>
 #include "optimproblem.hpp"
 #include "output.hpp"
 #include "petsc.h"
 #ifdef WITH_SLEPC
 #include <slepceps.h>
 #endif
-
 
 #define TEST_FD_GRAD 0    // Run Finite Differences gradient test
 #define TEST_FD_HESS 0    // Run Finite Differences Hessian test
@@ -69,6 +71,7 @@ int main(int argc,char **argv)
   if      (runtypestr.compare("simulation")      == 0) runtype = RunType::SIMULATION;
   else if (runtypestr.compare("gradient")     == 0)    runtype = RunType::GRADIENT;
   else if (runtypestr.compare("optimization")== 0)     runtype = RunType::OPTIMIZATION;
+  else if (runtypestr.compare("evalcontrols")== 0)     runtype = RunType::EVALCONTROLS;
   else {
     printf("\n\n WARNING: Unknown runtype: %s.\n\n", runtypestr.c_str());
     runtype = RunType::NONE;
@@ -143,7 +146,7 @@ int main(int argc,char **argv)
   // np_optim= min(np_optim, mpisize_world); 
   int np_optim= 1;
   // Number of cores for initial condition distribution. Since this gives perfect speedup, choose maximum.
-  int np_init = min(ninit, mpisize_world); 
+  int np_init = std::min(ninit, mpisize_world); 
   // Number of cores for Petsc: All the remaining ones. 
   int np_petsc = mpisize_world / (np_init * np_optim);
 
@@ -204,8 +207,8 @@ int main(int argc,char **argv)
   // Get lindblad type and collapse times
   std::string lindblad = config.GetStrParam("collapse_type", "none");
   std::vector<double> decay_time, dephase_time;
-  config.GetVecDoubleParam("decay_time", decay_time, 0.0);
-  config.GetVecDoubleParam("dephase_time", dephase_time, 0.0);
+  config.GetVecDoubleParam("decay_time", decay_time, 0.0, true, false);
+  config.GetVecDoubleParam("dephase_time", dephase_time, 0.0, true, false);
   LindbladType lindbladtype;
   if      (lindblad.compare("none")      == 0 ) lindbladtype = LindbladType::NONE;
   else if (lindblad.compare("decay")     == 0 ) lindbladtype = LindbladType::DECAY;
@@ -220,8 +223,8 @@ int main(int argc,char **argv)
   copyLast(dephase_time, nlevels.size());
   
   // Get control segment types, carrierwaves and control initialization
-  string default_seg_str = "spline, 10, 0.0, "+std::to_string(total_time); // Default for first oscillator control segment
-  string default_init_str = "constant, 0.0";                               // Default for first oscillator initialization
+  std::string default_seg_str = "spline, 10, 0.0, "+std::to_string(total_time); // Default for first oscillator control segment
+  std::string default_init_str = "constant, 0.0";                               // Default for first oscillator initialization
   for (int i = 0; i < nlevels.size(); i++){
     // Get carrier wave frequencies 
     std::vector<double> carrier_freq;
@@ -248,7 +251,7 @@ int main(int argc,char **argv)
 
   // Get pi-pulses, if any
   std::vector<std::string> pipulse_str;
-  config.GetVecStrParam("apply_pipulse", pipulse_str, "none");
+  config.GetVecStrParam("apply_pipulse", pipulse_str, "none", true, false);
   if (pipulse_str[0].compare("none") != 0) { // There is at least one pipulse to be applied!
     // sanity check
     if (pipulse_str.size() % 4 != 0) {
@@ -306,7 +309,7 @@ int main(int argc,char **argv)
     }
   }
   // Check if Hamiltonian should be read from file
-  std::string hamiltonian_file = config.GetStrParam("hamiltonian_file", "none");
+  std::string hamiltonian_file = config.GetStrParam("hamiltonian_file", "none", true, false);
   if (hamiltonian_file.compare("none") != 0 && usematfree) {
     if (mpirank_world==0 && !quietmode) printf("# Warning: Matrix-free solver can not be used when Hamiltonian is read fromfile. Switching to sparse-matrix version.\n");
     usematfree = false;
@@ -392,7 +395,7 @@ int main(int argc,char **argv)
   {
     /* Print parameters to file */
     sprintf(filename, "%s/config_log.dat", output->datadir.c_str());
-    ofstream logfile(filename);
+    std::ofstream logfile(filename);
     if (logfile.is_open()){
       logfile << log.str();
       logfile.close();
@@ -434,6 +437,14 @@ int main(int argc,char **argv)
     if (mpirank_world == 0 && !quietmode) printf("\nStarting Optimization solver ... \n");
     optimctx->solve(xinit);
     optimctx->getSolution(&opt);
+  }
+
+  /* Only evaluate and write control pulses (no propagation) */
+  if (runtype == RunType::EVALCONTROLS) {
+    std::vector<double> pt, qt;
+    optimctx->getStartingPoint(xinit);
+    if (mpirank_world == 0 && !quietmode) printf("\nEvaluating current controls ... \n");
+    output->writeControls(xinit, mastereq, ntime, dt);
   }
 
   /* Output */

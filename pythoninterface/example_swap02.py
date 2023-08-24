@@ -1,7 +1,6 @@
 from quandary import * 
 
 ## One qubit test case ##
-
 Ne = [3]  # Number of essential energy levels
 Ng = [0]  # Number of extra guard levels
 
@@ -9,93 +8,64 @@ Ng = [0]  # Number of extra guard levels
 freq01 = [4.10595] 
 # Anharmonicities [GHz] per oscillator
 selfkerr = [0.2198]
-# Coupling strength [GHz] (Format [0<->1, 0<->2, ..., 1<->2, ... ])
-Jkl = []        # no Jaynes-Cummings coupling
-crosskerr = []  # no crossker coupling
 # Frequency of rotations for computational frame [GHz] per oscillator
 rotfreq = freq01
-# If Lindblad solver: Specify decay (T1) and dephasing (T2) [ns]
-T1 = [] # [100.0]
-T2 = [] # [80.0]
 
-# Set the time duration (ns)
+# Set the total time duration (ns)
 T = 100.0
-# Number of points to resolve the shortest period of the dynamics
-Pmin = 40  # 60 # 40 # 80
 
 # Bounds on the control pulse (in rotational frame, p and q) [MHz] per oscillator
 maxctrl_MHz = [10.0]  
-# Bspline spacing (ns) for control pulse parameterization. // The number of Bspline basis functions is then T/dtau + 2.
-dtau = 3.33
-
-# Set the amplitude of initial (randomized) control vector for each oscillator 
-amp_frac = 0.9
-initctrl_MHz = [amp_frac * maxctrl_MHz[i] for i in range(len(Ne))]
-rand_seed = 1234
-randomize_init_ctrl = True
 
 # Set up a target gate (in essential level dimensions)
 unitary = [[0,0,1],[0,1,0],[1,0,0]]  # Swaps first and last level
 # print(unitary)
 
-# Optimization options
-costfunction = "Jtrace"     # "Jtrace", "Jfrobenius"
-initialcondition = "basis"  # "basis", "diagonal", "pure, 0,0,1,...", "file, /path/to/file" 
-gamma_tik0 = 1e-4 	# Tikhonov regularization
-gamma_energy = 0.01	# Penality: Integral over control pulse energy
-gamma_dpdm = 0.01	# Penality: Integral over second state derivative
-tol_infidelity = 1e-3   # Stopping tolerance based on the infidelity
-tol_costfunc = 1e-3	# Stopping criterion based on the objective function
-maxiter = 100 		# Maximum number of optimization iterations
+# Potentially load initial control parameters from a file. Use absolute path!
+# pcof0_filename = os.getcwd() + "/SWAP02_params.dat"
+# pcof0=np.zeros(30)
 
-# Quandary run options
-runtype = "simulation"  # "simulation", or "gradient", or "optimization"
+# Set the location of the quandary executable (absolute path!)
 quandary_exec="/Users/guenther5/Numerics/quandary/main"
 # quandary_exec="/cygdrive/c/Users/scada-125/quandary/main.exe"
-ncores = np.prod(Ne)  # Number of cores 
-# ncores = 1
-datadir = "./run_dir"  # Compute and output directory 
+
+# Print out stuff
 verbose = True
 
-# Potentially load initial control parameters from a file
-with open('./swap02_params.dat', 'r') as f:
-    pcof0 = [float(line.strip()) for line in f if line]
-# pcof0=[]
-
-
-
-# Potentially create custom Hamiltonian model, if different from standard model
-# Ntotal = [sum(x) for x in zip(Ne, Ng)]
-# Hsys, Hc_re, Hc_im = hamiltonians(Ntotal, freq01, selfkerr, crosskerr, Jkl, rotfreq=rotfreq, verbose=verbose)
-Hsys = []
-Hc_re = []
-Hc_im = []
+# Prepare Quandary
+myconfig = QuandaryConfig(Ne=Ne, Ng=Ng, freq01=freq01, selfkerr=selfkerr, rotfreq=rotfreq, maxctrl_MHz=maxctrl_MHz, targetgate=unitary, T=T, verbose=verbose)
 
 # Execute quandary
-popt, infidelity, optim_hist = quandary_run(Ne, Ng, freq01, selfkerr, crosskerr, Jkl, rotfreq, maxctrl_MHz, T, initctrl_MHz, rand_seed, randomize_init_ctrl, unitary,  dtau=dtau, Pmin=Pmin, datadir=datadir, tol_infidelity=tol_infidelity, tol_costfunc=tol_costfunc, maxiter=maxiter, gamma_tik0=gamma_tik0, gamma_energy=gamma_energy, gamma_dpdm=gamma_dpdm, costfunction=costfunction, initialcondition=initialcondition, T1=T1, T2=T2, runtype=runtype, quandary_exec=quandary_exec, ncores=ncores, verbose=verbose, pcof0=pcof0, Hsys=Hsys, Hc_re=Hc_re, Hc_im=Hc_im)
-# Other keyword arg defaults
-# cw_amp_thres = 6e-2
-# cw_prox_thres = 1e-3
+pt, qt, expectedEnergy, infidelity = quandary_run(myconfig, quandary_exec=quandary_exec)
 
-print(f"Fidelity = {1.0 - infidelity}")
-print("\n Quandary data directory: ", datadir)
+
+print(f"\nFidelity = {1.0 - infidelity}")
+
+# Plot the control pulse and expected energy level evolution
+if False:
+    plot_pulse(myconfig.Ne, myconfig.time, pt, qt)
+    plot_expectedEnergy(myconfig.Ne, myconfig.time, expectedEnergy)
+
+# You can change config options directly, without creating a new QuandaryConfig instance. In most cases however, it is advised however to call config.update() afterwards to ensure that number of time steps and carrier wave frequencies are re-computed.
+# E.g. if you want to change the pulse length, this will work:
+#    myconfig.T = 200.0
+#    myconfig.update()
+# time, pt, qt, ft, expectedEnergy, popt, infidelity, optim_hist = quandary_run(myconfig, quandary_exec=quandary_exec, ncores=ncores, datadir=datadir)
+
+# If you want to run Quandary again, e.g. using the previously optimized control parameters, this will do it:
+#    myconfig.pcof0= myconfig.popt
+#    pt, qt, expectedEnergy, infidelity = quandary_run(myconfig, quandary_exec=quandary_exec, runtype="simulation")
+# (not myconfig.update() needed in this case)
 
 
 # TODO:
-#   * All function call arguments should be keyword only.  
-#   * Switch between standard model and self-created Hamiltonian operators -> modify pulse_gen arguments
 #   * Create high-level functions for pulse_gen vs simulation
-#   * Change return of pulse_gen to match Tensorflow returns
+#   * Take 'samplerate as an input to quandary run, or get results or something
 #   * Ander: Get resonances: Iterating over non-zeros of U'HcU, should be all elements? Previously it was only lower triangular matrix, but it is not hermitian, so this makes a difference!
 #   * Anders: Culled and sorted carrier waves, is that needed? 
     #   # CNOT case with Jkl coupling is not converging!
 #   * Add custom decoherence operators to Quandary? 
-#   * Gather all configuration in a dictionary (or other struct) that contains all defaults and allows for changes. Dump it with 
-    # with open("config.cfg", 'w') as f:
-    #     for key, value in config_dict.items():
-    #         f.write('%s = %s' %(key, value))
 
 # Note: 
-#   * pcof0 uses Quandaries initialization
 #   * leakage_weights = [0.0, 0.0] is disabled.
 #   * "use_eigenbasis" disabled.

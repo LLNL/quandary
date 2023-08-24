@@ -47,11 +47,11 @@ INC = -I$(INC_DIR) -I${PETSC_DIR}/include -I${PETSC_DIR}/${PETSC_ARCH}/include $
 
 # Set Library paths and flags
 LDPATH  = ${PETSC_DIR}/${PETSC_ARCH}/lib
-LDFLAGS =  -lm  -L${PETSC_DIR}/${PETSC_ARCH}/lib -lblas -llapack ${LDFLAGS_OPT} -lpetsc
+LDFLAGS =  -lm  -L${PETSC_DIR}/${PETSC_ARCH}/lib -lblas -llapack ${LDFLAGS_OPT} -lpetsc -std=c++14
 
 # Set compiler and flags 
 CXX=mpicxx
-CXXFLAGS= -O3 -std=c++11 -lstdc++ $(CXX_OPT)
+CXXFLAGS= -O3 -std=c++14 -lstdc++ $(CXX_OPT)
 
 
 # Rule for linking main

@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include "defs.hpp"
 #include "controlbasis.hpp"
 #include <fstream>
 #include <iostream> 
@@ -11,8 +12,6 @@
 #include <stdlib.h> 
 
 #pragma once
-
-using namespace std;
 
 struct PiPulse {
   std::vector<double> tstart; 

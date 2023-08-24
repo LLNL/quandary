@@ -1,8 +1,5 @@
 #include "mastereq.hpp"
 
-
-
-
 MasterEq::MasterEq(){
   dim = 0;
   oscil_vec = NULL;

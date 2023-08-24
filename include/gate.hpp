@@ -8,7 +8,6 @@
 #include "util.hpp"
 #pragma once
 
-
 class Gate {
   protected:
     Mat V_re, V_im;    /* Input: Real and imaginary part of V_target, non-vectorized, essential levels only */
