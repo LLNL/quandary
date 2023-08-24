@@ -3,6 +3,9 @@ import numpy as np
 from subprocess import run, PIPE, Popen
 import matplotlib.pyplot as plt
 from dataclasses import dataclass, field
+# For Ander's Matplotlib to work.... 
+import PyQt6.QtCore
+os.environ["QT_API"] = "pyqt5"
 
 ## 
 # This class collects configuration options to run quandary. The default values are set to optimize for the swap02 gate. Fields in this configuration file are set through the constructor

@@ -61,3 +61,8 @@ pt, qt, expectedEnergy, infidelity = quandary_run(myconfig, quandary_exec=quanda
 
 print(f"Fidelity = {1.0 - infidelity}")
 print("\n Quandary data directory: ", datadir)
+
+
+# Plot the control pulse and expected energy level evolution
+plot_pulse(Ne, myconfig.time, pt, qt)
+plot_expectedEnergy(Ne, myconfig.time, expectedEnergy)
