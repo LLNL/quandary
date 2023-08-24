@@ -3,8 +3,9 @@ import numpy as np
 from subprocess import run, PIPE, Popen
 
 
-# Main interface function to create a pulse with Quandary. 
-def quandary_run(Ne, Ng, freq01, selfkerr, crosskerr, Jkl, rotfreq, maxctrl_MHz, T, initctrl_MHz, rand_seed, randomize_init_ctrl, targetgate, *, dtau=3.33, Pmin=40, cw_amp_thres=1e-2, cw_prox_thres=1e-3, datadir=".", tol_infidelity=1e-3, tol_costfunc=1e-3, maxiter=100, gamma_tik0=1e-4, gamma_energy=1e-2, gamma_dpdm=1e-2, costfunction="Jtrace", initialcondition="basis", T1=None, T2=None, runtype="simulation", quandary_exec="/absolute/path/to/quandary/main", ncores=1, print_frequency_iter=1, verbose=False, pcof0=[], Hsys=[], Hc_re=[], Hc_im=[]):
+# Main interface function to create a pulse with Quandary.
+# Previous default settings: cw_amp_thres=1e-2, cw_prox_thres=1e-3
+def quandary_run(Ne, Ng, freq01, selfkerr, crosskerr, Jkl, rotfreq, maxctrl_MHz, T, initctrl_MHz, rand_seed, randomize_init_ctrl, targetgate, *, dtau=3.33, Pmin=40, cw_amp_thres=1e-7, cw_prox_thres=1e-2, datadir=".", tol_infidelity=1e-3, tol_costfunc=1e-3, maxiter=100, gamma_tik0=1e-4, gamma_energy=1e-2, gamma_dpdm=1e-2, costfunction="Jtrace", initialcondition="basis", T1=None, T2=None, runtype="simulation", quandary_exec="/absolute/path/to/quandary/main", ncores=1, print_frequency_iter=1, verbose=False, pcof0=[], Hsys=[], Hc_re=[], Hc_im=[]):
 
     # Create quandary data directory
     os.makedirs(datadir, exist_ok=True)
@@ -60,8 +61,8 @@ def quandary_run(Ne, Ng, freq01, selfkerr, crosskerr, Jkl, rotfreq, maxctrl_MHz,
     # Estimate carrier wave frequencies
     carrierfreq, _ = get_resonances(Ne=Ne, Ng=Ng, Hsys=Hsys, Hc_re=Hc_re, Hc_im=Hc_im, verbose=verbose, cw_amp_thres=cw_amp_thres, cw_prox_thres=cw_prox_thres, stdmodel=standardmodel) 
 
-    if verbose:
-        print("Carrier frequencies: ", carrierfreq)
+    #if verbose:
+    print("Carrier frequencies: ", carrierfreq)
 
     # Write target gate to file
     gatefilename = datadir + "/targetgate.dat"
@@ -313,26 +314,75 @@ def estimate_timesteps(*, T=1.0, Hsys=[], Hc_re=[], Hc_im=[], maxctrl_MHz=[], Pm
     return nsteps
 
 
+# computes eigen decomposition and re-orders it to make the eigenvector matrix as close to the identity as posiible
+def eigen_and_reorder(H0, verbose=False):
+    Ntot = H0.shape[0]
+    evals, evects = np.linalg.eig(H0)
+
+    if verbose:
+        print("H0 evals (before sorting) = ", evals)
+
+    reord = np.argsort(evals)
+    evals = evals[reord]
+    evects = evects[:,reord]
+
+    if verbose:
+        print("H0 evals (in ascending order) = ", evals)
+        
+    maxrow = np.zeros(Ntot, dtype=np.int32)
+
+    for j in range(Ntot):
+        maxrow[j] = np.argmax(np.abs(evects[:,j]))
+
+    if verbose:
+        print("maxrow (+1)= ", maxrow+1)
+
+    # get the permutation vector
+    s_perm = np.argsort(maxrow)
+
+    if verbose:
+        print("s_perm (+1)= ", s_perm+1)
+
+    evects = evects[:,s_perm]
+    evals = evals[s_perm]
+    
+    # make sure all diagonal elements in Utrans are positive
+    for j in range(Ntot):
+        if evects[j,j]<0.0:
+            evects[:,j] = - evects[:,j]
+
+    if verbose:
+        print("Sorted evals/2*pi: ", evals/(2*np.pi))
+
+    return evals, evects
+
 
 # Computes system resonances, to be used as carrier wave frequencies
 # Returns resonance frequencies in GHz and corresponding growth rates.
-def get_resonances(*, Ne, Ng, Hsys, Hc_re=[], Hc_im=[], cw_amp_thres=6e-2, cw_prox_thres=1e-3,verbose=True, stdmodel=True):
+# Previous default settings: cw_amp_thres=6e-2, cw_prox_thres=1e-3
+def get_resonances(*, Ne, Ng, Hsys, Hc_re=[], Hc_im=[], cw_amp_thres=1e-7, cw_prox_thres=1e-2,verbose=True, stdmodel=True):
     if verbose:
         print("\nget_resonances: Ignoring growth rate slower than:", cw_amp_thres, "and frequencies closer than:", cw_prox_thres, "[GHz]")
 
     nqubits = len(Ne)
     n = Hsys.shape[0]
+    
+    if verbose:
+        print("Hsys dimensions, n=", n)
+        print("Ne=", Ne)
 
     # Get eigenvalues of system Hamiltonian (GHz)
-    Hsys_evals, Utrans = np.linalg.eig(Hsys)
-    Hsys_evals = Hsys_evals.real  # Eigenvalues may have a small imaginary part due to numerical precision
+    # AP: Julia calls eigen_and_reorder(), which deals with eigenvalues of multiplicity greater than 1
+    Hsys_evals, Utrans = eigen_and_reorder(Hsys, verbose) # np.linalg.eig(Hsys)
+    
+    Hsys_evals = Hsys_evals.real  # Eigenvalues may have a small imaginary part due to numerical imprecision
     Hsys_evals = Hsys_evals / (2 * np.pi)
-
+            
     resonances = []
     speed = []
 
     for q in range(nqubits):
-        if stdmodel: # If standard model, get resonances from non-zeros in U'a'U TODO: WHY?
+        if stdmodel: # If standard model, get resonances from non-zeros in U'a'U (avoiding duplicates from U'aU)
             Hctrl_ad = Hc_re[q] - Hc_im[q]  
             # Hctrl_ad = Hc_re[q]
             # Hctrl_ad = Hc_im[q]
@@ -348,13 +398,17 @@ def get_resonances(*, Ne, Ng, Hsys, Hc_re=[], Hc_im=[], cw_amp_thres=6e-2, cw_pr
 
         resonances_a = []
         speed_a = []
-        if verbose:
-            print("  Resonances in oscillator #", q)
+        #if verbose:
+        print("  Resonances in oscillator #", q)
+        
         # Iterate over non-zero elements in transformed control
         for i in range(n):
-            for j in range(n):
-                if abs(Hctrl_ad_trans[i,j])< 1e-14:
-                    continue
+            # Only consider transitions from lower to higher levels
+            for j in range(i):
+
+                # AP: what is this???
+                # if abs(Hctrl_ad_trans[i,j])< 1e-14:
+                #    continue
                 
                 # Get the resonance
                 delta_f = Hsys_evals[i] - Hsys_evals[j]
@@ -362,12 +416,22 @@ def get_resonances(*, Ne, Ng, Hsys, Hc_re=[], Hc_im=[], cw_amp_thres=6e-2, cw_pr
                     delta_f = 0.0
 
                 # Get involved oscillator levels
-                ids_j = map_to_oscillators(j, Ne, Ng)
                 ids_i = map_to_oscillators(i, Ne, Ng)
+                ids_j = map_to_oscillators(j, Ne, Ng)
+
+                #for qq in range(nqubits):
+                 #   print("qq=", qq, "ids_i[qq] < Ne[qq] = ", ids_i[qq] < Ne[qq])
+                
+                is_ess_i = all(ids_i[k] < Ne[k] for k in range(len(Ne)))
+                is_ess_j = all(ids_j[k] < Ne[k] for k in range(len(Ne)))
+
+                #print("i=", i, "ids_i=", ids_i, "is_ess_i=", is_ess_i)
+                #print("j=", j, "ids_j=", ids_j, "is_ess_j=", is_ess_j)
 
                 # Ignore resonance to non-essential levels
-                if any(ids_i[k] > Ne[k]-1 for k in range(len(Ne))) or \
-                   any(ids_j[k] > Ne[k]-1 for k in range(len(Ne))):
+                #                if any(ids_i[k]  Ne[k]-1 for k in range(len(Ne))) or \
+                #                   any(ids_j[k] > Ne[k]-1 for k in range(len(Ne))):
+                if not (is_ess_i and is_ess_j):
                    if verbose:
                        print("    Skipping non-essential resonance from ", ids_j, "to ", ids_i)
                 # Ignore resonance with small growth rate
@@ -383,8 +447,8 @@ def get_resonances(*, Ne, Ng, Hsys, Hc_re=[], Hc_im=[], cw_amp_thres=6e-2, cw_pr
                 else:
                     resonances_a.append(delta_f)
                     speed_a.append(abs(Hctrl_ad_trans[i, j]))
-                    if verbose:
-                        print("    Resonance from ", ids_j, "to ", ids_i, ", frequency", delta_f, ", growth rate=", abs(Hctrl_ad_trans[i, j]))
+                    #if verbose:
+                    print("    Resonance from ", ids_j, "to ", ids_i, ", frequency", delta_f, ", growth rate=", abs(Hctrl_ad_trans[i, j]))
         
         resonances.append(resonances_a)
         speed.append(speed_a)
@@ -484,7 +548,7 @@ def number(n):
 
 # Return the local energy level of each oscillator for a given global index id
 def map_to_oscillators(id, Ne, Ng):
-
+    # len(Ne) = number of subsystems
     nlevels = [Ne[i]+Ng[i] for i in range(len(Ne))]
     localIDs = []
 
