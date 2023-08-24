@@ -106,7 +106,7 @@ class QuandaryConfig:
             self.standardmodel=False   
         else: # Using standard Hamiltonian model
             Ntot = [sum(x) for x in zip(self.Ne, self.Ng)]
-            self.Hsys, self.Hc_re, self.Hc_im = hamiltonians(Ntot, self.freq01, self.selfkerr, self.crosskerr, self.Jkl, rotfreq=self.rotfreq, verbose=self.verbose)
+            self.Hsys, self.Hc_re, self.Hc_im = hamiltonians(N=Ntot, freq01=self.freq01, selfkerr=self.selfkerr, crosskerr=self.crosskerr, Jkl=self.Jkl, rotfreq=self.rotfreq, verbose=self.verbose)
             self.standardmodel=True
 
         # Estimate number of time steps
@@ -132,7 +132,7 @@ class QuandaryConfig:
     # Dumps all required configuration options (and target gate, pcof0, Hamiltonian operators) into files for Quandary use.
     # Returns the name of the configuration file needed for executing Quandary
     ##
-    def dump(self, runtype="simulation", datadir="./run_dir"):
+    def dump(self, *, runtype="simulation", datadir="./run_dir"):
 
         # If given, write the target gate to file
         if len(self.targetgate) > 0:
@@ -638,7 +638,7 @@ def map_to_oscillators(id, Ne, Ng):
 #   - Hc_re : Real parts of control Hamiltonian operators for each qubit (Hc = [ [Hc_qubit1], [Hc_qubit2],... ]). Unit-less.
 #   - Hc_im : Imag parts of control Hamiltonian operators for each qubit (Hc = [ [Hc_qubit1], [Hc_qubit2],... ]). Unit-less.
 ##
-def hamiltonians(N, freq01, selfkerr, crosskerr=[], Jkl = [], *, rotfreq=[], verbose=True):
+def hamiltonians(*, N, freq01, selfkerr, crosskerr=[], Jkl = [], rotfreq=[], verbose=True):
     if len(rotfreq) == 0:
         rotfreq=np.zeros(len(N))
 
