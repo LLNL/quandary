@@ -51,12 +51,12 @@ verbose = True
 myconfig = QuandaryConfig(Ne=Ne, Ng=Ng, freq01=freq01, selfkerr=selfkerr, crosskerr=crosskerr, rotfreq=rotfreq, T=T, maxctrl_MHz=maxctrl_MHz, initctrl_MHz=initctrl_MHz, targetgate=unitary, verbose=verbose)
 
 # Execute quandary
-time, pt, qt, ft, expectedEnergy, popt, infidelity, optim_hist = quandary_run(myconfig, quandary_exec=quandary_exec, ncores=ncores, datadir=datadir)
+pt, qt, expectedEnergy, infidelity = quandary_run(myconfig, quandary_exec=quandary_exec, ncores=ncores, datadir=datadir)
 
 
 print(f"Fidelity = {1.0 - infidelity}")
 
 # Plot the control pulse and expected energy level evolution
-plot_pulse(Ne, time, pt, qt)
-plot_expectedEnergy(Ne, time, expectedEnergy)
+plot_pulse(Ne, myconfig.time, pt, qt)
+plot_expectedEnergy(Ne, myconfig.time, expectedEnergy)
 

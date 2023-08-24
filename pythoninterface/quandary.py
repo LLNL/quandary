@@ -78,8 +78,13 @@ class QuandaryConfig:
 
 
     # Internal configuration. Should not be changed by user.
-    _hamiltonian_filename: str         = ""
-    _gatefilename        : str         = ""
+    _hamiltonian_filename : str         = ""
+    _gatefilename         : str         = ""
+
+    # Storage for some optimization results, in case they are needed afterwards.
+    popt        : list[float]   = field(default_factory=list)   # Optimized control paramters, could be useful to run quandary again after optimization
+    time        : list[float]   = field(default_factory=list)   # Vector of discretized time points, could be useful for plotting the control pulses etc.
+    optim_hist  : list[float]   = field(default_factory=list)   # Optimization history: all fields as in Quandary's output file <data>/optim_history.dat
 
     ##
     # This function will be called during initialization of a QuandaryConfig instance.
@@ -175,12 +180,12 @@ class QuandaryConfig:
         
         # If pcof0 is given, write it to a file 
         if len(self.pcof0) > 0:
-            self.pcof0_filename = datadir+"/pcof0.dat"
-            with open(self.pcof0_filename, "w") as f:
+            self.pcof0_filename = "./pcof0.dat"
+            with open(datadir+"/"+self.pcof0_filename, "w") as f:
                 for value in self.pcof0:
                     f.write("{:20.13e}\n".format(value))
             if self.verbose:
-                print("Initial control parameters written to ", self.pcof0_filename)
+                print("Initial control parameters written to ", datadir+"/"+self.pcof0_filename)
 
         # Set up string for Quandaries config file
         Nt = [self.Ne[i] + self.Ng[i] for i in range(len(self.Ng))]
@@ -304,9 +309,14 @@ def quandary_run(config: QuandaryConfig, *, runtype="optimization", ncores=-1, d
         print("Quandary data dir: ", datadir, "\n")
 
     # Get results and return
-    time, pt, qt, ft, expectedEnergy , popt, infidelity, optim_hist= get_results(Ne=config.Ne, datadir=datadir)
+    time, pt, qt, expectedEnergy, popt, infidelity, optim_hist= get_results(Ne=config.Ne, datadir=datadir)
 
-    return time, pt, qt, ft, expectedEnergy, popt, infidelity, optim_hist
+    # Store some results in the config file
+    config.optim_hist = optim_hist
+    config.popt = popt
+    config.time = time
+
+    return pt, qt, expectedEnergy, infidelity
 
 
 ##
@@ -418,7 +428,7 @@ def get_results(*, Ne=[], datadir="./"):
         qt.append([x[n,2]/(2*np.pi)*1e+3 for n in range(len(x[:,0]))])     # Rot frame q(t), MHz
         ft.append([x[n,3]/(2*np.pi)*1e+3 for n in range(len(x[:,0]))])     # Lab frame f(t)
 
-    return time, pt, qt, ft, expectedEnergy, pcof, infid_last, optim_hist
+    return time, pt, qt, expectedEnergy, pcof, infid_last, optim_hist
 
 ##
 # Estimates the number of time steps based on eigenvalues of the system Hamiltonian and maximum control Hamiltonians.
@@ -752,7 +762,7 @@ def plot_expectedEnergy(Ne, time, expectedEnergy, densitymatrix_form=False):
     plt.subplots_adjust(hspace=0.5)
     plt.subplots_adjust(wspace=0.5)
     plt.draw()
-    print("\nPlotting expected energy of qubit ", iosc)
+    print("\nPlotting expected energy dynamics")
     print("-> Press <enter> to proceed.")
     plt.waitforbuttonpress(1); 
     input(); 

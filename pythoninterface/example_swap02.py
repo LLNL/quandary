@@ -36,29 +36,31 @@ verbose = True
 myconfig = QuandaryConfig(Ne=Ne, Ng=Ng, freq01=freq01, selfkerr=selfkerr, rotfreq=rotfreq, maxctrl_MHz=maxctrl_MHz, targetgate=unitary, T=T, verbose=verbose)
 
 # Execute quandary
-time, pt, qt, ft, expectedEnergy, popt, infidelity, optim_hist = quandary_run(myconfig, quandary_exec=quandary_exec)
+pt, qt, expectedEnergy, infidelity = quandary_run(myconfig, quandary_exec=quandary_exec)
 
 
 print(f"\nFidelity = {1.0 - infidelity}")
 
 # Plot the control pulse and expected energy level evolution
 if False:
-    plot_pulse(myconfig.Ne, time, pt, qt)
-    plot_expectedEnergy(myconfig.Ne, time, expectedEnergy)
+    plot_pulse(myconfig.Ne, myconfig.time, pt, qt)
+    plot_expectedEnergy(myconfig.Ne, myconfig.time, expectedEnergy)
 
-
-# You can change config options directly, without creating a new QuandaryConfig instance, however make sure to call config.update() afterwards to ensure that number of time steps and carrier wave frequencies are re-computed.
+# You can change config options directly, without creating a new QuandaryConfig instance. In most cases however, it is advised however to call config.update() afterwards to ensure that number of time steps and carrier wave frequencies are re-computed.
 # E.g. if you want to change the pulse length, this will work:
-#   myconfig.T = 200.0
-#   myconfig.update()
+#    myconfig.T = 200.0
+#    myconfig.update()
 # time, pt, qt, ft, expectedEnergy, popt, infidelity, optim_hist = quandary_run(myconfig, quandary_exec=quandary_exec, ncores=ncores, datadir=datadir)
 
+# If you want to run Quandary again, e.g. using the previously optimized control parameters, this will do it:
+#    myconfig.pcof0= myconfig.popt
+#    pt, qt, expectedEnergy, infidelity = quandary_run(myconfig, quandary_exec=quandary_exec, runtype="simulation")
+# (not myconfig.update() needed in this case)
 
 
 # TODO:
-#   * All function call arguments should be keyword only.  
 #   * Create high-level functions for pulse_gen vs simulation
-#   * Match input/return arguments of pulse_gen to Tensorflow args
+#   * Take 'samplerate as an input to quandary run, or get results or something
 #   * Ander: Get resonances: Iterating over non-zeros of U'HcU, should be all elements? Previously it was only lower triangular matrix, but it is not hermitian, so this makes a difference!
 #   * Anders: Culled and sorted carrier waves, is that needed? 
     #   # CNOT case with Jkl coupling is not converging!
