@@ -124,10 +124,14 @@ class QuandaryConfig:
             print("Maximum control amplitudes: ", self.maxctrl_MHz, "MHz")
 
         # Estimate carrier wave frequencies
-        self.carrier_frequency, _ = get_resonances(Ne=self.Ne, Ng=self.Ng, Hsys=self.Hsys, Hc_re=self.Hc_re, Hc_im=self.Hc_im, verbose=self.verbose, cw_amp_thres=self.cw_amp_thres, cw_prox_thres=self.cw_prox_thres, stdmodel=self.standardmodel)
+        self.carrier_frequency, _ = get_resonances(Ne=self.Ne, Ng=self.Ng, Hsys=self.Hsys, Hc_re=self.Hc_re, Hc_im=self.Hc_im, rotfreq=self.rotfreq, verbose=self.verbose, cw_amp_thres=self.cw_amp_thres, cw_prox_thres=self.cw_prox_thres, stdmodel=self.standardmodel)
 
-        if self.verbose:
-            print("Carrier frequencies: ", self.carrier_frequency,"\n")
+        if True or self.verbose: # Always print this info?
+            nqubits = len(self.Ne)
+            print("\n")
+            for q in range(nqubits):
+                print("System #", q, "Carrier frequencies (lab frame): ", self.rotfreq[q]+self.carrier_frequency[q])
+            print("\n")
 
     ##
     # Call this function if you have changed a config option outside of the constructor, e.g. with "myconfig.variablename = new_variable". This will ensure that the number of time steps and carrier waves are re-computed, given the new setting. 
@@ -467,6 +471,7 @@ def estimate_timesteps(*, T=1.0, Hsys=[], Hc_re=[], Hc_im=[], maxctrl_MHz=[], Pm
 def eigen_and_reorder(H0, verbose=False):
     Ntot = H0.shape[0]
     evals, evects = np.linalg.eig(H0)
+    evects = np.asmatrix(evects) # convert ndarray to matrix ?
 
     if verbose:
         print("H0 evals (before sorting) = ", evals)
@@ -509,7 +514,7 @@ def eigen_and_reorder(H0, verbose=False):
 # Computes system resonances, to be used as carrier wave frequencies
 # Returns resonance frequencies in GHz and corresponding growth rates.
 # Previous default settings: cw_amp_thres=6e-2, cw_prox_thres=1e-3
-def get_resonances(*, Ne, Ng, Hsys, Hc_re=[], Hc_im=[], cw_amp_thres=1e-7, cw_prox_thres=1e-2,verbose=True, stdmodel=True):
+def get_resonances(*, Ne, Ng, Hsys, Hc_re=[], Hc_im=[], rotfreq=[], cw_amp_thres=1e-7, cw_prox_thres=1e-2,verbose=True, stdmodel=True):
     if verbose:
         print("\nComputing carrier frequencies, ignoring growth rate slower than:", cw_amp_thres, "and frequencies closer than:", cw_prox_thres, "[GHz])")
 
@@ -519,6 +524,8 @@ def get_resonances(*, Ne, Ng, Hsys, Hc_re=[], Hc_im=[], cw_amp_thres=1e-7, cw_pr
     if verbose:
         print("Hsys dimensions, n=", n)
         print("Ne=", Ne)
+        print("Hsys/2*pi:")
+        print(Hsys/(2*np.pi))
 
     # Get eigenvalues of system Hamiltonian (GHz)
     # AP: Julia calls eigen_and_reorder(), which deals with eigenvalues of multiplicity greater than 1
@@ -531,73 +538,73 @@ def get_resonances(*, Ne, Ng, Hsys, Hc_re=[], Hc_im=[], cw_amp_thres=1e-7, cw_pr
     speed = []
 
     for q in range(nqubits):
-        if stdmodel: # If standard model, get resonances from non-zeros in U'a'U (avoiding duplicates from U'aU)
-            Hctrl_ad = Hc_re[q] - Hc_im[q]  
-            # Hctrl_ad = Hc_re[q]
-            # Hctrl_ad = Hc_im[q]
-        else: # Get resonances from non-zeros in U'(Hc_re - Hc_im)U TODO: WHY?
-            Hctrl_ad =np.zeros(Hsys.shape)
-            if len(Hc_re) > q:
-                if len(Hc_re[q])> 0:
-                    Hctrl_ad += Hc_re[q]
-            if len(Hc_im) > q:
-                if len(Hc_im[q])> 0:
-                    Hctrl_ad -= Hc_im[q]
-        Hctrl_ad_trans = Utrans.T @ Hctrl_ad @ Utrans
+        # if stdmodel: # If standard model, get resonances from non-zeros in U'a'U (avoiding duplicates from U'aU)
+        #     Hctrl_ad = Hc_re[q] - Hc_im[q]  
+        #     # Hctrl_ad = Hc_re[q]
+        #     # Hctrl_ad = Hc_im[q]
+        # else: # Get resonances from non-zeros in U'(Hc_re - Hc_im)U TODO: WHY?
+        #     Hctrl_ad =np.zeros(Hsys.shape)
+        #     if len(Hc_re) > q:
+        #         if len(Hc_re[q])> 0:
+        #             Hctrl_ad += Hc_re[q]
+        #     if len(Hc_im) > q:
+        #         if len(Hc_im[q])> 0:
+        #             Hctrl_ad -= Hc_im[q]
+        # Hctrl_ad_trans = Utrans.T @ Hctrl_ad @ Utrans
+        
+        # Unified treatment of the standard and custom models for the control Hamiltonian:
+        # look for resonances in both the symmetric and anti-symmetric control Hamiltonians
+        # AP: If the system Hamiltonian is complex Hermitian, the eigenvectors can also be complex
+        #     Use Utrans.H to get the conjugate transpose
+        Hsym_trans = Utrans.H @ Hc_re[q] @ Utrans
+        Hanti_trans = Utrans.H @ Hc_im[q] @ Utrans
 
         resonances_a = []
         speed_a = []
         #if verbose:
         print("  Resonances in oscillator #", q)
         
-        # Iterate over non-zero elements in transformed control
-        for i in range(n):
-            # Only consider transitions from lower to higher levels
-            for j in range(i):
+        matNo = 1
+        for Hc_trans in (Hsym_trans, Hanti_trans):
+            if verbose:
+                print("Matrix number ", matNo)
 
-                # AP: what is this???
-                # if abs(Hctrl_ad_trans[i,j])< 1e-14:
-                #    continue
-                
-                # Get the resonance
-                delta_f = Hsys_evals[i] - Hsys_evals[j]
-                if abs(delta_f) < 1e-10:
-                    delta_f = 0.0
+            # Iterate over non-zero elements in transformed control
+            for i in range(n):
+                # Only consider transitions from lower to higher levels
+                for j in range(i):
 
-                # Get involved oscillator levels
-                ids_i = map_to_oscillators(i, Ne, Ng)
-                ids_j = map_to_oscillators(j, Ne, Ng)
+                    if abs(Hc_trans[i,j]) < cw_amp_thres:
+                        continue # coupling is too weak to be considered
 
-                #for qq in range(nqubits):
-                 #   print("qq=", qq, "ids_i[qq] < Ne[qq] = ", ids_i[qq] < Ne[qq])
-                
-                is_ess_i = all(ids_i[k] < Ne[k] for k in range(len(Ne)))
-                is_ess_j = all(ids_j[k] < Ne[k] for k in range(len(Ne)))
+                    # Get the resonance frequency
+                    delta_f = Hsys_evals[i] - Hsys_evals[j]
+                    if abs(delta_f) < 1e-10:
+                        delta_f = 0.0
 
-                #print("i=", i, "ids_i=", ids_i, "is_ess_i=", is_ess_i)
-                #print("j=", j, "ids_j=", ids_j, "is_ess_j=", is_ess_j)
+                    # Get involved oscillator levels
+                    ids_i = map_to_oscillators(i, Ne, Ng)
+                    ids_j = map_to_oscillators(j, Ne, Ng)
 
-                # Ignore resonance to non-essential levels
-                #                if any(ids_i[k]  Ne[k]-1 for k in range(len(Ne))) or \
-                #                   any(ids_j[k] > Ne[k]-1 for k in range(len(Ne))):
-                if not (is_ess_i and is_ess_j):
-                   if verbose:
-                       print("    Skipping non-essential resonance from ", ids_j, "to ", ids_i)
-                # Ignore resonance with small growth rate
-                elif abs(Hctrl_ad_trans[i, j]) < cw_amp_thres:
-                    if verbose:
-                        print("    Ignoring resonance from ", ids_j, "to ", ids_i, "due to small growth rate=", Hctrl_ad_trans[i,j])
-                # Ignore resonance too close to each other
-                elif any(abs(delta_f - f) < cw_prox_thres for f in resonances_a):
-                    #  any(abs(delta_f + f) < cw_prox_thres for f in resonances_a):
-                    if verbose:
-                        print("    Ignoring resonance from ", ids_j, "to ", ids_i, "being too close to one that already exists.")
-                # Otherwise, add resonance to the list
-                else:
-                    resonances_a.append(delta_f)
-                    speed_a.append(abs(Hctrl_ad_trans[i, j]))
-                    #if verbose:
-                    print("    Resonance from ", ids_j, "to ", ids_i, ", frequency", delta_f, ", growth rate=", abs(Hctrl_ad_trans[i, j]))
+                    # make sure both indices correspond to essential energy levels
+                    is_ess_i = all(ids_i[k] < Ne[k] for k in range(len(Ne)))
+                    is_ess_j = all(ids_j[k] < Ne[k] for k in range(len(Ne)))
+
+                    if (is_ess_i and is_ess_j):
+                        # Ignore resonances that are too close by comparing to all previous resonances
+                        if any(abs(delta_f - f) < cw_prox_thres for f in resonances_a):
+                            if verbose:
+                                print("    Ignoring resonance from ", ids_j, "to ", ids_i, ", lab-freq", rotfreq[q] + delta_f, ", growth rate=", abs(Hc_trans[i, j]), "being too close to one that already exists.")
+                        # Otherwise, add resonance to the list
+                        else:
+                            resonances_a.append(delta_f)
+                            speed_a.append(abs(Hc_trans[i, j]))
+                            #if verbose:
+                            print("    Resonance from ", ids_j, "to ", ids_i, ", lab-freq", rotfreq[q] + delta_f, ", growth rate=", abs(Hc_trans[i, j]))
+                    #else:
+                    #    if verbose:
+                    #        print("    Skipping non-essential resonance from ", ids_j, "to ", ids_i)
+            matNo += 1
         
         resonances.append(resonances_a)
         speed.append(speed_a)
@@ -753,7 +760,7 @@ def hamiltonians(*, N, freq01, selfkerr, crosskerr=[], Jkl = [], rotfreq=[], ver
                     idkl += 1
     
     # Add Jkl coupling term. 
-    # Note that if the rotating frame frequencies are different amongst oscillators, then this is contributes to a *time-dependent* system Hamiltonian. Here, we treat this as time-independent, because this Hamiltonian here is *ONLY* used to compute the time-step size and resonances, and it is NOT passed to the quandary code. Quandary sets up the standard model with a time-dependent system Hamiltonian if the frequencies of rotation differ amongst oscillators.  
+    # Note that if the rotating frame frequencies are different amongst oscillators, then this contributes to a *time-dependent* system Hamiltonian. Here, we treat this as time-independent, because this Hamiltonian here is *ONLY* used to compute the time-step size and resonances, and it is NOT passed to the quandary code. Quandary sets up the standard model with a time-dependent system Hamiltonian if the frequencies of rotation differ amongst oscillators.  
     if len(Jkl)>0:
         idkl = 0 
         for q in range(nqubits):
