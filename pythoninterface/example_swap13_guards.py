@@ -4,6 +4,7 @@ from quandary import *
 
 Ne = [2,2,2]  # Number of essential energy levels
 Ng = [1,1,1]  # Number of extra guard levels
+# Ng = [0,0,0]
 
 # 01 transition frequencies [GHz] per oscillator
 freq01 = [5.18, 5.12, 5.06] 

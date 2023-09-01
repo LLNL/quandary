@@ -521,11 +521,11 @@ def get_resonances(*, Ne, Ng, Hsys, Hc_re=[], Hc_im=[], rotfreq=[], cw_amp_thres
     nqubits = len(Ne)
     n = Hsys.shape[0]
     
-    if verbose:
-        print("Hsys dimensions, n=", n)
-        print("Ne=", Ne)
-        print("Hsys/2*pi:")
-        print(Hsys/(2*np.pi))
+    # if verbose:
+    #     print("Hsys dimensions, n=", n)
+    #     print("Ne=", Ne)
+    #     print("Hsys/2*pi:")
+    #     print(Hsys/(2*np.pi))
 
     # Get eigenvalues of system Hamiltonian (GHz)
     # AP: Julia calls eigen_and_reorder(), which deals with eigenvalues of multiplicity greater than 1
@@ -567,14 +567,14 @@ def get_resonances(*, Ne, Ng, Hsys, Hc_re=[], Hc_im=[], rotfreq=[], cw_amp_thres
         matNo = 1
         for Hc_trans in (Hsym_trans, Hanti_trans):
             if verbose:
-                print("Matrix number ", matNo)
+                print("  Matrix number ", matNo)
 
             # Iterate over non-zero elements in transformed control
             for i in range(n):
                 # Only consider transitions from lower to higher levels
                 for j in range(i):
 
-                    if abs(Hc_trans[i,j]) < cw_amp_thres:
+                    if abs(Hc_trans[i,j]) < 1e-14: #cw_amp_thres
                         continue # coupling is too weak to be considered
 
                     # Get the resonance frequency
@@ -595,6 +595,9 @@ def get_resonances(*, Ne, Ng, Hsys, Hc_re=[], Hc_im=[], rotfreq=[], cw_amp_thres
                         if any(abs(delta_f - f) < cw_prox_thres for f in resonances_a):
                             if verbose:
                                 print("    Ignoring resonance from ", ids_j, "to ", ids_i, ", lab-freq", rotfreq[q] + delta_f, ", growth rate=", abs(Hc_trans[i, j]), "being too close to one that already exists.")
+                        elif abs(Hc_trans[i,j]) < cw_amp_thres:
+                            if verbose:
+                                print("    Ignoring resonance from ", ids_j, "to ", ids_i, ", lab-freq", rotfreq[q] + delta_f, ", growth rate=", abs(Hc_trans[i, j]), "growth rate is too slow.")
                         # Otherwise, add resonance to the list
                         else:
                             resonances_a.append(delta_f)
@@ -738,7 +741,9 @@ def hamiltonians(*, N, freq01, selfkerr, crosskerr=[], Jkl = [], rotfreq=[], ver
         for j in range(i):
             ai = np.kron(np.identity(N[j]), ai) 
         for j in range(i+1,len(N)):
-            ai = np.kron(ai, np.identity(N[j])) 
+            ai = np.kron(ai, np.identity(N[j]))
+        #print("Amat i =", i)
+        #print(ai) 
         Amat.append(ai)
 
     # Set up system Hamiltonian: Duffing oscillators
@@ -757,7 +762,7 @@ def hamiltonians(*, N, freq01, selfkerr, crosskerr=[], Jkl = [], rotfreq=[], ver
                 if abs(crosskerr[idkl]) > 1e-14:
                     crosskerr_radns = 2.0*np.pi * crosskerr[idkl]
                     Hsys -= crosskerr_radns * Amat[q].T @ Amat[q] @ Amat[p].T @ Amat[p]
-                    idkl += 1
+                idkl += 1
     
     # Add Jkl coupling term. 
     # Note that if the rotating frame frequencies are different amongst oscillators, then this contributes to a *time-dependent* system Hamiltonian. Here, we treat this as time-independent, because this Hamiltonian here is *ONLY* used to compute the time-step size and resonances, and it is NOT passed to the quandary code. Quandary sets up the standard model with a time-dependent system Hamiltonian if the frequencies of rotation differ amongst oscillators.  
@@ -768,7 +773,7 @@ def hamiltonians(*, N, freq01, selfkerr, crosskerr=[], Jkl = [], rotfreq=[], ver
                 if abs(Jkl[idkl]) > 1e-14:
                     Jkl_radns  = 2.0*np.pi*Jkl[idkl]
                     Hsys += Jkl_radns * (Amat[q].T @ Amat[p] + Amat[q] @ Amat[p].T)
-                    idkl += 1
+                idkl += 1
 
     # Set up control Hamiltonians
     Hc_re = [Amat[q] + Amat[q].T for q in range(nqubits)]
