@@ -3,9 +3,9 @@ import numpy as np
 from subprocess import run, PIPE, Popen
 import matplotlib.pyplot as plt
 from dataclasses import dataclass, field
-# For Ander's Matplotlib to work.... 
-import PyQt6.QtCore
-os.environ["QT_API"] = "pyqt5"
+## For some Matplotlib installations to work, you might need the below...
+#import PyQt6.QtCore
+#os.environ["QT_API"] = "pyqt5"
 
 ## 
 # This class collects configuration options to run quandary. The default values are set to optimize for the swap02 gate. Fields in this configuration file are set through the constructor
@@ -17,7 +17,6 @@ os.environ["QT_API"] = "pyqt5"
 # it is advised to call
 #  > myconfig.update()
 # which recomputes the number of time-steps and carrier waves given the new settings. 
-
 @dataclass
 class QuandaryConfig:
 
@@ -56,8 +55,8 @@ class QuandaryConfig:
     initctrl_MHz        : list[float] = field(default_factory=list)   # Amplitude [MHz] of initial control parameters (will be ignored if pcof0 or pcof0_filename are given)
     # Carrier frequency options
     carrier_frequency   : list[list[float]] = field(default_factory=list) # will be set in __post_init
-    cw_amp_thres        : float             = 1e-2                        # Threshold to ignore carrier wave frequencies whose growth rate is below this value
-    cw_prox_thres       : float             = 1e-3                        # Threshold to distinguish different carrier wave frequencies from each other
+    cw_amp_thres        : float             = 1e-7                        # Threshold to ignore carrier wave frequencies whose growth rate is below this value
+    cw_prox_thres       : float             = 1e-2                        # Threshold to distinguish different carrier wave frequencies from each other
 
     # Optimization options
     costfunction        : str               = "Jtrace"                      # Cost function measure: "Jtrace" or "Jfrobenius"
@@ -69,7 +68,7 @@ class QuandaryConfig:
     gamma_dpdm          : float             = 0.01                          # Parameter for integral penality term on second state derivative
     tol_infidelity      : float             = 1e-3                          # Optimization stopping criterion based on the infidelity
     tol_costfunc        : float             = 1e-3                          # Optimization stopping criterion based on the objective function value
-    maxiter             : int               = 100                           # Maximum number of optimization iterations
+    maxiter             : int               = 200                           # Maximum number of optimization iterations
 
     # Quandary run options
     print_frequency_iter: int         = 1                   # Output frequency for optimization iterations. (Print every <x> iterations)
@@ -126,11 +125,11 @@ class QuandaryConfig:
         # Estimate carrier wave frequencies
         self.carrier_frequency, _ = get_resonances(Ne=self.Ne, Ng=self.Ng, Hsys=self.Hsys, Hc_re=self.Hc_re, Hc_im=self.Hc_im, rotfreq=self.rotfreq, verbose=self.verbose, cw_amp_thres=self.cw_amp_thres, cw_prox_thres=self.cw_prox_thres, stdmodel=self.standardmodel)
 
-        if True or self.verbose: # Always print this info?
-            nqubits = len(self.Ne)
+        if self.verbose: 
             print("\n")
-            for q in range(nqubits):
+            for q in range(len(self.Ne)):
                 print("System #", q, "Carrier frequencies (lab frame): ", self.rotfreq[q]+self.carrier_frequency[q])
+                print("                               (rot frame): ", self.carrier_frequency[q])
             print("\n")
 
     ##
@@ -469,51 +468,37 @@ def estimate_timesteps(*, T=1.0, Hsys=[], Hc_re=[], Hc_im=[], maxctrl_MHz=[], Pm
 
 # computes eigen decomposition and re-orders it to make the eigenvector matrix as close to the identity as posiible
 def eigen_and_reorder(H0, verbose=False):
+
+    # Get eigenvalues and vectors and sort them in ascending order
     Ntot = H0.shape[0]
     evals, evects = np.linalg.eig(H0)
     evects = np.asmatrix(evects) # convert ndarray to matrix ?
-
-    if verbose:
-        print("H0 evals (before sorting) = ", evals)
-
     reord = np.argsort(evals)
     evals = evals[reord]
     evects = evects[:,reord]
 
-    if verbose:
-        print("H0 evals (in ascending order) = ", evals)
-        
+    # Find the permutation that reorder the eigenvectors such that they are closer to the identity (max. val per column should be in the diagonal positions)
     maxrow = np.zeros(Ntot, dtype=np.int32)
-
     for j in range(Ntot):
-        maxrow[j] = np.argmax(np.abs(evects[:,j]))
-
-    if verbose:
-        print("maxrow (+1)= ", maxrow+1)
-
-    # get the permutation vector
-    s_perm = np.argsort(maxrow)
-
-    if verbose:
-        print("s_perm (+1)= ", s_perm+1)
-
+        # index of the maximum value in each eigenvector
+        maxrow[j] = np.argmax(np.abs(evects[:,j])) 
+    s_perm = np.argsort(maxrow)   
     evects = evects[:,s_perm]
     evals = evals[s_perm]
     
-    # make sure all diagonal elements in Utrans are positive
+    # Make sure all diagonal elements are positive
     for j in range(Ntot):
         if evects[j,j]<0.0:
             evects[:,j] = - evects[:,j]
 
     if verbose:
-        print("Sorted evals/2*pi: ", evals/(2*np.pi))
+        print("Sorted eigenvalues/2pi: ", evals/(2*np.pi))
 
     return evals, evects
 
 
 # Computes system resonances, to be used as carrier wave frequencies
 # Returns resonance frequencies in GHz and corresponding growth rates.
-# Previous default settings: cw_amp_thres=6e-2, cw_prox_thres=1e-3
 def get_resonances(*, Ne, Ng, Hsys, Hc_re=[], Hc_im=[], rotfreq=[], cw_amp_thres=1e-7, cw_prox_thres=1e-2,verbose=True, stdmodel=True):
     if verbose:
         print("\nComputing carrier frequencies, ignoring growth rate slower than:", cw_amp_thres, "and frequencies closer than:", cw_prox_thres, "[GHz])")
@@ -521,61 +506,35 @@ def get_resonances(*, Ne, Ng, Hsys, Hc_re=[], Hc_im=[], rotfreq=[], cw_amp_thres
     nqubits = len(Ne)
     n = Hsys.shape[0]
     
-    # if verbose:
-    #     print("Hsys dimensions, n=", n)
-    #     print("Ne=", Ne)
-    #     print("Hsys/2*pi:")
-    #     print(Hsys/(2*np.pi))
-
     # Get eigenvalues of system Hamiltonian (GHz)
-    # AP: Julia calls eigen_and_reorder(), which deals with eigenvalues of multiplicity greater than 1
-    Hsys_evals, Utrans = eigen_and_reorder(Hsys, verbose) # np.linalg.eig(Hsys)
-    
+    Hsys_evals, Utrans = eigen_and_reorder(Hsys, verbose)
     Hsys_evals = Hsys_evals.real  # Eigenvalues may have a small imaginary part due to numerical imprecision
-    Hsys_evals = Hsys_evals / (2 * np.pi)
+    Hsys_evals = Hsys_evals / (2 * np.pi) 
             
+    # Look for resonances in the symmetric and anti-symmetric control Hamiltonians for each qubit
     resonances = []
     speed = []
-
     for q in range(nqubits):
-        # if stdmodel: # If standard model, get resonances from non-zeros in U'a'U (avoiding duplicates from U'aU)
-        #     Hctrl_ad = Hc_re[q] - Hc_im[q]  
-        #     # Hctrl_ad = Hc_re[q]
-        #     # Hctrl_ad = Hc_im[q]
-        # else: # Get resonances from non-zeros in U'(Hc_re - Hc_im)U TODO: WHY?
-        #     Hctrl_ad =np.zeros(Hsys.shape)
-        #     if len(Hc_re) > q:
-        #         if len(Hc_re[q])> 0:
-        #             Hctrl_ad += Hc_re[q]
-        #     if len(Hc_im) > q:
-        #         if len(Hc_im[q])> 0:
-        #             Hctrl_ad -= Hc_im[q]
-        # Hctrl_ad_trans = Utrans.T @ Hctrl_ad @ Utrans
-        
-        # Unified treatment of the standard and custom models for the control Hamiltonian:
-        # look for resonances in both the symmetric and anti-symmetric control Hamiltonians
-        # AP: If the system Hamiltonian is complex Hermitian, the eigenvectors can also be complex
-        #     Use Utrans.H to get the conjugate transpose
+       
+        # Transform symmetric and anti-symmetric control Hamiltonians using eigenvectors (reordered)
         Hsym_trans = Utrans.H @ Hc_re[q] @ Utrans
         Hanti_trans = Utrans.H @ Hc_im[q] @ Utrans
 
         resonances_a = []
         speed_a = []
-        #if verbose:
-        print("  Resonances in oscillator #", q)
+        if verbose:
+            print("  Resonances in oscillator #", q)
         
-        matNo = 1
         for Hc_trans in (Hsym_trans, Hanti_trans):
-            if verbose:
-                print("  Matrix number ", matNo)
 
             # Iterate over non-zero elements in transformed control
             for i in range(n):
                 # Only consider transitions from lower to higher levels
                 for j in range(i):
 
-                    if abs(Hc_trans[i,j]) < 1e-14: #cw_amp_thres
-                        continue # coupling is too weak to be considered
+                    # Look for non-zero elements (skip otherwise)
+                    if abs(Hc_trans[i,j]) < 1e-14: 
+                        continue 
 
                     # Get the resonance frequency
                     delta_f = Hsys_evals[i] - Hsys_evals[j]
@@ -595,6 +554,7 @@ def get_resonances(*, Ne, Ng, Hsys, Hc_re=[], Hc_im=[], rotfreq=[], cw_amp_thres
                         if any(abs(delta_f - f) < cw_prox_thres for f in resonances_a):
                             if verbose:
                                 print("    Ignoring resonance from ", ids_j, "to ", ids_i, ", lab-freq", rotfreq[q] + delta_f, ", growth rate=", abs(Hc_trans[i, j]), "being too close to one that already exists.")
+                        # Ignore resonances with growth rate smaller than user-defined threshold
                         elif abs(Hc_trans[i,j]) < cw_amp_thres:
                             if verbose:
                                 print("    Ignoring resonance from ", ids_j, "to ", ids_i, ", lab-freq", rotfreq[q] + delta_f, ", growth rate=", abs(Hc_trans[i, j]), "growth rate is too slow.")
@@ -602,24 +562,17 @@ def get_resonances(*, Ne, Ng, Hsys, Hc_re=[], Hc_im=[], rotfreq=[], cw_amp_thres
                         else:
                             resonances_a.append(delta_f)
                             speed_a.append(abs(Hc_trans[i, j]))
-                            #if verbose:
-                            print("    Resonance from ", ids_j, "to ", ids_i, ", lab-freq", rotfreq[q] + delta_f, ", growth rate=", abs(Hc_trans[i, j]))
-                    #else:
-                    #    if verbose:
-                    #        print("    Skipping non-essential resonance from ", ids_j, "to ", ids_i)
-            matNo += 1
-        
+                            if verbose:
+                                print("    Resonance from ", ids_j, "to ", ids_i, ", lab-freq", rotfreq[q] + delta_f, ", growth rate=", abs(Hc_trans[i, j]))
+
+        # Append resonances for this qubit to overall list        
         resonances.append(resonances_a)
         speed.append(speed_a)
 
-    # print("nqubits ", nqubits)
+    # Prepare output for carrier frequencies (om) and growth_rate
     Nfreq = np.zeros(nqubits, dtype=int)
     om = [[0.0] for _ in range(nqubits)]
     growth_rate = [[] for _ in range(nqubits)]
-    
-    # print("om = ", om)
-    # print("Nfreq = ", Nfreq )
-
     for q in range(len(resonances)):
         Nfreq[q] = max(1, len(resonances[q]))  # at least one being 0.0
         om[q] = np.zeros(Nfreq[q])
@@ -629,72 +582,8 @@ def get_resonances(*, Ne, Ng, Hsys, Hc_re=[], Hc_im=[], rotfreq=[], cw_amp_thres
         if len(speed[q]) > 0:
             growth_rate[q] = np.array(speed[q])
 
-    # return om, growth_rate, Utrans
     return om, growth_rate
 
-
-# THE BELOW IS COPIED FROM Juqbox setup_std_model. It sorts and culls the carrier waves. SG: Not sure what to do with it. Needed? TODO: Anders?
-    # # allocate and sort the vectors (ascending order)
-    # om_p = [[]] * Nosc
-    # growth_rate_p = [[]] * Nosc
-    # use_p = [[]] * Nosc
-    # for q in range(Nosc):
-    #     om_p[q] = np.zeros(Nfreq[q])
-    #     growth_rate_p[q] = np.zeros(Nfreq[q])
-    #     use_p[q] = np.zeros(Nfreq[q], dtype=int)  # By default, don't use any freq's
-    #     p = np.argsort(om[q])  # sort indices based on om[q]
-    #     om_p[q][:] = om[q][p]
-    #     growth_rate_p[q][:] = growth_rate[q][p]
-
-    # print("Rotfreq =", rot_freq)
-    # print("omp =", om_p)
-    # print("growth_rate =", growth_rate_p)
-
-    # print("Sorted CW freq's:")
-    # for q in range(Nosc):
-    #     print("Ctrl Hamiltonian #", q, ", lab frame carrier frequencies:", rot_freq[q] + om_p[q] / (2 * np.pi), "[GHz]")
-    #     print("Ctrl Hamiltonian #", q, ",                   growth rate:", growth_rate_p[q], "[1/ns]")
-
-    # # Try to identify groups of almost equal frequencies
-    # for q in range(Nosc):
-    #     seg = 0
-    #     rge_q = np.max(om_p[q]) - np.min(om_p[q])  # this is the range of frequencies
-    #     k0 = 0
-    #     for k in range(1, Nfreq[q]):
-    #         delta_k = om_p[q][k] - om_p[q][k0]
-    #         if delta_k > 0.1 * rge_q:
-    #             seg += 1
-    #             # find the highest rate within the range [k0,k-1]
-    #             rge = range(k0, k)
-    #             om_avg = np.sum(om_p[q][rge]) / len(rge)
-    #             print("Osc #", q, "segment #", seg, "Freq-range:", (np.max(om_p[q][rge]) - np.min(om_p[q][rge])) / (2 * np.pi), "Freq-avg:", om_avg / (2 * np.pi) + rot_freq[q])
-    #             use_p[q][k0] = 1
-    #             # average the cw frequency over the segment
-    #             om_p[q][k0] = om_avg
-    #             k0 = k  # start a new group
-    #     # find the highest rate within the last range [k0,Nfreq[q]]
-    #     seg += 1
-    #     rge = range(k0, Nfreq[q])
-    #     om_avg = np.sum(om_p[q][rge]) / len(rge)
-    #     print("Osc #", q, "segment #", seg, "Freq-range:", (np.max(om_p[q][rge]) - np.min(om_p[q][rge])) / (2 * np.pi), "Freq-avg:", om_avg / (2 * np.pi) + rot_freq[q])
-    #     use_p[q][k0] = 1
-    #     om_p[q][k0] = om_avg
-
-    #     # cull out unused frequencies
-    #     om[q] = np.zeros(np.sum(use_p[q]))
-    #     growth_rate[q] = np.zeros(np.sum(use_p[q]))
-    #     j = 0
-    #     for k in range(Nfreq[q]):
-    #         if use_p[q][k] == 1:
-    #             j += 1
-    #             om[q][j] = om_p[q][k]
-    #             growth_rate[q][j] = growth_rate_p[q][k]
-    #     Nfreq[q] = j  # correct the number of CW frequencies for oscillator 'q'
-
-    # print("\nSorted and culled CW freq's:")
-    # for q in range(Nosc):
-    #     print("Ctrl Hamiltonian #", q, ", lab frame carrier frequencies:", rot_freq[q] + om[q] / (2 * np.pi), "[GHz]")
-    #     print("Ctrl Hamiltonian #", q, ",                   growth rate:", growth_rate[q], "[1/ns]")
 
 # Lowering operator of dimension n
 def lowering(n):
