@@ -78,6 +78,7 @@ class QuandaryConfig:
     # General options
     verbose             : bool        = False               # Switch to shut down printing to screen
     rand_seed           : int         = 1234                # Seed for random number generator
+    cygwin              : bool        = False               # Set to true if running on Windows with Cygwin
 
 
     # Internal configuration. Should not be changed by user.
@@ -310,7 +311,7 @@ def quandary_run(config: QuandaryConfig, *, runtype="optimization", ncores=-1, d
         ncores = np.prod(config.Ne) 
 
     # Execute subprocess to run Quandary
-    err = execute(runtype=runtype, ncores=ncores, config_filename=config_filename, datadir=datadir, quandary_exec=quandary_exec, verbose=config.verbose)
+    err = execute(runtype=runtype, ncores=ncores, config_filename=config_filename, datadir=datadir, quandary_exec=quandary_exec, verbose=config.verbose, cygwin=config.cygwin)
 
     if config.verbose:
         print("Quandary data dir: ", datadir, "\n")
