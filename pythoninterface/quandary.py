@@ -3,6 +3,7 @@ import numpy as np
 from subprocess import run, PIPE, Popen
 import matplotlib.pyplot as plt
 from dataclasses import dataclass, field
+from typing import List
 ## For some Matplotlib installations to work, you might need the below...
 #import PyQt6.QtCore
 #os.environ["QT_API"] = "pyqt5"
@@ -21,15 +22,15 @@ from dataclasses import dataclass, field
 class QuandaryConfig:
 
     # Quantum system specifications
-    Ne        : list[int]   = field(default_factory=lambda: [3])        # Number of essential energy levels per qubit
-    Ng        : list[int]   = field(default_factory=lambda: [0])        # Number of extra guard levels per qubit
-    freq01    : list[float] = field(default_factory=lambda: [4.10595])  # 01-transition frequencies [GHz] per qubit
-    selfkerr  : list[float] = field(default_factory=lambda: [0.2198])   # Anharmonicities [GHz] per qubit
-    rotfreq   : list[float] = field(default_factory=list)               # Frequency of rotations for computational frame [GHz] per qubit (default =freq01)
-    Jkl       : list[float] = field(default_factory=list)               # Jaynes-Cummings coupling strength [GHz]. Format [J01, J02, ..., J12, J13, ...]
-    crosskerr : list[float] = field(default_factory=list)               # ZZ coupling strength [GHz]. Format [g01, g02, ..., g12, g13, ...]
-    T1        : list[float] = field(default_factory=list)               # Optional: T1-Decay time per qubit (invokes Lindblad solver)
-    T2        : list[float] = field(default_factory=list)               # Optional: T2-Dephasing time per qubit (invokes Lindlbad solver)
+    Ne        : List[int]   = field(default_factory=lambda: [3])        # Number of essential energy levels per qubit
+    Ng        : List[int]   = field(default_factory=lambda: [0])        # Number of extra guard levels per qubit
+    freq01    : List[float] = field(default_factory=lambda: [4.10595])  # 01-transition frequencies [GHz] per qubit
+    selfkerr  : List[float] = field(default_factory=lambda: [0.2198])   # Anharmonicities [GHz] per qubit
+    rotfreq   : List[float] = field(default_factory=list)               # Frequency of rotations for computational frame [GHz] per qubit (default =freq01)
+    Jkl       : List[float] = field(default_factory=list)               # Jaynes-Cummings coupling strength [GHz]. Format [J01, J02, ..., J12, J13, ...]
+    crosskerr : List[float] = field(default_factory=list)               # ZZ coupling strength [GHz]. Format [g01, g02, ..., g12, g13, ...]
+    T1        : List[float] = field(default_factory=list)               # Optional: T1-Decay time per qubit (invokes Lindblad solver)
+    T2        : List[float] = field(default_factory=list)               # Optional: T2-Dephasing time per qubit (invokes Lindlbad solver)
 
     # Time duration and discretization options
     T                   : float       = 100.0             # Final time duration
@@ -39,28 +40,28 @@ class QuandaryConfig:
 
     # Hamiltonian model
     standardmodel       : bool              = True                          # Switch to use standard Hamiltonian model for superconduction qubits
-    Hsys                : list[float]       = field(default_factory=list)   # Optional: User specified system Hamiltonian model
-    Hc_re               : list[list[float]] = field(default_factory=list)   # Optional: User specified control Hamiltonian operators for each qubit (real-parts)
-    Hc_im               : list[list[float]] = field(default_factory=list)   # Optional: User specified control Hamiltonian operators for each qubit (real-parts)
+    Hsys                : List[float]       = field(default_factory=list)   # Optional: User specified system Hamiltonian model
+    Hc_re               : List[List[float]] = field(default_factory=list)   # Optional: User specified control Hamiltonian operators for each qubit (real-parts)
+    Hc_im               : List[List[float]] = field(default_factory=list)   # Optional: User specified control Hamiltonian operators for each qubit (real-parts)
 
     # Control parameterization options
-    maxctrl_MHz         : list[float] = field(default_factory=list)   # Amplitude bounds for the control pulses [MHz]
+    maxctrl_MHz         : List[float] = field(default_factory=list)   # Amplitude bounds for the control pulses [MHz]
     control_enforce_BC  : bool        = True                          # Enforce that control pulses start and end at zero.
     dtau                : float       = 3.33                          # Spacing [ns] of Bspline basis functions. (The number of Bspline basis functions will be T/dtau + 2)
     nsplines            : int         = -1                            # Number of Bspline basis functions, will be computed from T and dtau. 
     # Control pulse initialization options
-    pcof0               : list[float] = field(default_factory=list)   # Optional: Pass an initial control parameter vector
+    pcof0               : List[float] = field(default_factory=list)   # Optional: Pass an initial control parameter vector
     pcof0_filename      : str         = ""                            # Optional: Load initial control parameter vector from a file
     randomize_init_ctrl : bool        = True                          # Randomize the initial control parameters (will be ignored if pcof0 or pcof0_filename are given)
-    initctrl_MHz        : list[float] = field(default_factory=list)   # Amplitude [MHz] of initial control parameters (will be ignored if pcof0 or pcof0_filename are given)
+    initctrl_MHz        : List[float] = field(default_factory=list)   # Amplitude [MHz] of initial control parameters (will be ignored if pcof0 or pcof0_filename are given)
     # Carrier frequency options
-    carrier_frequency   : list[list[float]] = field(default_factory=list) # will be set in __post_init
+    carrier_frequency   : List[List[float]] = field(default_factory=list) # will be set in __post_init
     cw_amp_thres        : float             = 1e-7                        # Threshold to ignore carrier wave frequencies whose growth rate is below this value
     cw_prox_thres       : float             = 1e-2                        # Threshold to distinguish different carrier wave frequencies from each other
 
     # Optimization options
     costfunction        : str               = "Jtrace"                      # Cost function measure: "Jtrace" or "Jfrobenius"
-    targetgate          : list[list[complex]] = field(default_factory=list) # Complex target unitary in the essential level dimensions for gate optimization
+    targetgate          : List[List[complex]] = field(default_factory=list) # Complex target unitary in the essential level dimensions for gate optimization
     optim_target        : str               = "gate"                        # Optional: Set optimization targets, if not specified through the targetgate
     initialcondition    : str               = "basis"                       # Initial states at time t=0.0: "basis", "diagonal", "pure, 0,0,1,...", "file, /path/to/file" 
     gamma_tik0          : float             = 1e-4 	                        # Parameter for Tikhonov regularization term
@@ -84,9 +85,9 @@ class QuandaryConfig:
     _gatefilename         : str         = ""
 
     # Storage for some optimization results, in case they are needed afterwards.
-    popt        : list[float]   = field(default_factory=list)   # Optimized control paramters, could be useful to run quandary again after optimization
-    time        : list[float]   = field(default_factory=list)   # Vector of discretized time points, could be useful for plotting the control pulses etc.
-    optim_hist  : list[float]   = field(default_factory=list)   # Optimization history: all fields as in Quandary's output file <data>/optim_history.dat
+    popt        : List[float]   = field(default_factory=list)   # Optimized control paramters, could be useful to run quandary again after optimization
+    time        : List[float]   = field(default_factory=list)   # Vector of discretized time points, could be useful for plotting the control pulses etc.
+    optim_hist  : List[float]   = field(default_factory=list)   # Optimization history: all fields as in Quandary's output file <data>/optim_history.dat
 
     ##
     # This function will be called during initialization of a QuandaryConfig instance.
