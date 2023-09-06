@@ -26,7 +26,7 @@ quandary_exec="/Users/guenther5/Numerics/quandary/main"
 # quandary_exec="/cygdrive/c/Users/scada-125/quandary/main.exe"
 
 # Print out stuff
-verbose = True
+verbose = False
 
 # Prepare Quandary configuration. 
 # The dataclass 'QuandaryConfig' gathers all default settings (have a look at the class member defaults in 'quandary.py'). You can change the defaults by passing them to the constructor. 
@@ -36,7 +36,7 @@ myconfig = QuandaryConfig(Ne=Ne, freq01=freq01, selfkerr=selfkerr, rotfreq=rotfr
 # myconfig.pcof0_filename = os.getcwd() + "/SWAP02_params.dat" # Use absolute path!
 
 # Execute quandary. Default number of executing cores is the essential Hilbert space dimension.
-pt, qt, expectedEnergy, infidelity = quandary_run(myconfig, quandary_exec=quandary_exec)
+pt, qt, expectedEnergy, infidelity = quandary_run(myconfig, quandary_exec=quandary_exec, datadir="./SWAP02_run_dir")
 print(f"\nFidelity = {1.0 - infidelity}")
 
 # Plot the control pulse and expected energy level evolution
