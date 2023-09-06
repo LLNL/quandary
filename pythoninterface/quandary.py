@@ -37,7 +37,6 @@ class QuandaryConfig:
     Pmin                : int         = 40                # Number of discretization points to resolve the shortest period of the dynamics (determines <nsteps>)
     nsteps              : int         = -1                # Number of time-discretization points (will be computed internally based on Pmin, or can be set here)
     timestepper         : str         = "IMR"             # Time-discretization scheme
-    samplerate          : float       = 0.0               # Sample rate [ns] where resulting control pulses will be evaluated and returned. 0.0 = ALL timesteps. 
 
     # Hamiltonian model
     standardmodel       : bool              = True                          # Switch to use standard Hamiltonian model for superconduction qubits
@@ -337,22 +336,6 @@ def quandary_run(config: QuandaryConfig, *, runtype="optimization", ncores=-1, d
     # Get results from quandary output files
     time, pt, qt, expectedEnergy, popt, infidelity, optim_hist= get_results(Ne=config.Ne, datadir=datadir)
 
-    # Re-evaluate the controls if a specific sample rate is given
-    if config.samplerate > 0.0:
-        # Copy original setting
-        nsteps_org = config.nsteps
-        pcof0_org = config.pcof0[:]
-        # Run evalcontrol mode on new setting
-        config.nsteps = int(np.ceil(config.T / config.samplerate))
-        config.pcof0 = popt[:]
-        runtype = 'evalcontrols'
-        config_eval= config.dump(runtype=runtype, datadir=datadir)
-        err = execute(runtype=runtype, ncores=1, config_filename=config_eval, datadir=datadir, quandary_exec=quandary_exec, verbose=False, cygwin=config.cygwin)
-        time, pt, qt, _, _, _, _= get_results(Ne=config.Ne, datadir=datadir)
-        # Restore original setting
-        config.nsteps = nsteps_org
-        config.pcof0 = pcof0_org[:]
-
     # Store some results in the config file
     config.optim_hist = optim_hist[:]
     config.popt = popt[:]
@@ -472,6 +455,30 @@ def get_results(*, Ne=[], datadir="./"):
         ft.append([x[n,3]/(2*np.pi)*1e+3 for n in range(len(x[:,0]))])     # Lab frame f(t)
 
     return time, pt, qt, expectedEnergy, pcof, infid_last, optim_hist
+
+
+##
+# Helper function to re-evaluate the controls on a different time grid for a specific sample rate
+#
+def evalControls(config, *, pcof, samplerate, quandary_exec="/absolute/path/to/quandary/main", datadir="./data_controls"):
+
+    # Copy original setting and overwrite
+    nsteps_org = config.nsteps
+    pcof0_org = config.pcof0[:]
+    config.nsteps = int(np.ceil(config.T / samplerate))
+    config.pcof0 = pcof[:]
+
+    # Execute quandary in 'evalcontrols' mode
+    runtype = 'evalcontrols'
+    os.makedirs(datadir, exist_ok=True)
+    configfile_eval= config.dump(runtype=runtype, datadir=datadir)
+    err = execute(runtype=runtype, ncores=1, config_filename=configfile_eval, datadir=datadir, quandary_exec=quandary_exec, verbose=False, cygwin=config.cygwin)
+    time, pt, qt, _, _, _, _= get_results(Ne=config.Ne, datadir=datadir)
+    # Restore original setting
+    config.nsteps = nsteps_org
+    config.pcof0 = pcof0_org[:]
+
+    return time, pt, qt
 
 ##
 # Estimates the number of time steps based on eigenvalues of the system Hamiltonian and maximum control Hamiltonians.
