@@ -1,8 +1,8 @@
 from quandary import * 
 
-## One qubit test case ##
+## One qudit test case: Swap the 0 and 2 state of a three-level qudit ##
+
 Ne = [3]  # Number of essential energy levels
-Ng = [0]  # Number of extra guard levels
 
 # 01 transition frequencies [GHz] per oscillator
 freq01 = [4.10595] 
@@ -21,10 +21,6 @@ maxctrl_MHz = [10.0]
 unitary = [[0,0,1],[0,1,0],[1,0,0]]  # Swaps first and last level
 # print(unitary)
 
-# Potentially load initial control parameters from a file. Use absolute path!
-# pcof0_filename = os.getcwd() + "/SWAP02_params.dat"
-# pcof0=np.zeros(30)
-
 # Set the location of the quandary executable (absolute path!)
 quandary_exec="/Users/guenther5/Numerics/quandary/main"
 # quandary_exec="/cygdrive/c/Users/scada-125/quandary/main.exe"
@@ -32,40 +28,42 @@ quandary_exec="/Users/guenther5/Numerics/quandary/main"
 # Print out stuff
 verbose = True
 
-# Prepare Quandary
-myconfig = QuandaryConfig(Ne=Ne, Ng=Ng, freq01=freq01, selfkerr=selfkerr, rotfreq=rotfreq, maxctrl_MHz=maxctrl_MHz, targetgate=unitary, T=T, verbose=verbose)
+# Prepare Quandary configuration. 
+# The dataclass 'QuandaryConfig' gathers all default settings (have a look at the class member defaults in 'quandary.py'). You can change the defaults by passing them to the constructor. 
+myconfig = QuandaryConfig(Ne=Ne, freq01=freq01, selfkerr=selfkerr, rotfreq=rotfreq, maxctrl_MHz=maxctrl_MHz, targetgate=unitary, T=T, verbose=verbose)
 
-# Execute quandary
+# Potentially load initial control parameters from a file. 
+# myconfig.pcof0_filename = os.getcwd() + "/SWAP02_params.dat" # Use absolute path!
+
+# Execute quandary. Default number of executing cores is the essential Hilbert space dimension.
 pt, qt, expectedEnergy, infidelity = quandary_run(myconfig, quandary_exec=quandary_exec)
-
-
 print(f"\nFidelity = {1.0 - infidelity}")
 
 # Plot the control pulse and expected energy level evolution
-if False:
+if True:
     plot_pulse(myconfig.Ne, myconfig.time, pt, qt)
     plot_expectedEnergy(myconfig.Ne, myconfig.time, expectedEnergy)
 
-# You can change config options directly, without creating a new QuandaryConfig instance. In most cases however, it is advised however to call config.update() afterwards to ensure that number of time steps and carrier wave frequencies are re-computed.
+# Other optimization results can be accessed through the myconfig class, e.g. 
+#   myconfig.popt         :  Optimized control parameters
+#   myconfig.optim_hist   :  Optimization convergence history
+#   myconfig.time         :  Time points where the expected energy is stored
+
+
+# You can change configuration options directly, without creating a new QuandaryConfig instance. In most cases however, it is advised to call myconfig.update() afterwards to ensure that number of time steps and carrier wave frequencies are being re-computed.
 # E.g. if you want to change the pulse length, this will work:
 #    myconfig.T = 200.0
 #    myconfig.update()
-# time, pt, qt, ft, expectedEnergy, popt, infidelity, optim_hist = quandary_run(myconfig, quandary_exec=quandary_exec, ncores=ncores, datadir=datadir)
+# pt, qt, expectedEnergy, infidelity = quandary_run(myconfig, quandary_exec=quandary_exec)
 
-# If you want to run Quandary again, e.g. using the previously optimized control parameters, this will do it:
+# If you want to run Quandary using previously optimized control parameters, this will do it:
 #    myconfig.pcof0= myconfig.popt
-#    pt, qt, expectedEnergy, infidelity = quandary_run(myconfig, quandary_exec=quandary_exec, runtype="simulation")
-# (not myconfig.update() needed in this case)
+#    pt, qt, expectedEnergy, infidelity = quandary_run(myconfig, quandary_exec=quandary_exec, runtype="simulation")     # Note the runtype.
+# (myconfig.update() is not needed in this case)
 
 
 # TODO:
 #   * Create high-level functions for pulse_gen vs simulation
 #   * Take 'samplerate as an input to quandary run, or get results or something
-#   * Ander: Get resonances: Iterating over non-zeros of U'HcU, should be all elements? Previously it was only lower triangular matrix, but it is not hermitian, so this makes a difference!
 #   * Anders: Culled and sorted carrier waves, is that needed? 
-    #   # CNOT case with Jkl coupling is not converging!
-#   * Add custom decoherence operators to Quandary? 
-
-# Note: 
-#   * leakage_weights = [0.0, 0.0] is disabled.
-#   * "use_eigenbasis" disabled.
+#   * CNOT case with Jkl coupling is not converging!

@@ -69,7 +69,7 @@ class QuandaryConfig:
     gamma_dpdm          : float             = 0.01                          # Parameter for integral penality term on second state derivative
     tol_infidelity      : float             = 1e-3                          # Optimization stopping criterion based on the infidelity
     tol_costfunc        : float             = 1e-3                          # Optimization stopping criterion based on the objective function value
-    maxiter             : int               = 200                           # Maximum number of optimization iterations
+    maxiter             : int               = 300                           # Maximum number of optimization iterations
 
     # Quandary run options
     print_frequency_iter: int         = 1                   # Output frequency for optimization iterations. (Print every <x> iterations)
@@ -98,18 +98,35 @@ class QuandaryConfig:
     #   - <carrier_frequency> : carrier wave frequencies bases on system resonances
     ##
     def __post_init__(self):
+
+        # Set default two-level system, if Ne is not specified by user
+        if len(self.freq01) != len(self.Ne):
+            self.Ne = [2 for _ in range(len(self.freq01))]
+
+        # Set default NO guard levels, if Ng is not specified by user
+        if len(self.Ng) != len(self.Ne):
+            self.Ng = [0 for _ in range(len(self.Ne))]
+        
+        # Set zero selfkerr, if not specified by user
+        if len(self.selfkerr) != len(self.Ne):
+            self.selfkerr= np.zeros(len(self.Ne))
+
         # Set default rotational frequency (default=freq01), unless specified by user
         if len(self.rotfreq) == 0:
             self.rotfreq = self.freq01
+
         # Set default number of splines for control parameterization, unless specified by user
         if self.nsplines < 0:
-            self.nsplines = int(np.max([np.ceil(self.T/self.dtau + 2), 5])) # 10
+            self.nsplines = int(np.max([np.ceil(self.T/self.dtau + 2), 5]))
+            
         # Set default bounds on control pulse amplitudes (default = no bounds), unless specified by user
         if len(self.maxctrl_MHz) == 0:
             self.maxctrl_MHz = [1e12 for _ in range(len(self.Ne))]
+
         # Set default amplitude of initial control parameters [MHz] (default = 9 MHz)
         if len(self.initctrl_MHz) == 0:
             self.initctrl_MHz = [9.0 for _ in range(len(self.Ne))]
+
         # Set default Hamiltonian operators, unless specified by user
         if len(self.Hsys) > 0 and not self.standardmodel: # User-provided Hamiltonian operators 
             self.standardmodel=False   
@@ -262,7 +279,7 @@ class QuandaryConfig:
         mystring += "optim_inftol= " + str(self.tol_infidelity) + "\n"
         mystring += "optim_maxiter= " + str(self.maxiter) + "\n"
         mystring += "optim_regul= " + str(self.gamma_tik0) + "\n"
-        mystring += "optim_penalty= 0.0\n"
+        mystring += "optim_penalty= 1.0\n"
         mystring += "optim_penalty_param= 0.0\n"
         mystring += "optim_penalty_dpdm= " + str(self.gamma_dpdm) + "\n"
         mystring += "optim_penalty_energy= " + str(self.gamma_energy) + "\n"
@@ -492,9 +509,6 @@ def eigen_and_reorder(H0, verbose=False):
     for j in range(Ntot):
         if evects[j,j]<0.0:
             evects[:,j] = - evects[:,j]
-
-    if verbose:
-        print("Sorted eigenvalues/2pi: ", evals/(2*np.pi))
 
     return evals, evects
 
