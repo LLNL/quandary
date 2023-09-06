@@ -78,7 +78,6 @@ class QuandaryConfig:
     # General options
     verbose             : bool        = False               # Switch to shut down printing to screen
     rand_seed           : int         = 1234                # Seed for random number generator
-    cygwin              : bool        = False               # Set to true if running on Windows with Cygwin
 
 
     # Internal configuration. Should not be changed by user.
@@ -315,7 +314,7 @@ class QuandaryConfig:
 #   2. Envokes subprocess to run quandary (on multiple cores)
 #   3. Gathers results from Quandays output directory
 ##
-def quandary_run(config: QuandaryConfig, *, runtype="optimization", ncores=-1, datadir="./run_dir", quandary_exec="/absolute/path/to/quandary/main"):
+def quandary_run(config: QuandaryConfig, *, runtype="optimization", ncores=-1, datadir="./run_dir", quandary_exec="/absolute/path/to/quandary/main", cygwin=False):
 
     # Create quandary data directory
     os.makedirs(datadir, exist_ok=True)
@@ -328,7 +327,7 @@ def quandary_run(config: QuandaryConfig, *, runtype="optimization", ncores=-1, d
         ncores = np.prod(config.Ne) 
 
     # Execute subprocess to run Quandary
-    err = execute(runtype=runtype, ncores=ncores, config_filename=config_filename, datadir=datadir, quandary_exec=quandary_exec, verbose=config.verbose, cygwin=config.cygwin)
+    err = execute(runtype=runtype, ncores=ncores, config_filename=config_filename, datadir=datadir, quandary_exec=quandary_exec, verbose=config.verbose, cygwin=cygwin)
 
     if config.verbose:
         print("Quandary data dir: ", datadir, "\n")
@@ -460,7 +459,7 @@ def get_results(*, Ne=[], datadir="./"):
 ##
 # Helper function to re-evaluate the controls on a different time grid for a specific sample rate
 #
-def evalControls(config, *, pcof, samplerate, quandary_exec="/absolute/path/to/quandary/main", datadir="./data_controls"):
+def evalControls(config, *, pcof, samplerate, quandary_exec="/absolute/path/to/quandary/main", datadir="./data_controls", cygwin=False):
 
     # Copy original setting and overwrite
     nsteps_org = config.nsteps
@@ -472,7 +471,7 @@ def evalControls(config, *, pcof, samplerate, quandary_exec="/absolute/path/to/q
     runtype = 'evalcontrols'
     os.makedirs(datadir, exist_ok=True)
     configfile_eval= config.dump(runtype=runtype, datadir=datadir)
-    err = execute(runtype=runtype, ncores=1, config_filename=configfile_eval, datadir=datadir, quandary_exec=quandary_exec, verbose=False, cygwin=config.cygwin)
+    err = execute(runtype=runtype, ncores=1, config_filename=configfile_eval, datadir=datadir, quandary_exec=quandary_exec, verbose=False, cygwin=cygwin)
     time, pt, qt, _, _, _, _= get_results(Ne=config.Ne, datadir=datadir)
     # Restore original setting
     config.nsteps = nsteps_org

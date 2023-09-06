@@ -64,6 +64,5 @@ if True:
 
 # TODO:
 #   * Create high-level functions for pulse_gen vs simulation
-#   * Take 'samplerate as an input to quandary run, or get results or something
 #   * Anders: Culled and sorted carrier waves, is that needed? 
 #   * CNOT case with Jkl coupling is not converging!
