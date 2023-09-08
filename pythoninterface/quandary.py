@@ -118,10 +118,6 @@ class QuandaryConfig:
         if self.nsplines < 0:
             self.nsplines = int(np.max([np.ceil(self.T/self.dtau + 2), 5]))
             
-        # Set default bounds on control pulse amplitudes (default = no bounds), unless specified by user
-        if len(self.maxctrl_MHz) == 0:
-            self.maxctrl_MHz = [1e12 for _ in range(len(self.Ne))]
-
         # Set default amplitude of initial control parameters [MHz] (default = 9 MHz)
         if len(self.initctrl_MHz) == 0:
             self.initctrl_MHz = [9.0 for _ in range(len(self.Ne))]
@@ -254,10 +250,10 @@ class QuandaryConfig:
                 initstring = ("random, " if self.randomize_init_ctrl else "constant, ") + str(initamp) + "\n"
             mystring += "control_initialization" + str(iosc) + " = " + initstring 
             if len(self.maxctrl_MHz) == 0: # Disable bounds, if not specified
-                initval = 1e+12*np.ones(len(self.Ne))
+                boundval = 1e+12
             else:
-                initval = self.maxctrl_MHz[iosc]*2.0*np.pi/1000.0  # Scale to rad/ns
-            mystring += "control_bounds" + str(iosc) + " = " + str(initval) + "\n"
+                boundval = self.maxctrl_MHz[iosc]*2.0*np.pi/1000.0  # Scale to rad/ns
+            mystring += "control_bounds" + str(iosc) + " = " + str(boundval) + "\n"
             mystring += "carrier_frequency" + str(iosc) + " = "
             omi = self.carrier_frequency[iosc]
             for j in range(len(omi)):
@@ -484,18 +480,23 @@ def evalControls(config, *, pcof, samplerate, quandary_exec="/absolute/path/to/q
 # Note: The estimate does not account for quickly varying signals or a large number of splines. Double check that at least 2-3 points per spline are present to resolve control function. #TODO: Automate this
 ##
 def estimate_timesteps(*, T=1.0, Hsys=[], Hc_re=[], Hc_im=[], maxctrl_MHz=[], Pmin=40):
-    assert len(maxctrl_MHz) >= len(Hc_re)
+
+    # Get estimated control pulse amplitude
+    est_ctrl_MHz = maxctrl_MHz[:]
+    if len(maxctrl_MHz) == 0:
+        est_ctrl_MHz = [10.0 for _ in range(max(len(Hc_re), len(Hc_im)))] 
 
     # Set up Hsys +  maxctrl*Hcontrol
     K1 = np.copy(Hsys) 
+
     for i in range(len(Hc_re)):
-        max_radns = maxctrl_MHz[i]*2.0*np.pi/1e+3
+        est_radns = est_ctrl_MHz[i]*2.0*np.pi/1e+3
         if len(Hc_re[i])>0:
-            K1 += max_radns * Hc_re[i] 
+            K1 += est_radns * Hc_re[i] 
     for i in range(len(Hc_im)):
-        max_radns = maxctrl_MHz[i]*2.0*np.pi/1e+3
+        est_radns = est_ctrl_MHz[i]*2.0*np.pi/1e+3
         if len(Hc_im[i])>0:
-            K1 = K1 + 1j * max_radns * Hc_im[i] # can't use += due to type!
+            K1 = K1 + 1j * est_radns * Hc_im[i] # can't use += due to type!
     
     # Estimate time step
     eigenvalues = np.linalg.eigvals(K1)
@@ -729,7 +730,9 @@ def plot_pulse(Ne, time, pt, qt):
         plt.plot(time, qt[iosc], "b", label="q(t)")
         plt.xlabel('time (ns)')
         plt.ylabel('Drive strength [MHz]')
-        plt.title('Qubit '+str(iosc))
+        maxp = max(pt[iosc])
+        maxq = max(qt[iosc])
+        plt.title('Qubit '+str(iosc)+'\n max. drive '+str(round(maxp,1))+", "+str(round(maxq,1))+" MHz")
         plt.legend(loc='lower right')
         plt.xlim([0.0, time[-1]])
     # plt.grid()
