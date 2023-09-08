@@ -44,7 +44,9 @@ if True:
     plot_pulse(myconfig.Ne, myconfig.time, pt, qt)
     plot_expectedEnergy(myconfig.Ne, myconfig.time, expectedEnergy)
 
-# Other optimization results can be accessed through the myconfig class, e.g. 
+
+
+# Other optimization results can be accessed from the myconfig, in particular:
 #   myconfig.popt         :  Optimized control parameters
 #   myconfig.optim_hist   :  Optimization convergence history
 #   myconfig.time         :  Time points where the expected energy is stored
@@ -60,9 +62,3 @@ if True:
 #    myconfig.pcof0= myconfig.popt
 #    pt, qt, expectedEnergy, infidelity = quandary_run(myconfig, quandary_exec=quandary_exec, runtype="simulation")     # Note the runtype.
 # (myconfig.update() is not needed in this case)
-
-
-# TODO:
-#   * Create high-level functions for pulse_gen vs simulation
-#   * Anders: Culled and sorted carrier waves, is that needed? 
-#   * CNOT case with Jkl coupling is not converging!
