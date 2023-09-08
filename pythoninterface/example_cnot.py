@@ -3,13 +3,10 @@ from quandary import *
 ## Two qubit test case: CNOT gate, two levels each, no guard levels ##
 
 # 01 transition frequencies [GHz] per oscillator
-freq01 = [4.10595, 4.8152] 
-
-# Anharmonicities [GHz] per oscillator
-selfkerr = [0.2198, 0.2252]
+freq01 = [4.80595, 4.8601] 
 
 # Coupling strength [GHz] (Format [0<->1, 0<->2, ..., 1<->2, ... ])
-crosskerr = [0.01]  # Crossker coupling of qubit 0<->1
+Jkl = [0.005]  # Jaynes-Cumming coupling of qubit 0<->1
 
 # Frequency of rotations for computational frame [GHz] per oscillator
 favg = sum(freq01)/len(freq01)
@@ -20,14 +17,14 @@ rotfreq = favg*np.ones(len(freq01))
 # T2 = [] # [80.0, 90.0]
 
 # Set the time duration (ns)
-T = 150.0
+T = 200.0
 
-# Bounds on the control pulse (in rotational frame, p and q) [MHz] per oscillator
-maxctrl_MHz = 10.0*np.ones(len(freq01))  
+# Set bounds on the control pulse amplitude (in rotational frame, p and q) [MHz] per oscillator
+maxctrl_MHz = [10.0 for _ in range(len(freq01))]
 
-# Set the amplitude of initial (randomized) control vector for each oscillator 
-amp_frac = 0.9
-initctrl_MHz = [amp_frac * maxctrl_MHz[i] for i in range(len(freq01))]
+# Set the amplitude of initial control vector for each oscillator [MHz]
+initctrl_MHz = [10.0 for _ in range(len(freq01))]  
+randomize_init_ctrl = False     # Use constant initial control pulse
 
 # Set up the CNOT target gate
 unitary = np.identity(4)
@@ -46,10 +43,13 @@ datadir = "./CNOT_run_dir"  # Compute and output directory
 verbose = False
 
 # Prepare Quandary configuration
-myconfig = QuandaryConfig(freq01=freq01, selfkerr=selfkerr, crosskerr=crosskerr, rotfreq=rotfreq, T=T, maxctrl_MHz=maxctrl_MHz, initctrl_MHz=initctrl_MHz, targetgate=unitary, verbose=verbose)
+myconfig = QuandaryConfig(freq01=freq01, Jkl=Jkl, rotfreq=rotfreq, T=T, initctrl_MHz=initctrl_MHz, randomize_init_ctrl=randomize_init_ctrl, maxctrl_MHz=maxctrl_MHz, targetgate=unitary, verbose=verbose)
+
+# Potentially load initial control coefficient from a file
+# myconfig.pcof0_filename = os.getcwd() + "/"+datadir+"/params.dat"
 
 # Execute quandary
-pt, qt, expectedEnergy, infidelity = quandary_run(myconfig, quandary_exec=quandary_exec, ncores=ncores, datadir=datadir)
+pt, qt, expectedEnergy, infidelity = quandary_run(myconfig, quandary_exec=quandary_exec, ncores=ncores, datadir=datadir, runtype="optimization")
 
 
 print(f"Fidelity = {1.0 - infidelity}")
