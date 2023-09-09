@@ -52,11 +52,11 @@ print("Target gate: ", unitary)
 
 # Quandary run options
 runtype = "optimization" # "simulation" # "simulation", or "gradient", or "optimization"
-quandary_exec="/Users/guenther5/Numerics/quandary/main"
-# quandary_exec="/Users/petersson1/src/quandary/main"
-ncores = np.prod(Ne)  # Number of cores 
+# quandary_exec="/Users/guenther5/Numerics/quandary/main"
+quandary_exec="/Users/petersson1/src/quandary/main"
+ncores = 4 # np.prod(Ne)  # Number of cores 
 datadir = "./SWAP13_guard_run_dir"  # Compute and output directory 
-verbose = False
+verbose = True
 
 
 # Prepare Quandary

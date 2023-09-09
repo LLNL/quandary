@@ -37,8 +37,8 @@ unitary[2,2] = 0.0
 
 # Quandary run options
 runtype = "optimization"        # "simulation" # "simulation", or "gradient", or "optimization"
-quandary_exec="/Users/guenther5/Numerics/quandary/main"
-# quandary_exec="/Users/petersson1/src/quandary/main"
+# quandary_exec="/Users/guenther5/Numerics/quandary/main"
+quandary_exec="/Users/petersson1/src/quandary/main"
 ncores = 4  # Number of cores 
 datadir = "./SWAP12_run_dir"  # Compute and output directory 
 verbose = False

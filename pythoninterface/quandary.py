@@ -5,8 +5,7 @@ import matplotlib.pyplot as plt
 from dataclasses import dataclass, field
 from typing import List
 ## For some Matplotlib installations to work, you might need the below...
-#import PyQt6.QtCore
-#os.environ["QT_API"] = "pyqt5"
+import PyQt6.QtCore
 
 ## 
 # This class collects configuration options to run quandary. The default values are set to optimize for the swap02 gate. Fields in this configuration file are set through the constructor
@@ -521,14 +520,29 @@ def eigen_and_reorder(H0, verbose=False):
     evals = evals[reord]
     evects = evects[:,reord]
 
-    # Find the permutation that reorder the eigenvectors such that they are closer to the identity (max. val per column should be in the diagonal positions)
-    maxrow = np.zeros(Ntot, dtype=np.int32)
-    for j in range(Ntot):
-        # index of the maximum value in each eigenvector
-        maxrow[j] = np.argmax(np.abs(evects[:,j])) 
-    s_perm = np.argsort(maxrow)   
-    evects = evects[:,s_perm]
-    evals = evals[s_perm]
+    # Find the column index corresponding to the largest element in each row of evects 
+    max_col = np.zeros(Ntot, dtype=np.int32)
+    for row in range(Ntot):
+        max_col[row] = np.argmax(np.abs(evects[row,:]))
+
+    # test the error detection
+    # max_col[1] = max_col[0]
+
+    # loop over all columns and check max_col for duplicates
+    Ndup_col = 0 
+    for row in range(Ntot-1): 
+        for k in range(row+1, Ntot):
+            if max_col[row] == max_col[k]:
+                Ndup_col += 1
+                print("Error: detected identical max_col =", max_col[row], "for rows", row, "and", k)
+
+
+    if Ndup_col > 0:
+        print("Found", Ndup_col, "duplicate column indices in max_col array")
+        raise ValueError('Permutation of eigen-vector matrix failed')
+
+    evects = evects[:,max_col]
+    evals = evals[max_col]
     
     # Make sure all diagonal elements are positive
     for j in range(Ntot):
