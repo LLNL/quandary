@@ -43,14 +43,14 @@ unitary[2,2] = 0.0
 
 
 # Quandary run options
-runtype = "optimization" # "simulation" # "simulation", or "gradient", or "optimization"
-quandary_exec="/Users/guenther5/Numerics/quandary/main"
-# quandary_exec="/Users/petersson1/src/quandary/main"
+runtype = "simulation" # "optimization" #  # "simulation", or "gradient", or "optimization"
+# quandary_exec="/Users/guenther5/Numerics/quandary/main"
+quandary_exec="/Users/petersson1/src/quandary/main"
 # quandary_exec="/cygdrive/c/Users/scada-125/quandary/main.exe"
 ncores = 4  # Number of cores 
 # ncores = 1
 datadir = "./SWAP12_guard_run_dir"  # Compute and output directory 
-verbose = False
+verbose = True
 
 # Prepare Quandary
 myconfig = QuandaryConfig(Ne=Ne, Ng=Ng, freq01=freq01, selfkerr=selfkerr, Jkl=Jkl, rotfreq=rotfreq, T=T, maxctrl_MHz=maxctrl_MHz, initctrl_MHz=initctrl_MHz, targetgate=unitary, verbose=verbose, dtau=dtau, Pmin=Pmin)
