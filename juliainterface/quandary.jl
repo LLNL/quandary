@@ -646,7 +646,7 @@ function quandary_run(config::QuandaryConfig;runtype="optimization",ncores=-1,da
     end
 
     # Get results from Quandary output files
-    densitymatrix_form = (len(config.T1) > 0 or len(config.T2) > 0) ? true : false
+    densitymatrix_form = (length(config.T1) > 0 || length(config.T2) > 0) ? true : false
     timelist, pt, qt, expectedEnergy, popt, infidelity, optim_hist = get_results(Ne=config.Ne, datadir=datadir, densitymatrix_form=densitymatrix_form)
 
     # Store some results in the config file
@@ -754,7 +754,7 @@ function get_results(; Ne=[], datadir="./", densitymatrix_form=false)
     expectedEnergy = Vector{Vector{Any}}(undef, length(Ne))
     for iosc in 1:length(Ne)
         expectedEnergy[iosc] = Vector{Vector{Float64}}()
-        ninit = densitymatrix_form ? np.prod(Ne)^2 : np.prod(Ne)
+        ninit = densitymatrix_form ? prod(Ne)^2 : prod(Ne)
         for iinit in 1:ninit
             filename = string(dataout_dir, "expected", iosc-1, ".iinit", lpad(iinit-1, 4, '0'), ".dat")
             try
