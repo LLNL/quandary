@@ -39,6 +39,7 @@ mutable struct QuandaryConfig
     optim_target::String  # Optional: Set optimization targets, if not specified through the targetgate
     initialcondition::String        # Initial states at time t=0.0: "basis", "diagonal", "pure, 0,0,1,...", "file, /path/to/file"
     gamma_tik0::Float64             # Parameter for Tikhonov regularization term
+    gamma_leakage::Float64          # Parameter to prevent leakage to guard levels
     gamma_energy::Float64           # Parameter for integral penalty term on the control pulse energy
     gamma_dpdm::Float64             # Parameter for integral penalty term on the second state derivative
     tol_infidelity::Float64         # Optimization stopping criterion based on the infidelity
@@ -89,6 +90,7 @@ mutable struct QuandaryConfig
             optim_target::String="gate",        # Default: Gate optimization. Requires 'targetgate' to be set!
             initialcondition::String="basis",   # Default takes all basis states as initial conditions
             gamma_tik0::Float64=1e-4,           # Default Tikhonov regularization
+            gamma_leakage::Float64=1e-2,        # Default leakage penalty
             gamma_energy::Float64=0.01,         # Default Energy Penalty 
             gamma_dpdm::Float64=0.01,           # Default Penalty for second derivative of state evolution
             tol_infidelity::Float64=1e-3,       # Default optimization stopping criterion based on the infidelity
@@ -153,7 +155,7 @@ mutable struct QuandaryConfig
             println("\n")
         end
 
-        new(Ne, Ng, freq01, selfkerr, rotfreq, Jkl, crosskerr, T1, T2, T, Pmin, nsteps, timestepper, standardmodel, Hsys, Hc_re, Hc_im, maxctrl_MHz, control_enforce_BC, dtau, nsplines, pcof0, pcof0_filename, randomize_init_ctrl, initctrl_MHz, carrier_frequency, cw_amp_thres, cw_prox_thres, costfunction, targetgate, optim_target, initialcondition, gamma_tik0, gamma_energy, gamma_dpdm, tol_infidelity, tol_costfunc, maxiter, print_frequency_iter, usematfree, verbose, rand_seed, _hamiltonian_filename, _gatefilename, popt, time, optim_hist)
+        new(Ne, Ng, freq01, selfkerr, rotfreq, Jkl, crosskerr, T1, T2, T, Pmin, nsteps, timestepper, standardmodel, Hsys, Hc_re, Hc_im, maxctrl_MHz, control_enforce_BC, dtau, nsplines, pcof0, pcof0_filename, randomize_init_ctrl, initctrl_MHz, carrier_frequency, cw_amp_thres, cw_prox_thres, costfunction, targetgate, optim_target, initialcondition, gamma_tik0, gamma_leakage, gamma_energy, gamma_dpdm, tol_infidelity, tol_costfunc, maxiter, print_frequency_iter, usematfree, verbose, rand_seed, _hamiltonian_filename, _gatefilename, popt, time, optim_hist)
     end
 end
 
@@ -575,7 +577,7 @@ function dump_config(self;runtype="simulation",datadir="./run_dir")
     mystring *= "optim_inftol = " * string(self.tol_infidelity) * "\n"
     mystring *= "optim_maxiter = " * string(self.maxiter) * "\n"
     mystring *= "optim_regul = " * string(self.gamma_tik0) * "\n"
-    mystring *= "optim_penalty = 1.0\n"
+    mystring *= "optim_penalty = " * string(self.gamma_leakage) * "\n"
     mystring *= "optim_penalty_param = 0.0\n"
     mystring *= "optim_penalty_dpdm = " * string(self.gamma_dpdm) * "\n"
     mystring *= "optim_penalty_energy = " * string(self.gamma_energy) * "\n"
