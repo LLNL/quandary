@@ -646,7 +646,8 @@ function quandary_run(config::QuandaryConfig;runtype="optimization",ncores=-1,da
     end
 
     # Get results from Quandary output files
-    timelist, pt, qt, expectedEnergy, popt, infidelity, optim_hist = get_results(Ne=config.Ne, datadir=datadir)
+    densitymatrix_form = (len(config.T1) > 0 or len(config.T2) > 0) ? true : false
+    timelist, pt, qt, expectedEnergy, popt, infidelity, optim_hist = get_results(Ne=config.Ne, datadir=datadir, densitymatrix_form=densitymatrix_form)
 
     # Store some results in the config file
     config.optim_hist = deepcopy(optim_hist)
@@ -718,7 +719,7 @@ end
 
 
 # Helper function to gather results from Quandary's output directory
-function get_results(; Ne=[], datadir="./")
+function get_results(; Ne=[], datadir="./", densitymatrix_form=false)
     dataout_dir = string(datadir, "/")
 
     # Get control parameters
@@ -753,7 +754,8 @@ function get_results(; Ne=[], datadir="./")
     expectedEnergy = Vector{Vector{Any}}(undef, length(Ne))
     for iosc in 1:length(Ne)
         expectedEnergy[iosc] = Vector{Vector{Float64}}()
-        for iinit in 1:prod(Ne)
+        ninit = densitymatrix_form ? np.prod(Ne)^2 : np.prod(Ne)
+        for iinit in 1:ninit
             filename = string(dataout_dir, "expected", iosc-1, ".iinit", lpad(iinit-1, 4, '0'), ".dat")
             try
                 x = readdlm(filename)
@@ -837,7 +839,7 @@ function plot_expectedEnergy(Ne, timex, expectedEnergy, densitymatrix_form=false
         ylims!(0.0 - 1e-2, Ne[1] - 1.0 + 1e-2)
         xlims!(0.0, maximum(timex))
         
-        binary_ID = (length(Ne) == 1) ? iinit : parse(Int, string(iinit, base=2))
+        binary_ID = (length(Ne) == 1) ? iplot : parse(Int, string(iplot, base=2))
         title!("init |$binary_ID>")
         plot_i = plot!(legend=:topright)
 

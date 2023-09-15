@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from dataclasses import dataclass, field
 from typing import List
 ## For some Matplotlib installations to work, you might need the below...
-import PyQt6.QtCore
+# import PyQt6.QtCore
 
 ## 
 # This class collects configuration options to run quandary. The default values are set to optimize for the swap02 gate. Fields in this configuration file are set through the constructor
@@ -328,7 +328,8 @@ def quandary_run(config: QuandaryConfig, *, runtype="optimization", ncores=-1, d
         print("Quandary data dir: ", datadir, "\n")
 
     # Get results from quandary output files
-    time, pt, qt, expectedEnergy, popt, infidelity, optim_hist= get_results(Ne=config.Ne, datadir=datadir)
+    densitymatrix_form = True if (len(config.T1) > 0 or len(config.T2) > 0) else False
+    time, pt, qt, expectedEnergy, popt, infidelity, optim_hist= get_results(Ne=config.Ne, datadir=datadir, densitymatrix_form=densitymatrix_form)
 
     # Store some results in the config file
     config.optim_hist = optim_hist[:]
@@ -399,7 +400,7 @@ def execute(*, runtype="simulation", ncores=1, config_filename="config.cfg", dat
 ##
 # Helper function to gather results from Quandaries output directory
 ##
-def get_results(*, Ne=[], datadir="./"):
+def get_results(*, Ne=[], datadir="./", densitymatrix_form=False):
     dataout_dir = datadir + "/"
     
     # Get control parameters
@@ -425,7 +426,8 @@ def get_results(*, Ne=[], datadir="./"):
     # Get the time-evolution of the expected energy for each qubit, for each initial condition
     expectedEnergy = [[] for _ in range(len(Ne))]
     for iosc in range(len(Ne)):
-        for iinit in range(np.prod(Ne)):
+        ninit = np.prod(Ne) if not densitymatrix_form else np.prod(Ne)**2
+        for iinit in range(ninit):
             try:
                 x = np.loadtxt(dataout_dir + "./expected"+str(iosc)+".iinit"+str(iinit).zfill(4)+".dat")
                 expectedEnergy[iosc].append(x[:,1])    # first column is time, second column is expected energy
@@ -779,7 +781,7 @@ def plot_expectedEnergy(Ne, time, expectedEnergy, densitymatrix_form=False):
         plt.ylabel('expected energy')
         plt.ylim([0.0-1e-2, Ne[0]-1.0 + 1e-2])
         plt.xlim([0.0, time[-1]])
-        binary_ID = iinit if len(Ne) == 1 else bin(iinit).replace("0b", "").zfill(len(Ne))
+        binary_ID = iplot if len(Ne) == 1 else bin(iplot).replace("0b", "").zfill(len(Ne))
         plt.title("init |"+str(binary_ID)+">")
         plt.legend(loc='lower right')
     plt.subplots_adjust(hspace=0.5)
