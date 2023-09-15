@@ -56,56 +56,56 @@ mutable struct QuandaryConfig
 
     # Define a constructor for QuandaryConfig with default values
     function QuandaryConfig(; 
-            Ne::Vector{Int}=[3], 
-            Ng::Vector{Int}=[0], 
-            freq01::Vector{Float64}=[4.10595], 
-            selfkerr::Vector{Float64}=[0.2198], 
-            rotfreq::Vector{Float64}=Vector{Float64}(), 
-            Jkl::Vector{Float64}=Vector{Float64}(), 
-            crosskerr::Vector{Float64}=Vector{Float64}(), 
-            T1::Vector{Float64}=Vector{Float64}(), 
-            T2::Vector{Float64}=Vector{Float64}(), 
-            T::Float64=100.0, 
-            Pmin::Int=40, 
-            nsteps::Int=-1, 
-            timestepper::String="IMR", 
-            standardmodel::Bool=true, 
-            Hsys ::Vector{Vector{Float64}}=Vector{Vector{Float64}}(), 
-            Hc_re::Vector{Vector{Float64}}=Vector{Vector{Float64}}(), 
-            Hc_im::Vector{Vector{Float64}}=Vector{Vector{Float64}}(), 
-            maxctrl_MHz::Vector{Float64}=Vector{Float64}(), 
-            control_enforce_BC::Bool=true, 
-            dtau::Float64=3.33, 
-            nsplines::Int=-1, 
-            pcof0::Vector{Float64}=Vector{Float64}(), 
-            pcof0_filename::String="", 
-            randomize_init_ctrl::Bool=true, 
-            initctrl_MHz::Vector{Float64}=Vector{Float64}(), 
-            carrier_frequency::Vector{Vector{Float64}}=Vector{Vector{Float64}}(), 
-            cw_amp_thres::Float64=1e-7, 
+            Ne::Vector{Int}=[3],    # Default one oscillator with 3 levels
+            Ng::Vector{Int}=[0],    # Default no guard levels
+            freq01::Vector{Float64}=[4.10595],  # Default one qudit with this transition frequency
+            selfkerr::Vector{Float64}=[0.2198], # Default selfkerr for this qubit
+            rotfreq::Vector{Float64}=Vector{Float64}(), # Default rotation frequency will be set to 'freq01' if not specified otherwise
+            Jkl::Vector{Float64}=Vector{Float64}(),       # Default no coupling
+            crosskerr::Vector{Float64}=Vector{Float64}(), # Default no coupling
+            T1::Vector{Float64}=Vector{Float64}(),        # Default no decay
+            T2::Vector{Float64}=Vector{Float64}(),        # Default no dephasing
+            T::Float64=100.0,                 # Default time domain
+            Pmin::Int=40,                     # Default #steps to resolve fastest period
+            nsteps::Int=-1,                   # Will be computed during initialization
+            timestepper::String="IMR",        # Default timestepper Implicit Midpoint Rule
+            standardmodel::Bool=true,         # Default: use standard Hamiltonian model, not user-defined Hamiltonian matrices
+            Hsys ::Vector{Vector{Float64}}=Vector{Vector{Float64}}(),
+            Hc_re::Vector{Vector{Float64}}=Vector{Vector{Float64}}(),
+            Hc_im::Vector{Vector{Float64}}=Vector{Vector{Float64}}(),
+            maxctrl_MHz::Vector{Float64}=Vector{Float64}(),   # Default no bounds
+            control_enforce_BC::Bool=true,             # Default control boundary condition: pulses start and end at zero
+            dtau::Float64=3.33,                        # Default Bspline spacing [ns]
+            nsplines::Int=-1,                          # Default will be computed from dtau
+            pcof0::Vector{Float64}=Vector{Float64}(),  # Default: start from scratch
+            pcof0_filename::String="",                 # Default: Start from stcratch
+            randomize_init_ctrl::Bool=true,            # Default: Randomize initial controls
+            initctrl_MHz::Vector{Float64}=Vector{Float64}(), # Default will be set to 9 MHz during initialization
+            carrier_frequency::Vector{Vector{Float64}}=Vector{Vector{Float64}}(),        # Will be computed during initialization
+            cw_amp_thres::Float64=1e-7,     
             cw_prox_thres::Float64=1e-2, 
-            costfunction::String="Jtrace", 
-            targetgate::Matrix{ComplexF64}=Matrix{ComplexF64}(), 
-            optim_target::String="gate", 
-            initialcondition::String="basis", 
-            gamma_tik0::Float64=1e-4, 
-            gamma_energy::Float64=0.01, 
-            gamma_dpdm::Float64=0.01, 
-            tol_infidelity::Float64=1e-3, 
-            tol_costfunc::Float64=1e-3, 
-            maxiter::Int=300, 
-            print_frequency_iter::Int=1, 
-            usematfree::Bool=true, 
-            verbose::Bool=false, 
-            rand_seed::Int=1234, 
-            _hamiltonian_filename::String="", 
-            _gatefilename::String="", 
-            popt::Vector{Float64}=Vector{Float64}(), 
-            time::Vector{Float64}=Vector{Float64}(), 
-            optim_hist::Matrix{Float64}=Matrix{Float64}(undef, 1, 10)
+            costfunction::String="Jtrace", # Default cost function is the infidelity
+            targetgate::Matrix{ComplexF64}=Matrix{ComplexF64}(), # Default no target gate
+            optim_target::String="gate",        # Default: Gate optimization. Requires 'targetgate' to be set!
+            initialcondition::String="basis",   # Default takes all basis states as initial conditions
+            gamma_tik0::Float64=1e-4,           # Default Tikhonov regularization
+            gamma_energy::Float64=0.01,         # Default Energy Penalty 
+            gamma_dpdm::Float64=0.01,           # Default Penalty for second derivative of state evolution
+            tol_infidelity::Float64=1e-3,       # Default optimization stopping criterion based on the infidelity
+            tol_costfunc::Float64=1e-3,         # Default optimization stopping criterion based on the overall objective function  
+            maxiter::Int=300,               # Default: maximum of 300 optim iters
+            print_frequency_iter::Int=1,    # Default: print every iteration
+            usematfree::Bool=true,          # Default: Use matrix-free solver
+            verbose::Bool=false,            # Default: Don't print debug info
+            rand_seed::Int=1234,            # Default seed for randomizing controls
+            _hamiltonian_filename::String="", # Internal, do not change
+            _gatefilename::String="",         # Internal, do not change
+            popt::Vector{Float64}=Vector{Float64}(), # Output, access after optim
+            time::Vector{Float64}=Vector{Float64}(), # Output, access after optim
+            optim_hist::Matrix{Float64}=Matrix{Float64}(undef, 1, 10) # Output, access after optim
             )
 
-        # Set default values if some parameters are not provided by the user
+        # Set other default values if some parameters are not provided by the user
         if length(freq01) != length(Ne)
             Ne = [2 for _ in freq01]  # Set default two-level system if Ne is not specified by the user
         end
@@ -116,17 +116,12 @@ mutable struct QuandaryConfig
             selfkerr = zeros(Float64, length(Ne))  # Set zero selfkerr if not specified by the user
         end
         rotfreq = isempty(rotfreq) ? freq01 : rotfreq  # Set default rotational frequency (default=freq01), unless specified by the user
-
-        # Set default number of splines for control parameterization, unless specified by the user
         if nsplines < 0
-            nsplines = max(ceil(Int, T / dtau + 2), 5)
-        end
-
-        # Set default amplitude of initial control parameters [MHz] (default = 9 MHz)
+            nsplines = max(ceil(Int, T / dtau + 2), 5) # Set default number of splines for control parameterization, unless specified by the user
+        end 
         if isempty(initctrl_MHz)
-            initctrl_MHz = [9.0 for _ in Ne]
+            initctrl_MHz = [9.0 for _ in Ne] # Set default amplitude of initial control parameters [MHz] (default = 9 MHz)
         end
-
 
         # Set default Hamiltonian operators, unless specified by the user
         if !isempty(Hsys) && !standardmodel
@@ -172,14 +167,14 @@ function estimate_timesteps(; T=1.0, Hsys=[], Hc_re=[], Hc_im=[], maxctrl_MHz=[]
     # Set up Hsys + maxctrl*Hcontrol
     K1 = copy(Hsys)
 
-    for i in 1:length(Hc_re)
+    for i in 1:size(Hc_re,1)
         est_radns = est_ctrl_MHz[i] * 2.0 * π / 1.0e3
         if !isempty(Hc_re[i])
             K1 += est_radns * Hc_re[i]
         end
     end
 
-    for i in 1:length(Hc_im)
+    for i in 1:size(Hc_im,1)
         est_radns = est_ctrl_MHz[i] * 2.0 * π / 1.0e3
         if !isempty(Hc_im[i])
             K1 = K1 + 1.0im * est_radns * Hc_im[i]  # Note: Julia uses `im` for the imaginary unit
@@ -646,8 +641,8 @@ function quandary_run(config::QuandaryConfig;runtype="optimization",ncores=-1,da
     end
 
     # Get results from Quandary output files
-    densitymatrix_form = (length(config.T1) > 0 || length(config.T2) > 0) ? true : false
-    timelist, pt, qt, expectedEnergy, popt, infidelity, optim_hist = get_results(Ne=config.Ne, datadir=datadir, densitymatrix_form=densitymatrix_form)
+    lindblad_solver = (length(config.T1) > 0 || length(config.T2) > 0) ? true : false
+    timelist, pt, qt, expectedEnergy, popt, infidelity, optim_hist = get_results(Ne=config.Ne, datadir=datadir, lindblad_solver=lindblad_solver)
 
     # Store some results in the config file
     config.optim_hist = deepcopy(optim_hist)
@@ -719,7 +714,7 @@ end
 
 
 # Helper function to gather results from Quandary's output directory
-function get_results(; Ne=[], datadir="./", densitymatrix_form=false)
+function get_results(; Ne=[], datadir="./", lindblad_solver=false)
     dataout_dir = string(datadir, "/")
 
     # Get control parameters
@@ -728,7 +723,7 @@ function get_results(; Ne=[], datadir="./", densitymatrix_form=false)
         pcof = readdlm(string(dataout_dir, "/params.dat"), Float64)
         pcof = pcof[:]
     catch
-        println("Can't read results from ", dataout_dir, "/params.dat")
+        println("Can't read control coefficients from ", dataout_dir, "/params.dat")
     end
 
     # Get optimization history information
@@ -738,7 +733,7 @@ function get_results(; Ne=[], datadir="./", densitymatrix_form=false)
         optim_hist = readdlm(string(dataout_dir, "/optim_history.dat"))
         optim_hist = optim_hist[2:end,1:10]
     catch
-        println("Can't read ", string(dataout_dir, "/optim_history.dat"))
+        println("Can't read optimization history from ", string(dataout_dir, "/optim_history.dat"))
     end
 
     if ndims(optim_hist) == 2
@@ -754,7 +749,7 @@ function get_results(; Ne=[], datadir="./", densitymatrix_form=false)
     expectedEnergy = Vector{Vector{Any}}(undef, length(Ne))
     for iosc in 1:length(Ne)
         expectedEnergy[iosc] = Vector{Vector{Float64}}()
-        ninit = densitymatrix_form ? prod(Ne)^2 : prod(Ne)
+        ninit = lindblad_solver ? prod(Ne)^2 : prod(Ne)
         for iinit in 1:ninit
             filename = string(dataout_dir, "expected", iosc-1, ".iinit", lpad(iinit-1, 4, '0'), ".dat")
             try
@@ -814,7 +809,7 @@ end
 ##
 # Plot evolution of expected energy levels
 ##
-function plot_expectedEnergy(Ne, timex, expectedEnergy, densitymatrix_form=false)
+function plot_expectedEnergy(Ne, timex, expectedEnergy; lindblad_solver=false)
     nplots = prod(Ne)
     ncols = (nplots >= 4) ? 2 : 1     # 2 rows if more than 3 plots
     nrows = Int(ceil(nplots / ncols))
@@ -825,7 +820,7 @@ function plot_expectedEnergy(Ne, timex, expectedEnergy, densitymatrix_form=false
     
     pl = []
     for iplot in 1:nplots
-        iinit = !densitymatrix_form ? iplot : iplot * prod(Ne) + iplot
+        iinit = !lindblad_solver ? iplot : iplot * prod(Ne) + iplot
         # subplot!(iplot)
         
         plot_i = plot()

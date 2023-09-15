@@ -328,8 +328,8 @@ def quandary_run(config: QuandaryConfig, *, runtype="optimization", ncores=-1, d
         print("Quandary data dir: ", datadir, "\n")
 
     # Get results from quandary output files
-    densitymatrix_form = True if (len(config.T1) > 0 or len(config.T2) > 0) else False
-    time, pt, qt, expectedEnergy, popt, infidelity, optim_hist= get_results(Ne=config.Ne, datadir=datadir, densitymatrix_form=densitymatrix_form)
+    lindblad_solver = True if (len(config.T1) > 0 or len(config.T2) > 0) else False
+    time, pt, qt, expectedEnergy, popt, infidelity, optim_hist= get_results(Ne=config.Ne, datadir=datadir, lindblad_solver=lindblad_solver)
 
     # Store some results in the config file
     config.optim_hist = optim_hist[:]
@@ -400,19 +400,23 @@ def execute(*, runtype="simulation", ncores=1, config_filename="config.cfg", dat
 ##
 # Helper function to gather results from Quandaries output directory
 ##
-def get_results(*, Ne=[], datadir="./", densitymatrix_form=False):
+def get_results(*, Ne=[], datadir="./", lindblad_solver=False):
     dataout_dir = datadir + "/"
     
     # Get control parameters
+    filename = dataout_dir + "/params.dat"
     try:
-        pcof = np.loadtxt(dataout_dir + "/params.dat").astype(float)
+        pcof = np.loadtxt(filename).astype(float)
     except:
+        print("Can't read control coefficients from $filename !\n")
         pcof=[]
 
     # Get optimization history information
+    filename = dataout_dir + "/optim_history.dat"
     try:
-        optim_hist = np.loadtxt(dataout_dir + "/optim_history.dat")
+        optim_hist = np.loadtxt(filename)
     except:
+        print("Can't read optimization history from $filename")
         optim_hist = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 
     if optim_hist.ndim == 2:
@@ -426,13 +430,14 @@ def get_results(*, Ne=[], datadir="./", densitymatrix_form=False):
     # Get the time-evolution of the expected energy for each qubit, for each initial condition
     expectedEnergy = [[] for _ in range(len(Ne))]
     for iosc in range(len(Ne)):
-        ninit = np.prod(Ne) if not densitymatrix_form else np.prod(Ne)**2
+        ninit = np.prod(Ne) if not lindblad_solver else np.prod(Ne)**2
         for iinit in range(ninit):
+            filename = dataout_dir + "./expected"+str(iosc)+".iinit"+str(iinit).zfill(4)+".dat"
             try:
-                x = np.loadtxt(dataout_dir + "./expected"+str(iosc)+".iinit"+str(iinit).zfill(4)+".dat")
+                x = np.loadtxt(filename)
                 expectedEnergy[iosc].append(x[:,1])    # first column is time, second column is expected energy
             except:
-                continue
+                print("Can't read expected energy from $filename !")
 
     # Get the control pulses for each qubit
     pt = []
@@ -440,9 +445,11 @@ def get_results(*, Ne=[], datadir="./", densitymatrix_form=False):
     ft = []
     for iosc in range(len(Ne)):
         # Read the control pulse file
+        filename = dataout_dir + "./control"+str(iosc)+".dat"
         try:
-            x = np.loadtxt(dataout_dir + "./control"+str(iosc)+".dat")
+            x = np.loadtxt(filename)
         except:
+            print("Can't read control pulses from $filename !")
             x = np.zeros((1,4))
         # Extract the pulses 
         time = x[:,0]   # Time domain
@@ -763,7 +770,7 @@ def plot_pulse(Ne, time, pt, qt):
 ##
 # Plot evolution of expected energy levels
 ##
-def plot_expectedEnergy(Ne, time, expectedEnergy, densitymatrix_form=False):
+def plot_expectedEnergy(Ne, time, expectedEnergy, *, lindblad_solver=False):
     nplots = np.prod(Ne)
     ncols = 2 if nplots >= 4 else 1     # 2 rows if more than 3 plots
     nrows = int(np.ceil(np.prod(Ne)/ncols))
@@ -771,7 +778,7 @@ def plot_expectedEnergy(Ne, time, expectedEnergy, densitymatrix_form=False):
     figsizey = 4.8*nrows*0.75 
     fig = plt.figure(figsize=(figsizex,figsizey))
     for iplot in range(nplots):
-        iinit = iplot if not densitymatrix_form else iplot*np.prod(Ne) + iplot
+        iinit = iplot if not lindblad_solver else iplot*np.prod(Ne) + iplot
         plt.subplot(nrows, ncols, iplot+1)
         plt.figsize=(15, 15)
         for iosc in range(len(Ne)):

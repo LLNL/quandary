@@ -20,17 +20,14 @@ maxctrl_MHz = [10.0]
 # Set up a target gate (in essential level dimensions)
 unitary = Matrix{ComplexF64}([0.0 0.0 1.0; 0.0 1.0 0.0; 1.0 0.0 0.0])  # Swaps first and last level
 
-# # Set the location of the quandary executable (absolute path!)
-quandary_exec = "/Users/guenther5/Numerics/quandary/main"
-# # quandary_exec = "/cygdrive/c/Users/scada-125/quandary/main.exe"
-
-# Print out stuff
+# Flag for debugging: prints out more information during initialization and quandary execution if set to 'true'
 verbose = false
 
-# Prepare Quandary configuration.
-# The dataclass 'QuandaryConfig' gathers all default settings. You can change the defaults by passing them to the constructor.
+# Prepare Quandary configuration. The 'QuandaryConfig' dataclass gathers all configuration options and sets defaults for those member variables that are not passed through the constructor here. It is advised to compare what other defaults are set in the QuandaryConfig constructor (beginning of quandary.jl)
 myconfig = QuandaryConfig(Ne=Ne, freq01=freq01, selfkerr=selfkerr, rotfreq=rotfreq, maxctrl_MHz=maxctrl_MHz, targetgate=unitary, T=T, verbose=verbose)
 
+# Set the location of the quandary executable (absolute path!)
+quandary_exec = "/Users/guenther5/Numerics/quandary/main"
 
 # Execute quandary. Default number of executing cores is the essential Hilbert space dimension.
 pt, qt, expectedEnergy, infidelity = quandary_run(myconfig, quandary_exec=quandary_exec, datadir="./SWAP02_run_dir_julia")

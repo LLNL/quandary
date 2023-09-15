@@ -12,9 +12,9 @@ Jkl = [0.005]  # Jaynes-Cumming coupling of qubit 0<->1
 favg = sum(freq01)/len(freq01)
 rotfreq = favg*np.ones(len(freq01))
 
-# If Lindblad solver: Specify decay (T1) and dephasing (T2) [ns]. Make sure to also pass those to the QuandaryConfig constructor if you uncomment this.
-# T1 = [] # [100.0, 110.0]
-# T2 = [] # [80.0, 90.0]
+# # If Lindblad solver: Specify decay (T1) and dephasing (T2) [ns]. Make sure to also pass those to the QuandaryConfig constructor if you uncomment this.
+# T1 = [100000.0, 110000.0]
+# T2 = [80000.0, 90000.0]
 
 # Set the time duration (ns)
 T = 200.0
@@ -34,28 +34,26 @@ unitary[2,3] = 1.0
 unitary[3,2] = 1.0
 # print("Target gate: ", unitary)
 
-# Quandary run options
-runtype = "optimization" # "simulation", or "gradient", or "optimization"
-quandary_exec="/Users/guenther5/Numerics/quandary/main"
-# quandary_exec="/cygdrive/c/Users/scada-125/quandary/main.exe"
-ncores = 4  # Number of cores 
-datadir = "./CNOT_run_dir"  # Compute and output directory 
+# Flag for printing out more information
 verbose = False
 
-# Prepare Quandary configuration
-myconfig = QuandaryConfig(freq01=freq01, Jkl=Jkl, rotfreq=rotfreq, T=T, initctrl_MHz=initctrl_MHz, randomize_init_ctrl=randomize_init_ctrl, maxctrl_MHz=maxctrl_MHz, targetgate=unitary, verbose=verbose)
+# Set up the Quandary configuration for this test case
+myconfig = QuandaryConfig(freq01=freq01, Jkl=Jkl, rotfreq=rotfreq, T=T, initctrl_MHz=initctrl_MHz, randomize_init_ctrl=randomize_init_ctrl, maxctrl_MHz=maxctrl_MHz, targetgate=unitary, verbose=verbose) # potentially add T1=T1, T2=T2 for Lindblad solver with decay and decoherence
 
-# Potentially load initial control coefficient from a file
-# myconfig.pcof0_filename = os.getcwd() + "/"+datadir+"/params.dat"
+# Set some run options for Quandary
+runtype = "optimization"    # "simulation", or "gradient", or "optimization"
+quandary_exec="/Users/guenther5/Numerics/quandary/main" # Absolute path to Quandary's executable
+ncores = 4  		    # Number of cores. Up to 8 for Lindblad solver, up to 4 for Schroedinger solver
+datadir = "./CNOT_run_dir"  # Compute and output directory 
+
+# Potentially, load initial control parameters from a file. 
+# myconfig.pcof0_filename = os.getcwd() + "/"+datadir+"/params.dat"  # absolute path!
 
 # Execute quandary
-pt, qt, expectedEnergy, infidelity = quandary_run(myconfig, quandary_exec=quandary_exec, ncores=ncores, datadir=datadir, runtype="optimization")
-
-
+pt, qt, expectedEnergy, infidelity = quandary_run(myconfig, quandary_exec=quandary_exec, ncores=ncores, datadir=datadir, runtype=runtype)
 print(f"Fidelity = {1.0 - infidelity}")
 
 # Plot the control pulse and expected energy level evolution
 if True:
 	plot_pulse(myconfig.Ne, myconfig.time, pt, qt)
-	plot_expectedEnergy(myconfig.Ne, myconfig.time, expectedEnergy)
-
+	plot_expectedEnergy(myconfig.Ne, myconfig.time, expectedEnergy) # if T1 or T2 decoherence (Lindblad solver), also pass the argument 'lindblad_solver=True' to this function.
