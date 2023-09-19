@@ -119,8 +119,11 @@ class QuandaryConfig:
             self.nsplines = int(np.max([np.ceil(self.T/self.dtau + 2), 5]))
             
         # Set default amplitude of initial control parameters [MHz] (default = 9 MHz)
+        if isinstance(self.initctrl_MHz, float) or isinstance(self.initctrl_MHz, int):
+            max_alloscillators = self.initctrl_MHz
+            self.initctrl_MHz = [max_alloscillators for _ in range(len(self.Ne))]
         if len(self.initctrl_MHz) == 0:
-            self.initctrl_MHz = [9.0 for _ in range(len(self.Ne))]
+            self.initctrl_MHz = [2.0 for _ in range(len(self.Ne))]
 
         # Set default Hamiltonian operators, unless specified by user
         if len(self.Hsys) > 0 and not self.standardmodel: # User-provided Hamiltonian operators 
@@ -486,7 +489,7 @@ def evalControls(config, *, pcof, samplerate, quandary_exec="/absolute/path/to/q
     # Copy original setting and overwrite
     nsteps_org = config.nsteps
     pcof0_org = config.pcof0[:]
-    config.nsteps = int(np.ceil(config.T / samplerate))
+    config.nsteps = int(np.ceil(config.T * samplerate))
     config.pcof0 = pcof[:]
 
     # Execute quandary in 'evalcontrols' mode
