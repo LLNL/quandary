@@ -130,6 +130,11 @@ class QuandaryConfig:
             self.Hsys, self.Hc_re, self.Hc_im = hamiltonians(N=Ntot, freq01=self.freq01, selfkerr=self.selfkerr, crosskerr=self.crosskerr, Jkl=self.Jkl, rotfreq=self.rotfreq, verbose=self.verbose)
             self.standardmodel=True
 
+        # Convert maxctrl_MHz to a list for each oscillator, if not so already
+        if isinstance(self.maxctrl_MHz, float) or isinstance(self.maxctrl_MHz, int):
+            max_alloscillators = self.maxctrl_MHz
+            self.maxctrl_MHz = [max_alloscillators for _ in range(len(self.Ne))]
+
         # Estimate number of time steps
         self.nsteps = estimate_timesteps(T=self.T, Hsys=self.Hsys, Hc_re=self.Hc_re, Hc_im=self.Hc_im, maxctrl_MHz=self.maxctrl_MHz, Pmin=self.Pmin)
         if self.verbose:
