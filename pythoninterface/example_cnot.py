@@ -50,11 +50,11 @@ datadir = "./CNOT_run_dir"  # Compute and output directory
 # myconfig.pcof0_filename = os.getcwd() + "/"+datadir+"/params.dat"  # absolute path!
 
 # Execute quandary
-pt, qt, infidelity, expectedEnergy, population = quandary_run(myconfig, quandary_exec=quandary_exec, ncores=ncores, datadir=datadir, runtype=runtype)
+t, pt, qt, infidelity, expectedEnergy, population = quandary_run(myconfig, quandary_exec=quandary_exec, ncores=ncores, datadir=datadir, runtype=runtype)
 print(f"Fidelity = {1.0 - infidelity}")
 
 # Plot the control pulse and expected energy level evolution
 if True:
-	plot_pulse(myconfig.Ne, myconfig.time, pt, qt)
-	plot_expectedEnergy(myconfig.Ne, myconfig.time, expectedEnergy) # if T1 or T2 decoherence (Lindblad solver), also pass the argument 'lindblad_solver=True' to this function.
+	plot_pulse(myconfig.Ne, t, pt, qt)
+	plot_expectedEnergy(myconfig.Ne, t, expectedEnergy) # if T1 or T2 decoherence (Lindblad solver), also pass the argument 'lindblad_solver=True' to this function.
 	# plot_population(myconfig.Ne, myconfig.time, population)

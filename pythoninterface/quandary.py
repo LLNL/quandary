@@ -345,7 +345,7 @@ def quandary_run(config: QuandaryConfig, *, runtype="optimization", ncores=-1, d
     config.popt = popt[:]
     config.time = time[:]
 
-    return pt, qt, infidelity, expectedEnergy, population
+    return config.time, pt, qt, infidelity, expectedEnergy, population
 
 
 ##

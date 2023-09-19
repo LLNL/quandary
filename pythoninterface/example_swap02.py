@@ -34,14 +34,16 @@ quandary_exec="/Users/guenther5/Numerics/quandary/main"
 # myconfig.pcof0_filename = os.getcwd() + "/SWAP02_params.dat" # Use absolute path!
 
 # # Execute quandary. Default number of executing cores is the essential Hilbert space dimension.
-pt, qt, infidelity, expectedEnergy, population = quandary_run(myconfig, quandary_exec=quandary_exec, datadir="./SWAP02_run_dir")
+t, pt, qt, infidelity, expectedEnergy, population = quandary_run(myconfig, quandary_exec=quandary_exec, datadir="./SWAP02_run_dir")
 print(f"\nFidelity = {1.0 - infidelity}")
 
 # Plot the control pulse and expected energy level evolution
 if True:
-    plot_pulse(myconfig.Ne, myconfig.time, pt, qt)
-    plot_expectedEnergy(myconfig.Ne, myconfig.time, expectedEnergy)
-    plot_population(myconfig.Ne, myconfig.time, population)
+    plot_pulse(myconfig.Ne, t, pt, qt)
+    plot_expectedEnergy(myconfig.Ne, t, expectedEnergy)
+    plot_population(myconfig.Ne, t, population)
+
+plot_results(myconfig, pt[0], qt[0], expectedEnergy[0], population[0])
 
 # Other optimization results can be accessed from the myconfig, in particular:
 #   myconfig.popt         :  Optimized control parameters
@@ -53,9 +55,9 @@ if True:
 # E.g. if you want to change the pulse length, do this:
 #    myconfig.T = 200.0
 #    myconfig.update()
-# pt, qt, infidelity, expectedEnergy, population = quandary_run(myconfig, quandary_exec=quandary_exec)
+# t, pt, qt, infidelity, expectedEnergy, population = quandary_run(myconfig, quandary_exec=quandary_exec)
 
 # If you want to run Quandary using previously optimized control parameters, this will do it:
 #    myconfig.pcof0= myconfig.popt
-#    pt, qt, infidelity, expectedEnergy, population = quandary_run(myconfig, quandary_exec=quandary_exec, runtype="simulation")     # Note the runtype.
+#    t, pt, qt, infidelity, expectedEnergy, population = quandary_run(myconfig, quandary_exec=quandary_exec, runtype="simulation")     # Note the runtype.
 # [myconfig.update() is not needed in this case]
