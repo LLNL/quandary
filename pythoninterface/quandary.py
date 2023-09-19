@@ -335,14 +335,14 @@ def quandary_run(config: QuandaryConfig, *, runtype="optimization", ncores=-1, d
 
     # Get results from quandary output files
     lindblad_solver = True if (len(config.T1) > 0 or len(config.T2) > 0) else False
-    time, pt, qt, expectedEnergy, popt, infidelity, optim_hist= get_results(Ne=config.Ne, datadir=datadir, lindblad_solver=lindblad_solver)
+    time, pt, qt, expectedEnergy, population, popt, infidelity, optim_hist= get_results(Ne=config.Ne, datadir=datadir, lindblad_solver=lindblad_solver)
 
     # Store some results in the config file
     config.optim_hist = optim_hist[:]
     config.popt = popt[:]
     config.time = time[:]
 
-    return pt, qt, expectedEnergy, infidelity
+    return pt, qt, infidelity, expectedEnergy, population
 
 
 ##
@@ -441,9 +441,21 @@ def get_results(*, Ne=[], datadir="./", lindblad_solver=False):
             filename = dataout_dir + "./expected"+str(iosc)+".iinit"+str(iinit).zfill(4)+".dat"
             try:
                 x = np.loadtxt(filename)
-                expectedEnergy[iosc].append(x[:,1])    # first column is time, second column is expected energy
+                expectedEnergy[iosc].append(x[:,1])    # 0th column is time, second column is expected energy
             except:
                 print("Can't read expected energy from $filename !")
+
+    # Get population for each qubit, for each initial condition
+    population = [[] for _ in range(len(Ne))]
+    for iosc in range(len(Ne)):
+        ninit = np.prod(Ne) if not lindblad_solver else np.prod(Ne)**2
+        for iinit in range(ninit):
+            filename = dataout_dir + "./population"+str(iosc)+".iinit"+str(iinit).zfill(4)+".dat"
+            try:
+                x = np.loadtxt(filename)
+                population[iosc].append(x[:,1:].transpose())    # first column is time
+            except:
+                print("Can't read population from $filename !")
 
     # Get the control pulses for each qubit
     pt = []
@@ -463,7 +475,7 @@ def get_results(*, Ne=[], datadir="./", lindblad_solver=False):
         qt.append([x[n,2]/(2*np.pi)*1e+3 for n in range(len(x[:,0]))])     # Rot frame q(t), MHz
         ft.append([x[n,3]/(2*np.pi)*1e+3 for n in range(len(x[:,0]))])     # Lab frame f(t)
 
-    return time, pt, qt, expectedEnergy, pcof, infid_last, optim_hist
+    return time, pt, qt, expectedEnergy, population, pcof, infid_last, optim_hist
 
 
 ##
@@ -777,7 +789,7 @@ def plot_pulse(Ne, time, pt, qt):
 # Plot evolution of expected energy levels
 ##
 def plot_expectedEnergy(Ne, time, expectedEnergy, *, lindblad_solver=False):
-    nplots = np.prod(Ne)
+    nplots = np.prod(Ne)                # one plot for initial state
     ncols = 2 if nplots >= 4 else 1     # 2 rows if more than 3 plots
     nrows = int(np.ceil(np.prod(Ne)/ncols))
     figsizex = 6.4*nrows*0.75 
@@ -788,14 +800,14 @@ def plot_expectedEnergy(Ne, time, expectedEnergy, *, lindblad_solver=False):
         plt.subplot(nrows, ncols, iplot+1)
         plt.figsize=(15, 15)
         for iosc in range(len(Ne)):
-            label = 'Qubit '+str(iosc) if len(Ne)>0 else ''
+            label = 'Qubit '+str(iosc) if len(Ne)>1 else ''
             plt.plot(time, expectedEnergy[iosc][iinit], label=label)
         plt.xlabel('time (ns)')
         plt.ylabel('expected energy')
         plt.ylim([0.0-1e-2, Ne[0]-1.0 + 1e-2])
         plt.xlim([0.0, time[-1]])
         binary_ID = iplot if len(Ne) == 1 else bin(iplot).replace("0b", "").zfill(len(Ne))
-        plt.title("init |"+str(binary_ID)+">")
+        plt.title("from |"+str(binary_ID)+">")
         plt.legend(loc='lower right')
     plt.subplots_adjust(hspace=0.5)
     plt.subplots_adjust(wspace=0.5)
@@ -805,3 +817,42 @@ def plot_expectedEnergy(Ne, time, expectedEnergy, *, lindblad_solver=False):
     plt.waitforbuttonpress(1); 
     input(); 
     plt.close(fig)
+
+
+##
+# Plot evolution of population
+##
+def plot_population(Ne, time, population, *, lindblad_solver=False):
+    nplots = np.prod(Ne)                # one plot for each initial state
+    ncols = 2 if nplots >= 4 else 1     # 2 rows if more than 3 plots
+    nrows = int(np.ceil(np.prod(Ne)/ncols))
+    figsizex = 6.4*nrows*0.75 
+    figsizey = 4.8*nrows*0.75 
+    fig = plt.figure(figsize=(figsizex,figsizey))
+
+    # Iterate over initial conditions (one plot for each)
+    for iplot in range(nplots):
+        iinit = iplot if not lindblad_solver else iplot*np.prod(Ne) + iplot
+        plt.subplot(nrows, ncols, iplot+1)
+        plt.figsize=(15, 15)
+        for iosc in range(len(Ne)):
+            for istate in range(Ne[iosc]):
+                label = 'Qubit '+str(iosc) if len(Ne)>1 else ''
+                label = label + " |"+str(istate)+">"
+                plt.plot(time, population[iosc][iinit][istate], label=label)
+        plt.xlabel('time (ns)')
+        plt.ylabel('population')
+        plt.ylim([0.0-1e-4, 1.0 + 1e-2])
+        plt.xlim([0.0, time[-1]])
+        binary_ID = iplot if len(Ne) == 1 else bin(iplot).replace("0b", "").zfill(len(Ne))
+        plt.title("from |"+str(binary_ID)+">")
+        plt.legend(loc='lower right')
+    plt.subplots_adjust(hspace=0.5)
+    plt.subplots_adjust(wspace=0.5)
+    plt.draw()
+    print("\nPlotting population dynamics")
+    print("-> Press <enter> to proceed.")
+    plt.waitforbuttonpress(1); 
+    input(); 
+    plt.close(fig)
+
