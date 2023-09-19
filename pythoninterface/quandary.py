@@ -497,7 +497,7 @@ def evalControls(config, *, pcof, samplerate, quandary_exec="/absolute/path/to/q
     os.makedirs(datadir, exist_ok=True)
     configfile_eval= config.dump(runtype=runtype, datadir=datadir)
     err = execute(runtype=runtype, ncores=1, config_filename=configfile_eval, datadir=datadir, quandary_exec=quandary_exec, verbose=False, cygwin=cygwin)
-    time, pt, qt, _, _, _, _= get_results(Ne=config.Ne, datadir=datadir)
+    time, pt, qt, _, _, _, _, _ = get_results(Ne=config.Ne, datadir=datadir)
     # Restore original setting
     config.nsteps = nsteps_org
     config.pcof0 = pcof0_org[:]
