@@ -859,3 +859,75 @@ def plot_population(Ne, time, population, *, lindblad_solver=False):
     input(); 
     plt.close(fig)
 
+
+def plot_results_1osc(myconfig, p, q, expectedEnergy, population):
+    assert(myconfig.Ne == [3])
+
+
+    fig, ax = plt.subplots(2, 3, figsize=(20,8))
+    fig.subplots_adjust(hspace=0.3)
+
+    t = myconfig.time
+
+    # Plot pulses
+    ax[0,0].plot(t, p, label='I') # y label: MHz
+    ax[0,0].plot(t, q, label='Q') # y label: MHz
+    ax[0,0].set_ylabel('Pulse amplitude (MHz)')
+    ax[0,0].set_xlabel('Time (ns)')
+    ax[0,0].legend()
+    ax[0,0].grid()
+
+
+    # Compute and plot FFT
+    zlist = np.array(p)*1e-3 + 1j*np.array(q)*1e-3
+    fft = np.fft.fft(zlist)
+    dt = myconfig.T / myconfig.nsteps
+    fftfr = np.fft.fftfreq(len(zlist), d=dt)
+
+    ax[0,1].scatter(fftfr*1e3, np.abs(fft)**2)
+    ax[0,1].set_ylabel('FFT')
+    ax[0,1].set_xlabel('Frequency (MHz)')
+    ax[0,1].grid()
+    ax[0,1].set_title('FFT')
+    ax[0,1].set_yscale('log')
+    ax[0,1].set_xlim(-500, 500)
+    ax[0,1].set_ylim(1e-8, 1e5)
+
+    # Plot Populations for each initial condition 
+    for iinit in range(myconfig.Ne[0]):  # for each of the 3 initial states
+        row = 1
+        col = iinit
+            
+        for istate in range(myconfig.Ne[0]): # for each essential level
+            label = "|"+str(istate)+">"
+            ax[row, col].plot(t, population[iinit][istate], label=label)
+            # ax[row, col+1].plot(np.arange(0, numgate), prob_me_gate[i].real, label=str(i))
+            
+        ax[row, col].set_xlabel('Time (ns)')
+        ax[row, col].set_ylabel('Population')
+        ax[row, col].legend()
+        ax[row, col].set_title('Populations from |%d>' % iinit)
+        ax[row, col].grid()
+        
+        # ax[row, col+1].set_xlabel('Gate repetition')
+        # ax[row, col+1].set_ylabel('Population')
+        # ax[row, col+1].legend()
+        # ax[row, col+1].set_title('ME solve, starting from %d' % state)
+
+    # Plot expected Energy
+    row, col = 0, 2
+    for iinit in range(myconfig.Ne[0]):
+        label = 'from |'+str(iinit)+'>' 
+        ax[row, col].plot(t, expectedEnergy[iinit], label=label)
+    ax[row, col].set_xlabel('Time (ns)')
+    ax[row, col].set_ylabel('Expected Energy Level')
+    ax[row, col].legend()
+    ax[row, col].set_title('Expected Energy Level')
+    ax[row, col].grid()
+
+    plt.draw()
+    print("\nPlotting results...")
+    print("-> Press <enter> to proceed.")
+    plt.waitforbuttonpress(1); 
+    input(); 
+    plt.close(fig)

@@ -43,7 +43,8 @@ if True:
     plot_expectedEnergy(myconfig.Ne, t, expectedEnergy)
     plot_population(myconfig.Ne, t, population)
 
-plot_results(myconfig, pt[0], qt[0], expectedEnergy[0], population[0])
+    # If one oscillator, you can also use the plot_results function to plot everything in one figure.
+    plot_results_1osc(myconfig, pt[0], qt[0], expectedEnergy[0], population[0])
 
 # Other optimization results can be accessed from the myconfig, in particular:
 #   myconfig.popt         :  Optimized control parameters
