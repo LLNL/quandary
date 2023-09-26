@@ -45,8 +45,8 @@ class QuandaryConfig:
 
     # Control parameterization options
     maxctrl_MHz         : List[float] = field(default_factory=list)   # Amplitude bounds for the control pulses [MHz]
-    control_enforce_BC  : bool        = True                          # Enforce that control pulses start and end at zero.
-    dtau                : float       = 3.33                          # Spacing [ns] of Bspline basis functions. (The number of Bspline basis functions will be T/dtau + 2)
+    control_enforce_BC  : bool        = False                         # Enforce that control pulses start and end at zero.
+    dtau                : float       = 10.0                          # Spacing [ns] of Bspline basis functions. (The number of Bspline basis functions will be T/dtau + 2)
     nsplines            : int         = -1                            # Number of Bspline basis functions, will be computed from T and dtau. 
     # Control pulse initialization options
     pcof0               : List[float] = field(default_factory=list)   # Optional: Pass an initial control parameter vector
@@ -65,7 +65,7 @@ class QuandaryConfig:
     initialcondition    : str               = "basis"                       # Initial states at time t=0.0: "basis", "diagonal", "pure, 0,0,1,...", "file, /path/to/file" 
     gamma_tik0          : float             = 1e-4 	                        # Parameter for Tikhonov regularization term
     gamma_leakage       : float             = 0.1 	                        # Parameter for leakage prevention
-    gamma_energy        : float             = 0.01                          # Parameter for integral penality term on the control pulse energy
+    gamma_energy        : float             = 0.1                          # Parameter for integral penality term on the control pulse energy
     gamma_dpdm          : float             = 0.01                          # Parameter for integral penality term on second state derivative
     tol_infidelity      : float             = 1e-3                          # Optimization stopping criterion based on the infidelity
     tol_costfunc        : float             = 1e-3                          # Optimization stopping criterion based on the objective function value
@@ -116,14 +116,15 @@ class QuandaryConfig:
 
         # Set default number of splines for control parameterization, unless specified by user
         if self.nsplines < 0:
-            self.nsplines = int(np.max([np.ceil(self.T/self.dtau + 2), 5]))
+            minspline = 5 if self.control_enforce_BC else 3
+            self.nsplines = int(np.max([np.ceil(self.T/self.dtau + 2), minspline]))
             
         # Set default amplitude of initial control parameters [MHz] (default = 9 MHz)
         if isinstance(self.initctrl_MHz, float) or isinstance(self.initctrl_MHz, int):
             max_alloscillators = self.initctrl_MHz
             self.initctrl_MHz = [max_alloscillators for _ in range(len(self.Ne))]
         if len(self.initctrl_MHz) == 0:
-            self.initctrl_MHz = [2.0 for _ in range(len(self.Ne))]
+            self.initctrl_MHz = [1.0 for _ in range(len(self.Ne))]
 
         # Set default Hamiltonian operators, unless specified by user
         if len(self.Hsys) > 0 and not self.standardmodel: # User-provided Hamiltonian operators 
@@ -484,12 +485,12 @@ def get_results(*, Ne=[], datadir="./", lindblad_solver=False):
 ##
 # Helper function to re-evaluate the controls on a different time grid for a specific sample rate
 #
-def evalControls(config, *, pcof, samplerate, quandary_exec="/absolute/path/to/quandary/main", datadir="./data_controls", cygwin=False):
+def evalControls(config, *, pcof, points_per_ns, quandary_exec="/absolute/path/to/quandary/main", datadir="./data_controls", cygwin=False):
 
     # Copy original setting and overwrite
     nsteps_org = config.nsteps
     pcof0_org = config.pcof0[:]
-    config.nsteps = int(np.ceil(config.T * samplerate))
+    config.nsteps = int(np.ceil(config.T * points_per_ns))
     config.pcof0 = pcof[:]
 
     # Execute quandary in 'evalcontrols' mode

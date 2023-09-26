@@ -8,14 +8,12 @@ Ne = [3]  # Number of essential energy levels
 freq01 = [4.10595] 
 # Anharmonicities [GHz] per oscillator
 selfkerr = [0.2198]
-# Frequency of rotations for computational frame [GHz] per oscillator
-rotfreq = freq01
 
 # Set the total time duration (ns)
-T = 100.0
+T = 200.5
 
 # Bounds on the control pulse (in rotational frame, p and q) [MHz] per oscillator
-maxctrl_MHz = [10.0]  
+maxctrl_MHz = [4.0]  
 
 # Set up a target gate (in essential level dimensions)
 unitary = [[0,0,1],[0,1,0],[1,0,0]]  # Swaps first and last level
@@ -25,7 +23,7 @@ unitary = [[0,0,1],[0,1,0],[1,0,0]]  # Swaps first and last level
 verbose = False
 
 # Prepare Quandary configuration. The 'QuandaryConfig' dataclass gathers all configuration options and sets defaults for those member variables that are not passed through the constructor here. It is advised to compare what other defaults are set in the QuandaryConfig constructor (beginning of quandary.py)
-myconfig = QuandaryConfig(Ne=Ne, freq01=freq01, selfkerr=selfkerr, rotfreq=rotfreq, maxctrl_MHz=maxctrl_MHz, targetgate=unitary, T=T, verbose=verbose)
+myconfig = QuandaryConfig(Ne=Ne, freq01=freq01, selfkerr=selfkerr, maxctrl_MHz=maxctrl_MHz, targetgate=unitary, T=T, verbose=verbose)
 
 # Set the location of the quandary executable (absolute path!)
 quandary_exec="/Users/guenther5/Numerics/quandary/main"
