@@ -21,11 +21,6 @@
 
 int main(int argc,char **argv)
 {
-
-  // Initialize random number generator 
-  srand(1);  // fixed seed
-  // srand(time(0));  // random seed
-
   char filename[255];
   PetscErrorCode ierr;
 
@@ -221,7 +216,7 @@ int main(int argc,char **argv)
   }
   copyLast(decay_time, nlevels.size());
   copyLast(dephase_time, nlevels.size());
-  
+
   // Get control segment types, carrierwaves and control initialization
   std::string default_seg_str = "spline, 10, 0.0, "+std::to_string(total_time); // Default for first oscillator control segment
   std::string default_init_str = "constant, 0.0";                               // Default for first oscillator initialization

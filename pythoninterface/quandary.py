@@ -77,7 +77,7 @@ class QuandaryConfig:
 
     # General options
     verbose             : bool        = False               # Switch to shut down printing to screen
-    rand_seed           : int         = 1234                # Seed for random number generator
+    rand_seed           : int         = None                # Default: use system time(0) random seed
 
 
     # Internal configuration. Should not be changed by user.
@@ -302,6 +302,8 @@ class QuandaryConfig:
         if not self.standardmodel:
             mystring += "hamiltonian_file= "+str(self._hamiltonian_filename)+"\n"
         mystring += "timestepper = "+str(self.timestepper)+ "\n"
+        if self.rand_seed is not None and self.rand_seed >= 0:
+            mystring += "rand_seed = "+str(int(self.rand_seed))+ "\n"
 
         # Write the file
         outpath = datadir+"/config.cfg"
