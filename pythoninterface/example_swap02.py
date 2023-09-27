@@ -60,3 +60,8 @@ if True:
 #    myconfig.pcof0= myconfig.popt
 #    t, pt, qt, infidelity, expectedEnergy, population = quandary_run(myconfig, quandary_exec=quandary_exec, runtype="simulation")     # Note the runtype.
 # [myconfig.update() is not needed in this case]
+
+# Evaluate control pulse on different sampling rate
+# points_per_ns = 1
+# t, pt, qt = evalControls(myconfig, pcof=myconfig.popt, points_per_ns=points_per_ns, quandary_exec=quandary_exec, datadir="./SWAP02_run_dir")
+

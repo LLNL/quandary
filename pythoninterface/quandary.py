@@ -490,7 +490,7 @@ def evalControls(config, *, pcof, points_per_ns, quandary_exec="/absolute/path/t
     # Copy original setting and overwrite
     nsteps_org = config.nsteps
     pcof0_org = config.pcof0[:]
-    config.nsteps = int(np.ceil(config.T * points_per_ns))
+    config.nsteps = int(np.floor(config.T * points_per_ns))
     config.pcof0 = pcof[:]
 
     # Execute quandary in 'evalcontrols' mode
