@@ -22,7 +22,7 @@ class QuandaryConfig:
 
     # Quantum system specifications
     Ne        : List[int]   = field(default_factory=lambda: [3])        # Number of essential energy levels per qubit
-    Ng        : List[int]   = field(default_factory=lambda: [0])        # Number of extra guard levels per qubit
+    Ng        : List[int]   = field(default_factory=lambda: [1])        # Number of extra guard levels per qubit
     freq01    : List[float] = field(default_factory=lambda: [4.10595])  # 01-transition frequencies [GHz] per qubit
     selfkerr  : List[float] = field(default_factory=lambda: [0.2198])   # Anharmonicities [GHz] per qubit
     rotfreq   : List[float] = field(default_factory=list)               # Frequency of rotations for computational frame [GHz] per qubit (default =freq01)
@@ -276,7 +276,7 @@ class QuandaryConfig:
         mystring += "optim_objective = " + str(self.costfunction) + "\n"
         mystring += "gate_rot_freq = 0.0\n"
         mystring += "optim_weights= 1.0\n"
-        mystring += "optim_atol= 1e-5\n"
+        mystring += "optim_atol= 1e-4\n"
         mystring += "optim_rtol= 1e-4\n"
         mystring += "optim_dxtol = 1e-8\n"
         mystring += "optim_ftol= " + str(self.tol_costfunc) + "\n"
