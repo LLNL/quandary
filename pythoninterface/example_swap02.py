@@ -10,7 +10,7 @@ freq01 = [4.10595]
 selfkerr = [0.2198]
 
 # Set the total time duration (ns)
-T = 200.5
+T = 200.0
 
 # Bounds on the control pulse (in rotational frame, p and q) [MHz] per oscillator
 maxctrl_MHz = [4.0]  
@@ -37,12 +37,13 @@ print(f"\nFidelity = {1.0 - infidelity}")
 
 # Plot the control pulse and expected energy level evolution
 if True:
-    plot_pulse(myconfig.Ne, t, pt, qt)
-    plot_expectedEnergy(myconfig.Ne, t, expectedEnergy)
-    plot_population(myconfig.Ne, t, population)
+    # plot_pulse(myconfig.Ne, t, pt, qt)
+    # plot_expectedEnergy(myconfig.Ne, t, expectedEnergy)
+    # plot_population(myconfig.Ne, t, population)
 
     # If one oscillator, you can also use the plot_results function to plot everything in one figure.
     plot_results_1osc(myconfig, pt[0], qt[0], expectedEnergy[0], population[0])
+
 
 # Other optimization results can be accessed from the myconfig, in particular:
 #   myconfig.popt         :  Optimized control parameters
