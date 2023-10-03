@@ -67,12 +67,12 @@ class MasterEq{
     std::vector<std::vector<Mat>> Ac_vec;  // Vector of vector of constant mats for time-varying control term (real). One vector of mats for each oscillators. 
     std::vector<std::vector<Mat>> Bc_vec;  // Vector of vector of constant mats for time-varying control term (imag). One vector of mats for each oscillators. 
     Mat  Ad, Bd;  // Real and imaginary part of constant system matrix
-    std::vector<Mat> Ad_vec;  // Vector of constant mats for Jaynes-Cummings coupling term in drift Hamiltonian (real)
-    std::vector<Mat> Bd_vec;  // Vector of constant mats for Jaynes-Cummings coupling term in drift Hamiltonian (imag)
+    std::vector<Mat> Ad_vec;  // Vector of constant mats for Dipole-Dipole coupling term in drift Hamiltonian (real)
+    std::vector<Mat> Bd_vec;  // Vector of constant mats for Dipole-Dipole coupling term in drift Hamiltonian (imag)
 
     std::vector<double> crosskerr;    // Cross ker coefficients (rad/time) $\xi_{kl} for zz-coupling ak^d ak al^d al
-    std::vector<double> Jkl;          // Jaynes-Cummings coupling coefficient (rad/time), multiplies ak^d al + ak al^d
-    std::vector<double> eta;          // Delta in rotational frame frequencies (rad/time). Used for Jaynes-Cummings coupling terms in rotating frame
+    std::vector<double> Jkl;          // Dipole-Dipole coupling coefficient (rad/time), multiplies ak^d al + ak al^d
+    std::vector<double> eta;          // Delta in rotational frame frequencies (rad/time). Used for Dipole-Dipole coupling terms in rotating frame
     bool addT1, addT2;                // flags for including Lindblad collapse operators T1-decay and/or T2-dephasing
 
     /* Auxiliary stuff */

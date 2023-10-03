@@ -5,7 +5,7 @@ from quandary import *
 # 01 transition frequencies [GHz] per oscillator
 freq01 = [5.12, 5.06] 
 # Coupling strength [GHz] (Format [0<->1, 0<->2, ..., 1<->2, ... ])
-Jkl = [5.0e-3]         # Jaynes-Cummings coupling
+Jkl = [5.0e-3]         # Dipole-Dipole coupling
 
 # Frequency of rotations for computational frame [GHz] per oscillator
 favg = sum(freq01)/len(freq01)

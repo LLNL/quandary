@@ -6,7 +6,7 @@ from quandary import *
 freq01 = [4.80595, 4.8601] 
 
 # Coupling strength [GHz] (Format [0<->1, 0<->2, ..., 1<->2, ... ])
-Jkl = [0.005]  # Jaynes-Cumming coupling of qubit 0<->1
+Jkl = [0.005]  # Dipole-Dipole coupling of qubit 0<->1
 
 # Frequency of rotations for computational frame [GHz] per oscillator
 favg = sum(freq01)/len(freq01)

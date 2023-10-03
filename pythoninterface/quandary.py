@@ -26,7 +26,7 @@ class QuandaryConfig:
     freq01    : List[float] = field(default_factory=lambda: [4.10595])  # 01-transition frequencies [GHz] per qubit
     selfkerr  : List[float] = field(default_factory=lambda: [0.2198])   # Anharmonicities [GHz] per qubit
     rotfreq   : List[float] = field(default_factory=list)               # Frequency of rotations for computational frame [GHz] per qubit (default =freq01)
-    Jkl       : List[float] = field(default_factory=list)               # Jaynes-Cummings coupling strength [GHz]. Format [J01, J02, ..., J12, J13, ...]
+    Jkl       : List[float] = field(default_factory=list)               # Dipole-dipole coupling strength [GHz]. Format [J01, J02, ..., J12, J13, ...]
     crosskerr : List[float] = field(default_factory=list)               # ZZ coupling strength [GHz]. Format [g01, g02, ..., g12, g13, ...]
     T1        : List[float] = field(default_factory=list)               # Optional: T1-Decay time per qubit (invokes Lindblad solver)
     T2        : List[float] = field(default_factory=list)               # Optional: T2-Dephasing time per qubit (invokes Lindlbad solver)

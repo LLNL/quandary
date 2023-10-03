@@ -11,8 +11,8 @@ mutable struct QuandaryConfig
     freq01::Vector{Float64}    # 01-transition frequencies [GHz] per qubit
     selfkerr::Vector{Float64}  # Anharmonicities [GHz] per qubit
     rotfreq::Vector{Float64}   # Frequency of rotations for computational frame [GHz] per qubit
-    Jkl::Vector{Float64}        # Jaynes-Cummings coupling strength [GHz] per qubit
-    crosskerr::Vector{Float64}  # ZZ coupling strength [GHz] per qubit
+    Jkl::Vector{Float64}        # Dipole-Dipole coupling strength [GHz] between qubits. Format: [J01, J02, ..., J12, J13, ...]
+    crosskerr::Vector{Float64}  # ZZ coupling strength [GHz] Format: [xi01, xi02, ..., xi12, xi13, ...]
     T1::Vector{Float64}         # Optional: T1-Decay time per qubit (invokes Lindblad solver)
     T2::Vector{Float64}         # Optional: T2-Dephasing time per qubit (invokes Lindlbad solver)
     T::Float64                  # Final time duration
