@@ -119,7 +119,7 @@ class QuandaryConfig:
             minspline = 5 if self.control_enforce_BC else 3
             self.nsplines = int(np.max([np.ceil(self.T/self.dtau + 2), minspline]))
             
-        # Set default amplitude of initial control parameters [MHz] (default = 9 MHz)
+        # Set default amplitude of initial control parameters [MHz] (default = 1 MHz)
         if isinstance(self.initctrl_MHz, float) or isinstance(self.initctrl_MHz, int):
             max_alloscillators = self.initctrl_MHz
             self.initctrl_MHz = [max_alloscillators for _ in range(len(self.Ne))]
@@ -795,7 +795,7 @@ def plot_pulse(Ne, time, pt, qt):
 # Plot evolution of expected energy levels
 ##
 def plot_expectedEnergy(Ne, time, expectedEnergy, *, lindblad_solver=False):
-    nplots = np.prod(Ne)                # one plot for initial state
+    nplots = np.prod(Ne)                # one plot for each initial state
     ncols = 2 if nplots >= 4 else 1     # 2 rows if more than 3 plots
     nrows = int(np.ceil(np.prod(Ne)/ncols))
     figsizex = 6.4*nrows*0.75 

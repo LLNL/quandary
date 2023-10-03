@@ -23,14 +23,14 @@ mutable struct QuandaryConfig
     Hsys::Matrix{Float64}       # Optional: User-specified system Hamiltonian model
     Hc_re::Vector{Matrix{Float64}}  # Optional: User-specified control Hamiltonian operators for each qubit (real-parts)
     Hc_im::Vector{Matrix{Float64}}  # Optional: User-specified control Hamiltonian operators for each qubit (imaginary-parts)
-    maxctrl_MHz::Vector{Float64}    # Amplitude bounds for the control pulses [MHz]
+    maxctrl_MHz                     # Amplitude bounds for the control pulses [MHz]
     control_enforce_BC::Bool        # Enforce that control pulses start and end at zero
     dtau::Float64                   # Spacing [ns] of Bspline basis functions (The number of Bspline basis functions will be T/dtau + 2)
     nsplines::Int                   # Number of Bspline basis functions, will be computed from T and dtau
     pcof0::Vector{Float64}          # Optional: Pass an initial control parameter vector
     pcof0_filename::String          # Optional: Load initial control parameter vector from a file
     randomize_init_ctrl::Bool       # Randomize the initial control parameters (will be ignored if pcof0 or pcof0_filename are given)
-    initctrl_MHz::Vector{Float64}   # Amplitude [MHz] of initial control parameters (will be ignored if pcof0 or pcof0_filename are given)
+    initctrl_MHz                    # Amplitude [MHz] of initial control parameters (will be ignored if pcof0 or pcof0_filename are given)
     carrier_frequency::Vector{Vector{Float64}}  # Will be set in __post_init
     cw_amp_thres::Float64           # Threshold to ignore carrier wave frequencies whose growth rate is below this value
     cw_prox_thres::Float64          # Threshold to distinguish different carrier wave frequencies from each other
@@ -121,8 +121,14 @@ mutable struct QuandaryConfig
         if nsplines < 0
             nsplines = max(ceil(Int, T / dtau + 2), 5) # Set default number of splines for control parameterization, unless specified by the user
         end 
+
+        # Set default amplitude of initial control parameters [MHz] (default = 1 MHz)
+        if isa(initctrl_MHz, Float64) || isa(initctrl_MHz, Int64)
+            max_alloscillators = initctrl_MHz
+            initctrl_MHz = [max_alloscillators for _ in Ne] 
+        end
         if isempty(initctrl_MHz)
-            initctrl_MHz = [9.0 for _ in Ne] # Set default amplitude of initial control parameters [MHz] (default = 9 MHz)
+            initctrl_MHz = [1.0 for _ in Ne] # Set default amplitude of initial control parameters [MHz] (default = 1 MHz)
         end
 
         # Set default Hamiltonian operators, unless specified by the user
@@ -134,7 +140,13 @@ mutable struct QuandaryConfig
             Hsys, Hc_re, Hc_im = hamiltonians(N=Ntot, freq01=freq01, selfkerr=selfkerr, crosskerr=crosskerr, Jkl=Jkl, rotfreq=rotfreq, verbose=verbose)
             standardmodel = true
         end
-        println("Hsys", Hsys)
+        # println("Hsys", Hsys)
+
+        # Convert maxctrl_MHz to a list for each oscillator, if not so already
+        if isa(maxctrl_MHz, Float64) || isa(maxctrl_MHz, Int64)
+            max_alloscillators = maxctrl_MHz
+            maxctrl_MHz = [max_alloscillators for _ in Ne]
+        end
 
         # Estimate the number of time steps
         nsteps = estimate_timesteps(T=T, Hsys=Hsys, Hc_re=Hc_re, Hc_im=Hc_im, maxctrl_MHz=maxctrl_MHz, Pmin=Pmin)
@@ -644,14 +656,14 @@ function quandary_run(config::QuandaryConfig;runtype="optimization",ncores=-1,da
 
     # Get results from Quandary output files
     lindblad_solver = (length(config.T1) > 0 || length(config.T2) > 0) ? true : false
-    timelist, pt, qt, expectedEnergy, popt, infidelity, optim_hist = get_results(Ne=config.Ne, datadir=datadir, lindblad_solver=lindblad_solver)
+    timelist, pt, qt, expectedEnergy, population, popt, infidelity, optim_hist = get_results(Ne=config.Ne, datadir=datadir, lindblad_solver=lindblad_solver)
 
     # Store some results in the config file
     config.optim_hist = deepcopy(optim_hist)
     config.popt = deepcopy(popt)
     config.time = deepcopy(timelist)
 
-    return pt, qt, expectedEnergy, infidelity
+    return pt, qt, infidelity, expectedEnergy, population
     # return 0
 end
 
@@ -763,6 +775,23 @@ function get_results(; Ne=[], datadir="./", lindblad_solver=false)
         end
     end
 
+    # Get population for each qubit, for each initial condition
+    population = Vector{Vector{Matrix{Any}}}(undef, length(Ne))
+    for iosc in 1:length(Ne)
+        population[iosc] = Vector{Matrix{Any}}()
+        ninit = lindblad_solver ? prod(Ne)^2 : prod(Ne)
+        for iinit in 1:ninit
+            filename = string(dataout_dir, "population",iosc-1,".iinit",lpad(iinit-1,4,'0'),".dat")
+            try
+                x = readdlm(filename)
+                pop = x[2:end,2:Ne[1]+1]'
+                push!(population[iosc], pop)    # first column is time
+            catch
+                println("Can't read population from $filename !")
+            end
+        end
+    end
+
     # Get the control pulses for each qubit
     pt = Vector{Vector{Float64}}()
     qt = Vector{Vector{Float64}}()
@@ -780,7 +809,7 @@ function get_results(; Ne=[], datadir="./", lindblad_solver=false)
         push!(ft, (x[2:end, 4] / (2 * pi)) * 1e3)  # Lab frame f(t)
     end
 
-    return timelist, pt, qt, expectedEnergy, pcof, infid_last, optim_hist
+    return timelist, pt, qt, expectedEnergy, population, pcof, infid_last, optim_hist
 end
 
 ##
@@ -812,7 +841,7 @@ end
 # Plot evolution of expected energy levels
 ##
 function plot_expectedEnergy(Ne, timex, expectedEnergy; lindblad_solver=false)
-    nplots = prod(Ne)
+    nplots = prod(Ne)                 # One plot for each initial state
     ncols = (nplots >= 4) ? 2 : 1     # 2 rows if more than 3 plots
     nrows = Int(ceil(nplots / ncols))
     figsizex = 6.4 * nrows * 0.75
@@ -827,7 +856,7 @@ function plot_expectedEnergy(Ne, timex, expectedEnergy; lindblad_solver=false)
         
         plot_i = plot()
         for iosc in 1:length(Ne)
-            label = !isempty(Ne) ? "Qubit $iosc" : ""
+            label = length(Ne)>1 ? "Qubit $iosc" : ""
             plot!(timex, expectedEnergy[iosc][iinit], label=label)
         end
         
@@ -837,7 +866,7 @@ function plot_expectedEnergy(Ne, timex, expectedEnergy; lindblad_solver=false)
         xlims!(0.0, maximum(timex))
         
         binary_ID = (length(Ne) == 1) ? iplot : parse(Int, string(iplot, base=2))
-        title!("init |$binary_ID>")
+        title!("from |$binary_ID>")
         plot_i = plot!(legend=:topright)
 
         push!(pl, plot_i)
@@ -845,5 +874,52 @@ function plot_expectedEnergy(Ne, timex, expectedEnergy; lindblad_solver=false)
     
     plall = plot(pl...)
     # pl = plot!(xticks=0:1:maximum(time), yticks=0:10:ceil(maximum([maximum(expectedEnergy)...])))
+    return plall
+end
+
+
+
+
+
+##
+# Plot evolution of population
+##
+function plot_population(Ne, timex, population; lindblad_solver=false)
+
+    nplots = prod(Ne)                 # One plot for each initial state
+    ncols = (nplots >= 4) ? 2 : 1     # 2 rows if more than 3 plots
+    nrows = Int(ceil(nplots / ncols))
+    figsizex = 6.4 * nrows * 0.75
+    figsizey = 4.8 * nrows * 0.75
+    # pl = plot(layout=(nrows, ncols), legend=:topright, size=(figsizex, figsizey))
+    # pl = plot(layout=(nrows, ncols), legend=:topright)
+ 
+    # Iterate over initial conditions (one plot for each)
+    pl = []
+    for iplot in 1:nplots
+        iinit = !lindblad_solver ? iplot : iplot * prod(Ne) + iplot
+        # subplot!(iplot)
+
+        plot_i = plot()
+        for iosc in 1:length(Ne)
+            for istate in 1:Ne[iosc]
+                label = length(Ne)>1 ? "Qubit $iosc" : ""
+                label = label * " |"*string(istate-1)*">"
+                plot!(timex, population[iosc][iinit][istate,:], label=label)
+            end
+        end
+        xlabel!("time (ns)")
+        ylabel!("population")
+        ylims!(0.0-1e-4, 1.0 + 1e-2)
+        xlims!(0.0, timex[end])
+        binary_ID = (length(Ne) == 1) ? iplot-1 : parse(Int, string(iplot-1, base=2))
+        title!("from |"*string(binary_ID)*">")
+
+        plot_i = plot!(legend=:topright)
+        push!(pl, plot_i)
+    end
+
+    plall = plot(pl...)
+
     return plall
 end
