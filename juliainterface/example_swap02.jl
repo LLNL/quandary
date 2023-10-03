@@ -26,18 +26,21 @@ verbose = false
 # Prepare Quandary configuration. The 'QuandaryConfig' dataclass gathers all configuration options and sets defaults for those member variables that are not passed through the constructor here. It is advised to compare what other defaults are set in the QuandaryConfig constructor (beginning of quandary.jl)
 myconfig = QuandaryConfig(Ne=Ne, freq01=freq01, selfkerr=selfkerr, rotfreq=rotfreq, maxctrl_MHz=maxctrl_MHz, targetgate=unitary, T=T, verbose=verbose)
 
+# # For reproducability, you can use a fixed seed for the random number generator 
+# myconfig.rand_seed = 123
+
 # Set the location of the quandary executable (absolute path!)
 quandary_exec = "/Users/guenther5/Numerics/quandary/main"
 
 # Execute quandary. Default number of executing cores is the essential Hilbert space dimension.
-pt, qt, infidelity, expectedEnergy, population = quandary_run(myconfig, quandary_exec=quandary_exec, datadir="./SWAP02_run_dir_julia")
+t, pt, qt, infidelity, expectedEnergy, population = quandary_run(myconfig, quandary_exec=quandary_exec, datadir="./SWAP02_run_dir_julia")
 println("\nFidelity = ", 1.0 - infidelity)
 
 # Plot the control pulse and expected energy level evolution
 if true
-    pl1 = plot_pulse(myconfig.Ne, myconfig.time, pt, qt)
-    pl2 = plot_expectedEnergy(myconfig.Ne, myconfig.time, expectedEnergy)
-    pl3 = plot_population(myconfig.Ne, myconfig.time, population)
+    pl1 = plot_pulse(myconfig.Ne, t, pt, qt)
+    pl2 = plot_expectedEnergy(myconfig.Ne, t, expectedEnergy)
+    pl3 = plot_population(myconfig.Ne, t, population)
 end
 
 

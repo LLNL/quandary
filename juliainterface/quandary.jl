@@ -58,7 +58,7 @@ mutable struct QuandaryConfig
     # Define a constructor for QuandaryConfig with default values
     function QuandaryConfig(; 
             Ne::Vector{Int}=[3],    # Default one oscillator with 3 levels
-            Ng::Vector{Int}=[0],    # Default no guard levels
+            Ng::Vector{Int}=[1],    # Default no guard levels
             freq01::Vector{Float64}=[4.10595],  # Default one qudit with this transition frequency
             selfkerr::Vector{Float64}=[0.2198], # Default selfkerr for this qubit
             rotfreq::Vector{Float64}=Vector{Float64}(), # Default rotation frequency will be set to 'freq01' if not specified otherwise
@@ -99,7 +99,7 @@ mutable struct QuandaryConfig
             print_frequency_iter::Int=1,    # Default: print every iteration
             usematfree::Bool=true,          # Default: Use matrix-free solver
             verbose::Bool=false,            # Default: Don't print debug info
-            rand_seed::Int=1234,            # Default seed for randomizing controls
+            rand_seed::Int=-1,              # Default: use system time(0) random seed
             _hamiltonian_filename::String="", # Internal, do not change
             _gatefilename::String="",         # Internal, do not change
             popt::Vector{Float64}=Vector{Float64}(), # Output, access after optim
@@ -169,6 +169,27 @@ mutable struct QuandaryConfig
 
         new(Ne, Ng, freq01, selfkerr, rotfreq, Jkl, crosskerr, T1, T2, T, Pmin, nsteps, timestepper, standardmodel, Hsys, Hc_re, Hc_im, maxctrl_MHz, control_enforce_BC, dtau, nsplines, pcof0, pcof0_filename, randomize_init_ctrl, initctrl_MHz, carrier_frequency, cw_amp_thres, cw_prox_thres, costfunction, targetgate, optim_target, initialcondition, gamma_tik0, gamma_leakage, gamma_energy, gamma_dpdm, tol_infidelity, tol_costfunc, maxiter, print_frequency_iter, usematfree, verbose, rand_seed, _hamiltonian_filename, _gatefilename, popt, time, optim_hist)
     end
+end
+
+function evalControls(config; pcof, points_per_ns, quandary_exec="/absolute/path/to/quandary/main", datadir="./data_controls", cygwin=false)
+    # Copy original setting and overwrite
+    nsteps_org = config.nsteps
+    pcof0_org = copy(config.pcof0)
+    config.nsteps = floor(Int, config.T * points_per_ns)
+    config.pcof0 .= pcof
+
+    # Execute quandary in 'evalcontrols' mode
+    runtype = "evalcontrols"
+    mkpath(datadir)
+    configfile_eval = dump_config(config, runtype=runtype, datadir=datadir)
+    err = execute(runtype=runtype, ncores=1, config_filename=configfile_eval, datadir=datadir, quandary_exec=quandary_exec, verbose=false, cygwin=cygwin)
+    timex, pt, qt, _, _, _, _, _ = get_results(Ne=config.Ne, datadir=datadir)
+
+    # Restore original setting
+    config.nsteps = nsteps_org
+    config.pcof0 .= pcof0_org
+
+    return timex, pt, qt
 end
 
 function estimate_timesteps(; T=1.0, Hsys=[], Hc_re=[], Hc_im=[], maxctrl_MHz=[], Pmin=40)
@@ -582,7 +603,7 @@ function dump_config(self;runtype="simulation",datadir="./run_dir")
     mystring *= "optim_objective = " * string(self.costfunction) * "\n"
     mystring *= "gate_rot_freq = 0.0\n"
     mystring *= "optim_weights = 1.0\n"
-    mystring *= "optim_atol = 1e-5\n"
+    mystring *= "optim_atol = 1e-4\n"
     mystring *= "optim_rtol = 1e-4\n"
     mystring *= "optim_dxtol = 1e-8\n"
     mystring *= "optim_ftol = " * string(self.tol_costfunc) * "\n"
@@ -617,6 +638,9 @@ function dump_config(self;runtype="simulation",datadir="./run_dir")
     end
 
     mystring *= "timestepper = " * string(self.timestepper) * "\n"
+    if self.rand_seed != -1 && self.rand_seed >= 0
+        mystring *= "rand_seed= " * string(self.rand_seed) * "\n"
+    end
 
     # Write the configuration file
     outpath = joinpath(datadir, "config.cfg")
@@ -663,7 +687,7 @@ function quandary_run(config::QuandaryConfig;runtype="optimization",ncores=-1,da
     config.popt = deepcopy(popt)
     config.time = deepcopy(timelist)
 
-    return pt, qt, infidelity, expectedEnergy, population
+    return config.time, pt, qt, infidelity, expectedEnergy, population
     # return 0
 end
 
