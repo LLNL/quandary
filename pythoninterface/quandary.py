@@ -434,6 +434,7 @@ def get_results(*, Ne=[], datadir="./", lindblad_solver=False):
         optim_last = optim_hist_tmp[-1]
     else:
         optim_last = optim_hist_tmp
+        optim_hist_tmp = np.array([optim_hist_tmp])
     infid_last = 1.0 - optim_last[4]
     tikhonov_last = optim_last[6]
     dpdm_penalty_last = optim_last[8] 
