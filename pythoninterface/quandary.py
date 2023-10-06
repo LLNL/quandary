@@ -146,7 +146,8 @@ class QuandaryConfig:
             print("Maximum control amplitudes: ", self.maxctrl_MHz, "MHz")
 
         # Estimate carrier wave frequencies
-        self.carrier_frequency, _ = get_resonances(Ne=self.Ne, Ng=self.Ng, Hsys=self.Hsys, Hc_re=self.Hc_re, Hc_im=self.Hc_im, rotfreq=self.rotfreq, verbose=self.verbose, cw_amp_thres=self.cw_amp_thres, cw_prox_thres=self.cw_prox_thres, stdmodel=self.standardmodel)
+        if len(self.carrier_frequency) == 0: 
+            self.carrier_frequency, _ = get_resonances(Ne=self.Ne, Ng=self.Ng, Hsys=self.Hsys, Hc_re=self.Hc_re, Hc_im=self.Hc_im, rotfreq=self.rotfreq, verbose=self.verbose, cw_amp_thres=self.cw_amp_thres, cw_prox_thres=self.cw_prox_thres, stdmodel=self.standardmodel)
 
         if self.verbose: 
             print("\n")
@@ -501,21 +502,26 @@ def get_results(*, Ne=[], datadir="./", lindblad_solver=False):
 #
 def evalControls(config, *, pcof, points_per_ns, quandary_exec="/absolute/path/to/quandary/main", datadir="./data_controls", cygwin=False):
 
-    # Copy original setting and overwrite
+    # Copy original setting and overwrite number of time steps for simulation
     nsteps_org = config.nsteps
-    pcof0_org = config.pcof0[:]
     config.nsteps = int(np.floor(config.T * points_per_ns))
-    config.pcof0 = pcof[:]
+    
+    # Pass pcof to the configuration, if given
+    if len(pcof) > 0:
+        config.pcof0 = pcof[:]
 
     # Execute quandary in 'evalcontrols' mode
     runtype = 'evalcontrols'
     os.makedirs(datadir, exist_ok=True)
     configfile_eval= config.dump(runtype=runtype, datadir=datadir)
     err = execute(runtype=runtype, ncores=1, config_filename=configfile_eval, datadir=datadir, quandary_exec=quandary_exec, verbose=False, cygwin=cygwin)
-    time, pt, qt, _, _, _, _, _ = get_results(Ne=config.Ne, datadir=datadir)
+    time, pt, qt, _, _, pcof, _, _ = get_results(Ne=config.Ne, datadir=datadir)
+
+    # Save pcof to config.popt
+    config.popt = pcof[:]
+    
     # Restore original setting
-    config.nsteps = nsteps_org
-    config.pcof0 = pcof0_org[:]
+    config.nsteps = nsteps_org    
 
     return time, pt, qt
 
