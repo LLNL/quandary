@@ -882,8 +882,6 @@ def plot_population(Ne, time, population, *, lindblad_solver=False):
 
 
 def plot_results_1osc(myconfig, p, q, expectedEnergy, population):
-    assert(myconfig.Ne == [3])
-
 
     fig, ax = plt.subplots(2, 3, figsize=(20,8))
     fig.subplots_adjust(hspace=0.3)
