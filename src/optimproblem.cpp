@@ -45,6 +45,7 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
 
   /* Store other optimization parameters */
   gamma_tik = config.GetDoubleParam("optim_regul", 1e-4);
+  gamma_tik_interpolate = config.GetBoolParam("optim_regul_interpolate", false);
   gatol = config.GetDoubleParam("optim_atol", 1e-8);
   fatol = config.GetDoubleParam("optim_ftol", 1e-8);
   dxtol = config.GetDoubleParam("optim_dxtol", 1e-8);
@@ -392,10 +393,18 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   /* Allocate auxiliary vector */
   mygrad = new double[ndesign];
 
-  /* Allocat xprev */
+  /* Allocat xprev, xinit, xtmp */
   VecCreateSeq(PETSC_COMM_SELF, ndesign, &xprev);
   VecSetFromOptions(xprev);
   VecZeroEntries(xprev);
+
+  VecCreateSeq(PETSC_COMM_SELF, ndesign, &xinit);
+  VecSetFromOptions(xinit);
+  VecZeroEntries(xinit);
+
+  VecCreateSeq(PETSC_COMM_SELF, ndesign, &xtmp);
+  VecSetFromOptions(xtmp);
+  VecZeroEntries(xtmp);
 }
 
 
@@ -408,6 +417,8 @@ OptimProblem::~OptimProblem() {
   VecDestroy(&xlower);
   VecDestroy(&xupper);
   VecDestroy(&xprev);
+  VecDestroy(&xinit);
+  VecDestroy(&xtmp);
 
   for (int i = 0; i < store_finalstates.size(); i++) {
     VecDestroy(&(store_finalstates[i]));
@@ -504,9 +515,15 @@ double OptimProblem::evalF(const Vec x) {
   /* Finalize the objective function */
   obj_cost = optim_target->finalizeJ(obj_cost_re, obj_cost_im);
 
-  /* Evaluate regularization objective += gamma/2 * ||x||^2*/
+  /* Evaluate regularization objective += gamma/2 * ||x-x0||^2*/
   double xnorm;
-  VecNorm(x, NORM_2, &xnorm);
+  if (!gamma_tik_interpolate){  // ||x||^2
+    VecNorm(x, NORM_2, &xnorm);
+  } else {
+    VecCopy(x, xtmp);
+    VecAXPY(xtmp, -1.0, xinit);    // xtmp =  x - x_0
+    VecNorm(xtmp, NORM_2, &xnorm);
+  }
   obj_regul = gamma_tik / 2. * pow(xnorm,2.0);
 
   /* Sum, store and return objective value */
@@ -539,7 +556,10 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
   /* Derivative of regulatization term gamma / 2 ||x||^2 (ADD ON ONE PROC ONLY!) */
   // if (mpirank_init == 0 && mpirank_optim == 0) { // TODO: Which one?? 
   if (mpirank_init == 0 ) {
-    VecAXPY(G, gamma_tik, x);
+    VecAXPY(G, gamma_tik, x);   // + gamma_tik * x
+    if (gamma_tik_interpolate){
+      VecAXPY(G, -1.0*gamma_tik, xinit); // -gamma_tik * xinit
+    }
   }
 
   /*  Iterate over initial condition */
@@ -642,7 +662,13 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
 
   /* Evaluate regularization objective += gamma/2 * ||x||^2*/
   double xnorm;
-  VecNorm(x, NORM_2, &xnorm);
+  if (!gamma_tik_interpolate){  // ||x||^2
+    VecNorm(x, NORM_2, &xnorm);
+  } else {
+    VecCopy(x, xtmp);
+    VecAXPY(xtmp, -1.0, xinit);    // xtmp =  x_k - x_0
+    VecNorm(xtmp, NORM_2, &xnorm);
+  }
   obj_regul = gamma_tik / 2. * pow(xnorm,2.0);
 
   /* Sum, store and return objective value */

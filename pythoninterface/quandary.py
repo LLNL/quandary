@@ -63,9 +63,10 @@ class QuandaryConfig:
     targetgate          : List[List[complex]] = field(default_factory=lambda : [[0,0,1],[0,1,0],[1,0,0]]) # Complex target unitary in the essential level dimensions for gate optimization
     optim_target        : str               = "gate"                        # Optional: Set optimization targets, if not specified through the targetgate
     initialcondition    : str               = "basis"                       # Initial states at time t=0.0: "basis", "diagonal", "pure, 0,0,1,...", "file, /path/to/file" 
-    gamma_tik0          : float             = 1e-4 	                        # Parameter for Tikhonov regularization term
+    gamma_tik0          : float             = 1e-4 	                        # Parameter for Tikhonov regularization ||alpha||^2
+    gamma_tik0_interpolate : bool           = False                         # Switch to use ||alpha-alpha_0||^2 instead, where alpha_0 is the initial guess.
     gamma_leakage       : float             = 0.1 	                        # Parameter for leakage prevention
-    gamma_energy        : float             = 0.1                          # Parameter for integral penality term on the control pulse energy
+    gamma_energy        : float             = 0.1                           # Parameter for integral penality term on the control pulse energy
     gamma_dpdm          : float             = 0.01                          # Parameter for integral penality term on second state derivative
     tol_infidelity      : float             = 1e-3                          # Optimization stopping criterion based on the infidelity
     tol_costfunc        : float             = 1e-3                          # Optimization stopping criterion based on the objective function value
@@ -284,6 +285,7 @@ class QuandaryConfig:
         mystring += "optim_inftol= " + str(self.tol_infidelity) + "\n"
         mystring += "optim_maxiter= " + str(self.maxiter) + "\n"
         mystring += "optim_regul= " + str(self.gamma_tik0) + "\n"
+        mystring += "optim_regul_interpolate= " + str(self.gamma_tik0_interpolate) + "\n"
         mystring += "optim_penalty= " + str(self.gamma_leakage) + "\n"
         mystring += "optim_penalty_param= 0.0\n"
         mystring += "optim_penalty_dpdm= " + str(self.gamma_dpdm) + "\n"

@@ -226,6 +226,7 @@ def read_config(filename):
                case("output5") or \
                case("runtype") or \
                case("usematfree") or \
+               case("gamma_regul_interpolate") or \
                case("linearsolver_type") or \
                case("python_file") or \
                case("timestepper") or \
