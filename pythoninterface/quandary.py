@@ -3,7 +3,7 @@ import numpy as np
 from subprocess import run, PIPE, Popen
 import matplotlib.pyplot as plt
 from dataclasses import dataclass, field
-from typing import List
+from typing import List, Dict
 ## For some Matplotlib installations to work, you might need the below...
 # import PyQt6.QtCore
 
@@ -87,7 +87,7 @@ class QuandaryConfig:
     # Storage for some optimization results, in case they are needed afterwards.
     popt        : List[float]   = field(default_factory=list)   # Optimized control paramters, could be useful to run quandary again after optimization
     time        : List[float]   = field(default_factory=list)   # Vector of discretized time points, could be useful for plotting the control pulses etc.
-    optim_hist  : List[float]   = field(default_factory=list)   # Optimization history: all fields as in Quandary's output file <data>/optim_history.dat
+    optim_hist  : Dict          = field(default_factory=dict)   # Optimization history: all fields as in Quandary's output file <data>/optim_history.dat
 
     ##
     # This function will be called during initialization of a QuandaryConfig instance.
@@ -341,10 +341,10 @@ def quandary_run(config: QuandaryConfig, *, runtype="optimization", ncores=-1, d
 
     # Get results from quandary output files
     lindblad_solver = True if (len(config.T1) > 0 or len(config.T2) > 0) else False
-    time, pt, qt, expectedEnergy, population, popt, infidelity, optim_hist= get_results(Ne=config.Ne, datadir=datadir, lindblad_solver=lindblad_solver)
+    time, pt, qt, expectedEnergy, population, popt, infidelity, optim_hist = get_results(Ne=config.Ne, datadir=datadir, lindblad_solver=lindblad_solver)
 
     # Store some results in the config file
-    config.optim_hist = optim_hist[:]
+    config.optim_hist = optim_hist
     config.popt = popt[:]
     config.time = time[:]
 
@@ -396,9 +396,8 @@ def execute(*, runtype="simulation", ncores=1, config_filename="config.cfg", dat
         p.stdin.close()
         std_out, std_err = p.communicate()
         # Print stdout and stderr
-        if verbose:
-            print(std_out.strip().decode('ascii'))
-            print(std_err.strip().decode('ascii'))
+        print(std_out.strip().decode('ascii'))
+        print(std_err.strip().decode('ascii'))
 
     # Return to previous directory
     os.chdir(dir_org)
@@ -426,18 +425,30 @@ def get_results(*, Ne=[], datadir="./", lindblad_solver=False):
     # Get optimization history information
     filename = dataout_dir + "/optim_history.dat"
     try:
-        optim_hist = np.loadtxt(filename)
+        optim_hist_tmp = np.loadtxt(filename)
     except:
         print("Can't read optimization history from $filename")
-        optim_hist = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        optim_hist_tmp = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 
-    if optim_hist.ndim == 2:
-        optim_last = optim_hist[-1]
+    if optim_hist_tmp.ndim == 2:
+        optim_last = optim_hist_tmp[-1]
     else:
-        optim_last = optim_hist
+        optim_last = optim_hist_tmp
     infid_last = 1.0 - optim_last[4]
     tikhonov_last = optim_last[6]
     dpdm_penalty_last = optim_last[8] 
+
+    # Put optimization history into a dictionary: 
+    optim_hist = {
+        "Iters"                  : optim_hist_tmp[:,0],
+        "Gradient"               : optim_hist_tmp[:,2],
+        "Fidelity"               : optim_hist_tmp[:,4],
+        "Cost"                   : optim_hist_tmp[:,5],
+        "Tikhonov"               : optim_hist_tmp[:,6],
+        "Penalty-Leakage"        : optim_hist_tmp[:,7],
+        "Penalty-StateVariation" : optim_hist_tmp[:,8],
+        "Penalty-TotalEnergy"    : optim_hist_tmp[:,9],
+    }
 
     # Get the time-evolution of the expected energy for each qubit, for each initial condition
     expectedEnergy = [[] for _ in range(len(Ne))]

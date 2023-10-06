@@ -47,7 +47,7 @@ if True:
 
 # Other optimization results can be accessed from the myconfig, in particular:
 #   myconfig.popt         :  Optimized control parameters
-#   myconfig.optim_hist   :  Optimization convergence history
+#   myconfig.optim_hist   :  Dictionary of relevant optimization convergence history fields
 #   myconfig.time         :  Time points where the expected energy is stored
 
 

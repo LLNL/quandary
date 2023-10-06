@@ -779,6 +779,10 @@ PetscErrorCode TaoMonitor(Tao tao,void*ptr){
   // }
 
   /* Screen output */
+  if (ctx->getMPIrank_world() == 0 && iter == 0) {
+    std::cout<<  "\t\tObjective\t      Tikhonov \t             Penalty-Leakage\t    Penalty-StateVariation   Penalty-TotalEnergy " << std::endl;
+  }
+
   if (ctx->getMPIrank_world() == 0 && iter % ctx->output->optim_monitor_freq == 0) {
     std::cout<< iter <<  ": Objective = " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal << " + " << obj_penal_dpdm << " + " << obj_penal_energy;
     std::cout<< "  Fidelity = " << F_avg;
