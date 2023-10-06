@@ -502,7 +502,7 @@ def get_results(*, Ne=[], datadir="./", lindblad_solver=False):
 ##
 # Helper function to re-evaluate the controls on a different time grid for a specific sample rate
 #
-def evalControls(config, *, pcof, points_per_ns, quandary_exec="/absolute/path/to/quandary/main", datadir="./data_controls", cygwin=False):
+def evalControls(config, *, pcof=[], points_per_ns=1, quandary_exec="/absolute/path/to/quandary/main", datadir="./data_controls", cygwin=False):
 
     # Copy original setting and overwrite number of time steps for simulation
     nsteps_org = config.nsteps
@@ -523,7 +523,7 @@ def evalControls(config, *, pcof, points_per_ns, quandary_exec="/absolute/path/t
     config.popt = pcof[:]
     
     # Restore original setting
-    config.nsteps = nsteps_org    
+    config.nsteps = nsteps_org
 
     return time, pt, qt
 
