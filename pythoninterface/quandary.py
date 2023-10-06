@@ -60,7 +60,7 @@ class QuandaryConfig:
 
     # Optimization options
     costfunction        : str               = "Jtrace"                      # Cost function measure: "Jtrace" or "Jfrobenius"
-    targetgate          : List[List[complex]] = field(default_factory=list) # Complex target unitary in the essential level dimensions for gate optimization
+    targetgate          : List[List[complex]] = field(default_factory=lambda : [[0,0,1],[0,1,0],[1,0,0]]) # Complex target unitary in the essential level dimensions for gate optimization
     optim_target        : str               = "gate"                        # Optional: Set optimization targets, if not specified through the targetgate
     initialcondition    : str               = "basis"                       # Initial states at time t=0.0: "basis", "diagonal", "pure, 0,0,1,...", "file, /path/to/file" 
     gamma_tik0          : float             = 1e-4 	                        # Parameter for Tikhonov regularization term
