@@ -60,7 +60,7 @@ class QuandaryConfig:
 
     # Optimization options
     costfunction        : str               = "Jtrace"                      # Cost function measure: "Jtrace" or "Jfrobenius"
-    targetgate          : List[List[complex]] = field(default_factory=lambda : [[0,0,1],[0,1,0],[1,0,0]]) # Complex target unitary in the essential level dimensions for gate optimization
+    targetgate          : List[List[complex]] = field(default_factory=list) # Complex target unitary in the essential level dimensions for gate optimization
     targetstate         : List[complex]     = field(default_factory=list) # Complex target state vector for state-to-state optimization
     optim_target        : str               = ""                          # Optional: Set optimization targets, if not specified through the targetgate or targetstate
     initialcondition    : str               = "basis"                         # Initial states at time t=0.0: "basis" (default), "diagonal", "pure, 0,0,1,...", "file, /path/to/file"
@@ -69,8 +69,8 @@ class QuandaryConfig:
     gamma_leakage       : float             = 0.1 	                        # Parameter for leakage prevention
     gamma_energy        : float             = 0.1                           # Parameter for integral penality term on the control pulse energy
     gamma_dpdm          : float             = 0.01                          # Parameter for integral penality term on second state derivative
-    tol_infidelity      : float             = 1e-3                          # Optimization stopping criterion based on the infidelity
-    tol_costfunc        : float             = 1e-3                          # Optimization stopping criterion based on the objective function value
+    tol_infidelity      : float             = 1e-5                          # Optimization stopping criterion based on the infidelity
+    tol_costfunc        : float             = 1e-4                          # Optimization stopping criterion based on the objective function value
     maxiter             : int               = 100                           # Maximum number of optimization iterations
 
     # Quandary run options
