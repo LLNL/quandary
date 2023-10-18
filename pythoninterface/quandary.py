@@ -63,7 +63,7 @@ class QuandaryConfig:
     targetgate          : List[List[complex]] = field(default_factory=lambda : [[0,0,1],[0,1,0],[1,0,0]]) # Complex target unitary in the essential level dimensions for gate optimization
     targetstate         : List[complex]     = field(default_factory=list) # Complex target state vector for state-to-state optimization
     optim_target        : str               = ""                          # Optional: Set optimization targets, if not specified through the targetgate or targetstate
-    initialcondition    : str               = "basis"                       # Initial states at time t=0.0: "basis", "diagonal", "pure, 0,0,1,...", "file, /path/to/file" 
+    initialcondition    : str               = "basis"                         # Initial states at time t=0.0: "basis" (default), "diagonal", "pure, 0,0,1,...", "file, /path/to/file"
     gamma_tik0          : float             = 1e-4 	                        # Parameter for Tikhonov regularization ||alpha||^2
     gamma_tik0_interpolate : bool           = False                         # Switch to use ||alpha-alpha_0||^2 instead, where alpha_0 is the initial guess.
     gamma_leakage       : float             = 0.1 	                        # Parameter for leakage prevention
@@ -136,6 +136,18 @@ class QuandaryConfig:
             self.Hsys, self.Hc_re, self.Hc_im = hamiltonians(N=Ntot, freq01=self.freq01, selfkerr=self.selfkerr, crosskerr=self.crosskerr, Jkl=self.Jkl, rotfreq=self.rotfreq, verbose=self.verbose)
             self.standardmodel=True
 
+        # Set the optimization target 
+        if len(self.targetstate) > 0:
+            self.optim_target = "file"
+        if len(self.targetgate) > 0:
+            self.optim_target = "gate, fromfile"
+        
+        # Change default initial condition to pure state if target is state-to-state optimization
+        if len(self.targetstate) > 0:
+            self.initialcondition = "pure, " 
+            for i in range(len(self.Ne)):
+                self.initialcondition += "0,"
+
         # Convert maxctrl_MHz to a list for each oscillator, if not so already
         if isinstance(self.maxctrl_MHz, float) or isinstance(self.maxctrl_MHz, int):
             max_alloscillators = self.maxctrl_MHz
@@ -175,7 +187,6 @@ class QuandaryConfig:
         if len(self.targetgate) > 0:
             gate_vectorized = np.concatenate((np.real(self.targetgate).ravel(), np.imag(self.targetgate).ravel()))
             self._gatefilename = "./targetgate.dat"
-            self.optim_target = "gate, fromfile"
             with open(datadir+"/"+self._gatefilename, "w") as f:
                 for value in gate_vectorized:
                     f.write("{:20.13e}\n".format(value))
@@ -186,7 +197,6 @@ class QuandaryConfig:
         if len(self.targetstate) > 0:
             gate_vectorized = np.concatenate((np.real(self.targetstate).ravel(), np.imag(self.targetstate).ravel()))
             self._gatefilename = "./targetstate.dat"
-            self.optim_target = "file"
             with open(datadir+"/"+self._gatefilename, "w") as f:
                 for value in gate_vectorized:
                     f.write("{:20.13e}\n".format(value))
