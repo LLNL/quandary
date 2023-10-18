@@ -33,7 +33,7 @@ class QuandaryConfig:
 
     # Time duration and discretization options
     T                   : float       = 100.0             # Final time duration
-    Pmin                : int         = 40                # Number of discretization points to resolve the shortest period of the dynamics (determines <nsteps>)
+    Pmin                : int         = 150               # Number of discretization points to resolve the shortest period of the dynamics (determines <nsteps>)
     nsteps              : int         = -1                # Number of time-discretization points (will be computed internally based on Pmin, or can be set here)
     timestepper         : str         = "IMR"             # Time-discretization scheme
 
@@ -61,7 +61,8 @@ class QuandaryConfig:
     # Optimization options
     costfunction        : str               = "Jtrace"                      # Cost function measure: "Jtrace" or "Jfrobenius"
     targetgate          : List[List[complex]] = field(default_factory=lambda : [[0,0,1],[0,1,0],[1,0,0]]) # Complex target unitary in the essential level dimensions for gate optimization
-    optim_target        : str               = "gate"                        # Optional: Set optimization targets, if not specified through the targetgate
+    targetstate         : List[complex]     = field(default_factory=list) # Complex target state vector for state-to-state optimization
+    optim_target        : str               = ""                          # Optional: Set optimization targets, if not specified through the targetgate or targetstate
     initialcondition    : str               = "basis"                       # Initial states at time t=0.0: "basis", "diagonal", "pure, 0,0,1,...", "file, /path/to/file" 
     gamma_tik0          : float             = 1e-4 	                        # Parameter for Tikhonov regularization ||alpha||^2
     gamma_tik0_interpolate : bool           = False                         # Switch to use ||alpha-alpha_0||^2 instead, where alpha_0 is the initial guess.
@@ -70,7 +71,7 @@ class QuandaryConfig:
     gamma_dpdm          : float             = 0.01                          # Parameter for integral penality term on second state derivative
     tol_infidelity      : float             = 1e-3                          # Optimization stopping criterion based on the infidelity
     tol_costfunc        : float             = 1e-3                          # Optimization stopping criterion based on the objective function value
-    maxiter             : int               = 300                           # Maximum number of optimization iterations
+    maxiter             : int               = 100                           # Maximum number of optimization iterations
 
     # Quandary run options
     print_frequency_iter: int         = 1                   # Output frequency for optimization iterations. (Print every <x> iterations)
@@ -174,11 +175,25 @@ class QuandaryConfig:
         if len(self.targetgate) > 0:
             gate_vectorized = np.concatenate((np.real(self.targetgate).ravel(), np.imag(self.targetgate).ravel()))
             self._gatefilename = "./targetgate.dat"
+            self.optim_target = "gate, fromfile"
             with open(datadir+"/"+self._gatefilename, "w") as f:
                 for value in gate_vectorized:
                     f.write("{:20.13e}\n".format(value))
             if self.verbose:
                 print("Target gate written to ", datadir+"/"+self._gatefilename)
+
+        # If given, write the target state to file
+        if len(self.targetstate) > 0:
+            gate_vectorized = np.concatenate((np.real(self.targetstate).ravel(), np.imag(self.targetstate).ravel()))
+            self._gatefilename = "./targetstate.dat"
+            self.optim_target = "file"
+            with open(datadir+"/"+self._gatefilename, "w") as f:
+                for value in gate_vectorized:
+                    f.write("{:20.13e}\n".format(value))
+            if self.verbose:
+                print("Target state written to ", datadir+"/"+self._gatefilename)
+
+
 
         # If not standard Hamiltonian model, write provided Hamiltonians to a file
         if not self.standardmodel:
@@ -272,7 +287,7 @@ class QuandaryConfig:
             mystring += "\n"
         mystring += "control_enforceBC = " + str(self.control_enforce_BC)+ "\n"
         if len(self._gatefilename) > 0:
-            mystring += "optim_target = gate, fromfile, " + self._gatefilename + "\n"
+            mystring += "optim_target = " + self.optim_target + ", " + self._gatefilename + "\n"
         else: 
             mystring += "optim_target = " + str(self.optim_target) + "\n"
         mystring += "optim_objective = " + str(self.costfunction) + "\n"
@@ -815,14 +830,16 @@ def plot_pulse(Ne, time, pt, qt):
 # Plot evolution of expected energy levels
 ##
 def plot_expectedEnergy(Ne, time, expectedEnergy, *, lindblad_solver=False):
-    nplots = np.prod(Ne)                # one plot for each initial state
+    ninit = len(expectedEnergy[0])
+    nplots = ninit                    # one plot for each initial state
+    # nplots = np.prod(Ne)                # one plot for each initial state
     ncols = 2 if nplots >= 4 else 1     # 2 rows if more than 3 plots
-    nrows = int(np.ceil(np.prod(Ne)/ncols))
+    nrows = int(np.ceil(nplots/ncols))
     figsizex = 6.4*nrows*0.75 
     figsizey = 4.8*nrows*0.75 
     fig = plt.figure(figsize=(figsizex,figsizey))
     for iplot in range(nplots):
-        iinit = iplot if not lindblad_solver else iplot*np.prod(Ne) + iplot
+        iinit = iplot if not lindblad_solver else iplot*nplots + iplot
         plt.subplot(nrows, ncols, iplot+1)
         plt.figsize=(15, 15)
         for iosc in range(len(Ne)):
@@ -849,16 +866,18 @@ def plot_expectedEnergy(Ne, time, expectedEnergy, *, lindblad_solver=False):
 # Plot evolution of population
 ##
 def plot_population(Ne, time, population, *, lindblad_solver=False):
-    nplots = np.prod(Ne)                # one plot for each initial state
+    ninit = len(population[0])
+    # nplots = np.prod(Ne)                # one plot for each initial state
+    nplots = ninit                      # one plot for each initial state
     ncols = 2 if nplots >= 4 else 1     # 2 rows if more than 3 plots
-    nrows = int(np.ceil(np.prod(Ne)/ncols))
+    nrows = int(np.ceil(nplots/ncols))
     figsizex = 6.4*nrows*0.75 
     figsizey = 4.8*nrows*0.75 
     fig = plt.figure(figsize=(figsizex,figsizey))
 
     # Iterate over initial conditions (one plot for each)
     for iplot in range(nplots):
-        iinit = iplot if not lindblad_solver else iplot*np.prod(Ne) + iplot
+        iinit = iplot if not lindblad_solver else iplot*nplots + iplot
         plt.subplot(nrows, ncols, iplot+1)
         plt.figsize=(15, 15)
         for iosc in range(len(Ne)):
@@ -915,7 +934,7 @@ def plot_results_1osc(myconfig, p, q, expectedEnergy, population):
     ax[0,1].set_ylim(1e-8, 1e5)
 
     # Plot Populations for each initial condition 
-    for iinit in range(myconfig.Ne[0]):  # for each of the 3 initial states
+    for iinit in range(len(population)):  # for each of the 3 initial states
         row = 1
         col = iinit
             
@@ -937,7 +956,7 @@ def plot_results_1osc(myconfig, p, q, expectedEnergy, population):
 
     # Plot expected Energy
     row, col = 0, 2
-    for iinit in range(myconfig.Ne[0]):
+    for iinit in range(len(expectedEnergy)):
         label = 'from |'+str(iinit)+'>' 
         ax[row, col].plot(t, expectedEnergy[iinit], label=label)
     ax[row, col].set_xlabel('Time (ns)')
