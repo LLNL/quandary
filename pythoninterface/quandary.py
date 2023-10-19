@@ -90,6 +90,8 @@ class QuandaryConfig:
     popt        : List[float]   = field(default_factory=list)   # Optimized control paramters, could be useful to run quandary again after optimization
     time        : List[float]   = field(default_factory=list)   # Vector of discretized time points, could be useful for plotting the control pulses etc.
     optim_hist  : Dict          = field(default_factory=dict)   # Optimization history: all fields as in Quandary's output file <data>/optim_history.dat
+    uT          : List[float]   = field(default_factory=list)   # Evolved states at final time T. This is the (unitary) solution operator, if the initial conditions span the full basis. 
+
 
     ##
     # This function will be called during initialization of a QuandaryConfig instance.
@@ -375,8 +377,9 @@ def quandary_run(config: QuandaryConfig, *, runtype="optimization", ncores=-1, d
     config.optim_hist = optim_hist
     config.popt = popt[:]
     config.time = time[:]
+    config.uT   = uT.copy()
 
-    return config.time, pt, qt, infidelity, uT, expectedEnergy, population
+    return config.time, pt, qt, infidelity, expectedEnergy, population
 
 
 ##

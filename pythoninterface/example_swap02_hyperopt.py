@@ -31,7 +31,7 @@ myconfig = QuandaryConfig(freq01=freq01, rotfreq=rotfreq, maxctrl_MHz=maxctrl_MH
 quandary_exec="/Users/guenther5/Numerics/quandary/main"
 
 # # Execute quandary. Default number of executing cores is the essential Hilbert space dimension.
-t, pt, qt, infidelity,  uT,expectedEnergy, population = quandary_run(myconfig, quandary_exec=quandary_exec, datadir="./SWAP02_run_dir")
+t, pt, qt, infidelity, expectedEnergy, population = quandary_run(myconfig, quandary_exec=quandary_exec, datadir="./SWAP02_run_dir")
 print(f"\nFidelity = {1.0 - infidelity}")
 
 # # Plot the control pulse and expected energy level evolution
@@ -71,7 +71,7 @@ def objective(params):
     myconfig = QuandaryConfig(freq01=freq01, maxiter=maxiter, gamma_energy=gamma_energy, gamma_tik0=gamma_tik0, rotfreq=rotfreq, maxctrl_MHz=maxctrl_MHz, targetgate=unitary, T=T, nsplines=nsplines, control_enforce_BC=False, randomize_init_ctrl=randomize_init_ctrl)
 
     # Execute quandary. 
-    t, pt, qt, infidelity, uT, expectedEnergy, population = quandary_run(myconfig, quandary_exec=quandary_exec, datadir="./SWAP02_run_dir")
+    t, pt, qt, infidelity, expectedEnergy, population = quandary_run(myconfig, quandary_exec=quandary_exec, datadir="./SWAP02_run_dir")
     print(f"-> Fidelity = {1.0 - infidelity}")
     
     # Return the infidelity. Hyperopt allows to pass more information back. Check the documentation.

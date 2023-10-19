@@ -32,7 +32,7 @@ quandary_exec="/Users/guenther5/Numerics/quandary/main"
 # myconfig.pcof0_filename = os.getcwd() + "/SWAP02_params.dat" # Use absolute path!
 
 # # Execute quandary. Default number of executing cores is the essential Hilbert space dimension.
-t, pt, qt, infidelity,  uT, expectedEnergy, population = quandary_run(myconfig, quandary_exec=quandary_exec, datadir="./SWAP02_run_dir")
+t, pt, qt, infidelity, expectedEnergy, population = quandary_run(myconfig, quandary_exec=quandary_exec, datadir="./SWAP02_run_dir")
 print(f"\nFidelity = {1.0 - infidelity}")
 
 # Plot the control pulse and expected energy level evolution
@@ -55,11 +55,11 @@ if True:
 # E.g. if you want to change the pulse length, do this:
 #    myconfig.T = 200.0
 #    myconfig.update()
-# t, pt, qt, infidelity, _, expectedEnergy, population = quandary_run(myconfig, quandary_exec=quandary_exec)
+# t, pt, qt, infidelity, expectedEnergy, population = quandary_run(myconfig, quandary_exec=quandary_exec)
 
 # If you want to run Quandary using previously optimized control parameters, this will do it:
 #    myconfig.pcof0= myconfig.popt
-#    t, pt, qt, infidelity, _, expectedEnergy, population = quandary_run(myconfig, quandary_exec=quandary_exec, runtype="simulation")     # Note the runtype.
+#    t, pt, qt, infidelity, expectedEnergy, population = quandary_run(myconfig, quandary_exec=quandary_exec, runtype="simulation")     # Note the runtype.
 # [myconfig.update() is not needed in this case]
 
 # Evaluate control pulse on different sampling rate

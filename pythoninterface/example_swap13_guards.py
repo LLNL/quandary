@@ -63,7 +63,7 @@ verbose = True
 myconfig = QuandaryConfig(Ne=Ne, Ng=Ng, freq01=freq01, selfkerr=selfkerr, Jkl=Jkl, rotfreq=rotfreq, T=T, maxctrl_MHz=maxctrl_MHz, initctrl_MHz=initctrl_MHz, targetgate=unitary, verbose=verbose, dtau=dtau, Pmin=Pmin, cw_amp_thres=cw_amp_thres, cw_prox_thres=cw_prox_thres)
 
 # Execute quandary
-t, pt, qt, infidelity, uT, expectedEnergy, population = quandary_run(myconfig, quandary_exec=quandary_exec, ncores=ncores, datadir=datadir, runtype=runtype)
+t, pt, qt, infidelity, expectedEnergy, population = quandary_run(myconfig, quandary_exec=quandary_exec, ncores=ncores, datadir=datadir, runtype=runtype)
 
 print(f"Fidelity = {1.0 - infidelity}")
 print("\n Quandary data directory: ", datadir)

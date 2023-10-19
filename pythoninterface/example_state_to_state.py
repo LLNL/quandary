@@ -34,7 +34,7 @@ quandary_exec="/Users/guenther5/Numerics/quandary/main"
 
 # # Execute quandary on one core.
 ncores=1
-t, pt, qt, infidelity, uT, expectedEnergy, population = quandary_run(myconfig, quandary_exec=quandary_exec, datadir="./run_dir", ncores=ncores)
+t, pt, qt, infidelity, expectedEnergy, population = quandary_run(myconfig, quandary_exec=quandary_exec, datadir="./run_dir", ncores=ncores)
 print(f"\nFidelity = {1.0 - infidelity}")
 
 # Plot the control pulse and expected energy level evolution
