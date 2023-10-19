@@ -50,7 +50,7 @@ datadir = "./CNOT_run_dir"  # Compute and output directory
 # myconfig.pcof0_filename = os.getcwd() + "/"+datadir+"/params.dat"  # absolute path!
 
 # Execute quandary
-t, pt, qt, infidelity, expectedEnergy, population = quandary_run(myconfig, quandary_exec=quandary_exec, ncores=ncores, datadir=datadir, runtype=runtype)
+t, pt, qt, infidelity, uT, expectedEnergy, population = quandary_run(myconfig, quandary_exec=quandary_exec, ncores=ncores, datadir=datadir, runtype=runtype)
 print(f"Fidelity = {1.0 - infidelity}")
 
 # Plot the control pulse and expected energy level evolution

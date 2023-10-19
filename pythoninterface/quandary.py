@@ -317,7 +317,7 @@ class QuandaryConfig:
         mystring += "optim_penalty_energy= " + str(self.gamma_energy) + "\n"
         mystring += "datadir= ./\n"
         for iosc in range(len(self.Ne)):
-            mystring += "output" + str(iosc) + "=expectedEnergy, population\n"
+            mystring += "output" + str(iosc) + "=expectedEnergy, population, fullstate\n"
         mystring += "output_frequency = 1\n"
         mystring += "optim_monitor_frequency = " + str(self.print_frequency_iter) + "\n"
         mystring += "runtype = " + runtype + "\n"
@@ -369,14 +369,14 @@ def quandary_run(config: QuandaryConfig, *, runtype="optimization", ncores=-1, d
 
     # Get results from quandary output files
     lindblad_solver = True if (len(config.T1) > 0 or len(config.T2) > 0) else False
-    time, pt, qt, expectedEnergy, population, popt, infidelity, optim_hist = get_results(Ne=config.Ne, datadir=datadir, lindblad_solver=lindblad_solver)
+    time, pt, qt, uT, expectedEnergy, population, popt, infidelity, optim_hist = get_results(Ne=config.Ne, Ng=config.Ng, datadir=datadir, lindblad_solver=lindblad_solver)
 
     # Store some results in the config file
     config.optim_hist = optim_hist
     config.popt = popt[:]
     config.time = time[:]
 
-    return config.time, pt, qt, infidelity, expectedEnergy, population
+    return config.time, pt, qt, infidelity, uT, expectedEnergy, population
 
 
 ##
@@ -439,7 +439,7 @@ def execute(*, runtype="simulation", ncores=1, config_filename="config.cfg", dat
 ##
 # Helper function to gather results from Quandaries output directory
 ##
-def get_results(*, Ne=[], datadir="./", lindblad_solver=False):
+def get_results(*, Ne=[], Ng=[], datadir="./", lindblad_solver=False):
     dataout_dir = datadir + "/"
     
     # Get control parameters
@@ -503,6 +503,17 @@ def get_results(*, Ne=[], datadir="./", lindblad_solver=False):
             except:
                 print("Can't read population from $filename !")
 
+    # Get last time-step unitary
+    ninit = np.prod(Ne) if not lindblad_solver else np.prod(Ne)**2
+    Ntot = [i+j for i,j in zip(Ne,Ng)]
+    ndim = np.prod(Ntot) if not lindblad_solver else np.prod(Ntot)**2
+    uT = np.zeros((ndim, ninit), dtype=complex)
+    for iinit in range(ninit):
+        file_index = str(iinit).zfill(4)
+        xre = np.loadtxt(f"{dataout_dir}/rho_Re.iinit{file_index}.dat", skiprows=1, usecols=range(1, ndim+1))[-1]
+        xim = np.loadtxt(f"{dataout_dir}/rho_Im.iinit{file_index}.dat", skiprows=1, usecols=range(1, ndim+1))[-1]
+        uT[:, iinit] = xre + 1j * xim
+
     # Get the control pulses for each qubit
     pt = []
     qt = []
@@ -521,7 +532,7 @@ def get_results(*, Ne=[], datadir="./", lindblad_solver=False):
         qt.append([x[n,2]/(2*np.pi)*1e+3 for n in range(len(x[:,0]))])     # Rot frame q(t), MHz
         ft.append([x[n,3]/(2*np.pi)*1e+3 for n in range(len(x[:,0]))])     # Lab frame f(t)
 
-    return time, pt, qt, expectedEnergy, population, pcof, infid_last, optim_hist
+    return time, pt, qt, uT, expectedEnergy, population, pcof, infid_last, optim_hist
 
 
 ##
@@ -542,7 +553,7 @@ def evalControls(config, *, pcof=[], points_per_ns=1, quandary_exec="/absolute/p
     os.makedirs(datadir, exist_ok=True)
     configfile_eval= config.dump(runtype=runtype, datadir=datadir)
     err = execute(runtype=runtype, ncores=1, config_filename=configfile_eval, datadir=datadir, quandary_exec=quandary_exec, verbose=False, cygwin=cygwin)
-    time, pt, qt, _, _, pcof, _, _ = get_results(Ne=config.Ne, datadir=datadir)
+    time, pt, qt, _, _, _, pcof, _, _ = get_results(Ne=config.Ne, Ng=config.Ng, datadir=datadir)
 
     # Save pcof to config.popt
     config.popt = pcof[:]
