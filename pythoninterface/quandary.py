@@ -185,7 +185,7 @@ class QuandaryConfig:
 
         # If given, write the target gate to file
         if len(self.targetgate) > 0:
-            gate_vectorized = np.concatenate((np.real(self.targetgate).ravel(), np.imag(self.targetgate).ravel()))
+            gate_vectorized = np.concatenate((np.real(self.targetgate).ravel(order='F'), np.imag(self.targetgate).ravel(order='F')))
             self._gatefilename = "./targetgate.dat"
             with open(datadir+"/"+self._gatefilename, "w") as f:
                 for value in gate_vectorized:
@@ -195,7 +195,7 @@ class QuandaryConfig:
 
         # If given, write the target state to file
         if len(self.targetstate) > 0:
-            gate_vectorized = np.concatenate((np.real(self.targetstate).ravel(), np.imag(self.targetstate).ravel()))
+            gate_vectorized = np.concatenate((np.real(self.targetstate).ravel(order='F'), np.imag(self.targetstate).ravel(order='F')))
             self._gatefilename = "./targetstate.dat"
             with open(datadir+"/"+self._gatefilename, "w") as f:
                 for value in gate_vectorized:
