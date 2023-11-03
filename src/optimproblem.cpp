@@ -45,7 +45,7 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
 
   /* Store other optimization parameters */
   gamma_tik = config.GetDoubleParam("optim_regul", 1e-4);
-  gamma_tik_interpolate = config.GetBoolParam("optim_regul_interpolate", false);
+  gamma_tik_interpolate = config.GetBoolParam("optim_regul_interpolate", false, false);
   gatol = config.GetDoubleParam("optim_atol", 1e-8);
   fatol = config.GetDoubleParam("optim_ftol", 1e-8);
   dxtol = config.GetDoubleParam("optim_dxtol", 1e-8);
