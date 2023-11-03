@@ -450,7 +450,7 @@ def get_results(*, Ne=[], Ng=[], datadir="./", lindblad_solver=False):
     try:
         pcof = np.loadtxt(filename).astype(float)
     except:
-        print("Can't read control coefficients from $filename !\n")
+        print("Can't read control coefficients from ", filename)
         pcof=[]
 
     # Get optimization history information
@@ -458,7 +458,7 @@ def get_results(*, Ne=[], Ng=[], datadir="./", lindblad_solver=False):
     try:
         optim_hist_tmp = np.loadtxt(filename)
     except:
-        print("Can't read optimization history from $filename")
+        print("Can't read optimization history from ", filename)
         optim_hist_tmp = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 
     if optim_hist_tmp.ndim == 2:
@@ -492,7 +492,7 @@ def get_results(*, Ne=[], Ng=[], datadir="./", lindblad_solver=False):
                 x = np.loadtxt(filename)
                 expectedEnergy[iosc].append(x[:,1])    # 0th column is time, second column is expected energy
             except:
-                print("Can't read expected energy from $filename !")
+                print("Can't read expected energy from ", filename)
 
     # Get population for each qubit, for each initial condition
     population = [[] for _ in range(len(Ne))]
@@ -504,7 +504,7 @@ def get_results(*, Ne=[], Ng=[], datadir="./", lindblad_solver=False):
                 x = np.loadtxt(filename)
                 population[iosc].append(x[:,1:].transpose())    # first column is time
             except:
-                print("Can't read population from $filename !")
+                print("Can't read population from ", filename)
 
     # Get last time-step unitary
     ninit = np.prod(Ne) if not lindblad_solver else np.prod(Ne)**2
@@ -513,9 +513,19 @@ def get_results(*, Ne=[], Ng=[], datadir="./", lindblad_solver=False):
     uT = np.zeros((ndim, ninit), dtype=complex)
     for iinit in range(ninit):
         file_index = str(iinit).zfill(4)
-        xre = np.loadtxt(f"{dataout_dir}/rho_Re.iinit{file_index}.dat", skiprows=1, usecols=range(1, ndim+1))[-1]
-        xim = np.loadtxt(f"{dataout_dir}/rho_Im.iinit{file_index}.dat", skiprows=1, usecols=range(1, ndim+1))[-1]
-        uT[:, iinit] = xre + 1j * xim
+        try:
+            xre = np.loadtxt(f"{dataout_dir}/rho_Re.iinit{file_index}.dat", skiprows=1, usecols=range(1, ndim+1))[-1]
+            uT[:, iinit] = xre 
+        except:
+            name = dataout_dir+"/rho_Re.iinit"+str(file_index)+".dat"
+            print("Can't read from ", name)
+        try:
+            xim = np.loadtxt(f"{dataout_dir}/rho_Im.iinit{file_index}.dat", skiprows=1, usecols=range(1, ndim+1))[-1]
+            uT[:, iinit] += 1j * xim
+        except:
+            name = dataout_dir+"/rho_Im.iinit"+str(file_index)+".dat"
+            print("Can't read from ", name)
+        # uT[:, iinit] = xre + 1j * xim
 
     # Get the control pulses for each qubit
     pt = []
