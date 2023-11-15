@@ -371,7 +371,7 @@ def quandary_run(config: QuandaryConfig, *, runtype="optimization", ncores=-1, d
 
     # Get results from quandary output files
     lindblad_solver = True if (len(config.T1) > 0 or len(config.T2) > 0) else False
-    time, pt, qt, uT, expectedEnergy, population, popt, infidelity, optim_hist = get_results(Ne=config.Ne, Ng=config.Ng, datadir=datadir, lindblad_solver=lindblad_solver)
+    time, pt, qt, uT, expectedEnergy, population, popt, infidelity, optim_hist = get_results(Ne=config.Ne, Ng=config.Ng, datadir=datadir, lindblad_solver=lindblad_solver, initialcondition=config.initialcondition)
 
     # Store some results in the config file
     config.optim_hist = optim_hist
@@ -442,7 +442,7 @@ def execute(*, runtype="simulation", ncores=1, config_filename="config.cfg", dat
 ##
 # Helper function to gather results from Quandaries output directory
 ##
-def get_results(*, Ne=[], Ng=[], datadir="./", lindblad_solver=False):
+def get_results(*, Ne=[], Ng=[], datadir="./", lindblad_solver=False, initialcondition="basis"):
     dataout_dir = datadir + "/"
     
     # Get control parameters
@@ -482,10 +482,14 @@ def get_results(*, Ne=[], Ng=[], datadir="./", lindblad_solver=False):
         "Penalty-TotalEnergy"    : optim_hist_tmp[:,9],
     }
 
+    # Number of initial conditions
+    ninit = np.prod(Ne) if initialcondition[0:4] != "pure" else 1
+    if lindblad_solver:
+        ninit = ninit**2
+
     # Get the time-evolution of the expected energy for each qubit, for each initial condition
     expectedEnergy = [[] for _ in range(len(Ne))]
     for iosc in range(len(Ne)):
-        ninit = np.prod(Ne) if not lindblad_solver else np.prod(Ne)**2
         for iinit in range(ninit):
             filename = dataout_dir + "./expected"+str(iosc)+".iinit"+str(iinit).zfill(4)+".dat"
             try:
@@ -497,7 +501,6 @@ def get_results(*, Ne=[], Ng=[], datadir="./", lindblad_solver=False):
     # Get population for each qubit, for each initial condition
     population = [[] for _ in range(len(Ne))]
     for iosc in range(len(Ne)):
-        ninit = np.prod(Ne) if not lindblad_solver else np.prod(Ne)**2
         for iinit in range(ninit):
             filename = dataout_dir + "./population"+str(iosc)+".iinit"+str(iinit).zfill(4)+".dat"
             try:
@@ -507,7 +510,6 @@ def get_results(*, Ne=[], Ng=[], datadir="./", lindblad_solver=False):
                 print("Can't read population from ", filename)
 
     # Get last time-step unitary
-    ninit = np.prod(Ne) if not lindblad_solver else np.prod(Ne)**2
     Ntot = [i+j for i,j in zip(Ne,Ng)]
     ndim = np.prod(Ntot) if not lindblad_solver else np.prod(Ntot)**2
     uT = np.zeros((ndim, ninit), dtype=complex)
@@ -566,7 +568,7 @@ def evalControls(config, *, pcof=[], points_per_ns=1, quandary_exec="/absolute/p
     os.makedirs(datadir, exist_ok=True)
     configfile_eval= config.dump(runtype=runtype, datadir=datadir)
     err = execute(runtype=runtype, ncores=1, config_filename=configfile_eval, datadir=datadir, quandary_exec=quandary_exec, verbose=False, cygwin=cygwin)
-    time, pt, qt, _, _, _, pcof, _, _ = get_results(Ne=config.Ne, Ng=config.Ng, datadir=datadir)
+    time, pt, qt, _, _, _, pcof, _, _ = get_results(Ne=config.Ne, Ng=config.Ng, datadir=datadir, lindblad_solver=False, initialcondition=config.initialcondition)
 
     # Save pcof to config.popt
     config.popt = pcof[:]

@@ -1340,7 +1340,7 @@ int MasterEq::getRhoT0(const int iinit, const int ninit, const InitialConditionT
   PetscInt elemID;
   double val;
   int dim_post;
-  int initID = 1;    // Output: ID for this initial condition */
+  int initID = 0;    // Output: ID for this initial condition */
   int dim_rho = dim; // can be N^2 or N
   if (lindbladtype != LindbladType::NONE) dim_rho = (int) sqrt(dim); // now dim_rho = N always.
 
@@ -1390,7 +1390,7 @@ int MasterEq::getRhoT0(const int iinit, const int ninit, const InitialConditionT
       /* Set the <iinit>'th initial state */
       if (iinit == 0) {
         // 1st initial state: rho(0)_IJ = 2(N-i)/(N(N+1)) Delta_IJ
-        initID = 1;
+        initID = 0;
 
         /* Iterate over diagonal elements of full-dimension system */
         for (int i_full = 0; i_full<dim_rho; i_full++) {
@@ -1401,7 +1401,7 @@ int MasterEq::getRhoT0(const int iinit, const int ninit, const InitialConditionT
 
       } else if (iinit == 1) {
         // 2nd initial state: rho(0)_IJ = 1/N
-        initID = 2;
+        initID = 1;
         for (int i_full = 0; i_full<dim_rho; i_full++) {
           for (int j_full = 0; j_full<dim_rho; j_full++) {
             double val = 1./dim_rho;
@@ -1412,7 +1412,7 @@ int MasterEq::getRhoT0(const int iinit, const int ninit, const InitialConditionT
 
       } else if (iinit == 2) {
         // 3rd initial state: rho(0)_IJ = 1/N Delta_IJ
-        initID = 3;
+        initID = 2;
 
         /* Iterate over diagonal elements */
         for (int i_full = 0; i_full<dim_rho; i_full++) {
