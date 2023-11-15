@@ -144,8 +144,8 @@ class QuandaryConfig:
         if len(self.targetgate) > 0:
             self.optim_target = "gate, fromfile"
         
-        # Change default initial condition to pure state if target is state-to-state optimization
-        if len(self.targetstate) > 0:
+        # Change default initial condition to ground state, if target is state-to-state optimization
+        if len(self.targetstate) > 0 and self.initialcondition[0:4] != "pure":
             self.initialcondition = "pure, " 
             for i in range(len(self.Ne)):
                 self.initialcondition += "0,"
@@ -195,10 +195,14 @@ class QuandaryConfig:
 
         # If given, write the target state to file
         if len(self.targetstate) > 0:
-            gate_vectorized = np.concatenate((np.real(self.targetstate).ravel(order='F'), np.imag(self.targetstate).ravel(order='F')))
+            if (len(self.T1) > 0 or len(self.T2) > 0): # If Lindblad solver, make it a density matrix
+                state = np.outer(self.targetstate, np.array(self.targetstate).conj())
+            else:
+                state = self.targetstate
+            vectorized = np.concatenate((np.real(state).ravel(order='F'), np.imag(state).ravel(order='F')))
             self._gatefilename = "./targetstate.dat"
             with open(datadir+"/"+self._gatefilename, "w") as f:
-                for value in gate_vectorized:
+                for value in vectorized:
                     f.write("{:20.13e}\n".format(value))
             if self.verbose:
                 print("Target state written to ", datadir+"/"+self._gatefilename)
