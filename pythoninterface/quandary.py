@@ -167,9 +167,7 @@ class QuandaryConfig:
 
         if self.verbose: 
             print("\n")
-            for q in range(len(self.Ne)):
-                print("System #", q, "Carrier frequencies (lab frame): ", self.rotfreq[q]+self.carrier_frequency[q])
-                print("                               (rot frame): ", self.carrier_frequency[q])
+            print("Carrier frequencies (rot. frame): ", self.carrier_frequency)
             print("\n")
 
     ##
