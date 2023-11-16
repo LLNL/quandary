@@ -361,9 +361,15 @@ def quandary_run(config: QuandaryConfig, *, runtype="optimization", ncores=-1, d
     # Write the configuration to file
     config_filename = config.dump(runtype=runtype, datadir=datadir)
 
-    # Set default number of cores to dim(H), unless otherwise specified
+    # Set flag for lindblad solver or Schroedinger solver. This determines the number of initial conditions, and dimension of state.
+    lindblad_solver = True if (len(config.T1) > 0 or len(config.T2) > 0) else False
+
+    # Set default number of cores to the number of initial conditions, unless otherwise specified
     if ncores == -1:
-        ncores = np.prod(config.Ne) 
+        ninit = np.prod(config.Ne) if config.initialcondition[0:4] != "pure" else 1
+        if lindblad_solver:
+            ninit = ninit**2
+        ncores = ninit
 
     # Execute subprocess to run Quandary
     err = execute(runtype=runtype, ncores=ncores, config_filename=config_filename, datadir=datadir, quandary_exec=quandary_exec, verbose=config.verbose, cygwin=cygwin)
@@ -372,7 +378,6 @@ def quandary_run(config: QuandaryConfig, *, runtype="optimization", ncores=-1, d
         print("Quandary data dir: ", datadir, "\n")
 
     # Get results from quandary output files
-    lindblad_solver = True if (len(config.T1) > 0 or len(config.T2) > 0) else False
     time, pt, qt, uT, expectedEnergy, population, popt, infidelity, optim_hist = get_results(Ne=config.Ne, Ng=config.Ng, datadir=datadir, lindblad_solver=lindblad_solver, initialcondition=config.initialcondition)
 
     # Store some results in the config file
@@ -555,7 +560,7 @@ def get_results(*, Ne=[], Ng=[], datadir="./", lindblad_solver=False, initialcon
 ##
 # Helper function to re-evaluate the controls on a different time grid for a specific sample rate
 #
-def evalControls(config, *, pcof=[], points_per_ns=1, quandary_exec="/absolute/path/to/quandary/main", datadir="./data_controls", cygwin=False):
+def evalControls(config, *, pcof=[], points_per_ns=1, quandary_exec="/absolute/path/to/quandary/main", datadir="./run_dir", cygwin=False):
 
     # Copy original setting and overwrite number of time steps for simulation
     nsteps_org = config.nsteps
