@@ -30,6 +30,8 @@ typedef struct {
   Mat *Ad, *Bd;
   std::vector<Mat> Ad_vec;
   std::vector<Mat> Bd_vec;
+  std::vector<Mat> AlearnH_vec;
+  std::vector<Mat> BlearnH_vec;
   Vec *aux;
   double time;
 } MatShellCtx;
@@ -90,8 +92,11 @@ class MasterEq{
 
     bool quietmode;
 
+    /* Stuff for UDE learning */
     bool do_learning;
     Learning* learning;   // UDE learnable operators
+    std::vector<Mat> AlearnH_vec;  // Vector of constant mats for learning H: real parts
+    std::vector<Mat> BlearnH_vec;  // Vector of constant mats for learning H: imag parts
 
   public:
     std::vector<int> nlevels;  // Number of levels per oscillator

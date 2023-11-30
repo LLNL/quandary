@@ -127,7 +127,9 @@ MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Osci
 
   /* Create Learnable parameters */
   do_learning = true;   // TODO. 
-  learning = new Learning(dim);
+  if (do_learning) {
+    learning = new Learning(dim);
+  }
 
   /* Initialize Hamiltonian matrices */
   if (!usematfree) {
@@ -168,6 +170,8 @@ MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Osci
     RHSctx.Bc_vec = Bc_vec;
     RHSctx.Ad_vec = Ad_vec;
     RHSctx.Bd_vec = Bd_vec;
+    RHSctx.AlearnH_vec = AlearnH_vec;
+    RHSctx.BlearnH_vec = BlearnH_vec;
     RHSctx.Ad = &Ad;
     RHSctx.Bd = &Bd;
     RHSctx.aux = &aux;
@@ -264,7 +268,15 @@ MasterEq::~MasterEq(){
     delete [] vals;
     delete [] cols;
 
-    delete learning;
+    if (do_learning) {
+      delete learning;
+      for (int k=0; k<AlearnH_vec.size(); k++) {
+        MatDestroy(&(AlearnH_vec[k]));
+      }
+      for (int k=0; k<BlearnH_vec.size(); k++) {
+         MatDestroy(&(BlearnH_vec[k]));
+      }
+    }
 
     ISDestroy(&isu);
     ISDestroy(&isv);
@@ -291,6 +303,7 @@ void MasterEq::initSparseMatSolver(){
   MatSetUp(Bd);
   MatSetFromOptions(Ad);
   MatSetFromOptions(Bd);
+
   // One control operator per oscillator
   // Ac_vec[0] = real(-i Hc) and Bc_vec[0] = imag(-i Hc)
   for (int iosc = 0; iosc < noscillators; iosc++) {
@@ -344,6 +357,31 @@ void MasterEq::initSparseMatSolver(){
         MatSetFromOptions(Bd_vec[id_kl]);
       }
       id_kl++;
+    }
+  }
+
+  // Allocate learnable Matrices
+  // Learnable Hamiltonian building blocks 
+  if (do_learning) {
+    for (int i = 0; i<learning->learn_params_H.size(); i++){
+      Mat myA, myB;
+      AlearnH_vec.push_back(myA);
+      BlearnH_vec.push_back(myB);
+      MatCreate(PETSC_COMM_WORLD, &AlearnH_vec[i]);
+      MatCreate(PETSC_COMM_WORLD, &BlearnH_vec[i]);
+      MatSetType(AlearnH_vec[i], MATMPIAIJ);
+      MatSetType(BlearnH_vec[i], MATMPIAIJ);
+      MatSetSizes(AlearnH_vec[i], PETSC_DECIDE, PETSC_DECIDE, dim, dim);
+      MatSetSizes(BlearnH_vec[i], PETSC_DECIDE, PETSC_DECIDE, dim, dim);
+      int d_nz = 2; // TODO: #non-zeros per row in DIAGONAL part for each proc
+      int o_nz = 2; // TODO: #non-zeros per row in OFFDIAGONAL part for each proc
+      // TODO: Should be only ONE for the diagonal basis mats
+      MatMPIAIJSetPreallocation(AlearnH_vec[i], d_nz, NULL, o_nz, NULL);
+      MatMPIAIJSetPreallocation(AlearnH_vec[i], d_nz, NULL, o_nz, NULL);
+      MatSetUp(AlearnH_vec[i]);
+      MatSetUp(BlearnH_vec[i]);
+      MatSetFromOptions(AlearnH_vec[i]);
+      MatSetFromOptions(BlearnH_vec[i]);
     }
   }
 
