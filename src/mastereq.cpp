@@ -125,6 +125,10 @@ MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Osci
     }
   }
 
+  /* Create Learnable parameters */
+  do_learning = true;   // TODO. 
+  learning = new Learning(dim);
+
   /* Initialize Hamiltonian matrices */
   if (!usematfree) {
     initSparseMatSolver();
@@ -259,6 +263,8 @@ MasterEq::~MasterEq(){
     delete [] dImdp;
     delete [] vals;
     delete [] cols;
+
+    delete learning;
 
     ISDestroy(&isu);
     ISDestroy(&isv);

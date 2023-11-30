@@ -6,6 +6,7 @@
 #include <assert.h>
 #include <iostream> 
 #include "gate.hpp"
+#include "learning.hpp"
 #include "pythoninterface.hpp"
 
 #pragma once
@@ -88,6 +89,9 @@ class MasterEq{
     PetscScalar* vals;   // holding values when evaluating dRHSdp
 
     bool quietmode;
+
+    bool do_learning;
+    Learning* learning;   // UDE learnable operators
 
   public:
     std::vector<int> nlevels;  // Number of levels per oscillator
