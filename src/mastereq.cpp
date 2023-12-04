@@ -170,8 +170,8 @@ MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Osci
     RHSctx.Bc_vec = Bc_vec;
     RHSctx.Ad_vec = Ad_vec;
     RHSctx.Bd_vec = Bd_vec;
-    RHSctx.AlearnH_vec = AlearnH_vec;
-    RHSctx.BlearnH_vec = BlearnH_vec;
+    RHSctx.AlearnH = &AlearnH;
+    RHSctx.BlearnH = &BlearnH;
     RHSctx.Ad = &Ad;
     RHSctx.Bd = &Bd;
     RHSctx.aux = &aux;
@@ -270,12 +270,8 @@ MasterEq::~MasterEq(){
 
     if (do_learning) {
       delete learning;
-      for (int k=0; k<AlearnH_vec.size(); k++) {
-        MatDestroy(&(AlearnH_vec[k]));
-      }
-      for (int k=0; k<BlearnH_vec.size(); k++) {
-         MatDestroy(&(BlearnH_vec[k]));
-      }
+      MatDestroy(&(AlearnH));
+      MatDestroy(&(BlearnH));
     }
 
     ISDestroy(&isu);
@@ -361,28 +357,23 @@ void MasterEq::initSparseMatSolver(){
   }
 
   // Allocate learnable Matrices
-  // Learnable Hamiltonian building blocks 
+  // Learnable Hamiltonian. 2N nnzs per row. TODO: split diagonal nnz's
   if (do_learning) {
-    for (int i = 0; i<learning->learn_params_H.size(); i++){
-      Mat myA, myB;
-      AlearnH_vec.push_back(myA);
-      BlearnH_vec.push_back(myB);
-      MatCreate(PETSC_COMM_WORLD, &AlearnH_vec[i]);
-      MatCreate(PETSC_COMM_WORLD, &BlearnH_vec[i]);
-      MatSetType(AlearnH_vec[i], MATMPIAIJ);
-      MatSetType(BlearnH_vec[i], MATMPIAIJ);
-      MatSetSizes(AlearnH_vec[i], PETSC_DECIDE, PETSC_DECIDE, dim, dim);
-      MatSetSizes(BlearnH_vec[i], PETSC_DECIDE, PETSC_DECIDE, dim, dim);
-      int d_nz = 2; // TODO: #non-zeros per row in DIAGONAL part for each proc
-      int o_nz = 2; // TODO: #non-zeros per row in OFFDIAGONAL part for each proc
+      MatCreate(PETSC_COMM_WORLD, &AlearnH);
+      MatCreate(PETSC_COMM_WORLD, &BlearnH);
+      MatSetType(AlearnH, MATMPIAIJ);
+      MatSetType(BlearnH, MATMPIAIJ);
+      MatSetSizes(AlearnH, PETSC_DECIDE, PETSC_DECIDE, dim, dim);
+      MatSetSizes(BlearnH, PETSC_DECIDE, PETSC_DECIDE, dim, dim);
+      int d_nz = 2*dim_rho-1; // TODO: Need to split this into nnz in DIAGONAL part for each proc
+      int o_nz = 2*dim_rho-1; // TODO: Need to split this into nnz of OFFDIAGONAL part for each proc
       // TODO: Should be only ONE for the diagonal basis mats
-      MatMPIAIJSetPreallocation(AlearnH_vec[i], d_nz, NULL, o_nz, NULL);
-      MatMPIAIJSetPreallocation(AlearnH_vec[i], d_nz, NULL, o_nz, NULL);
-      MatSetUp(AlearnH_vec[i]);
-      MatSetUp(BlearnH_vec[i]);
-      MatSetFromOptions(AlearnH_vec[i]);
-      MatSetFromOptions(BlearnH_vec[i]);
-    }
+      MatMPIAIJSetPreallocation(AlearnH, d_nz, NULL, o_nz, NULL);
+      MatMPIAIJSetPreallocation(AlearnH, d_nz, NULL, o_nz, NULL);
+      MatSetUp(AlearnH);
+      MatSetUp(BlearnH);
+      MatSetFromOptions(AlearnH);
+      MatSetFromOptions(BlearnH);
   }
 
 
