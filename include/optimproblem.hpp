@@ -32,8 +32,8 @@ class OptimProblem {
 
   /* MPI stuff */
   MPI_Comm comm_init;
-  MPI_Comm comm_optim;
-  int mpirank_optim, mpisize_optim;
+  MPI_Comm comm_time;
+  int mpirank_time, mpisize_time;
   int mpirank_space, mpisize_space;
   int mpirank_world, mpisize_world;
   int mpirank_init, mpisize_init;
@@ -77,7 +77,7 @@ class OptimProblem {
     Vec xinit;                       /* Storing initial design vector */
 
   /* Constructor */
-  OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm comm_init_, MPI_Comm comm_optim, int ninit_, std::vector<double> gate_rot_freq, Output* output_, bool quietmode=false);
+  OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm comm_init_, MPI_Comm comm_time, int ninit_, std::vector<double> gate_rot_freq, Output* output_, bool quietmode=false);
   ~OptimProblem();
 
   /* Return the number of design variables */

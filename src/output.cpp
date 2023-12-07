@@ -1,9 +1,9 @@
 #include "output.hpp"
 
 Output::Output(){
-  mpirank_world = 0;
-  mpirank_petsc = 0;
-  mpirank_init  = 0;
+  mpirank_world = -1;
+  mpirank_petsc = -1;
+  mpirank_init  = -1;
   optim_monitor_freq = 0;
   output_frequency = 0;
   optim_iter = 0;

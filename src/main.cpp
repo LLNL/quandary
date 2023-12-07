@@ -35,7 +35,7 @@ int main(int argc,char **argv)
   if (argc > 2){
     for (int i=2; i<argc; i++) {
       std::string quietstring = argv[i];
-      if (quietstring.substr(2,5).compare("quiet") == 0) {
+      if (quietstring.length() > 2 && quietstring.substr(2,5).compare("quiet") == 0) {
         quietmode = true;
         // printf("quietmode =  %d\n", quietmode);
       }
@@ -129,40 +129,71 @@ int main(int argc,char **argv)
     exit(1);
   }
 
-  /* --- Split communicators for distributed initial conditions, distributed linear algebra, parallel optimization --- */
+  /* --- Split communicators for distributed initial conditions, distributed linear algebra, time-parallel optimization --- */
   int mpirank_init, mpisize_init;
-  int mpirank_optim, mpisize_optim;
+  int mpirank_time, mpisize_time;
   int mpirank_petsc, mpisize_petsc;
-  MPI_Comm comm_optim, comm_init, comm_petsc;
+  MPI_Comm comm_time, comm_init, comm_petsc;
 
   /* Get the size of communicators  */
-  // Number of cores for optimization. Under development, set to 1 for now. 
-  // int np_optim= config.GetIntParam("np_optim", 1);
-  // np_optim= min(np_optim, mpisize_world); 
-  int np_optim= 1;
-  // Number of cores for initial condition distribution. Since this gives perfect speedup, choose maximum.
-  int np_init = std::min(ninit, mpisize_world); 
-  // Number of cores for Petsc: All the remaining ones. 
-  int np_petsc = mpisize_world / (np_init * np_optim);
+
+  // Parse command line args for "-np_init <x>" and "-np_time <x>" 
+  int np_init=0;
+  int np_time=0;
+  int np_petsc=0;
+  for (int i=2; i<argc; i++) {
+    std::string mystring = argv[i];
+    if (mystring.length() > 2 && mystring.substr(1,7).compare("np_init") == 0) {
+      np_init = std::stoi(argv[i+1]);
+      np_init = std::min(np_init, mpisize_world);
+    }
+    if (mystring.length() > 2 && mystring.substr(1,7).compare("np_time") == 0) {
+      np_time = std::stoi(argv[i+1]);
+      np_time = std::min(np_time, mpisize_world);
+    }
+  }
+
+  // Number of petsc cores. Hardcode 1 for now due to time-parallel development. TODO.
+  np_petsc= 1;
+  // If either np_init or np_time is given, use it, and compute the other one
+  if (np_init > 0 && np_time <= 0) {
+    np_init = std::min(ninit, np_init); // Limit by number of initial conditions
+    np_time = mpisize_world / (np_init * np_petsc);
+  } else if (np_time > 0 && np_init <= 0) {
+    np_init = mpisize_world / (np_time * np_petsc);
+    np_init = std::min(ninit, np_init); // Limit by number of initial conditions
+  } else if (np_init <= 0 && np_time <= 0){
+    // If none were given, default np_init = ninit
+    np_init = std::min(ninit, mpisize_world); 
+    np_time = mpisize_world / (np_init * np_petsc);
+  }
+  // If both were given, they have to match to mpisize_world -> sanity check
 
   /* Sanity check for communicator sizes */ 
-  if (mpisize_world % ninit != 0 && ninit % mpisize_world != 0) {
-    if (mpirank_world == 0) printf("ERROR: Number of threads (%d) must be integer multiplier or divisor of the number of initial conditions (%d)!\n", mpisize_world, ninit);
+  if (mpisize_world != np_init * np_time) {
+    if (mpirank_world == 0) printf("ERROR: Can't split %d cores onto processor grid of %d (initial conditions) x %d (time-parallel) \n", mpisize_world, np_init, np_time);
+    MPI_Finalize();
+    exit(1);
+  }
+  if (ninit % np_init != 0) {
+    if (mpirank_world == 0) printf("ERROR: Number of initial conditions (%d) can not be evenly distributed amongst %d cores.\n", ninit, np_init);
+    MPI_Finalize();
     exit(1);
   }
 
+
   /* Split communicators */
   // Distributed initial conditions 
-  int color_init = mpirank_world % (np_petsc * np_optim);
+  int color_init = mpirank_world % (np_petsc * np_time);
   MPI_Comm_split(MPI_COMM_WORLD, color_init, mpirank_world, &comm_init);
   MPI_Comm_rank(comm_init, &mpirank_init);
   MPI_Comm_size(comm_init, &mpisize_init);
 
   // Time-parallel Optimization
   int color_optim = mpirank_world % np_petsc + mpirank_init * np_petsc;
-  MPI_Comm_split(MPI_COMM_WORLD, color_optim, mpirank_world, &comm_optim);
-  MPI_Comm_rank(comm_optim, &mpirank_optim);
-  MPI_Comm_size(comm_optim, &mpisize_optim);
+  MPI_Comm_split(MPI_COMM_WORLD, color_optim, mpirank_world, &comm_time);
+  MPI_Comm_rank(comm_time, &mpirank_time);
+  MPI_Comm_size(comm_time, &mpisize_time);
 
   // Distributed Linear algebra: Petsc
   int color_petsc = mpirank_world / np_petsc;
@@ -173,7 +204,7 @@ int main(int argc,char **argv)
   /* Set Petsc using petsc's communicator */
   PETSC_COMM_WORLD = comm_petsc;
 
-  if (mpirank_world == 0 && !quietmode)  std::cout<< "Parallel distribution: " << mpisize_init << " np_init  X  " << mpisize_petsc<< " np_petsc  " << std::endl;
+  if (mpirank_world == 0 && !quietmode)  std::cout<< "Parallel distribution: " << mpisize_init << " np_init  X  " << mpisize_petsc<< " np_petsc  X " << mpisize_time << " np_optim" << std::endl;
 
 #ifdef WITH_SLEPC
   ierr = SlepcInitialize(&argc, &argv, (char*)0, NULL);if (ierr) return ierr;
@@ -352,10 +383,10 @@ int main(int argc,char **argv)
 
   std::string timesteppertypestr = config.GetStrParam("timestepper", "IMR");
   TimeStepper* mytimestepper;
-  if (timesteppertypestr.compare("IMR")==0) mytimestepper = new ImplMidpoint(config, mastereq, ntime, total_time, linsolvetype, linsolve_maxiter, output, storeFWD);
-  else if (timesteppertypestr.compare("IMR4")==0) mytimestepper = new CompositionalImplMidpoint(config, 4, mastereq, ntime, total_time, linsolvetype, linsolve_maxiter, output, storeFWD);
-  else if (timesteppertypestr.compare("IMR8")==0) mytimestepper = new CompositionalImplMidpoint(config, 8, mastereq, ntime, total_time, linsolvetype, linsolve_maxiter, output, storeFWD);
-  else if (timesteppertypestr.compare("EE")==0) mytimestepper = new ExplEuler(config, mastereq, ntime, total_time, output, storeFWD);
+  if (timesteppertypestr.compare("IMR")==0) mytimestepper = new ImplMidpoint(config, mastereq, ntime, total_time, linsolvetype, linsolve_maxiter, output, storeFWD, comm_time);
+  else if (timesteppertypestr.compare("IMR4")==0) mytimestepper = new CompositionalImplMidpoint(config, 4, mastereq, ntime, total_time, linsolvetype, linsolve_maxiter, output, storeFWD, comm_time);
+  else if (timesteppertypestr.compare("IMR8")==0) mytimestepper = new CompositionalImplMidpoint(config, 8, mastereq, ntime, total_time, linsolvetype, linsolve_maxiter, output, storeFWD, comm_time);
+  else if (timesteppertypestr.compare("EE")==0) mytimestepper = new ExplEuler(config, mastereq, ntime, total_time, output, storeFWD, comm_time);
   else {
     printf("\n\n ERROR: Unknow timestepping type: %s.\n\n", timesteppertypestr.c_str());
     exit(1);
@@ -373,7 +404,7 @@ int main(int argc,char **argv)
   if (read_gate_rot[0] < 1e20) { // the config option exists
     for (int i=0; i<noscillators; i++)  gate_rot_freq[i] = read_gate_rot[i];
   }
-  OptimProblem* optimctx = new OptimProblem(config, mytimestepper, comm_init, comm_optim, ninit, gate_rot_freq, output, quietmode);
+  OptimProblem* optimctx = new OptimProblem(config, mytimestepper, comm_init, comm_time, ninit, gate_rot_freq, output, quietmode);
 
   /* Set upt solution and gradient vector */
   Vec xinit;

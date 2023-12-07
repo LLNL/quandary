@@ -1,6 +1,6 @@
 #include "optimproblem.hpp"
 
-OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm comm_init_, MPI_Comm comm_optim_, int ninit_, std::vector<double> gate_rot_freq, Output* output_, bool quietmode_){
+OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm comm_init_, MPI_Comm comm_time_, int ninit_, std::vector<double> gate_rot_freq, Output* output_, bool quietmode_){
 
   timestepper = timestepper_;
   ninit = ninit_;
@@ -10,7 +10,7 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   objective = 0.0;
 
   comm_init = comm_init_;
-  comm_optim = comm_optim_;
+  comm_time = comm_time_;
   /* Store ranks and sizes of communicators */
   MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
   MPI_Comm_size(MPI_COMM_WORLD, &mpisize_world);
@@ -18,13 +18,16 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   MPI_Comm_size(PETSC_COMM_WORLD, &mpisize_space);
   MPI_Comm_rank(comm_init, &mpirank_init);
   MPI_Comm_size(comm_init, &mpisize_init);
-  MPI_Comm_rank(comm_optim, &mpirank_optim);
-  MPI_Comm_size(comm_optim, &mpisize_optim);
+  MPI_Comm_rank(comm_time, &mpirank_time);
+  MPI_Comm_size(comm_time, &mpisize_time);
 
   /* Store number of initial conditions per init-processor group */
   ninit_local = ninit / mpisize_init; 
 
   /*  If Schroedingers solver, allocate storage for the final states at time T for each initial condition. Schroedinger's solver does not store the time-trajectories during forward ODE solve, but instead recomputes the primal states during the adjoint solve. Therefore we need to store the terminal condition for the backwards primal solve. Be aware that the final states stored here will be overwritten during backwards computation!! */
+
+  /* TODO: For PinT, we might want to store the intermediate states locally, rather than recomputing them. */
+
   if (timestepper->mastereq->lindbladtype == LindbladType::NONE) {
     for (int i = 0; i < ninit_local; i++) {
       Vec state;
@@ -455,7 +458,7 @@ double OptimProblem::evalF(const Vec x) {
     /* Prepare the initial condition in [rank * ninit_local, ... , (rank+1) * ninit_local - 1] */
     int iinit_global = mpirank_init * ninit_local + iinit;
     int initid = timestepper->mastereq->getRhoT0(iinit_global, ninit, initcond_type, initcond_IDs, rho_t0);
-    if (mpirank_optim == 0 && !quietmode) printf("%d: Initial condition id=%d ...\n", mpirank_init, initid);
+    if (mpirank_time == 0 && !quietmode) printf("%d: Initial condition id=%d ...\n", mpirank_init, initid);
 
     /* If gate optimiztion, compute the target state rho^target = Vrho(0)V^dagger */
     optim_target->prepare(rho_t0);
@@ -554,7 +557,7 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
   VecZeroEntries(G);
 
   /* Derivative of regulatization term gamma / 2 ||x||^2 (ADD ON ONE PROC ONLY!) */
-  // if (mpirank_init == 0 && mpirank_optim == 0) { // TODO: Which one?? 
+  // if (mpirank_init == 0 && mpirank_time == 0) { // TODO: Which one?? 
   if (mpirank_init == 0 ) {
     VecAXPY(G, gamma_tik, x);   // + gamma_tik * x
     if (gamma_tik_interpolate){
@@ -583,7 +586,7 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
     optim_target->prepare(rho_t0);
 
     /* --- Solve primal --- */
-    // if (mpirank_optim == 0) printf("%d: %d FWD. ", mpirank_init, initid);
+    // if (mpirank_time == 0) printf("%d: %d FWD. ", mpirank_init, initid);
 
     /* Run forward with initial condition rho_t0 */
     finalstate = timestepper->solveODE(initid, rho_t0);
@@ -615,7 +618,7 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
 
     /* If Lindblas solver, compute adjoint for this initial condition. Otherwise (Schroedinger solver), compute adjoint only after all initial conditions have been propagated through (separate loop below) */
     if (timestepper->mastereq->lindbladtype != LindbladType::NONE) {
-      // if (mpirank_optim == 0) printf("%d: %d BWD.", mpirank_init, initid);
+      // if (mpirank_time == 0) printf("%d: %d BWD.", mpirank_init, initid);
 
       /* Reset adjoint */
       VecZeroEntries(rho_t0_bar);
