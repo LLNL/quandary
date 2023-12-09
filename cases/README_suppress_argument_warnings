@@ -1,0 +1,1 @@
+mpirun -np 4 ../main swap12.cfg --quiet -options_left no
