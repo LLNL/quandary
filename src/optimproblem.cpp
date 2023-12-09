@@ -809,27 +809,35 @@ PetscErrorCode TaoMonitor(Tao tao,void*ptr){
 
   /* Screen output */
   if (ctx->getMPIrank_world() == 0 && iter == 0) {
+    // tmp
+    // std::cout << "maxiter = " << ctx->getMaxIter();
+
     std::cout<<  "    Objective             Tikhonov                Penalty-Leakage        Penalty-StateVar       Penalty-TotalEnergy " << std::endl;
   }
 
-  if (ctx->getMPIrank_world() == 0 && iter % ctx->output->optim_monitor_freq == 0) {
+  bool printedConv = false;
+  if (ctx->getMPIrank_world() == 0 && (iter == ctx->getMaxIter() || iter % ctx->output->optim_monitor_freq == 0)) {
     std::cout<< iter <<  "  " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal << " + " << obj_penal_dpdm << " + " << obj_penal_energy;
     std::cout<< "  Fidelity = " << F_avg;
     std::cout<< "  ||Grad|| = " << gnorm;
     std::cout<< std::endl;
+    printedConv = true;
   }
 
   /* Additional Stopping criteria */
+  bool additionalPrint = false;
   if (1.0 - F_avg <= ctx->getInfTol()) {
     if (ctx->getMPIrank_world() == 0) {
-     printf("Optimization finished with small infidelity.\n");
+      printf("Optimization finished with small infidelity.\n");
     }
     TaoSetConvergedReason(tao, TAO_CONVERGED_USER);
+    additionalPrint = true;
   } else if (obj_cost <= ctx->getFaTol()) {
     if (ctx->getMPIrank_world() == 0) {
-     printf("Optimization finished with small final time cost.\n");
+      printf("Optimization finished with small final time cost.\n");
     }
     TaoSetConvergedReason(tao, TAO_CONVERGED_USER);
+    additionalPrint = true;
   } else if (iter > 1) { // Stop if delta x is smaller than tolerance (relative)
     // Compute ||x - xprev||/||xprev||
     double xnorm, dxnorm;
@@ -842,10 +850,18 @@ PetscErrorCode TaoMonitor(Tao tao,void*ptr){
       if (ctx->getMPIrank_world() == 0) {
        printf("Optimization finished with small parameter update (%1.4e rel. update).\n", dxnorm);
       }
-      TaoSetConvergedReason(tao, TAO_CONVERGED_USER); 
+      TaoSetConvergedReason(tao, TAO_CONVERGED_USER);
+      additionalPrint = true;
     }
   }
 
+  if (ctx->getMPIrank_world() == 0 && additionalPrint){
+    std::cout<< iter <<  "  " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal << " + " << obj_penal_dpdm << " + " << obj_penal_energy;
+    std::cout<< "  Fidelity = " << F_avg;
+    std::cout<< "  ||Grad|| = " << gnorm;
+    std::cout<< std::endl;
+  }
+ 
   /* Update xprev for next iteration */
   VecCopy(params, ctx->xprev);
 

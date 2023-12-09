@@ -95,6 +95,7 @@ class OptimProblem {
   double getDxTol()    { return dxtol; };
   double getInfTol()   { return inftol; };
   int getMPIrank_world() { return mpirank_world;};
+  int getMaxIter()     { return maxiter; };
 
   /* Evaluate the objective function F(x) */
   double evalF(const Vec x);
