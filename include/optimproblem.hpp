@@ -69,6 +69,13 @@ class OptimProblem {
     
   Vec xtmp;                        /* Temporary storage */
   
+  // Additional variables needed for multiple time intervals
+  int nAlpha; /* total number of B-spline coefficients */
+  int nEss, nTot, nMat; /* number of elements in one initial condition matrix */
+  int nTimeIntervals; /* number of time intervals */
+  std::vector<int> Tsteps; /* number of time steps in each time interval */
+  std::vector<double> T0int; /* starting time for each time interval */
+
   public: 
     Output* output;                 /* Store a reference to the output */
     TimeStepper* timestepper;       /* Store a reference to the time-stepping scheme */

@@ -38,7 +38,7 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
     }
   }
 
-  /* Store number of design parameters */
+  /* Store number of design parameters */ /* TODO: Add intermediate initial conditions */
   int n = 0;
   for (int ioscil = 0; ioscil < timestepper->mastereq->getNOscillators(); ioscil++) {
       n += timestepper->mastereq->getOscillator(ioscil)->getNParams(); 
@@ -408,7 +408,17 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   VecCreateSeq(PETSC_COMM_SELF, ndesign, &xtmp);
   VecSetFromOptions(xtmp);
   VecZeroEntries(xtmp);
-}
+
+  /* initialize variables for intermediate time intervals TODO: all need to be updated */
+  nAlpha = ndesign; /* TODO: update */
+  nEss = 1;
+  nTot = 1;
+  nMat = 1;
+  nTimeIntervals = 1;
+  Tsteps.push_back(1);
+  T0int.push_back(0.0);
+
+} // end OptimProblem constructor
 
 
 OptimProblem::~OptimProblem() {
