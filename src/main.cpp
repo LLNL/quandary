@@ -28,7 +28,7 @@ int main(int argc,char **argv)
   int mpisize_world, mpirank_world;
   MPI_Init(&argc, &argv);
   MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
-  MPI_Comm_size(MPI_COMM_WORLD, &mpisize_world);
+  MPI_Comm_size(MPI_COMM_WORLD, &mpisize_world); // mpisize_world is the total number of tasks, read from cmd line arg
 
   /* Parse argument line for "--quiet" to enable reduced output mode */
   bool quietmode = false;
@@ -42,7 +42,7 @@ int main(int argc,char **argv)
     }
   }
 
-  if (mpirank_world == 0 && !quietmode) printf("Running on %d cores.\n", mpisize_world);
+  if (mpirank_world == 0 /* && !quietmode */) printf("Running Quandary on %d cores.\n", mpisize_world);
 
   /* Read config file */
   if (argc < 2) {
@@ -204,7 +204,7 @@ int main(int argc,char **argv)
   /* Set Petsc using petsc's communicator */
   PETSC_COMM_WORLD = comm_petsc;
 
-  if (mpirank_world == 0 && !quietmode)  std::cout<< "Parallel distribution: " << mpisize_init << " np_init  X  " << mpisize_petsc<< " np_petsc  X " << mpisize_time << " np_optim" << std::endl;
+  if (mpirank_world == 0 && !quietmode)  std::cout<< "Parallel distribution: " << mpisize_init << " np_init  X  " << mpisize_petsc<< " np_petsc  X " << mpisize_time << " np_time" << std::endl;
 
 #ifdef WITH_SLEPC
   ierr = SlepcInitialize(&argc, &argv, (char*)0, NULL);if (ierr) return ierr;
@@ -309,7 +309,7 @@ int main(int argc,char **argv)
   // Get self and cross kers and coupling terms 
   std::vector<double> crosskerr, Jkl;
   config.GetVecDoubleParam("crosskerr", crosskerr, 0.0);   // cross ker \xi_{kl}, zz-coupling
-  config.GetVecDoubleParam("Jkl", Jkl, 0.0); // Jaynes-Cummings coupling
+  config.GetVecDoubleParam("Jkl", Jkl, 0.0); // Jaynes-Cummings (dipole-dipole) coupling coeff
   copyLast(crosskerr, (nlevels.size()-1) * nlevels.size()/ 2);
   copyLast(Jkl, (nlevels.size()-1) * nlevels.size()/ 2);
   // If not enough elements are given, fill up with zeros!
@@ -406,7 +406,7 @@ int main(int argc,char **argv)
   }
   OptimProblem* optimctx = new OptimProblem(config, mytimestepper, comm_init, comm_time, ninit, gate_rot_freq, output, quietmode);
 
-  /* Set upt solution and gradient vector */
+  /* Set up vectors for the optimization variables and the gradient of the objective */
   Vec xinit;
   VecCreateSeq(PETSC_COMM_SELF, optimctx->getNdesign(), &xinit);
   VecSetFromOptions(xinit);
@@ -414,13 +414,13 @@ int main(int argc,char **argv)
   VecCreateSeq(PETSC_COMM_SELF, optimctx->getNdesign(), &grad);
   VecSetUp(grad);
   VecZeroEntries(grad);
-  Vec opt;
+  Vec opt; // for returning results for runtypes Simulation & Optimization
 
   /* Some output */
   if (mpirank_world == 0)
   {
     /* Print parameters to file */
-    sprintf(filename, "%s/config_log.dat", output->datadir.c_str());
+    snprintf(filename, 254, "%s/config_log.dat", output->datadir.c_str());
     std::ofstream logfile(filename);
     if (logfile.is_open()){
       logfile << log.str();
@@ -508,7 +508,7 @@ int main(int argc,char **argv)
 
   /* Print timing to file */
   if (mpirank_world == 0) {
-    sprintf(filename, "%s/timing.dat", output->datadir.c_str());
+    snprintf(filename, 254, "%s/timing.dat", output->datadir.c_str());
     FILE* timefile = fopen(filename, "w");
     fprintf(timefile, "%d  %1.8e\n", mpisize_world, UsedTime);
     fclose(timefile);
@@ -658,7 +658,7 @@ int main(int argc,char **argv)
 
   /* --- Print Hessian to file */
   
-  sprintf(filename, "%s/hessian.dat", output->datadir.c_str());
+  snprintf(filename, 254, "%s/hessian.dat", output->datadir.c_str());
   printf("File written: %s.\n", filename);
   PetscViewer viewer;
   PetscViewerCreate(MPI_COMM_WORLD, &viewer);
@@ -671,7 +671,7 @@ int main(int argc,char **argv)
   PetscViewerDestroy(&viewer);
 
   // write again in binary
-  sprintf(filename, "%s/hessian_bin.dat", output->datadir.c_str());
+  snprintf(filename, 254, "%s/hessian_bin.dat", output->datadir.c_str());
   printf("File written: %s.\n", filename);
   PetscViewerBinaryOpen(MPI_COMM_WORLD, filename, FILE_MODE_WRITE, &viewer);
   MatView(Hess, viewer);
@@ -690,7 +690,7 @@ int main(int argc,char **argv)
   /* Load Hessian from file */
   Mat Hess;
   MatCreate(PETSC_COMM_SELF, &Hess);
-  sprintf(filename, "%s/hessian_bin.dat", output->datadir.c_str());
+  snprintf(filename, 254, "%s/hessian_bin.dat", output->datadir.c_str());
   printf("Reading file: %s\n", filename);
   PetscViewer viewer;
   PetscViewerCreate(MPI_COMM_WORLD, &viewer);
@@ -717,7 +717,7 @@ int main(int argc,char **argv)
 
   /* Print eigenvalues to file. */
   FILE *file;
-  sprintf(filename, "%s/eigvals.dat", output->datadir.c_str());
+  snprintf(filename, 254, "%s/eigvals.dat", output->datadir.c_str());
   file =fopen(filename,"w");
   for (int i=0; i<eigvals.size(); i++){
       fprintf(file, "% 1.8e\n", eigvals[i]);  
@@ -726,7 +726,7 @@ int main(int argc,char **argv)
   printf("File written: %s.\n", filename);
 
   /* Print eigenvectors to file. Columns wise */
-  sprintf(filename, "%s/eigvecs.dat", output->datadir.c_str());
+  snprintf(filename, 254, "%s/eigvecs.dat", output->datadir.c_str());
   file =fopen(filename,"w");
   for (PetscInt j=0; j<nrows; j++){  // rows
     for (PetscInt i=0; i<eigvals.size(); i++){
