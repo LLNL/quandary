@@ -1,1 +1,9 @@
 mpirun -np 4 ../main swap12.cfg --quiet -options_left no
+
+# several time intervals for a case with 3 initial conditions:
+mpirun -np 3 swap02.cfg               // distributes 3 cores for initial conditions, and 1 (=3/3) for time
+mpirun -np 6 swap02.cfg               // distributes 3 cores for initial conditions and 2 (=6/3) cores for time
+mpirun -np 6 swap02.cfg -np_init  3   // same: distributes 3 cores for initial conditions and 2 (=6/3) cores for time window
+mpirun -np 3 swap02.cfg -np_time 3    // distributes 3 cores for time window, and 1 (3/3) for initial conditions (hence serial initial conditions)
+mpirun -np 9 swap02.cfg -np_time 3    // distributes 3 for time window and 3 (=9/3) for initial conditions
+ 
