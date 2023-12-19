@@ -1,5 +1,5 @@
 # Set location of PETSC
-#PETSC_DIR=/path/to/petsc-<version>
+#PETSC_DIR=/usr/local/Cellar/petsc/3.20.2
 #PETSC_ARCH=arch-linux-c-debug
 
 # Optional: Link to SLEPC
@@ -8,6 +8,11 @@ WITH_SLEPC = false
 
 # Choose to run sanity tests
 SANITY_CHECK = false
+
+# Choose to use Ensmallen optimizer
+# g++ example.cpp -o example -O2 -larmadillo -std=c++11 -I/Users/guenther5/Software/ensmallen-install/include 
+WITH_ENSMALLEN=true
+ENSM_DIR=/Users/guenther5/Software/ensmallen-install
 
 
 #######################################################
@@ -19,6 +24,13 @@ ifeq ($(WITH_SLEPC), true)
 CXX_OPT = -DWITH_SLEPC
 LDFLAGS_OPT = -L${SLEPC_DIR}/lib -L${SLEPC_DIR}/${PETSC_ARCH}/lib -lslepc 
 INC_OPT = -I${SLEPC_DIR}/${PETSC_ARCH}/include -I${SLEPC_DIR}/include
+endif
+
+# Add optional Ensmallen
+ifeq ($(WITH_ENSMALLEN), true)
+CXX_OPT += -DWITH_ENSMALLEN
+LDFLAGS_OPT += -L${ENSM_DIR}/lib -larmadillo
+INC_OPT += -I${ENSM_DIR}/include
 endif
 
 

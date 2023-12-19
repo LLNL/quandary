@@ -10,6 +10,10 @@
 #include "optimproblem.hpp"
 #include "output.hpp"
 #include "petsc.h"
+#ifdef WITH_ENSMALLEN
+#include <armadillo>
+#include <ensmallen.hpp>
+#endif
 #ifdef WITH_SLEPC
 #include <slepceps.h>
 #endif
@@ -384,6 +388,30 @@ int main(int argc,char **argv)
   VecSetUp(grad);
   VecZeroEntries(grad);
   Vec opt;
+
+// #ifdef WITH_ENSMALLEN
+//   /* Set up using Armadillo / Ensmallen */
+//   int n_dims = 1;
+//   int n_size = optimctx->getNdesign();
+//   arma::mat armaxinit(n_dims, n_size, arma::fill::randu);
+//   armaxinit.print("my armaxinit = ");
+//   printf("IJ + %1.4e\n", armaxinit(2));
+//   armaxinit.submat( 0, 0, 0, 2).print("Submat=");
+//   armaxinit.submat(0,0,0,2) = {1.0, 2.0, 3.0};
+//   armaxinit.submat( 0, 0, 0, 2).print("Submat=");
+
+  // Get a pointer from Petsc's xinit vector
+  PetscScalar* xin_ptr;
+  VecGetArray(xinit, &xin_ptr);
+  arma::mat xinit_2(xin_ptr, 1, n_size);
+  VecRestoreArray(xinit, &xin_ptr);
+  xinit_2.print("arma xinit=");
+  VecView(xinit, NULL);
+
+  exit(1);
+
+// #endif
+
 
   /* Some output */
   if (mpirank_world == 0)
