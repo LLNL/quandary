@@ -401,9 +401,11 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   VecSetFromOptions(xprev);
   VecZeroEntries(xprev);
 
-  VecCreateSeq(PETSC_COMM_SELF, ndesign, &xinit);
-  VecSetFromOptions(xinit);
-  VecZeroEntries(xinit);
+  if (gamma_tik_interpolate) {
+    VecCreateSeq(PETSC_COMM_SELF, ndesign, &xinit);
+    VecSetFromOptions(xinit);
+    VecZeroEntries(xinit);
+  }
 
   VecCreateSeq(PETSC_COMM_SELF, ndesign, &xtmp);
   VecSetFromOptions(xtmp);
@@ -420,7 +422,9 @@ OptimProblem::~OptimProblem() {
   VecDestroy(&xlower);
   VecDestroy(&xupper);
   VecDestroy(&xprev);
-  VecDestroy(&xinit);
+  if (gamma_tik_interpolate) {
+    VecDestroy(&xinit);
+  }
   VecDestroy(&xtmp);
 
   for (int i = 0; i < store_finalstates.size(); i++) {

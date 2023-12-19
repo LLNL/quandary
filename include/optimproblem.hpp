@@ -74,7 +74,7 @@ class OptimProblem {
     TimeStepper* timestepper;       /* Store a reference to the time-stepping scheme */
     Vec xlower, xupper;              /* Optimization bounds */
     Vec xprev;                       /* design vector at previous iteration */
-    Vec xinit;                       /* Storing initial design vector */
+    Vec xinit;                       /* Storing initial design vector, if gamma_tik_interpolate=true, aka if tikhonov is ||x - x_0||^2 rather than ||x||^2 */
 
   /* Constructor */
   OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm comm_init_, MPI_Comm comm_time, int ninit_, std::vector<double> gate_rot_freq, Output* output_, bool quietmode=false);
