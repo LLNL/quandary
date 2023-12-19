@@ -322,7 +322,7 @@ int main(int argc,char **argv)
         usematfree = false;
   }
   if (usematfree && mpisize_petsc > 1) {
-    if (mpirank_world == 0) printf("ERROR: No Petsc-parallel version for the matrix free solver available!");
+    if (mpirank_world == 0) printf("ERROR: No Petsc-parallel version for the matrix free solver available!\n");
     exit(1);
   }
   // Compute coupling rotation frequencies eta_ij = w^r_i - w^r_j
@@ -383,10 +383,10 @@ int main(int argc,char **argv)
 
   std::string timesteppertypestr = config.GetStrParam("timestepper", "IMR");
   TimeStepper* mytimestepper;
-  if (timesteppertypestr.compare("IMR")==0) mytimestepper = new ImplMidpoint(config, mastereq, ntime, total_time, linsolvetype, linsolve_maxiter, output, storeFWD, comm_time);
-  else if (timesteppertypestr.compare("IMR4")==0) mytimestepper = new CompositionalImplMidpoint(config, 4, mastereq, ntime, total_time, linsolvetype, linsolve_maxiter, output, storeFWD, comm_time);
-  else if (timesteppertypestr.compare("IMR8")==0) mytimestepper = new CompositionalImplMidpoint(config, 8, mastereq, ntime, total_time, linsolvetype, linsolve_maxiter, output, storeFWD, comm_time);
-  else if (timesteppertypestr.compare("EE")==0) mytimestepper = new ExplEuler(config, mastereq, ntime, total_time, output, storeFWD, comm_time);
+  if (timesteppertypestr.compare("IMR")==0) mytimestepper = new ImplMidpoint(config, mastereq, ninit, ntime, total_time, linsolvetype, linsolve_maxiter, output, storeFWD, comm_time);
+  else if (timesteppertypestr.compare("IMR4")==0) mytimestepper = new CompositionalImplMidpoint(config, 4, mastereq, ninit, ntime, total_time, linsolvetype, linsolve_maxiter, output, storeFWD, comm_time);
+  else if (timesteppertypestr.compare("IMR8")==0) mytimestepper = new CompositionalImplMidpoint(config, 8, mastereq, ninit, ntime, total_time, linsolvetype, linsolve_maxiter, output, storeFWD, comm_time);
+  else if (timesteppertypestr.compare("EE")==0) mytimestepper = new ExplEuler(config, mastereq, ninit, ntime, total_time, output, storeFWD, comm_time);
   else {
     printf("\n\n ERROR: Unknow timestepping type: %s.\n\n", timesteppertypestr.c_str());
     exit(1);
@@ -456,6 +456,49 @@ int main(int argc,char **argv)
       printf("\nGradient norm: %1.14e\n", gnorm);
     }
     optimctx->output->writeGradient(grad);
+
+    bool verify_gradient = config.GetBoolParam("verify_grad", false);
+
+    if (verify_gradient) {
+      if (mpirank_world == 0 && !quietmode) printf("\nStarting primal solver... \n");
+      objective = optimctx->evalF(xinit);
+      if (mpirank_world == 0 && !quietmode) printf("\nTotal objective = %1.14e, \n", objective);
+
+      const int Nk = 40;
+      Vec xperturb;
+      VecCreateSeq(PETSC_COMM_SELF, optimctx->getNdesign(), &xperturb);
+      double obj1[Nk], amp[Nk], dJdx[Nk], error[Nk];
+      for (int k = 0; k < Nk; k++) {
+        amp[k] = pow(10.0, -0.25 * k);
+        VecCopy(xinit, xperturb);
+        VecAXPY(xperturb, amp[k] / gnorm, grad);
+
+        obj1[k] = optimctx->evalF(xperturb);
+        dJdx[k] = (obj1[k] - objective) / amp[k];
+        error[k] = abs(dJdx[k] - gnorm) / gnorm;
+      }
+
+      if (mpirank_world == 0 && !quietmode) {
+        PetscScalar *ptr;
+        VecGetArray(xinit, &ptr);
+        printf("x0: \n");
+        for (int k = 0; k < optimctx->getNdesign(); k++)
+          printf("%.3E\t", ptr[k]);
+        printf("\n");
+        VecRestoreArray(xinit, &ptr);
+
+        VecGetArray(grad, &ptr);
+        printf("grad: \n");
+        for (int k = 0; k < optimctx->getNdesign(); k++)
+          printf("%.3E\t", ptr[k]);
+        printf("\n");
+        VecRestoreArray(grad, &ptr);
+        
+        printf("amp\tJ1\tdJdx\terror\n");
+        for (int k = 0; k < Nk; k++)
+          printf("%.4E\t%.4E\t%.4E\t%.4E\n", amp[k], obj1[k], dJdx[k], error[k]);
+      }
+    }
   }
 
   /* --- Solve the optimization  --- */

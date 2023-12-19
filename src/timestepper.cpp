@@ -8,10 +8,11 @@ TimeStepper::TimeStepper() {
   total_time = 0.0;
   dt = 0.0;
   storeFWD = false;
+  compute_icgrad = false;
   MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
 }
 
-TimeStepper::TimeStepper(MapParam config, MasterEq* mastereq_, int ntime_, double total_time_, Output* output_, bool storeFWD_, MPI_Comm comm_time_) : TimeStepper() {
+TimeStepper::TimeStepper(MapParam config, MasterEq* mastereq_, int ninit_, int ntime_, double total_time_, Output* output_, bool storeFWD_, MPI_Comm comm_time_) : TimeStepper() {
   mastereq = mastereq_;
   dim = 2*mastereq->getDim(); // will be either N^2 (Lindblad) or N (Schroedinger)
   ntime = ntime_;
@@ -54,10 +55,25 @@ TimeStepper::TimeStepper(MapParam config, MasterEq* mastereq_, int ntime_, doubl
   VecSetFromOptions(x);
   VecZeroEntries(x);
 
+  compute_icgrad = config.GetBoolParam("initial_condition_gradient", false);
+
   /* Allocate the reduced gradient */
+  // TODO(kevin): this is not a good thing to initialize design parameter gradient here, separate from OptimProblem.
+  //              Especially when there will be an option of parallel in time.
+  //              at least the allocation of redgrad should be done by OptimProblem.
   int ndesign = 0;
   for (int ioscil = 0; ioscil < mastereq->getNOscillators(); ioscil++) {
       ndesign += mastereq->getOscillator(ioscil)->getNParams(); 
+  }
+  // TODO(kevin): save initial condition as design parameter in all processors for now.
+  if (compute_icgrad) {
+    ndesign += ninit_ * (2 * mastereq->getDim());
+    
+    // TODO(kevin): can I set icgrad to be a view vector for part of redgrad, according to mpi rank?
+    VecCreate(PETSC_COMM_WORLD, &icgrad);
+    VecSetSizes(icgrad, PETSC_DECIDE, dim);
+    VecSetFromOptions(icgrad);
+    VecZeroEntries(icgrad);
   }
   VecCreateSeq(PETSC_COMM_SELF, ndesign, &redgrad);
   VecSetFromOptions(redgrad);
@@ -86,6 +102,7 @@ TimeStepper::~TimeStepper() {
   }
   VecDestroy(&x);
   VecDestroy(&redgrad);
+  VecDestroy(&icgrad);
 }
 
 
@@ -185,6 +202,8 @@ void TimeStepper::solveAdjointODE(int initid, Vec rho_t0_bar, Vec finalstate, do
   /* Reset gradient */
   VecZeroEntries(redgrad);
 
+  // TODO(kevin): for parallel in time, we will have terminal adjoint condition for each time segment.
+  //              rho_t0_bar for the final time segment, and the discontinuity gradient for other time segments.
   /* Set terminal adjoint condition */
   VecCopy(rho_t0_bar, x);
 
@@ -229,7 +248,8 @@ void TimeStepper::solveAdjointODE(int initid, Vec rho_t0_bar, Vec finalstate, do
 
     /* Take one time step backwards for the adjoint */
     // printf("Backwards %f -> %f ... ", tstop, tstart);
-    evolveBWD(tstop, tstart, xprimal, x, redgrad, true);
+    bool compute_icgrad_ = (compute_icgrad && (n == 1));
+    evolveBWD(tstop, tstart, xprimal, x, redgrad, true, compute_icgrad_);
     // printf("Done\n");
 
     /* Update dpdm storage */
@@ -532,11 +552,15 @@ void TimeStepper::energyPenaltyIntegral_diff(double time, double penaltybar, Vec
   delete [] cols;
 }
 
-void TimeStepper::evolveBWD(const double tstart, const double tstop, const Vec x_stop, Vec x_adj, Vec grad, bool compute_gradient){}
+void TimeStepper::evolveBWD(const double tstart, const double tstop, const Vec x_stop, Vec x_adj, Vec grad, bool compute_gradient, bool compute_icgrad_){}
 
-ExplEuler::ExplEuler(MapParam config, MasterEq* mastereq_, int ntime_, double total_time_, Output* output_, bool storeFWD_, MPI_Comm comm_time_) : TimeStepper(config, mastereq_, ntime_, total_time_, output_, storeFWD_, comm_time_) {
+ExplEuler::ExplEuler(MapParam config, MasterEq* mastereq_, int ninit_, int ntime_, double total_time_, Output* output_, bool storeFWD_, MPI_Comm comm_time_) : TimeStepper(config, mastereq_, ninit_, ntime_, total_time_, output_, storeFWD_, comm_time_) {
   MatCreateVecs(mastereq->getRHS(), &stage, NULL);
   VecZeroEntries(stage);
+  if (compute_icgrad) {
+    printf("\n\n ERROR: initial condition gradient is not implemented for ExplEuler\n\n");
+    exit(1);
+  }
 }
 
 ExplEuler::~ExplEuler() {
@@ -557,7 +581,7 @@ void ExplEuler::evolveFWD(const double tstart,const  double tstop, Vec x) {
 
 }
 
-void ExplEuler::evolveBWD(const double tstop,const  double tstart,const  Vec x, Vec x_adj, Vec grad, bool compute_gradient){
+void ExplEuler::evolveBWD(const double tstop,const  double tstart,const  Vec x, Vec x_adj, Vec grad, bool compute_gradient, bool compute_icgrad_){
   double dt = tstop - tstart;
 
   /* Add to reduced gradient */
@@ -573,7 +597,7 @@ void ExplEuler::evolveBWD(const double tstop,const  double tstart,const  Vec x, 
 
 }
 
-ImplMidpoint::ImplMidpoint(MapParam config,MasterEq* mastereq_, int ntime_, double total_time_, LinearSolverType linsolve_type_, int linsolve_maxiter_, Output* output_, bool storeFWD_, MPI_Comm comm_time_) : TimeStepper(config, mastereq_, ntime_, total_time_, output_, storeFWD_, comm_time_) {
+ImplMidpoint::ImplMidpoint(MapParam config,MasterEq* mastereq_, int ninit_, int ntime_, double total_time_, LinearSolverType linsolve_type_, int linsolve_maxiter_, Output* output_, bool storeFWD_, MPI_Comm comm_time_) : TimeStepper(config, mastereq_, ninit_, ntime_, total_time_, output_, storeFWD_, comm_time_) {
 
   /* Create and reset the intermediate vectors */
   MatCreateVecs(mastereq->getRHS(), &stage, NULL);
@@ -683,7 +707,7 @@ void ImplMidpoint::evolveFWD(const double tstart,const  double tstop, Vec x) {
   VecAXPY(x, dt, stage);
 }
 
-void ImplMidpoint::evolveBWD(const double tstop, const double tstart, const Vec x, Vec x_adj, Vec grad, bool compute_gradient){
+void ImplMidpoint::evolveBWD(const double tstop, const double tstart, const Vec x, Vec x_adj, Vec grad, bool compute_gradient, bool compute_icgrad_){
   Mat A;
 
   /* Compute time step size */
@@ -719,11 +743,18 @@ void ImplMidpoint::evolveBWD(const double tstop, const double tstart, const Vec 
       break;
   }
 
+  /* Add initial condition gradient - part 1 */
+  if (compute_gradient && compute_icgrad_) {
+    VecCopy(stage_adj, icgrad);
+  }
+
   // k_bar = h*k_bar 
   VecScale(stage_adj, dt);
 
   /* Add to reduced gradient */
   if (compute_gradient) {
+    // TODO(kevin): if we're storing forward states, then we don't need to solve this equation.
+    //              we just need the average between (n-1) and n-th forward state.
     switch (linsolve_type) {
       case LinearSolverType::GMRES: 
         KSPSolve(ksp, rhs, stage);
@@ -745,6 +776,13 @@ void ImplMidpoint::evolveBWD(const double tstop, const double tstart, const Vec 
 
   /* Update adjoint state x_adj += dt * A^Tstage_adj --- */
   MatMultTransposeAdd(A, stage_adj, x_adj, x_adj);
+
+  /* Add initial condition gradient - part 2 */
+  if (compute_gradient && compute_icgrad_) {
+    // get 0.5 * h * k_bar 
+    VecScale(stage_adj, 0.5);
+    MatMultTransposeAdd(A, stage_adj, icgrad, icgrad);
+  }
 
 }
 
@@ -783,7 +821,7 @@ int ImplMidpoint::NeumannSolve(Mat A, Vec b, Vec y, double alpha, bool transpose
 
 
 
-CompositionalImplMidpoint::CompositionalImplMidpoint(MapParam config, int order_, MasterEq* mastereq_, int ntime_, double total_time_, LinearSolverType linsolve_type_, int linsolve_maxiter_, Output* output_, bool storeFWD_, MPI_Comm comm_time_): ImplMidpoint(config, mastereq_, ntime_, total_time_, linsolve_type_, linsolve_maxiter_, output_, storeFWD_, comm_time_) {
+CompositionalImplMidpoint::CompositionalImplMidpoint(MapParam config, int order_, MasterEq* mastereq_, int ninit_, int ntime_, double total_time_, LinearSolverType linsolve_type_, int linsolve_maxiter_, Output* output_, bool storeFWD_, MPI_Comm comm_time_): ImplMidpoint(config, mastereq_, ninit_, ntime_, total_time_, linsolve_type_, linsolve_maxiter_, output_, storeFWD_, comm_time_) {
 
   order = order_;
 
@@ -824,6 +862,11 @@ CompositionalImplMidpoint::CompositionalImplMidpoint(MapParam config, int order_
   VecCreate(PETSC_COMM_WORLD, &aux);
   VecSetSizes(aux, PETSC_DECIDE, dim);
   VecSetFromOptions(aux);
+
+  if (compute_icgrad) {
+    printf("\n\n ERROR: initial condition gradient is not implemented for ExplEuler\n\n");
+    exit(1);
+  }
 }
 
 CompositionalImplMidpoint::~CompositionalImplMidpoint(){
@@ -854,7 +897,7 @@ void CompositionalImplMidpoint::evolveFWD(const double tstart,const  double tsto
 
 }
 
-void CompositionalImplMidpoint::evolveBWD(const double tstop, const double tstart, const Vec x, Vec x_adj, Vec grad, bool compute_gradient){
+void CompositionalImplMidpoint::evolveBWD(const double tstop, const double tstart, const Vec x, Vec x_adj, Vec grad, bool compute_gradient, bool compute_icgrad_){
   
   double dt = tstop - tstart;
 

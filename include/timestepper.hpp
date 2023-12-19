@@ -28,6 +28,8 @@ class TimeStepper{
     int n_start;    // local first time index for PinT local time-stepping
     int n_stop;     // local last time index for PinT local time-stepping
 
+    bool compute_icgrad;  // flag to compute initial condition gradient
+
   public:
     MasterEq* mastereq;  // Lindblad master equation
     int ntime;           // number of time steps
@@ -35,6 +37,7 @@ class TimeStepper{
     double dt;           // time step size
 
     Vec redgrad;                   /* Reduced gradient */
+    Vec icgrad;                    // local gradient variable to initial condition
 
     /* Stuff needed for the penalty integral term */
     // TODO: pass those through the timestepper constructor (currently, they are set manually inside optimproblem constructor), or add up the penalty within the optim_target.
@@ -55,7 +58,7 @@ class TimeStepper{
     bool storeFWD;       /* Flag that determines if primal states should be stored during forward evaluation */
 
     TimeStepper(); 
-    TimeStepper(MapParam config, MasterEq* mastereq_, int ntime_, double total_time_, Output* output_, bool storeFWD_, MPI_Comm comm_time_); 
+    TimeStepper(MapParam config, MasterEq* mastereq_, int ninit_, int ntime_, double total_time_, Output* output_, bool storeFWD_, MPI_Comm comm_time_); 
     virtual ~TimeStepper(); 
 
     /* Return the state at a certain time index */
@@ -83,19 +86,19 @@ class TimeStepper{
     /* Evolve state forward from tstart to tstop */
     virtual void evolveFWD(const double tstart, const double tstop, Vec x) = 0;
     /* Evolve adjoint backward from tstop to tstart and update reduced gradient */
-    virtual void evolveBWD(const double tstart, const double tstop, const Vec x_stop, Vec x_adj, Vec grad, bool compute_gradient);
+    virtual void evolveBWD(const double tstart, const double tstop, const Vec x_stop, Vec x_adj, Vec grad, bool compute_gradient, bool compute_icgrad_=false);
 };
 
 class ExplEuler : public TimeStepper {
   Vec stage;
   public:
-    ExplEuler(MapParam config, MasterEq* mastereq_, int ntime_, double total_time_, Output* output_, bool storeFWD_, MPI_Comm comm_time_);
+    ExplEuler(MapParam config, MasterEq* mastereq_, int ninit_, int ntime_, double total_time_, Output* output_, bool storeFWD_, MPI_Comm comm_time_);
     ~ExplEuler();
 
     /* Evolve state forward from tstart to tstop */
     void evolveFWD(const double tstart, const double tstop, Vec x);
     /* Evolve adjoint backward from tstop to tstart and update reduced gradient */
-    void evolveBWD(const double tstart, const double tstop, const Vec x_stop, Vec x_adj, Vec grad, bool compute_gradient);
+    void evolveBWD(const double tstart, const double tstop, const Vec x_stop, Vec x_adj, Vec grad, bool compute_gradient, bool compute_icgrad_=false);
 };
 
 
@@ -121,14 +124,14 @@ class ImplMidpoint : public TimeStepper {
   Vec tmp, err;                    /* Auxiliary vector for applying the neuman iterations */
 
   public:
-    ImplMidpoint(MapParam config, MasterEq* mastereq_, int ntime_, double total_time_, LinearSolverType linsolve_type_, int linsolve_maxiter_, Output* output_, bool storeFWD_, MPI_Comm comm_time_);
+    ImplMidpoint(MapParam config, MasterEq* mastereq_, int ninit_, int ntime_, double total_time_, LinearSolverType linsolve_type_, int linsolve_maxiter_, Output* output_, bool storeFWD_, MPI_Comm comm_time_);
     ~ImplMidpoint();
 
 
     /* Evolve state forward from tstart to tstop */
     virtual void evolveFWD(const double tstart, const double tstop, Vec x);
     /* Evolve adjoint backward from tstop to tstart and update reduced gradient */
-    virtual void evolveBWD(const double tstart, const double tstop, const Vec x_stop, Vec x_adj, Vec grad, bool compute_gradient);
+    virtual void evolveBWD(const double tstart, const double tstop, const Vec x_stop, Vec x_adj, Vec grad, bool compute_gradient, bool compute_icgrad_=false);
 
     /* Solve (I-alpha*A) * x = b using Neumann iterations */
     // bool transpose=true solves the transposed system (I-alpha A^T)x = b
@@ -145,9 +148,9 @@ class CompositionalImplMidpoint : public ImplMidpoint {
   int order;
 
   public:
-    CompositionalImplMidpoint(MapParam config, int order_, MasterEq* mastereq_, int ntime_, double total_time_, LinearSolverType linsolve_type_, int linsolve_maxiter_, Output* output_, bool storeFWD_, MPI_Comm comm_time_);
+    CompositionalImplMidpoint(MapParam config, int order_, MasterEq* mastereq_, int ninit_, int ntime_, double total_time_, LinearSolverType linsolve_type_, int linsolve_maxiter_, Output* output_, bool storeFWD_, MPI_Comm comm_time_);
     ~CompositionalImplMidpoint();
 
     void evolveFWD(const double tstart, const double tstop, Vec x);
-    void evolveBWD(const double tstart, const double tstop, const Vec x_stop, Vec x_adj, Vec grad, bool compute_gradient);
+    void evolveBWD(const double tstart, const double tstop, const Vec x_stop, Vec x_adj, Vec grad, bool compute_gradient, bool compute_icgrad_=false);
 };

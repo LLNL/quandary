@@ -21,6 +21,8 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   MPI_Comm_rank(comm_time, &mpirank_time);
   MPI_Comm_size(comm_time, &mpisize_time);
 
+  compute_icgrad = config.GetBoolParam("initial_condition_gradient", false);
+
   /* Store number of initial conditions per init-processor group */
   ninit_local = ninit / mpisize_init; 
 
@@ -44,6 +46,9 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
       n += timestepper->mastereq->getOscillator(ioscil)->getNParams(); 
   }
   ndesign = n;
+  ncontrol = n;
+  // TODO(kevin): save initial condition as design parameter in all processors for now.
+  if (compute_icgrad) ndesign += ninit * (2 * timestepper->mastereq->getDim());
   if (mpirank_world == 0 && !quietmode) std::cout<< "ndesign = " << ndesign << std::endl;
 
   /* Store other optimization parameters */
@@ -370,6 +375,7 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   VecAssemblyBegin(xupper); VecAssemblyEnd(xupper);
 
   /* Store the initial guess if read from file */
+  // TODO(kevin): this needs a revision for intermediate conditions.
   std::vector<std::string> controlinit_str;
   config.GetVecStrParam("control_initialization0", controlinit_str, "constant, 0.0");
   if ( controlinit_str.size() > 0 && controlinit_str[0].compare("file") == 0 ) {
@@ -462,6 +468,8 @@ double OptimProblem::evalF(const Vec x) {
 
     /* If gate optimiztion, compute the target state rho^target = Vrho(0)V^dagger */
     optim_target->prepare(rho_t0);
+
+    shiftInitialCondition(x, iinit_global, rho_t0);
 
     /* Run forward with initial condition initid */
     finalstate = timestepper->solveODE(initid, rho_t0);
@@ -585,6 +593,8 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
     /* If gate optimiztion, compute the target state rho^target = Vrho(0)V^dagger */
     optim_target->prepare(rho_t0);
 
+    shiftInitialCondition(x, iinit_global, rho_t0);
+
     /* --- Solve primal --- */
     // if (mpirank_time == 0) printf("%d: %d FWD. ", mpirank_init, initid);
 
@@ -630,6 +640,9 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
 
       /* Derivative of time-stepping */
       timestepper->solveAdjointODE(initid, rho_t0_bar, finalstate, obj_weights[iinit] * gamma_penalty, obj_weights[iinit]*gamma_penalty_dpdm, obj_weights[iinit]*gamma_penalty_energy);
+
+      /* Add initial condition gradient to optimizer's gradient */
+      gatherICGradient(timestepper->icgrad, iinit_global, G);
 
       /* Add to optimizers's gradient */
       VecAXPY(G, 1.0, timestepper->redgrad);
@@ -687,6 +700,8 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
       /* Recompute the initial state and target */
       int initid = timestepper->mastereq->getRhoT0(iinit_global, ninit, initcond_type, initcond_IDs, rho_t0);
       optim_target->prepare(rho_t0);
+
+      shiftInitialCondition(x, iinit_global, rho_t0);
      
       /* Get the last time step (finalstate) */
       finalstate = store_finalstates[iinit];
@@ -701,6 +716,9 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
 
       /* Derivative of time-stepping */
       timestepper->solveAdjointODE(initid, rho_t0_bar, finalstate, obj_weights[iinit] * gamma_penalty, obj_weights[iinit]*gamma_penalty_dpdm, obj_weights[iinit]*gamma_penalty_energy);
+
+      /* Add initial condition gradient to optimizer's gradient */
+      gatherICGradient(timestepper->icgrad, iinit_global, G);
 
       /* Add to optimizers's gradient */
       VecAXPY(G, 1.0, timestepper->redgrad);
@@ -774,6 +792,48 @@ void OptimProblem::getSolution(Vec* param_ptr){
   Vec params;
   TaoGetSolution(tao, &params);
   *param_ptr = params;
+}
+
+void OptimProblem::shiftInitialCondition(const Vec &x, const int &iinit_global, Vec &rho_t0_){
+  if (!compute_icgrad) return;
+  // assumes all processors have full access to design parameter vector x.
+  PetscScalar *x_ptr, *rho_ptr;
+  VecGetArray(x, &x_ptr);
+  VecGetArray(rho_t0_, &rho_ptr);
+
+  PetscInt ilow, iupp;
+  VecGetOwnershipRange(rho_t0_, &ilow, &iupp);
+
+  /* Pass design vector x to initial condition */
+  int shift = ncontrol + iinit_global * 2 * timestepper->mastereq->getDim();
+  // printf("shift: %d\n", shift);
+  for (int k = ilow; k < iupp; k++) {
+    // printf("x[%d]: %.3E\n", k + shift, x_ptr[k+shift]);
+    rho_ptr[k] += x_ptr[k + shift];
+  }
+  VecRestoreArray(x, &x_ptr);
+  VecRestoreArray(rho_t0_, &rho_ptr);
+}
+
+void OptimProblem::gatherICGradient(const Vec &icgrad, const int &iinit_global, Vec &x){
+  if (!compute_icgrad) return;
+  // assumes all processors have full access to design parameter vector x.
+  PetscScalar *x_ptr, *rho_ptr;
+  VecGetArray(x, &x_ptr);
+  VecGetArray(icgrad, &rho_ptr);
+
+  PetscInt ilow, iupp;
+  VecGetOwnershipRange(icgrad, &ilow, &iupp);
+
+  /* Pass design vector x to initial condition */
+  int shift = ncontrol + iinit_global * 2 * timestepper->mastereq->getDim();
+  // printf("shift: %d\n", shift);
+  for (int k = ilow; k < iupp; k++) {
+    // printf("x[%d]: %.3E\n", k + shift, x_ptr[k+shift]);
+    x_ptr[k + shift] += rho_ptr[k];
+  }
+  VecRestoreArray(x, &x_ptr);
+  VecRestoreArray(icgrad, &rho_ptr);
 }
 
 PetscErrorCode TaoMonitor(Tao tao,void*ptr){

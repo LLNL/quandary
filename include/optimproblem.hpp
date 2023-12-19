@@ -41,8 +41,10 @@ class OptimProblem {
   bool quietmode;
 
   /* Optimization stuff */
+  bool compute_icgrad;             // flag to compute initial condition gradient
   std::vector<double> obj_weights; /* List of weights for weighting the average objective over initial conditions  */
   int ndesign;                     /* Number of global design parameters */
+  int ncontrol;                    /* Number of global control design parameters */
   double objective;                /* Holds current objective function value */
   double obj_cost;                 /* Final-time term J(T) in objective */
   double obj_regul;                /* Regularization term in objective */
@@ -110,6 +112,11 @@ class OptimProblem {
 
   /* Call this after TaoSolve() has finished to print out some information */
   void getSolution(Vec* opt);
+
+  private:
+
+  void shiftInitialCondition(const Vec &x, const int &iinit_global, Vec &rho_t0_);
+  void gatherICGradient(const Vec &icgrad, const int &iinit_global, Vec &x);
 };
 
 /* Monitor the optimization progress. This routine is called in each iteration of TaoSolve() */
