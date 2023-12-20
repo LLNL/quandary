@@ -401,12 +401,15 @@ int main(int argc,char **argv)
 //   armaxinit.submat( 0, 0, 0, 2).print("Submat=");
 
   // Get a pointer from Petsc's xinit vector
+  optimctx->getStartingPoint(xinit);
   PetscScalar* xin_ptr;
   VecGetArray(xinit, &xin_ptr);
   arma::mat xinit_2(xin_ptr, 1, n_size);
   VecRestoreArray(xinit, &xin_ptr);
   xinit_2.print("arma xinit=");
   VecView(xinit, NULL);
+
+  colvec y = conv_to< colvec >::from(x)
 
   exit(1);
 
