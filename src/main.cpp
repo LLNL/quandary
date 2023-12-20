@@ -392,7 +392,7 @@ int main(int argc,char **argv)
 // #ifdef WITH_ENSMALLEN
 //   /* Set up using Armadillo / Ensmallen */
 //   int n_dims = 1;
-//   int n_size = optimctx->getNdesign();
+   int n_size = optimctx->getNdesign();
 //   arma::mat armaxinit(n_dims, n_size, arma::fill::randu);
 //   armaxinit.print("my armaxinit = ");
 //   printf("IJ + %1.4e\n", armaxinit(2));
@@ -409,7 +409,7 @@ int main(int argc,char **argv)
   xinit_2.print("arma xinit=");
   VecView(xinit, NULL);
 
-  colvec y = conv_to< colvec >::from(x)
+  //colvec y = conv_to< colvec >::from(x)
 
   exit(1);
 
