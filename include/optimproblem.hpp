@@ -114,6 +114,10 @@ class OptimProblem {
   /* Compute initial guess for optimization variables */
   void getStartingPoint(Vec x);
 
+  /* Roll-out fidelity. This function might better live in the timestepper?? */
+  // The argument is OPTIONAL! If given, the rollout intermediate states will be stored in this vector.
+  void rollOut(Vec x=NULL);
+
   /* Call this after TaoSolve() has finished to print out some information */
   void getSolution(Vec* opt);
 };

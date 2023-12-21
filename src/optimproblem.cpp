@@ -510,8 +510,10 @@ double OptimProblem::evalF(const Vec x) {
       if (mpirank_time == 0 && iwindow == 0) {
         x0 = rho_t0; 
       } else {
-        // printf("%d:  -> Window %d, n0=%d, takes from global id %d\n", mpirank_time, iwindow, n0, iinit*(nwindows-1) + index-1);
-        VecGetSubVector(x, is_interm_states[iinit*(nwindows-1) + index-1], &x0);
+        int id = iinit_global*(nwindows-1) + index-1;
+        // printf("%d, %d: iinit %d, iwindow %d, starting from global id = %d\n", mpirank_time, mpirank_init, iinit, iwindow, id);
+        VecGetSubVector(x, is_interm_states[id], &x0);
+        // VecView(x0, NULL);
       }
       finalstate = timestepper->solveODE(initid, x0, n0);
 
@@ -538,7 +540,7 @@ double OptimProblem::evalF(const Vec x) {
         optim_target->HilbertSchmidtOverlap(finalstate, false, &fidelity_iinit_re, &fidelity_iinit_im);
         fidelity_re += 1./ ninit * fidelity_iinit_re;
         fidelity_im += 1./ ninit * fidelity_iinit_im;
-        // printf("%d: Window %d, add to objective, obj_cost_re = %f\n", mpirank_time, iwindow, obj_cost_re);
+        // printf("%d, %d: iinit %d, iwindow %d, add to objective obj_cost_re = %1.8e\n", mpirank_time, mpirank_init, iinit, iwindow, obj_cost_re);
         // VecView(finalstate, NULL);
       }
       /* Else, add to constraint. For now just the norm... */
@@ -809,6 +811,7 @@ void OptimProblem::solve(Vec xinit) {
 void OptimProblem::getStartingPoint(Vec xinit){
   MasterEq* mastereq = timestepper->mastereq;
 
+  /* This is for the controls alphas! TODO: also read the intermediate states from file. */
   if (initguess_fromfile.size() > 0) {
     /* Set the initial guess from file */
     for (int i=0; i<initguess_fromfile.size(); i++) {
@@ -830,7 +833,7 @@ void OptimProblem::getStartingPoint(Vec xinit){
   VecAssemblyBegin(xinit);
   VecAssemblyEnd(xinit);
 
-  /* Pass to oscillator */
+  /* Pass control alphas to the oscillator */
   Vec x_alpha;
   VecGetSubVector(xinit, is_alpha, &x_alpha);
   timestepper->mastereq->setControlAmplitudes(x_alpha);
@@ -838,31 +841,37 @@ void OptimProblem::getStartingPoint(Vec xinit){
   /* Write initial control functions to file TODO: Multiple time windows */
   // output->writeControls(xinit, timestepper->mastereq, timestepper->ntime, timestepper->dt);
 
-  /* Set the intermediate states. Here, roll-out forward propagation. */
-  printf("ROLLOUT Initialization\n");
-  for (int iinit = 0; iinit < ninit_local; iinit++) {
+  /* Set the initial guess for the intermediate states. Here, roll-out forward propagation. TODO: Read from file*/
+  // Note: THIS Currently is entirely serial! No parallel initial conditions, no parallel windows. 
+  rollOut(xinit);
+  // VecView(xinit, NULL);
+
+}
+
+void OptimProblem::rollOut(Vec x){
+
+  /* Roll-out forward propagation. */
+  for (int iinit = 0; iinit < ninit; iinit++) {
     // printf("Initial condition %d\n", iinit);
-    int iinit_global = mpirank_init * ninit_local + iinit;
-    int initid = timestepper->mastereq->getRhoT0(iinit_global, ninit, initcond_type, initcond_IDs, rho_t0);
+    // int iinit_global = mpirank_init * ninit_local + iinit;
+    int initid = timestepper->mastereq->getRhoT0(iinit, ninit, initcond_type, initcond_IDs, rho_t0);
     Vec x0 = rho_t0; 
+
     for (int iwindow=0; iwindow<nwindows; iwindow++){
       // Solve forward from starting point.
       int n0 = iwindow * timestepper->ntime; // First time-step index for this window.
       // printf(" Solve in window %d, n0=%d\n", iwindow, n0);
       x0 = timestepper->solveODE(initid, x0, n0);
 
-      if (iwindow < nwindows-1) {
+      /* Potentially, store the intermediate results in the given vector */
+      if (x != NULL && iwindow < nwindows-1) {
         int id = iinit*(nwindows-1) + iwindow;
         // printf(" Storing into id=%d\n", id);
-        VecISCopy(xinit, is_interm_states[id], SCATTER_FORWARD, x0); 
+        VecISCopy(x, is_interm_states[id], SCATTER_FORWARD, x0); 
       }
     }
   }
-  printf("Done ROLLOUT.\n");
-  // VecView(xinit, NULL);
-
 }
-
 
 void OptimProblem::getSolution(Vec* param_ptr){
   
