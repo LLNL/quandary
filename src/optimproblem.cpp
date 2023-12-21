@@ -50,8 +50,8 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   for (int ioscil = 0; ioscil < timestepper->mastereq->getNOscillators(); ioscil++) {
       nalpha += timestepper->mastereq->getOscillator(ioscil)->getNParams(); 
   }
-  // Then all state variables N*(M-1) for each of the N initial conditions -> N^2*(M-1)
-  int nstate = (int) 2*pow(timestepper->mastereq->getDimRho(),2.0) * (nwindows-1);
+  // Then all state variables N*(M-1) for each of the initial conditions (real and imag)
+  int nstate = (int) 2*timestepper->mastereq->getDimRho() * (nwindows-1) * ninit;
   ndesign = nalpha + nstate;
   if (mpirank_world == 0 && !quietmode) std::cout<< "noptimvars = " << nalpha << "(controls) + " << nstate << "(states) = " << ndesign  << std::endl;
 
@@ -541,13 +541,13 @@ double OptimProblem::evalF(const Vec x) {
       /* Else, add to constraint*/
       else {
         int id = iinit*(nwindows-1) + index;
-        printf("Add to constraints. take compare from id=%d\n", id);
         Vec xnext;
         VecGetSubVector(x, is_interm_states[id], &xnext);
-        VecAXPY(xnext, -1.0, finalstate); // TODO: Does this keep original x intact?? 
+        VecAXPY(finalstate, -1.0, xnext); 
         double cnorm;
-        VecNorm(xnext, NORM_2, &cnorm);
+        VecNorm(finalstate, NORM_2, &cnorm);
         constraint += cnorm;
+        printf("Add to constraints (c=%f). take compare from id=%d\n", cnorm, id);
       }
     }
 
@@ -845,15 +845,17 @@ void OptimProblem::getStartingPoint(Vec xinit){
       // Solve forward from starting point.
       int n0 = iwindow * timestepper->ntime; // First time-step index for this window.
       printf(" Solve in window %d, n0=%d\n", iwindow, n0);
-      Vec finalstate = timestepper->solveODE(initid, x0, n0);
+      x0 = timestepper->solveODE(initid, x0, n0);
 
       if (iwindow < nwindows-1) {
         int id = iinit*(nwindows-1) + iwindow;
-        VecISCopy(xinit, is_interm_states[id], SCATTER_FORWARD, finalstate); 
+        printf(" Storing into id=%d\n", id);
+        VecISCopy(xinit, is_interm_states[id], SCATTER_FORWARD, x0); 
       }
     }
   }
   printf("Done ROLLOUT.\n");
+  VecView(xinit, NULL);
 
 }
 

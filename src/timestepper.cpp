@@ -123,9 +123,11 @@ Vec TimeStepper::solveODE(int initid, Vec rho_t0, int n0){
     if (storeFWD) VecCopy(x, store_states[n]);       // TODO: This might need revision for PinT
     output->writeDataFiles(n, tstart, x, mastereq);  // TODO: This might need revision for PinT
 
+    // printf("   Evolve %f->%f\n", tstart, tstop);
+    // VecView(x, NULL);
     /* Take one time step */
     evolveFWD(tstart, tstop, x);
-    printf("   Evolve %f->%f\n", tstart, tstop);
+    // VecView(x, NULL);
 
     /* Add to penalty objective term */
     if (gamma_penalty > 1e-13) penalty_integral += penaltyIntegral(tstop, x);
