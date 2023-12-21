@@ -59,7 +59,7 @@ int main(int argc,char **argv)
   /* --- Get some options from the config file --- */
   std::vector<int> nlevels;
   config.GetVecIntParam("nlevels", nlevels, 0);
-  int ntime = config.GetIntParam("ntime", 1000);
+  int ntime = config.GetIntParam("ntime", 1000);    // number of global time steps
   double dt    = config.GetDoubleParam("dt", 0.01);
   RunType runtype;
   std::string runtypestr = config.GetStrParam("runtype", "simulation");
@@ -382,11 +382,18 @@ int main(int argc,char **argv)
      (runtype == RunType::GRADIENT || runtype == RunType::OPTIMIZATION) ) storeFWD = true;  // if NOT Schroedinger solver and running gradient optim: store forward states. Otherwise, they will be recomputed during gradient. 
 
   std::string timesteppertypestr = config.GetStrParam("timestepper", "IMR");
+  int nwindows = config.GetIntParam("nwindows", 1); // number of time windows
+  int ntime_per_window = ntime / nwindows;
+  if (ntime % nwindows != 0) {
+    printf("Error: Need ntime MOD nwindows == 0.\n");
+    exit(1);
+  }
+  printf("Time-windows: %d, each %d steps\n", nwindows, ntime_per_window);
   TimeStepper* mytimestepper;
-  if (timesteppertypestr.compare("IMR")==0) mytimestepper = new ImplMidpoint(config, mastereq, ntime, total_time, linsolvetype, linsolve_maxiter, output, storeFWD, comm_time);
-  else if (timesteppertypestr.compare("IMR4")==0) mytimestepper = new CompositionalImplMidpoint(config, 4, mastereq, ntime, total_time, linsolvetype, linsolve_maxiter, output, storeFWD, comm_time);
-  else if (timesteppertypestr.compare("IMR8")==0) mytimestepper = new CompositionalImplMidpoint(config, 8, mastereq, ntime, total_time, linsolvetype, linsolve_maxiter, output, storeFWD, comm_time);
-  else if (timesteppertypestr.compare("EE")==0) mytimestepper = new ExplEuler(config, mastereq, ntime, total_time, output, storeFWD, comm_time);
+  if (timesteppertypestr.compare("IMR")==0) mytimestepper = new ImplMidpoint(config, mastereq, ntime_per_window, dt, linsolvetype, linsolve_maxiter, output, storeFWD, comm_time);
+  else if (timesteppertypestr.compare("IMR4")==0) mytimestepper = new CompositionalImplMidpoint(config, 4, mastereq, ntime_per_window, dt, linsolvetype, linsolve_maxiter, output, storeFWD, comm_time);
+  else if (timesteppertypestr.compare("IMR8")==0) mytimestepper = new CompositionalImplMidpoint(config, 8, mastereq, ntime_per_window, dt, linsolvetype, linsolve_maxiter, output, storeFWD, comm_time);
+  else if (timesteppertypestr.compare("EE")==0) mytimestepper = new ExplEuler(config, mastereq, ntime_per_window, dt, output, storeFWD, comm_time);
   else {
     printf("\n\n ERROR: Unknow timestepping type: %s.\n\n", timesteppertypestr.c_str());
     exit(1);
@@ -404,14 +411,14 @@ int main(int argc,char **argv)
   if (read_gate_rot[0] < 1e20) { // the config option exists
     for (int i=0; i<noscillators; i++)  gate_rot_freq[i] = read_gate_rot[i];
   }
-  OptimProblem* optimctx = new OptimProblem(config, mytimestepper, comm_init, comm_time, ninit, gate_rot_freq, output, quietmode);
+  OptimProblem* optimctx = new OptimProblem(config, mytimestepper, comm_init, comm_time, ninit, nwindows,total_time, gate_rot_freq, output, quietmode);
 
   /* Set upt solution and gradient vector */
   Vec xinit;
-  VecCreateSeq(PETSC_COMM_SELF, optimctx->getNdesign(), &xinit);
+  VecCreateSeq(PETSC_COMM_SELF, optimctx->getNoptimvars(), &xinit);
   VecSetFromOptions(xinit);
   Vec grad;
-  VecCreateSeq(PETSC_COMM_SELF, optimctx->getNdesign(), &grad);
+  VecCreateSeq(PETSC_COMM_SELF, optimctx->getNoptimvars(), &grad);
   VecSetUp(grad);
   VecZeroEntries(grad);
   Vec opt;
@@ -437,7 +444,7 @@ int main(int argc,char **argv)
   /* --- Solve primal --- */
   if (runtype == RunType::SIMULATION) {
     optimctx->getStartingPoint(xinit);
-    VecCopy(xinit, optimctx->xinit); // Store the initial guess
+    // VecCopy(xinit, optimctx->xinit); // Store the initial guess
     if (mpirank_world == 0 && !quietmode) printf("\nStarting primal solver... \n");
     objective = optimctx->evalF(xinit);
     if (mpirank_world == 0 && !quietmode) printf("\nTotal objective = %1.14e, \n", objective);
@@ -447,7 +454,7 @@ int main(int argc,char **argv)
   /* --- Solve adjoint --- */
   if (runtype == RunType::GRADIENT) {
     optimctx->getStartingPoint(xinit);
-    VecCopy(xinit, optimctx->xinit); // Store the initial guess
+    // VecCopy(xinit, optimctx->xinit); // Store the initial guess
     if (mpirank_world == 0 && !quietmode) printf("\nStarting adjoint solver...\n");
     optimctx->evalGradF(xinit, grad);
     VecNorm(grad, NORM_2, &gnorm);
@@ -462,7 +469,7 @@ int main(int argc,char **argv)
   if (runtype == RunType::OPTIMIZATION) {
     /* Set initial starting point */
     optimctx->getStartingPoint(xinit);
-    VecCopy(xinit, optimctx->xinit); // Store the initial guess
+    // VecCopy(xinit, optimctx->xinit); // Store the initial guess
     if (mpirank_world == 0 && !quietmode) printf("\nStarting Optimization solver ... \n");
     optimctx->solve(xinit);
     optimctx->getSolution(&opt);
@@ -540,7 +547,7 @@ int main(int argc,char **argv)
 
   /* --- Finite Differences --- */
   if (mpirank_world == 0) printf("\nFD...\n");
-  for (PetscInt i=0; i<optimctx->getNdesign(); i++){
+  for (PetscInt i=0; i<optimctx->getNoptimvars(); i++){
   // {int i=0;
 
     /* Evaluate f(p+eps)*/
@@ -577,7 +584,7 @@ int main(int argc,char **argv)
   /* Figure out which parameters are hitting bounds */
   double bound_tol = 1e-3;
   std::vector<int> Ihess; // Index set for all elements that do NOT hit a bound
-  for (PetscInt i=0; i<optimctx->getNdesign(); i++){
+  for (PetscInt i=0; i<optimctx->getNoptimvars(); i++){
     // get x_i and bounds for x_i
     double xi, blower, bupper;
     VecGetValues(xinit, 1, &i, &xi);

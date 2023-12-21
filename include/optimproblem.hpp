@@ -22,6 +22,8 @@ class OptimProblem {
   /* ODE stuff */
   int ninit;                            /* Number of initial conditions to be considered (N^2, N, or 1) */
   int ninit_local;                      /* Local number of initial conditions on this processor */
+  int nwindows;                          /* Number of time windows */
+  int nwindows_local;;                   /* Number of local time windows on this processor */
   Vec rho_t0;                            /* Storage for initial condition of the ODE */
   Vec rho_t0_bar;                        /* Adjoint of ODE initial condition */
   InitialConditionType initcond_type;    /* Type of initial conditions */
@@ -40,9 +42,13 @@ class OptimProblem {
 
   bool quietmode;
 
+  std::vector<IS> is_interm_states;    // Vector of vector-strides for accessing intermediate states from global vector  
+  IS is_alpha;                         // Vector stride for accessing the control parameters
+
   /* Optimization stuff */
   std::vector<double> obj_weights; /* List of weights for weighting the average objective over initial conditions  */
-  int ndesign;                     /* Number of global design parameters */
+  int ndesign;                     /* Number of control optimization parameters */
+  int nstate;                      /* Number of state optimization parameters */
   double objective;                /* Holds current objective function value */
   double obj_cost;                 /* Final-time term J(T) in objective */
   double obj_regul;                /* Regularization term in objective */
@@ -77,11 +83,11 @@ class OptimProblem {
     Vec xinit;                       /* Storing initial design vector, if gamma_tik_interpolate=true, aka if tikhonov is ||x - x_0||^2 rather than ||x||^2 */
 
   /* Constructor */
-  OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm comm_init_, MPI_Comm comm_time, int ninit_, std::vector<double> gate_rot_freq, Output* output_, bool quietmode=false);
+  OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm comm_init_, MPI_Comm comm_time, int ninit_, int nwindows_, double total_time, std::vector<double> gate_rot_freq, Output* output_, bool quietmode=false);
   ~OptimProblem();
 
-  /* Return the number of design variables */
-  int getNdesign(){ return ndesign; };
+  /* Return the number of optimization variables */
+  int getNoptimvars(){ return ndesign; };
 
   /* Return the overall objective, final-time costs, regularization and penalty terms */
   double getObjective(){ return objective; };

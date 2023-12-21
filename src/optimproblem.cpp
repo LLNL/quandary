@@ -1,9 +1,10 @@
 #include "optimproblem.hpp"
 
-OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm comm_init_, MPI_Comm comm_time_, int ninit_, std::vector<double> gate_rot_freq, Output* output_, bool quietmode_){
+OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm comm_init_, MPI_Comm comm_time_, int ninit_, int nwindows_, double total_time_, std::vector<double> gate_rot_freq, Output* output_, bool quietmode_){
 
   timestepper = timestepper_;
   ninit = ninit_;
+  nwindows = nwindows_;
   output = output_;
   quietmode = quietmode_;
   /* Reset */
@@ -24,10 +25,15 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   /* Store number of initial conditions per init-processor group */
   ninit_local = ninit / mpisize_init; 
 
+  /* Store number of local windows per time-processor group */
+  nwindows_local = nwindows / mpisize_time;
+  // TODO. For now sanity check whether nwindows is equally divisible by number or processors for time.
+  if (nwindows % mpisize_time != 0){
+    printf("ERROR: For now, need nwindows MOD mpisize_time == 0.\n");
+    exit(1);
+  }
+
   /*  If Schroedingers solver, allocate storage for the final states at time T for each initial condition. Schroedinger's solver does not store the time-trajectories during forward ODE solve, but instead recomputes the primal states during the adjoint solve. Therefore we need to store the terminal condition for the backwards primal solve. Be aware that the final states stored here will be overwritten during backwards computation!! */
-
-  /* TODO: For PinT, we might want to store the intermediate states locally, rather than recomputing them. */
-
   if (timestepper->mastereq->lindbladtype == LindbladType::NONE) {
     for (int i = 0; i < ninit_local; i++) {
       Vec state;
@@ -38,13 +44,29 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
     }
   }
 
-  /* Store number of design parameters */
-  int n = 0;
+  /* Store number of optimization parameters */
+  // First add all that correspond to the splines
+  int nalpha = 0;
   for (int ioscil = 0; ioscil < timestepper->mastereq->getNOscillators(); ioscil++) {
-      n += timestepper->mastereq->getOscillator(ioscil)->getNParams(); 
+      nalpha += timestepper->mastereq->getOscillator(ioscil)->getNParams(); 
   }
-  ndesign = n;
-  if (mpirank_world == 0 && !quietmode) std::cout<< "ndesign = " << ndesign << std::endl;
+  // Then all state variables N*(M-1) for each of the N initial conditions -> N^2*(M-1)
+  int nstate = (int) 2*pow(timestepper->mastereq->getDimRho(),2.0) * (nwindows-1);
+  ndesign = nalpha + nstate;
+  if (mpirank_world == 0 && !quietmode) std::cout<< "noptimvars = " << nalpha << "(controls) + " << nstate << "(states) = " << ndesign  << std::endl;
+
+  /* Create vector strides to access the control vector and intermediate states */
+  ISCreateStride(PETSC_COMM_WORLD, nalpha, 0, 1, &is_alpha);
+  int skip = nalpha;
+  for (int ic=0; ic<timestepper->mastereq->getDimRho(); ic++){
+    for (int m=0; m<nwindows-1; m++) {
+      IS state_m_ic;
+      ISCreateStride(PETSC_COMM_WORLD, timestepper->mastereq->getDimRho()*2, skip, 1, &state_m_ic);
+      is_interm_states.push_back(state_m_ic);
+      skip += timestepper->mastereq->getDimRho()*2; // *2 for real and imag. 
+    }
+  } 
+  printf("state strides: %d\n", is_interm_states.size());
 
   /* Store other optimization parameters */
   gamma_tik = config.GetDoubleParam("optim_regul", 1e-4);
@@ -72,15 +94,15 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
       exit(1);
     }
     if      (target_str[1].compare("none") == 0)  targetgate = new Gate(); // dummy gate. do nothing
-    else if (target_str[1].compare("xgate") == 0) targetgate = new XGate(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, timestepper->total_time, gate_rot_freq, timestepper->mastereq->lindbladtype, quietmode); 
-    else if (target_str[1].compare("ygate") == 0) targetgate = new YGate(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, timestepper->total_time, gate_rot_freq, timestepper->mastereq->lindbladtype, quietmode); 
-    else if (target_str[1].compare("zgate") == 0) targetgate = new ZGate(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, timestepper->total_time, gate_rot_freq, timestepper->mastereq->lindbladtype, quietmode);
-    else if (target_str[1].compare("hadamard") == 0) targetgate = new HadamardGate(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, timestepper->total_time, gate_rot_freq, timestepper->mastereq->lindbladtype, quietmode);
-    else if (target_str[1].compare("cnot") == 0) targetgate = new CNOT(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, timestepper->total_time, gate_rot_freq, timestepper->mastereq->lindbladtype, quietmode); 
-    else if (target_str[1].compare("swap") == 0) targetgate = new SWAP(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, timestepper->total_time, gate_rot_freq, timestepper->mastereq->lindbladtype, quietmode); 
-    else if (target_str[1].compare("swap0q") == 0) targetgate = new SWAP_0Q(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, timestepper->total_time, gate_rot_freq, timestepper->mastereq->lindbladtype, quietmode); 
-    else if (target_str[1].compare("cqnot") == 0) targetgate = new CQNOT(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, timestepper->total_time, gate_rot_freq, timestepper->mastereq->lindbladtype, quietmode); 
-    else if (target_str[1].compare("fromfile") == 0) targetgate = new FromFile(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, timestepper->total_time, gate_rot_freq, timestepper->mastereq->lindbladtype, target_str[2], quietmode); 
+    else if (target_str[1].compare("xgate") == 0) targetgate = new XGate(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, total_time_, gate_rot_freq, timestepper->mastereq->lindbladtype, quietmode); 
+    else if (target_str[1].compare("ygate") == 0) targetgate = new YGate(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, total_time_, gate_rot_freq, timestepper->mastereq->lindbladtype, quietmode); 
+    else if (target_str[1].compare("zgate") == 0) targetgate = new ZGate(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, total_time_, gate_rot_freq, timestepper->mastereq->lindbladtype, quietmode);
+    else if (target_str[1].compare("hadamard") == 0) targetgate = new HadamardGate(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, total_time_, gate_rot_freq, timestepper->mastereq->lindbladtype, quietmode);
+    else if (target_str[1].compare("cnot") == 0) targetgate = new CNOT(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, total_time_, gate_rot_freq, timestepper->mastereq->lindbladtype, quietmode); 
+    else if (target_str[1].compare("swap") == 0) targetgate = new SWAP(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, total_time_, gate_rot_freq, timestepper->mastereq->lindbladtype, quietmode); 
+    else if (target_str[1].compare("swap0q") == 0) targetgate = new SWAP_0Q(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, total_time_, gate_rot_freq, timestepper->mastereq->lindbladtype, quietmode); 
+    else if (target_str[1].compare("cqnot") == 0) targetgate = new CQNOT(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, total_time_, gate_rot_freq, timestepper->mastereq->lindbladtype, quietmode); 
+    else if (target_str[1].compare("fromfile") == 0) targetgate = new FromFile(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, total_time_, gate_rot_freq, timestepper->mastereq->lindbladtype, target_str[2], quietmode); 
     else {
       printf("\n\n ERROR: Unnown gate type: %s.\n", target_str[1].c_str());
       printf(" Available gates are 'none', 'xgate', 'ygate', 'zgate', 'hadamard', 'cnot', 'swap', 'swap0q', 'cqnot'.\n");
@@ -396,20 +418,23 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   /* Allocate auxiliary vector */
   mygrad = new double[ndesign];
 
-  /* Allocat xprev, xinit, xtmp */
-  VecCreateSeq(PETSC_COMM_SELF, ndesign, &xprev);
-  VecSetFromOptions(xprev);
-  VecZeroEntries(xprev);
+  // /* Allocat xprev, xinit, xtmp */
+  // VecCreateSeq(PETSC_COMM_SELF, ndesign, &xprev);
+  // VecSetFromOptions(xprev);
+  // VecZeroEntries(xprev);
 
   if (gamma_tik_interpolate) {
-    VecCreateSeq(PETSC_COMM_SELF, ndesign, &xinit);
-    VecSetFromOptions(xinit);
-    VecZeroEntries(xinit);
+    // DISABLE FOR NOW
+    printf("Warning: Disabling gamma_tik_interpolate for multiple shooting.\n");
+    gamma_tik_interpolate = false;
+    // VecCreateSeq(PETSC_COMM_SELF, ndesign, &xinit);
+    // VecSetFromOptions(xinit);
+    // VecZeroEntries(xinit);
   }
 
-  VecCreateSeq(PETSC_COMM_SELF, ndesign, &xtmp);
-  VecSetFromOptions(xtmp);
-  VecZeroEntries(xtmp);
+  // VecCreateSeq(PETSC_COMM_SELF, ndesign, &xtmp);
+  // VecSetFromOptions(xtmp);
+  // VecZeroEntries(xtmp);
 }
 
 
@@ -421,15 +446,20 @@ OptimProblem::~OptimProblem() {
 
   VecDestroy(&xlower);
   VecDestroy(&xupper);
-  VecDestroy(&xprev);
+  // VecDestroy(&xprev);
   if (gamma_tik_interpolate) {
-    VecDestroy(&xinit);
+    // VecDestroy(&xinit);
   }
-  VecDestroy(&xtmp);
+  // VecDestroy(&xtmp);
 
   for (int i = 0; i < store_finalstates.size(); i++) {
     VecDestroy(&(store_finalstates[i]));
   }
+
+  for (int m=0; m<is_interm_states.size(); m++){
+    ISDestroy(&(is_interm_states[m]));
+  }
+  ISDestroy(&is_alpha);
 
   TaoDestroy(&tao);
 }
@@ -443,8 +473,10 @@ double OptimProblem::evalF(const Vec x) {
   if (mpirank_world == 0 && !quietmode) printf("EVAL F... \n");
   Vec finalstate = NULL;
 
-  /* Pass design vector x to oscillators */
-  mastereq->setControlAmplitudes(x); 
+  /* Pass control vector to oscillators */
+  Vec x_alpha;
+  VecGetSubVector(x, is_alpha, &x_alpha);
+  mastereq->setControlAmplitudes(x_alpha); 
 
   /*  Iterate over initial condition */
   obj_cost  = 0.0;
@@ -457,6 +489,7 @@ double OptimProblem::evalF(const Vec x) {
   double obj_cost_im = 0.0;
   double fidelity_re = 0.0;
   double fidelity_im = 0.0;
+  double constraint = 0.0;
   for (int iinit = 0; iinit < ninit_local; iinit++) {
       
     /* Prepare the initial condition in [rank * ninit_local, ... , (rank+1) * ninit_local - 1] */
@@ -467,31 +500,56 @@ double OptimProblem::evalF(const Vec x) {
     /* If gate optimiztion, compute the target state rho^target = Vrho(0)V^dagger */
     optim_target->prepare(rho_t0);
 
-    /* Run forward with initial condition initid */
-    finalstate = timestepper->solveODE(initid, rho_t0);
+    /* Iterate over local time windows */
+    for (int iwindow=0; iwindow<nwindows_local; iwindow++){
+      // Solve forward from starting point.
+      int index = mpirank_time*nwindows_local + iwindow ; 
+      int n0 = index * timestepper->ntime; // First time-step index for this window.
+      printf("Window %d\n", iwindow);
+      Vec x0 = rho_t0; 
+      if (mpirank_time == 0 && iwindow > 0) {
+        printf(" -> Take init cond from id %d\n", iinit*(nwindows-1) + index-1);
+        VecGetSubVector(x, is_interm_states[iinit*(nwindows-1) + index-1], &x0);
+      }
+      finalstate = timestepper->solveODE(initid, x0, n0);
 
-    /* Add to integral penalty term */
-    obj_penal += obj_weights[iinit] * gamma_penalty * timestepper->penalty_integral;
+      /* Add to integral penalty term */
+      obj_penal += obj_weights[iinit] * gamma_penalty * timestepper->penalty_integral;
 
-    /* Add to second derivative penalty term */
-    obj_penal_dpdm += obj_weights[iinit] * gamma_penalty_dpdm * timestepper->penalty_dpdm;
+      /* Add to second derivative penalty term */
+      obj_penal_dpdm += obj_weights[iinit] * gamma_penalty_dpdm * timestepper->penalty_dpdm;
     
-    /* Add to energy integral penalty term */
-    obj_penal_energy += obj_weights[iinit] * gamma_penalty_energy* timestepper->energy_penalty_integral;
+      /* Add to energy integral penalty term */
+      obj_penal_energy += obj_weights[iinit] * gamma_penalty_energy* timestepper->energy_penalty_integral;
 
-    /* Evaluate J(finalstate) and add to final-time cost */
-    double obj_iinit_re = 0.0;
-    double obj_iinit_im = 0.0;
-    optim_target->evalJ(finalstate,  &obj_iinit_re, &obj_iinit_im);
-    obj_cost_re += obj_weights[iinit] * obj_iinit_re;
-    obj_cost_im += obj_weights[iinit] * obj_iinit_im;
+      /* Evaluate J(finalstate) and add to final-time cost */
+      if (mpirank_time == mpisize_time-1 && iwindow == nwindows_local-1){
+        printf("Add to objective.\n");
+        double obj_iinit_re = 0.0;
+        double obj_iinit_im = 0.0;
+        optim_target->evalJ(finalstate,  &obj_iinit_re, &obj_iinit_im);
+        obj_cost_re += obj_weights[iinit] * obj_iinit_re;
+        obj_cost_im += obj_weights[iinit] * obj_iinit_im;
 
-    /* Add to final-time fidelity */
-    double fidelity_iinit_re = 0.0;
-    double fidelity_iinit_im = 0.0;
-    optim_target->HilbertSchmidtOverlap(finalstate, false, &fidelity_iinit_re, &fidelity_iinit_im);
-    fidelity_re += 1./ ninit * fidelity_iinit_re;
-    fidelity_im += 1./ ninit * fidelity_iinit_im;
+        /* Add to final-time fidelity */
+        double fidelity_iinit_re = 0.0;
+        double fidelity_iinit_im = 0.0;
+        optim_target->HilbertSchmidtOverlap(finalstate, false, &fidelity_iinit_re, &fidelity_iinit_im);
+        fidelity_re += 1./ ninit * fidelity_iinit_re;
+        fidelity_im += 1./ ninit * fidelity_iinit_im;
+      }
+      /* Else, add to constraint*/
+      else {
+        int id = iinit*(nwindows-1) + index;
+        printf("Add to constraints. take compare from id=%d\n", id);
+        Vec xnext;
+        VecGetSubVector(x, is_interm_states[id], &xnext);
+        VecAXPY(xnext, -1.0, finalstate); // TODO: Does this keep original x intact?? 
+        double cnorm;
+        VecNorm(xnext, NORM_2, &cnorm);
+        constraint += cnorm;
+      }
+    }
 
     // printf("%d, %d: iinit obj_iinit: %f * (%1.14e + i %1.14e, Overlap=%1.14e + i %1.14e\n", mpirank_world, mpirank_init, obj_weights[iinit], obj_iinit_re, obj_iinit_im, fidelity_iinit_re, fidelity_iinit_im);
   }
@@ -524,13 +582,14 @@ double OptimProblem::evalF(const Vec x) {
 
   /* Evaluate regularization objective += gamma/2 * ||x-x0||^2*/
   double xnorm;
-  if (!gamma_tik_interpolate){  // ||x||^2
-    VecNorm(x, NORM_2, &xnorm);
-  } else {
-    VecCopy(x, xtmp);
-    VecAXPY(xtmp, -1.0, xinit);    // xtmp =  x - x_0
-    VecNorm(xtmp, NORM_2, &xnorm);
-  }
+  if (!gamma_tik_interpolate){  // ||x_alpha||^2
+    VecNorm(x_alpha, NORM_2, &xnorm);
+  } 
+  // else {
+    // VecCopy(x, xtmp);
+    // VecAXPY(xtmp, -1.0, xinit);    // xtmp =  x - x_0
+    // VecNorm(xtmp, NORM_2, &xnorm);
+  // }
   obj_regul = gamma_tik / 2. * pow(xnorm,2.0);
 
   /* Sum, store and return objective value */
@@ -541,6 +600,9 @@ double OptimProblem::evalF(const Vec x) {
     std::cout<< "Objective = " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal << " + " << obj_penal_dpdm << " + " << obj_penal_energy << std::endl;
     std::cout<< "Fidelity = " << fidelity  << std::endl;
   }
+
+  /* More output */
+  std::cout<< "Constraint = " <<  std::scientific<<std::setprecision(14) << constraint << std::endl;
 
   return objective;
 }
@@ -565,7 +627,7 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
   if (mpirank_init == 0 ) {
     VecAXPY(G, gamma_tik, x);   // + gamma_tik * x
     if (gamma_tik_interpolate){
-      VecAXPY(G, -1.0*gamma_tik, xinit); // -gamma_tik * xinit
+      // VecAXPY(G, -1.0*gamma_tik, xinit); // -gamma_tik * xinit
     }
   }
 
@@ -671,11 +733,12 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
   double xnorm;
   if (!gamma_tik_interpolate){  // ||x||^2
     VecNorm(x, NORM_2, &xnorm);
-  } else {
-    VecCopy(x, xtmp);
-    VecAXPY(xtmp, -1.0, xinit);    // xtmp =  x_k - x_0
-    VecNorm(xtmp, NORM_2, &xnorm);
-  }
+  } 
+  // else {
+    // VecCopy(x, xtmp);
+    // VecAXPY(xtmp, -1.0, xinit);    // xtmp =  x_k - x_0
+    // VecNorm(xtmp, NORM_2, &xnorm);
+  // }
   obj_regul = gamma_tik / 2. * pow(xnorm,2.0);
 
   /* Sum, store and return objective value */
@@ -748,7 +811,7 @@ void OptimProblem::getStartingPoint(Vec xinit){
       VecSetValue(xinit, i, initguess_fromfile[i], INSERT_VALUES);
     }
 
-  } else { // copy from initialization in oscillators contructor
+  } else { // copy alpha from control initialization in oscillators contructor
     PetscScalar* xptr;
     VecGetArray(xinit, &xptr);
     int shift = 0;
@@ -764,10 +827,33 @@ void OptimProblem::getStartingPoint(Vec xinit){
   VecAssemblyEnd(xinit);
 
   /* Pass to oscillator */
-  timestepper->mastereq->setControlAmplitudes(xinit);
+  Vec x_alpha;
+  VecGetSubVector(xinit, is_alpha, &x_alpha);
+  timestepper->mastereq->setControlAmplitudes(x_alpha);
   
-  /* Write initial control functions to file */
-  output->writeControls(xinit, timestepper->mastereq, timestepper->ntime, timestepper->dt);
+  /* Write initial control functions to file TODO: Multiple time windows */
+  // output->writeControls(xinit, timestepper->mastereq, timestepper->ntime, timestepper->dt);
+
+  /* Set the intermediate states. Here, roll-out forward propagation. */
+  printf("ROLLOUT Initialization\n");
+  for (int iinit = 0; iinit < ninit_local; iinit++) {
+    printf("Initial condition %d\n", iinit);
+    int iinit_global = mpirank_init * ninit_local + iinit;
+    int initid = timestepper->mastereq->getRhoT0(iinit_global, ninit, initcond_type, initcond_IDs, rho_t0);
+    Vec x0 = rho_t0; 
+    for (int iwindow=0; iwindow<nwindows; iwindow++){
+      // Solve forward from starting point.
+      int n0 = iwindow * timestepper->ntime; // First time-step index for this window.
+      printf(" Solve in window %d, n0=%d\n", iwindow, n0);
+      Vec finalstate = timestepper->solveODE(initid, x0, n0);
+
+      if (iwindow < nwindows-1) {
+        int id = iinit*(nwindows-1) + iwindow;
+        VecISCopy(xinit, is_interm_states[id], SCATTER_FORWARD, finalstate); 
+      }
+    }
+  }
+  printf("Done ROLLOUT.\n");
 
 }
 
@@ -808,7 +894,7 @@ PetscErrorCode TaoMonitor(Tao tao,void*ptr){
 
   /* Print parameters and controls to file */
   // if ( optim_iter % optim_monitor_freq == 0 ) {
-  ctx->output->writeControls(params, ctx->timestepper->mastereq, ctx->timestepper->ntime, ctx->timestepper->dt);
+  // ctx->output->writeControls(params, ctx->timestepper->mastereq, ctx->timestepper->ntime, ctx->timestepper->dt);
   // }
 
   /* Screen output */
@@ -834,24 +920,25 @@ PetscErrorCode TaoMonitor(Tao tao,void*ptr){
      printf("Optimization finished with small final time cost.\n");
     }
     TaoSetConvergedReason(tao, TAO_CONVERGED_USER);
-  } else if (iter > 1) { // Stop if delta x is smaller than tolerance (relative)
-    // Compute ||x - xprev||/||xprev||
-    double xnorm, dxnorm;
-    VecNorm(ctx->xprev, NORM_2, &xnorm);  // xnorm = ||x_k-1||
-    VecAXPY(ctx->xprev, -1.0, params);    // xprev =  x_k - x_k-1
-    VecNorm(ctx->xprev, NORM_2, &dxnorm);  // dxnorm = || x_k - x_k-1 ||
-    if (fabs(xnorm > 1e-15)) dxnorm = dxnorm / xnorm; 
-    // Stopping 
-    if (dxnorm <= ctx->getDxTol()) {
-      if (ctx->getMPIrank_world() == 0) {
-       printf("Optimization finished with small parameter update (%1.4e rel. update).\n", dxnorm);
-      }
-      TaoSetConvergedReason(tao, TAO_CONVERGED_USER); 
-    }
-  }
+  } 
+  // else if (iter > 1) { // Stop if delta x is smaller than tolerance (relative)
+    // // Compute ||x - xprev||/||xprev||
+    // double xnorm, dxnorm;
+    // VecNorm(ctx->xprev, NORM_2, &xnorm);  // xnorm = ||x_k-1||
+    // VecAXPY(ctx->xprev, -1.0, params);    // xprev =  x_k - x_k-1
+    // VecNorm(ctx->xprev, NORM_2, &dxnorm);  // dxnorm = || x_k - x_k-1 ||
+    // if (fabs(xnorm > 1e-15)) dxnorm = dxnorm / xnorm; 
+    // // Stopping 
+    // if (dxnorm <= ctx->getDxTol()) {
+    //   if (ctx->getMPIrank_world() == 0) {
+    //    printf("Optimization finished with small parameter update (%1.4e rel. update).\n", dxnorm);
+    //   }
+    //   TaoSetConvergedReason(tao, TAO_CONVERGED_USER); 
+    // }
+  // }
 
-  /* Update xprev for next iteration */
-  VecCopy(params, ctx->xprev);
+  // /* Update xprev for next iteration */
+  // VecCopy(params, ctx->xprev);
 
   return 0;
 }
