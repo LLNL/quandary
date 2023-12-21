@@ -495,7 +495,7 @@ double OptimProblem::evalF(const Vec x) {
     /* Prepare the initial condition in [rank * ninit_local, ... , (rank+1) * ninit_local - 1] */
     int iinit_global = mpirank_init * ninit_local + iinit;
     int initid = timestepper->mastereq->getRhoT0(iinit_global, ninit, initcond_type, initcond_IDs, rho_t0);
-    if (mpirank_time == 0 && !quietmode) printf("%d: Initial condition id=%d ...\n", mpirank_init, initid);
+    // if (mpirank_time == 0 && !quietmode) printf("%d: Initial condition id=%d ...\n", mpirank_init, initid);
 
     /* If gate optimiztion, compute the target state rho^target = Vrho(0)V^dagger */
     optim_target->prepare(rho_t0);
@@ -505,12 +505,12 @@ double OptimProblem::evalF(const Vec x) {
       // Solve forward from starting point.
       int index = mpirank_time*nwindows_local + iwindow ; 
       int n0 = index * timestepper->ntime; // First time-step index for this window.
-      printf("%d: Local window %d , n0=%d\n", mpirank_time, iwindow, n0);
+      // printf("%d: Local window %d , n0=%d\n", mpirank_time, iwindow, n0);
       Vec x0;
       if (mpirank_time == 0 && iwindow == 0) {
         x0 = rho_t0; 
       } else {
-        printf("%d:  -> Window %d, n0=%d, takes from global id %d\n", mpirank_time, iwindow, n0, iinit*(nwindows-1) + index-1);
+        // printf("%d:  -> Window %d, n0=%d, takes from global id %d\n", mpirank_time, iwindow, n0, iinit*(nwindows-1) + index-1);
         VecGetSubVector(x, is_interm_states[iinit*(nwindows-1) + index-1], &x0);
       }
       finalstate = timestepper->solveODE(initid, x0, n0);
@@ -538,8 +538,8 @@ double OptimProblem::evalF(const Vec x) {
         optim_target->HilbertSchmidtOverlap(finalstate, false, &fidelity_iinit_re, &fidelity_iinit_im);
         fidelity_re += 1./ ninit * fidelity_iinit_re;
         fidelity_im += 1./ ninit * fidelity_iinit_im;
-        printf("%d: Window %d, add to objective, obj_cost_re = %f\n", mpirank_time, iwindow, obj_cost_re);
-        VecView(finalstate, NULL);
+        // printf("%d: Window %d, add to objective, obj_cost_re = %f\n", mpirank_time, iwindow, obj_cost_re);
+        // VecView(finalstate, NULL);
       }
       /* Else, add to constraint. For now just the norm... */
       else {
@@ -550,7 +550,7 @@ double OptimProblem::evalF(const Vec x) {
         double cnorm;
         VecNorm(finalstate, NORM_2, &cnorm);
         constraint += cnorm;
-        printf("%d: Window %d, add to constraint taking from id=%d. c=%f\n", mpirank_time, iwindow, id, cnorm);
+        // printf("%d: Window %d, add to constraint taking from id=%d. c=%f\n", mpirank_time, iwindow, id, cnorm);
       }
     }
 
@@ -841,25 +841,25 @@ void OptimProblem::getStartingPoint(Vec xinit){
   /* Set the intermediate states. Here, roll-out forward propagation. */
   printf("ROLLOUT Initialization\n");
   for (int iinit = 0; iinit < ninit_local; iinit++) {
-    printf("Initial condition %d\n", iinit);
+    // printf("Initial condition %d\n", iinit);
     int iinit_global = mpirank_init * ninit_local + iinit;
     int initid = timestepper->mastereq->getRhoT0(iinit_global, ninit, initcond_type, initcond_IDs, rho_t0);
     Vec x0 = rho_t0; 
     for (int iwindow=0; iwindow<nwindows; iwindow++){
       // Solve forward from starting point.
       int n0 = iwindow * timestepper->ntime; // First time-step index for this window.
-      printf(" Solve in window %d, n0=%d\n", iwindow, n0);
+      // printf(" Solve in window %d, n0=%d\n", iwindow, n0);
       x0 = timestepper->solveODE(initid, x0, n0);
 
       if (iwindow < nwindows-1) {
         int id = iinit*(nwindows-1) + iwindow;
-        printf(" Storing into id=%d\n", id);
+        // printf(" Storing into id=%d\n", id);
         VecISCopy(xinit, is_interm_states[id], SCATTER_FORWARD, x0); 
       }
     }
   }
   printf("Done ROLLOUT.\n");
-  VecView(xinit, NULL);
+  // VecView(xinit, NULL);
 
 }
 
