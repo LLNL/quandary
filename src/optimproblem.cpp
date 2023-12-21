@@ -505,10 +505,12 @@ double OptimProblem::evalF(const Vec x) {
       // Solve forward from starting point.
       int index = mpirank_time*nwindows_local + iwindow ; 
       int n0 = index * timestepper->ntime; // First time-step index for this window.
-      printf("Window %d\n", iwindow);
-      Vec x0 = rho_t0; 
-      if (mpirank_time == 0 && iwindow > 0) {
-        printf(" -> Take init cond from id %d\n", iinit*(nwindows-1) + index-1);
+      printf("%d: Local window %d , n0=%d\n", mpirank_time, iwindow, n0);
+      Vec x0;
+      if (mpirank_time == 0 && iwindow == 0) {
+        x0 = rho_t0; 
+      } else {
+        printf("%d:  -> Window %d, n0=%d, takes from global id %d\n", mpirank_time, iwindow, n0, iinit*(nwindows-1) + index-1);
         VecGetSubVector(x, is_interm_states[iinit*(nwindows-1) + index-1], &x0);
       }
       finalstate = timestepper->solveODE(initid, x0, n0);
@@ -524,7 +526,6 @@ double OptimProblem::evalF(const Vec x) {
 
       /* Evaluate J(finalstate) and add to final-time cost */
       if (mpirank_time == mpisize_time-1 && iwindow == nwindows_local-1){
-        printf("Add to objective.\n");
         double obj_iinit_re = 0.0;
         double obj_iinit_im = 0.0;
         optim_target->evalJ(finalstate,  &obj_iinit_re, &obj_iinit_im);
@@ -537,8 +538,10 @@ double OptimProblem::evalF(const Vec x) {
         optim_target->HilbertSchmidtOverlap(finalstate, false, &fidelity_iinit_re, &fidelity_iinit_im);
         fidelity_re += 1./ ninit * fidelity_iinit_re;
         fidelity_im += 1./ ninit * fidelity_iinit_im;
+        printf("%d: Window %d, add to objective, obj_cost_re = %f\n", mpirank_time, iwindow, obj_cost_re);
+        VecView(finalstate, NULL);
       }
-      /* Else, add to constraint*/
+      /* Else, add to constraint. For now just the norm... */
       else {
         int id = iinit*(nwindows-1) + index;
         Vec xnext;
@@ -547,11 +550,11 @@ double OptimProblem::evalF(const Vec x) {
         double cnorm;
         VecNorm(finalstate, NORM_2, &cnorm);
         constraint += cnorm;
-        printf("Add to constraints (c=%f). take compare from id=%d\n", cnorm, id);
+        printf("%d: Window %d, add to constraint taking from id=%d. c=%f\n", mpirank_time, iwindow, id, cnorm);
       }
     }
 
-    // printf("%d, %d: iinit obj_iinit: %f * (%1.14e + i %1.14e, Overlap=%1.14e + i %1.14e\n", mpirank_world, mpirank_init, obj_weights[iinit], obj_iinit_re, obj_iinit_im, fidelity_iinit_re, fidelity_iinit_im);
+    // printf("%d, (%d, %d): iinit obj_iinit: %f * (%1.14e + i %1.14e, Overlap=%1.14e + i %1.14e, Constraint=%1.14e\n", mpirank_world, mpirank_init, mpirank_time, obj_weights[iinit], obj_iinit_re, obj_iinit_im, fidelity_iinit_re, fidelity_iinit_im, constraint);
   }
 
   /* Sum up from initial conditions processors */
@@ -562,13 +565,15 @@ double OptimProblem::evalF(const Vec x) {
   double mycost_im = obj_cost_im;
   double myfidelity_re = fidelity_re;
   double myfidelity_im = fidelity_im;
+  double myconstraint = constraint;
   MPI_Allreduce(&mypen, &obj_penal, 1, MPI_DOUBLE, MPI_SUM, comm_init);
   MPI_Allreduce(&mypen_dpdm, &obj_penal_dpdm, 1, MPI_DOUBLE, MPI_SUM, comm_init);
   MPI_Allreduce(&mypenen, &obj_penal_energy, 1, MPI_DOUBLE, MPI_SUM, comm_init);
-  MPI_Allreduce(&mycost_re, &obj_cost_re, 1, MPI_DOUBLE, MPI_SUM, comm_init);
-  MPI_Allreduce(&mycost_im, &obj_cost_im, 1, MPI_DOUBLE, MPI_SUM, comm_init);
-  MPI_Allreduce(&myfidelity_re, &fidelity_re, 1, MPI_DOUBLE, MPI_SUM, comm_init);
-  MPI_Allreduce(&myfidelity_im, &fidelity_im, 1, MPI_DOUBLE, MPI_SUM, comm_init);
+  MPI_Allreduce(&mycost_re, &obj_cost_re, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD); // Should be comm_init and also comm_time! 
+  MPI_Allreduce(&mycost_im, &obj_cost_im, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(&myfidelity_re, &fidelity_re, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(&myfidelity_im, &fidelity_im, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(&myconstraint, &constraint, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 
   /* Set the fidelity: If Schroedinger, need to compute the absolute value: Fid= |\sum_i \phi^\dagger \phi_target|^2 */
   if (timestepper->mastereq->lindbladtype == LindbladType::NONE) {
@@ -599,10 +604,9 @@ double OptimProblem::evalF(const Vec x) {
   if (mpirank_world == 0) {
     std::cout<< "Objective = " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal << " + " << obj_penal_dpdm << " + " << obj_penal_energy << std::endl;
     std::cout<< "Fidelity = " << fidelity  << std::endl;
+    std::cout<< "Constraint = " <<  constraint << std::endl;
   }
 
-  /* More output */
-  std::cout<< "Constraint = " <<  std::scientific<<std::setprecision(14) << constraint << std::endl;
 
   return objective;
 }
