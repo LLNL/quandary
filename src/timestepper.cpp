@@ -90,10 +90,10 @@ Vec TimeStepper::getState(int tindex){
 
 Vec TimeStepper::solveODE(int initid, Vec rho_t0, int n0){
 
-  /* Open output files */
-  char postfix[120];
-  std::sprintf(postfix, "_t%1.0f", n0*dt); 
-  output->openDataFiles("rho", initid, postfix);
+  // /* Open output files */
+  // char postfix[120];
+  // std::sprintf(postfix, "_t%1.0f", n0*dt); 
+  // output->openDataFiles("rho", initid, postfix);
 
   /* Set initial condition  */
   VecCopy(rho_t0, x);
@@ -123,7 +123,7 @@ Vec TimeStepper::solveODE(int initid, Vec rho_t0, int n0){
 
     /* store and write current state. */
     if (storeFWD) VecCopy(x, store_states[n]);       // TODO: This might need revision for PinT
-    output->writeDataFiles(n, tstart, x, mastereq);  // TODO: This might need revision for PinT
+    // output->writeDataFiles(n, tstart, x, mastereq);  // TODO: This might need revision for PinT
 
     // printf("   Evolve %f->%f\n", tstart, tstop);
     // VecView(x, NULL);
@@ -164,9 +164,9 @@ Vec TimeStepper::solveODE(int initid, Vec rho_t0, int n0){
     dpdm_states.clear();
   }
 
-  /* Write last time step and close files */
-  output->writeDataFiles(ntime, (n0 + ntime)*dt, x, mastereq);
-  output->closeDataFiles();
+  // /* Write last time step and close files */
+  // output->writeDataFiles(ntime, (n0 + ntime)*dt, x, mastereq);
+  // output->closeDataFiles();
   
 
   return x;

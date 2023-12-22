@@ -843,6 +843,9 @@ void OptimProblem::getStartingPoint(Vec xinit){
 
   /* Set the initial guess for the intermediate states. Here, roll-out forward propagation. TODO: Read from file*/
   // Note: THIS Currently is entirely serial! No parallel initial conditions, no parallel windows. 
+  if (mpirank_world==0) {
+    printf(" -> Rollout initialization of intermediate states (entirely sequential). This might take a while...\n");
+  }
   rollOut(xinit);
   // VecView(xinit, NULL);
 
