@@ -383,29 +383,23 @@ int main(int argc,char **argv)
 
   std::string timesteppertypestr = config.GetStrParam("timestepper", "IMR");
   int nwindows = mpisize_time; // default: use as many windows as time-processors. 
-  int ntime_local = ntime / nwindows;
-  int rest = ntime % nwindows;
-  if (mpirank_time < rest){
-    ntime_local += 1;
-  }
-  //If config option 'nwindow' is given, overwrite the local number for the timestepper.
-  int nwindows_read = config.GetIntParam("nwindows", -1, false); 
+  int nwindows_read = config.GetIntParam("nwindows", -1); //If config option given, overwrite nwindows.
   if (nwindows_read > 0){
-    if (ntime % nwindows_read != 0) {
-      printf("Error: Multiple time-windows per processor needs ntime MOD nwindows == 0.\n");
-      exit(1);
-    }
-    ntime_local = ntime / nwindows_read;
-    nwindows = nwindows_read;
+    nwindows = nwindows_read; 
+  }
+  int ntime_per_window = ntime / nwindows;
+  if (ntime % nwindows != 0) {
+    printf("Error: Need ntime MOD nwindows == 0.\n");
+    exit(1);
   }
   if (mpirank_world == 0) {
-    printf("Time-windows: %d, each <= %d steps\n", nwindows, ntime_local);
+    printf("Time-windows: %d, each %d steps\n", nwindows, ntime_per_window);
   }
   TimeStepper* mytimestepper;
-  if (timesteppertypestr.compare("IMR")==0) mytimestepper = new ImplMidpoint(config, mastereq, ntime_local, dt, linsolvetype, linsolve_maxiter, output, storeFWD, comm_time);
-  else if (timesteppertypestr.compare("IMR4")==0) mytimestepper = new CompositionalImplMidpoint(config, 4, mastereq, ntime_local, dt, linsolvetype, linsolve_maxiter, output, storeFWD, comm_time);
-  else if (timesteppertypestr.compare("IMR8")==0) mytimestepper = new CompositionalImplMidpoint(config, 8, mastereq, ntime_local, dt, linsolvetype, linsolve_maxiter, output, storeFWD, comm_time);
-  else if (timesteppertypestr.compare("EE")==0) mytimestepper = new ExplEuler(config, mastereq, ntime_local, dt, output, storeFWD, comm_time);
+  if (timesteppertypestr.compare("IMR")==0) mytimestepper = new ImplMidpoint(config, mastereq, ntime_per_window, dt, linsolvetype, linsolve_maxiter, output, storeFWD, comm_time);
+  else if (timesteppertypestr.compare("IMR4")==0) mytimestepper = new CompositionalImplMidpoint(config, 4, mastereq, ntime_per_window, dt, linsolvetype, linsolve_maxiter, output, storeFWD, comm_time);
+  else if (timesteppertypestr.compare("IMR8")==0) mytimestepper = new CompositionalImplMidpoint(config, 8, mastereq, ntime_per_window, dt, linsolvetype, linsolve_maxiter, output, storeFWD, comm_time);
+  else if (timesteppertypestr.compare("EE")==0) mytimestepper = new ExplEuler(config, mastereq, ntime_per_window, dt, output, storeFWD, comm_time);
   else {
     printf("\n\n ERROR: Unknow timestepping type: %s.\n\n", timesteppertypestr.c_str());
     exit(1);
