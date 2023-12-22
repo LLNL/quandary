@@ -91,7 +91,9 @@ Vec TimeStepper::getState(int tindex){
 Vec TimeStepper::solveODE(int initid, Vec rho_t0, int n0){
 
   /* Open output files */
-  output->openDataFiles("rho", initid);
+  char postfix[120];
+  std::sprintf(postfix, "_t%1.0f", n0*dt); 
+  output->openDataFiles("rho", initid, postfix);
 
   /* Set initial condition  */
   VecCopy(rho_t0, x);
