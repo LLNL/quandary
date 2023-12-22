@@ -454,7 +454,9 @@ int main(int argc,char **argv)
     optimctx->getStartingPoint(xinit);
     // VecCopy(xinit, optimctx->xinit); // Store the initial guess
 
+    MPI_Barrier(MPI_COMM_WORLD);
     StartTime = MPI_Wtime(); // update timer after getStarting has been finished.
+
     objective = optimctx->evalF(xinit);
     EndTime = MPI_Wtime();
     if (mpirank_world == 0 && !quietmode) printf("\nTotal objective = %1.14e, \n", objective);
