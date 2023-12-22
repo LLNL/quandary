@@ -382,7 +382,11 @@ int main(int argc,char **argv)
      (runtype == RunType::GRADIENT || runtype == RunType::OPTIMIZATION) ) storeFWD = true;  // if NOT Schroedinger solver and running gradient optim: store forward states. Otherwise, they will be recomputed during gradient. 
 
   std::string timesteppertypestr = config.GetStrParam("timestepper", "IMR");
-  int nwindows = config.GetIntParam("nwindows", 1); // number of time windows
+  int nwindows = mpisize_time; // default: use as many windows as time-processors. 
+  int nwindows_read = config.GetIntParam("nwindows", -1); //If config option given, overwrite nwindows.
+  if (nwindows_read > 0){
+    nwindows = nwindows_read; 
+  }
   int ntime_per_window = ntime / nwindows;
   if (ntime % nwindows != 0) {
     printf("Error: Need ntime MOD nwindows == 0.\n");
