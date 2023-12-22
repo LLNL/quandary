@@ -42,8 +42,9 @@ class OptimProblem {
 
   bool quietmode;
 
-  std::vector<IS> is_interm_states;    // Vector of vector-strides for accessing intermediate states from global vector  
-  IS is_alpha;                         // Vector stride for accessing the control parameters
+  std::vector<IS> IS_interm_states;    // Vector of vector-strides for accessing intermediate states from global vector  
+  std::vector<IS> IS_interm_lambda;    // Vector of vector-strides for accessing intermediate lagrange multipliers from global vector  
+  IS IS_alpha;                         // Vector stride for accessing the control parameters
 
   /* Optimization stuff */
   std::vector<double> obj_weights; /* List of weights for weighting the average objective over initial conditions  */
@@ -81,13 +82,15 @@ class OptimProblem {
     Vec xlower, xupper;              /* Optimization bounds */
     Vec xprev;                       /* design vector at previous iteration */
     Vec xinit;                       /* Storing initial design vector, if gamma_tik_interpolate=true, aka if tikhonov is ||x - x_0||^2 rather than ||x||^2 */
+    Vec lambda;                      /* Storing (initial) lagrange multiplier, probably not needed to store it. TODO. */
 
   /* Constructor */
   OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm comm_init_, MPI_Comm comm_time, int ninit_, int nwindows_, double total_time, std::vector<double> gate_rot_freq, Output* output_, bool quietmode=false);
   ~OptimProblem();
 
   /* Return the number of optimization variables */
-  int getNoptimvars(){ return ndesign; };
+  int getNdesign(){ return ndesign; };
+  int getNoptimvars(){ return ndesign+nstate; };
 
   /* Return the overall objective, final-time costs, regularization and penalty terms */
   double getObjective(){ return objective; };
@@ -103,7 +106,7 @@ class OptimProblem {
   int getMPIrank_world() { return mpirank_world;};
 
   /* Evaluate the objective function F(x) */
-  double evalF(const Vec x);
+  double evalF(const Vec x, const Vec lambda);
 
   /* Evaluate gradient \nabla F(x) */
   void evalGradF(const Vec x, Vec G);

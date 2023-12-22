@@ -46,27 +46,31 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
 
   /* Store number of optimization parameters */
   // First add all that correspond to the splines
-  int nalpha = 0;
+  ndesign = 0;
   for (int ioscil = 0; ioscil < timestepper->mastereq->getNOscillators(); ioscil++) {
-      nalpha += timestepper->mastereq->getOscillator(ioscil)->getNParams(); 
+      ndesign += timestepper->mastereq->getOscillator(ioscil)->getNParams(); 
   }
   // Then all state variables N*(M-1) for each of the initial conditions (real and imag)
-  int nstate = (int) 2*timestepper->mastereq->getDimRho() * (nwindows-1) * ninit;
-  ndesign = nalpha + nstate;
-  if (mpirank_world == 0 && !quietmode) std::cout<< "noptimvars = " << nalpha << "(controls) + " << nstate << "(states) = " << ndesign  << std::endl;
+  nstate = (int) 2*timestepper->mastereq->getDimRho() * (nwindows-1) * ninit;
+  if (mpirank_world == 0 && !quietmode) std::cout<< "noptimvars = " << ndesign << "(controls) + " << nstate << "(states) = " << ndesign  << std::endl;
 
-  /* Create vector strides to access the control vector and intermediate states */
-  ISCreateStride(PETSC_COMM_WORLD, nalpha, 0, 1, &is_alpha);
-  int skip = nalpha;
+  /* Create vector strides to access the control vector and intermediate states, and intermediate lagrange multipliers */
+  ISCreateStride(PETSC_COMM_WORLD, ndesign, 0, 1, &IS_alpha);
+  int skip = 0.0;
+  int every = 1;
   for (int ic=0; ic<timestepper->mastereq->getDimRho(); ic++){
     for (int m=0; m<nwindows-1; m++) {
       IS state_m_ic;
-      ISCreateStride(PETSC_COMM_WORLD, timestepper->mastereq->getDimRho()*2, skip, 1, &state_m_ic);
-      is_interm_states.push_back(state_m_ic);
-      skip += timestepper->mastereq->getDimRho()*2; // *2 for real and imag. 
+      IS lambda_m_ic;
+      int xdim = timestepper->mastereq->getDimRho()*2; // state dimension. x2 for real and imag. 
+      ISCreateStride(PETSC_COMM_WORLD, xdim, ndesign+ skip, every, &state_m_ic);
+      ISCreateStride(PETSC_COMM_WORLD, xdim, skip, every, &lambda_m_ic);
+      IS_interm_states.push_back(state_m_ic);
+      IS_interm_lambda.push_back(lambda_m_ic);
+      skip += xdim; 
     }
   } 
-  // printf("state strides: %d\n", is_interm_states.size());
+  // printf("state strides: %d\n", IS_interm_states.size());
 
   /* Store other optimization parameters */
   gamma_tik = config.GetDoubleParam("optim_regul", 1e-4);
@@ -355,7 +359,7 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   VecAssemblyBegin(rho_t0_bar); VecAssemblyEnd(rho_t0_bar);
 
   /* Store optimization bounds */
-  VecCreateSeq(PETSC_COMM_SELF, ndesign, &xlower);
+  VecCreateSeq(PETSC_COMM_SELF, ndesign+nstate, &xlower);
   VecSetFromOptions(xlower);
   VecDuplicate(xlower, &xupper);
   int col = 0;
@@ -416,7 +420,7 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   TaoSetObjectiveAndGradient(tao, NULL, TaoEvalObjectiveAndGradient, (void*) this);
 
   /* Allocate auxiliary vector */
-  mygrad = new double[ndesign];
+  mygrad = new double[getNoptimvars()];
 
   // /* Allocat xprev, xinit, xtmp */
   // VecCreateSeq(PETSC_COMM_SELF, ndesign, &xprev);
@@ -456,17 +460,17 @@ OptimProblem::~OptimProblem() {
     VecDestroy(&(store_finalstates[i]));
   }
 
-  for (int m=0; m<is_interm_states.size(); m++){
-    ISDestroy(&(is_interm_states[m]));
+  for (int m=0; m<IS_interm_states.size(); m++){
+    ISDestroy(&(IS_interm_states[m]));
   }
-  ISDestroy(&is_alpha);
+  ISDestroy(&IS_alpha);
 
   TaoDestroy(&tao);
 }
 
 
 
-double OptimProblem::evalF(const Vec x) {
+double OptimProblem::evalF(const Vec x, const Vec lambda) {   // x = (alpha, interm.states), lambda = lagrange multipliers: dim(lambda) = dim(x_intermediatestates)
 
   MasterEq* mastereq = timestepper->mastereq;
 
@@ -475,7 +479,7 @@ double OptimProblem::evalF(const Vec x) {
 
   /* Pass control vector to oscillators */
   Vec x_alpha;
-  VecGetSubVector(x, is_alpha, &x_alpha);
+  VecGetSubVector(x, IS_alpha, &x_alpha);
   mastereq->setControlAmplitudes(x_alpha); 
 
   /*  Iterate over initial condition */
@@ -516,7 +520,7 @@ double OptimProblem::evalF(const Vec x) {
       } else {
         int id = iinit_global*(nwindows-1) + index-1;
         // printf("%d, %d: iinit %d, iwindow %d, starting from global id = %d\n", mpirank_time, mpirank_init, iinit, iwindow, id);
-        VecGetSubVector(x, is_interm_states[id], &x0);
+        VecGetSubVector(x, IS_interm_states[id], &x0);
         // VecView(x0, NULL);
       }
       finalstate = timestepper->solveODE(1, x0, n0);
@@ -547,16 +551,17 @@ double OptimProblem::evalF(const Vec x) {
         // printf("%d, %d: iinit %d, iwindow %d, add to objective obj_cost_re = %1.8e\n", mpirank_time, mpirank_init, iinit, iwindow, obj_cost_re);
         // VecView(finalstate, NULL);
       }
-      /* Else, add to constraint. For now just the norm... TODO: lagrange multiplier */
+      /* Else, add to constraint. */
       else {
         int id = iinit*(nwindows-1) + index;
-        Vec xnext;
-        VecGetSubVector(x, is_interm_states[id], &xnext);
-        VecAXPY(finalstate, -1.0, xnext); 
-        double cnorm;
-        VecNorm(finalstate, NORM_2, &cnorm);
-        constraint += cnorm;
-        // printf("%d: Window %d, add to constraint taking from id=%d. c=%f\n", mpirank_time, iwindow, id, cnorm);
+        Vec xnext, lag;
+        VecGetSubVector(x, IS_interm_states[id], &xnext);
+        VecGetSubVector(lambda, IS_interm_lambda[id], &lag);
+        VecAXPY(finalstate, -1.0, xnext);  // finalstate = S(u_{i-1}) - u_i
+        double cdot;
+        VecDot(finalstate, lag, &cdot);   // c = lambda^T (Su - u)
+        constraint += cdot;
+        // printf("%d: Window %d, add to constraint taking from id=%d. c=%f\n", mpirank_time, iwindow, id, cdot);
       }
     }
 
@@ -787,10 +792,10 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
   /* Sum up the gradient from all initial condition processors */
   PetscScalar* grad; 
   VecGetArray(G, &grad);
-  for (int i=0; i<ndesign; i++) {
+  for (int i=0; i<getNoptimvars(); i++) {
     mygrad[i] = grad[i];
   }
-  MPI_Allreduce(mygrad, grad, ndesign, MPI_DOUBLE, MPI_SUM, comm_init);
+  MPI_Allreduce(mygrad, grad, getNoptimvars(), MPI_DOUBLE, MPI_SUM, comm_init);
   VecRestoreArray(G, &grad);
 
   
@@ -839,7 +844,7 @@ void OptimProblem::getStartingPoint(Vec xinit){
 
   /* Pass control alphas to the oscillator */
   Vec x_alpha;
-  VecGetSubVector(xinit, is_alpha, &x_alpha);
+  VecGetSubVector(xinit, IS_alpha, &x_alpha);
   timestepper->mastereq->setControlAmplitudes(x_alpha);
   
   /* Write initial control functions to file TODO: Multiple time windows */
@@ -874,7 +879,7 @@ void OptimProblem::rollOut(Vec x){
       if (x != NULL && iwindow < nwindows-1) {
         int id = iinit*(nwindows-1) + iwindow;
         // printf(" Storing into id=%d\n", id);
-        VecISCopy(x, is_interm_states[id], SCATTER_FORWARD, x0); 
+        VecISCopy(x, IS_interm_states[id], SCATTER_FORWARD, x0); 
       }
     }
   }
@@ -978,7 +983,7 @@ PetscErrorCode TaoEvalObjectiveAndGradient(Tao tao, Vec x, PetscReal *f, Vec G, 
 PetscErrorCode TaoEvalObjective(Tao tao, Vec x, PetscReal *f, void*ptr){
 
   OptimProblem* ctx = (OptimProblem*) ptr;
-  *f = ctx->evalF(x);
+  *f = ctx->evalF(x, ctx->lambda);
   
   return 0;
 }

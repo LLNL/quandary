@@ -423,11 +423,21 @@ int main(int argc,char **argv)
   Vec xinit;
   VecCreateSeq(PETSC_COMM_SELF, optimctx->getNoptimvars(), &xinit);
   VecSetFromOptions(xinit);
+  VecAssemblyBegin(xinit);
+  VecAssemblyEnd(xinit);
   Vec grad;
   VecCreateSeq(PETSC_COMM_SELF, optimctx->getNoptimvars(), &grad);
   VecSetUp(grad);
   VecZeroEntries(grad);
   Vec opt;
+
+  /* Set up lagrange multiplier */
+  Vec lambda;
+  VecCreateSeq(PETSC_COMM_SELF, optimctx->getNoptimvars() - optimctx->getNdesign(), &lambda);
+  VecSetFromOptions(lambda);
+  VecSet(lambda, 1.0); // Set to one for now. TODO: Initialize somehow. 
+  VecAssemblyBegin(lambda);
+  VecAssemblyEnd(lambda);
 
   /* Some output */
   if (mpirank_world == 0)
@@ -457,7 +467,7 @@ int main(int argc,char **argv)
     MPI_Barrier(MPI_COMM_WORLD);
     StartTime = MPI_Wtime(); // update timer after getStarting has been finished.
 
-    objective = optimctx->evalF(xinit);
+    objective = optimctx->evalF(xinit, lambda);
     EndTime = MPI_Wtime();
     if (mpirank_world == 0 && !quietmode) printf("\nTotal objective = %1.14e, \n", objective);
     optimctx->getSolution(&opt);
@@ -548,7 +558,7 @@ int main(int argc,char **argv)
 
   /* --- Solve primal --- */
   if (mpirank_world == 0) printf("\nRunning optimizer eval_f... ");
-  obj_org = optimctx->evalF(xinit);
+  obj_org = optimctx->evalF(xinit, lambda);
   if (mpirank_world == 0) printf(" Obj_orig %1.14e\n", obj_org);
 
   /* --- Solve adjoint --- */
@@ -564,11 +574,11 @@ int main(int argc,char **argv)
 
     /* Evaluate f(p+eps)*/
     VecSetValue(xinit, i, EPS, ADD_VALUES);
-    obj_pert1 = optimctx->evalF(xinit);
+    obj_pert1 = optimctx->evalF(xinit, lambda);
 
     /* Evaluate f(p-eps)*/
     VecSetValue(xinit, i, -2*EPS, ADD_VALUES);
-    obj_pert2 = optimctx->evalF(xinit);
+    obj_pert2 = optimctx->evalF(xinit, lambda);
 
     /* Eval FD and error */
     double fd = (obj_pert1 - obj_pert2) / (2.*EPS);
