@@ -388,7 +388,9 @@ int main(int argc,char **argv)
     printf("Error: Need ntime MOD nwindows == 0.\n");
     exit(1);
   }
-  printf("Time-windows: %d, each %d steps\n", nwindows, ntime_per_window);
+  if (mpirank_world == 0) {
+    printf("Time-windows: %d, each %d steps\n", nwindows, ntime_per_window);
+  }
   TimeStepper* mytimestepper;
   if (timesteppertypestr.compare("IMR")==0) mytimestepper = new ImplMidpoint(config, mastereq, ntime_per_window, dt, linsolvetype, linsolve_maxiter, output, storeFWD, comm_time);
   else if (timesteppertypestr.compare("IMR4")==0) mytimestepper = new CompositionalImplMidpoint(config, 4, mastereq, ntime_per_window, dt, linsolvetype, linsolve_maxiter, output, storeFWD, comm_time);
@@ -443,9 +445,11 @@ int main(int argc,char **argv)
   double gnorm = 0.0;
   /* --- Solve primal --- */
   if (runtype == RunType::SIMULATION) {
+    if (mpirank_world == 0 && !quietmode) printf("\nStarting primal solver... \n");
     optimctx->getStartingPoint(xinit);
     // VecCopy(xinit, optimctx->xinit); // Store the initial guess
-    if (mpirank_world == 0 && !quietmode) printf("\nStarting primal solver... \n");
+
+    StartTime = MPI_Wtime(); // update timer after getStarting has been finished.
     objective = optimctx->evalF(xinit);
     if (mpirank_world == 0 && !quietmode) printf("\nTotal objective = %1.14e, \n", objective);
     optimctx->getSolution(&opt);

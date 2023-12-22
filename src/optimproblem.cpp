@@ -66,7 +66,7 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
       skip += timestepper->mastereq->getDimRho()*2; // *2 for real and imag. 
     }
   } 
-  printf("state strides: %d\n", is_interm_states.size());
+  // printf("state strides: %d\n", is_interm_states.size());
 
   /* Store other optimization parameters */
   gamma_tik = config.GetDoubleParam("optim_regul", 1e-4);
