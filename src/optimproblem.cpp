@@ -494,11 +494,15 @@ double OptimProblem::evalF(const Vec x) {
       
     /* Prepare the initial condition in [rank * ninit_local, ... , (rank+1) * ninit_local - 1] */
     int iinit_global = mpirank_init * ninit_local + iinit;
-    int initid = timestepper->mastereq->getRhoT0(iinit_global, ninit, initcond_type, initcond_IDs, rho_t0);
+    if ( mpirank_time == 0 || mpirank_time == mpisize_time -1 ) {
+      timestepper->mastereq->getRhoT0(iinit_global, ninit, initcond_type, initcond_IDs, rho_t0);
+    }
     // if (mpirank_time == 0 && !quietmode) printf("%d: Initial condition id=%d ...\n", mpirank_init, initid);
 
     /* If gate optimiztion, compute the target state rho^target = Vrho(0)V^dagger */
-    optim_target->prepare(rho_t0);
+    if (mpirank_time == mpisize_time-1) {
+      optim_target->prepare(rho_t0);
+    }
 
     /* Iterate over local time windows */
     for (int iwindow=0; iwindow<nwindows_local; iwindow++){
@@ -515,7 +519,7 @@ double OptimProblem::evalF(const Vec x) {
         VecGetSubVector(x, is_interm_states[id], &x0);
         // VecView(x0, NULL);
       }
-      finalstate = timestepper->solveODE(initid, x0, n0);
+      finalstate = timestepper->solveODE(1, x0, n0);
 
       /* Add to integral penalty term */
       obj_penal += obj_weights[iinit] * gamma_penalty * timestepper->penalty_integral;
@@ -543,7 +547,7 @@ double OptimProblem::evalF(const Vec x) {
         // printf("%d, %d: iinit %d, iwindow %d, add to objective obj_cost_re = %1.8e\n", mpirank_time, mpirank_init, iinit, iwindow, obj_cost_re);
         // VecView(finalstate, NULL);
       }
-      /* Else, add to constraint. For now just the norm... */
+      /* Else, add to constraint. For now just the norm... TODO: lagrange multiplier */
       else {
         int id = iinit*(nwindows-1) + index;
         Vec xnext;

@@ -383,7 +383,7 @@ int main(int argc,char **argv)
 
   std::string timesteppertypestr = config.GetStrParam("timestepper", "IMR");
   int nwindows = mpisize_time; // default: use as many windows as time-processors. 
-  int nwindows_read = config.GetIntParam("nwindows", -1); //If config option given, overwrite nwindows.
+  int nwindows_read = config.GetIntParam("nwindows", -1, false); //If config option given, overwrite nwindows.
   if (nwindows_read > 0){
     nwindows = nwindows_read; 
   }
@@ -445,6 +445,7 @@ int main(int argc,char **argv)
 
   /* Start timer */
   double StartTime = MPI_Wtime();
+  double EndTime;
   double objective;
   double gnorm = 0.0;
   /* --- Solve primal --- */
@@ -455,6 +456,7 @@ int main(int argc,char **argv)
 
     StartTime = MPI_Wtime(); // update timer after getStarting has been finished.
     objective = optimctx->evalF(xinit);
+    EndTime = MPI_Wtime();
     if (mpirank_world == 0 && !quietmode) printf("\nTotal objective = %1.14e, \n", objective);
     optimctx->getSolution(&opt);
   } 
@@ -499,7 +501,7 @@ int main(int argc,char **argv)
 
   /* Get timings */
   // #ifdef WITH_MPI
-  double UsedTime = MPI_Wtime() - StartTime;
+  double UsedTime = EndTime - StartTime;
   // #else
   // double UsedTime = 0.0; // TODO
   // #endif
