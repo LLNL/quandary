@@ -29,6 +29,8 @@ class OptimTarget{
     /* Get information on the type of optimization target */
     TargetType getTargetType(){ return target_type; };
     ObjectiveType getObjectiveType(){ return objective_type; };
+    // tmp
+    double getPurity0(){ return purity_rho0;};
 
     /* If gate optimization, this routine prepares the rotated target state VrhoV for a given initial state rho. Further, it stores the purity of rho(0) because it will be used to scale the Hilbertschmidt overlap for the JTrace objective function. */
     void prepare(const Vec rho);
@@ -41,7 +43,7 @@ class OptimTarget{
     void evalJ_diff(const Vec state, Vec statebar, const double J_re_bar, const double J_im_bar);
 
     /* Finalze the objective function */
-    double finalizeJ(const double obj_cost_re, const double obj_cost_im); 
+    double finalizeJ(const double obj_cost_re, const double obj_cost_im, const double frob2); 
     void finalizeJ_diff(const double obj_cost_re, const double obj_cost_im, double* obj_cost_re_bar, double* obj_cost_im_bar); 
 
     /* Frobenius distance F = 1/2 || targetstate - state ||^2_F */
@@ -52,5 +54,7 @@ class OptimTarget{
     /* Return real and imaginary parts in HS_re_ptr, Hs_im_ptr */
     void HilbertSchmidtOverlap(const Vec state, const bool scalebypurity, double* HS_re_ptr, double* Hs_im_ptr );
     void HilbertSchmidtOverlap_diff(const Vec state, Vec statebar, bool scalebypurity, const double HS_re_bar, const double HS_im_bar);
+
+    double FrobeniusSquared(const Vec state); // AP: New function
 };
 

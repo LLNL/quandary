@@ -74,6 +74,16 @@ void OptimTarget::FrobeniusDistance_diff(const Vec state, Vec statebar, const do
   VecAXPY(statebar, -2.0*Jbar, targetstate);  
 }
 
+// AP: Frobenius norm squared
+double OptimTarget::FrobeniusSquared(const Vec state){
+  // Frobenius norm squared: F2 = || state ||^2_F  = || vec(state)||^2_2
+  double norm;
+  VecNorm(state, NORM_2, &norm);
+  double F2 = norm * norm;
+
+  return F2;
+}
+
 void OptimTarget::HilbertSchmidtOverlap(const Vec state, const bool scalebypurity, double* HS_re_ptr, double* HS_im_ptr ){
   /* Lindblas solver: Tr(state * target^\dagger) = vec(target)^dagger * vec(state), will be real!
    * Schroedinger:    Tr(state * target^\dagger) = target^\dag * state, will be complex!*/
@@ -186,7 +196,7 @@ void OptimTarget::HilbertSchmidtOverlap_diff(const Vec state, Vec statebar, bool
   }
 }
 
-
+// AP: the purpose of this function is unclear to me
 void OptimTarget::prepare(const Vec rho_t0){
   // If gate optimization, apply the gate and store targetstate for later use. Else, do nothing.
   if (target_type == TargetType::GATE) targetgate->applyGate(rho_t0, targetstate);
@@ -271,7 +281,7 @@ void OptimTarget::evalJ(const Vec state, double* J_re_ptr, double* J_im_ptr){
       J_re = sum;
       MPI_Allreduce(&sum, &J_re, 1, MPI_DOUBLE, MPI_SUM, PETSC_COMM_WORLD);
       break; // case J_MEASURE
-  }
+  } // end switch
 
   // return
   *J_re_ptr = J_re;
@@ -336,12 +346,12 @@ void OptimTarget::evalJ_diff(const Vec state, Vec statebar, const double J_re_ba
   VecAssemblyBegin(statebar); VecAssemblyEnd(statebar);
 }
 
-double OptimTarget::finalizeJ(const double obj_cost_re, const double obj_cost_im) {
+double OptimTarget::finalizeJ(const double obj_cost_re, const double obj_cost_im, const double frob2) {
   double obj_cost = 0.0;
 
   if (objective_type == ObjectiveType::JTRACE) {
     if (lindbladtype == LindbladType::NONE) {
-      obj_cost = 1.0 - (pow(obj_cost_re,2.0) + pow(obj_cost_im, 2.0));
+      obj_cost = frob2 - (pow(obj_cost_re,2.0) + pow(obj_cost_im, 2.0));
     } else {
       obj_cost = 1.0 - obj_cost_re;
     }

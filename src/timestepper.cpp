@@ -265,7 +265,9 @@ double TimeStepper::penaltyIntegral(double time, const Vec x){
     double obj_re = 0.0;
     double obj_im = 0.0;
     optim_target->evalJ(x, &obj_re, &obj_im);
-    double obj_cost = optim_target->finalizeJ(obj_re, obj_im);
+
+    double frob2 = 1.0; // AP: FIX THIS
+    double obj_cost = optim_target->finalizeJ(obj_re, obj_im, frob2);
     penalty = weight * obj_cost * dt;
   }
 
