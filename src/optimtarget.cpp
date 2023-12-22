@@ -75,13 +75,17 @@ void OptimTarget::FrobeniusDistance_diff(const Vec state, Vec statebar, const do
 }
 
 // AP: Frobenius norm squared
-double OptimTarget::FrobeniusSquared(const Vec state){
-  // Frobenius norm squared: F2 = || state ||^2_F  = || vec(state)||^2_2
+void OptimTarget::FrobeniusSquared(const Vec state, double* frob2){
+  // Frobenius norm squared: frob2 = || state ||^2_F  = || vec(state)||^2_2
   double norm;
   VecNorm(state, NORM_2, &norm);
-  double F2 = norm * norm;
+  *frob2 = norm * norm;
+}
 
-  return F2;
+// AP: Adjoint of FrobeniusSquared
+void OptimTarget::FrobeniusSquared_diff(const Vec state, Vec statebar, const double frob2_bar){
+  // Frobenius norm squared: frob2 = || state ||^2_F  = sum_i state[i]^2
+  VecAXPY(statebar,  2.0*frob2_bar, state);
 }
 
 void OptimTarget::HilbertSchmidtOverlap(const Vec state, const bool scalebypurity, double* HS_re_ptr, double* HS_im_ptr ){
@@ -173,7 +177,7 @@ void OptimTarget::HilbertSchmidtOverlap_diff(const Vec state, Vec statebar, bool
 
     if (lindbladtype != LindbladType::NONE)
       VecAXPY(statebar, HS_re_bar*scale, targetstate);
-    else {
+    else {  // Schroedinger solver. target^\dagger * state
       const PetscScalar* target_ptr;
       PetscScalar* statebar_ptr;
       VecGetArrayRead(targetstate, &target_ptr); 
@@ -206,11 +210,10 @@ void OptimTarget::prepare(const Vec rho_t0){
   purity_rho0 = purity_rho0 * purity_rho0;
 }
 
-
-
-void OptimTarget::evalJ(const Vec state, double* J_re_ptr, double* J_im_ptr){
+void OptimTarget::evalJ(const Vec state, double* J_re_ptr, double* J_im_ptr, double* frob2_ptr){
   double J_re = 0.0;
   double J_im = 0.0;
+  double frob2 = 0.0; // new variable
   PetscInt diagID, diagID_re, diagID_im;
   double sum, mine, rhoii, rhoii_re, rhoii_im, lambdai, norm;
   PetscInt ilo, ihi;
@@ -243,8 +246,9 @@ void OptimTarget::evalJ(const Vec state, double* J_re_ptr, double* J_im_ptr){
 
     /* J_Trace:  1 / purity * Tr(state * target^\dagger)  =  HilbertSchmidtOverlap(target, state) is real if Lindblad, and complex if Schroedinger! */
     case ObjectiveType::JTRACE:
-
-      HilbertSchmidtOverlap(state, true, &J_re, &J_im); // is real if Lindblad solver. 
+      FrobeniusSquared(state, &frob2); // for the generalized fidelity
+      // AP: why scalebypurity==true? this scales the target by 1/purity_rho0???
+      HilbertSchmidtOverlap(state, true, &J_re, &J_im); // is real if Lindblad solver.
       break; // case J_Trace
 
     /* J_Measure = Tr(O_m rho(T)) = \sum_i |i-m| rho_ii(T) if Lindblad and \sum_i |i-m| |phi_i(T)|^2  if Schroedinger */
@@ -286,10 +290,11 @@ void OptimTarget::evalJ(const Vec state, double* J_re_ptr, double* J_im_ptr){
   // return
   *J_re_ptr = J_re;
   *J_im_ptr = J_im;
+  *frob2_ptr = frob2;
 }
 
 
-void OptimTarget::evalJ_diff(const Vec state, Vec statebar, const double J_re_bar, const double J_im_bar){
+void OptimTarget::evalJ_diff(const Vec state, Vec statebar, const double J_re_bar, const double J_im_bar, const double frob2_bar){
   PetscInt ilo, ihi;
   double lambdai, val, val_re, val_im, rhoii_re, rhoii_im;
   PetscInt diagID, diagID_re, diagID_im, dimsq;
@@ -314,6 +319,7 @@ void OptimTarget::evalJ_diff(const Vec state, Vec statebar, const double J_re_ba
 
     case ObjectiveType::JTRACE:
       HilbertSchmidtOverlap_diff(state, statebar, true, J_re_bar, J_im_bar);
+      FrobeniusSquared_diff(state, statebar, frob2_bar);
     break;
 
     case ObjectiveType::JMEASURE:
@@ -364,19 +370,22 @@ double OptimTarget::finalizeJ(const double obj_cost_re, const double obj_cost_im
 }
 
 
-void OptimTarget::finalizeJ_diff(const double obj_cost_re, const double obj_cost_im, double* obj_cost_re_bar, double* obj_cost_im_bar){
+void OptimTarget::finalizeJ_diff(const double obj_cost_re, const double obj_cost_im, double* obj_cost_re_bar, double* obj_cost_im_bar, double* frob2_bar){
 
   if (objective_type == ObjectiveType::JTRACE) {
     if (lindbladtype == LindbladType::NONE) {
-      // obj_cost = 1.0 - (pow(obj_cost_re,2.0) + pow(obj_cost_im, 2.0));
+      // obj_cost = frob2 - (pow(obj_cost_re,2.0) + pow(obj_cost_im, 2.0));
       *obj_cost_re_bar = -2.*obj_cost_re;
       *obj_cost_im_bar = -2.*obj_cost_im;
+      *frob2_bar = 1.0; // AP: d(obj_cost)/d(frob2)
     } else {
       *obj_cost_re_bar = -1.0;
       *obj_cost_im_bar = 0.0;
+      *frob2_bar = 0.0; // AP: No dependence on frob2
     }
   } else {
     *obj_cost_re_bar = 1.0;
     *obj_cost_im_bar = 0.0;
+    *frob2_bar = 0.0; // AP: No dependence on frob2
   }
 }

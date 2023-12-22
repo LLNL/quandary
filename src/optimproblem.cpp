@@ -463,7 +463,7 @@ double OptimProblem::evalF(const Vec x) {
   double obj_cost_im = 0.0;
   double fidelity_re = 0.0;
   double fidelity_im = 0.0;
-  double frob2 = 0.0; // AP: new variables
+  double frob2 = 0.0; // AP: new variable for the generalized infidelity
   for (int iinit = 0; iinit < ninit_local; iinit++) {
       
     /* Prepare the initial condition in [rank * ninit_local, ... , (rank+1) * ninit_local - 1] */
@@ -477,9 +477,6 @@ double OptimProblem::evalF(const Vec x) {
     // AP: what's the purpose of OptimTarget::purity_rho0? It seems to always equal 1.0
     // when the initial condition is unitary. With multiple shooting it may get another value from 
     // OptimTarget::prepare()?
-    if (mpirank_world == 0) {
-      printf("evalF: scalepurity = %e, obj_weight = %e, ninit = %d\n", optim_target->getPurity0(), obj_weights[iinit], ninit);
-    }
 
     /* Run forward with initial condition initid */
     finalstate = timestepper->solveODE(initid, rho_t0);
@@ -496,14 +493,14 @@ double OptimProblem::evalF(const Vec x) {
     /* Evaluate J(finalstate) and add to final-time cost */
     double obj_iinit_re = 0.0;
     double obj_iinit_im = 0.0;
+    double frob2_iinit; // needed for the generalized infidelity (initialized in evalJ)
     // Local contribution to the Hilbert-Schmidt overlap between target and final states (S_T)
     // NOTE: NOT scaled
-    optim_target->evalJ(finalstate,  &obj_iinit_re, &obj_iinit_im);
+    optim_target->evalJ(finalstate,  &obj_iinit_re, &obj_iinit_im, &frob2_iinit);
+    
     obj_cost_re += obj_weights[iinit] * obj_iinit_re; // For Schroedinger, weights = 1.0/ninit
     obj_cost_im += obj_weights[iinit] * obj_iinit_im;
-
-    // new term needed for the generalized infidelity
-    frob2 += optim_target->FrobeniusSquared(finalstate)/ninit;
+    frob2 += frob2_iinit/ninit; // scale by 1/(number of initial conditions)
 
     /* Contributions to final-time (regular) fidelity */
     double st_iinit_re = 0.0;
@@ -514,7 +511,7 @@ double OptimProblem::evalF(const Vec x) {
     fidelity_im += st_iinit_im / ninit;
  
     // printf("%d, %d: iinit obj_iinit: %f * (%1.14e + i %1.14e, Overlap=%1.14e + i %1.14e\n", mpirank_world, mpirank_init, obj_weights[iinit], obj_iinit_re, obj_iinit_im, fidelity_iinit_re, fidelity_iinit_im);
-  }
+  } // end for iinit
 
   /* Sum up from initial conditions processors */
   double mypen = obj_penal;
@@ -536,10 +533,6 @@ double OptimProblem::evalF(const Vec x) {
   MPI_Allreduce(&myfidelity_im, &fidelity_im, 1, MPI_DOUBLE, MPI_SUM, comm_init);
 
   MPI_Allreduce(&my_frob2, &frob2, 1, MPI_DOUBLE, MPI_SUM, comm_init); // AP: New
-  // test
-  if (mpirank_world == 0) {
-    printf("frob2 = %e\n", frob2);
-  }
 
   /* Set the fidelity: If Schroedinger, need to compute the absolute value: Fid= |\sum_i \phi^\dagger \phi_target|^2 */
   if (timestepper->mastereq->lindbladtype == LindbladType::NONE) {
@@ -609,6 +602,7 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
   double obj_cost_im = 0.0;
   double fidelity_re = 0.0;
   double fidelity_im = 0.0;
+  double frob2 = 0.0; // AP: new variable for gen. infidelity
   for (int iinit = 0; iinit < ninit_local; iinit++) {
 
     /* Prepare the initial condition */
@@ -638,9 +632,12 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
     /* Evaluate J(finalstate) and add to final-time cost */
     double obj_iinit_re = 0.0;
     double obj_iinit_im = 0.0;
-    optim_target->evalJ(finalstate,  &obj_iinit_re, &obj_iinit_im);
+    double frob2_iinit;    // new term needed for the generalized infidelity
+    optim_target->evalJ(finalstate,  &obj_iinit_re, &obj_iinit_im, &frob2_iinit);
+
     obj_cost_re += obj_weights[iinit] * obj_iinit_re;
     obj_cost_im += obj_weights[iinit] * obj_iinit_im;
+    frob2 += frob2_iinit/ninit;
 
     /* Add to final-time fidelity */
     double fidelity_iinit_re = 0.0;
@@ -657,9 +654,10 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
       VecZeroEntries(rho_t0_bar);
 
       /* Terminal condition for adjoint variable: Derivative of final time objective J */
-      double obj_cost_re_bar, obj_cost_im_bar;
-      optim_target->finalizeJ_diff(obj_cost_re, obj_cost_im, &obj_cost_re_bar, &obj_cost_im_bar);
-      optim_target->evalJ_diff(finalstate, rho_t0_bar, obj_weights[iinit]*obj_cost_re_bar, obj_weights[iinit]*obj_cost_im_bar);
+      double obj_cost_re_bar, obj_cost_im_bar, frob2_bar; // Note: frob2_bar=0 in this case (?)
+      optim_target->finalizeJ_diff(obj_cost_re, obj_cost_im, &obj_cost_re_bar, &obj_cost_im_bar, &frob2_bar);
+
+      optim_target->evalJ_diff(finalstate, rho_t0_bar, obj_weights[iinit]*obj_cost_re_bar, obj_weights[iinit]*obj_cost_im_bar, frob2_bar/ninit);
 
       /* Derivative of time-stepping */
       timestepper->solveAdjointODE(initid, rho_t0_bar, finalstate, obj_weights[iinit] * gamma_penalty, obj_weights[iinit]*gamma_penalty_dpdm, obj_weights[iinit]*gamma_penalty_energy);
@@ -667,7 +665,7 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
       /* Add to optimizers's gradient */
       VecAXPY(G, 1.0, timestepper->redgrad);
     }
-  }
+  } // end for iinit
 
   /* Sum up from initial conditions processors */
   double mypen = obj_penal;
@@ -677,6 +675,9 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
   double mycost_im = obj_cost_im;
   double myfidelity_re = fidelity_re;
   double myfidelity_im = fidelity_im;
+
+  double my_frob2 = frob2; // AP: New variable
+
   MPI_Allreduce(&mypen, &obj_penal, 1, MPI_DOUBLE, MPI_SUM, comm_init);
   MPI_Allreduce(&mypen_dpdm, &obj_penal_dpdm, 1, MPI_DOUBLE, MPI_SUM, comm_init);
   MPI_Allreduce(&mypenen, &obj_penal_energy, 1, MPI_DOUBLE, MPI_SUM, comm_init);
@@ -685,7 +686,10 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
   MPI_Allreduce(&myfidelity_re, &fidelity_re, 1, MPI_DOUBLE, MPI_SUM, comm_init);
   MPI_Allreduce(&myfidelity_im, &fidelity_im, 1, MPI_DOUBLE, MPI_SUM, comm_init);
 
+  MPI_Allreduce(&my_frob2, &frob2, 1, MPI_DOUBLE, MPI_SUM, comm_init); // AP: New
+
   /* Set the fidelity: If Schroedinger, need to compute the absolute value: Fid= |\sum_i \phi^\dagger \phi_target|^2 */
+  // AP: Why do you need to recompute the fidelity here?
   if (timestepper->mastereq->lindbladtype == LindbladType::NONE) {
     fidelity = pow(fidelity_re, 2.0) + pow(fidelity_im, 2.0);
   } else {
@@ -694,8 +698,7 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
  
   /* Finalize the objective function Jtrace to get the infidelity. 
      If Schroedingers solver, need to take the absolute value */
-  // FIX THIS:
-  double frob2 = 1.0;
+
   obj_cost = optim_target->finalizeJ(obj_cost_re, obj_cost_im, frob2);
 
   /* Evaluate regularization objective += gamma/2 * ||x||^2*/
@@ -730,9 +733,11 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
       VecZeroEntries(rho_t0_bar);
 
       /* Terminal condition for adjoint variable: Derivative of final time objective J */
-      double obj_cost_re_bar, obj_cost_im_bar;
-      optim_target->finalizeJ_diff(obj_cost_re, obj_cost_im, &obj_cost_re_bar, &obj_cost_im_bar);
-      optim_target->evalJ_diff(finalstate, rho_t0_bar, obj_weights[iinit]*obj_cost_re_bar, obj_weights[iinit]*obj_cost_im_bar);
+      double obj_cost_re_bar, obj_cost_im_bar, frob2_bar;
+
+      optim_target->finalizeJ_diff(obj_cost_re, obj_cost_im, &obj_cost_re_bar, &obj_cost_im_bar, &frob2_bar);
+
+      optim_target->evalJ_diff(finalstate, rho_t0_bar, obj_weights[iinit]*obj_cost_re_bar, obj_weights[iinit]*obj_cost_im_bar, frob2_bar/ninit);
 
       /* Derivative of time-stepping */
       timestepper->solveAdjointODE(initid, rho_t0_bar, finalstate, obj_weights[iinit] * gamma_penalty, obj_weights[iinit]*gamma_penalty_dpdm, obj_weights[iinit]*gamma_penalty_energy);

@@ -37,14 +37,14 @@ class OptimTarget{
 
     /* Evaluate the objective J. Note that J depends on the target state, which should be stored and ready before calling evalJ. The target state can be set with the 'prepare' routine. */
     /* Output is J_re and J_im. Generally imaginary part will be zero, except for the case of Schroedinger solver with Jtrace. */
-    void evalJ(const Vec state, double* J_re_ptr, double* J_im_ptr);
+    void evalJ(const Vec state, double* J_re_ptr, double* J_im_ptr, double* frob2);
 
     /* Derivative of evalJ. This updates the adjoint initial condition statebar */
-    void evalJ_diff(const Vec state, Vec statebar, const double J_re_bar, const double J_im_bar);
+    void evalJ_diff(const Vec state, Vec statebar, const double J_re_bar, const double J_im_bar, const double frob2_bar);
 
     /* Finalze the objective function */
     double finalizeJ(const double obj_cost_re, const double obj_cost_im, const double frob2); 
-    void finalizeJ_diff(const double obj_cost_re, const double obj_cost_im, double* obj_cost_re_bar, double* obj_cost_im_bar); 
+    void finalizeJ_diff(const double obj_cost_re, const double obj_cost_im, double* obj_cost_re_bar, double* obj_cost_im_bar, double* frob2_bar); 
 
     /* Frobenius distance F = 1/2 || targetstate - state ||^2_F */
     double FrobeniusDistance(const Vec state);
@@ -55,6 +55,8 @@ class OptimTarget{
     void HilbertSchmidtOverlap(const Vec state, const bool scalebypurity, double* HS_re_ptr, double* Hs_im_ptr );
     void HilbertSchmidtOverlap_diff(const Vec state, Vec statebar, bool scalebypurity, const double HS_re_bar, const double HS_im_bar);
 
-    double FrobeniusSquared(const Vec state); // AP: New function
+    // AP: New functions for generalized infidelity
+    void FrobeniusSquared(const Vec state, double *frob2); 
+    void FrobeniusSquared_diff(const Vec state, Vec statebar, const double frob2_bar); 
 };
 
