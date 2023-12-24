@@ -151,10 +151,10 @@ void Output::writeControls(Vec params, MasterEq* mastereq, int ntime, double dt)
 }
 
 
-void Output::openDataFiles(std::string prefix, int initid){
+void Output::openDataFiles(std::string prefix, int initid, std::string postfix){
   char filename[255];
 
-  /* Flag to determine of this optimization iteration will write data output */
+  /* Flag to determine if this optimization iteration will write data output */
   bool write_this_iter = false;
   if (optim_iter % optim_monitor_freq == 0) write_this_iter = true;
 

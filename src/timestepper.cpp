@@ -5,17 +5,16 @@ TimeStepper::TimeStepper() {
   dim = 0;
   mastereq = NULL;
   ntime = 0;
-  total_time = 0.0;
   dt = 0.0;
   storeFWD = false;
   MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
 }
 
-TimeStepper::TimeStepper(MapParam config, MasterEq* mastereq_, int ntime_, double total_time_, Output* output_, bool storeFWD_, MPI_Comm comm_time_) : TimeStepper() {
+TimeStepper::TimeStepper(MapParam config, MasterEq* mastereq_, int ntime_, double dt_, Output* output_, bool storeFWD_, MPI_Comm comm_time_) : TimeStepper() {
   mastereq = mastereq_;
   dim = 2*mastereq->getDim(); // will be either N^2 (Lindblad) or N (Schroedinger)
   ntime = ntime_;
-  total_time = total_time_;
+  dt = dt_;
   output = output_;
   storeFWD = storeFWD_;
   comm_time= comm_time_;
@@ -33,9 +32,6 @@ TimeStepper::TimeStepper(MapParam config, MasterEq* mastereq_, int ntime_, doubl
   for (int i=0; i<mastereq->getNOscillators(); i++){
     if (mastereq->nessential[i] < mastereq->nlevels[i]) addLeakagePrevent = true;
   }
-
-  /* Set the time-step size */
-  dt = total_time / ntime;
 
   /* Allocate storage of primal state */
   if (storeFWD) { 
@@ -69,14 +65,6 @@ TimeStepper::TimeStepper(MapParam config, MasterEq* mastereq_, int ntime_, doubl
   /* Time-parallel stuff. TODO: Check n_start and n_stop on each processor. */
   MPI_Comm_rank(comm_time, &mpirank_time);
   MPI_Comm_size(comm_time, &mpisize_time);
-  int ntime_local = ntime / mpisize_time;
-  int ntime_rest = ntime % mpisize_time;
-  n_start = mpirank_time* ntime_local;
-  n_stop = (mpirank_time+1) * ntime_local;
-  if (mpirank_time== mpisize_time-1) n_stop += ntime_rest;
-  if (mpisize_time> 1) {
-    printf("%d, %d: Time-parallel solve in [%d, %d)\n", mpirank_time, mpirank_world, n_start, n_stop);
-  }
 }
 
 
@@ -100,10 +88,12 @@ Vec TimeStepper::getState(int tindex){
   return store_states[tindex];
 }
 
-Vec TimeStepper::solveODE(int initid, Vec rho_t0){
+Vec TimeStepper::solveODE(int initid, Vec rho_t0, int n0){
 
-  /* Open output files */
-  output->openDataFiles("rho", initid);
+  // /* Open output files */
+  char postfix[121];
+  std::snprintf(postfix, 120, "_t%1.0f", n0*dt); // replacing sprintf by snprintf
+  output->openDataFiles("rho", initid, postfix);
 
   /* Set initial condition  */
   VecCopy(rho_t0, x);
@@ -128,15 +118,18 @@ Vec TimeStepper::solveODE(int initid, Vec rho_t0){
   for (int n = 0; n < ntime; n++){ // TODO: Do local PinT time stepping
 
     /* current time */
-    double tstart = n * dt;
-    double tstop  = (n+1) * dt;
+    double tstart = (n0 + n) * dt;
+    double tstop  = tstart + dt;
 
     /* store and write current state. */
     if (storeFWD) VecCopy(x, store_states[n]);       // TODO: This might need revision for PinT
     output->writeDataFiles(n, tstart, x, mastereq);  // TODO: This might need revision for PinT
 
+    // printf("   Evolve %f->%f\n", tstart, tstop);
+    // VecView(x, NULL);
     /* Take one time step */
     evolveFWD(tstart, tstop, x);
+    // VecView(x, NULL);
 
     /* Add to penalty objective term */
     if (gamma_penalty > 1e-13) penalty_integral += penaltyIntegral(tstop, x);
@@ -171,8 +164,8 @@ Vec TimeStepper::solveODE(int initid, Vec rho_t0){
     dpdm_states.clear();
   }
 
-  /* Write last time step and close files */
-  output->writeDataFiles(ntime, ntime*dt, x, mastereq);
+  // /* Write last time step and close files */
+  output->writeDataFiles(ntime, (n0 + ntime)*dt, x, mastereq);
   output->closeDataFiles();
   
 
@@ -260,15 +253,16 @@ double TimeStepper::penaltyIntegral(double time, const Vec x){
 
   /* weighted integral of the objective function */
   if (penalty_param > 1e-13) {
-    double weight = 1./penalty_param * exp(- pow((time - total_time)/penalty_param, 2));
+    printf("Penalty-param currently disabled.\n");
+    exit(1);
+    // double weight = 1./penalty_param * exp(- pow((time - total_time)/penalty_param, 2));
 
-    double obj_re = 0.0;
-    double obj_im = 0.0;
-    double frob2;
-    optim_target->evalJ(x, &obj_re, &obj_im, &frob2);
-
-    double obj_cost = optim_target->finalizeJ(obj_re, obj_im, frob2);
-    penalty = weight * obj_cost * dt;
+    // double obj_re = 0.0;
+    // double obj_im = 0.0;
+    //  double frob2;
+    // optim_target->evalJ(x, &obj_re, &obj_im, &frob2
+    // double obj_cost = optim_target->finalizeJ(obj_re, obj_im, frob2);
+    // penalty = weight * obj_cost * dt;
   }
 
   /* Add guard-level occupation to prevent leakage. A guard level is the LAST NON-ESSENTIAL energy level of an oscillator */
@@ -307,19 +301,19 @@ void TimeStepper::penaltyIntegral_diff(double time, const Vec x, Vec xbar, doubl
 
   /* Derivative of weighted integral of the objective function */
   if (penalty_param > 1e-13){
-    double weight = 1./penalty_param * exp(- pow((time - total_time)/penalty_param, 2));
+    // double weight = 1./penalty_param * exp(- pow((time - total_time)/penalty_param, 2));
     
-    double obj_cost_re = 0.0;
-    double obj_cost_im = 0.0;
-    double frob2;
-    optim_target->evalJ(x, &obj_cost_re, &obj_cost_im, &frob2);
+    // double obj_cost_re = 0.0;
+    // double obj_cost_im = 0.0;
+    // double frob2;
+    // optim_target->evalJ(x, &obj_cost_re, &obj_cost_im, &frob2);
 
-    double obj_cost_re_bar = 0.0; 
-    double obj_cost_im_bar = 0.0;
-    double frob2_bar; // for gen. infidelity
-    int ninit = 1; // TODO: should be # of initial conditions; not available here ???
-    optim_target->finalizeJ_diff(obj_cost_re, obj_cost_im, &obj_cost_re_bar, &obj_cost_im_bar, &frob2_bar);
-    optim_target->evalJ_diff(x, xbar, weight*obj_cost_re_bar*penaltybar*dt, weight*obj_cost_im_bar*penaltybar*dt, frob2_bar/ninit);
+    // double obj_cost_re_bar = 0.0; 
+    // double obj_cost_im_bar = 0.0;
+    // double frob2_bar; // for gen. infidelity
+    // int ninit = 1; // TODO: should be # of initial conditions; not available here ???
+    // optim_target->finalizeJ_diff(obj_cost_re, obj_cost_im, &obj_cost_re_bar, &obj_cost_im_bar, &frob2_bar);
+    // optim_target->evalJ_diff(x, xbar, weight*obj_cost_re_bar*penaltybar*dt, weight*obj_cost_im_bar*penaltybar*dt, frob2_bar/ninit);
   }
 
   /* If gate optimization: Derivative of adding guard-level occupation */
@@ -539,7 +533,7 @@ void TimeStepper::energyPenaltyIntegral_diff(double time, double penaltybar, Vec
 
 void TimeStepper::evolveBWD(const double tstart, const double tstop, const Vec x_stop, Vec x_adj, Vec grad, bool compute_gradient){}
 
-ExplEuler::ExplEuler(MapParam config, MasterEq* mastereq_, int ntime_, double total_time_, Output* output_, bool storeFWD_, MPI_Comm comm_time_) : TimeStepper(config, mastereq_, ntime_, total_time_, output_, storeFWD_, comm_time_) {
+ExplEuler::ExplEuler(MapParam config, MasterEq* mastereq_, int ntime_, double dt_, Output* output_, bool storeFWD_, MPI_Comm comm_time_) : TimeStepper(config, mastereq_, ntime_, dt_, output_, storeFWD_, comm_time_) {
   MatCreateVecs(mastereq->getRHS(), &stage, NULL);
   VecZeroEntries(stage);
 }
@@ -578,7 +572,7 @@ void ExplEuler::evolveBWD(const double tstop,const  double tstart,const  Vec x, 
 
 }
 
-ImplMidpoint::ImplMidpoint(MapParam config,MasterEq* mastereq_, int ntime_, double total_time_, LinearSolverType linsolve_type_, int linsolve_maxiter_, Output* output_, bool storeFWD_, MPI_Comm comm_time_) : TimeStepper(config, mastereq_, ntime_, total_time_, output_, storeFWD_, comm_time_) {
+ImplMidpoint::ImplMidpoint(MapParam config,MasterEq* mastereq_, int ntime_, double dt_, LinearSolverType linsolve_type_, int linsolve_maxiter_, Output* output_, bool storeFWD_, MPI_Comm comm_time_) : TimeStepper(config, mastereq_, ntime_, dt_, output_, storeFWD_, comm_time_) {
 
   /* Create and reset the intermediate vectors */
   MatCreateVecs(mastereq->getRHS(), &stage, NULL);
@@ -788,7 +782,7 @@ int ImplMidpoint::NeumannSolve(Mat A, Vec b, Vec y, double alpha, bool transpose
 
 
 
-CompositionalImplMidpoint::CompositionalImplMidpoint(MapParam config, int order_, MasterEq* mastereq_, int ntime_, double total_time_, LinearSolverType linsolve_type_, int linsolve_maxiter_, Output* output_, bool storeFWD_, MPI_Comm comm_time_): ImplMidpoint(config, mastereq_, ntime_, total_time_, linsolve_type_, linsolve_maxiter_, output_, storeFWD_, comm_time_) {
+CompositionalImplMidpoint::CompositionalImplMidpoint(MapParam config, int order_, MasterEq* mastereq_, int ntime_, double dt_, LinearSolverType linsolve_type_, int linsolve_maxiter_, Output* output_, bool storeFWD_, MPI_Comm comm_time_): ImplMidpoint(config, mastereq_, ntime_, dt_, linsolve_type_, linsolve_maxiter_, output_, storeFWD_, comm_time_) {
 
   order = order_;
 

@@ -1,9 +1,10 @@
 #include "optimproblem.hpp"
 
-OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm comm_init_, MPI_Comm comm_time_, int ninit_, std::vector<double> gate_rot_freq, Output* output_, bool quietmode_){
+OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm comm_init_, MPI_Comm comm_time_, int ninit_, int nwindows_, double total_time_, std::vector<double> gate_rot_freq, Output* output_, bool quietmode_){
 
   timestepper = timestepper_;
   ninit = ninit_;
+  nwindows = nwindows_;
   output = output_;
   quietmode = quietmode_;
   /* Reset */
@@ -24,10 +25,15 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   /* Store number of initial conditions per init-processor group */
   ninit_local = ninit / mpisize_init; 
 
+  /* Store number of local windows per time-processor group */
+  nwindows_local = nwindows / mpisize_time;
+  // TODO. For now sanity check whether nwindows is equally divisible by number or processors for time.
+  if (nwindows % mpisize_time != 0){
+    printf("ERROR: For now, need nwindows MOD mpisize_time == 0.\n");
+    exit(1);
+  }
+
   /*  If Schroedingers solver, allocate storage for the final states at time T for each initial condition. Schroedinger's solver does not store the time-trajectories during forward ODE solve, but instead recomputes the primal states during the adjoint solve. Therefore we need to store the terminal condition for the backwards primal solve. Be aware that the final states stored here will be overwritten during backwards computation!! */
-
-  /* TODO: For PinT, we might want to store the intermediate states locally, rather than recomputing them. */
-
   if (timestepper->mastereq->lindbladtype == LindbladType::NONE) {
     for (int i = 0; i < ninit_local; i++) {
       Vec state;
@@ -38,13 +44,33 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
     }
   }
 
-  /* Store number of design parameters */ /* TODO: Add intermediate initial conditions */
-  int n = 0;
+  /* Store number of optimization parameters */
+  // First add all that correspond to the splines
+  ndesign = 0;
   for (int ioscil = 0; ioscil < timestepper->mastereq->getNOscillators(); ioscil++) {
-      n += timestepper->mastereq->getOscillator(ioscil)->getNParams(); 
+      ndesign += timestepper->mastereq->getOscillator(ioscil)->getNParams(); 
   }
-  ndesign = n;
-  if (mpirank_world == 0 && !quietmode) std::cout<< "ndesign = " << ndesign << std::endl;
+  // Then all state variables N*(M-1) for each of the initial conditions (real and imag)
+  nstate = (int) 2*timestepper->mastereq->getDimRho() * (nwindows-1) * ninit;
+  if (mpirank_world == 0 && !quietmode) std::cout<< "noptimvars = " << ndesign << "(controls) + " << nstate << "(states) = " << ndesign  << std::endl;
+
+  /* Create vector strides to access the control vector and intermediate states, and intermediate lagrange multipliers */
+  ISCreateStride(PETSC_COMM_WORLD, ndesign, 0, 1, &IS_alpha);
+  int skip = 0.0;
+  int every = 1;
+  for (int ic=0; ic<timestepper->mastereq->getDimRho(); ic++){
+    for (int m=0; m<nwindows-1; m++) {
+      IS state_m_ic;
+      IS lambda_m_ic;
+      int xdim = timestepper->mastereq->getDimRho()*2; // state dimension. x2 for real and imag. 
+      ISCreateStride(PETSC_COMM_WORLD, xdim, ndesign+ skip, every, &state_m_ic);
+      ISCreateStride(PETSC_COMM_WORLD, xdim, skip, every, &lambda_m_ic);
+      IS_interm_states.push_back(state_m_ic);
+      IS_interm_lambda.push_back(lambda_m_ic);
+      skip += xdim; 
+    }
+  } 
+  // printf("state strides: %d\n", IS_interm_states.size());
 
   /* Store other optimization parameters */
   gamma_tik = config.GetDoubleParam("optim_regul", 1e-4);
@@ -72,15 +98,15 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
       exit(1);
     }
     if      (target_str[1].compare("none") == 0)  targetgate = new Gate(); // dummy gate. do nothing
-    else if (target_str[1].compare("xgate") == 0) targetgate = new XGate(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, timestepper->total_time, gate_rot_freq, timestepper->mastereq->lindbladtype, quietmode); 
-    else if (target_str[1].compare("ygate") == 0) targetgate = new YGate(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, timestepper->total_time, gate_rot_freq, timestepper->mastereq->lindbladtype, quietmode); 
-    else if (target_str[1].compare("zgate") == 0) targetgate = new ZGate(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, timestepper->total_time, gate_rot_freq, timestepper->mastereq->lindbladtype, quietmode);
-    else if (target_str[1].compare("hadamard") == 0) targetgate = new HadamardGate(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, timestepper->total_time, gate_rot_freq, timestepper->mastereq->lindbladtype, quietmode);
-    else if (target_str[1].compare("cnot") == 0) targetgate = new CNOT(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, timestepper->total_time, gate_rot_freq, timestepper->mastereq->lindbladtype, quietmode); 
-    else if (target_str[1].compare("swap") == 0) targetgate = new SWAP(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, timestepper->total_time, gate_rot_freq, timestepper->mastereq->lindbladtype, quietmode); 
-    else if (target_str[1].compare("swap0q") == 0) targetgate = new SWAP_0Q(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, timestepper->total_time, gate_rot_freq, timestepper->mastereq->lindbladtype, quietmode); 
-    else if (target_str[1].compare("cqnot") == 0) targetgate = new CQNOT(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, timestepper->total_time, gate_rot_freq, timestepper->mastereq->lindbladtype, quietmode); 
-    else if (target_str[1].compare("fromfile") == 0) targetgate = new FromFile(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, timestepper->total_time, gate_rot_freq, timestepper->mastereq->lindbladtype, target_str[2], quietmode); 
+    else if (target_str[1].compare("xgate") == 0) targetgate = new XGate(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, total_time_, gate_rot_freq, timestepper->mastereq->lindbladtype, quietmode); 
+    else if (target_str[1].compare("ygate") == 0) targetgate = new YGate(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, total_time_, gate_rot_freq, timestepper->mastereq->lindbladtype, quietmode); 
+    else if (target_str[1].compare("zgate") == 0) targetgate = new ZGate(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, total_time_, gate_rot_freq, timestepper->mastereq->lindbladtype, quietmode);
+    else if (target_str[1].compare("hadamard") == 0) targetgate = new HadamardGate(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, total_time_, gate_rot_freq, timestepper->mastereq->lindbladtype, quietmode);
+    else if (target_str[1].compare("cnot") == 0) targetgate = new CNOT(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, total_time_, gate_rot_freq, timestepper->mastereq->lindbladtype, quietmode); 
+    else if (target_str[1].compare("swap") == 0) targetgate = new SWAP(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, total_time_, gate_rot_freq, timestepper->mastereq->lindbladtype, quietmode); 
+    else if (target_str[1].compare("swap0q") == 0) targetgate = new SWAP_0Q(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, total_time_, gate_rot_freq, timestepper->mastereq->lindbladtype, quietmode); 
+    else if (target_str[1].compare("cqnot") == 0) targetgate = new CQNOT(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, total_time_, gate_rot_freq, timestepper->mastereq->lindbladtype, quietmode); 
+    else if (target_str[1].compare("fromfile") == 0) targetgate = new FromFile(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, total_time_, gate_rot_freq, timestepper->mastereq->lindbladtype, target_str[2], quietmode); 
     else {
       printf("\n\n ERROR: Unnown gate type: %s.\n", target_str[1].c_str());
       printf(" Available gates are 'none', 'xgate', 'ygate', 'zgate', 'hadamard', 'cnot', 'swap', 'swap0q', 'cqnot'.\n");
@@ -333,7 +359,7 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   VecAssemblyBegin(rho_t0_bar); VecAssemblyEnd(rho_t0_bar);
 
   /* Store optimization bounds */
-  VecCreateSeq(PETSC_COMM_SELF, ndesign, &xlower);
+  VecCreateSeq(PETSC_COMM_SELF, ndesign+nstate, &xlower);
   VecSetFromOptions(xlower);
   VecDuplicate(xlower, &xupper);
   int col = 0;
@@ -394,31 +420,26 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   TaoSetObjectiveAndGradient(tao, NULL, TaoEvalObjectiveAndGradient, (void*) this);
 
   /* Allocate auxiliary vector */
-  mygrad = new double[ndesign];
+  mygrad = new double[getNoptimvars()];
 
-  /* Allocat xprev, xinit, xtmp */
-  VecCreateSeq(PETSC_COMM_SELF, ndesign, &xprev);
-  VecSetFromOptions(xprev);
-  VecZeroEntries(xprev);
+  // /* Allocat xprev, xinit, xtmp */
+  // VecCreateSeq(PETSC_COMM_SELF, ndesign, &xprev);
+  // VecSetFromOptions(xprev);
+  // VecZeroEntries(xprev);
 
-  VecCreateSeq(PETSC_COMM_SELF, ndesign, &xinit);
-  VecSetFromOptions(xinit);
-  VecZeroEntries(xinit);
+  if (gamma_tik_interpolate) {
+    // DISABLE FOR NOW
+    printf("Warning: Disabling gamma_tik_interpolate for multiple shooting.\n");
+    gamma_tik_interpolate = false;
+    // VecCreateSeq(PETSC_COMM_SELF, ndesign, &xinit);
+    // VecSetFromOptions(xinit);
+    // VecZeroEntries(xinit);
+  }
 
-  VecCreateSeq(PETSC_COMM_SELF, ndesign, &xtmp);
-  VecSetFromOptions(xtmp);
-  VecZeroEntries(xtmp);
-
-  /* initialize variables for intermediate time intervals TODO: all need to be updated */
-  nAlpha = ndesign; /* TODO: update */
-  nEss = 1;
-  nTot = 1;
-  nMat = 1;
-  nTimeIntervals = 1;
-  Tsteps.push_back(1);
-  T0int.push_back(0.0);
-
-} // end OptimProblem constructor
+  // VecCreateSeq(PETSC_COMM_SELF, ndesign, &xtmp);
+  // VecSetFromOptions(xtmp);
+  // VecZeroEntries(xtmp);
+}
 
 
 OptimProblem::~OptimProblem() {
@@ -429,28 +450,37 @@ OptimProblem::~OptimProblem() {
 
   VecDestroy(&xlower);
   VecDestroy(&xupper);
-  VecDestroy(&xprev);
-  VecDestroy(&xinit);
-  VecDestroy(&xtmp);
+  // VecDestroy(&xprev);
+  if (gamma_tik_interpolate) {
+    // VecDestroy(&xinit);
+  }
+  // VecDestroy(&xtmp);
 
   for (int i = 0; i < store_finalstates.size(); i++) {
     VecDestroy(&(store_finalstates[i]));
   }
+
+  for (int m=0; m<IS_interm_states.size(); m++){
+    ISDestroy(&(IS_interm_states[m]));
+  }
+  ISDestroy(&IS_alpha);
 
   TaoDestroy(&tao);
 }
 
 
 
-double OptimProblem::evalF(const Vec x) {
+double OptimProblem::evalF(const Vec x, const Vec lambda) {   // x = (alpha, interm.states), lambda = lagrange multipliers: dim(lambda) = dim(x_intermediatestates)
 
   MasterEq* mastereq = timestepper->mastereq;
 
   if (mpirank_world == 0 && !quietmode) printf("EVAL F... \n");
   Vec finalstate = NULL;
 
-  /* Pass design vector x to oscillators */
-  mastereq->setControlAmplitudes(x); 
+  /* Pass control vector to oscillators */
+  Vec x_alpha;
+  VecGetSubVector(x, IS_alpha, &x_alpha);
+  mastereq->setControlAmplitudes(x_alpha); 
 
   /*  Iterate over initial condition */
   obj_cost  = 0.0;
@@ -464,53 +494,85 @@ double OptimProblem::evalF(const Vec x) {
   double fidelity_re = 0.0;
   double fidelity_im = 0.0;
   double frob2 = 0.0; // AP: new variable for the generalized infidelity
+  double constraint = 0.0;
   for (int iinit = 0; iinit < ninit_local; iinit++) {
       
     /* Prepare the initial condition in [rank * ninit_local, ... , (rank+1) * ninit_local - 1] */
     int iinit_global = mpirank_init * ninit_local + iinit;
-    int initid = timestepper->mastereq->getRhoT0(iinit_global, ninit, initcond_type, initcond_IDs, rho_t0);
-    if (mpirank_time == 0 && !quietmode) printf("%d: Initial condition id=%d ...\n", mpirank_init, initid);
+    if ( mpirank_time == 0 || mpirank_time == mpisize_time -1 ) {
+      timestepper->mastereq->getRhoT0(iinit_global, ninit, initcond_type, initcond_IDs, rho_t0);
+    }
+    // if (mpirank_time == 0 && !quietmode) printf("%d: Initial condition id=%d ...\n", mpirank_init, initid);
 
     /* If gate optimiztion, compute the target state rho^target = Vrho(0)V^dagger */
-    optim_target->prepare(rho_t0);
+    if (mpirank_time == mpisize_time-1) {
+      optim_target->prepare(rho_t0);
+    }
 
-    // AP: what's the purpose of OptimTarget::purity_rho0? It seems to always equal 1.0
-    // when the initial condition is unitary. With multiple shooting it may get another value from 
-    // OptimTarget::prepare()?
+    /* Iterate over local time windows */
+    for (int iwindow=0; iwindow<nwindows_local; iwindow++){
+      // Solve forward from starting point.
+      int index = mpirank_time*nwindows_local + iwindow ; 
+      int n0 = index * timestepper->ntime; // First time-step index for this window.
+      // printf("%d: Local window %d , n0=%d\n", mpirank_time, iwindow, n0);
+      Vec x0;
+      if (mpirank_time == 0 && iwindow == 0) {
+        x0 = rho_t0; 
+      } else {
+        int id = iinit_global*(nwindows-1) + index-1;
+        // printf("%d, %d: iinit %d, iwindow %d, starting from global id = %d\n", mpirank_time, mpirank_init, iinit, iwindow, id);
+        VecGetSubVector(x, IS_interm_states[id], &x0);
+        // VecView(x0, NULL);
+      }
+      finalstate = timestepper->solveODE(1, x0, n0);
 
-    /* Run forward with initial condition initid */
-    finalstate = timestepper->solveODE(initid, rho_t0);
+      /* Add to integral penalty term */
+      obj_penal += obj_weights[iinit] * gamma_penalty * timestepper->penalty_integral;
 
-    /* Add to integral penalty term */
-    obj_penal += obj_weights[iinit] * gamma_penalty * timestepper->penalty_integral;
-
-    /* Add to second derivative penalty term */
-    obj_penal_dpdm += obj_weights[iinit] * gamma_penalty_dpdm * timestepper->penalty_dpdm;
+      /* Add to second derivative penalty term */
+      obj_penal_dpdm += obj_weights[iinit] * gamma_penalty_dpdm * timestepper->penalty_dpdm;
     
-    /* Add to energy integral penalty term */
-    obj_penal_energy += obj_weights[iinit] * gamma_penalty_energy* timestepper->energy_penalty_integral;
+      /* Add to energy integral penalty term */
+      obj_penal_energy += obj_weights[iinit] * gamma_penalty_energy* timestepper->energy_penalty_integral;
 
-    /* Evaluate J(finalstate) and add to final-time cost */
-    double obj_iinit_re = 0.0;
-    double obj_iinit_im = 0.0;
-    double frob2_iinit; // needed for the generalized infidelity (initialized in evalJ)
-    // Local contribution to the Hilbert-Schmidt overlap between target and final states (S_T)
-    // NOTE: NOT scaled
-    optim_target->evalJ(finalstate,  &obj_iinit_re, &obj_iinit_im, &frob2_iinit);
+      /* Evaluate J(finalstate) and add to final-time cost */
+      if (mpirank_time == mpisize_time-1 && iwindow == nwindows_local-1){
+        double obj_iinit_re = 0.0;
+        double obj_iinit_im = 0.0;
+        double frob2_iinit; // needed for the generalized infidelity (initialized in evalJ)
+        // Local contribution to the Hilbert-Schmidt overlap between target and final states (S_T)
+        // NOTE: NOT scaled
+        optim_target->evalJ(finalstate,  &obj_iinit_re, &obj_iinit_im, &frob2_iinit);
+        
+        obj_cost_re += obj_weights[iinit] * obj_iinit_re; // For Schroedinger, weights = 1.0/ninit
+        obj_cost_im += obj_weights[iinit] * obj_iinit_im;
+        frob2 += frob2_iinit/ninit; // scale by 1/(number of initial conditions)
+
+        /* Contributions to final-time (regular) fidelity */
+        double fidelity_iinit_re = 0.0;
+        double fidelity_iinit_im = 0.0;
+        // AP: NOTE: scalebypurity = false in this call. Hence, purity_rho0 is never used.
+        optim_target->HilbertSchmidtOverlap(finalstate, false, &fidelity_iinit_re, &fidelity_iinit_im);
+        fidelity_re += fidelity_iinit_re / ninit; // Scale by 1/N
+        fidelity_im += fidelity_iinit_im / ninit;
     
-    obj_cost_re += obj_weights[iinit] * obj_iinit_re; // For Schroedinger, weights = 1.0/ninit
-    obj_cost_im += obj_weights[iinit] * obj_iinit_im;
-    frob2 += frob2_iinit/ninit; // scale by 1/(number of initial conditions)
+        // printf("%d, %d: iinit obj_iinit: %f * (%1.14e + i %1.14e, Overlap=%1.14e + i %1.14e\n", mpirank_world, mpirank_init, obj_weights[iinit], obj_iinit_re, obj_iinit_im, fidelity_iinit_re, fidelity_iinit_im);
+      }
+      /* Else, add to constraint. */
+      else {
+        int id = iinit*(nwindows-1) + index;
+        Vec xnext, lag;
+        VecGetSubVector(x, IS_interm_states[id], &xnext);
+        VecGetSubVector(lambda, IS_interm_lambda[id], &lag);
+        VecAXPY(finalstate, -1.0, xnext);  // finalstate = S(u_{i-1}) - u_i
+        double cdot;
+        VecDot(finalstate, lag, &cdot);   // c = lambda^T (Su - u)
+        constraint += cdot;
+        // printf("%d: Window %d, add to constraint taking from id=%d. c=%f\n", mpirank_time, iwindow, id, cdot);
+      }
+    } // end for iwindow
 
-    /* Contributions to final-time (regular) fidelity */
-    double st_iinit_re = 0.0;
-    double st_iinit_im = 0.0;
-    // AP: NOTE: scalebypurity = false in this call. Hence, purity_rho0 is never used.
-    optim_target->HilbertSchmidtOverlap(finalstate, false, &st_iinit_re, &st_iinit_im);
-    fidelity_re += st_iinit_re / ninit; // Scale by 1/N
-    fidelity_im += st_iinit_im / ninit;
- 
-    // printf("%d, %d: iinit obj_iinit: %f * (%1.14e + i %1.14e, Overlap=%1.14e + i %1.14e\n", mpirank_world, mpirank_init, obj_weights[iinit], obj_iinit_re, obj_iinit_im, fidelity_iinit_re, fidelity_iinit_im);
+    // printf("%d, (%d, %d): iinit obj_iinit: %f * (%1.14e + i %1.14e, Overlap=%1.14e + i %1.14e, Constraint=%1.14e\n", mpirank_world, mpirank_init, mpirank_time, obj_weights[iinit], obj_iinit_re, obj_iinit_im, fidelity_iinit_re, fidelity_iinit_im, constraint);
   } // end for iinit
 
   /* Sum up from initial conditions processors */
@@ -519,20 +581,22 @@ double OptimProblem::evalF(const Vec x) {
   double mypenen = obj_penal_energy;
   double mycost_re = obj_cost_re;
   double mycost_im = obj_cost_im;
-  double myfidelity_re = fidelity_re; // AP: these varaibles store the re/im parts of S_T
-  double myfidelity_im = fidelity_im; // and the std fidelity equals |S_T|^2
 
   double my_frob2 = frob2; // AP: New variable
 
+  double myfidelity_re = fidelity_re;
+  double myfidelity_im = fidelity_im;
+  double myconstraint = constraint;
   MPI_Allreduce(&mypen, &obj_penal, 1, MPI_DOUBLE, MPI_SUM, comm_init);
   MPI_Allreduce(&mypen_dpdm, &obj_penal_dpdm, 1, MPI_DOUBLE, MPI_SUM, comm_init);
   MPI_Allreduce(&mypenen, &obj_penal_energy, 1, MPI_DOUBLE, MPI_SUM, comm_init);
-  MPI_Allreduce(&mycost_re, &obj_cost_re, 1, MPI_DOUBLE, MPI_SUM, comm_init);
-  MPI_Allreduce(&mycost_im, &obj_cost_im, 1, MPI_DOUBLE, MPI_SUM, comm_init);
-  MPI_Allreduce(&myfidelity_re, &fidelity_re, 1, MPI_DOUBLE, MPI_SUM, comm_init);
-  MPI_Allreduce(&myfidelity_im, &fidelity_im, 1, MPI_DOUBLE, MPI_SUM, comm_init);
+  MPI_Allreduce(&mycost_re, &obj_cost_re, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD); // Should be comm_init and also comm_time! 
+  MPI_Allreduce(&mycost_im, &obj_cost_im, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(&myfidelity_re, &fidelity_re, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(&myfidelity_im, &fidelity_im, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(&myconstraint, &constraint, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 
-  MPI_Allreduce(&my_frob2, &frob2, 1, MPI_DOUBLE, MPI_SUM, comm_init); // AP: New
+  MPI_Allreduce(&my_frob2, &frob2, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD); // AP: New
 
   /* Set the fidelity: If Schroedinger, need to compute the absolute value: Fid= |\sum_i \phi^\dagger \phi_target|^2 */
   if (timestepper->mastereq->lindbladtype == LindbladType::NONE) {
@@ -546,13 +610,14 @@ double OptimProblem::evalF(const Vec x) {
 
   /* Evaluate regularization objective += gamma/2 * ||x-x0||^2*/
   double xnorm;
-  if (!gamma_tik_interpolate){  // ||x||^2
-    VecNorm(x, NORM_2, &xnorm);
-  } else {
-    VecCopy(x, xtmp);
-    VecAXPY(xtmp, -1.0, xinit);    // xtmp =  x - x_0
-    VecNorm(xtmp, NORM_2, &xnorm);
-  }
+  if (!gamma_tik_interpolate){  // ||x_alpha||^2
+    VecNorm(x_alpha, NORM_2, &xnorm);
+  } 
+  // else {
+    // VecCopy(x, xtmp);
+    // VecAXPY(xtmp, -1.0, xinit);    // xtmp =  x - x_0
+    // VecNorm(xtmp, NORM_2, &xnorm);
+  // }
   obj_regul = gamma_tik / 2. * pow(xnorm,2.0);
 
   /* Sum, store and return objective value */
@@ -562,7 +627,9 @@ double OptimProblem::evalF(const Vec x) {
   if (mpirank_world == 0) {
     std::cout<< "Objective = " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal << " + " << obj_penal_dpdm << " + " << obj_penal_energy << std::endl;
     std::cout<< "Fidelity = " << fidelity  << std::endl;
+    std::cout<< "Constraint = " <<  constraint << std::endl;
   }
+
 
   return objective;
 }
@@ -587,7 +654,7 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
   if (mpirank_init == 0 ) {
     VecAXPY(G, gamma_tik, x);   // + gamma_tik * x
     if (gamma_tik_interpolate){
-      VecAXPY(G, -1.0*gamma_tik, xinit); // -gamma_tik * xinit
+      // VecAXPY(G, -1.0*gamma_tik, xinit); // -gamma_tik * xinit
     }
   }
 
@@ -705,11 +772,12 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
   double xnorm;
   if (!gamma_tik_interpolate){  // ||x||^2
     VecNorm(x, NORM_2, &xnorm);
-  } else {
-    VecCopy(x, xtmp);
-    VecAXPY(xtmp, -1.0, xinit);    // xtmp =  x_k - x_0
-    VecNorm(xtmp, NORM_2, &xnorm);
-  }
+  } 
+  // else {
+    // VecCopy(x, xtmp);
+    // VecAXPY(xtmp, -1.0, xinit);    // xtmp =  x_k - x_0
+    // VecNorm(xtmp, NORM_2, &xnorm);
+  // }
   obj_regul = gamma_tik / 2. * pow(xnorm,2.0);
 
   /* Sum, store and return objective value */
@@ -750,10 +818,10 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
   /* Sum up the gradient from all initial condition processors */
   PetscScalar* grad; 
   VecGetArray(G, &grad);
-  for (int i=0; i<ndesign; i++) {
+  for (int i=0; i<getNoptimvars(); i++) {
     mygrad[i] = grad[i];
   }
-  MPI_Allreduce(mygrad, grad, ndesign, MPI_DOUBLE, MPI_SUM, comm_init);
+  MPI_Allreduce(mygrad, grad, getNoptimvars(), MPI_DOUBLE, MPI_SUM, comm_init);
   VecRestoreArray(G, &grad);
 
   
@@ -778,13 +846,14 @@ void OptimProblem::solve(Vec xinit) {
 void OptimProblem::getStartingPoint(Vec xinit){
   MasterEq* mastereq = timestepper->mastereq;
 
+  /* This is for the controls alphas! TODO: also read the intermediate states from file. */
   if (initguess_fromfile.size() > 0) {
     /* Set the initial guess from file */
     for (int i=0; i<initguess_fromfile.size(); i++) {
       VecSetValue(xinit, i, initguess_fromfile[i], INSERT_VALUES);
     }
 
-  } else { // copy from initialization in oscillators contructor
+  } else { // copy alpha from control initialization in oscillators contructor
     PetscScalar* xptr;
     VecGetArray(xinit, &xptr);
     int shift = 0;
@@ -799,14 +868,48 @@ void OptimProblem::getStartingPoint(Vec xinit){
   VecAssemblyBegin(xinit);
   VecAssemblyEnd(xinit);
 
-  /* Pass to oscillator */
-  timestepper->mastereq->setControlAmplitudes(xinit);
+  /* Pass control alphas to the oscillator */
+  Vec x_alpha;
+  VecGetSubVector(xinit, IS_alpha, &x_alpha);
+  timestepper->mastereq->setControlAmplitudes(x_alpha);
   
-  /* Write initial control functions to file */
-  output->writeControls(xinit, timestepper->mastereq, timestepper->ntime, timestepper->dt);
+  /* Write initial control functions to file TODO: Multiple time windows */
+  // output->writeControls(xinit, timestepper->mastereq, timestepper->ntime, timestepper->dt);
+
+  /* Set the initial guess for the intermediate states. Here, roll-out forward propagation. TODO: Read from file*/
+  // Note: THIS Currently is entirely serial! No parallel initial conditions, no parallel windows. 
+  if (mpirank_world==0) {
+    printf(" -> Rollout initialization of intermediate states (entirely sequential). This might take a while...\n");
+  }
+  rollOut(xinit);
+  // VecView(xinit, NULL);
 
 }
 
+void OptimProblem::rollOut(Vec x){
+
+  /* Roll-out forward propagation. */
+  for (int iinit = 0; iinit < ninit; iinit++) {
+    // printf("Initial condition %d\n", iinit);
+    // int iinit_global = mpirank_init * ninit_local + iinit;
+    int initid = timestepper->mastereq->getRhoT0(iinit, ninit, initcond_type, initcond_IDs, rho_t0);
+    Vec x0 = rho_t0; 
+
+    for (int iwindow=0; iwindow<nwindows; iwindow++){
+      // Solve forward from starting point.
+      int n0 = iwindow * timestepper->ntime; // First time-step index for this window.
+      // printf(" Solve in window %d, n0=%d\n", iwindow, n0);
+      x0 = timestepper->solveODE(initid, x0, n0);
+
+      /* Potentially, store the intermediate results in the given vector */
+      if (x != NULL && iwindow < nwindows-1) {
+        int id = iinit*(nwindows-1) + iwindow;
+        // printf(" Storing into id=%d\n", id);
+        VecISCopy(x, IS_interm_states[id], SCATTER_FORWARD, x0); 
+      }
+    }
+  }
+}
 
 void OptimProblem::getSolution(Vec* param_ptr){
   
@@ -844,7 +947,7 @@ PetscErrorCode TaoMonitor(Tao tao,void*ptr){
 
   /* Print parameters and controls to file */
   // if ( optim_iter % optim_monitor_freq == 0 ) {
-  ctx->output->writeControls(params, ctx->timestepper->mastereq, ctx->timestepper->ntime, ctx->timestepper->dt);
+  // ctx->output->writeControls(params, ctx->timestepper->mastereq, ctx->timestepper->ntime, ctx->timestepper->dt);
   // }
 
   /* Screen output */
@@ -872,23 +975,24 @@ PetscErrorCode TaoMonitor(Tao tao,void*ptr){
     }
     TaoSetConvergedReason(tao, TAO_CONVERGED_USER);
     lastIter = true;
-  } else if (iter > 1) { // Stop if delta x is smaller than tolerance (relative)
-    // Compute ||x - xprev||/||xprev||
-    double xnorm, dxnorm;
-    VecNorm(ctx->xprev, NORM_2, &xnorm);  // xnorm = ||x_k-1||
-    VecAXPY(ctx->xprev, -1.0, params);    // xprev =  x_k - x_k-1
-    VecNorm(ctx->xprev, NORM_2, &dxnorm);  // dxnorm = || x_k - x_k-1 ||
-    if (fabs(xnorm > 1e-15)) dxnorm = dxnorm / xnorm; 
-    // Stopping 
-    if (dxnorm <= ctx->getDxTol()) {
-      if (ctx->getMPIrank_world() == 0) {
-       //printf("Optimization finished with small parameter update (%1.4e rel. update).\n", dxnorm);
-       finalReason_str = "Optimization finished with small parameter update (" + std::to_string(dxnorm) + "rel. update).";
-      }
-      TaoSetConvergedReason(tao, TAO_CONVERGED_USER);
-      lastIter = true;
-    }
-  }
+  } 
+  // else if (iter > 1) { // TODO: NEEDS UPDATE?? Stop if delta x is smaller than tolerance (relative)
+    // // Compute ||x - xprev||/||xprev||
+    // double xnorm, dxnorm;
+    // VecNorm(ctx->xprev, NORM_2, &xnorm);  // xnorm = ||x_k-1||
+    // VecAXPY(ctx->xprev, -1.0, params);    // xprev =  x_k - x_k-1
+    // VecNorm(ctx->xprev, NORM_2, &dxnorm);  // dxnorm = || x_k - x_k-1 ||
+    // if (fabs(xnorm > 1e-15)) dxnorm = dxnorm / xnorm; 
+    // // Stopping 
+    // if (dxnorm <= ctx->getDxTol()) {
+    //   if (ctx->getMPIrank_world() == 0) {
+    //    //printf("Optimization finished with small parameter update (%1.4e rel. update).\n", dxnorm);
+    //    finalReason_str = "Optimization finished with small parameter update (" + std::to_string(dxnorm) + "rel. update).";
+    //   }
+    //   TaoSetConvergedReason(tao, TAO_CONVERGED_USER);
+    //   lastIter = true;
+    // }
+  // }
 
   if (ctx->getMPIrank_world() == 0 && (iter == ctx->getMaxIter() || lastIter || iter % ctx->output->optim_monitor_freq == 0)) {
     std::cout<< iter <<  "  " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal << " + " << obj_penal_dpdm << " + " << obj_penal_energy;
@@ -901,8 +1005,8 @@ PetscErrorCode TaoMonitor(Tao tao,void*ptr){
     std::cout<< finalReason_str << std::endl;
   }
  
-  /* Update xprev for next iteration */
-  VecCopy(params, ctx->xprev);
+  // /* Update xprev for next iteration */
+  // VecCopy(params, ctx->xprev);
 
   return 0;
 }
@@ -920,7 +1024,7 @@ PetscErrorCode TaoEvalObjectiveAndGradient(Tao tao, Vec x, PetscReal *f, Vec G, 
 PetscErrorCode TaoEvalObjective(Tao tao, Vec x, PetscReal *f, void*ptr){
 
   OptimProblem* ctx = (OptimProblem*) ptr;
-  *f = ctx->evalF(x);
+  *f = ctx->evalF(x, ctx->lambda);
   
   return 0;
 }
