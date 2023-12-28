@@ -29,6 +29,7 @@ class OptimProblem {
   InitialConditionType initcond_type;    /* Type of initial conditions */
   std::vector<int> initcond_IDs;         /* Integer list for pure-state initialization */
   std::vector<Vec> store_finalstates;    /* Storage for last time steps for each initial condition */
+  std::vector<std::vector<Vec>> store_interm_states;    /* Storage for last time steps of each local time window for each initial condition */
 
   OptimTarget* optim_target;      /* Storing the optimization goal */
 

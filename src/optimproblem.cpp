@@ -35,12 +35,32 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
 
   /*  If Schroedingers solver, allocate storage for the final states at time T for each initial condition. Schroedinger's solver does not store the time-trajectories during forward ODE solve, but instead recomputes the primal states during the adjoint solve. Therefore we need to store the terminal condition for the backwards primal solve. Be aware that the final states stored here will be overwritten during backwards computation!! */
   if (timestepper->mastereq->lindbladtype == LindbladType::NONE) {
+    store_interm_states.resize(ninit_local);
+
     for (int i = 0; i < ninit_local; i++) {
       Vec state;
       VecCreate(PETSC_COMM_WORLD, &state);
       VecSetSizes(state, PETSC_DECIDE, 2*timestepper->mastereq->getDim());
       VecSetFromOptions(state);
       store_finalstates.push_back(state);
+
+      /*
+        store_interm_states[i][index] is the final timestep of index-th local time window, for i-th initial condition.
+        (index = 0, 1, ..., nwindows_local-1)
+        For mpirank_time = mpisize_time - 1,
+          store_interm_states[i] has a size of (nwindows_local - 1), excluding final state.
+      */
+      store_interm_states[i].clear();
+      for (int iwindow = 0; iwindow < nwindows_local; iwindow++) {
+        if (mpirank_time == mpisize_time-1 && iwindow == nwindows_local-1)
+          break;
+        
+        Vec state;
+        VecCreate(PETSC_COMM_WORLD, &state);
+        VecSetSizes(state, PETSC_DECIDE, 2*timestepper->mastereq->getDim());
+        VecSetFromOptions(state);
+        store_interm_states[i].push_back(state);
+      }
     }
   }
 
@@ -459,6 +479,9 @@ OptimProblem::~OptimProblem() {
 
   for (int i = 0; i < store_finalstates.size(); i++) {
     VecDestroy(&(store_finalstates[i]));
+
+    for (int k = 0; k < store_interm_states[i].size(); k++)
+      VecDestroy(&(store_interm_states[i][k]));
   }
 
   for (int m=0; m<IS_interm_states.size(); m++){
@@ -613,7 +636,7 @@ double OptimProblem::evalF(const Vec x, const Vec lambda) {   // x = (alpha, int
   obj_regul = gamma_tik / 2. * pow(xnorm,2.0);
 
   /* Sum, store and return objective value */
-  objective = obj_cost + obj_regul + obj_penal + obj_penal_dpdm + obj_penal_energy;
+  objective = obj_cost + obj_regul + obj_penal + obj_penal_dpdm + obj_penal_energy + constraint;
 
   /* Output */
   if (mpirank_world == 0) {
@@ -634,6 +657,7 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
 
   if (mpirank_world == 0 && !quietmode) std::cout<< "EVAL GRAD F... " << std::endl;
   Vec finalstate = NULL;
+  Vec adjoint_ic = NULL;
 
   /* Pass design vector x to oscillators */
   mastereq->setControlAmplitudes(x); 
@@ -661,65 +685,113 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
   double obj_cost_im = 0.0;
   double fidelity_re = 0.0;
   double fidelity_im = 0.0;
+  double constraint = 0.0;
   for (int iinit = 0; iinit < ninit_local; iinit++) {
 
     /* Prepare the initial condition */
     int iinit_global = mpirank_init * ninit_local + iinit;
-    int initid = timestepper->mastereq->getRhoT0(iinit_global, ninit, initcond_type, initcond_IDs, rho_t0);
+    int initid;
+    if ( mpirank_time == 0 || mpirank_time == mpisize_time -1 ) {
+      initid = timestepper->mastereq->getRhoT0(iinit_global, ninit, initcond_type, initcond_IDs, rho_t0);
+    }
 
     /* If gate optimiztion, compute the target state rho^target = Vrho(0)V^dagger */
-    optim_target->prepare(rho_t0);
-
-    /* --- Solve primal --- */
-    // if (mpirank_time == 0) printf("%d: %d FWD. ", mpirank_init, initid);
-
-    /* Run forward with initial condition rho_t0 */
-    finalstate = timestepper->solveODE(initid, rho_t0);
-
-    /* Store the final state for the Schroedinger solver */
-    if (timestepper->mastereq->lindbladtype == LindbladType::NONE) VecCopy(finalstate, store_finalstates[iinit]);
-
-    /* Add to integral penalty term */
-    obj_penal += obj_weights[iinit] * gamma_penalty * timestepper->penalty_integral;
-
-    /* Add to second derivative dpdm integral penalty term */
-    obj_penal_dpdm += obj_weights[iinit] * gamma_penalty_dpdm * timestepper->penalty_dpdm;
-    /* Add to energy integral penalty term */
-    obj_penal_energy += obj_weights[iinit] * gamma_penalty_energy * timestepper->energy_penalty_integral;
-
-    /* Evaluate J(finalstate) and add to final-time cost */
-    double obj_iinit_re = 0.0;
-    double obj_iinit_im = 0.0;
-    optim_target->evalJ(finalstate,  &obj_iinit_re, &obj_iinit_im);
-    obj_cost_re += obj_weights[iinit] * obj_iinit_re;
-    obj_cost_im += obj_weights[iinit] * obj_iinit_im;
-
-    /* Add to final-time fidelity */
-    double fidelity_iinit_re = 0.0;
-    double fidelity_iinit_im = 0.0;
-    optim_target->HilbertSchmidtOverlap(finalstate, false, &fidelity_iinit_re, &fidelity_iinit_im);
-    fidelity_re += 1./ ninit * fidelity_iinit_re;
-    fidelity_im += 1./ ninit * fidelity_iinit_im;
-
-    /* If Lindblas solver, compute adjoint for this initial condition. Otherwise (Schroedinger solver), compute adjoint only after all initial conditions have been propagated through (separate loop below) */
-    if (timestepper->mastereq->lindbladtype != LindbladType::NONE) {
-      // if (mpirank_time == 0) printf("%d: %d BWD.", mpirank_init, initid);
-
-      /* Reset adjoint */
-      VecZeroEntries(rho_t0_bar);
-
-      /* Terminal condition for adjoint variable: Derivative of final time objective J */
-      double obj_cost_re_bar, obj_cost_im_bar;
-      optim_target->finalizeJ_diff(obj_cost_re, obj_cost_im, &obj_cost_re_bar, &obj_cost_im_bar);
-      optim_target->evalJ_diff(finalstate, rho_t0_bar, obj_weights[iinit]*obj_cost_re_bar, obj_weights[iinit]*obj_cost_im_bar);
-
-      /* Derivative of time-stepping */
-      timestepper->solveAdjointODE(initid, rho_t0_bar, finalstate, obj_weights[iinit] * gamma_penalty, obj_weights[iinit]*gamma_penalty_dpdm, obj_weights[iinit]*gamma_penalty_energy);
-
-      /* Add to optimizers's gradient */
-      VecAXPY(G, 1.0, timestepper->redgrad);
+    if (mpirank_time == mpisize_time-1) {
+      optim_target->prepare(rho_t0);
     }
-  }
+
+    /* Iterate over local time windows */
+    for (int iwindow=0; iwindow<nwindows_local; iwindow++){
+      // Solve forward from starting point.
+      int index = mpirank_time * nwindows_local + iwindow ; 
+      int n0 = index * timestepper->ntime; // First time-step index for this window.
+      // printf("%d: Local window %d , n0=%d\n", mpirank_time, iwindow, n0);
+      Vec x0;
+      if (mpirank_time == 0 && iwindow == 0) {
+        x0 = rho_t0; 
+      } else {
+        int id = iinit_global*(nwindows-1) + index-1;
+        // printf("%d, %d: iinit %d, iwindow %d, starting from global id = %d\n", mpirank_time, mpirank_init, iinit, iwindow, id);
+        VecGetSubVector(x, IS_interm_states[id], &x0);
+        // VecView(x0, NULL);
+      }
+
+      /* --- Solve primal --- */
+      // if (mpirank_time == 0) printf("%d: %d FWD. ", mpirank_init, initid);
+
+      /* Run forward with initial condition rho_t0 */
+      finalstate = timestepper->solveODE(initid, x0, n0);
+
+      /* Add to integral penalty term */
+      obj_penal += obj_weights[iinit] * gamma_penalty * timestepper->penalty_integral;
+
+      /* Add to second derivative dpdm integral penalty term */
+      obj_penal_dpdm += obj_weights[iinit] * gamma_penalty_dpdm * timestepper->penalty_dpdm;
+      /* Add to energy integral penalty term */
+      obj_penal_energy += obj_weights[iinit] * gamma_penalty_energy * timestepper->energy_penalty_integral;
+
+      /* Evaluate J(finalstate) and add to final-time cost */
+      if (mpirank_time == mpisize_time-1 && iwindow == nwindows_local-1) {
+        /* Store the final state for the Schroedinger solver */
+        if (timestepper->mastereq->lindbladtype == LindbladType::NONE)
+          VecCopy(finalstate, store_finalstates[iinit]);
+
+        /* Evaluate J(finalstate) and add to final-time cost */
+        double obj_iinit_re = 0.0;
+        double obj_iinit_im = 0.0;
+        optim_target->evalJ(finalstate,  &obj_iinit_re, &obj_iinit_im);
+        obj_cost_re += obj_weights[iinit] * obj_iinit_re;
+        obj_cost_im += obj_weights[iinit] * obj_iinit_im;
+
+        /* Add to final-time fidelity */
+        double fidelity_iinit_re = 0.0;
+        double fidelity_iinit_im = 0.0;
+        optim_target->HilbertSchmidtOverlap(finalstate, false, &fidelity_iinit_re, &fidelity_iinit_im);
+        fidelity_re += 1./ ninit * fidelity_iinit_re;
+        fidelity_im += 1./ ninit * fidelity_iinit_im;
+      }
+      /* Else, add to constraint. */
+      else {
+        /* Store the intermediate state for the Schroedinger solver */
+        if (timestepper->mastereq->lindbladtype == LindbladType::NONE)
+          VecCopy(finalstate, store_interm_states[iinit][iwindow]);
+
+        int id = iinit*(nwindows-1) + index;
+        Vec xnext, lag;
+        VecGetSubVector(x, IS_interm_states[id], &xnext);
+        VecGetSubVector(lambda, IS_interm_lambda[id], &lag);
+        VecAXPY(finalstate, -1.0, xnext);  // finalstate = S(u_{i-1}) - u_i
+
+        // TODO(kevin): templatize this for various penalty functionals.
+        double cdot, quadratic_penalty;
+        VecDot(finalstate, finalstate, &quadratic_penalty); // q = || (Su - u) ||^2
+        VecDot(finalstate, lag, &cdot);   // c = lambda^T (Su - u)
+        constraint += 0.5 * mu * quadratic_penalty - cdot;
+        // printf("%d: Window %d, add to constraint taking from id=%d. c=%f\n", mpirank_time, iwindow, id, cdot);
+      }
+
+      /* If Lindblas solver, compute adjoint for this initial condition. Otherwise (Schroedinger solver), compute adjoint only after all initial conditions have been propagated through (separate loop below) */
+      if (timestepper->mastereq->lindbladtype != LindbladType::NONE) {
+        printf("Multiple shooting adjoint is not yet implemented for Lindblas solver!\n");
+        exit(-1);
+        // if (mpirank_time == 0) printf("%d: %d BWD.", mpirank_init, initid);
+
+        /* Reset adjoint */
+        VecZeroEntries(rho_t0_bar);
+
+        /* Terminal condition for adjoint variable: Derivative of final time objective J */
+        double obj_cost_re_bar, obj_cost_im_bar;
+        optim_target->finalizeJ_diff(obj_cost_re, obj_cost_im, &obj_cost_re_bar, &obj_cost_im_bar);
+        optim_target->evalJ_diff(finalstate, rho_t0_bar, obj_weights[iinit]*obj_cost_re_bar, obj_weights[iinit]*obj_cost_im_bar);
+
+        /* Derivative of time-stepping */
+        adjoint_ic = timestepper->solveAdjointODE(initid, rho_t0_bar, finalstate, obj_weights[iinit] * gamma_penalty, obj_weights[iinit]*gamma_penalty_dpdm, obj_weights[iinit]*gamma_penalty_energy);
+
+        /* Add to optimizers's gradient */
+        VecAXPY(G, 1.0, timestepper->redgrad);
+      }
+    } // for (int iwindow=0; iwindow<nwindows_local; iwindow++)
+  } // for (int iinit = 0; iinit < ninit_local; iinit++) {
 
   /* Sum up from initial conditions processors */
   double mypen = obj_penal;
@@ -761,7 +833,7 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
   obj_regul = gamma_tik / 2. * pow(xnorm,2.0);
 
   /* Sum, store and return objective value */
-  objective = obj_cost + obj_regul + obj_penal + obj_penal_dpdm + obj_penal_energy;
+  objective = obj_cost + obj_regul + obj_penal + obj_penal_dpdm + obj_penal_energy + constraint;
 
   /* For Schroedinger solver: Solve adjoint equations for all initial conditions here. */
   if (timestepper->mastereq->lindbladtype == LindbladType::NONE) {
@@ -771,25 +843,64 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
       int iinit_global = mpirank_init * ninit_local + iinit;
 
       /* Recompute the initial state and target */
-      int initid = timestepper->mastereq->getRhoT0(iinit_global, ninit, initcond_type, initcond_IDs, rho_t0);
-      optim_target->prepare(rho_t0);
-     
-      /* Get the last time step (finalstate) */
-      finalstate = store_finalstates[iinit];
+      int initid;
+      if ( mpirank_time == 0 || mpirank_time == mpisize_time -1 ) {
+        initid = timestepper->mastereq->getRhoT0(iinit_global, ninit, initcond_type, initcond_IDs, rho_t0);
+      }
+      if (mpirank_time == mpisize_time-1) {
+        optim_target->prepare(rho_t0);
+      }
+      
+      /* Iterate over local time windows */
+      // NOTE(kevin): this loop needs not iterate backward, thanks to parallel-in-time integration.
+      for (int iwindow=0; iwindow<nwindows_local; iwindow++) {
+        int index = mpirank_time*nwindows_local + iwindow ; 
+        int n0 = index * timestepper->ntime; // First time-step index for this window.
 
-      /* Reset adjoint */
-      VecZeroEntries(rho_t0_bar);
+        /* Reset adjoint */
+        VecZeroEntries(rho_t0_bar);
 
-      /* Terminal condition for adjoint variable: Derivative of final time objective J */
-      double obj_cost_re_bar, obj_cost_im_bar;
-      optim_target->finalizeJ_diff(obj_cost_re, obj_cost_im, &obj_cost_re_bar, &obj_cost_im_bar);
-      optim_target->evalJ_diff(finalstate, rho_t0_bar, obj_weights[iinit]*obj_cost_re_bar, obj_weights[iinit]*obj_cost_im_bar);
+        /* Get final primal state and adjoint terminal condition at each local time window */
+        if (mpirank_time == mpisize_time-1 && iwindow == nwindows_local-1) {
+          /* Get the last time step (finalstate) */
+          finalstate = store_finalstates[iinit];
 
-      /* Derivative of time-stepping */
-      timestepper->solveAdjointODE(initid, rho_t0_bar, finalstate, obj_weights[iinit] * gamma_penalty, obj_weights[iinit]*gamma_penalty_dpdm, obj_weights[iinit]*gamma_penalty_energy);
+          /* Terminal condition for adjoint variable: Derivative of final time objective J */
+          double obj_cost_re_bar, obj_cost_im_bar;
+          optim_target->finalizeJ_diff(obj_cost_re, obj_cost_im, &obj_cost_re_bar, &obj_cost_im_bar);
+          optim_target->evalJ_diff(finalstate, rho_t0_bar, obj_weights[iinit]*obj_cost_re_bar, obj_weights[iinit]*obj_cost_im_bar);
+        }
+        else {
+          finalstate = store_interm_states[iinit][iwindow];
+          Vec disc;
+          VecCopy(finalstate, disc);
 
-      /* Add to optimizers's gradient */
-      VecAXPY(G, 1.0, timestepper->redgrad);
+          int id = iinit*(nwindows-1) + index;
+          Vec xnext, lag;
+          VecGetSubVector(x, IS_interm_states[id], &xnext);
+          VecGetSubVector(lambda, IS_interm_lambda[id], &lag);
+          VecAXPY(disc, -1.0, xnext);  // finalstate = S(u_{i-1}) - u_i
+
+          // TODO(kevin): templatize this for various penalty functionals.
+          VecAXPY(rho_t0_bar, mu, disc);  // d q / d Su
+          VecAXPY(rho_t0_bar, -1.0, lag); // - d c / d Su
+
+          /* add immediate gradient w.r.t the xnext. */
+          VecISAXPY(G, IS_interm_states[id], -mu, disc);
+          VecISAXPY(G, IS_interm_states[id], 1.0, lag);
+        }
+
+        /* Derivative of time-stepping */
+        adjoint_ic = timestepper->solveAdjointODE(initid, rho_t0_bar, finalstate, obj_weights[iinit] * gamma_penalty, obj_weights[iinit]*gamma_penalty_dpdm, obj_weights[iinit]*gamma_penalty_energy);
+
+        if (!(mpirank_time == 0 && iwindow == 0)) {
+          int id = iinit*(nwindows-1) + index-1;
+          VecISAXPY(G, IS_interm_states[id], 1.0, adjoint_ic);
+        }
+
+        /* Add to optimizers's gradient */
+        VecAXPY(G, 1.0, timestepper->redgrad);
+      } // for (int iwindow=0; iwindow<nwindows_local; iwindow++)
     } // end of initial condition loop 
   } // end of adjoint for Schroedinger
 
@@ -810,7 +921,7 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
 
   /* Output */
   if (mpirank_world == 0 && !quietmode) {
-    std::cout<< "Objective = " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal << " + " << obj_penal_dpdm << " + " << obj_penal_energy << std::endl;
+    std::cout<< "Objective = " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal << " + " << obj_penal_dpdm << " + " << obj_penal_energy << " + " << constraint << std::endl;
     std::cout<< "Fidelity = " << fidelity << std::endl;
   }
 }
