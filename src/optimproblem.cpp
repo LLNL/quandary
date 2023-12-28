@@ -56,7 +56,7 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
 
   /* Create vector strides to access the control vector and intermediate states, and intermediate lagrange multipliers */
   ISCreateStride(PETSC_COMM_WORLD, ndesign, 0, 1, &IS_alpha);
-  int skip = 0.0;
+  int skip = 0;
   int every = 1;
   for (int ic=0; ic<timestepper->mastereq->getDimRho(); ic++){
     for (int m=0; m<nwindows-1; m++) {
@@ -81,6 +81,7 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   inftol = config.GetDoubleParam("optim_inftol", 1e-5);
   grtol = config.GetDoubleParam("optim_rtol", 1e-4);
   maxiter = config.GetIntParam("optim_maxiter", 200);
+  mu = config.GetIntParam("optim_mu", 0.0);
   
     /* Store the optimization target */
   std::vector<std::string> target_str;
@@ -558,9 +559,12 @@ double OptimProblem::evalF(const Vec x, const Vec lambda) {   // x = (alpha, int
         VecGetSubVector(x, IS_interm_states[id], &xnext);
         VecGetSubVector(lambda, IS_interm_lambda[id], &lag);
         VecAXPY(finalstate, -1.0, xnext);  // finalstate = S(u_{i-1}) - u_i
-        double cdot;
+
+        // TODO(kevin): templatize this for various penalty functionals.
+        double cdot, quadratic_penalty;
+        VecDot(finalstate, finalstate, &quadratic_penalty); // q = || (Su - u) ||^2
         VecDot(finalstate, lag, &cdot);   // c = lambda^T (Su - u)
-        constraint += cdot;
+        constraint += 0.5 * mu * quadratic_penalty - cdot;
         // printf("%d: Window %d, add to constraint taking from id=%d. c=%f\n", mpirank_time, iwindow, id, cdot);
       }
     }

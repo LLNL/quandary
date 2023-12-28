@@ -83,6 +83,7 @@ class OptimProblem {
     Vec xprev;                       /* design vector at previous iteration */
     Vec xinit;                       /* Storing initial design vector, if gamma_tik_interpolate=true, aka if tikhonov is ||x - x_0||^2 rather than ||x||^2 */
     Vec lambda;                      /* Storing (initial) lagrange multiplier, probably not needed to store it. TODO. */
+    double mu;                       /* Penalty strength to intermediate state discontinuities */
 
   /* Constructor */
   OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm comm_init_, MPI_Comm comm_time, int ninit_, int nwindows_, double total_time, std::vector<double> gate_rot_freq, Output* output_, bool quietmode=false);
