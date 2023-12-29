@@ -783,8 +783,8 @@ void OptimProblem::evalGradF(const Vec x, const Vec lambda_, Vec G){
 
       /* If Lindblas solver, compute adjoint for this initial condition. Otherwise (Schroedinger solver), compute adjoint only after all initial conditions have been propagated through (separate loop below) */
       if (timestepper->mastereq->lindbladtype != LindbladType::NONE) {
-        printf("Multiple shooting adjoint is not yet implemented for Lindblas solver!\n");
-        exit(-1);
+        if (mpirank_time == 0)
+          printf("WARNING: Multiple shooting adjoint is not yet tested for Lindblas solver!\n");
         // if (mpirank_time == 0) printf("%d: %d BWD.", mpirank_init, initid);
 
         /* Reset adjoint */
@@ -797,6 +797,11 @@ void OptimProblem::evalGradF(const Vec x, const Vec lambda_, Vec G){
 
         /* Derivative of time-stepping */
         adjoint_ic = timestepper->solveAdjointODE(initid, rho_t0_bar, finalstate, obj_weights[iinit] * gamma_penalty, obj_weights[iinit]*gamma_penalty_dpdm, obj_weights[iinit]*gamma_penalty_energy, n0);
+
+        if (!(mpirank_time == 0 && iwindow == 0)) {
+          int id = iinit*(nwindows-1) + index-1;
+          VecISAXPY(G, IS_interm_states[id], 1.0, adjoint_ic);
+        }
 
         /* Add to optimizers's gradient */
         VecAXPY(G, 1.0, timestepper->redgrad);
@@ -907,16 +912,6 @@ void OptimProblem::evalGradF(const Vec x, const Vec lambda_, Vec G){
           int id = iinit*(nwindows-1) + index-1;
           VecISAXPY(G, IS_interm_states[id], 1.0, adjoint_ic);
         }
-
-// {
-//   printf("iinit: %d, iwindow: %d\n", iinit, iwindow);
-//   PetscScalar *ptr;
-//   VecGetArray(timestepper->redgrad, &ptr);
-//   for (int k = 0; k < getNoptimvars(); k++)
-//     printf("%.4E\t", ptr[k]);
-//   printf("\n");
-//   VecRestoreArray(timestepper->redgrad, &ptr);
-// }
 
         /* Add to optimizers's gradient */
         VecAXPY(G, 1.0, timestepper->redgrad);

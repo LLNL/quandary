@@ -435,7 +435,20 @@ int main(int argc,char **argv)
   Vec lambda;
   VecCreateSeq(PETSC_COMM_SELF, optimctx->getNoptimvars() - optimctx->getNdesign(), &lambda);
   VecSetFromOptions(lambda);
-  VecSet(lambda, 0.0); // Set to zero for now. TODO: Initialize somehow. 
+  // TODO(kevin): loading Lagrangian multipliers.
+  {
+    if (mpirank_world == 0)
+      printf("\nWARNING: Randomizing the lagrangian multipliers for now.\n");
+    srand(time(0));
+    PetscScalar *ptr;
+    VecGetArray(lambda, &ptr);
+    for (int k = 0; k < optimctx->getNoptimvars() - optimctx->getNdesign(); k++) {
+      double randval = (double) rand() / ((double)RAND_MAX);  // random in [0,1]
+      ptr[k] = -1.0 + 2.0 * randval;
+    }
+    MPI_Bcast(ptr, optimctx->getNoptimvars(), MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    VecRestoreArray(lambda, &ptr);
+  }
   VecAssemblyBegin(lambda);
   VecAssemblyEnd(lambda);
 
@@ -475,26 +488,35 @@ int main(int argc,char **argv)
   
   /* --- Solve adjoint --- */
   if (runtype == RunType::GRADIENT) {
+    bool verify_gradient = config.GetBoolParam("verify_grad", false);
+
     optimctx->getStartingPoint(xinit);
+    if (verify_gradient) {
+      if (mpirank_world == 0)
+        printf("\nRandomizing the optimization variables for verification...\n");
+
+      srand(time(0));
+      PetscScalar *ptr;
+      VecGetArray(xinit, &ptr);
+      for (int k = 0; k < optimctx->getNoptimvars(); k++) {
+        double randval = (double) rand() / ((double)RAND_MAX);  // random in [0,1]
+        randval = -0.01 + 0.02 * randval;
+        ptr[k] *= 1.0 + randval;
+      }
+      MPI_Bcast(ptr, optimctx->getNoptimvars(), MPI_DOUBLE, 0, MPI_COMM_WORLD);
+      VecRestoreArray(xinit, &ptr);
+    }
     // VecCopy(xinit, optimctx->xinit); // Store the initial guess
+
     if (mpirank_world == 0 && !quietmode) printf("\nStarting adjoint solver...\n");
     optimctx->evalGradF(xinit, lambda, grad);
-{
-  PetscScalar *ptr;
-  VecGetArray(grad, &ptr);
-  // // for (int k = optimctx->getNdesign(); k < optimctx->getNoptimvars(); k++)
-  // for (int k = 0; k < optimctx->getNdesign(); k++)
-  //   ptr[k] = 0.0;
-  VecRestoreArray(grad, &ptr);
-}
+
     VecNorm(grad, NORM_2, &gnorm);
     // VecView(grad, PETSC_VIEWER_STDOUT_WORLD);
     if (mpirank_world == 0 && !quietmode) {
       printf("\nGradient norm: %1.14e\n", gnorm);
     }
     optimctx->output->writeGradient(grad);
-
-    bool verify_gradient = config.GetBoolParam("verify_grad", false);
 
     if (verify_gradient) {
       if (mpirank_world == 0 && !quietmode) printf("\nStarting primal solver... \n");
