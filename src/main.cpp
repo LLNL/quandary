@@ -396,10 +396,10 @@ int main(int argc,char **argv)
     printf("Time-windows: %d, each %d steps\n", nwindows, ntime_per_window);
   }
   TimeStepper* mytimestepper;
-  if (timesteppertypestr.compare("IMR")==0) mytimestepper = new ImplMidpoint(config, mastereq, ntime_per_window, dt, linsolvetype, linsolve_maxiter, output, storeFWD, comm_time);
-  else if (timesteppertypestr.compare("IMR4")==0) mytimestepper = new CompositionalImplMidpoint(config, 4, mastereq, ntime_per_window, dt, linsolvetype, linsolve_maxiter, output, storeFWD, comm_time);
-  else if (timesteppertypestr.compare("IMR8")==0) mytimestepper = new CompositionalImplMidpoint(config, 8, mastereq, ntime_per_window, dt, linsolvetype, linsolve_maxiter, output, storeFWD, comm_time);
-  else if (timesteppertypestr.compare("EE")==0) mytimestepper = new ExplEuler(config, mastereq, ntime_per_window, dt, output, storeFWD, comm_time);
+  if (timesteppertypestr.compare("IMR")==0) mytimestepper = new ImplMidpoint(config, mastereq, ntime, ntime_per_window, dt, linsolvetype, linsolve_maxiter, output, storeFWD, comm_time);
+  else if (timesteppertypestr.compare("IMR4")==0) mytimestepper = new CompositionalImplMidpoint(config, 4, mastereq, ntime, ntime_per_window, dt, linsolvetype, linsolve_maxiter, output, storeFWD, comm_time);
+  else if (timesteppertypestr.compare("IMR8")==0) mytimestepper = new CompositionalImplMidpoint(config, 8, mastereq, ntime, ntime_per_window, dt, linsolvetype, linsolve_maxiter, output, storeFWD, comm_time);
+  else if (timesteppertypestr.compare("EE")==0) mytimestepper = new ExplEuler(config, mastereq, ntime, ntime_per_window, dt, output, storeFWD, comm_time);
   else {
     printf("\n\n ERROR: Unknow timestepping type: %s.\n\n", timesteppertypestr.c_str());
     exit(1);
@@ -436,19 +436,7 @@ int main(int argc,char **argv)
   VecCreateSeq(PETSC_COMM_SELF, optimctx->getNoptimvars() - optimctx->getNdesign(), &lambda);
   VecSetFromOptions(lambda);
   // TODO(kevin): loading Lagrangian multipliers.
-  {
-    if (mpirank_world == 0)
-      printf("\nWARNING: Randomizing the lagrangian multipliers for now.\n");
-    srand(time(0));
-    PetscScalar *ptr;
-    VecGetArray(lambda, &ptr);
-    for (int k = 0; k < optimctx->getNoptimvars() - optimctx->getNdesign(); k++) {
-      double randval = (double) rand() / ((double)RAND_MAX);  // random in [0,1]
-      ptr[k] = -1.0 + 2.0 * randval;
-    }
-    MPI_Bcast(ptr, optimctx->getNoptimvars(), MPI_DOUBLE, 0, MPI_COMM_WORLD);
-    VecRestoreArray(lambda, &ptr);
-  }
+  VecSet(lambda, 1.0);
   VecAssemblyBegin(lambda);
   VecAssemblyEnd(lambda);
 
