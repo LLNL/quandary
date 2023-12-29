@@ -616,7 +616,9 @@ double OptimProblem::evalF(const Vec x, const Vec lambda_) {   // x = (alpha, in
   double myfidelity_im = fidelity_im;
   double myconstraint = constraint;
   // Should be comm_init and also comm_time! 
-  MPI_Allreduce(&mypen, &obj_penal, 1, MPI_DOUBLE, MPI_SUM, comm_init);
+  MPI_Allreduce(&mypen, &obj_penal, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+// printf("rank(world, init, time): %d/%d, %d/%d, %d/%d, obj_penal: %.4E\n",
+//        mpirank_world, mpisize_world, mpirank_init, mpisize_init, mpirank_time, mpisize_time, obj_penal);
   MPI_Allreduce(&mypen_dpdm, &obj_penal_dpdm, 1, MPI_DOUBLE, MPI_SUM, comm_init);
   MPI_Allreduce(&mypenen, &obj_penal_energy, 1, MPI_DOUBLE, MPI_SUM, comm_init);
   MPI_Allreduce(&mycost_re, &obj_cost_re, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
@@ -828,7 +830,7 @@ void OptimProblem::evalGradF(const Vec x, const Vec lambda_, Vec G){
   double myfidelity_re = fidelity_re;
   double myfidelity_im = fidelity_im;
   double myconstraint = constraint;
-  MPI_Allreduce(&mypen, &obj_penal, 1, MPI_DOUBLE, MPI_SUM, comm_init);
+  MPI_Allreduce(&mypen, &obj_penal, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(&mypen_dpdm, &obj_penal_dpdm, 1, MPI_DOUBLE, MPI_SUM, comm_init);
   MPI_Allreduce(&mypenen, &obj_penal_energy, 1, MPI_DOUBLE, MPI_SUM, comm_init);
   // Should be comm_init and also comm_time! 

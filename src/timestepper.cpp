@@ -10,9 +10,10 @@ TimeStepper::TimeStepper() {
   MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
 }
 
-TimeStepper::TimeStepper(MapParam config, MasterEq* mastereq_, int ntime_, double dt_, Output* output_, bool storeFWD_, MPI_Comm comm_time_) : TimeStepper() {
+TimeStepper::TimeStepper(MapParam config, MasterEq* mastereq_, int ntime_global_, int ntime_, double dt_, Output* output_, bool storeFWD_, MPI_Comm comm_time_) : TimeStepper() {
   mastereq = mastereq_;
   dim = 2*mastereq->getDim(); // will be either N^2 (Lindblad) or N (Schroedinger)
+  ntime_global = ntime_global_;
   ntime = ntime_;
   dt = dt_;
   output = output_;
@@ -291,7 +292,7 @@ double TimeStepper::penaltyIntegral(double time, const Vec x){
         x_re = 0.0; x_im = 0.0;
         if (ilow <= vecID_re && vecID_re < iupp) VecGetValues(x, 1, &vecID_re, &x_re);
         if (ilow <= vecID_im && vecID_im < iupp) VecGetValues(x, 1, &vecID_im, &x_im); 
-        leakage += (x_re * x_re + x_im * x_im) / (dt*ntime);
+        leakage += (x_re * x_re + x_im * x_im) / (dt*ntime_global);
       }
     }
     double mine = leakage;
@@ -338,8 +339,8 @@ void TimeStepper::penaltyIntegral_diff(double time, const Vec x, Vec xbar, doubl
         if (ilow <= vecID_re && vecID_re < iupp) VecGetValues(x, 1, &vecID_re, &x_re);
         if (ilow <= vecID_im && vecID_im < iupp) VecGetValues(x, 1, &vecID_im, &x_im);
         // Derivative: 2 * rho(i,i) * weights * penalbar * dt
-        if (ilow <= vecID_re && vecID_re < iupp) VecSetValue(xbar, vecID_re, 2.*x_re*penaltybar/ntime, ADD_VALUES);
-        if (ilow <= vecID_im && vecID_im < iupp) VecSetValue(xbar, vecID_im, 2.*x_im*penaltybar/ntime, ADD_VALUES);
+        if (ilow <= vecID_re && vecID_re < iupp) VecSetValue(xbar, vecID_re, 2.*x_re*penaltybar/ntime_global, ADD_VALUES);
+        if (ilow <= vecID_im && vecID_im < iupp) VecSetValue(xbar, vecID_im, 2.*x_im*penaltybar/ntime_global, ADD_VALUES);
       }
     }
     VecAssemblyBegin(xbar);
@@ -537,7 +538,8 @@ void TimeStepper::energyPenaltyIntegral_diff(double time, double penaltybar, Vec
 
 void TimeStepper::evolveBWD(const double tstart, const double tstop, const Vec x_stop, Vec x_adj, Vec grad, bool compute_gradient){}
 
-ExplEuler::ExplEuler(MapParam config, MasterEq* mastereq_, int ntime_, double dt_, Output* output_, bool storeFWD_, MPI_Comm comm_time_) : TimeStepper(config, mastereq_, ntime_, dt_, output_, storeFWD_, comm_time_) {
+ExplEuler::ExplEuler(MapParam config, MasterEq* mastereq_, int ntime_global_, int ntime_, double dt_, Output* output_, bool storeFWD_, MPI_Comm comm_time_)
+  : TimeStepper(config, mastereq_, ntime_global_, ntime_, dt_, output_, storeFWD_, comm_time_) {
   MatCreateVecs(mastereq->getRHS(), &stage, NULL);
   VecZeroEntries(stage);
 }
@@ -576,7 +578,8 @@ void ExplEuler::evolveBWD(const double tstop,const  double tstart,const  Vec x, 
 
 }
 
-ImplMidpoint::ImplMidpoint(MapParam config,MasterEq* mastereq_, int ntime_, double dt_, LinearSolverType linsolve_type_, int linsolve_maxiter_, Output* output_, bool storeFWD_, MPI_Comm comm_time_) : TimeStepper(config, mastereq_, ntime_, dt_, output_, storeFWD_, comm_time_) {
+ImplMidpoint::ImplMidpoint(MapParam config,MasterEq* mastereq_, int ntime_global_, int ntime_, double dt_, LinearSolverType linsolve_type_, int linsolve_maxiter_, Output* output_, bool storeFWD_, MPI_Comm comm_time_)
+  : TimeStepper(config, mastereq_, ntime_global_, ntime_, dt_, output_, storeFWD_, comm_time_) {
 
   /* Create and reset the intermediate vectors */
   MatCreateVecs(mastereq->getRHS(), &stage, NULL);
@@ -786,7 +789,8 @@ int ImplMidpoint::NeumannSolve(Mat A, Vec b, Vec y, double alpha, bool transpose
 
 
 
-CompositionalImplMidpoint::CompositionalImplMidpoint(MapParam config, int order_, MasterEq* mastereq_, int ntime_, double dt_, LinearSolverType linsolve_type_, int linsolve_maxiter_, Output* output_, bool storeFWD_, MPI_Comm comm_time_): ImplMidpoint(config, mastereq_, ntime_, dt_, linsolve_type_, linsolve_maxiter_, output_, storeFWD_, comm_time_) {
+CompositionalImplMidpoint::CompositionalImplMidpoint(MapParam config, int order_, MasterEq* mastereq_, int ntime_global_, int ntime_, double dt_, LinearSolverType linsolve_type_, int linsolve_maxiter_, Output* output_, bool storeFWD_, MPI_Comm comm_time_)
+  : ImplMidpoint(config, mastereq_, ntime_global_, ntime_, dt_, linsolve_type_, linsolve_maxiter_, output_, storeFWD_, comm_time_) {
 
   order = order_;
 
