@@ -219,7 +219,7 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
 
   if ((gamma_penalty_dpdm > 1.0e-13) && (nwindows > 1)) {
     if (mpirank_world == 0) {
-      printf("Multiple shooting optimization currently does not support dpdm penalty!\n");
+      printf("\nMultiple shooting optimization currently does not support dpdm penalty!\n");
       printf("dpdm penalty adjoint calculation needs time step index adjustion!\n");
     }
     exit(-1);
@@ -620,7 +620,7 @@ double OptimProblem::evalF(const Vec x, const Vec lambda_) {   // x = (alpha, in
 // printf("rank(world, init, time): %d/%d, %d/%d, %d/%d, obj_penal: %.4E\n",
 //        mpirank_world, mpisize_world, mpirank_init, mpisize_init, mpirank_time, mpisize_time, obj_penal);
   MPI_Allreduce(&mypen_dpdm, &obj_penal_dpdm, 1, MPI_DOUBLE, MPI_SUM, comm_init);
-  MPI_Allreduce(&mypenen, &obj_penal_energy, 1, MPI_DOUBLE, MPI_SUM, comm_init);
+  MPI_Allreduce(&mypenen, &obj_penal_energy, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(&mycost_re, &obj_cost_re, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(&mycost_im, &obj_cost_im, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(&myfidelity_re, &fidelity_re, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
@@ -832,7 +832,7 @@ void OptimProblem::evalGradF(const Vec x, const Vec lambda_, Vec G){
   double myconstraint = constraint;
   MPI_Allreduce(&mypen, &obj_penal, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(&mypen_dpdm, &obj_penal_dpdm, 1, MPI_DOUBLE, MPI_SUM, comm_init);
-  MPI_Allreduce(&mypenen, &obj_penal_energy, 1, MPI_DOUBLE, MPI_SUM, comm_init);
+  MPI_Allreduce(&mypenen, &obj_penal_energy, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   // Should be comm_init and also comm_time! 
   MPI_Allreduce(&mycost_re, &obj_cost_re, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(&mycost_im, &obj_cost_im, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);

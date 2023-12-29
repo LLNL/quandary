@@ -486,7 +486,7 @@ double TimeStepper::energyPenaltyIntegral(double time){
   for (int iosc = 0; iosc < mastereq->getNOscillators(); iosc++) {
     double p,q;
     mastereq->getOscillator(iosc)->evalControl(time, &p, &q); 
-    pen += (p*p + q*q) / ntime;
+    pen += (p*p + q*q) / ntime_global;
   }
 
   return pen;
@@ -522,7 +522,7 @@ void TimeStepper::energyPenaltyIntegral_diff(double time, double penaltybar, Vec
 
     PetscInt nparam = mastereq->getOscillator(iosc)->getNParams();
     for (int iparam=0; iparam < nparam; iparam++) {
-      vals[iparam] = penaltybar / ntime * 2.0 * ( p * dRedp[iparam] + q * dImdp[iparam]);
+      vals[iparam] = penaltybar / ntime_global * 2.0 * ( p * dRedp[iparam] + q * dImdp[iparam]);
       cols[iparam] = iparam + shift;
     }
     VecSetValues(redgrad, nparam, cols, vals, ADD_VALUES);
