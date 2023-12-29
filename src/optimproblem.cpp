@@ -903,20 +903,20 @@ void OptimProblem::evalGradF(const Vec x, const Vec lambda_, Vec G){
         /* Derivative of time-stepping */
         adjoint_ic = timestepper->solveAdjointODE(initid, rho_t0_bar, finalstate, obj_weights[iinit] * gamma_penalty, obj_weights[iinit]*gamma_penalty_dpdm, obj_weights[iinit]*gamma_penalty_energy, n0);
 
-        // if (!(mpirank_time == 0 && iwindow == 0)) {
-        //   int id = iinit*(nwindows-1) + index-1;
-        //   VecISAXPY(G, IS_interm_states[id], 1.0, adjoint_ic);
-        // }
+        if (!(mpirank_time == 0 && iwindow == 0)) {
+          int id = iinit*(nwindows-1) + index-1;
+          VecISAXPY(G, IS_interm_states[id], 1.0, adjoint_ic);
+        }
 
-{
-  printf("iinit: %d, iwindow: %d\n", iinit, iwindow);
-  PetscScalar *ptr;
-  VecGetArray(timestepper->redgrad, &ptr);
-  for (int k = 0; k < getNoptimvars(); k++)
-    printf("%.4E\t", ptr[k]);
-  printf("\n");
-  VecRestoreArray(timestepper->redgrad, &ptr);
-}
+// {
+//   printf("iinit: %d, iwindow: %d\n", iinit, iwindow);
+//   PetscScalar *ptr;
+//   VecGetArray(timestepper->redgrad, &ptr);
+//   for (int k = 0; k < getNoptimvars(); k++)
+//     printf("%.4E\t", ptr[k]);
+//   printf("\n");
+//   VecRestoreArray(timestepper->redgrad, &ptr);
+// }
 
         /* Add to optimizers's gradient */
         VecAXPY(G, 1.0, timestepper->redgrad);
