@@ -217,6 +217,14 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   timestepper->gamma_penalty_energy = gamma_penalty_energy;
   timestepper->optim_target = optim_target;
 
+  if ((gamma_penalty_dpdm > 1.0e-13) && (nwindows > 1)) {
+    if (mpirank_world == 0) {
+      printf("Multiple shooting optimization currently does not support dpdm penalty!\n");
+      printf("dpdm penalty adjoint calculation needs time step index adjustion!\n");
+    }
+    exit(-1);
+  }
+
   /* Get initial condition type and involved oscillators */
   std::vector<std::string> initcondstr;
   config.GetVecStrParam("initialcondition", initcondstr, "none", false);
@@ -546,7 +554,7 @@ double OptimProblem::evalF(const Vec x, const Vec lambda_) {   // x = (alpha, in
         x0 = rho_t0; 
       } else {
         int id = iinit_global*(nwindows-1) + index-1;
-        // printf("%d, %d: iinit %d, iwindow %d, starting from global id = %d\n", mpirank_time, mpirank_init, iinit, iwindow, id);
+        // printf("time rank %d, init rank %d: iinit %d, iwindow %d, starting from global id = %d\n", mpirank_time, mpirank_init, iinit, iwindow, id);
         VecGetSubVector(x, IS_interm_states[id], &x0);
         // VecView(x0, NULL);
       }
@@ -580,7 +588,7 @@ double OptimProblem::evalF(const Vec x, const Vec lambda_) {   // x = (alpha, in
       }
       /* Else, add to constraint. */
       else {
-        int id = iinit*(nwindows-1) + index;
+        int id = iinit_global*(nwindows-1) + index;
         Vec xnext, lag;
         VecGetSubVector(x, IS_interm_states[id], &xnext);
         VecGetSubVector(lambda_, IS_interm_lambda[id], &lag);
@@ -607,10 +615,11 @@ double OptimProblem::evalF(const Vec x, const Vec lambda_) {   // x = (alpha, in
   double myfidelity_re = fidelity_re;
   double myfidelity_im = fidelity_im;
   double myconstraint = constraint;
+  // Should be comm_init and also comm_time! 
   MPI_Allreduce(&mypen, &obj_penal, 1, MPI_DOUBLE, MPI_SUM, comm_init);
   MPI_Allreduce(&mypen_dpdm, &obj_penal_dpdm, 1, MPI_DOUBLE, MPI_SUM, comm_init);
   MPI_Allreduce(&mypenen, &obj_penal_energy, 1, MPI_DOUBLE, MPI_SUM, comm_init);
-  MPI_Allreduce(&mycost_re, &obj_cost_re, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD); // Should be comm_init and also comm_time! 
+  MPI_Allreduce(&mycost_re, &obj_cost_re, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(&mycost_im, &obj_cost_im, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(&myfidelity_re, &fidelity_re, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(&myfidelity_im, &fidelity_im, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
@@ -677,8 +686,9 @@ void OptimProblem::evalGradF(const Vec x, const Vec lambda_, Vec G){
   VecZeroEntries(G);
 
   /* Derivative of regulatization term gamma / 2 ||x||^2 (ADD ON ONE PROC ONLY!) */
-  // if (mpirank_init == 0 && mpirank_time == 0) { // TODO: Which one?? 
-  if (mpirank_init == 0 ) {
+  // NOTE(kevin): currently optim variable is global. do this on only one rank in global communicator.
+  if (mpirank_init == 0 && mpirank_time == 0) {
+  // if (mpirank_init == 0 ) {
     VecISAXPY(G, IS_alpha, gamma_tik, x_alpha);   // + gamma_tik * x
     if (gamma_tik_interpolate){
       // VecAXPY(G, -1.0*gamma_tik, xinit); // -gamma_tik * xinit
@@ -767,7 +777,7 @@ void OptimProblem::evalGradF(const Vec x, const Vec lambda_, Vec G){
         if (timestepper->mastereq->lindbladtype == LindbladType::NONE)
           VecCopy(finalstate, store_interm_states[iinit][iwindow]);
 
-        int id = iinit*(nwindows-1) + index;
+        int id = iinit_global*(nwindows-1) + index;
         Vec xnext, lag;
         VecGetSubVector(x, IS_interm_states[id], &xnext);
         VecGetSubVector(lambda_, IS_interm_lambda[id], &lag);
@@ -799,7 +809,7 @@ void OptimProblem::evalGradF(const Vec x, const Vec lambda_, Vec G){
         adjoint_ic = timestepper->solveAdjointODE(initid, rho_t0_bar, finalstate, obj_weights[iinit] * gamma_penalty, obj_weights[iinit]*gamma_penalty_dpdm, obj_weights[iinit]*gamma_penalty_energy, n0);
 
         if (!(mpirank_time == 0 && iwindow == 0)) {
-          int id = iinit*(nwindows-1) + index-1;
+          int id = iinit_global*(nwindows-1) + index-1;
           VecISAXPY(G, IS_interm_states[id], 1.0, adjoint_ic);
         }
 
@@ -817,13 +827,16 @@ void OptimProblem::evalGradF(const Vec x, const Vec lambda_, Vec G){
   double mycost_im = obj_cost_im;
   double myfidelity_re = fidelity_re;
   double myfidelity_im = fidelity_im;
+  double myconstraint = constraint;
   MPI_Allreduce(&mypen, &obj_penal, 1, MPI_DOUBLE, MPI_SUM, comm_init);
   MPI_Allreduce(&mypen_dpdm, &obj_penal_dpdm, 1, MPI_DOUBLE, MPI_SUM, comm_init);
   MPI_Allreduce(&mypenen, &obj_penal_energy, 1, MPI_DOUBLE, MPI_SUM, comm_init);
-  MPI_Allreduce(&mycost_re, &obj_cost_re, 1, MPI_DOUBLE, MPI_SUM, comm_init);
-  MPI_Allreduce(&mycost_im, &obj_cost_im, 1, MPI_DOUBLE, MPI_SUM, comm_init);
-  MPI_Allreduce(&myfidelity_re, &fidelity_re, 1, MPI_DOUBLE, MPI_SUM, comm_init);
-  MPI_Allreduce(&myfidelity_im, &fidelity_im, 1, MPI_DOUBLE, MPI_SUM, comm_init);
+  // Should be comm_init and also comm_time! 
+  MPI_Allreduce(&mycost_re, &obj_cost_re, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(&mycost_im, &obj_cost_im, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(&myfidelity_re, &fidelity_re, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(&myfidelity_im, &fidelity_im, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(&myconstraint, &constraint, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 
   /* Set the fidelity: If Schroedinger, need to compute the absolute value: Fid= |\sum_i \phi^\dagger \phi_target|^2 */
   if (timestepper->mastereq->lindbladtype == LindbladType::NONE) {
@@ -890,7 +903,7 @@ void OptimProblem::evalGradF(const Vec x, const Vec lambda_, Vec G){
           finalstate = store_interm_states[iinit][iwindow];
           VecCopy(finalstate, disc);
 
-          int id = iinit*(nwindows-1) + index;
+          int id = iinit_global*(nwindows-1) + index;
           Vec xnext, lag;
           VecGetSubVector(x, IS_interm_states[id], &xnext);
           VecGetSubVector(lambda_, IS_interm_lambda[id], &lag);
@@ -909,7 +922,7 @@ void OptimProblem::evalGradF(const Vec x, const Vec lambda_, Vec G){
         adjoint_ic = timestepper->solveAdjointODE(initid, rho_t0_bar, finalstate, obj_weights[iinit] * gamma_penalty, obj_weights[iinit]*gamma_penalty_dpdm, obj_weights[iinit]*gamma_penalty_energy, n0);
 
         if (!(mpirank_time == 0 && iwindow == 0)) {
-          int id = iinit*(nwindows-1) + index-1;
+          int id = iinit_global*(nwindows-1) + index-1;
           VecISAXPY(G, IS_interm_states[id], 1.0, adjoint_ic);
         }
 
@@ -925,7 +938,7 @@ void OptimProblem::evalGradF(const Vec x, const Vec lambda_, Vec G){
   for (int i=0; i<getNoptimvars(); i++) {
     mygrad[i] = grad[i];
   }
-  MPI_Allreduce(mygrad, grad, getNoptimvars(), MPI_DOUBLE, MPI_SUM, comm_init);
+  MPI_Allreduce(mygrad, grad, getNoptimvars(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD); // Should be comm_init and also comm_time! 
   VecRestoreArray(G, &grad);
 
   Vec g_alpha;
