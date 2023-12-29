@@ -852,7 +852,7 @@ void OptimProblem::evalGradF(const Vec x, const Vec lambda_, Vec G){
   /* Evaluate regularization objective += gamma/2 * ||x||^2*/
   double xnorm;
   if (!gamma_tik_interpolate){  // ||x||^2
-    VecNorm(x, NORM_2, &xnorm);
+    VecNorm(x_alpha, NORM_2, &xnorm);
   } 
   // else {
     // VecCopy(x, xtmp);
