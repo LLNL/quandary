@@ -57,6 +57,8 @@ class TimeStepper{
     TimeStepper(MapParam config, MasterEq* mastereq_, int ntime_, double dt_, Output* output_, bool storeFWD_, MPI_Comm comm_time_); 
     virtual ~TimeStepper(); 
 
+    void allocateReducedGradient(const int noptimvars);
+
     /* Return the state at a certain time index */
     Vec getState(int tindex);
 
@@ -64,7 +66,9 @@ class TimeStepper{
     Vec solveODE(int initid, Vec rho_t0, int n0=0);
 
     /* Solve the adjoint ODE backwards in time from terminal condition rho_t0_bar. Return state at adjoint final time step */
-    Vec solveAdjointODE(int initid, Vec rho_t0_bar, Vec finalstate, double Jbar_penalty, double Jbar_penalty_dpdm, double Jbar_penalty_energy);
+    Vec solveAdjointODE(int initid, Vec rho_t0_bar, Vec finalstate,
+                        double Jbar_penalty, double Jbar_penalty_dpdm, double Jbar_penalty_energy,
+                        int n0=0);
 
     /* evaluate the penalty integral term */
     double penaltyIntegral(double time, const Vec x);

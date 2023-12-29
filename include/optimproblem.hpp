@@ -108,10 +108,10 @@ class OptimProblem {
   int getMPIrank_world() { return mpirank_world;};
 
   /* Evaluate the objective function F(x) */
-  double evalF(const Vec x, const Vec lambda);
+  double evalF(const Vec x, const Vec lambda_);
 
   /* Evaluate gradient \nabla F(x) */
-  void evalGradF(const Vec x, Vec G);
+  void evalGradF(const Vec x, const Vec lambda_, Vec G);
 
   /* Run optimization solver, starting from initial guess xinit */
   void solve(Vec xinit);

@@ -72,7 +72,10 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   }
   // Then all state variables N*(M-1) for each of the initial conditions (real and imag)
   nstate = (int) 2*timestepper->mastereq->getDimRho() * (nwindows-1) * ninit;
-  if (mpirank_world == 0 && !quietmode) std::cout<< "noptimvars = " << ndesign << "(controls) + " << nstate << "(states) = " << ndesign  << std::endl;
+  if (mpirank_world == 0 && !quietmode) std::cout<< "noptimvars = " << ndesign << "(controls) + " << nstate << "(states) = " << ndesign + nstate  << std::endl;
+
+  /* allocate reduced gradient of timestepper */
+  timestepper->allocateReducedGradient(ndesign + nstate);
 
   /* Create vector strides to access the control vector and intermediate states, and intermediate lagrange multipliers */
   ISCreateStride(PETSC_COMM_WORLD, ndesign, 0, 1, &IS_alpha);
@@ -494,7 +497,7 @@ OptimProblem::~OptimProblem() {
 
 
 
-double OptimProblem::evalF(const Vec x, const Vec lambda) {   // x = (alpha, interm.states), lambda = lagrange multipliers: dim(lambda) = dim(x_intermediatestates)
+double OptimProblem::evalF(const Vec x, const Vec lambda_) {   // x = (alpha, interm.states), lambda = lagrange multipliers: dim(lambda) = dim(x_intermediatestates)
 
   MasterEq* mastereq = timestepper->mastereq;
 
@@ -580,7 +583,7 @@ double OptimProblem::evalF(const Vec x, const Vec lambda) {   // x = (alpha, int
         int id = iinit*(nwindows-1) + index;
         Vec xnext, lag;
         VecGetSubVector(x, IS_interm_states[id], &xnext);
-        VecGetSubVector(lambda, IS_interm_lambda[id], &lag);
+        VecGetSubVector(lambda_, IS_interm_lambda[id], &lag);
         VecAXPY(finalstate, -1.0, xnext);  // finalstate = S(u_{i-1}) - u_i
 
         // TODO(kevin): templatize this for various penalty functionals.
@@ -640,7 +643,7 @@ double OptimProblem::evalF(const Vec x, const Vec lambda) {   // x = (alpha, int
 
   /* Output */
   if (mpirank_world == 0) {
-    std::cout<< "Objective = " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal << " + " << obj_penal_dpdm << " + " << obj_penal_energy << std::endl;
+    std::cout<< "Objective = " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal << " + " << obj_penal_dpdm << " + " << obj_penal_energy << " + " << constraint << std::endl;
     std::cout<< "Fidelity = " << fidelity  << std::endl;
     std::cout<< "Constraint = " <<  constraint << std::endl;
   }
@@ -651,7 +654,7 @@ double OptimProblem::evalF(const Vec x, const Vec lambda) {   // x = (alpha, int
 
 
 
-void OptimProblem::evalGradF(const Vec x, Vec G){
+void OptimProblem::evalGradF(const Vec x, const Vec lambda_, Vec G){
 
   MasterEq* mastereq = timestepper->mastereq;
 
@@ -659,8 +662,16 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
   Vec finalstate = NULL;
   Vec adjoint_ic = NULL;
 
+  /* discontinuity between time segments */
+  Vec disc;
+  VecCreate(PETSC_COMM_WORLD, &disc);
+  VecSetSizes(disc, PETSC_DECIDE, 2*timestepper->mastereq->getDim());
+  VecSetFromOptions(disc);
+
   /* Pass design vector x to oscillators */
-  mastereq->setControlAmplitudes(x); 
+  Vec x_alpha;
+  VecGetSubVector(x, IS_alpha, &x_alpha);
+  mastereq->setControlAmplitudes(x_alpha); 
 
   /* Reset Gradient */
   VecZeroEntries(G);
@@ -668,7 +679,7 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
   /* Derivative of regulatization term gamma / 2 ||x||^2 (ADD ON ONE PROC ONLY!) */
   // if (mpirank_init == 0 && mpirank_time == 0) { // TODO: Which one?? 
   if (mpirank_init == 0 ) {
-    VecAXPY(G, gamma_tik, x);   // + gamma_tik * x
+    VecISAXPY(G, IS_alpha, gamma_tik, x_alpha);   // + gamma_tik * x
     if (gamma_tik_interpolate){
       // VecAXPY(G, -1.0*gamma_tik, xinit); // -gamma_tik * xinit
     }
@@ -759,7 +770,7 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
         int id = iinit*(nwindows-1) + index;
         Vec xnext, lag;
         VecGetSubVector(x, IS_interm_states[id], &xnext);
-        VecGetSubVector(lambda, IS_interm_lambda[id], &lag);
+        VecGetSubVector(lambda_, IS_interm_lambda[id], &lag);
         VecAXPY(finalstate, -1.0, xnext);  // finalstate = S(u_{i-1}) - u_i
 
         // TODO(kevin): templatize this for various penalty functionals.
@@ -785,7 +796,7 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
         optim_target->evalJ_diff(finalstate, rho_t0_bar, obj_weights[iinit]*obj_cost_re_bar, obj_weights[iinit]*obj_cost_im_bar);
 
         /* Derivative of time-stepping */
-        adjoint_ic = timestepper->solveAdjointODE(initid, rho_t0_bar, finalstate, obj_weights[iinit] * gamma_penalty, obj_weights[iinit]*gamma_penalty_dpdm, obj_weights[iinit]*gamma_penalty_energy);
+        adjoint_ic = timestepper->solveAdjointODE(initid, rho_t0_bar, finalstate, obj_weights[iinit] * gamma_penalty, obj_weights[iinit]*gamma_penalty_dpdm, obj_weights[iinit]*gamma_penalty_energy, n0);
 
         /* Add to optimizers's gradient */
         VecAXPY(G, 1.0, timestepper->redgrad);
@@ -872,13 +883,12 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
         }
         else {
           finalstate = store_interm_states[iinit][iwindow];
-          Vec disc;
           VecCopy(finalstate, disc);
 
           int id = iinit*(nwindows-1) + index;
           Vec xnext, lag;
           VecGetSubVector(x, IS_interm_states[id], &xnext);
-          VecGetSubVector(lambda, IS_interm_lambda[id], &lag);
+          VecGetSubVector(lambda_, IS_interm_lambda[id], &lag);
           VecAXPY(disc, -1.0, xnext);  // finalstate = S(u_{i-1}) - u_i
 
           // TODO(kevin): templatize this for various penalty functionals.
@@ -891,12 +901,22 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
         }
 
         /* Derivative of time-stepping */
-        adjoint_ic = timestepper->solveAdjointODE(initid, rho_t0_bar, finalstate, obj_weights[iinit] * gamma_penalty, obj_weights[iinit]*gamma_penalty_dpdm, obj_weights[iinit]*gamma_penalty_energy);
+        adjoint_ic = timestepper->solveAdjointODE(initid, rho_t0_bar, finalstate, obj_weights[iinit] * gamma_penalty, obj_weights[iinit]*gamma_penalty_dpdm, obj_weights[iinit]*gamma_penalty_energy, n0);
 
-        if (!(mpirank_time == 0 && iwindow == 0)) {
-          int id = iinit*(nwindows-1) + index-1;
-          VecISAXPY(G, IS_interm_states[id], 1.0, adjoint_ic);
-        }
+        // if (!(mpirank_time == 0 && iwindow == 0)) {
+        //   int id = iinit*(nwindows-1) + index-1;
+        //   VecISAXPY(G, IS_interm_states[id], 1.0, adjoint_ic);
+        // }
+
+{
+  printf("iinit: %d, iwindow: %d\n", iinit, iwindow);
+  PetscScalar *ptr;
+  VecGetArray(timestepper->redgrad, &ptr);
+  for (int k = 0; k < getNoptimvars(); k++)
+    printf("%.4E\t", ptr[k]);
+  printf("\n");
+  VecRestoreArray(timestepper->redgrad, &ptr);
+}
 
         /* Add to optimizers's gradient */
         VecAXPY(G, 1.0, timestepper->redgrad);
@@ -913,8 +933,9 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
   MPI_Allreduce(mygrad, grad, getNoptimvars(), MPI_DOUBLE, MPI_SUM, comm_init);
   VecRestoreArray(G, &grad);
 
-  
-  mastereq->setControlAmplitudes_diff(G);
+  Vec g_alpha;
+  VecGetSubVector(G, IS_alpha, &g_alpha);
+  mastereq->setControlAmplitudes_diff(g_alpha);
 
   /* Compute and store gradient norm */
   VecNorm(G, NORM_2, &(gnorm));
@@ -924,6 +945,8 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
     std::cout<< "Objective = " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal << " + " << obj_penal_dpdm << " + " << obj_penal_energy << " + " << constraint << std::endl;
     std::cout<< "Fidelity = " << fidelity << std::endl;
   }
+
+  VecDestroy(&disc);
 }
 
 
@@ -1107,7 +1130,7 @@ PetscErrorCode TaoEvalObjective(Tao tao, Vec x, PetscReal *f, void*ptr){
 PetscErrorCode TaoEvalGradient(Tao tao, Vec x, Vec G, void*ptr){
 
   OptimProblem* ctx = (OptimProblem*) ptr;
-  ctx->evalGradF(x, G);
+  ctx->evalGradF(x, ctx->lambda, G);
   
   return 0;
 }

@@ -50,17 +50,16 @@ TimeStepper::TimeStepper(MapParam config, MasterEq* mastereq_, int ntime_, doubl
   VecSetFromOptions(x);
   VecZeroEntries(x);
 
-  /* Allocate the reduced gradient */
-  int ndesign = 0;
-  for (int ioscil = 0; ioscil < mastereq->getNOscillators(); ioscil++) {
-      ndesign += mastereq->getOscillator(ioscil)->getNParams(); 
-  }
-  VecCreateSeq(PETSC_COMM_SELF, ndesign, &redgrad);
-  VecSetFromOptions(redgrad);
-  VecAssemblyBegin(redgrad);
-  VecAssemblyEnd(redgrad);
-
-
+  /* NOTE(kevin): we delegate this allocation to OptimProblem. */
+  // /* Allocate the reduced gradient */
+  // int ndesign = 0;
+  // for (int ioscil = 0; ioscil < mastereq->getNOscillators(); ioscil++) {
+  //     ndesign += mastereq->getOscillator(ioscil)->getNParams(); 
+  // }
+  // VecCreateSeq(PETSC_COMM_SELF, ndesign, &redgrad);
+  // VecSetFromOptions(redgrad);
+  // VecAssemblyBegin(redgrad);
+  // VecAssemblyEnd(redgrad);
 
   /* Time-parallel stuff. TODO: Check n_start and n_stop on each processor. */
   MPI_Comm_rank(comm_time, &mpirank_time);
@@ -76,7 +75,14 @@ TimeStepper::~TimeStepper() {
   VecDestroy(&redgrad);
 }
 
+void TimeStepper::allocateReducedGradient(const int noptimvars) {
+  VecDestroy(&redgrad);
 
+  VecCreateSeq(PETSC_COMM_SELF, noptimvars, &redgrad);
+  VecSetFromOptions(redgrad);
+  VecAssemblyBegin(redgrad);
+  VecAssemblyEnd(redgrad);
+}
 
 Vec TimeStepper::getState(int tindex){
   
@@ -173,7 +179,7 @@ Vec TimeStepper::solveODE(int initid, Vec rho_t0, int n0){
 }
 
 
-Vec TimeStepper::solveAdjointODE(int initid, Vec rho_t0_bar, Vec finalstate, double Jbar_penalty, double Jbar_penalty_dpdm, double Jbar_energy_penalty) {
+Vec TimeStepper::solveAdjointODE(int initid, Vec rho_t0_bar, Vec finalstate, double Jbar_penalty, double Jbar_penalty_dpdm, double Jbar_energy_penalty, int n0) {
 
   /* Reset gradient */
   VecZeroEntries(redgrad);
@@ -203,8 +209,8 @@ Vec TimeStepper::solveAdjointODE(int initid, Vec rho_t0_bar, Vec finalstate, dou
 
   /* Loop over time interval */
   for (int n = ntime; n > 0; n--){
-    double tstop  = n * dt;
-    double tstart = (n-1) * dt;
+    double tstop  = (n0 + n) * dt;
+    double tstart = tstop - dt;
     // printf("Backwards %d -> %d ... ", n, n-1);
 
     /* Derivative of energy penalty objective term */

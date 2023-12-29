@@ -435,7 +435,7 @@ int main(int argc,char **argv)
   Vec lambda;
   VecCreateSeq(PETSC_COMM_SELF, optimctx->getNoptimvars() - optimctx->getNdesign(), &lambda);
   VecSetFromOptions(lambda);
-  VecSet(lambda, 1.0); // Set to one for now. TODO: Initialize somehow. 
+  VecSet(lambda, 0.0); // Set to zero for now. TODO: Initialize somehow. 
   VecAssemblyBegin(lambda);
   VecAssemblyEnd(lambda);
 
@@ -478,13 +478,66 @@ int main(int argc,char **argv)
     optimctx->getStartingPoint(xinit);
     // VecCopy(xinit, optimctx->xinit); // Store the initial guess
     if (mpirank_world == 0 && !quietmode) printf("\nStarting adjoint solver...\n");
-    optimctx->evalGradF(xinit, grad);
+    optimctx->evalGradF(xinit, lambda, grad);
+{
+  PetscScalar *ptr;
+  VecGetArray(grad, &ptr);
+  // // for (int k = optimctx->getNdesign(); k < optimctx->getNoptimvars(); k++)
+  // for (int k = 0; k < optimctx->getNdesign(); k++)
+  //   ptr[k] = 0.0;
+  VecRestoreArray(grad, &ptr);
+}
     VecNorm(grad, NORM_2, &gnorm);
     // VecView(grad, PETSC_VIEWER_STDOUT_WORLD);
     if (mpirank_world == 0 && !quietmode) {
       printf("\nGradient norm: %1.14e\n", gnorm);
     }
     optimctx->output->writeGradient(grad);
+
+    bool verify_gradient = config.GetBoolParam("verify_grad", false);
+
+    if (verify_gradient) {
+      if (mpirank_world == 0 && !quietmode) printf("\nStarting primal solver... \n");
+      objective = optimctx->evalF(xinit, lambda);
+      if (mpirank_world == 0 && !quietmode) printf("\nTotal objective = %1.14e, \n", objective);
+
+      const int Nk = 40;
+      Vec xperturb;
+      VecCreateSeq(PETSC_COMM_SELF, optimctx->getNoptimvars(), &xperturb);
+      double obj1[Nk], amp[Nk], dJdx[Nk], error[Nk];
+      for (int k = 0; k < Nk; k++) {
+        amp[k] = pow(10.0, -0.25 * k);
+        VecCopy(xinit, xperturb);
+        VecAXPY(xperturb, amp[k] / gnorm, grad);
+
+        obj1[k] = optimctx->evalF(xperturb, lambda);
+        dJdx[k] = (obj1[k] - objective) / amp[k];
+        error[k] = abs(dJdx[k] - gnorm) / gnorm;
+      }
+
+      if (mpirank_world == 0) {
+        if (!quietmode) {
+          PetscScalar *ptr;
+          VecGetArray(xinit, &ptr);
+          printf("x0: \n");
+          for (int k = 0; k < optimctx->getNoptimvars(); k++)
+            printf("%.3E\t", ptr[k]);
+          printf("\n");
+          VecRestoreArray(xinit, &ptr);
+
+          VecGetArray(grad, &ptr);
+          printf("grad: \n");
+          for (int k = 0; k < optimctx->getNoptimvars(); k++)
+            printf("%.3E\t", ptr[k]);
+          printf("\n");
+          VecRestoreArray(grad, &ptr);
+        }
+        
+        printf("amp\tJ1\tdJdx\terror\n");
+        for (int k = 0; k < Nk; k++)
+          printf("%.4E\t%.4E\t%.4E\t%.4E\n", amp[k], obj1[k], dJdx[k], error[k]);
+      }
+    }
   }
 
   /* --- Solve the optimization  --- */
@@ -563,7 +616,7 @@ int main(int argc,char **argv)
 
   /* --- Solve adjoint --- */
   if (mpirank_world == 0) printf("\nRunning optimizer eval_grad_f...\n");
-  optimctx->evalGradF(xinit, grad);
+  optimctx->evalGradF(xinit, lambda, grad);
   VecView(grad, PETSC_VIEWER_STDOUT_WORLD);
   
 
@@ -640,12 +693,12 @@ int main(int argc,char **argv)
 
     /* Evaluate \nabla_x J(x + eps * e_j) */
     VecSetValue(xinit, j, EPS, ADD_VALUES); 
-    optimctx->evalGradF(xinit, grad);        
+    optimctx->evalGradF(xinit, lambda, grad);        
     VecCopy(grad, grad1);
 
     /* Evaluate \nabla_x J(x - eps * e_j) */
     VecSetValue(xinit, j, -2.*EPS, ADD_VALUES); 
-    optimctx->evalGradF(xinit, grad);
+    optimctx->evalGradF(xinit, lambda, grad);
     VecCopy(grad, grad2);
 
     for (PetscInt l=0; l<Ihess.size(); l++){
