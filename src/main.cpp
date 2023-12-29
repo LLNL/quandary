@@ -439,6 +439,7 @@ int main(int argc,char **argv)
   VecSet(lambda, 0.0);
   VecAssemblyBegin(lambda);
   VecAssemblyEnd(lambda);
+  optimctx->lambda = &lambda;
 
   /* Some output */
   if (mpirank_world == 0)
@@ -598,8 +599,6 @@ int main(int argc,char **argv)
     }
     else
       optimctx->getStartingPoint(xinit);
-
-    optimctx->lambda = lambda;
 
     // VecCopy(xinit, optimctx->xinit); // Store the initial guess
     if (mpirank_world == 0 && !quietmode) printf("\nStarting Optimization solver ... \n");

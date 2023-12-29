@@ -83,7 +83,7 @@ class OptimProblem {
     Vec xlower, xupper;              /* Optimization bounds */
     Vec xprev;                       /* design vector at previous iteration */
     Vec xinit;                       /* Storing initial design vector, if gamma_tik_interpolate=true, aka if tikhonov is ||x - x_0||^2 rather than ||x||^2 */
-    Vec lambda;                      /* Pointer to lagrange multiplier, not owned by OptimProblem. TODO. */
+    Vec *lambda;                     /* Pointer to lagrange multiplier, not owned by OptimProblem. TODO. */
     double mu;                       /* Penalty strength to intermediate state discontinuities */
 
   /* Constructor */

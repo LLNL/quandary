@@ -1202,7 +1202,7 @@ PetscErrorCode TaoEvalObjective(Tao tao, Vec x, PetscReal *f, void*ptr){
 
   OptimProblem* ctx = (OptimProblem*) ptr;
   assert(ctx->lambda);
-  *f = ctx->evalF(x, (ctx->lambda));
+  *f = ctx->evalF(x, *(ctx->lambda));
   
   return 0;
 }
@@ -1212,7 +1212,7 @@ PetscErrorCode TaoEvalGradient(Tao tao, Vec x, Vec G, void*ptr){
 
   OptimProblem* ctx = (OptimProblem*) ptr;
   assert(ctx->lambda);
-  ctx->evalGradF(x, (ctx->lambda), G);
+  ctx->evalGradF(x, *(ctx->lambda), G);
   
   return 0;
 }
