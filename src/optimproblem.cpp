@@ -9,6 +9,7 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   quietmode = quietmode_;
   /* Reset */
   objective = 0.0;
+  lambda = NULL;
 
   comm_init = comm_init_;
   comm_time = comm_time_;
@@ -35,32 +36,34 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
 
   /*  If Schroedingers solver, allocate storage for the final states at time T for each initial condition. Schroedinger's solver does not store the time-trajectories during forward ODE solve, but instead recomputes the primal states during the adjoint solve. Therefore we need to store the terminal condition for the backwards primal solve. Be aware that the final states stored here will be overwritten during backwards computation!! */
   if (timestepper->mastereq->lindbladtype == LindbladType::NONE) {
-    store_interm_states.resize(ninit_local);
-
     for (int i = 0; i < ninit_local; i++) {
       Vec state;
       VecCreate(PETSC_COMM_WORLD, &state);
       VecSetSizes(state, PETSC_DECIDE, 2*timestepper->mastereq->getDim());
       VecSetFromOptions(state);
       store_finalstates.push_back(state);
+    }
+  }
 
-      /*
-        store_interm_states[i][index] is the final timestep of index-th local time window, for i-th initial condition.
-        (index = 0, 1, ..., nwindows_local-1)
-        For mpirank_time = mpisize_time - 1,
-          store_interm_states[i] has a size of (nwindows_local - 1), excluding final state.
-      */
-      store_interm_states[i].clear();
-      for (int iwindow = 0; iwindow < nwindows_local; iwindow++) {
-        if (mpirank_time == mpisize_time-1 && iwindow == nwindows_local-1)
-          break;
-        
-        Vec state;
-        VecCreate(PETSC_COMM_WORLD, &state);
-        VecSetSizes(state, PETSC_DECIDE, 2*timestepper->mastereq->getDim());
-        VecSetFromOptions(state);
-        store_interm_states[i].push_back(state);
-      }
+  /* NOTE(kevin): store intermediate final states regardless of master equation type. */
+  store_interm_states.resize(ninit_local);
+  for (int i = 0; i < ninit_local; i++) {
+    /*
+      store_interm_states[i][index] is the final timestep of index-th local time window, for i-th initial condition.
+      (index = 0, 1, ..., nwindows_local-1)
+      For mpirank_time = mpisize_time - 1,
+        store_interm_states[i] has a size of (nwindows_local - 1), excluding final state.
+    */
+    store_interm_states[i].clear();
+    for (int iwindow = 0; iwindow < nwindows_local; iwindow++) {
+      if (mpirank_time == mpisize_time-1 && iwindow == nwindows_local-1)
+        break;
+      
+      Vec state;
+      VecCreate(PETSC_COMM_WORLD, &state);
+      VecSetSizes(state, PETSC_DECIDE, 2*timestepper->mastereq->getDim());
+      VecSetFromOptions(state);
+      store_interm_states[i].push_back(state);
     }
   }
 
@@ -394,6 +397,7 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   VecCreateSeq(PETSC_COMM_SELF, ndesign+nstate, &xlower);
   VecSetFromOptions(xlower);
   VecDuplicate(xlower, &xupper);
+  /* bounds for control */
   int col = 0;
   for (int iosc = 0; iosc < timestepper->mastereq->getNOscillators(); iosc++){
     std::vector<std::string> bound_str;
@@ -423,6 +427,12 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
       }
       col = col + timestepper->mastereq->getOscillator(iosc)->getNSegParams(iseg);
     }
+  }
+  /* intermediate conditions must be unbounded. Setting a large range. */
+  double very_large = 1.0e20;
+  for (int k = getNdesign(); k < getNoptimvars(); k++) {
+    VecSetValue(xlower, k, -very_large, INSERT_VALUES);
+    VecSetValue(xupper, k, very_large, INSERT_VALUES);
   }
   VecAssemblyBegin(xlower); VecAssemblyEnd(xlower);
   VecAssemblyBegin(xupper); VecAssemblyEnd(xupper);
@@ -505,7 +515,7 @@ OptimProblem::~OptimProblem() {
 
 
 
-double OptimProblem::evalF(const Vec x, const Vec lambda_) {   // x = (alpha, interm.states), lambda = lagrange multipliers: dim(lambda) = dim(x_intermediatestates)
+double OptimProblem::evalF(const Vec x, const Vec lambda_, const bool store_interm) {   // x = (alpha, interm.states), lambda = lagrange multipliers: dim(lambda) = dim(x_intermediatestates)
 
   MasterEq* mastereq = timestepper->mastereq;
 
@@ -588,6 +598,9 @@ double OptimProblem::evalF(const Vec x, const Vec lambda_) {   // x = (alpha, in
       }
       /* Else, add to constraint. */
       else {
+        if (store_interm)
+          VecCopy(finalstate, store_interm_states[iinit][iwindow]);
+
         int id = iinit_global*(nwindows-1) + index;
         Vec xnext, lag;
         VecGetSubVector(x, IS_interm_states[id], &xnext);
@@ -726,7 +739,7 @@ void OptimProblem::evalGradF(const Vec x, const Vec lambda_, Vec G){
     /* Iterate over local time windows */
     for (int iwindow=0; iwindow<nwindows_local; iwindow++){
       // Solve forward from starting point.
-      int index = mpirank_time * nwindows_local + iwindow ; 
+      int index = mpirank_time * nwindows_local + iwindow ;
       int n0 = index * timestepper->ntime; // First time-step index for this window.
       // printf("%d: Local window %d , n0=%d\n", mpirank_time, iwindow, n0);
       Vec x0;
@@ -1031,6 +1044,63 @@ void OptimProblem::rollOut(Vec x){
       }
     }
   }
+
+}
+
+void OptimProblem::updateLagrangian(const double prev_mu, const Vec x, Vec lambda) {
+
+  evalF(x, lambda, true);
+
+  Vec lambda_incre;
+  VecCreate(PETSC_COMM_WORLD, &lambda_incre);
+  VecSetSizes(lambda_incre, PETSC_DECIDE, getNstate());
+  VecSetFromOptions(lambda_incre);
+  VecSet(lambda_incre, 0.0);
+  VecAssemblyBegin(lambda_incre);
+  VecAssemblyEnd(lambda_incre);
+
+  /* discontinuity between time segments */
+  Vec disc;
+  VecCreate(PETSC_COMM_WORLD, &disc);
+  VecSetSizes(disc, PETSC_DECIDE, 2*timestepper->mastereq->getDim());
+  VecSetFromOptions(disc);
+
+  for (int iinit = 0; iinit < ninit_local; iinit++) {
+    /* Prepare the initial condition in [rank * ninit_local, ... , (rank+1) * ninit_local - 1] */
+    int iinit_global = mpirank_init * ninit_local + iinit;
+
+    /* Iterate over local time windows */
+    for (int iwindow = 0; iwindow < nwindows_local; iwindow++){
+      if (mpirank_time == mpisize_time-1 && iwindow == nwindows_local-1)
+        continue;
+
+      VecCopy(store_interm_states[iinit][iwindow], disc);
+
+      int index = mpirank_time * nwindows_local + iwindow ;
+      int id = iinit_global*(nwindows-1) + index;
+      Vec xnext;
+      VecGetSubVector(x, IS_interm_states[id], &xnext);
+      VecAXPY(disc, -1.0, xnext);  // finalstate = S(u_{i-1}) - u_i
+
+      /* lag += - prev_mu * ( S(u_{i-1}) - u_i ) */
+      VecISAXPY(lambda_incre, IS_interm_lambda[id], -prev_mu, disc);
+    }
+  }
+
+  /* Sum up the increment from all ic+time processors */
+  double *local_increment = new double[getNstate()];
+  PetscScalar* global_increment; 
+  VecGetArray(lambda_incre, &global_increment);
+  for (int i=0; i<getNstate(); i++) {
+    local_increment[i] = global_increment[i];
+  }
+  MPI_Allreduce(local_increment, global_increment, getNstate(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD); // Should be comm_init and also comm_time! 
+  VecRestoreArray(lambda_incre, &global_increment);
+
+  /* update global Lagrangian */
+  VecAXPY(lambda, 1.0, lambda_incre);
+
+  delete local_increment;
 }
 
 void OptimProblem::getSolution(Vec* param_ptr){
@@ -1131,7 +1201,8 @@ PetscErrorCode TaoEvalObjectiveAndGradient(Tao tao, Vec x, PetscReal *f, Vec G, 
 PetscErrorCode TaoEvalObjective(Tao tao, Vec x, PetscReal *f, void*ptr){
 
   OptimProblem* ctx = (OptimProblem*) ptr;
-  *f = ctx->evalF(x, ctx->lambda);
+  assert(ctx->lambda);
+  *f = ctx->evalF(x, (ctx->lambda));
   
   return 0;
 }
@@ -1140,7 +1211,8 @@ PetscErrorCode TaoEvalObjective(Tao tao, Vec x, PetscReal *f, void*ptr){
 PetscErrorCode TaoEvalGradient(Tao tao, Vec x, Vec G, void*ptr){
 
   OptimProblem* ctx = (OptimProblem*) ptr;
-  ctx->evalGradF(x, ctx->lambda, G);
+  assert(ctx->lambda);
+  ctx->evalGradF(x, (ctx->lambda), G);
   
   return 0;
 }

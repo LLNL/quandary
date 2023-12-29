@@ -83,7 +83,7 @@ class OptimProblem {
     Vec xlower, xupper;              /* Optimization bounds */
     Vec xprev;                       /* design vector at previous iteration */
     Vec xinit;                       /* Storing initial design vector, if gamma_tik_interpolate=true, aka if tikhonov is ||x - x_0||^2 rather than ||x||^2 */
-    Vec lambda;                      /* Storing (initial) lagrange multiplier, probably not needed to store it. TODO. */
+    Vec lambda;                      /* Pointer to lagrange multiplier, not owned by OptimProblem. TODO. */
     double mu;                       /* Penalty strength to intermediate state discontinuities */
 
   /* Constructor */
@@ -92,6 +92,7 @@ class OptimProblem {
 
   /* Return the number of optimization variables */
   int getNdesign(){ return ndesign; };
+  int getNstate(){ return nstate; };
   int getNoptimvars(){ return ndesign+nstate; };
 
   /* Return the overall objective, final-time costs, regularization and penalty terms */
@@ -108,7 +109,7 @@ class OptimProblem {
   int getMPIrank_world() { return mpirank_world;};
 
   /* Evaluate the objective function F(x) */
-  double evalF(const Vec x, const Vec lambda_);
+  double evalF(const Vec x, const Vec lambda_, const bool store_interm=false);
 
   /* Evaluate gradient \nabla F(x) */
   void evalGradF(const Vec x, const Vec lambda_, Vec G);
@@ -122,6 +123,8 @@ class OptimProblem {
   /* Roll-out fidelity. This function might better live in the timestepper?? */
   // The argument is OPTIONAL! If given, the rollout intermediate states will be stored in this vector.
   void rollOut(Vec x=NULL);
+
+  void updateLagrangian(const double prev_mu, const Vec x, Vec lambda);
 
   /* Call this after TaoSolve() has finished to print out some information */
   void getSolution(Vec* opt);
