@@ -493,7 +493,7 @@ double OptimProblem::evalF(const Vec x, const Vec lambda) {   // x = (alpha, int
   double obj_cost_im = 0.0;
   double fidelity_re = 0.0;
   double fidelity_im = 0.0;
-  double frob2 = 0.0; // AP: new variable for the generalized infidelity
+  double frob2 = 0.0; // For generalized infidelity, stores Tr(U'U)
   double constraint = 0.0;
   for (int iinit = 0; iinit < ninit_local; iinit++) {
       
@@ -539,24 +539,23 @@ double OptimProblem::evalF(const Vec x, const Vec lambda) {   // x = (alpha, int
       if (mpirank_time == mpisize_time-1 && iwindow == nwindows_local-1){
         double obj_iinit_re = 0.0;
         double obj_iinit_im = 0.0;
-        double frob2_iinit; // needed for the generalized infidelity (initialized in evalJ)
+        double frob2_iinit; // For generalized infidelity 
         // Local contribution to the Hilbert-Schmidt overlap between target and final states (S_T)
-        // NOTE: NOT scaled
         optim_target->evalJ(finalstate,  &obj_iinit_re, &obj_iinit_im, &frob2_iinit);
         
         obj_cost_re += obj_weights[iinit] * obj_iinit_re; // For Schroedinger, weights = 1.0/ninit
         obj_cost_im += obj_weights[iinit] * obj_iinit_im;
-        frob2 += frob2_iinit/ninit; // scale by 1/(number of initial conditions)
+        frob2 += frob2_iinit / ninit; 
 
         /* Contributions to final-time (regular) fidelity */
         double fidelity_iinit_re = 0.0;
         double fidelity_iinit_im = 0.0;
-        // AP: NOTE: scalebypurity = false in this call. Hence, purity_rho0 is never used.
+        // NOTE: scalebypurity = false. TODO: Check.
         optim_target->HilbertSchmidtOverlap(finalstate, false, &fidelity_iinit_re, &fidelity_iinit_im);
         fidelity_re += fidelity_iinit_re / ninit; // Scale by 1/N
         fidelity_im += fidelity_iinit_im / ninit;
     
-        // printf("%d, %d: iinit obj_iinit: %f * (%1.14e + i %1.14e, Overlap=%1.14e + i %1.14e\n", mpirank_world, mpirank_init, obj_weights[iinit], obj_iinit_re, obj_iinit_im, fidelity_iinit_re, fidelity_iinit_im);
+        // printf("%d, %d: iinit %d, iwindow %d, add to objective obj_cost_re = %1.8e\n", mpirank_time, mpirank_init, iinit, iwindow, obj_cost_re);
       }
       /* Else, add to constraint. */
       else {
@@ -581,9 +580,7 @@ double OptimProblem::evalF(const Vec x, const Vec lambda) {   // x = (alpha, int
   double mypenen = obj_penal_energy;
   double mycost_re = obj_cost_re;
   double mycost_im = obj_cost_im;
-
-  double my_frob2 = frob2; // AP: New variable
-
+  double my_frob2 = frob2; 
   double myfidelity_re = fidelity_re;
   double myfidelity_im = fidelity_im;
   double myconstraint = constraint;
@@ -595,8 +592,7 @@ double OptimProblem::evalF(const Vec x, const Vec lambda) {   // x = (alpha, int
   MPI_Allreduce(&myfidelity_re, &fidelity_re, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(&myfidelity_im, &fidelity_im, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(&myconstraint, &constraint, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-
-  MPI_Allreduce(&my_frob2, &frob2, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD); // AP: New
+  MPI_Allreduce(&my_frob2, &frob2, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 
   /* Set the fidelity: If Schroedinger, need to compute the absolute value: Fid= |\sum_i \phi^\dagger \phi_target|^2 */
   if (timestepper->mastereq->lindbladtype == LindbladType::NONE) {
@@ -669,7 +665,7 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
   double obj_cost_im = 0.0;
   double fidelity_re = 0.0;
   double fidelity_im = 0.0;
-  double frob2 = 0.0; // AP: new variable for gen. infidelity
+  double frob2 = 0.0; // Neede for generalized infidelity
   for (int iinit = 0; iinit < ninit_local; iinit++) {
 
     /* Prepare the initial condition */
@@ -704,7 +700,7 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
 
     obj_cost_re += obj_weights[iinit] * obj_iinit_re;
     obj_cost_im += obj_weights[iinit] * obj_iinit_im;
-    frob2 += frob2_iinit/ninit;
+    frob2 += frob2_iinit / ninit;
 
     /* Add to final-time fidelity */
     double fidelity_iinit_re = 0.0;
@@ -721,9 +717,8 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
       VecZeroEntries(rho_t0_bar);
 
       /* Terminal condition for adjoint variable: Derivative of final time objective J */
-      double obj_cost_re_bar, obj_cost_im_bar, frob2_bar; // Note: frob2_bar=0 in this case (?)
+      double obj_cost_re_bar, obj_cost_im_bar, frob2_bar;
       optim_target->finalizeJ_diff(obj_cost_re, obj_cost_im, &obj_cost_re_bar, &obj_cost_im_bar, &frob2_bar);
-
       optim_target->evalJ_diff(finalstate, rho_t0_bar, obj_weights[iinit]*obj_cost_re_bar, obj_weights[iinit]*obj_cost_im_bar, frob2_bar/ninit);
 
       /* Derivative of time-stepping */
@@ -742,9 +737,7 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
   double mycost_im = obj_cost_im;
   double myfidelity_re = fidelity_re;
   double myfidelity_im = fidelity_im;
-
-  double my_frob2 = frob2; // AP: New variable
-
+  double my_frob2 = frob2;
   MPI_Allreduce(&mypen, &obj_penal, 1, MPI_DOUBLE, MPI_SUM, comm_init);
   MPI_Allreduce(&mypen_dpdm, &obj_penal_dpdm, 1, MPI_DOUBLE, MPI_SUM, comm_init);
   MPI_Allreduce(&mypenen, &obj_penal_energy, 1, MPI_DOUBLE, MPI_SUM, comm_init);
@@ -752,11 +745,9 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
   MPI_Allreduce(&mycost_im, &obj_cost_im, 1, MPI_DOUBLE, MPI_SUM, comm_init);
   MPI_Allreduce(&myfidelity_re, &fidelity_re, 1, MPI_DOUBLE, MPI_SUM, comm_init);
   MPI_Allreduce(&myfidelity_im, &fidelity_im, 1, MPI_DOUBLE, MPI_SUM, comm_init);
-
-  MPI_Allreduce(&my_frob2, &frob2, 1, MPI_DOUBLE, MPI_SUM, comm_init); // AP: New
+  MPI_Allreduce(&my_frob2, &frob2, 1, MPI_DOUBLE, MPI_SUM, comm_init);
 
   /* Set the fidelity: If Schroedinger, need to compute the absolute value: Fid= |\sum_i \phi^\dagger \phi_target|^2 */
-  // AP: Why do you need to recompute the fidelity here?
   if (timestepper->mastereq->lindbladtype == LindbladType::NONE) {
     fidelity = pow(fidelity_re, 2.0) + pow(fidelity_im, 2.0);
   } else {
@@ -765,7 +756,6 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
  
   /* Finalize the objective function Jtrace to get the infidelity. 
      If Schroedingers solver, need to take the absolute value */
-
   obj_cost = optim_target->finalizeJ(obj_cost_re, obj_cost_im, frob2);
 
   /* Evaluate regularization objective += gamma/2 * ||x||^2*/
@@ -802,9 +792,7 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
 
       /* Terminal condition for adjoint variable: Derivative of final time objective J */
       double obj_cost_re_bar, obj_cost_im_bar, frob2_bar;
-
       optim_target->finalizeJ_diff(obj_cost_re, obj_cost_im, &obj_cost_re_bar, &obj_cost_im_bar, &frob2_bar);
-
       optim_target->evalJ_diff(finalstate, rho_t0_bar, obj_weights[iinit]*obj_cost_re_bar, obj_weights[iinit]*obj_cost_im_bar, frob2_bar/ninit);
 
       /* Derivative of time-stepping */
@@ -952,9 +940,6 @@ PetscErrorCode TaoMonitor(Tao tao,void*ptr){
 
   /* Screen output */
   if (ctx->getMPIrank_world() == 0 && iter == 0) {
-    // tmp
-    // std::cout << "maxiter = " << ctx->getMaxIter();
-
     std::cout<<  "    Objective             Tikhonov                Penalty-Leakage        Penalty-StateVar       Penalty-TotalEnergy " << std::endl;
   }
 
@@ -962,17 +947,11 @@ PetscErrorCode TaoMonitor(Tao tao,void*ptr){
   bool lastIter = false;
   std::string finalReason_str = "";
   if (1.0 - F_avg <= ctx->getInfTol()) {
-    if (ctx->getMPIrank_world() == 0) {
-      //printf("Optimization finished with small infidelity.\n");
-      finalReason_str = "Optimization finished with small infidelity.";
-    }
+    finalReason_str = "Optimization finished with small infidelity.";
     TaoSetConvergedReason(tao, TAO_CONVERGED_USER);
     lastIter = true;
   } else if (obj_cost <= ctx->getFaTol()) {
-    if (ctx->getMPIrank_world() == 0) {
-      //printf("Optimization finished with small final time cost.\n");
-      finalReason_str = "Optimization finished with small final time cost.";
-    }
+    finalReason_str = "Optimization finished with small final time cost.";
     TaoSetConvergedReason(tao, TAO_CONVERGED_USER);
     lastIter = true;
   } 
@@ -985,10 +964,7 @@ PetscErrorCode TaoMonitor(Tao tao,void*ptr){
     // if (fabs(xnorm > 1e-15)) dxnorm = dxnorm / xnorm; 
     // // Stopping 
     // if (dxnorm <= ctx->getDxTol()) {
-    //   if (ctx->getMPIrank_world() == 0) {
-    //    //printf("Optimization finished with small parameter update (%1.4e rel. update).\n", dxnorm);
     //    finalReason_str = "Optimization finished with small parameter update (" + std::to_string(dxnorm) + "rel. update).";
-    //   }
     //   TaoSetConvergedReason(tao, TAO_CONVERGED_USER);
     //   lastIter = true;
     // }

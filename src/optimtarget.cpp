@@ -74,15 +74,15 @@ void OptimTarget::FrobeniusDistance_diff(const Vec state, Vec statebar, const do
   VecAXPY(statebar, -2.0*Jbar, targetstate);  
 }
 
-// AP: Frobenius norm squared
-void OptimTarget::FrobeniusSquared(const Vec state, double* frob2){
+// Frobenius norm squared
+void OptimTarget::FrobeniusSquared(const Vec state, double* frob2_ptr){
   // Frobenius norm squared: frob2 = || state ||^2_F  = || vec(state)||^2_2
   double norm;
   VecNorm(state, NORM_2, &norm);
-  *frob2 = norm * norm;
+  *frob2_ptr = norm * norm;
 }
 
-// AP: Adjoint of FrobeniusSquared
+// Adjoint of FrobeniusSquared
 void OptimTarget::FrobeniusSquared_diff(const Vec state, Vec statebar, const double frob2_bar){
   // Frobenius norm squared: frob2 = || state ||^2_F  = sum_i state[i]^2
   VecAXPY(statebar,  2.0*frob2_bar, state);
@@ -200,7 +200,6 @@ void OptimTarget::HilbertSchmidtOverlap_diff(const Vec state, Vec statebar, bool
   }
 }
 
-// AP: the purpose of this function is unclear to me
 void OptimTarget::prepare(const Vec rho_t0){
   // If gate optimization, apply the gate and store targetstate for later use. Else, do nothing.
   if (target_type == TargetType::GATE) targetgate->applyGate(rho_t0, targetstate);
@@ -213,7 +212,7 @@ void OptimTarget::prepare(const Vec rho_t0){
 void OptimTarget::evalJ(const Vec state, double* J_re_ptr, double* J_im_ptr, double* frob2_ptr){
   double J_re = 0.0;
   double J_im = 0.0;
-  double frob2 = 0.0; // new variable
+  double frob2 = 0.0; 
   PetscInt diagID, diagID_re, diagID_im;
   double sum, mine, rhoii, rhoii_re, rhoii_im, lambdai, norm;
   PetscInt ilo, ihi;
@@ -247,7 +246,7 @@ void OptimTarget::evalJ(const Vec state, double* J_re_ptr, double* J_im_ptr, dou
     /* J_Trace:  1 / purity * Tr(state * target^\dagger)  =  HilbertSchmidtOverlap(target, state) is real if Lindblad, and complex if Schroedinger! */
     case ObjectiveType::JTRACE:
       FrobeniusSquared(state, &frob2); // for the generalized fidelity
-      // AP: why scalebypurity==true? this scales the target by 1/purity_rho0???
+      // TODO: Check scaling by purity of rho0 (should be 1 in most cases anyways.)
       HilbertSchmidtOverlap(state, true, &J_re, &J_im); // is real if Lindblad solver.
       break; // case J_Trace
 
@@ -377,15 +376,15 @@ void OptimTarget::finalizeJ_diff(const double obj_cost_re, const double obj_cost
       // obj_cost = frob2 - (pow(obj_cost_re,2.0) + pow(obj_cost_im, 2.0));
       *obj_cost_re_bar = -2.*obj_cost_re;
       *obj_cost_im_bar = -2.*obj_cost_im;
-      *frob2_bar = 1.0; // AP: d(obj_cost)/d(frob2)
+      *frob2_bar = 1.0; // Seed: d(obj_cost)/d(frob2)=1.0
     } else {
       *obj_cost_re_bar = -1.0;
       *obj_cost_im_bar = 0.0;
-      *frob2_bar = 0.0; // AP: No dependence on frob2
+      *frob2_bar = 0.0; 
     }
   } else {
     *obj_cost_re_bar = 1.0;
     *obj_cost_im_bar = 0.0;
-    *frob2_bar = 0.0; // AP: No dependence on frob2
+    *frob2_bar = 0.0; 
   }
 }

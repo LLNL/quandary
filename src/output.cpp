@@ -33,7 +33,7 @@ Output::Output(MapParam& config, MPI_Comm comm_petsc, MPI_Comm comm_init, int no
   output_frequency = config.GetIntParam("output_frequency", 1);
   if (mpirank_world == 0) {
     char filename[255];
-    snprintf(filename, 254, "%s/optim_history.dat", datadir.c_str()); // compiler doesn't like sprintf()
+    snprintf(filename, 254, "%s/optim_history.dat", datadir.c_str()); 
     optimfile = fopen(filename, "w");
     fprintf(optimfile, "#iter    Objective           ||Pr(grad)||           LS step           F_avg           Terminal cost       Tikhonov-regul      Penalty-term       DpDm           Energy-term\n");
   } 
@@ -88,7 +88,7 @@ void Output::writeGradient(Vec grad){
     /* Print current gradients to file */
     FILE *file;
     // sprintf(filename, "%s/grad_iter%04d.dat", datadir.c_str(), optim_iter);
-    snprintf(filename, 254, "%s/grad.dat", datadir.c_str()); // compiler doesn't like sprintf()
+    snprintf(filename, 254, "%s/grad.dat", datadir.c_str()); 
     file = fopen(filename, "w");
 
     const PetscScalar* grad_ptr;
@@ -114,7 +114,7 @@ void Output::writeControls(Vec params, MasterEq* mastereq, int ntime, double dt)
     /* Print current parameters to file */
     FILE *file, *file_c;
     // sprintf(filename, "%s/params_iter%04d.dat", datadir.c_str(), optim_iter);
-    snprintf(filename, 254, "%s/params.dat", datadir.c_str()); // compiler doesn't like sprintf()
+    snprintf(filename, 254, "%s/params.dat", datadir.c_str()); 
     file = fopen(filename, "w");
 
     const PetscScalar* params_ptr;
@@ -129,7 +129,7 @@ void Output::writeControls(Vec params, MasterEq* mastereq, int ntime, double dt)
     /* Print control to file for each oscillator */
     mastereq->setControlAmplitudes(params);
     for (int ioscil = 0; ioscil < mastereq->getNOscillators(); ioscil++) {
-      snprintf(filename, 254, "%s/control%d.dat", datadir.c_str(), ioscil); // compiler doesn't like sprintf()
+      snprintf(filename, 254, "%s/control%d.dat", datadir.c_str(), ioscil); 
       file_c = fopen(filename, "w");
       fprintf(file_c, "# time         p(t) (rotating)          q(t) (rotating)        f(t) (labframe) \n");
 
@@ -160,9 +160,9 @@ void Output::openDataFiles(std::string prefix, int initid, std::string postfix){
 
   /* Open files for state vector */
   if (mpirank_petsc == 0 && writefullstate && write_this_iter) {
-    snprintf(filename, 254, "%s/%s_Re.iinit%04d.dat", datadir.c_str(), prefix.c_str(), initid); // compiler doesn't like sprintf()
+    snprintf(filename, 254, "%s/%s_Re.iinit%04d.dat", datadir.c_str(), prefix.c_str(), initid); 
     ufile = fopen(filename, "w");
-    snprintf(filename, 254, "%s/%s_Im.iinit%04d.dat", datadir.c_str(), prefix.c_str(), initid); // compiler doesn't like sprintf()
+    snprintf(filename, 254, "%s/%s_Im.iinit%04d.dat", datadir.c_str(), prefix.c_str(), initid); 
     vfile = fopen(filename, "w"); 
   }
 
@@ -173,13 +173,13 @@ void Output::openDataFiles(std::string prefix, int initid, std::string postfix){
     for (int i=0; i<outputstr.size(); i++) {
       for (int j=0; j<outputstr[i].size(); j++) {
         if (outputstr[i][j].compare("expectedEnergy") == 0) {
-          snprintf(filename, 254, "%s/expected%d.iinit%04d.dat", datadir.c_str(), i, initid); // compiler doesn't like sprintf()
+          snprintf(filename, 254, "%s/expected%d.iinit%04d.dat", datadir.c_str(), i, initid);
           expectedfile[i] = fopen(filename, "w");
           fprintf(expectedfile[i], "# time      expected energy level\n");
         }
         if (outputstr[i][j].compare("expectedEnergyComposite") == 0) writeExpComp = true;
         if (outputstr[i][j].compare("population") == 0) {
-          snprintf(filename, 254, "%s/population%d.iinit%04d.dat", datadir.c_str(), i, initid); // compiler doesn't like sprintf()
+          snprintf(filename, 254, "%s/population%d.iinit%04d.dat", datadir.c_str(), i, initid); 
           populationfile[i] = fopen(filename, "w");
           fprintf(populationfile[i], "# time      diagonal of the density matrix \n");
         }
@@ -187,12 +187,12 @@ void Output::openDataFiles(std::string prefix, int initid, std::string postfix){
       }
     }
     if (writeExpComp){
-      snprintf(filename, 254, "%s/expected_composite.iinit%04d.dat", datadir.c_str(), initid); // compiler doesn't like sprintf()
+      snprintf(filename, 254, "%s/expected_composite.iinit%04d.dat", datadir.c_str(), initid); 
       expectedfile_comp = fopen(filename, "w");
       fprintf(expectedfile_comp, "# time      expected energy level\n");
     }
     if (writePopComp){
-      snprintf(filename, 254, "%s/population_composite.iinit%04d.dat", datadir.c_str(), initid); // compiler doesn't like sprintf()
+      snprintf(filename, 254, "%s/population_composite.iinit%04d.dat", datadir.c_str(), initid); 
       populationfile_comp = fopen(filename, "w");
       fprintf(populationfile_comp, "# time      population \n");
     }

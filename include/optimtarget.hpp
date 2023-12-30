@@ -29,15 +29,13 @@ class OptimTarget{
     /* Get information on the type of optimization target */
     TargetType getTargetType(){ return target_type; };
     ObjectiveType getObjectiveType(){ return objective_type; };
-    // tmp
-    double getPurity0(){ return purity_rho0;};
-
+    
     /* If gate optimization, this routine prepares the rotated target state VrhoV for a given initial state rho. Further, it stores the purity of rho(0) because it will be used to scale the Hilbertschmidt overlap for the JTrace objective function. */
     void prepare(const Vec rho);
 
     /* Evaluate the objective J. Note that J depends on the target state, which should be stored and ready before calling evalJ. The target state can be set with the 'prepare' routine. */
     /* Output is J_re and J_im. Generally imaginary part will be zero, except for the case of Schroedinger solver with Jtrace. */
-    void evalJ(const Vec state, double* J_re_ptr, double* J_im_ptr, double* frob2);
+    void evalJ(const Vec state, double* J_re_ptr, double* J_im_ptr, double* frob2_ptr);
 
     /* Derivative of evalJ. This updates the adjoint initial condition statebar */
     void evalJ_diff(const Vec state, Vec statebar, const double J_re_bar, const double J_im_bar, const double frob2_bar);
@@ -55,7 +53,7 @@ class OptimTarget{
     void HilbertSchmidtOverlap(const Vec state, const bool scalebypurity, double* HS_re_ptr, double* Hs_im_ptr );
     void HilbertSchmidtOverlap_diff(const Vec state, Vec statebar, bool scalebypurity, const double HS_re_bar, const double HS_im_bar);
 
-    // AP: New functions for generalized infidelity
+    // For generalized infidelity: Compute vector 2-norm squared
     void FrobeniusSquared(const Vec state, double *frob2); 
     void FrobeniusSquared_diff(const Vec state, Vec statebar, const double frob2_bar); 
 };

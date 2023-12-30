@@ -92,7 +92,7 @@ Vec TimeStepper::solveODE(int initid, Vec rho_t0, int n0){
 
   // /* Open output files */
   char postfix[121];
-  std::snprintf(postfix, 120, "_t%1.0f", n0*dt); // replacing sprintf by snprintf
+  std::snprintf(postfix, 120, "_t%1.0f", n0*dt); 
   output->openDataFiles("rho", initid, postfix);
 
   /* Set initial condition  */
