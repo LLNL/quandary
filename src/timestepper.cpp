@@ -98,8 +98,8 @@ Vec TimeStepper::getState(int tindex){
 Vec TimeStepper::solveODE(int initid, Vec rho_t0, int n0){
 
   // /* Open output files */
-  char postfix[120];
-  std::sprintf(postfix, "_t%1.0f", n0*dt); 
+  char postfix[121];
+  std::snprintf(postfix, 120, "_t%1.0f", n0*dt); 
   output->openDataFiles("rho", initid, postfix);
 
   /* Set initial condition  */
@@ -268,8 +268,9 @@ double TimeStepper::penaltyIntegral(double time, const Vec x){
 
     // double obj_re = 0.0;
     // double obj_im = 0.0;
-    // optim_target->evalJ(x, &obj_re, &obj_im);
-    // double obj_cost = optim_target->finalizeJ(obj_re, obj_im);
+    //  double frob2;
+    // optim_target->evalJ(x, &obj_re, &obj_im, &frob2
+    // double obj_cost = optim_target->finalizeJ(obj_re, obj_im, frob2);
     // penalty = weight * obj_cost * dt;
   }
 
@@ -313,12 +314,15 @@ void TimeStepper::penaltyIntegral_diff(double time, const Vec x, Vec xbar, doubl
     
     // double obj_cost_re = 0.0;
     // double obj_cost_im = 0.0;
-    // optim_target->evalJ(x, &obj_cost_re, &obj_cost_im);
+    // double frob2;
+    // optim_target->evalJ(x, &obj_cost_re, &obj_cost_im, &frob2);
 
     // double obj_cost_re_bar = 0.0; 
     // double obj_cost_im_bar = 0.0;
-    // optim_target->finalizeJ_diff(obj_cost_re, obj_cost_im, &obj_cost_re_bar, &obj_cost_im_bar);
-    // optim_target->evalJ_diff(x, xbar, weight*obj_cost_re_bar*penaltybar*dt, weight*obj_cost_im_bar*penaltybar*dt);
+    // double frob2_bar; // for gen. infidelity
+    // int ninit = 1; // TODO: should be # of initial conditions; not available here ???
+    // optim_target->finalizeJ_diff(obj_cost_re, obj_cost_im, &obj_cost_re_bar, &obj_cost_im_bar, &frob2_bar);
+    // optim_target->evalJ_diff(x, xbar, weight*obj_cost_re_bar*penaltybar*dt, weight*obj_cost_im_bar*penaltybar*dt, frob2_bar/ninit);
   }
 
   /* If gate optimization: Derivative of adding guard-level occupation */

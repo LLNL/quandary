@@ -74,6 +74,20 @@ void OptimTarget::FrobeniusDistance_diff(const Vec state, Vec statebar, const do
   VecAXPY(statebar, -2.0*Jbar, targetstate);  
 }
 
+// Frobenius norm squared
+void OptimTarget::FrobeniusSquared(const Vec state, double* frob2_ptr){
+  // Frobenius norm squared: frob2 = || state ||^2_F  = || vec(state)||^2_2
+  double norm;
+  VecNorm(state, NORM_2, &norm);
+  *frob2_ptr = norm * norm;
+}
+
+// Adjoint of FrobeniusSquared
+void OptimTarget::FrobeniusSquared_diff(const Vec state, Vec statebar, const double frob2_bar){
+  // Frobenius norm squared: frob2 = || state ||^2_F  = sum_i state[i]^2
+  VecAXPY(statebar,  2.0*frob2_bar, state);
+}
+
 void OptimTarget::HilbertSchmidtOverlap(const Vec state, const bool scalebypurity, double* HS_re_ptr, double* HS_im_ptr ){
   /* Lindblas solver: Tr(state * target^\dagger) = vec(target)^dagger * vec(state), will be real!
    * Schroedinger:    Tr(state * target^\dagger) = target^\dag * state, will be complex!*/
@@ -163,7 +177,7 @@ void OptimTarget::HilbertSchmidtOverlap_diff(const Vec state, Vec statebar, bool
 
     if (lindbladtype != LindbladType::NONE)
       VecAXPY(statebar, HS_re_bar*scale, targetstate);
-    else {
+    else {  // Schroedinger solver. target^\dagger * state
       const PetscScalar* target_ptr;
       PetscScalar* statebar_ptr;
       VecGetArrayRead(targetstate, &target_ptr); 
@@ -186,7 +200,6 @@ void OptimTarget::HilbertSchmidtOverlap_diff(const Vec state, Vec statebar, bool
   }
 }
 
-
 void OptimTarget::prepare(const Vec rho_t0){
   // If gate optimization, apply the gate and store targetstate for later use. Else, do nothing.
   if (target_type == TargetType::GATE) targetgate->applyGate(rho_t0, targetstate);
@@ -196,11 +209,10 @@ void OptimTarget::prepare(const Vec rho_t0){
   purity_rho0 = purity_rho0 * purity_rho0;
 }
 
-
-
-void OptimTarget::evalJ(const Vec state, double* J_re_ptr, double* J_im_ptr){
+void OptimTarget::evalJ(const Vec state, double* J_re_ptr, double* J_im_ptr, double* frob2_ptr){
   double J_re = 0.0;
   double J_im = 0.0;
+  double frob2 = 0.0; 
   PetscInt diagID, diagID_re, diagID_im;
   double sum, mine, rhoii, rhoii_re, rhoii_im, lambdai, norm;
   PetscInt ilo, ihi;
@@ -233,8 +245,9 @@ void OptimTarget::evalJ(const Vec state, double* J_re_ptr, double* J_im_ptr){
 
     /* J_Trace:  1 / purity * Tr(state * target^\dagger)  =  HilbertSchmidtOverlap(target, state) is real if Lindblad, and complex if Schroedinger! */
     case ObjectiveType::JTRACE:
-
-      HilbertSchmidtOverlap(state, true, &J_re, &J_im); // is real if Lindblad solver. 
+      FrobeniusSquared(state, &frob2); // for the generalized fidelity
+      // TODO: Check scaling by purity of rho0 (should be 1 in most cases anyways.)
+      HilbertSchmidtOverlap(state, true, &J_re, &J_im); // is real if Lindblad solver.
       break; // case J_Trace
 
     /* J_Measure = Tr(O_m rho(T)) = \sum_i |i-m| rho_ii(T) if Lindblad and \sum_i |i-m| |phi_i(T)|^2  if Schroedinger */
@@ -271,15 +284,16 @@ void OptimTarget::evalJ(const Vec state, double* J_re_ptr, double* J_im_ptr){
       J_re = sum;
       MPI_Allreduce(&sum, &J_re, 1, MPI_DOUBLE, MPI_SUM, PETSC_COMM_WORLD);
       break; // case J_MEASURE
-  }
+  } // end switch
 
   // return
   *J_re_ptr = J_re;
   *J_im_ptr = J_im;
+  *frob2_ptr = frob2;
 }
 
 
-void OptimTarget::evalJ_diff(const Vec state, Vec statebar, const double J_re_bar, const double J_im_bar){
+void OptimTarget::evalJ_diff(const Vec state, Vec statebar, const double J_re_bar, const double J_im_bar, const double frob2_bar){
   PetscInt ilo, ihi;
   double lambdai, val, val_re, val_im, rhoii_re, rhoii_im;
   PetscInt diagID, diagID_re, diagID_im, dimsq;
@@ -304,6 +318,7 @@ void OptimTarget::evalJ_diff(const Vec state, Vec statebar, const double J_re_ba
 
     case ObjectiveType::JTRACE:
       HilbertSchmidtOverlap_diff(state, statebar, true, J_re_bar, J_im_bar);
+      FrobeniusSquared_diff(state, statebar, frob2_bar);
     break;
 
     case ObjectiveType::JMEASURE:
@@ -336,12 +351,12 @@ void OptimTarget::evalJ_diff(const Vec state, Vec statebar, const double J_re_ba
   VecAssemblyBegin(statebar); VecAssemblyEnd(statebar);
 }
 
-double OptimTarget::finalizeJ(const double obj_cost_re, const double obj_cost_im) {
+double OptimTarget::finalizeJ(const double obj_cost_re, const double obj_cost_im, const double frob2) {
   double obj_cost = 0.0;
 
   if (objective_type == ObjectiveType::JTRACE) {
     if (lindbladtype == LindbladType::NONE) {
-      obj_cost = 1.0 - (pow(obj_cost_re,2.0) + pow(obj_cost_im, 2.0));
+      obj_cost = frob2 - (pow(obj_cost_re,2.0) + pow(obj_cost_im, 2.0));
     } else {
       obj_cost = 1.0 - obj_cost_re;
     }
@@ -354,19 +369,22 @@ double OptimTarget::finalizeJ(const double obj_cost_re, const double obj_cost_im
 }
 
 
-void OptimTarget::finalizeJ_diff(const double obj_cost_re, const double obj_cost_im, double* obj_cost_re_bar, double* obj_cost_im_bar){
+void OptimTarget::finalizeJ_diff(const double obj_cost_re, const double obj_cost_im, double* obj_cost_re_bar, double* obj_cost_im_bar, double* frob2_bar){
 
   if (objective_type == ObjectiveType::JTRACE) {
     if (lindbladtype == LindbladType::NONE) {
-      // obj_cost = 1.0 - (pow(obj_cost_re,2.0) + pow(obj_cost_im, 2.0));
+      // obj_cost = frob2 - (pow(obj_cost_re,2.0) + pow(obj_cost_im, 2.0));
       *obj_cost_re_bar = -2.*obj_cost_re;
       *obj_cost_im_bar = -2.*obj_cost_im;
+      *frob2_bar = 1.0; // Seed: d(obj_cost)/d(frob2)=1.0
     } else {
       *obj_cost_re_bar = -1.0;
       *obj_cost_im_bar = 0.0;
+      *frob2_bar = 0.0; 
     }
   } else {
     *obj_cost_re_bar = 1.0;
     *obj_cost_im_bar = 0.0;
+    *frob2_bar = 0.0; 
   }
 }
