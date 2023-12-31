@@ -590,7 +590,7 @@ double OptimProblem::evalF(const Vec x, const Vec lambda_, const bool store_inte
         
         obj_cost_re += obj_weights[iinit] * obj_iinit_re; // For Schroedinger, weights = 1.0/ninit
         obj_cost_im += obj_weights[iinit] * obj_iinit_im;
-        frob2 += frob2_iinit / ninit; 
+        frob2 += obj_weights[iinit] * frob2_iinit;
 
         /* Contributions to final-time (regular) fidelity */
         double fidelity_iinit_re = 0.0;
@@ -637,8 +637,6 @@ double OptimProblem::evalF(const Vec x, const Vec lambda_, const bool store_inte
   double myconstraint = constraint;
   // Should be comm_init and also comm_time! 
   MPI_Allreduce(&mypen, &obj_penal, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-// printf("rank(world, init, time): %d/%d, %d/%d, %d/%d, obj_penal: %.4E\n",
-//        mpirank_world, mpisize_world, mpirank_init, mpisize_init, mpirank_time, mpisize_time, obj_penal);
   MPI_Allreduce(&mypen_dpdm, &obj_penal_dpdm, 1, MPI_DOUBLE, MPI_SUM, comm_init);
   MPI_Allreduce(&mypenen, &obj_penal_energy, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(&mycost_re, &obj_cost_re, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
@@ -789,7 +787,7 @@ void OptimProblem::evalGradF(const Vec x, const Vec lambda_, Vec G){
 
         obj_cost_re += obj_weights[iinit] * obj_iinit_re;
         obj_cost_im += obj_weights[iinit] * obj_iinit_im;
-        frob2 += frob2_iinit / ninit;
+        frob2 += obj_weights[iinit] * frob2_iinit;
 
         /* Add to final-time fidelity */
         double fidelity_iinit_re = 0.0;
@@ -830,7 +828,7 @@ void OptimProblem::evalGradF(const Vec x, const Vec lambda_, Vec G){
         /* Terminal condition for adjoint variable: Derivative of final time objective J */
         double obj_cost_re_bar, obj_cost_im_bar, frob2_bar;
         optim_target->finalizeJ_diff(obj_cost_re, obj_cost_im, &obj_cost_re_bar, &obj_cost_im_bar, &frob2_bar);
-        optim_target->evalJ_diff(finalstate, rho_t0_bar, obj_weights[iinit]*obj_cost_re_bar, obj_weights[iinit]*obj_cost_im_bar, frob2_bar/ninit);
+        optim_target->evalJ_diff(finalstate, rho_t0_bar, obj_weights[iinit]*obj_cost_re_bar, obj_weights[iinit]*obj_cost_im_bar, obj_weights[iinit]*frob2_bar);
 
         /* Derivative of time-stepping */
         adjoint_ic = timestepper->solveAdjointODE(initid, rho_t0_bar, finalstate, obj_weights[iinit] * gamma_penalty, obj_weights[iinit]*gamma_penalty_dpdm, obj_weights[iinit]*gamma_penalty_energy, n0);
@@ -865,7 +863,7 @@ void OptimProblem::evalGradF(const Vec x, const Vec lambda_, Vec G){
   MPI_Allreduce(&myfidelity_re, &fidelity_re, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(&myfidelity_im, &fidelity_im, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(&myconstraint, &constraint, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-  MPI_Allreduce(&my_frob2, &frob2, 1, MPI_DOUBLE, MPI_SUM, comm_init);
+  MPI_Allreduce(&my_frob2, &frob2, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 
   /* Set the fidelity: If Schroedinger, need to compute the absolute value: Fid= |\sum_i \phi^\dagger \phi_target|^2 */
   if (timestepper->mastereq->lindbladtype == LindbladType::NONE) {
@@ -926,7 +924,7 @@ void OptimProblem::evalGradF(const Vec x, const Vec lambda_, Vec G){
           /* Terminal condition for adjoint variable: Derivative of final time objective J */
           double obj_cost_re_bar, obj_cost_im_bar, frob2_bar;
           optim_target->finalizeJ_diff(obj_cost_re, obj_cost_im, &obj_cost_re_bar, &obj_cost_im_bar, &frob2_bar);
-          optim_target->evalJ_diff(finalstate, rho_t0_bar, obj_weights[iinit]*obj_cost_re_bar, obj_weights[iinit]*obj_cost_im_bar, frob2_bar/ninit);
+          optim_target->evalJ_diff(finalstate, rho_t0_bar, obj_weights[iinit]*obj_cost_re_bar, obj_weights[iinit]*obj_cost_im_bar, obj_weights[iinit]*frob2_bar);
         }
         else {
           finalstate = store_interm_states[iinit][iwindow];
