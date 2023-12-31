@@ -590,7 +590,7 @@ double OptimProblem::evalF(const Vec x, const Vec lambda_, const bool store_inte
         
         obj_cost_re += obj_weights[iinit] * obj_iinit_re; // For Schroedinger, weights = 1.0/ninit
         obj_cost_im += obj_weights[iinit] * obj_iinit_im;
-        frob2 += obj_weights[iinit] * frob2_iinit;
+        frob2 += 1./ninit * frob2_iinit;
 
         /* Contributions to final-time (regular) fidelity */
         double fidelity_iinit_re = 0.0;
@@ -787,7 +787,7 @@ void OptimProblem::evalGradF(const Vec x, const Vec lambda_, Vec G){
 
         obj_cost_re += obj_weights[iinit] * obj_iinit_re;
         obj_cost_im += obj_weights[iinit] * obj_iinit_im;
-        frob2 += obj_weights[iinit] * frob2_iinit;
+        frob2 += 1./ninit * frob2_iinit;
 
         /* Add to final-time fidelity */
         double fidelity_iinit_re = 0.0;
@@ -828,7 +828,7 @@ void OptimProblem::evalGradF(const Vec x, const Vec lambda_, Vec G){
         /* Terminal condition for adjoint variable: Derivative of final time objective J */
         double obj_cost_re_bar, obj_cost_im_bar, frob2_bar;
         optim_target->finalizeJ_diff(obj_cost_re, obj_cost_im, &obj_cost_re_bar, &obj_cost_im_bar, &frob2_bar);
-        optim_target->evalJ_diff(finalstate, rho_t0_bar, obj_weights[iinit]*obj_cost_re_bar, obj_weights[iinit]*obj_cost_im_bar, obj_weights[iinit]*frob2_bar);
+        optim_target->evalJ_diff(finalstate, rho_t0_bar, obj_weights[iinit]*obj_cost_re_bar, obj_weights[iinit]*obj_cost_im_bar, 1./ninit*frob2_bar);
 
         /* Derivative of time-stepping */
         adjoint_ic = timestepper->solveAdjointODE(initid, rho_t0_bar, finalstate, obj_weights[iinit] * gamma_penalty, obj_weights[iinit]*gamma_penalty_dpdm, obj_weights[iinit]*gamma_penalty_energy, n0);
@@ -924,7 +924,7 @@ void OptimProblem::evalGradF(const Vec x, const Vec lambda_, Vec G){
           /* Terminal condition for adjoint variable: Derivative of final time objective J */
           double obj_cost_re_bar, obj_cost_im_bar, frob2_bar;
           optim_target->finalizeJ_diff(obj_cost_re, obj_cost_im, &obj_cost_re_bar, &obj_cost_im_bar, &frob2_bar);
-          optim_target->evalJ_diff(finalstate, rho_t0_bar, obj_weights[iinit]*obj_cost_re_bar, obj_weights[iinit]*obj_cost_im_bar, obj_weights[iinit]*frob2_bar);
+          optim_target->evalJ_diff(finalstate, rho_t0_bar, obj_weights[iinit]*obj_cost_re_bar, obj_weights[iinit]*obj_cost_im_bar, 1./ninit*frob2_bar);
         }
         else {
           finalstate = store_interm_states[iinit][iwindow];
