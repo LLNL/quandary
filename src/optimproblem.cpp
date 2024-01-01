@@ -108,7 +108,7 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   grtol = config.GetDoubleParam("optim_rtol", 1e-4);
   interm_tol = config.GetDoubleParam("optim_interm_tol", 1e-4);
   maxiter = config.GetIntParam("optim_maxiter", 200);
-  mu = config.GetIntParam("optim_mu", 0.0);
+  mu = config.GetDoubleParam("optim_mu", 0.0);
   
     /* Store the optimization target */
   std::vector<std::string> target_str;

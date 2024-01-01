@@ -441,6 +441,49 @@ int main(int argc,char **argv)
   VecAssemblyEnd(lambda);
   optimctx->lambda = &lambda;
 
+  bool load_optimvar = config.GetBoolParam("load_optimvar", false);
+  double old_mu;  // discontinuity penalty strength at the previous optimization iteration.
+
+  /* Set initial starting point */
+  if (load_optimvar) {
+    PetscScalar *ptr;
+
+    // TODO(kevin): Highly recommend to use hdf5 for I/O. and save all data into one single file.
+    /* All variables are saved as binary files, to save the storage size and time. */
+    if (mpirank_world == 0) {
+      FILE* file;
+          
+      sprintf(filename, "%s/mu.dat", output->datadir.c_str());
+      file = fopen(filename, "rb");
+      fread(&(old_mu), sizeof(old_mu), 1, file);
+      fclose(file);
+
+      sprintf(filename, "%s/optimvars.dat", output->datadir.c_str());
+      file = fopen(filename, "rb");
+      VecGetArray(xinit, &ptr);
+      fread(ptr, sizeof(ptr[0]), optimctx->getNoptimvars(), file);
+      VecRestoreArray(xinit, &ptr);
+      fclose(file);
+
+      sprintf(filename, "%s/lagrange.dat", output->datadir.c_str());
+      file = fopen(filename, "rb");
+      VecGetArray(lambda, &ptr);
+      fread(ptr, sizeof(ptr[0]), optimctx->getNstate(), file);
+      VecRestoreArray(lambda, &ptr);
+      fclose(file);
+    }
+
+    MPI_Bcast(&(old_mu), 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    VecGetArray(xinit, &ptr);
+    MPI_Bcast(ptr, optimctx->getNoptimvars(), MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    VecRestoreArray(xinit, &ptr);
+    VecGetArray(lambda, &ptr);
+    MPI_Bcast(ptr, optimctx->getNstate(), MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    VecRestoreArray(lambda, &ptr);
+  }
+  else
+    optimctx->getStartingPoint(xinit);
+
   /* Some output */
   if (mpirank_world == 0)
   {
@@ -463,7 +506,7 @@ int main(int argc,char **argv)
   /* --- Solve primal --- */
   if (runtype == RunType::SIMULATION) {
     if (mpirank_world == 0 && !quietmode) printf("\nStarting primal solver... \n");
-    optimctx->getStartingPoint(xinit);
+    
     // VecCopy(xinit, optimctx->xinit); // Store the initial guess
 
     MPI_Barrier(MPI_COMM_WORLD);
@@ -479,7 +522,6 @@ int main(int argc,char **argv)
   if (runtype == RunType::GRADIENT) {
     bool verify_gradient = config.GetBoolParam("verify_grad", false);
 
-    optimctx->getStartingPoint(xinit);
     if (verify_gradient) {
       if (mpirank_world == 0)
         printf("\nRandomizing the optimization variables for verification...\n");
@@ -553,52 +595,10 @@ int main(int argc,char **argv)
 
   /* --- Solve the optimization  --- */
   if (runtype == RunType::OPTIMIZATION) {
-    bool load_optimvar = config.GetBoolParam("load_optimvar", false);
     bool update_lagrangian = config.GetBoolParam("update_lagrangian", false);
 
-    /* Set initial starting point */
-    if (load_optimvar) {
-      PetscScalar *ptr;
-      double old_mu;  // discontinuity penalty strength at the previous optimization iteration.
-
-      // TODO(kevin): Highly recommend to use hdf5 for I/O. and save all data into one single file.
-      /* All variables are saved as binary files, to save the storage size and time. */
-      if (mpirank_world == 0) {
-        FILE* file;
-            
-        sprintf(filename, "%s/mu.dat", output->datadir.c_str());
-        file = fopen(filename, "rb");
-        fread(&(old_mu), sizeof(old_mu), 1, file);
-        fclose(file);
-
-        sprintf(filename, "%s/optimvars.dat", output->datadir.c_str());
-        file = fopen(filename, "rb");
-        VecGetArray(xinit, &ptr);
-        fread(ptr, sizeof(ptr[0]), optimctx->getNoptimvars(), file);
-        VecRestoreArray(xinit, &ptr);
-        fclose(file);
-
-        sprintf(filename, "%s/lagrange.dat", output->datadir.c_str());
-        file = fopen(filename, "rb");
-        VecGetArray(lambda, &ptr);
-        fread(ptr, sizeof(ptr[0]), optimctx->getNstate(), file);
-        VecRestoreArray(lambda, &ptr);
-        fclose(file);
-      }
-
-      MPI_Bcast(&(old_mu), 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-      VecGetArray(xinit, &ptr);
-      MPI_Bcast(ptr, optimctx->getNoptimvars(), MPI_DOUBLE, 0, MPI_COMM_WORLD);
-      VecRestoreArray(xinit, &ptr);
-      VecGetArray(lambda, &ptr);
-      MPI_Bcast(ptr, optimctx->getNstate(), MPI_DOUBLE, 0, MPI_COMM_WORLD);
-      VecRestoreArray(lambda, &ptr);
-
-      if (update_lagrangian)
+    if (update_lagrangian)
         optimctx->updateLagrangian(old_mu, xinit, lambda);
-    }
-    else
-      optimctx->getStartingPoint(xinit);
 
     // VecCopy(xinit, optimctx->xinit); // Store the initial guess
     if (mpirank_world == 0 && !quietmode) printf("\nStarting Optimization solver ... \n");
