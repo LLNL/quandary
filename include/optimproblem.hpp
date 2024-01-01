@@ -58,6 +58,7 @@ class OptimProblem {
   double obj_penal_dpdm;           /* Penalty term in objective for second order state */
   double obj_penal_energy;         /* Energy Penalty term in objective */
   double fidelity;                 /* Final-time fidelity: 1/ninit \sum_iinit Tr(rhotarget^\dag rho(T)) for Lindblad, or |1/ninit \sum_iinit phitarget^dagger phi |^2 for Schroedinger */
+  double interm_discontinuity;     /* Sum of squared norm of intermediate discontinuities */
   double gnorm;                    /* Holds current norm of gradient */
   double gamma_tik;                /* Parameter for tikhonov regularization */
   bool gamma_tik_interpolate;      /* Switch to use ||x - x0||^2 for tikhonov regularization instead of ||x||^2 */
@@ -70,6 +71,7 @@ class OptimProblem {
   double dxtol;                    /* Stopping criterion based on update of control parameters */
   double inftol;                   /* Stopping criterion based on infidelity */
   double grtol;                    /* Stopping criterion based on relative gradient norm */
+  double interm_tol;               /* Stopping criterion based on intermediate discontinuity */
   int maxiter;                     /* Stopping criterion based on maximum number of iterations */
   Tao tao;                         /* Petsc's Optimization solver */
   std::vector<double> initguess_fromfile;      /* Stores the initial guess, if read from file */
@@ -110,9 +112,11 @@ class OptimProblem {
   double getPenaltyDpDm()  { return obj_penal_dpdm; };
   double getPenaltyEnergy()  { return obj_penal_energy; };
   double getFidelity() { return fidelity; };
+  double getDiscontinuity() { return interm_discontinuity; }
   double getFaTol()    { return fatol; };
   double getDxTol()    { return dxtol; };
   double getInfTol()   { return inftol; };
+  double getIntermTol() { return interm_tol; }
   int getMPIrank_world() { return mpirank_world;};
   int getMaxIter()     { return maxiter; };
 

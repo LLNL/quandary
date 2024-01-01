@@ -641,7 +641,10 @@ int main(int argc,char **argv)
   }
 
   /* Output */
-  if (runtype != RunType::OPTIMIZATION) optimctx->output->writeOptimFile(optimctx->getObjective(), gnorm, 0.0, optimctx->getFidelity(), optimctx->getCostT(), optimctx->getRegul(), optimctx->getPenalty(), optimctx->getPenaltyDpDm(), optimctx->getPenaltyEnergy());
+  if (runtype != RunType::OPTIMIZATION)
+    optimctx->output->writeOptimFile(
+      optimctx->getObjective(), gnorm, 0.0, optimctx->getFidelity(), optimctx->getCostT(), optimctx->getRegul(),
+      optimctx->getPenalty(), optimctx->getPenaltyDpDm(), optimctx->getPenaltyEnergy(), optimctx->getDiscontinuity());
 
 
   /* --- Finalize --- */

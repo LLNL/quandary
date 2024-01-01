@@ -106,6 +106,7 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   dxtol = config.GetDoubleParam("optim_dxtol", 1e-8);
   inftol = config.GetDoubleParam("optim_inftol", 1e-5);
   grtol = config.GetDoubleParam("optim_rtol", 1e-4);
+  interm_tol = config.GetDoubleParam("optim_interm_tol", 1e-4);
   maxiter = config.GetIntParam("optim_maxiter", 200);
   mu = config.GetIntParam("optim_mu", 0.0);
   
@@ -534,6 +535,7 @@ double OptimProblem::evalF(const Vec x, const Vec lambda_, const bool store_inte
   obj_penal_dpdm = 0.0;
   obj_penal_energy = 0.0;
   fidelity = 0.0;
+  interm_discontinuity = 0.0; // For TaoMonitor only.
   double obj_cost_re = 0.0;
   double obj_cost_im = 0.0;
   double fidelity_re = 0.0;
@@ -614,10 +616,11 @@ double OptimProblem::evalF(const Vec x, const Vec lambda_, const bool store_inte
         VecAXPY(finalstate, -1.0, xnext);  // finalstate = S(u_{i-1}) - u_i
 
         // TODO(kevin): templatize this for various penalty functionals.
-        double cdot, quadratic_penalty;
-        VecDot(finalstate, finalstate, &quadratic_penalty); // q = || (Su - u) ||^2
+        double cdot, qnorm2;
+        VecDot(finalstate, finalstate, &qnorm2); // q = || (Su - u) ||^2
         VecDot(finalstate, lag, &cdot);   // c = lambda^T (Su - u)
-        constraint += 0.5 * mu * quadratic_penalty - cdot;
+        interm_discontinuity += qnorm2;
+        constraint += 0.5 * mu * qnorm2 - cdot;
         // printf("%d: Window %d, add to constraint taking from id=%d. c=%f\n", mpirank_time, iwindow, id, cdot);
       }
     } // end for iwindow
@@ -635,6 +638,7 @@ double OptimProblem::evalF(const Vec x, const Vec lambda_, const bool store_inte
   double myfidelity_re = fidelity_re;
   double myfidelity_im = fidelity_im;
   double myconstraint = constraint;
+  double my_interm_disc = interm_discontinuity;
   // Should be comm_init and also comm_time! 
   MPI_Allreduce(&mypen, &obj_penal, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(&mypen_dpdm, &obj_penal_dpdm, 1, MPI_DOUBLE, MPI_SUM, comm_init);
@@ -644,6 +648,7 @@ double OptimProblem::evalF(const Vec x, const Vec lambda_, const bool store_inte
   MPI_Allreduce(&myfidelity_re, &fidelity_re, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(&myfidelity_im, &fidelity_im, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(&myconstraint, &constraint, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(&my_interm_disc, &interm_discontinuity, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(&my_frob2, &frob2, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 
   /* Set the fidelity: If Schroedinger, need to compute the absolute value: Fid= |\sum_i \phi^\dagger \phi_target|^2 */
@@ -675,7 +680,7 @@ double OptimProblem::evalF(const Vec x, const Vec lambda_, const bool store_inte
   if (mpirank_world == 0) {
     std::cout<< "Objective = " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal << " + " << obj_penal_dpdm << " + " << obj_penal_energy << " + " << constraint << std::endl;
     std::cout<< "Fidelity = " << fidelity  << std::endl;
-    std::cout<< "Constraint = " <<  constraint << std::endl;
+    std::cout<< "Discontinuities = " << interm_discontinuity << std::endl;
   }
 
 
@@ -723,6 +728,7 @@ void OptimProblem::evalGradF(const Vec x, const Vec lambda_, Vec G){
   obj_penal_dpdm = 0.0;
   obj_penal_energy = 0.0;
   fidelity = 0.0;
+  interm_discontinuity = 0.0; // for TaoMonitor
   double obj_cost_re = 0.0;
   double obj_cost_im = 0.0;
   double fidelity_re = 0.0;
@@ -809,10 +815,11 @@ void OptimProblem::evalGradF(const Vec x, const Vec lambda_, Vec G){
         VecAXPY(finalstate, -1.0, xnext);  // finalstate = S(u_{i-1}) - u_i
 
         // TODO(kevin): templatize this for various penalty functionals.
-        double cdot, quadratic_penalty;
-        VecDot(finalstate, finalstate, &quadratic_penalty); // q = || (Su - u) ||^2
+        double cdot, qnorm2;
+        VecDot(finalstate, finalstate, &qnorm2); // q = || (Su - u) ||^2
         VecDot(finalstate, lag, &cdot);   // c = lambda^T (Su - u)
-        constraint += 0.5 * mu * quadratic_penalty - cdot;
+        interm_discontinuity += qnorm2;
+        constraint += 0.5 * mu * qnorm2 - cdot;
         // printf("%d: Window %d, add to constraint taking from id=%d. c=%f\n", mpirank_time, iwindow, id, cdot);
       }
 
@@ -853,6 +860,7 @@ void OptimProblem::evalGradF(const Vec x, const Vec lambda_, Vec G){
   double myfidelity_re = fidelity_re;
   double myfidelity_im = fidelity_im;
   double myconstraint = constraint;
+  double my_interm_disc = interm_discontinuity;
   double my_frob2 = frob2;
   MPI_Allreduce(&mypen, &obj_penal, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(&mypen_dpdm, &obj_penal_dpdm, 1, MPI_DOUBLE, MPI_SUM, comm_init);
@@ -863,6 +871,7 @@ void OptimProblem::evalGradF(const Vec x, const Vec lambda_, Vec G){
   MPI_Allreduce(&myfidelity_re, &fidelity_re, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(&myfidelity_im, &fidelity_im, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(&myconstraint, &constraint, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(&my_interm_disc, &interm_discontinuity, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(&my_frob2, &frob2, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 
   /* Set the fidelity: If Schroedinger, need to compute the absolute value: Fid= |\sum_i \phi^\dagger \phi_target|^2 */
@@ -979,6 +988,7 @@ void OptimProblem::evalGradF(const Vec x, const Vec lambda_, Vec G){
   if (mpirank_world == 0 && !quietmode) {
     std::cout<< "Objective = " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal << " + " << obj_penal_dpdm << " + " << obj_penal_energy << " + " << constraint << std::endl;
     std::cout<< "Fidelity = " << fidelity << std::endl;
+    std::cout<< "Discontinuities = " << interm_discontinuity << std::endl;
   }
 
   VecDestroy(&disc);
@@ -1139,15 +1149,17 @@ PetscErrorCode TaoMonitor(Tao tao,void*ptr){
   ctx->output->optim_iter = iter;
 
   /* Grab some output stuff */
+  double objective = ctx->getObjective();
   double obj_cost = ctx->getCostT();
   double obj_regul = ctx->getRegul();
   double obj_penal = ctx->getPenalty();
   double obj_penal_dpdm = ctx->getPenaltyDpDm();
   double obj_penal_energy = ctx->getPenaltyEnergy();
+  double interm_discontinuity = ctx->getDiscontinuity();
   double F_avg = ctx->getFidelity();
 
   /* Print to optimization file */
-  ctx->output->writeOptimFile(f, gnorm, deltax, F_avg, obj_cost, obj_regul, obj_penal, obj_penal_dpdm, obj_penal_energy);
+  ctx->output->writeOptimFile(f, gnorm, deltax, F_avg, obj_cost, obj_regul, obj_penal, obj_penal_dpdm, obj_penal_energy, interm_discontinuity);
 
   /* Print parameters and controls to file */
   // if ( optim_iter % optim_monitor_freq == 0 ) {
@@ -1162,12 +1174,12 @@ PetscErrorCode TaoMonitor(Tao tao,void*ptr){
   /* Additional Stopping criteria */
   bool lastIter = false;
   std::string finalReason_str = "";
-  if (1.0 - F_avg <= ctx->getInfTol()) {
-    finalReason_str = "Optimization finished with small infidelity.";
+  if ((1.0 - F_avg <= ctx->getInfTol()) && (interm_discontinuity < ctx->getIntermTol())) {
+    finalReason_str = "Optimization converged to a continuous trajectory with small infidelity.";
     TaoSetConvergedReason(tao, TAO_CONVERGED_USER);
     lastIter = true;
-  } else if (obj_cost <= ctx->getFaTol()) {
-    finalReason_str = "Optimization finished with small final time cost.";
+  } else if ((obj_cost <= ctx->getFaTol()) && (interm_discontinuity < ctx->getIntermTol())) {
+    finalReason_str = "Optimization converged to a continuous trajectory with small final time cost.";
     TaoSetConvergedReason(tao, TAO_CONVERGED_USER);
     lastIter = true;
   } 
