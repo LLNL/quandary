@@ -128,6 +128,8 @@ int main(int argc,char **argv)
     printf("\n\n ERROR: Wrong setting for initial condition.\n");
     exit(1);
   }
+  if (mpirank_world == 0)
+    printf("Number of initial conditions: %d\n", ninit);
 
   /* --- Split communicators for distributed initial conditions, distributed linear algebra, time-parallel optimization --- */
   int mpirank_init, mpisize_init;
@@ -453,19 +455,19 @@ int main(int argc,char **argv)
     if (mpirank_world == 0) {
       FILE* file;
           
-      sprintf(filename, "%s/mu.dat", output->datadir.c_str());
+      sprintf(filename, "%s/mu.bin", output->datadir.c_str());
       file = fopen(filename, "rb");
       fread(&(old_mu), sizeof(old_mu), 1, file);
       fclose(file);
 
-      sprintf(filename, "%s/optimvars.dat", output->datadir.c_str());
+      sprintf(filename, "%s/optimvars.bin", output->datadir.c_str());
       file = fopen(filename, "rb");
       VecGetArray(xinit, &ptr);
       fread(ptr, sizeof(ptr[0]), optimctx->getNoptimvars(), file);
       VecRestoreArray(xinit, &ptr);
       fclose(file);
 
-      sprintf(filename, "%s/lagrange.dat", output->datadir.c_str());
+      sprintf(filename, "%s/lagrange.bin", output->datadir.c_str());
       file = fopen(filename, "rb");
       VecGetArray(lambda, &ptr);
       fread(ptr, sizeof(ptr[0]), optimctx->getNstate(), file);
@@ -611,19 +613,19 @@ int main(int argc,char **argv)
       FILE* file;
       PetscScalar *ptr;
           
-      sprintf(filename, "%s/mu.dat", output->datadir.c_str());
+      sprintf(filename, "%s/mu.bin", output->datadir.c_str());
       file = fopen(filename, "wb");
       fwrite(&(optimctx->mu), sizeof(optimctx->mu), 1, file);
       fclose(file);
       
-      sprintf(filename, "%s/optimvars.dat", output->datadir.c_str());
+      sprintf(filename, "%s/optimvars.bin", output->datadir.c_str());
       file = fopen(filename, "wb");
       VecGetArray(opt, &ptr);
       fwrite(ptr, sizeof(ptr[0]), optimctx->getNoptimvars(), file);
       VecRestoreArray(opt, &ptr);
       fclose(file);
 
-      sprintf(filename, "%s/lagrange.dat", output->datadir.c_str());
+      sprintf(filename, "%s/lagrange.bin", output->datadir.c_str());
       file = fopen(filename, "wb");
       VecGetArray(lambda, &ptr);
       fwrite(ptr, sizeof(ptr[0]), optimctx->getNstate(), file);
