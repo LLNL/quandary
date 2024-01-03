@@ -52,6 +52,7 @@ TimeStepper::TimeStepper(MapParam config, MasterEq* mastereq_, int ntime_global_
   VecZeroEntries(x);
 
   /* NOTE(kevin): we delegate this allocation to OptimProblem. */
+  redgrad = PETSC_NULL;
   // /* Allocate the reduced gradient */
   // int ndesign = 0;
   // for (int ioscil = 0; ioscil < mastereq->getNOscillators(); ioscil++) {
@@ -73,11 +74,11 @@ TimeStepper::~TimeStepper() {
     VecDestroy(&(store_states[n]));
   }
   VecDestroy(&x);
-  VecDestroy(&redgrad);
+  if (redgrad) VecDestroy(&redgrad);
 }
 
 void TimeStepper::allocateReducedGradient(const int noptimvars) {
-  VecDestroy(&redgrad);
+  if (redgrad) VecDestroy(&redgrad);
 
   VecCreateSeq(PETSC_COMM_SELF, noptimvars, &redgrad);
   VecSetFromOptions(redgrad);
@@ -104,7 +105,6 @@ Vec TimeStepper::solveODE(int initid, Vec rho_t0, int n0){
 
   /* Set initial condition  */
   VecCopy(rho_t0, x);
-
 
   /* Store initial state for dpdm penalty */
   if (gamma_penalty_dpdm > 1e-13){
