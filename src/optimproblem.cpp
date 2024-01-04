@@ -547,6 +547,7 @@ double OptimProblem::evalF(const Vec x, const Vec lambda_, const bool store_inte
     /* Prepare the initial condition in [rank * ninit_local, ... , (rank+1) * ninit_local - 1] */
     int iinit_global = mpirank_init * ninit_local + iinit;
     if ( mpirank_time == 0 || mpirank_time == mpisize_time -1 ) {
+      // NOTE(kevin): first rank needs it as initial condition. last rank needs it to prepare the target state.
       timestepper->mastereq->getRhoT0(iinit_global, ninit, initcond_type, initcond_IDs, rho_t0);
     }
     // if (mpirank_time == 0 && !quietmode) printf("%d: Initial condition id=%d ...\n", mpirank_init, initid);
@@ -592,7 +593,7 @@ double OptimProblem::evalF(const Vec x, const Vec lambda_, const bool store_inte
         
         obj_cost_re += obj_weights[iinit] * obj_iinit_re; // For Schroedinger, weights = 1.0/ninit
         obj_cost_im += obj_weights[iinit] * obj_iinit_im;
-        frob2 += 1./ninit * frob2_iinit;
+        frob2 += frob2_iinit / ninit;
 
         /* Contributions to final-time (regular) fidelity */
         double fidelity_iinit_re = 0.0;
@@ -741,6 +742,7 @@ void OptimProblem::evalGradF(const Vec x, const Vec lambda_, Vec G){
     int iinit_global = mpirank_init * ninit_local + iinit;
     int initid;
     if ( mpirank_time == 0 || mpirank_time == mpisize_time -1 ) {
+      // NOTE(kevin): first rank needs it as initial condition. last rank needs it to prepare the target state.
       initid = timestepper->mastereq->getRhoT0(iinit_global, ninit, initcond_type, initcond_IDs, rho_t0);
     }
 
@@ -793,14 +795,14 @@ void OptimProblem::evalGradF(const Vec x, const Vec lambda_, Vec G){
 
         obj_cost_re += obj_weights[iinit] * obj_iinit_re;
         obj_cost_im += obj_weights[iinit] * obj_iinit_im;
-        frob2 += 1./ninit * frob2_iinit;
+        frob2 += frob2_iinit / ninit;
 
         /* Add to final-time fidelity */
         double fidelity_iinit_re = 0.0;
         double fidelity_iinit_im = 0.0;
         optim_target->HilbertSchmidtOverlap(finalstate, false, &fidelity_iinit_re, &fidelity_iinit_im);
-        fidelity_re += 1./ ninit * fidelity_iinit_re;
-        fidelity_im += 1./ ninit * fidelity_iinit_im;
+        fidelity_re += fidelity_iinit_re / ninit;
+        fidelity_im += fidelity_iinit_im / ninit;
       }
       /* Else, add to constraint. */
       else {
@@ -933,7 +935,7 @@ void OptimProblem::evalGradF(const Vec x, const Vec lambda_, Vec G){
           /* Terminal condition for adjoint variable: Derivative of final time objective J */
           double obj_cost_re_bar, obj_cost_im_bar, frob2_bar;
           optim_target->finalizeJ_diff(obj_cost_re, obj_cost_im, &obj_cost_re_bar, &obj_cost_im_bar, &frob2_bar);
-          optim_target->evalJ_diff(finalstate, rho_t0_bar, obj_weights[iinit]*obj_cost_re_bar, obj_weights[iinit]*obj_cost_im_bar, 1./ninit*frob2_bar);
+          optim_target->evalJ_diff(finalstate, rho_t0_bar, obj_weights[iinit]*obj_cost_re_bar, obj_weights[iinit]*obj_cost_im_bar, frob2_bar/ninit);
         }
         else {
           finalstate = store_interm_states[iinit][iwindow];
@@ -1069,6 +1071,7 @@ void OptimProblem::rollOut(Vec x){
 
 }
 
+/* lag += - prev_mu * ( S(u_{i-1}) - u_i ) */
 void OptimProblem::updateLagrangian(const double prev_mu, const Vec x, Vec lambda) {
 
   evalF(x, lambda, true);

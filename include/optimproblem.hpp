@@ -136,6 +136,7 @@ class OptimProblem {
   // The argument is OPTIONAL! If given, the rollout intermediate states will be stored in this vector.
   void rollOut(Vec x=NULL);
 
+  /* lag += - prev_mu * ( S(u_{i-1}) - u_i ) */
   void updateLagrangian(const double prev_mu, const Vec x, Vec lambda);
 
   /* Call this after TaoSolve() has finished to print out some information */
