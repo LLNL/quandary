@@ -470,6 +470,19 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   // VecSetFromOptions(xprev);
   // VecZeroEntries(xprev);
 
+  /* Allocate temporary storage of a state discontinuity */
+  VecCreate(PETSC_COMM_WORLD, &disc);
+  VecSetSizes(disc, PETSC_DECIDE, 2*timestepper->mastereq->getDim());
+  VecSetFromOptions(disc);
+  /* Allocate temporary storage of a lagrange multiplier update */
+  VecCreate(PETSC_COMM_WORLD, &lambda_incre);
+  VecSetSizes(lambda_incre, PETSC_DECIDE, getNstate());
+  VecSetFromOptions(lambda_incre);
+  VecSet(lambda_incre, 0.0);
+  VecAssemblyBegin(lambda_incre);
+  VecAssemblyEnd(lambda_incre);
+
+
   if (gamma_tik_interpolate) {
     // DISABLE FOR NOW
     printf("Warning: Disabling gamma_tik_interpolate for multiple shooting.\n");
@@ -497,7 +510,8 @@ OptimProblem::~OptimProblem() {
   if (gamma_tik_interpolate) {
     // VecDestroy(&xinit);
   }
-  // VecDestroy(&xtmp);
+  VecDestroy(&disc);
+  VecDestroy(&lambda_incre);
 
   for (int i = 0; i < store_finalstates.size(); i++) {
     VecDestroy(&(store_finalstates[i]));
@@ -697,12 +711,6 @@ void OptimProblem::evalGradF(const Vec x, const Vec lambda_, Vec G){
   if (mpirank_world == 0 && !quietmode) std::cout<< "EVAL GRAD F... " << std::endl;
   Vec finalstate = NULL;
   Vec adjoint_ic = NULL;
-
-  /* discontinuity between time segments */
-  Vec disc;
-  VecCreate(PETSC_COMM_WORLD, &disc);
-  VecSetSizes(disc, PETSC_DECIDE, 2*timestepper->mastereq->getDim());
-  VecSetFromOptions(disc);
 
   /* Pass design vector x to oscillators */
   Vec x_alpha;
@@ -992,8 +1000,6 @@ void OptimProblem::evalGradF(const Vec x, const Vec lambda_, Vec G){
     std::cout<< "Fidelity = " << fidelity << std::endl;
     std::cout<< "Discontinuities = " << interm_discontinuity << std::endl;
   }
-
-  VecDestroy(&disc);
 }
 
 
@@ -1076,20 +1082,7 @@ void OptimProblem::updateLagrangian(const double prev_mu, const Vec x, Vec lambd
 
   evalF(x, lambda, true);
 
-  Vec lambda_incre;
-  VecCreate(PETSC_COMM_WORLD, &lambda_incre);
-  VecSetSizes(lambda_incre, PETSC_DECIDE, getNstate());
-  VecSetFromOptions(lambda_incre);
-  VecSet(lambda_incre, 0.0);
-  VecAssemblyBegin(lambda_incre);
-  VecAssemblyEnd(lambda_incre);
-
-  /* discontinuity between time segments */
-  Vec disc;
-  VecCreate(PETSC_COMM_WORLD, &disc);
-  VecSetSizes(disc, PETSC_DECIDE, 2*timestepper->mastereq->getDim());
-  VecSetFromOptions(disc);
-
+  /* Iterate over local initial conditions */
   for (int iinit = 0; iinit < ninit_local; iinit++) {
     /* Prepare the initial condition in [rank * ninit_local, ... , (rank+1) * ninit_local - 1] */
     int iinit_global = mpirank_init * ninit_local + iinit;

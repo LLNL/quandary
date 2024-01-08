@@ -77,7 +77,9 @@ class OptimProblem {
   std::vector<double> initguess_fromfile;      /* Stores the initial guess, if read from file */
   double* mygrad;  /* Auxiliary */
     
-  Vec xtmp;                        /* Temporary storage */
+  // Vec xtmp;                        /* Temporary storage for optim vars */
+  Vec disc;                           /* Temporary storage for state discontinuity. size = 2*mastereq->getDim() */
+  Vec lambda_incre;                   /* Temporary storage for incrementing lagrange multipliers. size = nstate */
   
   // Additional variables needed for multiple time intervals
   int nAlpha; /* total number of B-spline coefficients */
