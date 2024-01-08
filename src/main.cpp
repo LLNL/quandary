@@ -502,7 +502,7 @@ int main(int argc,char **argv)
 
   /* Start timer */
   double StartTime = MPI_Wtime();
-  double EndTime;
+  double EndTime = StartTime;
   double objective;
   double gnorm = 0.0;
   /* --- Solve primal --- */
@@ -512,7 +512,7 @@ int main(int argc,char **argv)
     // VecCopy(xinit, optimctx->xinit); // Store the initial guess
 
     MPI_Barrier(MPI_COMM_WORLD);
-    StartTime = MPI_Wtime(); // update timer after getStarting has been finished.
+    StartTime = MPI_Wtime(); // update timer after initialization is finished
 
     objective = optimctx->evalF(xinit, lambda);
     EndTime = MPI_Wtime();
@@ -542,7 +542,10 @@ int main(int argc,char **argv)
     // VecCopy(xinit, optimctx->xinit); // Store the initial guess
 
     if (mpirank_world == 0 && !quietmode) printf("\nStarting adjoint solver...\n");
+
+    StartTime = MPI_Wtime(); 
     optimctx->evalGradF(xinit, lambda, grad);
+    EndTime = MPI_Wtime();
 
     VecNorm(grad, NORM_2, &gnorm);
     // VecView(grad, PETSC_VIEWER_STDOUT_WORLD);
@@ -604,7 +607,9 @@ int main(int argc,char **argv)
 
     // VecCopy(xinit, optimctx->xinit); // Store the initial guess
     if (mpirank_world == 0 && !quietmode) printf("\nStarting Optimization solver ... \n");
+    StartTime = MPI_Wtime(); 
     optimctx->solve(xinit);
+    EndTime = MPI_Wtime();
     optimctx->getSolution(&opt);
 
     // TODO(kevin): Highly recommend to use hdf5 for I/O. and save all data into one single file.
