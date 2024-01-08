@@ -1105,20 +1105,19 @@ void OptimProblem::updateLagrangian(const double prev_mu, const Vec x, Vec lambd
     }
   }
 
-  /* Sum up the increment from all ic+time processors */
-  double *local_increment = new double[getNstate()];
-  PetscScalar* global_increment; 
-  VecGetArray(lambda_incre, &global_increment);
+  /* Sum up the increment from all comm_init AND comm_time processors */
+  // Note: Reusing allocated temporary storage 'mygrad' here, since its size is already larger than getNstate().
+  PetscScalar* lambda_incre_ptr; 
+  VecGetArray(lambda_incre, &lambda_incre_ptr);
   for (int i=0; i<getNstate(); i++) {
-    local_increment[i] = global_increment[i];
+    mygrad[i] = lambda_incre_ptr[i];
   }
-  MPI_Allreduce(local_increment, global_increment, getNstate(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD); // Should be comm_init and also comm_time! 
-  VecRestoreArray(lambda_incre, &global_increment);
+  MPI_Allreduce(mygrad, lambda_incre_ptr, getNstate(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  VecRestoreArray(lambda_incre, &lambda_incre_ptr);
 
   /* update global Lagrangian */
   VecAXPY(lambda, 1.0, lambda_incre);
 
-  delete local_increment;
 }
 
 void OptimProblem::getSolution(Vec* param_ptr){
