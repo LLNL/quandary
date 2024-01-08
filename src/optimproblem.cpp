@@ -561,7 +561,7 @@ double OptimProblem::evalF(const Vec x, const Vec lambda_, const bool store_inte
     /* Prepare the initial condition in [rank * ninit_local, ... , (rank+1) * ninit_local - 1] */
     int iinit_global = mpirank_init * ninit_local + iinit;
     if ( mpirank_time == 0 || mpirank_time == mpisize_time -1 ) {
-      // NOTE(kevin): first rank needs it as initial condition. last rank needs it to prepare the target state.
+      // Note: first rank needs it as initial condition. last rank needs it to prepare the target state.
       timestepper->mastereq->getRhoT0(iinit_global, ninit, initcond_type, initcond_IDs, rho_t0);
     }
     // if (mpirank_time == 0 && !quietmode) printf("%d: Initial condition id=%d ...\n", mpirank_init, initid);
@@ -586,6 +586,7 @@ double OptimProblem::evalF(const Vec x, const Vec lambda_, const bool store_inte
         VecGetSubVector(x, IS_interm_states[id], &x0);
         // VecView(x0, NULL);
       }
+      // TODO (SG): Fix timestepper output (-> initid, windowid.)
       finalstate = timestepper->solveODE(1, x0, n0);
 
       /* Add to integral penalty term */
@@ -654,9 +655,9 @@ double OptimProblem::evalF(const Vec x, const Vec lambda_, const bool store_inte
   double myfidelity_im = fidelity_im;
   double myconstraint = constraint;
   double my_interm_disc = interm_discontinuity;
-  // Should be comm_init and also comm_time! 
+  // Should be comm_init and also comm_time! Currently, no Petsc Parallelization possible, hence (comm-init AND comm_time) = COMM_WORLD
   MPI_Allreduce(&mypen, &obj_penal, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-  MPI_Allreduce(&mypen_dpdm, &obj_penal_dpdm, 1, MPI_DOUBLE, MPI_SUM, comm_init);
+  MPI_Allreduce(&mypen_dpdm, &obj_penal_dpdm, 1, MPI_DOUBLE, MPI_SUM, comm_init); // SG: Penalty DPDM currently disabled.
   MPI_Allreduce(&mypenen, &obj_penal_energy, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(&mycost_re, &obj_cost_re, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(&mycost_im, &obj_cost_im, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
@@ -720,10 +721,8 @@ void OptimProblem::evalGradF(const Vec x, const Vec lambda_, Vec G){
   /* Reset Gradient */
   VecZeroEntries(G);
 
-  /* Derivative of regulatization term gamma / 2 ||x||^2 (ADD ON ONE PROC ONLY!) */
-  // NOTE(kevin): currently optim variable is global. do this on only one rank in global communicator.
-  if (mpirank_init == 0 && mpirank_time == 0) {
-  // if (mpirank_init == 0 ) {
+  /* Derivative of regulatization term gamma / 2 ||x||^2 Note: currently optim variable is global. do this on only one rank in global communicator. */
+  if (mpirank_world == 0 && mpirank_time == 0) {
     VecISAXPY(G, IS_alpha, gamma_tik, x_alpha);   // + gamma_tik * x
     if (gamma_tik_interpolate){
       // VecAXPY(G, -1.0*gamma_tik, xinit); // -gamma_tik * xinit
@@ -750,7 +749,7 @@ void OptimProblem::evalGradF(const Vec x, const Vec lambda_, Vec G){
     int iinit_global = mpirank_init * ninit_local + iinit;
     int initid;
     if ( mpirank_time == 0 || mpirank_time == mpisize_time -1 ) {
-      // NOTE(kevin): first rank needs it as initial condition. last rank needs it to prepare the target state.
+      // Note: first rank needs it as initial condition. last rank needs it to prepare the target state.
       initid = timestepper->mastereq->getRhoT0(iinit_global, ninit, initcond_type, initcond_IDs, rho_t0);
     }
 
@@ -779,6 +778,7 @@ void OptimProblem::evalGradF(const Vec x, const Vec lambda_, Vec G){
       // if (mpirank_time == 0) printf("%d: %d FWD. ", mpirank_init, initid);
 
       /* Run forward with initial condition rho_t0 */
+      // TODO (SG): Fix timestepper output (-> initid, windowid)
       finalstate = timestepper->solveODE(initid, x0, n0);
 
       /* Add to integral penalty term */
@@ -927,7 +927,6 @@ void OptimProblem::evalGradF(const Vec x, const Vec lambda_, Vec G){
       }
       
       /* Iterate over local time windows */
-      // NOTE(kevin): this loop needs not iterate backward, thanks to parallel-in-time integration.
       for (int iwindow=0; iwindow<nwindows_local; iwindow++) {
         int index = mpirank_time*nwindows_local + iwindow ; 
         int n0 = index * timestepper->ntime; // First time-step index for this window.
@@ -984,7 +983,7 @@ void OptimProblem::evalGradF(const Vec x, const Vec lambda_, Vec G){
   for (int i=0; i<getNoptimvars(); i++) {
     mygrad[i] = grad[i];
   }
-  MPI_Allreduce(mygrad, grad, getNoptimvars(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD); // Should be comm_init and also comm_time! 
+  MPI_Allreduce(mygrad, grad, getNoptimvars(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD); // This is comm_init AND comm_time.
   VecRestoreArray(G, &grad);
 
   Vec g_alpha;
@@ -1080,15 +1079,16 @@ void OptimProblem::rollOut(Vec x){
 /* lag += - prev_mu * ( S(u_{i-1}) - u_i ) */
 void OptimProblem::updateLagrangian(const double prev_mu, const Vec x, Vec lambda) {
 
+  /* Forward solve to store intermediate discontinuities */
   evalF(x, lambda, true);
 
   /* Iterate over local initial conditions */
   for (int iinit = 0; iinit < ninit_local; iinit++) {
-    /* Prepare the initial condition in [rank * ninit_local, ... , (rank+1) * ninit_local - 1] */
     int iinit_global = mpirank_init * ninit_local + iinit;
 
     /* Iterate over local time windows */
     for (int iwindow = 0; iwindow < nwindows_local; iwindow++){
+      // Exclude the very last time window 
       if (mpirank_time == mpisize_time-1 && iwindow == nwindows_local-1)
         continue;
 
