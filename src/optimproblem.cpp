@@ -689,6 +689,16 @@ double OptimProblem::evalF(const Vec x, const Vec lambda_, const bool store_inte
   // }
   obj_regul = gamma_tik / 2. * pow(xnorm,2.0);
 
+  /* L2-penalty over the global discontinuity, replacing constraint */
+  // TODO(kevin): currently using hard-coded parameters. add input option for this.
+  {
+    double disc_eps = 1e-5;
+    if (sqrt(interm_discontinuity) < disc_eps)
+      constraint = mu * interm_discontinuity / 2.0 / disc_eps;
+    else
+      constraint = mu * (sqrt(interm_discontinuity) - 0.5 * disc_eps);
+  }
+
   /* Sum, store and return objective value */
   objective = obj_cost + obj_regul + obj_penal + obj_penal_dpdm + obj_penal_energy + constraint;
 
@@ -706,6 +716,10 @@ double OptimProblem::evalF(const Vec x, const Vec lambda_, const bool store_inte
 
 
 void OptimProblem::evalGradF(const Vec x, const Vec lambda_, Vec G){
+
+  /* L2-penalty over the global discontinuity, replacing constraint */
+  // TODO(kevin): currently using hard-coded parameters. add input option for this.
+  double disc_eps = 1e-5;
 
   MasterEq* mastereq = timestepper->mastereq;
 
@@ -907,6 +921,15 @@ void OptimProblem::evalGradF(const Vec x, const Vec lambda_, Vec G){
   // }
   obj_regul = gamma_tik / 2. * pow(xnorm,2.0);
 
+  /* L2-penalty over the global discontinuity, replacing constraint */
+  // TODO(kevin): currently using hard-coded parameters. add input option for this.
+  {
+    if (sqrt(interm_discontinuity) < disc_eps)
+      constraint = mu * interm_discontinuity / 2.0 / disc_eps;
+    else
+      constraint = mu * (sqrt(interm_discontinuity) - 0.5 * disc_eps);
+  }
+
   /* Sum, store and return objective value */
   objective = obj_cost + obj_regul + obj_penal + obj_penal_dpdm + obj_penal_energy + constraint;
 
@@ -955,12 +978,24 @@ void OptimProblem::evalGradF(const Vec x, const Vec lambda_, Vec G){
           VecAXPY(disc, -1.0, xnext);  // finalstate = S(u_{i-1}) - u_i
 
           // TODO(kevin): templatize this for various penalty functionals.
-          VecAXPY(rho_t0_bar, mu, disc);  // d q / d Su
-          VecAXPY(rho_t0_bar, -1.0, lag); // - d c / d Su
+          /* L2-penalty over the global discontinuity, replacing constraint */
+          // TODO(kevin): currently using hard-coded parameters. add input option for this.
+          {
+            double factor = std::max(disc_eps, sqrt(interm_discontinuity));
+            VecAXPY(rho_t0_bar, mu / factor, disc);  // d q / d Su
 
-          /* add immediate gradient w.r.t the xnext. */
-          VecISAXPY(G, IS_interm_states[id], -mu, disc);
-          VecISAXPY(G, IS_interm_states[id], 1.0, lag);
+            /* add immediate gradient w.r.t the xnext. */
+            VecISAXPY(G, IS_interm_states[id], -mu / factor, disc);
+          }
+          /* Standard augmented Lagrangian. */
+          {
+            // VecAXPY(rho_t0_bar, mu, disc);  // d q / d Su
+            // VecAXPY(rho_t0_bar, -1.0, lag); // - d c / d Su
+
+            // /* add immediate gradient w.r.t the xnext. */
+            // VecISAXPY(G, IS_interm_states[id], -mu, disc);
+            // VecISAXPY(G, IS_interm_states[id], 1.0, lag);
+          }
         }
 
         /* Derivative of time-stepping */
