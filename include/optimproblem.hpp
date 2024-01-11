@@ -52,6 +52,7 @@ class OptimProblem {
   double fidelity;                 /* Final-time fidelity: 1/ninit \sum_iinit Tr(rhotarget^\dag rho(T)) for Lindblad, or |1/ninit \sum_iinit phitarget^dagger phi |^2 for Schroedinger */
   double gnorm;                    /* Holds current norm of gradient */
   double gamma_tik;                /* Parameter for tikhonov regularization */
+  bool gamma_tik_interpolate;      /* Switch to use ||x - x0||^2 for tikhonov regularization instead of ||x||^2 */
   double gamma_penalty;            /* Parameter multiplying integral penalty term */
   double gamma_penalty_dpdm;            /* Parameter multiplying integral penalty term */
   double gamma_penalty_energy;     /* Parameter multiplying energy penalty */
@@ -65,12 +66,15 @@ class OptimProblem {
   Tao tao;                         /* Petsc's Optimization solver */
   std::vector<double> initguess_fromfile;      /* Stores the initial guess, if read from file */
   double* mygrad;  /* Auxiliary */
+    
+  Vec xtmp;                        /* Temporary storage */
   
   public: 
     Output* output;                 /* Store a reference to the output */
     TimeStepper* timestepper;       /* Store a reference to the time-stepping scheme */
     Vec xlower, xupper;              /* Optimization bounds */
     Vec xprev;                       /* design vector at previous iteration */
+    Vec xinit;                       /* Storing initial design vector */
 
   /* Constructor */
   OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm comm_init_, MPI_Comm comm_optim, int ninit_, std::vector<double> gate_rot_freq, Output* output_, bool quietmode=false);

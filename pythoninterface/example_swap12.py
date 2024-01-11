@@ -5,7 +5,7 @@ from quandary import *
 # 01 transition frequencies [GHz] per oscillator
 freq01 = [5.12, 5.06] 
 # Coupling strength [GHz] (Format [0<->1, 0<->2, ..., 1<->2, ... ])
-Jkl = [5.0e-3]         # Jaynes-Cummings coupling
+Jkl = [5.0e-3]         # Dipole-Dipole coupling
 
 # Frequency of rotations for computational frame [GHz] per oscillator
 favg = sum(freq01)/len(freq01)
@@ -37,8 +37,8 @@ unitary[2,2] = 0.0
 
 # Quandary run options
 runtype = "optimization"        # "simulation" # "simulation", or "gradient", or "optimization"
-quandary_exec="/Users/guenther5/Numerics/quandary/main"
-# quandary_exec="/Users/petersson1/src/quandary/main"
+# quandary_exec="/Users/guenther5/Numerics/quandary/main"
+quandary_exec="/Users/petersson1/src/quandary/main"
 ncores = 4  # Number of cores 
 datadir = "./SWAP12_run_dir"  # Compute and output directory 
 verbose = False
@@ -50,7 +50,7 @@ myconfig = QuandaryConfig(freq01=freq01, Jkl=Jkl, rotfreq=rotfreq, T=T, maxctrl_
 # myconfig.pcof0_filename="./SWAP12_params.dat"
 
 # Execute quandary
-pt, qt, expectedEnergy, infidelity = quandary_run(myconfig, quandary_exec=quandary_exec, ncores=ncores, datadir=datadir)
+t, pt, qt, infidelity, expectedEnergy, population = quandary_run(myconfig, quandary_exec=quandary_exec, ncores=ncores, datadir=datadir)
 
 print(f"Fidelity = {1.0 - infidelity}")
 print("\n Quandary data directory: ", datadir)
@@ -58,5 +58,5 @@ print("\n Quandary data directory: ", datadir)
 
 # Plot the control pulse and expected energy level evolution
 if True:
-	plot_pulse(myconfig.Ne, myconfig.time, pt, qt)
-	plot_expectedEnergy(myconfig.Ne, myconfig.time, expectedEnergy)
+	plot_pulse(myconfig.Ne, t, pt, qt)
+	plot_expectedEnergy(myconfig.Ne, t, expectedEnergy)

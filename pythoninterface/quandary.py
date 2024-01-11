@@ -3,10 +3,9 @@ import numpy as np
 from subprocess import run, PIPE, Popen
 import matplotlib.pyplot as plt
 from dataclasses import dataclass, field
-from typing import List
+from typing import List, Dict
 ## For some Matplotlib installations to work, you might need the below...
-#import PyQt6.QtCore
-#os.environ["QT_API"] = "pyqt5"
+# import PyQt6.QtCore
 
 ## 
 # This class collects configuration options to run quandary. The default values are set to optimize for the swap02 gate. Fields in this configuration file are set through the constructor
@@ -23,18 +22,18 @@ class QuandaryConfig:
 
     # Quantum system specifications
     Ne        : List[int]   = field(default_factory=lambda: [3])        # Number of essential energy levels per qubit
-    Ng        : List[int]   = field(default_factory=lambda: [0])        # Number of extra guard levels per qubit
+    Ng        : List[int]   = field(default_factory=lambda: [1])        # Number of extra guard levels per qubit
     freq01    : List[float] = field(default_factory=lambda: [4.10595])  # 01-transition frequencies [GHz] per qubit
     selfkerr  : List[float] = field(default_factory=lambda: [0.2198])   # Anharmonicities [GHz] per qubit
     rotfreq   : List[float] = field(default_factory=list)               # Frequency of rotations for computational frame [GHz] per qubit (default =freq01)
-    Jkl       : List[float] = field(default_factory=list)               # Jaynes-Cummings coupling strength [GHz]. Format [J01, J02, ..., J12, J13, ...]
+    Jkl       : List[float] = field(default_factory=list)               # Dipole-dipole coupling strength [GHz]. Format [J01, J02, ..., J12, J13, ...]
     crosskerr : List[float] = field(default_factory=list)               # ZZ coupling strength [GHz]. Format [g01, g02, ..., g12, g13, ...]
     T1        : List[float] = field(default_factory=list)               # Optional: T1-Decay time per qubit (invokes Lindblad solver)
     T2        : List[float] = field(default_factory=list)               # Optional: T2-Dephasing time per qubit (invokes Lindlbad solver)
 
     # Time duration and discretization options
     T                   : float       = 100.0             # Final time duration
-    Pmin                : int         = 40                # Number of discretization points to resolve the shortest period of the dynamics (determines <nsteps>)
+    Pmin                : int         = 150               # Number of discretization points to resolve the shortest period of the dynamics (determines <nsteps>)
     nsteps              : int         = -1                # Number of time-discretization points (will be computed internally based on Pmin, or can be set here)
     timestepper         : str         = "IMR"             # Time-discretization scheme
 
@@ -46,8 +45,8 @@ class QuandaryConfig:
 
     # Control parameterization options
     maxctrl_MHz         : List[float] = field(default_factory=list)   # Amplitude bounds for the control pulses [MHz]
-    control_enforce_BC  : bool        = True                          # Enforce that control pulses start and end at zero.
-    dtau                : float       = 3.33                          # Spacing [ns] of Bspline basis functions. (The number of Bspline basis functions will be T/dtau + 2)
+    control_enforce_BC  : bool        = False                         # Enforce that control pulses start and end at zero.
+    dtau                : float       = 10.0                          # Spacing [ns] of Bspline basis functions. (The number of Bspline basis functions will be T/dtau + 2)
     nsplines            : int         = -1                            # Number of Bspline basis functions, will be computed from T and dtau. 
     # Control pulse initialization options
     pcof0               : List[float] = field(default_factory=list)   # Optional: Pass an initial control parameter vector
@@ -62,14 +61,17 @@ class QuandaryConfig:
     # Optimization options
     costfunction        : str               = "Jtrace"                      # Cost function measure: "Jtrace" or "Jfrobenius"
     targetgate          : List[List[complex]] = field(default_factory=list) # Complex target unitary in the essential level dimensions for gate optimization
-    optim_target        : str               = "gate"                        # Optional: Set optimization targets, if not specified through the targetgate
-    initialcondition    : str               = "basis"                       # Initial states at time t=0.0: "basis", "diagonal", "pure, 0,0,1,...", "file, /path/to/file" 
-    gamma_tik0          : float             = 1e-4 	                        # Parameter for Tikhonov regularization term
-    gamma_energy        : float             = 0.01                          # Parameter for integral penality term on the control pulse energy
+    targetstate         : List[complex]     = field(default_factory=list) # Complex target state vector for state-to-state optimization
+    optim_target        : str               = "gate, none"                 # Optional: Set optimization targets, if not specified through the targetgate or targetstate
+    initialcondition    : str               = "basis"                         # Initial states at time t=0.0: "basis" (default), "diagonal", "pure, 0,0,1,...", "file, /path/to/file"
+    gamma_tik0          : float             = 1e-4 	                        # Parameter for Tikhonov regularization ||alpha||^2
+    gamma_tik0_interpolate : bool           = False                         # Switch to use ||alpha-alpha_0||^2 instead, where alpha_0 is the initial guess.
+    gamma_leakage       : float             = 0.1 	                        # Parameter for leakage prevention
+    gamma_energy        : float             = 0.1                           # Parameter for integral penality term on the control pulse energy
     gamma_dpdm          : float             = 0.01                          # Parameter for integral penality term on second state derivative
-    tol_infidelity      : float             = 1e-3                          # Optimization stopping criterion based on the infidelity
-    tol_costfunc        : float             = 1e-3                          # Optimization stopping criterion based on the objective function value
-    maxiter             : int               = 300                           # Maximum number of optimization iterations
+    tol_infidelity      : float             = 1e-5                          # Optimization stopping criterion based on the infidelity
+    tol_costfunc        : float             = 1e-4                          # Optimization stopping criterion based on the objective function value
+    maxiter             : int               = 100                           # Maximum number of optimization iterations
 
     # Quandary run options
     print_frequency_iter: int         = 1                   # Output frequency for optimization iterations. (Print every <x> iterations)
@@ -77,7 +79,7 @@ class QuandaryConfig:
 
     # General options
     verbose             : bool        = False               # Switch to shut down printing to screen
-    rand_seed           : int         = 1234                # Seed for random number generator
+    rand_seed           : int         = None                # Default: use system time(0) random seed
 
 
     # Internal configuration. Should not be changed by user.
@@ -87,7 +89,9 @@ class QuandaryConfig:
     # Storage for some optimization results, in case they are needed afterwards.
     popt        : List[float]   = field(default_factory=list)   # Optimized control paramters, could be useful to run quandary again after optimization
     time        : List[float]   = field(default_factory=list)   # Vector of discretized time points, could be useful for plotting the control pulses etc.
-    optim_hist  : List[float]   = field(default_factory=list)   # Optimization history: all fields as in Quandary's output file <data>/optim_history.dat
+    optim_hist  : Dict          = field(default_factory=dict)   # Optimization history: all fields as in Quandary's output file <data>/optim_history.dat
+    uT          : List[float]   = field(default_factory=list)   # Evolved states at final time T. This is the (unitary) solution operator, if the initial conditions span the full basis. 
+
 
     ##
     # This function will be called during initialization of a QuandaryConfig instance.
@@ -116,15 +120,15 @@ class QuandaryConfig:
 
         # Set default number of splines for control parameterization, unless specified by user
         if self.nsplines < 0:
-            self.nsplines = int(np.max([np.ceil(self.T/self.dtau + 2), 5]))
+            minspline = 5 if self.control_enforce_BC else 3
+            self.nsplines = int(np.max([np.ceil(self.T/self.dtau + 2), minspline]))
             
-        # Set default bounds on control pulse amplitudes (default = no bounds), unless specified by user
-        if len(self.maxctrl_MHz) == 0:
-            self.maxctrl_MHz = [1e12 for _ in range(len(self.Ne))]
-
-        # Set default amplitude of initial control parameters [MHz] (default = 9 MHz)
+        # Set default amplitude of initial control parameters [MHz] (default = 1 MHz)
+        if isinstance(self.initctrl_MHz, float) or isinstance(self.initctrl_MHz, int):
+            max_alloscillators = self.initctrl_MHz
+            self.initctrl_MHz = [max_alloscillators for _ in range(len(self.Ne))]
         if len(self.initctrl_MHz) == 0:
-            self.initctrl_MHz = [9.0 for _ in range(len(self.Ne))]
+            self.initctrl_MHz = [1.0 for _ in range(len(self.Ne))]
 
         # Set default Hamiltonian operators, unless specified by user
         if len(self.Hsys) > 0 and not self.standardmodel: # User-provided Hamiltonian operators 
@@ -134,6 +138,23 @@ class QuandaryConfig:
             self.Hsys, self.Hc_re, self.Hc_im = hamiltonians(N=Ntot, freq01=self.freq01, selfkerr=self.selfkerr, crosskerr=self.crosskerr, Jkl=self.Jkl, rotfreq=self.rotfreq, verbose=self.verbose)
             self.standardmodel=True
 
+        # Set the optimization target 
+        if len(self.targetstate) > 0:
+            self.optim_target = "file"
+        if len(self.targetgate) > 0:
+            self.optim_target = "gate, fromfile"
+        
+        # Change default initial condition to ground state, if target is state-to-state optimization
+        if len(self.targetstate) > 0 and self.initialcondition[0:4] != "pure":
+            self.initialcondition = "pure, " 
+            for i in range(len(self.Ne)):
+                self.initialcondition += "0,"
+
+        # Convert maxctrl_MHz to a list for each oscillator, if not so already
+        if isinstance(self.maxctrl_MHz, float) or isinstance(self.maxctrl_MHz, int):
+            max_alloscillators = self.maxctrl_MHz
+            self.maxctrl_MHz = [max_alloscillators for _ in range(len(self.Ne))]
+
         # Estimate number of time steps
         self.nsteps = estimate_timesteps(T=self.T, Hsys=self.Hsys, Hc_re=self.Hc_re, Hc_im=self.Hc_im, maxctrl_MHz=self.maxctrl_MHz, Pmin=self.Pmin)
         if self.verbose:
@@ -141,13 +162,12 @@ class QuandaryConfig:
             print("Maximum control amplitudes: ", self.maxctrl_MHz, "MHz")
 
         # Estimate carrier wave frequencies
-        self.carrier_frequency, _ = get_resonances(Ne=self.Ne, Ng=self.Ng, Hsys=self.Hsys, Hc_re=self.Hc_re, Hc_im=self.Hc_im, rotfreq=self.rotfreq, verbose=self.verbose, cw_amp_thres=self.cw_amp_thres, cw_prox_thres=self.cw_prox_thres, stdmodel=self.standardmodel)
+        if len(self.carrier_frequency) == 0: 
+            self.carrier_frequency, _ = get_resonances(Ne=self.Ne, Ng=self.Ng, Hsys=self.Hsys, Hc_re=self.Hc_re, Hc_im=self.Hc_im, rotfreq=self.rotfreq, verbose=self.verbose, cw_amp_thres=self.cw_amp_thres, cw_prox_thres=self.cw_prox_thres, stdmodel=self.standardmodel)
 
         if self.verbose: 
             print("\n")
-            for q in range(len(self.Ne)):
-                print("System #", q, "Carrier frequencies (lab frame): ", self.rotfreq[q]+self.carrier_frequency[q])
-                print("                               (rot frame): ", self.carrier_frequency[q])
+            print("Carrier frequencies (rot. frame): ", self.carrier_frequency)
             print("\n")
 
     ##
@@ -165,13 +185,29 @@ class QuandaryConfig:
 
         # If given, write the target gate to file
         if len(self.targetgate) > 0:
-            gate_vectorized = np.concatenate((np.real(self.targetgate).ravel(), np.imag(self.targetgate).ravel()))
+            gate_vectorized = np.concatenate((np.real(self.targetgate).ravel(order='F'), np.imag(self.targetgate).ravel(order='F')))
             self._gatefilename = "./targetgate.dat"
             with open(datadir+"/"+self._gatefilename, "w") as f:
                 for value in gate_vectorized:
                     f.write("{:20.13e}\n".format(value))
             if self.verbose:
                 print("Target gate written to ", datadir+"/"+self._gatefilename)
+
+        # If given, write the target state to file
+        if len(self.targetstate) > 0:
+            if (len(self.T1) > 0 or len(self.T2) > 0): # If Lindblad solver, make it a density matrix
+                state = np.outer(self.targetstate, np.array(self.targetstate).conj())
+            else:
+                state = self.targetstate
+            vectorized = np.concatenate((np.real(state).ravel(order='F'), np.imag(state).ravel(order='F')))
+            self._gatefilename = "./targetstate.dat"
+            with open(datadir+"/"+self._gatefilename, "w") as f:
+                for value in vectorized:
+                    f.write("{:20.13e}\n".format(value))
+            if self.verbose:
+                print("Target state written to ", datadir+"/"+self._gatefilename)
+
+
 
         # If not standard Hamiltonian model, write provided Hamiltonians to a file
         if not self.standardmodel:
@@ -254,10 +290,10 @@ class QuandaryConfig:
                 initstring = ("random, " if self.randomize_init_ctrl else "constant, ") + str(initamp) + "\n"
             mystring += "control_initialization" + str(iosc) + " = " + initstring 
             if len(self.maxctrl_MHz) == 0: # Disable bounds, if not specified
-                initval = 1e+12*np.ones(len(self.Ne))
+                boundval = 1e+12
             else:
-                initval = self.maxctrl_MHz[iosc]*2.0*np.pi/1000.0  # Scale to rad/ns
-            mystring += "control_bounds" + str(iosc) + " = " + str(initval) + "\n"
+                boundval = self.maxctrl_MHz[iosc]*2.0*np.pi/1000.0  # Scale to rad/ns
+            mystring += "control_bounds" + str(iosc) + " = " + str(boundval) + "\n"
             mystring += "carrier_frequency" + str(iosc) + " = "
             omi = self.carrier_frequency[iosc]
             for j in range(len(omi)):
@@ -265,26 +301,27 @@ class QuandaryConfig:
             mystring += "\n"
         mystring += "control_enforceBC = " + str(self.control_enforce_BC)+ "\n"
         if len(self._gatefilename) > 0:
-            mystring += "optim_target = gate, fromfile, " + self._gatefilename + "\n"
+            mystring += "optim_target = " + self.optim_target + ", " + self._gatefilename + "\n"
         else: 
             mystring += "optim_target = " + str(self.optim_target) + "\n"
         mystring += "optim_objective = " + str(self.costfunction) + "\n"
         mystring += "gate_rot_freq = 0.0\n"
         mystring += "optim_weights= 1.0\n"
-        mystring += "optim_atol= 1e-5\n"
+        mystring += "optim_atol= 1e-4\n"
         mystring += "optim_rtol= 1e-4\n"
         mystring += "optim_dxtol = 1e-8\n"
         mystring += "optim_ftol= " + str(self.tol_costfunc) + "\n"
         mystring += "optim_inftol= " + str(self.tol_infidelity) + "\n"
         mystring += "optim_maxiter= " + str(self.maxiter) + "\n"
         mystring += "optim_regul= " + str(self.gamma_tik0) + "\n"
-        mystring += "optim_penalty= 1.0\n"
+        mystring += "optim_regul_interpolate= " + str(self.gamma_tik0_interpolate) + "\n"
+        mystring += "optim_penalty= " + str(self.gamma_leakage) + "\n"
         mystring += "optim_penalty_param= 0.0\n"
         mystring += "optim_penalty_dpdm= " + str(self.gamma_dpdm) + "\n"
         mystring += "optim_penalty_energy= " + str(self.gamma_energy) + "\n"
         mystring += "datadir= ./\n"
         for iosc in range(len(self.Ne)):
-            mystring += "output" + str(iosc) + "=expectedEnergy, population\n"
+            mystring += "output" + str(iosc) + "=expectedEnergy, population, fullstate\n"
         mystring += "output_frequency = 1\n"
         mystring += "optim_monitor_frequency = " + str(self.print_frequency_iter) + "\n"
         mystring += "runtype = " + runtype + "\n"
@@ -297,6 +334,8 @@ class QuandaryConfig:
         if not self.standardmodel:
             mystring += "hamiltonian_file= "+str(self._hamiltonian_filename)+"\n"
         mystring += "timestepper = "+str(self.timestepper)+ "\n"
+        if self.rand_seed is not None and self.rand_seed >= 0:
+            mystring += "rand_seed = "+str(int(self.rand_seed))+ "\n"
 
         # Write the file
         outpath = datadir+"/config.cfg"
@@ -322,9 +361,15 @@ def quandary_run(config: QuandaryConfig, *, runtype="optimization", ncores=-1, d
     # Write the configuration to file
     config_filename = config.dump(runtype=runtype, datadir=datadir)
 
-    # Set default number of cores to dim(H), unless otherwise specified
+    # Set flag for lindblad solver or Schroedinger solver. This determines the number of initial conditions, and dimension of state.
+    lindblad_solver = True if (len(config.T1) > 0 or len(config.T2) > 0) else False
+
+    # Set default number of cores to the number of initial conditions, unless otherwise specified
     if ncores == -1:
-        ncores = np.prod(config.Ne) 
+        ninit = np.prod(config.Ne) if config.initialcondition[0:4] != "pure" else 1
+        if lindblad_solver:
+            ninit = ninit**2
+        ncores = ninit
 
     # Execute subprocess to run Quandary
     err = execute(runtype=runtype, ncores=ncores, config_filename=config_filename, datadir=datadir, quandary_exec=quandary_exec, verbose=config.verbose, cygwin=cygwin)
@@ -333,14 +378,15 @@ def quandary_run(config: QuandaryConfig, *, runtype="optimization", ncores=-1, d
         print("Quandary data dir: ", datadir, "\n")
 
     # Get results from quandary output files
-    time, pt, qt, expectedEnergy, popt, infidelity, optim_hist= get_results(Ne=config.Ne, datadir=datadir)
+    time, pt, qt, uT, expectedEnergy, population, popt, infidelity, optim_hist = get_results(Ne=config.Ne, Ng=config.Ng, datadir=datadir, lindblad_solver=lindblad_solver, initialcondition=config.initialcondition)
 
     # Store some results in the config file
-    config.optim_hist = optim_hist[:]
+    config.optim_hist = optim_hist
     config.popt = popt[:]
     config.time = time[:]
+    config.uT   = uT.copy()
 
-    return pt, qt, expectedEnergy, infidelity
+    return config.time, pt, qt, infidelity, expectedEnergy, population
 
 
 ##
@@ -388,9 +434,8 @@ def execute(*, runtype="simulation", ncores=1, config_filename="config.cfg", dat
         p.stdin.close()
         std_out, std_err = p.communicate()
         # Print stdout and stderr
-        if verbose:
-            print(std_out.strip().decode('ascii'))
-            print(std_err.strip().decode('ascii'))
+        print(std_out.strip().decode('ascii'))
+        print(std_err.strip().decode('ascii'))
 
     # Return to previous directory
     os.chdir(dir_org)
@@ -404,38 +449,92 @@ def execute(*, runtype="simulation", ncores=1, config_filename="config.cfg", dat
 ##
 # Helper function to gather results from Quandaries output directory
 ##
-def get_results(*, Ne=[], datadir="./"):
+def get_results(*, Ne=[], Ng=[], datadir="./", lindblad_solver=False, initialcondition="basis"):
     dataout_dir = datadir + "/"
     
     # Get control parameters
+    filename = dataout_dir + "/params.dat"
     try:
-        pcof = np.loadtxt(dataout_dir + "/params.dat").astype(float)
+        pcof = np.loadtxt(filename).astype(float)
     except:
+        print("Can't read control coefficients from ", filename)
         pcof=[]
 
     # Get optimization history information
+    filename = dataout_dir + "/optim_history.dat"
     try:
-        optim_hist = np.loadtxt(dataout_dir + "/optim_history.dat")
+        optim_hist_tmp = np.loadtxt(filename)
     except:
-        optim_hist = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        print("Can't read optimization history from ", filename)
+        optim_hist_tmp = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 
-    if optim_hist.ndim == 2:
-        optim_last = optim_hist[-1]
+    if optim_hist_tmp.ndim == 2:
+        optim_last = optim_hist_tmp[-1]
     else:
-        optim_last = optim_hist
+        optim_last = optim_hist_tmp
+        optim_hist_tmp = np.array([optim_hist_tmp])
     infid_last = 1.0 - optim_last[4]
     tikhonov_last = optim_last[6]
     dpdm_penalty_last = optim_last[8] 
 
+    # Put optimization history into a dictionary: 
+    optim_hist = {
+        "Iters"                  : optim_hist_tmp[:,0],
+        "Gradient"               : optim_hist_tmp[:,2],
+        "Fidelity"               : optim_hist_tmp[:,4],
+        "Cost"                   : optim_hist_tmp[:,5],
+        "Tikhonov"               : optim_hist_tmp[:,6],
+        "Penalty-Leakage"        : optim_hist_tmp[:,7],
+        "Penalty-StateVariation" : optim_hist_tmp[:,8],
+        "Penalty-TotalEnergy"    : optim_hist_tmp[:,9],
+    }
+
+    # Number of initial conditions
+    ninit = np.prod(Ne) if initialcondition[0:4] != "pure" else 1
+    if lindblad_solver:
+        ninit = ninit**2
+
     # Get the time-evolution of the expected energy for each qubit, for each initial condition
     expectedEnergy = [[] for _ in range(len(Ne))]
     for iosc in range(len(Ne)):
-        for iinit in range(np.prod(Ne)):
+        for iinit in range(ninit):
+            filename = dataout_dir + "./expected"+str(iosc)+".iinit"+str(iinit).zfill(4)+".dat"
             try:
-                x = np.loadtxt(dataout_dir + "./expected"+str(iosc)+".iinit"+str(iinit).zfill(4)+".dat")
-                expectedEnergy[iosc].append(x[:,1])    # first column is time, second column is expected energy
+                x = np.loadtxt(filename)
+                expectedEnergy[iosc].append(x[:,1])    # 0th column is time, second column is expected energy
             except:
-                continue
+                print("Can't read expected energy from ", filename)
+
+    # Get population for each qubit, for each initial condition
+    population = [[] for _ in range(len(Ne))]
+    for iosc in range(len(Ne)):
+        for iinit in range(ninit):
+            filename = dataout_dir + "./population"+str(iosc)+".iinit"+str(iinit).zfill(4)+".dat"
+            try:
+                x = np.loadtxt(filename)
+                population[iosc].append(x[:,1:].transpose())    # first column is time
+            except:
+                print("Can't read population from ", filename)
+
+    # Get last time-step unitary
+    Ntot = [i+j for i,j in zip(Ne,Ng)]
+    ndim = np.prod(Ntot) if not lindblad_solver else np.prod(Ntot)**2
+    uT = np.zeros((ndim, ninit), dtype=complex)
+    for iinit in range(ninit):
+        file_index = str(iinit).zfill(4)
+        try:
+            xre = np.loadtxt(f"{dataout_dir}/rho_Re.iinit{file_index}.dat", skiprows=1, usecols=range(1, ndim+1))[-1]
+            uT[:, iinit] = xre 
+        except:
+            name = dataout_dir+"/rho_Re.iinit"+str(file_index)+".dat"
+            print("Can't read from ", name)
+        try:
+            xim = np.loadtxt(f"{dataout_dir}/rho_Im.iinit{file_index}.dat", skiprows=1, usecols=range(1, ndim+1))[-1]
+            uT[:, iinit] += 1j * xim
+        except:
+            name = dataout_dir+"/rho_Im.iinit"+str(file_index)+".dat"
+            print("Can't read from ", name)
+        # uT[:, iinit] = xre + 1j * xim
 
     # Get the control pulses for each qubit
     pt = []
@@ -443,9 +542,11 @@ def get_results(*, Ne=[], datadir="./"):
     ft = []
     for iosc in range(len(Ne)):
         # Read the control pulse file
+        filename = dataout_dir + "./control"+str(iosc)+".dat"
         try:
-            x = np.loadtxt(dataout_dir + "./control"+str(iosc)+".dat")
+            x = np.loadtxt(filename)
         except:
+            print("Can't read control pulses from $filename !")
             x = np.zeros((1,4))
         # Extract the pulses 
         time = x[:,0]   # Time domain
@@ -453,29 +554,34 @@ def get_results(*, Ne=[], datadir="./"):
         qt.append([x[n,2]/(2*np.pi)*1e+3 for n in range(len(x[:,0]))])     # Rot frame q(t), MHz
         ft.append([x[n,3]/(2*np.pi)*1e+3 for n in range(len(x[:,0]))])     # Lab frame f(t)
 
-    return time, pt, qt, expectedEnergy, pcof, infid_last, optim_hist
+    return time, pt, qt, uT, expectedEnergy, population, pcof, infid_last, optim_hist
 
 
 ##
 # Helper function to re-evaluate the controls on a different time grid for a specific sample rate
 #
-def evalControls(config, *, pcof, samplerate, quandary_exec="/absolute/path/to/quandary/main", datadir="./data_controls", cygwin=False):
+def evalControls(config, *, pcof=[], points_per_ns=1, quandary_exec="/absolute/path/to/quandary/main", datadir="./run_dir", cygwin=False):
 
-    # Copy original setting and overwrite
+    # Copy original setting and overwrite number of time steps for simulation
     nsteps_org = config.nsteps
-    pcof0_org = config.pcof0[:]
-    config.nsteps = int(np.ceil(config.T / samplerate))
-    config.pcof0 = pcof[:]
+    config.nsteps = int(np.floor(config.T * points_per_ns))
+    
+    # Pass pcof to the configuration, if given
+    if len(pcof) > 0:
+        config.pcof0 = pcof[:]
 
     # Execute quandary in 'evalcontrols' mode
     runtype = 'evalcontrols'
     os.makedirs(datadir, exist_ok=True)
     configfile_eval= config.dump(runtype=runtype, datadir=datadir)
     err = execute(runtype=runtype, ncores=1, config_filename=configfile_eval, datadir=datadir, quandary_exec=quandary_exec, verbose=False, cygwin=cygwin)
-    time, pt, qt, _, _, _, _= get_results(Ne=config.Ne, datadir=datadir)
+    time, pt, qt, _, _, _, pcof, _, _ = get_results(Ne=config.Ne, Ng=config.Ng, datadir=datadir, lindblad_solver=False, initialcondition=config.initialcondition)
+
+    # Save pcof to config.popt
+    config.popt = pcof[:]
+    
     # Restore original setting
     config.nsteps = nsteps_org
-    config.pcof0 = pcof0_org[:]
 
     return time, pt, qt
 
@@ -484,18 +590,23 @@ def evalControls(config, *, pcof, samplerate, quandary_exec="/absolute/path/to/q
 # Note: The estimate does not account for quickly varying signals or a large number of splines. Double check that at least 2-3 points per spline are present to resolve control function. #TODO: Automate this
 ##
 def estimate_timesteps(*, T=1.0, Hsys=[], Hc_re=[], Hc_im=[], maxctrl_MHz=[], Pmin=40):
-    assert len(maxctrl_MHz) >= len(Hc_re)
+
+    # Get estimated control pulse amplitude
+    est_ctrl_MHz = maxctrl_MHz[:]
+    if len(maxctrl_MHz) == 0:
+        est_ctrl_MHz = [10.0 for _ in range(max(len(Hc_re), len(Hc_im)))] 
 
     # Set up Hsys +  maxctrl*Hcontrol
     K1 = np.copy(Hsys) 
+
     for i in range(len(Hc_re)):
-        max_radns = maxctrl_MHz[i]*2.0*np.pi/1e+3
+        est_radns = est_ctrl_MHz[i]*2.0*np.pi/1e+3
         if len(Hc_re[i])>0:
-            K1 += max_radns * Hc_re[i] 
+            K1 += est_radns * Hc_re[i] 
     for i in range(len(Hc_im)):
-        max_radns = maxctrl_MHz[i]*2.0*np.pi/1e+3
+        est_radns = est_ctrl_MHz[i]*2.0*np.pi/1e+3
         if len(Hc_im[i])>0:
-            K1 = K1 + 1j * max_radns * Hc_im[i] # can't use += due to type!
+            K1 = K1 + 1j * est_radns * Hc_im[i] # can't use += due to type!
     
     # Estimate time step
     eigenvalues = np.linalg.eigvals(K1)
@@ -520,14 +631,29 @@ def eigen_and_reorder(H0, verbose=False):
     evals = evals[reord]
     evects = evects[:,reord]
 
-    # Find the permutation that reorder the eigenvectors such that they are closer to the identity (max. val per column should be in the diagonal positions)
-    maxrow = np.zeros(Ntot, dtype=np.int32)
-    for j in range(Ntot):
-        # index of the maximum value in each eigenvector
-        maxrow[j] = np.argmax(np.abs(evects[:,j])) 
-    s_perm = np.argsort(maxrow)   
-    evects = evects[:,s_perm]
-    evals = evals[s_perm]
+    # Find the column index corresponding to the largest element in each row of evects 
+    max_col = np.zeros(Ntot, dtype=np.int32)
+    for row in range(Ntot):
+        max_col[row] = np.argmax(np.abs(evects[row,:]))
+
+    # test the error detection
+    # max_col[1] = max_col[0]
+
+    # loop over all columns and check max_col for duplicates
+    Ndup_col = 0 
+    for row in range(Ntot-1): 
+        for k in range(row+1, Ntot):
+            if max_col[row] == max_col[k]:
+                Ndup_col += 1
+                print("Error: detected identical max_col =", max_col[row], "for rows", row, "and", k)
+
+
+    if Ndup_col > 0:
+        print("Found", Ndup_col, "duplicate column indices in max_col array")
+        raise ValueError('Permutation of eigen-vector matrix failed')
+
+    evects = evects[:,max_col]
+    evals = evals[max_col]
     
     # Make sure all diagonal elements are positive
     for j in range(Ntot):
@@ -729,7 +855,9 @@ def plot_pulse(Ne, time, pt, qt):
         plt.plot(time, qt[iosc], "b", label="q(t)")
         plt.xlabel('time (ns)')
         plt.ylabel('Drive strength [MHz]')
-        plt.title('Qubit '+str(iosc))
+        maxp = max(np.abs(pt[iosc]))
+        maxq = max(np.abs(qt[iosc]))
+        plt.title('Qubit '+str(iosc)+'\n max. drive '+str(round(maxp,1))+", "+str(round(maxq,1))+" MHz")
         plt.legend(loc='lower right')
         plt.xlim([0.0, time[-1]])
     # plt.grid()
@@ -744,31 +872,144 @@ def plot_pulse(Ne, time, pt, qt):
 ##
 # Plot evolution of expected energy levels
 ##
-def plot_expectedEnergy(Ne, time, expectedEnergy, densitymatrix_form=False):
-    nplots = np.prod(Ne)
+def plot_expectedEnergy(Ne, time, expectedEnergy, *, lindblad_solver=False):
+    ninit = len(expectedEnergy[0])
+    nplots = ninit                    # one plot for each initial state
+    # nplots = np.prod(Ne)                # one plot for each initial state
     ncols = 2 if nplots >= 4 else 1     # 2 rows if more than 3 plots
-    nrows = int(np.ceil(np.prod(Ne)/ncols))
+    nrows = int(np.ceil(nplots/ncols))
     figsizex = 6.4*nrows*0.75 
     figsizey = 4.8*nrows*0.75 
     fig = plt.figure(figsize=(figsizex,figsizey))
     for iplot in range(nplots):
-        iinit = iplot if not densitymatrix_form else iplot*np.prod(Ne) + iplot
+        iinit = iplot if not lindblad_solver else iplot*nplots + iplot
         plt.subplot(nrows, ncols, iplot+1)
         plt.figsize=(15, 15)
         for iosc in range(len(Ne)):
-            label = 'Qubit '+str(iosc) if len(Ne)>0 else ''
+            label = 'Qubit '+str(iosc) if len(Ne)>1 else ''
             plt.plot(time, expectedEnergy[iosc][iinit], label=label)
         plt.xlabel('time (ns)')
         plt.ylabel('expected energy')
         plt.ylim([0.0-1e-2, Ne[0]-1.0 + 1e-2])
         plt.xlim([0.0, time[-1]])
-        binary_ID = iinit if len(Ne) == 1 else bin(iinit).replace("0b", "").zfill(len(Ne))
-        plt.title("init |"+str(binary_ID)+">")
+        binary_ID = iplot if len(Ne) == 1 else bin(iplot).replace("0b", "").zfill(len(Ne))
+        plt.title("from |"+str(binary_ID)+">")
         plt.legend(loc='lower right')
     plt.subplots_adjust(hspace=0.5)
     plt.subplots_adjust(wspace=0.5)
     plt.draw()
     print("\nPlotting expected energy dynamics")
+    print("-> Press <enter> to proceed.")
+    plt.waitforbuttonpress(1); 
+    input(); 
+    plt.close(fig)
+
+
+##
+# Plot evolution of population
+##
+def plot_population(Ne, time, population, *, lindblad_solver=False):
+    ninit = len(population[0])
+    # nplots = np.prod(Ne)                # one plot for each initial state
+    nplots = ninit                      # one plot for each initial state
+    ncols = 2 if nplots >= 4 else 1     # 2 rows if more than 3 plots
+    nrows = int(np.ceil(nplots/ncols))
+    figsizex = 6.4*nrows*0.75 
+    figsizey = 4.8*nrows*0.75 
+    fig = plt.figure(figsize=(figsizex,figsizey))
+
+    # Iterate over initial conditions (one plot for each)
+    for iplot in range(nplots):
+        iinit = iplot if not lindblad_solver else iplot*nplots + iplot
+        plt.subplot(nrows, ncols, iplot+1)
+        plt.figsize=(15, 15)
+        for iosc in range(len(Ne)):
+            for istate in range(Ne[iosc]):
+                label = 'Qubit '+str(iosc) if len(Ne)>1 else ''
+                label = label + " |"+str(istate)+">"
+                plt.plot(time, population[iosc][iinit][istate], label=label)
+        plt.xlabel('time (ns)')
+        plt.ylabel('population')
+        plt.ylim([0.0-1e-4, 1.0 + 1e-2])
+        plt.xlim([0.0, time[-1]])
+        binary_ID = iplot if len(Ne) == 1 else bin(iplot).replace("0b", "").zfill(len(Ne))
+        plt.title("from |"+str(binary_ID)+">")
+        plt.legend(loc='lower right')
+    plt.subplots_adjust(hspace=0.5)
+    plt.subplots_adjust(wspace=0.5)
+    plt.draw()
+    print("\nPlotting population dynamics")
+    print("-> Press <enter> to proceed.")
+    plt.waitforbuttonpress(1); 
+    input(); 
+    plt.close(fig)
+
+
+def plot_results_1osc(myconfig, p, q, expectedEnergy, population):
+
+    fig, ax = plt.subplots(2, 3, figsize=(20,8))
+    fig.subplots_adjust(hspace=0.3)
+
+    t = myconfig.time
+
+    # Plot pulses
+    ax[0,0].plot(t, p, label='I') # y label: MHz
+    ax[0,0].plot(t, q, label='Q') # y label: MHz
+    ax[0,0].set_ylabel('Pulse amplitude (MHz)')
+    ax[0,0].set_xlabel('Time (ns)')
+    ax[0,0].legend()
+    ax[0,0].grid()
+
+
+    # Compute and plot FFT
+    zlist = np.array(p)*1e-3 + 1j*np.array(q)*1e-3
+    fft = np.fft.fft(zlist)
+    dt = myconfig.T / myconfig.nsteps
+    fftfr = np.fft.fftfreq(len(zlist), d=dt)
+
+    ax[0,1].scatter(fftfr*1e3, np.abs(fft)**2)
+    ax[0,1].set_ylabel('FFT')
+    ax[0,1].set_xlabel('Frequency (MHz)')
+    ax[0,1].grid()
+    ax[0,1].set_title('FFT')
+    ax[0,1].set_yscale('log')
+    ax[0,1].set_xlim(-500, 500)
+    ax[0,1].set_ylim(1e-8, 1e5)
+
+    # Plot Populations for each initial condition 
+    for iinit in range(len(population)):  # for each of the 3 initial states
+        row = 1
+        col = iinit
+            
+        for istate in range(myconfig.Ne[0]): # for each essential level
+            label = "|"+str(istate)+">"
+            ax[row, col].plot(t, population[iinit][istate], label=label)
+            # ax[row, col+1].plot(np.arange(0, numgate), prob_me_gate[i].real, label=str(i))
+            
+        ax[row, col].set_xlabel('Time (ns)')
+        ax[row, col].set_ylabel('Population')
+        ax[row, col].legend()
+        ax[row, col].set_title('Populations from |%d>' % iinit)
+        ax[row, col].grid()
+        
+        # ax[row, col+1].set_xlabel('Gate repetition')
+        # ax[row, col+1].set_ylabel('Population')
+        # ax[row, col+1].legend()
+        # ax[row, col+1].set_title('ME solve, starting from %d' % state)
+
+    # Plot expected Energy
+    row, col = 0, 2
+    for iinit in range(len(expectedEnergy)):
+        label = 'from |'+str(iinit)+'>' 
+        ax[row, col].plot(t, expectedEnergy[iinit], label=label)
+    ax[row, col].set_xlabel('Time (ns)')
+    ax[row, col].set_ylabel('Expected Energy Level')
+    ax[row, col].legend()
+    ax[row, col].set_title('Expected Energy Level')
+    ax[row, col].grid()
+
+    plt.draw()
+    print("\nPlotting results...")
     print("-> Press <enter> to proceed.")
     plt.waitforbuttonpress(1); 
     input(); 

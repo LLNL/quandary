@@ -3,31 +3,28 @@ from quandary import *
 ## Two qubit test case: CNOT gate, two levels each, no guard levels ##
 
 # 01 transition frequencies [GHz] per oscillator
-freq01 = [4.10595, 4.8152] 
-
-# Anharmonicities [GHz] per oscillator
-selfkerr = [0.2198, 0.2252]
+freq01 = [4.80595, 4.8601] 
 
 # Coupling strength [GHz] (Format [0<->1, 0<->2, ..., 1<->2, ... ])
-crosskerr = [0.01]  # Crossker coupling of qubit 0<->1
+Jkl = [0.005]  # Dipole-Dipole coupling of qubit 0<->1
 
 # Frequency of rotations for computational frame [GHz] per oscillator
 favg = sum(freq01)/len(freq01)
 rotfreq = favg*np.ones(len(freq01))
 
-# If Lindblad solver: Specify decay (T1) and dephasing (T2) [ns]. Make sure to also pass those to the QuandaryConfig constructor if you uncomment this.
-# T1 = [] # [100.0, 110.0]
-# T2 = [] # [80.0, 90.0]
+# # If Lindblad solver: Specify decay (T1) and dephasing (T2) [ns]. Make sure to also pass those to the QuandaryConfig constructor if you uncomment this.
+# T1 = [100000.0, 110000.0]
+# T2 = [80000.0, 90000.0]
 
 # Set the time duration (ns)
-T = 150.0
+T = 200.0
 
-# Bounds on the control pulse (in rotational frame, p and q) [MHz] per oscillator
-maxctrl_MHz = 10.0*np.ones(len(freq01))  
+# Set bounds on the control pulse amplitude (in rotational frame, p and q) [MHz] per oscillator
+maxctrl_MHz = [10.0 for _ in range(len(freq01))]
 
-# Set the amplitude of initial (randomized) control vector for each oscillator 
-amp_frac = 0.9
-initctrl_MHz = [amp_frac * maxctrl_MHz[i] for i in range(len(freq01))]
+# Set the amplitude of initial control vector for each oscillator [MHz]
+initctrl_MHz = [10.0 for _ in range(len(freq01))]  
+randomize_init_ctrl = False     # Use constant initial control pulse
 
 # Set up the CNOT target gate
 unitary = np.identity(4)
@@ -37,25 +34,27 @@ unitary[2,3] = 1.0
 unitary[3,2] = 1.0
 # print("Target gate: ", unitary)
 
-# Quandary run options
-runtype = "optimization" # "simulation", or "gradient", or "optimization"
-quandary_exec="/Users/guenther5/Numerics/quandary/main"
-# quandary_exec="/cygdrive/c/Users/scada-125/quandary/main.exe"
-ncores = 4  # Number of cores 
-datadir = "./CNOT_run_dir"  # Compute and output directory 
+# Flag for printing out more information
 verbose = False
 
-# Prepare Quandary configuration
-myconfig = QuandaryConfig(freq01=freq01, selfkerr=selfkerr, crosskerr=crosskerr, rotfreq=rotfreq, T=T, maxctrl_MHz=maxctrl_MHz, initctrl_MHz=initctrl_MHz, targetgate=unitary, verbose=verbose)
+# Set up the Quandary configuration for this test case
+myconfig = QuandaryConfig(freq01=freq01, Jkl=Jkl, rotfreq=rotfreq, T=T, initctrl_MHz=initctrl_MHz, randomize_init_ctrl=randomize_init_ctrl, maxctrl_MHz=maxctrl_MHz, targetgate=unitary, verbose=verbose) # potentially add T1=T1, T2=T2 for Lindblad solver with decay and decoherence
+
+# Set some run options for Quandary
+runtype = "optimization"    # "simulation", or "gradient", or "optimization"
+quandary_exec="/Users/guenther5/Numerics/quandary/main" # Absolute path to Quandary's executable
+ncores = 4  		    # Number of cores. Up to 8 for Lindblad solver, up to 4 for Schroedinger solver
+datadir = "./CNOT_run_dir"  # Compute and output directory 
+
+# Potentially, load initial control parameters from a file. 
+# myconfig.pcof0_filename = os.getcwd() + "/"+datadir+"/params.dat"  # absolute path!
 
 # Execute quandary
-pt, qt, expectedEnergy, infidelity = quandary_run(myconfig, quandary_exec=quandary_exec, ncores=ncores, datadir=datadir)
-
-
+t, pt, qt, infidelity, expectedEnergy, population = quandary_run(myconfig, quandary_exec=quandary_exec, ncores=ncores, datadir=datadir, runtype=runtype)
 print(f"Fidelity = {1.0 - infidelity}")
 
 # Plot the control pulse and expected energy level evolution
 if True:
-	plot_pulse(myconfig.Ne, myconfig.time, pt, qt)
-	plot_expectedEnergy(myconfig.Ne, myconfig.time, expectedEnergy)
-
+	plot_pulse(myconfig.Ne, t, pt, qt)
+	plot_expectedEnergy(myconfig.Ne, t, expectedEnergy) # if T1 or T2 decoherence (Lindblad solver), also pass the argument 'lindblad_solver=True' to this function.
+	# plot_population(myconfig.Ne, myconfig.time, population)

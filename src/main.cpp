@@ -21,11 +21,6 @@
 
 int main(int argc,char **argv)
 {
-
-  // Initialize random number generator 
-  srand(1);  // fixed seed
-  // srand(time(0));  // random seed
-
   char filename[255];
   PetscErrorCode ierr;
 
@@ -221,7 +216,7 @@ int main(int argc,char **argv)
   }
   copyLast(decay_time, nlevels.size());
   copyLast(dephase_time, nlevels.size());
-  
+
   // Get control segment types, carrierwaves and control initialization
   std::string default_seg_str = "spline, 10, 0.0, "+std::to_string(total_time); // Default for first oscillator control segment
   std::string default_init_str = "constant, 0.0";                               // Default for first oscillator initialization
@@ -411,6 +406,7 @@ int main(int argc,char **argv)
   /* --- Solve primal --- */
   if (runtype == RunType::SIMULATION) {
     optimctx->getStartingPoint(xinit);
+    VecCopy(xinit, optimctx->xinit); // Store the initial guess
     if (mpirank_world == 0 && !quietmode) printf("\nStarting primal solver... \n");
     objective = optimctx->evalF(xinit);
     if (mpirank_world == 0 && !quietmode) printf("\nTotal objective = %1.14e, \n", objective);
@@ -420,6 +416,7 @@ int main(int argc,char **argv)
   /* --- Solve adjoint --- */
   if (runtype == RunType::GRADIENT) {
     optimctx->getStartingPoint(xinit);
+    VecCopy(xinit, optimctx->xinit); // Store the initial guess
     if (mpirank_world == 0 && !quietmode) printf("\nStarting adjoint solver...\n");
     optimctx->evalGradF(xinit, grad);
     VecNorm(grad, NORM_2, &gnorm);
@@ -434,6 +431,7 @@ int main(int argc,char **argv)
   if (runtype == RunType::OPTIMIZATION) {
     /* Set initial starting point */
     optimctx->getStartingPoint(xinit);
+    VecCopy(xinit, optimctx->xinit); // Store the initial guess
     if (mpirank_world == 0 && !quietmode) printf("\nStarting Optimization solver ... \n");
     optimctx->solve(xinit);
     optimctx->getSolution(&opt);

@@ -52,23 +52,23 @@ print("Target gate: ", unitary)
 
 # Quandary run options
 runtype = "optimization" # "simulation" # "simulation", or "gradient", or "optimization"
-quandary_exec="/Users/guenther5/Numerics/quandary/main"
-# quandary_exec="/Users/petersson1/src/quandary/main"
-ncores = np.prod(Ne)  # Number of cores 
+# quandary_exec="/Users/guenther5/Numerics/quandary/main"
+quandary_exec="/Users/petersson1/src/quandary/main"
+ncores = 4 # np.prod(Ne)  # Number of cores 
 datadir = "./SWAP13_guard_run_dir"  # Compute and output directory 
-verbose = False
+verbose = True
 
 
 # Prepare Quandary
 myconfig = QuandaryConfig(Ne=Ne, Ng=Ng, freq01=freq01, selfkerr=selfkerr, Jkl=Jkl, rotfreq=rotfreq, T=T, maxctrl_MHz=maxctrl_MHz, initctrl_MHz=initctrl_MHz, targetgate=unitary, verbose=verbose, dtau=dtau, Pmin=Pmin, cw_amp_thres=cw_amp_thres, cw_prox_thres=cw_prox_thres)
 
 # Execute quandary
-pt, qt, expectedEnergy, infidelity = quandary_run(myconfig, quandary_exec=quandary_exec, ncores=ncores, datadir=datadir, runtype=runtype)
+t, pt, qt, infidelity, expectedEnergy, population = quandary_run(myconfig, quandary_exec=quandary_exec, ncores=ncores, datadir=datadir, runtype=runtype)
 
 print(f"Fidelity = {1.0 - infidelity}")
 print("\n Quandary data directory: ", datadir)
 
 # Plot the control pulse and expected energy level evolution
 if True:
-	plot_pulse(myconfig.Ne, myconfig.time, pt, qt)
-	plot_expectedEnergy(myconfig.Ne, myconfig.time, expectedEnergy)
+	plot_pulse(myconfig.Ne, t, pt, qt)
+	plot_expectedEnergy(myconfig.Ne, t, expectedEnergy)
