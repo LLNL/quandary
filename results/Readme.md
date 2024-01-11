@@ -1,13 +1,15 @@
-2x2_cnot:
-  * Optimizes for a CNOT gate on two coupled qubits with 2 levels each. System configuration for the 'Geb' resonator at LLNL.
+cnot:
+  * Optimizes for a CNOT gate on two coupled qubits each modelled with 2 energy levels. System configuration for the 'Geb' resonator at LLNL.
   * T = 200ns, time step size = 0.1ns
-  * run optimization from scratch (using random initial controls) with config file 'cnot.cfg', or 
-  * run forward simulation of the optimized controls (params_optimized.dat) using 'cnot_FWD_optimized.cfg'
-  * Optimization in open system setting (density matrix) using three initial states a la C. Koch
+  * 'cnot.cfg': Runs a closed-system (Schroedinger eq.) optimization using random initial control parameters. Can be run on up to 4 cores (one for each initial basis state)
+  * 'cnot_FWD_optimized.cfg': Evaluates the fidelity of the control parameters stored in 'params_optimized.dat' by forward simulation (Schroedinger's equation)
+  * 'cnot_FWD_optimized_withnoise.cfg': Same as above, but simulates with Lindblads master equation (with decoherence). 
 
 swap02:
-  * Considers one qutrid (3 levels, 1 guard level)
-  * Optimizes for a SWAP02 gate that swapps the |0> with the |1> state. 
+  * Considers a qudid modelled with 3 essential energy levels and one guard level
+  * Optimizes for a SWAP02 gate that swaps the |0> with the |1> state. 
+  * Schroedinger solver (-> closed system optimization)
+  * Can be run on up to 3 compute cores (one for each initial condition)
 
 3x20_AliceCavity_cooling:
   * Models a qudit (3 levels, "Alice") coupled to a readout cavity (20 levels). System configuration for the 'Nut' resonator at LLNL.
