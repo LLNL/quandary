@@ -477,6 +477,31 @@ CQNOT::CQNOT(std::vector<int> nlevels_, std::vector<int> nessential_, double tim
 CQNOT::~CQNOT(){}
 
 
+QFT::QFT(std::vector<int> nlevels_, std::vector<int> nessential_, double time_, std::vector<double> gate_rot_freq_, LindbladType lindbladtype_, bool quietmode) : Gate(nlevels_, nessential_, time_, gate_rot_freq_, lindbladtype_, quietmode) {
+
+  double sq = sqrt(dim_ess);
+
+  for (int j=0; j<dim_ess; j++){
+      for (int k = 0; k<dim_ess; k++){
+          double val_re = cos(2.0*M_PI*j*k/dim_ess) / sq;
+          double val_im = sin(2.0*M_PI*j*k/dim_ess) / sq;
+          MatSetValue(V_re, j, k, val_re, INSERT_VALUES);
+          MatSetValue(V_im, j, k, val_im, INSERT_VALUES);
+      }
+  }
+
+  MatAssemblyBegin(V_re, MAT_FINAL_ASSEMBLY);
+  MatAssemblyBegin(V_im, MAT_FINAL_ASSEMBLY);
+  MatAssemblyEnd(V_re, MAT_FINAL_ASSEMBLY);
+  MatAssemblyEnd(V_im, MAT_FINAL_ASSEMBLY);
+
+  /* assemble vectorized rotated target gate \bar VP \kron VP from V=V_re + i V_im */
+  assembleGate();
+}
+
+QFT::~QFT(){}
+
+
 FromFile::FromFile(std::vector<int> nlevels_, std::vector<int> nessential_, double time_, std::vector<double> gate_rot_freq_, LindbladType lindbladtype_, std::string filename, bool quietmode) : Gate(nlevels_, nessential_, time_, gate_rot_freq_, lindbladtype_, quietmode){
 
   // Read the gate from a file
@@ -516,3 +541,4 @@ FromFile::FromFile(std::vector<int> nlevels_, std::vector<int> nessential_, doub
 }
 
 FromFile::~FromFile(){}
+
