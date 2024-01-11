@@ -163,7 +163,8 @@ def read_config(filename):
                 case("optim_maxiter") or \
                 case("linearsolver_maxiter") or \
                 case("output_frequency") or \
-                case("optim_monitor_frequency") :
+                case("optim_monitor_frequency") or \
+                case("rand_seed") :
                 data_dict[this_param] = int(this_value)
                 break
 
@@ -228,7 +229,6 @@ def read_config(filename):
                case("usematfree") or \
                case("gamma_regul_interpolate") or \
                case("linearsolver_type") or \
-               case("python_file") or \
                case("timestepper") or \
                case("apply_pipulse") :
                data_dict[this_param] = this_value
