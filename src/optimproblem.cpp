@@ -41,14 +41,13 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
       n += timestepper->mastereq->getOscillator(ioscil)->getNParams(); 
   }
   ndesign = n;
-  if (mpirank_world == 0 && !quietmode) std::cout<< "ndesign = " << ndesign << std::endl;
+  if (mpirank_world == 0 && !quietmode) std::cout<< "Number of control parameters: " << ndesign << std::endl;
 
   /* Store other optimization parameters */
   gamma_tik = config.GetDoubleParam("optim_regul", 1e-4);
   gamma_tik_interpolate = config.GetBoolParam("optim_regul_interpolate", false, false);
   gatol = config.GetDoubleParam("optim_atol", 1e-8);
   fatol = config.GetDoubleParam("optim_ftol", 1e-8);
-  dxtol = config.GetDoubleParam("optim_dxtol", 1e-8);
   inftol = config.GetDoubleParam("optim_inftol", 1e-5);
   grtol = config.GetDoubleParam("optim_rtol", 1e-4);
   maxiter = config.GetIntParam("optim_maxiter", 200);
@@ -394,15 +393,10 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   /* Allocate auxiliary vector */
   mygrad = new double[ndesign];
 
-  /* Allocat xprev, xinit, xtmp */
-  VecCreateSeq(PETSC_COMM_SELF, ndesign, &xprev);
-  VecSetFromOptions(xprev);
-  VecZeroEntries(xprev);
-
+  /* Allocat xinit, xtmp */
   VecCreateSeq(PETSC_COMM_SELF, ndesign, &xinit);
   VecSetFromOptions(xinit);
   VecZeroEntries(xinit);
-
   VecCreateSeq(PETSC_COMM_SELF, ndesign, &xtmp);
   VecSetFromOptions(xtmp);
   VecZeroEntries(xtmp);
@@ -417,7 +411,6 @@ OptimProblem::~OptimProblem() {
 
   VecDestroy(&xlower);
   VecDestroy(&xupper);
-  VecDestroy(&xprev);
   VecDestroy(&xinit);
   VecDestroy(&xtmp);
 
@@ -810,42 +803,31 @@ PetscErrorCode TaoMonitor(Tao tao,void*ptr){
     std::cout<<  "    Objective             Tikhonov                Penalty-Leakage        Penalty-StateVar       Penalty-TotalEnergy " << std::endl;
   }
 
-  if (ctx->getMPIrank_world() == 0 && iter % ctx->output->optim_monitor_freq == 0) {
+  /* Additional Stopping criteria */
+  bool lastIter = false;
+  std::string finalReason_str = "";
+  if (1.0 - F_avg <= ctx->getInfTol()) {
+    finalReason_str = "Optimization converged with small infidelity.";
+    TaoSetConvergedReason(tao, TAO_CONVERGED_USER);
+    lastIter = true;
+  } else if (obj_cost <= ctx->getFaTol()) {
+    finalReason_str = "Optimization converged with small final time cost.";
+    TaoSetConvergedReason(tao, TAO_CONVERGED_USER);
+    lastIter = true;
+  } 
+
+
+  if (ctx->getMPIrank_world() == 0 && (iter == ctx->getMaxIter() || lastIter || iter % ctx->output->optim_monitor_freq == 0)) {
     std::cout<< iter <<  "  " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal << " + " << obj_penal_dpdm << " + " << obj_penal_energy;
     std::cout<< "  Fidelity = " << F_avg;
     std::cout<< "  ||Grad|| = " << gnorm;
     std::cout<< std::endl;
   }
 
-  /* Additional Stopping criteria */
-  if (1.0 - F_avg <= ctx->getInfTol()) {
-    if (ctx->getMPIrank_world() == 0) {
-     printf("Optimization finished with small infidelity.\n");
-    }
-    TaoSetConvergedReason(tao, TAO_CONVERGED_USER);
-  } else if (obj_cost <= ctx->getFaTol()) {
-    if (ctx->getMPIrank_world() == 0) {
-     printf("Optimization finished with small final time cost.\n");
-    }
-    TaoSetConvergedReason(tao, TAO_CONVERGED_USER);
-  } else if (iter > 1) { // Stop if delta x is smaller than tolerance (relative)
-    // Compute ||x - xprev||/||xprev||
-    double xnorm, dxnorm;
-    VecNorm(ctx->xprev, NORM_2, &xnorm);  // xnorm = ||x_k-1||
-    VecAXPY(ctx->xprev, -1.0, params);    // xprev =  x_k - x_k-1
-    VecNorm(ctx->xprev, NORM_2, &dxnorm);  // dxnorm = || x_k - x_k-1 ||
-    if (fabs(xnorm > 1e-15)) dxnorm = dxnorm / xnorm; 
-    // Stopping 
-    if (dxnorm <= ctx->getDxTol()) {
-      if (ctx->getMPIrank_world() == 0) {
-       printf("Optimization finished with small parameter update (%1.4e rel. update).\n", dxnorm);
-      }
-      TaoSetConvergedReason(tao, TAO_CONVERGED_USER); 
-    }
+if (ctx->getMPIrank_world() == 0 && lastIter){
+    std::cout<< finalReason_str << std::endl;
   }
-
-  /* Update xprev for next iteration */
-  VecCopy(params, ctx->xprev);
+ 
 
   return 0;
 }

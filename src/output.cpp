@@ -1,9 +1,9 @@
 #include "output.hpp"
 
 Output::Output(){
-  mpirank_world = 0;
-  mpirank_petsc = 0;
-  mpirank_init  = 0;
+  mpirank_world = -1;
+  mpirank_petsc = -1;
+  mpirank_init  = -1;
   optim_monitor_freq = 0;
   output_frequency = 0;
   optim_iter = 0;
@@ -33,7 +33,7 @@ Output::Output(MapParam& config, MPI_Comm comm_petsc, MPI_Comm comm_init, int no
   output_frequency = config.GetIntParam("output_frequency", 1);
   if (mpirank_world == 0) {
     char filename[255];
-    sprintf(filename, "%s/optim_history.dat", datadir.c_str());
+    snprintf(filename, 254, "%s/optim_history.dat", datadir.c_str());
     optimfile = fopen(filename, "w");
     fprintf(optimfile, "#iter    Objective           ||Pr(grad)||           LS step           F_avg           Terminal cost       Tikhonov-regul      Penalty-term       DpDm           Energy-term\n");
   } 
@@ -88,7 +88,7 @@ void Output::writeGradient(Vec grad){
     /* Print current gradients to file */
     FILE *file;
     // sprintf(filename, "%s/grad_iter%04d.dat", datadir.c_str(), optim_iter);
-    sprintf(filename, "%s/grad.dat", datadir.c_str());
+    snprintf(filename, 254, "%s/grad.dat", datadir.c_str());
     file = fopen(filename, "w");
 
     const PetscScalar* grad_ptr;
@@ -114,7 +114,7 @@ void Output::writeControls(Vec params, MasterEq* mastereq, int ntime, double dt)
     /* Print current parameters to file */
     FILE *file, *file_c;
     // sprintf(filename, "%s/params_iter%04d.dat", datadir.c_str(), optim_iter);
-    sprintf(filename, "%s/params.dat", datadir.c_str());
+    snprintf(filename, 254, "%s/params.dat", datadir.c_str());
     file = fopen(filename, "w");
 
     const PetscScalar* params_ptr;
@@ -129,7 +129,7 @@ void Output::writeControls(Vec params, MasterEq* mastereq, int ntime, double dt)
     /* Print control to file for each oscillator */
     mastereq->setControlAmplitudes(params);
     for (int ioscil = 0; ioscil < mastereq->getNOscillators(); ioscil++) {
-      sprintf(filename, "%s/control%d.dat", datadir.c_str(), ioscil);
+      snprintf(filename, 254, "%s/control%d.dat", datadir.c_str(), ioscil);
       file_c = fopen(filename, "w");
       fprintf(file_c, "# time         p(t) (rotating)          q(t) (rotating)        f(t) (labframe) \n");
 
@@ -154,15 +154,15 @@ void Output::writeControls(Vec params, MasterEq* mastereq, int ntime, double dt)
 void Output::openDataFiles(std::string prefix, int initid){
   char filename[255];
 
-  /* Flag to determine of this optimization iteration will write data output */
+  /* Flag to determine if this optimization iteration will write data output */
   bool write_this_iter = false;
   if (optim_iter % optim_monitor_freq == 0) write_this_iter = true;
 
   /* Open files for state vector */
   if (mpirank_petsc == 0 && writefullstate && write_this_iter) {
-    sprintf(filename, "%s/%s_Re.iinit%04d.dat", datadir.c_str(), prefix.c_str(), initid);
+    snprintf(filename, 254, "%s/%s_Re.iinit%04d.dat", datadir.c_str(), prefix.c_str(), initid);
     ufile = fopen(filename, "w");
-    sprintf(filename, "%s/%s_Im.iinit%04d.dat", datadir.c_str(), prefix.c_str(), initid);
+    snprintf(filename, 254, "%s/%s_Im.iinit%04d.dat", datadir.c_str(), prefix.c_str(), initid);
     vfile = fopen(filename, "w"); 
   }
 
@@ -173,13 +173,13 @@ void Output::openDataFiles(std::string prefix, int initid){
     for (int i=0; i<outputstr.size(); i++) {
       for (int j=0; j<outputstr[i].size(); j++) {
         if (outputstr[i][j].compare("expectedEnergy") == 0) {
-          sprintf(filename, "%s/expected%d.iinit%04d.dat", datadir.c_str(), i, initid);
+          snprintf(filename, 254, "%s/expected%d.iinit%04d.dat", datadir.c_str(), i, initid);
           expectedfile[i] = fopen(filename, "w");
           fprintf(expectedfile[i], "# time      expected energy level\n");
         }
         if (outputstr[i][j].compare("expectedEnergyComposite") == 0) writeExpComp = true;
         if (outputstr[i][j].compare("population") == 0) {
-          sprintf(filename, "%s/population%d.iinit%04d.dat", datadir.c_str(), i, initid);
+          snprintf(filename, 254, "%s/population%d.iinit%04d.dat", datadir.c_str(), i, initid);
           populationfile[i] = fopen(filename, "w");
           fprintf(populationfile[i], "# time      diagonal of the density matrix \n");
         }
@@ -187,12 +187,12 @@ void Output::openDataFiles(std::string prefix, int initid){
       }
     }
     if (writeExpComp){
-      sprintf(filename, "%s/expected_composite.iinit%04d.dat", datadir.c_str(), initid);
+      snprintf(filename, 254, "%s/expected_composite.iinit%04d.dat", datadir.c_str(), initid);
       expectedfile_comp = fopen(filename, "w");
       fprintf(expectedfile_comp, "# time      expected energy level\n");
     }
     if (writePopComp){
-      sprintf(filename, "%s/population_composite.iinit%04d.dat", datadir.c_str(), initid);
+      snprintf(filename, 254, "%s/population_composite.iinit%04d.dat", datadir.c_str(), initid);
       populationfile_comp = fopen(filename, "w");
       fprintf(populationfile_comp, "# time      population \n");
     }

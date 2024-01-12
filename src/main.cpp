@@ -137,6 +137,9 @@ int main(int argc,char **argv)
     printf("\n\n ERROR: Wrong setting for initial condition.\n");
     exit(1);
   }
+  if (mpirank_world == 0) {
+    printf("Number of initial conditions: %d\n", ninit);
+  }
 
   /* --- Split communicators for distributed initial conditions, distributed linear algebra, parallel optimization --- */
   int mpirank_init, mpisize_init;
@@ -287,7 +290,7 @@ int main(int argc,char **argv)
   // Get self and cross kers and coupling terms 
   std::vector<double> crosskerr, Jkl;
   config.GetVecDoubleParam("crosskerr", crosskerr, 0.0);   // cross ker \xi_{kl}, zz-coupling
-  config.GetVecDoubleParam("Jkl", Jkl, 0.0); // Jaynes-Cummings coupling
+  config.GetVecDoubleParam("Jkl", Jkl, 0.0); // Jaynes-Cummings (dipole-dipole) coupling coeff
   copyLast(crosskerr, (nlevels.size()-1) * nlevels.size()/ 2);
   copyLast(Jkl, (nlevels.size()-1) * nlevels.size()/ 2);
   // If not enough elements are given, fill up with zeros!
@@ -327,8 +330,6 @@ int main(int argc,char **argv)
 
   // Some screen output 
   if (mpirank_world == 0 && !quietmode) {
-    std::cout << "Time: [0:" << total_time << "], ";
-    std::cout << "N="<< ntime << ", dt=" << dt << std::endl;
     std::cout<< "System: ";
     for (int i=0; i<nlevels.size(); i++) {
       std::cout<< nlevels[i];
@@ -340,6 +341,10 @@ int main(int argc,char **argv)
       if (i < nlevels.size()-1) std::cout<< "x";
     }
     std::cout << ") " << std::endl;
+
+    std::cout<<"State dimension (complex): " << mastereq->getDim() << std::endl;
+    std::cout << "Time: [0:" << total_time << "], ";
+    std::cout << "N="<< ntime << ", dt=" << dt << std::endl;
   }
 
   /* --- Initialize the time-stepper --- */
@@ -398,7 +403,7 @@ int main(int argc,char **argv)
   if (mpirank_world == 0)
   {
     /* Print parameters to file */
-    sprintf(filename, "%s/config_log.dat", output->datadir.c_str());
+    snprintf(filename, 254, "%s/config_log.dat", output->datadir.c_str());
     std::ofstream logfile(filename);
     if (logfile.is_open()){
       logfile << log.str();
@@ -486,7 +491,7 @@ int main(int argc,char **argv)
 
   /* Print timing to file */
   if (mpirank_world == 0) {
-    sprintf(filename, "%s/timing.dat", output->datadir.c_str());
+    snprintf(filename, 254, "%s/timing.dat", output->datadir.c_str());
     FILE* timefile = fopen(filename, "w");
     fprintf(timefile, "%d  %1.8e\n", mpisize_world, UsedTime);
     fclose(timefile);
@@ -636,7 +641,7 @@ int main(int argc,char **argv)
 
   /* --- Print Hessian to file */
   
-  sprintf(filename, "%s/hessian.dat", output->datadir.c_str());
+  snprintf(filename, 254, "%s/hessian.dat", output->datadir.c_str());
   printf("File written: %s.\n", filename);
   PetscViewer viewer;
   PetscViewerCreate(MPI_COMM_WORLD, &viewer);
@@ -649,7 +654,7 @@ int main(int argc,char **argv)
   PetscViewerDestroy(&viewer);
 
   // write again in binary
-  sprintf(filename, "%s/hessian_bin.dat", output->datadir.c_str());
+  snprintf(filename, 254, "%s/hessian_bin.dat", output->datadir.c_str());
   printf("File written: %s.\n", filename);
   PetscViewerBinaryOpen(MPI_COMM_WORLD, filename, FILE_MODE_WRITE, &viewer);
   MatView(Hess, viewer);
@@ -668,7 +673,7 @@ int main(int argc,char **argv)
   /* Load Hessian from file */
   Mat Hess;
   MatCreate(PETSC_COMM_SELF, &Hess);
-  sprintf(filename, "%s/hessian_bin.dat", output->datadir.c_str());
+  snprintf(filename, 254, "%s/hessian_bin.dat", output->datadir.c_str());
   printf("Reading file: %s\n", filename);
   PetscViewer viewer;
   PetscViewerCreate(MPI_COMM_WORLD, &viewer);
@@ -695,7 +700,7 @@ int main(int argc,char **argv)
 
   /* Print eigenvalues to file. */
   FILE *file;
-  sprintf(filename, "%s/eigvals.dat", output->datadir.c_str());
+  snprintf(filename, 254, "%s/eigvals.dat", output->datadir.c_str());
   file =fopen(filename,"w");
   for (int i=0; i<eigvals.size(); i++){
       fprintf(file, "% 1.8e\n", eigvals[i]);  
@@ -704,7 +709,7 @@ int main(int argc,char **argv)
   printf("File written: %s.\n", filename);
 
   /* Print eigenvectors to file. Columns wise */
-  sprintf(filename, "%s/eigvecs.dat", output->datadir.c_str());
+  snprintf(filename, 254, "%s/eigvecs.dat", output->datadir.c_str());
   file =fopen(filename,"w");
   for (PetscInt j=0; j<nrows; j++){  // rows
     for (PetscInt i=0; i<eigvals.size(); i++){

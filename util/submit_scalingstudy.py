@@ -21,6 +21,12 @@ nlevels = ["2,2", "4,4", "8,8"]    # nlevels is handled as a string option in ut
 # Specify number of cores
 npt = [2,4,8]
 
+# Number of cores per node (e.g. quartz=32), this is to pass the number of requested nodes
+cores_per_node = 36
+
+# Switch for exclusive use of nodes
+exclusive = True
+
 # Submit a job for each parameter setup
 for i in range(len(nlevels)):
 
@@ -45,7 +51,7 @@ for i in range(len(nlevels)):
 
         # submit the job
         os.chdir(jobname)
-        submit_job(jobname, runcommand, npt[i], "00:02:00", "../main", newconfigfile, "sqoc", False) # sqoc is the slurm account name. check util/batch_job.py for this function!
+        submit_job(jobname, runcommand, npt[i], nodes, "00:02:00", "../main", newconfigfile, "sqoc", exclusive, False) # sqoc is the slurm account name. check util/batch_job.py for this function!
         #submit_job(jobname, runcommand, npt[i], "00:02:00", "../main", newconfigfile, "sqoc", True) 
         os.chdir("../")
 
