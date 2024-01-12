@@ -1,14 +1,6 @@
 #include "config.hpp"
 
 
-template <typename T>
-void export_param(int mpi_rank, std::stringstream& log, std::string key, T value)
-{
-  if (mpi_rank == 0)
-  {
-    log << key << " = " << value << std::endl;
-  }
-}
 
 MapParam::MapParam() { 
     mpi_rank = 0; 
@@ -121,7 +113,7 @@ double MapParam::GetDoubleParam(std::string key, double default_val, bool warnme
   return val;
 }
 
-int MapParam::GetIntParam(std::string key, int default_val, bool warnme) const
+int MapParam::GetIntParam(std::string key, int default_val, bool warnme, bool exportme) const
 {
   std::map<std::string, std::string>::const_iterator it_value = this->find(key);
   int val;
@@ -134,7 +126,10 @@ int MapParam::GetIntParam(std::string key, int default_val, bool warnme) const
   else
     val = atoi(it_value->second.c_str());
 
-  export_param(mpi_rank, *log, key, val);
+  if (exportme) {
+    export_param(mpi_rank, *log, key, val);
+  }
+
   return val;
 }
 

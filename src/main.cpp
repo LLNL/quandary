@@ -56,6 +56,15 @@ int main(int argc,char **argv)
   MapParam config(MPI_COMM_WORLD, log, quietmode);
   config.ReadFile(argv[1]);
 
+  /* Initialize random number generator: Check if rand_seed is provided from config file, otherwise set random. */
+  int rand_seed = config.GetIntParam("rand_seed", -1, false, false);
+  if (rand_seed < 0){
+    rand_seed = time(0);  // random seed
+  }
+  srand(rand_seed); 
+  MPI_Bcast(&rand_seed, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD); // Broadcast from rank 0 to all.
+  export_param(mpirank_world, *config.log, "rand_seed", rand_seed);
+
   /* --- Get some options from the config file --- */
   std::vector<int> nlevels;
   config.GetVecIntParam("nlevels", nlevels, 0);
