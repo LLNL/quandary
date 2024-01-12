@@ -1013,3 +1013,52 @@ def plot_results_1osc(myconfig, p, q, expectedEnergy, population):
     plt.waitforbuttonpress(1); 
     input(); 
     plt.close(fig)
+
+
+# Decrease timestep size until Richardson error estimate meets threshold
+def timestep_richardson_est(myconfig, tol=1e-8, order=2, quandary_exec="../../quandary"):
+
+    # Factor by which timestep size is decreased
+    m = 2 
+    
+    # Initialize somehow
+    Jcurr = 0.0
+    uT = myconfig.uT
+
+    # Loop
+    errs_J = []
+    errs_u = []
+    dts = []
+    for i in range(10):
+
+        # Update configuration number of timesteps. Note: dt will be set in dump()
+        myconfig.nsteps= myconfig.nsteps* m
+        dt = myconfig.T / myconfig.nsteps
+
+        # Get u(dt/m) 
+        myconfig.verbose=False
+        t, pt, qt, infidelity, _, _ = quandary_run(myconfig, quandary_exec=quandary_exec, runtype="simulation", datadir="test")
+
+
+        # Richardson error estimate 
+        err_J = np.abs(Jcurr - infidelity) / (m**order-1.0)
+        # err_u = np.abs(uT[1,1]- myconfig.uT[1,1]) / (m**order - 1.0)
+        err_u = np.linalg.norm(np.subtract(uT, myconfig.uT)) / (m**order - 1.0)
+        errs_J.append(err_J)
+        errs_u.append(err_u)
+
+        # Output 
+        dts.append(dt)
+        print(" -> Error at i=", i, ", dt = ", dt, ": err_J = ", err_J, " err_u=", err_u)
+
+
+        # Stop if tolerance is reached
+        if err_J < tol:
+            print("\n -> Tolerance reached. N=", myconfig.nsteps, ", dt=",dt)
+            break
+
+        # Update
+        Jcurr = infidelity
+        uT = np.copy(myconfig.uT)
+
+    return errs_J, errs_u, dts
