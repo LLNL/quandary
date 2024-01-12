@@ -175,7 +175,7 @@ do
 					HEADER="$COMMAND -n $NUM_PARALLEL_PROCESSORS"
 					testName="${testNames[$subTestNum]}-parallel"
 				fi
-        QUANDARY="$HEADER ${DIR}/../main "
+        QUANDARY="$HEADER ${DIR}/../quandary"
 
 				# Update subtest numbers
 				subTestNum=$((subTestNum+1))
