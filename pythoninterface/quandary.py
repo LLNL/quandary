@@ -128,7 +128,7 @@ class QuandaryConfig:
             max_alloscillators = self.initctrl_MHz
             self.initctrl_MHz = [max_alloscillators for _ in range(len(self.Ne))]
         if len(self.initctrl_MHz) == 0:
-            self.initctrl_MHz = [1.0 for _ in range(len(self.Ne))]
+            self.initctrl_MHz = [10.0 for _ in range(len(self.Ne))]
 
         # Set default Hamiltonian operators, unless specified by user
         if len(self.Hsys) > 0 and not self.standardmodel: # User-provided Hamiltonian operators 

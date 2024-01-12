@@ -137,7 +137,7 @@ int main(int argc,char **argv)
     printf("\n\n ERROR: Wrong setting for initial condition.\n");
     exit(1);
   }
-  if (mpirank_world == 0) {
+  if (mpirank_world == 0 && !quietmode) {
     printf("Number of initial conditions: %d\n", ninit);
   }
 
