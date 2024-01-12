@@ -16,11 +16,9 @@ State-to-state:
   * Schroedinger's solver (closed-system optimization)
   * Can run on one core (one initial condition)
 
-3x20_AliceCavity_cooling:
-  * Models a qudit (3 levels, "Alice") coupled to a readout cavity (20 levels). System configuration for the 'Nut' resonator at LLNL.
-  * Optimization towards the pure |00> state of the coupled system (ground-state reset)
-  * The initial state is the ensemble state over the qudit's space dimension (spanning all possible qudit states), coupled to the ground state in the cavity.
-  * The configuration file 'AxC.cfg' is set to simulate T=2.5us, using a stepsize of dt=1e-5 (i.e. N=250000 time steps). 
-  * Applies previously optimized control parameters (param_optimized.dat) that drive the qudit and the cavity (almost) to the ground state. (Parameters are not fully optimal.)
-  * Note that since many tiny time-steps are performed, this testcase takes a while to simulate (and hence to optimize)...
+Groundstate reset:   
+  * Models a qudit (3 energy levels) coupled to a fast-decaying readout cavity (20 energy levels). System configuration for the 'Nut' resonator at LLNL.
+  * Control pulse parameters have been previously optimized to drive any initial state of the coupled qudit-cavity system to the ground-state |00>. 
+  * The current provided configuration file initializes the qudit in a maximally mixed ensemble state, however any other initial state can be chosen too, and the pulses should still drive this state to the ground state. 
+  * Note that since many tiny time-steps are performed, this testcase takes a while to simulate (and hence to optimize).
 
