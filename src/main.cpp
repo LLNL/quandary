@@ -744,6 +744,7 @@ int main(int argc,char **argv)
 #ifdef WITH_SLEPC
   ierr = SlepcFinalize();
 #else
+  PetscOptionsSetValue(NULL, "-options_left", "no"); // Remove warning about unused options.
   ierr = PetscFinalize();
 #endif
 
