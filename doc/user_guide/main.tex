@@ -476,7 +476,7 @@ where $r$ iterates over all indices that correspond to a guard level (i.e. last 
 
 The second penalty term can be added with parameter $\gamma_3 \geq 0$ to encourage solutions whose populations vary slowly in time by penalizing the second derivative of the populations of the state. 
 
-The third penalty term can be added with parameter $\gamma_4 \geq 0$ to encourage small control pulse amplitudes by penalizing the control pulse energy. 
+The third penalty term can be added with parameter $\gamma_4 \geq 0$ to encourage small control pulse amplitudes by penalizing the control pulse energy. This term can be useful if hardware bounds are given for the control pulse amplitudes: Rather than include amplitude bounds on control pulse directly, which often leads to more non-convex optimization problems and convergence deterioration, one can utilize this penalty term to favor short control pulses with small amplitudes. Compare also \cite{gunther2023practical} for its usage to determine minimal gate durations.
 
 Note: All regularization and penalty coefficients $\gamma_i$ should be chosen small enough so that they do not dominate the final-time objective function $J$. This might require some fine-tuning. It is recommended to always add $\gamma_1>0$, e.g. $\gamma_1 = 10^{-4}$, and add other penalties only if needed. 
 
@@ -685,7 +685,6 @@ The user can change the frequency of output in time (printing only every $j$-th 
   \item \texttt{config\_log.dat} contains all configuration options that had been used for the current run. 
   \item \texttt{params.dat} contains the control parameters $\bfa$ that had been used to determine the current control pulses. This file contains one column containing all parameters, ordered as stored, see Section \ref{subsec:controlpulses}.
   \item \texttt{control<k>.dat} contain the resulting control pulses applied to subsystem $k$ over time. It contains four columns, the first one being the time, second and third being $p^k(t)$ and $q^k(t)$ (rotating frame controls), and the last one is the corresponding lab-frame pulse $f^k(t)$.
-  \item \texttt{transfer\_control<k>.dat}: By default, those are the same as the control pulse files, since default transfer functions are the identity. However, in case the python interface is enabled, the user can specify different transfer functions, and this file contains the resulting (transferred) pulses. 
   \item \texttt{optim\_history.dat} contains information about the optimization progress in terms of the overall objective function and contribution from each term (cost at final time $T$ and contribution from the tikhonov regularization and the penalty term), as well the norm of the gradient and the fidelity, for each iteration of the optimization. If only a forward simulation is performed, this file still prints out the objective function and fidelity for the forward simulation. 
 \end{itemize}
 Quandary always prints the current paramters and control pulses at the beginning of a simulation or optimization, and in addition at every $l$-th optimization iteration determined from the \texttt{optim\_monitor\_frequency} configuration option. 
