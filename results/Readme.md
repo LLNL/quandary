@@ -16,9 +16,3 @@ State-to-state:
   * Schroedinger's solver (closed-system optimization)
   * Can run on one core (one initial condition)
 
-Groundstate reset:   
-  * Models a qudit (3 energy levels) coupled to a fast-decaying readout cavity (20 energy levels). System configuration for the 'Nut' resonator at LLNL.
-  * Control pulse parameters have been previously optimized to drive any initial state of the coupled qudit-cavity system to the ground-state |00>. 
-  * The current provided configuration file initializes the qudit in a maximally mixed ensemble state, however any other initial state can be chosen too, and the pulses should still drive this state to the ground state. 
-  * Note that since many tiny time-steps are performed, this testcase takes a while to simulate (and hence to optimize).
-
