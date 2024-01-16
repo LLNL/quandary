@@ -393,7 +393,7 @@ int main(int argc,char **argv)
   }
   OptimProblem* optimctx = new OptimProblem(config, mytimestepper, comm_init, comm_optim, ninit, gate_rot_freq, output, quietmode);
 
-  /* Set upt solution and gradient vector */
+  /* PETSC: Set upt solution and gradient vector */
   Vec xinit;
   VecCreateSeq(PETSC_COMM_SELF, optimctx->getNdesign(), &xinit);
   VecSetFromOptions(xinit);
@@ -404,26 +404,41 @@ int main(int argc,char **argv)
   Vec opt;
 
 // #ifdef WITH_ENSMALLEN
-//   /* Set up using Armadillo / Ensmallen */
+//   /* TEST Armadillo  */
 //   int n_dims = 1;
-   int n_size = optimctx->getNdesign();
+//   int n_size = optimctx->getNdesign();
 //   arma::mat armaxinit(n_dims, n_size, arma::fill::randu);
 //   armaxinit.print("my armaxinit = ");
 //   printf("IJ + %1.4e\n", armaxinit(2));
 //   armaxinit.submat( 0, 0, 0, 2).print("Submat=");
 //   armaxinit.submat(0,0,0,2) = {1.0, 2.0, 3.0};
 //   armaxinit.submat( 0, 0, 0, 2).print("Submat=");
-
-  // Get a pointer from Petsc's xinit vector
-  optimctx->getStartingPoint(xinit);
-  PetscScalar* xin_ptr;
-  VecGetArray(xinit, &xin_ptr);
-  arma::mat xinit_2(xin_ptr, 1, n_size);
-  VecRestoreArray(xinit, &xin_ptr);
-  xinit_2.print("arma xinit=");
-  VecView(xinit, NULL);
-
+  // This might be useful?
   //colvec y = conv_to< colvec >::from(x)
+// #endif
+
+// #ifdef WITH_ENSMALLEN
+  // Pass initial guess to armadillo matrix 
+  optimctx->getStartingPoint(xinit);
+  PetscScalar* xinit_ptr;
+  VecGetArray(xinit, &xinit_ptr);
+  arma::mat xinit_arma(xinit_ptr, 1, optimctx->getNdesign());
+  VecRestoreArray(xinit, &xinit_ptr);
+  // xinit_arma.print("arma xinit=");
+  // VecView(xinit, NULL);
+  
+  // // TEST: evaluate the controls
+  // double p, q;
+  // double t = 1.0;
+  mastereq->setControlAmplitudes(xinit_arma);
+  // mastereq->getOscillator(0)->evalControl(t, &p, &q);
+  // printf("ARMA Controls(%f) = %1.14e, %1.14e\n", t, p, q);
+  output->writeControls(xinit_arma, mastereq, ntime, dt);
+  // mastereq->setControlAmplitudes(xinit);
+  // mastereq->getOscillator(0)->evalControl(t, &p, &q);
+  // printf("ORIG Controls(%f) = %1.14e, %1.14e\n", t, p, q);
+  // output->writeControls(xinit, mastereq, ntime, dt);
+
 
   exit(1);
 

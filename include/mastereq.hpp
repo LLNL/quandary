@@ -7,7 +7,9 @@
 #include <iostream> 
 #include "gate.hpp"
 #include "pythoninterface.hpp"
-
+#ifdef WITH_ENSMALLEN
+#include <armadillo>
+#endif
 #pragma once
 
 /* Define a matshell context containing pointers to data needed for applying the RHS matrix to a vector */
@@ -149,8 +151,14 @@ class MasterEq{
     // void createReducedDensity_diff(Vec rhobar, const Vec reducedbar, const std::vector<int>& oscilIDs);
 
     /* Set the oscillators control function parameters from global design vector x */
+    void setControlAmplitudes_(double* x);
+    // Petsc interface
     void setControlAmplitudes(const Vec x);
     void setControlAmplitudes_diff(Vec xbar);
+    // Ensmallen interface
+#ifdef WITH_ENSMALLEN // TODO: This should be templated?
+    void setControlAmplitudes(arma::mat& x);
+#endif
 
     /* Set initial conditions 
      * In:   iinit -- index in processors range [rank * ninit_local .. (rank+1) * ninit_local - 1]

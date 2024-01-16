@@ -102,14 +102,12 @@ void Output::writeGradient(Vec grad){
   }
 }
 
-void Output::writeControls(Vec params, MasterEq* mastereq, int ntime, double dt){
+void Output::writeControls_(double* params, int ndesign, MasterEq* mastereq, int ntime, double dt){
 
   /* Write controls every <outfreq> iterations */
   if ( mpirank_world == 0 ) { 
 
     char filename[255];
-    PetscInt ndesign;
-    VecGetSize(params, &ndesign);
 
     /* Print current parameters to file */
     FILE *file, *file_c;
@@ -117,17 +115,14 @@ void Output::writeControls(Vec params, MasterEq* mastereq, int ntime, double dt)
     snprintf(filename, 254, "%s/params.dat", datadir.c_str());
     file = fopen(filename, "w");
 
-    const PetscScalar* params_ptr;
-    VecGetArrayRead(params, &params_ptr);
     for (int i=0; i<ndesign; i++){
-      fprintf(file, "%1.14e\n", params_ptr[i]);
+      fprintf(file, "%1.14e\n", params[i]);
     }
     fclose(file);
-    VecRestoreArrayRead(params, &params_ptr);
     if (!quietmode) printf("File written: %s\n", filename);
 
     /* Print control to file for each oscillator */
-    mastereq->setControlAmplitudes(params);
+    mastereq->setControlAmplitudes_(params);
     for (int ioscil = 0; ioscil < mastereq->getNOscillators(); ioscil++) {
       snprintf(filename, 254, "%s/control%d.dat", datadir.c_str(), ioscil);
       file_c = fopen(filename, "w");
@@ -150,6 +145,21 @@ void Output::writeControls(Vec params, MasterEq* mastereq, int ntime, double dt)
   }
 }
 
+// Petsc interface
+void Output::writeControls(Vec params, MasterEq* mastereq, int ntime, double dt){
+
+    PetscInt ndesign;
+    VecGetSize(params, &ndesign);
+    PetscScalar* params_ptr;
+    VecGetArray(params, &params_ptr);
+    writeControls_(params_ptr,ndesign,mastereq,ntime,dt);
+    VecRestoreArray(params, &params_ptr);
+}
+// Ensmallen interface
+void Output::writeControls(arma::mat params, MasterEq* mastereq, int ntime, double dt){
+
+    writeControls_(params.memptr(),params.n_elem,mastereq,ntime,dt);
+}
 
 void Output::openDataFiles(std::string prefix, int initid){
   char filename[255];

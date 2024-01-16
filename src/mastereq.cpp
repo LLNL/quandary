@@ -1302,11 +1302,8 @@ void MasterEq::computedRHSdp(const double t, const Vec x, const Vec xbar, const 
 
 }
 
-void MasterEq::setControlAmplitudes(const Vec x) {
-
-  PetscScalar* ptr;
-  VecGetArray(x, &ptr);
-
+// General interface: pass parameters to oscillators 
+void MasterEq::setControlAmplitudes_(double* ptr){
   /* Pass design vector x to oscillators */
   // Design storage: x = (params_oscil0, params_oscil2, ... ) 
   int shift=0;
@@ -1316,7 +1313,19 @@ void MasterEq::setControlAmplitudes(const Vec x) {
     getOscillator(ioscil)->setParams(ptr + shift);
     shift += getOscillator(ioscil)->getNParams();
   }
+}
+
+// Petsc interface
+void MasterEq::setControlAmplitudes(const Vec x) {
+  PetscScalar* ptr;
+  VecGetArray(x, &ptr);
+  setControlAmplitudes_(ptr);
   VecRestoreArray(x, &ptr);
+}
+
+// Ensmallen interface. TODO: Don't duplicate code, rather use templates.
+void MasterEq::setControlAmplitudes(arma::mat& x) {
+  setControlAmplitudes_(x.memptr()); 
 }
 
 
@@ -1330,7 +1339,6 @@ void MasterEq::setControlAmplitudes_diff(Vec xbar) {
   }
   VecRestoreArray(xbar, &ptr);
 }
-
 
 int MasterEq::getRhoT0(const int iinit, const int ninit, const InitialConditionType initcond_type, const std::vector<int>& oscilIDs, Vec rho0){
 
