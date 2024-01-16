@@ -54,14 +54,12 @@ MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Osci
   if (lindbladtype != LindbladType::NONE) {  // Solve Lindblads equation, dim = N^2
     dim = dim_rho*dim_rho; 
     if (mpirank_world == 0 && !quietmode) {
-      printf("Solving Lindblads master equation (state is a density matrix).\n");
-      printf("State dimension (complex) N^2 = %d\n",dim);
+      printf("Solving Lindblads master equation (open quantum system).\n");
     }
   } else { // Solve Schroedingers equation. dim = N
     dim = dim_rho; 
     if (mpirank_world == 0 && !quietmode) {
-      printf("Solving Schroedingers equation (state is a vector).\n");
-      printf("State dimension (complex) N = %d\n",dim);
+      printf("Solving Schroedingers equation (closed quantum system).\n");
     }
   }
 
@@ -3642,6 +3640,7 @@ int myMatMult_matfree_5Osc(Mat RHS, Vec x, Vec y){
   int n3 = shellctx->nlevels[3];
   int n4 = shellctx->nlevels[4];
   if      (n0==2 && n1==2 && n2==2 && n3 == 2 && n4 == 2) return myMatMult_matfree<2,2,2,2,2>(RHS, x, y);
+  else if (n0==3 && n1==3 && n2==3 && n3 == 3 && n4 == 3) return myMatMult_matfree<3,3,3,3,3>(RHS, x, y);
   else {
     printf("ERROR: In order to run this case, add a line at the end of mastereq.cpp with the corresponding number of levels!\n");
     exit(1);
@@ -3658,6 +3657,7 @@ int myMatMultTranspose_matfree_5Osc(Mat RHS, Vec x, Vec y){
   int n3 = shellctx->nlevels[3];
   int n4 = shellctx->nlevels[4];
   if      (n0==2 && n1==2 && n2==2 && n3==2 && n4==2)  return myMatMultTranspose_matfree<2,2,2,2,2>(RHS, x, y);
+  else if (n0==3 && n1==3 && n2==3 && n3==3 && n4==3)  return myMatMultTranspose_matfree<3,3,3,3,3>(RHS, x, y);
   else {
     printf("ERROR: In order to run this case, add a line at the end of mastereq.cpp with the corresponding number of levels!\n");
     exit(1);

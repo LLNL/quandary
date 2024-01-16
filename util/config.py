@@ -156,14 +156,12 @@ def read_config(filename):
         for case in switch(this_param):
             
             # Put all INTEGER options here
-            if case("np_init") or \
-                case("np_optim") or \
-                case("ntime") or \
-                case("nspline") or \
+            if case("ntime") or \
                 case("optim_maxiter") or \
                 case("linearsolver_maxiter") or \
                 case("output_frequency") or \
-                case("optim_monitor_frequency") :
+                case("optim_monitor_frequency") or \
+                case("rand_seed") :
                 data_dict[this_param] = int(this_value)
                 break
 
@@ -171,9 +169,12 @@ def read_config(filename):
             if case("dt") or \
                case("optim_atol") or \
                case("optim_rtol") or \
+               case("optim_ftol") or \
+               case("optim_regul") or \
                case("optim_penalty") or \
                case("optim_penalty_param") or \
-               case("optim_regul") :
+               case("optim_penalty_dpdm") or \
+               case("optim_penalty_energy") :
                data_dict[this_param] = float(this_value)
                break
 
@@ -228,7 +229,6 @@ def read_config(filename):
                case("usematfree") or \
                case("gamma_regul_interpolate") or \
                case("linearsolver_type") or \
-               case("python_file") or \
                case("timestepper") or \
                case("apply_pipulse") :
                data_dict[this_param] = this_value

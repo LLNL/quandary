@@ -128,7 +128,7 @@ class QuandaryConfig:
             max_alloscillators = self.initctrl_MHz
             self.initctrl_MHz = [max_alloscillators for _ in range(len(self.Ne))]
         if len(self.initctrl_MHz) == 0:
-            self.initctrl_MHz = [1.0 for _ in range(len(self.Ne))]
+            self.initctrl_MHz = [10.0 for _ in range(len(self.Ne))]
 
         # Set default Hamiltonian operators, unless specified by user
         if len(self.Hsys) > 0 and not self.standardmodel: # User-provided Hamiltonian operators 
@@ -309,7 +309,6 @@ class QuandaryConfig:
         mystring += "optim_weights= 1.0\n"
         mystring += "optim_atol= 1e-4\n"
         mystring += "optim_rtol= 1e-4\n"
-        mystring += "optim_dxtol = 1e-8\n"
         mystring += "optim_ftol= " + str(self.tol_costfunc) + "\n"
         mystring += "optim_inftol= " + str(self.tol_infidelity) + "\n"
         mystring += "optim_maxiter= " + str(self.maxiter) + "\n"
@@ -1014,3 +1013,52 @@ def plot_results_1osc(myconfig, p, q, expectedEnergy, population):
     plt.waitforbuttonpress(1); 
     input(); 
     plt.close(fig)
+
+
+# Decrease timestep size until Richardson error estimate meets threshold
+def timestep_richardson_est(myconfig, tol=1e-8, order=2, quandary_exec="../../quandary"):
+
+    # Factor by which timestep size is decreased
+    m = 2 
+    
+    # Initialize somehow
+    Jcurr = 0.0
+    uT = myconfig.uT
+
+    # Loop
+    errs_J = []
+    errs_u = []
+    dts = []
+    for i in range(10):
+
+        # Update configuration number of timesteps. Note: dt will be set in dump()
+        myconfig.nsteps= myconfig.nsteps* m
+        dt = myconfig.T / myconfig.nsteps
+
+        # Get u(dt/m) 
+        myconfig.verbose=False
+        t, pt, qt, infidelity, _, _ = quandary_run(myconfig, quandary_exec=quandary_exec, runtype="simulation", datadir="test")
+
+
+        # Richardson error estimate 
+        err_J = np.abs(Jcurr - infidelity) / (m**order-1.0)
+        # err_u = np.abs(uT[1,1]- myconfig.uT[1,1]) / (m**order - 1.0)
+        err_u = np.linalg.norm(np.subtract(uT, myconfig.uT)) / (m**order - 1.0)
+        errs_J.append(err_J)
+        errs_u.append(err_u)
+
+        # Output 
+        dts.append(dt)
+        print(" -> Error at i=", i, ", dt = ", dt, ": err_J = ", err_J, " err_u=", err_u)
+
+
+        # Stop if tolerance is reached
+        if err_J < tol:
+            print("\n -> Tolerance reached. N=", myconfig.nsteps, ", dt=",dt)
+            break
+
+        # Update
+        Jcurr = infidelity
+        uT = np.copy(myconfig.uT)
+
+    return errs_J, errs_u, dts

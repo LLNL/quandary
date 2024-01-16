@@ -59,7 +59,6 @@ class OptimProblem {
   double penalty_param;            /* Parameter inside integral penalty term w(t) (Gaussian variance) */
   double gatol;                    /* Stopping criterion based on absolute gradient norm */
   double fatol;                    /* Stopping criterion based on objective function value */
-  double dxtol;                    /* Stopping criterion based on update of control parameters */
   double inftol;                   /* Stopping criterion based on infidelity */
   double grtol;                    /* Stopping criterion based on relative gradient norm */
   int maxiter;                     /* Stopping criterion based on maximum number of iterations */
@@ -92,9 +91,9 @@ class OptimProblem {
   double getPenaltyEnergy()  { return obj_penal_energy; };
   double getFidelity() { return fidelity; };
   double getFaTol()    { return fatol; };
-  double getDxTol()    { return dxtol; };
   double getInfTol()   { return inftol; };
   int getMPIrank_world() { return mpirank_world;};
+  int getMaxIter()     { return maxiter; };
 
   /* Evaluate the objective function F(x) */
   double evalF(const Vec x);

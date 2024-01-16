@@ -235,7 +235,7 @@ components: $\alpha^k_f = \alpha^{k(1)}_{1,f}, \dots, \alpha^{k(1)}_{N_s^k,f}, \
 
 
 \subsection{Python and Julia interface}
-The Python and Julia interfaces for Quandary allows to simulate and optimize from within a python / julia environment. For Python, version $\geq 3$ is required. Both interfaces operate similarly, and here we describe the usage of the Python interface only. 
+The Python and Julia interfaces for Quandary allows to simulate and optimize from within a python / julia environment. For Python, version $\geq 3$ is required. Both interfaces operate similarly, and here we describe the usage of the Python interface only. Note: Development of the Julia interface is lagging behind currently, try yourself. 
 
 A good place to start is to have a look into the example \texttt{pythoninterface/example\_swap02.py}. This test case optimizes for a 3-level SWAP02 gate that swaps the state of the zero and the second energy level of a 3-level qudit. 
 
@@ -262,18 +262,8 @@ In the most general form, Quandary can solve the following optimization problem
   % \min_{\boldsymbol{\alpha}} \frac{1}{n_{init}} \sum_{i=1}^{n_{init}} \beta_i J(\rho^{target}_i, \rho_i(T)) + \gamma_1 \int_0^T P\left(\rho_i(t)\right) \, \mathrm{d} t + \gamma_2 \| \bfa \|^2_2
   \min_{\boldsymbol{\alpha}} J(\{\rho^{target}_i, \rho_i(T) \}) + \gamma_1 \| \bfa \|^2_2 + Penalty
 \end{align}
-where
-\begin{align}
-   Penalty = \gamma_2 \int_0^T P\left(\{\rho_i(t)\}\right) \, \mathrm{d} t +  \gamma_3 /T \int_0^T \, \| \partial_{tt} \mbox{Pop}(\rho_i(t)) \|^2 \mathrm{d}t + \gamma_4/T \int_0^T \, \sum_k |d^k(\alpha^k,t)|^2\, dt
-\end{align}
 where $\rho_i(T)$ denotes one or multiple quantum states evaluated at a final time $T>0$, which solve either Lindblad's master equation \eqref{mastereq} or Schroedinger's equation \eqref{eq:schroedinger} in the rotating frame for initial conditions $\rho_i(0)$, as specified in Section \ref{subsec:initcond}, $i=1,\dots, n_{init}$. The first term in \eqref{eq:minproblem} minimizes an objective function $J$ (see Section \ref{sec:objectivefunctionals}) that quantifies the discrepancy between the realized states $\rho_i(T)$ at final time $T$ driven by the current control $\boldsymbol{\alpha}$ and the desired target $\rho^{target}_i$, see Section \ref{sec:targets}. 
-The second term is a standart Tikhonov regularization that can be added with parameter $\gamma_1\geq 0$ in order to regularize the optimization problem (stabilize optimization convergence) by favoring solutions with small norm. 
-
-Three optional penalty terms can be added: The first penalty term can be added with $\gamma_2 \geq 0$ in oder to achieve a desired behavior of the quantum system over the entire time-domain $0\leq t\leq T$, rather than only at the final time, see Section \ref{sec:penalty} for details. 
-The second penalty term can be added with parameter $\gamma_3 \geq 0$ to encourage solutions whose populations vary slowly in time by penalizing the second derivative of the populations of the state. 
-The third penalty term can be added with parameter $\gamma_4 \geq 0$ to encourage small control pulse amplitudes by penalizing the control pulse energy. 
-
-All regularization and penalty coefficients $\gamma_i$ should be chosen small enough so that they do not dominate the final-time objective function $J$. This might require some fine-tuning. It is recommended to always add $\gamma_1>0$, e.g. $\gamma_1 = 10^{-4}$, and add other penalties only if needed. 
+The second term is a standart Tikhonov regularization that can be added with parameter $\gamma_1\geq 0$ in order to regularize the optimization problem (stabilize optimization convergence) by favoring solutions with small norm. Additional penalty terms, e.g. for leakage prevention, can be added, compare \ref{sec:penalty}.
 
 \subsection{Fidelity}\label{sec:fidelity}
 
@@ -357,7 +347,8 @@ Target gates that are currently implemented are
     0 & 0 & 1 & 0 \\
     0 & 1 & 0 & 0 \\
     0 & 0 & 0 & 1 \\
-  \end{bmatrix}
+  \end{bmatrix} \quad
+  V_{QFT} = ...
 \end{align}
 Further, a generalization of the SWAP and the CNOT gate for general $Q$ subsystems is available: The SWAP-0Q gate swaps the state of the first and the last qubit, while leaving all other oscillators in their respective initial state, and the CQNOT gate performs a NOT operation on the last qubit if all other qubits are in the one-state.
 New, user-defined gates can be easily added to the code by extending the \texttt{Gate} class in the corresponding \texttt{.cpp} and \texttt{.hpp} files. 
@@ -470,32 +461,32 @@ This option is useful for example if one wants to propagate a specific \textit{n
 
 
 
-\subsection{Integral penalty term and leakage}\label{sec:penalty}
-In order to achieve a desired behavior at earlier times other than the final time $T$, an integral penalty term can be added to the objective with parameter $\gamma_1 \geq 0$ :
-\begin{align}\label{eq:penaltyterm0}
- \gamma_1 \int_0^T P(\rho(t)) \mathrm{d}t
-\end{align}
-In the standard setting, the following penalty term is currently implemented (can be extended in the \texttt{TimeStepper} class.):
-\begin{align}\label{eq:penaltyterm}
-  P(\rho(t))  =  w(t) J\left(\rho(t)\right) \quad \text{where} \quad w(t) =
-  \frac{1}{a} e^{ -\left(\frac{t-T}{a} \right)^2},
-\end{align}
-for a penalty parameter $0 \leq a \leq 1$. Note, that as $a\to 0$, the weighting function $w(t)$ converges to the Dirac delta distribution with peak at final time $T$, hence reducing $a$ leads to more emphasis on the final time $T$ while larger $a$ penalize non-zero energy states at earlier times $t\leq T$. Both $\gamma_1$ as well as $a$ can be tuned in the configuration options, and choosing $\gamma_1 = 0$ and/or $a=0$ will skip the extra computation of this term. 
+\subsection{Penalty terms and leakage prevention}\label{sec:penalty}
 
-Be aware that adding the above integral penalty term requires to evaluate the objective $J$ at \textit{every} time-step within the time-domain $[0,T]$, instead of only the last one. This can be quite expensive, in particular when considering gate optimization, and should hence be turned off if possible (choosing $\gamma_1=0$ and/or $a=0$ does that).
-
-\textbf{Leakage prevention:}
-In addition to the above penalty, another intergral term can be added to the objective function in order to prevent leakage into higher levels that are not modelled by the finite-dimensional approximation to the infinite dimensional Hamiltonian. The leakage preventing term is enabled whenever the the number of essential levels is smaller than the number of modelled levels for at least one oscillator ($n_k^e < n_k$ for at least one subsystem $k$, compare Section \ref{sec:essentiallevels}), and in that case, the occupation of all \textit{guard levels} (i.e. the last modelled energy levels of each of the subsystems) is penalized by adding
+Three optional penalty terms can be added to the objective function:
+\begin{align}
+   Penalty = \gamma_2/T \int_0^T P\left(\{\rho_i(t)\}\right) \, \mathrm{d} t +  \gamma_3 /T \int_0^T \, \| \partial_{tt} \mbox{Pop}(\rho_i(t)) \|^2 \mathrm{d}t + \gamma_4/T \int_0^T \, \sum_k |d^k(\alpha^k,t)|^2\, dt
+\end{align}
+The first penalty term can be added with $\gamma_2 \geq 0$ to achieve a desired behavior over the entire time-domain $0\leq t\leq T$, rather than only at the final time. If extra (non-essential levels are considered through the optimization for at least one oscillator ($n_k^e < n_k$ for at least $k$, compare Sec. \ref{sec:essentiallevels}), then this term can be used to prevent leakage to higher energy levels that are not modelled. In particular, in that case the occupation of all \textit{guard levels} are penalized through
 \begin{align}\label{eq:leakprevention}
-  P(\rho(t)) += \sum_{r} \| \rho(t)_{rr} \|^2_2
+  P(\rho(t)) = \sum_{r} \| \rho(t)_{rr} \|^2_2
 \end{align}
-to the integral penalty term.
-In the above sum, $r$ iterates over all indices that correspond to a guard level (last non-essential energy level) of at least one of the subsystems, and $\rho(t)_{rr}$ denotes their corresponding population. 
-
-Note that if you want to include this leakage-preventing term, but do \textit{not} want to include the above penalty term \eqref{eq:penaltyterm} (e.g. for efficiency reasons), you can choose $\gamma_1>0$ while $a=0$, which will skip the computation of \eqref{eq:penaltyterm} but will include the term \eqref{eq:leakprevention}. 
+where $r$ iterates over all indices that correspond to a guard level (i.e. last non-essential energy level) of at least one of the subsystems, and $\rho(t)_{rr}$ denotes their corresponding population. 
 
 
+The second penalty term can be added with parameter $\gamma_3 \geq 0$ to encourage solutions whose populations vary slowly in time by penalizing the second derivative of the populations of the state. 
 
+The third penalty term can be added with parameter $\gamma_4 \geq 0$ to encourage small control pulse amplitudes by penalizing the control pulse energy. This term can be useful if hardware bounds are given for the control pulse amplitudes: Rather than include amplitude bounds on control pulse directly, which often leads to more non-convex optimization problems and convergence deterioration, one can utilize this penalty term to favor short control pulses with small amplitudes. Compare also \cite{gunther2023practical} for its usage to determine minimal gate durations.
+
+Note: All regularization and penalty coefficients $\gamma_i$ should be chosen small enough so that they do not dominate the final-time objective function $J$. This might require some fine-tuning. It is recommended to always add $\gamma_1>0$, e.g. $\gamma_1 = 10^{-4}$, and add other penalties only if needed. 
+
+
+% Achieving a target at EARLIER timesteps:
+% \begin{align}\label{eq:penaltyterm}
+%   P(\rho(t))  =  w(t) J\left(\rho(t)\right) \quad \text{where} \quad w(t) =
+%   \frac{1}{a} e^{ -\left(\frac{t-T}{a} \right)^2},
+% \end{align}
+% for a penalty parameter $0 \leq a \leq 1$. Note, that as $a\to 0$, the weighting function $w(t)$ converges to the Dirac delta distribution with peak at final time $T$, hence reducing $a$ leads to more emphasis on the final time $T$ while larger $a$ penalize non-zero energy states at earlier times $t\leq T$.  
 
 \section{Implementation}
 
@@ -694,7 +685,6 @@ The user can change the frequency of output in time (printing only every $j$-th 
   \item \texttt{config\_log.dat} contains all configuration options that had been used for the current run. 
   \item \texttt{params.dat} contains the control parameters $\bfa$ that had been used to determine the current control pulses. This file contains one column containing all parameters, ordered as stored, see Section \ref{subsec:controlpulses}.
   \item \texttt{control<k>.dat} contain the resulting control pulses applied to subsystem $k$ over time. It contains four columns, the first one being the time, second and third being $p^k(t)$ and $q^k(t)$ (rotating frame controls), and the last one is the corresponding lab-frame pulse $f^k(t)$.
-  \item \texttt{transfer\_control<k>.dat}: By default, those are the same as the control pulse files, since default transfer functions are the identity. However, in case the python interface is enabled, the user can specify different transfer functions, and this file contains the resulting (transferred) pulses. 
   \item \texttt{optim\_history.dat} contains information about the optimization progress in terms of the overall objective function and contribution from each term (cost at final time $T$ and contribution from the tikhonov regularization and the penalty term), as well the norm of the gradient and the fidelity, for each iteration of the optimization. If only a forward simulation is performed, this file still prints out the objective function and fidelity for the forward simulation. 
 \end{itemize}
 Quandary always prints the current paramters and control pulses at the beginning of a simulation or optimization, and in addition at every $l$-th optimization iteration determined from the \texttt{optim\_monitor\_frequency} configuration option. 
