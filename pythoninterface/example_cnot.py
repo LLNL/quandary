@@ -1,6 +1,6 @@
 from quandary import * 
 
-## Two qubit test case: CNOT gate, two levels each, no guard levels ##
+## Two qubit test case: CNOT gate, two levels each, no guard levels, dipole-dipole coupling 5KHz ##
 
 # 01 transition frequencies [GHz] per oscillator
 freq01 = [4.80595, 4.8601] 
@@ -16,15 +16,8 @@ rotfreq = favg*np.ones(len(freq01))
 # T1 = [100000.0, 110000.0]
 # T2 = [80000.0, 90000.0]
 
-# Set the time duration (ns)
+# Set the pulse duration (ns)
 T = 200.0
-
-# Set bounds on the control pulse amplitude (in rotational frame, p and q) [MHz] per oscillator
-maxctrl_MHz = [10.0 for _ in range(len(freq01))]
-
-# Set the amplitude of initial control vector for each oscillator [MHz]
-initctrl_MHz = [10.0 for _ in range(len(freq01))]  
-randomize_init_ctrl = False     # Use constant initial control pulse
 
 # Set up the CNOT target gate
 unitary = np.identity(4)
@@ -37,12 +30,15 @@ unitary[3,2] = 1.0
 # Flag for printing out more information
 verbose = False
 
+# For reproducability: Random number generator seed
+rand_seed=1234
+
 # Set up the Quandary configuration for this test case
-myconfig = QuandaryConfig(freq01=freq01, Jkl=Jkl, rotfreq=rotfreq, T=T, initctrl_MHz=initctrl_MHz, randomize_init_ctrl=randomize_init_ctrl, maxctrl_MHz=maxctrl_MHz, targetgate=unitary, verbose=verbose) # potentially add T1=T1, T2=T2 for Lindblad solver with decay and decoherence
+myconfig = QuandaryConfig(freq01=freq01, Jkl=Jkl, rotfreq=rotfreq, T=T, targetgate=unitary, verbose=verbose, rand_seed=rand_seed) # potentially add T1=T1, T2=T2 for Lindblad solver with decay and decoherence
 
 # Set some run options for Quandary
 runtype = "optimization"    # "simulation", or "gradient", or "optimization"
-quandary_exec="/Users/guenther5/Numerics/quandary/main" # Absolute path to Quandary's executable
+quandary_exec="/Users/guenther5/Numerics/quandary/quandary" # Absolute path to Quandary's executable
 ncores = 4  		    # Number of cores. Up to 8 for Lindblad solver, up to 4 for Schroedinger solver
 datadir = "./CNOT_run_dir"  # Compute and output directory 
 

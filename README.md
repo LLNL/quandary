@@ -46,12 +46,12 @@ Depending on your setup, you might need to load some additional modules, such as
 ## Installation
 Adapt the beginning of the 'Makefile' to set the path to your Petsc (and possibly Slepsc, python path, and fitpackpp) installation. Then,
 * `make cleanup` to clean the build directory. (Note the *up* in *cleanup*.)
-* `make main` to build the code (or 'make -j main' for faster build using multiple threads)
+* `make quandary` to build the code (or 'make -j quandary' for faster build using multiple threads)
 
 
 ## Running
-The code builds into the executable `main`. It takes one argument being the name of the test-case's configuration file. The file `config_template.cfg`, lists all possible configuration options. It is currently set to simulate a bipartite system with 3x20 levels (Alice - cavity testcase "AxC"). The configuration file is filled with comments that should help users set up their test case and match the options to the description in the user guide.
-* `./main config_template.cfg`
+The code builds into the executable `quandary`. It takes one argument being the name of the test-case's configuration file. The file `config_template.cfg`, lists all possible configuration options. It is currently set to simulate a bipartite system with 3x20 levels (Alice - cavity testcase "AxC"). The configuration file is filled with comments that should help users set up their test case and match the options to the description in the user guide.
+* `./quandary config_template.cfg`
 
 
 ## Community and Contributing

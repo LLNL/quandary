@@ -103,7 +103,6 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   gamma_tik_interpolate = config.GetBoolParam("optim_regul_interpolate", false, false);
   gatol = config.GetDoubleParam("optim_atol", 1e-8);
   fatol = config.GetDoubleParam("optim_ftol", 1e-8);
-  dxtol = config.GetDoubleParam("optim_dxtol", 1e-8);
   inftol = config.GetDoubleParam("optim_inftol", 1e-5);
   grtol = config.GetDoubleParam("optim_rtol", 1e-4);
   interm_tol = config.GetDoubleParam("optim_interm_tol", 1e-4);

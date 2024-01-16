@@ -54,14 +54,12 @@ MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Osci
   if (lindbladtype != LindbladType::NONE) {  // Solve Lindblads equation, dim = N^2
     dim = dim_rho*dim_rho; 
     if (mpirank_world == 0 && !quietmode) {
-      printf("Solving Lindblads master equation (state is a density matrix).\n");
-      printf("State dimension (complex) N^2 = %d\n",dim);
+      printf("Solving Lindblads master equation (open quantum system).\n");
     }
   } else { // Solve Schroedingers equation. dim = N
     dim = dim_rho; 
     if (mpirank_world == 0 && !quietmode) {
-      printf("Solving Schroedingers equation (state is a vector).\n");
-      printf("State dimension (complex) N = %d\n",dim);
+      printf("Solving Schroedingers equation (closed quantum system).\n");
     }
   }
 

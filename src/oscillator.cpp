@@ -131,14 +131,6 @@ Oscillator::Oscillator(MapParam config, int id, std::vector<int> nlevels_all_, s
       }
     } else if (controlinitializations[idini].compare("random") == 0) {
 
-      // Check whether a fixed seed is provided in the config file
-      int rand_seed = config.GetIntParam("rand_seed", -1, false);
-      if (rand_seed > 0){
-        srand(rand_seed);  // fixed seed
-      } else{
-        srand(time(0));  // random seed
-      }
-
       for (int f = 0; f<carrier_freq.size(); f++) {
         for (int i=0; i<basisfunctions[seg]->getNparams(); i++){
           double randval = (double) rand() / ((double)RAND_MAX);  // random in [0,1]

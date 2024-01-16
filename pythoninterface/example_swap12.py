@@ -14,18 +14,10 @@ rotfreq = favg*np.ones(len(freq01))
 # Set the time duration (ns)
 T = 200.0
 
-# Bspline spacing (ns) for control pulse parameterization. // The number of Bspline basis functions is then T/dtau + 2.
-dtau = 10.0 # 3.33
-
-# Number of points to resolve the shortest period of the dynamics
-Pmin = 40  # 60 # 40 # 80
+# Bspline spacing (ns) for control pulse parameterization. The number of Bspline basis functions is then T/dtau + 2.
 
 # Bounds on the control pulse (in rotational frame, p and q) [MHz] per oscillator
 maxctrl_MHz = 30.0*np.ones(len(freq01))  
-
-# Set the amplitude of initial (randomized) control vector for each oscillator 
-amp_frac = 0.9
-initctrl_MHz = [amp_frac * maxctrl_MHz[i] for i in range(len(freq01))]
 
 # Set up a SWAP target gate (in essential level dimensions)
 unitary = np.identity(4)
@@ -37,20 +29,18 @@ unitary[2,2] = 0.0
 
 # Quandary run options
 runtype = "optimization"        # "simulation" # "simulation", or "gradient", or "optimization"
-# quandary_exec="/Users/guenther5/Numerics/quandary/main"
-quandary_exec="/Users/petersson1/src/quandary/main"
-ncores = 4  # Number of cores 
+quandary_exec="/Users/guenther5/Numerics/quandary/quandary"
 datadir = "./SWAP12_run_dir"  # Compute and output directory 
 verbose = False
 
 # Prepare Quandary
-myconfig = QuandaryConfig(freq01=freq01, Jkl=Jkl, rotfreq=rotfreq, T=T, maxctrl_MHz=maxctrl_MHz, initctrl_MHz=initctrl_MHz, targetgate=unitary, verbose=verbose, dtau=dtau, Pmin=Pmin)
+myconfig = QuandaryConfig(freq01=freq01, Jkl=Jkl, rotfreq=rotfreq, T=T, maxctrl_MHz=maxctrl_MHz, targetgate=unitary, verbose=verbose, dtau=dtau)
 
 # Potentially load initial control parameters from a file
 # myconfig.pcof0_filename="./SWAP12_params.dat"
 
 # Execute quandary
-t, pt, qt, infidelity, expectedEnergy, population = quandary_run(myconfig, quandary_exec=quandary_exec, ncores=ncores, datadir=datadir)
+t, pt, qt, infidelity, expectedEnergy, population = quandary_run(myconfig, quandary_exec=quandary_exec, datadir=datadir)
 
 print(f"Fidelity = {1.0 - infidelity}")
 print("\n Quandary data directory: ", datadir)

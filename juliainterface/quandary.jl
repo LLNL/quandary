@@ -605,7 +605,6 @@ function dump_config(self;runtype="simulation",datadir="./run_dir")
     mystring *= "optim_weights = 1.0\n"
     mystring *= "optim_atol = 1e-4\n"
     mystring *= "optim_rtol = 1e-4\n"
-    mystring *= "optim_dxtol = 1e-8\n"
     mystring *= "optim_ftol = " * string(self.tol_costfunc) * "\n"
     mystring *= "optim_inftol = " * string(self.tol_infidelity) * "\n"
     mystring *= "optim_maxiter = " * string(self.maxiter) * "\n"

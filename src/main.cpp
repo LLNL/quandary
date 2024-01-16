@@ -56,6 +56,15 @@ int main(int argc,char **argv)
   MapParam config(MPI_COMM_WORLD, log, quietmode);
   config.ReadFile(argv[1]);
 
+  /* Initialize random number generator: Check if rand_seed is provided from config file, otherwise set random. */
+  int rand_seed = config.GetIntParam("rand_seed", -1, false, false);
+  if (rand_seed < 0){
+    rand_seed = time(0);  // random seed
+  }
+  srand(rand_seed); 
+  MPI_Bcast(&rand_seed, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD); // Broadcast from rank 0 to all.
+  export_param(mpirank_world, *config.log, "rand_seed", rand_seed);
+
   /* --- Get some options from the config file --- */
   std::vector<int> nlevels;
   config.GetVecIntParam("nlevels", nlevels, 0);
@@ -351,8 +360,6 @@ int main(int argc,char **argv)
 
   // Some screen output 
   if (mpirank_world == 0 && !quietmode) {
-    std::cout << "Time: [0:" << total_time << "], ";
-    std::cout << "N="<< ntime << ", dt=" << dt << std::endl;
     std::cout<< "System: ";
     for (int i=0; i<nlevels.size(); i++) {
       std::cout<< nlevels[i];
@@ -364,6 +371,10 @@ int main(int argc,char **argv)
       if (i < nlevels.size()-1) std::cout<< "x";
     }
     std::cout << ") " << std::endl;
+
+    std::cout<<"State dimension (complex): " << mastereq->getDim() << std::endl;
+    std::cout << "Time: [0:" << total_time << "], ";
+    std::cout << "N="<< ntime << ", dt=" << dt << std::endl;
   }
 
   /* --- Initialize the time-stepper --- */
@@ -935,6 +946,7 @@ int main(int argc,char **argv)
 #ifdef WITH_SLEPC
   ierr = SlepcFinalize();
 #else
+  PetscOptionsSetValue(NULL, "-options_left", "no"); // Remove warning about unused options.
   ierr = PetscFinalize();
 #endif
 

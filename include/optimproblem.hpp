@@ -68,7 +68,6 @@ class OptimProblem {
   double penalty_param;            /* Parameter inside integral penalty term w(t) (Gaussian variance) */
   double gatol;                    /* Stopping criterion based on absolute gradient norm */
   double fatol;                    /* Stopping criterion based on objective function value */
-  double dxtol;                    /* Stopping criterion based on update of control parameters */
   double inftol;                   /* Stopping criterion based on infidelity */
   double grtol;                    /* Stopping criterion based on relative gradient norm */
   double interm_tol;               /* Stopping criterion based on intermediate discontinuity */
@@ -116,7 +115,6 @@ class OptimProblem {
   double getFidelity() { return fidelity; };
   double getDiscontinuity() { return interm_discontinuity; }
   double getFaTol()    { return fatol; };
-  double getDxTol()    { return dxtol; };
   double getInfTol()   { return inftol; };
   double getIntermTol() { return interm_tol; }
   int getMPIrank_world() { return mpirank_world;};
