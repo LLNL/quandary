@@ -6,6 +6,10 @@
 #include <iostream>
 #include <algorithm>
 #include "optimtarget.hpp"
+#ifdef WITH_ENSMALLEN
+#include <armadillo>
+#include <ensmallen.hpp>
+#endif
 #pragma once
 
 /* if Petsc version < 3.17: Change interface for Tao Optimizer */
@@ -122,3 +126,34 @@ PetscErrorCode TaoEvalGradient(Tao tao, Vec x, Vec G, void*ptr);
 
 /* Petsc's Tao interface routine for evaluating the gradient g = \nabla f(x) */
 PetscErrorCode TaoEvalObjectiveAndGradient(Tao tao, Vec x, PetscReal *f, Vec G, void*ptr);
+
+
+// #ifdef WITH_ENSMALLEN
+/* ENSMALLEN */
+class EnsmallenFunction {
+  OptimProblem* optimctx;
+
+  public:
+
+    // Constructor 
+    EnsmallenFunction(OptimProblem* optimctx_, int ndata);
+    ~EnsmallenFunction();
+
+    // // Given parameters x, return the sum of the individual functions
+    // // f_i(x) + ... + f_{i + batchSize - 1}(x).  i will always be greater than 0,
+    // // and i + batchSize will be less than or equal to the value of NumFunctions().
+    double Evaluate(const arma::mat& x, const size_t i, const size_t batchSize);
+
+    // // Gradient of the above Evaluate function
+    // void Gradient(const arma::mat& x, const size_t i, arma::mat& g,const size_t batchSize);
+
+    // Shuffle the ordering of the functions f_i(x). (For machine learning problems, this would be equivalent to shuffling the data points, e.g., before an epoch of learning.)
+    void Shuffle();
+
+    // Get the number of functions f_i(x).
+    size_t NumFunctions();
+
+    // Optional: Given parameters x and a matrix g, return the sum of the individual functions f_i(x) + ... + f_{i + batchSize - 1}(x), and store the sum of the gradient of individual functions f'_i(x) + ... + f'_{i + batchSize - 1}(x) into the provided matrix g.  g should have the same size (rows, columns) as x.  i will always be greater than 0, and i + batchSize will be less than or equal to the value of NumFunctions().
+    double EvaluateWithGradient(const arma::mat& x, const size_t i, arma::mat& g, const size_t batchSize);
+};
+// #endif

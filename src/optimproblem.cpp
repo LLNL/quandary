@@ -858,3 +858,43 @@ PetscErrorCode TaoEvalGradient(Tao tao, Vec x, Vec G, void*ptr){
   
   return 0;
 }
+
+
+// #ifdef WITH_ENSMALLEN
+/* ENSMALLEN interface */
+
+// Constructor
+EnsmallenFunction::EnsmallenFunction(OptimProblem* optimctx_, int ndata){
+  optimctx = optimctx_;
+  
+  /* TODO: Create the 'data set': <ndata> random initial conditions */
+}
+
+EnsmallenFunction::~EnsmallenFunction(){}
+
+
+double EnsmallenFunction::Evaluate(const arma::mat& x, const size_t i, const size_t batchSize){
+  // for (int iinit=i; iinit < i+batchSize; iinit++){
+    // getRho0(iinit) from data set of random initial conditions
+
+    // prepare target state
+
+    // ...
+  // }
+
+  return -1.0;
+}
+
+void EnsmallenFunction::Shuffle(){}
+
+// Return the number of functions
+size_t EnsmallenFunction::NumFunctions(){ 
+  return -1;
+}
+
+double EnsmallenFunction::EvaluateWithGradient(const arma::mat& x, const size_t i, arma::mat& g, const size_t batchSize){
+
+  return -1.0;
+}
+
+// #endif
