@@ -430,14 +430,20 @@ int main(int argc,char **argv)
   // // TEST: evaluate the controls
   // double p, q;
   // double t = 1.0;
-  mastereq->setControlAmplitudes(xinit_arma);
+  // mastereq->setControlAmplitudes(xinit_arma);
   // mastereq->getOscillator(0)->evalControl(t, &p, &q);
   // printf("ARMA Controls(%f) = %1.14e, %1.14e\n", t, p, q);
-  output->writeControls(xinit_arma, mastereq, ntime, dt);
+  // output->writeControls(xinit_arma, mastereq, ntime, dt);
   // mastereq->setControlAmplitudes(xinit);
   // mastereq->getOscillator(0)->evalControl(t, &p, &q);
   // printf("ORIG Controls(%f) = %1.14e, %1.14e\n", t, p, q);
   // output->writeControls(xinit, mastereq, ntime, dt);
+
+  double F;
+  printf("ARMADILLO... \n");
+  F = optimctx->evalF(xinit_arma);
+  printf("PETSC... \n");
+  F = optimctx->evalF(xinit);
 
 
   exit(1);
