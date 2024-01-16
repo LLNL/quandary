@@ -423,18 +423,20 @@ OptimProblem::~OptimProblem() {
 
 
 
-double OptimProblem::evalTikhonov_(double* x){
-  // double xnorm;
-  printf("  -> Warning: Tikhonov disabled.\n");
-  return 0.0;
-  // if (!gamma_tik_interpolate){  // ||x||^2
-  //   VecNorm(x, NORM_2, &xnorm);
-  // } else {
+double OptimProblem::evalTikhonov_(double* x, int ndesign){
+  double xnorm;
+  if (!gamma_tik_interpolate){  // ||x||^2
+    for (int i=0; i<ndesign; i++){
+      xnorm += pow(x[i],2.0);
+    }
+  } else {
+    printf("Tikhonov interpolate disabled currently.\n");
+    exit(1);
   //   VecCopy(x, xtmp);
   //   VecAXPY(xtmp, -1.0, xinit);    // xtmp =  x - x_0
   //   VecNorm(xtmp, NORM_2, &xnorm);
-  // }
-  // return 0.5 * pow(xnorm,2.0);
+  }
+  return 0.5 * xnorm;
 }
 
 double OptimProblem::evalF(const Vec x) {
@@ -538,7 +540,7 @@ double OptimProblem::evalF_(double* x) {
   obj_cost = optim_target->finalizeJ(obj_cost_re, obj_cost_im);
 
   /* Evaluate regularization objective += gamma/2 * ||x-x0||^2*/
-  obj_regul = gamma_tik * evalTikhonov_(x);
+  obj_regul = gamma_tik * evalTikhonov_(x, ndesign);
 
   /* Sum, store and return objective value */
   objective = obj_cost + obj_regul + obj_penal + obj_penal_dpdm + obj_penal_energy;

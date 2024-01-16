@@ -119,7 +119,7 @@ class OptimProblem {
   void getSolution(Vec* opt);
 
   /* Evaluate Tikhonov regularization*/
-  double evalTikhonov_(double* x);
+  double evalTikhonov_(double* x, int ndesign);
 };
 
 /* Monitor the optimization progress. This routine is called in each iteration of TaoSolve() */
