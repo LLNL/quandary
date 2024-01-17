@@ -5,6 +5,7 @@ ControlBasis::ControlBasis() {
     nparams= 0;
     skip = 0;
     controltype = ControlType::NONE;
+    enforceBC = true;
 }
 
 ControlBasis::ControlBasis(int nparams_, double tstart_, double tstop_) : ControlBasis() {
@@ -35,15 +36,6 @@ BSpline2nd::~BSpline2nd(){
     delete [] tcenter;
 }
 
-void BSpline2nd::enforceBoundary(double* x, int carrier_id){
-    // set first and last two splines to zero so that spline starts and ends at zero 
-    for (int l=0; l<nsplines; l++) {
-        if (l<=1 || l >= nsplines- 2) {
-            x[skip + carrier_id*nsplines*2 + l] = 0.0;
-            x[skip + carrier_id*nsplines*2 + l + nsplines] = 0.0;
-        }
-    }
-}
 
 void BSpline2nd::evaluate(const double t, const std::vector<double>& coeff, int carrier_freq_id, double* Bl1_ptr, double* Bl2_ptr){
 
@@ -51,7 +43,10 @@ void BSpline2nd::evaluate(const double t, const std::vector<double>& coeff, int 
     double sum2 = 0.0;
     /* Sum over basis function */
     for (int l=0; l<nsplines; l++) {
-        // if (l<=1 || l >= nsplines- 2) continue; // skip first and last two splines (set to zero) so that spline starts and ends at zero 
+        // If enforceBC: skip first and last two splines (set to zero) so that spline starts and ends at zero 
+        if (enforceBC) {
+            if (l<=1 || l >= nsplines- 2) continue; 
+        }
         double Blt = basisfunction(l,t);
         double alpha1 = coeff[skip + carrier_freq_id*nsplines*2 + l];
         double alpha2 = coeff[skip + carrier_freq_id*nsplines*2 + l + nsplines];
@@ -112,20 +107,15 @@ BSpline2ndAmplitude::~BSpline2ndAmplitude(){
     delete [] tcenter;
 }
 
-void BSpline2ndAmplitude::enforceBoundary(double* x, int carrier_id){
-    // set first and last two splines to zero so that spline starts and ends at zero 
-    for (int l=0; l<nsplines; l++) {
-        if (l<=1 || l >= nsplines- 2) {
-            x[skip + carrier_id*(nsplines+1) + l] = 0.0;
-        }
-    }
-}
-
 void BSpline2ndAmplitude::evaluate(const double t, const std::vector<double>& coeff, int carrier_freq_id, double* Bl1_ptr, double* Bl2_ptr){
 
     /* Sum over basis function for amplitudes */
     double ampsum = 0.0;
     for (int l=0; l<nsplines; l++) {
+        // If enforceBC: skip first and last two splines (set to zero) so that spline starts and ends at zero 
+        if (enforceBC) {
+            if (l<=1 || l >= nsplines- 2) continue; 
+        }
         double Blt = basisfunction(l,t);
         double alpha1 = coeff[skip + carrier_freq_id*(nsplines+1) + l];
         ampsum += alpha1 * Blt;

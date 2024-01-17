@@ -4,7 +4,6 @@ Oscillator::Oscillator(){
   nlevels = 0;
   Tfinal = 0;
   ground_freq = 0.0;
-  control_enforceBC = true;
 }
 
 Oscillator::Oscillator(MapParam config, int id, std::vector<int> nlevels_all_, std::vector<std::string>& controlsegments, std::vector<std::string>& controlinitializations, double ground_freq_, double selfkerr_, double rotational_freq_, double decay_time_, double dephase_time_, std::vector<double> carrier_freq_, double Tfinal_, LindbladType lindbladtype_){
@@ -26,6 +25,8 @@ Oscillator::Oscillator(MapParam config, int id, std::vector<int> nlevels_all_, s
   MPI_Comm_rank(PETSC_COMM_WORLD, &mpirank_petsc);
   MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
 
+  /* Check if boundary conditions for controls should be enfored (default: yes). */
+  bool control_enforceBC = config.GetBoolParam("control_enforceBC", true);
 
   // for (int idstr = 0; idstr < controlsegments.size(); idstr++) printf("%s ", controlsegments[idstr].c_str());
   // printf("\n");
@@ -54,6 +55,7 @@ Oscillator::Oscillator(MapParam config, int id, std::vector<int> nlevels_all_, s
       // if (mpirank_world == 0) printf("%d: Creating step basis with amplitude (%f, %f) (tramp %f) in control segment [%f, %f]\n", myid, step_amp1, step_amp2, tramp, tstart, tstop);
       ControlBasis* mystep = new Step(step_amp1, step_amp2, tstart, tstop, tramp);
       mystep->setSkip(nparams);
+      mystep->setEnforceBC(control_enforceBC);
       nparams += mystep->getNparams() * carrier_freq.size();
       basisfunctions.push_back(mystep);
       
@@ -73,6 +75,7 @@ Oscillator::Oscillator(MapParam config, int id, std::vector<int> nlevels_all_, s
       // if (mpirank_world==0) printf("%d: Creating %d-spline basis in control segment [%f, %f]\n", myid, nspline,tstart, tstop);
       ControlBasis* mysplinebasis = new BSpline2nd(nspline, tstart, tstop);
       mysplinebasis->setSkip(nparams);
+      mysplinebasis->setEnforceBC(control_enforceBC);
       nparams += mysplinebasis->getNparams() * carrier_freq.size();
       basisfunctions.push_back(mysplinebasis);
     } else if (controlsegments[idstr].compare("spline_amplitude") == 0) { // Spline on amplitude only. Format in string: spline_amplitude, nsplines, tstart, tstop
@@ -92,6 +95,7 @@ Oscillator::Oscillator(MapParam config, int id, std::vector<int> nlevels_all_, s
       // if (mpirank_world==0) printf("%d: Creating %d-spline basis in control segment [%f, %f]\n", myid, nspline,tstart, tstop);
       ControlBasis* mysplinebasis = new BSpline2ndAmplitude(nspline, scaling, tstart, tstop);
       mysplinebasis->setSkip(nparams);
+      mysplinebasis->setEnforceBC(control_enforceBC);
       nparams += mysplinebasis->getNparams() * carrier_freq.size();
       basisfunctions.push_back(mysplinebasis);
     } else {
@@ -162,10 +166,6 @@ Oscillator::Oscillator(MapParam config, int id, std::vector<int> nlevels_all_, s
     idini += 2; 
   }
 
-
-  /* Check if boundary conditions for controls should be enfored (default: yes). */
-  control_enforceBC = config.GetBoolParam("control_enforceBC", true);
-
   /* Compute and store dimension of preceding and following oscillators */
   dim_preOsc = 1;
   dim_postOsc = 1;
@@ -184,37 +184,26 @@ Oscillator::~Oscillator(){
   }
 }
 
-void Oscillator::setParams(double* x){
+void Oscillator::setParams(const double* x){
 
-  if (params.size() > 0 && control_enforceBC){
-    //printf("\n\n True! \n\n");
-    // First, enforce the control boundaries, i.e. potentially set some parameters in x to zero. 
-    for (int bs = 0; bs < basisfunctions.size(); bs++){
-      for (int f=0; f < carrier_freq.size(); f++) {
-        basisfunctions[bs]->enforceBoundary(x, f);
-      }
-    }
-  }
-
-  // Now copy x into the oscillators parameter storage
+  // Copy x into the oscillators parameter storage
   for (int i=0; i<params.size(); i++) {
     params[i] = x[i]; 
   }
-
 }
 
 
 void Oscillator::setParams_diff(double* xbar){
 
-  if (params.size() > 0 && control_enforceBC){
-    //printf("\n\n True! \n\n");
-    // First, enforce the control boundaries, i.e. potentially set some parameters in x to zero. 
-    for (int bs = 0; bs < basisfunctions.size(); bs++){
-      for (int f=0; f < carrier_freq.size(); f++) {
-        basisfunctions[bs]->enforceBoundary(xbar, f);
-      }
-    }
-  }
+  // if (params.size() > 0 && control_enforceBC){
+  //   //printf("\n\n True! \n\n");
+  //   // First, enforce the control boundaries, i.e. potentially set some parameters in x to zero. 
+  //   for (int bs = 0; bs < basisfunctions.size(); bs++){
+  //     for (int f=0; f < carrier_freq.size(); f++) {
+  //       basisfunctions[bs]->enforceBoundary(xbar, f);
+  //     }
+  //   }
+  // }
 }
 
 

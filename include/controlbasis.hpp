@@ -16,6 +16,7 @@ class ControlBasis {
         double tstop;           
         int skip;              // Constant to skip to the starting location for this basis inside the (global) control vector. 
         ControlType controltype;
+        bool enforceBC;       // Flag to decide whether controls will have boundary conditions enforced.
 
     public: 
         ControlBasis();
@@ -27,11 +28,9 @@ class ControlBasis {
         double getTstop() {return tstop; };
         ControlType getType() {return controltype;};
         void setSkip(int skip_) {skip = skip_;};
+        void setEnforceBC(bool enforceBC_) {enforceBC = enforceBC_;};
 
         virtual int getNSplines() {return 0;};
-
-        /* Default: do nothing. For some control parameterizations, this can be used to enforce that the controls start and end at zero. E.g. the Splines will overwrite the parameters x of the first and last two splines by zero, so that the splines start and end at zero. */
-        virtual void enforceBoundary(double* x, int carrier_id) {};
 
         /* Evaluate the Basis(alpha, t) at time t using the coefficients coeff. */
         virtual void evaluate(const double t, const std::vector<double>& coeff, int carrier_freq_id, double* Blt1, double*Blt2) = 0;
@@ -60,9 +59,6 @@ class BSpline2nd : public ControlBasis {
         ~BSpline2nd();
 
         int getNSplines() {return nsplines;};
-
-        /* Sets the first and last two spline coefficients in x to zero, so that the controls start and end at zero */
-        void enforceBoundary(double* x, int carrier_id);
 
         /* Evaluate the spline at time t using the coefficients coeff. */
         void evaluate(const double t, const std::vector<double>& coeff, int carrier_freq_id, double* Blt1_ptr, double* Blt2_ptr);
@@ -93,9 +89,6 @@ class BSpline2ndAmplitude : public ControlBasis {
         ~BSpline2ndAmplitude();
 
         int getNSplines() {return nsplines;};
-
-        /* Sets the first and last two spline coefficients in x to zero, so that the controls start and end at zero */
-        void enforceBoundary(double* x, int carrier_id);
 
         /* Evaluate the spline at time t using the coefficients coeff. */
         void evaluate(const double t, const std::vector<double>& coeff, int carrier_freq_id, double* Blt1_ptr, double* Blt2_ptr);

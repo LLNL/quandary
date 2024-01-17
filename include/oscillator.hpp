@@ -39,8 +39,6 @@ class Oscillator {
     int mpirank_petsc;             // rank of Petsc's communicator
     int mpirank_world;             // rank of MPI_COMM_WORLD
 
-    bool control_enforceBC;       // Flag to decide whether controls will have boundary conditions enforced.
-
   public:
     PiPulse pipulse;  // Store a dummy pipulse that does nothing
     int dim_preOsc;                // Dimension of coupled subsystems preceding this oscillator
