@@ -100,11 +100,11 @@ class OptimProblem {
   int getMaxIter()     { return maxiter; };
 
   /* Evaluate the objective function F(x) */
-  double evalF_(double* x);
+  double evalF_(const double* x, const size_t i, const size_t batchSize);
   // Petsc interface
   double evalF(const Vec x);
   // Ensmallen interface
-  double evalF(arma::mat& x);
+  double evalF(const arma::mat& x, const size_t i, const size_t batchSize);
 
   /* Evaluate gradient \nabla F(x) */
   void evalGradF(const Vec x, Vec G);
@@ -119,7 +119,7 @@ class OptimProblem {
   void getSolution(Vec* opt);
 
   /* Evaluate Tikhonov regularization*/
-  double evalTikhonov_(double* x, int ndesign);
+  double evalTikhonov_(const double* x, int ndesign);
 };
 
 /* Monitor the optimization progress. This routine is called in each iteration of TaoSolve() */

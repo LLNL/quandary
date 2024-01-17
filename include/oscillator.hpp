@@ -66,7 +66,7 @@ class Oscillator {
     int getNSegParams(int segmentID);
 
     /* Copy x into the control parameter vector. This also checks the boundaries of the controls and potentially sets some parameters in x to zero.  */
-    void setParams(double* x);
+    void setParams(const double* x);
     void setParams_diff(double* xbar);
 
     /* Copy params into the vector x */

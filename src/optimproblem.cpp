@@ -423,7 +423,7 @@ OptimProblem::~OptimProblem() {
 
 
 
-double OptimProblem::evalTikhonov_(double* x, int ndesign){
+double OptimProblem::evalTikhonov_(const double* x, int ndesign){
   double xnorm;
   if (!gamma_tik_interpolate){  // ||x||^2
     for (int i=0; i<ndesign; i++){
@@ -440,20 +440,20 @@ double OptimProblem::evalTikhonov_(double* x, int ndesign){
 }
 
 double OptimProblem::evalF(const Vec x) {
-    PetscScalar* x_ptr;
-    VecGetArray(x, &x_ptr);
-    double F = evalF_(x_ptr);
-    VecRestoreArray(x, &x_ptr);
+    const PetscScalar* x_ptr;
+    VecGetArrayRead(x, &x_ptr);
+    double F = evalF_(x_ptr, 0, ninit_local);
+    VecRestoreArrayRead(x, &x_ptr);
     return F;
  }
 
-double OptimProblem::evalF(arma::mat& x) {
-  double F = evalF_(x.memptr());
+double OptimProblem::evalF(const arma::mat& x, const size_t i, const size_t batchSize) {
+  double F = evalF_(x.memptr(), i, batchSize);
   return F;
 }
 
 
-double OptimProblem::evalF_(double* x) {
+double OptimProblem::evalF_(const double* x, const size_t i, const size_t batchSize) {
 
   MasterEq* mastereq = timestepper->mastereq;
 
@@ -896,15 +896,10 @@ EnsmallenFunction::~EnsmallenFunction(){}
 
 
 double EnsmallenFunction::Evaluate(const arma::mat& x, const size_t i, const size_t batchSize){
-  // for (int iinit=i; iinit < i+batchSize; iinit++){
-    // getRho0(iinit) from data set of random initial conditions
 
-    // prepare target state
+  double F = optimctx->evalF(x, i, batchSize);
 
-    // ...
-  // }
-
-  return -1.0;
+  return F;
 }
 
 void EnsmallenFunction::Shuffle(){}
