@@ -419,7 +419,7 @@ OptimProblem::~OptimProblem() {
 
 
 double OptimProblem::evalTikhonov_(const double* x, int ndesign){
-  double xnorm;
+  double xnorm = 0.0;
   if (!gamma_tik_interpolate){  // ||x||^2
     for (int i=0; i<ndesign; i++){
       xnorm += pow(x[i],2.0);
