@@ -62,7 +62,9 @@ void BSpline2nd::derivative(const double t, const std::vector<double>& coeff, do
 
     /* Iterate over basis function */
     for (int l=0; l<nsplines; l++) {
-        // if (l<=1 || l >= nsplines- 2) continue; // skip first and last two splines (set to zero) so that spline starts and ends at zero       
+        if (enforceBC) {
+            if (l<=1 || l >= nsplines- 2) continue;
+        }
         double Blt = basisfunction(l, t); 
         coeff_diff[skip + carrier_freq_id*nsplines*2 + l]            += Blt * valbar1;
         coeff_diff[skip + carrier_freq_id*nsplines*2 + l + nsplines] += Blt * valbar2;
@@ -133,6 +135,10 @@ void BSpline2ndAmplitude::derivative(const double t, const std::vector<double>& 
     /* Iterate over basis function */
     double ampsum = 0.0;
     for (int l=0; l<nsplines; l++) {
+        if (enforceBC) {
+            if (l<=1 || l >= nsplines- 2) continue; 
+        }
+
         double Blt = basisfunction(l, t); 
         double alpha1 = coeff[skip + carrier_freq_id*(nsplines+1) + l];
         ampsum += alpha1 * Blt;
