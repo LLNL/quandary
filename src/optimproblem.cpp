@@ -885,8 +885,10 @@ PetscErrorCode TaoEvalGradient(Tao tao, Vec x, Vec G, void*ptr){
 /* ENSMALLEN interface */
 
 // Constructor
-EnsmallenFunction::EnsmallenFunction(OptimProblem* optimctx_, int ndata, std::default_random_engine rand_engine){
+EnsmallenFunction::EnsmallenFunction(OptimProblem* optimctx_, int ndata_, std::default_random_engine rand_engine_){
   optimctx = optimctx_;
+  ndata = ndata_;
+  rand_engine = rand_engine_;
   
   /* Create the 'data set': <ndata> random initial conditions, encoded as random seeds for generating random initial conditions */
   std::uniform_int_distribution<> unit_int_dist(1000, 1000000000);
@@ -907,15 +909,19 @@ double EnsmallenFunction::Evaluate(const arma::mat& x, const size_t i, const siz
   return F;
 }
 
-void EnsmallenFunction::Shuffle(){}
+void EnsmallenFunction::Shuffle(){
+  std::shuffle(std::begin(optimctx->ic_seed), std::end(optimctx->ic_seed), rand_engine);
+}
 
 // Return the number of functions
 size_t EnsmallenFunction::NumFunctions(){ 
-  return -1;
+  return ndata;
 }
 
 double EnsmallenFunction::EvaluateWithGradient(const arma::mat& x, const size_t i, arma::mat& g, const size_t batchSize){
 
+  printf("Ensmallen Gradient: TODO.\n")
+  exit(1);
   return -1.0;
 }
 

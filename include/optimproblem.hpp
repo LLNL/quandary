@@ -144,6 +144,8 @@ PetscErrorCode TaoEvalObjectiveAndGradient(Tao tao, Vec x, PetscReal *f, Vec G, 
 /* ENSMALLEN */
 class EnsmallenFunction {
   OptimProblem* optimctx;
+  int ndata;     /* Number of total data points */
+  std::default_random_engine rand_engine;
 
   public:
 

@@ -416,62 +416,34 @@ int main(int argc,char **argv)
   VecZeroEntries(grad);
   Vec opt;
 
-// #ifdef WITH_ENSMALLEN
-//   /* TEST Armadillo  */
-//   int n_dims = 1;
-//   int n_size = optimctx->getNdesign();
-//   arma::mat armaxinit(n_dims, n_size, arma::fill::randu);
-//   armaxinit.print("my armaxinit = ");
-//   printf("IJ + %1.4e\n", armaxinit(2));
-//   armaxinit.submat( 0, 0, 0, 2).print("Submat=");
-//   armaxinit.submat(0,0,0,2) = {1.0, 2.0, 3.0};
-//   armaxinit.submat( 0, 0, 0, 2).print("Submat=");
-  // This might be useful?
-  //colvec y = conv_to< colvec >::from(x)
-// #endif
-
-// #ifdef WITH_ENSMALLEN
-  // Pass initial guess to armadillo matrix 
+  /* Get the starging point */
   optimctx->getStartingPoint(xinit);
+
+  /* Prepare stochastic optimization via ENSMALLEN. */
+
+  // Pass initial guess to armadillo matrix 
   PetscScalar* xinit_ptr;
   VecGetArray(xinit, &xinit_ptr);
   arma::mat xinit_arma(xinit_ptr, 1, optimctx->getNdesign());
   VecRestoreArray(xinit, &xinit_ptr);
   // xinit_arma.print("arma xinit=");
-  // VecView(xinit, NULL);
-  
-  // // TEST: evaluate the controls
-  // double p, q;
-  // double t = 1.0;
-  // mastereq->setControlAmplitudes(xinit_arma);
-  // mastereq->getOscillator(0)->evalControl(t, &p, &q);
-  // printf("ARMA Controls(%f) = %1.14e, %1.14e\n", t, p, q);
-  // output->writeControls(xinit_arma, mastereq, ntime, dt);
-  // mastereq->setControlAmplitudes(xinit);
-  // mastereq->getOscillator(0)->evalControl(t, &p, &q);
-  // printf("ORIG Controls(%f) = %1.14e, %1.14e\n", t, p, q);
-  // output->writeControls(xinit, mastereq, ntime, dt);
 
-  // ENSMALLEN
+  EnsmallenFunction* ens_opt;
+  bool stochastic_opt = false;
+  int  ndata, batchsize;
+   
   if (initcondstr[0].compare("random") == 0 ) {
-    
     /* Get number of ndata points, batchsize */
-    int ndata = config.GetIntParam("ndata", 1, false, true);
-    int batchsize = config.GetIntParam("batchsize", -1, false, true);
+    ndata = config.GetIntParam("ndata", 1, false, true);
+    batchsize = config.GetIntParam("batchsize", -1, false, true);
 
-    printf("ENSMALLEN's evalF : \n");
-    EnsmallenFunction* ens_opt = new EnsmallenFunction(optimctx, ndata,rand_engine);
-    double F = ens_opt->Evaluate(xinit_arma, 0, batchsize);
+    printf("Creating stochastic ENSMALLEN optimizer, ndata=%d, batchsize=%d.\n", ndata, batchsize);
+    ens_opt = new EnsmallenFunction(optimctx, ndata,rand_engine);
+
+    // Store flag for stochastic optimizer
+    stochastic_opt = true;
   } 
-  else {
-    printf("PETSC's evalF coming now: \n");
-    double F = optimctx->evalF(xinit);
-  }
-
-  exit(1);
-
 // #endif
-
 
   /* Some output */
   if (mpirank_world == 0)
@@ -493,17 +465,18 @@ int main(int argc,char **argv)
   double gnorm = 0.0;
   /* --- Solve primal --- */
   if (runtype == RunType::SIMULATION) {
-    optimctx->getStartingPoint(xinit);
     VecCopy(xinit, optimctx->xinit); // Store the initial guess
     if (mpirank_world == 0 && !quietmode) printf("\nStarting primal solver... \n");
-    objective = optimctx->evalF(xinit);
+    if (stochastic_opt)
+      objective = ens_opt->Evaluate(xinit_arma, 0, batchsize);
+    else 
+      objective = optimctx->evalF(xinit);
     if (mpirank_world == 0 && !quietmode) printf("\nTotal objective = %1.14e, \n", objective);
     optimctx->getSolution(&opt);
   } 
   
   /* --- Solve adjoint --- */
   if (runtype == RunType::GRADIENT) {
-    optimctx->getStartingPoint(xinit);
     VecCopy(xinit, optimctx->xinit); // Store the initial guess
     if (mpirank_world == 0 && !quietmode) printf("\nStarting adjoint solver...\n");
     optimctx->evalGradF(xinit, grad);
@@ -518,7 +491,6 @@ int main(int argc,char **argv)
   /* --- Solve the optimization  --- */
   if (runtype == RunType::OPTIMIZATION) {
     /* Set initial starting point */
-    optimctx->getStartingPoint(xinit);
     VecCopy(xinit, optimctx->xinit); // Store the initial guess
     if (mpirank_world == 0 && !quietmode) printf("\nStarting Optimization solver ... \n");
     optimctx->solve(xinit);
@@ -528,7 +500,6 @@ int main(int argc,char **argv)
   /* Only evaluate and write control pulses (no propagation) */
   if (runtype == RunType::EVALCONTROLS) {
     std::vector<double> pt, qt;
-    optimctx->getStartingPoint(xinit);
     if (mpirank_world == 0 && !quietmode) printf("\nEvaluating current controls ... \n");
     output->writeControls(xinit, mastereq, ntime, dt);
   }
