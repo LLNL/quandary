@@ -484,15 +484,16 @@ int main(int argc,char **argv)
     if (stochastic_opt) {
       ens_opt->EvaluateWithGradient(xinit_arma, 0, grad_arma, batchsize);
       gnorm = norm(grad_arma, 2);
+      optimctx->output->writeGradient(grad_arma);
     } else {
       optimctx->evalGradF(xinit, grad);
       VecNorm(grad, NORM_2, &gnorm);
       // VecView(grad, PETSC_VIEWER_STDOUT_WORLD);
+      optimctx->output->writeGradient(grad);
     }
     if (mpirank_world == 0 && !quietmode) {
       printf("\nGradient norm: %1.14e\n", gnorm);
     }
-    optimctx->output->writeGradient(grad);
   }
 
   /* --- Solve the optimization  --- */
