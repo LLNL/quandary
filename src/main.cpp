@@ -430,7 +430,8 @@ int main(int argc,char **argv)
   // Initialize gradient to zero.
   arma::mat grad_arma(1, optimctx->getNdesign(), arma::fill::zeros);
 
-  EnsmallenFunction* ens_opt;
+  EnsmallenFunction* ens_function;  // Ensmallen function to be optimized
+  ens::RMSProp ens_optimizer;       // Ensmallen optimizer
   bool stochastic_opt = false;
   int  ndata, batchsize;
    
@@ -440,7 +441,7 @@ int main(int argc,char **argv)
     batchsize = config.GetIntParam("batchsize", -1, false, true);
 
     printf("Creating stochastic ENSMALLEN optimizer, ndata=%d, batchsize=%d.\n", ndata, batchsize);
-    ens_opt = new EnsmallenFunction(optimctx, ndata,rand_engine);
+    ens_function = new EnsmallenFunction(optimctx, ndata,rand_engine);
 
     // Store flag for stochastic optimizer
     stochastic_opt = true;
@@ -470,7 +471,7 @@ int main(int argc,char **argv)
     VecCopy(xinit, optimctx->xinit); // Store the initial guess
     if (mpirank_world == 0 && !quietmode) printf("\nStarting primal solver... \n");
     if (stochastic_opt)
-      objective = ens_opt->Evaluate(xinit_arma, 0, batchsize);
+      objective = ens_function->Evaluate(xinit_arma, 0, batchsize);
     else 
       objective = optimctx->evalF(xinit);
     if (mpirank_world == 0 && !quietmode) printf("\nTotal objective = %1.14e, \n", objective);
@@ -482,7 +483,7 @@ int main(int argc,char **argv)
     VecCopy(xinit, optimctx->xinit); // Store the initial guess
     if (mpirank_world == 0 && !quietmode) printf("\nStarting adjoint solver...\n");
     if (stochastic_opt) {
-      ens_opt->EvaluateWithGradient(xinit_arma, 0, grad_arma, batchsize);
+      ens_function->EvaluateWithGradient(xinit_arma, 0, grad_arma, batchsize);
       gnorm = norm(grad_arma, 2);
       optimctx->output->writeGradient(grad_arma);
     } else {
@@ -498,11 +499,14 @@ int main(int argc,char **argv)
 
   /* --- Solve the optimization  --- */
   if (runtype == RunType::OPTIMIZATION) {
-    /* Set initial starting point */
     VecCopy(xinit, optimctx->xinit); // Store the initial guess
     if (mpirank_world == 0 && !quietmode) printf("\nStarting Optimization solver ... \n");
-    optimctx->solve(xinit);
-    optimctx->getSolution(&opt);
+    if (stochastic_opt) {
+      ens_optimizer.Optimize(*ens_function, xinit_arma);
+    } else {
+      optimctx->solve(xinit);
+      optimctx->getSolution(&opt);
+    }
   }
 
   /* Only evaluate and write control pulses (no propagation) */
@@ -564,7 +568,7 @@ int main(int argc,char **argv)
   /* --- Solve primal --- */
   if (mpirank_world == 0) printf("\nRunning optimizer eval_f... ");
   if (stochastic_opt)
-    obj_org = ens_opt->Evaluate(xinit_arma, 0, batchsize);
+    obj_org = ens_function->Evaluate(xinit_arma, 0, batchsize);
   else
     obj_org = optimctx->evalF(xinit);
   if (mpirank_world == 0) printf(" Obj_orig %1.14e\n", obj_org);
@@ -572,7 +576,7 @@ int main(int argc,char **argv)
   /* --- Solve adjoint --- */
   if (mpirank_world == 0) printf("\nRunning optimizer eval_grad_f...\n");
   if (stochastic_opt) {
-    ens_opt->EvaluateWithGradient(xinit_arma, 0, grad_arma, batchsize);
+    ens_function->EvaluateWithGradient(xinit_arma, 0, grad_arma, batchsize);
     grad_arma.print("Ensmallen Gradient: ");
   }
   else {
@@ -589,7 +593,7 @@ int main(int argc,char **argv)
     /* Evaluate f(p+eps)*/
     if (stochastic_opt) {
       xinit_arma(i) += EPS;
-      obj_pert1 = ens_opt->Evaluate(xinit_arma, 0, batchsize);
+      obj_pert1 = ens_function->Evaluate(xinit_arma, 0, batchsize);
     } else {
       VecSetValue(xinit, i, EPS, ADD_VALUES);
       obj_pert1 = optimctx->evalF(xinit);
@@ -598,7 +602,7 @@ int main(int argc,char **argv)
     /* Evaluate f(p-eps)*/
     if (stochastic_opt) {
       xinit_arma(i) -= 2.0*EPS;
-      obj_pert2 = ens_opt->Evaluate(xinit_arma, 0, batchsize);
+      obj_pert2 = ens_function->Evaluate(xinit_arma, 0, batchsize);
     } else {
       VecSetValue(xinit, i, -2*EPS, ADD_VALUES);
       obj_pert2 = optimctx->evalF(xinit);
