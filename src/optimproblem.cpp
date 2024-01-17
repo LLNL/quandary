@@ -605,7 +605,7 @@ double OptimProblem::evalGradF_(const double* x, const size_t i, double* G, cons
   double obj_cost_im = 0.0;
   double fidelity_re = 0.0;
   double fidelity_im = 0.0;
-  for (int iinit = 0; iinit < ninit_local; iinit++) {
+  for (int iinit = i; iinit < i+ninit_local; iinit++) {
 
     /* Prepare the initial condition */
     int iinit_global = mpirank_init * ninit_local + iinit;
@@ -711,7 +711,7 @@ double OptimProblem::evalGradF_(const double* x, const size_t i, double* G, cons
   if (timestepper->mastereq->lindbladtype == LindbladType::NONE) {
 
     // Iterate over all initial conditions 
-    for (int iinit = 0; iinit < ninit_local; iinit++) {
+    for (int iinit = i; iinit < i+ninit_local; iinit++) {
       int iinit_global = mpirank_init * ninit_local + iinit;
 
       // FOR STOCHASTIC OPTIM: Pass the random number generator seed for this initial condition
