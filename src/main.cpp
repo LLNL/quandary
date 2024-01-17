@@ -108,11 +108,6 @@ int main(int argc,char **argv)
     }
   }
 
-  /* Get optimizer, ndata and batchsize */
-  std::string optimizer = config.GetStrParam("optimizer", "petsc", true, false);
-  int batchsize = config.GetIntParam("batchsize", -1, false, true);
-  int ndata = config.GetIntParam("ndata", 1, false, true);
-
   /* Get type and the total number of initial conditions */
   int ninit = 1;
   std::vector<std::string> initcondstr;
@@ -125,6 +120,7 @@ int main(int argc,char **argv)
   else if (initcondstr[0].compare("3states") == 0 ) ninit = 3;
   else if (initcondstr[0].compare("random") == 0 ) {
     // Check whether 'batchsize' option is given, otherwise set 1
+    int batchsize = config.GetIntParam("batchsize", -1, false, false);
     if (batchsize > 0) ninit = batchsize;
     else ninit = 1;
   }
@@ -456,24 +452,21 @@ int main(int argc,char **argv)
   // printf("ORIG Controls(%f) = %1.14e, %1.14e\n", t, p, q);
   // output->writeControls(xinit, mastereq, ntime, dt);
 
-    double F;
-  // printf("ARMADILLO... \n");
-  // F = optimctx->evalF(xinit_arma, 1, 1);
-  // printf("PETSC's evalF coming now: \n");
-  // F = optimctx->evalF(xinit)r
+  // ENSMALLEN
+  if (initcondstr[0].compare("random") == 0 ) {
+    
+    /* Get number of ndata points, batchsize */
+    int ndata = config.GetIntParam("ndata", 1, false, true);
+    int batchsize = config.GetIntParam("batchsize", -1, false, true);
 
-  // std::default_random_engine rand_engine{rand_seed};
-  // std::normal_distribution<double> std_normal_dist;
-  // double number = std_normal_dist(rand_engine);
-  // printf("Rand number: %1.8f\n", number);
-
-
-  // if (optimizer.compare("ensmallen") == 0) {
-  // }
-
-  EnsmallenFunction* ens_opt = new EnsmallenFunction(optimctx, ndata,rand_engine);
-  F = ens_opt->Evaluate(xinit_arma, 0, batchsize);
-
+    printf("ENSMALLEN's evalF : \n");
+    EnsmallenFunction* ens_opt = new EnsmallenFunction(optimctx, ndata,rand_engine);
+    double F = ens_opt->Evaluate(xinit_arma, 0, batchsize);
+  } 
+  else {
+    printf("PETSC's evalF coming now: \n");
+    double F = optimctx->evalF(xinit);
+  }
 
   exit(1);
 
