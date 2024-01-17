@@ -79,10 +79,8 @@ void Output::writeOptimFile(double objective, double gnorm, double stepsize, dou
 
 }
 
-void Output::writeGradient(Vec grad){
+void Output::writeGradient_(double* grad, int ngrad){
   char filename[255];  
-  PetscInt ngrad;
-  VecGetSize(grad, &ngrad);
 
   if (mpirank_world == 0) {
     /* Print current gradients to file */
@@ -91,15 +89,25 @@ void Output::writeGradient(Vec grad){
     snprintf(filename, 254, "%s/grad.dat", datadir.c_str());
     file = fopen(filename, "w");
 
-    const PetscScalar* grad_ptr;
-    VecGetArrayRead(grad, &grad_ptr);
     for (int i=0; i<ngrad; i++){
-      fprintf(file, "%1.14e\n", grad_ptr[i]);
+      fprintf(file, "%1.14e\n", grad[i]);
     }
     fclose(file);
-    VecRestoreArrayRead(grad, &grad_ptr);
     if (!quietmode) printf("File written: %s\n", filename);
   }
+}
+
+void Output::writeGradient(Vec grad){
+  PetscInt ngrad;
+  VecGetSize(grad, &ngrad);
+  PetscScalar* grad_ptr;
+  VecGetArray(grad, &grad_ptr);
+  writeGradient_(grad_ptr, ngrad);
+  VecRestoreArray(grad, &grad_ptr);
+}
+
+void Output::writeGradient(arma::mat& grad){
+  writeGradient_(grad.memptr(), grad.n_elem);
 }
 
 void Output::writeControls_(double* params, int ndesign, MasterEq* mastereq, int ntime, double dt){
@@ -156,7 +164,7 @@ void Output::writeControls(Vec params, MasterEq* mastereq, int ntime, double dt)
     VecRestoreArray(params, &params_ptr);
 }
 // Ensmallen interface
-void Output::writeControls(arma::mat params, MasterEq* mastereq, int ntime, double dt){
+void Output::writeControls(arma::mat& params, MasterEq* mastereq, int ntime, double dt){
 
     writeControls_(params.memptr(),params.n_elem,mastereq,ntime,dt);
 }

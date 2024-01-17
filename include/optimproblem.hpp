@@ -106,13 +106,13 @@ class OptimProblem {
 
   /* Evaluate the objective function F(x) */
   double evalF_(const double* x, const size_t i, const size_t batchSize);
-  // Petsc interface
+  // Petsc wrapper
   double evalF(const Vec x);
-  // Ensmallen interface
-  double evalF(const arma::mat& x, const size_t i, const size_t batchSize);
 
-  /* Evaluate gradient \nabla F(x) */
-  void evalGradF(const Vec x, Vec G);
+  /* Evaluate gradient \nabla F(x). Return F(x) */
+  double evalGradF_(const double* x, const size_t i, double* g, const size_t batchSize);
+  // Petsc wrapper 
+  double evalGradF(const Vec x, Vec G);
 
   /* Run optimization solver, starting from initial guess xinit */
   void solve(Vec xinit);
@@ -125,6 +125,7 @@ class OptimProblem {
 
   /* Evaluate Tikhonov regularization*/
   double evalTikhonov_(const double* x, int ndesign);
+  void evalTikhonov_diff_(const double* x, double* G, int ndesign, double factor);
 };
 
 /* Monitor the optimization progress. This routine is called in each iteration of TaoSolve() */

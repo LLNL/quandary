@@ -49,10 +49,12 @@ class Output{
     /* Write current controls and parameters every <optim_monitor_freq> iterations */
     void writeControls_(double* params, int ndesign, MasterEq* mastereq, int ntime, double dt);
     void writeControls(Vec params, MasterEq* mastereq, int ntime, double dt);
-    void writeControls(arma::mat params, MasterEq* mastereq, int ntime, double dt);
+    void writeControls(arma::mat& params, MasterEq* mastereq, int ntime, double dt);
 
     /* Write gradient for adjoint mode */
+    void writeGradient_(double* grad, int ndesign);
     void writeGradient(Vec grad);
+    void writeGradient(arma::mat& grad);
 
     /* Open, write and close files for fullstate and expected energy levels over time */
     void openDataFiles(std::string prefix, int initid);

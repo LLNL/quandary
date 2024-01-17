@@ -152,13 +152,11 @@ class MasterEq{
 
     /* Set the oscillators control function parameters from global design vector x */
     void setControlAmplitudes_(const double* x);
+    void setControlAmplitudes_diff_(double* xbar);
     // Petsc interface
     void setControlAmplitudes(const Vec x);
-    void setControlAmplitudes_diff(Vec xbar);
     // Ensmallen interface
-// #ifdef WITH_ENSMALLEN // TODO: This should be templated?
     void setControlAmplitudes(const arma::mat& x);
-// #endif
 
     /* Set initial conditions 
      * In:   iinit -- index in processors range [rank * ninit_local .. (rank+1) * ninit_local - 1]

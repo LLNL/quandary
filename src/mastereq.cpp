@@ -1329,15 +1329,12 @@ void MasterEq::setControlAmplitudes(const arma::mat& x) {
 }
 
 
-void MasterEq::setControlAmplitudes_diff(Vec xbar) {
-  PetscScalar* ptr;
-  VecGetArray(xbar, &ptr);
+void MasterEq::setControlAmplitudes_diff_(double* xbar) {
   int shift=0;
   for (int ioscil = 0; ioscil < getNOscillators(); ioscil++) {
-    getOscillator(ioscil)->setParams_diff(ptr + shift);
+    getOscillator(ioscil)->setParams_diff(xbar + shift);
     shift += getOscillator(ioscil)->getNParams();
   }
-  VecRestoreArray(xbar, &ptr);
 }
 
 int MasterEq::getRhoT0(const int iinit, const int ninit, const InitialConditionType initcond_type, const std::vector<int>& oscilIDs, Vec rho0){

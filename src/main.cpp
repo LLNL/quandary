@@ -427,6 +427,8 @@ int main(int argc,char **argv)
   arma::mat xinit_arma(xinit_ptr, 1, optimctx->getNdesign());
   VecRestoreArray(xinit, &xinit_ptr);
   // xinit_arma.print("arma xinit=");
+  // Initialize gradient to zero.
+  arma::mat grad_arma(1, optimctx->getNdesign(), arma::fill::zeros);
 
   EnsmallenFunction* ens_opt;
   bool stochastic_opt = false;
@@ -479,9 +481,14 @@ int main(int argc,char **argv)
   if (runtype == RunType::GRADIENT) {
     VecCopy(xinit, optimctx->xinit); // Store the initial guess
     if (mpirank_world == 0 && !quietmode) printf("\nStarting adjoint solver...\n");
-    optimctx->evalGradF(xinit, grad);
-    VecNorm(grad, NORM_2, &gnorm);
-    // VecView(grad, PETSC_VIEWER_STDOUT_WORLD);
+    if (stochastic_opt) {
+      ens_opt->EvaluateWithGradient(xinit_arma, 0, grad_arma, batchsize);
+      gnorm = norm(grad_arma, 2);
+    } else {
+      optimctx->evalGradF(xinit, grad);
+      VecNorm(grad, NORM_2, &gnorm);
+      // VecView(grad, PETSC_VIEWER_STDOUT_WORLD);
+    }
     if (mpirank_world == 0 && !quietmode) {
       printf("\nGradient norm: %1.14e\n", gnorm);
     }
@@ -553,17 +560,24 @@ int main(int argc,char **argv)
   double obj_org;
   double obj_pert1, obj_pert2;
 
-  optimctx->getStartingPoint(xinit);
-
   /* --- Solve primal --- */
   if (mpirank_world == 0) printf("\nRunning optimizer eval_f... ");
-  obj_org = optimctx->evalF(xinit);
+  if (stochastic_opt)
+    obj_org = ens_opt->Evaluate(xinit_arma, 0, batchsize);
+  else
+    obj_org = optimctx->evalF(xinit);
   if (mpirank_world == 0) printf(" Obj_orig %1.14e\n", obj_org);
 
   /* --- Solve adjoint --- */
   if (mpirank_world == 0) printf("\nRunning optimizer eval_grad_f...\n");
-  optimctx->evalGradF(xinit, grad);
-  VecView(grad, PETSC_VIEWER_STDOUT_WORLD);
+  if (stochastic_opt) {
+    ens_opt->EvaluateWithGradient(xinit_arma, 0, grad_arma, batchsize);
+    grad_arma.print("Ensmallen Gradient: ");
+  }
+  else {
+    optimctx->evalGradF(xinit, grad);
+    VecView(grad, PETSC_VIEWER_STDOUT_WORLD);
+  }
   
 
   /* --- Finite Differences --- */
@@ -572,23 +586,39 @@ int main(int argc,char **argv)
   // {int i=0;
 
     /* Evaluate f(p+eps)*/
-    VecSetValue(xinit, i, EPS, ADD_VALUES);
-    obj_pert1 = optimctx->evalF(xinit);
+    if (stochastic_opt) {
+      xinit_arma(i) += EPS;
+      obj_pert1 = ens_opt->Evaluate(xinit_arma, 0, batchsize);
+    } else {
+      VecSetValue(xinit, i, EPS, ADD_VALUES);
+      obj_pert1 = optimctx->evalF(xinit);
+    }
 
     /* Evaluate f(p-eps)*/
-    VecSetValue(xinit, i, -2*EPS, ADD_VALUES);
-    obj_pert2 = optimctx->evalF(xinit);
+    if (stochastic_opt) {
+      xinit_arma(i) -= 2.0*EPS;
+      obj_pert2 = ens_opt->Evaluate(xinit_arma, 0, batchsize);
+    } else {
+      VecSetValue(xinit, i, -2*EPS, ADD_VALUES);
+      obj_pert2 = optimctx->evalF(xinit);
+    }
 
     /* Eval FD and error */
     double fd = (obj_pert1 - obj_pert2) / (2.*EPS);
     double err = 0.0;
     double gradi; 
-    VecGetValues(grad, 1, &i, &gradi);
+    if (stochastic_opt) 
+      gradi = grad_arma(i);
+    else
+      VecGetValues(grad, 1, &i, &gradi);
     if (fd != 0.0) err = (gradi - fd) / fd;
     if (mpirank_world == 0) printf(" %d: obj %1.14e, obj_pert1 %1.14e, obj_pert2 %1.14e, fd %1.14e, grad %1.14e, err %1.14e\n", i, obj_org, obj_pert1, obj_pert2, fd, gradi, err);
 
     /* Restore parameter */
-    VecSetValue(xinit, i, EPS, ADD_VALUES);
+    if (stochastic_opt) 
+      xinit_arma(i) += EPS;
+    else
+      VecSetValue(xinit, i, EPS, ADD_VALUES);
   }
   
 #endif

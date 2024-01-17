@@ -434,6 +434,18 @@ double OptimProblem::evalTikhonov_(const double* x, int ndesign){
   return 0.5 * xnorm;
 }
 
+void OptimProblem::evalTikhonov_diff_(const double* x, double* xbar, int ndesign, double factor){
+  if (!gamma_tik_interpolate){  // ||x||^2
+    for (int i=0; i<ndesign; i++){
+      xbar[i] += x[i]*factor;
+    }
+  } else {
+    printf("Tikhonov interpolate disabled currently.\n");
+    exit(1);
+  }
+}
+
+// Petsc wrapper for evalF
 double OptimProblem::evalF(const Vec x) {
     const PetscScalar* x_ptr;
     VecGetArrayRead(x, &x_ptr);
@@ -442,12 +454,7 @@ double OptimProblem::evalF(const Vec x) {
     return F;
  }
 
-double OptimProblem::evalF(const arma::mat& x, const size_t i, const size_t batchSize) {
-  double F = evalF_(x.memptr(), i, batchSize);
-  return F;
-}
-
-
+// Evaluate F(x)
 double OptimProblem::evalF_(const double* x, const size_t i, const size_t ninit_local) {
 
   MasterEq* mastereq = timestepper->mastereq;
@@ -554,8 +561,20 @@ double OptimProblem::evalF_(const double* x, const size_t i, const size_t ninit_
 }
 
 
+// Petsc wrapper for evalGradF_
+double OptimProblem::evalGradF(const Vec x, Vec G){
+  const PetscScalar* x_ptr;
+  PetscScalar* G_ptr;
+  VecGetArrayRead(x, &x_ptr);
+  VecGetArray(G, &G_ptr);
+  double F = evalGradF_(x_ptr, 0, G_ptr, ninit_local);
+  VecRestoreArrayRead(x, &x_ptr);
+  VecRestoreArray(G, &G_ptr);
+  return F;
+}
 
-void OptimProblem::evalGradF(const Vec x, Vec G){
+/* Evaluate the gradient F'(x), and return F(x) */
+double OptimProblem::evalGradF_(const double* x, const size_t i, double* G, const size_t ninit_local){
 
   MasterEq* mastereq = timestepper->mastereq;
 
@@ -563,18 +582,16 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
   Vec finalstate = NULL;
 
   /* Pass design vector x to oscillators */
-  mastereq->setControlAmplitudes(x); 
+  mastereq->setControlAmplitudes_(x); 
 
   /* Reset Gradient */
-  VecZeroEntries(G);
+  for (int i=0; i<ndesign; i++){
+    G[i] = 0.0;
+  }
 
   /* Derivative of regulatization term gamma / 2 ||x||^2 (ADD ON ONE PROC ONLY!) */
-  // if (mpirank_init == 0 && mpirank_optim == 0) { // TODO: Which one?? 
   if (mpirank_init == 0 ) {
-    VecAXPY(G, gamma_tik, x);   // + gamma_tik * x
-    if (gamma_tik_interpolate){
-      VecAXPY(G, -1.0*gamma_tik, xinit); // -gamma_tik * xinit
-    }
+    evalTikhonov_diff_(x, G, ndesign, gamma_tik); // G += gamma_tik * x
   }
 
   /*  Iterate over initial condition */
@@ -592,6 +609,10 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
 
     /* Prepare the initial condition */
     int iinit_global = mpirank_init * ninit_local + iinit;
+    // FOR STOCHASTIC OPTIM: Pass the random number generator seed for this initial condition
+    if (ic_seed.size() > 0 ) {
+      iinit_global = ic_seed[iinit];
+    }
     int initid = timestepper->mastereq->getRhoT0(iinit_global, ninit, initcond_type, initcond_IDs, rho_t0);
 
     /* If gate optimiztion, compute the target state rho^target = Vrho(0)V^dagger */
@@ -644,7 +665,12 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
       timestepper->solveAdjointODE(initid, rho_t0_bar, finalstate, obj_weights[iinit] * gamma_penalty, obj_weights[iinit]*gamma_penalty_dpdm, obj_weights[iinit]*gamma_penalty_energy);
 
       /* Add to optimizers's gradient */
-      VecAXPY(G, 1.0, timestepper->redgrad);
+      const PetscScalar* g_ptr;
+      VecGetArrayRead(timestepper->redgrad, &g_ptr);
+      for (int i=0; i<ndesign;i++){
+        G[i] += g_ptr[i]; 
+      }
+      VecRestoreArrayRead(timestepper->redgrad, &g_ptr);
     }
   }
 
@@ -676,15 +702,7 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
   obj_cost = optim_target->finalizeJ(obj_cost_re, obj_cost_im);
 
   /* Evaluate regularization objective += gamma/2 * ||x||^2*/
-  double xnorm;
-  if (!gamma_tik_interpolate){  // ||x||^2
-    VecNorm(x, NORM_2, &xnorm);
-  } else {
-    VecCopy(x, xtmp);
-    VecAXPY(xtmp, -1.0, xinit);    // xtmp =  x_k - x_0
-    VecNorm(xtmp, NORM_2, &xnorm);
-  }
-  obj_regul = gamma_tik / 2. * pow(xnorm,2.0);
+  obj_regul = gamma_tik * evalTikhonov_(x, ndesign);
 
   /* Sum, store and return objective value */
   objective = obj_cost + obj_regul + obj_penal + obj_penal_dpdm + obj_penal_energy;
@@ -695,6 +713,11 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
     // Iterate over all initial conditions 
     for (int iinit = 0; iinit < ninit_local; iinit++) {
       int iinit_global = mpirank_init * ninit_local + iinit;
+
+      // FOR STOCHASTIC OPTIM: Pass the random number generator seed for this initial condition
+      if (ic_seed.size() > 0 ) {
+        iinit_global = ic_seed[iinit];
+      }
 
       /* Recompute the initial state and target */
       int initid = timestepper->mastereq->getRhoT0(iinit_global, ninit, initcond_type, initcond_IDs, rho_t0);
@@ -715,30 +738,37 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
       timestepper->solveAdjointODE(initid, rho_t0_bar, finalstate, obj_weights[iinit] * gamma_penalty, obj_weights[iinit]*gamma_penalty_dpdm, obj_weights[iinit]*gamma_penalty_energy);
 
       /* Add to optimizers's gradient */
-      VecAXPY(G, 1.0, timestepper->redgrad);
+      const PetscScalar* g_ptr;
+      VecGetArrayRead(timestepper->redgrad, &g_ptr);
+      for (int i=0; i<ndesign;i++){
+        G[i] += g_ptr[i]; 
+      }
+      VecRestoreArrayRead(timestepper->redgrad, &g_ptr);
     } // end of initial condition loop 
   } // end of adjoint for Schroedinger
 
   /* Sum up the gradient from all initial condition processors */
-  PetscScalar* grad; 
-  VecGetArray(G, &grad);
   for (int i=0; i<ndesign; i++) {
-    mygrad[i] = grad[i];
+    mygrad[i] = G[i];
   }
-  MPI_Allreduce(mygrad, grad, ndesign, MPI_DOUBLE, MPI_SUM, comm_init);
-  VecRestoreArray(G, &grad);
-
+  MPI_Allreduce(mygrad, G, ndesign, MPI_DOUBLE, MPI_SUM, comm_init);
   
-  mastereq->setControlAmplitudes_diff(G);
+  mastereq->setControlAmplitudes_diff_(G);
 
   /* Compute and store gradient norm */
-  VecNorm(G, NORM_2, &(gnorm));
+  gnorm = 0.0;
+  for (int i=0; i<ndesign; i++){
+    gnorm += pow(G[i],2.0);
+  }
+  gnorm = sqrt(gnorm);
 
   /* Output */
   if (mpirank_world == 0 && !quietmode) {
     std::cout<< "Objective = " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal << " + " << obj_penal_dpdm << " + " << obj_penal_energy << std::endl;
     std::cout<< "Fidelity = " << fidelity << std::endl;
   }
+
+  return objective;
 }
 
 
@@ -904,7 +934,7 @@ EnsmallenFunction::~EnsmallenFunction(){}
 
 double EnsmallenFunction::Evaluate(const arma::mat& x, const size_t i, const size_t batchSize){
 
-  double F = optimctx->evalF(x, i, batchSize);
+  double F = optimctx->evalF_(x.memptr(), i, batchSize);
 
   return F;
 }
@@ -920,9 +950,8 @@ size_t EnsmallenFunction::NumFunctions(){
 
 double EnsmallenFunction::EvaluateWithGradient(const arma::mat& x, const size_t i, arma::mat& g, const size_t batchSize){
 
-  printf("Ensmallen Gradient: TODO.\n")
-  exit(1);
-  return -1.0;
+  double F = optimctx->evalGradF_(x.memptr(), i, g.memptr(), batchSize);
+  return F;
 }
 
 // #endif
