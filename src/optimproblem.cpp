@@ -131,14 +131,7 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
 
   /* Get weights for the objective function (weighting the different initial conditions */
   config.GetVecDoubleParam("optim_weights", obj_weights, 1.0);
-  int nfill = 0;
-  if (obj_weights.size() < ninit) nfill = ninit - obj_weights.size();
-  double val = obj_weights[obj_weights.size()-1];
-  if (obj_weights.size() < ninit){
-    for (int i = 0; i < nfill; i++) 
-      obj_weights.push_back(val);
-  }
-  assert(obj_weights.size() >= ninit);
+  copyLast(obj_weights, ninit);
   // Scale the weights such that they sum up to one: beta_i <- beta_i / (\sum_i beta_i)
   double scaleweights = 0.0;
   for (int i=0; i<ninit; i++) scaleweights += obj_weights[i];
@@ -177,6 +170,7 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   else if (initcondstr[0].compare("Nplus1") == 0 )   initcond_type = InitialConditionType::NPLUSONE;
   else if (initcondstr[0].compare("diagonal") == 0 ) initcond_type = InitialConditionType::DIAGONAL;
   else if (initcondstr[0].compare("basis")    == 0 ) initcond_type = InitialConditionType::BASIS;
+  else if (initcondstr[0].compare("random")   == 0 ) initcond_type = InitialConditionType::RANDOM;
   else {
     printf("\n\n ERROR: Wrong setting for initial condition.\n");
     exit(1);
@@ -408,6 +402,7 @@ OptimProblem::~OptimProblem() {
   delete optim_target;
   VecDestroy(&rho_t0);
   VecDestroy(&rho_t0_bar);
+  ic_seed.clear();
 
   VecDestroy(&xlower);
   VecDestroy(&xupper);
@@ -453,7 +448,7 @@ double OptimProblem::evalF(const arma::mat& x, const size_t i, const size_t batc
 }
 
 
-double OptimProblem::evalF_(const double* x, const size_t i, const size_t batchSize) {
+double OptimProblem::evalF_(const double* x, const size_t i, const size_t ninit_local) {
 
   MasterEq* mastereq = timestepper->mastereq;
 
@@ -474,10 +469,14 @@ double OptimProblem::evalF_(const double* x, const size_t i, const size_t batchS
   double obj_cost_im = 0.0;
   double fidelity_re = 0.0;
   double fidelity_im = 0.0;
-  for (int iinit = 0; iinit < ninit_local; iinit++) {
+  for (int iinit = i; iinit < i+ninit_local; iinit++) {
       
     /* Prepare the initial condition in [rank * ninit_local, ... , (rank+1) * ninit_local - 1] */
     int iinit_global = mpirank_init * ninit_local + iinit;
+    // FOR STOCHASTIC OPTIM: Pass the random number generator seed for this initial condition
+    if (ic_seed.size() > 0 ) {
+      iinit_global = ic_seed[iinit];
+    }
     int initid = timestepper->mastereq->getRhoT0(iinit_global, ninit, initcond_type, initcond_IDs, rho_t0);
     if (mpirank_optim == 0 && !quietmode) printf("%d: Initial condition id=%d ...\n", mpirank_init, initid);
 
@@ -886,10 +885,16 @@ PetscErrorCode TaoEvalGradient(Tao tao, Vec x, Vec G, void*ptr){
 /* ENSMALLEN interface */
 
 // Constructor
-EnsmallenFunction::EnsmallenFunction(OptimProblem* optimctx_, int ndata){
+EnsmallenFunction::EnsmallenFunction(OptimProblem* optimctx_, int ndata, std::default_random_engine rand_engine){
   optimctx = optimctx_;
   
-  /* TODO: Create the 'data set': <ndata> random initial conditions */
+  /* Create the 'data set': <ndata> random initial conditions, encoded as random seeds for generating random initial conditions */
+  std::uniform_int_distribution<> unit_int_dist(1000, 1000000000);
+  for (int ic = 0; ic<ndata; ic++){
+    int val = unit_int_dist(rand_engine);
+    optimctx->ic_seed.push_back(val);
+    // printf("Rand seed = %d\n", optimctx->ic_seed[ic]);
+  }
 }
 
 EnsmallenFunction::~EnsmallenFunction(){}

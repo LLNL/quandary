@@ -10,6 +10,7 @@
 #include "optimproblem.hpp"
 #include "output.hpp"
 #include "petsc.h"
+#include <random>
 #ifdef WITH_ENSMALLEN
 #include <armadillo>
 #include <ensmallen.hpp>
@@ -69,6 +70,13 @@ int main(int argc,char **argv)
   MPI_Bcast(&rand_seed, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD); // Broadcast from rank 0 to all.
   export_param(mpirank_world, *config.log, "rand_seed", rand_seed);
 
+  // Better this one:
+  // std::default_random_engine rand_engine{rand_seed};
+  std::random_device rd;
+  std::default_random_engine rand_engine{rd()}; // non-reproducable seed
+  if ( rand_seed > 0 ) rand_engine.seed(rand_seed);
+ 
+
   /* --- Get some options from the config file --- */
   std::vector<int> nlevels;
   config.GetVecIntParam("nlevels", nlevels, 0);
@@ -100,6 +108,10 @@ int main(int argc,char **argv)
     }
   }
 
+  /* Get optimizer, ndata and batchsize */
+  std::string optimizer = config.GetStrParam("optimizer", "petsc", true, false);
+  int batchsize = config.GetIntParam("batchsize", -1, false, true);
+  int ndata = config.GetIntParam("ndata", 1, false, true);
 
   /* Get type and the total number of initial conditions */
   int ninit = 1;
@@ -111,6 +123,11 @@ int main(int argc,char **argv)
   else if (initcondstr[0].compare("performance") == 0 ) ninit = 1;
   else if (initcondstr[0].compare("ensemble") == 0 ) ninit = 1;
   else if (initcondstr[0].compare("3states") == 0 ) ninit = 3;
+  else if (initcondstr[0].compare("random") == 0 ) {
+    // Check whether 'batchsize' option is given, otherwise set 1
+    if (batchsize > 0) ninit = batchsize;
+    else ninit = 1;
+  }
   else if (initcondstr[0].compare("Nplus1") == 0 )  {
     // compute system dimension N 
     ninit = 1;
@@ -439,11 +456,23 @@ int main(int argc,char **argv)
   // printf("ORIG Controls(%f) = %1.14e, %1.14e\n", t, p, q);
   // output->writeControls(xinit, mastereq, ntime, dt);
 
-  double F;
-  printf("ARMADILLO... \n");
-  F = optimctx->evalF(xinit_arma);
-  printf("PETSC... \n");
-  F = optimctx->evalF(xinit);
+    double F;
+  // printf("ARMADILLO... \n");
+  // F = optimctx->evalF(xinit_arma, 1, 1);
+  // printf("PETSC's evalF coming now: \n");
+  // F = optimctx->evalF(xinit)r
+
+  // std::default_random_engine rand_engine{rand_seed};
+  // std::normal_distribution<double> std_normal_dist;
+  // double number = std_normal_dist(rand_engine);
+  // printf("Rand number: %1.8f\n", number);
+
+
+  // if (optimizer.compare("ensmallen") == 0) {
+  // }
+
+  EnsmallenFunction* ens_opt = new EnsmallenFunction(optimctx, ndata,rand_engine);
+  F = ens_opt->Evaluate(xinit_arma, 0, batchsize);
 
 
   exit(1);

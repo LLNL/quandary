@@ -1342,16 +1342,56 @@ void MasterEq::setControlAmplitudes_diff(Vec xbar) {
 
 int MasterEq::getRhoT0(const int iinit, const int ninit, const InitialConditionType initcond_type, const std::vector<int>& oscilIDs, Vec rho0){
 
+  std::default_random_engine rand_engine{};
+  std::normal_distribution<double> std_normal_dist;
+
   PetscInt ilow, iupp; 
   PetscInt elemID;
-  double val;
+  double val, sum;
   int dim_post;
+  auto gen = [&std_normal_dist, &rand_engine](){
+              return std_normal_dist(rand_engine);
+              };
+  std::vector<double> vals(2*dim_rho);
+  std::vector<int> ids(2*dim_rho);
   int initID = 0;    // Output: ID for this initial condition */
   int dim_rho = dim; // can be N^2 or N
   if (lindbladtype != LindbladType::NONE) dim_rho = (int) sqrt(dim); // now dim_rho = N always.
 
   /* Switch over type of initial condition */
   switch (initcond_type) {
+
+    case InitialConditionType::RANDOM:
+
+      if (lindbladtype != LindbladType::NONE) {
+        printf("Random initial condition for Lindblad solver not implemented yet.\n");
+        exit(1);
+      }
+
+      VecZeroEntries(rho0);
+      VecGetOwnershipRange(rho0, &ilow, &iupp);
+ 
+      // Generate a random state. iinit contains the random number gen seed for this initial condition
+      rand_engine.seed(iinit);
+      std::generate(begin(vals), end(vals), gen);
+      // Sum up 
+      sum = 0.0;
+      for (int i=0; i<dim_rho; i++) {
+        sum += pow(vals[getIndexReal(i)], 2.0) + pow(vals[getIndexImag(i)], 2.0);
+      }
+      sum = sqrt(sum);
+      // Scale values
+      for (int i=0; i<2*dim_rho; i++) {
+        vals[i] = vals[i] / sum;
+        ids[i] = i;
+      }
+      // Pass to rho0
+      VecSetValues(rho0, 2*dim_rho, ids.data(), vals.data(), INSERT_VALUES);
+
+      // Identifier is the seed
+      initID = iinit;
+      
+      break;
 
     case InitialConditionType::PERFORMANCE:
       /* Set up Input state psi = 1/sqrt(2N)*(Ones(N) + im*Ones(N)) or rho = psi*psi^\dag */

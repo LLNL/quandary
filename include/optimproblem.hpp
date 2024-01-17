@@ -79,6 +79,11 @@ class OptimProblem {
     Vec xprev;                       /* design vector at previous iteration */
     Vec xinit;                       /* Storing initial design vector */
 
+    /* For Ensmallen */
+    std::vector<int> ic_seed;  /* Vector storing seeds for random initial conditions. */
+
+
+
   /* Constructor */
   OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm comm_init_, MPI_Comm comm_optim, int ninit_, std::vector<double> gate_rot_freq, Output* output_, bool quietmode=false);
   ~OptimProblem();
@@ -143,7 +148,7 @@ class EnsmallenFunction {
   public:
 
     // Constructor 
-    EnsmallenFunction(OptimProblem* optimctx_, int ndata);
+    EnsmallenFunction(OptimProblem* optimctx_, int ndata, std::default_random_engine rand_engine);
     ~EnsmallenFunction();
 
     // // Given parameters x, return the sum of the individual functions
