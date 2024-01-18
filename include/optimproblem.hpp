@@ -117,6 +117,7 @@ class OptimProblem {
   double getFaTol()    { return fatol; };
   double getInfTol()   { return inftol; };
   double getIntermTol() { return interm_tol; }
+  int getNwindows() { return nwindows; }
   int getMPIrank_world() { return mpirank_world;};
   int getMaxIter()     { return maxiter; };
 
