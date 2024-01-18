@@ -79,7 +79,7 @@ void Output::writeOptimFile(double objective, double gnorm, double stepsize, dou
 
 }
 
-void Output::writeGradient_(double* grad, int ngrad){
+void Output::writeGradient_(const double* grad, int ngrad){
   char filename[255];  
 
   if (mpirank_world == 0) {
@@ -97,20 +97,20 @@ void Output::writeGradient_(double* grad, int ngrad){
   }
 }
 
-void Output::writeGradient(Vec grad){
+void Output::writeGradient(const Vec grad){
   PetscInt ngrad;
   VecGetSize(grad, &ngrad);
-  PetscScalar* grad_ptr;
-  VecGetArray(grad, &grad_ptr);
+  const PetscScalar* grad_ptr;
+  VecGetArrayRead(grad, &grad_ptr);
   writeGradient_(grad_ptr, ngrad);
-  VecRestoreArray(grad, &grad_ptr);
+  VecRestoreArrayRead(grad, &grad_ptr);
 }
 
-void Output::writeGradient(arma::mat& grad){
+void Output::writeGradient(const arma::mat& grad){
   writeGradient_(grad.memptr(), grad.n_elem);
 }
 
-void Output::writeControls_(double* params, int ndesign, MasterEq* mastereq, int ntime, double dt){
+void Output::writeControls_(const double* params, int ndesign, MasterEq* mastereq, int ntime, double dt){
 
   /* Write controls every <outfreq> iterations */
   if ( mpirank_world == 0 ) { 
@@ -154,17 +154,17 @@ void Output::writeControls_(double* params, int ndesign, MasterEq* mastereq, int
 }
 
 // Petsc interface
-void Output::writeControls(Vec params, MasterEq* mastereq, int ntime, double dt){
+void Output::writeControls(const Vec params, MasterEq* mastereq, int ntime, double dt){
 
     PetscInt ndesign;
     VecGetSize(params, &ndesign);
-    PetscScalar* params_ptr;
-    VecGetArray(params, &params_ptr);
+    const PetscScalar* params_ptr;
+    VecGetArrayRead(params, &params_ptr);
     writeControls_(params_ptr,ndesign,mastereq,ntime,dt);
-    VecRestoreArray(params, &params_ptr);
+    VecRestoreArrayRead(params, &params_ptr);
 }
 // Ensmallen interface
-void Output::writeControls(arma::mat& params, MasterEq* mastereq, int ntime, double dt){
+void Output::writeControls(const arma::mat& params, MasterEq* mastereq, int ntime, double dt){
 
     writeControls_(params.memptr(),params.n_elem,mastereq,ntime,dt);
 }

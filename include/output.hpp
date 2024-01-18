@@ -47,14 +47,14 @@ class Output{
     void writeOptimFile(double objective, double gnorm, double stepsize, double Favg, double cost, double tikh_regul,  double penalty, double penalty_dpdm, double penalty_energy);
 
     /* Write current controls and parameters every <optim_monitor_freq> iterations */
-    void writeControls_(double* params, int ndesign, MasterEq* mastereq, int ntime, double dt);
-    void writeControls(Vec params, MasterEq* mastereq, int ntime, double dt);
-    void writeControls(arma::mat& params, MasterEq* mastereq, int ntime, double dt);
+    void writeControls_(const double* params, int ndesign, MasterEq* mastereq, int ntime, double dt);
+    void writeControls(const Vec params, MasterEq* mastereq, int ntime, double dt);
+    void writeControls(const arma::mat& params, MasterEq* mastereq, int ntime, double dt);
 
     /* Write gradient for adjoint mode */
-    void writeGradient_(double* grad, int ndesign);
-    void writeGradient(Vec grad);
-    void writeGradient(arma::mat& grad);
+    void writeGradient_(const double* grad, int ndesign);
+    void writeGradient(const Vec grad);
+    void writeGradient(const arma::mat& grad);
 
     /* Open, write and close files for fullstate and expected energy levels over time */
     void openDataFiles(std::string prefix, int initid);
