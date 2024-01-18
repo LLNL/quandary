@@ -485,7 +485,7 @@ double OptimProblem::evalF_(const double* x, const size_t i, const size_t ninit_
       iinit_global = ic_seed[iinit];
     }
     int initid = timestepper->mastereq->getRhoT0(iinit_global, ninit, initcond_type, initcond_IDs, rho_t0);
-    if (mpirank_optim == 0 && !quietmode) printf("%d: iinit=%d, i=%d, ninit_local=%d. Initial condition id=%d ...\n", mpirank_init, iinit, i, ninit_local, initid);
+    if (mpirank_optim == 0 && !quietmode) printf("%d: iinit=%d, i=%zu, ninit_local=%zu. Initial condition id=%d ...\n", mpirank_init, iinit, i, ninit_local, initid);
 
     /* If gate optimiztion, compute the target state rho^target = Vrho(0)V^dagger */
     optim_target->prepare(rho_t0);
@@ -615,7 +615,7 @@ double OptimProblem::evalGradF_(const double* x, const size_t i, double* G, cons
       iinit_global = ic_seed[iinit];
     }
     int initid = timestepper->mastereq->getRhoT0(iinit_global, ninit, initcond_type, initcond_IDs, rho_t0);
-    if (mpirank_optim == 0 && !quietmode) printf("%d: iinit=%d, i=%d, ninit_local=%d. Initial condition id=%d ...\n", mpirank_init, iinit, i, ninit_local, initid);
+    if (mpirank_optim == 0 && !quietmode) printf("%d: iinit=%d, i=%zu, ninit_local=%zu. Initial condition id=%d ...\n", mpirank_init, iinit, i, ninit_local, initid);
 
     /* If gate optimiztion, compute the target state rho^target = Vrho(0)V^dagger */
     optim_target->prepare(rho_t0);
@@ -760,7 +760,7 @@ double OptimProblem::evalGradF_(const double* x, const size_t i, double* G, cons
   /* Compute and store gradient norm */
   gnorm = 0.0;
   for (int i=0; i<ndesign; i++){
-    gnorm += pow(G[i],2.0);
+    gnorm += G[i]*G[i];
   }
   gnorm = sqrt(gnorm);
 
@@ -820,6 +820,58 @@ void OptimProblem::getSolution(Vec* param_ptr){
   *param_ptr = params;
 }
 
+bool OptimProblem::Monitor(const double objective, const double* x, const size_t iter, const double stepsize){
+  /* Pass current iteration number to output manager */
+  output->optim_iter = iter;
+
+  /* Grab some output stuff */
+  double obj_cost = getCostT();
+  double obj_regul = getRegul();
+  double obj_penal = getPenalty();
+  double obj_penal_dpdm = getPenaltyDpDm();
+  double obj_penal_energy = getPenaltyEnergy();
+  double F_avg = getFidelity();
+  double gn = getGnorm();
+
+  /* Print to optimization file */
+  output->writeOptimFile(objective, gn, stepsize, F_avg, obj_cost, obj_regul, obj_penal, obj_penal_dpdm, obj_penal_energy);
+
+  /* Print parameters and controls to file */
+  // if ( optim_iter % optim_monitor_freq == 0 ) {
+  output->writeControls_(x, ndesign, timestepper->mastereq, timestepper->ntime, timestepper->dt);
+  // }
+
+  /* Additional Stopping criteria */
+  bool lastIter = false;
+  std::string finalReason_str = "";
+  if (1.0 - F_avg <= getInfTol()) {
+    finalReason_str = "Optimization converged with small infidelity.";
+    lastIter = true;
+  } else if (obj_cost <= getFaTol()) {
+    finalReason_str = "Optimization converged with small final time cost.";
+    lastIter = true;
+  } 
+
+  /* Screen output header */
+  if (getMPIrank_world() == 0 && iter == 0) {
+    std::cout<<  "    Objective             Tikhonov                Penalty-Leakage        Penalty-StateVar       Penalty-TotalEnergy " << std::endl;
+  }
+
+  /* Screen output per iteration */
+  if (getMPIrank_world() == 0 && (iter == getMaxIter() || lastIter || iter % output->optim_monitor_freq == 0)) {
+    std::cout<< iter <<  "  " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal << " + " << obj_penal_dpdm << " + " << obj_penal_energy;
+    std::cout<< "  Fidelity = " << F_avg;
+    std::cout<< "  ||Grad|| = " << gn;
+    std::cout<< std::endl;
+  }
+
+  if (getMPIrank_world() == 0 && lastIter){
+    std::cout<< finalReason_str << std::endl;
+  }
+ 
+  return lastIter;
+}
+
 PetscErrorCode TaoMonitor(Tao tao,void*ptr){
   OptimProblem* ctx = (OptimProblem*) ptr;
 
@@ -832,55 +884,19 @@ PetscErrorCode TaoMonitor(Tao tao,void*ptr){
   TaoGetSolutionStatus(tao, &iter, &f, &gnorm, NULL, &deltax, &reason);
   TaoGetSolution(tao, &params);
 
-  /* Pass current iteration number to output manager */
-  ctx->output->optim_iter = iter;
+  // printf("TAO Gnorm = %1.14e\n", gnorm);
+  // printf("TAO f = %1.14e\n", f);
+  ctx->setGnorm(gnorm); // TODO: For some reason, Tao's gnorm is smaller than the reported Gnorm from EvalGradF_...
 
-  /* Grab some output stuff */
-  double obj_cost = ctx->getCostT();
-  double obj_regul = ctx->getRegul();
-  double obj_penal = ctx->getPenalty();
-  double obj_penal_dpdm = ctx->getPenaltyDpDm();
-  double obj_penal_energy = ctx->getPenaltyEnergy();
-  double F_avg = ctx->getFidelity();
+  /* Call optimproblem->Monitor() */
+  const PetscScalar* params_ptr;
+  VecGetArrayRead(params, &params_ptr);
+  bool isLastIter = ctx->Monitor(f, params_ptr, iter, deltax);
+  VecRestoreArrayRead(params, &params_ptr);
 
-  /* Print to optimization file */
-  ctx->output->writeOptimFile(f, gnorm, deltax, F_avg, obj_cost, obj_regul, obj_penal, obj_penal_dpdm, obj_penal_energy);
 
-  /* Print parameters and controls to file */
-  // if ( optim_iter % optim_monitor_freq == 0 ) {
-  ctx->output->writeControls(params, ctx->timestepper->mastereq, ctx->timestepper->ntime, ctx->timestepper->dt);
-  // }
-
-  /* Screen output */
-  if (ctx->getMPIrank_world() == 0 && iter == 0) {
-    std::cout<<  "    Objective             Tikhonov                Penalty-Leakage        Penalty-StateVar       Penalty-TotalEnergy " << std::endl;
-  }
-
-  /* Additional Stopping criteria */
-  bool lastIter = false;
-  std::string finalReason_str = "";
-  if (1.0 - F_avg <= ctx->getInfTol()) {
-    finalReason_str = "Optimization converged with small infidelity.";
+  if (isLastIter)
     TaoSetConvergedReason(tao, TAO_CONVERGED_USER);
-    lastIter = true;
-  } else if (obj_cost <= ctx->getFaTol()) {
-    finalReason_str = "Optimization converged with small final time cost.";
-    TaoSetConvergedReason(tao, TAO_CONVERGED_USER);
-    lastIter = true;
-  } 
-
-
-  if (ctx->getMPIrank_world() == 0 && (iter == ctx->getMaxIter() || lastIter || iter % ctx->output->optim_monitor_freq == 0)) {
-    std::cout<< iter <<  "  " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal << " + " << obj_penal_dpdm << " + " << obj_penal_energy;
-    std::cout<< "  Fidelity = " << F_avg;
-    std::cout<< "  ||Grad|| = " << gnorm;
-    std::cout<< std::endl;
-  }
-
-if (ctx->getMPIrank_world() == 0 && lastIter){
-    std::cout<< finalReason_str << std::endl;
-  }
- 
 
   return 0;
 }
@@ -957,3 +973,4 @@ double EnsmallenFunction::EvaluateWithGradient(const arma::mat& x, const size_t 
 }
 
 // #endif
+

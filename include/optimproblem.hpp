@@ -103,6 +103,8 @@ class OptimProblem {
   double getInfTol()   { return inftol; };
   int getMPIrank_world() { return mpirank_world;};
   int getMaxIter()     { return maxiter; };
+  double getGnorm()     { return gnorm; };
+  void setGnorm(double gnorm_)     { gnorm = gnorm_; };
 
   /* Evaluate the objective function F(x) */
   double evalF_(const double* x, const size_t i, const size_t batchSize);
@@ -126,6 +128,8 @@ class OptimProblem {
   /* Evaluate Tikhonov regularization*/
   double evalTikhonov_(const double* x, int ndesign);
   void evalTikhonov_diff_(const double* x, double* G, int ndesign, double factor);
+
+  bool Monitor(const double objective, const double* x, const size_t iter, const double stepsize);
 };
 
 /* Monitor the optimization progress. This routine is called in each iteration of TaoSolve() */
@@ -144,12 +148,12 @@ PetscErrorCode TaoEvalObjectiveAndGradient(Tao tao, Vec x, PetscReal *f, Vec G, 
 // #ifdef WITH_ENSMALLEN
 /* ENSMALLEN */
 class EnsmallenFunction {
-  OptimProblem* optimctx;
-  int ndata;     /* Number of total data points */
-  std::default_random_engine rand_engine;
+  public:
+    OptimProblem* optimctx;
+    int ndata;     /* Number of total data points */
+    std::default_random_engine rand_engine;
 
   public:
-
     // Constructor 
     EnsmallenFunction(OptimProblem* optimctx_, int ndata, std::default_random_engine rand_engine);
     ~EnsmallenFunction();
@@ -172,3 +176,26 @@ class EnsmallenFunction {
     double EvaluateWithGradient(const arma::mat& x, const size_t i, arma::mat& g, const size_t batchSize);
 };
 // #endif
+
+
+class EnsMonitor{
+  public:
+    EnsMonitor(){};
+
+    // Callback function called at the beginning and end of the optimization. FOR SOME REASON THOSE DON'T WORK
+    // template<typename OptimizerType, typename FunctionType, typename MatType>
+    // void BeginOptimization(OptimizerType& optimizer, FunctionType& function, const MatType& coordinates){
+    //   printf(" Stochastic Optimization with ndata=%d, batchsize=%d\n", function.ndata, optimizer.BatchSize());
+    // };
+
+    // Callback function called at the end of a pass over the data (after each epoch)
+    template<typename OptimizerType, typename FunctionType, typename MatType>
+    bool EndEpoch(OptimizerType& optimizer, FunctionType& function, const MatType& coordinates, const size_t epoch, const double objective)
+    {
+      bool isLastIter = function.optimctx->Monitor(objective, coordinates.memptr(), epoch*function.ndata, optimizer.StepSize());
+
+      // Do not terminate the optimization unless last iter
+      return isLastIter;
+    };
+};
+
