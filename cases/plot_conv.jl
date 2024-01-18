@@ -12,3 +12,5 @@ plot!(d[:,1],d[:,10],lab="Ctrl Energy",yscale=:log10)
 plot!(d[:,1],d[:,11].+1e-10,lab="Discont",yscale=:log10)
 
 ylims!(1e-6,30)
+
+println("Plot handle in 'pl'")
