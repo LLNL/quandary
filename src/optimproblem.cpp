@@ -485,7 +485,7 @@ double OptimProblem::evalF_(const double* x, const size_t i, const size_t ninit_
       iinit_global = ic_seed[iinit];
     }
     int initid = timestepper->mastereq->getRhoT0(iinit_global, ninit, initcond_type, initcond_IDs, rho_t0);
-    if (mpirank_optim == 0 && !quietmode) printf("%d: Initial condition id=%d ...\n", mpirank_init, initid);
+    if (mpirank_optim == 0 && !quietmode) printf("%d: iinit=%d, i=%d, ninit_local=%d. Initial condition id=%d ...\n", mpirank_init, iinit, i, ninit_local, initid);
 
     /* If gate optimiztion, compute the target state rho^target = Vrho(0)V^dagger */
     optim_target->prepare(rho_t0);
@@ -494,20 +494,20 @@ double OptimProblem::evalF_(const double* x, const size_t i, const size_t ninit_
     finalstate = timestepper->solveODE(initid, rho_t0);
 
     /* Add to integral penalty term */
-    obj_penal += obj_weights[iinit] * gamma_penalty * timestepper->penalty_integral;
+    obj_penal += obj_weights[iinit-i] * gamma_penalty * timestepper->penalty_integral;
 
     /* Add to second derivative penalty term */
-    obj_penal_dpdm += obj_weights[iinit] * gamma_penalty_dpdm * timestepper->penalty_dpdm;
+    obj_penal_dpdm += obj_weights[iinit-i] * gamma_penalty_dpdm * timestepper->penalty_dpdm;
     
     /* Add to energy integral penalty term */
-    obj_penal_energy += obj_weights[iinit] * gamma_penalty_energy* timestepper->energy_penalty_integral;
+    obj_penal_energy += obj_weights[iinit-i] * gamma_penalty_energy* timestepper->energy_penalty_integral;
 
     /* Evaluate J(finalstate) and add to final-time cost */
     double obj_iinit_re = 0.0;
     double obj_iinit_im = 0.0;
     optim_target->evalJ(finalstate,  &obj_iinit_re, &obj_iinit_im);
-    obj_cost_re += obj_weights[iinit] * obj_iinit_re;
-    obj_cost_im += obj_weights[iinit] * obj_iinit_im;
+    obj_cost_re += obj_weights[iinit-i] * obj_iinit_re;
+    obj_cost_im += obj_weights[iinit-i] * obj_iinit_im;
 
     /* Add to final-time fidelity */
     double fidelity_iinit_re = 0.0;
@@ -607,6 +607,7 @@ double OptimProblem::evalGradF_(const double* x, const size_t i, double* G, cons
   double fidelity_im = 0.0;
   for (int iinit = i; iinit < i+ninit_local; iinit++) {
 
+
     /* Prepare the initial condition */
     int iinit_global = mpirank_init * ninit_local + iinit;
     // FOR STOCHASTIC OPTIM: Pass the random number generator seed for this initial condition
@@ -614,6 +615,7 @@ double OptimProblem::evalGradF_(const double* x, const size_t i, double* G, cons
       iinit_global = ic_seed[iinit];
     }
     int initid = timestepper->mastereq->getRhoT0(iinit_global, ninit, initcond_type, initcond_IDs, rho_t0);
+    if (mpirank_optim == 0 && !quietmode) printf("%d: iinit=%d, i=%d, ninit_local=%d. Initial condition id=%d ...\n", mpirank_init, iinit, i, ninit_local, initid);
 
     /* If gate optimiztion, compute the target state rho^target = Vrho(0)V^dagger */
     optim_target->prepare(rho_t0);
@@ -625,22 +627,22 @@ double OptimProblem::evalGradF_(const double* x, const size_t i, double* G, cons
     finalstate = timestepper->solveODE(initid, rho_t0);
 
     /* Store the final state for the Schroedinger solver */
-    if (timestepper->mastereq->lindbladtype == LindbladType::NONE) VecCopy(finalstate, store_finalstates[iinit]);
+    if (timestepper->mastereq->lindbladtype == LindbladType::NONE) VecCopy(finalstate, store_finalstates[iinit-i]);
 
     /* Add to integral penalty term */
-    obj_penal += obj_weights[iinit] * gamma_penalty * timestepper->penalty_integral;
+    obj_penal += obj_weights[iinit-i] * gamma_penalty * timestepper->penalty_integral;
 
     /* Add to second derivative dpdm integral penalty term */
-    obj_penal_dpdm += obj_weights[iinit] * gamma_penalty_dpdm * timestepper->penalty_dpdm;
+    obj_penal_dpdm += obj_weights[iinit-i] * gamma_penalty_dpdm * timestepper->penalty_dpdm;
     /* Add to energy integral penalty term */
-    obj_penal_energy += obj_weights[iinit] * gamma_penalty_energy * timestepper->energy_penalty_integral;
+    obj_penal_energy += obj_weights[iinit-i] * gamma_penalty_energy * timestepper->energy_penalty_integral;
 
     /* Evaluate J(finalstate) and add to final-time cost */
     double obj_iinit_re = 0.0;
     double obj_iinit_im = 0.0;
     optim_target->evalJ(finalstate,  &obj_iinit_re, &obj_iinit_im);
-    obj_cost_re += obj_weights[iinit] * obj_iinit_re;
-    obj_cost_im += obj_weights[iinit] * obj_iinit_im;
+    obj_cost_re += obj_weights[iinit-i] * obj_iinit_re;
+    obj_cost_im += obj_weights[iinit-i] * obj_iinit_im;
 
     /* Add to final-time fidelity */
     double fidelity_iinit_re = 0.0;
@@ -659,10 +661,10 @@ double OptimProblem::evalGradF_(const double* x, const size_t i, double* G, cons
       /* Terminal condition for adjoint variable: Derivative of final time objective J */
       double obj_cost_re_bar, obj_cost_im_bar;
       optim_target->finalizeJ_diff(obj_cost_re, obj_cost_im, &obj_cost_re_bar, &obj_cost_im_bar);
-      optim_target->evalJ_diff(finalstate, rho_t0_bar, obj_weights[iinit]*obj_cost_re_bar, obj_weights[iinit]*obj_cost_im_bar);
+      optim_target->evalJ_diff(finalstate, rho_t0_bar, obj_weights[iinit-i]*obj_cost_re_bar, obj_weights[iinit-i]*obj_cost_im_bar);
 
       /* Derivative of time-stepping */
-      timestepper->solveAdjointODE(initid, rho_t0_bar, finalstate, obj_weights[iinit] * gamma_penalty, obj_weights[iinit]*gamma_penalty_dpdm, obj_weights[iinit]*gamma_penalty_energy);
+      timestepper->solveAdjointODE(initid, rho_t0_bar, finalstate, obj_weights[iinit-i] * gamma_penalty, obj_weights[iinit-i]*gamma_penalty_dpdm, obj_weights[iinit-i]*gamma_penalty_energy);
 
       /* Add to optimizers's gradient */
       const PetscScalar* g_ptr;
@@ -724,7 +726,7 @@ double OptimProblem::evalGradF_(const double* x, const size_t i, double* G, cons
       optim_target->prepare(rho_t0);
      
       /* Get the last time step (finalstate) */
-      finalstate = store_finalstates[iinit];
+      finalstate = store_finalstates[iinit-i];
 
       /* Reset adjoint */
       VecZeroEntries(rho_t0_bar);
@@ -732,10 +734,10 @@ double OptimProblem::evalGradF_(const double* x, const size_t i, double* G, cons
       /* Terminal condition for adjoint variable: Derivative of final time objective J */
       double obj_cost_re_bar, obj_cost_im_bar;
       optim_target->finalizeJ_diff(obj_cost_re, obj_cost_im, &obj_cost_re_bar, &obj_cost_im_bar);
-      optim_target->evalJ_diff(finalstate, rho_t0_bar, obj_weights[iinit]*obj_cost_re_bar, obj_weights[iinit]*obj_cost_im_bar);
+      optim_target->evalJ_diff(finalstate, rho_t0_bar, obj_weights[iinit-i]*obj_cost_re_bar, obj_weights[iinit-i]*obj_cost_im_bar);
 
       /* Derivative of time-stepping */
-      timestepper->solveAdjointODE(initid, rho_t0_bar, finalstate, obj_weights[iinit] * gamma_penalty, obj_weights[iinit]*gamma_penalty_dpdm, obj_weights[iinit]*gamma_penalty_energy);
+      timestepper->solveAdjointODE(initid, rho_t0_bar, finalstate, obj_weights[iinit-i] * gamma_penalty, obj_weights[iinit-i]*gamma_penalty_dpdm, obj_weights[iinit-i]*gamma_penalty_energy);
 
       /* Add to optimizers's gradient */
       const PetscScalar* g_ptr;
