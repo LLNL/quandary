@@ -431,21 +431,22 @@ int main(int argc,char **argv)
   arma::mat grad_arma(1, optimctx->getNdesign(), arma::fill::zeros);
 
   EnsmallenFunction* ens_function;  // Ensmallen function to be optimized
-  ens::RMSProp ens_optimizer;       // Ensmallen optimizer
+  int  ndata=0, batchsize=-1;
   bool stochastic_opt = false;
-  int  ndata, batchsize;
-   
   if (initcondstr[0].compare("random") == 0 ) {
     /* Get number of ndata points, batchsize */
     ndata = config.GetIntParam("ndata", 1, false, true);
     batchsize = config.GetIntParam("batchsize", -1, false, true);
 
-    printf("Creating stochastic ENSMALLEN optimizer, ndata=%d, batchsize=%d.\n", ndata, batchsize);
-    ens_function = new EnsmallenFunction(optimctx, ndata,rand_engine);
-
-    // Store flag for stochastic optimizer
+   // Store flag for stochastic optimizer
     stochastic_opt = true;
   } 
+
+  double stepsize = 1e-3; // Default 1e-3
+  printf("Creating stochastic ENSMALLEN optimizer, ndata=%d, batchsize=%d.\n", ndata, batchsize);
+  ens::Adam ens_optimizer(stepsize, batchsize, 0.9, 0.999, 1e-8, optimctx->getMaxIter(), 1e-5, true);       // Ensmallen ADAM optimizer
+  ens_function = new EnsmallenFunction(optimctx, ndata,rand_engine);
+ 
 // #endif
 
   /* Some output */
@@ -502,7 +503,7 @@ int main(int argc,char **argv)
     VecCopy(xinit, optimctx->xinit); // Store the initial guess
     if (mpirank_world == 0 && !quietmode) printf("\nStarting Optimization solver ... \n");
     if (stochastic_opt) {
-      ens_optimizer.Optimize(*ens_function, xinit_arma);
+      ens_optimizer.Optimize(*ens_function, xinit_arma, ens::ProgressBar());
     } else {
       optimctx->solve(xinit);
       optimctx->getSolution(&opt);
