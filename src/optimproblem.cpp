@@ -669,7 +669,7 @@ double OptimProblem::evalF(const Vec x, const Vec lambda_, const bool store_inte
 
   /* Set the fidelity: If Schroedinger, need to compute the absolute value: Fid= |\sum_i \phi^\dagger \phi_target|^2 */
   if (timestepper->mastereq->lindbladtype == LindbladType::NONE) {
-    fidelity = pow(fidelity_re, 2.0) + pow(fidelity_im, 2.0);
+    fidelity = fidelity_re*fidelity_re + fidelity_im*fidelity_im;
   } else {
     fidelity = fidelity_re; 
   }
@@ -695,7 +695,8 @@ double OptimProblem::evalF(const Vec x, const Vec lambda_, const bool store_inte
   /* Output */
   if (mpirank_world == 0) {
     std::cout<< "Objective = " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal << " + " << obj_penal_dpdm << " + " << obj_penal_energy << " + " << constraint << std::endl;
-    std::cout<< "Fidelity = " << fidelity  << std::endl;
+    if (nwindows == 1) // Fidelity only makes sense with one window
+      std::cout<< "Fidelity = " << fidelity  << std::endl;
     std::cout<< "Discontinuities = " << interm_discontinuity << std::endl;
   }
 
@@ -886,7 +887,7 @@ void OptimProblem::evalGradF(const Vec x, const Vec lambda_, Vec G){
 
   /* Set the fidelity: If Schroedinger, need to compute the absolute value: Fid= |\sum_i \phi^\dagger \phi_target|^2 */
   if (timestepper->mastereq->lindbladtype == LindbladType::NONE) {
-    fidelity = pow(fidelity_re, 2.0) + pow(fidelity_im, 2.0);
+    fidelity = fidelity_re*fidelity_re + fidelity_im*fidelity_im;
   } else {
     fidelity = fidelity_re; 
   }
@@ -996,7 +997,8 @@ void OptimProblem::evalGradF(const Vec x, const Vec lambda_, Vec G){
   /* Output */
   if (mpirank_world == 0 && !quietmode) {
     std::cout<< "Objective = " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal << " + " << obj_penal_dpdm << " + " << obj_penal_energy << " + " << constraint << std::endl;
-    std::cout<< "Fidelity = " << fidelity << std::endl;
+    if (nwindows == 1) // Fidelity only makes sense with one window
+      std::cout<< "Fidelity = " << fidelity << std::endl;
     std::cout<< "Discontinuities = " << interm_discontinuity << std::endl;
   }
 }
@@ -1195,7 +1197,8 @@ PetscErrorCode TaoMonitor(Tao tao,void*ptr){
 
   if (ctx->getMPIrank_world() == 0 && (iter == ctx->getMaxIter() || lastIter || iter % ctx->output->optim_monitor_freq == 0)) {
     std::cout<< iter <<  "  " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal << " + " << obj_penal_dpdm << " + " << obj_penal_energy;
-    std::cout<< "  Fidelity = " << F_avg;
+    if (ctx->getNwindows() == 1) // Fidelity only makes sense with one window
+      std::cout<< "  Fidelity = " << F_avg;
     std::cout<< "  ||Grad|| = " << gnorm;
     std::cout<< std::endl;
   }
