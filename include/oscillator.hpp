@@ -10,6 +10,7 @@
 #include "util.hpp"
 #include "config.hpp"
 #include <stdlib.h> 
+#include<random>
 
 #pragma once
 
@@ -49,7 +50,7 @@ class Oscillator {
 
       public:
     Oscillator();
-    Oscillator(MapParam config, int id, std::vector<int> nlevels_all_, std::vector<std::string>& controlsegments, std::vector<std::string>& controlinitializations, double ground_freq_, double selfkerr_, double rotational_freq_, double decay_time_, double dephase_time_, std::vector<double> carrier_freq_, double Tfinal_, LindbladType lindbladtype_);
+    Oscillator(MapParam config, int id, std::vector<int> nlevels_all_, std::vector<std::string>& controlsegments, std::vector<std::string>& controlinitializations, double ground_freq_, double selfkerr_, double rotational_freq_, double decay_time_, double dephase_time_, std::vector<double> carrier_freq_, double Tfinal_, LindbladType lindbladtype_, std::default_random_engine rand_engine);
     virtual ~Oscillator();
 
     /* Return the constants */

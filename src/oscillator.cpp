@@ -7,7 +7,7 @@ Oscillator::Oscillator(){
   control_enforceBC = true;
 }
 
-Oscillator::Oscillator(MapParam config, int id, std::vector<int> nlevels_all_, std::vector<std::string>& controlsegments, std::vector<std::string>& controlinitializations, double ground_freq_, double selfkerr_, double rotational_freq_, double decay_time_, double dephase_time_, std::vector<double> carrier_freq_, double Tfinal_, LindbladType lindbladtype_){
+Oscillator::Oscillator(MapParam config, int id, std::vector<int> nlevels_all_, std::vector<std::string>& controlsegments, std::vector<std::string>& controlinitializations, double ground_freq_, double selfkerr_, double rotational_freq_, double decay_time_, double dephase_time_, std::vector<double> carrier_freq_, double Tfinal_, LindbladType lindbladtype_, std::default_random_engine rand_engine){
 
   myid = id;
   nlevels = nlevels_all_[id];
@@ -131,10 +131,13 @@ Oscillator::Oscillator(MapParam config, int id, std::vector<int> nlevels_all_, s
       }
     } else if (controlinitializations[idini].compare("random") == 0) {
 
+      // Uniform distribution [0,1)
+      std::uniform_real_distribution<double> unit_dist(0.0, 1.0);
+
       for (int f = 0; f<carrier_freq.size(); f++) {
         for (int i=0; i<basisfunctions[seg]->getNparams(); i++){
-          double randval = (double) rand() / ((double)RAND_MAX);  // random in [0,1]
-          MPI_Bcast(&randval, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+          double randval = unit_dist(rand_engine);  // random in [0,1]
+          // MPI_Bcast(&randval, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD); // since all procs have the same seed, we don't have to communicate here. 
           // scale to chosen amplitude 
           double maxval = atof(controlinitializations[idini+1].c_str());
           double initval = maxval*randval;

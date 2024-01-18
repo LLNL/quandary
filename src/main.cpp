@@ -10,6 +10,7 @@
 #include "optimproblem.hpp"
 #include "output.hpp"
 #include "petsc.h"
+#include <random>
 #ifdef WITH_SLEPC
 #include <slepceps.h>
 #endif
@@ -58,11 +59,13 @@ int main(int argc,char **argv)
 
   /* Initialize random number generator: Check if rand_seed is provided from config file, otherwise set random. */
   int rand_seed = config.GetIntParam("rand_seed", -1, false, false);
+  std::random_device rd;
   if (rand_seed < 0){
-    rand_seed = time(0);  // random seed
+    rand_seed = rd();  // random non-reproducable seed
   }
-  srand(rand_seed); 
   MPI_Bcast(&rand_seed, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD); // Broadcast from rank 0 to all.
+  std::default_random_engine rand_engine{};
+  rand_engine.seed(rand_seed);
   export_param(mpirank_world, *config.log, "rand_seed", rand_seed);
 
   /* --- Get some options from the config file --- */
@@ -247,7 +250,7 @@ int main(int argc,char **argv)
     config.GetVecStrParam("control_initialization" + std::to_string(i), controlinit_str, default_init_str);
 
     // Create oscillator 
-    oscil_vec[i] = new Oscillator(config, i, nlevels, controltype_str, controlinit_str, trans_freq[i], selfkerr[i], rot_freq[i], decay_time[i], dephase_time[i], carrier_freq, total_time, lindbladtype);
+    oscil_vec[i] = new Oscillator(config, i, nlevels, controltype_str, controlinit_str, trans_freq[i], selfkerr[i], rot_freq[i], decay_time[i], dephase_time[i], carrier_freq, total_time, lindbladtype, rand_engine);
     
     // Update the default for control type
     default_seg_str = "";
