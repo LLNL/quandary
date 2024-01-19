@@ -67,6 +67,22 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
     }
   }
 
+  /*
+    store_interm_ic[i][index] is the unitarized ic of (index+1)-th global time window, for i-th global initial condition.
+    (index = 0, 1, ..., nwindows-2)
+  */
+  store_interm_ic.resize(ninit);
+  for (int i = 0; i < ninit; i++) {
+    store_interm_ic[i].clear();
+    for (int iwindow = 0; iwindow < nwindows-1; iwindow++) {
+      Vec state;
+      VecCreate(PETSC_COMM_WORLD, &state);
+      VecSetSizes(state, PETSC_DECIDE, 2*timestepper->mastereq->getDim());
+      VecSetFromOptions(state);
+      store_interm_ic[i].push_back(state);
+    }
+  }
+
   /* Store number of optimization parameters */
   // First add all that correspond to the splines
   ndesign = 0;
@@ -84,7 +100,7 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   ISCreateStride(PETSC_COMM_WORLD, ndesign, 0, 1, &IS_alpha);
   int skip = 0;
   int every = 1;
-  for (int ic=0; ic<timestepper->mastereq->getDimRho(); ic++){
+  for (int ic=0; ic<ninit; ic++){
     for (int m=0; m<nwindows-1; m++) {
       IS state_m_ic;
       IS lambda_m_ic;
@@ -518,6 +534,9 @@ OptimProblem::~OptimProblem() {
 
     for (int k = 0; k < store_interm_states[i].size(); k++)
       VecDestroy(&(store_interm_states[i][k]));
+
+    for (int k = 0; k < store_interm_ic[i].size(); k++)
+      VecDestroy(&(store_interm_ic[i][k]));
   }
 
   for (int m=0; m<IS_interm_states.size(); m++){
