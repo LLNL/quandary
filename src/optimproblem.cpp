@@ -531,6 +531,7 @@ OptimProblem::~OptimProblem() {
 
 
 double OptimProblem::evalF(const Vec x, const Vec lambda_, const bool store_interm) {   // x = (alpha, interm.states), lambda = lagrange multipliers: dim(lambda) = dim(x_intermediatestates)
+// NOTE:store_interm is an optional arg, defaults to false
 
   MasterEq* mastereq = timestepper->mastereq;
 
@@ -1065,7 +1066,7 @@ void OptimProblem::rollOut(Vec x){
       // Solve forward from starting point.
       int n0 = iwindow * timestepper->ntime; // First time-step index for this window.
       // printf(" Solve in window %d, n0=%d\n", iwindow, n0);
-      x0 = timestepper->solveODE(initid, x0, n0);
+      x0 = timestepper->solveODE(initid, x0, n0); // Note: the initial condition (x0) is over-written to give the initial condition for next window
 
       /* Potentially, store the intermediate results in the given vector */
       if (x != NULL && iwindow < nwindows-1) {
@@ -1073,8 +1074,8 @@ void OptimProblem::rollOut(Vec x){
         // printf(" Storing into id=%d\n", id);
         VecISCopy(x, IS_interm_states[id], SCATTER_FORWARD, x0); 
       }
-    }
-  }
+    } // end for iwindow
+  } // end for initial condition
 
 }
 

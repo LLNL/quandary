@@ -68,8 +68,20 @@ int main(int argc,char **argv)
   /* --- Get some options from the config file --- */
   std::vector<int> nlevels;
   config.GetVecIntParam("nlevels", nlevels, 0);
+  
   int ntime = config.GetIntParam("ntime", 1000);    // number of global time steps
-  double dt    = config.GetDoubleParam("dt", 0.01);
+  // AP: This would be a good place to modify ntime to be divisible by nwindows
+
+  double total_time = config.GetDoubleParam("duration", -1.0);
+  double dt;
+  if (total_time < 0.0){ // NOTE if a 'duration' line is not present in the cfg file, rollback to the original approach
+    dt    = config.GetDoubleParam("dt", 0.01);
+    total_time = ntime * dt;
+  }
+  else{
+    dt = total_time/ntime;
+  }
+
   RunType runtype;
   std::string runtypestr = config.GetStrParam("runtype", "simulation");
   if      (runtypestr.compare("simulation")      == 0) runtype = RunType::SIMULATION;
@@ -224,9 +236,7 @@ int main(int argc,char **argv)
 #endif
   PetscViewerPushFormat(PETSC_VIEWER_STDOUT_WORLD, 	PETSC_VIEWER_ASCII_MATLAB );
 
-
-
-  double total_time = ntime * dt;
+//  double total_time = ntime * dt;
 
   /* --- Initialize the Oscillators --- */
   Oscillator** oscil_vec = new Oscillator*[nlevels.size()];
@@ -619,9 +629,9 @@ int main(int argc,char **argv)
     // VecCopy(xinit, optimctx->xinit); // Store the initial guess
     if (mpirank_world == 0 && !quietmode) printf("\nStarting Optimization solver ... \n");
     StartTime = MPI_Wtime(); 
-    optimctx->solve(xinit);
+    optimctx->solve(xinit); // calling TAO to solve the optimization problem
     EndTime = MPI_Wtime();
-    optimctx->getSolution(&opt);
+    optimctx->getSolution(&opt); // final design variables copied into opt
 
     // TODO(kevin): Highly recommend to use hdf5 for I/O. and save all data into one single file.
     /* All variables are saved as binary files, to save the storage size and time. */
@@ -648,6 +658,19 @@ int main(int argc,char **argv)
       VecRestoreArray(lambda, &ptr);
       fclose(file);
     }
+
+    // Calculate rollout infidelity and fidelity
+    if (mpirank_world == 0) {
+      printf("\n *** Rolling out the final state ***\n");
+    }
+    optimctx->rollOut(opt); // overwrite the intermediate initial conds in 'opt'
+
+    // evaluate the fidelity and infidelity with evalF()
+    double final_obj = optimctx->evalF(opt, lambda);
+    if (mpirank_world == 0) {
+      printf("Final fidelity: %e\n", optimctx->getFidelity());
+      printf("Final INfidelity: %e\n", optimctx->getCostT());
+    }
   }
 
   /* Only evaluate and write control pulses (no propagation) */
@@ -659,10 +682,12 @@ int main(int argc,char **argv)
   }
 
   /* Output */
-  if (runtype != RunType::OPTIMIZATION)
+  if (runtype != RunType::OPTIMIZATION){
+
     optimctx->output->writeOptimFile(
       optimctx->getObjective(), gnorm, 0.0, optimctx->getFidelity(), optimctx->getCostT(), optimctx->getRegul(),
       optimctx->getPenalty(), optimctx->getPenaltyDpDm(), optimctx->getPenaltyEnergy(), optimctx->getDiscontinuity());
+  }
 
 
   /* --- Finalize --- */

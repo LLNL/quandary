@@ -1458,7 +1458,7 @@ int MasterEq::getRhoT0(const int iinit, const int ninit, const InitialConditionT
 
       break;
 
-
+    // NOTE: For Schroedinger, initcond_type is set to DIAGONAL in optimproblem.cpp, line 259
     case InitialConditionType::DIAGONAL:
       int row, diagelem;
 
