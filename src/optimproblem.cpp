@@ -67,19 +67,22 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
     }
   }
 
+  unitarize_interm_ic = config.GetBoolParam("optim_unitarize_interm_ic", false);
   /*
     store_interm_ic[i][index] is the unitarized ic of (index+1)-th global time window, for i-th global initial condition.
     (index = 0, 1, ..., nwindows-2)
   */
-  store_interm_ic.resize(ninit);
-  for (int i = 0; i < ninit; i++) {
-    store_interm_ic[i].clear();
-    for (int iwindow = 0; iwindow < nwindows-1; iwindow++) {
-      Vec state;
-      VecCreate(PETSC_COMM_WORLD, &state);
-      VecSetSizes(state, PETSC_DECIDE, 2*timestepper->mastereq->getDim());
-      VecSetFromOptions(state);
-      store_interm_ic[i].push_back(state);
+  if (unitarize_interm_ic) {
+    store_interm_ic.resize(ninit);
+    for (int i = 0; i < ninit; i++) {
+      store_interm_ic[i].clear();
+      for (int iwindow = 0; iwindow < nwindows-1; iwindow++) {
+        Vec state;
+        VecCreate(PETSC_COMM_WORLD, &state);
+        VecSetSizes(state, PETSC_DECIDE, 2*timestepper->mastereq->getDim());
+        VecSetFromOptions(state);
+        store_interm_ic[i].push_back(state);
+      }
     }
   }
 
@@ -534,9 +537,12 @@ OptimProblem::~OptimProblem() {
 
     for (int k = 0; k < store_interm_states[i].size(); k++)
       VecDestroy(&(store_interm_states[i][k]));
+  }
 
-    for (int k = 0; k < store_interm_ic[i].size(); k++)
-      VecDestroy(&(store_interm_ic[i][k]));
+  if (unitarize_interm_ic) {
+    for (int i = 0; i < store_interm_ic.size(); i++)
+      for (int k = 0; k < store_interm_ic[i].size(); k++)
+        VecDestroy(&(store_interm_ic[i][k]));
   }
 
   for (int m=0; m<IS_interm_states.size(); m++){
@@ -561,6 +567,10 @@ double OptimProblem::evalF(const Vec x, const Vec lambda_, const bool store_inte
   Vec x_alpha;
   VecGetSubVector(x, IS_alpha, &x_alpha);
   mastereq->setControlAmplitudes(x_alpha); 
+
+  /* prepare intermediate conditions. unitarize them if the option is set. */
+  std::vector<std::vector<double>> vnorms;
+  prepareIntermediateCondition(x, vnorms);
 
   /*  Iterate over initial condition */
   obj_cost  = 0.0;
@@ -601,10 +611,11 @@ double OptimProblem::evalF(const Vec x, const Vec lambda_, const bool store_inte
       if (mpirank_time == 0 && iwindow == 0) {
         x0 = rho_t0; 
       } else {
-        int id = iinit_global*(nwindows-1) + index-1;
-        // printf("time rank %d, init rank %d: iinit %d, iwindow %d, starting from global id = %d\n", mpirank_time, mpirank_init, iinit, iwindow, id);
-        VecGetSubVector(x, IS_interm_states[id], &x0);
-        // VecView(x0, NULL);
+        x0 = store_interm_ic[iinit_global][index - 1];
+        // int id = iinit_global*(nwindows-1) + index-1;
+        // // printf("time rank %d, init rank %d: iinit %d, iwindow %d, starting from global id = %d\n", mpirank_time, mpirank_init, iinit, iwindow, id);
+        // VecGetSubVector(x, IS_interm_states[id], &x0);
+        // // VecView(x0, NULL);
       }
       // TODO (SG): Fix timestepper output (-> initid, windowid.)
       finalstate = timestepper->solveODE(1, x0, n0);
@@ -647,7 +658,8 @@ double OptimProblem::evalF(const Vec x, const Vec lambda_, const bool store_inte
 
         int id = iinit_global*(nwindows-1) + index;
         Vec xnext, lag;
-        VecGetSubVector(x, IS_interm_states[id], &xnext);
+        xnext = store_interm_ic[iinit_global][index];
+        // VecGetSubVector(x, IS_interm_states[id], &xnext);
         VecGetSubVector(lambda_, IS_interm_lambda[id], &lag);
         VecAXPY(finalstate, -1.0, xnext);  // finalstate = S(u_{i-1}) - u_i
 
@@ -739,6 +751,10 @@ void OptimProblem::evalGradF(const Vec x, const Vec lambda_, Vec G){
   VecGetSubVector(x, IS_alpha, &x_alpha);
   mastereq->setControlAmplitudes(x_alpha); 
 
+  /* prepare intermediate conditions. unitarize them if the option is set. */
+  std::vector<std::vector<double>> vnorms;
+  prepareIntermediateCondition(x, vnorms);
+
   /* Reset Gradient */
   VecZeroEntries(G);
 
@@ -789,10 +805,11 @@ void OptimProblem::evalGradF(const Vec x, const Vec lambda_, Vec G){
       if (mpirank_time == 0 && iwindow == 0) {
         x0 = rho_t0; 
       } else {
-        int id = iinit_global*(nwindows-1) + index-1;
-        // printf("%d, %d: iinit %d, iwindow %d, starting from global id = %d\n", mpirank_time, mpirank_init, iinit, iwindow, id);
-        VecGetSubVector(x, IS_interm_states[id], &x0);
-        // VecView(x0, NULL);
+        x0 = store_interm_ic[iinit_global][index - 1];
+        // int id = iinit_global*(nwindows-1) + index-1;
+        // // printf("%d, %d: iinit %d, iwindow %d, starting from global id = %d\n", mpirank_time, mpirank_init, iinit, iwindow, id);
+        // VecGetSubVector(x, IS_interm_states[id], &x0);
+        // // VecView(x0, NULL);
       }
 
       /* --- Solve primal --- */
@@ -841,7 +858,8 @@ void OptimProblem::evalGradF(const Vec x, const Vec lambda_, Vec G){
 
         int id = iinit_global*(nwindows-1) + index;
         Vec xnext, lag;
-        VecGetSubVector(x, IS_interm_states[id], &xnext);
+        xnext = store_interm_ic[iinit_global][index];
+        // VecGetSubVector(x, IS_interm_states[id], &xnext);
         VecGetSubVector(lambda_, IS_interm_lambda[id], &lag);
         VecAXPY(finalstate, -1.0, xnext);  // finalstate = S(u_{i-1}) - u_i
 
@@ -1007,6 +1025,11 @@ void OptimProblem::evalGradF(const Vec x, const Vec lambda_, Vec G){
   MPI_Allreduce(mygrad, grad, getNoptimvars(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD); // This is comm_init AND comm_time.
   VecRestoreArray(G, &grad);
 
+  /* Apply chain rule for unitarization if specified. */
+  // TODO(kevin): currently all processes own the same G and perform the same operation. need parallelization.
+  if (unitarize_interm_ic)
+    unitarize_grad(x, IS_interm_states, store_interm_ic, vnorms, G);
+
   Vec g_alpha;
   VecGetSubVector(G, IS_alpha, &g_alpha);
   mastereq->setControlAmplitudes_diff(g_alpha);
@@ -1148,6 +1171,34 @@ void OptimProblem::getSolution(Vec* param_ptr){
   Vec params;
   TaoGetSolution(tao, &params);
   *param_ptr = params;
+}
+
+void OptimProblem::prepareIntermediateCondition(const Vec x, std::vector<std::vector<double>> &vnorms){
+  if (unitarize_interm_ic)
+    // TODO(kevin): we should be able to parallelize this function similar to below.
+    unitarize(x, IS_interm_states, store_interm_ic, vnorms);
+  else {
+    /* Copy only needed intermediate conditions for this local process */
+    for (int iinit = 0; iinit < ninit_local; iinit++) {
+      /* Prepare the initial condition in [rank * ninit_local, ... , (rank+1) * ninit_local - 1] */
+      int iinit_global = mpirank_init * ninit_local + iinit;
+      for (int iwindow=0; iwindow<nwindows_local; iwindow++){
+
+        // Solve forward from starting point.
+        int index = mpirank_time*nwindows_local + iwindow;
+        int id = iinit_global*(nwindows-1) + index;
+        // Store intermediate conditions (except initial condition)
+        if (index > 0) {
+          VecGetSubVector(x, IS_interm_states[id-1], &store_interm_ic[iinit_global][index-1]);
+        }
+        // Store next intermediate conditions for discontinuity penalty (except final window)
+        if (index < nwindows-1) {
+          VecGetSubVector(x, IS_interm_states[id], &store_interm_ic[iinit_global][index]);
+        }
+
+      } // for (int iwindow=0; iwindow<nwindows_local; iwindow++)
+    } // for (int iinit = 0; iinit < ninit_local; iinit++)
+  } // if not (unitarize_interm_ic)
 }
 
 PetscErrorCode TaoMonitor(Tao tao,void*ptr){
