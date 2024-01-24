@@ -707,7 +707,9 @@ void unitarize(const Vec &x, const std::vector<IS> &IS_interm_states, std::vecto
         VecGetArray(interm_ic[jinit][iwindow], &uptr);
         VecGetArray(interm_ic[iinit][iwindow], &vptr);
         for (int d = 0; d < dim; d++) {
+          // Re[v] -= Re[v.u] * Re[u] - Im[v.u] * Im[u]
           vptr[d] -= vu_re * uptr[d] - vu_im * uptr[d + dim];
+          // Im[v] -= Re[v.u] * Im[u] + Im[v.u] * Re[u]
           vptr[d + dim] -= vu_re * uptr[d + dim] + vu_im * uptr[d];
         }
         VecRestoreArray(interm_ic[jinit][iwindow], &uptr);
