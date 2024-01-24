@@ -1,5 +1,67 @@
 #include "optimproblem.hpp"
 
+template <typename T>
+auto findMatch(T array, std::string string, bool initCond) {
+  
+  const int arrLength = sizeof(array)/sizeof(array[0]);
+  for (int i=0; i<arrLength; i++){
+    if (string.compare(array[i].name) == 0){
+      return array[i].class;
+    } else if (i == arrLength -1 && !initCond){
+      printf("\n\n ERROR: Unnown gate type: %s.\n", string.c_str());
+      printf("Available gates are 'none', 'xgate', 'ygate', 'zgate', 'hadamard', 'cnot', 'swap', 'swap0q', 'cqnot'.\n");
+      exit(1);
+    } else if (i == arrLength -1){
+      printf("\n\n ERROR: Wrong setting for initial condition.\n");
+      exit(1);
+    }
+  }
+}
+
+Gate* initTargetGate(std::vector<std::string> target_str, TimeStepper* timestepper, bool quietmode, std::vector<int> nlevels, MasterEq* mastereq, std::vector<int> nessential, std::vector<double> gate_rot_freq, LindbladType lindbladtype, double total_time, Gate* targetgate){
+
+  struct Object {
+    char* name;
+    Gate* class; 
+  };
+  Object gates[] = {
+    {"none", new Gate()}, 
+    {"xgate", new XGate(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, timestepper->total_time, gate_rot_freq, timestepper->mastereq->lindbladtype, quietmode)}, 
+    {"ygate", new YGate(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, timestepper->total_time, gate_rot_freq, timestepper->mastereq->lindbladtype, quietmode)}, 
+    {"zgate", new ZGate(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, timestepper->total_time, gate_rot_freq, timestepper->mastereq->lindbladtype, quietmode)}, 
+    {"hadamard", new HadamardGate(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, timestepper->total_time, gate_rot_freq, timestepper->mastereq->lindbladtype, quietmode)}, 
+    {"cnot", new CNOT(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, timestepper->total_time, gate_rot_freq, timestepper->mastereq->lindbladtype, quietmode)}, 
+    {"swap", new SWAP(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, timestepper->total_time, gate_rot_freq, timestepper->mastereq->lindbladtype, quietmode)}, 
+    {"swap0q", new SWAP_0Q(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, timestepper->total_time, gate_rot_freq, timestepper->mastereq->lindbladtype, quietmode)}, 
+    {"cqnot", new CQNOT(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, timestepper->total_time, gate_rot_freq, timestepper->mastereq->lindbladtype, quietmode)}, 
+    {"fromfile", new FromFile(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, timestepper->total_time, gate_rot_freq, timestepper->mastereq->lindbladtype, target_str[2], quietmode)}
+  };
+  if ( target_str.size() < 2 ) {
+    printf("ERROR: You want to optimize for a gate, but didn't specify which one. Check your config for 'optim_target'!\n");
+    exit(1);
+  };
+  return findMatch(gates, target_str[1]);
+}
+
+InitialConditionType getInitCondition(std::string initcondstr){
+  struct Object {
+    char* name;
+    InitialConditionType class; 
+  };
+  Object types[] = {
+    {"file", InitialConditionType::FROMFILE}, 
+    {"pure", InitialConditionType::PURE}, 
+    {"ensemble", InitialConditionType::ENSEMBLE}, 
+    {"performance", InitialConditionType::PERFORMANCE}, 
+    {"3states", InitialConditionType::THREESTATES}, 
+    {"Nplus1", InitialConditionType::NPLUSONE}, 
+    {"diagonal", InitialConditionType::DIAGONAL}, 
+    {"basis", InitialConditionType::BASIS}
+  };
+  bool initCond = true;
+  return findMatch(types, initcondstr, initCond);
+}
+
 OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm comm_init_, MPI_Comm comm_optim_, int ninit_, std::vector<double> gate_rot_freq, Output* output_, bool quietmode_){
 
   timestepper = timestepper_;
@@ -62,25 +124,7 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   if ( target_str[0].compare("gate") ==0 ) {
     target_type = TargetType::GATE;
     /* Initialize the targetgate */
-    if ( target_str.size() < 2 ) {
-      printf("ERROR: You want to optimize for a gate, but didn't specify which one. Check your config for 'optim_target'!\n");
-      exit(1);
-    }
-    if      (target_str[1].compare("none") == 0)  targetgate = new Gate(); // dummy gate. do nothing
-    else if (target_str[1].compare("xgate") == 0) targetgate = new XGate(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, timestepper->total_time, gate_rot_freq, timestepper->mastereq->lindbladtype, quietmode); 
-    else if (target_str[1].compare("ygate") == 0) targetgate = new YGate(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, timestepper->total_time, gate_rot_freq, timestepper->mastereq->lindbladtype, quietmode); 
-    else if (target_str[1].compare("zgate") == 0) targetgate = new ZGate(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, timestepper->total_time, gate_rot_freq, timestepper->mastereq->lindbladtype, quietmode);
-    else if (target_str[1].compare("hadamard") == 0) targetgate = new HadamardGate(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, timestepper->total_time, gate_rot_freq, timestepper->mastereq->lindbladtype, quietmode);
-    else if (target_str[1].compare("cnot") == 0) targetgate = new CNOT(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, timestepper->total_time, gate_rot_freq, timestepper->mastereq->lindbladtype, quietmode); 
-    else if (target_str[1].compare("swap") == 0) targetgate = new SWAP(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, timestepper->total_time, gate_rot_freq, timestepper->mastereq->lindbladtype, quietmode); 
-    else if (target_str[1].compare("swap0q") == 0) targetgate = new SWAP_0Q(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, timestepper->total_time, gate_rot_freq, timestepper->mastereq->lindbladtype, quietmode); 
-    else if (target_str[1].compare("cqnot") == 0) targetgate = new CQNOT(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, timestepper->total_time, gate_rot_freq, timestepper->mastereq->lindbladtype, quietmode); 
-    else if (target_str[1].compare("fromfile") == 0) targetgate = new FromFile(timestepper->mastereq->nlevels, timestepper->mastereq->nessential, timestepper->total_time, gate_rot_freq, timestepper->mastereq->lindbladtype, target_str[2], quietmode); 
-    else {
-      printf("\n\n ERROR: Unnown gate type: %s.\n", target_str[1].c_str());
-      printf(" Available gates are 'none', 'xgate', 'ygate', 'zgate', 'hadamard', 'cnot', 'swap', 'swap0q', 'cqnot'.\n");
-      exit(1);
-    } 
+    targetgate = initTargetGate(target_str, timestepper, quietmode, nlevels, mastereq, nessential, gate_rot_freq, lindbladtype, total_time, targetgate);
   }  
   else if (target_str[0].compare("pure")==0) {
     target_type = TargetType::PURE;
@@ -164,18 +208,7 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   config.GetVecStrParam("initialcondition", initcondstr, "none", false);
   if (initcondstr.size() < 2) for (int j=0; j<timestepper->mastereq->getNOscillators(); j++)  initcondstr.push_back(std::to_string(j));
   for (int i=1; i<initcondstr.size(); i++) initcond_IDs.push_back(atoi(initcondstr[i].c_str()));
-  if (initcondstr[0].compare("file") == 0 )          initcond_type = InitialConditionType::FROMFILE;
-  else if (initcondstr[0].compare("pure") == 0 )     initcond_type = InitialConditionType::PURE;
-  else if (initcondstr[0].compare("ensemble") == 0 ) initcond_type = InitialConditionType::ENSEMBLE;
-  else if (initcondstr[0].compare("performance") == 0 ) initcond_type = InitialConditionType::PERFORMANCE;
-  else if (initcondstr[0].compare("3states") == 0 )  initcond_type = InitialConditionType::THREESTATES;
-  else if (initcondstr[0].compare("Nplus1") == 0 )   initcond_type = InitialConditionType::NPLUSONE;
-  else if (initcondstr[0].compare("diagonal") == 0 ) initcond_type = InitialConditionType::DIAGONAL;
-  else if (initcondstr[0].compare("basis")    == 0 ) initcond_type = InitialConditionType::BASIS;
-  else {
-    printf("\n\n ERROR: Wrong setting for initial condition.\n");
-    exit(1);
-  }
+  initcond_type = getInitCondition(initcondstr[0]);
 
   /* Sanity check for Schrodinger solver initial conditions */
   if (timestepper->mastereq->lindbladtype == LindbladType::NONE){
