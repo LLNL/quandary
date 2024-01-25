@@ -444,6 +444,7 @@ int main(int argc,char **argv)
   } 
 
   double stepsize = 1e-3; // Default 1e-3
+  printf("Batchsize = %d\n", batchsize);
   ens::Adam ens_optimizer(stepsize, batchsize, 0.9, 0.999, 1e-8, optimctx->getMaxIter(), 1e-5, true);       // Ensmallen ADAM optimizer
   ens_function = new EnsmallenFunction(optimctx, ndata,rand_engine);
  
@@ -503,7 +504,7 @@ int main(int argc,char **argv)
     VecCopy(xinit, optimctx->xinit); // Store the initial guess
     if (mpirank_world == 0 && !quietmode) printf("\nStarting Optimization solver ... \n");
     if (stochastic_opt) {
-      ens_optimizer.Optimize(*ens_function, xinit_arma, EnsMonitor());
+      ens_optimizer.Optimize(*ens_function, xinit_arma, EnsMonitor(), ens::ProgressBar());
     } else {
       optimctx->solve(xinit);
       optimctx->getSolution(&opt);

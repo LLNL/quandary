@@ -809,6 +809,9 @@ double OptimProblem::evalGradF_(const double* x, const size_t i, double* G, cons
     std::cout<< "Fidelity = " << fidelity << std::endl;
   }
 
+  // printf("Writing controls %1.14e\n", x[0]);
+  output->writeControls_(x, ndesign, timestepper->mastereq, timestepper->ntime, timestepper->dt);
+
   return objective;
 }
 
@@ -859,6 +862,12 @@ void OptimProblem::getSolution(Vec* param_ptr){
   *param_ptr = params;
 }
 
+void OptimProblem::setObjWeights(double value){
+  for (int i=0; i<obj_weights.size(); i++){
+    obj_weights[i] = value;
+  }
+}
+
 bool OptimProblem::Monitor(const double objective, const double* x, const size_t iter, const double stepsize){
   /* Pass current iteration number to output manager */
   output->optim_iter = iter;
@@ -876,8 +885,10 @@ bool OptimProblem::Monitor(const double objective, const double* x, const size_t
   output->writeOptimFile(objective, gn, stepsize, F_avg, obj_cost, obj_regul, obj_penal, obj_penal_dpdm, obj_penal_energy);
 
   /* Print parameters and controls to file */
+  /* DOES NOT WORK WITH ENSMALLEN, because MONITOR is called AFTER the control update. Instead, writing controls at the end of evalGradF_ */
   // if ( optim_iter % optim_monitor_freq == 0 ) {
-  output->writeControls_(x, ndesign, timestepper->mastereq, timestepper->ntime, timestepper->dt);
+  // printf("Writing controls %1.14e\n", x[0]);
+  // output->writeControls_(x, ndesign, timestepper->mastereq, timestepper->ntime, timestepper->dt);
   // }
 
   /* Additional Stopping criteria */

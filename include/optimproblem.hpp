@@ -195,7 +195,7 @@ class EnsMonitor{
     template<typename OptimizerType, typename FunctionType, typename MatType>
     bool EndEpoch(OptimizerType& optimizer, FunctionType& function, const MatType& coordinates, const size_t epoch, const double objective)
     {
-      bool isLastIter = function.optimctx->Monitor(objective, coordinates.memptr(), epoch*function.ndata, optimizer.StepSize());
+      bool isLastIter = function.optimctx->Monitor(objective, coordinates.memptr(), epoch, optimizer.StepSize());
 
       // Do not terminate the optimization unless last iter
       return isLastIter;
