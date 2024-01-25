@@ -72,17 +72,15 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
     store_interm_ic[i][index] is the unitarized ic of (index+1)-th global time window, for i-th global initial condition.
     (index = 0, 1, ..., nwindows-2)
   */
-  if (unitarize_interm_ic) {
-    store_interm_ic.resize(ninit);
-    for (int i = 0; i < ninit; i++) {
-      store_interm_ic[i].clear();
-      for (int iwindow = 0; iwindow < nwindows-1; iwindow++) {
-        Vec state;
-        VecCreate(PETSC_COMM_WORLD, &state);
-        VecSetSizes(state, PETSC_DECIDE, 2*timestepper->mastereq->getDim());
-        VecSetFromOptions(state);
-        store_interm_ic[i].push_back(state);
-      }
+  store_interm_ic.resize(ninit);
+  for (int i = 0; i < ninit; i++) {
+    store_interm_ic[i].clear();
+    for (int iwindow = 0; iwindow < nwindows-1; iwindow++) {
+      Vec state;
+      VecCreate(PETSC_COMM_WORLD, &state);
+      VecSetSizes(state, PETSC_DECIDE, 2*timestepper->mastereq->getDim());
+      VecSetFromOptions(state);
+      store_interm_ic[i].push_back(state);
     }
   }
 
@@ -987,7 +985,8 @@ void OptimProblem::evalGradF(const Vec x, const Vec lambda_, Vec G){
 
           int id = iinit_global*(nwindows-1) + index;
           Vec xnext, lag;
-          VecGetSubVector(x, IS_interm_states[id], &xnext);
+          xnext = store_interm_ic[iinit_global][index];
+          // VecGetSubVector(x, IS_interm_states[id], &xnext);
           VecGetSubVector(lambda_, IS_interm_lambda[id], &lag);
           VecAXPY(disc, -1.0, xnext);  // finalstate = S(u_{i-1}) - u_i
 
