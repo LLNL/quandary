@@ -699,7 +699,7 @@ void unitarize(const Vec &x, const std::vector<IS> &IS_interm_states, std::vecto
   for (int iwindow = 0; iwindow < nwindows-1; iwindow++) {
     for (int iinit = 0; iinit < ninit; iinit++) {
       int idxi = iinit * (nwindows - 1) + iwindow;
-      VecGetSubVector(x, IS_interm_states[idxi], &interm_ic[iinit][iwindow]);
+      VecISCopy(x, IS_interm_states[idxi], SCATTER_REVERSE, interm_ic[iinit][iwindow]); 
 
       for (int jinit = 0; jinit < iinit; jinit++) {
         complex_inner_product(interm_ic[iinit][iwindow], interm_ic[jinit][iwindow], vu_re, vu_im);
@@ -748,12 +748,18 @@ void unitarize_grad(const Vec &x, const std::vector<IS> &IS_interm_states, const
   }
   
   Vec us = NULL, ws = NULL;
+  VecCreate(PETSC_COMM_WORLD, &us);
+  VecSetSizes(us, PETSC_DECIDE, dim2);
+  VecSetFromOptions(us);
+  VecCreate(PETSC_COMM_WORLD, &ws);
+  VecSetSizes(ws, PETSC_DECIDE, dim2);
+  VecSetFromOptions(ws);
   PetscScalar *wptr, *vsptr, *usptr, *uptr;
   double wu_re, wu_im, vsu_re, vsu_im;
   for (int iwindow = 0; iwindow < nwindows-1; iwindow++) {
     for (int iinit = ninit-1; iinit >= 0; iinit--) {
       int idxi = iinit * (nwindows - 1) + iwindow;
-      VecGetSubVector(G, IS_interm_states[idxi], &us);
+      VecISCopy(G, IS_interm_states[idxi], SCATTER_REVERSE, us); 
 
       for (int cinit = iinit+1; cinit < ninit; cinit++) {
         int idxc = cinit * (nwindows - 1) + iwindow;
@@ -766,7 +772,7 @@ void unitarize_grad(const Vec &x, const std::vector<IS> &IS_interm_states, const
         VecGetArray(vs[cinit], &vsptr);
         for (int d = 0; d < dim; d++) {
           usptr[d] -= wu_re * vsptr[d] + wu_im * vsptr[d + dim] + vsu_re * wptr[d] + vsu_im * wptr[d + dim];
-          usptr[d + dim] -= -wu_im * vsptr[d] + wu_im * vsptr[d + dim] - vsu_im * wptr[d] + vsu_re * wptr[d + dim];
+          usptr[d + dim] -= -wu_im * vsptr[d] + wu_re * vsptr[d + dim] - vsu_im * wptr[d] + vsu_re * wptr[d + dim];
         }
         VecRestoreArray(us, &usptr);
         VecRestoreArray(w, &wptr);
@@ -808,4 +814,6 @@ void unitarize_grad(const Vec &x, const std::vector<IS> &IS_interm_states, const
   for (int k = 0; k < ninit; k++) {
     VecDestroy(&(vs[k]));
   }
+  VecDestroy(&ws);
+  VecDestroy(&us);
 }
