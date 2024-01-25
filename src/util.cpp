@@ -1,5 +1,5 @@
 #include "util.hpp"
-
+#include <assert.h>
 
 double sigmoid(double width, double x){
   return 1.0 / ( 1.0 + exp(-width*x) );
@@ -647,4 +647,173 @@ bool isUnitary(const Mat V_re, const Mat V_im){
   MatDestroy(&D);
 
   return isunitary;
+}
+
+void complex_inner_product(const Vec &x, const Vec &y, double &re, double &im) {
+  PetscInt dim2, dummy;
+  VecGetSize(x, &dim2);
+  VecGetSize(y, &dummy);
+  assert(dim2 == dummy);
+  assert(dim2 % 2 == 0);
+
+  PetscInt dim = dim2 / 2;
+  PetscScalar *xptr, *yptr;
+  VecGetArray(x, &xptr);
+  VecGetArray(y, &yptr);
+
+  re = 0.0; im = 0.0;
+  for (int d = 0; d < dim; d++)
+  {
+    // Re[x dot conj(y)] = Re[x] * Re[y] + Im[x] * Im[y]
+    re += xptr[d] * yptr[d] + xptr[d + dim] * yptr[d + dim];
+    // Im[x dot conj(y)] = Im[x] * Re[y] - Re[x] * Im[y]
+    im += xptr[d + dim] * yptr[d] - xptr[d] * yptr[d + dim];
+  }
+  
+  VecRestoreArray(x, &xptr);
+  VecRestoreArray(y, &yptr);
+
+  return;
+}
+
+void unitarize(const Vec &x, const std::vector<IS> &IS_interm_states, std::vector<std::vector<Vec>> &interm_ic, std::vector<std::vector<double>> &vnorms) {
+  Vec v = NULL;
+  VecGetSubVector(x, IS_interm_states[0], &v);
+  PetscInt dim2, dim;
+  VecGetSize(v, &dim2);
+  assert(dim2 % 2 == 0);
+  dim = dim2 / 2;
+
+  // IS IS_re, IS_im;
+  // ISCreateStride(PETSC_COMM_WORLD, dim, 0, 1, &IS_re);
+  // ISCreateStride(PETSC_COMM_WORLD, dim, dim, 1, &IS_im);
+
+  const int ninit = interm_ic.size();
+  const int nwindows = interm_ic[0].size() + 1;
+  vnorms.resize(ninit);
+  for (int iinit = 0; iinit < ninit; iinit++)
+    vnorms[iinit].resize(nwindows-1);
+  
+  PetscScalar *uptr, *vptr;
+  double vu_re, vu_im, vnorm;
+  for (int iwindow = 0; iwindow < nwindows-1; iwindow++) {
+    for (int iinit = 0; iinit < ninit; iinit++) {
+      int idxi = iinit * (nwindows - 1) + iwindow;
+      VecISCopy(x, IS_interm_states[idxi], SCATTER_REVERSE, interm_ic[iinit][iwindow]); 
+
+      for (int jinit = 0; jinit < iinit; jinit++) {
+        complex_inner_product(interm_ic[iinit][iwindow], interm_ic[jinit][iwindow], vu_re, vu_im);
+
+        VecGetArray(interm_ic[jinit][iwindow], &uptr);
+        VecGetArray(interm_ic[iinit][iwindow], &vptr);
+        for (int d = 0; d < dim; d++) {
+          // Re[v] -= Re[v.u] * Re[u] - Im[v.u] * Im[u]
+          vptr[d] -= vu_re * uptr[d] - vu_im * uptr[d + dim];
+          // Im[v] -= Re[v.u] * Im[u] + Im[v.u] * Re[u]
+          vptr[d + dim] -= vu_re * uptr[d + dim] + vu_im * uptr[d];
+        }
+        VecRestoreArray(interm_ic[jinit][iwindow], &uptr);
+        VecRestoreArray(interm_ic[iinit][iwindow], &vptr);
+      }
+
+      VecNorm(interm_ic[iinit][iwindow], NORM_2, &vnorm);
+      VecScale(interm_ic[iinit][iwindow], 1.0 / vnorm);
+
+      vnorms[iinit][iwindow] = vnorm;
+    }
+  }
+
+  // ISDestroy(&IS_re);
+  // ISDestroy(&IS_im);
+}
+
+void unitarize_grad(const Vec &x, const std::vector<IS> &IS_interm_states, const std::vector<std::vector<Vec>> &interm_ic, const std::vector<std::vector<double>> &vnorms, Vec &G) {
+  Vec w = NULL;
+  VecGetSubVector(x, IS_interm_states[0], &w);
+  PetscInt dim2, dim;
+  VecGetSize(w, &dim2);
+  assert(dim2 % 2 == 0);
+  dim = dim2 / 2;
+
+  const int ninit = interm_ic.size();
+  const int nwindows = interm_ic[0].size() + 1;
+
+  std::vector<Vec> vs(0);
+  for (int k = 0; k < ninit; k++) {
+    Vec state;
+    VecCreate(PETSC_COMM_WORLD, &state);
+    VecSetSizes(state, PETSC_DECIDE, dim2);
+    VecSetFromOptions(state);
+    vs.push_back(state);
+  }
+  
+  Vec us = NULL, ws = NULL;
+  VecCreate(PETSC_COMM_WORLD, &us);
+  VecSetSizes(us, PETSC_DECIDE, dim2);
+  VecSetFromOptions(us);
+  VecCreate(PETSC_COMM_WORLD, &ws);
+  VecSetSizes(ws, PETSC_DECIDE, dim2);
+  VecSetFromOptions(ws);
+  PetscScalar *wptr, *vsptr, *usptr, *uptr;
+  double wu_re, wu_im, vsu_re, vsu_im;
+  for (int iwindow = 0; iwindow < nwindows-1; iwindow++) {
+    for (int iinit = ninit-1; iinit >= 0; iinit--) {
+      int idxi = iinit * (nwindows - 1) + iwindow;
+      VecISCopy(G, IS_interm_states[idxi], SCATTER_REVERSE, us); 
+
+      for (int cinit = iinit+1; cinit < ninit; cinit++) {
+        int idxc = cinit * (nwindows - 1) + iwindow;
+        VecGetSubVector(x, IS_interm_states[idxc], &w);
+        complex_inner_product(w, interm_ic[iinit][iwindow], wu_re, wu_im);
+        complex_inner_product(vs[cinit], interm_ic[iinit][iwindow], vsu_re, vsu_im);
+
+        VecGetArray(us, &usptr);
+        VecGetArray(w, &wptr);
+        VecGetArray(vs[cinit], &vsptr);
+        for (int d = 0; d < dim; d++) {
+          usptr[d] -= wu_re * vsptr[d] + wu_im * vsptr[d + dim] + vsu_re * wptr[d] + vsu_im * wptr[d + dim];
+          usptr[d + dim] -= -wu_im * vsptr[d] + wu_re * vsptr[d + dim] - vsu_im * wptr[d] + vsu_re * wptr[d + dim];
+        }
+        VecRestoreArray(us, &usptr);
+        VecRestoreArray(w, &wptr);
+        VecRestoreArray(vs[cinit], &vsptr);
+      }
+
+      double vnorm = vnorms[iinit][iwindow];
+      double usu, dummy;
+      complex_inner_product(us, interm_ic[iinit][iwindow], usu, dummy);
+      VecGetArray(us, &usptr);
+      VecGetArray(vs[iinit], &vsptr);
+      VecGetArray(interm_ic[iinit][iwindow], &uptr);
+      for (int d = 0; d < dim; d++) {
+        vsptr[d] = 1.0 / vnorm * (usptr[d] - usu * uptr[d]);
+        vsptr[d + dim] = 1.0 / vnorm * (usptr[d + dim] - usu * uptr[d + dim]);
+      }
+      VecRestoreArray(us, &usptr);
+      VecRestoreArray(vs[iinit], &vsptr);
+      VecRestoreArray(interm_ic[iinit][iwindow], &uptr);
+
+      VecCopy(vs[iinit], ws);
+      for (int cinit = 0; cinit < iinit; cinit++) {
+        complex_inner_product(vs[iinit], interm_ic[cinit][iwindow], vsu_re, vsu_im);
+
+        VecGetArray(ws, &wptr);
+        VecGetArray(interm_ic[cinit][iwindow], &uptr);
+        for (int d = 0; d < dim; d++) {
+          wptr[d] -= vsu_re * uptr[d] - vsu_im * uptr[d + dim];
+          wptr[d + dim] -= vsu_im * uptr[d] + vsu_re * uptr[d + dim];
+        }
+        VecRestoreArray(ws, &wptr);
+        VecRestoreArray(interm_ic[cinit][iwindow], &uptr);
+      }
+
+      VecISCopy(G, IS_interm_states[idxi], SCATTER_FORWARD, ws);
+    }
+  }
+
+  for (int k = 0; k < ninit; k++) {
+    VecDestroy(&(vs[k]));
+  }
+  VecDestroy(&ws);
+  VecDestroy(&us);
 }

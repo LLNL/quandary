@@ -106,3 +106,8 @@ void copyLast(std::vector<Tval>& fillme, int tosize){
       // std::cout<<std::endl;
     // }
 };
+
+// TODO(kevin): need to figure out how to parallelize these.
+void complex_inner_product(const Vec &x, const Vec &y, double &re, double &im);
+void unitarize(const Vec &x, const std::vector<IS> &IS_interm_states, std::vector<std::vector<Vec>> &interm_ic, std::vector<std::vector<double>> &vnorms);
+void unitarize_grad(const Vec &x, const std::vector<IS> &IS_interm_states, const std::vector<std::vector<Vec>> &interm_ic, const std::vector<std::vector<double>> &vnorms, Vec &G);
