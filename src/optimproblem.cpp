@@ -129,7 +129,7 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   /* Finally initialize the optimization target struct */
   optim_target = new OptimTarget(timestepper->mastereq->getDim(), purestateID, target_type, objective_type, targetgate, target_filename, timestepper->mastereq->lindbladtype, quietmode);
 
-  /* Get weights for the objective function (weighting the different initial conditions */
+  /* Get weights for the objective function (weighting the different initial conditions. Default: 1/ninit */
   config.GetVecDoubleParam("optim_weights", obj_weights, 1.0);
   copyLast(obj_weights, ninit);
   // Scale the weights such that they sum up to one: beta_i <- beta_i / (\sum_i beta_i)
@@ -509,6 +509,11 @@ double OptimProblem::evalF_(const double* x, const size_t i, const size_t ninit_
     obj_cost_re += obj_weights[iinit-i] * obj_iinit_re;
     obj_cost_im += obj_weights[iinit-i] * obj_iinit_im;
 
+    // If stochastic optimizer, take the absolute value here and add to objective function
+    if (initcond_type == InitialConditionType::RANDOM) {
+      obj_cost += obj_weights[iinit-i]*(pow(obj_iinit_re,2.0) + pow(obj_iinit_im, 2.0));
+    }
+
     /* Add to final-time fidelity */
     double fidelity_iinit_re = 0.0;
     double fidelity_iinit_im = 0.0;
@@ -525,6 +530,7 @@ double OptimProblem::evalF_(const double* x, const size_t i, const size_t ninit_
   double mypenen = obj_penal_energy;
   double mycost_re = obj_cost_re;
   double mycost_im = obj_cost_im;
+  double mycost = obj_cost;
   double myfidelity_re = fidelity_re;
   double myfidelity_im = fidelity_im;
   MPI_Allreduce(&mypen, &obj_penal, 1, MPI_DOUBLE, MPI_SUM, comm_init);
@@ -532,6 +538,7 @@ double OptimProblem::evalF_(const double* x, const size_t i, const size_t ninit_
   MPI_Allreduce(&mypenen, &obj_penal_energy, 1, MPI_DOUBLE, MPI_SUM, comm_init);
   MPI_Allreduce(&mycost_re, &obj_cost_re, 1, MPI_DOUBLE, MPI_SUM, comm_init);
   MPI_Allreduce(&mycost_im, &obj_cost_im, 1, MPI_DOUBLE, MPI_SUM, comm_init);
+  MPI_Allreduce(&mycost, &obj_cost, 1, MPI_DOUBLE, MPI_SUM, comm_init);
   MPI_Allreduce(&myfidelity_re, &fidelity_re, 1, MPI_DOUBLE, MPI_SUM, comm_init);
   MPI_Allreduce(&myfidelity_im, &fidelity_im, 1, MPI_DOUBLE, MPI_SUM, comm_init);
 
@@ -543,7 +550,12 @@ double OptimProblem::evalF_(const double* x, const size_t i, const size_t ninit_
   }
  
   /* Finalize the objective function */
-  obj_cost = optim_target->finalizeJ(obj_cost_re, obj_cost_im);
+  if (initcond_type == InitialConditionType::RANDOM) {
+    fidelity = obj_cost;
+    obj_cost = 1.0 - fidelity;
+  } else {
+    obj_cost = optim_target->finalizeJ(obj_cost_re, obj_cost_im);
+  }
 
   /* Evaluate regularization objective += gamma/2 * ||x-x0||^2*/
   obj_regul = gamma_tik * evalTikhonov_(x, ndesign);
@@ -617,6 +629,7 @@ double OptimProblem::evalGradF_(const double* x, const size_t i, double* G, cons
     int initid = timestepper->mastereq->getRhoT0(iinit_global, ninit, initcond_type, initcond_IDs, rho_t0);
     if (mpirank_optim == 0 && !quietmode) printf("%d: iinit=%d, i=%zu, ninit_local=%zu. Initial condition id=%d ...\n", mpirank_init, iinit, i, ninit_local, initid);
 
+
     /* If gate optimiztion, compute the target state rho^target = Vrho(0)V^dagger */
     optim_target->prepare(rho_t0);
 
@@ -644,12 +657,19 @@ double OptimProblem::evalGradF_(const double* x, const size_t i, double* G, cons
     obj_cost_re += obj_weights[iinit-i] * obj_iinit_re;
     obj_cost_im += obj_weights[iinit-i] * obj_iinit_im;
 
+    // If stochastic optimizer, take the absolute value here and add to objective function
+    if (initcond_type == InitialConditionType::RANDOM) {
+      obj_cost += obj_weights[iinit-i] * (pow(obj_iinit_re,2.0) + pow(obj_iinit_im, 2.0));
+    }
     /* Add to final-time fidelity */
     double fidelity_iinit_re = 0.0;
     double fidelity_iinit_im = 0.0;
     optim_target->HilbertSchmidtOverlap(finalstate, false, &fidelity_iinit_re, &fidelity_iinit_im);
     fidelity_re += 1./ ninit * fidelity_iinit_re;
     fidelity_im += 1./ ninit * fidelity_iinit_im;
+
+
+    printf("%d: iinit=%d, i=%zu, ninit_local=%zu. InitCond ID = %d ... obj_cost = %1.14e \n", mpirank_init, iinit, i, ninit_local, initid, obj_cost);
 
     /* If Lindblas solver, compute adjoint for this initial condition. Otherwise (Schroedinger solver), compute adjoint only after all initial conditions have been propagated through (separate loop below) */
     if (timestepper->mastereq->lindbladtype != LindbladType::NONE) {
@@ -682,6 +702,7 @@ double OptimProblem::evalGradF_(const double* x, const size_t i, double* G, cons
   double mypenen = obj_penal_energy;
   double mycost_re = obj_cost_re;
   double mycost_im = obj_cost_im;
+  double mycost = obj_cost;
   double myfidelity_re = fidelity_re;
   double myfidelity_im = fidelity_im;
   MPI_Allreduce(&mypen, &obj_penal, 1, MPI_DOUBLE, MPI_SUM, comm_init);
@@ -689,6 +710,7 @@ double OptimProblem::evalGradF_(const double* x, const size_t i, double* G, cons
   MPI_Allreduce(&mypenen, &obj_penal_energy, 1, MPI_DOUBLE, MPI_SUM, comm_init);
   MPI_Allreduce(&mycost_re, &obj_cost_re, 1, MPI_DOUBLE, MPI_SUM, comm_init);
   MPI_Allreduce(&mycost_im, &obj_cost_im, 1, MPI_DOUBLE, MPI_SUM, comm_init);
+  MPI_Allreduce(&mycost, &obj_cost, 1, MPI_DOUBLE, MPI_SUM, comm_init);
   MPI_Allreduce(&myfidelity_re, &fidelity_re, 1, MPI_DOUBLE, MPI_SUM, comm_init);
   MPI_Allreduce(&myfidelity_im, &fidelity_im, 1, MPI_DOUBLE, MPI_SUM, comm_init);
 
@@ -699,9 +721,13 @@ double OptimProblem::evalGradF_(const double* x, const size_t i, double* G, cons
     fidelity = fidelity_re; 
   }
  
-  /* Finalize the objective function Jtrace to get the infidelity. 
-     If Schroedingers solver, need to take the absolute value */
-  obj_cost = optim_target->finalizeJ(obj_cost_re, obj_cost_im);
+  /* Finalize the objective function Jtrace to get the infidelity. */
+  if (initcond_type == InitialConditionType::RANDOM) {
+    fidelity = obj_cost;
+    obj_cost = 1.0 - fidelity;
+  } else {
+    obj_cost = optim_target->finalizeJ(obj_cost_re, obj_cost_im);
+  }
 
   /* Evaluate regularization objective += gamma/2 * ||x||^2*/
   obj_regul = gamma_tik * evalTikhonov_(x, ndesign);
@@ -711,6 +737,14 @@ double OptimProblem::evalGradF_(const double* x, const size_t i, double* G, cons
 
   /* For Schroedinger solver: Solve adjoint equations for all initial conditions here. */
   if (timestepper->mastereq->lindbladtype == LindbladType::NONE) {
+
+    double obj_cost_re_bar=0.0, obj_cost_im_bar=0.0;
+    double obj_cost_bar = 0.0;
+    if (initcond_type == InitialConditionType::RANDOM) {
+      obj_cost_bar = -1.0;
+    } else {
+      optim_target->finalizeJ_diff(obj_cost_re, obj_cost_im, &obj_cost_re_bar, &obj_cost_im_bar);
+    }
 
     // Iterate over all initial conditions 
     for (int iinit = i; iinit < i+ninit_local; iinit++) {
@@ -732,8 +766,13 @@ double OptimProblem::evalGradF_(const double* x, const size_t i, double* G, cons
       VecZeroEntries(rho_t0_bar);
 
       /* Terminal condition for adjoint variable: Derivative of final time objective J */
-      double obj_cost_re_bar, obj_cost_im_bar;
-      optim_target->finalizeJ_diff(obj_cost_re, obj_cost_im, &obj_cost_re_bar, &obj_cost_im_bar);
+      if (initcond_type == InitialConditionType::RANDOM) {
+        double obj_iinit_re = 0.0;
+        double obj_iinit_im = 0.0;
+        optim_target->evalJ(finalstate,  &obj_iinit_re, &obj_iinit_im);
+        obj_cost_re_bar = 2.0*obj_iinit_re*obj_cost_bar;
+        obj_cost_im_bar = 2.0*obj_iinit_im*obj_cost_bar;
+      }
       optim_target->evalJ_diff(finalstate, rho_t0_bar, obj_weights[iinit-i]*obj_cost_re_bar, obj_weights[iinit-i]*obj_cost_im_bar);
 
       /* Derivative of time-stepping */
@@ -945,6 +984,9 @@ EnsmallenFunction::EnsmallenFunction(OptimProblem* optimctx_, int ndata_, std::d
     optimctx->ic_seed.push_back(val);
     // printf("Rand seed = %d\n", optimctx->ic_seed[ic]);
   }
+
+  /* Overwrite weights in objective function to be 1/ndata */
+  optimctx->setObjWeights(1.0 / ndata);
 }
 
 EnsmallenFunction::~EnsmallenFunction(){}

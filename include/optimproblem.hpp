@@ -106,6 +106,9 @@ class OptimProblem {
   double getGnorm()     { return gnorm; };
   void setGnorm(double gnorm_)     { gnorm = gnorm_; };
 
+  /* Set all objective function weights to 'value' */
+  void setObjWeights(double value);
+
   /* Evaluate the objective function F(x) */
   double evalF_(const double* x, const size_t i, const size_t batchSize);
   // Petsc wrapper
