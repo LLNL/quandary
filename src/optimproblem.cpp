@@ -1118,6 +1118,7 @@ void OptimProblem::rollOut(Vec x){
     } // end for iwindow
   } // end for initial condition
 
+  // bool is_unitary = isUnitary(x, IS_interm_states, ninit, nwindows);
 }
 
 /* lag += - prev_mu * ( S(u_{i-1}) - u_i ) */
