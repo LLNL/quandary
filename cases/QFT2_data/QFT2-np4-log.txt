@@ -1,0 +1,19 @@
+Riemann:cases petersson1$ mpirun -np 4 ../quandary QFT2.cfg 
+Running Quandary on 4 cores.
+Number of initial conditions: 4
+Parallel distribution: 4 np_init  X  1 np_petsc  X 1 np_time
+Solving Schroedingers equation (closed quantum system).
+System: 2x2  (essential levels: 2x2) 
+State dimension (complex): 4
+Time: [0:900], N=5758, dt=0.156304
+Time-windows: 2, each 2879 steps
+# Warning: parameter optim_penalty_dpdm not found ! Taking default = 0
+noptimvars = 736(controls) + 32(states) = 768
+# Warning: parameter optim_interm_tol not found ! Taking default = 0.0001
+# Warning: parameter optim_mu not found ! Taking default = 0
+# Warning: parameter load_optimvar not found ! Taking default = 0
+ -> Rollout initialization of intermediate states (entirely sequential). This might take a while...
+File written: ./QFT2_data/config_log.dat
+# Warning: parameter update_lagrangian not found ! Taking default = 0
+
+Starting Optimization solver ... 
