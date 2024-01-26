@@ -30,7 +30,6 @@ class OptimProblem {
   std::vector<int> initcond_IDs;         /* Integer list for pure-state initialization */
   std::vector<Vec> store_finalstates;    /* Storage for last time steps for each initial condition */
 
-  bool unitarize_interm_ic;               /* Switch to unitarize intermediate initial conditions at evalF/evalGradF */
   std::vector<std::vector<Vec>> store_interm_states;    /* Storage for last time steps of each local time window for each initial condition */
   std::vector<std::vector<Vec>> store_interm_ic;    /* Storage for unitarized intermediate condition of each local time window for each initial condition */
 
@@ -98,6 +97,7 @@ class OptimProblem {
     Vec xinit;                       /* Storing initial design vector, if gamma_tik_interpolate=true, aka if tikhonov is ||x - x_0||^2 rather than ||x||^2 */
     Vec *lambda;                     /* Pointer to lagrange multiplier, not owned by OptimProblem. TODO. */
     double mu;                       /* Penalty strength to intermediate state discontinuities */
+    bool unitarize_interm_ic;               /* Switch to unitarize intermediate initial conditions at evalF/evalGradF */
 
   /* Constructor */
   OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm comm_init_, MPI_Comm comm_time, int ninit_, int nwindows_, double total_time, std::vector<double> gate_rot_freq, Output* output_, bool quietmode=false);

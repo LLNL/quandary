@@ -666,6 +666,8 @@ int main(int argc,char **argv)
     optimctx->rollOut(opt); // overwrite the intermediate initial conds in 'opt'
 
     // evaluate the fidelity and infidelity with evalF()
+    /* turn off unitarization for rolling out. */
+    optimctx->unitarize_interm_ic = false;
     double final_obj = optimctx->evalF(opt, lambda);
     if (mpirank_world == 0) {
       printf("Final fidelity: %e\n", optimctx->getFidelity());
