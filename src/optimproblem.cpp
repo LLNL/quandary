@@ -511,17 +511,17 @@ double OptimProblem::evalF_(const double* x, const size_t i, const size_t ninit_
 
     // If stochastic optimizer, take the absolute value here and add to objective function
     if (initcond_type == InitialConditionType::RANDOM) {
-      obj_cost += obj_weights[iinit-i]*(pow(obj_iinit_re,2.0) + pow(obj_iinit_im, 2.0));
+      obj_cost += obj_weights[iinit-i]*(1.0 - (pow(obj_iinit_re,2.0) + pow(obj_iinit_im, 2.0)));
     }
 
     /* Add to final-time fidelity */
     double fidelity_iinit_re = 0.0;
     double fidelity_iinit_im = 0.0;
     optim_target->HilbertSchmidtOverlap(finalstate, false, &fidelity_iinit_re, &fidelity_iinit_im);
-    fidelity_re += 1./ ninit * fidelity_iinit_re;
-    fidelity_im += 1./ ninit * fidelity_iinit_im;
+    fidelity_re += 1./ninit_local * fidelity_iinit_re;
+    fidelity_im += 1./ninit_local * fidelity_iinit_im;
 
-    // printf("%d, %d: iinit obj_iinit: %f * (%1.14e + i %1.14e, Overlap=%1.14e + i %1.14e\n", mpirank_world, mpirank_init, obj_weights[iinit], obj_iinit_re, obj_iinit_im, fidelity_iinit_re, fidelity_iinit_im);
+    // printf("%d, %d: iinit obj_iinit: %f * (%1.14e + i %1.14e), obj_cost=%1.14e, Overlap=%1.14e + i %1.14e\n", mpirank_world, mpirank_init, obj_weights[iinit-i], obj_iinit_re, obj_iinit_im, obj_cost, fidelity_iinit_re, fidelity_iinit_im);
   }
 
   /* Sum up from initial conditions processors */
@@ -550,10 +550,7 @@ double OptimProblem::evalF_(const double* x, const size_t i, const size_t ninit_
   }
  
   /* Finalize the objective function */
-  if (initcond_type == InitialConditionType::RANDOM) {
-    fidelity = obj_cost;
-    obj_cost = 1.0 - fidelity;
-  } else {
+  if (initcond_type != InitialConditionType::RANDOM) {
     obj_cost = optim_target->finalizeJ(obj_cost_re, obj_cost_im);
   }
 
@@ -659,17 +656,17 @@ double OptimProblem::evalGradF_(const double* x, const size_t i, double* G, cons
 
     // If stochastic optimizer, take the absolute value here and add to objective function
     if (initcond_type == InitialConditionType::RANDOM) {
-      obj_cost += obj_weights[iinit-i] * (pow(obj_iinit_re,2.0) + pow(obj_iinit_im, 2.0));
+      obj_cost += obj_weights[iinit-i] * (1.0 - (pow(obj_iinit_re,2.0) + pow(obj_iinit_im, 2.0)));
     }
     /* Add to final-time fidelity */
     double fidelity_iinit_re = 0.0;
     double fidelity_iinit_im = 0.0;
     optim_target->HilbertSchmidtOverlap(finalstate, false, &fidelity_iinit_re, &fidelity_iinit_im);
-    fidelity_re += 1./ ninit * fidelity_iinit_re;
-    fidelity_im += 1./ ninit * fidelity_iinit_im;
+    fidelity_re += 1./ ninit_local * fidelity_iinit_re;
+    fidelity_im += 1./ ninit_local * fidelity_iinit_im;
 
 
-    printf("%d: iinit=%d, i=%zu, ninit_local=%zu. InitCond ID = %d ... obj_cost = %1.14e \n", mpirank_init, iinit, i, ninit_local, initid, obj_cost);
+    // printf("%d, %d: iinit obj_iinit: %f * (%1.14e + i %1.14e), obj_cost=%1.14e, Overlap=%1.14e + i %1.14e\n", mpirank_world, mpirank_init, obj_weights[iinit-i], obj_iinit_re, obj_iinit_im, obj_cost, fidelity_iinit_re, fidelity_iinit_im);
 
     /* If Lindblas solver, compute adjoint for this initial condition. Otherwise (Schroedinger solver), compute adjoint only after all initial conditions have been propagated through (separate loop below) */
     if (timestepper->mastereq->lindbladtype != LindbladType::NONE) {
@@ -722,10 +719,7 @@ double OptimProblem::evalGradF_(const double* x, const size_t i, double* G, cons
   }
  
   /* Finalize the objective function Jtrace to get the infidelity. */
-  if (initcond_type == InitialConditionType::RANDOM) {
-    fidelity = obj_cost;
-    obj_cost = 1.0 - fidelity;
-  } else {
+  if (initcond_type != InitialConditionType::RANDOM) {
     obj_cost = optim_target->finalizeJ(obj_cost_re, obj_cost_im);
   }
 
@@ -997,7 +991,8 @@ EnsmallenFunction::EnsmallenFunction(OptimProblem* optimctx_, int ndata_, std::d
   }
 
   /* Overwrite weights in objective function to be 1/ndata */
-  optimctx->setObjWeights(1.0 / ndata);
+  // optimctx->setObjWeights(1.0 / ndata);
+  optimctx->setObjWeights(1.0);
 }
 
 EnsmallenFunction::~EnsmallenFunction(){}

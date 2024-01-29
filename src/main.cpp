@@ -119,9 +119,9 @@ int main(int argc,char **argv)
   else if (initcondstr[0].compare("ensemble") == 0 ) ninit = 1;
   else if (initcondstr[0].compare("3states") == 0 ) ninit = 3;
   else if (initcondstr[0].compare("random") == 0 ) {
-    // Check whether 'batchsize' option is given, otherwise set 1
-    int batchsize = config.GetIntParam("batchsize", -1, false, false);
-    if (batchsize > 0) ninit = batchsize;
+    // Check whether 'ndata' option is given, otherwise set 1
+    int ndata = config.GetIntParam("ndata", -1, false, false);
+    if (ndata> 0) ninit = ndata;
     else ninit = 1;
   }
   else if (initcondstr[0].compare("Nplus1") == 0 )  {
@@ -437,7 +437,8 @@ int main(int argc,char **argv)
     /* Get number of ndata points, batchsize */
     ndata = config.GetIntParam("ndata", 1, false, true);
     batchsize = config.GetIntParam("batchsize", -1, false, true);
-    printf("Creating stochastic ENSMALLEN optimizer, ndata=%d, batchsize=%d.\n", ndata, batchsize);
+    printf("Creating stochastic ENSMALLEN optimizer, ndata=%d.\n", ndata);
+    ens_function = new EnsmallenFunction(optimctx, ndata,rand_engine);
 
    // Store flag for stochastic optimizer
     stochastic_opt = true;
@@ -446,7 +447,6 @@ int main(int argc,char **argv)
   double stepsize = 1e-3; // Default 1e-3
   printf("Batchsize = %d\n", batchsize);
   ens::Adam ens_optimizer(stepsize, batchsize, 0.9, 0.999, 1e-8, optimctx->getMaxIter(), 1e-5, true);       // Ensmallen ADAM optimizer
-  ens_function = new EnsmallenFunction(optimctx, ndata,rand_engine);
  
 // #endif
 
@@ -473,7 +473,7 @@ int main(int argc,char **argv)
     VecCopy(xinit, optimctx->xinit); // Store the initial guess
     if (mpirank_world == 0 && !quietmode) printf("\nStarting primal solver... \n");
     if (stochastic_opt)
-      objective = ens_function->Evaluate(xinit_arma, 0, batchsize);
+      objective = ens_function->Evaluate(xinit_arma, 0, ndata);
     else 
       objective = optimctx->evalF(xinit);
     if (mpirank_world == 0 && !quietmode) printf("\nTotal objective = %1.14e, \n", objective);
@@ -485,7 +485,7 @@ int main(int argc,char **argv)
     VecCopy(xinit, optimctx->xinit); // Store the initial guess
     if (mpirank_world == 0 && !quietmode) printf("\nStarting adjoint solver...\n");
     if (stochastic_opt) {
-      ens_function->EvaluateWithGradient(xinit_arma, 0, grad_arma, batchsize);
+      ens_function->EvaluateWithGradient(xinit_arma, 0, grad_arma, ndata);
       gnorm = norm(grad_arma, 2);
       optimctx->output->writeGradient(grad_arma);
     } else {
