@@ -518,8 +518,12 @@ double OptimProblem::evalF_(const double* x, const size_t i, const size_t ninit_
     double fidelity_iinit_re = 0.0;
     double fidelity_iinit_im = 0.0;
     optim_target->HilbertSchmidtOverlap(finalstate, false, &fidelity_iinit_re, &fidelity_iinit_im);
-    fidelity_re += 1./ninit_local * fidelity_iinit_re;
-    fidelity_im += 1./ninit_local * fidelity_iinit_im;
+    double scaling = 1./ninit;
+    if (initcond_type == InitialConditionType::RANDOM) {
+      scaling = 1.0;
+    }
+    fidelity_re += scaling * fidelity_iinit_re;
+    fidelity_im += scaling * fidelity_iinit_im;
 
     // printf("%d, %d: iinit obj_iinit: %f * (%1.14e + i %1.14e), obj_cost=%1.14e, Overlap=%1.14e + i %1.14e\n", mpirank_world, mpirank_init, obj_weights[iinit-i], obj_iinit_re, obj_iinit_im, obj_cost, fidelity_iinit_re, fidelity_iinit_im);
   }
@@ -662,8 +666,12 @@ double OptimProblem::evalGradF_(const double* x, const size_t i, double* G, cons
     double fidelity_iinit_re = 0.0;
     double fidelity_iinit_im = 0.0;
     optim_target->HilbertSchmidtOverlap(finalstate, false, &fidelity_iinit_re, &fidelity_iinit_im);
-    fidelity_re += 1./ ninit_local * fidelity_iinit_re;
-    fidelity_im += 1./ ninit_local * fidelity_iinit_im;
+    double scaling = 1./ninit;
+    if (initcond_type == InitialConditionType::RANDOM) {
+      scaling = 1.0;
+    }
+    fidelity_re += scaling * fidelity_iinit_re;
+    fidelity_im += scaling * fidelity_iinit_im;
 
 
     // printf("%d, %d: iinit obj_iinit: %f * (%1.14e + i %1.14e), obj_cost=%1.14e, Overlap=%1.14e + i %1.14e\n", mpirank_world, mpirank_init, obj_weights[iinit-i], obj_iinit_re, obj_iinit_im, obj_cost, fidelity_iinit_re, fidelity_iinit_im);
