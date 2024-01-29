@@ -433,10 +433,12 @@ int main(int argc,char **argv)
   EnsmallenFunction* ens_function;  // Ensmallen function to be optimized
   int  ndata=0, batchsize=-1;
   bool stochastic_opt = false;
+  double stepsize = 1e-3; // Default
   if (initcondstr[0].compare("random") == 0 ) {
     /* Get number of ndata points, batchsize */
     ndata = config.GetIntParam("ndata", 1, false, true);
     batchsize = config.GetIntParam("batchsize", -1, false, true);
+    stepsize = config.GetDoubleParam("stepsize", 1e-3, true);
     printf("Creating stochastic ENSMALLEN optimizer, ndata=%d.\n", ndata);
     ens_function = new EnsmallenFunction(optimctx, ndata,rand_engine);
 
@@ -444,8 +446,6 @@ int main(int argc,char **argv)
     stochastic_opt = true;
   } 
 
-  double stepsize = 1e-3; // Default 1e-3
-  printf("Batchsize = %d\n", batchsize);
   ens::Adam ens_optimizer(stepsize, batchsize, 0.9, 0.999, 1e-8, optimctx->getMaxIter(), 1e-5, true);       // Ensmallen ADAM optimizer
  
 // #endif
