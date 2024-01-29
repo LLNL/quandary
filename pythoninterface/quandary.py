@@ -1021,8 +1021,11 @@ def timestep_richardson_est(myconfig, tol=1e-8, order=2, quandary_exec="../../qu
     # Factor by which timestep size is decreased
     m = 2 
     
-    # Initialize somehow
-    Jcurr = 0.0
+    # Initialize 
+    myconfig.verbose=False
+    t, pt, qt, infidelity, _, _ = quandary_run(myconfig, quandary_exec=quandary_exec, runtype="simulation", datadir="test")
+
+    Jcurr = infidelity
     uT = myconfig.uT
 
     # Loop
@@ -1032,13 +1035,12 @@ def timestep_richardson_est(myconfig, tol=1e-8, order=2, quandary_exec="../../qu
     for i in range(10):
 
         # Update configuration number of timesteps. Note: dt will be set in dump()
+        dt_org = myconfig.T / myconfig.nsteps
         myconfig.nsteps= myconfig.nsteps* m
-        dt = myconfig.T / myconfig.nsteps
 
         # Get u(dt/m) 
         myconfig.verbose=False
         t, pt, qt, infidelity, _, _ = quandary_run(myconfig, quandary_exec=quandary_exec, runtype="simulation", datadir="test")
-
 
         # Richardson error estimate 
         err_J = np.abs(Jcurr - infidelity) / (m**order-1.0)
@@ -1046,15 +1048,15 @@ def timestep_richardson_est(myconfig, tol=1e-8, order=2, quandary_exec="../../qu
         err_u = np.linalg.norm(np.subtract(uT, myconfig.uT)) / (m**order - 1.0)
         errs_J.append(err_J)
         errs_u.append(err_u)
+        dts.append(dt_org)
 
         # Output 
-        dts.append(dt)
-        print(" -> Error at i=", i, ", dt = ", dt, ": err_J = ", err_J, " err_u=", err_u)
+        print(" -> Error at i=", i, ", dt = ", dt_org, ": err_J = ", err_J, " err_u=", err_u)
 
 
         # Stop if tolerance is reached
         if err_J < tol:
-            print("\n -> Tolerance reached. N=", myconfig.nsteps, ", dt=",dt)
+            print("\n -> Tolerance reached. N=", myconfig.nsteps, ", dt=",dt_org)
             break
 
         # Update
