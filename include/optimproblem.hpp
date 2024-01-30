@@ -124,6 +124,8 @@ class OptimProblem {
   int getMPIrank_world() { return mpirank_world;};
   int getMaxIter()     { return maxiter; };
 
+  void setUnitarizeIntermediate(bool newVal) { unitarize_interm_ic = newVal; };
+
   /* Evaluate the objective function F(x) */
   double evalF(const Vec x, const Vec lambda_, const bool store_interm=false);
 

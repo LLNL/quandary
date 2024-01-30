@@ -1101,7 +1101,7 @@ void OptimProblem::rollOut(Vec x){
     // printf("Initial condition %d\n", iinit);
     // int iinit_global = mpirank_init * ninit_local + iinit;
     int initid = timestepper->mastereq->getRhoT0(iinit, ninit, initcond_type, initcond_IDs, rho_t0);
-    Vec x0 = rho_t0; 
+    Vec x0 = rho_t0;
 
     for (int iwindow=0; iwindow<nwindows; iwindow++){
       // Solve forward from starting point.
@@ -1116,7 +1116,7 @@ void OptimProblem::rollOut(Vec x){
         VecISCopy(x, IS_interm_states[id], SCATTER_FORWARD, x0); 
       }
     } // end for iwindow
-  } // end for initial condition
+  } // end for iinit (initial condition)
 
 }
 
@@ -1242,11 +1242,11 @@ PetscErrorCode TaoMonitor(Tao tao,void*ptr){
   bool lastIter = false;
   std::string finalReason_str = "";
   if ((1.0 - F_avg <= ctx->getInfTol()) && (interm_discontinuity < ctx->getIntermTol())) {
-    finalReason_str = "Optimization converged to a continuous trajectory with small infidelity.";
+    finalReason_str = "Optimization converged to a continuous trajectory with small infidelity and small discontinuity.";
     TaoSetConvergedReason(tao, TAO_CONVERGED_USER);
     lastIter = true;
   } else if ((obj_cost <= ctx->getFaTol()) && (interm_discontinuity < ctx->getIntermTol())) {
-    finalReason_str = "Optimization converged to a continuous trajectory with small final time cost.";
+    finalReason_str = "Optimization converged to a continuous trajectory with small final time cost and small discontinuity.";
     TaoSetConvergedReason(tao, TAO_CONVERGED_USER);
     lastIter = true;
   } 

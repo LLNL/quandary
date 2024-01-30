@@ -17,7 +17,7 @@
 #define TEST_FD_GRAD 0    // Run Finite Differences gradient test
 #define TEST_FD_HESS 0    // Run Finite Differences Hessian test
 #define HESSIAN_DECOMPOSITION 0 // Run eigenvalue analysis for Hessian
-#define EPS 1e-5          // Epsilon for Finite Differences
+#define EPS 1e-7 // 1e-5          // Epsilon for Finite Differences
 
 int main(int argc,char **argv)
 {
@@ -660,6 +660,8 @@ int main(int argc,char **argv)
     }
 
     // Calculate rollout infidelity and fidelity
+    /* turn off unitarization for rolling out. */
+    // optimctx->setUnitarizeIntermediate(false);
     if (mpirank_world == 0) {
       printf("\n *** Rolling out the final state ***\n");
     }
