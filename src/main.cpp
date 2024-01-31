@@ -225,9 +225,10 @@ int main(int argc,char **argv)
   MPI_Comm_size(comm_petsc, &mpisize_petsc);
 
   /* Set Petsc using petsc's communicator */
-  PETSC_COMM_WORLD = comm_petsc;
+  // PETSC_COMM_WORLD = comm_petsc;
+  PETSC_COMM_WORLD = MPI_COMM_WORLD;  // PETSC WILL BE THE GLOBAL COMMUNICATOR
 
-  if (mpirank_world == 0 && !quietmode)  std::cout<< "Parallel distribution: " << mpisize_init << " np_init  X  " << mpisize_petsc<< " np_petsc  X " << mpisize_time << " np_time" << std::endl;
+  if (mpirank_world == 0 && !quietmode)  std::cout<< "Parallel distribution: " << mpisize_init << " np_init  X  " << mpisize_time << " np_time" << std::endl;
 
 #ifdef WITH_SLEPC
   ierr = SlepcInitialize(&argc, &argv, (char*)0, NULL);if (ierr) return ierr;
@@ -443,26 +444,12 @@ int main(int argc,char **argv)
   OptimProblem* optimctx = new OptimProblem(config, mytimestepper, comm_init, comm_time, ninit, nwindows,total_time, gate_rot_freq, output, quietmode);
 
   /* Set up vectors for the optimization variables and the gradient of the objective */
-  Vec xinit;
-  VecCreateSeq(PETSC_COMM_SELF, optimctx->getNoptimvars(), &xinit);
-  VecSetFromOptions(xinit);
-  VecAssemblyBegin(xinit);
-  VecAssemblyEnd(xinit);
+  Vec xinit = optimctx->xinit;
+  Vec lambda = optimctx->lambda;
   Vec grad;
-  VecCreateSeq(PETSC_COMM_SELF, optimctx->getNoptimvars(), &grad);
-  VecSetUp(grad);
-  VecZeroEntries(grad);
   Vec opt; // for returning results for runtypes Simulation & Optimization
-
-  /* Set up lagrange multiplier */
-  Vec lambda;
-  VecCreateSeq(PETSC_COMM_SELF, optimctx->getNoptimvars() - optimctx->getNdesign(), &lambda);
-  VecSetFromOptions(lambda);
-  /* Initial Lagrangian multiplier is zero */
-  VecSet(lambda, 0.0);
-  VecAssemblyBegin(lambda);
-  VecAssemblyEnd(lambda);
-  optimctx->lambda = &lambda;
+  VecDuplicate(xinit, &grad);
+  VecZeroEntries(grad);
 
   bool load_optimvar = config.GetBoolParam("load_optimvar", false);
   double old_mu;  // discontinuity penalty strength at the previous optimization iteration.

@@ -63,11 +63,11 @@ MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Osci
     }
   }
 
-  /* Sanity check for parallel petsc */
-  if (dim % mpisize_petsc != 0) {
-    if (mpirank_world==0) printf("\n ERROR in parallel distribution: Petsc's communicator size (%d) must be integer divisor of system dimension (%d).\n", mpisize_petsc, dim);
-    exit(1);
-  }
+  // /* Sanity check for parallel petsc */
+  // if (dim % mpisize_petsc != 0) {
+  //   if (mpirank_world==0) printf("\n ERROR in parallel distribution: Petsc's communicator size (%d) must be integer divisor of system dimension (%d).\n", mpisize_petsc, dim);
+  //   exit(1);
+  // }
 
   /* Create matrix shell for applying system matrix (RHS), */
   /* dimension: 2*dim x 2*dim for the real-valued system */

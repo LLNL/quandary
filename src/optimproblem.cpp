@@ -75,19 +75,41 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   nstate = (int) 2*timestepper->mastereq->getDimRho() * (nwindows-1) * ninit;
   if (mpirank_world == 0 && !quietmode) std::cout<< "noptimvars = " << ndesign << "(controls) + " << nstate << "(states) = " << ndesign + nstate  << std::endl;
 
+  /* Allocate optimization variable xinit and lambda */
+  // Determine local rank sizes. Adding design to the very first processor. TODO: Divide by number of local time windows, add ghost layers
+  PetscInt local_size = ninit_local * 2*timestepper->mastereq->getDimRho() * nwindows_local ;
+  if (mpirank_time == 0) local_size -= ninit_local * 2*timestepper->mastereq->getDimRho(); // remove first windows states
+  VecCreateMPI(PETSC_COMM_WORLD, local_size, PETSC_DETERMINE, &lambda);
+  VecSetFromOptions(lambda);
+  VecSet(lambda, 0.0);
+  VecAssemblyBegin(lambda);
+  VecAssemblyEnd(lambda);
+  // xinit also has the control parameters
+  if (mpirank_world == 0) local_size += ndesign;  // Add design to very first processor
+  VecCreateMPI(PETSC_COMM_WORLD, local_size, PETSC_DETERMINE, &xinit);
+  VecSetFromOptions(xinit);
+  VecAssemblyBegin(xinit);
+  VecAssemblyEnd(xinit);
+ 
+  // test sizes
+  int global_size;
+  VecGetSize(xinit, &global_size);
+  // printf("global size = %d, optimvars = %d\n", global_size, getNoptimvars());
+  assert(global_size == getNoptimvars());
+
   /* allocate reduced gradient of timestepper */
-  timestepper->allocateReducedGradient(ndesign + nstate);
+  VecDuplicate(xinit, &(timestepper->redgrad));
 
   /* Create vector strides to access the control vector and intermediate states, and intermediate lagrange multipliers */
   ISCreateStride(PETSC_COMM_WORLD, ndesign, 0, 1, &IS_alpha);
   int skip = 0;
   int every = 1;
-  for (int ic=0; ic<timestepper->mastereq->getDimRho(); ic++){
-    for (int m=0; m<nwindows-1; m++) {
+  for (int m=0; m<nwindows-1; m++) {
+    for (int ic=0; ic<ninit; ic++){
       IS state_m_ic;
       IS lambda_m_ic;
       int xdim = timestepper->mastereq->getDimRho()*2; // state dimension. x2 for real and imag. 
-      ISCreateStride(PETSC_COMM_WORLD, xdim, ndesign+ skip, every, &state_m_ic);
+      ISCreateStride(PETSC_COMM_WORLD, xdim, ndesign + skip, every, &state_m_ic);
       ISCreateStride(PETSC_COMM_WORLD, xdim, skip, every, &lambda_m_ic);
       IS_interm_states.push_back(state_m_ic);
       IS_interm_lambda.push_back(lambda_m_ic);
@@ -390,11 +412,10 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   VecDuplicate(rho_t0, &rho_t0_bar);
   VecZeroEntries(rho_t0_bar);
   VecAssemblyBegin(rho_t0_bar); VecAssemblyEnd(rho_t0_bar);
-
+  
   /* Store optimization bounds */
-  VecCreateSeq(PETSC_COMM_SELF, ndesign+nstate, &xlower);
-  VecSetFromOptions(xlower);
-  VecDuplicate(xlower, &xupper);
+  VecDuplicate(xinit, &xlower);
+  VecDuplicate(xinit, &xupper);
   /* bounds for control */
   int col = 0;
   for (int iosc = 0; iosc < timestepper->mastereq->getNOscillators(); iosc++){
@@ -462,20 +483,11 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   /* Allocate auxiliary vector */
   mygrad = new double[getNoptimvars()];
 
-  // /* Allocat xprev, xinit, xtmp */
-  // VecCreateSeq(PETSC_COMM_SELF, ndesign, &xprev);
-  // VecSetFromOptions(xprev);
-  // VecZeroEntries(xprev);
-
   /* Allocate temporary storage of a state discontinuity */
   VecCreateSeq(PETSC_COMM_SELF,2*timestepper->mastereq->getDim(), &disc);
   VecSetFromOptions(disc);
   /* Allocate temporary storage of a lagrange multiplier update */
-  VecCreateSeq(PETSC_COMM_SELF, getNstate(), &lambda_incre);
-  VecSetFromOptions(lambda_incre);
-  VecSet(lambda_incre, 0.0);
-  VecAssemblyBegin(lambda_incre);
-  VecAssemblyEnd(lambda_incre);
+  VecDuplicate(lambda, &lambda_incre);
 
 
   if (gamma_tik_interpolate) {
@@ -499,12 +511,14 @@ OptimProblem::~OptimProblem() {
   VecDestroy(&rho_t0);
   VecDestroy(&rho_t0_bar);
 
+  VecDestroy(&xinit);
+  VecDestroy(&lambda);
   VecDestroy(&xlower);
   VecDestroy(&xupper);
   // VecDestroy(&xprev);
-  if (gamma_tik_interpolate) {
+  // if (gamma_tik_interpolate) {
     // VecDestroy(&xinit);
-  }
+  // }
   VecDestroy(&disc);
   VecDestroy(&lambda_incre);
 
@@ -1223,7 +1237,7 @@ PetscErrorCode TaoEvalObjective(Tao tao, Vec x, PetscReal *f, void*ptr){
 
   OptimProblem* ctx = (OptimProblem*) ptr;
   assert(ctx->lambda);
-  *f = ctx->evalF(x, *(ctx->lambda));
+  *f = ctx->evalF(x, ctx->lambda);
   
   return 0;
 }
@@ -1233,7 +1247,7 @@ PetscErrorCode TaoEvalGradient(Tao tao, Vec x, Vec G, void*ptr){
 
   OptimProblem* ctx = (OptimProblem*) ptr;
   assert(ctx->lambda);
-  ctx->evalGradF(x, *(ctx->lambda), G);
+  ctx->evalGradF(x, ctx->lambda, G);
   
   return 0;
 }

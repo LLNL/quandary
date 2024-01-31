@@ -58,8 +58,6 @@ class TimeStepper{
     TimeStepper(MapParam config, MasterEq* mastereq_, int ntime_global_, int ntime_, double dt_, Output* output_, bool storeFWD_, MPI_Comm comm_time_); 
     virtual ~TimeStepper(); 
 
-    void allocateReducedGradient(const int noptimvars);
-
     /* Return the state at a certain time index */
     Vec getState(int tindex);
 

@@ -75,14 +75,6 @@ TimeStepper::~TimeStepper() {
   if (redgrad) VecDestroy(&redgrad);
 }
 
-void TimeStepper::allocateReducedGradient(const int noptimvars) {
-  if (redgrad) VecDestroy(&redgrad);
-
-  VecCreateSeq(PETSC_COMM_SELF, noptimvars, &redgrad);
-  VecSetFromOptions(redgrad);
-  VecAssemblyBegin(redgrad);
-  VecAssemblyEnd(redgrad);
-}
 
 Vec TimeStepper::getState(int tindex){
   
