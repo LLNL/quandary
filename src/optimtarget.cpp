@@ -17,8 +17,7 @@ OptimTarget::OptimTarget(int dim_, int purestateID_, TargetType target_type_, Ob
 
   /* Allocate target state, if it is read from file, of if target is a gate transformation VrhoV. If pure target, only store the ID. */
   if (target_type == TargetType::GATE || target_type == TargetType::FROMFILE) {
-    VecCreate(PETSC_COMM_WORLD, &targetstate); 
-    VecSetSizes(targetstate,PETSC_DECIDE, 2*dim);   // input dim is either N^2 (lindblad eq) or N (schroedinger eq)
+    VecCreateSeq(PETSC_COMM_SELF,2*dim, &targetstate); 
     VecSetFromOptions(targetstate);
   }
 
@@ -45,8 +44,7 @@ OptimTarget::OptimTarget(int dim_, int purestateID_, TargetType target_type_, Ob
 
   /* Allocate an auxiliary vec needed for evaluating the frobenius norm */
   if (objective_type == ObjectiveType::JFROBENIUS) {
-    VecCreate(PETSC_COMM_WORLD, &aux); 
-    VecSetSizes(aux,PETSC_DECIDE, 2*dim);
+    VecCreateSeq(PETSC_COMM_SELF, 2*dim, &aux); 
     VecSetFromOptions(aux);
   }
 }
@@ -108,11 +106,11 @@ void OptimTarget::HilbertSchmidtOverlap(const Vec state, const bool scalebypurit
     if (ilo <= idm_im && idm_im < ihi) VecGetValues(state, 1, &idm_im, &HS_im); // local! Should be 0.0 if Lindblad!
     if (lindbladtype != LindbladType::NONE) assert(fabs(HS_im) <= 1e-14);
 
-    // Communicate over all petsc processors.
-    double myre = HS_re;
-    double myim = HS_im;
-    MPI_Allreduce(&myre, &HS_re, 1, MPI_DOUBLE, MPI_SUM, PETSC_COMM_WORLD);
-    MPI_Allreduce(&myim, &HS_im, 1, MPI_DOUBLE, MPI_SUM, PETSC_COMM_WORLD);
+    // // Communicate over all petsc processors.
+    // double myre = HS_re;
+    // double myim = HS_im;
+    // MPI_Allreduce(&myre, &HS_re, 1, MPI_DOUBLE, MPI_SUM, PETSC_COMM_WORLD);
+    // MPI_Allreduce(&myim, &HS_im, 1, MPI_DOUBLE, MPI_SUM, PETSC_COMM_WORLD);
 
   } else { // Target is not of the form e_m (schroedinger) or e_m e_m^\dagger (lindblad).
 
@@ -137,11 +135,11 @@ void OptimTarget::HilbertSchmidtOverlap(const Vec state, const bool scalebypurit
       } 
       VecRestoreArrayRead(targetstate, &target_ptr);
       VecRestoreArrayRead(state, &state_ptr);
-      // The above computation was local, so have to sum up here.
-      double re=HS_re;
-      double im=HS_im;
-      MPI_Allreduce(&re, &HS_re, 1, MPI_DOUBLE, MPI_SUM, PETSC_COMM_WORLD);
-      MPI_Allreduce(&im, &HS_im, 1, MPI_DOUBLE, MPI_SUM, PETSC_COMM_WORLD);
+      // // The above computation was local, so have to sum up here.
+      // double re=HS_re;
+      // double im=HS_im;
+      // MPI_Allreduce(&re, &HS_re, 1, MPI_DOUBLE, MPI_SUM, PETSC_COMM_WORLD);
+      // MPI_Allreduce(&im, &HS_im, 1, MPI_DOUBLE, MPI_SUM, PETSC_COMM_WORLD);
     }
   }
 
@@ -282,7 +280,7 @@ void OptimTarget::evalJ(const Vec state, double* J_re_ptr, double* J_im_ptr, dou
         sum += lambdai * rhoii;
       }
       J_re = sum;
-      MPI_Allreduce(&sum, &J_re, 1, MPI_DOUBLE, MPI_SUM, PETSC_COMM_WORLD);
+      // MPI_Allreduce(&sum, &J_re, 1, MPI_DOUBLE, MPI_SUM, PETSC_COMM_WORLD);
       break; // case J_MEASURE
   } // end switch
 

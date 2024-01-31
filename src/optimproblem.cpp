@@ -38,8 +38,7 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   if (timestepper->mastereq->lindbladtype == LindbladType::NONE) {
     for (int i = 0; i < ninit_local; i++) {
       Vec state;
-      VecCreate(PETSC_COMM_WORLD, &state);
-      VecSetSizes(state, PETSC_DECIDE, 2*timestepper->mastereq->getDim());
+      VecCreateSeq(PETSC_COMM_SELF, 2*timestepper->mastereq->getDim(), &state);
       VecSetFromOptions(state);
       store_finalstates.push_back(state);
     }
@@ -60,8 +59,7 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
         break;
       
       Vec state;
-      VecCreate(PETSC_COMM_WORLD, &state);
-      VecSetSizes(state, PETSC_DECIDE, 2*timestepper->mastereq->getDim());
+      VecCreateSeq(PETSC_COMM_SELF, 2*timestepper->mastereq->getDim(), &state);
       VecSetFromOptions(state);
       store_interm_states[i].push_back(state);
     }
@@ -261,8 +259,7 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   }
 
   /* Allocate the initial condition vector */
-  VecCreate(PETSC_COMM_WORLD, &rho_t0); 
-  VecSetSizes(rho_t0,PETSC_DECIDE,2*timestepper->mastereq->getDim());
+  VecCreateSeq(PETSC_COMM_SELF, 2*timestepper->mastereq->getDim(), &rho_t0); 
   VecSetFromOptions(rho_t0);
   PetscInt ilow, iupp;
   VecGetOwnershipRange(rho_t0, &ilow, &iupp);
@@ -471,12 +468,10 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   // VecZeroEntries(xprev);
 
   /* Allocate temporary storage of a state discontinuity */
-  VecCreate(PETSC_COMM_WORLD, &disc);
-  VecSetSizes(disc, PETSC_DECIDE, 2*timestepper->mastereq->getDim());
+  VecCreateSeq(PETSC_COMM_SELF,2*timestepper->mastereq->getDim(), &disc);
   VecSetFromOptions(disc);
   /* Allocate temporary storage of a lagrange multiplier update */
-  VecCreate(PETSC_COMM_WORLD, &lambda_incre);
-  VecSetSizes(lambda_incre, PETSC_DECIDE, getNstate());
+  VecCreateSeq(PETSC_COMM_SELF, getNstate(), &lambda_incre);
   VecSetFromOptions(lambda_incre);
   VecSet(lambda_incre, 0.0);
   VecAssemblyBegin(lambda_incre);

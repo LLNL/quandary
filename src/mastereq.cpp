@@ -71,7 +71,7 @@ MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Osci
 
   /* Create matrix shell for applying system matrix (RHS), */
   /* dimension: 2*dim x 2*dim for the real-valued system */
-  MatCreateShell(PETSC_COMM_WORLD, PETSC_DECIDE, PETSC_DECIDE, 2*dim, 2*dim, (void**) &RHSctx, &RHS);
+  MatCreateShell(PETSC_COMM_SELF, 2*dim, 2*dim, 2*dim, 2*dim, (void**) &RHSctx, &RHS);
   MatSetOptionsPrefix(RHS, "system");
   MatSetFromOptions(RHS); MatSetUp(RHS);
   MatAssemblyBegin(RHS,MAT_FINAL_ASSEMBLY); MatAssemblyEnd(RHS,MAT_FINAL_ASSEMBLY);
@@ -132,8 +132,8 @@ MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Osci
   PetscInt ilow, iupp;
   MatGetOwnershipRange(RHS, &ilow, &iupp);
   int dimis = (iupp - ilow)/2;
-  ISCreateStride(PETSC_COMM_WORLD, dimis, ilow, 2, &isu);
-  ISCreateStride(PETSC_COMM_WORLD, dimis, ilow+1, 2, &isv);
+  ISCreateStride(PETSC_COMM_SELF, dimis, ilow, 2, &isu);
+  ISCreateStride(PETSC_COMM_SELF, dimis, ilow+1, 2, &isv);
 
   /* Compute maximum number of design parameters over all oscillators */
   nparams_max = 0;
@@ -271,18 +271,15 @@ void MasterEq::initSparseMatSolver(){
 
   // Time-independent system Hamiltonian
   // Ad = real(-i Hsys) and Bd = imag(-i Hsys)
-  MatCreate(PETSC_COMM_WORLD, &Ad);
-  MatCreate(PETSC_COMM_WORLD, &Bd);
-  MatSetSizes(Ad, PETSC_DECIDE, PETSC_DECIDE, dim, dim);
-  MatSetSizes(Bd, PETSC_DECIDE, PETSC_DECIDE, dim, dim);
-  MatSetType(Ad, MATMPIAIJ);
-  MatSetType(Bd, MATMPIAIJ);
-  if (addT1 || addT2) MatMPIAIJSetPreallocation(Ad, noscillators+5, NULL, noscillators+5, NULL);
-  MatMPIAIJSetPreallocation(Bd, 1, NULL, 1, NULL);
+  MatCreateSeqAIJ(PETSC_COMM_SELF, dim, dim, 2, NULL, &Bd);
+  PetscInt nz_Ad = 0;
+  // if (addT1 || addT2) nz_Ad = 2*(noscillators + 5); // TODO: CHECK!
+  if (addT1 || addT2) nz_Ad = (noscillators + 5); // TODO: CHECK!
+  MatCreateSeqAIJ(PETSC_COMM_SELF, dim, dim, nz_Ad, NULL, &Ad);
+  // if (addT1 || addT2) MatMPIAIJSetPreallocation(Ad, noscillators+5, NULL, noscillators+5, NULL);
+  // MatMPIAIJSetPreallocation(Bd, 1, NULL, 1, NULL);
   MatSetUp(Ad);
   MatSetUp(Bd);
-  MatSetFromOptions(Ad);
-  MatSetFromOptions(Bd);
   // One control operator per oscillator
   // Ac_vec[0] = real(-i Hc) and Bc_vec[0] = imag(-i Hc)
   for (int iosc = 0; iosc < noscillators; iosc++) {
@@ -291,23 +288,25 @@ void MasterEq::initSparseMatSolver(){
     std::vector<Mat> myBcvec_k{myBcMatk};
     Ac_vec.push_back(myAcvec_k);
     Bc_vec.push_back(myBcvec_k);
-    MatCreate(PETSC_COMM_WORLD, &(Ac_vec[iosc][0]));
-    MatCreate(PETSC_COMM_WORLD, &(Bc_vec[iosc][0]));
-    MatSetType(Ac_vec[iosc][0], MATMPIAIJ);
-    MatSetType(Bc_vec[iosc][0], MATMPIAIJ);
-    MatSetSizes(Ac_vec[iosc][0], PETSC_DECIDE, PETSC_DECIDE, dim, dim);
-    MatSetSizes(Bc_vec[iosc][0], PETSC_DECIDE, PETSC_DECIDE, dim, dim);
-    if (lindbladtype != LindbladType::NONE) {
-      MatMPIAIJSetPreallocation(Ac_vec[iosc][0], 4, NULL, 4, NULL);
-      MatMPIAIJSetPreallocation(Bc_vec[iosc][0], 4, NULL, 4, NULL);
-    } else {
-      MatMPIAIJSetPreallocation(Ac_vec[iosc][0], 2, NULL, 2, NULL);
-      MatMPIAIJSetPreallocation(Bc_vec[iosc][0], 2, NULL, 2, NULL);
-    }
+    PetscInt nz = 2;
+    if (lindbladtype != LindbladType::NONE) nz = 4;
+    // MatCreateSeqAIJ(PETSC_COMM_SELF, dim, dim, 2*nz, NULL, &(Ac_vec[iosc][0]));
+    // MatCreateSeqAIJ(PETSC_COMM_SELF, dim, dim, 2*nz, NULL, &(Bc_vec[iosc][0]));
+    MatCreateSeqAIJ(PETSC_COMM_SELF, dim, dim, nz, NULL, &(Ac_vec[iosc][0]));
+    MatCreateSeqAIJ(PETSC_COMM_SELF, dim, dim, nz, NULL, &(Bc_vec[iosc][0]));
+    // MatSetType(Ac_vec[iosc][0], MATMPIAIJ);
+    // MatSetType(Bc_vec[iosc][0], MATMPIAIJ);
+    // MatSetSizes(Ac_vec[iosc][0], PETSC_DECIDE, PETSC_DECIDE, dim, dim);
+    // MatSetSizes(Bc_vec[iosc][0], PETSC_DECIDE, PETSC_DECIDE, dim, dim);
+    // if (lindbladtype != LindbladType::NONE) {
+    //   MatMPIAIJSetPreallocation(Ac_vec[iosc][0], 4, NULL, 4, NULL);
+    //   MatMPIAIJSetPreallocation(Bc_vec[iosc][0], 4, NULL, 4, NULL);
+    // } else {
+    //   MatMPIAIJSetPreallocation(Ac_vec[iosc][0], 2, NULL, 2, NULL);
+    //   MatMPIAIJSetPreallocation(Bc_vec[iosc][0], 2, NULL, 2, NULL);
+    // }
     MatSetUp(Ac_vec[iosc][0]);
     MatSetUp(Bc_vec[iosc][0]);
-    MatSetFromOptions(Ac_vec[iosc][0]);
-    MatSetFromOptions(Bc_vec[iosc][0]); 
   }
   // Time-dependent system Hamiltonian matrices (other than controls)
   int id_kl = 0;
@@ -317,23 +316,23 @@ void MasterEq::initSparseMatSolver(){
         Mat myAdkl, myBdkl;
         Ad_vec.push_back(myAdkl);
         Bd_vec.push_back(myBdkl);
-        MatCreate(PETSC_COMM_WORLD, &Ad_vec[id_kl]);
-        MatCreate(PETSC_COMM_WORLD, &Bd_vec[id_kl]);
-        MatSetType(Ad_vec[id_kl], MATMPIAIJ);
-        MatSetType(Bd_vec[id_kl], MATMPIAIJ);
-        MatSetSizes(Ad_vec[id_kl], PETSC_DECIDE, PETSC_DECIDE, dim, dim);
-        MatSetSizes(Bd_vec[id_kl], PETSC_DECIDE, PETSC_DECIDE, dim, dim);
-        if (lindbladtype != LindbladType::NONE) {
-          MatMPIAIJSetPreallocation(Ad_vec[id_kl], 4, NULL, 4, NULL);
-          MatMPIAIJSetPreallocation(Bd_vec[id_kl], 4, NULL, 4, NULL);
-        } else {
-          MatMPIAIJSetPreallocation(Ad_vec[id_kl], 2, NULL, 2, NULL);
-          MatMPIAIJSetPreallocation(Bd_vec[id_kl], 2, NULL, 2, NULL);
-        }
+        PetscInt nz = 2;
+        if (lindbladtype != LindbladType::NONE) nz = 4;
+        // MatCreateSeqAIJ(PETSC_COMM_SELF, dim, dim, 2*nz, NULL, &Ad_vec[id_kl]);
+        // MatCreateSeqAIJ(PETSC_COMM_SELF, dim, dim, 2*nz, NULL, &Bd_vec[id_kl]);
+        MatCreateSeqAIJ(PETSC_COMM_SELF, dim, dim, nz, NULL, &Ad_vec[id_kl]);
+        MatCreateSeqAIJ(PETSC_COMM_SELF, dim, dim, nz, NULL, &Bd_vec[id_kl]);
+        // MatSetType(Ad_vec[id_kl], MATMPIAIJ);
+        // MatSetType(Bd_vec[id_kl], MATMPIAIJ);
+        // if (lindbladtype != LindbladType::NONE) {
+        //   MatMPIAIJSetPreallocation(Ad_vec[id_kl], 4, NULL, 4, NULL);
+        //   MatMPIAIJSetPreallocation(Bd_vec[id_kl], 4, NULL, 4, NULL);
+        // } else {
+        //   MatMPIAIJSetPreallocation(Ad_vec[id_kl], 2, NULL, 2, NULL);
+        //   MatMPIAIJSetPreallocation(Bd_vec[id_kl], 2, NULL, 2, NULL);
+        // }
         MatSetUp(Ad_vec[id_kl]);
         MatSetUp(Bd_vec[id_kl]);
-        MatSetFromOptions(Ad_vec[id_kl]);
-        MatSetFromOptions(Bd_vec[id_kl]);
       }
       id_kl++;
     }
@@ -3438,8 +3437,8 @@ double MasterEq::expectedEnergy(const Vec x){
   }
   
   /* Sum up from all Petsc processors */
-  double myexp = expected;
-  MPI_Allreduce(&myexp, &expected, 1, MPI_DOUBLE, MPI_SUM, PETSC_COMM_WORLD);
+  // double myexp = expected;
+  // MPI_Allreduce(&myexp, &expected, 1, MPI_DOUBLE, MPI_SUM, PETSC_COMM_WORLD);
 
   return expected;
 }
@@ -3482,8 +3481,8 @@ void MasterEq::population(const Vec x, std::vector<double> &pop){
   } 
 
   /* Gather poppulation from all Petsc processors */
-  for (int i=0; i<mypop.size(); i++) {pop[i] = mypop[i];}
-  MPI_Allreduce(mypop.data(), pop.data(), dim_rho, MPI_DOUBLE, MPI_SUM, PETSC_COMM_WORLD);
+  // for (int i=0; i<mypop.size(); i++) {pop[i] = mypop[i];}
+  // MPI_Allreduce(mypop.data(), pop.data(), dim_rho, MPI_DOUBLE, MPI_SUM, PETSC_COMM_WORLD);
 }
 
 /* --- 1 Oscillator cases --- */
