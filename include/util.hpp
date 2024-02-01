@@ -80,6 +80,11 @@ PetscErrorCode SanityTests(Vec x, PetscReal time);
  */
 int read_vector(const char *filename, double *var, int dim, bool quietmode=false, int skiplines=0, const std::string testheader="");
 
+/**
+ * Write data to file that is compatiable for read_vector
+ */
+int write_vector(const char *filename, double *var, int dim);
+
 
 /* 
  * Compute <neigvals> eigenvalues of A

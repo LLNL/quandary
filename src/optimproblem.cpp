@@ -1028,6 +1028,7 @@ void OptimProblem::getStartingPoint(Vec xinit){
       mastereq->getOscillator(ioscil)->getParams(xptr + shift);
       shift += mastereq->getOscillator(ioscil)->getNParams();
     }
+    if (mpirank_world == 0) write_vector("control_initial_guess.dat", xptr, ndesign);
     VecRestoreArray(xinit, &xptr);
   }
 
