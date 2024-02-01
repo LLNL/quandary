@@ -1,4 +1,6 @@
 #include "util.hpp"
+#include <fstream>
+#include <iomanip>
 
 
 double sigmoid(double width, double x){
@@ -548,6 +550,29 @@ int read_vector(const char *filename, double *var, int dim, bool quietmode, int 
   }
 
   fclose(file);
+  return success;
+}
+
+int write_vector(const char *filename, double *var, int dim) {
+  std::ofstream file(filename, std::ofstream::out);
+  double tmp;
+  int success = 0;
+
+  if (file.is_open()) {
+    printf("Writing file %s.. ", filename);
+    file << std::setprecision(15);
+    for (int d = 0; d < dim; d++)
+      file << var[d] << "\n";
+    
+    file.close();
+    printf("Done!\n");
+    success = 1;
+  }
+  else {
+    printf("ERROR: Can't open file %s\n", filename);
+    exit(1);
+  }
+
   return success;
 }
 
