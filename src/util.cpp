@@ -792,8 +792,39 @@ void unitarize(const Vec &x, const std::vector<IS> &IS_interm_states, std::vecto
     vnorms[iinit].resize(nwindows-1);
   
   Vec ure, uim;
+  // Vec vre, vim;
   double uv_re, uv_im, vnorm;
   for (int iwindow = 0; iwindow < nwindows-1; iwindow++) {
+    /* classic? GS */
+    /* This is actually equivalent to the modified GS. Only changing the order of loop. */
+    // for (int iinit = 0; iinit < ninit; iinit++) {
+    //   int idxi = iinit * (nwindows - 1) + iwindow;
+    //   VecISCopy(x, IS_interm_states[idxi], SCATTER_REVERSE, interm_ic[iinit][iwindow]); 
+
+    //   for (int jinit = 0; jinit < iinit; jinit++) {
+    //     // complex_inner_product(interm_ic[iinit][iwindow], interm_ic[jinit][iwindow], uv_re, uv_im);
+    //     complex_inner_product(interm_ic[jinit][iwindow], interm_ic[iinit][iwindow], uv_re, uv_im);
+
+    //     VecGetSubVector(interm_ic[jinit][iwindow], IS_re, &vre);
+    //     VecGetSubVector(interm_ic[jinit][iwindow], IS_im, &vim);
+
+    //     // Re[v] -= Re[u.v] * Re[u] - Im[u.v] * Im[u]
+    //     VecISAXPY(interm_ic[iinit][iwindow], IS_re, -uv_re, vre);
+    //     VecISAXPY(interm_ic[iinit][iwindow], IS_re, uv_im, vim);
+    //     // Im[v] -= Re[u.v] * Im[u] + Im[u.v] * Re[u]
+    //     VecISAXPY(interm_ic[iinit][iwindow], IS_im, -uv_re, vim);
+    //     VecISAXPY(interm_ic[iinit][iwindow], IS_im, -uv_im, vre);
+
+    //     VecRestoreSubVector(interm_ic[jinit][iwindow], IS_re, &vre);
+    //     VecRestoreSubVector(interm_ic[jinit][iwindow], IS_im, &vim);
+    //   }
+
+    //   VecNorm(interm_ic[iinit][iwindow], NORM_2, &vnorm);
+    //   VecScale(interm_ic[iinit][iwindow], 1.0 / vnorm);
+    //   vnorms[iinit][iwindow] = vnorm;
+    // }
+
+    /* modified GS */
     for (int iinit = 0; iinit < ninit; iinit++) {
       int idxi = iinit * (nwindows - 1) + iwindow;
       VecISCopy(x, IS_interm_states[idxi], SCATTER_REVERSE, interm_ic[iinit][iwindow]); 
@@ -828,6 +859,12 @@ void unitarize(const Vec &x, const std::vector<IS> &IS_interm_states, std::vecto
 }
 
 void unitarize_grad(const Vec &x, const std::vector<IS> &IS_interm_states, const std::vector<std::vector<Vec>> &interm_ic, const std::vector<std::vector<double>> &vnorms, Vec &G) {
+  /* The adjoint for unitarize function.
+     While unitarize uses the modified Gram-Schmidt, the adjoint formulation is based on the classic Gram-Schmidt.
+     The adjoint for the modified G-S requires to store all intermediate v states,
+      while that for classic G-S requires only the norm of final v states.
+     Their gradients, due to orthonormality, are equivalent to each other.
+   */
   Vec w = NULL;
   VecGetSubVector(x, IS_interm_states[0], &w);
   PetscInt dim2, dim;
@@ -865,8 +902,8 @@ void unitarize_grad(const Vec &x, const std::vector<IS> &IS_interm_states, const
       for (int cinit = iinit+1; cinit < ninit; cinit++) {
         int idxc = cinit * (nwindows - 1) + iwindow;
         VecGetSubVector(x, IS_interm_states[idxc], &w);
-        complex_inner_product(w, interm_ic[iinit][iwindow], wu_re, wu_im);
-        complex_inner_product(vs[cinit], interm_ic[iinit][iwindow], vsu_re, vsu_im);
+        complex_inner_product(interm_ic[iinit][iwindow], w, wu_re, wu_im);
+        complex_inner_product(interm_ic[iinit][iwindow], vs[cinit], vsu_re, vsu_im);
 
         VecGetArray(us, &usptr);
         VecGetArray(w, &wptr);
@@ -885,7 +922,7 @@ void unitarize_grad(const Vec &x, const std::vector<IS> &IS_interm_states, const
 
       double vnorm = vnorms[iinit][iwindow];
       double usu, dummy;
-      complex_inner_product(us, interm_ic[iinit][iwindow], usu, dummy);
+      complex_inner_product(interm_ic[iinit][iwindow], us, usu, dummy);
       VecGetArray(us, &usptr);
       VecGetArray(vs[iinit], &vsptr);
       VecGetArray(interm_ic[iinit][iwindow], &uptr);
@@ -898,7 +935,7 @@ void unitarize_grad(const Vec &x, const std::vector<IS> &IS_interm_states, const
 
       VecCopy(vs[iinit], ws);
       for (int cinit = 0; cinit < iinit; cinit++) {
-        complex_inner_product(vs[iinit], interm_ic[cinit][iwindow], vsu_re, vsu_im);
+        complex_inner_product(interm_ic[cinit][iwindow], vs[iinit], vsu_re, vsu_im);
 
         VecGetArray(ws, &wptr);
         VecGetArray(interm_ic[cinit][iwindow], &uptr);
