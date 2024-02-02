@@ -736,24 +736,39 @@ void complex_inner_product(const Vec &x, const Vec &y, double &re, double &im) {
   assert(dim2 % 2 == 0);
 
   PetscInt dim = dim2 / 2;
-  PetscScalar *xptr, *yptr;
-  VecGetArray(x, &xptr);
-  VecGetArray(y, &yptr);
+
+  IS IS_re, IS_im;
+  ISCreateStride(PETSC_COMM_WORLD, dim, 0, 2, &IS_re);
+  ISCreateStride(PETSC_COMM_WORLD, dim, 1, 2, &IS_im);
+
+  Vec xre, xim, yre, yim;
+  VecGetSubVector(x, IS_re, &xre);
+  VecGetSubVector(x, IS_im, &xim);
+  VecGetSubVector(y, IS_re, &yre);
+  VecGetSubVector(y, IS_im, &yim);
 
   re = 0.0; im = 0.0;
-  int dreal, dimag;
-  for (int d = 0; d < dim; d++)
-  {
-    dreal = 2 * d;
-    dimag = 2 * d + 1;
-    // Re[x dot conj(y)] = Re[x] * Re[y] + Im[x] * Im[y]
-    re += xptr[dreal] * yptr[dreal] + xptr[dimag] * yptr[dimag];
-    // Im[x dot conj(y)] = Im[x] * Re[y] - Re[x] * Im[y]
-    im += xptr[dimag] * yptr[dreal] - xptr[dreal] * yptr[dimag];
-  }
-  
-  VecRestoreArray(x, &xptr);
-  VecRestoreArray(y, &yptr);
+  PetscScalar tmp;
+
+  // Re[conj(x) dot y] = Re[x] * Re[y] + Im[x] * Im[y]
+  VecDot(xre, yre, &tmp);
+  re += tmp;
+  VecDot(xim, yim, &tmp);
+  re += tmp;
+
+  // Im[conj(x) dot y] = Re[x] * Im[y] - Im[x] * Re[y]
+  VecDot(xre, yim, &tmp);
+  im += tmp;
+  VecDot(xim, yre, &tmp);
+  im -= tmp;
+
+  VecRestoreSubVector(x, IS_re, &xre);
+  VecRestoreSubVector(x, IS_im, &xim);
+  VecRestoreSubVector(y, IS_re, &yre);
+  VecRestoreSubVector(y, IS_im, &yim);
+
+  ISDestroy(&IS_re);
+  ISDestroy(&IS_im);
 
   return;
 }
@@ -766,9 +781,9 @@ void unitarize(const Vec &x, const std::vector<IS> &IS_interm_states, std::vecto
   assert(dim2 % 2 == 0);
   dim = dim2 / 2;
 
-  // IS IS_re, IS_im;
-  // ISCreateStride(PETSC_COMM_WORLD, dim, 0, 1, &IS_re);
-  // ISCreateStride(PETSC_COMM_WORLD, dim, dim, 1, &IS_im);
+  IS IS_re, IS_im;
+  ISCreateStride(PETSC_COMM_WORLD, dim, 0, 2, &IS_re);
+  ISCreateStride(PETSC_COMM_WORLD, dim, 1, 2, &IS_im);
 
   const int ninit = interm_ic.size();
   const int nwindows = interm_ic[0].size() + 1;
@@ -776,41 +791,40 @@ void unitarize(const Vec &x, const std::vector<IS> &IS_interm_states, std::vecto
   for (int iinit = 0; iinit < ninit; iinit++)
     vnorms[iinit].resize(nwindows-1);
   
-  PetscScalar *uptr, *vptr;
-  double vu_re, vu_im, vnorm;
-  int dreal, dimag;
+  Vec ure, uim;
+  double uv_re, uv_im, vnorm;
   for (int iwindow = 0; iwindow < nwindows-1; iwindow++) {
     for (int iinit = 0; iinit < ninit; iinit++) {
       int idxi = iinit * (nwindows - 1) + iwindow;
       VecISCopy(x, IS_interm_states[idxi], SCATTER_REVERSE, interm_ic[iinit][iwindow]); 
+    }
 
-      for (int jinit = 0; jinit < iinit; jinit++) {
-        complex_inner_product(interm_ic[iinit][iwindow], interm_ic[jinit][iwindow], vu_re, vu_im);
-
-        VecGetArray(interm_ic[jinit][iwindow], &uptr);
-        VecGetArray(interm_ic[iinit][iwindow], &vptr);
-        for (int d = 0; d < dim; d++) {
-          dreal = 2 * d;
-          dimag = 2 * d + 1;
-
-          // Re[v] -= Re[v.u] * Re[u] - Im[v.u] * Im[u]
-          vptr[dreal] -= vu_re * uptr[dreal] - vu_im * uptr[dimag];
-          // Im[v] -= Re[v.u] * Im[u] + Im[v.u] * Re[u]
-          vptr[dimag] -= vu_re * uptr[dimag] + vu_im * uptr[dreal];
-        }
-        VecRestoreArray(interm_ic[jinit][iwindow], &uptr);
-        VecRestoreArray(interm_ic[iinit][iwindow], &vptr);
-      }
-
+    for (int iinit = 0; iinit < ninit; iinit++) {
       VecNorm(interm_ic[iinit][iwindow], NORM_2, &vnorm);
       VecScale(interm_ic[iinit][iwindow], 1.0 / vnorm);
-
       vnorms[iinit][iwindow] = vnorm;
+
+      VecGetSubVector(interm_ic[iinit][iwindow], IS_re, &ure);
+      VecGetSubVector(interm_ic[iinit][iwindow], IS_im, &uim);
+
+      for (int jinit = iinit+1; jinit < ninit; jinit++) {
+        complex_inner_product(interm_ic[iinit][iwindow], interm_ic[jinit][iwindow], uv_re, uv_im);
+
+        // Re[v] -= Re[u.v] * Re[u] - Im[u.v] * Im[u]
+        VecISAXPY(interm_ic[jinit][iwindow], IS_re, -uv_re, ure);
+        VecISAXPY(interm_ic[jinit][iwindow], IS_re, uv_im, uim);
+        // Im[v] -= Re[u.v] * Im[u] + Im[u.v] * Re[u]
+        VecISAXPY(interm_ic[jinit][iwindow], IS_im, -uv_re, uim);
+        VecISAXPY(interm_ic[jinit][iwindow], IS_im, -uv_im, ure);
+      }
+
+      VecRestoreSubVector(interm_ic[iinit][iwindow], IS_re, &ure);
+      VecRestoreSubVector(interm_ic[iinit][iwindow], IS_im, &uim);
     }
   }
 
-  // ISDestroy(&IS_re);
-  // ISDestroy(&IS_im);
+  ISDestroy(&IS_re);
+  ISDestroy(&IS_im);
 }
 
 void unitarize_grad(const Vec &x, const std::vector<IS> &IS_interm_states, const std::vector<std::vector<Vec>> &interm_ic, const std::vector<std::vector<double>> &vnorms, Vec &G) {
