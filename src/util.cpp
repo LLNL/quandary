@@ -780,6 +780,7 @@ void unitarize(const Vec &x, const std::vector<IS> &IS_interm_states, std::vecto
   VecGetSize(v, &dim2);
   assert(dim2 % 2 == 0);
   dim = dim2 / 2;
+  VecRestoreSubVector(x, IS_interm_states[0], &v);
 
   IS IS_re, IS_im;
   ISCreateStride(PETSC_COMM_WORLD, dim, 0, 2, &IS_re);
@@ -871,6 +872,7 @@ void unitarize_grad(const Vec &x, const std::vector<IS> &IS_interm_states, const
   VecGetSize(w, &dim2);
   assert(dim2 % 2 == 0);
   dim = dim2 / 2;
+  VecRestoreSubVector(x, IS_interm_states[0], &w);
 
   IS IS_re, IS_im;
   ISCreateStride(PETSC_COMM_WORLD, dim, 0, 2, &IS_re);
@@ -898,7 +900,6 @@ void unitarize_grad(const Vec &x, const std::vector<IS> &IS_interm_states, const
   
   Vec wre, wim, vsre, vsim, ure, uim;
   double wu_re, wu_im, vsu_re, vsu_im;
-  int dreal, dimag;
   for (int iwindow = 0; iwindow < nwindows-1; iwindow++) {
     for (int iinit = ninit-1; iinit >= 0; iinit--) {
       int idxi = iinit * (nwindows - 1) + iwindow;
