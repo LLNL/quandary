@@ -31,13 +31,25 @@ Output::Output(MapParam& config, MPI_Comm comm_petsc, MPI_Comm comm_init, int no
   /* Prepare output for optimizer */
   optim_monitor_freq = config.GetIntParam("optim_monitor_frequency", 10);
   output_frequency = config.GetIntParam("output_frequency", 1);
-  if (mpirank_world == 0) {
-    char filename[255];
-    snprintf(filename, 254, "%s/optim_history.dat", datadir.c_str());
-    optimfile = fopen(filename, "w");
-    fprintf(optimfile, "#iter    Objective           ||Pr(grad)||           LS_step           F_avg             Terminal_cost         Tikhonov-regul        Penalty-term          DpDm                  Energy-term         Discontinuity\n");
-  } 
 
+  // only open the optimization history file in optimization mode
+  RunType runtype;
+  std::string runtypestr = config.GetStrParam("runtype", "simulation");
+
+  if (runtypestr.compare("optimization")== 0){ 
+    if (mpirank_world == 0) {
+      printf("INFO: opening the optimization history file\n");
+      char filename[255];
+      snprintf(filename, 254, "%s/optim_history.dat", datadir.c_str());
+      optimfile = fopen(filename, "w");
+      fprintf(optimfile, "#iter    Objective           ||Pr(grad)||           LS_step           F_avg             Terminal_cost         Tikhonov-regul        Penalty-term          DpDm                  Energy-term         Discontinuity\n");
+    } 
+  }
+  else{
+    if (mpirank_world == 0) {
+      printf("INFO: NOT opening the optimization history file\n");
+    }
+  }
   /* Read from config what output is desired */
   for (int i = 0; i < noscillators; i++){
     std::vector<std::string> fillme;

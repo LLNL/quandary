@@ -14,7 +14,7 @@
 #include <slepceps.h>
 #endif
 
-#define TEST_FD_GRAD 1    // Run Finite Differences gradient test
+#define TEST_FD_GRAD 0    // Run Finite Differences gradient test
 #define TEST_FD_HESS 0    // Run Finite Differences Hessian test
 #define HESSIAN_DECOMPOSITION 0 // Run eigenvalue analysis for Hessian
 #define EPS 1e-7 // 1e-5          // Epsilon for Finite Differences
@@ -687,7 +687,7 @@ int main(int argc,char **argv)
       printf("Final fidelity: %e\n", optimctx->getFidelity());
       printf("Final INfidelity: %e\n", optimctx->getCostT());
     }
-  }
+  } // end runtype == optimization
 
   /* Only evaluate and write control pulses (no propagation) */
   if (runtype == RunType::EVALCONTROLS) {
@@ -698,13 +698,12 @@ int main(int argc,char **argv)
   }
 
   /* Output */
-  if (runtype != RunType::OPTIMIZATION){
-
+  // the optimization history is saved during optimization from TAOMonitor()
+  if (false /*runtype != RunType::OPTIMIZATION*/){ 
     optimctx->output->writeOptimFile(
       optimctx->getObjective(), gnorm, 0.0, optimctx->getFidelity(), optimctx->getCostT(), optimctx->getRegul(),
       optimctx->getPenalty(), optimctx->getPenaltyDpDm(), optimctx->getPenaltyEnergy(), optimctx->getDiscontinuity());
   }
-
 
   /* --- Finalize --- */
 
