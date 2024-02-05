@@ -504,12 +504,16 @@ int main(int argc,char **argv)
     MPI_Bcast(ptr, optimctx->getNstate(), MPI_DOUBLE, 0, MPI_COMM_WORLD);
     VecRestoreArray(lambda, &ptr);
   }
-  else
-    optimctx->getStartingPoint(xinit);
+  else{
+    optimctx->getStartingPoint(xinit); // calls rollOut()
+  }
 
   /* Some output */
   if (mpirank_world == 0)
   {
+    // tmp
+    printf("Returning from getStartingPoint()\n");
+
     /* Print parameters to file */
     snprintf(filename, 254, "%s/config_log.dat", output->datadir.c_str());
     std::ofstream logfile(filename);
@@ -528,17 +532,25 @@ int main(int argc,char **argv)
   double gnorm = 0.0;
   /* --- Solve primal --- */
   if (runtype == RunType::SIMULATION) {
-    if (mpirank_world == 0 && !quietmode) printf("\nStarting primal solver... \n");
+    if (mpirank_world == 0 && !quietmode) printf("\nStarting primal (simulation) solver... \n");
     
     // VecCopy(xinit, optimctx->xinit); // Store the initial guess
 
     MPI_Barrier(MPI_COMM_WORLD);
     StartTime = MPI_Wtime(); // update timer after initialization is finished
 
+    // tmp
+    printf("main(): before evalF()\n");
+    optimctx->output_states(xinit);
+
     objective = optimctx->evalF(xinit, lambda);
     EndTime = MPI_Wtime();
     if (mpirank_world == 0 && !quietmode) printf("\nTotal objective = %1.14e, \n", objective);
     optimctx->getSolution(&opt);
+
+    // tmp running again
+    // objective = optimctx->evalF(xinit, lambda);
+    // if (mpirank_world == 0 && !quietmode) printf("\nTotal 2nd objective = %1.14e, \n", objective);
   } 
   
   /* --- Solve adjoint --- */
@@ -668,7 +680,7 @@ int main(int argc,char **argv)
     optimctx->rollOut(opt); // overwrite the intermediate initial conds in 'opt'
 
     // evaluate the fidelity and infidelity with evalF()
-    double final_obj = optimctx->evalF(opt, lambda);
+    double final_obj = optimctx->evalF(opt, lambda); // store_interm = false
     if (mpirank_world == 0) {
       printf("Final fidelity: %e\n", optimctx->getFidelity());
       printf("Final INfidelity: %e\n", optimctx->getCostT());
@@ -730,7 +742,7 @@ int main(int argc,char **argv)
 #if TEST_FD_GRAD
   if (mpirank_world == 0)  {
     printf("\n\n#########################\n");
-    printf(" FD Testing for Gradient ... \n");
+    printf(" FD Testing the Gradient ... \n");
     printf("#########################\n\n");
   }
 
@@ -747,9 +759,10 @@ int main(int argc,char **argv)
   /* --- Solve adjoint --- */
   if (mpirank_world == 0) printf("\nRunning optimizer eval_grad_f...\n");
   optimctx->evalGradF(xinit, lambda, grad);
-  VecView(grad, PETSC_VIEWER_STDOUT_WORLD);
+  //VecView(grad, PETSC_VIEWER_STDOUT_WORLD);
   
 
+  double max_err=0.0;
   /* --- Finite Differences --- */
   if (mpirank_world == 0) printf("\nFD...\n");
   for (PetscInt i=0; i<optimctx->getNoptimvars(); i++){
@@ -768,13 +781,18 @@ int main(int argc,char **argv)
     double err = 0.0;
     double gradi; 
     VecGetValues(grad, 1, &i, &gradi);
-    if (fd != 0.0) err = (gradi - fd) / fd;
+    if (fabs(fd) >= 1e-7) 
+      err = (gradi - fd) / fd;
+    else
+      err = (gradi - fd);
     if (mpirank_world == 0) printf(" %d: obj %1.14e, obj_pert1 %1.14e, obj_pert2 %1.14e, fd %1.14e, grad %1.14e, err %1.14e\n", i, obj_org, obj_pert1, obj_pert2, fd, gradi, err);
+
+    max_err = (err > max_err)? err: max_err;
 
     /* Restore parameter */
     VecSetValue(xinit, i, EPS, ADD_VALUES);
   }
-  
+  if (mpirank_world == 0) printf("Max error in grad: %e\n", max_err);
 #endif
 
 

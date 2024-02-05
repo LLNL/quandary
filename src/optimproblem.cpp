@@ -99,6 +99,8 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
 
   /* Create vector strides to access the control vector and intermediate states, and intermediate lagrange multipliers */
   ISCreateStride(PETSC_COMM_WORLD, ndesign, 0, 1, &IS_alpha);
+  ISCreateStride(PETSC_COMM_WORLD, nstate, ndesign, 1, &IS_initialcond);
+
   int skip = 0;
   int every = 1;
   for (int ic=0; ic<ninit; ic++){
@@ -125,6 +127,13 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   interm_tol = config.GetDoubleParam("optim_interm_tol", 1e-4);
   maxiter = config.GetIntParam("optim_maxiter", 200);
   mu = config.GetDoubleParam("optim_mu", 0.0);
+  scalefactor_interm_ic = config.GetDoubleParam("scalefactor_interm_ic", 1.0);
+  
+  if (mpirank_world == 0) {
+    printf("\n *** Reading scalefactor ***\n");
+    printf("scalefactor_ic = %e\n", scalefactor_interm_ic);
+    printf("\n");
+  }
   
     /* Store the optimization target */
   std::vector<std::string> target_str;
@@ -1170,6 +1179,35 @@ void OptimProblem::getSolution(Vec* param_ptr){
   Vec params;
   TaoGetSolution(tao, &params);
   *param_ptr = params;
+}
+
+void OptimProblem::output_interm_ic(){
+  for (int iinit = 0; iinit < ninit_local; iinit++) {
+      int iinit_global = mpirank_init * ninit_local + iinit; // global initial condition
+      
+      for (int iwindow=0; iwindow<nwindows_local; iwindow++){
+        int iwin_global = mpirank_time*nwindows_local + iwindow; // global window index
+
+        if (iwin_global < nwindows-1) {
+          printf("iinit_g = %d, iwind_g = %d, store_interm_ic:\n", iinit_global, iwin_global);
+          VecView(store_interm_ic[iinit][iwindow], PETSC_VIEWER_STDOUT_WORLD);
+        }
+      }
+  }
+}
+
+void OptimProblem::output_states(Vec x){
+  //    tmp
+  Vec x_ic;
+  VecCreate(PETSC_COMM_WORLD, &x_ic);
+  VecSetSizes(x_ic, PETSC_DECIDE, nstate);
+  VecSetFromOptions(x_ic);
+  
+  if (mpirank_world == 0) {
+    VecISCopy(x, IS_initialcond, SCATTER_REVERSE, x_ic); // assign x_ic[i] = x[IS[i]]
+    printf("output_states(): initial states in vector x:\n");
+    VecView(x_ic, PETSC_VIEWER_STDOUT_WORLD);
+  }
 }
 
 void OptimProblem::prepareIntermediateCondition(const Vec x, std::vector<std::vector<double>> &vnorms){

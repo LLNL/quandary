@@ -48,7 +48,8 @@ class OptimProblem {
 
   std::vector<IS> IS_interm_states;    // Vector of vector-strides for accessing intermediate states from global vector  
   std::vector<IS> IS_interm_lambda;    // Vector of vector-strides for accessing intermediate lagrange multipliers from global vector  
-  IS IS_alpha;                         // Vector stride for accessing the control parameters
+  IS IS_alpha, IS_initialcond;         // Vector stride for accessing the control parameters
+  
 
   /* Optimization stuff */
   std::vector<double> obj_weights; /* List of weights for weighting the average objective over initial conditions  */
@@ -79,7 +80,7 @@ class OptimProblem {
   std::vector<double> initguess_fromfile;      /* Stores the initial guess, if read from file */
   double* mygrad;  /* Auxiliary */
     
-  // Vec xtmp;                        /* Temporary storage for optim vars */
+  Vec x_unsc;                        /* Storage for the unscaled optimization variable, used in evalF & evalGradF */
   Vec disc;                           /* Temporary storage for state discontinuity. size = 2*mastereq->getDim() */
   Vec lambda_incre;                   /* Temporary storage for incrementing lagrange multipliers. size = nstate */
   
@@ -98,6 +99,7 @@ class OptimProblem {
     Vec xinit;                       /* Storing initial design vector, if gamma_tik_interpolate=true, aka if tikhonov is ||x - x_0||^2 rather than ||x||^2 */
     Vec *lambda;                     /* Pointer to lagrange multiplier, not owned by OptimProblem. TODO. */
     double mu;                       /* Penalty strength to intermediate state discontinuities */
+    double scalefactor_interm_ic;    /* Scalefactor for the intermediate initial conditions */
 
   /* Constructor */
   OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm comm_init_, MPI_Comm comm_time, int ninit_, int nwindows_, double total_time, std::vector<double> gate_rot_freq, Output* output_, bool quietmode=false);
@@ -123,6 +125,9 @@ class OptimProblem {
   int getNwindows() { return nwindows; }
   int getMPIrank_world() { return mpirank_world;};
   int getMaxIter()     { return maxiter; };
+
+  void output_interm_ic();
+  void output_states(Vec x);
 
   void setUnitarizeIntermediate(bool newVal) { unitarize_interm_ic = newVal; };
 
