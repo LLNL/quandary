@@ -127,11 +127,11 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   interm_tol = config.GetDoubleParam("optim_interm_tol", 1e-4);
   maxiter = config.GetIntParam("optim_maxiter", 200);
   mu = config.GetDoubleParam("optim_mu", 0.0);
-  scalefactor_interm_ic = config.GetDoubleParam("scalefactor_interm_ic", 1.0);
+  scalefactor_states = config.GetDoubleParam("scalefactor_states", 1.0);
   
   if (mpirank_world == 0) {
     printf("\n *** Reading scalefactor ***\n");
-    printf("scalefactor_ic = %e\n", scalefactor_interm_ic);
+    printf("scalefactor_states = %e\n", scalefactor_states);
     printf("\n");
   }
   
@@ -415,10 +415,18 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   }
   VecAssemblyBegin(rho_t0); VecAssemblyEnd(rho_t0);
 
+// AP: if there is only one window, we could store rho_t0 in initial_win_state[0] and replace rho_t0_bar by final_win_state[0]
+
   /* Initialize adjoint */
   VecDuplicate(rho_t0, &rho_t0_bar);
   VecZeroEntries(rho_t0_bar);
   VecAssemblyBegin(rho_t0_bar); VecAssemblyEnd(rho_t0_bar);
+
+  // allocate storage for unscaled version of the optimization variable
+  // It will be used internally to store the unscaled version of the optimization variable in evalF & evalGradF
+  VecCreateSeq(PETSC_COMM_SELF, ndesign+nstate, &x_unsc);
+  VecSetUp(x_unsc);
+  VecZeroEntries(x_unsc);
 
   /* Store optimization bounds */
   VecCreateSeq(PETSC_COMM_SELF, ndesign+nstate, &xlower);
@@ -573,11 +581,18 @@ double OptimProblem::evalF(const Vec x, const Vec lambda_, const bool store_inte
   /* Pass control vector to oscillators */
   Vec x_alpha;
   VecGetSubVector(x, IS_alpha, &x_alpha);
-  mastereq->setControlAmplitudes(x_alpha); 
+  mastereq->setControlAmplitudes(x_alpha);
 
-  /* prepare intermediate conditions. unitarize them if the option is set. */
+  // unscale the state part of 'x'
+  VecCopy(x,x_unsc);
+  Vec x_states;
+  VecGetSubVector(x_unsc, IS_initialcond, &x_states);
+  VecScale(x_states, 1.0/scalefactor_states);
+  VecRestoreSubVector(x_unsc, IS_initialcond, &x_states);
+  
+  // prepare intermediate conditions. unitarize them if the option is set.
   std::vector<std::vector<double>> vnorms;
-  prepareIntermediateCondition(x, vnorms);
+  prepareIntermediateCondition(x_unsc, vnorms);
 
   /*  Iterate over initial condition */
   obj_cost  = 0.0;
@@ -731,6 +746,8 @@ double OptimProblem::evalF(const Vec x, const Vec lambda_, const bool store_inte
   /* Sum, store and return objective value */
   objective = obj_cost + obj_regul + obj_penal + obj_penal_dpdm + obj_penal_energy + constraint;
 
+  VecRestoreSubVector(x, IS_alpha, &x_alpha); // AP added
+
   /* Output */
   if (mpirank_world == 0) {
     std::cout<< "Objective = " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal << " + " << obj_penal_dpdm << " + " << obj_penal_energy << " + " << constraint << std::endl;
@@ -739,9 +756,8 @@ double OptimProblem::evalF(const Vec x, const Vec lambda_, const bool store_inte
     std::cout<< "Discontinuities = " << interm_discontinuity << std::endl;
   }
 
-
   return objective;
-}
+} // end evalF()
 
 
 
@@ -755,12 +771,19 @@ void OptimProblem::evalGradF(const Vec x, const Vec lambda_, Vec G){
 
   /* Pass design vector x to oscillators */
   Vec x_alpha;
-  VecGetSubVector(x, IS_alpha, &x_alpha);
+  VecGetSubVector(x, IS_alpha, &x_alpha); // call VecRestoreSubVector() when done using x_alpha
   mastereq->setControlAmplitudes(x_alpha); 
 
-  /* prepare intermediate conditions. unitarize them if the option is set. */
+  // unscale the state part of 'x'
+  VecCopy(x,x_unsc);
+  Vec x_states;
+  VecGetSubVector(x_unsc, IS_initialcond, &x_states);
+  VecScale(x_states, 1.0/scalefactor_states);
+  VecRestoreSubVector(x_unsc, IS_initialcond, &x_states);
+  
+  // prepare intermediate conditions. unitarize them if the option is set.
   std::vector<std::vector<double>> vnorms;
-  prepareIntermediateCondition(x, vnorms);
+  prepareIntermediateCondition(x_unsc, vnorms);
 
   /* Reset Gradient */
   VecZeroEntries(G);
@@ -1045,6 +1068,15 @@ void OptimProblem::evalGradF(const Vec x, const Vec lambda_, Vec G){
   /* Compute and store gradient norm */
   VecNorm(G, NORM_2, &(gnorm));
 
+  // scale the state part of the gradient by 1/scalefactor_states
+  Vec g_states;
+  VecGetSubVector(G, IS_initialcond, &g_states);
+  VecScale(g_states, 1.0/scalefactor_states);
+  VecRestoreSubVector(G, IS_initialcond, &g_states);
+
+  // The subvector x_alpha was created near the top of this function
+  VecRestoreSubVector(x, IS_alpha, &x_alpha); 
+
   /* Output */
   if (mpirank_world == 0 && !quietmode) {
     std::cout<< "Objective = " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal << " + " << obj_penal_dpdm << " + " << obj_penal_energy << " + " << constraint << std::endl;
@@ -1052,7 +1084,7 @@ void OptimProblem::evalGradF(const Vec x, const Vec lambda_, Vec G){
       std::cout<< "Fidelity = " << fidelity << std::endl;
     std::cout<< "Discontinuities = " << interm_discontinuity << std::endl;
   }
-}
+} // end evalGradF()
 
 
 void OptimProblem::solve(Vec xinit) {
@@ -1126,6 +1158,12 @@ void OptimProblem::rollOut(Vec x){
       }
     } // end for iwindow
   } // end for iinit (initial condition)
+
+  // scale the state part of x by scalefactor_states
+  Vec x_states;
+  VecGetSubVector(x, IS_initialcond, &x_states);
+  VecScale(x_states, scalefactor_states);
+  VecRestoreSubVector(x, IS_initialcond, &x_states);
 
 }
 

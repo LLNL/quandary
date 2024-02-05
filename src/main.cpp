@@ -14,7 +14,7 @@
 #include <slepceps.h>
 #endif
 
-#define TEST_FD_GRAD 0    // Run Finite Differences gradient test
+#define TEST_FD_GRAD 1    // Run Finite Differences gradient test
 #define TEST_FD_HESS 0    // Run Finite Differences Hessian test
 #define HESSIAN_DECOMPOSITION 0 // Run eigenvalue analysis for Hessian
 #define EPS 1e-7 // 1e-5          // Epsilon for Finite Differences
@@ -494,6 +494,8 @@ int main(int argc,char **argv)
       fread(ptr, sizeof(ptr[0]), optimctx->getNstate(), file);
       VecRestoreArray(lambda, &ptr);
       fclose(file);
+
+      printf("INFO: read starting point from optimvars.bin\n");
     }
 
     MPI_Bcast(&(old_mu), 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
@@ -540,8 +542,8 @@ int main(int argc,char **argv)
     StartTime = MPI_Wtime(); // update timer after initialization is finished
 
     // tmp
-    printf("main(): before evalF()\n");
-    optimctx->output_states(xinit);
+    // printf("main(): before evalF()\n");
+    // optimctx->output_states(xinit);
 
     objective = optimctx->evalF(xinit, lambda);
     EndTime = MPI_Wtime();
@@ -782,9 +784,9 @@ int main(int argc,char **argv)
     double gradi; 
     VecGetValues(grad, 1, &i, &gradi);
     if (fabs(fd) >= 1e-7) 
-      err = (gradi - fd) / fd;
+      err = fabs(gradi - fd) / fd;
     else
-      err = (gradi - fd);
+      err = fabs(gradi - fd);
     if (mpirank_world == 0) printf(" %d: obj %1.14e, obj_pert1 %1.14e, obj_pert2 %1.14e, fd %1.14e, grad %1.14e, err %1.14e\n", i, obj_org, obj_pert1, obj_pert2, fd, gradi, err);
 
     max_err = (err > max_err)? err: max_err;
