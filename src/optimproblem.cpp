@@ -1350,7 +1350,7 @@ PetscErrorCode TaoMonitor(Tao tao,void*ptr){
   }
 
   if (ctx->getMPIrank_world() == 0 && lastIter){
-    std::cout<< finalReason_str << std::endl;
+    std::cout<< "Rank: " << ctx->getMPIrank_world() << " " << finalReason_str << std::endl;
   }
  
   // /* Update xprev for next iteration */
