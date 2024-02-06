@@ -666,6 +666,9 @@ double OptimProblem::evalF(const Vec x, const Vec lambda_, const bool store_inte
         interm_discontinuity += qnorm2;
         constraint += 0.5 * mu * qnorm2 - cdot;
         // printf("%d: Window %d, add to constraint taking from id=%d. c=%f\n", mpirank_time, iwindow, id, cdot);
+
+        /* clean up local variables */
+        VecRestoreSubVector(lambda_, IS_interm_lambda[id], &lag);
       }
     } // end for iwindow
 
@@ -728,6 +731,8 @@ double OptimProblem::evalF(const Vec x, const Vec lambda_, const bool store_inte
     std::cout<< "Discontinuities = " << interm_discontinuity << std::endl;
   }
 
+  /* clean up variables */
+  VecRestoreSubVector(x, IS_alpha, &x_alpha);
 
   return objective;
 }
@@ -866,6 +871,9 @@ void OptimProblem::evalGradF(const Vec x, const Vec lambda_, Vec G){
         interm_discontinuity += qnorm2;
         constraint += 0.5 * mu * qnorm2 - cdot;
         // printf("%d: Window %d, add to constraint taking from id=%d. c=%f\n", mpirank_time, iwindow, id, cdot);
+
+        /* clean up local variables */
+        VecRestoreSubVector(lambda_, IS_interm_lambda[id], &lag);
       }
 
       /* If Lindblas solver, compute adjoint for this initial condition. Otherwise (Schroedinger solver), compute adjoint only after all initial conditions have been propagated through (separate loop below) */
@@ -997,6 +1005,9 @@ void OptimProblem::evalGradF(const Vec x, const Vec lambda_, Vec G){
           /* add immediate gradient w.r.t the xnext. */
           VecISAXPY(G, IS_interm_states[id], -mu, disc);
           VecISAXPY(G, IS_interm_states[id], 1.0, lag);
+
+          /* clean up local variable */
+          VecRestoreSubVector(lambda_, IS_interm_lambda[id], &lag);
         }
 
         /* Derivative of time-stepping */
@@ -1041,6 +1052,10 @@ void OptimProblem::evalGradF(const Vec x, const Vec lambda_, Vec G){
       std::cout<< "Fidelity = " << fidelity << std::endl;
     std::cout<< "Discontinuities = " << interm_discontinuity << std::endl;
   }
+
+  /* clean up variables */
+  VecRestoreSubVector(x, IS_alpha, &x_alpha);
+  VecRestoreSubVector(G, IS_alpha, &g_alpha);
 }
 
 
@@ -1078,6 +1093,7 @@ void OptimProblem::getStartingPoint(Vec xinit){
   Vec x_alpha;
   VecGetSubVector(xinit, IS_alpha, &x_alpha);
   timestepper->mastereq->setControlAmplitudes(x_alpha);
+  VecRestoreSubVector(xinit, IS_alpha, &x_alpha);
   
   /* Write initial control functions to file TODO: Multiple time windows */
   // output->writeControls(xinit, timestepper->mastereq, timestepper->ntime, timestepper->dt);
@@ -1142,6 +1158,7 @@ void OptimProblem::updateLagrangian(const double prev_mu, const Vec x, Vec lambd
       Vec xnext;
       VecGetSubVector(x, IS_interm_states[id], &xnext);
       VecAXPY(disc, -1.0, xnext);  // finalstate = S(u_{i-1}) - u_i
+      VecRestoreSubVector(x, IS_interm_states[id], &xnext);
 
       /* lag += - prev_mu * ( S(u_{i-1}) - u_i ) */
       VecISAXPY(lambda_incre, IS_interm_lambda[id], -prev_mu, disc);

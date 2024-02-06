@@ -866,7 +866,7 @@ void unitarize_grad(const Vec &x, const std::vector<IS> &IS_interm_states, const
       while that for classic G-S requires only the norm of final v states.
      Their gradients, due to orthonormality, are equivalent to each other.
    */
-  Vec w = NULL;
+  Vec w;
   VecGetSubVector(x, IS_interm_states[0], &w);
   PetscInt dim2, dim;
   VecGetSize(w, &dim2);
@@ -930,6 +930,8 @@ void unitarize_grad(const Vec &x, const std::vector<IS> &IS_interm_states, const
         VecRestoreSubVector(w, IS_im, &wim);
         VecRestoreSubVector(vs[cinit], IS_re, &vsre);
         VecRestoreSubVector(vs[cinit], IS_im, &vsim);
+
+        VecRestoreSubVector(x, IS_interm_states[idxc], &w);
       }
 
       double vnorm = vnorms[iinit][iwindow];

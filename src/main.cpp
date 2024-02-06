@@ -616,6 +616,8 @@ int main(int argc,char **argv)
         for (int k = 0; k < Nk; k++)
           printf("%.4E\t%.4E\t%.4E\t%.4E\n", amp[k], obj1[k], dJdx[k], error[k]);
       }
+
+      VecDestroy(&xperturb);
     }
   }
 
@@ -967,6 +969,10 @@ int main(int argc,char **argv)
   delete mytimestepper;
   delete optimctx;
   delete output;
+
+  VecDestroy(&xinit);
+  VecDestroy(&grad);
+  VecDestroy(&lambda);
 
 
   /* Finallize Petsc */
