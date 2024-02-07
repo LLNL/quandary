@@ -1059,20 +1059,20 @@ void OptimProblem::evalGradF(const Vec x, const Vec lambda_, Vec G){
   /* Apply chain rule for unitarization if specified. */
   // TODO(kevin): currently all processes own the same G and perform the same operation. need parallelization.
   if (unitarize_interm_ic)
-    unitarize_grad(x, IS_interm_states, store_interm_ic, vnorms, G);
+    unitarize_grad(x_unsc, IS_interm_states, store_interm_ic, vnorms, G);
 
   Vec g_alpha;
   VecGetSubVector(G, IS_alpha, &g_alpha);
   mastereq->setControlAmplitudes_diff(g_alpha);
-
-  /* Compute and store gradient norm */
-  VecNorm(G, NORM_2, &(gnorm));
 
   // scale the state part of the gradient by 1/scalefactor_states
   Vec g_states;
   VecGetSubVector(G, IS_initialcond, &g_states);
   VecScale(g_states, 1.0/scalefactor_states);
   VecRestoreSubVector(G, IS_initialcond, &g_states);
+
+  /* Compute and store gradient norm */
+  VecNorm(G, NORM_2, &(gnorm));
 
   // The subvector x_alpha was created near the top of this function
   VecRestoreSubVector(x, IS_alpha, &x_alpha); 
