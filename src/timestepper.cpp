@@ -100,6 +100,9 @@ Vec TimeStepper::solveODE(int initid, Vec rho_t0, int n0){
 
   // /* Open output files */
   char postfix[121];
+
+  // AP: Why are we saving the results on file???
+  
   std::snprintf(postfix, 120, "_t%1.0f", n0*dt); 
   output->openDataFiles("rho", initid, postfix);
 

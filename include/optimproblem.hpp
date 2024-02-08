@@ -81,7 +81,7 @@ class OptimProblem {
   double* mygrad;  /* Auxiliary */
     
   Vec x_unsc;                        /* Storage for the unscaled optimization variable, used in evalF & evalGradF */
-  Vec disc;                           /* Temporary storage for state discontinuity. size = 2*mastereq->getDim() */
+  Vec disc;                           /* Temporary storage for one state discontinuity. size = 2*mastereq->getDim() */
   Vec lambda_incre;                   /* Temporary storage for incrementing lagrange multipliers. size = nstate */
   
   // Additional variables needed for multiple time intervals
@@ -98,6 +98,8 @@ class OptimProblem {
     Vec xprev;                       /* design vector at previous iteration */
     Vec xinit;                       /* Storing initial design vector, if gamma_tik_interpolate=true, aka if tikhonov is ||x - x_0||^2 rather than ||x||^2 */
     Vec *lambda;                     /* Pointer to lagrange multiplier, not owned by OptimProblem. TODO. */
+    Vec disc_all;                    // Temporary storage for all pointwise discontinuities, size = nstate
+
     double mu;                       /* Penalty strength to intermediate state discontinuities */
     double scalefactor_states;    /* Scalefactor for the intermediate initial conditions */
 
@@ -148,10 +150,12 @@ class OptimProblem {
   void rollOut(Vec x=NULL);
 
   /* lag += - prev_mu * ( S(u_{i-1}) - u_i ) */
-  void updateLagrangian(const double prev_mu, const Vec x, Vec lambda);
+  void updateLagrangian(const double prev_mu, const Vec x_a, Vec lambda_a);
 
   /* Call this after TaoSolve() has finished to print out some information */
   void getSolution(Vec* opt);
+
+  void getExitReason(TaoConvergedReason *reason);
 
   /* Prepare intermediate conditions needed from the optimization variable. If unitarize_interm_ic, unitarize them before using. */
   void prepareIntermediateCondition(const Vec x, std::vector<std::vector<double>> &vnorms);

@@ -14,7 +14,7 @@
 #include <slepceps.h>
 #endif
 
-#define TEST_FD_GRAD 1    // Run Finite Differences gradient test
+#define TEST_FD_GRAD 0    // Run Finite Differences gradient test
 #define TEST_FD_HESS 0    // Run Finite Differences Hessian test
 #define HESSIAN_DECOMPOSITION 0 // Run eigenvalue analysis for Hessian
 #define EPS 1e-7 // 1e-5          // Epsilon for Finite Differences
@@ -643,8 +643,43 @@ int main(int argc,char **argv)
     // VecCopy(xinit, optimctx->xinit); // Store the initial guess
     if (mpirank_world == 0 && !quietmode) printf("\nStarting Optimization solver ... \n");
     StartTime = MPI_Wtime(); 
-    optimctx->solve(xinit); // calling TAO to solve the optimization problem
+
+    // Augmented Lagrangian loop
+    int Nouter = 3; // max number of outer iterations
+    // check TAO convergence criteria
+    for (int iouter=0; iouter < Nouter; iouter++){
+      if (mpirank_world == 0 && !quietmode) printf("\nStarting outer AL iteration #%d ... \n", iouter);
+      optimctx->solve(xinit); // calling TAO to solve the optimization problem
+      
+      TaoConvergedReason reason;
+      optimctx->getExitReason(&reason);
+      if (mpirank_world == 0 && !quietmode) std::cout << "\nTaoConvergedReason: " << reason << std::endl;
+
+      if (mpirank_world == 0 && !quietmode) printf("\nBefore getSolution AL iteration #%d ... \n", iouter);
+      optimctx->getSolution(&opt); // converged design variables copied into opt
+      // where are the objective and norm^2(discontinuity) saved?
+      if (mpirank_world == 0 && !quietmode) printf("\nBefore updateLagrangian AL iteration #%d ... \n", iouter);
+      optimctx->updateLagrangian(optimctx->mu, opt, lambda);
+
+      FILE* file;
+      PetscScalar *ptr;
+      sprintf(filename, "%s/lagrange-outer-%d.bin", output->datadir.c_str(),iouter);
+      file = fopen(filename, "wb");
+      VecGetArray(lambda, &ptr);
+      fwrite(ptr, sizeof(ptr[0]), optimctx->getNstate(), file);
+      VecRestoreArray(lambda, &ptr);
+      fclose(file);
+      printf("Saved lambda variables on file %s containing %d float64\n", filename, optimctx->getNstate());
+
+      // update penalty parameter
+      // update convergence tolerance
+      if (mpirank_world == 0 && !quietmode) printf("\nBefore VecCopy AL iteration #%d ... \n", iouter);
+      VecCopy(opt,xinit); // update initial condition for next iteration
+    } 
+    
+
     EndTime = MPI_Wtime();
+    
     optimctx->getSolution(&opt); // final design variables copied into opt
 
     // TODO(kevin): Highly recommend to use hdf5 for I/O. and save all data into one single file.
@@ -657,6 +692,7 @@ int main(int argc,char **argv)
       file = fopen(filename, "wb");
       fwrite(&(optimctx->mu), sizeof(optimctx->mu), 1, file);
       fclose(file);
+      printf("Saved mu on file %s containing 1 float64\n", filename);
       
       sprintf(filename, "%s/optimvars.bin", output->datadir.c_str());
       file = fopen(filename, "wb");
@@ -664,6 +700,7 @@ int main(int argc,char **argv)
       fwrite(ptr, sizeof(ptr[0]), optimctx->getNoptimvars(), file);
       VecRestoreArray(opt, &ptr);
       fclose(file);
+      printf("Saved scaled optimization variable on file %s containing %d float64\n", filename, optimctx->getNoptimvars());
 
       sprintf(filename, "%s/lagrange.bin", output->datadir.c_str());
       file = fopen(filename, "wb");
@@ -671,6 +708,15 @@ int main(int argc,char **argv)
       fwrite(ptr, sizeof(ptr[0]), optimctx->getNstate(), file);
       VecRestoreArray(lambda, &ptr);
       fclose(file);
+      printf("Saved lambda variable on file %s containing %d float64\n", filename, optimctx->getNstate());
+
+      sprintf(filename, "%s/discont.bin", output->datadir.c_str());
+      file = fopen(filename, "wb");
+      VecGetArray(optimctx->disc_all, &ptr);
+      fwrite(ptr, sizeof(ptr[0]), optimctx->getNstate(), file);
+      VecRestoreArray(optimctx->disc_all, &ptr);
+      fclose(file);
+      printf("Saved disc_all variable on file %s containing %d float64\n", filename, optimctx->getNstate());
     }
 
     // Calculate rollout infidelity and fidelity
