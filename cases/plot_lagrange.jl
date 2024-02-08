@@ -8,10 +8,10 @@ function read_binary(filename::String, Ndata::Int64)
 end
 
 pll = plot(xlabel="Index")
-for q = 0:2
+for q = 0:4
     # lagrange-outer-0.bin
     local filename = "lagrange-outer-" * string(q) * ".bin"
-    Ndata = 64
+    Ndata = 512 # 64
     lambda = read_binary(filename, Ndata)
     plot!(lambda,lab="Lambda-"*string(q+1))
 end

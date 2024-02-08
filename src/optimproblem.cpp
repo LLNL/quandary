@@ -127,6 +127,7 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   grtol = config.GetDoubleParam("optim_rtol", 1e-4);
   interm_tol = config.GetDoubleParam("optim_interm_tol", 1e-4);
   maxiter = config.GetIntParam("optim_maxiter", 200);
+  al_max_outer = config.GetIntParam("optim_maxouter", 1);
   mu = config.GetDoubleParam("optim_mu", 0.0);
   scalefactor_states = config.GetDoubleParam("scalefactor_states", 1.0);
   
@@ -519,12 +520,12 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   VecAssemblyEnd(lambda_incre);
 
   // tmp array for evaluating equality constraints
-  VecCreate(PETSC_COMM_WORLD, &disc_all);
-  VecSetSizes(disc_all, PETSC_DECIDE, getNstate());
-  VecSetFromOptions(disc_all);
-  VecSet(disc_all, 0.0); // initialize all elements to zero
-  VecAssemblyBegin(disc_all);
-  VecAssemblyEnd(disc_all);
+  // VecCreate(PETSC_COMM_WORLD, &disc_all);
+  // VecSetSizes(disc_all, PETSC_DECIDE, getNstate());
+  // VecSetFromOptions(disc_all);
+  // VecSet(disc_all, 0.0); // initialize all elements to zero
+  // VecAssemblyBegin(disc_all);
+  // VecAssemblyEnd(disc_all);
 
   if (gamma_tik_interpolate) {
     // DISABLE FOR NOW
@@ -1193,7 +1194,7 @@ void OptimProblem::updateLagrangian(const double prev_mu, const Vec x_a, Vec lam
   evalF(x_a, lambda_a, true);
 
   /* Reset disc_all */
-  VecZeroEntries(disc_all);
+  // VecZeroEntries(disc_all);
 
   /* Reset lambda */
   VecZeroEntries(lambda_incre);
@@ -1216,7 +1217,7 @@ void OptimProblem::updateLagrangian(const double prev_mu, const Vec x_a, Vec lam
 
       Vec xnext;
       // tmp
-      printf("Copying scaled state into xnext for id=%d, iinit_g=%d, iwin_g=%d\n", id, iinit_global, iwin_global);
+      //printf("Copying scaled state into xnext for id=%d, iinit_g=%d, iwin_g=%d\n", id, iinit_global, iwin_global);
 
       VecGetSubVector(x_a, IS_interm_states[id], &xnext); // NOTE: here, x & xnext hold the scaled state
       VecAXPY(disc, -1.0/scalefactor_states, xnext);  // NOTE: factor 1/scalefactor_states. discont = S(u_{i-1}) - u_i
@@ -1228,7 +1229,7 @@ void OptimProblem::updateLagrangian(const double prev_mu, const Vec x_a, Vec lam
       qnorm2_sum += qnorm2;
 
       // tmp
-      VecISCopy(disc_all, IS_interm_lambda[id], SCATTER_FORWARD, disc);
+      //VecISCopy(disc_all, IS_interm_lambda[id], SCATTER_FORWARD, disc);
 
       /* lambda_incre += - prev_mu * ( S(u_{i-1}) - u_i ) */
       VecISAXPY(lambda_incre, IS_interm_lambda[id], -prev_mu, disc);
@@ -1243,13 +1244,13 @@ void OptimProblem::updateLagrangian(const double prev_mu, const Vec x_a, Vec lam
 
   // test
   /* Sum up the discontinuity from all initial condition & window processors */
-  PetscScalar* disc_all_ptr; 
-  VecGetArray(disc_all, &disc_all_ptr);
-  for (int i=0; i<getNstate(); i++) {
-    mygrad[i] = disc_all_ptr[i]; // reusing temporary storege, see lambda_incre below
-  }
-  MPI_Allreduce(mygrad, disc_all_ptr, getNstate(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD); // This is comm_init AND comm_time.
-  VecRestoreArray(disc_all, &disc_all_ptr);
+  // PetscScalar* disc_all_ptr; 
+  // VecGetArray(disc_all, &disc_all_ptr);
+  // for (int i=0; i<getNstate(); i++) {
+  //   mygrad[i] = disc_all_ptr[i]; // reusing temporary storege, see lambda_incre below
+  // }
+  // MPI_Allreduce(mygrad, disc_all_ptr, getNstate(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD); // This is comm_init AND comm_time.
+  // VecRestoreArray(disc_all, &disc_all_ptr);
   // end test
 
   /* Sum up the increment from all comm_init AND comm_time processors */

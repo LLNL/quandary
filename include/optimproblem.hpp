@@ -61,6 +61,7 @@ class OptimProblem {
   double obj_penal;                /* Penalty term in objective */
   double obj_penal_dpdm;           /* Penalty term in objective for second order state */
   double obj_penal_energy;         /* Energy Penalty term in objective */
+  double obj_constraint;           /* constraint = 0.5*mu*norm2(disc) - <lambda, disc> */
   double fidelity;                 /* Final-time fidelity: 1/ninit \sum_iinit Tr(rhotarget^\dag rho(T)) for Lindblad, or |1/ninit \sum_iinit phitarget^dagger phi |^2 for Schroedinger */
   double interm_discontinuity;     /* Sum of squared norm of intermediate discontinuities */
   double gnorm;                    /* Holds current norm of gradient */
@@ -76,6 +77,7 @@ class OptimProblem {
   double grtol;                    /* Stopping criterion based on relative gradient norm */
   double interm_tol;               /* Stopping criterion based on intermediate discontinuity */
   int maxiter;                     /* Stopping criterion based on maximum number of iterations */
+  int al_max_outer;               // Max number of outer iterations in the Augmented Lagrangian method
   Tao tao;                         /* Petsc's Optimization solver */
   std::vector<double> initguess_fromfile;      /* Stores the initial guess, if read from file */
   double* mygrad;  /* Auxiliary */
@@ -98,7 +100,7 @@ class OptimProblem {
     Vec xprev;                       /* design vector at previous iteration */
     Vec xinit;                       /* Storing initial design vector, if gamma_tik_interpolate=true, aka if tikhonov is ||x - x_0||^2 rather than ||x||^2 */
     Vec *lambda;                     /* Pointer to lagrange multiplier, not owned by OptimProblem. TODO. */
-    Vec disc_all;                    // Temporary storage for all pointwise discontinuities, size = nstate
+    // Vec disc_all;                    // Temporary storage for all pointwise discontinuities, size = nstate
 
     double mu;                       /* Penalty strength to intermediate state discontinuities */
     double scalefactor_states;    /* Scalefactor for the intermediate initial conditions */
@@ -121,17 +123,22 @@ class OptimProblem {
   double getPenaltyEnergy()  { return obj_penal_energy; };
   double getFidelity() { return fidelity; };
   double getDiscontinuity() { return interm_discontinuity; }
+
   double getFaTol()    { return fatol; };
   double getInfTol()   { return inftol; };
   double getIntermTol() { return interm_tol; }
+  double getGradAbsTol() { return gatol; }
+  double getGradRelTol() { return grtol; }
+
   int getNwindows() { return nwindows; }
   int getMPIrank_world() { return mpirank_world;};
   int getMaxIter()     { return maxiter; };
-
+  int getAlMaxOuter()     { return al_max_outer; };
   void output_interm_ic();
   void output_states(Vec x);
 
   void setUnitarizeIntermediate(bool newVal) { unitarize_interm_ic = newVal; };
+  void setIntermTol(double newVal) { interm_tol = newVal; };
 
   /* Evaluate the objective function F(x) */
   double evalF(const Vec x, const Vec lambda_, const bool store_interm=false);

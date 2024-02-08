@@ -637,16 +637,14 @@ int main(int argc,char **argv)
   if (runtype == RunType::OPTIMIZATION) {
     bool update_lagrangian = config.GetBoolParam("update_lagrangian", false);
 
-    if (update_lagrangian)
-        optimctx->updateLagrangian(old_mu, xinit, lambda);
-
     // VecCopy(xinit, optimctx->xinit); // Store the initial guess
     if (mpirank_world == 0 && !quietmode) printf("\nStarting Optimization solver ... \n");
     StartTime = MPI_Wtime(); 
 
     // Augmented Lagrangian loop
-    int Nouter = 3; // max number of outer iterations
+    int Nouter = optimctx->getAlMaxOuter(); // max number of outer iterations
     // check TAO convergence criteria
+    // TaoSetTolerances(tao, optimctx->getGradAbsTol(), PETSC_DEFAULT, optimctx->getGradRelTol());
     for (int iouter=0; iouter < Nouter; iouter++){
       if (mpirank_world == 0 && !quietmode) printf("\nStarting outer AL iteration #%d ... \n", iouter);
       optimctx->solve(xinit); // calling TAO to solve the optimization problem
@@ -658,21 +656,28 @@ int main(int argc,char **argv)
       if (mpirank_world == 0 && !quietmode) printf("\nBefore getSolution AL iteration #%d ... \n", iouter);
       optimctx->getSolution(&opt); // converged design variables copied into opt
       // where are the objective and norm^2(discontinuity) saved?
-      if (mpirank_world == 0 && !quietmode) printf("\nBefore updateLagrangian AL iteration #%d ... \n", iouter);
-      optimctx->updateLagrangian(optimctx->mu, opt, lambda);
 
-      FILE* file;
-      PetscScalar *ptr;
-      sprintf(filename, "%s/lagrange-outer-%d.bin", output->datadir.c_str(),iouter);
-      file = fopen(filename, "wb");
-      VecGetArray(lambda, &ptr);
-      fwrite(ptr, sizeof(ptr[0]), optimctx->getNstate(), file);
-      VecRestoreArray(lambda, &ptr);
-      fclose(file);
-      printf("Saved lambda variables on file %s containing %d float64\n", filename, optimctx->getNstate());
+      double norm2_disc = optimctx->getDiscontinuity();
+      if (mpirank_world == 0 && !quietmode) printf("\nnorm^2(discontiuity) = %e\n", norm2_disc);
+
+      if (update_lagrangian){
+        if (mpirank_world == 0 && !quietmode) printf("\nBefore updateLagrangian AL iteration #%d ... \n", iouter);
+        optimctx->updateLagrangian(optimctx->mu, opt, lambda);
+
+        FILE* file;
+        PetscScalar *ptr;
+        sprintf(filename, "%s/lagrange-outer-%d.bin", output->datadir.c_str(),iouter);
+        file = fopen(filename, "wb");
+        VecGetArray(lambda, &ptr);
+        fwrite(ptr, sizeof(ptr[0]), optimctx->getNstate(), file);
+        VecRestoreArray(lambda, &ptr);
+        fclose(file);
+        printf("Saved lambda variables on file %s containing %d float64\n", filename, optimctx->getNstate());
 
       // update penalty parameter
       // update convergence tolerance
+      }
+
       if (mpirank_world == 0 && !quietmode) printf("\nBefore VecCopy AL iteration #%d ... \n", iouter);
       VecCopy(opt,xinit); // update initial condition for next iteration
     } 
@@ -710,13 +715,13 @@ int main(int argc,char **argv)
       fclose(file);
       printf("Saved lambda variable on file %s containing %d float64\n", filename, optimctx->getNstate());
 
-      sprintf(filename, "%s/discont.bin", output->datadir.c_str());
-      file = fopen(filename, "wb");
-      VecGetArray(optimctx->disc_all, &ptr);
-      fwrite(ptr, sizeof(ptr[0]), optimctx->getNstate(), file);
-      VecRestoreArray(optimctx->disc_all, &ptr);
-      fclose(file);
-      printf("Saved disc_all variable on file %s containing %d float64\n", filename, optimctx->getNstate());
+      // sprintf(filename, "%s/discont.bin", output->datadir.c_str());
+      // file = fopen(filename, "wb");
+      // VecGetArray(optimctx->disc_all, &ptr);
+      // fwrite(ptr, sizeof(ptr[0]), optimctx->getNstate(), file);
+      // VecRestoreArray(optimctx->disc_all, &ptr);
+      // fclose(file);
+      // printf("Saved disc_all variable on file %s containing %d float64\n", filename, optimctx->getNstate());
     }
 
     // Calculate rollout infidelity and fidelity
