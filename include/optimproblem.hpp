@@ -116,6 +116,7 @@ class OptimProblem {
 
   /* Return the overall objective, final-time costs, regularization and penalty terms */
   double getObjective(){ return objective; };
+
   double getCostT()    { return obj_cost; };
   double getRegul()    { return obj_regul; };
   double getPenalty()  { return obj_penal; };
@@ -123,6 +124,7 @@ class OptimProblem {
   double getPenaltyEnergy()  { return obj_penal_energy; };
   double getFidelity() { return fidelity; };
   double getDiscontinuity() { return interm_discontinuity; }
+  double getConstraint() { return obj_constraint; }
 
   double getFaTol()    { return fatol; };
   double getInfTol()   { return inftol; };
@@ -139,6 +141,7 @@ class OptimProblem {
 
   void setUnitarizeIntermediate(bool newVal) { unitarize_interm_ic = newVal; };
   void setIntermTol(double newVal) { interm_tol = newVal; };
+  void setTaoWarmStart(PetscBool yes_no);
 
   /* Evaluate the objective function F(x) */
   double evalF(const Vec x, const Vec lambda_, const bool store_interm=false);
@@ -163,6 +166,8 @@ class OptimProblem {
   void getSolution(Vec* opt);
 
   void getExitReason(TaoConvergedReason *reason);
+
+  int getTotalIterations();
 
   /* Prepare intermediate conditions needed from the optimization variable. If unitarize_interm_ic, unitarize them before using. */
   void prepareIntermediateCondition(const Vec x, std::vector<std::vector<double>> &vnorms);

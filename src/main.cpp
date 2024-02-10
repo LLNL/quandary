@@ -637,46 +637,73 @@ int main(int argc,char **argv)
   if (runtype == RunType::OPTIMIZATION) {
     bool update_lagrangian = config.GetBoolParam("update_lagrangian", false);
 
+    double mu_factor=config.GetDoubleParam("optim_mu_factor", 1.0);
+
+    bool warm_starting = config.GetBoolParam("tao_warmstart", false);
+    PetscBool yes_no = (warm_starting ? PETSC_TRUE: PETSC_FALSE);
+
+    optimctx->setTaoWarmStart(yes_no);
+
     // VecCopy(xinit, optimctx->xinit); // Store the initial guess
     if (mpirank_world == 0 && !quietmode) printf("\nStarting Optimization solver ... \n");
     StartTime = MPI_Wtime(); 
 
-    // Augmented Lagrangian loop
     int Nouter = optimctx->getAlMaxOuter(); // max number of outer iterations
-    // check TAO convergence criteria
+    // set TAO convergence criteria
     // TaoSetTolerances(tao, optimctx->getGradAbsTol(), PETSC_DEFAULT, optimctx->getGradRelTol());
+    double final_norm2_disc_tol = optimctx->getIntermTol();
+    optimctx->setIntermTol(final_norm2_disc_tol); // starting tolerance for equality constraints
+
+    double discont_factor=5.0;
+    if (mpirank_world == 0){
+      printf("AL max # outer iterations = %d\n", Nouter);
+      printf("Initial norm^2(disc) threshold = %e\n", optimctx->getIntermTol());
+      printf("Initial quadratic penalty param, mu = %e\n", optimctx->mu);
+    } 
+
+    // Augmented Lagrangian loop
     for (int iouter=0; iouter < Nouter; iouter++){
-      if (mpirank_world == 0 && !quietmode) printf("\nStarting outer AL iteration #%d ... \n", iouter);
+      if (mpirank_world == 0) printf("\nStarting outer AL iteration #%d ... \n", iouter);
       optimctx->solve(xinit); // calling TAO to solve the optimization problem
       
       TaoConvergedReason reason;
       optimctx->getExitReason(&reason);
-      if (mpirank_world == 0 && !quietmode) std::cout << "\nTaoConvergedReason: " << reason << std::endl;
+      if (mpirank_world == 0) std::cout << "\nTaoConvergedReason: " << reason << std::endl;
 
       if (mpirank_world == 0 && !quietmode) printf("\nBefore getSolution AL iteration #%d ... \n", iouter);
       optimctx->getSolution(&opt); // converged design variables copied into opt
-      // where are the objective and norm^2(discontinuity) saved?
+
+      // check if the solution meets our convergence criteria
+      if ((optimctx->getCostT() <= optimctx->getInfTol()) && (optimctx->getDiscontinuity() < final_norm2_disc_tol)) {
+        if (mpirank_world == 0) printf("Inner optimization converged to a continuous trajectory with small final time cost and small discontinuity.\n");
+        break;
+      } 
 
       double norm2_disc = optimctx->getDiscontinuity();
-      if (mpirank_world == 0 && !quietmode) printf("\nnorm^2(discontiuity) = %e\n", norm2_disc);
+      if (mpirank_world == 0) printf("\nnorm^2(discontiuity) = %e\n", norm2_disc);
 
       if (update_lagrangian){
-        if (mpirank_world == 0 && !quietmode) printf("\nBefore updateLagrangian AL iteration #%d ... \n", iouter);
+        if (mpirank_world == 0) printf("\nUpdating the Lagrangian, AL iteration #%d ... \n", iouter);
         optimctx->updateLagrangian(optimctx->mu, opt, lambda);
 
         FILE* file;
         PetscScalar *ptr;
-        sprintf(filename, "%s/lagrange-outer-%d.bin", output->datadir.c_str(),iouter);
+        sprintf(filename, "%s/lagrange-outer-%d.bin", output->datadir.c_str(),iouter+1);
         file = fopen(filename, "wb");
         VecGetArray(lambda, &ptr);
         fwrite(ptr, sizeof(ptr[0]), optimctx->getNstate(), file);
         VecRestoreArray(lambda, &ptr);
         fclose(file);
         printf("Saved lambda variables on file %s containing %d float64\n", filename, optimctx->getNstate());
+      }
 
       // update penalty parameter
+      optimctx->mu = mu_factor * optimctx->mu; // increasing quadratic penalty param
+      if (mpirank_world == 0) printf("Updated quadratic penalty param, mu = %e\n", optimctx->mu);
+
       // update convergence tolerance
-      }
+      // optimctx->setIntermTol( optimctx->getIntermTol()/discont_factor ); //reduce norm^2(disc) tolerance
+      if (mpirank_world == 0) printf("Updated norm^2(disc) threshold = %e\n", optimctx->getIntermTol());
 
       if (mpirank_world == 0 && !quietmode) printf("\nBefore VecCopy AL iteration #%d ... \n", iouter);
       VecCopy(opt,xinit); // update initial condition for next iteration
@@ -686,6 +713,9 @@ int main(int argc,char **argv)
     EndTime = MPI_Wtime();
     
     optimctx->getSolution(&opt); // final design variables copied into opt
+
+    int totalIterations = optimctx->getTotalIterations();
+    if (mpirank_world == 0) printf("Total number of optimizer iterations = %d\n", totalIterations);
 
     // TODO(kevin): Highly recommend to use hdf5 for I/O. and save all data into one single file.
     /* All variables are saved as binary files, to save the storage size and time. */
@@ -714,14 +744,6 @@ int main(int argc,char **argv)
       VecRestoreArray(lambda, &ptr);
       fclose(file);
       printf("Saved lambda variable on file %s containing %d float64\n", filename, optimctx->getNstate());
-
-      // sprintf(filename, "%s/discont.bin", output->datadir.c_str());
-      // file = fopen(filename, "wb");
-      // VecGetArray(optimctx->disc_all, &ptr);
-      // fwrite(ptr, sizeof(ptr[0]), optimctx->getNstate(), file);
-      // VecRestoreArray(optimctx->disc_all, &ptr);
-      // fclose(file);
-      // printf("Saved disc_all variable on file %s containing %d float64\n", filename, optimctx->getNstate());
     }
 
     // Calculate rollout infidelity and fidelity
@@ -753,7 +775,7 @@ int main(int argc,char **argv)
   if (false /*runtype != RunType::OPTIMIZATION*/){ 
     optimctx->output->writeOptimFile(
       optimctx->getObjective(), gnorm, 0.0, optimctx->getFidelity(), optimctx->getCostT(), optimctx->getRegul(),
-      optimctx->getPenalty(), optimctx->getPenaltyDpDm(), optimctx->getPenaltyEnergy(), optimctx->getDiscontinuity());
+      optimctx->getPenalty(), optimctx->getPenaltyDpDm(), optimctx->getPenaltyEnergy(), optimctx->getConstraint(), optimctx->getDiscontinuity());
   }
 
   /* --- Finalize --- */

@@ -611,13 +611,14 @@ double OptimProblem::evalF(const Vec x, const Vec lambda_, const bool store_inte
   obj_penal_dpdm = 0.0;
   obj_penal_energy = 0.0;
   fidelity = 0.0;
-  interm_discontinuity = 0.0; // For TaoMonitor only.
+  interm_discontinuity = 0.0; // For TaoMonitor only
+  obj_constraint = 0.0;
   double obj_cost_re = 0.0;
   double obj_cost_im = 0.0;
   double fidelity_re = 0.0;
   double fidelity_im = 0.0;
   double frob2 = 0.0; // For generalized infidelity, stores Tr(U'U)
-  double constraint = 0.0;
+
   for (int iinit = 0; iinit < ninit_local; iinit++) {
       
     /* Prepare the initial condition in [rank * ninit_local, ... , (rank+1) * ninit_local - 1] */
@@ -705,13 +706,13 @@ double OptimProblem::evalF(const Vec x, const Vec lambda_, const bool store_inte
         VecDot(finalstate, finalstate, &qnorm2); // q = || (Su - u) ||^2
         VecDot(finalstate, lag, &cdot);   // c = lambda^T (Su - u)
         interm_discontinuity += qnorm2;
-        constraint += 0.5 * mu * qnorm2 - cdot;
+        obj_constraint += 0.5 * mu * qnorm2 - cdot;
         //printf("MPIRankTime = %d: Window %d, add to constraint taking from id=%d. c=%f\n", mpirank_time, iwindow, id, cdot);
         VecRestoreSubVector(lambda_, IS_interm_lambda[id], &lag); // restore lag
       }
     } // end for iwindow
 
-    // printf("%d, (%d, %d): iinit obj_iinit: %f * (%1.14e + i %1.14e, Overlap=%1.14e + i %1.14e, Constraint=%1.14e\n", mpirank_world, mpirank_init, mpirank_time, obj_weights[iinit], obj_iinit_re, obj_iinit_im, fidelity_iinit_re, fidelity_iinit_im, constraint);
+    // printf("%d, (%d, %d): iinit obj_iinit: %f * (%1.14e + i %1.14e, Overlap=%1.14e + i %1.14e, Constraint=%1.14e\n", mpirank_world, mpirank_init, mpirank_time, obj_weights[iinit], obj_iinit_re, obj_iinit_im, fidelity_iinit_re, fidelity_iinit_im, obj_constraint);
   } // end for iinit
 
   /* Sum up from initial conditions processors */
@@ -723,7 +724,7 @@ double OptimProblem::evalF(const Vec x, const Vec lambda_, const bool store_inte
   double my_frob2 = frob2; 
   double myfidelity_re = fidelity_re;
   double myfidelity_im = fidelity_im;
-  double myconstraint = constraint;
+  double myconstraint = obj_constraint;
   double my_interm_disc = interm_discontinuity;
   // Should be comm_init and also comm_time! Currently, no Petsc Parallelization possible, hence (comm-init AND comm_time) = COMM_WORLD
   MPI_Allreduce(&mypen, &obj_penal, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
@@ -733,7 +734,7 @@ double OptimProblem::evalF(const Vec x, const Vec lambda_, const bool store_inte
   MPI_Allreduce(&mycost_im, &obj_cost_im, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(&myfidelity_re, &fidelity_re, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(&myfidelity_im, &fidelity_im, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-  MPI_Allreduce(&myconstraint, &constraint, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(&myconstraint, &obj_constraint, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(&my_interm_disc, &interm_discontinuity, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(&my_frob2, &frob2, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 
@@ -760,16 +761,16 @@ double OptimProblem::evalF(const Vec x, const Vec lambda_, const bool store_inte
   obj_regul = gamma_tik / 2. * pow(xnorm,2.0);
 
   /* Sum, store and return objective value */
-  objective = obj_cost + obj_regul + obj_penal + obj_penal_dpdm + obj_penal_energy + constraint;
+  objective = obj_cost + obj_regul + obj_penal + obj_penal_dpdm + obj_penal_energy + obj_constraint;
 
   VecRestoreSubVector(x, IS_alpha, &x_alpha); // AP added
 
   /* Output */
-  if (mpirank_world == 0) {
-    std::cout<< "Objective = " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal << " + " << obj_penal_dpdm << " + " << obj_penal_energy << " + " << constraint << std::endl;
+  if (false && mpirank_world == 0) {
+    std::cout<< "Objective = " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal << " + " << obj_penal_dpdm << " + " << obj_penal_energy << " + " << obj_constraint;
     if (nwindows == 1) // Fidelity only makes sense with one window
-      std::cout<< "Fidelity = " << fidelity  << std::endl;
-    std::cout<< "norm2(discontinuity) = " << interm_discontinuity << std::endl;
+      std::cout<< " Fidelity = " << fidelity  << std::endl;
+    std::cout<< " norm2(discontinuity) = " << interm_discontinuity << std::endl;
   }
 
   return objective;
@@ -820,11 +821,12 @@ void OptimProblem::evalGradF(const Vec x, const Vec lambda_, Vec G){
   obj_penal_energy = 0.0;
   fidelity = 0.0;
   interm_discontinuity = 0.0; // for TaoMonitor
+  obj_constraint = 0.0; 
   double obj_cost_re = 0.0;
   double obj_cost_im = 0.0;
   double fidelity_re = 0.0;
   double fidelity_im = 0.0;
-  double constraint = 0.0;
+  
   double frob2 = 0.0; // Neede for generalized infidelity
   for (int iinit = 0; iinit < ninit_local; iinit++) {
 
@@ -914,7 +916,7 @@ void OptimProblem::evalGradF(const Vec x, const Vec lambda_, Vec G){
         VecDot(finalstate, finalstate, &qnorm2); // q = || (Su - u) ||^2
         VecDot(finalstate, lag, &cdot);   // c = lambda^T (Su - u)
         interm_discontinuity += qnorm2;
-        constraint += 0.5 * mu * qnorm2 - cdot;
+        obj_constraint += 0.5 * mu * qnorm2 - cdot;
         // printf("%d: Window %d, add to constraint taking from id=%d. c=%f\n", mpirank_time, iwindow, id, cdot);
         VecRestoreSubVector(lambda_, IS_interm_lambda[id], &lag); // restore lag
       }
@@ -955,18 +957,18 @@ void OptimProblem::evalGradF(const Vec x, const Vec lambda_, Vec G){
   double mycost_im = obj_cost_im;
   double myfidelity_re = fidelity_re;
   double myfidelity_im = fidelity_im;
-  double myconstraint = constraint;
+  double myconstraint = obj_constraint;
   double my_interm_disc = interm_discontinuity;
   double my_frob2 = frob2;
   MPI_Allreduce(&mypen, &obj_penal, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(&mypen_dpdm, &obj_penal_dpdm, 1, MPI_DOUBLE, MPI_SUM, comm_init);
   MPI_Allreduce(&mypenen, &obj_penal_energy, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-  // Should be comm_init and also comm_time! 
+
   MPI_Allreduce(&mycost_re, &obj_cost_re, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(&mycost_im, &obj_cost_im, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(&myfidelity_re, &fidelity_re, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(&myfidelity_im, &fidelity_im, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-  MPI_Allreduce(&myconstraint, &constraint, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(&myconstraint, &obj_constraint, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(&my_interm_disc, &interm_discontinuity, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(&my_frob2, &frob2, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 
@@ -994,7 +996,7 @@ void OptimProblem::evalGradF(const Vec x, const Vec lambda_, Vec G){
   obj_regul = gamma_tik / 2. * pow(xnorm,2.0);
 
   /* Sum, store and return objective value */
-  objective = obj_cost + obj_regul + obj_penal + obj_penal_dpdm + obj_penal_energy + constraint;
+  objective = obj_cost + obj_regul + obj_penal + obj_penal_dpdm + obj_penal_energy + obj_constraint;
 
   /* For Schroedinger solver: Solve adjoint equations for all initial conditions here. */
   if (timestepper->mastereq->lindbladtype == LindbladType::NONE) {
@@ -1097,11 +1099,11 @@ void OptimProblem::evalGradF(const Vec x, const Vec lambda_, Vec G){
   VecRestoreSubVector(x, IS_alpha, &x_alpha); 
 
   /* Output */
-  if (mpirank_world == 0 && !quietmode) {
-    std::cout<< "Objective = " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal << " + " << obj_penal_dpdm << " + " << obj_penal_energy << " + " << constraint << std::endl;
+  if (false && mpirank_world == 0 && !quietmode) {
+    std::cout<< "Objective = " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal << " + " << obj_penal_dpdm << " + " << obj_penal_energy << " + " << obj_constraint;
     if (nwindows == 1) // Fidelity only makes sense with one window
-      std::cout<< "Fidelity = " << fidelity << std::endl;
-    std::cout<< "norm2(discontinuity) = " << interm_discontinuity << std::endl;
+      std::cout<< " Fidelity = " << fidelity << std::endl;
+    std::cout<< " norm2(discontinuity) = " << interm_discontinuity << std::endl;
   }
 } // end evalGradF()
 
@@ -1285,6 +1287,16 @@ void OptimProblem::getExitReason(TaoConvergedReason *reason_ptr){
   *reason_ptr = reason;
 }
 
+int OptimProblem::getTotalIterations(){
+  int iter;
+  TaoGetTotalIterationNumber(tao, &iter);
+  return iter;
+}
+
+void OptimProblem::setTaoWarmStart(PetscBool yes_no){
+  TaoSetRecycleHistory(tao, yes_no);
+}
+
 void OptimProblem::output_interm_ic(){
   for (int iinit = 0; iinit < ninit_local; iinit++) {
       int iinit_global = mpirank_init * ninit_local + iinit; // global initial condition
@@ -1364,11 +1376,12 @@ PetscErrorCode TaoMonitor(Tao tao,void*ptr){
   double obj_penal = ctx->getPenalty();
   double obj_penal_dpdm = ctx->getPenaltyDpDm();
   double obj_penal_energy = ctx->getPenaltyEnergy();
+  double obj_constraint = ctx->getConstraint();
   double interm_discontinuity = ctx->getDiscontinuity();
   double F_avg = ctx->getFidelity();
 
   /* Print to optimization file */
-  ctx->output->writeOptimFile(f, gnorm, deltax, F_avg, obj_cost, obj_regul, obj_penal, obj_penal_dpdm, obj_penal_energy, interm_discontinuity);
+  ctx->output->writeOptimFile(f, gnorm, deltax, F_avg, obj_cost, obj_regul, obj_penal, obj_penal_dpdm, obj_penal_energy, obj_constraint, interm_discontinuity);
 
   /* Print parameters and controls to file */
   // if ( optim_iter % optim_monitor_freq == 0 ) {
@@ -1377,7 +1390,7 @@ PetscErrorCode TaoMonitor(Tao tao,void*ptr){
 
   /* Screen output */
   if (ctx->getMPIrank_world() == 0 && iter == 0) {
-    std::cout<<  "    Objective             Tikhonov                Penalty-Leakage        Penalty-StateVar       Penalty-TotalEnergy " << std::endl;
+    std::cout<<  "    Objective             Tikhonov                Penalty-Leakage        Penalty-StateVar       Penalty-TotalEnergy    Constraint" << std::endl;
   }
 
   /* Additional Stopping criteria */
@@ -1407,12 +1420,13 @@ PetscErrorCode TaoMonitor(Tao tao,void*ptr){
     // }
   // }
 
+  // output progress on std out
   if (ctx->getMPIrank_world() == 0 && (iter == ctx->getMaxIter() || lastIter || iter % ctx->output->optim_monitor_freq == 0)) {
-    std::cout<< iter <<  "  " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal << " + " << obj_penal_dpdm << " + " << obj_penal_energy;
+    std::cout<< iter <<  "  " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal << " + " << obj_penal_dpdm << " + " << obj_penal_energy << " + " << obj_constraint;
     if (ctx->getNwindows() == 1) // Fidelity only makes sense with one window
       std::cout<< "  Fidelity = " << F_avg;
     std::cout<< "  ||Grad|| = " << gnorm;
-    std::cout<< std::endl;
+    std::cout<< " norm2(disc) = " << interm_discontinuity << std::endl;
   }
 
   if (ctx->getMPIrank_world() == 0 && lastIter){
