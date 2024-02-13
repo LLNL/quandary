@@ -43,9 +43,12 @@ class OptimProblem {
 
   bool quietmode;
 
-  std::vector<IS> IS_interm_states;    // Vector of vector-strides for accessing intermediate states from global vector  
-  std::vector<IS> IS_interm_lambda;    // Vector of vector-strides for accessing intermediate lagrange multipliers from global vector  
-  IS IS_alpha;                         // Vector stride for accessing the control parameters
+  std::vector<std::vector<IS>> IS_interm_states;    // Index set for accessing intermediate states from global vector. Ordering [window][initial condition]
+  std::vector<std::vector<IS>> IS_interm_lambda;    // Index set for accessing intermediate lagrange multipliers from global vector. Ordering [window][initial condition]
+  IS IS_alpha;                         // Vector stride for accessing the control parameters from global vector
+  IS IS_alldesign;
+  Vec x_alpha;
+  VecScatter ctx_alpha;
 
   /* Optimization stuff */
   std::vector<double> obj_weights; /* List of weights for weighting the average objective over initial conditions  */
@@ -74,7 +77,7 @@ class OptimProblem {
   int maxiter;                     /* Stopping criterion based on maximum number of iterations */
   Tao tao;                         /* Petsc's Optimization solver */
   std::vector<double> initguess_fromfile;      /* Stores the initial guess, if read from file */
-  double* mygrad;  /* Auxiliary */
+  // double* mygrad;  /* Auxiliary */
     
   // Vec xtmp;                        /* Temporary storage for optim vars */
   Vec disc;                           /* Temporary storage for state discontinuity. size = 2*mastereq->getDim() */

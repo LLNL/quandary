@@ -206,17 +206,19 @@ int main(int argc,char **argv)
 
 
   /* Split communicators */
-  // Distributed initial conditions 
-  int color_init = mpirank_world % (np_petsc * np_time);
-  MPI_Comm_split(MPI_COMM_WORLD, color_init, mpirank_world, &comm_init);
-  MPI_Comm_rank(comm_init, &mpirank_init);
-  MPI_Comm_size(comm_init, &mpisize_init);
-
   // Time-parallel Optimization
-  int color_optim = mpirank_world % np_petsc + mpirank_init * np_petsc;
+  int color_optim = mpirank_world % (np_petsc * np_init);
   MPI_Comm_split(MPI_COMM_WORLD, color_optim, mpirank_world, &comm_time);
   MPI_Comm_rank(comm_time, &mpirank_time);
   MPI_Comm_size(comm_time, &mpisize_time);
+
+
+  // Distributed initial conditions 
+  // int color_init = mpirank_world % (np_petsc * np_time);
+  int color_init= mpirank_world % np_petsc + mpirank_time* np_petsc;
+  MPI_Comm_split(MPI_COMM_WORLD, color_init, mpirank_world, &comm_init);
+  MPI_Comm_rank(comm_init, &mpirank_init);
+  MPI_Comm_size(comm_init, &mpisize_init);
 
   // Distributed Linear algebra: Petsc
   int color_petsc = mpirank_world / np_petsc;
