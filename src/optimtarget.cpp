@@ -54,6 +54,8 @@ OptimTarget::OptimTarget(int dim_, int purestateID_, TargetType target_type_, Ob
 OptimTarget::~OptimTarget(){
   if (objective_type == ObjectiveType::JFROBENIUS) VecDestroy(&aux);
   if (target_type == TargetType::GATE || target_type == TargetType::FROMFILE)  VecDestroy(&targetstate);
+
+  delete targetgate;
 }
 
 double OptimTarget::FrobeniusDistance(const Vec state){

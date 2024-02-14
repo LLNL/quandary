@@ -742,6 +742,9 @@ int main(int argc,char **argv)
   delete optimctx;
   delete output;
 
+  VecDestroy(&xinit);
+  VecDestroy(&grad);
+
 
   /* Finallize Petsc */
 #ifdef WITH_SLEPC
