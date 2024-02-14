@@ -9,7 +9,6 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   quietmode = quietmode_;
   /* Reset */
   objective = 0.0;
-  lambda = NULL;
 
   comm_init = comm_init_;
   comm_time = comm_time_;
@@ -205,9 +204,13 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   Vec x_ic_m;
   int ic = 0;
   int m = 1;
-    printf("%d Yaja\n", mpirank_world);
+    printf("%d Yaja m=%d, ic=%d\n", mpirank_world, m, ic);
   // ISView(IS_interm_lambda[m][ic], PETSC_VIEWER_STDOUT_SELF);
     // ISGetLocalSize(IS_interm_lambda[m][ic], &siize_loc);
+    // VecGetSubVector(xinit, IS_interm_states[m][ic], &x_ic_m);
+    // VecView(x_ic_m, PETSC_VIEWER_STDOUT_WORLD);
+    // VecRestoreSubVector(xinit, IS_interm_states[m][ic], &x_ic_m);
+
     VecGetSubVector(lambda, IS_interm_lambda[m][ic], &x_ic_m);
     VecView(x_ic_m, PETSC_VIEWER_STDOUT_WORLD);
     VecRestoreSubVector(lambda, IS_interm_lambda[m][ic], &x_ic_m);
@@ -743,15 +746,15 @@ double OptimProblem::evalF(const Vec x, const Vec lambda_, const bool store_inte
       /* Add to energy integral penalty term */
       obj_penal_energy += obj_weights[iinit] * gamma_penalty_energy* timestepper->energy_penalty_integral;
 
-  ISView(IS_interm_lambda[iwindow_global+1][iinit_global], PETSC_VIEWER_STDOUT_SELF);
-
       /* Evaluate J(finalstate) and add to final-time cost */
       if (mpirank_time == mpisize_time-1 && iwindow == nwindows_local-1){
         double obj_iinit_re = 0.0;
         double obj_iinit_im = 0.0;
         double frob2_iinit; // For generalized infidelity 
         // Local contribution to the Hilbert-Schmidt overlap between target and final states (S_T)
+      printf("%d|%d|%d: Eval J now. \n", mpirank_world, mpirank_time, mpirank_init);
         optim_target->evalJ(finalstate,  &obj_iinit_re, &obj_iinit_im, &frob2_iinit);
+      printf("%d|%d|%d: Done Eval J. \n", mpirank_world, mpirank_time, mpirank_init);
         
         obj_cost_re += obj_weights[iinit] * obj_iinit_re; // For Schroedinger, weights = 1.0/ninit
         obj_cost_im += obj_weights[iinit] * obj_iinit_im;
@@ -761,7 +764,9 @@ double OptimProblem::evalF(const Vec x, const Vec lambda_, const bool store_inte
         double fidelity_iinit_re = 0.0;
         double fidelity_iinit_im = 0.0;
         // NOTE: scalebypurity = false. TODO: Check.
+      printf("%d|%d|%d: HilbertSchmidt now. \n", mpirank_world, mpirank_time, mpirank_init);
         optim_target->HilbertSchmidtOverlap(finalstate, false, &fidelity_iinit_re, &fidelity_iinit_im);
+      printf("%d|%d|%d: Done HilbertSchmidt. \n", mpirank_world, mpirank_time, mpirank_init);
         fidelity_re += fidelity_iinit_re / ninit; // Scale by 1/N
         fidelity_im += fidelity_iinit_im / ninit;
     
@@ -772,15 +777,16 @@ double OptimProblem::evalF(const Vec x, const Vec lambda_, const bool store_inte
         if (store_interm)
           VecCopy(finalstate, store_interm_states[iinit][iwindow]);
 
+      printf("%d|%d|%d: Eval constraints now. \n", mpirank_world, mpirank_time, mpirank_init);
         Vec xnext, lag;
         // Should communicate u_i from the right neighbor to here!
-        printf("%d|%d|%d: iDiiscontinuity. \n", mpirank_world, mpirank_time, mpirank_init);
+        // printf("%d|%d|%d: iDiiscontinuity. \n", mpirank_world, mpirank_time, mpirank_init);
         VecGetSubVector(x, IS_interm_states[iwindow_global+1][iinit_global], &xnext);
-        printf("%d|%d|%d: iCenter. iiwindowglobal=%d, iniit_global=%d\n", mpirank_world, mpirank_time, mpirank_init, iwindow_global, iinit_global);
+      printf("%d|%d|%d: Got x subvectors. \n", mpirank_world, mpirank_time, mpirank_init);
+      VecView(lambda_, PETSC_VIEWER_STDOUT_WORLD);
+        VecGetSubVector(lambda_, IS_interm_lambda[iwindow_global+1][iinit_global], &lag);
+      printf("%d|%d|%d: Got lambda subvectors. \n", mpirank_world, mpirank_time, mpirank_init);
 
-        // VecGetSubVector(lambda_, IS_interm_lambda[iwindow_global+1][iinit_global], &lag);
-
-        printf("%d|%d|%d: iDONE iCenter. \n", mpirank_world, mpirank_time, mpirank_init);
         VecAXPY(finalstate, -1.0, xnext);  // finalstate = S(u_{i-1}) - u_i
 
         // ISView(IS_interm_lambda[iwindow_global+1][iinit_global], PETSC_VIEWER_STDOUT_WORLD);
@@ -794,8 +800,10 @@ double OptimProblem::evalF(const Vec x, const Vec lambda_, const bool store_inte
         constraint += 0.5 * mu * qnorm2 - cdot;
         // printf("%d: Window %d, add to constraint taking from id=%d. c=%f\n", mpirank_time, iwindow, id, cdot);
 
-        VecRestoreSubVector(x, IS_interm_states[iwindow_global][iinit_global], &xnext);
-        VecRestoreSubVector(lambda_, IS_interm_lambda[iwindow_global][iinit_global], &lag);
+        // TODO: CAN THIS BE MOVED UPWARDS? 
+        VecRestoreSubVector(x, IS_interm_states[iwindow_global+1][iinit_global], &xnext);
+        VecRestoreSubVector(lambda_, IS_interm_lambda[iwindow_global+1][iinit_global], &lag);
+      printf("%d|%d|%d: Done Eval constraints. \n", mpirank_world, mpirank_time, mpirank_init);
       }
     } // end for iwindow
 
@@ -833,7 +841,9 @@ double OptimProblem::evalF(const Vec x, const Vec lambda_, const bool store_inte
   }
  
   /* Finalize the objective function */
+  printf("%d|%d|%d: Finalize J now. \n", mpirank_world, mpirank_time, mpirank_init);
   obj_cost = optim_target->finalizeJ(obj_cost_re, obj_cost_im, frob2);
+  printf("%d|%d|%d: Done Finalize J. \n", mpirank_world, mpirank_time, mpirank_init);
 
   /* Evaluate regularization objective += gamma/2 * ||x-x0||^2*/
   double xnorm;
@@ -1395,6 +1405,8 @@ PetscErrorCode TaoEvalObjective(Tao tao, Vec x, PetscReal *f, void*ptr){
 
   OptimProblem* ctx = (OptimProblem*) ptr;
   assert(ctx->lambda);
+  VecView(ctx->lambda, PETSC_VIEWER_STDOUT_WORLD);
+  exit(1);
   *f = ctx->evalF(x, ctx->lambda);
   
   return 0;
