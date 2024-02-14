@@ -83,6 +83,13 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   VecSet(lambda, 0.0);
   VecAssemblyBegin(lambda);
   VecAssemblyEnd(lambda);
+  double* ptrl;
+  VecGetArray(lambda, &ptrl);
+  for (int i=0; i<local_size; i++){
+    ptrl[i] = 100.0*mpirank_world;
+  }
+  VecRestoreArray(lambda, &ptrl);
+
   // xinit also has the control parameters
   if (mpirank_world == 0) local_size += ndesign;  // Add design to very first processor for the state
   VecCreateMPI(PETSC_COMM_WORLD, local_size, PETSC_DETERMINE, &xinit);
@@ -99,13 +106,13 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   double* ptr;
   VecGetArray(xinit, &ptr);
   for (int i=0; i<local_size; i++){
-    ptr[i] = mpirank_world + 1.0;
+    ptr[i] = mpirank_world;
   }
-  if (mpirank_world == 0) {
-    for (int i=0; i<ndesign; i++){
-      ptr[i] = -1.0;
-    }
-  }
+  // if (mpirank_world == 0) {
+  //   for (int i=0; i<ndesign; i++){
+  //     ptr[i] = -1.0;
+  //   }
+  // }
   VecRestoreArray(xinit, &ptr);
 
   /* allocate reduced gradient of timestepper */
@@ -180,8 +187,36 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   // VecGetOwnershipRange(lambda, &ilow2, &ihi2);
   // printf("%d: xinit %d-%d\n", mpirank_world, a, b);
   // printf("%d: lambd %d-%d\n", mpirank_world, ilow2, ihi2);
-  
 
+  // TEST look at the local elements
+	PetscBarrier((PetscObject)xinit); 
+	PetscPrintf(PETSC_COMM_WORLD, "\nShow the content of each processor.\n\n"); 
+	PetscBarrier((PetscObject)xinit); 
+  int ihi1, ilow1, ihi2, ilow2;
+  VecGetOwnershipRange(xinit, &ilow1, &ihi1);
+  VecGetOwnershipRange(lambda, &ilow2, &ihi2);
+  int len1 = ihi1 - ilow1;
+  int len2 = ihi2 - ilow2;
+  // Show the content by using raw pointer.
+	PetscScalar* px = PETSC_NULLPTR;
+	VecGetArray(xinit, &px); 
+	for ( int i = 0; i < len1; ++i ) {
+	  PetscPrintf(PETSC_COMM_SELF, "Rank %d: idx = %d, x_value= %f.\n", mpirank_world, i, px[i]); 
+	}
+	VecRestoreArray(xinit, &px); 
+	PetscBarrier((PetscObject)xinit);  
+
+	PetscBarrier((PetscObject)lambda);  
+	PetscPrintf(PETSC_COMM_WORLD, "\nShow the content of each processor.\n\n"); 
+	PetscBarrier((PetscObject)lambda);  
+	PetscScalar* pl = PETSC_NULLPTR;
+	VecGetArray(lambda, &pl); 
+	for ( int i = 0; i < len2; ++i ) {
+	  PetscPrintf(PETSC_COMM_SELF, "Rank %d: idx = %d, lambda_value= %f.\n", mpirank_world, i, pl[i]); 
+	}
+	VecRestoreArray(lambda, &pl); 
+	PetscBarrier((PetscObject)lambda);  
+  
   /// TEST: PRINT OUT IS ALPHA
   // Vec myalphavec;
   // VecGetSubVector(xinit, IS_alpha, &myalphavec);
