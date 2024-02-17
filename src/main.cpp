@@ -206,11 +206,15 @@ int main(int argc,char **argv)
 
 
   /* Split communicators */
+
+
   // Time-parallel Optimization
-  int color_optim = mpirank_world % (np_petsc * np_init);
-  MPI_Comm_split(MPI_COMM_WORLD, color_optim, mpirank_world, &comm_time);
+  int color_time = mpirank_world % (np_petsc * np_init);
+  // int color_time = mpirank_world % np_petsc + mpirank_init * np_petsc;
+  MPI_Comm_split(MPI_COMM_WORLD, color_time , mpirank_world, &comm_time);
   MPI_Comm_rank(comm_time, &mpirank_time);
   MPI_Comm_size(comm_time, &mpisize_time);
+
 
 
   // Distributed initial conditions 
@@ -219,6 +223,7 @@ int main(int argc,char **argv)
   MPI_Comm_split(MPI_COMM_WORLD, color_init, mpirank_world, &comm_init);
   MPI_Comm_rank(comm_init, &mpirank_init);
   MPI_Comm_size(comm_init, &mpisize_init);
+
 
   // Distributed Linear algebra: Petsc
   int color_petsc = mpirank_world / np_petsc;
@@ -453,7 +458,7 @@ int main(int argc,char **argv)
   VecDuplicate(xinit, &grad);
   VecZeroEntries(grad);
 
-  bool load_optimvar = config.GetBoolParam("load_optimvar", false);
+  bool load_optimvar = config.GetBoolParam("load_optimvar", false, false);
   double old_mu;  // discontinuity penalty strength at the previous optimization iteration.
 
   /* Set initial starting point */
