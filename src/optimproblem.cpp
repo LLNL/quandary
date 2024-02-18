@@ -109,18 +109,6 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   // printf("world=%d, time=%d, init=%d:  global size = %d, optimvars = %d, local_size=%d\n", mpirank_world, mpirank_time, mpirank_init, global_size, getNoptimvars(), local_size);
   assert(global_size == getNoptimvars());
 
-  double* ptr;
-  VecGetArray(xinit, &ptr);
-  for (int i=0; i<local_size; i++){
-    ptr[i] = mpirank_world +1;
-  }
-  if (mpirank_world == 0) {
-    for (int i=0; i<ndesign; i++){
-      ptr[i] = -1.0;
-    }
-  }
-  VecRestoreArray(xinit, &ptr);
-
   /* allocate reduced gradient of timestepper */
   VecDuplicate(xinit, &(timestepper->redgrad));
 
@@ -145,21 +133,14 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   VecCreateSeq(PETSC_COMM_SELF, ndesign, &x_alpha);
   VecScatterCreate(xinit, IS_alldesign, x_alpha, IS_alldesign, &scatter_alpha);
 
-
+  // Gather the processor distribution of xinit and lambda
   int istart_x, istart_lambda, istop_x, istop_lambda;
   VecGetOwnershipRange(xinit, &istart_x, &istop_x); 
   VecGetOwnershipRange(lambda, &istart_lambda, &istop_lambda); 
-  // Communicate istart_x to all processors
   int istart_x_all[mpisize_time];
   MPI_Allgather(&istart_x, 1, MPI_INT, istart_x_all, 1, MPI_INT, comm_time);
-  // for (int i=0; i<mpisize_time; i++){
-  //   printf("%d: %d,%d, istart_x[%d] = %d\n", mpirank_world, mpirank_time, mpirank_init, i, istart_x_all[i]);
-  // }
 
   /* Create index set to access intermediate states from global vector */
-  // int globalID_x = 0;
-  // int globalID_l = 0;
-  // int skip_alpha = ndesign;
   int xdim = timestepper->mastereq->getDimRho()*2; // state dimension. x2 for real and imag. 
   int *ids_m_ic = new int[xdim];
   IS_interm_states.resize(nwindows);
@@ -188,7 +169,7 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
       IS_interm_states[m].push_back(state_m_ic);
       // if (nelems>0) printf("%d: P_%d^%d: Created state IS[%d][%d] nelems %d, first id=%d \n", mpirank_world, mpirank_time, mpirank_init, m, ic, nelems, ids_m_ic[0]);
 
-      // set the global IDs for lambda. Note how thiis one does not have the 'skip_alpha'. 
+      // set the global IDs for lambda. Note how thiis does not skip ndesign,
       nelems=0;
       if (mpirank_init == ic / ninit_local && mpirank_time == m / nwindows_local && m<nwindows-1){
         nelems=xdim;
@@ -201,9 +182,6 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
       ISCreateGeneral(PETSC_COMM_SELF, nelems, ids_m_ic, PETSC_COPY_VALUES, &lambda_m_ic);
       // if (nelems>0) printf("%d: P_%d^%d: Created lambda IS[%d][%d] nelems %d, first id=%d \n", mpirank_world, mpirank_time, mpirank_init, m, ic, nelems, ids_m_ic[0]);
       IS_interm_lambda[m].push_back(lambda_m_ic);
-
-      // if (m>0) globalID_x += xdim; 
-      // globalID_l += xdim; 
     }
   } 
 
@@ -225,10 +203,10 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
       if ( m_global < nwindows-1 ){ // dont scatter on the last interval
         nelems = xdim;
 
+        // figure out which global starting index the next time window state has
         int mpirank_time_next = (m_global+1)/nwindows_local;
         int mpirank_init_next = (ic_global)/ninit_local;
         skip = istart_x_all[mpirank_time_next];
-        // printf("%d: P_%d^%d: global [%d][%d] istart next time-window =%d \n", mpirank_world, mpirank_time, mpirank_init, m_global, ic_global, skip);
         skip += ic * xdim; 
         if (mpirank_time_next > 0) skip += ((m_global+1)%nwindows_local) * ninit_local *xdim;
         else                       skip += ( ( (m_global+1)%nwindows_local) -1) * ninit_local *xdim;
@@ -237,11 +215,10 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
       for (int i=0; i<xdim; i++){
         ids_m_ic[i] = skip + i;
       }
- 
-      // figure out which index the next time window state is
-      if (nelems > 0)
-        printf("%d: P_%d^%d: Scatter at local [%d][%d] nelems %d, taking from id=%d \n", mpirank_world, mpirank_time, mpirank_init, m, ic, nelems, ids_m_ic[0]);
+      // if (nelems > 0)
+      //   printf("%d: P_%d^%d: Scatter at local [%d][%d] nelems %d, taking from id=%d \n", mpirank_world, mpirank_time, mpirank_init, m, ic, nelems, ids_m_ic[0]);
 
+      // finally create the scatter contexts
       IS IS_to, IS_from;
       VecScatter ctx_state;
       ISCreateGeneral(PETSC_COMM_SELF,nelems,ids_state,PETSC_COPY_VALUES, &IS_to);
@@ -249,107 +226,14 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
       VecScatterCreate(xinit, IS_from, x_next, IS_to, &ctx_state);
       scatter_xnext[m].push_back(ctx_state);
 
-      if (nelems > 0)
-        VecScatterView(scatter_xnext[m][ic], PETSC_VIEWER_STDOUT_SELF);
-
-
+      // if (nelems > 0)
+        // VecScatterView(scatter_xnext[m][ic], PETSC_VIEWER_STDOUT_SELF);
     }
   }
   delete [] ids_state;
   delete [] ids_m_ic;
-
-  // exit(1);
-
-  // TEST Who owns what
-  int a,b;
-  VecGetOwnershipRange(xinit, &a, &b);
-  PetscBarrier((PetscObject)xinit); 
-  printf("%d: P_%d^%d I own xinit at %d--%d \n", mpirank_world, mpirank_time, mpirank_init, a, b);
-  PetscBarrier((PetscObject)xinit); 
-
-
-  // VecView(xinit, PETSC_VIEWER_STDOUT_WORLD);
-  // VecView(lambda, PETSC_VIEWER_STDOUT_WORLD);
-  // int a, b, ilow2, ihi2;
-  // VecGetOwnershipRange(xinit, &a, &b);
-  // VecGetOwnershipRange(lambda, &ilow2, &ihi2);
-  // printf("%d: xinit %d-%d\n", mpirank_world, a, b);
-  // printf("%d: lambd %d-%d\n", mpirank_world, ilow2, ihi2);
-
-  // // TEST look at the local elements
-	// PetscBarrier((PetscObject)xinit); 
-	// PetscPrintf(PETSC_COMM_WORLD, "\nShow the content of each processor.\n\n"); 
-	// PetscBarrier((PetscObject)xinit); 
-  // int ihi1, ilow1, ihi2, ilow2;
-  // VecGetOwnershipRange(xinit, &ilow1, &ihi1);
-  // VecGetOwnershipRange(lambda, &ilow2, &ihi2);
-  // int len1 = ihi1 - ilow1;
-  // int len2 = ihi2 - ilow2;
-  // // Show the content by using raw pointer.
-	// PetscScalar* px = PETSC_NULLPTR;
-	// VecGetArray(xinit, &px); 
-	// for ( int i = 0; i < len1; ++i ) {
-	//   PetscPrintf(PETSC_COMM_SELF, "Rank %d: idx = %d, x_value= %f.\n", mpirank_world, i, px[i]); 
-	// }
-	// VecRestoreArray(xinit, &px); 
-	// PetscBarrier((PetscObject)xinit);  
-
-	// PetscBarrier((PetscObject)lambda);  
-	// PetscPrintf(PETSC_COMM_WORLD, "\nShow the content of each processor.\n\n"); 
-	// PetscBarrier((PetscObject)lambda);  
-	// PetscScalar* pl = PETSC_NULLPTR;
-	// VecGetArray(lambda, &pl); 
-	// for ( int i = 0; i < len2; ++i ) {
-	//   PetscPrintf(PETSC_COMM_SELF, "Rank %d: idx = %d, lambda_value= %f.\n", mpirank_world, i, pl[i]); 
-	// }
-	// VecRestoreArray(lambda, &pl); 
-	// PetscBarrier((PetscObject)lambda);  
   
-  /// TEST: PRINT OUT IS ALPHA
-  // Vec myalphavec;
-  // VecGetSubVector(xinit, IS_alpha, &myalphavec);
-  // ISView(IS_alpha, PETSC_VIEWER_STDOUT_WORLD);
-  // VecView(myalphavec, PETSC_VIEWER_STDOUT_WORLD);
-  // VecRestoreSubVector(xinit, IS_alpha, &myalphavec);
-
-  // TEST: Print out a specific IS_access
-  // Vec x_ic_m;
-  // int ic = 0;
-  // int m = 1;
-  //   printf("%d Yaja m=%d, ic=%d\n", mpirank_world, m, ic);
-  // // ISView(IS_interm_lambda[m][ic], PETSC_VIEWER_STDOUT_SELF);
-  //   // ISGetLocalSize(IS_interm_lambda[m][ic], &siize_loc);
-  //   // VecGetSubVector(xinit, IS_interm_states[m][ic], &x_ic_m);
-  //   // VecView(x_ic_m, PETSC_VIEWER_STDOUT_WORLD);
-  //   // VecRestoreSubVector(xinit, IS_interm_states[m][ic], &x_ic_m);
-
-  //   VecGetSubVector(lambda, IS_interm_lambda[m][ic], &x_ic_m);
-  //   VecView(x_ic_m, PETSC_VIEWER_STDOUT_WORLD);
-  //   VecRestoreSubVector(lambda, IS_interm_lambda[m][ic], &x_ic_m);
-  //   printf("END\n");
-
-  // TEST: Pring out LOCAL VECTORS
-  // int locsize;
-  // VecGetLocalSize(xinit, &locsize);
-  // Vec xloc;
-  // printf("world=%d time=%d init=%d, localsize=%d\n", mpirank_world, mpirank_time, mpirank_init, locsize);
-  // if (mpirank_world == 0) {
-  //   printf("HEYHEY\n");
-  //   VecCreateLocalVector(xinit, &xloc);
-  //   VecGetLocalVector(xinit, xloc);
-  //   VecView(xloc, PETSC_VIEWER_STDOUT_SELF);
-  //   printf("DONE\n");
-  // }
-
-  // Vec x_ic_win_loc;
-  // VecCreateLocalVector(x_ic_win, &x_ic_win_loc);
-  // VecGetLocalVector(x_ic_win, x_ic_win_loc);
-  // if (mpirank_world == 1) {
-  //   printf("%d: x_ic_win_loc:\n", mpirank_world);
-  //   VecView(x_ic_win_loc, NULL);
-  // }
-  // VecDestroy(&x_ic_win_loc);
-
+  
   /* Store other optimization parameters */
   gamma_tik = config.GetDoubleParam("optim_regul", 1e-4);
   gamma_tik_interpolate = config.GetBoolParam("optim_regul_interpolate", false, false);
@@ -745,6 +629,7 @@ OptimProblem::~OptimProblem() {
   VecDestroy(&rho_t0_bar);
 
   VecDestroy(&xinit);
+  VecDestroy(&x_next);
   VecDestroy(&lambda);
   VecDestroy(&xlower);
   VecDestroy(&xupper);
@@ -770,6 +655,12 @@ OptimProblem::~OptimProblem() {
   }
   ISDestroy(&IS_alpha);
 
+  VecScatterDestroy(&scatter_alpha);
+  for (int m=0; m<scatter_xnext.size();m++){
+    for (int ic=0; ic<scatter_xnext[m].size();ic++){
+      VecScatterDestroy(&(scatter_xnext[m][ic]));
+    }
+  }
   TaoDestroy(&tao);
 }
 
@@ -810,7 +701,7 @@ double OptimProblem::evalF(const Vec x, const Vec lambda_, const bool store_inte
 
       int iinit_global = mpirank_init * ninit_local + iinit;
       int iwindow_global = mpirank_time*nwindows_local + iwindow ; 
-      printf("%d:%d|%d: --> LOOP m = %d(%d) ic = %d(%d)\n", mpirank_world, mpirank_time, mpirank_init, iwindow_global, iwindow, iinit_global, iinit);
+      // printf("%d:%d|%d: --> LOOP m = %d(%d) ic = %d(%d)\n", mpirank_world, mpirank_time, mpirank_init, iwindow_global, iwindow, iinit_global, iinit);
 
       /* Prepare the initial condition. Last window will also need it for J. */
       if ( iwindow_global == 0 || iwindow_global == nwindows -1 ) {
@@ -849,7 +740,7 @@ double OptimProblem::evalF(const Vec x, const Vec lambda_, const bool store_inte
       VecGetArray(x_next, &ptrx);
       VecGetArray(lambda_, &ptrl);
       if (iwindow_global != nwindows-1)
-        printf("%d:%d|%d: Will be using from scatter[%d][%d]: xnext[0] = %f\n", mpirank_world, mpirank_time, mpirank_init, iwindow, iinit, ptrx[0]);
+        // printf("%d:%d|%d: Will be using from scatter[%d][%d]: xnext[0] = %f\n", mpirank_world, mpirank_time, mpirank_init, iwindow, iinit, ptrx[0]);
       VecRestoreArray(x_next, &ptrl);
       VecRestoreArray(lambda_, &ptrl);
 	    PetscBarrier((PetscObject)x); 
@@ -1346,7 +1237,7 @@ void OptimProblem::rollOut(Vec x){
     } // end for iwindow
   } // end for initial condition
 
-  VecView(x, PETSC_VIEWER_STDOUT_WORLD);
+  // VecView(x, PETSC_VIEWER_STDOUT_WORLD);
 }
 
 /* lag += - prev_mu * ( S(u_{i-1}) - u_i ) */
