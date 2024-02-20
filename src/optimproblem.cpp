@@ -46,15 +46,15 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   }
 
   /* NOTE(kevin): store intermediate final states regardless of master equation type. */
-  store_interm_states.resize(ninit_local);
+  final_win_state.resize(ninit_local);
   for (int i = 0; i < ninit_local; i++) {
     /*
-      store_interm_states[i][index] is the final timestep of index-th local time window, for i-th initial condition.
+      final_win_state[i][index] is the final timestep of index-th local time window, for i-th initial condition.
       (index = 0, 1, ..., nwindows_local-1)
       For mpirank_time = mpisize_time - 1,
-        store_interm_states[i] has a size of (nwindows_local - 1), excluding final state.
+        final_win_state[i] has a size of (nwindows_local - 1), excluding final state.
     */
-    store_interm_states[i].clear();
+    final_win_state[i].clear();
     for (int iwindow = 0; iwindow < nwindows_local; iwindow++) {
       if (mpirank_time == mpisize_time-1 && iwindow == nwindows_local-1)
         break;
@@ -63,24 +63,24 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
       VecCreate(PETSC_COMM_WORLD, &state);
       VecSetSizes(state, PETSC_DECIDE, 2*timestepper->mastereq->getDim());
       VecSetFromOptions(state);
-      store_interm_states[i].push_back(state);
+      final_win_state[i].push_back(state);
     }
   }
 
   unitarize_interm_ic = config.GetBoolParam("optim_unitarize_interm_ic", false);
   /*
-    store_interm_ic[i][index] is the unitarized ic of (index+1)-th global time window, for i-th global initial condition.
+    initial_win_state[i][index] is the unitarized ic of (index+1)-th global time window, for i-th global initial condition.
     (index = 0, 1, ..., nwindows-2)
   */
-  store_interm_ic.resize(ninit);
+  initial_win_state.resize(ninit);
   for (int i = 0; i < ninit; i++) {
-    store_interm_ic[i].clear();
+    initial_win_state[i].clear();
     for (int iwindow = 0; iwindow < nwindows-1; iwindow++) {
       Vec state;
       VecCreate(PETSC_COMM_WORLD, &state);
       VecSetSizes(state, PETSC_DECIDE, 2*timestepper->mastereq->getDim());
       VecSetFromOptions(state);
-      store_interm_ic[i].push_back(state);
+      initial_win_state[i].push_back(state);
     }
   }
 
@@ -560,15 +560,13 @@ OptimProblem::~OptimProblem() {
   for (int i = 0; i < store_finalstates.size(); i++) {
     VecDestroy(&(store_finalstates[i]));
 
-    for (int k = 0; k < store_interm_states[i].size(); k++)
-      VecDestroy(&(store_interm_states[i][k]));
+    for (int k = 0; k < final_win_state[i].size(); k++)
+      VecDestroy(&(final_win_state[i][k]));
   }
 
-  if (unitarize_interm_ic) {
-    for (int i = 0; i < store_interm_ic.size(); i++)
-      for (int k = 0; k < store_interm_ic[i].size(); k++)
-        VecDestroy(&(store_interm_ic[i][k]));
-  }
+  for (int i = 0; i < initial_win_state.size(); i++)
+    for (int k = 0; k < initial_win_state[i].size(); k++)
+      VecDestroy(&(initial_win_state[i][k]));
 
   for (int m=0; m<IS_interm_states.size(); m++){
     ISDestroy(&(IS_interm_states[m]));
@@ -645,7 +643,7 @@ double OptimProblem::evalF(const Vec x, const Vec lambda_, const bool store_inte
       if (mpirank_time == 0 && iwindow == 0) {
         x0 = rho_t0; 
       } else {
-        x0 = store_interm_ic[iinit_global][iwin_global - 1]; // shifted by -1 because element [iint][0] holds the initial condition for window 1
+        x0 = initial_win_state[iinit_global][iwin_global - 1]; // shifted by -1 because element [iint][0] holds the initial condition for window 1
         // int id = iinit_global*(nwindows-1) + iwin_global-1;
         // // printf("time rank %d, init rank %d: iinit %d, iwindow %d, starting from global id = %d\n", mpirank_time, mpirank_init, iinit, iwindow, id);
         // VecGetSubVector(x, IS_interm_states[id], &x0);
@@ -689,11 +687,11 @@ double OptimProblem::evalF(const Vec x, const Vec lambda_, const bool store_inte
       /* Else, we are not at the final time window; add to constraint. */
       else {
         if (store_interm)
-          VecCopy(finalstate, store_interm_states[iinit][iwindow]);
+          VecCopy(finalstate, final_win_state[iinit][iwindow]);
 
         int id = iinit_global*(nwindows-1) + iwin_global;
         Vec xnext, lag;
-        xnext = store_interm_ic[iinit_global][iwin_global]; // next intermediate initial cond.
+        xnext = initial_win_state[iinit_global][iwin_global]; // next intermediate initial cond.
         // VecGetSubVector(x, IS_interm_states[id], &xnext);
         VecAXPY(finalstate, -1.0, xnext);  // finalstate = S(u_{i-1}) - u_i
 
@@ -763,7 +761,7 @@ double OptimProblem::evalF(const Vec x, const Vec lambda_, const bool store_inte
   /* Sum, store and return objective value */
   objective = obj_cost + obj_regul + obj_penal + obj_penal_dpdm + obj_penal_energy + obj_constraint;
 
-  VecRestoreSubVector(x, IS_alpha, &x_alpha); // AP added
+  VecRestoreSubVector(x, IS_alpha, &x_alpha);
 
   /* Output */
   if (false && mpirank_world == 0) {
@@ -853,7 +851,7 @@ void OptimProblem::evalGradF(const Vec x, const Vec lambda_, Vec G){
       if (mpirank_time == 0 && iwindow == 0) {
         x0 = rho_t0; 
       } else {
-        x0 = store_interm_ic[iinit_global][iwin_global - 1];
+        x0 = initial_win_state[iinit_global][iwin_global - 1];
         // int id = iinit_global*(nwindows-1) + iwin_global-1;
         // // printf("%d, %d: iinit %d, iwindow %d, starting from global id = %d\n", mpirank_time, mpirank_init, iinit, iwindow, id);
         // VecGetSubVector(x, IS_interm_states[id], &x0);
@@ -902,11 +900,11 @@ void OptimProblem::evalGradF(const Vec x, const Vec lambda_, Vec G){
       else {
         /* Store the intermediate state for the Schroedinger solver */
         if (timestepper->mastereq->lindbladtype == LindbladType::NONE)
-          VecCopy(finalstate, store_interm_states[iinit][iwindow]);
+          VecCopy(finalstate, final_win_state[iinit][iwindow]);
 
         int id = iinit_global*(nwindows-1) + iwin_global;
         Vec xnext, lag;
-        xnext = store_interm_ic[iinit_global][iwin_global];
+        xnext = initial_win_state[iinit_global][iwin_global];
         // VecGetSubVector(x, IS_interm_states[id], &xnext);
         VecGetSubVector(lambda_, IS_interm_lambda[id], &lag);
         VecAXPY(finalstate, -1.0, xnext);  // finalstate = S(u_{i-1}) - u_i
@@ -1033,12 +1031,12 @@ void OptimProblem::evalGradF(const Vec x, const Vec lambda_, Vec G){
           optim_target->evalJ_diff(finalstate, rho_t0_bar, obj_weights[iinit]*obj_cost_re_bar, obj_weights[iinit]*obj_cost_im_bar, frob2_bar/ninit);
         }
         else {
-          finalstate = store_interm_states[iinit][iwindow];
+          finalstate = final_win_state[iinit][iwindow];
           VecCopy(finalstate, disc);
 
           int id = iinit_global*(nwindows-1) + iwin_global;
           Vec xnext, lag;
-          xnext = store_interm_ic[iinit_global][iwin_global];
+          xnext = initial_win_state[iinit_global][iwin_global];
           // VecGetSubVector(x, IS_interm_states[id], &xnext);
           VecGetSubVector(lambda_, IS_interm_lambda[id], &lag);
           VecAXPY(disc, -1.0, xnext);  // finalstate = S(u_{i-1}) - u_i
@@ -1079,24 +1077,20 @@ void OptimProblem::evalGradF(const Vec x, const Vec lambda_, Vec G){
 
   /* Apply chain rule for unitarization if specified. */
   // TODO(kevin): currently all processes own the same G and perform the same operation. need parallelization.
-  if (unitarize_interm_ic)
-    unitarize_grad(x_unsc, IS_interm_states, store_interm_ic, vnorms, G); // NOTE: x_unsc is the unscaled state vector
+  if (unitarize_interm_ic && (nwindows > 1))
+    unitarize_grad(x_unsc, IS_interm_states, initial_win_state, vnorms, G); // NOTE: x_unsc is the unscaled state vector
 
-  Vec g_alpha;
+  Vec g_alpha, g_states;
   VecGetSubVector(G, IS_alpha, &g_alpha);
+  VecGetSubVector(G, IS_initialcond, &g_states);
+
   mastereq->setControlAmplitudes_diff(g_alpha);
 
   /* Compute and store gradient norm */
   VecNorm(G, NORM_2, &(gnorm));
 
   // scale the state part of the gradient by 1/scalefactor_states
-  Vec g_states;
-  VecGetSubVector(G, IS_initialcond, &g_states);
   VecScale(g_states, 1.0/scalefactor_states);
-  VecRestoreSubVector(G, IS_initialcond, &g_states);
-
-  // The subvector x_alpha was created near the top of this function
-  VecRestoreSubVector(x, IS_alpha, &x_alpha); 
 
   /* Output */
   if (false && mpirank_world == 0 && !quietmode) {
@@ -1105,7 +1099,12 @@ void OptimProblem::evalGradF(const Vec x, const Vec lambda_, Vec G){
       std::cout<< " Fidelity = " << fidelity << std::endl;
     std::cout<< " norm2(discontinuity) = " << interm_discontinuity << std::endl;
   }
-} // end evalGradF()
+
+  /* clean up variables */
+  VecRestoreSubVector(G, IS_initialcond, &g_states);
+  VecRestoreSubVector(x, IS_alpha, &x_alpha); 
+  VecRestoreSubVector(G, IS_alpha, &g_alpha);
+}
 
 
 void OptimProblem::solve(Vec xinit) {
@@ -1142,6 +1141,7 @@ void OptimProblem::getStartingPoint(Vec xinit){
   Vec x_alpha;
   VecGetSubVector(xinit, IS_alpha, &x_alpha);
   timestepper->mastereq->setControlAmplitudes(x_alpha);
+  VecRestoreSubVector(xinit, IS_alpha, &x_alpha);
   
   /* Write initial control functions to file TODO: Multiple time windows */
   // output->writeControls(xinit, timestepper->mastereq, timestepper->ntime, timestepper->dt);
@@ -1186,6 +1186,7 @@ void OptimProblem::rollOut(Vec x){
   VecScale(x_states, scalefactor_states);
   VecRestoreSubVector(x, IS_initialcond, &x_states);
 
+  // bool is_unitary = isUnitary(x, IS_interm_states, ninit, nwindows);
 }
 
 /* lag += - prev_mu * ( S(u_{i-1}) - u_i ) */
@@ -1215,7 +1216,7 @@ void OptimProblem::updateLagrangian(const double prev_mu, const Vec x_a, Vec lam
       if (mpirank_time == mpisize_time-1 && iwin_local == nwindows_local-1)
         continue;
 
-      VecCopy(store_interm_states[iinit_local][iwin_local], disc); // NOTE: disc = store_interm_states holds the UNscaled evolved state in this window
+      VecCopy(final_win_state[iinit_local][iwin_local], disc); // NOTE: disc = store_interm_states holds the UNscaled evolved state in this window
 
       Vec xnext;
       // tmp
@@ -1305,8 +1306,8 @@ void OptimProblem::output_interm_ic(){
         int iwin_global = mpirank_time*nwindows_local + iwindow; // global window index
 
         if (iwin_global < nwindows-1) {
-          printf("iinit_g = %d, iwind_g = %d, store_interm_ic:\n", iinit_global, iwin_global);
-          VecView(store_interm_ic[iinit][iwindow], PETSC_VIEWER_STDOUT_WORLD);
+          printf("iinit_g = %d, iwind_g = %d, initial_win_state:\n", iinit_global, iwin_global);
+          VecView(initial_win_state[iinit][iwindow], PETSC_VIEWER_STDOUT_WORLD);
         }
       }
   }
@@ -1327,9 +1328,11 @@ void OptimProblem::output_states(Vec x){
 }
 
 void OptimProblem::prepareIntermediateCondition(const Vec x, std::vector<std::vector<double>> &vnorms){
+  if (nwindows == 1) return;
+
   if (unitarize_interm_ic)
     // TODO(kevin): we should be able to parallelize this function similar to below.
-    unitarize(x, IS_interm_states, store_interm_ic, vnorms);
+    unitarize(x, IS_interm_states, initial_win_state, vnorms);
   else {
     /* Copy only needed intermediate conditions for this local process */
     for (int iinit = 0; iinit < ninit_local; iinit++) {
@@ -1342,11 +1345,11 @@ void OptimProblem::prepareIntermediateCondition(const Vec x, std::vector<std::ve
         int id = iinit_global*(nwindows-1) + index;
         // Store intermediate conditions (except initial condition)
         if (index > 0) {
-          VecGetSubVector(x, IS_interm_states[id-1], &store_interm_ic[iinit_global][index-1]);
+          VecGetSubVector(x, IS_interm_states[id-1], &initial_win_state[iinit_global][index-1]);
         }
         // Store next intermediate conditions for discontinuity penalty (except final window)
         if (index < nwindows-1) {
-          VecGetSubVector(x, IS_interm_states[id], &store_interm_ic[iinit_global][index]);
+          VecGetSubVector(x, IS_interm_states[id], &initial_win_state[iinit_global][index]);
         }
 
       } // for (int iwindow=0; iwindow<nwindows_local; iwindow++)

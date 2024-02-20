@@ -630,6 +630,8 @@ int main(int argc,char **argv)
         for (int k = 0; k < Nk; k++)
           printf("%.4E\t%.4E\t%.4E\t%.4E\n", amp[k], obj1[k], dJdx[k], error[k]);
       }
+
+      VecDestroy(&xperturb);
     }
   }
 
@@ -755,6 +757,7 @@ int main(int argc,char **argv)
     optimctx->rollOut(opt); // overwrite the intermediate initial conds in 'opt'
 
     // evaluate the fidelity and infidelity with evalF()
+    optimctx->unitarize_interm_ic = false;
     double final_obj = optimctx->evalF(opt, lambda); // store_interm = false
     if (mpirank_world == 0) {
       printf("Final fidelity: %e\n", optimctx->getFidelity());
@@ -1059,6 +1062,10 @@ int main(int argc,char **argv)
   delete mytimestepper;
   delete optimctx;
   delete output;
+
+  VecDestroy(&xinit);
+  VecDestroy(&grad);
+  VecDestroy(&lambda);
 
 
   /* Finallize Petsc */
