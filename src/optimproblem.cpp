@@ -83,12 +83,6 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   VecSet(lambda, 0.0);
   VecAssemblyBegin(lambda);
   VecAssemblyEnd(lambda);
-  double* ptrl;
-  VecGetArray(lambda, &ptrl);
-  for (int i=0; i<local_size; i++){
-    ptrl[i] = 2.0;
-  }
-  VecRestoreArray(lambda, &ptrl);
 
   // xinit also has the control parameters
   local_size = ninit_local * 2*timestepper->mastereq->getDimRho() * nwindows_local ;
@@ -100,17 +94,16 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   }
   VecCreateMPI(PETSC_COMM_WORLD, local_size, PETSC_DETERMINE, &xinit);
   VecSetFromOptions(xinit);
+  VecSet(xinit, 0.0);
   VecAssemblyBegin(xinit);
   VecAssemblyEnd(xinit);
+
 
   // test sizes
   int global_size;
   VecGetSize(xinit, &global_size);
   // printf("world=%d, time=%d, init=%d:  global size = %d, optimvars = %d, local_size=%d\n", mpirank_world, mpirank_time, mpirank_init, global_size, getNoptimvars(), local_size);
   assert(global_size == getNoptimvars());
-
-  /* allocate reduced gradient of timestepper */
-  VecDuplicate(xinit, &(timestepper->redgrad));
 
   /* Create index set to access the control from global vector */
   int nelems_alpha = 0;
@@ -132,6 +125,9 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   delete [] ids_all;
   VecCreateSeq(PETSC_COMM_SELF, ndesign, &x_alpha);
   VecScatterCreate(xinit, IS_alldesign, x_alpha, IS_alldesign, &scatter_alpha);
+
+  /* allocate reduced gradient of timestepper */
+  VecDuplicate(x_alpha, &(timestepper->redgrad));
 
   // Gather the processor distribution of xinit and lambda
   int istart_x, istart_lambda, istop_x, istop_lambda;
@@ -666,7 +662,8 @@ OptimProblem::~OptimProblem() {
 
 
 
-double OptimProblem::evalF(const Vec x, const Vec lambda_, const bool store_interm) {   // x = (alpha, interm.states), lambda = lagrange multipliers: dim(lambda) = dim(x_intermediatestates)
+double OptimProblem::evalF(const Vec x, const Vec lambda_, const bool store_interm) {
+  // x = (alpha, interm.states), lambda = lagrange multipliers: dim(lambda) = dim(x_intermediatestates)
 // NOTE:store_interm is an optional arg, defaults to false
 
   MasterEq* mastereq = timestepper->mastereq;
@@ -676,8 +673,8 @@ double OptimProblem::evalF(const Vec x, const Vec lambda_, const bool store_inte
 
   /* Pass control vector to oscillators */
   // x_alpha is set only on first processor. Need to communicate x_alpha to all processors here. 
-  VecScatterBegin(scatter_alpha, xinit, x_alpha, INSERT_VALUES, SCATTER_FORWARD);
-  VecScatterEnd(scatter_alpha, xinit, x_alpha, INSERT_VALUES, SCATTER_FORWARD);
+  VecScatterBegin(scatter_alpha, x, x_alpha, INSERT_VALUES, SCATTER_FORWARD);
+  VecScatterEnd(scatter_alpha, x, x_alpha, INSERT_VALUES, SCATTER_FORWARD);
   // Finally all processors set the controls
   mastereq->setControlAmplitudes(x_alpha); 
 
@@ -708,19 +705,16 @@ double OptimProblem::evalF(const Vec x, const Vec lambda_, const bool store_inte
         timestepper->mastereq->getRhoT0(iinit_global, ninit, initcond_type, initcond_IDs, rho_t0);
       }
 
-        // printf("%d: %d,%d Setting my initial condition iinit %d(%d), iwindow %d(%d)\n", mpirank_world, mpirank_time, mpirank_init, iinit_global, iinit, iwindow_global, iwindow);
-        // ISView(IS_interm_states[iwindow_global][iinit_global], PETSC_VIEWER_STDOUT_SELF);
-      Vec x0;
-      VecGetSubVector(x, IS_interm_states[iwindow_global][iinit_global], &x0);
-      // VecView(x0, PETSC_VIEWER_STDOUT_WORLD);
-
+      /* Solve the ODE in local time window */
       // TODO (SG): Fix timestepper output (-> initid, windowid.)
       // printf("%d|%d|%d: Solving ODE now, ic=%d, iwin=%d. \n", mpirank_world, mpirank_time, mpirank_init, iinit_global, iwindow_global);
-      if (iwindow_global == 0)
+      Vec x0;
+      VecGetSubVector(x, IS_interm_states[iwindow_global][iinit_global], &x0);
+      if (iwindow_global == 0) {
         finalstate = timestepper->solveODE(1, rho_t0, iwindow_global * timestepper->ntime);
-      else 
+      } else {
         finalstate = timestepper->solveODE(1, x0, iwindow_global * timestepper->ntime);
-
+      }
       VecRestoreSubVector(x, IS_interm_states[iwindow_global][iinit_global], &x0);
 
       /* Add to integral penalty term */
@@ -728,27 +722,13 @@ double OptimProblem::evalF(const Vec x, const Vec lambda_, const bool store_inte
       obj_penal_dpdm += obj_weights[iinit] * gamma_penalty_dpdm * timestepper->penalty_dpdm;
       obj_penal_energy += obj_weights[iinit] * gamma_penalty_energy* timestepper->energy_penalty_integral;
 
+      /* Get next window's initial state and lagrangian variable */
       // Everyone needs to participate in the scatter! THose need to be the LOCAL indicees!
       VecScatterBegin(scatter_xnext[iwindow][iinit], x, x_next, INSERT_VALUES, SCATTER_FORWARD);
       VecScatterEnd(scatter_xnext[iwindow][iinit], x, x_next, INSERT_VALUES, SCATTER_FORWARD); 
-
       Vec lag;
       // ISView(IS_interm_lambda[iwindow_global][iinit_global], PETSC_VIEWER_STDOUT_SELF);
       VecGetSubVector(lambda_, IS_interm_lambda[iwindow_global][iinit_global], &lag);
-
-      double *ptrx, *ptrl;
-      VecGetArray(x_next, &ptrx);
-      VecGetArray(lambda_, &ptrl);
-      if (iwindow_global != nwindows-1)
-        // printf("%d:%d|%d: Will be using from scatter[%d][%d]: xnext[0] = %f\n", mpirank_world, mpirank_time, mpirank_init, iwindow, iinit, ptrx[0]);
-      VecRestoreArray(x_next, &ptrl);
-      VecRestoreArray(lambda_, &ptrl);
-	    PetscBarrier((PetscObject)x); 
-
-      // if (iwindow_global == 2 && iinit_global == 0)
-      //   VecScatterView(scatter_xnext[iwindow_global][iinit_global], PETSC_VIEWER_STDOUT_SELF);
-	    // PetscBarrier((PetscObject)scatter_xnext[iwindow_global][iinit_global]); 
-
 
       /* Evaluate J(finalstate) and add to final-time cost */
       if (iwindow_global == nwindows-1){
@@ -774,7 +754,7 @@ double OptimProblem::evalF(const Vec x, const Vec lambda_, const bool store_inte
       else {
         // printf("%d|%d|%d: Eval constraints. \n", mpirank_world, mpirank_time, mpirank_init);
 
-        if (store_interm)
+        // if (store_interm)
           VecCopy(finalstate, store_interm_states[iinit][iwindow]);
 
         // eval || (Su - u) ||^2
@@ -786,10 +766,8 @@ double OptimProblem::evalF(const Vec x, const Vec lambda_, const bool store_inte
         VecDot(finalstate, lag, &cdot);   // c = lambda^T (Su - u)
         constraint += 0.5 * mu * qnorm2 - cdot;
       }
-
       VecRestoreSubVector(lambda_, IS_interm_lambda[iwindow_global][iinit_global], &lag);
     } // end for iwindow
-
     // printf("%d, (%d, %d): iinit obj_iinit: %f * (%1.14e + i %1.14e, Overlap=%1.14e + i %1.14e, Constraint=%1.14e\n", mpirank_world, mpirank_init, mpirank_time, obj_weights[iinit], obj_iinit_re, obj_iinit_im, fidelity_iinit_re, fidelity_iinit_im, constraint);
   } // end for iinit
 
@@ -827,16 +805,11 @@ double OptimProblem::evalF(const Vec x, const Vec lambda_, const bool store_inte
   obj_cost = optim_target->finalizeJ(obj_cost_re, obj_cost_im, frob2);
 
   /* Evaluate regularization objective += gamma/2 * ||x-x0||^2*/
-  double xnorm;
+  double x_alpha_norm;
   if (!gamma_tik_interpolate){  // ||x_alpha||^2
-    VecNorm(x_alpha, NORM_2, &xnorm);
+    VecNorm(x_alpha, NORM_2, &x_alpha_norm);
   } 
-  // else {
-    // VecCopy(x, xtmp);
-    // VecAXPY(xtmp, -1.0, xinit);    // xtmp =  x - x_0
-    // VecNorm(xtmp, NORM_2, &xnorm);
-  // }
-  obj_regul = gamma_tik / 2. * pow(xnorm,2.0);
+  obj_regul = gamma_tik / 2. * pow(x_alpha_norm,2.0);
 
   /* Sum, store and return objective value */
   objective = obj_cost + obj_regul + obj_penal + obj_penal_dpdm + obj_penal_energy + constraint;
@@ -855,7 +828,7 @@ double OptimProblem::evalF(const Vec x, const Vec lambda_, const bool store_inte
 
 
 
-void OptimProblem::evalGradF(const Vec x, const Vec lambda_, Vec G){
+void OptimProblem::evalGradF(const Vec x, const Vec lambda_, Vec G, const bool store_interm){
 
   MasterEq* mastereq = timestepper->mastereq;
 
@@ -864,20 +837,19 @@ void OptimProblem::evalGradF(const Vec x, const Vec lambda_, Vec G){
   Vec adjoint_ic = NULL;
 
   /* Pass design vector x to oscillators */
-  Vec x_alpha;
-  VecGetSubVector(x, IS_alpha, &x_alpha);
+  // x_alpha is set only on first processor. Need to communicate x_alpha to all processors here. 
+  VecScatterBegin(scatter_alpha, x, x_alpha, INSERT_VALUES, SCATTER_FORWARD);
+  VecScatterEnd(scatter_alpha, x, x_alpha, INSERT_VALUES, SCATTER_FORWARD);
+  // Finally all processors set the controls
   mastereq->setControlAmplitudes(x_alpha); 
 
   /* Reset Gradient */
   VecZeroEntries(G);
 
-  /* Derivative of regulatization term gamma / 2 ||x||^2 Note: currently optim variable is global. do this on only one rank in global communicator. */
-  if (mpirank_world == 0 && mpirank_time == 0) {
-    VecISAXPY(G, IS_alpha, gamma_tik, x_alpha);   // + gamma_tik * x
-    if (gamma_tik_interpolate){
-      // VecAXPY(G, -1.0*gamma_tik, xinit); // -gamma_tik * xinit
-    }
-  }
+  /* Derivative of regulatization term gamma / 2 ||x||^2 */
+  VecScale(x_alpha, gamma_tik);
+  VecScatterBegin(scatter_alpha, x_alpha, G, INSERT_VALUES, SCATTER_REVERSE);
+  VecScatterEnd(scatter_alpha, x_alpha, G, INSERT_VALUES, SCATTER_REVERSE);
 
   /*  Iterate over initial condition */
   obj_cost = 0.0;
@@ -894,53 +866,44 @@ void OptimProblem::evalGradF(const Vec x, const Vec lambda_, Vec G){
   double constraint = 0.0;
   double frob2 = 0.0; // Neede for generalized infidelity
   for (int iinit = 0; iinit < ninit_local; iinit++) {
-
-    /* Prepare the initial condition */
-    int iinit_global = mpirank_init * ninit_local + iinit;
-    int initid;
-    if ( mpirank_time == 0 || mpirank_time == mpisize_time -1 ) {
-      // Note: first rank needs it as initial condition. last rank needs it to prepare the target state.
-      initid = timestepper->mastereq->getRhoT0(iinit_global, ninit, initcond_type, initcond_IDs, rho_t0);
-    }
-
-    /* If gate optimiztion, compute the target state rho^target = Vrho(0)V^dagger */
-    if (mpirank_time == mpisize_time-1) {
-      optim_target->prepare(rho_t0);
-    }
-
     /* Iterate over local time windows */
     for (int iwindow=0; iwindow<nwindows_local; iwindow++){
-      // Solve forward from starting point.
+
+      int iinit_global = mpirank_init * ninit_local + iinit;
       int iwindow_global = mpirank_time * nwindows_local + iwindow ;
-      int n0 = iwindow_global * timestepper->ntime; // First time-step index for this window.
-      // printf("%d: Local window %d , n0=%d\n", mpirank_time, iwindow, n0);
-      Vec x0;
-      if (mpirank_time == 0 && iwindow == 0) {
-        x0 = rho_t0; 
-      } else {
-        // int id = iinit_global*(nwindows-1) + index-1;
-        // printf("%d, %d: iinit %d, iwindow %d, starting from global id = %d\n", mpirank_time, mpirank_init, iinit, iwindow, id);
-        VecGetSubVector(x, IS_interm_states[iwindow_global][iinit_global], &x0);
-        // VecView(x0, NULL);
+
+      /* Prepare the initial condition */
+      int initid;
+      if ( mpirank_time == 0 || mpirank_time == mpisize_time -1 ) {
+        // Note: first rank needs it as initial condition. last rank needs it to prepare the target state.
+        initid = timestepper->mastereq->getRhoT0(iinit_global, ninit, initcond_type, initcond_IDs, rho_t0);
       }
+      Vec x0;
+      VecGetSubVector(x, IS_interm_states[iwindow_global][iinit_global], &x0);
 
-      /* --- Solve primal --- */
-      // if (mpirank_time == 0) printf("%d: %d FWD. ", mpirank_init, initid);
-
-      /* Run forward with initial condition rho_t0 */
-      // TODO (SG): Fix timestepper output (-> initid, windowid)
-      finalstate = timestepper->solveODE(initid, x0, n0);
+      // Solve forward from starting point.
+      if (iwindow_global == 0) {
+        finalstate = timestepper->solveODE(initid, rho_t0, iwindow_global * timestepper->ntime);
+      } else {
+        finalstate = timestepper->solveODE(initid, x0, iwindow_global * timestepper->ntime);
+      }
+      VecRestoreSubVector(x, IS_interm_states[iwindow_global][iinit_global], &x0);
 
       /* Add to integral penalty term */
       obj_penal += obj_weights[iinit] * gamma_penalty * timestepper->penalty_integral;
-
-      /* Add to second derivative dpdm integral penalty term */
       obj_penal_dpdm += obj_weights[iinit] * gamma_penalty_dpdm * timestepper->penalty_dpdm;
-      /* Add to energy integral penalty term */
       obj_penal_energy += obj_weights[iinit] * gamma_penalty_energy * timestepper->energy_penalty_integral;
 
+      // Get next window's initial state, needed for the constraints. And lagrangian vars.
+      // Everyone needs to participate in the scatter! Those need to be the LOCAL indicees!
+      VecScatterBegin(scatter_xnext[iwindow][iinit], x, x_next, INSERT_VALUES, SCATTER_FORWARD);
+      VecScatterEnd(scatter_xnext[iwindow][iinit], x, x_next, INSERT_VALUES, SCATTER_FORWARD); 
+      Vec lag;
+      VecGetSubVector(lambda_, IS_interm_lambda[iwindow_global][iinit_global], &lag);
+
       /* Evaluate J(finalstate) and add to final-time cost */
-      if (mpirank_time == mpisize_time-1 && iwindow == nwindows_local-1) {
+      if (iwindow_global == nwindows-1) {
+
         /* Store the final state for the Schroedinger solver */
         if (timestepper->mastereq->lindbladtype == LindbladType::NONE)
           VecCopy(finalstate, store_finalstates[iinit]);
@@ -948,13 +911,12 @@ void OptimProblem::evalGradF(const Vec x, const Vec lambda_, Vec G){
         /* Evaluate J(finalstate) and add to final-time cost */
         double obj_iinit_re = 0.0;
         double obj_iinit_im = 0.0;
-        double frob2_iinit;    // new term needed for the generalized infidelity
+        double frob2_iinit;    
+        optim_target->prepare(rho_t0);
         optim_target->evalJ(finalstate,  &obj_iinit_re, &obj_iinit_im, &frob2_iinit);
-
         obj_cost_re += obj_weights[iinit] * obj_iinit_re;
         obj_cost_im += obj_weights[iinit] * obj_iinit_im;
         frob2 += frob2_iinit / ninit;
-
         /* Add to final-time fidelity */
         double fidelity_iinit_re = 0.0;
         double fidelity_iinit_im = 0.0;
@@ -965,48 +927,43 @@ void OptimProblem::evalGradF(const Vec x, const Vec lambda_, Vec G){
       /* Else, add to constraint. */
       else {
         /* Store the intermediate state for the Schroedinger solver */
-        if (timestepper->mastereq->lindbladtype == LindbladType::NONE)
-          VecCopy(finalstate, store_interm_states[iinit][iwindow]);
-
-        // int id = iinit_global*(nwindows-1) + index;
-        Vec xnext, lag;
-        VecGetSubVector(x, IS_interm_states[iwindow_global][iinit_global], &xnext);
-        VecGetSubVector(lambda_, IS_interm_lambda[iwindow_global][iinit_global], &lag);
-        VecAXPY(finalstate, -1.0, xnext);  // finalstate = S(u_{i-1}) - u_i
+        // if (store_interm) // TODO: WHY WAS THIS HERE? NEEDED?
+        VecCopy(finalstate, store_interm_states[iinit][iwindow]);
 
         // TODO(kevin): templatize this for various penalty functionals.
         double cdot, qnorm2;
+        VecAXPY(finalstate, -1.0, x_next);  // finalstate = S(u_{i-1}) - u_i
         VecDot(finalstate, finalstate, &qnorm2); // q = || (Su - u) ||^2
-        VecDot(finalstate, lag, &cdot);   // c = lambda^T (Su - u)
         interm_discontinuity += qnorm2;
+
+        VecDot(finalstate, lag, &cdot);   // c = lambda^T (Su - u)
         constraint += 0.5 * mu * qnorm2 - cdot;
-        // printf("%d: Window %d, add to constraint taking from id=%d. c=%f\n", mpirank_time, iwindow, id, cdot);
       }
+      VecRestoreSubVector(lambda_, IS_interm_lambda[iwindow_global][iinit_global], &lag);
 
       /* If Lindblas solver, compute adjoint for this initial condition. Otherwise (Schroedinger solver), compute adjoint only after all initial conditions have been propagated through (separate loop below) */
       if (timestepper->mastereq->lindbladtype != LindbladType::NONE) {
         if (mpirank_time == 0)
           printf("WARNING: Multiple shooting adjoint is not yet tested for Lindblas solver!\n");
-        // if (mpirank_time == 0) printf("%d: %d BWD.", mpirank_init, initid);
+      //   // if (mpirank_time == 0) printf("%d: %d BWD.", mpirank_init, initid);
 
-        /* Reset adjoint */
-        VecZeroEntries(rho_t0_bar);
+      //   /* Reset adjoint */
+      //   VecZeroEntries(rho_t0_bar);
 
-        /* Terminal condition for adjoint variable: Derivative of final time objective J */
-        double obj_cost_re_bar, obj_cost_im_bar, frob2_bar;
-        optim_target->finalizeJ_diff(obj_cost_re, obj_cost_im, &obj_cost_re_bar, &obj_cost_im_bar, &frob2_bar);
-        optim_target->evalJ_diff(finalstate, rho_t0_bar, obj_weights[iinit]*obj_cost_re_bar, obj_weights[iinit]*obj_cost_im_bar, 1./ninit*frob2_bar);
+      //   /* Terminal condition for adjoint variable: Derivative of final time objective J */
+      //   double obj_cost_re_bar, obj_cost_im_bar, frob2_bar;
+      //   optim_target->finalizeJ_diff(obj_cost_re, obj_cost_im, &obj_cost_re_bar, &obj_cost_im_bar, &frob2_bar);
+      //   optim_target->evalJ_diff(finalstate, rho_t0_bar, obj_weights[iinit]*obj_cost_re_bar, obj_weights[iinit]*obj_cost_im_bar, 1./ninit*frob2_bar);
 
-        /* Derivative of time-stepping */
-        adjoint_ic = timestepper->solveAdjointODE(initid, rho_t0_bar, finalstate, obj_weights[iinit] * gamma_penalty, obj_weights[iinit]*gamma_penalty_dpdm, obj_weights[iinit]*gamma_penalty_energy, n0);
+      //   /* Derivative of time-stepping */
+      //   adjoint_ic = timestepper->solveAdjointODE(initid, rho_t0_bar, finalstate, obj_weights[iinit] * gamma_penalty, obj_weights[iinit]*gamma_penalty_dpdm, obj_weights[iinit]*gamma_penalty_energy, n0);
 
-        if (!(mpirank_time == 0 && iwindow == 0)) {
-          // int id = iinit_global*(nwindows-1) + index-1;
-          VecISAXPY(G, IS_interm_states[iwindow_global][iinit_global], 1.0, adjoint_ic);
-        }
-
-        /* Add to optimizers's gradient */
-        VecAXPY(G, 1.0, timestepper->redgrad);
+      //   if (!(mpirank_time == 0 && iwindow == 0)) {
+      //     // int id = iinit_global*(nwindows-1) + index-1;
+      //     VecISAXPY(G, IS_interm_states[iwindow_global][iinit_global], 1.0, adjoint_ic);
+      //   }
+      //   /* Add to optimizers's gradient */
+      //   VecAXPY(G, 1.0, timestepper->redgrad);
       }
     } // for (int iwindow=0; iwindow<nwindows_local; iwindow++)
   } // for (int iinit = 0; iinit < ninit_local; iinit++) {
@@ -1046,16 +1003,12 @@ void OptimProblem::evalGradF(const Vec x, const Vec lambda_, Vec G){
   obj_cost = optim_target->finalizeJ(obj_cost_re, obj_cost_im, frob2);
 
   /* Evaluate regularization objective += gamma/2 * ||x||^2*/
-  double xnorm;
+  double x_alpha_norm;
+  VecScale(x_alpha, 1.0/gamma_tik); // revert scaling at beginning of evalGradF
   if (!gamma_tik_interpolate){  // ||x||^2
-    VecNorm(x_alpha, NORM_2, &xnorm);
+    VecNorm(x_alpha, NORM_2, &x_alpha_norm);
   } 
-  // else {
-    // VecCopy(x, xtmp);
-    // VecAXPY(xtmp, -1.0, xinit);    // xtmp =  x_k - x_0
-    // VecNorm(xtmp, NORM_2, &xnorm);
-  // }
-  obj_regul = gamma_tik / 2. * pow(xnorm,2.0);
+  obj_regul = gamma_tik / 2. * pow(x_alpha_norm,2.0);
 
   /* Sum, store and return objective value */
   objective = obj_cost + obj_regul + obj_penal + obj_penal_dpdm + obj_penal_energy + constraint;
@@ -1065,80 +1018,83 @@ void OptimProblem::evalGradF(const Vec x, const Vec lambda_, Vec G){
 
     // Iterate over all initial conditions 
     for (int iinit = 0; iinit < ninit_local; iinit++) {
-      int iinit_global = mpirank_init * ninit_local + iinit;
-
-      /* Recompute the initial state and target */
-      int initid;
-      if ( mpirank_time == 0 || mpirank_time == mpisize_time -1 ) {
-        initid = timestepper->mastereq->getRhoT0(iinit_global, ninit, initcond_type, initcond_IDs, rho_t0);
-      }
-      if (mpirank_time == mpisize_time-1) {
-        optim_target->prepare(rho_t0);
-      }
-      
       /* Iterate over local time windows */
       for (int iwindow=0; iwindow<nwindows_local; iwindow++) {
+
+        int iinit_global = mpirank_init * ninit_local + iinit;
         int iwindow_global = mpirank_time*nwindows_local + iwindow ; 
-        int n0 = iwindow_global * timestepper->ntime; // First time-step index for this window.
 
         /* Reset adjoint */
         VecZeroEntries(rho_t0_bar);
 
+        /* Recompute the initial state */
+        int initid;
+        if ( iwindow_global == 0 || iwindow_global == nwindows -1 ) {
+          initid = timestepper->mastereq->getRhoT0(iinit_global, ninit, initcond_type, initcond_IDs, rho_t0);
+        }
+
+        /* Get next window's initial state and lagrangian variable */
+        VecScatterBegin(scatter_xnext[iwindow][iinit], x, x_next, INSERT_VALUES, SCATTER_FORWARD);
+        VecScatterEnd(scatter_xnext[iwindow][iinit], x, x_next, INSERT_VALUES, SCATTER_FORWARD); 
+        Vec lag;
+        VecGetSubVector(lambda_, IS_interm_lambda[iwindow_global][iinit_global], &lag);
+
+        VecSet(disc, 0.0);
+
         /* Get final primal state and adjoint terminal condition at each local time window */
-        if (mpirank_time == mpisize_time-1 && iwindow == nwindows_local-1) {
+        if (iwindow_global == nwindows-1) {
           /* Get the last time step (finalstate) */
           finalstate = store_finalstates[iinit];
 
           /* Terminal condition for adjoint variable: Derivative of final time objective J */
           double obj_cost_re_bar, obj_cost_im_bar, frob2_bar;
+          optim_target->prepare(rho_t0);
           optim_target->finalizeJ_diff(obj_cost_re, obj_cost_im, &obj_cost_re_bar, &obj_cost_im_bar, &frob2_bar);
           optim_target->evalJ_diff(finalstate, rho_t0_bar, obj_weights[iinit]*obj_cost_re_bar, obj_weights[iinit]*obj_cost_im_bar, frob2_bar/ninit);
         }
         else {
+          /* Get the last time step in this window */
           finalstate = store_interm_states[iinit][iwindow];
+
+          /* Set terminal adjoint condition from discontinuity*/
           VecCopy(finalstate, disc);
-
-          // int id = iinit_global*(nwindows-1) + index;
-          Vec xnext, lag;
-          VecGetSubVector(x, IS_interm_states[iwindow_global][iinit_global], &xnext);
-          VecGetSubVector(lambda_, IS_interm_lambda[iwindow_global][iinit_global], &lag);
-          VecAXPY(disc, -1.0, xnext);  // finalstate = S(u_{i-1}) - u_i
-
-          // TODO(kevin): templatize this for various penalty functionals.
-          VecAXPY(rho_t0_bar, mu, disc);  // d q / d Su
-          VecAXPY(rho_t0_bar, -1.0, lag); // - d c / d Su
-
-          /* add immediate gradient w.r.t the xnext. */
-          VecISAXPY(G, IS_interm_states[iwindow_global][iinit_global], -mu, disc);
-          VecISAXPY(G, IS_interm_states[iwindow_global][iinit_global], 1.0, lag);
+          VecAXPY(disc, -1.0, x_next);     // disc = final - xnext
+          VecAXPY(rho_t0_bar, mu, disc);  // rho_t0_bar = mu *( final - xnext) = d q / d Su
+          VecAXPY(rho_t0_bar, -1.0, lag); // rho_t0_bar -= lambda => - d c / d Su
         }
 
-        /* Derivative of time-stepping */
-        adjoint_ic = timestepper->solveAdjointODE(initid, rho_t0_bar, finalstate, obj_weights[iinit] * gamma_penalty, obj_weights[iinit]*gamma_penalty_dpdm, obj_weights[iinit]*gamma_penalty_energy, n0);
+        /* add discontinuity gradient w.r.t the xnext. Everyone needs to participate in the scatter. */
+        VecScale(disc, -mu);
+        VecScatterBegin(scatter_xnext[iwindow][iinit], disc, G, ADD_VALUES, SCATTER_REVERSE);
+        VecScatterEnd(scatter_xnext[iwindow][iinit], disc, G, ADD_VALUES, SCATTER_REVERSE);
+        VecScatterBegin(scatter_xnext[iwindow][iinit], lag, G, ADD_VALUES, SCATTER_REVERSE);
+        VecScatterEnd(scatter_xnext[iwindow][iinit], lag, G, ADD_VALUES, SCATTER_REVERSE);
+       
+        VecRestoreSubVector(lambda_, IS_interm_lambda[iwindow_global][iinit_global], &lag);
 
-        if (!(mpirank_time == 0 && iwindow == 0)) {
-          // int id = iinit_global*(nwindows-1) + index-1;
+        /* Derivative of time-stepping */
+        // printf("%d: %d|%d SOLVE ODE BWD in [%d/%d][%d/%d] now.\n", mpirank_world, mpirank_time, mpirank_init, iwindow, iwindow_global, iinit, iinit_global);
+        adjoint_ic = timestepper->solveAdjointODE(initid, rho_t0_bar, finalstate, obj_weights[iinit] * gamma_penalty, obj_weights[iinit]*gamma_penalty_dpdm, obj_weights[iinit]*gamma_penalty_energy, iwindow_global * timestepper->ntime);
+
+        // Add adjoint initial conditions to gradient. This is local, each proc sets its own windows/initialconditions. 
+        if (!(iwindow_global==0)) {
           VecISAXPY(G, IS_interm_states[iwindow_global][iinit_global], 1.0, adjoint_ic);
         }
 
-        /* Add to optimizers's gradient */
-        VecAXPY(G, 1.0, timestepper->redgrad);
-      } // for (int iwindow=0; iwindow<nwindows_local; iwindow++)
-    } // end of initial condition loop 
+        /* Add to optimizers's gradient. All scatter to the first processor. */
+        VecScatterBegin(scatter_alpha, timestepper->redgrad, G, ADD_VALUES, SCATTER_REVERSE);
+        VecScatterEnd(scatter_alpha, timestepper->redgrad, G, ADD_VALUES, SCATTER_REVERSE);
+      } // end of local iwindow loop
+    } // end of local iinit loop 
   } // end of adjoint for Schroedinger
 
-  /* Sum up the gradient from all initial condition processors */
-  PetscScalar* grad; 
-  VecGetArray(G, &grad);
-  for (int i=0; i<getNoptimvars(); i++) {
-    // mygrad[i] = grad[i];
-  }
-  // MPI_Allreduce(mygrad, grad, getNoptimvars(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD); // This is comm_init AND comm_time.
-  VecRestoreArray(G, &grad);
-
-  Vec g_alpha;
-  VecGetSubVector(G, IS_alpha, &g_alpha);
-  mastereq->setControlAmplitudes_diff(g_alpha);
+  // ??? REALLY UNSURE ABOUT THE FOLLOWING! PROBABLY WRONG!!
+  // Vec g_alpha;
+  // VecScatterBegin(scatter_alpha, G, g_alpha, INSERT_VALUES, SCATTER_FORWARD);
+  // VecScatterEnd(scatter_alpha, G, g_alpha, INSERT_VALUES, SCATTER_FORWARD);
+  // mastereq->setControlAmplitudes_diff(g_alpha);
+  // VecScatterBegin(scatter_alpha, g_alpha, G, ADD_VALUES, SCATTER_REVERSE);
+  // VecScatterEnd(scatter_alpha, g_alpha, G ADD_VALUES, SCATTER_REVERSE);
 
   /* Compute and store gradient norm */
   VecNorm(G, NORM_2, &(gnorm));

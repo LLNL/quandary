@@ -129,7 +129,7 @@ class OptimProblem {
   double evalF(const Vec x, const Vec lambda_, const bool store_interm=false);
 
   /* Evaluate gradient \nabla F(x) */
-  void evalGradF(const Vec x, const Vec lambda_, Vec G);
+  void evalGradF(const Vec x, const Vec lambda_, Vec G, const bool store_interm=false);
 
   /* Run optimization solver, starting from initial guess xinit */
   void solve(Vec xinit);
