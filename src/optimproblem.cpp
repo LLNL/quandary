@@ -993,23 +993,20 @@ void OptimProblem::evalGradF(const Vec x, const Vec lambda_, Vec G){
         Vec lag;
         VecGetSubVector(lambda_, IS_interm_lambda[iwindow_global][iinit_global], &lag);
 
-        /* Get the last time step in this window */
-        VecCopy(store_finalstates[iwindow][iinit], finalstate);
-
         /* Get adjoint terminal condition */
         if (iwindow_global == nwindows-1) {
           /* Set terminal adjoint condition from derivative of final time objective J */
           double obj_cost_re_bar, obj_cost_im_bar, frob2_bar;
           optim_target->prepare(rho_t0);
           optim_target->finalizeJ_diff(obj_cost_re, obj_cost_im, &obj_cost_re_bar, &obj_cost_im_bar, &frob2_bar);
-          optim_target->evalJ_diff(finalstate, rho_t0_bar, obj_weights[iinit]*obj_cost_re_bar, obj_weights[iinit]*obj_cost_im_bar, frob2_bar/ninit);
+          optim_target->evalJ_diff(store_finalstates[iwindow][iinit], rho_t0_bar, obj_weights[iinit]*obj_cost_re_bar, obj_weights[iinit]*obj_cost_im_bar, frob2_bar/ninit);
 
-          // Reset disc, in case it was set in previous iterations.
+          /* Reset temporary disc variable, in case it had been set in prev iteration */
           VecSet(disc, 0.0);
         }
         else {
           /* Set terminal adjoint condition from discontinuity*/
-          VecCopy(finalstate, disc);
+          VecCopy(store_finalstates[iwindow][iinit], disc);
           VecAXPY(disc, -1.0, x_next);     // disc = final - xnext
           VecAXPY(rho_t0_bar, mu, disc);  // rho_t0_bar = mu *( final - xnext) = d q / d Su
           VecAXPY(rho_t0_bar, -1.0, lag); // rho_t0_bar -= lambda => - d c / d Su
@@ -1019,9 +1016,9 @@ void OptimProblem::evalGradF(const Vec x, const Vec lambda_, Vec G){
         VecScale(disc, -mu);
         VecScatterBegin(scatter_xnext[iwindow][iinit], disc, G, ADD_VALUES, SCATTER_REVERSE);
         VecScatterEnd(scatter_xnext[iwindow][iinit], disc, G, ADD_VALUES, SCATTER_REVERSE);
-       
+
         /* Solve adjoint ODE */
-        adjoint_ic = timestepper->solveAdjointODE(1, rho_t0_bar, finalstate, obj_weights[iinit] * gamma_penalty, obj_weights[iinit]*gamma_penalty_dpdm, obj_weights[iinit]*gamma_penalty_energy, iwindow_global * timestepper->ntime);
+        adjoint_ic = timestepper->solveAdjointODE(1, rho_t0_bar, store_finalstates[iwindow][iinit], obj_weights[iinit] * gamma_penalty, obj_weights[iinit]*gamma_penalty_dpdm, obj_weights[iinit]*gamma_penalty_energy, iwindow_global * timestepper->ntime);
 
         /* Receive the discontinuity gradient wrt xnext */
         VecScatterBegin(scatter_xnext[iwindow][iinit], lag, G, ADD_VALUES, SCATTER_REVERSE);
