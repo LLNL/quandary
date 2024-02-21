@@ -1008,21 +1008,23 @@ void OptimProblem::evalGradF(const Vec x, const Vec lambda_, Vec G){
           /* Set terminal adjoint condition from discontinuity*/
           VecCopy(store_finalstates[iwindow][iinit], disc);
           VecAXPY(disc, -1.0, x_next);     // disc = final - xnext
-          VecAXPY(rho_t0_bar, mu, disc);  // rho_t0_bar = mu *( final - xnext) = d q / d Su
+          VecScale(disc, -mu);
+          VecAXPY(rho_t0_bar, -1.0, disc);  // rho_t0_bar = mu *( final - xnext) = d q / d Su
           VecAXPY(rho_t0_bar, -1.0, lag); // rho_t0_bar -= lambda => - d c / d Su
         }
 
-        /* Start adding discontinuity gradient w.r.t xnext. Everyone needs to participate in the scatter. */
-        VecScale(disc, -mu);
+        /* Start scattering discontinuity gradient w.r.t xnext. Everyone needs to participate in the scatter. */
+        int lag_exists_here;
+        VecGetSize(lag, &lag_exists_here);
+        if (lag_exists_here> 0)
+          VecAXPY(disc, 1.0, lag);
         VecScatterBegin(scatter_xnext[iwindow][iinit], disc, G, ADD_VALUES, SCATTER_REVERSE);
-        VecScatterEnd(scatter_xnext[iwindow][iinit], disc, G, ADD_VALUES, SCATTER_REVERSE);
 
         /* Solve adjoint ODE */
         adjoint_ic = timestepper->solveAdjointODE(1, rho_t0_bar, store_finalstates[iwindow][iinit], obj_weights[iinit] * gamma_penalty, obj_weights[iinit]*gamma_penalty_dpdm, obj_weights[iinit]*gamma_penalty_energy, iwindow_global * timestepper->ntime);
 
-        /* Receive the discontinuity gradient wrt xnext */
-        VecScatterBegin(scatter_xnext[iwindow][iinit], lag, G, ADD_VALUES, SCATTER_REVERSE);
-        VecScatterEnd(scatter_xnext[iwindow][iinit], lag, G, ADD_VALUES, SCATTER_REVERSE);
+        /* Finalize the scatter */
+        VecScatterEnd(scatter_xnext[iwindow][iinit], disc, G, ADD_VALUES, SCATTER_REVERSE);
 
         // Add adjoint initial conditions to gradient. This is local, each proc sets its own windows/initialconditions. 
         if (!(iwindow_global==0)) {
