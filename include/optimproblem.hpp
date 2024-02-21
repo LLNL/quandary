@@ -28,8 +28,7 @@ class OptimProblem {
   Vec rho_t0_bar;                        /* Adjoint of ODE initial condition */
   InitialConditionType initcond_type;    /* Type of initial conditions */
   std::vector<int> initcond_IDs;         /* Integer list for pure-state initialization */
-  std::vector<Vec> store_finalstates;    /* Storage for last time steps for each initial condition */
-  std::vector<std::vector<Vec>> store_interm_states;    /* Storage for last time steps of each local time window for each initial condition */
+  std::vector<std::vector<Vec>> store_finalstates;    /* Storage for last time steps for each window and each initial condition */
 
   OptimTarget* optim_target;      /* Storing the optimization goal */
 
@@ -80,16 +79,8 @@ class OptimProblem {
   std::vector<double> initguess_fromfile;      /* Stores the initial guess, if read from file */
   // double* mygrad;  /* Auxiliary */
     
-  // Vec xtmp;                        /* Temporary storage for optim vars */
-  Vec disc;                           /* Temporary storage for state discontinuity. size = 2*mastereq->getDim() */
+  Vec disc;                        /* Temporary storage for a state. size = 2*mastereq->getDim() */
   
-  // Additional variables needed for multiple time intervals
-  int nAlpha; /* total number of B-spline coefficients */
-  int nEss, nTot, nMat; /* number of elements in one initial condition matrix */
-  int nTimeIntervals; /* number of time intervals */
-  std::vector<int> Tsteps; /* number of time steps in each time interval */
-  std::vector<double> T0int; /* starting time for each time interval */
-
   public: 
     Output* output;                 /* Store a reference to the output */
     TimeStepper* timestepper;       /* Store a reference to the time-stepping scheme */
@@ -125,10 +116,10 @@ class OptimProblem {
   int getMaxIter()     { return maxiter; };
 
   /* Evaluate the objective function F(x) */
-  double evalF(const Vec x, const Vec lambda_, const bool store_interm=false);
+  double evalF(const Vec x, const Vec lambda_);
 
   /* Evaluate gradient \nabla F(x) */
-  void evalGradF(const Vec x, const Vec lambda_, Vec G, const bool store_interm=false);
+  void evalGradF(const Vec x, const Vec lambda_, Vec G);
 
   /* Run optimization solver, starting from initial guess xinit */
   void solve(Vec xinit);

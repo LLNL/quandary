@@ -33,34 +33,15 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
     exit(1);
   }
 
-  /*  If Schroedingers solver, allocate storage for the final states at time T for each initial condition. Schroedinger's solver does not store the time-trajectories during forward ODE solve, but instead recomputes the primal states during the adjoint solve. Therefore we need to store the terminal condition for the backwards primal solve. Be aware that the final states stored here will be overwritten during backwards computation!! */
-  if (timestepper->mastereq->lindbladtype == LindbladType::NONE) {
+  /*  Allocate storage for the final states at the end of each time window */
+  store_finalstates.resize(nwindows_local);
+  for (int m = 0; m < nwindows_local; m++) {
+    store_finalstates[m].clear();
     for (int i = 0; i < ninit_local; i++) {
       Vec state;
       VecCreateSeq(PETSC_COMM_SELF, 2*timestepper->mastereq->getDim(), &state);
       VecSetFromOptions(state);
-      store_finalstates.push_back(state);
-    }
-  }
-
-  /* NOTE(kevin): store intermediate final states regardless of master equation type. */
-  store_interm_states.resize(ninit_local);
-  for (int i = 0; i < ninit_local; i++) {
-    /*
-      store_interm_states[i][index] is the final timestep of index-th local time window, for i-th initial condition.
-      (index = 0, 1, ..., nwindows_local-1)
-      For mpirank_time = mpisize_time - 1,
-        store_interm_states[i] has a size of (nwindows_local - 1), excluding final state.
-    */
-    store_interm_states[i].clear();
-    for (int iwindow = 0; iwindow < nwindows_local; iwindow++) {
-      if (mpirank_time == mpisize_time-1 && iwindow == nwindows_local-1)
-        break;
-      
-      Vec state;
-      VecCreateSeq(PETSC_COMM_SELF, 2*timestepper->mastereq->getDim(), &state);
-      VecSetFromOptions(state);
-      store_interm_states[i].push_back(state);
+      store_finalstates[m].push_back(state);
     }
   }
 
@@ -104,7 +85,6 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   // test sizes
   int global_size;
   VecGetSize(xinit, &global_size);
-  // printf("world=%d, time=%d, init=%d:  global size = %d, optimvars = %d, local_size=%d\n", mpirank_world, mpirank_time, mpirank_init, global_size, getNoptimvars(), local_size);
   assert(global_size == getNoptimvars());
 
   /* Create index set to access the control from global vector */
@@ -597,23 +577,19 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   /* Allocate auxiliary vector */
   // mygrad = new double[getNoptimvars()];
 
-  /* Allocate temporary storage of a state discontinuity */
+  /* Allocate temporary storage of a state vector */
   VecCreateSeq(PETSC_COMM_SELF,2*timestepper->mastereq->getDim(), &disc);
   VecSetFromOptions(disc);
+  VecSet(disc, 0.0);
+  VecAssemblyBegin(disc);
+  VecAssemblyEnd(disc);
 
 
   if (gamma_tik_interpolate) {
     // DISABLE FOR NOW
     printf("Warning: Disabling gamma_tik_interpolate for multiple shooting.\n");
     gamma_tik_interpolate = false;
-    // VecCreateSeq(PETSC_COMM_SELF, ndesign, &xinit);
-    // VecSetFromOptions(xinit);
-    // VecZeroEntries(xinit);
   }
-
-  // VecCreateSeq(PETSC_COMM_SELF, ndesign, &xtmp);
-  // VecSetFromOptions(xtmp);
-  // VecZeroEntries(xtmp);
 }
 
 
@@ -628,17 +604,12 @@ OptimProblem::~OptimProblem() {
   VecDestroy(&lambda);
   VecDestroy(&xlower);
   VecDestroy(&xupper);
-  // VecDestroy(&xprev);
-  // if (gamma_tik_interpolate) {
-    // VecDestroy(&xinit);
-  // }
   VecDestroy(&disc);
 
-  for (int i = 0; i < store_finalstates.size(); i++) {
-    VecDestroy(&(store_finalstates[i]));
-
-    for (int k = 0; k < store_interm_states[i].size(); k++)
-      VecDestroy(&(store_interm_states[i][k]));
+  for (int m = 0; m < store_finalstates.size(); m++) {
+    for (int i = 0; i < store_finalstates[m].size(); i++) {
+      VecDestroy(&(store_finalstates[m][i]));
+    }
   }
 
   for (int m=0; m<IS_interm_states.size(); m++){
@@ -659,10 +630,8 @@ OptimProblem::~OptimProblem() {
 }
 
 
-
-double OptimProblem::evalF(const Vec x, const Vec lambda_, const bool store_interm) {
-  // x = (alpha, interm.states), lambda = lagrange multipliers: dim(lambda) = dim(x_intermediatestates)
-// NOTE:store_interm is an optional arg, defaults to false
+// EvalF optim var. x = (alpha, interm.states), 
+double OptimProblem::evalF(const Vec x, const Vec lambda_) {
 
   MasterEq* mastereq = timestepper->mastereq;
 
@@ -711,12 +680,14 @@ double OptimProblem::evalF(const Vec x, const Vec lambda_, const bool store_inte
         timestepper->mastereq->getRhoT0(iinit_global, ninit, initcond_type, initcond_IDs, rho_t0);
       }
 
-      /* Solve the ODE in the local time window */
+      /* Solve the ODE in the local time window and store Su_i */
       if (iwindow_global == 0) {
         finalstate = timestepper->solveODE(1, rho_t0, iwindow_global * timestepper->ntime);
       } else {
         finalstate = timestepper->solveODE(1, x0, iwindow_global * timestepper->ntime);
       }
+      VecCopy(finalstate, store_finalstates[iwindow][iinit]);
+
 
       /* Add to integral penalty term */
       obj_penal += obj_weights[iinit] * gamma_penalty * timestepper->penalty_integral;
@@ -746,8 +717,6 @@ double OptimProblem::evalF(const Vec x, const Vec lambda_, const bool store_inte
       }
       /* Else, add to constraint. */
       else {
-        // if (store_interm)
-          VecCopy(finalstate, store_interm_states[iinit][iwindow]);
         // eval || (Su - u) ||^2 and lambda^T(Su-u)
         double cdot, qnorm2;
         VecAXPY(finalstate, -1.0, x_next);  // finalstate = S(u_{i-1}) - u_i
@@ -821,7 +790,7 @@ double OptimProblem::evalF(const Vec x, const Vec lambda_, const bool store_inte
 
 
 
-void OptimProblem::evalGradF(const Vec x, const Vec lambda_, Vec G, const bool store_interm){
+void OptimProblem::evalGradF(const Vec x, const Vec lambda_, Vec G){
 
   MasterEq* mastereq = timestepper->mastereq;
 
@@ -883,6 +852,7 @@ void OptimProblem::evalGradF(const Vec x, const Vec lambda_, Vec G, const bool s
       } else {
         finalstate = timestepper->solveODE(1, x0, iwindow_global * timestepper->ntime);
       }
+      VecCopy(finalstate, store_finalstates[iwindow][iinit]);
 
       /* Add to integral penalty term */
       obj_penal += obj_weights[iinit] * gamma_penalty * timestepper->penalty_integral;
@@ -895,11 +865,6 @@ void OptimProblem::evalGradF(const Vec x, const Vec lambda_, Vec G, const bool s
       /* Evaluate J(finalstate) and add to final-time cost */
       if (iwindow_global == nwindows-1) {
 
-        /* Store the final state for the Schroedinger solver */
-        if (timestepper->mastereq->lindbladtype == LindbladType::NONE)
-          VecCopy(finalstate, store_finalstates[iinit]);
-
-        /* Evaluate J(finalstate) and add to final-time cost */
         double obj_iinit_re = 0.0;
         double obj_iinit_im = 0.0;
         double frob2_iinit;    
@@ -917,12 +882,9 @@ void OptimProblem::evalGradF(const Vec x, const Vec lambda_, Vec G, const bool s
       }
       /* Else, add to constraint. */
       else {
-        /* Store the intermediate state for the Schroedinger solver */
-        // if (store_interm) // TODO: WHY WAS THIS HERE? NEEDED?
-        VecCopy(finalstate, store_interm_states[iinit][iwindow]);
         // eval || (Su - u) ||^2 and lambda^T(Su-u)
         double cdot, qnorm2;
-        VecAXPY(finalstate, -1.0, x_next);  // finalstate = S(u_{i-1}) - u_i
+        VecAXPY(finalstate, -1.0, x_next);  // finalstate = Su - u
         VecDot(finalstate, finalstate, &qnorm2); // q = || (Su - u) ||^2
         interm_discontinuity += qnorm2;
         VecDot(finalstate, lag, &cdot);   // c = lambda^T (Su - u)
@@ -936,7 +898,8 @@ void OptimProblem::evalGradF(const Vec x, const Vec lambda_, Vec G, const bool s
       /* If Lindblas solver, compute adjoint for this initial condition. Otherwise (Schroedinger solver), compute adjoint only after all initial conditions have been propagated through (separate loop below) */
       if (timestepper->mastereq->lindbladtype != LindbladType::NONE) {
         if (mpirank_time == 0)
-          printf("WARNING: Multiple shooting adjoint is not yet tested for Lindblas solver!\n");
+          printf("Multiple shooting adjoint is not yet implemented for Lindblas solver!\n");
+          exit(1);
       //   // if (mpirank_time == 0) printf("%d: %d BWD.", mpirank_init, initid);
 
       //   /* Reset adjoint */
@@ -1030,22 +993,21 @@ void OptimProblem::evalGradF(const Vec x, const Vec lambda_, Vec G, const bool s
         Vec lag;
         VecGetSubVector(lambda_, IS_interm_lambda[iwindow_global][iinit_global], &lag);
 
-        VecSet(disc, 0.0);
+        /* Get the last time step in this window */
+        VecCopy(store_finalstates[iwindow][iinit], finalstate);
 
-        /* Get final primal state and adjoint terminal condition at each local time window */
+        /* Get adjoint terminal condition */
         if (iwindow_global == nwindows-1) {
-          /* Get the last time step (finalstate) */
-          finalstate = store_finalstates[iinit];
           /* Set terminal adjoint condition from derivative of final time objective J */
           double obj_cost_re_bar, obj_cost_im_bar, frob2_bar;
           optim_target->prepare(rho_t0);
           optim_target->finalizeJ_diff(obj_cost_re, obj_cost_im, &obj_cost_re_bar, &obj_cost_im_bar, &frob2_bar);
           optim_target->evalJ_diff(finalstate, rho_t0_bar, obj_weights[iinit]*obj_cost_re_bar, obj_weights[iinit]*obj_cost_im_bar, frob2_bar/ninit);
+
+          // Reset disc, in case it was set in previous iterations.
+          VecSet(disc, 0.0);
         }
         else {
-          /* Get the last time step in this window */
-          finalstate = store_interm_states[iinit][iwindow];
-
           /* Set terminal adjoint condition from discontinuity*/
           VecCopy(finalstate, disc);
           VecAXPY(disc, -1.0, x_next);     // disc = final - xnext
@@ -1196,8 +1158,8 @@ void OptimProblem::rollOut(Vec x){
 /* lag += - prev_mu * ( S(u_{i-1}) - u_i ) */
 void OptimProblem::updateLagrangian(const double prev_mu, const Vec x, Vec lambda) {
 
-  /* Forward solve to store intermediate discontinuities */
-  evalF(x, lambda, true);
+  /* Forward solve to store the final states. This might already always be the case... */
+  evalF(x, lambda);
 
   /* Iterate over local initial conditions */
   for (int iinit = 0; iinit < ninit_local; iinit++) {
@@ -1212,11 +1174,10 @@ void OptimProblem::updateLagrangian(const double prev_mu, const Vec x, Vec lambd
         continue;
 
       /* Get next time-windows initial state and eval discontinuity */
-      Vec xnext;
       VecScatterBegin(scatter_xnext[iwindow][iinit], x, x_next, INSERT_VALUES, SCATTER_FORWARD);
       VecScatterEnd(scatter_xnext[iwindow][iinit], x, x_next, INSERT_VALUES, SCATTER_FORWARD);
-      VecCopy(store_interm_states[iinit][iwindow], disc);
-      VecAXPY(disc, -1.0, xnext);  // finalstate = S(u_{i-1}) - u_i
+      VecCopy(store_finalstates[iwindow][iinit], disc);
+      VecAXPY(disc, -1.0, x_next);  // disc = S(u_{i-1}) - u_i
 
       /* lag += - prev_mu * ( S(u_{i-1}) - u_i ) */
       Vec lag;
