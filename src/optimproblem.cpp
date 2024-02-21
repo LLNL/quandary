@@ -532,8 +532,10 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
     }
   }
   /* intermediate conditions must be unbounded. Setting a large range. */
-  double very_large = 1.0e20;
-  for (int k = getNdesign(); k < getNoptimvars(); k++) {
+  double very_large = 1.0e15;
+  VecGetOwnershipRange(xlower, &ilow, &iupp);
+  if (mpirank_world==0) ilow += getNdesign(); // skip design on first processor
+  for (int k = ilow; k < iupp; k++) {
     VecSetValue(xlower, k, -very_large, INSERT_VALUES);
     VecSetValue(xupper, k, very_large, INSERT_VALUES);
   }
@@ -1101,7 +1103,7 @@ void OptimProblem::getStartingPoint(Vec xinit){
   /* Set the initial guess for the intermediate states. Here, roll-out forward propagation. TODO: Read from file*/
   // Note: THIS Currently is entirely serial! No parallel initial conditions, no parallel windows. 
   if (mpirank_world==0) {
-    printf(" -> Rollout initialization of intermediate states (entirely sequential). This might take a while...\n");
+    printf(" -> Rollout initialization of intermediate states (sequential in time windows parallel in initial conditions. This might take a while...\n");
   }
   rollOut(xinit);
 }
@@ -1109,38 +1111,31 @@ void OptimProblem::getStartingPoint(Vec xinit){
 void OptimProblem::rollOut(Vec x){
 
   /* Roll-out forward propagation. */
-  for (int iinit = 0; iinit < ninit; iinit++) {
-    // printf("Initial condition %d\n", iinit);
-    // int iinit_global = mpirank_init * ninit_local + iinit;
-    int initid = timestepper->mastereq->getRhoT0(iinit, ninit, initcond_type, initcond_IDs, rho_t0);
-    Vec x0 = rho_t0; 
+  for (int iinit = 0; iinit < ninit_local; iinit++) {
+    int iinit_global = mpirank_init * ninit_local + iinit;
 
-    for (int iwindow=0; iwindow<nwindows; iwindow++){
+    // Get the initial condition
+    timestepper->mastereq->getRhoT0(iinit_global, ninit, initcond_type, initcond_IDs, rho_t0);
+
+    for (int iwindow_global=0; iwindow_global<nwindows-1; iwindow_global++){
+
       // Solve forward from starting point.
-      int n0 = iwindow * timestepper->ntime; // First time-step index for this window.
-
-
-      // printf("%d|%d|%d: iinit %d iwindow %d S(x0) in rollout \n", mpirank_world, mpirank_time, mpirank_init, iinit, iwindow);
-
-      // printf(" Solve in window %d, n0=%d\n", iwindow, n0);
-      x0 = timestepper->solveODE(initid, x0, n0); // Note: the initial condition (x0) is over-written to give the initial condition for next window
+      Vec xfinal = timestepper->solveODE(1, rho_t0, iwindow_global * timestepper->ntime); 
+      VecCopy(xfinal, rho_t0);
 
       /* Potentially, store the intermediate results in the given vector */
-      if (x != NULL && iwindow < nwindows-1) {
-        // int id = iinit*(nwindows-1) + iwindow;
-        // printf(" Storing into id=%d\n", id);
-      
-        int size;
-        ISGetLocalSize(IS_interm_states[iwindow+1][iinit], &size);
-        if (size > 0) {
-          // printf("%d|%d|%d -> Copying size %d into iwindow %d iinit %d\n", mpirank_world, mpirank_time, mpirank_init, size, iwindow+1, iinit);
-          VecISCopy(x, IS_interm_states[iwindow+1][iinit], SCATTER_FORWARD, x0); 
-        }
+      int size;
+      ISGetLocalSize(IS_interm_states[iwindow_global+1][iinit_global], &size);
+      if (size > 0) {
+        // printf("%d|%d|%d -> Copying size %d into iwindow %d iinit %d\n", mpirank_world, mpirank_time, mpirank_init, size, iwindow+1, iinit);
+        VecISCopy(x, IS_interm_states[iwindow_global+1][iinit_global], SCATTER_FORWARD, rho_t0);
       }
+
+      PetscBarrier((PetscObject) x);
     } // end for iwindow
   } // end for initial condition
 
-  // VecView(x, PETSC_VIEWER_STDOUT_WORLD);
+  VecView(x, PETSC_VIEWER_STDOUT_WORLD);
 }
 
 /* lag += - prev_mu * ( S(u_{i-1}) - u_i ) */
