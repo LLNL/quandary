@@ -1117,13 +1117,14 @@ void OptimProblem::rollOut(Vec x){
     // Get the initial condition
     timestepper->mastereq->getRhoT0(iinit_global, ninit, initcond_type, initcond_IDs, rho_t0);
 
+    // Iterate over all (global) time windows
     for (int iwindow_global=0; iwindow_global<nwindows-1; iwindow_global++){
 
       // Solve forward from starting point.
       Vec xfinal = timestepper->solveODE(1, rho_t0, iwindow_global * timestepper->ntime); 
       VecCopy(xfinal, rho_t0);
 
-      /* Potentially, store the intermediate results in the given vector */
+      /* Store the final state of this window in x. Only the processor who owns this window/initial contidion should do the copy */
       int size;
       ISGetLocalSize(IS_interm_states[iwindow_global+1][iinit_global], &size);
       if (size > 0) {
@@ -1132,10 +1133,9 @@ void OptimProblem::rollOut(Vec x){
       }
 
       PetscBarrier((PetscObject) x);
-    } // end for iwindow
-  } // end for initial condition
-
-  VecView(x, PETSC_VIEWER_STDOUT_WORLD);
+    } // end for iwindow global
+  } // end for initial condition local
+  // VecView(x, PETSC_VIEWER_STDOUT_WORLD);
 }
 
 /* lag += - prev_mu * ( S(u_{i-1}) - u_i ) */
