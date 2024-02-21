@@ -87,16 +87,6 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   VecGetSize(xinit, &global_size);
   assert(global_size == getNoptimvars());
 
-  /* Create index set to access the control from global vector */
-  int nelems_alpha = 0;
-  if (mpirank_world == 0) nelems_alpha = ndesign;
-  int *ids_alpha = new int[nelems_alpha];
-  for (int i=0; i<nelems_alpha; i++){
-    ids_alpha[i] = i;
-  }
-  ISCreateGeneral(PETSC_COMM_WORLD, nelems_alpha, ids_alpha, PETSC_COPY_VALUES, &IS_alpha);
-  delete [] ids_alpha;
-
   // Create scatter context for x_alpha
   int *ids_all = new int[ndesign];
   for (int i=0; i< ndesign; i++){
@@ -618,7 +608,6 @@ OptimProblem::~OptimProblem() {
       ISDestroy(&(IS_interm_lambda[m][ic]));
     }
   }
-  ISDestroy(&IS_alpha);
 
   VecScatterDestroy(&scatter_alpha);
   for (int m=0; m<scatter_xnext.size();m++){

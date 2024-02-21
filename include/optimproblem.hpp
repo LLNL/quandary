@@ -44,7 +44,6 @@ class OptimProblem {
 
   std::vector<std::vector<IS>> IS_interm_states;    // Index set for accessing intermediate states from global vector. Ordering [window][initial condition]
   std::vector<std::vector<IS>> IS_interm_lambda;    // Index set for accessing intermediate lagrange multipliers from global vector. Ordering [window][initial condition]
-  IS IS_alpha;                         // Vector stride for accessing the control parameters from global vector
   Vec x_alpha;
   VecScatter scatter_alpha;
   Vec x_next;
