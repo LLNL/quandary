@@ -48,6 +48,7 @@ TimeStepper::TimeStepper(MapParam config, MasterEq* mastereq_, int ntime_global_
   VecCreateSeq(PETSC_COMM_SELF, dim, &x);
   VecSetFromOptions(x);
   VecZeroEntries(x);
+  VecDuplicate(x, &xprimal);
 
   /* NOTE(kevin): we delegate this allocation to OptimProblem. */
   redgrad = PETSC_NULLPTR;
@@ -72,6 +73,7 @@ TimeStepper::~TimeStepper() {
     VecDestroy(&(store_states[n]));
   }
   VecDestroy(&x);
+  VecDestroy(&xprimal);
   if (redgrad) VecDestroy(&redgrad);
 }
 
@@ -174,11 +176,9 @@ Vec TimeStepper::solveAdjointODE(int initid, Vec rho_t0_bar, Vec finalstate, dou
   /* Reset gradient */
   VecZeroEntries(redgrad);
 
-  /* Set terminal adjoint condition */
+  /* Set terminal adjoint condition and terminal primal state */
   VecCopy(rho_t0_bar, x);
-
-  /* Set terminal primal state */
-  Vec xprimal = finalstate;
+  VecCopy(finalstate, xprimal);
 
   /* Store states at N, N-1, N-2 for dpdm penalty */
   if (gamma_penalty_dpdm > 1e-13){
