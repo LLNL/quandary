@@ -82,7 +82,6 @@ class OptimProblem {
     
   // Vec xtmp;                        /* Temporary storage for optim vars */
   Vec disc;                           /* Temporary storage for state discontinuity. size = 2*mastereq->getDim() */
-  Vec lambda_incre;                   /* Temporary storage for incrementing lagrange multipliers. size = nstate */
   
   // Additional variables needed for multiple time intervals
   int nAlpha; /* total number of B-spline coefficients */
@@ -96,8 +95,8 @@ class OptimProblem {
     TimeStepper* timestepper;       /* Store a reference to the time-stepping scheme */
     Vec xlower, xupper;              /* Optimization bounds */
     Vec xprev;                       /* design vector at previous iteration */
-    Vec xinit;                       /* Storing initial design vector, if gamma_tik_interpolate=true, aka if tikhonov is ||x - x_0||^2 rather than ||x||^2 */
-    Vec lambda;                     /* Pointer to lagrange multiplier, not owned by OptimProblem. TODO. */
+    Vec xinit;                       /* Storing initial optim. var */
+    Vec lambda;                      /* Lagrange multiplier */
     double mu;                       /* Penalty strength to intermediate state discontinuities */
 
   /* Constructor */

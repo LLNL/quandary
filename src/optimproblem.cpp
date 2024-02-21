@@ -75,7 +75,7 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   if (mpirank_world == 0 && !quietmode) std::cout<< "noptimvars = " << ndesign << "(controls) + " << nstate << "(states) = " << ndesign + nstate  << std::endl;
 
   /* Allocate optimization variable xinit and lambda */
-  // Determine local rank sizes. Adding design to the very first processor. TODO: Divide by number of local time windows, add ghost layers
+  // Determine local rank sizes. Adding design to the very first processor. TODO: Divide by number of local time windows, add ghost layers for alpha
   PetscInt local_size = ninit_local * 2*timestepper->mastereq->getDimRho() * nwindows_local ;
   if (mpirank_time == mpisize_time-1) local_size -= ninit_local * 2*timestepper->mastereq->getDimRho(); // remove last windows states
   VecCreateMPI(PETSC_COMM_WORLD, local_size, PETSC_DETERMINE, &lambda);
@@ -601,9 +601,6 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   VecCreateSeq(PETSC_COMM_SELF,2*timestepper->mastereq->getDim(), &disc);
   VecSetFromOptions(disc);
 
-  /* Allocate temporary storage of a lagrange multiplier update */
-  VecDuplicate(lambda, &lambda_incre);
-
 
   if (gamma_tik_interpolate) {
     // DISABLE FOR NOW
@@ -636,7 +633,6 @@ OptimProblem::~OptimProblem() {
     // VecDestroy(&xinit);
   // }
   VecDestroy(&disc);
-  VecDestroy(&lambda_incre);
 
   for (int i = 0; i < store_finalstates.size(); i++) {
     VecDestroy(&(store_finalstates[i]));
@@ -1085,6 +1081,11 @@ void OptimProblem::evalGradF(const Vec x, const Vec lambda_, Vec G, const bool s
   } // end of adjoint for Schroedinger
 
   // TODO: REALLY UNSURE ABOUT HOW TO DO setControlAmplitudes_diff. Disabling.
+  if (timestepper->mastereq->getOscillator(0)->control_enforceBC &&
+      nwindows>1) {
+    printf("TODO: enforce control boundary currently not available with multiple time windows. Exiting now.\n");
+    exit(1);
+  }
   // Vec g_alpha;
   // VecScatterBegin(scatter_alpha, G, g_alpha, INSERT_VALUES, SCATTER_FORWARD);
   // VecScatterEnd(scatter_alpha, G, g_alpha, INSERT_VALUES, SCATTER_FORWARD);
@@ -1149,10 +1150,10 @@ void OptimProblem::getStartingPoint(Vec xinit){
 
   /* Set the initial guess for the intermediate states. Here, roll-out forward propagation. TODO: Read from file*/
   // Note: THIS Currently is entirely serial! No parallel initial conditions, no parallel windows. 
-  // if (mpirank_world==0) {
-  //   printf(" -> Rollout initialization of intermediate states (entirely sequential). This might take a while...\n");
-  // }
-  // rollOut(xinit);
+  if (mpirank_world==0) {
+    printf(" -> Rollout initialization of intermediate states (entirely sequential). This might take a while...\n");
+  }
+  rollOut(xinit);
 }
 
 void OptimProblem::rollOut(Vec x){
@@ -1200,42 +1201,32 @@ void OptimProblem::updateLagrangian(const double prev_mu, const Vec x, Vec lambd
 
   /* Iterate over local initial conditions */
   for (int iinit = 0; iinit < ninit_local; iinit++) {
-    int iinit_global = mpirank_init * ninit_local + iinit;
-
     /* Iterate over local time windows */
     for (int iwindow = 0; iwindow < nwindows_local; iwindow++){
+
+      int iinit_global = mpirank_init * ninit_local + iinit;
+      int iwindow_global = mpirank_time*nwindows_local + iwindow ; 
+
       // Exclude the very last time window 
-      if (mpirank_time == mpisize_time-1 && iwindow == nwindows_local-1)
+      if (iwindow_global == nwindows-1)
         continue;
 
-      VecCopy(store_interm_states[iinit][iwindow], disc);
-
-      int index = mpirank_time * nwindows_local + iwindow ;
-      int id = iinit_global*(nwindows-1) + index;
+      /* Get next time-windows initial state and eval discontinuity */
       Vec xnext;
-      printf("\n\n TODO here again.\n");
-      exit(1);
-      VecGetSubVector(x, IS_interm_states[id][0], &xnext);
+      VecScatterBegin(scatter_xnext[iwindow][iinit], x, x_next, INSERT_VALUES, SCATTER_FORWARD);
+      VecScatterEnd(scatter_xnext[iwindow][iinit], x, x_next, INSERT_VALUES, SCATTER_FORWARD);
+      VecCopy(store_interm_states[iinit][iwindow], disc);
       VecAXPY(disc, -1.0, xnext);  // finalstate = S(u_{i-1}) - u_i
 
       /* lag += - prev_mu * ( S(u_{i-1}) - u_i ) */
-      VecISAXPY(lambda_incre, IS_interm_lambda[id][0], -prev_mu, disc);
+      Vec lag;
+      VecGetSubVector(lag, IS_interm_lambda[iwindow_global][iinit_global], &lag);
+      VecAXPY(lag, -prev_mu, disc);
+      VecRestoreSubVector(lag, IS_interm_lambda[iwindow_global][iinit_global], &lag);
+
+      printf("\n\n TODO: Check the updateLagrangian function!\n");
     }
   }
-
-  /* Sum up the increment from all comm_init AND comm_time processors */
-  // Note: Reusing allocated temporary storage 'mygrad' here, since its size is already larger than getNstate().
-  PetscScalar* lambda_incre_ptr; 
-  VecGetArray(lambda_incre, &lambda_incre_ptr);
-  for (int i=0; i<getNstate(); i++) {
-    // mygrad[i] = lambda_incre_ptr[i];
-  }
-  // MPI_Allreduce(mygrad, lambda_incre_ptr, getNstate(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-  VecRestoreArray(lambda_incre, &lambda_incre_ptr);
-
-  /* update global Lagrangian */
-  VecAXPY(lambda, 1.0, lambda_incre);
-
 }
 
 void OptimProblem::getSolution(Vec* param_ptr){

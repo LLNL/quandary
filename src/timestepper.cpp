@@ -111,7 +111,7 @@ Vec TimeStepper::solveODE(int initid, Vec rho_t0, int n0){
   penalty_integral = 0.0;
   penalty_dpdm = 0.0;
   energy_penalty_integral = 0.0;
-  for (int n = 0; n < ntime; n++){ // TODO: Do local PinT time stepping
+  for (int n = 0; n < ntime; n++){ 
 
     /* current time */
     double tstart = (n0 + n) * dt;
