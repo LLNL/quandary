@@ -4,13 +4,20 @@ using DelimitedFiles
 
 d, h = readdlm("optim_history.dat",header=true)
 
-pl = plot(d[:,1],d[:,2],lab="Obj",yscale=:log10,xlabel="Iterations")
-plot!(d[:,1],d[:,3],lab="Norm(grad)",yscale=:log10)
-plot!(d[:,1],d[:,6],lab="Infid",yscale=:log10)
-plot!(d[:,1],d[:,7],lab="Tik",yscale=:log10)
-plot!(d[:,1],d[:,10],lab="Ctrl Energy",yscale=:log10)
-plot!(d[:,1],d[:,11].+1e-10,lab="Discont",yscale=:log10)
+pld = plot(abs.(d[:,12]).+1e-10,lab="Norm^2(disc)",yscale=:log10,xlabel="Iterations")
+ylims!(pld,1e-6,30)
 
-ylims!(1e-6,30)
+pl = plot(abs.(d[:,2]).+1e-10,lab="|Obj|",yscale=:log10,xlabel="Iterations")
+plot!(d[:,3],lab="Norm(grad)",yscale=:log10)
+plot!(d[:,6],lab="Last Infid",yscale=:log10)
 
-println("Plot handle in 'pl'")
+plot!(d[:,10],lab="Ctrl Energy",yscale=:log10)
+plot!(abs.(d[:,11]).+1e-10,lab="|Constraint|",yscale=:log10)
+
+if minimum(d[:,7]) > 0.0
+    plot!(d[:,7],lab="Tik",yscale=:log10)
+end
+
+ylims!(1e-7,1e-2)
+
+println("Plot handles in 'pl' and 'pld'")

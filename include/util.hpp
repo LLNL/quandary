@@ -106,3 +106,8 @@ void copyLast(std::vector<Tval>& fillme, int tosize){
       // std::cout<<std::endl;
     // }
 };
+
+// TODO(kevin): need to figure out how to parallelize these.
+// bool isUnitary(const Vec &x, const std::vector<IS> &IS_interm_states, const int &ninit, const int &nwindows);
+void complex_inner_product(const Vec &x, const Vec &y, double &re, double &im);
+

@@ -471,6 +471,7 @@ int main(int argc,char **argv)
     /* All variables are saved as binary files, to save the storage size and time. */
     if (mpirank_world == 0) {
       FILE* file;
+      printf("Read starting point from optimvars.bin\n");
           
       sprintf(filename, "%s/mu.bin", output->datadir.c_str());
       file = fopen(filename, "rb");
@@ -500,8 +501,9 @@ int main(int argc,char **argv)
     MPI_Bcast(ptr, optimctx->getNstate(), MPI_DOUBLE, 0, MPI_COMM_WORLD);
     VecRestoreArray(lambda, &ptr);
   }
-  else
-    optimctx->getStartingPoint(xinit);
+  else{
+    optimctx->getStartingPoint(xinit); 
+  }
 
   /* Some output */
   if (mpirank_world == 0)
@@ -524,7 +526,7 @@ int main(int argc,char **argv)
   double gnorm = 0.0;
   /* --- Solve primal --- */
   if (runtype == RunType::SIMULATION) {
-    if (mpirank_world == 0 && !quietmode) printf("\nStarting primal solver... \n");
+    if (mpirank_world == 0 && !quietmode) printf("\nStarting primal (simulation) solver... \n");
     
     // VecCopy(xinit, optimctx->xinit); // Store the initial guess
 
@@ -612,6 +614,8 @@ int main(int argc,char **argv)
         for (int k = 0; k < Nk; k++)
           printf("%.4E\t%.4E\t%.4E\t%.4E\n", amp[k], obj1[k], dJdx[k], error[k]);
       }
+
+      VecDestroy(&xperturb);
     }
   }
 
@@ -619,55 +623,127 @@ int main(int argc,char **argv)
   if (runtype == RunType::OPTIMIZATION) {
     bool update_lagrangian = config.GetBoolParam("update_lagrangian", false);
 
-    if (update_lagrangian)
-        optimctx->updateLagrangian(old_mu, xinit, lambda);
+    double mu_factor=config.GetDoubleParam("optim_mu_factor", 1.0);
+    bool warm_starting = config.GetBoolParam("tao_warmstart", false);
+    PetscBool yes_no = (warm_starting ? PETSC_TRUE: PETSC_FALSE);
+    optimctx->setTaoWarmStart(yes_no);
 
     // VecCopy(xinit, optimctx->xinit); // Store the initial guess
     if (mpirank_world == 0 && !quietmode) printf("\nStarting Optimization solver ... \n");
     StartTime = MPI_Wtime(); 
-    optimctx->solve(xinit); // calling TAO to solve the optimization problem
+
+    int Nouter = optimctx->getAlMaxOuter(); // max number of outer iterations
+    // set TAO convergence criteria
+    // TaoSetTolerances(tao, optimctx->getGradAbsTol(), PETSC_DEFAULT, optimctx->getGradRelTol());
+    double final_norm2_disc_tol = optimctx->getIntermTol();
+    optimctx->setIntermTol(final_norm2_disc_tol); // starting tolerance for equality constraints
+
+    double discont_factor=5.0;
+    if (mpirank_world == 0){
+      printf("AL max # outer iterations = %d\n", Nouter);
+      printf("Initial norm^2(disc) threshold = %e\n", optimctx->getIntermTol());
+      printf("Initial quadratic penalty param, mu = %e\n", optimctx->mu);
+    } 
+
+    // Augmented Lagrangian loop
+    for (int iouter=0; iouter < Nouter; iouter++){
+      if (mpirank_world == 0) printf("\nStarting outer AL iteration #%d ... \n", iouter);
+      optimctx->solve(xinit); // calling TAO to solve the optimization problem
+      
+      TaoConvergedReason reason;
+      optimctx->getExitReason(&reason);
+      if (mpirank_world == 0) std::cout << "\nTaoConvergedReason: " << reason << std::endl;
+
+      if (mpirank_world == 0 && !quietmode) printf("\nBefore getSolution AL iteration #%d ... \n", iouter);
+      optimctx->getSolution(&opt); // converged design variables copied into opt
+
+      // check if the solution meets our convergence criteria
+      if ((optimctx->getCostT() <= optimctx->getInfTol()) && (optimctx->getDiscontinuity() < final_norm2_disc_tol)) {
+        if (mpirank_world == 0) printf("Inner optimization converged to a continuous trajectory with small final time cost and small discontinuity.\n");
+        break;
+      } 
+
+      double norm2_disc = optimctx->getDiscontinuity();
+      if (mpirank_world == 0) printf("\nnorm^2(discontiuity) = %e\n", norm2_disc);
+
+      if (update_lagrangian){
+        if (mpirank_world == 0) printf("\nUpdating the Lagrangian, AL iteration #%d ... \n", iouter);
+        optimctx->updateLagrangian(optimctx->mu, opt, lambda);
+
+      //   FILE* file;
+      //   PetscScalar *ptr;
+      //   sprintf(filename, "%s/lagrange-outer-%d.bin", output->datadir.c_str(),iouter+1);
+      //   file = fopen(filename, "wb");
+      //   VecGetArray(lambda, &ptr);
+      //   fwrite(ptr, sizeof(ptr[0]), optimctx->getNstate(), file);
+      //   VecRestoreArray(lambda, &ptr);
+      //   fclose(file);
+      //   printf("Saved lambda variables on file %s containing %d float64\n", filename, optimctx->getNstate());
+      }
+
+      // update penalty parameter
+      optimctx->mu = mu_factor * optimctx->mu; // increasing quadratic penalty param
+      if (mpirank_world == 0) printf("Updated quadratic penalty param, mu = %e\n", optimctx->mu);
+
+      // update convergence tolerance
+      // optimctx->setIntermTol( optimctx->getIntermTol()/discont_factor ); //reduce norm^2(disc) tolerance
+      if (mpirank_world == 0) printf("Updated norm^2(disc) threshold = %e\n", optimctx->getIntermTol());
+
+      /* update initial condition for next iteration */
+      VecCopy(opt,xinit); 
+    } 
+    
+
     EndTime = MPI_Wtime();
     optimctx->getSolution(&opt); // final design variables copied into opt
 
-    // TODO(kevin): Highly recommend to use hdf5 for I/O. and save all data into one single file.
-    /* All variables are saved as binary files, to save the storage size and time. */
-    if (mpirank_world == 0) {
-      FILE* file;
-      PetscScalar *ptr;
-          
-      sprintf(filename, "%s/mu.bin", output->datadir.c_str());
-      file = fopen(filename, "wb");
-      fwrite(&(optimctx->mu), sizeof(optimctx->mu), 1, file);
-      fclose(file);
-      
-      sprintf(filename, "%s/optimvars.bin", output->datadir.c_str());
-      file = fopen(filename, "wb");
-      VecGetArray(opt, &ptr);
-      fwrite(ptr, sizeof(ptr[0]), optimctx->getNoptimvars(), file);
-      VecRestoreArray(opt, &ptr);
-      fclose(file);
+    int totalIterations = optimctx->getTotalIterations();
+    if (mpirank_world == 0) printf("Total number of optimizer iterations = %d\n", totalIterations);
 
-      sprintf(filename, "%s/lagrange.bin", output->datadir.c_str());
-      file = fopen(filename, "wb");
-      VecGetArray(lambda, &ptr);
-      fwrite(ptr, sizeof(ptr[0]), optimctx->getNstate(), file);
-      VecRestoreArray(lambda, &ptr);
-      fclose(file);
-    }
+    /* All variables are saved as binary files, to save the storage size and time. */
+    // if (mpirank_world == 0) {
+    //   FILE* file;
+    //   PetscScalar *ptr;
+          
+    //   sprintf(filename, "%s/mu.bin", output->datadir.c_str());
+    //   file = fopen(filename, "wb");
+    //   fwrite(&(optimctx->mu), sizeof(optimctx->mu), 1, file);
+    //   fclose(file);
+    //   printf("Saved mu on file %s containing 1 float64\n", filename);
+      
+    //   sprintf(filename, "%s/optimvars.bin", output->datadir.c_str());
+    //   file = fopen(filename, "wb");
+    //   VecGetArray(opt, &ptr);
+    //   fwrite(ptr, sizeof(ptr[0]), optimctx->getNoptimvars(), file);
+    //   VecRestoreArray(opt, &ptr);
+    //   fclose(file);
+    //   printf("Saved scaled optimization variable on file %s containing %d float64\n", filename, optimctx->getNoptimvars());
+
+    //   sprintf(filename, "%s/lagrange.bin", output->datadir.c_str());
+    //   file = fopen(filename, "wb");
+    //   VecGetArray(lambda, &ptr);
+    //   fwrite(ptr, sizeof(ptr[0]), optimctx->getNstate(), file);
+    //   VecRestoreArray(lambda, &ptr);
+    //   fclose(file);
+    //   printf("Saved lambda variable on file %s containing %d float64\n", filename, optimctx->getNstate());
+    // }
 
     // Calculate rollout infidelity and fidelity
+    /* turn off unitarization for rolling out. */
+    // optimctx->setUnitarizeIntermediate(false);
     if (mpirank_world == 0) {
       printf("\n *** Rolling out the final state ***\n");
     }
     optimctx->rollOut(opt); // overwrite the intermediate initial conds in 'opt'
 
-    // evaluate the fidelity and infidelity with evalF()
-    double final_obj = optimctx->evalF(opt, lambda);
+    /* evaluate the final fidelity with evalF() */
+    optimctx->setUnitarizeIntermediate(false);
+    double final_obj = optimctx->evalF(opt, lambda); 
     if (mpirank_world == 0) {
       printf("Final fidelity: %e\n", optimctx->getFidelity());
       printf("Final INfidelity: %e\n", optimctx->getCostT());
     }
-  }
+  } // end runtype == optimization
 
   /* Only evaluate and write control pulses (no propagation) */
   if (runtype == RunType::EVALCONTROLS) {
@@ -678,13 +754,12 @@ int main(int argc,char **argv)
   }
 
   /* Output */
-  if (runtype != RunType::OPTIMIZATION){
+  if (runtype != RunType::OPTIMIZATION){ 
 
     optimctx->output->writeOptimFile(
       optimctx->getObjective(), gnorm, 0.0, optimctx->getFidelity(), optimctx->getCostT(), optimctx->getRegul(),
-      optimctx->getPenalty(), optimctx->getPenaltyDpDm(), optimctx->getPenaltyEnergy(), optimctx->getDiscontinuity());
+      optimctx->getPenalty(), optimctx->getPenaltyDpDm(), optimctx->getPenaltyEnergy(), optimctx->getConstraint(), optimctx->getDiscontinuity());
   }
-
 
   /* --- Finalize --- */
 
@@ -724,7 +799,7 @@ int main(int argc,char **argv)
 #if TEST_FD_GRAD
   if (mpirank_world == 0)  {
     printf("\n\n#########################\n");
-    printf(" FD Testing for Gradient ... \n");
+    printf(" FD Testing the Gradient ... \n");
     printf("#########################\n\n");
   }
 
@@ -741,9 +816,10 @@ int main(int argc,char **argv)
   /* --- Solve adjoint --- */
   if (mpirank_world == 0) printf("\nRunning optimizer eval_grad_f...\n");
   optimctx->evalGradF(xinit, lambda, grad);
-  VecView(grad, PETSC_VIEWER_STDOUT_WORLD);
+  //VecView(grad, PETSC_VIEWER_STDOUT_WORLD);
   
 
+  double max_err=0.0;
   /* --- Finite Differences --- */
   if (mpirank_world == 0) printf("\nFD...\n");
   for (PetscInt i=0; i<optimctx->getNoptimvars(); i++){
@@ -751,10 +827,12 @@ int main(int argc,char **argv)
 
     /* Evaluate f(p+eps)*/
     VecSetValue(xinit, i, EPS, ADD_VALUES);
+    VecAssemblyBegin(xinit); VecAssemblyEnd(xinit);
     obj_pert1 = optimctx->evalF(xinit, lambda);
 
     /* Evaluate f(p-eps)*/
     VecSetValue(xinit, i, -2*EPS, ADD_VALUES);
+    VecAssemblyBegin(xinit); VecAssemblyEnd(xinit);
     obj_pert2 = optimctx->evalF(xinit, lambda);
 
     /* Eval FD and error */
@@ -762,13 +840,19 @@ int main(int argc,char **argv)
     double err = 0.0;
     double gradi; 
     VecGetValues(grad, 1, &i, &gradi);
-    if (fd != 0.0) err = (gradi - fd) / fd;
+    if (fabs(fd) >= 1e-12) 
+      err = fabs(gradi - fd) / fd;
+    else
+      err = fabs(gradi - fd);
     if (mpirank_world == 0) printf(" %d: obj %1.14e, obj_pert1 %1.14e, obj_pert2 %1.14e, fd %1.14e, grad %1.14e, err %1.14e\n", i, obj_org, obj_pert1, obj_pert2, fd, gradi, err);
+
+    max_err = (err > max_err)? err: max_err;
 
     /* Restore parameter */
     VecSetValue(xinit, i, EPS, ADD_VALUES);
+    VecAssemblyBegin(xinit); VecAssemblyEnd(xinit);
   }
-  
+  if (mpirank_world == 0) printf("Max error in grad: %e\n", max_err);
 #endif
 
 
@@ -962,7 +1046,7 @@ int main(int argc,char **argv)
   delete optimctx;
   delete output;
 
-
+  
   /* Finallize Petsc */
 #ifdef WITH_SLEPC
   ierr = SlepcFinalize();

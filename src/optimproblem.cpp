@@ -22,6 +22,21 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   MPI_Comm_rank(comm_time, &mpirank_time);
   MPI_Comm_size(comm_time, &mpisize_time);
 
+  /* Store other optimization parameters */
+  gamma_tik = config.GetDoubleParam("optim_regul", 1e-4);
+  gamma_tik_interpolate = config.GetBoolParam("optim_regul_interpolate", false, false);
+  gatol = config.GetDoubleParam("optim_atol", 1e-8);
+  fatol = config.GetDoubleParam("optim_ftol", 1e-8);
+  inftol = config.GetDoubleParam("optim_inftol", 1e-5);
+  grtol = config.GetDoubleParam("optim_rtol", 1e-4);
+  interm_tol = config.GetDoubleParam("optim_interm_tol", 1e-4, false);
+  maxiter = config.GetIntParam("optim_maxiter", 200);
+  mu = config.GetDoubleParam("optim_mu", 0.0, false);
+  unitarize_interm_ic = config.GetBoolParam("optim_unitarize", false);
+  al_max_outer = config.GetIntParam("optim_maxouter", 1);
+  scalefactor_states = config.GetDoubleParam("scalefactor_states", 1.0);
+  
+
   /* Store number of initial conditions per init-processor group */
   ninit_local = ninit / mpisize_init; 
 
@@ -200,20 +215,8 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   }
   delete [] ids_state;
   delete [] ids_m_ic;
-  
-  
-  /* Store other optimization parameters */
-  gamma_tik = config.GetDoubleParam("optim_regul", 1e-4);
-  gamma_tik_interpolate = config.GetBoolParam("optim_regul_interpolate", false, false);
-  gatol = config.GetDoubleParam("optim_atol", 1e-8);
-  fatol = config.GetDoubleParam("optim_ftol", 1e-8);
-  inftol = config.GetDoubleParam("optim_inftol", 1e-5);
-  grtol = config.GetDoubleParam("optim_rtol", 1e-4);
-  interm_tol = config.GetDoubleParam("optim_interm_tol", 1e-4, false);
-  maxiter = config.GetIntParam("optim_maxiter", 200);
-  mu = config.GetDoubleParam("optim_mu", 0.0, false);
-  
-    /* Store the optimization target */
+   
+  /* Store the optimization target */
   std::vector<std::string> target_str;
   Gate* targetgate=NULL;
   int purestateID = -1;
@@ -496,7 +499,11 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   VecDuplicate(rho_t0, &rho_t0_bar);
   VecZeroEntries(rho_t0_bar);
   VecAssemblyBegin(rho_t0_bar); VecAssemblyEnd(rho_t0_bar);
-  
+
+  /* allocate storage for unscaled version of the optimization variable */
+  VecDuplicate(xinit, &x);
+  VecZeroEntries(x);
+
   /* Store optimization bounds */
   VecDuplicate(xinit, &xlower);
   VecDuplicate(xinit, &xupper);
@@ -576,7 +583,6 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   VecAssemblyBegin(disc);
   VecAssemblyEnd(disc);
 
-
   if (gamma_tik_interpolate) {
     // DISABLE FOR NOW
     printf("Warning: Disabling gamma_tik_interpolate for multiple shooting.\n");
@@ -593,6 +599,7 @@ OptimProblem::~OptimProblem() {
 
   VecDestroy(&xinit);
   VecDestroy(&x_next);
+  VecDestroy(&x);
   VecDestroy(&lambda);
   VecDestroy(&xlower);
   VecDestroy(&xupper);
@@ -622,19 +629,35 @@ OptimProblem::~OptimProblem() {
 
 
 // EvalF optim var. x = (alpha, interm.states), 
-double OptimProblem::evalF(const Vec x, const Vec lambda_) {
+double OptimProblem::evalF(const Vec xin, const Vec lambda_) {
 
   MasterEq* mastereq = timestepper->mastereq;
 
   if (mpirank_world == 0 && !quietmode) printf("EVAL F... \n");
   Vec finalstate = NULL;
 
+  /* unscale the state part of 'x' */
+  VecCopy(xin,x);
+  VecScale(x, 1.0/scalefactor_states);
+  // undo scaling of alpha
+  if (mpirank_world==0) {
+    double* xptr;
+    VecGetArray(x, &xptr);
+    for (int i=0; i<ndesign; i++)
+      xptr[i] *=scalefactor_states;
+    VecRestoreArray(x, &xptr);
+  }
+
   /* Pass control vector to oscillators */
   // x_alpha is set only on first processor. Need to communicate x_alpha to all processors here. 
   VecScatterBegin(scatter_alpha, x, x_alpha, INSERT_VALUES, SCATTER_FORWARD);
   VecScatterEnd(scatter_alpha, x, x_alpha, INSERT_VALUES, SCATTER_FORWARD);
-  // Finally all processors set the controls
   mastereq->setControlAmplitudes(x_alpha); 
+ 
+  // Unitarize the initial conditions. Note: This modifies x!
+  std::vector<std::vector<double>> vnorms;
+  if (unitarize_interm_ic)
+    unitarize(x, vnorms);
 
   /*  Iterate over initial condition */
   obj_cost  = 0.0;
@@ -643,13 +666,14 @@ double OptimProblem::evalF(const Vec x, const Vec lambda_) {
   obj_penal_dpdm = 0.0;
   obj_penal_energy = 0.0;
   fidelity = 0.0;
-  interm_discontinuity = 0.0; // For TaoMonitor only.
+  interm_discontinuity = 0.0; 
+  obj_constraint = 0.0;
   double obj_cost_re = 0.0;
   double obj_cost_im = 0.0;
   double fidelity_re = 0.0;
   double fidelity_im = 0.0;
   double frob2 = 0.0; // For generalized infidelity, stores Tr(U'U)
-  double constraint = 0.0;
+
   for (int iinit = 0; iinit < ninit_local; iinit++) {
     /* Iterate over local time windows */
     for (int iwindow=0; iwindow<nwindows_local; iwindow++){
@@ -661,8 +685,8 @@ double OptimProblem::evalF(const Vec x, const Vec lambda_) {
       /* Start sending next window's initial state, will be received by this processor */
       VecScatterBegin(scatter_xnext[iwindow][iinit], x, x_next, INSERT_VALUES, SCATTER_FORWARD);
 
-      /* Get local state and lambda for this window */
-      Vec x0, lag;
+      /* Get local state and lambda for this window. Probably safer to make a copy VecISCopy. */
+      Vec x0, lag;  
       VecGetSubVector(x, IS_interm_states[iwindow_global][iinit_global], &x0);
       VecGetSubVector(lambda_, IS_interm_lambda[iwindow_global][iinit_global], &lag);
 
@@ -714,8 +738,9 @@ double OptimProblem::evalF(const Vec x, const Vec lambda_) {
         VecDot(finalstate, finalstate, &qnorm2); // q = || (Su - u) ||^2
         interm_discontinuity += qnorm2;
         VecDot(finalstate, lag, &cdot);   // c = lambda^T (Su - u)
-        constraint += 0.5 * mu * qnorm2 - cdot;
+        obj_constraint += 0.5 * mu * qnorm2 - cdot;
       }
+
 
       /* Restore local subvectors */
       VecRestoreSubVector(x, IS_interm_states[iwindow_global][iinit_global], &x0);
@@ -733,7 +758,7 @@ double OptimProblem::evalF(const Vec x, const Vec lambda_) {
   double my_frob2 = frob2; 
   double myfidelity_re = fidelity_re;
   double myfidelity_im = fidelity_im;
-  double myconstraint = constraint;
+  double myconstraint = obj_constraint;
   double my_interm_disc = interm_discontinuity;
   // Should be comm_init and also comm_time! Currently, no Petsc Parallelization possible, hence (comm-init AND comm_time) = COMM_WORLD
   MPI_Allreduce(&mypen, &obj_penal, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
@@ -743,7 +768,7 @@ double OptimProblem::evalF(const Vec x, const Vec lambda_) {
   MPI_Allreduce(&mycost_im, &obj_cost_im, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(&myfidelity_re, &fidelity_re, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(&myfidelity_im, &fidelity_im, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-  MPI_Allreduce(&myconstraint, &constraint, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(&myconstraint, &obj_constraint, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(&my_interm_disc, &interm_discontinuity, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(&my_frob2, &frob2, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 
@@ -765,23 +790,22 @@ double OptimProblem::evalF(const Vec x, const Vec lambda_) {
   obj_regul = gamma_tik / 2. * pow(x_alpha_norm,2.0);
 
   /* Sum, store and return objective value */
-  objective = obj_cost + obj_regul + obj_penal + obj_penal_dpdm + obj_penal_energy + constraint;
+  objective = obj_cost + obj_regul + obj_penal + obj_penal_dpdm + obj_penal_energy + obj_constraint;
 
   /* Output */
   if (mpirank_world == 0) {
-    std::cout<< "Objective = " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal << " + " << obj_penal_dpdm << " + " << obj_penal_energy << " + " << constraint << std::endl;
+    std::cout<< "Objective = " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal << " + " << obj_penal_dpdm << " + " << obj_penal_energy << " + " << obj_constraint <<std::endl;
+    std::cout<< "Discontinuity = " << interm_discontinuity << std::endl;
     if (nwindows == 1) // Fidelity only makes sense with one window
       std::cout<< "Fidelity = " << fidelity  << std::endl;
-    std::cout<< "Discontinuities = " << interm_discontinuity << std::endl;
   }
 
-
   return objective;
-}
+} // end evalF()
 
 
 
-void OptimProblem::evalGradF(const Vec x, const Vec lambda_, Vec G){
+void OptimProblem::evalGradF(const Vec xin, const Vec lambda_, Vec G){
 
   MasterEq* mastereq = timestepper->mastereq;
 
@@ -789,11 +813,30 @@ void OptimProblem::evalGradF(const Vec x, const Vec lambda_, Vec G){
   Vec finalstate = NULL;
   Vec adjoint_ic = NULL;
 
+
+  /* unscale the state part of 'x' */
+  VecCopy(xin,x);
+  VecScale(x, 1.0/scalefactor_states);
+  // undo scaling of alpha
+  if (mpirank_world==0) {
+    double* xptr;
+    VecGetArray(x, &xptr);
+    for (int i=0; i<ndesign; i++)
+      xptr[i] *=scalefactor_states;
+    VecRestoreArray(x, &xptr);
+  }
+
   /* Pass design vector x to oscillators */
   // x_alpha is set only on first processor. Need to communicate x_alpha to all processors here. 
   VecScatterBegin(scatter_alpha, x, x_alpha, INSERT_VALUES, SCATTER_FORWARD);
   VecScatterEnd(scatter_alpha, x, x_alpha, INSERT_VALUES, SCATTER_FORWARD);
   mastereq->setControlAmplitudes(x_alpha); 
+
+ 
+  // Unitarize the initial conditions. Note: This modifies x!
+  std::vector<std::vector<double>> vnorms;
+  if (unitarize_interm_ic)
+    unitarize(x, vnorms);
 
   /* Reset Gradient */
   VecZeroEntries(G);
@@ -811,6 +854,7 @@ void OptimProblem::evalGradF(const Vec x, const Vec lambda_, Vec G){
   obj_penal_energy = 0.0;
   fidelity = 0.0;
   interm_discontinuity = 0.0; // for TaoMonitor
+  obj_constraint = 0.0; 
   double obj_cost_re = 0.0;
   double obj_cost_im = 0.0;
   double fidelity_re = 0.0;
@@ -879,7 +923,7 @@ void OptimProblem::evalGradF(const Vec x, const Vec lambda_, Vec G){
         VecDot(finalstate, finalstate, &qnorm2); // q = || (Su - u) ||^2
         interm_discontinuity += qnorm2;
         VecDot(finalstate, lag, &cdot);   // c = lambda^T (Su - u)
-        constraint += 0.5 * mu * qnorm2 - cdot;
+        obj_constraint += 0.5 * mu * qnorm2 - cdot;
       }
       
       /* Restore local state and lambda*/
@@ -922,18 +966,18 @@ void OptimProblem::evalGradF(const Vec x, const Vec lambda_, Vec G){
   double mycost_im = obj_cost_im;
   double myfidelity_re = fidelity_re;
   double myfidelity_im = fidelity_im;
-  double myconstraint = constraint;
+  double myconstraint = obj_constraint;
   double my_interm_disc = interm_discontinuity;
   double my_frob2 = frob2;
   MPI_Allreduce(&mypen, &obj_penal, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(&mypen_dpdm, &obj_penal_dpdm, 1, MPI_DOUBLE, MPI_SUM, comm_init);
   MPI_Allreduce(&mypenen, &obj_penal_energy, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-  // Should be comm_init and also comm_time! 
+
   MPI_Allreduce(&mycost_re, &obj_cost_re, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(&mycost_im, &obj_cost_im, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(&myfidelity_re, &fidelity_re, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(&myfidelity_im, &fidelity_im, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-  MPI_Allreduce(&myconstraint, &constraint, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(&myconstraint, &obj_constraint, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(&my_interm_disc, &interm_discontinuity, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(&my_frob2, &frob2, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 
@@ -957,7 +1001,7 @@ void OptimProblem::evalGradF(const Vec x, const Vec lambda_, Vec G){
   obj_regul = gamma_tik / 2. * pow(x_alpha_norm,2.0);
 
   /* Sum, store and return objective value */
-  objective = obj_cost + obj_regul + obj_penal + obj_penal_dpdm + obj_penal_energy + constraint;
+  objective = obj_cost + obj_regul + obj_penal + obj_penal_dpdm + obj_penal_energy + obj_constraint;
 
   /* For Schroedinger solver: Solve adjoint equations for all initial conditions here. */
   if (timestepper->mastereq->lindbladtype == LindbladType::NONE) {
@@ -1045,15 +1089,31 @@ void OptimProblem::evalGradF(const Vec x, const Vec lambda_, Vec G){
   // VecScatterBegin(scatter_alpha, g_alpha, G, ADD_VALUES, SCATTER_REVERSE);
   // VecScatterEnd(scatter_alpha, g_alpha, G ADD_VALUES, SCATTER_REVERSE);
 
+  /* Apply chain rule for unitarization */
+  if (unitarize_interm_ic && (nwindows > 1))
+    unitarize_grad(x, vnorms, G); 
+
   /* Compute and store gradient norm */
   VecNorm(G, NORM_2, &(gnorm));
 
+  // scale the state part of the gradient by 1/scalefactor_states
+  VecScale(G, 1.0/scalefactor_states);
+  // undo scaling of alpha
+  if (mpirank_world==0) {
+    double* xptr;
+    VecGetArray(G, &xptr);
+    for (int i=0; i<ndesign; i++)
+      xptr[i] *=scalefactor_states;
+    VecRestoreArray(G, &xptr);
+  }
+
+
   /* Output */
   if (mpirank_world == 0 && !quietmode) {
-    std::cout<< "Objective = " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal << " + " << obj_penal_dpdm << " + " << obj_penal_energy << " + " << constraint << std::endl;
+    std::cout<< "Objective = " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal << " + " << obj_penal_dpdm << " + " << obj_penal_energy << " + " << obj_constraint;
     if (nwindows == 1) // Fidelity only makes sense with one window
-      std::cout<< "Fidelity = " << fidelity << std::endl;
-    std::cout<< "Discontinuities = " << interm_discontinuity << std::endl;
+      std::cout<< " Fidelity = " << fidelity << std::endl;
+    std::cout<< " Discontinuity = " << interm_discontinuity << std::endl;
   }
 }
 
@@ -1100,10 +1160,9 @@ void OptimProblem::getStartingPoint(Vec xinit){
   /* Write initial control functions to file TODO: Multiple time windows */
   // output->writeControls(xinit, timestepper->mastereq, timestepper->ntime, timestepper->dt);
 
-  /* Set the initial guess for the intermediate states. Here, roll-out forward propagation. TODO: Read from file*/
-  // Note: THIS Currently is entirely serial! No parallel initial conditions, no parallel windows. 
+  /* Set the initial guess for the intermediate states. Here, roll-out forward propagation. TODO: Read from file */
   if (mpirank_world==0) {
-    printf(" -> Rollout initialization of intermediate states (sequential in time windows parallel in initial conditions. This might take a while...\n");
+  printf(" -> Rollout initialization of intermediate states (sequential in time windows parallel in initial conditions. This might take a while...\n");
   }
   rollOut(xinit);
 }
@@ -1139,10 +1198,11 @@ void OptimProblem::rollOut(Vec x){
 }
 
 /* lag += - prev_mu * ( S(u_{i-1}) - u_i ) */
-void OptimProblem::updateLagrangian(const double prev_mu, const Vec x, Vec lambda) {
-
-  /* Forward solve to store the final states. This might already always be the case... */
-  evalF(x, lambda);
+void OptimProblem::updateLagrangian(const double prev_mu, const Vec x_a, Vec lambda_a) {
+  // NOTE: lambda_incre = 0 on entry
+  
+  /* Forward solve to store intermediate discontinuities in store_initial_states (local sizes)*/
+  evalF(x_a, lambda_a);
 
   /* Iterate over local initial conditions */
   for (int iinit = 0; iinit < ninit_local; iinit++) {
@@ -1164,9 +1224,9 @@ void OptimProblem::updateLagrangian(const double prev_mu, const Vec x, Vec lambd
 
       /* lag += - prev_mu * ( S(u_{i-1}) - u_i ) */
       Vec lag;
-      VecGetSubVector(lag, IS_interm_lambda[iwindow_global][iinit_global], &lag);
+      VecGetSubVector(lambda_a, IS_interm_lambda[iwindow_global][iinit_global], &lag);
       VecAXPY(lag, -prev_mu, disc);
-      VecRestoreSubVector(lag, IS_interm_lambda[iwindow_global][iinit_global], &lag);
+      VecRestoreSubVector(lambda_a, IS_interm_lambda[iwindow_global][iinit_global], &lag);
 
       printf("\n\n TODO: Check the updateLagrangian function!\n");
     }
@@ -1180,6 +1240,53 @@ void OptimProblem::getSolution(Vec* param_ptr){
   TaoGetSolution(tao, &params);
   *param_ptr = params;
 }
+
+void OptimProblem::getExitReason(TaoConvergedReason *reason_ptr){
+  
+  /* Get ref to optimized parameters */
+  TaoConvergedReason reason;
+  TaoGetConvergedReason(tao, &reason);
+  *reason_ptr = reason;
+}
+
+int OptimProblem::getTotalIterations(){
+  int iter;
+  TaoGetTotalIterationNumber(tao, &iter);
+  return iter;
+}
+
+void OptimProblem::setTaoWarmStart(PetscBool yes_no){
+  TaoSetRecycleHistory(tao, yes_no);
+}
+
+// void OptimProblem::output_interm_ic(){
+//   for (int iinit = 0; iinit < ninit_local; iinit++) {
+//     for (int iwindow=0; iwindow<nwindows_local; iwindow++){
+//       int iwin_global = mpirank_time*nwindows_local + iwindow; 
+//       int iinit_global = mpirank_init * ninit_local + iinit; 
+
+//       if (iwin_global < nwindows-1) {
+//         printf("iinit_g = %d, iwind_g = %d, initial_win_state:\n", iinit_global, iwin_global);
+//         VecView(store_initial_state[iinit][iwindow], PETSC_VIEWER_STDOUT_WORLD);
+//       }
+//     }
+//   }
+// }
+
+// void OptimProblem::output_states(Vec x){
+//   //    tmp
+//   Vec x_ic;
+//   VecCreate(PETSC_COMM_WORLD, &x_ic);
+//   VecSetSizes(x_ic, PETSC_DECIDE, nstate);
+//   VecSetFromOptions(x_ic);
+  
+//   if (mpirank_world == 0) {
+//     VecISCopy(x, IS_initialcond, SCATTER_REVERSE, x_ic); // assign x_ic[i] = x[IS[i]]
+//     printf("output_states(): initial states in vector x:\n");
+//     VecView(x_ic, PETSC_VIEWER_STDOUT_WORLD);
+//   }
+// }
+
 
 PetscErrorCode TaoMonitor(Tao tao,void*ptr){
   OptimProblem* ctx = (OptimProblem*) ptr;
@@ -1203,11 +1310,12 @@ PetscErrorCode TaoMonitor(Tao tao,void*ptr){
   double obj_penal = ctx->getPenalty();
   double obj_penal_dpdm = ctx->getPenaltyDpDm();
   double obj_penal_energy = ctx->getPenaltyEnergy();
+  double obj_constraint = ctx->getConstraint();
   double interm_discontinuity = ctx->getDiscontinuity();
   double F_avg = ctx->getFidelity();
 
   /* Print to optimization file */
-  ctx->output->writeOptimFile(f, gnorm, deltax, F_avg, obj_cost, obj_regul, obj_penal, obj_penal_dpdm, obj_penal_energy, interm_discontinuity);
+  ctx->output->writeOptimFile(f, gnorm, deltax, F_avg, obj_cost, obj_regul, obj_penal, obj_penal_dpdm, obj_penal_energy, obj_constraint, interm_discontinuity);
 
   /* Print parameters and controls to file */
   // if ( optim_iter % optim_monitor_freq == 0 ) {
@@ -1216,18 +1324,18 @@ PetscErrorCode TaoMonitor(Tao tao,void*ptr){
 
   /* Screen output */
   if (ctx->getMPIrank_world() == 0 && iter == 0) {
-    std::cout<<  "    Objective             Tikhonov                Penalty-Leakage        Penalty-StateVar       Penalty-TotalEnergy " << std::endl;
+    std::cout<<  "    Objective             Tikhonov                Penalty-Leakage        Penalty-StateVar       Penalty-TotalEnergy    Constraint" << std::endl;
   }
 
   /* Additional Stopping criteria */
   bool lastIter = false;
   std::string finalReason_str = "";
   if ((1.0 - F_avg <= ctx->getInfTol()) && (interm_discontinuity < ctx->getIntermTol())) {
-    finalReason_str = "Optimization converged to a continuous trajectory with small infidelity.";
+    finalReason_str = "Optimization converged to a continuous trajectory with small infidelity and small discontinuity.";
     TaoSetConvergedReason(tao, TAO_CONVERGED_USER);
     lastIter = true;
   } else if ((obj_cost <= ctx->getFaTol()) && (interm_discontinuity < ctx->getIntermTol())) {
-    finalReason_str = "Optimization converged to a continuous trajectory with small final time cost.";
+    finalReason_str = "Optimization converged to a continuous trajectory with small final time cost and small discontinuity.";
     TaoSetConvergedReason(tao, TAO_CONVERGED_USER);
     lastIter = true;
   } 
@@ -1246,16 +1354,17 @@ PetscErrorCode TaoMonitor(Tao tao,void*ptr){
     // }
   // }
 
+  // output progress on std out
   if (ctx->getMPIrank_world() == 0 && (iter == ctx->getMaxIter() || lastIter || iter % ctx->output->optim_monitor_freq == 0)) {
-    std::cout<< iter <<  "  " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal << " + " << obj_penal_dpdm << " + " << obj_penal_energy;
+    std::cout<< iter <<  "  " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal << " + " << obj_penal_dpdm << " + " << obj_penal_energy << " + " << obj_constraint;
     if (ctx->getNwindows() == 1) // Fidelity only makes sense with one window
       std::cout<< "  Fidelity = " << F_avg;
     std::cout<< "  ||Grad|| = " << gnorm;
-    std::cout<< std::endl;
+    std::cout<< " norm2(disc) = " << interm_discontinuity << std::endl;
   }
 
   if (ctx->getMPIrank_world() == 0 && lastIter){
-    std::cout<< finalReason_str << std::endl;
+    std::cout<< "Rank: " << ctx->getMPIrank_world() << " " << finalReason_str << std::endl;
   }
  
   // /* Update xprev for next iteration */
@@ -1291,4 +1400,218 @@ PetscErrorCode TaoEvalGradient(Tao tao, Vec x, Vec G, void*ptr){
   ctx->evalGradF(x, ctx->lambda, G);
   
   return 0;
+}
+
+
+/* Unitarize the intermediate initial staets */
+// could be in util.hpp/cpp, but then needs args for dim, isu,isv, is_interm_states
+void OptimProblem::unitarize(Vec &x, std::vector<std::vector<double>> &vnorms) {
+
+  const int nwindows = IS_interm_states.size();
+  const int ninit = IS_interm_states[0].size();
+  int dim = 2*timestepper->mastereq->getDim();
+
+  Vec x0j;
+  VecCreateSeq(PETSC_COMM_SELF, dim, &x0j);
+
+  vnorms.resize(ninit);
+  for (int iinit = 0; iinit < ninit; iinit++)
+    vnorms[iinit].resize(nwindows);
+
+  Vec vre, vim;
+  double uv_re, uv_im, vnorm;
+  IS IS_re = timestepper->mastereq->isu;
+  IS IS_im = timestepper->mastereq->isv;
+
+
+  int *ids_from= new int[dim];
+  int *ids_to = new int[dim];
+  for (int i=0; i< dim; i++){
+    ids_to[i] = i;
+  }
+
+  /* classical GS */
+  for (int iwindow = 1; iwindow < nwindows; iwindow++) {
+    for (int iinit = 0; iinit < ninit; iinit++) {
+
+      /* Get local state for this window: Only one proc will have it, otherones will have an empty vector. */
+      int isize;
+      ISGetLocalSize(IS_interm_states[iwindow][iinit], &isize);
+      if (isize>0) {
+        VecISCopy(x, IS_interm_states[iwindow][iinit], SCATTER_REVERSE, x_next); 
+        VecNorm(x_next, NORM_2, &vnorm);
+        VecScale(x_next, 1.0 / vnorm);
+        vnorms[iinit][iwindow] = vnorm;
+      }
+
+      /* Iterate over all remaining initial conditions in this window */
+      for (int jinit = iinit+1; jinit < ninit; jinit++) {
+      
+        /* Scatter j'th initial condition to this processor */
+        // only one processor has a nonzero IS size! That one sends his first index. Receive it if isize>0.
+        int jstart, jstop;
+        ISGetMinMax(IS_interm_states[iwindow][jinit], &jstart, &jstop);
+        if (jstart == PETSC_MAX_INT) jstart = 0;
+        MPI_Allreduce(&jstart, &jstart, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
+        int nelems = 0;
+        if (jstart > 0 && isize > 0)  {
+          nelems = dim;
+          for (int i=0; i< dim; i++){
+            ids_from[i] = jstart + i;
+          }
+        }
+        IS IS_from, IS_to;
+        VecScatter ctx_x0j;
+        /* Now scatter the next initial condition to this processor */
+        ISCreateGeneral(PETSC_COMM_SELF,nelems,ids_from,PETSC_COPY_VALUES, &IS_from);
+        ISCreateGeneral(PETSC_COMM_SELF,nelems,ids_to,PETSC_COPY_VALUES, &IS_to);
+        VecScatterCreate(x, IS_from, x0j, IS_to, &ctx_x0j);
+        VecScatterBegin(ctx_x0j, x, x0j, INSERT_VALUES, SCATTER_FORWARD);
+        VecScatterEnd(ctx_x0j, x, x0j, INSERT_VALUES, SCATTER_FORWARD);
+        VecScatterDestroy(&ctx_x0j);
+        ISDestroy(&IS_from);
+        ISDestroy(&IS_to);
+
+        /* On this processor, compute unitarization of local state */
+        if (isize>0) {
+          complex_inner_product(x0j, x_next, uv_re, uv_im);
+
+          VecGetSubVector(x0j, IS_re, &vre);
+          VecGetSubVector(x0j, IS_im, &vim);
+
+          // Re[v] -= Re[u.v] * Re[u] - Im[u.v] * Im[u]
+          VecISAXPY(x_next, IS_re, -uv_re, vre);
+          VecISAXPY(x_next, IS_re, uv_im, vim);
+          // Im[v] -= Re[u.v] * Im[u] + Im[u.v] * Re[u]
+          VecISAXPY(x_next, IS_im, -uv_re, vim);
+          VecISAXPY(x_next, IS_im, -uv_im, vre);
+
+          VecRestoreSubVector(x0j, IS_re, &vre);
+          VecRestoreSubVector(x0j, IS_im, &vim);
+
+          /* Finally update the global vector entry */
+          VecISCopy(x, IS_interm_states[iwindow][iinit], SCATTER_FORWARD, x_next); 
+        }
+      }
+    }
+  }
+
+  delete [] ids_from;
+  delete [] ids_to;
+  VecDestroy(&x0j);
+}
+
+void OptimProblem::unitarize_grad(const Vec &x, const std::vector<std::vector<double>> &vnorms, Vec &G) {
+  /* The adjoint for unitarize function.
+     While unitarize uses the modified Gram-Schmidt, the adjoint formulation is based on the classic Gram-Schmidt.
+     The adjoint for the modified G-S requires to store all intermediate v states,
+      while that for classic G-S requires only the norm of final v states.
+     Their gradients, due to orthonormality, are equivalent to each other.
+   */
+
+  printf("TODO: Gradient of unitarization needs implementaion.\n");
+  exit(1);
+  // Vec w;
+  // VecGetSubVector(x, IS_interm_states[0], &w);
+  // PetscInt dim2, dim;
+  // VecGetSize(w, &dim2);
+  // assert(dim2 % 2 == 0);
+  // dim = dim2 / 2;
+  // VecRestoreSubVector(x, IS_interm_states[0], &w);
+
+  // IS IS_re, IS_im;
+  // ISCreateStride(PETSC_COMM_WORLD, dim, 0, 2, &IS_re);
+  // ISCreateStride(PETSC_COMM_WORLD, dim, 1, 2, &IS_im);
+
+  // const int ninit = interm_ic.size();
+  // const int nwindows = interm_ic[0].size() + 1;
+
+  // std::vector<Vec> vs(0);
+  // for (int k = 0; k < ninit; k++) {
+  //   Vec state;
+  //   VecCreate(PETSC_COMM_WORLD, &state);
+  //   VecSetSizes(state, PETSC_DECIDE, dim2);
+  //   VecSetFromOptions(state);
+  //   vs.push_back(state);
+  // }
+  
+  // Vec us = NULL, ws = NULL;
+  // VecCreate(PETSC_COMM_WORLD, &us);
+  // VecSetSizes(us, PETSC_DECIDE, dim2);
+  // VecSetFromOptions(us);
+  // VecCreate(PETSC_COMM_WORLD, &ws);
+  // VecSetSizes(ws, PETSC_DECIDE, dim2);
+  // VecSetFromOptions(ws);
+  
+  // Vec wre, wim, vsre, vsim, ure, uim;
+  // double wu_re, wu_im, vsu_re, vsu_im;
+  // for (int iwindow = 0; iwindow < nwindows-1; iwindow++) {
+  //   for (int iinit = ninit-1; iinit >= 0; iinit--) {
+  //     int idxi = iinit * (nwindows - 1) + iwindow;
+  //     VecISCopy(G, IS_interm_states[idxi], SCATTER_REVERSE, us); 
+
+  //     for (int cinit = iinit+1; cinit < ninit; cinit++) {
+  //       int idxc = cinit * (nwindows - 1) + iwindow;
+  //       VecGetSubVector(x, IS_interm_states[idxc], &w);
+  //       complex_inner_product(interm_ic[iinit][iwindow], w, wu_re, wu_im);
+  //       complex_inner_product(interm_ic[iinit][iwindow], vs[cinit], vsu_re, vsu_im);
+
+  //       VecGetSubVector(w, IS_re, &wre);
+  //       VecGetSubVector(w, IS_im, &wim);
+  //       VecGetSubVector(vs[cinit], IS_re, &vsre);
+  //       VecGetSubVector(vs[cinit], IS_im, &vsim);
+
+  //       VecISAXPY(us, IS_re, -wu_re, vsre);
+  //       VecISAXPY(us, IS_re, -wu_im, vsim);
+  //       VecISAXPY(us, IS_re, -vsu_re, wre);
+  //       VecISAXPY(us, IS_re, -vsu_im, wim);
+
+  //       VecISAXPY(us, IS_im, wu_im, vsre);
+  //       VecISAXPY(us, IS_im, -wu_re, vsim);
+  //       VecISAXPY(us, IS_im, vsu_im, wre);
+  //       VecISAXPY(us, IS_im, -vsu_re, wim);
+
+  //       VecRestoreSubVector(w, IS_re, &wre);
+  //       VecRestoreSubVector(w, IS_im, &wim);
+  //       VecRestoreSubVector(vs[cinit], IS_re, &vsre);
+  //       VecRestoreSubVector(vs[cinit], IS_im, &vsim);
+
+  //       VecRestoreSubVector(x, IS_interm_states[idxc], &w);
+  //     }
+
+  //     double vnorm = vnorms[iinit][iwindow];
+  //     double usu, dummy;
+  //     complex_inner_product(interm_ic[iinit][iwindow], us, usu, dummy);
+  //     VecCopy(us, vs[iinit]);
+  //     VecAXPY(vs[iinit], -usu, interm_ic[iinit][iwindow]);
+  //     VecScale(vs[iinit], 1.0 / vnorm);
+
+  //     VecCopy(vs[iinit], ws);
+  //     for (int cinit = 0; cinit < iinit; cinit++) {
+  //       complex_inner_product(interm_ic[cinit][iwindow], vs[iinit], vsu_re, vsu_im);
+
+  //       VecGetSubVector(interm_ic[cinit][iwindow], IS_re, &ure);
+  //       VecGetSubVector(interm_ic[cinit][iwindow], IS_im, &uim);
+
+  //       VecISAXPY(ws, IS_re, -vsu_re, ure);
+  //       VecISAXPY(ws, IS_re, +vsu_im, uim);
+  //       VecISAXPY(ws, IS_im, -vsu_im, ure);
+  //       VecISAXPY(ws, IS_im, -vsu_re, uim);
+
+  //       VecRestoreSubVector(interm_ic[cinit][iwindow], IS_re, &ure);
+  //       VecRestoreSubVector(interm_ic[cinit][iwindow], IS_im, &uim);
+  //     }
+
+  //     VecISCopy(G, IS_interm_states[idxi], SCATTER_FORWARD, ws);
+  //   }
+  // }
+
+  // for (int k = 0; k < ninit; k++) {
+  //   VecDestroy(&(vs[k]));
+  // }
+  // VecDestroy(&ws);
+  // VecDestroy(&us);
+
+  // ISDestroy(&IS_re);
+  // ISDestroy(&IS_im);
 }

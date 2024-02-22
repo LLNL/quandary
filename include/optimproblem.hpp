@@ -30,6 +30,7 @@ class OptimProblem {
   std::vector<int> initcond_IDs;         /* Integer list for pure-state initialization */
   std::vector<std::vector<Vec>> store_finalstates;    /* Storage for last time steps for each window and each initial condition */
 
+
   OptimTarget* optim_target;      /* Storing the optimization goal */
 
   /* MPI stuff */
@@ -44,10 +45,8 @@ class OptimProblem {
 
   std::vector<std::vector<IS>> IS_interm_states;    // Index set for accessing intermediate states from global vector. Ordering [window][initial condition]
   std::vector<std::vector<IS>> IS_interm_lambda;    // Index set for accessing intermediate lagrange multipliers from global vector. Ordering [window][initial condition]
-  Vec x_alpha;
-  VecScatter scatter_alpha;
-  Vec x_next;
-  std::vector<std::vector<VecScatter>> scatter_xnext;
+  VecScatter scatter_alpha;  // Scatter alpha to all processors 
+  std::vector<std::vector<VecScatter>> scatter_xnext; // Scattering next window's state to this proc
 
   /* Optimization stuff */
   std::vector<double> obj_weights; /* List of weights for weighting the average objective over initial conditions  */
@@ -59,6 +58,7 @@ class OptimProblem {
   double obj_penal;                /* Penalty term in objective */
   double obj_penal_dpdm;           /* Penalty term in objective for second order state */
   double obj_penal_energy;         /* Energy Penalty term in objective */
+  double obj_constraint;           /* constraint = 0.5*mu*norm2(disc) - <lambda, disc> */
   double fidelity;                 /* Final-time fidelity: 1/ninit \sum_iinit Tr(rhotarget^\dag rho(T)) for Lindblad, or |1/ninit \sum_iinit phitarget^dagger phi |^2 for Schroedinger */
   double interm_discontinuity;     /* Sum of squared norm of intermediate discontinuities */
   double gnorm;                    /* Holds current norm of gradient */
@@ -74,11 +74,16 @@ class OptimProblem {
   double grtol;                    /* Stopping criterion based on relative gradient norm */
   double interm_tol;               /* Stopping criterion based on intermediate discontinuity */
   int maxiter;                     /* Stopping criterion based on maximum number of iterations */
+  int al_max_outer;               // Max number of outer iterations in the Augmented Lagrangian method
   Tao tao;                         /* Petsc's Optimization solver */
-  std::vector<double> initguess_fromfile;      /* Stores the initial guess, if read from file */
-  // double* mygrad;  /* Auxiliary */
+  std::vector<double> initguess_fromfile; /* Stores the initial guess, if read from file */
+  double scalefactor_states;              /* Scalefactor for the intermediate initial conditions */
+  bool unitarize_interm_ic;               /* Switch to unitarize intermediate initial conditions at evalF/evalGradF */
     
-  Vec disc;                        /* Temporary storage for a state. size = 2*mastereq->getDim() */
+  Vec x_alpha;            /* Temporary storage for design variable */
+  Vec x_next;             /* Temporary storage for a state vector */
+  Vec disc;               /* Temporary storage for a state. size = 2*mastereq->getDim(). Only would need either x_next or disc... */
+  Vec x;                  /* Storage for the optimization variable */
   
   public: 
     Output* output;                 /* Store a reference to the output */
@@ -107,12 +112,24 @@ class OptimProblem {
   double getPenaltyEnergy()  { return obj_penal_energy; };
   double getFidelity() { return fidelity; };
   double getDiscontinuity() { return interm_discontinuity; }
+  double getConstraint() { return obj_constraint; }
+
   double getFaTol()    { return fatol; };
   double getInfTol()   { return inftol; };
   double getIntermTol() { return interm_tol; }
+  double getGradAbsTol() { return gatol; }
+  double getGradRelTol() { return grtol; }
+
   int getNwindows() { return nwindows; }
   int getMPIrank_world() { return mpirank_world;};
   int getMaxIter()     { return maxiter; };
+  int getAlMaxOuter()     { return al_max_outer; };
+  // void output_interm_ic();
+  // void output_states(Vec x);
+
+  void setUnitarizeIntermediate(bool newVal) { unitarize_interm_ic = newVal; };
+  void setIntermTol(double newVal) { interm_tol = newVal; };
+  void setTaoWarmStart(PetscBool yes_no);
 
   /* Evaluate the objective function F(x) */
   double evalF(const Vec x, const Vec lambda_);
@@ -131,10 +148,18 @@ class OptimProblem {
   void rollOut(Vec x=NULL);
 
   /* lag += - prev_mu * ( S(u_{i-1}) - u_i ) */
-  void updateLagrangian(const double prev_mu, const Vec x, Vec lambda);
+  void updateLagrangian(const double prev_mu, const Vec x_a, Vec lambda_a);
 
   /* Call this after TaoSolve() has finished to print out some information */
   void getSolution(Vec* opt);
+
+  void getExitReason(TaoConvergedReason *reason);
+
+  int getTotalIterations();
+
+  /* Unitarize the state optim vars */
+  void unitarize(Vec &x, std::vector<std::vector<double>> &vnorms);
+  void unitarize_grad(const Vec &x, const std::vector<std::vector<double>> &vnorms, Vec &G);
 };
 
 /* Monitor the optimization progress. This routine is called in each iteration of TaoSolve() */

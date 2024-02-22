@@ -1,5 +1,5 @@
 #include "util.hpp"
-
+#include <assert.h>
 
 double sigmoid(double width, double x){
   return 1.0 / ( 1.0 + exp(-width*x) );
@@ -647,4 +647,113 @@ bool isUnitary(const Mat V_re, const Mat V_im){
   MatDestroy(&D);
 
   return isunitary;
+}
+
+// bool isUnitary(const Vec &x, const std::vector<IS> &IS_interm_states, const int &ninit, const int &nwindows) {
+//   bool is_unitary = true;
+
+//   Vec v = NULL;
+//   VecGetSubVector(x, IS_interm_states[0], &v);
+//   PetscInt dim2, dim;
+//   VecGetSize(v, &dim2);
+//   assert(dim2 % 2 == 0);
+//   dim = dim2 / 2;
+
+//   assert(dim == ninit);
+
+//   Mat V_re, V_im;
+//   /* Currently all processes own the same global Vec x. */
+//   MatCreate(PETSC_COMM_SELF, &V_re);
+//   MatCreate(PETSC_COMM_SELF, &V_im);
+//   MatSetSizes(V_re, PETSC_DECIDE, PETSC_DECIDE, dim, dim);
+//   MatSetSizes(V_im, PETSC_DECIDE, PETSC_DECIDE, dim, dim);
+//   MatSetUp(V_re);
+//   MatSetUp(V_im);
+
+//   PetscScalar *vptr;
+
+//   PetscInt *row_idx;
+//   PetscScalar *out_re, *out_im;
+//   PetscMalloc1(dim, &out_re); 
+//   PetscMalloc1(dim, &out_im); 
+//   PetscMalloc1(dim, &row_idx);
+//   for (int d = 0; d < dim; d++) row_idx[d] = d;
+
+//   Vec vj = NULL;
+
+//   for (int iwindow = 0; iwindow < nwindows-1; iwindow++) {
+//     for (PetscInt iinit = 0; iinit < ninit; iinit++) {
+//       int idxi = iinit * (nwindows - 1) + iwindow;
+//       VecGetSubVector(x, IS_interm_states[idxi], &v);
+//       VecGetArray(v, &vptr);
+
+//       for (int d = 0; d < dim; d++) {
+//         out_re[d] = vptr[2 * d];
+//         out_im[d] = vptr[2 * d + 1];
+//       }
+
+//       // MatSetValues(V_re, dim, row_idx, 1, &iinit, vptr, INSERT_VALUES);
+//       // MatSetValues(V_im, dim, row_idx, 1, &iinit, &vptr[dim], INSERT_VALUES);
+//       MatSetValues(V_re, dim, row_idx, 1, &iinit, out_re, INSERT_VALUES);
+//       MatSetValues(V_im, dim, row_idx, 1, &iinit, out_im, INSERT_VALUES);
+
+//       VecRestoreArray(v, &vptr);
+
+//       // for (PetscInt jinit = 0; jinit < ninit; jinit++) {
+//       //   int idxj = jinit * (nwindows - 1) + iwindow;
+//       //   VecGetSubVector(x, IS_interm_states[idxj], &vj);
+//       //   double re, im;
+//       //   complex_inner_product(v, vj, re, im);
+//       //   printf("inner product (%d, %d): (%.2e, %.2e)\n", iinit, jinit, re, im);
+//       // }
+//     }
+//     MatAssemblyBegin(V_re, MAT_FINAL_ASSEMBLY);
+//     MatAssemblyEnd(V_re, MAT_FINAL_ASSEMBLY);
+//     MatAssemblyBegin(V_im, MAT_FINAL_ASSEMBLY);
+//     MatAssemblyEnd(V_im, MAT_FINAL_ASSEMBLY);
+
+//     is_unitary = isUnitary(V_re, V_im);
+//     if (!is_unitary) {
+//       printf("window %d is not unitary!\n", iwindow);
+//     }
+//   }
+  
+
+//   MatDestroy(&V_re);
+//   MatDestroy(&V_im);
+//   PetscFree(row_idx);
+//   PetscFree(out_re);
+//   PetscFree(out_im);
+
+//   return is_unitary;
+// }
+
+void complex_inner_product(const Vec &x, const Vec &y, double &re, double &im) {
+  PetscInt dim2, dummy;
+  VecGetSize(x, &dim2);
+  VecGetSize(y, &dummy);
+  assert(dim2 == dummy);
+  assert(dim2 % 2 == 0);
+
+  PetscInt dim = dim2 / 2;
+  PetscScalar *xptr, *yptr;
+  VecGetArray(x, &xptr);
+  VecGetArray(y, &yptr);
+
+  re = 0.0; im = 0.0;
+  for (int d = 0; d < dim; d++)
+  {
+    // NOTE 1: the solution is ordered as [re0, im0, re1, im1, ...]
+    // NOTE 2: The usual definition of the complex scalar product is <x,y> = conj(x) * y, but here <x,y> = conj(y)*x
+    // Re[x dot conj(y)] = Re[x] * Re[y] + Im[x] * Im[y]
+    re += xptr[getIndexReal(d)] * yptr[getIndexReal(d)] + xptr[getIndexImag(d)] * yptr[getIndexImag(d)];
+
+    // Im[x dot conj(y)] = Im[x] * Re[y] - Re[x] * Im[y]
+    im += xptr[getIndexImag(d)] * yptr[getIndexReal(d)] - xptr[getIndexReal(d)] * yptr[getIndexImag(d)];
+  }
+  
+  VecRestoreArray(x, &xptr);
+  VecRestoreArray(y, &yptr);
+
+  return;
 }
