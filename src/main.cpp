@@ -569,7 +569,7 @@ int main(int argc,char **argv)
     if (mpirank_world == 0 && !quietmode) {
       printf("\nGradient norm: %1.14e\n", gnorm);
     }
-    optimctx->output->writeGradient(grad);
+    // optimctx->output->writeGradient(grad);
 
     if (verify_gradient) {
       if (mpirank_world == 0 && !quietmode) printf("\nStarting primal solver... \n");
