@@ -464,6 +464,8 @@ int main(int argc,char **argv)
   /* Set initial starting point */
   if (load_optimvar) {
     PetscScalar *ptr;
+    printf("Loading optimvars disabled for now. Needs revision.\n");
+    exit(1);
 
     // TODO(kevin): Highly recommend to use hdf5 for I/O. and save all data into one single file.
     /* All variables are saved as binary files, to save the storage size and time. */

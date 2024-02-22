@@ -1278,8 +1278,6 @@ PetscErrorCode TaoEvalObjective(Tao tao, Vec x, PetscReal *f, void*ptr){
 
   OptimProblem* ctx = (OptimProblem*) ptr;
   assert(ctx->lambda);
-  VecView(ctx->lambda, PETSC_VIEWER_STDOUT_WORLD);
-  exit(1);
   *f = ctx->evalF(x, ctx->lambda);
   
   return 0;
