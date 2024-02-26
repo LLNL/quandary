@@ -15,7 +15,7 @@
 class TimeStepper{
   protected:
     int dim;             /* State vector dimension */
-    Vec x;               // auxiliary vector needed for time stepping
+    Vec x, xprimal;               // auxiliary vector needed for time stepping
     std::vector<Vec> store_states; /* Storage for primal states */
     std::vector<Vec> dpdm_states;  /* storage of primal states needed for DpDm penalty term */
     bool addLeakagePrevent;   /* flag to determine if Leakage preventing term is added to penalty.  */
@@ -57,8 +57,6 @@ class TimeStepper{
     TimeStepper(); 
     TimeStepper(MapParam config, MasterEq* mastereq_, int ntime_global_, int ntime_, double dt_, Output* output_, bool storeFWD_, MPI_Comm comm_time_); 
     virtual ~TimeStepper(); 
-
-    void allocateReducedGradient(const int noptimvars);
 
     /* Return the state at a certain time index */
     Vec getState(int tindex);

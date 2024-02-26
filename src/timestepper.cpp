@@ -38,21 +38,20 @@ TimeStepper::TimeStepper(MapParam config, MasterEq* mastereq_, int ntime_global_
   if (storeFWD) { 
     for (int n = 0; n <=ntime; n++) {
       Vec state;
-      VecCreate(PETSC_COMM_WORLD, &state);
-      VecSetSizes(state, PETSC_DECIDE, dim);
+      VecCreateSeq(PETSC_COMM_SELF, dim, &state);
       VecSetFromOptions(state);
       store_states.push_back(state);
     }
   }
 
   /* Allocate auxiliary state vector */
-  VecCreate(PETSC_COMM_WORLD, &x);
-  VecSetSizes(x, PETSC_DECIDE, dim);
+  VecCreateSeq(PETSC_COMM_SELF, dim, &x);
   VecSetFromOptions(x);
   VecZeroEntries(x);
+  VecDuplicate(x, &xprimal);
 
   /* NOTE(kevin): we delegate this allocation to OptimProblem. */
-  redgrad = PETSC_NULL;
+  redgrad = PETSC_NULLPTR;
   // /* Allocate the reduced gradient */
   // int ndesign = 0;
   // for (int ioscil = 0; ioscil < mastereq->getNOscillators(); ioscil++) {
@@ -74,17 +73,10 @@ TimeStepper::~TimeStepper() {
     VecDestroy(&(store_states[n]));
   }
   VecDestroy(&x);
+  VecDestroy(&xprimal);
   if (redgrad) VecDestroy(&redgrad);
 }
 
-void TimeStepper::allocateReducedGradient(const int noptimvars) {
-  if (redgrad) VecDestroy(&redgrad);
-
-  VecCreateSeq(PETSC_COMM_SELF, noptimvars, &redgrad);
-  VecSetFromOptions(redgrad);
-  VecAssemblyBegin(redgrad);
-  VecAssemblyEnd(redgrad);
-}
 
 Vec TimeStepper::getState(int tindex){
   
@@ -110,8 +102,7 @@ Vec TimeStepper::solveODE(int initid, Vec rho_t0, int n0){
   if (gamma_penalty_dpdm > 1e-13){
     for (int i = 0; i < 2; i++) {
       Vec state;
-      VecCreate(PETSC_COMM_WORLD, &state);
-      VecSetSizes(state, PETSC_DECIDE, dim);
+      VecCreateSeq(PETSC_COMM_SELF, dim, &state);
       VecSetFromOptions(state);
       dpdm_states.push_back(state);
     }
@@ -122,7 +113,7 @@ Vec TimeStepper::solveODE(int initid, Vec rho_t0, int n0){
   penalty_integral = 0.0;
   penalty_dpdm = 0.0;
   energy_penalty_integral = 0.0;
-  for (int n = 0; n < ntime; n++){ // TODO: Do local PinT time stepping
+  for (int n = 0; n < ntime; n++){ 
 
     /* current time */
     double tstart = (n0 + n) * dt;
@@ -185,18 +176,15 @@ Vec TimeStepper::solveAdjointODE(int initid, Vec rho_t0_bar, Vec finalstate, dou
   /* Reset gradient */
   VecZeroEntries(redgrad);
 
-  /* Set terminal adjoint condition */
+  /* Set terminal adjoint condition and terminal primal state */
   VecCopy(rho_t0_bar, x);
-
-  /* Set terminal primal state */
-  Vec xprimal = finalstate;
+  VecCopy(finalstate, xprimal);
 
   /* Store states at N, N-1, N-2 for dpdm penalty */
   if (gamma_penalty_dpdm > 1e-13){
     for (int i = 0; i < 5; i++) {
       Vec state;
-      VecCreate(PETSC_COMM_WORLD, &state);
-      VecSetSizes(state, PETSC_DECIDE, dim);
+      VecCreateSeq(PETSC_COMM_SELF, dim, &state);
       VecSetFromOptions(state);
       dpdm_states.push_back(state);
     }
@@ -296,8 +284,8 @@ double TimeStepper::penaltyIntegral(double time, const Vec x){
         leakage += (x_re * x_re + x_im * x_im) / (dt*ntime_global);
       }
     }
-    double mine = leakage;
-    MPI_Allreduce(&mine, &leakage, 1, MPI_DOUBLE, MPI_SUM, PETSC_COMM_WORLD);
+    // double mine = leakage;
+    // MPI_Allreduce(&mine, &leakage, 1, MPI_DOUBLE, MPI_SUM, PETSC_COMM_WORLD);
     penalty += dt * leakage;
   }
 
@@ -602,7 +590,7 @@ ImplMidpoint::ImplMidpoint(MapParam config,MasterEq* mastereq_, int ntime_global
 
   if (linsolve_type == LinearSolverType::GMRES) {
     /* Create Petsc's linear solver */
-    KSPCreate(PETSC_COMM_WORLD, &ksp);
+    KSPCreate(PETSC_COMM_SELF, &ksp);
     KSPGetPC(ksp, &preconditioner);
     PCSetType(preconditioner, PCNONE);
     KSPSetTolerances(ksp, linsolve_reltol, linsolve_abstol, PETSC_DEFAULT, linsolve_maxiter);
@@ -824,13 +812,11 @@ CompositionalImplMidpoint::CompositionalImplMidpoint(MapParam config, int order_
   // Allocate storage of stages for backward process 
   for (int i = 0; i <gamma.size(); i++) {
     Vec state;
-    VecCreate(PETSC_COMM_WORLD, &state);
-    VecSetSizes(state, PETSC_DECIDE, dim);
+    VecCreateSeq(PETSC_COMM_SELF, dim, &state);
     VecSetFromOptions(state);
     x_stage.push_back(state);
   }
-  VecCreate(PETSC_COMM_WORLD, &aux);
-  VecSetSizes(aux, PETSC_DECIDE, dim);
+  VecCreateSeq(PETSC_COMM_SELF, dim, &aux);
   VecSetFromOptions(aux);
 }
 

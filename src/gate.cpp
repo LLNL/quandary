@@ -49,11 +49,9 @@ Gate::Gate(std::vector<int> nlevels_, std::vector<int> nessential_, double time_
   int dim_gate;
   if (lindbladtype != LindbladType::NONE) dim_gate = dim_rho*dim_rho;
   else dim_gate = dim_rho;
-  MatCreate(PETSC_COMM_WORLD, &VxV_re);
-  MatCreate(PETSC_COMM_WORLD, &VxV_im);
-  // parallel matrix, TODO: Preallocate!
-  MatSetSizes(VxV_re, PETSC_DECIDE, PETSC_DECIDE, dim_gate, dim_gate);
-  MatSetSizes(VxV_im, PETSC_DECIDE, PETSC_DECIDE, dim_gate, dim_gate);
+  // TODO: Sparse AIJ and Preallocate!
+  MatCreateSeqDense(PETSC_COMM_SELF, dim_gate, dim_gate, NULL, &VxV_re);
+  MatCreateSeqDense(PETSC_COMM_SELF, dim_gate, dim_gate, NULL, &VxV_im);
   MatSetUp(VxV_re);
   MatSetUp(VxV_im);
   MatAssemblyBegin(VxV_re, MAT_FINAL_ASSEMBLY);
@@ -69,8 +67,8 @@ Gate::Gate(std::vector<int> nlevels_, std::vector<int> nessential_, double time_
   PetscInt ilow, iupp;
   MatGetOwnershipRange(VxV_re, &ilow, &iupp);
   PetscInt dimis = iupp - ilow;
-  ISCreateStride(PETSC_COMM_WORLD, dimis, 2*ilow, 2, &isu);
-  ISCreateStride(PETSC_COMM_WORLD, dimis, 2*ilow+1, 2, &isv);
+  ISCreateStride(PETSC_COMM_SELF, dimis, 2*ilow, 2, &isu);
+  ISCreateStride(PETSC_COMM_SELF, dimis, 2*ilow+1, 2, &isv);
  
 }
 

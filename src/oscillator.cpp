@@ -420,8 +420,8 @@ double Oscillator::expectedEnergy(const Vec x) {
   }
   
   /* Sum up from all Petsc processors */
-  double myexp = expected;
-  MPI_Allreduce(&myexp, &expected, 1, MPI_DOUBLE, MPI_SUM, PETSC_COMM_WORLD);
+  // double myexp = expected;
+  // MPI_Allreduce(&myexp, &expected, 1, MPI_DOUBLE, MPI_SUM, PETSC_COMM_WORLD);
 
   return expected;
 }
@@ -475,7 +475,7 @@ void Oscillator::population(const Vec x, std::vector<double> &pop) {
 
   assert (pop.size() == nlevels);
 
-  std::vector<double> mypop(nlevels, 0.0);
+  // std::vector<double> mypop(nlevels, 0.0);
 
   /* Get locally owned portion of x */
   PetscInt ilow, iupp;
@@ -509,10 +509,10 @@ void Oscillator::population(const Vec x, std::vector<double> &pop) {
         }
       }
     }
-    mypop[i] = sum;
+    pop[i] = sum;
   } 
 
   /* Gather poppulation from all Petsc processors */
-  for (int i=0; i<mypop.size(); i++) {pop[i] = mypop[i];}
-  MPI_Allreduce(mypop.data(), pop.data(), nlevels, MPI_DOUBLE, MPI_SUM, PETSC_COMM_WORLD);
+  // for (int i=0; i<mypop.size(); i++) {pop[i] = mypop[i];}
+  // MPI_Allreduce(mypop.data(), pop.data(), nlevels, MPI_DOUBLE, MPI_SUM, PETSC_COMM_WORLD);
 }
