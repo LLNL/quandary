@@ -93,9 +93,8 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   VecAssemblyBegin(xinit);
   VecAssemblyEnd(xinit);
 
-  VecSet(lambda, 1.0);
-  VecSet(xinit, 1.0);
-
+  // VecSet(lambda, 1.0);
+  // VecSet(xinit, 1.0);
 
   // test sizes
   int global_size;
