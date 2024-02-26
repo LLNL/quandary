@@ -640,13 +640,13 @@ double OptimProblem::evalF(const Vec xin, const Vec lambda_) {
   VecCopy(xin,x);
   VecScale(x, 1.0/scalefactor_states);
   // undo scaling of alpha
+  double* xptr;
+  VecGetArray(x, &xptr);
   if (mpirank_world==0) {
-    double* xptr;
-    VecGetArray(x, &xptr);
     for (int i=0; i<ndesign; i++)
       xptr[i] *=scalefactor_states;
-    VecRestoreArray(x, &xptr);
   }
+  VecRestoreArray(x, &xptr);
 
   /* Pass control vector to oscillators */
   // x_alpha is set only on first processor. Need to communicate x_alpha to all processors here. 
@@ -818,13 +818,13 @@ void OptimProblem::evalGradF(const Vec xin, const Vec lambda_, Vec G){
   VecCopy(xin,x);
   VecScale(x, 1.0/scalefactor_states);
   // undo scaling of alpha
+  double* xptr;
+  VecGetArray(x, &xptr);
   if (mpirank_world==0) {
-    double* xptr;
-    VecGetArray(x, &xptr);
     for (int i=0; i<ndesign; i++)
       xptr[i] *=scalefactor_states;
-    VecRestoreArray(x, &xptr);
   }
+  VecRestoreArray(x, &xptr);
 
   /* Pass design vector x to oscillators */
   // x_alpha is set only on first processor. Need to communicate x_alpha to all processors here. 
@@ -1098,14 +1098,13 @@ void OptimProblem::evalGradF(const Vec xin, const Vec lambda_, Vec G){
   // scale the state part of the gradient by 1/scalefactor_states
   VecScale(G, 1.0/scalefactor_states);
   // undo scaling of alpha
+  double* ptr;
+  VecGetArray(G, &ptr);
   if (mpirank_world==0) {
-    double* xptr;
-    VecGetArray(G, &xptr);
     for (int i=0; i<ndesign; i++)
-      xptr[i] *=scalefactor_states;
-    VecRestoreArray(G, &xptr);
+      ptr[i] *=scalefactor_states;
   }
-
+  VecRestoreArray(G, &ptr);
 
   /* Output */
   if (mpirank_world == 0 && !quietmode) {
@@ -1133,16 +1132,16 @@ void OptimProblem::getStartingPoint(Vec xinit){
     }
 
   } else { // copy alpha from control initialization in oscillators contructor
+    PetscScalar* xptr;
+    VecGetArray(xinit, &xptr);
     if (mpirank_world == 0) { // only first processor stores x_alpha
-      PetscScalar* xptr;
-      VecGetArray(xinit, &xptr);
       int shift = 0;
       for (int ioscil = 0; ioscil<mastereq->getNOscillators(); ioscil++){
         mastereq->getOscillator(ioscil)->getParams(xptr + shift);
         shift += mastereq->getOscillator(ioscil)->getNParams();
       }
-      VecRestoreArray(xinit, &xptr);
     }
+    VecRestoreArray(xinit, &xptr);
   }
 
   /* Assemble initial guess */
