@@ -1192,6 +1192,17 @@ void OptimProblem::rollOut(Vec x){
     } // end for iwindow global
   } // end for initial condition local
   // VecView(x, PETSC_VIEWER_STDOUT_WORLD);
+
+  /* Scale the state part of x by scalefactor_states */
+  VecScale(x, scalefactor_states);
+  // undo scaling of alpha
+  double* xptr;
+  VecGetArray(x, &xptr);
+  if (mpirank_world==0) {
+    for (int i=0; i<ndesign; i++)
+      xptr[i] /=scalefactor_states;
+  }
+  VecRestoreArray(x, &xptr);
 }
 
 /* lag += - prev_mu * ( S(u_{i-1}) - u_i ) */
