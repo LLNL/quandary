@@ -160,6 +160,7 @@ class OptimProblem {
   /* Unitarize the state optim vars */
   void unitarize(Vec &x, std::vector<std::vector<double>> &vnorms);
   void unitarize_grad(const Vec &x, const std::vector<std::vector<double>> &vnorms, Vec &G);
+  void check_unitarity(const Vec &x);
 };
 
 /* Monitor the optimization progress. This routine is called in each iteration of TaoSolve() */

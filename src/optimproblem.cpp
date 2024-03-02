@@ -1447,13 +1447,10 @@ void OptimProblem::unitarize(Vec &x, std::vector<std::vector<double>> &vnorms) {
       ISGetLocalSize(IS_interm_states[iwindow][iinit], &isize);
       if (isize>0) {
         VecISCopy(x, IS_interm_states[iwindow][iinit], SCATTER_REVERSE, x_next); 
-        VecNorm(x_next, NORM_2, &vnorm);
-        VecScale(x_next, 1.0 / vnorm);
-        vnorms[iinit][iwindow] = vnorm;
       }
 
       /* Iterate over all remaining initial conditions in this window */
-      for (int jinit = iinit+1; jinit < ninit; jinit++) {
+      for (int jinit = 0; jinit < iinit; jinit++) {
       
         /* Scatter j'th initial condition to this processor */
         // only one processor has a nonzero IS size! That one sends his first index. Receive it if isize>0.
@@ -1496,13 +1493,19 @@ void OptimProblem::unitarize(Vec &x, std::vector<std::vector<double>> &vnorms) {
 
           VecRestoreSubVector(x0j, IS_re, &vre);
           VecRestoreSubVector(x0j, IS_im, &vim);
-
-          /* Finally update the global vector entry */
-          VecISCopy(x, IS_interm_states[iwindow][iinit], SCATTER_FORWARD, x_next); 
         }
+      } // for (int jinit = 0; jinit < iinit; jinit++)
+
+      if (isize>0) {
+        VecNorm(x_next, NORM_2, &vnorm);
+        VecScale(x_next, 1.0 / vnorm);
+        vnorms[iinit][iwindow] = vnorm;
+
+        /* Finally update the global vector entry */
+        VecISCopy(x, IS_interm_states[iwindow][iinit], SCATTER_FORWARD, x_next); 
       }
-    }
-  }
+    } // for (int iinit = 0; iinit < ninit; iinit++)
+  } // for (int iwindow = 1; iwindow < nwindows; iwindow++)
 
   delete [] ids_from;
   delete [] ids_to;
@@ -1622,4 +1625,76 @@ void OptimProblem::unitarize_grad(const Vec &x, const std::vector<std::vector<do
 
   // ISDestroy(&IS_re);
   // ISDestroy(&IS_im);
+}
+
+void OptimProblem::check_unitarity(const Vec &x)
+{
+  const int nwindows = IS_interm_states.size();
+  const int ninit = IS_interm_states[0].size();
+  int dim = 2*timestepper->mastereq->getDim();
+
+  Vec x0j;
+  VecCreateSeq(PETSC_COMM_SELF, dim, &x0j);
+
+  Vec vre, vim;
+  double uv_re, uv_im, vnorm;
+  IS IS_re = timestepper->mastereq->isu;
+  IS IS_im = timestepper->mastereq->isv;
+
+  int *ids_from= new int[dim];
+  int *ids_to = new int[dim];
+  for (int i=0; i< dim; i++){
+    ids_to[i] = i;
+  }
+
+  /* Iterate over local time windows */
+  for (int iwindow = 1; iwindow < nwindows; iwindow++) {
+    /* IS_interm_states[0][...] will have zero size */
+    for (int iinit = 0; iinit < ninit; iinit++) {
+
+      /* Get local state for this window: Only one proc will have it, otherones will have an empty vector. */
+      int isize;
+      ISGetLocalSize(IS_interm_states[iwindow][iinit], &isize);
+      if (isize>0) {
+        VecISCopy(x, IS_interm_states[iwindow][iinit], SCATTER_REVERSE, x_next); 
+      }
+
+      /* Iterate over all remaining initial conditions in this window */
+      for (int jinit = 0; jinit < ninit; jinit++) {
+      
+        /* Scatter j'th initial condition to this processor */
+        // only one processor has a nonzero IS size! That one sends his first index. Receive it if isize>0.
+        int jstart, jstop;
+        ISGetMinMax(IS_interm_states[iwindow][jinit], &jstart, &jstop);
+        if (jstart == PETSC_MAX_INT) jstart = 0;
+        MPI_Allreduce(&jstart, &jstart, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
+        int nelems = 0;
+        if (jstart > 0 && isize > 0)  {
+          nelems = dim;
+          for (int i=0; i< dim; i++){
+            ids_from[i] = jstart + i;
+          }
+        }
+        IS IS_from, IS_to;
+        VecScatter ctx_x0j;
+        /* Now scatter the next initial condition to this processor */
+        ISCreateGeneral(PETSC_COMM_SELF,nelems,ids_from,PETSC_COPY_VALUES, &IS_from);
+        ISCreateGeneral(PETSC_COMM_SELF,nelems,ids_to,PETSC_COPY_VALUES, &IS_to);
+        VecScatterCreate(x, IS_from, x0j, IS_to, &ctx_x0j);
+        VecScatterBegin(ctx_x0j, x, x0j, INSERT_VALUES, SCATTER_FORWARD);
+        VecScatterEnd(ctx_x0j, x, x0j, INSERT_VALUES, SCATTER_FORWARD);
+        VecScatterDestroy(&ctx_x0j);
+        ISDestroy(&IS_from);
+        ISDestroy(&IS_to);
+
+        /* On this processor, compute unitarization of local state */
+        if (isize>0) {
+          complex_inner_product(x0j, x_next, uv_re, uv_im);
+          printf("%2.1e+%2.1ei\t", uv_re, uv_im);
+        }
+      } // for (int jinit = 0; jinit < ninit; jinit++)
+      if (isize>0) printf("\n");
+    } // for (int iinit = 0; iinit < ninit; iinit++)
+    printf("\n");
+  } // for (int iwindow = 1; iwindow < nwindows; iwindow++)
 }
