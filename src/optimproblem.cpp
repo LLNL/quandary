@@ -1444,7 +1444,6 @@ void OptimProblem::unitarize(Vec &x, std::vector<std::vector<double>> &vnorms) {
   IS IS_re = timestepper->mastereq->isu;
   IS IS_im = timestepper->mastereq->isv;
 
-
   int *ids_from= new int[dim];
   int *ids_to = new int[dim];
   for (int i=0; i< dim; i++){
@@ -1464,7 +1463,6 @@ void OptimProblem::unitarize(Vec &x, std::vector<std::vector<double>> &vnorms) {
 
       /* Iterate over all remaining initial conditions in this window */
       for (int jinit = 0; jinit < iinit; jinit++) {
-      
         /* Scatter j'th initial condition to this processor */
         // only one processor has a nonzero IS size! That one sends his first index. Receive it if isize>0.
         int jstart, jstop;
@@ -1478,6 +1476,7 @@ void OptimProblem::unitarize(Vec &x, std::vector<std::vector<double>> &vnorms) {
             ids_from[i] = jstart + i;
           }
         }
+
         IS IS_from, IS_to;
         VecScatter ctx_x0j;
         /* Now scatter the next initial condition to this processor */
