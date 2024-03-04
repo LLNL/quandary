@@ -810,8 +810,20 @@ int main(int argc,char **argv)
   double obj_org;
   double obj_pert1, obj_pert2;
 
-  optimctx->getStartingPoint(xinit);
-
+  // optimctx->getStartingPoint(xinit);
+  printf("\nRandomizing the optimization variables for FD Gradient verification...\n");
+  srand(time(0));
+  int local_size;
+  VecGetLocalSize(xinit, &local_size);
+  PetscScalar *ptr;
+  VecGetArray(xinit, &ptr);
+  for (int k = 0; k < local_size; k++) {
+    double randval = (double) rand() / ((double)RAND_MAX);  // random in [0,1]
+    randval = -0.01 + 0.02 * randval;
+    ptr[k] *= 1.0 + randval;
+  }
+  VecRestoreArray(xinit, &ptr);
+ 
   /* --- Solve primal --- */
   if (mpirank_world == 0) printf("\nRunning optimizer eval_f... ");
   obj_org = optimctx->evalF(xinit, lambda);

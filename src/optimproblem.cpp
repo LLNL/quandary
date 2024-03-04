@@ -503,6 +503,12 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   VecDuplicate(xinit, &x);
   VecZeroEntries(x);
 
+  /* allocate temporary storage needed for unitarization and its gradient */
+  if (unitarize_interm_ic) {
+    VecDuplicate(x, &x_b4unit); // Parallel vector, entire optimization variable
+    VecDuplicate(x_next, &x0j);  // Sequential vector, only one initial state at one time-window
+  }
+
   /* Store optimization bounds */
   VecDuplicate(xinit, &xlower);
   VecDuplicate(xinit, &xupper);
@@ -601,6 +607,7 @@ OptimProblem::~OptimProblem() {
   VecDestroy(&x);
   if (unitarize_interm_ic) {
     VecDestroy(&x_b4unit);
+    VecDestroy(&x0j);
   }
   VecDestroy(&lambda);
   VecDestroy(&xlower);
@@ -840,7 +847,6 @@ void OptimProblem::evalGradF(const Vec xin, const Vec lambda_, Vec G){
   if (unitarize_interm_ic)
   {
     // original x is required for gradient computation
-    VecDuplicate(x, &x_b4unit);
     VecCopy(x, x_b4unit);
     unitarize(x, vnorms);
   }
@@ -1166,13 +1172,13 @@ void OptimProblem::getStartingPoint(Vec xinit){
   // output->writeControls(xinit, timestepper->mastereq, timestepper->ntime, timestepper->dt);
 
   /* Set the initial guess for the intermediate states. Here, roll-out forward propagation. TODO: Read from file */
-  if (mpirank_world==0) {
-  printf(" -> Rollout initialization of intermediate states (sequential in time windows parallel in initial conditions. This might take a while...\n");
-  }
   rollOut(xinit);
 }
 
 void OptimProblem::rollOut(Vec x){
+  if (mpirank_world==0) {
+  printf(" -> Rollout initialization of intermediate states (sequential in time windows parallel in initial conditions. This might take a while...\n");
+  }
 
   /* Roll-out forward propagation. */
   for (int iinit = 0; iinit < ninit_local; iinit++) {
@@ -1427,9 +1433,6 @@ void OptimProblem::unitarize(Vec &x, std::vector<std::vector<double>> &vnorms) {
   const int ninit = IS_interm_states[0].size();
   int dim = 2*timestepper->mastereq->getDim();
 
-  Vec x0j;
-  VecCreateSeq(PETSC_COMM_SELF, dim, &x0j);
-
   /* vnorms do not need to be broadcast. The global size is kept just for convenient indexing. */
   vnorms.resize(ninit);
   for (int iinit = 0; iinit < ninit; iinit++)
@@ -1521,16 +1524,10 @@ void OptimProblem::unitarize(Vec &x, std::vector<std::vector<double>> &vnorms) {
 
   delete [] ids_from;
   delete [] ids_to;
-  VecDestroy(&x0j);
 }
 
-void OptimProblem::unitarize_grad(const Vec &x_b4unit, const Vec &x, const std::vector<std::vector<double>> &vnorms, Vec &G) {
-  /* The adjoint for unitarize function.
-     The adjoint formulation is based on the classic Gram-Schmidt.
-     The adjoint for the modified G-S requires to store all intermediate v states,
-      while that for classic G-S requires only the norm of final v states.
-     Their gradients, due to orthonormality, are equivalent to each other.
-   */
+/* The adjoint for unitarize function based on the classic Gram-Schmidt. */
+void OptimProblem::unitarize_grad(const Vec &x_b4unit, Vec &x, const std::vector<std::vector<double>> &vnorms, Vec &G) {
 
   const int nwindows = IS_interm_states.size();
   const int ninit = IS_interm_states[0].size();
@@ -1546,10 +1543,6 @@ void OptimProblem::unitarize_grad(const Vec &x_b4unit, const Vec &x, const std::
     ids_to[i] = i;
   }
 
-  /* same as optimization variable vector, to exploit the same IS */
-  Vec vs;
-  VecDuplicate(x, &vs);
-  
   Vec us, ws;
   VecCreateSeq(PETSC_COMM_SELF, dim, &us);
   VecCreateSeq(PETSC_COMM_SELF, dim, &ws);
@@ -1592,10 +1585,8 @@ void OptimProblem::unitarize_grad(const Vec &x_b4unit, const Vec &x, const std::
         VecScatterCreate(x_b4unit, IS_from, wc, IS_to, &ctx_xc);
         VecScatterBegin(ctx_xc, x_b4unit, wc, INSERT_VALUES, SCATTER_FORWARD);
         VecScatterEnd(ctx_xc, x_b4unit, wc, INSERT_VALUES, SCATTER_FORWARD);
-        VecScatterDestroy(&ctx_xc);
-        VecScatterCreate(vs, IS_from, vsc, IS_to, &ctx_xc);
-        VecScatterBegin(ctx_xc, vs, vsc, INSERT_VALUES, SCATTER_FORWARD);
-        VecScatterEnd(ctx_xc, vs, vsc, INSERT_VALUES, SCATTER_FORWARD);
+        VecScatterBegin(ctx_xc, x, vsc, INSERT_VALUES, SCATTER_FORWARD);
+        VecScatterEnd(ctx_xc, x, vsc, INSERT_VALUES, SCATTER_FORWARD);
         VecScatterDestroy(&ctx_xc);
         ISDestroy(&IS_from);
         ISDestroy(&IS_to);
@@ -1636,7 +1627,7 @@ void OptimProblem::unitarize_grad(const Vec &x_b4unit, const Vec &x, const std::
         VecScale(us, 1.0 / vnorm);
 
         /* update the global vs entry */
-        VecISCopy(vs, IS_interm_states[iwindow][iinit], SCATTER_FORWARD, us); 
+        VecISCopy(x, IS_interm_states[iwindow][iinit], SCATTER_FORWARD, us); 
 
         VecCopy(us, ws);
       }
@@ -1690,7 +1681,6 @@ void OptimProblem::unitarize_grad(const Vec &x_b4unit, const Vec &x, const std::
     }
   }
 
-  VecDestroy(&vs);
   VecDestroy(&ws);
   VecDestroy(&us);
 
@@ -1703,9 +1693,6 @@ void OptimProblem::check_unitarity(const Vec &x)
   const int nwindows = IS_interm_states.size();
   const int ninit = IS_interm_states[0].size();
   int dim = 2*timestepper->mastereq->getDim();
-
-  Vec x0j;
-  VecCreateSeq(PETSC_COMM_SELF, dim, &x0j);
 
   Vec vre, vim;
   double uv_re, uv_im, vnorm;

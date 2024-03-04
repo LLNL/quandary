@@ -84,7 +84,8 @@ class OptimProblem {
   Vec x_next;             /* Temporary storage for a state vector */
   Vec disc;               /* Temporary storage for a state. size = 2*mastereq->getDim(). Only would need either x_next or disc... */
   Vec x;                  /* Storage for the optimization variable */
-  Vec x_b4unit;           /* Temporary storage for the optimization variable, if the states are unitarized. */
+  Vec x_b4unit;           /* Temporary storage for the optimization variable, if the states are unitarized. Parallel vector */
+  Vec x0j;                /* Temporary storage for one initial state at one time-window. Sequential vector. */
   
   public: 
     Output* output;                 /* Store a reference to the output */
@@ -160,7 +161,7 @@ class OptimProblem {
 
   /* Unitarize the state optim vars */
   void unitarize(Vec &x, std::vector<std::vector<double>> &vnorms);
-  void unitarize_grad(const Vec &x_b4unit, const Vec &x, const std::vector<std::vector<double>> &vnorms, Vec &G);
+  void unitarize_grad(const Vec &x_b4unit, Vec &x, const std::vector<std::vector<double>> &vnorms, Vec &G);
   void check_unitarity(const Vec &x);
 };
 
