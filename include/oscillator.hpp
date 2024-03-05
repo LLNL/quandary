@@ -59,6 +59,7 @@ class Oscillator {
     double getDephaseTime() {return dephase_time; };
     int getNSegments() {return basisfunctions.size(); };
     int getNCarrierfrequencies() {return carrier_freq.size(); };
+    double getRotFreq() {return (ground_freq - detuning_freq) / (2.0*M_PI); };
 
     /* Return the number of parameters for the k-th segment */
     int getNSegParams(int segmentID);

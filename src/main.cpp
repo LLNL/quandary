@@ -359,18 +359,7 @@ int main(int argc,char **argv)
   }
 
   /* --- Initialize optimization --- */
-  /* Get gate rotation frequencies. Default: use rotational frequencies for the gate. */
-  int noscillators = nlevels.size();
-  std::vector<double> gate_rot_freq(noscillators); 
-  for (int iosc=0; iosc<noscillators; iosc++) gate_rot_freq[iosc] = rot_freq[iosc];
-  /* If gate_rot_freq option is given in config file, overwrite them with input */
-  std::vector<double> read_gate_rot;
-  config.GetVecDoubleParam("gate_rot_freq", read_gate_rot, 1e20); 
-  copyLast(read_gate_rot, noscillators);
-  if (read_gate_rot[0] < 1e20) { // the config option exists
-    for (int i=0; i<noscillators; i++)  gate_rot_freq[i] = read_gate_rot[i];
-  }
-  OptimProblem* optimctx = new OptimProblem(config, mytimestepper, comm_init, comm_optim, ninit, gate_rot_freq, output, quietmode);
+  OptimProblem* optimctx = new OptimProblem(config, mytimestepper, comm_init, comm_optim, ninit, output, quietmode);
 
   /* Set upt solution and gradient vector */
   Vec xinit;
