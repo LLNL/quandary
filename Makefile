@@ -77,7 +77,7 @@ LDFLAGS =  -lm  -L${PETSC_DIR}/${PETSC_ARCH}/lib -lblas -llapack ${LDFLAGS_OPT} 
 
 # Set compiler and flags 
 CXX=mpicxx
-CXXFLAGS= -O3 -std=c++11 -lstdc++ $(CXX_OPT)
+CXXFLAGS= -O3 -std=c++14 $(CXX_OPT)
 
 
 # Rule for linking main
