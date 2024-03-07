@@ -235,7 +235,6 @@ OptimTarget::OptimTarget(std::vector<std::string> target_str, std::string object
     printf("\n\n ERROR: Unknown objective function: %s\n", objective_str.c_str());
     exit(1);
   }
-  printf("objective_type = %d, purestateID=%d\n", objective_type, purestateID);
 
   /* Allocate target state, if it is read from file, or if target is a gate transformation VrhoV. If pure target, only store the ID. */
   if (target_type == TargetType::GATE || target_type == TargetType::FROMFILE) {
