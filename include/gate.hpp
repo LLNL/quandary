@@ -140,3 +140,6 @@ class FromFile: public Gate {
     ~FromFile();
 };
 
+
+/* Intializes one of the above classes given the target string. */
+Gate* initTargetGate(std::vector<std::string> target_str, std::vector<int>nlevels, std::vector<int>nessential, double total_time, LindbladType lindbladtype, std::vector<double> gate_rot_freq, bool quietmode);

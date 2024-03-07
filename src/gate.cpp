@@ -542,3 +542,25 @@ FromFile::FromFile(std::vector<int> nlevels_, std::vector<int> nessential_, doub
 
 FromFile::~FromFile(){}
 
+
+Gate* initTargetGate(std::vector<std::string> target_str, std::vector<int>nlevels, std::vector<int>nessential, double total_time, LindbladType lindbladtype, std::vector<double> gate_rot_freq, bool quietmode){
+
+  if ( target_str.size() < 2 ) {
+    printf("ERROR: You want to optimize for a gate, but didn't specify which one. Check your config for 'optim_target'!\n");
+    exit(1);
+  };
+
+  Gate* mygate;
+  if      (target_str[1].compare("none")  == 0 )    mygate = new Gate();
+  else if (target_str[1].compare("xgate") == 0 )    mygate = new XGate(nlevels, nessential, total_time, gate_rot_freq, lindbladtype, quietmode);
+  else if (target_str[1].compare("ygate") == 0 )    mygate = new YGate(nlevels, nessential, total_time, gate_rot_freq, lindbladtype, quietmode);
+  else if (target_str[1].compare("zgate") == 0 )    mygate = new ZGate(nlevels, nessential, total_time, gate_rot_freq, lindbladtype, quietmode);
+  else if (target_str[1].compare("hadamard") == 0 ) mygate = new HadamardGate(nlevels, nessential, total_time, gate_rot_freq, lindbladtype, quietmode);
+  else if (target_str[1].compare("cnot") == 0 )     mygate = new CNOT(nlevels, nessential, total_time, gate_rot_freq, lindbladtype, quietmode);
+  else if (target_str[1].compare("swap") == 0 )     mygate = new SWAP(nlevels, nessential, total_time, gate_rot_freq, lindbladtype, quietmode);
+  else if (target_str[1].compare("swap0q") == 0 )   mygate = new SWAP_0Q(nlevels, nessential, total_time, gate_rot_freq, lindbladtype, quietmode);
+  else if (target_str[1].compare("cqnot") == 0 )    mygate = new CQNOT(nlevels, nessential, total_time, gate_rot_freq, lindbladtype, quietmode);
+  else if (target_str[1].compare("fromfile") == 0 ) mygate = new FromFile(nlevels, nessential, total_time, gate_rot_freq, lindbladtype, target_str[2], quietmode);
+
+  return mygate;
+}

@@ -113,7 +113,6 @@ void Output::writeControls(Vec params, MasterEq* mastereq, int ntime, double dt)
 
     /* Print current parameters to file */
     FILE *file, *file_c;
-    // sprintf(filename, "%s/params_iter%04d.dat", datadir.c_str(), optim_iter);
     snprintf(filename, 254, "%s/params.dat", datadir.c_str());
     file = fopen(filename, "w");
 
