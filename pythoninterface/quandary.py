@@ -285,14 +285,14 @@ class QuandaryConfig:
             if len(self.pcof0_filename)>0:
                 initstring = "file, "+str(self.pcof0_filename) + "\n"
             else:
-                # Scale initial control amplitudes by the number of carrier waves and convert to rad/ns
-                initamp = self.initctrl_MHz[iosc] *2.0*np.pi/1000.0 / np.sqrt(2) / len(self.carrier_frequency[iosc])
+                # Scale initial control amplitudes by the number of carrier waves and convert to ns
+                initamp = self.initctrl_MHz[iosc] /1000.0 / np.sqrt(2) / len(self.carrier_frequency[iosc])
                 initstring = ("random, " if self.randomize_init_ctrl else "constant, ") + str(initamp) + "\n"
             mystring += "control_initialization" + str(iosc) + " = " + initstring 
             if len(self.maxctrl_MHz) == 0: # Disable bounds, if not specified
                 boundval = 1e+12
             else:
-                boundval = self.maxctrl_MHz[iosc]*2.0*np.pi/1000.0  # Scale to rad/ns
+                boundval = self.maxctrl_MHz[iosc]/1000.0  # Scale to ns
             mystring += "control_bounds" + str(iosc) + " = " + str(boundval) + "\n"
             mystring += "carrier_frequency" + str(iosc) + " = "
             omi = self.carrier_frequency[iosc]
