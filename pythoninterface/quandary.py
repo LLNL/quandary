@@ -142,7 +142,7 @@ class QuandaryConfig:
         if len(self.targetstate) > 0:
             self.optim_target = "file"
         if len(self.targetgate) > 0:
-            self.optim_target = "gate, fromfile"
+            self.optim_target = "gate, file"
         
         # Change default initial condition to ground state, if target is state-to-state optimization
         if len(self.targetstate) > 0 and self.initialcondition[0:4] != "pure":

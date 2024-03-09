@@ -595,7 +595,7 @@ function dump_config(self;runtype="simulation",datadir="./run_dir")
     mystring *= "control_enforceBC = " * string(self.control_enforce_BC) * "\n"
 
     if length(self._gatefilename) > 0
-        mystring *= "optim_target = gate, fromfile, " * self._gatefilename * "\n"
+        mystring *= "optim_target = gate, file, " * self._gatefilename * "\n"
     else
         mystring *= "optim_target = " * string(self.optim_target) * "\n"
     end
