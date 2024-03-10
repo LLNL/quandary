@@ -416,7 +416,7 @@ int OptimTarget::prepareInitialState(const int iinit, const int ninit, std::vect
   PetscInt elemID;
   double val;
   int dim_post;
-  int initID = 1;    // Output: ID for this initial condition */
+  int initID = 0;    // Output: ID for this initial condition */
 
   /* Switch over type of initial condition */
   switch (initcond_type) {
