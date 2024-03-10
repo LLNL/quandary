@@ -1,3 +1,5 @@
+# Make sure you have the location of quandary.py in your PYTHONPATH. E.g. with
+#   > export PYTHONPATH=/path/to/quandary/:$PYTHONPATH
 from quandary import * 
 
 ## Two qubit test case: CNOT gate, two levels each, no guard levels, dipole-dipole coupling 5KHz ##

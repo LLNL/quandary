@@ -7,18 +7,80 @@ from typing import List, Dict
 ## For some Matplotlib installations to work, you might need the below...
 # import PyQt6.QtCore
 
-## 
-# This class collects configuration options to run quandary. The default values are set to optimize for the swap02 gate. Fields in this configuration file are set through the constructor
-#   > myconfig = QuandaryConfig(fieldname=mynewsetting, anotherfieldname=anothernewsetting, ...)
-# which sets the default values for those variables that are not set through those arguments. 
-# 
-# In addition to setting defaults, the constructor also computes the number of time-steps required to resolve the time-domain, as well as the resonant carrier wave frequencies. If you attempt to change options of the configuration *after* construction, e.g. through
-#   > myconfig.fieldname = mynewsetting
-# it is advised to call
-#  > myconfig.update()
-# which recomputes the number of time-steps and carrier waves given the new settings. 
 @dataclass
 class QuandaryConfig:
+    """
+    This class collects configuration options to run quandary and sets all defaults. Each parameter can be overwritten within the constructor. The number of time-steps required to resolve the time-domain, as well as the resonant carrier wave frequencies are computed within the constructor. If you attempt to change options of the configuration *after* construction by accessing them directly (e.g. myconfig.fieldname = mynewsetting), it is therefore advised to call myconfig.update() afterwards to recompute the number of time-steps and carrier waves.
+
+    Parameters
+    ----------
+    Ne                  : Number of essential energy levels per qubit    Default: [3]        
+    Ng                  : Number of extra guard levels per qubit         Default: [1]        
+    freq01              : 01-transition frequencies [GHz] per qubit      Default: [4.10595]
+    selfkerr            : Anharmonicities [GHz] per qubit                Default: [0.2198]
+    rotfreq             : Frequency of rotations for computational frame [GHz] per qubit (default =freq01)
+    Jkl                 : Dipole-dipole coupling strength [GHz]. Formated list [J01, J02, ..., J12, J13, ...]
+    crosskerr           : ZZ coupling strength [GHz]. Formated list [g01, g02, ..., g12, g13, ...]
+    T1                  : Optional: T1-Decay time per qubit (invokes Lindblad solver)
+    T2                  : Optional: T2-Dephasing time per qubit (invokes Lindlbad solver)
+
+    T                   : Pulse time duration. 
+    Pmin                : Number of discretization points to resolve the shortest period of the dynamics (determines <nsteps>). Default: 150
+    nsteps              : Number of time-discretization points (will be computed internally based on Pmin, or can be set here)
+
+    targetgate          : Complex target unitary in the essential level dimensions for gate optimization.
+    targetstate         : Complex target state vector for state-to-state optimization
+    initialcondition    : Initial states at time t=0.0: "basis" (default), "diagonal", "pure, 0,0,1,...", "file, /path/to/file"
+ 
+    maxctrl_MHz         : Amplitude bounds for the control pulses [MHz]. Float or List[float]
+    control_enforce_BC  : Bool to let control pulses start and end at zero. Default: False
+    initctrl_MHz        : Amplitude [MHz] of initial control parameters. Float or List[float]. Default 10 MHz.
+    randomize_init_ctrl : Randomize the initial control parameters (will be ignored if pcof0 or pcof0_filename are given). Default=True
+    rand_seed           : Set a fixed random number generator seed. Default: random seed through time(0). Non-reproducable.
+
+    pcof0               : Optional: Pass an initial vector of control parameters
+    pcof0_filename      : Optional: Load initial control parameter vector from a file
+
+    dtau                : Spacing [ns] of Bspline basis functions. Default 10ns. The smaller dtau, the larger nsplines = T/dtau + 2)
+    nsplines            : Number of Bspline basis functions, will be computed from T and dtau if not set directly here
+    carrier_frequency   : List of carrier frequencies for each oscillator. List[List[float]]. Default will be computed based on Hsys.
+    cw_amp_thres        : Threshold to ignore carrier wave frequencies whose growth rate is below this value. Default: 1e-7
+    cw_prox_thres       : Threshold to distinguish different carrier wave frequencies from each other. Default: 1e-2
+
+    Hsys                : Optional: User specified system Hamiltonian model. Array.
+    Hc_re               : Optional: User specified control Hamiltonian operators for each qubit (real-parts). List of Arrays
+    Hc_im               : Optional: User specified control Hamiltonian operators for each qubit (real-parts) List of Arrays
+    standardmodel       : Internal: Bool to use standard Hamiltonian model for superconduction qubits. Default: true
+
+    maxiter              : Maximum number of optimization iterations. Default 200
+    tol_infidelity       : Optimization stopping criterion based on the infidelity. Default 1e-5
+    tol_costfunc         : Optimization stopping criterion based on the objective function value. Default 1e-4
+    optim_target         : Optional: Set other optimization target string, if not specified through the targetgate or targetstate. 
+    costfunction         : Cost function measure: "Jtrace" or "Jfrobenius". Default: "Jtrace"
+    gamma_tik0           : Parameter for Tikhonov regularization ||alpha||^2. Default 1e-4
+    gamma_tik0_interpolate : Switch to use ||alpha-alpha_0||^2 instead, where alpha_0 is the initial guess. Default: False
+    gamma_leakage        : Parameter for leakage prevention. Default 0.1
+    gamma_energy         : Parameter for integral penality term on the control pulse energy. Default 0.1
+    gamma_dpdm           : Parameter for integral penality term on second state derivative. Default 0.01
+
+    print_frequency_iter : Output frequency for optimization iterations. (Print every <x> iterations). Default: 1
+    timestepper          : Time-discretization scheme. Default: IMR
+    usematfree           : Bool to use matrix-free (rather than sparse-matrix) solver. Default: True
+    verbose              : Switch to turn on more screen output for debugging. Default: False
+
+    Internal variables 
+    --------------
+    _hamiltonian_filename : str  = ""
+    _gatefilename         : str  = ""
+
+
+    Output, available after quandary_run(..)
+    ----------------------------------------
+    popt         # Optimized control palamters. List[float]
+    time         # Vector of discretized time points. List[float]
+    optim_hist   # Optimization history: all fields as in Quandary's output file optim_history.dat. Dict
+    uT           # Evolved states at final time T. This is the (unitary) solution operator, if the initial conditions span the full basis. 
+    """ 
 
     # Quantum system specifications
     Ne        : List[int]   = field(default_factory=lambda: [3])        # Number of essential energy levels per qubit
@@ -71,7 +133,7 @@ class QuandaryConfig:
     gamma_dpdm          : float             = 0.01                          # Parameter for integral penality term on second state derivative
     tol_infidelity      : float             = 1e-5                          # Optimization stopping criterion based on the infidelity
     tol_costfunc        : float             = 1e-4                          # Optimization stopping criterion based on the objective function value
-    maxiter             : int               = 100                           # Maximum number of optimization iterations
+    maxiter             : int               = 200                           # Maximum number of optimization iterations
 
     # Quandary run options
     print_frequency_iter: int         = 1                   # Output frequency for optimization iterations. (Print every <x> iterations)
@@ -93,14 +155,14 @@ class QuandaryConfig:
     uT          : List[float]   = field(default_factory=list)   # Evolved states at final time T. This is the (unitary) solution operator, if the initial conditions span the full basis. 
 
 
-    ##
-    # This function will be called during initialization of a QuandaryConfig instance.
-    # It sets default options that are nor specified by the user and not by the above defaults.
-    # It further sets
-    #   - <nsteps>            : the number of time steps based on Hamiltonian eigenvalues and Pmin
-    #   - <carrier_frequency> : carrier wave frequencies bases on system resonances
-    ##
     def __post_init__(self):
+        """
+        This function will be called during initialization of a QuandaryConfig instance.
+        It sets default options that are nor specified by the user and not by the above defaults.
+        It further sets
+          - <nsteps>            : the number of time steps based on Hamiltonian eigenvalues and Pmin
+          - <carrier_frequency> : carrier wave frequencies bases on system resonances
+        """
 
         # Set default two-level system, if Ne is not specified by user
         if len(self.freq01) != len(self.Ne):
@@ -170,18 +232,18 @@ class QuandaryConfig:
             print("Carrier frequencies (rot. frame): ", self.carrier_frequency)
             print("\n")
 
-    ##
-    # Call this function if you have changed a config option outside of the constructor, e.g. with "myconfig.variablename = new_variable". This will ensure that the number of time steps and carrier waves are re-computed, given the new setting. 
-    ## 
     def update(self):
+        """
+        Call this function if you have changed a config option outside of the constructor, e.g. with "myconfig.variablename = new_variable". 
+        This will ensure that the number of time steps and carrier waves are re-computed, given the new setting, by calling __post_init__().
+        """
         self.__post_init__()
 
-
-    ##
-    # Dumps all required configuration options (and target gate, pcof0, Hamiltonian operators) into files for Quandary use.
-    # Returns the name of the configuration file needed for executing Quandary
-    ##
     def dump(self, *, runtype="simulation", datadir="./run_dir"):
+        """
+        Dumps all required configuration options (and target gate, pcof0, Hamiltonian operators) into files for Quandary use.
+        # Returns the name of the configuration file needed for executing Quandary
+        """
 
         # If given, write the target gate to file
         if len(self.targetgate) > 0:
@@ -346,13 +408,33 @@ class QuandaryConfig:
 
         return "./config.cfg"
 
-##
-# Main interface function to run Quandary: 
-#   1. Writes config files
-#   2. Envokes subprocess to run quandary (on multiple cores)
-#   3. Gathers results from Quandays output directory
-##
+
 def quandary_run(config: QuandaryConfig, *, runtype="optimization", ncores=-1, datadir="./run_dir", quandary_exec="/absolute/path/to/quandary/main", cygwin=False):
+    """
+    Main interface function to run Quandary: 
+      1. Writes quandary config files to file system
+      2. Envokes subprocesses to run quandary (on multiple cores)
+      3. Gathers results from Quandays output directory into python
+
+    Required parameters:
+    --------------------
+    config          :  QuandaryConfig instance
+
+    Optional parameters:
+    --------------------
+    runtype         :  "simulation", or "gradient", or "optimization"
+    ncores          :  Number of cores to execute the C++ quandary code
+    datadir         :  Folder name to store results. Default: "./run_dir"
+    quandary_exec   :  Path to C++ executable (absolute path)
+
+    Returns:
+    --------
+    time            :  List of time-points at which the controls are evaluated  (List)
+    pt, qt          :  p,q-control pulses at each time point for each oscillator (List of list)
+    infidelity      :  Infidelity of the pulses for the specified target operation (Float)
+    expectedEnergy  :  Evolution of the expected energy of each oscillator and each initial condition. Acces: expectedEnergy[oscillator][initialcondition]
+    population      :  Evolution of the population of each oscillator, of each initial condition. Acces: expectedEnergy[oscillator][initialcondition]
+    """
 
     # Create quandary data directory
     os.makedirs(datadir, exist_ok=True)
@@ -388,12 +470,9 @@ def quandary_run(config: QuandaryConfig, *, runtype="optimization", ncores=-1, d
     return config.time, pt, qt, infidelity, expectedEnergy, population
 
 
-##
-# Helper function to evoke a subprossess that executes Quandary
-##
 def execute(*, runtype="simulation", ncores=1, config_filename="config.cfg", datadir=".", quandary_exec="/absolute/path/to/quandary/main", verbose=False, cygwin=False):
+    """ Helper function to evoke a subprocess that executes Quandary  """
 
-    
     # result = run(["pwd"], shell=True, capture_output=True, text=True)
     # print("Current location: ", result.stdout, "\n")
     # print("data dir: ", datadir, "\n")
@@ -445,10 +524,8 @@ def execute(*, runtype="simulation", ncores=1, config_filename="config.cfg", dat
     return 1
 
 
-##
-# Helper function to gather results from Quandaries output directory
-##
 def get_results(*, Ne=[], Ng=[], datadir="./", lindblad_solver=False, initialcondition="basis"):
+    """ Helper function to gather results from Quandary output directory """
     dataout_dir = datadir + "/"
     
     # Get control parameters
@@ -556,10 +633,26 @@ def get_results(*, Ne=[], Ng=[], datadir="./", lindblad_solver=False, initialcon
     return time, pt, qt, uT, expectedEnergy, population, pcof, infid_last, optim_hist
 
 
-##
-# Helper function to re-evaluate the controls on a different time grid for a specific sample rate
-#
+
 def evalControls(config, *, pcof=[], points_per_ns=1, quandary_exec="/absolute/path/to/quandary/main", datadir="./run_dir", cygwin=False):
+    """
+    Evaluate control pulses on a specific sample rate. Either the controls specified through the options in config will be used, or the vector parameters pcof0 will be used to determine the pulses.
+
+    Parameters:
+    ------------
+    config     :  QuandaryConfig. 
+
+    Optional Parameters:
+    --------------------
+    pcof          :  List of control parameters (bspline coefficients) that determine the controls pulse. If not given, this function will use the setting from config (pcof0, or filename, or random initial control...)
+    points_per_ns :  sample rate of the resulting controls. Default: 1ns
+    quandary_exec :  Path to Quandary's C++ executable
+    
+    Returns:
+    ---------
+    time    :  List of time-points
+    pt, qt  :  Control pulses for each oscillator at each time point
+    """
 
     # Copy original setting and overwrite number of time steps for simulation
     nsteps_org = config.nsteps
@@ -584,11 +677,12 @@ def evalControls(config, *, pcof=[], points_per_ns=1, quandary_exec="/absolute/p
 
     return time, pt, qt
 
-##
-# Estimates the number of time steps based on eigenvalues of the system Hamiltonian and maximum control Hamiltonians.
-# Note: The estimate does not account for quickly varying signals or a large number of splines. Double check that at least 2-3 points per spline are present to resolve control function. #TODO: Automate this
-##
+
 def estimate_timesteps(*, T=1.0, Hsys=[], Hc_re=[], Hc_im=[], maxctrl_MHz=[], Pmin=40):
+    """
+    Estimates the number of time steps based on eigenvalues of the system Hamiltonian and maximum control Hamiltonians.
+    Note: The estimate does not account for quickly varying signals or a large number of splines. Double check that at least 2-3 points per spline are present to resolve control function. #TODO: Automate this
+    """
 
     # Get estimated control pulse amplitude
     est_ctrl_MHz = maxctrl_MHz[:]
@@ -619,8 +713,8 @@ def estimate_timesteps(*, T=1.0, Hsys=[], Hc_re=[], Hc_im=[], maxctrl_MHz=[], Pm
     return nsteps
 
 
-# computes eigen decomposition and re-orders it to make the eigenvector matrix as close to the identity as posiible
 def eigen_and_reorder(H0, verbose=False):
+    """ Computes eigen decomposition and re-orders it to make the eigenvector matrix as close to the identity as posiible """
 
     # Get eigenvalues and vectors and sort them in ascending order
     Ntot = H0.shape[0]
@@ -662,9 +756,12 @@ def eigen_and_reorder(H0, verbose=False):
     return evals, evects
 
 
-# Computes system resonances, to be used as carrier wave frequencies
-# Returns resonance frequencies in GHz and corresponding growth rates.
 def get_resonances(*, Ne, Ng, Hsys, Hc_re=[], Hc_im=[], rotfreq=[], cw_amp_thres=1e-7, cw_prox_thres=1e-2,verbose=True, stdmodel=True):
+    """ 
+    Computes system resonances, to be used as carrier wave frequencie.
+    Returns resonance frequencies in GHz and corresponding growth rates.
+    """ 
+
     if verbose:
         print("\nComputing carrier frequencies, ignoring growth rate slower than:", cw_amp_thres, "and frequencies closer than:", cw_prox_thres, "[GHz])")
 
@@ -770,14 +867,15 @@ def map_to_oscillators(id, Ne, Ng):
 
     return localIDs 
 
-##
-# Create standard Hamiltonian operators to model superconducting qubits. 
-# Returns 
-#   - Hsys  : System Hamiltonian (time-independent), units rad/ns
-#   - Hc_re : Real parts of control Hamiltonian operators for each qubit (Hc = [ [Hc_qubit1], [Hc_qubit2],... ]). Unit-less.
-#   - Hc_im : Imag parts of control Hamiltonian operators for each qubit (Hc = [ [Hc_qubit1], [Hc_qubit2],... ]). Unit-less.
-##
+
 def hamiltonians(*, N, freq01, selfkerr, crosskerr=[], Jkl = [], rotfreq=[], verbose=True):
+    """  
+    Create standard Hamiltonian operators to model superconducting qubits. 
+    Returns 
+       - Hsys  : System Hamiltonian (time-independent), units rad/ns
+       - Hc_re : Real parts of control Hamiltonian operators for each qubit (Hc = [ [Hc_qubit1], [Hc_qubit2],... ]). Unit-less.
+       - Hc_im : Imag parts of control Hamiltonian operators for each qubit (Hc = [ [Hc_qubit1], [Hc_qubit2],... ]). Unit-less.
+    """
     if len(rotfreq) == 0:
         rotfreq=np.zeros(len(N))
 
@@ -841,10 +939,12 @@ def hamiltonians(*, N, freq01, selfkerr, crosskerr=[], Jkl = [], rotfreq=[], ver
 
     return Hsys, Hc_re, Hc_im
 
-##
-# Plot the control pulse for all qubits
-##
+
 def plot_pulse(Ne, time, pt, qt):
+    """ 
+    Plot the control pulse for all qubits
+    """
+
     fig = plt.figure()
     nrows = len(Ne)
     ncols = 1
@@ -868,10 +968,9 @@ def plot_pulse(Ne, time, pt, qt):
     input(); 
     plt.close(fig)
 
-##
-# Plot evolution of expected energy levels
-##
 def plot_expectedEnergy(Ne, time, expectedEnergy, *, lindblad_solver=False):
+    """ Plot evolution of expected energy levels """
+
     ninit = len(expectedEnergy[0])
     nplots = ninit                    # one plot for each initial state
     # nplots = np.prod(Ne)                # one plot for each initial state
@@ -904,10 +1003,9 @@ def plot_expectedEnergy(Ne, time, expectedEnergy, *, lindblad_solver=False):
     plt.close(fig)
 
 
-##
-# Plot evolution of population
-##
 def plot_population(Ne, time, population, *, lindblad_solver=False):
+    """ Plot evolution of population """ 
+
     ninit = len(population[0])
     # nplots = np.prod(Ne)                # one plot for each initial state
     nplots = ninit                      # one plot for each initial state
@@ -945,6 +1043,7 @@ def plot_population(Ne, time, population, *, lindblad_solver=False):
 
 
 def plot_results_1osc(myconfig, p, q, expectedEnergy, population):
+    """ Plot all results of one oscillator """
 
     fig, ax = plt.subplots(2, 3, figsize=(20,8))
     fig.subplots_adjust(hspace=0.3)
@@ -1015,8 +1114,8 @@ def plot_results_1osc(myconfig, p, q, expectedEnergy, population):
     plt.close(fig)
 
 
-# Decrease timestep size until Richardson error estimate meets threshold
-def timestep_richardson_est(myconfig, tol=1e-8, order=2, quandary_exec="../../quandary"):
+def timestep_richardson_est(myconfig, tol=1e-8, order=2, quandary_exec="./quandary"):
+    """ Decrease timestep size until Richardson error estimate meets threshold """
 
     # Factor by which timestep size is decreased
     m = 2 

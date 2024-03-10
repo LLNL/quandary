@@ -1,3 +1,5 @@
+# Make sure you have the location of quandary.py in your PYTHONPATH. E.g. with
+#   > export PYTHONPATH=/path/to/quandary/:$PYTHONPATH
 from quandary import * 
 
 ## One qudit test case: Swap the 0 and 2 state of a three-level qudit ##
@@ -23,7 +25,7 @@ unitary = [[0,0,1],[0,1,0],[1,0,0]]  # Swaps first and last level
 # Prepare Quandary configuration. The 'QuandaryConfig' dataclass gathers all configuration options and sets defaults for those member variables that are not passed through the constructor here. It is advised to compare what other defaults are set in the QuandaryConfig constructor (beginning of quandary.py)
 myconfig = QuandaryConfig(Ne=Ne, Ng=Ng, freq01=freq01, selfkerr=selfkerr, maxctrl_MHz=maxctrl_MHz, targetgate=unitary, T=T)
 
-# Set the location of the quandary executable (absolute path!)
+# Set the location of the quandary executable, if not in your $PATH
 quandary_exec="/Users/guenther5/Numerics/quandary/quandary"
 
 # Potentially load initial control parameters from a file. 
