@@ -14,210 +14,194 @@ class QuandaryConfig:
 
     Parameters
     ----------
-    Ne                  : Number of essential energy levels per qubit    Default: [3]        
-    Ng                  : Number of extra guard levels per qubit         Default: [1]        
-    freq01              : 01-transition frequencies [GHz] per qubit      Default: [4.10595]
-    selfkerr            : Anharmonicities [GHz] per qubit                Default: [0.2198]
-    rotfreq             : Frequency of rotations for computational frame [GHz] per qubit (default =freq01)
-    Jkl                 : Dipole-dipole coupling strength [GHz]. Formated list [J01, J02, ..., J12, J13, ...]
-    crosskerr           : ZZ coupling strength [GHz]. Formated list [g01, g02, ..., g12, g13, ...]
-    T1                  : Optional: T1-Decay time per qubit (invokes Lindblad solver)
-    T2                  : Optional: T2-Dephasing time per qubit (invokes Lindlbad solver)
+    # Quantum system specifications
+    Ne           # Number of essential energy levels per qubit. Default: [3]        
+    Ng           # Number of extra guard levels per qubit. Default: [1]        
+    freq01       # 01-transition frequencies [GHz] per qubit. Default: [4.10595]
+    selfkerr     # Anharmonicities [GHz] per qubit. Default: [0.2198]
+    rotfreq      # Frequency of rotations for computational frame [GHz] per qubit. Default: freq01
+    Jkl          # Dipole-dipole coupling strength [GHz]. Formated list [J01, J02, ..., J12, J13, ...] Default: 0
+    crosskerr    # ZZ coupling strength [GHz]. Formated list [g01, g02, ..., g12, g13, ...] Default: 0
+    T1           # Optional: T1-Decay time per qubit (invokes Lindblad solver). Default: 0
+    T2           # Optional: T2-Dephasing time per qubit (invokes Lindlbad solver). Default: 0
 
-    T                   : Pulse time duration. 
-    Pmin                : Number of discretization points to resolve the shortest period of the dynamics (determines <nsteps>). Default: 150
-    nsteps              : Number of time-discretization points (will be computed internally based on Pmin, or can be set here)
+    # Optional: User-defined system and control Hamiltonian operators. Default: Superconducting Hamiltonian model
+    Hsys                # Optional: User specified system Hamiltonian model. Array. 
+    Hc_re               # Optional: User specified control Hamiltonian operators for each qubit (real-parts). List of Arrays
+    Hc_im               # Optional: User specified control Hamiltonian operators for each qubit (real-parts) List of Arrays
+    standardmodel       # Internal: Bool to use standard Hamiltonian model for superconduction qubits. Default: True
 
-    targetgate          : Complex target unitary in the essential level dimensions for gate optimization.
-    targetstate         : Complex target state vector for state-to-state optimization
-    initialcondition    : Initial states at time t=0.0: "basis" (default), "diagonal", "pure, 0,0,1,...", "file, /path/to/file"
- 
-    maxctrl_MHz         : Amplitude bounds for the control pulses [MHz]. Float or List[float]
-    control_enforce_BC  : Bool to let control pulses start and end at zero. Default: False
-    initctrl_MHz        : Amplitude [MHz] of initial control parameters. Float or List[float]. Default 10 MHz.
-    randomize_init_ctrl : Randomize the initial control parameters (will be ignored if pcof0 or pcof0_filename are given). Default=True
-    rand_seed           : Set a fixed random number generator seed. Default: random seed through time(0). Non-reproducable.
+    # Time duration and discretization options
+    T            # Pulse duration (simulation time). Default: 100ns
+    Pmin         # Number of discretization points to resolve the shortest period of the dynamics (determines <nsteps>). Default: 150
+    nsteps       # Number of time-discretization points (will be computed internally based on Pmin, or can be set here)
+    timestepper  # Time-discretization scheme. Default: "IMR"
 
-    pcof0               : Optional: Pass an initial vector of control parameters
-    pcof0_filename      : Optional: Load initial control parameter vector from a file
+    # Optimization targets and initial states options
+    targetgate          # Complex target unitary in the essential level dimensions for gate optimization. Default: none
+    targetstate         # Complex target state vector for state-to-state optimization. Default: none
+    initialcondition    # Initial states at time t=0.0: "basis", "diagonal", "pure, 0,0,1,...", "file, /path/to/file". Default: "basis" 
 
-    dtau                : Spacing [ns] of Bspline basis functions. Default 10ns. The smaller dtau, the larger nsplines = T/dtau + 2)
-    nsplines            : Number of Bspline basis functions, will be computed from T and dtau if not set directly here
-    carrier_frequency   : List of carrier frequencies for each oscillator. List[List[float]]. Default will be computed based on Hsys.
-    cw_amp_thres        : Threshold to ignore carrier wave frequencies whose growth rate is below this value. Default: 1e-7
-    cw_prox_thres       : Threshold to distinguish different carrier wave frequencies from each other. Default: 1e-2
+    # Control pulse options
+    pcof0               # Optional: Pass an initial vector of control parameters. Default: none
+    pcof0_filename      # Optional: Load initial control parameter vector from a file. Default: none
+    randomize_init_ctrl # Randomize the initial control parameters (will be ignored if pcof0 or pcof0_filename are given). Default: True
+    initctrl_MHz        # Amplitude [MHz] of initial control parameters. Float or List[float]. Default: 10 MHz.
+    maxctrl_MHz         # Amplitude bounds for the control pulses [MHz]. Float or List[float]. Default: none
+    control_enforce_BC  # Bool to let control pulses start and end at zero. Default: False
+    dtau                # Spacing of Bspline basis functions [ns]. The smaller dtau, the larger nsplines. Default: 10ns
+    nsplines            # Number of Bspline basis functions. Default: T/dtau + 2
+    carrier_frequency   # Carrier frequencies for each oscillator. List[List[float]]. Default will be computed based on Hsys.
+    cw_amp_thres        # Threshold to ignore carrier wave frequencies whose growth rate is below this value. Default: 1e-7
+    cw_prox_thres       # Threshold to distinguish different carrier wave frequencies from each other. Default: 1e-2
 
-    Hsys                : Optional: User specified system Hamiltonian model. Array.
-    Hc_re               : Optional: User specified control Hamiltonian operators for each qubit (real-parts). List of Arrays
-    Hc_im               : Optional: User specified control Hamiltonian operators for each qubit (real-parts) List of Arrays
-    standardmodel       : Internal: Bool to use standard Hamiltonian model for superconduction qubits. Default: true
+    # Optimization options
+    maxiter             # Maximum number of optimization iterations. Default 200
+    tol_infidelity      # Optimization stopping criterion based on the infidelity. Default 1e-5
+    tol_costfunc        # Optimization stopping criterion based on the objective function value. Default 1e-4
+    costfunction        # Cost function measure: "Jtrace" or "Jfrobenius". Default: "Jtrace"
+    optim_target        # Optional: Set other optimization target string, if not specified through the targetgate or targetstate. 
+    gamma_tik0          # Parameter for Tikhonov regularization ||alpha||^2. Default 1e-4
+    gamma_tik0_interpolate # Switch to use ||alpha-alpha_0||^2 instead, where alpha_0 is the initial guess. Default: False
+    gamma_leakage       # Parameter for leakage prevention. Default: 0.1
+    gamma_energy        # Parameter for integral penality term on the control pulse energy. Default: 0.1
+    gamma_dpdm          # Parameter for integral penality term on second state derivative. Default: 0.01
 
-    maxiter              : Maximum number of optimization iterations. Default 200
-    tol_infidelity       : Optimization stopping criterion based on the infidelity. Default 1e-5
-    tol_costfunc         : Optimization stopping criterion based on the objective function value. Default 1e-4
-    optim_target         : Optional: Set other optimization target string, if not specified through the targetgate or targetstate. 
-    costfunction         : Cost function measure: "Jtrace" or "Jfrobenius". Default: "Jtrace"
-    gamma_tik0           : Parameter for Tikhonov regularization ||alpha||^2. Default 1e-4
-    gamma_tik0_interpolate : Switch to use ||alpha-alpha_0||^2 instead, where alpha_0 is the initial guess. Default: False
-    gamma_leakage        : Parameter for leakage prevention. Default 0.1
-    gamma_energy         : Parameter for integral penality term on the control pulse energy. Default 0.1
-    gamma_dpdm           : Parameter for integral penality term on second state derivative. Default 0.01
+    # General options
+    rand_seed            # Set a fixed random number generator seed. Default: None (non-reproducable)
+    print_frequency_iter # Output frequency for optimization iterations. (Print every <x> iterations). Default: 1
+    usematfree           # Switch to use matrix-free (rather than sparse-matrix) solver. Default: True
+    verbose              # Switch to turn on more screen output for debugging. Default: False
 
-    print_frequency_iter : Output frequency for optimization iterations. (Print every <x> iterations). Default: 1
-    timestepper          : Time-discretization scheme. Default: IMR
-    usematfree           : Bool to use matrix-free (rather than sparse-matrix) solver. Default: True
-    verbose              : Switch to turn on more screen output for debugging. Default: False
-
-    Internal variables 
-    --------------
+    Internal variables. 
+    -------------------
     _hamiltonian_filename : str  = ""
     _gatefilename         : str  = ""
 
 
-    Output, available after quandary_run(..)
-    ----------------------------------------
-    popt         # Optimized control palamters. List[float]
+    Output parameters, available after quandary_run(..)
+    -----------------------------------------------------
+    popt         # Optimized control palamters (Bspline coefficients). List[float]
     time         # Vector of discretized time points. List[float]
-    optim_hist   # Optimization history: all fields as in Quandary's output file optim_history.dat. Dict
+    optim_hist   # Optimization history: all fields as in Quandary's output file optim_history.dat. Dictionary.
     uT           # Evolved states at final time T. This is the (unitary) solution operator, if the initial conditions span the full basis. 
     """ 
 
     # Quantum system specifications
-    Ne        : List[int]   = field(default_factory=lambda: [3])        # Number of essential energy levels per qubit
-    Ng        : List[int]   = field(default_factory=lambda: [1])        # Number of extra guard levels per qubit
-    freq01    : List[float] = field(default_factory=lambda: [4.10595])  # 01-transition frequencies [GHz] per qubit
-    selfkerr  : List[float] = field(default_factory=lambda: [0.2198])   # Anharmonicities [GHz] per qubit
-    rotfreq   : List[float] = field(default_factory=list)               # Frequency of rotations for computational frame [GHz] per qubit (default =freq01)
-    Jkl       : List[float] = field(default_factory=list)               # Dipole-dipole coupling strength [GHz]. Format [J01, J02, ..., J12, J13, ...]
-    crosskerr : List[float] = field(default_factory=list)               # ZZ coupling strength [GHz]. Format [g01, g02, ..., g12, g13, ...]
-    T1        : List[float] = field(default_factory=list)               # Optional: T1-Decay time per qubit (invokes Lindblad solver)
-    T2        : List[float] = field(default_factory=list)               # Optional: T2-Dephasing time per qubit (invokes Lindlbad solver)
+    Ne        : List[int]   = field(default_factory=lambda: [3])
+    Ng        : List[int]   = field(default_factory=lambda: [1])
+    freq01    : List[float] = field(default_factory=lambda: [4.10595])
+    selfkerr  : List[float] = field(default_factory=lambda: [0.2198])
+    rotfreq   : List[float] = field(default_factory=list)
+    Jkl       : List[float] = field(default_factory=list)
+    crosskerr : List[float] = field(default_factory=list)
+    T1        : List[float] = field(default_factory=list)
+    T2        : List[float] = field(default_factory=list)
+
+    # Optiona: User-defined Hamiltonian model (Default = superconducting qubits model)
+    Hsys                : List[float]       = field(default_factory=list)
+    Hc_re               : List[List[float]] = field(default_factory=list)
+    Hc_im               : List[List[float]] = field(default_factory=list)
+    standardmodel       : bool              = True
 
     # Time duration and discretization options
-    T                   : float       = 100.0             # Final time duration
-    Pmin                : int         = 150               # Number of discretization points to resolve the shortest period of the dynamics (determines <nsteps>)
-    nsteps              : int         = -1                # Number of time-discretization points (will be computed internally based on Pmin, or can be set here)
-    timestepper         : str         = "IMR"             # Time-discretization scheme
+    T            : float = 100.0
+    Pmin         : int   = 150
+    nsteps       : int   = -1
+    timestepper  : str   = "IMR"
 
-    # Hamiltonian model
-    standardmodel       : bool              = True                          # Switch to use standard Hamiltonian model for superconduction qubits
-    Hsys                : List[float]       = field(default_factory=list)   # Optional: User specified system Hamiltonian model
-    Hc_re               : List[List[float]] = field(default_factory=list)   # Optional: User specified control Hamiltonian operators for each qubit (real-parts)
-    Hc_im               : List[List[float]] = field(default_factory=list)   # Optional: User specified control Hamiltonian operators for each qubit (real-parts)
+    # Optimization targets and initial states options
+    targetgate             : List[List[complex]] = field(default_factory=list) 
+    targetstate            : List[complex] = field(default_factory=list) 
+    initialcondition       : str = "basis"
 
-    # Control parameterization options
-    maxctrl_MHz         : List[float] = field(default_factory=list)   # Amplitude bounds for the control pulses [MHz]
-    control_enforce_BC  : bool        = False                         # Enforce that control pulses start and end at zero.
-    dtau                : float       = 10.0                          # Spacing [ns] of Bspline basis functions. (The number of Bspline basis functions will be T/dtau + 2)
-    nsplines            : int         = -1                            # Number of Bspline basis functions, will be computed from T and dtau. 
-    # Control pulse initialization options
-    pcof0               : List[float] = field(default_factory=list)   # Optional: Pass an initial control parameter vector
-    pcof0_filename      : str         = ""                            # Optional: Load initial control parameter vector from a file
-    randomize_init_ctrl : bool        = True                          # Randomize the initial control parameters (will be ignored if pcof0 or pcof0_filename are given)
-    initctrl_MHz        : List[float] = field(default_factory=list)   # Amplitude [MHz] of initial control parameters (will be ignored if pcof0 or pcof0_filename are given)
-    # Carrier frequency options
-    carrier_frequency   : List[List[float]] = field(default_factory=list) # will be set in __post_init
-    cw_amp_thres        : float             = 1e-7                        # Threshold to ignore carrier wave frequencies whose growth rate is below this value
-    cw_prox_thres       : float             = 1e-2                        # Threshold to distinguish different carrier wave frequencies from each other
+    # Control pulse options
+    pcof0               : List[float] = field(default_factory=list)   
+    pcof0_filename      : str         = ""                            
+    randomize_init_ctrl : bool        = True                          
+    initctrl_MHz        : List[float] = field(default_factory=list)   
+    maxctrl_MHz         : List[float] = field(default_factory=list)   
+    control_enforce_BC  : bool        = False                         
+    dtau                : float       = 10.0                          
+    nsplines            : int         = -1                            
+    carrier_frequency   : List[List[float]] = field(default_factory=list) 
+    cw_amp_thres        : float       = 1e-7
+    cw_prox_thres       : float       = 1e-2                        
 
     # Optimization options
-    costfunction        : str               = "Jtrace"                      # Cost function measure: "Jtrace" or "Jfrobenius"
-    targetgate          : List[List[complex]] = field(default_factory=list) # Complex target unitary in the essential level dimensions for gate optimization
-    targetstate         : List[complex]     = field(default_factory=list) # Complex target state vector for state-to-state optimization
-    optim_target        : str               = "gate, none"                 # Optional: Set optimization targets, if not specified through the targetgate or targetstate
-    initialcondition    : str               = "basis"                         # Initial states at time t=0.0: "basis" (default), "diagonal", "pure, 0,0,1,...", "file, /path/to/file"
-    gamma_tik0          : float             = 1e-4 	                        # Parameter for Tikhonov regularization ||alpha||^2
-    gamma_tik0_interpolate : bool           = False                         # Switch to use ||alpha-alpha_0||^2 instead, where alpha_0 is the initial guess.
-    gamma_leakage       : float             = 0.1 	                        # Parameter for leakage prevention
-    gamma_energy        : float             = 0.1                           # Parameter for integral penality term on the control pulse energy
-    gamma_dpdm          : float             = 0.01                          # Parameter for integral penality term on second state derivative
-    tol_infidelity      : float             = 1e-5                          # Optimization stopping criterion based on the infidelity
-    tol_costfunc        : float             = 1e-4                          # Optimization stopping criterion based on the objective function value
-    maxiter             : int               = 200                           # Maximum number of optimization iterations
-
-    # Quandary run options
-    print_frequency_iter: int         = 1                   # Output frequency for optimization iterations. (Print every <x> iterations)
-    usematfree          : bool        = True                # Switch between matrix-free vs. sparse-matrix solver
+    maxiter                : int   = 200         
+    tol_infidelity         : float = 1e-5        
+    tol_costfunc           : float = 1e-4        
+    costfunction           : str   = "Jtrace"                      
+    optim_target           : str   = "gate, none"
+    gamma_tik0             : float = 1e-4 
+    gamma_tik0_interpolate : bool  = False       
+    gamma_leakage          : float = 0.1 	       
+    gamma_energy           : float = 0.1
+    gamma_dpdm             : float = 0.01        
 
     # General options
-    verbose             : bool        = False               # Switch to shut down printing to screen
-    rand_seed           : int         = None                # Default: use system time(0) random seed
-
+    rand_seed              : int  = None
+    print_frequency_iter   : int  = 1
+    usematfree             : bool = True 
+    verbose                : bool = False
 
     # Internal configuration. Should not be changed by user.
     _hamiltonian_filename : str         = ""
     _gatefilename         : str         = ""
 
-    # Storage for some optimization results, in case they are needed afterwards.
-    popt        : List[float]   = field(default_factory=list)   # Optimized control paramters, could be useful to run quandary again after optimization
-    time        : List[float]   = field(default_factory=list)   # Vector of discretized time points, could be useful for plotting the control pulses etc.
-    optim_hist  : Dict          = field(default_factory=dict)   # Optimization history: all fields as in Quandary's output file <data>/optim_history.dat
-    uT          : List[float]   = field(default_factory=list)   # Evolved states at final time T. This is the (unitary) solution operator, if the initial conditions span the full basis. 
+    # Output parameters available after quandary_run().
+    popt        : List[float]   = field(default_factory=list)
+    time        : List[float]   = field(default_factory=list)
+    optim_hist  : Dict          = field(default_factory=dict)
+    uT          : List[float]   = field(default_factory=list)
 
 
     def __post_init__(self):
         """
-        This function will be called during initialization of a QuandaryConfig instance.
-        It sets default options that are nor specified by the user and not by the above defaults.
-        It further sets
+        This function sets all default options and overwrites those that specified by the user. It performs sanity checks on the user-specified input, and it computes
           - <nsteps>            : the number of time steps based on Hamiltonian eigenvalues and Pmin
           - <carrier_frequency> : carrier wave frequencies bases on system resonances
         """
 
-        # Set default two-level system, if Ne is not specified by user
+        # Set some defaults, if not set by the user
         if len(self.freq01) != len(self.Ne):
             self.Ne = [2 for _ in range(len(self.freq01))]
-
-        # Set default NO guard levels, if Ng is not specified by user
         if len(self.Ng) != len(self.Ne):
-            self.Ng = [0 for _ in range(len(self.Ne))]
-        
-        # Set zero selfkerr, if not specified by user
+            self.Ng = [1 for _ in range(len(self.Ne))]
         if len(self.selfkerr) != len(self.Ne):
             self.selfkerr= np.zeros(len(self.Ne))
-
-        # Set default rotational frequency (default=freq01), unless specified by user
         if len(self.rotfreq) == 0:
             self.rotfreq = self.freq01
-
-        # Set default number of splines for control parameterization, unless specified by user
         if self.nsplines < 0:
             minspline = 5 if self.control_enforce_BC else 3
             self.nsplines = int(np.max([np.ceil(self.T/self.dtau + 2), minspline]))
-            
-        # Set default amplitude of initial control parameters [MHz] (default = 1 MHz)
         if isinstance(self.initctrl_MHz, float) or isinstance(self.initctrl_MHz, int):
             max_alloscillators = self.initctrl_MHz
             self.initctrl_MHz = [max_alloscillators for _ in range(len(self.Ne))]
         if len(self.initctrl_MHz) == 0:
             self.initctrl_MHz = [10.0 for _ in range(len(self.Ne))]
-
-        # Set default Hamiltonian operators, unless specified by user
         if len(self.Hsys) > 0 and not self.standardmodel: # User-provided Hamiltonian operators 
             self.standardmodel=False   
         else: # Using standard Hamiltonian model
             Ntot = [sum(x) for x in zip(self.Ne, self.Ng)]
             self.Hsys, self.Hc_re, self.Hc_im = hamiltonians(N=Ntot, freq01=self.freq01, selfkerr=self.selfkerr, crosskerr=self.crosskerr, Jkl=self.Jkl, rotfreq=self.rotfreq, verbose=self.verbose)
             self.standardmodel=True
-
-        # Set the optimization target 
         if len(self.targetstate) > 0:
             self.optim_target = "file"
         if len(self.targetgate) > 0:
             self.optim_target = "gate, file"
-        
-        # Change default initial condition to ground state, if target is state-to-state optimization
         if len(self.targetstate) > 0 and self.initialcondition[0:4] != "pure":
+            # Change default initial condition to ground state, if target is state-to-state optimization
             self.initialcondition = "pure, " 
             for i in range(len(self.Ne)):
                 self.initialcondition += "0,"
-
         # Convert maxctrl_MHz to a list for each oscillator, if not so already
         if isinstance(self.maxctrl_MHz, float) or isinstance(self.maxctrl_MHz, int):
             max_alloscillators = self.maxctrl_MHz
             self.maxctrl_MHz = [max_alloscillators for _ in range(len(self.Ne))]
 
-        # Estimate number of time steps
+        # Estimate the number of required time steps
         self.nsteps = estimate_timesteps(T=self.T, Hsys=self.Hsys, Hc_re=self.Hc_re, Hc_im=self.Hc_im, maxctrl_MHz=self.maxctrl_MHz, Pmin=self.Pmin)
         if self.verbose:
             print("Final time: ",self.T,"ns, Number of timesteps: ", self.nsteps,", dt=", self.T/self.nsteps, "ns")
@@ -235,14 +219,13 @@ class QuandaryConfig:
     def update(self):
         """
         Call this function if you have changed a config option outside of the constructor, e.g. with "myconfig.variablename = new_variable". 
-        This will ensure that the number of time steps and carrier waves are re-computed, given the new setting, by calling __post_init__().
+        This will ensure that the number of time steps and carrier waves are re-computed, given the new setting.
         """
         self.__post_init__()
 
     def dump(self, *, runtype="simulation", datadir="./run_dir"):
         """
-        Dumps all required configuration options (and target gate, pcof0, Hamiltonian operators) into files for Quandary use.
-        # Returns the name of the configuration file needed for executing Quandary
+        Dumps all required configuration options (and target gate, pcof0, Hamiltonian operators) into files for Quandary use. Returns the name of the configuration file needed for executing Quandary
         """
 
         # If given, write the target gate to file
@@ -268,8 +251,6 @@ class QuandaryConfig:
                     f.write("{:20.13e}\n".format(value))
             if self.verbose:
                 print("Target state written to ", datadir+"/"+self._gatefilename)
-
-
 
         # If not standard Hamiltonian model, write provided Hamiltonians to a file
         if not self.standardmodel:
@@ -436,10 +417,8 @@ def quandary_run(config: QuandaryConfig, *, runtype="optimization", ncores=-1, d
     population      :  Evolution of the population of each oscillator, of each initial condition. Acces: expectedEnergy[oscillator][initialcondition]
     """
 
-    # Create quandary data directory
+    # Create quandary data directory and dump configuration file
     os.makedirs(datadir, exist_ok=True)
-
-    # Write the configuration to file
     config_filename = config.dump(runtype=runtype, datadir=datadir)
 
     # Set flag for lindblad solver or Schroedinger solver. This determines the number of initial conditions, and dimension of state.
@@ -454,14 +433,13 @@ def quandary_run(config: QuandaryConfig, *, runtype="optimization", ncores=-1, d
 
     # Execute subprocess to run Quandary
     err = execute(runtype=runtype, ncores=ncores, config_filename=config_filename, datadir=datadir, quandary_exec=quandary_exec, verbose=config.verbose, cygwin=cygwin)
-
     if config.verbose:
         print("Quandary data dir: ", datadir, "\n")
 
     # Get results from quandary output files
     time, pt, qt, uT, expectedEnergy, population, popt, infidelity, optim_hist = get_results(Ne=config.Ne, Ng=config.Ng, datadir=datadir, lindblad_solver=lindblad_solver, initialcondition=config.initialcondition)
 
-    # Store some results in the config file
+    # Store some results in the config output parameters
     config.optim_hist = optim_hist
     config.popt = popt[:]
     config.time = time[:]
@@ -486,11 +464,8 @@ def execute(*, runtype="simulation", ncores=1, config_filename="config.cfg", dat
     if not verbose:
         runcommand += " --quiet"
     if ncores > 1:
-        # prefix = f"mpirun -np {ncores}"
         runcommand = f"mpirun -np {ncores} " + runcommand
 
-    # if verbose:
-        # result = run(["pwd"], shell=True, capture_output=True, text=True)
     if verbose:
         print("Running Quandary ... ")
 
