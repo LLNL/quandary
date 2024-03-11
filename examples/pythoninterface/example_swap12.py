@@ -1,3 +1,7 @@
+# Make sure you have the location of quandary.py in your PYTHONPATH. E.g. with
+#   > export PYTHONPATH=/path/to/quandary/:$PYTHONPATH
+# Further, make sure that your quandary executable is in your $PATH variable. E.g. with
+#   > export PATH=/path/to/quandary/:$PATH
 from quandary import * 
 
 ## Two qubit test case for the SWAP gate, two essential levels each, no guard levels ##
@@ -13,9 +17,6 @@ rotfreq = favg*np.ones(len(freq01))
 
 # Set the time duration (ns)
 T = 200.0
-
-# Bspline spacing (ns) for control pulse parameterization. The number of Bspline basis functions is then T/dtau + 2.
-dtau = 10.0 
 
 # Bounds on the control pulse (in rotational frame, p and q) [MHz] per oscillator
 maxctrl_MHz = 30.0*np.ones(len(freq01))  
@@ -35,17 +36,16 @@ datadir = "./SWAP12_run_dir"  # Compute and output directory
 verbose = False
 
 # Prepare Quandary
-myconfig = QuandaryConfig(freq01=freq01, Jkl=Jkl, rotfreq=rotfreq, T=T, maxctrl_MHz=maxctrl_MHz, targetgate=unitary, verbose=verbose, dtau=dtau)
+myconfig = QuandaryConfig(freq01=freq01, Jkl=Jkl, rotfreq=rotfreq, T=T, maxctrl_MHz=maxctrl_MHz, targetgate=unitary, verbose=verbose)
 
 # Potentially load initial control parameters from a file
 # myconfig.pcof0_filename="./SWAP12_params.dat"
 
 # Execute quandary
-t, pt, qt, infidelity, expectedEnergy, population = quandary_run(myconfig, quandary_exec=quandary_exec, datadir=datadir)
+t, pt, qt, infidelity, expectedEnergy, population = quandary_run(myconfig, quandary_exec=quandary_exec, datadir=datadir, runtype=runtype)
 
 print(f"Fidelity = {1.0 - infidelity}")
 print("\n Quandary data directory: ", datadir)
-
 
 # Plot the control pulse and expected energy level evolution
 if True:

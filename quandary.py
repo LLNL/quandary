@@ -16,7 +16,7 @@ class QuandaryConfig:
     ----------
     # Quantum system specifications
     Ne           # Number of essential energy levels per qubit. Default: [3]        
-    Ng           # Number of extra guard levels per qubit. Default: [1]        
+    Ng           # Number of extra guard levels per qubit. Default: [0] (no guard levels)
     freq01       # 01-transition frequencies [GHz] per qubit. Default: [4.10595]
     selfkerr     # Anharmonicities [GHz] per qubit. Default: [0.2198]
     rotfreq      # Frequency of rotations for computational frame [GHz] per qubit. Default: freq01
@@ -89,7 +89,7 @@ class QuandaryConfig:
 
     # Quantum system specifications
     Ne        : List[int]   = field(default_factory=lambda: [3])
-    Ng        : List[int]   = field(default_factory=lambda: [1])
+    Ng        : List[int]   = field(default_factory=lambda: [0])
     freq01    : List[float] = field(default_factory=lambda: [4.10595])
     selfkerr  : List[float] = field(default_factory=lambda: [0.2198])
     rotfreq   : List[float] = field(default_factory=list)
@@ -168,7 +168,7 @@ class QuandaryConfig:
         if len(self.freq01) != len(self.Ne):
             self.Ne = [2 for _ in range(len(self.freq01))]
         if len(self.Ng) != len(self.Ne):
-            self.Ng = [1 for _ in range(len(self.Ne))]
+            self.Ng = [0 for _ in range(len(self.Ne))]
         if len(self.selfkerr) != len(self.Ne):
             self.selfkerr= np.zeros(len(self.Ne))
         if len(self.rotfreq) == 0:
@@ -390,7 +390,7 @@ class QuandaryConfig:
         return "./config.cfg"
 
 
-def quandary_run(config: QuandaryConfig, *, runtype="optimization", ncores=-1, datadir="./run_dir", quandary_exec="/absolute/path/to/quandary/main", cygwin=False):
+def quandary_run(config: QuandaryConfig, *, runtype="optimization", ncores=-1, datadir="./run_dir", quandary_exec="", cygwin=False):
     """
     Main interface function to run Quandary: 
       1. Writes quandary config files to file system
@@ -406,7 +406,7 @@ def quandary_run(config: QuandaryConfig, *, runtype="optimization", ncores=-1, d
     runtype         :  "simulation", or "gradient", or "optimization"
     ncores          :  Number of cores to execute the C++ quandary code
     datadir         :  Folder name to store results. Default: "./run_dir"
-    quandary_exec   :  Path to C++ executable (absolute path)
+    quandary_exec   :  Path to C++ executable (absolute path), if not in your $PATH
 
     Returns:
     --------
@@ -448,7 +448,7 @@ def quandary_run(config: QuandaryConfig, *, runtype="optimization", ncores=-1, d
     return config.time, pt, qt, infidelity, expectedEnergy, population
 
 
-def execute(*, runtype="simulation", ncores=1, config_filename="config.cfg", datadir=".", quandary_exec="/absolute/path/to/quandary/main", verbose=False, cygwin=False):
+def execute(*, runtype="simulation", ncores=1, config_filename="config.cfg", datadir=".", quandary_exec="", verbose=False, cygwin=False):
     """ Helper function to evoke a subprocess that executes Quandary  """
 
     # result = run(["pwd"], shell=True, capture_output=True, text=True)
@@ -460,7 +460,10 @@ def execute(*, runtype="simulation", ncores=1, config_filename="config.cfg", dat
     os.chdir(datadir)
     
     # Set up the run command
-    runcommand = f"{quandary_exec} {config_filename}"
+    exe = "quandary"
+    if len(quandary_exec) > 0:
+        exe = quandary_exec
+    runcommand = f"{exe} {config_filename}"
     if not verbose:
         runcommand += " --quiet"
     if ncores > 1:
@@ -609,7 +612,7 @@ def get_results(*, Ne=[], Ng=[], datadir="./", lindblad_solver=False, initialcon
 
 
 
-def evalControls(config, *, pcof=[], points_per_ns=1, quandary_exec="/absolute/path/to/quandary/main", datadir="./run_dir", cygwin=False):
+def evalControls(config, *, pcof=[], points_per_ns=1, quandary_exec="", datadir="./run_dir", cygwin=False):
     """
     Evaluate control pulses on a specific sample rate. Either the controls specified through the options in config will be used, or the vector parameters pcof0 will be used to determine the pulses.
 
@@ -1089,7 +1092,7 @@ def plot_results_1osc(myconfig, p, q, expectedEnergy, population):
     plt.close(fig)
 
 
-def timestep_richardson_est(myconfig, tol=1e-8, order=2, quandary_exec="./quandary"):
+def timestep_richardson_est(myconfig, tol=1e-8, order=2, quandary_exec=""):
     """ Decrease timestep size until Richardson error estimate meets threshold """
 
     # Factor by which timestep size is decreased

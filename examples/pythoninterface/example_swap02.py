@@ -1,5 +1,7 @@
 # Make sure you have the location of quandary.py in your PYTHONPATH. E.g. with
 #   > export PYTHONPATH=/path/to/quandary/:$PYTHONPATH
+# Further, make sure that your quandary executable is in your $PATH variable. E.g. with
+#   > export PATH=/path/to/quandary/:$PATH
 from quandary import * 
 
 ## One qudit test case: Swap the 0 and 2 state of a three-level qudit ##
@@ -23,16 +25,13 @@ unitary = [[0,0,1],[0,1,0],[1,0,0]]  # Swaps first and last level
 # print(unitary)
 
 # Prepare Quandary configuration. The 'QuandaryConfig' dataclass gathers all configuration options and sets defaults for those member variables that are not passed through the constructor here. It is advised to compare what other defaults are set in the QuandaryConfig constructor (beginning of quandary.py)
-myconfig = QuandaryConfig(Ne=Ne, Ng=Ng, freq01=freq01, selfkerr=selfkerr, maxctrl_MHz=maxctrl_MHz, targetgate=unitary, T=T)
-
-# Set the location of the quandary executable, if not in your $PATH
-quandary_exec="/Users/guenther5/Numerics/quandary/quandary"
+myconfig = QuandaryConfig(Ne=Ne, Ng=Ng, freq01=freq01, selfkerr=selfkerr, maxctrl_MHz=maxctrl_MHz, targetgate=unitary, T=T, rand_seed=1234)
 
 # Potentially load initial control parameters from a file. 
 # myconfig.pcof0_filename = os.getcwd() + "/SWAP02_params.dat" # Use absolute path!
 
 # # Execute quandary. Default number of executing cores is the essential Hilbert space dimension.
-t, pt, qt, infidelity, expectedEnergy, population = quandary_run(myconfig, quandary_exec=quandary_exec, datadir="./SWAP02_run_dir")
+t, pt, qt, infidelity, expectedEnergy, population = quandary_run(myconfig, datadir="./SWAP02_run_dir")
 print(f"\nFidelity = {1.0 - infidelity}")
 
 # Plot the control pulse and expected energy level evolution
@@ -43,7 +42,6 @@ if True:
 
     # If one oscillator, you can also use the plot_results function to plot everything in one figure.
     plot_results_1osc(myconfig, pt[0], qt[0], expectedEnergy[0], population[0])
-
 
 # Other optimization results can be accessed from the myconfig, in particular:
 #   myconfig.popt         :  Optimized control parameters

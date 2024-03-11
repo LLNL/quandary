@@ -1,3 +1,7 @@
+# Make sure you have the location of quandary.py in your PYTHONPATH. E.g. with
+#   > export PYTHONPATH=/path/to/quandary/:$PYTHONPATH
+# Further, make sure that your quandary executable is in your $PATH variable. E.g. with
+#   > export PATH=/path/to/quandary/:$PATH
 from quandary import * 
 
 ## One qudit test case: State preparation (state-to-state) of the GHZ state ##
@@ -26,11 +30,8 @@ initialcondition = "pure, 0"
 # Prepare Quandary configuration. The 'QuandaryConfig' dataclass gathers all configuration options and sets defaults for those member variables that are not passed through the constructor here. It is advised to compare what other defaults are set in the QuandaryConfig constructor (beginning of quandary.py)
 myconfig = QuandaryConfig(Ne=Ne, Ng=Ng, freq01=freq01, selfkerr=selfkerr, maxctrl_MHz=maxctrl_MHz, targetstate=targetstate, T=T,  initialcondition=initialcondition, tol_infidelity=1e-5)
 
-# Set the location of the quandary executable (absolute path!)
-quandary_exec="/Users/guenther5/Numerics/quandary/quandary"
-
 # # Execute quandary.
-t, pt, qt, infidelity, expectedEnergy, population = quandary_run(myconfig, quandary_exec=quandary_exec, datadir="./run_dir")
+t, pt, qt, infidelity, expectedEnergy, population = quandary_run(myconfig)
 print(f"\nFidelity = {1.0 - infidelity}")
 
 # Plot the control pulse and expected energy level evolution
