@@ -245,23 +245,39 @@ OptimTarget::OptimTarget(std::vector<std::string> target_str, std::string object
 
   /* Read the target state from file into vec */
   if (target_type == TargetType::FROMFILE) {
-    int mpirank_world;
-    MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
-    double* vec = new double[2*dim];
-    if (mpirank_world == 0) read_vector(target_filename.c_str(), vec, 2*dim, quietmode);
-    MPI_Bcast(vec, 2*dim, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-    // pass vec into the targetstate
-    PetscInt ilow, iupp;
-    VecGetOwnershipRange(targetstate, &ilow, &iupp);
-    for (int i = 0; i < dim; i++) { 
-      int elemid_re = getIndexReal(i);
-      int elemid_im = getIndexImag(i);
-      if (ilow <= elemid_re && elemid_re < iupp) VecSetValue(targetstate, elemid_re, vec[i],       INSERT_VALUES); // RealPart
-      if (ilow <= elemid_im && elemid_im < iupp) VecSetValue(targetstate, elemid_im, vec[i + dim], INSERT_VALUES); // Imaginary Part
+    int nelems = 0;
+    if (mastereq->lindbladtype != LindbladType::NONE) nelems = 2*dim_ess*dim_ess;
+    else nelems = 2 * dim_ess;
+    double* vec = new double[nelems];
+    if (mpirank_world == 0) 
+      read_vector(target_filename.c_str(), vec, nelems, quietmode);
+    MPI_Bcast(vec, nelems, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    if (lindbladtype != LindbladType::NONE) { // Lindblad solver, fill density matrix
+      for (int i = 0; i < dim_ess*dim_ess; i++) { 
+        int k = i % dim_ess;
+        int j = (int) i / dim_ess;
+        if (dim_ess*dim_ess < mastereq->getDim()) {
+          k = mapEssToFull(k, mastereq->nlevels, mastereq->nessential);
+          j = mapEssToFull(j, mastereq->nlevels, mastereq->nessential);
+        }
+        int elemid_re = getIndexReal(getVecID(k,j,dim_rho));
+        int elemid_im = getIndexImag(getVecID(k,j,dim_rho));
+        if (ilow <= elemid_re && elemid_re < iupp) VecSetValue(targetstate, elemid_re, vec[i],       INSERT_VALUES); // RealPart
+        if (ilow <= elemid_im && elemid_im < iupp) VecSetValue(targetstate, elemid_im, vec[i + dim_ess*dim_ess], INSERT_VALUES); // Imaginary Part
+      }
+    } else {  // Schroedinger solver, fill vector
+      for (int i = 0; i < dim_ess; i++) {
+        int k = i;
+        if (dim_ess < mastereq->getDim()) 
+          k = mapEssToFull(i, mastereq->nlevels, mastereq->nessential);
+        int elemid_re = getIndexReal(k);
+        int elemid_im = getIndexImag(k);
+        if (ilow <= elemid_re && elemid_re < iupp) VecSetValue(targetstate, elemid_re, vec[i], INSERT_VALUES);        // RealPart
+        if (ilow <= elemid_im && elemid_im < iupp) VecSetValue(targetstate, elemid_im, vec[i + dim_ess], INSERT_VALUES); // Imaginary Part
+      }
     }
     VecAssemblyBegin(targetstate); VecAssemblyEnd(targetstate);
     delete [] vec;
-    // VecView(targetstate, NULL);
   }
 
   /* Allocate an auxiliary vec needed for evaluating the frobenius norm */
