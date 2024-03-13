@@ -12,7 +12,7 @@ Gate optimization SWAP02:
   * Can be run on up to 3 compute cores (one for each initial condition)
 
 State-to-state:
-  * Optimized for pulses that transfer the ground state of a 2-level qubit to the maximally mixed state [1/sqrt(2), 1/sqrt(2)].
+  * Optimized for pulses that transfer the ground state of a 2-level qubit with one guard level to the maximally mixed state [1/sqrt(2), 1/sqrt(2)]. 
   * Schroedinger's solver (closed-system optimization)
   * Can run on one core (one initial condition)
 
