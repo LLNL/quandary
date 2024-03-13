@@ -29,25 +29,28 @@ unitary[2,1] = 1.0
 unitary[2,2] = 0.0
 # print("Target gate: ", unitary)
 
-# Quandary run options
-runtype = "optimization"        # "simulation" # "simulation", or "gradient", or "optimization"
-quandary_exec="/Users/guenther5/Numerics/quandary/quandary"
-datadir = "./SWAP12_run_dir"  # Compute and output directory 
-verbose = False
+# You can enable more output by passing to Quandary
+verbose = True 
 
 # Prepare Quandary
-myconfig = QuandaryConfig(freq01=freq01, Jkl=Jkl, rotfreq=rotfreq, T=T, maxctrl_MHz=maxctrl_MHz, targetgate=unitary, verbose=verbose)
-
-# Potentially load initial control parameters from a file
-# myconfig.pcof0_filename="./SWAP12_params.dat"
+quandary = Quandary(freq01=freq01, Jkl=Jkl, rotfreq=rotfreq, T=T, maxctrl_MHz=maxctrl_MHz, targetgate=unitary, verbose=verbose)
 
 # Execute quandary
-t, pt, qt, infidelity, expectedEnergy, population = quandary_run(myconfig, quandary_exec=quandary_exec, datadir=datadir, runtype=runtype)
-
+datadir = "SWAP12_run_dir"
+t, pt, qt, infidelity, expectedEnergy, population = quandary.optimize(datadir=datadir)
 print(f"Fidelity = {1.0 - infidelity}")
 print("\n Quandary data directory: ", datadir)
 
 # Plot the control pulse and expected energy level evolution
 if True:
-	plot_pulse(myconfig.Ne, t, pt, qt)
-	plot_expectedEnergy(myconfig.Ne, t, expectedEnergy)
+	plot_pulse(quandary.Ne, t, pt, qt)
+	plot_expectedEnergy(quandary.Ne, t, expectedEnergy)
+
+
+# Adding some decoherence and simulate again
+quandary.T1 = [10000.0]
+quandary.T2 = [8000.0]
+quandary.update()
+quandary.pcof0 = quandary.popt[:]
+t, pt, qt, infidelity, expectedEnergy, population = quandary.simulate(datadir=datadir, maxcores=8)
+print(f"Fidelity under decoherence = {1.0 - infidelity}")

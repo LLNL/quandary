@@ -20,20 +20,18 @@ T = 50.0
 # Bounds on the control pulse (in rotational frame, p and q) [MHz] per oscillator
 maxctrl_MHz = 4.0  
 
-# Set up the target state (in essential level dimensions)
+# Set up the initial and the target state (in essential level dimensions)
+initialstate = [1.0, 0.0]
 targetstate =  [1.0/np.sqrt(2), 1.0/np.sqrt(2)] 
-print("target state = ", targetstate)
 
-# Set an initial condition (must be a pure state, here ground state). 
-initialcondition = "pure, 0"
-
-# Prepare Quandary configuration. The 'QuandaryConfig' dataclass gathers all configuration options and sets defaults for those member variables that are not passed through the constructor here. It is advised to compare what other defaults are set in the QuandaryConfig constructor (beginning of quandary.py)
-myconfig = QuandaryConfig(Ne=Ne, Ng=Ng, freq01=freq01, selfkerr=selfkerr, maxctrl_MHz=maxctrl_MHz, targetstate=targetstate, T=T,  initialcondition=initialcondition, tol_infidelity=1e-5)
+# Prepare Quandary configuration. The 'Quandary' dataclass gathers all configuration options and sets defaults for those member variables that are not passed through the constructor here. It is advised to compare what other defaults are set in the Quandary constructor (beginning of quandary.py)
+quandary = Quandary(Ne=Ne, Ng=Ng, freq01=freq01, selfkerr=selfkerr, maxctrl_MHz=maxctrl_MHz, initialstate=initialstate, targetstate=targetstate, T=T, tol_infidelity=1e-5, rand_seed=4321)
 
 # # Execute quandary.
-t, pt, qt, infidelity, expectedEnergy, population = quandary_run(myconfig)
+t, pt, qt, infidelity, expectedEnergy, population = quandary.optimize()
 print(f"\nFidelity = {1.0 - infidelity}")
 
 # Plot the control pulse and expected energy level evolution
 if True:
-    plot_results_1osc(myconfig, pt[0], qt[0], expectedEnergy[0], population[0])
+    plot_results_1osc(quandary, pt[0], qt[0], expectedEnergy[0], population[0])
+

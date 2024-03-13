@@ -16,10 +16,6 @@ Jkl = [0.005]  # Dipole-Dipole coupling of qubit 0<->1
 favg = sum(freq01)/len(freq01)
 rotfreq = favg*np.ones(len(freq01))
 
-# # If Lindblad solver: Specify decay (T1) and dephasing (T2) [ns]. Make sure to also pass those to the QuandaryConfig constructor if you uncomment this.
-# T1 = [100000.0, 110000.0]
-# T2 = [80000.0, 90000.0]
-
 # Set the pulse duration (ns)
 T = 200.0
 
@@ -31,30 +27,34 @@ unitary[2,3] = 1.0
 unitary[3,2] = 1.0
 # print("Target gate: ", unitary)
 
-# Flag for printing out more information
+# Flag for printing out more information to screen
 verbose = False
 
 # For reproducability: Random number generator seed
 rand_seed=1234
 
-# Set up the Quandary configuration for this test case
-myconfig = QuandaryConfig(freq01=freq01, Jkl=Jkl, rotfreq=rotfreq, T=T, targetgate=unitary, verbose=verbose, rand_seed=rand_seed) # potentially add T1=T1, T2=T2 for Lindblad solver with decay and decoherence
-
-# Set some run options for Quandary
-runtype = "optimization"    # "simulation", or "gradient", or "optimization"
-quandary_exec="/Users/guenther5/Numerics/quandary/quandary" # Absolute path to Quandary's executable
-ncores = 4  		    # Number of cores. Up to 8 for Lindblad solver, up to 4 for Schroedinger solver
-datadir = "./CNOT_run_dir"  # Compute and output directory 
+# Set up the Quandary configuration for this test case. Make sure to pass all of the above to the corresponding fields, compare help(Quandary)!
+quandary = Quandary(freq01=freq01, Jkl=Jkl, rotfreq=rotfreq, T=T, targetgate=unitary, verbose=verbose, rand_seed=rand_seed) 
 
 # Potentially, load initial control parameters from a file. 
-# myconfig.pcof0_filename = os.getcwd() + "/"+datadir+"/params.dat"  # absolute path!
+# quandary.pcof0_filename = os.getcwd() + "./CNOT_params.dat"  # absolute path!
 
 # Execute quandary
-t, pt, qt, infidelity, expectedEnergy, population = quandary_run(myconfig, quandary_exec=quandary_exec, ncores=ncores, datadir=datadir, runtype=runtype)
+t, pt, qt, infidelity, expectedEnergy, population = quandary.optimize()
 print(f"Fidelity = {1.0 - infidelity}")
 
 # Plot the control pulse and expected energy level evolution
 if True:
-	plot_pulse(myconfig.Ne, t, pt, qt)
-	plot_expectedEnergy(myconfig.Ne, t, expectedEnergy) # if T1 or T2 decoherence (Lindblad solver), also pass the argument 'lindblad_solver=True' to this function.
-	# plot_population(myconfig.Ne, myconfig.time, population)
+	plot_pulse(quandary.Ne, t, pt, qt)
+	plot_expectedEnergy(quandary.Ne, t, expectedEnergy) 
+	# plot_population(quandary.Ne, t, population)
+
+
+# You can predict the decoherence error of optimized dynamics:
+print("Evaluate accuracy under decay and dephasing decoherence:\n")
+T1 = [100000.0, 10000.0] #[ns] decay for each qubit
+T2 = [80000.0 , 80000.0] #[ns] dephase for each qubit
+quandary_lblad = Quandary(freq01=freq01, Jkl=Jkl, rotfreq=rotfreq, T=T, targetgate=unitary, verbose=verbose, T1=T1, T2=T2)
+quandary_lblad.pcof0 = quandary.popt[:]
+t, pt, qt, infidelity, expect, _ = quandary_lblad.simulate(maxcores=8) # Running on 8 cores
+
