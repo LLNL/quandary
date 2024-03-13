@@ -561,6 +561,10 @@ Gate* initTargetGate(std::vector<std::string> target_str, std::vector<int>nlevel
   else if (target_str[1].compare("swap0q") == 0 )   mygate = new SWAP_0Q(nlevels, nessential, total_time, gate_rot_freq, lindbladtype, quietmode);
   else if (target_str[1].compare("cqnot") == 0 )    mygate = new CQNOT(nlevels, nessential, total_time, gate_rot_freq, lindbladtype, quietmode);
   else if (target_str[1].compare("file") == 0 ) mygate = new FromFile(nlevels, nessential, total_time, gate_rot_freq, lindbladtype, target_str[2], quietmode);
+  else {
+    printf("ERROR. Could not find target gate. Exiting now.\n");
+    exit(1);
+  }
 
   return mygate;
 }
