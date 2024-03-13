@@ -2,7 +2,7 @@ import os
 import numpy as np
 from subprocess import run, PIPE, Popen
 import matplotlib.pyplot as plt
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import List, Dict
 ## For some Matplotlib installations to work, you might need the below...
 # import PyQt6.QtCore
@@ -40,8 +40,7 @@ class Quandary:
     # Optimization targets and initial states options
     targetgate          # Complex target unitary in the essential level dimensions for gate optimization. Default: none
     targetstate         # Complex target state vector for state-to-state optimization. Default: none
-    initialcondition    # Choose from provided initial states at time t=0.0: "basis" (all basis states, default), "pure, 0,0,1,..." (one pure initial state |001...>), "file, /path/to/file" (read from file). Default: "basis" 
-    initialstate        # Specify one specific (arbitrary) initial state. If given, overwrites the 'initialcondition' setting. Default: none
+    initialcondition    # Choose from provided initial states at time t=0.0: "basis" (all basis states, default), "pure, 0,0,1,..." (one pure initial state |001...>), or pass a vector as initial state. Default: "basis" 
 
     # Control pulse options
     pcof0               # Optional: Pass an initial vector of control parameters. Default: none
@@ -115,7 +114,6 @@ class Quandary:
     targetgate             : List[List[complex]] = field(default_factory=list) 
     targetstate            : List[complex] = field(default_factory=list) 
     initialcondition       : str = "basis"
-    initialstate           : List[complex] = field(default_factory=list)
     # Control pulse options
     pcof0               : List[float] = field(default_factory=list)   
     pcof0_filename      : str         = ""                            
@@ -150,6 +148,8 @@ class Quandary:
     _hamiltonian_filename : str         = ""
     _gatefilename         : str         = ""
     _initstatefilename    : str         = ""
+    _initialstate           : List[complex] = field(default_factory=list)
+    
     # Output parameters available after Quandary has been run
     popt        : List[float]   = field(default_factory=list)
     time        : List[float]   = field(default_factory=list)
@@ -191,7 +191,8 @@ class Quandary:
             self.optim_target = "file"
         if len(self.targetgate) > 0:
             self.optim_target = "gate, file"
-        if len(self.initialstate) > 0:
+        if not isinstance(self.initialcondition, str):
+            self._initialstate=self.initialcondition.copy()
             self.initialcondition = "file" 
         # Convert maxctrl_MHz to a list for each oscillator, if not so already
         if isinstance(self.maxctrl_MHz, float) or isinstance(self.maxctrl_MHz, int):
@@ -200,7 +201,7 @@ class Quandary:
         
         # Store the number of initial conditions and solver flag
         self._lindblad_solver = True if (len(self.T1)>0) or (len(self.T2)>0) else False
-        if len(self.initialstate) > 0 or self.initialcondition[0:4] == "pure":
+        if self.initialcondition[0:4] == "file" or self.initialcondition[0:4] == "pure":
             self._ninit = 1
         else:
             self._ninit = np.prod(self.Ne)
@@ -222,6 +223,9 @@ class Quandary:
             print("Carrier frequencies (rot. frame): ", self.carrier_frequency)
             print("\n")
 
+    def copy(self):
+        """ Return a new instance of the class, copying all member variables. """
+        return replace(self)
 
     def update(self):
         """
@@ -265,7 +269,7 @@ class Quandary:
 
         if len(pcof0)>0:
             self.pcof0 = pcof0[:]
-        return self.__run(runtype="simulation", maxcores=maxcores, datadir=datadir, quandary_exec=quandary_exec, cygwinbash=cygwinbash)
+        return self.__run(runtype="simulation", overwrite_popt=False, maxcores=maxcores, datadir=datadir, quandary_exec=quandary_exec, cygwinbash=cygwinbash)
 
 
     def optimize(self, *, pcof0=[], maxcores=-1, datadir="./run_dir", quandary_exec="", cygwinbash=""):
@@ -291,7 +295,7 @@ class Quandary:
 
         if len(pcof0)>0:
             self.pcof0 = pcof0[:]
-        return self.__run(runtype="optimization", maxcores=maxcores, datadir=datadir, quandary_exec=quandary_exec, cygwinbash=cygwinbash)
+        return self.__run(runtype="optimization", overwrite_popt=True, maxcores=maxcores, datadir=datadir, quandary_exec=quandary_exec, cygwinbash=cygwinbash)
     
 
     def evalControls(self, *, pcof0=[], points_per_ns=1,datadir="./run_dir", quandary_exec="", cygwinbash=""):
@@ -337,7 +341,7 @@ class Quandary:
         return time, pt, qt
 
 
-    def __run(self, *, runtype="optimization", maxcores=-1, datadir="./run_dir", quandary_exec="", cygwinbash=""):
+    def __run(self, *, runtype="optimization", overwrite_popt=False, maxcores=-1, datadir="./run_dir", quandary_exec="", cygwinbash=""):
         """
         Internal helper function to launch processes to execute the C++ Quandary code:
           1. Writes quandary config files to file system
@@ -369,8 +373,9 @@ class Quandary:
         time, pt, qt, uT, expectedEnergy, population, popt, infidelity, optim_hist = self.__get_results(datadir=datadir)
 
         # Store some results in the config output parameters
+        if (overwrite_popt):
+            self.popt = popt[:]
         self.optim_hist = optim_hist
-        self.popt = popt[:]
         self.time = time[:]
         self.uT   = uT.copy()
 
@@ -407,11 +412,11 @@ class Quandary:
                 print("Target state written to ", datadir+"/"+self._gatefilename)
 
         # If given, write the initial state to file
-        if len(self.initialstate) > 0:
+        if self.initialcondition[0:4]=="file":
             if self._lindblad_solver: # If Lindblad solver, make it a density matrix
-                state = np.outer(self.initialstate, np.array(self.initialstate).conj())
+                state = np.outer(self._initialstate, np.array(self._initialstate).conj())
             else:
-                state = self.initialstate
+                state = self._initialstate
             vectorized = np.concatenate((np.real(state).ravel(order='F'), np.imag(state).ravel(order='F')))
             self._initstatefilename = "./initialstate.dat"
             with open(datadir+"/"+self._initstatefilename, "w") as f:
@@ -491,7 +496,7 @@ class Quandary:
             mystring += "collapse_type = dephase\n"
         else:
             mystring += "collapse_type = none\n"
-        if len(self._initstatefilename) > 0:
+        if self.initialcondition[0:4] == "file":
             mystring += "initialcondition = " + str(self.initialcondition) + ", " + self._initstatefilename + "\n"
         else:
             mystring += "initialcondition = " + str(self.initialcondition) + "\n"
@@ -980,7 +985,7 @@ def plot_pulse(Ne, time, pt, qt):
     print("-> Press <enter> to proceed.")
     plt.waitforbuttonpress(1); 
     input(); 
-    plt.close(fig)
+    # plt.close(fig)
 
 def plot_expectedEnergy(Ne, time, expectedEnergy):
     """ Plot evolution of expected energy levels """
@@ -1014,7 +1019,7 @@ def plot_expectedEnergy(Ne, time, expectedEnergy):
     print("-> Press <enter> to proceed.")
     plt.waitforbuttonpress(1); 
     input(); 
-    plt.close(fig)
+    # plt.close(fig)
 
 
 def plot_population(Ne, time, population):
@@ -1053,7 +1058,7 @@ def plot_population(Ne, time, population):
     print("-> Press <enter> to proceed.")
     plt.waitforbuttonpress(1); 
     input(); 
-    plt.close(fig)
+    # plt.close(fig)
 
 
 def plot_results_1osc(myconfig, p, q, expectedEnergy, population):
@@ -1125,21 +1130,21 @@ def plot_results_1osc(myconfig, p, q, expectedEnergy, population):
     print("-> Press <enter> to proceed.")
     plt.waitforbuttonpress(1); 
     input(); 
-    plt.close(fig)
+    # plt.close(fig)
 
 
-def timestep_richardson_est(myconfig, tol=1e-8, order=2, quandary_exec=""):
+def timestep_richardson_est(quandary, tol=1e-8, order=2, quandary_exec=""):
     """ Decrease timestep size until Richardson error estimate meets threshold """
 
     # Factor by which timestep size is decreased
     m = 2 
     
     # Initialize 
-    myconfig.verbose=False
-    t, pt, qt, infidelity, _, _ = myconfig.run(quandary_exec=quandary_exec, runtype="simulation", datadir="TS_test")
+    quandary.verbose=False
+    t, pt, qt, infidelity, _, _ = quandary.simulate(quandary_exec=quandary_exec, datadir="TS_test")
 
     Jcurr = infidelity
-    uT = myconfig.uT
+    uT = quandary.uT
 
     # Loop
     errs_J = []
@@ -1148,17 +1153,17 @@ def timestep_richardson_est(myconfig, tol=1e-8, order=2, quandary_exec=""):
     for i in range(10):
 
         # Update configuration number of timesteps. Note: dt will be set in dump()
-        dt_org = myconfig.T / myconfig.nsteps
-        myconfig.nsteps= myconfig.nsteps* m
+        dt_org = quandary.T / quandary.nsteps
+        quandary.nsteps= quandary.nsteps* m
 
         # Get u(dt/m) 
-        myconfig.verbose=False
-        t, pt, qt, infidelity, _, _ = myconfig.run(quandary_exec=quandary_exec, runtype="simulation", datadir="TS_test")
+        quandary.verbose=False
+        t, pt, qt, infidelity, _, _ = quandary.simulate(quandary_exec=quandary_exec, datadir="TS_test")
 
         # Richardson error estimate 
         err_J = np.abs(Jcurr - infidelity) / (m**order-1.0)
-        # err_u = np.abs(uT[1,1]- myconfig.uT[1,1]) / (m**order - 1.0)
-        err_u = np.linalg.norm(np.subtract(uT, myconfig.uT)) / (m**order - 1.0)
+        # err_u = np.abs(uT[1,1]- quandary.uT[1,1]) / (m**order - 1.0)
+        err_u = np.linalg.norm(np.subtract(uT, quandary.uT)) / (m**order - 1.0)
         errs_J.append(err_J)
         errs_u.append(err_u)
         dts.append(dt_org)
@@ -1169,12 +1174,12 @@ def timestep_richardson_est(myconfig, tol=1e-8, order=2, quandary_exec=""):
 
         # Stop if tolerance is reached
         if err_J < tol:
-            print("\n -> Tolerance reached. N=", myconfig.nsteps, ", dt=",dt_org)
+            print("\n -> Tolerance reached. N=", quandary.nsteps, ", dt=",dt_org)
             break
 
         # Update
         Jcurr = infidelity
-        uT = np.copy(myconfig.uT)
+        uT = np.copy(quandary.uT)
 
     return errs_J, errs_u, dts
 

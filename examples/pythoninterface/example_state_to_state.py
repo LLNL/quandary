@@ -21,11 +21,11 @@ T = 50.0
 maxctrl_MHz = 4.0  
 
 # Set up the initial and the target state (in essential level dimensions)
-initialstate = [1.0, 0.0]
+initialcondition = [1.0, 0.0]
 targetstate =  [1.0/np.sqrt(2), 1.0/np.sqrt(2)] 
 
 # Prepare Quandary configuration. The 'Quandary' dataclass gathers all configuration options and sets defaults for those member variables that are not passed through the constructor here. It is advised to compare what other defaults are set in the Quandary constructor (beginning of quandary.py)
-quandary = Quandary(Ne=Ne, Ng=Ng, freq01=freq01, selfkerr=selfkerr, maxctrl_MHz=maxctrl_MHz, initialstate=initialstate, targetstate=targetstate, T=T, tol_infidelity=1e-5, rand_seed=4321)
+quandary = Quandary(Ne=Ne, Ng=Ng, freq01=freq01, selfkerr=selfkerr, maxctrl_MHz=maxctrl_MHz, initialcondition=initialcondition, targetstate=targetstate, T=T, tol_infidelity=1e-5, rand_seed=4321)
 
 # # Execute quandary.
 t, pt, qt, infidelity, expectedEnergy, population = quandary.optimize()
@@ -35,3 +35,13 @@ print(f"\nFidelity = {1.0 - infidelity}")
 if True:
     plot_results_1osc(quandary, pt[0], qt[0], expectedEnergy[0], population[0])
 
+
+# To get the solution operator, you will have to simulate all basis states:
+quandary.initialcondition = "basis"
+quandary.update()
+t, pt, qt, _, _, _ = quandary.simulate(pcof0=quandary.popt)
+propagator = quandary.uT[:-1,:] # Remove last row since it's the guard level
+
+# TEST the fidelity: Check whether uT indeed maps the initial [1,0] state to the desired target state:
+test_fid = np.abs(np.array(targetstate).conj() @ propagator @ initialcondition)   # Overlap between target state and evolved state
+print("Test fidelity = ", test_fid)

@@ -48,8 +48,9 @@ if True:
 #   quandary.time         :  Time points where the expected energy is stored
 
 # You can simulate the dynamics using the optimized control parameters by passing the optimized result 'quandary.popt' as an initial 'pcof0' vector:
-#   quandary.pcof0 = quandary.popt
-#   t, pt, qt, infidelity, expectedEnergy, population = quandary.simulate(datadir=datadir)   
+t, pt, qt, infidelity, expectedEnergy, population = quandary.simulate(datadir=datadir, pcof0 = quandary.popt)
+
+
 
 # You can also load an initial control parameters from a file, and simulate or optimize on it.
 #   quandary.pcof0_filename = os.getcwd() + "/" + datadir + "/params.dat" # Use absolute path!
