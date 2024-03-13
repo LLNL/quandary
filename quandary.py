@@ -242,7 +242,7 @@ class Quandary:
         self.uT         = uT_org.copy()
 
 
-    def simulate(self, *, pcof0=[], maxcores=-1, datadir="./run_dir", quandary_exec="", cygwin=False):
+    def simulate(self, *, pcof0=[], maxcores=-1, datadir="./run_dir", quandary_exec="", cygwinbash=""):
         """ 
         Simulate the quantm dynamics using the current settings. 
 
@@ -252,7 +252,7 @@ class Quandary:
         maxcores      : Maximum number of processing cores. Default: number of initial conditions
         datadir       : Data directory for storing output files. Default: "./run_dir"
         quandary_exec : Location of Quandary's C++ executable, if not in $PATH
-        cywin         : Flag to run on Windows through Cygwin. Default: False. TODO!
+        cygwinbash    : To run on Windows through Cygwin, set the path to Cygwin/bash.exe. Default: None.
 
         Returns:
         --------
@@ -265,10 +265,10 @@ class Quandary:
 
         if len(pcof0)>0:
             self.pcof0 = pcof0[:]
-        return self.__run(runtype="simulation", maxcores=maxcores, datadir=datadir, quandary_exec=quandary_exec, cygwin=cygwin)
+        return self.__run(runtype="simulation", maxcores=maxcores, datadir=datadir, quandary_exec=quandary_exec, cygwinbash=cygwinbash)
 
 
-    def optimize(self, *, pcof0=[], maxcores=-1, datadir="./run_dir", quandary_exec="", cygwin=False):
+    def optimize(self, *, pcof0=[], maxcores=-1, datadir="./run_dir", quandary_exec="", cygwinbash=""):
         """ 
         Optimize the quantm dynamics using the current settings. 
 
@@ -278,7 +278,7 @@ class Quandary:
         maxcores      : Maximum number of processing cores. Default: number of initial conditions
         datadir       : Data directory for storing output files. Default: "./run_dir"
         quandary_exec : Location of Quandary's C++ executable, if not in $PATH
-        cywin         : Flag to run on Windows through Cygwin. Default: False. TODO!
+        cygwinbash    : To run on Windows through Cygwin, set the path to Cygwin/bash.exe. Default: None.
 
         Returns:
         --------
@@ -291,10 +291,10 @@ class Quandary:
 
         if len(pcof0)>0:
             self.pcof0 = pcof0[:]
-        return self.__run(runtype="optimization", maxcores=maxcores, datadir=datadir, quandary_exec=quandary_exec, cygwin=cygwin)
+        return self.__run(runtype="optimization", maxcores=maxcores, datadir=datadir, quandary_exec=quandary_exec, cygwinbash=cygwinbash)
     
 
-    def evalControls(self, *, pcof0=[], points_per_ns=1,datadir="./run_dir", quandary_exec="", cygwin=False):
+    def evalControls(self, *, pcof0=[], points_per_ns=1,datadir="./run_dir", quandary_exec="", cygwinbash=""):
         """
         Evaluate control pulses on a specific sample rate.       
         
@@ -304,7 +304,7 @@ class Quandary:
         points_per_ns :  sample rate of the resulting controls. Default: 1ns 
         datadir       :  Directory for output files. Default: "./run_dir"
         quandary_exec :  Path to Quandary's C++ executable if not in $PATH
-        cygwin        :  Flag to run on Windows through Cygwin. Default: False.
+        cygwinbash    : To run on Windows through Cygwin, set the path to Cygwin/bash.exe. Default: None.
     
         Returns:
         ---------
@@ -325,7 +325,7 @@ class Quandary:
         os.makedirs(datadir_controls, exist_ok=True)
         runtype = 'evalcontrols'
         configfile_eval= self.__dump(runtype=runtype, datadir=datadir_controls)
-        err = execute(runtype=runtype, ncores=1, config_filename=configfile_eval, datadir=datadir_controls, quandary_exec=quandary_exec, verbose=False, cygwin=cygwin)
+        err = execute(runtype=runtype, ncores=1, config_filename=configfile_eval, datadir=datadir_controls, quandary_exec=quandary_exec, verbose=False, cygwinbash=cygwinbash)
         time, pt, qt, _, _, _, pcof, _, _ = self.__get_results(datadir=datadir_controls, ignore_failure=True)
 
         # Save pcof to config.popt
@@ -337,7 +337,7 @@ class Quandary:
         return time, pt, qt
 
 
-    def __run(self, *, runtype="optimization", maxcores=-1, datadir="./run_dir", quandary_exec="", cygwin=False):
+    def __run(self, *, runtype="optimization", maxcores=-1, datadir="./run_dir", quandary_exec="", cygwinbash=""):
         """
         Internal helper function to launch processes to execute the C++ Quandary code:
           1. Writes quandary config files to file system
@@ -361,7 +361,7 @@ class Quandary:
                     break
 
         # Execute subprocess to run Quandary
-        err = execute(runtype=runtype, ncores=ncores, config_filename=config_filename, datadir=datadir, quandary_exec=quandary_exec, verbose=self.verbose, cygwin=cygwin)
+        err = execute(runtype=runtype, ncores=ncores, config_filename=config_filename, datadir=datadir, quandary_exec=quandary_exec, verbose=self.verbose, cygwinbash=cygwinbash)
         if self.verbose:
             print("Quandary data dir: ", datadir, "\n")
 
@@ -1179,7 +1179,7 @@ def timestep_richardson_est(myconfig, tol=1e-8, order=2, quandary_exec=""):
     return errs_J, errs_u, dts
 
 
-def execute(*, runtype="simulation", ncores=1, config_filename="config.cfg", datadir=".", quandary_exec="", verbose=False, cygwin=False):
+def execute(*, runtype="simulation", ncores=1, config_filename="config.cfg", datadir=".", quandary_exec="", verbose=False, cygwinbash=""):
     """ Helper function to evoke a subprocess that executes Quandary  """
 
     # result = run(["pwd"], shell=True, capture_output=True, text=True)
@@ -1203,7 +1203,7 @@ def execute(*, runtype="simulation", ncores=1, config_filename="config.cfg", dat
         print("Running Quandary ... ")
 
     # Execute Quandary
-    if not cygwin: # NOT on Windows through Cygwin. Should work on Mac, Linux.
+    if len(cygwinbash) == 0: # NOT on Windows through Cygwin. The following should work on Mac, Linux.
         # Pipe std output to file rather than screen
         # with open(os.path.join(datadir, "out.log"), "w") as stdout_file, \
         #      open(os.path.join(datadir, "err.log"), "w") as stderr_file:
@@ -1213,8 +1213,10 @@ def execute(*, runtype="simulation", ncores=1, config_filename="config.cfg", dat
         # Check return code
         err = exec.check_returncode()
     else:
-        # Execute Quandary on Windows through Cygwin
-        p = Popen(r"C:/cygwin64/bin/bash.exe", stdin=PIPE, stdout=PIPE, stderr=PIPE)  
+        # Windows through Cygwin
+        cygwinbash= str(cygwinbash)
+        # p = Popen(r"C:/cygwin64/bin/bash.exe", stdin=PIPE, stdout=PIPE, stderr=PIPE)  
+        p = Popen(cygwinbash, stdin=PIPE, stdout=PIPE, stderr=PIPE)  
         p.stdin.write(runcommand.encode('ASCII')) 
         p.stdin.close()
         std_out, std_err = p.communicate()
