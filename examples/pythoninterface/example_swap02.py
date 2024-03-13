@@ -8,7 +8,7 @@ from quandary import *
 ## One qudit test case: Swap the 0 and 2 state of a three-level qudit ##
 
 Ne = [3]  # Number of essential energy levels
-Ng = [0]  # Number of extra guard levels
+Ng = [1]  # Number of extra guard levels
 
 # 01 transition frequencies [GHz] per oscillator
 freq01 = [4.10595] 
@@ -16,10 +16,10 @@ freq01 = [4.10595]
 selfkerr = [0.2198]
 
 # Set the total time duration (ns)
-T = 200.0
+T = 100.0
 
 # Bounds on the control pulse (in rotational frame, p and q) [MHz] per oscillator
-maxctrl_MHz = 4.0
+maxctrl_MHz = 8.0
 
 # Set up a target gate (in essential level dimensions)
 unitary = [[0,0,1],[0,1,0],[1,0,0]]  # Swaps first and last level

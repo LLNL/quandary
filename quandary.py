@@ -49,7 +49,7 @@ class Quandary:
     initctrl_MHz        # Amplitude [MHz] of initial control parameters. Float or List[float]. Default: 10 MHz.
     maxctrl_MHz         # Amplitude bounds for the control pulses [MHz]. Float or List[float]. Default: none
     control_enforce_BC  # Bool to let control pulses start and end at zero. Default: False
-    dtau                # Spacing of Bspline basis functions [ns]. The smaller dtau, the larger nsplines. Default: 10ns
+    dtau                # Spacing of Bspline basis functions [ns]. The smaller dtau, the larger nsplines. Default: 3ns
     nsplines            # Number of Bspline basis functions. Default: T/dtau + 2
     carrier_frequency   # Carrier frequencies for each oscillator. List[List[float]]. Default will be computed based on Hsys.
     cw_amp_thres        # Threshold to ignore carrier wave frequencies whose growth rate is below this value. Default: 1e-7
@@ -122,7 +122,7 @@ class Quandary:
     initctrl_MHz        : List[float] = field(default_factory=list)   
     maxctrl_MHz         : List[float] = field(default_factory=list)   
     control_enforce_BC  : bool        = False                         
-    dtau                : float       = 10.0                          
+    dtau                : float       = 3.0
     nsplines            : int         = -1                            
     carrier_frequency   : List[List[float]] = field(default_factory=list) 
     cw_amp_thres        : float       = 1e-7
