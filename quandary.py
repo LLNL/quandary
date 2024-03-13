@@ -80,6 +80,7 @@ class Quandary:
     _hamiltonian_filename : str 
     _gatefilename         : str 
     _initstatefilename    : str 
+    _initialstate         : List[complex] = field(default_factory=list)
 
 
     Output parameters, available after Quandary has been executed (simulate or optimze)
@@ -148,7 +149,7 @@ class Quandary:
     _hamiltonian_filename : str         = ""
     _gatefilename         : str         = ""
     _initstatefilename    : str         = ""
-    _initialstate           : List[complex] = field(default_factory=list)
+    _initialstate         : List[complex] = field(default_factory=list)
     
     # Output parameters available after Quandary has been run
     popt        : List[float]   = field(default_factory=list)
