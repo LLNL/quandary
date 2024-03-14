@@ -170,6 +170,7 @@ def read_config(filename):
                case("optim_atol") or \
                case("optim_rtol") or \
                case("optim_ftol") or \
+               case("optim_inftol") or \
                case("optim_regul") or \
                case("optim_penalty") or \
                case("optim_penalty_param") or \
@@ -227,6 +228,8 @@ def read_config(filename):
                case("output5") or \
                case("runtype") or \
                case("usematfree") or \
+               case("optim_regul_tik0") or \
+               case("control_enforceBC") or \
                case("gamma_regul_interpolate") or \
                case("linearsolver_type") or \
                case("timestepper") or \
