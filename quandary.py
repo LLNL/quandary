@@ -1,4 +1,4 @@
-import os
+import os, copy
 import numpy as np
 from subprocess import run, PIPE, Popen
 import matplotlib.pyplot as plt
@@ -247,7 +247,7 @@ class Quandary:
         self.uT         = uT_org.copy()
 
 
-    def simulate(self, *, pcof0=[], maxcores=-1, datadir="./run_dir", quandary_exec="", cygwinbash=""):
+    def simulate(self, *, pcof0=[], maxcores=-1, datadir="./run_dir", quandary_exec="", cygwinbash="", batchargs=[]):
         """ 
         Simulate the quantm dynamics using the current settings. 
 
@@ -258,6 +258,7 @@ class Quandary:
         datadir       : Data directory for storing output files. Default: "./run_dir"
         quandary_exec : Location of Quandary's C++ executable, if not in $PATH
         cygwinbash    : To run on Windows through Cygwin, set the path to Cygwin/bash.exe. Default: None.
+        batchargs     : [str(time), str(accountname), int(nodes)] If given, submits a batch job rather than local execution. Specify the max. runtime (string), the account name (string) and the number of requested nodes (int). Note, the number of executing *cores* is defined through 'maxcores'. 
 
         Returns:
         --------
@@ -270,10 +271,10 @@ class Quandary:
 
         if len(pcof0)>0:
             self.pcof0 = pcof0[:]
-        return self.__run(runtype="simulation", overwrite_popt=False, maxcores=maxcores, datadir=datadir, quandary_exec=quandary_exec, cygwinbash=cygwinbash)
+        return self.__run(runtype="simulation", overwrite_popt=False, maxcores=maxcores, datadir=datadir, quandary_exec=quandary_exec, cygwinbash=cygwinbash, batchargs=batchargs)
 
 
-    def optimize(self, *, pcof0=[], maxcores=-1, datadir="./run_dir", quandary_exec="", cygwinbash=""):
+    def optimize(self, *, pcof0=[], maxcores=-1, datadir="./run_dir", quandary_exec="", cygwinbash="", batchargs=[]):
         """ 
         Optimize the quantm dynamics using the current settings. 
 
@@ -284,6 +285,7 @@ class Quandary:
         datadir       : Data directory for storing output files. Default: "./run_dir"
         quandary_exec : Location of Quandary's C++ executable, if not in $PATH
         cygwinbash    : To run on Windows through Cygwin, set the path to Cygwin/bash.exe. Default: None.
+        batchargs     : [str(time), str(accountname), int(nodes)] If given, submits a batch job rather than local execution. Specify the max. runtime (string), the account name (string) and the number of requested nodes (int). Note, the number of executing *cores* is defined through 'maxcores'. 
 
         Returns:
         --------
@@ -296,7 +298,7 @@ class Quandary:
 
         if len(pcof0)>0:
             self.pcof0 = pcof0[:]
-        return self.__run(runtype="optimization", overwrite_popt=True, maxcores=maxcores, datadir=datadir, quandary_exec=quandary_exec, cygwinbash=cygwinbash)
+        return self.__run(runtype="optimization", overwrite_popt=True, maxcores=maxcores, datadir=datadir, quandary_exec=quandary_exec, cygwinbash=cygwinbash, batchargs=batchargs)
     
 
     def evalControls(self, *, pcof0=[], points_per_ns=1,datadir="./run_dir", quandary_exec="", cygwinbash=""):
@@ -331,7 +333,7 @@ class Quandary:
         runtype = 'evalcontrols'
         configfile_eval= self.__dump(runtype=runtype, datadir=datadir_controls)
         err = execute(runtype=runtype, ncores=1, config_filename=configfile_eval, datadir=datadir_controls, quandary_exec=quandary_exec, verbose=False, cygwinbash=cygwinbash)
-        time, pt, qt, _, _, _, pcof, _, _ = self.__get_results(datadir=datadir_controls, ignore_failure=True)
+        time, pt, qt, _, _, _, pcof, _, _ = self.get_results(datadir=datadir_controls, ignore_failure=True)
 
         # Save pcof to config.popt
         self.popt = pcof[:]
@@ -342,11 +344,11 @@ class Quandary:
         return time, pt, qt
 
 
-    def __run(self, *, runtype="optimization", overwrite_popt=False, maxcores=-1, datadir="./run_dir", quandary_exec="", cygwinbash=""):
+    def __run(self, *, runtype="optimization", overwrite_popt=False, maxcores=-1, datadir="./run_dir", quandary_exec="", cygwinbash="", batchargs=[]):
         """
         Internal helper function to launch processes to execute the C++ Quandary code:
           1. Writes quandary config files to file system
-          2. Envokes subprocesses to run quandary (on multiple cores)
+          2. Envokes subprocesses to run quandary (on multiple cores), or submits the jobs if 'batchargs' is given.
           3. Gathers results from Quandays output directory into python
           4. Evaluate controls on the input sample rate, if given
         """
@@ -366,21 +368,28 @@ class Quandary:
                     break
 
         # Execute subprocess to run Quandary
-        err = execute(runtype=runtype, ncores=ncores, config_filename=config_filename, datadir=datadir, quandary_exec=quandary_exec, verbose=self.verbose, cygwinbash=cygwinbash)
+        err = execute(runtype=runtype, ncores=ncores, config_filename=config_filename, datadir=datadir, quandary_exec=quandary_exec, verbose=self.verbose, cygwinbash=cygwinbash, batchargs=batchargs)
         if self.verbose:
             print("Quandary data dir: ", datadir, "\n")
 
         # Get results from quandary output files
-        time, pt, qt, uT, expectedEnergy, population, popt, infidelity, optim_hist = self.__get_results(datadir=datadir)
-
-        # Store some results in the config output parameters
-        if (overwrite_popt):
-            self.popt = popt[:]
-        self.optim_hist = optim_hist
-        self.time = time[:]
-        self.uT   = uT.copy()
-
-        return self.time, pt, qt, infidelity, expectedEnergy, population
+        if not err:
+            # Get results form quandary's output folder and store some
+            time, pt, qt, uT, expectedEnergy, population, popt, infidelity, optim_hist = self.get_results(datadir=datadir)
+            if (overwrite_popt):
+                self.popt = popt[:]
+            self.optim_hist = optim_hist
+            self.time = time[:]
+            self.uT   = uT.copy()
+        else:
+            time = []
+            pt = []
+            qt = []
+            infidelity = 1.0
+            expectedEnergy = []
+            population = []
+        
+        return time, pt, qt, infidelity, expectedEnergy, population
 
 
     def __dump(self, *, runtype="simulation", datadir="./run_dir"):
@@ -568,8 +577,23 @@ class Quandary:
         return "./config.cfg"
 
 
-    def __get_results(self, *, datadir="./", ignore_failure=False):
-        """ Helper function to read results from Quandary's output directory """
+    def get_results(self, *, datadir="./", ignore_failure=False):
+        """ 
+        Loads Quandary's output into python.
+
+        Parameters:
+        -----------
+        datadir        (string) : Directory containing Quandary's output files.
+        ignore_failure (bool)   : Flag to ignore warning when an expected file can't be found
+
+        Returns:
+        ---------
+        time            :  List of time-points at which the controls are evaluated  (List)
+        pt, qt          :  p,q-control pulses at each time point for each oscillator (List of list)
+        infidelity      :  Infidelity of the pulses for the specified target operation (Float)
+        expectedEnergy  :  Evolution of the expected energy of each oscillator and each initial condition. Acces: expectedEnergy[oscillator][initialcondition]
+        population      :  Evolution of the population of each oscillator, of each initial condition. (expectedEnergy[oscillator][initialcondition])
+        """
 
         dataout_dir = datadir + "/"
         
@@ -1185,17 +1209,29 @@ def timestep_richardson_est(quandary, tol=1e-8, order=2, quandary_exec=""):
     return errs_J, errs_u, dts
 
 
-def execute(*, runtype="simulation", ncores=1, config_filename="config.cfg", datadir=".", quandary_exec="", verbose=False, cygwinbash=""):
-    """ Helper function to evoke a subprocess that executes Quandary  """
+def execute(*, runtype="simulation", ncores=1, config_filename="config.cfg", datadir=".", quandary_exec="", verbose=False, cygwinbash="", batchargs=[]):
+    """ 
+    Helper function to evoke a subprocess that executes Quandary.
 
-    # result = run(["pwd"], shell=True, capture_output=True, text=True)
-    # print("Current location: ", result.stdout, "\n")
-    # print("data dir: ", datadir, "\n")
+    Optional Parameters:
+    -----------
+    ncores              (int)       : Number of cores to run on. Default: 1 
+    config_filename     (string)    : Name of Quandaries configuration file. Default: "config.cfg"
+    datadir             (string)    : Directory for running Quandary and output files. Default: "./"
+    quandary_exec       (string)    : Absolute path to quandary's executable. Default: "" (expecting quandary to be in the $PATH)
+    verbose             (Bool)      : Flag to print more output. Default: False
+    cygwinbash          (string)    : Path to Cygwin bash.exe, if running on Windows machine. Default: None
+    batchargs           (List)      : Submit to batch system by setting batchargs= [maxime, accountname, nodes]. Default: []. Compare end of this file. Specify the max. runtime (string), the account name (string) and the number of requested nodes (int). Note, the number of executing *cores* is defined through 'ncores'. 
+
+    Returns:
+    ---------
+    err     (int)  : Error indicator (didn't run successfully if this this 1. Hence, load the results only if this is 0)
+    """
 
     # Enter the directory where Quandary will be run
     dir_org = os.getcwd() 
     os.chdir(datadir)
-    
+ 
     # Set up the run command
     exe = "quandary"
     if len(quandary_exec) > 0:
@@ -1203,23 +1239,33 @@ def execute(*, runtype="simulation", ncores=1, config_filename="config.cfg", dat
     runcommand = f"{exe} {config_filename}"
     if not verbose:
         runcommand += " --quiet"
+    # If parallel run, specify runcommand. Default is 'mpirun -np ', unless batch args are given, then currently using 'srun -n', see end of this file for changing that to other batch systems.
     if ncores > 1:
-        runcommand = f"mpirun -np {ncores} " + runcommand
+        if len(batchargs)>0:
+            myrun = batch_run  # currently set to "srun -n"
+        else:
+            myrun = "mpirun -np "
+        runcommand = f"{myrun} {ncores} " + runcommand
     if verbose:
         print("Running Quandary ... ")
 
-    # Execute Quandary
-    if len(cygwinbash) == 0: # NOT on Windows through Cygwin. The following should work on Mac, Linux.
-        # Pipe std output to file rather than screen
-        # with open(os.path.join(datadir, "out.log"), "w") as stdout_file, \
-        #      open(os.path.join(datadir, "err.log"), "w") as stderr_file:
-        #         exec = run(runcommand, shell=True, stdout=stdout_file, stderr=stderr_file)
-        print("Executing '", runcommand, ". Runtype: ", runtype, "...")
-        exec = run(runcommand, shell=True)
-        # Check return code
-        err = exec.check_returncode()
-    else:
-        # Windows through Cygwin
+    # If batchargs option is given, submit a batch script to schedule execution of Quandary
+    if len(batchargs) > 0:
+        maxtime, account, nodes = batchargs
+        batch_args = copy.deepcopy(default_batch_args)
+        batch_args[batch_args_mapping["NAME"]]            = datadir
+        batch_args[batch_args_mapping["ERROR"]]           = datadir+".err"
+        batch_args[batch_args_mapping["OUTPUT"]]          = datadir+".out"
+        batch_args[batch_args_mapping["NTASKS"]]          = ncores
+        batch_args[batch_args_mapping["ACCOUNT"]]         = account
+        batch_args[batch_args_mapping["NODES"]]           = nodes
+        batch_args[batch_args_mapping["TIME"]]            = maxtime
+        assemble_batch_script(datadir+".batch", runcommand, batch_args)
+        if True:
+            subprocess.call("sbatch " + datadir+".batch", shell=True)
+        err=1
+    # If Cygwin option is given, execute on Windows through Cygwin bash
+    elif len(cygwinbash)>0: 
         cygwinbash= str(cygwinbash)
         # p = Popen(r"C:/cygwin64/bin/bash.exe", stdin=PIPE, stdout=PIPE, stderr=PIPE)  
         p = Popen(cygwinbash, stdin=PIPE, stdout=PIPE, stderr=PIPE)  
@@ -1229,10 +1275,60 @@ def execute(*, runtype="simulation", ncores=1, config_filename="config.cfg", dat
         # Print stdout and stderr
         print(std_out.strip().decode('ascii'))
         print(std_err.strip().decode('ascii'))
+        err=0
+    # Else: (Default) Execute Quandary locally, for Linux or MacOS 
+    else: 
+        # Pipe std output to file rather than screen
+        # with open(os.path.join(datadir, "out.log"), "w") as stdout_file, \
+        #      open(os.path.join(datadir, "err.log"), "w") as stderr_file:
+        #         exec = run(runcommand, shell=True, stdout=stdout_file, stderr=stderr_file)
+        print("Executing '", runcommand, ". Runtype: ", runtype, "...")
+        exec = run(runcommand, shell=True)
+        # Check return code
+        err = exec.check_returncode()
     if verbose: 
         print("DONE. \n")
 
     # Return to previous directory
     os.chdir(dir_org)
-    return 1
+    return err
 
+####################################
+# Batch system settings
+####################################
+
+# Define batch argument names, here for SLURM scheduler. You can add others if needed, make sure to 
+batch_args_mapping_slurm = {"NAME"  : "--job-name",
+                            "ERROR" : "--error",
+                            "OUTPUT" : "--output",
+                            "TIME"  : "--time",
+                            "NTASKS"  : "--ntasks",
+                            "NODES"  : "--nodes",
+                            "ACCOUNT"  : "--account",
+                            "NTASKSPERNODE"  : "--ntasks-per-node",
+                            "CONSTRAINT" : "--constraint",
+                            "PARTITION" : "--partition"}
+
+# Specify batch system config. Here: Slurm
+batch_args_mapping = batch_args_mapping_slurm
+batch_run = "srun -n "
+
+# Set default batch arguments
+default_batch_args = {batch_args_mapping["NAME"]          : "default",
+                      batch_args_mapping["OUTPUT"]        : "default-%j.out",
+                      batch_args_mapping["ERROR"]         : "default-%j.err",
+                      batch_args_mapping["ACCOUNT"]       : "sqoc",
+                      batch_args_mapping["PARTITION"]     : "pbatch",
+                      batch_args_mapping["TIME"]          : "00:05:00",
+                      batch_args_mapping["NODES"]         : 1,
+                      batch_args_mapping["NTASKS"]        : 1}
+
+def assemble_batch_script(name, run_command, batch_args, exclusive=True):
+    outfile = open(name, 'w')
+    outfile.write("#!/usr/bin/bash\n")
+    for arg,value in batch_args.items():
+        outfile.write("#SBATCH " + arg + "=" + str(value) + "\n")
+    if exclusive:
+        outfile.write("#SBATCH --exclusive\n")
+    outfile.write(run_command)
+    outfile.close()
