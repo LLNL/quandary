@@ -1,7 +1,7 @@
 # Quandary - Optimal control for open and closed quantum systems
 Quandary implements an optimization solver for open and closed optimal quantum control. The underlying quantum dynamics model open or closed quantum systems, using either Schroedinger's equation for a state vector (closed), or Lindblad master equation for a density matrix (open). The control problem aims to find control pulses that drive the system to a desired target, such as a target unitary solution operator or to a predefined target state. Quandary targets deployment on High-Performance Computing platforms, offering various levels for parallelization using the message passing paradigm. 
 
-It is advised to look at the user guide in `doc/`, describing the underlying mathematical models, their implementation and usage in Quandary. The `config_template.cfg` gathers all available options for Quandary's execution. 
+It is advised to look at the user guide in `doc/`, describing the underlying mathematical models, their implementation and usage in Quandary. 
 
 Feel free to reach out to Stefanie Guenther [guenther5@llnl.gov] for any question you may have. 
 
@@ -45,6 +45,7 @@ It is advised to add Quandary to your `PATH`, e.g.
 
 **Optional:** To run Quandary from within a Python environment, you should have a working python interpreter with numpy and matplotlib installed. Then, append Quandary's location to your `PYTHONPATH`, e.g. with  
 * `export PYTHONPATH=$PYTHONPATH:/path/to/quandary/`
+and have a look into the examples.
  
 
 ## Running
