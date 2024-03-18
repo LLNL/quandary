@@ -58,9 +58,10 @@ for i in range(len(ncores_all)):
   t, pt, qt, infidelity, expectedEnergy, population = quandary.optimize(datadir=jobname, maxcores=ncores, batchargs=batchargs)
 
 
-# AFTER THE JOBS FINISHED, load results into python. e.g. with 
-# jobname = "ncores_4"
-# t, pt, qt, infidelity, expectedEnergy, population = quandary.get_results(datadir=jobname)
+  # AFTER THE JOBS FINISHED, load results into python if needed. E.g. with 
+  # time, pt, qt, uT, expectedEnergy, population, popt, infidelity, optim_hist = quandary.get_results(datadir=jobname)
+  # print("Fidelity = ", 1.0 - infidelity)
+
 
 
 ## Another example: Run quandary on varying parameters 
