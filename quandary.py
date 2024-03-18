@@ -1,6 +1,6 @@
 import os, copy
 import numpy as np
-from subprocess import run, PIPE, Popen
+from subprocess import run, PIPE, Popen, call
 import matplotlib.pyplot as plt
 from dataclasses import dataclass, field, replace
 from typing import List, Dict
@@ -1262,7 +1262,7 @@ def execute(*, runtype="simulation", ncores=1, config_filename="config.cfg", dat
         batch_args[batch_args_mapping["TIME"]]            = maxtime
         assemble_batch_script(datadir+".batch", runcommand, batch_args)
         if True:
-            subprocess.call("sbatch " + datadir+".batch", shell=True)
+            call("sbatch " + datadir+".batch", shell=True)
         err=1
     # If Cygwin option is given, execute on Windows through Cygwin bash
     elif len(cygwinbash)>0: 
