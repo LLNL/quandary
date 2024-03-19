@@ -744,12 +744,12 @@ void complex_inner_product(const Vec &x, const Vec &y, double &re, double &im) {
   for (int d = 0; d < dim; d++)
   {
     // NOTE 1: the solution is ordered as [re0, im0, re1, im1, ...]
-    // NOTE 2: The usual definition of the complex scalar product is <x,y> = conj(x) * y, but here <x,y> = conj(y)*x
+    // NOTE 2: The usual definition of the complex scalar product is <x,y> = conj(x) * y
     // Re[x dot conj(y)] = Re[x] * Re[y] + Im[x] * Im[y]
     re += xptr[getIndexReal(d)] * yptr[getIndexReal(d)] + xptr[getIndexImag(d)] * yptr[getIndexImag(d)];
 
-    // Im[x dot conj(y)] = Im[x] * Re[y] - Re[x] * Im[y]
-    im += xptr[getIndexImag(d)] * yptr[getIndexReal(d)] - xptr[getIndexReal(d)] * yptr[getIndexImag(d)];
+    // Im[x dot conj(y)] = Re[x] * Im[y] - Im[x] * Re[y]
+    im += xptr[getIndexReal(d)] * yptr[getIndexImag(d)] - xptr[getIndexImag(d)] * yptr[getIndexReal(d)];
   }
   
   VecRestoreArray(x, &xptr);
