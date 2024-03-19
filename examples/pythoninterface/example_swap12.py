@@ -1,3 +1,7 @@
+# Make sure you have the location of quandary.py in your PYTHONPATH. E.g. with
+#   > export PYTHONPATH=/path/to/quandary/:$PYTHONPATH
+# Further, make sure that your quandary executable is in your $PATH variable. E.g. with
+#   > export PATH=/path/to/quandary/:$PATH
 from quandary import * 
 
 ## Two qubit test case for the SWAP gate, two essential levels each, no guard levels ##
@@ -14,8 +18,6 @@ rotfreq = favg*np.ones(len(freq01))
 # Set the time duration (ns)
 T = 200.0
 
-# Bspline spacing (ns) for control pulse parameterization. The number of Bspline basis functions is then T/dtau + 2.
-
 # Bounds on the control pulse (in rotational frame, p and q) [MHz] per oscillator
 maxctrl_MHz = 30.0*np.ones(len(freq01))  
 
@@ -27,26 +29,28 @@ unitary[2,1] = 1.0
 unitary[2,2] = 0.0
 # print("Target gate: ", unitary)
 
-# Quandary run options
-runtype = "optimization"        # "simulation" # "simulation", or "gradient", or "optimization"
-quandary_exec="/Users/guenther5/Numerics/quandary/quandary"
-datadir = "./SWAP12_run_dir"  # Compute and output directory 
-verbose = False
+# You can enable more output by passing to Quandary
+verbose = True 
 
 # Prepare Quandary
-myconfig = QuandaryConfig(freq01=freq01, Jkl=Jkl, rotfreq=rotfreq, T=T, maxctrl_MHz=maxctrl_MHz, targetgate=unitary, verbose=verbose, dtau=dtau)
-
-# Potentially load initial control parameters from a file
-# myconfig.pcof0_filename="./SWAP12_params.dat"
+quandary = Quandary(freq01=freq01, Jkl=Jkl, rotfreq=rotfreq, T=T, maxctrl_MHz=maxctrl_MHz, targetgate=unitary, verbose=verbose)
 
 # Execute quandary
-t, pt, qt, infidelity, expectedEnergy, population = quandary_run(myconfig, quandary_exec=quandary_exec, datadir=datadir)
-
+datadir = "SWAP12_run_dir"
+t, pt, qt, infidelity, expectedEnergy, population = quandary.optimize(datadir=datadir)
 print(f"Fidelity = {1.0 - infidelity}")
 print("\n Quandary data directory: ", datadir)
 
-
 # Plot the control pulse and expected energy level evolution
 if True:
-	plot_pulse(myconfig.Ne, t, pt, qt)
-	plot_expectedEnergy(myconfig.Ne, t, expectedEnergy)
+	plot_pulse(quandary.Ne, t, pt, qt)
+	plot_expectedEnergy(quandary.Ne, t, expectedEnergy)
+
+
+# Adding some decoherence and simulate again
+quandary.T1 = [10000.0]
+quandary.T2 = [8000.0]
+quandary.update()
+quandary.pcof0 = quandary.popt[:]
+t, pt, qt, infidelity, expectedEnergy, population = quandary.simulate(datadir=datadir, maxcores=8)
+print(f"Fidelity under decoherence = {1.0 - infidelity}")

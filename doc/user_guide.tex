@@ -4,11 +4,34 @@
 \usepackage{dsfont}
 \usepackage{graphicx}
 \usepackage[utf8]{inputenc}
-\usepackage{xcolor}
+\usepackage[usenames,dvipsnames]{xcolor}
+\usepackage[most]{tcolorbox}
 % \usepackage{soul}
 % \usepackage{authblk}
-\usepackage{verbatim}
 % \usepackage[legalpaper, margin=2in]{geometry}
+\usepackage{verbatim}
+
+\usepackage{listings}
+\lstset{%
+  basicstyle=\footnotesize\ttfamily,
+  morecomment=[l][\color{black}]{*},
+  morecomment=[l][\color{gray}]{\#},
+  morecomment=[l][\color{Mahogany}]{//},
+  morecomment=[n][\bfseries]{/*}{*/},
+  commentstyle=\color{black}\bfseries
+}
+
+\lstdefinelanguage{mylanguage}
+{
+  basicstyle=\footnotesize\ttfamily,
+  morecomment=[l][\color{black}]{*},
+  morecomment=[l][\color{Mahogany}]{\#},
+  morecomment=[l][\color{Mahogany}]{//},
+  morecomment=[n][\bfseries]{/*}{*/},
+  commentstyle=\color{black}\bfseries
+}
+
+  % morecomment=[n][\color{LimeGreen}]{/*}{*/},
 
 % \usepackage{color}   %May be necessary if you want to color links
 \usepackage{hyperref}  % Clickable table of content
@@ -54,29 +77,58 @@
 \begin{document}
 \maketitle
 
+
+\section*{Installation}
+ Read the \texttt{README.md}! In short:
+ \begin{enumerate}
+  \item Install Petsc (\url{https://petsc.org/}), export \texttt{\$PETSC\_DIR} and \texttt{\$PETSC\_ARCH}, and append \\[0ex] \texttt{\$PETSC\_DIR/\$PETSC\_ARCH} to your \texttt{\$LD\_LIBRARY\_PATH}. 
+  \item Compile the quandary executable with 
+  \begin{itemize}
+    \item[$>$] \texttt{make -j quandary}
+  \end{itemize}
+  and add it to your \texttt{\$PATH}. 
+  \item For the python interface, add the Quandary folder to your \texttt{\$PYTHONPATH}.
+ \end{enumerate}
+
+ 
+ \subsection*{Quick start} 
+ 
+The C++ Quandary executable takes a configuration input file. As a quick start, test it with 
+\begin{itemize}
+  \item[$>$]  \texttt{./quandary config\_template.cfg}  \hfill (serial execution)
+  \item[$>$]  \texttt{mpirun -np 4 ./quandary config\_template.cfg}  \hfill (on 4 cores)
+\end{itemize}
+You can silence Quandary by adding the \texttt{--quiet} command line argument.
+
+Results are written as column-based text files in the output directory. Gnuplot is an excellent plotting tool to visualize the written output files, see below. The \texttt{config\_template.cfg} is currently set to run a CNOT optimization test case. It lists all available options and configurations, and is filled with comments that should help users to set up new simulation and optimization runs, and match the input options to the equations found in this document. 
+
+Test the python interface by running one of the examples in \texttt{/examples/pythoninterface/}, e.g. 
+\begin{itemize}
+  \item[$>$]  \texttt{python3 example\_swap02.py}
+\end{itemize}
+ The python interpreter will start background processes on the C++ executable using a config file written by the python interpreter, and gathers quandary's output results back into the python shell for plotting.
+
 \tableofcontents
 
 \section{Introduction}
 Quandary numerically simulates and optimizes the time evolution of closed and open quantum systems. The
 underlying dynamics are modelled by either Schroedinger's equation (for closed systems), or Lindblad's master equation (for open systems that interact with the environment). Quandary solves the respective ordinary differential equation (ODE) numerically by applying a time-stepping integration scheme, and applies a gradient-based optimization
-scheme to determine optimal control pulses that drive the quantum system to a desired target state.
-Two optimization objectives are considered: Unitary gate optimization that finds controls to
-realize a logical quantum gate, and state preparation that aims to drive the quantum system to a desired target state, such as for example the ground state of zero energy level. 
+scheme to determine optimal control pulses that drive the quantum system to a desired target.
+The target can be a unitary, i.e. optimizing for pulses that
+realize a logical quantum operation, or state preparation that aims to drive the quantum system from one (or multiple) initial state to a desired target state, such as for example the ground state of zero energy level, or for the creation of entangled state. 
 
-Quandary is designed to solve optimal control problems in larger (potentially open) quantum systems, targeting modern high performance computing (HPC) platforms. Quandary utilizes distributed memory computations using the message passing paradigm that enables scalability to large number of compute cores. Implemented in C++, Quandary is portable and its object-oriented implementation allows developers to easily extend the predefined setup to suit their particular simulation and optimization requirements. For example, customized gates for Hamiltonian simulations can easily be added to supplement Quandary’s predefined gate set.
+Quandary is designed to solve optimal control problems in larger (potentially open) quantum systems, targeting modern high performance computing (HPC) platforms. Quandary utilizes distributed memory computations using the message passing paradigm that enables scalability to large number of compute cores. Implemented in C++, Quandary is portable and its object-oriented implementation allows developers to extend the predefined setup to suit their particular simulation and optimization requirements. For example, customized gates for Hamiltonian simulations can easily be added to supplement Quandary’s predefined gate set. 
+The Python interface allows for greater flexibility where custom Hamiltonian models can be used.
 
 This document outlines the mathematical background and underlying equations, and summarizes their
-implementation in Quandary. For installation instructions and execution, please take a
-look at the \texttt{README.md} file. Further, the configuration file \texttt{config\_template.cfg} is filled with comments that should help users and developers to set up new simulation and optimization runs, and match the input options to the equations found in this document.
-A full documentation is under development. In the meantime, don't
-hesitate to direct any questions to guenther5@llnl.gov. 
-We also refer to our publications \cite{guenther2021quandary, guenther2021quantum}.
+implementation and usage in Quandary. We also refer to our publications \cite{guenther2021quandary, guenther2021quantum}.
+
 
 \section{Model equation}\label{sec:model}
 Quandary models composite quantum systems consisting of $Q$ subsystems, with $n_k$ energy levels for the
 $k$-th subsystem, $k=0,\dots,Q-1$. The Hilberspace dimension is hence the product of each subsystem dimensions: $N = \prod_{k=0}^{Q-1} n_k$. 
 
-The Hamiltonian describing the composite system is modelled as 
+The default system Hamiltonian model for the composite system is
 \begin{align}
   H_d &:= \sum_{k=0}^{Q-1} \left(\omega_k a_k^{\dagger}a_k- \frac{\xi_k}{2} a_k^{\dagger}a_k^{\dagger}a_k a_k  + \sum_{l> k} \left(  J_{kl} \left( a_k^\dagger a_l + a_k a_l^\dagger \right) -\xi_{kl} a_{k}^{\dagger}a_{k}   a_{l}^{\dagger} a_{l} \right)\right)
 \end{align}
@@ -234,15 +286,13 @@ components: $\alpha^k_f = \alpha^{k(1)}_{1,f}, \dots, \alpha^{k(1)}_{N_s^k,f}, \
   \end{align}
 
 
-\subsection{Python and Julia interface}
-The Python and Julia interfaces for Quandary allows to simulate and optimize from within a python / julia environment. For Python, version $\geq 3$ is required. Both interfaces operate similarly, and here we describe the usage of the Python interface only. Note: Development of the Julia interface is lagging behind currently, try yourself. 
+\subsection{Interfacing to Python environemnt}
+You can use the Python interface for Quandary to simulate and optimize from within a python environment (version $\geq$ 3). It eases the use of Quandary, and adds some additional functionality, such as automatic computation of the required number of time steps, automatic choice of the carrier frequencies, and it allows for custom Hamiltonian models to be used (system and control Hamiltonian operators $H_d$ and $H_c$). A good place to start is to have a look into the example \texttt{example\_swap02.py}. This test case optimizes for a 3-level SWAP02 gate that swaps the state of the zero and the second energy level of a 3-level qudit. 
 
-A good place to start is to have a look into the example \texttt{pythoninterface/example\_swap02.py}. This test case optimizes for a 3-level SWAP02 gate that swaps the state of the zero and the second energy level of a 3-level qudit. 
+All interface functions are defined in \texttt{quandary.py}, which should be imported at the beginning of the script. Hence, you should either have this file in your working directory, or append your python path with the location of that file.
+Most importantly, the pythoninterface defines the \texttt{Quandary} dataclass that gathers all configuration options and sets defaults. Default values are overwritten by user input either through the constructor call through \texttt{Quandary(<membervar>=<value>)} directly, or by accessing the member variables after construction and calling \texttt{config.update()} afterwards (compare \texttt{example\_swap02.py}). 
 
-All interface functions are defined in \texttt{pythoninterface/quandary.py}, which should be imported at the beginning of the script. Hence, you should either have this file in your working directory, or append your python path with the location of that file.
-Most importantly, the pythoninterface defines the \texttt{QuandaryConfig} dataclass, whose member variables gather all Quandary configuration options. Default settings are provided for all member variables so it is advised to have a look into the class definition and defaults. Default values are overwritten by user input either through the constructor call to the \texttt{QuandaryConfig(<membervar>=<value>)} directly, or by accessing the member variables after construction and calling \texttt{config.update()} afterwards (compare \texttt{example\_swap02.py}). 
-
-After setting up the configuration, a call to \texttt{quandary\_run(args..)} then invokes execution of Quandary (see the function definition for default and optional arguments). \texttt{quandary\_run} invokes system subprocesses, potentially on multiple cores, if given. Under the hood, this function writes the required Quandary configuration file (\texttt{config.cfg}) to a data output directory, then makes the subprocess call to execute Quandary on that configuration file through the shell, and then loads the results from Quandary's output files back into the python interpreter. Plotting scripts are also provided, see the example script. 
+After setting up the configuration, you can evoke simulations or optimizations with \texttt{quandary.simulate/optimize()}. Check out \texttt{help(Quandary)} to see all available user functions. Under the hood, those function writes the required Quandary configuration files (\texttt{config.cfg}, etc.) to a data directory, then evokes (multiple) subprocesses to execute parallel C++ Quandary on that configuration file through the shell, and then loads the results from Quandary's output files back into the python interpreter. Plotting scripts are also provided, see the example scripts.
 
 In addition to the standard Hamiltonian models as described in Section \ref{sec:model}, the python interface allows for user-defined Hamiltonian operators $H_d$ and $H_c$. Those are provided to Quandary through optional arguments to the python interface configuration \texttt{QuandaryConfig}. If those user-defined Hamiltonians are given, Quandary replaces the Hamiltonian operators in \eqref{eq:Hd_rotating} (system Hamiltonian) and \eqref{eq:Hc_rotating} (control Hamiltonian operators $a\pm a'$) by the provided matrices.
 \begin{itemize}
@@ -298,7 +348,7 @@ The distinction for Lindblad vs. Schroedingers solver is made explicit for $J_{t
 
 
 \subsection{Optimization targets} \label{sec:targets}
-Here we describe the target states $\rho^{target}$ that are realized in Quandary. Two cases are considered: State preparation, where the target state is the same for all initial conditions, and gate optimization, where the target state is a unitary transformation of the initial condition. The type of the optimization target can be specified in the configuration option \texttt{optim\_target}. 
+Here we describe the target states $\rho^{target}$ that are realized in Quandary (C++ config option \texttt{optim\_target}). Two cases are considered: State preparation, where the target state is the same for all initial conditions, and gate optimization, where the target state is a unitary transformation of the initial condition. 
 
 
 \subsubsection{Pure target states}\label{sec:statepreparation}
@@ -324,13 +374,13 @@ For $m=0$, the target state represents the ground state of the system under cons
 % For example, assume one considers a composite system consisting of a qubit modelled with $n_0=2$ levels coupled to a readout cavity modelled with $n_1=10$ levels, and one wants to drive the qubit to the $|1\rangle$ state and the cavity to the ground state. The target pure state input for Quandary is hence $m_0=1, m_1=0$ (i.e. the $|10\rangle$ state in the composite system), which corresonds $m=1\cdot10+0 = 10$ in the composite system of dimension $N=2\cdot 10 = 20$. 
 
 
-\subsubsection{Read a target state from file}
-A specific target state $\rho^{target}$ can also be read from file. This can be useful when considering non-pure target states. File format: The vectorized density matrix (columnwise vectorization) in the Lindblad case, or the state vector in the Schroedinger case, one real-valued number per row, first list all real parts, then list all imaginary parts (hence either $2N^2$ lines with one real number each, or $2N$ lines with one real number each). 
+\subsubsection{Arbitrary target state}
+A specific (non-pure) target state $\rho^{target}$ can also be used a a target. For the C++ code, such a target state is read from file. File format: The vectorized density matrix (columnwise vectorization) in the Lindblad case, or the state vector in the Schroedinger case, one real-valued number per row, first list all real parts, then list all imaginary parts (hence either $2N^2$ lines with one real number each, or $2N$ lines with one real number each). The configuration option should be pointing to the file location. For the Python interface, the target state can be passes as a numpy array. 
  
 \subsubsection{Gate optimization}
 
 Quandary can be used to realize logical gate operations. In that case, the target state is not fixed across the initial states, but instead is a unitary transformation of each initial condition. Let $V\in \C^{N\times N}$ be a unitary matrix presenting a logical operation, the goal is to drive any initial state $\rho(0)$ to the unitary transformation $\rho^{target} = V\rho(0)V^{\dagger}$, or, in the Schroedinger case, drive any initial state $\psi(0)$ to the unitary transformation $\psi(T) =  V\psi(0)$.
-Target gates that are currently implemented are
+In the C++ code, some default target gates that are currently available:
 \begin{align}
   V_{X} := \begin{bmatrix} 0 & 1 \\ 1 & 0  \end{bmatrix} \quad
   V_{Y} := \begin{bmatrix} 0 & -i \\ i & 0 \end{bmatrix} \quad
@@ -350,9 +400,10 @@ Target gates that are currently implemented are
   \end{bmatrix} \quad
   V_{QFT} = ...
 \end{align}
-Further, a generalization of the SWAP and the CNOT gate for general $Q$ subsystems is available: The SWAP-0Q gate swaps the state of the first and the last qubit, while leaving all other oscillators in their respective initial state, and the CQNOT gate performs a NOT operation on the last qubit if all other qubits are in the one-state.
-New, user-defined gates can be easily added to the code by extending the \texttt{Gate} class in the corresponding \texttt{.cpp} and \texttt{.hpp} files. 
-Lastly, the target gate matrix can also be read from file. The file is a simple text file that contains the vectorized target unitary matrix (columnwise vectorization), first all real parts, then all imaginary parts (giving a total of $2N^2$ real-valued numbers). Compare the template configuration file for more details. 
+as well as a multi-qubit generalization of the SWAP and the CNOT gate for general $Q$ subsystems: The SWAP-0Q gate swaps the state of the first and the last qubit, while leaving all other oscillators in their respective initial state, and the CQNOT gate performs a NOT operation on the last qubit if all other qubits are in the one-state.
+New, user-defined gates can be added to the C++ code by augmenting the \texttt{Gate} class in the corresponding \texttt{.cpp} and \texttt{.hpp} files.
+The target gate matrix can also be read from file. The file is a simple text file that contains the vectorized target unitary matrix (columnwise vectorization), first all real parts, then all imaginary parts (giving a total of $2N^2$ real-valued numbers). It should be specified in the essential dimensions. 
+For the python interface, the target unitary matrix is passed to Quandary through a numpy array.
 
 For gate optimization, the first two objective function $J_{frobenius}$ and $J_{trace}$ are appropriate. Since \textit{any} initial quantum state should be transformed by the control pulses, typically a basis for the initial states should be considered ($n_{init} = N$ for Schroedinger solver, and $n_{init}=N^2$ for Lindblad solver). In the Lindblad solver case, it has however been shown in \cite{goerz2014optimal} that it is enough to optimize with only three specific initial states ($n_{init} = 3$), independent of the Hilbert space dimension $N$. Those three states are set up in such a way that they can distinguish between any two unitaries in that Hilbert space. The three initial states are readily available in Quandary, see Section \ref{subsec:initcond}. Note that when optimizing with only those three initial states, it turns out that the choice of the weights $\beta_i$ that weight the contribution from each initial state in the overall objective function strongly influences the optimization convergence. For faster convergence, it is often benefitial to emphasize on the first of the three initial conditions ($\rho_1(0)$ in Section \ref{subsec:threeinitcond}), hence choosing $\beta_1$ (much) bigger than $\beta_2$ and $\beta_3$ (e.g. $\beta = \{20,1,1\}$ often works better than $\beta = \{1,1,1\}$, try it yourself). We refer to \cite{goerz2014optimal} for details. Note that the weights will be scaled internally such that $\sum_i \beta_i = 1$.
 
@@ -561,7 +612,7 @@ The real and imaginary parts of $q(t)$ are stored in a colocated manner: For
     q(t) = M(t) q(t)$ for $t\in [0,T]$, Quandary applies a time-stepping integration
     scheme on a uniform time discretization grid $0=t_0 < \dots t_{N} = T$, with
     $t_n = n \delta t$ and $\delta t = \frac{T}{N}$, and approximates the
-    solution at each discrete time step $q^{n} \approx q(t_n)$. The time-stepping scheme can be chosen in Quandary through the configuration option \texttt{timestepper}
+    solution at each discrete time step $q^{n} \approx q(t_n)$. The time-stepping scheme can be chosen in Quandary through the configuration option \texttt{timestepper}. 
     
     \subsubsection{Implicit Midpoint Rule (\texttt{IMR})}
     The implicit midpoint rule is a second-order accurate, symplectic time-stepping algorithm with Runge-Kutta scheme tableau 
@@ -586,6 +637,8 @@ The real and imaginary parts of $q(t)$ are stored in a colocated manner: For
     Currently available is a compositional method of 4-th order that performs 3 sub-steps per time step (\texttt{IMR4}), and a compositional method of 8-th order performing 15 sub-steps per time step (\texttt{IMR8}).
 
     \subsubsection{Choice of the time-step size}
+  The python interface to Quandary automatically computes a time-step size based on the fastest period of the system Hamiltonian. For the C++ code, it needs to be set by the user.
+
     In order to choose a time-step size $\delta t$, an eigenvalue analysis of
     the constant drift Hamiltonian $H_d$ is often useful. Since $H_d$ is Hermitian, there exists a transformation $Y$ such that $Y^{\dagger}H_d Y = \Lambda \qquad  \text{where} \quad Y^{\dagger} = Y$ where $\Lambda$ is a diagonal matrix containing the eigenvalues of $H_d$.
        Transform the state $\tilde q = Y^{\dagger} q$, then the ODE transforms to 
@@ -601,8 +654,7 @@ The real and imaginary parts of $q(t)$ are stored in a colocated manner: For
        \begin{align} \label{eq:timestepsize}
          \delta t = \frac{\tau_{min}}{p} = \frac{2\pi}{p\max_i\{|\lambda_i|\}}
        \end{align}
-       Usually, for a first order scheme we would use something like $p=20$,
-       second order may use $p=10$. The above estimate provides a first idea on how big (small) the time-step size should be, and the user is advised to consider this estimate when running a test case. However, the estimate ignores contributions from the control Hamiltonian, where larger control amplitudes will require smaller and smaller time-steps in order to resolve (a) the time-varying controls themselves and (b) the dynamics induced by large control contributions. A standard $\Delta t$ test should be performed in order to verify that the time-step is small enough. For example, one can compute the Richardson error estimator of the current approximation error to some true quantity $J^*$ from
+       Usually, for the second order scheme we would use something like $p=40$. The above estimate provides a first idea on how big (small) the time-step size should be, and the user is advised to consider this estimate when running a test case. However, the estimate ignores contributions from the control Hamiltonian, where larger control amplitudes will require smaller and smaller time-steps in order to resolve (a) the time-varying controls themselves and (b) the dynamics induced by large control contributions. A standard $\Delta t$ test should be performed in order to verify that the time-step is small enough. For example, one can compute the Richardson error estimator of the current approximation error to some true quantity $J^*$ from
        \begin{align}
          J^* - J^{\Delta t} = \frac{J^{\Delta t} - J^{\Delta t m}}{1-m^p} + O(\Delta t^{p+1})
        \end{align}
@@ -684,7 +736,7 @@ The user can change the frequency of output in time (printing only every $j$-th 
 \begin{itemize}
   \item \texttt{config\_log.dat} contains all configuration options that had been used for the current run. 
   \item \texttt{params.dat} contains the control parameters $\bfa$ that had been used to determine the current control pulses. This file contains one column containing all parameters, ordered as stored, see Section \ref{subsec:controlpulses}.
-  \item \texttt{control<k>.dat} contain the resulting control pulses applied to subsystem $k$ over time. It contains four columns, the first one being the time, second and third being $p^k(t)$ and $q^k(t)$ (rotating frame controls), and the last one is the corresponding lab-frame pulse $f^k(t)$.
+  \item \texttt{control<k>.dat} contain the resulting control pulses applied to subsystem $k$ over time. It contains four columns, the first one being the time, second and third being $p^k(t)$ and $q^k(t)$ (rotating frame controls), and the last one is the corresponding lab-frame pulse $f^k(t)$. Note that the units of the control pulses are in frequency domain (divided by $2\pi)$. The unit matches the unit specified with the system paramters such as the qubit gound frequencies $\omega_k$.
   \item \texttt{optim\_history.dat} contains information about the optimization progress in terms of the overall objective function and contribution from each term (cost at final time $T$ and contribution from the tikhonov regularization and the penalty term), as well the norm of the gradient and the fidelity, for each iteration of the optimization. If only a forward simulation is performed, this file still prints out the objective function and fidelity for the forward simulation. 
 \end{itemize}
 Quandary always prints the current paramters and control pulses at the beginning of a simulation or optimization, and in addition at every $l$-th optimization iteration determined from the \texttt{optim\_monitor\_frequency} configuration option. 
@@ -726,7 +778,7 @@ Livermore National Laboratory under Contract DE-AC52-07NA27344. LLNL-SM-818073.
 
 
 \bibliographystyle{plain}
-\bibliography{mybib}
+\bibliography{user_guide}
 
 
 \appendix
@@ -768,5 +820,20 @@ Livermore National Laboratory under Contract DE-AC52-07NA27344. LLNL-SM-818073.
 
   The matrix-free solver does not explicitly store the matrices $A_d,B_d,
        A_c^k, B_c^k$, etc., but instead only evaluates their action on a vector $q(t)$ using tensor contractions applied to the corresponding dimension of the density matrix tensor. 
+  
+
+
+
+  \section{Summary of all C++ configuration options}
+  Here is a list of all options available to the C++ Quandary code, this is the same as in \texttt{config\_template.cfg}.
+ 
+  \lstinputlisting[breaklines]{../config_template.cfg}
+
+
+  \section{Summary of all python interface options}
+  Here is a list of all options available to the python interface, this is the same as in \texttt{quandary.py}.
+
+  \lstinputlisting[breaklines, firstline=17, lastline=91, keepspaces=false, language=mylanguage]{../quandary.py}
+  
 
 \end{document}
