@@ -781,7 +781,7 @@ int main(int argc,char **argv)
   MPI_Allreduce(&myMB, &globalMB, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 
   /* Print statistics */
-  if (mpirank_world == 0 && !quietmode) {
+  if (mpirank_world == 0) {
     printf("\n");
     printf(" Used Time:        %.2f seconds\n", UsedTime);
     printf(" Processors used:  %d\n", mpisize_world);
