@@ -32,6 +32,7 @@ class TimeStepper{
     MasterEq* mastereq;  // Lindblad master equation
     int ntime_global;           // number of total time steps. only used as a constant factor for penalties.
     int ntime;                  // number of time steps per window
+    double total_time;    // total final time T (not per window)
     double dt;           // time step size
 
     Vec redgrad;                   /* Reduced gradient */
@@ -55,7 +56,7 @@ class TimeStepper{
     bool storeFWD;       /* Flag that determines if primal states should be stored during forward evaluation */
 
     TimeStepper(); 
-    TimeStepper(MapParam config, MasterEq* mastereq_, int ntime_global_, int ntime_, double dt_, Output* output_, bool storeFWD_, MPI_Comm comm_time_); 
+    TimeStepper(MapParam config, MasterEq* mastereq_, int ntime_global_, int ntime_, double total_time, double dt_, Output* output_, bool storeFWD_, MPI_Comm comm_time_); 
     virtual ~TimeStepper(); 
 
     /* Return the state at a certain time index */
@@ -89,7 +90,7 @@ class TimeStepper{
 class ExplEuler : public TimeStepper {
   Vec stage;
   public:
-    ExplEuler(MapParam config, MasterEq* mastereq_, int ntime_global_, int ntime_, double dt_, Output* output_, bool storeFWD_, MPI_Comm comm_time_);
+    ExplEuler(MapParam config, MasterEq* mastereq_, int ntime_global_, int ntime_, double total_time, double dt_, Output* output_, bool storeFWD_, MPI_Comm comm_time_);
     ~ExplEuler();
 
     /* Evolve state forward from tstart to tstop */
@@ -121,7 +122,7 @@ class ImplMidpoint : public TimeStepper {
   Vec tmp, err;                    /* Auxiliary vector for applying the neuman iterations */
 
   public:
-    ImplMidpoint(MapParam config, MasterEq* mastereq_, int ntime_global_, int ntime_, double dt_, LinearSolverType linsolve_type_, int linsolve_maxiter_, Output* output_, bool storeFWD_, MPI_Comm comm_time_);
+    ImplMidpoint(MapParam config, MasterEq* mastereq_, int ntime_global_, int ntime_, double total_time, double dt_, LinearSolverType linsolve_type_, int linsolve_maxiter_, Output* output_, bool storeFWD_, MPI_Comm comm_time_);
     ~ImplMidpoint();
 
 
@@ -145,7 +146,7 @@ class CompositionalImplMidpoint : public ImplMidpoint {
   int order;
 
   public:
-    CompositionalImplMidpoint(MapParam config, int order_, MasterEq* mastereq_, int ntime_global_, int ntime_, double dt_, LinearSolverType linsolve_type_, int linsolve_maxiter_, Output* output_, bool storeFWD_, MPI_Comm comm_time_);
+    CompositionalImplMidpoint(MapParam config, int order_, MasterEq* mastereq_, int ntime_global_, int ntime_, double total_time, double dt_, LinearSolverType linsolve_type_, int linsolve_maxiter_, Output* output_, bool storeFWD_, MPI_Comm comm_time_);
     ~CompositionalImplMidpoint();
 
     void evolveFWD(const double tstart, const double tstop, Vec x);

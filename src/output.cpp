@@ -119,7 +119,6 @@ void Output::writeControls(Vec params, MasterEq* mastereq, int ntime, double dt)
 
     /* Print current parameters to file */
     FILE *file, *file_c;
-    // sprintf(filename, "%s/params_iter%04d.dat", datadir.c_str(), optim_iter);
     snprintf(filename, 254, "%s/params.dat", datadir.c_str());
     file = fopen(filename, "w");
 
@@ -137,7 +136,7 @@ void Output::writeControls(Vec params, MasterEq* mastereq, int ntime, double dt)
     for (int ioscil = 0; ioscil < mastereq->getNOscillators(); ioscil++) {
       snprintf(filename, 254, "%s/control%d.dat", datadir.c_str(), ioscil);
       file_c = fopen(filename, "w");
-      fprintf(file_c, "# time         p(t) (rotating)          q(t) (rotating)        f(t) (labframe) \n");
+      fprintf(file_c, "# time         p(t) (rotating)          q(t) (rotating)         f(t) (labframe) \n");
 
       /* Write every <num> timestep to file */
       for (int i=0; i<=ntime; i+=output_frequency) {
@@ -147,7 +146,7 @@ void Output::writeControls(Vec params, MasterEq* mastereq, int ntime, double dt)
         mastereq->getOscillator(ioscil)->evalControl(time, &ReI, &ImI);
         mastereq->getOscillator(ioscil)->evalControl_Labframe(time, &LabI);
         // Write control drives
-        fprintf(file_c, "% 1.8f   % 1.14e   % 1.14e   % 1.14e \n", time, ReI, ImI, LabI);
+        fprintf(file_c, "% 1.8f   % 1.14e   % 1.14e   % 1.14e \n", time, ReI/(2.0*M_PI), ImI/(2.0*M_PI), LabI/(2.0*M_PI));
      } // end of time loop 
 
       fclose(file_c);

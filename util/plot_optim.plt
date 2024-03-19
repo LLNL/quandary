@@ -1,5 +1,6 @@
 # run from command line with
 # > gnuplot -e "datafile='data.dat'" plot_optim.plt
+# or from within an open gnuplot session, setting datafile='<path/to/data', then loading the script with load 'plot_optim.plt'
 
 # set a default file 
 if (!exists("datafile")) datafile='optim_history.dat'
@@ -33,17 +34,19 @@ plot \
 #    datafile u 8 axis x1y1  w l t 'penalty', \
 
 
-set term epslatex color size 15.5cm, 8cm
-set output 'optim_history.tex'
-replot
+## Plotting to "epslatex terminal" will create a latex file that can be included directly into latex documents.
+#set term epslatex color size 15.5cm, 8cm
+#set output 'optim_history.tex'
+#replot
 
+## Plotting to the "epslatex standalone" terminal will create a standalone tex document that can be compiled by itself with 'pdflatex myfile.tex'
+#set term epslatex color size 12.5cm, 8cm standalone 
+#set output 'optim_history_standalone.tex'
+#replot
 
-set term epslatex color size 12.5cm, 8cm standalone 
-set output 'optim_history_standalone.tex'
-replot
-
-set term qt
-replot
+## Plot again to default terminal (here qt). This sometimes is needed to close the above tex files... 
+#set term qt
+#replot
 
 #set term postscript dashed color
 #set output 'out.ps'
