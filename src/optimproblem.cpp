@@ -1234,22 +1234,19 @@ void OptimProblem::updateLagrangian(const double prev_mu, const Vec x_a, Vec lam
       int iinit_global = mpirank_init * ninit_local + iinit;
       int iwindow_global = mpirank_time*nwindows_local + iwindow ; 
 
-      // Exclude the very last time window 
-      if (iwindow_global == nwindows-1)
-        continue;
-
       /* Get next time-windows initial state and eval discontinuity */
       VecScatterBegin(scatter_xnext[iwindow][iinit], x_a, x_next, INSERT_VALUES, SCATTER_FORWARD);
       VecScatterEnd(scatter_xnext[iwindow][iinit], x_a, x_next, INSERT_VALUES, SCATTER_FORWARD);
-      VecCopy(store_finalstates[iwindow][iinit], disc);
-      VecAXPY(disc, -1.0, x_next);  // disc = S(u_{i-1}) - u_i
 
       /* lag += - prev_mu * ( S(u_{i-1}) - u_i ) */
       Vec lag;
       VecGetSubVector(lambda_a, IS_interm_lambda[iwindow_global][iinit_global], &lag);
-      VecAXPY(lag, -prev_mu, disc);
+      if (iwindow_global < nwindows-1) {
+        VecCopy(store_finalstates[iwindow][iinit], disc);
+        VecAXPY(disc, -1.0, x_next);  // disc = S(u_{i-1}) - u_i
+        VecAXPY(lag, -prev_mu, disc);
+      }
       VecRestoreSubVector(lambda_a, IS_interm_lambda[iwindow_global][iinit_global], &lag);
-
       printf("\n\n TODO: Check the updateLagrangian function!\n");
     }
   }
