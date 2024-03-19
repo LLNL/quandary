@@ -503,6 +503,12 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   VecDuplicate(xinit, &x);
   VecZeroEntries(x);
 
+  /* allocate temporary storage needed for unitarization and its gradient */
+  if (unitarize_interm_ic) {
+    VecDuplicate(x, &x_b4unit); // Parallel vector, entire optimization variable
+    VecDuplicate(x_next, &x0j);  // Sequential vector, only one initial state at one time-window
+  }
+
   /* Store optimization bounds */
   VecDuplicate(xinit, &xlower);
   VecDuplicate(xinit, &xupper);
@@ -599,6 +605,10 @@ OptimProblem::~OptimProblem() {
   VecDestroy(&xinit);
   VecDestroy(&x_next);
   VecDestroy(&x);
+  if (unitarize_interm_ic) {
+    VecDestroy(&x_b4unit);
+    VecDestroy(&x0j);
+  }
   VecDestroy(&lambda);
   VecDestroy(&xlower);
   VecDestroy(&xupper);
@@ -835,7 +845,11 @@ void OptimProblem::evalGradF(const Vec xin, const Vec lambda_, Vec G){
   // Unitarize the initial conditions. Note: This modifies x!
   std::vector<std::vector<double>> vnorms;
   if (unitarize_interm_ic)
+  {
+    // original x is required for gradient computation
+    VecCopy(x, x_b4unit);
     unitarize(x, vnorms);
+  }
 
   /* Reset Gradient */
   VecZeroEntries(G);
@@ -1089,7 +1103,7 @@ void OptimProblem::evalGradF(const Vec xin, const Vec lambda_, Vec G){
 
   /* Apply chain rule for unitarization */
   if (unitarize_interm_ic && (nwindows > 1))
-    unitarize_grad(x, vnorms, G); 
+    unitarize_grad(x_b4unit, x, vnorms, G); 
 
   /* Compute and store gradient norm */
   VecNorm(G, NORM_2, &(gnorm));
@@ -1158,13 +1172,13 @@ void OptimProblem::getStartingPoint(Vec xinit){
   // output->writeControls(xinit, timestepper->mastereq, timestepper->ntime, timestepper->dt);
 
   /* Set the initial guess for the intermediate states. Here, roll-out forward propagation. TODO: Read from file */
-  if (mpirank_world==0) {
-  printf(" -> Rollout initialization of intermediate states (sequential in time windows parallel in initial conditions. This might take a while...\n");
-  }
   rollOut(xinit);
 }
 
 void OptimProblem::rollOut(Vec x){
+  if (mpirank_world==0) {
+  printf(" -> Rollout initialization of intermediate states (sequential in time windows parallel in initial conditions. This might take a while...\n");
+  }
 
   /* Roll-out forward propagation. */
   for (int iinit = 0; iinit < ninit_local; iinit++) {
@@ -1419,18 +1433,19 @@ void OptimProblem::unitarize(Vec &x, std::vector<std::vector<double>> &vnorms) {
   const int ninit = IS_interm_states[0].size();
   int dim = 2*timestepper->mastereq->getDim();
 
-  Vec x0j;
-  VecCreateSeq(PETSC_COMM_SELF, dim, &x0j);
-
+  /* vnorms do not need to be broadcast. The global size is kept just for convenient indexing. */
   vnorms.resize(ninit);
   for (int iinit = 0; iinit < ninit; iinit++)
+  {
     vnorms[iinit].resize(nwindows);
+    for (int iwindow = 0; iwindow < nwindows; iwindow++)
+      vnorms[iinit][iwindow] = 0.0;
+  }
 
   Vec vre, vim;
   double uv_re, uv_im, vnorm;
   IS IS_re = timestepper->mastereq->isu;
   IS IS_im = timestepper->mastereq->isv;
-
 
   int *ids_from= new int[dim];
   int *ids_to = new int[dim];
@@ -1447,13 +1462,263 @@ void OptimProblem::unitarize(Vec &x, std::vector<std::vector<double>> &vnorms) {
       ISGetLocalSize(IS_interm_states[iwindow][iinit], &isize);
       if (isize>0) {
         VecISCopy(x, IS_interm_states[iwindow][iinit], SCATTER_REVERSE, x_next); 
-        VecNorm(x_next, NORM_2, &vnorm);
-        VecScale(x_next, 1.0 / vnorm);
-        vnorms[iinit][iwindow] = vnorm;
       }
 
       /* Iterate over all remaining initial conditions in this window */
-      for (int jinit = iinit+1; jinit < ninit; jinit++) {
+      for (int jinit = 0; jinit < iinit; jinit++) {
+        /* Scatter j'th initial condition to this processor */
+        // only one processor has a nonzero IS size! That one sends his first index. Receive it if isize>0.
+        int jstart, jstop;
+        ISGetMinMax(IS_interm_states[iwindow][jinit], &jstart, &jstop);
+        if (jstart == PETSC_MAX_INT) jstart = 0;
+        MPI_Allreduce(&jstart, &jstart, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
+        int nelems = 0;
+        if (jstart > 0 && isize > 0)  {
+          nelems = dim;
+          for (int i=0; i< dim; i++){
+            ids_from[i] = jstart + i;
+          }
+        }
+
+        IS IS_from, IS_to;
+        VecScatter ctx_x0j;
+        /* Now scatter the next initial condition to this processor */
+        ISCreateGeneral(PETSC_COMM_SELF,nelems,ids_from,PETSC_COPY_VALUES, &IS_from);
+        ISCreateGeneral(PETSC_COMM_SELF,nelems,ids_to,PETSC_COPY_VALUES, &IS_to);
+        VecScatterCreate(x, IS_from, x0j, IS_to, &ctx_x0j);
+        VecScatterBegin(ctx_x0j, x, x0j, INSERT_VALUES, SCATTER_FORWARD);
+        VecScatterEnd(ctx_x0j, x, x0j, INSERT_VALUES, SCATTER_FORWARD);
+        VecScatterDestroy(&ctx_x0j);
+        ISDestroy(&IS_from);
+        ISDestroy(&IS_to);
+
+        /* On this processor, compute unitarization of local state */
+        if (isize>0) {
+          complex_inner_product(x0j, x_next, uv_re, uv_im);
+
+          VecGetSubVector(x0j, IS_re, &vre);
+          VecGetSubVector(x0j, IS_im, &vim);
+
+          // Re[v] -= Re[u.v] * Re[u] - Im[u.v] * Im[u]
+          VecISAXPY(x_next, IS_re, -uv_re, vre);
+          VecISAXPY(x_next, IS_re, uv_im, vim);
+          // Im[v] -= Re[u.v] * Im[u] + Im[u.v] * Re[u]
+          VecISAXPY(x_next, IS_im, -uv_re, vim);
+          VecISAXPY(x_next, IS_im, -uv_im, vre);
+
+          VecRestoreSubVector(x0j, IS_re, &vre);
+          VecRestoreSubVector(x0j, IS_im, &vim);
+        }
+      } // for (int jinit = 0; jinit < iinit; jinit++)
+
+      if (isize>0) {
+        VecNorm(x_next, NORM_2, &vnorm);
+        VecScale(x_next, 1.0 / vnorm);
+        vnorms[iinit][iwindow] = vnorm;
+
+        /* Finally update the global vector entry */
+        VecISCopy(x, IS_interm_states[iwindow][iinit], SCATTER_FORWARD, x_next); 
+      }
+    } // for (int iinit = 0; iinit < ninit; iinit++)
+  } // for (int iwindow = 1; iwindow < nwindows; iwindow++)
+
+  delete [] ids_from;
+  delete [] ids_to;
+}
+
+/* The adjoint for unitarize function based on the classic Gram-Schmidt. */
+void OptimProblem::unitarize_grad(const Vec &x_b4unit, Vec &x, const std::vector<std::vector<double>> &vnorms, Vec &G) {
+
+  const int nwindows = IS_interm_states.size();
+  const int ninit = IS_interm_states[0].size();
+  int dim = 2*timestepper->mastereq->getDim();
+  int dim_half = dim / 2;
+
+  IS IS_re = timestepper->mastereq->isu;
+  IS IS_im = timestepper->mastereq->isv;
+
+  int *ids_from= new int[dim];
+  int *ids_to = new int[dim];
+  for (int i=0; i< dim; i++){
+    ids_to[i] = i;
+  }
+
+  Vec us, ws;
+  VecCreateSeq(PETSC_COMM_SELF, dim, &us);
+  VecCreateSeq(PETSC_COMM_SELF, dim, &ws);
+
+  Vec wc, vsc;
+  VecCreateSeq(PETSC_COMM_SELF, dim, &wc);
+  VecCreateSeq(PETSC_COMM_SELF, dim, &vsc);
+  
+  Vec wre, wim, vsre, vsim, ure, uim;
+  double wu_re, wu_im, vsu_re, vsu_im;
+  for (int iwindow = 1; iwindow < nwindows; iwindow++) {
+    for (int iinit = ninit-1; iinit >= 0; iinit--) {
+      /* Get local state for this window: Only one proc will have it, otherones will have an empty vector. */
+      int isize;
+      ISGetLocalSize(IS_interm_states[iwindow][iinit], &isize);
+      if (isize>0) {
+        VecISCopy(x, IS_interm_states[iwindow][iinit], SCATTER_REVERSE, x_next);
+        VecISCopy(G, IS_interm_states[iwindow][iinit], SCATTER_REVERSE, us); 
+      }
+
+      for (int cinit = iinit+1; cinit < ninit; cinit++) {
+        /* Scatter c'th initial condition/vs to this processor */
+        // only one processor has a nonzero IS size! That one sends his first index. Receive it if isize>0.
+        int cstart, cstop;
+        ISGetMinMax(IS_interm_states[iwindow][cinit], &cstart, &cstop);
+        if (cstart == PETSC_MAX_INT) cstart = 0;
+        MPI_Allreduce(&cstart, &cstart, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
+        int nelems = 0;
+        if (cstart > 0 && isize > 0)  {
+          nelems = dim;
+          for (int i=0; i< dim; i++){
+            ids_from[i] = cstart + i;
+          }
+        }
+        IS IS_from, IS_to;
+        VecScatter ctx_xc;
+        /* Now scatter the next initial condition to this processor */
+        ISCreateGeneral(PETSC_COMM_SELF,nelems,ids_from,PETSC_COPY_VALUES, &IS_from);
+        ISCreateGeneral(PETSC_COMM_SELF,nelems,ids_to,PETSC_COPY_VALUES, &IS_to);
+        VecScatterCreate(x_b4unit, IS_from, wc, IS_to, &ctx_xc);
+        VecScatterBegin(ctx_xc, x_b4unit, wc, INSERT_VALUES, SCATTER_FORWARD);
+        VecScatterEnd(ctx_xc, x_b4unit, wc, INSERT_VALUES, SCATTER_FORWARD);
+        VecScatterBegin(ctx_xc, x, vsc, INSERT_VALUES, SCATTER_FORWARD);
+        VecScatterEnd(ctx_xc, x, vsc, INSERT_VALUES, SCATTER_FORWARD);
+        VecScatterDestroy(&ctx_xc);
+        ISDestroy(&IS_from);
+        ISDestroy(&IS_to);
+
+        /* On this processor, compute unitarization of local state */
+        if (isize>0) {
+          complex_inner_product(x_next, wc, wu_re, wu_im);
+          complex_inner_product(x_next, vsc, vsu_re, vsu_im);
+
+          VecGetSubVector(wc, IS_re, &wre);
+          VecGetSubVector(wc, IS_im, &wim);
+          VecGetSubVector(vsc, IS_re, &vsre);
+          VecGetSubVector(vsc, IS_im, &vsim);
+
+          VecISAXPY(us, IS_re, -wu_re, vsre);
+          VecISAXPY(us, IS_re, -wu_im, vsim);
+          VecISAXPY(us, IS_re, -vsu_re, wre);
+          VecISAXPY(us, IS_re, -vsu_im, wim);
+
+          VecISAXPY(us, IS_im, wu_im, vsre);
+          VecISAXPY(us, IS_im, -wu_re, vsim);
+          VecISAXPY(us, IS_im, vsu_im, wre);
+          VecISAXPY(us, IS_im, -vsu_re, wim);
+
+          VecRestoreSubVector(wc, IS_re, &wre);
+          VecRestoreSubVector(wc, IS_im, &wim);
+          VecRestoreSubVector(vsc, IS_re, &vsre);
+          VecRestoreSubVector(vsc, IS_im, &vsim);
+        } // if (isize>0)
+      } // for (int cinit = iinit+1; cinit < ninit; cinit++)
+
+      if (isize>0) {
+        double vnorm = vnorms[iinit][iwindow];
+        double usu, dummy;
+
+        complex_inner_product(x_next, us, usu, dummy);
+        VecAXPY(us, -usu, x_next);
+        VecScale(us, 1.0 / vnorm);
+
+        /* update the global vs entry */
+        VecISCopy(x, IS_interm_states[iwindow][iinit], SCATTER_FORWARD, us); 
+
+        VecCopy(us, ws);
+      }
+      
+      for (int cinit = 0; cinit < iinit; cinit++) {
+        /* Scatter c'th initial condition/vs to this processor */
+        // only one processor has a nonzero IS size! That one sends his first index. Receive it if isize>0.
+        int cstart, cstop;
+        ISGetMinMax(IS_interm_states[iwindow][cinit], &cstart, &cstop);
+        if (cstart == PETSC_MAX_INT) cstart = 0;
+        MPI_Allreduce(&cstart, &cstart, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
+        int nelems = 0;
+        if (cstart > 0 && isize > 0)  {
+          nelems = dim;
+          for (int i=0; i< dim; i++){
+            ids_from[i] = cstart + i;
+          }
+        }
+        IS IS_from, IS_to;
+        VecScatter ctx_xc;
+        /* Now scatter the next initial condition to this processor */
+        ISCreateGeneral(PETSC_COMM_SELF,nelems,ids_from,PETSC_COPY_VALUES, &IS_from);
+        ISCreateGeneral(PETSC_COMM_SELF,nelems,ids_to,PETSC_COPY_VALUES, &IS_to);
+        VecScatterCreate(x, IS_from, wc, IS_to, &ctx_xc);
+        VecScatterBegin(ctx_xc, x, wc, INSERT_VALUES, SCATTER_FORWARD);
+        VecScatterEnd(ctx_xc, x, wc, INSERT_VALUES, SCATTER_FORWARD);
+        VecScatterDestroy(&ctx_xc);
+        ISDestroy(&IS_from);
+        ISDestroy(&IS_to);
+
+        if (isize>0)
+        {
+          complex_inner_product(wc, us, vsu_re, vsu_im);
+
+          VecGetSubVector(wc, IS_re, &ure);
+          VecGetSubVector(wc, IS_im, &uim);
+
+          VecISAXPY(ws, IS_re, -vsu_re, ure);
+          VecISAXPY(ws, IS_re, +vsu_im, uim);
+          VecISAXPY(ws, IS_im, -vsu_im, ure);
+          VecISAXPY(ws, IS_im, -vsu_re, uim);
+
+          VecRestoreSubVector(wc, IS_re, &ure);
+          VecRestoreSubVector(wc, IS_im, &uim);
+        } // if (isize>0)
+      } // for (int cinit = 0; cinit < iinit; cinit++)
+
+      if (isize>0) {
+        VecISCopy(G, IS_interm_states[iwindow][iinit], SCATTER_FORWARD, ws); 
+      }
+    }
+  }
+
+  VecDestroy(&ws);
+  VecDestroy(&us);
+
+  VecDestroy(&wc);
+  VecDestroy(&vsc);
+}
+
+void OptimProblem::check_unitarity(const Vec &x)
+{
+  const int nwindows = IS_interm_states.size();
+  const int ninit = IS_interm_states[0].size();
+  int dim = 2*timestepper->mastereq->getDim();
+
+  Vec vre, vim;
+  double uv_re, uv_im, vnorm;
+  IS IS_re = timestepper->mastereq->isu;
+  IS IS_im = timestepper->mastereq->isv;
+
+  int *ids_from= new int[dim];
+  int *ids_to = new int[dim];
+  for (int i=0; i< dim; i++){
+    ids_to[i] = i;
+  }
+
+  /* Iterate over local time windows */
+  for (int iwindow = 1; iwindow < nwindows; iwindow++) {
+    /* IS_interm_states[0][...] will have zero size */
+    for (int iinit = 0; iinit < ninit; iinit++) {
+
+      /* Get local state for this window: Only one proc will have it, otherones will have an empty vector. */
+      int isize;
+      ISGetLocalSize(IS_interm_states[iwindow][iinit], &isize);
+      if (isize>0) {
+        VecISCopy(x, IS_interm_states[iwindow][iinit], SCATTER_REVERSE, x_next); 
+      }
+
+      /* Iterate over all remaining initial conditions in this window */
+      for (int jinit = 0; jinit < ninit; jinit++) {
       
         /* Scatter j'th initial condition to this processor */
         // only one processor has a nonzero IS size! That one sends his first index. Receive it if isize>0.
@@ -1483,143 +1748,11 @@ void OptimProblem::unitarize(Vec &x, std::vector<std::vector<double>> &vnorms) {
         /* On this processor, compute unitarization of local state */
         if (isize>0) {
           complex_inner_product(x0j, x_next, uv_re, uv_im);
-
-          VecGetSubVector(x0j, IS_re, &vre);
-          VecGetSubVector(x0j, IS_im, &vim);
-
-          // Re[v] -= Re[u.v] * Re[u] - Im[u.v] * Im[u]
-          VecISAXPY(x_next, IS_re, -uv_re, vre);
-          VecISAXPY(x_next, IS_re, uv_im, vim);
-          // Im[v] -= Re[u.v] * Im[u] + Im[u.v] * Re[u]
-          VecISAXPY(x_next, IS_im, -uv_re, vim);
-          VecISAXPY(x_next, IS_im, -uv_im, vre);
-
-          VecRestoreSubVector(x0j, IS_re, &vre);
-          VecRestoreSubVector(x0j, IS_im, &vim);
-
-          /* Finally update the global vector entry */
-          VecISCopy(x, IS_interm_states[iwindow][iinit], SCATTER_FORWARD, x_next); 
+          printf("%2.1e+%2.1ei\t", uv_re, uv_im);
         }
-      }
-    }
-  }
-
-  delete [] ids_from;
-  delete [] ids_to;
-  VecDestroy(&x0j);
-}
-
-void OptimProblem::unitarize_grad(const Vec &x, const std::vector<std::vector<double>> &vnorms, Vec &G) {
-  /* The adjoint for unitarize function.
-     While unitarize uses the modified Gram-Schmidt, the adjoint formulation is based on the classic Gram-Schmidt.
-     The adjoint for the modified G-S requires to store all intermediate v states,
-      while that for classic G-S requires only the norm of final v states.
-     Their gradients, due to orthonormality, are equivalent to each other.
-   */
-
-  printf("TODO: Gradient of unitarization needs implementaion.\n");
-  exit(1);
-  // Vec w;
-  // VecGetSubVector(x, IS_interm_states[0], &w);
-  // PetscInt dim2, dim;
-  // VecGetSize(w, &dim2);
-  // assert(dim2 % 2 == 0);
-  // dim = dim2 / 2;
-  // VecRestoreSubVector(x, IS_interm_states[0], &w);
-
-  // IS IS_re, IS_im;
-  // ISCreateStride(PETSC_COMM_WORLD, dim, 0, 2, &IS_re);
-  // ISCreateStride(PETSC_COMM_WORLD, dim, 1, 2, &IS_im);
-
-  // const int ninit = interm_ic.size();
-  // const int nwindows = interm_ic[0].size() + 1;
-
-  // std::vector<Vec> vs(0);
-  // for (int k = 0; k < ninit; k++) {
-  //   Vec state;
-  //   VecCreate(PETSC_COMM_WORLD, &state);
-  //   VecSetSizes(state, PETSC_DECIDE, dim2);
-  //   VecSetFromOptions(state);
-  //   vs.push_back(state);
-  // }
-  
-  // Vec us = NULL, ws = NULL;
-  // VecCreate(PETSC_COMM_WORLD, &us);
-  // VecSetSizes(us, PETSC_DECIDE, dim2);
-  // VecSetFromOptions(us);
-  // VecCreate(PETSC_COMM_WORLD, &ws);
-  // VecSetSizes(ws, PETSC_DECIDE, dim2);
-  // VecSetFromOptions(ws);
-  
-  // Vec wre, wim, vsre, vsim, ure, uim;
-  // double wu_re, wu_im, vsu_re, vsu_im;
-  // for (int iwindow = 0; iwindow < nwindows-1; iwindow++) {
-  //   for (int iinit = ninit-1; iinit >= 0; iinit--) {
-  //     int idxi = iinit * (nwindows - 1) + iwindow;
-  //     VecISCopy(G, IS_interm_states[idxi], SCATTER_REVERSE, us); 
-
-  //     for (int cinit = iinit+1; cinit < ninit; cinit++) {
-  //       int idxc = cinit * (nwindows - 1) + iwindow;
-  //       VecGetSubVector(x, IS_interm_states[idxc], &w);
-  //       complex_inner_product(interm_ic[iinit][iwindow], w, wu_re, wu_im);
-  //       complex_inner_product(interm_ic[iinit][iwindow], vs[cinit], vsu_re, vsu_im);
-
-  //       VecGetSubVector(w, IS_re, &wre);
-  //       VecGetSubVector(w, IS_im, &wim);
-  //       VecGetSubVector(vs[cinit], IS_re, &vsre);
-  //       VecGetSubVector(vs[cinit], IS_im, &vsim);
-
-  //       VecISAXPY(us, IS_re, -wu_re, vsre);
-  //       VecISAXPY(us, IS_re, -wu_im, vsim);
-  //       VecISAXPY(us, IS_re, -vsu_re, wre);
-  //       VecISAXPY(us, IS_re, -vsu_im, wim);
-
-  //       VecISAXPY(us, IS_im, wu_im, vsre);
-  //       VecISAXPY(us, IS_im, -wu_re, vsim);
-  //       VecISAXPY(us, IS_im, vsu_im, wre);
-  //       VecISAXPY(us, IS_im, -vsu_re, wim);
-
-  //       VecRestoreSubVector(w, IS_re, &wre);
-  //       VecRestoreSubVector(w, IS_im, &wim);
-  //       VecRestoreSubVector(vs[cinit], IS_re, &vsre);
-  //       VecRestoreSubVector(vs[cinit], IS_im, &vsim);
-
-  //       VecRestoreSubVector(x, IS_interm_states[idxc], &w);
-  //     }
-
-  //     double vnorm = vnorms[iinit][iwindow];
-  //     double usu, dummy;
-  //     complex_inner_product(interm_ic[iinit][iwindow], us, usu, dummy);
-  //     VecCopy(us, vs[iinit]);
-  //     VecAXPY(vs[iinit], -usu, interm_ic[iinit][iwindow]);
-  //     VecScale(vs[iinit], 1.0 / vnorm);
-
-  //     VecCopy(vs[iinit], ws);
-  //     for (int cinit = 0; cinit < iinit; cinit++) {
-  //       complex_inner_product(interm_ic[cinit][iwindow], vs[iinit], vsu_re, vsu_im);
-
-  //       VecGetSubVector(interm_ic[cinit][iwindow], IS_re, &ure);
-  //       VecGetSubVector(interm_ic[cinit][iwindow], IS_im, &uim);
-
-  //       VecISAXPY(ws, IS_re, -vsu_re, ure);
-  //       VecISAXPY(ws, IS_re, +vsu_im, uim);
-  //       VecISAXPY(ws, IS_im, -vsu_im, ure);
-  //       VecISAXPY(ws, IS_im, -vsu_re, uim);
-
-  //       VecRestoreSubVector(interm_ic[cinit][iwindow], IS_re, &ure);
-  //       VecRestoreSubVector(interm_ic[cinit][iwindow], IS_im, &uim);
-  //     }
-
-  //     VecISCopy(G, IS_interm_states[idxi], SCATTER_FORWARD, ws);
-  //   }
-  // }
-
-  // for (int k = 0; k < ninit; k++) {
-  //   VecDestroy(&(vs[k]));
-  // }
-  // VecDestroy(&ws);
-  // VecDestroy(&us);
-
-  // ISDestroy(&IS_re);
-  // ISDestroy(&IS_im);
+      } // for (int jinit = 0; jinit < ninit; jinit++)
+      if (isize>0) printf("\n");
+    } // for (int iinit = 0; iinit < ninit; iinit++)
+    printf("\n");
+  } // for (int iwindow = 1; iwindow < nwindows; iwindow++)
 }
