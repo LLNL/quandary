@@ -67,6 +67,18 @@ class Quandary:
     gamma_energy        # Parameter for integral penality term on the control pulse energy. Default: 0.1
     gamma_dpdm          # Parameter for integral penality term on second state derivative. Default: 0.01
 
+    # Multiple Shooting options
+    nwindows            # Number of time windows. Default: Number of time-processors.
+    mu                  # Penalty parameter for quadratic norm of discontinuities. Default: 1e-3
+    mu_factor           # Factor to increase mu in each outer iteration. Default: 1.0
+    update_lagrangian   # Flag to update Lagrangian multipliers in each outer iteration. Default: True
+    tao_warmstart       # Warm-starting TAO's L-BFGS optimizer. Default: True
+    interm_tol          # Stopping criterion based on intermediate discontinuity. Default: 1e-8
+    unitarize           # Flag to unitarize the intermediate initial conditions. Default: False
+    maxouter            # Maximum number of outer AL iterations. Default: 1
+    scalefactor_states  # Scaling factor applied to the state-part of the optimization vector. Default: 1.0
+
+
     # General options
     rand_seed            # Set a fixed random number generator seed. Default: None (non-reproducable)
     print_frequency_iter # Output frequency for optimization iterations. (Print every <x> iterations). Default: 1
@@ -138,6 +150,16 @@ class Quandary:
     gamma_leakage          : float = 0.1 	       
     gamma_energy           : float = 0.1
     gamma_dpdm             : float = 0.01        
+    # Multiple Shooting options
+    nwindows               : int   = -1  # Default: Number of time-processors.
+    mu                     : float = 1e-3
+    mu_factor              : float = 1.0 
+    update_lagrangian      : bool  = True
+    tao_warmstart          : bool  = True
+    interm_tol             : float = 1e-8 
+    unitarize              : bool  = False 
+    maxouter               : int   = 1 
+    scalefactor_states     : float = 1.0 
     # General options
     rand_seed              : int  = None
     print_frequency_iter   : int  = 1
@@ -214,6 +236,11 @@ class Quandary:
         if self.verbose:
             print("Final time: ",self.T,"ns, Number of timesteps: ", self.nsteps,", dt=", self.T/self.nsteps, "ns")
             print("Maximum control amplitudes: ", self.maxctrl_MHz, "MHz")
+        if self.nwindows > 0: 
+            if not (self.nsteps % self.nwindows == 0):
+                print("Warning: nwindows ", self.nwindows, " is not integer divisor of nsteps ", self.nsteps,". Using default now.\n")
+                self.nwindows = -1
+
 
         # Estimate carrier wave frequencies
         if len(self.carrier_frequency) == 0: 
@@ -360,12 +387,16 @@ class Quandary:
         # Set default number of cores to the number of initial conditions, unless otherwise specified. Make sure ncores is an integer divisible of ninit.
         ncores = self._ninit
         if maxcores > -1:
-            ncores = min(self._ninit, maxcores)
-        for i in range(self._ninit, 0, -1):
+            ncores = min(self._ninit, maxcores) # Limiting ncores to maxcores and to ninit.
+        for i in range(self._ninit, 0, -1):  # Find biggest integer divisor of ninit
             if self._ninit % i == 0:  # i is a factor of ninit
                 if i <= ncores:
                     ncores = i
                     break
+        if maxcores > ncores:
+            if maxcores % ncores ==0:
+                ncores_time = int(maxcores / ncores)
+                ncores = ncores * ncores_time
 
         # Execute subprocess to run Quandary
         err = execute(runtype=runtype, ncores=ncores, config_filename=config_filename, datadir=datadir, quandary_exec=quandary_exec, verbose=self.verbose, cygwinbash=cygwinbash, batchargs=batchargs)
@@ -548,6 +579,18 @@ class Quandary:
         mystring += "optim_penalty_param= 0.0\n"
         mystring += "optim_penalty_dpdm= " + str(self.gamma_dpdm) + "\n"
         mystring += "optim_penalty_energy= " + str(self.gamma_energy) + "\n"
+        # Multiple Shooting
+        if self.nwindows > 0:
+            mystring += "nwindows= " + str(self.nwindows) + "\n"
+        mystring += "optim_mu= " + str(self.mu) + "\n"
+        mystring += "optim_mu_factor= " + str(self.mu_factor)+ "\n"
+        mystring += "update_lagrangian=" + str(self.update_lagrangian)+ "\n"
+        mystring += "tao_warmstart=" + str(self.tao_warmstart)+ "\n"
+        mystring += "optim_interm_tol=" + str(self.interm_tol)+ "\n"
+        mystring += "optim_unitarize=" + str(self.unitarize)+ "\n"
+        mystring += "optim_maxouter=" + str(self.maxouter)+ "\n"
+        mystring += "scalefactor_states=" + str(self.scalefactor_states)+ "\n"
+        # End Multiple Shooting
         mystring += "datadir= ./\n"
         for iosc in range(len(self.Ne)):
             mystring += "output" + str(iosc) + "=expectedEnergy, population, fullstate\n"
