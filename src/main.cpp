@@ -10,6 +10,7 @@
 #include "optimproblem.hpp"
 #include "output.hpp"
 #include "petsc.h"
+#include <random>
 #ifdef WITH_SLEPC
 #include <slepceps.h>
 #endif
@@ -58,11 +59,13 @@ int main(int argc,char **argv)
 
   /* Initialize random number generator: Check if rand_seed is provided from config file, otherwise set random. */
   int rand_seed = config.GetIntParam("rand_seed", -1, false, false);
+  std::random_device rd;
   if (rand_seed < 0){
-    rand_seed = time(0);  // random seed
+    rand_seed = rd();  // random non-reproducable seed
   }
-  srand(rand_seed); 
   MPI_Bcast(&rand_seed, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD); // Broadcast from rank 0 to all.
+  std::default_random_engine rand_engine{};
+  rand_engine.seed(rand_seed);
   export_param(mpirank_world, *config.log, "rand_seed", rand_seed);
 
   /* --- Get some options from the config file --- */
@@ -76,11 +79,11 @@ int main(int argc,char **argv)
   double dt;
   if (total_time < 0.0){ // NOTE if a 'duration' line is not present in the cfg file, rollback to the original approach
     dt    = config.GetDoubleParam("dt", 0.01);
-    total_time = ntime * dt;
   }
   else{
     dt = total_time/ntime;
   }
+  total_time = ntime * dt;
 
   RunType runtype;
   std::string runtypestr = config.GetStrParam("runtype", "simulation");
@@ -295,7 +298,7 @@ int main(int argc,char **argv)
     config.GetVecStrParam("control_initialization" + std::to_string(i), controlinit_str, default_init_str);
 
     // Create oscillator 
-    oscil_vec[i] = new Oscillator(config, i, nlevels, controltype_str, controlinit_str, trans_freq[i], selfkerr[i], rot_freq[i], decay_time[i], dephase_time[i], carrier_freq, total_time, lindbladtype);
+    oscil_vec[i] = new Oscillator(config, i, nlevels, controltype_str, controlinit_str, trans_freq[i], selfkerr[i], rot_freq[i], decay_time[i], dephase_time[i], carrier_freq, total_time, lindbladtype, rand_engine);
     
     // Update the default for control type
     default_seg_str = "";
@@ -427,28 +430,17 @@ int main(int argc,char **argv)
     printf("Time-windows: %d, each %d steps\n", nwindows, ntime_per_window);
   }
   TimeStepper* mytimestepper;
-  if (timesteppertypestr.compare("IMR")==0) mytimestepper = new ImplMidpoint(config, mastereq, ntime, ntime_per_window, dt, linsolvetype, linsolve_maxiter, output, storeFWD, comm_time);
-  else if (timesteppertypestr.compare("IMR4")==0) mytimestepper = new CompositionalImplMidpoint(config, 4, mastereq, ntime, ntime_per_window, dt, linsolvetype, linsolve_maxiter, output, storeFWD, comm_time);
-  else if (timesteppertypestr.compare("IMR8")==0) mytimestepper = new CompositionalImplMidpoint(config, 8, mastereq, ntime, ntime_per_window, dt, linsolvetype, linsolve_maxiter, output, storeFWD, comm_time);
-  else if (timesteppertypestr.compare("EE")==0) mytimestepper = new ExplEuler(config, mastereq, ntime, ntime_per_window, dt, output, storeFWD, comm_time);
+  if (timesteppertypestr.compare("IMR")==0) mytimestepper = new ImplMidpoint(config, mastereq, ntime, ntime_per_window, total_time, dt, linsolvetype, linsolve_maxiter, output, storeFWD, comm_time);
+  else if (timesteppertypestr.compare("IMR4")==0) mytimestepper = new CompositionalImplMidpoint(config, 4, mastereq, ntime, ntime_per_window, total_time,  dt, linsolvetype, linsolve_maxiter, output, storeFWD, comm_time);
+  else if (timesteppertypestr.compare("IMR8")==0) mytimestepper = new CompositionalImplMidpoint(config, 8, mastereq, ntime, ntime_per_window, total_time, dt, linsolvetype, linsolve_maxiter, output, storeFWD, comm_time);
+  else if (timesteppertypestr.compare("EE")==0) mytimestepper = new ExplEuler(config, mastereq, ntime, ntime_per_window, total_time, dt, output, storeFWD, comm_time);
   else {
     printf("\n\n ERROR: Unknow timestepping type: %s.\n\n", timesteppertypestr.c_str());
     exit(1);
   }
 
   /* --- Initialize optimization --- */
-  /* Get gate rotation frequencies. Default: use rotational frequencies for the gate. */
-  int noscillators = nlevels.size();
-  std::vector<double> gate_rot_freq(noscillators); 
-  for (int iosc=0; iosc<noscillators; iosc++) gate_rot_freq[iosc] = rot_freq[iosc];
-  /* If gate_rot_freq option is given in config file, overwrite them with input */
-  std::vector<double> read_gate_rot;
-  config.GetVecDoubleParam("gate_rot_freq", read_gate_rot, 1e20); 
-  copyLast(read_gate_rot, noscillators);
-  if (read_gate_rot[0] < 1e20) { // the config option exists
-    for (int i=0; i<noscillators; i++)  gate_rot_freq[i] = read_gate_rot[i];
-  }
-  OptimProblem* optimctx = new OptimProblem(config, mytimestepper, comm_init, comm_time, ninit, nwindows,total_time, gate_rot_freq, output, quietmode);
+  OptimProblem* optimctx = new OptimProblem(config, mytimestepper, comm_init, comm_time, ninit, nwindows, output, quietmode);
 
   /* Set up vectors for the optimization variables and the gradient of the objective */
   Vec xinit = optimctx->xinit;
@@ -1062,7 +1054,7 @@ int main(int argc,char **argv)
   delete optimctx;
   delete output;
 
-  
+
   /* Finallize Petsc */
 #ifdef WITH_SLEPC
   ierr = SlepcFinalize();

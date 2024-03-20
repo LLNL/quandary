@@ -10,23 +10,16 @@ TimeStepper::TimeStepper() {
   MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
 }
 
-TimeStepper::TimeStepper(MapParam config, MasterEq* mastereq_, int ntime_global_, int ntime_, double dt_, Output* output_, bool storeFWD_, MPI_Comm comm_time_) : TimeStepper() {
+TimeStepper::TimeStepper(MapParam config, MasterEq* mastereq_, int ntime_global_, int ntime_, double total_time_, double dt_, Output* output_, bool storeFWD_, MPI_Comm comm_time_) : TimeStepper() {
   mastereq = mastereq_;
   dim = 2*mastereq->getDim(); // will be either N^2 (Lindblad) or N (Schroedinger)
   ntime_global = ntime_global_;
   ntime = ntime_;
+  total_time = total_time_;
   dt = dt_;
   output = output_;
   storeFWD = storeFWD_;
   comm_time= comm_time_;
-
-  gamma_penalty_dpdm = config.GetDoubleParam("optim_penalty_dpdm", 0.0);
-  if (gamma_penalty_dpdm > 1e-13 && mastereq->lindbladtype != LindbladType::NONE){
-    if (mpirank_world == 0) {
-      printf("Warning: Disabling DpDm penalty term because it is not implemented for the Lindblad solver.\n");
-    }
-    gamma_penalty_dpdm = 0.0;
-  }
 
   /* Check if leakage term is added: Only if nessential is smaller than nlevels for at least one oscillator */
   addLeakagePrevent = false; 
@@ -530,7 +523,7 @@ void TimeStepper::energyPenaltyIntegral_diff(double time, double penaltybar, Vec
 
 void TimeStepper::evolveBWD(const double tstart, const double tstop, const Vec x_stop, Vec x_adj, Vec grad, bool compute_gradient){}
 
-ExplEuler::ExplEuler(MapParam config, MasterEq* mastereq_, int ntime_global_, int ntime_, double dt_, Output* output_, bool storeFWD_, MPI_Comm comm_time_) : TimeStepper(config, mastereq_, ntime_global_, ntime_, dt_, output_, storeFWD_, comm_time_) {
+ExplEuler::ExplEuler(MapParam config, MasterEq* mastereq_, int ntime_global_, int ntime_, double total_time_, double dt_, Output* output_, bool storeFWD_, MPI_Comm comm_time_) : TimeStepper(config, mastereq_, ntime_global_, ntime_, total_time_, dt_, output_, storeFWD_, comm_time_) {
   MatCreateVecs(mastereq->getRHS(), &stage, NULL);
   VecZeroEntries(stage);
 }
@@ -569,7 +562,7 @@ void ExplEuler::evolveBWD(const double tstop,const  double tstart,const  Vec x, 
 
 }
 
-ImplMidpoint::ImplMidpoint(MapParam config,MasterEq* mastereq_, int ntime_global_, int ntime_, double dt_, LinearSolverType linsolve_type_, int linsolve_maxiter_, Output* output_, bool storeFWD_, MPI_Comm comm_time_) : TimeStepper(config, mastereq_, ntime_global_, ntime_, dt_, output_, storeFWD_, comm_time_) {
+ImplMidpoint::ImplMidpoint(MapParam config,MasterEq* mastereq_, int ntime_global_, int ntime_, double total_time_, double dt_, LinearSolverType linsolve_type_, int linsolve_maxiter_, Output* output_, bool storeFWD_, MPI_Comm comm_time_) : TimeStepper(config, mastereq_, ntime_global_, ntime_, total_time_, dt_, output_, storeFWD_, comm_time_) {
 
   /* Create and reset the intermediate vectors */
   MatCreateVecs(mastereq->getRHS(), &stage, NULL);
@@ -779,7 +772,7 @@ int ImplMidpoint::NeumannSolve(Mat A, Vec b, Vec y, double alpha, bool transpose
 
 
 
-CompositionalImplMidpoint::CompositionalImplMidpoint(MapParam config, int order_, MasterEq* mastereq_, int ntime_global_, int ntime_, double dt_, LinearSolverType linsolve_type_, int linsolve_maxiter_, Output* output_, bool storeFWD_, MPI_Comm comm_time_) : ImplMidpoint(config, mastereq_, ntime_global_, ntime_, dt_, linsolve_type_, linsolve_maxiter_, output_, storeFWD_, comm_time_) {
+CompositionalImplMidpoint::CompositionalImplMidpoint(MapParam config, int order_, MasterEq* mastereq_, int ntime_global_, int ntime_, double total_time_, double dt_, LinearSolverType linsolve_type_, int linsolve_maxiter_, Output* output_, bool storeFWD_, MPI_Comm comm_time_) : ImplMidpoint(config, mastereq_, ntime_global_, ntime_, total_time_, dt_, linsolve_type_, linsolve_maxiter_, output_, storeFWD_, comm_time_) {
 
   order = order_;
 

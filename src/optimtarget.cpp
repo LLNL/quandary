@@ -1,21 +1,242 @@
 #include "optimtarget.hpp"
 
+OptimTarget::OptimTarget(){
+  dim = 0;
+  dim_rho = 0;
+  dim_ess = 0;
+  noscillators = 0;
+  target_type = TargetType::GATE;
+  objective_type = ObjectiveType::JTRACE;
+  initcond_type = InitialConditionType::BASIS;
+  lindbladtype = LindbladType::NONE;
+  targetgate = NULL;
+  purity_rho0 = 1.0;
+  purestateID = -1;
+  target_filename = "";
+  targetstate = NULL;
+}
 
-OptimTarget::OptimTarget(int dim_, int purestateID_, TargetType target_type_, ObjectiveType objective_type_, Gate* targetgate_, std::string target_filename_, LindbladType lindbladtype_, bool quietmode_){
+
+OptimTarget::OptimTarget(std::vector<std::string> target_str, std::string objective_str, std::vector<std::string> initcond_str, MasterEq* mastereq, double total_time, std::vector<double> read_gate_rot, Vec rho_t0, bool quietmode_) : OptimTarget() {
 
   // initialize
-  dim = dim_;
-  target_type = target_type_;
-  objective_type = objective_type_;
-  targetgate = targetgate_;
-  purestateID = purestateID_;
-  target_filename = target_filename_;
-  lindbladtype = lindbladtype_;
-  purity_rho0 = 1.0;
+  dim = mastereq->getDim();
+  dim_rho = mastereq->getDimRho();
+  dim_ess = mastereq->getDimEss();
   quietmode = quietmode_;
- 
+  lindbladtype = mastereq->lindbladtype;
 
-  /* Allocate target state, if it is read from file, of if target is a gate transformation VrhoV. If pure target, only store the ID. */
+  // Get global communicator rank
+  int mpirank_world;
+  MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
+
+  /* Get initial condition type */
+  if (initcond_str[0].compare("file") == 0)              initcond_type = InitialConditionType::FROMFILE;
+  else if  (initcond_str[0].compare("pure") == 0)        initcond_type = InitialConditionType::PURE;
+  else if  (initcond_str[0].compare("ensemble") == 0)    initcond_type = InitialConditionType::ENSEMBLE;
+  else if  (initcond_str[0].compare("performance") == 0) initcond_type = InitialConditionType::PERFORMANCE;
+  else if  (initcond_str[0].compare("3states") == 0)     initcond_type = InitialConditionType::THREESTATES;
+  else if  (initcond_str[0].compare("Nplus1") == 0)      initcond_type = InitialConditionType::NPLUSONE;
+  else if  (initcond_str[0].compare("diagonal") == 0)    initcond_type = InitialConditionType::DIAGONAL;
+  else if  (initcond_str[0].compare("basis") == 0)       initcond_type = InitialConditionType::BASIS;
+  else {
+    printf("ERROR: Unknown initial condition type %s!\n", initcond_str[0].c_str());
+    exit(1);
+  }
+  /* Sanity check for Schrodinger solver initial conditions */
+  if (lindbladtype == LindbladType::NONE){
+    if (initcond_type == InitialConditionType::ENSEMBLE ||
+        initcond_type == InitialConditionType::THREESTATES ||
+        initcond_type == InitialConditionType::NPLUSONE ){
+          printf("\n\n ERROR for initial condition setting: \n When running Schroedingers solver (collapse_type == NONE), the initial condition needs to be either 'pure' or 'from file' or 'diagonal' or 'basis'. Note that 'diagonal' and 'basis' in the Schroedinger case are the same (all unit vectors).\n\n");
+          exit(1);
+    } else if (initcond_type == InitialConditionType::BASIS) {
+      // DIAGONAL and BASIS initial conditions in the Schroedinger case are the same. Overwrite it to DIAGONAL
+      initcond_type = InitialConditionType::DIAGONAL;  
+    }
+  }
+  /* Get list of involved oscillators */
+  if (initcond_str.size() < 2) 
+    for (int j=0; j<mastereq->getNOscillators(); j++)   
+      initcond_str.push_back(std::to_string(j)); // Default: all oscillators
+  for (int i=1; i<initcond_str.size(); i++) 
+    initcond_IDs.push_back(atoi(initcond_str[i].c_str())); // Overwrite with config option, if given.
+
+  /* Prepare initial state rho_t0 if PURE or FROMFILE or ENSEMBLE initialization. Otherwise they are set within prepareInitialState during evalF. */
+  PetscInt ilow, iupp;
+  VecGetOwnershipRange(rho_t0, &ilow, &iupp);
+  if (initcond_type == InitialConditionType::PURE) { 
+    /* Initialize with tensor product of unit vectors. */
+    if (initcond_IDs.size() != mastereq->getNOscillators()) {
+      printf("ERROR during pure-state initialization: List of IDs must contain %d elements!\n", mastereq->getNOscillators());
+      exit(1);
+    }
+    int diag_id = 0;
+    for (int k=0; k < initcond_IDs.size(); k++) {
+      if (initcond_IDs[k] > mastereq->getOscillator(k)->getNLevels()-1){
+        printf("ERROR in config setting. The requested pure state initialization |%d> exceeds the number of allowed levels for that oscillator (%d).\n", initcond_IDs[k], mastereq->getOscillator(k)->getNLevels());
+        exit(1);
+      }
+      assert (initcond_IDs[k] < mastereq->getOscillator(k)->getNLevels());
+      int dim_postkron = 1;
+      for (int m=k+1; m < initcond_IDs.size(); m++) {
+        dim_postkron *= mastereq->getOscillator(m)->getNLevels();
+      }
+      diag_id += initcond_IDs[k] * dim_postkron;
+    }
+    int ndim = mastereq->getDimRho();
+    int vec_id = -1;
+    if (lindbladtype != LindbladType::NONE) vec_id = getIndexReal(getVecID( diag_id, diag_id, ndim )); // Real part of x
+    else vec_id = getIndexReal(diag_id);
+    if (ilow <= vec_id && vec_id < iupp) VecSetValue(rho_t0, vec_id, 1.0, INSERT_VALUES);
+  }
+  else if (initcond_type == InitialConditionType::FROMFILE) { 
+    /* Read initial condition from file */
+    int nelems = 0;
+    if (mastereq->lindbladtype != LindbladType::NONE) nelems = 2*dim_ess*dim_ess;
+    else nelems = 2 * dim_ess;
+    double * vec = new double[nelems];
+    if (mpirank_world == 0) {
+      assert (initcond_str.size()==2);
+      std::string filename = initcond_str[1];
+      read_vector(filename.c_str(), vec, nelems, quietmode);
+    }
+    MPI_Bcast(vec, nelems, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    if (lindbladtype != LindbladType::NONE) { // Lindblad solver, fill density matrix
+      for (int i = 0; i < dim_ess*dim_ess; i++) {
+        int k = i % dim_ess;
+        int j = (int) i / dim_ess;
+        if (dim_ess*dim_ess < mastereq->getDim()) {
+          k = mapEssToFull(k, mastereq->nlevels, mastereq->nessential);
+          j = mapEssToFull(j, mastereq->nlevels, mastereq->nessential);
+        }
+        int elemid_re = getIndexReal(getVecID(k,j,dim_rho));
+        int elemid_im = getIndexImag(getVecID(k,j,dim_rho));
+        if (ilow <= elemid_re && elemid_re < iupp) VecSetValue(rho_t0, elemid_re, vec[i], INSERT_VALUES);        // RealPart
+        if (ilow <= elemid_im && elemid_im < iupp) VecSetValue(rho_t0, elemid_im, vec[i + dim_ess*dim_ess], INSERT_VALUES); // Imaginary Part
+      }
+    } else { // Schroedinger solver, fill vector 
+      for (int i = 0; i < dim_ess; i++) {
+        int k = i;
+        if (dim_ess < mastereq->getDim()) 
+          k = mapEssToFull(i, mastereq->nlevels, mastereq->nessential);
+        int elemid_re = getIndexReal(k);
+        int elemid_im = getIndexImag(k);
+        if (ilow <= elemid_re && elemid_re < iupp) VecSetValue(rho_t0, elemid_re, vec[i], INSERT_VALUES);        // RealPart
+        if (ilow <= elemid_im && elemid_im < iupp) VecSetValue(rho_t0, elemid_im, vec[i + dim_ess], INSERT_VALUES); // Imaginary Part
+      }
+    }
+    delete [] vec;
+  } else if (initcond_type == InitialConditionType::ENSEMBLE) {
+    // Sanity check for the list in initcond_IDs!
+    assert(initcond_IDs.size() >= 1); // at least one element 
+    assert(initcond_IDs[initcond_IDs.size()-1] < mastereq->getNOscillators()); // last element can't exceed total number of oscillators
+    for (int i=0; i < initcond_IDs.size()-1; i++){ // list should be consecutive!
+      if (initcond_IDs[i]+1 != initcond_IDs[i+1]) {
+        printf("ERROR: List of oscillators for ensemble initialization should be consecutive!\n");
+        exit(1);
+      }
+    }
+    // get dimension of subsystems defined by initcond_IDs, as well as the one before and after. Span in essential levels only.
+    int dimpre = 1;
+    int dimpost = 1;
+    int dimsub = 1;
+    for (int i=0; i<mastereq->getNOscillators(); i++){
+      if (i < initcond_IDs[0]) dimpre *= mastereq->nessential[i];
+      else if (initcond_IDs[0] <= i && i <= initcond_IDs[initcond_IDs.size()-1]) dimsub *= mastereq->nessential[i];
+      else dimpost *= mastereq->nessential[i];
+    }
+    int dimrho = mastereq->getDimRho();
+    int dimrhoess = mastereq->getDimEss();
+    // Loop over ensemble state elements in essential level dimensions of the subsystem defined by the initcond_ids:
+    for (int i=0; i < dimsub; i++){
+      for (int j=i; j < dimsub; j++){
+        int ifull = i * dimpost; // account for the system behind
+        int jfull = j * dimpost;
+        if (dimrhoess < dimrho) ifull = mapEssToFull(ifull, mastereq->nlevels, mastereq->nessential);
+        if (dimrhoess < dimrho) jfull = mapEssToFull(jfull, mastereq->nlevels, mastereq->nessential);
+        // printf(" i=%d j=%d ifull %d, jfull %d\n", i, j, ifull, jfull);
+        if (i == j) { 
+          // diagonal element: 1/N_sub
+          int elemid_re = getIndexReal(getVecID(ifull, jfull, dimrho));
+          if (ilow <= elemid_re && elemid_re < iupp) VecSetValue(rho_t0, elemid_re, 1./dimsub, INSERT_VALUES);
+        } else {
+          // upper diagonal (0.5 + 0.5*i) / (N_sub^2)
+          int elemid_re = getIndexReal(getVecID(ifull, jfull, dimrho));
+          int elemid_im = getIndexImag(getVecID(ifull, jfull, dimrho));
+          if (ilow <= elemid_re && elemid_re < iupp) VecSetValue(rho_t0, elemid_re, 0.5/(dimsub*dimsub), INSERT_VALUES);
+          if (ilow <= elemid_im && elemid_im < iupp) VecSetValue(rho_t0, elemid_im, 0.5/(dimsub*dimsub), INSERT_VALUES);
+          // lower diagonal (0.5 - 0.5*i) / (N_sub^2)
+          elemid_re = getIndexReal(getVecID(jfull, ifull, dimrho));
+          elemid_im = getIndexImag(getVecID(jfull, ifull, dimrho));
+          if (ilow <= elemid_re && elemid_re < iupp) VecSetValue(rho_t0, elemid_re,  0.5/(dimsub*dimsub), INSERT_VALUES);
+          if (ilow <= elemid_im && elemid_im < iupp) VecSetValue(rho_t0, elemid_im, -0.5/(dimsub*dimsub), INSERT_VALUES);
+        } 
+      }
+    }
+  }
+  VecAssemblyBegin(rho_t0); VecAssemblyEnd(rho_t0);
+
+  /* Get target type */  
+  purestateID = -1;
+  target_filename = "";
+  if ( target_str[0].compare("gate") ==0 ) {
+    target_type = TargetType::GATE;
+
+    /* Get gate rotation frequencies. Default: use rotational frequencies for the gate. */
+    int noscillators = mastereq->nlevels.size();
+    copyLast(read_gate_rot, noscillators);
+    std::vector<double> gate_rot_freq(noscillators); 
+    for (int iosc=0; iosc<noscillators; iosc++) {
+      if (read_gate_rot[0] < 1e20) // the config option exists, use it, else use mastereq rotationnal frequency as default
+        gate_rot_freq[iosc] = read_gate_rot[iosc];
+      else
+        gate_rot_freq[iosc] = mastereq->getOscillator(iosc)->getRotFreq();
+    }
+    /* Initialize the targetgate */
+    targetgate = initTargetGate(target_str, mastereq->nlevels, mastereq->nessential, total_time, lindbladtype, gate_rot_freq, quietmode);
+  }  
+  else if (target_str[0].compare("pure")==0) {
+    target_type = TargetType::PURE;
+    purestateID = 0;
+    if (target_str.size() < 2) {
+      printf("# Warning: You want to prepare a pure state, but didn't specify which one. Taking default: ground-state |0...0> \n");
+    } else {
+      /* Compute the index m for preparing e_m e_m^\dagger. Note that the input is given for pure states PER OSCILLATOR such as |m_1 m_2 ... m_Q> and hence m = m_1 * dimPost(oscil 1) + m_2 * dimPost(oscil 2) + ... + m_Q */
+      if (target_str.size() - 1 < mastereq->getNOscillators()) {
+        copyLast(target_str, mastereq->getNOscillators()+1);
+      }
+      for (int i=0; i < mastereq->getNOscillators(); i++) {
+        int Qi_state = atoi(target_str[i+1].c_str());
+        if (Qi_state >= mastereq->getOscillator(i)->getNLevels()) {
+          printf("ERROR in config setting. The requested pure state target |%d> exceeds the number of modeled levels for that oscillator (%d).\n", Qi_state, mastereq->getOscillator(i)->getNLevels());
+          exit(1);
+        }
+        purestateID += Qi_state * mastereq->getOscillator(i)->dim_postOsc;
+      }
+    }
+  } 
+  else if (target_str[0].compare("file")==0) { 
+    // Get the name of the file and pass it to the OptimTarget type later.
+    target_type = TargetType::FROMFILE;
+    assert(target_str.size() >= 2);
+    target_filename = target_str[1];
+  }
+  else {
+      printf("\n\n ERROR: Unknown optimization target: %s\n", target_str[0].c_str());
+      exit(1);
+  }
+
+  /* Get the objective function */
+  if (objective_str.compare("Jfrobenius")==0)     objective_type = ObjectiveType::JFROBENIUS;
+  else if (objective_str.compare("Jtrace")==0)    objective_type = ObjectiveType::JTRACE;
+  else if (objective_str.compare("Jmeasure")==0)  objective_type = ObjectiveType::JMEASURE;
+  else  {
+    printf("\n\n ERROR: Unknown objective function: %s\n", objective_str.c_str());
+    exit(1);
+  }
+
+  /* Allocate target state, if it is read from file, or if target is a gate transformation VrhoV. If pure target, only store the ID. */
   if (target_type == TargetType::GATE || target_type == TargetType::FROMFILE) {
     VecCreateSeq(PETSC_COMM_SELF,2*dim, &targetstate); 
     VecSetFromOptions(targetstate);
@@ -23,23 +244,39 @@ OptimTarget::OptimTarget(int dim_, int purestateID_, TargetType target_type_, Ob
 
   /* Read the target state from file into vec */
   if (target_type == TargetType::FROMFILE) {
-    int mpirank_world;
-    MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
-    double* vec = new double[2*dim];
-    if (mpirank_world == 0) read_vector(target_filename.c_str(), vec, 2*dim, quietmode);
-    MPI_Bcast(vec, 2*dim, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-    // pass vec into the targetstate
-    PetscInt ilow, iupp;
-    VecGetOwnershipRange(targetstate, &ilow, &iupp);
-    for (int i = 0; i < dim; i++) { 
-      int elemid_re = getIndexReal(i);
-      int elemid_im = getIndexImag(i);
-      if (ilow <= elemid_re && elemid_re < iupp) VecSetValue(targetstate, elemid_re, vec[i],       INSERT_VALUES); // RealPart
-      if (ilow <= elemid_im && elemid_im < iupp) VecSetValue(targetstate, elemid_im, vec[i + dim], INSERT_VALUES); // Imaginary Part
+    int nelems = 0;
+    if (mastereq->lindbladtype != LindbladType::NONE) nelems = 2*dim_ess*dim_ess;
+    else nelems = 2 * dim_ess;
+    double* vec = new double[nelems];
+    if (mpirank_world == 0) 
+      read_vector(target_filename.c_str(), vec, nelems, quietmode);
+    MPI_Bcast(vec, nelems, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    if (lindbladtype != LindbladType::NONE) { // Lindblad solver, fill density matrix
+      for (int i = 0; i < dim_ess*dim_ess; i++) { 
+        int k = i % dim_ess;
+        int j = (int) i / dim_ess;
+        if (dim_ess*dim_ess < mastereq->getDim()) {
+          k = mapEssToFull(k, mastereq->nlevels, mastereq->nessential);
+          j = mapEssToFull(j, mastereq->nlevels, mastereq->nessential);
+        }
+        int elemid_re = getIndexReal(getVecID(k,j,dim_rho));
+        int elemid_im = getIndexImag(getVecID(k,j,dim_rho));
+        if (ilow <= elemid_re && elemid_re < iupp) VecSetValue(targetstate, elemid_re, vec[i],       INSERT_VALUES); // RealPart
+        if (ilow <= elemid_im && elemid_im < iupp) VecSetValue(targetstate, elemid_im, vec[i + dim_ess*dim_ess], INSERT_VALUES); // Imaginary Part
+      }
+    } else {  // Schroedinger solver, fill vector
+      for (int i = 0; i < dim_ess; i++) {
+        int k = i;
+        if (dim_ess < mastereq->getDim()) 
+          k = mapEssToFull(i, mastereq->nlevels, mastereq->nessential);
+        int elemid_re = getIndexReal(k);
+        int elemid_im = getIndexImag(k);
+        if (ilow <= elemid_re && elemid_re < iupp) VecSetValue(targetstate, elemid_re, vec[i], INSERT_VALUES);        // RealPart
+        if (ilow <= elemid_im && elemid_im < iupp) VecSetValue(targetstate, elemid_im, vec[i + dim_ess], INSERT_VALUES); // Imaginary Part
+      }
     }
     VecAssemblyBegin(targetstate); VecAssemblyEnd(targetstate);
     delete [] vec;
-    // VecView(targetstate, NULL);
   }
 
   /* Allocate an auxiliary vec needed for evaluating the frobenius norm */
@@ -52,6 +289,8 @@ OptimTarget::OptimTarget(int dim_, int purestateID_, TargetType target_type_, Ob
 OptimTarget::~OptimTarget(){
   if (objective_type == ObjectiveType::JFROBENIUS) VecDestroy(&aux);
   if (target_type == TargetType::GATE || target_type == TargetType::FROMFILE)  VecDestroy(&targetstate);
+
+  delete targetgate;
 }
 
 double OptimTarget::FrobeniusDistance(const Vec state){
@@ -198,7 +437,232 @@ void OptimTarget::HilbertSchmidtOverlap_diff(const Vec state, Vec statebar, bool
   }
 }
 
-void OptimTarget::prepare(const Vec rho_t0){
+
+int OptimTarget::prepareInitialState(const int iinit, const int ninit, std::vector<int> nlevels, std::vector<int> nessential, Vec rho0){
+
+  PetscInt ilow, iupp; 
+  PetscInt elemID;
+  double val;
+  int dim_post;
+  int initID = 0;    // Output: ID for this initial condition */
+
+  /* Switch over type of initial condition */
+  switch (initcond_type) {
+
+    case InitialConditionType::PERFORMANCE:
+      /* Set up Input state psi = 1/sqrt(2N)*(Ones(N) + im*Ones(N)) or rho = psi*psi^\dag */
+      VecZeroEntries(rho0);
+      VecGetOwnershipRange(rho0, &ilow, &iupp);
+      for (int i=0; i<dim_rho; i++){
+        if (lindbladtype == LindbladType::NONE) {
+          int elem_re = getIndexReal(i);
+          int elem_im = getIndexImag(i);
+          double val = 1./ sqrt(2.*dim_rho);
+          if (ilow <= elem_re && elem_re < iupp) VecSetValue(rho0, elem_re, val, INSERT_VALUES);
+          if (ilow <= elem_im && elem_im < iupp) VecSetValue(rho0, elem_im, val, INSERT_VALUES);
+        } else {
+          int elem_re = getIndexReal(getVecID(i, i, dim_rho));
+          double val = 1./ dim_rho;
+          if (ilow <= elem_re && elem_re < iupp) VecSetValue(rho0, elem_re, val, INSERT_VALUES);
+        }
+      }
+      break;
+
+    case InitialConditionType::FROMFILE:
+      /* Do nothing. Init cond is already stored */
+      break;
+
+    case InitialConditionType::PURE:
+      /* Do nothing. Init cond is already stored */
+      break;
+
+    case InitialConditionType::ENSEMBLE:
+      /* Do nothing. Init cond is already stored */
+      break;
+
+    case InitialConditionType::THREESTATES:
+      assert(lindbladtype != LindbladType::NONE);
+      VecZeroEntries(rho0);
+      VecGetOwnershipRange(rho0, &ilow, &iupp);
+
+      /* Set the <iinit>'th initial state */
+      if (iinit == 0) {
+        // 1st initial state: rho(0)_IJ = 2(N-i)/(N(N+1)) Delta_IJ
+        initID = 1;
+        for (int i_full = 0; i_full<dim_rho; i_full++) {
+          int diagID = getIndexReal(getVecID(i_full,i_full,dim_rho));
+          double val = 2.*(dim_rho - i_full) / (dim_rho * (dim_rho + 1));
+          if (ilow <= diagID && diagID < iupp) VecSetValue(rho0, diagID, val, INSERT_VALUES);
+        }
+      } else if (iinit == 1) {
+        // 2nd initial state: rho(0)_IJ = 1/N
+        initID = 2;
+        for (int i_full = 0; i_full<dim_rho; i_full++) {
+          for (int j_full = 0; j_full<dim_rho; j_full++) {
+            double val = 1./dim_rho;
+            int index = getIndexReal(getVecID(i_full,j_full,dim_rho));   // Re(rho_ij)
+            if (ilow <= index && index < iupp) VecSetValue(rho0, index, val, INSERT_VALUES); 
+          }
+        }
+      } else if (iinit == 2) {
+        // 3rd initial state: rho(0)_IJ = 1/N Delta_IJ
+        initID = 3;
+        for (int i_full = 0; i_full<dim_rho; i_full++) {
+          int diagID = getIndexReal(getVecID(i_full,i_full,dim_rho));
+          double val = 1./ dim_rho;
+          if (ilow <= diagID && diagID < iupp) VecSetValue(rho0, diagID, val, INSERT_VALUES);
+        }
+      } else {
+        printf("ERROR: Wrong initial condition setting! Should never happen.\n");
+        exit(1);
+      }
+      VecAssemblyBegin(rho0); VecAssemblyEnd(rho0);
+      break;
+
+    case InitialConditionType::NPLUSONE:
+      assert(lindbladtype != LindbladType::NONE);
+      VecGetOwnershipRange(rho0, &ilow, &iupp);
+
+      if (iinit < dim_rho) {// Diagonal e_j e_j^\dag
+        VecZeroEntries(rho0);
+        elemID = getIndexReal(getVecID(iinit, iinit, dim_rho));
+        val = 1.0;
+        if (ilow <= elemID && elemID < iupp) VecSetValues(rho0, 1, &elemID, &val, INSERT_VALUES);
+      }
+      else if (iinit == dim_rho) { // fully rotated 1/d*Ones(d)
+        for (int i=0; i<dim_rho; i++){
+          for (int j=0; j<dim_rho; j++){
+            elemID = getIndexReal(getVecID(i,j,dim_rho));
+            val = 1.0 / dim_rho;
+            if (ilow <= elemID && elemID < iupp) VecSetValues(rho0, 1, &elemID, &val, INSERT_VALUES);
+          }
+        }
+      }
+      else {
+        printf("Wrong initial condition index. Should never happen!\n");
+        exit(1);
+      }
+      initID = iinit;
+      VecAssemblyBegin(rho0); VecAssemblyEnd(rho0);
+      break;
+
+    case InitialConditionType::DIAGONAL:
+      int row, diagelem;
+      VecZeroEntries(rho0);
+
+      /* Get dimension of partial system behind last oscillator ID (essential levels only) */
+      dim_post = 1;
+      for (int k = initcond_IDs[initcond_IDs.size()-1] + 1; k < nessential.size(); k++) {
+        // dim_post *= getOscillator(k)->getNLevels();
+        dim_post *= nessential[k];
+      }
+
+      /* Compute index of the nonzero element in rho_m(0) = E_pre \otimes |m><m| \otimes E_post */
+      diagelem = iinit * dim_post;
+      if (dim_ess < dim_rho)  diagelem = mapEssToFull(diagelem, nlevels, nessential);
+
+      /* Set B_{mm} */
+      if (lindbladtype != LindbladType::NONE) elemID = getIndexReal(getVecID(diagelem, diagelem, dim_rho)); // density matrix
+      else  elemID = getIndexReal(diagelem); 
+      val = 1.0;
+      VecGetOwnershipRange(rho0, &ilow, &iupp);
+      if (ilow <= elemID && elemID < iupp) VecSetValues(rho0, 1, &elemID, &val, INSERT_VALUES);
+      VecAssemblyBegin(rho0); VecAssemblyEnd(rho0);
+
+      /* Set initial conditon ID */
+      if (lindbladtype != LindbladType::NONE) initID = iinit * ninit + iinit;
+      else initID = iinit;
+
+      break;
+
+    case InitialConditionType::BASIS:
+      assert(lindbladtype != LindbladType::NONE); // should never happen. For Schroedinger: BASIS equals DIAGONAL, and should go into the above switch case. 
+
+      /* Reset the initial conditions */
+      VecZeroEntries(rho0);
+
+      /* Get distribution */
+      VecGetOwnershipRange(rho0, &ilow, &iupp);
+
+      /* Get dimension of partial system behind last oscillator ID (essential levels only) */
+      dim_post = 1;
+      for (int k = initcond_IDs[initcond_IDs.size()-1] + 1; k < nessential.size(); k++) {
+        dim_post *= nessential[k];
+      }
+
+      /* Get index (k,j) of basis element B_{k,j} for this initial condition index iinit */
+      int k, j;
+      k = iinit % ( (int) sqrt(ninit) );
+      j = (int) iinit / ( (int) sqrt(ninit) );
+
+      /* Set initial condition ID */
+      initID = j * ( (int) sqrt(ninit)) + k;
+
+      /* Set position in rho */
+      k = k*dim_post;
+      j = j*dim_post;
+      if (dim_ess < dim_rho) { 
+        k = mapEssToFull(k, nlevels, nessential);
+        j = mapEssToFull(j, nlevels, nessential);
+      }
+
+      if (k == j) {
+        /* B_{kk} = E_{kk} -> set only one element at (k,k) */
+        elemID = getIndexReal(getVecID(k, k, dim_rho)); // real part in vectorized system
+        double val = 1.0;
+        if (ilow <= elemID && elemID < iupp) VecSetValues(rho0, 1, &elemID, &val, INSERT_VALUES);
+      } else {
+      //   /* B_{kj} contains four non-zeros, two per row */
+        PetscInt* rows = new PetscInt[4];
+        PetscScalar* vals = new PetscScalar[4];
+
+        /* Get storage index of Re(x) */
+        rows[0] = getIndexReal(getVecID(k, k, dim_rho)); // (k,k)
+        rows[1] = getIndexReal(getVecID(j, j, dim_rho)); // (j,j)
+        rows[2] = getIndexReal(getVecID(k, j, dim_rho)); // (k,j)
+        rows[3] = getIndexReal(getVecID(j, k, dim_rho)); // (j,k)
+
+        if (k < j) { // B_{kj} = 1/2(E_kk + E_jj) + 1/2(E_kj + E_jk)
+          vals[0] = 0.5;
+          vals[1] = 0.5;
+          vals[2] = 0.5;
+          vals[3] = 0.5;
+          for (int i=0; i<4; i++) {
+            if (ilow <= rows[i] && rows[i] < iupp) VecSetValues(rho0, 1, &(rows[i]), &(vals[i]), INSERT_VALUES);
+          }
+        } else {  // B_{kj} = 1/2(E_kk + E_jj) + i/2(E_jk - E_kj)
+          vals[0] = 0.5;
+          vals[1] = 0.5;
+          for (int i=0; i<2; i++) {
+            if (ilow <= rows[i] && rows[i] < iupp) VecSetValues(rho0, 1, &(rows[i]), &(vals[i]), INSERT_VALUES);
+          }
+          vals[2] = -0.5;
+          vals[3] = 0.5;
+          rows[2] = getIndexImag(getVecID(k, j, dim_rho)); // (k,j)
+          rows[3] = getIndexImag(getVecID(j, k, dim_rho)); // (j,k)
+          for (int i=2; i<4; i++) {
+            if (ilow <= rows[i] && rows[i] < iupp) VecSetValues(rho0, 1, &(rows[i]), &(vals[i]), INSERT_VALUES);
+          }
+        }
+        delete [] rows;
+        delete [] vals;
+      }
+
+      /* Assemble rho0 */
+      VecAssemblyBegin(rho0); VecAssemblyEnd(rho0);
+
+      break;
+
+    default:
+      printf("ERROR! Wrong initial condition type: %d\n This should never happen!\n", initcond_type);
+      exit(1);
+  }
+
+  return initID;
+}
+
+
+void OptimTarget::prepareTargetState(const Vec rho_t0){
   // If gate optimization, apply the gate and store targetstate for later use. Else, do nothing.
   if (target_type == TargetType::GATE) targetgate->applyGate(rho_t0, targetstate);
 

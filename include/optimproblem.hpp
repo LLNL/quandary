@@ -30,7 +30,6 @@ class OptimProblem {
   std::vector<int> initcond_IDs;         /* Integer list for pure-state initialization */
   std::vector<std::vector<Vec>> store_finalstates;    /* Storage for last time steps for each window and each initial condition */
 
-
   OptimTarget* optim_target;      /* Storing the optimization goal */
 
   /* MPI stuff */
@@ -97,7 +96,7 @@ class OptimProblem {
     double mu;                       /* Penalty strength to intermediate state discontinuities */
 
   /* Constructor */
-  OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm comm_init_, MPI_Comm comm_time, int ninit_, int nwindows_, double total_time, std::vector<double> gate_rot_freq, Output* output_, bool quietmode=false);
+  OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm comm_init_, MPI_Comm comm_time, int ninit_, int nwindows_, Output* output_, bool quietmode=false);
   ~OptimProblem();
 
   /* Return the number of optimization variables */

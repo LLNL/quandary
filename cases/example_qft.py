@@ -8,17 +8,29 @@ T_all = [50, 200, 500, 900, 1500]
 Jkl_coupling = 5e-3  	# Dipole-Dipole for CHAIN topology
 
 ## Number of qubits ##
-nqubits = 5
+nqubits = 2
 
 # Runtypes
 verbose = True
-do_optim = False
+do_optim = True 
 do_plot = False
 
-rand_seed=1234
 maxcores=8
+rand_seed=1234
 maxiter=500
 gamma_energy = 1e-4
+
+# Multiple Shooting options
+nwindows = -1		# Using -1 defaults to using nwindows = number of executing time-cores.
+mu = 1e-3
+mu_factor = 1.5
+update_lagrangian = True
+tao_warmstart = True
+interm_tol = 1e-4
+unitarize = False
+maxouter = 10
+scalefactor_states = 0.1
+
 
 # Carrier wave thresholds
 cw_amp_thres = 5e-2  # Min. theshold on growth rate for each carrier
@@ -69,24 +81,20 @@ unitary = get_QFT_gate(np.prod(Ne))
 # print("Target gate: ", unitary)
 
 # Set up the Quandary configuration for this test case
-myconfig = QuandaryConfig(Ne=Ne, Ng=Ng, freq01=freq01, Jkl=Jkl, rotfreq=rotfreq, T=T, targetgate=unitary, verbose=verbose, rand_seed=rand_seed, maxiter=maxiter, cw_amp_thres=cw_amp_thres, cw_prox_thres=cw_prox_thres, gamma_energy=gamma_energy) 
+quandary = Quandary(Ne=Ne, Ng=Ng, freq01=freq01, Jkl=Jkl, rotfreq=rotfreq, T=T, targetgate=unitary, verbose=verbose, rand_seed=rand_seed, maxiter=maxiter, cw_amp_thres=cw_amp_thres, cw_prox_thres=cw_prox_thres, gamma_energy=gamma_energy, nwindows = nwindows, mu = mu, mu_factor = mu_factor, update_lagrangian = update_lagrangian, tao_warmstart = tao_warmstart, interm_tol = interm_tol, unitarize = unitarize, maxouter = maxouter, scalefactor_states = scalefactor_states)
 
 # Set some run options for Quandary
-runtype = "optimization"    
-quandary_exec="/Users/guenther5/Numerics/quandary/quandary" 
 datadir = "./QFT_"+str(nqubits)+"_run_dir"  
 
-# Potentially, load initial control parameters from a file. 
-# myconfig.pcof0_filename = os.getcwd() + "/"+datadir+"/params.dat"  # absolute path!
-
-# Execute quandary
-ncores = min(np.prod(Ne), maxcores)
 if do_optim:
-	t, pt, qt, infidelity, expectedEnergy, population = quandary_run(myconfig, quandary_exec=quandary_exec, datadir=datadir, runtype=runtype, ncores=ncores)
+	t, pt, qt, infidelity, expectedEnergy, population = quandary.optimize(maxcores=maxcores, datadir=datadir)
 	print(f"Fidelity = {1.0 - infidelity}")
+
+
+
+
 
 # Plot the control pulse and expected energy level evolution
 if do_plot:
-	plot_pulse(myconfig.Ne, t, pt, qt)
-	plot_expectedEnergy(myconfig.Ne, t, expectedEnergy) # if T1 or T2 decoherence (Lindblad solver), also pass the argument 'lindblad_solver=True' to this function.
-	# plot_population(myconfig.Ne, myconfig.time, population)
+	plot_pulse(quandary.Ne, t, pt, qt)
+	plot_expectedEnergy(quandary.Ne, t, expectedEnergy) 
