@@ -28,6 +28,7 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   gamma_tik_interpolate = config.GetBoolParam("optim_regul_interpolate", false, false);
   gamma_penalty_energy = config.GetDoubleParam("optim_penalty_energy", 0.0);
   gamma_penalty = config.GetDoubleParam("optim_penalty", 0.0);
+  gamma_penalty_dpdm = config.GetDoubleParam("optim_penalty_dpdm", 0.0);
   penalty_param = config.GetDoubleParam("optim_penalty_param", 0.5);
   gatol = config.GetDoubleParam("optim_atol", 1e-8);
   fatol = config.GetDoubleParam("optim_ftol", 1e-8);
@@ -39,7 +40,14 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   unitarize_interm_ic = config.GetBoolParam("optim_unitarize", false);
   al_max_outer = config.GetIntParam("optim_maxouter", 1);
   scalefactor_states = config.GetDoubleParam("scalefactor_states", 1.0);
-  
+  if (gamma_penalty_dpdm > 1e-13 && timestepper->mastereq->lindbladtype != LindbladType::NONE){
+    if (mpirank_world == 0) {
+      printf("Warning: Disabling DpDm penalty term because it is not implemented for the Lindblad solver.\n");
+    }
+    gamma_penalty_dpdm = 0.0;
+  }
+
+ 
 
   /* Store number of initial conditions per init-processor group */
   ninit_local = ninit / mpisize_init; 
@@ -266,17 +274,9 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   /* Pass information on objective function to the time stepper needed for penalty objective function */
   timestepper->penalty_param = penalty_param;
   timestepper->gamma_penalty = gamma_penalty;
-  gamma_penalty_dpdm = timestepper->gamma_penalty_dpdm;
+  timestepper->gamma_penalty_dpdm = gamma_penalty_dpdm;
   timestepper->gamma_penalty_energy = gamma_penalty_energy;
   timestepper->optim_target = optim_target;
-
-  if ((gamma_penalty_dpdm > 1.0e-13) && (nwindows > 1)) {
-    if (mpirank_world == 0) {
-      printf("\nMultiple shooting optimization currently does not support dpdm penalty!\n");
-      printf("dpdm penalty adjoint calculation needs time step index adjustion!\n");
-    }
-    exit(-1);
-  }
 
   /* allocate storage for unscaled version of the optimization variable */
   VecDuplicate(xinit, &x);
