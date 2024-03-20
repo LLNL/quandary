@@ -79,11 +79,11 @@ int main(int argc,char **argv)
   double dt;
   if (total_time < 0.0){ // NOTE if a 'duration' line is not present in the cfg file, rollback to the original approach
     dt    = config.GetDoubleParam("dt", 0.01);
-    total_time = ntime * dt;
   }
   else{
     dt = total_time/ntime;
   }
+  total_time = ntime * dt;
 
   RunType runtype;
   std::string runtypestr = config.GetStrParam("runtype", "simulation");
