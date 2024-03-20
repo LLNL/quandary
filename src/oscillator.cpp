@@ -293,10 +293,10 @@ int Oscillator::evalControl(const double t, double* Re_ptr, double* Im_ptr){
 int Oscillator::evalControl_diff(const double t, double* dRedp, double* dImdp) {
 
   // Sanity check 
-  if ( t > Tfinal ){
-    printf("ERROR: accessing spline outside of [0,T] at %f. Should never happen! Bug.\n", t);
-    exit(1);
-  } 
+  // if ( t > Tfinal ){
+  //   printf("ERROR: accessing spline outside of [0,T] at %f. Should never happen! Bug.\n", t);
+  //   exit(1);
+  // } 
 
 
   if (params.size()>0) {
@@ -335,11 +335,11 @@ int Oscillator::evalControl_diff(const double t, double* dRedp, double* dImdp) {
 
 int Oscillator::evalControl_Labframe(const double t, double* f){
 
-  // Sanity check 
-  if ( t > Tfinal ){
-    printf("ERROR: accessing spline outside of [0,T] at %f. Should never happen! Bug.\n", t);
-    exit(1);
-  }
+  // // Sanity check 
+  // if ( t > Tfinal ){
+  //   printf("ERROR: accessing spline outside of [0,T] at %f. Should never happen! Bug.\n", t);
+  //   exit(1);
+  // }
 
   /* Evaluate the spline at time t  */
   *f = 0.0;
