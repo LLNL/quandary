@@ -78,7 +78,6 @@ class Quandary:
     maxouter            # Maximum number of outer AL iterations. Default: 1
     scalefactor_states  # Scaling factor applied to the state-part of the optimization vector. Default: 1.0
 
-
     # General options
     rand_seed            # Set a fixed random number generator seed. Default: None (non-reproducable)
     print_frequency_iter # Output frequency for optimization iterations. (Print every <x> iterations). Default: 1

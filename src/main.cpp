@@ -1054,7 +1054,7 @@ int main(int argc,char **argv)
   delete optimctx;
   delete output;
 
-  
+
   /* Finallize Petsc */
 #ifdef WITH_SLEPC
   ierr = SlepcFinalize();
