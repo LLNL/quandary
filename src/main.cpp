@@ -105,7 +105,7 @@ int main(int argc,char **argv)
   std::vector<std::string> initcondstr;
   config.GetVecStrParam("initialcondition", initcondstr, "none");
   assert (initcondstr.size() >= 1);
-  if      (initcondstr[0].compare("file") == 0 ) ninit = 1;
+  if      (initcondstr[0].compare("file") == 0 ) ninit = config.GetIntParam("ninit", 1, false, false); 
   else if (initcondstr[0].compare("pure") == 0 ) ninit = 1;
   else if (initcondstr[0].compare("performance") == 0 ) ninit = 1;
   else if (initcondstr[0].compare("ensemble") == 0 ) ninit = 1;

@@ -24,6 +24,7 @@ class OptimTarget{
     std::vector<int> initcond_IDs;         /* Integer list for pure-state initialization */
     LindbladType lindbladtype;             /* Type of decoherence (lindblad vs schroedinger) */
 
+    double* initstates_read_from_file;  /* storing what has been read as initial conditions from file */
     Vec aux;      /* auxiliary vector needed when computing the objective for gate optimization */
     bool quietmode;
 

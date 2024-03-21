@@ -91,42 +91,16 @@ OptimTarget::OptimTarget(std::vector<std::string> target_str, std::string object
     if (ilow <= vec_id && vec_id < iupp) VecSetValue(rho_t0, vec_id, 1.0, INSERT_VALUES);
   }
   else if (initcond_type == InitialConditionType::FROMFILE) { 
-    /* Read initial condition from file */
-    int nelems = 0;
-    if (mastereq->lindbladtype != LindbladType::NONE) nelems = 2*dim_ess*dim_ess;
-    else nelems = 2 * dim_ess;
-    double * vec = new double[nelems];
+    /* Read initial conditions from file and store it */
+    int nelems = get_file_length(initcond_str[1]);
+    initstates_read_from_file = new double[nelems];
     if (mpirank_world == 0) {
       assert (initcond_str.size()==2);
       std::string filename = initcond_str[1];
-      read_vector(filename.c_str(), vec, nelems, quietmode);
+      read_vector(filename.c_str(), initstates_read_from_file, nelems, quietmode);
     }
-    MPI_Bcast(vec, nelems, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-    if (lindbladtype != LindbladType::NONE) { // Lindblad solver, fill density matrix
-      for (int i = 0; i < dim_ess*dim_ess; i++) {
-        int k = i % dim_ess;
-        int j = (int) i / dim_ess;
-        if (dim_ess*dim_ess < mastereq->getDim()) {
-          k = mapEssToFull(k, mastereq->nlevels, mastereq->nessential);
-          j = mapEssToFull(j, mastereq->nlevels, mastereq->nessential);
-        }
-        int elemid_re = getIndexReal(getVecID(k,j,dim_rho));
-        int elemid_im = getIndexImag(getVecID(k,j,dim_rho));
-        if (ilow <= elemid_re && elemid_re < iupp) VecSetValue(rho_t0, elemid_re, vec[i], INSERT_VALUES);        // RealPart
-        if (ilow <= elemid_im && elemid_im < iupp) VecSetValue(rho_t0, elemid_im, vec[i + dim_ess*dim_ess], INSERT_VALUES); // Imaginary Part
-      }
-    } else { // Schroedinger solver, fill vector 
-      for (int i = 0; i < dim_ess; i++) {
-        int k = i;
-        if (dim_ess < mastereq->getDim()) 
-          k = mapEssToFull(i, mastereq->nlevels, mastereq->nessential);
-        int elemid_re = getIndexReal(k);
-        int elemid_im = getIndexImag(k);
-        if (ilow <= elemid_re && elemid_re < iupp) VecSetValue(rho_t0, elemid_re, vec[i], INSERT_VALUES);        // RealPart
-        if (ilow <= elemid_im && elemid_im < iupp) VecSetValue(rho_t0, elemid_im, vec[i + dim_ess], INSERT_VALUES); // Imaginary Part
-      }
-    }
-    delete [] vec;
+    MPI_Bcast(initstates_read_from_file, nelems, MPI_DOUBLE, 0, MPI_COMM_WORLD); 
+    
   } else if (initcond_type == InitialConditionType::ENSEMBLE) {
     // Sanity check for the list in initcond_IDs!
     assert(initcond_IDs.size() >= 1); // at least one element 
@@ -429,6 +403,7 @@ void OptimTarget::HilbertSchmidtOverlap_diff(const Vec state, Vec statebar, bool
 int OptimTarget::prepareInitialState(const int iinit, const int ninit, std::vector<int> nlevels, std::vector<int> nessential, Vec rho0){
 
   PetscInt ilow, iupp; 
+  VecGetOwnershipRange(rho0, &ilow, &iupp);
   PetscInt elemID;
   double val;
   int dim_post;
@@ -440,7 +415,6 @@ int OptimTarget::prepareInitialState(const int iinit, const int ninit, std::vect
     case InitialConditionType::PERFORMANCE:
       /* Set up Input state psi = 1/sqrt(2N)*(Ones(N) + im*Ones(N)) or rho = psi*psi^\dag */
       VecZeroEntries(rho0);
-      VecGetOwnershipRange(rho0, &ilow, &iupp);
       for (int i=0; i<dim_rho; i++){
         if (lindbladtype == LindbladType::NONE) {
           int elem_re = getIndexReal(i);
@@ -457,7 +431,35 @@ int OptimTarget::prepareInitialState(const int iinit, const int ninit, std::vect
       break;
 
     case InitialConditionType::FROMFILE:
-      /* Do nothing. Init cond is already stored */
+      /* Set initial condition as read from file  */
+      initID = iinit; // iinit is global index!
+      if (lindbladtype != LindbladType::NONE) { // Lindblad solver, fill density matrix
+        int skip= iinit* 2*dim_ess*dim_ess;  
+        for (int i = 0; i < dim_ess*dim_ess; i++) {
+          int k = i % dim_ess;
+          int j = (int) i / dim_ess;
+          if (dim_ess*dim_ess < dim) {
+            k = mapEssToFull(k, nlevels, nessential);
+            j = mapEssToFull(j, nlevels, nessential);
+          }
+          int elemid_re = getIndexReal(getVecID(k,j,dim_rho));
+          int elemid_im = getIndexImag(getVecID(k,j,dim_rho));
+          if (ilow <= elemid_re && elemid_re < iupp) VecSetValue(rho0, elemid_re, initstates_read_from_file[skip + i], INSERT_VALUES);        // RealPart
+          if (ilow <= elemid_im && elemid_im < iupp) VecSetValue(rho0, elemid_im, initstates_read_from_file[skip + i + dim_ess*dim_ess], INSERT_VALUES); // Imaginary Part
+        }
+      } else { // Schroedinger solver, fill vector 
+        int skip= iinit* 2*dim_ess;
+        for (int i = 0; i < dim_ess; i++) {
+          int k = i;
+          if (dim_ess < dim) 
+            k = mapEssToFull(i, nlevels, nessential);
+          int elemid_re = getIndexReal(k);
+          int elemid_im = getIndexImag(k);
+          if (ilow <= elemid_re && elemid_re < iupp) VecSetValue(rho0, elemid_re, initstates_read_from_file[skip + i], INSERT_VALUES);        // RealPart
+          if (ilow <= elemid_im && elemid_im < iupp) VecSetValue(rho0, elemid_im, initstates_read_from_file[skip + i + dim_ess], INSERT_VALUES); // Imaginary Part
+        }
+      }
+      VecAssemblyBegin(rho0); VecAssemblyEnd(rho0);
       break;
 
     case InitialConditionType::PURE:

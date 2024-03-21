@@ -551,6 +551,16 @@ int read_vector(const char *filename, double *var, int dim, bool quietmode, int 
   return success;
 }
 
+int get_file_length(std::string filename) { 
+  int number_of_lines = 0;
+  std::string line;
+  std::ifstream myfile(filename);
+  while (std::getline(myfile, line))
+      ++number_of_lines;
+  // std::cout << "Number of lines in text file: " << number_of_lines;
+  return number_of_lines;
+}
+
 
 /* Compute eigenvalues */
 int getEigvals(const Mat A, const int neigvals, std::vector<double>& eigvals, std::vector<Vec>& eigvecs){
