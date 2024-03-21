@@ -269,9 +269,7 @@ class Quandary:
         population      :  Evolution of the population of each oscillator, of each initial condition. (expectedEnergy[oscillator][initialcondition])
         """
 
-        if len(pcof0)>0:
-            self.pcof0 = pcof0[:]
-        return self.__run(runtype="simulation", overwrite_popt=False, maxcores=maxcores, datadir=datadir, quandary_exec=quandary_exec, cygwinbash=cygwinbash, batchargs=batchargs)
+        return self.__run(pcof0=pcof0, runtype="simulation", overwrite_popt=False, maxcores=maxcores, datadir=datadir, quandary_exec=quandary_exec, cygwinbash=cygwinbash, batchargs=batchargs)
 
 
     def optimize(self, *, pcof0=[], maxcores=-1, datadir="./run_dir", quandary_exec="", cygwinbash="", batchargs=[]):
@@ -296,9 +294,7 @@ class Quandary:
         population      :  Evolution of the population of each oscillator, of each initial condition. (expectedEnergy[oscillator][initialcondition])
         """
 
-        if len(pcof0)>0:
-            self.pcof0 = pcof0[:]
-        return self.__run(runtype="optimization", overwrite_popt=True, maxcores=maxcores, datadir=datadir, quandary_exec=quandary_exec, cygwinbash=cygwinbash, batchargs=batchargs)
+        return self.__run(pcof0=pcof0, runtype="optimization", overwrite_popt=True, maxcores=maxcores, datadir=datadir, quandary_exec=quandary_exec, cygwinbash=cygwinbash, batchargs=batchargs)
     
 
     def evalControls(self, *, pcof0=[], points_per_ns=1,datadir="./run_dir", quandary_exec="", cygwinbash=""):
@@ -323,15 +319,11 @@ class Quandary:
         nsteps_org = self.nsteps
         self.nsteps = int(np.floor(self.T * points_per_ns))
     
-        # Pass pcof to the configuration, if given
-        if len(pcof0) > 0:
-            self.pcof0 = pcof0[:]
-
         # Execute quandary in 'evalcontrols' mode
         datadir_controls = datadir +"_ppns"+str(points_per_ns)
         os.makedirs(datadir_controls, exist_ok=True)
         runtype = 'evalcontrols'
-        configfile_eval= self.__dump(runtype=runtype, datadir=datadir_controls)
+        configfile_eval= self.__dump(pcof0=pcof0, runtype=runtype, datadir=datadir_controls)
         err = execute(runtype=runtype, ncores=1, config_filename=configfile_eval, datadir=datadir_controls, quandary_exec=quandary_exec, verbose=False, cygwinbash=cygwinbash)
         time, pt, qt, _, _, _, pcof, _, _ = self.get_results(datadir=datadir_controls, ignore_failure=True)
 
@@ -344,7 +336,7 @@ class Quandary:
         return time, pt, qt
 
 
-    def __run(self, *, runtype="optimization", overwrite_popt=False, maxcores=-1, datadir="./run_dir", quandary_exec="", cygwinbash="", batchargs=[]):
+    def __run(self, *, pcof0=[], runtype="optimization", overwrite_popt=False, maxcores=-1, datadir="./run_dir", quandary_exec="", cygwinbash="", batchargs=[]):
         """
         Internal helper function to launch processes to execute the C++ Quandary code:
           1. Writes quandary config files to file system
@@ -355,7 +347,7 @@ class Quandary:
 
         # Create quandary data directory and dump configuration file
         os.makedirs(datadir, exist_ok=True)
-        config_filename = self.__dump(runtype=runtype, datadir=datadir)
+        config_filename = self.__dump(pcof0=pcof0, runtype=runtype, datadir=datadir)
 
         # Set default number of cores to the number of initial conditions, unless otherwise specified. Make sure ncores is an integer divisible of ninit.
         ncores = self._ninit
@@ -392,7 +384,7 @@ class Quandary:
         return time, pt, qt, infidelity, expectedEnergy, population
 
 
-    def __dump(self, *, runtype="simulation", datadir="./run_dir"):
+    def __dump(self, *, pcof0=[], runtype="simulation", datadir="./run_dir"):
         """
         Internal helper function that dumps all configuration options (and target gate, pcof0, Hamiltonian operators) into files for Quandary C++ runs. Returns the name of the configuration file needed for executing Quandary. 
         """
@@ -466,10 +458,15 @@ class Quandary:
                 print("Hamiltonian operators written to ", datadir+"/"+self._hamiltonian_filename)
 
         # If pcof0 is given, write it to a file 
+        writeme = []
         if len(self.pcof0) > 0:
+            writeme = self.pcof0
+        if len(pcof0) > 0:
+            writeme = pcof0
+        if len(writeme)>0:
             self.pcof0_filename = "./pcof0.dat"
             with open(datadir+"/"+self.pcof0_filename, "w") as f:
-                for value in self.pcof0:
+                for value in writeme:
                     f.write("{:20.13e}\n".format(value))
             if self.verbose:
                 print("Initial control parameters written to ", datadir+"/"+self.pcof0_filename)
