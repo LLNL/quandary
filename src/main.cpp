@@ -63,19 +63,14 @@ int main(int argc,char **argv)
 
   /* Initialize random number generator: Check if rand_seed is provided from config file, otherwise set random. */
   int rand_seed = config.GetIntParam("rand_seed", -1, false, false);
-  if (rand_seed < 0){
-    rand_seed = time(0);  // random seed
-  }
-  srand(rand_seed); 
-  MPI_Bcast(&rand_seed, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD); // Broadcast from rank 0 to all.
-  export_param(mpirank_world, *config.log, "rand_seed", rand_seed);
-
-  // Better this one:
-  // std::default_random_engine rand_engine{rand_seed};
   std::random_device rd;
-  std::default_random_engine rand_engine{rd()}; // non-reproducable seed
-  if ( rand_seed > 0 ) rand_engine.seed(rand_seed);
- 
+  if (rand_seed < 0){
+    rand_seed = rd();  // random non-reproducable seed
+  }
+  MPI_Bcast(&rand_seed, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD); // Broadcast from rank 0 to all.
+  std::default_random_engine rand_engine{};
+  rand_engine.seed(rand_seed);
+  export_param(mpirank_world, *config.log, "rand_seed", rand_seed);
 
   /* --- Get some options from the config file --- */
   std::vector<int> nlevels;
@@ -264,7 +259,7 @@ int main(int argc,char **argv)
     config.GetVecStrParam("control_initialization" + std::to_string(i), controlinit_str, default_init_str);
 
     // Create oscillator 
-    oscil_vec[i] = new Oscillator(config, i, nlevels, controltype_str, controlinit_str, trans_freq[i], selfkerr[i], rot_freq[i], decay_time[i], dephase_time[i], carrier_freq, total_time, lindbladtype);
+    oscil_vec[i] = new Oscillator(config, i, nlevels, controltype_str, controlinit_str, trans_freq[i], selfkerr[i], rot_freq[i], decay_time[i], dephase_time[i], carrier_freq, total_time, lindbladtype, rand_engine);
     
     // Update the default for control type
     default_seg_str = "";
@@ -393,18 +388,7 @@ int main(int argc,char **argv)
   }
 
   /* --- Initialize optimization --- */
-  /* Get gate rotation frequencies. Default: use rotational frequencies for the gate. */
-  int noscillators = nlevels.size();
-  std::vector<double> gate_rot_freq(noscillators); 
-  for (int iosc=0; iosc<noscillators; iosc++) gate_rot_freq[iosc] = rot_freq[iosc];
-  /* If gate_rot_freq option is given in config file, overwrite them with input */
-  std::vector<double> read_gate_rot;
-  config.GetVecDoubleParam("gate_rot_freq", read_gate_rot, 1e20); 
-  copyLast(read_gate_rot, noscillators);
-  if (read_gate_rot[0] < 1e20) { // the config option exists
-    for (int i=0; i<noscillators; i++)  gate_rot_freq[i] = read_gate_rot[i];
-  }
-  OptimProblem* optimctx = new OptimProblem(config, mytimestepper, comm_init, comm_optim, ninit, gate_rot_freq, output, quietmode);
+  OptimProblem* optimctx = new OptimProblem(config, mytimestepper, comm_init, comm_optim, ninit, output, quietmode);
 
   /* PETSC: Set upt solution and gradient vector */
   Vec xinit;
@@ -820,6 +804,9 @@ int main(int argc,char **argv)
   delete mytimestepper;
   delete optimctx;
   delete output;
+
+  VecDestroy(&xinit);
+  VecDestroy(&grad);
 
 
   /* Finallize Petsc */

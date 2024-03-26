@@ -28,8 +28,6 @@ class OptimProblem {
   int ninit_local;                      /* Local number of initial conditions on this processor */
   Vec rho_t0;                            /* Storage for initial condition of the ODE */
   Vec rho_t0_bar;                        /* Adjoint of ODE initial condition */
-  InitialConditionType initcond_type;    /* Type of initial conditions */
-  std::vector<int> initcond_IDs;         /* Integer list for pure-state initialization */
   std::vector<Vec> store_finalstates;    /* Storage for last time steps for each initial condition */
 
   OptimTarget* optim_target;      /* Storing the optimization goal */
@@ -85,7 +83,7 @@ class OptimProblem {
 
 
   /* Constructor */
-  OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm comm_init_, MPI_Comm comm_optim, int ninit_, std::vector<double> gate_rot_freq, Output* output_, bool quietmode=false);
+  OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm comm_init_, MPI_Comm comm_optim, int ninit_, Output* output_, bool quietmode=false);
   ~OptimProblem();
 
   /* Return the number of design variables */

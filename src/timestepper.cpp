@@ -19,14 +19,6 @@ TimeStepper::TimeStepper(MapParam config, MasterEq* mastereq_, int ntime_, doubl
   output = output_;
   storeFWD = storeFWD_;
 
-  gamma_penalty_dpdm = config.GetDoubleParam("optim_penalty_dpdm", 0.0);
-  if (gamma_penalty_dpdm > 1e-13 && mastereq->lindbladtype != LindbladType::NONE){
-    if (mpirank_world == 0) {
-      printf("Warning: Disabling DpDm penalty term because it is not implemented for the Lindblad solver.\n");
-    }
-    gamma_penalty_dpdm = 0.0;
-  }
-
   /* Check if leakage term is added: Only if nessential is smaller than nlevels for at least one oscillator */
   addLeakagePrevent = false; 
   for (int i=0; i<mastereq->getNOscillators(); i++){

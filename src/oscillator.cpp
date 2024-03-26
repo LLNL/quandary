@@ -6,7 +6,7 @@ Oscillator::Oscillator(){
   ground_freq = 0.0;
 }
 
-Oscillator::Oscillator(MapParam config, int id, std::vector<int> nlevels_all_, std::vector<std::string>& controlsegments, std::vector<std::string>& controlinitializations, double ground_freq_, double selfkerr_, double rotational_freq_, double decay_time_, double dephase_time_, std::vector<double> carrier_freq_, double Tfinal_, LindbladType lindbladtype_){
+Oscillator::Oscillator(MapParam config, int id, std::vector<int> nlevels_all_, std::vector<std::string>& controlsegments, std::vector<std::string>& controlinitializations, double ground_freq_, double selfkerr_, double rotational_freq_, double decay_time_, double dephase_time_, std::vector<double> carrier_freq_, double Tfinal_, LindbladType lindbladtype_, std::default_random_engine rand_engine){
 
   myid = id;
   nlevels = nlevels_all_[id];
@@ -116,8 +116,8 @@ Oscillator::Oscillator(MapParam config, int id, std::vector<int> nlevels_all_, s
         controlinitializations.push_back("0.0");
     }
     // Check config option for 'constant' or 'random' initialization
+    double initval = atof(controlinitializations[idini+1].c_str())*2.0*M_PI;
     if (controlinitializations[idini].compare("constant") == 0 ) {
-      double initval = atof(controlinitializations[idini+1].c_str());
       // If STEP: scale to [0,1]
       if (basisfunctions[seg]->getType() == ControlType::STEP){
         initval = std::max(0.0, initval);  
@@ -135,22 +135,23 @@ Oscillator::Oscillator(MapParam config, int id, std::vector<int> nlevels_all_, s
       }
     } else if (controlinitializations[idini].compare("random") == 0) {
 
+      // Uniform distribution [0,1)
+      std::uniform_real_distribution<double> unit_dist(0.0, 1.0);
+
       for (int f = 0; f<carrier_freq.size(); f++) {
         for (int i=0; i<basisfunctions[seg]->getNparams(); i++){
-          double randval = (double) rand() / ((double)RAND_MAX);  // random in [0,1]
-          MPI_Bcast(&randval, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+          double randval = unit_dist(rand_engine);  // random in [0,1]
           // scale to chosen amplitude 
-          double maxval = atof(controlinitializations[idini+1].c_str());
-          double initval = maxval*randval;
+          double val = initval*randval;
 
           // If STEP: scale to [0,1] else scale to [-a,a]
           if (basisfunctions[seg]->getType() == ControlType::STEP){
-            initval = std::max(0.0, initval);  
-            initval = std::min(1.0, initval); 
+            val = std::max(0.0, val);  
+            val = std::min(1.0, val); 
           } else {
-            initval = 2*initval - maxval;
+            val = 2*val - initval;
           }
-          params.push_back(initval);
+          params.push_back(val);
         }
         // if BSPLINEAMP: Two values can be provided: First one for the amplitude (set above), second one for the phase which otherwise is set to 0.0 (overwrite here)
         if (basisfunctions[seg]->getType() == ControlType::BSPLINEAMP) {
