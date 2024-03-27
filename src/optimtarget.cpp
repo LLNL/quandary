@@ -479,6 +479,7 @@ int OptimTarget::prepareInitialState(const int iinit, const int ninit, std::vect
       // Identifier is the seed
       initID = iinit;
       
+      VecAssemblyBegin(rho0); VecAssemblyEnd(rho0);
       break;
 
     case InitialConditionType::PERFORMANCE:
@@ -498,6 +499,7 @@ int OptimTarget::prepareInitialState(const int iinit, const int ninit, std::vect
           if (ilow <= elem_re && elem_re < iupp) VecSetValue(rho0, elem_re, val, INSERT_VALUES);
         }
       }
+      VecAssemblyBegin(rho0); VecAssemblyEnd(rho0);
       break;
 
     case InitialConditionType::FROMFILE:
