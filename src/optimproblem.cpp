@@ -547,14 +547,14 @@ double OptimProblem::evalGradF_(const double* x, const size_t i, double* G, cons
       if (optim_target->getInitCondType() == InitialConditionType::RANDOM) {
         double obj_iinit_re = 0.0;
         double obj_iinit_im = 0.0;
-        optim_target->evalJ(store_finalstates[iinit],  &obj_iinit_re, &obj_iinit_im);
+        optim_target->evalJ(store_finalstates[iinit-i],  &obj_iinit_re, &obj_iinit_im);
         obj_cost_re_bar = 2.0*obj_iinit_re*obj_cost_bar;
         obj_cost_im_bar = 2.0*obj_iinit_im*obj_cost_bar;
       }
-      optim_target->evalJ_diff(store_finalstates[iinit], rho_t0_bar, obj_weights[iinit-i]*obj_cost_re_bar, obj_weights[iinit-i]*obj_cost_im_bar);
+      optim_target->evalJ_diff(store_finalstates[iinit-i], rho_t0_bar, obj_weights[iinit-i]*obj_cost_re_bar, obj_weights[iinit-i]*obj_cost_im_bar);
 
       /* Derivative of time-stepping */
-      timestepper->solveAdjointODE(initid, rho_t0_bar, store_finalstates[iinit], obj_weights[iinit-i] * gamma_penalty, obj_weights[iinit-i]*gamma_penalty_dpdm, obj_weights[iinit-i]*gamma_penalty_energy);
+      timestepper->solveAdjointODE(initid, rho_t0_bar, store_finalstates[iinit-i], obj_weights[iinit-i] * gamma_penalty, obj_weights[iinit-i]*gamma_penalty_dpdm, obj_weights[iinit-i]*gamma_penalty_energy);
 
       /* Add to optimizers's gradient */
       const PetscScalar* g_ptr;
