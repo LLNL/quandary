@@ -430,7 +430,10 @@ int main(int argc,char **argv)
     stochastic_opt = true;
   } 
 
-  ens::Adam ens_optimizer(stepsize, batchsize, 0.9, 0.999, 1e-8, optimctx->getMaxIter(), 1e-5, true);       // Ensmallen ADAM optimizer
+  // Maximum epochs:
+  int nelems_per_epoch = floor(ndata / batchsize);
+  int maxepochs = optimctx->getMaxIter() * nelems_per_epoch;
+  ens::Adam ens_optimizer(stepsize, batchsize, 0.9, 0.999, 1e-8,maxepochs, 1e-5, true);       // Ensmallen ADAM optimizer
  
 // #endif
 
