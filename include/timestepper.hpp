@@ -16,6 +16,7 @@ class TimeStepper{
   protected:
     int dim;             /* State vector dimension */
     Vec x;               // auxiliary vector needed for time stepping
+    Vec xprimal;         // auxiliary vector needed for backwards time stepping
     std::vector<Vec> store_states; /* Storage for primal states */
     std::vector<Vec> dpdm_states;  /* storage of primal states needed for DpDm penalty term */
     bool addLeakagePrevent;   /* flag to determine if Leakage preventing term is added to penalty.  */
