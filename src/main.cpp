@@ -572,7 +572,8 @@ int main(int argc,char **argv)
   
 
   /* --- Finite Differences --- */
-  if (mpirank_world == 0) printf("\nFD...\n");
+  if (mpirank_world == 0) printf("\nFinite Difference testing...\n");
+  double max_err = 0.0;
   for (PetscInt i=0; i<optimctx->getNdesign(); i++){
   // {int i=0;
 
@@ -604,6 +605,7 @@ int main(int argc,char **argv)
       VecGetValues(grad, 1, &i, &gradi);
     if (fd != 0.0) err = (gradi - fd) / fd;
     if (mpirank_world == 0) printf(" %d: obj %1.14e, obj_pert1 %1.14e, obj_pert2 %1.14e, fd %1.14e, grad %1.14e, err %1.14e\n", i, obj_org, obj_pert1, obj_pert2, fd, gradi, err);
+    if (abs(err) > max_err) max_err = err;
 
     /* Restore parameter */
     if (stochastic_opt) 
@@ -611,6 +613,8 @@ int main(int argc,char **argv)
     else
       VecSetValue(xinit, i, EPS, ADD_VALUES);
   }
+
+  printf("\nMax. Finite Difference error: %1.14e\n\n", max_err);
   
 #endif
 

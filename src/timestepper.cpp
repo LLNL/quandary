@@ -44,6 +44,7 @@ TimeStepper::TimeStepper(MapParam config, MasterEq* mastereq_, int ntime_, doubl
   VecSetSizes(x, PETSC_DECIDE, dim);
   VecSetFromOptions(x);
   VecZeroEntries(x);
+  VecDuplicate(x, &xprimal);
 
   /* Allocate the reduced gradient */
   int ndesign = 0;
@@ -63,6 +64,7 @@ TimeStepper::~TimeStepper() {
     VecDestroy(&(store_states[n]));
   }
   VecDestroy(&x);
+  VecDestroy(&xprimal);
   VecDestroy(&redgrad);
 }
 
@@ -167,7 +169,7 @@ void TimeStepper::solveAdjointODE(int initid, Vec rho_t0_bar, Vec finalstate, do
   VecCopy(rho_t0_bar, x);
 
   /* Set terminal primal state */
-  Vec xprimal = finalstate;
+  VecCopy(finalstate, xprimal);
 
   /* Store states at N, N-1, N-2 for dpdm penalty */
   if (gamma_penalty_dpdm > 1e-13){
@@ -202,7 +204,7 @@ void TimeStepper::solveAdjointODE(int initid, Vec rho_t0_bar, Vec finalstate, do
     if (gamma_penalty > 1e-13) penaltyIntegral_diff(tstop, xprimal, x, Jbar_penalty);
 
     /* Get the state at n-1. If Schroedinger solver, recompute it by taking a step backwards with the forward solver, otherwise get it from storage. */
-    if (storeFWD) xprimal = getState(n-1);
+    if (storeFWD) VecCopy(getState(n-1), xprimal);
     else evolveFWD(tstop, tstart, xprimal);
 
     /* Take one time step backwards for the adjoint */
