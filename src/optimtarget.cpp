@@ -750,6 +750,11 @@ void OptimTarget::evalJ(const Vec state, double* J_re_ptr, double* J_im_ptr){
     case ObjectiveType::JTRACE:
 
       HilbertSchmidtOverlap(state, true, &J_re, &J_im); // is real if Lindblad solver. 
+
+      if (initcond_type == InitialConditionType::RANDOM){
+        J_re = 1.0 - (pow(J_re, 2.0) + pow(J_im, 2.0)); 
+        J_im = 0.0; 
+      }
       break; // case J_Trace
 
     /* J_Measure = Tr(O_m rho(T)) = \sum_i |i-m| rho_ii(T) if Lindblad and \sum_i |i-m| |phi_i(T)|^2  if Schroedinger */
@@ -798,6 +803,7 @@ void OptimTarget::evalJ_diff(const Vec state, Vec statebar, const double J_re_ba
   PetscInt ilo, ihi;
   double lambdai, val, val_re, val_im, rhoii_re, rhoii_im;
   PetscInt diagID, diagID_re, diagID_im, dimsq;
+  double a, b, J_re=0.0, J_im=0.0;
 
   switch (objective_type) {
 
@@ -818,7 +824,14 @@ void OptimTarget::evalJ_diff(const Vec state, Vec statebar, const double J_re_ba
       break; // case JFROBENIUS
 
     case ObjectiveType::JTRACE:
-      HilbertSchmidtOverlap_diff(state, statebar, true, J_re_bar, J_im_bar);
+      a = J_re_bar;
+      b = J_im_bar;
+      if (getInitCondType() == InitialConditionType::RANDOM) {
+        HilbertSchmidtOverlap(state, true, &J_re, &J_im); 
+        a = -2.0*J_re*J_re_bar;
+        b = -2.0*J_im*J_re_bar;
+      }
+      HilbertSchmidtOverlap_diff(state, statebar, true, a, b);
     break;
 
     case ObjectiveType::JMEASURE:
@@ -854,7 +867,7 @@ void OptimTarget::evalJ_diff(const Vec state, Vec statebar, const double J_re_ba
 double OptimTarget::finalizeJ(const double obj_cost_re, const double obj_cost_im) {
   double obj_cost = 0.0;
 
-  if (objective_type == ObjectiveType::JTRACE) {
+  if (objective_type == ObjectiveType::JTRACE && initcond_type != InitialConditionType::RANDOM) {
     if (lindbladtype == LindbladType::NONE) {
       obj_cost = 1.0 - (pow(obj_cost_re,2.0) + pow(obj_cost_im, 2.0));
     } else {
@@ -871,7 +884,7 @@ double OptimTarget::finalizeJ(const double obj_cost_re, const double obj_cost_im
 
 void OptimTarget::finalizeJ_diff(const double obj_cost_re, const double obj_cost_im, double* obj_cost_re_bar, double* obj_cost_im_bar){
 
-  if (objective_type == ObjectiveType::JTRACE) {
+  if (objective_type == ObjectiveType::JTRACE && initcond_type != InitialConditionType::RANDOM) {
     if (lindbladtype == LindbladType::NONE) {
       // obj_cost = 1.0 - (pow(obj_cost_re,2.0) + pow(obj_cost_im, 2.0));
       *obj_cost_re_bar = -2.*obj_cost_re;

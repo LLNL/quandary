@@ -290,11 +290,6 @@ double OptimProblem::evalF_(const double* x, const size_t i, const size_t ninit_
     obj_cost_re += obj_weights[iinit-i] * obj_iinit_re;
     obj_cost_im += obj_weights[iinit-i] * obj_iinit_im;
 
-    // If stochastic optimizer, take the absolute value here and add to objective function
-    if (optim_target->getInitCondType() == InitialConditionType::RANDOM) {
-      obj_cost += obj_weights[iinit-i]*(1.0 - (pow(obj_iinit_re,2.0) + pow(obj_iinit_im, 2.0)));
-    }
-
     /* Add to final-time fidelity */
     double fidelity_iinit_re = 0.0;
     double fidelity_iinit_im = 0.0;
@@ -335,9 +330,7 @@ double OptimProblem::evalF_(const double* x, const size_t i, const size_t ninit_
   }
  
   /* Finalize the objective function */
-  if (optim_target->getInitCondType() != InitialConditionType::RANDOM) {
-    obj_cost = optim_target->finalizeJ(obj_cost_re, obj_cost_im);
-  }
+  obj_cost = optim_target->finalizeJ(obj_cost_re, obj_cost_im);
 
   /* Evaluate regularization objective += gamma/2 * ||x-x0||^2*/
   obj_regul = gamma_tik * evalTikhonov_(x, ndesign);
@@ -437,10 +430,6 @@ double OptimProblem::evalGradF_(const double* x, const size_t i, double* G, cons
     obj_cost_re += obj_weights[iinit-i] * obj_iinit_re;
     obj_cost_im += obj_weights[iinit-i] * obj_iinit_im;
 
-    // If stochastic optimizer, take the absolute value here and add to objective function
-    if (optim_target->getInitCondType() == InitialConditionType::RANDOM) {
-      obj_cost += obj_weights[iinit-i] * (1.0 - (pow(obj_iinit_re,2.0) + pow(obj_iinit_im, 2.0)));
-    }
     /* Add to final-time fidelity */
     double fidelity_iinit_re = 0.0;
     double fidelity_iinit_im = 0.0;
@@ -505,10 +494,7 @@ double OptimProblem::evalGradF_(const double* x, const size_t i, double* G, cons
     fidelity = fidelity_re; 
   }
  
-  /* Finalize the objective function Jtrace to get the infidelity. */
-  if (optim_target->getInitCondType() != InitialConditionType::RANDOM) {
-    obj_cost = optim_target->finalizeJ(obj_cost_re, obj_cost_im);
-  }
+  obj_cost = optim_target->finalizeJ(obj_cost_re, obj_cost_im);
 
   /* Evaluate regularization objective += gamma/2 * ||x||^2*/
   obj_regul = gamma_tik * evalTikhonov_(x, ndesign);
@@ -520,12 +506,7 @@ double OptimProblem::evalGradF_(const double* x, const size_t i, double* G, cons
   if (timestepper->mastereq->lindbladtype == LindbladType::NONE) {
 
     double obj_cost_re_bar=0.0, obj_cost_im_bar=0.0;
-    double obj_cost_bar = 0.0;
-    if (optim_target->getInitCondType() == InitialConditionType::RANDOM) {
-      obj_cost_bar = -1.0;
-    } else {
-      optim_target->finalizeJ_diff(obj_cost_re, obj_cost_im, &obj_cost_re_bar, &obj_cost_im_bar);
-    }
+    optim_target->finalizeJ_diff(obj_cost_re, obj_cost_im, &obj_cost_re_bar, &obj_cost_im_bar);
 
     // Iterate over all initial conditions 
     for (int iinit = i; iinit < i+ninit_local; iinit++) {
@@ -544,13 +525,6 @@ double OptimProblem::evalGradF_(const double* x, const size_t i, double* G, cons
       VecZeroEntries(rho_t0_bar);
 
       /* Terminal condition for adjoint variable: Derivative of final time objective J */
-      if (optim_target->getInitCondType() == InitialConditionType::RANDOM) {
-        double obj_iinit_re = 0.0;
-        double obj_iinit_im = 0.0;
-        optim_target->evalJ(store_finalstates[iinit-i],  &obj_iinit_re, &obj_iinit_im);
-        obj_cost_re_bar = 2.0*obj_iinit_re*obj_cost_bar;
-        obj_cost_im_bar = 2.0*obj_iinit_im*obj_cost_bar;
-      }
       optim_target->evalJ_diff(store_finalstates[iinit-i], rho_t0_bar, obj_weights[iinit-i]*obj_cost_re_bar, obj_weights[iinit-i]*obj_cost_im_bar);
 
       /* Derivative of time-stepping */
