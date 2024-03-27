@@ -703,6 +703,12 @@ void OptimTarget::prepareTargetState(const Vec rho_t0){
   /* Compute and store the purity of rho(0), Tr(rho(0)^2), so that it can be used by JTrace (HS overlap) */
   VecNorm(rho_t0, NORM_2, &purity_rho0);
   purity_rho0 = purity_rho0 * purity_rho0;
+
+  // 
+  if (abs(purity_rho0 - 1.0) > 1e-14) {
+    printf("Rho_t0 is not pure (%1.14e), but should be for Schroedinger solver! Exiting now.\n", purity_rho0);
+    exit(1);
+  }
 }
 
 
