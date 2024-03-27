@@ -51,7 +51,8 @@ class OptimProblem {
   double obj_penal;                /* Penalty term in objective */
   double obj_penal_dpdm;           /* Penalty term in objective for second order state */
   double obj_penal_energy;         /* Energy Penalty term in objective */
-  double fidelity;                 /* Final-time fidelity: 1/ninit \sum_iinit Tr(rhotarget^\dag rho(T)) for Lindblad, or |1/ninit \sum_iinit phitarget^dagger phi |^2 for Schroedinger */
+  double fidelity;                 /* Final-time GATE fidelity: 1/ninit \sum_iinit Tr(rhotarget^\dag rho(T)) for Lindblad, or |1/ninit \sum_iinit phitarget^dagger phi |^2 for Schroedinger */
+  double fidelity_avg;              /* Final-time average fidelity: 1/batch \sum_iinit |phitarget^dagger phi |^2 for Schroedinger */
   double gnorm;                    /* Holds current norm of gradient */
   double gamma_tik;                /* Parameter for tikhonov regularization */
   bool gamma_tik_interpolate;      /* Switch to use ||x - x0||^2 for tikhonov regularization instead of ||x||^2 */

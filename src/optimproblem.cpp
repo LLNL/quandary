@@ -253,6 +253,7 @@ double OptimProblem::evalF_(const double* x, const size_t i, const size_t ninit_
   obj_penal_dpdm = 0.0;
   obj_penal_energy = 0.0;
   fidelity = 0.0;
+  fidelity_avg = 0.0;
   double obj_cost_re = 0.0;
   double obj_cost_im = 0.0;
   double fidelity_re = 0.0;
@@ -266,7 +267,7 @@ double OptimProblem::evalF_(const double* x, const size_t i, const size_t ninit_
       iinit_global = ic_seed[iinit];
     }
     int initid = optim_target->prepareInitialState(iinit_global, ninit, timestepper->mastereq->nlevels, timestepper->mastereq->nessential, rho_t0);
-    if (mpirank_optim == 0 && !quietmode) printf("%d: iinit=%d, i=%zu, ninit_local=%zu. Initial condition id=%d ...\n", mpirank_init, iinit, i, ninit_local, initid);
+    if (mpirank_optim == 0 && !quietmode) printf("%d: iinit=%d, i=%zu, ninit_local=%zu. Initial condition id=%d/%d ...\n", mpirank_init, iinit, i, ninit_local, initid, ninit);
 
     /* If gate optimiztion, compute the target state rho^target = Vrho(0)V^dagger */
     optim_target->prepareTargetState(rho_t0);
@@ -290,18 +291,18 @@ double OptimProblem::evalF_(const double* x, const size_t i, const size_t ninit_
     obj_cost_re += obj_weights[iinit-i] * obj_iinit_re;
     obj_cost_im += obj_weights[iinit-i] * obj_iinit_im;
 
-    /* Add to final-time fidelity */
+    /* Add to final-time fidelity. */
     double fidelity_iinit_re = 0.0;
     double fidelity_iinit_im = 0.0;
-    optim_target->HilbertSchmidtOverlap(finalstate, false, &fidelity_iinit_re, &fidelity_iinit_im);
-    double scaling = 1./ninit;
-    if (optim_target->getInitCondType() == InitialConditionType::RANDOM) {
-      scaling = 1.0;
-    }
-    fidelity_re += scaling * fidelity_iinit_re;
-    fidelity_im += scaling * fidelity_iinit_im;
+    optim_target->HilbertSchmidtOverlap(finalstate, true, &fidelity_iinit_re, &fidelity_iinit_im);
+    // Add to GATE fidelity |1/n Tr(V'U)|^2:
+    fidelity_re += 1./ninit * fidelity_iinit_re;
+    fidelity_im += 1./ninit * fidelity_iinit_im;
+    // Add to AVERAGE fidelity 1/batchsize \sum_i |<Vx_i|Ux_i>|^2
+    double fid_iinit = pow(fidelity_iinit_re, 2.0) + pow(fidelity_iinit_im, 2.0);
+    fidelity_avg += 1./ninit_local * fid_iinit;
 
-    // printf("%d, %d: iinit obj_iinit: %f * (%1.14e + i %1.14e), obj_cost=%1.14e, Overlap=%1.14e + i %1.14e\n", mpirank_world, mpirank_init, obj_weights[iinit-i], obj_iinit_re, obj_iinit_im, obj_cost, fidelity_iinit_re, fidelity_iinit_im);
+    printf("%d, %d: iinit obj_iinit: %f * (%1.14e + i %1.14e), state fidelity=%1.14e\n", mpirank_world, mpirank_init, obj_weights[iinit-i], obj_iinit_re, obj_iinit_im, fid_iinit);
   }
 
   /* Sum up from initial conditions processors */
@@ -313,6 +314,7 @@ double OptimProblem::evalF_(const double* x, const size_t i, const size_t ninit_
   double mycost = obj_cost;
   double myfidelity_re = fidelity_re;
   double myfidelity_im = fidelity_im;
+  double myfidelity_avg = fidelity_avg;
   MPI_Allreduce(&mypen, &obj_penal, 1, MPI_DOUBLE, MPI_SUM, comm_init);
   MPI_Allreduce(&mypen_dpdm, &obj_penal_dpdm, 1, MPI_DOUBLE, MPI_SUM, comm_init);
   MPI_Allreduce(&mypenen, &obj_penal_energy, 1, MPI_DOUBLE, MPI_SUM, comm_init);
@@ -321,8 +323,9 @@ double OptimProblem::evalF_(const double* x, const size_t i, const size_t ninit_
   MPI_Allreduce(&mycost, &obj_cost, 1, MPI_DOUBLE, MPI_SUM, comm_init);
   MPI_Allreduce(&myfidelity_re, &fidelity_re, 1, MPI_DOUBLE, MPI_SUM, comm_init);
   MPI_Allreduce(&myfidelity_im, &fidelity_im, 1, MPI_DOUBLE, MPI_SUM, comm_init);
+  MPI_Allreduce(&myfidelity_avg, &fidelity_avg, 1, MPI_DOUBLE, MPI_SUM, comm_init);
 
-  /* Set the fidelity: If Schroedinger, need to compute the absolute value: Fid= |\sum_i \phi^\dagger \phi_target|^2 */
+  /* Set the gate fidelity: If Schroedinger, need to compute the absolute value: Fid= |\sum_i \phi^\dagger \phi_target|^2 */
   if (timestepper->mastereq->lindbladtype == LindbladType::NONE) {
     fidelity = pow(fidelity_re, 2.0) + pow(fidelity_im, 2.0);
   } else {
@@ -341,7 +344,8 @@ double OptimProblem::evalF_(const double* x, const size_t i, const size_t ninit_
   /* Output */
   if (mpirank_world == 0) {
     std::cout<< "Objective = " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal << " + " << obj_penal_dpdm << " + " << obj_penal_energy << std::endl;
-    std::cout<< "Fidelity = " << fidelity  << std::endl;
+    std::cout<< "Gate Fidelity = " << fidelity  << std::endl;
+    std::cout<< "Avg. Fidelity = " << fidelity_avg  << std::endl;
   }
 
   return objective;
@@ -387,6 +391,7 @@ double OptimProblem::evalGradF_(const double* x, const size_t i, double* G, cons
   obj_penal_dpdm = 0.0;
   obj_penal_energy = 0.0;
   fidelity = 0.0;
+  fidelity_avg = 0.0;
   double obj_cost_re = 0.0;
   double obj_cost_im = 0.0;
   double fidelity_re = 0.0;
@@ -401,7 +406,7 @@ double OptimProblem::evalGradF_(const double* x, const size_t i, double* G, cons
       iinit_global = ic_seed[iinit];
     }
     int initid = optim_target->prepareInitialState(iinit_global, ninit, timestepper->mastereq->nlevels, timestepper->mastereq->nessential, rho_t0);
-    if (mpirank_optim == 0 && !quietmode) printf("%d: iinit=%d, i=%zu, ninit_local=%zu. Initial condition id=%d ...\n", mpirank_init, iinit, i, ninit_local, initid);
+    if (mpirank_optim == 0 && !quietmode) printf("%d: iinit=%d, i=%zu, ninit_local=%zu. Initial condition id=%d/%d ...\n", mpirank_init, iinit, i, ninit_local, initid, ninit);
 
     /* If gate optimiztion, compute the target state rho^target = Vrho(0)V^dagger */
     optim_target->prepareTargetState(rho_t0);
@@ -433,16 +438,15 @@ double OptimProblem::evalGradF_(const double* x, const size_t i, double* G, cons
     /* Add to final-time fidelity */
     double fidelity_iinit_re = 0.0;
     double fidelity_iinit_im = 0.0;
-    optim_target->HilbertSchmidtOverlap(finalstate, false, &fidelity_iinit_re, &fidelity_iinit_im);
-    double scaling = 1./ninit;
-    if (optim_target->getInitCondType() == InitialConditionType::RANDOM) {
-      scaling = 1.0;
-    }
-    fidelity_re += scaling * fidelity_iinit_re;
-    fidelity_im += scaling * fidelity_iinit_im;
+    optim_target->HilbertSchmidtOverlap(finalstate, true, &fidelity_iinit_re, &fidelity_iinit_im);
+    // Add to GATE fidelity |1/n Tr(V'U)|^2:
+    fidelity_re += 1./ninit * fidelity_iinit_re;
+    fidelity_im += 1./ninit * fidelity_iinit_im;
+    // Add to AVERAGE fidelity 1/batchsize \sum_i |<Vx_i|Ux_i>|^2
+    double fid_iinit = pow(fidelity_iinit_re, 2.0) + pow(fidelity_iinit_im, 2.0);
+    fidelity_avg += 1./ninit_local * fid_iinit;
 
-
-    // printf("%d, %d: iinit obj_iinit: %f * (%1.14e + i %1.14e), obj_cost=%1.14e, Overlap=%1.14e + i %1.14e\n", mpirank_world, mpirank_init, obj_weights[iinit-i], obj_iinit_re, obj_iinit_im, obj_cost, fidelity_iinit_re, fidelity_iinit_im);
+    printf("%d, %d: iinit obj_iinit: %f * (%1.14e + i %1.14e), state fidelity=%1.14e\n", mpirank_world, mpirank_init, obj_weights[iinit-i], obj_iinit_re, obj_iinit_im, fid_iinit);
 
     /* If Lindblas solver, compute adjoint for this initial condition. Otherwise (Schroedinger solver), compute adjoint only after all initial conditions have been propagated through (separate loop below) */
     if (timestepper->mastereq->lindbladtype != LindbladType::NONE) {
@@ -478,6 +482,7 @@ double OptimProblem::evalGradF_(const double* x, const size_t i, double* G, cons
   double mycost = obj_cost;
   double myfidelity_re = fidelity_re;
   double myfidelity_im = fidelity_im;
+  double myfidelity_avg = fidelity_avg;
   MPI_Allreduce(&mypen, &obj_penal, 1, MPI_DOUBLE, MPI_SUM, comm_init);
   MPI_Allreduce(&mypen_dpdm, &obj_penal_dpdm, 1, MPI_DOUBLE, MPI_SUM, comm_init);
   MPI_Allreduce(&mypenen, &obj_penal_energy, 1, MPI_DOUBLE, MPI_SUM, comm_init);
@@ -486,6 +491,7 @@ double OptimProblem::evalGradF_(const double* x, const size_t i, double* G, cons
   MPI_Allreduce(&mycost, &obj_cost, 1, MPI_DOUBLE, MPI_SUM, comm_init);
   MPI_Allreduce(&myfidelity_re, &fidelity_re, 1, MPI_DOUBLE, MPI_SUM, comm_init);
   MPI_Allreduce(&myfidelity_im, &fidelity_im, 1, MPI_DOUBLE, MPI_SUM, comm_init);
+  MPI_Allreduce(&myfidelity_avg, &fidelity_avg, 1, MPI_DOUBLE, MPI_SUM, comm_init);
 
   /* Set the fidelity: If Schroedinger, need to compute the absolute value: Fid= |\sum_i \phi^\dagger \phi_target|^2 */
   if (timestepper->mastereq->lindbladtype == LindbladType::NONE) {
@@ -558,7 +564,10 @@ double OptimProblem::evalGradF_(const double* x, const size_t i, double* G, cons
   /* Output */
   if (mpirank_world == 0 && !quietmode) {
     std::cout<< "Objective = " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal << " + " << obj_penal_dpdm << " + " << obj_penal_energy << std::endl;
-    std::cout<< "Fidelity = " << fidelity << std::endl;
+    if (optim_target->getInitCondType() == InitialConditionType::BASIS) {
+      std::cout<< "Gate Fidelity = " << fidelity << std::endl;
+    }
+    std::cout<< "Avg. Fidelity = " << fidelity_avg  << std::endl;
   }
 
   // printf("Writing controls %1.14e\n", x[0]);
