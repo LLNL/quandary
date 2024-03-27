@@ -423,7 +423,7 @@ int main(int argc,char **argv)
     ndata = config.GetIntParam("ndata", 1, false, true);
     batchsize = config.GetIntParam("batchsize", -1, false, true);
     stepsize = config.GetDoubleParam("stepsize", 1e-3, true);
-    printf("Creating stochastic ENSMALLEN optimizer, ndata=%d.\n", ndata);
+    printf("\nCreating stochastic ENSMALLEN optimizer, ndata=%d, batchsize=%d.\n", ndata, batchsize);
     ens_function = new EnsmallenFunction(optimctx, ndata,rand_engine);
 
    // Store flag for stochastic optimizer
@@ -431,9 +431,9 @@ int main(int argc,char **argv)
   } 
 
   // Maximum epochs:
-  int nelems_per_epoch = floor(ndata / batchsize);
-  int maxepochs = optimctx->getMaxIter() * nelems_per_epoch;
-  ens::Adam ens_optimizer(stepsize, batchsize, 0.9, 0.999, 1e-8,maxepochs, 1e-5, true);       // Ensmallen ADAM optimizer
+  int maxADAMiters = ndata * optimctx->getMaxIter();
+  printf("Creating ADAM optimizer with batchsize=%d, maxupdates =%d\n\n", batchsize, maxADAMiters);
+  ens::Adam ens_optimizer(stepsize, batchsize, 0.9, 0.999, 1e-8,maxADAMiters, 1e-5, true);       // Ensmallen ADAM optimizer
  
 // #endif
 
