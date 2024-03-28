@@ -436,18 +436,18 @@ int main(int argc,char **argv)
   bool shuffle = true;
 
   printf("Creating stochastic optimizer with batchsize=%d, maxupdates=%d\n\n", batchsize, maxiters);
-  ens::Adam ens_optimizer(stepsize, batchsize, 0.9, 0.999, 1e-8,maxiters, tolerance, shuffle);
-  // ens::Nadam(stepsize, batchsize, 0.9, 0.999, 1e-8,maxiters, tolerance, shuffle);
-  // ens::StandardSGD ens_optimizer(stepsize, batchsize, maxiters, tolerance, shuffle); 
-  // ens::MomentumSGD(stepsize, batchsize, maxiters, tolerance, shuffle);
-  // ens::IQN(stepsize, batchsize, maxiters, tolerance);
-  // ens::SARAH optimizer(stepsize, batchsize, maxiters, 0, tolerance, shuffle);
-  // ens::SARAH_Plus optimizerPlus(stepsize, batchsize, maxiters, 0, tolerance, shuffle);
+  // ens::Adam* ens_optimizer = new ens::Adam(stepsize, batchsize, 0.9, 0.999, 1e-8,maxiters, tolerance, shuffle);
+  // ens::Nadam* ens_optimizer = new ens::Nadam(stepsize, batchsize, 0.9, 0.999, 1e-8,maxiters, tolerance, shuffle);
+  ens::StandardSGD* ens_optimizer = new ens::StandardSGD(stepsize, batchsize, maxiters, tolerance, shuffle); 
+  // ens::MomentumSGD* ens_optimizer = new ens::MomentumSGD(stepsize, batchsize, maxiters, tolerance, shuffle);
+  // ens::IQN* ens_optimizer = new ens::IQN(stepsize, batchsize, maxiters, tolerance);
+  // ens::SARAH* ens_optimizer = new ens::SARAH(stepsize, batchsize, maxiters, 0, tolerance, shuffle);
+  // ens::SARAH_Plus* ens_optimizer = new ens::SARAH_Plus(stepsize, batchsize, maxiters, 0, tolerance, shuffle);
 
-  // ens::Any ens_optimizer;
-  // ens_optimizer.Set(new ens::Adam(stepsize, batchsize, 0.9, 0.999, 1e-8,maxiters, tolerance, shuffle));
-  // printf("YES? %d\n", ens_optimizer.Has());
- 
+  // ens::Any* test = new ens::Any();
+  // test->Set(new ens::Adam(stepsize, batchsize, 0.9, 0.999, 1e-8,maxiters, tolerance, shuffle));
+  // printf("YES? %d\n", test->Has());
+
 // #endif
 
   /* Some output */
@@ -504,7 +504,7 @@ int main(int argc,char **argv)
     VecCopy(xinit, optimctx->xinit); // Store the initial guess
     if (mpirank_world == 0 && !quietmode) printf("\nStarting Optimization solver ... \n");
     if (stochastic_opt) {
-      ens_optimizer.Optimize(*ens_function, xinit_arma, EnsMonitor(), ens::ProgressBar());
+      ens_optimizer->Optimize(*ens_function, xinit_arma, EnsMonitor(), ens::ProgressBar());
     } else {
       optimctx->solve(xinit);
       optimctx->getSolution(&opt);
