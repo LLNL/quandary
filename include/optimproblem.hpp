@@ -97,7 +97,7 @@ class OptimProblem {
   double getPenalty()  { return obj_penal; };
   double getPenaltyDpDm()  { return obj_penal_dpdm; };
   double getPenaltyEnergy()  { return obj_penal_energy; };
-  double getFidelity() { return fidelity; };
+  double getAvgFidelity() { return fidelity_avg; };
   double getFaTol()    { return fatol; };
   double getInfTol()   { return inftol; };
   int getMPIrank_world() { return mpirank_world;};

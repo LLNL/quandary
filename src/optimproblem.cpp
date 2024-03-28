@@ -639,7 +639,7 @@ bool OptimProblem::Monitor(const double objective, const double* x, const size_t
   double obj_penal = getPenalty();
   double obj_penal_dpdm = getPenaltyDpDm();
   double obj_penal_energy = getPenaltyEnergy();
-  double F_avg = getFidelity();
+  double F_avg = getAvgFidelity();
   double gn = getGnorm();
 
   /* Print to optimization file */
@@ -655,13 +655,13 @@ bool OptimProblem::Monitor(const double objective, const double* x, const size_t
   /* Additional Stopping criteria */
   bool lastIter = false;
   std::string finalReason_str = "";
-  if (1.0 - F_avg <= getInfTol()) {
-    finalReason_str = "Optimization converged with small infidelity.";
-    lastIter = true;
-  } else if (obj_cost <= getFaTol()) {
-    finalReason_str = "Optimization converged with small final time cost.";
-    lastIter = true;
-  } 
+  // if (1.0 - F_avg <= getInfTol()) {
+  //   finalReason_str = "Optimization converged with small average infidelity.";
+  //   lastIter = true;
+  // } else if (obj_cost <= getFaTol()) {
+  //   finalReason_str = "Optimization converged with small final time cost.";
+  //   lastIter = true;
+  // } 
 
   /* Screen output header */
   if (getMPIrank_world() == 0 && iter == 0) {
@@ -679,7 +679,7 @@ bool OptimProblem::Monitor(const double objective, const double* x, const size_t
   if (getMPIrank_world() == 0 && lastIter){
     std::cout<< finalReason_str << std::endl;
   }
- 
+
   return lastIter;
 }
 
