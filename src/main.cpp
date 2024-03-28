@@ -431,9 +431,22 @@ int main(int argc,char **argv)
   } 
 
   // Maximum epochs:
-  int maxADAMiters = ndata * optimctx->getMaxIter();
-  printf("Creating ADAM optimizer with batchsize=%d, maxupdates =%d\n\n", batchsize, maxADAMiters);
-  ens::Adam ens_optimizer(stepsize, batchsize, 0.9, 0.999, 1e-8,maxADAMiters, 1e-5, true);       // Ensmallen ADAM optimizer
+  int maxiters = ndata * optimctx->getMaxIter();
+  double tolerance = optimctx->getFaTol(); // Absolute stopping criterion "optim_ftol"
+  bool shuffle = true;
+
+  printf("Creating stochastic optimizer with batchsize=%d, maxupdates=%d\n\n", batchsize, maxiters);
+  ens::Adam ens_optimizer(stepsize, batchsize, 0.9, 0.999, 1e-8,maxiters, tolerance, shuffle);
+  // ens::Nadam(stepsize, batchsize, 0.9, 0.999, 1e-8,maxiters, tolerance, shuffle);
+  // ens::StandardSGD ens_optimizer(stepsize, batchsize, maxiters, tolerance, shuffle); 
+  // ens::MomentumSGD(stepsize, batchsize, maxiters, tolerance, shuffle);
+  // ens::IQN(stepsize, batchsize, maxiters, tolerance);
+  // ens::SARAH optimizer(stepsize, batchsize, maxiters, 0, tolerance, shuffle);
+  // ens::SARAH_Plus optimizerPlus(stepsize, batchsize, maxiters, 0, tolerance, shuffle);
+
+  // ens::Any ens_optimizer;
+  // ens_optimizer.Set(new ens::Adam(stepsize, batchsize, 0.9, 0.999, 1e-8,maxiters, tolerance, shuffle));
+  // printf("YES? %d\n", ens_optimizer.Has());
  
 // #endif
 
