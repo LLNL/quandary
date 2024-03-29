@@ -211,7 +211,6 @@ double OptimProblem::evalF(const Vec x) {
   MasterEq* mastereq = timestepper->mastereq;
 
   if (mpirank_world == 0 && !quietmode) printf("EVAL F... \n");
-  Vec finalstate = NULL;
 
   /* Pass design vector x to oscillators */
   mastereq->setControlAmplitudes(x); 
@@ -238,7 +237,7 @@ double OptimProblem::evalF(const Vec x) {
     optim_target->prepareTargetState(rho_t0);
 
     /* Run forward with initial condition initid */
-    finalstate = timestepper->solveODE(initid, rho_t0);
+    Vec finalstate = timestepper->solveODE(initid, rho_t0);
 
     /* Add to integral penalty term */
     obj_penal += obj_weights[iinit] * gamma_penalty * timestepper->penalty_integral;
@@ -322,7 +321,6 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
   MasterEq* mastereq = timestepper->mastereq;
 
   if (mpirank_world == 0 && !quietmode) std::cout<< "EVAL GRAD F... " << std::endl;
-  Vec finalstate = NULL;
 
   /* Pass design vector x to oscillators */
   mastereq->setControlAmplitudes(x); 
@@ -363,7 +361,7 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
     // if (mpirank_optim == 0) printf("%d: %d FWD. ", mpirank_init, initid);
 
     /* Run forward with initial condition rho_t0 */
-    finalstate = timestepper->solveODE(initid, rho_t0);
+    Vec finalstate = timestepper->solveODE(initid, rho_t0);
 
     /* Store the final state for the Schroedinger solver */
     if (timestepper->mastereq->lindbladtype == LindbladType::NONE) VecCopy(finalstate, store_finalstates[iinit]);
@@ -462,19 +460,16 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
       int initid = optim_target->prepareInitialState(iinit_global, ninit, timestepper->mastereq->nlevels, timestepper->mastereq->nessential, rho_t0);
       optim_target->prepareTargetState(rho_t0);
      
-      /* Get the last time step (finalstate) */
-      finalstate = store_finalstates[iinit];
-
       /* Reset adjoint */
       VecZeroEntries(rho_t0_bar);
 
       /* Terminal condition for adjoint variable: Derivative of final time objective J */
       double obj_cost_re_bar, obj_cost_im_bar;
       optim_target->finalizeJ_diff(obj_cost_re, obj_cost_im, &obj_cost_re_bar, &obj_cost_im_bar);
-      optim_target->evalJ_diff(finalstate, rho_t0_bar, obj_weights[iinit]*obj_cost_re_bar, obj_weights[iinit]*obj_cost_im_bar);
+      optim_target->evalJ_diff(store_finalstates[iinit], rho_t0_bar, obj_weights[iinit]*obj_cost_re_bar, obj_weights[iinit]*obj_cost_im_bar);
 
       /* Derivative of time-stepping */
-      timestepper->solveAdjointODE(initid, rho_t0_bar, finalstate, obj_weights[iinit] * gamma_penalty, obj_weights[iinit]*gamma_penalty_dpdm, obj_weights[iinit]*gamma_penalty_energy);
+      timestepper->solveAdjointODE(initid, rho_t0_bar, store_finalstates[iinit], obj_weights[iinit] * gamma_penalty, obj_weights[iinit]*gamma_penalty_dpdm, obj_weights[iinit]*gamma_penalty_energy);
 
       /* Add to optimizers's gradient */
       VecAXPY(G, 1.0, timestepper->redgrad);
