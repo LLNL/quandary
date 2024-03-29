@@ -238,10 +238,10 @@ int Oscillator::getNSegParams(int segmentID){
 int Oscillator::evalControl(const double t, double* Re_ptr, double* Im_ptr){
 
   // Sanity check 
-  if ( t > Tfinal ){
-    printf("ERROR: accessing spline outside of [0,T] at %f. Should never happen! Bug.\n", t);
-    exit(1);
-  }
+  // if ( t > Tfinal ){
+  //   printf("ERROR: accessing spline outside of [0,T] at t-Tfinal = %e. Should never happen! Bug.\n", t-Tfinal);
+  //   exit(1);
+  // }
 
   // Default: Non controllable oscillator. Will typically be overwritten below. 
   *Re_ptr = 0.0;
@@ -295,7 +295,7 @@ int Oscillator::evalControl_diff(const double t, double* dRedp, double* dImdp) {
 
   // Sanity check 
   // if ( t > Tfinal ){
-  //   printf("ERROR: accessing spline outside of [0,T] at %f. Should never happen! Bug.\n", t);
+  //   printf("ERROR: accessing spline outside of [0,T] at %e. Should never happen! Bug.\n", t);
   //   exit(1);
   // } 
 

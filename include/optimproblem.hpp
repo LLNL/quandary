@@ -131,6 +131,7 @@ class OptimProblem {
   void setUnitarizeIntermediate(bool newVal) { unitarize_interm_ic = newVal; };
   void setIntermTol(double newVal) { interm_tol = newVal; };
   void setTaoWarmStart(PetscBool yes_no);
+  void setGradTol(double newAtol, double newRtol);
 
   /* Evaluate the objective function F(x) */
   double evalF(const Vec x, const Vec lambda_);

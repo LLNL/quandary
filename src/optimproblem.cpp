@@ -413,6 +413,11 @@ OptimProblem::~OptimProblem() {
   TaoDestroy(&tao);
 }
 
+void OptimProblem::setGradTol(double newAtol, double newRtol){
+  gatol = newAtol;
+  grtol = newRtol;
+  TaoSetTolerances(tao, gatol, PETSC_DEFAULT, grtol);
+}
 
 // EvalF optim var. x = (alpha, interm.states), 
 double OptimProblem::evalF(const Vec xin, const Vec lambda_) {
@@ -1024,7 +1029,7 @@ void OptimProblem::updateLagrangian(const double prev_mu, const Vec x_a, Vec lam
         VecAXPY(lag, -prev_mu, disc);
       }
       VecRestoreSubVector(lambda_a, IS_interm_lambda[iwindow_global][iinit_global], &lag);
-      printf("\n\n TODO: Check the updateLagrangian function!\n");
+      // printf("\n\n TODO: Check the updateLagrangian function!\n");
     }
   }
 }

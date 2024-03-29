@@ -648,9 +648,9 @@ int main(int argc,char **argv)
       
       TaoConvergedReason reason;
       optimctx->getExitReason(&reason);
-      if (mpirank_world == 0) std::cout << "\nTaoConvergedReason: " << reason << std::endl;
 
-      if (mpirank_world == 0 && !quietmode) printf("\nBefore getSolution AL iteration #%d ... \n", iouter);
+      if (mpirank_world == 0) printf("After total #optim-iters %d, TaoConvergedReason: %d\n", optimctx->getTotalIterations(), reason);
+
       optimctx->getSolution(&opt); // converged design variables copied into opt
 
       // check if the solution meets our convergence criteria
@@ -660,34 +660,52 @@ int main(int argc,char **argv)
       } 
 
       double norm2_disc = optimctx->getDiscontinuity();
-      if (mpirank_world == 0) printf("\nnorm^2(discontiuity) = %e\n", norm2_disc);
-
-      if (update_lagrangian){
-        if (mpirank_world == 0) printf("\nUpdating the Lagrangian, AL iteration #%d ... \n", iouter);
-        optimctx->updateLagrangian(optimctx->mu, opt, lambda);
-
-      //   FILE* file;
-      //   PetscScalar *ptr;
-      //   sprintf(filename, "%s/lagrange-outer-%d.bin", output->datadir.c_str(),iouter+1);
-      //   file = fopen(filename, "wb");
-      //   VecGetArray(lambda, &ptr);
-      //   fwrite(ptr, sizeof(ptr[0]), optimctx->getNstate(), file);
-      //   VecRestoreArray(lambda, &ptr);
-      //   fclose(file);
-      //   printf("Saved lambda variables on file %s containing %d float64\n", filename, optimctx->getNstate());
+      double last_infid = optimctx->getCostT();
+      double constraint = 0.5*optimctx->mu*norm2_disc;
+      
+      if (mpirank_world == 0){
+	printf("\nnorm^2(discontiuity) = %e\n", norm2_disc);
+	printf("Current constraint = %e, last infidelity = %e\n", constraint, last_infid);
       }
 
-      // update penalty parameter
-      optimctx->mu = mu_factor * optimctx->mu; // increasing quadratic penalty param
-      if (mpirank_world == 0) printf("Updated quadratic penalty param, mu = %e\n", optimctx->mu);
+      if (norm2_disc < 1e-2)
+      {
+	update_lagrangian = true;
+        if (mpirank_world == 0) printf("\nUpdating the Lagrangian, @ end of AL iteration #%d ... \n", iouter);
+        optimctx->updateLagrangian(optimctx->mu, opt, lambda);
 
+	// tighten inner convergence tol
+	double grad_Rtol = 0.1 * optimctx->getGradRelTol(); // make factor tunable
+	double grad_Atol = 0.1 * optimctx->getGradAbsTol(); // make factor tunable
+	optimctx->setGradTol( grad_Atol, grad_Rtol );
+        if (mpirank_world == 0) printf("\nUpdated grad (abs+rel)-tol = %e\n", optimctx->getGradRelTol());
+      }
+      else
+      {
+	// disable warm starting (if it was enabled)
+	optimctx->setTaoWarmStart(PETSC_FALSE);
+	// increase quadratic penalty param
+	optimctx->mu = mu_factor * optimctx->mu;
+        if (mpirank_world == 0) printf("\nUpdated mu = %e\n", optimctx->mu);
+      }
+
+      // // update penalty parameter
+      // if (constraint < last_infid)
+      // {
+      // 	// enable warm starting
+      // 	optimctx->setTaoWarmStart(PETSC_TRUE);
+      // 	if (mpirank_world == 0) printf("Enabling warm start, decreasing tol_grad to %e\n", optimctx->getGradRelTol());
+      // }
+      
       // update convergence tolerance
       // optimctx->setIntermTol( optimctx->getIntermTol()/discont_factor ); //reduce norm^2(disc) tolerance
-      if (mpirank_world == 0) printf("Updated norm^2(disc) threshold = %e\n", optimctx->getIntermTol());
 
+      if (mpirank_world == 0) printf("Next parameters: norm^2(disc)-threshold = %e, mu = %e, grad (abs+rel)-tol = %e\n",
+				     optimctx->getIntermTol(), optimctx->mu, optimctx->getGradRelTol());
+            
       /* update initial condition for next iteration */
       VecCopy(opt,xinit); 
-    } 
+    } /* end outer loop */
     
 
     EndTime = MPI_Wtime();
@@ -696,6 +714,10 @@ int main(int argc,char **argv)
     int totalIterations = optimctx->getTotalIterations();
     if (mpirank_world == 0) printf("Total number of optimizer iterations = %d\n", totalIterations);
 
+    /* save design variables and control functions on file */
+    if (mpirank_world == 0 && !quietmode) printf("\nEvaluating final controls ... \n");
+    output->writeControls(opt, mastereq, ntime, dt);
+    
     /* All variables are saved as binary files, to save the storage size and time. */
     // if (mpirank_world == 0) {
     //   FILE* file;

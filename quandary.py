@@ -4,6 +4,7 @@ from subprocess import run, PIPE, Popen, call
 import matplotlib.pyplot as plt
 from dataclasses import dataclass, field, replace
 from typing import List, Dict
+from math import ceil
 ## For some Matplotlib installations to work, you might need the below...
 # import PyQt6.QtCore
 
@@ -142,6 +143,7 @@ class Quandary:
     maxiter                : int   = 200         
     tol_infidelity         : float = 1e-5        
     tol_costfunc           : float = 1e-4        
+    tol_grad               : float = 1e-4        
     costfunction           : str   = "Jtrace"                      
     optim_target           : str   = "gate, none"
     gamma_tik0             : float = 1e-4 
@@ -237,8 +239,10 @@ class Quandary:
             print("Maximum control amplitudes: ", self.maxctrl_MHz, "MHz")
         if self.nwindows > 0: 
             if not (self.nsteps % self.nwindows == 0):
-                print("Warning: nwindows ", self.nwindows, " is not integer divisor of nsteps ", self.nsteps,". Using default now.\n")
-                self.nwindows = -1
+                print("Warning: nwindows ", self.nwindows, " is not integer divisor of nsteps ", self.nsteps )
+                self.nsteps = int(ceil(self.nsteps/self.nwindows))*self.nwindows
+                print("Info: new number of time steps: ", self.nsteps)
+
 
 
         # Estimate carrier wave frequencies
@@ -509,7 +513,8 @@ class Quandary:
         mystring = "nlevels = " + str(list(Nt))[1:-1] + "\n"
         mystring += "nessential= " + str(list(self.Ne))[1:-1] + "\n"
         mystring += "ntime = " + str(self.nsteps) + "\n"
-        mystring += "dt = " + str(self.T / self.nsteps) + "\n"
+#        mystring += "dt = " + str(self.T / self.nsteps) + "\n"
+        mystring += "duration = " + str(self.T) + "\n"
         mystring += "transfreq = " + str(list(self.freq01))[1:-1] + "\n"
         mystring += "rotfreq= " + str(list(self.rotfreq))[1:-1] + "\n"
         mystring += "selfkerr = " + str(list(self.selfkerr))[1:-1] + "\n"
@@ -567,8 +572,8 @@ class Quandary:
         mystring += "optim_objective = " + str(self.costfunction) + "\n"
         mystring += "gate_rot_freq = 0.0\n"
         mystring += "optim_weights= 1.0\n"
-        mystring += "optim_atol= 1e-4\n"
-        mystring += "optim_rtol= 1e-4\n"
+        mystring += "optim_atol= " + str(self.tol_grad) + "\n"
+        mystring += "optim_rtol= " + str(self.tol_grad) + "\n"
         mystring += "optim_ftol= " + str(self.tol_costfunc) + "\n"
         mystring += "optim_inftol= " + str(self.tol_infidelity) + "\n"
         mystring += "optim_maxiter= " + str(self.maxiter) + "\n"
@@ -592,8 +597,12 @@ class Quandary:
         # End Multiple Shooting
         mystring += "datadir= ./\n"
         for iosc in range(len(self.Ne)):
-            mystring += "output" + str(iosc) + "=expectedEnergy, population, fullstate\n"
-        mystring += "output_frequency = 1\n"
+            mystring += "output" + str(iosc) + "=expectedEnergy\n" # default: only save expected energy on file
+#            mystring += "output" + str(iosc) + "=expectedEnergy, population, fullstate\n"
+
+# stride (down-sampling factor) for saving the ctrl functions on file
+        mystring += "output_frequency = 10\n" # Make this number tunable
+# output frequency for optimization progress        
         mystring += "optim_monitor_frequency = " + str(self.print_frequency_iter) + "\n"
         mystring += "runtype = " + runtype + "\n"
         if len(self.Ne) < 6:
@@ -1293,7 +1302,7 @@ def execute(*, runtype="simulation", ncores=1, config_filename="config.cfg", dat
 
     # If batchargs option is given, submit a batch script to schedule execution of Quandary
     if len(batchargs) > 0:
-        maxtime, account, nodes = batchargs
+        maxtime, account, nodes, partition = batchargs # note: nodes is an int, all others are strings
         batch_args = copy.deepcopy(default_batch_args)
         batch_args[batch_args_mapping["NAME"]]            = datadir
         batch_args[batch_args_mapping["ERROR"]]           = datadir+".err"
@@ -1301,6 +1310,7 @@ def execute(*, runtype="simulation", ncores=1, config_filename="config.cfg", dat
         batch_args[batch_args_mapping["NTASKS"]]          = ncores
         batch_args[batch_args_mapping["ACCOUNT"]]         = account
         batch_args[batch_args_mapping["NODES"]]           = nodes
+        batch_args[batch_args_mapping["PARTITION"]]       = partition
         batch_args[batch_args_mapping["TIME"]]            = maxtime
         assemble_batch_script(datadir+".batch", runcommand, batch_args)
         if True:
@@ -1372,5 +1382,6 @@ def assemble_batch_script(name, run_command, batch_args, exclusive=True):
         outfile.write("#SBATCH " + arg + "=" + str(value) + "\n")
     if exclusive:
         outfile.write("#SBATCH --exclusive\n")
+    outfile.write("uname -a\n")
     outfile.write(run_command)
     outfile.close()
