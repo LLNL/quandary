@@ -787,5 +787,12 @@ double EnsmallenFunction::EvaluateWithGradient(const arma::mat& x, const size_t 
   return F;
 }
 
+void EnsmallenFunction::Gradient(const arma::mat& x, const size_t i, arma::mat& g, const size_t batchSize){
+
+  double F = optimctx->evalGradF_(x.memptr(), i, g.memptr(), batchSize);
+  printf("NOPE. WHY Gradient() EVEN CALLED?? Should use EvaluateWithGradient(). \n");
+  exit(1);
+}
+
 // #endif
 

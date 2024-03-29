@@ -436,10 +436,14 @@ int main(int argc,char **argv)
   bool shuffle = true;
 
   printf("Creating stochastic optimizer with batchsize=%d, maxupdates=%d\n\n", batchsize, maxiters);
-  // ens::Adam* ens_optimizer = new ens::Adam(stepsize, batchsize, 0.9, 0.999, 1e-8,maxiters, tolerance, shuffle);
+  ens::Adam* ens_optimizer = new ens::Adam(stepsize, batchsize, 0.9, 0.999, 1e-8,maxiters, tolerance, shuffle);
   // ens::Nadam* ens_optimizer = new ens::Nadam(stepsize, batchsize, 0.9, 0.999, 1e-8,maxiters, tolerance, shuffle);
-  ens::StandardSGD* ens_optimizer = new ens::StandardSGD(stepsize, batchsize, maxiters, tolerance, shuffle); 
+  // ens::StandardSGD* ens_optimizer = new ens::StandardSGD(stepsize, batchsize, maxiters, tolerance, shuffle); 
   // ens::MomentumSGD* ens_optimizer = new ens::MomentumSGD(stepsize, batchsize, maxiters, tolerance, shuffle);
+  // ens::RMSProp* ens_optimizer = new ens::RMSProp(stepsize, batchsize);
+  // ens::Eve* ens_optimizer = new ens::Eve(stepsize, batchsize);
+
+  // WONT WORK for some reason...
   // ens::IQN* ens_optimizer = new ens::IQN(stepsize, batchsize, maxiters, tolerance);
   // ens::SARAH* ens_optimizer = new ens::SARAH(stepsize, batchsize, maxiters, 0, tolerance, shuffle);
   // ens::SARAH_Plus* ens_optimizer = new ens::SARAH_Plus(stepsize, batchsize, maxiters, 0, tolerance, shuffle);
