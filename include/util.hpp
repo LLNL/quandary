@@ -1,5 +1,6 @@
 #include <petscmat.h>
 #include <iostream>
+#include <fstream>
 #include <vector>
 #ifdef WITH_SLEPC
 #include <slepceps.h>
@@ -80,6 +81,8 @@ PetscErrorCode SanityTests(Vec x, PetscReal time);
  */
 int read_vector(const char *filename, double *var, int dim, bool quietmode=false, int skiplines=0, const std::string testheader="");
 
+/* Get the number of rows in a file */
+int get_file_length(std::string filename);
 
 /* 
  * Compute <neigvals> eigenvalues of A

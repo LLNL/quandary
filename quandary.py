@@ -40,7 +40,7 @@ class Quandary:
     # Optimization targets and initial states options
     targetgate          # Complex target unitary in the essential level dimensions for gate optimization. Default: none
     targetstate         # Complex target state vector for state-to-state optimization. Default: none
-    initialcondition    # Choose from provided initial states at time t=0.0: "basis" (all basis states, default), "pure, 0,0,1,..." (one pure initial state |001...>), or pass a vector as initial state. Default: "basis" 
+    initialcondition    # Choose from provided initial states at time t=0.0: "basis" (all basis states, default), "pure, 0,0,1,..." (one pure initial state |001...>), or pass a vector or matrix as initial state. Default: "basis" 
 
     # Control pulse options
     pcof0               # Optional: Pass an initial vector of control parameters. Default: none
@@ -193,7 +193,7 @@ class Quandary:
         if len(self.targetgate) > 0:
             self.optim_target = "gate, file"
         if not isinstance(self.initialcondition, str):
-            self._initialstate=self.initialcondition.copy()
+            self._initialstate=np.array(self.initialcondition).copy()
             self.initialcondition = "file" 
         # Convert maxctrl_MHz to a list for each oscillator, if not so already
         if isinstance(self.maxctrl_MHz, float) or isinstance(self.maxctrl_MHz, int):
@@ -202,8 +202,10 @@ class Quandary:
         
         # Store the number of initial conditions and solver flag
         self._lindblad_solver = True if (len(self.T1)>0) or (len(self.T2)>0) else False
-        if self.initialcondition[0:4] == "file" or self.initialcondition[0:4] == "pure":
+        if self.initialcondition[0:4] == "pure":
             self._ninit = 1
+        elif self.initialcondition[0:4] == "file":
+            self._ninit = 1 if self._initialstate.ndim == 1 else len(self._initialstate)
         else:
             self._ninit = np.prod(self.Ne)
         if self._lindblad_solver:
@@ -419,7 +421,14 @@ class Quandary:
                 state = np.outer(self._initialstate, np.array(self._initialstate).conj())
             else:
                 state = self._initialstate
-            vectorized = np.concatenate((np.real(state).ravel(order='F'), np.imag(state).ravel(order='F')))
+            # print("initialstate", state)
+            if state.ndim == 1: 
+                vectorized = np.concatenate((np.real(state).ravel(order='F'), np.imag(state).ravel(order='F')))
+            else:
+                vectorized = []
+                for icol in range(len(state)):
+                    col = np.concatenate((np.real(state[icol]).ravel(order='F'), np.imag(state[icol]).ravel(order='F')))
+                    vectorized = np.concatenate((vectorized, col))
             self._initstatefilename = "./initialstate.dat"
             with open(datadir+"/"+self._initstatefilename, "w") as f:
                 for value in vectorized:
@@ -505,6 +514,8 @@ class Quandary:
             mystring += "collapse_type = none\n"
         if self.initialcondition[0:4] == "file":
             mystring += "initialcondition = " + str(self.initialcondition) + ", " + self._initstatefilename + "\n"
+            if self._initialstate.ndim > 1:
+                mystring += "ninit = " + str(len(self._initialstate)) + "\n"
         else:
             mystring += "initialcondition = " + str(self.initialcondition) + "\n"
         for iosc in range(len(self.Ne)):
