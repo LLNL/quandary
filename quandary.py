@@ -765,6 +765,7 @@ def estimate_timesteps(*, T=1.0, Hsys=[], Hc_re=[], Hc_im=[], maxctrl_MHz=[], Pm
 
     # Get estimated control pulse amplitude
     est_ctrl_MHz = maxctrl_MHz[:]
+    # If maxctrl_MHz is not provided, use 10 Mz
     if len(maxctrl_MHz) == 0:
         est_ctrl_MHz = [10.0 for _ in range(max(len(Hc_re), len(Hc_im)))] 
 
