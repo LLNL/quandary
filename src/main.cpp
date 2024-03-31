@@ -657,8 +657,9 @@ int main(int argc,char **argv)
       optimctx->getSolution(&opt); // converged design variables copied into opt
 
       // check if the solution meets our convergence criteria
-      if ((optimctx->getCostT() <= optimctx->getInfTol()) && (optimctx->getDiscontinuity() < final_norm2_disc_tol)) {
-        if (mpirank_world == 0) printf("Inner optimization converged to a continuous trajectory with small final time cost and small discontinuity.\n");
+      if (reason == TAO_CONVERGED_USER)
+      {
+	if (mpirank_world == 0) printf("Exiting outer AL loop: continuous trajectory with small final time cost and small discontinuity.\n");
         break;
       } 
 
