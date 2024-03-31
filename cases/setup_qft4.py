@@ -14,8 +14,8 @@ nqubits = 4
 nstates = 2**nqubits
 
 # verbosity
-opt_verbose = False # False adds --quiet to run-time args
 verbose = True # used during setup
+opt_verbose = False # False adds --quiet to run-time args
 
 # Runtypes
 do_optim = True 
@@ -24,7 +24,7 @@ do_plot = False # Warning: buggy
 rand_seed = 1234
 
 # penalty coefficients
-gamma_energy = 1e-4
+gamma_energy = 1e-5 # 1e-4
 gamma_tik0 = 0.0 
 gamma_dpdm = 0.0
 
@@ -32,46 +32,50 @@ gamma_dpdm = 0.0
 print_frequency_iter = 50
 
 # Multiple Shooting options
-nwindows = 32 # 8 # 32 # 24 # 16 # 32 # 64 # 16  # Using -1 defaults to using nwindows = number of time-tasks.
+nwindows = 32 # 1 #
 
 # Set to true for AL method, false for quadratic penalty
 update_lagrangian = False
 
 # Misc optimization options
-tao_warmstart = False # True
+tao_warmstart = True # False
 unitarize = False
 
 # Max number of outer AL/QP iterations
-maxouter = 5
+maxouter = 15
 
 # Inner iteration
-maxiter = 500
+maxiter = 500 # 600 #
 interm_tol = 1e-4
 tol_infidelity = 1e-5
 
-tol_grad = 1e-1 # 5e-2 # 1e-4
+# penalty strength
+# baseline settings
+# mu = 1e-3 
+# mu_factor =  1.5
+# tol_grad = 1e-4
 
-# initial penalty strength
-mu = 1.0/nstates # 1e-3
-mu_factor = 5.0 # 10.0 # 1.5
+mu = 1e-3 # 1.0/nstates # 
+mu_factor = 1.5
+tol_grad = 1e-4
 
 # MPI options 
 maxcores = nstates*nwindows
 
-# (for quartz)
-nnodes = ceil(maxcores/36)
-
 # (for dane)
-#nnodes = ceil(maxcores/112)
+tasks_per_node = 64 # 96 # 103 # 112 is the max
 
-print("nstates =", nstates, "nwindows =", nwindows, "ncores =", maxcores, "nnodes =", nnodes)
+# Number of nodes
+nnodes = ceil(maxcores/tasks_per_node)
+
+print("nStates =", nstates, "nWindows =", nwindows, "nTasks =", maxcores, "nTasksPerNode =", tasks_per_node, "nNodes =", nnodes)
 
 # batch job args
 if nqubits == 2:
 	batchargs = ["0:15:00", "qude", 1, "pdebug"]
 else:
-	batchargs = ["0:05:00", "qude", nnodes, "pbatch"]
-#	batchargs = ["0:15:00", "qude", nnodes, "pdebug"]
+#	batchargs = ["0:05:00", "qude", nnodes, tasks_per_node, "pbatch"]
+	batchargs = ["0:10:00", "qude", nnodes, tasks_per_node, "pdebug"]
 
         
 # Set directory for the results

@@ -1272,7 +1272,7 @@ def execute(*, runtype="simulation", ncores=1, config_filename="config.cfg", dat
     quandary_exec       (string)    : Absolute path to quandary's executable. Default: "" (expecting quandary to be in the $PATH)
     verbose             (Bool)      : Flag to print more output. Default: False
     cygwinbash          (string)    : Path to Cygwin bash.exe, if running on Windows machine. Default: None
-    batchargs           (List)      : Submit to batch system by setting batchargs= [maxime, accountname, nodes]. Default: []. Compare end of this file. Specify the max. runtime (string), the account name (string) and the number of requested nodes (int). Note, the number of executing *cores* is defined through 'ncores'. 
+    batchargs           (List)      : Submit to batch system by setting batchargs= [maxime, accountname, nodes, tasks_per_node, partition]. Default: []. Compare end of this file. Specify the max. runtime (string), the account name (string) and the number of requested nodes (int). Note, the number of executing *cores* is defined through 'ncores'. 
 
     Returns:
     ---------
@@ -1302,12 +1302,13 @@ def execute(*, runtype="simulation", ncores=1, config_filename="config.cfg", dat
 
     # If batchargs option is given, submit a batch script to schedule execution of Quandary
     if len(batchargs) > 0:
-        maxtime, account, nodes, partition = batchargs # note: nodes is an int, all others are strings
+        maxtime, account, nodes, tasks_per_node, partition = batchargs # note: nodes is an int, all others are strings
         batch_args = copy.deepcopy(default_batch_args)
         batch_args[batch_args_mapping["NAME"]]            = datadir
         batch_args[batch_args_mapping["ERROR"]]           = datadir+".err"
         batch_args[batch_args_mapping["OUTPUT"]]          = datadir+".out"
         batch_args[batch_args_mapping["NTASKS"]]          = ncores
+        batch_args[batch_args_mapping["NTASKSPERNODE"]]   = tasks_per_node
         batch_args[batch_args_mapping["ACCOUNT"]]         = account
         batch_args[batch_args_mapping["NODES"]]           = nodes
         batch_args[batch_args_mapping["PARTITION"]]       = partition
@@ -1373,7 +1374,8 @@ default_batch_args = {batch_args_mapping["NAME"]          : "default",
                       batch_args_mapping["PARTITION"]     : "pbatch",
                       batch_args_mapping["TIME"]          : "00:05:00",
                       batch_args_mapping["NODES"]         : 1,
-                      batch_args_mapping["NTASKS"]        : 1}
+                      batch_args_mapping["NTASKS"]        : 1,
+                      batch_args_mapping["NTASKSPERNODE"] : 1}
 
 def assemble_batch_script(name, run_command, batch_args, exclusive=True):
     outfile = open(name, 'w')

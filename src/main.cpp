@@ -63,7 +63,7 @@ int main(int argc,char **argv)
   if (rand_seed < 0){
     rand_seed = rd();  // random non-reproducable seed
   }
-  MPI_Bcast(&rand_seed, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD); // Broadcast from rank 0 to all.
+  MPI_Bcast(&rand_seed, 1, MPI_INT, 0, MPI_COMM_WORLD); // Broadcast from rank 0 to all.
   std::default_random_engine rand_engine{};
   rand_engine.seed(rand_seed);
   export_param(mpirank_world, *config.log, "rand_seed", rand_seed);
@@ -641,6 +641,8 @@ int main(int argc,char **argv)
       printf("Initial quadratic penalty param, mu = %e\n", optimctx->mu);
     } 
 
+    int startIters = 0;
+    
     // Augmented Lagrangian loop
     for (int iouter=0; iouter < Nouter; iouter++){
       if (mpirank_world == 0) printf("\nStarting outer AL iteration #%d ... \n", iouter);
@@ -649,7 +651,8 @@ int main(int argc,char **argv)
       TaoConvergedReason reason;
       optimctx->getExitReason(&reason);
 
-      if (mpirank_world == 0) printf("After total #optim-iters %d, TaoConvergedReason: %d\n", optimctx->getTotalIterations(), reason);
+      int endIters = optimctx->getTotalIterations();
+      if (mpirank_world == 0) printf("After #optim-iters %d, TaoConvergedReason: %d\n", endIters - startIters, reason);
 
       optimctx->getSolution(&opt); // converged design variables copied into opt
 
@@ -664,31 +667,37 @@ int main(int argc,char **argv)
       double constraint = 0.5*optimctx->mu*norm2_disc;
       
       if (mpirank_world == 0){
-	printf("\nnorm^2(discontiuity) = %e\n", norm2_disc);
-	printf("Current constraint = %e, last infidelity = %e\n", constraint, last_infid);
+	printf("\nTotal #iters = %d, norm^2(discontiuity) = %e, constraint = %e, last infidelity = %e\n", endIters, norm2_disc, constraint, last_infid);
       }
 
-      if (norm2_disc < 1e-2)
-      {
-	update_lagrangian = true;
-        if (mpirank_world == 0) printf("\nUpdating the Lagrangian, @ end of AL iteration #%d ... \n", iouter);
-        optimctx->updateLagrangian(optimctx->mu, opt, lambda);
+      // if (norm2_disc < 5e-2)
+      // {
+      // 	mu_factor = 1.0;
+      // 	if (mpirank_world == 0) printf("\nUpdated mu_factor = %e\n", mu_factor);
+      // }
+      
+      // 	update_lagrangian = true;
+      //   if (mpirank_world == 0) printf("\nUpdating the Lagrangian, @ end of AL iteration #%d ... \n", iouter);
+      //   optimctx->updateLagrangian(optimctx->mu, opt, lambda);
 
-	// tighten inner convergence tol
-	double grad_Rtol = 0.1 * optimctx->getGradRelTol(); // make factor tunable
-	double grad_Atol = 0.1 * optimctx->getGradAbsTol(); // make factor tunable
-	optimctx->setGradTol( grad_Atol, grad_Rtol );
-        if (mpirank_world == 0) printf("\nUpdated grad (abs+rel)-tol = %e\n", optimctx->getGradRelTol());
-      }
-      else
-      {
-	// disable warm starting (if it was enabled)
-	optimctx->setTaoWarmStart(PETSC_FALSE);
-	// increase quadratic penalty param
-	optimctx->mu = mu_factor * optimctx->mu;
-        if (mpirank_world == 0) printf("\nUpdated mu = %e\n", optimctx->mu);
-      }
+      // 	// tighten inner convergence tol
+      // 	double grad_Rtol = 0.1 * optimctx->getGradRelTol(); // make factor tunable
+      // 	double grad_Atol = 0.1 * optimctx->getGradAbsTol(); // make factor tunable
+      // 	optimctx->setGradTol( grad_Atol, grad_Rtol );
+      //   if (mpirank_world == 0) printf("\nUpdated grad (abs+rel)-tol = %e\n", optimctx->getGradRelTol());
+      // }
+      // else
+      // {
+      // 	// disable warm starting (if it was enabled)
+      // 	optimctx->setTaoWarmStart(PETSC_FALSE);
+      // 	// increase quadratic penalty param
+      // 	optimctx->mu = mu_factor * optimctx->mu;
+      //   if (mpirank_world == 0) printf("\nUpdated mu = %e\n", optimctx->mu);
+      // }
 
+      // increase quadratic penalty param
+      optimctx->mu = mu_factor * optimctx->mu; // cap it at mu_max = 1/N?
+      
       // // update penalty parameter
       // if (constraint < last_infid)
       // {
@@ -700,11 +709,12 @@ int main(int argc,char **argv)
       // update convergence tolerance
       // optimctx->setIntermTol( optimctx->getIntermTol()/discont_factor ); //reduce norm^2(disc) tolerance
 
-      if (mpirank_world == 0) printf("Next parameters: norm^2(disc)-threshold = %e, mu = %e, grad (abs+rel)-tol = %e\n",
+      if (mpirank_world == 0) printf("Next outer iter: norm^2(disc)-threshold = %e, mu = %e, grad (abs+rel)-tol = %e\n",
 				     optimctx->getIntermTol(), optimctx->mu, optimctx->getGradRelTol());
             
       /* update initial condition for next iteration */
-      VecCopy(opt,xinit); 
+      VecCopy(opt,xinit);
+      startIters = endIters;
     } /* end outer loop */
     
 
