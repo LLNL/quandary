@@ -8,7 +8,7 @@ T_all = [50, 200, 300, 600, 1500]
 Jkl_coupling = 5e-3  	# Dipole-Dipole for CHAIN topology
 
 ## Number of qubits ##
-nqubits = 2
+nqubits = 3
 
 # Number of essential elements in state vector
 nstates = 2**nqubits
@@ -32,7 +32,7 @@ gamma_dpdm = 0.0
 print_frequency_iter = 50
 
 # Multiple Shooting options
-nwindows = 4 # 8 # 4 # 1 # 32 # 1 #
+nwindows = 8 # 4 # 1 # 32 # 1 #
 
 # Set to true for AL method, false for quadratic penalty
 update_lagrangian = False
@@ -45,14 +45,14 @@ unitarize = False
 maxouter = 5 # 15
 
 # Inner iteration
-maxiter = 500 # 600 #
+maxiter = 1000 # 600 #
 interm_tol = 1e-4
 tol_infidelity = 1e-5
 
 # penalty strength
 
 # baseline settings
-mu = 0.25 # 1.0/nstates # 
+mu = 0.125 # 1.0/nstates # 
 mu_factor = 1.5
 tol_grad = 1e-4
 
