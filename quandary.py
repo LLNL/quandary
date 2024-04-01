@@ -209,12 +209,6 @@ class Quandary:
         if self._lindblad_solver:
             self._ninit = self._ninit**2
         
-        # Change default initial condition to ground state, if target is state-to-state optimization
-        if len(self.targetstate) > 0 and (self.initialcondition[0:4] != "pure" or len(self._initialstate) ==0 ):
-            self.initialcondition = "pure, " 
-            for i in range(len(self.Ne)):
-                self.initialcondition += "0,"
-
         # Estimate the number of required time steps
         self.nsteps = estimate_timesteps(T=self.T, Hsys=self.Hsys, Hc_re=self.Hc_re, Hc_im=self.Hc_im, maxctrl_MHz=self.maxctrl_MHz, Pmin=self.Pmin)
         if self.verbose:
