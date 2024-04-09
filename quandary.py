@@ -60,6 +60,7 @@ class Quandary:
     maxiter             # Maximum number of optimization iterations. Default 200
     tol_infidelity      # Optimization stopping criterion based on the infidelity. Default 1e-5
     tol_costfunc        # Optimization stopping criterion based on the objective function value. Default 1e-4
+    tol_grad            # Optimization stopping criterion based on the gradient norm (absolute and relative). Default: 1e-4
     costfunction        # Cost function measure: "Jtrace" or "Jfrobenius". Default: "Jtrace"
     optim_target        # Optional: Set other optimization target string, if not specified through the targetgate or targetstate. 
     gamma_tik0          # Parameter for Tikhonov regularization ||alpha||^2. Default 1e-4
@@ -600,10 +601,7 @@ class Quandary:
         for iosc in range(len(self.Ne)):
             mystring += "output" + str(iosc) + "=expectedEnergy\n" # default: only save expected energy on file
 #            mystring += "output" + str(iosc) + "=expectedEnergy, population, fullstate\n"
-
-# stride (down-sampling factor) for saving the ctrl functions on file
-        mystring += "output_frequency = 10\n" # Make this number tunable
-# output frequency for optimization progress        
+        mystring += "output_frequency = 10\n" # TODO: Make this number tunable
         mystring += "optim_monitor_frequency = " + str(self.print_frequency_iter) + "\n"
         mystring += "runtype = " + runtype + "\n"
         if len(self.Ne) < 6:
@@ -1211,46 +1209,43 @@ def plot_results_1osc(myconfig, p, q, expectedEnergy, population):
     # plt.close(fig)
 
 
-def timestep_richardson_est(quandary, maxcores, batchargs, tol=1e-6, order=2, datadir="data_out"):
+def timestep_richardson_est(quandary, tol=1e-8, order=2, quandary_exec=""):
     """ Decrease timestep size until Richardson error estimate meets threshold """
 
     # Factor by which timestep size is decreased
     m = 2 
-
-    # number of refinements
-    nRef = 2
+    
     # Initialize 
     quandary.verbose=False
-    t, pt, qt, infidelity, _, _ = quandary.simulate(maxcores=maxcores, datadir=datadir) #, batchargs=batchargs)
+    t, pt, qt, infidelity, _, _ = quandary.simulate(quandary_exec=quandary_exec, datadir="TS_test")
 
     Jcurr = infidelity
     uT = quandary.uT
 
     # Loop
     errs_J = []
-    #errs_u = []
+    errs_u = []
     dts = []
-    for i in range(nRef):
+    for i in range(10):
 
         # Update configuration number of timesteps. Note: dt will be set in dump()
         dt_org = quandary.T / quandary.nsteps
-        nsteps_org = quandary.nsteps
         quandary.nsteps= quandary.nsteps* m
 
         # Get u(dt/m) 
         quandary.verbose=False
-        t, pt, qt, infidelity, _, _ = quandary.simulate(maxcores=maxcores, datadir=datadir) #, batchargs=batchargs)
+        t, pt, qt, infidelity, _, _ = quandary.simulate(quandary_exec=quandary_exec, datadir="TS_test")
 
         # Richardson error estimate 
         err_J = np.abs(Jcurr - infidelity) / (m**order-1.0)
         # err_u = np.abs(uT[1,1]- quandary.uT[1,1]) / (m**order - 1.0)
-        # err_u = np.linalg.norm(np.subtract(uT, quandary.uT)) / (m**order - 1.0)
+        err_u = np.linalg.norm(np.subtract(uT, quandary.uT)) / (m**order - 1.0)
         errs_J.append(err_J)
-        #errs_u.append(err_u)
+        errs_u.append(err_u)
         dts.append(dt_org)
 
         # Output 
-        print(" -> Error at i=", i, ", Nsteps = ", nsteps_org, ": err_J = ", err_J) #, " err_u=", err_u)
+        print(" -> Error at i=", i, ", dt = ", dt_org, ": err_J = ", err_J, " err_u=", err_u)
 
 
         # Stop if tolerance is reached
@@ -1277,7 +1272,7 @@ def execute(*, runtype="simulation", ncores=1, config_filename="config.cfg", dat
     quandary_exec       (string)    : Absolute path to quandary's executable. Default: "" (expecting quandary to be in the $PATH)
     verbose             (Bool)      : Flag to print more output. Default: False
     cygwinbash          (string)    : Path to Cygwin bash.exe, if running on Windows machine. Default: None
-    batchargs           (List)      : Submit to batch system by setting batchargs= [maxime, accountname, nodes, tasks_per_node, partition]. Default: []. Compare end of this file. Specify the max. runtime (string), the account name (string) and the number of requested nodes (int). Note, the number of executing *cores* is defined through 'ncores'. 
+    batchargs           (List)      : Submit to batch system by setting batchargs= [maxtime, accountname, nodes, tasks_per_node, partition]. Default: []. Compare end of this file. Specify the max. runtime (string), the account name (string), the number of requested nodes (int), the number of tasks per node (int) and the partition name (string). Note, the number of executing *cores* is defined through 'ncores'. 
 
     Returns:
     ---------
@@ -1355,7 +1350,7 @@ def execute(*, runtype="simulation", ncores=1, config_filename="config.cfg", dat
 # Batch system settings
 ####################################
 
-# Define batch argument names, here for SLURM scheduler. You can add others if needed, make sure to 
+# Define batch argument names, here for SLURM scheduler. You can add others if you need to. 
 batch_args_mapping_slurm = {"NAME"  : "--job-name",
                             "ERROR" : "--error",
                             "OUTPUT" : "--output",

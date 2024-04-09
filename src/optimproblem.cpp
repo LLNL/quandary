@@ -578,7 +578,7 @@ double OptimProblem::evalF(const Vec xin, const Vec lambda_) {
   if (!gamma_tik_interpolate){  // ||x_alpha||^2
     VecNorm(x_alpha, NORM_2, &x_alpha_norm);
   } 
-  obj_regul = gamma_tik / 2. * pow(x_alpha_norm,2.0); // scale by 1/ndesign
+  obj_regul = gamma_tik / 2. * pow(x_alpha_norm,2.0); // TODO: scale by 1/ndesign
 
   /* Sum, store and return objective value */
   objective = obj_cost + obj_regul + obj_penal + obj_penal_dpdm + obj_penal_energy + obj_constraint;
@@ -1029,7 +1029,7 @@ void OptimProblem::updateLagrangian(const double prev_mu, const Vec x_a, Vec lam
         VecAXPY(lag, -prev_mu, disc);
       }
       VecRestoreSubVector(lambda_a, IS_interm_lambda[iwindow_global][iinit_global], &lag);
-      // printf("\n\n TODO: Check the updateLagrangian function!\n");
+      printf("\n\n TODO: Check the updateLagrangian function!\n");
     }
   }
 }
