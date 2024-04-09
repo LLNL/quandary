@@ -1210,43 +1210,46 @@ def plot_results_1osc(myconfig, p, q, expectedEnergy, population):
     # plt.close(fig)
 
 
-def timestep_richardson_est(quandary, tol=1e-8, order=2, quandary_exec=""):
+def timestep_richardson_est(quandary, maxcores, batchargs, tol=1e-6, order=2, datadir="data_out"):
     """ Decrease timestep size until Richardson error estimate meets threshold """
 
     # Factor by which timestep size is decreased
     m = 2 
-    
+
+    # number of refinements
+    nRef = 2
     # Initialize 
     quandary.verbose=False
-    t, pt, qt, infidelity, _, _ = quandary.simulate(quandary_exec=quandary_exec, datadir="TS_test")
+    t, pt, qt, infidelity, _, _ = quandary.simulate(maxcores=maxcores, datadir=datadir) #, batchargs=batchargs)
 
     Jcurr = infidelity
     uT = quandary.uT
 
     # Loop
     errs_J = []
-    errs_u = []
+    #errs_u = []
     dts = []
-    for i in range(10):
+    for i in range(nRef):
 
         # Update configuration number of timesteps. Note: dt will be set in dump()
         dt_org = quandary.T / quandary.nsteps
+        nsteps_org = quandary.nsteps
         quandary.nsteps= quandary.nsteps* m
 
         # Get u(dt/m) 
         quandary.verbose=False
-        t, pt, qt, infidelity, _, _ = quandary.simulate(quandary_exec=quandary_exec, datadir="TS_test")
+        t, pt, qt, infidelity, _, _ = quandary.simulate(maxcores=maxcores, datadir=datadir) #, batchargs=batchargs)
 
         # Richardson error estimate 
         err_J = np.abs(Jcurr - infidelity) / (m**order-1.0)
         # err_u = np.abs(uT[1,1]- quandary.uT[1,1]) / (m**order - 1.0)
-        err_u = np.linalg.norm(np.subtract(uT, quandary.uT)) / (m**order - 1.0)
+        # err_u = np.linalg.norm(np.subtract(uT, quandary.uT)) / (m**order - 1.0)
         errs_J.append(err_J)
-        errs_u.append(err_u)
+        #errs_u.append(err_u)
         dts.append(dt_org)
 
         # Output 
-        print(" -> Error at i=", i, ", dt = ", dt_org, ": err_J = ", err_J, " err_u=", err_u)
+        print(" -> Error at i=", i, ", Nsteps = ", nsteps_org, ": err_J = ", err_J) #, " err_u=", err_u)
 
 
         # Stop if tolerance is reached

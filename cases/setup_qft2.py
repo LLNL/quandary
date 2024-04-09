@@ -4,7 +4,7 @@ from quandary import *
 
 # ALL PROBLEMS encoded here
 freq01_all = [5.18, 5.12, 5.06, 5.0, 4.94] 
-T_all = [50, 200, 300, 600, 1500]
+T_all = [50, 190, 500, 800, 1500]
 Jkl_coupling = 5e-3  	# Dipole-Dipole for CHAIN topology
 
 ## Number of qubits ##
@@ -24,15 +24,18 @@ do_plot = False # Warning: buggy
 rand_seed = 1234
 
 # penalty coefficients
-gamma_energy = 1e-5 # 1e-4
-gamma_tik0 = 0.0 
+gamma_energy = 0.0 # 1e-3 # 1e-4
+gamma_tik0 = 0.1
 gamma_dpdm = 0.0
 
 # Additional options
 print_frequency_iter = 50
 
+# Time stepping resolution
+Pmin = 150 # 300
+
 # Multiple Shooting options
-nwindows = 4 # 8 # 4 # 1 # 32 # 1 #
+nwindows = 1 # 1 # 8 # 4 # 1 # 12 # 1 # 32 # 1 #
 
 # Set to true for AL method, false for quadratic penalty
 update_lagrangian = False
@@ -45,7 +48,7 @@ unitarize = False
 maxouter = 5 # 15
 
 # Inner iteration
-maxiter = 500 # 600 #
+maxiter = 1500 # 600 #
 interm_tol = 1e-4
 tol_infidelity = 1e-5
 
@@ -53,12 +56,12 @@ tol_infidelity = 1e-5
 
 # baseline settings
 mu = 0.25 # 1.0/nstates # 
-mu_factor = 1.5
-tol_grad = 1e-4
+mu_factor = 1.0
+tol_grad = 1e-5
 
-# mu = 0.5 # 1.0/nstates # 
-# mu_factor = 1.5
-# tol_grad = 1e-4
+# mu = 0.5
+# mu_factor = 1.0
+# tol_grad = 1e-5
 
 # MPI options 
 maxcores = nstates*nwindows
@@ -83,6 +86,9 @@ datadir = "./qft_"+str(nqubits)+"_win_" + str(nwindows) + "_run_dir"
 # Carrier wave thresholds
 cw_amp_thres = 5e-2  # Min. theshold on growth rate for each carrier
 cw_prox_thres = 1e-3 # Max. threshold on carrier proximity
+
+# Bounds for the B-spline coefficients
+maxctrl_MHz = 25.0
 
 # coupling topo
 fully_coupled = False
@@ -113,8 +119,8 @@ print("Coupling: ", Jkl)
 T = T_all[nqubits-1]
 
 # Bspline spacing [ns]
-dtau = 10.0  	
-scalefactor_states = 1.0/10.6 # Avg 1/norm(dS/dalpha_k)
+dtau = 10.0 # 3.0  	
+scalefactor_states = 1.0/12.0 # Avg 1/norm(dS/dalpha_k)
 print("T=", T, "scalefactor_states=", scalefactor_states)
 
 # Set up rotational frame frequency
@@ -143,6 +149,8 @@ quandary = Quandary(Ne=Ne,
                     T=T,
                     targetgate=unitary,
                     dtau=dtau,
+                    Pmin=Pmin,
+                    maxctrl_MHz=maxctrl_MHz,
                     verbose=verbose,
                     cw_amp_thres=cw_amp_thres,
                     cw_prox_thres=cw_prox_thres,
@@ -163,6 +171,16 @@ quandary = Quandary(Ne=Ne,
                     maxouter = maxouter,
                     scalefactor_states = scalefactor_states,
                     print_frequency_iter = print_frequency_iter)
+
+# rescale gamma_tik0
+Nosc = len(quandary.Ne)
+Ncf = 0
+for iosc in range(Nosc):
+	Ncf += len(quandary.carrier_frequency[iosc])
+Ndes = 2*Ncf*quandary.nsplines
+quandary.gamma_tik0 /= Ndes
+
+print("Nosc =", Nosc, ", Total # carrier freq, Ncf =", Ncf, ", Total # design variables, Ndes = ", Ndes, ", gamma_tik*Ndes = ", quandary.gamma_tik0*Ndes)
 
 if do_optim:
 	quandary.verbose = opt_verbose

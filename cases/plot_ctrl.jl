@@ -14,3 +14,10 @@ function plotcontrol(n::Int64)
   println("Returning plot handle")
   return plc
 end
+
+function getHistory(n::Int64 = 6)
+  # n=6 is the last infidelity
+  d, h = readdlm("optim_history.dat",header=true)
+
+  return d[:,n]
+end

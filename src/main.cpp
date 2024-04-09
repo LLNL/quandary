@@ -427,6 +427,7 @@ int main(int argc,char **argv)
     exit(1);
   }
   if (mpirank_world == 0) {
+    printf("Total # time steps: %d, each time step: %e, duration: %e\n", ntime, dt, total_time);
     printf("Time-windows: %d, each %d steps\n", nwindows, ntime_per_window);
   }
   TimeStepper* mytimestepper;

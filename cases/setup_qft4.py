@@ -4,7 +4,7 @@ from quandary import *
 
 # ALL PROBLEMS encoded here
 freq01_all = [5.18, 5.12, 5.06, 5.0, 4.94] 
-T_all = [50, 200, 300, 600, 1500]
+T_all = [50, 200, 500, 900, 1500]
 Jkl_coupling = 5e-3  	# Dipole-Dipole for CHAIN topology
 
 ## Number of qubits ##
@@ -24,15 +24,18 @@ do_plot = False # Warning: buggy
 rand_seed = 1234
 
 # penalty coefficients
-gamma_energy = 1e-5 # 1e-4
-gamma_tik0 = 0.0 
+gamma_energy = 0.0 # 1e-4
+gamma_tik0 = 0.1
 gamma_dpdm = 0.0
 
 # Additional options
 print_frequency_iter = 50
 
+# Time stepping resolution
+Pmin = 150 # 300
+
 # Multiple Shooting options
-nwindows = 32 # 1 #
+nwindows = 48 # 48 # 32 # 32 # 8 # 1 # 16 # 8 # 32 
 
 # Set to true for AL method, false for quadratic penalty
 update_lagrangian = False
@@ -42,22 +45,19 @@ tao_warmstart = True # False
 unitarize = False
 
 # Max number of outer AL/QP iterations
-maxouter = 15
+maxouter = 5 # 15
 
 # Inner iteration
-maxiter = 500 # 600 #
+maxiter = 5000 # 600 #
 interm_tol = 1e-4
 tol_infidelity = 1e-5
 
 # penalty strength
-# baseline settings
-# mu = 1e-3 
-# mu_factor =  1.5
-# tol_grad = 1e-4
 
-mu = 1e-3 # 1.0/nstates # 
-mu_factor = 1.5
-tol_grad = 1e-4
+# baseline settings
+mu = 0.0625 # 1.0/nstates # 
+mu_factor = 1.0
+tol_grad = 1e-5
 
 # MPI options 
 maxcores = nstates*nwindows
@@ -71,11 +71,8 @@ nnodes = ceil(maxcores/tasks_per_node)
 print("nStates =", nstates, "nWindows =", nwindows, "nTasks =", maxcores, "nTasksPerNode =", tasks_per_node, "nNodes =", nnodes)
 
 # batch job args
-if nqubits == 2:
-	batchargs = ["0:15:00", "qude", 1, "pdebug"]
-else:
-#	batchargs = ["0:05:00", "qude", nnodes, tasks_per_node, "pbatch"]
-	batchargs = ["0:10:00", "qude", nnodes, tasks_per_node, "pdebug"]
+batchargs = ["0:20:00", "qude", nnodes, tasks_per_node, "pdebug"]
+# batchargs = ["0:05:00", "qude", nnodes, tasks_per_node, "pbatch"]
 
         
 # Set directory for the results
@@ -86,6 +83,9 @@ datadir = "./qft_"+str(nqubits)+"_win_" + str(nwindows) + "_run_dir"
 cw_amp_thres = 5e-2  # Min. theshold on growth rate for each carrier
 cw_prox_thres = 1e-3 # Max. threshold on carrier proximity
 
+# Bounds for the B-spline coefficients
+maxctrl_MHz = 25.0 # 30.0
+
 # coupling topo
 fully_coupled = False
 
@@ -95,8 +95,8 @@ Ne = []
 Ng = []
 for i in range(nqubits):
 	freq01.append(freq01_all[len(freq01_all)-i-1])
-	Ne.append(2)
-	Ng.append(0)
+	Ne.append(2) # essential levels
+	Ng.append(0) # guard levels
 print("Frequencies: ", freq01)
 print("Ne: ", Ne)
 
@@ -113,8 +113,10 @@ print("Coupling: ", Jkl)
 
 # Set the pulse duration (ns)
 T = T_all[nqubits-1]
-dtau = 10.0  	# Bspline spacing [ns]
-scalefactor_states = 1.0/18.0 # 18.0 comes from estimating norm(dS/dalpha_k)
+
+# Bspline spacing [ns]
+dtau = 10.0 # 3.0 # 5.0 # 10.0  	
+scalefactor_states = 1.0/12.0 # 11.0 # Avg 1/norm(dS/dalpha_k), depends on dtau
 print("T=", T, "scalefactor_states=", scalefactor_states)
 
 # Set up rotational frame frequency
@@ -143,6 +145,8 @@ quandary = Quandary(Ne=Ne,
                     T=T,
                     targetgate=unitary,
                     dtau=dtau,
+                    Pmin=Pmin,
+                    maxctrl_MHz=maxctrl_MHz,
                     verbose=verbose,
                     cw_amp_thres=cw_amp_thres,
                     cw_prox_thres=cw_prox_thres,
@@ -163,6 +167,16 @@ quandary = Quandary(Ne=Ne,
                     maxouter = maxouter,
                     scalefactor_states = scalefactor_states,
                     print_frequency_iter = print_frequency_iter)
+
+# recale gamma_tik0
+Nosc = len(quandary.Ne)
+Ncf = 0
+for iosc in range(Nosc):
+	Ncf += len(quandary.carrier_frequency[iosc])
+Ndes = 2*Ncf*quandary.nsplines
+quandary.gamma_tik0 /= Ndes
+
+print("Nosc =", Nosc, ", Total # carrier freq, Ncf =", Ncf, ", Total # design variables, Ndes = ", Ndes, ", gamma_tik*Ndes = ", quandary.gamma_tik0*Ndes)
 
 if do_optim:
 	quandary.verbose = opt_verbose
