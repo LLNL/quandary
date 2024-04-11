@@ -80,6 +80,7 @@ class OptimProblem {
   bool unitarize_interm_ic;               /* Switch to unitarize intermediate initial conditions at evalF/evalGradF */
     
   Vec x_alpha;            /* Temporary storage for design variable */
+  Vec x_alpha_diff;         /* Temporary storage for design variable */
   Vec x_next;             /* Temporary storage for a state vector */
   Vec disc;               /* Temporary storage for a state. size = 2*mastereq->getDim(). Only would need either x_next or disc... */
   Vec x;                  /* Storage for the optimization variable */

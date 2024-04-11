@@ -126,6 +126,7 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
 
   /* allocate reduced gradient of timestepper */
   VecDuplicate(x_alpha, &(timestepper->redgrad));
+  VecDuplicate(x_alpha, &x_alpha_diff);
 
   // Gather the processor distribution of xinit and lambda
   int istart_x, istart_lambda, istop_x, istop_lambda;
@@ -391,6 +392,9 @@ OptimProblem::~OptimProblem() {
   VecDestroy(&xupper);
   VecDestroy(&disc);
 
+  VecDestroy(&x_alpha);
+  VecDestroy(&x_alpha_diff);
+
   for (int m = 0; m < store_finalstates.size(); m++) {
     for (int i = 0; i < store_finalstates[m].size(); i++) {
       VecDestroy(&(store_finalstates[m][i]));
@@ -635,10 +639,23 @@ void OptimProblem::evalGradF(const Vec xin, const Vec lambda_, Vec G){
 
   /* Reset Gradient */
   VecZeroEntries(G);
+  VecZeroEntries(x_alpha_diff);
 
   /* Derivative of regulatization term gamma / 2 ||x||^2 */
-  VecScatterBegin(scatter_alpha, x_alpha, G, INSERT_VALUES, SCATTER_REVERSE);
-  VecScatterEnd(scatter_alpha, x_alpha, G, INSERT_VALUES, SCATTER_REVERSE);
+  // NOTE: AVOID SCATTER_REVERSE. SEEMS TO BE SLOW!
+  //VecScatterBegin(scatter_alpha, x_alpha, G, INSERT_VALUES, SCATTER_REVERSE);
+  //VecScatterEnd(scatter_alpha, x_alpha, G, INSERT_VALUES, SCATTER_REVERSE);
+  if (mpirank_world==0) {
+    double* gptr;
+    double* xaptr;
+    VecGetArray(G, &gptr);
+    VecGetArray(x_alpha, &xaptr);
+    for (int i=0; i<ndesign; i++) {
+        gptr[i] += xaptr[i];
+    }
+    VecRestoreArray(G, &gptr);
+    VecRestoreArray(x_alpha, &xaptr);
+  }
   VecScale(G, gamma_tik);
 
   /*  Iterate over initial condition */
@@ -820,7 +837,9 @@ void OptimProblem::evalGradF(const Vec xin, const Vec lambda_, Vec G){
         VecScatterBegin(scatter_xnext[iwindow][iinit], x, x_next, INSERT_VALUES, SCATTER_FORWARD);
         VecScatterEnd(scatter_xnext[iwindow][iinit], x, x_next, INSERT_VALUES, SCATTER_FORWARD); 
         Vec lag;
+        Vec g_local;
         VecGetSubVector(lambda_, IS_interm_lambda[iwindow_global][iinit_global], &lag);
+        VecGetSubVector(G, IS_interm_states[iwindow_global][iinit_global], &g_local);
 
         /* Get adjoint terminal condition */
         if (iwindow_global == nwindows-1) {
@@ -856,16 +875,19 @@ void OptimProblem::evalGradF(const Vec xin, const Vec lambda_, Vec G){
         VecScatterEnd(scatter_xnext[iwindow][iinit], disc, G, ADD_VALUES, SCATTER_REVERSE);
 
         // Add adjoint initial conditions to gradient. This is local, each proc sets its own windows/initialconditions. 
-        if (!(iwindow_global==0)) {
-          VecISAXPY(G, IS_interm_states[iwindow_global][iinit_global], 1.0, adjoint_ic);
+        int g_exists_here;
+        VecGetSize(adjoint_ic, &g_exists_here);
+        if (g_exists_here> 0) {
+            VecAXPY(g_local, 1.0, adjoint_ic);
         }
-
-        /* Add time-stepping reduced gradient to G. All scatter to the first processor. */
-        VecScatterBegin(scatter_alpha, timestepper->redgrad, G, ADD_VALUES, SCATTER_REVERSE);
-        VecScatterEnd(scatter_alpha, timestepper->redgrad, G, ADD_VALUES, SCATTER_REVERSE);
 
         /* Restore lambda */
         VecRestoreSubVector(lambda_, IS_interm_lambda[iwindow_global][iinit_global], &lag);
+        VecRestoreSubVector(G, IS_interm_states[iwindow_global][iinit_global], &g_local);
+
+        ///* Add local time-stepping reduced gradient to local storage. */
+        VecAXPY(x_alpha_diff, 1.0, timestepper->redgrad);
+
       } // end of local iwindow loop
     } // end of local iinit loop 
   } // end of adjoint for Schroedinger
@@ -876,12 +898,24 @@ void OptimProblem::evalGradF(const Vec xin, const Vec lambda_, Vec G){
     printf("TODO: enforce control boundary currently not available with multiple time windows. Exiting now.\n");
     exit(1);
   }
-  // Vec g_alpha;
-  // VecScatterBegin(scatter_alpha, G, g_alpha, INSERT_VALUES, SCATTER_FORWARD);
-  // VecScatterEnd(scatter_alpha, G, g_alpha, INSERT_VALUES, SCATTER_FORWARD);
-  // mastereq->setControlAmplitudes_diff(g_alpha);
-  // VecScatterBegin(scatter_alpha, g_alpha, G, ADD_VALUES, SCATTER_REVERSE);
-  // VecScatterEnd(scatter_alpha, g_alpha, G ADD_VALUES, SCATTER_REVERSE);
+  
+  // Sum up reduced gradient wrt alpha from all processors onto processor 0.
+  VecGetArray(x_alpha_diff, &xptr);
+  double receivedata[ndesign];
+  MPI_Reduce(xptr, receivedata, ndesign, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+  VecRestoreArray(x_alpha_diff, &xptr);
+  // On processor 0, pass gradient to optim gradient G
+  if (mpirank_world==0) {
+    double* gptr;
+    double* xaptr;
+    VecGetArray(G, &gptr);
+    VecGetArray(x_alpha_diff, &xaptr);
+    for (int i=0; i<ndesign; i++) {
+        gptr[i] += receivedata[i];
+    }
+    VecRestoreArray(G, &gptr);
+    VecRestoreArray(x_alpha_diff, &xaptr);
+  }
 
   /* Apply chain rule for unitarization */
   if (unitarize_interm_ic && (nwindows > 1))
@@ -890,7 +924,7 @@ void OptimProblem::evalGradF(const Vec xin, const Vec lambda_, Vec G){
   /* Compute and store gradient norm */
   VecNorm(G, NORM_2, &(gnorm));
 
-  // scale the state part of the gradient by 1/scalefactor_states
+  //// scale the state part of the gradient by 1/scalefactor_states
   VecScale(G, 1.0/scalefactor_states);
   // undo scaling of alpha
   double* ptr;
