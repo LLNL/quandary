@@ -25,7 +25,7 @@ rand_seed = 1234
 
 # penalty coefficients
 gamma_energy = 0.0 # 1e-4
-gamma_tik0 = 0.1
+gamma_tik0 = 1e-2 # 0.1
 gamma_dpdm = 0.0
 
 # Additional options
@@ -35,7 +35,7 @@ print_frequency_iter = 50
 Pmin = 150 # 300
 
 # Multiple Shooting options
-nwindows = 48 # 48 # 32 # 32 # 8 # 1 # 16 # 8 # 32 
+nwindows = 40 # 2 # 48 # 40  # 48 # 48 # 32 # 32 # 8 # 1 # 16 # 8 # 32 
 
 # Set to true for AL method, false for quadratic penalty
 update_lagrangian = False
@@ -84,7 +84,7 @@ cw_amp_thres = 5e-2  # Min. theshold on growth rate for each carrier
 cw_prox_thres = 1e-3 # Max. threshold on carrier proximity
 
 # Bounds for the B-spline coefficients
-maxctrl_MHz = 25.0 # 30.0
+maxctrl_MHz =  30.0 # 25.0 #
 
 # coupling topo
 fully_coupled = False
@@ -116,7 +116,7 @@ T = T_all[nqubits-1]
 
 # Bspline spacing [ns]
 dtau = 10.0 # 3.0 # 5.0 # 10.0  	
-scalefactor_states = 1.0/12.0 # 11.0 # Avg 1/norm(dS/dalpha_k), depends on dtau
+scalefactor_states = 1.0/10.0 # 11.0 # Avg 1/norm(dS/dalpha_k), depends on dtau
 print("T=", T, "scalefactor_states=", scalefactor_states)
 
 # Set up rotational frame frequency
