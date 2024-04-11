@@ -876,7 +876,7 @@ void OptimProblem::evalGradF(const Vec xin, const Vec lambda_, Vec G){
 
         // Add adjoint initial conditions to gradient. This is local, each proc sets its own windows/initialconditions. 
         int g_exists_here;
-        VecGetSize(adjoint_ic, &g_exists_here);
+        VecGetSize(g_local, &g_exists_here);
         if (g_exists_here> 0) {
             VecAXPY(g_local, 1.0, adjoint_ic);
         }
