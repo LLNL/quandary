@@ -391,8 +391,8 @@ class Quandary:
 
         # Set default number of cores to the number of initial conditions, unless otherwise specified. Make sure ncores is an integer divisible of ninit.
         ncores = self._ninit
-        if maxcores > -1:
-            ncores = min(self._ninit, maxcores) # Limiting ncores to maxcores and to ninit.
+        #if maxcores > -1:
+        #    ncores = min(self._ninit, maxcores) # Limiting ncores to maxcores and to ninit.
         for i in range(self._ninit, 0, -1):  # Find biggest integer divisor of ninit
             if self._ninit % i == 0:  # i is a factor of ninit
                 if i <= ncores:
