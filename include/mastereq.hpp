@@ -150,7 +150,6 @@ class MasterEq{
 
     /* Set the oscillators control function parameters from global design vector x */
     void setControlAmplitudes(const Vec x);
-    void setControlAmplitudes_diff(Vec xbar);
 
     // Get expected energy of the full composite system.
     double expectedEnergy(const Vec x);

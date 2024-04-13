@@ -1304,32 +1304,20 @@ void MasterEq::computedRHSdp(const double t, const Vec x, const Vec xbar, const 
 
 void MasterEq::setControlAmplitudes(const Vec x) {
 
-  PetscScalar* ptr;
-  VecGetArray(x, &ptr);
+  const PetscScalar* ptr;
+  VecGetArrayRead(x, &ptr);
 
   /* Pass design vector x to oscillators */
   // Design storage: x = (params_oscil0, params_oscil2, ... ) 
   int shift=0;
   for (int ioscil = 0; ioscil < getNOscillators(); ioscil++) {
     /* Copy x into the oscillators parameter array. */
-    // This potentially sets some of the parameters in x to zero in order to enforce the control boundaries. 
     getOscillator(ioscil)->setParams(ptr + shift);
     shift += getOscillator(ioscil)->getNParams();
   }
-  VecRestoreArray(x, &ptr);
+  VecRestoreArrayRead(x, &ptr);
 }
 
-
-void MasterEq::setControlAmplitudes_diff(Vec xbar) {
-  PetscScalar* ptr;
-  VecGetArray(xbar, &ptr);
-  int shift=0;
-  for (int ioscil = 0; ioscil < getNOscillators(); ioscil++) {
-    getOscillator(ioscil)->setParams_diff(ptr + shift);
-    shift += getOscillator(ioscil)->getNParams();
-  }
-  VecRestoreArray(xbar, &ptr);
-}
 
 /* Sparse matrix solver: Define the action of RHS on a vector x */
 int myMatMult_sparsemat(Mat RHS, Vec x, Vec y){
