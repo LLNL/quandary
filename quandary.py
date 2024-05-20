@@ -41,6 +41,7 @@ class Quandary:
     targetgate          # Complex target unitary in the essential level dimensions for gate optimization. Default: none
     targetstate         # Complex target state vector for state-to-state optimization. Default: none
     initialcondition    # Choose from provided initial states at time t=0.0: "basis" (all basis states, default), "pure, 0,0,1,..." (one pure initial state |001...>), or pass a vector as initial state. Default: "basis" 
+    gate_rot_freq       # Specify frequencies to rotate a target gate (one per oscillator). Default: Using the computational frame rotation frequency (rotfreq). 
 
     # Control pulse options
     pcof0               # Optional: Pass an initial vector of control parameters. Default: none
@@ -115,6 +116,7 @@ class Quandary:
     targetgate             : List[List[complex]] = field(default_factory=list) 
     targetstate            : List[complex] = field(default_factory=list) 
     initialcondition       : str = "basis"
+    gate_rot_freq          : List[float] = field(default_factory=list)
     # Control pulse options
     pcof0               : List[float] = field(default_factory=list)   
     pcof0_filename      : str         = ""                            
@@ -174,6 +176,8 @@ class Quandary:
             self.selfkerr= np.zeros(len(self.Ne))
         if len(self.rotfreq) == 0:
             self.rotfreq = self.freq01
+        if len(self.gate_rot_freq) == 0:
+            self.gate_rot_freq = self.rotfreq
         if self.nsplines < 0:
             minspline = 5 if self.control_enforce_BC else 3
             self.nsplines = int(np.max([np.ceil(self.T/self.dtau + 2), minspline]))
@@ -533,7 +537,10 @@ class Quandary:
         else: 
             mystring += "optim_target = " + str(self.optim_target) + "\n"
         mystring += "optim_objective = " + str(self.costfunction) + "\n"
-        mystring += "gate_rot_freq = 0.0\n"
+        mystring += "gate_rot_freq = "
+        for val in self.gate_rot_freq:
+            mystring += str(val) + ", " 
+        mystring += "\n"
         mystring += "optim_weights= 1.0\n"
         mystring += "optim_atol= 1e-4\n"
         mystring += "optim_rtol= 1e-4\n"

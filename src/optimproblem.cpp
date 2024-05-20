@@ -58,7 +58,7 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   config.GetVecStrParam("optim_target", target_str, "pure");
   std::string objective_str = config.GetStrParam("optim_objective", "Jfrobenius");
   std::vector<double> read_gate_rot;
-  config.GetVecDoubleParam("gate_rot_freq", read_gate_rot, 1e20); 
+  config.GetVecDoubleParam("gate_rot_freq", read_gate_rot, 1e20, true, false); 
   std::vector<std::string> initcond_str;
   config.GetVecStrParam("initialcondition", initcond_str, "none", false);
   optim_target = new OptimTarget(target_str, objective_str, initcond_str, timestepper->mastereq, timestepper->total_time, read_gate_rot, rho_t0, quietmode);
