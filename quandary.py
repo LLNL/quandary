@@ -509,7 +509,8 @@ class Quandary:
             mystring += "initialcondition = " + str(self.initialcondition) + "\n"
         for iosc in range(len(self.Ne)):
             mystring += "control_segments" + str(iosc) + " = spline, " + str(self.nsplines) + "\n"
-            if len(self.pcof0_filename)>0:
+            # if len(self.pcof0_filename)>0:
+            if len(writeme)>0:
                 initstring = "file, "+str(self.pcof0_filename) + "\n"
             else:
                 # Scale initial control amplitudes by the number of carrier waves and convert to ns
