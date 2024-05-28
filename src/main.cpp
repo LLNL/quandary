@@ -851,6 +851,7 @@ int main(int argc,char **argv)
     else
       err = fabs(gradi - fd);
     if (mpirank_world == 0) printf(" %d: obj %1.14e, obj_pert1 %1.14e, obj_pert2 %1.14e, fd %1.14e, grad %1.14e, err %1.14e\n", i, obj_org, obj_pert1, obj_pert2, fd, gradi, err);
+    if (abs(err) > max_err) max_err = err;
 
     max_err = (err > max_err)? err: max_err;
 

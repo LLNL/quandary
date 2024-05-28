@@ -42,6 +42,7 @@ class Quandary:
     targetgate          # Complex target unitary in the essential level dimensions for gate optimization. Default: none
     targetstate         # Complex target state vector for state-to-state optimization. Default: none
     initialcondition    # Choose from provided initial states at time t=0.0: "basis" (all basis states, default), "pure, 0,0,1,..." (one pure initial state |001...>), or pass a vector as initial state. Default: "basis" 
+    gate_rot_freq       # Specify frequencies to rotate a target gate (one per oscillator). Default: Using the computational frame rotation frequency (rotfreq). 
 
     # Control pulse options
     pcof0               # Optional: Pass an initial vector of control parameters. Default: none
@@ -128,6 +129,7 @@ class Quandary:
     targetgate             : List[List[complex]] = field(default_factory=list) 
     targetstate            : List[complex] = field(default_factory=list) 
     initialcondition       : str = "basis"
+    gate_rot_freq          : List[float] = field(default_factory=list)
     # Control pulse options
     pcof0               : List[float] = field(default_factory=list)   
     pcof0_filename      : str         = ""                            
@@ -148,7 +150,7 @@ class Quandary:
     costfunction           : str   = "Jtrace"                      
     optim_target           : str   = "gate, none"
     gamma_tik0             : float = 1e-4 
-    gamma_tik0_interpolate : bool  = False       
+    gamma_tik0_interpolate : float = 0.0
     gamma_leakage          : float = 0.1 	       
     gamma_energy           : float = 0.1
     gamma_dpdm             : float = 0.01        
@@ -198,6 +200,8 @@ class Quandary:
             self.selfkerr= np.zeros(len(self.Ne))
         if len(self.rotfreq) == 0:
             self.rotfreq = self.freq01
+        if len(self.gate_rot_freq) == 0:
+            self.gate_rot_freq = self.rotfreq
         if self.nsplines < 0:
             minspline = 5 if self.control_enforce_BC else 3
             self.nsplines = int(np.max([np.ceil(self.T/self.dtau + 2), minspline]))
@@ -232,7 +236,7 @@ class Quandary:
             self._ninit = np.prod(self.Ne)
         if self._lindblad_solver:
             self._ninit = self._ninit**2
-
+        
         # Estimate the number of required time steps
         if self.nsteps < 0:
             self.nsteps = estimate_timesteps(T=self.T, Hsys=self.Hsys, Hc_re=self.Hc_re, Hc_im=self.Hc_im, maxctrl_MHz=self.maxctrl_MHz, Pmin=self.Pmin)
@@ -301,9 +305,7 @@ class Quandary:
         population      :  Evolution of the population of each oscillator, of each initial condition. (expectedEnergy[oscillator][initialcondition])
         """
 
-        if len(pcof0)>0:
-            self.pcof0 = pcof0[:]
-        return self.__run(runtype="simulation", overwrite_popt=False, maxcores=maxcores, datadir=datadir, quandary_exec=quandary_exec, cygwinbash=cygwinbash, batchargs=batchargs)
+        return self.__run(pcof0=pcof0, runtype="simulation", overwrite_popt=False, maxcores=maxcores, datadir=datadir, quandary_exec=quandary_exec, cygwinbash=cygwinbash, batchargs=batchargs)
 
 
     def optimize(self, *, pcof0=[], maxcores=-1, datadir="./run_dir", quandary_exec="", cygwinbash="", batchargs=[]):
@@ -328,9 +330,7 @@ class Quandary:
         population      :  Evolution of the population of each oscillator, of each initial condition. (expectedEnergy[oscillator][initialcondition])
         """
 
-        if len(pcof0)>0:
-            self.pcof0 = pcof0[:]
-        return self.__run(runtype="optimization", overwrite_popt=True, maxcores=maxcores, datadir=datadir, quandary_exec=quandary_exec, cygwinbash=cygwinbash, batchargs=batchargs)
+        return self.__run(pcof0=pcof0, runtype="optimization", overwrite_popt=True, maxcores=maxcores, datadir=datadir, quandary_exec=quandary_exec, cygwinbash=cygwinbash, batchargs=batchargs)
     
 
     def evalControls(self, *, pcof0=[], points_per_ns=1,datadir="./run_dir", quandary_exec="", cygwinbash=""):
@@ -355,15 +355,11 @@ class Quandary:
         nsteps_org = self.nsteps
         self.nsteps = int(np.floor(self.T * points_per_ns))
     
-        # Pass pcof to the configuration, if given
-        if len(pcof0) > 0:
-            self.pcof0 = pcof0[:]
-
         # Execute quandary in 'evalcontrols' mode
         datadir_controls = datadir +"_ppns"+str(points_per_ns)
         os.makedirs(datadir_controls, exist_ok=True)
         runtype = 'evalcontrols'
-        configfile_eval= self.__dump(runtype=runtype, datadir=datadir_controls)
+        configfile_eval= self.__dump(pcof0=pcof0, runtype=runtype, datadir=datadir_controls)
         err = execute(runtype=runtype, ncores=1, config_filename=configfile_eval, datadir=datadir_controls, quandary_exec=quandary_exec, verbose=False, cygwinbash=cygwinbash)
         time, pt, qt, _, _, _, pcof, _, _ = self.get_results(datadir=datadir_controls, ignore_failure=True)
 
@@ -376,7 +372,7 @@ class Quandary:
         return time, pt, qt
 
 
-    def __run(self, *, runtype="optimization", overwrite_popt=False, maxcores=-1, datadir="./run_dir", quandary_exec="", cygwinbash="", batchargs=[]):
+    def __run(self, *, pcof0=[], runtype="optimization", overwrite_popt=False, maxcores=-1, datadir="./run_dir", quandary_exec="", cygwinbash="", batchargs=[]):
         """
         Internal helper function to launch processes to execute the C++ Quandary code:
           1. Writes quandary config files to file system
@@ -387,7 +383,7 @@ class Quandary:
 
         # Create quandary data directory and dump configuration file
         os.makedirs(datadir, exist_ok=True)
-        config_filename = self.__dump(runtype=runtype, datadir=datadir)
+        config_filename = self.__dump(pcof0=pcof0, runtype=runtype, datadir=datadir)
 
         # Set default number of cores to the number of initial conditions, unless otherwise specified. Make sure ncores is an integer divisible of ninit.
         ncores = self._ninit
@@ -428,7 +424,7 @@ class Quandary:
         return time, pt, qt, infidelity, expectedEnergy, population
 
 
-    def __dump(self, *, runtype="simulation", datadir="./run_dir"):
+    def __dump(self, *, pcof0=[], runtype="simulation", datadir="./run_dir"):
         """
         Internal helper function that dumps all configuration options (and target gate, pcof0, Hamiltonian operators) into files for Quandary C++ runs. Returns the name of the configuration file needed for executing Quandary. 
         """
@@ -502,15 +498,20 @@ class Quandary:
                 print("Hamiltonian operators written to ", datadir+"/"+self._hamiltonian_filename)
 
         # If pcof0 is given, write it to a file 
+        writeme = []
         if len(self.pcof0) > 0:
+            writeme = self.pcof0
+        if len(pcof0) > 0:
+            writeme = pcof0
+        if len(writeme)>0:
             self.pcof0_filename = "./pcof0.dat"
             with open(datadir+"/"+self.pcof0_filename, "w") as f:
-                for value in self.pcof0:
+                for value in writeme:
                     f.write("{:20.13e}\n".format(value))
             if self.verbose:
                 print("Initial control parameters written to ", datadir+"/"+self.pcof0_filename)
 
-        # Set up string for Quandaries self file
+        # Set up string for Quandary's config file
         Nt = [self.Ne[i] + self.Ng[i] for i in range(len(self.Ng))]
         mystring = "nlevels = " + str(list(Nt))[1:-1] + "\n"
         mystring += "nessential= " + str(list(self.Ne))[1:-1] + "\n"
@@ -549,7 +550,8 @@ class Quandary:
             mystring += "initialcondition = " + str(self.initialcondition) + "\n"
         for iosc in range(len(self.Ne)):
             mystring += "control_segments" + str(iosc) + " = spline, " + str(self.nsplines) + "\n"
-            if len(self.pcof0_filename)>0:
+            # if len(self.pcof0_filename)>0:
+            if len(writeme)>0:
                 initstring = "file, "+str(self.pcof0_filename) + "\n"
             else:
                 # Scale initial control amplitudes by the number of carrier waves and convert to ns
@@ -572,15 +574,22 @@ class Quandary:
         else: 
             mystring += "optim_target = " + str(self.optim_target) + "\n"
         mystring += "optim_objective = " + str(self.costfunction) + "\n"
-        mystring += "gate_rot_freq = 0.0\n"
+        mystring += "gate_rot_freq = "
+        for val in self.gate_rot_freq:
+            mystring += str(val) + ", " 
+        mystring += "\n"
         mystring += "optim_weights= 1.0\n"
         mystring += "optim_atol= " + str(self.tol_grad) + "\n"
         mystring += "optim_rtol= " + str(self.tol_grad) + "\n"
         mystring += "optim_ftol= " + str(self.tol_costfunc) + "\n"
         mystring += "optim_inftol= " + str(self.tol_infidelity) + "\n"
         mystring += "optim_maxiter= " + str(self.maxiter) + "\n"
-        mystring += "optim_regul= " + str(self.gamma_tik0) + "\n"
-        mystring += "optim_regul_interpolate= " + str(self.gamma_tik0_interpolate) + "\n"
+        if self.gamma_tik0_interpolate > 0.0:
+            mystring += "optim_regul= " + str(self.gamma_tik0_interpolate) + "\n"
+            mystring += "optim_regul_interpolate = true\n"
+        else:
+            mystring += "optim_regul= " + str(self.gamma_tik0) + "\n"
+            mystring += "optim_regul_interpolate=False\n"
         mystring += "optim_penalty= " + str(self.gamma_leakage) + "\n"
         mystring += "optim_penalty_param= 0.0\n"
         mystring += "optim_penalty_dpdm= " + str(self.gamma_dpdm) + "\n"
@@ -622,7 +631,7 @@ class Quandary:
             file.write(mystring)
 
         if self.verbose:
-            print("Quandary self file written to:", outpath)
+            print("Quandary config file written to:", outpath)
 
         return "./config.cfg"
 

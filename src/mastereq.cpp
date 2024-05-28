@@ -1303,32 +1303,20 @@ void MasterEq::computedRHSdp(const double t, const Vec x, const Vec xbar, const 
 
 void MasterEq::setControlAmplitudes(const Vec x) {
 
-  PetscScalar* ptr;
-  VecGetArray(x, &ptr);
+  const PetscScalar* ptr;
+  VecGetArrayRead(x, &ptr);
 
   /* Pass design vector x to oscillators */
   // Design storage: x = (params_oscil0, params_oscil2, ... ) 
   int shift=0;
   for (int ioscil = 0; ioscil < getNOscillators(); ioscil++) {
     /* Copy x into the oscillators parameter array. */
-    // This potentially sets some of the parameters in x to zero in order to enforce the control boundaries. 
     getOscillator(ioscil)->setParams(ptr + shift);
     shift += getOscillator(ioscil)->getNParams();
   }
-  VecRestoreArray(x, &ptr);
+  VecRestoreArrayRead(x, &ptr);
 }
 
-
-void MasterEq::setControlAmplitudes_diff(Vec xbar) {
-  PetscScalar* ptr;
-  VecGetArray(xbar, &ptr);
-  int shift=0;
-  for (int ioscil = 0; ioscil < getNOscillators(); ioscil++) {
-    getOscillator(ioscil)->setParams_diff(ptr + shift);
-    shift += getOscillator(ioscil)->getNParams();
-  }
-  VecRestoreArray(xbar, &ptr);
-}
 
 /* Sparse matrix solver: Define the action of RHS on a vector x */
 int myMatMult_sparsemat(Mat RHS, Vec x, Vec y){
@@ -3250,9 +3238,23 @@ int myMatMult_matfree_1Osc(Mat RHS, Vec x, Vec y){
   else if (n0==4)  return myMatMult_matfree<4>(RHS, x, y);
   else if (n0==5)  return myMatMult_matfree<5>(RHS, x, y);
   else if (n0==6)  return myMatMult_matfree<6>(RHS, x, y);
+  else if (n0==7)  return myMatMult_matfree<7>(RHS, x, y);
+  else if (n0==8)  return myMatMult_matfree<8>(RHS, x, y);
+  else if (n0==9)  return myMatMult_matfree<9>(RHS, x, y);
+  else if (n0==10)  return myMatMult_matfree<10>(RHS, x, y);
   else {
-    printf("ERROR: In order to run this case, add a line at the end of mastereq.cpp with the corresponding number of levels!\n");
-    exit(1);
+    int mpirank_world = -1;
+    MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
+    if (mpirank_world==0) {
+      printf("\nERROR: Matrix-free solver for this number of qubit levels needs a simple modification:\n");
+      printf("  Add the following lines to the end of src/mastereq.cpp and recompile Quandary:\n \
+  -> In function 'int myMatMult_matfree_1Osc(..)':  \n \
+             elseif (n0==%d) return  myMatMult_matfree<%d>(RHS, x, y); \n \
+  -> In function 'int myMatMultTranspose_matfree_1Osc(..)': \n \
+             elseif (n0==%d) return  myMatMultTranspose_matfree<%d>(RHS, x, y);\n\n", n0, n0, n0, n0);
+      exit(1);
+    } 
+    return 0;
   }
 }
 int myMatMultTranspose_matfree_1Osc(Mat RHS, Vec x, Vec y){
@@ -3265,9 +3267,18 @@ int myMatMultTranspose_matfree_1Osc(Mat RHS, Vec x, Vec y){
   else if (n0==4)  return myMatMultTranspose_matfree<4>(RHS, x, y);
   else if (n0==5)  return myMatMultTranspose_matfree<5>(RHS, x, y);
   else if (n0==6)  return myMatMultTranspose_matfree<6>(RHS, x, y);
+  else if (n0==7)  return myMatMultTranspose_matfree<7>(RHS, x, y);
+  else if (n0==8)  return myMatMultTranspose_matfree<8>(RHS, x, y);
+  else if (n0==9)  return myMatMultTranspose_matfree<9>(RHS, x, y);
+  else if (n0==10)  return myMatMultTranspose_matfree<10>(RHS, x, y);
   else {
-    printf("ERROR: In order to run this case, add a line at the end of mastereq.cpp with the corresponding number of levels!\n");
-    exit(1);
+    int mpirank_world = -1;
+    MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
+    if (mpirank_world==0) {
+      printf("ERROR: Matrix-free solver for this number of qubit levels needs template instantiation.\n");
+      exit(1);
+    }
+    return 0;
   }
 }
 
@@ -3281,14 +3292,26 @@ int myMatMult_matfree_2Osc(Mat RHS, Vec x, Vec y){
   int n1 = shellctx->nlevels[1];
   if      (n0==3 && n1==20)  return myMatMult_matfree<3,20>(RHS, x, y);
   else if (n0==3 && n1==10)  return myMatMult_matfree<3,10>(RHS, x, y);
-  else if (n0==4 && n1==4)   return myMatMult_matfree<4,4>(RHS, x, y);
   else if (n0==1 && n1==1)   return myMatMult_matfree<1,1>(RHS, x, y);
   else if (n0==2 && n1==2)   return myMatMult_matfree<2,2>(RHS, x, y);
   else if (n0==3 && n1==3)   return myMatMult_matfree<3,3>(RHS, x, y);
+  else if (n0==4 && n1==4)   return myMatMult_matfree<4,4>(RHS, x, y);
+  else if (n0==5 && n1==5)   return myMatMult_matfree<5,5>(RHS, x, y);
+  else if (n0==10 && n1==10)   return myMatMult_matfree<10,10>(RHS, x, y);
   else if (n0==20 && n1==20) return myMatMult_matfree<20,20>(RHS, x, y);
   else {
-    printf("ERROR: In order to run this case, add a line at the end of mastereq.cpp with the corresponding number of levels!\n");
-    exit(1);
+    int mpirank_world = -1;
+    MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
+    if (mpirank_world==0) {
+      printf("\nERROR: Matrix-free solver for this number of qubit levels needs a simple modification:\n");
+      printf("  Add the following lines to the end of src/mastereq.cpp and recompile Quandary:\n \
+  -> In function 'int myMatMult_matfree_2Osc(..)':  \n \
+             elseif (n0==%d && n1==%d) return  myMatMult_matfree<%d,%d>(RHS, x, y); \n \
+  -> In function 'int myMatMultTranspose_matfree_2Osc(..)': \n \
+             elseif (n0==%d && n1==%d) return  myMatMultTranspose_matfree<%d,%d>(RHS, x, y);\n\n", n0, n1, n0, n1, n0, n1, n0, n1);
+      exit(1);
+    }
+    return 0;
   }
 }
 int myMatMultTranspose_matfree_2Osc(Mat RHS, Vec x, Vec y){
@@ -3299,14 +3322,21 @@ int myMatMultTranspose_matfree_2Osc(Mat RHS, Vec x, Vec y){
   int n1 = shellctx->nlevels[1];
   if      (n0==3 && n1==20)  return myMatMultTranspose_matfree<3,20>(RHS, x, y);
   else if (n0==3 && n1==10)  return myMatMultTranspose_matfree<3,10>(RHS, x, y);
-  else if (n0==4 && n1==4)   return myMatMultTranspose_matfree<4,4>(RHS, x, y);
   else if (n0==1 && n1==1)   return myMatMultTranspose_matfree<1,1>(RHS, x, y);
   else if (n0==2 && n1==2)   return myMatMultTranspose_matfree<2,2>(RHS, x, y);
   else if (n0==3 && n1==3)   return myMatMultTranspose_matfree<3,3>(RHS, x, y);
+  else if (n0==4 && n1==4)   return myMatMultTranspose_matfree<4,4>(RHS, x, y);
+  else if (n0==5 && n1==5)   return myMatMultTranspose_matfree<5,5>(RHS, x, y);
+  else if (n0==10 && n1==10)   return myMatMultTranspose_matfree<10,10>(RHS, x, y);
   else if (n0==20 && n1==20) return myMatMultTranspose_matfree<20,20>(RHS, x, y);
   else {
-    printf("ERROR: In order to run this case, add a line at the end of mastereq.cpp with the corresponding number of levels!\n");
-    exit(1);
+    int mpirank_world = -1;
+    MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
+    if (mpirank_world==0) {
+      printf("ERROR: Matrix-free solver for this number of qubit levels needs template instanciation.\n");
+      exit(1);
+    }
+    return 0;
   }
 }
 
@@ -3324,8 +3354,18 @@ int myMatMult_matfree_3Osc(Mat RHS, Vec x, Vec y){
   else if (n0==3 && n1==3 && n2==3) return myMatMult_matfree<3,3,3>(RHS, x, y);
   else if (n0==4 && n1==4 && n2==4) return myMatMult_matfree<4,4,4>(RHS, x, y);
   else {
-    printf("ERROR: In order to run this case, add a line at the end of mastereq.cpp with the corresponding number of levels!\n");
-    exit(1);
+    int mpirank_world = -1;
+    MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
+    if (mpirank_world==0) {
+      printf("\nERROR: Matrix-free solver for this number of qubit levels needs a simple modification:\n");
+      printf("  Add the following lines to the end of src/mastereq.cpp and recompile Quandary:\n \
+  -> In function 'int myMatMult_matfree_3Osc(..)':  \n \
+             elseif (n0==%d && n1==%d && n2==%d) return  myMatMult_matfree<%d,%d,%d>(RHS, x, y); \n \
+  -> In function 'int myMatMultTranspose_matfree_3Osc(..)': \n \
+             elseif (n0==%d && n1==%d && n2==%d) return  myMatMultTranspose_matfree<%d,%d,%d>(RHS, x, y);\n\n", n0, n1, n2, n0, n1, n2, n0, n1, n2, n0, n1, n2);
+      exit(1);
+    } 
+    return 0;
   }
 }
 int myMatMultTranspose_matfree_3Osc(Mat RHS, Vec x, Vec y){
@@ -3340,8 +3380,13 @@ int myMatMultTranspose_matfree_3Osc(Mat RHS, Vec x, Vec y){
   else if (n0==3 && n1==3 && n2==3)  return myMatMultTranspose_matfree<3,3,3>(RHS, x, y);
   else if (n0==4 && n1==4 && n2==4)  return myMatMultTranspose_matfree<4,4,4>(RHS, x, y);
   else {
-    printf("ERROR: In order to run this case, add a line at the end of mastereq.cpp with the corresponding number of levels!\n");
-    exit(1);
+    int mpirank_world = -1;
+    MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
+    if (mpirank_world==0) {
+      printf("ERROR: Matrix-free solver for this number of qubit levels needs template instanciation.\n");
+      exit(1);
+    }
+    return 0;
   }
 }
 
@@ -3359,8 +3404,18 @@ int myMatMult_matfree_4Osc(Mat RHS, Vec x, Vec y){
   else if (n0==3 && n1==3 && n2==3 && n3 == 3) return myMatMult_matfree<3,3,3,3>(RHS, x, y);
   else if (n0==4 && n1==4 && n2==4 && n3 == 4) return myMatMult_matfree<4,4,4,4>(RHS, x, y);
   else {
-    printf("ERROR: In order to run this case, add a line at the end of mastereq.cpp with the corresponding number of levels!\n");
-    exit(1);
+    int mpirank_world = -1;
+    MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
+    if (mpirank_world==0) {
+      printf("\nERROR: Matrix-free solver for this number of qubit levels needs a simple modification:\n");
+      printf("  Add the following lines to the end of src/mastereq.cpp and recompile Quandary:\n \
+  -> In function 'int myMatMult_matfree_4Osc(..)':  \n \
+             elseif (n0==%d && n1==%d && n2==%d && n3==%d) return  myMatMult_matfree<%d,%d,%d,%d>(RHS, x, y); \n \
+  -> In function 'int myMatMultTranspose_matfree_4Osc(..)': \n \
+             elseif (n0==%d && n1==%d && n2==%d && n3==%d) return  myMatMultTranspose_matfree<%d,%d,%d,%d>(RHS, x, y);\n\n", n0, n1, n2, n3, n0, n1, n2, n3, n0, n1, n2, n3, n0, n1, n2, n3);
+      exit(1);
+    }
+    return 0;
   }
 }
 int myMatMultTranspose_matfree_4Osc(Mat RHS, Vec x, Vec y){
@@ -3376,8 +3431,13 @@ int myMatMultTranspose_matfree_4Osc(Mat RHS, Vec x, Vec y){
   else if (n0==3 && n1==3 && n2==3 && n3==3)  return myMatMultTranspose_matfree<3,3,3,3>(RHS, x, y);
   else if (n0==4 && n1==4 && n2==4 && n3==4)  return myMatMultTranspose_matfree<4,4,4,4>(RHS, x, y);
   else {
-    printf("ERROR: In order to run this case, add a line at the end of mastereq.cpp with the corresponding number of levels!\n");
-    exit(1);
+    int mpirank_world = -1;
+    MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
+    if (mpirank_world==0) {
+      printf("ERROR: Matrix-free solver for this number of qubit levels needs template instanciation.\n");
+      exit(1);
+    }
+    return 0;
   }
 }
 
@@ -3395,8 +3455,18 @@ int myMatMult_matfree_5Osc(Mat RHS, Vec x, Vec y){
   if      (n0==2 && n1==2 && n2==2 && n3 == 2 && n4 == 2) return myMatMult_matfree<2,2,2,2,2>(RHS, x, y);
   else if (n0==3 && n1==3 && n2==3 && n3 == 3 && n4 == 3) return myMatMult_matfree<3,3,3,3,3>(RHS, x, y);
   else {
-    printf("ERROR: In order to run this case, add a line at the end of mastereq.cpp with the corresponding number of levels!\n");
-    exit(1);
+    int mpirank_world = -1;
+    MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
+    if (mpirank_world==0) {
+      printf("\nERROR: Matrix-free solver for this number of qubit levels needs a simple modification:\n");
+      printf("  Add the following lines to the end of src/mastereq.cpp and recompile Quandary:\n \
+  -> In function 'int myMatMult_matfree_5Osc(..)':  \n \
+             elseif (n0==%d && n1==%d && n2==%d && n3==%d && n4==%d) return  myMatMult_matfree<%d,%d,%d,%d,%d>(RHS, x, y); \n \
+  -> In function 'int myMatMultTranspose_matfree_5Osc(..)': \n \
+             elseif (n0==%d && n1==%d && n2==%d && n3==%d && n4==%d) return  myMatMultTranspose_matfree<%d,%d,%d,%d,%d>(RHS, x, y);\n\n", n0, n1, n2, n3, n4, n0, n1, n2, n3, n4, n0, n1, n2, n3, n4, n0, n1, n2, n3, n4);
+      exit(1);
+    }
+    return 0;
   }
 }
 int myMatMultTranspose_matfree_5Osc(Mat RHS, Vec x, Vec y){
@@ -3412,8 +3482,12 @@ int myMatMultTranspose_matfree_5Osc(Mat RHS, Vec x, Vec y){
   if      (n0==2 && n1==2 && n2==2 && n3==2 && n4==2)  return myMatMultTranspose_matfree<2,2,2,2,2>(RHS, x, y);
   else if (n0==3 && n1==3 && n2==3 && n3==3 && n4==3)  return myMatMultTranspose_matfree<3,3,3,3,3>(RHS, x, y);
   else {
-    printf("ERROR: In order to run this case, add a line at the end of mastereq.cpp with the corresponding number of levels!\n");
-    exit(1);
+    int mpirank_world = -1;
+    MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
+    if (mpirank_world==0) {
+      printf("ERROR: Matrix-free solver for this number of qubit levels needs template instanciation.\n");
+      exit(1);
+    }
+    return 0;
   }
 }
-
