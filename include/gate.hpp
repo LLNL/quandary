@@ -127,9 +127,19 @@ class CQNOT: public Gate {
     ~CQNOT();
 };
 
+/* Discrete Quantum Fourier transformation gate */
+class QFT: public Gate {
+  public:
+    QFT(std::vector<int> nlevels_, std::vector<int> nessential_, double time, std::vector<double> rotation_frequencies_, LindbladType lindbladtype_, bool quietmode=false);
+    ~QFT();
+};
+
 class FromFile: public Gate {
   public:
     FromFile(std::vector<int> nlevels_, std::vector<int> nessential_, double time, std::vector<double> rotation_frequencies_, LindbladType lindbladtype_, std::string filename, bool quietmode=false);
     ~FromFile();
 };
 
+
+/* Intializes one of the above classes given the target string. */
+Gate* initTargetGate(std::vector<std::string> target_str, std::vector<int>nlevels, std::vector<int>nessential, double total_time, LindbladType lindbladtype, std::vector<double> gate_rot_freq, bool quietmode);

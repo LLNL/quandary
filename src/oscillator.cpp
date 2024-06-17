@@ -7,7 +7,7 @@ Oscillator::Oscillator(){
   control_enforceBC = true;
 }
 
-Oscillator::Oscillator(MapParam config, int id, std::vector<int> nlevels_all_, std::vector<std::string>& controlsegments, std::vector<std::string>& controlinitializations, double ground_freq_, double selfkerr_, double rotational_freq_, double decay_time_, double dephase_time_, std::vector<double> carrier_freq_, double Tfinal_, LindbladType lindbladtype_){
+Oscillator::Oscillator(MapParam config, int id, std::vector<int> nlevels_all_, std::vector<std::string>& controlsegments, std::vector<std::string>& controlinitializations, double ground_freq_, double selfkerr_, double rotational_freq_, double decay_time_, double dephase_time_, std::vector<double> carrier_freq_, double Tfinal_, LindbladType lindbladtype_, std::default_random_engine rand_engine){
 
   myid = id;
   nlevels = nlevels_all_[id];
@@ -26,9 +26,8 @@ Oscillator::Oscillator(MapParam config, int id, std::vector<int> nlevels_all_, s
   MPI_Comm_rank(PETSC_COMM_WORLD, &mpirank_petsc);
   MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
 
-
-  // for (int idstr = 0; idstr < controlsegments.size(); idstr++) printf("%s ", controlsegments[idstr].c_str());
-  // printf("\n");
+  /* Check if boundary conditions for controls should be enfored (default: yes). */
+  control_enforceBC = config.GetBoolParam("control_enforceBC", true);
 
   // Parse for control segments
   int idstr = 0;
@@ -52,7 +51,7 @@ Oscillator::Oscillator(MapParam config, int id, std::vector<int> nlevels_all_, s
         tstop = atof(controlsegments[idstr].c_str()); idstr++;
       }
       // if (mpirank_world == 0) printf("%d: Creating step basis with amplitude (%f, %f) (tramp %f) in control segment [%f, %f]\n", myid, step_amp1, step_amp2, tramp, tstart, tstop);
-      ControlBasis* mystep = new Step(step_amp1, step_amp2, tstart, tstop, tramp);
+      ControlBasis* mystep = new Step(step_amp1, step_amp2, tstart, tstop, tramp, control_enforceBC);
       mystep->setSkip(nparams);
       nparams += mystep->getNparams() * carrier_freq.size();
       basisfunctions.push_back(mystep);
@@ -71,7 +70,7 @@ Oscillator::Oscillator(MapParam config, int id, std::vector<int> nlevels_all_, s
         tstop = atof(controlsegments[idstr].c_str()); idstr++;
       }
       // if (mpirank_world==0) printf("%d: Creating %d-spline basis in control segment [%f, %f]\n", myid, nspline,tstart, tstop);
-      ControlBasis* mysplinebasis = new BSpline2nd(nspline, tstart, tstop);
+      ControlBasis* mysplinebasis = new BSpline2nd(nspline, tstart, tstop, control_enforceBC);
       mysplinebasis->setSkip(nparams);
       nparams += mysplinebasis->getNparams() * carrier_freq.size();
       basisfunctions.push_back(mysplinebasis);
@@ -90,7 +89,7 @@ Oscillator::Oscillator(MapParam config, int id, std::vector<int> nlevels_all_, s
         tstop = atof(controlsegments[idstr].c_str()); idstr++;
       }
       // if (mpirank_world==0) printf("%d: Creating %d-spline basis in control segment [%f, %f]\n", myid, nspline,tstart, tstop);
-      ControlBasis* mysplinebasis = new BSpline2ndAmplitude(nspline, scaling, tstart, tstop);
+      ControlBasis* mysplinebasis = new BSpline2ndAmplitude(nspline, scaling, tstart, tstop, control_enforceBC);
       mysplinebasis->setSkip(nparams);
       nparams += mysplinebasis->getNparams() * carrier_freq.size();
       basisfunctions.push_back(mysplinebasis);
@@ -112,8 +111,8 @@ Oscillator::Oscillator(MapParam config, int id, std::vector<int> nlevels_all_, s
         controlinitializations.push_back("0.0");
     }
     // Check config option for 'constant' or 'random' initialization
+    double initval = atof(controlinitializations[idini+1].c_str())*2.0*M_PI;
     if (controlinitializations[idini].compare("constant") == 0 ) {
-      double initval = atof(controlinitializations[idini+1].c_str());
       // If STEP: scale to [0,1]
       if (basisfunctions[seg]->getType() == ControlType::STEP){
         initval = std::max(0.0, initval);  
@@ -131,30 +130,23 @@ Oscillator::Oscillator(MapParam config, int id, std::vector<int> nlevels_all_, s
       }
     } else if (controlinitializations[idini].compare("random") == 0) {
 
-      // Check whether a fixed seed is provided in the config file
-      int rand_seed = config.GetIntParam("rand_seed", -1, false);
-      if (rand_seed > 0){
-        srand(rand_seed);  // fixed seed
-      } else{
-        srand(time(0));  // random seed
-      }
+      // Uniform distribution [0,1)
+      std::uniform_real_distribution<double> unit_dist(0.0, 1.0);
 
       for (int f = 0; f<carrier_freq.size(); f++) {
         for (int i=0; i<basisfunctions[seg]->getNparams(); i++){
-          double randval = (double) rand() / ((double)RAND_MAX);  // random in [0,1]
-          MPI_Bcast(&randval, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+          double randval = unit_dist(rand_engine);  // random in [0,1]
           // scale to chosen amplitude 
-          double maxval = atof(controlinitializations[idini+1].c_str());
-          double initval = maxval*randval;
+          double val = initval*randval;
 
           // If STEP: scale to [0,1] else scale to [-a,a]
           if (basisfunctions[seg]->getType() == ControlType::STEP){
-            initval = std::max(0.0, initval);  
-            initval = std::min(1.0, initval); 
+            val = std::max(0.0, val);  
+            val = std::min(1.0, val); 
           } else {
-            initval = 2*initval - maxval;
+            val = 2*val - initval;
           }
-          params.push_back(initval);
+          params.push_back(val);
         }
         // if BSPLINEAMP: Two values can be provided: First one for the amplitude (set above), second one for the phase which otherwise is set to 0.0 (overwrite here)
         if (basisfunctions[seg]->getType() == ControlType::BSPLINEAMP) {
@@ -170,9 +162,14 @@ Oscillator::Oscillator(MapParam config, int id, std::vector<int> nlevels_all_, s
     idini += 2; 
   }
 
-
-  /* Check if boundary conditions for controls should be enfored (default: yes). */
-  control_enforceBC = config.GetBoolParam("control_enforceBC", true);
+  /* Make sure the initial guess satisfies the boundary conditions, if needed */
+  if (params.size() > 0 && control_enforceBC){
+    for (int bs = 0; bs < basisfunctions.size(); bs++){
+      for (int f=0; f < carrier_freq.size(); f++) {
+        basisfunctions[bs]->enforceBoundary(params.data(), f);
+      }
+    }
+  }
 
   /* Compute and store dimension of preceding and following oscillators */
   dim_preOsc = 1;
@@ -181,7 +178,6 @@ Oscillator::Oscillator(MapParam config, int id, std::vector<int> nlevels_all_, s
     if (j < id) dim_preOsc  *= nlevels_all_[j];
     if (j > id) dim_postOsc *= nlevels_all_[j];
   }
-
 }
 
 
@@ -192,39 +188,13 @@ Oscillator::~Oscillator(){
   }
 }
 
-void Oscillator::setParams(double* x){
+void Oscillator::setParams(const double* x){
 
-  if (params.size() > 0 && control_enforceBC){
-    //printf("\n\n True! \n\n");
-    // First, enforce the control boundaries, i.e. potentially set some parameters in x to zero. 
-    for (int bs = 0; bs < basisfunctions.size(); bs++){
-      for (int f=0; f < carrier_freq.size(); f++) {
-        basisfunctions[bs]->enforceBoundary(x, f);
-      }
-    }
-  }
-
-  // Now copy x into the oscillators parameter storage
+  // copy x into the oscillators parameter storage
   for (int i=0; i<params.size(); i++) {
     params[i] = x[i]; 
   }
-
 }
-
-
-void Oscillator::setParams_diff(double* xbar){
-
-  if (params.size() > 0 && control_enforceBC){
-    //printf("\n\n True! \n\n");
-    // First, enforce the control boundaries, i.e. potentially set some parameters in x to zero. 
-    for (int bs = 0; bs < basisfunctions.size(); bs++){
-      for (int f=0; f < carrier_freq.size(); f++) {
-        basisfunctions[bs]->enforceBoundary(xbar, f);
-      }
-    }
-  }
-}
-
 
 void Oscillator::getParams(double* x){
   for (int i=0; i<params.size(); i++) {

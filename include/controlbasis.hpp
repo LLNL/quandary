@@ -16,10 +16,11 @@ class ControlBasis {
         double tstop;           
         int skip;              // Constant to skip to the starting location for this basis inside the (global) control vector. 
         ControlType controltype;
+        bool enforceZeroBoundary;   // Flag to determine whether controls should start and end at zero.
 
     public: 
         ControlBasis();
-        ControlBasis(int nparams_, double tstart, double tstop);
+        ControlBasis(int nparams_, double tstart, double tstop, bool enforceZeroBoundary);
         virtual ~ControlBasis();
 
         int getNparams() {return nparams; };
@@ -56,7 +57,7 @@ class BSpline2nd : public ControlBasis {
         double basisfunction(int id, double t);
 
     public:
-        BSpline2nd(int nsplines, double tstart, double tstop);
+        BSpline2nd(int nsplines, double tstart, double tstop, bool enforceZeroBoundary);
         ~BSpline2nd();
 
         int getNSplines() {return nsplines;};
@@ -89,7 +90,7 @@ class BSpline2ndAmplitude : public ControlBasis {
         double basisfunction(int id, double t);
 
     public:
-        BSpline2ndAmplitude(int nsplines, double scaling, double tstart, double tstop);
+        BSpline2ndAmplitude(int nsplines, double scaling, double tstart, double tstop, bool enforceZeroBoundary);
         ~BSpline2ndAmplitude();
 
         int getNSplines() {return nsplines;};
@@ -114,7 +115,7 @@ class Step : public ControlBasis {
         double tramp;
 
     public: 
-        Step(double step_amp1_, double step_amp2_, double t0, double t1, double tramp);
+        Step(double step_amp1_, double step_amp2_, double t0, double t1, double tramp, bool enforceZeroBoundary);
         ~Step();
 
        /* Evaluate the spline at time t using the coefficients coeff. */

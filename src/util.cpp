@@ -502,9 +502,9 @@ int read_vector(const char *filename, double *var, int dim, bool quietmode, int 
     if (!quietmode) printf("Reading file %s, starting from line %d.\n", filename, skiplines+1);
 
     /* Scip first <skiplines> lines */
-    char buffer[50];
+    char buffer[51]; // need one extra element because fscanf adds a '\0' at the end
     for (int ix = 0; ix < skiplines; ix++) {
-      fscanf(file, "%50[^\n]%*c", &buffer);
+      fscanf(file, "%50[^\n]%*c", buffer); // // NOTE: &buffer[50] is a pointer to buffer[50] (i.e. its last element)
       // printf("Skipping %d lines: %s \n:", skiplines, buffer);
     }
 
@@ -512,7 +512,7 @@ int read_vector(const char *filename, double *var, int dim, bool quietmode, int 
     if (testheader.size()>0) {
       if (!quietmode) printf("Compare to Header '%s': ", testheader.c_str());
       // read one (first) line
-      int ret = fscanf(file, "%50[^\n]%*c", &buffer);
+      int ret = fscanf(file, "%50[^\n]%*c", buffer); // NOTE: &buffer[50] is a pointer to buffer[50] (i.e. its last element)
       std::string header = buffer;
       // Compare to testheader, return if it doesn't match 
       if (ret==EOF || header.compare(0,testheader.size(),testheader) != 0) {

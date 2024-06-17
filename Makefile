@@ -51,11 +51,11 @@ LDFLAGS =  -lm  -L${PETSC_DIR}/${PETSC_ARCH}/lib -lblas -llapack ${LDFLAGS_OPT} 
 
 # Set compiler and flags 
 CXX=mpicxx
-CXXFLAGS= -O3 -std=c++14 -lstdc++ $(CXX_OPT)
+CXXFLAGS= -O3 -std=c++14 $(CXX_OPT)
 
 
-# Rule for linking main
-main: $(OBJ_FILES)
+# Rule for linking main executable 'quandary'
+quandary: $(OBJ_FILES)
 	$(CXX) -o $@ $(OBJ_FILES) $(LDFLAGS) -L$(LDPATH)
 
 # Rule for building all src files
@@ -70,7 +70,7 @@ $(BUILD_DIR)/%.o : $(SRC_DIR)/%.cpp
 # use 'make cleanup' to remove object files and executable
 cleanup:
 	rm -fr $(BUILD_DIR) 
-	rm -f  main 
+	rm -f  quandary
 
 # use 'make clean-regtest' to remove tests/results
 clean-regtest:

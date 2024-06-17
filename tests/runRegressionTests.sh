@@ -127,15 +127,19 @@ done
 echo 
 
 # Check machine
-case "$(uname -s)" in
-    Linux*)
-		  COMMAND="srun -p pdebug";;
-    Darwin*)
-		  COMMAND="mpirun -oversubscribe";;
-    *)
-			echo "The regression tests can only run on Linux and MAC."
-			exit 1
-esac
+if [ -x "$(command -v srun)" ];
+then
+    echo 'Using srun -p debug' >&2
+    COMMAND="srun -p pdebug"
+elif [ -x "$(command -v mpirun)" ];
+then
+    echo 'Using mpirun -oversubscribe' >&2
+    COMMAND="mpirun -oversubscribe"
+else
+    echo 'ERROR: Neither mpirun nor srun could be found. Exiting.' >%2
+    exit 1
+fi
+
 
 # Test number counter
 testNum=0
@@ -175,7 +179,7 @@ do
 					HEADER="$COMMAND -n $NUM_PARALLEL_PROCESSORS"
 					testName="${testNames[$subTestNum]}-parallel"
 				fi
-        QUANDARY="$HEADER ${DIR}/../main "
+        QUANDARY="$HEADER ${DIR}/../quandary"
 
 				# Update subtest numbers
 				subTestNum=$((subTestNum+1))

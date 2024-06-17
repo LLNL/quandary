@@ -54,14 +54,12 @@ MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Osci
   if (lindbladtype != LindbladType::NONE) {  // Solve Lindblads equation, dim = N^2
     dim = dim_rho*dim_rho; 
     if (mpirank_world == 0 && !quietmode) {
-      printf("Solving Lindblads master equation (state is a density matrix).\n");
-      printf("State dimension (complex) N^2 = %d\n",dim);
+      printf("Solving Lindblads master equation (open quantum system).\n");
     }
   } else { // Solve Schroedingers equation. dim = N
     dim = dim_rho; 
     if (mpirank_world == 0 && !quietmode) {
-      printf("Solving Schroedingers equation (state is a vector).\n");
-      printf("State dimension (complex) N = %d\n",dim);
+      printf("Solving Schroedingers equation (closed quantum system).\n");
     }
   }
 
@@ -1341,276 +1339,18 @@ void MasterEq::computedRHSdp(const double t, const Vec x, const Vec xbar, const 
 
 void MasterEq::setControlAmplitudes(const Vec x) {
 
-  PetscScalar* ptr;
-  VecGetArray(x, &ptr);
+  const PetscScalar* ptr;
+  VecGetArrayRead(x, &ptr);
 
   /* Pass design vector x to oscillators */
   // Design storage: x = (params_oscil0, params_oscil2, ... ) 
   int shift=0;
   for (int ioscil = 0; ioscil < getNOscillators(); ioscil++) {
     /* Copy x into the oscillators parameter array. */
-    // This potentially sets some of the parameters in x to zero in order to enforce the control boundaries. 
     getOscillator(ioscil)->setParams(ptr + shift);
     shift += getOscillator(ioscil)->getNParams();
   }
-  VecRestoreArray(x, &ptr);
-}
-
-
-void MasterEq::setControlAmplitudes_diff(Vec xbar) {
-  PetscScalar* ptr;
-  VecGetArray(xbar, &ptr);
-  int shift=0;
-  for (int ioscil = 0; ioscil < getNOscillators(); ioscil++) {
-    getOscillator(ioscil)->setParams_diff(ptr + shift);
-    shift += getOscillator(ioscil)->getNParams();
-  }
-  VecRestoreArray(xbar, &ptr);
-}
-
-
-int MasterEq::getRhoT0(const int iinit, const int ninit, const InitialConditionType initcond_type, const std::vector<int>& oscilIDs, Vec rho0){
-
-  PetscInt ilow, iupp; 
-  PetscInt elemID;
-  double val;
-  int dim_post;
-  int initID = 0;    // Output: ID for this initial condition */
-  int dim_rho = dim; // can be N^2 or N
-  if (lindbladtype != LindbladType::NONE) dim_rho = (int) sqrt(dim); // now dim_rho = N always.
-
-  /* Switch over type of initial condition */
-  switch (initcond_type) {
-
-    case InitialConditionType::PERFORMANCE:
-      /* Set up Input state psi = 1/sqrt(2N)*(Ones(N) + im*Ones(N)) or rho = psi*psi^\dag */
-      VecZeroEntries(rho0);
-      VecGetOwnershipRange(rho0, &ilow, &iupp);
-      for (int i=0; i<dim_rho; i++){
-        if (lindbladtype == LindbladType::NONE) {
-          int elem_re = getIndexReal(i);
-          int elem_im = getIndexImag(i);
-          double val = 1./ sqrt(2.*dim_rho);
-          if (ilow <= elem_re && elem_re < iupp) VecSetValue(rho0, elem_re, val, INSERT_VALUES);
-          if (ilow <= elem_im && elem_im < iupp) VecSetValue(rho0, elem_im, val, INSERT_VALUES);
-        } else {
-          int elem_re = getIndexReal(getVecID(i, i, dim_rho));
-          double val = 1./ dim_rho;
-          if (ilow <= elem_re && elem_re < iupp) VecSetValue(rho0, elem_re, val, INSERT_VALUES);
-        }
-      }
-      break;
-
-    case InitialConditionType::FROMFILE:
-      /* Do nothing. Init cond is already stored */
-      break;
-
-    case InitialConditionType::PURE:
-      /* Do nothing. Init cond is already stored */
-      break;
-
-    case InitialConditionType::ENSEMBLE:
-      /* Do nothing. Init cond is already stored */
-      break;
-
-    case InitialConditionType::THREESTATES:
-      assert(lindbladtype != LindbladType::NONE);
-
-      /* Reset the initial conditions */
-      VecZeroEntries(rho0);
-
-      /* Get partitioning */
-      VecGetOwnershipRange(rho0, &ilow, &iupp);
-
-      /* Set the <iinit>'th initial state */
-      if (iinit == 0) {
-        // 1st initial state: rho(0)_IJ = 2(N-i)/(N(N+1)) Delta_IJ
-        initID = 0;
-
-        /* Iterate over diagonal elements of full-dimension system */
-        for (int i_full = 0; i_full<dim_rho; i_full++) {
-          int diagID = getIndexReal(getVecID(i_full,i_full,dim_rho));
-          double val = 2.*(dim_rho - i_full) / (dim_rho * (dim_rho + 1));
-          if (ilow <= diagID && diagID < iupp) VecSetValue(rho0, diagID, val, INSERT_VALUES);
-        }
-
-      } else if (iinit == 1) {
-        // 2nd initial state: rho(0)_IJ = 1/N
-        initID = 1;
-        for (int i_full = 0; i_full<dim_rho; i_full++) {
-          for (int j_full = 0; j_full<dim_rho; j_full++) {
-            double val = 1./dim_rho;
-            int index = getIndexReal(getVecID(i_full,j_full,dim_rho));   // Re(rho_ij)
-            if (ilow <= index && index < iupp) VecSetValue(rho0, index, val, INSERT_VALUES); 
-          }
-        }
-
-      } else if (iinit == 2) {
-        // 3rd initial state: rho(0)_IJ = 1/N Delta_IJ
-        initID = 2;
-
-        /* Iterate over diagonal elements */
-        for (int i_full = 0; i_full<dim_rho; i_full++) {
-          int diagID = getIndexReal(getVecID(i_full,i_full,dim_rho));
-          double val = 1./ dim_rho;
-          if (ilow <= diagID && diagID < iupp) VecSetValue(rho0, diagID, val, INSERT_VALUES);
-        }
-
-      } else {
-        printf("ERROR: Wrong initial condition setting!\n");
-        exit(1);
-      }
-
-      /* Assemble rho0 */
-      VecAssemblyBegin(rho0); VecAssemblyEnd(rho0);
-
-      break;
-
-    case InitialConditionType::NPLUSONE:
-      assert(lindbladtype != LindbladType::NONE);
-      VecGetOwnershipRange(rho0, &ilow, &iupp);
-
-      if (iinit < dim_rho) {// Diagonal e_j e_j^\dag
-        VecZeroEntries(rho0);
-        elemID = getIndexReal(getVecID(iinit, iinit, dim_rho));
-        val = 1.0;
-        if (ilow <= elemID && elemID < iupp) VecSetValues(rho0, 1, &elemID, &val, INSERT_VALUES);
-        VecAssemblyBegin(rho0); VecAssemblyEnd(rho0);
-      }
-      else if (iinit == dim_rho) { // fully rotated 1/d*Ones(d)
-        for (int i=0; i<dim_rho; i++){
-          for (int j=0; j<dim_rho; j++){
-            elemID = getIndexReal(getVecID(i,j,dim_rho));
-            val = 1.0 / dim_rho;
-            if (ilow <= elemID && elemID < iupp) VecSetValues(rho0, 1, &elemID, &val, INSERT_VALUES);
-            VecAssemblyBegin(rho0); VecAssemblyEnd(rho0);
-          }
-        }
-      }
-      else {
-        printf("Wrong initial condition index. Should never happen!\n");
-        exit(1);
-      }
-      initID = iinit;
-
-      break;
-
-
-    case InitialConditionType::DIAGONAL:
-      int row, diagelem;
-
-      /* Reset the initial conditions */
-      VecZeroEntries(rho0);
-
-      /* Get dimension of partial system behind last oscillator ID (essential levels only) */
-      dim_post = 1;
-      for (int k = oscilIDs[oscilIDs.size()-1] + 1; k < getNOscillators(); k++) {
-        // dim_post *= getOscillator(k)->getNLevels();
-        dim_post *= nessential[k];
-      }
-
-      /* Compute index of the nonzero element in rho_m(0) = E_pre \otimes |m><m| \otimes E_post */
-      diagelem = iinit * dim_post;
-      if (dim_ess < dim_rho)  diagelem = mapEssToFull(diagelem, nlevels, nessential);
-
-      /* Set B_{mm} */
-      if (lindbladtype != LindbladType::NONE) elemID = getIndexReal(getVecID(diagelem, diagelem, dim_rho)); // density matrix
-      else  elemID = getIndexReal(diagelem); 
-      val = 1.0;
-      VecGetOwnershipRange(rho0, &ilow, &iupp);
-      if (ilow <= elemID && elemID < iupp) VecSetValues(rho0, 1, &elemID, &val, INSERT_VALUES);
-      VecAssemblyBegin(rho0); VecAssemblyEnd(rho0);
-
-      /* Set initial conditon ID */
-      if (lindbladtype != LindbladType::NONE) initID = iinit * ninit + iinit;
-      else initID = iinit;
-
-      break;
-
-    case InitialConditionType::BASIS:
-      assert(lindbladtype != LindbladType::NONE); // should never happen. For Schroedinger: BASIS equals DIAGONAL, and should go into the above switch case. 
-
-      /* Reset the initial conditions */
-      VecZeroEntries(rho0);
-
-      /* Get distribution */
-      VecGetOwnershipRange(rho0, &ilow, &iupp);
-
-      /* Get dimension of partial system behind last oscillator ID (essential levels only) */
-      dim_post = 1;
-      for (int k = oscilIDs[oscilIDs.size()-1] + 1; k < getNOscillators(); k++) {
-        dim_post *= nessential[k];
-      }
-
-      /* Get index (k,j) of basis element B_{k,j} for this initial condition index iinit */
-      int k, j;
-      k = iinit % ( (int) sqrt(ninit) );
-      j = (int) iinit / ( (int) sqrt(ninit) );
-
-      /* Set initial condition ID */
-      initID = j * ( (int) sqrt(ninit)) + k;
-
-      /* Set position in rho */
-      k = k*dim_post;
-      j = j*dim_post;
-      if (dim_ess < dim_rho) { 
-        k = mapEssToFull(k, nlevels, nessential);
-        j = mapEssToFull(j, nlevels, nessential);
-      }
-
-      if (k == j) {
-        /* B_{kk} = E_{kk} -> set only one element at (k,k) */
-        elemID = getIndexReal(getVecID(k, k, dim_rho)); // real part in vectorized system
-        double val = 1.0;
-        if (ilow <= elemID && elemID < iupp) VecSetValues(rho0, 1, &elemID, &val, INSERT_VALUES);
-      } else {
-      //   /* B_{kj} contains four non-zeros, two per row */
-        PetscInt* rows = new PetscInt[4];
-        PetscScalar* vals = new PetscScalar[4];
-
-        /* Get storage index of Re(x) */
-        rows[0] = getIndexReal(getVecID(k, k, dim_rho)); // (k,k)
-        rows[1] = getIndexReal(getVecID(j, j, dim_rho)); // (j,j)
-        rows[2] = getIndexReal(getVecID(k, j, dim_rho)); // (k,j)
-        rows[3] = getIndexReal(getVecID(j, k, dim_rho)); // (j,k)
-
-        if (k < j) { // B_{kj} = 1/2(E_kk + E_jj) + 1/2(E_kj + E_jk)
-          vals[0] = 0.5;
-          vals[1] = 0.5;
-          vals[2] = 0.5;
-          vals[3] = 0.5;
-          for (int i=0; i<4; i++) {
-            if (ilow <= rows[i] && rows[i] < iupp) VecSetValues(rho0, 1, &(rows[i]), &(vals[i]), INSERT_VALUES);
-          }
-        } else {  // B_{kj} = 1/2(E_kk + E_jj) + i/2(E_jk - E_kj)
-          vals[0] = 0.5;
-          vals[1] = 0.5;
-          for (int i=0; i<2; i++) {
-            if (ilow <= rows[i] && rows[i] < iupp) VecSetValues(rho0, 1, &(rows[i]), &(vals[i]), INSERT_VALUES);
-          }
-          vals[2] = -0.5;
-          vals[3] = 0.5;
-          rows[2] = getIndexImag(getVecID(k, j, dim_rho)); // (k,j)
-          rows[3] = getIndexImag(getVecID(j, k, dim_rho)); // (j,k)
-          for (int i=2; i<4; i++) {
-            if (ilow <= rows[i] && rows[i] < iupp) VecSetValues(rho0, 1, &(rows[i]), &(vals[i]), INSERT_VALUES);
-          }
-        }
-        delete [] rows;
-        delete [] vals;
-      }
-
-      /* Assemble rho0 */
-      VecAssemblyBegin(rho0); VecAssemblyEnd(rho0);
-
-      break;
-
-    default:
-      printf("ERROR! Wrong initial condition type: %d\n This should never happen!\n", initcond_type);
-      exit(1);
-  }
-
-  return initID;
+  VecRestoreArrayRead(x, &ptr);
 }
 
 
@@ -3534,9 +3274,23 @@ int myMatMult_matfree_1Osc(Mat RHS, Vec x, Vec y){
   else if (n0==4)  return myMatMult_matfree<4>(RHS, x, y);
   else if (n0==5)  return myMatMult_matfree<5>(RHS, x, y);
   else if (n0==6)  return myMatMult_matfree<6>(RHS, x, y);
+  else if (n0==7)  return myMatMult_matfree<7>(RHS, x, y);
+  else if (n0==8)  return myMatMult_matfree<8>(RHS, x, y);
+  else if (n0==9)  return myMatMult_matfree<9>(RHS, x, y);
+  else if (n0==10)  return myMatMult_matfree<10>(RHS, x, y);
   else {
-    printf("ERROR: In order to run this case, add a line at the end of mastereq.cpp with the corresponding number of levels!\n");
-    exit(1);
+    int mpirank_world = -1;
+    MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
+    if (mpirank_world==0) {
+      printf("\nERROR: Matrix-free solver for this number of qubit levels needs a simple modification:\n");
+      printf("  Add the following lines to the end of src/mastereq.cpp and recompile Quandary:\n \
+  -> In function 'int myMatMult_matfree_1Osc(..)':  \n \
+             elseif (n0==%d) return  myMatMult_matfree<%d>(RHS, x, y); \n \
+  -> In function 'int myMatMultTranspose_matfree_1Osc(..)': \n \
+             elseif (n0==%d) return  myMatMultTranspose_matfree<%d>(RHS, x, y);\n\n", n0, n0, n0, n0);
+      exit(1);
+    } 
+    return 0;
   }
 }
 int myMatMultTranspose_matfree_1Osc(Mat RHS, Vec x, Vec y){
@@ -3549,9 +3303,18 @@ int myMatMultTranspose_matfree_1Osc(Mat RHS, Vec x, Vec y){
   else if (n0==4)  return myMatMultTranspose_matfree<4>(RHS, x, y);
   else if (n0==5)  return myMatMultTranspose_matfree<5>(RHS, x, y);
   else if (n0==6)  return myMatMultTranspose_matfree<6>(RHS, x, y);
+  else if (n0==7)  return myMatMultTranspose_matfree<7>(RHS, x, y);
+  else if (n0==8)  return myMatMultTranspose_matfree<8>(RHS, x, y);
+  else if (n0==9)  return myMatMultTranspose_matfree<9>(RHS, x, y);
+  else if (n0==10)  return myMatMultTranspose_matfree<10>(RHS, x, y);
   else {
-    printf("ERROR: In order to run this case, add a line at the end of mastereq.cpp with the corresponding number of levels!\n");
-    exit(1);
+    int mpirank_world = -1;
+    MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
+    if (mpirank_world==0) {
+      printf("ERROR: Matrix-free solver for this number of qubit levels needs template instantiation.\n");
+      exit(1);
+    }
+    return 0;
   }
 }
 
@@ -3565,14 +3328,26 @@ int myMatMult_matfree_2Osc(Mat RHS, Vec x, Vec y){
   int n1 = shellctx->nlevels[1];
   if      (n0==3 && n1==20)  return myMatMult_matfree<3,20>(RHS, x, y);
   else if (n0==3 && n1==10)  return myMatMult_matfree<3,10>(RHS, x, y);
-  else if (n0==4 && n1==4)   return myMatMult_matfree<4,4>(RHS, x, y);
   else if (n0==1 && n1==1)   return myMatMult_matfree<1,1>(RHS, x, y);
   else if (n0==2 && n1==2)   return myMatMult_matfree<2,2>(RHS, x, y);
   else if (n0==3 && n1==3)   return myMatMult_matfree<3,3>(RHS, x, y);
+  else if (n0==4 && n1==4)   return myMatMult_matfree<4,4>(RHS, x, y);
+  else if (n0==5 && n1==5)   return myMatMult_matfree<5,5>(RHS, x, y);
+  else if (n0==10 && n1==10)   return myMatMult_matfree<10,10>(RHS, x, y);
   else if (n0==20 && n1==20) return myMatMult_matfree<20,20>(RHS, x, y);
   else {
-    printf("ERROR: In order to run this case, add a line at the end of mastereq.cpp with the corresponding number of levels!\n");
-    exit(1);
+    int mpirank_world = -1;
+    MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
+    if (mpirank_world==0) {
+      printf("\nERROR: Matrix-free solver for this number of qubit levels needs a simple modification:\n");
+      printf("  Add the following lines to the end of src/mastereq.cpp and recompile Quandary:\n \
+  -> In function 'int myMatMult_matfree_2Osc(..)':  \n \
+             elseif (n0==%d && n1==%d) return  myMatMult_matfree<%d,%d>(RHS, x, y); \n \
+  -> In function 'int myMatMultTranspose_matfree_2Osc(..)': \n \
+             elseif (n0==%d && n1==%d) return  myMatMultTranspose_matfree<%d,%d>(RHS, x, y);\n\n", n0, n1, n0, n1, n0, n1, n0, n1);
+      exit(1);
+    }
+    return 0;
   }
 }
 int myMatMultTranspose_matfree_2Osc(Mat RHS, Vec x, Vec y){
@@ -3583,14 +3358,21 @@ int myMatMultTranspose_matfree_2Osc(Mat RHS, Vec x, Vec y){
   int n1 = shellctx->nlevels[1];
   if      (n0==3 && n1==20)  return myMatMultTranspose_matfree<3,20>(RHS, x, y);
   else if (n0==3 && n1==10)  return myMatMultTranspose_matfree<3,10>(RHS, x, y);
-  else if (n0==4 && n1==4)   return myMatMultTranspose_matfree<4,4>(RHS, x, y);
   else if (n0==1 && n1==1)   return myMatMultTranspose_matfree<1,1>(RHS, x, y);
   else if (n0==2 && n1==2)   return myMatMultTranspose_matfree<2,2>(RHS, x, y);
   else if (n0==3 && n1==3)   return myMatMultTranspose_matfree<3,3>(RHS, x, y);
+  else if (n0==4 && n1==4)   return myMatMultTranspose_matfree<4,4>(RHS, x, y);
+  else if (n0==5 && n1==5)   return myMatMultTranspose_matfree<5,5>(RHS, x, y);
+  else if (n0==10 && n1==10)   return myMatMultTranspose_matfree<10,10>(RHS, x, y);
   else if (n0==20 && n1==20) return myMatMultTranspose_matfree<20,20>(RHS, x, y);
   else {
-    printf("ERROR: In order to run this case, add a line at the end of mastereq.cpp with the corresponding number of levels!\n");
-    exit(1);
+    int mpirank_world = -1;
+    MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
+    if (mpirank_world==0) {
+      printf("ERROR: Matrix-free solver for this number of qubit levels needs template instanciation.\n");
+      exit(1);
+    }
+    return 0;
   }
 }
 
@@ -3608,8 +3390,18 @@ int myMatMult_matfree_3Osc(Mat RHS, Vec x, Vec y){
   else if (n0==3 && n1==3 && n2==3) return myMatMult_matfree<3,3,3>(RHS, x, y);
   else if (n0==4 && n1==4 && n2==4) return myMatMult_matfree<4,4,4>(RHS, x, y);
   else {
-    printf("ERROR: In order to run this case, add a line at the end of mastereq.cpp with the corresponding number of levels!\n");
-    exit(1);
+    int mpirank_world = -1;
+    MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
+    if (mpirank_world==0) {
+      printf("\nERROR: Matrix-free solver for this number of qubit levels needs a simple modification:\n");
+      printf("  Add the following lines to the end of src/mastereq.cpp and recompile Quandary:\n \
+  -> In function 'int myMatMult_matfree_3Osc(..)':  \n \
+             elseif (n0==%d && n1==%d && n2==%d) return  myMatMult_matfree<%d,%d,%d>(RHS, x, y); \n \
+  -> In function 'int myMatMultTranspose_matfree_3Osc(..)': \n \
+             elseif (n0==%d && n1==%d && n2==%d) return  myMatMultTranspose_matfree<%d,%d,%d>(RHS, x, y);\n\n", n0, n1, n2, n0, n1, n2, n0, n1, n2, n0, n1, n2);
+      exit(1);
+    } 
+    return 0;
   }
 }
 int myMatMultTranspose_matfree_3Osc(Mat RHS, Vec x, Vec y){
@@ -3624,8 +3416,13 @@ int myMatMultTranspose_matfree_3Osc(Mat RHS, Vec x, Vec y){
   else if (n0==3 && n1==3 && n2==3)  return myMatMultTranspose_matfree<3,3,3>(RHS, x, y);
   else if (n0==4 && n1==4 && n2==4)  return myMatMultTranspose_matfree<4,4,4>(RHS, x, y);
   else {
-    printf("ERROR: In order to run this case, add a line at the end of mastereq.cpp with the corresponding number of levels!\n");
-    exit(1);
+    int mpirank_world = -1;
+    MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
+    if (mpirank_world==0) {
+      printf("ERROR: Matrix-free solver for this number of qubit levels needs template instanciation.\n");
+      exit(1);
+    }
+    return 0;
   }
 }
 
@@ -3643,8 +3440,18 @@ int myMatMult_matfree_4Osc(Mat RHS, Vec x, Vec y){
   else if (n0==3 && n1==3 && n2==3 && n3 == 3) return myMatMult_matfree<3,3,3,3>(RHS, x, y);
   else if (n0==4 && n1==4 && n2==4 && n3 == 4) return myMatMult_matfree<4,4,4,4>(RHS, x, y);
   else {
-    printf("ERROR: In order to run this case, add a line at the end of mastereq.cpp with the corresponding number of levels!\n");
-    exit(1);
+    int mpirank_world = -1;
+    MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
+    if (mpirank_world==0) {
+      printf("\nERROR: Matrix-free solver for this number of qubit levels needs a simple modification:\n");
+      printf("  Add the following lines to the end of src/mastereq.cpp and recompile Quandary:\n \
+  -> In function 'int myMatMult_matfree_4Osc(..)':  \n \
+             elseif (n0==%d && n1==%d && n2==%d && n3==%d) return  myMatMult_matfree<%d,%d,%d,%d>(RHS, x, y); \n \
+  -> In function 'int myMatMultTranspose_matfree_4Osc(..)': \n \
+             elseif (n0==%d && n1==%d && n2==%d && n3==%d) return  myMatMultTranspose_matfree<%d,%d,%d,%d>(RHS, x, y);\n\n", n0, n1, n2, n3, n0, n1, n2, n3, n0, n1, n2, n3, n0, n1, n2, n3);
+      exit(1);
+    }
+    return 0;
   }
 }
 int myMatMultTranspose_matfree_4Osc(Mat RHS, Vec x, Vec y){
@@ -3660,8 +3467,13 @@ int myMatMultTranspose_matfree_4Osc(Mat RHS, Vec x, Vec y){
   else if (n0==3 && n1==3 && n2==3 && n3==3)  return myMatMultTranspose_matfree<3,3,3,3>(RHS, x, y);
   else if (n0==4 && n1==4 && n2==4 && n3==4)  return myMatMultTranspose_matfree<4,4,4,4>(RHS, x, y);
   else {
-    printf("ERROR: In order to run this case, add a line at the end of mastereq.cpp with the corresponding number of levels!\n");
-    exit(1);
+    int mpirank_world = -1;
+    MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
+    if (mpirank_world==0) {
+      printf("ERROR: Matrix-free solver for this number of qubit levels needs template instanciation.\n");
+      exit(1);
+    }
+    return 0;
   }
 }
 
@@ -3677,9 +3489,20 @@ int myMatMult_matfree_5Osc(Mat RHS, Vec x, Vec y){
   int n3 = shellctx->nlevels[3];
   int n4 = shellctx->nlevels[4];
   if      (n0==2 && n1==2 && n2==2 && n3 == 2 && n4 == 2) return myMatMult_matfree<2,2,2,2,2>(RHS, x, y);
+  else if (n0==3 && n1==3 && n2==3 && n3 == 3 && n4 == 3) return myMatMult_matfree<3,3,3,3,3>(RHS, x, y);
   else {
-    printf("ERROR: In order to run this case, add a line at the end of mastereq.cpp with the corresponding number of levels!\n");
-    exit(1);
+    int mpirank_world = -1;
+    MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
+    if (mpirank_world==0) {
+      printf("\nERROR: Matrix-free solver for this number of qubit levels needs a simple modification:\n");
+      printf("  Add the following lines to the end of src/mastereq.cpp and recompile Quandary:\n \
+  -> In function 'int myMatMult_matfree_5Osc(..)':  \n \
+             elseif (n0==%d && n1==%d && n2==%d && n3==%d && n4==%d) return  myMatMult_matfree<%d,%d,%d,%d,%d>(RHS, x, y); \n \
+  -> In function 'int myMatMultTranspose_matfree_5Osc(..)': \n \
+             elseif (n0==%d && n1==%d && n2==%d && n3==%d && n4==%d) return  myMatMultTranspose_matfree<%d,%d,%d,%d,%d>(RHS, x, y);\n\n", n0, n1, n2, n3, n4, n0, n1, n2, n3, n4, n0, n1, n2, n3, n4, n0, n1, n2, n3, n4);
+      exit(1);
+    }
+    return 0;
   }
 }
 int myMatMultTranspose_matfree_5Osc(Mat RHS, Vec x, Vec y){
@@ -3693,9 +3516,14 @@ int myMatMultTranspose_matfree_5Osc(Mat RHS, Vec x, Vec y){
   int n3 = shellctx->nlevels[3];
   int n4 = shellctx->nlevels[4];
   if      (n0==2 && n1==2 && n2==2 && n3==2 && n4==2)  return myMatMultTranspose_matfree<2,2,2,2,2>(RHS, x, y);
+  else if (n0==3 && n1==3 && n2==3 && n3==3 && n4==3)  return myMatMultTranspose_matfree<3,3,3,3,3>(RHS, x, y);
   else {
-    printf("ERROR: In order to run this case, add a line at the end of mastereq.cpp with the corresponding number of levels!\n");
-    exit(1);
+    int mpirank_world = -1;
+    MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
+    if (mpirank_world==0) {
+      printf("ERROR: Matrix-free solver for this number of qubit levels needs template instanciation.\n");
+      exit(1);
+    }
+    return 0;
   }
 }
-

@@ -477,6 +477,31 @@ CQNOT::CQNOT(std::vector<int> nlevels_, std::vector<int> nessential_, double tim
 CQNOT::~CQNOT(){}
 
 
+QFT::QFT(std::vector<int> nlevels_, std::vector<int> nessential_, double time_, std::vector<double> gate_rot_freq_, LindbladType lindbladtype_, bool quietmode) : Gate(nlevels_, nessential_, time_, gate_rot_freq_, lindbladtype_, quietmode) {
+
+  double sq = sqrt(dim_ess);
+
+  for (int j=0; j<dim_ess; j++){
+      for (int k = 0; k<dim_ess; k++){
+          double val_re = cos(2.0*M_PI*j*k/dim_ess) / sq;
+          double val_im = sin(2.0*M_PI*j*k/dim_ess) / sq;
+          MatSetValue(V_re, j, k, val_re, INSERT_VALUES);
+          MatSetValue(V_im, j, k, val_im, INSERT_VALUES);
+      }
+  }
+
+  MatAssemblyBegin(V_re, MAT_FINAL_ASSEMBLY);
+  MatAssemblyBegin(V_im, MAT_FINAL_ASSEMBLY);
+  MatAssemblyEnd(V_re, MAT_FINAL_ASSEMBLY);
+  MatAssemblyEnd(V_im, MAT_FINAL_ASSEMBLY);
+
+  /* assemble vectorized rotated target gate \bar VP \kron VP from V=V_re + i V_im */
+  assembleGate();
+}
+
+QFT::~QFT(){}
+
+
 FromFile::FromFile(std::vector<int> nlevels_, std::vector<int> nessential_, double time_, std::vector<double> gate_rot_freq_, LindbladType lindbladtype_, std::string filename, bool quietmode) : Gate(nlevels_, nessential_, time_, gate_rot_freq_, lindbladtype_, quietmode){
 
   // Read the gate from a file
@@ -516,3 +541,30 @@ FromFile::FromFile(std::vector<int> nlevels_, std::vector<int> nessential_, doub
 }
 
 FromFile::~FromFile(){}
+
+
+Gate* initTargetGate(std::vector<std::string> target_str, std::vector<int>nlevels, std::vector<int>nessential, double total_time, LindbladType lindbladtype, std::vector<double> gate_rot_freq, bool quietmode){
+
+  if ( target_str.size() < 2 ) {
+    printf("ERROR: You want to optimize for a gate, but didn't specify which one. Check your config for 'optim_target'!\n");
+    exit(1);
+  };
+
+  Gate* mygate;
+  if      (target_str[1].compare("none")  == 0 )    mygate = new Gate();
+  else if (target_str[1].compare("xgate") == 0 )    mygate = new XGate(nlevels, nessential, total_time, gate_rot_freq, lindbladtype, quietmode);
+  else if (target_str[1].compare("ygate") == 0 )    mygate = new YGate(nlevels, nessential, total_time, gate_rot_freq, lindbladtype, quietmode);
+  else if (target_str[1].compare("zgate") == 0 )    mygate = new ZGate(nlevels, nessential, total_time, gate_rot_freq, lindbladtype, quietmode);
+  else if (target_str[1].compare("hadamard") == 0 ) mygate = new HadamardGate(nlevels, nessential, total_time, gate_rot_freq, lindbladtype, quietmode);
+  else if (target_str[1].compare("cnot") == 0 )     mygate = new CNOT(nlevels, nessential, total_time, gate_rot_freq, lindbladtype, quietmode);
+  else if (target_str[1].compare("swap") == 0 )     mygate = new SWAP(nlevels, nessential, total_time, gate_rot_freq, lindbladtype, quietmode);
+  else if (target_str[1].compare("swap0q") == 0 )   mygate = new SWAP_0Q(nlevels, nessential, total_time, gate_rot_freq, lindbladtype, quietmode);
+  else if (target_str[1].compare("cqnot") == 0 )    mygate = new CQNOT(nlevels, nessential, total_time, gate_rot_freq, lindbladtype, quietmode);
+  else if (target_str[1].compare("file") == 0 ) mygate = new FromFile(nlevels, nessential, total_time, gate_rot_freq, lindbladtype, target_str[2], quietmode);
+  else {
+    printf("ERROR. Could not find target gate. Exiting now.\n");
+    exit(1);
+  }
+
+  return mygate;
+}

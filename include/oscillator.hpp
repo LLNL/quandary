@@ -10,6 +10,7 @@
 #include "util.hpp"
 #include "config.hpp"
 #include <stdlib.h> 
+#include<random>
 
 #pragma once
 
@@ -49,7 +50,7 @@ class Oscillator {
 
       public:
     Oscillator();
-    Oscillator(MapParam config, int id, std::vector<int> nlevels_all_, std::vector<std::string>& controlsegments, std::vector<std::string>& controlinitializations, double ground_freq_, double selfkerr_, double rotational_freq_, double decay_time_, double dephase_time_, std::vector<double> carrier_freq_, double Tfinal_, LindbladType lindbladtype_);
+    Oscillator(MapParam config, int id, std::vector<int> nlevels_all_, std::vector<std::string>& controlsegments, std::vector<std::string>& controlinitializations, double ground_freq_, double selfkerr_, double rotational_freq_, double decay_time_, double dephase_time_, std::vector<double> carrier_freq_, double Tfinal_, LindbladType lindbladtype_, std::default_random_engine rand_engine);
     virtual ~Oscillator();
 
     /* Return the constants */
@@ -63,13 +64,13 @@ class Oscillator {
     int getNCarrierfrequencies() {return carrier_freq.size(); };
     ControlType getControlType() {return basisfunctions[0]->getType(); };
     int getNSplines() {return basisfunctions[0]->getNSplines();};
+    double getRotFreq() {return (ground_freq - detuning_freq) / (2.0*M_PI); };
 
     /* Return the number of parameters for the k-th segment */
     int getNSegParams(int segmentID);
 
-    /* Copy x into the control parameter vector. This also checks the boundaries of the controls and potentially sets some parameters in x to zero.  */
-    void setParams(double* x);
-    void setParams_diff(double* xbar);
+    /* Copy x into the control parameter vector. */
+    void setParams(const double* x);
 
     /* Copy params into the vector x */
     void getParams(double* x);
