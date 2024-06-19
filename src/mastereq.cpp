@@ -1431,10 +1431,10 @@ int myMatMult_sparsemat(Mat RHS, Vec x, Vec y){
       //   MatView(shellctx->Ad_vec[id_kl], NULL);
       // }
     }
-
-    /* --- Apply learning terms --- */
-    shellctx->learning->applyLearningTerms(u,v,uout, vout);
   }
+
+  /* --- Apply learning terms --- */
+  shellctx->learning->applyLearningTerms(u,v,uout, vout);
 
   /* Restore */
   VecRestoreSubVector(x, *shellctx->isu, &u);
