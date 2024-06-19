@@ -1,14 +1,17 @@
 #include "learning.hpp"
 
 
-Learning::Learning(const int dim_, LindbladType lindbladtype_){
-  dim = dim_;     // Dimension of the state vector (N^2 for Lindblad)
+Learning::Learning(std::vector<int>& nlevels, LindbladType lindbladtype_, std::vector<std::string>& learninit_str, std::default_random_engine rand_engine){
   lindbladtype = lindbladtype_;
 
-  // Get dimension of the Hilbert space (N)
-  dim_rho = dim;
+  // Get dimension of the Hilbert space (dim_rho = N) and dimension of the state variable (dim = N or N^2 for Schroedinger or Lindblad solver)
+  dim_rho = 1;
+  for (int i=0; i<nlevels.size(); i++){
+    dim_rho *= nlevels[i];
+  }
+  dim = dim_rho;
   if (lindbladtype != LindbladType::NONE){
-    dim_rho = sqrt(dim); 
+    dim = dim_rho*dim_rho; 
   }
 
   /* Create generalized Gellman matrices, multiplied by (-i) and shifted s.t. G_00=0 */
@@ -152,17 +155,35 @@ Learning::Learning(const int dim_, LindbladType lindbladtype_){
   nbasis = GellmannMats_A.size() + GellmannMats_B.size();
 
   /* Set an initial guess for the learnable Hamiltonian parameters */
-  for (int i=0; i<GellmannMats_A.size(); i++){
-    double val = 0.0;                // TODO
-    learnparamsH_A.push_back(val);
-  }
-  for (int i=0; i<GellmannMats_B.size(); i++){
-    double val = 0.0;                // TODO
-    learnparamsH_B.push_back(val);
-  }
+  if (nbasis > 0) {
+    if (learninit_str[0].compare("file") == 0 ) {
 
-  // Create auxiliary vector 
-  if (GellmannMats_A.size()>0) {
+    } else if (learninit_str[0].compare("random") == 0 ) {
+
+      // Uniform distribution in [0,amp)
+      assert(learninit_str.size()>1);
+      double amp = atof(learninit_str[1].c_str());
+      std::uniform_real_distribution<double> unit_dist(0.0, amp);
+      for (int i=0; i<GellmannMats_A.size(); i++){
+        double randval = unit_dist(rand_engine) * 2.0*M_PI;  // radians
+        learnparamsH_A.push_back(randval);
+      }
+      for (int i=0; i<GellmannMats_B.size(); i++){
+        double randval = unit_dist(rand_engine) * 2.0*M_PI;  // radians
+        learnparamsH_B.push_back(randval);
+      }
+    } else {
+      printf("ERROR: Wrong configuration for learnable parameter initialization. Choose 'file, <pathtofile>', or 'random, <amplitude>'\n");
+      exit(1);
+    }
+    for (int i=0; i<learnparamsH_A.size(); i++){
+      printf("  paramA %d = %f\n", i, learnparamsH_A[i]);
+    }
+    for (int i=0; i<learnparamsH_B.size(); i++){
+      printf("  paramB %d = %f\n", i, learnparamsH_B[i]);
+    }
+
+    // Create auxiliary vector needed for MatMult.
     MatCreateVecs(GellmannMats_A[0], &aux, NULL);
   }
 }
@@ -179,6 +200,9 @@ Learning::~Learning(){
   }
   GellmannMats_A.clear();
   GellmannMats_B.clear();
+  if (nbasis > 0) {
+    VecDestroy(&aux);
+  }
 }
 
 void Learning::applyLearningTerms(Vec u, Vec v, Vec uout, Vec vout){

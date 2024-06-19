@@ -289,6 +289,19 @@ int main(int argc,char **argv)
     }
   }
 
+  /* Create Learning Model or dummy */
+  bool dolearning = config.GetBoolParam("dolearning", false, false);
+  std::vector<std::string> learninit_str;
+  Learning* learning;
+  if (dolearning) {
+    config.GetVecStrParam("learnparams_initialization", learninit_str, "random, 0.0");
+    learning = new Learning(nlevels, lindbladtype, learninit_str, rand_engine);
+    printf("Created Learning operators on %d Gellmann mats\n", learning->getNBasis());
+  } else {
+    std::vector<int> nlevelsdummy(nlevels.size(), 0);
+    learning = new Learning(nlevelsdummy, LindbladType::NONE, learninit_str, rand_engine); // Dummy. Does nothing.
+  }
+
   /* --- Initialize the Master Equation  --- */
   // Get self and cross kers and coupling terms 
   std::vector<double> crosskerr, Jkl;
@@ -324,10 +337,8 @@ int main(int argc,char **argv)
     if (mpirank_world==0 && !quietmode) printf("# Warning: Matrix-free solver can not be used when Hamiltonian is read fromfile. Switching to sparse-matrix version.\n");
     usematfree = false;
   }
-  // Check if learning terms are enabled
-  bool dolearning = config.GetBoolParam("dolearning", false, false);
   // Initialize Master equation
-  MasterEq* mastereq = new MasterEq(nlevels, nessential, oscil_vec, crosskerr, Jkl, eta, lindbladtype, usematfree, dolearning, hamiltonian_file, quietmode);
+  MasterEq* mastereq = new MasterEq(nlevels, nessential, oscil_vec, crosskerr, Jkl, eta, lindbladtype, usematfree, dolearning, learning, hamiltonian_file, quietmode);
 
 
   /* Output */
@@ -733,6 +744,7 @@ int main(int argc,char **argv)
   }
   delete [] oscil_vec;
   delete mastereq;
+  delete learning;
   delete mytimestepper;
   delete optimctx;
   delete output;

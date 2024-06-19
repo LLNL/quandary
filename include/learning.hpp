@@ -1,6 +1,8 @@
 #include "defs.hpp"
+#include <assert.h>
 #include <petscts.h>
 #include <vector>
+#include<random>
 #pragma once
 
 
@@ -19,7 +21,7 @@ class Learning {
   Vec aux;    // Auxiliary vector to perform matvecs
 
   public: 
-    Learning(const int dim_, LindbladType lindbladtype_);
+    Learning(std::vector<int>&nlevels, LindbladType lindbladtype_, std::vector<std::string>& learninit_str, std::default_random_engine rand_engine);
     ~Learning();
 
     /* Applies Learning operator to input state (u,v) */

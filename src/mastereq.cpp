@@ -14,7 +14,7 @@ MasterEq::MasterEq(){
 }
 
 
-MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Oscillator** oscil_vec_, const std::vector<double> crosskerr_, const std::vector<double> Jkl_, const std::vector<double> eta_, LindbladType lindbladtype_, bool usematfree_, bool dolearning_, std::string hamiltonian_file_, bool quietmode_) {
+MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Oscillator** oscil_vec_, const std::vector<double> crosskerr_, const std::vector<double> Jkl_, const std::vector<double> eta_, LindbladType lindbladtype_, bool usematfree_, bool dolearning_, Learning* learning_, std::string hamiltonian_file_, bool quietmode_) {
   int ierr;
 
   nlevels = nlevels_;
@@ -26,6 +26,7 @@ MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Osci
   eta = eta_;
   usematfree = usematfree_;
   dolearning = dolearning_;
+  learning = learning_;
   lindbladtype = lindbladtype_;
   hamiltonian_file = hamiltonian_file_;
   quietmode = quietmode_;
@@ -123,14 +124,6 @@ MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Osci
       transfer_Hdt_re.push_back(mytransfer_re);
       transfer_Hdt_im.push_back(mytransfer_im);
     }
-  }
-
-  /* Create Learnable parameters */
-  if (dolearning) {
-    learning = new Learning(dim, lindbladtype);
-    printf("Created Learning operators on %d Gellmann mats\n", learning->getNBasis());
-  } else {
-    learning = new Learning(-1, LindbladType::NONE); // Dummy. Does nothing.
   }
 
   /* Initialize Hamiltonian matrices */
@@ -269,13 +262,8 @@ MasterEq::~MasterEq(){
     delete [] vals;
     delete [] cols;
 
-    if (dolearning) {
-      delete learning;
-    }
-
     ISDestroy(&isu);
     ISDestroy(&isv);
-
   }
 }
 
