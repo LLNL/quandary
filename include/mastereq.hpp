@@ -30,8 +30,7 @@ typedef struct {
   Mat *Ad, *Bd;
   std::vector<Mat> Ad_vec;
   std::vector<Mat> Bd_vec;
-  Mat* AlearnH;
-  Mat* BlearnH;
+  Learning* learning; 
   Vec *aux;
   double time;
 } MatShellCtx;

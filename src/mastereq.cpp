@@ -10,6 +10,7 @@ MasterEq::MasterEq(){
   dImdp = NULL;
   usematfree = false;
   quietmode = false;
+  learning = NULL;
 }
 
 
@@ -168,12 +169,11 @@ MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Osci
     RHSctx.Bc_vec = Bc_vec;
     RHSctx.Ad_vec = Ad_vec;
     RHSctx.Bd_vec = Bd_vec;
-    RHSctx.AlearnH = &AlearnH;
-    RHSctx.BlearnH = &BlearnH;
     RHSctx.Ad = &Ad;
     RHSctx.Bd = &Bd;
     RHSctx.aux = &aux;
   }
+  RHSctx.learning = learning;
   RHSctx.nlevels = nlevels;
   RHSctx.oscil_vec = oscil_vec;
   RHSctx.time = 0.0;
@@ -1429,6 +1429,32 @@ int myMatMult_sparsemat(Mat RHS, Vec x, Vec y){
       //   printf("trans_im %f  %.8f\n", shellctx->time, trans_im);
       //   MatView(shellctx->Ad_vec[id_kl], NULL);
       // }
+    }
+
+    /* --- Apply learning terms --- */
+    // Real parts of (-i * H)
+    for (int i=0; i< shellctx->learning->GellmannMats_A.size(); i++){
+      Mat myG = shellctx->learning->GellmannMats_A[i];
+      double param = shellctx->learning->learnparamsH_A[i];
+
+      // uout += learnparamA * GellmannA * u
+      MatMult(myG, u, *shellctx->aux);
+      VecAXPY(uout, param, *shellctx->aux); 
+      // vout += learnparamA * GellmannA * v
+      MatMult(myG, v, *shellctx->aux);
+      VecAXPY(vout, param, *shellctx->aux);
+    }
+    // Imaginary parts of (-i * H)
+    for (int i=0; i< shellctx->learning->GellmannMats_B.size(); i++){
+      Mat myG = shellctx->learning->GellmannMats_B[i];
+      double param = shellctx->learning->learnparamsH_B[i];
+
+      // uout -= learnparamB * GellmannB * u
+      MatMult(myG, v, *shellctx->aux);
+      VecAXPY(uout, -1.*param, *shellctx->aux); 
+      // vout += learnparamB * GellmannB * u
+      MatMult(myG, u, *shellctx->aux);
+      VecAXPY(vout, param, *shellctx->aux);
     }
   }
 

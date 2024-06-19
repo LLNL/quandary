@@ -11,24 +11,10 @@ Learning::Learning(const int dim_, LindbladType lindbladtype_){
     dim_rho = sqrt(dim); 
   }
 
-  /* Set an initial guess for the learnable parameters */
-  // learnable Hamiltonian initialization
-  int nparams_H = dim-1;  // N^2-1 many
-  for (int i=0; i<nparams_H; i++){
-    double val = 0.0;                // TODO
-    learn_params_H.push_back(val);
-  }
-  // learnable Collapse operators
-  int nparams_C = dim*(dim-1)/2;  // N^2(N^2-1)/2  many
-  for (int i=0; i<nparams_C; i++){
-    double val = 0.0;                // TODO
-    learn_params_C.push_back(val);
-  }
+  /* Create generalized Gellman matrices multiplied by (-i), shifted s.t. G_00=0 */
 
-
-  /* Create Gellman matrices */
-
-  /* 1) myG = - I_N \kron sigma_jk^Re + sigma_jk^Re \kron I_N  where  sigma_jk^re = |j><k| + |k><j| */
+  /* 1) Real offdiagonal Gellman matrices:  sigma_jk^re = |j><k| + |k><j| 
+        Note: (-i)sigma_jk^RE is purely imaginary, hence into Gellman_B = Im(H) */
   for (int j=0; j<dim_rho; j++){
     for (int k=j+1; k<dim_rho; k++){
       Mat myG;
@@ -43,15 +29,16 @@ Learning::Learning(const int dim_, LindbladType lindbladtype_){
         int col = k;
         MatSetValue(myG, row, col, -1.0, INSERT_VALUES);
         MatSetValue(myG, col, row, -1.0, INSERT_VALUES);
-      } else { // Lindbladsolver
-        // first part: -I\kron sigma_jk^Re
+      } else {
+        // For Lindblad: I_N \kron (-i)sigma_jk^Re - (-i)sigma_jk^Re \kron I_N  */
+        //  -I\kron sigma_jk^Re
         for (int i=0; i<dim_rho; i++){
           int row = i*dim_rho + j;
           int col = i*dim_rho + k;
           MatSetValue(myG, row, col, -1.0, INSERT_VALUES);
           MatSetValue(myG, col, row, -1.0, INSERT_VALUES);
         }
-        // second part: +sigma_jk^Re \kron I
+        // +sigma_jk^Re \kron I
         for (int i=0; i<dim_rho; i++){
           int row = j*dim_rho + i;
           int col = k*dim_rho + i;
@@ -62,11 +49,13 @@ Learning::Learning(const int dim_, LindbladType lindbladtype_){
 
       MatAssemblyBegin(myG, MAT_FINAL_ASSEMBLY);
       MatAssemblyEnd(myG, MAT_FINAL_ASSEMBLY);
-      GellmannMats.push_back(myG);
+      GellmannMats_B.push_back(myG);
     }
   }
 
   /* 2) myG = - I_N \kron sigma_jk^Im + sigma_jk^Im \kron I_N  where  sigma_jk^Im = |j><k| - |k><j| */
+  /* 2) Imaginary offdiagonal Gellman matrices:  sigma_jk^im = -i|j><k| + i|k><j| 
+        Note: (-i)sigma_jk^IM is real, hence into Gellman_A = Re(H) */
   for (int j=0; j<dim_rho; j++){
     for (int k=j+1; k<dim_rho; k++){
       Mat myG;
@@ -81,15 +70,16 @@ Learning::Learning(const int dim_, LindbladType lindbladtype_){
         int col = k;
         MatSetValue(myG, row, col, -1.0, INSERT_VALUES);
         MatSetValue(myG, col, row, +1.0, INSERT_VALUES);
-      } else { // Lindblad solver 
-        // first part: -I\kron sigma_jk^Im
+      } else {
+        // For Lindblad: I_N \kron (-i)sigma_jk^Im - (-i)sigma_jk^Ie \kron I_N  */
+        //  -I\kron sigma_jk^Im
         for (int i=0; i<dim_rho; i++){
           int row = i*dim_rho + j;
           int col = i*dim_rho + k;
           MatSetValue(myG, row, col, -1.0, INSERT_VALUES);
           MatSetValue(myG, col, row, +1.0, INSERT_VALUES);
         }
-        // second part: +sigma_jk^Im \kron I
+        // +sigma_jk^Im \kron I
         for (int i=0; i<dim_rho; i++){
           int row = j*dim_rho + i;
           int col = k*dim_rho + i;
@@ -99,11 +89,12 @@ Learning::Learning(const int dim_, LindbladType lindbladtype_){
       }
       MatAssemblyBegin(myG, MAT_FINAL_ASSEMBLY);
       MatAssemblyEnd(myG, MAT_FINAL_ASSEMBLY);
-      GellmannMats.push_back(myG);
+      GellmannMats_A.push_back(myG);
     }
   }
 
- /* 3) myG = - I_N \kron sigma_l + sigma_l \kron I_N  where  sigma_l = ... */
+  /* 3) Real diagonal Gellman matrices:  sigma_l^Re = (2/(l(l+1))(sum_j|j><j| - l|l><l|) 
+        Note: (-i)sigma_l^RE is purely imaginary, hence into Gellman_B = Im(H) */
   for (int l=1; l<dim_rho; l++){
     Mat myG;
     MatCreate(PETSC_COMM_WORLD, &myG);
@@ -144,23 +135,40 @@ Learning::Learning(const int dim_, LindbladType lindbladtype_){
 
     MatAssemblyBegin(myG, MAT_FINAL_ASSEMBLY);
     MatAssemblyEnd(myG, MAT_FINAL_ASSEMBLY);
-    GellmannMats.push_back(myG);
+    GellmannMats_B.push_back(myG);
   }
-  printf("Hey dim=%d, dim_rho=%d, Mats %d\n", dim, dim_rho, GellmannMats.size());
-  for (int i=0; i<GellmannMats.size(); i++){
-    printf("i=%d\n", i);
-    MatView(GellmannMats[i], NULL);
+  printf("HEY: dim=%d, dim_rho=%d, A-Mats:%d, B-Mats: %d\n", dim, dim_rho, GellmannMats_A.size(), GellmannMats_B.size() );
+  for (int i=0; i<GellmannMats_A.size(); i++){
+    printf("Gellman A: i=%d\n", i);
+    MatView(GellmannMats_A[i], NULL);
   }
-  exit(1);
- 
+  for (int i=0; i<GellmannMats_B.size(); i++){
+    printf("Gellman B: i=%d\n", i);
+    MatView(GellmannMats_B[i], NULL);
+  }
+  // exit(1);
+
+  /* Set an initial guess for the learnable Hamiltonian parameters */
+  for (int i=0; i<GellmannMats_A.size(); i++){
+    double val = 0.0;                // TODO
+    learnparamsH_A.push_back(val);
+  }
+  for (int i=0; i<GellmannMats_B.size(); i++){
+    double val = 0.0;                // TODO
+    learnparamsH_B.push_back(val);
+  }
 }
 
 Learning::~Learning(){
-  learn_params_H.clear();
-  learn_params_C.clear();
+  learnparamsH_A.clear();
+  learnparamsH_B.clear();
 
-  for (int i=0; i<GellmannMats.size(); i++){
-    MatDestroy(&GellmannMats[i]);
+  for (int i=0; i<GellmannMats_A.size(); i++){
+    MatDestroy(&GellmannMats_A[i]);
   }
-  GellmannMats.clear();
+  for (int i=0; i<GellmannMats_B.size(); i++){
+    MatDestroy(&GellmannMats_B[i]);
+  }
+  GellmannMats_A.clear();
+  GellmannMats_B.clear();
 }
