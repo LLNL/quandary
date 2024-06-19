@@ -1,3 +1,4 @@
+#include "util.hpp"
 #include "defs.hpp"
 #include <assert.h>
 #include <petscts.h>
@@ -20,8 +21,10 @@ class Learning {
 
   Vec aux;    // Auxiliary vector to perform matvecs
 
+  int mpirank_world;
+
   public: 
-    Learning(std::vector<int>&nlevels, LindbladType lindbladtype_, std::vector<std::string>& learninit_str, std::default_random_engine rand_engine);
+    Learning(std::vector<int>&nlevels, LindbladType lindbladtype_, std::vector<std::string>& learninit_str, std::default_random_engine rand_engine, bool quietmode);
     ~Learning();
 
     /* Applies Learning operator to input state (u,v) */

@@ -1,8 +1,9 @@
 #include "learning.hpp"
 
 
-Learning::Learning(std::vector<int>& nlevels, LindbladType lindbladtype_, std::vector<std::string>& learninit_str, std::default_random_engine rand_engine){
+Learning::Learning(std::vector<int>& nlevels, LindbladType lindbladtype_, std::vector<std::string>& learninit_str, std::default_random_engine rand_engine, bool quietmode){
   lindbladtype = lindbladtype_;
+  MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
 
   // Get dimension of the Hilbert space (dim_rho = N) and dimension of the state variable (dim = N or N^2 for Schroedinger or Lindblad solver)
   dim_rho = 1;
@@ -157,20 +158,38 @@ Learning::Learning(std::vector<int>& nlevels, LindbladType lindbladtype_, std::v
   /* Set an initial guess for the learnable Hamiltonian parameters */
   if (nbasis > 0) {
     if (learninit_str[0].compare("file") == 0 ) {
+      // Read parameter from file
+
+      assert(learninit_str.size()>1);
+      std::vector<double> initguess_fromfile(nbasis, 0.0);
+      if (mpirank_world == 0) {
+        read_vector(learninit_str[1].c_str(), initguess_fromfile.data(), nbasis, quietmode);
+      }
+      MPI_Bcast(initguess_fromfile.data(), nbasis, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+
+      // Store parameters: First for sigma_jk^RE, they go with first part of Gellmann_B. Then for sigma_jk^IM, they go with first part of Gellmann_A. Then for sigma_l, they go with last part of Gellmann_B.
+      int nsigma = dim*(dim-1)/2;
+      for (int i=0; i<nsigma; i++){
+        learnparamsH_B.push_back(initguess_fromfile[i] * 2.0*M_PI); // radians
+      }
+      for (int i=nsigma; i<2*nsigma; i++){
+        learnparamsH_A.push_back(initguess_fromfile[i] * 2.0*M_PI); // radians
+      }
+      for (int i=2*nsigma; i<nbasis; i++){
+        learnparamsH_B.push_back(initguess_fromfile[i] * 2.0*M_PI); // radians
+      }
 
     } else if (learninit_str[0].compare("random") == 0 ) {
+      // Set uniform random parameters in [0,amp)
 
-      // Uniform distribution in [0,amp)
       assert(learninit_str.size()>1);
       double amp = atof(learninit_str[1].c_str());
       std::uniform_real_distribution<double> unit_dist(0.0, amp);
       for (int i=0; i<GellmannMats_A.size(); i++){
-        double randval = unit_dist(rand_engine) * 2.0*M_PI;  // radians
-        learnparamsH_A.push_back(randval);
+        learnparamsH_A.push_back(unit_dist(rand_engine) * 2.0*M_PI); // radians
       }
       for (int i=0; i<GellmannMats_B.size(); i++){
-        double randval = unit_dist(rand_engine) * 2.0*M_PI;  // radians
-        learnparamsH_B.push_back(randval);
+        learnparamsH_B.push_back(unit_dist(rand_engine) * 2.0*M_PI); // radians
       }
     } else {
       printf("ERROR: Wrong configuration for learnable parameter initialization. Choose 'file, <pathtofile>', or 'random, <amplitude>'\n");
@@ -182,6 +201,9 @@ Learning::Learning(std::vector<int>& nlevels, LindbladType lindbladtype_, std::v
     for (int i=0; i<learnparamsH_B.size(); i++){
       printf("  paramB %d = %f\n", i, learnparamsH_B[i]);
     }
+    
+    assert(GellmannMats_A.size() == learnparamsH_A.size());
+    assert(GellmannMats_B.size() == learnparamsH_B.size());
 
     // Create auxiliary vector needed for MatMult.
     MatCreateVecs(GellmannMats_A[0], &aux, NULL);
