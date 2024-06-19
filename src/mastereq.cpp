@@ -126,7 +126,7 @@ MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Osci
   /* Create Learnable parameters */
   do_learning = true;   // TODO. 
   if (do_learning) {
-    learning = new Learning(dim);
+    learning = new Learning(dim, lindbladtype);
   }
 
   /* Initialize Hamiltonian matrices */
@@ -353,27 +353,6 @@ void MasterEq::initSparseMatSolver(){
       id_kl++;
     }
   }
-
-  // Allocate learnable Matrices
-  // Learnable Hamiltonian. 2N nnzs per row. TODO: split diagonal nnz's
-  if (do_learning) {
-      MatCreate(PETSC_COMM_WORLD, &AlearnH);
-      MatCreate(PETSC_COMM_WORLD, &BlearnH);
-      MatSetType(AlearnH, MATMPIAIJ);
-      MatSetType(BlearnH, MATMPIAIJ);
-      MatSetSizes(AlearnH, PETSC_DECIDE, PETSC_DECIDE, dim, dim);
-      MatSetSizes(BlearnH, PETSC_DECIDE, PETSC_DECIDE, dim, dim);
-      int d_nz = 2*dim_rho-1; // TODO: Need to split this into nnz in DIAGONAL part for each proc
-      int o_nz = 2*dim_rho-1; // TODO: Need to split this into nnz of OFFDIAGONAL part for each proc
-      // TODO: Should be only ONE for the diagonal basis mats
-      MatMPIAIJSetPreallocation(AlearnH, d_nz, NULL, o_nz, NULL);
-      MatMPIAIJSetPreallocation(AlearnH, d_nz, NULL, o_nz, NULL);
-      MatSetUp(AlearnH);
-      MatSetUp(BlearnH);
-      MatSetFromOptions(AlearnH);
-      MatSetFromOptions(BlearnH);
-  }
-
 
   int dimmat = dim_rho; // this is N!
 
