@@ -11,7 +11,7 @@ Learning::Learning(const int dim_, LindbladType lindbladtype_){
     dim_rho = sqrt(dim); 
   }
 
-  /* Create generalized Gellman matrices multiplied by (-i), shifted s.t. G_00=0 */
+  /* Create generalized Gellman matrices, multiplied by (-i) and shifted s.t. G_00=0 */
 
   /* 1) Real offdiagonal Gellman matrices:  sigma_jk^re = |j><k| + |k><j| 
         Note: (-i)sigma_jk^RE is purely imaginary, hence into Gellman_B = Im(H) */
@@ -137,16 +137,19 @@ Learning::Learning(const int dim_, LindbladType lindbladtype_){
     MatAssemblyEnd(myG, MAT_FINAL_ASSEMBLY);
     GellmannMats_B.push_back(myG);
   }
-  printf("HEY: dim=%d, dim_rho=%d, A-Mats:%d, B-Mats: %d\n", dim, dim_rho, GellmannMats_A.size(), GellmannMats_B.size() );
-  for (int i=0; i<GellmannMats_A.size(); i++){
-    printf("Gellman A: i=%d\n", i);
-    MatView(GellmannMats_A[i], NULL);
-  }
-  for (int i=0; i<GellmannMats_B.size(); i++){
-    printf("Gellman B: i=%d\n", i);
-    MatView(GellmannMats_B[i], NULL);
-  }
+  // printf("Learnable basis matrices for dim=%d, dim_rho=%d, A-Mats:%d, B-Mats: %d\n", dim, dim_rho, GellmannMats_A.size(), GellmannMats_B.size() );
+  // for (int i=0; i<GellmannMats_A.size(); i++){
+  //   printf("Gellman A: i=%d\n", i);
+  //   MatView(GellmannMats_A[i], NULL);
+  // }
+  // for (int i=0; i<GellmannMats_B.size(); i++){
+  //   printf("Gellman B: i=%d\n", i);
+  //   MatView(GellmannMats_B[i], NULL);
+  // }
   // exit(1);
+
+  // Store the number of basis elements 
+  nbasis = GellmannMats_A.size() + GellmannMats_B.size();
 
   /* Set an initial guess for the learnable Hamiltonian parameters */
   for (int i=0; i<GellmannMats_A.size(); i++){
@@ -156,6 +159,11 @@ Learning::Learning(const int dim_, LindbladType lindbladtype_){
   for (int i=0; i<GellmannMats_B.size(); i++){
     double val = 0.0;                // TODO
     learnparamsH_B.push_back(val);
+  }
+
+  // Create auxiliary vector 
+  if (GellmannMats_A.size()>0) {
+    MatCreateVecs(GellmannMats_A[0], &aux, NULL);
   }
 }
 
@@ -171,4 +179,25 @@ Learning::~Learning(){
   }
   GellmannMats_A.clear();
   GellmannMats_B.clear();
+}
+
+void Learning::applyLearningTerms(Vec u, Vec v, Vec uout, Vec vout){
+      // Real parts of (-i * H)
+    for (int i=0; i< GellmannMats_A.size(); i++){
+      // uout += learnparamA * GellmannA * u
+      MatMult(GellmannMats_A[i], u, aux);
+      VecAXPY(uout, learnparamsH_A[i], aux); 
+      // vout += learnparamA * GellmannA * v
+      MatMult(GellmannMats_A[i], v, aux);
+      VecAXPY(vout, learnparamsH_A[i], aux);
+    }
+    // Imaginary parts of (-i * H)
+    for (int i=0; i< GellmannMats_B.size(); i++){
+      // uout -= learnparamB * GellmannB * u
+      MatMult(GellmannMats_B[i], v, aux);
+      VecAXPY(uout, -1.*learnparamsH_B[i], aux); 
+      // vout += learnparamB * GellmannB * u
+      MatMult(GellmannMats_B[i], u, aux);
+      VecAXPY(vout, learnparamsH_B[i], aux);
+    }
 }

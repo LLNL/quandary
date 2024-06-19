@@ -92,10 +92,8 @@ class MasterEq{
     bool quietmode;
 
     /* Stuff for UDE learning */
-    bool do_learning;
+    bool dolearning;
     Learning* learning;   // UDE learnable operators
-    Mat AlearnH;  // Learning H: real parts
-    Mat BlearnH;  // Learning H: imag parts
 
   public:
     std::vector<int> nlevels;  // Number of levels per oscillator
@@ -112,7 +110,7 @@ class MasterEq{
 
   public:
     MasterEq();
-    MasterEq(std::vector<int> nlevels, std::vector<int> nessential, Oscillator** oscil_vec_, const std::vector<double> crosskerr_, const std::vector<double> Jkl_, const std::vector<double> eta_, LindbladType lindbladtype_, bool usematfree_, std::string hamiltonian_file, bool quietmode=false);
+    MasterEq(std::vector<int> nlevels, std::vector<int> nessential, Oscillator** oscil_vec_, const std::vector<double> crosskerr_, const std::vector<double> Jkl_, const std::vector<double> eta_, LindbladType lindbladtype_, bool usematfree_, bool dolearning_, std::string hamiltonian_file, bool quietmode=false);
     ~MasterEq();
 
     /* initialize matrices needed for applying sparse-mat solver */

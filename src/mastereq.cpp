@@ -9,12 +9,12 @@ MasterEq::MasterEq(){
   dRedp = NULL;
   dImdp = NULL;
   usematfree = false;
+  dolearning = false;
   quietmode = false;
-  learning = NULL;
 }
 
 
-MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Oscillator** oscil_vec_, const std::vector<double> crosskerr_, const std::vector<double> Jkl_, const std::vector<double> eta_, LindbladType lindbladtype_, bool usematfree_, std::string hamiltonian_file_, bool quietmode_) {
+MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Oscillator** oscil_vec_, const std::vector<double> crosskerr_, const std::vector<double> Jkl_, const std::vector<double> eta_, LindbladType lindbladtype_, bool usematfree_, bool dolearning_, std::string hamiltonian_file_, bool quietmode_) {
   int ierr;
 
   nlevels = nlevels_;
@@ -25,6 +25,7 @@ MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Osci
   Jkl = Jkl_;
   eta = eta_;
   usematfree = usematfree_;
+  dolearning = dolearning_;
   lindbladtype = lindbladtype_;
   hamiltonian_file = hamiltonian_file_;
   quietmode = quietmode_;
@@ -125,9 +126,11 @@ MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Osci
   }
 
   /* Create Learnable parameters */
-  do_learning = true;   // TODO. 
-  if (do_learning) {
+  if (dolearning) {
     learning = new Learning(dim, lindbladtype);
+    printf("Created Learning operators on %d Gellmann mats\n", learning->getNBasis());
+  } else {
+    learning = new Learning(-1, LindbladType::NONE); // Dummy. Does nothing.
   }
 
   /* Initialize Hamiltonian matrices */
@@ -266,10 +269,8 @@ MasterEq::~MasterEq(){
     delete [] vals;
     delete [] cols;
 
-    if (do_learning) {
+    if (dolearning) {
       delete learning;
-      MatDestroy(&(AlearnH));
-      MatDestroy(&(BlearnH));
     }
 
     ISDestroy(&isu);
@@ -1432,30 +1433,7 @@ int myMatMult_sparsemat(Mat RHS, Vec x, Vec y){
     }
 
     /* --- Apply learning terms --- */
-    // Real parts of (-i * H)
-    for (int i=0; i< shellctx->learning->GellmannMats_A.size(); i++){
-      Mat myG = shellctx->learning->GellmannMats_A[i];
-      double param = shellctx->learning->learnparamsH_A[i];
-
-      // uout += learnparamA * GellmannA * u
-      MatMult(myG, u, *shellctx->aux);
-      VecAXPY(uout, param, *shellctx->aux); 
-      // vout += learnparamA * GellmannA * v
-      MatMult(myG, v, *shellctx->aux);
-      VecAXPY(vout, param, *shellctx->aux);
-    }
-    // Imaginary parts of (-i * H)
-    for (int i=0; i< shellctx->learning->GellmannMats_B.size(); i++){
-      Mat myG = shellctx->learning->GellmannMats_B[i];
-      double param = shellctx->learning->learnparamsH_B[i];
-
-      // uout -= learnparamB * GellmannB * u
-      MatMult(myG, v, *shellctx->aux);
-      VecAXPY(uout, -1.*param, *shellctx->aux); 
-      // vout += learnparamB * GellmannB * u
-      MatMult(myG, u, *shellctx->aux);
-      VecAXPY(vout, param, *shellctx->aux);
-    }
+    shellctx->learning->applyLearningTerms(u,v,uout, vout);
   }
 
   /* Restore */
@@ -1652,6 +1630,20 @@ int myMatMult_matfree(Mat RHS, Vec x, Vec y){
   /* Restore x and y */
   VecRestoreArrayRead(x, &xptr);
   VecRestoreArray(y, &yptr);
+
+  /* Apply learning */
+  if (shellctx->learning->getNBasis() > 0) {
+    Vec u, v, uout, vout;
+    VecGetSubVector(x, *shellctx->isu, &u);
+    VecGetSubVector(x, *shellctx->isv, &v);
+    VecGetSubVector(y, *shellctx->isu, &uout);
+    VecGetSubVector(y, *shellctx->isv, &vout);
+    shellctx->learning->applyLearningTerms(u,v,uout, vout);
+    VecRestoreSubVector(x, *shellctx->isu, &u);
+    VecRestoreSubVector(x, *shellctx->isv, &v);
+    VecRestoreSubVector(y, *shellctx->isu, &uout);
+    VecRestoreSubVector(y, *shellctx->isv, &vout);
+  }
 
   return 0;
 }
@@ -1869,6 +1861,20 @@ int myMatMult_matfree(Mat RHS, Vec x, Vec y){
   /* Restore x and y */
   VecRestoreArrayRead(x, &xptr);
   VecRestoreArray(y, &yptr);
+
+  /* Apply learning */
+  if (shellctx->learning->getNBasis() > 0) {
+    Vec u, v, uout, vout;
+    VecGetSubVector(x, *shellctx->isu, &u);
+    VecGetSubVector(x, *shellctx->isv, &v);
+    VecGetSubVector(y, *shellctx->isu, &uout);
+    VecGetSubVector(y, *shellctx->isv, &vout);
+    shellctx->learning->applyLearningTerms(u,v,uout, vout);
+    VecRestoreSubVector(x, *shellctx->isu, &u);
+    VecRestoreSubVector(x, *shellctx->isv, &v);
+    VecRestoreSubVector(y, *shellctx->isu, &uout);
+    VecRestoreSubVector(y, *shellctx->isv, &vout);
+  }
 
   return 0;
 }
@@ -2146,6 +2152,20 @@ int myMatMult_matfree(Mat RHS, Vec x, Vec y){
   /* Restore x and y */
   VecRestoreArrayRead(x, &xptr);
   VecRestoreArray(y, &yptr);
+  
+  /* Apply learning */
+  if (shellctx->learning->getNBasis() > 0) {
+    Vec u, v, uout, vout;
+    VecGetSubVector(x, *shellctx->isu, &u);
+    VecGetSubVector(x, *shellctx->isv, &v);
+    VecGetSubVector(y, *shellctx->isu, &uout);
+    VecGetSubVector(y, *shellctx->isv, &vout);
+    shellctx->learning->applyLearningTerms(u,v,uout, vout);
+    VecRestoreSubVector(x, *shellctx->isu, &u);
+    VecRestoreSubVector(x, *shellctx->isv, &v);
+    VecRestoreSubVector(y, *shellctx->isu, &uout);
+    VecRestoreSubVector(y, *shellctx->isv, &vout);
+  }
 
   return 0;
 }
@@ -2496,6 +2516,20 @@ int myMatMult_matfree(Mat RHS, Vec x, Vec y){
   /* Restore x and y */
   VecRestoreArrayRead(x, &xptr);
   VecRestoreArray(y, &yptr);
+
+  /* Apply learning */
+  if (shellctx->learning->getNBasis() > 0) {
+    Vec u, v, uout, vout;
+    VecGetSubVector(x, *shellctx->isu, &u);
+    VecGetSubVector(x, *shellctx->isv, &v);
+    VecGetSubVector(y, *shellctx->isu, &uout);
+    VecGetSubVector(y, *shellctx->isv, &vout);
+    shellctx->learning->applyLearningTerms(u,v,uout, vout);
+    VecRestoreSubVector(x, *shellctx->isu, &u);
+    VecRestoreSubVector(x, *shellctx->isv, &v);
+    VecRestoreSubVector(y, *shellctx->isu, &uout);
+    VecRestoreSubVector(y, *shellctx->isv, &vout);
+  }
 
   return 0;
 }
@@ -2934,6 +2968,20 @@ int myMatMult_matfree(Mat RHS, Vec x, Vec y){
   /* Restore x and y */
   VecRestoreArrayRead(x, &xptr);
   VecRestoreArray(y, &yptr);
+
+  /* Apply learning */
+  if (shellctx->learning->getNBasis() > 0) {
+    Vec u, v, uout, vout;
+    VecGetSubVector(x, *shellctx->isu, &u);
+    VecGetSubVector(x, *shellctx->isv, &v);
+    VecGetSubVector(y, *shellctx->isu, &uout);
+    VecGetSubVector(y, *shellctx->isv, &vout);
+    shellctx->learning->applyLearningTerms(u,v,uout, vout);
+    VecRestoreSubVector(x, *shellctx->isu, &u);
+    VecRestoreSubVector(x, *shellctx->isv, &v);
+    VecRestoreSubVector(y, *shellctx->isu, &uout);
+    VecRestoreSubVector(y, *shellctx->isv, &vout);
+  }
 
   return 0;
 }
