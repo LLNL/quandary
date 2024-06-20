@@ -195,12 +195,11 @@ Learning::Learning(std::vector<int>& nlevels, LindbladType lindbladtype_, std::v
       printf("ERROR: Wrong configuration for learnable parameter initialization. Choose 'file, <pathtofile>', or 'random, <amplitude>'\n");
       exit(1);
     }
-    for (int i=0; i<learnparamsH_A.size(); i++){
-      printf("  paramA %d = %f\n", i, learnparamsH_A[i]);
-    }
-    for (int i=0; i<learnparamsH_B.size(); i++){
-      printf("  paramB %d = %f\n", i, learnparamsH_B[i]);
-    }
+
+    // for (int i=0; i<learnparamsH_A.size(); i++)
+    //   printf("  paramA %d = %f\n", i, learnparamsH_A[i]);
+    // for (int i=0; i<learnparamsH_B.size(); i++)
+    //   printf("  paramB %d = %f\n", i, learnparamsH_B[i]);
     
     assert(GellmannMats_A.size() == learnparamsH_A.size());
     assert(GellmannMats_B.size() == learnparamsH_B.size());
@@ -228,22 +227,65 @@ Learning::~Learning(){
 }
 
 void Learning::applyLearningTerms(Vec u, Vec v, Vec uout, Vec vout){
-      // Real parts of (-i * H)
-    for (int i=0; i< GellmannMats_A.size(); i++){
-      // uout += learnparamA * GellmannA * u
-      MatMult(GellmannMats_A[i], u, aux);
-      VecAXPY(uout, learnparamsH_A[i], aux); 
-      // vout += learnparamA * GellmannA * v
-      MatMult(GellmannMats_A[i], v, aux);
-      VecAXPY(vout, learnparamsH_A[i], aux);
-    }
-    // Imaginary parts of (-i * H)
-    for (int i=0; i< GellmannMats_B.size(); i++){
-      // uout -= learnparamB * GellmannB * u
-      MatMult(GellmannMats_B[i], v, aux);
-      VecAXPY(uout, -1.*learnparamsH_B[i], aux); 
-      // vout += learnparamB * GellmannB * u
-      MatMult(GellmannMats_B[i], u, aux);
-      VecAXPY(vout, learnparamsH_B[i], aux);
-    }
+  // Real parts of (-i * H)
+  for (int i=0; i< GellmannMats_A.size(); i++){
+    // uout += learnparamA * GellmannA * u
+    MatMult(GellmannMats_A[i], u, aux);
+    VecAXPY(uout, learnparamsH_A[i], aux); 
+    // vout += learnparamA * GellmannA * v
+    MatMult(GellmannMats_A[i], v, aux);
+    VecAXPY(vout, learnparamsH_A[i], aux);
+  }
+  // Imaginary parts of (-i * H)
+  for (int i=0; i< GellmannMats_B.size(); i++){
+    // uout -= learnparamB * GellmannB * v
+    MatMult(GellmannMats_B[i], v, aux);
+    VecAXPY(uout, -1.*learnparamsH_B[i], aux); 
+    // vout += learnparamB * GellmannB * u
+    MatMult(GellmannMats_B[i], u, aux);
+    VecAXPY(vout, learnparamsH_B[i], aux);
+  }
+}
+
+
+void Learning::applyLearningTerms_diff(Vec u, Vec v, Vec uout, Vec vout){
+
+  // Real parts of (-i * H)
+  for (int i=0; i< GellmannMats_A.size(); i++){
+    // uout += learnparamA * GellmannA^T * u
+    MatMultTranspose(GellmannMats_A[i], u, aux);
+    VecAXPY(uout, learnparamsH_A[i], aux); 
+    // vout += learnparamA * GellmannA^T * v
+    MatMult(GellmannMats_A[i], v, aux);
+    VecAXPY(vout, learnparamsH_A[i], aux);
+  }
+  // Imaginary parts of (-i * H)
+  for (int i=0; i< GellmannMats_B.size(); i++){
+    // uout += learnparamB * GellmannB^T * v
+    MatMult(GellmannMats_B[i], v, aux);
+    VecAXPY(uout, learnparamsH_B[i], aux); 
+    // vout -= learnparamB * GellmannB^T * u
+    MatMult(GellmannMats_B[i], u, aux);
+    VecAXPY(vout, -1.*learnparamsH_B[i], aux);
+  }
+}
+
+
+void Learning::getLearnOperator(Mat* A, Mat* B){
+
+  MatCreateDense(PETSC_COMM_WORLD,PETSC_DECIDE, PETSC_DECIDE, dim, dim, NULL, A);
+  MatCreateDense(PETSC_COMM_WORLD,PETSC_DECIDE, PETSC_DECIDE, dim, dim, NULL, B);
+  MatSetUp(*A);
+  MatSetUp(*B);
+  MatAssemblyBegin(*A, MAT_FINAL_ASSEMBLY);
+  MatAssemblyEnd(*A, MAT_FINAL_ASSEMBLY);
+  MatAssemblyBegin(*B, MAT_FINAL_ASSEMBLY);
+  MatAssemblyEnd(*B, MAT_FINAL_ASSEMBLY);
+
+  for (int i=0; i<GellmannMats_A.size(); i++) {
+    MatAXPY(*A, learnparamsH_A[i], GellmannMats_A[i], SUBSET_NONZERO_PATTERN);
+  }
+  for (int i=0; i<GellmannMats_B.size(); i++) {
+    MatAXPY(*B, learnparamsH_B[i], GellmannMats_B[i], SUBSET_NONZERO_PATTERN);
+  }
 }

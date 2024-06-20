@@ -1424,6 +1424,14 @@ int myMatMult_sparsemat(Mat RHS, Vec x, Vec y){
   /* --- Apply learning terms --- */
   shellctx->learning->applyLearningTerms(u,v,uout, vout);
 
+  // Mat Atest, Btest;
+  // shellctx->learning->getLearnOperator(&Atest, &Btest);
+  // printf("Original :\n");
+  // MatView(*shellctx->Bd, NULL);
+  // printf("Learn :\n");
+  // MatView(Btest, NULL);
+  // exit(1);
+
   /* Restore */
   VecRestoreSubVector(x, *shellctx->isu, &u);
   VecRestoreSubVector(x, *shellctx->isv, &v);
@@ -1520,6 +1528,9 @@ int myMatMultTranspose_sparsemat(Mat RHS, Vec x, Vec y) {
       VecAXPY(vout, trans_im, *shellctx->aux);
     }
   }
+
+  /* --- Apply learning terms --- */
+  shellctx->learning->applyLearningTerms_diff(u,v,uout, vout);
 
   /* Restore */
   VecRestoreSubVector(x, *shellctx->isu, &u);
@@ -1720,6 +1731,22 @@ int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
           it++;
       }
   }
+
+  /* Apply learning */
+  if (shellctx->learning->getNBasis() > 0) {
+    Vec u, v, uout, vout;
+    VecGetSubVector(x, *shellctx->isu, &u);
+    VecGetSubVector(x, *shellctx->isv, &v);
+    VecGetSubVector(y, *shellctx->isu, &uout);
+    VecGetSubVector(y, *shellctx->isv, &vout);
+    shellctx->learning->applyLearningTerms_diff(u,v,uout, vout);
+    VecRestoreSubVector(x, *shellctx->isu, &u);
+    VecRestoreSubVector(x, *shellctx->isv, &v);
+    VecRestoreSubVector(y, *shellctx->isu, &uout);
+    VecRestoreSubVector(y, *shellctx->isv, &vout);
+  }
+
+
 
   /* Restore x and y */
   VecRestoreArrayRead(x, &xptr);
@@ -1987,6 +2014,20 @@ int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
   /* Restore x and y */
   VecRestoreArrayRead(x, &xptr);
   VecRestoreArray(y, &yptr);
+
+  /* Apply learning */
+  if (shellctx->learning->getNBasis() > 0) {
+    Vec u, v, uout, vout;
+    VecGetSubVector(x, *shellctx->isu, &u);
+    VecGetSubVector(x, *shellctx->isv, &v);
+    VecGetSubVector(y, *shellctx->isu, &uout);
+    VecGetSubVector(y, *shellctx->isv, &vout);
+    shellctx->learning->applyLearningTerms_diff(u,v,uout, vout);
+    VecRestoreSubVector(x, *shellctx->isu, &u);
+    VecRestoreSubVector(x, *shellctx->isv, &v);
+    VecRestoreSubVector(y, *shellctx->isu, &uout);
+    VecRestoreSubVector(y, *shellctx->isv, &vout);
+  }
 
   return 0;
 }
@@ -2310,6 +2351,19 @@ int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
   VecRestoreArrayRead(x, &xptr);
   VecRestoreArray(y, &yptr);
 
+  /* Apply learning */
+  if (shellctx->learning->getNBasis() > 0) {
+    Vec u, v, uout, vout;
+    VecGetSubVector(x, *shellctx->isu, &u);
+    VecGetSubVector(x, *shellctx->isv, &v);
+    VecGetSubVector(y, *shellctx->isu, &uout);
+    VecGetSubVector(y, *shellctx->isv, &vout);
+    shellctx->learning->applyLearningTerms_diff(u,v,uout, vout);
+    VecRestoreSubVector(x, *shellctx->isu, &u);
+    VecRestoreSubVector(x, *shellctx->isv, &v);
+    VecRestoreSubVector(y, *shellctx->isu, &uout);
+    VecRestoreSubVector(y, *shellctx->isv, &vout);
+  }
   return 0;
 }
 
@@ -2714,6 +2768,20 @@ int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
   /* Restore x and y */
   VecRestoreArrayRead(x, &xptr);
   VecRestoreArray(y, &yptr);
+
+  /* Apply learning */
+  if (shellctx->learning->getNBasis() > 0) {
+    Vec u, v, uout, vout;
+    VecGetSubVector(x, *shellctx->isu, &u);
+    VecGetSubVector(x, *shellctx->isv, &v);
+    VecGetSubVector(y, *shellctx->isu, &uout);
+    VecGetSubVector(y, *shellctx->isv, &vout);
+    shellctx->learning->applyLearningTerms_diff(u,v,uout, vout);
+    VecRestoreSubVector(x, *shellctx->isu, &u);
+    VecRestoreSubVector(x, *shellctx->isv, &v);
+    VecRestoreSubVector(y, *shellctx->isu, &uout);
+    VecRestoreSubVector(y, *shellctx->isv, &vout);
+  }
 
   return 0;
 }
@@ -3214,6 +3282,19 @@ int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
   VecRestoreArrayRead(x, &xptr);
   VecRestoreArray(y, &yptr);
 
+  /* Apply learning */
+  if (shellctx->learning->getNBasis() > 0) {
+    Vec u, v, uout, vout;
+    VecGetSubVector(x, *shellctx->isu, &u);
+    VecGetSubVector(x, *shellctx->isv, &v);
+    VecGetSubVector(y, *shellctx->isu, &uout);
+    VecGetSubVector(y, *shellctx->isv, &vout);
+    shellctx->learning->applyLearningTerms_diff(u,v,uout, vout);
+    VecRestoreSubVector(x, *shellctx->isu, &u);
+    VecRestoreSubVector(x, *shellctx->isv, &v);
+    VecRestoreSubVector(y, *shellctx->isu, &uout);
+    VecRestoreSubVector(y, *shellctx->isv, &vout);
+  }
   return 0;
 }
 

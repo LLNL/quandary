@@ -30,6 +30,12 @@ class Learning {
     /* Applies Learning operator to input state (u,v) */
     void applyLearningTerms(Vec u, Vec v, Vec uout, Vec vout);
 
+    /* Gradient: Sets (uout,vout) = dFWD^T *(u,v) */
+    void applyLearningTerms_diff(Vec u, Vec v, Vec uout, Vec vout);
+
     /* Get size of the basis: N^2-1, or 0 if no learning */
     int getNBasis(){ return nbasis; };
+
+    /* Assemble the learned operator. Allocates the (dense!) return matrix, which hence must be destroyed after usage. */
+    void getLearnOperator(Mat* A, Mat* B);
 };
