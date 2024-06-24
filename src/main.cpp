@@ -297,9 +297,9 @@ int main(int argc,char **argv)
     config.GetVecStrParam("learnparams_initialization", learninit_str, "random, 0.0");
     learning = new Learning(nlevels, lindbladtype, learninit_str, rand_engine, quietmode);
     printf("Created Learning operators on %d Gellmann mats\n", learning->getNBasis());
-  } else {
+  } else {// Dummy. Does nothing.
     std::vector<int> nlevelsdummy(nlevels.size(), 0);
-    learning = new Learning(nlevelsdummy, LindbladType::NONE, learninit_str, rand_engine, quietmode); // Dummy. Does nothing.
+    learning = new Learning(nlevelsdummy, LindbladType::NONE, learninit_str, rand_engine, quietmode); 
   }
 
   /* --- Initialize the Master Equation  --- */

@@ -1425,10 +1425,17 @@ int myMatMult_sparsemat(Mat RHS, Vec x, Vec y){
   shellctx->learning->applyLearningTerms(u,v,uout, vout);
 
   // Mat Atest, Btest;
-  // shellctx->learning->getLearnOperator(&Atest, &Btest);
   // printf("Original :\n");
+  // if (shellctx->learning->getNBasis()==0) {
+  //   int id_kl = 0;
+  //   double trans_re = shellctx->eval_transfer_Hdt_re[id_kl];
+  //   MatAXPY(*shellctx->Bd, trans_re, shellctx->Bd_vec[id_kl], DIFFERENT_NONZERO_PATTERN);
+  //   // MatView(shellctx->Bd_vec[id_kl], NULL);
+  // }
   // MatView(*shellctx->Bd, NULL);
+
   // printf("Learn :\n");
+  // shellctx->learning->getLearnOperator(&Atest, &Btest);
   // MatView(Btest, NULL);
   // exit(1);
 
