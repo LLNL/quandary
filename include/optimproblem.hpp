@@ -53,6 +53,7 @@ class OptimProblem {
   int nstate;                      /* Number of state optimization parameters */
   double objective;                /* Holds current objective function value */
   double obj_cost;                 /* Final-time term J(T) in objective */
+  double obj_rolloutestimate;      /* Estimate for rollout fidelity */
   double obj_regul;                /* Regularization term in objective */
   double obj_penal;                /* Penalty term in objective */
   double obj_penal_dpdm;           /* Penalty term in objective for second order state */
@@ -108,6 +109,7 @@ class OptimProblem {
   /* Return the overall objective, final-time costs, regularization and penalty terms */
   double getObjective(){ return objective; };
   double getCostT()    { return obj_cost; };
+  double getRolloutEstimate()    { return obj_rolloutestimate; };
   double getRegul()    { return obj_regul; };
   double getPenalty()  { return obj_penal; };
   double getPenaltyDpDm()  { return obj_penal_dpdm; };

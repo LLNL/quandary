@@ -463,6 +463,8 @@ double OptimProblem::evalF(const Vec xin, const Vec lambda_) {
   fidelity = 0.0;
   interm_discontinuity = 0.0; 
   obj_constraint = 0.0;
+  obj_rolloutestimate = 0.0;
+  double obj_rolloutest_tmp = 0.0;
   double obj_cost_re = 0.0;
   double obj_cost_im = 0.0;
   double fidelity_re = 0.0;
@@ -534,6 +536,9 @@ double OptimProblem::evalF(const Vec xin, const Vec lambda_) {
         interm_discontinuity += qnorm2;
         VecDot(finalstate, lag, &cdot);   // c = lambda^T (Su - u)
         obj_constraint += 0.5 * mu * qnorm2 - cdot;
+
+        obj_rolloutestimate += qnorm2 / timestepper->mastereq->getDimRho();
+        obj_rolloutest_tmp += sqrt(qnorm2/timestepper->mastereq->getDimRho());
       }
 
 
@@ -555,6 +560,8 @@ double OptimProblem::evalF(const Vec xin, const Vec lambda_) {
   double myfidelity_im = fidelity_im;
   double myconstraint = obj_constraint;
   double my_interm_disc = interm_discontinuity;
+  double myobj_rolloutestimate = obj_rolloutestimate;
+  double myobj_rolloutest_tmp = obj_rolloutest_tmp;
   // Should be comm_init and also comm_time! Currently, no Petsc Parallelization possible, hence (comm-init AND comm_time) = COMM_WORLD
   MPI_Allreduce(&mypen, &obj_penal, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(&mypen_dpdm, &obj_penal_dpdm, 1, MPI_DOUBLE, MPI_SUM, comm_init); // SG: Penalty DPDM currently disabled.
@@ -566,6 +573,8 @@ double OptimProblem::evalF(const Vec xin, const Vec lambda_) {
   MPI_Allreduce(&myconstraint, &obj_constraint, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(&my_interm_disc, &interm_discontinuity, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(&my_frob2, &frob2, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(&myobj_rolloutestimate, &obj_rolloutestimate, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(&myobj_rolloutest_tmp, &obj_rolloutest_tmp, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 
   /* Set the fidelity: If Schroedinger, need to compute the absolute value: Fid= |\sum_i \phi^\dagger \phi_target|^2 */
   if (timestepper->mastereq->lindbladtype == LindbladType::NONE) {
@@ -575,7 +584,11 @@ double OptimProblem::evalF(const Vec xin, const Vec lambda_) {
   }
  
   /* Finalize the objective function */
-  obj_cost = optim_target->finalizeJ(obj_cost_re, obj_cost_im, frob2);
+  double infid = optim_target->finalizeJ(obj_cost_re, obj_cost_im, frob2);
+  obj_cost = infid;
+
+  /* Update the rollout estimate */
+  obj_rolloutestimate = infid + 2.0*sqrt(infid)*obj_rolloutest_tmp + obj_rolloutestimate;
 
   /* Evaluate regularization objective += gamma/2 * ||x-x0||^2*/
   double x_alpha_norm;
@@ -667,6 +680,8 @@ void OptimProblem::evalGradF(const Vec xin, const Vec lambda_, Vec G){
   fidelity = 0.0;
   interm_discontinuity = 0.0; // for TaoMonitor
   obj_constraint = 0.0; 
+  obj_rolloutestimate = 0.0;
+  double obj_rolloutest_tmp = 0.0;
   double obj_cost_re = 0.0;
   double obj_cost_im = 0.0;
   double fidelity_re = 0.0;
@@ -736,6 +751,9 @@ void OptimProblem::evalGradF(const Vec xin, const Vec lambda_, Vec G){
         interm_discontinuity += qnorm2;
         VecDot(finalstate, lag, &cdot);   // c = lambda^T (Su - u)
         obj_constraint += 0.5 * mu * qnorm2 - cdot;
+
+        obj_rolloutestimate += qnorm2 / timestepper->mastereq->getDimRho();
+        obj_rolloutest_tmp += sqrt(qnorm2/timestepper->mastereq->getDimRho());
       }
       
       /* Restore local state and lambda*/
@@ -781,10 +799,11 @@ void OptimProblem::evalGradF(const Vec xin, const Vec lambda_, Vec G){
   double myconstraint = obj_constraint;
   double my_interm_disc = interm_discontinuity;
   double my_frob2 = frob2;
+  double myobj_rolloutestimate = obj_rolloutestimate;
+  double myobj_rolloutest_tmp = obj_rolloutest_tmp;
   MPI_Allreduce(&mypen, &obj_penal, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(&mypen_dpdm, &obj_penal_dpdm, 1, MPI_DOUBLE, MPI_SUM, comm_init);
   MPI_Allreduce(&mypenen, &obj_penal_energy, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-
   MPI_Allreduce(&mycost_re, &obj_cost_re, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(&mycost_im, &obj_cost_im, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(&myfidelity_re, &fidelity_re, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
@@ -792,6 +811,8 @@ void OptimProblem::evalGradF(const Vec xin, const Vec lambda_, Vec G){
   MPI_Allreduce(&myconstraint, &obj_constraint, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(&my_interm_disc, &interm_discontinuity, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(&my_frob2, &frob2, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(&myobj_rolloutestimate, &obj_rolloutestimate, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(&myobj_rolloutest_tmp, &obj_rolloutest_tmp, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 
   /* Set the fidelity: If Schroedinger, need to compute the absolute value: Fid= |\sum_i \phi^\dagger \phi_target|^2 */
   if (timestepper->mastereq->lindbladtype == LindbladType::NONE) {
@@ -802,7 +823,11 @@ void OptimProblem::evalGradF(const Vec xin, const Vec lambda_, Vec G){
  
   /* Finalize the objective function Jtrace to get the infidelity. 
      If Schroedingers solver, need to take the absolute value */
-  obj_cost = optim_target->finalizeJ(obj_cost_re, obj_cost_im, frob2);
+  double infid = optim_target->finalizeJ(obj_cost_re, obj_cost_im, frob2);
+  obj_cost = infid;
+
+  /* Update the rollout estimate */
+  obj_rolloutestimate = infid + 2.0*sqrt(infid)*obj_rolloutest_tmp + obj_rolloutestimate;
 
   /* Evaluate regularization objective += gamma/2 * ||x||^2*/
   double x_alpha_norm;
@@ -1196,6 +1221,7 @@ PetscErrorCode TaoMonitor(Tao tao,void*ptr){
       std::cout<< "  Fidelity = " << F_avg;
     std::cout<< "  ||Grad|| = " << gnorm;
     std::cout<< " norm2(disc) = " << interm_discontinuity << std::endl;
+    std::cout<< " Rollout estimate = " << ctx->getRolloutEstimate() << std::endl;
   }
 
   if (ctx->getMPIrank_world() == 0 && lastIter){
