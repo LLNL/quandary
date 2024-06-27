@@ -1183,15 +1183,20 @@ PetscErrorCode TaoMonitor(Tao tao,void*ptr){
   /* Additional Stopping criteria */
   bool lastIter = false;
   std::string finalReason_str = "";
-  if ((1.0 - F_avg <= ctx->getInfTol()) && (interm_discontinuity < ctx->getIntermTol())) {
-    finalReason_str = "Optimization converged to a continuous trajectory with small infidelity and small discontinuity.";
+  // if ((1.0 - F_avg <= ctx->getInfTol()) && (interm_discontinuity < ctx->getIntermTol())) {
+  //   finalReason_str = "Optimization converged to a continuous trajectory with small infidelity and small discontinuity.";
+  //   TaoSetConvergedReason(tao, TAO_CONVERGED_USER);
+  //   lastIter = true;
+  // } else if ((obj_cost <= ctx->getFaTol()) && (interm_discontinuity < ctx->getIntermTol())) {
+  //   finalReason_str = "Optimization converged to a continuous trajectory with small final time cost and small discontinuity.";
+  //   TaoSetConvergedReason(tao, TAO_CONVERGED_USER);
+  //   lastIter = true;
+  // } 
+  if (ctx->getRolloutEstimate()<= ctx->getInfTol()) {
+    finalReason_str = "Optimization terminated due to small estimated rollout infidelity.";
     TaoSetConvergedReason(tao, TAO_CONVERGED_USER);
     lastIter = true;
-  } else if ((obj_cost <= ctx->getFaTol()) && (interm_discontinuity < ctx->getIntermTol())) {
-    finalReason_str = "Optimization converged to a continuous trajectory with small final time cost and small discontinuity.";
-    TaoSetConvergedReason(tao, TAO_CONVERGED_USER);
-    lastIter = true;
-  } 
+  }
   // else if (iter > 1) { // TODO: NEEDS UPDATE?? Stop if delta x is smaller than tolerance (relative)
     // // Compute ||x - xprev||/||xprev||
     // double xnorm, dxnorm;
