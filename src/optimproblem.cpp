@@ -567,10 +567,6 @@ void OptimProblem::getStartingPoint(Vec xinit){
     }
     VecRestoreArray(xinit, &xptr);
 
-    /* Write initial control functions to file */
-    output->writeControls(xinit, timestepper->mastereq, timestepper->ntime, timestepper->dt);
-
-
   } else { // optim wrt learning parameters 
     // Copy from initialization in learning constructor
     PetscScalar* xptr;
@@ -578,7 +574,10 @@ void OptimProblem::getStartingPoint(Vec xinit){
     mastereq->learning->getLearnParams(xptr);
     VecRestoreArray(xinit, &xptr);
   }
- 
+
+  /* Write initial optimization paramters and control functions to file */
+  output->writeParams(xinit);
+  output->writeControls(xinit, timestepper->mastereq, timestepper->ntime, timestepper->dt);
 }
 
 
@@ -607,6 +606,7 @@ PetscErrorCode TaoMonitor(Tao tao,void*ptr){
 
   /* Grab some output stuff */
   double obj_cost = ctx->getCostT();
+  double obj_loss = ctx->getLoss();
   double obj_regul = ctx->getRegul();
   double obj_penal = ctx->getPenalty();
   double obj_penal_dpdm = ctx->getPenaltyDpDm();
@@ -616,14 +616,21 @@ PetscErrorCode TaoMonitor(Tao tao,void*ptr){
   /* Print to optimization file */
   ctx->output->writeOptimFile(f, gnorm, deltax, F_avg, obj_cost, obj_regul, obj_penal, obj_penal_dpdm, obj_penal_energy);
 
-  /* Print parameters and controls to file */
+  /* Print optimization parameters to file */
+  ctx->output->writeParams(params);
+
+  /* Print control pulses to file */
   if (ctx->x_is_control) {
     ctx->output->writeControls(params, ctx->timestepper->mastereq, ctx->timestepper->ntime, ctx->timestepper->dt);
   }
 
   /* Screen output */
   if (ctx->getMPIrank_world() == 0 && iter == 0) {
-    std::cout<<  "    Objective             Tikhonov                Penalty-Leakage        Penalty-StateVar       Penalty-TotalEnergy " << std::endl;
+    if (ctx->x_is_control) {
+      std::cout<<  "    Objective             Tikhonov                Penalty-Leakage        Penalty-StateVar       Penalty-TotalEnergy            GradNorm " << std::endl;
+    } else {
+      std::cout<<  "    Objective             Tikhonov                GradNorm " << std::endl;
+    }
   }
 
   /* Additional Stopping criteria */
@@ -641,10 +648,15 @@ PetscErrorCode TaoMonitor(Tao tao,void*ptr){
 
 
   if (ctx->getMPIrank_world() == 0 && (iter == ctx->getMaxIter() || lastIter || iter % ctx->output->optim_monitor_freq == 0)) {
-    std::cout<< iter <<  "  " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal << " + " << obj_penal_dpdm << " + " << obj_penal_energy;
-    std::cout<< "  Fidelity = " << F_avg;
-    std::cout<< "  ||Grad|| = " << gnorm;
-    std::cout<< std::endl;
+
+    std::cout<< iter <<  "  " << std::scientific<<std::setprecision(14);
+    if (ctx->x_is_control) {
+      std::cout << obj_cost << " + " << obj_regul << " + " << obj_penal << " + " << obj_penal_dpdm << " + " << obj_penal_energy << ".   " << gnorm << std::endl;
+      std::cout<< "  Fidelity = " << F_avg ;
+    } else {
+      std::cout << obj_loss << " + " << obj_regul << ".   " << gnorm;
+    }
+      std::cout<< std::endl;
   }
 
 if (ctx->getMPIrank_world() == 0 && lastIter){

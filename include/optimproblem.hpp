@@ -84,6 +84,7 @@ class OptimProblem {
   /* Return the overall objective, final-time costs, regularization and penalty terms */
   double getObjective(){ return objective; };
   double getCostT()    { return obj_cost; };
+  double getLoss()    { return obj_loss; };
   double getRegul()    { return obj_regul; };
   double getPenalty()  { return obj_penal; };
   double getPenaltyDpDm()  { return obj_penal_dpdm; };

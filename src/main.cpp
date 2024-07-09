@@ -506,6 +506,7 @@ int main(int argc,char **argv)
     std::vector<double> pt, qt;
     optimctx->getStartingPoint(xinit);
     if (mpirank_world == 0 && !quietmode) printf("\nEvaluating current controls ... \n");
+    output->writeParams(xinit);
     output->writeControls(xinit, mastereq, ntime, dt);
   }
 
