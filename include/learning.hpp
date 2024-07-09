@@ -32,10 +32,20 @@ class Learning {
   Vec aux;    // Auxiliary vector to perform matvecs
 
   int mpirank_world;
+  bool quietmode;
 
   public: 
     Learning(std::vector<int>&nlevels, LindbladType lindbladtype_, std::vector<std::string>& learninit_str, std::string data_name, double data_dtAWG_, int data_ntime, std::default_random_engine rand_engine, bool quietmode);
     ~Learning();
+
+    /* Load data from file */
+    void loadData(std::string data_name, double data_dtAWG, int data_ntime);
+
+    /* Create generalized Gellman matrices, multiplied by (-i) and shifted s.t. G_00=0. Returns number of basis elements */
+    int setupGellmannBasis(int dim_rho, int dim, LindbladType lindbladtype);
+
+    /* Initialize learnable parameters */
+    void initLearnableParams(std::vector<std::string> learninit_str, int nbasis, int dim_rho, std::default_random_engine rand_engine);
 
     /* Applies Learning operator to input state (u,v) */
     void applyLearningTerms(Vec u, Vec v, Vec uout, Vec vout);
