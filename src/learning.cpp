@@ -1,8 +1,10 @@
 #include "learning.hpp"
 
 
-Learning::Learning(std::vector<int>& nlevels, LindbladType lindbladtype_, std::vector<std::string>& learninit_str, std::default_random_engine rand_engine, bool quietmode){
+Learning::Learning(std::vector<int>& nlevels, LindbladType lindbladtype_, std::vector<std::string>& learninit_str, std::string data_name, double data_dtAWG_, int data_ntime_, std::default_random_engine rand_engine, bool quietmode){
   lindbladtype = lindbladtype_;
+  data_dtAWG = data_dtAWG_;
+  data_ntime = data_ntime_;
   MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
 
   // Get dimension of the Hilbert space (dim_rho = N) and dimension of the state variable (dim = N or N^2 for Schroedinger or Lindblad solver)
@@ -13,6 +15,51 @@ Learning::Learning(std::vector<int>& nlevels, LindbladType lindbladtype_, std::v
   dim = dim_rho;
   if (lindbladtype != LindbladType::NONE){
     dim = dim_rho*dim_rho; 
+  }
+
+  /* Load trajectory data from file */
+  if (dim_rho > 0) {
+    std::ifstream infile_re;
+    std::ifstream infile_im;
+    infile_re.open(data_name + "_re.dat", std::ifstream::in);
+    infile_im.open(data_name + "_im.dat", std::ifstream::in);
+    if(infile_re.fail() || infile_im.fail() ) {// checks to see if file opended 
+        std::cout << "\n ERROR loading learning data file\n" << std::endl; 
+        std::cout << data_name + "_re.dat" << std::endl;
+        exit(1);
+    } 
+    // Iterate over each line
+    for (int n = 0; n <data_ntime; n++) {
+      Vec state;
+      VecCreate(PETSC_COMM_WORLD, &state);
+      VecSetSizes(state, PETSC_DECIDE, 2*dim);
+      VecSetFromOptions(state);
+
+      // Iterate over columns
+      double val_re, val_im;
+      infile_re >> val_re; // first element is time
+      infile_im >> val_im; // first element is time
+      // printf("time-step %1.4f == %1.4f ??\n", val_re, val_im);
+      assert(fabs(val_re - val_im) < 1e-12);
+      for (int i=0; i<dim; i++) { // Other elements are the state (re and im) at this time
+        infile_re >> val_re;
+        infile_im >> val_im;
+        VecSetValue(state, getIndexReal(i), val_re, INSERT_VALUES);
+        VecSetValue(state, getIndexImag(i), val_im, INSERT_VALUES);
+      }
+      VecAssemblyBegin(state);
+      VecAssemblyEnd(state);
+      data.push_back(state);
+    }
+	  infile_re.close();
+	  infile_im.close();
+
+    // // TEST what was loaded
+    // printf("\nDATA POINTS:\n");
+    // for (int i=0; i<data.size(); i++){
+    //   VecView(data[i], NULL);
+    // }
+    // printf("END DATA POINTS.\n\n");
   }
 
   /* Create generalized Gellman matrices, multiplied by (-i) and shifted s.t. G_00=0 */
@@ -168,7 +215,7 @@ Learning::Learning(std::vector<int>& nlevels, LindbladType lindbladtype_, std::v
       MPI_Bcast(initguess_fromfile.data(), nbasis, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
       // Store parameters: First for sigma_jk^RE, they go with first part of Gellmann_B. Then for sigma_jk^IM, they go with first part of Gellmann_A. Then for sigma_l, they go with last part of Gellmann_B.
-      int nsigma = dim*(dim-1)/2;
+      int nsigma = dim_rho*(dim_rho-1)/2;
       for (int i=0; i<nsigma; i++){
         learnparamsH_B.push_back(initguess_fromfile[i] * 2.0*M_PI); // radians
       }
@@ -191,6 +238,16 @@ Learning::Learning(std::vector<int>& nlevels, LindbladType lindbladtype_, std::v
       for (int i=0; i<GellmannMats_B.size(); i++){
         learnparamsH_B.push_back(unit_dist(rand_engine) * 2.0*M_PI); // radians
       }
+    } else if (learninit_str[0].compare("constant") == 0 ) {
+      // Set constant amp
+      assert(learninit_str.size()>1);
+      double amp = atof(learninit_str[1].c_str());
+      for (int i=0; i<GellmannMats_A.size(); i++){
+        learnparamsH_A.push_back(amp * 2.0*M_PI);
+      }
+      for (int i=0; i<GellmannMats_B.size(); i++){
+        learnparamsH_B.push_back(amp * 2.0*M_PI);
+      }
     } else {
       printf("ERROR: Wrong configuration for learnable parameter initialization. Choose 'file, <pathtofile>', or 'random, <amplitude>'\n");
       exit(1);
@@ -212,6 +269,11 @@ Learning::Learning(std::vector<int>& nlevels, LindbladType lindbladtype_, std::v
 Learning::~Learning(){
   learnparamsH_A.clear();
   learnparamsH_B.clear();
+
+  for (int i=0; i<data.size(); i++){
+    VecDestroy(&data[i]);
+  }
+  data.clear();
 
   for (int i=0; i<GellmannMats_A.size(); i++){
     MatDestroy(&GellmannMats_A[i]);
@@ -256,16 +318,16 @@ void Learning::applyLearningTerms_diff(Vec u, Vec v, Vec uout, Vec vout){
     MatMultTranspose(GellmannMats_A[i], u, aux);
     VecAXPY(uout, learnparamsH_A[i], aux); 
     // vout += learnparamA * GellmannA^T * v
-    MatMult(GellmannMats_A[i], v, aux);
+    MatMultTranspose(GellmannMats_A[i], v, aux);
     VecAXPY(vout, learnparamsH_A[i], aux);
   }
   // Imaginary parts of (-i * H)
   for (int i=0; i< GellmannMats_B.size(); i++){
     // uout += learnparamB * GellmannB^T * v
-    MatMult(GellmannMats_B[i], v, aux);
+    MatMultTranspose(GellmannMats_B[i], v, aux);
     VecAXPY(uout, learnparamsH_B[i], aux); 
     // vout -= learnparamB * GellmannB^T * u
-    MatMult(GellmannMats_B[i], u, aux);
+    MatMultTranspose(GellmannMats_B[i], u, aux);
     VecAXPY(vout, -1.*learnparamsH_B[i], aux);
   }
 }
@@ -288,4 +350,73 @@ void Learning::getLearnOperator(Mat* A, Mat* B){
   for (int i=0; i<GellmannMats_B.size(); i++) {
     MatAXPY(*B, learnparamsH_B[i], GellmannMats_B[i], SUBSET_NONZERO_PATTERN);
   }
+}
+
+
+void Learning::setLearnParams(const Vec x){
+
+  const PetscScalar* ptr;
+  VecGetArrayRead(x, &ptr);
+
+  /* Storage of parameters in x:
+   * First all sigma_jk^RE (in GellmannB), 
+   * then all sigma_ij^IM (in GellmannA), 
+   * then all sigma_l (in GellmannB) */
+
+  int nsigma = dim_rho*(dim_rho-1)/2;
+  for (int i=0; i<nsigma; i++) {
+    learnparamsH_B[i] = ptr[i];
+    learnparamsH_A[i] = ptr[i+nsigma];
+  }
+  for (int i=0; i<dim_rho-1; i++){
+    learnparamsH_B[i+nsigma] = ptr[i+2*nsigma];
+  }
+
+  VecRestoreArrayRead(x, &ptr);
+
+  // for (int i=0; i<learnparamsH_A.size(); i++){
+  //   printf("A %1.14e% \n", learnparamsH_A[i]);
+  // }
+  // for (int i=0; i<learnparamsH_B.size(); i++){
+  //   printf("B %1.14e \n", learnparamsH_B[i]);
+  // }
+}
+
+void Learning::getLearnParams(double* x){
+  int nsigma = dim_rho*(dim_rho-1)/2;
+  for (int i=0; i<nsigma; i++) {
+    x[i]        = learnparamsH_B[i];
+    x[i+nsigma] = learnparamsH_A[i];
+  }
+  for (int i=0; i<dim_rho-1; i++){
+    x[i+2*nsigma] = learnparamsH_B[i+nsigma];
+  }
+}
+
+void Learning::dRHSdp(Vec grad, Vec u, Vec v, double alpha, Vec ubar, Vec vbar){
+  double uAubar, vAvbar, vBubar, uBvbar;
+
+  // gamma_bar_A += alpha * (  u^t sigma_A^t ubar + v^t sigma_A^t vbar )
+  // gamma_bar_B += alpha * ( -v^t sigma_B^t ubar + u^t sigma_B^t vbar )
+
+  int nsigma = dim_rho*(dim_rho-1)/2;
+  for (int i=0; i< nsigma; i++){
+
+    MatMult(GellmannMats_B[i], u, aux); VecDot(aux, vbar, &uBvbar);
+    MatMult(GellmannMats_B[i], v, aux); VecDot(aux, ubar, &vBubar);
+    VecSetValue(grad, i, alpha*(-vBubar + uBvbar), ADD_VALUES);
+
+    MatMult(GellmannMats_A[i], u, aux); VecDot(aux, ubar, &uAubar);
+    MatMult(GellmannMats_A[i], v, aux); VecDot(aux, vbar, &vAvbar);
+    VecSetValue(grad, i+nsigma, alpha*(uAubar + vAvbar), ADD_VALUES);
+  }
+
+  for (int i=0; i<dim_rho-1; i++){
+    MatMult(GellmannMats_B[i+nsigma], u, aux); VecDot(aux, vbar, &uBvbar);
+    MatMult(GellmannMats_B[i+nsigma], v, aux); VecDot(aux, ubar, &vBubar);
+    VecSetValue(grad, i+2*nsigma, alpha*(-vBubar + uBvbar), ADD_VALUES);
+  }
+
+  VecAssemblyBegin(grad);
+  VecAssemblyEnd(grad);
 }

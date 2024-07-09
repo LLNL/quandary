@@ -91,15 +91,16 @@ class MasterEq{
 
     bool quietmode;
 
-    /* Stuff for UDE learning */
-    bool dolearning;
-    Learning* learning;   // UDE learnable operators
-
   public:
     std::vector<int> nlevels;  // Number of levels per oscillator
     std::vector<int> nessential; // Number of essential levels per oscillator
     bool usematfree;  // Flag for using matrix free solver
     LindbladType lindbladtype;        // Flag that determines which lindblad terms are added. if NONE, than Schroedingers eq. is solved
+
+    /* Stuff for UDE learning */
+    bool useUDEmodel;     // Use the UDE correction terms in the master equation
+    bool x_is_control;    // Flag if True: Optimization variables are the control parameters, else optimization vars are the UDE model parameters
+    Learning* learning;   // Pointer to UDE model class
 
     std::vector<std::vector<TransferFunction*>> transfer_Hc_re; // Stores the transfer functions for each control term for each oscillator
     std::vector<std::vector<TransferFunction*>> transfer_Hc_im; // Stores the transfer functions for each control term for each oscillator
@@ -110,7 +111,7 @@ class MasterEq{
 
   public:
     MasterEq();
-    MasterEq(std::vector<int> nlevels, std::vector<int> nessential, Oscillator** oscil_vec_, const std::vector<double> crosskerr_, const std::vector<double> Jkl_, const std::vector<double> eta_, LindbladType lindbladtype_, bool usematfree_, bool dolearning_, Learning* learning, std::string hamiltonian_file, bool quietmode=false);
+    MasterEq(std::vector<int> nlevels, std::vector<int> nessential, Oscillator** oscil_vec_, const std::vector<double> crosskerr_, const std::vector<double> Jkl_, const std::vector<double> eta_, LindbladType lindbladtype_, bool usematfree_, bool useUDEmodel_, bool x_is_control, Learning* learning, std::string hamiltonian_file, bool quietmode=false);
     ~MasterEq();
 
     /* initialize matrices needed for applying sparse-mat solver */

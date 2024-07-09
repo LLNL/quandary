@@ -75,13 +75,21 @@ int main(int argc,char **argv)
   double dt    = config.GetDoubleParam("dt", 0.01);
   RunType runtype;
   std::string runtypestr = config.GetStrParam("runtype", "simulation");
-  if      (runtypestr.compare("simulation")      == 0) runtype = RunType::SIMULATION;
-  else if (runtypestr.compare("gradient")     == 0)    runtype = RunType::GRADIENT;
-  else if (runtypestr.compare("optimization")== 0)     runtype = RunType::OPTIMIZATION;
-  else if (runtypestr.compare("evalcontrols")== 0)     runtype = RunType::EVALCONTROLS;
+  if      (runtypestr.find("simulation") != std::string::npos ) runtype = RunType::SIMULATION;
+  else if (runtypestr.find("gradient")   != std::string::npos) runtype = RunType::GRADIENT;
+  else if (runtypestr.find("optimization") != std::string::npos) runtype = RunType::OPTIMIZATION;
+  else if (runtypestr.find("evalcontrols") != std::string::npos) runtype = RunType::EVALCONTROLS;
   else {
     printf("\n\n WARNING: Unknown runtype: %s.\n\n", runtypestr.c_str());
     runtype = RunType::NONE;
+  }
+
+  /* Switch solver mode between learning UDE model parameters vs optimizing controls */
+  bool x_is_control;
+  if (runtypestr.find("UDE") != std::string::npos) {
+    x_is_control = false ; // optim wrt UDE model parameters
+  } else {
+    x_is_control = true; // optim wrt controls parameters
   }
 
   /* Get the number of essential levels per oscillator. 
@@ -198,9 +206,6 @@ int main(int argc,char **argv)
   PetscViewerPushFormat(PETSC_VIEWER_STDOUT_WORLD, 	PETSC_VIEWER_ASCII_MATLAB );
 
 
-
-  double total_time = ntime * dt;
-
   /* --- Initialize the Oscillators --- */
   Oscillator** oscil_vec = new Oscillator*[nlevels.size()];
   // Get fundamental and rotation frequencies from config file 
@@ -232,7 +237,32 @@ int main(int argc,char **argv)
   copyLast(decay_time, nlevels.size());
   copyLast(dephase_time, nlevels.size());
 
+  /* Create Learning Model or dummy */
+  bool useUDEmodel = config.GetBoolParam("useUDEmodel", false, false);
+  std::vector<std::string> learninit_str;
+  Learning* learning;
+  if (useUDEmodel) {
+    config.GetVecStrParam("learnparams_initialization", learninit_str, "random, 0.0");
+    double data_dtAWG = config.GetDoubleParam("data_dtAWG", 4.0, false);
+    int data_ntime = config.GetIntParam("data_ntime", 0, false, true);
+    data_ntime = std::min(data_ntime, ntime+1);
+    std::string data_name = config.GetStrParam("data_name", "data");
+    learning = new Learning(nlevels, lindbladtype, learninit_str, data_name, data_dtAWG, data_ntime, rand_engine, quietmode);
+    printf("\nLearning with %d Gellmann mats\n", learning->getNBasis());
+
+    // Update delta t such that its integer divisor of 4ns. TODO: GENERALIZE 4ns through configuration input!
+    int k = ceil(data_dtAWG / dt);
+    double dt_new = data_dtAWG / k;
+    dt = dt_new;
+    printf(" -> Updated dt from %1.14e to %1.14e\n", dt, dt_new);
+
+  } else {// Dummy. Does nothing.
+    std::vector<int> nlevelsdummy(nlevels.size(), 0);
+    learning = new Learning(nlevelsdummy, LindbladType::NONE, learninit_str, "dummy", 0.0, 0, rand_engine, quietmode); 
+  }
+
   // Get control segment types, carrierwaves and control initialization
+  double total_time = ntime * dt;
   std::string default_seg_str = "spline, 10, 0.0, "+std::to_string(total_time); // Default for first oscillator control segment
   std::string default_init_str = "constant, 0.0";                               // Default for first oscillator initialization
   for (int i = 0; i < nlevels.size(); i++){
@@ -245,19 +275,44 @@ int main(int argc,char **argv)
     std::vector<std::string> controltype_str;
     config.GetVecStrParam("control_segments" + std::to_string(i), controltype_str,default_seg_str);
 
-    // Get control initialization
+    // Get control initialization for this oscillator
     std::vector<std::string> controlinit_str;
     config.GetVecStrParam("control_initialization" + std::to_string(i), controlinit_str, default_init_str);
 
     // Create oscillator 
     oscil_vec[i] = new Oscillator(config, i, nlevels, controltype_str, controlinit_str, trans_freq[i], selfkerr[i], rot_freq[i], decay_time[i], dephase_time[i], carrier_freq, total_time, lindbladtype, rand_engine);
-    
+ 
     // Update the default for control type
     default_seg_str = "";
     default_init_str = "";
     for (int l = 0; l<controltype_str.size(); l++) default_seg_str += controltype_str[l]+=", ";
     for (int l = 0; l<controlinit_str.size(); l++) default_init_str += controlinit_str[l]+=", ";
   }
+
+  // If control initialization is read from file, pass it to oscillators
+  std::vector<std::string> controlinit_str;
+  config.GetVecStrParam("control_initialization0", controlinit_str, "constant, 0.0", false, false);
+  if (controlinit_str.size() > 0 && controlinit_str[0].compare("file") == 0 ) {
+    assert(controlinit_str.size() >=2);
+
+    // Read file 
+    int nparams = 0;
+    for (int iosc = 0; iosc < nlevels.size(); iosc++){
+      nparams += oscil_vec[iosc]->getNParams();
+    }
+    std::vector<double> initguess_fromfile(nparams, 0.0);
+    if (mpirank_world == 0) read_vector(controlinit_str[1].c_str(), initguess_fromfile.data(), nparams, quietmode);
+    MPI_Bcast(initguess_fromfile.data(), nparams, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+
+    // Pass control initialization to oscillators
+    int shift=0;
+    for (int ioscil = 0; ioscil < nlevels.size(); ioscil++) {
+      /* Copy x into the oscillators parameter array. */
+      oscil_vec[ioscil]->setParams(initguess_fromfile.data() + shift);
+      shift += oscil_vec[ioscil]->getNParams();
+    }
+  }
+  
 
   // Get pi-pulses, if any
   std::vector<std::string> pipulse_str;
@@ -289,19 +344,6 @@ int main(int argc,char **argv)
     }
   }
 
-  /* Create Learning Model or dummy */
-  bool dolearning = config.GetBoolParam("dolearning", false, false);
-  std::vector<std::string> learninit_str;
-  Learning* learning;
-  if (dolearning) {
-    config.GetVecStrParam("learnparams_initialization", learninit_str, "random, 0.0");
-    learning = new Learning(nlevels, lindbladtype, learninit_str, rand_engine, quietmode);
-    printf("Created Learning operators on %d Gellmann mats\n", learning->getNBasis());
-  } else {// Dummy. Does nothing.
-    std::vector<int> nlevelsdummy(nlevels.size(), 0);
-    learning = new Learning(nlevelsdummy, LindbladType::NONE, learninit_str, rand_engine, quietmode); 
-  }
-
   /* --- Initialize the Master Equation  --- */
   // Get self and cross kers and coupling terms 
   std::vector<double> crosskerr, Jkl;
@@ -314,6 +356,9 @@ int main(int argc,char **argv)
   // for (int i = Jkl.size(); i < (noscillators-1) * noscillators / 2; i++) Jkl.push_back(0.0);
   // Sanity check for matrix free solver
   bool usematfree = config.GetBoolParam("usematfree", false);
+  if (usematfree && useUDEmodel) {
+    printf("\n\n WARNING: using matfree solver together with UDE model needs testing!! Not recommended at this point.\n\n");
+  }
   if (usematfree && nlevels.size() > 5){
         printf("Warning: Matrix free solver is only implemented for systems with 2, 3, 4, or 5 oscillators. Switching to sparse-matrix solver now.\n");
         usematfree = false;
@@ -338,7 +383,7 @@ int main(int argc,char **argv)
     usematfree = false;
   }
   // Initialize Master equation
-  MasterEq* mastereq = new MasterEq(nlevels, nessential, oscil_vec, crosskerr, Jkl, eta, lindbladtype, usematfree, dolearning, learning, hamiltonian_file, quietmode);
+  MasterEq* mastereq = new MasterEq(nlevels, nessential, oscil_vec, crosskerr, Jkl, eta, lindbladtype, usematfree, useUDEmodel, x_is_control, learning, hamiltonian_file, quietmode);
 
 
   /* Output */
@@ -378,7 +423,7 @@ int main(int argc,char **argv)
   bool storeFWD = false;
   int ninit_local = ninit / mpisize_init; 
   if (mastereq->lindbladtype != LindbladType::NONE &&   
-     (runtype == RunType::GRADIENT || runtype == RunType::OPTIMIZATION) ) storeFWD = true;  // if NOT Schroedinger solver and running gradient optim: store forward states. Otherwise, they will be recomputed during gradient. 
+     (runtype == RunType::GRADIENT || runtype == RunType::OPTIMIZATION )) storeFWD = true;  // if NOT Schroedinger solver and running gradient optim: store forward states. Otherwise, they will be recomputed during gradient. 
 
   std::string timesteppertypestr = config.GetStrParam("timestepper", "IMR");
   TimeStepper* mytimestepper;
@@ -392,7 +437,7 @@ int main(int argc,char **argv)
   }
 
   /* --- Initialize optimization --- */
-  OptimProblem* optimctx = new OptimProblem(config, mytimestepper, comm_init, comm_optim, ninit, output, quietmode);
+  OptimProblem* optimctx = new OptimProblem(config, mytimestepper, comm_init, comm_optim, ninit, output, x_is_control, quietmode);
 
   /* Set upt solution and gradient vector */
   Vec xinit;
@@ -471,11 +516,7 @@ int main(int argc,char **argv)
   /* --- Finalize --- */
 
   /* Get timings */
-  // #ifdef WITH_MPI
   double UsedTime = MPI_Wtime() - StartTime;
-  // #else
-  // double UsedTime = 0.0; // TODO
-  // #endif
   /* Get memory usage */
   struct rusage r_usage;
   getrusage(RUSAGE_SELF, &r_usage);

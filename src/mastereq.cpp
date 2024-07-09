@@ -9,12 +9,12 @@ MasterEq::MasterEq(){
   dRedp = NULL;
   dImdp = NULL;
   usematfree = false;
-  dolearning = false;
+  useUDEmodel = false;
   quietmode = false;
 }
 
 
-MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Oscillator** oscil_vec_, const std::vector<double> crosskerr_, const std::vector<double> Jkl_, const std::vector<double> eta_, LindbladType lindbladtype_, bool usematfree_, bool dolearning_, Learning* learning_, std::string hamiltonian_file_, bool quietmode_) {
+MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Oscillator** oscil_vec_, const std::vector<double> crosskerr_, const std::vector<double> Jkl_, const std::vector<double> eta_, LindbladType lindbladtype_, bool usematfree_, bool useUDEmodel_, bool x_is_control_, Learning* learning_, std::string hamiltonian_file_, bool quietmode_) {
   int ierr;
 
   nlevels = nlevels_;
@@ -25,7 +25,8 @@ MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Osci
   Jkl = Jkl_;
   eta = eta_;
   usematfree = usematfree_;
-  dolearning = dolearning_;
+  useUDEmodel = useUDEmodel_;
+  x_is_control = x_is_control_;
   learning = learning_;
   lindbladtype = lindbladtype_;
   hamiltonian_file = hamiltonian_file_;
@@ -916,8 +917,7 @@ Mat MasterEq::getRHS() { return RHS; }
 /* grad += alpha * RHS(x)^T * xbar  */
 void MasterEq::computedRHSdp(const double t, const Vec x, const Vec xbar, const double alpha, Vec grad) {
 
-
-  if (usematfree) {  // Matrix-free solver
+  if (usematfree && learning->getNBasis() <= 0) {  // Matrix-free solver
     double res_p_re,  res_p_im, res_q_re, res_q_im;
 
     const double* xptr, *xbarptr;
@@ -1232,7 +1232,7 @@ void MasterEq::computedRHSdp(const double t, const Vec x, const Vec xbar, const 
     delete [] coeff_p;
     delete [] coeff_q;
 
-  } else {  // sparse matrix solver
+  } else {  // sparse matrix solver or learning 
 
   /* Get real and imaginary part from x and x_bar */
   Vec u, v, ubar, vbar;
@@ -1241,60 +1241,68 @@ void MasterEq::computedRHSdp(const double t, const Vec x, const Vec xbar, const 
   VecGetSubVector(xbar, isu, &ubar);
   VecGetSubVector(xbar, isv, &vbar);
 
-  /* Loop over oscillators */
-  int col_shift = 0;
-  for (int iosc= 0; iosc < noscillators; iosc++){
+  if (x_is_control) { // Gradient wrt control parameters 
+  
+    /* Loop over oscillators */
+    int col_shift = 0;
+    for (int iosc= 0; iosc < noscillators; iosc++){
 
-    /* Evaluate the derivative of the control functions wrt control parameters */
-    for (int i=0; i<nparams_max; i++){
-      dRedp[i] = 0.0;
-      dImdp[i] = 0.0;
-    }
-    oscil_vec[iosc]->evalControl_diff(t, dRedp, dImdp);
+      /* Evaluate the derivative of the control functions wrt control parameters */
+      for (int i=0; i<nparams_max; i++){
+        dRedp[i] = 0.0;
+        dImdp[i] = 0.0;
+      }
+      oscil_vec[iosc]->evalControl_diff(t, dRedp, dImdp);
 
-    // Derivative of transfer functions u^k_i(p), v^k_i(q) for all control terms i=0,..., ncontrol[k]-1
-    std::vector<double> dukidp;
-    std::vector<double> dukidq;
-    double p, q;
-    oscil_vec[iosc]->evalControl(t, &p, &q);  // Evaluates the B-spline basis functions -> p(t,alpha), q(t,alpha)
-    for (int icon=0; icon<Bc_vec[iosc].size(); icon++){ // Now evaluate the derivative of transfer functions for each control term
-      double dukidp_tmp = transfer_Hc_re[iosc][icon]->der(p, t); // dudp(p)
-      dukidp.push_back(dukidp_tmp);
-    }
-    for (int icon=0; icon<Ac_vec[iosc].size(); icon++){ 
-      double dukidq_tmp = transfer_Hc_im[iosc][icon]->der(q, t); // dvdq(q)
-      dukidq.push_back(dukidq_tmp);
+      // Derivative of transfer functions u^k_i(p), v^k_i(q) for all control terms i=0,..., ncontrol[k]-1
+      std::vector<double> dukidp;
+      std::vector<double> dukidq;
+      double p, q;
+      oscil_vec[iosc]->evalControl(t, &p, &q);  // Evaluates the B-spline basis functions -> p(t,alpha), q(t,alpha)
+      for (int icon=0; icon<Bc_vec[iosc].size(); icon++){ // Now evaluate the derivative of transfer functions for each control term
+        double dukidp_tmp = transfer_Hc_re[iosc][icon]->der(p, t); // dudp(p)
+        dukidp.push_back(dukidp_tmp);
+      }
+      for (int icon=0; icon<Ac_vec[iosc].size(); icon++){ 
+        double dukidq_tmp = transfer_Hc_im[iosc][icon]->der(q, t); // dvdq(q)
+        dukidq.push_back(dukidq_tmp);
+      }
+
+      /* Compute terms in RHS(x)^T xbar */
+      double uAubar = 0.0; 
+      double vAvbar = 0.0;
+      double vBubar = 0.0;
+      double uBvbar = 0.0;
+      for (int icon=0; icon<Ac_vec[iosc].size(); icon++){
+        double dot;
+        MatMult(Ac_vec[iosc][icon], u, aux); VecDot(aux, ubar, &dot); uAubar += dot * dukidq[icon];
+        MatMult(Ac_vec[iosc][icon], v, aux); VecDot(aux, vbar, &dot); vAvbar += dot * dukidq[icon];
+      }
+      for (int icon=0; icon<Bc_vec[iosc].size(); icon++){
+        double dot;
+        MatMult(Bc_vec[iosc][icon], u, aux); VecDot(aux, vbar, &dot); uBvbar += dot * dukidp[icon];
+        MatMult(Bc_vec[iosc][icon], v, aux); VecDot(aux, ubar, &dot); vBubar += dot * dukidp[icon];
+      }
+
+      /* Number of parameters for this oscillator */
+      int nparams_iosc = getOscillator(iosc)->getNParams();
+
+      /* Set gradient terms for each control parameter */
+      for (int iparam=0; iparam < nparams_iosc; iparam++) {
+        vals[iparam] = alpha * ((uAubar + vAvbar) * dImdp[iparam] + ( -vBubar + uBvbar) * dRedp[iparam]);
+        cols[iparam] = col_shift + iparam;
+      }
+      VecSetValues(grad, nparams_iosc, cols, vals, ADD_VALUES);
+      col_shift += nparams_iosc;
     }
 
-    /* Compute terms in RHS(x)^T xbar */
-    double uAubar = 0.0; 
-    double vAvbar = 0.0;
-    double vBubar = 0.0;
-    double uBvbar = 0.0;
-    for (int icon=0; icon<Ac_vec[iosc].size(); icon++){
-      double dot;
-      MatMult(Ac_vec[iosc][icon], u, aux); VecDot(aux, ubar, &dot); uAubar += dot * dukidq[icon];
-      MatMult(Ac_vec[iosc][icon], v, aux); VecDot(aux, vbar, &dot); vAvbar += dot * dukidq[icon];
-    }
-    for (int icon=0; icon<Bc_vec[iosc].size(); icon++){
-      double dot;
-      MatMult(Bc_vec[iosc][icon], u, aux); VecDot(aux, vbar, &dot); uBvbar += dot * dukidp[icon];
-      MatMult(Bc_vec[iosc][icon], v, aux); VecDot(aux, ubar, &dot); vBubar += dot * dukidp[icon];
-    }
+    VecAssemblyBegin(grad);
+    VecAssemblyEnd(grad);
 
-    /* Number of parameters for this oscillator */
-    int nparams_iosc = getOscillator(iosc)->getNParams();
+  } else { // Gradient wrt learnable parameters
 
-    /* Set gradient terms for each control parameter */
-    for (int iparam=0; iparam < nparams_iosc; iparam++) {
-      vals[iparam] = alpha * ((uAubar + vAvbar) * dImdp[iparam] + ( -vBubar + uBvbar) * dRedp[iparam]);
-      cols[iparam] = col_shift + iparam;
-    }
-    VecSetValues(grad, nparams_iosc, cols, vals, ADD_VALUES);
-    col_shift += nparams_iosc;
+    learning->dRHSdp(grad, u, v, alpha, ubar, vbar);
   }
-  VecAssemblyBegin(grad);
-  VecAssemblyEnd(grad);
 
   /* Restore x */
   VecRestoreSubVector(x, isu, &u);
@@ -1364,7 +1372,7 @@ int myMatMult_sparsemat(Mat RHS, Vec x, Vec y){
       q = shellctx->control_Im[iosc][icon];
       // uout += q^k*Acu
       MatMult(shellctx->Ac_vec[iosc][icon], u, *shellctx->aux);
-      VecAXPY(uout, q, *shellctx->aux); // Should use MatAXPY! TODO.
+      VecAXPY(uout, q, *shellctx->aux); 
       // vout += q^kAcv
       MatMult(shellctx->Ac_vec[iosc][icon], v, *shellctx->aux);
       VecAXPY(vout, q, *shellctx->aux);

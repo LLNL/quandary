@@ -1,11 +1,12 @@
 #include "optimproblem.hpp"
 
-OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm comm_init_, MPI_Comm comm_optim_, int ninit_, Output* output_, bool quietmode_){
+OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm comm_init_, MPI_Comm comm_optim_, int ninit_, Output* output_, bool x_is_control_, bool quietmode_){
 
   timestepper = timestepper_;
   ninit = ninit_;
   output = output_;
   quietmode = quietmode_;
+  x_is_control = x_is_control_;
   /* Reset */
   objective = 0.0;
 
@@ -35,13 +36,17 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
     }
   }
 
-  /* Store number of design parameters */
-  int n = 0;
-  for (int ioscil = 0; ioscil < timestepper->mastereq->getNOscillators(); ioscil++) {
-      n += timestepper->mastereq->getOscillator(ioscil)->getNParams(); 
+  /* Store number of optimization parameters */
+  if (x_is_control) { // Optimizing on the control parameters
+    int n = 0;
+    for (int ioscil = 0; ioscil < timestepper->mastereq->getNOscillators(); ioscil++) {
+        n += timestepper->mastereq->getOscillator(ioscil)->getNParams(); 
+    }
+    ndesign = n;
+    if (mpirank_world == 0 && !quietmode) std::cout<< "Number of control parameters: " << ndesign << std::endl;
+  } else { // Optimizing on the learnable parameters
+    ndesign = timestepper->mastereq->learning->getNBasis();
   }
-  ndesign = n;
-  if (mpirank_world == 0 && !quietmode) std::cout<< "Number of control parameters: " << ndesign << std::endl;
 
   /* Allocate the initial condition vector and adjoint terminal state */
   VecCreate(PETSC_COMM_WORLD, &rho_t0); 
@@ -119,46 +124,44 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   VecCreateSeq(PETSC_COMM_SELF, ndesign, &xlower);
   VecSetFromOptions(xlower);
   VecDuplicate(xlower, &xupper);
-  int col = 0;
-  for (int iosc = 0; iosc < timestepper->mastereq->getNOscillators(); iosc++){
-    std::vector<std::string> bound_str;
-    config.GetVecStrParam("control_bounds" + std::to_string(iosc), bound_str, "10000.0");
-    for (int iseg = 0; iseg < timestepper->mastereq->getOscillator(iosc)->getNSegments(); iseg++){
-      double boundval = 0.0;
-      if (bound_str.size() <= iseg) boundval =  atof(bound_str[bound_str.size()-1].c_str());
-      else boundval = atof(bound_str[iseg].c_str());
-      // Scale bounds by the number of carrier waves, and convert to radians */
-      boundval = boundval / (sqrt(2) * timestepper->mastereq->getOscillator(iosc)->getNCarrierfrequencies());
-      boundval = boundval * 2.0*M_PI;
-      for (int i=0; i<timestepper->mastereq->getOscillator(iosc)->getNSegParams(iseg); i++){
-        VecSetValue(xupper, col + i, boundval, INSERT_VALUES);
-        VecSetValue(xlower, col + i, -1. * boundval, INSERT_VALUES);
-      }
-      // Disable bound for phase if this is spline_amplitude control
-      if (timestepper->mastereq->getOscillator(iosc)->getControlType() == ControlType::BSPLINEAMP) {
-        for (int f = 0; f < timestepper->mastereq->getOscillator(iosc)->getNCarrierfrequencies(); f++){
-          int nsplines = timestepper->mastereq->getOscillator(iosc)->getNSplines();
-          boundval = 1e+10;
-          VecSetValue(xupper, col + f*(nsplines+1) + nsplines, boundval, INSERT_VALUES);
-          VecSetValue(xlower, col + f*(nsplines+1) + nsplines, -1.*boundval, INSERT_VALUES);
+  if (x_is_control) { // Optimize on control parameters, set bounds from config
+    int col = 0;
+    for (int iosc = 0; iosc < timestepper->mastereq->getNOscillators(); iosc++){
+      std::vector<std::string> bound_str;
+      config.GetVecStrParam("control_bounds" + std::to_string(iosc), bound_str, "10000.0");
+      for (int iseg = 0; iseg < timestepper->mastereq->getOscillator(iosc)->getNSegments(); iseg++){
+        double boundval = 0.0;
+        if (bound_str.size() <= iseg) boundval =  atof(bound_str[bound_str.size()-1].c_str());
+        else boundval = atof(bound_str[iseg].c_str());
+        // Scale bounds by the number of carrier waves, and convert to radians */
+        boundval = boundval / (sqrt(2) * timestepper->mastereq->getOscillator(iosc)->getNCarrierfrequencies());
+        boundval = boundval * 2.0*M_PI;
+        for (int i=0; i<timestepper->mastereq->getOscillator(iosc)->getNSegParams(iseg); i++){
+          VecSetValue(xupper, col + i, boundval, INSERT_VALUES);
+          VecSetValue(xlower, col + i, -1. * boundval, INSERT_VALUES);
         }
+        // Disable bound for phase if this is spline_amplitude control
+        if (timestepper->mastereq->getOscillator(iosc)->getControlType() == ControlType::BSPLINEAMP) {
+          for (int f = 0; f < timestepper->mastereq->getOscillator(iosc)->getNCarrierfrequencies(); f++){
+            int nsplines = timestepper->mastereq->getOscillator(iosc)->getNSplines();
+            boundval = 1e+10;
+            VecSetValue(xupper, col + f*(nsplines+1) + nsplines, boundval, INSERT_VALUES);
+            VecSetValue(xlower, col + f*(nsplines+1) + nsplines, -1.*boundval, INSERT_VALUES);
+          }
+        }
+        col = col + timestepper->mastereq->getOscillator(iosc)->getNSegParams(iseg);
       }
-      col = col + timestepper->mastereq->getOscillator(iosc)->getNSegParams(iseg);
+    }
+  } else { // Optimize on learnable parameters, disable bounds.
+    for (int i=0; i<ndesign; i++) {
+      double boundval = 1e6;
+      VecSetValue(xupper, i,     boundval, INSERT_VALUES);
+      VecSetValue(xlower, i, -1.*boundval, INSERT_VALUES);
     }
   }
   VecAssemblyBegin(xlower); VecAssemblyEnd(xlower);
   VecAssemblyBegin(xupper); VecAssemblyEnd(xupper);
 
-  /* Store the initial guess if read from file */
-  std::vector<std::string> controlinit_str;
-  config.GetVecStrParam("control_initialization0", controlinit_str, "constant, 0.0");
-  if ( controlinit_str.size() > 0 && controlinit_str[0].compare("file") == 0 ) {
-    assert(controlinit_str.size() >=2);
-    for (int i=0; i<ndesign; i++) initguess_fromfile.push_back(0.0);
-    if (mpirank_world == 0) read_vector(controlinit_str[1].c_str(), initguess_fromfile.data(), ndesign, quietmode);
-    MPI_Bcast(initguess_fromfile.data(), ndesign, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-  }
- 
   /* Create Petsc's optimization solver */
   TaoCreate(PETSC_COMM_WORLD, &tao);
   /* Set optimization type and parameters */
@@ -173,9 +176,6 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   TaoSetGradient(tao, NULL, TaoEvalGradient,(void *)this);
   TaoSetObjectiveAndGradient(tao, NULL, TaoEvalObjectiveAndGradient, (void*) this);
 
-  /* Allocate auxiliary vector */
-  mygrad = new double[ndesign];
-
   /* Allocat xinit, xtmp */
   VecCreateSeq(PETSC_COMM_SELF, ndesign, &xinit);
   VecSetFromOptions(xinit);
@@ -183,6 +183,16 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   VecCreateSeq(PETSC_COMM_SELF, ndesign, &xtmp);
   VecSetFromOptions(xtmp);
   VecZeroEntries(xtmp);
+
+  /* Allocat reduce gradient for time-stepper */
+  VecCreateSeq(PETSC_COMM_SELF, ndesign, &(timestepper->redgrad));
+  VecSetFromOptions(timestepper->redgrad);
+  VecAssemblyBegin(timestepper->redgrad);
+  VecAssemblyEnd(timestepper->redgrad);
+
+
+  /* Allocate auxiliary vector */
+  mygrad = new double[ndesign];
 }
 
 
@@ -196,6 +206,7 @@ OptimProblem::~OptimProblem() {
   VecDestroy(&xupper);
   VecDestroy(&xinit);
   VecDestroy(&xtmp);
+  VecDestroy(&(timestepper->redgrad));
 
   for (int i = 0; i < store_finalstates.size(); i++) {
     VecDestroy(&(store_finalstates[i]));
@@ -212,11 +223,17 @@ double OptimProblem::evalF(const Vec x) {
 
   if (mpirank_world == 0 && !quietmode) printf("EVAL F... \n");
 
-  /* Pass design vector x to oscillators */
-  mastereq->setControlAmplitudes(x); 
+  /* Set current optimization vector x */
+  if (x_is_control) { // Optimize on control parameters
+    mastereq->setControlAmplitudes(x); 
+  } else { // Optimize on learnable parameters
+    mastereq->learning->setLearnParams(x); 
+  }
+
 
   /*  Iterate over initial condition */
   obj_cost  = 0.0;
+  obj_loss = 0.0;
   obj_regul = 0.0;
   obj_penal = 0.0;
   obj_penal_dpdm = 0.0;
@@ -238,6 +255,9 @@ double OptimProblem::evalF(const Vec x) {
 
     /* Run forward with initial condition initid */
     Vec finalstate = timestepper->solveODE(initid, rho_t0);
+
+    /* If learning: add to loss function */
+    obj_loss += obj_weights[iinit] * timestepper->learning_integral;
 
     /* Add to integral penalty term */
     obj_penal += obj_weights[iinit] * gamma_penalty * timestepper->penalty_integral;
@@ -267,12 +287,14 @@ double OptimProblem::evalF(const Vec x) {
 
   /* Sum up from initial conditions processors */
   double mypen = obj_penal;
+  double myloss= obj_loss;
   double mypen_dpdm = obj_penal_dpdm;
   double mypenen = obj_penal_energy;
   double mycost_re = obj_cost_re;
   double mycost_im = obj_cost_im;
   double myfidelity_re = fidelity_re;
   double myfidelity_im = fidelity_im;
+  MPI_Allreduce(&myloss, &obj_loss, 1, MPI_DOUBLE, MPI_SUM, comm_init);
   MPI_Allreduce(&mypen, &obj_penal, 1, MPI_DOUBLE, MPI_SUM, comm_init);
   MPI_Allreduce(&mypen_dpdm, &obj_penal_dpdm, 1, MPI_DOUBLE, MPI_SUM, comm_init);
   MPI_Allreduce(&mypenen, &obj_penal_energy, 1, MPI_DOUBLE, MPI_SUM, comm_init);
@@ -303,12 +325,20 @@ double OptimProblem::evalF(const Vec x) {
   obj_regul = gamma_tik / 2. * pow(xnorm,2.0);
 
   /* Sum, store and return objective value */
-  objective = obj_cost + obj_regul + obj_penal + obj_penal_dpdm + obj_penal_energy;
+  if (x_is_control) {
+    objective = obj_cost + obj_regul + obj_penal + obj_penal_dpdm + obj_penal_energy;
+  } else {
+    objective = obj_loss + obj_regul;
+  }
 
   /* Output */
   if (mpirank_world == 0) {
-    std::cout<< "Objective = " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal << " + " << obj_penal_dpdm << " + " << obj_penal_energy << std::endl;
-    std::cout<< "Fidelity = " << fidelity  << std::endl;
+    if (x_is_control){
+      std::cout<< "Objective = " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal << " + " << obj_penal_dpdm << " + " << obj_penal_energy << std::endl;
+      std::cout<< "Fidelity = " << fidelity  << std::endl;
+    } else {
+      std::cout<< "Learning loss = " << std::scientific<<std::setprecision(14) << obj_loss << " + " << obj_regul << std::endl;
+    }
   }
 
   return objective;
@@ -322,8 +352,12 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
 
   if (mpirank_world == 0 && !quietmode) std::cout<< "EVAL GRAD F... " << std::endl;
 
-  /* Pass design vector x to oscillators */
-  mastereq->setControlAmplitudes(x); 
+  /* Set current optimization vector x */
+  if (x_is_control) { // Optimize on control parameters
+    mastereq->setControlAmplitudes(x); 
+  } else { // Optimize on learnable parameters
+    mastereq->learning->setLearnParams(x); 
+  }
 
   /* Reset Gradient */
   VecZeroEntries(G);
@@ -339,6 +373,7 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
 
   /*  Iterate over initial condition */
   obj_cost = 0.0;
+  obj_loss = 0.0;
   obj_regul = 0.0;
   obj_penal = 0.0;
   obj_penal_dpdm = 0.0;
@@ -358,13 +393,16 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
     optim_target->prepareTargetState(rho_t0);
 
     /* --- Solve primal --- */
-    // if (mpirank_optim == 0) printf("%d: %d FWD. ", mpirank_init, initid);
+    // if (mpirank_optim == 0) printf("%d: %d FWD. \n", mpirank_init, initid);
 
     /* Run forward with initial condition rho_t0 */
     Vec finalstate = timestepper->solveODE(initid, rho_t0);
 
     /* Store the final state for the Schroedinger solver */
     if (timestepper->mastereq->lindbladtype == LindbladType::NONE) VecCopy(finalstate, store_finalstates[iinit]);
+
+    /* If learning: add to loss function */
+    obj_loss += obj_weights[iinit] * timestepper->learning_integral;
 
     /* Add to integral penalty term */
     obj_penal += obj_weights[iinit] * gamma_penalty * timestepper->penalty_integral;
@@ -395,13 +433,15 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
       /* Reset adjoint */
       VecZeroEntries(rho_t0_bar);
 
-      /* Terminal condition for adjoint variable: Derivative of final time objective J */
-      double obj_cost_re_bar, obj_cost_im_bar;
-      optim_target->finalizeJ_diff(obj_cost_re, obj_cost_im, &obj_cost_re_bar, &obj_cost_im_bar);
-      optim_target->evalJ_diff(finalstate, rho_t0_bar, obj_weights[iinit]*obj_cost_re_bar, obj_weights[iinit]*obj_cost_im_bar);
+      if (x_is_control) {
+        /* Terminal condition for adjoint variable: Derivative of final time objective J */
+        double obj_cost_re_bar, obj_cost_im_bar;
+        optim_target->finalizeJ_diff(obj_cost_re, obj_cost_im, &obj_cost_re_bar, &obj_cost_im_bar);
+        optim_target->evalJ_diff(finalstate, rho_t0_bar, obj_weights[iinit]*obj_cost_re_bar, obj_weights[iinit]*obj_cost_im_bar);
+      }
 
       /* Derivative of time-stepping */
-      timestepper->solveAdjointODE(initid, rho_t0_bar, finalstate, obj_weights[iinit] * gamma_penalty, obj_weights[iinit]*gamma_penalty_dpdm, obj_weights[iinit]*gamma_penalty_energy);
+      timestepper->solveAdjointODE(initid, rho_t0_bar, finalstate, obj_weights[iinit] * gamma_penalty, obj_weights[iinit]*gamma_penalty_dpdm, obj_weights[iinit]*gamma_penalty_energy, obj_weights[iinit]);
 
       /* Add to optimizers's gradient */
       VecAXPY(G, 1.0, timestepper->redgrad);
@@ -410,12 +450,14 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
 
   /* Sum up from initial conditions processors */
   double mypen = obj_penal;
+  double myloss= obj_loss;
   double mypen_dpdm = obj_penal_dpdm;
   double mypenen = obj_penal_energy;
   double mycost_re = obj_cost_re;
   double mycost_im = obj_cost_im;
   double myfidelity_re = fidelity_re;
   double myfidelity_im = fidelity_im;
+  MPI_Allreduce(&myloss, &obj_loss, 1, MPI_DOUBLE, MPI_SUM, comm_init);
   MPI_Allreduce(&mypen, &obj_penal, 1, MPI_DOUBLE, MPI_SUM, comm_init);
   MPI_Allreduce(&mypen_dpdm, &obj_penal_dpdm, 1, MPI_DOUBLE, MPI_SUM, comm_init);
   MPI_Allreduce(&mypenen, &obj_penal_energy, 1, MPI_DOUBLE, MPI_SUM, comm_init);
@@ -447,7 +489,11 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
   obj_regul = gamma_tik / 2. * pow(xnorm,2.0);
 
   /* Sum, store and return objective value */
-  objective = obj_cost + obj_regul + obj_penal + obj_penal_dpdm + obj_penal_energy;
+  if (x_is_control) {
+    objective = obj_cost + obj_regul + obj_penal + obj_penal_dpdm + obj_penal_energy;
+  } else {
+    objective = obj_loss + obj_regul;
+  }
 
   /* For Schroedinger solver: Solve adjoint equations for all initial conditions here. */
   if (timestepper->mastereq->lindbladtype == LindbladType::NONE) {
@@ -463,13 +509,15 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
       /* Reset adjoint */
       VecZeroEntries(rho_t0_bar);
 
-      /* Terminal condition for adjoint variable: Derivative of final time objective J */
-      double obj_cost_re_bar, obj_cost_im_bar;
-      optim_target->finalizeJ_diff(obj_cost_re, obj_cost_im, &obj_cost_re_bar, &obj_cost_im_bar);
-      optim_target->evalJ_diff(store_finalstates[iinit], rho_t0_bar, obj_weights[iinit]*obj_cost_re_bar, obj_weights[iinit]*obj_cost_im_bar);
+      if (x_is_control) {
+        /* Terminal condition for adjoint variable: Derivative of final time objective J */
+        double obj_cost_re_bar, obj_cost_im_bar;
+        optim_target->finalizeJ_diff(obj_cost_re, obj_cost_im, &obj_cost_re_bar, &obj_cost_im_bar);
+        optim_target->evalJ_diff(store_finalstates[iinit], rho_t0_bar, obj_weights[iinit]*obj_cost_re_bar, obj_weights[iinit]*obj_cost_im_bar);
+      }
 
       /* Derivative of time-stepping */
-      timestepper->solveAdjointODE(initid, rho_t0_bar, store_finalstates[iinit], obj_weights[iinit] * gamma_penalty, obj_weights[iinit]*gamma_penalty_dpdm, obj_weights[iinit]*gamma_penalty_energy);
+      timestepper->solveAdjointODE(initid, rho_t0_bar, store_finalstates[iinit], obj_weights[iinit] * gamma_penalty, obj_weights[iinit]*gamma_penalty_dpdm, obj_weights[iinit]*gamma_penalty_energy, obj_weights[iinit]);
 
       /* Add to optimizers's gradient */
       VecAXPY(G, 1.0, timestepper->redgrad);
@@ -490,8 +538,12 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
 
   /* Output */
   if (mpirank_world == 0 && !quietmode) {
-    std::cout<< "Objective = " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal << " + " << obj_penal_dpdm << " + " << obj_penal_energy << std::endl;
-    std::cout<< "Fidelity = " << fidelity << std::endl;
+    if (x_is_control){
+      std::cout<< "Objective = " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal << " + " << obj_penal_dpdm << " + " << obj_penal_energy << std::endl;
+      std::cout<< "Fidelity = " << fidelity << std::endl;
+    } else {
+      std::cout<< "Learning loss = " << std::scientific<<std::setprecision(14) << obj_loss << " + " << obj_regul << std::endl;
+    }
   }
 }
 
@@ -504,13 +556,8 @@ void OptimProblem::solve(Vec xinit) {
 void OptimProblem::getStartingPoint(Vec xinit){
   MasterEq* mastereq = timestepper->mastereq;
 
-  if (initguess_fromfile.size() > 0) {
-    /* Set the initial guess from file */
-    for (int i=0; i<initguess_fromfile.size(); i++) {
-      VecSetValue(xinit, i, initguess_fromfile[i], INSERT_VALUES);
-    }
-
-  } else { // copy from initialization in oscillators contructor
+  if (x_is_control) {// optim wrt controls 
+    // copy from initialization of oscillator constructor
     PetscScalar* xptr;
     VecGetArray(xinit, &xptr);
     int shift = 0;
@@ -519,18 +566,19 @@ void OptimProblem::getStartingPoint(Vec xinit){
       shift += mastereq->getOscillator(ioscil)->getNParams();
     }
     VecRestoreArray(xinit, &xptr);
+
+    /* Write initial control functions to file */
+    output->writeControls(xinit, timestepper->mastereq, timestepper->ntime, timestepper->dt);
+
+
+  } else { // optim wrt learning parameters 
+    // Copy from initialization in learning constructor
+    PetscScalar* xptr;
+    VecGetArray(xinit, &xptr);
+    mastereq->learning->getLearnParams(xptr);
+    VecRestoreArray(xinit, &xptr);
   }
-
-  /* Assemble initial guess */
-  VecAssemblyBegin(xinit);
-  VecAssemblyEnd(xinit);
-
-  /* Pass to oscillator */
-  timestepper->mastereq->setControlAmplitudes(xinit);
-  
-  /* Write initial control functions to file */
-  output->writeControls(xinit, timestepper->mastereq, timestepper->ntime, timestepper->dt);
-
+ 
 }
 
 
@@ -569,9 +617,9 @@ PetscErrorCode TaoMonitor(Tao tao,void*ptr){
   ctx->output->writeOptimFile(f, gnorm, deltax, F_avg, obj_cost, obj_regul, obj_penal, obj_penal_dpdm, obj_penal_energy);
 
   /* Print parameters and controls to file */
-  // if ( optim_iter % optim_monitor_freq == 0 ) {
-  ctx->output->writeControls(params, ctx->timestepper->mastereq, ctx->timestepper->ntime, ctx->timestepper->dt);
-  // }
+  if (ctx->x_is_control) {
+    ctx->output->writeControls(params, ctx->timestepper->mastereq, ctx->timestepper->ntime, ctx->timestepper->dt);
+  }
 
   /* Screen output */
   if (ctx->getMPIrank_world() == 0 && iter == 0) {

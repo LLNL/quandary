@@ -7,6 +7,7 @@
 #include "defs.hpp"
 #include "output.hpp"
 #include "optimtarget.hpp"
+#include "util.hpp"
 #include <deque>
 #pragma once
 
@@ -22,16 +23,19 @@ class TimeStepper{
     bool addLeakagePrevent;   /* flag to determine if Leakage preventing term is added to penalty.  */
     int mpirank_world;
 
+    Vec aux;                         /* Auxiliary vector for learning */
+
   public:
     MasterEq* mastereq;  // Lindblad master equation
     int ntime;           // number of time steps
     double total_time;   // final time
     double dt;           // time step size
 
-    Vec redgrad;                   /* Reduced gradient */
+    Vec redgrad;                  /* Reduced gradient wrt control parameters or learnable parameters */
 
     /* Stuff needed for the penalty integral term */
     // TODO: pass those through the timestepper constructor (currently, they are set manually inside optimproblem constructor), or add up the penalty within the optim_target.
+    double learning_integral;        // output, holds the integral learning term
     double penalty_integral;        // output, holds the integral term
     double energy_penalty_integral;        // output, holds the integral term
     double penalty_dpdm;        
@@ -59,7 +63,7 @@ class TimeStepper{
     Vec solveODE(int initid, Vec rho_t0);
 
     /* Solve the adjoint ODE backwards in time from terminal condition rho_t0_bar */
-    void solveAdjointODE(int initid, Vec rho_t0_bar, Vec finalstate, double Jbar_penalty, double Jbar_penalty_dpdm, double Jbar_penalty_energy);
+    void solveAdjointODE(int initid, Vec rho_t0_bar, Vec finalstate, double Jbar_penalty, double Jbar_penalty_dpdm, double Jbar_penalty_energy, double Jbar_loss);
 
     /* evaluate the penalty integral term */
     double penaltyIntegral(double time, const Vec x);

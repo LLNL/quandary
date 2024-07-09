@@ -32,7 +32,7 @@ enum class RunType {
   SIMULATION,        // Runs one simulation to compute the objective function (forward)
   GRADIENT,          // Runs a simulation followed by the adjoint for gradient computation (forward & backward)
   OPTIMIZATION,      // Runs optimization iterations
-  EVALCONTROLS,      // Runs optimization iterations
+  EVALCONTROLS,      // Evaluates the control pulses
   NONE               // Don't run anything.
 };
 

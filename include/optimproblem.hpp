@@ -42,6 +42,7 @@ class OptimProblem {
   std::vector<double> obj_weights; /* List of weights for weighting the average objective over initial conditions  */
   int ndesign;                     /* Number of global design parameters */
   double objective;                /* Holds current objective function value */
+  double obj_loss;                 /* If learning: loss function value */
   double obj_cost;                 /* Final-time term J(T) in objective */
   double obj_regul;                /* Regularization term in objective */
   double obj_penal;                /* Penalty term in objective */
@@ -61,12 +62,12 @@ class OptimProblem {
   double grtol;                    /* Stopping criterion based on relative gradient norm */
   int maxiter;                     /* Stopping criterion based on maximum number of iterations */
   Tao tao;                         /* Petsc's Optimization solver */
-  std::vector<double> initguess_fromfile;      /* Stores the initial guess, if read from file */
   double* mygrad;  /* Auxiliary */
     
   Vec xtmp;                        /* Temporary storage */
   
   public: 
+    bool x_is_control;              // Flag if True: Optimization variables are the control parameters, else optimization vars are the UDE model parameters
     Output* output;                 /* Store a reference to the output */
     TimeStepper* timestepper;       /* Store a reference to the time-stepping scheme */
     Vec xlower, xupper;              /* Optimization bounds */
@@ -74,7 +75,7 @@ class OptimProblem {
     Vec xinit;                       /* Storing initial design vector */
 
   /* Constructor */
-  OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm comm_init_, MPI_Comm comm_optim, int ninit_, Output* output_, bool quietmode=false);
+  OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm comm_init_, MPI_Comm comm_optim, int ninit_, Output* output_, bool x_is_control_, bool quietmode=false);
   ~OptimProblem();
 
   /* Return the number of design variables */
