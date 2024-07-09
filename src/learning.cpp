@@ -217,13 +217,13 @@ Learning::Learning(std::vector<int>& nlevels, LindbladType lindbladtype_, std::v
       // Store parameters: First for sigma_jk^RE, they go with first part of Gellmann_B. Then for sigma_jk^IM, they go with first part of Gellmann_A. Then for sigma_l, they go with last part of Gellmann_B.
       int nsigma = dim_rho*(dim_rho-1)/2;
       for (int i=0; i<nsigma; i++){
-        learnparamsH_B.push_back(initguess_fromfile[i] * 2.0*M_PI); // radians
+        learnparamsH_B.push_back(initguess_fromfile[i]); 
       }
       for (int i=nsigma; i<2*nsigma; i++){
-        learnparamsH_A.push_back(initguess_fromfile[i] * 2.0*M_PI); // radians
+        learnparamsH_A.push_back(initguess_fromfile[i]);
       }
       for (int i=2*nsigma; i<nbasis; i++){
-        learnparamsH_B.push_back(initguess_fromfile[i] * 2.0*M_PI); // radians
+        learnparamsH_B.push_back(initguess_fromfile[i]); 
       }
 
     } else if (learninit_str[0].compare("random") == 0 ) {
