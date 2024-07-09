@@ -787,8 +787,8 @@ int main(int argc,char **argv)
   delete [] oscil_vec;
   delete mastereq;
   delete learning;
-  delete mytimestepper;
   delete optimctx;
+  delete mytimestepper;
   delete output;
 
   VecDestroy(&xinit);
