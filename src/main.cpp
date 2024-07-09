@@ -420,11 +420,14 @@ int main(int argc,char **argv)
   }
 
   /* My time stepper */
-  bool storeFWD = false;
   int ninit_local = ninit / mpisize_init; 
-  if (mastereq->lindbladtype != LindbladType::NONE &&   
-     (runtype == RunType::GRADIENT || runtype == RunType::OPTIMIZATION )) storeFWD = true;  // if NOT Schroedinger solver and running gradient optim: store forward states. Otherwise, they will be recomputed during gradient. 
-
+  // If lindblad solver, store states during forward timestepping (needed for gradients). Otherwise, states will be recomputed during backward timestepping. 
+  bool storeFWD;
+  if (mastereq->lindbladtype != LindbladType::NONE ) { // Lindblad solver
+    storeFWD = true;
+  } else { // Schroedinger solver
+    storeFWD = false;
+  }
   std::string timesteppertypestr = config.GetStrParam("timestepper", "IMR");
   TimeStepper* mytimestepper;
   if (timesteppertypestr.compare("IMR")==0) mytimestepper = new ImplMidpoint(config, mastereq, ntime, total_time, linsolvetype, linsolve_maxiter, output, storeFWD);
