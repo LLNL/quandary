@@ -24,22 +24,24 @@ class Learning {
   std::vector<double> learnparamsH_A; // Learnable parameters for Hamiltonian
   std::vector<double> learnparamsH_B; // Learnable parameters for Hamiltonian
 
-
   double data_dtAWG;                /* Sample rate of AWG data (default 4ns) */
   int data_ntime;                   /* Number of data points in time */
   std::vector<Vec> data;            /* List of all data point (rho_data) at each data_dtAWG */
 
-  Vec aux;    // Auxiliary vector to perform matvecs
+  Vec aux;     // Auxiliary vector to perform matvecs on Re(x) or Im(x)
+  Vec aux2;    // Auxiliary vector to perform matvecs on x
 
   int mpirank_world;
   bool quietmode;
+
+  double loss_integral;   /* Running cost for Loss function */
 
   public: 
     Learning(std::vector<int>&nlevels, LindbladType lindbladtype_, std::vector<std::string>& learninit_str, std::string data_name, double data_dtAWG_, int data_ntime, std::default_random_engine rand_engine, bool quietmode);
     ~Learning();
 
-    /* Load data from file */
-    void loadData(std::string data_name, double data_dtAWG, int data_ntime);
+    void resetLoss(){ loss_integral = 0.0; };
+    double getLoss() { return loss_integral; };
 
     /* Create generalized Gellman matrices, multiplied by (-i) and shifted s.t. G_00=0. Returns number of basis elements */
     int setupGellmannBasis(int dim_rho, int dim, LindbladType lindbladtype);
@@ -59,6 +61,9 @@ class Learning {
     /* Get size of the basis: N^2-1, or 0 if no learning */
     int getNBasis(){ return nbasis; };
 
+    /* Load data from file */
+    void loadData(std::string data_name, double data_dtAWG, int data_ntime);
+
     /* Get data trajectory element */
     Vec getData(int id) {assert(data.size()>id); return data[id];};
 
@@ -73,5 +78,9 @@ class Learning {
 
     /* Copy learnable parameters from storage into x */
     void getLearnParams(double* x);
+
+    /* Add to loss */
+    void addToLoss(int timestepID, Vec x);
+    void addToLoss_diff(int timestepID, Vec xbar, Vec xprimal, double Jbar_loss);
 };
 

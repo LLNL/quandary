@@ -35,7 +35,6 @@ class TimeStepper{
 
     /* Stuff needed for the penalty integral term */
     // TODO: pass those through the timestepper constructor (currently, they are set manually inside optimproblem constructor), or add up the penalty within the optim_target.
-    double learning_integral;        // output, holds the integral learning term
     double penalty_integral;        // output, holds the integral term
     double energy_penalty_integral;        // output, holds the integral term
     double penalty_dpdm;        

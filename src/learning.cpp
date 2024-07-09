@@ -7,6 +7,7 @@ Learning::Learning(std::vector<int>& nlevels, LindbladType lindbladtype_, std::v
   data_ntime = data_ntime_;
   quietmode = quietmode_;
   MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
+  loss_integral = 0.0;
 
   // Get dimension of the Hilbert space (dim_rho = N) and dimension of the state variable (dim = N or N^2 for Schroedinger or Lindblad solver)
   dim_rho = 1;
@@ -31,9 +32,12 @@ Learning::Learning(std::vector<int>& nlevels, LindbladType lindbladtype_, std::v
   assert(GellmannMats_A.size() == learnparamsH_A.size());
   assert(GellmannMats_B.size() == learnparamsH_B.size());
 
-  // Create auxiliary vector needed for MatMult.
+  // Create auxiliary vectors needed for MatMult.
   if (nbasis > 0) {
-    MatCreateVecs(GellmannMats_A[0], &aux, NULL);
+    MatCreateVecs(GellmannMats_A[0], &aux, NULL); // size for Re(state) or Im(state)
+    VecCreate(PETSC_COMM_WORLD, &aux2);           // size for state (re and im)
+    VecSetSizes(aux2, PETSC_DECIDE, 2*dim);
+    VecSetFromOptions(aux2);
   }
 }
 
@@ -56,6 +60,7 @@ Learning::~Learning(){
   GellmannMats_B.clear();
   if (nbasis > 0) {
     VecDestroy(&aux);
+    VecDestroy(&aux2);
   }
 }
 
@@ -452,5 +457,30 @@ void Learning::initLearnableParams(std::vector<std::string> learninit_str, int n
     //   printf("  paramA %d = %f\n", i, learnparamsH_A[i]);
     // for (int i=0; i<learnparamsH_B.size(); i++)
     //   printf("  paramB %d = %f\n", i, learnparamsH_B[i]);
-    
+}
+
+
+void Learning::addToLoss(int timestepID, Vec x){
+
+  // TODO: LEARN ONLY EVERY N-th TIME STEP!
+
+  if (getNData() > timestepID) {
+    // Frobenius norm between state x and data
+    double norm; 
+    Vec xdata = getData(timestepID);
+    VecAYPX(aux2, 0.0, x);
+    VecAXPY(aux2, -1.0, xdata);   // aux = x - data
+    VecNorm(aux2, NORM_2, &norm);
+    loss_integral += 0.5*norm*norm / (getNData()-1);
+  }
+}
+
+
+void Learning::addToLoss_diff(int timestepID, Vec xbar, Vec xprimal, double Jbar_loss){
+
+  if (getNData() > timestepID) {
+    Vec xdata = getData(timestepID);
+    VecAXPY(xbar, Jbar_loss / (getNData()-1), xprimal);
+    VecAXPY(xbar, -Jbar_loss/ (getNData()-1), xdata);
+  }
 }

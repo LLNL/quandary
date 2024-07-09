@@ -257,7 +257,7 @@ double OptimProblem::evalF(const Vec x) {
     Vec finalstate = timestepper->solveODE(initid, rho_t0);
 
     /* If learning: add to loss function */
-    obj_loss += obj_weights[iinit] * timestepper->learning_integral;
+    obj_loss += obj_weights[iinit] * mastereq->learning->getLoss();
 
     /* Add to integral penalty term */
     obj_penal += obj_weights[iinit] * gamma_penalty * timestepper->penalty_integral;
@@ -402,7 +402,7 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
     if (timestepper->mastereq->lindbladtype == LindbladType::NONE) VecCopy(finalstate, store_finalstates[iinit]);
 
     /* If learning: add to loss function */
-    obj_loss += obj_weights[iinit] * timestepper->learning_integral;
+    obj_loss += obj_weights[iinit] * mastereq->learning->getLoss();
 
     /* Add to integral penalty term */
     obj_penal += obj_weights[iinit] * gamma_penalty * timestepper->penalty_integral;

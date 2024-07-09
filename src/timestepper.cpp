@@ -95,9 +95,9 @@ Vec TimeStepper::solveODE(int initid, Vec rho_t0){
 
   /* --- Loop over time interval --- */
   penalty_integral = 0.0;
-  learning_integral = 0.0;
   penalty_dpdm = 0.0;
   energy_penalty_integral = 0.0;
+  mastereq->learning->resetLoss();
   for (int n = 0; n < ntime; n++){
 
     /* current time */
@@ -112,17 +112,7 @@ Vec TimeStepper::solveODE(int initid, Vec rho_t0){
     evolveFWD(tstart, tstop, x);
 
     /* Add to Learning loss integral */
-    // TODO: LEARN ONLY EVERY N-th TIME STEP!
-    if ((!mastereq->x_is_control) && mastereq->learning->getNData()> n+1) {
-      // Frobenius norm between rho_data and state
-      double norm; 
-      Vec xdata = mastereq->learning->getData(n+1);
-      VecAYPX(aux, 0.0, x);
-      VecAXPY(aux, -1.0, xdata);   // aux = x - data
-      VecNorm(aux, NORM_2, &norm);
-      learning_integral += 0.5*norm*norm*dt;
-
-    }
+    mastereq->learning->addToLoss(n+1, x);
 
     /* Add to penalty objective term */
     if (gamma_penalty > 1e-13) penalty_integral += penaltyIntegral(tstop, x);
@@ -210,11 +200,7 @@ void TimeStepper::solveAdjointODE(int initid, Vec rho_t0_bar, Vec finalstate, do
     if (gamma_penalty > 1e-13) penaltyIntegral_diff(tstop, xprimal, x, Jbar_penalty);
 
     /* Derivative of loss function */
-    if ((!mastereq->x_is_control) && mastereq->learning->getNData() > n) {
-      Vec xdata = mastereq->learning->getData(n);
-      VecAXPY(x, dt*Jbar_loss, xprimal);
-      VecAXPY(x, -dt*Jbar_loss, xdata);
-    }
+    mastereq->learning->addToLoss_diff(n, x, xprimal, Jbar_loss);
 
     /* Get the state at n-1. If Schroedinger solver, recompute it by taking a step backwards with the forward solver, otherwise get it from storage. */
     if (storeFWD) VecCopy(getState(n-1), xprimal);
