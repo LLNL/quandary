@@ -567,6 +567,9 @@ void OptimProblem::getStartingPoint(Vec xinit){
     }
     VecRestoreArray(xinit, &xptr);
 
+    /* Write initial control pulses to file */
+    output->writeControls(xinit, timestepper->mastereq, timestepper->ntime, timestepper->dt);
+
   } else { // optim wrt learning parameters 
     // Copy from initialization in learning constructor
     PetscScalar* xptr;
@@ -575,9 +578,8 @@ void OptimProblem::getStartingPoint(Vec xinit){
     VecRestoreArray(xinit, &xptr);
   }
 
-  /* Write initial optimization paramters and control functions to file */
+  /* Write initial optimization paramters to file */
   output->writeParams(xinit);
-  output->writeControls(xinit, timestepper->mastereq, timestepper->ntime, timestepper->dt);
 }
 
 
