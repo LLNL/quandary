@@ -501,6 +501,21 @@ int main(int argc,char **argv)
     if (mpirank_world == 0 && !quietmode) printf("\nStarting Optimization solver ... \n");
     optimctx->solve(xinit);
     optimctx->getSolution(&opt);
+
+    /* If learning, print out the learned operators */
+    if (!x_is_control){
+      Mat A, B;
+      learning->getHamiltonian(A, B);
+      
+      printf("\nLearned Hamiltonian operator:\n");
+      printf("Re = \n");
+      MatView(A, NULL);
+      printf("Im = \n");
+      MatView(B, NULL);
+
+      MatDestroy(&A);
+      MatDestroy(&B);
+    }
   }
 
   /* Only evaluate and write control pulses (no propagation) */

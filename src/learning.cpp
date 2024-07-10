@@ -105,24 +105,35 @@ void Learning::applyLearningTerms_diff(Vec u, Vec v, Vec uout, Vec vout){
 }
 
 
-void Learning::getLearnOperator(Mat* A, Mat* B){
+void Learning::getHamiltonian(Mat& Re, Mat& Im){
 
-  // TODO.
-  // MatCreateDense(PETSC_COMM_WORLD,PETSC_DECIDE, PETSC_DECIDE, dim, dim, NULL, A);
-  // MatCreateDense(PETSC_COMM_WORLD,PETSC_DECIDE, PETSC_DECIDE, dim, dim, NULL, B);
-  // MatSetUp(*A);
-  // MatSetUp(*B);
-  // MatAssemblyBegin(*A, MAT_FINAL_ASSEMBLY);
-  // MatAssemblyEnd(*A, MAT_FINAL_ASSEMBLY);
-  // MatAssemblyBegin(*B, MAT_FINAL_ASSEMBLY);
-  // MatAssemblyEnd(*B, MAT_FINAL_ASSEMBLY);
+  MatCreateDense(PETSC_COMM_WORLD,PETSC_DECIDE, PETSC_DECIDE, dim_rho, dim_rho, NULL, &Re);
+  MatCreateDense(PETSC_COMM_WORLD,PETSC_DECIDE, PETSC_DECIDE, dim_rho, dim_rho, NULL, &Im);
+  MatSetUp(Re);
+  MatSetUp(Im);
+  MatAssemblyBegin(Re, MAT_FINAL_ASSEMBLY);
+  MatAssemblyBegin(Im, MAT_FINAL_ASSEMBLY);
+  MatAssemblyEnd(Re, MAT_FINAL_ASSEMBLY);
+  MatAssemblyEnd(Im, MAT_FINAL_ASSEMBLY);
 
-  // for (int i=0; i<GellmannMats_A.size(); i++) {
-  //   MatAXPY(*A, learnparamsH_A[i], GellmannMats_A[i], SUBSET_NONZERO_PATTERN);
-  // }
-  // for (int i=0; i<GellmannMats_B.size(); i++) {
-  //   MatAXPY(*B, learnparamsH_B[i], GellmannMats_B[i], SUBSET_NONZERO_PATTERN);
-  // }
+  if (dim > dim_rho) {
+    printf("getHamiltonianOperator() not implemented for Lindblad solver currently. Sorry!\n");
+    exit(1);
+  }
+
+  /* Assemble the Hamiltonian */
+  // Note, the Gellmann BasisMats store A=Re(-i*sigma) and B=Im(-i*sigma), here we want to return A=sum Re(sigma) and B=sum Im(sigma), hence need to revert order.
+
+  // -> if sigma was purely real, then -i*sigma is purely imaginary and hence stored in BasisMats_B
+  for (int i=0; i<hamiltonian_basis->getNBasis_B(); i++) {
+    double fac = -learnparamsH_B[i] / (2.0*M_PI);
+    MatAXPY(Re, fac , hamiltonian_basis->BasisMats_B[i], SUBSET_NONZERO_PATTERN);
+  }
+  // -> if sigma was purely imaginary, then -i*sigma is purely real and hence stored in BasisMats_A. Note that the -1 cancels out??
+  for (int i=0; i<hamiltonian_basis->getNBasis_A(); i++) {
+    double fac = learnparamsH_A[i] / (2.0*M_PI);
+    MatAXPY(Im, fac, hamiltonian_basis->BasisMats_A[i], SUBSET_NONZERO_PATTERN);
+  }
 }
 
 

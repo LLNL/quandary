@@ -88,8 +88,8 @@ class Learning {
     /* Get number of data elements */
     int getNData(){ return data.size(); };
 
-    /* Assemble the learned operator. Allocates the (dense!) return matrix, which hence must be destroyed after usage. */
-    void getLearnOperator(Mat* A, Mat* B);
+    /* Assemble the learned operator. Allocates the (dense!) matrices Re(H) and Im(H), which hence must be destroyed after usage. */
+    void getHamiltonian(Mat& Re, Mat& Im);
 
     /* Pass learnable parameters to storage learnparamsH_A and learnparamsH_B*/
     void setLearnParams(const Vec x);
