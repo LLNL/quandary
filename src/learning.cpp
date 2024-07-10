@@ -64,19 +64,19 @@ void Learning::applyLearningTerms(Vec u, Vec v, Vec uout, Vec vout){
   // Real parts of (-i * H)
   for (int i=0; i< hamiltonian_basis->getNBasis_A(); i++){
     // uout += learnparamA * GellmannA * u
-    MatMult(hamiltonian_basis->BasisMats_A[i], u, aux);
+    MatMult(hamiltonian_basis->getMat_A(i), u, aux);
     VecAXPY(uout, learnparamsH_A[i], aux); 
     // vout += learnparamA * GellmannA * v
-    MatMult(hamiltonian_basis->BasisMats_A[i], v, aux);
+    MatMult(hamiltonian_basis->getMat_A(i), v, aux);
     VecAXPY(vout, learnparamsH_A[i], aux);
   }
   // Imaginary parts of (-i * H)
   for (int i=0; i< hamiltonian_basis->getNBasis_B(); i++){
     // uout -= learnparamB * GellmannB * v
-    MatMult(hamiltonian_basis->BasisMats_B[i], v, aux);
+    MatMult(hamiltonian_basis->getMat_B(i), v, aux);
     VecAXPY(uout, -1.*learnparamsH_B[i], aux); 
     // vout += learnparamB * GellmannB * u
-    MatMult(hamiltonian_basis->BasisMats_B[i], u, aux);
+    MatMult(hamiltonian_basis->getMat_B(i), u, aux);
     VecAXPY(vout, learnparamsH_B[i], aux);
   }
 }
@@ -87,19 +87,19 @@ void Learning::applyLearningTerms_diff(Vec u, Vec v, Vec uout, Vec vout){
   // Real parts of (-i * H)
   for (int i=0; i< hamiltonian_basis->getNBasis_A(); i++){
     // uout += learnparamA * GellmannA^T * u
-    MatMultTranspose(hamiltonian_basis->BasisMats_A[i], u, aux);
+    MatMultTranspose(hamiltonian_basis->getMat_A(i), u, aux);
     VecAXPY(uout, learnparamsH_A[i], aux); 
     // vout += learnparamA * GellmannA^T * v
-    MatMultTranspose(hamiltonian_basis->BasisMats_A[i], v, aux);
+    MatMultTranspose(hamiltonian_basis->getMat_A(i), v, aux);
     VecAXPY(vout, learnparamsH_A[i], aux);
   }
   // Imaginary parts of (-i * H)
   for (int i=0; i< hamiltonian_basis->getNBasis_B(); i++){
     // uout += learnparamB * GellmannB^T * v
-    MatMultTranspose(hamiltonian_basis->BasisMats_B[i], v, aux);
+    MatMultTranspose(hamiltonian_basis->getMat_B(i), v, aux);
     VecAXPY(uout, learnparamsH_B[i], aux); 
     // vout -= learnparamB * GellmannB^T * u
-    MatMultTranspose(hamiltonian_basis->BasisMats_B[i], u, aux);
+    MatMultTranspose(hamiltonian_basis->getMat_B(i), u, aux);
     VecAXPY(vout, -1.*learnparamsH_B[i], aux);
   }
 }
@@ -127,12 +127,12 @@ void Learning::getHamiltonian(Mat& Re, Mat& Im){
   // -> if sigma was purely real, then -i*sigma is purely imaginary and hence stored in BasisMats_B
   for (int i=0; i<hamiltonian_basis->getNBasis_B(); i++) {
     double fac = -learnparamsH_B[i] / (2.0*M_PI);
-    MatAXPY(Re, fac , hamiltonian_basis->BasisMats_B[i], SUBSET_NONZERO_PATTERN);
+    MatAXPY(Re, fac , hamiltonian_basis->getMat_B(i), SUBSET_NONZERO_PATTERN);
   }
   // -> if sigma was purely imaginary, then -i*sigma is purely real and hence stored in BasisMats_A. Note that the -1 cancels out??
   for (int i=0; i<hamiltonian_basis->getNBasis_A(); i++) {
     double fac = learnparamsH_A[i] / (2.0*M_PI);
-    MatAXPY(Im, fac, hamiltonian_basis->BasisMats_A[i], SUBSET_NONZERO_PATTERN);
+    MatAXPY(Im, fac, hamiltonian_basis->getMat_A(i), SUBSET_NONZERO_PATTERN);
   }
 }
 
@@ -182,14 +182,14 @@ void Learning::dRHSdp(Vec grad, Vec u, Vec v, double alpha, Vec ubar, Vec vbar){
   int nsigma = dim_rho*(dim_rho-1)/2;
   for (int i=0; i< hamiltonian_basis->getNBasis_A(); i++){
 
-    MatMult(hamiltonian_basis->BasisMats_A[i], u, aux); VecDot(aux, ubar, &uAubar);
-    MatMult(hamiltonian_basis->BasisMats_A[i], v, aux); VecDot(aux, vbar, &vAvbar);
+    MatMult(hamiltonian_basis->getMat_A(i), u, aux); VecDot(aux, ubar, &uAubar);
+    MatMult(hamiltonian_basis->getMat_A(i), v, aux); VecDot(aux, vbar, &vAvbar);
     VecSetValue(grad, i, alpha*(uAubar + vAvbar), ADD_VALUES);
   }
   int skip = hamiltonian_basis->getNBasis_A();
   for (int i=0; i<hamiltonian_basis->getNBasis_B(); i++){
-    MatMult(hamiltonian_basis->BasisMats_B[i], u, aux); VecDot(aux, vbar, &uBvbar);
-    MatMult(hamiltonian_basis->BasisMats_B[i], v, aux); VecDot(aux, ubar, &vBubar);
+    MatMult(hamiltonian_basis->getMat_B(i), u, aux); VecDot(aux, vbar, &uBvbar);
+    MatMult(hamiltonian_basis->getMat_B(i), v, aux); VecDot(aux, ubar, &vBubar);
     VecSetValue(grad, i+skip, alpha*(-vBubar + uBvbar), ADD_VALUES);
   }
 

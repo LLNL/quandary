@@ -12,6 +12,8 @@
 #pragma once
 
 /* Generalized Gellman matrices, multiplied by (-i) and shifted s.t. G_00=0 */
+// BasisMats_A stores (-i*sigma) if sigma is purely imaginary (hence (-i*sigma) is real)
+// BasisMats_B stores (-i*sigma) if sigma is purely real (hence (-i*sigma) is imaginary)
 class GenGellmannBasis {
 
   int dim_rho;   /* Dimension of the Hilbertspace (N)*/
@@ -19,9 +21,8 @@ class GenGellmannBasis {
   int nbasis;    /* Total number of basis matrices */
   int nsigma;    /* =N*(N-1)/2. Here, number of offdiagonal real (or imag) basis matrices. */
 
-  public:
-    std::vector<Mat> BasisMats_A;  // Real(-i*GellmannMatx), for the generalized & shifted Gellmann matrices
-    std::vector<Mat> BasisMats_B;  // Imag(-i*GellmannMatx), for the generalized & shifted Gellmann matrices
+  std::vector<Mat> BasisMats_A;  // Real(-i*GellmannMatx), for the generalized & shifted Gellmann matrices
+  std::vector<Mat> BasisMats_B;  // Imag(-i*GellmannMatx), for the generalized & shifted Gellmann matrices
 
   public:
     GenGellmannBasis(int dim_rho_, LindbladType lindbladtype_);
@@ -30,6 +31,9 @@ class GenGellmannBasis {
     int getNBasis(){return nbasis;};
     int getNBasis_A(){return BasisMats_A.size();};
     int getNBasis_B(){return BasisMats_B.size();};
+
+    Mat getMat_A(int id) {assert(id<BasisMats_A.size()); return BasisMats_A[id];};
+    Mat getMat_B(int id) {assert(id<BasisMats_B.size()); return BasisMats_B[id];};
 };
 
 class Learning {
