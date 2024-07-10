@@ -171,6 +171,7 @@ MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Osci
     RHSctx.aux = &aux;
   }
   RHSctx.learning = learning;
+  RHSctx.useUDEmodel= useUDEmodel;
   RHSctx.nlevels = nlevels;
   RHSctx.oscil_vec = oscil_vec;
   RHSctx.time = 0.0;
@@ -917,7 +918,7 @@ Mat MasterEq::getRHS() { return RHS; }
 /* grad += alpha * RHS(x)^T * xbar  */
 void MasterEq::computedRHSdp(const double t, const Vec x, const Vec xbar, const double alpha, Vec grad) {
 
-  if (usematfree && learning->getNBasis() <= 0) {  // Matrix-free solver
+  if (usematfree && !useUDEmodel) {  // Matrix-free solver
     double res_p_re,  res_p_im, res_q_re, res_q_im;
 
     const double* xptr, *xbarptr;
@@ -1432,21 +1433,6 @@ int myMatMult_sparsemat(Mat RHS, Vec x, Vec y){
   /* --- Apply learning terms --- */
   shellctx->learning->applyLearningTerms(u,v,uout, vout);
 
-  // Mat Atest, Btest;
-  // printf("Original :\n");
-  // if (shellctx->learning->getNBasis()==0) {
-  //   int id_kl = 0;
-  //   double trans_re = shellctx->eval_transfer_Hdt_re[id_kl];
-  //   MatAXPY(*shellctx->Bd, trans_re, shellctx->Bd_vec[id_kl], DIFFERENT_NONZERO_PATTERN);
-  //   // MatView(shellctx->Bd_vec[id_kl], NULL);
-  // }
-  // MatView(*shellctx->Bd, NULL);
-
-  // printf("Learn :\n");
-  // shellctx->learning->getLearnOperator(&Atest, &Btest);
-  // MatView(Btest, NULL);
-  // exit(1);
-
   /* Restore */
   VecRestoreSubVector(x, *shellctx->isu, &u);
   VecRestoreSubVector(x, *shellctx->isv, &v);
@@ -1646,7 +1632,7 @@ int myMatMult_matfree(Mat RHS, Vec x, Vec y){
   VecRestoreArray(y, &yptr);
 
   /* Apply learning */
-  if (shellctx->learning->getNBasis() > 0) {
+  if (shellctx->useUDEmodel) {
     Vec u, v, uout, vout;
     VecGetSubVector(x, *shellctx->isu, &u);
     VecGetSubVector(x, *shellctx->isv, &v);
@@ -1748,7 +1734,7 @@ int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
   }
 
   /* Apply learning */
-  if (shellctx->learning->getNBasis() > 0) {
+  if (shellctx->useUDEmodel) {
     Vec u, v, uout, vout;
     VecGetSubVector(x, *shellctx->isu, &u);
     VecGetSubVector(x, *shellctx->isv, &v);
@@ -1893,7 +1879,7 @@ int myMatMult_matfree(Mat RHS, Vec x, Vec y){
   VecRestoreArray(y, &yptr);
 
   /* Apply learning */
-  if (shellctx->learning->getNBasis() > 0) {
+  if (shellctx->useUDEmodel) {
     Vec u, v, uout, vout;
     VecGetSubVector(x, *shellctx->isu, &u);
     VecGetSubVector(x, *shellctx->isv, &v);
@@ -2031,7 +2017,7 @@ int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
   VecRestoreArray(y, &yptr);
 
   /* Apply learning */
-  if (shellctx->learning->getNBasis() > 0) {
+  if (shellctx->useUDEmodel) {
     Vec u, v, uout, vout;
     VecGetSubVector(x, *shellctx->isu, &u);
     VecGetSubVector(x, *shellctx->isv, &v);
@@ -2198,7 +2184,7 @@ int myMatMult_matfree(Mat RHS, Vec x, Vec y){
   VecRestoreArray(y, &yptr);
   
   /* Apply learning */
-  if (shellctx->learning->getNBasis() > 0) {
+  if (shellctx->useUDEmodel) {
     Vec u, v, uout, vout;
     VecGetSubVector(x, *shellctx->isu, &u);
     VecGetSubVector(x, *shellctx->isv, &v);
@@ -2367,7 +2353,7 @@ int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
   VecRestoreArray(y, &yptr);
 
   /* Apply learning */
-  if (shellctx->learning->getNBasis() > 0) {
+  if (shellctx->useUDEmodel) {
     Vec u, v, uout, vout;
     VecGetSubVector(x, *shellctx->isu, &u);
     VecGetSubVector(x, *shellctx->isv, &v);
@@ -2575,7 +2561,7 @@ int myMatMult_matfree(Mat RHS, Vec x, Vec y){
   VecRestoreArray(y, &yptr);
 
   /* Apply learning */
-  if (shellctx->learning->getNBasis() > 0) {
+  if (shellctx->useUDEmodel) {
     Vec u, v, uout, vout;
     VecGetSubVector(x, *shellctx->isu, &u);
     VecGetSubVector(x, *shellctx->isv, &v);
@@ -2785,7 +2771,7 @@ int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
   VecRestoreArray(y, &yptr);
 
   /* Apply learning */
-  if (shellctx->learning->getNBasis() > 0) {
+  if (shellctx->useUDEmodel) {
     Vec u, v, uout, vout;
     VecGetSubVector(x, *shellctx->isu, &u);
     VecGetSubVector(x, *shellctx->isv, &v);
@@ -3041,7 +3027,7 @@ int myMatMult_matfree(Mat RHS, Vec x, Vec y){
   VecRestoreArray(y, &yptr);
 
   /* Apply learning */
-  if (shellctx->learning->getNBasis() > 0) {
+  if (shellctx->useUDEmodel) {
     Vec u, v, uout, vout;
     VecGetSubVector(x, *shellctx->isu, &u);
     VecGetSubVector(x, *shellctx->isv, &v);
@@ -3298,7 +3284,7 @@ int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
   VecRestoreArray(y, &yptr);
 
   /* Apply learning */
-  if (shellctx->learning->getNBasis() > 0) {
+  if (shellctx->useUDEmodel) {
     Vec u, v, uout, vout;
     VecGetSubVector(x, *shellctx->isu, &u);
     VecGetSubVector(x, *shellctx->isv, &v);

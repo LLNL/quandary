@@ -45,7 +45,7 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
     ndesign = n;
     if (mpirank_world == 0 && !quietmode) std::cout<< "Number of control parameters: " << ndesign << std::endl;
   } else { // Optimizing on the learnable parameters
-    ndesign = timestepper->mastereq->learning->getNBasis();
+    ndesign = timestepper->mastereq->learning->getNParams();
   }
 
   /* Allocate the initial condition vector and adjoint terminal state */

@@ -31,6 +31,7 @@ typedef struct {
   std::vector<Mat> Ad_vec;
   std::vector<Mat> Bd_vec;
   Learning* learning; 
+  bool useUDEmodel;     
   Vec *aux;
   double time;
 } MatShellCtx;

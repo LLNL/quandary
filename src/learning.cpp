@@ -20,51 +20,41 @@ Learning::Learning(std::vector<int>& nlevels, LindbladType lindbladtype_, std::v
     dim = dim_rho*dim_rho; 
   }
 
-  /* Create generalized Gellman matrices, multiplied by (-i) and shifted s.t. G_00=0 */
-  nbasis = setupGellmannBasis(dim_rho, dim, lindbladtype);
+  /* Proceed only if this is not a dummy class (aka only if using the UDE model)*/
+  if (dim_rho > 0) {
 
-  /* Load trajectory data from file */
-  loadData(data_name, data_dtAWG, data_ntime);
+    /* Create Basis matrices for the learnable hamiltonian term. Here: generalized Gellman matrices */
+    hamiltonian_basis = new GenGellmannBasis(dim_rho, lindbladtype);
 
-  /* Set an initial guess for the learnable Hamiltonian parameters */
-  initLearnableParams(learninit_str, nbasis, dim_rho, rand_engine);
+    /* Create learnable Hamiltonian parameters and set an initial guess */
+    nparams = initLearnableParams(learninit_str, rand_engine);
 
-  // Sanity check
-  assert(GellmannMats_A.size() == learnparamsH_A.size());
-  assert(GellmannMats_B.size() == learnparamsH_B.size());
+    /* Load trajectory data from file */
+    loadData(data_name, data_dtAWG, data_ntime);
 
-  // Create auxiliary vectors needed for MatMult.
-  if (nbasis > 0) {
-    MatCreateVecs(GellmannMats_A[0], &aux, NULL); // size for Re(state) or Im(state)
-    VecCreate(PETSC_COMM_WORLD, &aux2);           // size for state (re and im)
+    /* Create auxiliary vectors needed for MatMult. */
+    VecCreate(PETSC_COMM_WORLD, &aux);     // aux sized for Re(state) or Im(state) 
+    VecCreate(PETSC_COMM_WORLD, &aux2);    // aux2 sized for state (re and im)
+    VecSetSizes(aux , PETSC_DECIDE, dim);
     VecSetSizes(aux2, PETSC_DECIDE, 2*dim);
+    VecSetFromOptions(aux);
     VecSetFromOptions(aux2);
-  }
 
-  // Some output 
-  if (nbasis > 0 && !quietmode) {
-    printf("Learning with %d Gellmann mats\n", nbasis);
+    // Some output 
+    if (!quietmode) {
+      printf("Learning with %d Gellmann mats\n", hamiltonian_basis->getNBasis());
+    }
   }
 }
 
 Learning::~Learning(){
-  learnparamsH_A.clear();
-  learnparamsH_B.clear();
-
-  for (int i=0; i<data.size(); i++){
-    VecDestroy(&data[i]);
-  }
-  data.clear();
-
-  for (int i=0; i<GellmannMats_A.size(); i++){
-    MatDestroy(&GellmannMats_A[i]);
-  }
-  for (int i=0; i<GellmannMats_B.size(); i++){
-    MatDestroy(&GellmannMats_B[i]);
-  }
-  GellmannMats_A.clear();
-  GellmannMats_B.clear();
-  if (nbasis > 0) {
+  if (dim_rho > 0) {
+    learnparamsH_A.clear();
+    learnparamsH_B.clear();
+    for (int i=0; i<data.size(); i++){
+      VecDestroy(&data[i]);
+    }
+    data.clear();
     VecDestroy(&aux);
     VecDestroy(&aux2);
   }
@@ -72,21 +62,21 @@ Learning::~Learning(){
 
 void Learning::applyLearningTerms(Vec u, Vec v, Vec uout, Vec vout){
   // Real parts of (-i * H)
-  for (int i=0; i< GellmannMats_A.size(); i++){
+  for (int i=0; i< hamiltonian_basis->getNBasis_A(); i++){
     // uout += learnparamA * GellmannA * u
-    MatMult(GellmannMats_A[i], u, aux);
+    MatMult(hamiltonian_basis->BasisMats_A[i], u, aux);
     VecAXPY(uout, learnparamsH_A[i], aux); 
     // vout += learnparamA * GellmannA * v
-    MatMult(GellmannMats_A[i], v, aux);
+    MatMult(hamiltonian_basis->BasisMats_A[i], v, aux);
     VecAXPY(vout, learnparamsH_A[i], aux);
   }
   // Imaginary parts of (-i * H)
-  for (int i=0; i< GellmannMats_B.size(); i++){
+  for (int i=0; i< hamiltonian_basis->getNBasis_B(); i++){
     // uout -= learnparamB * GellmannB * v
-    MatMult(GellmannMats_B[i], v, aux);
+    MatMult(hamiltonian_basis->BasisMats_B[i], v, aux);
     VecAXPY(uout, -1.*learnparamsH_B[i], aux); 
     // vout += learnparamB * GellmannB * u
-    MatMult(GellmannMats_B[i], u, aux);
+    MatMult(hamiltonian_basis->BasisMats_B[i], u, aux);
     VecAXPY(vout, learnparamsH_B[i], aux);
   }
 }
@@ -95,21 +85,21 @@ void Learning::applyLearningTerms(Vec u, Vec v, Vec uout, Vec vout){
 void Learning::applyLearningTerms_diff(Vec u, Vec v, Vec uout, Vec vout){
 
   // Real parts of (-i * H)
-  for (int i=0; i< GellmannMats_A.size(); i++){
+  for (int i=0; i< hamiltonian_basis->getNBasis_A(); i++){
     // uout += learnparamA * GellmannA^T * u
-    MatMultTranspose(GellmannMats_A[i], u, aux);
+    MatMultTranspose(hamiltonian_basis->BasisMats_A[i], u, aux);
     VecAXPY(uout, learnparamsH_A[i], aux); 
     // vout += learnparamA * GellmannA^T * v
-    MatMultTranspose(GellmannMats_A[i], v, aux);
+    MatMultTranspose(hamiltonian_basis->BasisMats_A[i], v, aux);
     VecAXPY(vout, learnparamsH_A[i], aux);
   }
   // Imaginary parts of (-i * H)
-  for (int i=0; i< GellmannMats_B.size(); i++){
+  for (int i=0; i< hamiltonian_basis->getNBasis_B(); i++){
     // uout += learnparamB * GellmannB^T * v
-    MatMultTranspose(GellmannMats_B[i], v, aux);
+    MatMultTranspose(hamiltonian_basis->BasisMats_B[i], v, aux);
     VecAXPY(uout, learnparamsH_B[i], aux); 
     // vout -= learnparamB * GellmannB^T * u
-    MatMultTranspose(GellmannMats_B[i], u, aux);
+    MatMultTranspose(hamiltonian_basis->BasisMats_B[i], u, aux);
     VecAXPY(vout, -1.*learnparamsH_B[i], aux);
   }
 }
@@ -117,43 +107,41 @@ void Learning::applyLearningTerms_diff(Vec u, Vec v, Vec uout, Vec vout){
 
 void Learning::getLearnOperator(Mat* A, Mat* B){
 
-  MatCreateDense(PETSC_COMM_WORLD,PETSC_DECIDE, PETSC_DECIDE, dim, dim, NULL, A);
-  MatCreateDense(PETSC_COMM_WORLD,PETSC_DECIDE, PETSC_DECIDE, dim, dim, NULL, B);
-  MatSetUp(*A);
-  MatSetUp(*B);
-  MatAssemblyBegin(*A, MAT_FINAL_ASSEMBLY);
-  MatAssemblyEnd(*A, MAT_FINAL_ASSEMBLY);
-  MatAssemblyBegin(*B, MAT_FINAL_ASSEMBLY);
-  MatAssemblyEnd(*B, MAT_FINAL_ASSEMBLY);
+  // TODO.
+  // MatCreateDense(PETSC_COMM_WORLD,PETSC_DECIDE, PETSC_DECIDE, dim, dim, NULL, A);
+  // MatCreateDense(PETSC_COMM_WORLD,PETSC_DECIDE, PETSC_DECIDE, dim, dim, NULL, B);
+  // MatSetUp(*A);
+  // MatSetUp(*B);
+  // MatAssemblyBegin(*A, MAT_FINAL_ASSEMBLY);
+  // MatAssemblyEnd(*A, MAT_FINAL_ASSEMBLY);
+  // MatAssemblyBegin(*B, MAT_FINAL_ASSEMBLY);
+  // MatAssemblyEnd(*B, MAT_FINAL_ASSEMBLY);
 
-  for (int i=0; i<GellmannMats_A.size(); i++) {
-    MatAXPY(*A, learnparamsH_A[i], GellmannMats_A[i], SUBSET_NONZERO_PATTERN);
-  }
-  for (int i=0; i<GellmannMats_B.size(); i++) {
-    MatAXPY(*B, learnparamsH_B[i], GellmannMats_B[i], SUBSET_NONZERO_PATTERN);
-  }
+  // for (int i=0; i<GellmannMats_A.size(); i++) {
+  //   MatAXPY(*A, learnparamsH_A[i], GellmannMats_A[i], SUBSET_NONZERO_PATTERN);
+  // }
+  // for (int i=0; i<GellmannMats_B.size(); i++) {
+  //   MatAXPY(*B, learnparamsH_B[i], GellmannMats_B[i], SUBSET_NONZERO_PATTERN);
+  // }
 }
 
 
 void Learning::setLearnParams(const Vec x){
 
-  const PetscScalar* ptr;
-  VecGetArrayRead(x, &ptr);
-
   /* Storage of parameters in x:
-   * First all sigma_jk^RE (in GellmannB), 
-   * then all sigma_ij^IM (in GellmannA), 
+   * First all sigma_ij^IM (in GellmannA), 
+   * then all sigma_jk^RE (in GellmannB)
    * then all sigma_l (in GellmannB) */
 
-  int nsigma = dim_rho*(dim_rho-1)/2;
-  for (int i=0; i<nsigma; i++) {
-    learnparamsH_B[i] = ptr[i];
-    learnparamsH_A[i] = ptr[i+nsigma];
+  const PetscScalar* ptr;
+  VecGetArrayRead(x, &ptr);
+  for (int i=0; i<hamiltonian_basis->getNBasis_A(); i++) {
+    learnparamsH_A[i] = ptr[i];
   }
-  for (int i=0; i<dim_rho-1; i++){
-    learnparamsH_B[i+nsigma] = ptr[i+2*nsigma];
+  int skip = hamiltonian_basis->getNBasis_A();
+  for (int i=0; i<hamiltonian_basis->getNBasis_B(); i++){
+    learnparamsH_B[i] = ptr[i+skip];
   }
-
   VecRestoreArrayRead(x, &ptr);
 
   // for (int i=0; i<learnparamsH_A.size(); i++){
@@ -165,13 +153,12 @@ void Learning::setLearnParams(const Vec x){
 }
 
 void Learning::getLearnParams(double* x){
-  int nsigma = dim_rho*(dim_rho-1)/2;
-  for (int i=0; i<nsigma; i++) {
-    x[i]        = learnparamsH_B[i];
-    x[i+nsigma] = learnparamsH_A[i];
+  for (int i=0; i<hamiltonian_basis->getNBasis_A(); i++) {
+    x[i]        = learnparamsH_A[i];
   }
-  for (int i=0; i<dim_rho-1; i++){
-    x[i+2*nsigma] = learnparamsH_B[i+nsigma];
+  int skip = hamiltonian_basis->getNBasis_A();
+  for (int i=0; i<hamiltonian_basis->getNBasis_B(); i++){
+    x[i+skip] = learnparamsH_B[i];
   }
 }
 
@@ -182,21 +169,17 @@ void Learning::dRHSdp(Vec grad, Vec u, Vec v, double alpha, Vec ubar, Vec vbar){
   // gamma_bar_B += alpha * ( -v^t sigma_B^t ubar + u^t sigma_B^t vbar )
 
   int nsigma = dim_rho*(dim_rho-1)/2;
-  for (int i=0; i< nsigma; i++){
+  for (int i=0; i< hamiltonian_basis->getNBasis_A(); i++){
 
-    MatMult(GellmannMats_B[i], u, aux); VecDot(aux, vbar, &uBvbar);
-    MatMult(GellmannMats_B[i], v, aux); VecDot(aux, ubar, &vBubar);
-    VecSetValue(grad, i, alpha*(-vBubar + uBvbar), ADD_VALUES);
-
-    MatMult(GellmannMats_A[i], u, aux); VecDot(aux, ubar, &uAubar);
-    MatMult(GellmannMats_A[i], v, aux); VecDot(aux, vbar, &vAvbar);
-    VecSetValue(grad, i+nsigma, alpha*(uAubar + vAvbar), ADD_VALUES);
+    MatMult(hamiltonian_basis->BasisMats_A[i], u, aux); VecDot(aux, ubar, &uAubar);
+    MatMult(hamiltonian_basis->BasisMats_A[i], v, aux); VecDot(aux, vbar, &vAvbar);
+    VecSetValue(grad, i, alpha*(uAubar + vAvbar), ADD_VALUES);
   }
-
-  for (int i=0; i<dim_rho-1; i++){
-    MatMult(GellmannMats_B[i+nsigma], u, aux); VecDot(aux, vbar, &uBvbar);
-    MatMult(GellmannMats_B[i+nsigma], v, aux); VecDot(aux, ubar, &vBubar);
-    VecSetValue(grad, i+2*nsigma, alpha*(-vBubar + uBvbar), ADD_VALUES);
+  int skip = hamiltonian_basis->getNBasis_A();
+  for (int i=0; i<hamiltonian_basis->getNBasis_B(); i++){
+    MatMult(hamiltonian_basis->BasisMats_B[i], u, aux); VecDot(aux, vbar, &uBvbar);
+    MatMult(hamiltonian_basis->BasisMats_B[i], v, aux); VecDot(aux, ubar, &vBubar);
+    VecSetValue(grad, i+skip, alpha*(-vBubar + uBvbar), ADD_VALUES);
   }
 
   VecAssemblyBegin(grad);
@@ -206,64 +189,160 @@ void Learning::dRHSdp(Vec grad, Vec u, Vec v, double alpha, Vec ubar, Vec vbar){
 
 void Learning::loadData(std::string data_name, double data_dtAWG, int data_ntime){
 
-  // Exit if not learning.
-  if (nbasis <= 0) return;
+  // Open files 
+  std::ifstream infile_re;
+  std::ifstream infile_im;
+  infile_re.open(data_name + "_re.dat", std::ifstream::in);
+  infile_im.open(data_name + "_im.dat", std::ifstream::in);
+  if(infile_re.fail() || infile_im.fail() ) {// checks to see if file opended 
+      std::cout << "\n ERROR loading learning data file\n" << std::endl; 
+      std::cout << data_name + "_re.dat" << std::endl;
+      exit(1);
+  } else {
+    if (!quietmode) {
+      std::cout<< "Loading trajectory data from " << data_name+"_re.dat" << ", " << data_name+"_im.dat" << std::endl;
+    }
+  }
 
-  if (dim_rho > 0) {
-    // Open files 
-    std::ifstream infile_re;
-    std::ifstream infile_im;
-    infile_re.open(data_name + "_re.dat", std::ifstream::in);
-    infile_im.open(data_name + "_im.dat", std::ifstream::in);
-    if(infile_re.fail() || infile_im.fail() ) {// checks to see if file opended 
-        std::cout << "\n ERROR loading learning data file\n" << std::endl; 
-        std::cout << data_name + "_re.dat" << std::endl;
-        exit(1);
-    } else {
-      if (!quietmode) {
-        std::cout<< "Loading trajectory data from " << data_name+"_re.dat" << ", " << data_name+"_im.dat" << std::endl;
-      }
+  // Iterate over each line in the file
+  for (int n = 0; n <data_ntime; n++) {
+    Vec state;
+    VecCreate(PETSC_COMM_WORLD, &state);
+    VecSetSizes(state, PETSC_DECIDE, 2*dim);
+    VecSetFromOptions(state);
+
+    // Iterate over columns
+    double val_re, val_im;
+    infile_re >> val_re; // first element is time
+    infile_im >> val_im; // first element is time
+    // printf("time-step %1.4f == %1.4f ??\n", val_re, val_im);
+    assert(fabs(val_re - val_im) < 1e-12);
+    for (int i=0; i<dim; i++) { // Other elements are the state (re and im) at this time
+      infile_re >> val_re;
+      infile_im >> val_im;
+      VecSetValue(state, getIndexReal(i), val_re, INSERT_VALUES);
+      VecSetValue(state, getIndexImag(i), val_im, INSERT_VALUES);
+    }
+    VecAssemblyBegin(state);
+    VecAssemblyEnd(state);
+    data.push_back(state);
+  }
+
+  // Close files
+	infile_re.close();
+	infile_im.close();
+
+  // // TEST what was loaded
+  // printf("\nDATA POINTS:\n");
+  // for (int i=0; i<data.size(); i++){
+  //   VecView(data[i], NULL);
+  // }
+  // printf("END DATA POINTS.\n\n");
+}
+
+
+
+int Learning::initLearnableParams(std::vector<std::string> learninit_str, std::default_random_engine rand_engine){
+
+  // Switch over initialization string ("file", "constant", or "random")
+  if (learninit_str[0].compare("file") == 0 ) {
+    // Read parameter from file
+
+    assert(learninit_str.size()>1);
+    int nrows = hamiltonian_basis->getNBasis();
+    std::vector<double> initguess_fromfile(nrows, 0.0);
+    if (mpirank_world == 0) {
+      read_vector(learninit_str[1].c_str(), initguess_fromfile.data(), nrows, quietmode);
+    }
+    MPI_Bcast(initguess_fromfile.data(), nrows, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+
+    // Store parameters: First all that corresponds to BasisMats_A = Real(-i*sigma), hence all those that correspond to purely imaginary basis matrices (for which -i*sigma) is real. Then all BasisMats_B = Imag(-i*sigma) where first come all offdiagonal ones, then all diagonal ones. 
+    for (int i=0; i<hamiltonian_basis->getNBasis_A(); i++){
+      learnparamsH_A.push_back(initguess_fromfile[i]); 
+    }
+    for (int i=0; i<=hamiltonian_basis->getNBasis_B(); i++){
+      learnparamsH_B.push_back(initguess_fromfile[i]); 
     }
 
-    // Iterate over each line in the file
-    for (int n = 0; n <data_ntime; n++) {
-      Vec state;
-      VecCreate(PETSC_COMM_WORLD, &state);
-      VecSetSizes(state, PETSC_DECIDE, 2*dim);
-      VecSetFromOptions(state);
+  } else if (learninit_str[0].compare("random") == 0 ) {
+    // Set uniform random parameters in [0,amp)
 
-      // Iterate over columns
-      double val_re, val_im;
-      infile_re >> val_re; // first element is time
-      infile_im >> val_im; // first element is time
-      // printf("time-step %1.4f == %1.4f ??\n", val_re, val_im);
-      assert(fabs(val_re - val_im) < 1e-12);
-      for (int i=0; i<dim; i++) { // Other elements are the state (re and im) at this time
-        infile_re >> val_re;
-        infile_im >> val_im;
-        VecSetValue(state, getIndexReal(i), val_re, INSERT_VALUES);
-        VecSetValue(state, getIndexImag(i), val_im, INSERT_VALUES);
-      }
-      VecAssemblyBegin(state);
-      VecAssemblyEnd(state);
-      data.push_back(state);
+    assert(learninit_str.size()>1);
+    double amp = atof(learninit_str[1].c_str());
+    std::uniform_real_distribution<double> unit_dist(0.0, amp);
+    for (int i=0; i<hamiltonian_basis->getNBasis_A(); i++){
+      learnparamsH_A.push_back(unit_dist(rand_engine) * 2.0*M_PI); // radians
     }
+    for (int i=0; i<hamiltonian_basis->getNBasis_B(); i++){
+      learnparamsH_B.push_back(unit_dist(rand_engine) * 2.0*M_PI); // radians
+    }
+  } else if (learninit_str[0].compare("constant") == 0 ) {
+    // Set constant amp
+    assert(learninit_str.size()>1);
+    double amp = atof(learninit_str[1].c_str());
+    for (int i=0; i<hamiltonian_basis->getNBasis_A(); i++){
+      learnparamsH_A.push_back(amp * 2.0*M_PI);
+    }
+    for (int i=0; i<hamiltonian_basis->getNBasis_B(); i++){
+      learnparamsH_B.push_back(amp * 2.0*M_PI);
+    }
+  } else {
+    printf("ERROR: Wrong configuration for learnable parameter initialization. Choose 'file, <pathtofile>', or 'random, <amplitude>'\n");
+    exit(1);
+  }
 
-    // Close files
-	  infile_re.close();
-	  infile_im.close();
+  return learnparamsH_A.size() + learnparamsH_B.size();
+}
 
-    // // TEST what was loaded
-    // printf("\nDATA POINTS:\n");
-    // for (int i=0; i<data.size(); i++){
-    //   VecView(data[i], NULL);
-    // }
-    // printf("END DATA POINTS.\n\n");
+
+void Learning::addToLoss(int timestepID, Vec x){
+
+  // Add to loss only every k-th timestep, and if data exists
+  int dataID = -1;
+  if (timestepID % loss_every_k == 0 ) {
+    dataID = timestepID / loss_every_k;
+  }
+
+  // Add to loss if data exists
+  if (dataID > 0 && dataID < getNData()) {
+    // printf("Add to loss at ts %d with dataID %d\n", timestepID, dataID);
+    double norm; 
+    Vec xdata = getData(dataID);
+    // Frobenius norm between state x and data
+    VecAYPX(aux2, 0.0, x);
+    VecAXPY(aux2, -1.0, xdata);   // aux2 = x - data
+    VecNorm(aux2, NORM_2, &norm);
+    loss_integral += 0.5*norm*norm / (getNData()-1);
   }
 }
 
 
-int Learning::setupGellmannBasis(int dim_rho, int dim, LindbladType lindbladtype){
+void Learning::addToLoss_diff(int timestepID, Vec xbar, Vec xprimal, double Jbar_loss){
+
+  // Add to loss only every k-th timestep, and if data exists
+  int dataID = -1;
+  if (timestepID % loss_every_k == 0 ) {
+    dataID = timestepID / loss_every_k;
+  }
+
+  if (dataID > 0 && dataID < getNData()) {
+    // printf("loss_DIFF at ts %d with dataID %d\n", timestepID, dataID);
+    Vec xdata = getData(dataID);
+    VecAXPY(xbar, Jbar_loss / (getNData()-1), xprimal);
+    VecAXPY(xbar, -Jbar_loss/ (getNData()-1), xdata);
+  }
+}
+
+
+
+
+GenGellmannBasis::GenGellmannBasis(int dim_rho_, LindbladType lindbladtype){
+  dim_rho = dim_rho_;
+  dim = dim_rho;
+  if (lindbladtype != LindbladType::NONE){
+    dim = dim_rho*dim_rho; 
+  }
+  nsigma = dim_rho*(dim_rho-1)/2;
 
   /* 1) Real offdiagonal Gellman matrices:  sigma_jk^re = |j><k| + |k><j| 
         Note: (-i)sigma_jk^RE is purely imaginary, hence into Gellman_B = Im(H) */
@@ -301,7 +380,7 @@ int Learning::setupGellmannBasis(int dim_rho, int dim, LindbladType lindbladtype
 
       MatAssemblyBegin(myG, MAT_FINAL_ASSEMBLY);
       MatAssemblyEnd(myG, MAT_FINAL_ASSEMBLY);
-      GellmannMats_B.push_back(myG);
+      BasisMats_B.push_back(myG);
     }
   }
 
@@ -341,7 +420,7 @@ int Learning::setupGellmannBasis(int dim_rho, int dim, LindbladType lindbladtype
       }
       MatAssemblyBegin(myG, MAT_FINAL_ASSEMBLY);
       MatAssemblyEnd(myG, MAT_FINAL_ASSEMBLY);
-      GellmannMats_A.push_back(myG);
+      BasisMats_A.push_back(myG);
     }
   }
 
@@ -387,7 +466,7 @@ int Learning::setupGellmannBasis(int dim_rho, int dim, LindbladType lindbladtype
 
     MatAssemblyBegin(myG, MAT_FINAL_ASSEMBLY);
     MatAssemblyEnd(myG, MAT_FINAL_ASSEMBLY);
-    GellmannMats_B.push_back(myG);
+    BasisMats_B.push_back(myG);
   }
   // printf("Learnable basis matrices for dim=%d, dim_rho=%d, A-Mats:%d, B-Mats: %d\n", dim, dim_rho, GellmannMats_A.size(), GellmannMats_B.size() );
   // for (int i=0; i<GellmannMats_A.size(); i++){
@@ -400,106 +479,18 @@ int Learning::setupGellmannBasis(int dim_rho, int dim, LindbladType lindbladtype
   // }
   // exit(1);
 
-  return GellmannMats_A.size() + GellmannMats_B.size();
+  nbasis = BasisMats_A.size() + BasisMats_B.size();
 }
 
 
-void Learning::initLearnableParams(std::vector<std::string> learninit_str, int nbasis, int dim_rho, std::default_random_engine rand_engine){
+GenGellmannBasis::~GenGellmannBasis(){
 
-  // Exit if UDE model is not used.
-  if (nbasis <= 0) return;
-
-  // Switch over initialization string ("file", "constant", or "random")
-  if (learninit_str[0].compare("file") == 0 ) {
-      // Read parameter from file
-
-      assert(learninit_str.size()>1);
-      std::vector<double> initguess_fromfile(nbasis, 0.0);
-      if (mpirank_world == 0) {
-        read_vector(learninit_str[1].c_str(), initguess_fromfile.data(), nbasis, quietmode);
-      }
-      MPI_Bcast(initguess_fromfile.data(), nbasis, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-
-      // Store parameters: First for sigma_jk^RE, they go with first part of Gellmann_B. Then for sigma_jk^IM, they go with first part of Gellmann_A. Then for sigma_l, they go with last part of Gellmann_B.
-      int nsigma = dim_rho*(dim_rho-1)/2;
-      for (int i=0; i<nsigma; i++){
-        learnparamsH_B.push_back(initguess_fromfile[i]); 
-      }
-      for (int i=nsigma; i<2*nsigma; i++){
-        learnparamsH_A.push_back(initguess_fromfile[i]);
-      }
-      for (int i=2*nsigma; i<nbasis; i++){
-        learnparamsH_B.push_back(initguess_fromfile[i]); 
-      }
-
-    } else if (learninit_str[0].compare("random") == 0 ) {
-      // Set uniform random parameters in [0,amp)
-
-      assert(learninit_str.size()>1);
-      double amp = atof(learninit_str[1].c_str());
-      std::uniform_real_distribution<double> unit_dist(0.0, amp);
-      for (int i=0; i<GellmannMats_A.size(); i++){
-        learnparamsH_A.push_back(unit_dist(rand_engine) * 2.0*M_PI); // radians
-      }
-      for (int i=0; i<GellmannMats_B.size(); i++){
-        learnparamsH_B.push_back(unit_dist(rand_engine) * 2.0*M_PI); // radians
-      }
-    } else if (learninit_str[0].compare("constant") == 0 ) {
-      // Set constant amp
-      assert(learninit_str.size()>1);
-      double amp = atof(learninit_str[1].c_str());
-      for (int i=0; i<GellmannMats_A.size(); i++){
-        learnparamsH_A.push_back(amp * 2.0*M_PI);
-      }
-      for (int i=0; i<GellmannMats_B.size(); i++){
-        learnparamsH_B.push_back(amp * 2.0*M_PI);
-      }
-    } else {
-      printf("ERROR: Wrong configuration for learnable parameter initialization. Choose 'file, <pathtofile>', or 'random, <amplitude>'\n");
-      exit(1);
-    }
-
-    // for (int i=0; i<learnparamsH_A.size(); i++)
-    //   printf("  paramA %d = %f\n", i, learnparamsH_A[i]);
-    // for (int i=0; i<learnparamsH_B.size(); i++)
-    //   printf("  paramB %d = %f\n", i, learnparamsH_B[i]);
-}
-
-
-void Learning::addToLoss(int timestepID, Vec x){
-
-  // Add to loss only every k-th timestep, and if data exists
-  int dataID = -1;
-  if (timestepID % loss_every_k == 0 ) {
-    dataID = timestepID / loss_every_k;
+  for (int i=0; i< BasisMats_A.size(); i++){
+    MatDestroy(&BasisMats_A[i]);
   }
-
-  // Add to loss if data exists
-  if (dataID > 0 && dataID < getNData()) {
-    // printf("Add to loss at ts %d with dataID %d\n", timestepID, dataID);
-    double norm; 
-    Vec xdata = getData(dataID);
-    // Frobenius norm between state x and data
-    VecAYPX(aux2, 0.0, x);
-    VecAXPY(aux2, -1.0, xdata);   // aux2 = x - data
-    VecNorm(aux2, NORM_2, &norm);
-    loss_integral += 0.5*norm*norm / (getNData()-1);
+  for (int i=0; i<BasisMats_B.size(); i++){
+    MatDestroy(&BasisMats_B[i]);
   }
-}
-
-
-void Learning::addToLoss_diff(int timestepID, Vec xbar, Vec xprimal, double Jbar_loss){
-
-  // Add to loss only every k-th timestep, and if data exists
-  int dataID = -1;
-  if (timestepID % loss_every_k == 0 ) {
-    dataID = timestepID / loss_every_k;
-  }
-
-  if (dataID > 0 && dataID < getNData()) {
-    // printf("loss_DIFF at ts %d with dataID %d\n", timestepID, dataID);
-    Vec xdata = getData(dataID);
-    VecAXPY(xbar, Jbar_loss / (getNData()-1), xprimal);
-    VecAXPY(xbar, -Jbar_loss/ (getNData()-1), xdata);
-  }
+  BasisMats_A.clear();
+  BasisMats_B.clear();
 }
