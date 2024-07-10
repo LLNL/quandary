@@ -26,6 +26,7 @@ class Learning {
 
   double data_dtAWG;                /* Sample rate of AWG data (default 4ns) */
   int data_ntime;                   /* Number of data points in time */
+  int loss_every_k;                 /* Add to loss at every k-th timestep */
   std::vector<Vec> data;            /* List of all data point (rho_data) at each data_dtAWG */
 
   Vec aux;     // Auxiliary vector to perform matvecs on Re(x) or Im(x)
@@ -37,7 +38,7 @@ class Learning {
   double loss_integral;   /* Running cost for Loss function */
 
   public: 
-    Learning(std::vector<int>&nlevels, LindbladType lindbladtype_, std::vector<std::string>& learninit_str, std::string data_name, double data_dtAWG_, int data_ntime, std::default_random_engine rand_engine, bool quietmode);
+    Learning(std::vector<int>&nlevels, LindbladType lindbladtype_, std::vector<std::string>& learninit_str, std::string data_name, double data_dtAWG_, int data_ntime, int loss_every_k, std::default_random_engine rand_engine, bool quietmode);
     ~Learning();
 
     void resetLoss(){ loss_integral = 0.0; };

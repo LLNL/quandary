@@ -1,11 +1,12 @@
 #include "learning.hpp"
 
 
-Learning::Learning(std::vector<int>& nlevels, LindbladType lindbladtype_, std::vector<std::string>& learninit_str, std::string data_name, double data_dtAWG_, int data_ntime_, std::default_random_engine rand_engine, bool quietmode_){
+Learning::Learning(std::vector<int>& nlevels, LindbladType lindbladtype_, std::vector<std::string>& learninit_str, std::string data_name, double data_dtAWG_, int data_ntime_, int loss_every_k_, std::default_random_engine rand_engine, bool quietmode_){
   lindbladtype = lindbladtype_;
   data_dtAWG = data_dtAWG_;
   data_ntime = data_ntime_;
   quietmode = quietmode_;
+  loss_every_k = loss_every_k_;
   MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
   loss_integral = 0.0;
 
@@ -38,6 +39,11 @@ Learning::Learning(std::vector<int>& nlevels, LindbladType lindbladtype_, std::v
     VecCreate(PETSC_COMM_WORLD, &aux2);           // size for state (re and im)
     VecSetSizes(aux2, PETSC_DECIDE, 2*dim);
     VecSetFromOptions(aux2);
+  }
+
+  // Some output 
+  if (nbasis > 0 && !quietmode) {
+    printf("Learning with %d Gellmann mats\n", nbasis);
   }
 }
 
@@ -462,14 +468,20 @@ void Learning::initLearnableParams(std::vector<std::string> learninit_str, int n
 
 void Learning::addToLoss(int timestepID, Vec x){
 
-  // TODO: LEARN ONLY EVERY N-th TIME STEP!
+  // Add to loss only every k-th timestep, and if data exists
+  int dataID = -1;
+  if (timestepID % loss_every_k == 0 ) {
+    dataID = timestepID / loss_every_k;
+  }
 
-  if (getNData() > timestepID) {
-    // Frobenius norm between state x and data
+  // Add to loss if data exists
+  if (dataID > 0 && dataID < getNData()) {
+    // printf("Add to loss at ts %d with dataID %d\n", timestepID, dataID);
     double norm; 
-    Vec xdata = getData(timestepID);
+    Vec xdata = getData(dataID);
+    // Frobenius norm between state x and data
     VecAYPX(aux2, 0.0, x);
-    VecAXPY(aux2, -1.0, xdata);   // aux = x - data
+    VecAXPY(aux2, -1.0, xdata);   // aux2 = x - data
     VecNorm(aux2, NORM_2, &norm);
     loss_integral += 0.5*norm*norm / (getNData()-1);
   }
@@ -478,8 +490,15 @@ void Learning::addToLoss(int timestepID, Vec x){
 
 void Learning::addToLoss_diff(int timestepID, Vec xbar, Vec xprimal, double Jbar_loss){
 
-  if (getNData() > timestepID) {
-    Vec xdata = getData(timestepID);
+  // Add to loss only every k-th timestep, and if data exists
+  int dataID = -1;
+  if (timestepID % loss_every_k == 0 ) {
+    dataID = timestepID / loss_every_k;
+  }
+
+  if (dataID > 0 && dataID < getNData()) {
+    // printf("loss_DIFF at ts %d with dataID %d\n", timestepID, dataID);
+    Vec xdata = getData(dataID);
     VecAXPY(xbar, Jbar_loss / (getNData()-1), xprimal);
     VecAXPY(xbar, -Jbar_loss/ (getNData()-1), xdata);
   }

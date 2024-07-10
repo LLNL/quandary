@@ -247,18 +247,17 @@ int main(int argc,char **argv)
     int data_ntime = config.GetIntParam("data_ntime", 0, false, true);
     data_ntime = std::min(data_ntime, ntime+1);
     std::string data_name = config.GetStrParam("data_name", "data");
-    learning = new Learning(nlevels, lindbladtype, learninit_str, data_name, data_dtAWG, data_ntime, rand_engine, quietmode);
-    printf("\nLearning with %d Gellmann mats\n", learning->getNBasis());
-
-    // Update delta t such that its integer divisor of 4ns. TODO: GENERALIZE 4ns through configuration input!
-    int k = ceil(data_dtAWG / dt);
-    double dt_new = data_dtAWG / k;
-    dt = dt_new;
-    printf(" -> Updated dt from %1.14e to %1.14e\n", dt, dt_new);
+    // Update delta_t such that it is an integer divisor of dt_AWG
+    int loss_every_k = ceil(data_dtAWG / dt);
+    double dt_new = data_dtAWG / loss_every_k;
+    dt = dt_new;   
+    // Create learning 
+    learning = new Learning(nlevels, lindbladtype, learninit_str, data_name, data_dtAWG, data_ntime, loss_every_k, rand_engine, quietmode);
+    if (!quietmode && abs(dt - dt_new) > 1e-12) printf(" -> Updated dt from %1.14e to %1.14e\n", dt, dt_new);
 
   } else {// Dummy. Does nothing.
     std::vector<int> nlevelsdummy(nlevels.size(), 0);
-    learning = new Learning(nlevelsdummy, LindbladType::NONE, learninit_str, "dummy", 0.0, 0, rand_engine, quietmode); 
+    learning = new Learning(nlevelsdummy, LindbladType::NONE, learninit_str, "dummy", 0.0, 0, 0, rand_engine, quietmode); 
   }
 
   // Get control segment types, carrierwaves and control initialization
