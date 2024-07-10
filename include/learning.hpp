@@ -14,19 +14,19 @@
 /* Generalized Gellman matrices, multiplied by (-i) and shifted s.t. G_00=0 */
 // BasisMats_A stores (-i*sigma) if sigma is purely imaginary (hence (-i*sigma) is real)
 // BasisMats_B stores (-i*sigma) if sigma is purely real (hence (-i*sigma) is imaginary)
-class GenGellmannBasis {
+class GellmannBasis {
 
   int dim_rho;   /* Dimension of the Hilbertspace (N)*/
   int dim;       /* N (if Schroedinger solver) or N^2 (if Lindblad) */
   int nbasis;    /* Total number of basis matrices */
-  int nsigma;    /* =N*(N-1)/2. Here, number of offdiagonal real (or imag) basis matrices. */
+  bool upperdiag; /* If true: Only the upper triangular part of the Gellmann mats (including the diagonal itself). Used for Lindblad terms */
 
   std::vector<Mat> BasisMats_A;  // Real(-i*GellmannMatx), for the generalized & shifted Gellmann matrices
   std::vector<Mat> BasisMats_B;  // Imag(-i*GellmannMatx), for the generalized & shifted Gellmann matrices
 
   public:
-    GenGellmannBasis(int dim_rho_, LindbladType lindbladtype_);
-    ~GenGellmannBasis();
+    GellmannBasis(int dim_rho_, LindbladType lindbladtype_);
+    ~GellmannBasis();
 
     int getNBasis(){return nbasis;};
     int getNBasis_A(){return BasisMats_A.size();};
@@ -42,7 +42,7 @@ class Learning {
   int dim_rho;               // Dimension of Hilbertspace = N
   LindbladType lindbladtype; // Switch for Lindblad vs Schroedinger solver
 
-  GenGellmannBasis* hamiltonian_basis; 
+  GellmannBasis* hamiltonian_basis; 
   std::vector<double> learnparamsH_A; // Learnable parameters for Hamiltonian
   std::vector<double> learnparamsH_B; // Learnable parameters for Hamiltonian
   

@@ -24,7 +24,7 @@ Learning::Learning(std::vector<int>& nlevels, LindbladType lindbladtype_, std::v
   if (dim_rho > 0) {
 
     /* Create Basis matrices for the learnable hamiltonian term. Here: generalized Gellman matrices */
-    hamiltonian_basis = new GenGellmannBasis(dim_rho, lindbladtype);
+    hamiltonian_basis = new GellmannBasis(dim_rho, lindbladtype);
 
     /* Create learnable Hamiltonian parameters and set an initial guess */
     nparams = initLearnableParams(learninit_str, rand_engine);
@@ -179,7 +179,6 @@ void Learning::dRHSdp(Vec grad, Vec u, Vec v, double alpha, Vec ubar, Vec vbar){
   // gamma_bar_A += alpha * (  u^t sigma_A^t ubar + v^t sigma_A^t vbar )
   // gamma_bar_B += alpha * ( -v^t sigma_B^t ubar + u^t sigma_B^t vbar )
 
-  int nsigma = dim_rho*(dim_rho-1)/2;
   for (int i=0; i< hamiltonian_basis->getNBasis_A(); i++){
 
     MatMult(hamiltonian_basis->getMat_A(i), u, aux); VecDot(aux, ubar, &uAubar);
@@ -347,13 +346,12 @@ void Learning::addToLoss_diff(int timestepID, Vec xbar, Vec xprimal, double Jbar
 
 
 
-GenGellmannBasis::GenGellmannBasis(int dim_rho_, LindbladType lindbladtype){
+GellmannBasis::GellmannBasis(int dim_rho_, LindbladType lindbladtype){
   dim_rho = dim_rho_;
   dim = dim_rho;
   if (lindbladtype != LindbladType::NONE){
     dim = dim_rho*dim_rho; 
   }
-  nsigma = dim_rho*(dim_rho-1)/2;
 
   /* 1) Real offdiagonal Gellman matrices:  sigma_jk^re = |j><k| + |k><j| 
         Note: (-i)sigma_jk^RE is purely imaginary, hence into Gellman_B = Im(H) */
@@ -494,7 +492,7 @@ GenGellmannBasis::GenGellmannBasis(int dim_rho_, LindbladType lindbladtype){
 }
 
 
-GenGellmannBasis::~GenGellmannBasis(){
+GellmannBasis::~GellmannBasis(){
 
   for (int i=0; i< BasisMats_A.size(); i++){
     MatDestroy(&BasisMats_A[i]);
