@@ -1302,7 +1302,7 @@ void MasterEq::computedRHSdp(const double t, const Vec x, const Vec xbar, const 
 
   } else { // Gradient wrt learnable parameters
 
-    learning->dRHSdp(grad, u, v, alpha, ubar, vbar);
+    learning->dRHSdp_Ham(grad, u, v, alpha, ubar, vbar);
   }
 
   /* Restore x */
@@ -1431,7 +1431,8 @@ int myMatMult_sparsemat(Mat RHS, Vec x, Vec y){
   }
 
   /* --- Apply learning terms --- */
-  shellctx->learning->applyLearningTerms(u,v,uout, vout);
+  shellctx->learning->applyLearnHamiltonian(u,v,uout, vout);
+  // shellctx->learning->applyLearnLindblad(u,v,uout, vout);
 
   /* Restore */
   VecRestoreSubVector(x, *shellctx->isu, &u);
@@ -1531,7 +1532,8 @@ int myMatMultTranspose_sparsemat(Mat RHS, Vec x, Vec y) {
   }
 
   /* --- Apply learning terms --- */
-  shellctx->learning->applyLearningTerms_diff(u,v,uout, vout);
+  shellctx->learning->applyLearnHamiltonian_diff(u,v,uout, vout);
+  // shellctx->learning->applyLearnLindblad_diff(u,v,uout, vout);
 
   /* Restore */
   VecRestoreSubVector(x, *shellctx->isu, &u);
@@ -1638,7 +1640,8 @@ int myMatMult_matfree(Mat RHS, Vec x, Vec y){
     VecGetSubVector(x, *shellctx->isv, &v);
     VecGetSubVector(y, *shellctx->isu, &uout);
     VecGetSubVector(y, *shellctx->isv, &vout);
-    shellctx->learning->applyLearningTerms(u,v,uout, vout);
+    shellctx->learning->applyLearnHamiltonian(u,v,uout, vout);
+    // shellctx->learning->applyLearnLindblad(u,v,uout, vout);
     VecRestoreSubVector(x, *shellctx->isu, &u);
     VecRestoreSubVector(x, *shellctx->isv, &v);
     VecRestoreSubVector(y, *shellctx->isu, &uout);
@@ -1740,7 +1743,8 @@ int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
     VecGetSubVector(x, *shellctx->isv, &v);
     VecGetSubVector(y, *shellctx->isu, &uout);
     VecGetSubVector(y, *shellctx->isv, &vout);
-    shellctx->learning->applyLearningTerms_diff(u,v,uout, vout);
+    shellctx->learning->applyLearnHamiltonian_diff(u,v,uout, vout);
+    // shellctx->learning->applyLearnLindblad_diff(u,v,uout, vout);
     VecRestoreSubVector(x, *shellctx->isu, &u);
     VecRestoreSubVector(x, *shellctx->isv, &v);
     VecRestoreSubVector(y, *shellctx->isu, &uout);
@@ -1885,7 +1889,8 @@ int myMatMult_matfree(Mat RHS, Vec x, Vec y){
     VecGetSubVector(x, *shellctx->isv, &v);
     VecGetSubVector(y, *shellctx->isu, &uout);
     VecGetSubVector(y, *shellctx->isv, &vout);
-    shellctx->learning->applyLearningTerms(u,v,uout, vout);
+    shellctx->learning->applyLearnHamiltonian(u,v,uout, vout);
+    // shellctx->learning->applyLearnLindblad(u,v,uout, vout);
     VecRestoreSubVector(x, *shellctx->isu, &u);
     VecRestoreSubVector(x, *shellctx->isv, &v);
     VecRestoreSubVector(y, *shellctx->isu, &uout);
@@ -2023,7 +2028,8 @@ int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
     VecGetSubVector(x, *shellctx->isv, &v);
     VecGetSubVector(y, *shellctx->isu, &uout);
     VecGetSubVector(y, *shellctx->isv, &vout);
-    shellctx->learning->applyLearningTerms_diff(u,v,uout, vout);
+    shellctx->learning->applyLearnHamiltonian_diff(u,v,uout, vout);
+    // shellctx->learning->applyLearnLindblad_diff(u,v,uout, vout);
     VecRestoreSubVector(x, *shellctx->isu, &u);
     VecRestoreSubVector(x, *shellctx->isv, &v);
     VecRestoreSubVector(y, *shellctx->isu, &uout);
@@ -2190,7 +2196,8 @@ int myMatMult_matfree(Mat RHS, Vec x, Vec y){
     VecGetSubVector(x, *shellctx->isv, &v);
     VecGetSubVector(y, *shellctx->isu, &uout);
     VecGetSubVector(y, *shellctx->isv, &vout);
-    shellctx->learning->applyLearningTerms(u,v,uout, vout);
+    shellctx->learning->applyLearnHamiltonian(u,v,uout, vout);
+    // shellctx->learning->applyLearnLindblad(u,v,uout, vout);
     VecRestoreSubVector(x, *shellctx->isu, &u);
     VecRestoreSubVector(x, *shellctx->isv, &v);
     VecRestoreSubVector(y, *shellctx->isu, &uout);
@@ -2359,7 +2366,8 @@ int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
     VecGetSubVector(x, *shellctx->isv, &v);
     VecGetSubVector(y, *shellctx->isu, &uout);
     VecGetSubVector(y, *shellctx->isv, &vout);
-    shellctx->learning->applyLearningTerms_diff(u,v,uout, vout);
+    shellctx->learning->applyLearnHamiltonian_diff(u,v,uout, vout);
+    // shellctx->learning->applyLearnLindblad_diff(u,v,uout, vout);
     VecRestoreSubVector(x, *shellctx->isu, &u);
     VecRestoreSubVector(x, *shellctx->isv, &v);
     VecRestoreSubVector(y, *shellctx->isu, &uout);
@@ -2567,7 +2575,8 @@ int myMatMult_matfree(Mat RHS, Vec x, Vec y){
     VecGetSubVector(x, *shellctx->isv, &v);
     VecGetSubVector(y, *shellctx->isu, &uout);
     VecGetSubVector(y, *shellctx->isv, &vout);
-    shellctx->learning->applyLearningTerms(u,v,uout, vout);
+    shellctx->learning->applyLearnHamiltonian(u,v,uout, vout);
+    // shellctx->learning->applyLearnLindblad(u,v,uout, vout);
     VecRestoreSubVector(x, *shellctx->isu, &u);
     VecRestoreSubVector(x, *shellctx->isv, &v);
     VecRestoreSubVector(y, *shellctx->isu, &uout);
@@ -2777,7 +2786,8 @@ int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
     VecGetSubVector(x, *shellctx->isv, &v);
     VecGetSubVector(y, *shellctx->isu, &uout);
     VecGetSubVector(y, *shellctx->isv, &vout);
-    shellctx->learning->applyLearningTerms_diff(u,v,uout, vout);
+    shellctx->learning->applyLearnHamiltonian_diff(u,v,uout, vout);
+    // shellctx->learning->applyLearnLindblad_diff(u,v,uout, vout);
     VecRestoreSubVector(x, *shellctx->isu, &u);
     VecRestoreSubVector(x, *shellctx->isv, &v);
     VecRestoreSubVector(y, *shellctx->isu, &uout);
@@ -3033,7 +3043,8 @@ int myMatMult_matfree(Mat RHS, Vec x, Vec y){
     VecGetSubVector(x, *shellctx->isv, &v);
     VecGetSubVector(y, *shellctx->isu, &uout);
     VecGetSubVector(y, *shellctx->isv, &vout);
-    shellctx->learning->applyLearningTerms(u,v,uout, vout);
+    shellctx->learning->applyLearnHamiltonian(u,v,uout, vout);
+    // shellctx->learning->applyLearnLindblad(u,v,uout, vout);
     VecRestoreSubVector(x, *shellctx->isu, &u);
     VecRestoreSubVector(x, *shellctx->isv, &v);
     VecRestoreSubVector(y, *shellctx->isu, &uout);
@@ -3290,7 +3301,8 @@ int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
     VecGetSubVector(x, *shellctx->isv, &v);
     VecGetSubVector(y, *shellctx->isu, &uout);
     VecGetSubVector(y, *shellctx->isv, &vout);
-    shellctx->learning->applyLearningTerms_diff(u,v,uout, vout);
+    shellctx->learning->applyLearnHamiltonian_diff(u,v,uout, vout);
+    // shellctx->learning->applyLearnLindblad_diff(u,v,uout, vout);
     VecRestoreSubVector(x, *shellctx->isu, &u);
     VecRestoreSubVector(x, *shellctx->isv, &v);
     VecRestoreSubVector(y, *shellctx->isu, &uout);
