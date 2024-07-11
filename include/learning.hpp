@@ -46,7 +46,20 @@ class HamiltonianBasis : public GellmannBasis {
 
     int getNBasis_A(){return SystemMats_A.size();};
     int getNBasis_B(){return SystemMats_B.size();};
+    Mat getSystemMat_A(int id) {return SystemMats_A[id];};
+    Mat getSystemMat_B(int id) {return SystemMats_B[id];};
+};
 
+class LindbladBasis: public GellmannBasis {
+  std::vector<Mat> SystemMats_A;  // System matrix: Real(-i*GellmannMatx)
+  std::vector<Mat> SystemMats_B;  // System matrix: Imag(-i*GellmannMatx)
+
+  public:
+    LindbladBasis(int dim_rho_, bool vectorize_);
+    ~LindbladBasis();
+
+    int getNBasis_A(){return SystemMats_A.size();};
+    int getNBasis_B(){return SystemMats_B.size();};
     Mat getSystemMat_A(int id) {return SystemMats_A[id];};
     Mat getSystemMat_B(int id) {return SystemMats_B[id];};
 };
@@ -58,7 +71,7 @@ class Learning {
   LindbladType lindbladtype; // Switch for Lindblad vs Schroedinger solver
 
   HamiltonianBasis* hamiltonian_basis;  // Basis matrices for Hamiltonian term
-  // LindbladBasis* lindblad_basis;     // Basis matrices for Lindblad term 
+  LindbladBasis* lindblad_basis;     // Basis matrices for Lindblad term 
   std::vector<double> learnparamsH_A; // Learnable parameters for Hamiltonian
   std::vector<double> learnparamsH_B; // Learnable parameters for Hamiltonian
   std::vector<double> learnparamsL_A; // Learnable parameters for Lindblad

@@ -25,19 +25,14 @@ Learning::Learning(std::vector<int>& nlevels, LindbladType lindbladtype_, std::v
 
     /* Create Basis for the learnable Hamiltonian terms. Here: generalized Gellman matrices */
     bool vectorize = false;
-    if (lindbladtype != LindbladType::NONE) vectorize = true;
+    if (lindbladtype != LindbladType::NONE) {
+      vectorize = true;
+    }
     hamiltonian_basis = new HamiltonianBasis(dim_rho, vectorize);
-
-    // /* Create Basis for the learnable Lindblad terms. Here: upper triangular part of the generalized Gellman matrices */
-    // if (lindbladtype != LindbladType::NONE) {
-    //   lindblad_basis = new LindbladBasis(dim_rho);
-    // } else {
-    //   lindblad_basis = new LindbladBasis(0); // DUMMY! Empty basis.
-    // }
+    lindblad_basis    = new LindbladBasis(dim_rho, vectorize);  // will be empty if not Lindblad solver
 
     /* Set the total number of learnable paramters */
-    // nparams = hamiltonian_basis->getNBasis() + lindblad_basis->getNBasis();
-    nparams = hamiltonian_basis->getNBasis(); 
+    nparams = hamiltonian_basis->getNBasis() + lindblad_basis->getNBasis();
 
     /* Allocate learnable Hamiltonian and Lindblad parameters, and set an initial guess */
     initLearnableParams(learninit_str, rand_engine);
@@ -72,7 +67,7 @@ Learning::~Learning(){
     VecDestroy(&aux2);
 
     delete hamiltonian_basis;
-    // delete lindblad_basis;
+    delete lindblad_basis;
   }
 }
 
@@ -394,31 +389,32 @@ GellmannBasis::GellmannBasis(int dim_rho_, bool upper_only_, bool vectorize_){
   /* First all offdiagonal matrices (re and im)*/
   for (int j=0; j<dim_rho; j++){
     for (int k=j+1; k<dim_rho; k++){
-      Mat G_re, G_im;
-      MatCreate(PETSC_COMM_WORLD, &G_re);
-      MatCreate(PETSC_COMM_WORLD, &G_im);
-      MatSetType(G_re, MATSEQAIJ);
-      MatSetType(G_im, MATSEQAIJ);
-      MatSetSizes(G_re, PETSC_DECIDE, PETSC_DECIDE, dim_rho, dim_rho);
-      MatSetSizes(G_im, PETSC_DECIDE, PETSC_DECIDE, dim_rho, dim_rho);
-      MatSetUp(G_re);
-      MatSetUp(G_im);
-
       /* Real sigma_jk^re = |j><k| + |k><j| */ 
+      Mat G_re;
+      MatCreate(PETSC_COMM_WORLD, &G_re);
+      MatSetType(G_re, MATSEQAIJ);
+      MatSetSizes(G_re, PETSC_DECIDE, PETSC_DECIDE, dim_rho, dim_rho);
+      MatSetUp(G_re);
       MatSetValue(G_re, j, k, 1.0, INSERT_VALUES);
       if (!upper_only) MatSetValue(G_re, k, j, 1.0, INSERT_VALUES);
-      
-      /* Imaginary sigma_jk^im = -i|j><k| + i|k><j| */ 
-      MatSetValue(G_im, j, k, -1.0, INSERT_VALUES);
-      if (!upper_only) MatSetValue(G_im, k, j, +1.0, INSERT_VALUES);
-
-      /* Assemble and store */
       MatAssemblyBegin(G_re, MAT_FINAL_ASSEMBLY);
-      MatAssemblyBegin(G_im, MAT_FINAL_ASSEMBLY);
       MatAssemblyEnd(G_re, MAT_FINAL_ASSEMBLY);
-      MatAssemblyEnd(G_im, MAT_FINAL_ASSEMBLY);
       BasisMat_Re.push_back(G_re);
-      BasisMat_Im.push_back(G_im);
+
+      /* Imaginary sigma_jk^im = -i|j><k| + i|k><j| */ 
+      if (!upper_only) {
+        Mat G_im;
+        MatCreate(PETSC_COMM_WORLD, &G_im);
+        MatSetType(G_im, MATSEQAIJ);
+        MatSetSizes(G_im, PETSC_DECIDE, PETSC_DECIDE, dim_rho, dim_rho);
+        MatSetUp(G_im);
+        MatSetValue(G_im, j, k, -1.0, INSERT_VALUES);
+        MatSetValue(G_im, k, j, +1.0, INSERT_VALUES);
+        /* Assemble and store */
+        MatAssemblyBegin(G_im, MAT_FINAL_ASSEMBLY);
+        MatAssemblyEnd(G_im, MAT_FINAL_ASSEMBLY);
+        BasisMat_Im.push_back(G_im);
+      }
     }
   }
 
@@ -456,11 +452,12 @@ GellmannBasis::~GellmannBasis(){
   BasisMat_Im.clear();
 }
 
-
 HamiltonianBasis::HamiltonianBasis(int dim_rho_, bool vectorize_) : GellmannBasis(dim_rho_, false, vectorize_) {
 
   /* Set up and store the Hamiltonian system matrices:
    *   (-i*sigma)   or vectorized   -i(I kron sigma - sigma kron I) 
+   *  A = Re(-isigma)
+   *  B = Im(-isigma)
    */
 
   //if vectorizing, set up the identity matrix
@@ -517,8 +514,57 @@ HamiltonianBasis::~HamiltonianBasis(){
   }
   SystemMats_A.clear();
   SystemMats_B.clear();
- 
 }
 
 
-  
+LindbladBasis::LindbladBasis(int dim_rho_, bool vectorize_) : GellmannBasis(dim_rho_, true, vectorize_) {
+
+  /* Exit, if this is not a lindblad solver */
+  if (!vectorize) {
+    nbasis = 0;
+    return;
+  }
+
+  /* Set up and store the Lindblad system matrices: 
+  *   sigma.conj kron sigma - 1/2(I kron sigma^t sigma + (sigma^t sigma)^T kron I)
+   * Here, all Basis mats are REAL (only using upper part of the real Gellmann mats), hence all go into A = Re(...)
+   * Note that here we have: sigma.conj = sigma and (sigma^tsigma)^T
+  */
+
+  // Set up the identity matrix
+  Mat Id;
+  MatCreate(PETSC_COMM_WORLD, &Id);
+  MatSetType(Id, MATSEQAIJ);
+  MatSetSizes(Id, PETSC_DECIDE, PETSC_DECIDE, dim_rho, dim_rho);
+  for (int i=0; i<dim_rho; i++){
+    MatSetValue(Id, i, i, 1.0, INSERT_VALUES);
+  }
+  MatAssemblyBegin(Id, MAT_FINAL_ASSEMBLY);
+  MatAssemblyEnd(Id, MAT_FINAL_ASSEMBLY);
+
+  for (int i=0; i<BasisMat_Re.size(); i++){
+
+    Mat myMat, myMat1, myMat2, sigmasq;
+    MatTransposeMatMult(BasisMat_Re[i], BasisMat_Re[i],MAT_INITIAL_MATRIX, PETSC_DEFAULT,&sigmasq);
+
+    MatSeqAIJKron(BasisMat_Re[i], BasisMat_Re[i], MAT_INITIAL_MATRIX, &myMat);   // sigma \kron sigma
+    MatSeqAIJKron(Id, sigmasq, MAT_INITIAL_MATRIX, &myMat1);  // Id \kron sigma^tsigma
+    MatAXPY(myMat, -0.5, myMat1, DIFFERENT_NONZERO_PATTERN);
+    MatSeqAIJKron(sigmasq, Id, MAT_INITIAL_MATRIX, &myMat2);  // sigma^tsigma \kron Id
+    MatAXPY(myMat, -0.5, myMat2, DIFFERENT_NONZERO_PATTERN);
+
+    SystemMats_A.push_back(myMat);
+  }
+}
+
+LindbladBasis::~LindbladBasis(){
+  for (int i=0; i< SystemMats_A.size(); i++){
+    MatDestroy(&SystemMats_A[i]);
+  }
+  for (int i=0; i<SystemMats_B.size(); i++){
+    MatDestroy(&SystemMats_B[i]);
+  }
+  SystemMats_A.clear();
+  SystemMats_B.clear();
+}
+
