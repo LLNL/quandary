@@ -401,10 +401,10 @@ void Learning::addToLoss_diff(int timestepID, Vec xbar, Vec xprimal, double Jbar
 HamiltonianBasis::HamiltonianBasis(int dim_rho_, bool vectorize_){
   dim_rho = dim_rho_;
   dim = dim_rho;
+  vectorize = vectorize_;
   if (vectorize){
     dim = dim_rho*dim_rho; 
   }
-  vectorize = vectorize_;
 
   /* 1) Imaginary offdiagonal Gellman matrices:  sigma_jk^im = -i|j><k| + i|k><j| 
         Note: (-i)sigma_jk^IM is real, hence stored into Gellman_A = Re(H) */
@@ -423,7 +423,7 @@ HamiltonianBasis::HamiltonianBasis(int dim_rho_, bool vectorize_){
         MatSetValue(myG, row, col, -1.0, INSERT_VALUES);
         MatSetValue(myG, col, row, +1.0, INSERT_VALUES);
       } else {
-        // For Lindblad: I_N \kron (-i)sigma_jk^Im - (-i)sigma_jk^Ie \kron I_N  */
+        // For Lindblad: I_N \kron (-i)sigma_jk^Im - (-i)sigma_jk^Im^T \kron I_N  */
         //  -I\kron sigma_jk^Im
         for (int i=0; i<dim_rho; i++){
           int row = i*dim_rho + j;
@@ -431,24 +431,20 @@ HamiltonianBasis::HamiltonianBasis(int dim_rho_, bool vectorize_){
           MatSetValue(myG, row, col, -1.0, INSERT_VALUES);
           MatSetValue(myG, col, row, +1.0, INSERT_VALUES);
         }
-        // +sigma_jk^Im \kron I
+        // +sigma_jk^Im^T \kron I
         for (int i=0; i<dim_rho; i++){
-          int row = j*dim_rho + i;
-          int col = k*dim_rho + i;
+          int row = k*dim_rho + i;
+          int col = j*dim_rho + i;
           MatSetValue(myG, row, col, 1.0, INSERT_VALUES);
           MatSetValue(myG, col, row, -1.0, INSERT_VALUES);
         }
       }
 
-      printf("Somethign wrong here??\n");
       MatAssemblyBegin(myG, MAT_FINAL_ASSEMBLY);
       MatAssemblyEnd(myG, MAT_FINAL_ASSEMBLY);
-      printf("WELL??\n");
       BasisMats_A.push_back(myG);
     }
   }
-
-  printf("STILL HERE??\n");
 
   /* 2) Real offdiagonal Gellman matrices:  sigma_jk^re = |j><k| + |k><j| 
         Note: (-i)sigma_jk^RE is purely imaginary, hence into Gellman_B = Im(H) */
@@ -545,9 +541,14 @@ HamiltonianBasis::HamiltonianBasis(int dim_rho_, bool vectorize_){
   // setup identity matrix, if vectorizing 
   Mat Id; 
   if (vectorize) {
-    MatCreateConstantDiagonal(PETSC_COMM_SELF, PETSC_DECIDE, PETSC_DECIDE, dim, dim, 1.0, &Id);
+    MatCreate(PETSC_COMM_WORLD, &Id);
     MatSetType(Id, MATSEQAIJ);
-    MatSetUp(Id);
+    MatSetSizes(Id, PETSC_DECIDE, PETSC_DECIDE, dim_rho, dim_rho);
+    for (int i=0; i<dim_rho; i++){
+      MatSetValue(Id, i, i, 1.0, INSERT_VALUES);
+    }
+    MatAssemblyBegin(Id, MAT_FINAL_ASSEMBLY);
+    MatAssemblyEnd(Id, MAT_FINAL_ASSEMBLY);
   }
 
   // First: -i*(Real_Gellmann), they go into Bd = Im(-iH)
@@ -583,7 +584,11 @@ HamiltonianBasis::HamiltonianBasis(int dim_rho_, bool vectorize_){
     PetscBool equal = PETSC_FALSE;
     MatEqual(BasisMats_A[i], Test_A[i], &equal);
     printf("Basis A, equal = %d\n", equal);
-    assert(equal);
+    if (!equal){
+      MatView(BasisMats_A[i], NULL);
+      MatView(Test_A[i], NULL);
+      // exit(1);
+    }
   }
   for (int i=0; i<BasisMats_B.size(); i++){
     PetscBool equal = PETSC_FALSE;
