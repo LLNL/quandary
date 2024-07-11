@@ -127,25 +127,20 @@ void Learning::applyLearnHamiltonian_diff(Vec u, Vec v, Vec uout, Vec vout){
 }
 
 
-void Learning::assembleHamiltonian(Mat& Re, Mat& Im){
+void Learning::viewOperators(){
 
-  MatCreateDense(PETSC_COMM_SELF,PETSC_DECIDE, PETSC_DECIDE, dim_rho, dim_rho, NULL, &Re);
-  MatCreateDense(PETSC_COMM_SELF,PETSC_DECIDE, PETSC_DECIDE, dim_rho, dim_rho, NULL, &Im);
-  MatSetUp(Re);
-  MatSetUp(Im);
-  MatAssemblyBegin(Re, MAT_FINAL_ASSEMBLY);
-  MatAssemblyBegin(Im, MAT_FINAL_ASSEMBLY);
-  MatAssemblyEnd(Re, MAT_FINAL_ASSEMBLY);
-  MatAssemblyEnd(Im, MAT_FINAL_ASSEMBLY);
+  hamiltonian_basis->assembleOperator(learnparamsH_A, learnparamsH_B);
+  printf("\nLearned Hamiltonian operator: Re = \n");
+  MatView(hamiltonian_basis->getOperator_Re(), NULL);
+  printf("Learned Hamiltonian operator: Im = \n");
+  MatView(hamiltonian_basis->getOperator_Im(), NULL);
 
-  /* Assemble the Hamiltonian */
-  // Note, the Gellmann BasisMats store A=Re(-i*sigma) and B=Im(-i*sigma), here we want to return A=sum Re(sigma) and B=sum Im(sigma), hence need to revert order (learnparams_A are for GellmannBasis_Re)
-
-  for (int i=0; i<hamiltonian_basis->getNBasis_B(); i++) {
-    MatAXPY(Re, learnparamsH_B[i] / (2.0*M_PI), hamiltonian_basis->getBasisMat_Re(i), DIFFERENT_NONZERO_PATTERN);
-  }
-  for (int i=0; i<hamiltonian_basis->getNBasis_A(); i++) {
-    MatAXPY(Im, learnparamsH_A[i] / (2.0*M_PI), hamiltonian_basis->getBasisMat_Im(i), DIFFERENT_NONZERO_PATTERN);
+  for (int i=0; i<lindblad_basis->getNBasis_A(); i++){
+    printf("Lindblad: %d \n", i);
+    MatScale(lindblad_basis->getBasisMat_Re(i), learnparamsL_A[i]);
+    MatView(lindblad_basis->getBasisMat_Re(i), NULL);
+    // Revert scaling, just to be safe...
+    MatScale(lindblad_basis->getBasisMat_Re(i), 1.0/learnparamsL_A[i]);
   }
 }
 
@@ -502,6 +497,16 @@ HamiltonianBasis::HamiltonianBasis(int dim_rho_, bool vectorize_) : GellmannBasi
     SystemMats_A.push_back(myMat);
   }
   if (vectorize) MatDestroy(&Id);
+
+  /* Allocate assembled operators */
+  MatCreateDense(PETSC_COMM_WORLD,PETSC_DECIDE, PETSC_DECIDE, dim_rho, dim_rho, NULL, &Operator_Re);
+  MatCreateDense(PETSC_COMM_WORLD,PETSC_DECIDE, PETSC_DECIDE, dim_rho, dim_rho, NULL, &Operator_Im);
+  MatSetUp(Operator_Re);
+  MatSetUp(Operator_Im);
+  MatAssemblyBegin(Operator_Re, MAT_FINAL_ASSEMBLY);
+  MatAssemblyBegin(Operator_Im, MAT_FINAL_ASSEMBLY);
+  MatAssemblyEnd(Operator_Re, MAT_FINAL_ASSEMBLY);
+  MatAssemblyEnd(Operator_Im, MAT_FINAL_ASSEMBLY);
 }
 
 
@@ -514,6 +519,21 @@ HamiltonianBasis::~HamiltonianBasis(){
   }
   SystemMats_A.clear();
   SystemMats_B.clear();
+  MatDestroy(&Operator_Re);
+  MatDestroy(&Operator_Im);
+}
+
+void HamiltonianBasis::assembleOperator(std::vector<double>& learnparams_A, std::vector<double>& learnparams_B){
+
+  /* Assemble the Hamiltonian */
+  // Note, the system matrices are A=Re(-i*sigma) and B=Im(-i*sigma), with corresponding learnparams_A and learnparams_B, respectively. But, we here want to return A=sum learnparam*Re(sigma) and B=sum learnparam*Im(sigma), hence need to revert order (learnparams_B are for Basis_Re, learnparam_A for Basis_Im)
+
+  for (int i=0; i<BasisMat_Re.size(); i++) {
+    MatAXPY(Operator_Re, learnparams_B[i] / (2.0*M_PI), BasisMat_Re[i], DIFFERENT_NONZERO_PATTERN);
+  }
+  for (int i=0; i<BasisMat_Im.size(); i++) {
+    MatAXPY(Operator_Im, learnparams_A[i] / (2.0*M_PI), BasisMat_Im[i], DIFFERENT_NONZERO_PATTERN);
+  }
 }
 
 

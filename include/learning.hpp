@@ -40,6 +40,9 @@ class HamiltonianBasis : public GellmannBasis {
   std::vector<Mat> SystemMats_A;  // System matrix: Real(-i*GellmannMatx)
   std::vector<Mat> SystemMats_B;  // System matrix: Imag(-i*GellmannMatx)
 
+  Mat Operator_Re;  /* All assembled real operators */
+  Mat Operator_Im;  /* All assembled imaginary operators */
+
   public:
     HamiltonianBasis(int dim_rho_, bool vectorize_);
     ~HamiltonianBasis();
@@ -48,6 +51,10 @@ class HamiltonianBasis : public GellmannBasis {
     int getNBasis_B(){return SystemMats_B.size();};
     Mat getSystemMat_A(int id) {return SystemMats_A[id];};
     Mat getSystemMat_B(int id) {return SystemMats_B[id];};
+
+    void assembleOperator(std::vector<double>& learnparamsH_A, std::vector<double>& learnparamsH_B);
+    Mat getOperator_Re() {return Operator_Re;};
+    Mat getOperator_Im() {return Operator_Im;};
 };
 
 class LindbladBasis: public GellmannBasis {
@@ -126,7 +133,7 @@ class Learning {
     int getNData(){ return data.size(); };
 
     /* Assemble the learned operator. Allocates the (dense!) matrices Re(H) and Im(H), which hence must be destroyed after usage. */
-    void assembleHamiltonian(Mat& Re, Mat& Im);
+    void viewOperators();
 
     /* Pass learnable parameters to storage learnparamsH_A and learnparamsH_B*/
     void setLearnParams(const Vec x);

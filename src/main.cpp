@@ -504,17 +504,7 @@ int main(int argc,char **argv)
 
     /* If learning, print out the learned operators */
     if (!x_is_control){
-      Mat H_re, H_im;
-      learning->assembleHamiltonian(H_re, H_im);
-      
-      printf("\nLearned Hamiltonian operator:\n");
-      printf("Re = \n");
-      MatView(H_re, NULL);
-      printf("Im = \n");
-      MatView(H_im, NULL);
-
-      MatDestroy(&H_re);
-      MatDestroy(&H_im);
+      learning->viewOperators();
     }
   }
 
