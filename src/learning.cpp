@@ -147,10 +147,10 @@ void Learning::assembleHamiltonian(Mat& Re, Mat& Im){
   // Note, the Gellmann BasisMats store A=Re(-i*sigma) and B=Im(-i*sigma), here we want to return A=sum Re(sigma) and B=sum Im(sigma), hence need to revert order (learnparams_A are for GellmannBasis_Re)
 
   for (int i=0; i<hamiltonian_basis->getNBasis_B(); i++) {
-    MatAXPY(Re, learnparamsH_B[i] / (2.0*M_PI), hamiltonian_basis->getGellmann_Re(i), DIFFERENT_NONZERO_PATTERN);
+    MatAXPY(Re, learnparamsH_B[i] / (2.0*M_PI), hamiltonian_basis->getBasisMat_Re(i), DIFFERENT_NONZERO_PATTERN);
   }
   for (int i=0; i<hamiltonian_basis->getNBasis_A(); i++) {
-    MatAXPY(Im, learnparamsH_A[i] / (2.0*M_PI), hamiltonian_basis->getGellmann_Im(i), DIFFERENT_NONZERO_PATTERN);
+    MatAXPY(Im, learnparamsH_A[i] / (2.0*M_PI), hamiltonian_basis->getBasisMat_Im(i), DIFFERENT_NONZERO_PATTERN);
   }
 }
 
@@ -381,91 +381,15 @@ void Learning::addToLoss_diff(int timestepID, Vec xbar, Vec xprimal, double Jbar
 }
 
 
-
-
-HamiltonianBasis::HamiltonianBasis(int dim_rho_, bool vectorize_){
+GellmannBasis::GellmannBasis(int dim_rho_, bool upper_only_, bool vectorize_){
   dim_rho = dim_rho_;
   dim = dim_rho;
   vectorize = vectorize_;
   if (vectorize){
     dim = dim_rho*dim_rho; 
   }
+  upper_only = upper_only_;
 
-  /* Set up Gellmann basis matrices sigma */
-  setupGellmannMats(dim_rho, false, Gellmann_Re, Gellmann_Im);
-
-  /* Now store system matrices (-i*sigma) or vectorized -i(I kron sigma - sigma kron I) */
-
-  //if vectorizing, set up the identity matrix
-  Mat Id; 
-  if (vectorize) {
-    MatCreate(PETSC_COMM_WORLD, &Id);
-    MatSetType(Id, MATSEQAIJ);
-    MatSetSizes(Id, PETSC_DECIDE, PETSC_DECIDE, dim_rho, dim_rho);
-    for (int i=0; i<dim_rho; i++){
-      MatSetValue(Id, i, i, 1.0, INSERT_VALUES);
-    }
-    MatAssemblyBegin(Id, MAT_FINAL_ASSEMBLY);
-    MatAssemblyEnd(Id, MAT_FINAL_ASSEMBLY);
-  }
-  // -i*(Real_Gellmann), they go into Bd = Im(-iH)
-  for (int i=0; i<Gellmann_Re.size(); i++){
-    Mat myMat;
-    if (!vectorize){
-      MatDuplicate(Gellmann_Re[i],  MAT_COPY_VALUES, &myMat);
-      MatScale(myMat, -1.0);
-    } else {
-      Mat myMat1;
-      MatSeqAIJKron(Gellmann_Re[i], Id, MAT_INITIAL_MATRIX, &myMat);  // sigma^T kron I
-      MatSeqAIJKron(Id, Gellmann_Re[i], MAT_INITIAL_MATRIX, &myMat1); // I kron sigma
-      MatAXPY(myMat, -1.0, myMat1, DIFFERENT_NONZERO_PATTERN);
-    }
-    SystemMats_B.push_back(myMat);
-  }
-  // -i*(Imag_Gellmann), they go into Ad = Re(-iH) [note: no scaling by -1!]
-  Mat myMat;
-  for (int i=0; i<Gellmann_Im.size(); i++){
-    if (!vectorize){
-      MatDuplicate(Gellmann_Im[i],  MAT_COPY_VALUES, &myMat);
-    } else {
-      Mat myMat1;
-      MatSeqAIJKron(Gellmann_Im[i], Id, MAT_INITIAL_MATRIX, &myMat);  // sigma^T kron I
-      MatSeqAIJKron(Id, Gellmann_Im[i], MAT_INITIAL_MATRIX, &myMat1); // I kron sigma
-      MatAXPY(myMat, 1.0, myMat1, DIFFERENT_NONZERO_PATTERN);
-    }
-    SystemMats_A.push_back(myMat);
-  }
-  if (vectorize) MatDestroy(&Id);
-
-  /* Store number of basis matrices for the Hamiltonian */
-  nbasis = SystemMats_A.size() + SystemMats_B.size();
-}
-
-
-HamiltonianBasis::~HamiltonianBasis(){
-
-  for (int i=0; i< SystemMats_A.size(); i++){
-    MatDestroy(&SystemMats_A[i]);
-  }
-  for (int i=0; i<SystemMats_B.size(); i++){
-    MatDestroy(&SystemMats_B[i]);
-  }
-  SystemMats_A.clear();
-  SystemMats_B.clear();
-  for (int i=0; i<Gellmann_Re.size(); i++){
-    MatDestroy(&Gellmann_Re[i]);
-  }
-  for (int i=0; i<Gellmann_Im.size(); i++){
-    MatDestroy(&Gellmann_Im[i]);
-  }
-  Gellmann_Re.clear();
-  Gellmann_Im.clear();
-
-}
-
-
-/* Generalized Gellmann matrices, diagonally shifted such tha G_00 = 0 */
-void setupGellmannMats(int dim_rho, bool upperdiag_only, std::vector<Mat>& Gellmann_Real, std::vector<Mat>& Gellmann_Imag){
 
   /* First all offdiagonal matrices (re and im)*/
   for (int j=0; j<dim_rho; j++){
@@ -482,19 +406,19 @@ void setupGellmannMats(int dim_rho, bool upperdiag_only, std::vector<Mat>& Gellm
 
       /* Real sigma_jk^re = |j><k| + |k><j| */ 
       MatSetValue(G_re, j, k, 1.0, INSERT_VALUES);
-      if (!upperdiag_only) MatSetValue(G_re, k, j, 1.0, INSERT_VALUES);
-
+      if (!upper_only) MatSetValue(G_re, k, j, 1.0, INSERT_VALUES);
+      
       /* Imaginary sigma_jk^im = -i|j><k| + i|k><j| */ 
       MatSetValue(G_im, j, k, -1.0, INSERT_VALUES);
-      if (!upperdiag_only) MatSetValue(G_im, k, j, +1.0, INSERT_VALUES);
+      if (!upper_only) MatSetValue(G_im, k, j, +1.0, INSERT_VALUES);
 
       /* Assemble and store */
       MatAssemblyBegin(G_re, MAT_FINAL_ASSEMBLY);
       MatAssemblyBegin(G_im, MAT_FINAL_ASSEMBLY);
       MatAssemblyEnd(G_re, MAT_FINAL_ASSEMBLY);
       MatAssemblyEnd(G_im, MAT_FINAL_ASSEMBLY);
-      Gellmann_Real.push_back(G_re);
-      Gellmann_Imag.push_back(G_im);
+      BasisMat_Re.push_back(G_re);
+      BasisMat_Im.push_back(G_im);
     }
   }
 
@@ -514,17 +438,87 @@ void setupGellmannMats(int dim_rho, bool upperdiag_only, std::vector<Mat>& Gellm
     }
     MatAssemblyBegin(G_re, MAT_FINAL_ASSEMBLY);
     MatAssemblyEnd(G_re, MAT_FINAL_ASSEMBLY);
-    Gellmann_Real.push_back(G_re);
+    BasisMat_Re.push_back(G_re);
   }
 
-  // //TEST
-  // printf("All REAL Gellmann matrices:\n");
-  // for (int i=0; i<Gellmann_Real.size(); i++){
-  //   MatView(Gellmann_Real[i], NULL);
-  // }
-  // printf("All IMAG Gellmann matrices:\n");
-  // for (int i=0; i<Gellmann_Imag.size(); i++){
-  //   MatView(Gellmann_Imag[i], NULL);
-  // }
-  // exit(1);
+  /* Store the number of basis elements */
+  nbasis = BasisMat_Re.size() + BasisMat_Im.size();
 }
+
+GellmannBasis::~GellmannBasis(){
+ for (int i=0; i<BasisMat_Re.size(); i++){
+    MatDestroy(&BasisMat_Re[i]);
+  }
+  for (int i=0; i<BasisMat_Im.size(); i++){
+    MatDestroy(&BasisMat_Im[i]);
+  }
+  BasisMat_Re.clear();
+  BasisMat_Im.clear();
+}
+
+
+HamiltonianBasis::HamiltonianBasis(int dim_rho_, bool vectorize_) : GellmannBasis(dim_rho_, false, vectorize_) {
+
+  /* Set up and store the Hamiltonian system matrices:
+   *   (-i*sigma)   or vectorized   -i(I kron sigma - sigma kron I) 
+   */
+
+  //if vectorizing, set up the identity matrix
+  Mat Id; 
+  if (vectorize) {
+    MatCreate(PETSC_COMM_WORLD, &Id);
+    MatSetType(Id, MATSEQAIJ);
+    MatSetSizes(Id, PETSC_DECIDE, PETSC_DECIDE, dim_rho, dim_rho);
+    for (int i=0; i<dim_rho; i++){
+      MatSetValue(Id, i, i, 1.0, INSERT_VALUES);
+    }
+    MatAssemblyBegin(Id, MAT_FINAL_ASSEMBLY);
+    MatAssemblyEnd(Id, MAT_FINAL_ASSEMBLY);
+  }
+
+  // Set up -i*(Real_Gellmann), they go into Bd = Im(-iH)
+  for (int i=0; i<BasisMat_Re.size(); i++){
+    Mat myMat;
+    if (!vectorize){
+      MatDuplicate(BasisMat_Re[i],  MAT_COPY_VALUES, &myMat);
+      MatScale(myMat, -1.0);
+    } else {
+      Mat myMat1;
+      MatSeqAIJKron(BasisMat_Re[i], Id, MAT_INITIAL_MATRIX, &myMat);  // sigma^T kron I
+      MatSeqAIJKron(Id, BasisMat_Re[i], MAT_INITIAL_MATRIX, &myMat1); // I kron sigma
+      MatAXPY(myMat, -1.0, myMat1, DIFFERENT_NONZERO_PATTERN);
+    }
+    SystemMats_B.push_back(myMat);
+  }
+
+  // Set up -i*(Imag_BasisMat), they go into Ad = Re(-iH) [note: no scaling by -1!]
+  Mat myMat;
+  for (int i=0; i<BasisMat_Im.size(); i++){
+    if (!vectorize){
+      MatDuplicate(BasisMat_Im[i],  MAT_COPY_VALUES, &myMat);
+    } else {
+      Mat myMat1;
+      MatSeqAIJKron(BasisMat_Im[i], Id, MAT_INITIAL_MATRIX, &myMat);  // sigma^T kron I
+      MatSeqAIJKron(Id, BasisMat_Im[i], MAT_INITIAL_MATRIX, &myMat1); // I kron sigma
+      MatAXPY(myMat, 1.0, myMat1, DIFFERENT_NONZERO_PATTERN);
+    }
+    SystemMats_A.push_back(myMat);
+  }
+  if (vectorize) MatDestroy(&Id);
+}
+
+
+HamiltonianBasis::~HamiltonianBasis(){
+  for (int i=0; i< SystemMats_A.size(); i++){
+    MatDestroy(&SystemMats_A[i]);
+  }
+  for (int i=0; i<SystemMats_B.size(); i++){
+    MatDestroy(&SystemMats_B[i]);
+  }
+  SystemMats_A.clear();
+  SystemMats_B.clear();
+ 
+}
+
+
+  

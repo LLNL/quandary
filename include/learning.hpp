@@ -11,20 +11,31 @@
 #include<random>
 #pragma once
 
-/* Generalized Gellmann matrices, diagonally shifted such tha G_00 = 0 */
-// Optional: only get the upper diagonal part (including the diagonal itself)
-// Allocates the matrices and puts them into the vectors. Need to be destroyed after usage! 
 void setupGellmannMats(int dim_rho, bool upperdiag_only, std::vector<Mat>& Gellmann_Real, std::vector<Mat>& Gellmann_Imag);
 
+/* Generalized Gellmann matrices, diagonally shifted such tha G_00 = 0, optionally only upper part */
+class GellmannBasis {
+  protected:
+    int dim_rho;   /* Dimension of the Hilbertspace (N)*/
+    int dim;       /* N (if Schroedinger solver) or N^2 (if Lindblad) */
+    int nbasis;    /* Total number of basis matrices */
+    bool vectorize;  // is true if Lindblad solver, false otherwise
+    bool upper_only; // Optional: only get the upper diagonal part (including the diagonal itself)
+
+    std::vector<Mat> BasisMat_Re; /* All (purely) real basis matrices. Size = dim_rho = N */ 
+    std::vector<Mat> BasisMat_Im; /* All (purely) imaginary basis matrices. Size = dim_rho = N */ 
+
+  public:
+     GellmannBasis(int dim_rho_, bool upper_only_, bool vectorize_);
+    ~GellmannBasis();
+
+    int getNBasis(){return nbasis;};
+    Mat getBasisMat_Re(int id) {return BasisMat_Re[id];};
+    Mat getBasisMat_Im(int id) {return BasisMat_Im[id];};
+};
+
 /* Hamiltonian paramterization via generalized Gellman matrices, multiplied by (-i) and shifted s.t. G_00=0 */
-class HamiltonianBasis {
-
-  int dim_rho;   /* Dimension of the Hilbertspace (N)*/
-  int dim;       /* N (if Schroedinger solver) or N^2 (if Lindblad) */
-  int nbasis;    /* Total number of basis matrices */
-  bool vectorize; // true if Lindblad solver, false otherwise
-
-  std::vector<Mat> Gellmann_Re, Gellmann_Im;  // Gellmann matrices, size = dim_rho = N
+class HamiltonianBasis : public GellmannBasis {
 
   std::vector<Mat> SystemMats_A;  // System matrix: Real(-i*GellmannMatx)
   std::vector<Mat> SystemMats_B;  // System matrix: Imag(-i*GellmannMatx)
@@ -33,15 +44,11 @@ class HamiltonianBasis {
     HamiltonianBasis(int dim_rho_, bool vectorize_);
     ~HamiltonianBasis();
 
-    int getNBasis(){return nbasis;};
     int getNBasis_A(){return SystemMats_A.size();};
     int getNBasis_B(){return SystemMats_B.size();};
 
     Mat getSystemMat_A(int id) {return SystemMats_A[id];};
     Mat getSystemMat_B(int id) {return SystemMats_B[id];};
-
-    Mat getGellmann_Re(int id) {return Gellmann_Re[id];};
-    Mat getGellmann_Im(int id) {return Gellmann_Im[id];};
 };
 
 class Learning {
