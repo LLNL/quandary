@@ -77,22 +77,23 @@ Learning::~Learning(){
 }
 
 void Learning::applyLearnHamiltonian(Vec u, Vec v, Vec uout, Vec vout){
+
   // Real parts of (-i * H)
   for (int i=0; i< hamiltonian_basis->getNBasis_A(); i++){
     // uout += learnparamA * GellmannA * u
-    MatMult(hamiltonian_basis->getMat_A(i), u, aux);
+    MatMult(hamiltonian_basis->getSystemMat_A(i), u, aux);
     VecAXPY(uout, learnparamsH_A[i], aux); 
     // vout += learnparamA * GellmannA * v
-    MatMult(hamiltonian_basis->getMat_A(i), v, aux);
+    MatMult(hamiltonian_basis->getSystemMat_A(i), v, aux);
     VecAXPY(vout, learnparamsH_A[i], aux);
   }
   // Imaginary parts of (-i * H)
   for (int i=0; i< hamiltonian_basis->getNBasis_B(); i++){
     // uout -= learnparamB * GellmannB * v
-    MatMult(hamiltonian_basis->getMat_B(i), v, aux);
+    MatMult(hamiltonian_basis->getSystemMat_B(i), v, aux);
     VecAXPY(uout, -1.*learnparamsH_B[i], aux); 
     // vout += learnparamB * GellmannB * u
-    MatMult(hamiltonian_basis->getMat_B(i), u, aux);
+    MatMult(hamiltonian_basis->getSystemMat_B(i), u, aux);
     VecAXPY(vout, learnparamsH_B[i], aux);
   }
 }
@@ -113,25 +114,25 @@ void Learning::applyLearnHamiltonian_diff(Vec u, Vec v, Vec uout, Vec vout){
   // Real parts of (-i * H)
   for (int i=0; i< hamiltonian_basis->getNBasis_A(); i++){
     // uout += learnparamA * GellmannA^T * u
-    MatMultTranspose(hamiltonian_basis->getMat_A(i), u, aux);
+    MatMultTranspose(hamiltonian_basis->getSystemMat_A(i), u, aux);
     VecAXPY(uout, learnparamsH_A[i], aux); 
     // vout += learnparamA * GellmannA^T * v
-    MatMultTranspose(hamiltonian_basis->getMat_A(i), v, aux);
+    MatMultTranspose(hamiltonian_basis->getSystemMat_A(i), v, aux);
     VecAXPY(vout, learnparamsH_A[i], aux);
   }
   // Imaginary parts of (-i * H)
   for (int i=0; i< hamiltonian_basis->getNBasis_B(); i++){
     // uout += learnparamB * GellmannB^T * v
-    MatMultTranspose(hamiltonian_basis->getMat_B(i), v, aux);
+    MatMultTranspose(hamiltonian_basis->getSystemMat_B(i), v, aux);
     VecAXPY(uout, learnparamsH_B[i], aux); 
     // vout -= learnparamB * GellmannB^T * u
-    MatMultTranspose(hamiltonian_basis->getMat_B(i), u, aux);
+    MatMultTranspose(hamiltonian_basis->getSystemMat_B(i), u, aux);
     VecAXPY(vout, -1.*learnparamsH_B[i], aux);
   }
 }
 
 
-void Learning::getHamiltonian(Mat& Re, Mat& Im){
+void Learning::assembleHamiltonian(Mat& Re, Mat& Im){
 
   MatCreateDense(PETSC_COMM_SELF,PETSC_DECIDE, PETSC_DECIDE, dim_rho, dim_rho, NULL, &Re);
   MatCreateDense(PETSC_COMM_SELF,PETSC_DECIDE, PETSC_DECIDE, dim_rho, dim_rho, NULL, &Im);
@@ -142,30 +143,21 @@ void Learning::getHamiltonian(Mat& Re, Mat& Im){
   MatAssemblyEnd(Re, MAT_FINAL_ASSEMBLY);
   MatAssemblyEnd(Im, MAT_FINAL_ASSEMBLY);
 
-  if (dim > dim_rho) {
-    printf("getHamiltonianOperator() not implemented for Lindblad solver currently. Sorry!\n");
-    exit(1);
-  }
-
   /* Assemble the Hamiltonian */
-  // Note, the Gellmann BasisMats store A=Re(-i*sigma) and B=Im(-i*sigma), here we want to return A=sum Re(sigma) and B=sum Im(sigma), hence need to revert order.
+  // Note, the Gellmann BasisMats store A=Re(-i*sigma) and B=Im(-i*sigma), here we want to return A=sum Re(sigma) and B=sum Im(sigma), hence need to revert order (learnparams_A are for GellmannBasis_Re)
 
-  // -> if sigma was purely real, then -i*sigma is purely imaginary and hence stored in BasisMats_B
   for (int i=0; i<hamiltonian_basis->getNBasis_B(); i++) {
-    double fac = -learnparamsH_B[i] / (2.0*M_PI);
-    MatAXPY(Re, fac , hamiltonian_basis->getMat_B(i), SUBSET_NONZERO_PATTERN);
+    MatAXPY(Re, learnparamsH_B[i] / (2.0*M_PI), hamiltonian_basis->getGellmann_Re(i), DIFFERENT_NONZERO_PATTERN);
   }
-  // -> if sigma was purely imaginary, then -i*sigma is purely real and hence stored in BasisMats_A. Note that the -1 cancels out??
   for (int i=0; i<hamiltonian_basis->getNBasis_A(); i++) {
-    double fac = learnparamsH_A[i] / (2.0*M_PI);
-    MatAXPY(Im, fac, hamiltonian_basis->getMat_A(i), SUBSET_NONZERO_PATTERN);
+    MatAXPY(Im, learnparamsH_A[i] / (2.0*M_PI), hamiltonian_basis->getGellmann_Im(i), DIFFERENT_NONZERO_PATTERN);
   }
 }
 
 
 void Learning::setLearnParams(const Vec x){
 
-  /* Storage of parameters in x: First all for BasisMats_A, then all for BasisMats_B */
+  /* Storage of parameters in x: First all for SystemMats_A, then all for SystemMats_B */
 
   const PetscScalar* ptr;
   VecGetArrayRead(x, &ptr);
@@ -177,13 +169,6 @@ void Learning::setLearnParams(const Vec x){
     learnparamsH_B[i] = ptr[i+skip];
   }
   VecRestoreArrayRead(x, &ptr);
-
-  // for (int i=0; i<learnparamsH_A.size(); i++){
-  //   printf("A %1.14e% \n", learnparamsH_A[i]);
-  // }
-  // for (int i=0; i<learnparamsH_B.size(); i++){
-  //   printf("B %1.14e \n", learnparamsH_B[i]);
-  // }
 }
 
 void Learning::getLearnParams(double* x){
@@ -204,14 +189,14 @@ void Learning::dRHSdp_Ham(Vec grad, Vec u, Vec v, double alpha, Vec ubar, Vec vb
 
   for (int i=0; i< hamiltonian_basis->getNBasis_A(); i++){
 
-    MatMult(hamiltonian_basis->getMat_A(i), u, aux); VecDot(aux, ubar, &uAubar);
-    MatMult(hamiltonian_basis->getMat_A(i), v, aux); VecDot(aux, vbar, &vAvbar);
+    MatMult(hamiltonian_basis->getSystemMat_A(i), u, aux); VecDot(aux, ubar, &uAubar);
+    MatMult(hamiltonian_basis->getSystemMat_A(i), v, aux); VecDot(aux, vbar, &vAvbar);
     VecSetValue(grad, i, alpha*(uAubar + vAvbar), ADD_VALUES);
   }
   int skip = hamiltonian_basis->getNBasis_A();
   for (int i=0; i<hamiltonian_basis->getNBasis_B(); i++){
-    MatMult(hamiltonian_basis->getMat_B(i), u, aux); VecDot(aux, vbar, &uBvbar);
-    MatMult(hamiltonian_basis->getMat_B(i), v, aux); VecDot(aux, ubar, &vBubar);
+    MatMult(hamiltonian_basis->getSystemMat_B(i), u, aux); VecDot(aux, vbar, &uBvbar);
+    MatMult(hamiltonian_basis->getSystemMat_B(i), v, aux); VecDot(aux, ubar, &vBubar);
     VecSetValue(grad, i+skip, alpha*(-vBubar + uBvbar), ADD_VALUES);
   }
 
@@ -281,7 +266,7 @@ void Learning::initLearnableParams(std::vector<std::string> learninit_str, std::
   if (learninit_str[0].compare("file") == 0 ) {
     // Read parameter from file. 
 
-    /* Parameter file format: First all that corresponds to BasisMats_A = Real(-i*sigma), hence all those that correspond to purely imaginary basis matrices (for which -i*sigma) is real. Then all BasisMats_B = Imag(-i*sigma) where first come all offdiagonal ones, then all diagonal ones. */
+    /* Parameter file format: First all that corresponds to SystemMats_A = Real(-i*sigma), hence all those that correspond to purely imaginary basis matrices (for which -i*sigma) is real. Then all SystemMats_B = Imag(-i*sigma) where first come all offdiagonal ones, then all diagonal ones. */
 
     assert(learninit_str.size()>1);
     std::vector<double> initguess_fromfile(nparams, 0.0);
@@ -406,139 +391,12 @@ HamiltonianBasis::HamiltonianBasis(int dim_rho_, bool vectorize_){
     dim = dim_rho*dim_rho; 
   }
 
-  /* 1) Imaginary offdiagonal Gellman matrices:  sigma_jk^im = -i|j><k| + i|k><j| 
-        Note: (-i)sigma_jk^IM is real, hence stored into Gellman_A = Re(H) */
-  for (int j=0; j<dim_rho; j++){
-    for (int k=j+1; k<dim_rho; k++){
-      Mat myG;
-      MatCreate(PETSC_COMM_WORLD, &myG);
-      MatSetType(myG, MATMPIAIJ);
-      MatSetSizes(myG, PETSC_DECIDE, PETSC_DECIDE, dim, dim);
-      // MatMPIAIJSetPreallocation(myG, 2, NULL, 2, NULL);  // How many to allocate? Split into diag and off diag per proc.
-      MatSetUp(myG);
+  /* Set up Gellmann basis matrices sigma */
+  setupGellmannMats(dim_rho, false, Gellmann_Re, Gellmann_Im);
 
-      if (!vectorize) { // Schroedinger solver
-        int row = j;
-        int col = k;
-        MatSetValue(myG, row, col, -1.0, INSERT_VALUES);
-        MatSetValue(myG, col, row, +1.0, INSERT_VALUES);
-      } else {
-        // For Lindblad: I_N \kron (-i)sigma_jk^Im - (-i)sigma_jk^Im^T \kron I_N  */
-        //  -I\kron sigma_jk^Im
-        for (int i=0; i<dim_rho; i++){
-          int row = i*dim_rho + j;
-          int col = i*dim_rho + k;
-          MatSetValue(myG, row, col, -1.0, INSERT_VALUES);
-          MatSetValue(myG, col, row, +1.0, INSERT_VALUES);
-        }
-        // +sigma_jk^Im^T \kron I
-        for (int i=0; i<dim_rho; i++){
-          int row = k*dim_rho + i;
-          int col = j*dim_rho + i;
-          MatSetValue(myG, row, col, 1.0, INSERT_VALUES);
-          MatSetValue(myG, col, row, -1.0, INSERT_VALUES);
-        }
-      }
+  /* Now store system matrices (-i*sigma) or vectorized -i(I kron sigma - sigma kron I) */
 
-      MatAssemblyBegin(myG, MAT_FINAL_ASSEMBLY);
-      MatAssemblyEnd(myG, MAT_FINAL_ASSEMBLY);
-      BasisMats_A.push_back(myG);
-    }
-  }
-
-  /* 2) Real offdiagonal Gellman matrices:  sigma_jk^re = |j><k| + |k><j| 
-        Note: (-i)sigma_jk^RE is purely imaginary, hence into Gellman_B = Im(H) */
-  for (int j=0; j<dim_rho; j++){
-    for (int k=j+1; k<dim_rho; k++){
-      Mat myG;
-      MatCreate(PETSC_COMM_SELF, &myG);
-      MatSetType(myG, MATMPIAIJ);
-      MatSetSizes(myG, PETSC_DECIDE, PETSC_DECIDE, dim, dim);
-      // MatMPIAIJSetPreallocation(myG, 2, NULL, 2, NULL);  // How many to allocate? Split into diag and off diag per proc.
-      MatSetUp(myG);
-
-      if (!vectorize) { // Schroedinger solver
-        int row = j;
-        int col = k;
-        MatSetValue(myG, row, col, -1.0, INSERT_VALUES);
-        MatSetValue(myG, col, row, -1.0, INSERT_VALUES);
-      } else {
-        // For Lindblad: I_N \kron (-i)sigma_jk^Re - (-i)sigma_jk^Re \kron I_N  */
-        //  -I\kron sigma_jk^Re
-        for (int i=0; i<dim_rho; i++){
-          int row = i*dim_rho + j;
-          int col = i*dim_rho + k;
-          MatSetValue(myG, row, col, -1.0, INSERT_VALUES);
-          MatSetValue(myG, col, row, -1.0, INSERT_VALUES);
-        }
-        // +sigma_jk^Re \kron I
-        for (int i=0; i<dim_rho; i++){
-          int row = j*dim_rho + i;
-          int col = k*dim_rho + i;
-          MatSetValue(myG, row, col, 1.0, INSERT_VALUES);
-          MatSetValue(myG, col, row, 1.0, INSERT_VALUES);
-        }
-      }
-
-      MatAssemblyBegin(myG, MAT_FINAL_ASSEMBLY);
-      MatAssemblyEnd(myG, MAT_FINAL_ASSEMBLY);
-      BasisMats_B.push_back(myG);
-    }
-  }
-
-  /* 3) Real diagonal Gellman matrices:  sigma_l^Re = (2/(l(l+1))(sum_j|j><j| - l|l><l|) 
-        Note: (-i)sigma_l^RE is purely imaginary, hence into Gellman_B = Im(H) */
-  for (int l=1; l<dim_rho; l++){
-    Mat myG;
-    MatCreate(PETSC_COMM_SELF, &myG);
-    MatSetType(myG, MATMPIAIJ);
-    MatSetSizes(myG, PETSC_DECIDE, PETSC_DECIDE, dim, dim);
-    // MatMPIAIJSetPreallocation(myG, 2, NULL, 2, NULL);  // How many to allocate? Split into diag and off diag per proc.
-    MatSetUp(myG);
-
-    double prefactor = sqrt(2.0/(l*(l+1)));
-
-    if (!vectorize) { // Schroedinger solver
-      int row = l;
-      MatSetValue(myG, row, row, +1.0*l*prefactor, ADD_VALUES);
-      for (int j=l; j<dim_rho; j++){
-        int row = j;
-        MatSetValue(myG, row, row, +1.0*prefactor, ADD_VALUES);
-      }
-    } else { // Lindblad solver
-      // first part: -I\kron sigma_l
-      for (int i=0; i<dim_rho; i++){
-        int row = i*dim_rho + l;
-        MatSetValue(myG, row, row, +1.0*l*prefactor, ADD_VALUES);
-        for (int j=l; j<dim_rho; j++){
-          int row = i*dim_rho + j;
-          MatSetValue(myG, row, row, +1.0*prefactor, ADD_VALUES);
-        }
-      }
-      // second part: +sigma_l \kron I
-      for (int i=0; i<dim_rho; i++){
-        int row = l*dim_rho + i;
-        MatSetValue(myG, row, row, -1.0*l*prefactor, ADD_VALUES);
-        for (int j=l; j<dim_rho; j++){
-          int row = j*dim_rho + i;
-          MatSetValue(myG, row, row, -1.0*prefactor, ADD_VALUES);
-        }
-      }
-    }
-
-    MatAssemblyBegin(myG, MAT_FINAL_ASSEMBLY);
-    MatAssemblyEnd(myG, MAT_FINAL_ASSEMBLY);
-    BasisMats_B.push_back(myG);
-  }
-
-  // TEST Gellmann mats
-  std::vector<Mat> G_re, G_im;
-  std::vector<Mat> Test_A, Test_B;
-  setupGellmannMats(dim_rho, false, G_re, G_im);
-  // Now set up -isigma or vectorized -i(I kron sigma - sigma kron I)
-
-
-  // setup identity matrix, if vectorizing 
+  //if vectorizing, set up the identity matrix
   Mat Id; 
   if (vectorize) {
     MatCreate(PETSC_COMM_WORLD, &Id);
@@ -550,85 +408,59 @@ HamiltonianBasis::HamiltonianBasis(int dim_rho_, bool vectorize_){
     MatAssemblyBegin(Id, MAT_FINAL_ASSEMBLY);
     MatAssemblyEnd(Id, MAT_FINAL_ASSEMBLY);
   }
-
-  // First: -i*(Real_Gellmann), they go into Bd = Im(-iH)
-  for (int i=0; i<G_re.size(); i++){
+  // -i*(Real_Gellmann), they go into Bd = Im(-iH)
+  for (int i=0; i<Gellmann_Re.size(); i++){
     Mat myMat;
     if (!vectorize){
-      MatDuplicate(G_re[i],  MAT_COPY_VALUES, &myMat);
+      MatDuplicate(Gellmann_Re[i],  MAT_COPY_VALUES, &myMat);
       MatScale(myMat, -1.0);
     } else {
       Mat myMat1;
-      MatSeqAIJKron(G_re[i], Id, MAT_INITIAL_MATRIX, &myMat);  // sigma^T kron I
-      MatSeqAIJKron(Id, G_re[i], MAT_INITIAL_MATRIX, &myMat1); // I kron sigma
+      MatSeqAIJKron(Gellmann_Re[i], Id, MAT_INITIAL_MATRIX, &myMat);  // sigma^T kron I
+      MatSeqAIJKron(Id, Gellmann_Re[i], MAT_INITIAL_MATRIX, &myMat1); // I kron sigma
       MatAXPY(myMat, -1.0, myMat1, DIFFERENT_NONZERO_PATTERN);
     }
-    Test_B.push_back(myMat);
+    SystemMats_B.push_back(myMat);
   }
-  // Then: -i*(Imag_Gellmann), they go into Ad = Re(-iH) [note: no scaling by -1!]
+  // -i*(Imag_Gellmann), they go into Ad = Re(-iH) [note: no scaling by -1!]
   Mat myMat;
-  for (int i=0; i<G_im.size(); i++){
+  for (int i=0; i<Gellmann_Im.size(); i++){
     if (!vectorize){
-      MatDuplicate(G_im[i],  MAT_COPY_VALUES, &myMat);
+      MatDuplicate(Gellmann_Im[i],  MAT_COPY_VALUES, &myMat);
     } else {
       Mat myMat1;
-      MatSeqAIJKron(G_im[i], Id, MAT_INITIAL_MATRIX, &myMat);  // sigma^T kron I
-      MatSeqAIJKron(Id, G_im[i], MAT_INITIAL_MATRIX, &myMat1); // I kron sigma
+      MatSeqAIJKron(Gellmann_Im[i], Id, MAT_INITIAL_MATRIX, &myMat);  // sigma^T kron I
+      MatSeqAIJKron(Id, Gellmann_Im[i], MAT_INITIAL_MATRIX, &myMat1); // I kron sigma
       MatAXPY(myMat, 1.0, myMat1, DIFFERENT_NONZERO_PATTERN);
     }
-    Test_A.push_back(myMat);
+    SystemMats_A.push_back(myMat);
   }
+  if (vectorize) MatDestroy(&Id);
 
-  printf("Learnable basis matrices for dim=%d, dim_rho=%d, A-Mats:%d, B-Mats: %d\n", dim, dim_rho, BasisMats_A.size(), BasisMats_B.size() );
-  for (int i=0; i<BasisMats_A.size(); i++){
-    PetscBool equal = PETSC_FALSE;
-    MatEqual(BasisMats_A[i], Test_A[i], &equal);
-    printf("Basis A, equal = %d\n", equal);
-    if (!equal){
-      MatView(BasisMats_A[i], NULL);
-      MatView(Test_A[i], NULL);
-      // exit(1);
-    }
-  }
-  for (int i=0; i<BasisMats_B.size(); i++){
-    PetscBool equal = PETSC_FALSE;
-    MatEqual(BasisMats_B[i], Test_B[i], &equal);
-    printf("Basis B, equal = %d\n", equal);
-    assert(equal);
-  }
-  printf("SUCCESS\n");
-  // for (int i=0; i<BasisMats_A.size(); i++){
-  //   printf("ORIGINAL Gellman A: i=%d\n", i);
-  //   MatView(BasisMats_A[i], NULL);
-  // }
-  // for (int i=0; i<Test_A.size(); i++){
-  //   printf("NEW TEST Gellman A: i=%d\n", i);
-  //   MatView(Test_A[i], NULL);
-  // }
-  // for (int i=0; i<BasisMats_B.size(); i++){
-  //   printf("ORIGINAL Gellman B: i=%d\n", i);
-  //   MatView(BasisMats_B[i], NULL);
-  // }
-  // for (int i=0; i<Test_B.size(); i++){
-  //   printf("NEW TEST Gellman B: i=%d\n", i);
-  //   MatView(Test_B[i], NULL);
-  // }
-  exit(1);
-
-  nbasis = BasisMats_A.size() + BasisMats_B.size();
+  /* Store number of basis matrices for the Hamiltonian */
+  nbasis = SystemMats_A.size() + SystemMats_B.size();
 }
 
 
 HamiltonianBasis::~HamiltonianBasis(){
 
-  for (int i=0; i< BasisMats_A.size(); i++){
-    MatDestroy(&BasisMats_A[i]);
+  for (int i=0; i< SystemMats_A.size(); i++){
+    MatDestroy(&SystemMats_A[i]);
   }
-  for (int i=0; i<BasisMats_B.size(); i++){
-    MatDestroy(&BasisMats_B[i]);
+  for (int i=0; i<SystemMats_B.size(); i++){
+    MatDestroy(&SystemMats_B[i]);
   }
-  BasisMats_A.clear();
-  BasisMats_B.clear();
+  SystemMats_A.clear();
+  SystemMats_B.clear();
+  for (int i=0; i<Gellmann_Re.size(); i++){
+    MatDestroy(&Gellmann_Re[i]);
+  }
+  for (int i=0; i<Gellmann_Im.size(); i++){
+    MatDestroy(&Gellmann_Im[i]);
+  }
+  Gellmann_Re.clear();
+  Gellmann_Im.clear();
+
 }
 
 

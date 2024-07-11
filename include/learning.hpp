@@ -16,9 +16,7 @@
 // Allocates the matrices and puts them into the vectors. Need to be destroyed after usage! 
 void setupGellmannMats(int dim_rho, bool upperdiag_only, std::vector<Mat>& Gellmann_Real, std::vector<Mat>& Gellmann_Imag);
 
-/* Generalized Gellman matrices, multiplied by (-i) and shifted s.t. G_00=0 */
-// BasisMats_A stores (-i*sigma) if sigma is purely imaginary (hence (-i*sigma) is real)
-// BasisMats_B stores (-i*sigma) if sigma is purely real (hence (-i*sigma) is imaginary)
+/* Hamiltonian paramterization via generalized Gellman matrices, multiplied by (-i) and shifted s.t. G_00=0 */
 class HamiltonianBasis {
 
   int dim_rho;   /* Dimension of the Hilbertspace (N)*/
@@ -26,19 +24,24 @@ class HamiltonianBasis {
   int nbasis;    /* Total number of basis matrices */
   bool vectorize; // true if Lindblad solver, false otherwise
 
-  std::vector<Mat> BasisMats_A;  // Real(-i*GellmannMatx), for the generalized & shifted Gellmann matrices
-  std::vector<Mat> BasisMats_B;  // Imag(-i*GellmannMatx), for the generalized & shifted Gellmann matrices
+  std::vector<Mat> Gellmann_Re, Gellmann_Im;  // Gellmann matrices, size = dim_rho = N
+
+  std::vector<Mat> SystemMats_A;  // System matrix: Real(-i*GellmannMatx)
+  std::vector<Mat> SystemMats_B;  // System matrix: Imag(-i*GellmannMatx)
 
   public:
     HamiltonianBasis(int dim_rho_, bool vectorize_);
     ~HamiltonianBasis();
 
     int getNBasis(){return nbasis;};
-    int getNBasis_A(){return BasisMats_A.size();};
-    int getNBasis_B(){return BasisMats_B.size();};
+    int getNBasis_A(){return SystemMats_A.size();};
+    int getNBasis_B(){return SystemMats_B.size();};
 
-    Mat getMat_A(int id) {assert(id<BasisMats_A.size()); return BasisMats_A[id];};
-    Mat getMat_B(int id) {assert(id<BasisMats_B.size()); return BasisMats_B[id];};
+    Mat getSystemMat_A(int id) {return SystemMats_A[id];};
+    Mat getSystemMat_B(int id) {return SystemMats_B[id];};
+
+    Mat getGellmann_Re(int id) {return Gellmann_Re[id];};
+    Mat getGellmann_Im(int id) {return Gellmann_Im[id];};
 };
 
 class Learning {
@@ -103,7 +106,7 @@ class Learning {
     int getNData(){ return data.size(); };
 
     /* Assemble the learned operator. Allocates the (dense!) matrices Re(H) and Im(H), which hence must be destroyed after usage. */
-    void getHamiltonian(Mat& Re, Mat& Im);
+    void assembleHamiltonian(Mat& Re, Mat& Im);
 
     /* Pass learnable parameters to storage learnparamsH_A and learnparamsH_B*/
     void setLearnParams(const Vec x);
