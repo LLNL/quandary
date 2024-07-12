@@ -11,46 +11,55 @@
 #include<random>
 #pragma once
 
-void setupGellmannMats(int dim_rho, bool upperdiag_only, std::vector<Mat>& Gellmann_Real, std::vector<Mat>& Gellmann_Imag);
-
 /* Generalized Gellmann matrices, diagonally shifted such tha G_00 = 0, optionally only upper part */
 class GellmannBasis {
   protected:
     int dim_rho;   /* Dimension of the Hilbertspace (N)*/
     int dim;       /* N (if Schroedinger solver) or N^2 (if Lindblad) */
     int nbasis;    /* Total number of basis matrices */
-    bool vectorize;  // is true if Lindblad solver, false otherwise
+    LindbladType lindbladtype;  // decides whether or not to vectorize the system matrices
     bool upper_only; // Optional: only get the upper diagonal part (including the diagonal itself)
 
     std::vector<Mat> BasisMat_Re; /* All (purely) real basis matrices. Size = dim_rho = N */ 
     std::vector<Mat> BasisMat_Im; /* All (purely) imaginary basis matrices. Size = dim_rho = N */ 
 
+    std::vector<Mat> SystemMats_A;  // System matrix when applying the operator in Schroedinger's equation
+    std::vector<Mat> SystemMats_B;  // System matrix when applying the operator in Schroedinger's equation
+
+    Vec aux;     // Auxiliary vector to perform matvecs on Re(x) or Im(x)
+
   public:
-     GellmannBasis(int dim_rho_, bool upper_only_, bool vectorize_);
-    ~GellmannBasis();
+     GellmannBasis(int dim_rho_, bool upper_only_, LindbladType lindbladtype_);
+     virtual ~GellmannBasis();
 
     int getNBasis(){return nbasis;};
+    int getNBasis_Re(){return BasisMat_Re.size();};
+    int getNBasis_Im(){return BasisMat_Im.size();};
     Mat getBasisMat_Re(int id) {return BasisMat_Re[id];};
     Mat getBasisMat_Im(int id) {return BasisMat_Im[id];};
+
+    virtual void assembleSystemMats()=0;
+
+    virtual void applySystem(Vec u, Vec v, Vec uout, Vec vout, std::vector<double>& learnparams_Re, std::vector<double>& learnparams_Im) = 0;
+    virtual void applySystem_diff(Vec u, Vec v, Vec uout, Vec vout, std::vector<double>& learnparams_Re, std::vector<double>& learnparams_Im) = 0;
+    virtual void dRHSdp(Vec grad, Vec u, Vec v, double alpha, Vec ubar, Vec vbar) = 0;
 };
 
 /* Hamiltonian paramterization via generalized Gellman matrices, multiplied by (-i) and shifted s.t. G_00=0 */
 class HamiltonianBasis : public GellmannBasis {
 
-  std::vector<Mat> SystemMats_A;  // System matrix: Real(-i*GellmannMatx)
-  std::vector<Mat> SystemMats_B;  // System matrix: Imag(-i*GellmannMatx)
-
   Mat Operator_Re;  /* All assembled real operators */
   Mat Operator_Im;  /* All assembled imaginary operators */
 
   public:
-    HamiltonianBasis(int dim_rho_, bool vectorize_);
+    HamiltonianBasis(int dim_rho_, LindbladType lindbladtype);
     ~HamiltonianBasis();
+    
+    void assembleSystemMats();
 
-    int getNBasis_A(){return SystemMats_A.size();};
-    int getNBasis_B(){return SystemMats_B.size();};
-    Mat getSystemMat_A(int id) {return SystemMats_A[id];};
-    Mat getSystemMat_B(int id) {return SystemMats_B[id];};
+    void applySystem(Vec u, Vec v, Vec uout, Vec vout, std::vector<double>& learnparams_Re, std::vector<double>& learnparams_Im);
+    void applySystem_diff(Vec u, Vec v, Vec uout, Vec vout, std::vector<double>& learnparams_Re, std::vector<double>& learnparams_Im);
+    void dRHSdp(Vec grad, Vec u, Vec v, double alpha, Vec ubar, Vec vbar);
 
     void assembleOperator(std::vector<double>& learnparamsH_A, std::vector<double>& learnparamsH_B);
     Mat getOperator_Re() {return Operator_Re;};
@@ -58,17 +67,16 @@ class HamiltonianBasis : public GellmannBasis {
 };
 
 class LindbladBasis: public GellmannBasis {
-  std::vector<Mat> SystemMats_A;  // System matrix: Real(-i*GellmannMatx)
-  std::vector<Mat> SystemMats_B;  // System matrix: Imag(-i*GellmannMatx)
 
   public:
-    LindbladBasis(int dim_rho_, bool vectorize_);
+    LindbladBasis(int dim_rho_);
     ~LindbladBasis();
 
-    int getNBasis_A(){return SystemMats_A.size();};
-    int getNBasis_B(){return SystemMats_B.size();};
-    Mat getSystemMat_A(int id) {return SystemMats_A[id];};
-    Mat getSystemMat_B(int id) {return SystemMats_B[id];};
+    void assembleSystemMats();
+
+    void applySystem(Vec u, Vec v, Vec uout, Vec vout, std::vector<double>& learnparams_Re, std::vector<double>& learnparams_Im);
+    void applySystem_diff(Vec u, Vec v, Vec uout, Vec vout, std::vector<double>& learnparams_Re, std::vector<double>& learnparams_Im);
+    void dRHSdp(Vec grad, Vec u, Vec v, double alpha, Vec ubar, Vec vbar);
 };
 
 class Learning {
@@ -79,10 +87,10 @@ class Learning {
 
   HamiltonianBasis* hamiltonian_basis;  // Basis matrices for Hamiltonian term
   LindbladBasis* lindblad_basis;     // Basis matrices for Lindblad term 
-  std::vector<double> learnparamsH_A; // Learnable parameters for Hamiltonian
-  std::vector<double> learnparamsH_B; // Learnable parameters for Hamiltonian
-  std::vector<double> learnparamsL_A; // Learnable parameters for Lindblad
-  std::vector<double> learnparamsL_B; // Learnable parameters for Lindblad
+  std::vector<double> learnparamsH_Re; // Learnable parameters for Hamiltonian
+  std::vector<double> learnparamsH_Im; // Learnable parameters for Hamiltonian
+  std::vector<double> learnparamsL_Re; // Learnable parameters for Lindblad
+  std::vector<double> learnparamsL_Im; // Learnable parameters for Lindblad
   
   int nparams;           /* Total Number of learnable paramters*/
 
@@ -91,8 +99,7 @@ class Learning {
   int loss_every_k;      /* Add to loss at every k-th timestep */
   std::vector<Vec> data; /* List of all data point (rho_data) at each data_dtAWG */
 
-  Vec aux;     // Auxiliary vector to perform matvecs on Re(x) or Im(x)
-  Vec aux2;    // Auxiliary vector to perform matvecs on x
+  Vec aux2;    // Auxiliary vector to perform matvecs on state x during Loss
 
   int mpirank_world;
   bool quietmode;
@@ -113,15 +120,13 @@ class Learning {
     void initLearnableParams(std::vector<std::string> learninit_str, std::default_random_engine rand_engine);
 
     /* Applies UDE terms to input state (u,v) */
-    void applyLearnHamiltonian(Vec u, Vec v, Vec uout, Vec vout);
-    void applyLearnLindblad(Vec u, Vec v, Vec uout, Vec vout);
+    void applyLearningTerms(Vec u, Vec v, Vec uout, Vec vout);
     /* Adjoint gradient: Sets (uout,vout) = dFWD^T *(u,v) */
-    void applyLearnHamiltonian_diff(Vec u, Vec v, Vec uout, Vec vout);
-    void applyLearnLindblad_diff(Vec u, Vec v, Vec uout, Vec vout);
+    void applyLearningTerms_diff(Vec u, Vec v, Vec uout, Vec vout);
 
     /* Reduced gradient for Hamiltonian part: 
        Sets grad += alpha * (dRHS(u,v)/dgamma)^T *(ubar, vbar) */
-    void dRHSdp_Ham(Vec grad, Vec u, Vec v, double alpha, Vec ubar, Vec vbar);
+    void dRHSdp(Vec grad, Vec u, Vec v, double alpha, Vec ubar, Vec vbar);
 
     /* Load data from file */
     void loadData(std::string data_name, double data_dtAWG, int data_ntime);
