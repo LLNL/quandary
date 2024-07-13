@@ -214,7 +214,7 @@ void HamiltonianBasis::applySystem_diff(Vec u, Vec v, Vec uout, Vec vout, std::v
   }
 }
 
-void HamiltonianBasis::dRHSdp(Vec grad, Vec u, Vec v, double alpha, Vec ubar, Vec vbar){
+void HamiltonianBasis::dRHSdp(Vec grad, Vec u, Vec v, double alpha, Vec ubar, Vec vbar, int skipID){
 // Note: learnparam storage is [learn_Re, learn_Im]. For the Hamiltonian, learn_Re is applied to System_A and learn_Im is applied to System_B. Hence, invert order here: First part of the gradient goes with System_B (learn_Re), and second goes with System_A (learn_Im).
 
   // gamma_bar_A += alpha * (  u^t sigma_A^t ubar + v^t sigma_A^t vbar )
@@ -232,7 +232,6 @@ void HamiltonianBasis::dRHSdp(Vec grad, Vec u, Vec v, double alpha, Vec ubar, Ve
     MatMult(SystemMats_A[i], v, aux); VecDot(aux, vbar, &vAvbar);
     VecSetValue(grad, i+skip, alpha*(uAubar + vAvbar), ADD_VALUES);
   }
-
 }
 
 void HamiltonianBasis::assembleOperator(std::vector<double>& learnparams_Re, std::vector<double>& learnparams_Im){
@@ -289,20 +288,65 @@ void LindbladBasis::assembleSystemMats(){
   }
 }
 
-void LindbladBasis::applySystem(Vec u, Vec v, Vec uout, Vec vout, std::vector<double>& learnparamsL_A, std::vector<double>& learnparamsL_B){
-  printf("\n\nTODO.\n");
-  exit(1);
+void LindbladBasis::applySystem(Vec u, Vec v, Vec uout, Vec vout, std::vector<double>& learnparamsL_Re, std::vector<double>& learnparamsL_Im){
+
+  // Real parts of (-i * H)
+  for (int i=0; i< SystemMats_A.size(); i++){
+    // uout += learnparam_Re * SystemA * u
+    MatMult(SystemMats_A[i], u, aux);
+    VecAXPY(uout, learnparamsL_Re[i], aux); 
+    // vout += learnparam_Re * SystemA * v
+    MatMult(SystemMats_A[i], v, aux);
+    VecAXPY(vout, learnparamsL_Re[i], aux);
+  }
+  // Imaginary parts of (-i * H)
+  for (int i=0; i< SystemMats_B.size(); i++){
+    // uout -= learnparam_Im * SystemB * v
+    MatMult(SystemMats_B[i], v, aux);
+    VecAXPY(uout, -1.*learnparamsL_Im[i], aux); 
+    // vout += learnparam_Im * SystemB * u
+    MatMult(SystemMats_B[i], u, aux);
+    VecAXPY(vout, learnparamsL_Im[i], aux);
+  }
 }
 
-void LindbladBasis::applySystem_diff(Vec u, Vec v, Vec uout, Vec vout, std::vector<double>& learnparamsL_A, std::vector<double>& learnparamsL_B){
-  printf("\n\nTODO.\n");
-  exit(1);
+void LindbladBasis::applySystem_diff(Vec u, Vec v, Vec uout, Vec vout, std::vector<double>& learnparamsL_Re, std::vector<double>& learnparamsL_Im){
+  // Real parts of (-i * H)
+  for (int i=0; i< SystemMats_A.size(); i++){
+    // uout += learnparam_Re * SystemMat_A^T * u
+    MatMultTranspose(SystemMats_A[i], u, aux);
+    VecAXPY(uout, learnparamsL_Re[i], aux); 
+    // vout += learnparam_Re * SystemMat_A^T * v
+    MatMultTranspose(SystemMats_A[i], v, aux);
+    VecAXPY(vout, learnparamsL_Re[i], aux);
+  }
+  // Imaginary parts of (-i * H)
+  for (int i=0; i< SystemMats_B.size(); i++){
+    // uout += learnparam_Im * SystemMat_B^T * v
+    MatMultTranspose(SystemMats_B[i], v, aux);
+    VecAXPY(uout, learnparamsL_Im[i], aux); 
+    // vout -= learnparam_Im * SystemMat_B^T * u
+    MatMultTranspose(SystemMats_B[i], u, aux);
+    VecAXPY(vout, -1.*learnparamsL_Im[i], aux);
+  }
 }
 
 
-void LindbladBasis::dRHSdp(Vec grad, Vec u, Vec v, double alpha, Vec ubar, Vec vbar){
-  printf("\n\nTODO.\n");
-  exit(1);
+void LindbladBasis::dRHSdp(Vec grad, Vec u, Vec v, double alpha, Vec ubar, Vec vbar, int skip){
+ double uAubar, vAvbar, vBubar, uBvbar;
+  // Note: Storage in grad corresponds to x = [learn_H, learn_L], so need to skip to the second part of the gradient] 
+
+  for (int i=0; i< SystemMats_A.size(); i++){
+    MatMult(SystemMats_A[i], u, aux); VecDot(aux, ubar, &uAubar);
+    MatMult(SystemMats_A[i], v, aux); VecDot(aux, vbar, &vAvbar);
+    VecSetValue(grad, i+skip, alpha*(uAubar + vAvbar), ADD_VALUES);
+  }
+  skip += SystemMats_A.size();
+  for (int i=0; i<SystemMats_B.size(); i++){
+    MatMult(SystemMats_B[i], u, aux); VecDot(aux, vbar, &uBvbar);
+    MatMult(SystemMats_B[i], v, aux); VecDot(aux, ubar, &vBubar);
+    VecSetValue(grad, i+skip, alpha*(-vBubar + uBvbar), ADD_VALUES);
+  }
 }
 
 
@@ -342,7 +386,7 @@ Learning::Learning(std::vector<int>& nlevels, LindbladType lindbladtype_, std::v
     nparams = hamiltonian_basis->getNBasis() + lindblad_basis->getNBasis();
 
     /* Allocate learnable Hamiltonian and Lindblad parameters, and set an initial guess */
-    initLearnableParams(learninit_str, rand_engine);
+    initLearnParams(learninit_str, rand_engine);
 
     /* Load trajectory data from file */
     loadData(data_name, data_dtAWG, data_ntime);
@@ -398,22 +442,25 @@ void Learning::viewOperators(){
   printf("Learned Hamiltonian operator: Im = \n");
   MatView(hamiltonian_basis->getOperator_Im(), NULL);
 
-  // for (int i=0; i<lindblad_basis->SystemMats_A.size(); i++){
-  //   printf("Lindblad: %d \n", i);
-  //   MatScale(lindblad_basis->getBasisMat_Re(i), learnparamsL_A[i]);
-  //   MatView(lindblad_basis->getBasisMat_Re(i), NULL);
-  //   // Revert scaling, just to be safe...
-  //   MatScale(lindblad_basis->getBasisMat_Re(i), 1.0/learnparamsL_A[i]);
-  // }
+  for (int i=0; i<lindblad_basis->getNBasis_Re(); i++){
+    printf("Lindblad: %d \n", i);
+    MatScale(lindblad_basis->getBasisMat_Re(i), learnparamsL_Re[i]);
+    MatView(lindblad_basis->getBasisMat_Re(i), NULL);
+    // Revert scaling, just to be safe...
+    MatScale(lindblad_basis->getBasisMat_Re(i), 1.0/learnparamsL_Re[i]);
+  }
 }
 
 
 void Learning::setLearnParams(const Vec x){
-
-  /* Storage of parameters in x: First all for BasisMats_Real, then all for BasisMats_Imag */
+  /* Storage of parameters in x:  
+   *   x = [learnparamH_Re, learnparamH_Im, learnparamL_Re, learnparamL_Im ] 
+   */
 
   const PetscScalar* ptr;
   VecGetArrayRead(x, &ptr);
+  
+  // Hamiltonian parameters first
   for (int i=0; i<hamiltonian_basis->getNBasis_Re(); i++) {
     learnparamsH_Re[i] = ptr[i];
   }
@@ -421,25 +468,48 @@ void Learning::setLearnParams(const Vec x){
   for (int i=0; i<hamiltonian_basis->getNBasis_Im(); i++){
     learnparamsH_Im[i] = ptr[i+skip];
   }
-  VecRestoreArrayRead(x, &ptr);
+  // Lindblad terms next
+  skip = hamiltonian_basis->getNBasis();
+  for (int i=0; i<lindblad_basis->getNBasis_Re(); i++) {
+    learnparamsH_Re[i] = ptr[i+skip];
+  }
+  skip += lindblad_basis->getNBasis_Re();
+  for (int i=0; i<lindblad_basis->getNBasis_Im(); i++){
+    learnparamsH_Im[i] = ptr[i+skip];
+  }
 
-  // TODO: Lindblad terms
+  VecRestoreArrayRead(x, &ptr);
 }
 
 void Learning::getLearnParams(double* x){
+  /* Storage of parameters in x:  
+   *   x = [learnparamH_Re, learnparamH_Im, learnparamL_Re, learnparamL_Im ] 
+   */
+  // Hamiltonian parameters first
   for (int i=0; i<hamiltonian_basis->getNBasis_Re(); i++) {
-    x[i]        = learnparamsH_Re[i];
+    x[i]      = learnparamsH_Re[i];
   }
   int skip = hamiltonian_basis->getNBasis_Re();
   for (int i=0; i<hamiltonian_basis->getNBasis_Im(); i++){
     x[i+skip] = learnparamsH_Im[i];
   }
+  // Lindblad terms next
+  skip = hamiltonian_basis->getNBasis();
+  for (int i=0; i<lindblad_basis->getNBasis_Re(); i++) {
+    x[i+skip] = learnparamsL_Re[i];
+  }
+  skip += lindblad_basis->getNBasis_Re();
+  for (int i=0; i<lindblad_basis->getNBasis_Im(); i++){
+    x[i+skip] = learnparamsL_Im[i];
+  }
 }
 
 void Learning::dRHSdp(Vec grad, Vec u, Vec v, double alpha, Vec ubar, Vec vbar){
-
+  /* Storage of parameters in x:  
+   *   x = [learnparamH_Re, learnparamH_Im, learnparamL_Re, learnparamL_Im ] 
+   */
   hamiltonian_basis->dRHSdp(grad, u, v, alpha, ubar, vbar);
-  // lindblad_basis->dRHSdp(grad, u, v, alpha, ubar, vbar);
+  lindblad_basis->dRHSdp(grad, u, v, alpha, ubar, vbar, hamiltonian_basis->getNBasis());
 
   VecAssemblyBegin(grad);
   VecAssemblyEnd(grad);
@@ -501,16 +571,17 @@ void Learning::loadData(std::string data_name, double data_dtAWG, int data_ntime
 
 
 
-void Learning::initLearnableParams(std::vector<std::string> learninit_str, std::default_random_engine rand_engine){
-
+void Learning::initLearnParams(std::vector<std::string> learninit_str, std::default_random_engine rand_engine){
   // Switch over initialization string ("file", "constant", or "random")
-  if (learninit_str[0].compare("file") == 0 ) {
-    // Read parameter from file. 
 
-    /* Parameter file format: First all that corresponds to purely real basis matrices, where first come all offdiagonal ones, then all diagonal ones, and then all that correspond to imaginary basis matrices. */
+  if (learninit_str[0].compare("file") == 0 ) { //  Read parameter from file. 
 
-    assert(learninit_str.size()>1);
+    /* Parameter file format:  One column containing all learnable paramters as 
+     *    x = [learnparamH_Re, learnparamH_Im, learnparamL_Re, learnparamL_Im ] 
+     */
+    int nparams = hamiltonian_basis->getNBasis() + lindblad_basis->getNBasis();
     std::vector<double> initguess_fromfile(nparams, 0.0);
+    assert(learninit_str.size()>1);
     if (mpirank_world == 0) {
       read_vector(learninit_str[1].c_str(), initguess_fromfile.data(), nparams, quietmode);
     }
@@ -524,19 +595,19 @@ void Learning::initLearnableParams(std::vector<std::string> learninit_str, std::
     for (int i=0; i<=hamiltonian_basis->getNBasis_Im(); i++){
       learnparamsH_Im.push_back(initguess_fromfile[i + skip]); 
     }
-    // int skip = hamiltonian_basis->getNBasis();
-
-    // // Then set all Lindblad params
-    // for (int i=0; i<lindblad_basis->SystemMats_A.size()(); i++){
-    //   learnparamsL_A.push_back(initguess_fromfile[skip + i]); 
-    // }
-    // for (int i=0; i<=lindblad_basis->SystemMats_B.size()(); i++){
-    //   learnparamsL_B.push_back(initguess_fromfile[skip + i + lindblad_basis->SystemMats_A.size()()]); 
-    // }
+    // Then set all Lindblad params
+    skip = hamiltonian_basis->getNBasis();
+    for (int i=0; i<lindblad_basis->getNBasis_Re(); i++){
+      learnparamsL_Re.push_back(initguess_fromfile[skip + i]); 
+    }
+    skip = hamiltonian_basis->getNBasis() + lindblad_basis->getNBasis_Re();
+    for (int i=0; i<=lindblad_basis->getNBasis_Im(); i++){
+      learnparamsL_Im.push_back(initguess_fromfile[skip + i]); 
+    }
   } else if (learninit_str[0].compare("random") == 0 ) {
     // Set uniform random parameters in [0,amp)
 
-    // First all Hamiltonian parameters
+    // First all Hamiltonian parameters, multiply by 2*M_PI
     assert(learninit_str.size()>1);
     double amp = atof(learninit_str[1].c_str());
     std::uniform_real_distribution<double> unit_dist(0.0, amp);
@@ -546,17 +617,18 @@ void Learning::initLearnableParams(std::vector<std::string> learninit_str, std::
     for (int i=0; i<hamiltonian_basis->getNBasis_Im(); i++){
       learnparamsH_Im.push_back(unit_dist(rand_engine) * 2.0*M_PI); // radians
     }
-    // // Then all Lindblad parameters
-    // assert(learninit_str.size()>2);
-    // amp = atof(learninit_str[2].c_str());
-    // std::uniform_real_distribution<double> unit_dist(0.0, amp);
-    // for (int i=0; i<lindblad_basis->SystemMats_A.size()(); i++){
-    //   learnparamsL_A.push_back(unit_dist(rand_engine)); // ns?
-    // }
-    // for (int i=0; i<lindblad_basis->SystemMats_B.size()(); i++){
-    //   learnparamsL_B.push_back(unit_dist(rand_engine)); // ns? 
-    // }
-
+    // Then all Lindblad parameters
+    if (lindblad_basis->getNBasis() > 0) {
+      assert(learninit_str.size()>2);
+      amp = atof(learninit_str[2].c_str());
+      std::uniform_real_distribution<double> unit_dist2(0.0, amp);
+      for (int i=0; i<lindblad_basis->getNBasis_Re(); i++){
+        learnparamsL_Re.push_back(unit_dist2(rand_engine)); // ns?
+      }
+      for (int i=0; i<lindblad_basis->getNBasis_Im(); i++){
+        learnparamsL_Im.push_back(unit_dist2(rand_engine)); // ns? 
+      }
+    }
   } else if (learninit_str[0].compare("constant") == 0 ) {
     // Set constant amp
     // First all Hamiltonian parameters
@@ -568,15 +640,17 @@ void Learning::initLearnableParams(std::vector<std::string> learninit_str, std::
     for (int i=0; i<hamiltonian_basis->getNBasis_Im(); i++){
       learnparamsH_Im.push_back(amp * 2.0*M_PI);
     }
-    // // Then all Lindblad parameters
-    // assert(learninit_str.size()>2);
-    // amp = atof(learninit_str[2].c_str());
-    // for (int i=0; i<lindblad_basis->SystemMats_A.size()(); i++){
-    //   learnparamsL_A.push_back(amp); // ns?
-    // }
-    // for (int i=0; i<lindblad_basis->SystemMats_B.size()(); i++){
-    //   learnparamsL_B.push_back(amp); // ns? 
-    // }
+    // Then all Lindblad parameters
+    if (lindblad_basis->getNBasis() > 0) {
+      assert(learninit_str.size()>2);
+      amp = atof(learninit_str[2].c_str());
+      for (int i=0; i<lindblad_basis->getNBasis_Re(); i++){
+        learnparamsL_Re.push_back(amp); // ns?
+      }
+      for (int i=0; i<lindblad_basis->getNBasis_Re(); i++){
+        learnparamsL_Im.push_back(amp); // ns? 
+      }
+    }
   } else {
     printf("ERROR: Wrong configuration for learnable parameter initialization. Choose 'file, <pathtofile>', or 'random, <amplitude_Ham>, <amplitude_Lindblad>', or 'constant, <amplitude_Ham>, <amplitude_Lind>'\n");
     exit(1);

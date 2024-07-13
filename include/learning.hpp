@@ -42,7 +42,7 @@ class GellmannBasis {
 
     virtual void applySystem(Vec u, Vec v, Vec uout, Vec vout, std::vector<double>& learnparams_Re, std::vector<double>& learnparams_Im) = 0;
     virtual void applySystem_diff(Vec u, Vec v, Vec uout, Vec vout, std::vector<double>& learnparams_Re, std::vector<double>& learnparams_Im) = 0;
-    virtual void dRHSdp(Vec grad, Vec u, Vec v, double alpha, Vec ubar, Vec vbar) = 0;
+    virtual void dRHSdp(Vec grad, Vec u, Vec v, double alpha, Vec ubar, Vec vbar, int skipID=0) = 0;
 };
 
 /* Hamiltonian paramterization via generalized Gellman matrices, multiplied by (-i) and shifted s.t. G_00=0 */
@@ -59,7 +59,7 @@ class HamiltonianBasis : public GellmannBasis {
 
     void applySystem(Vec u, Vec v, Vec uout, Vec vout, std::vector<double>& learnparams_Re, std::vector<double>& learnparams_Im);
     void applySystem_diff(Vec u, Vec v, Vec uout, Vec vout, std::vector<double>& learnparams_Re, std::vector<double>& learnparams_Im);
-    void dRHSdp(Vec grad, Vec u, Vec v, double alpha, Vec ubar, Vec vbar);
+    void dRHSdp(Vec grad, Vec u, Vec v, double alpha, Vec ubar, Vec vbar, int skipID=0);
 
     void assembleOperator(std::vector<double>& learnparamsH_A, std::vector<double>& learnparamsH_B);
     Mat getOperator_Re() {return Operator_Re;};
@@ -76,7 +76,7 @@ class LindbladBasis: public GellmannBasis {
 
     void applySystem(Vec u, Vec v, Vec uout, Vec vout, std::vector<double>& learnparams_Re, std::vector<double>& learnparams_Im);
     void applySystem_diff(Vec u, Vec v, Vec uout, Vec vout, std::vector<double>& learnparams_Re, std::vector<double>& learnparams_Im);
-    void dRHSdp(Vec grad, Vec u, Vec v, double alpha, Vec ubar, Vec vbar);
+    void dRHSdp(Vec grad, Vec u, Vec v, double alpha, Vec ubar, Vec vbar, int skipID=0);
 };
 
 class Learning {
@@ -117,7 +117,7 @@ class Learning {
     int getNParams(){ return nparams; };
 
     /* Initialize learnable parameters. */
-    void initLearnableParams(std::vector<std::string> learninit_str, std::default_random_engine rand_engine);
+    void initLearnParams(std::vector<std::string> learninit_str, std::default_random_engine rand_engine);
 
     /* Applies UDE terms to input state (u,v) */
     void applyLearningTerms(Vec u, Vec v, Vec uout, Vec vout);
