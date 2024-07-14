@@ -514,7 +514,7 @@ int main(int argc,char **argv)
     optimctx->getStartingPoint(xinit);
     if (mpirank_world == 0 && !quietmode) printf("\nEvaluating current controls ... \n");
     output->writeParams(xinit);
-    output->writeControls(xinit, mastereq, ntime, dt);
+    output->writeControls(mastereq, ntime, dt);
   }
 
   /* Output */

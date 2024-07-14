@@ -567,9 +567,6 @@ void OptimProblem::getStartingPoint(Vec xinit){
     }
     VecRestoreArray(xinit, &xptr);
 
-    /* Write initial control pulses to file */
-    output->writeControls(xinit, timestepper->mastereq, timestepper->ntime, timestepper->dt);
-
   } else { // optim wrt learning parameters 
     // Copy from initialization in learning constructor
     PetscScalar* xptr;
@@ -577,6 +574,9 @@ void OptimProblem::getStartingPoint(Vec xinit){
     mastereq->learning->getLearnParams(xptr);
     VecRestoreArray(xinit, &xptr);
   }
+
+  /* Write initial control pulses to file */
+  output->writeControls(timestepper->mastereq, timestepper->ntime, timestepper->dt);
 
   /* Write initial optimization paramters to file */
   output->writeParams(xinit);
@@ -622,9 +622,7 @@ PetscErrorCode TaoMonitor(Tao tao,void*ptr){
   ctx->output->writeParams(params);
 
   /* Print control pulses to file */
-  if (ctx->x_is_control) {
-    ctx->output->writeControls(params, ctx->timestepper->mastereq, ctx->timestepper->ntime, ctx->timestepper->dt);
-  }
+  ctx->output->writeControls(ctx->timestepper->mastereq, ctx->timestepper->ntime, ctx->timestepper->dt);
 
   /* Screen output */
   if (ctx->getMPIrank_world() == 0 && iter == 0) {

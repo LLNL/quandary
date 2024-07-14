@@ -44,7 +44,7 @@ class Output{
     void writeOptimFile(double objective, double gnorm, double stepsize, double Favg, double cost, double tikh_regul,  double penalty, double penalty_dpdm, double penalty_energy);
 
     /* Write current control pulses to file */
-    void writeControls(Vec params, MasterEq* mastereq, int ntime, double dt);
+    void writeControls(MasterEq* mastereq, int ntime, double dt);
 
     /* Write optimization parameters to file */
     void writeParams(Vec params);

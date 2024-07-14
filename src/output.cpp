@@ -123,7 +123,7 @@ void Output::writeParams(Vec params) {
   }
 }
 
-void Output::writeControls(Vec params, MasterEq* mastereq, int ntime, double dt){
+void Output::writeControls(MasterEq* mastereq, int ntime, double dt){
 
   /* Write controls every <outfreq> iterations */
   if ( mpirank_world == 0 ) { 
@@ -132,7 +132,6 @@ void Output::writeControls(Vec params, MasterEq* mastereq, int ntime, double dt)
     char filename[255];
 
     /* Print control pulse for each oscillator to file */
-    mastereq->setControlAmplitudes(params);
     for (int ioscil = 0; ioscil < mastereq->getNOscillators(); ioscil++) {
       snprintf(filename, 254, "%s/control%d.dat", datadir.c_str(), ioscil);
       file_c = fopen(filename, "w");
