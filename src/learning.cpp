@@ -420,6 +420,8 @@ Learning::~Learning(){
 
 void Learning::applyLearningTerms(Vec u, Vec v, Vec uout, Vec vout){
 
+  if (dim_rho <= 0) return;
+
   hamiltonian_basis->applySystem(u, v, uout, vout, learnparamsH_Re, learnparamsH_Im);
   // lindblad_basis->applySystem(u, v, uout, vout, learnparamsL_A, learnparamsL_B);
 }
@@ -429,12 +431,16 @@ void Learning::applyLearningTerms(Vec u, Vec v, Vec uout, Vec vout){
 
 void Learning::applyLearningTerms_diff(Vec u, Vec v, Vec uout, Vec vout){
 
+  if (dim_rho <= 0) return;
+
   hamiltonian_basis->applySystem_diff(u,v,uout, vout, learnparamsH_Re, learnparamsH_Im);
   // lindblad_basis->applySystem_diff(u,v,uout, vout, learnparamsH_A, learnparamsH_B);
 }
 
 
 void Learning::viewOperators(){
+
+  if (dim_rho <= 0) return;
 
   hamiltonian_basis->assembleOperator(learnparamsH_Re, learnparamsH_Im);
   printf("\nLearned Hamiltonian operator: Re = \n");
@@ -508,6 +514,9 @@ void Learning::dRHSdp(Vec grad, Vec u, Vec v, double alpha, Vec ubar, Vec vbar){
   /* Storage of parameters in x:  
    *   x = [learnparamH_Re, learnparamH_Im, learnparamL_Re, learnparamL_Im ] 
    */
+
+  if (dim_rho <= 0) return;
+
   hamiltonian_basis->dRHSdp(grad, u, v, alpha, ubar, vbar);
   lindblad_basis->dRHSdp(grad, u, v, alpha, ubar, vbar, hamiltonian_basis->getNBasis());
 
@@ -619,6 +628,7 @@ void Learning::initLearnParams(std::vector<std::string> learninit_str, std::defa
     }
     // Then all Lindblad parameters
     if (lindblad_basis->getNBasis() > 0) {
+      if (learninit_str.size() == 2) learninit_str.push_back(learninit_str[1]);
       assert(learninit_str.size()>2);
       amp = atof(learninit_str[2].c_str());
       std::uniform_real_distribution<double> unit_dist2(0.0, amp);
@@ -642,6 +652,7 @@ void Learning::initLearnParams(std::vector<std::string> learninit_str, std::defa
     }
     // Then all Lindblad parameters
     if (lindblad_basis->getNBasis() > 0) {
+      if (learninit_str.size() == 2) learninit_str.push_back(learninit_str[1]);
       assert(learninit_str.size()>2);
       amp = atof(learninit_str[2].c_str());
       for (int i=0; i<lindblad_basis->getNBasis_Re(); i++){
@@ -659,6 +670,8 @@ void Learning::initLearnParams(std::vector<std::string> learninit_str, std::defa
 
 
 void Learning::addToLoss(int timestepID, Vec x){
+
+  if (dim_rho <= 0) return;
 
   // Add to loss only every k-th timestep, and if data exists
   int dataID = -1;
@@ -681,6 +694,8 @@ void Learning::addToLoss(int timestepID, Vec x){
 
 
 void Learning::addToLoss_diff(int timestepID, Vec xbar, Vec xprimal, double Jbar_loss){
+
+  if (dim_rho <= 0) return;
 
   // Add to loss only every k-th timestep, and if data exists
   int dataID = -1;
