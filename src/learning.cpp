@@ -285,11 +285,13 @@ void LindbladBasis::assembleSystemMats(){
     MatAXPY(myMat, -0.5, myMat1, DIFFERENT_NONZERO_PATTERN);
     MatSeqAIJKron(sigmasq, Id, MAT_INITIAL_MATRIX, &myMat2);  // sigma^tsigma \kron Id
     MatAXPY(myMat, -0.5, myMat2, DIFFERENT_NONZERO_PATTERN);
-    MatDestroy(&myMat1);
-    MatDestroy(&myMat2);
 
     SystemMats_A.push_back(myMat);
+    MatDestroy(&myMat1);
+    MatDestroy(&myMat2);
+    MatDestroy(&sigmasq);
   }
+  MatDestroy(&Id);
 }
 
 void LindbladBasis::applySystem(Vec u, Vec v, Vec uout, Vec vout, std::vector<double>& learnparamsL_Re, std::vector<double>& learnparamsL_Im){
