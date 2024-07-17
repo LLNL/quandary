@@ -347,6 +347,11 @@ void MasterEq::initSparseMatSolver(){
 
   int dimmat = dim_rho; // this is N!
 
+  PetscInt ilow, iupp;
+  int r1,r2, r1a, r2a, r1b, r2b;
+  int col, col1, col2;
+  double val;
+
   /* If a Hamiltonian file is given, read the system matrices from file. */ 
   if (hamiltonian_file.compare("none") != 0 ) {
     if (mpirank_world==0 && !quietmode) printf("\n# Reading Hamiltonian model from file %s.\n\n", hamiltonian_file.c_str());
@@ -358,13 +363,8 @@ void MasterEq::initSparseMatSolver(){
 
     if (mpirank_world==0&& !quietmode) printf("# Done. \n\n");
 
-  /* Else: Initialize system matrices with standard Hamiltonian model */
+  /* Else: Initialize Hamiltonian system matrices with standard Hamiltonian model */
   } else {
-
-    PetscInt ilow, iupp;
-    int r1,r2, r1a, r2a, r1b, r2b;
-    int col, col1, col2;
-    double val;
 
     for (int iosc = 0; iosc < noscillators; iosc++) {
 
@@ -582,69 +582,69 @@ void MasterEq::initSparseMatSolver(){
         }
       }
     }
+  }
 
-    /* Set Ad = Lindblad terms */
-    if (addT1 || addT2) {  // leave matrix empty if no T1 or T2 decay
-      for (int iosc = 0; iosc < noscillators; iosc++) {
+  /* Set Ad = Lindblad terms */
+  if (addT1 || addT2) {  // leave matrix empty if no T1 or T2 decay
+    for (int iosc = 0; iosc < noscillators; iosc++) {
 
-        /* Get T1, T2 times */
-        double gammaT1 = 0.0;
-        double gammaT2 = 0.0;
-        if (oscil_vec[iosc]->getDecayTime()   > 1e-14) gammaT1 = 1./(oscil_vec[iosc]->getDecayTime());
-        if (oscil_vec[iosc]->getDephaseTime() > 1e-14) gammaT2 = 1./(oscil_vec[iosc]->getDephaseTime());
+      /* Get T1, T2 times */
+      double gammaT1 = 0.0;
+      double gammaT2 = 0.0;
+      if (oscil_vec[iosc]->getDecayTime()   > 1e-14) gammaT1 = 1./(oscil_vec[iosc]->getDecayTime());
+      if (oscil_vec[iosc]->getDephaseTime() > 1e-14) gammaT2 = 1./(oscil_vec[iosc]->getDephaseTime());
 
-        // Dimensions 
-        int nk     = oscil_vec[iosc]->getNLevels();
-        int nprek  = oscil_vec[iosc]->dim_preOsc;
-        int npostk = oscil_vec[iosc]->dim_postOsc;
+      // Dimensions 
+      int nk     = oscil_vec[iosc]->getNLevels();
+      int nprek  = oscil_vec[iosc]->dim_preOsc;
+      int npostk = oscil_vec[iosc]->dim_postOsc;
 
-        /* Iterate over local rows of Ad */
-        MatGetOwnershipRange(Ad, &ilow, &iupp);
-        for (int row = ilow; row<iupp; row++){
+      /* Iterate over local rows of Ad */
+      MatGetOwnershipRange(Ad, &ilow, &iupp);
+      for (int row = ilow; row<iupp; row++){
 
-          /* Add Ad += gamma_j * L \kron L */
-          r1 = row % (dimmat*nk*npostk);
-          r1a = r1 / (dimmat*npostk);
-          r1b = r1 % (npostk*dimmat);
-          r1b = r1b % (nk*npostk);
-          r1b = r1b / npostk;
-          // T1  decay (L1 = a_j)
-          if (addT1) { 
-            if (r1a < nk-1 && r1b < nk-1) {
-              val = gammaT1 * sqrt( (r1a+1) * (r1b+1) );
-              col1 = row + npostk * dimmat + npostk;
-              if (fabs(val)>1e-14) MatSetValue(Ad, row, col1, val, ADD_VALUES);
-            }
+        /* Add Ad += gamma_j * L \kron L */
+        r1 = row % (dimmat*nk*npostk);
+        r1a = r1 / (dimmat*npostk);
+        r1b = r1 % (npostk*dimmat);
+        r1b = r1b % (nk*npostk);
+        r1b = r1b / npostk;
+        // T1  decay (L1 = a_j)
+        if (addT1) { 
+          if (r1a < nk-1 && r1b < nk-1) {
+            val = gammaT1 * sqrt( (r1a+1) * (r1b+1) );
+            col1 = row + npostk * dimmat + npostk;
+            if (fabs(val)>1e-14) MatSetValue(Ad, row, col1, val, ADD_VALUES);
           }
-          // T2  dephasing (L1 = a_j^Ta_j)
-          if (addT2) { 
-            val = gammaT2 * r1a * r1b ;
-            if (fabs(val)>1e-14) MatSetValue(Ad, row, row, val, ADD_VALUES);
-          }
+        }
+        // T2  dephasing (L1 = a_j^Ta_j)
+        if (addT2) { 
+          val = gammaT2 * r1a * r1b ;
+          if (fabs(val)>1e-14) MatSetValue(Ad, row, row, val, ADD_VALUES);
+        }
 
-          /* Add Ad += - gamma_j/2  I_n  \kron L^TL  */
-          r1 = row % (nk*npostk);
-          r1 = r1 / npostk;
-          if (addT1) {
-            val = - gammaT1/2. * r1;
-            if (fabs(val)>1e-14) MatSetValue(Ad, row, row, val, ADD_VALUES);
-          }
-          if (addT2) {
-            val = -gammaT2/2. * r1*r1;
-            if (fabs(val)>1e-14) MatSetValue(Ad, row, row, val, ADD_VALUES);
-          }
+        /* Add Ad += - gamma_j/2  I_n  \kron L^TL  */
+        r1 = row % (nk*npostk);
+        r1 = r1 / npostk;
+        if (addT1) {
+          val = - gammaT1/2. * r1;
+          if (fabs(val)>1e-14) MatSetValue(Ad, row, row, val, ADD_VALUES);
+        }
+        if (addT2) {
+          val = -gammaT2/2. * r1*r1;
+          if (fabs(val)>1e-14) MatSetValue(Ad, row, row, val, ADD_VALUES);
+        }
 
-          /* Add Ad += - gamma_j/2  L^TL \kron I_n */
-          r1 = row % (nk*npostk*dimmat);
-          r1 = r1 / (npostk*dimmat);
-          if (addT1) {
-            val = -gammaT1/2. * r1;
-            if (fabs(val)>1e-14) MatSetValue(Ad, row, row, val, ADD_VALUES);
-          }
-          if (addT2) {
-            val = -gammaT2/2. * r1*r1;
-            if (fabs(val)>1e-14) MatSetValue(Ad, row, row, val, ADD_VALUES);
-          }
+        /* Add Ad += - gamma_j/2  L^TL \kron I_n */
+        r1 = row % (nk*npostk*dimmat);
+        r1 = r1 / (npostk*dimmat);
+        if (addT1) {
+          val = -gammaT1/2. * r1;
+          if (fabs(val)>1e-14) MatSetValue(Ad, row, row, val, ADD_VALUES);
+        }
+        if (addT2) {
+          val = -gammaT2/2. * r1*r1;
+          if (fabs(val)>1e-14) MatSetValue(Ad, row, row, val, ADD_VALUES);
         }
       }
     }
@@ -655,6 +655,11 @@ void MasterEq::initSparseMatSolver(){
   MatAssemblyEnd(Bd, MAT_FINAL_ASSEMBLY);
   MatAssemblyBegin(Ad, MAT_FINAL_ASSEMBLY);
   MatAssemblyEnd(Ad, MAT_FINAL_ASSEMBLY);
+
+  // MatView(Ad, NULL);
+  // exit(1);
+
+
   id_kl = 0;
   for (int iosc = 0; iosc < noscillators; iosc++){
     MatAssemblyBegin(Ac_vec[iosc][0], MAT_FINAL_ASSEMBLY);
@@ -1364,6 +1369,10 @@ int myMatMult_sparsemat(Mat RHS, Vec x, Vec y){
   MatMult(*shellctx->Ad, v, vout);
   MatMultAdd(*shellctx->Bd, u, vout, vout);
 
+  // printf("Mastereq System Mats\n");
+  // MatView(*shellctx->Ad, NULL);
+  // MatView(*shellctx->Bd, NULL);
+
 
   /* -- Control Terms -- */
   for (int iosc = 0; iosc < shellctx->nlevels.size(); iosc++) {
@@ -1432,6 +1441,7 @@ int myMatMult_sparsemat(Mat RHS, Vec x, Vec y){
 
   /* --- Apply learning terms --- */
   shellctx->learning->applyLearningTerms(u,v,uout, vout);
+  // exit(1);
 
   /* Restore */
   VecRestoreSubVector(x, *shellctx->isu, &u);
