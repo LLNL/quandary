@@ -290,7 +290,7 @@ void LindbladBasis::assembleSystemMats(){
 
 void LindbladBasis::applySystem(Vec u, Vec v, Vec uout, Vec vout, std::vector<double>& learnparamsL_Re, std::vector<double>& learnparamsL_Im){
 
-  // Real parts of (-i * H)
+  // Real parts of lindblad terms
   for (int i=0; i< SystemMats_A.size(); i++){
     // uout += learnparam_Re * SystemA * u
     MatMult(SystemMats_A[i], u, aux);
@@ -299,7 +299,7 @@ void LindbladBasis::applySystem(Vec u, Vec v, Vec uout, Vec vout, std::vector<do
     MatMult(SystemMats_A[i], v, aux);
     VecAXPY(vout, learnparamsL_Re[i], aux);
   }
-  // Imaginary parts of (-i * H)
+  // Imaginary parts of lindblad terms
   for (int i=0; i< SystemMats_B.size(); i++){
     // uout -= learnparam_Im * SystemB * v
     MatMult(SystemMats_B[i], v, aux);
@@ -311,7 +311,7 @@ void LindbladBasis::applySystem(Vec u, Vec v, Vec uout, Vec vout, std::vector<do
 }
 
 void LindbladBasis::applySystem_diff(Vec u, Vec v, Vec uout, Vec vout, std::vector<double>& learnparamsL_Re, std::vector<double>& learnparamsL_Im){
-  // Real parts of (-i * H)
+  // Real parts of lindblad terms
   for (int i=0; i< SystemMats_A.size(); i++){
     // uout += learnparam_Re * SystemMat_A^T * u
     MatMultTranspose(SystemMats_A[i], u, aux);
@@ -320,7 +320,7 @@ void LindbladBasis::applySystem_diff(Vec u, Vec v, Vec uout, Vec vout, std::vect
     MatMultTranspose(SystemMats_A[i], v, aux);
     VecAXPY(vout, learnparamsL_Re[i], aux);
   }
-  // Imaginary parts of (-i * H)
+  // Imaginary parts of lindbladterms
   for (int i=0; i< SystemMats_B.size(); i++){
     // uout += learnparam_Im * SystemMat_B^T * v
     MatMultTranspose(SystemMats_B[i], v, aux);
@@ -423,7 +423,7 @@ void Learning::applyLearningTerms(Vec u, Vec v, Vec uout, Vec vout){
   if (dim_rho <= 0) return;
 
   hamiltonian_basis->applySystem(u, v, uout, vout, learnparamsH_Re, learnparamsH_Im);
-  // lindblad_basis->applySystem(u, v, uout, vout, learnparamsL_A, learnparamsL_B);
+  lindblad_basis->applySystem(u, v, uout, vout, learnparamsL_Re, learnparamsL_Im);
 }
 
 
@@ -434,7 +434,7 @@ void Learning::applyLearningTerms_diff(Vec u, Vec v, Vec uout, Vec vout){
   if (dim_rho <= 0) return;
 
   hamiltonian_basis->applySystem_diff(u,v,uout, vout, learnparamsH_Re, learnparamsH_Im);
-  // lindblad_basis->applySystem_diff(u,v,uout, vout, learnparamsH_A, learnparamsH_B);
+  lindblad_basis->applySystem_diff(u,v,uout, vout, learnparamsL_Re, learnparamsL_Im);
 }
 
 
@@ -477,11 +477,11 @@ void Learning::setLearnParams(const Vec x){
   // Lindblad terms next
   skip = hamiltonian_basis->getNBasis();
   for (int i=0; i<lindblad_basis->getNBasis_Re(); i++) {
-    learnparamsH_Re[i] = ptr[i+skip];
+    learnparamsL_Re[i] = ptr[i+skip];
   }
   skip += lindblad_basis->getNBasis_Re();
   for (int i=0; i<lindblad_basis->getNBasis_Im(); i++){
-    learnparamsH_Im[i] = ptr[i+skip];
+    learnparamsL_Im[i] = ptr[i+skip];
   }
 
   VecRestoreArrayRead(x, &ptr);

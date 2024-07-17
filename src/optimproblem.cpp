@@ -433,15 +433,18 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
       /* Reset adjoint */
       VecZeroEntries(rho_t0_bar);
 
+      double Jbar_loss = 0.0;
       if (x_is_control) {
         /* Terminal condition for adjoint variable: Derivative of final time objective J */
         double obj_cost_re_bar, obj_cost_im_bar;
         optim_target->finalizeJ_diff(obj_cost_re, obj_cost_im, &obj_cost_re_bar, &obj_cost_im_bar);
         optim_target->evalJ_diff(finalstate, rho_t0_bar, obj_weights[iinit]*obj_cost_re_bar, obj_weights[iinit]*obj_cost_im_bar);
+      } else {
+        Jbar_loss = obj_weights[iinit];
       }
 
       /* Derivative of time-stepping */
-      timestepper->solveAdjointODE(initid, rho_t0_bar, finalstate, obj_weights[iinit] * gamma_penalty, obj_weights[iinit]*gamma_penalty_dpdm, obj_weights[iinit]*gamma_penalty_energy, obj_weights[iinit]);
+      timestepper->solveAdjointODE(initid, rho_t0_bar, finalstate, obj_weights[iinit] * gamma_penalty, obj_weights[iinit]*gamma_penalty_dpdm, obj_weights[iinit]*gamma_penalty_energy, Jbar_loss);
 
       /* Add to optimizers's gradient */
       VecAXPY(G, 1.0, timestepper->redgrad);
@@ -509,15 +512,18 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
       /* Reset adjoint */
       VecZeroEntries(rho_t0_bar);
 
+      double Jbar_loss = 0.0;
       if (x_is_control) {
         /* Terminal condition for adjoint variable: Derivative of final time objective J */
         double obj_cost_re_bar, obj_cost_im_bar;
         optim_target->finalizeJ_diff(obj_cost_re, obj_cost_im, &obj_cost_re_bar, &obj_cost_im_bar);
         optim_target->evalJ_diff(store_finalstates[iinit], rho_t0_bar, obj_weights[iinit]*obj_cost_re_bar, obj_weights[iinit]*obj_cost_im_bar);
+      } else {
+        Jbar_loss = obj_weights[iinit];
       }
 
       /* Derivative of time-stepping */
-      timestepper->solveAdjointODE(initid, rho_t0_bar, store_finalstates[iinit], obj_weights[iinit] * gamma_penalty, obj_weights[iinit]*gamma_penalty_dpdm, obj_weights[iinit]*gamma_penalty_energy, obj_weights[iinit]);
+      timestepper->solveAdjointODE(initid, rho_t0_bar, store_finalstates[iinit], obj_weights[iinit] * gamma_penalty, obj_weights[iinit]*gamma_penalty_dpdm, obj_weights[iinit]*gamma_penalty_energy, Jbar_loss);
 
       /* Add to optimizers's gradient */
       VecAXPY(G, 1.0, timestepper->redgrad);
