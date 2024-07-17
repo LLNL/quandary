@@ -144,6 +144,7 @@ void HamiltonianBasis::assembleSystemMats(){
       MatSeqAIJKron(BasisMat_Re[i], Id, MAT_INITIAL_MATRIX, &myMat);  // sigma^T kron I
       MatSeqAIJKron(Id, BasisMat_Re[i], MAT_INITIAL_MATRIX, &myMat1); // I kron sigma
       MatAXPY(myMat, -1.0, myMat1, DIFFERENT_NONZERO_PATTERN);
+      MatDestroy(&myMat1);
     }
     SystemMats_B.push_back(myMat);
   }
@@ -158,6 +159,7 @@ void HamiltonianBasis::assembleSystemMats(){
       MatSeqAIJKron(BasisMat_Im[i], Id, MAT_INITIAL_MATRIX, &myMat);  // sigma^T kron I
       MatSeqAIJKron(Id, BasisMat_Im[i], MAT_INITIAL_MATRIX, &myMat1); // I kron sigma
       MatAXPY(myMat, 1.0, myMat1, DIFFERENT_NONZERO_PATTERN);
+      MatDestroy(&myMat1);
     }
     SystemMats_A.push_back(myMat);
   }
@@ -283,6 +285,8 @@ void LindbladBasis::assembleSystemMats(){
     MatAXPY(myMat, -0.5, myMat1, DIFFERENT_NONZERO_PATTERN);
     MatSeqAIJKron(sigmasq, Id, MAT_INITIAL_MATRIX, &myMat2);  // sigma^tsigma \kron Id
     MatAXPY(myMat, -0.5, myMat2, DIFFERENT_NONZERO_PATTERN);
+    MatDestroy(&myMat1);
+    MatDestroy(&myMat2);
 
     SystemMats_A.push_back(myMat);
   }
