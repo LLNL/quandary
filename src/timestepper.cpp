@@ -44,6 +44,7 @@ TimeStepper::TimeStepper(MapParam config, MasterEq* mastereq_, int ntime_, doubl
   VecSetSizes(x, PETSC_DECIDE, dim);
   VecSetFromOptions(x);
   VecZeroEntries(x);
+  VecDuplicate(x, &xadj);
   VecDuplicate(x, &xprimal);
 
   /* Create another auxiliary vector for learning */
@@ -56,6 +57,7 @@ TimeStepper::~TimeStepper() {
     VecDestroy(&(store_states[n]));
   }
   VecDestroy(&x);
+  VecDestroy(&xadj);
   VecDestroy(&xprimal);
   VecDestroy(&aux);
 }
@@ -156,13 +158,13 @@ Vec TimeStepper::solveODE(int initid, Vec rho_t0){
 }
 
 
-void TimeStepper::solveAdjointODE(int initid, Vec rho_t0_bar, Vec finalstate, double Jbar_penalty, double Jbar_penalty_dpdm, double Jbar_energy_penalty, double Jbar_loss) {
+void TimeStepper::solveAdjointODE(int initid, Vec rho_t0_bar, const Vec finalstate, double Jbar_penalty, double Jbar_penalty_dpdm, double Jbar_energy_penalty, double Jbar_loss) {
 
   /* Reset gradient */
   VecZeroEntries(redgrad);
 
   /* Set terminal adjoint condition */
-  VecCopy(rho_t0_bar, x);
+  VecCopy(rho_t0_bar, xadj);
 
   /* Set terminal primal state */
   VecCopy(finalstate, xprimal);
@@ -194,21 +196,20 @@ void TimeStepper::solveAdjointODE(int initid, Vec rho_t0_bar, Vec finalstate, do
     if (gamma_penalty_energy > 1e-13) energyPenaltyIntegral_diff(tstop, Jbar_energy_penalty, redgrad);
 
     /* Derivative of penalty term */
-    if (gamma_penalty_dpdm > 1e-13) penaltyDpDm_diff(n, x, Jbar_penalty_dpdm/ntime);
+    if (gamma_penalty_dpdm > 1e-13) penaltyDpDm_diff(n, xadj, Jbar_penalty_dpdm/ntime);
 
     /* Derivative of penalty objective term */
-    if (gamma_penalty > 1e-13) penaltyIntegral_diff(tstop, xprimal, x, Jbar_penalty);
+    if (gamma_penalty > 1e-13) penaltyIntegral_diff(tstop, xprimal, xadj, Jbar_penalty);
 
     /* Derivative of loss function */
-    mastereq->learning->addToLoss_diff(n, x, xprimal, Jbar_loss);
+    mastereq->learning->addToLoss_diff(n, xadj, xprimal, Jbar_loss);
 
     /* Get the state at n-1. If Schroedinger solver, recompute it by taking a step backwards with the forward solver, otherwise get it from storage. */
     if (storeFWD) VecCopy(getState(n-1), xprimal);
     else evolveFWD(tstop, tstart, xprimal);
 
-
     /* Take one time step backwards for the adjoint */
-    evolveBWD(tstop, tstart, xprimal, x, redgrad, true);
+    evolveBWD(tstop, tstart, xprimal, xadj, redgrad, true);
 
     /* Update dpdm storage */
     if (gamma_penalty_dpdm > 1e-13 ) {

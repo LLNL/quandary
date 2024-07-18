@@ -17,6 +17,7 @@ class TimeStepper{
   protected:
     int dim;             /* State vector dimension */
     Vec x;               // auxiliary vector needed for time stepping
+    Vec xadj;            // auxiliary vector needed for adjoint time stepping
     Vec xprimal;         // auxiliary vector needed for backwards time stepping
     std::vector<Vec> store_states; /* Storage for primal states */
     std::vector<Vec> dpdm_states;  /* storage of primal states needed for DpDm penalty term */
@@ -62,7 +63,7 @@ class TimeStepper{
     Vec solveODE(int initid, Vec rho_t0);
 
     /* Solve the adjoint ODE backwards in time from terminal condition rho_t0_bar */
-    void solveAdjointODE(int initid, Vec rho_t0_bar, Vec finalstate, double Jbar_penalty, double Jbar_penalty_dpdm, double Jbar_penalty_energy, double Jbar_loss);
+    void solveAdjointODE(int initid, Vec rho_t0_bar, const Vec finalstate, double Jbar_penalty, double Jbar_penalty_dpdm, double Jbar_penalty_energy, double Jbar_loss);
 
     /* evaluate the penalty integral term */
     double penaltyIntegral(double time, const Vec x);
