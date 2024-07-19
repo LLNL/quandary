@@ -16,7 +16,7 @@ PythonInterface::PythonInterface(std::string hamiltonian_file_, LindbladType lin
 PythonInterface::~PythonInterface(){
 }
 
-void PythonInterface::receiveHsys(Mat& Bd){
+void PythonInterface::receiveHsys(Mat& Bd, Mat& Ad){
   PetscInt ilow, iupp;
   MatGetOwnershipRange(Bd, &ilow, &iupp);
 
@@ -26,22 +26,22 @@ void PythonInterface::receiveHsys(Mat& Bd){
   int sqdim = dim;
   if (lindbladtype != LindbladType::NONE) sqdim = (int) sqrt(dim); // sqdim = N 
 
+  MatSetOption(Ad, MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);
+  MatSetOption(Bd, MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);
+
   /* ----- Real system matrix Hd_real, write it into Bd ---- */
   // if (mpirank_world == 0) printf("Receiving system Hamiltonian...\n");
-
-
-  MatSetOption(Bd, MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);
 
   // Read Hsys from file
   long int nelems = sqdim*sqdim;
   std::vector<double> vals (nelems);
   int skiplines=0;
-  std::string testheader = "# Hsys ";
+  std::string testheader = "# Hsys_real";
   int success = 0;
   if (mpirank_world == 0) {
     success = read_vector(hamiltonian_file.c_str(), vals.data(), nelems, quietmode, skiplines, testheader);
     if (success != 1){
-      printf("# ERROR: Did not receive system Hamiltonian.\n");
+      printf("# ERROR: Did not receive real system Hamiltonian.\n");
       exit(1);
     }
   }
@@ -75,6 +75,50 @@ void PythonInterface::receiveHsys(Mat& Bd){
       }
     } 
   }
+
+  /* ----- Imaginary system matrix Hd_imag, write it into Ad ---- */
+  // Read Hsys from file
+  skiplines=nelems+1;
+  testheader = "# Hsys_imag";
+  success = 0;
+  if (mpirank_world == 0) {
+    success = read_vector(hamiltonian_file.c_str(), vals.data(), nelems, quietmode, skiplines, testheader);
+    if (success != 1){
+      printf("# ERROR: Did not receive imaginary system Hamiltonian.\n");
+      exit(1);
+    }
+  }
+  MPI_Bcast(vals.data(), nelems, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+
+  /* Iterate over all elements*/
+  for (int i = 0; i<vals.size(); i++) {
+    if (fabs(vals[i])<1e-14) continue; // Skip zeros
+
+    // Get position in the Bd matrix
+    int row = i % sqdim;
+    int col = i / sqdim;
+
+    // If Schroedinger: Assemble A_d 
+    if (lindbladtype == LindbladType::NONE) {
+      double val = vals[i];
+      if (ilow <= row && row < iupp) MatSetValue(Ad, row, col, val, ADD_VALUES);
+    } else {
+    // If Lindblad: Assemble I_N \kron A_d - A_d \kron I_N
+      for (int k=0; k<sqdim; k++){
+        // first place all v_ij in the I_N \kron A_d term:
+        int rowk = row + sqdim * k;
+        int colk = col + sqdim * k;
+        double val = vals[i];
+        if (ilow <= rowk && rowk < iupp) MatSetValue(Ad, rowk, colk, val, ADD_VALUES);
+        // Then add -1*v_ij in the A_d \kron I_N term:
+        rowk = row*sqdim + k;
+        colk = col*sqdim + k;
+        val = -1.*vals[i];
+        if (ilow <= rowk && rowk < iupp) MatSetValue(Ad, rowk, colk, val, ADD_VALUES);
+      }
+    } 
+  }
+
 }
 
 void PythonInterface::receiveHc(int noscillators, std::vector<std::vector<Mat>>& Ac_vec, std::vector<std::vector<Mat>>& Bc_vec){
@@ -91,7 +135,7 @@ void PythonInterface::receiveHc(int noscillators, std::vector<std::vector<Mat>>&
   int nelems = dim_rho*dim_rho;
 
   // Skip first Hd lines in the file
-  int skiplines = nelems+1; // nelems for Hsys and +1 for the first comment line
+  int skiplines = 2*(nelems+1); // 2*nelems for Hsys and +2 for the comment lines
 
   /* Iterate over oscillators */
   for (int k=0; k<noscillators; k++){

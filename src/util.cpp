@@ -517,7 +517,7 @@ int read_vector(const char *filename, double *var, int dim, bool quietmode, int 
       // Compare to testheader, return if it doesn't match 
       if (ret==EOF || header.compare(0,testheader.size(),testheader) != 0) {
         // printf("Header not found: %s != %s\n", header.c_str(), testheader.c_str());
-        printf("Header not found.\n");
+        printf("Header not found. Got this instead: %s, skipped %d lines\n", header.c_str(), skiplines);
         for (int ix = 0; ix < dim; ix++) var[ix] = 0.0;
         fclose(file);
         return success;

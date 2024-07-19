@@ -358,7 +358,7 @@ void MasterEq::initSparseMatSolver(){
 
     /* Read Hamiltonians from file */
     PythonInterface* py = new PythonInterface(hamiltonian_file, lindbladtype, dim_rho, quietmode);
-    py->receiveHsys(Bd);
+    py->receiveHsys(Bd, Ad);
     py->receiveHc(noscillators, Ac_vec, Bc_vec); 
 
     if (mpirank_world==0&& !quietmode) printf("# Done. \n\n");
@@ -676,6 +676,21 @@ void MasterEq::initSparseMatSolver(){
       id_kl++;
     }
   }
+
+    // printf("Ad =");
+    // MatView(Ad, NULL);
+    // printf("Bd =");
+    // MatView(Bd, NULL);
+    // for (int iosc =0; iosc < Ac_vec.size(); iosc++){
+    //   printf("Ac %d=", iosc);
+    //   MatView(Ac_vec[iosc][0], NULL);
+    // }
+    // for (int iosc =0; iosc < Bc_vec.size(); iosc++){
+    //   printf("Bc %d=", iosc);
+    //   MatView(Bc_vec[iosc][0], NULL);
+    // }
+
+
 
   // Remove control parameters for those oscillators that are non-controllable
   for (int k=0; k<nlevels.size(); k++){

@@ -103,7 +103,7 @@ class Quandary:
     T1        : List[float] = field(default_factory=list)
     T2        : List[float] = field(default_factory=list)
     # Optiona: User-defined Hamiltonian model (Default = superconducting qubits model)
-    Hsys                : List[float]       = field(default_factory=list)
+    Hsys                : List[complex]     = field(default_factory=list)
     Hc_re               : List[List[float]] = field(default_factory=list)
     Hc_im               : List[List[float]] = field(default_factory=list)
     standardmodel       : bool              = True
@@ -437,8 +437,12 @@ class Quandary:
             # Write non-standard Hamiltonians to file  
             self._hamiltonian_filename= "./hamiltonian.dat"
             with open(datadir+"/" + self._hamiltonian_filename, "w") as f:
-                f.write("# Hsys \n")
-                Hsyslist = list(np.array(self.Hsys).flatten(order='F'))
+                f.write("# Hsys_real\n")
+                Hsyslist = list(np.array(self.Hsys.real).flatten(order='F'))
+                for value in Hsyslist:
+                    f.write("{:20.13e}\n".format(value))
+                f.write("# Hsys_imag\n")
+                Hsyslist = list(np.array(self.Hsys.imag).flatten(order='F'))
                 for value in Hsyslist:
                     f.write("{:20.13e}\n".format(value))
 
