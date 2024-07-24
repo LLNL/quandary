@@ -115,7 +115,7 @@ HamiltonianBasis::~HamiltonianBasis(){
 void HamiltonianBasis::assembleSystemMats(){
 
   /* Set up and store the Hamiltonian system matrices:
-   *   (-i*sigma)   or vectorized   -i(I kron sigma - sigma kron I) 
+   *   (-i*sigma)   or vectorized   -i(I kron sigma - sigma^T kron I) 
    *  A = Re(-isigma)
    *  B = Im(-isigma)
    */
@@ -136,30 +136,34 @@ void HamiltonianBasis::assembleSystemMats(){
   // Set up -i*(Real_Gellmann), they go into Bd = Im(-iH)
   for (int i=0; i<BasisMat_Re.size(); i++){
     Mat myMat;
-    if (lindbladtype == LindbladType::NONE){
+    if (lindbladtype == LindbladType::NONE){ // -sigma
       MatDuplicate(BasisMat_Re[i],  MAT_COPY_VALUES, &myMat);
       MatScale(myMat, -1.0);
-    } else {
-      Mat myMat1;
-      MatSeqAIJKron(BasisMat_Re[i], Id, MAT_INITIAL_MATRIX, &myMat);  // sigma^T kron I
-      MatSeqAIJKron(Id, BasisMat_Re[i], MAT_INITIAL_MATRIX, &myMat1); // I kron sigma
-      MatAXPY(myMat, -1.0, myMat1, DIFFERENT_NONZERO_PATTERN);
+    } else { // - I kron sigma + sigma^T kron I
+      Mat myMat1, myMat2;
+      MatTranspose(BasisMat_Re[i], MAT_INITIAL_MATRIX, &myMat1);      // myMat1 = sigma^T
+      MatSeqAIJKron(myMat1, Id, MAT_INITIAL_MATRIX, &myMat);          // myMat = sigma^T kron I
+      MatSeqAIJKron(Id, BasisMat_Re[i], MAT_INITIAL_MATRIX, &myMat2); // myMat2 = I kron sigma
+      MatAXPY(myMat, -1.0, myMat2, DIFFERENT_NONZERO_PATTERN);        // myMat = sigma^T kron I - I kron sigma
       MatDestroy(&myMat1);
+      MatDestroy(&myMat2);
     }
     SystemMats_B.push_back(myMat);
   }
 
-  // Set up -i*(Imag_BasisMat), they go into Ad = Re(-iH) [note: no scaling by -1!]
+  // Set up -i*(Imag_BasisMat), they go into Ad = Re(-iH) 
   Mat myMat;
   for (int i=0; i<BasisMat_Im.size(); i++){
-    if (lindbladtype == LindbladType::NONE){
+    if (lindbladtype == LindbladType::NONE){ // sigma
       MatDuplicate(BasisMat_Im[i],  MAT_COPY_VALUES, &myMat);
-    } else {
-      Mat myMat1;
-      MatSeqAIJKron(BasisMat_Im[i], Id, MAT_INITIAL_MATRIX, &myMat);  // sigma^T kron I
-      MatSeqAIJKron(Id, BasisMat_Im[i], MAT_INITIAL_MATRIX, &myMat1); // I kron sigma
-      MatAXPY(myMat, 1.0, myMat1, DIFFERENT_NONZERO_PATTERN);
+    } else { // I kron sigma - sigma^T kron I
+      Mat myMat1, myMat2;
+      MatSeqAIJKron(Id, BasisMat_Im[i], MAT_INITIAL_MATRIX, &myMat); // myMat = I kron sigma
+      MatTranspose(BasisMat_Im[i], MAT_INITIAL_MATRIX, &myMat1);    // myMat1 = sigma^T
+      MatSeqAIJKron(myMat1, Id, MAT_INITIAL_MATRIX, &myMat2);       // myMat2 = sigma^T kron I
+      MatAXPY(myMat, -1.0, myMat2, DIFFERENT_NONZERO_PATTERN);      // myMat = I kron sigma - sigma^T kron I
       MatDestroy(&myMat1);
+      MatDestroy(&myMat2);
     }
     SystemMats_A.push_back(myMat);
   }
@@ -280,11 +284,12 @@ void LindbladBasis::assembleSystemMats(){
     Mat myMat, myMat1, myMat2, sigmasq;
     MatTransposeMatMult(BasisMat_Re[i], BasisMat_Re[i],MAT_INITIAL_MATRIX, PETSC_DEFAULT,&sigmasq);
 
-    MatSeqAIJKron(BasisMat_Re[i], BasisMat_Re[i], MAT_INITIAL_MATRIX, &myMat);   // sigma \kron sigma
-    MatSeqAIJKron(Id, sigmasq, MAT_INITIAL_MATRIX, &myMat1);  // Id \kron sigma^tsigma
-    MatAXPY(myMat, -0.5, myMat1, DIFFERENT_NONZERO_PATTERN);
-    MatSeqAIJKron(sigmasq, Id, MAT_INITIAL_MATRIX, &myMat2);  // sigma^tsigma \kron Id
-    MatAXPY(myMat, -0.5, myMat2, DIFFERENT_NONZERO_PATTERN);
+    MatSeqAIJKron(BasisMat_Re[i], BasisMat_Re[i], MAT_INITIAL_MATRIX, &myMat);  // myMat = sigma \kron sigma
+    MatSeqAIJKron(Id, sigmasq, MAT_INITIAL_MATRIX, &myMat1);                    // myMay1 = Id \kron sigma^tsigma
+    MatAXPY(myMat, -0.5, myMat1, DIFFERENT_NONZERO_PATTERN);                    // myMat = sigma kron sigma - 0.5*(Id kron sigma^tsigma)
+    MatTranspose(sigmasq, MAT_INPLACE_MATRIX, &sigmasq);
+    MatSeqAIJKron(sigmasq, Id, MAT_INITIAL_MATRIX, &myMat2);  // myMat2 = (sigma^tsigma)^T \kron Id
+    MatAXPY(myMat, -0.5, myMat2, DIFFERENT_NONZERO_PATTERN);  // myMat = sigma kron sigma - 0.5*( Id kron sigma^2 + sigma^2 kron Id)
 
     SystemMats_A.push_back(myMat);
     MatDestroy(&myMat1);
