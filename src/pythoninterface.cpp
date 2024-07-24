@@ -60,16 +60,16 @@ void PythonInterface::receiveHsys(Mat& Bd, Mat& Ad){
       double val = -1.*vals[i];
       if (ilow <= row && row < iupp) MatSetValue(Bd, row, col, val, ADD_VALUES);
     } else {
-    // If Lindblad: Assemble -I_N \kron B_d + B_d \kron I_N
+    // If Lindblad: Assemble -I_N \kron B_d + B_d^T \kron I_N
       for (int k=0; k<sqdim; k++){
         // first place all -v_ij in the -I_N \kron B_d term:
         int rowk = row + sqdim * k;
         int colk = col + sqdim * k;
         double val = -1.*vals[i];
         if (ilow <= rowk && rowk < iupp) MatSetValue(Bd, rowk, colk, val, ADD_VALUES);
-        // Then add v_ij in the B_d \kron I_N term:
-        rowk = row*sqdim + k;
-        colk = col*sqdim + k;
+        // Then add v_ij in the B_d^T \kron I_N term:
+        rowk = col*sqdim + k;
+        colk = row*sqdim + k;
         val = vals[i];
         if (ilow <= rowk && rowk < iupp) MatSetValue(Bd, rowk, colk, val, ADD_VALUES);
       }
@@ -103,16 +103,16 @@ void PythonInterface::receiveHsys(Mat& Bd, Mat& Ad){
       double val = vals[i];
       if (ilow <= row && row < iupp) MatSetValue(Ad, row, col, val, ADD_VALUES);
     } else {
-    // If Lindblad: Assemble I_N \kron A_d - A_d \kron I_N
+    // If Lindblad: Assemble I_N \kron A_d - A_d^T \kron I_N
       for (int k=0; k<sqdim; k++){
         // first place all v_ij in the I_N \kron A_d term:
         int rowk = row + sqdim * k;
         int colk = col + sqdim * k;
         double val = vals[i];
         if (ilow <= rowk && rowk < iupp) MatSetValue(Ad, rowk, colk, val, ADD_VALUES);
-        // Then add -1*v_ij in the A_d \kron I_N term:
-        rowk = row*sqdim + k;
-        colk = col*sqdim + k;
+        // Then add -1*v_ij in the A_d^T \kron I_N term:
+        rowk = col*sqdim + k;
+        colk = row*sqdim + k;
         val = -1.*vals[i];
         if (ilow <= rowk && rowk < iupp) MatSetValue(Ad, rowk, colk, val, ADD_VALUES);
       }
