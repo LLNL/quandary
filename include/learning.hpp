@@ -107,7 +107,7 @@ class Learning {
   double loss_integral;   /* Running cost for Loss function */
 
   public: 
-    Learning(std::vector<int>&nlevels, LindbladType lindbladtype_, std::vector<std::string>& learninit_str, std::string data_name, double data_dtAWG_, int data_ntime, int loss_every_k, std::default_random_engine rand_engine, bool quietmode);
+    Learning(std::vector<int>&nlevels, LindbladType lindbladtype_, std::vector<std::string>& learninit_str, std::vector<std::string> data_name, double data_dtAWG_, int data_ntime, int loss_every_k, std::default_random_engine rand_engine, bool quietmode);
     ~Learning();
 
     void resetLoss(){ loss_integral = 0.0; };
@@ -129,7 +129,7 @@ class Learning {
     void dRHSdp(Vec grad, Vec u, Vec v, double alpha, Vec ubar, Vec vbar);
 
     /* Load data from file */
-    void loadData(std::string data_name, double data_dtAWG, int data_ntime);
+    void loadData(std::vector<std::string> data_name, double data_dtAWG, int data_ntime);
 
     /* Get data trajectory element */
     Vec getData(int id) {assert(data.size()>id); return data[id];};

@@ -357,7 +357,7 @@ void LindbladBasis::dRHSdp(Vec grad, Vec u, Vec v, double alpha, Vec ubar, Vec v
 
 
 
-Learning::Learning(std::vector<int>& nlevels, LindbladType lindbladtype_, std::vector<std::string>& learninit_str, std::string data_name, double data_dtAWG_, int data_ntime_, int loss_every_k_, std::default_random_engine rand_engine, bool quietmode_){
+Learning::Learning(std::vector<int>& nlevels, LindbladType lindbladtype_, std::vector<std::string>& learninit_str, std::vector<std::string> data_name, double data_dtAWG_, int data_ntime_, int loss_every_k_, std::default_random_engine rand_engine, bool quietmode_){
   lindbladtype = lindbladtype_;
   data_dtAWG = data_dtAWG_;
   data_ntime = data_ntime_;
@@ -531,20 +531,20 @@ void Learning::dRHSdp(Vec grad, Vec u, Vec v, double alpha, Vec ubar, Vec vbar){
 }
 
 
-void Learning::loadData(std::string data_name, double data_dtAWG, int data_ntime){
+void Learning::loadData(std::vector<std::string> data_name, double data_dtAWG, int data_ntime){
 
   // Open files 
   std::ifstream infile_re;
   std::ifstream infile_im;
-  infile_re.open(data_name + "_re.dat", std::ifstream::in);
-  infile_im.open(data_name + "_im.dat", std::ifstream::in);
+  infile_re.open(data_name[0], std::ifstream::in);
+  infile_im.open(data_name[1], std::ifstream::in);
   if(infile_re.fail() || infile_im.fail() ) {// checks to see if file opended 
       std::cout << "\n ERROR loading learning data file\n" << std::endl; 
-      std::cout << data_name + "_re.dat" << std::endl;
+      std::cout << data_name[0] + "_re.dat" << std::endl;
       exit(1);
   } else {
     if (!quietmode) {
-      std::cout<< "Loading trajectory data from " << data_name+"_re.dat" << ", " << data_name+"_im.dat" << std::endl;
+      std::cout<< "Loading trajectory data from " << data_name[0] << ", " << data_name[1] << std::endl;
     }
   }
 

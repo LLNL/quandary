@@ -246,7 +246,9 @@ int main(int argc,char **argv)
     double data_dtAWG = config.GetDoubleParam("data_dtAWG", 4.0, false);
     int data_ntime = config.GetIntParam("data_ntime", 0, false, true);
     data_ntime = std::min(data_ntime, ntime+1);
-    std::string data_name = config.GetStrParam("data_name", "data");
+    // std::string data_name = config.GetStrParam("data_name", "data");
+    std::vector<std::string> data_name;
+    config.GetVecStrParam("data_name", data_name, "data");
     // Update delta_t such that it is an integer divisor of dt_AWG
     int loss_every_k = ceil(data_dtAWG / dt);
     double dt_new = data_dtAWG / loss_every_k;
@@ -257,7 +259,8 @@ int main(int argc,char **argv)
 
   } else {// Dummy. Does nothing.
     std::vector<int> nlevelsdummy(nlevels.size(), 0);
-    learning = new Learning(nlevelsdummy, LindbladType::NONE, learninit_str, "dummy", 0.0, 0, 0, rand_engine, quietmode); 
+    std::vector<std::string> data_name_dummy;
+    learning = new Learning(nlevelsdummy, LindbladType::NONE, learninit_str, data_name_dummy, 0.0, 0, 0, rand_engine, quietmode); 
   }
 
   // Get control segment types, carrierwaves and control initialization
