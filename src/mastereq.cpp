@@ -584,6 +584,46 @@ void MasterEq::initSparseMatSolver(){
     }
   }
 
+  /* Assemble all system matrices */
+  MatAssemblyBegin(Bd, MAT_FINAL_ASSEMBLY);
+  MatAssemblyEnd(Bd, MAT_FINAL_ASSEMBLY);
+  MatAssemblyBegin(Ad, MAT_FINAL_ASSEMBLY);
+  MatAssemblyEnd(Ad, MAT_FINAL_ASSEMBLY);
+  id_kl = 0;
+  for (int iosc = 0; iosc < noscillators; iosc++){
+    MatAssemblyBegin(Ac_vec[iosc][0], MAT_FINAL_ASSEMBLY);
+    MatAssemblyEnd(Ac_vec[iosc][0], MAT_FINAL_ASSEMBLY);
+    MatAssemblyBegin(Bc_vec[iosc][0], MAT_FINAL_ASSEMBLY);
+    MatAssemblyEnd(Bc_vec[iosc][0], MAT_FINAL_ASSEMBLY);
+    for (int josc=iosc+1; josc<noscillators; josc++){
+      if (fabs(Jkl[id_kl]) > 1e-12) { // only allocate if Jkl>0
+        MatAssemblyBegin(Ad_vec[id_kl], MAT_FINAL_ASSEMBLY);
+        MatAssemblyBegin(Bd_vec[id_kl], MAT_FINAL_ASSEMBLY);
+        MatAssemblyEnd(Ad_vec[id_kl], MAT_FINAL_ASSEMBLY);
+        MatAssemblyEnd(Bd_vec[id_kl], MAT_FINAL_ASSEMBLY);
+      }
+      id_kl++;
+    }
+  }
+
+  // Test if Bd is symmetric is symmetric 
+  PetscBool isSymm;
+  double norm = 0.0;
+  MatIsSymmetric(Bd, 1e-12, &isSymm);
+  if (!isSymm) {
+    printf("ERROR: System hamiltonian is not hermitian!\n");
+    exit(1);
+  }
+  // Test if Ad is anti-symmetric
+  Mat AdTest;
+  MatTranspose(Ad, MAT_INITIAL_MATRIX, &AdTest);
+  MatAXPY(AdTest, 1.0, Ad, DIFFERENT_NONZERO_PATTERN);
+  MatNorm(AdTest, NORM_FROBENIUS, &norm);
+  if (norm > 1e-12) {
+    printf("ERROR: System hamiltonian is not hermitian!\n");
+    exit(1);
+  }
+  
   /* Set Ad = Lindblad terms */
   if (addT1 || addT2) {  // leave matrix empty if no T1 or T2 decay
     for (int iosc = 0; iosc < noscillators; iosc++) {
@@ -648,33 +688,9 @@ void MasterEq::initSparseMatSolver(){
         }
       }
     }
-  }
-
-  /* Assemble all system matrices */
-  MatAssemblyBegin(Bd, MAT_FINAL_ASSEMBLY);
-  MatAssemblyEnd(Bd, MAT_FINAL_ASSEMBLY);
-  MatAssemblyBegin(Ad, MAT_FINAL_ASSEMBLY);
-  MatAssemblyEnd(Ad, MAT_FINAL_ASSEMBLY);
-
-  // MatView(Ad, NULL);
-  // exit(1);
-
-
-  id_kl = 0;
-  for (int iosc = 0; iosc < noscillators; iosc++){
-    MatAssemblyBegin(Ac_vec[iosc][0], MAT_FINAL_ASSEMBLY);
-    MatAssemblyEnd(Ac_vec[iosc][0], MAT_FINAL_ASSEMBLY);
-    MatAssemblyBegin(Bc_vec[iosc][0], MAT_FINAL_ASSEMBLY);
-    MatAssemblyEnd(Bc_vec[iosc][0], MAT_FINAL_ASSEMBLY);
-    for (int josc=iosc+1; josc<noscillators; josc++){
-      if (fabs(Jkl[id_kl]) > 1e-12) { // only allocate if Jkl>0
-        MatAssemblyBegin(Ad_vec[id_kl], MAT_FINAL_ASSEMBLY);
-        MatAssemblyBegin(Bd_vec[id_kl], MAT_FINAL_ASSEMBLY);
-        MatAssemblyEnd(Ad_vec[id_kl], MAT_FINAL_ASSEMBLY);
-        MatAssemblyEnd(Bd_vec[id_kl], MAT_FINAL_ASSEMBLY);
-      }
-      id_kl++;
-    }
+    /* Assemble Ad again */
+    MatAssemblyBegin(Ad, MAT_FINAL_ASSEMBLY);
+    MatAssemblyEnd(Ad, MAT_FINAL_ASSEMBLY);
   }
 
     // printf("Ad =");
