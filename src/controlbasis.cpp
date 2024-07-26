@@ -217,6 +217,89 @@ void Step::derivative(const double t, const std::vector<double>& coeff, double* 
     coeff_diff[skip + carrier_freq_id*2] += step_amp2*valbar2 * dramp * (tstop - tstart); 
 }
 
+//
+// Zeroth order B-splines, i.e., piecewise constant
+//
+BSpline0::BSpline0(int nsplines_, double t0, double T, bool enforceZeroBoundary_) : ControlBasis(2*nsplines_, t0, T, enforceZeroBoundary_){
+    nsplines = nsplines_;
+    controltype = ControlType::BSPLINE0;
+
+    dtknot = (T-t0) / (double)nsplines;
+	width = dtknot;
+
+    /* Compute center points of the splines */
+    tcenter = new double[nsplines];
+    for (int i = 0; i < nsplines; i++){
+        tcenter[i] = t0 + dtknot * ( i + 0.5 );
+    }
+
+}
+
+BSpline0::~BSpline0(){
+
+    delete [] tcenter;
+}
+
+
+void BSpline0::evaluate(const double t, const std::vector<double>& coeff, int carrier_freq_id, double* Bl1_ptr, double* Bl2_ptr){
+    /* NO need to sum over basis functions! */
+    // double sum1 = 0.0;
+    // double sum2 = 0.0;
+
+    // first calculate lc index from t
+    int lc = floor((t-tstart)/dtknot);
+
+    // Ctrl function defined to be zero outside [tstart, tend]
+    if (lc < 0 || lc >= nsplines){
+        *Bl1_ptr = 0.0;
+        *Bl2_ptr = 0.0;
+    }
+    else{
+        *Bl1_ptr = coeff[skip + carrier_freq_id*nsplines*2 + lc];
+        *Bl2_ptr = coeff[skip + carrier_freq_id*nsplines*2 + lc + nsplines];
+    }
+
+    // for (int l=lstart; l<lend; l++) { 
+    //     double Blt = bspl0(l,t);
+    //     double alpha1 = coeff[skip + carrier_freq_id*nsplines*2 + l];
+    //     double alpha2 = coeff[skip + carrier_freq_id*nsplines*2 + l + nsplines];
+    //     sum1 += alpha1 * Blt;
+    //     sum2 += alpha2 * Blt;
+    // }
+    // *Bl1_ptr = sum1;
+    // *Bl2_ptr = sum2;
+}
+
+void BSpline0::derivative(const double t, const std::vector<double>& coeff, double* coeff_diff, const double valbar1, const double valbar2, int carrier_freq_id) {
+
+    // first calculate lc index from t
+    int lc = floor((t-tstart)/dtknot);
+
+    if (lc >= 0 && lc < nsplines){
+        coeff_diff[skip + carrier_freq_id*nsplines*2 + lc] += valbar1;
+        coeff_diff[skip + carrier_freq_id*nsplines*2 + lc + nsplines] += valbar2;
+    }
+
+    // for (int l=lstart; l<lend; l++) {
+    //     double Blt = basisfunction(l, t); 
+    //     coeff_diff[skip + carrier_freq_id*nsplines*2 + l]            += Blt * valbar1;
+    //     coeff_diff[skip + carrier_freq_id*nsplines*2 + l + nsplines] += Blt * valbar2;
+    // }
+}
+
+// This fcn is not needed anymore
+// double BSpline0::bspl0(int id, double t){
+
+//     /* compute scaled time tau = (t-tcenter[k])  */
+//     double tau = (t - tcenter[id]) / width;
+
+//     /* Return 0 if tau not in local support */
+//     if ( tau < -1./2. || tau >= 1./2. ) 
+//         return 0.0;
+//     else 
+//         return 1.0;
+
+// }
 
 TransferFunction::TransferFunction(){}
 TransferFunction::TransferFunction(std::vector<double> onofftimes_){

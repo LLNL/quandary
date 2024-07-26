@@ -74,6 +74,26 @@ Oscillator::Oscillator(MapParam config, int id, std::vector<int> nlevels_all_, s
       mysplinebasis->setSkip(nparams);
       nparams += mysplinebasis->getNparams() * carrier_freq.size();
       basisfunctions.push_back(mysplinebasis);
+      //
+    } else if (controlsegments[idstr].compare("bs0") == 0) { // Format in string: bs0, nsplines, tstart, tstop
+      idstr++;
+      if (controlsegments.size() <= idstr){
+        printf("ERROR: Wrong setting for control segments: Number of splines not found.\n");
+        exit(1);
+      }
+      int nspline = atoi(controlsegments[idstr].c_str()); idstr++;
+      double tstart = 0.0;
+      double tstop = Tfinal;
+      if (controlsegments.size()>=idstr+2){
+        tstart = atof(controlsegments[idstr].c_str()); idstr++;
+        tstop = atof(controlsegments[idstr].c_str()); idstr++;
+      }
+      // if (mpirank_world==0) printf("%d: Creating %d-spline basis in control segment [%f, %f]\n", myid, nspline,tstart, tstop);
+      ControlBasis* mysplinebasis = new BSpline0(nspline, tstart, tstop, control_enforceBC);
+      mysplinebasis->setSkip(nparams);
+      nparams += mysplinebasis->getNparams() * carrier_freq.size();
+      basisfunctions.push_back(mysplinebasis);
+      //
     } else if (controlsegments[idstr].compare("spline_amplitude") == 0) { // Spline on amplitude only. Format in string: spline_amplitude, nsplines, tstart, tstop
       idstr++;
       if (controlsegments.size() <= idstr){
