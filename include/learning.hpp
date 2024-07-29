@@ -9,6 +9,7 @@
 #include <petscts.h>
 #include <vector>
 #include<random>
+#include "data.hpp"
 #pragma once
 
 /* Generalized Gellmann matrices, diagonally shifted such tha G_00 = 0, optionally only upper part */
@@ -94,10 +95,8 @@ class Learning {
   
   int nparams;           /* Total Number of learnable paramters*/
 
-  double data_dtAWG;     /* Sample rate of AWG data (default 4ns) */
-  int data_ntime;        /* Number of data points in time */
   int loss_every_k;      /* Add to loss at every k-th timestep */
-  std::vector<Vec> data; /* List of all data point (rho_data) at each data_dtAWG */
+  Data* data;
 
   Vec aux2;    // Auxiliary vector to perform matvecs on state x during Loss
 
@@ -127,15 +126,6 @@ class Learning {
     /* Reduced gradient for Hamiltonian part: 
        Sets grad += alpha * (dRHS(u,v)/dgamma)^T *(ubar, vbar) */
     void dRHSdp(Vec grad, Vec u, Vec v, double alpha, Vec ubar, Vec vbar);
-
-    /* Load data from file */
-    void loadData(std::vector<std::string> data_name, double data_dtAWG, int data_ntime);
-
-    /* Get data trajectory element */
-    Vec getData(int id) {assert(data.size()>id); return data[id];};
-
-    /* Get number of data elements */
-    int getNData(){ return data.size(); };
 
     /* Assemble the learned operator. Allocates the (dense!) matrices Re(H) and Im(H), which hence must be destroyed after usage. */
     void viewOperators();

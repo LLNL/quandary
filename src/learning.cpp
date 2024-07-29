@@ -364,8 +364,6 @@ void LindbladBasis::dRHSdp(Vec grad, Vec u, Vec v, double alpha, Vec ubar, Vec v
 
 Learning::Learning(std::vector<int>& nlevels, LindbladType lindbladtype_, std::vector<std::string>& learninit_str, std::vector<std::string> data_name, double data_dtAWG_, int data_ntime_, int loss_every_k_, std::default_random_engine rand_engine, bool quietmode_){
   lindbladtype = lindbladtype_;
-  data_dtAWG = data_dtAWG_;
-  data_ntime = data_ntime_;
   quietmode = quietmode_;
   loss_every_k = loss_every_k_;
   MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
@@ -400,7 +398,7 @@ Learning::Learning(std::vector<int>& nlevels, LindbladType lindbladtype_, std::v
     initLearnParams(learninit_str, rand_engine);
 
     /* Load trajectory data from file */
-    loadData(data_name, data_dtAWG, data_ntime);
+    data = new SyntheticQuandaryData(data_name, data_dtAWG_, data_ntime_, dim);
 
     /* Create auxiliary vectors needed for MatMult. */
     VecCreate(PETSC_COMM_WORLD, &aux2);    // aux2 sized for state (re and im)
@@ -418,14 +416,11 @@ Learning::~Learning(){
   if (dim_rho > 0) {
     learnparamsH_Re.clear();
     learnparamsH_Im.clear();
-    for (int i=0; i<data.size(); i++){
-      VecDestroy(&data[i]);
-    }
-    data.clear();
     VecDestroy(&aux2);
 
     delete hamiltonian_basis;
     delete lindblad_basis;
+    delete data;
   }
 }
 
@@ -536,61 +531,6 @@ void Learning::dRHSdp(Vec grad, Vec u, Vec v, double alpha, Vec ubar, Vec vbar){
 }
 
 
-void Learning::loadData(std::vector<std::string> data_name, double data_dtAWG, int data_ntime){
-
-  // Open files 
-  std::ifstream infile_re;
-  std::ifstream infile_im;
-  infile_re.open(data_name[0], std::ifstream::in);
-  infile_im.open(data_name[1], std::ifstream::in);
-  if(infile_re.fail() || infile_im.fail() ) {// checks to see if file opended 
-      std::cout << "\n ERROR loading learning data file\n" << std::endl; 
-      std::cout << data_name[0] + "_re.dat" << std::endl;
-      exit(1);
-  } else {
-    if (!quietmode) {
-      std::cout<< "Loading trajectory data from " << data_name[0] << ", " << data_name[1] << std::endl;
-    }
-  }
-
-  // Iterate over each line in the file
-  for (int n = 0; n <data_ntime; n++) {
-    Vec state;
-    VecCreate(PETSC_COMM_WORLD, &state);
-    VecSetSizes(state, PETSC_DECIDE, 2*dim);
-    VecSetFromOptions(state);
-
-    // Iterate over columns
-    double val_re, val_im;
-    infile_re >> val_re; // first element is time
-    infile_im >> val_im; // first element is time
-    // printf("time-step %1.4f == %1.4f ??\n", val_re, val_im);
-    assert(fabs(val_re - val_im) < 1e-12);
-    for (int i=0; i<dim; i++) { // Other elements are the state (re and im) at this time
-      infile_re >> val_re;
-      infile_im >> val_im;
-      VecSetValue(state, getIndexReal(i), val_re, INSERT_VALUES);
-      VecSetValue(state, getIndexImag(i), val_im, INSERT_VALUES);
-    }
-    VecAssemblyBegin(state);
-    VecAssemblyEnd(state);
-    data.push_back(state);
-  }
-
-  // Close files
-	infile_re.close();
-	infile_im.close();
-
-  // // TEST what was loaded
-  // printf("\nDATA POINTS:\n");
-  // for (int i=0; i<data.size(); i++){
-  //   VecView(data[i], NULL);
-  // }
-  // printf("END DATA POINTS.\n\n");
-}
-
-
-
 void Learning::initLearnParams(std::vector<std::string> learninit_str, std::default_random_engine rand_engine){
   // Switch over initialization string ("file", "constant", or "random")
 
@@ -691,15 +631,15 @@ void Learning::addToLoss(int timestepID, Vec x){
   }
 
   // Add to loss if data exists
-  if (dataID > 0 && dataID < getNData()) {
+  if (dataID > 0 && dataID < data->getNData()) {
     // printf("Add to loss at ts %d with dataID %d\n", timestepID, dataID);
     double norm; 
-    Vec xdata = getData(dataID);
+    Vec xdata = data->getData(dataID);
     // Frobenius norm between state x and data
     VecAYPX(aux2, 0.0, x);
     VecAXPY(aux2, -1.0, xdata);   // aux2 = x - data
     VecNorm(aux2, NORM_2, &norm);
-    loss_integral += 0.5*norm*norm / (getNData()-1);
+    loss_integral += 0.5*norm*norm / (data->getNData()-1);
   }
 }
 
@@ -714,11 +654,11 @@ void Learning::addToLoss_diff(int timestepID, Vec xbar, Vec xprimal, double Jbar
     dataID = timestepID / loss_every_k;
   }
 
-  if (dataID > 0 && dataID < getNData()) {
+  if (dataID > 0 && dataID < data->getNData()) {
     // printf("loss_DIFF at ts %d with dataID %d\n", timestepID, dataID);
-    Vec xdata = getData(dataID);
-    VecAXPY(xbar, Jbar_loss / (getNData()-1), xprimal);
-    VecAXPY(xbar, -Jbar_loss/ (getNData()-1), xdata);
+    Vec xdata = data->getData(dataID);
+    VecAXPY(xbar, Jbar_loss / (data->getNData()-1), xprimal);
+    VecAXPY(xbar, -Jbar_loss/ (data->getNData()-1), xdata);
   }
 }
 
