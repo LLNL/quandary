@@ -288,6 +288,8 @@ void MasterEq::initSparseMatSolver(){
   MatSetUp(Bd);
   MatSetFromOptions(Ad);
   MatSetFromOptions(Bd);
+  // Allow for setting new nonzeros entries into Ad after pre-allocation
+  MatSetOption(Ad, MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);
 
   // One control operator per oscillator
   // Ac_vec[0] = real(-i Hc) and Bc_vec[0] = imag(-i Hc)
