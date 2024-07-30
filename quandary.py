@@ -479,28 +479,28 @@ class Quandary:
 
         # Set up string for Quandary's config file
         Nt = [self.Ne[i] + self.Ng[i] for i in range(len(self.Ng))]
-        mystring = "nlevels = " + str(list(Nt))[1:-1] + "\n"
-        mystring += "nessential= " + str(list(self.Ne))[1:-1] + "\n"
+        mystring = "nlevels = " + ",".join([str(i) for i in Nt]) + "\n"
+        mystring += "nessential= " + ",".join([str(i) for i in self.Ne]) + "\n"
         mystring += "ntime = " + str(self.nsteps) + "\n"
         mystring += "dt = " + str(self.T / self.nsteps) + "\n"
-        mystring += "transfreq = " + str(list(self.freq01))[1:-1] + "\n"
-        mystring += "rotfreq= " + str(list(self.rotfreq))[1:-1] + "\n"
-        mystring += "selfkerr = " + str(list(self.selfkerr))[1:-1] + "\n"
+        mystring += "transfreq = " + ",".join([str(i) for i in self.freq01]) + "\n"
+        mystring += "rotfreq= " + ",".join([str(i) for i in self.rotfreq]) + "\n"
+        mystring += "selfkerr = " + ",".join([str(i) for i in self.selfkerr]) + "\n"
         if len(self.crosskerr)>0:
-            mystring += "crosskerr= " + str(list(self.crosskerr))[1:-1] + "\n"
+            mystring += "crosskerr= " + ",".join([str(i) for i in self.crosskerr]) + "\n"
         else:
             mystring += "crosskerr= 0.0\n"
         if len(self.Jkl)>0:
-            mystring += "Jkl= " + str(list(self.Jkl))[1:-1] + "\n"
+            mystring += "Jkl= " + ",".join([str(i) for i in self.Jkl]) + "\n"
         else:
             mystring += "Jkl= 0.0\n"
         decay = dephase = False
         if len(self.T1) > 0: 
             decay = True
-            mystring += "decay_time = " + str(list(self.T1))[1:-1] + "\n"
+            mystring += "decay_time = " + ",".join([str(i) for i in self.T1]) + "\n"
         if len(self.T2) > 0:
             dephase = True
-            mystring += "dephase_time = " + str(list(self.T2))[1:-1] + "\n"
+            mystring += "dephase_time = " + ",".join([str(i) for i in self.T2]) + "\n"
         if decay and dephase:
             mystring += "collapse_type = both\n"
         elif decay:
