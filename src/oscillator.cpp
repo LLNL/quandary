@@ -75,7 +75,7 @@ Oscillator::Oscillator(MapParam config, int id, std::vector<int> nlevels_all_, s
       nparams += mysplinebasis->getNparams() * carrier_freq.size();
       basisfunctions.push_back(mysplinebasis);
       //
-    } else if (controlsegments[idstr].compare("bs0") == 0) { // Format in string: bs0, nsplines, tstart, tstop
+    } else if (controlsegments[idstr].compare("spline0") == 0) { // Format in string: bs0, nsplines, tstart, tstop
       idstr++;
       if (controlsegments.size() <= idstr){
         printf("ERROR: Wrong setting for control segments: Number of splines not found.\n");
