@@ -362,23 +362,21 @@ void LindbladBasis::dRHSdp(Vec grad, Vec u, Vec v, double alpha, Vec ubar, Vec v
 
 
 
-Learning::Learning(std::vector<int>& nlevels, LindbladType lindbladtype_, std::vector<std::string>& learninit_str, std::vector<std::string> data_name, double data_dtAWG_, int data_ntime_, int loss_every_k_, std::default_random_engine rand_engine, bool quietmode_){
+Learning::Learning(int dim_rho_, LindbladType lindbladtype_, std::vector<std::string>& learninit_str, Data* data_, int loss_every_k_, std::default_random_engine rand_engine, bool quietmode_){
   lindbladtype = lindbladtype_;
   quietmode = quietmode_;
+  data = data_;
   loss_every_k = loss_every_k_;
+  dim_rho = dim_rho_;
+
   MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
   loss_integral = 0.0;
 
-  // Get dimension of the Hilbert space (dim_rho = N) and dimension of the state variable (dim = N or N^2 for Schroedinger or Lindblad solver)
-  dim_rho = 1;
-  for (int i=0; i<nlevels.size(); i++){
-    dim_rho *= nlevels[i];
-  }
+  // Get dimension of the state variable (dim = N or N^2 for Schroedinger or Lindblad solver)
   dim = dim_rho;
   if (lindbladtype != LindbladType::NONE){
     dim = dim_rho*dim_rho; 
   }
-
 
   /* Proceed only if this is not a dummy class (aka only if using the UDE model)*/
   if (dim_rho > 0) {
@@ -396,9 +394,6 @@ Learning::Learning(std::vector<int>& nlevels, LindbladType lindbladtype_, std::v
 
     /* Allocate learnable Hamiltonian and Lindblad parameters, and set an initial guess */
     initLearnParams(learninit_str, rand_engine);
-
-    /* Load trajectory data from file */
-    data = new SyntheticQuandaryData(data_name, data_dtAWG_, data_ntime_, dim);
 
     /* Create auxiliary vectors needed for MatMult. */
     VecCreate(PETSC_COMM_WORLD, &aux2);    // aux2 sized for state (re and im)
@@ -624,7 +619,8 @@ void Learning::addToLoss(int timestepID, Vec x){
 
   if (dim_rho <= 0) return;
 
-  // Add to loss only every k-th timestep, and if data exists
+  // printf("loss every = %d\n", loss_every_k);
+  // Get the id of the data point (adding to loss only every k-th timestep). This probably is expensive, and should be avoided.
   int dataID = -1;
   if (timestepID % loss_every_k == 0 ) {
     dataID = timestepID / loss_every_k;

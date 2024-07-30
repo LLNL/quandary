@@ -243,24 +243,48 @@ int main(int argc,char **argv)
   Learning* learning;
   if (useUDEmodel) {
     config.GetVecStrParam("learnparams_initialization", learninit_str, "random, 0.0");
-    double data_dtAWG = config.GetDoubleParam("data_dtAWG", 4.0, false);
-    int data_ntime = config.GetIntParam("data_ntime", 0, false, true);
-    data_ntime = std::min(data_ntime, ntime+1);
-    // std::string data_name = config.GetStrParam("data_name", "data");
+    double data_tstop = config.GetDoubleParam("data_tstop", 1e+14, false);
+    data_tstop = std::min(ntime*dt, data_tstop);
+
+    /* Load trajectory data from file */
     std::vector<std::string> data_name;
     config.GetVecStrParam("data_name", data_name, "data");
-    // Update delta_t such that it is an integer divisor of dt_AWG
-    int loss_every_k = ceil(data_dtAWG / dt);
-    double dt_new = data_dtAWG / loss_every_k;
+    int dim_rho = 1;
+    for (int i=0; i<nlevels.size(); i++){
+      dim_rho *= nlevels[i];  // Hilbert-space dimension (N)
+    }
+    int dim = dim_rho;   // State dimension (N or N^2)
+    if (lindbladtype != LindbladType::NONE){
+      dim = dim*dim;
+    }               
+    Data* data;
+    std::string identifyer = data_name[0];
+    data_name.erase(data_name.begin());
+    if (identifyer.compare("synthetic") == 0)
+      data = new SyntheticQuandaryData(data_name, data_tstop, dim);
+    else {
+      printf("Wrong setting for loading data. Needs prefix 'synthetic,'\n");
+      exit(1);
+    }
+
+    // Make sure that time-integration step size is integer divisor of the data sampling size and update it if needed.
+    double dt_data = data->getDt();
+    int loss_every_k = 1;
+    if (abs(int(dt_data / dt) - dt_data/dt) > 1e-8) 
+      loss_every_k = ceil(dt_data /dt);
+    else
+      loss_every_k = int(dt_data /dt);
+    // printf("dt_data / dt= %1.9f, int(..)=%d, abs(int - ..) = %1.9f\n", dt_data/dt, int(dt_data/dt), abs(int(dt_data/dt)-dt_data/dt));
+    double dt_new = dt_data / loss_every_k;
+    if (!quietmode && abs(dt - dt_new) > 1e-8) printf(" -> Updated dt from %1.14e to %1.14e\n", dt, dt_new);
     dt = dt_new;   
+    // printf("loss_every_k %d, dt_data %1.10f, dt %1.10f\n", loss_every_k, dt_data, dt);
+
     // Create learning 
-    learning = new Learning(nlevels, lindbladtype, learninit_str, data_name, data_dtAWG, data_ntime, loss_every_k, rand_engine, quietmode);
-    if (!quietmode && abs(dt - dt_new) > 1e-12) printf(" -> Updated dt from %1.14e to %1.14e\n", dt, dt_new);
+    learning = new Learning(dim_rho, lindbladtype, learninit_str, data, loss_every_k, rand_engine, quietmode);
 
   } else {// Dummy. Does nothing.
-    std::vector<int> nlevelsdummy(nlevels.size(), 0);
-    std::vector<std::string> data_name_dummy;
-    learning = new Learning(nlevelsdummy, LindbladType::NONE, learninit_str, data_name_dummy, 0.0, 0, 0, rand_engine, quietmode); 
+    learning = new Learning(0, LindbladType::NONE, learninit_str, NULL, 0, rand_engine, quietmode); 
   }
 
   // Get control segment types, carrierwaves and control initialization

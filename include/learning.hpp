@@ -93,10 +93,9 @@ class Learning {
   std::vector<double> learnparamsL_Re; // Learnable parameters for Lindblad
   std::vector<double> learnparamsL_Im; // Learnable parameters for Lindblad
   
-  int nparams;           /* Total Number of learnable paramters*/
-
-  int loss_every_k;      /* Add to loss at every k-th timestep */
-  Data* data;
+  int nparams;      /* Total Number of learnable paramters*/
+  Data* data;       /* Stores the data */
+  int loss_every_k; /* Evaluate loss every k-th time-step */
 
   Vec aux2;    // Auxiliary vector to perform matvecs on state x during Loss
 
@@ -105,8 +104,9 @@ class Learning {
 
   double loss_integral;   /* Running cost for Loss function */
 
+
   public: 
-    Learning(std::vector<int>&nlevels, LindbladType lindbladtype_, std::vector<std::string>& learninit_str, std::vector<std::string> data_name, double data_dtAWG_, int data_ntime, int loss_every_k, std::default_random_engine rand_engine, bool quietmode);
+    Learning(int dim_rho_, LindbladType lindbladtype_, std::vector<std::string>& learninit_str, Data* data, int loss_every_k, std::default_random_engine rand_engine, bool quietmode);
     ~Learning();
 
     void resetLoss(){ loss_integral = 0.0; };
