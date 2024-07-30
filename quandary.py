@@ -52,6 +52,7 @@ class Quandary:
     control_enforce_BC  # Bool to let control pulses start and end at zero. Default: False
     dtau                # Spacing of Bspline basis functions [ns]. The smaller dtau, the larger nsplines. Default: 3ns
     nsplines            # Number of Bspline basis functions. Default: T/dtau + 2
+    spline_order        # Order of the B-spline basis (0 or 2). Default: 2
     carrier_frequency   # Carrier frequencies for each oscillator. List[List[float]]. Default will be computed based on Hsys.
     cw_amp_thres        # Threshold to ignore carrier wave frequencies whose growth rate is below this value. Default: 1e-7
     cw_prox_thres       # Threshold to distinguish different carrier wave frequencies from each other. Default: 1e-2
@@ -125,7 +126,8 @@ class Quandary:
     maxctrl_MHz         : List[float] = field(default_factory=list)   
     control_enforce_BC  : bool        = False                         
     dtau                : float       = 3.0
-    nsplines            : int         = -1                            
+    nsplines            : int         = -1 
+    spline_order        : int         = 2                           
     carrier_frequency   : List[List[float]] = field(default_factory=list) 
     cw_amp_thres        : float       = 1e-7
     cw_prox_thres       : float       = 1e-2                        
@@ -512,7 +514,13 @@ class Quandary:
         else:
             mystring += "initialcondition = " + str(self.initialcondition) + "\n"
         for iosc in range(len(self.Ne)):
-            mystring += "control_segments" + str(iosc) + " = spline, " + str(self.nsplines) + "\n"
+            if self.spline_order == 0:
+                mystring += "control_segments" + str(iosc) + " = spline0, " + str(self.nsplines) + "\n"
+            elif self.spline_order == 2:
+                mystring += "control_segments" + str(iosc) + " = spline, " + str(self.nsplines) + "\n"
+            else:
+                print("Error: spline order = ", self.spline_order, " not implemented")
+                return -1
             # if len(self.pcof0_filename)>0:
             if len(writeme)>0:
                 initstring = "file, "+str(self.pcof0_filename) + "\n"
