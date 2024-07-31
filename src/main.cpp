@@ -18,7 +18,7 @@
 #define TEST_FD_GRAD 0    // Run Finite Differences gradient test
 #define TEST_FD_HESS 0    // Run Finite Differences Hessian test
 #define HESSIAN_DECOMPOSITION 0 // Run eigenvalue analysis for Hessian
-#define EPS 1e-5          // Epsilon for Finite Differences
+#define EPS 1e-7          // Epsilon for Finite Differences
 
 int main(int argc,char **argv)
 {
@@ -239,16 +239,10 @@ int main(int argc,char **argv)
 
   /* Create Learning Model or dummy */
   bool useUDEmodel = config.GetBoolParam("useUDEmodel", false, false);
-  std::vector<std::string> learninit_str;
   Learning* learning;
   if (useUDEmodel) {
-    config.GetVecStrParam("learnparams_initialization", learninit_str, "random, 0.0");
-    double data_tstop = config.GetDoubleParam("data_tstop", 1e+14, false);
-    data_tstop = std::min(ntime*dt, data_tstop);
 
     /* Load trajectory data from file */
-    std::vector<std::string> data_name;
-    config.GetVecStrParam("data_name", data_name, "data");
     int dim_rho = 1;
     for (int i=0; i<nlevels.size(); i++){
       dim_rho *= nlevels[i];  // Hilbert-space dimension (N)
@@ -258,33 +252,40 @@ int main(int argc,char **argv)
       dim = dim*dim;
     }               
     Data* data;
+    std::vector<std::string> data_name;
+    config.GetVecStrParam("data_name", data_name, "data");
     std::string identifyer = data_name[0];
     data_name.erase(data_name.begin());
-    if (identifyer.compare("synthetic") == 0)
+    double data_tstop = config.GetDoubleParam("data_tstop", 1e+14, false);
+    if (identifyer.compare("synthetic") == 0) {
       data = new SyntheticQuandaryData(data_name, data_tstop, dim);
+    } else if (identifyer.compare("Tant2level") == 0) {
+      int npulses = config.GetIntParam("data_npulses", 1, true, true);
+      data = new Tant2levelData(data_name, data_tstop, dim, npulses);
+    }
     else {
-      printf("Wrong setting for loading data. Needs prefix 'synthetic,'\n");
+      printf("Wrong setting for loading data. Needs prefix 'synthetic', or 'Tant2level'. \n");
       exit(1);
     }
 
-    // Make sure that time-integration step size is integer divisor of the data sampling size and update it if needed.
-    double dt_data = data->getDt();
-    int loss_every_k = 1;
-    if (abs(int(dt_data / dt) - dt_data/dt) > 1e-8) 
-      loss_every_k = ceil(dt_data /dt);
-    else
-      loss_every_k = int(dt_data /dt);
-    // printf("dt_data / dt= %1.9f, int(..)=%d, abs(int - ..) = %1.9f\n", dt_data/dt, int(dt_data/dt), abs(int(dt_data/dt)-dt_data/dt));
-    double dt_new = dt_data / loss_every_k;
-    if (!quietmode && abs(dt - dt_new) > 1e-8) printf(" -> Updated dt from %1.14e to %1.14e\n", dt, dt_new);
-    dt = dt_new;   
-    // printf("loss_every_k %d, dt_data %1.10f, dt %1.10f\n", loss_every_k, dt_data, dt);
+    /* Update the time-integration step-size such that it is an integer divisor of the data sampling size  */
+    double remain = std::remainder(data->getDt(),dt);
+    int loss_every_k;
+    if (abs(remain) < 1e-8) loss_every_k = std::round(data->getDt()/dt); // dt is already integer divisor of data_dt
+    else loss_every_k = ceil(data->getDt()/dt);   // Next larger integer
+    double dt_old = dt;
+    dt = data->getDt()/ loss_every_k;    // Update timestep size
+    if (abs(dt - dt_old) > 1e-8 && !quietmode) printf(" -> Updated dt from %1.14e to %1.14e\n", dt_old, dt);
 
-    // Create learning 
-    learning = new Learning(dim_rho, lindbladtype, learninit_str, data, loss_every_k, rand_engine, quietmode);
+    /* Create learning  */
+    std::vector<std::string> learninit_str;
+    config.GetVecStrParam("learnparams_initialization", learninit_str, "random, 0.0");
+    learning = new Learning(dim_rho, lindbladtype, learninit_str, data, rand_engine, quietmode);
 
-  } else {// Dummy. Does nothing.
-    learning = new Learning(0, LindbladType::NONE, learninit_str, NULL, 0, rand_engine, quietmode); 
+  } else {
+    /* Create dummy learning. Does nothing. */
+    std::vector<std::string> learninit_str;
+    learning = new Learning(0, LindbladType::NONE, learninit_str, NULL, rand_engine, quietmode); 
   }
 
   // Get control segment types, carrierwaves and control initialization

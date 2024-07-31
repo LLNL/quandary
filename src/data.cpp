@@ -4,12 +4,15 @@ Data::Data() {
 	dt = 0.0;
   dim = -1;
   npulses = 0;
+  tstart = 0.0;
+  tstop = 1.0e14;
 }
 
-Data::Data(std::vector<std::string> data_name_, int dim_, int npulses_) {
+Data::Data(std::vector<std::string> data_name_, double tstop_, int dim_, int npulses_) {
   data_name = data_name_;
   dim = dim_;
   npulses = npulses_;
+  tstop = tstop_;
 
   // Set outer dimension of the data to number of control pulses. Inner dimension will be filled in the subclasses.
   data.resize(npulses);
@@ -25,17 +28,28 @@ Data::~Data() {
   data.clear();
 }
 
-SyntheticQuandaryData::SyntheticQuandaryData(std::vector<std::string> data_name, double data_tstop, int dim) : Data(data_name, dim, 1) {
+Vec Data::getData(double time, int pulse_num){
+  
+  if (tstart <= time && time <= tstop) {  // if time is within the data domain
+    double remainder = std::remainder(time - tstart, dt);
+    if (abs(remainder) < 1e-10) {        // if data exists at this time
+      int dataID = round((time - tstart)/dt);
+      return data[pulse_num][dataID]; 
+    } else return NULL;
+  } else return NULL;
+}
+
+SyntheticQuandaryData::SyntheticQuandaryData(std::vector<std::string> data_name, double data_tstop, int dim) : Data(data_name, data_tstop, dim, 1) {
 
   /* Load training data */
-  dt = loadData(data_tstop);
+  loadData(&tstart, &tstop, &dt);
 }
 
 SyntheticQuandaryData::~SyntheticQuandaryData() {
 
 }
 
-double SyntheticQuandaryData::loadData(double tstop) {
+void SyntheticQuandaryData::loadData(double* tstart, double* tstop, double* dt){
 
   // Open files 
   std::ifstream infile_re;
@@ -51,21 +65,19 @@ double SyntheticQuandaryData::loadData(double tstop) {
 
   // Iterate over each line in the files
   int count = 0;
-  double time_re, time_im;
-  double data_dt;
+  double time_re, time_im, time_prev;
   while (infile_re >> time_re) 
   {
     // Figure out time and dt
-    if (count == 1) {
-      data_dt = time_re - time_im; // Note: since 'time_re' is read in the 'while' statement, it will have value from the 2nd row here, whereas time_im still has the value from the first row, hence dt = re - im
-    } 
+    if (count == 0) *tstart = time_re;
+    if (count == 1) *dt = time_re - time_im; // Note: since 'time_re' is read in the 'while' statement, it will have value from the 2nd row here, whereas time_im still has the value from the first row, hence dt = re - im
     infile_im >> time_im; // Read in time for the im file (it's already done for re in the while statement!)
     // printf("time_re = %1.8f, time_im = %1.8f\n", time_re, time_im);
     assert(fabs(time_re - time_im) < 1e-12);
 
     // printf("Loading data at Time %1.8f\n", time_re);
     // Break if exceeding the requested time domain length
-    if (time_re > tstop)  {
+    if (time_re > *tstop)  {
       // printf("Stopping data at %1.8f > %1.8f \n", time_re, tstop);
       break;
     }
@@ -88,7 +100,11 @@ double SyntheticQuandaryData::loadData(double tstop) {
     // Store the state
     data[0].push_back(state);  // Here, only one pulse
     count+=1;
+    time_prev = time_re;
   }
+
+  /* Update the final time stamp */
+  *tstop = std::min(time_prev, *tstop);
 
   // Close files
 	infile_re.close();
@@ -100,23 +116,22 @@ double SyntheticQuandaryData::loadData(double tstop) {
   //   VecView(data[i], NULL);
   // }
   // printf("END DATA POINTS.\n\n");
-  return data_dt;
 }
 
 
-Tant2levelData::Tant2levelData(std::vector<std::string> data_name, double data_tstop, int dim, int npulses) : Data(data_name, dim, npulses){
+Tant2levelData::Tant2levelData(std::vector<std::string> data_name, double data_tstop, int dim, int npulses) : Data(data_name, data_tstop, dim, npulses){
   // Currently only for 2level data. 
   assert(dim == 4);
 
-  /* Load training data, return data time-step spacing */
-  dt = loadData(data_tstop);
+  /* Load training data, this also sets first and last time stamp as well as data sampling step size */
+  loadData(&tstart, &tstop, &dt);
 }
 
 Tant2levelData::~Tant2levelData(){
 
 }
 
-double Tant2levelData::loadData(double tstop){
+void Tant2levelData::loadData(double* tstart, double* tstop, double* dt){
 
   /* Data format: First row is header following rows are formated as follows: 
   *   <nshots> <time> <pulse_num> <rho_lie_ij> for ij=1,2 <rho_lie_phys_ij> for ij=12 
@@ -146,7 +161,6 @@ double Tant2levelData::loadData(double tstop){
   int count = 0;
   double time, time_prev;
   int pulse_num;
-  double data_dt;
   std::string strval;
 
   while (infile >> nshots) 
@@ -159,15 +173,15 @@ double Tant2levelData::loadData(double tstop){
       break;
     }
 
-    // Figure out data sampling time-step
-    if (count == 0) tstart = time;
-    if (count == 1) data_dt = time - time_prev; 
+    // Figure out first time point and sampling time-step
+    if (count == 0) *tstart = time;
+    if (count == 1) *dt = time - time_prev; 
 
     // printf("tstart = %1.8f, dt=%1.8f\n", tstart, data_dt);
     // printf("Loading data at Time %1.8f\n", time);
 
     // Break if exceeding the requested time domain length 
-    if (time > tstop)  {
+    if (time > *tstop)  {
       if (npulses == 1) {
         break; 
       } else { // Skip to next pulse number. TODO: TEST THIS!! Probably wrong...
@@ -217,19 +231,20 @@ double Tant2levelData::loadData(double tstop){
     time_prev = time;
   }
 
+  /* Update the final time stamp */
+  *tstop = std::min(time_prev, *tstop);
+
   // Close files
 	infile.close();
 
-  // TEST what was loaded
-  printf("\nDATA POINTS:\n");
-  for (int ipulse=0; ipulse<data.size(); ipulse++){
-    printf("PULSE NUMBER %d\n", ipulse);
-    for (int j=0; j<data[ipulse].size(); j++){
-      VecView(data[ipulse][j], NULL);
-    }
-  }
-  printf("END DATA POINTS.\n\n");
-  exit(1);
-
-  return data_dt;
+  // // TEST what was loaded
+  // printf("\nDATA POINTS:\n");
+  // for (int ipulse=0; ipulse<data.size(); ipulse++){
+  //   printf("PULSE NUMBER %d\n", ipulse);
+  //   for (int j=0; j<data[ipulse].size(); j++){
+  //     VecView(data[ipulse][j], NULL);
+  //   }
+  // }
+  // printf("END DATA POINTS.\n\n");
+  // exit(1);
 }

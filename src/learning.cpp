@@ -362,11 +362,10 @@ void LindbladBasis::dRHSdp(Vec grad, Vec u, Vec v, double alpha, Vec ubar, Vec v
 
 
 
-Learning::Learning(int dim_rho_, LindbladType lindbladtype_, std::vector<std::string>& learninit_str, Data* data_, int loss_every_k_, std::default_random_engine rand_engine, bool quietmode_){
+Learning::Learning(int dim_rho_, LindbladType lindbladtype_, std::vector<std::string>& learninit_str, Data* data_, std::default_random_engine rand_engine, bool quietmode_){
   lindbladtype = lindbladtype_;
   quietmode = quietmode_;
   data = data_;
-  loss_every_k = loss_every_k_;
   dim_rho = dim_rho_;
 
   MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
@@ -615,44 +614,32 @@ void Learning::initLearnParams(std::vector<std::string> learninit_str, std::defa
 }
 
 
-void Learning::addToLoss(int timestepID, Vec x){
+void Learning::addToLoss(double time, Vec x){
 
   if (dim_rho <= 0) return;
 
-  // printf("loss every = %d\n", loss_every_k);
-  // Get the id of the data point (adding to loss only every k-th timestep). This probably is expensive, and should be avoided.
-  int dataID = -1;
-  if (timestepID % loss_every_k == 0 ) {
-    dataID = timestepID / loss_every_k;
-  }
-
-  // Add to loss if data exists
-  if (dataID > 0 && dataID < data->getNData()) {
-    // printf("Add to loss at ts %d with dataID %d\n", timestepID, dataID);
-    double norm; 
-    Vec xdata = data->getData(dataID);
-    // Frobenius norm between state x and data
+  // Try to access data point and compute frobenius norm (x-xdata) if it exists.
+  Vec xdata = data->getData(time);
+  if (xdata != NULL) {
+    // printf("Add to loss at time %1.8f \n", time);
+    // VecView(x,NULL);
     VecAYPX(aux2, 0.0, x);
     VecAXPY(aux2, -1.0, xdata);   // aux2 = x - data
+    double norm; 
     VecNorm(aux2, NORM_2, &norm);
     loss_integral += 0.5*norm*norm / (data->getNData()-1);
   }
 }
 
 
-void Learning::addToLoss_diff(int timestepID, Vec xbar, Vec xprimal, double Jbar_loss){
+void Learning::addToLoss_diff(double time, Vec xbar, Vec xprimal, double Jbar_loss){
 
   if (dim_rho <= 0) return;
 
-  // Add to loss only every k-th timestep, and if data exists
-  int dataID = -1;
-  if (timestepID % loss_every_k == 0 ) {
-    dataID = timestepID / loss_every_k;
-  }
-
-  if (dataID > 0 && dataID < data->getNData()) {
-    // printf("loss_DIFF at ts %d with dataID %d\n", timestepID, dataID);
-    Vec xdata = data->getData(dataID);
+  Vec xdata = data->getData(time);
+  if (xdata != NULL) {
+    // printf("loss_DIFF at time %1.8f \n", time);
+    // VecView(xprimal,NULL);
     VecAXPY(xbar, Jbar_loss / (data->getNData()-1), xprimal);
     VecAXPY(xbar, -Jbar_loss/ (data->getNData()-1), xdata);
   }
