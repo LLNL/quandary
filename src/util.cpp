@@ -1,6 +1,99 @@
 #include "util.hpp"
 
 
+double expectedEnergy(const Vec x, LindbladType lindbladtype){
+ 
+  // Compute Hilbertspace dimension -> N
+  PetscInt dim;
+  VecGetSize(x, &dim);
+  int dimmat = dim / 2;  // since x stores real and imaginary numbers separately
+  if (lindbladtype != LindbladType::NONE){ // take the square root if lindblad solver -> N
+    dimmat = int(sqrt(dimmat)); 
+  }
+
+  /* Get locally owned portion of x */
+  PetscInt ilow, iupp, idx_diag_re, idx_diag_im;
+  VecGetOwnershipRange(x, &ilow, &iupp);
+  double xdiag;
+
+  /* Iterate over diagonal elements to add up expected energy level */
+  double expected = 0.0;
+  for (int i=0; i<dimmat; i++) {
+    /* Get diagonal element in number operator */
+    int num_diag = i ;
+
+    /* Get diagonal element in rho (real) and sum up */
+    if (lindbladtype != LindbladType::NONE){ // Lindblad solver: += i * rho_ii
+      idx_diag_re = getIndexReal(getVecID(i,i,dimmat));
+      xdiag = 0.0;
+      if (ilow <= idx_diag_re && idx_diag_re < iupp) VecGetValues(x, 1, &idx_diag_re, &xdiag);
+      expected += num_diag * xdiag;
+    }
+    else { // Schoedinger solver: += i * | psi_i |^2
+      idx_diag_re = getIndexReal(i);
+      xdiag = 0.0;
+      if (ilow <= idx_diag_re && idx_diag_re < iupp) VecGetValues(x, 1, &idx_diag_re, &xdiag);
+      expected += num_diag * xdiag * xdiag;
+      idx_diag_im = getIndexImag(i);
+      xdiag = 0.0;
+      if (ilow <= idx_diag_im && idx_diag_im < iupp) VecGetValues(x, 1, &idx_diag_im, &xdiag);
+      expected += num_diag * xdiag * xdiag;
+    }
+  }
+  
+  /* Sum up from all Petsc processors */
+  double myexp = expected;
+  MPI_Allreduce(&myexp, &expected, 1, MPI_DOUBLE, MPI_SUM, PETSC_COMM_WORLD);
+
+  return expected;
+}
+
+void population(const Vec x, LindbladType lindbladtype, std::vector<double> &pop){
+
+  // Compute Hilbertspace dimension -> N
+  PetscInt dim;
+  VecGetSize(x, &dim);
+  int dim_rho = dim / 2;  // since x stores real and imaginary numbers separately
+  if (lindbladtype != LindbladType::NONE){ // take the square root if lindblad solver -> N
+    dim_rho= int(sqrt(dim_rho)); 
+  }
+
+  // Zero out the population vector
+  pop.clear();
+  pop.resize(dim_rho);
+
+  /* Get locally owned portion of x */
+  PetscInt ilow, iupp;
+  VecGetOwnershipRange(x, &ilow, &iupp);
+
+  /* Iterate over diagonal elements of the density matrix */
+  std::vector<double> mypop(dim_rho, 0.0);
+  for (int idiag=0; idiag < dim_rho; idiag++) {
+    double popi = 0.0;
+    /* Get the diagonal element */
+    if (lindbladtype != LindbladType::NONE) { // Lindblad solver
+      PetscInt diagID = getIndexReal(getVecID(idiag, idiag, dim_rho));  // Position in vectorized rho
+      double val = 0.0;
+      if (ilow <= diagID && diagID < iupp)  VecGetValues(x, 1, &diagID, &val);
+      popi = val;
+    } else {
+      PetscInt diagID_re = getIndexReal(idiag);
+      PetscInt diagID_im = getIndexImag(idiag);
+      double val = 0.0;
+      if (ilow <= diagID_re && diagID_re < iupp)  VecGetValues(x, 1, &diagID_re, &val);
+      popi = val * val;
+      val = 0.0;
+      if (ilow <= diagID_im && diagID_im < iupp)  VecGetValues(x, 1, &diagID_im, &val);
+      popi += val * val;
+    }
+    mypop[idiag] = popi;
+  } 
+
+  /* Gather poppulation from all Petsc processors and store in the output vector */
+  for (int i=0; i<mypop.size(); i++) {pop[i] = mypop[i];}
+  MPI_Allreduce(mypop.data(), pop.data(), dim_rho, MPI_DOUBLE, MPI_SUM, PETSC_COMM_WORLD);
+}
+
 double sigmoid(double width, double x){
   return 1.0 / ( 1.0 + exp(-width*x) );
 }

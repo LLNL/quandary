@@ -39,6 +39,27 @@ Vec Data::getData(double time, int pulse_num){
   } else return NULL;
 }
 
+
+void Data::writeExpectedEnergy(const char* filename, int pulse_num){
+
+  /* Open file  */
+  FILE *file_c;
+  file_c = fopen(filename, "w");
+
+  /* Iterate over time points, compute expected energy and write to file. */
+  for (int i=0; i<getNData(); i++){
+    double time = tstart + i*dt;
+
+    Vec x = getData(time, pulse_num);
+    if (x != NULL) {
+      double val = expectedEnergy(x, LindbladType::BOTH);
+      fprintf(file_c, "% 1.8f   % 1.14e   \n", time, val);
+    }
+  }
+  fclose(file_c);
+  printf("File written: %s\n", filename);
+}
+
 SyntheticQuandaryData::SyntheticQuandaryData(std::vector<std::string> data_name, double data_tstop, int dim) : Data(data_name, data_tstop, dim, 1) {
 
   /* Load training data */

@@ -268,6 +268,10 @@ int main(int argc,char **argv)
       exit(1);
     }
 
+    // TEST: write expected energy of the data.
+    std::string mydatadir = config.GetStrParam("datadir", "./data_out", false, true);
+    data->writeExpectedEnergy(mydatadir.append("/TrainingData.dat").c_str(), 0);
+
     /* Update the time-integration step-size such that it is an integer divisor of the data sampling size  */
     double remain = std::remainder(data->getDt(),dt);
     int loss_every_k;

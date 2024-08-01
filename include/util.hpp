@@ -1,12 +1,19 @@
 #include <petscmat.h>
 #include <iostream>
 #include <vector>
+#include "defs.hpp"
 #ifdef WITH_SLEPC
 #include <slepceps.h>
 #endif
 
 #pragma once
 
+
+/* Compute the expected energy of the full composite system. */
+double expectedEnergy(const Vec x, LindbladType lindbladtype);
+
+/* Compute the population of the full composite system.*/
+void population(const Vec x, LindbladType lindbladtype, std::vector<double> &population_com);
 
 double sigmoid(double width, double x);
 double sigmoid_diff(double width, double x);

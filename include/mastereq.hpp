@@ -158,12 +158,6 @@ class MasterEq{
 
     /* Set the oscillators control function parameters from global design vector x */
     void setControlAmplitudes(const Vec x);
-
-    // Get expected energy of the full composite system.
-    double expectedEnergy(const Vec x);
-
-    // Get population of the full composite system.
-    void population(const Vec x, std::vector<double> &population_com);
 };
 
 // Mat-free solver inlines for 1 oscillator

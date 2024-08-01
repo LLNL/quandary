@@ -216,7 +216,7 @@ void Output::writeDataFiles(int timestep, double time, const Vec state, MasterEq
       if (expectedfile[iosc] != NULL) fprintf(expectedfile[iosc], "%.8f %1.14e\n", time, expected);
     }
 
-    double expected_comp = mastereq->expectedEnergy(state);
+    double expected_comp = expectedEnergy(state, mastereq->lindbladtype);
     if (expectedfile_comp != NULL) fprintf(expectedfile_comp, "%.8f %1.14e\n", time, expected_comp);
 
     /* Write population to file */
@@ -235,7 +235,7 @@ void Output::writeDataFiles(int timestep, double time, const Vec state, MasterEq
 
 
     std::vector<double> population_comp; 
-    mastereq->population(state, population_comp);
+    population(state, mastereq->lindbladtype, population_comp);
     if (populationfile_comp != NULL) {
       fprintf(populationfile_comp, "%.8f  ", time);
       for (int i=0; i<population_comp.size(); i++){
