@@ -20,6 +20,7 @@ class GellmannBasis {
     int nbasis;    /* Total number of basis matrices */
     LindbladType lindbladtype;  // decides whether or not to vectorize the system matrices
     bool upper_only; // Optional: only get the upper diagonal part (including the diagonal itself)
+    bool shifted_diag; // Optional: Turn of shifting of the diagonal elements
 
     std::vector<Mat> BasisMat_Re; /* All (purely) real basis matrices. Size = dim_rho = N */ 
     std::vector<Mat> BasisMat_Im; /* All (purely) imaginary basis matrices. Size = dim_rho = N */ 
@@ -30,7 +31,7 @@ class GellmannBasis {
     Vec aux;     // Auxiliary vector to perform matvecs on Re(x) or Im(x)
 
   public:
-     GellmannBasis(int dim_rho_, bool upper_only_, LindbladType lindbladtype_);
+     GellmannBasis(int dim_rho_, bool upper_only_, bool shifted_diag_, LindbladType lindbladtype_);
      virtual ~GellmannBasis();
 
     int getNBasis(){return nbasis;};

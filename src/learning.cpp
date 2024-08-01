@@ -1,9 +1,10 @@
 #include "learning.hpp"
 
-GellmannBasis::GellmannBasis(int dim_rho_, bool upper_only_, LindbladType lindbladtype_){
+GellmannBasis::GellmannBasis(int dim_rho_, bool upper_only_, bool shifted_diag_, LindbladType lindbladtype_){
   dim_rho = dim_rho_;
   lindbladtype = lindbladtype_;
   upper_only = upper_only_;
+  shifted_diag = shifted_diag_;
 
   // If Lindblad solver, dim = N^2, otherwise dim=N
   dim = dim_rho;
@@ -51,11 +52,20 @@ GellmannBasis::GellmannBasis(int dim_rho_, bool upper_only_, LindbladType lindbl
     MatSetSizes(G_re, PETSC_DECIDE, PETSC_DECIDE, dim_rho, dim_rho);
     MatSetUp(G_re);
 
-    /* shifted diagonal mats: sigma_l^Re = (2/(l(l+1))( sum_j -|j><j| - l|l><l|) */
+    /* Diagonal mats 
+     *  shifted:     sigma_l^Re = (2/(l(l+1))( sum_{j=l,...,N-1} -|j><j| - l|l><l|)
+     *  not shifted: sigma_l^Re = (2/(l(l+1))( sum_{j=0,...,l-1}  |j><j| - l|l><l|) 
+     */
     double factor = sqrt(2.0/(l*(l+1)));
     MatSetValue(G_re, l, l, -1.0*l*factor, ADD_VALUES);
-    for (int j=l; j<dim_rho; j++){
-      MatSetValue(G_re, j, j, -1.0*factor, ADD_VALUES);
+    if (shifted_diag) {      
+      for (int j=l; j<dim_rho; j++){
+        MatSetValue(G_re, j, j, -1.0*factor, ADD_VALUES);
+      }
+    } else {  
+      for (int j=0; j<l; j++){
+        MatSetValue(G_re, j, j, factor, ADD_VALUES);
+      }
     }
     MatAssemblyBegin(G_re, MAT_FINAL_ASSEMBLY);
     MatAssemblyEnd(G_re, MAT_FINAL_ASSEMBLY);
@@ -91,7 +101,7 @@ GellmannBasis::~GellmannBasis(){
   SystemMats_B.clear();
 }
 
-HamiltonianBasis::HamiltonianBasis(int dim_rho_, LindbladType lindbladtype_) : GellmannBasis(dim_rho_, false, lindbladtype_) {
+HamiltonianBasis::HamiltonianBasis(int dim_rho_, LindbladType lindbladtype_) : GellmannBasis(dim_rho_, false, true, lindbladtype_) {
 
   /* Assemble system Matrices */
   assembleSystemMats();
@@ -252,7 +262,7 @@ void HamiltonianBasis::assembleOperator(std::vector<double>& learnparams_Re, std
 }
 
 
-LindbladBasis::LindbladBasis(int dim_rho_) : GellmannBasis(dim_rho_, true, LindbladType::BOTH) {
+LindbladBasis::LindbladBasis(int dim_rho_) : GellmannBasis(dim_rho_, true, true, LindbladType::BOTH) {
 
   /* Assemble system Matrices */
   assembleSystemMats();
