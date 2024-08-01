@@ -140,7 +140,10 @@ void SyntheticQuandaryData::loadData(double* tstart, double* tstop, double* dt){
 }
 
 
-Tant2levelData::Tant2levelData(std::vector<std::string> data_name, double data_tstop, int dim, int npulses) : Data(data_name, data_tstop, dim, npulses){
+Tant2levelData::Tant2levelData(std::vector<std::string> data_name, double data_tstop, int dim, bool corrected_, int npulses) : Data(data_name, data_tstop, dim, npulses){
+
+  corrected = corrected_;
+
   // Currently only for 2level data. 
   assert(dim == 4);
 
@@ -214,9 +217,11 @@ void Tant2levelData::loadData(double* tstart, double* tstop, double* dt){
       }
     }
     
-    // Now skip to the corrected physical LIE data (skip next <dim> columns)
-    for (int i=0; i < dim; i++){
-      infile >> strval;
+    // Skip to the corrected physical LIE data (skip next <dim> columns)
+    if (corrected) {
+      for (int i=0; i < dim; i++){
+        infile >> strval;
+      }
     }
     
     // Allocate the state 
@@ -250,6 +255,14 @@ void Tant2levelData::loadData(double* tstart, double* tstop, double* dt){
     data[pulse_num].push_back(state);
     count+=1;
     time_prev = time;
+
+    // Skip to the end of file, if we used non-corrected data
+    if (!corrected) {
+      for (int i=0; i < dim; i++){
+        infile >> strval;
+      }
+    }
+ 
   }
 
   /* Update the final time stamp */

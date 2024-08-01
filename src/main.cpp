@@ -206,6 +206,9 @@ int main(int argc,char **argv)
   PetscViewerPushFormat(PETSC_VIEWER_STDOUT_WORLD, 	PETSC_VIEWER_ASCII_MATLAB );
 
 
+  /* Create output class */
+  Output* output = new Output(config, comm_petsc, comm_init, nlevels.size(), quietmode);
+
   /* --- Initialize the Oscillators --- */
   Oscillator** oscil_vec = new Oscillator*[nlevels.size()];
   // Get fundamental and rotation frequencies from config file 
@@ -260,8 +263,13 @@ int main(int argc,char **argv)
     if (identifyer.compare("synthetic") == 0) {
       data = new SyntheticQuandaryData(data_name, data_tstop, dim);
     } else if (identifyer.compare("Tant2level") == 0) {
+      bool corrected = false;
+      if (data_name[0].compare("corrected") == 0) {
+        corrected = true;
+        data_name.erase(data_name.begin());
+      }
       int npulses = config.GetIntParam("data_npulses", 1, true, true);
-      data = new Tant2levelData(data_name, data_tstop, dim, npulses);
+      data = new Tant2levelData(data_name, data_tstop, dim, corrected, npulses);
     }
     else {
       printf("Wrong setting for loading data. Needs prefix 'synthetic', or 'Tant2level'. \n");
@@ -269,7 +277,7 @@ int main(int argc,char **argv)
     }
 
     // TEST: write expected energy of the data.
-    std::string mydatadir = config.GetStrParam("datadir", "./data_out", false, true);
+    std::string mydatadir = output->datadir; 
     data->writeExpectedEnergy(mydatadir.append("/TrainingData.dat").c_str(), 0);
 
     /* Update the time-integration step-size such that it is an integer divisor of the data sampling size  */
@@ -415,10 +423,6 @@ int main(int argc,char **argv)
   }
   // Initialize Master equation
   MasterEq* mastereq = new MasterEq(nlevels, nessential, oscil_vec, crosskerr, Jkl, eta, lindbladtype, usematfree, useUDEmodel, x_is_control, learning, hamiltonian_file, quietmode);
-
-
-  /* Output */
-  Output* output = new Output(config, comm_petsc, comm_init, nlevels.size(), quietmode);
 
   // Some screen output 
   if (mpirank_world == 0 && !quietmode) {

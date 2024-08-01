@@ -57,9 +57,10 @@ class SyntheticQuandaryData : public Data {
 class Tant2levelData : public Data {
   protected:
     int nshots;    /* Number of shots */
+    bool corrected;  /* If true, using physical density matrices */
 
   public:
-    Tant2levelData(std::vector<std::string> data_name, double data_tstop, int dim, int npulses);
+    Tant2levelData(std::vector<std::string> data_name, double data_tstop, int dim, bool corrected, int npulses);
     ~Tant2levelData();
 
     /* Loads data and sets first and last time point as well as sampling step size */
