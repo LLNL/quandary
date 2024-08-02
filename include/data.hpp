@@ -8,6 +8,7 @@
 #include <assert.h>
 #include <petscts.h>
 #include <vector>
+#include "gellmannbasis.hpp"
 #pragma once
 
 /* Abstract base data class */
@@ -53,7 +54,7 @@ class SyntheticQuandaryData : public Data {
 };
 
 
-/* Class for data generated on Tant, compatible with 231110_SG_Tant_2level */
+/* Class for data generated on Tant with 2level measurement operators. Compatible with database 231110_SG_Tant_2level */
 class Tant2levelData : public Data {
   protected:
     int nshots;    /* Number of shots */
@@ -62,6 +63,19 @@ class Tant2levelData : public Data {
   public:
     Tant2levelData(std::vector<std::string> data_name, double data_tstop, int dim, bool corrected, int npulses);
     ~Tant2levelData();
+
+    /* Loads data and sets first and last time point as well as sampling step size */
+    void loadData(double* tstart, double* tstop, double* dt);
+};
+
+/* Class for data generated on Tant with 3 level measurement operators. Compatible with database 240711/ and 240715/ */
+class Tant3levelData : public Data {
+  protected:
+    bool corrected;  /* If true, using physical density matrices */
+
+  public:
+    Tant3levelData(std::vector<std::string> data_name, double data_tstop, int dim, bool corrected, int npulses);
+    ~Tant3levelData();
 
     /* Loads data and sets first and last time point as well as sampling step size */
     void loadData(double* tstart, double* tstop, double* dt);

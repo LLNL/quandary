@@ -256,11 +256,11 @@ void Learning::addToLoss(double time, Vec x){
 
   if (dim_rho <= 0) return;
 
-  // Try to access data point and compute frobenius norm (x-xdata) if it exists.
+  // If data point exists at this time, compute frobenius norm (x-xdata)
   Vec xdata = data->getData(time);
   if (xdata != NULL) {
     // printf("Add to loss at time %1.8f \n", time);
-    // VecView(x,NULL);
+    // VecView(xdata,NULL);
     VecAYPX(aux2, 0.0, x);
     VecAXPY(aux2, -1.0, xdata);   // aux2 = x - data
     double norm; 

@@ -270,6 +270,14 @@ int main(int argc,char **argv)
       }
       int npulses = config.GetIntParam("data_npulses", 1, true, true);
       data = new Tant2levelData(data_name, data_tstop, dim, corrected, npulses);
+    } else if (identifyer.compare("Tant3level") == 0) {
+      bool corrected = false;
+      if (data_name[0].compare("corrected") == 0) {
+        corrected = true;
+        data_name.erase(data_name.begin());
+      }
+      int npulses = config.GetIntParam("data_npulses", 1, true, true);
+      data = new Tant3levelData(data_name, data_tstop, dim, corrected, npulses);
     }
     else {
       printf("Wrong setting for loading data. Needs prefix 'synthetic', or 'Tant2level'. \n");

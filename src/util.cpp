@@ -28,6 +28,13 @@ double expectedEnergy(const Vec x, LindbladType lindbladtype){
       xdiag = 0.0;
       if (ilow <= idx_diag_re && idx_diag_re < iupp) VecGetValues(x, 1, &idx_diag_re, &xdiag);
       expected += num_diag * xdiag;
+
+      // Make sure the diagonal is real. 
+      idx_diag_im = getIndexImag(getVecID(i,i,dimmat));
+      if (ilow <= idx_diag_im && idx_diag_im < iupp) VecGetValues(x, 1, &idx_diag_im, &xdiag);
+      if (xdiag > 1e-10) {
+        printf("WARNING: imaginary number on the diagonal of the density matrix!\n");
+      }
     }
     else { // Schoedinger solver: += i * | psi_i |^2
       idx_diag_re = getIndexReal(i);
