@@ -111,6 +111,7 @@ Oscillator::Oscillator(MapParam config, int id, std::vector<int> nlevels_all_, s
         controlinitializations.push_back("0.0");
     }
     // Check config option for 'constant' or 'random' initialization
+    // Note, the config amplitude is multiplied by 2pi !!
     double initval = atof(controlinitializations[idini+1].c_str())*2.0*M_PI;
     if (controlinitializations[idini].compare("constant") == 0 ) {
       // If STEP: scale to [0,1]

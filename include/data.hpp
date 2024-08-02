@@ -23,6 +23,8 @@ class Data{
     std::vector<std::vector<Vec>> data; /* For each pulse_number: List of states at each data time-step */
     std::vector<std::string> data_name; /* Name of the data files */
 
+    std::vector<double> controlparams; /* Control parameters. Could be empty (if synthetic data), or 2 values (if constant p and q), or a list of bspline parameters (if random pulses) */
+
 	public:
     Data();
     Data(std::vector<std::string> data_name, double tstop, int dim, int npulses = 1);
@@ -35,6 +37,7 @@ class Data{
     double getDt(){ return dt; };
     double getTStart(){ return tstart; };
     double getTStop(){ return tstop; };
+    std::vector<double> getControls(int ioscillator=0){return controlparams;}; // TODO: Multiple oscillators!
 
     /* If data point exists at this time, return it. Otherwise, returns NULL */
     Vec getData(double time, int pulse_num=0);

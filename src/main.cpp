@@ -84,14 +84,6 @@ int main(int argc,char **argv)
     runtype = RunType::NONE;
   }
 
-  /* Switch solver mode between learning UDE model parameters vs optimizing controls */
-  bool x_is_control;
-  if (runtypestr.find("UDE") != std::string::npos) {
-    x_is_control = false ; // optim wrt UDE model parameters
-  } else {
-    x_is_control = true; // optim wrt controls parameters
-  }
-
   /* Get the number of essential levels per oscillator. 
    * Default: same as number of levels */  
   std::vector<int> nessential(nlevels.size());
@@ -308,28 +300,37 @@ int main(int argc,char **argv)
     learning = new Learning(0, LindbladType::NONE, learninit_str, NULL, rand_engine, quietmode); 
   }
 
-  // Get control segment types, carrierwaves and control initialization
+  /* Switch solver mode between learning UDE model parameters vs optimizing controls */
+  bool x_is_control;
+  if (runtypestr.find("UDE") != std::string::npos && useUDEmodel) {
+    x_is_control = false ; // optim wrt UDE model parameters
+  } else {
+    x_is_control = true; // optim wrt controls parameters
+  }
+
+  /* Set total time */
   double total_time = ntime * dt;
-  std::string default_seg_str = "spline, 10, 0.0, "+std::to_string(total_time); // Default for first oscillator control segment
-  std::string default_init_str = "constant, 0.0";                               // Default for first oscillator initialization
+
+  /* Initialize oscillators, with control paramterization and carrierwaves */
+  // Set defaults 
+  std::string default_seg_str = "spline, 10, 0.0, "+std::to_string(total_time); 
+  std::string default_init_str = "constant, 0.0";
+  // Iterate over oscillators
   for (int i = 0; i < nlevels.size(); i++){
     // Get carrier wave frequencies 
     std::vector<double> carrier_freq;
     std::string key = "carrier_frequency" + std::to_string(i);
     config.GetVecDoubleParam(key, carrier_freq, 0.0);
-
-    // Get control type. Default for second or larger oscillator is the previous one
+    // Get control type and initialization string
     std::vector<std::string> controltype_str;
     config.GetVecStrParam("control_segments" + std::to_string(i), controltype_str,default_seg_str);
-
-    // Get control initialization for this oscillator
     std::vector<std::string> controlinit_str;
     config.GetVecStrParam("control_initialization" + std::to_string(i), controlinit_str, default_init_str);
 
     // Create oscillator 
     oscil_vec[i] = new Oscillator(config, i, nlevels, controltype_str, controlinit_str, trans_freq[i], selfkerr[i], rot_freq[i], decay_time[i], dephase_time[i], carrier_freq, total_time, lindbladtype, rand_engine);
  
-    // Update the default for control type
+    // Update the default for control type for next iter
     default_seg_str = "";
     default_init_str = "";
     for (int l = 0; l<controltype_str.size(); l++) default_seg_str += controltype_str[l]+=", ";
@@ -341,7 +342,6 @@ int main(int argc,char **argv)
   config.GetVecStrParam("control_initialization0", controlinit_str, "constant, 0.0", false, false);
   if (controlinit_str.size() > 0 && controlinit_str[0].compare("file") == 0 ) {
     assert(controlinit_str.size() >=2);
-
     // Read file 
     int nparams = 0;
     for (int iosc = 0; iosc < nlevels.size(); iosc++){
@@ -350,7 +350,6 @@ int main(int argc,char **argv)
     std::vector<double> initguess_fromfile(nparams, 0.0);
     if (mpirank_world == 0) read_vector(controlinit_str[1].c_str(), initguess_fromfile.data(), nparams, quietmode);
     MPI_Bcast(initguess_fromfile.data(), nparams, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-
     // Pass control initialization to oscillators
     int shift=0;
     for (int ioscil = 0; ioscil < nlevels.size(); ioscil++) {
@@ -359,9 +358,37 @@ int main(int argc,char **argv)
       shift += oscil_vec[ioscil]->getNParams();
     }
   }
-  
 
-  // Get pi-pulses, if any
+
+  // Overwrite control initialization, if defined by training data
+  if (useUDEmodel && !x_is_control){
+    int ioscil = 0; // TODO: iterate over oscillators
+    std::vector<double> controls = learning->data->getControls(ioscil);
+    // format: could be two values (constant p & q), or could be a list of bspline parameters
+    if (controls.size() > 0){ // if exists
+      if (controls.size() == 2){ // p and q values
+        int nsplines = oscil_vec[ioscil]->getNSplines();
+        int nparams = oscil_vec[ioscil]->getNParams();
+        assert(nparams = 2*nsplines);
+        double p_GHz = controls[0];
+        double q_GHz = controls[1];
+        controls.resize(nparams);
+        for (int i=0; i<nsplines; i++) {
+          controls[i] = p_GHz *2*M_PI;
+          controls[i+nsplines] = q_GHz*2*M_PI;
+        }
+        printf("Learning: Using constant controls with p=%f, q=%f [MHz]\n", p_GHz*1e3, q_GHz*1e3);
+      } else {  // list of bspline parameters
+        assert(controls.size() == oscil_vec[ioscil]->getNParams());
+        printf("Learning: Using (given) random control parameters\n");
+      }
+      // Pass to oscillators
+      oscil_vec[ioscil]->setParams(controls.data());
+      // for (int i=0; i<controls.size(); i++) printf("%1.7f\n", controls[i]);
+    }
+  }
+
+  // Get pi-pulses, if any, and pass it to the oscillators
   std::vector<std::string> pipulse_str;
   config.GetVecStrParam("apply_pipulse", pipulse_str, "none", true, false);
   if (pipulse_str[0].compare("none") != 0) { // There is at least one pipulse to be applied!

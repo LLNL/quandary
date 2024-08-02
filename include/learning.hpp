@@ -15,6 +15,8 @@
 
 class Learning {
 
+  int mpirank_world;
+  bool quietmode;
   int dim;              // Dimension of full vectorized system: N^2 for Lindblad, N for Schroedinger, or -1 if not learning.
   int dim_rho;               // Dimension of Hilbertspace = N
   LindbladType lindbladtype; // Switch for Lindblad vs Schroedinger solver
@@ -26,16 +28,12 @@ class Learning {
   std::vector<double> learnparamsL_Re; // Learnable parameters for Lindblad
   std::vector<double> learnparamsL_Im; // Learnable parameters for Lindblad
   
-  int nparams;      /* Total Number of learnable paramters*/
-  Data* data;       /* Stores the data */
-
-  Vec aux2;    // Auxiliary vector to perform matvecs on state x during Loss
-
-  int mpirank_world;
-  bool quietmode;
-
+  int nparams;            /* Total Number of learnable paramters*/
   double loss_integral;   /* Running cost for Loss function */
+  Vec aux2;               /* Auxiliary state to eval loss */
 
+  public: 
+    Data* data;       /* Stores the data */
 
   public: 
     Learning(int dim_rho_, LindbladType lindbladtype_, std::vector<std::string>& learninit_str, Data* data, std::default_random_engine rand_engine, bool quietmode);

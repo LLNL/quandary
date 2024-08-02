@@ -26,6 +26,7 @@ Data::~Data() {
     data[ipulse].clear();
   }
   data.clear();
+  controlparams.clear();
 }
 
 Vec Data::getData(double time, int pulse_num){
@@ -305,7 +306,19 @@ void Tant3levelData::loadData(double* tstart, double* tstop, double* dt){
   // Only one pulse for now. TODO.
   int pulse_num = 0;
 
-  // Open file
+  /* TODO: Extract control amplitudes  */
+  double conversion_factor = 0.04790850565409482;  // conversion factor: Volt to GHz
+  std::size_t found_p = data_name[0].find_last_of("p");
+  std::size_t found_q = data_name[0].find_last_of("q");
+  double p_Volt = std::stod(data_name[0].substr(found_p+1, 5));
+  double q_Volt = std::stod(data_name[0].substr(found_q+1, 5));
+  double p_GHz = p_Volt * conversion_factor;
+  double q_GHz = q_Volt * conversion_factor;
+  // printf("Got the control amplitudes %1.8f,%1.8f GHz\n", p_GHz, q_GHz);
+  controlparams.push_back(p_GHz);
+  controlparams.push_back(q_GHz);
+  
+
   std::ifstream infile;
   infile.open(data_name[0], std::ifstream::in);
   if(infile.fail() ) {// checks to see if file opended 
