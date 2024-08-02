@@ -75,6 +75,16 @@ GellmannBasis::GellmannBasis(int dim_rho_, bool upper_only_, bool shifted_diag_,
   /* Store the number of basis elements */
   nbasis = BasisMat_Re.size() + BasisMat_Im.size();
 
+  /* set up the identity matrix */
+  MatCreate(PETSC_COMM_WORLD, &Id);
+  MatSetType(Id, MATSEQAIJ);
+  MatSetSizes(Id, PETSC_DECIDE, PETSC_DECIDE, dim_rho, dim_rho);
+  for (int i=0; i<dim_rho; i++){
+    MatSetValue(Id, i, i, 1.0, INSERT_VALUES);
+  }
+  MatAssemblyBegin(Id, MAT_FINAL_ASSEMBLY);
+  MatAssemblyEnd(Id, MAT_FINAL_ASSEMBLY);
+
   /* Create an auxiliary vector for system matrix matmult */
   VecCreate(PETSC_COMM_WORLD, &aux);     // aux sized for Re(state) or Im(state) 
   VecSetSizes(aux , PETSC_DECIDE, dim);
@@ -90,6 +100,7 @@ GellmannBasis::~GellmannBasis(){
   }
   BasisMat_Re.clear();
   BasisMat_Im.clear();
+  MatDestroy(&Id);
   VecDestroy(&aux);
   for (int i=0; i< SystemMats_A.size(); i++){
     MatDestroy(&SystemMats_A[i]);
@@ -134,19 +145,6 @@ void HamiltonianBasis::assembleSystemMats(){
    *  B = Im(-isigma)
    */
 
-  //if vectorizing, set up the identity matrix
-  Mat Id; 
-  if (lindbladtype != LindbladType::NONE) {
-    MatCreate(PETSC_COMM_WORLD, &Id);
-    MatSetType(Id, MATSEQAIJ);
-    MatSetSizes(Id, PETSC_DECIDE, PETSC_DECIDE, dim_rho, dim_rho);
-    for (int i=0; i<dim_rho; i++){
-      MatSetValue(Id, i, i, 1.0, INSERT_VALUES);
-    }
-    MatAssemblyBegin(Id, MAT_FINAL_ASSEMBLY);
-    MatAssemblyEnd(Id, MAT_FINAL_ASSEMBLY);
-  }
-
   // Set up -i*(Real_Gellmann), they go into Bd = Im(-iH)
   for (int i=0; i<BasisMat_Re.size(); i++){
     Mat myMat;
@@ -180,9 +178,6 @@ void HamiltonianBasis::assembleSystemMats(){
       MatDestroy(&myMat2);
     }
     SystemMats_A.push_back(myMat);
-  }
-  if (lindbladtype != LindbladType::NONE) {
-    MatDestroy(&Id);
   }
 }
 
@@ -282,17 +277,6 @@ void LindbladBasis::assembleSystemMats(){
    * Note that here we have: sigma.conj = sigma and (sigma^tsigma)^T
   */
 
-  // Set up the identity matrix
-  Mat Id;
-  MatCreate(PETSC_COMM_WORLD, &Id);
-  MatSetType(Id, MATSEQAIJ);
-  MatSetSizes(Id, PETSC_DECIDE, PETSC_DECIDE, dim_rho, dim_rho);
-  for (int i=0; i<dim_rho; i++){
-    MatSetValue(Id, i, i, 1.0, INSERT_VALUES);
-  }
-  MatAssemblyBegin(Id, MAT_FINAL_ASSEMBLY);
-  MatAssemblyEnd(Id, MAT_FINAL_ASSEMBLY);
-
   for (int i=0; i<BasisMat_Re.size(); i++){
 
     Mat myMat, myMat1, myMat2, sigmasq;
@@ -310,7 +294,6 @@ void LindbladBasis::assembleSystemMats(){
     MatDestroy(&myMat2);
     MatDestroy(&sigmasq);
   }
-  MatDestroy(&Id);
 }
 
 void LindbladBasis::applySystem(Vec u, Vec v, Vec uout, Vec vout, std::vector<double>& learnparamsL_Re, std::vector<double>& learnparamsL_Im){

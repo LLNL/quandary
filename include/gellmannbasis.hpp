@@ -23,6 +23,7 @@ class GellmannBasis {
 
     std::vector<Mat> BasisMat_Re; /* All (purely) real basis matrices. Size = dim_rho = N */ 
     std::vector<Mat> BasisMat_Im; /* All (purely) imaginary basis matrices. Size = dim_rho = N */ 
+    Mat Id;			  /* Identity matrix */
 
     std::vector<Mat> SystemMats_A;  // System matrix when applying the operator in Schroedinger's equation
     std::vector<Mat> SystemMats_B;  // System matrix when applying the operator in Schroedinger's equation
@@ -38,6 +39,7 @@ class GellmannBasis {
     int getNBasis_Im(){return BasisMat_Im.size();};
     Mat getBasisMat_Re(int id) {return BasisMat_Re[id];};
     Mat getBasisMat_Im(int id) {return BasisMat_Im[id];};
+    Mat getIdentity(){return Id;};
 
     virtual void assembleSystemMats()=0;
 
