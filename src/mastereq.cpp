@@ -364,6 +364,7 @@ void MasterEq::initSparseMatSolver(){
     py->receiveHc(noscillators, Ac_vec, Bc_vec); 
 
     if (mpirank_world==0&& !quietmode) printf("# Done. \n\n");
+    delete py;
 
   /* Else: Initialize Hamiltonian system matrices with standard Hamiltonian model */
   } else {
@@ -625,6 +626,7 @@ void MasterEq::initSparseMatSolver(){
     printf("ERROR: System hamiltonian is not hermitian!\n");
     exit(1);
   }
+  MatDestroy(&AdTest);
   
   /* Set Ad = Lindblad terms */
   if (addT1 || addT2) {  // leave matrix empty if no T1 or T2 decay
