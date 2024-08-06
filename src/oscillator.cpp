@@ -231,6 +231,86 @@ int Oscillator::getNSegParams(int segmentID){
   return n; 
 }
 
+double Oscillator::evalAlphaVar(){
+#define SQR(x) (x)*(x)
+  // Evaluate un-divided differences of ctrl parameters for each spline segment
+  // NOTE: params holds the relevant copy of the 'x' array
+  double var_reg = 0.0;
+
+  if (params.size()>0) {
+    // Iterate over basis parameterizations??? 
+    for (int bs = 0; bs < basisfunctions.size(); bs++){
+      /* Iterate over carrier frequencies */
+      // AP: NOTE: in class ControlBasis, nparams holds the number of basis fcn's 
+      int nsplines = basisfunctions[bs]->getNparams();
+      int offset = basisfunctions[bs]->getSkip();
+
+      double local_var = 0.0;
+      for (int f=0; f < carrier_freq.size(); f++) {
+        // Re params
+        for (int lc=1; lc<nsplines; lc++){
+          local_var += SQR(params[offset + 2*f*nsplines + lc] - params[offset + 2*f*nsplines + lc - 1]);
+        }
+        // Im params
+        for (int lc=1; lc<nsplines; lc++){
+          local_var += SQR(params[offset + 2*f*nsplines + nsplines + lc] - params[offset + 2*f*nsplines + nsplines + lc - 1]);
+        }
+      }
+      // Normalize
+      var_reg += local_var/nsplines;
+    }
+  } 
+  return var_reg;
+#undef SQR
+}
+
+void Oscillator::evalAlphaVarDiff(double gamma_penalty_diff, Vec G){
+  // Evaluate gradient of the penalty of un-divided differences of ctrl parameters for each spline segment
+  // NOTE: params holds the relevant copy of the 'x' array
+
+  if (params.size()>0) {
+    // get pointer from petsc
+    PetscScalar* grad; 
+    VecGetArray(G, &grad);
+    // for (int i=0; i<ndesign; i++) {
+    //   mygrad[i] = grad[i];
+    // }
+    // MPI_Allreduce(mygrad, grad, ndesign, MPI_DOUBLE, MPI_SUM, comm_init);
+
+    // Iterate over basis parameterizations??? 
+    for (int bs = 0; bs < basisfunctions.size(); bs++){
+      /* Iterate over carrier frequencies */
+      // AP: NOTE: in class ControlBasis, nparams holds the number of basis fcn's per segment
+      int nsplines = basisfunctions[bs]->getNparams();
+      int offset = basisfunctions[bs]->getSkip();
+      double fact = gamma_penalty_diff/nsplines;
+
+      for (int f=0; f < carrier_freq.size(); f++) {
+        // Re params
+        int lc = 0;
+        grad[offset + 2*f*nsplines + lc] += fact * (params[offset + 2*f*nsplines + lc] - params[offset + 2*f*nsplines + lc + 1]);
+        // interior lc
+        for (lc=1; lc<nsplines-1; lc++){
+          grad[offset + 2*f*nsplines + lc] += fact * (2*params[offset + 2*f*nsplines + lc] - params[offset + 2*f*nsplines + lc - 1] - params[offset + 2*f*nsplines + lc + 1]);
+        }
+        lc = nsplines-1;
+        grad[offset + 2*f*nsplines + lc] += fact * (params[offset + 2*f*nsplines + lc] - params[offset + 2*f*nsplines + lc - 1]);
+
+        // Im params
+        lc = 0;
+        grad[offset + (2*f+1)*nsplines + lc] += fact * (params[offset + (2*f+1)*nsplines + lc] - params[offset + (2*f+1)*nsplines + lc + 1]);
+        // interior lc
+        for (int lc=1; lc<nsplines-1; lc++){
+          grad[offset + (2*f+1)*nsplines + lc] += fact * (2*params[offset + (2*f+1)*nsplines + lc] - params[offset + (2*f+1)*nsplines + lc - 1] - params[offset + (2*f+1)*nsplines + lc + 1]);
+        }
+        lc = nsplines-1;
+        grad[offset + (2*f+1)*nsplines + lc] += fact * (params[offset + (2*f+1)*nsplines + lc] - params[offset + (2*f+1)*nsplines + lc - 1]);
+      }
+    }
+    // restore petsc pointer
+    VecRestoreArray(G, &grad);
+  } 
+}
 
 int Oscillator::evalControl(const double t, double* Re_ptr, double* Im_ptr){
 

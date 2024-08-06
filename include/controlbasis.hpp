@@ -28,6 +28,7 @@ class ControlBasis {
         double getTstop() {return tstop; };
         ControlType getType() {return controltype;};
         void setSkip(int skip_) {skip = skip_;};
+        int getSkip(){return skip;};
 
         virtual int getNSplines() {return 0;};
 
@@ -134,7 +135,7 @@ class BSpline0 : public ControlBasis {
     protected:
         int nsplines;                     // Number of splines
         double dtknot;                    // spacing of time knot vector    
-        double *tcenter;                  // vector of basis function center positions
+        // double *tcenter;                  // vector of basis function center positions
         double width;                     // support of each basis function (m*dtknot)
 
         /* Evaluate the bspline basis functions B_l(tau_l(t)) NOT USED */

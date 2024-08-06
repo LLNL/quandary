@@ -48,7 +48,7 @@ class Oscillator {
     int dim_postOsc;               // Dimension of coupled subsystem following this oscillator
 
 
-      public:
+    //  public: // AP already in 'public'
     Oscillator();
     Oscillator(MapParam config, int id, std::vector<int> nlevels_all_, std::vector<std::string>& controlsegments, std::vector<std::string>& controlinitializations, double ground_freq_, double selfkerr_, double rotational_freq_, double decay_time_, double dephase_time_, std::vector<double> carrier_freq_, double Tfinal_, LindbladType lindbladtype_, std::default_random_engine rand_engine);
     virtual ~Oscillator();
@@ -92,7 +92,13 @@ class Oscillator {
     void expectedEnergy_diff(const Vec x, Vec x_bar, const double obj_bar);
 
     /* Compute population (=diagonal elements) for this oscillators reduced system */
-    void population(const Vec x, std::vector<double> &pop); 
+    void population(const Vec x, std::vector<double> &pop);
+
+    // Evaluate un-divided differences in alpha ctrl vector, within each spline segment
+    double evalAlphaVar();
+
+    // Contribution to the gradient of evalAlphaVar
+    void evalAlphaVarDiff(double gamma_penalty_diff, Vec G);
 };
 
 

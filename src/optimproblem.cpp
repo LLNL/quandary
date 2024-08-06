@@ -100,6 +100,8 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   gamma_penalty_energy = config.GetDoubleParam("optim_penalty_energy", 0.0);
   gamma_tik_interpolate = config.GetBoolParam("optim_regul_interpolate", false, false);
   gamma_penalty_dpdm = config.GetDoubleParam("optim_penalty_dpdm", 0.0);
+  gamma_penalty_diff = config.GetDoubleParam("optim_penalty_diff", 10.0); // testing
+  
 
   if (gamma_penalty_dpdm > 1e-13 && timestepper->mastereq->lindbladtype != LindbladType::NONE){
     if (mpirank_world == 0) {
@@ -302,6 +304,17 @@ double OptimProblem::evalF(const Vec x) {
   }
   obj_regul = gamma_tik / 2. * pow(xnorm,2.0);
 
+  // Penalize variation in alpha within each spline segment
+  double var_reg = 0.0;
+  for (int iosc = 0; iosc < timestepper->mastereq->getNOscillators(); iosc++){
+    Oscillator* osc = timestepper->mastereq->getOscillator(iosc);
+    double var_reg_osc = osc->evalAlphaVar(); // uses Oscillator::params instead of 'x'
+    // printf("MPI-task %d, variation in alpha (iosc %d): %e\n", getMPIrank_world(), iosc, var_reg_osc);
+    var_reg += var_reg_osc;
+  }
+  // add to obj_regul
+  obj_regul += 0.5*gamma_penalty_diff*var_reg; 
+
   /* Sum, store and return objective value */
   objective = obj_cost + obj_regul + obj_penal + obj_penal_dpdm + obj_penal_energy;
 
@@ -328,13 +341,23 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
   /* Reset Gradient */
   VecZeroEntries(G);
 
-  /* Derivative of regulatization term gamma / 2 ||x||^2 (ADD ON ONE PROC ONLY!) */
+  /* Derivative of regulatization terms (ADD ON ONE PROC ONLY!) */
   // if (mpirank_init == 0 && mpirank_optim == 0) { // TODO: Which one?? 
   if (mpirank_init == 0 ) {
+
+    // Derivative of Tikhonov 0.5*gamma * ||x||^2 
     VecAXPY(G, gamma_tik, x);   // + gamma_tik * x
     if (gamma_tik_interpolate){
       VecAXPY(G, -1.0*gamma_tik, xinit); // -gamma_tik * xinit
     }
+
+    // Derivative of penalization of variation in alpha within each spline segment
+    for (int iosc = 0; iosc < timestepper->mastereq->getNOscillators(); iosc++){
+      Oscillator* osc = timestepper->mastereq->getOscillator(iosc);
+      osc->evalAlphaVarDiff(gamma_penalty_diff, G);
+      printf("MPI-task %d, iosc %d, calling evalAlphaVarDiff\n", getMPIrank_world(), iosc);
+    }
+
   }
 
   /*  Iterate over initial condition */
@@ -446,6 +469,17 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
   }
   obj_regul = gamma_tik / 2. * pow(xnorm,2.0);
 
+  // Penalize variation in alpha within each spline segment
+  double var_reg = 0.0;
+  for (int iosc = 0; iosc < timestepper->mastereq->getNOscillators(); iosc++){
+    Oscillator* osc = timestepper->mastereq->getOscillator(iosc);
+    double var_reg_osc = osc->evalAlphaVar(); // uses Oscillator::params instead of 'x'
+    // printf("MPI-task %d, variation in alpha (iosc %d): %e\n", getMPIrank_world(), iosc, var_reg_osc);
+    var_reg += var_reg_osc;
+  }
+  // add to obj_regul
+  obj_regul += 0.5*gamma_penalty_diff*var_reg; 
+
   /* Sum, store and return objective value */
   objective = obj_cost + obj_regul + obj_penal + obj_penal_dpdm + obj_penal_energy;
 
@@ -494,7 +528,6 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
     std::cout<< "Fidelity = " << fidelity << std::endl;
   }
 }
-
 
 void OptimProblem::solve(Vec xinit) {
   TaoSetSolution(tao, xinit);

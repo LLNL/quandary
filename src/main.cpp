@@ -15,7 +15,7 @@
 #include <slepceps.h>
 #endif
 
-#define TEST_FD_GRAD 0    // Run Finite Differences gradient test
+#define TEST_FD_GRAD 1    // Run Finite Differences gradient test
 #define TEST_FD_HESS 0    // Run Finite Differences Hessian test
 #define HESSIAN_DECOMPOSITION 0 // Run eigenvalue analysis for Hessian
 #define EPS 1e-5          // Epsilon for Finite Differences
