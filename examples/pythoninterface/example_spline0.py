@@ -36,18 +36,21 @@ rand_seed=1234
 # Spline order (0 or 2)
 spline_order = 0
 
+# New penalty paramter for variation of the control parameters
+gamma_variation = 1000.0
+
 # Carrier freq's
 carrier_frequency =[[0.0], [0.0]]
 
 # Set up the Quandary configuration for this test case. Make sure to pass all of the above to the corresponding fields, compare help(Quandary)!
-quandary = Quandary(freq01=freq01, Jkl=Jkl, rotfreq=rotfreq, T=T, targetgate=unitary, verbose=verbose, rand_seed=rand_seed, spline_order=spline_order, nsplines=5, carrier_frequency=carrier_frequency) 
+quandary = Quandary(freq01=freq01, Jkl=Jkl, rotfreq=rotfreq, T=T, targetgate=unitary, verbose=verbose, rand_seed=rand_seed, spline_order=spline_order, nsplines=5, carrier_frequency=carrier_frequency, gamma_variation=gamma_variation) 
 
 # Potentially, load initial control parameters from a file. 
 # quandary.pcof0_filename = os.getcwd() + "./CNOT_params.dat"  # absolute path!
 
 # Execute quandary
 # t, pt, qt, infidelity, expectedEnergy, population = quandary.optimize()
-t, pt, qt, infidelity, expectedEnergy, population = quandary.simulate(maxcores=1)
+t, pt, qt, infidelity, expectedEnergy, population = quandary.simulate()
 
 print(f"Fidelity = {1.0 - infidelity}")
 

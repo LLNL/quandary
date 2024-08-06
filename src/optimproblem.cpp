@@ -100,7 +100,7 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   gamma_penalty_energy = config.GetDoubleParam("optim_penalty_energy", 0.0);
   gamma_tik_interpolate = config.GetBoolParam("optim_regul_interpolate", false, false);
   gamma_penalty_dpdm = config.GetDoubleParam("optim_penalty_dpdm", 0.0);
-  gamma_penalty_diff = config.GetDoubleParam("optim_penalty_diff", 10.0); // testing
+  gamma_penalty_variation = config.GetDoubleParam("optim_penalty_variation", 0.01); 
   
 
   if (gamma_penalty_dpdm > 1e-13 && timestepper->mastereq->lindbladtype != LindbladType::NONE){
@@ -313,7 +313,7 @@ double OptimProblem::evalF(const Vec x) {
     var_reg += var_reg_osc;
   }
   // add to obj_regul
-  obj_regul += 0.5*gamma_penalty_diff*var_reg; 
+  obj_regul += 0.5*gamma_penalty_variation*var_reg; 
 
   /* Sum, store and return objective value */
   objective = obj_cost + obj_regul + obj_penal + obj_penal_dpdm + obj_penal_energy;
@@ -352,7 +352,7 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
     }
 
     // Derivative of penalization of variation in alpha within each spline segment
-    double var_reg_bar = 0.5*gamma_penalty_diff;
+    double var_reg_bar = 0.5*gamma_penalty_variation;
     int skip_to_oscillator = 0;
     for (int iosc = 0; iosc < timestepper->mastereq->getNOscillators(); iosc++){
       Oscillator* osc = timestepper->mastereq->getOscillator(iosc);
@@ -480,7 +480,7 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
     var_reg += var_reg_osc;
   }
   // add to obj_regul
-  obj_regul += 0.5*gamma_penalty_diff*var_reg; 
+  obj_regul += 0.5*gamma_penalty_variation*var_reg; 
 
   /* Sum, store and return objective value */
   objective = obj_cost + obj_regul + obj_penal + obj_penal_dpdm + obj_penal_energy;

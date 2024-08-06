@@ -68,6 +68,7 @@ class Quandary:
     gamma_leakage       # Parameter for leakage prevention. Default: 0.1
     gamma_energy        # Parameter for integral penality term on the control pulse energy. Default: 0.1
     gamma_dpdm          # Parameter for integral penality term on second state derivative. Default: 0.01
+    gamma_variation     # Parameter for penality term on variations in the control parameters: Default: 0.01
 
     # General options
     rand_seed            # Set a fixed random number generator seed. Default: None (non-reproducable)
@@ -142,6 +143,7 @@ class Quandary:
     gamma_leakage          : float = 0.1 	       
     gamma_energy           : float = 0.1
     gamma_dpdm             : float = 0.01        
+    gamma_variation        : float = 0.01        
     # General options
     rand_seed              : int  = None
     print_frequency_iter   : int  = 1
@@ -564,6 +566,7 @@ class Quandary:
         mystring += "optim_penalty= " + str(self.gamma_leakage) + "\n"
         mystring += "optim_penalty_param= 0.0\n"
         mystring += "optim_penalty_dpdm= " + str(self.gamma_dpdm) + "\n"
+        mystring += "optim_penalty_variation= " + str(self.gamma_variation) + "\n"
         mystring += "optim_penalty_energy= " + str(self.gamma_energy) + "\n"
         mystring += "datadir= ./\n"
         for iosc in range(len(self.Ne)):
