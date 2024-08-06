@@ -441,7 +441,7 @@ int main(int argc,char **argv)
     std::cout << ") " << std::endl;
 
     std::cout<<"State dimension (complex): " << mastereq->getDim() << std::endl;
-    std::cout << "Time: [0:" << total_time << "], ";
+    std::cout << "Simulation time: [0:" << total_time << "], ";
     std::cout << "N="<< ntime << ", dt=" << dt << std::endl;
   }
 

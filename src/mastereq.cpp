@@ -1390,10 +1390,10 @@ void MasterEq::setControlAmplitudes(const Vec x) {
           controls[i] = p_GHz *2*M_PI;
           controls[i+nsplines] = q_GHz*2*M_PI;
         }
-        printf("Learning: Using constant controls with p=%f, q=%f [MHz]\n", p_GHz*1e3, q_GHz*1e3);
+        // printf("Learning: Using constant controls with p=%f, q=%f [MHz]\n", p_GHz*1e3, q_GHz*1e3);
       } else {  // list of bspline parameters
         assert(controls.size() == oscil_vec[ioscil]->getNParams());
-        printf("Learning: Using (given) random control parameters\n");
+        // printf("Learning: Using (given) random control parameters\n");
       }
       // Pass to oscillators
       oscil_vec[ioscil]->setParams(controls.data());

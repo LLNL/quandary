@@ -64,6 +64,47 @@ void Data::writeExpectedEnergy(const char* filename, int pulse_num){
   printf("File written: %s\n", filename);
 }
 
+
+void Data::writeFullstate(const char* filename_re, const char* filename_im, int pulse_num){
+
+
+  /* Open files  */
+  FILE *file_re, *file_im;
+  file_re = fopen(filename_re, "w");
+  file_im = fopen(filename_im, "w");
+
+  /* Iterate over time points ane write vectorized state to file. */
+  for (int i=0; i<getNData(); i++){
+    double time = tstart + i*dt;
+
+    Vec x = getData(time, pulse_num);
+    if (x != NULL) {
+
+      // write time in first column
+      fprintf(file_re, "%1.8f  ", time);
+      fprintf(file_im, "%1.8f  ", time);
+      // write vectorized state in the following columns
+      int size = 0;
+      VecGetSize(x, &size);
+      const PetscScalar *xptr;
+      VecGetArrayRead(x, &xptr);
+      for (int i=0; i<int(size/2); i++) {
+        fprintf(file_re, "%1.10e  ", xptr[getIndexReal(i)]);  
+        fprintf(file_im, "%1.10e  ", xptr[getIndexImag(i)]);  
+      }
+      fprintf(file_re, "\n");
+      fprintf(file_im, "\n");
+      VecRestoreArrayRead(x, &xptr);
+    }
+  }
+
+  fclose(file_re);
+  fclose(file_im);
+  printf("File written: %s\n", filename_re);
+  printf("File written: %s\n", filename_im);
+}
+
+
 SyntheticQuandaryData::SyntheticQuandaryData(std::vector<std::string> data_name, double data_tstop, int dim) : Data(data_name, data_tstop, dim, 1) {
 
   /* Load training data */
@@ -313,6 +354,9 @@ void Tant2levelData::loadData(double* tstart, double* tstop, double* dt){
   // }
   // printf("END DATA POINTS.\n\n");
   // exit(1);
+
+  printf("Training data in [%1.2f, %1.2f] ns, sampling rate dt=%1.4f ns\n", *tstart, *tstop, *dt);
+  printf("Training data with constant controls\n");
 }
 
 Tant3levelData::Tant3levelData(std::vector<std::string> data_name, double data_tstop, int dim, bool corrected_, int npulses) : Data(data_name, data_tstop, dim, npulses) {
@@ -520,4 +564,6 @@ void Tant3levelData::loadData(double* tstart, double* tstop, double* dt){
   // }
   // printf("END DATA POINTS. tstart = %1.8f, tstop=%1.8f, dt=%1.8f\n", *tstart, *tstop, *dt);
   // exit(1);
+  printf("Training data in [%1.2f, %1.2f] ns, sampling rate dt=%1.4f ns\n", *tstart, *tstop, *dt);
+  printf("Training data with constant controls\n");
 }
