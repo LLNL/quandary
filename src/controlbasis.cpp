@@ -278,14 +278,14 @@ double BSpline0::computeVariation(std::vector<double>& params, int carrierfreqID
     for (int lc=1; lc<nsplines; lc++){
         var += SQR(params[skip + (2*carrierfreqID+1)*nsplines + lc] - params[skip + (2*carrierfreqID+1)*nsplines + lc - 1]);
     }
-    return var/nsplines;
+    return var;
 }
 
 
 void BSpline0::computeVariation_diff(double* grad, std::vector<double>&params, double var_bar, int carrierfreqID){
 
     int offset = skip;
-    double fact = 2.0*var_bar/nsplines;
+    double fact = 2.0*var_bar;
 
     // Re params
     int lc = 0;
