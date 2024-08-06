@@ -228,6 +228,14 @@ double OptimProblem::evalF(const Vec x) {
     mastereq->setControlAmplitudes(x); 
   } else { // Optimize on learnable parameters
     mastereq->learning->setLearnParams(x); 
+
+    /* Make sure the control pulse matches the data */
+    int ipulse = 0; // TODO
+    mastereq->setControlFromData(ipulse);
+
+    // TEST: write expected energy of the Training data.
+    std::string mydatadir = output->datadir; 
+    mastereq->learning->data->writeExpectedEnergy(mydatadir.append("/TrainingData.dat").c_str(), ipulse);
   }
 
 
@@ -357,6 +365,10 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
     mastereq->setControlAmplitudes(x); 
   } else { // Optimize on learnable parameters
     mastereq->learning->setLearnParams(x); 
+
+    /* Make sure the control pulse matches the data */
+    int ipulse = 0; // TODO
+    mastereq->setControlFromData(ipulse);
   }
 
   /* Reset Gradient */

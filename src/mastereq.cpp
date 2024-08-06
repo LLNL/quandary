@@ -1371,6 +1371,38 @@ void MasterEq::setControlAmplitudes(const Vec x) {
 }
 
 
+ void MasterEq::setControlFromData(int ipulse){
+  // Overwrite control initialization, if defined by training data
+  if (useUDEmodel && !x_is_control){
+    int ioscil = 0; // TODO: iterate over oscillators
+    std::vector<double> datacontrols = learning->data->getControls(ipulse, ioscil);
+    std::vector<double> controls = datacontrols;
+    // format: could be two values (constant p & q), or could be a list of bspline parameters
+    if (controls.size() > 0){ // if exists
+      if (controls.size() == 2){ // p and q values
+        int nsplines = oscil_vec[ioscil]->getNSplines();
+        int nparams = oscil_vec[ioscil]->getNParams();
+        assert(nparams = 2*nsplines);
+        double p_GHz = controls[0];
+        double q_GHz = controls[1];
+        controls.resize(nparams);
+        for (int i=0; i<nsplines; i++) {
+          controls[i] = p_GHz *2*M_PI;
+          controls[i+nsplines] = q_GHz*2*M_PI;
+        }
+        printf("Learning: Using constant controls with p=%f, q=%f [MHz]\n", p_GHz*1e3, q_GHz*1e3);
+      } else {  // list of bspline parameters
+        assert(controls.size() == oscil_vec[ioscil]->getNParams());
+        printf("Learning: Using (given) random control parameters\n");
+      }
+      // Pass to oscillators
+      oscil_vec[ioscil]->setParams(controls.data());
+      // for (int i=0; i<controls.size(); i++) printf("%1.7f\n", controls[i]);
+    }
+  }
+}
+
+
 /* Sparse matrix solver: Define the action of RHS on a vector x */
 int myMatMult_sparsemat(Mat RHS, Vec x, Vec y){
   double p,q;

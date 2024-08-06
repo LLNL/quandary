@@ -5,7 +5,7 @@ Data::Data() {
   dim = -1;
   npulses = 0;
   tstart = 0.0;
-  tstop = 1.0e14;
+  tstop = 1.0e26;
 }
 
 Data::Data(std::vector<std::string> data_name_, double tstop_, int dim_, int npulses_) {
@@ -26,6 +26,9 @@ Data::~Data() {
     data[ipulse].clear();
   }
   data.clear();
+  for (int i=0; i<controlparams.size(); i++) {
+    controlparams[i].clear();
+  }
   controlparams.clear();
 }
 
@@ -157,7 +160,7 @@ Tant2levelData::~Tant2levelData(){
 void Tant2levelData::loadData(double* tstart, double* tstop, double* dt){
 
   /* Data format: First row is header following rows are formated as follows: 
-  *   <nshots> <time> <pulse_num> <rho_lie_ij> for ij=1,2 <rho_lie_phys_ij> for ij=12 
+  *   <nshots> <time [us]> <pulse_num> <rho_lie_ij> for ij=1,2 <rho_lie_phys_ij> for ij=12 
   *    int     double   int       (val_re+val_imj)              (val_re+val_imj)
   */
 
@@ -171,14 +174,13 @@ void Tant2levelData::loadData(double* tstart, double* tstop, double* dt){
     std::cout<< "Loading Tant Device data from " << data_name[0] << std::endl;
   }
 
-  // Skip first line, its just the header.
-  std::string tmp; 
-  for (int i=0; i< 300; i++){
-    infile >> tmp;
-    if (tmp.compare("rho_lie_phys_11") == 0) { // this is the last word in the first row
-      break;
-    }
-  }
+  // // Skip first line, its just the header.
+  // for (int i=0; i< 300; i++){
+  //   infile >> tmp;
+  //   if (tmp.compare("rho_lie_phys_11") == 0) { // this is the last word in the first row
+  //     break;
+  //   }
+  // }
 
   // Iterate over lines
   int count = 0;
@@ -186,10 +188,26 @@ void Tant2levelData::loadData(double* tstart, double* tstop, double* dt){
   int pulse_num;
   std::string strval;
 
-  while (infile >> nshots) 
+  std::string tmp; 
+  while (infile >> tmp) 
   {
+    // Skip header lines
+    if (tmp.compare("Nshots") == 0){
+      for (int i=0; i< 300; i++){
+        infile >> tmp;
+        if (tmp.compare("rho_lie_phys_11") == 0) { // this is the last word in the first row
+          infile >> nshots; // nshots from the next line.
+          break;
+        }
+      }
+    }
+    nshots = std::atoi(tmp.c_str());
+
     infile >> time;      // 2nd column;
     infile >> pulse_num; // 3th column;
+
+    // Time in file is us, scale to ns here:
+    time = time*1.0e+3; // ns
 
     /* Only read the first <npulses> trajectories */
     if (pulse_num >= npulses) {
@@ -206,12 +224,13 @@ void Tant2levelData::loadData(double* tstart, double* tstop, double* dt){
     if (time > *tstop)  {
       if (npulses == 1) {
         break; 
-      } else { // Skip to next pulse number. TODO: TEST THIS!! Probably wrong...
-        while (infile >> strval) {
-          if (strval.compare(std::to_string(pulse_num+1)) == 0) {
+      } else { // Skip to next pulse number.
+        while (infile >> tmp) {
+          if (tmp.compare("rho_lie_phys_11") == 0) {
             break;
           }
         }
+        continue;
       }
     }
     
@@ -263,6 +282,21 @@ void Tant2levelData::loadData(double* tstart, double* tstop, double* dt){
  
   }
 
+  /* Set pulse amplitude. Hardcoded here. TODO. */
+  // double conversion_factor = 0.018941058958963778; // Volt to GHz
+  controlparams.resize(5);
+  // Those are taken from 231110_SG_Tant_2level_constAndRandompulse_raw_and_corrected_2000shots/const_pulse/*_const_ampfac*_popt_rs*.dat
+  controlparams[0].push_back(0.00177715/(2.0*M_PI));
+  controlparams[0].push_back(0.00177715/(2.0*M_PI));
+  controlparams[1].push_back(0.00355431/(2.0*M_PI));
+  controlparams[1].push_back(0.00355431/(2.0*M_PI));
+  controlparams[2].push_back(0.00533146/(2.0*M_PI));
+  controlparams[2].push_back(0.00533146/(2.0*M_PI));
+  controlparams[3].push_back(0.00710861/(2.0*M_PI));
+  controlparams[3].push_back(0.00710861/(2.0*M_PI));
+  controlparams[4].push_back(0.00888577/(2.0*M_PI));
+  controlparams[4].push_back(0.00888577/(2.0*M_PI));
+
   /* Update the final time stamp */
   *tstop = std::min(time_prev, *tstop);
 
@@ -296,8 +330,8 @@ Tant3levelData::~Tant3levelData(){}
 void Tant3levelData::loadData(double* tstart, double* tstop, double* dt){
 
   /* Data format: First row is header following rows are probabilities of the identity and 8 rotation operators
-  *   <line> | <time> | <P(R_i=j)> for i=0,...8, j=0,1,2, | mitigated P(R_i=j)
-  *    int     double   double [...]                      | double [...]
+  *   <line> | <time [ns]> | <P(R_i=j)> for i=0,...8, j=0,1,2, | mitigated P(R_i=j)
+  *    int     double        double [...]                      | double [...]
   */
 
   // Dimension of the Hilbert space (N);
@@ -305,6 +339,7 @@ void Tant3levelData::loadData(double* tstart, double* tstop, double* dt){
 
   // Only one pulse for now. TODO.
   int pulse_num = 0;
+  controlparams.resize(1);
 
   /* Extract control amplitudes from file name */
   double conversion_factor = 0.04790850565409482;  // conversion factor: Volt to GHz
@@ -319,8 +354,8 @@ void Tant3levelData::loadData(double* tstart, double* tstop, double* dt){
   double p_GHz = p_Volt * conversion_factor;
   double q_GHz = q_Volt * conversion_factor;
   // printf("Got the control amplitudes %1.8f,%1.8f GHz\n", p_GHz, q_GHz);
-  controlparams.push_back(p_GHz);
-  controlparams.push_back(q_GHz);
+  controlparams[pulse_num].push_back(p_GHz);
+  controlparams[pulse_num].push_back(q_GHz);
   
   /* Open the data file */
   std::ifstream infile;

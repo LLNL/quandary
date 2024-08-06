@@ -276,10 +276,6 @@ int main(int argc,char **argv)
       exit(1);
     }
 
-    // TEST: write expected energy of the data.
-    std::string mydatadir = output->datadir; 
-    data->writeExpectedEnergy(mydatadir.append("/TrainingData.dat").c_str(), 0);
-
     /* Update the time-integration step-size such that it is an integer divisor of the data sampling size  */
     double remain = std::remainder(data->getDt(),dt);
     int loss_every_k;
@@ -356,35 +352,6 @@ int main(int argc,char **argv)
       /* Copy x into the oscillators parameter array. */
       oscil_vec[ioscil]->setParams(initguess_fromfile.data() + shift);
       shift += oscil_vec[ioscil]->getNParams();
-    }
-  }
-
-
-  // Overwrite control initialization, if defined by training data
-  if (useUDEmodel && !x_is_control){
-    int ioscil = 0; // TODO: iterate over oscillators
-    std::vector<double> controls = learning->data->getControls(ioscil);
-    // format: could be two values (constant p & q), or could be a list of bspline parameters
-    if (controls.size() > 0){ // if exists
-      if (controls.size() == 2){ // p and q values
-        int nsplines = oscil_vec[ioscil]->getNSplines();
-        int nparams = oscil_vec[ioscil]->getNParams();
-        assert(nparams = 2*nsplines);
-        double p_GHz = controls[0];
-        double q_GHz = controls[1];
-        controls.resize(nparams);
-        for (int i=0; i<nsplines; i++) {
-          controls[i] = p_GHz *2*M_PI;
-          controls[i+nsplines] = q_GHz*2*M_PI;
-        }
-        printf("Learning: Using constant controls with p=%f, q=%f [MHz]\n", p_GHz*1e3, q_GHz*1e3);
-      } else {  // list of bspline parameters
-        assert(controls.size() == oscil_vec[ioscil]->getNParams());
-        printf("Learning: Using (given) random control parameters\n");
-      }
-      // Pass to oscillators
-      oscil_vec[ioscil]->setParams(controls.data());
-      // for (int i=0; i<controls.size(); i++) printf("%1.7f\n", controls[i]);
     }
   }
 

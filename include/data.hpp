@@ -17,13 +17,13 @@ class Data{
     int dim;              // Dimension of full vectorized system: N^2 for Lindblad or N for Schroedinger, or -1 if not learning.
     int npulses;          // Number of pulses
 
-    double tstart;        /* Time stamp of the first data point */
-    double tstop;         /* Time stamp of the last data point */
-    double dt;             /* Sample rate of the data */
+    double tstart;        /* Time stamp of the first data point [ns] */
+    double tstop;         /* Time stamp of the last data point [ns] */
+    double dt;             /* Sample rate of the data [ns] */
     std::vector<std::vector<Vec>> data; /* For each pulse_number: List of states at each data time-step */
     std::vector<std::string> data_name; /* Name of the data files */
 
-    std::vector<double> controlparams; /* Control parameters. Could be empty (if synthetic data), or 2 values (if constant p and q), or a list of bspline parameters (if random pulses) */
+    std::vector<std::vector<double>> controlparams; /* Control parameters. Could be empty (if synthetic data), or 2 values (if constant p and q), or a list of bspline parameters (if random pulses) */
 
 	public:
     Data();
@@ -37,7 +37,7 @@ class Data{
     double getDt(){ return dt; };
     double getTStart(){ return tstart; };
     double getTStop(){ return tstop; };
-    std::vector<double> getControls(int ioscillator=0){return controlparams;}; // TODO: Multiple oscillators!
+    std::vector<double> getControls(int ipulse = 0, int ioscillator=0){return controlparams[ipulse];}; // TODO: Multiple oscillators, multiple pulses
 
     /* If data point exists at this time, return it. Otherwise, returns NULL */
     Vec getData(double time, int pulse_num=0);
