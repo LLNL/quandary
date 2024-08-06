@@ -87,11 +87,11 @@ void Learning::viewOperators(){
   MatView(hamiltonian_basis->getOperator_Im(), NULL);
 
   for (int i=0; i<lindblad_basis->getNBasis_Re(); i++){
-    printf("Lindblad: %d \n", i);
-    MatScale(lindblad_basis->getBasisMat_Re(i), learnparamsL_Re[i]);
+    printf("Lindblad: %d\n", i);
+    MatScale(lindblad_basis->getBasisMat_Re(i), sqrt(learnparamsL_Re[i]));
     MatView(lindblad_basis->getBasisMat_Re(i), NULL);
     // Revert scaling, just to be safe...
-    MatScale(lindblad_basis->getBasisMat_Re(i), 1.0/learnparamsL_Re[i]);
+    MatScale(lindblad_basis->getBasisMat_Re(i), 1.0/sqrt(learnparamsL_Re[i]));
   }
 }
 
@@ -181,10 +181,12 @@ void Learning::initLearnParams(std::vector<std::string> learninit_str, std::defa
  
     //First set all Hamiltonian parameters
     for (int i=0; i<hamiltonian_basis->getNBasis_Re(); i++){
+      //learnparamsH_Re.push_back(initguess_fromfile[i]/(2*M_PI)); 
       learnparamsH_Re.push_back(initguess_fromfile[i]); 
     }
     int skip = hamiltonian_basis->getNBasis_Re();
     for (int i=0; i<=hamiltonian_basis->getNBasis_Im(); i++){
+      // learnparamsH_Im.push_back(initguess_fromfile[i + skip]/(2*M_PI)); 
       learnparamsH_Im.push_back(initguess_fromfile[i + skip]); 
     }
     // Then set all Lindblad params
