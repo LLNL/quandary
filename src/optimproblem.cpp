@@ -657,16 +657,23 @@ PetscErrorCode TaoMonitor(Tao tao,void*ptr){
   /* Additional Stopping criteria */
   bool lastIter = false;
   std::string finalReason_str = "";
-  if (1.0 - F_avg <= ctx->getInfTol()) {
-    finalReason_str = "Optimization converged with small infidelity.";
-    TaoSetConvergedReason(tao, TAO_CONVERGED_USER);
-    lastIter = true;
-  } else if (obj_cost <= ctx->getFaTol()) {
-    finalReason_str = "Optimization converged with small final time cost.";
-    TaoSetConvergedReason(tao, TAO_CONVERGED_USER);
-    lastIter = true;
-  } 
-
+  if (ctx->x_is_control) {
+    if (1.0 - F_avg <= ctx->getInfTol()) {
+      finalReason_str = "Optimization converged with small infidelity.";
+      TaoSetConvergedReason(tao, TAO_CONVERGED_USER);
+      lastIter = true;
+    } else if (obj_cost <= ctx->getFaTol()) {
+      finalReason_str = "Optimization converged with small final time cost.";
+      TaoSetConvergedReason(tao, TAO_CONVERGED_USER);
+      lastIter = true;
+    } 
+  } else {
+    if (obj_loss <= ctx->getFaTol()) {
+      finalReason_str = "Optimization converged with small Loss.";
+      TaoSetConvergedReason(tao, TAO_CONVERGED_USER);
+      lastIter = true;
+    }
+  }
 
   if (ctx->getMPIrank_world() == 0 && (iter == ctx->getMaxIter() || lastIter || iter % ctx->output->optim_monitor_freq == 0)) {
 
