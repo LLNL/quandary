@@ -31,7 +31,7 @@ Oscillator::Oscillator(MapParam config, int id, std::vector<int> nlevels_all_, s
 
   // Parse for control segments
   int idstr = 0;
-  int nparams = 0;
+  int nparams_per_seg = 0;
   while (idstr < controlsegments.size()) {
 
     if (controlsegments[idstr].compare("step") == 0) {
@@ -52,8 +52,8 @@ Oscillator::Oscillator(MapParam config, int id, std::vector<int> nlevels_all_, s
       }
       // if (mpirank_world == 0) printf("%d: Creating step basis with amplitude (%f, %f) (tramp %f) in control segment [%f, %f]\n", myid, step_amp1, step_amp2, tramp, tstart, tstop);
       ControlBasis* mystep = new Step(step_amp1, step_amp2, tstart, tstop, tramp, control_enforceBC);
-      mystep->setSkip(nparams);
-      nparams += mystep->getNparams() * carrier_freq.size();
+      mystep->setSkip(nparams_per_seg);
+      nparams_per_seg += mystep->getNparams() * carrier_freq.size();
       basisfunctions.push_back(mystep);
       
     } else if (controlsegments[idstr].compare("spline") == 0) { // Default: splines. Format in string: spline, nsplines, tstart, tstop
@@ -71,8 +71,8 @@ Oscillator::Oscillator(MapParam config, int id, std::vector<int> nlevels_all_, s
       }
       // if (mpirank_world==0) printf("%d: Creating %d-spline basis in control segment [%f, %f]\n", myid, nspline,tstart, tstop);
       ControlBasis* mysplinebasis = new BSpline2nd(nspline, tstart, tstop, control_enforceBC);
-      mysplinebasis->setSkip(nparams);
-      nparams += mysplinebasis->getNparams() * carrier_freq.size();
+      mysplinebasis->setSkip(nparams_per_seg);
+      nparams_per_seg += mysplinebasis->getNparams() * carrier_freq.size();
       basisfunctions.push_back(mysplinebasis);
       //
     } else if (controlsegments[idstr].compare("spline0") == 0) { // Format in string: bs0, nsplines, tstart, tstop
@@ -90,8 +90,8 @@ Oscillator::Oscillator(MapParam config, int id, std::vector<int> nlevels_all_, s
       }
       // if (mpirank_world==0) printf("%d: Creating %d-spline basis in control segment [%f, %f]\n", myid, nspline,tstart, tstop);
       ControlBasis* mysplinebasis = new BSpline0(nspline, tstart, tstop, control_enforceBC);
-      mysplinebasis->setSkip(nparams);
-      nparams += mysplinebasis->getNparams() * carrier_freq.size();
+      mysplinebasis->setSkip(nparams_per_seg);
+      nparams_per_seg += mysplinebasis->getNparams() * carrier_freq.size();
       basisfunctions.push_back(mysplinebasis);
       //
     } else if (controlsegments[idstr].compare("spline_amplitude") == 0) { // Spline on amplitude only. Format in string: spline_amplitude, nsplines, tstart, tstop
@@ -110,8 +110,8 @@ Oscillator::Oscillator(MapParam config, int id, std::vector<int> nlevels_all_, s
       }
       // if (mpirank_world==0) printf("%d: Creating %d-spline basis in control segment [%f, %f]\n", myid, nspline,tstart, tstop);
       ControlBasis* mysplinebasis = new BSpline2ndAmplitude(nspline, scaling, tstart, tstop, control_enforceBC);
-      mysplinebasis->setSkip(nparams);
-      nparams += mysplinebasis->getNparams() * carrier_freq.size();
+      mysplinebasis->setSkip(nparams_per_seg);
+      nparams_per_seg += mysplinebasis->getNparams() * carrier_freq.size();
       basisfunctions.push_back(mysplinebasis);
     } else {
       // if (mpirank_world==0) printf("%d: Non-controllable.\n", myid);
@@ -239,21 +239,22 @@ double Oscillator::evalAlphaVar(){
 
   if (params.size()>0) {
     // Iterate over basis parameterizations??? 
-    for (int bs = 0; bs < basisfunctions.size(); bs++){
+    for (int iseg= 0; iseg< basisfunctions.size(); iseg++){
       /* Iterate over carrier frequencies */
       // AP: NOTE: in class ControlBasis, nparams holds the number of basis fcn's 
-      int nsplines = basisfunctions[bs]->getNparams();
-      int offset = basisfunctions[bs]->getSkip();
+      int nsplines = basisfunctions[iseg]->getNSplines();
+      int offset = basisfunctions[iseg]->getSkip();
 
       double local_var = 0.0;
       for (int f=0; f < carrier_freq.size(); f++) {
         // Re params
         for (int lc=1; lc<nsplines; lc++){
           local_var += SQR(params[offset + 2*f*nsplines + lc] - params[offset + 2*f*nsplines + lc - 1]);
+          // local_var += params[offset+2*f*nsplines + lc];
         }
         // Im params
         for (int lc=1; lc<nsplines; lc++){
-          local_var += SQR(params[offset + 2*f*nsplines + nsplines + lc] - params[offset + 2*f*nsplines + nsplines + lc - 1]);
+          local_var += SQR(params[offset + (2*f+1)*nsplines + lc] - params[offset + (2*f+1)*nsplines + lc - 1]);
         }
       }
       // Normalize
@@ -264,7 +265,7 @@ double Oscillator::evalAlphaVar(){
 #undef SQR
 }
 
-void Oscillator::evalAlphaVarDiff(double gamma_penalty_diff, Vec G){
+void Oscillator::evalAlphaVarDiff(Vec G, double var_reg_bar, int skip_to_oscillator){
   // Evaluate gradient of the penalty of un-divided differences of ctrl parameters for each spline segment
   // NOTE: params holds the relevant copy of the 'x' array
 
@@ -278,33 +279,36 @@ void Oscillator::evalAlphaVarDiff(double gamma_penalty_diff, Vec G){
     // MPI_Allreduce(mygrad, grad, ndesign, MPI_DOUBLE, MPI_SUM, comm_init);
 
     // Iterate over basis parameterizations??? 
-    for (int bs = 0; bs < basisfunctions.size(); bs++){
+    for (int iseg = 0; iseg< basisfunctions.size(); iseg++){
       /* Iterate over carrier frequencies */
       // AP: NOTE: in class ControlBasis, nparams holds the number of basis fcn's per segment
-      int nsplines = basisfunctions[bs]->getNparams();
-      int offset = basisfunctions[bs]->getSkip();
-      double fact = gamma_penalty_diff/nsplines;
+      int nsplines = basisfunctions[iseg]->getNSplines();
+      int offset = basisfunctions[iseg]->getSkip();
+      double fact = 2.0*var_reg_bar/nsplines;
 
       for (int f=0; f < carrier_freq.size(); f++) {
         // Re params
         int lc = 0;
-        grad[offset + 2*f*nsplines + lc] += fact * (params[offset + 2*f*nsplines + lc] - params[offset + 2*f*nsplines + lc + 1]);
+        grad[skip_to_oscillator + offset + 2*f*nsplines + lc] += fact * (params[offset + 2*f*nsplines + lc] - params[offset + 2*f*nsplines + lc + 1]);
         // interior lc
         for (lc=1; lc<nsplines-1; lc++){
-          grad[offset + 2*f*nsplines + lc] += fact * (2*params[offset + 2*f*nsplines + lc] - params[offset + 2*f*nsplines + lc - 1] - params[offset + 2*f*nsplines + lc + 1]);
+          grad[skip_to_oscillator + offset+ 2*f*nsplines + lc] += fact * (2*params[offset + 2*f*nsplines + lc] - params[offset + 2*f*nsplines + lc - 1] - params[offset + 2*f*nsplines + lc + 1]);
         }
         lc = nsplines-1;
-        grad[offset + 2*f*nsplines + lc] += fact * (params[offset + 2*f*nsplines + lc] - params[offset + 2*f*nsplines + lc - 1]);
+        grad[skip_to_oscillator + offset + 2*f*nsplines + lc] += fact * (params[offset + 2*f*nsplines + lc] - params[offset + 2*f*nsplines + lc - 1]);
+        // for (int lc=1; lc<nsplines; lc++){
+        //   grad[skip_to_oscillator + 2*f*nsplines + lc] += fact ;
+        // }
 
         // Im params
         lc = 0;
-        grad[offset + (2*f+1)*nsplines + lc] += fact * (params[offset + (2*f+1)*nsplines + lc] - params[offset + (2*f+1)*nsplines + lc + 1]);
+        grad[skip_to_oscillator + offset + (2*f+1)*nsplines + lc] += fact * (params[offset + (2*f+1)*nsplines + lc] - params[offset + (2*f+1)*nsplines + lc + 1]);
         // interior lc
         for (int lc=1; lc<nsplines-1; lc++){
-          grad[offset + (2*f+1)*nsplines + lc] += fact * (2*params[offset + (2*f+1)*nsplines + lc] - params[offset + (2*f+1)*nsplines + lc - 1] - params[offset + (2*f+1)*nsplines + lc + 1]);
+          grad[skip_to_oscillator + offset + (2*f+1)*nsplines + lc] += fact * (2*params[offset + (2*f+1)*nsplines + lc] - params[offset + (2*f+1)*nsplines + lc - 1] - params[offset + (2*f+1)*nsplines + lc + 1]);
         }
         lc = nsplines-1;
-        grad[offset + (2*f+1)*nsplines + lc] += fact * (params[offset + (2*f+1)*nsplines + lc] - params[offset + (2*f+1)*nsplines + lc - 1]);
+        grad[skip_to_oscillator + offset + (2*f+1)*nsplines + lc] += fact * (params[offset + (2*f+1)*nsplines + lc] - params[offset + (2*f+1)*nsplines + lc - 1]);
       }
     }
     // restore petsc pointer

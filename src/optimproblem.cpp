@@ -352,10 +352,15 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
     }
 
     // Derivative of penalization of variation in alpha within each spline segment
+    double var_reg_bar = 0.5*gamma_penalty_diff;
+    int skip_to_oscillator = 0;
     for (int iosc = 0; iosc < timestepper->mastereq->getNOscillators(); iosc++){
       Oscillator* osc = timestepper->mastereq->getOscillator(iosc);
-      osc->evalAlphaVarDiff(gamma_penalty_diff, G);
-      printf("MPI-task %d, iosc %d, calling evalAlphaVarDiff\n", getMPIrank_world(), iosc);
+
+      osc->evalAlphaVarDiff(G, var_reg_bar, skip_to_oscillator);
+      skip_to_oscillator += osc->getNParams();
+      printf("SKIP to oscilator %d\n", skip_to_oscillator);
+      // printf("MPI-task %d, iosc %d, calling evalAlphaVarDiff\n", getMPIrank_world(), iosc);
     }
 
   }

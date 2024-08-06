@@ -62,8 +62,8 @@ class Oscillator {
     double getDephaseTime() {return dephase_time; };
     int getNSegments() {return basisfunctions.size(); };
     int getNCarrierfrequencies() {return carrier_freq.size(); };
-    ControlType getControlType() {return basisfunctions[0]->getType(); };
-    int getNSplines() {return basisfunctions[0]->getNSplines();};
+    ControlType getControlType(int isegment=0) {return basisfunctions[isegment]->getType(); };
+    int getNSplines(int isegment=0) {return basisfunctions[isegment]->getNSplines();};
     double getRotFreq() {return (ground_freq - detuning_freq) / (2.0*M_PI); };
 
     /* Return the number of parameters for the k-th segment */
@@ -98,7 +98,7 @@ class Oscillator {
     double evalAlphaVar();
 
     // Contribution to the gradient of evalAlphaVar
-    void evalAlphaVarDiff(double gamma_penalty_diff, Vec G);
+    void evalAlphaVarDiff(Vec G, double var_reg_bar, int skip_to_oscillator);
 };
 
 
