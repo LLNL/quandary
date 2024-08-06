@@ -267,6 +267,47 @@ void BSpline0::derivative(const double t, const std::vector<double>& coeff, doub
     }
 }
 
+
+double BSpline0::computeVariation(std::vector<double>& params, int carrierfreqID){
+    double var = 0.0;
+    //   Re params
+    for (int lc=1; lc<nsplines; lc++){
+        var += SQR(params[skip + 2*carrierfreqID*nsplines + lc] - params[skip+ 2*carrierfreqID*nsplines + lc - 1]);
+    }
+    // Im params
+    for (int lc=1; lc<nsplines; lc++){
+        var += SQR(params[skip + (2*carrierfreqID+1)*nsplines + lc] - params[skip + (2*carrierfreqID+1)*nsplines + lc - 1]);
+    }
+    return var/nsplines;
+}
+
+
+void BSpline0::computeVariation_diff(double* grad, std::vector<double>&params, double var_bar, int carrierfreqID){
+
+    int offset = skip;
+    double fact = 2.0*var_bar/nsplines;
+
+    // Re params
+    int lc = 0;
+    grad[offset + 2*carrierfreqID*nsplines + lc] += fact * (params[offset + 2*carrierfreqID*nsplines + lc] - params[offset + 2*carrierfreqID*nsplines + lc + 1]);
+    // interior lc
+    for (lc=1; lc<nsplines-1; lc++){
+      grad[offset+ 2*carrierfreqID*nsplines + lc] += fact * (2*params[offset + 2*carrierfreqID*nsplines + lc] - params[offset + 2*carrierfreqID*nsplines + lc - 1] - params[offset + 2*carrierfreqID*nsplines + lc + 1]);
+    }
+    lc = nsplines-1;
+    grad[offset + 2*carrierfreqID*nsplines + lc] += fact * (params[offset + 2*carrierfreqID*nsplines + lc] - params[offset + 2*carrierfreqID*nsplines + lc - 1]);
+
+    // Im params
+    lc = 0;
+    grad[offset + (2*carrierfreqID+1)*nsplines + lc] += fact * (params[offset + (2*carrierfreqID+1)*nsplines + lc] - params[offset + (2*carrierfreqID+1)*nsplines + lc + 1]);
+    // interior lc
+    for (int lc=1; lc<nsplines-1; lc++){
+      grad[offset + (2*carrierfreqID+1)*nsplines + lc] += fact * (2*params[offset + (2*carrierfreqID+1)*nsplines + lc] - params[offset + (2*carrierfreqID+1)*nsplines + lc - 1] - params[offset + (2*carrierfreqID+1)*nsplines + lc + 1]);
+    }
+    lc = nsplines-1;
+    grad[offset + (2*carrierfreqID+1)*nsplines + lc] += fact * (params[offset + (2*carrierfreqID+1)*nsplines + lc] - params[offset + (2*carrierfreqID+1)*nsplines + lc - 1]);
+}
+
 TransferFunction::TransferFunction(){}
 TransferFunction::TransferFunction(std::vector<double> onofftimes_){
    storeOnOffTimes(onofftimes_); 

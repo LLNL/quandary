@@ -32,6 +32,10 @@ class ControlBasis {
 
         virtual int getNSplines() {return 0;};
 
+        /* Variation of control parameters */
+        virtual double computeVariation(std::vector<double>& params, int carrierfreqID){return 0.0;};
+        virtual void computeVariation_diff(double* grad, std::vector<double>&params, double var_bar, int carrierfreqID){};
+
         /* Default: do nothing. For some control parameterizations, this can be used to enforce that the controls start and end at zero. E.g. the Splines will overwrite the parameters x of the first and last two splines by zero, so that the splines start and end at zero. */
         virtual void enforceBoundary(double* x, int carrier_id) {};
 
@@ -146,6 +150,10 @@ class BSpline0 : public ControlBasis {
         ~BSpline0();
 
         int getNSplines() {return nsplines;};
+
+        /* Variation of the control parameters: 1/nsplines * sum_splines (alpha_i - alpha_{i-1})^2 */
+        double computeVariation(std::vector<double>& params, int carrierfreqID);
+        virtual void computeVariation_diff(double* grad, std::vector<double>&params, double var_bar, int carrierfreqID);
 
         /* Evaluate the spline at time t using the coefficients coeff. */
         void evaluate(const double t, const std::vector<double>& coeff, int carrier_freq_id, double* Blt1_ptr, double* Blt2_ptr);

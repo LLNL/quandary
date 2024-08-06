@@ -232,37 +232,20 @@ int Oscillator::getNSegParams(int segmentID){
 }
 
 double Oscillator::evalAlphaVar(){
-#define SQR(x) (x)*(x)
   // Evaluate un-divided differences of ctrl parameters for each spline segment
   // NOTE: params holds the relevant copy of the 'x' array
   double var_reg = 0.0;
 
   if (params.size()>0) {
-    // Iterate over basis parameterizations??? 
+    // Iterate over control segments
     for (int iseg= 0; iseg< basisfunctions.size(); iseg++){
       /* Iterate over carrier frequencies */
-      // AP: NOTE: in class ControlBasis, nparams holds the number of basis fcn's 
-      int nsplines = basisfunctions[iseg]->getNSplines();
-      int offset = basisfunctions[iseg]->getSkip();
-
-      double local_var = 0.0;
       for (int f=0; f < carrier_freq.size(); f++) {
-        // Re params
-        for (int lc=1; lc<nsplines; lc++){
-          local_var += SQR(params[offset + 2*f*nsplines + lc] - params[offset + 2*f*nsplines + lc - 1]);
-          // local_var += params[offset+2*f*nsplines + lc];
-        }
-        // Im params
-        for (int lc=1; lc<nsplines; lc++){
-          local_var += SQR(params[offset + (2*f+1)*nsplines + lc] - params[offset + (2*f+1)*nsplines + lc - 1]);
-        }
+        var_reg += basisfunctions[iseg]->computeVariation(params, f);
       }
-      // Normalize
-      var_reg += local_var/nsplines;
     }
   } 
   return var_reg;
-#undef SQR
 }
 
 void Oscillator::evalAlphaVarDiff(Vec G, double var_reg_bar, int skip_to_oscillator){
@@ -273,43 +256,14 @@ void Oscillator::evalAlphaVarDiff(Vec G, double var_reg_bar, int skip_to_oscilla
     // get pointer from petsc
     PetscScalar* grad; 
     VecGetArray(G, &grad);
-    // for (int i=0; i<ndesign; i++) {
-    //   mygrad[i] = grad[i];
-    // }
-    // MPI_Allreduce(mygrad, grad, ndesign, MPI_DOUBLE, MPI_SUM, comm_init);
 
     // Iterate over basis parameterizations??? 
     for (int iseg = 0; iseg< basisfunctions.size(); iseg++){
       /* Iterate over carrier frequencies */
-      // AP: NOTE: in class ControlBasis, nparams holds the number of basis fcn's per segment
-      int nsplines = basisfunctions[iseg]->getNSplines();
-      int offset = basisfunctions[iseg]->getSkip();
-      double fact = 2.0*var_reg_bar/nsplines;
-
       for (int f=0; f < carrier_freq.size(); f++) {
-        // Re params
-        int lc = 0;
-        grad[skip_to_oscillator + offset + 2*f*nsplines + lc] += fact * (params[offset + 2*f*nsplines + lc] - params[offset + 2*f*nsplines + lc + 1]);
-        // interior lc
-        for (lc=1; lc<nsplines-1; lc++){
-          grad[skip_to_oscillator + offset+ 2*f*nsplines + lc] += fact * (2*params[offset + 2*f*nsplines + lc] - params[offset + 2*f*nsplines + lc - 1] - params[offset + 2*f*nsplines + lc + 1]);
-        }
-        lc = nsplines-1;
-        grad[skip_to_oscillator + offset + 2*f*nsplines + lc] += fact * (params[offset + 2*f*nsplines + lc] - params[offset + 2*f*nsplines + lc - 1]);
-        // for (int lc=1; lc<nsplines; lc++){
-        //   grad[skip_to_oscillator + 2*f*nsplines + lc] += fact ;
-        // }
-
-        // Im params
-        lc = 0;
-        grad[skip_to_oscillator + offset + (2*f+1)*nsplines + lc] += fact * (params[offset + (2*f+1)*nsplines + lc] - params[offset + (2*f+1)*nsplines + lc + 1]);
-        // interior lc
-        for (int lc=1; lc<nsplines-1; lc++){
-          grad[skip_to_oscillator + offset + (2*f+1)*nsplines + lc] += fact * (2*params[offset + (2*f+1)*nsplines + lc] - params[offset + (2*f+1)*nsplines + lc - 1] - params[offset + (2*f+1)*nsplines + lc + 1]);
-        }
-        lc = nsplines-1;
-        grad[skip_to_oscillator + offset + (2*f+1)*nsplines + lc] += fact * (params[offset + (2*f+1)*nsplines + lc] - params[offset + (2*f+1)*nsplines + lc - 1]);
-      }
+        // pass the portion of the gradient that corresponds to this oscillator
+        basisfunctions[iseg]->computeVariation_diff(grad+skip_to_oscillator, params, var_reg_bar, f);
+     }
     }
     // restore petsc pointer
     VecRestoreArray(G, &grad);

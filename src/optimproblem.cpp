@@ -359,10 +359,7 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
 
       osc->evalAlphaVarDiff(G, var_reg_bar, skip_to_oscillator);
       skip_to_oscillator += osc->getNParams();
-      printf("SKIP to oscilator %d\n", skip_to_oscillator);
-      // printf("MPI-task %d, iosc %d, calling evalAlphaVarDiff\n", getMPIrank_world(), iosc);
     }
-
   }
 
   /*  Iterate over initial condition */
