@@ -223,6 +223,7 @@ double OptimProblem::evalF(const Vec x) {
   obj_penal = 0.0;
   obj_penal_dpdm = 0.0;
   obj_penal_energy = 0.0;
+  obj_penal_variation = 0.0;
   fidelity = 0.0;
   double obj_cost_re = 0.0;
   double obj_cost_im = 0.0;
@@ -313,14 +314,14 @@ double OptimProblem::evalF(const Vec x) {
     var_reg += var_reg_osc;
   }
   // add to obj_regul
-  obj_regul += 0.5*gamma_penalty_variation*var_reg; 
+  obj_penal_variation = 0.5*gamma_penalty_variation*var_reg; 
 
   /* Sum, store and return objective value */
-  objective = obj_cost + obj_regul + obj_penal + obj_penal_dpdm + obj_penal_energy;
+  objective = obj_cost + obj_regul + obj_penal + obj_penal_dpdm + obj_penal_energy + obj_penal_variation;
 
   /* Output */
   if (mpirank_world == 0) {
-    std::cout<< "Objective = " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal << " + " << obj_penal_dpdm << " + " << obj_penal_energy << std::endl;
+    std::cout<< "Objective = " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal << " + " << obj_penal_dpdm << " + " << obj_penal_energy << " + " << obj_penal_variation << std::endl;
     std::cout<< "Fidelity = " << fidelity  << std::endl;
   }
 
@@ -368,6 +369,7 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
   obj_penal = 0.0;
   obj_penal_dpdm = 0.0;
   obj_penal_energy = 0.0;
+  obj_penal_variation = 0.0;
   fidelity = 0.0;
   double obj_cost_re = 0.0;
   double obj_cost_im = 0.0;
@@ -480,10 +482,10 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
     var_reg += var_reg_osc;
   }
   // add to obj_regul
-  obj_regul += 0.5*gamma_penalty_variation*var_reg; 
+  obj_penal_variation = 0.5*gamma_penalty_variation*var_reg; 
 
   /* Sum, store and return objective value */
-  objective = obj_cost + obj_regul + obj_penal + obj_penal_dpdm + obj_penal_energy;
+  objective = obj_cost + obj_regul + obj_penal + obj_penal_dpdm + obj_penal_energy + obj_penal_variation;
 
   /* For Schroedinger solver: Solve adjoint equations for all initial conditions here. */
   if (timestepper->mastereq->lindbladtype == LindbladType::NONE) {
@@ -526,7 +528,7 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
 
   /* Output */
   if (mpirank_world == 0 && !quietmode) {
-    std::cout<< "Objective = " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal << " + " << obj_penal_dpdm << " + " << obj_penal_energy << std::endl;
+    std::cout<< "Objective = " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal << " + " << obj_penal_dpdm << " + " << obj_penal_energy << " + " << obj_penal_variation << std::endl;
     std::cout<< "Fidelity = " << fidelity << std::endl;
   }
 }
@@ -598,10 +600,11 @@ PetscErrorCode TaoMonitor(Tao tao,void*ptr){
   double obj_penal = ctx->getPenalty();
   double obj_penal_dpdm = ctx->getPenaltyDpDm();
   double obj_penal_energy = ctx->getPenaltyEnergy();
+  double obj_penal_variation= ctx->getPenaltyVariation();
   double F_avg = ctx->getFidelity();
 
   /* Print to optimization file */
-  ctx->output->writeOptimFile(f, gnorm, deltax, F_avg, obj_cost, obj_regul, obj_penal, obj_penal_dpdm, obj_penal_energy);
+  ctx->output->writeOptimFile(f, gnorm, deltax, F_avg, obj_cost, obj_regul, obj_penal, obj_penal_dpdm, obj_penal_energy, obj_penal_variation);
 
   /* Print parameters and controls to file */
   // if ( optim_iter % optim_monitor_freq == 0 ) {
@@ -628,7 +631,7 @@ PetscErrorCode TaoMonitor(Tao tao,void*ptr){
 
 
   if (ctx->getMPIrank_world() == 0 && (iter == ctx->getMaxIter() || lastIter || iter % ctx->output->optim_monitor_freq == 0)) {
-    std::cout<< iter <<  "  " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal << " + " << obj_penal_dpdm << " + " << obj_penal_energy;
+    std::cout<< iter <<  "  " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal << " + " << obj_penal_dpdm << " + " << obj_penal_energy << " + " << obj_penal_variation;
     std::cout<< "  Fidelity = " << F_avg;
     std::cout<< "  ||Grad|| = " << gnorm;
     std::cout<< std::endl;
