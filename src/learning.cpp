@@ -82,9 +82,9 @@ void Learning::viewOperators(){
   if (dim_rho <= 0) return;
 
   hamiltonian_basis->assembleOperator(learnparamsH_Re, learnparamsH_Im);
-  printf("\nLearned Hamiltonian operator [rad/ns]: Re = \n");
+  printf("\nLearned Hamiltonian operator [MHz]: Re = \n");
   MatView(hamiltonian_basis->getOperator_Re(), NULL);
-  printf("Learned Hamiltonian operator [rad/ns]: Im = \n");
+  printf("Learned Hamiltonian operator [MHz]: Im = \n");
   MatView(hamiltonian_basis->getOperator_Im(), NULL);
 
   for (int i=0; i<lindblad_basis->getNBasis_Re(); i++){
