@@ -646,7 +646,9 @@ PetscErrorCode TaoMonitor(Tao tao,void*ptr){
   double F_avg = ctx->getFidelity();
 
   /* Print to optimization file */
-  ctx->output->writeOptimFile(f, gnorm, deltax, F_avg, obj_cost, obj_regul, obj_penal, obj_penal_dpdm, obj_penal_energy);
+  double costT_output = obj_cost;
+  if (!ctx->x_is_control) costT_output = obj_loss;
+  ctx->output->writeOptimFile(f, gnorm, deltax, F_avg, costT_output, obj_regul, obj_penal, obj_penal_dpdm, obj_penal_energy);
 
   /* Print optimization parameters to file */
   ctx->output->writeParams(params);
