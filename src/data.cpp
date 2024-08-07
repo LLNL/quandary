@@ -132,8 +132,11 @@ void SyntheticQuandaryData::loadData(double* tstart, double* tstop, double* dt){
   std::ifstream infile_im;
   infile_re.open(data_name[0], std::ifstream::in);
   infile_im.open(data_name[1], std::ifstream::in);
-  if(infile_re.fail() || infile_im.fail() ) {// checks to see if file opended 
+  if(infile_re.fail() ) {
       std::cout << "\n ERROR loading learning data file " << data_name[0] << std::endl;
+      exit(1);
+  } else if (infile_im.fail() ) {// checks to see if file opended 
+      std::cout << "\n ERROR loading learning data file " << data_name[1] << std::endl;
       exit(1);
   } else {
     std::cout<< "Loading synthetic data from " << data_name[0] << ", " << data_name[1] << std::endl;
