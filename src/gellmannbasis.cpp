@@ -251,17 +251,23 @@ void HamiltonianBasis::dRHSdp(Vec grad, Vec u, Vec v, double alpha, Vec ubar, Ve
 
 void HamiltonianBasis::assembleOperator(std::vector<double>& learnparams_Re, std::vector<double>& learnparams_Im){
 
-  /* Assemble the Hamiltonian */
+  /* Assemble the Hamiltonian (diagonally shifted)  H = \sum l_i*sigma_i  - H_00*Id */
+  MatZeroEntries(Operator_Re);
+  MatZeroEntries(Operator_Im);
   for (int i=0; i<BasisMat_Re.size(); i++) {
     MatAXPY(Operator_Re, learnparams_Re[i], BasisMat_Re[i], DIFFERENT_NONZERO_PATTERN);
   }
   for (int i=0; i<BasisMat_Im.size(); i++) {
     MatAXPY(Operator_Im, learnparams_Im[i], BasisMat_Im[i], DIFFERENT_NONZERO_PATTERN);
   }
+  // subtract H00*Id
+  double h00=0.0;
+  MatGetValue(Operator_Re, 1, 1, &h00);
+  MatShift(Operator_Re, h00);
 }
 
 
-LindbladBasis::LindbladBasis(int dim_rho_) : GellmannBasis(dim_rho_, true, true, LindbladType::BOTH) {
+LindbladBasis::LindbladBasis(int dim_rho_, bool shifted_diag_) : GellmannBasis(dim_rho_, true, shifted_diag_, LindbladType::BOTH) {
 
   /* Assemble system Matrices */
   assembleSystemMats();

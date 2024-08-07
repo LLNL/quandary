@@ -539,12 +539,12 @@ int main(int argc,char **argv)
     if (mpirank_world == 0 && !quietmode) printf("\nStarting Optimization solver ... \n");
     optimctx->solve(xinit);
     optimctx->getSolution(&opt);
+  }
 
     /* If learning, print out the learned operators */
     if (!x_is_control){
       learning->viewOperators();
     }
-  }
 
   /* Only evaluate and write control pulses (no propagation) */
   if (runtype == RunType::EVALCONTROLS) {

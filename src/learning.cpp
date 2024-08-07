@@ -82,17 +82,18 @@ void Learning::viewOperators(){
   if (dim_rho <= 0) return;
 
   hamiltonian_basis->assembleOperator(learnparamsH_Re, learnparamsH_Im);
-  printf("\nLearned Hamiltonian operator: Re = \n");
+  printf("\nLearned Hamiltonian operator [rad/ns]: Re = \n");
   MatView(hamiltonian_basis->getOperator_Re(), NULL);
-  printf("Learned Hamiltonian operator: Im = \n");
+  printf("Learned Hamiltonian operator [rad/ns]: Im = \n");
   MatView(hamiltonian_basis->getOperator_Im(), NULL);
 
   for (int i=0; i<lindblad_basis->getNBasis_Re(); i++){
-    printf("Lindblad: %d\n", i);
-    MatScale(lindblad_basis->getBasisMat_Re(i), sqrt(learnparamsL_Re[i]));
-    MatView(lindblad_basis->getBasisMat_Re(i), NULL);
-    // Revert scaling, just to be safe...
-    MatScale(lindblad_basis->getBasisMat_Re(i), 1.0/sqrt(learnparamsL_Re[i]));
+    printf("Lindblad coeff %d: %1.8e\n", i, learnparamsL_Re[i]);
+    // MatView(lindblad_basis->getBasisMat_Re(i), NULL);
+  }
+  if (dim_rho == 2) {
+    printf(" -> maps to T_1 time %1.2f [ns]\n", 1.0/learnparamsL_Re[0]);
+    printf(" -> maps to T_2 time %1.2f [ns]\n", 1.0/(4.0*learnparamsL_Re[1]));
   }
 }
 
