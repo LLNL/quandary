@@ -253,10 +253,10 @@ void HamiltonianBasis::assembleOperator(std::vector<double>& learnparams_Re, std
 
   /* Assemble the Hamiltonian */
   for (int i=0; i<BasisMat_Re.size(); i++) {
-    MatAXPY(Operator_Re, learnparams_Re[i] / (2.0*M_PI), BasisMat_Re[i], DIFFERENT_NONZERO_PATTERN);
+    MatAXPY(Operator_Re, learnparams_Re[i], BasisMat_Re[i], DIFFERENT_NONZERO_PATTERN);
   }
   for (int i=0; i<BasisMat_Im.size(); i++) {
-    MatAXPY(Operator_Im, learnparams_Im[i] / (2.0*M_PI), BasisMat_Im[i], DIFFERENT_NONZERO_PATTERN);
+    MatAXPY(Operator_Im, learnparams_Im[i], BasisMat_Im[i], DIFFERENT_NONZERO_PATTERN);
   }
 }
 
