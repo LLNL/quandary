@@ -262,8 +262,8 @@ void HamiltonianBasis::assembleOperator(std::vector<double>& learnparams_Re, std
   }
   // subtract H00*Id
   double h00=0.0;
-  MatGetValue(Operator_Re, 1, 1, &h00);
-  MatShift(Operator_Re, h00);
+  MatGetValue(Operator_Re, 0, 0, &h00);
+  MatShift(Operator_Re, -h00);
 }
 
 
