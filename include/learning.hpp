@@ -44,6 +44,8 @@ class Learning {
 
     /* Get total number of learnable parameters */
     int getNParams(){ return nparams; };
+    int getNParamsHamiltonian(){ return learnparamsH_Re.size() + learnparamsH_Im.size(); };
+    int getNParamsLindblad(){ return learnparamsL_Re.size() + learnparamsL_Im.size(); };
 
     /* Initialize learnable parameters. */
     void initLearnParams(std::vector<std::string> learninit_str, std::default_random_engine rand_engine);

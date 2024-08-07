@@ -152,15 +152,24 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
         col = col + timestepper->mastereq->getOscillator(iosc)->getNSegParams(iseg);
       }
     }
-  } else { // Optimize on learnable parameters, disable bounds.
-    for (int i=0; i<ndesign; i++) {
+  } else { // Optimize on learnable parameters. Hamiltonian: no bounds, Lindblad: >=0
+    int nparamsH = timestepper->mastereq->learning->getNParamsHamiltonian();
+    int nparamsL = timestepper->mastereq->learning->getNParamsLindblad();
+    assert(ndesign = nparamsH + nparamsL);
+    for (int i=0; i<nparamsH; i++) {
       double boundval = 1e6;
       VecSetValue(xupper, i,     boundval, INSERT_VALUES);
       VecSetValue(xlower, i, -1.*boundval, INSERT_VALUES);
     }
+    for (int i=nparamsH; i<nparamsH+nparamsL; i++) {
+      double boundval = 1e6;
+      VecSetValue(xupper, i, boundval, INSERT_VALUES);
+      VecSetValue(xlower, i, 0.0, INSERT_VALUES);
+    }
   }
   VecAssemblyBegin(xlower); VecAssemblyEnd(xlower);
   VecAssemblyBegin(xupper); VecAssemblyEnd(xupper);
+  // VecView(xlower, NULL);
 
   /* Create Petsc's optimization solver */
   TaoCreate(PETSC_COMM_WORLD, &tao);
