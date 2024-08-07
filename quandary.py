@@ -465,19 +465,27 @@ class Quandary:
             if self.verbose:
                 print("Hamiltonian operators written to ", datadir+"/"+self._hamiltonian_filename)
 
-        # If pcof0 is given, write it to a file 
-        writeme = []
-        if len(self.pcof0) > 0:
-            writeme = self.pcof0
-        if len(pcof0) > 0:
-            writeme = pcof0
-        if len(writeme)>0:
-            self.pcof0_filename = "./pcof0.dat"
-            with open(datadir+"/"+self.pcof0_filename, "w") as f:
-                for value in writeme:
-                    f.write("{:20.13e}\n".format(value))
-            if self.verbose:
-                print("Initial control parameters written to ", datadir+"/"+self.pcof0_filename)
+        # AP: initializing the control parameter vector 'pcof0'
+        # 1. If the initial parameter vector (list) is given with the 'pcof0' argument, the list will be dumped to a file with name self.pcof0_filename := "pcof0.dat". The file name will be given as argument to the Quandary command. 'control_initialization0 = file, filename'
+        # 2. If pcof0 is empty but self.pcof_filename is given, use that filename in the 'control_initialization0 = file' command
+
+        read_pcof0_from_file = False
+        if len(self.pcof0) > 0 or len(pcof0) > 0:
+            if len(self.pcof0) > 0:
+                writeme = self.pcof0
+            if len(pcof0) > 0: # pcof0 is an argument to __dump(), while self.pcof0 is stored in the object
+                writeme = pcof0
+            if len(writeme)>0:
+                self.pcof0_filename = "./pcof0.dat"
+                with open(datadir+"/"+self.pcof0_filename, "w") as f:
+                    for value in writeme:
+                        f.write("{:20.13e}\n".format(value))
+                if self.verbose:
+                    print("Initial control parameters written to ", datadir+"/"+self.pcof0_filename)
+                read_pcof0_from_file = True
+        elif len(self.pcof0_filename) > 0:
+            print("Using the provided filename '", self.pcof0_filename, "' in the control_initialization command")
+            read_pcof0_from_file = True
 
         # Set up string for Quandary's config file
         Nt = [self.Ne[i] + self.Ng[i] for i in range(len(self.Ng))]
@@ -524,7 +532,7 @@ class Quandary:
                 print("Error: spline order = ", self.spline_order, " not implemented")
                 return -1
             # if len(self.pcof0_filename)>0:
-            if len(writeme)>0:
+            if read_pcof0_from_file:
                 initstring = "file, "+str(self.pcof0_filename) + "\n"
             else:
                 # Scale initial control amplitudes by the number of carrier waves and convert to ns
