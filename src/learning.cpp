@@ -19,11 +19,12 @@ Learning::Learning(int dim_rho_, LindbladType lindbladtype_, std::vector<std::st
   if (dim_rho > 0) {
 
     /* Create Basis for the learnable terms. Here: generalized Gellman matrices */
-    hamiltonian_basis = new HamiltonianBasis(dim_rho, lindbladtype);
+    bool shifted_diag = false;
+    hamiltonian_basis = new HamiltonianBasis(dim_rho, shifted_diag, lindbladtype);
     if (lindbladtype != LindbladType::NONE) {
-      lindblad_basis    = new LindbladBasis(dim_rho); 
+      lindblad_basis    = new LindbladBasis(dim_rho, shifted_diag); 
     } else {
-      lindblad_basis    = new LindbladBasis(0);  // will be empty if not Lindblad solver
+      lindblad_basis    = new LindbladBasis(0, false);  // will be empty if not Lindblad solver
     }
 
     /* Set the total number of learnable paramters */

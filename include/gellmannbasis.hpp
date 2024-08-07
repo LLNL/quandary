@@ -67,7 +67,7 @@ class HamiltonianBasis : public GellmannBasis {
   Mat Operator_Im;  /* All assembled imaginary operators */
 
   public:
-    HamiltonianBasis(int dim_rho_, LindbladType lindbladtype);
+    HamiltonianBasis(int dim_rho_, bool shifted_diag_, LindbladType lindbladtype);
     ~HamiltonianBasis();
     
     void assembleSystemMats();
@@ -84,7 +84,7 @@ class HamiltonianBasis : public GellmannBasis {
 class LindbladBasis: public GellmannBasis {
 
   public:
-    LindbladBasis(int dim_rho_);
+    LindbladBasis(int dim_rho_, bool shifted_diag_);
     ~LindbladBasis();
 
     void assembleSystemMats();

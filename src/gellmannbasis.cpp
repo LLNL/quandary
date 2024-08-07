@@ -116,7 +116,7 @@ StdGellmannBasis::StdGellmannBasis(int dim_rho_) : GellmannBasis(dim_rho_, false
 
 StdGellmannBasis::~StdGellmannBasis(){}
 
-HamiltonianBasis::HamiltonianBasis(int dim_rho_, LindbladType lindbladtype_) : GellmannBasis(dim_rho_, false, true, lindbladtype_) {
+HamiltonianBasis::HamiltonianBasis(int dim_rho_, bool shifted_diag_, LindbladType lindbladtype_) : GellmannBasis(dim_rho_, false, shifted_diag_, lindbladtype_) {
 
   /* Assemble system Matrices */
   assembleSystemMats();
