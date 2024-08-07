@@ -39,6 +39,7 @@ nsplines = 1000
 
 # Optionally, load initial control parameters from a file. 
 pcof0_filename = os.getcwd() + "/BS0_params.dat"  # use absolute path!
+#pcof0_filename = os.getcwd() + "/BS0-pert_params.dat"  # use absolute path!
 
 # New penalty paramter for variation of the control parameters
 gamma_variation = 1.0
