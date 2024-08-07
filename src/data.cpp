@@ -43,6 +43,18 @@ Vec Data::getData(double time, int pulse_num){
   } else return NULL;
 }
 
+// TODO: Multiple oscillators, multiple pulses
+std::vector<double> Data::getControls(int ipulse, int ioscillator){
+
+  if (controlparams.size()>ipulse) {
+    return controlparams[ipulse];
+  }
+  else {
+    std::vector<double> dummy;
+    return dummy;
+  }
+}
+
 
 void Data::writeExpectedEnergy(const char* filename, int pulse_num){
 

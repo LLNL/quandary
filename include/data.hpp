@@ -37,7 +37,7 @@ class Data{
     double getDt(){ return dt; };
     double getTStart(){ return tstart; };
     double getTStop(){ return tstop; };
-    std::vector<double> getControls(int ipulse = 0, int ioscillator=0){return controlparams[ipulse];}; // TODO: Multiple oscillators, multiple pulses
+    std::vector<double> getControls(int ipulse = 0, int ioscillator=0); 
 
     /* If data point exists at this time, return it. Otherwise, returns NULL */
     Vec getData(double time, int pulse_num=0);
