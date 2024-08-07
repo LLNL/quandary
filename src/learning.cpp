@@ -171,7 +171,6 @@ void Learning::initLearnParams(std::vector<std::string> learninit_str, std::defa
     /* Parameter file format:  One column containing all learnable paramters as 
      *    x = [learnparamH_Re, learnparamH_Im, learnparamL_Re, learnparamL_Im ] 
      */
-    int nparams = hamiltonian_basis->getNBasis() + lindblad_basis->getNBasis();
     std::vector<double> initguess_fromfile(nparams, 0.0);
     assert(learninit_str.size()>1);
     if (mpirank_world == 0) {
@@ -181,12 +180,10 @@ void Learning::initLearnParams(std::vector<std::string> learninit_str, std::defa
  
     //First set all Hamiltonian parameters
     for (int i=0; i<hamiltonian_basis->getNBasis_Re(); i++){
-      //learnparamsH_Re.push_back(initguess_fromfile[i]/(2*M_PI)); 
       learnparamsH_Re.push_back(initguess_fromfile[i]); 
     }
     int skip = hamiltonian_basis->getNBasis_Re();
-    for (int i=0; i<=hamiltonian_basis->getNBasis_Im(); i++){
-      // learnparamsH_Im.push_back(initguess_fromfile[i + skip]/(2*M_PI)); 
+    for (int i=0; i<hamiltonian_basis->getNBasis_Im(); i++){
       learnparamsH_Im.push_back(initguess_fromfile[i + skip]); 
     }
     // Then set all Lindblad params
@@ -195,7 +192,7 @@ void Learning::initLearnParams(std::vector<std::string> learninit_str, std::defa
       learnparamsL_Re.push_back(initguess_fromfile[skip + i]); 
     }
     skip = hamiltonian_basis->getNBasis() + lindblad_basis->getNBasis_Re();
-    for (int i=0; i<=lindblad_basis->getNBasis_Im(); i++){
+    for (int i=0; i<lindblad_basis->getNBasis_Im(); i++){
       learnparamsL_Im.push_back(initguess_fromfile[skip + i]); 
     }
   } else if (learninit_str[0].compare("random") == 0 ) {
@@ -243,7 +240,7 @@ void Learning::initLearnParams(std::vector<std::string> learninit_str, std::defa
       for (int i=0; i<lindblad_basis->getNBasis_Re(); i++){
         learnparamsL_Re.push_back(amp); // ns?
       }
-      for (int i=0; i<lindblad_basis->getNBasis_Re(); i++){
+      for (int i=0; i<lindblad_basis->getNBasis_Im(); i++){
         learnparamsL_Im.push_back(amp); // ns? 
       }
     }
