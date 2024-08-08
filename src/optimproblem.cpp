@@ -100,6 +100,8 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   gamma_penalty_energy = config.GetDoubleParam("optim_penalty_energy", 0.0);
   gamma_tik_interpolate = config.GetBoolParam("optim_regul_interpolate", false, false);
   gamma_penalty_dpdm = config.GetDoubleParam("optim_penalty_dpdm", 0.0);
+  gamma_penalty_variation = config.GetDoubleParam("optim_penalty_variation", 0.01); 
+  
 
   if (gamma_penalty_dpdm > 1e-13 && timestepper->mastereq->lindbladtype != LindbladType::NONE){
     if (mpirank_world == 0) {
@@ -221,6 +223,7 @@ double OptimProblem::evalF(const Vec x) {
   obj_penal = 0.0;
   obj_penal_dpdm = 0.0;
   obj_penal_energy = 0.0;
+  obj_penal_variation = 0.0;
   fidelity = 0.0;
   double obj_cost_re = 0.0;
   double obj_cost_im = 0.0;
@@ -302,12 +305,23 @@ double OptimProblem::evalF(const Vec x) {
   }
   obj_regul = gamma_tik / 2. * pow(xnorm,2.0);
 
+  // Penalize variation in alpha within each spline segment
+  double var_reg = 0.0;
+  for (int iosc = 0; iosc < timestepper->mastereq->getNOscillators(); iosc++){
+    Oscillator* osc = timestepper->mastereq->getOscillator(iosc);
+    double var_reg_osc = osc->evalAlphaVar(); // uses Oscillator::params instead of 'x'
+    // printf("MPI-task %d, variation in alpha (iosc %d): %e\n", getMPIrank_world(), iosc, var_reg_osc);
+    var_reg += var_reg_osc;
+  }
+  // add to obj_regul
+  obj_penal_variation = 0.5*gamma_penalty_variation*var_reg; 
+
   /* Sum, store and return objective value */
-  objective = obj_cost + obj_regul + obj_penal + obj_penal_dpdm + obj_penal_energy;
+  objective = obj_cost + obj_regul + obj_penal + obj_penal_dpdm + obj_penal_energy + obj_penal_variation;
 
   /* Output */
   if (mpirank_world == 0) {
-    std::cout<< "Objective = " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal << " + " << obj_penal_dpdm << " + " << obj_penal_energy << std::endl;
+    std::cout<< "Objective = " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal << " + " << obj_penal_dpdm << " + " << obj_penal_energy << " + " << obj_penal_variation << std::endl;
     std::cout<< "Fidelity = " << fidelity  << std::endl;
   }
 
@@ -328,12 +342,24 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
   /* Reset Gradient */
   VecZeroEntries(G);
 
-  /* Derivative of regulatization term gamma / 2 ||x||^2 (ADD ON ONE PROC ONLY!) */
+  /* Derivative of regulatization terms (ADD ON ONE PROC ONLY!) */
   // if (mpirank_init == 0 && mpirank_optim == 0) { // TODO: Which one?? 
   if (mpirank_init == 0 ) {
+
+    // Derivative of Tikhonov 0.5*gamma * ||x||^2 
     VecAXPY(G, gamma_tik, x);   // + gamma_tik * x
     if (gamma_tik_interpolate){
       VecAXPY(G, -1.0*gamma_tik, xinit); // -gamma_tik * xinit
+    }
+
+    // Derivative of penalization of variation in alpha within each spline segment
+    double var_reg_bar = 0.5*gamma_penalty_variation;
+    int skip_to_oscillator = 0;
+    for (int iosc = 0; iosc < timestepper->mastereq->getNOscillators(); iosc++){
+      Oscillator* osc = timestepper->mastereq->getOscillator(iosc);
+
+      osc->evalAlphaVarDiff(G, var_reg_bar, skip_to_oscillator);
+      skip_to_oscillator += osc->getNParams();
     }
   }
 
@@ -343,6 +369,7 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
   obj_penal = 0.0;
   obj_penal_dpdm = 0.0;
   obj_penal_energy = 0.0;
+  obj_penal_variation = 0.0;
   fidelity = 0.0;
   double obj_cost_re = 0.0;
   double obj_cost_im = 0.0;
@@ -446,8 +473,19 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
   }
   obj_regul = gamma_tik / 2. * pow(xnorm,2.0);
 
+  // Penalize variation in alpha within each spline segment
+  double var_reg = 0.0;
+  for (int iosc = 0; iosc < timestepper->mastereq->getNOscillators(); iosc++){
+    Oscillator* osc = timestepper->mastereq->getOscillator(iosc);
+    double var_reg_osc = osc->evalAlphaVar(); // uses Oscillator::params instead of 'x'
+    // printf("MPI-task %d, variation in alpha (iosc %d): %e\n", getMPIrank_world(), iosc, var_reg_osc);
+    var_reg += var_reg_osc;
+  }
+  // add to obj_regul
+  obj_penal_variation = 0.5*gamma_penalty_variation*var_reg; 
+
   /* Sum, store and return objective value */
-  objective = obj_cost + obj_regul + obj_penal + obj_penal_dpdm + obj_penal_energy;
+  objective = obj_cost + obj_regul + obj_penal + obj_penal_dpdm + obj_penal_energy + obj_penal_variation;
 
   /* For Schroedinger solver: Solve adjoint equations for all initial conditions here. */
   if (timestepper->mastereq->lindbladtype == LindbladType::NONE) {
@@ -490,11 +528,10 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
 
   /* Output */
   if (mpirank_world == 0 && !quietmode) {
-    std::cout<< "Objective = " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal << " + " << obj_penal_dpdm << " + " << obj_penal_energy << std::endl;
+    std::cout<< "Objective = " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal << " + " << obj_penal_dpdm << " + " << obj_penal_energy << " + " << obj_penal_variation << std::endl;
     std::cout<< "Fidelity = " << fidelity << std::endl;
   }
 }
-
 
 void OptimProblem::solve(Vec xinit) {
   TaoSetSolution(tao, xinit);
@@ -563,10 +600,11 @@ PetscErrorCode TaoMonitor(Tao tao,void*ptr){
   double obj_penal = ctx->getPenalty();
   double obj_penal_dpdm = ctx->getPenaltyDpDm();
   double obj_penal_energy = ctx->getPenaltyEnergy();
+  double obj_penal_variation= ctx->getPenaltyVariation();
   double F_avg = ctx->getFidelity();
 
   /* Print to optimization file */
-  ctx->output->writeOptimFile(f, gnorm, deltax, F_avg, obj_cost, obj_regul, obj_penal, obj_penal_dpdm, obj_penal_energy);
+  ctx->output->writeOptimFile(f, gnorm, deltax, F_avg, obj_cost, obj_regul, obj_penal, obj_penal_dpdm, obj_penal_energy, obj_penal_variation);
 
   /* Print parameters and controls to file */
   // if ( optim_iter % optim_monitor_freq == 0 ) {
@@ -593,7 +631,7 @@ PetscErrorCode TaoMonitor(Tao tao,void*ptr){
 
 
   if (ctx->getMPIrank_world() == 0 && (iter == ctx->getMaxIter() || lastIter || iter % ctx->output->optim_monitor_freq == 0)) {
-    std::cout<< iter <<  "  " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal << " + " << obj_penal_dpdm << " + " << obj_penal_energy;
+    std::cout<< iter <<  "  " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal << " + " << obj_penal_dpdm << " + " << obj_penal_energy << " + " << obj_penal_variation;
     std::cout<< "  Fidelity = " << F_avg;
     std::cout<< "  ||Grad|| = " << gnorm;
     std::cout<< std::endl;

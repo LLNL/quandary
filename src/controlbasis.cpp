@@ -217,6 +217,96 @@ void Step::derivative(const double t, const std::vector<double>& coeff, double* 
     coeff_diff[skip + carrier_freq_id*2] += step_amp2*valbar2 * dramp * (tstop - tstart); 
 }
 
+//
+// Zeroth order B-splines, i.e., piecewise constant
+//
+BSpline0::BSpline0(int nsplines_, double t0, double T, bool enforceZeroBoundary_) : ControlBasis(2*nsplines_, t0, T, enforceZeroBoundary_){
+    nsplines = nsplines_;
+    controltype = ControlType::BSPLINE0;
+
+    dtknot = (T-t0) / (double)nsplines;
+	width = dtknot;
+
+    /* Compute center points of the splines */
+    // tcenter = new double[nsplines];
+    // for (int i = 0; i < nsplines; i++){
+    //     tcenter[i] = t0 + dtknot * ( i + 0.5 );
+    // }
+
+}
+
+BSpline0::~BSpline0(){
+    // delete [] tcenter;
+}
+
+
+void BSpline0::evaluate(const double t, const std::vector<double>& coeff, int carrier_freq_id, double* Bl1_ptr, double* Bl2_ptr){
+    /* NO need to sum over basis functions! */
+
+    // first calculate lc index from t
+    int lc = floor((t-tstart)/dtknot);
+
+    // Ctrl function defined to be zero outside [tstart, tend]
+    if (lc < 0 || lc >= nsplines){
+        *Bl1_ptr = 0.0;
+        *Bl2_ptr = 0.0;
+    }
+    else{
+        *Bl1_ptr = coeff[skip + carrier_freq_id*nsplines*2 + lc];
+        *Bl2_ptr = coeff[skip + carrier_freq_id*nsplines*2 + lc + nsplines];
+    }
+}
+
+void BSpline0::derivative(const double t, const std::vector<double>& coeff, double* coeff_diff, const double valbar1, const double valbar2, int carrier_freq_id) {
+    // first calculate lc index from t
+    int lc = floor((t-tstart)/dtknot);
+
+    if (lc >= 0 && lc < nsplines){
+        coeff_diff[skip + carrier_freq_id*nsplines*2 + lc] += valbar1;
+        coeff_diff[skip + carrier_freq_id*nsplines*2 + lc + nsplines] += valbar2;
+    }
+}
+
+
+double BSpline0::computeVariation(std::vector<double>& params, int carrierfreqID){
+    double var = 0.0;
+    //   Re params
+    for (int lc=1; lc<nsplines; lc++){
+        var += SQR(params[skip + 2*carrierfreqID*nsplines + lc] - params[skip+ 2*carrierfreqID*nsplines + lc - 1]);
+    }
+    // Im params
+    for (int lc=1; lc<nsplines; lc++){
+        var += SQR(params[skip + (2*carrierfreqID+1)*nsplines + lc] - params[skip + (2*carrierfreqID+1)*nsplines + lc - 1]);
+    }
+    return var;
+}
+
+
+void BSpline0::computeVariation_diff(double* grad, std::vector<double>&params, double var_bar, int carrierfreqID){
+
+    int offset = skip;
+    double fact = 2.0*var_bar;
+
+    // Re params
+    int lc = 0;
+    grad[offset + 2*carrierfreqID*nsplines + lc] += fact * (params[offset + 2*carrierfreqID*nsplines + lc] - params[offset + 2*carrierfreqID*nsplines + lc + 1]);
+    // interior lc
+    for (lc=1; lc<nsplines-1; lc++){
+      grad[offset+ 2*carrierfreqID*nsplines + lc] += fact * (2*params[offset + 2*carrierfreqID*nsplines + lc] - params[offset + 2*carrierfreqID*nsplines + lc - 1] - params[offset + 2*carrierfreqID*nsplines + lc + 1]);
+    }
+    lc = nsplines-1;
+    grad[offset + 2*carrierfreqID*nsplines + lc] += fact * (params[offset + 2*carrierfreqID*nsplines + lc] - params[offset + 2*carrierfreqID*nsplines + lc - 1]);
+
+    // Im params
+    lc = 0;
+    grad[offset + (2*carrierfreqID+1)*nsplines + lc] += fact * (params[offset + (2*carrierfreqID+1)*nsplines + lc] - params[offset + (2*carrierfreqID+1)*nsplines + lc + 1]);
+    // interior lc
+    for (int lc=1; lc<nsplines-1; lc++){
+      grad[offset + (2*carrierfreqID+1)*nsplines + lc] += fact * (2*params[offset + (2*carrierfreqID+1)*nsplines + lc] - params[offset + (2*carrierfreqID+1)*nsplines + lc - 1] - params[offset + (2*carrierfreqID+1)*nsplines + lc + 1]);
+    }
+    lc = nsplines-1;
+    grad[offset + (2*carrierfreqID+1)*nsplines + lc] += fact * (params[offset + (2*carrierfreqID+1)*nsplines + lc] - params[offset + (2*carrierfreqID+1)*nsplines + lc - 1]);
+}
 
 TransferFunction::TransferFunction(){}
 TransferFunction::TransferFunction(std::vector<double> onofftimes_){
