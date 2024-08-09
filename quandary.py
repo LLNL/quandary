@@ -465,7 +465,7 @@ class Quandary:
             if self.verbose:
                 print("Hamiltonian operators written to ", datadir+"/"+self._hamiltonian_filename)
 
-        # AP: initializing the control parameter vector 'pcof0'
+        # Initializing the control parameter vector 'pcof0'
         # 1. If the initial parameter vector (list) is given with the 'pcof0' argument, the list will be dumped to a file with name self.pcof0_filename := "pcof0.dat". The file name will be given as argument to the Quandary command. 'control_initialization0 = file, filename'
         # 2. If pcof0 is empty but self.pcof_filename is given, use that filename in the 'control_initialization0 = file' command
 
