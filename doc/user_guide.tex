@@ -548,7 +548,7 @@ The fourth penalty term, activated by setting $\gamma_5>0$, is used to penalize 
 \begin{align}
   Var(\vec{\alpha}) = \sum_{k=1}^Q Var_k(\vec{\alpha}),\quad Var_k(\vec{\alpha}) = \sum_{f=1}^{N_f^k} \sum_{s=2}^{N_s^k} |\alpha_{s,f}^k - \alpha_{s-1,f}^k|^2,
 \end{align}
-in terms of the complex-valued control parameters $\alpha_{s,f}^k = \alpha_{s,f}^{k(1)} + i \alpha_{s,f}^{k(2)}$. Penalizing the variance can significantly reduce the noise level in the optimiced control functions.
+in terms of the complex-valued control parameters $\alpha_{s,f}^k = \alpha_{s,f}^{k(1)} + i \alpha_{s,f}^{k(2)}$. Penalizing the variance can significantly reduce the noise level in the optimized control functions.
 
 Note: All regularization and penalty coefficients $\gamma_i$ should be chosen small enough so that they do not dominate the final-time objective function $J$. This might require some fine-tuning. It is recommended to always add $\gamma_1>0$, e.g. $\gamma_1 = 10^{-4}$, and add other penalties only if needed. 
 
