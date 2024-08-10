@@ -216,10 +216,10 @@ where the rotational frequencies $\omega_k^r$ act as carrier waves to the rotati
 
 \subsection{Control pulses} \label{subsec:controlpulses}
 The time-dependent rotating-frame control functions $d^k(\vec{\alpha}^k,t)$ are parameterized using $N_s^k$ basis functions $B_s(t)$ acting as envelope for $N_f^k$ carrier waves:
-\begin{align}
+\begin{align}\label{eq:spline-ctrl}
   d^k(\vec{\alpha}^k,t) = \sum_{f=1}^{N_f^k} \sum_{s=1}^{N_s^k} \alpha_{s,f}^k B_s(t) e^{i\Omega_k^ft}, \quad \alpha_{s,f}^k = \alpha_{s,f}^{k(1)} + i \alpha_{s,f}^{k(2)} \in \C
 \end{align}
-By default, the basis functions are piece-wise quadratic (2nd order) B-splines, centered on an equally spaced grid in time. To instead use a zeroth order B-spline basis, see Section~\ref{subsec:bspline-0}.
+By default, the basis functions are piece-wise quadratic (2nd order) B-spline polynomials, centered on an equally spaced grid in time. To instead use a piece-wise constant (0th order) B-spline basis, see Section~\ref{subsec:bspline-0}.
 The amplitudes $\alpha_{s,f}^{k(1)}, \alpha_{s,f}^{k(2)} \in \R$ are the control
 parameters (\textit{design} variables) that Quandary can optimize in order to realize a
 desired system behavior, giving a total number of $2\sum_kN_s^kN_f^k$ real-valued optimization variables. (Note that the number of carrier wave frequencies $N_f^k$ as well as the number of spline basis functions $N_s^k$ can be different for each subsystem $k$.) $\Omega_k^f \in \R$ denote the carrier wave frequencies in the rotating frame which can be choosen to trigger certain system frequencies. The corresponding Lab-frame carrier frequencies become $\omega_k^r + \Omega_k^f$. Those frequencies can be chosen to match the transition frequencies in the lab-frame system Hamiltonian. For example, when $\xi_{kl} << \xi_k$, the transition frequencies satisfy $\omega_k - n\xi_k$. Thus by choosing $\Omega_k^f = \omega_k-\omega_k^r - n \xi_k$, one triggers transition between energy levels $n$ and $n+1$ in subsystem $k$. Choosing effective carrier wave frequencies is quite important for optimization performance. We recommend to have a look at \cite{petersson2021optimal} for details on how to choose them.
@@ -321,10 +321,10 @@ To switch between the Schroedinger solver and the Lindblad solver, the optional 
 In the most general form, Quandary can solve the following optimization problem
 \begin{align}\label{eq:minproblem}
   % \min_{\boldsymbol{\alpha}} \frac{1}{n_{init}} \sum_{i=1}^{n_{init}} \beta_i J(\rho^{target}_i, \rho_i(T)) + \gamma_1 \int_0^T P\left(\rho_i(t)\right) \, \mathrm{d} t + \gamma_2 \| \bfa \|^2_2
-  \min_{\boldsymbol{\alpha}} J(\{\rho^{target}_i, \rho_i(T) \}) + \gamma_1 \| \bfa \|^2_2 + Penalty
+  \min_{\boldsymbol{\alpha}} J(\{\rho^{target}_i, \rho_i(T) \}) + \frac{\gamma_1}{2} \| \bfa \|^2_2 + Penalty
 \end{align}
 where $\rho_i(T)$ denotes one or multiple quantum states evaluated at a final time $T>0$, which solve either Lindblad's master equation \eqref{mastereq} or Schroedinger's equation \eqref{eq:schroedinger} in the rotating frame for initial conditions $\rho_i(0)$, as specified in Section \ref{subsec:initcond}, $i=1,\dots, n_{init}$. The first term in \eqref{eq:minproblem} minimizes an objective function $J$ (see Section \ref{sec:objectivefunctionals}) that quantifies the discrepancy between the realized states $\rho_i(T)$ at final time $T$ driven by the current control $\boldsymbol{\alpha}$ and the desired target $\rho^{target}_i$, see Section \ref{sec:targets}. 
-The second term is a standart Tikhonov regularization that can be added with parameter $\gamma_1\geq 0$ in order to regularize the optimization problem (stabilize optimization convergence) by favoring solutions with small norm. Additional penalty terms, e.g. for leakage prevention, can be added, compare \ref{sec:penalty}.
+The second term is a standart Tikhonov regularization that can be added with parameter $\gamma_1\geq 0$ in order to regularize the optimization problem (stabilize optimization convergence) by favoring control vectors with small norm. Additional penalty terms, e.g. for leakage prevention, can be added, compare \ref{sec:penalty}.
 
 \subsection{Fidelity}\label{sec:fidelity}
 
@@ -528,10 +528,12 @@ This option is useful for example if one wants to propagate a specific \textit{n
 \subsection{Penalty terms and leakage prevention}\label{sec:penalty}
 
 Three optional penalty terms can be added to the objective function:
-\begin{align}
-   Penalty = \gamma_2/T \int_0^T P\left(\{\rho_i(t)\}\right) \, \mathrm{d} t +  \gamma_3 /T \int_0^T \, \| \partial_{tt} \mbox{Pop}(\rho_i(t)) \|^2 \mathrm{d}t + \gamma_4/T \int_0^T \, \sum_k |d^k(\alpha^k,t)|^2\, dt
-\end{align}
-The first penalty term can be added with $\gamma_2 \geq 0$ to achieve a desired behavior over the entire time-domain $0\leq t\leq T$, rather than only at the final time. If extra (non-essential levels are considered through the optimization for at least one oscillator ($n_k^e < n_k$ for at least $k$, compare Sec. \ref{sec:essentiallevels}), then this term can be used to prevent leakage to higher energy levels that are not modelled. In particular, in that case the occupation of all \textit{guard levels} are penalized through
+\begin{multline}
+  Penalty = \frac{\gamma_2}{T} \int_0^T P\left(\{\rho_i(t)\}\right) \, \mathrm{d} t +  \frac{\gamma_3}{T} \int_0^T \, \| \partial_{tt} \mbox{Pop}(\rho_i(t)) \|^2 \mathrm{d}t + \\
+  %
+  \frac{\gamma_4}{T} \int_0^T \, \sum_k |d^k(\alpha^k,t)|^2\, dt + \frac{\gamma_5}{2} Var(\vec{\alpha}).
+\end{multline}
+The first penalty term can be added with $\gamma_2 \geq 0$ to drive the quantum system towards the desired state over the entire time-domain $0\leq t\leq T$, rather than only at the final time. If extra (non-essential levels are considered through the optimization for at least one oscillator ($n_k^e < n_k$ for at least $k$, compare Sec.~\ref{sec:essentiallevels}), then this term can be used to prevent leakage to higher energy levels that are not modelled. In particular, in that case the occupation of all \textit{guard levels} are penalized through
 \begin{align}\label{eq:leakprevention}
   P(\rho(t)) = \sum_{r} \| \rho(t)_{rr} \|^2_2
 \end{align}
@@ -541,6 +543,12 @@ where $r$ iterates over all indices that correspond to a guard level (i.e. last 
 The second penalty term can be added with parameter $\gamma_3 \geq 0$ to encourage solutions whose populations vary slowly in time by penalizing the second derivative of the populations of the state. 
 
 The third penalty term can be added with parameter $\gamma_4 \geq 0$ to encourage small control pulse amplitudes by penalizing the control pulse energy. This term can be useful if hardware bounds are given for the control pulse amplitudes: Rather than include amplitude bounds on control pulse directly, which often leads to more non-convex optimization problems and convergence deterioration, one can utilize this penalty term to favor short control pulses with small amplitudes. Compare also \cite{gunther2023practical} for its usage to determine minimal gate durations.
+
+The fourth penalty term, activated by setting $\gamma_5>0$, is used to penalize variation in control strength between consequtive B-spline coefficients. It is currently only implemented for piece-wise zeroth order spline functions, see Section \ref{subsec:bspline-0}. Referring to the control function representation in \eqref{eq:spline-ctrl}, this penalty function takes the form:
+\begin{align}
+  Var(\vec{\alpha}) = \sum_{k=1}^Q Var_k(\vec{\alpha}),\quad Var_k(\vec{\alpha}) = \sum_{f=1}^{N_f^k} \sum_{s=2}^{N_s^k} |\alpha_{s,f}^k - \alpha_{s-1,f}^k|^2,
+\end{align}
+in terms of the complex-valued control parameters $\alpha_{s,f}^k = \alpha_{s,f}^{k(1)} + i \alpha_{s,f}^{k(2)}$. Penalizing the variance can significantly reduce the noise level in the optimiced control functions.
 
 Note: All regularization and penalty coefficients $\gamma_i$ should be chosen small enough so that they do not dominate the final-time objective function $J$. This might require some fine-tuning. It is recommended to always add $\gamma_1>0$, e.g. $\gamma_1 = 10^{-4}$, and add other penalties only if needed. 
 
