@@ -414,6 +414,7 @@ int main(int argc,char **argv)
     optimctx->getStartingPoint(xinit);
     VecCopy(xinit, optimctx->xinit); // Store the initial guess
     if (mpirank_world == 0 && !quietmode) printf("\nStarting primal solver... \n");
+    optimctx->timestepper->writeDataFiles = true;
     objective = optimctx->evalF(xinit);
     if (mpirank_world == 0 && !quietmode) printf("\nTotal objective = %1.14e, \n", objective);
     optimctx->getSolution(&opt);
@@ -424,6 +425,7 @@ int main(int argc,char **argv)
     optimctx->getStartingPoint(xinit);
     VecCopy(xinit, optimctx->xinit); // Store the initial guess
     if (mpirank_world == 0 && !quietmode) printf("\nStarting adjoint solver...\n");
+    optimctx->timestepper->writeDataFiles = true;
     optimctx->evalGradF(xinit, grad);
     VecNorm(grad, NORM_2, &gnorm);
     // VecView(grad, PETSC_VIEWER_STDOUT_WORLD);
@@ -439,6 +441,7 @@ int main(int argc,char **argv)
     optimctx->getStartingPoint(xinit);
     VecCopy(xinit, optimctx->xinit); // Store the initial guess
     if (mpirank_world == 0 && !quietmode) printf("\nStarting Optimization solver ... \n");
+    optimctx->timestepper->writeDataFiles = false;
     optimctx->solve(xinit);
     optimctx->getSolution(&opt);
   }
@@ -452,8 +455,9 @@ int main(int argc,char **argv)
   }
 
   /* Output */
-  if (runtype != RunType::OPTIMIZATION) optimctx->output->writeOptimFile(optimctx->getObjective(), gnorm, 0.0, optimctx->getFidelity(), optimctx->getCostT(), optimctx->getRegul(), optimctx->getPenalty(), optimctx->getPenaltyDpDm(), optimctx->getPenaltyEnergy(), optimctx->getPenaltyVariation());
-
+  if (runtype != RunType::OPTIMIZATION) {
+    optimctx->output->writeOptimFile(0, optimctx->getObjective(), gnorm, 0.0, optimctx->getFidelity(), optimctx->getCostT(), optimctx->getRegul(), optimctx->getPenalty(), optimctx->getPenaltyDpDm(), optimctx->getPenaltyEnergy(), optimctx->getPenaltyVariation());
+  }
 
   /* --- Finalize --- */
 
