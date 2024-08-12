@@ -306,7 +306,7 @@ double OptimProblem::evalF(const Vec x) {
   objective = obj_cost + obj_regul + obj_penal + obj_penal_dpdm + obj_penal_energy;
 
   /* Output */
-  if (mpirank_world == 0) {
+  if (mpirank_world == 0 && !quietmode) {
     std::cout<< "Objective = " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal << " + " << obj_penal_dpdm << " + " << obj_penal_energy << std::endl;
     std::cout<< "Fidelity = " << fidelity  << std::endl;
   }
@@ -488,11 +488,11 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
   /* Compute and store gradient norm */
   VecNorm(G, NORM_2, &(gnorm));
 
-  /* Output */
-  if (mpirank_world == 0 && !quietmode) {
-    std::cout<< "Objective = " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal << " + " << obj_penal_dpdm << " + " << obj_penal_energy << std::endl;
-    std::cout<< "Fidelity = " << fidelity << std::endl;
-  }
+  // /* Output */
+  // if (mpirank_world == 0 && !quietmode) {
+  //   std::cout<< "Objective = " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal << " + " << obj_penal_dpdm << " + " << obj_penal_energy << std::endl;
+  //   std::cout<< "Fidelity = " << fidelity << std::endl;
+  // }
 }
 
 
@@ -554,9 +554,6 @@ PetscErrorCode TaoMonitor(Tao tao,void*ptr){
   TaoGetSolutionStatus(tao, &iter, &f, &gnorm, NULL, &deltax, &reason);
   TaoGetSolution(tao, &params);
 
-  /* Pass current iteration number to output manager */
-  ctx->output->optim_iter = iter;
-
   /* Grab some output stuff */
   double obj_cost = ctx->getCostT();
   double obj_regul = ctx->getRegul();
@@ -564,19 +561,6 @@ PetscErrorCode TaoMonitor(Tao tao,void*ptr){
   double obj_penal_dpdm = ctx->getPenaltyDpDm();
   double obj_penal_energy = ctx->getPenaltyEnergy();
   double F_avg = ctx->getFidelity();
-
-  /* Print to optimization file */
-  ctx->output->writeOptimFile(f, gnorm, deltax, F_avg, obj_cost, obj_regul, obj_penal, obj_penal_dpdm, obj_penal_energy);
-
-  /* Print parameters and controls to file */
-  // if ( optim_iter % optim_monitor_freq == 0 ) {
-  ctx->output->writeControls(params, ctx->timestepper->mastereq, ctx->timestepper->ntime, ctx->timestepper->dt);
-  // }
-
-  /* Screen output */
-  if (ctx->getMPIrank_world() == 0 && iter == 0) {
-    std::cout<<  "    Objective             Tikhonov                Penalty-Leakage        Penalty-StateVar       Penalty-TotalEnergy " << std::endl;
-  }
 
   /* Additional Stopping criteria */
   bool lastIter = false;
@@ -589,20 +573,43 @@ PetscErrorCode TaoMonitor(Tao tao,void*ptr){
     finalReason_str = "Optimization converged with small final time cost.";
     TaoSetConvergedReason(tao, TAO_CONVERGED_USER);
     lastIter = true;
-  } 
-
-
-  if (ctx->getMPIrank_world() == 0 && (iter == ctx->getMaxIter() || lastIter || iter % ctx->output->optim_monitor_freq == 0)) {
-    std::cout<< iter <<  "  " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal << " + " << obj_penal_dpdm << " + " << obj_penal_energy;
-    std::cout<< "  Fidelity = " << F_avg;
-    std::cout<< "  ||Grad|| = " << gnorm;
-    std::cout<< std::endl;
+  } else if (iter == ctx->getMaxIter()) {
+    finalReason_str = "Optimization stopped at maximum number of iterations.";
+    lastIter = true;
   }
 
-if (ctx->getMPIrank_world() == 0 && lastIter){
-    std::cout<< finalReason_str << std::endl;
+  /* First iteration: Header for screen output of optimization history */
+  if (iter == 0 && ctx->getMPIrank_world() == 0) {
+    std::cout<<  "    Objective             Tikhonov                Penalty-Leakage        Penalty-StateVar       Penalty-TotalEnergy " << std::endl;
   }
- 
+
+  /* Every <optim_monitor_freq> iterations: Output of optimization history */
+  if (iter % ctx->output->optim_monitor_freq == 0 ||lastIter) {
+    // Add to optimization history file 
+    ctx->output->writeOptimFile(iter, f, gnorm, deltax, F_avg, obj_cost, obj_regul, obj_penal, obj_penal_dpdm, obj_penal_energy);
+    // Screen output 
+    if (ctx->getMPIrank_world() == 0) {
+      std::cout<< iter <<  "  " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal << " + " << obj_penal_dpdm << " + " << obj_penal_energy;
+      std::cout<< "  Fidelity = " << F_avg;
+      std::cout<< "  ||Grad|| = " << gnorm;
+      std::cout<< std::endl;
+    }
+  }
+
+  /* Last iteration: Print solution, controls and trajectory data to files */
+  if (lastIter) {
+    ctx->output->writeControls(params, ctx->timestepper->mastereq, ctx->timestepper->ntime, ctx->timestepper->dt);
+
+    // do one last forward evaluation while writing trajectory files
+    ctx->timestepper->writeDataFiles = true;
+    ctx->evalF(params); 
+
+    // Print stopping reason to screen
+    if (ctx->getMPIrank_world() == 0){
+      std::cout<< finalReason_str << std::endl;
+    }
+  }
+
 
   return 0;
 }
