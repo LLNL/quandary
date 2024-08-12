@@ -294,7 +294,7 @@ double OptimProblem::evalF(const Vec x) {
   /* Finalize the objective function */
   obj_cost = optim_target->finalizeJ(obj_cost_re, obj_cost_im);
 
-  /* Evaluate regularization objective += gamma/2 * ||x-x0||^2*/
+  /* Evaluate Tikhonov regularization term: gamma/2 * ||x-x0||^2*/
   double xnorm;
   if (!gamma_tik_interpolate){  // ||x||^2
     VecNorm(x, NORM_2, &xnorm);
@@ -305,15 +305,11 @@ double OptimProblem::evalF(const Vec x) {
   }
   obj_regul = gamma_tik / 2. * pow(xnorm,2.0);
 
-  // Penalize variation in alpha within each spline segment
+  /* Evaluate penality term for control variation */
   double var_reg = 0.0;
   for (int iosc = 0; iosc < timestepper->mastereq->getNOscillators(); iosc++){
-    Oscillator* osc = timestepper->mastereq->getOscillator(iosc);
-    double var_reg_osc = osc->evalAlphaVar(); // uses Oscillator::params instead of 'x'
-    // printf("MPI-task %d, variation in alpha (iosc %d): %e\n", getMPIrank_world(), iosc, var_reg_osc);
-    var_reg += var_reg_osc;
+    var_reg += timestepper->mastereq->getOscillator(iosc)->evalControlVariation(); // uses Oscillator::params instead of 'x'
   }
-  // add to obj_regul
   obj_penal_variation = 0.5*gamma_penalty_variation*var_reg; 
 
   /* Sum, store and return objective value */
@@ -352,13 +348,12 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
       VecAXPY(G, -1.0*gamma_tik, xinit); // -gamma_tik * xinit
     }
 
-    // Derivative of penalization of variation in alpha within each spline segment
+    // Derivative of penalization of control variation 
     double var_reg_bar = 0.5*gamma_penalty_variation;
     int skip_to_oscillator = 0;
     for (int iosc = 0; iosc < timestepper->mastereq->getNOscillators(); iosc++){
       Oscillator* osc = timestepper->mastereq->getOscillator(iosc);
-
-      osc->evalAlphaVarDiff(G, var_reg_bar, skip_to_oscillator);
+      osc->evalControlVariationDiff(G, var_reg_bar, skip_to_oscillator);
       skip_to_oscillator += osc->getNParams();
     }
   }
@@ -462,7 +457,7 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
      If Schroedingers solver, need to take the absolute value */
   obj_cost = optim_target->finalizeJ(obj_cost_re, obj_cost_im);
 
-  /* Evaluate regularization objective += gamma/2 * ||x||^2*/
+  /* Evaluate Tikhonov regularization term += gamma/2 * ||x||^2*/
   double xnorm;
   if (!gamma_tik_interpolate){  // ||x||^2
     VecNorm(x, NORM_2, &xnorm);
@@ -473,15 +468,11 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
   }
   obj_regul = gamma_tik / 2. * pow(xnorm,2.0);
 
-  // Penalize variation in alpha within each spline segment
+  /* Evaluate penalty term for control parameter variation */
   double var_reg = 0.0;
   for (int iosc = 0; iosc < timestepper->mastereq->getNOscillators(); iosc++){
-    Oscillator* osc = timestepper->mastereq->getOscillator(iosc);
-    double var_reg_osc = osc->evalAlphaVar(); // uses Oscillator::params instead of 'x'
-    // printf("MPI-task %d, variation in alpha (iosc %d): %e\n", getMPIrank_world(), iosc, var_reg_osc);
-    var_reg += var_reg_osc;
+    var_reg += timestepper->mastereq->getOscillator(iosc)->evalControlVariation(); // uses Oscillator::params instead of 'x'
   }
-  // add to obj_regul
   obj_penal_variation = 0.5*gamma_penalty_variation*var_reg; 
 
   /* Sum, store and return objective value */

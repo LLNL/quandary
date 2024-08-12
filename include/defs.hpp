@@ -39,7 +39,7 @@ enum class RunType {
 
 enum class ControlType {
   NONE,       // Non-controllable
-  BSPLINE,    // Control paremters are the amplitudes of BSpline basis functions
+  BSPLINE,    // Control paremters are the amplitudes of 2nd order BSpline basis functions
   BSPLINEAMP, // Control paremters are the amplitudes of BSpline basis functions. ONLY FOR AMPLITUDE
   STEP,       // Control parameter is the width of a step envelop function for a given amplitude
   BSPLINE0,   // Zeroth order Bspline (piece-wise constant)

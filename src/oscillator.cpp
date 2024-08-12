@@ -93,7 +93,6 @@ Oscillator::Oscillator(MapParam config, int id, std::vector<int> nlevels_all_, s
       mysplinebasis->setSkip(nparams_per_seg);
       nparams_per_seg += mysplinebasis->getNparams() * carrier_freq.size();
       basisfunctions.push_back(mysplinebasis);
-      //
     } else if (controlsegments[idstr].compare("spline_amplitude") == 0) { // Spline on amplitude only. Format in string: spline_amplitude, nsplines, tstart, tstop
       idstr++;
       if (controlsegments.size() <= idstr){
@@ -231,11 +230,9 @@ int Oscillator::getNSegParams(int segmentID){
   return n; 
 }
 
-double Oscillator::evalAlphaVar(){
-  // Evaluate un-divided differences of ctrl parameters for each spline segment
-  // NOTE: params holds the relevant copy of the 'x' array
+double Oscillator::evalControlVariation(){
+  // NOTE: params holds the relevant copy of the optimizers 'x' vector 
   double var_reg = 0.0;
-
   if (params.size()>0) {
     // Iterate over control segments
     for (int iseg= 0; iseg< basisfunctions.size(); iseg++){
@@ -248,12 +245,10 @@ double Oscillator::evalAlphaVar(){
   return var_reg;
 }
 
-void Oscillator::evalAlphaVarDiff(Vec G, double var_reg_bar, int skip_to_oscillator){
-  // Evaluate gradient of the penalty of un-divided differences of ctrl parameters for each spline segment
+void Oscillator::evalControlVariationDiff(Vec G, double var_reg_bar, int skip_to_oscillator){
   // NOTE: params holds the relevant copy of the 'x' array
 
   if (params.size()>0) {
-    // get pointer from petsc
     PetscScalar* grad; 
     VecGetArray(G, &grad);
 
@@ -265,7 +260,6 @@ void Oscillator::evalAlphaVarDiff(Vec G, double var_reg_bar, int skip_to_oscilla
         basisfunctions[iseg]->computeVariation_diff(grad+skip_to_oscillator, params, var_reg_bar, f);
      }
     }
-    // restore petsc pointer
     VecRestoreArray(G, &grad);
   } 
 }

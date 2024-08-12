@@ -466,8 +466,8 @@ class Quandary:
                 print("Hamiltonian operators written to ", datadir+"/"+self._hamiltonian_filename)
 
         # Initializing the control parameter vector 'pcof0'
-        # 1. If the initial parameter vector (list) is given with the 'pcof0' argument, the list will be dumped to a file with name self.pcof0_filename := "pcof0.dat". The file name will be given as argument to the Quandary command. 'control_initialization0 = file, filename'
-        # 2. If pcof0 is empty but self.pcof_filename is given, use that filename in the 'control_initialization0 = file' command
+        # 1. If the initial parameter vector (list) is given with the 'pcof0' argument, the list will be dumped to a file with name self.pcof0_filename := "pcof0.dat". 
+        # 2. If pcof0 is empty but self.pcof_filename is given, use that filename in Quandary 
 
         read_pcof0_from_file = False
         if len(self.pcof0) > 0 or len(pcof0) > 0:
@@ -529,7 +529,7 @@ class Quandary:
             elif self.spline_order == 2:
                 mystring += "control_segments" + str(iosc) + " = spline, " + str(self.nsplines) + "\n"
             else:
-                print("Error: spline order = ", self.spline_order, " not implemented")
+                print("Error: spline order = ", self.spline_order, " is currently not available. Choose 0 or 2.")
                 return -1
             # if len(self.pcof0_filename)>0:
             if read_pcof0_from_file:

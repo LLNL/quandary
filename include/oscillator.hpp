@@ -92,11 +92,10 @@ class Oscillator {
     /* Compute population (=diagonal elements) for this oscillators reduced system */
     void population(const Vec x, std::vector<double> &pop);
 
-    // Evaluate un-divided differences in alpha ctrl vector, within each spline segment
-    double evalAlphaVar();
-
-    // Contribution to the gradient of evalAlphaVar
-    void evalAlphaVarDiff(Vec G, double var_reg_bar, int skip_to_oscillator);
+    /* Evaluate un-divided differences in control vector */
+    double evalControlVariation();
+    /* Derivative of un-divided differences in control vector */
+    void evalControlVariationDiff(Vec G, double var_reg_bar, int skip_to_oscillator);
 };
 
 
