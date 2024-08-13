@@ -224,6 +224,8 @@ class Quandary:
             print("Maximum control amplitudes: ", self.maxctrl_MHz, "MHz")
 
         # Estimate carrier wave frequencies
+        if self.spline_order == 0 and len(self.carrier_frequency) == 0:
+            self.carrier_frequency = [[0.0] for _ in range(len(self.freq01))]
         if len(self.carrier_frequency) == 0: 
             self.carrier_frequency, _ = get_resonances(Ne=self.Ne, Ng=self.Ng, Hsys=self.Hsys, Hc_re=self.Hc_re, Hc_im=self.Hc_im, rotfreq=self.rotfreq, verbose=self.verbose, cw_amp_thres=self.cw_amp_thres, cw_prox_thres=self.cw_prox_thres, stdmodel=self.standardmodel)
 
