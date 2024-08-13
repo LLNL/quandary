@@ -43,11 +43,14 @@ gamma_variation = 1.0
 # Carrier freq's
 carrier_frequency =[[0.0], [0.0]]
 
+# Optionally: let controls start and end at zero
+control_enforce_BC = True
+
 # Set up the Quandary configuration for this test case. Make sure to pass all of the above to the corresponding fields, compare help(Quandary)!
-quandary = Quandary(freq01=freq01, Jkl=Jkl, rotfreq=rotfreq, T=T, targetgate=unitary, verbose=verbose, rand_seed=rand_seed, spline_order=spline_order, nsplines=nsplines, carrier_frequency=carrier_frequency, gamma_variation=gamma_variation) 
+quandary = Quandary(freq01=freq01, Jkl=Jkl, rotfreq=rotfreq, T=T, targetgate=unitary, verbose=verbose, rand_seed=rand_seed, spline_order=spline_order, nsplines=nsplines, carrier_frequency=carrier_frequency, gamma_variation=gamma_variation, control_enforce_BC=control_enforce_BC) 
 
 # Execute quandary
-t, pt, qt, infidelity, expectedEnergy, population = quandary.optimize()
+t, pt, qt, infidelity, expectedEnergy, population = quandary.optimize(quandary_exec="~/Numerics/quandary_master/quandary")
 
 print(f"Fidelity = {1.0 - infidelity}")
 

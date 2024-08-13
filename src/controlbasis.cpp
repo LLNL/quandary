@@ -264,34 +264,59 @@ double BSpline0::computeVariation(std::vector<double>& params, int carrierfreqID
     for (int lc=1; lc<nsplines; lc++){
         var += SQR(params[skip + (2*carrierfreqID+1)*nsplines + lc] - params[skip + (2*carrierfreqID+1)*nsplines + lc - 1]);
     }
+
+    if (enforceZeroBoundary) {
+        // Re
+        var += SQR(params[skip + 2*carrierfreqID*nsplines + 0 ]); // lc = 0
+        var += SQR(params[skip+ 2*carrierfreqID*nsplines + nsplines - 1]); // lc = nsplines
+        // Im
+        var += SQR(params[skip + (2*carrierfreqID+1)*nsplines ]); // lc=0
+        var += SQR(params[skip + (2*carrierfreqID+1)*nsplines + nsplines- 1]); // lc=nsplines
+    }
     return var;
 }
 
 
 void BSpline0::computeVariation_diff(double* grad, std::vector<double>&params, double var_bar, int carrierfreqID){
 
-    int offset = skip;
     double fact = 2.0*var_bar;
 
     // Re params
     int lc = 0;
-    grad[offset + 2*carrierfreqID*nsplines + lc] += fact * (params[offset + 2*carrierfreqID*nsplines + lc] - params[offset + 2*carrierfreqID*nsplines + lc + 1]);
+    grad[skip + 2*carrierfreqID*nsplines + lc] += fact * (params[skip + 2*carrierfreqID*nsplines + lc] - params[skip + 2*carrierfreqID*nsplines + lc + 1]);
     // interior lc
     for (lc=1; lc<nsplines-1; lc++){
-      grad[offset+ 2*carrierfreqID*nsplines + lc] += fact * (2*params[offset + 2*carrierfreqID*nsplines + lc] - params[offset + 2*carrierfreqID*nsplines + lc - 1] - params[offset + 2*carrierfreqID*nsplines + lc + 1]);
+      grad[skip+ 2*carrierfreqID*nsplines + lc] += fact * (2*params[skip + 2*carrierfreqID*nsplines + lc] - params[skip + 2*carrierfreqID*nsplines + lc - 1] - params[skip + 2*carrierfreqID*nsplines + lc + 1]);
     }
     lc = nsplines-1;
-    grad[offset + 2*carrierfreqID*nsplines + lc] += fact * (params[offset + 2*carrierfreqID*nsplines + lc] - params[offset + 2*carrierfreqID*nsplines + lc - 1]);
-
+    grad[skip + 2*carrierfreqID*nsplines + lc] += fact * (params[skip + 2*carrierfreqID*nsplines + lc] - params[skip + 2*carrierfreqID*nsplines + lc - 1]);
     // Im params
     lc = 0;
-    grad[offset + (2*carrierfreqID+1)*nsplines + lc] += fact * (params[offset + (2*carrierfreqID+1)*nsplines + lc] - params[offset + (2*carrierfreqID+1)*nsplines + lc + 1]);
+    grad[skip + (2*carrierfreqID+1)*nsplines + lc] += fact * (params[skip + (2*carrierfreqID+1)*nsplines + lc] - params[skip + (2*carrierfreqID+1)*nsplines + lc + 1]);
     // interior lc
     for (int lc=1; lc<nsplines-1; lc++){
-      grad[offset + (2*carrierfreqID+1)*nsplines + lc] += fact * (2*params[offset + (2*carrierfreqID+1)*nsplines + lc] - params[offset + (2*carrierfreqID+1)*nsplines + lc - 1] - params[offset + (2*carrierfreqID+1)*nsplines + lc + 1]);
+      grad[skip + (2*carrierfreqID+1)*nsplines + lc] += fact * (2*params[skip + (2*carrierfreqID+1)*nsplines + lc] - params[skip + (2*carrierfreqID+1)*nsplines + lc - 1] - params[skip + (2*carrierfreqID+1)*nsplines + lc + 1]);
     }
     lc = nsplines-1;
-    grad[offset + (2*carrierfreqID+1)*nsplines + lc] += fact * (params[offset + (2*carrierfreqID+1)*nsplines + lc] - params[offset + (2*carrierfreqID+1)*nsplines + lc - 1]);
+    grad[skip + (2*carrierfreqID+1)*nsplines + lc] += fact * (params[skip + (2*carrierfreqID+1)*nsplines + lc] - params[skip + (2*carrierfreqID+1)*nsplines + lc - 1]);
+
+
+    if (enforceZeroBoundary) {
+        // Re
+        grad[skip + 2*carrierfreqID*nsplines ] += fact * params[skip + 2*carrierfreqID*nsplines ];
+        grad[skip + 2*carrierfreqID*nsplines + nsplines-1] += fact * params[skip + 2*carrierfreqID*nsplines + nsplines-1];
+        // Im
+        grad[skip + 2*carrierfreqID*nsplines + nsplines] += fact * params[skip + 2*carrierfreqID*nsplines + nsplines];
+        grad[skip + 2*carrierfreqID*nsplines + 2*nsplines-1] += fact * params[skip + 2*carrierfreqID*nsplines + 2*nsplines-1];
+    }
+}
+
+void BSpline0::enforceBoundary(double* x, int carrierfreqID){
+
+        x[skip + 2*carrierfreqID*nsplines + 0 ] = 0.0; // first real
+        x[skip+ 2*carrierfreqID*nsplines + nsplines - 1] = 0.0; // last real
+        x[skip + (2*carrierfreqID+1)*nsplines ] = 0.0; // first imag
+        x[skip + (2*carrierfreqID+1)*nsplines + nsplines- 1] = 0.0; // last imag
 }
 
 TransferFunction::TransferFunction(){}

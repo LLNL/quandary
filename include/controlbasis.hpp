@@ -151,6 +151,9 @@ class BSpline0 : public ControlBasis {
 
         int getNSplines() {return nsplines;};
 
+        /* Set the first and last parameter to zero, for this carrier wave */
+        void enforceBoundary(double* x, int carrier_id);
+
         /* Variation of the control parameters: 1/nsplines * sum_splines (alpha_i - alpha_{i-1})^2 */
         double computeVariation(std::vector<double>& params, int carrierfreqID);
         virtual void computeVariation_diff(double* grad, std::vector<double>&params, double var_bar, int carrierfreqID);
