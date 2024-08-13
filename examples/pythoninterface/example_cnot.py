@@ -36,8 +36,8 @@ rand_seed=1234
 # Set up the Quandary configuration for this test case. Make sure to pass all of the above to the corresponding fields, compare help(Quandary)!
 quandary = Quandary(freq01=freq01, Jkl=Jkl, rotfreq=rotfreq, T=T, targetgate=unitary, verbose=verbose, rand_seed=rand_seed) 
 
-# Potentially, load initial control parameters from a file. 
-# quandary.pcof0_filename = os.getcwd() + "./CNOT_params.dat"  # absolute path!
+# Optionally, if you already have control parameters, load them from a file. 
+# quandary.pcof0_filename = os.getcwd() + "/CNOT_params.dat"  # absolute path!
 
 # Execute quandary
 t, pt, qt, infidelity, expectedEnergy, population = quandary.optimize()
