@@ -39,7 +39,9 @@ Data::~Data() {
   for (int i=0; i<controlparams.size(); i++) {
     controlparams[i].clear();
   }
+  std::cout<<mpirank_optim<<" WELL" << controlparams.size() << std::endl;
   controlparams.clear();
+  std::cout<<mpirank_optim<<" DONE\n";
 }
 
 Vec Data::getData(double time, int pulse_num){
@@ -54,7 +56,7 @@ Vec Data::getData(double time, int pulse_num){
   } else return NULL;
 }
 
-// TODO: Multiple oscillators, multiple pulses
+// TODO: Multiple oscillators
 std::vector<double> Data::getControls(int ipulse_local, int ioscillator){
 
   if (controlparams.size()>ipulse_local) {
@@ -155,6 +157,7 @@ void SyntheticQuandaryData::loadData(double* tstart, double* tstop, double* dt){
     int strlength_p = 5;
     int strlength_q = 5;
     // If controls are given, load them, otherwise leave controlparams[ipulse] empty
+    controlparams[ipulse_local].clear();
     if (found_p != std::string::npos && found_q != std::string::npos ){
       if (data_name[ipulse*2+0][found_p+1] == '-') strlength_p=6;
       if (data_name[ipulse*2+0][found_q+1] == '-') strlength_q=6;
@@ -255,27 +258,35 @@ Tant2levelData::Tant2levelData(MPI_Comm comm_optim_, std::vector<std::string> da
   loadData(&tstart, &tstop, &dt);
 
   /* Set pulse amplitude. Hardcoded here. TODO. */
-  // double conversion_factor = 0.018941058958963778; // Volt to GHz
-  controlparams.resize(5);
   // Those are taken from 231110_SG_Tant_2level_constAndRandompulse_raw_and_corrected_2000shots/const_pulse/*_const_ampfac*_popt_rs*.dat
-  controlparams[0].push_back(0.00177715/(2.0*M_PI));
-  controlparams[0].push_back(0.00177715/(2.0*M_PI));
-  controlparams[1].push_back(0.00355431/(2.0*M_PI));
-  controlparams[1].push_back(0.00355431/(2.0*M_PI));
-  controlparams[2].push_back(0.00533146/(2.0*M_PI));
-  controlparams[2].push_back(0.00533146/(2.0*M_PI));
-  controlparams[3].push_back(0.00710861/(2.0*M_PI));
-  controlparams[3].push_back(0.00710861/(2.0*M_PI));
-  controlparams[4].push_back(0.00888577/(2.0*M_PI));
-  controlparams[4].push_back(0.00888577/(2.0*M_PI));
+  std::vector<std::vector<double>> datacontrols;
+  datacontrols.resize(5);
+  datacontrols[0].push_back(0.00177715/(2.0*M_PI));
+  datacontrols[0].push_back(0.00177715/(2.0*M_PI));
+  datacontrols[1].push_back(0.00355431/(2.0*M_PI));
+  datacontrols[1].push_back(0.00355431/(2.0*M_PI));
+  datacontrols[2].push_back(0.00533146/(2.0*M_PI));
+  datacontrols[2].push_back(0.00533146/(2.0*M_PI));
+  datacontrols[3].push_back(0.00710861/(2.0*M_PI));
+  datacontrols[3].push_back(0.00710861/(2.0*M_PI));
+  datacontrols[4].push_back(0.00888577/(2.0*M_PI));
+  datacontrols[4].push_back(0.00888577/(2.0*M_PI));
+  // Now distribute them over optim processors
+  for (int ipulse_local=0; ipulse_local < npulses_local; ipulse_local++){
+    int ipulse_global = mpirank_optim*npulses_local + ipulse_local;
+    controlparams[ipulse_local].clear();
+    for (int ip=0; ip<datacontrols[ipulse_global].size(); ip++) {
+      controlparams[ipulse_local].push_back(datacontrols[ipulse_global][ip]);
+    }
+  }
 
-  printf("Training data in [%1.2f, %1.2f] ns, sampling rate dt=%1.4f ns\n", tstart, tstop, dt);
-  printf("Training data with constant controls\n");
+  if (mpirank_world == 0) {
+    printf("Training data in [%1.2f, %1.2f] ns, sampling rate dt=%1.4f ns\n", tstart, tstop, dt);
+    printf("Training data with constant controls\n");
+  }
 }
 
-Tant2levelData::~Tant2levelData(){
-
-}
+Tant2levelData::~Tant2levelData(){}
 
 void Tant2levelData::loadData(double* tstart, double* tstop, double* dt){
 
