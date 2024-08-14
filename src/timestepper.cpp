@@ -77,7 +77,7 @@ Vec TimeStepper::getState(int tindex){
 Vec TimeStepper::solveODE(int initid, Vec rho_t0, int pulse_num){
 
   /* Open output files */
-  output->openDataFiles("rho", initid);
+  output->openDataFiles("rho", initid, pulse_num);
 
   /* Set initial condition  */
   VecCopy(rho_t0, x);
@@ -158,7 +158,7 @@ Vec TimeStepper::solveODE(int initid, Vec rho_t0, int pulse_num){
 }
 
 
-void TimeStepper::solveAdjointODE(int initid, Vec rho_t0_bar, const Vec finalstate, double Jbar_penalty, double Jbar_penalty_dpdm, double Jbar_energy_penalty, double Jbar_loss, int pulse_num_local) {
+void TimeStepper::solveAdjointODE(int initid, Vec rho_t0_bar, const Vec finalstate, double Jbar_penalty, double Jbar_penalty_dpdm, double Jbar_energy_penalty, double Jbar_loss, int pulse_num) {
 
   /* Reset gradient */
   VecZeroEntries(redgrad);

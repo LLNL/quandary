@@ -563,9 +563,18 @@ int main(int argc,char **argv)
   }
 
     // /* If learning, print out the learned operators */
-    // if (!x_is_control){
-    //   learning->viewOperators();
-    // }
+    if (!x_is_control){
+      // learning->viewOperators();
+    }
+  
+  /* Write all control pulses to file */
+  for (int ipulse_local = 0; ipulse_local < learning->data->getNPulses_local(); ipulse_local++){
+    int ipulse_global = mpirank_optim * learning->data->getNPulses_local() + ipulse_local;
+    if (!x_is_control) {
+      mastereq->setControlFromData(ipulse_local);
+    }
+    output->writeControls(optimctx->timestepper->mastereq, optimctx->timestepper->ntime, optimctx->timestepper->dt, ipulse_global);
+  }
 
   /* Only evaluate and write control pulses (no propagation) */
   if (runtype == RunType::EVALCONTROLS) {
@@ -573,7 +582,7 @@ int main(int argc,char **argv)
     optimctx->getStartingPoint(xinit);
     if (mpirank_world == 0 && !quietmode) printf("\nEvaluating current controls ... \n");
     output->writeParams(xinit);
-    output->writeControls(mastereq, ntime, dt);
+    output->writeControls(mastereq, ntime, dt, 0);
   }
 
   /* Output */

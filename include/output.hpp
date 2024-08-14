@@ -44,7 +44,7 @@ class Output{
     void writeOptimFile(double objective, double gnorm, double stepsize, double Favg, double cost, double tikh_regul,  double penalty, double penalty_dpdm, double penalty_energy);
 
     /* Write current control pulses to file */
-    void writeControls(MasterEq* mastereq, int ntime, double dt);
+    void writeControls(MasterEq* mastereq, int ntime, double dt, int pulseID);
 
     /* Write optimization parameters to file */
     void writeParams(Vec params);
@@ -53,7 +53,7 @@ class Output{
     void writeGradient(Vec grad);
 
     /* Open, write and close files for fullstate and expected energy levels over time */
-    void openDataFiles(std::string prefix, int initid);
+    void openDataFiles(std::string prefix, int initid, int pulseID);
     void writeDataFiles(int timestep, double time, const Vec state, MasterEq* mastereq);
     void closeDataFiles();
 

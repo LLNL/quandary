@@ -247,7 +247,7 @@ double OptimProblem::evalF(const Vec x) {
 
     /* Get global id if the pulse */
     int ipulse = mpirank_optim * npulseiters + ipulse_local;
-    if (!quietmode) printf("%dx%d: evalF: Pulse number ipulse=%d ...\n", mpirank_optim, mpirank_init, ipulse);
+    // if (!quietmode) printf("%dx%d: evalF: Pulse number ipulse=%d ...\n", mpirank_optim, mpirank_init, ipulse);
 
     /* Set current optimization vector x */
     if (x_is_control) { // Optimize on control parameters
@@ -259,11 +259,11 @@ double OptimProblem::evalF(const Vec x) {
       mastereq->setControlFromData(ipulse_local);
 
       // TEST: write expected energy of the Training data.
-      std::string filename_expEnergy = output->datadir + "/TrainingData"+std::to_string(ipulse)+"_expectedEnergy.dat"; 
+      std::string filename_expEnergy = output->datadir + "/TrainingData_pulse"+std::to_string(ipulse)+"_expectedEnergy.dat"; 
       mastereq->learning->data->writeExpectedEnergy(filename_expEnergy.c_str(), ipulse_local);
-      std::string filename_rho_Re = output->datadir + "/TrainingData"+std::to_string(ipulse)+"_rho_Re.dat"; 
-      std::string filename_rho_Im = output->datadir + "/TrainingData"+std::to_string(ipulse)+"_rho_Im.dat"; 
-      mastereq->learning->data->writeFullstate(filename_rho_Re.c_str(), filename_rho_Im.c_str(), ipulse_local);
+      // std::string filename_rho_Re = output->datadir + "/TrainingData_pulse"+std::to_string(ipulse)+"_rho_Re.dat"; 
+      // std::string filename_rho_Im = output->datadir + "/TrainingData_pulse"+std::to_string(ipulse)+"_rho_Im.dat"; 
+      // mastereq->learning->data->writeFullstate(filename_rho_Re.c_str(), filename_rho_Im.c_str(), ipulse_local);
     }
 
 
@@ -284,7 +284,8 @@ double OptimProblem::evalF(const Vec x) {
 
       /* If learning: add to loss function */
       double loss_local = mastereq->learning->getLoss();
-      printf("%dx%d: Local loss for pulse %d = %1.14e\n", mpirank_optim, mpirank_init, ipulse, loss_local);
+      if (!x_is_control)
+        printf("%dx%d: Local loss for pulse %d = %1.14e\n", mpirank_optim, mpirank_init, ipulse, loss_local);
       obj_loss += obj_weights[iinit] * loss_local;
 
       /* Add to integral penalty terms */
@@ -624,9 +625,6 @@ void OptimProblem::getStartingPoint(Vec xinit){
     VecRestoreArray(xinit, &xptr);
   }
 
-  /* Write initial control pulses to file */
-  output->writeControls(timestepper->mastereq, timestepper->ntime, timestepper->dt);
-
   /* Write initial optimization paramters to file */
   output->writeParams(xinit);
 }
@@ -673,7 +671,7 @@ PetscErrorCode TaoMonitor(Tao tao,void*ptr){
   ctx->output->writeParams(params);
 
   /* Print control pulses to file */
-  ctx->output->writeControls(ctx->timestepper->mastereq, ctx->timestepper->ntime, ctx->timestepper->dt);
+  // ctx->output->writeControls(ctx->timestepper->mastereq, ctx->timestepper->ntime, ctx->timestepper->dt, 0);
 
   /* Screen output */
   if (ctx->getMPIrank_world() == 0 && iter == 0) {

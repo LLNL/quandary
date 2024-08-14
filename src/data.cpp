@@ -69,6 +69,10 @@ std::vector<double> Data::getControls(int ipulse_local, int ioscillator){
 
 void Data::writeExpectedEnergy(const char* filename, int pulse_num){
 
+  // Only the processor who owns this pulse trajectory should be writing the file, other procs exit here.
+  int proc = int(pulse_num / npulses_local);
+  if (proc != mpirank_optim) return;
+
   /* Open file  */
   FILE *file_c;
   file_c = fopen(filename, "w");

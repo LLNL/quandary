@@ -60,10 +60,10 @@ class TimeStepper{
     Vec getState(int tindex);
 
     /* Solve the ODE forward in time with initial condition rho_t0. Return state at final time step */
-    Vec solveODE(int initid, Vec rho_t0, int pulse_num_local);
+    Vec solveODE(int initid, Vec rho_t0, int pulse_num);
 
     /* Solve the adjoint ODE backwards in time from terminal condition rho_t0_bar */
-    void solveAdjointODE(int initid, Vec rho_t0_bar, const Vec finalstate, double Jbar_penalty, double Jbar_penalty_dpdm, double Jbar_penalty_energy, double Jbar_loss, int pulse_num_local);
+    void solveAdjointODE(int initid, Vec rho_t0_bar, const Vec finalstate, double Jbar_penalty, double Jbar_penalty_dpdm, double Jbar_penalty_energy, double Jbar_loss, int pulse_num);
 
     /* evaluate the penalty integral term */
     double penaltyIntegral(double time, const Vec x);
