@@ -1,12 +1,12 @@
 #include <data.hpp>
 
 Data::Data() {
-	dt = 0.0;
   dim = -1;
   npulses = 1;
   npulses_local = 1;
   tstart = 0.0;
   tstop = 1.0e26;
+	dt = 0.0;
 }
 
 Data::Data(MPI_Comm comm_optim_, std::vector<std::string> data_name_, double tstop_, int dim_, int npulses_) {
@@ -141,21 +141,24 @@ void SyntheticQuandaryData::loadData(double* tstart, double* tstop, double* dt){
   for (int ipulse_local = 0; ipulse_local < npulses_local; ipulse_local++){
     int ipulse = mpirank_optim* npulses_local + ipulse_local;
 
-    /* Extract control amplitudes from file name */
+    /* Extract control amplitudes from file name (searching for "p" and "q")*/
     double conversion_factor = 1.0;  // conversion factor: Volt to GHz
     std::size_t found_p = data_name[ipulse*2+0].find_last_of("p");
     std::size_t found_q = data_name[ipulse*2+0].find_last_of("q");
     int strlength_p = 5;
     int strlength_q = 5;
-    if (data_name[ipulse*2+0][found_p+1] == '-') strlength_p=6;
-    if (data_name[ipulse*2+0][found_q+1] == '-') strlength_q=6;
-    double p_Volt = std::stod(data_name[ipulse*2+0].substr(found_p+1, strlength_p));
-    double q_Volt = std::stod(data_name[ipulse*2+0].substr(found_q+1, strlength_q));
-    double p_GHz = p_Volt * conversion_factor;
-    double q_GHz = q_Volt * conversion_factor;
-    // printf("Got the control amplitudes %1.8f,%1.8f GHz\n", p_GHz, q_GHz);
-    controlparams[ipulse_local].push_back(p_GHz);
-    controlparams[ipulse_local].push_back(q_GHz);
+    // If controls are given, load them, otherwise leave controlparams[ipulse] empty
+    if (found_p != std::string::npos && found_q != std::string::npos ){
+      if (data_name[ipulse*2+0][found_p+1] == '-') strlength_p=6;
+      if (data_name[ipulse*2+0][found_q+1] == '-') strlength_q=6;
+      double p_Volt = std::stod(data_name[ipulse*2+0].substr(found_p+1, strlength_p));
+      double q_Volt = std::stod(data_name[ipulse*2+0].substr(found_q+1, strlength_q));
+      double p_GHz = p_Volt * conversion_factor;
+      double q_GHz = q_Volt * conversion_factor;
+      // printf("Got the control amplitudes %1.8f,%1.8f GHz\n", p_GHz, q_GHz);
+      controlparams[ipulse_local].push_back(p_GHz);
+      controlparams[ipulse_local].push_back(q_GHz);
+    }
 
     // Open files 
     std::ifstream infile_re;

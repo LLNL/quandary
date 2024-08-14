@@ -1378,7 +1378,7 @@ void MasterEq::setControlAmplitudes(const Vec x) {
     std::vector<double> datacontrols = learning->data->getControls(ipulse_local, ioscil);
     std::vector<double> controls = datacontrols;
     // format: could be two values (constant p & q), or could be a list of bspline parameters
-    if (controls.size() > 0){ // if exists
+    if (datacontrols.size() > 0){ // if exists
       if (controls.size() == 2){ // p and q values
         int nsplines = oscil_vec[ioscil]->getNSplines();
         int nparams = oscil_vec[ioscil]->getNParams();

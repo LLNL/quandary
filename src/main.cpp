@@ -236,6 +236,7 @@ int main(int argc,char **argv)
 
   /* Create Learning Model or dummy */
   bool useUDEmodel = config.GetBoolParam("useUDEmodel", false, false);
+
   Learning* learning;
   if (useUDEmodel) {
 
@@ -311,8 +312,9 @@ int main(int argc,char **argv)
 
   } else {
     /* Create dummy learning. Does nothing. */
+    Data* data = new Data();
     std::vector<std::string> learninit_str;
-    learning = new Learning(0, LindbladType::NONE, learninit_str, NULL, rand_engine, quietmode); 
+    learning = new Learning(0, LindbladType::NONE, learninit_str, data, rand_engine, quietmode); 
   }
 
   /* Switch solver mode between learning UDE model parameters vs optimizing controls */
