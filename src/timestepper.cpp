@@ -74,7 +74,7 @@ Vec TimeStepper::getState(int tindex){
   return store_states[tindex];
 }
 
-Vec TimeStepper::solveODE(int initid, Vec rho_t0){
+Vec TimeStepper::solveODE(int initid, Vec rho_t0, int pulse_num_local){
 
   /* Open output files */
   output->openDataFiles("rho", initid);
@@ -114,7 +114,7 @@ Vec TimeStepper::solveODE(int initid, Vec rho_t0){
     evolveFWD(tstart, tstop, x);
 
     /* Add to Learning loss integral */
-    mastereq->learning->addToLoss(tstop, x);
+    mastereq->learning->addToLoss(tstop, x, pulse_num_local);
 
     /* Add to penalty objective term */
     if (gamma_penalty > 1e-13) penalty_integral += penaltyIntegral(tstop, x);
@@ -158,7 +158,7 @@ Vec TimeStepper::solveODE(int initid, Vec rho_t0){
 }
 
 
-void TimeStepper::solveAdjointODE(int initid, Vec rho_t0_bar, const Vec finalstate, double Jbar_penalty, double Jbar_penalty_dpdm, double Jbar_energy_penalty, double Jbar_loss) {
+void TimeStepper::solveAdjointODE(int initid, Vec rho_t0_bar, const Vec finalstate, double Jbar_penalty, double Jbar_penalty_dpdm, double Jbar_energy_penalty, double Jbar_loss, int pulse_num_local) {
 
   /* Reset gradient */
   VecZeroEntries(redgrad);
@@ -202,7 +202,7 @@ void TimeStepper::solveAdjointODE(int initid, Vec rho_t0_bar, const Vec finalsta
     if (gamma_penalty > 1e-13) penaltyIntegral_diff(tstop, xprimal, xadj, Jbar_penalty);
 
     /* Derivative of loss function */
-    mastereq->learning->addToLoss_diff(tstop, xadj, xprimal, Jbar_loss);
+    mastereq->learning->addToLoss_diff(tstop, xadj, xprimal, pulse_num_local, Jbar_loss);
 
     /* Get the state at n-1. If Schroedinger solver, recompute it by taking a step backwards with the forward solver, otherwise get it from storage. */
     if (storeFWD) VecCopy(getState(n-1), xprimal);

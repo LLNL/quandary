@@ -3,19 +3,27 @@
 Data::Data() {
 	dt = 0.0;
   dim = -1;
-  npulses = 0;
+  npulses = 1;
+  npulses_local = 1;
   tstart = 0.0;
   tstop = 1.0e26;
 }
 
-Data::Data(std::vector<std::string> data_name_, double tstop_, int dim_, int npulses_) {
+Data::Data(MPI_Comm comm_optim_, std::vector<std::string> data_name_, double tstop_, int dim_, int npulses_) {
   data_name = data_name_;
   dim = dim_;
   npulses = npulses_;
   tstop = tstop_;
+  comm_optim = comm_optim_;
+
+  MPI_Comm_rank(comm_optim, &mpirank_optim);
+  MPI_Comm_size(comm_optim, &mpisize_optim);
+  assert(npulses % mpisize_optim == 0);
+  npulses_local = int(npulses / mpisize_optim);
 
   // Set outer dimension of the data to number of control pulses. Inner dimension will be filled in the subclasses.
-  data.resize(npulses);
+  data.resize(npulses_local);
+  controlparams.resize(npulses_local);
 }
 
 Data::~Data() {
@@ -32,22 +40,22 @@ Data::~Data() {
   controlparams.clear();
 }
 
-Vec Data::getData(double time, int pulse_num){
+Vec Data::getData(double time, int pulse_num_local){
   
   if (tstart <= time && time <= tstop) {  // if time is within the data domain
     double remainder = std::remainder(time - tstart, dt);
     if (abs(remainder) < 1e-10) {        // if data exists at this time
       int dataID = round((time - tstart)/dt);
-      return data[pulse_num][dataID]; 
+      return data[pulse_num_local][dataID]; 
     } else return NULL;
   } else return NULL;
 }
 
 // TODO: Multiple oscillators, multiple pulses
-std::vector<double> Data::getControls(int ipulse, int ioscillator){
+std::vector<double> Data::getControls(int ipulse_local, int ioscillator){
 
-  if (controlparams.size()>ipulse) {
-    return controlparams[ipulse];
+  if (controlparams.size()>ipulse_local) {
+    return controlparams[ipulse_local];
   }
   else {
     std::vector<double> dummy;
@@ -73,7 +81,7 @@ void Data::writeExpectedEnergy(const char* filename, int pulse_num){
     }
   }
   fclose(file_c);
-  printf("File written: %s\n", filename);
+  // printf("%d: File written: %s\n", mpirank_optim, filename);
 }
 
 
@@ -112,12 +120,12 @@ void Data::writeFullstate(const char* filename_re, const char* filename_im, int 
 
   fclose(file_re);
   fclose(file_im);
-  printf("File written: %s\n", filename_re);
-  printf("File written: %s\n", filename_im);
+  // printf("%d: File written: %s\n", mpirank_optim, filename_re);
+  // printf("%d: File written: %s\n", mpirank_optim, filename_im);
 }
 
 
-SyntheticQuandaryData::SyntheticQuandaryData(std::vector<std::string> data_name, double data_tstop, int dim) : Data(data_name, data_tstop, dim, 1) {
+SyntheticQuandaryData::SyntheticQuandaryData(MPI_Comm comm_optim_, std::vector<std::string> data_name, double data_tstop, int dim, int npulses) : Data(comm_optim_, data_name, data_tstop, dim, npulses) {
 
   /* Load training data */
   loadData(&tstart, &tstop, &dt);
@@ -127,78 +135,106 @@ SyntheticQuandaryData::~SyntheticQuandaryData() {}
 
 void SyntheticQuandaryData::loadData(double* tstart, double* tstop, double* dt){
 
-  // Open files 
-  std::ifstream infile_re;
-  std::ifstream infile_im;
-  infile_re.open(data_name[0], std::ifstream::in);
-  infile_im.open(data_name[1], std::ifstream::in);
-  if(infile_re.fail() ) {
-      std::cout << "\n ERROR loading learning data file " << data_name[0] << std::endl;
-      exit(1);
-  } else if (infile_im.fail() ) {// checks to see if file opended 
-      std::cout << "\n ERROR loading learning data file " << data_name[1] << std::endl;
-      exit(1);
-  } else {
-    std::cout<< "Loading synthetic data from " << data_name[0] << ", " << data_name[1] << std::endl;
-  }
+  assert(npulses = data_name.size()/2);
 
-  // Iterate over each line in the files
-  int count = 0;
-  double time_re, time_im, time_prev;
-  while (infile_re >> time_re) 
-  {
-    // Figure out time and dt
-    if (count == 0) *tstart = time_re;
-    if (count == 1) *dt = time_re - time_im; // Note: since 'time_re' is read in the 'while' statement, it will have value from the 2nd row here, whereas time_im still has the value from the first row, hence dt = re - im
-    infile_im >> time_im; // Read in time for the im file (it's already done for re in the while statement!)
-    // printf("time_re = %1.8f, time_im = %1.8f\n", time_re, time_im);
-    assert(fabs(time_re - time_im) < 1e-12);
+  // Iterate over pulses
+  for (int ipulse_local = 0; ipulse_local < npulses_local; ipulse_local++){
+    int ipulse = mpirank_optim* npulses_local + ipulse_local;
 
-    // printf("Loading data at Time %1.8f\n", time_re);
-    // Break if exceeding the requested time domain length
-    if (time_re > *tstop)  {
-      // printf("Stopping data at %1.8f > %1.8f \n", time_re, tstop);
-      break;
+    /* Extract control amplitudes from file name */
+    double conversion_factor = 1.0;  // conversion factor: Volt to GHz
+    std::size_t found_p = data_name[ipulse*2+0].find_last_of("p");
+    std::size_t found_q = data_name[ipulse*2+0].find_last_of("q");
+    int strlength_p = 5;
+    int strlength_q = 5;
+    if (data_name[ipulse*2+0][found_p+1] == '-') strlength_p=6;
+    if (data_name[ipulse*2+0][found_q+1] == '-') strlength_q=6;
+    double p_Volt = std::stod(data_name[ipulse*2+0].substr(found_p+1, strlength_p));
+    double q_Volt = std::stod(data_name[ipulse*2+0].substr(found_q+1, strlength_q));
+    double p_GHz = p_Volt * conversion_factor;
+    double q_GHz = q_Volt * conversion_factor;
+    // printf("Got the control amplitudes %1.8f,%1.8f GHz\n", p_GHz, q_GHz);
+    controlparams[ipulse_local].push_back(p_GHz);
+    controlparams[ipulse_local].push_back(q_GHz);
+
+    // Open files 
+    std::ifstream infile_re;
+    std::ifstream infile_im;
+    infile_re.open(data_name[ipulse*2 + 0], std::ifstream::in);
+    infile_im.open(data_name[ipulse*2 + 1], std::ifstream::in);
+    if(infile_re.fail() ) {
+        std::cout << "\n " << mpirank_optim << ": ERROR loading learning data file " << data_name[ipulse*2 + 0] << std::endl;
+        exit(1);
+    } else if (infile_im.fail() ) {// checks to see if file opended 
+        std::cout << "\n "<< mpirank_optim << ": ERROR loading learning data file " << data_name[ipulse*2 + 1] << std::endl;
+        exit(1);
+    } else {
+      std::cout<< mpirank_optim << ": Loading synthetic data from " << data_name[ipulse*2 + 0] << ", " << data_name[ipulse*2 + 1] << std::endl;
     }
 
-    // Now iterate over the remaining columns and store values.
-    Vec state;
-    VecCreate(PETSC_COMM_WORLD, &state);
-    VecSetSizes(state, PETSC_DECIDE, 2*dim);
-    VecSetFromOptions(state);
-    double val_re, val_im;
-    for (int i=0; i<dim; i++) { // Other elements are the state (re and im) at this time
-      infile_re >> val_re;
-      infile_im >> val_im;
-      VecSetValue(state, getIndexReal(i), val_re, INSERT_VALUES);
-      VecSetValue(state, getIndexImag(i), val_im, INSERT_VALUES);
+    // Iterate over each line in the files
+    int count = 0;
+    double time_re, time_im, time_prev;
+    while (infile_re >> time_re) 
+    {
+      // Figure out time and dt
+      if (count == 0) *tstart = time_re;
+      if (count == 1) *dt = time_re - time_im; // Note: since 'time_re' is read in the 'while' statement, it will have value from the 2nd row here, whereas time_im still has the value from the first row, hence dt = re - im
+      infile_im >> time_im; // Read in time for the im file (it's already done for re in the while statement!)
+      // printf("time_re = %1.8f, time_im = %1.8f\n", time_re, time_im);
+      assert(fabs(time_re - time_im) < 1e-12);
+
+      // printf("Loading data at Time %1.8f\n", time_re);
+      // Break if exceeding the requested time domain length
+      if (time_re > *tstop)  {
+        // printf("Stopping data at %1.8f > %1.8f \n", time_re, tstop);
+        break;
+      }
+
+      // Now iterate over the remaining columns and store values.
+      Vec state;
+      VecCreate(PETSC_COMM_WORLD, &state);
+      VecSetSizes(state, PETSC_DECIDE, 2*dim);
+      VecSetFromOptions(state);
+      double val_re, val_im;
+      for (int i=0; i<dim; i++) { // Other elements are the state (re and im) at this time
+        infile_re >> val_re;
+        infile_im >> val_im;
+        VecSetValue(state, getIndexReal(i), val_re, INSERT_VALUES);
+        VecSetValue(state, getIndexImag(i), val_im, INSERT_VALUES);
+      }
+      VecAssemblyBegin(state);
+      VecAssemblyEnd(state);
+
+      // Store the state
+      data[ipulse_local].push_back(state);  // Here, only one pulse
+      count+=1;
+      time_prev = time_re;
     }
-    VecAssemblyBegin(state);
-    VecAssemblyEnd(state);
 
-    // Store the state
-    data[0].push_back(state);  // Here, only one pulse
-    count+=1;
-    time_prev = time_re;
+    /* Update the final time stamp */
+    *tstop = std::min(time_prev, *tstop);
+
+    // Close files
+	  infile_re.close();
+	  infile_im.close();
   }
-
-  /* Update the final time stamp */
-  *tstop = std::min(time_prev, *tstop);
-
-  // Close files
-	infile_re.close();
-	infile_im.close();
 
   // // TEST what was loaded
   // printf("\nDATA POINTS:\n");
-  // for (int i=0; i<data.size(); i++){
-  //   VecView(data[i], NULL);
+  // for (int ipulse=0; ipulse<data.size(); ipulse++){
+  //   printf("Control amplutidue: %f %f\n", controlparams[ipulse][0], controlparams[ipulse][1]);
+  //   for (int i=0; i<data[ipulse].size(); i++){
+  //     VecView(data[ipulse][i], NULL);
+  //   }
+  //   printf("\n");
   // }
   // printf("END DATA POINTS.\n\n");
+  // exit(1);
 }
 
 
-Tant2levelData::Tant2levelData(std::vector<std::string> data_name, double data_tstop, int dim, bool corrected_, int npulses) : Data(data_name, data_tstop, dim, npulses){
+Tant2levelData::Tant2levelData(MPI_Comm comm_optim_, std::vector<std::string> data_name, double data_tstop, int dim, bool corrected_, int npulses) : Data(comm_optim_, data_name, data_tstop, dim, npulses){
 
   corrected = corrected_;
 
@@ -207,6 +243,24 @@ Tant2levelData::Tant2levelData(std::vector<std::string> data_name, double data_t
 
   /* Load training data, this also sets first and last time stamp as well as data sampling step size */
   loadData(&tstart, &tstop, &dt);
+
+  /* Set pulse amplitude. Hardcoded here. TODO. */
+  // double conversion_factor = 0.018941058958963778; // Volt to GHz
+  controlparams.resize(5);
+  // Those are taken from 231110_SG_Tant_2level_constAndRandompulse_raw_and_corrected_2000shots/const_pulse/*_const_ampfac*_popt_rs*.dat
+  controlparams[0].push_back(0.00177715/(2.0*M_PI));
+  controlparams[0].push_back(0.00177715/(2.0*M_PI));
+  controlparams[1].push_back(0.00355431/(2.0*M_PI));
+  controlparams[1].push_back(0.00355431/(2.0*M_PI));
+  controlparams[2].push_back(0.00533146/(2.0*M_PI));
+  controlparams[2].push_back(0.00533146/(2.0*M_PI));
+  controlparams[3].push_back(0.00710861/(2.0*M_PI));
+  controlparams[3].push_back(0.00710861/(2.0*M_PI));
+  controlparams[4].push_back(0.00888577/(2.0*M_PI));
+  controlparams[4].push_back(0.00888577/(2.0*M_PI));
+
+  printf("Training data in [%1.2f, %1.2f] ns, sampling rate dt=%1.4f ns\n", tstart, tstop, dt);
+  printf("Training data with constant controls\n");
 }
 
 Tant2levelData::~Tant2levelData(){
@@ -338,21 +392,6 @@ void Tant2levelData::loadData(double* tstart, double* tstop, double* dt){
  
   }
 
-  /* Set pulse amplitude. Hardcoded here. TODO. */
-  // double conversion_factor = 0.018941058958963778; // Volt to GHz
-  controlparams.resize(5);
-  // Those are taken from 231110_SG_Tant_2level_constAndRandompulse_raw_and_corrected_2000shots/const_pulse/*_const_ampfac*_popt_rs*.dat
-  controlparams[0].push_back(0.00177715/(2.0*M_PI));
-  controlparams[0].push_back(0.00177715/(2.0*M_PI));
-  controlparams[1].push_back(0.00355431/(2.0*M_PI));
-  controlparams[1].push_back(0.00355431/(2.0*M_PI));
-  controlparams[2].push_back(0.00533146/(2.0*M_PI));
-  controlparams[2].push_back(0.00533146/(2.0*M_PI));
-  controlparams[3].push_back(0.00710861/(2.0*M_PI));
-  controlparams[3].push_back(0.00710861/(2.0*M_PI));
-  controlparams[4].push_back(0.00888577/(2.0*M_PI));
-  controlparams[4].push_back(0.00888577/(2.0*M_PI));
-
   /* Update the final time stamp */
   *tstop = std::min(time_prev, *tstop);
 
@@ -369,12 +408,9 @@ void Tant2levelData::loadData(double* tstart, double* tstop, double* dt){
   // }
   // printf("END DATA POINTS.\n\n");
   // exit(1);
-
-  printf("Training data in [%1.2f, %1.2f] ns, sampling rate dt=%1.4f ns\n", *tstart, *tstop, *dt);
-  printf("Training data with constant controls\n");
 }
 
-Tant3levelData::Tant3levelData(std::vector<std::string> data_name, double data_tstop, int dim, bool corrected_, int npulses) : Data(data_name, data_tstop, dim, npulses) {
+Tant3levelData::Tant3levelData(MPI_Comm comm_optim_, std::vector<std::string> data_name, double data_tstop, int dim, bool corrected_, int npulses) : Data(comm_optim_, data_name, data_tstop, dim, npulses) {
   corrected = corrected_; 
 
   // Only for 3level data. 

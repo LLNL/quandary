@@ -229,29 +229,9 @@ OptimProblem::~OptimProblem() {
 double OptimProblem::evalF(const Vec x) {
 
   MasterEq* mastereq = timestepper->mastereq;
-
   if (mpirank_world == 0 && !quietmode) printf("EVAL F... \n");
 
-  /* Set current optimization vector x */
-  if (x_is_control) { // Optimize on control parameters
-    mastereq->setControlAmplitudes(x); 
-  } else { // Optimize on learnable parameters
-    mastereq->learning->setLearnParams(x); 
-
-    /* Make sure the control pulse matches the data */
-    int ipulse = 0; // TODO
-    mastereq->setControlFromData(ipulse);
-
-    // TEST: write expected energy of the Training data.
-    std::string filename_expEnergy = output->datadir + "/TrainingData_expectedEnergy.dat"; 
-    mastereq->learning->data->writeExpectedEnergy(filename_expEnergy.c_str(), ipulse);
-    std::string filename_rho_Re = output->datadir + "/TrainingData_rho_Re.dat"; 
-    std::string filename_rho_Im = output->datadir + "/TrainingData_rho_Im.dat"; 
-    mastereq->learning->data->writeFullstate(filename_rho_Re.c_str(), filename_rho_Im.c_str(), ipulse);
-  }
-
-
-  /*  Iterate over initial condition */
+  /* Reset optimizer's objective function measures*/
   obj_cost  = 0.0;
   obj_loss = 0.0;
   obj_regul = 0.0;
@@ -259,79 +239,108 @@ double OptimProblem::evalF(const Vec x) {
   obj_penal_dpdm = 0.0;
   obj_penal_energy = 0.0;
   fidelity = 0.0;
-  double obj_cost_re = 0.0;
-  double obj_cost_im = 0.0;
-  double fidelity_re = 0.0;
-  double fidelity_im = 0.0;
-  for (int iinit = 0; iinit < ninit_local; iinit++) {
-      
-    /* Prepare the initial condition in [rank * ninit_local, ... , (rank+1) * ninit_local - 1] */
-    int iinit_global = mpirank_init * ninit_local + iinit;
-    int initid = optim_target->prepareInitialState(iinit_global, ninit, timestepper->mastereq->nlevels, timestepper->mastereq->nessential, rho_t0);
-    if (mpirank_optim == 0 && !quietmode) printf("%d: Initial condition id=%d ...\n", mpirank_init, initid);
 
-    /* If gate optimiztion, compute the target state rho^target = Vrho(0)V^dagger */
-    optim_target->prepareTargetState(rho_t0);
+  /* Iterate over control pulses */
+  int npulseiters = 1;
+  if (!x_is_control) npulseiters = mastereq->learning->data->getNPulses_local();
+  for (int ipulse_local = 0; ipulse_local < npulseiters; ipulse_local++){
 
-    /* Run forward with initial condition initid */
-    Vec finalstate = timestepper->solveODE(initid, rho_t0);
+    /* Get global id if the pulse */
+    int ipulse = mpirank_optim * npulseiters + ipulse_local;
+    if (!quietmode) printf("%dx%d: evalF: Pulse number ipulse=%d ...\n", mpirank_optim, mpirank_init, ipulse);
 
-    /* If learning: add to loss function */
-    obj_loss += obj_weights[iinit] * mastereq->learning->getLoss();
+    /* Set current optimization vector x */
+    if (x_is_control) { // Optimize on control parameters
+      mastereq->setControlAmplitudes(x); 
+    } else { // Optimize on learnable parameters
+      mastereq->learning->setLearnParams(x); 
 
-    /* Add to integral penalty term */
-    obj_penal += obj_weights[iinit] * gamma_penalty * timestepper->penalty_integral;
+      /* Make sure the control pulse matches the data */
+      mastereq->setControlFromData(ipulse_local);
 
-    /* Add to second derivative penalty term */
-    obj_penal_dpdm += obj_weights[iinit] * gamma_penalty_dpdm * timestepper->penalty_dpdm;
-    
-    /* Add to energy integral penalty term */
-    obj_penal_energy += obj_weights[iinit] * gamma_penalty_energy* timestepper->energy_penalty_integral;
+      // TEST: write expected energy of the Training data.
+      std::string filename_expEnergy = output->datadir + "/TrainingData"+std::to_string(ipulse)+"_expectedEnergy.dat"; 
+      mastereq->learning->data->writeExpectedEnergy(filename_expEnergy.c_str(), ipulse_local);
+      std::string filename_rho_Re = output->datadir + "/TrainingData"+std::to_string(ipulse)+"_rho_Re.dat"; 
+      std::string filename_rho_Im = output->datadir + "/TrainingData"+std::to_string(ipulse)+"_rho_Im.dat"; 
+      mastereq->learning->data->writeFullstate(filename_rho_Re.c_str(), filename_rho_Im.c_str(), ipulse_local);
+    }
 
-    /* Evaluate J(finalstate) and add to final-time cost */
-    double obj_iinit_re = 0.0;
-    double obj_iinit_im = 0.0;
-    optim_target->evalJ(finalstate,  &obj_iinit_re, &obj_iinit_im);
-    obj_cost_re += obj_weights[iinit] * obj_iinit_re;
-    obj_cost_im += obj_weights[iinit] * obj_iinit_im;
 
-    /* Add to final-time fidelity */
-    double fidelity_iinit_re = 0.0;
-    double fidelity_iinit_im = 0.0;
-    optim_target->HilbertSchmidtOverlap(finalstate, false, &fidelity_iinit_re, &fidelity_iinit_im);
-    fidelity_re += 1./ ninit * fidelity_iinit_re;
-    fidelity_im += 1./ ninit * fidelity_iinit_im;
+    /*  Iterate over initial condition */
+    double obj_cost_re = 0.0;
+    double obj_cost_im = 0.0;
+    double fidelity_re = 0.0;
+    double fidelity_im = 0.0;
+    for (int iinit = 0; iinit < ninit_local; iinit++) {
+      /* Prepare the initial condition in [rank * ninit_local, ... , (rank+1) * ninit_local - 1] */
+      int iinit_global = mpirank_init * ninit_local + iinit;
+      int initid = optim_target->prepareInitialState(iinit_global, ninit, timestepper->mastereq->nlevels, timestepper->mastereq->nessential, rho_t0);
+      // if (!quietmode) printf("%dx%d:    -> Initial condition id=%d ...\n",mpirank_optim, mpirank_init, initid);
 
-    // printf("%d, %d: iinit obj_iinit: %f * (%1.14e + i %1.14e, Overlap=%1.14e + i %1.14e\n", mpirank_world, mpirank_init, obj_weights[iinit], obj_iinit_re, obj_iinit_im, fidelity_iinit_re, fidelity_iinit_im);
-  }
+      /* Run forward with initial condition initid */
+      optim_target->prepareTargetState(rho_t0);
+      Vec finalstate = timestepper->solveODE(initid, rho_t0, ipulse_local);
 
-  /* Sum up from initial conditions processors */
+      /* If learning: add to loss function */
+      double loss_local = mastereq->learning->getLoss();
+      printf("%dx%d: Local loss for pulse %d = %1.14e\n", mpirank_optim, mpirank_init, ipulse, loss_local);
+      obj_loss += obj_weights[iinit] * loss_local;
+
+      /* Add to integral penalty terms */
+      obj_penal += obj_weights[iinit] * gamma_penalty * timestepper->penalty_integral;
+      obj_penal_dpdm += obj_weights[iinit] * gamma_penalty_dpdm * timestepper->penalty_dpdm;
+      obj_penal_energy += obj_weights[iinit] * gamma_penalty_energy* timestepper->energy_penalty_integral;
+
+      /* Evaluate J(finalstate) and add to final-time cost */
+      double obj_iinit_re = 0.0;
+      double obj_iinit_im = 0.0;
+      optim_target->evalJ(finalstate,  &obj_iinit_re, &obj_iinit_im);
+      obj_cost_re += obj_weights[iinit] * obj_iinit_re;
+      obj_cost_im += obj_weights[iinit] * obj_iinit_im;
+
+      /* Add to final-time fidelity */
+      double fidelity_iinit_re = 0.0;
+      double fidelity_iinit_im = 0.0;
+      optim_target->HilbertSchmidtOverlap(finalstate, false, &fidelity_iinit_re, &fidelity_iinit_im);
+      fidelity_re += 1./ ninit * fidelity_iinit_re;
+      fidelity_im += 1./ ninit * fidelity_iinit_im;
+
+      // printf("%d, %d: iinit obj_iinit: %f * (%1.14e + i %1.14e, Overlap=%1.14e + i %1.14e\n", mpirank_world, mpirank_init, obj_weights[iinit], obj_iinit_re, obj_iinit_im, fidelity_iinit_re, fidelity_iinit_im);
+
+    } // end of loop over initial conditions 
+
+    /* Sum the fidelity cost function from initial conditions processors, for the current pulse iteration */
+    double mycost_re = obj_cost_re;
+    double mycost_im = obj_cost_im;
+    double myfidelity_re = fidelity_re;
+    double myfidelity_im = fidelity_im;
+    MPI_Allreduce(&mycost_re, &obj_cost_re, 1, MPI_DOUBLE, MPI_SUM, comm_init);
+    MPI_Allreduce(&mycost_im, &obj_cost_im, 1, MPI_DOUBLE, MPI_SUM, comm_init);
+    MPI_Allreduce(&myfidelity_re, &fidelity_re, 1, MPI_DOUBLE, MPI_SUM, comm_init);
+    MPI_Allreduce(&myfidelity_im, &fidelity_im, 1, MPI_DOUBLE, MPI_SUM, comm_init);
+    // Add the fidelity of this pulse: If Schroedinger, need to compute the absolute value: Fid= |\sum_i \phi^\dagger \phi_target|^2
+    if (timestepper->mastereq->lindbladtype == LindbladType::NONE) {
+      fidelity += pow(fidelity_re, 2.0) + pow(fidelity_im, 2.0);
+    } else {
+      fidelity += fidelity_re; 
+    }
+    obj_cost += optim_target->finalizeJ(obj_cost_re, obj_cost_im);
+
+  } // end of loop over pulses
+
+  /* Sum up penalty and loss from all processors */
   double mypen = obj_penal;
   double myloss= obj_loss;
   double mypen_dpdm = obj_penal_dpdm;
   double mypenen = obj_penal_energy;
-  double mycost_re = obj_cost_re;
-  double mycost_im = obj_cost_im;
-  double myfidelity_re = fidelity_re;
-  double myfidelity_im = fidelity_im;
-  MPI_Allreduce(&myloss, &obj_loss, 1, MPI_DOUBLE, MPI_SUM, comm_init);
-  MPI_Allreduce(&mypen, &obj_penal, 1, MPI_DOUBLE, MPI_SUM, comm_init);
-  MPI_Allreduce(&mypen_dpdm, &obj_penal_dpdm, 1, MPI_DOUBLE, MPI_SUM, comm_init);
-  MPI_Allreduce(&mypenen, &obj_penal_energy, 1, MPI_DOUBLE, MPI_SUM, comm_init);
-  MPI_Allreduce(&mycost_re, &obj_cost_re, 1, MPI_DOUBLE, MPI_SUM, comm_init);
-  MPI_Allreduce(&mycost_im, &obj_cost_im, 1, MPI_DOUBLE, MPI_SUM, comm_init);
-  MPI_Allreduce(&myfidelity_re, &fidelity_re, 1, MPI_DOUBLE, MPI_SUM, comm_init);
-  MPI_Allreduce(&myfidelity_im, &fidelity_im, 1, MPI_DOUBLE, MPI_SUM, comm_init);
+  MPI_Allreduce(&myloss, &obj_loss, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(&mypen, &obj_penal, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(&mypen_dpdm, &obj_penal_dpdm, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(&mypenen, &obj_penal_energy, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 
-  /* Set the fidelity: If Schroedinger, need to compute the absolute value: Fid= |\sum_i \phi^\dagger \phi_target|^2 */
-  if (timestepper->mastereq->lindbladtype == LindbladType::NONE) {
-    fidelity = pow(fidelity_re, 2.0) + pow(fidelity_im, 2.0);
-  } else {
-    fidelity = fidelity_re; 
-  }
- 
-  /* Finalize the objective function */
-  obj_cost = optim_target->finalizeJ(obj_cost_re, obj_cost_im);
+  // Scale loss with respect to the number of pulses 
+  obj_loss /= mastereq->learning->data->getNPulses();
 
   /* Evaluate regularization objective += gamma/2 * ||x-x0||^2*/
   double xnorm;
@@ -369,33 +378,9 @@ double OptimProblem::evalF(const Vec x) {
 void OptimProblem::evalGradF(const Vec x, Vec G){
 
   MasterEq* mastereq = timestepper->mastereq;
-
   if (mpirank_world == 0 && !quietmode) std::cout<< "EVAL GRAD F... " << std::endl;
 
-  /* Set current optimization vector x */
-  if (x_is_control) { // Optimize on control parameters
-    mastereq->setControlAmplitudes(x); 
-  } else { // Optimize on learnable parameters
-    mastereq->learning->setLearnParams(x); 
-
-    /* Make sure the control pulse matches the data */
-    int ipulse = 0; // TODO
-    mastereq->setControlFromData(ipulse);
-  }
-
-  /* Reset Gradient */
-  VecZeroEntries(G);
-
-  /* Derivative of regulatization term gamma / 2 ||x||^2 (ADD ON ONE PROC ONLY!) */
-  // if (mpirank_init == 0 && mpirank_optim == 0) { // TODO: Which one?? 
-  if (mpirank_init == 0 ) {
-    VecAXPY(G, gamma_tik, x);   // + gamma_tik * x
-    if (gamma_tik_interpolate){
-      VecAXPY(G, -1.0*gamma_tik, xinit); // -gamma_tik * xinit
-    }
-  }
-
-  /*  Iterate over initial condition */
+  /* Reset optimizer's objective function measures*/
   obj_cost = 0.0;
   obj_loss = 0.0;
   obj_regul = 0.0;
@@ -403,106 +388,136 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
   obj_penal_dpdm = 0.0;
   obj_penal_energy = 0.0;
   fidelity = 0.0;
-  double obj_cost_re = 0.0;
-  double obj_cost_im = 0.0;
-  double fidelity_re = 0.0;
-  double fidelity_im = 0.0;
-  for (int iinit = 0; iinit < ninit_local; iinit++) {
 
-    /* Prepare the initial condition */
-    int iinit_global = mpirank_init * ninit_local + iinit;
-    int initid = optim_target->prepareInitialState(iinit_global, ninit, timestepper->mastereq->nlevels, timestepper->mastereq->nessential, rho_t0);
+   /* Reset Gradient */
+  VecZeroEntries(G);
 
-    /* If gate optimiztion, compute the target state rho^target = Vrho(0)V^dagger */
-    optim_target->prepareTargetState(rho_t0);
-
-    /* --- Solve primal --- */
-    // if (mpirank_optim == 0) printf("%d: %d FWD. \n", mpirank_init, initid);
-
-    /* Run forward with initial condition rho_t0 */
-    Vec finalstate = timestepper->solveODE(initid, rho_t0);
-
-    /* Store the final state for the Schroedinger solver */
-    if (timestepper->mastereq->lindbladtype == LindbladType::NONE) VecCopy(finalstate, store_finalstates[iinit]);
-
-    /* If learning: add to loss function */
-    obj_loss += obj_weights[iinit] * mastereq->learning->getLoss();
-
-    /* Add to integral penalty term */
-    obj_penal += obj_weights[iinit] * gamma_penalty * timestepper->penalty_integral;
-
-    /* Add to second derivative dpdm integral penalty term */
-    obj_penal_dpdm += obj_weights[iinit] * gamma_penalty_dpdm * timestepper->penalty_dpdm;
-    /* Add to energy integral penalty term */
-    obj_penal_energy += obj_weights[iinit] * gamma_penalty_energy * timestepper->energy_penalty_integral;
-
-    /* Evaluate J(finalstate) and add to final-time cost */
-    double obj_iinit_re = 0.0;
-    double obj_iinit_im = 0.0;
-    optim_target->evalJ(finalstate,  &obj_iinit_re, &obj_iinit_im);
-    obj_cost_re += obj_weights[iinit] * obj_iinit_re;
-    obj_cost_im += obj_weights[iinit] * obj_iinit_im;
-
-    /* Add to final-time fidelity */
-    double fidelity_iinit_re = 0.0;
-    double fidelity_iinit_im = 0.0;
-    optim_target->HilbertSchmidtOverlap(finalstate, false, &fidelity_iinit_re, &fidelity_iinit_im);
-    fidelity_re += 1./ ninit * fidelity_iinit_re;
-    fidelity_im += 1./ ninit * fidelity_iinit_im;
-
-    /* If Lindblas solver, compute adjoint for this initial condition. Otherwise (Schroedinger solver), compute adjoint only after all initial conditions have been propagated through (separate loop below) */
-    if (timestepper->mastereq->lindbladtype != LindbladType::NONE) {
-      // if (mpirank_optim == 0) printf("%d: %d BWD.", mpirank_init, initid);
-
-      /* Reset adjoint */
-      VecZeroEntries(rho_t0_bar);
-
-      double Jbar_loss = 0.0;
-      if (x_is_control) {
-        /* Terminal condition for adjoint variable: Derivative of final time objective J */
-        double obj_cost_re_bar, obj_cost_im_bar;
-        optim_target->finalizeJ_diff(obj_cost_re, obj_cost_im, &obj_cost_re_bar, &obj_cost_im_bar);
-        optim_target->evalJ_diff(finalstate, rho_t0_bar, obj_weights[iinit]*obj_cost_re_bar, obj_weights[iinit]*obj_cost_im_bar);
-      } else {
-        Jbar_loss = obj_weights[iinit];
-      }
-
-      /* Derivative of time-stepping */
-      timestepper->solveAdjointODE(initid, rho_t0_bar, finalstate, obj_weights[iinit] * gamma_penalty, obj_weights[iinit]*gamma_penalty_dpdm, obj_weights[iinit]*gamma_penalty_energy, Jbar_loss);
-
-      /* Add to optimizers's gradient */
-      VecAXPY(G, 1.0, timestepper->redgrad);
+  /* Derivative of regulatization term gamma / 2 ||x||^2 (ADD ON ONE PROC ONLY!) */
+  // if (mpirank_init == 0 && mpirank_optim == 0) { // TODO: Which one?? 
+  if (mpirank_world== 0 ) {
+    VecAXPY(G, gamma_tik, x);   // + gamma_tik * x
+    if (gamma_tik_interpolate){
+      VecAXPY(G, -1.0*gamma_tik, xinit); // -gamma_tik * xinit
     }
   }
 
-  /* Sum up from initial conditions processors */
+  /* Iterate over control pulses */
+  int npulseiters = 1;
+  if (!x_is_control) npulseiters = mastereq->learning->data->getNPulses_local();
+  for (int ipulse_local = 0; ipulse_local < npulseiters; ipulse_local++){
+
+    /* Get global id if the pulse */
+    int ipulse = mpirank_optim * npulseiters + ipulse_local;
+    if (!quietmode) printf("%dx%d: evalGradF: Pulse number ipulse=%d ...\n", mpirank_optim, mpirank_init, ipulse);
+
+    /* Set current optimization vector x */
+    if (x_is_control) { // Optimize on control parameters
+      mastereq->setControlAmplitudes(x); 
+    } else { // Optimize on learnable parameters
+      mastereq->learning->setLearnParams(x); 
+
+      /* Make sure the control pulse matches the data */
+      mastereq->setControlFromData(ipulse_local);
+    }
+
+    /*  Iterate over initial condition */
+    double obj_cost_re = 0.0;
+    double obj_cost_im = 0.0;
+    double fidelity_re = 0.0;
+    double fidelity_im = 0.0;
+    for (int iinit = 0; iinit < ninit_local; iinit++) {
+
+      /* Prepare the initial condition */
+      int iinit_global = mpirank_init * ninit_local + iinit;
+      int initid = optim_target->prepareInitialState(iinit_global, ninit, timestepper->mastereq->nlevels, timestepper->mastereq->nessential, rho_t0);
+
+      /* --- Solve primal --- */
+
+      /* Run forward with initial condition rho_t0 */
+      optim_target->prepareTargetState(rho_t0);
+      Vec finalstate = timestepper->solveODE(initid, rho_t0, ipulse_local);
+
+      /* Store the final state for the Schroedinger solver */
+      if (timestepper->mastereq->lindbladtype == LindbladType::NONE) VecCopy(finalstate, store_finalstates[iinit]);
+
+      /* If learning: add to loss function */
+      obj_loss += obj_weights[iinit] * mastereq->learning->getLoss();
+
+      /* Add to integral penalty terms */
+      obj_penal += obj_weights[iinit] * gamma_penalty * timestepper->penalty_integral;
+      obj_penal_dpdm += obj_weights[iinit] * gamma_penalty_dpdm * timestepper->penalty_dpdm;
+      obj_penal_energy += obj_weights[iinit] * gamma_penalty_energy * timestepper->energy_penalty_integral;
+
+      /* Evaluate J(finalstate) and add to final-time cost */
+      double obj_iinit_re = 0.0;
+      double obj_iinit_im = 0.0;
+      optim_target->evalJ(finalstate,  &obj_iinit_re, &obj_iinit_im);
+      obj_cost_re += obj_weights[iinit] * obj_iinit_re;
+      obj_cost_im += obj_weights[iinit] * obj_iinit_im;
+
+      /* Add to final-time fidelity */
+      double fidelity_iinit_re = 0.0;
+      double fidelity_iinit_im = 0.0;
+      optim_target->HilbertSchmidtOverlap(finalstate, false, &fidelity_iinit_re, &fidelity_iinit_im);
+      fidelity_re += 1./ ninit * fidelity_iinit_re;
+      fidelity_im += 1./ ninit * fidelity_iinit_im;
+
+      /* If Lindblas solver, compute adjoint for this initial condition. Otherwise (Schroedinger solver), compute adjoint only after all initial conditions have been propagated through (separate loop below) */
+      if (timestepper->mastereq->lindbladtype != LindbladType::NONE) {
+
+        /* Reset adjoint */
+        VecZeroEntries(rho_t0_bar);
+
+        double Jbar_loss = 0.0;
+        if (x_is_control) {
+          /* Terminal condition for adjoint variable: Derivative of final time objective J */
+          double obj_cost_re_bar, obj_cost_im_bar;
+          optim_target->finalizeJ_diff(obj_cost_re, obj_cost_im, &obj_cost_re_bar, &obj_cost_im_bar);
+          optim_target->evalJ_diff(finalstate, rho_t0_bar, obj_weights[iinit]*obj_cost_re_bar, obj_weights[iinit]*obj_cost_im_bar);
+        } else {
+          Jbar_loss = obj_weights[iinit]/mastereq->learning->data->getNPulses();
+        }
+
+        /* Derivative of time-stepping */
+        timestepper->solveAdjointODE(initid, rho_t0_bar, finalstate, obj_weights[iinit] * gamma_penalty, obj_weights[iinit]*gamma_penalty_dpdm, obj_weights[iinit]*gamma_penalty_energy, Jbar_loss, ipulse_local);
+
+        /* Add to optimizers's gradient */
+        VecAXPY(G, 1.0, timestepper->redgrad);
+      }
+    } // end of loop over initial conditions
+
+    /* Sum up from initial conditions processors for the current pulse iteration */
+    double mycost_re = obj_cost_re;
+    double mycost_im = obj_cost_im;
+    double myfidelity_re = fidelity_re;
+    double myfidelity_im = fidelity_im;
+    MPI_Allreduce(&mycost_re, &obj_cost_re, 1, MPI_DOUBLE, MPI_SUM, comm_init);
+    MPI_Allreduce(&mycost_im, &obj_cost_im, 1, MPI_DOUBLE, MPI_SUM, comm_init);
+    MPI_Allreduce(&myfidelity_re, &fidelity_re, 1, MPI_DOUBLE, MPI_SUM, comm_init);
+    MPI_Allreduce(&myfidelity_im, &fidelity_im, 1, MPI_DOUBLE, MPI_SUM, comm_init);
+
+    /* Add the fidelity: If Schroedinger, need to compute the absolute value: Fid= |\sum_i \phi^\dagger \phi_target|^2 */
+    if (timestepper->mastereq->lindbladtype == LindbladType::NONE) {
+      fidelity += pow(fidelity_re, 2.0) + pow(fidelity_im, 2.0);
+    } else {
+      fidelity += fidelity_re; 
+    }
+    obj_cost += optim_target->finalizeJ(obj_cost_re, obj_cost_im);
+
+  } // end of loop over npulses 
+
+  /* Sum up penalty and loss from all processors */
   double mypen = obj_penal;
   double myloss= obj_loss;
   double mypen_dpdm = obj_penal_dpdm;
   double mypenen = obj_penal_energy;
-  double mycost_re = obj_cost_re;
-  double mycost_im = obj_cost_im;
-  double myfidelity_re = fidelity_re;
-  double myfidelity_im = fidelity_im;
-  MPI_Allreduce(&myloss, &obj_loss, 1, MPI_DOUBLE, MPI_SUM, comm_init);
-  MPI_Allreduce(&mypen, &obj_penal, 1, MPI_DOUBLE, MPI_SUM, comm_init);
-  MPI_Allreduce(&mypen_dpdm, &obj_penal_dpdm, 1, MPI_DOUBLE, MPI_SUM, comm_init);
-  MPI_Allreduce(&mypenen, &obj_penal_energy, 1, MPI_DOUBLE, MPI_SUM, comm_init);
-  MPI_Allreduce(&mycost_re, &obj_cost_re, 1, MPI_DOUBLE, MPI_SUM, comm_init);
-  MPI_Allreduce(&mycost_im, &obj_cost_im, 1, MPI_DOUBLE, MPI_SUM, comm_init);
-  MPI_Allreduce(&myfidelity_re, &fidelity_re, 1, MPI_DOUBLE, MPI_SUM, comm_init);
-  MPI_Allreduce(&myfidelity_im, &fidelity_im, 1, MPI_DOUBLE, MPI_SUM, comm_init);
+  MPI_Allreduce(&myloss, &obj_loss, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(&mypen, &obj_penal, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(&mypen_dpdm, &obj_penal_dpdm, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(&mypenen, &obj_penal_energy, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 
-  /* Set the fidelity: If Schroedinger, need to compute the absolute value: Fid= |\sum_i \phi^\dagger \phi_target|^2 */
-  if (timestepper->mastereq->lindbladtype == LindbladType::NONE) {
-    fidelity = pow(fidelity_re, 2.0) + pow(fidelity_im, 2.0);
-  } else {
-    fidelity = fidelity_re; 
-  }
- 
-  /* Finalize the objective function Jtrace to get the infidelity. 
-     If Schroedingers solver, need to take the absolute value */
-  obj_cost = optim_target->finalizeJ(obj_cost_re, obj_cost_im);
+  // Scale loss with respect to the number of pulses 
+  obj_loss /= mastereq->learning->data->getNPulses();
 
   /* Evaluate regularization objective += gamma/2 * ||x||^2*/
   double xnorm;
@@ -524,6 +539,8 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
 
   /* For Schroedinger solver: Solve adjoint equations for all initial conditions here. */
   if (timestepper->mastereq->lindbladtype == LindbladType::NONE) {
+    printf("ERROR, THIS NEEDS CHANGE! !\n");
+    exit(1);
 
     // Iterate over all initial conditions 
     for (int iinit = 0; iinit < ninit_local; iinit++) {
@@ -540,27 +557,29 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
       if (x_is_control) {
         /* Terminal condition for adjoint variable: Derivative of final time objective J */
         double obj_cost_re_bar, obj_cost_im_bar;
-        optim_target->finalizeJ_diff(obj_cost_re, obj_cost_im, &obj_cost_re_bar, &obj_cost_im_bar);
-        optim_target->evalJ_diff(store_finalstates[iinit], rho_t0_bar, obj_weights[iinit]*obj_cost_re_bar, obj_weights[iinit]*obj_cost_im_bar);
+        // optim_target->finalizeJ_diff(obj_cost_re, obj_cost_im, &obj_cost_re_bar, &obj_cost_im_bar);
+        // optim_target->evalJ_diff(store_finalstates[iinit], rho_t0_bar, obj_weights[iinit]*obj_cost_re_bar, obj_weights[iinit]*obj_cost_im_bar);
       } else {
         Jbar_loss = obj_weights[iinit];
       }
 
       /* Derivative of time-stepping */
-      timestepper->solveAdjointODE(initid, rho_t0_bar, store_finalstates[iinit], obj_weights[iinit] * gamma_penalty, obj_weights[iinit]*gamma_penalty_dpdm, obj_weights[iinit]*gamma_penalty_energy, Jbar_loss);
+      printf("TODO. PUlsenum.\n");
+      exit(1);
+      timestepper->solveAdjointODE(initid, rho_t0_bar, store_finalstates[iinit], obj_weights[iinit] * gamma_penalty, obj_weights[iinit]*gamma_penalty_dpdm, obj_weights[iinit]*gamma_penalty_energy, Jbar_loss, 0);
 
       /* Add to optimizers's gradient */
       VecAXPY(G, 1.0, timestepper->redgrad);
     } // end of initial condition loop 
   } // end of adjoint for Schroedinger
 
-  /* Sum up the gradient from all initial condition processors */
+  /* Sum up the gradient from all processors */
   PetscScalar* grad; 
   VecGetArray(G, &grad);
   for (int i=0; i<ndesign; i++) {
     mygrad[i] = grad[i];
   }
-  MPI_Allreduce(mygrad, grad, ndesign, MPI_DOUBLE, MPI_SUM, comm_init);
+  MPI_Allreduce(mygrad, grad, ndesign, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   VecRestoreArray(G, &grad);
 
   /* Compute and store gradient norm */

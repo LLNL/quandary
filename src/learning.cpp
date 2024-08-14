@@ -39,7 +39,7 @@ Learning::Learning(int dim_rho_, LindbladType lindbladtype_, std::vector<std::st
     VecSetFromOptions(aux2);
 
     // Some output 
-    if (!quietmode) {
+    if (mpirank_world == 0 && !quietmode) {
       printf("Learning with %d Gellmann mats\n", hamiltonian_basis->getNBasis());
     }
   }
@@ -81,19 +81,21 @@ void Learning::viewOperators(){
 
   if (dim_rho <= 0) return;
 
-  hamiltonian_basis->assembleOperator(learnparamsH_Re, learnparamsH_Im);
-  printf("\nLearned Hamiltonian operator [MHz]: Re = \n");
-  MatView(hamiltonian_basis->getOperator_Re(), NULL);
-  printf("Learned Hamiltonian operator [MHz]: Im = \n");
-  MatView(hamiltonian_basis->getOperator_Im(), NULL);
+  if (mpirank_world == 0) {
+    hamiltonian_basis->assembleOperator(learnparamsH_Re, learnparamsH_Im);
+    printf("\nLearned Hamiltonian operator [MHz]: Re = \n");
+    MatView(hamiltonian_basis->getOperator_Re(), NULL);
+    printf("Learned Hamiltonian operator [MHz]: Im = \n");
+    MatView(hamiltonian_basis->getOperator_Im(), NULL);
 
-  for (int i=0; i<lindblad_basis->getNBasis_Re(); i++){
-    printf("Lindblad coeff %d: %1.8e\n", i, learnparamsL_Re[i]);
-    // MatView(lindblad_basis->getBasisMat_Re(i), NULL);
-  }
-  if (dim_rho == 2) {
-    printf(" -> maps to T_1 time %1.2f [ns]\n", 1.0/learnparamsL_Re[0]);
-    printf(" -> maps to T_2 time %1.2f [ns]\n", 1.0/(4.0*learnparamsL_Re[1]));
+    for (int i=0; i<lindblad_basis->getNBasis_Re(); i++){
+      printf("Lindblad coeff %d: %1.8e\n", i, learnparamsL_Re[i]);
+      // MatView(lindblad_basis->getBasisMat_Re(i), NULL);
+    }
+    if (dim_rho == 2) {
+      printf(" -> maps to T_1 time %1.2f [ns]\n", 1.0/learnparamsL_Re[0]);
+      printf(" -> maps to T_2 time %1.2f [ns]\n", 1.0/(4.0*learnparamsL_Re[1]));
+    }
   }
 }
 
@@ -247,18 +249,18 @@ void Learning::initLearnParams(std::vector<std::string> learninit_str, std::defa
       }
     }
   } else {
-    printf("ERROR: Wrong configuration for learnable parameter initialization. Choose 'file, <pathtofile>', or 'random, <amplitude_Ham>, <amplitude_Lindblad>', or 'constant, <amplitude_Ham>, <amplitude_Lind>'\n");
+    if (mpirank_world==0) printf("ERROR: Wrong configuration for learnable parameter initialization. Choose 'file, <pathtofile>', or 'random, <amplitude_Ham>, <amplitude_Lindblad>', or 'constant, <amplitude_Ham>, <amplitude_Lind>'\n");
     exit(1);
   }
 }
 
 
-void Learning::addToLoss(double time, Vec x){
+void Learning::addToLoss(double time, Vec x, int pulse_num_local){
 
   if (dim_rho <= 0) return;
 
   // If data point exists at this time, compute frobenius norm (x-xdata)
-  Vec xdata = data->getData(time);
+  Vec xdata = data->getData(time, pulse_num_local);
   if (xdata != NULL) {
     // printf("Add to loss at time %1.8f \n", time);
     // VecView(xdata,NULL);
@@ -271,11 +273,11 @@ void Learning::addToLoss(double time, Vec x){
 }
 
 
-void Learning::addToLoss_diff(double time, Vec xbar, Vec xprimal, double Jbar_loss){
+void Learning::addToLoss_diff(double time, Vec xbar, Vec xprimal, int pulse_num_local, double Jbar_loss){
 
   if (dim_rho <= 0) return;
 
-  Vec xdata = data->getData(time);
+  Vec xdata = data->getData(time, pulse_num_local);
   if (xdata != NULL) {
     // printf("loss_DIFF at time %1.8f \n", time);
     // VecView(xprimal,NULL);

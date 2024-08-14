@@ -154,11 +154,13 @@ int main(int argc,char **argv)
   // Number of cores for optimization. Under development, set to 1 for now. 
   // int np_optim= config.GetIntParam("np_optim", 1);
   // np_optim= min(np_optim, mpisize_world); 
-  int np_optim= 1;
+  // int np_optim= 1;
+  // Number of pulses for Petsc: hardcode 1
+  int np_petsc = 1;
   // Number of cores for initial condition distribution. Since this gives perfect speedup, choose maximum.
   int np_init = std::min(ninit, mpisize_world); 
-  // Number of cores for Petsc: All the remaining ones. 
-  int np_petsc = mpisize_world / (np_init * np_optim);
+  // Number of cores for different pulses: All the remaining ones. 
+  int np_optim = mpisize_world / (np_init * np_petsc);
 
   /* Sanity check for communicator sizes */ 
   if (mpisize_world % ninit != 0 && ninit % mpisize_world != 0) {
@@ -188,7 +190,7 @@ int main(int argc,char **argv)
   /* Set Petsc using petsc's communicator */
   PETSC_COMM_WORLD = comm_petsc;
 
-  if (mpirank_world == 0 && !quietmode)  std::cout<< "Parallel distribution: " << mpisize_init << " np_init  X  " << mpisize_petsc<< " np_petsc  " << std::endl;
+  if (mpirank_world == 0 && !quietmode)  std::cout<< "Parallel distribution: " << mpisize_init << " np_init  X  " << mpisize_petsc<< " np_petsc  X  " << mpisize_optim << " np_optim" << std::endl;
 
 #ifdef WITH_SLEPC
   ierr = SlepcInitialize(&argc, &argv, (char*)0, NULL);if (ierr) return ierr;
@@ -252,24 +254,41 @@ int main(int argc,char **argv)
     std::string identifyer = data_name[0];
     data_name.erase(data_name.begin());
     double data_tstop = config.GetDoubleParam("data_tstop", 1e+14, false);
+    int npulses = config.GetIntParam("data_npulses", 1, true, true);
+    if (npulses %  mpisize_optim != 0) {
+      printf("ERROR: Can't distribute %d pulses over %d cores\n", npulses, mpisize_optim);
+      exit(1);
+    }
     if (identifyer.compare("synthetic") == 0) {
-      data = new SyntheticQuandaryData(data_name, data_tstop, dim);
+      // search more data file names ("data_name1", "data_name2", ...) and push them to the data_name vector. 
+      for (int ipulse = 1; ipulse<npulses; ipulse++) {
+        std::vector<std::string> data_morenames;
+        config.GetVecStrParam("data_name"+std::to_string(ipulse), data_morenames, "none");
+        if (data_morenames[0].compare("none") != 0){
+            data_name.push_back(data_morenames[0]);
+            data_name.push_back(data_morenames[1]);
+        }
+      }
+      // printf("Here are all the names:\n");
+      // for (int i = 0; i<data_name.size(); i++){
+      //   std::cout<< data_name[i] << "\n";
+      // }
+      // exit(1);
+      data = new SyntheticQuandaryData(comm_optim, data_name, data_tstop, dim, npulses);
     } else if (identifyer.compare("Tant2level") == 0) {
       bool corrected = false;
       if (data_name[0].compare("corrected") == 0) {
         corrected = true;
         data_name.erase(data_name.begin());
       }
-      int npulses = config.GetIntParam("data_npulses", 1, true, true);
-      data = new Tant2levelData(data_name, data_tstop, dim, corrected, npulses);
+      data = new Tant2levelData(comm_optim, data_name, data_tstop, dim, corrected, npulses);
     } else if (identifyer.compare("Tant3level") == 0) {
       bool corrected = false;
       if (data_name[0].compare("corrected") == 0) {
         corrected = true;
         data_name.erase(data_name.begin());
       }
-      int npulses = config.GetIntParam("data_npulses", 1, true, true);
-      data = new Tant3levelData(data_name, data_tstop, dim, corrected, npulses);
+      data = new Tant3levelData(comm_optim, data_name, data_tstop, dim, corrected, npulses);
     }
     else {
       printf("Wrong setting for loading data. Needs prefix 'synthetic', or 'Tant2level'. \n");
@@ -541,10 +560,10 @@ int main(int argc,char **argv)
     optimctx->getSolution(&opt);
   }
 
-    /* If learning, print out the learned operators */
-    if (!x_is_control){
-      learning->viewOperators();
-    }
+    // /* If learning, print out the learned operators */
+    // if (!x_is_control){
+    //   learning->viewOperators();
+    // }
 
   /* Only evaluate and write control pulses (no propagation) */
   if (runtype == RunType::EVALCONTROLS) {
