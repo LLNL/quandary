@@ -41,7 +41,7 @@ class Quandary:
     targetgate          # Complex target unitary in the essential level dimensions for gate optimization. Default: none
     targetstate         # Complex target state vector for state-to-state optimization. Default: none
     initialcondition    # Choose from provided initial states at time t=0.0: "basis" (all basis states, default), "pure, 0,0,1,..." (one pure initial state |001...>), or pass a vector as initial state. Default: "basis" 
-    gate_rot_freq       # Specify frequencies to rotate a target gate (one per oscillator). Default: Using the computational frame rotation frequency (rotfreq). 
+    gate_rot_freq       # Specify frequencies to rotate a target gate (one per oscillator). Default: no rotation (0.0 for each oscillator)
 
     # Control pulse options
     pcof0               # Optional: Pass an initial vector of control parameters. Default: none
@@ -181,7 +181,7 @@ class Quandary:
         if len(self.rotfreq) == 0:
             self.rotfreq = self.freq01
         if len(self.gate_rot_freq) == 0:
-            self.gate_rot_freq = self.rotfreq
+            self.gate_rot_freq = np.zeros(len(self.rotfreq))
         if self.nsplines < 0:
             minspline = 5 if self.control_enforce_BC else 3
             self.nsplines = int(np.max([np.ceil(self.T/self.dtau + 2), minspline]))
