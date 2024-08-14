@@ -409,7 +409,7 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
 
     /* Get global id if the pulse */
     int ipulse = mpirank_optim * npulseiters + ipulse_local;
-    if (!quietmode) printf("%dx%d: evalGradF: Pulse number ipulse=%d ...\n", mpirank_optim, mpirank_init, ipulse);
+    // if (!quietmode) printf("%dx%d: evalGradF: Pulse number ipulse=%d ...\n", mpirank_optim, mpirank_init, ipulse);
 
     /* Set current optimization vector x */
     if (x_is_control) { // Optimize on control parameters

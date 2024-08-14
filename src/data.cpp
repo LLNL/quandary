@@ -39,9 +39,7 @@ Data::~Data() {
   for (int i=0; i<controlparams.size(); i++) {
     controlparams[i].clear();
   }
-  std::cout<<mpirank_optim<<" WELL" << controlparams.size() << std::endl;
   controlparams.clear();
-  std::cout<<mpirank_optim<<" DONE\n";
 }
 
 Vec Data::getData(double time, int pulse_num){
@@ -146,7 +144,7 @@ void SyntheticQuandaryData::loadData(double* tstart, double* tstop, double* dt){
 
   assert(npulses = data_name.size()/2);
 
-  // Iterate over pulses
+  // Iterate over local pulses
   for (int ipulse_local = 0; ipulse_local < npulses_local; ipulse_local++){
     int ipulse = mpirank_optim* npulses_local + ipulse_local;
 
@@ -295,140 +293,122 @@ void Tant2levelData::loadData(double* tstart, double* tstop, double* dt){
   *    int     double   int       (val_re+val_imj)              (val_re+val_imj)
   */
 
-  // Open file
-  std::ifstream infile;
-  infile.open(data_name[0], std::ifstream::in);
-  if(infile.fail() ) {// checks to see if file opended 
-      std::cout << "\n ERROR loading learning data file " << data_name[0] << std::endl;
-      exit(1);
-  } else {
-    std::cout<< "Loading Tant Device data from " << data_name[0] << std::endl;
-  }
+  assert(npulses = data_name.size()/2);
 
-  // // Skip first line, its just the header.
-  // for (int i=0; i< 300; i++){
-  //   infile >> tmp;
-  //   if (tmp.compare("rho_lie_phys_11") == 0) { // this is the last word in the first row
-  //     break;
-  //   }
-  // }
+  // Iterate over local pulses
+  for (int ipulse_local = 0; ipulse_local < npulses_local; ipulse_local++){
+    int ipulse = mpirank_optim* npulses_local + ipulse_local;
 
-  // Iterate over lines
-  int count = 0;
-  double time, time_prev;
-  int pulse_num;
-  std::string strval;
-
-  std::string tmp; 
-  while (infile >> tmp) 
-  {
-    // Skip header lines
-    if (tmp.compare("Nshots") == 0){
-      for (int i=0; i< 300; i++){
-        infile >> tmp;
-        if (tmp.compare("rho_lie_phys_11") == 0) { // this is the last word in the first row
-          infile >> nshots; // nshots from the next line.
-          break;
-        }
-      }
-    }
-    nshots = std::atoi(tmp.c_str());
-
-    infile >> time;      // 2nd column;
-    infile >> pulse_num; // 3th column;
-
-    // Time in file is us, scale to ns here:
-    time = time*1.0e+3; // ns
-
-    /* Only read the first <npulses> trajectories */
-    if (pulse_num >= npulses) {
-      break;
+    // Open the respective file 
+    std::ifstream infile;
+    infile.open(data_name[ipulse], std::ifstream::in);
+    if(infile.fail() ) {// checks to see if file opended 
+        std::cout << "\n ERROR loading learning data file " << data_name[ipulse] << std::endl;
+        exit(1);
+    } else {
+      std::cout<< "Loading Tant Device data from " << data_name[ipulse] << std::endl;
     }
 
-    // Figure out first time point and sampling time-step
-    if (count == 0) *tstart = time;
-    if (count == 1) *dt = time - time_prev; 
-    // printf("tstart = %1.8f, dt=%1.8f\n", tstart, data_dt);
-    // printf("Loading data at Time %1.8f\n", time);
-
-    // Break if exceeding the requested time domain length 
-    if (time > *tstop)  {
-      if (npulses == 1) {
-        break; 
-      } else { // Skip to next pulse number.
-        while (infile >> tmp) {
-          if (tmp.compare("rho_lie_phys_11") == 0) {
+    // Iterate over lines
+    int count = 0;
+    double time, time_prev;
+    int pulse_num;
+    std::string strval;
+    std::string tmp; 
+    while (infile >> tmp) 
+    {
+      // Skip header lines
+      if (tmp.compare("Nshots") == 0){
+        for (int i=0; i< 300; i++){
+          infile >> tmp;
+          if (tmp.compare("rho_lie_phys_11") == 0) { // this is the last word in the first row
+            infile >> nshots; // nshots from the next line.
             break;
           }
         }
-        continue;
       }
-    }
-    
-    // Skip to the corrected physical LIE data (skip next <dim> columns)
-    if (corrected) {
-      for (int i=0; i < dim; i++){
-        infile >> strval;
-      }
-    }
-    
-    // Allocate the state 
-    Vec state;
-    VecCreate(PETSC_COMM_WORLD, &state);
-    VecSetSizes(state, PETSC_DECIDE, 2*dim);
-    VecSetFromOptions(state);
- 
-    // Iterate over the remaining columns and store values.
-    int id=0;
-    for (int i=0; i<dim; i++) {
-      // Read string and remove the brackets around (val_re+val_imj) as well as the trailing "j" character
-      infile >> strval;
-      std::string stripped = strval.substr(1, strval.size()-3);  
-      // Extract real and imaginary parts, with correct sign.
-      std::stringstream stream(stripped); 
-      double val_re, val_im;
-      char sign;
-      while (stream >> val_re >> sign >> val_im) {
-        if (sign == '-') val_im = -val_im;
-        // std::cout<< " -> Got val = " << val_re << " " << val_im << " j" << std::endl;
-      }
-      VecSetValue(state, getIndexReal(id), val_re, INSERT_VALUES);
-      VecSetValue(state, getIndexImag(id), val_im, INSERT_VALUES);
-      id++;
-    }
-    VecAssemblyBegin(state);
-    VecAssemblyEnd(state);
+      nshots = std::atoi(tmp.c_str());
 
-    // Store the state and update counters
-    data[pulse_num].push_back(state);
-    count+=1;
-    time_prev = time;
+      infile >> time;      // 2nd column;
+      infile >> pulse_num; // 3th column;
+      assert(pulse_num == ipulse);
 
-    // Skip to the end of file, if we used non-corrected data
-    if (!corrected) {
-      for (int i=0; i < dim; i++){
+      // Time in file is us, scale to ns here:
+      time = time*1.0e+3; // ns
+
+      // Figure out first time point and sampling time-step
+      if (count == 0) *tstart = time;
+      if (count == 1) *dt = time - time_prev; 
+      // printf("tstart = %1.8f, dt=%1.8f\n", tstart, data_dt);
+      // printf("Loading data at Time %1.8f\n", time);
+
+      // Break if exceeding the requested time domain length 
+      if (time > *tstop)  {
+        if (npulses == 1) {
+          break; 
+        } else { // Skip to next pulse number.
+          while (infile >> tmp) {
+            if (tmp.compare("rho_lie_phys_11") == 0) {
+              break;
+            }
+          }
+          continue;
+        }
+      }
+    
+      // Skip to the corrected physical LIE data (skip next <dim> columns)
+      if (corrected) {
+        for (int i=0; i < dim; i++){
+          infile >> strval;
+        }
+      }
+    
+      // Allocate the state 
+      Vec state;
+      VecCreate(PETSC_COMM_WORLD, &state);
+      VecSetSizes(state, PETSC_DECIDE, 2*dim);
+      VecSetFromOptions(state);
+ 
+      // Iterate over the remaining columns and store values.
+      int id=0;
+      for (int i=0; i<dim; i++) {
+        // Read string and remove the brackets around (val_re+val_imj) as well as the trailing "j" character
         infile >> strval;
+        std::string stripped = strval.substr(1, strval.size()-3);  
+        // Extract real and imaginary parts, with correct sign.
+        std::stringstream stream(stripped); 
+        double val_re, val_im;
+        char sign;
+        while (stream >> val_re >> sign >> val_im) {
+          if (sign == '-') val_im = -val_im;
+          // std::cout<< " -> Got val = " << val_re << " " << val_im << " j" << std::endl;
+        }
+        VecSetValue(state, getIndexReal(id), val_re, INSERT_VALUES);
+        VecSetValue(state, getIndexImag(id), val_im, INSERT_VALUES);
+        id++;
+      }
+      VecAssemblyBegin(state);
+      VecAssemblyEnd(state);
+
+      // Store the state and update counters
+      data[ipulse_local].push_back(state);
+      count+=1;
+      time_prev = time;
+
+      // Skip to the end of the line, if we used non-corrected data
+      if (!corrected) {
+        for (int i=0; i < dim; i++){
+          infile >> strval;
+        }
       }
     }
- 
+
+    /* Update the final time stamp */
+    *tstop = std::min(time_prev, *tstop);
+
+    // Close files
+    infile.close();
   }
-
-  /* Update the final time stamp */
-  *tstop = std::min(time_prev, *tstop);
-
-  // Close files
-	infile.close();
-
-  // // TEST what was loaded
-  // printf("\nDATA POINTS:\n");
-  // for (int ipulse=0; ipulse<data.size(); ipulse++){
-  //   printf("PULSE NUMBER %d\n", ipulse);
-  //   for (int j=0; j<data[ipulse].size(); j++){
-  //     VecView(data[ipulse][j], NULL);
-  //   }
-  // }
-  // printf("END DATA POINTS.\n\n");
-  // exit(1);
 }
 
 Tant3levelData::Tant3levelData(MPI_Comm comm_optim_, std::vector<std::string> data_name, double data_tstop, int dim, bool corrected_, int npulses) : Data(comm_optim_, data_name, data_tstop, dim, npulses) {

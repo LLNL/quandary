@@ -260,21 +260,17 @@ int main(int argc,char **argv)
       printf("ERROR: Can't distribute %d pulses over %d cores\n", npulses, mpisize_optim);
       exit(1);
     }
-    if (identifyer.compare("synthetic") == 0) {
-      // search more data file names ("data_name1", "data_name2", ...) and push them to the data_name vector. 
-      for (int ipulse = 1; ipulse<npulses; ipulse++) {
-        std::vector<std::string> data_morenames;
-        config.GetVecStrParam("data_name"+std::to_string(ipulse), data_morenames, "none");
-        if (data_morenames[0].compare("none") != 0){
-            data_name.push_back(data_morenames[0]);
-            data_name.push_back(data_morenames[1]);
-        }
+    // search more data file names ("data_name1", "data_name2", ...) and push them to the data_name vector. 
+    for (int ipulse = 1; ipulse<npulses; ipulse++) {
+      std::vector<std::string> data_morenames;
+      config.GetVecStrParam("data_name"+std::to_string(ipulse), data_morenames, "none");
+      if (data_morenames[0].compare("none") != 0){
+          data_name.push_back(data_morenames[0]);
+          data_name.push_back(data_morenames[1]);
       }
-      // printf("Here are all the names:\n");
-      // for (int i = 0; i<data_name.size(); i++){
-      //   std::cout<< data_name[i] << "\n";
-      // }
-      // exit(1);
+    }
+    // Now load data 
+    if (identifyer.compare("synthetic") == 0) { 
       data = new SyntheticQuandaryData(comm_optim, data_name, data_tstop, dim, npulses);
     } else if (identifyer.compare("Tant2level") == 0) {
       bool corrected = false;
