@@ -29,6 +29,8 @@ class Data{
     MPI_Comm comm_optim;
     int mpirank_optim;
     int mpisize_optim;
+    int mpirank_world;
+    int mpisize_world;
 
 	public:
     Data();
@@ -47,7 +49,7 @@ class Data{
     std::vector<double> getControls(int ipulse = 0, int ioscillator=0); 
 
     /* If data point exists at this time, return it. Otherwise, returns NULL */
-    Vec getData(double time, int pulse_num_local);
+    Vec getData(double time, int pulse_num);
 
     /* Write expected energy of a data trajectory to file */
     void writeExpectedEnergy(const char* filename, int pulse_num);

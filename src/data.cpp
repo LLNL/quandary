@@ -16,6 +16,8 @@ Data::Data(MPI_Comm comm_optim_, std::vector<std::string> data_name_, double tst
   tstop = tstop_;
   comm_optim = comm_optim_;
 
+  MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
+  MPI_Comm_size(MPI_COMM_WORLD, &mpisize_world);
   MPI_Comm_rank(comm_optim, &mpirank_optim);
   MPI_Comm_size(comm_optim, &mpisize_optim);
   assert(npulses % mpisize_optim == 0);
@@ -40,7 +42,8 @@ Data::~Data() {
   controlparams.clear();
 }
 
-Vec Data::getData(double time, int pulse_num_local){
+Vec Data::getData(double time, int pulse_num){
+  int pulse_num_local =  pulse_num % npulses_local;
   
   if (tstart <= time && time <= tstop) {  // if time is within the data domain
     double remainder = std::remainder(time - tstart, dt);

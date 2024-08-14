@@ -69,7 +69,7 @@ class Learning {
     void getLearnParams(double* x);
 
     /* Add to loss */
-    void addToLoss(double time, Vec x, int pulse_num_local);
-    void addToLoss_diff(double time, Vec xbar, Vec xprimal, int pulse_num_local, double Jbar_loss);
+    void addToLoss(double time, Vec x, int pulse_num);
+    void addToLoss_diff(double time, Vec xbar, Vec xprimal, int pulse_num, double Jbar_loss);
 };
 
