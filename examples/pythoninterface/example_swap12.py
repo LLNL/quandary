@@ -47,10 +47,10 @@ if True:
 	plot_expectedEnergy(quandary.Ne, t, expectedEnergy)
 
 
-# Adding some decoherence and simulate again
-quandary.T1 = [10000.0]
-quandary.T2 = [8000.0]
-quandary.update()
-quandary.pcof0 = quandary.popt[:]
-t, pt, qt, infidelity, expectedEnergy, population = quandary.simulate(datadir=datadir, maxcores=8)
-print(f"Fidelity under decoherence = {1.0 - infidelity}")
+# # Adding some decoherence and simulate again
+# quandary.T1 = [10000.0]
+# quandary.T2 = [8000.0]
+# quandary.update()
+# quandary.pcof0 = quandary.popt[:]
+# t, pt, qt, infidelity, expectedEnergy, population = quandary.simulate(datadir=datadir, maxcores=8)
+# print(f"Fidelity under decoherence = {1.0 - infidelity}")

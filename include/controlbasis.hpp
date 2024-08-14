@@ -28,8 +28,13 @@ class ControlBasis {
         double getTstop() {return tstop; };
         ControlType getType() {return controltype;};
         void setSkip(int skip_) {skip = skip_;};
+        int getSkip(){return skip;};
 
         virtual int getNSplines() {return 0;};
+
+        /* Variation of control parameters */
+        virtual double computeVariation(std::vector<double>& params, int carrierfreqID){return 0.0;};
+        virtual void computeVariation_diff(double* grad, std::vector<double>&params, double var_bar, int carrierfreqID){};
 
         /* Default: do nothing. For some control parameterizations, this can be used to enforce that the controls start and end at zero. E.g. the Splines will overwrite the parameters x of the first and last two splines by zero, so that the splines start and end at zero. */
         virtual void enforceBoundary(double* x, int carrier_id) {};
@@ -125,6 +130,40 @@ class Step : public ControlBasis {
         void derivative(const double t, const std::vector<double>& coeff, double* coeff_diff, const double valbar1, const double valbar2, int carrier_freq_id);
 };
 
+/* 
+ * Discretization of the Controls using piece-wise constant Bsplines
+ * Bspline basis functions have local support with width = dtknot, 
+ * where dtknot = T/nsplines is the time knot vector spacing.
+ */
+class BSpline0 : public ControlBasis {
+    protected:
+        int nsplines;                     // Number of splines
+        double dtknot;                    // spacing of time knot vector    
+        // double *tcenter;                  // vector of basis function center positions
+        double width;                     // support of each basis function (m*dtknot)
+
+        /* Evaluate the bspline basis functions B_l(tau_l(t)) NOT USED */
+        // double bspl0(int id, double t);
+
+    public:
+        BSpline0(int nsplines, double tstart, double tstop, bool enforceZeroBoundary);
+        ~BSpline0();
+
+        int getNSplines() {return nsplines;};
+
+        /* Set the first and last parameter to zero, for this carrier wave */
+        void enforceBoundary(double* x, int carrier_id);
+
+        /* Variation of the control parameters: 1/nsplines * sum_splines (alpha_i - alpha_{i-1})^2 */
+        double computeVariation(std::vector<double>& params, int carrierfreqID);
+        virtual void computeVariation_diff(double* grad, std::vector<double>&params, double var_bar, int carrierfreqID);
+
+        /* Evaluate the spline at time t using the coefficients coeff. */
+        void evaluate(const double t, const std::vector<double>& coeff, int carrier_freq_id, double* Blt1_ptr, double* Blt2_ptr);
+
+        /* Evaluates the derivative at time t, multiplied with fbar. */
+        void derivative(const double t, const std::vector<double>& coeff, double* coeff_diff, const double valbar1, const double valbar2, int carrier_freq_id);
+};
 
 /* 
  * Abstract class to represent transfer functions that act on the controls: evaluate u(p(t)), or v(q(t)).

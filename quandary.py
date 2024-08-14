@@ -52,6 +52,7 @@ class Quandary:
     control_enforce_BC  # Bool to let control pulses start and end at zero. Default: False
     dtau                # Spacing of Bspline basis functions [ns]. The smaller dtau, the larger nsplines. Default: 3ns
     nsplines            # Number of Bspline basis functions. Default: T/dtau + 2
+    spline_order        # Order of the B-spline basis (0 or 2). Default: 2
     carrier_frequency   # Carrier frequencies for each oscillator. List[List[float]]. Default will be computed based on Hsys.
     cw_amp_thres        # Threshold to ignore carrier wave frequencies whose growth rate is below this value. Default: 1e-7
     cw_prox_thres       # Threshold to distinguish different carrier wave frequencies from each other. Default: 1e-2
@@ -67,6 +68,7 @@ class Quandary:
     gamma_leakage       # Parameter for leakage prevention. Default: 0.1
     gamma_energy        # Parameter for integral penality term on the control pulse energy. Default: 0.1
     gamma_dpdm          # Parameter for integral penality term on second state derivative. Default: 0.01
+    gamma_variation     # Parameter for penality term on variations in the control parameters: Default: 0.01
 
     # General options
     rand_seed            # Set a fixed random number generator seed. Default: None (non-reproducable)
@@ -125,7 +127,8 @@ class Quandary:
     maxctrl_MHz         : List[float] = field(default_factory=list)   
     control_enforce_BC  : bool        = False                         
     dtau                : float       = 3.0
-    nsplines            : int         = -1                            
+    nsplines            : int         = -1 
+    spline_order        : int         = 2                           
     carrier_frequency   : List[List[float]] = field(default_factory=list) 
     cw_amp_thres        : float       = 1e-7
     cw_prox_thres       : float       = 1e-2                        
@@ -140,6 +143,7 @@ class Quandary:
     gamma_leakage          : float = 0.1 	       
     gamma_energy           : float = 0.1
     gamma_dpdm             : float = 0.01        
+    gamma_variation        : float = 0.01        
     # General options
     rand_seed              : int  = None
     print_frequency_iter   : int  = 1
@@ -220,6 +224,8 @@ class Quandary:
             print("Maximum control amplitudes: ", self.maxctrl_MHz, "MHz")
 
         # Estimate carrier wave frequencies
+        if self.spline_order == 0 and len(self.carrier_frequency) == 0:
+            self.carrier_frequency = [[0.0] for _ in range(len(self.freq01))]
         if len(self.carrier_frequency) == 0: 
             self.carrier_frequency, _ = get_resonances(Ne=self.Ne, Ng=self.Ng, Hsys=self.Hsys, Hc_re=self.Hc_re, Hc_im=self.Hc_im, rotfreq=self.rotfreq, verbose=self.verbose, cw_amp_thres=self.cw_amp_thres, cw_prox_thres=self.cw_prox_thres, stdmodel=self.standardmodel)
 
@@ -461,19 +467,27 @@ class Quandary:
             if self.verbose:
                 print("Hamiltonian operators written to ", datadir+"/"+self._hamiltonian_filename)
 
-        # If pcof0 is given, write it to a file 
-        writeme = []
-        if len(self.pcof0) > 0:
-            writeme = self.pcof0
-        if len(pcof0) > 0:
-            writeme = pcof0
-        if len(writeme)>0:
-            self.pcof0_filename = "./pcof0.dat"
-            with open(datadir+"/"+self.pcof0_filename, "w") as f:
-                for value in writeme:
-                    f.write("{:20.13e}\n".format(value))
-            if self.verbose:
-                print("Initial control parameters written to ", datadir+"/"+self.pcof0_filename)
+        # Initializing the control parameter vector 'pcof0'
+        # 1. If the initial parameter vector (list) is given with the 'pcof0' argument, the list will be dumped to a file with name self.pcof0_filename := "pcof0.dat". 
+        # 2. If pcof0 is empty but self.pcof_filename is given, use that filename in Quandary 
+
+        read_pcof0_from_file = False
+        if len(self.pcof0) > 0 or len(pcof0) > 0:
+            if len(self.pcof0) > 0:
+                writeme = self.pcof0
+            if len(pcof0) > 0: # pcof0 is an argument to __dump(), while self.pcof0 is stored in the object
+                writeme = pcof0
+            if len(writeme)>0:
+                self.pcof0_filename = "./pcof0.dat"
+                with open(datadir+"/"+self.pcof0_filename, "w") as f:
+                    for value in writeme:
+                        f.write("{:20.13e}\n".format(value))
+                if self.verbose:
+                    print("Initial control parameters written to ", datadir+"/"+self.pcof0_filename)
+                read_pcof0_from_file = True
+        elif len(self.pcof0_filename) > 0:
+            print("Using the provided filename '", self.pcof0_filename, "' in the control_initialization command")
+            read_pcof0_from_file = True
 
         # Set up string for Quandary's config file
         Nt = [self.Ne[i] + self.Ng[i] for i in range(len(self.Ng))]
@@ -512,9 +526,15 @@ class Quandary:
         else:
             mystring += "initialcondition = " + str(self.initialcondition) + "\n"
         for iosc in range(len(self.Ne)):
-            mystring += "control_segments" + str(iosc) + " = spline, " + str(self.nsplines) + "\n"
+            if self.spline_order == 0:
+                mystring += "control_segments" + str(iosc) + " = spline0, " + str(self.nsplines) + "\n"
+            elif self.spline_order == 2:
+                mystring += "control_segments" + str(iosc) + " = spline, " + str(self.nsplines) + "\n"
+            else:
+                print("Error: spline order = ", self.spline_order, " is currently not available. Choose 0 or 2.")
+                return -1
             # if len(self.pcof0_filename)>0:
-            if len(writeme)>0:
+            if read_pcof0_from_file:
                 initstring = "file, "+str(self.pcof0_filename) + "\n"
             else:
                 # Scale initial control amplitudes by the number of carrier waves and convert to ns
@@ -556,6 +576,7 @@ class Quandary:
         mystring += "optim_penalty= " + str(self.gamma_leakage) + "\n"
         mystring += "optim_penalty_param= 0.0\n"
         mystring += "optim_penalty_dpdm= " + str(self.gamma_dpdm) + "\n"
+        mystring += "optim_penalty_variation= " + str(self.gamma_variation) + "\n"
         mystring += "optim_penalty_energy= " + str(self.gamma_energy) + "\n"
         mystring += "datadir= ./\n"
         for iosc in range(len(self.Ne)):
