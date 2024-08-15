@@ -560,7 +560,7 @@ int main(int argc,char **argv)
 
     // /* If learning, print out the learned operators */
     if (!x_is_control){
-      // learning->viewOperators();
+      learning->viewOperators();
     }
   
   /* Write all control pulses to file */

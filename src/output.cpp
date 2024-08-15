@@ -119,7 +119,7 @@ void Output::writeParams(Vec params) {
     }
     fclose(file);
     VecRestoreArrayRead(params, &params_ptr);
-    if (!quietmode) printf("File written: %s\n", filename);
+    // if (!quietmode) printf("File written: %s\n", filename);
   }
 }
 

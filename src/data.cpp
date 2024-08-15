@@ -259,16 +259,11 @@ Tant2levelData::Tant2levelData(MPI_Comm comm_optim_, std::vector<std::string> da
   // Those are taken from 231110_SG_Tant_2level_constAndRandompulse_raw_and_corrected_2000shots/const_pulse/*_const_ampfac*_popt_rs*.dat
   std::vector<std::vector<double>> datacontrols;
   datacontrols.resize(5);
-  datacontrols[0].push_back(0.00177715/(2.0*M_PI));
-  datacontrols[0].push_back(0.00177715/(2.0*M_PI));
-  datacontrols[1].push_back(0.00355431/(2.0*M_PI));
-  datacontrols[1].push_back(0.00355431/(2.0*M_PI));
-  datacontrols[2].push_back(0.00533146/(2.0*M_PI));
-  datacontrols[2].push_back(0.00533146/(2.0*M_PI));
-  datacontrols[3].push_back(0.00710861/(2.0*M_PI));
-  datacontrols[3].push_back(0.00710861/(2.0*M_PI));
-  datacontrols[4].push_back(0.00888577/(2.0*M_PI));
-  datacontrols[4].push_back(0.00888577/(2.0*M_PI));
+  std::vector<double> amp{0.00177715, 0.00355431, 0.00533146, 0.00710861, 0.00888577};
+  for (int i=0; i<5; i++) {
+    datacontrols[i].push_back(amp[i]/(2.0*M_PI));
+    datacontrols[i].push_back(-amp[i]/(2.0*M_PI)); // NOT SURE WHY -q here, but that seems to match
+  }
   // Now distribute them over optim processors
   for (int ipulse_local=0; ipulse_local < npulses_local; ipulse_local++){
     int ipulse_global = mpirank_optim*npulses_local + ipulse_local;
@@ -293,8 +288,6 @@ void Tant2levelData::loadData(double* tstart, double* tstop, double* dt){
   *    int     double   int       (val_re+val_imj)              (val_re+val_imj)
   */
 
-  assert(npulses = data_name.size()/2);
-
   // Iterate over local pulses
   for (int ipulse_local = 0; ipulse_local < npulses_local; ipulse_local++){
     int ipulse = mpirank_optim* npulses_local + ipulse_local;
@@ -306,7 +299,7 @@ void Tant2levelData::loadData(double* tstart, double* tstop, double* dt){
         std::cout << "\n ERROR loading learning data file " << data_name[ipulse] << std::endl;
         exit(1);
     } else {
-      std::cout<< "Loading Tant Device data from " << data_name[ipulse] << std::endl;
+      std::cout<< mpirank_optim << ": Loading Tant Device data from " << data_name[ipulse] << std::endl;
     }
 
     // Iterate over lines
@@ -370,7 +363,8 @@ void Tant2levelData::loadData(double* tstart, double* tstop, double* dt){
       VecSetFromOptions(state);
  
       // Iterate over the remaining columns and store values.
-      int id=0;
+      // Note, the vectorization of the density matrix in Yujin's Tant 2level data is row-wise whereas in quandary is columnwise, so here is the mapping of idices
+      std::vector<int> ids{0,2,1,3};
       for (int i=0; i<dim; i++) {
         // Read string and remove the brackets around (val_re+val_imj) as well as the trailing "j" character
         infile >> strval;
@@ -383,9 +377,8 @@ void Tant2levelData::loadData(double* tstart, double* tstop, double* dt){
           if (sign == '-') val_im = -val_im;
           // std::cout<< " -> Got val = " << val_re << " " << val_im << " j" << std::endl;
         }
-        VecSetValue(state, getIndexReal(id), val_re, INSERT_VALUES);
-        VecSetValue(state, getIndexImag(id), val_im, INSERT_VALUES);
-        id++;
+        VecSetValue(state, getIndexReal(ids[i]), val_re, INSERT_VALUES);
+        VecSetValue(state, getIndexImag(ids[i]), val_im, INSERT_VALUES);
       }
       VecAssemblyBegin(state);
       VecAssemblyEnd(state);
