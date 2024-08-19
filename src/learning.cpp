@@ -93,8 +93,8 @@ void Learning::viewOperators(){
       // MatView(lindblad_basis->getBasisMat_Re(i), NULL);
     }
     if (dim_rho == 2) {
-      printf(" -> maps to T_1 time %1.2f [ns]\n", 1.0/learnparamsL_Re[0]);
-      printf(" -> maps to T_2 time %1.2f [ns]\n", 1.0/(4.0*learnparamsL_Re[1]));
+      printf(" -> maps to T_1 time %1.2f [us]\n", 1.0/learnparamsL_Re[0]);
+      printf(" -> maps to T_2 time %1.2f [us]\n", 1.0/(4.0*learnparamsL_Re[1]));
     }
   }
 }

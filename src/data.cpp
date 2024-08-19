@@ -261,8 +261,8 @@ Tant2levelData::Tant2levelData(MPI_Comm comm_optim_, std::vector<std::string> da
   datacontrols.resize(5);
   std::vector<double> amp{0.00177715, 0.00355431, 0.00533146, 0.00710861, 0.00888577};
   for (int i=0; i<5; i++) {
-    datacontrols[i].push_back(amp[i]/(2.0*M_PI));
-    datacontrols[i].push_back(-amp[i]/(2.0*M_PI)); // NOT SURE WHY -q here, but that seems to match
+    datacontrols[i].push_back( amp[i]*1e3/(2.0*M_PI));
+    datacontrols[i].push_back(-amp[i]*1e3/(2.0*M_PI)); // NOT SURE WHY -q here, but that seems to match
   }
   // Now distribute them over optim processors
   for (int ipulse_local=0; ipulse_local < npulses_local; ipulse_local++){
@@ -274,7 +274,7 @@ Tant2levelData::Tant2levelData(MPI_Comm comm_optim_, std::vector<std::string> da
   }
 
   if (mpirank_world == 0) {
-    printf("Training data in [%1.2f, %1.2f] ns, sampling rate dt=%1.4f ns\n", tstart, tstop, dt);
+    printf("Training data in [%1.4f, %1.4f] us, sampling rate dt=%1.4f us\n", tstart, tstop, dt);
     printf("Training data with constant controls\n");
   }
 }
@@ -326,13 +326,10 @@ void Tant2levelData::loadData(double* tstart, double* tstop, double* dt){
       infile >> pulse_num; // 3th column;
       assert(pulse_num == ipulse);
 
-      // Time in file is us, scale to ns here:
-      time = time*1.0e+3; // ns
-
       // Figure out first time point and sampling time-step
       if (count == 0) *tstart = time;
       if (count == 1) *dt = time - time_prev; 
-      // printf("tstart = %1.8f, dt=%1.8f\n", tstart, data_dt);
+      // printf("tstart = %1.8f\n", *tstart);
       // printf("Loading data at Time %1.8f\n", time);
 
       // Break if exceeding the requested time domain length 
@@ -431,7 +428,7 @@ void Tant3levelData::loadData(double* tstart, double* tstop, double* dt){
   controlparams.resize(1);
 
   /* Extract control amplitudes from file name */
-  double conversion_factor = 0.04790850565409482;  // conversion factor: Volt to GHz
+  double conversion_factor = 47.90850565409482;  // conversion factor: Volt to MHz
   std::size_t found_p = data_name[0].find_last_of("p");
   std::size_t found_q = data_name[0].find_last_of("q");
   int strlength_p = 5;
@@ -440,11 +437,11 @@ void Tant3levelData::loadData(double* tstart, double* tstop, double* dt){
   if (data_name[0][found_q+1] == '-') strlength_q=6;
   double p_Volt = std::stod(data_name[0].substr(found_p+1, strlength_p));
   double q_Volt = std::stod(data_name[0].substr(found_q+1, strlength_q));
-  double p_GHz = p_Volt * conversion_factor;
-  double q_GHz = q_Volt * conversion_factor;
+  double p_MHz = p_Volt * conversion_factor;
+  double q_MHz = q_Volt * conversion_factor;
   // printf("Got the control amplitudes %1.8f,%1.8f GHz\n", p_GHz, q_GHz);
-  controlparams[pulse_num].push_back(p_GHz);
-  controlparams[pulse_num].push_back(q_GHz);
+  controlparams[pulse_num].push_back(p_MHz);
+  controlparams[pulse_num].push_back(q_MHz);
   
   /* Open the data file */
   std::ifstream infile;
@@ -472,6 +469,9 @@ void Tant3levelData::loadData(double* tstart, double* tstop, double* dt){
   int linenumber = 1;
   while (infile >> linenumber || count < 1) {
     infile >> time ;      // 2nd column
+
+    // Time in file is ns, scale to us here:
+    time = time * 1e-3; // us
 
     // Figure out first time point and sampling time-step
     if (count == 0) *tstart = time;
@@ -609,6 +609,6 @@ void Tant3levelData::loadData(double* tstart, double* tstop, double* dt){
   // }
   // printf("END DATA POINTS. tstart = %1.8f, tstop=%1.8f, dt=%1.8f\n", *tstart, *tstop, *dt);
   // exit(1);
-  printf("Training data in [%1.2f, %1.2f] ns, sampling rate dt=%1.4f ns\n", *tstart, *tstop, *dt);
+  printf("Training data in [%1.4f, %1.4f] us, sampling rate dt=%1.4f us\n", *tstart, *tstop, *dt);
   printf("Training data with constant controls\n");
 }
