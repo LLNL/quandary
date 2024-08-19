@@ -265,8 +265,9 @@ int main(int argc,char **argv)
       std::vector<std::string> data_morenames;
       config.GetVecStrParam("data_name"+std::to_string(ipulse), data_morenames, "none");
       if (data_morenames[0].compare("none") != 0){
-          data_name.push_back(data_morenames[0]);
-          data_name.push_back(data_morenames[1]);
+        for (int i =0; i<data_morenames.size(); i++){
+          data_name.push_back(data_morenames[i]);
+        }
       }
     }
     // Now load data 
