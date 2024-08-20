@@ -234,13 +234,12 @@ int main(int argc,char **argv)
   copyLast(decay_time, nlevels.size());
   copyLast(dephase_time, nlevels.size());
 
-  /* Create Learning Model or dummy */
+  /* Create Learning Model, or a dummy if not using UDEs */
   bool useUDEmodel = config.GetBoolParam("useUDEmodel", false, false);
-
   Learning* learning;
   if (useUDEmodel) {
 
-    /* Load trajectory data from file */
+    /* First get the dimensions right */
     int dim_rho = 1;
     for (int i=0; i<nlevels.size(); i++){
       dim_rho *= nlevels[i];  // Hilbert-space dimension (N)
@@ -249,60 +248,31 @@ int main(int argc,char **argv)
     if (lindbladtype != LindbladType::NONE){
       dim = dim*dim;
     }               
+
+    /* Load trajectory data */
     Data* data;
     std::vector<std::string> data_name;
     config.GetVecStrParam("data_name", data_name, "data");
     std::string identifyer = data_name[0];
     data_name.erase(data_name.begin());
-    double data_tstop = config.GetDoubleParam("data_tstop", 1e+14, false);
-    int npulses = config.GetIntParam("data_npulses", 1, true, true);
-    if (npulses %  mpisize_optim != 0) {
-      printf("ERROR: Can't distribute %d pulses over %d cores\n", npulses, mpisize_optim);
-      exit(1);
-    }
-    // search more data file names ("data_name1", "data_name2", ...) and push them to the data_name vector. 
-    for (int ipulse = 1; ipulse<npulses; ipulse++) {
-      std::vector<std::string> data_morenames;
-      config.GetVecStrParam("data_name"+std::to_string(ipulse), data_morenames, "none");
-      if (data_morenames[0].compare("none") != 0){
-        for (int i =0; i<data_morenames.size(); i++){
-          data_name.push_back(data_morenames[i]);
-        }
-      }
-    }
-    // Now load data 
     if (identifyer.compare("synthetic") == 0) { 
-      data = new SyntheticQuandaryData(comm_optim, data_name, data_tstop, dim, npulses);
-    } else if (identifyer.compare("Tant2level") == 0) {
-      bool corrected = false;
-      if (data_name[0].compare("corrected") == 0) {
-        corrected = true;
-        data_name.erase(data_name.begin());
-      }
-      data = new Tant2levelData(comm_optim, data_name, data_tstop, dim, corrected, npulses);
+      data = new SyntheticQuandaryData(config, comm_optim, data_name, dim);
+    } else if (identifyer.compare("Tant2level") == 0) { 
+      data = new Tant2levelData(config, comm_optim, data_name, dim);
     } else if (identifyer.compare("Tant3level") == 0) {
-      bool corrected = false;
-      if (data_name[0].compare("corrected") == 0) {
-        corrected = true;
-        data_name.erase(data_name.begin());
-      }
-      data = new Tant3levelData(comm_optim, data_name, data_tstop, dim, corrected, npulses);
+      data = new Tant3levelData(config, comm_optim, data_name, dim);
     }
     else {
-      printf("Wrong setting for loading data. Needs prefix 'synthetic', or 'Tant2level'. \n");
+      printf("Wrong setting for loading data. Needs prefix 'synthetic', or 'Tant2level', or 'Tant3level'.\n");
       exit(1);
     }
 
     /* Update the time-integration step-size such that it is an integer divisor of the data sampling size  */
-    double remain = std::remainder(data->getDt(),dt);
-    int loss_every_k;
-    if (abs(remain) < 1e-8) loss_every_k = std::round(data->getDt()/dt); // dt is already integer divisor of data_dt
-    else loss_every_k = ceil(data->getDt()/dt);   // Next larger integer
-    double dt_old = dt;
-    dt = data->getDt()/ loss_every_k;    // Update timestep size
-    if (abs(dt - dt_old) > 1e-8 && !quietmode) printf(" -> Updated dt from %1.14e to %1.14e\n", dt_old, dt);
+    double dt_tmp = dt;
+    dt = data->suggestTimeStepSize(dt_tmp);
+    if (abs(dt - dt_tmp) > 1e-8 && !quietmode) printf(" -> Updated dt from %1.14e to %1.14e\n", dt_tmp, dt);
 
-    /* Create learning  */
+    /* Now create learning object */
     std::vector<std::string> learninit_str;
     config.GetVecStrParam("learnparams_initialization", learninit_str, "random, 0.0");
     learning = new Learning(dim_rho, lindbladtype, learninit_str, data, rand_engine, quietmode);

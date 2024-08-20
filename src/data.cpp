@@ -9,17 +9,33 @@ Data::Data() {
 	dt = 0.0;
 }
 
-Data::Data(MPI_Comm comm_optim_, std::vector<std::string> data_name_, double tstop_, int dim_, int npulses_) {
-  data_name = data_name_;
+Data::Data(MapParam config, MPI_Comm comm_optim_, std::vector<std::string>& data_name, int dim_) {
   dim = dim_;
-  npulses = npulses_;
-  tstop = tstop_;
   comm_optim = comm_optim_;
 
   MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
   MPI_Comm_size(MPI_COMM_WORLD, &mpisize_world);
   MPI_Comm_rank(comm_optim, &mpirank_optim);
   MPI_Comm_size(comm_optim, &mpisize_optim);
+
+  /* Get some data configuration */
+  tstop = config.GetDoubleParam("data_tstop", 1e+14, false);
+  npulses = config.GetIntParam("data_npulses", 1, true, true);
+  if (npulses %  mpisize_optim != 0) {
+    printf("ERROR: Can't distribute %d pulses over %d cores\n", npulses, mpisize_optim);
+    exit(1);
+  }
+  // search more data file names ("data_name1", "data_name2", ...) and push them to the data_name vector. 
+  for (int ipulse = 1; ipulse<npulses; ipulse++) {
+    std::vector<std::string> data_morenames;
+    config.GetVecStrParam("data_name"+std::to_string(ipulse), data_morenames, "none");
+    if (data_morenames[0].compare("none") != 0){
+      for (int i =0; i<data_morenames.size(); i++){
+        data_name.push_back(data_morenames[i]);
+      }
+    }
+  }
+ 
   assert(npulses % mpisize_optim == 0);
   npulses_local = int(npulses / mpisize_optim);
 
@@ -40,6 +56,20 @@ Data::~Data() {
     controlparams[i].clear();
   }
   controlparams.clear();
+}
+
+double Data::suggestTimeStepSize(double dt_old){
+
+  int loss_every_k;
+  if (abs(std::remainder(dt, dt_old)) < 1e-8) // dt_old already is an integer divisor of data_dt
+    loss_every_k = std::round(dt / dt_old); 
+  else // dt_old is not integer divisor of data_dt
+    loss_every_k = ceil(dt / dt_old);   // Next larger integer
+  
+  // Updated timestep size
+  double dt_new = dt / loss_every_k;    
+
+  return dt_new;
 }
 
 Vec Data::getData(double time, int pulse_num){
@@ -132,15 +162,15 @@ void Data::writeFullstate(const char* filename_re, const char* filename_im, int 
 }
 
 
-SyntheticQuandaryData::SyntheticQuandaryData(MPI_Comm comm_optim_, std::vector<std::string> data_name, double data_tstop, int dim, int npulses) : Data(comm_optim_, data_name, data_tstop, dim, npulses) {
+SyntheticQuandaryData::SyntheticQuandaryData(MapParam config, MPI_Comm comm_optim_, std::vector<std::string>& data_name, int dim) : Data(config, comm_optim_, data_name, dim) {
 
   /* Load training data */
-  loadData(&tstart, &tstop, &dt);
+  loadData(data_name, &tstart, &tstop, &dt);
 }
 
 SyntheticQuandaryData::~SyntheticQuandaryData() {}
 
-void SyntheticQuandaryData::loadData(double* tstart, double* tstop, double* dt){
+void SyntheticQuandaryData::loadData(std::vector<std::string>& data_name, double* tstart, double* tstop, double* dt){
 
   assert(npulses = data_name.size()/2);
 
@@ -245,15 +275,19 @@ void SyntheticQuandaryData::loadData(double* tstart, double* tstop, double* dt){
 }
 
 
-Tant2levelData::Tant2levelData(MPI_Comm comm_optim_, std::vector<std::string> data_name, double data_tstop, int dim, bool corrected_, int npulses) : Data(comm_optim_, data_name, data_tstop, dim, npulses){
-
-  corrected = corrected_;
-
+Tant2levelData::Tant2levelData(MapParam config, MPI_Comm comm_optim_, std::vector<std::string>& data_name, int dim) : Data(config, comm_optim_, data_name, dim){
   // Only for 2level data. 
   assert(dim == 4);
 
+  /* Check whether data should be corrected or raw */
+  corrected = false;
+  if (data_name[0].compare("corrected") == 0) {
+    corrected = true;
+    data_name.erase(data_name.begin());
+  }
+
   /* Load training data, this also sets first and last time stamp as well as data sampling step size */
-  loadData(&tstart, &tstop, &dt);
+  loadData(data_name, &tstart, &tstop, &dt);
 
   /* Set pulse amplitude. Hardcoded here. TODO. */
   // Those are taken from 231110_SG_Tant_2level_constAndRandompulse_raw_and_corrected_2000shots/const_pulse/*_const_ampfac*_popt_rs*.dat
@@ -281,7 +315,7 @@ Tant2levelData::Tant2levelData(MPI_Comm comm_optim_, std::vector<std::string> da
 
 Tant2levelData::~Tant2levelData(){}
 
-void Tant2levelData::loadData(double* tstart, double* tstop, double* dt){
+void Tant2levelData::loadData(std::vector<std::string>& data_name, double* tstart, double* tstop, double* dt){
 
   /* Data format: First row is header following rows are formated as follows: 
   *   <nshots> <time [us]> <pulse_num> <rho_lie_ij> for ij=1,2 <rho_lie_phys_ij> for ij=12 
@@ -401,19 +435,24 @@ void Tant2levelData::loadData(double* tstart, double* tstop, double* dt){
   }
 }
 
-Tant3levelData::Tant3levelData(MPI_Comm comm_optim_, std::vector<std::string> data_name, double data_tstop, int dim, bool corrected_, int npulses) : Data(comm_optim_, data_name, data_tstop, dim, npulses) {
-  corrected = corrected_; 
-
+Tant3levelData::Tant3levelData(MapParam config, MPI_Comm comm_optim_, std::vector<std::string>& data_name, int dim) : Data(config, comm_optim_, data_name, dim) {
   // Only for 3level data. 
   assert(dim == 9);
 
+  /* Check whether data should be corrected or raw */
+  corrected = false;
+  if (data_name[0].compare("corrected") == 0) {
+    corrected = true;
+    data_name.erase(data_name.begin());
+  }
+
   /* Load training data */
-  loadData(&tstart, &tstop, &dt);
+  loadData(data_name, &tstart, &tstop, &dt);
 }
 
 Tant3levelData::~Tant3levelData(){}
 
-void Tant3levelData::loadData(double* tstart, double* tstop, double* dt){
+void Tant3levelData::loadData(std::vector<std::string>& data_name, double* tstart, double* tstop, double* dt){
 
   /* Data format: First row is header following rows are probabilities of the identity and 8 rotation operators
   *   <line> | <time [ns]> | <P(R_i=j)> for i=0,...8, j=0,1,2, | mitigated P(R_i=j)
