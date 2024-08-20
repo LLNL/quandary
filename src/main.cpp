@@ -267,6 +267,8 @@ int main(int argc,char **argv)
       exit(1);
     }
 
+    std::cout << mpirank_optim<< " Im here!" << std::endl;
+
     /* Update the time-integration step-size such that it is an integer divisor of the data sampling size  */
     double dt_tmp = dt;
     dt = data->suggestTimeStepSize(dt_tmp);
@@ -533,12 +535,12 @@ int main(int argc,char **argv)
     if (!x_is_control){
       learning->viewOperators();
     }
-  
+   
   /* Write all control pulses to file */
   for (int ipulse_local = 0; ipulse_local < learning->data->getNPulses_local(); ipulse_local++){
     int ipulse_global = mpirank_optim * learning->data->getNPulses_local() + ipulse_local;
     if (!x_is_control) {
-      mastereq->setControlFromData(ipulse_local);
+      mastereq->setControlFromData(ipulse_global);
     }
     output->writeControls(optimctx->timestepper->mastereq, optimctx->timestepper->ntime, optimctx->timestepper->dt, ipulse_global);
   }

@@ -49,10 +49,10 @@ class Data{
     /* Suggest a time-step size that matches to the data sampling (is an integer divisor of the data sampling rate and that is close to dt_old */
     double suggestTimeStepSize(double dt_old);
 
-    /* Get control parameters that were used for data generation */
-    std::vector<double> getControls(int ipulse = 0, int ioscillator=0); 
+    /* Get control parameters that were used for data generation. Note: pulse_num is global. */
+    std::vector<double> getControls(int pulse_num, int ioscillator=0); 
 
-    /* If data point exists at this time, return it. Otherwise, returns NULL */
+    /* If data point exists at this time, return it. Otherwise, returns NULL. Note: pulse_num is the global counter. */
     Vec getData(double time, int pulse_num);
 
     /* Write expected energy of a data trajectory to file */

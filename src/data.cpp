@@ -73,6 +73,7 @@ double Data::suggestTimeStepSize(double dt_old){
 }
 
 Vec Data::getData(double time, int pulse_num){
+  // Get local pulse number for this processor;
   int pulse_num_local =  pulse_num % npulses_local;
   
   if (tstart <= time && time <= tstop) {  // if time is within the data domain
@@ -85,10 +86,13 @@ Vec Data::getData(double time, int pulse_num){
 }
 
 // TODO: Multiple oscillators
-std::vector<double> Data::getControls(int ipulse_local, int ioscillator){
+std::vector<double> Data::getControls(int pulse_num, int ioscillator){
 
-  if (controlparams.size()>ipulse_local) {
-    return controlparams[ipulse_local];
+  // Get local pulse number for this processor;
+  int pulse_num_local =  pulse_num % npulses_local;
+
+  if (controlparams.size()>pulse_num_local) {
+    return controlparams[pulse_num_local];
   }
   else {
     std::vector<double> dummy;
@@ -124,6 +128,9 @@ void Data::writeExpectedEnergy(const char* filename, int pulse_num){
 
 void Data::writeFullstate(const char* filename_re, const char* filename_im, int pulse_num){
 
+  // Only the processor who owns this pulse trajectory should be writing the file, other procs exit here.
+  int proc = int(pulse_num / npulses_local);
+  if (proc != mpirank_optim) return;
 
   /* Open files  */
   FILE *file_re, *file_im;

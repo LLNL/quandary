@@ -68,7 +68,7 @@ class Learning {
     /* Copy learnable parameters from storage into x */
     void getLearnParams(double* x);
 
-    /* Add to loss */
+    /* Add to loss. Note: pulse_num is the global one. */
     void addToLoss(double time, Vec x, int pulse_num);
     void addToLoss_diff(double time, Vec xbar, Vec xprimal, int pulse_num, double Jbar_loss);
 };

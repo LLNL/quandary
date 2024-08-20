@@ -159,8 +159,8 @@ class MasterEq{
     /* Set the oscillators control function parameters from global design vector x */
     void setControlAmplitudes(const Vec x);
 
-    /* If learning: Set control amplitudes from training data */
-    void setControlFromData(int ipulse);
+    /* If learning: Set control amplitudes from training data. Note: pulse_num is global. */
+    void setControlFromData(int pulse_num);
 };
 
 // Mat-free solver inlines for 1 oscillator

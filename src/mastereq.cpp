@@ -1371,11 +1371,11 @@ void MasterEq::setControlAmplitudes(const Vec x) {
 }
 
 
- void MasterEq::setControlFromData(int ipulse_local){
+ void MasterEq::setControlFromData(int pulse_num){
   // Overwrite control initialization, if defined by training data
   if (useUDEmodel && !x_is_control){
     int ioscil = 0; // TODO: iterate over oscillators
-    std::vector<double> datacontrols = learning->data->getControls(ipulse_local, ioscil);
+    std::vector<double> datacontrols = learning->data->getControls(pulse_num, ioscil);
     std::vector<double> controls = datacontrols;
     // format: could be two values (constant p & q), or could be a list of bspline parameters
     if (datacontrols.size() > 0){ // if exists
