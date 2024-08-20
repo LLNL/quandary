@@ -281,10 +281,7 @@ void SyntheticQuandaryData::loadData(std::vector<std::string>& data_name, double
   // exit(1);
 }
 
-
 Tant2levelData::Tant2levelData(MapParam config, MPI_Comm comm_optim_, std::vector<std::string>& data_name, int dim) : Data(config, comm_optim_, data_name, dim){
-
-    std::cout << std::endl << mpirank_optim<< " Im here!" << std::endl;
 
   // Only for 2level data. 
   assert(dim == 4);
@@ -299,7 +296,6 @@ Tant2levelData::Tant2levelData(MapParam config, MPI_Comm comm_optim_, std::vecto
 
   /* Load training data, this also sets first and last time stamp as well as data sampling step size */
   loadData(data_name, &tstart, &tstop, &dt);
-    std::cout << std::endl << mpirank_optim<< " STILL!" << std::endl;
 
   /* Set pulse amplitude. Hardcoded here. TODO. */
   // Those are taken from 231110_SG_Tant_2level_constAndRandompulse_raw_and_corrected_2000shots/const_pulse/*_const_ampfac*_popt_rs*.dat
