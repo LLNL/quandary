@@ -10,7 +10,7 @@ Output::Output(){
   quietmode = false;
 }
 
-Output::Output(MapParam& config, MPI_Comm comm_petsc, MPI_Comm comm_init, int noscillators, bool quietmode_) : Output() {
+Output::Output(MapParam config, MPI_Comm comm_petsc, MPI_Comm comm_init, int noscillators, bool quietmode_) : Output() {
 
   /* Get communicator ranks */
   MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
