@@ -258,6 +258,7 @@ int main(int argc,char **argv)
     if (identifyer.compare("synthetic") == 0) { 
       data = new SyntheticQuandaryData(config, comm_optim, data_name, dim);
     } else if (identifyer.compare("Tant2level") == 0) { 
+      std::cout << std::endl << mpirank_optim<< " NOW LOADING!" << std::endl;
       data = new Tant2levelData(config, comm_optim, data_name, dim);
     } else if (identifyer.compare("Tant3level") == 0) {
       data = new Tant3levelData(config, comm_optim, data_name, dim);
@@ -266,8 +267,6 @@ int main(int argc,char **argv)
       printf("Wrong setting for loading data. Needs prefix 'synthetic', or 'Tant2level', or 'Tant3level'.\n");
       exit(1);
     }
-
-    std::cout << mpirank_optim<< " Im here!" << std::endl;
 
     /* Update the time-integration step-size such that it is an integer divisor of the data sampling size  */
     double dt_tmp = dt;
