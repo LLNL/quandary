@@ -58,14 +58,47 @@ if True:
 
 # the optimized parameter vector is stored in quandary.popt as a 1-dimensioan numpy.ndarray
 Ncoeff = np.size(quandary.popt)
+Nsys = len(quandary.Ne)
+Nsplines = quandary.nsplines
 pcof_opt = quandary.popt[:]
 
-# setup the random number generator
-rng = np.random.default_rng()
+# the following assumes Nsys == 2, with 1 carrier frequency per system
+assert Nsys == 2, "ERROR: the sub-division of the pcof vector assumes Nsys = 2"
+assert len(quandary.carrier_frequency[0]) == 1, "ERROR: the subdivision of the pcof vector assumes one carrier freq in sys 0"
+assert len(quandary.carrier_frequency[1]) == 1, "ERROR: the subdivision of the pcof vector assumes one carrier freq in sys 1"
 
-# perturb the pcof vector by random numbers
-amp = 2.0*np.pi*1e-3 # units for amp are in rad/ns = 2*pi*GHz
-pcof_sim = pcof_opt + 2.0*amp*(rng.random(Ncoeff)-0.5)
+# extract sub-vectors from pcof_opt
+offs = 0
+pcof0_re = pcof_opt[offs:offs+Nsplines]
+offs += Nsplines
+pcof0_im = pcof_opt[offs:offs+Nsplines]
+offs += Nsplines
+pcof1_re = pcof_opt[offs:offs+Nsplines]
+offs += Nsplines
+pcof1_im = pcof_opt[offs:offs+Nsplines]
+offs += Nsplines
+
+# initialize perturbed subvectors to zero
+pert0_re = np.zeros(Nsplines)
+pert0_im = np.zeros(Nsplines)
+pert1_re = np.zeros(Nsplines)
+pert1_im = np.zeros(Nsplines)
+
+# assign perturbed vectors by shifting the sub-vectors from pcof_opt
+pert0_re[0:Nsplines-1] = pcof0_re[1:Nsplines] # shift left
+pert0_im[0:Nsplines-1] = pcof0_im[1:Nsplines]
+pert1_re[1:Nsplines] = pcof1_re[0:Nsplines-1] # shift right
+pert1_im[1:Nsplines] = pcof1_im[0:Nsplines-1]
+
+# form the global parameter vector by appending the sub-vectors
+pert0 = np.append(pert0_re, pert0_im)
+pert1 = np.append(pert1_re, pert1_im)
+pcof_sim = np.append(pert0, pert1)
+
+# perturb the entire pcof vector by random numbers
+#rng = np.random.default_rng() # setup the random number generator
+#amp = 2.0*np.pi*1e-3 # units for amp are in rad/ns = 2*pi*GHz
+#pcof_sim = pcof_opt + 2.0*amp*(rng.random(Ncoeff)-0.5)
 
 # simulate with quandary
 t_2, pt_2, qt_2, infidelity_2, expectedEnergy_2, population_2 = quandary.simulate(pcof0=pcof_sim)
