@@ -45,7 +45,7 @@ control_enforce_BC = True
 quandary = Quandary(freq01=freq01, Jkl=Jkl, rotfreq=rotfreq, T=T, targetgate=unitary, verbose=verbose, rand_seed=rand_seed, spline_order=spline_order, nsplines=nsplines, gamma_variation=gamma_variation, control_enforce_BC=control_enforce_BC) 
 
 # Execute quandary
-t, pt, qt, infidelity, expectedEnergy, population = quandary.optimize(quandary_exec="~/Numerics/quandary_master/quandary")
+t, pt, qt, infidelity, expectedEnergy, population = quandary.optimize()
 
 print(f"Fidelity = {1.0 - infidelity}")
 
