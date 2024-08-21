@@ -4,7 +4,9 @@
 #   > export PATH=/path/to/quandary/:$PATH
 from quandary import * 
 
-## Two qubit test case, demonstrating the use of piecewise constant control functions with total variation penalty term. CNOT gate, two levels each, no guard levels, dipole-dipole coupling 5KHz ##
+## Two qubit test case, demonstrating the use of piecewise constant control functions with total variation penalty term. 
+# Also demonstrating how to perturb the control vector and evaluate the corresponding fidelity.
+# Here, the qubits have two levels each, no guard levels, with a dipole-dipole coupling 5MHz ##
 
 # 01 transition frequencies [GHz] per oscillator
 freq01 = [4.80595, 4.8601] 
