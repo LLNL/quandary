@@ -27,6 +27,8 @@ class Output{
   FILE *populationfile_comp;    /* File for writing the evolution of the population of the composite system */
   std::vector<FILE *>populationfile;  /* Files for writing population over time */
 
+  FILE *errorfile;    /* File for writing the evolution of error between training data vs model */
+
   // VecScatter scat;    /* Petsc's scatter context to communicate a state across petsc's cores */
   // Vec xseq;           /* A sequential vector for IO. */
 
@@ -36,6 +38,7 @@ class Output{
     int optim_monitor_freq; /* Write output files every <num> optimization iterations */
 
   public:
+    bool x_is_control;
     Output();
     Output(MapParam config, MPI_Comm comm_petsc, MPI_Comm comm_init, int noscillators, bool quietmode=false);
     ~Output();
@@ -56,5 +59,7 @@ class Output{
     void openDataFiles(std::string prefix, int initid, int pulseID);
     void writeDataFiles(int timestep, double time, const Vec state, MasterEq* mastereq);
     void closeDataFiles();
+
+    void writeErrorFile(double time, double norm);
 
 };

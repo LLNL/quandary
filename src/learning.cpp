@@ -5,6 +5,7 @@ Learning::Learning(int dim_rho_, LindbladType lindbladtype_, std::vector<std::st
   quietmode = quietmode_;
   data = data_;
   dim_rho = dim_rho_;
+  current_err = 0.0;
 
   MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
   loss_integral = 0.0;
@@ -257,6 +258,7 @@ void Learning::initLearnParams(std::vector<std::string> learninit_str, std::defa
 
 void Learning::addToLoss(double time, Vec x, int pulse_num){
 
+  current_err = 0.0;
   if (dim_rho <= 0) return;
 
   // If data point exists at this time, compute frobenius norm (x-xdata)
@@ -268,6 +270,7 @@ void Learning::addToLoss(double time, Vec x, int pulse_num){
     VecAXPY(aux2, -1.0, xdata);   // aux2 = x - data
     double norm; 
     VecNorm(aux2, NORM_2, &norm);
+    current_err = norm;
     loss_integral += 0.5*norm*norm / (data->getNData()-1);
   }
 }

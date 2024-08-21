@@ -8,6 +8,7 @@ Output::Output(){
   output_frequency = 0;
   optim_iter = 0;
   quietmode = false;
+
 }
 
 Output::Output(MapParam config, MPI_Comm comm_petsc, MPI_Comm comm_init, int noscillators, bool quietmode_) : Output() {
@@ -60,7 +61,7 @@ Output::Output(MapParam config, MPI_Comm comm_petsc, MPI_Comm comm_init, int nos
   for (int i=0; i< outputstr.size(); i++) populationfile.push_back (NULL);
   expectedfile_comp=NULL;
   populationfile_comp=NULL;
-
+  errorfile = NULL;
 }
 
 
@@ -201,6 +202,12 @@ void Output::openDataFiles(std::string prefix, int initid, int pulseID){
       fprintf(populationfile_comp, "# time      population \n");
     }
 
+    if (!x_is_control){
+      snprintf(filename, 254, "%s/TrajectoryError_pulse%d.iinit%04d.dat", datadir.c_str(), pulseID, initid);
+      errorfile = fopen(filename, "w");
+      fprintf(errorfile, "# time      error norm\n");
+    }
+
   }
 
 }
@@ -275,6 +282,10 @@ void Output::writeDataFiles(int timestep, double time, const Vec state, MasterEq
   }
 }
 
+void Output::writeErrorFile(double time, double errnorm){
+  if (errorfile != NULL) fprintf(errorfile, "%.8f %1.14e\n", time, errnorm);
+}
+
 void Output::closeDataFiles(){
 
   /* Close output data files */
@@ -302,4 +313,7 @@ void Output::closeDataFiles(){
   }
   if (populationfile_comp != NULL) fclose(populationfile_comp);
   populationfile_comp = NULL;
+
+  if (errorfile != NULL) fclose(errorfile);
+  errorfile = NULL;
 }

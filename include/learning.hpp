@@ -33,6 +33,7 @@ class Learning {
   Vec aux2;               /* Auxiliary state to eval loss */
 
   public: 
+    double current_err;
     Data* data;       /* Stores the data */
 
   public: 

@@ -115,6 +115,10 @@ Vec TimeStepper::solveODE(int initid, Vec rho_t0, int pulse_num){
 
     /* Add to Learning loss integral */
     mastereq->learning->addToLoss(tstop, x, pulse_num);
+    double current_err = mastereq->learning->current_err;
+    if (current_err > 0.0) {
+      output->writeErrorFile(tstop, current_err);
+    }
 
     /* Add to penalty objective term */
     if (gamma_penalty > 1e-13) penalty_integral += penaltyIntegral(tstop, x);

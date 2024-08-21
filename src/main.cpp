@@ -291,6 +291,7 @@ int main(int argc,char **argv)
   } else {
     x_is_control = true; // optim wrt controls parameters
   }
+  output->x_is_control = x_is_control;
 
   /* Set total time */
   double total_time = ntime * dt;
