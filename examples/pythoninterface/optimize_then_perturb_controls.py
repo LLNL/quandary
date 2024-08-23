@@ -73,7 +73,7 @@ for iosc in range(Nsys):
 	p_seg = p_osc + 2.0*amp*(rng.random(Nelem)-0.5)
 	q_seg = q_osc + 2.0*amp*(rng.random(Nelem)-0.5)
 
-	pt_pert.append(p_seg) # for plot_pulse, is conversion to list needed?
+	pt_pert.append(p_seg)
 	qt_pert.append(q_seg)
 
 # plot the original perturbed pulse
