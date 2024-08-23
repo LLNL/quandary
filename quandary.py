@@ -326,7 +326,7 @@ class Quandary:
                     pcof0 = np.append(pcof0, seg_re) # append segment to the global control vector
                     pcof0 = np.append(pcof0, seg_im)
                 print("simulation(): downsampling of (pt0, qt0) completed")
-            else:
+            elif len(pt0) > 0 or len(qt0) > 0:
                 print("simulation(): the length of pt0 or qt0 != Nsys = ", Nsys)
         elif len(pt0) > 0 and len(qt0) > 0:
             print("Downsampling (pt,qt) is only implemented for spline order 0, not ", self.spline_order)
