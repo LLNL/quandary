@@ -13,7 +13,7 @@ freq01 = [4.80595, 4.8601]
 # Coupling strength [GHz] (Format [0<->1, 0<->2, ..., 1<->2, ... ])
 Jkl = [0.005]  # Dipole-Dipole coupling of qubit 0<->1
 # Frequency of rotations for computational frame [GHz] per oscillator
-favg = sum(freq01)/len(freq01)
+favg = np.sum(freq01)/len(freq01)
 rotfreq = favg*np.ones(len(freq01))
 
 # Set the pulse duration (ns)
@@ -48,7 +48,6 @@ quandary = Quandary(freq01=freq01, Jkl=Jkl, rotfreq=rotfreq, T=T, targetgate=uni
 
 # Optimize with quandary
 t, pt, qt, infidelity, expectedEnergy, population = quandary.optimize()
-
 print(f"Optimized Fidelity = {1.0 - infidelity}")
 
 # Plot the optimized control pulse and expected energy level evolution
@@ -56,33 +55,24 @@ if True:
 	plot_pulse(quandary.Ne, t, pt, qt)
 	plot_expectedEnergy(quandary.Ne, t, expectedEnergy) 
 
-# get sizes from the quandary object
-Nsys = len(quandary.Ne)
-Nelem = quandary.nsteps+1
 
-rng = np.random.default_rng() # setup the random number generator
-amp = 2.0 # units for amp are in MHz
+# Here, we are perturbing the time-series of optimized control functions (pt, qt) by random numbers 
+amp = 2.0 # [MHz] Amplitude of random perturbation
+rng = np.random.default_rng()  # Random number generator
 
-# perturb the time-series of the control functions (pt, qt) by random numbers and store the results in lists
-pt_pert = []
-qt_pert = []
-for iosc in range(Nsys):
-	p_osc = np.array(pt[iosc])
-	q_osc = np.array(qt[iosc])
+pt_pert = np.array(pt)
+qt_pert = np.array(qt)
+nqubits = len(freq01)
+for iqubit in range(nqubits):
+	pt_pert[iqubit] += 2.0*amp*(rng.random(len(pt_pert[iqubit]))-0.5)
+	qt_pert[iqubit] += 2.0*amp*(rng.random(len(qt_pert[iqubit]))-0.5)
 
-	p_seg = p_osc + 2.0*amp*(rng.random(Nelem)-0.5)
-	q_seg = q_osc + 2.0*amp*(rng.random(Nelem)-0.5)
-
-	pt_pert.append(p_seg)
-	qt_pert.append(q_seg)
-
-# plot the original perturbed pulse
+# plot the perturbed pulse
 if True:
 	plot_pulse(quandary.Ne, t, pt_pert, qt_pert)
 
-# downsample the perturbed control vector and simulate with quandary
+# Simulate the pertubed pulse dynamics with Quandary. Internally, the pulses are  down-sampled to the sampling rate used in the original problem setup (T/nsplines)
 t_2, pt_2, qt_2, infidelity_2, expectedEnergy_2, population_2 = quandary.simulate(pt0=pt_pert, qt0=qt_pert)
-
 print(f"Perturbed Fidelity = {1.0 - infidelity_2}")
 
 # Plot the down-sampled perturbed control pulse and expected energy
