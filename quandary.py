@@ -170,6 +170,14 @@ class Quandary:
           - <nsteps>            : the number of time steps based on Hamiltonian eigenvalues and Pmin
           - <carrier_frequency> : carrier wave frequencies bases on system resonances
         """
+        
+        if self.spline_order == 0:
+            minspline = 1
+        elif self.spline_order == 2:
+            minspline = 5 if self.control_enforce_BC else 3
+        else:
+            print("Error: spline order = ", self.spline_order, " is currently not available. Choose 0 or 2.")
+            return -1
 
         # Set some defaults, if not set by the user
         if len(self.freq01) != len(self.Ne):
@@ -183,8 +191,10 @@ class Quandary:
         if len(self.gate_rot_freq) == 0:
             self.gate_rot_freq = np.zeros(len(self.rotfreq))
         if self.nsplines < 0:
-            minspline = 5 if self.control_enforce_BC else 3
+            #minspline = 5 if self.control_enforce_BC else 3
             self.nsplines = int(np.max([np.ceil(self.T/self.dtau + 2), minspline]))
+        else:
+            self.dtau = self.T/self.nsplines if self.spline_order == 0 else self.T/(self.nsplines - 2)
         if isinstance(self.initctrl_MHz, float) or isinstance(self.initctrl_MHz, int):
             max_alloscillators = self.initctrl_MHz
             self.initctrl_MHz = [max_alloscillators for _ in range(len(self.Ne))]
@@ -257,13 +267,15 @@ class Quandary:
         self.uT         = uT_org.copy()
 
 
-    def simulate(self, *, pcof0=[], maxcores=-1, datadir="./run_dir", quandary_exec="", cygwinbash="", batchargs=[]):
+    def simulate(self, *, pcof0=[], pt0=[], qt0=[], maxcores=-1, datadir="./run_dir", quandary_exec="", cygwinbash="", batchargs=[]):
         """ 
         Simulate the quantm dynamics using the current settings. 
 
         Optional arguments:
         ------------------- 
-        pcof0         : List of control parameters to be simulated. Default: Use use initial guess from the Quandary (pcof0, or pcof0_filename, or randomized initial guess)
+        pcof0         : List of control parameters to be simulated. Default: Use use initial guess from the quandary object (pcof0, or pcof0_filename, or randomized initial guess)
+        pt0           : List of ndarrays for the real part of the control function [MHz] for each oscillator, ndarray size = nsteps+1. Assumes spline_order == 0 and ignores the pcof0 argument. Default: []
+        qt0           : Same as pt0, but for the imaginary part.
         maxcores      : Maximum number of processing cores. Default: number of initial conditions
         datadir       : Data directory for storing output files. Default: "./run_dir"
         quandary_exec : Location of Quandary's C++ executable, if not in $PATH
@@ -273,11 +285,52 @@ class Quandary:
         Returns:
         --------
         time            :  List of time-points at which the controls are evaluated  (List)
-        pt, qt          :  p,q-control pulses at each time point for each oscillator (List of list)
+        pt, qt          :  p,q-control pulses [MHz] at each time point for each oscillator (List of list)
         infidelity      :  Infidelity of the pulses for the specified target operation (Float)
         expectedEnergy  :  Evolution of the expected energy of each oscillator and each initial condition. Acces: expectedEnergy[oscillator][initialcondition]
         population      :  Evolution of the population of each oscillator, of each initial condition. (expectedEnergy[oscillator][initialcondition])
         """
+        
+        if self.spline_order == 0: #specifying (pt, qt) only makes sense for piecewise constant B-splines
+            Nsys = len(self.Ne)
+            Nelem = self.nsteps+1
+            Nsplines = self.nsplines
+            if len(pt0) == Nsys and len(qt0) == Nsys:
+                sizes_ok = True
+                for iosc in range(Nsys):
+                    if sizes_ok and len(pt0[iosc]) == Nelem and len(qt0[iosc]) == Nelem:
+                        sizes_ok = True
+                    else:
+                        sizes_ok = False
+                # print("simulate(): sizes_ok = ", sizes_ok)
+                # do the downsampling and construct pcof0
+                pcof0 = np.zeros(0) # to hold the downsampled numpy array for the control vector
+                fact = 2e-3*np.pi # conversion factor from MHz to rad/ns
+                dt = self.T/self.nsteps # time step corresponding to (pt0, qt0)
+                for iosc in range(Nsys):
+                    p_seg = pt0[iosc]
+                    q_seg = qt0[iosc]
+
+                    seg_re = np.zeros(Nsplines) # to hold downsampled amplitudes
+                    seg_im = np.zeros(Nsplines)
+                    # downsample p_seg, q_seg
+                    for i_spl in range(Nsplines):
+                        # the B-spline0 coefficients correspond to the time levels
+                        # t_spl[i] = (ispl+0.5)*dtau, i_spl=0,1,...,self.nsplines-1
+                        t_spl = (i_spl+0.5)*self.dtau
+                        i = max(0, np.rint(t_spl/dt).astype(int))# given t_spl, find the closest time step index
+                        i = min(i, self.nsteps) # make sure i is in range
+                        seg_re[i_spl] = fact * p_seg[i]
+                        seg_im[i_spl] = fact * q_seg[i]
+
+                    pcof0 = np.append(pcof0, seg_re) # append segment to the global control vector
+                    pcof0 = np.append(pcof0, seg_im)
+                print("simulation(): downsampling of (pt0, qt0) completed")
+            else:
+                print("simulation(): the length of pt0 or qt0 != Nsys = ", Nsys)
+        elif len(pt0) > 0 and len(qt0) > 0:
+            print("Downsampling (pt,qt) is only implemented for spline order 0, not ", self.spline_order)
+        
 
         return self.__run(pcof0=pcof0, runtype="simulation", overwrite_popt=False, maxcores=maxcores, datadir=datadir, quandary_exec=quandary_exec, cygwinbash=cygwinbash, batchargs=batchargs)
 

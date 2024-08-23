@@ -56,56 +56,37 @@ if True:
 	plot_pulse(quandary.Ne, t, pt, qt)
 	plot_expectedEnergy(quandary.Ne, t, expectedEnergy) 
 
-# the optimized parameter vector is stored in quandary.popt as a 1-dimensioan numpy.ndarray
-Ncoeff = np.size(quandary.popt)
+# get sizes from the quandary object
 Nsys = len(quandary.Ne)
-Nsplines = quandary.nsplines
-pcof_opt = quandary.popt[:]
+Nelem = quandary.nsteps+1
 
-# the following assumes Nsys == 2, with 1 carrier frequency per system
-assert Nsys == 2, "ERROR: the sub-division of the pcof vector assumes Nsys = 2"
-assert len(quandary.carrier_frequency[0]) == 1, "ERROR: the subdivision of the pcof vector assumes one carrier freq in sys 0"
-assert len(quandary.carrier_frequency[1]) == 1, "ERROR: the subdivision of the pcof vector assumes one carrier freq in sys 1"
+rng = np.random.default_rng() # setup the random number generator
+amp = 2.0 # units for amp are in MHz
 
-# extract sub-vectors from pcof_opt
-offs = 0
-pcof0_re = pcof_opt[offs:offs+Nsplines]
-offs += Nsplines
-pcof0_im = pcof_opt[offs:offs+Nsplines]
-offs += Nsplines
-pcof1_re = pcof_opt[offs:offs+Nsplines]
-offs += Nsplines
-pcof1_im = pcof_opt[offs:offs+Nsplines]
-offs += Nsplines
+# perturb the time-series of the control functions (pt, qt) by random numbers and store the results in lists
+pt_pert = []
+qt_pert = []
+for iosc in range(Nsys):
+	p_osc = np.array(pt[iosc])
+	q_osc = np.array(qt[iosc])
 
-# initialize perturbed subvectors to zero
-pert0_re = np.zeros(Nsplines)
-pert0_im = np.zeros(Nsplines)
-pert1_re = np.zeros(Nsplines)
-pert1_im = np.zeros(Nsplines)
+	p_seg = p_osc + 2.0*amp*(rng.random(Nelem)-0.5)
+	q_seg = q_osc + 2.0*amp*(rng.random(Nelem)-0.5)
 
-# assign perturbed vectors by shifting the sub-vectors from pcof_opt
-pert0_re[0:Nsplines-1] = pcof0_re[1:Nsplines] # shift left
-pert0_im[0:Nsplines-1] = pcof0_im[1:Nsplines]
-pert1_re[1:Nsplines] = pcof1_re[0:Nsplines-1] # shift right
-pert1_im[1:Nsplines] = pcof1_im[0:Nsplines-1]
+	pt_pert.append(p_seg) # for plot_pulse, is conversion to list needed?
+	qt_pert.append(q_seg)
 
-# form the global parameter vector by appending the sub-vectors
-pert0 = np.append(pert0_re, pert0_im)
-pert1 = np.append(pert1_re, pert1_im)
-pcof_sim = np.append(pert0, pert1)
+# plot the original perturbed pulse
+if True:
+	plot_pulse(quandary.Ne, t, pt_pert, qt_pert)
 
-# perturb the entire pcof vector by random numbers
-#rng = np.random.default_rng() # setup the random number generator
-#amp = 2.0*np.pi*1e-3 # units for amp are in rad/ns = 2*pi*GHz
-#pcof_sim = pcof_opt + 2.0*amp*(rng.random(Ncoeff)-0.5)
-
-# simulate with quandary
-t_2, pt_2, qt_2, infidelity_2, expectedEnergy_2, population_2 = quandary.simulate(pcof0=pcof_sim)
+# downsample the perturbed control vector and simulate with quandary
+t_2, pt_2, qt_2, infidelity_2, expectedEnergy_2, population_2 = quandary.simulate(pt0=pt_pert, qt0=qt_pert)
 
 print(f"Perturbed Fidelity = {1.0 - infidelity_2}")
 
-# Plot the perturbed control pulse and expected energy level evolution
+# Plot the down-sampled perturbed control pulse and expected energy
 if True:
 	plot_pulse(quandary.Ne, t_2, pt_2, qt_2)
-	plot_expectedEnergy(quandary.Ne, t_2, expectedEnergy_2) 
+	plot_expectedEnergy(quandary.Ne, t_2, expectedEnergy_2)
+
