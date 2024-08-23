@@ -293,39 +293,43 @@ class Quandary:
         
         if self.spline_order == 0: #specifying (pt, qt) only makes sense for piecewise constant B-splines
             Nsys = len(self.Ne)
-            Nelem = self.nsteps+1
             Nsplines = self.nsplines
             if len(pt0) == Nsys and len(qt0) == Nsys:
                 sizes_ok = True
                 for iosc in range(Nsys):
-                    if sizes_ok and len(pt0[iosc]) == Nelem and len(qt0[iosc]) == Nelem:
+                    if sizes_ok and len(pt0[iosc]) >= 2 and len(pt0[iosc]) == len(qt0[iosc]):
                         sizes_ok = True
                     else:
                         sizes_ok = False
                 # print("simulate(): sizes_ok = ", sizes_ok)
-                # do the downsampling and construct pcof0
-                pcof0 = np.zeros(0) # to hold the downsampled numpy array for the control vector
-                fact = 2e-3*np.pi # conversion factor from MHz to rad/ns
-                dt = self.T/self.nsteps # time step corresponding to (pt0, qt0)
-                for iosc in range(Nsys):
-                    p_seg = pt0[iosc]
-                    q_seg = qt0[iosc]
+                if sizes_ok:
+                    # do the downsampling and construct pcof0
+                    pcof0 = np.zeros(0) # to hold the downsampled numpy array for the control vector
+                    fact = 2e-3*np.pi # conversion factor from MHz to rad/ns
+                    
+                    for iosc in range(Nsys):
+                        Nelem = np.size(pt0[iosc])
+                        dt = self.T/(Nelem-1) # time step corresponding to (pt0, qt0)
+                        p_seg = pt0[iosc]
+                        q_seg = qt0[iosc]
 
-                    seg_re = np.zeros(Nsplines) # to hold downsampled amplitudes
-                    seg_im = np.zeros(Nsplines)
-                    # downsample p_seg, q_seg
-                    for i_spl in range(Nsplines):
-                        # the B-spline0 coefficients correspond to the time levels
-                        # t_spl[i] = (ispl+0.5)*dtau, i_spl=0,1,...,self.nsplines-1
-                        t_spl = (i_spl+0.5)*self.dtau
-                        i = max(0, np.rint(t_spl/dt).astype(int))# given t_spl, find the closest time step index
-                        i = min(i, self.nsteps) # make sure i is in range
-                        seg_re[i_spl] = fact * p_seg[i]
-                        seg_im[i_spl] = fact * q_seg[i]
+                        seg_re = np.zeros(Nsplines) # to hold downsampled amplitudes
+                        seg_im = np.zeros(Nsplines)
+                        # downsample p_seg, q_seg
+                        for i_spl in range(Nsplines):
+                            # the B-spline0 coefficients correspond to the time levels
+                            # t_spl[i] = (ispl+0.5)*dtau, i_spl=0,1,...,self.nsplines-1
+                            t_spl = (i_spl+0.5)*self.dtau
+                            i = max(0, np.rint(t_spl/dt).astype(int))# given t_spl, find the closest time step index
+                            i = min(i, self.nsteps) # make sure i is in range
+                            seg_re[i_spl] = fact * p_seg[i]
+                            seg_im[i_spl] = fact * q_seg[i]
 
-                    pcof0 = np.append(pcof0, seg_re) # append segment to the global control vector
-                    pcof0 = np.append(pcof0, seg_im)
-                print("simulation(): downsampling of (pt0, qt0) completed")
+                        pcof0 = np.append(pcof0, seg_re) # append segment to the global control vector
+                        pcof0 = np.append(pcof0, seg_im)
+                    print("simulation(): downsampling of (pt0, qt0) completed")
+                else:
+                    print("simulation(): detected a mismatch in the sizes of (pt0, qt0)")
             elif len(pt0) > 0 or len(qt0) > 0:
                 print("simulation(): the length of pt0 or qt0 != Nsys = ", Nsys)
         elif len(pt0) > 0 and len(qt0) > 0:
