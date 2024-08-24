@@ -35,7 +35,7 @@ rand_seed=1234
 
 # For piecewise constant control functions, choose spline order of 0 (Default spline order would be 2, being 2nd order Bsplines). Note, the number spline basis functions for piecewise constant controls has to be much larger than if you use 2nd order Bsplines. Also note that if the spline order is zero, it is recommended not to use any carrier frequencies, which is already the default.
 spline_order = 0
-nsplines = 140
+spline_knot_spacing = 1.0  # [ns] Width of the constant control pieces
 
 # In order get less noisy control functions, activate the penalty term for variation of the control parameters
 gamma_variation = 1.0
@@ -44,7 +44,7 @@ gamma_variation = 1.0
 control_enforce_BC = True
 
 # Set up the Quandary configuration for this test case. Make sure to pass all of the above to the corresponding fields, compare help(Quandary)!
-quandary = Quandary(freq01=freq01, Jkl=Jkl, rotfreq=rotfreq, T=T, targetgate=unitary, verbose=verbose, rand_seed=rand_seed, spline_order=spline_order, nsplines=nsplines, gamma_variation=gamma_variation, control_enforce_BC=control_enforce_BC) 
+quandary = Quandary(freq01=freq01, Jkl=Jkl, rotfreq=rotfreq, T=T, targetgate=unitary, verbose=verbose, rand_seed=rand_seed, spline_order=spline_order, spline_knot_spacing=spline_knot_spacing, gamma_variation=gamma_variation, control_enforce_BC=control_enforce_BC) 
 
 # Optimize with quandary
 t, pt, qt, infidelity, expectedEnergy, population = quandary.optimize()

@@ -50,8 +50,8 @@ class Quandary:
     initctrl_MHz        # Amplitude [MHz] of initial control parameters. Float or List[float]. Default: 10 MHz.
     maxctrl_MHz         # Amplitude bounds for the control pulses [MHz]. Float or List[float]. Default: none
     control_enforce_BC  # Bool to let control pulses start and end at zero. Default: False
-    dtau                # Spacing of Bspline basis functions [ns]. The smaller dtau, the larger nsplines. Default: 3ns
-    nsplines            # Number of Bspline basis functions. Default: T/dtau + 2
+    spline_knot_spacing # Spacing of Bspline basis functions [ns]. The smaller this is, the larger the number of splines. Default: 3ns
+    nsplines            # Number of Bspline basis functions. Default: T/spline_knot_spacing + 2
     spline_order        # Order of the B-spline basis (0 or 2). Default: 2
     carrier_frequency   # Carrier frequencies for each oscillator. List[List[float]]. Default will be computed based on Hsys.
     cw_amp_thres        # Threshold to ignore carrier wave frequencies whose growth rate is below this value. Default: 1e-7
@@ -126,7 +126,7 @@ class Quandary:
     initctrl_MHz        : List[float] = field(default_factory=list)   
     maxctrl_MHz         : List[float] = field(default_factory=list)   
     control_enforce_BC  : bool        = False                         
-    dtau                : float       = 3.0
+    spline_knot_spacing : float       = 3.0
     nsplines            : int         = -1 
     spline_order        : int         = 2                           
     carrier_frequency   : List[List[float]] = field(default_factory=list) 
@@ -192,9 +192,9 @@ class Quandary:
             self.gate_rot_freq = np.zeros(len(self.rotfreq))
         if self.nsplines < 0:
             #minspline = 5 if self.control_enforce_BC else 3
-            self.nsplines = int(np.max([np.ceil(self.T/self.dtau + 2), minspline]))
+            self.nsplines = int(np.max([np.ceil(self.T/self.spline_knot_spacing), minspline])) if self.spline_order==0 else int(np.max([np.ceil(self.T/self.spline_knot_spacing+ 2), minspline]))
         else:
-            self.dtau = self.T/self.nsplines if self.spline_order == 0 else self.T/(self.nsplines - 2)
+            self.spline_knot_spacing= self.T/self.nsplines if self.spline_order == 0 else self.T/(self.nsplines - 2)
         if isinstance(self.initctrl_MHz, float) or isinstance(self.initctrl_MHz, int):
             max_alloscillators = self.initctrl_MHz
             self.initctrl_MHz = [max_alloscillators for _ in range(len(self.Ne))]
@@ -318,8 +318,7 @@ class Quandary:
                         # downsample p_seg, q_seg
                         for i_spl in range(Nsplines):
                             # the B-spline0 coefficients correspond to the time levels
-                            # t_spl[i] = (ispl+0.5)*dtau, i_spl=0,1,...,self.nsplines-1
-                            t_spl = (i_spl+0.5)*self.dtau
+                            t_spl = (i_spl+0.5)*self.spline_knot_spacing
                             i = max(0, np.rint(t_spl/dt).astype(int))# given t_spl, find the closest time step index
                             i = min(i, self.nsteps) # make sure i is in range
                             seg_re[i_spl] = fact * p_seg[i]
