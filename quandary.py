@@ -439,6 +439,8 @@ class Quandary:
             self.optim_hist = optim_hist
             self.time = time[:]
             self.uT   = uT.copy()
+            if len(pcof0) == 0:
+                self.pcof0 = popt[:]
         else:
             time = []
             pt = []
@@ -447,6 +449,9 @@ class Quandary:
             expectedEnergy = []
             population = []
         
+        if len(pcof0)>0:
+            self.pcof0 = pcof0[:]
+
         return time, pt, qt, infidelity, expectedEnergy, population
 
 
