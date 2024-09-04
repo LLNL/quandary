@@ -27,6 +27,8 @@ Learning::Learning(int dim_rho_, LindbladType lindbladtype_, std::vector<std::st
     } else {
       lindblad_basis    = new LindbladBasis(0, false);  // will be empty if not Lindblad solver
     }
+    // TEST
+    lindblad_basis->showBasisMats();
 
     /* Set the total number of learnable paramters */
     nparams = hamiltonian_basis->getNBasis() + lindblad_basis->getNBasis();

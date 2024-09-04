@@ -41,6 +41,8 @@ class GellmannBasis {
     Mat getBasisMat_Im(int id) {return BasisMat_Im[id];};
     Mat getIdentity(){return Id;};
 
+    void showBasisMats();
+
     virtual void assembleSystemMats()=0;
 
     virtual void applySystem(Vec u, Vec v, Vec uout, Vec vout, std::vector<double>& learnparams_Re, std::vector<double>& learnparams_Im) = 0;

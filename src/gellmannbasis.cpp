@@ -91,8 +91,22 @@ GellmannBasis::GellmannBasis(int dim_rho_, bool upper_only_, bool shifted_diag_,
   VecSetFromOptions(aux);
 }
 
+
+void GellmannBasis::showBasisMats(){
+
+  printf("\n Here are all Gellmann Basis mats (shifted %d, upper_only %d):\n", shifted_diag, upper_only);
+  printf("REAL Mats:\n");
+  for (int i=0; i<BasisMat_Re.size(); i++){
+    MatView(BasisMat_Re[i], NULL);
+  }
+  printf("REAL Mats:\n");
+  for (int i=0; i<BasisMat_Im.size(); i++){
+    MatView(BasisMat_Im[i], NULL);
+  }
+}
+
 GellmannBasis::~GellmannBasis(){
- for (int i=0; i<BasisMat_Re.size(); i++){
+  for (int i=0; i<BasisMat_Re.size(); i++){
     MatDestroy(&BasisMat_Re[i]);
   }
   for (int i=0; i<BasisMat_Im.size(); i++){
