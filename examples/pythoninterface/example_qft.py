@@ -48,7 +48,7 @@ print("Coupling: ", Jkl)
 
 # Set the pulse duration (ns)
 T = T_all[nqubits-1]
-dtau = 10.0  	# Bspline spacing [ns]
+spline_knot_spacing = 10.0 # Optional: Set Bspline spacing [ns]
 print("T=", T)
 
 # Set up rotational frame frequency
@@ -69,7 +69,7 @@ unitary = get_QFT_gate(np.prod(Ne))
 # print("Target gate: ", unitary)
 
 # Set up the Quandary configuration for this test case
-quandary = Quandary(Ne=Ne, Ng=Ng, freq01=freq01, Jkl=Jkl, rotfreq=rotfreq, T=T, targetgate=unitary, verbose=verbose, rand_seed=rand_seed, maxiter=maxiter, cw_amp_thres=cw_amp_thres, cw_prox_thres=cw_prox_thres, gamma_energy=gamma_energy) 
+quandary = Quandary(Ne=Ne, Ng=Ng, freq01=freq01, Jkl=Jkl, rotfreq=rotfreq, T=T, spline_knot_spacing=spline_knot_spacing, targetgate=unitary, verbose=verbose, rand_seed=rand_seed, maxiter=maxiter, cw_amp_thres=cw_amp_thres, cw_prox_thres=cw_prox_thres, gamma_energy=gamma_energy) 
 
 
 # Potentially, load initial control parameters from a file. 
