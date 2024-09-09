@@ -10,9 +10,11 @@ WITH_SLEPC = false
 SANITY_CHECK = false
 
 # Choose to use Ensmallen optimizer
+
 # g++ example.cpp -o example -O2 -larmadillo -std=c++11 -I/Users/guenther5/Software/ensmallen-install/include 
 WITH_ENSMALLEN=true
-ENSM_DIR=/Users/guenther5/Software/ensmallen-install
+ARMA_DIR=/Users/guenther5/local/Cellar/armadillo/14.0.2_1/
+ENSM_DIR=/Users/guenther5/Software/ensmallen-install/include
 
 
 #######################################################
@@ -29,8 +31,9 @@ endif
 # Add optional Ensmallen
 ifeq ($(WITH_ENSMALLEN), true)
 CXX_OPT += -DWITH_ENSMALLEN
-LDFLAGS_OPT += -L${ENSM_DIR}/lib -larmadillo
-INC_OPT += -I${ENSM_DIR}/include
+#LDFLAGS_OPT += -L${ENSM_DIR}/lib -larmadillo
+LDFLAGS_OPT += -L${ARMA_DIR}/lib -larmadillo -L${ENSM_DIR}
+INC_OPT += -I${ARMA_DIR}/include -I${ENSM_DIR}
 endif
 
 
