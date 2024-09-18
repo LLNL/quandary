@@ -235,19 +235,19 @@ int main(int argc,char **argv)
   copyLast(dephase_time, nlevels.size());
 
   /* Create Learning Model, or a dummy if not using UDEs */
-  bool useUDEmodel = config.GetBoolParam("useUDEmodel", false, false);
+  std::string UDEmodel_str = config.GetStrParam("UDEmodel", "none", true, false);
+  UDEmodelType UDEmodel; 
+  if      (UDEmodel_str.compare("none")        == 0 ) UDEmodel = UDEmodelType::NONE;
+  else if (UDEmodel_str.compare("hamiltonian") == 0 ) UDEmodel = UDEmodelType::HAMILTONIAN;
+  else if (UDEmodel_str.compare("lindblad")    == 0 ) UDEmodel = UDEmodelType::LINDBLAD;
+  else if (UDEmodel_str.compare("both")        == 0 ) UDEmodel = UDEmodelType::BOTH;
+  else {
+    printf("\n\n ERROR: Unnown UDE model type: %s.\n", UDEmodel_str.c_str());
+    printf(" Choose either 'none', 'hamiltonian', 'lindblad', or 'both'\n");
+    exit(1);
+  }
   Learning* learning;
-  if (useUDEmodel) {
-
-    /* First get the dimensions right */
-    int dim_rho = 1;
-    for (int i=0; i<nlevels.size(); i++){
-      dim_rho *= nlevels[i];  // Hilbert-space dimension (N)
-    }
-    int dim = dim_rho;   // State dimension (N or N^2)
-    if (lindbladtype != LindbladType::NONE){
-      dim = dim*dim;
-    }               
+  if (UDEmodel != UDEmodelType::NONE) {
 
     /* Load trajectory data */
     Data* data;
@@ -275,18 +275,19 @@ int main(int argc,char **argv)
     /* Now create learning object */
     std::vector<std::string> learninit_str;
     config.GetVecStrParam("learnparams_initialization", learninit_str, "random, 0.0");
-    learning = new Learning(dim_rho, lindbladtype, learninit_str, data, rand_engine, quietmode);
+    learning = new Learning(nlevels, lindbladtype, UDEmodel, learninit_str, data, rand_engine, quietmode);
 
   } else {
     /* Create dummy learning. Does nothing. */
     Data* data = new Data();
-    std::vector<std::string> learninit_str;
-    learning = new Learning(0, LindbladType::NONE, learninit_str, data, rand_engine, quietmode); 
+    std::vector<std::string> dummy_learninit_str;
+    std::vector<int> dummy_nlevels(0);
+    learning = new Learning(dummy_nlevels, LindbladType::NONE, UDEmodelType::NONE, dummy_learninit_str, data, rand_engine, quietmode); 
   }
 
   /* Switch solver mode between learning UDE model parameters vs optimizing controls */
   bool x_is_control;
-  if (runtypestr.find("UDE") != std::string::npos && useUDEmodel) {
+  if (runtypestr.find("UDE") != std::string::npos && UDEmodel != UDEmodelType::NONE) {
     x_is_control = false ; // optim wrt UDE model parameters
   } else {
     x_is_control = true; // optim wrt controls parameters
@@ -386,7 +387,7 @@ int main(int argc,char **argv)
   // for (int i = Jkl.size(); i < (noscillators-1) * noscillators / 2; i++) Jkl.push_back(0.0);
   // Sanity check for matrix free solver
   bool usematfree = config.GetBoolParam("usematfree", false);
-  if (usematfree && useUDEmodel) {
+  if (usematfree && UDEmodel != UDEmodelType::NONE) {
     printf("\n\n WARNING: using matfree solver together with UDE model needs testing!! Not recommended at this point.\n\n");
   }
   if (usematfree && nlevels.size() > 5){
@@ -413,7 +414,7 @@ int main(int argc,char **argv)
     usematfree = false;
   }
   // Initialize Master equation
-  MasterEq* mastereq = new MasterEq(nlevels, nessential, oscil_vec, crosskerr, Jkl, eta, lindbladtype, usematfree, useUDEmodel, x_is_control, learning, hamiltonian_file, quietmode);
+  MasterEq* mastereq = new MasterEq(nlevels, nessential, oscil_vec, crosskerr, Jkl, eta, lindbladtype, usematfree, UDEmodel, x_is_control, learning, hamiltonian_file, quietmode);
 
   // Some screen output 
   if (mpirank_world == 0 && !quietmode) {

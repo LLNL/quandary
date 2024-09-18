@@ -20,6 +20,7 @@ class Learning {
   int dim;              // Dimension of full vectorized system: N^2 for Lindblad, N for Schroedinger, or -1 if not learning.
   int dim_rho;               // Dimension of Hilbertspace = N
   LindbladType lindbladtype; // Switch for Lindblad vs Schroedinger solver
+  UDEmodelType UDEmodel; // Switch type of learning model: hamiltonian, lindblad, or both
 
   HamiltonianBasis* hamiltonian_basis;  // Basis matrices for Hamiltonian term
   LindbladBasis* lindblad_basis;     // Basis matrices for Lindblad term 
@@ -37,7 +38,7 @@ class Learning {
     Data* data;       /* Stores the data */
 
   public: 
-    Learning(int dim_rho_, LindbladType lindbladtype_, std::vector<std::string>& learninit_str, Data* data, std::default_random_engine rand_engine, bool quietmode);
+    Learning(std::vector<int> nlevels, LindbladType lindbladtype_, UDEmodelType UDEmodel_, std::vector<std::string>& learninit_str, Data* data, std::default_random_engine rand_engine, bool quietmode);
     ~Learning();
 
     void resetLoss(){ loss_integral = 0.0; };

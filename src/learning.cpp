@@ -1,16 +1,24 @@
 #include "learning.hpp"
 
-Learning::Learning(int dim_rho_, LindbladType lindbladtype_, std::vector<std::string>& learninit_str, Data* data_, std::default_random_engine rand_engine, bool quietmode_){
+Learning::Learning(std::vector<int> nlevels, LindbladType lindbladtype_, UDEmodelType UDEmodel_, std::vector<std::string>& learninit_str, Data* data_, std::default_random_engine rand_engine, bool quietmode_){
   lindbladtype = lindbladtype_;
   quietmode = quietmode_;
   data = data_;
-  dim_rho = dim_rho_;
+  UDEmodel = UDEmodel_;
+  MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
+
+   // Reset
+  loss_integral = 0.0;
   current_err = 0.0;
 
-  MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
-  loss_integral = 0.0;
-
-  // Get dimension of the state variable (dim = N or N^2 for Schroedinger or Lindblad solver)
+  /* Get Hilbertspace dimension (dim_rho, N) and state variable (either N or N^2)*/
+  dim_rho = 0;
+  if (nlevels.size() > 0){
+    dim_rho = 1;
+    for (int i = 0; i<nlevels.size(); i++){
+      dim_rho *= nlevels[i];
+    }
+  }
   dim = dim_rho;
   if (lindbladtype != LindbladType::NONE){
     dim = dim_rho*dim_rho; 
@@ -19,16 +27,20 @@ Learning::Learning(int dim_rho_, LindbladType lindbladtype_, std::vector<std::st
   /* Proceed only if this is not a dummy class (aka only if using the UDE model)*/
   if (dim_rho > 0) {
 
-    /* Create Basis for the learnable terms. Here: generalized Gellman matrices */
+    /* Create Basis for the learnable terms. */
     bool shifted_diag = false;
-    hamiltonian_basis = new HamiltonianBasis(dim_rho, shifted_diag, lindbladtype);
-    if (lindbladtype != LindbladType::NONE) {
-      lindblad_basis    = new LindbladBasis(dim_rho, shifted_diag); 
+    if (UDEmodel == UDEmodelType::HAMILTONIAN || UDEmodel == UDEmodelType::BOTH) {
+      hamiltonian_basis = new HamiltonianBasis(dim_rho, shifted_diag, lindbladtype);
     } else {
-      lindblad_basis    = new LindbladBasis(0, false);  // will be empty if not Lindblad solver
+      hamiltonian_basis = new HamiltonianBasis(0, false, lindbladtype); // will be empty. Dummy
+    }
+    if (lindbladtype != LindbladType::NONE && (UDEmodel == UDEmodelType::LINDBLAD || UDEmodel == UDEmodelType::BOTH)) {
+        lindblad_basis    = new LindbladBasis(dim_rho, shifted_diag); 
+    } else {
+        lindblad_basis    = new LindbladBasis(0, false);  // will be empty. Dummy
     }
     // TEST
-    lindblad_basis->showBasisMats();
+    // lindblad_basis->showBasisMats();
 
     /* Set the total number of learnable paramters */
     nparams = hamiltonian_basis->getNBasis() + lindblad_basis->getNBasis();

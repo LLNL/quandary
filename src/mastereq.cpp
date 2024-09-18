@@ -9,12 +9,12 @@ MasterEq::MasterEq(){
   dRedp = NULL;
   dImdp = NULL;
   usematfree = false;
-  useUDEmodel = false;
+  UDEmodel = UDEmodelType::NONE;
   quietmode = false;
 }
 
 
-MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Oscillator** oscil_vec_, const std::vector<double> crosskerr_, const std::vector<double> Jkl_, const std::vector<double> eta_, LindbladType lindbladtype_, bool usematfree_, bool useUDEmodel_, bool x_is_control_, Learning* learning_, std::string hamiltonian_file_, bool quietmode_) {
+MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Oscillator** oscil_vec_, const std::vector<double> crosskerr_, const std::vector<double> Jkl_, const std::vector<double> eta_, LindbladType lindbladtype_, bool usematfree_, UDEmodelType UDEmodel_, bool x_is_control_, Learning* learning_, std::string hamiltonian_file_, bool quietmode_) {
   int ierr;
 
   nlevels = nlevels_;
@@ -25,7 +25,7 @@ MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Osci
   Jkl = Jkl_;
   eta = eta_;
   usematfree = usematfree_;
-  useUDEmodel = useUDEmodel_;
+  UDEmodel = UDEmodel_;
   x_is_control = x_is_control_;
   learning = learning_;
   lindbladtype = lindbladtype_;
@@ -171,7 +171,7 @@ MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Osci
     RHSctx.aux = &aux;
   }
   RHSctx.learning = learning;
-  RHSctx.useUDEmodel= useUDEmodel;
+  RHSctx.UDEmodel= UDEmodel_;
   RHSctx.nlevels = nlevels;
   RHSctx.oscil_vec = oscil_vec;
   RHSctx.time = 0.0;
@@ -958,7 +958,7 @@ Mat MasterEq::getRHS() { return RHS; }
 /* grad += alpha * RHS(x)^T * xbar  */
 void MasterEq::computedRHSdp(const double t, const Vec x, const Vec xbar, const double alpha, Vec grad) {
 
-  if (usematfree && !useUDEmodel) {  // Matrix-free solver
+  if (usematfree && UDEmodel==UDEmodelType::NONE) {  // Matrix-free solver
     double res_p_re,  res_p_im, res_q_re, res_q_im;
 
     const double* xptr, *xbarptr;
@@ -1373,7 +1373,7 @@ void MasterEq::setControlAmplitudes(const Vec x) {
 
  void MasterEq::setControlFromData(int pulse_num){
   // Overwrite control initialization, if defined by training data
-  if (useUDEmodel && !x_is_control){
+  if (UDEmodel!=UDEmodelType::NONE && !x_is_control){
     int ioscil = 0; // TODO: iterate over oscillators
     std::vector<double> datacontrols = learning->data->getControls(pulse_num, ioscil);
     std::vector<double> controls = datacontrols;
@@ -1709,7 +1709,7 @@ int myMatMult_matfree(Mat RHS, Vec x, Vec y){
   VecRestoreArray(y, &yptr);
 
   /* Apply learning */
-  if (shellctx->useUDEmodel) {
+  if (shellctx->UDEmodel != UDEmodelType::NONE) {
     Vec u, v, uout, vout;
     VecGetSubVector(x, *shellctx->isu, &u);
     VecGetSubVector(x, *shellctx->isv, &v);
@@ -1811,7 +1811,7 @@ int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
   }
 
   /* Apply learning */
-  if (shellctx->useUDEmodel) {
+  if (shellctx->UDEmodel != UDEmodelType::NONE) {
     Vec u, v, uout, vout;
     VecGetSubVector(x, *shellctx->isu, &u);
     VecGetSubVector(x, *shellctx->isv, &v);
@@ -1956,7 +1956,7 @@ int myMatMult_matfree(Mat RHS, Vec x, Vec y){
   VecRestoreArray(y, &yptr);
 
   /* Apply learning */
-  if (shellctx->useUDEmodel) {
+  if (shellctx->UDEmodel != UDEmodelType::NONE) {
     Vec u, v, uout, vout;
     VecGetSubVector(x, *shellctx->isu, &u);
     VecGetSubVector(x, *shellctx->isv, &v);
@@ -2094,7 +2094,7 @@ int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
   VecRestoreArray(y, &yptr);
 
   /* Apply learning */
-  if (shellctx->useUDEmodel) {
+  if (shellctx->UDEmodel != UDEmodelType::NONE) {
     Vec u, v, uout, vout;
     VecGetSubVector(x, *shellctx->isu, &u);
     VecGetSubVector(x, *shellctx->isv, &v);
@@ -2261,7 +2261,7 @@ int myMatMult_matfree(Mat RHS, Vec x, Vec y){
   VecRestoreArray(y, &yptr);
   
   /* Apply learning */
-  if (shellctx->useUDEmodel) {
+  if (shellctx->UDEmodel != UDEmodelType::NONE) {
     Vec u, v, uout, vout;
     VecGetSubVector(x, *shellctx->isu, &u);
     VecGetSubVector(x, *shellctx->isv, &v);
@@ -2430,7 +2430,7 @@ int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
   VecRestoreArray(y, &yptr);
 
   /* Apply learning */
-  if (shellctx->useUDEmodel) {
+  if (shellctx->UDEmodel != UDEmodelType::NONE) {
     Vec u, v, uout, vout;
     VecGetSubVector(x, *shellctx->isu, &u);
     VecGetSubVector(x, *shellctx->isv, &v);
@@ -2638,7 +2638,7 @@ int myMatMult_matfree(Mat RHS, Vec x, Vec y){
   VecRestoreArray(y, &yptr);
 
   /* Apply learning */
-  if (shellctx->useUDEmodel) {
+  if (shellctx->UDEmodel != UDEmodelType::NONE) {
     Vec u, v, uout, vout;
     VecGetSubVector(x, *shellctx->isu, &u);
     VecGetSubVector(x, *shellctx->isv, &v);
@@ -2848,7 +2848,7 @@ int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
   VecRestoreArray(y, &yptr);
 
   /* Apply learning */
-  if (shellctx->useUDEmodel) {
+  if (shellctx->UDEmodel != UDEmodelType::NONE) {
     Vec u, v, uout, vout;
     VecGetSubVector(x, *shellctx->isu, &u);
     VecGetSubVector(x, *shellctx->isv, &v);
@@ -3104,7 +3104,7 @@ int myMatMult_matfree(Mat RHS, Vec x, Vec y){
   VecRestoreArray(y, &yptr);
 
   /* Apply learning */
-  if (shellctx->useUDEmodel) {
+  if (shellctx->UDEmodel != UDEmodelType::NONE) {
     Vec u, v, uout, vout;
     VecGetSubVector(x, *shellctx->isu, &u);
     VecGetSubVector(x, *shellctx->isv, &v);
@@ -3361,7 +3361,7 @@ int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
   VecRestoreArray(y, &yptr);
 
   /* Apply learning */
-  if (shellctx->useUDEmodel) {
+  if (shellctx->UDEmodel != UDEmodelType::NONE) {
     Vec u, v, uout, vout;
     VecGetSubVector(x, *shellctx->isu, &u);
     VecGetSubVector(x, *shellctx->isv, &v);
