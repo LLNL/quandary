@@ -9,9 +9,19 @@ Data::Data() {
 	dt = 0.0;
 }
 
-Data::Data(MapParam config, MPI_Comm comm_optim_, std::vector<std::string>& data_name, int dim_) {
-  dim = dim_;
+Data::Data(MapParam config, MPI_Comm comm_optim_, std::vector<std::string>& data_name, std::vector<int> nlevels_, LindbladType lindbladtype_) {
+  nlevels = nlevels_;
   comm_optim = comm_optim_;
+  lindbladtype = lindbladtype_;
+
+  // Compute dimension of the full vectorized system
+  dim = 1;
+  for (int i=0; i<nlevels.size(); i++){
+    dim *= nlevels[i];
+  }
+  if (lindbladtype != LindbladType::NONE){
+      dim = dim*dim;
+  }
 
   MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
   MPI_Comm_size(MPI_COMM_WORLD, &mpisize_world);
@@ -101,7 +111,7 @@ std::vector<double> Data::getControls(int pulse_num, int ioscillator){
 }
 
 
-void Data::writeExpectedEnergy(const char* filename, int pulse_num){
+void Data::writeExpectedEnergy(const char* filename, int pulse_num, int ioscillator){
 
   // Only the processor who owns this pulse trajectory should be writing the file, other procs exit here.
   int proc = int(pulse_num / npulses_local);
@@ -117,7 +127,7 @@ void Data::writeExpectedEnergy(const char* filename, int pulse_num){
 
     Vec x = getData(time, pulse_num);
     if (x != NULL) {
-      double val = expectedEnergy(x, LindbladType::BOTH);
+      double val = expectedEnergy(x, LindbladType::BOTH, nlevels, ioscillator);
       fprintf(file_c, "% 1.8f   % 1.14e   \n", time, val);
     }
   }
@@ -169,7 +179,7 @@ void Data::writeFullstate(const char* filename_re, const char* filename_im, int 
 }
 
 
-SyntheticQuandaryData::SyntheticQuandaryData(MapParam config, MPI_Comm comm_optim_, std::vector<std::string>& data_name, int dim) : Data(config, comm_optim_, data_name, dim) {
+SyntheticQuandaryData::SyntheticQuandaryData(MapParam config, MPI_Comm comm_optim_, std::vector<std::string>& data_name, std::vector<int> nlevels_, LindbladType lindbladtype_) : Data(config, comm_optim_, data_name, nlevels_, lindbladtype_) {
 
   /* Load training data */
   loadData(data_name, &tstart, &tstop, &dt);
@@ -281,7 +291,7 @@ void SyntheticQuandaryData::loadData(std::vector<std::string>& data_name, double
   // exit(1);
 }
 
-Tant2levelData::Tant2levelData(MapParam config, MPI_Comm comm_optim_, std::vector<std::string>& data_name, int dim) : Data(config, comm_optim_, data_name, dim){
+Tant2levelData::Tant2levelData(MapParam config, MPI_Comm comm_optim_, std::vector<std::string>& data_name, std::vector<int> nlevels_, LindbladType lindbladtype_) : Data(config, comm_optim_, data_name, nlevels_, lindbladtype_){
 
   // Only for 2level data. 
   assert(dim == 4);
@@ -443,7 +453,7 @@ void Tant2levelData::loadData(std::vector<std::string>& data_name, double* tstar
   }
 }
 
-Tant3levelData::Tant3levelData(MapParam config, MPI_Comm comm_optim_, std::vector<std::string>& data_name, int dim) : Data(config, comm_optim_, data_name, dim) {
+Tant3levelData::Tant3levelData(MapParam config, MPI_Comm comm_optim_, std::vector<std::string>& data_name, std::vector<int> nlevels_, LindbladType lindbladtype_) : Data(config, comm_optim_, data_name, nlevels_, lindbladtype_) {
   // Only for 3level data. 
   assert(dim == 9);
 

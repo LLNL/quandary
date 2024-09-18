@@ -1,15 +1,25 @@
 #include "util.hpp"
 
 
-double expectedEnergy(const Vec x, LindbladType lindbladtype){
+double expectedEnergy(const Vec x, LindbladType lindbladtype, std::vector<int> nlevels, int subsystem){
  
-  // Compute Hilbertspace dimension -> N
-  PetscInt dim;
-  VecGetSize(x, &dim);
-  int dimmat = dim / 2;  // since x stores real and imaginary numbers separately
-  if (lindbladtype != LindbladType::NONE){ // take the square root if lindblad solver -> N
-    dimmat = int(sqrt(dimmat)); 
+  // Compute Hilbertspace dimension and the dimension of the systems following this subsystem
+  PetscInt dim=1;
+  PetscInt post_dim = 1;
+  for (int i=0; i<nlevels.size(); i++){
+    dim *= nlevels[i];
+    if (i > subsystem) {
+      post_dim *= nlevels[i];
+    }
   }
+  // Sanity check on full Hilbert space dimension:
+  PetscInt dim_test;
+  VecGetSize(x, &dim_test);
+  dim_test = dim_test / 2;  // since x stores real and imaginary numbers separately
+  if (lindbladtype != LindbladType::NONE){ // take the square root if lindblad solver -> N
+    dim_test = int(sqrt(dim_test)); 
+  }
+  assert(dim_test == dim);
 
   /* Get locally owned portion of x */
   PetscInt ilow, iupp, idx_diag_re, idx_diag_im;
@@ -18,19 +28,23 @@ double expectedEnergy(const Vec x, LindbladType lindbladtype){
 
   /* Iterate over diagonal elements to add up expected energy level */
   double expected = 0.0;
-  for (int i=0; i<dimmat; i++) {
+  for (int i=0; i<dim; i++) {
     /* Get diagonal element in number operator */
-    int num_diag = i ;
+    int num_diag = i;  // for full composite system
+    if (subsystem >= 0) { // for a subsystem
+      num_diag = i % (nlevels[subsystem]*post_dim);
+      num_diag = num_diag / post_dim;
+    }
 
     /* Get diagonal element in rho (real) and sum up */
     if (lindbladtype != LindbladType::NONE){ // Lindblad solver: += i * rho_ii
-      idx_diag_re = getIndexReal(getVecID(i,i,dimmat));
+      idx_diag_re = getIndexReal(getVecID(i,i,dim));
       xdiag = 0.0;
       if (ilow <= idx_diag_re && idx_diag_re < iupp) VecGetValues(x, 1, &idx_diag_re, &xdiag);
       expected += num_diag * xdiag;
 
       // Make sure the diagonal is real. 
-      idx_diag_im = getIndexImag(getVecID(i,i,dimmat));
+      idx_diag_im = getIndexImag(getVecID(i,i,dim));
       if (ilow <= idx_diag_im && idx_diag_im < iupp) VecGetValues(x, 1, &idx_diag_im, &xdiag);
       if (xdiag > 1e-10) {
         printf("WARNING: imaginary number on the diagonal of the density matrix!\n");
@@ -54,6 +68,45 @@ double expectedEnergy(const Vec x, LindbladType lindbladtype){
 
   return expected;
 }
+
+// void expectedEnergy_diff(const Vec x, Vec x_bar, const double obj_bar) {
+//   PetscInt dim;
+//   VecGetSize(x, &dim);
+//   int dimmat;
+//   if (lindbladtype != LindbladType::NONE) dimmat = (int) sqrt(dim/2);
+//   else dimmat = (int) dim/2;
+//   double num_diag, xdiag, val;
+
+//   /* Get locally owned portion of x */
+//   PetscInt ilow, iupp, idx_diag_re, idx_diag_im;
+//   VecGetOwnershipRange(x, &ilow, &iupp);
+
+//   /* Derivative of projective measure */
+//   for (int i=0; i<dimmat; i++) {
+//     int num_diag = i % (nlevels*dim_postOsc);
+//     num_diag = num_diag / dim_postOsc;
+//     if (lindbladtype != LindbladType::NONE) { // Lindblas solver
+//       val = num_diag * obj_bar;
+//       idx_diag_re = getIndexReal(getVecID(i, i, dimmat));
+//       if (ilow <= idx_diag_re && idx_diag_re < iupp) VecSetValues(x_bar, 1, &idx_diag_re, &val, ADD_VALUES);
+//     }
+//     else {
+//       // Real part
+//       idx_diag_re = getIndexReal(i);
+//       xdiag = 0.0;
+//       if (ilow <= idx_diag_re && idx_diag_re < iupp) VecGetValues(x, 1, &idx_diag_re, &xdiag);
+//       val = num_diag * xdiag * obj_bar;
+//       if (ilow <= idx_diag_re && idx_diag_re < iupp) VecSetValues(x_bar, 1, &idx_diag_re, &val, ADD_VALUES);
+//       // Imaginary part
+//       idx_diag_im = getIndexImag(i);
+//       xdiag = 0.0;
+//       if (ilow <= idx_diag_im && idx_diag_im < iupp) VecGetValues(x, 1, &idx_diag_im, &xdiag);
+//       val = - num_diag * xdiag * obj_bar; // TODO: Is this a minus or a plus?? 
+//       if (ilow <= idx_diag_im && idx_diag_im < iupp) VecSetValues(x_bar, 1, &idx_diag_im, &val, ADD_VALUES);
+//     }
+//   }
+//   VecAssemblyBegin(x_bar); VecAssemblyEnd(x_bar);
+// }
 
 void population(const Vec x, LindbladType lindbladtype, std::vector<double> &pop){
 

@@ -259,8 +259,10 @@ double OptimProblem::evalF(const Vec x) {
       mastereq->setControlFromData(ipulse);
 
       // TEST: write expected energy of the Training data.
-      std::string filename_expEnergy = output->datadir + "/TrainingData_pulse"+std::to_string(ipulse)+"_expectedEnergy.dat"; 
-      mastereq->learning->data->writeExpectedEnergy(filename_expEnergy.c_str(), ipulse);
+      for (int iosc=0; iosc<mastereq->nlevels.size(); iosc++){
+        std::string filename_expEnergy = output->datadir + "/TrainingData_pulse"+std::to_string(ipulse)+"_expectedEnergy"+std::to_string(iosc)+".dat"; 
+        mastereq->learning->data->writeExpectedEnergy(filename_expEnergy.c_str(), ipulse, iosc);
+      }
       std::string filename_rho_Re = output->datadir + "/TrainingData_pulse"+std::to_string(ipulse)+"_rho_Re.dat"; 
       std::string filename_rho_Im = output->datadir + "/TrainingData_pulse"+std::to_string(ipulse)+"_rho_Im.dat"; 
       mastereq->learning->data->writeFullstate(filename_rho_Re.c_str(), filename_rho_Im.c_str(), ipulse);

@@ -219,11 +219,10 @@ void Output::writeDataFiles(int timestep, double time, const Vec state, MasterEq
 
     /* Write expected energy levels to file */
     for (int iosc = 0; iosc < expectedfile.size(); iosc++) {
-      double expected = mastereq->getOscillator(iosc)->expectedEnergy(state);
+      double expected = expectedEnergy(state, mastereq->lindbladtype, mastereq->nlevels, iosc);
       if (expectedfile[iosc] != NULL) fprintf(expectedfile[iosc], "%.8f %1.14e\n", time, expected);
     }
-
-    double expected_comp = expectedEnergy(state, mastereq->lindbladtype);
+    double expected_comp = expectedEnergy(state, mastereq->lindbladtype, mastereq->nlevels);
     if (expectedfile_comp != NULL) fprintf(expectedfile_comp, "%.8f %1.14e\n", time, expected_comp);
 
     /* Write population to file */

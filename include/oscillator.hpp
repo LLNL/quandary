@@ -86,11 +86,6 @@ class Oscillator {
     /* Evaluates Lab-frame control function f(t) */
     int evalControl_Labframe(const double t, double* f_ptr);
 
-    /* Return expected value of projective measure in basis |m> */
-    double expectedEnergy(const Vec x);
-    /* Derivative of expected alrue computation */
-    void expectedEnergy_diff(const Vec x, Vec x_bar, const double obj_bar);
-
     /* Compute population (=diagonal elements) for this oscillators reduced system */
     void population(const Vec x, std::vector<double> &pop); 
 };

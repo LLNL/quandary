@@ -256,11 +256,11 @@ int main(int argc,char **argv)
     std::string identifyer = data_name[0];
     data_name.erase(data_name.begin());
     if (identifyer.compare("synthetic") == 0) { 
-      data = new SyntheticQuandaryData(config, comm_optim, data_name, dim);
+      data = new SyntheticQuandaryData(config, comm_optim, data_name, nlevels, lindbladtype);
     } else if (identifyer.compare("Tant2level") == 0) { 
-      data = new Tant2levelData(config, comm_optim, data_name, dim);
+      data = new Tant2levelData(config, comm_optim, data_name, nlevels, lindbladtype);
     } else if (identifyer.compare("Tant3level") == 0) {
-      data = new Tant3levelData(config, comm_optim, data_name, dim);
+      data = new Tant3levelData(config, comm_optim, data_name, nlevels, lindbladtype);
     }
     else {
       printf("Wrong setting for loading data. Needs prefix 'synthetic', or 'Tant2level', or 'Tant3level'.\n");

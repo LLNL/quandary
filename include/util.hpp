@@ -1,6 +1,7 @@
 #include <petscmat.h>
 #include <iostream>
 #include <vector>
+#include <assert.h>
 #include "defs.hpp"
 #ifdef WITH_SLEPC
 #include <slepceps.h>
@@ -9,8 +10,10 @@
 #pragma once
 
 
-/* Compute the expected energy of the full composite system. */
-double expectedEnergy(const Vec x, LindbladType lindbladtype);
+/* Compute the expected energy of the full composite system (default), or of a subsystem i */
+double expectedEnergy(const Vec x, LindbladType lindbladtype, std::vector<int> nlevels, int subsystem =-1);
+// void expectedEnergy_diff(const Vec x, Vec x_bar, const double obj_bar);
+
 
 /* Compute the population of the full composite system.*/
 void population(const Vec x, LindbladType lindbladtype, std::vector<double> &population_com);
