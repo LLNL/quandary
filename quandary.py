@@ -168,7 +168,7 @@ class Quandary:
         """
 
         # Set some defaults, if not set by the user
-        if len(self.freq01) != len(self.Ne):
+        if len(self.freq01) != len(self.Ne) and len(self.Hsys)<=0:
             self.Ne = [2 for _ in range(len(self.freq01))]
         if len(self.Ng) != len(self.Ne):
             self.Ng = [0 for _ in range(len(self.Ne))]
@@ -186,7 +186,7 @@ class Quandary:
             self.initctrl_MHz = [max_alloscillators for _ in range(len(self.Ne))]
         if len(self.initctrl_MHz) == 0:
             self.initctrl_MHz = [10.0 for _ in range(len(self.Ne))]
-        if len(self.Hsys) > 0 and not self.standardmodel: # User-provided Hamiltonian operators 
+        if len(self.Hsys) > 0: # User-provided Hamiltonian operators 
             self.standardmodel=False   
         else: # Using standard Hamiltonian model
             Ntot = [sum(x) for x in zip(self.Ne, self.Ng)]
@@ -856,17 +856,17 @@ def get_resonances(*, Ne, Ng, Hsys, Hc_re=[], Hc_im=[], rotfreq=[], cw_amp_thres
                         # Ignore resonances that are too close by comparing to all previous resonances
                         if any(abs(delta_f - f) < cw_prox_thres for f in resonances_a):
                             if verbose:
-                                print("    Ignoring resonance from ", ids_j, "to ", ids_i, ", lab-freq", rotfreq[q] + delta_f, ", growth rate=", abs(Hc_trans[i, j]), "being too close to one that already exists.")
+                                print("    Ignoring resonance from ", ids_j, "to ", ids_i, ", freq", delta_f, ", growth rate=", abs(Hc_trans[i, j]), "being too close to one that already exists.")
                         # Ignore resonances with growth rate smaller than user-defined threshold
                         elif abs(Hc_trans[i,j]) < cw_amp_thres:
                             if verbose:
-                                print("    Ignoring resonance from ", ids_j, "to ", ids_i, ", lab-freq", rotfreq[q] + delta_f, ", growth rate=", abs(Hc_trans[i, j]), "growth rate is too slow.")
+                                print("    Ignoring resonance from ", ids_j, "to ", ids_i, ", freq", delta_f, ", growth rate=", abs(Hc_trans[i, j]), "growth rate is too slow.")
                         # Otherwise, add resonance to the list
                         else:
                             resonances_a.append(delta_f)
                             speed_a.append(abs(Hc_trans[i, j]))
                             if verbose:
-                                print("    Resonance from ", ids_j, "to ", ids_i, ", lab-freq", rotfreq[q] + delta_f, ", growth rate=", abs(Hc_trans[i, j]))
+                                print("    Resonance from ", ids_j, "to ", ids_i, ", freq", delta_f, ", growth rate=", abs(Hc_trans[i, j]))
 
         # Append resonances for this qubit to overall list        
         resonances.append(resonances_a)
