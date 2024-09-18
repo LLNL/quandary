@@ -78,7 +78,7 @@ class HamiltonianBasis : public GellmannBasis {
     void applySystem_diff(Vec u, Vec v, Vec uout, Vec vout, std::vector<double>& learnparams_Re, std::vector<double>& learnparams_Im);
     void dRHSdp(Vec grad, Vec u, Vec v, double alpha, Vec ubar, Vec vbar, int skipID=0);
 
-    void assembleOperator(std::vector<double>& learnparamsH_A, std::vector<double>& learnparamsH_B);
+    void assembleOperator(bool shift_diag, std::vector<double>& learnparamsH_A, std::vector<double>& learnparamsH_B);
     Mat getOperator_Re() {return Operator_Re;};
     Mat getOperator_Im() {return Operator_Im;};
 };

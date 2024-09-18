@@ -263,9 +263,9 @@ void HamiltonianBasis::dRHSdp(Vec grad, Vec u, Vec v, double alpha, Vec ubar, Ve
   }
 }
 
-void HamiltonianBasis::assembleOperator(std::vector<double>& learnparams_Re, std::vector<double>& learnparams_Im){
+void HamiltonianBasis::assembleOperator(bool shift_diag, std::vector<double>& learnparams_Re, std::vector<double>& learnparams_Im){
 
-  /* Assemble the Hamiltonian (diagonally shifted), MHz, H = \sum l_i*sigma_i  - H_00*Id */
+  /* Assemble the Hamiltonian, MHz, H = \sum l_i*sigma_i */
   MatZeroEntries(Operator_Re);
   MatZeroEntries(Operator_Im);
   for (int i=0; i<BasisMat_Re.size(); i++) {
@@ -274,10 +274,12 @@ void HamiltonianBasis::assembleOperator(std::vector<double>& learnparams_Re, std
   for (int i=0; i<BasisMat_Im.size(); i++) {
     MatAXPY(Operator_Im, learnparams_Im[i] / (2.0*M_PI), BasisMat_Im[i], DIFFERENT_NONZERO_PATTERN);
   }
-  // subtract H00*Id
-  double h00=0.0;
-  MatGetValue(Operator_Re, 0, 0, &h00);
-  MatShift(Operator_Re, -h00);
+  // If diagonally shifted: H -= H_00*Id */
+  if (shift_diag) {
+    double h00=0.0;
+    MatGetValue(Operator_Re, 0, 0, &h00);
+    MatShift(Operator_Re, -h00);
+  }
 }
 
 

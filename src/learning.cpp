@@ -97,7 +97,8 @@ void Learning::viewOperators(){
   if (dim_rho <= 0) return;
 
   if (mpirank_world == 0) {
-    hamiltonian_basis->assembleOperator(learnparamsH_Re, learnparamsH_Im);
+    bool shift_diag = true;
+    hamiltonian_basis->assembleOperator(shift_diag, learnparamsH_Re, learnparamsH_Im);
     printf("\nLearned Hamiltonian operator [MHz]: Re = \n");
     MatView(hamiltonian_basis->getOperator_Re(), NULL);
     printf("Learned Hamiltonian operator [MHz]: Im = \n");
