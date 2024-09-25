@@ -65,9 +65,6 @@ class StdGellmannBasis : public GellmannBasis {
 /* Hamiltonian paramterization via generalized Gellman matrices, multiplied by (-i) and shifted s.t. G_00=0 */
 class HamiltonianBasis : public GellmannBasis {
 
-  Mat Operator_Re;  /* All assembled real operators */
-  Mat Operator_Im;  /* All assembled imaginary operators */
-
   public:
     HamiltonianBasis(int dim_rho_, bool shifted_diag_, LindbladType lindbladtype);
     ~HamiltonianBasis();
@@ -77,10 +74,6 @@ class HamiltonianBasis : public GellmannBasis {
     void applySystem(Vec u, Vec v, Vec uout, Vec vout, std::vector<double>& learnparams_Re, std::vector<double>& learnparams_Im);
     void applySystem_diff(Vec u, Vec v, Vec uout, Vec vout, std::vector<double>& learnparams_Re, std::vector<double>& learnparams_Im);
     void dRHSdp(Vec grad, Vec u, Vec v, double alpha, Vec ubar, Vec vbar, int skipID=0);
-
-    void assembleOperator(bool shift_diag, std::vector<double>& learnparamsH_A, std::vector<double>& learnparamsH_B);
-    Mat getOperator_Re() {return Operator_Re;};
-    Mat getOperator_Im() {return Operator_Im;};
 };
 
 class LindbladBasis: public GellmannBasis {
@@ -94,4 +87,8 @@ class LindbladBasis: public GellmannBasis {
     void applySystem(Vec u, Vec v, Vec uout, Vec vout, std::vector<double>& learnparams_Re, std::vector<double>& learnparams_Im);
     void applySystem_diff(Vec u, Vec v, Vec uout, Vec vout, std::vector<double>& learnparams_Re, std::vector<double>& learnparams_Im);
     void dRHSdp(Vec grad, Vec u, Vec v, double alpha, Vec ubar, Vec vbar, int skipID=0);
+
+    std::vector<Mat> getSystemMats_A() {return SystemMats_A;};
+    std::vector<Mat> getSystemMats_B() {return SystemMats_B;};
+
 };

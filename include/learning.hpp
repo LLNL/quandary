@@ -62,7 +62,7 @@ class Learning {
     void dRHSdp(Vec grad, Vec u, Vec v, double alpha, Vec ubar, Vec vbar);
 
     /* Assemble the learned operator. Allocates the (dense!) matrices Re(H) and Im(H), which hence must be destroyed after usage. */
-    void viewOperators();
+    void viewOperators(std::string datadir);
 
     /* Pass learnable parameters to storage learnparamsH_A and learnparamsH_B*/
     void setLearnParams(const Vec x);

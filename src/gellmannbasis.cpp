@@ -135,21 +135,9 @@ HamiltonianBasis::HamiltonianBasis(int dim_rho_, bool shifted_diag_, LindbladTyp
   /* Assemble system Matrices */
   assembleSystemMats();
 
-  /* Allocate assembled operator */
-  MatCreateDense(PETSC_COMM_WORLD,PETSC_DECIDE, PETSC_DECIDE, dim_rho, dim_rho, NULL, &Operator_Re);
-  MatCreateDense(PETSC_COMM_WORLD,PETSC_DECIDE, PETSC_DECIDE, dim_rho, dim_rho, NULL, &Operator_Im);
-  MatSetUp(Operator_Re);
-  MatSetUp(Operator_Im);
-  MatAssemblyBegin(Operator_Re, MAT_FINAL_ASSEMBLY);
-  MatAssemblyBegin(Operator_Im, MAT_FINAL_ASSEMBLY);
-  MatAssemblyEnd(Operator_Re, MAT_FINAL_ASSEMBLY);
-  MatAssemblyEnd(Operator_Im, MAT_FINAL_ASSEMBLY);
 }
 
-HamiltonianBasis::~HamiltonianBasis(){
-  MatDestroy(&Operator_Re);
-  MatDestroy(&Operator_Im);
-}
+HamiltonianBasis::~HamiltonianBasis(){}
 
 void HamiltonianBasis::assembleSystemMats(){
 
@@ -263,26 +251,7 @@ void HamiltonianBasis::dRHSdp(Vec grad, Vec u, Vec v, double alpha, Vec ubar, Ve
   }
 }
 
-void HamiltonianBasis::assembleOperator(bool shift_diag, std::vector<double>& learnparams_Re, std::vector<double>& learnparams_Im){
-
-  /* Assemble the Hamiltonian, MHz, H = \sum l_i*sigma_i */
-  MatZeroEntries(Operator_Re);
-  MatZeroEntries(Operator_Im);
-  for (int i=0; i<BasisMat_Re.size(); i++) {
-    MatAXPY(Operator_Re, learnparams_Re[i] / (2.0*M_PI), BasisMat_Re[i], DIFFERENT_NONZERO_PATTERN);
-  }
-  for (int i=0; i<BasisMat_Im.size(); i++) {
-    MatAXPY(Operator_Im, learnparams_Im[i] / (2.0*M_PI), BasisMat_Im[i], DIFFERENT_NONZERO_PATTERN);
-  }
-  // If diagonally shifted: H -= H_00*Id */
-  if (shift_diag) {
-    double h00=0.0;
-    MatGetValue(Operator_Re, 0, 0, &h00);
-    MatShift(Operator_Re, -h00);
-  }
-}
-
-
+  
 LindbladBasis::LindbladBasis(int dim_rho_, bool shifted_diag_) : GellmannBasis(dim_rho_, true, shifted_diag_, LindbladType::BOTH) {
 
   /* Assemble system Matrices */
