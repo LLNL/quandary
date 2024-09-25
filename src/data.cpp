@@ -289,6 +289,7 @@ void SyntheticQuandaryData::loadData(std::vector<std::string>& data_name, double
   // }
   // printf("END DATA POINTS.\n\n");
   // exit(1);
+  printf("-> Data loaded sucessfully. Data dt = %f, tstop = %f\n", *dt, *tstop);
 }
 
 Tant2levelData::Tant2levelData(MapParam config, MPI_Comm comm_optim_, std::vector<std::string>& data_name, std::vector<int> nlevels_, LindbladType lindbladtype_) : Data(config, comm_optim_, data_name, nlevels_, lindbladtype_){
