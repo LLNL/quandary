@@ -200,7 +200,7 @@ class Quandary:
             self.initctrl_MHz = [max_alloscillators for _ in range(len(self.Ne))]
         if len(self.initctrl_MHz) == 0:
             self.initctrl_MHz = [10.0 for _ in range(len(self.Ne))]
-        if len(self.Hsys) > 0: # User-provided Hamiltonian operators 
+        if len(self.Hsys) > 0 and not self.standardmodel: # User-provided Hamiltonian operators 
             self.standardmodel=False   
         else: # Using standard Hamiltonian model
             Ntot = [sum(x) for x in zip(self.Ne, self.Ng)]
@@ -1079,7 +1079,6 @@ def plot_pulse(Ne, time, pt, qt):
     """ 
     Plot the control pulse for all qubits
     """
-
     fig = plt.figure()
     nrows = len(Ne)
     ncols = 1
@@ -1097,6 +1096,7 @@ def plot_pulse(Ne, time, pt, qt):
     # plt.grid()
     plt.subplots_adjust(hspace=0.6)
     plt.draw()
+    plt.pause(0.01)
     print("\nPlotting control pulses.")
     print("-> Press <enter> to proceed.")
     plt.waitforbuttonpress(1); 
@@ -1118,12 +1118,16 @@ def plot_expectedEnergy(Ne, time, expectedEnergy):
         iinit = iplot 
         plt.subplot(nrows, ncols, iplot+1)
         plt.figsize=(15, 15)
+        emax = 1.0
         for iosc in range(len(Ne)):
             label = 'Qubit '+str(iosc) if len(Ne)>1 else ''
             plt.plot(time, expectedEnergy[iosc][iinit], label=label)
+            emax_iosc = np.max(expectedEnergy[iosc][iinit])
+            emax = max(emax, emax_iosc) # keep track of max energy level for setting ylim
         plt.xlabel('time (ns)')
         plt.ylabel('expected energy')
-        plt.ylim([0.0-1e-2, Ne[0]-1.0 + 1e-2])
+
+        plt.ylim([0.0-1e-2, emax + 1e-2])
         plt.xlim([0.0, time[-1]])
         binary_ID = iplot if len(Ne) == 1 else bin(iplot).replace("0b", "").zfill(len(Ne))
         plt.title("from |"+str(binary_ID)+">")
