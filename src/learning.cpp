@@ -62,8 +62,9 @@ Learning::Learning(std::vector<int> nlevels, LindbladType lindbladtype_, UDEmode
 
 Learning::~Learning(){
   if (dim_rho > 0) {
-    learnparamsH_Re.clear();
-    learnparamsH_Im.clear();
+    learnparamsH.clear();
+    learnparamsL_Re.clear();
+    learnparamsL_Im.clear();
     VecDestroy(&aux2);
 
     delete hamiltonian_basis;
@@ -76,7 +77,7 @@ void Learning::applyLearningTerms(Vec u, Vec v, Vec uout, Vec vout){
 
   if (dim_rho <= 0) return;
 
-  hamiltonian_basis->applySystem(u, v, uout, vout, learnparamsH_Re, learnparamsH_Im);
+  hamiltonian_basis->applySystem(u, v, uout, vout, learnparamsH);
   lindblad_basis->applySystem(u, v, uout, vout, learnparamsL_Re, learnparamsL_Im);
 }
 
@@ -87,7 +88,7 @@ void Learning::applyLearningTerms_diff(Vec u, Vec v, Vec uout, Vec vout){
 
   if (dim_rho <= 0) return;
 
-  hamiltonian_basis->applySystem_diff(u,v,uout, vout, learnparamsH_Re, learnparamsH_Im);
+  hamiltonian_basis->applySystem_diff(u,v,uout, vout, learnparamsH);
   lindblad_basis->applySystem_diff(u,v,uout, vout, learnparamsL_Re, learnparamsL_Im);
 }
 
@@ -99,7 +100,7 @@ void Learning::viewOperators(std::string datadir){
   if (mpirank_world == 0) {
     bool shift_diag = true;
     if (UDEmodel == UDEmodelType::HAMILTONIAN || UDEmodel == UDEmodelType::BOTH) {
-      hamiltonian_basis->printOperator(learnparamsH_Re, learnparamsH_Im, datadir);
+      hamiltonian_basis->printOperator(learnparamsH, datadir);
     }
 
     if (lindbladtype != LindbladType::NONE && (UDEmodel == UDEmodelType::LINDBLAD || UDEmodel == UDEmodelType::BOTH)) {
@@ -118,15 +119,11 @@ void Learning::setLearnParams(const Vec x){
   VecGetArrayRead(x, &ptr);
   
   // Hamiltonian parameters first
-  for (int i=0; i<hamiltonian_basis->getNBasis_Re(); i++) {
-    learnparamsH_Re[i] = ptr[i];
-  }
-  int skip = hamiltonian_basis->getNBasis_Re();
-  for (int i=0; i<hamiltonian_basis->getNBasis_Im(); i++){
-    learnparamsH_Im[i] = ptr[i+skip];
+  for (int i=0; i<hamiltonian_basis->getNParams(); i++) {
+    learnparamsH[i] = ptr[i];
   }
   // Lindblad terms next
-  skip = hamiltonian_basis->getNParams();
+  int skip = hamiltonian_basis->getNParams();
   for (int i=0; i<lindblad_basis->getNParams(); i++) {
     learnparamsL_Re[i] = ptr[i+skip];
   }
@@ -143,15 +140,11 @@ void Learning::getLearnParams(double* x){
    *   x = [learnparamH_Re, learnparamH_Im, learnparamL_Re, learnparamL_Im ] 
    */
   // Hamiltonian parameters first
-  for (int i=0; i<hamiltonian_basis->getNBasis_Re(); i++) {
-    x[i]      = learnparamsH_Re[i];
-  }
-  int skip = hamiltonian_basis->getNBasis_Re();
-  for (int i=0; i<hamiltonian_basis->getNBasis_Im(); i++){
-    x[i+skip] = learnparamsH_Im[i];
+  for (int i=0; i<hamiltonian_basis->getNParams(); i++) {
+    x[i]      = learnparamsH[i];
   }
   // Lindblad terms next
-  skip = hamiltonian_basis->getNParams();
+  int skip = hamiltonian_basis->getNParams();
   for (int i=0; i<lindblad_basis->getNParams(); i++) {
     x[i+skip] = learnparamsL_Re[i];
   }
@@ -168,7 +161,7 @@ void Learning::dRHSdp(Vec grad, Vec u, Vec v, double alpha, Vec ubar, Vec vbar){
 
   if (dim_rho <= 0) return;
 
-  hamiltonian_basis->dRHSdp(grad, u, v, alpha, ubar, vbar, learnparamsL_Re);
+  hamiltonian_basis->dRHSdp(grad, u, v, alpha, ubar, vbar, learnparamsH);
   lindblad_basis->dRHSdp(grad, u, v, alpha, ubar, vbar, learnparamsL_Re, hamiltonian_basis->getNParams());
 
   VecAssemblyBegin(grad);
@@ -192,15 +185,11 @@ void Learning::initLearnParams(std::vector<std::string> learninit_str, std::defa
     MPI_Bcast(initguess_fromfile.data(), nparams, MPI_DOUBLE, 0, MPI_COMM_WORLD);
  
     //First set all Hamiltonian parameters
-    for (int i=0; i<hamiltonian_basis->getNBasis_Re(); i++){
-      learnparamsH_Re.push_back(initguess_fromfile[i]); 
-    }
-    int skip = hamiltonian_basis->getNBasis_Re();
-    for (int i=0; i<hamiltonian_basis->getNBasis_Im(); i++){
-      learnparamsH_Im.push_back(initguess_fromfile[i + skip]); 
+    for (int i=0; i<hamiltonian_basis->getNParams(); i++){
+      learnparamsH.push_back(initguess_fromfile[i]); 
     }
     // Then set all Lindblad params
-    skip = hamiltonian_basis->getNParams();
+    int skip = hamiltonian_basis->getNParams();
     for (int i=0; i<lindblad_basis->getNParams(); i++){
       learnparamsL_Re.push_back(initguess_fromfile[skip + i]); 
     }
@@ -215,11 +204,8 @@ void Learning::initLearnParams(std::vector<std::string> learninit_str, std::defa
     assert(learninit_str.size()>1);
     double amp = atof(learninit_str[1].c_str());
     std::uniform_real_distribution<double> unit_dist(0.0, amp);
-    for (int i=0; i<hamiltonian_basis->getNBasis_Re(); i++){
-      learnparamsH_Re.push_back(unit_dist(rand_engine) * 2.0*M_PI); // radians
-    }
-    for (int i=0; i<hamiltonian_basis->getNBasis_Im(); i++){
-      learnparamsH_Im.push_back(unit_dist(rand_engine) * 2.0*M_PI); // radians
+    for (int i=0; i<hamiltonian_basis->getNParams(); i++){
+      learnparamsH.push_back(unit_dist(rand_engine) * 2.0*M_PI); // radians
     }
     // Then all Lindblad parameters
     if (lindblad_basis->getNBasis() > 0) {
@@ -239,11 +225,8 @@ void Learning::initLearnParams(std::vector<std::string> learninit_str, std::defa
     // First all Hamiltonian parameters
     assert(learninit_str.size()>1);
     double amp = atof(learninit_str[1].c_str());
-    for (int i=0; i<hamiltonian_basis->getNBasis_Re(); i++){
-      learnparamsH_Re.push_back(amp * 2.0*M_PI);
-    }
-    for (int i=0; i<hamiltonian_basis->getNBasis_Im(); i++){
-      learnparamsH_Im.push_back(amp * 2.0*M_PI);
+    for (int i=0; i<hamiltonian_basis->getNParams(); i++){
+      learnparamsH.push_back(amp * 2.0*M_PI);
     }
     // Then all Lindblad parameters
     if (lindblad_basis->getNBasis() > 0) {

@@ -605,17 +605,19 @@ void Tant3levelData::loadData(std::vector<std::string>& data_name, double* tstar
     MatAssemblyBegin(rho_im, MAT_FINAL_ASSEMBLY);
     MatAssemblyEnd(rho_re, MAT_FINAL_ASSEMBLY);
     MatAssemblyEnd(rho_im, MAT_FINAL_ASSEMBLY);
-    StdGellmannBasis* stdgellmann = new StdGellmannBasis(dim_rho);
+    std::vector<Mat> BasisMat_Re;
+    std::vector<Mat> BasisMat_Im;
+    createGellmannMats(dim_rho, false, false, false, true, BasisMat_Re, BasisMat_Im);
     // Note: The Gellmann matrices are ordered in a different way than the above coefficients. Too bad... Here is the mapping. 
-    MatAXPY(rho_re, 1.0/dim_rho, stdgellmann->getIdentity(), DIFFERENT_NONZERO_PATTERN);
-    MatAXPY(rho_re, r1/2.0, stdgellmann->getBasisMat_Re(0), DIFFERENT_NONZERO_PATTERN);
-    MatAXPY(rho_re, r4/2.0, stdgellmann->getBasisMat_Re(1), DIFFERENT_NONZERO_PATTERN);
-    MatAXPY(rho_re, r6/2.0, stdgellmann->getBasisMat_Re(2), DIFFERENT_NONZERO_PATTERN);
-    MatAXPY(rho_re, r3/2.0, stdgellmann->getBasisMat_Re(3), DIFFERENT_NONZERO_PATTERN);
-    MatAXPY(rho_re, r8/2.0, stdgellmann->getBasisMat_Re(4), DIFFERENT_NONZERO_PATTERN);
-    MatAXPY(rho_im, r2/2.0, stdgellmann->getBasisMat_Im(0), DIFFERENT_NONZERO_PATTERN);
-    MatAXPY(rho_im, r5/2.0, stdgellmann->getBasisMat_Im(1), DIFFERENT_NONZERO_PATTERN);
-    MatAXPY(rho_im, r7/2.0, stdgellmann->getBasisMat_Im(2), DIFFERENT_NONZERO_PATTERN);
+    MatAXPY(rho_re, 1.0/dim_rho, BasisMat_Re[0], DIFFERENT_NONZERO_PATTERN);
+    MatAXPY(rho_re, r1/2.0, BasisMat_Re[1], DIFFERENT_NONZERO_PATTERN);
+    MatAXPY(rho_re, r4/2.0, BasisMat_Re[2], DIFFERENT_NONZERO_PATTERN);
+    MatAXPY(rho_re, r6/2.0, BasisMat_Re[3], DIFFERENT_NONZERO_PATTERN);
+    MatAXPY(rho_re, r3/2.0, BasisMat_Re[4], DIFFERENT_NONZERO_PATTERN);
+    MatAXPY(rho_re, r8/2.0, BasisMat_Re[5], DIFFERENT_NONZERO_PATTERN);
+    MatAXPY(rho_im, r2/2.0, BasisMat_Im[0], DIFFERENT_NONZERO_PATTERN);
+    MatAXPY(rho_im, r5/2.0, BasisMat_Im[1], DIFFERENT_NONZERO_PATTERN);
+    MatAXPY(rho_im, r7/2.0, BasisMat_Im[2], DIFFERENT_NONZERO_PATTERN);
 
     // Now vectorize the density matrix and store into the state 
     for (int col = 0; col < dim_rho; col++){
@@ -636,7 +638,6 @@ void Tant3levelData::loadData(std::vector<std::string>& data_name, double* tstar
     // Cleanup
     MatDestroy(&rho_re);
     MatDestroy(&rho_im);
-    delete stdgellmann;
 
     // Store the state
     data[pulse_num].push_back(state);  // Here, only one pulse

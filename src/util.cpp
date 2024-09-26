@@ -1,5 +1,86 @@
 #include "util.hpp"
 
+void createGellmannMats(int dim_rho, bool upper_only, bool real_only, bool shifted_diag, bool includeIdentity, std::vector<Mat>& Mats_Re, std::vector<Mat>& Mats_Im){
+
+  /* First empty out the vectors, if needed */
+ for (int i=0; i<Mats_Re.size(); i++) MatDestroy(&Mats_Re[i]);
+ for (int i=0; i<Mats_Im.size(); i++) MatDestroy(&Mats_Im[i]);
+
+  /* Put the identity first, if needed */
+  if (includeIdentity){
+    Mat G_re;
+    MatCreate(PETSC_COMM_WORLD, &G_re);
+    MatSetType(G_re, MATSEQAIJ);
+    MatSetSizes(G_re, PETSC_DECIDE, PETSC_DECIDE, dim_rho, dim_rho);
+    MatSetUp(G_re);
+    for (int i=0; i<dim_rho; i++){
+      MatSetValue(G_re, i, i, 1.0, INSERT_VALUES);
+    }
+    MatAssemblyBegin(G_re, MAT_FINAL_ASSEMBLY);
+    MatAssemblyEnd(G_re, MAT_FINAL_ASSEMBLY);
+    Mats_Re.push_back(G_re);
+  }
+
+  /* Create all offdiagonal matrices (re and im)*/
+  for (int j=0; j<dim_rho; j++){
+    for (int k=j+1; k<dim_rho; k++){
+      /* Real sigma_jk^re = |j><k| + |k><j| */ 
+      Mat G_re;
+      MatCreate(PETSC_COMM_WORLD, &G_re);
+      MatSetType(G_re, MATSEQAIJ);
+      MatSetSizes(G_re, PETSC_DECIDE, PETSC_DECIDE, dim_rho, dim_rho);
+      MatSetUp(G_re);
+      MatSetValue(G_re, j, k, 1.0, INSERT_VALUES);
+      if (!upper_only) MatSetValue(G_re, k, j, 1.0, INSERT_VALUES);
+      MatAssemblyBegin(G_re, MAT_FINAL_ASSEMBLY);
+      MatAssemblyEnd(G_re, MAT_FINAL_ASSEMBLY);
+      Mats_Re.push_back(G_re);
+
+      /* Imaginary sigma_jk^im = -i|j><k| + i|k><j| */ 
+      if (!real_only) {
+        Mat G_im;
+        MatCreate(PETSC_COMM_WORLD, &G_im);
+        MatSetType(G_im, MATSEQAIJ);
+        MatSetSizes(G_im, PETSC_DECIDE, PETSC_DECIDE, dim_rho, dim_rho);
+        MatSetUp(G_im);
+        MatSetValue(G_im, j, k, -1.0, INSERT_VALUES);
+        if (!upper_only) MatSetValue(G_im, k, j, +1.0, INSERT_VALUES);
+        /* Assemble and store */
+        MatAssemblyBegin(G_im, MAT_FINAL_ASSEMBLY);
+        MatAssemblyEnd(G_im, MAT_FINAL_ASSEMBLY);
+        Mats_Im.push_back(G_im);
+      }
+    }
+  }
+
+  /* All diagonal matrices  */
+  for (int l=1; l<dim_rho; l++){
+    Mat G_re;
+    MatCreate(PETSC_COMM_WORLD, &G_re);
+    MatSetType(G_re, MATSEQAIJ);
+    MatSetSizes(G_re, PETSC_DECIDE, PETSC_DECIDE, dim_rho, dim_rho);
+    MatSetUp(G_re);
+
+    /* Diagonal mats 
+     *  shifted:     sigma_l^Re = (2/(l(l+1))( sum_{j=l,...,N-1} -|j><j| - l|l><l|)
+     *  not shifted: sigma_l^Re = (2/(l(l+1))( sum_{j=0,...,l-1}  |j><j| - l|l><l|) 
+     */
+    double factor = sqrt(2.0/(l*(l+1)));
+    MatSetValue(G_re, l, l, -1.0*l*factor, ADD_VALUES);
+    if (shifted_diag) {      
+      for (int j=l; j<dim_rho; j++){
+        MatSetValue(G_re, j, j, -1.0*factor, ADD_VALUES);
+      }
+    } else {  
+      for (int j=0; j<l; j++){
+        MatSetValue(G_re, j, j, factor, ADD_VALUES);
+      }
+    }
+    MatAssemblyBegin(G_re, MAT_FINAL_ASSEMBLY);
+    MatAssemblyEnd(G_re, MAT_FINAL_ASSEMBLY);
+    Mats_Re.push_back(G_re);
+  }
+}
 
 double expectedEnergy(const Vec x, LindbladType lindbladtype, std::vector<int> nlevels, int subsystem){
  

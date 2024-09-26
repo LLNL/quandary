@@ -24,8 +24,7 @@ class Learning {
 
   HamiltonianBasis* hamiltonian_basis;  // Basis matrices for Hamiltonian term
   LindbladBasis* lindblad_basis;     // Basis matrices for Lindblad term 
-  std::vector<double> learnparamsH_Re; // Learnable parameters for Hamiltonian
-  std::vector<double> learnparamsH_Im; // Learnable parameters for Hamiltonian
+  std::vector<double> learnparamsH;  // Learnable parameters for Hamiltonian
   std::vector<double> learnparamsL_Re; // Learnable parameters for Lindblad
   std::vector<double> learnparamsL_Im; // Learnable parameters for Lindblad
   
@@ -46,7 +45,7 @@ class Learning {
 
     /* Get total number of learnable parameters */
     int getNParams(){ return nparams; };
-    int getNParamsHamiltonian(){ return learnparamsH_Re.size() + learnparamsH_Im.size(); };
+    int getNParamsHamiltonian(){ return learnparamsH.size();};
     int getNParamsLindblad(){ return learnparamsL_Re.size() + learnparamsL_Im.size(); };
 
     /* Initialize learnable parameters. */
