@@ -83,6 +83,7 @@ class Quandary:
     _gatefilename         : str 
     _initstatefilename    : str 
     _initialstate         : List[complex] = field(default_factory=list)
+    unitMHz               : Switch using MHz units
 
 
     Output parameters, available after Quandary has been executed (simulate or optimze)
@@ -154,6 +155,7 @@ class Quandary:
     _gatefilename         : str         = ""
     _initstatefilename    : str         = ""
     _initialstate         : List[complex] = field(default_factory=list)
+    unitMHz               : bool        = False
     
     # Output parameters available after Quandary has been run
     popt        : List[float]   = field(default_factory=list)
@@ -217,7 +219,7 @@ class Quandary:
         
         # Estimate the number of required time steps
         if (self.nsteps < 0):
-            self.nsteps = estimate_timesteps(T=self.T, Hsys=self.Hsys, Hc_re=self.Hc_re, Hc_im=self.Hc_im, maxctrl_MHz=self.maxctrl_MHz, Pmin=self.Pmin)
+            self.nsteps = estimate_timesteps(T=self.T, Hsys=self.Hsys, Hc_re=self.Hc_re, Hc_im=self.Hc_im, maxctrl_MHz=self.maxctrl_MHz, Pmin=self.Pmin, unitMHz=self.unitMHz)
         if self.verbose:
             print("Final time: ",self.T,"ns, Number of timesteps: ", self.nsteps,", dt=", self.T/self.nsteps, "ns")
             print("Maximum control amplitudes: ", self.maxctrl_MHz, "MHz")
@@ -525,7 +527,9 @@ class Quandary:
                 initstring = "file, "+str(self.pcof0_filename) + "\n"
             else:
                 # Scale initial control amplitudes by the number of carrier waves and convert to ns
-                initamp = self.initctrl_MHz[iosc] /1000.0 / np.sqrt(2) / len(self.carrier_frequency[iosc])
+                initamp = self.initctrl_MHz[iosc] / np.sqrt(2) / len(self.carrier_frequency[iosc])
+                if not self.unitMHz:
+                    initamp = initamp / 1e+3
                 initstring = ("random, " if self.randomize_init_ctrl else "constant, ") + str(initamp) + "\n"
             mystring += "control_initialization" + str(iosc) + " = " + initstring 
             if len(self.maxctrl_MHz) == 0: # Disable bounds, if not specified
@@ -723,7 +727,7 @@ class Quandary:
         return time, pt, qt, uT, expectedEnergy, population, pcof, infid_last, optim_hist
 
 
-def estimate_timesteps(*, T=1.0, Hsys=[], Hc_re=[], Hc_im=[], maxctrl_MHz=[], Pmin=40):
+def estimate_timesteps(*, T=1.0, Hsys=[], Hc_re=[], Hc_im=[], maxctrl_MHz=[], Pmin=40, unitMHz=False):
     """
     Helper function to estimate the number of time steps based on eigenvalues of the system Hamiltonian and maximum control Hamiltonians. Note: The estimate does not account for quickly varying signals or a large number of splines. Double check that at least 2-3 points per spline are present to resolve control function. #TODO: Automate this.
     """
@@ -737,11 +741,15 @@ def estimate_timesteps(*, T=1.0, Hsys=[], Hc_re=[], Hc_im=[], maxctrl_MHz=[], Pm
     K1 = np.copy(Hsys) 
 
     for i in range(len(Hc_re)):
-        est_radns = est_ctrl_MHz[i]*2.0*np.pi/1e+3
+        est_radns = est_ctrl_MHz[i]*2.0*np.pi
+        if not unitMHz:
+            est_radns  = est_radns / 1e+3
         if len(Hc_re[i])>0:
             K1 += est_radns * Hc_re[i] 
     for i in range(len(Hc_im)):
-        est_radns = est_ctrl_MHz[i]*2.0*np.pi/1e+3
+        est_radns = est_ctrl_MHz[i]*2.0*np.pi
+        if not unitMHz:
+            est_radns  = est_radns / 1e+3
         if len(Hc_im[i])>0:
             K1 = K1 + 1j * est_radns * Hc_im[i] # can't use += due to type!
     
