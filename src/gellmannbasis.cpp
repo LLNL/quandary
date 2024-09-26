@@ -5,6 +5,7 @@ GellmannBasis::GellmannBasis(int dim_rho_, bool upper_only_, bool shifted_diag_,
   lindbladtype = lindbladtype_;
   upper_only = upper_only_;
   shifted_diag = shifted_diag_;
+  nparams = 0;
 
   // If Lindblad solver, dim = N^2, otherwise dim=N
   dim = dim_rho;
@@ -134,10 +135,20 @@ HamiltonianBasis::HamiltonianBasis(int dim_rho_, bool shifted_diag_, LindbladTyp
 
   /* Assemble system Matrices */
   assembleSystemMats();
+  nparams = getNBasis();
 
+  /* Allocate storage for returning learned Hamitonian operators */
+  MatCreateDense(PETSC_COMM_WORLD,PETSC_DECIDE, PETSC_DECIDE, dim_rho, dim_rho, NULL, &Operator_Re);
+  MatCreateDense(PETSC_COMM_WORLD,PETSC_DECIDE, PETSC_DECIDE, dim_rho, dim_rho, NULL, &Operator_Im);
+  MatSetUp(Operator_Re);
+  MatSetUp(Operator_Im);
+ }
+
+HamiltonianBasis::~HamiltonianBasis(){
+
+  MatDestroy(&Operator_Re);
+  MatDestroy(&Operator_Im);
 }
-
-HamiltonianBasis::~HamiltonianBasis(){}
 
 void HamiltonianBasis::assembleSystemMats(){
 
@@ -231,7 +242,7 @@ void HamiltonianBasis::applySystem_diff(Vec u, Vec v, Vec uout, Vec vout, std::v
   }
 }
 
-void HamiltonianBasis::dRHSdp(Vec grad, Vec u, Vec v, double alpha, Vec ubar, Vec vbar, int skipID){
+void HamiltonianBasis::dRHSdp(Vec grad, Vec u, Vec v, double alpha, Vec ubar, Vec vbar, std::vector<double>& learnparamsL_Re, int skipID){
 // Note: learnparam storage is [learn_Re, learn_Im]. For the Hamiltonian, learn_Re is applied to System_A and learn_Im is applied to System_B. Hence, invert order here: First part of the gradient goes with System_B (learn_Re), and second goes with System_A (learn_Im).
 
   // gamma_bar_A += alpha * (  u^t sigma_A^t ubar + v^t sigma_A^t vbar )
@@ -251,11 +262,60 @@ void HamiltonianBasis::dRHSdp(Vec grad, Vec u, Vec v, double alpha, Vec ubar, Ve
   }
 }
 
+void HamiltonianBasis::printOperator(std::vector<double>& learnparams_Re, std::vector<double>& learnparams_Im, std::string datadir){
+
+  /* Assemble the Hamiltonian, MHz, H = \sum l_i*sigma_i */
+  MatZeroEntries(Operator_Re);
+  MatZeroEntries(Operator_Im);
+  for (int i=0; i<getNBasis_Re(); i++) {
+    MatAXPY(Operator_Re, learnparams_Re[i] / (2.0*M_PI), getBasisMat_Re(i), DIFFERENT_NONZERO_PATTERN);
+  }
+  for (int i=0; i<getNBasis_Im(); i++) {
+    MatAXPY(Operator_Im, learnparams_Im[i] / (2.0*M_PI), getBasisMat_Im(i), DIFFERENT_NONZERO_PATTERN);
+  }
+  // // If diagonally shifted: H -= H_00*Id */
+  // if (shift_diag) {
+  //   double h00=0.0;
+  //   MatGetValue(Operator_Re, 0, 0, &h00);
+  //   MatShift(Operator_Re, -h00);
+  // }
+
+  /* Print to screen */
+  printf("\nLearned Hamiltonian operator [MHz]: Re = \n");
+  MatView(Operator_Re, NULL);
+  printf("Learned Hamiltonian operator [MHz]: Im = \n");
+  MatView(Operator_Im, NULL);
+
+  /* print to file */
+  char filename_re[254]; 
+  char filename_im[254]; 
+  snprintf(filename_re, 254, "%s/LearnedHamiltonian_Re.dat", datadir.c_str());
+  snprintf(filename_im, 254, "%s/LearnedHamiltonian_Im.dat", datadir.c_str());
+  PetscViewer viewer_re, viewer_im;
+  PetscViewerASCIIOpen(PETSC_COMM_WORLD,filename_re, &viewer_re);
+  PetscViewerASCIIOpen(PETSC_COMM_WORLD,filename_im, &viewer_im);
+  MatView(Operator_Re,viewer_re);
+  MatView(Operator_Im,viewer_im);
+  PetscViewerDestroy(&viewer_re);
+  PetscViewerDestroy(&viewer_im);
+  printf("\nLearned Hamiltonian written to file %s, %s\n", filename_re, filename_im);
+}
   
 LindbladBasis::LindbladBasis(int dim_rho_, bool shifted_diag_) : GellmannBasis(dim_rho_, true, shifted_diag_, LindbladType::BOTH) {
 
   /* Assemble system Matrices */
   assembleSystemMats();
+  nparams = 0.5 * getNBasis() * (getNBasis()+1);
+
+  /* Allocate storage for the summed-up lindblad system matrix */
+  MatCreateDense(PETSC_COMM_WORLD,PETSC_DECIDE, PETSC_DECIDE, dim, dim, NULL, &Operator);
+  MatSetUp(Operator);
+  // MatCreate(PETSC_COMM_WORLD, &Operator);
+  // MatSetType(Operator, MATSEQAIJ);
+  // MatSetSizes(Operator, PETSC_DECIDE, PETSC_DECIDE, dim, dim);
+  // MatSetUp(Operator);
+  // MatAssemblyBegin(Operator, MAT_FINAL_ASSEMBLY);
+  // MatAssemblyEnd(Operator, MAT_FINAL_ASSEMBLY);
 }
 
 LindbladBasis::~LindbladBasis(){}
@@ -263,87 +323,195 @@ LindbladBasis::~LindbladBasis(){}
 
 void LindbladBasis::assembleSystemMats(){
   /* Set up and store the Lindblad system matrices: 
-  *   sigma.conj kron sigma - 1/2(I kron sigma^t sigma + (sigma^t sigma)^T kron I)
+  *   sigma_i.conj kron sigma_j - 1/2(I kron sigma_i^t sigma_j + (sigma_i^t sigma_j)^T kron I)
    * Here, all Basis mats are REAL (only using upper part of the real Gellmann mats), hence all go into A = Re(...)
    * Note that here we have: sigma.conj = sigma and (sigma^tsigma)^T
   */
 
   for (int i=0; i<BasisMat_Re.size(); i++){
+    for (int j=0; j<BasisMat_Re.size(); j++){
 
-    Mat myMat, myMat1, myMat2, sigmasq;
-    MatTransposeMatMult(BasisMat_Re[i], BasisMat_Re[i],MAT_INITIAL_MATRIX, PETSC_DEFAULT,&sigmasq);
+      Mat myMat, myMat1, myMat2, sigmasq;
+      MatTransposeMatMult(BasisMat_Re[i], BasisMat_Re[j],MAT_INITIAL_MATRIX, PETSC_DEFAULT,&sigmasq);
 
-    MatSeqAIJKron(BasisMat_Re[i], BasisMat_Re[i], MAT_INITIAL_MATRIX, &myMat);  // myMat = sigma \kron sigma
-    MatSeqAIJKron(Id, sigmasq, MAT_INITIAL_MATRIX, &myMat1);                    // myMay1 = Id \kron sigma^tsigma
-    MatAXPY(myMat, -0.5, myMat1, DIFFERENT_NONZERO_PATTERN);                    // myMat = sigma kron sigma - 0.5*(Id kron sigma^tsigma)
-    MatTranspose(sigmasq, MAT_INPLACE_MATRIX, &sigmasq);
-    MatSeqAIJKron(sigmasq, Id, MAT_INITIAL_MATRIX, &myMat2);  // myMat2 = (sigma^tsigma)^T \kron Id
-    MatAXPY(myMat, -0.5, myMat2, DIFFERENT_NONZERO_PATTERN);  // myMat = sigma kron sigma - 0.5*( Id kron sigma^2 + sigma^2 kron Id)
+      MatSeqAIJKron(BasisMat_Re[i], BasisMat_Re[j], MAT_INITIAL_MATRIX, &myMat);  // myMat = sigma_i \kron sigma_j
+      MatSeqAIJKron(Id, sigmasq, MAT_INITIAL_MATRIX, &myMat1);                    // myMay1 = Id \kron sigma_i^tsigma_j
+      MatAXPY(myMat, -0.5, myMat1, DIFFERENT_NONZERO_PATTERN);                    // myMat = sigma kron sigma - 0.5*(Id kron sigma^tsigma)
+      MatTranspose(sigmasq, MAT_INPLACE_MATRIX, &sigmasq);
+      MatSeqAIJKron(sigmasq, Id, MAT_INITIAL_MATRIX, &myMat2);  // myMat2 = (sigma_i^tsigma_j)^T \kron Id
+      MatAXPY(myMat, -0.5, myMat2, DIFFERENT_NONZERO_PATTERN);  // myMat = sigma kron sigma - 0.5*( Id kron sigma^2 + sigma^2 kron Id)
 
-    SystemMats_A.push_back(myMat);
-    MatDestroy(&myMat1);
-    MatDestroy(&myMat2);
-    MatDestroy(&sigmasq);
+      SystemMats_A.push_back(myMat);
+      MatDestroy(&myMat1);
+      MatDestroy(&myMat2);
+      MatDestroy(&sigmasq);
+    }
   }
 }
 
 void LindbladBasis::applySystem(Vec u, Vec v, Vec uout, Vec vout, std::vector<double>& learnparamsL_Re, std::vector<double>& learnparamsL_Im){
 
+  // evalOperator(learnparamsL_Re);
+  // // uout += learnparam_Re * SystemA * u
+  // MatMult(Operator, u, aux);
+  // VecAXPY(uout, 1.0, aux); 
+  // // vout += learnparam_Re * SystemA * v
+  // MatMult(Operator, v, aux);
+  // VecAXPY(vout, 1.0, aux);
+ 
   // Real parts of lindblad terms
-  for (int i=0; i< SystemMats_A.size(); i++){
-    // uout += learnparam_Re * SystemA * u
-    MatMult(SystemMats_A[i], u, aux);
-    VecAXPY(uout, learnparamsL_Re[i], aux); 
-    // vout += learnparam_Re * SystemA * v
-    MatMult(SystemMats_A[i], v, aux);
-    VecAXPY(vout, learnparamsL_Re[i], aux);
+  for (int i=0; i< BasisMat_Re.size(); i++){
+    for (int j=0; j< BasisMat_Re.size(); j++){
+      int id_sys = i*BasisMat_Re.size() + j;
+
+      // Get aij coefficient
+      double aij = 0.0;
+      for (int l=0; l<BasisMat_Re.size(); l++){
+        double x_il = 0.0; 
+        double x_jl = 0.0;
+        if (i<=l) x_il = learnparamsL_Re[mapID(i,l)];
+        if (j<=l) x_jl = learnparamsL_Re[mapID(j,l)];
+        aij += x_il * x_jl;
+      }
+
+      // uout += learnparam_Re * SystemA * u
+      MatMult(SystemMats_A[id_sys], u, aux);
+      VecAXPY(uout, aij, aux); 
+      // vout += learnparam_Re * SystemA * v
+      MatMult(SystemMats_A[id_sys], v, aux);
+      VecAXPY(vout, aij, aux);
+    }
   }
-  // Imaginary parts of lindblad terms
-  for (int i=0; i< SystemMats_B.size(); i++){
-    // uout -= learnparam_Im * SystemB * v
-    MatMult(SystemMats_B[i], v, aux);
-    VecAXPY(uout, -1.*learnparamsL_Im[i], aux); 
-    // vout += learnparam_Im * SystemB * u
-    MatMult(SystemMats_B[i], u, aux);
-    VecAXPY(vout, learnparamsL_Im[i], aux);
-  }
+  // // Imaginary parts of lindblad terms
+  // for (int i=0; i< SystemMats_B.size(); i++){
+  //   printf("Should not be here.\n");
+  //   exit(1);
+  //   // uout -= learnparam_Im * SystemB * v
+  //   MatMult(SystemMats_B[i], v, aux);
+  //   VecAXPY(uout, -1.*learnparamsL_Im[i], aux); 
+  //   // vout += learnparam_Im * SystemB * u
+  //   MatMult(SystemMats_B[i], u, aux);
+  //   VecAXPY(vout, learnparamsL_Im[i], aux);
+  // }
 }
 
 void LindbladBasis::applySystem_diff(Vec u, Vec v, Vec uout, Vec vout, std::vector<double>& learnparamsL_Re, std::vector<double>& learnparamsL_Im){
   // Real parts of lindblad terms
-  for (int i=0; i< SystemMats_A.size(); i++){
-    // uout += learnparam_Re * SystemMat_A^T * u
-    MatMultTranspose(SystemMats_A[i], u, aux);
-    VecAXPY(uout, learnparamsL_Re[i], aux); 
-    // vout += learnparam_Re * SystemMat_A^T * v
-    MatMultTranspose(SystemMats_A[i], v, aux);
-    VecAXPY(vout, learnparamsL_Re[i], aux);
+  for (int i=0; i< BasisMat_Re.size(); i++){
+    for (int j=0; j< BasisMat_Re.size(); j++){
+      int id_sys = i*BasisMat_Re.size() + j;
+
+      // Get aij coefficient
+      double aij = 0.0;
+      for (int l=0; l<BasisMat_Re.size(); l++){
+        double x_il = 0.0;
+        double x_jl = 0.0;
+        if (i<=l) x_il = learnparamsL_Re[mapID(i,l)];
+        if (j<=l) x_jl = learnparamsL_Re[mapID(j,l)];
+        aij += x_il * x_jl;
+      }
+
+      // uout += learnparam_Re * SystemMat_A^T * u
+      MatMultTranspose(SystemMats_A[id_sys], u, aux);
+      VecAXPY(uout, aij, aux); 
+      // vout += learnparam_Re * SystemMat_A^T * v
+      MatMultTranspose(SystemMats_A[id_sys], v, aux);
+      VecAXPY(vout, aij, aux);
+    }
   }
-  // Imaginary parts of lindbladterms
-  for (int i=0; i< SystemMats_B.size(); i++){
-    // uout += learnparam_Im * SystemMat_B^T * v
-    MatMultTranspose(SystemMats_B[i], v, aux);
-    VecAXPY(uout, learnparamsL_Im[i], aux); 
-    // vout -= learnparam_Im * SystemMat_B^T * u
-    MatMultTranspose(SystemMats_B[i], u, aux);
-    VecAXPY(vout, -1.*learnparamsL_Im[i], aux);
-  }
+  // // Imaginary parts of lindbladterms
+  // for (int i=0; i< SystemMats_B.size(); i++){
+  //   // uout += learnparam_Im * SystemMat_B^T * v
+  //   MatMultTranspose(SystemMats_B[i], v, aux);
+  //   VecAXPY(uout, learnparamsL_Im[i], aux); 
+  //   // vout -= learnparam_Im * SystemMat_B^T * u
+  //   MatMultTranspose(SystemMats_B[i], u, aux);
+  //   VecAXPY(vout, -1.*learnparamsL_Im[i], aux);
+  // }
 }
 
 
-void LindbladBasis::dRHSdp(Vec grad, Vec u, Vec v, double alpha, Vec ubar, Vec vbar, int skip){
+void LindbladBasis::dRHSdp(Vec grad, Vec u, Vec v, double alpha, Vec ubar, Vec vbar, std::vector<double>& learnparamsL_Re, int skip){
  double uAubar, vAvbar, vBubar, uBvbar;
   // Note: Storage in grad corresponds to x = [learn_H, learn_L], so need to skip to the second part of the gradient] 
 
-  for (int i=0; i< SystemMats_A.size(); i++){
-    MatMult(SystemMats_A[i], u, aux); VecDot(aux, ubar, &uAubar);
-    MatMult(SystemMats_A[i], v, aux); VecDot(aux, vbar, &vAvbar);
-    VecSetValue(grad, i+skip, alpha*(uAubar + vAvbar), ADD_VALUES);
+  for (int i=0; i< BasisMat_Re.size(); i++){
+    for (int j=0; j< BasisMat_Re.size(); j++){
+      int id_sys = i*BasisMat_Re.size() + j;
+
+      MatMult(SystemMats_A[id_sys], u, aux); VecDot(aux, ubar, &uAubar);
+      MatMult(SystemMats_A[id_sys], v, aux); VecDot(aux, vbar, &vAvbar);
+      double aijbar = uAubar + vAvbar;
+
+      for (int l=0; l<BasisMat_Re.size(); l++){
+        double x_il = 0.0;
+        double x_jl = 0.0;
+        if (i<=l) x_il = learnparamsL_Re[mapID(i,l)];
+        if (j<=l) x_jl = learnparamsL_Re[mapID(j,l)];
+        double x_il_bar = x_jl * aijbar;
+        double x_jl_bar = x_il * aijbar;
+        if (i<=l) VecSetValue(grad, mapID(i,l)+skip, alpha*x_il_bar, ADD_VALUES);
+        if (j<=l) VecSetValue(grad, mapID(j,l)+skip, alpha*x_jl_bar, ADD_VALUES);
+      }
+    }
   }
-  skip += SystemMats_A.size();
-  for (int i=0; i<SystemMats_B.size(); i++){
-    MatMult(SystemMats_B[i], u, aux); VecDot(aux, vbar, &uBvbar);
-    MatMult(SystemMats_B[i], v, aux); VecDot(aux, ubar, &vBubar);
-    VecSetValue(grad, i+skip, alpha*(-vBubar + uBvbar), ADD_VALUES);
+  // skip += SystemMats_A.size();
+  // for (int i=0; i<SystemMats_B.size(); i++){
+  //   MatMult(SystemMats_B[i], u, aux); VecDot(aux, vbar, &uBvbar);
+  //   MatMult(SystemMats_B[i], v, aux); VecDot(aux, ubar, &vBubar);
+  //   VecSetValue(grad, i+skip, alpha*(-vBubar + uBvbar), ADD_VALUES);
+  // }
+}
+
+void LindbladBasis::evalOperator(std::vector<double>& learnparams_Re){
+
+  /* Reset */
+  MatZeroEntries(Operator);
+
+  /* Sum up the system operator */
+  for (int i=0; i<getNBasis_Re(); i++) {
+    for (int j=0; j<getNBasis_Re(); j++) {
+
+      // Get aij coefficient
+      double aij = 0.0;
+      for (int l=0; l<BasisMat_Re.size(); l++){
+        double x_il = 0.0; 
+        double x_jl = 0.0;
+        if (i<=l) x_il = learnparams_Re[mapID(i,l)];
+        if (j<=l) x_jl = learnparams_Re[mapID(j,l)];
+        aij += x_il * x_jl;
+      }
+
+      // Add to operator 
+      int id_sys = i*getNBasis_Re() + j;
+      MatAXPY(Operator, aij, SystemMats_A[id_sys], DIFFERENT_NONZERO_PATTERN);
+    }
   }
+}
+
+void LindbladBasis::printOperator(std::vector<double>& learnparams_Re, std::vector<double>& learnparams_Im, std::string datadir){
+  assert(getSystemMats_B().size() == 0);
+
+  // print coefficients to screen
+  for (int i=0; i<getNParams(); i++){
+    printf("Lindblad coeff %d: %1.8e\n", i, learnparams_Re[i]);
+  }
+  if (dim_rho == 2) {
+    printf(" -> maps to T_1 time %1.2f [us]\n", 1.0/learnparams_Re[0]);
+    printf(" -> maps to T_2 time %1.2f [us]\n", 1.0/(4.0*learnparams_Re[1]));
+  }
+
+  /* assemble the system matrix */
+  evalOperator(learnparams_Re);
+
+  // print to file
+  char filename[254]; 
+  snprintf(filename, 254, "%s/LearnedLindbladSystemMat.dat", datadir.c_str());
+  PetscViewer viewer;
+  PetscViewerASCIIOpen(PETSC_COMM_WORLD,filename, &viewer);
+  MatView(Operator,viewer);
+  printf("\nLearned Lindblad system matrix written to file %s\n", filename);
+
+  PetscViewerDestroy(&viewer);
+  MatDestroy(&Operator);
 }

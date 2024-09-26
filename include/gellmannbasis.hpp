@@ -28,6 +28,8 @@ class GellmannBasis {
     std::vector<Mat> SystemMats_A;  // System matrix when applying the operator in Schroedinger's equation
     std::vector<Mat> SystemMats_B;  // System matrix when applying the operator in Schroedinger's equation
 
+    int nparams;
+
     Vec aux;     // Auxiliary vector to perform matvecs on Re(x) or Im(x)
 
   public:
@@ -40,6 +42,7 @@ class GellmannBasis {
     Mat getBasisMat_Re(int id) {return BasisMat_Re[id];};
     Mat getBasisMat_Im(int id) {return BasisMat_Im[id];};
     Mat getIdentity(){return Id;};
+    int getNParams(){return nparams;};
 
     void showBasisMats();
 
@@ -47,7 +50,9 @@ class GellmannBasis {
 
     virtual void applySystem(Vec u, Vec v, Vec uout, Vec vout, std::vector<double>& learnparams_Re, std::vector<double>& learnparams_Im) = 0;
     virtual void applySystem_diff(Vec u, Vec v, Vec uout, Vec vout, std::vector<double>& learnparams_Re, std::vector<double>& learnparams_Im) = 0;
-    virtual void dRHSdp(Vec grad, Vec u, Vec v, double alpha, Vec ubar, Vec vbar, int skipID=0) = 0;
+    virtual void dRHSdp(Vec grad, Vec u, Vec v, double alpha, Vec ubar, Vec vbar, std::vector<double>& learnparamsL_Re, int skipID=0) = 0;
+
+    virtual void printOperator(std::vector<double>& learnparams_Re, std::vector<double>& learnparams_Im, std::string datadir) = 0;
 };
 
 /* The standard generalized Gellmann matrices */
@@ -59,11 +64,15 @@ class StdGellmannBasis : public GellmannBasis {
     void assembleSystemMats(){};
     void applySystem(Vec u, Vec v, Vec uout, Vec vout, std::vector<double>& learnparams_Re, std::vector<double>& learnparams_Im){};
     void applySystem_diff(Vec u, Vec v, Vec uout, Vec vout, std::vector<double>& learnparams_Re, std::vector<double>& learnparams_Im){};
-    void dRHSdp(Vec grad, Vec u, Vec v, double alpha, Vec ubar, Vec vbar, int skipID=0){};
+    void dRHSdp(Vec grad, Vec u, Vec v, double alpha, Vec ubar, Vec vbar, std::vector<double>& learnparamsL_Re, int skipID=0){};
+
+    void printOperator(std::vector<double>& learnparams_Re, std::vector<double>& learnparams_Im, std::string datadir){};
 };
 
 /* Hamiltonian paramterization via generalized Gellman matrices, multiplied by (-i) and shifted s.t. G_00=0 */
 class HamiltonianBasis : public GellmannBasis {
+  Mat Operator_Re;  
+  Mat Operator_Im;  
 
   public:
     HamiltonianBasis(int dim_rho_, bool shifted_diag_, LindbladType lindbladtype);
@@ -73,10 +82,13 @@ class HamiltonianBasis : public GellmannBasis {
 
     void applySystem(Vec u, Vec v, Vec uout, Vec vout, std::vector<double>& learnparams_Re, std::vector<double>& learnparams_Im);
     void applySystem_diff(Vec u, Vec v, Vec uout, Vec vout, std::vector<double>& learnparams_Re, std::vector<double>& learnparams_Im);
-    void dRHSdp(Vec grad, Vec u, Vec v, double alpha, Vec ubar, Vec vbar, int skipID=0);
+    void dRHSdp(Vec grad, Vec u, Vec v, double alpha, Vec ubar, Vec vbar, std::vector<double>& learnparamsL_Re, int skipID=0);
+
+    void printOperator(std::vector<double>& learnparams_Re, std::vector<double>& learnparams_Im, std::string datadir);
 };
 
 class LindbladBasis: public GellmannBasis {
+  Mat Operator;  
 
   public:
     LindbladBasis(int dim_rho_, bool shifted_diag_);
@@ -86,9 +98,13 @@ class LindbladBasis: public GellmannBasis {
 
     void applySystem(Vec u, Vec v, Vec uout, Vec vout, std::vector<double>& learnparams_Re, std::vector<double>& learnparams_Im);
     void applySystem_diff(Vec u, Vec v, Vec uout, Vec vout, std::vector<double>& learnparams_Re, std::vector<double>& learnparams_Im);
-    void dRHSdp(Vec grad, Vec u, Vec v, double alpha, Vec ubar, Vec vbar, int skipID=0);
+    void dRHSdp(Vec grad, Vec u, Vec v, double alpha, Vec ubar, Vec vbar, std::vector<double>& learnparamsL_Re, int skipID=0);
 
     std::vector<Mat> getSystemMats_A() {return SystemMats_A;};
     std::vector<Mat> getSystemMats_B() {return SystemMats_B;};
 
+    void printOperator(std::vector<double>& learnparams_Re, std::vector<double>& learnparams_Im, std::string datadir);
+
+    void evalOperator(std::vector<double>& learnparams_Re);
+    int mapID(int i, int j){return i*BasisMat_Re.size() - i*(i+1)/2 + j;}
 };

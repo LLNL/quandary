@@ -1345,3 +1345,59 @@ def assemble_batch_script(name, run_command, batch_args, exclusive=True):
         outfile.write("#SBATCH --exclusive\n")
     outfile.write(run_command)
     outfile.close()
+
+
+def getGellmanMats(dim, *, realonly=False, upperonly=False, shifted=True):
+    GellmannMats = []
+    # offdiagonal mats
+    for j in range(dim):
+        for k in range(j+1, dim):
+            G_re = np.zeros((dim,dim)) if realonly else np.zeros((dim,dim), dtype=complex)
+            G_re[j,k] = 1.0
+            if not upperonly:
+                G_re[k,j] = 1.0
+            GellmannMats.append(G_re)
+            if not realonly:
+                G_im = np.zeros((dim,dim)) if realonly else np.zeros((dim,dim), dtype=complex)
+                G_im[j,k] = -1.0j
+                if not upperonly:
+                    G_im[k,j] =  1.0j
+                GellmannMats.append(G_im)
+    # diagonal mats
+    for l in range(1,dim):
+        G = np.zeros((dim,dim)) if realonly else np.zeros((dim,dim), dtype=complex)
+        factor = np.sqrt(2.0/(l*(l+1)))
+        G[l,l] = -l*factor
+        if (shifted):
+            for j in range(l,dim):
+                G[j,j] -= factor
+        else:
+            for j in range(l):
+                G[j,j] += factor
+        GellmannMats.append(G)
+    
+    return GellmannMats
+
+def getBasisMats(dim, upperonly=False, shifted=True):
+    BasisMats= []
+    # offdiagonals
+    for j in range(dim):
+        for k in range(j+1, dim):
+            G = np.zeros((dim,dim)) 
+            G[j,k] = 1.0
+            BasisMats.append(G)
+            if not upperonly:
+                G = np.zeros((dim,dim)) 
+                G[k,j] = 1.0
+                BasisMats.append(G)
+    # diagonals 
+    for l in range(1,dim):
+        G = np.zeros((dim,dim)) 
+        G[l,l] = 1.0
+        if (shifted):
+            for j in range(dim):
+                G[j,j] -= 1.0
+        BasisMats.append(G)
+
+    return BasisMats
+

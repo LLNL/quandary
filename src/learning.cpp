@@ -43,7 +43,7 @@ Learning::Learning(std::vector<int> nlevels, LindbladType lindbladtype_, UDEmode
     // lindblad_basis->showBasisMats();
 
     /* Set the total number of learnable paramters */
-    nparams = hamiltonian_basis->getNBasis() + lindblad_basis->getNBasis();
+    nparams = hamiltonian_basis->getNParams() + lindblad_basis->getNParams();
 
     /* Allocate learnable Hamiltonian and Lindblad parameters, and set an initial guess */
     initLearnParams(learninit_str, rand_engine);
@@ -54,9 +54,9 @@ Learning::Learning(std::vector<int> nlevels, LindbladType lindbladtype_, UDEmode
     VecSetFromOptions(aux2);
 
     // Some output 
-    if (mpirank_world == 0 && !quietmode) {
-      printf("Learning with %d Gellmann mats\n", hamiltonian_basis->getNBasis());
-    }
+    // if (mpirank_world == 0 && !quietmode) {
+      printf("Learning with %d Hamiltonian params and %d Lindblad params \n", hamiltonian_basis->getNParams(), lindblad_basis->getNParams());
+    // }
   }
 }
 
@@ -99,85 +99,11 @@ void Learning::viewOperators(std::string datadir){
   if (mpirank_world == 0) {
     bool shift_diag = true;
     if (UDEmodel == UDEmodelType::HAMILTONIAN || UDEmodel == UDEmodelType::BOTH) {
-
-      /* Assemble the Hamiltonian, MHz, H = \sum l_i*sigma_i */
-      Mat Operator_Re;  
-      Mat Operator_Im;  
-      MatCreateDense(PETSC_COMM_WORLD,PETSC_DECIDE, PETSC_DECIDE, dim_rho, dim_rho, NULL, &Operator_Re);
-      MatCreateDense(PETSC_COMM_WORLD,PETSC_DECIDE, PETSC_DECIDE, dim_rho, dim_rho, NULL, &Operator_Im);
-      MatSetUp(Operator_Re);
-      MatSetUp(Operator_Im);
-      MatZeroEntries(Operator_Re);
-      MatZeroEntries(Operator_Im);
-
-      for (int i=0; i<hamiltonian_basis->getNBasis_Re(); i++) {
-        MatAXPY(Operator_Re, learnparamsH_Re[i] / (2.0*M_PI), hamiltonian_basis->getBasisMat_Re(i), DIFFERENT_NONZERO_PATTERN);
-      }
-      for (int i=0; i<hamiltonian_basis->getNBasis_Im(); i++) {
-        MatAXPY(Operator_Im, learnparamsH_Im[i] / (2.0*M_PI), hamiltonian_basis->getBasisMat_Im(i), DIFFERENT_NONZERO_PATTERN);
-      }
-      // If diagonally shifted: H -= H_00*Id */
-      if (shift_diag) {
-        double h00=0.0;
-        MatGetValue(Operator_Re, 0, 0, &h00);
-        MatShift(Operator_Re, -h00);
-      }
-
-      /* Print to screen */
-      printf("\nLearned Hamiltonian operator [MHz]: Re = \n");
-      MatView(Operator_Re, NULL);
-      printf("Learned Hamiltonian operator [MHz]: Im = \n");
-      MatView(Operator_Im, NULL);
-
-      /* print to file */
-      char filename_re[254]; 
-      char filename_im[254]; 
-      snprintf(filename_re, 254, "%s/LearnedHamiltonian_Re.dat", datadir.c_str());
-      snprintf(filename_im, 254, "%s/LearnedHamiltonian_Im.dat", datadir.c_str());
-      PetscViewer viewer_re, viewer_im;
-      PetscViewerASCIIOpen(PETSC_COMM_WORLD,filename_re, &viewer_re);
-      PetscViewerASCIIOpen(PETSC_COMM_WORLD,filename_im, &viewer_im);
-      MatView(Operator_Re,viewer_re);
-      MatView(Operator_Im,viewer_im);
-      PetscViewerDestroy(&viewer_re);
-      PetscViewerDestroy(&viewer_im);
-      printf("\nLearned Lindblad system matrix written to file %s, %s\n", filename_re, filename_im);
-
-      MatDestroy(&Operator_Re);
-      MatDestroy(&Operator_Im);
+      hamiltonian_basis->printOperator(learnparamsH_Re, learnparamsH_Im, datadir);
     }
 
     if (lindbladtype != LindbladType::NONE && (UDEmodel == UDEmodelType::LINDBLAD || UDEmodel == UDEmodelType::BOTH)) {
-
-      // print coefficients to screen
-      for (int i=0; i<lindblad_basis->getNBasis_Re(); i++){
-        printf("Lindblad coeff %d: %1.8e\n", i, learnparamsL_Re[i]);
-      }
-      if (dim_rho == 2) {
-        printf(" -> maps to T_1 time %1.2f [us]\n", 1.0/learnparamsL_Re[0]);
-        printf(" -> maps to T_2 time %1.2f [us]\n", 1.0/(4.0*learnparamsL_Re[1]));
-      }
-
-      /* assemble and print system matrix */
-      Mat Operator;  
-      MatCreateDense(PETSC_COMM_WORLD,PETSC_DECIDE, PETSC_DECIDE, dim, dim, NULL, &Operator);
-      MatSetUp(Operator);
-      MatZeroEntries(Operator);
-      for (int i=0; i<lindblad_basis->getSystemMats_A().size(); i++) {
-        MatAXPY(Operator, learnparamsL_Re[i], lindblad_basis->getSystemMats_A()[i], DIFFERENT_NONZERO_PATTERN);
-      }
-      assert(lindblad_basis->getSystemMats_B().size() == 0);
-
-      // print to file
-      char filename[254]; 
-      snprintf(filename, 254, "%s/LearnedLindbladSystemMat.dat", datadir.c_str());
-      PetscViewer viewer;
-      PetscViewerASCIIOpen(PETSC_COMM_WORLD,filename, &viewer);
-      MatView(Operator,viewer);
-      printf("\nLearned Lindblad system matrix written to file %s\n", filename);
-
-      PetscViewerDestroy(&viewer);
-      MatDestroy(&Operator);
+      lindblad_basis->printOperator(learnparamsL_Re, learnparamsL_Im, datadir);
     }
   }
 }
@@ -200,14 +126,14 @@ void Learning::setLearnParams(const Vec x){
     learnparamsH_Im[i] = ptr[i+skip];
   }
   // Lindblad terms next
-  skip = hamiltonian_basis->getNBasis();
-  for (int i=0; i<lindblad_basis->getNBasis_Re(); i++) {
+  skip = hamiltonian_basis->getNParams();
+  for (int i=0; i<lindblad_basis->getNParams(); i++) {
     learnparamsL_Re[i] = ptr[i+skip];
   }
-  skip += lindblad_basis->getNBasis_Re();
-  for (int i=0; i<lindblad_basis->getNBasis_Im(); i++){
-    learnparamsL_Im[i] = ptr[i+skip];
-  }
+  // skip += lindblad_basis->getNParams_A();
+  // for (int i=0; i<lindblad_basis->getNParams_B(); i++){
+    // learnparamsL_Im[i] = ptr[i+skip];
+  // }
 
   VecRestoreArrayRead(x, &ptr);
 }
@@ -225,14 +151,14 @@ void Learning::getLearnParams(double* x){
     x[i+skip] = learnparamsH_Im[i];
   }
   // Lindblad terms next
-  skip = hamiltonian_basis->getNBasis();
-  for (int i=0; i<lindblad_basis->getNBasis_Re(); i++) {
+  skip = hamiltonian_basis->getNParams();
+  for (int i=0; i<lindblad_basis->getNParams(); i++) {
     x[i+skip] = learnparamsL_Re[i];
   }
-  skip += lindblad_basis->getNBasis_Re();
-  for (int i=0; i<lindblad_basis->getNBasis_Im(); i++){
-    x[i+skip] = learnparamsL_Im[i];
-  }
+  // skip += lindblad_basis->getNParams_A();
+  // for (int i=0; i<lindblad_basis->getNParams_B(); i++){
+    // x[i+skip] = learnparamsL_Im[i];
+  // }
 }
 
 void Learning::dRHSdp(Vec grad, Vec u, Vec v, double alpha, Vec ubar, Vec vbar){
@@ -242,8 +168,8 @@ void Learning::dRHSdp(Vec grad, Vec u, Vec v, double alpha, Vec ubar, Vec vbar){
 
   if (dim_rho <= 0) return;
 
-  hamiltonian_basis->dRHSdp(grad, u, v, alpha, ubar, vbar);
-  lindblad_basis->dRHSdp(grad, u, v, alpha, ubar, vbar, hamiltonian_basis->getNBasis());
+  hamiltonian_basis->dRHSdp(grad, u, v, alpha, ubar, vbar, learnparamsL_Re);
+  lindblad_basis->dRHSdp(grad, u, v, alpha, ubar, vbar, learnparamsL_Re, hamiltonian_basis->getNParams());
 
   VecAssemblyBegin(grad);
   VecAssemblyEnd(grad);
@@ -274,14 +200,14 @@ void Learning::initLearnParams(std::vector<std::string> learninit_str, std::defa
       learnparamsH_Im.push_back(initguess_fromfile[i + skip]); 
     }
     // Then set all Lindblad params
-    skip = hamiltonian_basis->getNBasis();
-    for (int i=0; i<lindblad_basis->getNBasis_Re(); i++){
+    skip = hamiltonian_basis->getNParams();
+    for (int i=0; i<lindblad_basis->getNParams(); i++){
       learnparamsL_Re.push_back(initguess_fromfile[skip + i]); 
     }
-    skip = hamiltonian_basis->getNBasis() + lindblad_basis->getNBasis_Re();
-    for (int i=0; i<lindblad_basis->getNBasis_Im(); i++){
-      learnparamsL_Im.push_back(initguess_fromfile[skip + i]); 
-    }
+    // skip = hamiltonian_basis->getNParams_A() + hamiltonian_basis->getNParams_B() + lindblad_basis->getNParams_A();
+    // for (int i=0; i<lindblad_basis->getNParams_B(); i++){
+      // learnparamsL_Im.push_back(initguess_fromfile[skip + i]); 
+    // }
   } else if (learninit_str[0].compare("random") == 0 ) {
     // Set uniform random parameters in [0,amp)
 
@@ -301,12 +227,12 @@ void Learning::initLearnParams(std::vector<std::string> learninit_str, std::defa
       assert(learninit_str.size()>2);
       amp = atof(learninit_str[2].c_str());
       std::uniform_real_distribution<double> unit_dist2(0.0, amp);
-      for (int i=0; i<lindblad_basis->getNBasis_Re(); i++){
+      for (int i=0; i<lindblad_basis->getNParams(); i++){
         learnparamsL_Re.push_back(unit_dist2(rand_engine)); // ns?
       }
-      for (int i=0; i<lindblad_basis->getNBasis_Im(); i++){
-        learnparamsL_Im.push_back(unit_dist2(rand_engine)); // ns? 
-      }
+      // for (int i=0; i<lindblad_basis->getNParams_B(); i++){
+        // learnparamsL_Im.push_back(unit_dist2(rand_engine)); // ns? 
+      // }
     }
   } else if (learninit_str[0].compare("constant") == 0 ) {
     // Set constant amp
@@ -324,12 +250,12 @@ void Learning::initLearnParams(std::vector<std::string> learninit_str, std::defa
       if (learninit_str.size() == 2) learninit_str.push_back(learninit_str[1]);
       assert(learninit_str.size()>2);
       amp = atof(learninit_str[2].c_str());
-      for (int i=0; i<lindblad_basis->getNBasis_Re(); i++){
+      for (int i=0; i<lindblad_basis->getNParams(); i++){
         learnparamsL_Re.push_back(amp); // ns?
       }
-      for (int i=0; i<lindblad_basis->getNBasis_Im(); i++){
-        learnparamsL_Im.push_back(amp); // ns? 
-      }
+      // for (int i=0; i<lindblad_basis->getNParams_B(); i++){
+        // learnparamsL_Im.push_back(amp); // ns? 
+      // }
     }
   } else {
     if (mpirank_world==0) printf("ERROR: Wrong configuration for learnable parameter initialization. Choose 'file, <pathtofile>', or 'random, <amplitude_Ham>, <amplitude_Lindblad>', or 'constant, <amplitude_Ham>, <amplitude_Lind>'\n");
