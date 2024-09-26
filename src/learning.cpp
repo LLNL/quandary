@@ -28,7 +28,7 @@ Learning::Learning(std::vector<int> nlevels, LindbladType lindbladtype_, UDEmode
   if (dim_rho > 0) {
 
     /* Create Basis for the learnable terms. */
-    bool shifted_diag = false;
+    bool shifted_diag = true;
     if (UDEmodel == UDEmodelType::HAMILTONIAN || UDEmodel == UDEmodelType::BOTH) {
       hamiltonian_basis = new HamiltonianBasis(dim_rho, shifted_diag, lindbladtype);
     } else {
