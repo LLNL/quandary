@@ -492,11 +492,11 @@ void LindbladBasis::evalOperator(std::vector<double>& learnparams_Re){
 void LindbladBasis::printOperator(std::vector<double>& learnparams_Re, std::vector<double>& learnparams_Im, std::string datadir){
   assert(getSystemMats_B().size() == 0);
 
-  // print coefficients to screen
-  for (int i=0; i<getNParams(); i++){
-    printf("Lindblad coeff %d: %1.8e\n", i, learnparams_Re[i]);
-  }
   if (dim_rho == 2) {
+    // print coefficients to screen
+    for (int i=0; i<getNParams(); i++){
+      printf("Lindblad coeff %d: %1.8e\n", i, learnparams_Re[i]);
+    }
     printf(" -> maps to T_1 time %1.2f [us]\n", 1.0/learnparams_Re[0]);
     printf(" -> maps to T_2 time %1.2f [us]\n", 1.0/(4.0*learnparams_Re[1]));
   }
