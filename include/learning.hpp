@@ -25,8 +25,7 @@ class Learning {
   HamiltonianBasis* hamiltonian_basis;  // Basis matrices for Hamiltonian term
   LindbladBasis* lindblad_basis;     // Basis matrices for Lindblad term 
   std::vector<double> learnparamsH;  // Learnable parameters for Hamiltonian
-  std::vector<double> learnparamsL_Re; // Learnable parameters for Lindblad
-  std::vector<double> learnparamsL_Im; // Learnable parameters for Lindblad
+  std::vector<double> learnparamsL; // Learnable parameters for Lindblad
   
   int nparams;            /* Total Number of learnable paramters*/
   double loss_integral;   /* Running cost for Loss function */
@@ -46,7 +45,7 @@ class Learning {
     /* Get total number of learnable parameters */
     int getNParams(){ return nparams; };
     int getNParamsHamiltonian(){ return learnparamsH.size();};
-    int getNParamsLindblad(){ return learnparamsL_Re.size() + learnparamsL_Im.size(); };
+    int getNParamsLindblad(){ return learnparamsL.size(); };
 
     /* Initialize learnable parameters. */
     void initLearnParams(std::vector<std::string> learninit_str, std::default_random_engine rand_engine);
@@ -60,16 +59,15 @@ class Learning {
        Sets grad += alpha * (dRHS(u,v)/dgamma)^T *(ubar, vbar) */
     void dRHSdp(Vec grad, Vec u, Vec v, double alpha, Vec ubar, Vec vbar);
 
-    /* Assemble the learned operator. Allocates the (dense!) matrices Re(H) and Im(H), which hence must be destroyed after usage. */
+    /* Assemble and view the learned operator. */
     void viewOperators(std::string datadir);
 
-    /* Pass learnable parameters to storage learnparamsH_A and learnparamsH_B*/
+    /* Copy optimization variable x into learnable parameter storage */
     void setLearnParams(const Vec x);
-
-    /* Copy learnable parameters from storage into x */
+    /* Copy learnable parameters from storage into optimization variable x */
     void getLearnParams(double* x);
 
-    /* Add to loss. Note: pulse_num is the global one. */
+    /* Add to loss. Note: pulse_num is the global pulse number . */
     void addToLoss(double time, Vec x, int pulse_num);
     void addToLoss_diff(double time, Vec xbar, Vec xprimal, int pulse_num, double Jbar_loss);
 };

@@ -35,9 +35,10 @@ Learning::Learning(std::vector<int> nlevels, LindbladType lindbladtype_, UDEmode
       hamiltonian_basis = new HamiltonianBasis(0, false, lindbladtype); // will be empty. Dummy
     }
     if (lindbladtype != LindbladType::NONE && (UDEmodel == UDEmodelType::LINDBLAD || UDEmodel == UDEmodelType::BOTH)) {
-        lindblad_basis    = new LindbladBasis(dim_rho, shifted_diag); 
+        bool upper_only = true;
+        lindblad_basis    = new LindbladBasis(dim_rho, shifted_diag, upper_only); 
     } else {
-        lindblad_basis    = new LindbladBasis(0, false);  // will be empty. Dummy
+        lindblad_basis    = new LindbladBasis(0, false, false);  // will be empty. Dummy
     }
     // TEST
     // lindblad_basis->showBasisMats();
@@ -63,8 +64,7 @@ Learning::Learning(std::vector<int> nlevels, LindbladType lindbladtype_, UDEmode
 Learning::~Learning(){
   if (dim_rho > 0) {
     learnparamsH.clear();
-    learnparamsL_Re.clear();
-    learnparamsL_Im.clear();
+    learnparamsL.clear();
     VecDestroy(&aux2);
 
     delete hamiltonian_basis;
@@ -78,7 +78,7 @@ void Learning::applyLearningTerms(Vec u, Vec v, Vec uout, Vec vout){
   if (dim_rho <= 0) return;
 
   hamiltonian_basis->applySystem(u, v, uout, vout, learnparamsH);
-  lindblad_basis->applySystem(u, v, uout, vout, learnparamsL_Re, learnparamsL_Im);
+  lindblad_basis->applySystem(u, v, uout, vout, learnparamsL);
 }
 
 
@@ -89,7 +89,7 @@ void Learning::applyLearningTerms_diff(Vec u, Vec v, Vec uout, Vec vout){
   if (dim_rho <= 0) return;
 
   hamiltonian_basis->applySystem_diff(u,v,uout, vout, learnparamsH);
-  lindblad_basis->applySystem_diff(u,v,uout, vout, learnparamsL_Re, learnparamsL_Im);
+  lindblad_basis->applySystem_diff(u,v,uout, vout, learnparamsL);
 }
 
 
@@ -104,7 +104,7 @@ void Learning::viewOperators(std::string datadir){
     }
 
     if (lindbladtype != LindbladType::NONE && (UDEmodel == UDEmodelType::LINDBLAD || UDEmodel == UDEmodelType::BOTH)) {
-      lindblad_basis->printOperator(learnparamsL_Re, learnparamsL_Im, datadir);
+      lindblad_basis->printOperator(learnparamsL, datadir);
     }
   }
 }
@@ -118,19 +118,13 @@ void Learning::setLearnParams(const Vec x){
   const PetscScalar* ptr;
   VecGetArrayRead(x, &ptr);
   
-  // Hamiltonian parameters first
   for (int i=0; i<hamiltonian_basis->getNParams(); i++) {
     learnparamsH[i] = ptr[i];
   }
-  // Lindblad terms next
   int skip = hamiltonian_basis->getNParams();
   for (int i=0; i<lindblad_basis->getNParams(); i++) {
-    learnparamsL_Re[i] = ptr[i+skip];
+    learnparamsL[i] = ptr[i+skip];
   }
-  // skip += lindblad_basis->getNParams_A();
-  // for (int i=0; i<lindblad_basis->getNParams_B(); i++){
-    // learnparamsL_Im[i] = ptr[i+skip];
-  // }
 
   VecRestoreArrayRead(x, &ptr);
 }
@@ -139,19 +133,14 @@ void Learning::getLearnParams(double* x){
   /* Storage of parameters in x:  
    *   x = [learnparamH_Re, learnparamH_Im, learnparamL_Re, learnparamL_Im ] 
    */
-  // Hamiltonian parameters first
+
   for (int i=0; i<hamiltonian_basis->getNParams(); i++) {
     x[i]      = learnparamsH[i];
   }
-  // Lindblad terms next
   int skip = hamiltonian_basis->getNParams();
   for (int i=0; i<lindblad_basis->getNParams(); i++) {
-    x[i+skip] = learnparamsL_Re[i];
+    x[i+skip] = learnparamsL[i];
   }
-  // skip += lindblad_basis->getNParams_A();
-  // for (int i=0; i<lindblad_basis->getNParams_B(); i++){
-    // x[i+skip] = learnparamsL_Im[i];
-  // }
 }
 
 void Learning::dRHSdp(Vec grad, Vec u, Vec v, double alpha, Vec ubar, Vec vbar){
@@ -162,7 +151,7 @@ void Learning::dRHSdp(Vec grad, Vec u, Vec v, double alpha, Vec ubar, Vec vbar){
   if (dim_rho <= 0) return;
 
   hamiltonian_basis->dRHSdp(grad, u, v, alpha, ubar, vbar, learnparamsH);
-  lindblad_basis->dRHSdp(grad, u, v, alpha, ubar, vbar, learnparamsL_Re, hamiltonian_basis->getNParams());
+  lindblad_basis->dRHSdp(grad, u, v, alpha, ubar, vbar, learnparamsL, hamiltonian_basis->getNParams());
 
   VecAssemblyBegin(grad);
   VecAssemblyEnd(grad);
@@ -191,12 +180,8 @@ void Learning::initLearnParams(std::vector<std::string> learninit_str, std::defa
     // Then set all Lindblad params
     int skip = hamiltonian_basis->getNParams();
     for (int i=0; i<lindblad_basis->getNParams(); i++){
-      learnparamsL_Re.push_back(initguess_fromfile[skip + i]); 
+      learnparamsL.push_back(initguess_fromfile[skip + i]); 
     }
-    // skip = hamiltonian_basis->getNParams_A() + hamiltonian_basis->getNParams_B() + lindblad_basis->getNParams_A();
-    // for (int i=0; i<lindblad_basis->getNParams_B(); i++){
-      // learnparamsL_Im.push_back(initguess_fromfile[skip + i]); 
-    // }
   } else if (learninit_str[0].compare("random") == 0 ) {
     // Set uniform random parameters in [0,amp)
 
@@ -208,13 +193,13 @@ void Learning::initLearnParams(std::vector<std::string> learninit_str, std::defa
       learnparamsH.push_back(unit_dist(rand_engine) * 2.0*M_PI); // radians
     }
     // Then all Lindblad parameters
-    if (lindblad_basis->getNBasis() > 0) {
+    if (lindblad_basis->getNParams() > 0) {
       if (learninit_str.size() == 2) learninit_str.push_back(learninit_str[1]);
       assert(learninit_str.size()>2);
       amp = atof(learninit_str[2].c_str());
       std::uniform_real_distribution<double> unit_dist2(0.0, amp);
       for (int i=0; i<lindblad_basis->getNParams(); i++){
-        learnparamsL_Re.push_back(unit_dist2(rand_engine)); // ns?
+        learnparamsL.push_back(unit_dist2(rand_engine)); // ns?
       }
       // for (int i=0; i<lindblad_basis->getNParams_B(); i++){
         // learnparamsL_Im.push_back(unit_dist2(rand_engine)); // ns? 
@@ -229,12 +214,12 @@ void Learning::initLearnParams(std::vector<std::string> learninit_str, std::defa
       learnparamsH.push_back(amp * 2.0*M_PI);
     }
     // Then all Lindblad parameters
-    if (lindblad_basis->getNBasis() > 0) {
+    if (lindblad_basis->getNParams() > 0) {
       if (learninit_str.size() == 2) learninit_str.push_back(learninit_str[1]);
       assert(learninit_str.size()>2);
       amp = atof(learninit_str[2].c_str());
       for (int i=0; i<lindblad_basis->getNParams(); i++){
-        learnparamsL_Re.push_back(amp); // ns?
+        learnparamsL.push_back(amp); // ns?
       }
       // for (int i=0; i<lindblad_basis->getNParams_B(); i++){
         // learnparamsL_Im.push_back(amp); // ns? 

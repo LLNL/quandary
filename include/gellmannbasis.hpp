@@ -85,24 +85,33 @@ class HamiltonianBasis {
     void printOperator(std::vector<double>& learnparams, std::string datadir);
 };
 
-class LindbladBasis: public GellmannBasis {
+class LindbladBasis {
+  int dim_rho;   /* Dimension of the Hilbertspace (N)*/
+  int dim;       /* N (if Schroedinger solver) or N^2 (if Lindblad) */
+  int nbasis;   /* Number of basis operators */
+  int nparams;  /* Total number of learnable parameters */
+
+  std::vector<Mat> SystemMats_A;  // System matrix for applying the Hamiltonian in the master equation
+  std::vector<Mat> SystemMats_B;  // System matrix for applying the Hamiltonian in the master equation
+
   Mat Operator;  
 
+  Vec aux;     // Auxiliary vector to perform matvecs on Re(x) or Im(x)
+
   public:
-    LindbladBasis(int dim_rho_, bool shifted_diag_);
+    LindbladBasis(int dim_rho_, bool shifted_diag_, bool upper_only_);
     ~LindbladBasis();
 
-    void assembleSystemMats();
+    int getNParams(){return nparams;};
 
-    void applySystem(Vec u, Vec v, Vec uout, Vec vout, std::vector<double>& learnparams_Re, std::vector<double>& learnparams_Im);
-    void applySystem_diff(Vec u, Vec v, Vec uout, Vec vout, std::vector<double>& learnparams_Re, std::vector<double>& learnparams_Im);
-    void dRHSdp(Vec grad, Vec u, Vec v, double alpha, Vec ubar, Vec vbar, std::vector<double>& learnparamsL_Re, int skipID=0);
+    int createSystemMats(bool upper_only, bool shifted_diag); // returns the total number of basis mats
 
-    std::vector<Mat> getSystemMats_A() {return SystemMats_A;};
-    std::vector<Mat> getSystemMats_B() {return SystemMats_B;};
+    void applySystem(Vec u, Vec v, Vec uout, Vec vout, std::vector<double>& learnparams);
+    void applySystem_diff(Vec u, Vec v, Vec uout, Vec vout, std::vector<double>& learnparams);
+    void dRHSdp(Vec grad, Vec u, Vec v, double alpha, Vec ubar, Vec vbar, std::vector<double>& learnparamsL, int skipID=0);
 
-    void printOperator(std::vector<double>& learnparams_Re, std::vector<double>& learnparams_Im, std::string datadir);
+    void printOperator(std::vector<double>& learnparamsL, std::string datadir);
 
     void evalOperator(std::vector<double>& learnparams_Re);
-    int mapID(int i, int j){return i*BasisMat_Re.size() - i*(i+1)/2 + j;}
+    int mapID(int i, int j){return i*nbasis - i*(i+1)/2 + j;}
 };
