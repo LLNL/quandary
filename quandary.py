@@ -73,6 +73,7 @@ class Quandary:
     print_frequency_iter # Output frequency for optimization iterations. (Print every <x> iterations). Default: 1
     usematfree           # Switch to use matrix-free (rather than sparse-matrix) solver. Default: True
     verbose              # Switch to turn on more screen output for debugging. Default: False
+    output_frequency    # Write trajectory every <n> the timestep. default 1
 
     Internal variables. 
     -------------------
@@ -145,6 +146,7 @@ class Quandary:
     print_frequency_iter   : int  = 1
     usematfree             : bool = True 
     verbose                : bool = False
+    output_frequency       : int  = 1
     # Internal configuration. Should not be changed by user.
     _ninit                : int         = -1
     _lindblad_solver      : bool        = False
@@ -214,7 +216,8 @@ class Quandary:
             self._ninit = self._ninit**2
         
         # Estimate the number of required time steps
-        self.nsteps = estimate_timesteps(T=self.T, Hsys=self.Hsys, Hc_re=self.Hc_re, Hc_im=self.Hc_im, maxctrl_MHz=self.maxctrl_MHz, Pmin=self.Pmin)
+        if (self.nsteps < 0):
+            self.nsteps = estimate_timesteps(T=self.T, Hsys=self.Hsys, Hc_re=self.Hc_re, Hc_im=self.Hc_im, maxctrl_MHz=self.maxctrl_MHz, Pmin=self.Pmin)
         if self.verbose:
             print("Final time: ",self.T,"ns, Number of timesteps: ", self.nsteps,", dt=", self.T/self.nsteps, "ns")
             print("Maximum control amplitudes: ", self.maxctrl_MHz, "MHz")
@@ -564,7 +567,7 @@ class Quandary:
         mystring += "datadir= ./\n"
         for iosc in range(len(self.Ne)):
             mystring += "output" + str(iosc) + "=expectedEnergy, population, fullstate\n"
-        mystring += "output_frequency = 1\n"
+        mystring += "output_frequency = " + str(self.output_frequency) + "\n"
         mystring += "optim_monitor_frequency = " + str(self.print_frequency_iter) + "\n"
         mystring += "runtype = " + runtype + "\n"
         if len(self.Ne) < 6:
