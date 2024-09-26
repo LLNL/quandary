@@ -65,23 +65,3 @@ if True:
 	plot_pulse(quandary.Ne, t, pt, qt)
 	plot_expectedEnergy(quandary.Ne, t, expectedEnergy) 
 	# plot_population(quandary.Ne, t, population)
-
-
-# You can predict the decoherence error of optimized dynamics:
-print("Evaluate accuracy under decay and dephasing decoherence:\n")
-T1 = [100000.0, 10000.0] #[ns] decay for each qubit
-T2 = [80000.0 , 80000.0] #[ns] dephase for each qubit
-
-# modify the solver object by adding decoherence
-quandary.T1 = T1
-quandary.T2 = T2
-quandary.update()
-t, pt, qt, infidelity, expect, _ = quandary.simulate(maxcores=8) # Running on 8 cores
-
-
-# quandary_lblad = Quandary(Ne=Ne, Ng=Ng, freq01=freq01, selfkerr=selfkerr, Jkl=Jkl, rotfreq=rotfreq, T=T, targetgate=unitary, verbose=verbose, rand_seed=rand_seed, spline_order=spline_order, spline_knot_spacing=spline_knot_spacing, gamma_variation=gamma_variation, control_enforce_BC=control_enforce_BC, maxiter = maxiter, T1=T1, T2=T2)
-# quandary_lblad.pcof0 = quandary.popt[:]
-# t, pt, qt, infidelity, expect, _ = quandary_lblad.simulate(maxcores=8) # Running on 8 cores
-
-print(f"Lindblad Fidelity = {1.0 - infidelity}")
-
