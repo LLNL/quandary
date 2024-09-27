@@ -10,7 +10,7 @@
 #include <vector>
 #include<random>
 #include "data.hpp"
-#include "gellmannbasis.hpp"
+#include "UDEmodel.hpp"
 #pragma once
 
 class Learning {
@@ -22,8 +22,8 @@ class Learning {
   LindbladType lindbladtype; // Switch for Lindblad vs Schroedinger solver
   UDEmodelType UDEmodel; // Switch type of learning model: hamiltonian, lindblad, or both
 
-  HamiltonianBasis* hamiltonian_basis;  // Basis matrices for Hamiltonian term
-  LindbladBasis* lindblad_basis;     // Basis matrices for Lindblad term 
+  HamiltonianModel* hamiltonian_model;  // Basis matrices for Hamiltonian term
+  LindbladModel* lindblad_model;     // Basis matrices for Lindblad term 
   std::vector<double> learnparamsH;  // Learnable parameters for Hamiltonian
   std::vector<double> learnparamsL; // Learnable parameters for Lindblad
   

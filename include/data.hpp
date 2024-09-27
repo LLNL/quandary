@@ -9,7 +9,6 @@
 #include <assert.h>
 #include <petscts.h>
 #include <vector>
-#include "gellmannbasis.hpp"
 #pragma once
 
 /* Abstract base data class */
