@@ -36,9 +36,10 @@ Learning::Learning(std::vector<int> nlevels, LindbladType lindbladtype_, UDEmode
     }
     if (lindbladtype != LindbladType::NONE && (UDEmodel == UDEmodelType::LINDBLAD || UDEmodel == UDEmodelType::BOTH)) {
         bool upper_only = true;
-        lindblad_model    = new LindbladModel(dim_rho, shifted_diag, upper_only); 
+        bool real_only = true;
+        lindblad_model    = new LindbladModel(dim_rho, shifted_diag, upper_only, real_only); 
     } else {
-        lindblad_model    = new LindbladModel(0, false, false);  // will be empty. Dummy
+        lindblad_model    = new LindbladModel(0, false, false, false);  // will be empty. Dummy
     }
     // TEST
     // lindblad_model->showBasisMats();

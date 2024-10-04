@@ -56,16 +56,16 @@ class LindbladModel: public UDEmodel {
   int nbasis;   /* Number of basis operators */
 
   public:
-    LindbladModel(int dim_rho_, bool shifted_diag_, bool upper_only_);
+    LindbladModel(int dim_rho_, bool shifted_diag_, bool upper_only_, bool real_only_);
     ~LindbladModel();
 
-    int createSystemMats(bool upper_only, bool shifted_diag); // returns the total number of basis mats
+    int createSystemMats(bool upper_only, bool real_only, bool shifted_diag); // returns the total number of basis mats
 
     /* Assembles the system matrix operator */
     void evalOperator(std::vector<double>& learnparams);
 
     /* Index mapping for storing the upper triangular learnable matrix in a linear vector (vectorized row-wise)*/
-    int mapID(int i, int j){return i*nbasis - i*(i+1)/2 + j;}
+    inline int mapID(int i, int j){return i*nbasis - i*(i+1)/2 + j;}
 
     void applySystem(Vec u, Vec v, Vec uout, Vec vout, std::vector<double>& learnparams);
     void applySystem_diff(Vec u, Vec v, Vec uout, Vec vout, std::vector<double>& learnparams);

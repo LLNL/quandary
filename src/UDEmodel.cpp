@@ -226,12 +226,12 @@ void HamiltonianModel::printOperator(std::vector<double>& learnparamsH, std::str
 
 }
   
-LindbladModel::LindbladModel(int dim_rho_, bool shifted_diag, bool upper_only) : UDEmodel(dim_rho_, LindbladType::BOTH) {
+LindbladModel::LindbladModel(int dim_rho_, bool shifted_diag, bool upper_only, bool real_only) : UDEmodel(dim_rho_, LindbladType::BOTH) {
   dim_rho = dim_rho_;
   dim = dim_rho*dim_rho; 
 
   /* Assemble system Matrices */ 
-  nbasis = createSystemMats(upper_only, shifted_diag);
+  nbasis = createSystemMats(upper_only, real_only, shifted_diag);
 
   /* set the total number of learnable parameters */
   nparams = 0.5 * nbasis * (nbasis+1);
@@ -245,13 +245,16 @@ LindbladModel::LindbladModel(int dim_rho_, bool shifted_diag, bool upper_only) :
 LindbladModel::~LindbladModel(){}
 
 
-int LindbladModel::createSystemMats(bool upper_only, bool shifted_diag){
+int LindbladModel::createSystemMats(bool upper_only, bool real_only, bool shifted_diag){
   /* Set up and store the Lindblad system matrices: 
   *   sigma_i.conj kron sigma_j - 1/2(I kron sigma_i^t sigma_j + (sigma_i^t sigma_j)^T kron I)
    * Here, all Basis mats are REAL (only using upper part of the real Gellmann mats), hence all go into A = Re(...)
    * Note that here we have: sigma.conj = sigma and (sigma^tsigma)^T
   */
-  bool real_only = true;
+  if (!real_only) {
+    printf("ERROR: Lindblad basis currently only implemented for real basis mats.");
+    exit(1);
+  }
 
   /* Create the Gellmann matrices*/
   std::vector<Mat> BasisMats_Re, BasisMats_Im;
