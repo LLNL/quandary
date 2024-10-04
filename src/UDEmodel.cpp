@@ -270,9 +270,9 @@ int LindbladModel::createSystemMats(bool upper_only, bool real_only, bool shifte
     for (int j=1; j<BasisMats_Re.size(); j++){
 
       Mat myMat, myMat1, myMat2, sigmasq;
-      MatTransposeMatMult(BasisMats_Re[i], BasisMats_Re[j],MAT_INITIAL_MATRIX, PETSC_DEFAULT,&sigmasq);
+      MatTransposeMatMult(BasisMats_Re[j], BasisMats_Re[i],MAT_INITIAL_MATRIX, PETSC_DEFAULT,&sigmasq);
 
-      MatSeqAIJKron(BasisMats_Re[i], BasisMats_Re[j], MAT_INITIAL_MATRIX, &myMat);  // myMat = sigma_i \kron sigma_j
+      MatSeqAIJKron(BasisMats_Re[j], BasisMats_Re[i], MAT_INITIAL_MATRIX, &myMat);  // myMat = sigma_j \kron sigma_i
       MatSeqAIJKron(Id, sigmasq, MAT_INITIAL_MATRIX, &myMat1);                    // myMay1 = Id \kron sigma_i^tsigma_j
       MatAXPY(myMat, -0.5, myMat1, DIFFERENT_NONZERO_PATTERN);                    // myMat = sigma kron sigma - 0.5*(Id kron sigma^tsigma)
       MatTranspose(sigmasq, MAT_INPLACE_MATRIX, &sigmasq);
