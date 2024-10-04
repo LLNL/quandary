@@ -1389,7 +1389,7 @@ def getGellmanMats(dim, *, realonly=False, upperonly=False, shifted=True):
     
     return GellmannMats
 
-def getBasisMats(dim, upperonly=False, shifted=True):
+def getEijBasisMats(dim, upperonly=False, shifted=True):
     BasisMats= []
     # offdiagonals
     for j in range(dim):
