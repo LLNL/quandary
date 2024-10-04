@@ -12,6 +12,9 @@
 /* Create the generalized Gellmann matrices. Must be destroyed after usage. */
 void createGellmannMats(int dim_rho, bool upper_only, bool real_only, bool shifted_diag, bool includeIdentity, std::vector<Mat>& Mats_Re, std::vector<Mat>& Mats_Im);
 
+/* Create Basis matrix for 2qubit 2level system that contain decay and decoherence for each qubit */
+void createDecayBasis_2qubit(int dim_rho, std::vector<Mat>& BasisMats_Re, bool includeIdentity);
+
 /* Compute the expected energy of the full composite system (default), or of a subsystem i */
 double expectedEnergy(const Vec x, LindbladType lindbladtype, std::vector<int> nlevels, int subsystem =-1);
 // void expectedEnergy_diff(const Vec x, Vec x_bar, const double obj_bar);

@@ -82,6 +82,137 @@ void createGellmannMats(int dim_rho, bool upper_only, bool real_only, bool shift
   }
 }
 
+
+void createDecayBasis_2qubit(int dim_rho, std::vector<Mat>& BasisMats_Re, bool includeIdentity){
+
+  /* Put the identity first, if needed */
+  if (includeIdentity){
+    Mat G_re;
+    MatCreate(PETSC_COMM_WORLD, &G_re);
+    MatSetType(G_re, MATSEQAIJ);
+    MatSetSizes(G_re, PETSC_DECIDE, PETSC_DECIDE, dim_rho, dim_rho);
+    MatSetUp(G_re);
+    for (int i=0; i<dim_rho; i++){
+      MatSetValue(G_re, i, i, 1.0, INSERT_VALUES);
+    }
+    MatAssemblyBegin(G_re, MAT_FINAL_ASSEMBLY);
+    MatAssemblyEnd(G_re, MAT_FINAL_ASSEMBLY);
+    BasisMats_Re.push_back(G_re);
+  }
+
+
+  /* First decay and decoherence for each qubit */
+  Mat G01, G02, G11, G12;
+  MatCreate(PETSC_COMM_WORLD, &G01);
+  MatCreate(PETSC_COMM_WORLD, &G02);
+  MatCreate(PETSC_COMM_WORLD, &G11);
+  MatCreate(PETSC_COMM_WORLD, &G12);
+  MatSetType(G01, MATSEQAIJ);
+  MatSetType(G02, MATSEQAIJ);
+  MatSetType(G11, MATSEQAIJ);
+  MatSetType(G12, MATSEQAIJ);
+  MatSetSizes(G01, PETSC_DECIDE, PETSC_DECIDE, dim_rho, dim_rho);
+  MatSetSizes(G02, PETSC_DECIDE, PETSC_DECIDE, dim_rho, dim_rho);
+  MatSetSizes(G11, PETSC_DECIDE, PETSC_DECIDE, dim_rho, dim_rho);
+  MatSetSizes(G12, PETSC_DECIDE, PETSC_DECIDE, dim_rho, dim_rho);
+  MatSetUp(G01);
+  MatSetUp(G02);
+  MatSetUp(G11);
+  MatSetUp(G12);
+
+  MatSetValue(G01, 0, 2, 1.0, ADD_VALUES);
+  MatSetValue(G01, 1, 3, 1.0, ADD_VALUES);
+  MatSetValue(G02, 2, 2, 1.0, ADD_VALUES);
+  MatSetValue(G02, 3, 3, 1.0, ADD_VALUES);
+  MatSetValue(G11, 0, 1, 1.0, ADD_VALUES);
+  MatSetValue(G11, 2, 3, 1.0, ADD_VALUES);
+  MatSetValue(G12, 1, 1, 1.0, ADD_VALUES);
+  MatSetValue(G12, 3, 3, 1.0, ADD_VALUES);
+ 
+  MatAssemblyBegin(G01, MAT_FINAL_ASSEMBLY);
+  MatAssemblyBegin(G02, MAT_FINAL_ASSEMBLY);
+  MatAssemblyBegin(G11, MAT_FINAL_ASSEMBLY);
+  MatAssemblyBegin(G12, MAT_FINAL_ASSEMBLY);
+  MatAssemblyEnd(G01, MAT_FINAL_ASSEMBLY);
+  MatAssemblyEnd(G02, MAT_FINAL_ASSEMBLY);
+  MatAssemblyEnd(G11, MAT_FINAL_ASSEMBLY);
+  MatAssemblyEnd(G12, MAT_FINAL_ASSEMBLY);
+  BasisMats_Re.push_back(G01);
+  BasisMats_Re.push_back(G02);
+  BasisMats_Re.push_back(G11);
+  BasisMats_Re.push_back(G12);
+
+  for (int i=1; i<4; i++) {
+    Mat Gu, Gl;
+    MatCreate(PETSC_COMM_WORLD, &Gu);
+    MatCreate(PETSC_COMM_WORLD, &Gl);
+    MatSetType(Gu, MATSEQAIJ);
+    MatSetType(Gl, MATSEQAIJ);
+    MatSetSizes(Gu, PETSC_DECIDE, PETSC_DECIDE, dim_rho, dim_rho);
+    MatSetSizes(Gl, PETSC_DECIDE, PETSC_DECIDE, dim_rho, dim_rho);
+    MatSetUp(Gu);
+    MatSetUp(Gl);
+    MatSetValue(Gu, 0, i, 1.0, ADD_VALUES);
+    MatSetValue(Gl, i, 0, 1.0, ADD_VALUES);
+    MatAssemblyBegin(Gu, MAT_FINAL_ASSEMBLY);
+    MatAssemblyBegin(Gl, MAT_FINAL_ASSEMBLY);
+    MatAssemblyEnd(Gu, MAT_FINAL_ASSEMBLY);
+    MatAssemblyEnd(Gl, MAT_FINAL_ASSEMBLY);
+    BasisMats_Re.push_back(Gu);
+    BasisMats_Re.push_back(Gl);
+  }
+
+  {
+    Mat Gu, Gl;
+    MatCreate(PETSC_COMM_WORLD, &Gu);
+    MatCreate(PETSC_COMM_WORLD, &Gl);
+    MatSetType(Gu, MATSEQAIJ);
+    MatSetType(Gl, MATSEQAIJ);
+    MatSetSizes(Gu, PETSC_DECIDE, PETSC_DECIDE, dim_rho, dim_rho);
+    MatSetSizes(Gl, PETSC_DECIDE, PETSC_DECIDE, dim_rho, dim_rho);
+    MatSetUp(Gu);
+    MatSetUp(Gl);
+    MatSetValue(Gu, 1, 2, 1.0, ADD_VALUES);
+    MatSetValue(Gl, 2, 1, 1.0, ADD_VALUES);
+    MatAssemblyBegin(Gu, MAT_FINAL_ASSEMBLY);
+    MatAssemblyBegin(Gl, MAT_FINAL_ASSEMBLY);
+    MatAssemblyEnd(Gu, MAT_FINAL_ASSEMBLY);
+    MatAssemblyEnd(Gl, MAT_FINAL_ASSEMBLY);
+    BasisMats_Re.push_back(Gu);
+    BasisMats_Re.push_back(Gl);
+  }
+  {
+    Mat Gu, Gl;
+    MatCreate(PETSC_COMM_WORLD, &Gu);
+    MatCreate(PETSC_COMM_WORLD, &Gl);
+    MatSetType(Gu, MATSEQAIJ);
+    MatSetType(Gl, MATSEQAIJ);
+    MatSetSizes(Gu, PETSC_DECIDE, PETSC_DECIDE, dim_rho, dim_rho);
+    MatSetSizes(Gl, PETSC_DECIDE, PETSC_DECIDE, dim_rho, dim_rho);
+    MatSetUp(Gu);
+    MatSetUp(Gl);
+    MatSetValue(Gu, 3, 1, 1.0, ADD_VALUES);
+    MatSetValue(Gl, 3, 2, 1.0, ADD_VALUES);
+    MatAssemblyBegin(Gu, MAT_FINAL_ASSEMBLY);
+    MatAssemblyBegin(Gl, MAT_FINAL_ASSEMBLY);
+    MatAssemblyEnd(Gu, MAT_FINAL_ASSEMBLY);
+    MatAssemblyEnd(Gl, MAT_FINAL_ASSEMBLY);
+    BasisMats_Re.push_back(Gu);
+    BasisMats_Re.push_back(Gl);
+  }
+  {
+    Mat Gu;
+    MatCreate(PETSC_COMM_WORLD, &Gu);
+    MatSetType(Gu, MATSEQAIJ);
+    MatSetSizes(Gu, PETSC_DECIDE, PETSC_DECIDE, dim_rho, dim_rho);
+    MatSetUp(Gu);
+    MatSetValue(Gu, 1, 1, 1.0, ADD_VALUES);
+    MatAssemblyBegin(Gu, MAT_FINAL_ASSEMBLY);
+    MatAssemblyEnd(Gu, MAT_FINAL_ASSEMBLY);
+    BasisMats_Re.push_back(Gu);
+  }
+}
+
 double expectedEnergy(const Vec x, LindbladType lindbladtype, std::vector<int> nlevels, int subsystem){
  
   // Compute Hilbertspace dimension and the dimension of the systems following this subsystem

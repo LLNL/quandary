@@ -260,6 +260,7 @@ int LindbladModel::createSystemMats(bool upper_only, bool real_only, bool shifte
   std::vector<Mat> BasisMats_Re, BasisMats_Im;
   bool includeIdentity = true;
   createGellmannMats(dim_rho, upper_only, real_only, shifted_diag, includeIdentity, BasisMats_Re, BasisMats_Im);
+  // createDecayBasis_2qubit(dim_rho, BasisMats_Re, includeIdentity);
   int nbasis = BasisMats_Re.size() - 1 + BasisMats_Im.size();
 
   // Note BasisMats[0] contains the identity. Grab it here:
