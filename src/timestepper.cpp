@@ -9,6 +9,7 @@ TimeStepper::TimeStepper() {
   dt = 0.0;
   storeFWD = false;
   MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
+  writeDataFiles = false;
 }
 
 TimeStepper::TimeStepper(MapParam config, MasterEq* mastereq_, int ntime_, double total_time_, Output* output_, bool storeFWD_) : TimeStepper() {
@@ -18,14 +19,6 @@ TimeStepper::TimeStepper(MapParam config, MasterEq* mastereq_, int ntime_, doubl
   total_time = total_time_;
   output = output_;
   storeFWD = storeFWD_;
-
-  gamma_penalty_dpdm = config.GetDoubleParam("optim_penalty_dpdm", 0.0);
-  if (gamma_penalty_dpdm > 1e-13 && mastereq->lindbladtype != LindbladType::NONE){
-    if (mpirank_world == 0) {
-      printf("Warning: Disabling DpDm penalty term because it is not implemented for the Lindblad solver.\n");
-    }
-    gamma_penalty_dpdm = 0.0;
-  }
 
   /* Check if leakage term is added: Only if nessential is smaller than nlevels for at least one oscillator */
   addLeakagePrevent = false; 
@@ -52,6 +45,7 @@ TimeStepper::TimeStepper(MapParam config, MasterEq* mastereq_, int ntime_, doubl
   VecSetSizes(x, PETSC_DECIDE, dim);
   VecSetFromOptions(x);
   VecZeroEntries(x);
+  VecDuplicate(x, &xprimal);
 
   /* Allocate the reduced gradient */
   int ndesign = 0;
@@ -71,6 +65,7 @@ TimeStepper::~TimeStepper() {
     VecDestroy(&(store_states[n]));
   }
   VecDestroy(&x);
+  VecDestroy(&xprimal);
   VecDestroy(&redgrad);
 }
 
@@ -89,7 +84,9 @@ Vec TimeStepper::getState(int tindex){
 Vec TimeStepper::solveODE(int initid, Vec rho_t0){
 
   /* Open output files */
-  output->openDataFiles("rho", initid);
+  if (writeDataFiles) {
+    output->openDataFiles("rho", initid);
+  }
 
   /* Set initial condition  */
   VecCopy(rho_t0, x);
@@ -119,7 +116,9 @@ Vec TimeStepper::solveODE(int initid, Vec rho_t0){
 
     /* store and write current state. */
     if (storeFWD) VecCopy(x, store_states[n]);
-    output->writeDataFiles(n, tstart, x, mastereq);
+    if (writeDataFiles) {
+      output->writeDataFiles(n, tstart, x, mastereq);
+    }
 
     /* Take one time step */
     evolveFWD(tstart, tstop, x);
@@ -158,8 +157,10 @@ Vec TimeStepper::solveODE(int initid, Vec rho_t0){
   }
 
   /* Write last time step and close files */
-  output->writeDataFiles(ntime, ntime*dt, x, mastereq);
-  output->closeDataFiles();
+  if (writeDataFiles) {
+    output->writeDataFiles(ntime, ntime*dt, x, mastereq);
+    output->closeDataFiles();
+  }
   
 
   return x;
@@ -175,7 +176,7 @@ void TimeStepper::solveAdjointODE(int initid, Vec rho_t0_bar, Vec finalstate, do
   VecCopy(rho_t0_bar, x);
 
   /* Set terminal primal state */
-  Vec xprimal = finalstate;
+  VecCopy(finalstate, xprimal);
 
   /* Store states at N, N-1, N-2 for dpdm penalty */
   if (gamma_penalty_dpdm > 1e-13){
@@ -210,7 +211,7 @@ void TimeStepper::solveAdjointODE(int initid, Vec rho_t0_bar, Vec finalstate, do
     if (gamma_penalty > 1e-13) penaltyIntegral_diff(tstop, xprimal, x, Jbar_penalty);
 
     /* Get the state at n-1. If Schroedinger solver, recompute it by taking a step backwards with the forward solver, otherwise get it from storage. */
-    if (storeFWD) xprimal = getState(n-1);
+    if (storeFWD) VecCopy(getState(n-1), xprimal);
     else evolveFWD(tstop, tstart, xprimal);
 
     /* Take one time step backwards for the adjoint */

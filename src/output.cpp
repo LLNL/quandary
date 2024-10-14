@@ -4,9 +4,7 @@ Output::Output(){
   mpirank_world = -1;
   mpirank_petsc = -1;
   mpirank_init  = -1;
-  optim_monitor_freq = 0;
   output_frequency = 0;
-  optim_iter = 0;
   quietmode = false;
 }
 
@@ -35,7 +33,7 @@ Output::Output(MapParam& config, MPI_Comm comm_petsc, MPI_Comm comm_init, int no
     char filename[255];
     snprintf(filename, 254, "%s/optim_history.dat", datadir.c_str());
     optimfile = fopen(filename, "w");
-    fprintf(optimfile, "#iter    Objective           ||Pr(grad)||           LS step           F_avg           Terminal cost       Tikhonov-regul      Penalty-term       DpDm           Energy-term\n");
+    fprintf(optimfile, "#iter    Objective           ||Pr(grad)||           LS step           F_avg           Terminal cost         Tikhonov-regul        Penalty-term          State variation        Energy-term           Control variation\n");
   } 
 
   /* Read from config what output is desired */
@@ -70,10 +68,10 @@ Output::~Output(){
 }
 
 
-void Output::writeOptimFile(double objective, double gnorm, double stepsize, double Favg, double costT, double tikh_regul, double penalty, double penalty_dpdm, double penalty_energy){
+void Output::writeOptimFile(int optim_iter, double objective, double gnorm, double stepsize, double Favg, double costT, double tikh_regul, double penalty, double penalty_dpdm, double penalty_energy, double penalty_variation){
 
   if (mpirank_world == 0){
-    fprintf(optimfile, "%05d  %1.14e  %1.14e  %.8f  %1.14e  %1.14e  %1.14e  %1.14e  %1.14e  %1.14e\n", optim_iter, objective, gnorm, stepsize, Favg, costT, tikh_regul, penalty, penalty_dpdm, penalty_energy);
+    fprintf(optimfile, "%05d  %1.14e  %1.14e  %.8f  %1.14e  %1.14e  %1.14e  %1.14e  %1.14e  %1.14e  %1.14e\n", optim_iter, objective, gnorm, stepsize, Favg, costT, tikh_regul, penalty, penalty_dpdm, penalty_energy, penalty_variation);
     fflush(optimfile);
   } 
 
@@ -98,7 +96,7 @@ void Output::writeGradient(Vec grad){
     }
     fclose(file);
     VecRestoreArrayRead(grad, &grad_ptr);
-    if (!quietmode) printf("File written: %s\n", filename);
+    // if (!quietmode) printf("File written: %s\n", filename);
   }
 }
 
@@ -113,7 +111,6 @@ void Output::writeControls(Vec params, MasterEq* mastereq, int ntime, double dt)
 
     /* Print current parameters to file */
     FILE *file, *file_c;
-    // sprintf(filename, "%s/params_iter%04d.dat", datadir.c_str(), optim_iter);
     snprintf(filename, 254, "%s/params.dat", datadir.c_str());
     file = fopen(filename, "w");
 
@@ -131,7 +128,7 @@ void Output::writeControls(Vec params, MasterEq* mastereq, int ntime, double dt)
     for (int ioscil = 0; ioscil < mastereq->getNOscillators(); ioscil++) {
       snprintf(filename, 254, "%s/control%d.dat", datadir.c_str(), ioscil);
       file_c = fopen(filename, "w");
-      fprintf(file_c, "# time         p(t) (rotating)          q(t) (rotating)        f(t) (labframe) \n");
+      fprintf(file_c, "# time         p(t) (rotating)          q(t) (rotating)         f(t) (labframe) \n");
 
       /* Write every <num> timestep to file */
       for (int i=0; i<=ntime; i+=output_frequency) {
@@ -141,7 +138,7 @@ void Output::writeControls(Vec params, MasterEq* mastereq, int ntime, double dt)
         mastereq->getOscillator(ioscil)->evalControl(time, &ReI, &ImI);
         mastereq->getOscillator(ioscil)->evalControl_Labframe(time, &LabI);
         // Write control drives
-        fprintf(file_c, "% 1.8f   % 1.14e   % 1.14e   % 1.14e \n", time, ReI, ImI, LabI);
+        fprintf(file_c, "% 1.8f   % 1.14e   % 1.14e   % 1.14e \n", time, ReI/(2.0*M_PI), ImI/(2.0*M_PI), LabI/(2.0*M_PI));
      } // end of time loop 
 
       fclose(file_c);
@@ -155,11 +152,9 @@ void Output::openDataFiles(std::string prefix, int initid){
   char filename[255];
 
   /* Flag to determine if this optimization iteration will write data output */
-  bool write_this_iter = false;
-  if (optim_iter % optim_monitor_freq == 0) write_this_iter = true;
 
   /* Open files for state vector */
-  if (mpirank_petsc == 0 && writefullstate && write_this_iter) {
+  if (mpirank_petsc == 0 && writefullstate ) {
     snprintf(filename, 254, "%s/%s_Re.iinit%04d.dat", datadir.c_str(), prefix.c_str(), initid);
     ufile = fopen(filename, "w");
     snprintf(filename, 254, "%s/%s_Im.iinit%04d.dat", datadir.c_str(), prefix.c_str(), initid);
@@ -169,7 +164,7 @@ void Output::openDataFiles(std::string prefix, int initid){
   /* Open files for expected energy */
   bool writeExpComp = false;
   bool writePopComp = false;
-  if (mpirank_petsc == 0 && write_this_iter) {
+  if (mpirank_petsc == 0) {
     for (int i=0; i<outputstr.size(); i++) {
       for (int j=0; j<outputstr[i].size(); j++) {
         if (outputstr[i][j].compare("expectedEnergy") == 0) {
@@ -208,19 +203,22 @@ void Output::writeDataFiles(int timestep, double time, const Vec state, MasterEq
 
     /* Write expected energy levels to file */
     for (int iosc = 0; iosc < expectedfile.size(); iosc++) {
-      double expected = mastereq->getOscillator(iosc)->expectedEnergy(state);
-      if (expectedfile[iosc] != NULL) fprintf(expectedfile[iosc], "%.8f %1.14e\n", time, expected);
+      if (expectedfile[iosc] != NULL) {
+        double expected = mastereq->getOscillator(iosc)->expectedEnergy(state);
+        fprintf(expectedfile[iosc], "%.8f %1.14e\n", time, expected);
+      }
     }
 
-    double expected_comp = mastereq->expectedEnergy(state);
-    if (expectedfile_comp != NULL) fprintf(expectedfile_comp, "%.8f %1.14e\n", time, expected_comp);
+    if (expectedfile_comp != NULL) {
+      double expected_comp = mastereq->expectedEnergy(state);
+      fprintf(expectedfile_comp, "%.8f %1.14e\n", time, expected_comp);
+    }
 
     /* Write population to file */
     for (int iosc = 0; iosc < populationfile.size(); iosc++) {
-      std::vector<double> pop (mastereq->getOscillator(iosc)->getNLevels(), 0.0);
-      mastereq->getOscillator(iosc)->population(state, pop);
-      // write
       if (populationfile[iosc] != NULL) {
+        std::vector<double> pop (mastereq->getOscillator(iosc)->getNLevels(), 0.0);
+        mastereq->getOscillator(iosc)->population(state, pop);
         fprintf(populationfile[iosc], "%.8f ", time);
         for (int i = 0; i<pop.size(); i++) {
           fprintf(populationfile[iosc], " %1.14e", pop[i]);
@@ -229,10 +227,9 @@ void Output::writeDataFiles(int timestep, double time, const Vec state, MasterEq
       }
     }
 
-
-    std::vector<double> population_comp; 
-    mastereq->population(state, population_comp);
     if (populationfile_comp != NULL) {
+      std::vector<double> population_comp; 
+      mastereq->population(state, population_comp);
       fprintf(populationfile_comp, "%.8f  ", time);
       for (int i=0; i<population_comp.size(); i++){
         fprintf(populationfile_comp, "%1.14e  ", population_comp[i]);

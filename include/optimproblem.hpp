@@ -24,8 +24,6 @@ class OptimProblem {
   int ninit_local;                      /* Local number of initial conditions on this processor */
   Vec rho_t0;                            /* Storage for initial condition of the ODE */
   Vec rho_t0_bar;                        /* Adjoint of ODE initial condition */
-  InitialConditionType initcond_type;    /* Type of initial conditions */
-  std::vector<int> initcond_IDs;         /* Integer list for pure-state initialization */
   std::vector<Vec> store_finalstates;    /* Storage for last time steps for each initial condition */
 
   OptimTarget* optim_target;      /* Storing the optimization goal */
@@ -48,14 +46,16 @@ class OptimProblem {
   double obj_regul;                /* Regularization term in objective */
   double obj_penal;                /* Penalty term in objective */
   double obj_penal_dpdm;           /* Penalty term in objective for second order state */
+  double obj_penal_variation;      /* Penalty term for variation of control parameters */
   double obj_penal_energy;         /* Energy Penalty term in objective */
   double fidelity;                 /* Final-time fidelity: 1/ninit \sum_iinit Tr(rhotarget^\dag rho(T)) for Lindblad, or |1/ninit \sum_iinit phitarget^dagger phi |^2 for Schroedinger */
   double gnorm;                    /* Holds current norm of gradient */
-  double gamma_tik;                /* Parameter for tikhonov regularization */
+  double gamma_tik;                /* Parameter for Tikhonov regularization */
   bool gamma_tik_interpolate;      /* Switch to use ||x - x0||^2 for tikhonov regularization instead of ||x||^2 */
-  double gamma_penalty;            /* Parameter multiplying integral penalty term */
-  double gamma_penalty_dpdm;            /* Parameter multiplying integral penalty term */
+  double gamma_penalty;            /* Parameter multiplying integral penalty term on the infidelity */
+  double gamma_penalty_dpdm;       /* Parameter multiplying integral penalty term for 2nd derivative of state variation */
   double gamma_penalty_energy;     /* Parameter multiplying energy penalty */
+  double gamma_penalty_variation;  /* Parameter multiplying the un-divided difference squared regularization term */
   double penalty_param;            /* Parameter inside integral penalty term w(t) (Gaussian variance) */
   double gatol;                    /* Stopping criterion based on absolute gradient norm */
   double fatol;                    /* Stopping criterion based on objective function value */
@@ -76,7 +76,7 @@ class OptimProblem {
     Vec xinit;                       /* Storing initial design vector */
 
   /* Constructor */
-  OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm comm_init_, MPI_Comm comm_optim, int ninit_, std::vector<double> gate_rot_freq, Output* output_, bool quietmode=false);
+  OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm comm_init_, MPI_Comm comm_optim, int ninit_, Output* output_, bool quietmode=false);
   ~OptimProblem();
 
   /* Return the number of design variables */
@@ -88,6 +88,7 @@ class OptimProblem {
   double getRegul()    { return obj_regul; };
   double getPenalty()  { return obj_penal; };
   double getPenaltyDpDm()  { return obj_penal_dpdm; };
+  double getPenaltyVariation()  { return obj_penal_variation; };
   double getPenaltyEnergy()  { return obj_penal_energy; };
   double getFidelity() { return fidelity; };
   double getFaTol()    { return fatol; };

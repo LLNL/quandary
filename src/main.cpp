@@ -379,18 +379,7 @@ int main(int argc,char **argv)
   }
 
   /* --- Initialize optimization --- */
-  /* Get gate rotation frequencies. Default: use rotational frequencies for the gate. */
-  int noscillators = nlevels.size();
-  std::vector<double> gate_rot_freq(noscillators); 
-  for (int iosc=0; iosc<noscillators; iosc++) gate_rot_freq[iosc] = rot_freq[iosc];
-  /* If gate_rot_freq option is given in config file, overwrite them with input */
-  std::vector<double> read_gate_rot;
-  config.GetVecDoubleParam("gate_rot_freq", read_gate_rot, 1e20); 
-  copyLast(read_gate_rot, noscillators);
-  if (read_gate_rot[0] < 1e20) { // the config option exists
-    for (int i=0; i<noscillators; i++)  gate_rot_freq[i] = read_gate_rot[i];
-  }
-  OptimProblem* optimctx = new OptimProblem(config, mytimestepper, comm_init, comm_optim, ninit, gate_rot_freq, output, quietmode);
+  OptimProblem* optimctx = new OptimProblem(config, mytimestepper, comm_init, comm_optim, ninit, output, quietmode);
 
   /* Set upt solution and gradient vector */
   Vec xinit;
@@ -425,6 +414,7 @@ int main(int argc,char **argv)
     optimctx->getStartingPoint(xinit);
     VecCopy(xinit, optimctx->xinit); // Store the initial guess
     if (mpirank_world == 0 && !quietmode) printf("\nStarting primal solver... \n");
+    optimctx->timestepper->writeDataFiles = true;
     objective = optimctx->evalF(xinit);
     if (mpirank_world == 0 && !quietmode) printf("\nTotal objective = %1.14e, \n", objective);
     optimctx->getSolution(&opt);
@@ -435,6 +425,7 @@ int main(int argc,char **argv)
     optimctx->getStartingPoint(xinit);
     VecCopy(xinit, optimctx->xinit); // Store the initial guess
     if (mpirank_world == 0 && !quietmode) printf("\nStarting adjoint solver...\n");
+    optimctx->timestepper->writeDataFiles = true;
     optimctx->evalGradF(xinit, grad);
     VecNorm(grad, NORM_2, &gnorm);
     // VecView(grad, PETSC_VIEWER_STDOUT_WORLD);
@@ -450,6 +441,7 @@ int main(int argc,char **argv)
     optimctx->getStartingPoint(xinit);
     VecCopy(xinit, optimctx->xinit); // Store the initial guess
     if (mpirank_world == 0 && !quietmode) printf("\nStarting Optimization solver ... \n");
+    optimctx->timestepper->writeDataFiles = false;
     optimctx->solve(xinit);
     optimctx->getSolution(&opt);
   }
@@ -463,8 +455,9 @@ int main(int argc,char **argv)
   }
 
   /* Output */
-  if (runtype != RunType::OPTIMIZATION) optimctx->output->writeOptimFile(optimctx->getObjective(), gnorm, 0.0, optimctx->getFidelity(), optimctx->getCostT(), optimctx->getRegul(), optimctx->getPenalty(), optimctx->getPenaltyDpDm(), optimctx->getPenaltyEnergy());
-
+  if (runtype != RunType::OPTIMIZATION) {
+    optimctx->output->writeOptimFile(0, optimctx->getObjective(), gnorm, 0.0, optimctx->getFidelity(), optimctx->getCostT(), optimctx->getRegul(), optimctx->getPenalty(), optimctx->getPenaltyDpDm(), optimctx->getPenaltyEnergy(), optimctx->getPenaltyVariation());
+  }
 
   /* --- Finalize --- */
 
@@ -525,7 +518,8 @@ int main(int argc,char **argv)
   
 
   /* --- Finite Differences --- */
-  if (mpirank_world == 0) printf("\nFD...\n");
+  if (mpirank_world == 0) printf("\nFinite Difference testing...\n");
+  double max_err = 0.0;
   for (PetscInt i=0; i<optimctx->getNdesign(); i++){
   // {int i=0;
 
@@ -544,10 +538,13 @@ int main(int argc,char **argv)
     VecGetValues(grad, 1, &i, &gradi);
     if (fd != 0.0) err = (gradi - fd) / fd;
     if (mpirank_world == 0) printf(" %d: obj %1.14e, obj_pert1 %1.14e, obj_pert2 %1.14e, fd %1.14e, grad %1.14e, err %1.14e\n", i, obj_org, obj_pert1, obj_pert2, fd, gradi, err);
+    if (abs(err) > max_err) max_err = err;
 
     /* Restore parameter */
     VecSetValue(xinit, i, EPS, ADD_VALUES);
   }
+
+  printf("\nMax. Finite Difference error: %1.14e\n\n", max_err);
   
 #endif
 
@@ -741,6 +738,9 @@ int main(int argc,char **argv)
   delete mytimestepper;
   delete optimctx;
   delete output;
+
+  VecDestroy(&xinit);
+  VecDestroy(&grad);
 
 
   /* Finallize Petsc */

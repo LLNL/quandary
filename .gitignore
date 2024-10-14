@@ -2,8 +2,7 @@
 *.out
 *.dat
 build/*
-main
-braid.out.cycle
+quandary
 *.aux
 *.log
 *.err

@@ -150,18 +150,6 @@ class MasterEq{
 
     /* Set the oscillators control function parameters from global design vector x */
     void setControlAmplitudes(const Vec x);
-    void setControlAmplitudes_diff(Vec xbar);
-
-    /* Set initial conditions 
-     * In:   iinit -- index in processors range [rank * ninit_local .. (rank+1) * ninit_local - 1]
-     *       ninit -- number of initial conditions 
-     *       initcond_type -- type of initial condition (pure, fromfile, diagona, basis)
-     *       oscilIDs -- ID of oscillators defining the subsystem for the initial conditions  
-     * Out: initID -- Idenifyier for this initial condition: Element number in matrix vectorization. 
-     *       rho0 -- Vector for setting initial condition 
-     */
-    int getRhoT0(const int iinit, const int ninit, const InitialConditionType initcond_type, const std::vector<int>& oscilIDs, Vec rho0);
-
 
     // Get expected energy of the full composite system.
     double expectedEnergy(const Vec x);

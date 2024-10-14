@@ -32,7 +32,6 @@ class Output{
 
   public:
     std::string datadir;
-    int optim_iter;       /* Current optimization iteration */
     int optim_monitor_freq; /* Write output files every <num> optimization iterations */
 
   public:
@@ -41,7 +40,7 @@ class Output{
     ~Output();
 
     /* Write to optimization history file in every optim iteration */
-    void writeOptimFile(double objective, double gnorm, double stepsize, double Favg, double cost, double tikh_regul,  double penalty, double penalty_dpdm, double penalty_energy);
+    void writeOptimFile(int optim_iter, double objective, double gnorm, double stepsize, double Favg, double cost, double tikh_regul,  double penalty, double penalty_dpdm, double penalty_energy, double penalty_variation);
 
     /* Write current controls and parameters every <optim_monitor_freq> iterations */
     void writeControls(Vec params, MasterEq* mastereq, int ntime, double dt);
