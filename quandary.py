@@ -180,14 +180,19 @@ class Quandary:
             return -1
 
         # Set some defaults, if not set by the user
-        if len(self.freq01) != len(self.Ne) and len(self.Hsys)<=0:
-            self.Ne = [2 for _ in range(len(self.freq01))]
+        if len(self.freq01) != len(self.Ne) and len(self.Hsys)<=0:  # either Ne or freq had been passed by the user while the other one was default. Find out which to use:
+            if len(self.freq01)> 1:
+                self.Ne = [2 for _ in range(len(self.freq01))]
+            else:
+                detune = 0.1
+                self.freq01 = [self.freq01[0] + (i+1)*detune for i in range(len(self.Ne))]
         if len(self.Ng) != len(self.Ne):
             self.Ng = [0 for _ in range(len(self.Ne))]
         if len(self.selfkerr) != len(self.Ne):
             self.selfkerr= np.zeros(len(self.Ne))
         if len(self.rotfreq) == 0:
-            self.rotfreq = self.freq01
+            favg = sum(self.freq01)/len(self.freq01)
+            self.rotfreq = favg*np.ones(len(self.freq01))
         if len(self.gate_rot_freq) == 0:
             self.gate_rot_freq = np.zeros(len(self.rotfreq))
         if self.nsplines < 0:
@@ -199,7 +204,7 @@ class Quandary:
             max_alloscillators = self.initctrl_MHz
             self.initctrl_MHz = [max_alloscillators for _ in range(len(self.Ne))]
         if len(self.initctrl_MHz) == 0:
-            self.initctrl_MHz = [10.0 for _ in range(len(self.Ne))]
+            self.initctrl_MHz = [1.0 for _ in range(len(self.Ne))]
         if len(self.Hsys) > 0 and not self.standardmodel: # User-provided Hamiltonian operators 
             self.standardmodel=False   
         else: # Using standard Hamiltonian model
