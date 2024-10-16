@@ -63,7 +63,7 @@ int main(int argc,char **argv)
   if (rand_seed < 0){
     rand_seed = rd();  // random non-reproducable seed
   }
-  MPI_Bcast(&rand_seed, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD); // Broadcast from rank 0 to all.
+  MPI_Bcast(&rand_seed, 1, MPI_INT, 0, MPI_COMM_WORLD); // Broadcast from rank 0 to all.
   std::default_random_engine rand_engine{};
   rand_engine.seed(rand_seed);
   export_param(mpirank_world, *config.log, "rand_seed", rand_seed);
