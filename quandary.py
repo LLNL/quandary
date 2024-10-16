@@ -1339,7 +1339,7 @@ def execute(*, runtype="simulation", ncores=1, config_filename="config.cfg", dat
         if len(batchargs)>0:
             myrun = batch_run  # currently set to "srun -n"
         else:
-            myrun = "mpirun -np "
+            myrun = "srun -n "
         runcommand = f"{myrun} {ncores} " + runcommand
     if verbose:
         print("Running Quandary ... ")
