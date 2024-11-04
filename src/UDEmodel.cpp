@@ -251,7 +251,7 @@ int LindbladModel::createSystemMats(bool upper_only, bool real_only, bool shifte
    * Here, all Basis mats are REAL (only using upper part of the real Gellmann mats), hence all go into A = Re(...)
    * Note that here we have: sigma.conj = sigma and (sigma^tsigma)^T
   */
-  if (!real_only) {
+  if (!real_only && dim_rho > 0) {
     printf("ERROR: Lindblad basis currently only implemented for real basis mats.");
     exit(1);
   }

@@ -127,7 +127,7 @@ void Data::writeExpectedEnergy(const char* filename, int pulse_num, int ioscilla
 
     Vec x = getData(time, pulse_num);
     if (x != NULL) {
-      double val = expectedEnergy(x, LindbladType::BOTH, nlevels, ioscillator);
+      double val = expectedEnergy(x, lindbladtype, nlevels, ioscillator);
       fprintf(file_c, "% 1.8f   % 1.14e   \n", time, val);
     }
   }
