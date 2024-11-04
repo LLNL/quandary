@@ -2,6 +2,7 @@ from bqskit import Circuit
 from bqskit.ir.gates import HGate, CNOTGate
 
 from bqskit.compiler import Compiler
+from bqskit import MachineModel
 
 from pulsesynthesis import PulseSynthesisPass
 
@@ -23,6 +24,8 @@ if __name__ == '__main__':
     qubit_data = {"01-Transition":freq01, "Coupling":Jkl}
 
     # TODO use Module from Bqskit to specify the hardware
+    coupling_graph =[(0,1)]
+    machine_model = MachineModel(circ.num_qudits,  coupling_graph=coupling_graph)
 
     # Passes
     pulse = PulseSynthesisPass(
