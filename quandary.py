@@ -320,7 +320,7 @@ class Quandary:
                             # the B-spline0 coefficients correspond to the time levels
                             t_spl = (i_spl+0.5)*self.spline_knot_spacing
                             i = max(0, np.rint(t_spl/dt).astype(int))# given t_spl, find the closest time step index
-                            i = min(i, self.nsteps) # make sure i is in range
+                            i = min(i, self.nsteps-1) # make sure i is in range
                             seg_re[i_spl] = fact * p_seg[i]
                             seg_im[i_spl] = fact * q_seg[i]
 
