@@ -113,6 +113,7 @@ class Quandary:
     T            : float = 100.0
     Pmin         : int   = 150
     nsteps       : int   = -1
+    dT           : float = -1.0
     timestepper  : str   = "IMR"
     # Optimization targets and initial states options
     targetgate             : List[List[complex]] = field(default_factory=list) 
@@ -233,7 +234,11 @@ class Quandary:
             self._ninit = self._ninit**2
         
         # Estimate the number of required time steps
-        self.nsteps = estimate_timesteps(T=self.T, Hsys=self.Hsys, Hc_re=self.Hc_re, Hc_im=self.Hc_im, maxctrl_MHz=self.maxctrl_MHz, Pmin=self.Pmin)
+        if self.dT < 0:
+            self.nsteps = estimate_timesteps(T=self.T, Hsys=self.Hsys, Hc_re=self.Hc_re, Hc_im=self.Hc_im, maxctrl_MHz=self.maxctrl_MHz, Pmin=self.Pmin)
+            self.dT = self.T/self.nsteps
+        else:
+            self.nsteps = int(self.T / self.dT) + 1
         if self.verbose:
             print("Final time: ",self.T,"ns, Number of timesteps: ", self.nsteps,", dt=", self.T/self.nsteps, "ns")
             print("Maximum control amplitudes: ", self.maxctrl_MHz, "MHz")
@@ -560,7 +565,8 @@ class Quandary:
         mystring = "nlevels = " + ",".join([str(i) for i in Nt]) + "\n"
         mystring += "nessential= " + ",".join([str(i) for i in self.Ne]) + "\n"
         mystring += "ntime = " + str(self.nsteps) + "\n"
-        mystring += "dt = " + str(self.T / self.nsteps) + "\n"
+        # mystring += "dt = " + str(self.T / self.nsteps) + "\n"
+        mystring += "dt = " + str(self.dT) + "\n"
         mystring += "transfreq = " + ",".join([str(i) for i in self.freq01]) + "\n"
         mystring += "rotfreq= " + ",".join([str(i) for i in self.rotfreq]) + "\n"
         mystring += "selfkerr = " + ",".join([str(i) for i in self.selfkerr]) + "\n"
