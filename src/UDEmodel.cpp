@@ -230,11 +230,15 @@ LindbladModel::LindbladModel(int dim_rho_, bool shifted_diag, bool upper_only, b
   dim_rho = dim_rho_;
   dim = dim_rho*dim_rho; 
 
+  // TODO: 
+  doublesum = false;
+
   /* Assemble system Matrices */ 
   nbasis = createSystemMats(upper_only, real_only, shifted_diag);
 
   /* set the total number of learnable parameters */
-  nparams = 0.5 * nbasis * (nbasis+1);
+  nparams = nbasis;
+  // nparams = 0.5 * nbasis * (nbasis+1);
 
   /* Allocate storage for the summed-up lindblad system matrix */
   Operator.resize(1);
@@ -267,8 +271,8 @@ int LindbladModel::createSystemMats(bool upper_only, bool real_only, bool shifte
   Mat Id = BasisMats_Re[0];
 
   for (int i=1; i<BasisMats_Re.size(); i++){ // loop starts at 1 to exclude Id
-    for (int j=1; j<BasisMats_Re.size(); j++){
-
+    // for (int j=1; j<BasisMats_Re.size(); j++){
+      int j = i;
       Mat myMat, myMat1, myMat2, sigmasq;
       MatTransposeMatMult(BasisMats_Re[j], BasisMats_Re[i],MAT_INITIAL_MATRIX, PETSC_DEFAULT,&sigmasq);
 
@@ -283,8 +287,17 @@ int LindbladModel::createSystemMats(bool upper_only, bool real_only, bool shifte
       MatDestroy(&myMat1);
       MatDestroy(&myMat2);
       MatDestroy(&sigmasq);
-    }
+    // }
   }
+  // printf("Real\n");
+  // for (int i=0; i<SystemMats_A.size(); i++){
+  //   MatView(SystemMats_A[i], NULL);
+  // }
+  // printf("Imag\n");
+  // for (int i=0; i<SystemMats_B.size(); i++){
+  //   MatView(SystemMats_B[i], NULL);
+  // }
+  // exit(1);
 
   /* Clean up*/
   for (int i=0; i<BasisMats_Re.size(); i++) MatDestroy(&BasisMats_Re[i]);
@@ -296,19 +309,23 @@ int LindbladModel::createSystemMats(bool upper_only, bool real_only, bool shifte
 void LindbladModel::applySystem(Vec u, Vec v, Vec uout, Vec vout, std::vector<double>& learnparamsL){
 
   // Real parts of lindblad terms
-  for (int i=0; i<nbasis; i++){
-    for (int j=0; j<nbasis; j++){
-      int id_sys = i*nbasis + j;
+  // for (int i=0; i<nbasis; i++){
+    // for (int j=0; j<nbasis; j++){
+      // int id_sys = i*nbasis + j;
+  for (int i=0; i<SystemMats_A.size(); i++){
+      int j=i;
+      int id_sys = i;
 
       // Get aij coefficient
-      double aij = 0.0;
-      for (int l=0; l<nbasis; l++){
-        double x_il = 0.0; 
-        double x_jl = 0.0;
-        if (i<=l) x_il = learnparamsL[mapID(i,l)];
-        if (j<=l) x_jl = learnparamsL[mapID(j,l)];
-        aij += x_il * x_jl;
-      }
+      double aij = learnparamsL[i];
+      // double aij = 0.0;
+      // for (int l=0; l<nbasis; l++){
+      //   double x_il = 0.0; 
+      //   double x_jl = 0.0;
+      //   if (i<=l) x_il = learnparamsL[mapID(i,l)];
+      //   if (j<=l) x_jl = learnparamsL[mapID(j,l)];
+      //   aij += x_il * x_jl;
+      // }
 
       // uout += learnparam_Re * SystemA * u
       MatMult(SystemMats_A[id_sys], u, aux);
@@ -317,7 +334,7 @@ void LindbladModel::applySystem(Vec u, Vec v, Vec uout, Vec vout, std::vector<do
       MatMult(SystemMats_A[id_sys], v, aux);
       VecAXPY(vout, aij, aux);
 
-    }
+    // }
   }
   // // Imaginary parts of lindblad terms
   // for (int i=0; i< SystemMats_B.size(); i++){
@@ -334,19 +351,23 @@ void LindbladModel::applySystem(Vec u, Vec v, Vec uout, Vec vout, std::vector<do
 
 void LindbladModel::applySystem_diff(Vec u, Vec v, Vec uout, Vec vout, std::vector<double>& learnparamsL){
   // Real parts of lindblad terms
-  for (int i=0; i<nbasis; i++){
-    for (int j=0; j<nbasis; j++){
-      int id_sys = i*nbasis + j;
+  // for (int i=0; i<nbasis; i++){
+    // for (int j=0; j<nbasis; j++){
+      // int id_sys = i*nbasis + j;
+  for (int i=0; i<SystemMats_A.size();i++){
+      int j=i;
+      int id_sys = i;
 
       // Get aij coefficient
-      double aij = 0.0;
-      for (int l=0; l<nbasis; l++){
-        double x_il = 0.0;
-        double x_jl = 0.0;
-        if (i<=l) x_il = learnparamsL[mapID(i,l)];
-        if (j<=l) x_jl = learnparamsL[mapID(j,l)];
-        aij += x_il * x_jl;
-      }
+      double aij = learnparamsL[i];
+      // double aij = 0.0;
+      // for (int l=0; l<nbasis; l++){
+      //   double x_il = 0.0;
+      //   double x_jl = 0.0;
+      //   if (i<=l) x_il = learnparamsL[mapID(i,l)];
+      //   if (j<=l) x_jl = learnparamsL[mapID(j,l)];
+      //   aij += x_il * x_jl;
+      // }
 
       // uout += learnparam_Re * SystemMat_A^T * u
       MatMultTranspose(SystemMats_A[id_sys], u, aux);
@@ -354,7 +375,7 @@ void LindbladModel::applySystem_diff(Vec u, Vec v, Vec uout, Vec vout, std::vect
       // vout += learnparam_Re * SystemMat_A^T * v
       MatMultTranspose(SystemMats_A[id_sys], v, aux);
       VecAXPY(vout, aij, aux);
-    }
+    // }
   }
   // // Imaginary parts of lindbladterms
   // for (int i=0; i< SystemMats_B.size(); i++){
@@ -372,25 +393,29 @@ void LindbladModel::dRHSdp(Vec grad, Vec u, Vec v, double alpha, Vec ubar, Vec v
  double uAubar, vAvbar, vBubar, uBvbar;
   // Note: Storage in grad corresponds to x = [learn_H, learn_L], so need to skip to the second part of the gradient] 
 
-  for (int i=0; i<nbasis; i++){
-    for (int j=0; j<nbasis; j++){
-      int id_sys = i*nbasis + j;
+  // for (int i=0; i<nbasis; i++){
+    // for (int j=0; j<nbasis; j++){
+      // int id_sys = i*nbasis + j;
+  for (int i=0; i<SystemMats_A.size(); i++){
+      int j=i;
+      int id_sys = i;
 
       MatMult(SystemMats_A[id_sys], u, aux); VecDot(aux, ubar, &uAubar);
       MatMult(SystemMats_A[id_sys], v, aux); VecDot(aux, vbar, &vAvbar);
       double aijbar = uAubar + vAvbar;
 
-      for (int l=0; l<nbasis; l++){
-        double x_il = 0.0;
-        double x_jl = 0.0;
-        if (i<=l) x_il = learnparamsL[mapID(i,l)];
-        if (j<=l) x_jl = learnparamsL[mapID(j,l)];
-        double x_il_bar = x_jl * aijbar;
-        double x_jl_bar = x_il * aijbar;
-        if (i<=l) VecSetValue(grad, mapID(i,l)+grad_skip, alpha*x_il_bar, ADD_VALUES);
-        if (j<=l) VecSetValue(grad, mapID(j,l)+grad_skip, alpha*x_jl_bar, ADD_VALUES);
-      }
-    }
+      // for (int l=0; l<nbasis; l++){
+      //   double x_il = 0.0;
+      //   double x_jl = 0.0;
+      //   if (i<=l) x_il = learnparamsL[mapID(i,l)];
+      //   if (j<=l) x_jl = learnparamsL[mapID(j,l)];
+      //   double x_il_bar = x_jl * aijbar;
+      //   double x_jl_bar = x_il * aijbar;
+      //   if (i<=l) VecSetValue(grad, mapID(i,l)+grad_skip, alpha*x_il_bar, ADD_VALUES);
+      //   if (j<=l) VecSetValue(grad, mapID(j,l)+grad_skip, alpha*x_jl_bar, ADD_VALUES);
+      // }
+      VecSetValue(grad, i+grad_skip, alpha*aijbar, ADD_VALUES);
+    // }
   }
   // skip += SystemMats_A.size();
   // for (int i=0; i<SystemMats_B.size(); i++){
@@ -407,22 +432,25 @@ void LindbladModel::evalOperator(std::vector<double>& learnparamsL){
 
   /* Sum up the system operator */
   for (int i=0; i<nbasis; i++) {
-    for (int j=0; j<nbasis; j++) {
+    // for (int j=0; j<nbasis; j++) {
+      int j=i;
 
       // Get aij coefficient
-      double aij = 0.0;
-      for (int l=0; l<nbasis; l++){
-        double x_il = 0.0; 
-        double x_jl = 0.0;
-        if (i<=l) x_il = learnparamsL[mapID(i,l)];
-        if (j<=l) x_jl = learnparamsL[mapID(j,l)];
-        aij += x_il * x_jl;
-      }
+      double aij = learnparamsL[i];
+      // double aij = 0.0;
+      // for (int l=0; l<nbasis; l++){
+      //   double x_il = 0.0; 
+      //   double x_jl = 0.0;
+      //   if (i<=l) x_il = learnparamsL[mapID(i,l)];
+      //   if (j<=l) x_jl = learnparamsL[mapID(j,l)];
+      //   aij += x_il * x_jl;
+      // }
 
       // Add to operator 
-      int id_sys = i*nbasis + j;
+      // int id_sys = i*nbasis + j;
+      int id_sys = i;
       MatAXPY(Operator[0], aij, SystemMats_A[id_sys], DIFFERENT_NONZERO_PATTERN);
-    }
+    // }
   }
 }
 
