@@ -282,7 +282,9 @@ double OptimProblem::evalF(const Vec x) {
 
       /* Run forward with initial condition initid */
       optim_target->prepareTargetState(rho_t0);
-      Vec finalstate = timestepper->solveODE(initid, rho_t0, ipulse);
+      int pulseid = -1;
+      if (!x_is_control) pulseid = ipulse;
+      Vec finalstate = timestepper->solveODE(initid, rho_t0, pulseid);
 
       /* If learning: add to loss function */
       double loss_local = mastereq->learning->getLoss();
@@ -438,7 +440,9 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
 
       /* Run forward with initial condition rho_t0 */
       optim_target->prepareTargetState(rho_t0);
-      Vec finalstate = timestepper->solveODE(initid, rho_t0, ipulse);
+      int pulseid = -1;
+      if (!x_is_control) pulseid = ipulse;
+      Vec finalstate = timestepper->solveODE(initid, rho_t0, pulseid);
 
       /* Store the final state for the Schroedinger solver */
       if (timestepper->mastereq->lindbladtype == LindbladType::NONE) VecCopy(finalstate, store_finalstates[iinit]);
@@ -673,7 +677,7 @@ PetscErrorCode TaoMonitor(Tao tao,void*ptr){
   ctx->output->writeParams(params);
 
   /* Print control pulses to file */
-  // ctx->output->writeControls(ctx->timestepper->mastereq, ctx->timestepper->ntime, ctx->timestepper->dt, 0);
+  // ctx->output->writeControls(ctx->timestepper->mastereq, ctx->timestepper->ntime, ctx->timestepper->dt, -1);
 
   /* Screen output */
   if (ctx->getMPIrank_world() == 0 && iter == 0) {

@@ -542,7 +542,9 @@ int main(int argc,char **argv)
     if (!x_is_control) {
       mastereq->setControlFromData(ipulse_global);
     }
-    output->writeControls(optimctx->timestepper->mastereq, optimctx->timestepper->ntime, optimctx->timestepper->dt, ipulse_global);
+    int pulseID = -1;
+    if (!x_is_control)  pulseID = ipulse_global;
+    output->writeControls(optimctx->timestepper->mastereq, optimctx->timestepper->ntime, optimctx->timestepper->dt, pulseID);
   }
 
   /* Only evaluate and write control pulses (no propagation) */
@@ -551,7 +553,7 @@ int main(int argc,char **argv)
     optimctx->getStartingPoint(xinit);
     if (mpirank_world == 0 && !quietmode) printf("\nEvaluating current controls ... \n");
     output->writeParams(xinit);
-    output->writeControls(mastereq, ntime, dt, 0);
+    output->writeControls(mastereq, ntime, dt, -1);
   }
 
   /* Output */

@@ -527,7 +527,7 @@ class Quandary:
 
         # Training. TODO: Generalize
         if len(trainingdatadir) > 0:
-            mystring += "data_name = synthetic, ." + str(trainingdatadir)+"/rho_Re_pulse0.iinit0000.dat, ." + str(trainingdatadir)+"/rho_Im_pulse0.iinit0000.dat\n"
+            mystring += "data_name = synthetic, ." + str(trainingdatadir)+"/rho_Re.iinit0000.dat, ." + str(trainingdatadir)+"/rho_Im.iinit0000.dat\n"
             mystring += "UDEmodel = " + UDEmodel + "\n"
             mystring += "learnparams_initialization = constant, 0.0001, 0.0001\n"
         # End training

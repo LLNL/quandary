@@ -134,7 +134,11 @@ void Output::writeControls(MasterEq* mastereq, int ntime, double dt, int pulseID
 
     /* Print control pulse for each oscillator to file */
     for (int ioscil = 0; ioscil < mastereq->getNOscillators(); ioscil++) {
-      snprintf(filename, 254, "%s/control%d_pulse%d.dat", datadir.c_str(), ioscil, pulseID);
+      if (pulseID >= 0){
+        snprintf(filename, 254, "%s/control%d_pulse%d.dat", datadir.c_str(), ioscil, pulseID);
+      } else {
+        snprintf(filename, 254, "%s/control%d.dat", datadir.c_str(), ioscil);
+      }
       file_c = fopen(filename, "w");
       fprintf(file_c, "# time         p(t) (rotating)          q(t) (rotating)         f(t) (labframe) \n");
 
@@ -157,7 +161,8 @@ void Output::writeControls(MasterEq* mastereq, int ntime, double dt, int pulseID
 
 
 void Output::openDataFiles(std::string prefix, int initid, int pulseID){
-  char filename[255];
+  char filenameu[255];
+  char filenamev[255];
 
   /* Flag to determine if this optimization iteration will write data output */
   bool write_this_iter = false;
@@ -165,26 +170,40 @@ void Output::openDataFiles(std::string prefix, int initid, int pulseID){
 
   /* Open files for state vector */
   if (mpirank_petsc == 0 && writefullstate && write_this_iter) {
-    snprintf(filename, 254, "%s/%s_Re_pulse%d.iinit%04d.dat", datadir.c_str(), prefix.c_str(), pulseID, initid);
-    ufile = fopen(filename, "w");
-    snprintf(filename, 254, "%s/%s_Im_pulse%d.iinit%04d.dat", datadir.c_str(), prefix.c_str(), pulseID, initid);
-    vfile = fopen(filename, "w"); 
+    if (pulseID >= 0) {
+      snprintf(filenameu, 254, "%s/%s_Re_pulse%d.iinit%04d.dat", datadir.c_str(), prefix.c_str(), pulseID, initid);
+      snprintf(filenamev, 254, "%s/%s_Im_pulse%d.iinit%04d.dat", datadir.c_str(), prefix.c_str(), pulseID, initid);
+    } else {
+      snprintf(filenameu, 254, "%s/%s_Re.iinit%04d.dat", datadir.c_str(), prefix.c_str(), initid);
+      snprintf(filenamev, 254, "%s/%s_Im.iinit%04d.dat", datadir.c_str(), prefix.c_str(), initid);
+    }
+    ufile = fopen(filenameu, "w");
+    vfile = fopen(filenamev, "w"); 
   }
 
   /* Open files for expected energy */
+  char filename[255];
   bool writeExpComp = false;
   bool writePopComp = false;
   if (mpirank_petsc == 0 && write_this_iter) {
     for (int i=0; i<outputstr.size(); i++) {
       for (int j=0; j<outputstr[i].size(); j++) {
         if (outputstr[i][j].compare("expectedEnergy") == 0) {
-          snprintf(filename, 254, "%s/expected%d_pulse%d.iinit%04d.dat", datadir.c_str(), i, pulseID, initid);
+          if (pulseID >= 0) {
+            snprintf(filename, 254, "%s/expected%d_pulse%d.iinit%04d.dat", datadir.c_str(), i, pulseID, initid);
+          } else {
+            snprintf(filename, 254, "%s/expected%d.iinit%04d.dat", datadir.c_str(), i, initid);
+          }
           expectedfile[i] = fopen(filename, "w");
           fprintf(expectedfile[i], "# time      expected energy level\n");
         }
         if (outputstr[i][j].compare("expectedEnergyComposite") == 0) writeExpComp = true;
         if (outputstr[i][j].compare("population") == 0) {
-          snprintf(filename, 254, "%s/population%d_pulse%d.iinit%04d.dat", datadir.c_str(), i, pulseID, initid);
+          if (pulseID >= 0) {
+            snprintf(filename, 254, "%s/population%d_pulse%d.iinit%04d.dat", datadir.c_str(), i, pulseID, initid);
+          } else {
+            snprintf(filename, 254, "%s/population%d.iinit%04d.dat", datadir.c_str(), i, initid);
+          }
           populationfile[i] = fopen(filename, "w");
           fprintf(populationfile[i], "# time      diagonal of the density matrix \n");
         }
@@ -192,18 +211,30 @@ void Output::openDataFiles(std::string prefix, int initid, int pulseID){
       }
     }
     if (writeExpComp){
-      snprintf(filename, 254, "%s/expected_composite_pulse%d.iinit%04d.dat", datadir.c_str(), pulseID, initid);
+      if (pulseID >= 0){
+        snprintf(filename, 254, "%s/expected_composite_pulse%d.iinit%04d.dat", datadir.c_str(), pulseID, initid);
+      } else {
+        snprintf(filename, 254, "%s/expected_composite.iinit%04d.dat", datadir.c_str(), initid);
+      }
       expectedfile_comp = fopen(filename, "w");
       fprintf(expectedfile_comp, "# time      expected energy level\n");
     }
     if (writePopComp){
-      snprintf(filename, 254, "%s/population_composite_pulse%d.iinit%04d.dat", datadir.c_str(), pulseID, initid);
+      if (pulseID >= 0){
+        snprintf(filename, 254, "%s/population_composite_pulse%d.iinit%04d.dat", datadir.c_str(), pulseID, initid);
+      } else{
+        snprintf(filename, 254, "%s/population_composite.iinit%04d.dat", datadir.c_str(), initid);
+      }
       populationfile_comp = fopen(filename, "w");
       fprintf(populationfile_comp, "# time      population \n");
     }
 
     if (!x_is_control){
-      snprintf(filename, 254, "%s/TrajectoryError_pulse%d.iinit%04d.dat", datadir.c_str(), pulseID, initid);
+      if (pulseID >= 0) {
+        snprintf(filename, 254, "%s/TrajectoryError_pulse%d.iinit%04d.dat", datadir.c_str(), pulseID, initid);
+      } else {
+        snprintf(filename, 254, "%s/TrajectoryError.iinit%04d.dat", datadir.c_str(), initid);
+      }
       errorfile = fopen(filename, "w");
       fprintf(errorfile, "# time      error norm\n");
     }
