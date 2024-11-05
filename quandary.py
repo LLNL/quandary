@@ -60,6 +60,8 @@ class Quandary:
     maxiter             # Maximum number of optimization iterations. Default 200
     tol_infidelity      # Optimization stopping criterion based on the infidelity. Default 1e-5
     tol_costfunc        # Optimization stopping criterion based on the objective function value. Default 1e-4
+    tol_grad_rel        # Optimization stopping criterion based on the relative gradient drop . Default 1e-4
+    tol_grad_abs        # Optimization stopping criterion based on the absolute gradient drop . Default 1e-4
     costfunction        # Cost function measure: "Jtrace" or "Jfrobenius". Default: "Jtrace"
     optim_target        # Optional: Set other optimization target string, if not specified through the targetgate or targetstate. 
     gamma_tik0          # Parameter for Tikhonov regularization ||alpha||^2. Default 1e-4
@@ -135,6 +137,8 @@ class Quandary:
     maxiter                : int   = 200         
     tol_infidelity         : float = 1e-5        
     tol_costfunc           : float = 1e-4        
+    tol_grad_rel           : float = 1e-4
+    tol_grad_abs           : float = 1e-4
     costfunction           : str   = "Jtrace"                      
     optim_target           : str   = "gate, none"
     gamma_tik0             : float = 1e-4 
@@ -305,6 +309,10 @@ class Quandary:
 
         return self.__run(pcof0=pcof0, runtype="optimization", overwrite_popt=True, maxcores=maxcores, datadir=datadir, quandary_exec=quandary_exec, cygwinbash=cygwinbash, batchargs=batchargs)
     
+    def training(self, *, trainingdatadir, UDEmodel, pcof0=[], maxcores=-1, datadir="./run_dir", quandary_exec="", cygwinbash="", batchargs=[]):
+
+        return self.__run(pcof0=pcof0, runtype="UDEoptimization", overwrite_popt=True, maxcores=maxcores, datadir=datadir, quandary_exec=quandary_exec, cygwinbash=cygwinbash, batchargs=batchargs, trainingdatadir=trainingdatadir, UDEmodel=UDEmodel)
+
 
     def evalControls(self, *, pcof0=[], points_per_ns=1,datadir="./run_dir", quandary_exec="", cygwinbash=""):
         """
@@ -345,7 +353,7 @@ class Quandary:
         return time, pt, qt
 
 
-    def __run(self, *, pcof0=[], runtype="optimization", overwrite_popt=False, maxcores=-1, datadir="./run_dir", quandary_exec="", cygwinbash="", batchargs=[]):
+    def __run(self, *, pcof0=[], runtype="optimization", overwrite_popt=False, maxcores=-1, datadir="./run_dir", quandary_exec="", cygwinbash="", batchargs=[], trainingdatadir="", UDEmodel="none"):
         """
         Internal helper function to launch processes to execute the C++ Quandary code:
           1. Writes quandary config files to file system
@@ -356,7 +364,7 @@ class Quandary:
 
         # Create quandary data directory and dump configuration file
         os.makedirs(datadir, exist_ok=True)
-        config_filename = self.__dump(pcof0=pcof0, runtype=runtype, datadir=datadir)
+        config_filename = self.__dump(pcof0=pcof0, runtype=runtype, datadir=datadir, trainingdatadir=trainingdatadir, UDEmodel=UDEmodel)
 
         # Set default number of cores to the number of initial conditions, unless otherwise specified. Make sure ncores is an integer divisible of ninit.
         ncores = self._ninit
@@ -393,7 +401,7 @@ class Quandary:
         return time, pt, qt, infidelity, expectedEnergy, population
 
 
-    def __dump(self, *, pcof0=[], runtype="simulation", datadir="./run_dir"):
+    def __dump(self, *, pcof0=[], runtype="simulation", datadir="./run_dir", trainingdatadir="", UDEmodel="none"):
         """
         Internal helper function that dumps all configuration options (and target gate, pcof0, Hamiltonian operators) into files for Quandary C++ runs. Returns the name of the configuration file needed for executing Quandary. 
         """
@@ -516,6 +524,14 @@ class Quandary:
             mystring += "collapse_type = dephase\n"
         else:
             mystring += "collapse_type = none\n"
+
+        # Training. TODO: Generalize
+        if len(trainingdatadir) > 0:
+            mystring += "data_name = synthetic, ." + str(trainingdatadir)+"/rho_Re_pulse0.iinit0000.dat, ." + str(trainingdatadir)+"/rho_Im_pulse0.iinit0000.dat\n"
+            mystring += "UDEmodel = " + UDEmodel + "\n"
+            mystring += "learnparams_initialization = constant, 0.0001, 0.0001\n"
+        # End training
+
         if self.initialcondition[0:4] == "file":
             mystring += "initialcondition = " + str(self.initialcondition) + ", " + self._initstatefilename + "\n"
         else:
@@ -527,7 +543,7 @@ class Quandary:
                 initstring = "file, "+str(self.pcof0_filename) + "\n"
             else:
                 # Scale initial control amplitudes by the number of carrier waves and convert to ns
-                initamp = self.initctrl_MHz[iosc] / np.sqrt(2) / len(self.carrier_frequency[iosc])
+                initamp = self.initctrl_MHz[iosc] / len(self.carrier_frequency[iosc])
                 if not self.unitMHz:
                     initamp = initamp / 1e+3
                 initstring = ("random, " if self.randomize_init_ctrl else "constant, ") + str(initamp) + "\n"
@@ -553,8 +569,8 @@ class Quandary:
             mystring += str(val) + ", " 
         mystring += "\n"
         mystring += "optim_weights= 1.0\n"
-        mystring += "optim_atol= 1e-4\n"
-        mystring += "optim_rtol= 1e-4\n"
+        mystring += "optim_atol= "+ str(self.tol_grad_abs)+"\n"
+        mystring += "optim_rtol= " + str(self.tol_grad_rel)+"\n"
         mystring += "optim_ftol= " + str(self.tol_costfunc) + "\n"
         mystring += "optim_inftol= " + str(self.tol_infidelity) + "\n"
         mystring += "optim_maxiter= " + str(self.maxiter) + "\n"
@@ -574,7 +590,7 @@ class Quandary:
         mystring += "output_frequency = " + str(self.output_frequency) + "\n"
         mystring += "optim_monitor_frequency = " + str(self.print_frequency_iter) + "\n"
         mystring += "runtype = " + runtype + "\n"
-        if len(self.Ne) < 6:
+        if len(self.Ne) < 6 and len(trainingdatadir) == 0:
             mystring += "usematfree = " + str(self.usematfree) + "\n"
         else:
             mystring += "usematfree = false\n"
