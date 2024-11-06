@@ -605,6 +605,9 @@ PetscErrorCode TaoMonitor(Tao tao,void*ptr){
   } else if (iter == ctx->getMaxIter()) {
     finalReason_str = "Optimization stopped at maximum number of iterations.";
     lastIter = true;
+  } else if (gnorm < ctx->getGaTol()) {
+    finalReason_str = "OPtimization converged with small gradient norm.";
+    lastIter=true;
   }
 
   /* First iteration: Header for screen output of optimization history */
