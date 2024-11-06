@@ -311,7 +311,7 @@ class Quandary:
     
     def training(self, *, trainingdatadir, UDEmodel, pcof0=[], maxcores=-1, datadir="./run_dir", quandary_exec="", cygwinbash="", batchargs=[]):
 
-        return self.__run(pcof0=pcof0, runtype="UDEoptimization", overwrite_popt=True, maxcores=maxcores, datadir=datadir, quandary_exec=quandary_exec, cygwinbash=cygwinbash, batchargs=batchargs, trainingdatadir=trainingdatadir, UDEmodel=UDEmodel)
+        return self.__run(pcof0=pcof0, runtype="UDEoptimization", overwrite_popt=True, maxcores=maxcores, datadir=datadir, quandary_exec=quandary_exec, cygwinbash=cygwinbash, batchargs=batchargs, trainingdatadir=trainingdatadir, UDEmodel=UDEmodel, readfiles=False)
 
 
     def evalControls(self, *, pcof0=[], points_per_ns=1,datadir="./run_dir", quandary_exec="", cygwinbash=""):
@@ -353,7 +353,7 @@ class Quandary:
         return time, pt, qt
 
 
-    def __run(self, *, pcof0=[], runtype="optimization", overwrite_popt=False, maxcores=-1, datadir="./run_dir", quandary_exec="", cygwinbash="", batchargs=[], trainingdatadir="", UDEmodel="none"):
+    def __run(self, *, pcof0=[], runtype="optimization", overwrite_popt=False, maxcores=-1, datadir="./run_dir", quandary_exec="", cygwinbash="", batchargs=[], trainingdatadir="", UDEmodel="none", readfiles=True):
         """
         Internal helper function to launch processes to execute the C++ Quandary code:
           1. Writes quandary config files to file system
@@ -375,6 +375,10 @@ class Quandary:
                 if i <= ncores:
                     ncores = i
                     break
+        if len(trainingdatadir) > 0: # If UDE training: ncores=npulses
+            ncores = len(trainingdatadir) 
+            if maxcores > -1:
+                ncores = min(ncores, maxcores)
 
         # Execute subprocess to run Quandary
         err = execute(runtype=runtype, ncores=ncores, config_filename=config_filename, datadir=datadir, quandary_exec=quandary_exec, verbose=self.verbose, cygwinbash=cygwinbash, batchargs=batchargs)
@@ -382,7 +386,7 @@ class Quandary:
             print("Quandary data dir: ", datadir, "\n")
 
         # Get results from quandary output files
-        if not err:
+        if not err and readfiles:
             # Get results form quandary's output folder and store some
             time, pt, qt, uT, expectedEnergy, population, popt, infidelity, optim_hist = self.get_results(datadir=datadir)
             if (overwrite_popt):
@@ -527,7 +531,19 @@ class Quandary:
 
         # Training. TODO: Generalize
         if len(trainingdatadir) > 0:
-            mystring += "data_name = synthetic, ." + str(trainingdatadir)+"/rho_Re.iinit0000.dat, ." + str(trainingdatadir)+"/rho_Im.iinit0000.dat\n"
+            # Figure out if multiple directories are passed (multiple pulses from synthetic data)
+            if isinstance(trainingdatadir, str): # One pulse directory only
+                mystring += "data_npulses = 1\n"
+                mydir = [x.strip() for x in trainingdatadir.split(',')]
+                mystring += "data_name = " + mydir[0] + ", ." + mydir[1]+"/rho_Re.iinit0000.dat, ." + mydir[1]+"/rho_Im.iinit0000.dat\n"
+            else: # multiple pulses, received a list of trainingdatadirs
+                mystring += "data_npulses = " + str(len(trainingdatadir))+"\n"
+                # First element contains the data type specifyier:
+                mydir = [x.strip() for x in trainingdatadir[0].split(',')]
+                mystring += "data_name = " + mydir[0]+", ." + mydir[1]+"/rho_Re.iinit0000.dat, ." + mydir[1]+"/rho_Im.iinit0000.dat\n"
+                # All other elements:
+                for i, mydir in enumerate(trainingdatadir[1:]):
+                    mystring += "data_name"+str(i+1)+ " = ." + mydir+"/rho_Re.iinit0000.dat, ." + mydir+"/rho_Im.iinit0000.dat\n"
             mystring += "UDEmodel = " + UDEmodel + "\n"
             mystring += "learnparams_initialization = constant, 0.0001, 0.0001\n"
         # End training

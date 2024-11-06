@@ -194,11 +194,12 @@ void SyntheticQuandaryData::loadData(std::vector<std::string>& data_name, double
   // Iterate over local pulses
   for (int ipulse_local = 0; ipulse_local < npulses_local; ipulse_local++){
     int ipulse = mpirank_optim* npulses_local + ipulse_local;
+    // printf("Loading from name %s\n", data_name[ipulse*2+0].c_str());
 
     /* Extract control amplitudes from file name (searching for "p" and "q")*/
-    double conversion_factor = 1.0;  // conversion factor: Volt to GHz
-    std::size_t found_p = data_name[ipulse*2+0].find_last_of("p");
-    std::size_t found_q = data_name[ipulse*2+0].find_last_of("q");
+    std::size_t found_p = data_name[ipulse*2+0].find("ctrlP") + 4;
+    std::size_t found_q = data_name[ipulse*2+0].find("ctrlQ") + 4;
+
     int strlength_p = 5;
     int strlength_q = 5;
     // If controls are given, load them, otherwise leave controlparams[ipulse] empty
