@@ -260,7 +260,7 @@ class Quandary:
         self.uT         = uT_org.copy()
 
 
-    def simulate(self, *, pcof0=[], maxcores=-1, datadir="./run_dir", quandary_exec="", cygwinbash="", batchargs=[]):
+    def simulate(self, *, pcof0=[], maxcores=-1, datadir="./run_dir", quandary_exec="", cygwinbash="", batchargs=[], UDEmodel="none", learn_params=[]):
         """ 
         Simulate the quantm dynamics using the current settings. 
 
@@ -282,7 +282,7 @@ class Quandary:
         population      :  Evolution of the population of each oscillator, of each initial condition. (expectedEnergy[oscillator][initialcondition])
         """
 
-        return self.__run(pcof0=pcof0, runtype="simulation", overwrite_popt=False, maxcores=maxcores, datadir=datadir, quandary_exec=quandary_exec, cygwinbash=cygwinbash, batchargs=batchargs)
+        return self.__run(pcof0=pcof0, runtype="simulation", overwrite_popt=False, maxcores=maxcores, datadir=datadir, quandary_exec=quandary_exec, cygwinbash=cygwinbash, batchargs=batchargs, UDEmodel=UDEmodel, learn_params=learn_params)
 
 
     def optimize(self, *, pcof0=[], maxcores=-1, datadir="./run_dir", quandary_exec="", cygwinbash="", batchargs=[]):
@@ -309,9 +309,9 @@ class Quandary:
 
         return self.__run(pcof0=pcof0, runtype="optimization", overwrite_popt=True, maxcores=maxcores, datadir=datadir, quandary_exec=quandary_exec, cygwinbash=cygwinbash, batchargs=batchargs)
     
-    def training(self, *, trainingdatadir, UDEmodel, pcof0=[], maxcores=-1, datadir="./run_dir", quandary_exec="", cygwinbash="", batchargs=[]):
+    def training(self, *, trainingdatadir="./", UDEmodel="both", pcof0=[], maxcores=-1, datadir="./run_dir", quandary_exec="", cygwinbash="", batchargs=[], learn_params=[]):
 
-        return self.__run(pcof0=pcof0, runtype="UDEoptimization", overwrite_popt=True, maxcores=maxcores, datadir=datadir, quandary_exec=quandary_exec, cygwinbash=cygwinbash, batchargs=batchargs, trainingdatadir=trainingdatadir, UDEmodel=UDEmodel, readfiles=False)
+        return self.__run(pcof0=pcof0, runtype="UDEoptimization", overwrite_popt=True, maxcores=maxcores, datadir=datadir, quandary_exec=quandary_exec, cygwinbash=cygwinbash, batchargs=batchargs, trainingdatadir=trainingdatadir, UDEmodel=UDEmodel,  learn_params=learn_params)
 
 
     def evalControls(self, *, pcof0=[], points_per_ns=1,datadir="./run_dir", quandary_exec="", cygwinbash=""):
@@ -353,7 +353,7 @@ class Quandary:
         return time, pt, qt
 
 
-    def __run(self, *, pcof0=[], runtype="optimization", overwrite_popt=False, maxcores=-1, datadir="./run_dir", quandary_exec="", cygwinbash="", batchargs=[], trainingdatadir="", UDEmodel="none", readfiles=True):
+    def __run(self, *, pcof0=[], runtype="optimization", overwrite_popt=False, maxcores=-1, datadir="./run_dir", quandary_exec="", cygwinbash="", batchargs=[], trainingdatadir="", UDEmodel="none", learn_params=[]):
         """
         Internal helper function to launch processes to execute the C++ Quandary code:
           1. Writes quandary config files to file system
@@ -364,7 +364,7 @@ class Quandary:
 
         # Create quandary data directory and dump configuration file
         os.makedirs(datadir, exist_ok=True)
-        config_filename = self.__dump(pcof0=pcof0, runtype=runtype, datadir=datadir, trainingdatadir=trainingdatadir, UDEmodel=UDEmodel)
+        config_filename = self.__dump(pcof0=pcof0, runtype=runtype, datadir=datadir, trainingdatadir=trainingdatadir, UDEmodel=UDEmodel, learn_params=learn_params)
 
         # Set default number of cores to the number of initial conditions, unless otherwise specified. Make sure ncores is an integer divisible of ninit.
         ncores = self._ninit
@@ -386,7 +386,7 @@ class Quandary:
             print("Quandary data dir: ", datadir, "\n")
 
         # Get results from quandary output files
-        if not err and readfiles:
+        if not err:
             # Get results form quandary's output folder and store some
             time, pt, qt, uT, expectedEnergy, population, popt, infidelity, optim_hist = self.get_results(datadir=datadir)
             if (overwrite_popt):
@@ -405,7 +405,7 @@ class Quandary:
         return time, pt, qt, infidelity, expectedEnergy, population
 
 
-    def __dump(self, *, pcof0=[], runtype="simulation", datadir="./run_dir", trainingdatadir="", UDEmodel="none"):
+    def __dump(self, *, pcof0=[], runtype="simulation", datadir="./run_dir", trainingdatadir="", UDEmodel="none", learn_params=[]):
         """
         Internal helper function that dumps all configuration options (and target gate, pcof0, Hamiltonian operators) into files for Quandary C++ runs. Returns the name of the configuration file needed for executing Quandary. 
         """
@@ -496,6 +496,16 @@ class Quandary:
             if self.verbose:
                 print("Initial control parameters written to ", datadir+"/"+self.pcof0_filename)
 
+        # if learn_params is given, write it to a file
+        learn_params_filename = ""
+        if len(learn_params) > 0:
+            learn_params_filename = "./learn_params0.dat"
+            with open(datadir+"/" + learn_params_filename, "w") as f:
+                for value in learn_params:
+                    f.write("{:20.13e}\n".format(value))
+            if self.verbose:
+                print("Initial learning parameters written to ", datadir+"/"+learn_params_filename)
+
         # Set up string for Quandary's config file
         Nt = [self.Ne[i] + self.Ng[i] for i in range(len(self.Ng))]
         mystring = "nlevels = " + str(list(Nt))[1:-1] + "\n"
@@ -544,7 +554,10 @@ class Quandary:
                 # All other elements:
                 for i, mydir in enumerate(trainingdatadir[1:]):
                     mystring += "data_name"+str(i+1)+ " = ." + mydir+"/rho_Re.iinit0000.dat, ." + mydir+"/rho_Im.iinit0000.dat\n"
-            mystring += "UDEmodel = " + UDEmodel + "\n"
+        mystring += "UDEmodel = " + UDEmodel + "\n"
+        if len(learn_params_filename) > 0:
+            mystring += "learnparams_initialization = file, " + str(learn_params_filename) + "\n"
+        else:
             mystring += "learnparams_initialization = constant, 0.0001, 0.0001\n"
         # End training
 
@@ -606,7 +619,7 @@ class Quandary:
         mystring += "output_frequency = " + str(self.output_frequency) + "\n"
         mystring += "optim_monitor_frequency = " + str(self.print_frequency_iter) + "\n"
         mystring += "runtype = " + runtype + "\n"
-        if len(self.Ne) < 6 and len(trainingdatadir) == 0:
+        if len(self.Ne) < 6 and UDEmodel == "none":
             mystring += "usematfree = " + str(self.usematfree) + "\n"
         else:
             mystring += "usematfree = false\n"
