@@ -5,7 +5,7 @@ Data::Data() {
   npulses = 1;
   npulses_local = 1;
   tstart = 0.0;
-  tstop = 1.0e26;
+  tstop = 0.0;
 	dt = 0.0;
 }
 
@@ -209,6 +209,7 @@ void SyntheticQuandaryData::loadData(std::vector<std::string>& data_name, double
       if (data_name[ipulse*2+0][found_q+1] == '-') strlength_q=6;
       double p_Volt = std::stod(data_name[ipulse*2+0].substr(found_p+1, strlength_p));
       double q_Volt = std::stod(data_name[ipulse*2+0].substr(found_q+1, strlength_q));
+      double conversion_factor = 1.0;  // conversion factor: Volt to GHz
       double p_GHz = p_Volt * conversion_factor;
       double q_GHz = q_Volt * conversion_factor;
       // printf("Got the control amplitudes %1.8f,%1.8f GHz\n", p_GHz, q_GHz);

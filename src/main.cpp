@@ -246,31 +246,46 @@ int main(int argc,char **argv)
     printf(" Choose either 'none', 'hamiltonian', 'lindblad', or 'both'\n");
     exit(1);
   }
+
+  /* Switch solver mode between learning/simulation a UDE model parameters vs optimizing/simulating controls. */
+  bool x_is_control;
+  if (runtypestr.find("UDE") != std::string::npos && UDEmodel != UDEmodelType::NONE) {
+    x_is_control = false ; // optim wrt UDE model parameters
+  } else {
+    x_is_control = true; // optim wrt controls parameters
+  }
+  output->x_is_control = x_is_control;
+
+  /* Create learning and data class*/
   Learning* learning;
   if (UDEmodel != UDEmodelType::NONE) {
 
-    /* Load trajectory data */
+    /* Load trajectory data only if operating on the Loss (if not x_is_control) */
     Data* data;
-    std::vector<std::string> data_name;
-    config.GetVecStrParam("data_name", data_name, "data");
-    std::string identifyer = data_name[0];
-    data_name.erase(data_name.begin());
-    if (identifyer.compare("synthetic") == 0) { 
-      data = new SyntheticQuandaryData(config, comm_optim, data_name, nlevels, lindbladtype);
-    } else if (identifyer.compare("Tant2level") == 0) { 
-      data = new Tant2levelData(config, comm_optim, data_name, nlevels, lindbladtype);
-    } else if (identifyer.compare("Tant3level") == 0) {
-      data = new Tant3levelData(config, comm_optim, data_name, nlevels, lindbladtype);
-    }
-    else {
-      printf("Wrong setting for loading data. Needs prefix 'synthetic', or 'Tant2level', or 'Tant3level'.\n");
-      exit(1);
-    }
+    if (!x_is_control){
+      std::vector<std::string> data_name;
+      config.GetVecStrParam("data_name", data_name, "data");
+      std::string identifyer = data_name[0];
+      data_name.erase(data_name.begin());
+      if (identifyer.compare("synthetic") == 0) { 
+        data = new SyntheticQuandaryData(config, comm_optim, data_name, nlevels, lindbladtype);
+      } else if (identifyer.compare("Tant2level") == 0) { 
+        data = new Tant2levelData(config, comm_optim, data_name, nlevels, lindbladtype);
+      } else if (identifyer.compare("Tant3level") == 0) {
+        data = new Tant3levelData(config, comm_optim, data_name, nlevels, lindbladtype);
+      }
+      else {
+        printf("Wrong setting for loading data. Needs prefix 'synthetic', or 'Tant2level', or 'Tant3level'.\n");
+        exit(1);
+      }
 
-    /* Update the time-integration step-size such that it is an integer divisor of the data sampling size  */
-    double dt_tmp = dt;
-    dt = data->suggestTimeStepSize(dt_tmp);
-    if (abs(dt - dt_tmp) > 1e-8 && !quietmode) printf(" -> Updated dt from %1.14e to %1.14e\n", dt_tmp, dt);
+      /* Update the time-integration step-size such that it is an integer divisor of the data sampling size  */
+      double dt_tmp = dt;
+      dt = data->suggestTimeStepSize(dt_tmp);
+      if (abs(dt - dt_tmp) > 1e-8 && !quietmode) printf(" -> Updated dt from %1.14e to %1.14e\n", dt_tmp, dt);
+    } else {
+      data = new Data(); // Dummy
+    }
 
     /* Now create learning object */
     std::vector<std::string> learninit_str;
@@ -284,15 +299,6 @@ int main(int argc,char **argv)
     std::vector<int> dummy_nlevels(0);
     learning = new Learning(dummy_nlevels, LindbladType::NONE, UDEmodelType::NONE, dummy_learninit_str, data, rand_engine, quietmode); 
   }
-
-  /* Switch solver mode between learning UDE model parameters vs optimizing controls */
-  bool x_is_control;
-  if (runtypestr.find("UDE") != std::string::npos && UDEmodel != UDEmodelType::NONE) {
-    x_is_control = false ; // optim wrt UDE model parameters
-  } else {
-    x_is_control = true; // optim wrt controls parameters
-  }
-  output->x_is_control = x_is_control;
 
   /* Set total time */
   double total_time = ntime * dt;
