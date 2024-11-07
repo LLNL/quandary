@@ -765,9 +765,12 @@ class Quandary:
                 x = np.zeros((1,4))
             # Extract the pulses 
             time = x[:,0]   # Time domain
-            pt.append([x[n,1]*1e+3 for n in range(len(x[:,0]))])     # Rot frame p(t), MHz
-            qt.append([x[n,2]*1e+3 for n in range(len(x[:,0]))])     # Rot frame q(t), MHz
-            ft.append([x[n,3]*1e+3 for n in range(len(x[:,0]))])     # Lab frame f(t)
+            unitfac = 1.0
+            if not self.unitMHz:
+                unitfac = 1e+3
+            pt.append([x[n,1]*unitfac for n in range(len(x[:,0]))])     # Rot frame p(t), MHz
+            qt.append([x[n,2]*unitfac for n in range(len(x[:,0]))])     # Rot frame q(t), MHz
+            ft.append([x[n,3]*unitfac for n in range(len(x[:,0]))])     # Lab frame f(t)
     
         return time, pt, qt, uT, expectedEnergy, population, pcof, infid_last, optim_hist
 
