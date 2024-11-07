@@ -77,7 +77,11 @@ Vec TimeStepper::getState(int tindex){
 Vec TimeStepper::solveODE(int initid, Vec rho_t0, int pulse_num){
 
   /* Open output files */
-  output->openDataFiles("rho", initid, pulse_num);
+  int pulseid = pulse_num;
+  if (mastereq->learning->data->getNPulses() <= 1){
+    pulseid = -1;
+  }
+  output->openDataFiles("rho", initid, pulseid);
 
   /* Set initial condition  */
   VecCopy(rho_t0, x);

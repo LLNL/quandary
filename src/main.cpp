@@ -548,8 +548,8 @@ int main(int argc,char **argv)
     if (!x_is_control) {
       mastereq->setControlFromData(ipulse_global);
     }
-    int pulseID = -1;
-    if (!x_is_control)  pulseID = ipulse_global;
+    int pulseID = ipulse_global;
+    if (learning->data->getNPulses() <=1)  pulseID = -1;
     output->writeControls(optimctx->timestepper->mastereq, optimctx->timestepper->ntime, optimctx->timestepper->dt, pulseID);
   }
 

@@ -282,9 +282,7 @@ double OptimProblem::evalF(const Vec x) {
 
       /* Run forward with initial condition initid */
       optim_target->prepareTargetState(rho_t0);
-      int pulseid = -1;
-      if (!x_is_control) pulseid = ipulse;
-      Vec finalstate = timestepper->solveODE(initid, rho_t0, pulseid);
+      Vec finalstate = timestepper->solveODE(initid, rho_t0, ipulse);
 
       /* If learning: add to loss function */
       double loss_local = mastereq->learning->getLoss();
@@ -440,9 +438,7 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
 
       /* Run forward with initial condition rho_t0 */
       optim_target->prepareTargetState(rho_t0);
-      int pulseid = -1;
-      if (!x_is_control) pulseid = ipulse;
-      Vec finalstate = timestepper->solveODE(initid, rho_t0, pulseid);
+      Vec finalstate = timestepper->solveODE(initid, rho_t0, ipulse);
 
       /* Store the final state for the Schroedinger solver */
       if (timestepper->mastereq->lindbladtype == LindbladType::NONE) VecCopy(finalstate, store_finalstates[iinit]);
