@@ -51,7 +51,7 @@ class Data{
     double suggestTimeStepSize(double dt_old);
 
     /* Get control parameters that were used for data generation. Note: pulse_num is global. */
-    std::vector<double> getControls(int pulse_num, int ioscillator=0); 
+    std::vector<double> getControls(int pulse_num); 
 
     /* If data point exists at this time, return it. Otherwise, returns NULL. Note: pulse_num is the global counter. */
     Vec getData(double time, int pulse_num);

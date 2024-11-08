@@ -95,8 +95,8 @@ Vec Data::getData(double time, int pulse_num){
   } else return NULL;
 }
 
-// TODO: Multiple oscillators
-std::vector<double> Data::getControls(int pulse_num, int ioscillator){
+// TODO: Multiple oscillators!
+std::vector<double> Data::getControls(int pulse_num){
 
   // Get local pulse number for this processor;
   int pulse_num_local =  pulse_num % npulses_local;

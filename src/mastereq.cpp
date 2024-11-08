@@ -1374,30 +1374,37 @@ void MasterEq::setControlAmplitudes(const Vec x) {
  void MasterEq::setControlFromData(int pulse_num){
   // Overwrite control initialization, if defined by training data
   if (UDEmodel!=UDEmodelType::NONE && !x_is_control){
-    int ioscil = 0; // TODO: iterate over oscillators
-    std::vector<double> datacontrols = learning->data->getControls(pulse_num, ioscil);
-    std::vector<double> controls = datacontrols;
-    // format: could be two values (constant p & q), or could be a list of bspline parameters
+    // TODO: Different controls for each oscillator 
+    std::vector<double> datacontrols = learning->data->getControls(pulse_num);
+    std::vector<double> controls = datacontrols; // does a deep copy
+    // Note: assumes format to be either two values (constant p & q), or a list of bspline parameters
+
     if (datacontrols.size() > 0){ // if exists
-      if (controls.size() == 2){ // p and q values
-        int nsplines = oscil_vec[ioscil]->getNSplines();
-        int nparams = oscil_vec[ioscil]->getNParams();
-        assert(nparams = 2*nsplines);
-        double p_GHz = controls[0];
-        double q_GHz = controls[1];
-        controls.resize(nparams);
-        for (int i=0; i<nsplines; i++) {
-          controls[i] = p_GHz *2*M_PI;
-          controls[i+nsplines] = q_GHz*2*M_PI;
+      for (int ioscil=0; ioscil<noscillators; ioscil++){
+
+        if (controls.size() == 2){ // p and q values
+          int nsplines = oscil_vec[ioscil]->getNSplines();
+          int ncarrier = oscil_vec[ioscil]->getNCarrierfrequencies();
+          int nparams = oscil_vec[ioscil]->getNParams();
+          assert(nparams = 2*nsplines*ncarrier);
+          double p_GHz = controls[0] / ncarrier;
+          double q_GHz = controls[1] / ncarrier;
+          controls.resize(nparams);
+          for (int icarrier=0; icarrier<ncarrier; icarrier++) {
+            for (int ispline=0; ispline<nsplines; ispline++) {
+              controls[icarrier*nsplines*2 + ispline]          = p_GHz *2*M_PI;
+              controls[icarrier*nsplines*2 + ispline+nsplines] = q_GHz*2*M_PI;
+            }
+          }
+
+        } else {  // list of bspline parameters
+          assert(controls.size() == oscil_vec[ioscil]->getNParams());
+          // printf("Learning: Using (given) random control parameters\n");
         }
-        // printf("Learning: Using constant controls with p=%f, q=%f [MHz]\n", p_GHz*1e3, q_GHz*1e3);
-      } else {  // list of bspline parameters
-        assert(controls.size() == oscil_vec[ioscil]->getNParams());
-        // printf("Learning: Using (given) random control parameters\n");
+        // Pass to oscillators
+        oscil_vec[ioscil]->setParams(controls.data());
+        // for (int i=0; i<controls.size(); i++) printf("%1.7f\n", controls[i]);
       }
-      // Pass to oscillators
-      oscil_vec[ioscil]->setParams(controls.data());
-      // for (int i=0; i<controls.size(); i++) printf("%1.7f\n", controls[i]);
     }
   }
 }
