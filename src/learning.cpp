@@ -35,7 +35,7 @@ Learning::Learning(std::vector<int> nlevels, LindbladType lindbladtype_, UDEmode
       hamiltonian_model = new HamiltonianModel(0, false, lindbladtype); // will be empty. Dummy
     }
     if (lindbladtype != LindbladType::NONE && (UDEmodel == UDEmodelType::LINDBLAD || UDEmodel == UDEmodelType::BOTH)) {
-        bool upper_only = true;
+        bool upper_only = false;
         bool real_only = true;
         lindblad_model    = new LindbladModel(dim_rho, shifted_diag, upper_only, real_only); 
     } else {

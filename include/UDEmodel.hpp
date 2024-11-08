@@ -11,6 +11,8 @@
 #include<random>
 #pragma once
 
+#define DOUBLESUM 1
+
 class UDEmodel {
   protected:
     int dim_rho;   /* Dimension of the Hilbertspace (N)*/
@@ -54,7 +56,6 @@ class HamiltonianModel : public UDEmodel {
 
 class LindbladModel: public UDEmodel {
   int nbasis;   /* Number of basis operators */
-  bool doublesum;
 
   public:
     LindbladModel(int dim_rho_, bool shifted_diag_, bool upper_only_, bool real_only_);
