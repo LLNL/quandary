@@ -1457,3 +1457,9 @@ def assemble_batch_script(name, run_command, batch_args, exclusive=True):
         outfile.write("#SBATCH --exclusive\n")
     outfile.write(run_command)
     outfile.close()
+
+
+def infidelity_(A,B):
+	dim = int(np.sqrt(A.size))
+	return 1.0 - np.abs(np.trace(A.conj().transpose() @ B))**2/dim**2
+
