@@ -56,6 +56,7 @@ class Quandary:
     carrier_frequency   # Carrier frequencies for each oscillator. List[List[float]]. Default will be computed based on Hsys.
     cw_amp_thres        # Threshold to ignore carrier wave frequencies whose growth rate is below this value. Default: 1e-7
     cw_prox_thres       # Threshold to distinguish different carrier wave frequencies from each other. Default: 1e-2
+    controllable        # List of bools: Determines whether each qubit is controllable or not. Default: [True, True, ..., True]
 
     # Optimization options
     maxiter             # Maximum number of optimization iterations. Default 200
@@ -133,6 +134,7 @@ class Quandary:
     carrier_frequency   : List[List[float]] = field(default_factory=list) 
     cw_amp_thres        : float       = 1e-7
     cw_prox_thres       : float       = 1e-2                        
+    controllable        : List[bool]  = field(default_factory=list)
     # Optimization options
     maxiter                : int   = 200         
     tol_infidelity         : float = 1e-5        
@@ -248,6 +250,9 @@ class Quandary:
             self.carrier_frequency = [[0.0] for _ in range(len(self.freq01))]
         if len(self.carrier_frequency) == 0: 
             self.carrier_frequency, _ = get_resonances(Ne=self.Ne, Ng=self.Ng, Hsys=self.Hsys, Hc_re=self.Hc_re, Hc_im=self.Hc_im, rotfreq=self.rotfreq, verbose=self.verbose, cw_amp_thres=self.cw_amp_thres, cw_prox_thres=self.cw_prox_thres, stdmodel=self.standardmodel)
+
+        if len(self.controllable) == 0:
+            self.controllable = [True for _ in range(len(self.Ne))]
 
         if self.verbose: 
             print("\n")
@@ -598,13 +603,16 @@ class Quandary:
         else:
             mystring += "initialcondition = " + str(self.initialcondition) + "\n"
         for iosc in range(len(self.Ne)):
-            if self.spline_order == 0:
-                mystring += "control_segments" + str(iosc) + " = spline0, " + str(self.nsplines) + "\n"
-            elif self.spline_order == 2:
-                mystring += "control_segments" + str(iosc) + " = spline, " + str(self.nsplines) + "\n"
+            if not self.controllable[iosc]:
+                mystring += "control_segments" + str(iosc) + " = none \n" 
             else:
-                print("Error: spline order = ", self.spline_order, " is currently not available. Choose 0 or 2.")
-                return -1
+                if self.spline_order == 0:
+                    mystring += "control_segments" + str(iosc) + " = spline0, " + str(self.nsplines) + "\n"
+                elif self.spline_order == 2:
+                    mystring += "control_segments" + str(iosc) + " = spline, " + str(self.nsplines) + "\n"
+                else:
+                    print("Error: spline order = ", self.spline_order, " is currently not available. Choose 0 or 2.")
+                    return -1
             # if len(self.pcof0_filename)>0:
             if read_pcof0_from_file:
                 initstring = "file, "+str(self.pcof0_filename) + "\n"
