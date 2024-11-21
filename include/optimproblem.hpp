@@ -92,6 +92,7 @@ class OptimProblem {
   double getPenaltyEnergy()  { return obj_penal_energy; };
   double getFidelity() { return fidelity; };
   double getFaTol()    { return fatol; };
+  double getGaTol()    { return gatol; };
   double getInfTol()   { return inftol; };
   int getMPIrank_world() { return mpirank_world;};
   int getMaxIter()     { return maxiter; };
