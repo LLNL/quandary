@@ -113,6 +113,7 @@ class Quandary:
     T            : float = 100.0
     Pmin         : int   = 150
     nsteps       : int   = -1
+    dT           : float = -1.0
     timestepper  : str   = "IMR"
     # Optimization targets and initial states options
     targetgate             : List[List[complex]] = field(default_factory=list) 
@@ -228,7 +229,11 @@ class Quandary:
             self._ninit = self._ninit**2
         
         # Estimate the number of required time steps
-        self.nsteps = estimate_timesteps(T=self.T, Hsys=self.Hsys, Hc_re=self.Hc_re, Hc_im=self.Hc_im, maxctrl_MHz=self.maxctrl_MHz, Pmin=self.Pmin)
+        if self.dT < 0:
+            self.nsteps = estimate_timesteps(T=self.T, Hsys=self.Hsys, Hc_re=self.Hc_re, Hc_im=self.Hc_im, maxctrl_MHz=self.maxctrl_MHz, Pmin=self.Pmin)
+            self.dT = self.T/self.nsteps
+        else:
+            self.nsteps = int(np.ceil(self.T / self.dT))
         if self.verbose:
             print("Final time: ",self.T,"ns, Number of timesteps: ", self.nsteps,", dt=", self.T/self.nsteps, "ns")
             print("Maximum control amplitudes: ", self.maxctrl_MHz, "MHz")
@@ -291,54 +296,14 @@ class Quandary:
         population      :  Evolution of the population of each oscillator, of each initial condition. (expectedEnergy[oscillator][initialcondition])
         """
         
-        if self.spline_order == 0: #specifying (pt, qt) only makes sense for piecewise constant B-splines
-            Nsys = len(self.Ne)
-            Nsplines = self.nsplines
-            if len(pt0) == Nsys and len(qt0) == Nsys:
-                sizes_ok = True
-                for iosc in range(Nsys):
-                    if sizes_ok and len(pt0[iosc]) >= 2 and len(pt0[iosc]) == len(qt0[iosc]):
-                        sizes_ok = True
-                    else:
-                        sizes_ok = False
-                # print("simulate(): sizes_ok = ", sizes_ok)
-                if sizes_ok:
-                    # do the downsampling and construct pcof0
-                    pcof0 = np.zeros(0) # to hold the downsampled numpy array for the control vector
-                    fact = 2e-3*np.pi # conversion factor from MHz to rad/ns
-                    
-                    for iosc in range(Nsys):
-                        Nelem = np.size(pt0[iosc])
-                        dt = self.T/(Nelem-1) # time step corresponding to (pt0, qt0)
-                        p_seg = pt0[iosc]
-                        q_seg = qt0[iosc]
 
-                        seg_re = np.zeros(Nsplines) # to hold downsampled amplitudes
-                        seg_im = np.zeros(Nsplines)
-                        # downsample p_seg, q_seg
-                        for i_spl in range(Nsplines):
-                            # the B-spline0 coefficients correspond to the time levels
-                            t_spl = (i_spl+0.5)*self.spline_knot_spacing
-                            i = max(0, np.rint(t_spl/dt).astype(int))# given t_spl, find the closest time step index
-                            i = min(i, self.nsteps-1) # make sure i is in range
-                            seg_re[i_spl] = fact * p_seg[i]
-                            seg_im[i_spl] = fact * q_seg[i]
-
-                        pcof0 = np.append(pcof0, seg_re) # append segment to the global control vector
-                        pcof0 = np.append(pcof0, seg_im)
-                    print("simulation(): downsampling of (pt0, qt0) completed")
-                else:
-                    print("simulation(): detected a mismatch in the sizes of (pt0, qt0)")
-            elif len(pt0) > 0 or len(qt0) > 0:
-                print("simulation(): the length of pt0 or qt0 != Nsys = ", Nsys)
-        elif len(pt0) > 0 and len(qt0) > 0:
-            print("Downsampling (pt,qt) is only implemented for spline order 0, not ", self.spline_order)
-        
+        if len(pt0) > 0 and len(qt0) > 0:
+            pcof0 = self.downsample_pulses(pt0=pt0, qt0=qt0)
 
         return self.__run(pcof0=pcof0, runtype="simulation", overwrite_popt=False, maxcores=maxcores, datadir=datadir, quandary_exec=quandary_exec, cygwinbash=cygwinbash, batchargs=batchargs)
 
 
-    def optimize(self, *, pcof0=[], maxcores=-1, datadir="./run_dir", quandary_exec="", cygwinbash="", batchargs=[]):
+    def optimize(self, *, pcof0=[], pt0=[], qt0=[], maxcores=-1, datadir="./run_dir", quandary_exec="", cygwinbash="", batchargs=[]):
         """ 
         Optimize the quantm dynamics using the current settings. 
 
@@ -346,6 +311,7 @@ class Quandary:
         ------------------- 
         pcof0          : List of control parameters to start the optimization from. Default: Use initial guess from the Quandary (pcof0, or pcof0_filename, or randomized initial guess)
         maxcores      : Maximum number of processing cores. Default: number of initial conditions
+        pt, qt          :  p,q-control pulses [MHz] at each time point for each oscillator (List of list)
         datadir       : Data directory for storing output files. Default: "./run_dir"
         quandary_exec : Location of Quandary's C++ executable, if not in $PATH
         cygwinbash    : To run on Windows through Cygwin, set the path to Cygwin/bash.exe. Default: None.
@@ -359,6 +325,9 @@ class Quandary:
         expectedEnergy  :  Evolution of the expected energy of each oscillator and each initial condition. Acces: expectedEnergy[oscillator][initialcondition]
         population      :  Evolution of the population of each oscillator, of each initial condition. (expectedEnergy[oscillator][initialcondition])
         """
+
+        if len(pt0) > 0 and len(qt0) > 0:
+            pcof0 = self.downsample_pulses(pt0=pt0, qt0=qt0)
 
         return self.__run(pcof0=pcof0, runtype="optimization", overwrite_popt=True, maxcores=maxcores, datadir=datadir, quandary_exec=quandary_exec, cygwinbash=cygwinbash, batchargs=batchargs)
     
@@ -402,6 +371,53 @@ class Quandary:
         return time, pt, qt
 
 
+    def downsample_pulses(self, *, pt0=[], qt0=[]):
+        if self.spline_order == 0: #specifying (pt, qt) only makes sense for piecewise constant B-splines
+            Nsys = len(self.Ne)
+            self.nsplines = int(np.ceil(self.T/self.spline_knot_spacing)) 
+            if len(pt0) == Nsys and len(qt0) == Nsys:
+                sizes_ok = True
+                for iosc in range(Nsys):
+                    if sizes_ok and len(pt0[iosc]) >= 2 and len(pt0[iosc]) == len(qt0[iosc]):
+                        sizes_ok = True
+                    else:
+                        sizes_ok = False
+                # print("simulate(): sizes_ok = ", sizes_ok)
+                if sizes_ok:
+                    # do the downsampling and construct pcof0
+                    pcof0 = np.zeros(0) # to hold the downsampled numpy array for the control vector
+                    fact = 2e-3*np.pi # conversion factor from MHz to rad/ns
+                    
+                    for iosc in range(Nsys):
+                        Nelem = np.size(pt0[iosc])
+                        dt = (self.nsteps*self.dT)/(Nelem-1) # time step corresponding to (pt0, qt0)
+                        p_seg = pt0[iosc]
+                        q_seg = qt0[iosc]
+
+                        seg_re = np.zeros(self.nsplines) # to hold downsampled amplitudes
+                        seg_im = np.zeros(self.nsplines)
+                        # downsample p_seg, q_seg
+                        for i_spl in range(self.nsplines):
+                            # the B-spline0 coefficients correspond to the time levels
+                            t_spl = (i_spl+0.5)*self.spline_knot_spacing
+                            i = max(0, np.rint(t_spl/dt).astype(int))# given t_spl, find the closest time step index
+                            i = min(i, self.nsteps-1) # make sure i is in range
+                            seg_re[i_spl] = fact * p_seg[i]
+                            seg_im[i_spl] = fact * q_seg[i]
+
+                        pcof0 = np.append(pcof0, seg_re) # append segment to the global control vector
+                        pcof0 = np.append(pcof0, seg_im)
+                    # print("simulation(): downsampling of (pt0, qt0) completed")
+                else:
+                    print("simulation(): detected a mismatch in the sizes of (pt0, qt0)")
+            elif len(pt0) > 0 or len(qt0) > 0:
+                print("simulation(): the length of pt0 or qt0 != Nsys = ", Nsys)
+        else:
+            print("Downsampling (pt,qt) is only implemented for spline order 0, not ", self.spline_order)
+        
+        return pcof0
+
+
     def __run(self, *, pcof0=[], runtype="optimization", overwrite_popt=False, maxcores=-1, datadir="./run_dir", quandary_exec="", cygwinbash="", batchargs=[]):
         """
         Internal helper function to launch processes to execute the C++ Quandary code:
@@ -439,8 +455,8 @@ class Quandary:
             self.optim_hist = optim_hist
             self.time = time[:]
             self.uT   = uT.copy()
-            if len(pcof0) == 0:
-                self.pcof0 = popt[:]
+            # if len(pcof0) == 0:
+                # self.pcof0 = popt[:]
         else:
             time = []
             pt = []
@@ -555,7 +571,8 @@ class Quandary:
         mystring = "nlevels = " + ",".join([str(i) for i in Nt]) + "\n"
         mystring += "nessential= " + ",".join([str(i) for i in self.Ne]) + "\n"
         mystring += "ntime = " + str(self.nsteps) + "\n"
-        mystring += "dt = " + str(self.T / self.nsteps) + "\n"
+        # mystring += "dt = " + str(self.T / self.nsteps) + "\n"
+        mystring += "dt = " + str(self.dT) + "\n"
         mystring += "transfreq = " + ",".join([str(i) for i in self.freq01]) + "\n"
         mystring += "rotfreq= " + ",".join([str(i) for i in self.rotfreq]) + "\n"
         mystring += "selfkerr = " + ",".join([str(i) for i in self.selfkerr]) + "\n"
@@ -1427,3 +1444,9 @@ def assemble_batch_script(name, run_command, batch_args, exclusive=True):
         outfile.write("#SBATCH --exclusive\n")
     outfile.write(run_command)
     outfile.close()
+
+
+def infidelity_(A,B):
+	dim = int(np.sqrt(A.size))
+	return 1.0 - np.abs(np.trace(A.conj().transpose() @ B))**2/dim**2
+
