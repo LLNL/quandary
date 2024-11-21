@@ -240,7 +240,7 @@ class Quandary:
             self.nsteps = estimate_timesteps(T=self.T, Hsys=self.Hsys, Hc_re=self.Hc_re, Hc_im=self.Hc_im, maxctrl_MHz=self.maxctrl_MHz, Pmin=self.Pmin)
             self.dT = self.T/self.nsteps
         else:
-            self.nsteps = int(self.T / self.dT) + 1
+            self.nsteps = int(np.ceil(self.T / self.dT))
         if self.verbose:
             print("Final time: ",self.T,"ns, Number of timesteps: ", self.nsteps,", dt=", self.T/self.nsteps, "ns")
             print("Maximum control amplitudes: ", self.maxctrl_MHz, "MHz")
@@ -384,7 +384,7 @@ class Quandary:
     def downsample_pulses(self, *, pt0=[], qt0=[]):
         if self.spline_order == 0: #specifying (pt, qt) only makes sense for piecewise constant B-splines
             Nsys = len(self.Ne)
-            Nsplines = self.nsplines
+            self.nsplines = int(np.ceil(self.T/self.spline_knot_spacing)) 
             if len(pt0) == Nsys and len(qt0) == Nsys:
                 sizes_ok = True
                 for iosc in range(Nsys):
@@ -400,14 +400,14 @@ class Quandary:
                     
                     for iosc in range(Nsys):
                         Nelem = np.size(pt0[iosc])
-                        dt = self.T/(Nelem-1) # time step corresponding to (pt0, qt0)
+                        dt = (self.nsteps*self.dT)/(Nelem-1) # time step corresponding to (pt0, qt0)
                         p_seg = pt0[iosc]
                         q_seg = qt0[iosc]
 
-                        seg_re = np.zeros(Nsplines) # to hold downsampled amplitudes
-                        seg_im = np.zeros(Nsplines)
+                        seg_re = np.zeros(self.nsplines) # to hold downsampled amplitudes
+                        seg_im = np.zeros(self.nsplines)
                         # downsample p_seg, q_seg
-                        for i_spl in range(Nsplines):
+                        for i_spl in range(self.nsplines):
                             # the B-spline0 coefficients correspond to the time levels
                             t_spl = (i_spl+0.5)*self.spline_knot_spacing
                             i = max(0, np.rint(t_spl/dt).astype(int))# given t_spl, find the closest time step index
@@ -417,7 +417,7 @@ class Quandary:
 
                         pcof0 = np.append(pcof0, seg_re) # append segment to the global control vector
                         pcof0 = np.append(pcof0, seg_im)
-                    print("simulation(): downsampling of (pt0, qt0) completed")
+                    # print("simulation(): downsampling of (pt0, qt0) completed")
                 else:
                     print("simulation(): detected a mismatch in the sizes of (pt0, qt0)")
             elif len(pt0) > 0 or len(qt0) > 0:
@@ -465,8 +465,8 @@ class Quandary:
             self.optim_hist = optim_hist
             self.time = time[:]
             self.uT   = uT.copy()
-            if len(pcof0) == 0:
-                self.pcof0 = popt[:]
+            # if len(pcof0) == 0:
+                # self.pcof0 = popt[:]
         else:
             time = []
             pt = []
