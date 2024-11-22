@@ -175,7 +175,7 @@ class Quandary:
         """
         
         if self.spline_order == 0:
-            minspline = 1
+            minspline = 2
         elif self.spline_order == 2:
             minspline = 5 if self.control_enforce_BC else 3
         else:
@@ -198,11 +198,7 @@ class Quandary:
             self.rotfreq = favg*np.ones(len(self.freq01))
         if len(self.gate_rot_freq) == 0:
             self.gate_rot_freq = np.zeros(len(self.rotfreq))
-        if self.nsplines < 0:
-            #minspline = 5 if self.control_enforce_BC else 3
-            self.nsplines = int(np.max([np.ceil(self.T/self.spline_knot_spacing), minspline])) if self.spline_order==0 else int(np.max([np.ceil(self.T/self.spline_knot_spacing+ 2), minspline]))
-        else:
-            self.spline_knot_spacing= self.T/self.nsplines if self.spline_order == 0 else self.T/(self.nsplines - 2)
+        
         if isinstance(self.initctrl_MHz, float) or isinstance(self.initctrl_MHz, int):
             max_alloscillators = self.initctrl_MHz
             self.initctrl_MHz = [max_alloscillators for _ in range(len(self.Ne))]
@@ -241,9 +237,21 @@ class Quandary:
             self.dT = self.T/self.nsteps
         else:
             self.nsteps = int(np.ceil(self.T / self.dT))
+            self.T = self.nsteps*self.dT
         if self.verbose:
             print("Final time: ",self.T,"ns, Number of timesteps: ", self.nsteps,", dt=", self.T/self.nsteps, "ns")
             print("Maximum control amplitudes: ", self.maxctrl_MHz, "MHz")
+
+        # Get number of splines right
+        if self.nsplines < 0:
+            if self.spline_order == 0:
+                self.nsplines = int(np.max([np.rint(self.nsteps*self.dT/self.spline_knot_spacing+1), minspline])) 
+            else: 
+                self.nsplines = int(np.max([np.ceil(self.T/self.spline_knot_spacing+ 2), minspline]))
+
+            self.spline_knot_spacing = self.nsteps*self.dT / (self.nsplines-1) if self.spline_order == 0 else self.nsteps*self.dT / (self.nsplines-2)
+        else:
+            self.spline_knot_spacing= self.nsteps*self.dT/(self.nsplines-1) if self.spline_order == 0 else self.T/(self.nsplines - 2)
 
         # Estimate carrier wave frequencies
         if self.spline_order == 0 and len(self.carrier_frequency) == 0:
@@ -384,7 +392,8 @@ class Quandary:
     def downsample_pulses(self, *, pt0=[], qt0=[]):
         if self.spline_order == 0: #specifying (pt, qt) only makes sense for piecewise constant B-splines
             Nsys = len(self.Ne)
-            self.nsplines = int(np.ceil(self.T/self.spline_knot_spacing)) 
+            self.nsplines = np.max([2,int(np.ceil(self.nsteps*self.dT/self.spline_knot_spacing + 1))])
+            self.spline_knot_spacing = self.nsteps*self.dT / (self.nsplines-1)
             if len(pt0) == Nsys and len(qt0) == Nsys:
                 sizes_ok = True
                 for iosc in range(Nsys):
@@ -409,9 +418,10 @@ class Quandary:
                         # downsample p_seg, q_seg
                         for i_spl in range(self.nsplines):
                             # the B-spline0 coefficients correspond to the time levels
-                            t_spl = (i_spl+0.5)*self.spline_knot_spacing
-                            i = max(0, np.rint(t_spl/dt).astype(int))# given t_spl, find the closest time step index
-                            i = min(i, self.nsteps-1) # make sure i is in range
+                            t_spl = (i_spl)*self.spline_knot_spacing
+                            # i = max(0, np.rint(t_spl/dt).astype(int))# given t_spl, find the closest time step index
+                            i = int(np.rint(t_spl / dt))
+                            i = min(i, Nelem-1) # make sure i is in range
                             seg_re[i_spl] = fact * p_seg[i]
                             seg_im[i_spl] = fact * q_seg[i]
 
