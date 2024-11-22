@@ -220,7 +220,7 @@ BSpline0::BSpline0(int nsplines_, double t0, double T, bool enforceZeroBoundary_
     nsplines = nsplines_;
     controltype = ControlType::BSPLINE0;
 
-    dtknot = (T-t0) / (double)nsplines;
+    dtknot = (T-t0) / (nsplines - 1.0);
 	width = dtknot;
 }
 
@@ -230,7 +230,7 @@ BSpline0::~BSpline0(){}
 void BSpline0::evaluate(const double t, const std::vector<double>& coeff, int carrier_freq_id, double* Bl1_ptr, double* Bl2_ptr){
 
     // Figure out which basis function is active at this time point 
-    int splineID = floor((t-tstart)/dtknot);
+    int splineID = ceil((t-tstart)/dtknot - 0.5);
 
     // Ctrl function defined to be zero outside [tstart, tend]
     if (splineID < 0 || splineID >= nsplines){
@@ -245,7 +245,7 @@ void BSpline0::evaluate(const double t, const std::vector<double>& coeff, int ca
 void BSpline0::derivative(const double t, const std::vector<double>& coeff, double* coeff_diff, const double valbar1, const double valbar2, int carrier_freq_id) {
 
     // Figure out which basis function is active at this time point 
-    int splineID = floor((t-tstart)/dtknot);
+    int splineID = ceil((t-tstart)/dtknot - 0.5);
 
     if (splineID >= 0 && splineID < nsplines){
         coeff_diff[skip + carrier_freq_id*nsplines*2 + splineID] += valbar1;
