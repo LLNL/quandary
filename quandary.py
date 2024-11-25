@@ -893,14 +893,36 @@ def eigen_and_reorder(H0, verbose=False):
     evals = evals[reord]
     evects = evects[:,reord]
 
+    # print("Hsys = ")
+    # print(H0)
+    # print("evals= ") 
+    # print(evals)
+    # print("evecs= ") 
+    # print(evects)
+
     # Find the column index corresponding to the largest element in each row of evects 
     max_col = np.zeros(Ntot, dtype=np.int32)
     for row in range(Ntot):
-        max_col[row] = np.argmax(np.abs(evects[row,:]))
-
-    # test the error detection
-    # max_col[1] = max_col[0]
-
+        maxcol = np.argmax(np.abs(evects[row,:]))
+        # Check if this column has been taken yet, if so, use next available index
+        for k in range(0, row):
+            if max_col[k] == maxcol:
+                # print("Error: detected identical max_col =", max_col[row], "for rows ", row, "and", k)
+                # Find smallest available index
+                for id in range(Ntot): 
+                    ## test if index 'id' is taken already
+                    taken = -1 
+                    for j in range(row): 
+                        if max_col[j] == id: ## taken by index j
+                            taken = j
+                            break
+                    if taken < 0: # If available, take it
+                        maxcol = id
+                        break
+                # print("Using next available index instead: ", id)
+        max_col[row] = maxcol
+    # print("Maxcol = ")
+    # print(max_col)
     # loop over all columns and check max_col for duplicates
     Ndup_col = 0 
     for row in range(Ntot-1): 
@@ -908,15 +930,14 @@ def eigen_and_reorder(H0, verbose=False):
             if max_col[row] == max_col[k]:
                 Ndup_col += 1
                 print("Error: detected identical max_col =", max_col[row], "for rows", row, "and", k)
-
+                print("\n")
 
     if Ndup_col > 0:
-        print("Found", Ndup_col, "duplicate column indices in max_col array")
         raise ValueError('Permutation of eigen-vector matrix failed')
 
     evects = evects[:,max_col]
     evals = evals[max_col]
-    
+
     # Make sure all diagonal elements are positive
     for j in range(Ntot):
         if evects[j,j]<0.0:
