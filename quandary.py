@@ -1448,7 +1448,8 @@ def execute(*, runtype="simulation", ncores=1, config_filename="config.cfg", dat
         # with open(os.path.join(datadir, "out.log"), "w") as stdout_file, \
         #      open(os.path.join(datadir, "err.log"), "w") as stderr_file:
         #         exec = run(runcommand, shell=True, stdout=stdout_file, stderr=stderr_file)
-        print("Executing '", runcommand, ". Runtype: ", runtype, "...")
+        if verbose:
+            print("Executing '", runcommand, ". Runtype: ", runtype, "...")
         exec = run(runcommand, shell=True)
         # Check return code
         err = exec.check_returncode()
@@ -1500,7 +1501,48 @@ def assemble_batch_script(name, run_command, batch_args, exclusive=True):
     outfile.close()
 
 
-def infidelity_(A,B):
-	dim = int(np.sqrt(A.size))
-	return 1.0 - np.abs(np.trace(A.conj().transpose() @ B))**2/dim**2
+def fidelity_(A,B):
+    A = np.asmatrix(A)
+    B = np.asmatrix(B)
+    if A.shape[0] == 1:
+        A = A.transpose()
+    if B.shape[0] == 1:
+        B = B.transpose()
+    ncols = A.shape[1]
+    sum = 0.0
+    for col in range(ncols):
+        sum += A[:,col].conj().transpose() @ B[:,col]
+    fid = np.abs(1/ncols*sum[0,0])**2
+    return fid
 
+
+def append_pulse(pulse_location, pulse_dict, dT, t_global, p_global, q_global):
+    num_qubits = len(pulse_location)
+
+    timesteps = pulse_dict["times"]
+    p_pulse   = pulse_dict["p_pulse"]
+    q_pulse   = pulse_dict["q_pulse"]
+
+	# Synchronize when a multi-qubit gate occures. Here, inserting zero drive for idling qubits.
+    if num_qubits > 1:
+        synch_zero_padding(pulse_location, dT, t_global, p_global, q_global)
+	
+	# Append pulses for each qubit
+    for i, qubitid in enumerate(pulse_location):
+        tlast = t_global[qubitid][-1] if len(t_global[qubitid]) > 0 else 0.0
+        for item in timesteps:
+            t_global[qubitid].append(item + tlast)
+        for item in p_pulse[i]:
+            p_global[qubitid].append(item)
+        for item in q_pulse[i]:
+    	    q_global[qubitid].append(item)
+	
+def synch_zero_padding(pulse_location, dT, t_global, p_global, q_global):
+    tmax = np.max([t_global[iqubit][-1] if len(t_global[iqubit]) > 0 else 0.0 for iqubit in pulse_location])
+    for iqubit in pulse_location:
+        while (t_global[iqubit][-1] if len(t_global[iqubit]) > 0 else 0.0 ) < tmax:
+            tmp = t_global[iqubit][-1] if len(t_global[iqubit]) > 0 else 0.0 
+            t_global[iqubit].append(tmp + dT)
+            p_global[iqubit].append(0.0)
+            q_global[iqubit].append(0.0)
+	
