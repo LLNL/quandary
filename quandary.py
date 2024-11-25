@@ -93,6 +93,7 @@ class Quandary:
     time         # Vector of discretized time points. List[float]
     optim_hist   # Optimization history: all fields as in Quandary's output file optim_history.dat. Dictionary.
     uT           # Evolved states at final time T. This is the (unitary) solution operator, if the initial conditions span the full basis. 
+    uInt         # Evolved states at all times. This is the (unitary) solution operator, if the initial conditions span the full basis. 
     """ 
 
     # Quantum system specifications
@@ -165,6 +166,7 @@ class Quandary:
     time        : List[float]   = field(default_factory=list)
     optim_hist  : Dict          = field(default_factory=dict)
     uT          : List[float]   = field(default_factory=list)
+    uInt        : List[List[float]] = field(default_factory=list)
 
 
     def __post_init__(self):
@@ -799,23 +801,31 @@ class Quandary:
         Ntot = [i+j for i,j in zip(self.Ne,self.Ng)]
         ndim = np.prod(Ntot) if not self._lindblad_solver else np.prod(Ntot)**2
         uT = np.zeros((ndim, self._ninit), dtype=complex)
+        ntimes = len(expectedEnergy[0][0]) 
+        uInt = [np.zeros((ndim, self._ninit), dtype=complex) for _ in range(ntimes)]
         for iinit in range(self._ninit):
             file_index = str(iinit).zfill(4)
             try:
-                xre = np.loadtxt(f"{dataout_dir}/rho_Re.iinit{file_index}.dat", skiprows=1, usecols=range(1, ndim+1))[-1]
-                uT[:, iinit] = xre 
+            # if True:
+                xre = np.loadtxt(f"{dataout_dir}/rho_Re.iinit{file_index}.dat",  usecols=range(1, ndim+1))
+                uT[:, iinit] = xre[-1]
+                for nt in range(len(xre)):
+                    uInt[nt][:,iinit] = xre[nt]
             except:
                 name = dataout_dir+"/rho_Re.iinit"+str(file_index)+".dat"
                 if not ignore_failure:
                     print("Can't read from ", name)
             try:
-                xim = np.loadtxt(f"{dataout_dir}/rho_Im.iinit{file_index}.dat", skiprows=1, usecols=range(1, ndim+1))[-1]
-                uT[:, iinit] += 1j * xim
+                xim = np.loadtxt(f"{dataout_dir}/rho_Im.iinit{file_index}.dat",  usecols=range(1, ndim+1))
+                uT[:, iinit] += 1j * xim[-1]
+                for nt in range(len(xre)):
+                    uInt[nt][:,iinit] += 1j * xim[nt]
             except:
                 name = dataout_dir+"/rho_Im.iinit"+str(file_index)+".dat"
                 if not ignore_failure:
                     print("Can't read from ", name)
             # uT[:, iinit] = xre + 1j * xim
+        self.uInt = uInt
     
         # Get the control pulses for each qubit
         pt = []
