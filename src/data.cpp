@@ -499,7 +499,7 @@ void Tant3levelData::loadData(std::vector<std::string>& data_name, double* tstar
   double q_Volt = std::stod(data_name[0].substr(found_q+1, strlength_q));
   double p_MHz = p_Volt * conversion_factor;
   double q_MHz = q_Volt * conversion_factor;
-  // printf("Got the control amplitudes %1.8f,%1.8f GHz\n", p_GHz, q_GHz);
+  // printf("Got the control amplitudes %1.8f,%1.8f MHz\n", p_MHz, q_MHz);
   controlparams[pulse_num].push_back(p_MHz);
   controlparams[pulse_num].push_back(q_MHz);
   
