@@ -314,6 +314,10 @@ class Quandary:
         return self.__run(pcof0=pcof0, runtype="UDEoptimization", overwrite_popt=True, maxcores=maxcores, datadir=datadir, quandary_exec=quandary_exec, cygwinbash=cygwinbash, batchargs=batchargs, trainingdatadir=trainingdatadir,trainingdata_corrected=trainingdata_corrected,  UDEmodel=UDEmodel,  learn_params=learn_params, T_train=T_train)
 
 
+    def UDEsimulate(self, *, trainingdatadir="./", trainingdata_corrected=False, UDEmodel="both", pcof0=[], maxcores=-1, datadir="./run_dir", quandary_exec="", cygwinbash="", batchargs=[], learn_params=[], T_train=1e13):
+        return self.__run(pcof0=pcof0, runtype="UDEsimulation", overwrite_popt=True, maxcores=maxcores, datadir=datadir, quandary_exec=quandary_exec, cygwinbash=cygwinbash, batchargs=batchargs, trainingdatadir=trainingdatadir,trainingdata_corrected=trainingdata_corrected,  UDEmodel=UDEmodel,  learn_params=learn_params, T_train=T_train)
+
+
     def evalControls(self, *, pcof0=[], points_per_ns=1,datadir="./run_dir", quandary_exec="", cygwinbash=""):
         """
         Evaluate control pulses on a specific sample rate.       
