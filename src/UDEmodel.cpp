@@ -179,7 +179,7 @@ void HamiltonianModel::dRHSdp(Vec grad, Vec u, Vec v, double alpha, Vec ubar, Ve
   }
 }
 
-void HamiltonianModel::printOperator(std::vector<double>& learnparamsH, std::string datadir){
+void HamiltonianModel::writeOperator(std::vector<double>& learnparamsH, std::string datadir){
 
   /* Create the Gellmann matrices*/
   std::vector<Mat> BasisMats_Re, BasisMats_Im;
@@ -204,11 +204,11 @@ void HamiltonianModel::printOperator(std::vector<double>& learnparamsH, std::str
   for (int i=0; i<BasisMats_Re.size(); i++) MatDestroy(&BasisMats_Re[i]);
   for (int i=0; i<BasisMats_Im.size(); i++) MatDestroy(&BasisMats_Im[i]);
   
-  /* Print Hamiltonian to screen */
-  printf("\nLearned Hamiltonian operator [MHz]: Re = \n");
-  MatView(Operator[0], NULL);
-  printf("Learned Hamiltonian operator [MHz]: Im = \n");
-  MatView(Operator[1], NULL);
+  // /* Print Hamiltonian to screen */
+  // printf("\nLearned Hamiltonian operator [MHz]: Re = \n");
+  // MatView(Operator[0], NULL);
+  // printf("Learned Hamiltonian operator [MHz]: Im = \n");
+  // MatView(Operator[1], NULL);
 
   /* Print Hamiltonian to files */
   char filename_re[254]; 
@@ -482,7 +482,7 @@ void LindbladModel::evalOperator(std::vector<double>& learnparamsL){
 #endif
 }
 
-void LindbladModel::printOperator(std::vector<double>& learnparamsL, std::string datadir){
+void LindbladModel::writeOperator(std::vector<double>& learnparamsL, std::string datadir){
 
   if (dim_rho == 2) {
     // print coefficients to screen

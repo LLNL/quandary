@@ -60,7 +60,7 @@ class Learning {
     void dRHSdp(Vec grad, Vec u, Vec v, double alpha, Vec ubar, Vec vbar);
 
     /* Assemble and view the learned operator. */
-    void viewOperators(std::string datadir);
+    void writeOperators(std::string datadir);
 
     /* Copy optimization variable x into learnable parameter storage */
     void setLearnParams(const Vec x);

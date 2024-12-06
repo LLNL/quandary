@@ -57,8 +57,9 @@ Learning::Learning(std::vector<int> nlevels, LindbladType lindbladtype_, UDEmode
 
     // Some output 
     // if (mpirank_world == 0 && !quietmode) {
+    if (mpirank_world == 0) {
       printf("Learning with %d Hamiltonian params and %d Lindblad params \n", hamiltonian_model->getNParams(), lindblad_model->getNParams());
-    // }
+    }
   }
 }
 
@@ -94,18 +95,18 @@ void Learning::applyLearningTerms_diff(Vec u, Vec v, Vec uout, Vec vout){
 }
 
 
-void Learning::viewOperators(std::string datadir){
+void Learning::writeOperators(std::string datadir){
 
   if (dim_rho <= 0) return;
 
   if (mpirank_world == 0) {
     bool shift_diag = true;
     if (UDEmodel == UDEmodelType::HAMILTONIAN || UDEmodel == UDEmodelType::BOTH) {
-      hamiltonian_model->printOperator(learnparamsH, datadir);
+      hamiltonian_model->writeOperator(learnparamsH, datadir);
     }
 
     if (lindbladtype != LindbladType::NONE && (UDEmodel == UDEmodelType::LINDBLAD || UDEmodel == UDEmodelType::BOTH)) {
-      lindblad_model->printOperator(learnparamsL, datadir);
+      lindblad_model->writeOperator(learnparamsL, datadir);
     }
   }
 }

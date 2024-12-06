@@ -537,9 +537,9 @@ int main(int argc,char **argv)
     optimctx->getSolution(&opt);
   }
 
-    // /* If learning, print out the learned operators */
+    /* If learning, print out the learned operators */
     if (!x_is_control){
-      learning->viewOperators(output->datadir);
+      learning->writeOperators(output->datadir);
     }
    
   /* Write all control pulses to file */

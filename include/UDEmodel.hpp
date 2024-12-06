@@ -11,6 +11,7 @@
 #include<random>
 #pragma once
 
+// Switch to use the double-sum for Lindblad operators, vs only single sum
 #define DOUBLESUM 1
 
 class UDEmodel {
@@ -34,7 +35,7 @@ class UDEmodel {
     virtual void applySystem(Vec u, Vec v, Vec uout, Vec vout, std::vector<double>& learnparams) = 0;
     virtual void applySystem_diff(Vec u, Vec v, Vec uout, Vec vout, std::vector<double>& learnparams) = 0;
     virtual void dRHSdp(Vec grad, Vec u, Vec v, double alpha, Vec ubar, Vec vbar, std::vector<double>& learnparamsH, int grad_skip) = 0;
-    virtual void printOperator(std::vector<double>& learnparams, std::string datadir) = 0;
+    virtual void writeOperator(std::vector<double>& learnparams, std::string datadir) = 0;
 };
 
 
@@ -51,7 +52,7 @@ class HamiltonianModel : public UDEmodel {
     void applySystem(Vec u, Vec v, Vec uout, Vec vout, std::vector<double>& learnparams);
     void applySystem_diff(Vec u, Vec v, Vec uout, Vec vout, std::vector<double>& learnparams);
     void dRHSdp(Vec grad, Vec u, Vec v, double alpha, Vec ubar, Vec vbar, std::vector<double>& learnparamsH, int grad_skip);
-    void printOperator(std::vector<double>& learnparams, std::string datadir);
+    void writeOperator(std::vector<double>& learnparams, std::string datadir);
 };
 
 class LindbladModel: public UDEmodel {
@@ -72,5 +73,5 @@ class LindbladModel: public UDEmodel {
     void applySystem(Vec u, Vec v, Vec uout, Vec vout, std::vector<double>& learnparams);
     void applySystem_diff(Vec u, Vec v, Vec uout, Vec vout, std::vector<double>& learnparams);
     void dRHSdp(Vec grad, Vec u, Vec v, double alpha, Vec ubar, Vec vbar, std::vector<double>& learnparamsL, int grad_skip);
-    void printOperator(std::vector<double>& learnparamsL, std::string datadir);
+    void writeOperator(std::vector<double>& learnparamsL, std::string datadir);
 };

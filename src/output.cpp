@@ -127,7 +127,7 @@ void Output::writeParams(Vec params) {
 void Output::writeControls(MasterEq* mastereq, int ntime, double dt, int pulseID){
 
   /* Write controls every <outfreq> iterations */
-  if ( mpirank_world == 0 ) { 
+  // if ( mpirank_world == 0 ) { 
 
     FILE *file_c;
     char filename[255];
@@ -156,7 +156,7 @@ void Output::writeControls(MasterEq* mastereq, int ntime, double dt, int pulseID
       fclose(file_c);
       // if (!quietmode) printf("File written: %s\n", filename);
     } // end of oscillator loop
-  }
+  // }
 }
 
 
