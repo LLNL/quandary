@@ -483,182 +483,200 @@ void Tant3levelData::loadData(std::vector<std::string>& data_name, double* tstar
   // Dimension of the Hilbert space (N);
   int dim_rho = int(sqrt(dim));   // dim_rho = 3, dim = 9
 
-  // Only one pulse for now. TODO.
-  int pulse_num = 0;
-  controlparams.resize(1);
+  // Number of pulses
+  assert(npulses = data_name.size());
 
-  /* Extract control amplitudes from file name */
-  double conversion_factor = 47.90850565409482;  // conversion factor: Volt to MHz
-  std::size_t found_p = data_name[0].find_last_of("p");
-  std::size_t found_q = data_name[0].find_last_of("q");
-  int strlength_p = 5;
-  int strlength_q = 5;
-  if (data_name[0][found_p+1] == '-') strlength_p=6;
-  if (data_name[0][found_q+1] == '-') strlength_q=6;
-  double p_Volt = std::stod(data_name[0].substr(found_p+1, strlength_p));
-  double q_Volt = std::stod(data_name[0].substr(found_q+1, strlength_q));
-  double p_MHz = p_Volt * conversion_factor;
-  double q_MHz = q_Volt * conversion_factor;
-  // printf("Got the control amplitudes %1.8f,%1.8f MHz\n", p_MHz, q_MHz);
-  controlparams[pulse_num].push_back(p_MHz);
-  controlparams[pulse_num].push_back(q_MHz);
+  // Iterate over local pulses
+  for (int ipulse_local = 0; ipulse_local < npulses_local; ipulse_local++){
+    int ipulse = mpirank_optim* npulses_local + ipulse_local;
   
-  /* Open the data file */
-  std::ifstream infile;
-  infile.open(data_name[0], std::ifstream::in);
-  if(infile.fail() ) {// checks to see if file opended 
-      std::cout << "\n ERROR loading learning data file " << data_name[0] << std::endl;
-      exit(1);
-  } else {
-    std::cout<< "Loading Tant Device data from " << data_name[0] << std::endl;
-  }
+    /* Extract control amplitudes from file name */
+    double conversion_factor = 47.90850565409482;  // conversion factor: Volt to MHz
+    std::size_t found_p = data_name[ipulse].find_last_of("p");
+    std::size_t found_q = data_name[ipulse].find_last_of("q");
+    int strlength_p = 5;
+    int strlength_q = 5;
+    if (data_name[ipulse][found_p+1] == '-') strlength_p=6;
+    if (data_name[ipulse][found_q+1] == '-') strlength_q=6;
+    double p_Volt = std::stod(data_name[ipulse].substr(found_p+1, strlength_p));
+    double q_Volt = std::stod(data_name[ipulse].substr(found_q+1, strlength_q));
 
-  /* Skip first line, it's just the header. */
-  std::string tmp; 
-  for (int i=0; i< 300; i++){
-    infile >> tmp;
-    if (tmp.compare("Proj_op8_state2_mitigated") == 0) { // this is the last word in the first row
-      break;
+    if      (p_Volt == 0.015) p_Volt = 0.014797339327183157;
+    else if (p_Volt ==-0.015) p_Volt =-0.014797339327183157;
+    else if (p_Volt == 0.018) p_Volt = 0.018122965451208638;
+    else if (p_Volt ==-0.018) p_Volt =-0.018122965451208638;
+    else if (p_Volt == 0.026) p_Volt = 0.02562974353151829;
+    else if (p_Volt ==-0.026) p_Volt =-0.02562974353151829;
+    if      (q_Volt == 0.015) q_Volt = 0.014797339327183157;
+    else if (q_Volt ==-0.015) q_Volt =-0.014797339327183157;
+    else if (q_Volt == 0.018) q_Volt = 0.018122965451208638;
+    else if (q_Volt ==-0.018) q_Volt =-0.018122965451208638;
+    else if (q_Volt == 0.026) q_Volt = 0.02562974353151829;
+    else if (q_Volt ==-0.026) q_Volt =-0.02562974353151829;
+
+    double p_MHz = p_Volt * conversion_factor;
+    double q_MHz = q_Volt * conversion_factor;
+    // printf("Got the control amplitudes %1.8f,%1.8f MHz\n", p_MHz, q_MHz);
+    controlparams[ipulse_local].push_back(p_MHz);
+    controlparams[ipulse_local].push_back(q_MHz);
+  
+    /* Open the data file */
+    std::ifstream infile;
+    infile.open(data_name[ipulse], std::ifstream::in);
+    if(infile.fail() ) {// checks to see if file opended 
+        std::cout << "\n " << mpirank_optim << ": ERROR loading learning data file " << data_name[ipulse] << std::endl;
+        exit(1);
+    } else {
+      std::cout<< mpirank_optim << ": Loading Tant3Level data from " << data_name[ipulse] << std::endl;
     }
-  }
 
-  /* Now read each column */
-  double time, time_prev;
-  std::string strval;
-  int count = 0;
-  int linenumber = 1;
-  while (infile >> linenumber || count < 1) {
-    infile >> time ;      // 2nd column
-
-    // Time in file is ns, scale to us here:
-    time = time * 1e-3; // us
-
-    // Figure out first time point and sampling time-step
-    if (count == 0) *tstart = time;
-    if (count == 1) *dt = time - time_prev; 
-    // printf("tstart = %1.8f, dt=%1.8f\n", tstart, data_dt);
-    // printf("Loading data at Time %1.8f tstop = %1.8f\n", time, *tstop);
-
-    // Break if exceeding the requested time domain length 
-    if (time > *tstop) break; 
-
-    // Skip to the corrected (mitigated) data (skip next 9*3=27 columns)
-    if (corrected) {
-      for (int i=0; i < dim*dim_rho; i++){
-        infile >> strval;
+    /* Skip first line, it's just the header. */
+    std::string tmp; 
+    for (int i=0; i< 300; i++){
+      infile >> tmp;
+      if (tmp.compare("Proj_op8_state2_mitigated") == 0) { // this is the last word in the first row
+        break;
       }
     }
 
-    // Allocate the state 
-    Vec state;
-    VecCreate(PETSC_COMM_WORLD, &state);
-    VecSetSizes(state, PETSC_DECIDE, 2*dim);
-    VecSetFromOptions(state);
+    /* Now read each column */
+    double time, time_prev;
+    std::string strval;
+    int count = 0;
+    int linenumber = 1;
+    while (infile >> linenumber || count < 1) {
+      infile >> time ;      // 2nd column
 
-    // Iterate over the remaining columns to read the probabilities of the rotation operators R_0 to R_8
-    double val;
-    std::vector<std::vector<double>> prob;  // outer dimension for i, inner for j
-    prob.resize(dim_rho*dim_rho);
-    for (int i=0; i<dim_rho*dim_rho; i++) { // operators R_i
-      prob[i].resize(3);
-      for (int j=0; j<dim_rho; j++) { // outcomes R_i = j, j=0,1,2
-        infile >> prob[i][j];  // probability P(R_i = j)
-        // printf("Read P(R %d = %d) = %1.4e\n", i, j, prob[i][j]);
+      // Time in file is ns, scale to us here:
+      time = time * 1e-3; // us
 
-      }
-    }
+      // Figure out first time point and sampling time-step
+      if (count == 0) *tstart = time;
+      if (count == 1) *dt = time - time_prev; 
+      // printf("tstart = %1.8f, dt=%1.8f\n", tstart, data_dt);
+      // printf("Loading data at Time %1.8f tstop = %1.8f\n", time, *tstop);
 
-    // Correct the probabilities: Clip to [0,1] and sum = 1.0
-    if (corrected) {
-      for (int i=0; i<prob.size(); i++){
-        double sum = 0.0;
-        for (int j=0; j<prob[i].size(); j++){ 
-          // Clip to [0,1]
-          prob[i][j] = std::max(0.0, prob[i][j]);  
-          prob[i][j] = std::min(1.0, prob[i][j]);
-          sum += prob[i][j];
-        }
-        // Make sure they sum to 1.0 by reducing 2nd state probability
-        prob[i][2] -= (sum - 1.0);
-        sum = 0.0;
-        for (int j=0; j<dim_rho; j++){
-          sum += prob[i][j];
+      // Break if exceeding the requested time domain length 
+      if (time > *tstop) break; 
+
+      // Skip to the corrected (mitigated) data (skip next 9*3=27 columns)
+      if (corrected) {
+        for (int i=0; i < dim*dim_rho; i++){
+          infile >> strval;
         }
       }
-    }
 
-    // Now assemble the coefficients r_k of the Gellmann basis expansion \rho = 1/N Id + \sum_{k=1,8}}r_k sigma_k
-    double r1 = -prob[2][0] + prob[2][1]; 
-    double r2 = -prob[1][1] + prob[1][0]; 
-    double r3 = -prob[0][1] + prob[0][0]; 
-    double r4 = -prob[5][0] + prob[5][2]; 
-    double r5 = -prob[4][2] + prob[4][0]; 
-    double r6 = -prob[7][1] + prob[7][2]; 
-    double r7 = -prob[6][2] + prob[6][1]; 
-    double r8 = prob[0][0]/sqrt(3) + prob[0][1]/sqrt(3) - 2.0/sqrt(3)*prob[0][2];
+      // Allocate the state 
+      Vec state;
+      VecCreate(PETSC_COMM_WORLD, &state);
+      VecSetSizes(state, PETSC_DECIDE, 2*dim);
+      VecSetFromOptions(state);
 
-    // Now assemble the NxN density matrix
-    Mat rho_re, rho_im; 
-    MatCreateDense(PETSC_COMM_WORLD,PETSC_DECIDE, PETSC_DECIDE, dim_rho, dim_rho, NULL, &rho_re);
-    MatCreateDense(PETSC_COMM_WORLD,PETSC_DECIDE, PETSC_DECIDE, dim_rho, dim_rho, NULL, &rho_im);
-    MatSetUp(rho_re);
-    MatSetUp(rho_im);
-    MatAssemblyBegin(rho_re, MAT_FINAL_ASSEMBLY);
-    MatAssemblyBegin(rho_im, MAT_FINAL_ASSEMBLY);
-    MatAssemblyEnd(rho_re, MAT_FINAL_ASSEMBLY);
-    MatAssemblyEnd(rho_im, MAT_FINAL_ASSEMBLY);
-    std::vector<Mat> BasisMat_Re;
-    std::vector<Mat> BasisMat_Im;
-    createGellmannMats(dim_rho, false, false, false, true, BasisMat_Re, BasisMat_Im);
-    // Note: The Gellmann matrices are ordered in a different way than the above coefficients. Too bad... Here is the mapping. 
-    MatAXPY(rho_re, 1.0/dim_rho, BasisMat_Re[0], DIFFERENT_NONZERO_PATTERN);
-    MatAXPY(rho_re, r1/2.0, BasisMat_Re[1], DIFFERENT_NONZERO_PATTERN);
-    MatAXPY(rho_re, r4/2.0, BasisMat_Re[2], DIFFERENT_NONZERO_PATTERN);
-    MatAXPY(rho_re, r6/2.0, BasisMat_Re[3], DIFFERENT_NONZERO_PATTERN);
-    MatAXPY(rho_re, r3/2.0, BasisMat_Re[4], DIFFERENT_NONZERO_PATTERN);
-    MatAXPY(rho_re, r8/2.0, BasisMat_Re[5], DIFFERENT_NONZERO_PATTERN);
-    MatAXPY(rho_im, r2/2.0, BasisMat_Im[0], DIFFERENT_NONZERO_PATTERN);
-    MatAXPY(rho_im, r5/2.0, BasisMat_Im[1], DIFFERENT_NONZERO_PATTERN);
-    MatAXPY(rho_im, r7/2.0, BasisMat_Im[2], DIFFERENT_NONZERO_PATTERN);
+      // Iterate over the remaining columns to read the probabilities of the rotation operators R_0 to R_8
+      double val;
+      std::vector<std::vector<double>> prob;  // outer dimension for i, inner for j
+      prob.resize(dim_rho*dim_rho);
+      for (int i=0; i<dim_rho*dim_rho; i++) { // operators R_i
+        prob[i].resize(3);
+        for (int j=0; j<dim_rho; j++) { // outcomes R_i = j, j=0,1,2
+          infile >> prob[i][j];  // probability P(R_i = j)
+          // printf("Read P(R %d = %d) = %1.4e\n", i, j, prob[i][j]);
 
-    // Now vectorize the density matrix and store into the state 
-    for (int col = 0; col < dim_rho; col++){
-      PetscScalar *vals_re, *vals_im; 
-      MatDenseGetColumn(rho_re, col, &vals_re);
-      MatDenseGetColumn(rho_im, col, &vals_im);
-      for (int i=0; i<dim_rho; i++){
-        int row = col*dim_rho +i;
-        VecSetValue(state, getIndexReal(row), vals_re[i], INSERT_VALUES);
-        VecSetValue(state, getIndexImag(row), vals_im[i], INSERT_VALUES);
+        }
       }
-      MatDenseRestoreColumn(rho_re, &vals_re);
-      MatDenseRestoreColumn(rho_im, &vals_im);
-    }
-    VecAssemblyBegin(state);
-    VecAssemblyEnd(state);
+
+      // Correct the probabilities: Clip to [0,1] and sum = 1.0
+      if (corrected) {
+        for (int i=0; i<prob.size(); i++){
+          double sum = 0.0;
+          for (int j=0; j<prob[i].size(); j++){ 
+            // Clip to [0,1]
+            prob[i][j] = std::max(0.0, prob[i][j]);  
+            prob[i][j] = std::min(1.0, prob[i][j]);
+            sum += prob[i][j];
+          }
+          // Make sure they sum to 1.0 by reducing 2nd state probability
+          prob[i][2] -= (sum - 1.0);
+          sum = 0.0;
+          for (int j=0; j<dim_rho; j++){
+            sum += prob[i][j];
+          }
+        }
+      }
+
+      // Now assemble the coefficients r_k of the Gellmann basis expansion \rho = 1/N Id + \sum_{k=1,8}}r_k sigma_k
+      double r1 = -prob[2][0] + prob[2][1]; 
+      double r2 = -prob[1][1] + prob[1][0]; 
+      double r3 = -prob[0][1] + prob[0][0]; 
+      double r4 = -prob[5][0] + prob[5][2]; 
+      double r5 = -prob[4][2] + prob[4][0]; 
+      double r6 = -prob[7][1] + prob[7][2]; 
+      double r7 = -prob[6][2] + prob[6][1]; 
+      double r8 = prob[0][0]/sqrt(3) + prob[0][1]/sqrt(3) - 2.0/sqrt(3)*prob[0][2];
+
+      // Now assemble the NxN density matrix
+      Mat rho_re, rho_im; 
+      MatCreateDense(PETSC_COMM_WORLD,PETSC_DECIDE, PETSC_DECIDE, dim_rho, dim_rho, NULL, &rho_re);
+      MatCreateDense(PETSC_COMM_WORLD,PETSC_DECIDE, PETSC_DECIDE, dim_rho, dim_rho, NULL, &rho_im);
+      MatSetUp(rho_re);
+      MatSetUp(rho_im);
+      MatAssemblyBegin(rho_re, MAT_FINAL_ASSEMBLY);
+      MatAssemblyBegin(rho_im, MAT_FINAL_ASSEMBLY);
+      MatAssemblyEnd(rho_re, MAT_FINAL_ASSEMBLY);
+      MatAssemblyEnd(rho_im, MAT_FINAL_ASSEMBLY);
+      std::vector<Mat> BasisMat_Re;
+      std::vector<Mat> BasisMat_Im;
+      createGellmannMats(dim_rho, false, false, false, true, BasisMat_Re, BasisMat_Im);
+      // Note: The Gellmann matrices are ordered in a different way than the above coefficients. Too bad... Here is the mapping. 
+      MatAXPY(rho_re, 1.0/dim_rho, BasisMat_Re[0], DIFFERENT_NONZERO_PATTERN);
+      MatAXPY(rho_re, r1/2.0, BasisMat_Re[1], DIFFERENT_NONZERO_PATTERN);
+      MatAXPY(rho_re, r4/2.0, BasisMat_Re[2], DIFFERENT_NONZERO_PATTERN);
+      MatAXPY(rho_re, r6/2.0, BasisMat_Re[3], DIFFERENT_NONZERO_PATTERN);
+      MatAXPY(rho_re, r3/2.0, BasisMat_Re[4], DIFFERENT_NONZERO_PATTERN);
+      MatAXPY(rho_re, r8/2.0, BasisMat_Re[5], DIFFERENT_NONZERO_PATTERN);
+      MatAXPY(rho_im, r2/2.0, BasisMat_Im[0], DIFFERENT_NONZERO_PATTERN);
+      MatAXPY(rho_im, r5/2.0, BasisMat_Im[1], DIFFERENT_NONZERO_PATTERN);
+      MatAXPY(rho_im, r7/2.0, BasisMat_Im[2], DIFFERENT_NONZERO_PATTERN);
+
+      // Now vectorize the density matrix and store into the state 
+      for (int col = 0; col < dim_rho; col++){
+        PetscScalar *vals_re, *vals_im; 
+        MatDenseGetColumn(rho_re, col, &vals_re);
+        MatDenseGetColumn(rho_im, col, &vals_im);
+        for (int i=0; i<dim_rho; i++){
+          int row = col*dim_rho +i;
+          VecSetValue(state, getIndexReal(row), vals_re[i], INSERT_VALUES);
+          VecSetValue(state, getIndexImag(row), vals_im[i], INSERT_VALUES);
+        }
+        MatDenseRestoreColumn(rho_re, &vals_re);
+        MatDenseRestoreColumn(rho_im, &vals_im);
+      }
+      VecAssemblyBegin(state);
+      VecAssemblyEnd(state);
  
-    // Cleanup
-    MatDestroy(&rho_re);
-    MatDestroy(&rho_im);
+      // Cleanup
+      MatDestroy(&rho_re);
+      MatDestroy(&rho_im);
 
-    // Store the state
-    data[pulse_num].push_back(state);  // Here, only one pulse
-    count+=1;
-    time_prev = time;
+      // Store the state
+      data[ipulse_local].push_back(state);  // Here, only one pulse
+      count+=1;
+      time_prev = time;
 
-    // Skip to the end of file, if we used non-corrected data
-    if (!corrected) {
-      for (int i=0; i < dim*dim_rho; i++){
-        infile >> strval;
+      // Skip to the end of file, if we used non-corrected data
+      if (!corrected) {
+        for (int i=0; i < dim*dim_rho; i++){
+          infile >> strval;
+        }
       }
     }
+
+    /* Update the final time stamp */
+    *tstop = std::min(time_prev, *tstop);
+
+    // Close files
+    infile.close();
   }
-
-  /* Update the final time stamp */
-  *tstop = std::min(time_prev, *tstop);
-
-  // Close files
-	infile.close();
 
   // // TEST what was loaded
   // printf("\nDATA POINTS:");
@@ -670,6 +688,7 @@ void Tant3levelData::loadData(std::vector<std::string>& data_name, double* tstar
   // }
   // printf("END DATA POINTS. tstart = %1.8f, tstop=%1.8f, dt=%1.8f\n", *tstart, *tstop, *dt);
   // exit(1);
-  printf("Training data in [%1.4f, %1.4f] us, sampling rate dt=%1.4f us\n", *tstart, *tstop, *dt);
-  printf("Training data with constant controls\n");
+
+  if (mpirank_world == 0) printf("Training data in [%1.4f, %1.4f] us, sampling rate dt=%1.4f us\n", *tstart, *tstop, *dt);
+  if (mpirank_world == 0) printf("Training data with constant controls\n");
 }
