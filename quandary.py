@@ -549,27 +549,27 @@ class Quandary:
                 mystring += "data_npulses = 1\n"
                 mydir = [x.strip() for x in trainingdatadir.split(',')]
                 mystring += "data_name = " + mydir[0] +", "
-                if trainingdata_corrected:
-                    mystring += "corrected, " 
                 if mydir[0] == "synthetic":
-                    mystring += "." + mydir[1]+"/rho_Re.iinit0000.dat, ." + mydir[1]+"/rho_Im.iinit0000.dat\n"
+                    mystring += mydir[1]+"/rho_Re.iinit0000.dat, " + mydir[1]+"/rho_Im.iinit0000.dat\n"
                 else:
+                    if trainingdata_corrected:
+                        mystring += "corrected, " 
                     mystring += mydir[1]+"\n"
             else: # multiple pulses, received a list of trainingdatadirs
                 mystring += "data_npulses = " + str(len(trainingdatadir))+"\n"
                 # First element contains the data type specifyier:
                 mydir = [x.strip() for x in trainingdatadir[0].split(',')]
                 mystring += "data_name = " + mydir[0]+", "
-                if trainingdata_corrected:
-                    mystring += "corrected, " 
                 if mydir[0] == "synthetic":
-                    mystring += "." + mydir[1]+"/rho_Re.iinit0000.dat, ." + mydir[1]+"/rho_Im.iinit0000.dat\n"
+                    mystring += mydir[1]+"/rho_Re.iinit0000.dat, " + mydir[1]+"/rho_Im.iinit0000.dat\n"
                 else:
+                    if trainingdata_corrected:
+                        mystring += "corrected, " 
                     mystring += mydir[1]+"\n"
                 # All other elements:
                 for i, mydiri in enumerate(trainingdatadir[1:]):
                     if mydir[0] == "synthetic":
-                        mystring += "data_name"+str(i+1)+ " = ." + mydiri+"/rho_Re.iinit0000.dat, ." + mydiri+"/rho_Im.iinit0000.dat\n"
+                        mystring += "data_name"+str(i+1)+ " = " + mydiri+"/rho_Re.iinit0000.dat, " + mydiri+"/rho_Im.iinit0000.dat\n"
                     else:
                         mystring += "data_name"+str(i+1)+ " = " + mydiri+"\n"
         mystring += "UDEmodel = " + UDEmodel + "\n"
