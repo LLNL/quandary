@@ -194,12 +194,12 @@ class Quandary:
             self.initctrl_MHz = [max_alloscillators for _ in range(len(self.Ne))]
         if len(self.initctrl_MHz) == 0:
             self.initctrl_MHz = [10.0 for _ in range(len(self.Ne))]
-        if len(self.Hsys) > 0: # User-provided Hamiltonian operators 
-            self.standardmodel=False   
-        else: # Using standard Hamiltonian model
+        # if len(self.Hsys) > 0: # User-provided Hamiltonian operators 
+            # self.standardmodel=False   
+        # else: # Using standard Hamiltonian model
+        if self.standardmodel:
             Ntot = [sum(x) for x in zip(self.Ne, self.Ng)]
             self.Hsys, self.Hc_re, self.Hc_im = hamiltonians(N=Ntot, freq01=self.freq01, selfkerr=self.selfkerr, crosskerr=self.crosskerr, Jkl=self.Jkl, rotfreq=self.rotfreq, verbose=self.verbose)
-            self.standardmodel=True
         if len(self.targetstate) > 0:
             self.optim_target = "file"
         if len(self.targetgate) > 0:
