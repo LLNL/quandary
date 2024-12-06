@@ -390,8 +390,7 @@ class Quandary:
             print("Quandary data dir: ", datadir, "\n")
 
         # Get results from quandary output files
-        if not err:
-            # Get results form quandary's output folder and store some
+        if not err and len(trainingdatadir)<=1: # can't read for multiple pulses. TODO
             time, pt, qt, uT, expectedEnergy, population, popt, infidelity, optim_hist = self.get_results(datadir=datadir)
             if (overwrite_popt):
                 self.popt = popt[:]
@@ -577,7 +576,7 @@ class Quandary:
         if len(learn_params_filename) > 0:
             mystring += "learnparams_initialization = file, " + str(learn_params_filename) + "\n"
         else:
-            mystring += "learnparams_initialization = constant, 0.0001, 0.0001\n"
+            mystring += "learnparams_initialization = random, 0.0001, 0.0001\n"
         if T_train <= self.T:
             mystring += "data_tstop = " + str(T_train) + "\n"
         # End training
