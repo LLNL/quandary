@@ -104,6 +104,7 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   penalty_param = config.GetDoubleParam("optim_penalty_param", 0.5);
   gamma_penalty_energy = config.GetDoubleParam("optim_penalty_energy", 0.0);
   gamma_tik_interpolate = config.GetBoolParam("optim_regul_interpolate", false, false);
+  gamma_tik_onenorm = config.GetBoolParam("optim_regul_onenorm", false, false);
   gamma_penalty_dpdm = config.GetDoubleParam("optim_penalty_dpdm", 0.0);
 
   if (gamma_penalty_dpdm > 1e-13 && timestepper->mastereq->lindbladtype != LindbladType::NONE){
@@ -346,15 +347,27 @@ double OptimProblem::evalF(const Vec x) {
   obj_loss /= mastereq->learning->data->getNPulses();
 
   /* Evaluate regularization objective += gamma/2 * ||x-x0||^2*/
-  double xnorm;
+  double xnorm=0.0;
   if (!gamma_tik_interpolate){  // ||x||^2
-    VecNorm(x, NORM_2, &xnorm);
+    if (!gamma_tik_onenorm) {
+      VecNorm(x, NORM_2, &xnorm);
+    } else {
+      int size = 0;
+      const double *xptr;
+      VecGetSize(x, &size);
+      VecGetArrayRead(x, &xptr);
+      for (int i=0; i<size; i++){
+        xnorm += fabs(xptr[i]);
+      }
+      VecRestoreArrayRead(x, &xptr);
+    }
   } else {
     VecCopy(x, xtmp);
     VecAXPY(xtmp, -1.0, xinit);    // xtmp =  x - x_0
     VecNorm(xtmp, NORM_2, &xnorm);
   }
-  obj_regul = gamma_tik / 2. * pow(xnorm,2.0);
+  if (!gamma_tik_onenorm) obj_regul = gamma_tik / 2. * pow(xnorm,2.0);
+  else obj_regul = gamma_tik * xnorm;
 
   /* Sum, store and return objective value */
   if (x_is_control) {
@@ -398,7 +411,23 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
   /* Derivative of regulatization term gamma / 2 ||x||^2 (ADD ON ONE PROC ONLY!) */
   // if (mpirank_init == 0 && mpirank_optim == 0) { // TODO: Which one?? 
   if (mpirank_world== 0 ) {
-    VecAXPY(G, gamma_tik, x);   // + gamma_tik * x
+    if (!gamma_tik_onenorm) {
+      VecAXPY(G, gamma_tik, x);   // + gamma_tik * x
+    } else {
+      double *Gptr, *xptr;
+      int size;
+      VecGetSize(G, &size);
+      VecGetArray(G, &Gptr);
+      for (int i=0; i<size; i++){
+        if (xptr[i] > 0) {
+          Gptr[i] += gamma_tik;
+        }
+        else if (xptr[i] < 0){
+          Gptr[i] -= gamma_tik;
+        }
+      }
+      VecRestoreArray(G, &Gptr);
+    }
     if (gamma_tik_interpolate){
       VecAXPY(G, -1.0*gamma_tik, xinit); // -gamma_tik * xinit
     }
@@ -523,15 +552,27 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
   obj_loss /= mastereq->learning->data->getNPulses();
 
   /* Evaluate regularization objective += gamma/2 * ||x||^2*/
-  double xnorm;
+  double xnorm=0.0;
   if (!gamma_tik_interpolate){  // ||x||^2
-    VecNorm(x, NORM_2, &xnorm);
+    if (!gamma_tik_onenorm) {
+      VecNorm(x, NORM_2, &xnorm);
+    } else {
+      int size = 0;
+      const double *xptr;
+      VecGetSize(x, &size);
+      VecGetArrayRead(x, &xptr);
+      for (int i=0; i<size; i++){
+        xnorm += fabs(xptr[i]);
+      }
+      VecRestoreArrayRead(x, &xptr);
+    }
   } else {
     VecCopy(x, xtmp);
     VecAXPY(xtmp, -1.0, xinit);    // xtmp =  x_k - x_0
     VecNorm(xtmp, NORM_2, &xnorm);
   }
-  obj_regul = gamma_tik / 2. * pow(xnorm,2.0);
+  if (!gamma_tik_onenorm) obj_regul = gamma_tik / 2. * pow(xnorm,2.0);
+  else obj_regul = gamma_tik * xnorm;
 
   /* Sum, store and return objective value */
   if (x_is_control) {

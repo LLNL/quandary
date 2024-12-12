@@ -65,7 +65,8 @@ class Quandary:
     costfunction        # Cost function measure: "Jtrace" or "Jfrobenius". Default: "Jtrace"
     optim_target        # Optional: Set other optimization target string, if not specified through the targetgate or targetstate. 
     gamma_tik0          # Parameter for Tikhonov regularization ||alpha||^2. Default 1e-4
-    gamma_tik0_interpolate # Switch to use ||alpha-alpha_0||^2 instead, where alpha_0 is the initial guess. Default: False
+    gamma_tik0_onenorm # Switch to use 1-norm for tikhonov regularization. Default: False
+    gamma_tik0_interpolate # Switch to use ||alpha-alpha_0||^2 instead, where alpha_0 is the initial guess. Default: 0.0
     gamma_leakage       # Parameter for leakage prevention. Default: 0.1
     gamma_energy        # Parameter for integral penality term on the control pulse energy. Default: 0.1
     gamma_dpdm          # Parameter for integral penality term on second state derivative. Default: 0.01
@@ -142,6 +143,7 @@ class Quandary:
     costfunction           : str   = "Jtrace"                      
     optim_target           : str   = "gate, none"
     gamma_tik0             : float = 1e-4 
+    gamma_tik0_onenorm     : bool  = False
     gamma_tik0_interpolate : float = 0.0
     gamma_leakage          : float = 0.1 	       
     gamma_energy           : float = 0.1
@@ -629,6 +631,7 @@ class Quandary:
         else:
             mystring += "optim_regul= " + str(self.gamma_tik0) + "\n"
             mystring += "optim_regul_interpolate=False\n"
+        mystring += "optim_regul_onenorm=" + str(self.gamma_tik0_onenorm) + "\n"
         mystring += "optim_penalty= " + str(self.gamma_leakage) + "\n"
         mystring += "optim_penalty_param= 0.0\n"
         mystring += "optim_penalty_dpdm= " + str(self.gamma_dpdm) + "\n"
