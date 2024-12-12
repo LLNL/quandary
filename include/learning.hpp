@@ -31,12 +31,14 @@ class Learning {
   double loss_integral;   /* Running cost for Loss function */
   Vec aux2;               /* Auxiliary state to eval loss */
 
+  double loss_scaling_factor; /* Scaling the loss function value by this umber. Default=1.0 */
+
   public: 
     double current_err;
     Data* data;       /* Stores the data */
 
   public: 
-    Learning(std::vector<int> nlevels, LindbladType lindbladtype_, UDEmodelType UDEmodel_, std::vector<std::string>& learninit_str, Data* data, std::default_random_engine rand_engine, bool quietmode);
+    Learning(std::vector<int> nlevels, LindbladType lindbladtype_, UDEmodelType UDEmodel_, std::vector<std::string>& learninit_str, Data* data, std::default_random_engine rand_engine, bool quietmode, double loss_scaling_factor);
     ~Learning();
 
     void resetLoss(){ loss_integral = 0.0; };

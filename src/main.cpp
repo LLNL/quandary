@@ -290,14 +290,15 @@ int main(int argc,char **argv)
     /* Now create learning object */
     std::vector<std::string> learninit_str;
     config.GetVecStrParam("learnparams_initialization", learninit_str, "random, 0.0");
-    learning = new Learning(nlevels, lindbladtype, UDEmodel, learninit_str, data, rand_engine, quietmode);
+    double loss_scaling_factor = config.GetDoubleParam("loss_scaling_factor", 1.0, false);
+    learning = new Learning(nlevels, lindbladtype, UDEmodel, learninit_str, data, rand_engine, quietmode, loss_scaling_factor);
 
   } else {
     /* Create dummy learning. Does nothing. */
     Data* data = new Data();
     std::vector<std::string> dummy_learninit_str;
     std::vector<int> dummy_nlevels(0);
-    learning = new Learning(dummy_nlevels, LindbladType::NONE, UDEmodelType::NONE, dummy_learninit_str, data, rand_engine, quietmode); 
+    learning = new Learning(dummy_nlevels, LindbladType::NONE, UDEmodelType::NONE, dummy_learninit_str, data, rand_engine, quietmode, 1.0); 
   }
 
   /* Set total time */

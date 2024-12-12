@@ -1,10 +1,11 @@
 #include "learning.hpp"
 
-Learning::Learning(std::vector<int> nlevels, LindbladType lindbladtype_, UDEmodelType UDEmodel_, std::vector<std::string>& learninit_str, Data* data_, std::default_random_engine rand_engine, bool quietmode_){
+Learning::Learning(std::vector<int> nlevels, LindbladType lindbladtype_, UDEmodelType UDEmodel_, std::vector<std::string>& learninit_str, Data* data_, std::default_random_engine rand_engine, bool quietmode_, double loss_scaling_factor_){
   lindbladtype = lindbladtype_;
   quietmode = quietmode_;
   data = data_;
   UDEmodel = UDEmodel_;
+  loss_scaling_factor=loss_scaling_factor_;
   MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
 
    // Reset
@@ -249,7 +250,7 @@ void Learning::addToLoss(double time, Vec x, int pulse_num){
     double norm; 
     VecNorm(aux2, NORM_2, &norm);
     current_err = norm;
-    loss_integral += 0.5*norm*norm / (data->getNData()-1);
+    loss_integral += loss_scaling_factor*0.5*norm*norm / (data->getNData()-1);
   }
 }
 
@@ -262,8 +263,8 @@ void Learning::addToLoss_diff(double time, Vec xbar, Vec xprimal, int pulse_num,
   if (xdata != NULL) {
     // printf("loss_DIFF at time %1.8f \n", time);
     // VecView(xprimal,NULL);
-    VecAXPY(xbar, Jbar_loss / (data->getNData()-1), xprimal);
-    VecAXPY(xbar, -Jbar_loss/ (data->getNData()-1), xdata);
+    VecAXPY(xbar, Jbar_loss  * loss_scaling_factor / (data->getNData()-1), xprimal);
+    VecAXPY(xbar, -Jbar_loss * loss_scaling_factor / (data->getNData()-1), xdata);
   }
 }
 

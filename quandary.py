@@ -78,6 +78,9 @@ class Quandary:
     verbose              # Switch to turn on more screen output for debugging. Default: False
     output_frequency    # Write trajectory every <n> the timestep. default 1
 
+    # Training options
+    loss_scaling_factor  # Scales the loss objective function. Default 1.0
+
     Internal variables. 
     -------------------
     _ninit                : int  # number of initial conditions that are propagated
@@ -154,6 +157,8 @@ class Quandary:
     usematfree             : bool = True 
     verbose                : bool = False
     output_frequency       : int  = 1
+    # Training options
+    loss_scaling_factor    : float = 1.0
     # Internal configuration. Should not be changed by user.
     _ninit                : int         = -1
     _lindblad_solver      : bool        = False
@@ -162,6 +167,7 @@ class Quandary:
     _initstatefilename    : str         = ""
     _initialstate         : List[complex] = field(default_factory=list)
     unitMHz               : bool        = False
+
     
     # Output parameters available after Quandary has been run
     popt        : List[float]   = field(default_factory=list)
@@ -581,6 +587,7 @@ class Quandary:
             mystring += "learnparams_initialization = random, 0.0001, 0.0001\n"
         if T_train <= self.T:
             mystring += "data_tstop = " + str(T_train) + "\n"
+        mystring += "loss_scaling_factor = " + str(self.loss_scaling_factor) + "\n"
         # End training
 
         if self.initialcondition[0:4] == "file":
