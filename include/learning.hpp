@@ -25,7 +25,7 @@ class Learning {
   HamiltonianModel* hamiltonian_model;  // Basis matrices for Hamiltonian term
   LindbladModel* lindblad_model;     // Basis matrices for Lindblad term 
   std::vector<double> learnparamsH;  // Learnable parameters for Hamiltonian
-  std::vector<double> learnparamsL; // Learnable parameters for Lindblad
+  std::vector<double> learnparamsL; // Learnable parameters for Lindblad (first all real, then all imaginary parts)
   
   int nparams;            /* Total Number of learnable paramters*/
   double loss_integral;   /* Running cost for Loss function */

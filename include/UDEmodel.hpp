@@ -22,7 +22,8 @@ class UDEmodel {
 
     std::vector<Mat> SystemMats_A;  // System matrix for applying the Hamiltonian in the master equation
     std::vector<Mat> SystemMats_B;  // System matrix for applying the Hamiltonian in the master equation
-    std::vector<Mat> Operator;     // Learned operators
+    std::vector<Mat> Operator_Re;     // Learned operators
+    std::vector<Mat> Operator_Im;     // Learned operators
     Vec aux;     // Auxiliary vector to perform matvecs on Re(x) or Im(x)
 
   public:
@@ -57,6 +58,7 @@ class HamiltonianModel : public UDEmodel {
 
 class LindbladModel: public UDEmodel {
   int nbasis;   /* Number of basis operators */
+  bool real_only;
 
   public:
     LindbladModel(int dim_rho_, bool shifted_diag_, bool upper_only_, bool real_only_);
@@ -67,8 +69,11 @@ class LindbladModel: public UDEmodel {
     /* Assembles the system matrix operator */
     void evalOperator(std::vector<double>& learnparams);
 
-    /* Index mapping for storing the upper triangular learnable matrix in a linear vector (vectorized row-wise)*/
+    /* Index mapping for storing the lower triangular learnable matrix in a linear vector (vectorized column-wise) */
     inline int mapID(int i, int j){return i*nbasis - i*(i+1)/2 + j;}
+    
+    /* Evaluate the double-sum coefficient Gamma_ij */
+    void getCoeffIJ(int i, int j, std::vector<double>& learnparams, double* aij_re, double* aij_im);
 
     void applySystem(Vec u, Vec v, Vec uout, Vec vout, std::vector<double>& learnparams);
     void applySystem_diff(Vec u, Vec v, Vec uout, Vec vout, std::vector<double>& learnparams);

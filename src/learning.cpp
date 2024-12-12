@@ -36,7 +36,7 @@ Learning::Learning(std::vector<int> nlevels, LindbladType lindbladtype_, UDEmode
     }
     if (lindbladtype != LindbladType::NONE && (UDEmodel == UDEmodelType::LINDBLAD || UDEmodel == UDEmodelType::BOTH)) {
         bool upper_only = false;
-        bool real_only = true;
+        bool real_only = false;
         lindblad_model    = new LindbladModel(dim_rho, shifted_diag, upper_only, real_only); 
     } else {
         lindblad_model    = new LindbladModel(0, false, false, false);  // will be empty. Dummy
@@ -201,10 +201,10 @@ void Learning::initLearnParams(std::vector<std::string> learninit_str, std::defa
       amp = atof(learninit_str[2].c_str());
       std::uniform_real_distribution<double> unit_dist2(0.0, amp);
       for (int i=0; i<lindblad_model->getNParams(); i++){
-        learnparamsL.push_back(unit_dist2(rand_engine)); // ns?
+        learnparamsL.push_back(unit_dist2(rand_engine)); // 1/ns?
       }
       // for (int i=0; i<lindblad_model->getNParams_B(); i++){
-        // learnparamsL_Im.push_back(unit_dist2(rand_engine)); // ns? 
+        // learnparamsL_Im.push_back(unit_dist2(rand_engine)); // 1/ns? 
       // }
     }
   } else if (learninit_str[0].compare("constant") == 0 ) {

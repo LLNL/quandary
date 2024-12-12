@@ -3,8 +3,8 @@
 void createGellmannMats(int dim_rho, bool upper_only, bool real_only, bool shifted_diag, bool includeIdentity, std::vector<Mat>& Mats_Re, std::vector<Mat>& Mats_Im){
 
   /* First empty out the vectors, if needed */
- for (int i=0; i<Mats_Re.size(); i++) MatDestroy(&Mats_Re[i]);
- for (int i=0; i<Mats_Im.size(); i++) MatDestroy(&Mats_Im[i]);
+  for (int i=0; i<Mats_Re.size(); i++) MatDestroy(&Mats_Re[i]);
+  for (int i=0; i<Mats_Im.size(); i++) MatDestroy(&Mats_Im[i]);
 
   /* Put the identity first, if needed */
   if (includeIdentity){
@@ -80,6 +80,73 @@ void createGellmannMats(int dim_rho, bool upper_only, bool real_only, bool shift
     MatAssemblyEnd(G_re, MAT_FINAL_ASSEMBLY);
     Mats_Re.push_back(G_re);
   }
+}
+
+
+void createEijBasisMats(int dim_rho, bool includeIdentity, std::vector<Mat>& Mats_Re, std::vector<Mat>& Mats_Im){
+
+  /* First empty out the vectors, if needed */
+  for (int i=0; i<Mats_Re.size(); i++) MatDestroy(&Mats_Re[i]);
+  for (int i=0; i<Mats_Im.size(); i++) MatDestroy(&Mats_Im[i]);
+
+  /* Put the identity first, if needed */
+  if (includeIdentity){
+    Mat G_re;
+    MatCreate(PETSC_COMM_WORLD, &G_re);
+    MatSetType(G_re, MATSEQAIJ);
+    MatSetSizes(G_re, PETSC_DECIDE, PETSC_DECIDE, dim_rho, dim_rho);
+    MatSetUp(G_re);
+    for (int i=0; i<dim_rho; i++){
+      MatSetValue(G_re, i, i, 1.0, INSERT_VALUES);
+    }
+    MatAssemblyBegin(G_re, MAT_FINAL_ASSEMBLY);
+    MatAssemblyEnd(G_re, MAT_FINAL_ASSEMBLY);
+    Mats_Re.push_back(G_re);
+  }
+
+  /* Create E_ij matrices*/
+  for (int i=0; i<dim_rho; i++){
+    for (int j=0; j<dim_rho; j++){
+
+      // if (upper_only && j<i) continue;
+      // if (shifted_diag && i==0 && j==0) continue; 
+
+      Mat G_re;
+      MatCreate(PETSC_COMM_WORLD, &G_re);
+      MatSetType(G_re, MATSEQAIJ);
+      MatSetSizes(G_re, PETSC_DECIDE, PETSC_DECIDE, dim_rho, dim_rho);
+      MatSetUp(G_re);
+
+      if (i==j){
+        // if (i<dim_rho-1) {
+        //   double fact = 1.0/sqrt((i+1)*(i+2));
+        //   for (int l=0; l<i+1; l++){
+        //     MatSetValue(G_re, l, l, 1.0*fact, INSERT_VALUES);
+        //   }
+        //   MatSetValue(G_re, i+1, i+1, -1.0*(i+1)*fact, INSERT_VALUES);
+        //   MatAssemblyBegin(G_re, MAT_FINAL_ASSEMBLY);
+        //   MatAssemblyEnd(G_re, MAT_FINAL_ASSEMBLY);
+        //   Mats_Re.push_back(G_re);
+        if (i>0) {
+          MatSetValue(G_re, i, i, 1.0, INSERT_VALUES);
+          MatAssemblyBegin(G_re, MAT_FINAL_ASSEMBLY);
+          MatAssemblyEnd(G_re, MAT_FINAL_ASSEMBLY);
+          Mats_Re.push_back(G_re);
+        } else { 
+          continue; 
+        }
+      } else {
+        MatSetValue(G_re, i, j, 1.0, INSERT_VALUES);
+        MatAssemblyBegin(G_re, MAT_FINAL_ASSEMBLY);
+        MatAssemblyEnd(G_re, MAT_FINAL_ASSEMBLY);
+        Mats_Re.push_back(G_re);
+      }
+    }
+  }
+  // for (int i=0; i<Mats_Re.size(); i++){
+  //   MatView(Mats_Re[i], NULL);
+  // }
+  // exit(1);
 }
 
 
@@ -259,7 +326,7 @@ double expectedEnergy(const Vec x, LindbladType lindbladtype, std::vector<int> n
       idx_diag_im = getIndexImag(getVecID(i,i,dim));
       if (ilow <= idx_diag_im && idx_diag_im < iupp) VecGetValues(x, 1, &idx_diag_im, &xdiag);
       if (xdiag > 1e-10) {
-        printf("WARNING: imaginary number on the diagonal of the density matrix!\n");
+        printf("WARNING: imaginary number on the diagonal of the density matrix! %1.14e\n", xdiag);
       }
     }
     else { // Schoedinger solver: += i * | psi_i |^2

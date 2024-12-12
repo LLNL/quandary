@@ -1457,26 +1457,22 @@ def getGellmanMats(dim, *, realonly=False, upperonly=False, shifted=True):
     
     return GellmannMats
 
-def getEijBasisMats(dim, upperonly=False):
+def getEijBasisMats(dim):
     BasisMats= []
     # offdiagonals
-    for j in range(dim):
-        for k in range(j+1, dim):
-            G = np.zeros((dim,dim)) 
-            G[j,k] = 1.0
-            BasisMats.append(G)
-            if not upperonly:
+    for i in range(dim):
+        for j in range(dim):
+            if i==j:
+                if i>0:
+                    G = np.zeros((dim,dim)) 
+                    G[i,i] = 1.0
+                    BasisMats.append(G)
+                else:
+                    continue
+            else:
                 G = np.zeros((dim,dim)) 
-                G[k,j] = 1.0
+                G[i,j] = 1.0
                 BasisMats.append(G)
-    # diagonals 
-    for l in range(1,dim):
-        G = np.zeros((dim,dim)) 
-        G[l,l] = 1.0
-        # if (shifted):
-            # for j in range(dim):
-                # G[j,j] -= 1.0
-        BasisMats.append(G)
 
     return BasisMats
 
