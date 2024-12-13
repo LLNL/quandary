@@ -241,9 +241,10 @@ LindbladModel::LindbladModel(int dim_rho_, bool shifted_diag, bool upper_only, b
   /* set the total number of learnable parameters */
 #if DOUBLESUM
     int nparams_re = 0.5 * nbasis* (nbasis+1);
+    nparams = nparams_re;
     if (!real_only){
       nparams = 2*nparams_re;   // storing first all real parts, then all imaginary parts
-    }
+    } 
 #else
     nparams = nbasis;
 #endif 
