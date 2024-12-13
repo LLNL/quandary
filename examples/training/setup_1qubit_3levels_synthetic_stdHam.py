@@ -6,10 +6,11 @@ from quandary import *
 np.set_printoptions( linewidth=800)
 
 
-do_datageneration = False
+do_datageneration = True 
 do_training = True 
 do_extrapolate = True 
 do_analyze = True 
+do_prune = False
 
 # Standard Hamiltonian and Lindblad model setup
 unitMHz = True
@@ -139,13 +140,12 @@ quandary.maxiter = 150
 if do_training:
 	print("\n Starting UDE training (UDEmodel=", UDEmodel, ")...")
 
-	do_sparsify = True
-	if do_sparsify:
-		# Restart training from sparsified parameters
+	if do_prune:
+		# Re-start training from pruned sparsified parameters 
 		filename = UDEdatadir + "/params.dat"
 		params = np.loadtxt(filename)
 		cutoff = 1e-1
-		params = [0.0 if abs(p) < catoff else p for p in params]
+		params = [0.0 if abs(p) < cutoff else p for p in params]
 		# print("SPARSE ", params)
 		quandary.training(trainingdatadir=trainingdatadir, UDEmodel=UDEmodel, datadir=UDEdatadir, T_train=T_train, learn_params=params)
 	else:
