@@ -9,30 +9,31 @@ do_training = True
 do_loadtrained = True 
 do_plot2D = False
 do_plot3D = False
-do_analyze = False
+do_analyze = True 
 do_extrapolate = False
 
 unitMHz = True 
 
-# Best-guess detuning: 0.0
+# Best-guess system description
 Ne = [3]
+Ng = [0]
+N = np.prod([Ne[i] + Ng[i] for i in range(len(Ne))])
 freq01 = [3423.0] 
-rotfreq = freq01
-selfkerr = [200.0]
+rotfreq = freq01 		# Best-guess detuning: freq01 - rotfreq = 0.0
+selfkerr = [200.0]		# best-guess for anharmonicity
+# Best-guess decoherence [ns]
+T1 = [0.0] # [130.0]
+T2 = [0.0] # [6.0]
 
-# Set the duration (us)
-T = 4.0  # 4.0
+# Set the duration (us) and time-step size
+T = 4.0  	# 4.0  # 8.0
 dT = 0.002
 nsteps = int(np.ceil(T/dT))
 T = nsteps*dT
 output_frequency = 1  
 
-# Best-guess decoherence [ns]
-T1 = [0.0] # [130.0]
-T2 = [0.0] # [6.0]
-
 # Set up a dummy gate
-unitary = np.identity(Ne[0])
+unitary = np.identity(Ne[0]+Ng[0])
 
 # Initial ground state
 initialcondition = "pure, 0"
@@ -62,20 +63,29 @@ for pval in pvals:
 	for qval in qvals:
 
 		# Set up Quandary with standard Hamiltonian model 
-		quandary = Quandary(Ne=Ne, freq01=freq01, rotfreq=rotfreq, selfkerr=selfkerr, T=T, nsteps=nsteps, targetgate=unitary, verbose=verbose, rand_seed=rand_seed, T1=T1, T2=T2, initialcondition=initialcondition, output_frequency=output_frequency, randomize_init_ctrl=randomize_ctrl, initctrl_MHz=initctrl_MHz, carrier_frequency=carrier_freq, unitMHz=unitMHz) 
+		quandary = Quandary(Ne=Ne, Ng=Ng, freq01=freq01, rotfreq=rotfreq, selfkerr=selfkerr, T=T, nsteps=nsteps, targetgate=unitary, verbose=verbose, rand_seed=rand_seed, T1=T1, T2=T2, initialcondition=initialcondition, output_frequency=output_frequency, randomize_init_ctrl=randomize_ctrl, initctrl_MHz=initctrl_MHz, carrier_frequency=carrier_freq, unitMHz=unitMHz) 
 
 		# Set the UDE learning model: "hamiltonian", or "lindblad", or "both"
 		UDEmodel = "both"   
 		# Set the training time domain
 		T_train = T # T/2.0	  
-		# Set training data directories and specifier. For Tant3level, only one pulse per training. TODO.
+		# Switch to use mitigated data (corrected with confusion matrix), or raw data
 		trainingdata_corrected = True
+		# Switch between tikhonov regularization norms (L1 or L2 norm)
+		tik0_onenorm = True 			#  Use L1 for sparsification property
+		# Factor to scale the loss objective function value
+		loss_scaling_factor = 1.0
+
+		# Set training data directories and specifier. For Tant3level, only one pulse per training currently. TODO.
 		trainingdatadir = ["Tant3level, /Users/guenther5/Numerics/quantum-udes-database/experiment/240715/Rabi_const_p"+str(pval)+"_q"+str(qval)+"_0711_0715_2024.dat"]
+
 		# Set output directory for training
-		UDEdatadir = "./corrected_"+str(trainingdata_corrected)+"/UDE_corrected"+str(trainingdata_corrected)+"_p"+str(pval)+"_q"+str(qval)+"_rundir"
+		UDEdatadir = "./UDE_Tant3level_p"+str(pval)+"_q"+str(qval)+"_rundir"
 
 		# Set training optimization parameters
-		quandary.gamma_tik0 = 1e-4		# Tikhonov regularization
+		quandary.gamma_tik0 = 1e-6		# Tikhonov regularization
+		quandary.gamma_tik0_onenorm = tik0_onenorm
+		quandary.loss_scaling_factor = loss_scaling_factor
 		quandary.tol_grad_abs = 1e-8
 		quandary.tol_grad_rel = 1e-8
 		quandary.tol_costfunc = 1e-8
@@ -83,7 +93,7 @@ for pval in pvals:
 		quandary.gamma_leakage = 0.0
 		quandary.gamma_energy = 0.0
 		quandary.gamma_dpdm = 0.0
-		quandary.maxiter = 80
+		quandary.maxiter = 100
 		# quandary.maxiter = 1
 
 		if do_training:
@@ -91,20 +101,20 @@ for pval in pvals:
 			out = quandary.training(trainingdatadir=trainingdatadir, trainingdata_corrected=trainingdata_corrected, UDEmodel=UDEmodel, datadir=UDEdatadir, T_train=T_train)
 			time, pt, qt, infidelity, expectedEnergy, population = out
 
-			# Simulate forward with optimized paramters to write Training data evolutions and learned evolution
+			# Simulate forward with optimized paramters to write Training data evolutions and learned evolution on a longer time domain
 			filename = UDEdatadir + "/params.dat"
 			params = np.loadtxt(filename)
 			quandary.T = 16.0
+			quandary.nsteps =  int(np.ceil(quandary.T/dT))
 			quandary.update()
+			
 			quandary.UDEsimulate(trainingdatadir=trainingdatadir, trainingdata_corrected=trainingdata_corrected, UDEmodel=UDEmodel, datadir=UDEdatadir+"/FWD_opt", T_train=quandary.T, learn_params=params)
 
 			# Simulate forward the baseline model using zero learnable parameters to print out evolution
-			filename = UDEdatadir + "/params.dat"
-			quandary.T = 16.0
-			quandary.update()
-			quandary.UDEsimulate(trainingdatadir=trainingdatadir, trainingdata_corrected=trainingdata_corrected, UDEmodel=UDEmodel, datadir=UDEdatadir+"/FWD_zeroinit", T_train=quandary.T, learn_params=0.0*params)
+			zeroinit = np.zeros(len(params))
+			quandary.UDEsimulate(trainingdatadir=trainingdatadir, trainingdata_corrected=trainingdata_corrected, UDEmodel=UDEmodel, datadir=UDEdatadir+"/FWD_zeroinit", T_train=quandary.T, learn_params=zeroinit)
 
-
+  
 		########
 		# Load learned Hamiltonian and LIndblad terms from 'UDEdatadir'
 		########
@@ -113,8 +123,8 @@ for pval in pvals:
 			# Read learned Hamiltonian (N x N)
 			filename_re = UDEdatadir + "/LearnedHamiltonian_Re.dat"
 			filename_im = UDEdatadir + "/LearnedHamiltonian_Im.dat"
-			Ham_learn_re = np.loadtxt(filename_re, usecols=range(Ne[0]), skiprows=2)
-			Ham_learn_im = np.loadtxt(filename_im, usecols=range(Ne[0]), skiprows=2)
+			Ham_learn_re = np.loadtxt(filename_re, usecols=range(N), skiprows=2)
+			Ham_learn_im = np.loadtxt(filename_im, usecols=range(N), skiprows=2)
 			Ham_learn = Ham_learn_re + 1j*Ham_learn_im	
 			print("Learned Hamiltonian [MHz]:") 
 			print(Ham_learn)
@@ -139,11 +149,6 @@ for pval in pvals:
 			print("Delta xi  [MHz] = ", delta_selfkerr[-1])
 			print("Delta p   [MHz] = ", delta_p[-1], " (", round((ppulse_MHz+delta_p[-1])/ppulse_MHz*100.0,2), "%)")
 			print("Delta q   [MHz] = ", delta_q[-1], " (", round((qpulse_MHz+delta_q[-1])/qpulse_MHz*100.0,2), "%)")
-			# Read learned system Lindblad matrix (N^2 x N^2)
-			filename = UDEdatadir + "/LearnedLindbladSystemMat.dat"
-			Lindblad_learned = np.loadtxt(filename, skiprows=2)
-			# print("Learned Lindblad System matrix:")
-			# print(Lindblad_learned)
 
 			# Get learned coefficients 
 			filename = UDEdatadir + "/params.dat"
@@ -255,7 +260,7 @@ if do_plot3D:
 
 
 ###########
-# Analyze the Lindblad operators (NOT REALLY WORKING...)
+# Analyze the Lindblad operators (MIGHT NOT BE WORKING... Todo.)
 ##########
 if do_analyze:
 	def systemmat_lindblad(A,B):
@@ -269,53 +274,139 @@ if do_analyze:
 		S -= 0.5 * np.kron(BdA.transpose(), Ident)
 		return S
 
-	# Set up original system matrix for decay and decoherence terms: \bar L\kron L - 1/2 (I \kron L'L + (L'L)^T\kron I)
+	# Set up the original system Lindblad matrix, using Decay and Decoherence
 	a = lowering(Ne[0])
 	a0 = a
 	L01 = a0					# Qubit 0  decay
 	L02 = a0.transpose() @ a0 	# Qubit 0 dephasing
-
-	# Set up the original system Lindblad matrix, using Decay and Decoherence
-	Lops = [L01, L02]
+	Lops_org = [L01, L02]
 	# decoherencetimes = [T1[0], T2[0]] # us
 	## Best guess decoherence times
 	decoherencetimes = [130.0, 6.0] # us
-	Lindblad_org = np.zeros((Ne[0]**2, Ne[0]**2))
+	LindbladSys_org = np.zeros((N**2, N**2), dtype=complex)
 	LopsSys = []
-	for i in range(len(Lops)):
-		addme = systemmat_lindblad(Lops[i], Lops[i])
+	for i in range(len(Lops_org)):
+		addme = systemmat_lindblad(Lops_org[i], Lops_org[i])
 		LopsSys.append(addme)
-		Lindblad_org += 1./decoherencetimes[i] * addme
-	print("\nLearned Lindblad System matrix")
-	print(Lindblad_learned)
-	# print("Decay/Dephasing Lindblad System matrix")
-	# print(Lindblad_org)
-	# Lindblad_error = Lindblad_org - Lindblad_learned
-	# print(" Lindblad System matrix error norm:", np.linalg.norm(Lindblad_error))
+		LindbladSys_org += 1./decoherencetimes[i] * addme
 
+	# Set up the learned system Lindblad matrix. 
+	##### Compute elements in A = X*X':  aij = sum_l x_i^l * x_j^l
+	def assembleAij(i,j, nbasis, params):
+		# Mapping for accessing column-wise vectorized X_i^l coefficients in lower-triangular matrix X
+		def mapID(i,j, nbasis):
+			return int(i*nbasis - i*(i+1)/2 + j)
+		# Sum up
+		aij = 1j*0.0
+		for l in range(nbasis):
+			xil = 1j*0.0
+			if (l<=i):
+				xil  =     params[mapID(l,i, nbasis)]
+				xil += 1j* params[mapID(l,i, nbasis)+int(len(params)/2)] 
+			xjl = 0.0
+			if (l<=j):
+				xjl  =     params[mapID(l,j, nbasis)]
+				xjl += 1j* params[mapID(l,j, nbasis)+int(len(params)/2)]
+			aij += xil*xjl.conjugate()
+		return aij
+	#####
+	# Get coefficients of the learned lindblad operators
+	filename = UDEdatadir + "/params.dat"
+	skiprowsHam = N**2-1
+	paramsL = np.loadtxt(filename, skiprows=skiprowsHam)
+	# Basis matrices used during learning
+	BasisMats = getEijBasisMats(N)
+	Lsys_double = np.zeros((N**2, N**2), dtype=complex)
+	A = np.zeros((N**2-1, N**2-1), dtype=complex)
+	for i in range(N**2-1):
+		for j in range(N**2-1):
+			addme = systemmat_lindblad(BasisMats[i], BasisMats[j])
+			A[i,j] = assembleAij(i,j,len(BasisMats), paramsL)
+			Lsys_double += A[i,j] * addme
+
+
+	# TEST: Same system matrix should be constructed when reading the learned Lindblad operators from file and assembling them in a single-sum (N^2-1 many, each NxN complex)
+	filename_re = UDEdatadir + "/LearnedLindbladOperators_Re.dat"
+	filename_im = UDEdatadir + "/LearnedLindbladOperators_Im.dat"
+	LearnedOps_re = []
+	LearnedOps_im = []
+	current_block = []
+	skip_next = False  # Flag to track if the next line should be skipped
+	with open(filename_re, "r") as file:
+		for i,line in enumerate(file):
+			if skip_next:  # Skip the current line
+				skip_next = False
+				continue
+			if line.startswith("Mat"):  # Check if the line starts with "Mat"
+				if i>0:
+					LearnedOps_re.append(np.array(current_block, dtype=complex))
+				current_block = []
+				skip_next = True  # Skip the next line as well
+				continue
+			# filtered_lines.append(line.strip())
+			row = np.fromstring(line, sep=" ")
+			current_block.append(row)
+	if current_block:
+		LearnedOps_re.append(np.array(current_block, dtype=complex))
+	with open(filename_im, "r") as file:
+		for i,line in enumerate(file):
+			if skip_next:  # Skip the current line
+				skip_next = False
+				continue
+			if line.startswith("Mat"):  # Check if the line starts with "Mat"
+				if i>0:
+					LearnedOps_im.append(np.array(current_block, dtype=complex))
+				current_block = []
+				skip_next = True  # Skip the next line as well
+				continue
+			# filtered_lines.append(line.strip())
+			row = np.fromstring(line, sep=" ")
+			current_block.append(row)
+	if current_block:
+		LearnedOps_im.append(np.array(current_block, dtype=complex))
+	LearnedOps = LearnedOps_re.copy()
+	for i in range(len(LearnedOps_re)):
+		LearnedOps[i] += 1j*LearnedOps_im[i]
+
+	# Print learned Lindblad operators
+	for i in range(len(LearnedOps_re)):
+		print(f"Lindblad Operator {i}:\n{LearnedOps[i]}")
+
+	# Now assemble lindblad system matrix using those operators
+	LindbladSys_learned = np.zeros((N**2, N**2), dtype=complex)
+	for i in range(N**2-1):
+		addme = systemmat_lindblad(LearnedOps[i], LearnedOps[i])
+		LindbladSys_learned += addme
+	# Make sure those two system matrices are the same
+	assert(np.linalg.norm(Lsys_double - LindbladSys_learned) < 1e-11)
 
 	# Find best match to Lops ansatz min 1/2 || G - sum x_i Li||^2
-	N = len(Lops)
-	M = np.zeros((N,N)) 	# Hessian
-	rhs = np.zeros(N)
-	for i in range(N):
-		for j in range(N):
-			M[i,j] = np.trace(LopsSys[i].transpose()@LopsSys[j])
-		rhs[i] = np.trace(Lindblad_learned.transpose()@LopsSys[i])
+	nops = len(Lops_org)
+	M = np.zeros((nops,nops), dtype=complex) 	# Hessian
+	rhs = np.zeros(nops, dtype=complex)
+	for i in range(nops):
+		for j in range(nops):
+			M[i,j] = np.trace(LopsSys[i].transpose().conj()@LopsSys[j])
+		rhs[i] = np.trace(LindbladSys_learned.transpose().conj()@LopsSys[i])
 	# Solve linear system
 	x = np.linalg.inv(M) @ rhs
-
-	print("Best match decay and decoherence times:")
-	print([1.0/np.sqrt(xi) for xi in x])
-	print("Best-guess decay and decoherence times:")
-	print(decoherencetimes)
+	for xi in x:
+		assert(abs(xi.imag)<1e-16)
+	x = [xi.real for xi in x]
 
 	# Residual in the objective function 
 	f = 0.0
-	err = Lindblad_learned.copy()
-	for i in range(N):
+	err = LindbladSys_learned.copy()
+	for i in range(nops):
 		err -= x[i] * LopsSys[i]
-	print("Match objective function value: ", 1/2*np.linalg.norm(err)**2)
+	err = 1/2*np.linalg.norm(err)**2
+
+	print("Best match decay and decoherence times (residual = ", err,")")
+	# print([1.0/np.sqrt(xi) for xi in x])
+	print([1.0/xi for xi in x])
+	print("Best-guess decay and decoherence times:")
+	print(decoherencetimes)
+
 
 
 #########
