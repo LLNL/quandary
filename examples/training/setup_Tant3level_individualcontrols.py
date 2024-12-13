@@ -5,7 +5,7 @@
 from quandary import * 
 np.set_printoptions( linewidth=800)
 
-do_training = True 
+do_training = False
 do_loadtrained = True 
 do_plot2D = False
 do_plot3D = False
@@ -263,6 +263,8 @@ if do_plot3D:
 # Analyze the Lindblad operators (MIGHT NOT BE WORKING... Todo.)
 ##########
 if do_analyze:
+	real_only = False
+
 	def systemmat_lindblad(A,B):
 	# Construct the vectorized Lindblad system matrix for term  A rho B' - 1/2{B'A, rho}:
 	#  -> vectorized S = \bar B \kron A - 1/2(I \kron B'A + (B'A)^T \kron I)
@@ -302,11 +304,13 @@ if do_analyze:
 			xil = 1j*0.0
 			if (l<=i):
 				xil  =     params[mapID(l,i, nbasis)]
-				xil += 1j* params[mapID(l,i, nbasis)+int(len(params)/2)] 
+				if not real_only:
+					xil += 1j* params[mapID(l,i, nbasis)+int(len(params)/2)] 
 			xjl = 0.0
 			if (l<=j):
 				xjl  =     params[mapID(l,j, nbasis)]
-				xjl += 1j* params[mapID(l,j, nbasis)+int(len(params)/2)]
+				if not real_only:
+					xjl += 1j* params[mapID(l,j, nbasis)+int(len(params)/2)]
 			aij += xil*xjl.conjugate()
 		return aij
 	#####
@@ -348,6 +352,7 @@ if do_analyze:
 			current_block.append(row)
 	if current_block:
 		LearnedOps_re.append(np.array(current_block, dtype=complex))
+		current_block=[]
 	with open(filename_im, "r") as file:
 		for i,line in enumerate(file):
 			if skip_next:  # Skip the current line
@@ -364,8 +369,9 @@ if do_analyze:
 			current_block.append(row)
 	if current_block:
 		LearnedOps_im.append(np.array(current_block, dtype=complex))
+		current_block=[]
 	LearnedOps = LearnedOps_re.copy()
-	for i in range(len(LearnedOps_re)):
+	for i in range(len(LearnedOps_im)):
 		LearnedOps[i] += 1j*LearnedOps_im[i]
 
 	# Print learned Lindblad operators
