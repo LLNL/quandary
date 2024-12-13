@@ -265,17 +265,6 @@ if do_plot3D:
 if do_analyze:
 	real_only = False
 
-	def systemmat_lindblad(A,B):
-	# Construct the vectorized Lindblad system matrix for term  A rho B' - 1/2{B'A, rho}:
-	#  -> vectorized S = \bar B \kron A - 1/2(I \kron B'A + (B'A)^T \kron I)
-		dim = A.shape[0]
-		Ident = np.identity(dim)
-		S = np.kron(B.conjugate(), A)		
-		BdA = B.transpose().conjugate() @ A 
-		S -= 0.5 * np.kron(Ident, BdA)
-		S -= 0.5 * np.kron(BdA.transpose(), Ident)
-		return S
-
 	# Set up the original system Lindblad matrix, using Decay and Decoherence
 	a = lowering(Ne[0])
 	a0 = a
@@ -293,27 +282,6 @@ if do_analyze:
 		LindbladSys_org += 1./decoherencetimes[i] * addme
 
 	# Set up the learned system Lindblad matrix. 
-	##### Compute elements in A = X*X':  aij = sum_l x_i^l * x_j^l
-	def assembleAij(i,j, nbasis, params):
-		# Mapping for accessing column-wise vectorized X_i^l coefficients in lower-triangular matrix X
-		def mapID(i,j, nbasis):
-			return int(i*nbasis - i*(i+1)/2 + j)
-		# Sum up
-		aij = 1j*0.0
-		for l in range(nbasis):
-			xil = 1j*0.0
-			if (l<=i):
-				xil  =     params[mapID(l,i, nbasis)]
-				if not real_only:
-					xil += 1j* params[mapID(l,i, nbasis)+int(len(params)/2)] 
-			xjl = 0.0
-			if (l<=j):
-				xjl  =     params[mapID(l,j, nbasis)]
-				if not real_only:
-					xjl += 1j* params[mapID(l,j, nbasis)+int(len(params)/2)]
-			aij += xil*xjl.conjugate()
-		return aij
-	#####
 	# Get coefficients of the learned lindblad operators
 	filename = UDEdatadir + "/params.dat"
 	skiprowsHam = N**2-1
@@ -325,57 +293,14 @@ if do_analyze:
 	for i in range(N**2-1):
 		for j in range(N**2-1):
 			addme = systemmat_lindblad(BasisMats[i], BasisMats[j])
-			A[i,j] = assembleAij(i,j,len(BasisMats), paramsL)
+			A[i,j] = assembleAij(i,j,len(BasisMats), paramsL, real_only=real_only)
 			Lsys_double += A[i,j] * addme
 
 
 	# TEST: Same system matrix should be constructed when reading the learned Lindblad operators from file and assembling them in a single-sum (N^2-1 many, each NxN complex)
-	filename_re = UDEdatadir + "/LearnedLindbladOperators_Re.dat"
-	filename_im = UDEdatadir + "/LearnedLindbladOperators_Im.dat"
-	LearnedOps_re = []
-	LearnedOps_im = []
-	current_block = []
-	skip_next = False  # Flag to track if the next line should be skipped
-	with open(filename_re, "r") as file:
-		for i,line in enumerate(file):
-			if skip_next:  # Skip the current line
-				skip_next = False
-				continue
-			if line.startswith("Mat"):  # Check if the line starts with "Mat"
-				if i>0:
-					LearnedOps_re.append(np.array(current_block, dtype=complex))
-				current_block = []
-				skip_next = True  # Skip the next line as well
-				continue
-			# filtered_lines.append(line.strip())
-			row = np.fromstring(line, sep=" ")
-			current_block.append(row)
-	if current_block:
-		LearnedOps_re.append(np.array(current_block, dtype=complex))
-		current_block=[]
-	with open(filename_im, "r") as file:
-		for i,line in enumerate(file):
-			if skip_next:  # Skip the current line
-				skip_next = False
-				continue
-			if line.startswith("Mat"):  # Check if the line starts with "Mat"
-				if i>0:
-					LearnedOps_im.append(np.array(current_block, dtype=complex))
-				current_block = []
-				skip_next = True  # Skip the next line as well
-				continue
-			# filtered_lines.append(line.strip())
-			row = np.fromstring(line, sep=" ")
-			current_block.append(row)
-	if current_block:
-		LearnedOps_im.append(np.array(current_block, dtype=complex))
-		current_block=[]
-	LearnedOps = LearnedOps_re.copy()
-	for i in range(len(LearnedOps_im)):
-		LearnedOps[i] += 1j*LearnedOps_im[i]
-
+	LearnedOps = loadLearnedLindbladOperators(UDEdatadir)
 	# Print learned Lindblad operators
-	for i in range(len(LearnedOps_re)):
+	for i in range(len(LearnedOps)):
 		print(f"Lindblad Operator {i}:\n{LearnedOps[i]}")
 
 	# Now assemble lindblad system matrix using those operators
@@ -387,7 +312,7 @@ if do_analyze:
 	assert(np.linalg.norm(Lsys_double - LindbladSys_learned) < 1e-11)
 
 	# Find best match to Lops ansatz min 1/2 || G - sum x_i Li||^2
-	nops = len(Lops_org)
+	nops = len(LopsSys)
 	M = np.zeros((nops,nops), dtype=complex) 	# Hessian
 	rhs = np.zeros(nops, dtype=complex)
 	for i in range(nops):

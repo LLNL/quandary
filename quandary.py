@@ -1486,3 +1486,91 @@ def getEijBasisMats(dim):
 
     return BasisMats
 
+# Construct the vectorized Lindblad system matrix for term  A rho B' - 1/2{B'A, rho}:
+#  -> vectorized S =  B.conj \kron A - 1/2(I \kron B'A + (B'A)^T \kron I)
+def systemmat_lindblad(A,B):
+    dim = A.shape[0]
+    Ident = np.identity(dim)
+    S = np.kron(B.conjugate(), A)		
+    BdA = B.transpose().conjugate() @ A 
+    S -= 0.5 * np.kron(Ident, BdA)
+    S -= 0.5 * np.kron(BdA.transpose(), Ident)
+    return S
+
+# Compute elements Lindblad coefficient matrix A = X*X':  aij = sum_l x_i^l * x_j^l
+def assembleAij(i,j, nbasis, params, *, real_only=False):
+    # Mapping for accessing column-wise vectorized X_i^l coefficients in lower-triangular matrix X
+    def mapID(i,j, nbasis):
+        return int(i*nbasis - i*(i+1)/2 + j)
+    # Sum up
+    aij = 1j*0.0
+    for l in range(nbasis):
+        xil = 1j*0.0
+        if (l<=i):
+            xil  =     params[mapID(l,i, nbasis)]
+            if not real_only:
+                xil += 1j* params[mapID(l,i, nbasis)+int(len(params)/2)] 
+        xjl = 1j*0.0
+        if (l<=j):
+            xjl  =     params[mapID(l,j, nbasis)]
+            if not real_only:
+                xjl += 1j* params[mapID(l,j, nbasis)+int(len(params)/2)]
+        aij += xil*xjl.conjugate()
+    return aij
+
+def loadLearnedHamiltonian(UDEdatadir, N):
+    filename_re = UDEdatadir + "/LearnedHamiltonian_Re.dat"
+    filename_im = UDEdatadir + "/LearnedHamiltonian_Im.dat"
+    Ham_re = np.loadtxt(filename_re, usecols=range(N), skiprows=2)
+    Ham_im = np.loadtxt(filename_im, usecols=range(N), skiprows=2)
+    Ham = Ham_re + 1j*Ham_im	
+    return Ham
+
+def loadLearnedLindbladOperators(UDEdatadir):
+    # Read learned Lindblad operators (N^2-1 many, each NxN complex)
+    filename_re = UDEdatadir + "/LearnedLindbladOperators_Re.dat"
+    filename_im = UDEdatadir + "/LearnedLindbladOperators_Im.dat"
+    LearnedOps_re = []
+    LearnedOps_im = []
+    current_block = []
+    skip_next = False  # Flag to track if the next line should be skipped
+    with open(filename_re, "r") as file:
+        for i,line in enumerate(file):
+            if skip_next:  # Skip the current line
+                skip_next = False
+                continue
+            if line.startswith("Mat"):  # Check if the line starts with "Mat"
+                if i>0:
+                    LearnedOps_re.append(np.array(current_block, dtype=complex))
+                current_block = []
+                skip_next = True  # Skip the next line as well
+                continue
+            # filtered_lines.append(line.strip())
+            row = np.fromstring(line, sep=" ")
+            current_block.append(row)
+    if current_block:
+        LearnedOps_re.append(np.array(current_block, dtype=complex))
+        current_block = []
+    with open(filename_im, "r") as file:
+        for i,line in enumerate(file):
+            if skip_next:  # Skip the current line
+                skip_next = False
+                continue
+            if line.startswith("Mat"):  # Check if the line starts with "Mat"
+                if i>0:
+                    LearnedOps_im.append(np.array(current_block, dtype=complex))
+                current_block = []
+                skip_next = True  # Skip the next line as well
+                continue
+            # filtered_lines.append(line.strip())
+            row = np.fromstring(line, sep=" ")
+            current_block.append(row)
+    if current_block:
+        LearnedOps_im.append(np.array(current_block, dtype=complex))
+        current_block = []
+    LearnedOps = LearnedOps_re.copy()
+    for i in range(len(LearnedOps_im)):
+        LearnedOps[i] += 1j*LearnedOps_im[i]
+
+    return LearnedOps
+

@@ -182,29 +182,6 @@ if do_extrapolate:
 # Analyze the trained Hamiltonian and Lindblad terms 
 ################
 
-# Construct the vectorized Lindblad system matrix for term  A rho B' - 1/2{B'A, rho}:
-#  -> vectorized S = \bar B.conj \kron A - 1/2(I \kron B'A + (B'A)^T \kron I)
-def systemmat_lindblad(A,B):
-	dim = A.shape[0]
-	Ident = np.identity(dim)
-	S = np.kron(B.conjugate(), A)		
-	BdA = B.transpose().conjugate() @ A 
-	S -= 0.5 * np.kron(Ident, BdA)
-	S -= 0.5 * np.kron(BdA.transpose(), Ident)
-	return S
-
-# # Set up the original decay and dephasing operators
-# a = lowering(2)
-# Id2 = np.identity(2)
-# a0 = np.kron(a, Id2)
-# a1 = np.kron(Id2, a)
-# # Decoherence operators
-# L01 = a0					# Qubit 0  decay
-# L11 = a1 					# Qubit 1  decay
-# L02 = a0.transpose() @ a0 	# Qubit 0 dephasing
-# L12 = a1.transpose() @ a1	# Qubit 1 dephasing
-
-## Now read trained Operators from file and compare
 if do_analyze:
 	# Loading learned operators data from 'UDEdatadir'
 
@@ -297,25 +274,6 @@ if do_analyze:
 		# print(LindbladSys_learned)
 
 		## TEST: Make sure the learned system matrix as set up above matches to the system matrix when assembled with the double sum and basis operators. 
-		##### Compute elements in A = X*X':  aij = sum_l x_i^l * x_j^l
-		def assembleAij(i,j, nbasis, params):
-			# Mapping for accessing column-wise vectorized X_i^l coefficients in lower-triangular matrix X
-			def mapID(i,j, nbasis):
-				return int(i*nbasis - i*(i+1)/2 + j)
-			# Sum up
-			aij = 1j*0.0
-			for l in range(nbasis):
-				xil = 1j*0.0
-				if (l<=i):
-					xil  =     params[mapID(l,i, nbasis)]
-					xil += 1j* params[mapID(l,i, nbasis)+int(len(params)/2)] 
-				xjl = 0.0
-				if (l<=j):
-					xjl  =     params[mapID(l,j, nbasis)]
-					xjl += 1j* params[mapID(l,j, nbasis)+int(len(params)/2)]
-				aij += xil*xjl.conjugate()
-			return aij
-		#####
 		# Get coefficients of the learned lindblad operators
 		filename = UDEdatadir + "/params.dat"
 		skiprowsHam = N**2-1

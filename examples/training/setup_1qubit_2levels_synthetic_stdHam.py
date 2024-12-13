@@ -187,131 +187,43 @@ if do_extrapolate:
 # Analyze the trained Hamiltonian and Lindblad terms 
 ################
 
-# Construct the vectorized Lindblad system matrix for term  A rho B' - 1/2{B'A, rho}:
-#  -> vectorized S = \bar B.conj \kron A - 1/2(I \kron B'A + (B'A)^T \kron I)
-def systemmat_lindblad(A,B):
-	dim = A.shape[0]
-	Ident = np.identity(dim)
-	S = np.kron(B.conjugate(), A)		
-	BdA = B.transpose().conjugate() @ A 
-	S -= 0.5 * np.kron(Ident, BdA)
-	S -= 0.5 * np.kron(BdA.transpose(), Ident)
-	return S
+
 
 ## Now read trained Operators from file and compare
 if do_analyze:
 	# Loading learned operators data from 'UDEdatadir'
 
-	# Read learned Hamiltonian (N x N)
-	filename_re = UDEdatadir + "/LearnedHamiltonian_Re.dat"
-	filename_im = UDEdatadir + "/LearnedHamiltonian_Im.dat"
-	Ham_test_re = np.loadtxt(filename_re, usecols=range(N), skiprows=2)
-	Ham_test_im = np.loadtxt(filename_im, usecols=range(N), skiprows=2)
-	Ham_test = Ham_test_re + 1j*Ham_test_im	
+	# Read learned Hamiltonian (N x N) and compute error
+	Ham_learned = loadLearnedHamiltonian(UDEdatadir, N)
 	print("TO-BE-Learned Hamiltonian [MHz]:") 
 	print(Ham_org)
 	print("Learned Hamiltonian [MHz]:") 
-	print(Ham_test)
-	Ham_error = Ham_org - Ham_test
+	print(Ham_learned)
+	Ham_error = Ham_org - Ham_learned
 	print("\n Hamiltonian error norm [MHz]:", np.linalg.norm(Ham_error))
 
 	if UDEmodel == "lindblad" or UDEmodel == "both":
-		# Read learned Lindblad operators (N^2-1 many, each NxN complex)
-		filename_re = UDEdatadir + "/LearnedLindbladOperators_Re.dat"
-		filename_im = UDEdatadir + "/LearnedLindbladOperators_Im.dat"
-		LearnedOps_re = []
-		LearnedOps_im = []
-		current_block = []
-		skip_next = False  # Flag to track if the next line should be skipped
-		with open(filename_re, "r") as file:
-			for i,line in enumerate(file):
-				if skip_next:  # Skip the current line
-					skip_next = False
-					continue
-				if line.startswith("Mat"):  # Check if the line starts with "Mat"
-					if i>0:
-						LearnedOps_re.append(np.array(current_block, dtype=complex))
-					current_block = []
-					skip_next = True  # Skip the next line as well
-					continue
-				# filtered_lines.append(line.strip())
-				row = np.fromstring(line, sep=" ")
-				current_block.append(row)
-		if current_block:
-			LearnedOps_re.append(np.array(current_block, dtype=complex))
-		with open(filename_im, "r") as file:
-			for i,line in enumerate(file):
-				if skip_next:  # Skip the current line
-					skip_next = False
-					continue
-				if line.startswith("Mat"):  # Check if the line starts with "Mat"
-					if i>0:
-						LearnedOps_im.append(np.array(current_block, dtype=complex))
-					current_block = []
-					skip_next = True  # Skip the next line as well
-					continue
-				# filtered_lines.append(line.strip())
-				row = np.fromstring(line, sep=" ")
-				current_block.append(row)
-		if current_block:
-			LearnedOps_im.append(np.array(current_block, dtype=complex))
-		LearnedOps = LearnedOps_re.copy()
-		for i in range(len(LearnedOps_re)):
-			LearnedOps[i] += 1j*LearnedOps_im[i]
-
+		# Load learned operators from file
+		LearnedOps = loadLearnedLindbladOperators(UDEdatadir)
+		assert(len(LearnedOps) == N**2-1)
 		# # Print learned Lindblad operators
 		# for i in range(len(LearnedOps_re)):
 		# 	print(f"Lindblad Operator {i}:\n{LearnedOps[i]}")
 
-		# Set up the original system Lindblad matrix using Decay and Decoherence and the learned system Lindblad Matrix
-		a = lowering(N)
-		L01 = a					# Qubit 0  decay
-		L02 = a.transpose() @ a 	# Qubit 0 dephasing
-		Lops_org = [L01, L02]
-		decoherencetimes = [T1[0], T2[0]] # us
-		LindbladSys_org = np.zeros((N**2, N**2), dtype=complex)
+		# Set up the learned system Matrix
 		LindbladSys_learned = np.zeros((N**2, N**2), dtype=complex)
-		LopsSys = []
-		for i in range(len(Lops_org)):
-			addme = systemmat_lindblad(Lops_org[i], Lops_org[i])
-			LopsSys.append(addme)
-			LindbladSys_org += 1./decoherencetimes[i] * addme
 		for i in range(N**2-1):
 			addme = systemmat_lindblad(LearnedOps[i], LearnedOps[i])
 			LindbladSys_learned += addme
-		# print("Original Lindblad System matrix")
-		# print(LindbladSys_org)
-		# print("Learned Lindblad System matrix")
-		# print(LindbladSys_learned)
-		Lindblad_error = LindbladSys_org - LindbladSys_learned
-		# print(" Lindblad System matrix error norm:", np.linalg.norm(Lindblad_error))
 
-		## TEST: Make sure the learned system matrix as set up above matches to the system matrix when assembled with the double sum and basis operators. 
-		##### Compute elements in A = X*X':  aij = sum_l x_i^l * x_j^l
-		def assembleAij(i,j, nbasis, params):
-			# Mapping for accessing column-wise vectorized X_i^l coefficients in lower-triangular matrix X
-			def mapID(i,j, nbasis):
-				return int(i*nbasis - i*(i+1)/2 + j)
-			# Sum up
-			aij = 1j*0.0
-			for l in range(nbasis):
-				xil = 1j*0.0
-				if (l<=i):
-					xil  =     params[mapID(l,i, nbasis)]
-					xil += 1j* params[mapID(l,i, nbasis)+int(len(params)/2)] 
-				xjl = 0.0
-				if (l<=j):
-					xjl  =     params[mapID(l,j, nbasis)]
-					xjl += 1j* params[mapID(l,j, nbasis)+int(len(params)/2)]
-				aij += xil*xjl.conjugate()
-			return aij
-		#####
+		## TEST: Make sure that the matrix as was set up above equals the system matrix when assembled with the double sum coefficients and basis operators. 
 		# Get coefficients of the learned lindblad operators
 		filename = UDEdatadir + "/params.dat"
 		skiprowsHam = N**2-1
 		paramsL = np.loadtxt(filename, skiprows=skiprowsHam)
 		# Basis matrices used during learning
 		BasisMats = getEijBasisMats(N)
+		# Set up the double-sum system matrix
 		Lsys_double = np.zeros((N**2, N**2), dtype=complex)
 		A = np.zeros((N**2-1, N**2-1), dtype=complex)
 		for i in range(N**2-1):
@@ -319,12 +231,29 @@ if do_analyze:
 				addme = systemmat_lindblad(BasisMats[i], BasisMats[j])
 				A[i,j] = assembleAij(i,j,len(BasisMats), paramsL)
 				Lsys_double += A[i,j] * addme
-
 		assert(np.linalg.norm(Lsys_double - LindbladSys_learned) < 1e-12)
 
+		# Set up the original system Lindblad matrix using Decay and Decoherence
+		a = lowering(N)
+		L01 = a					# Qubit 0  decay
+		L02 = a.transpose() @ a 	# Qubit 0 dephasing
+		Lops_org = [L01, L02]
+		decoherencetimes = [T1[0], T2[0]] # us
+		LindbladSys_org = np.zeros((N**2, N**2), dtype=complex)
+		LopsSys = []
+		for i in range(len(Lops_org)):
+			addme = systemmat_lindblad(Lops_org[i], Lops_org[i])
+			LopsSys.append(addme)
+			LindbladSys_org += 1./decoherencetimes[i] * addme
+		# print("Original Lindblad System matrix")
+		# print(LindbladSys_org)
+		# print("Learned Lindblad System matrix")
+		# print(LindbladSys_learned)
+		Lindblad_error = LindbladSys_org - LindbladSys_learned
+		# print(" Lindblad System matrix error norm:", np.linalg.norm(Lindblad_error))
 
 		# Find best match to Lops ansatz min 1/2 || G - sum x_i Li||^2
-		nops = len(Lops_org)
+		nops = len(LopsSys)
 		M = np.zeros((nops,nops), dtype=complex) 	# Hessian
 		rhs = np.zeros(nops, dtype=complex)
 		for i in range(nops):
@@ -337,17 +266,15 @@ if do_analyze:
 			assert(abs(xi.imag)<1e-16)
 		x = [xi.real for xi in x]
 
-		print("\nBest match decay and decoherence times:")
-		print([1.0/xi for xi in x])
-		# print(" inv = ", [xi for xi in x])
-		print("Original decay and decoherence times:")
-		print(decoherencetimes)
-		# print(" inv = ", [1.0/d for d in decoherencetimes])
-
 		# Residual in the objective function 
 		f = 0.0
 		err = LindbladSys_learned.copy()
 		for i in range(nops):
 			err -= x[i] * LopsSys[i]
-		print("Match objective function value: ", 1/2*np.linalg.norm(err)**2)
+		err = 1/2*np.linalg.norm(err)**2
+
+		print("\nBest match decay and decoherence times (residual = ", err,")")
+		print([1.0/xi for xi in x])
+		print("Original decay and decoherence times:")
+		print(decoherencetimes)
 
