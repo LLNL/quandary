@@ -9,6 +9,7 @@ do_datageneration = True
 do_training = True 
 do_extrapolate = True 
 do_analyze = True 
+do_prune = True 
 
 # Standard Hamiltonian and Lindblad model setup
 unitMHz = True
@@ -133,7 +134,18 @@ quandary.gamma_dpdm = 0.0
 
 if do_training:
 	print("\n Starting UDE training (UDEmodel=", UDEmodel, ")...")
-	quandary.training(trainingdatadir=trainingdatadir, UDEmodel=UDEmodel, datadir=UDEdatadir, T_train=T_train)
+
+	if do_prune:
+		# Re-start training from pruned sparsified parameters 
+		filename = UDEdatadir + "/params.dat"
+		params = np.loadtxt(filename)
+		cutoff = 1e-1
+		params = [0.0 if abs(p) < cutoff else p for p in params]
+		# print("SPARSE ", params)
+		quandary.training(trainingdatadir=trainingdatadir, UDEmodel=UDEmodel, datadir=UDEdatadir, T_train=T_train, learn_params=params)
+	else:
+		# Start training from scratch
+		quandary.training(trainingdatadir=trainingdatadir, UDEmodel=UDEmodel, datadir=UDEdatadir, T_train=T_train)
 
 	# Simulate forward with optimized paramters to write out the Training data evolutions and the learned evolution
 	filename = UDEdatadir + "/params.dat"
