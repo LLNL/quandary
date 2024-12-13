@@ -6,7 +6,7 @@ from quandary import *
 np.set_printoptions( linewidth=800)
 
 
-do_datageneration = True 
+do_datageneration = False
 do_training = True 
 do_extrapolate = True 
 do_analyze = True 
@@ -80,7 +80,7 @@ Hc_re_mod = quandary.Hc_re.copy()
 Hc_im_mod = quandary.Hc_im.copy()
 
 # Generate training data trajectories for various pulse strength (one trajectory for each element in constctrl_MHz)
-constctrl_MHz = [1.0, 0.5]  	# Amplitudes of constant-control training data trajectories
+constctrl_MHz = [1.0, 0.5, 0.25]  	# Amplitudes of constant-control training data trajectories
 trainingdatadir = []
 for ctrlMHz in constctrl_MHz:
 	cwd = os.getcwd()
@@ -124,12 +124,12 @@ loss_scaling_factor = 1e3
 UDEdatadir = cwd+"/" + dirprefix+ "UDE_stdHam_perturb_"+str(rand_amp_MHz)+"MHz_npulses"+str(len(constctrl_MHz))+"_rundir"
 
 # Set training optimization parameters
-quandary.gamma_tik0 = 1e-7
+quandary.gamma_tik0 = 1e-9
 quandary.gamma_tik0_onenorm = tik0_onenorm
 quandary.loss_scaling_factor = loss_scaling_factor
 quandary.tol_grad_abs = 1e-7
 quandary.tol_grad_rel = 1e-7
-quandary.tol_costfunc = 1e-7
+quandary.tol_costfunc = 1e-8
 quandary.tol_infidelity = 1e-7
 quandary.gamma_leakage = 0.0
 quandary.gamma_energy = 0.0
@@ -138,7 +138,19 @@ quandary.maxiter = 150
 
 if do_training:
 	print("\n Starting UDE training (UDEmodel=", UDEmodel, ")...")
-	quandary.training(trainingdatadir=trainingdatadir, UDEmodel=UDEmodel, datadir=UDEdatadir, T_train=T_train)
+
+	do_sparsify = True
+	if do_sparsify:
+		# Restart training from sparsified parameters
+		filename = UDEdatadir + "/params.dat"
+		params = np.loadtxt(filename)
+		cutoff = 1e-1
+		params = [0.0 if abs(p) < catoff else p for p in params]
+		# print("SPARSE ", params)
+		quandary.training(trainingdatadir=trainingdatadir, UDEmodel=UDEmodel, datadir=UDEdatadir, T_train=T_train, learn_params=params)
+	else:
+		# Start training from scratch
+		quandary.training(trainingdatadir=trainingdatadir, UDEmodel=UDEmodel, datadir=UDEdatadir, T_train=T_train)
 
 	# Simulate forward with optimized paramters to write out the Training data evolutions and the learned evolution
 	filename = UDEdatadir + "/params.dat"
