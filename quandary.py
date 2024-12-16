@@ -1291,7 +1291,7 @@ def timestep_richardson_est(quandary, tol=1e-8, order=2, quandary_exec=""):
     t, pt, qt, infidelity, _, _ = quandary.simulate(quandary_exec=quandary_exec, datadir="TS_test")
 
     Jcurr = infidelity
-    uT = quandary.uT
+    uT = quandary.uT.copy()
 
     # Loop
     errs_J = []
@@ -1302,6 +1302,7 @@ def timestep_richardson_est(quandary, tol=1e-8, order=2, quandary_exec=""):
         # Update configuration number of timesteps. Note: dt will be set in dump()
         dt_org = quandary.T / quandary.nsteps
         quandary.nsteps= quandary.nsteps* m
+        quandary.dT = quandary.T / quandary.nsteps
 
         # Get u(dt/m) 
         quandary.verbose=False
