@@ -12,7 +12,7 @@
 # definition of these variables in a generic fashion. By overriding the
 # following section, projects can specify the variables to define in the
 # reproducer to exactly reproduce the CI build.
-.<machine>_reproducer_vars:
+.ruby_reproducer_vars:
   script:
     - |
       echo -e "# Define project specific variables here if any."
