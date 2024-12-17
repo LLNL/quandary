@@ -418,6 +418,7 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
       int size;
       VecGetSize(G, &size);
       VecGetArray(G, &Gptr);
+      VecGetArray(x, &xptr);
       for (int i=0; i<size; i++){
         if (xptr[i] > 0) {
           Gptr[i] += gamma_tik;
@@ -427,6 +428,7 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
         }
       }
       VecRestoreArray(G, &Gptr);
+      VecRestoreArray(x, &xptr);
     }
     if (gamma_tik_interpolate){
       VecAXPY(G, -1.0*gamma_tik, xinit); // -gamma_tik * xinit
