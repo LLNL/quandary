@@ -77,10 +77,10 @@ stages:
         file: 'pipelines/${CI_MACHINE}.yml'
       # Add your jobs
       # you can use a local file
-      - local: '.gitlab/jobs/${CI_MACHINE}.yml'
+      # - local: '.gitlab/jobs/${CI_MACHINE}.yml'
       # or a file generated in the previous steps
-      # - artifact: '${CI_MACHINE}-jobs.yml'
-      #   job: 'generate-job-file'
+      - artifact: '${CI_MACHINE}-jobs.yml'
+        job: 'generate-job-lists'
       # (See Umpire CI setup for an example).
     strategy: depend
     forward:
