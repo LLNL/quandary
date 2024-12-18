@@ -59,7 +59,7 @@ ruby-up-check:
 ruby-build-and-test:
   variables:
     CI_MACHINE: "ruby"
-  needs: [ruby-up-check]
+  needs: [ruby-up-check, generate-job-lists]
   extends: [.build-and-test]
 
 # POODLE
@@ -71,7 +71,7 @@ ruby-build-and-test:
 # poodle-build-and-test:
 #   variables:
 #     CI_MACHINE: "poodle"
-#   needs: [poodle-up-check]
+#  needs: [poodle-up-check, generate-job-lists]
 #   extends: [.build-and-test]
 
 # # CORONA
@@ -83,7 +83,7 @@ ruby-build-and-test:
 # corona-build-and-test:
 #   variables:
 #     CI_MACHINE: "corona"
-#   needs: [corona-up-check]
+#  needs: [corona-up-check, generate-job-lists]
 #   extends: [.build-and-test]
 
 # # TIOGA
@@ -95,7 +95,7 @@ ruby-build-and-test:
 # tioga-build-and-test:
 #   variables:
 #     CI_MACHINE: "tioga"
-#   needs: [tioga-up-check]
+#   needs: [tioga-up-check, generate-job-lists]
 #   extends: [.build-and-test]
 
 # # LASSEN
@@ -107,7 +107,7 @@ ruby-build-and-test:
 # lassen-build-and-test:
 #   variables:
 #     CI_MACHINE: "lassen"
-#   needs: [lassen-up-check]
+#   needs: [lassen-up-check, generate-job-lists]
 #   extends: [.build-and-test]
 
 
