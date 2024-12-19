@@ -129,8 +129,8 @@ echo
 # Check machine
 if [ -x "$(command -v srun)" ];
 then
-    echo 'Using srun -p debug' >&2
-    COMMAND="srun -p pdebug"
+    echo 'Using srun' >&2
+    COMMAND="srun"
 elif [ -x "$(command -v mpirun)" ];
 then
     echo 'Using mpirun -oversubscribe' >&2
