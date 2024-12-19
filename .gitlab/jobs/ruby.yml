@@ -44,3 +44,6 @@ variables:
 #  extends: .job_on_<machine>
 #  variables:
 #    <A_VARIABLE>: "<with job specific value>"
+# Build jobs
+ruby-1:
+  extends: [.job_on_ruby]
