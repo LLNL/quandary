@@ -63,11 +63,11 @@ def compare_two_files(basefile, currentfile, tolerance, isBitWiseStr):
 
             if error > float(tolerance):
                 print("-- Error is too big ", error)
-                return sys.exit(1)
+                assert False
             else:
                 overall_error = np.maximum(overall_error, error)
         print("-- Test passed! error is ", overall_error)
-        return sys.exit(0)
+        assert True
 
 
 if __name__ == '__main__':
