@@ -1,11 +1,13 @@
 import glob
 import pytest
 import os
+import pandas as pd
 import subprocess
 
 from compare_two_files import compare_two_files
 
-TOL = 1.0e-7
+REL_TOL = 1.0e-7
+ABS_TOL = 1.0e-15
 TEST_DIR = os.path.dirname(os.path.realpath(__file__))
 QUANDARY = os.path.join(TEST_DIR, "..", "quandary")
 
@@ -45,8 +47,14 @@ def test_eval(simulation_name, files_to_compare):
     for expected in matching_files:
         file_name = os.path.basename(expected)
         output = os.path.join(simulation_dir, "data_out", file_name)
-        compare_files_old(output, expected)
+        compare_files(file_name, output, expected)
+
+
+def compare_files(file_name, output, expected):
+        df_output = pd.read_csv(output, sep="\\s+")
+        df_expected = pd.read_csv(expected, sep="\\s+")
+        pd.testing.assert_frame_equal(df_output, df_expected, rtol=REL_TOL, atol=ABS_TOL, obj=file_name)
 
 
 def compare_files_old(output, expected):
-    compare_two_files(expected, output, TOL, 0)
+    compare_two_files(expected, output, REL_TOL, 0)
