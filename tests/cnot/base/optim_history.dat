@@ -1,2 +1,2 @@
-#iter    Objective           ||Pr(grad)||           LS step           F_avg           Terminal cost       Tikhonov-regul      Penalty-term       DpDm           Energy-term
-00000  5.62278061727574e-01  4.26439971721373e-03  0.00000000  4.37476606688745e-01  5.62278052998605e-01  8.72896883884913e-09  0.00000000000000e+00  0.00000000000000e+00  0.00000000000000e+00
+#iter    Objective           ||Pr(grad)||           LS step           F_avg           Terminal cost         Tikhonov-regul        Penalty-term          State variation        Energy-term           Control variation
+00000  5.62278061727574e-01  4.26439971721372e-03  0.00000000  4.37476606688745e-01  5.62278052998606e-01  8.72896883884913e-09  0.00000000000000e+00  0.00000000000000e+00  0.00000000000000e+00  0.00000000000000e+00
