@@ -33,7 +33,7 @@ Output::Output(MapParam& config, MPI_Comm comm_petsc, MPI_Comm comm_init, int no
     char filename[255];
     snprintf(filename, 254, "%s/optim_history.dat", datadir.c_str());
     optimfile = fopen(filename, "w");
-    fprintf(optimfile, "#iter    Objective           ||Pr(grad)||           LS step           F_avg           Terminal cost         Tikhonov-regul        Penalty-term          State variation        Energy-term           Control variation\n");
+    fprintf(optimfile, "#\"iter\"    \"Objective\"           \"||Pr(grad)||\"           \"LS step\"           \"F_avg\"           \"Terminal cost\"         \"Tikhonov-regul\"        \"Penalty-term\"          \"State variation\"        \"Energy-term\"           \"Control variation\"\n");
   } 
 
   /* Read from config what output is desired */
@@ -128,7 +128,7 @@ void Output::writeControls(Vec params, MasterEq* mastereq, int ntime, double dt)
     for (int ioscil = 0; ioscil < mastereq->getNOscillators(); ioscil++) {
       snprintf(filename, 254, "%s/control%d.dat", datadir.c_str(), ioscil);
       file_c = fopen(filename, "w");
-      fprintf(file_c, "# time         p(t) (rotating)          q(t) (rotating)         f(t) (labframe) \n");
+      fprintf(file_c, "#\"time\"         \"p(t) (rotating)\"          \"q(t) (rotating)\"         \"f(t) (labframe)\"\n");
 
       /* Write every <num> timestep to file */
       for (int i=0; i<=ntime; i+=output_frequency) {
@@ -170,13 +170,13 @@ void Output::openDataFiles(std::string prefix, int initid){
         if (outputstr[i][j].compare("expectedEnergy") == 0) {
           snprintf(filename, 254, "%s/expected%d.iinit%04d.dat", datadir.c_str(), i, initid);
           expectedfile[i] = fopen(filename, "w");
-          fprintf(expectedfile[i], "# time      expected energy level\n");
+          fprintf(expectedfile[i], "#\"time\"      \"expected energy level\"\n");
         }
         if (outputstr[i][j].compare("expectedEnergyComposite") == 0) writeExpComp = true;
         if (outputstr[i][j].compare("population") == 0) {
           snprintf(filename, 254, "%s/population%d.iinit%04d.dat", datadir.c_str(), i, initid);
           populationfile[i] = fopen(filename, "w");
-          fprintf(populationfile[i], "# time      diagonal of the density matrix \n");
+          fprintf(populationfile[i], "#\"time\"      \"diagonal of the density matrix\"\n");
         }
         if (outputstr[i][j].compare("populationComposite") == 0) writePopComp = true;
       }
@@ -184,12 +184,12 @@ void Output::openDataFiles(std::string prefix, int initid){
     if (writeExpComp){
       snprintf(filename, 254, "%s/expected_composite.iinit%04d.dat", datadir.c_str(), initid);
       expectedfile_comp = fopen(filename, "w");
-      fprintf(expectedfile_comp, "# time      expected energy level\n");
+      fprintf(expectedfile_comp, "#\"time\"      \"expected energy level\"\n");
     }
     if (writePopComp){
       snprintf(filename, 254, "%s/population_composite.iinit%04d.dat", datadir.c_str(), initid);
       populationfile_comp = fopen(filename, "w");
-      fprintf(populationfile_comp, "# time      population \n");
+      fprintf(populationfile_comp, "#\"time\"      \"population\"\n");
     }
 
   }
