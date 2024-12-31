@@ -1,2 +1,2 @@
-#iter    Objective           ||Pr(grad)||           LS step           F_avg           Terminal cost         Tikhonov-regul        Penalty-term          State variation        Energy-term           Control variation
+#"iter"    "Objective"           "||Pr(grad)||"           "LS step"           "F_avg"           "Terminal cost"         "Tikhonov-regul"        "Penalty-term"          "State variation"        "Energy-term"           "Control variation"
 00000  7.49748482040047e-01  8.86022744866375e-05  0.00000000  2.50089269772306e-01  7.49748482040047e-01  0.00000000000000e+00  0.00000000000000e+00  0.00000000000000e+00  0.00000000000000e+00  0.00000000000000e+00
