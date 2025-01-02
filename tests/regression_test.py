@@ -27,7 +27,7 @@ def load_test_cases():
 test_cases = load_test_cases()
 
 
-@pytest.mark.parametrize("test_case", test_cases)
+@pytest.mark.parametrize("test_case", test_cases, ids=lambda x: x["simulation_name"])
 def test_eval(test_case):
     simulation_name = test_case["simulation_name"]
     files_to_compare = test_case["files_to_compare"]
