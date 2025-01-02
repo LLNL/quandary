@@ -1,0 +1,24 @@
+{
+    "type": "array",
+    "items": {
+        "type": "object",
+        "properties": {
+            "simulation_name": {
+                "type": "string"
+            },
+            "files_to_compare": {
+                "type": "array",
+                "items": {
+                    "type": "string"
+                }
+            },
+            "number_of_processes": {
+                "type": "array",
+                "items": {
+                    "type": "integer"
+                }
+            }
+        },
+        "required": ["simulation_name", "files_to_compare", "number_of_processes"]
+    }
+}
