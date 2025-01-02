@@ -8,6 +8,10 @@ from compare_two_files import compare_two_files
 
 REL_TOL = 1.0e-7
 ABS_TOL = 1.0e-15
+
+BASE_DIR = "base"
+DATA_OUT_DIR = "data_out"
+
 TEST_DIR = os.path.dirname(os.path.realpath(__file__))
 QUANDARY = os.path.join(TEST_DIR, "..", "quandary")
 
@@ -43,10 +47,10 @@ def test_eval(simulation_name, files_to_compare):
     result = subprocess.run(command, capture_output=True, text=True, check=True)
     assert result.returncode == 0
 
-    matching_files = [file for pattern in files_to_compare for file in glob.glob(os.path.join(simulation_dir, "base", pattern))]
+    matching_files = [file for pattern in files_to_compare for file in glob.glob(os.path.join(simulation_dir, BASE_DIR, pattern))]
     for expected in matching_files:
         file_name = os.path.basename(expected)
-        output = os.path.join(simulation_dir, "data_out", file_name)
+        output = os.path.join(simulation_dir, DATA_OUT_DIR, file_name)
         compare_files(file_name, output, expected)
 
 
