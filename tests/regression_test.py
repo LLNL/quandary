@@ -3,6 +3,7 @@ import pytest
 import os
 import pandas as pd
 import subprocess
+import json
 
 REL_TOL = 1.0e-7
 ABS_TOL = 1.0e-15
@@ -11,37 +12,34 @@ BASE_DIR = "base"
 DATA_OUT_DIR = "data_out"
 
 TEST_DIR = os.path.dirname(os.path.realpath(__file__))
+TEST_CASES = os.path.join(TEST_DIR, "test_cases.json")
 QUANDARY = os.path.join(TEST_DIR, "..", "quandary")
 
-BASE_TEST_SET = ["grad.dat", "optim_history.dat"]
-EXTENDED_TEST_SET = BASE_TEST_SET + ["rho*.dat", "population*.dat"]
 
-TEST_CASES = [
-    ("AxC", EXTENDED_TEST_SET),
-    ("AxC_detuning", BASE_TEST_SET),
-    ("AxC_groundstate", BASE_TEST_SET),
-    ("AxC_initBasis0", BASE_TEST_SET),
-    ("AxC_initDiag0", BASE_TEST_SET),
-    ("AxC_initFile", BASE_TEST_SET),
-    ("AxC_schroedinger_matfree", BASE_TEST_SET),
-    ("cnot", EXTENDED_TEST_SET),
-    ("cnot-schroedinger", BASE_TEST_SET),
-    ("hadamard", BASE_TEST_SET),
-    ("pipulse", EXTENDED_TEST_SET),
-    ("qubit", BASE_TEST_SET),
-    ("xgate", EXTENDED_TEST_SET),
-    ("ygate", BASE_TEST_SET),
-    ("zgate", BASE_TEST_SET),
-]
+def load_test_cases():
+     with open(TEST_CASES) as f:
+          return json.load(f)
+
+test_cases = load_test_cases()
 
 
-@pytest.mark.parametrize("simulation_name,files_to_compare", TEST_CASES)
-def test_eval(simulation_name, files_to_compare):
+@pytest.mark.parametrize("test_case", test_cases)
+def test_eval(test_case):
+    simulation_name = test_case["simulation_name"]
+    files_to_compare = test_case["files_to_compare"]
+    number_of_processes_list = test_case["number_of_processes"]
+
     simulation_dir = os.path.join(TEST_DIR, simulation_name)
     config_file = os.path.join(simulation_dir, simulation_name + ".cfg")
 
+    for number_of_processes in number_of_processes_list:
+        run_test(simulation_dir, number_of_processes, config_file, files_to_compare)
+
+
+def run_test(simulation_dir, number_of_processes, config_file, files_to_compare):
     os.chdir(simulation_dir)
-    command = [QUANDARY, config_file]
+    command = ["mpirun", "-n", str(number_of_processes), QUANDARY, config_file]
+    print(command)
     result = subprocess.run(command, capture_output=True, text=True, check=True)
     assert result.returncode == 0
 
