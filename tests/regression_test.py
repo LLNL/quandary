@@ -4,6 +4,7 @@ import os
 import pandas as pd
 import subprocess
 import json
+from jsonschema import validate
 
 REL_TOL = 1.0e-7
 ABS_TOL = 1.0e-15
@@ -13,12 +14,15 @@ DATA_OUT_DIR = "data_out"
 
 TEST_DIR = os.path.dirname(os.path.realpath(__file__))
 TEST_CASES = os.path.join(TEST_DIR, "test_cases.json")
+TEST_CASE_SCHEMA = os.path.join(TEST_DIR, "test_case_schema.json")
 QUANDARY = os.path.join(TEST_DIR, "..", "quandary")
 
-
 def load_test_cases():
-     with open(TEST_CASES) as f:
-          return json.load(f)
+    with open(TEST_CASES) as test_cases_file, open(TEST_CASE_SCHEMA) as schema_file:
+        test_cases = json.load(test_cases_file)
+        schema = json.load(schema_file)
+        validate(instance=test_cases, schema=schema)
+        return test_cases
 
 test_cases = load_test_cases()
 
