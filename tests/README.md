@@ -24,3 +24,15 @@ See `pytest --help` for more options.
     - The `simulation_name` should be the new directory name, e.g. `newSimulation`.
     - The `files_to_compare` should be an array of output files that should be compared to the expected files in the base directory. You can list them individually or use a regex.
     - The `number_of_processes` is an array of integers. For each integer `i`, a simulation will be run with `mpirun -n ${i}` and the `files_to_compare` will be validated.
+
+## Rebasing tests
+
+To update expected test output for a single simulation, you can do, e.g.:
+```
+./rebaseTests.sh AxC
+```
+
+To update all tests:
+```
+./rebaseTests.sh
+```
