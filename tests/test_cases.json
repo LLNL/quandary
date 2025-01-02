@@ -1,0 +1,160 @@
+[
+    {
+        "simulation_name": "AxC",
+        "files_to_compare": [
+            "grad.dat",
+            "optim_history.dat",
+            "rho*.dat",
+            "population*.dat"
+        ],
+        "number_of_processes": [
+            1
+        ]
+    },
+    {
+        "simulation_name": "AxC_detuning",
+        "files_to_compare": [
+            "grad.dat",
+            "optim_history.dat"
+        ],
+        "number_of_processes": [
+            1
+        ]
+    },
+    {
+        "simulation_name": "AxC_groundstate",
+        "files_to_compare": [
+            "grad.dat",
+            "optim_history.dat"
+        ],
+        "number_of_processes": [
+            1
+        ]
+    },
+    {
+        "simulation_name": "AxC_initBasis0",
+        "files_to_compare": [
+            "grad.dat",
+            "optim_history.dat"
+        ],
+        "number_of_processes": [
+            1
+        ]
+    },
+    {
+        "simulation_name": "AxC_initDiag0",
+        "files_to_compare": [
+            "grad.dat",
+            "optim_history.dat"
+        ],
+        "number_of_processes": [
+            1
+        ]
+    },
+    {
+        "simulation_name": "AxC_initFile",
+        "files_to_compare": [
+            "grad.dat",
+            "optim_history.dat"
+        ],
+        "number_of_processes": [
+            1
+        ]
+    },
+    {
+        "simulation_name": "AxC_schroedinger_matfree",
+        "files_to_compare": [
+            "grad.dat",
+            "optim_history.dat"
+        ],
+        "number_of_processes": [
+            1
+        ]
+    },
+    {
+        "simulation_name": "cnot",
+        "files_to_compare": [
+            "grad.dat",
+            "optim_history.dat",
+            "rho*.dat",
+            "population*.dat"
+        ],
+        "number_of_processes": [
+            1
+        ]
+    },
+    {
+        "simulation_name": "cnot-schroedinger",
+        "files_to_compare": [
+            "grad.dat",
+            "optim_history.dat"
+        ],
+        "number_of_processes": [
+            1
+        ]
+    },
+    {
+        "simulation_name": "hadamard",
+        "files_to_compare": [
+            "grad.dat",
+            "optim_history.dat"
+        ],
+        "number_of_processes": [
+            1
+        ]
+    },
+    {
+        "simulation_name": "pipulse",
+        "files_to_compare": [
+            "grad.dat",
+            "optim_history.dat",
+            "rho*.dat",
+            "population*.dat"
+        ],
+        "number_of_processes": [
+            1
+        ]
+    },
+    {
+        "simulation_name": "qubit",
+        "files_to_compare": [
+            "grad.dat",
+            "optim_history.dat"
+        ],
+        "number_of_processes": [
+            1
+        ]
+    },
+    {
+        "simulation_name": "xgate",
+        "files_to_compare": [
+            "grad.dat",
+            "optim_history.dat",
+            "rho*.dat",
+            "population*.dat"
+        ],
+        "number_of_processes": [
+            1
+        ]
+    },
+    {
+        "simulation_name": "ygate",
+        "files_to_compare": [
+            "grad.dat",
+            "optim_history.dat"
+        ],
+        "number_of_processes": [
+            1
+        ]
+    },
+    {
+        "simulation_name": "zgate",
+        "files_to_compare": [
+            "grad.dat",
+            "optim_history.dat"
+        ],
+        "number_of_processes": [
+            1
+        ]
+    }
+]
