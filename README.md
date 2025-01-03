@@ -35,13 +35,22 @@ The 'PETSC_ARCH' variable is not needed in this case.
 Depending on your setup, you might need to load some additional modules, such as openmpi, e.g. as so:
 * `module load openmpi`
 
-## Installation
-Adapt the beginning of the 'Makefile' to set the path to your Petsc (and possibly Slepsc, python path, and fitpackpp) installation, if not exported. Then,
-* `make cleanup` to clean the build directory. (Note the *up* in *cleanup*.)
-* `make quandary` to build the code (or 'make -j quandary' for faster build using multiple threads)
-
-It is advised to add Quandary to your `PATH`, e.g.
-* `export PATH=$PATH:/path/to/quandary/`
+## Building
+Quandary uses CMake and BLT to handle builds. Since BLT is included as a
+submodule, first make sure you run:
+```
+git submodule init && git submodule update
+```
+Then, you can build quandary with:
+```
+mkdir build && cd build
+cmake ..
+make
+```
+To use SLEPc, you can pass a flag to `cmake`:
+```
+cmake -DWITH_SLEPC=ON ..
+```
 
 **Optional:** To run Quandary from within a Python environment, you should have a working python interpreter with numpy and matplotlib installed. Then, append Quandary's location to your `PYTHONPATH`, e.g. with  
 * `export PYTHONPATH=$PYTHONPATH:/path/to/quandary/`
