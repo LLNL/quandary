@@ -1,9 +1,10 @@
 import glob
-import pytest
-import os
-import pandas as pd
-import subprocess
 import json
+import os
+import subprocess
+
+import pandas as pd
+import pytest
 from jsonschema import validate
 
 REL_TOL = 1.0e-7
