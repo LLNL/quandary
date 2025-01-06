@@ -10,3 +10,5 @@ quandary
 *.pdf
 *.DS_Store
 quandary.code-workspace
+.spack_env/.spack-env/
+.spack_env/spack.lock

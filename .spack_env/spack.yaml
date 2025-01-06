@@ -1,0 +1,15 @@
+# This is a Spack Environment file.
+#
+# It describes a set of packages to be installed, along with
+# configuration settings.
+spack:
+  # add package specs to the `specs` list
+  specs:
+  - petsc
+  - slepc
+  - python
+  - py-numpy
+  - py-matplotlib
+  view: true
+  concretizer:
+    unify: true

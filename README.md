@@ -6,7 +6,27 @@ It is advised to look at the user guide in `doc/`, describing the underlying mat
 Feel free to reach out to Stefanie Guenther [guenther5@llnl.gov] for any question you may have. 
 
 ## Dependencies
-This project relies on Petsc [https://petsc.org/release/] to handle (parallel) linear algebra. Optionally Slepsc [https://slepc.upv.es] can be used to solve some eigenvalue problems if desired (e.g. for the Hessian...)
+This project relies on Petsc [https://petsc.org/release/] to handle (parallel) linear algebra. Optionally Slepsc [https://slepc.upv.es] can be used to solve some eigenvalue problems if desired (e.g. for the Hessian...).
+These dependencies can either be installed using Spack or manually.
+
+### Spack
+Petc, Slepc, and other dependencies such as Python packages can be managed and installed using Spack.
+
+1. To install Spack, clone the repo and add to your shell following the steps [here](https://spack.readthedocs.io/en/latest/getting_started.html#installation).
+
+2. To activate Quandary's spack environment, run:
+    ```
+    spack env activate .spack_env/
+    ```
+
+3. Finally, to install necessary dependencies, run:
+    ```
+    spack install
+    ```
+    Note: This step could take a while.
+
+### Manually
+
 * **Required:** Install Petsc:
 
     Check out [https://petsc.org/release/] for the latest installation guide. On MacOS, you can also `brew install petsc`. As a quick start, you can also try the below:
