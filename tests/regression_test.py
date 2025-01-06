@@ -13,28 +13,28 @@ ABS_TOL = 1.0e-15
 BASE_DIR = "base"
 DATA_OUT_DIR = "data_out"
 
-TEST_DIR = os.path.dirname(os.path.realpath(__file__))
-TEST_CASES = os.path.join(TEST_DIR, "test_cases.json")
-TEST_CASE_SCHEMA = os.path.join(TEST_DIR, "test_case_schema.json")
-QUANDARY = os.path.join(TEST_DIR, "..", "quandary")
+TEST_PATH = os.path.dirname(os.path.realpath(__file__))
+TEST_CASES_PATH = os.path.join(TEST_PATH, "test_cases.json")
+TEST_CASE_SCHEMA_PATH = os.path.join(TEST_PATH, "test_case_schema.json")
+QUANDARY_PATH = os.path.join(TEST_PATH, "..", "quandary")
 
 def load_test_cases():
-    with open(TEST_CASES) as test_cases_file, open(TEST_CASE_SCHEMA) as schema_file:
+    with open(TEST_CASES_PATH) as test_cases_file, open(TEST_CASE_SCHEMA_PATH) as schema_file:
         test_cases = json.load(test_cases_file)
         schema = json.load(schema_file)
         validate(instance=test_cases, schema=schema)
         return test_cases
 
-test_cases = load_test_cases()
+TEST_CASES = load_test_cases()
 
 
-@pytest.mark.parametrize("test_case", test_cases, ids=lambda x: x["simulation_name"])
+@pytest.mark.parametrize("test_case", TEST_CASES, ids=lambda x: x["simulation_name"])
 def test_eval(test_case):
     simulation_name = test_case["simulation_name"]
     files_to_compare = test_case["files_to_compare"]
     number_of_processes_list = test_case["number_of_processes"]
 
-    simulation_dir = os.path.join(TEST_DIR, simulation_name)
+    simulation_dir = os.path.join(TEST_PATH, simulation_name)
     config_file = os.path.join(simulation_dir, simulation_name + ".cfg")
 
     for number_of_processes in number_of_processes_list:
@@ -43,7 +43,7 @@ def test_eval(test_case):
 
 def run_test(simulation_dir, number_of_processes, config_file, files_to_compare):
     os.chdir(simulation_dir)
-    command = ["mpirun", "-n", str(number_of_processes), QUANDARY, config_file]
+    command = ["mpirun", "-n", str(number_of_processes), QUANDARY_PATH, config_file]
     print(command)
     result = subprocess.run(command, capture_output=True, text=True, check=True)
     assert result.returncode == 0
