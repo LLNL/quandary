@@ -1,7 +1,8 @@
 .vscode
 *.out
 *.dat
-build/*
+*build*
+quandary-*.cmake
 /quandary
 *.aux
 *.log
