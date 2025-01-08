@@ -3,13 +3,16 @@
 # It describes a set of packages to be installed, along with
 # configuration settings.
 spack:
-  # add package specs to the `specs` list
+  repos: [../.spack_packages/]
   specs:
-  - petsc
-  - slepc
+  - quandary@develop+slepc
   - python
   - py-numpy
   - py-matplotlib
   view: true
   concretizer:
     unify: true
+  develop:
+    quandary:
+      path: ../
+      spec: quandary@=develop
