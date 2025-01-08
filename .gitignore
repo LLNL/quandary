@@ -2,7 +2,7 @@
 *.out
 *.dat
 build/*
-quandary
+/quandary
 *.aux
 *.log
 *.err
@@ -10,5 +10,7 @@ quandary
 *.pdf
 *.DS_Store
 quandary.code-workspace
+__pycache__
+run_dir/
 .spack_env/.spack-env/
 .spack_env/spack.lock
