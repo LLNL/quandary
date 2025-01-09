@@ -5,7 +5,7 @@
 spack:
   repos: [../.spack_packages/]
   specs:
-  - quandary@develop+slepc
+  - quandary@develop+slepc+debug
   - python
   - py-numpy
   - py-matplotlib
