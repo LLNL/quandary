@@ -10,12 +10,8 @@ blt_add_executable(
     SOURCES ${SRC_FILES}
     HEADERS ${HEADER_FILES}
     INCLUDES ${INC_DIR}
+    DEPENDS_ON blt::mpi
 )
-
-# MPI
-find_package(MPI REQUIRED)
-target_include_directories(quandary PRIVATE ${MPI_INCLUDE_PATH})
-target_link_libraries(quandary PRIVATE ${MPI_LIBRARIES})
 
 # PETSc
 find_package(PkgConfig REQUIRED)
