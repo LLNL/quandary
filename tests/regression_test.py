@@ -1,11 +1,10 @@
 import glob
-import json
 import os
 import subprocess
-
 import pandas as pd
 import pytest
-from jsonschema import validate
+from pydantic import BaseModel, TypeAdapter
+from typing import List
 
 REL_TOL = 1.0e-7
 ABS_TOL = 1.0e-15
@@ -18,21 +17,28 @@ TEST_CASES_PATH = os.path.join(TEST_PATH, "test_cases.json")
 TEST_CASE_SCHEMA_PATH = os.path.join(TEST_PATH, "test_case_schema.json")
 QUANDARY_PATH = os.path.join(TEST_PATH, "..", "quandary")
 
+
+class Case(BaseModel):
+    simulation_name: str
+    files_to_compare: List[str]
+    number_of_processes: List[int]
+
+
 def load_test_cases():
-    with open(TEST_CASES_PATH) as test_cases_file, open(TEST_CASE_SCHEMA_PATH) as schema_file:
-        test_cases = json.load(test_cases_file)
-        schema = json.load(schema_file)
-        validate(instance=test_cases, schema=schema)
+    with open(TEST_CASES_PATH) as test_cases_file:
+        ta = TypeAdapter(List[Case])
+        test_cases = ta.validate_json(test_cases_file.read())
         return test_cases
+
 
 TEST_CASES = load_test_cases()
 
 
-@pytest.mark.parametrize("test_case", TEST_CASES, ids=lambda x: x["simulation_name"])
-def test_eval(test_case):
-    simulation_name = test_case["simulation_name"]
-    files_to_compare = test_case["files_to_compare"]
-    number_of_processes_list = test_case["number_of_processes"]
+@pytest.mark.parametrize("test_case", TEST_CASES, ids=lambda x: x.simulation_name)
+def test_eval(test_case: Case):
+    simulation_name = test_case.simulation_name
+    files_to_compare = test_case.files_to_compare
+    number_of_processes_list = test_case.number_of_processes
 
     simulation_dir = os.path.join(TEST_PATH, simulation_name)
     config_file = os.path.join(simulation_dir, simulation_name + ".cfg")
