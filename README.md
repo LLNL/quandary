@@ -5,12 +5,17 @@ It is advised to look at the user guide in `doc/`, describing the underlying mat
 
 Feel free to reach out to Stefanie Guenther [guenther5@llnl.gov] for any question you may have. 
 
-## Dependencies
+## Building
+Quandary uses CMake and BLT to handle builds. Since BLT is included as a
+submodule, first make sure you run:
+```
+git submodule init && git submodule update
+```
+
 This project relies on Petsc [https://petsc.org/release/] to handle (parallel) linear algebra. Optionally Slepsc [https://slepc.upv.es] can be used to solve some eigenvalue problems if desired (e.g. for the Hessian...).
-These dependencies can either be installed using Spack or manually.
 
 ### Spack
-Petc, Slepc, and other dependencies such as Python packages can be managed and installed using Spack.
+Petc, Slepc, and other dependencies such as Python packages can be managed and installed using Spack. Additionally, Spack can build Quandary itself from your local source code.
 
 1. To install Spack, clone the repo and add to your shell following the steps [here](https://spack.readthedocs.io/en/latest/getting_started.html#installation).
 
@@ -19,13 +24,20 @@ Petc, Slepc, and other dependencies such as Python packages can be managed and i
     spack env activate .spack_env/
     ```
 
-3. Finally, to install necessary dependencies, run:
+3. Trust Spack's binary mirror so we can speed up the installation process:
+    ```
+    spack buildcache keys --install --trust
+    ```
+4. Finally, to install the necessary dependencies and build Quandary run:
     ```
     spack install
     ```
-    Note: This step could take a while.
+    Note: This step could take a while the first time.
 
-### Manually
+Note that `spack install` will build Quandary using CMake from your local source code. The second time you run this is should be much faster, only looking for changes in the environment or local code. By default the specification in the Spack environment `.spack_env/spack.yaml` includes Slepc and Petsc in debug mode (`quandary+slepc+debug`).
+
+## Manually installing dependencies
+If you don't want to use Spack to install dependencies as explained above, you can follow these steps to install Petsc and optionally Slepc.
 
 * **Required:** Install Petsc:
 
@@ -45,23 +57,9 @@ Petc, Slepc, and other dependencies such as Python packages can be managed and i
 * **Optional:** Install Slepsc
     * Read the docs here: [https://slepc.upv.es/documentation/slepc.pdf]
 
-###  Petsc on LLNL's LC
-Petc is already installed on LLNL LC machines, see here [https://hpc.llnl.gov/software/mathematical-software/petsc]. It is located at '/usr/tce/packages/petsc/<version>'. To use it, export the 'PETSC_DIR' variable to point to the Petsc folder, and add the 'lib' subfolder to the 'LD_LIBRARY_PATH` variable: 
-* `export PETSC_DIR=/usr/tce/packages/petsc/<version>` (check the folder name for version number)
-* `export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$PETSC_DIR/lib`
 
-The 'PETSC_ARCH' variable is not needed in this case. 
-
-Depending on your setup, you might need to load some additional modules, such as openmpi, e.g. as so:
-* `module load openmpi`
-
-## Building
-Quandary uses CMake and BLT to handle builds. Since BLT is included as a
-submodule, first make sure you run:
-```
-git submodule init && git submodule update
-```
-Then, you can build quandary with:
+## Building without Spack
+If you don't want to use Spack to build Quandary, as explained above, you can build directly with CMake, using:
 ```
 mkdir build && cd build
 cmake ..
