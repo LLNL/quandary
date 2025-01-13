@@ -19,16 +19,21 @@ Petc, Slepc, and other dependencies such as Python packages can be managed and i
 
 1. To install Spack, clone the repo and add to your shell following the steps [here](https://spack.readthedocs.io/en/latest/getting_started.html#installation).
 
-2. To activate Quandary's spack environment, run:
+2. To setup your compilers in your local Spack configuration:
+   ```
+   spack compiler find
+   ```
+
+3. To activate Quandary's spack environment, run:
     ```
     spack env activate .spack_env/
     ```
 
-3. Trust Spack's binary mirror so we can speed up the installation process:
+4. Trust Spack's binary mirror so we can speed up the installation process:
     ```
     spack buildcache keys --install --trust
     ```
-4. Finally, to install the necessary dependencies and build Quandary run:
+5. Finally, to install the necessary dependencies and build Quandary run:
     ```
     spack install
     ```
