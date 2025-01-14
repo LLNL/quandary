@@ -20,8 +20,8 @@ class Quandary(CachedCMakePackage):
 
     depends_on("cxx", type="build")
 
-    depends_on("petsc")
-    depends_on("petsc+debug", when="+debug")
+    depends_on("petsc~hypre~metis~fortran")
+    depends_on("petsc~hypre~metis~fortran+debug", when="+debug")
     depends_on("slepc", when="+slepc")
 
     variant("slepc", default=False, description="Build with Slepc library")
