@@ -95,6 +95,24 @@ The code builds into the executable `quandary`. It takes one argument being the 
 * `./quandary config_template.cfg`
 * `mpirun -np 4 ./quandary config_template.cfg --quiet`
 
+## Tests
+
+### Unit tests
+Unit tests are written with [gtest](https://github.com/google/googletest).
+
+If using Spack to build, the unit tests can be run with
+```
+spack install --test root
+```
+
+If using CMake to build, unit tests can be run with
+```
+make test
+```
+Arguments can be passed in with, e.g., `make test ARGS="--rerun-failed --output-on-failure"`.
+
+### Regression tests
+Can be run with `pytest`. See tests/README.md for more information.
 
 ## Community and Contributing
 
