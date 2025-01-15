@@ -14,3 +14,4 @@ set(ENABLE_MPI ON CACHE BOOL "")
 include(blt/SetupBLT.cmake)
 
 add_subdirectory(src)
+add_subdirectory(unit_tests)

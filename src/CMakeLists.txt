@@ -2,24 +2,31 @@
 set(SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 set(INC_DIR ${PROJECT_SOURCE_DIR}/include)
 file(GLOB_RECURSE SRC_FILES ${SRC_DIR}/*.cpp)
+list(REMOVE_ITEM SRC_FILES ${SRC_DIR}/main.cpp)
 file(GLOB_RECURSE HEADER_FILES ${INC_DIR}/*.hpp)
 
 # Target definition
-blt_add_executable(
-    NAME quandary
+blt_add_library(
+    NAME quandary_lib
     SOURCES ${SRC_FILES}
     HEADERS ${HEADER_FILES}
     INCLUDES ${INC_DIR}
     DEPENDS_ON blt::mpi
 )
 
+blt_add_executable(
+    NAME quandary
+    SOURCES ${SRC_DIR}/main.cpp
+    DEPENDS_ON quandary_lib
+)
+
 # PETSc
 find_package(PkgConfig REQUIRED)
 pkg_search_module(PETSC REQUIRED IMPORTED_TARGET PETSc)
-target_link_libraries(quandary PRIVATE PkgConfig::PETSC)
+target_link_libraries(quandary_lib PRIVATE PkgConfig::PETSC)
 
 # Other libraries
-target_link_libraries(quandary PRIVATE m blas lapack)
+target_link_libraries(quandary_lib PRIVATE m blas lapack)
 
 # Put executable in root directory
 set_target_properties(
