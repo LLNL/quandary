@@ -41,6 +41,16 @@ Petc, Slepc, and other dependencies such as Python packages can be managed and i
 
 Note that `spack install` will build Quandary using CMake from your local source code. The second time you run this is should be much faster, only looking for changes in the environment or local code. By default the specification in the Spack environment `.spack_env/spack.yaml` includes Slepc and Petsc in debug mode (`quandary+slepc+debug`).
 
+#### Optional Spack environment variations
+The spack environment used to build Quandary as well as the python packages needed for tests and python interface are all defined in `.spack_env/spack.yaml`. You can add or remove packages from the `specs` list as needed or use different variants of these.
+
+For instance, if you want to include Slepc, you can change `quandary@develop` to `quandary@develop+slepc`. Or, if you want if you want to use Slepc and the debug variant (which builds Petsc in debug mode) you can use `quandary@develop+slepc+debug`. To use a specific version of Petsc instead of the latest release, you can do e.g. `quandary@develop^petsc@3.22.1`.
+
+These changes will be tracked by git, so if you want them to be locally ignored you can do
+`git update-index --assume-unchanged .spack_env/spack.yaml`
+This can be undone with
+`git update-index --no-assume-unchanged .spack_env/spack.yaml`
+
 ## Manually installing dependencies
 If you don't want to use Spack to install dependencies as explained above, you can follow these steps to install Petsc and optionally Slepc.
 
