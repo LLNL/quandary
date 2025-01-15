@@ -6,7 +6,7 @@ It is advised to look at the user guide in `doc/`, describing the underlying mat
 Feel free to reach out to Stefanie Guenther [guenther5@llnl.gov] for any question you may have. 
 
 ## Building
-Quandary uses CMake and BLT to handle builds. Since BLT is included as a
+Quandary uses CMake and [BLT](https://github.com/LLNL/blt) to handle builds. Since BLT is included as a
 submodule, first make sure you run:
 ```
 git submodule init && git submodule update
