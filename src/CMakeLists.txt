@@ -49,3 +49,7 @@ if(WITH_SLEPC)
     target_link_libraries(quandary PRIVATE PkgConfig::SLEPC)
     target_compile_options(quandary PRIVATE -DWITH_SLEPC)
 endif()
+
+# Suppress compiler warnings temporarily
+# TODO fix these and remove this!
+add_definitions(-w)
