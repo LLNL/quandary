@@ -62,12 +62,13 @@ If you don't want to use Spack to install dependencies as explained above, you c
     * `cd petsc-<version>`
     * Configure Petsc with `./configure`. Please check [https://petsc.org/release/install/install_tutorial] for optional arguments. For example, 
         `./configure --prefix=/YOUR/INSTALL/DIR --with-debugging=0 --with-fc=0 --with-cxx=mpicxx --with-cc=mpicc COPTFLAGS='-O3' CXXOPTFLAGS='-O3'`
-    * The output of `./configure` reports on how to set the `PETSC_DIR` and `PETSC_ARCH` variables
+    * The output of `./configure` reports on how to set the `PETSC_DIR` and `PETSC_ARCH` variables.
+    You can export them or just note them, they are only needed for the PkgConfig step below.
         * `export PETSC_DIR=/YOUR/INSTALL/DIR`
         * `export PETSC_ARCH=/YOUR/ARCH/PREFIX`
     * Compile petsc with `make all check'
-    * Append Petsc directory to the `LD_LIBRARY_PATH`:
-        * `export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$PETSC_DIR/$PETSC_ARCH/lib`
+    * Tell PkgConfig (used by CMake) how to find the Petsc:
+        * `export PKG_CONFIG_PATH=$PETSC_DIR/$PETSC_ARCH/lib/pkgconfig/:$PKG_CONFIG_PATH`
 
 * **Optional:** Install Slepsc
     * Read the docs here: [https://slepc.upv.es/documentation/slepc.pdf]
