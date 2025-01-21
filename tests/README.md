@@ -36,3 +36,10 @@ To update all tests:
 ```
 ./rebaseTests.sh
 ```
+
+## Exact comparison
+Normally the tests compare the numerical data of the expected and output files with a relative and absolute tolerance defined in the `regression_test.py`.
+To instead do an exact comparison, you can do:
+```
+pytest --exact
+```

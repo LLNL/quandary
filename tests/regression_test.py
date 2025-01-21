@@ -35,7 +35,9 @@ TEST_CASES = load_test_cases()
 
 
 @pytest.mark.parametrize("test_case", TEST_CASES, ids=lambda x: x.simulation_name)
-def test_eval(test_case: Case):
+def test_eval(test_case: Case, request):
+    exact = request.config.getoption("--exact")
+
     simulation_name = test_case.simulation_name
     files_to_compare = test_case.files_to_compare
     number_of_processes_list = test_case.number_of_processes
@@ -44,10 +46,10 @@ def test_eval(test_case: Case):
     config_file = os.path.join(simulation_dir, simulation_name + ".cfg")
 
     for number_of_processes in number_of_processes_list:
-        run_test(simulation_dir, number_of_processes, config_file, files_to_compare)
+        run_test(simulation_dir, number_of_processes, config_file, files_to_compare, exact)
 
 
-def run_test(simulation_dir, number_of_processes, config_file, files_to_compare):
+def run_test(simulation_dir, number_of_processes, config_file, files_to_compare, exact):
     os.chdir(simulation_dir)
     command = ["mpirun", "-n", str(number_of_processes), QUANDARY_PATH, config_file]
     print(command)
@@ -58,13 +60,13 @@ def run_test(simulation_dir, number_of_processes, config_file, files_to_compare)
     for expected in matching_files:
         file_name = os.path.basename(expected)
         output = os.path.join(simulation_dir, DATA_OUT_DIR, file_name)
-        compare_files(file_name, output, expected)
+        compare_files(file_name, output, expected, exact)
 
 
-def compare_files(file_name, output, expected):
+def compare_files(file_name, output, expected, exact):
     df_output = pd.read_csv(output, sep="\\s+", header=get_header(output))
     df_expected = pd.read_csv(expected, sep="\\s+", header=get_header(output))
-    pd.testing.assert_frame_equal(df_output, df_expected, rtol=REL_TOL, atol=ABS_TOL, obj=file_name)
+    pd.testing.assert_frame_equal(df_output, df_expected, rtol=REL_TOL, atol=ABS_TOL, obj=file_name, check_exact=exact)
 
 
 def get_header(path):
