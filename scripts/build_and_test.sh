@@ -1,14 +1,55 @@
 #!/bin/bash
 
-set -e
+set -e -x
 
-echo "~~~~~~~~~~ START:build_and_test.sh ~~~~~~~~~~~"
+project_dir="$(pwd)"
+hostconfig=${HOST_CONFIG:-""}
 
-export PETSC_DIR=/usr/tce/packages/petsc/petsc-3.18.3
-export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$PETSC_DIR/lib
+# Uberenv
+uberenv_cmd="./scripts/uberenv/uberenv.py"
+${uberenv_cmd}
 
-make cleanup
-make quandary
-./tests/runRegressionTests.sh
+# Find cmake cache file (hostconfig)
+if [[ -z ${hostconfig} ]]
+then
+    # If no host config file was provided, we assume it was generated.
+    # This means we are looking of a unique one in project dir.
+    hostconfigs=( $( ls "${project_dir}/"*.cmake ) )
+    if [[ ${#hostconfigs[@]} == 1 ]]
+    then
+        hostconfig_path=${hostconfigs[0]}
+    elif [[ ${#hostconfigs[@]} == 0 ]]
+    then
+        echo "[Error]: No result for: ${project_dir}/*.cmake"
+        echo "[Error]: Spack generated host-config not found."
+        exit 1
+    else
+        echo "[Error]: More than one result for: ${project_dir}/*.cmake"
+        echo "[Error]: ${hostconfigs[@]}"
+        echo "[Error]: Please specify one with HOST_CONFIG variable"
+        exit 1
+    fi
+else
+    # Using provided host-config file.
+    hostconfig_path="${project_dir}/${hostconfig}"
+fi
 
-echo "~~~~~~~~~~ END:build_and_test.sh ~~~~~~~~~~~~~"
+hostconfig=$(basename ${hostconfig_path})
+echo "[Information]: Found hostconfig ${hostconfig_path}"
+
+# Build
+cmake_exe=`grep 'CMake executable' ${hostconfig_path} | cut -d ':' -f 2 | xargs`
+build_dir="build_${hostconfig//.cmake/}"
+
+rm -rf ${build_dir} 2>/dev/null
+mkdir -p ${build_dir} && cd ${build_dir}
+$cmake_exe -C ${hostconfig_path} ${project_dir}
+
+make
+
+# Test
+ctest
+
+# cd ..
+# pytest tests/
+
