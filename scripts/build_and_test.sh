@@ -21,6 +21,18 @@ truehostname=${hostname//[0-9]/}
 project_dir="$(pwd)"
 
 hostconfig=${HOST_CONFIG:-""}
+spec=${SPEC:-""}
+job_unique_id=${CI_JOB_ID:-""}
+spack_debug=${SPACK_DEBUG:-false}
+debug_mode=${DEBUG_MODE:-false}
+push_to_registry=${PUSH_TO_REGISTRY:-true}
+
+# REGISTRY_TOKEN allows you to provide your own personal access token to the CI
+# registry. Be sure to set the token with at least read access to the registry.
+registry_token=${REGISTRY_TOKEN:-""}
+ci_registry_user=${CI_REGISTRY_USER:-"${USER}"}
+ci_registry_image=${CI_REGISTRY_IMAGE:-"czregistry.llnl.gov:5050/quantum1/quandary"}
+ci_registry_token=${CI_JOB_TOKEN:-"${registry_token}"}
 
 timed_message ()
 {
@@ -29,6 +41,19 @@ timed_message ()
     echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
 }
 
+if [[ ${debug_mode} == true ]]
+then
+    echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+    echo "~~~~~ Debug mode:"
+    echo "~~~~~ - Spack debug mode."
+    echo "~~~~~ - Deactivated shared memory."
+    echo "~~~~~ - Do not push to buildcache."
+    echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+    spack_debug=true
+    push_to_registry=false
+fi
+
+# We set the prefix in the parent directory so that spack dependencies are not installed inside the source tree.
 prefix="${project_dir}/../spack-and-build-root"
 
 echo "Creating directory ${prefix}"
@@ -39,9 +64,20 @@ mkdir -p ${prefix}
 spack_cmd="${prefix}/spack/bin/spack"
 spack_env_path="${prefix}/spack_env"
 uberenv_cmd="./scripts/uberenv/uberenv.py"
+if [[ ${spack_debug} == true ]]
+then
+    spack_cmd="${spack_cmd} --debug --stacktrace"
+    uberenv_cmd="${uberenv_cmd} --spack-debug"
+fi
 
 # Dependencies
 timed_message "Building dependencies"
+
+if [[ -z ${spec} ]]
+then
+    echo "[Error]: SPEC is undefined, aborting..."
+    exit 1
+fi
 
 prefix_opt="--prefix=${prefix}"
 
@@ -53,7 +89,25 @@ export SPACK_DISABLE_LOCAL_CONFIG=""
 export SPACK_USER_CACHE_PATH="${spack_user_cache}"
 mkdir -p ${spack_user_cache}
 
-${uberenv_cmd} ${prefix_opt}
+# generate cmake cache file with uberenv and radiuss spack package
+timed_message "Spack setup and environment"
+${uberenv_cmd} --setup-and-env-only --spec="${spec}" ${prefix_opt}
+
+if [[ -n ${ci_registry_token} ]]
+then
+    timed_message "GitLab registry as Spack Buildcache"
+    ${spack_cmd} -D ${spack_env_path} mirror add --unsigned --oci-username ${ci_registry_user} --oci-password ${ci_registry_token} gitlab_ci oci://${ci_registry_image}
+fi
+
+timed_message "Spack build of dependencies"
+${uberenv_cmd} --skip-setup-and-env --spec="${spec}" ${prefix_opt}
+
+if [[ -n ${ci_registry_token} && ${push_to_registry} == true ]]
+then
+    timed_message "Push dependencies to buildcache"
+    ${spack_cmd} -D ${spack_env_path} buildcache push --only dependencies gitlab_ci
+fi
+
 timed_message "Dependencies built"
 
 # Find cmake cache file (hostconfig)
@@ -106,29 +160,66 @@ rm -rf ${build_dir} 2>/dev/null
 mkdir -p ${build_dir} && cd ${build_dir}
 
 timed_message "Building Quandary"
+# We set the MPI tests command to allow overlapping.
+# Shared allocation: Allows build_and_test.sh to run within a sub-allocation (see CI config).
 cmake_options=""
 if [[ "${truehostname}" == "ruby" || "${truehostname}" == "poodle" ]]
 then
     cmake_options="-DBLT_MPI_COMMAND_APPEND:STRING=--overlap"
 fi
 
-if [[ "${truehostname}" == "corona" || "${truehostname}" == "tioga" ]]
-then
-    module unload rocm
-fi
 $cmake_exe \
     -C ${hostconfig_path} \
     ${cmake_options} \
     ${project_dir}
 
-make
+if ! $cmake_exe --build . -j
+then
+    echo "[Error]: Compilation failed, building with verbose output..."
+    timed_message "Re-building with --verbose"
+    $cmake_exe --build . --verbose -j 1
+fi
 
 timed_message "Quandary built"
 
 # Test
+if [[ ! -d ${build_dir} ]]
+then
+    echo "[Error]: Build directory not found : ${build_dir}" && exit 1
+fi
+
+cd ${build_dir}
+
 timed_message "Testing Quandary"
-ctest
+ctest --output-on-failure --no-compress-output -T test -VV 2>&1 | tee tests_output.txt
+
+no_test_str="No tests were found!!!"
+if [[ "$(tail -n 1 tests_output.txt)" == "${no_test_str}" ]]
+then
+    echo "[Error]: No tests were found" && exit 1
+fi
+
+timed_message "Preparing testing xml reports for export"
+tree Testing
+xsltproc -o junit.xml ${project_dir}/blt/tests/ctest-to-junit.xsl Testing/*/Test.xml
+mv junit.xml ${project_dir}/junit.xml
+
+if grep -q "Errors while running CTest" ./tests_output.txt
+then
+    echo "[Error]: Failure(s) while running CTest" && exit 1
+fi
 
 # cd ..
 # pytest tests/
 timed_message "Quandary tests completed"
+
+cd ${project_dir}
+
+timed_message "Build and test completed"
+echo "~~~~~ To reproduce this build on ${truehostname}:"
+echo ""
+echo " git checkout `git rev-parse HEAD` && git submodule update --init --recursive"
+echo ""
+echo "SPACK_DISABLE_LOCAL_CONFIG=\"\" SPACK_USER_CACHE_PATH=\"ci_spack_cache\" python3 scripts/uberenv/uberenv.py --prefix=/tmp/\$(whoami)/uberenv --spec=\"${spec}\""
+echo ""
+echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
