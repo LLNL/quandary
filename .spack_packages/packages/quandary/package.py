@@ -27,6 +27,12 @@ class Quandary(CachedCMakePackage):
     variant("slepc", default=False, description="Build with Slepc library")
     variant("debug", default=False, description="Debug mode")
 
+    variant("test", default=False, description="Add dependencies needed for testing")
+
+    with when("+test"):
+        depends_on("py-pandas", type="run")
+        depends_on("py-pytest", type="run")
+
     build_targets = ["all"]
     install_targets = []
 

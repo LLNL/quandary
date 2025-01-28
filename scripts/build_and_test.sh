@@ -79,6 +79,7 @@ then
     exit 1
 fi
 
+spec="+test ${spec}"
 prefix_opt="--prefix=${prefix}"
 
 # We force Spack to put all generated files (cache and configuration of
@@ -209,8 +210,9 @@ then
     echo "[Error]: Failure(s) while running CTest" && exit 1
 fi
 
-# cd ..
-# pytest tests/
+cd ${project_dir}
+pytest -v tests
+
 timed_message "Quandary tests completed"
 
 cd ${project_dir}
