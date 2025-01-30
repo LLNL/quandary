@@ -211,6 +211,11 @@ then
 fi
 
 cd ${project_dir}
+
+timed_message "Install python test dependencies and run pytests"
+
+python -m pip install -r requirements.txt
+
 pytest -v tests
 
 timed_message "Quandary tests completed"

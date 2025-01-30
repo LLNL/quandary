@@ -30,8 +30,8 @@ class Quandary(CachedCMakePackage):
     variant("test", default=False, description="Add dependencies needed for testing")
 
     with when("+test"):
-        depends_on("py-pandas", type="run")
-        depends_on("py-pytest", type="run")
+        depends_on("python", type="run")
+        depends_on("py-pip", type="run")
 
     build_targets = ["all"]
     install_targets = []
