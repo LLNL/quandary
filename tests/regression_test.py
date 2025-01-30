@@ -14,7 +14,6 @@ DATA_OUT_DIR = "data_out"
 
 TEST_PATH = os.path.dirname(os.path.realpath(__file__))
 TEST_CASES_PATH = os.path.join(TEST_PATH, "test_cases.json")
-TEST_CASE_SCHEMA_PATH = os.path.join(TEST_PATH, "test_case_schema.json")
 QUANDARY_PATH = os.path.join(TEST_PATH, "..", "quandary")
 
 
