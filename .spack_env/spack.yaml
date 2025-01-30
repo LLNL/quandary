@@ -11,6 +11,7 @@ spack:
   - py-matplotlib
   # tests
   - py-pandas
+  - py-pydantic
   - py-pytest
   view: true
   concretizer:
