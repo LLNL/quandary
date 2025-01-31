@@ -16,6 +16,7 @@ fi
 set -o errexit
 set -o nounset
 
+option=${1:-""}
 hostname="$(hostname)"
 truehostname=${hostname//[0-9]/}
 project_dir="$(pwd)"
@@ -71,45 +72,48 @@ then
 fi
 
 # Dependencies
-timed_message "Building dependencies"
-
-if [[ -z ${spec} ]]
+if [[ "${option}" != "--build-only" && "${option}" != "--test-only" ]]
 then
-    echo "[Error]: SPEC is undefined, aborting..."
-    exit 1
+    timed_message "Building dependencies"
+
+    if [[ -z ${spec} ]]
+    then
+        echo "[Error]: SPEC is undefined, aborting..."
+        exit 1
+    fi
+
+    spec="+test ${spec}"
+    prefix_opt="--prefix=${prefix}"
+
+    # We force Spack to put all generated files (cache and configuration of
+    # all sorts) in a unique location so that there can be no collision
+    # with existing or concurrent Spack.
+    spack_user_cache="${prefix}/spack-user-cache"
+    export SPACK_DISABLE_LOCAL_CONFIG=""
+    export SPACK_USER_CACHE_PATH="${spack_user_cache}"
+    mkdir -p ${spack_user_cache}
+
+    # generate cmake cache file with uberenv and radiuss spack package
+    timed_message "Spack setup and environment"
+    ${uberenv_cmd} --setup-and-env-only --spec="${spec}" ${prefix_opt}
+
+    if [[ -n ${ci_registry_token} ]]
+    then
+        timed_message "GitLab registry as Spack Buildcache"
+        ${spack_cmd} -D ${spack_env_path} mirror add --unsigned --oci-username ${ci_registry_user} --oci-password ${ci_registry_token} gitlab_ci oci://${ci_registry_image}
+    fi
+
+    timed_message "Spack build of dependencies"
+    ${uberenv_cmd} --skip-setup-and-env --spec="${spec}" ${prefix_opt}
+
+    if [[ -n ${ci_registry_token} && ${push_to_registry} == true ]]
+    then
+        timed_message "Push dependencies to buildcache"
+        ${spack_cmd} -D ${spack_env_path} buildcache push --only dependencies gitlab_ci
+    fi
+
+    timed_message "Dependencies built"
 fi
-
-spec="+test ${spec}"
-prefix_opt="--prefix=${prefix}"
-
-# We force Spack to put all generated files (cache and configuration of
-# all sorts) in a unique location so that there can be no collision
-# with existing or concurrent Spack.
-spack_user_cache="${prefix}/spack-user-cache"
-export SPACK_DISABLE_LOCAL_CONFIG=""
-export SPACK_USER_CACHE_PATH="${spack_user_cache}"
-mkdir -p ${spack_user_cache}
-
-# generate cmake cache file with uberenv and radiuss spack package
-timed_message "Spack setup and environment"
-${uberenv_cmd} --setup-and-env-only --spec="${spec}" ${prefix_opt}
-
-if [[ -n ${ci_registry_token} ]]
-then
-    timed_message "GitLab registry as Spack Buildcache"
-    ${spack_cmd} -D ${spack_env_path} mirror add --unsigned --oci-username ${ci_registry_user} --oci-password ${ci_registry_token} gitlab_ci oci://${ci_registry_image}
-fi
-
-timed_message "Spack build of dependencies"
-${uberenv_cmd} --skip-setup-and-env --spec="${spec}" ${prefix_opt}
-
-if [[ -n ${ci_registry_token} && ${push_to_registry} == true ]]
-then
-    timed_message "Push dependencies to buildcache"
-    ${spack_cmd} -D ${spack_env_path} buildcache push --only dependencies gitlab_ci
-fi
-
-timed_message "Dependencies built"
 
 # Find cmake cache file (hostconfig)
 if [[ -z ${hostconfig} ]]
@@ -147,81 +151,88 @@ build_dir="${build_root}/build_${hostconfig//.cmake/}"
 cmake_exe=`grep 'CMake executable' ${hostconfig_path} | cut -d ':' -f 2 | xargs`
 
 # Build
-echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
-echo "~~~~~ Prefix: ${prefix}"
-echo "~~~~~ Host-config: ${hostconfig_path}"
-echo "~~~~~ Build Dir:   ${build_dir}"
-echo "~~~~~ Project Dir: ${project_dir}"
-echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
-echo ""
-timed_message "Cleaning working directory"
-
-# If building, then delete everything first
-rm -rf ${build_dir} 2>/dev/null
-mkdir -p ${build_dir} && cd ${build_dir}
-
-timed_message "Building Quandary"
-# We set the MPI tests command to allow overlapping.
-# Shared allocation: Allows build_and_test.sh to run within a sub-allocation (see CI config).
-cmake_options=""
-if [[ "${truehostname}" == "ruby" || "${truehostname}" == "poodle" ]]
+if [[ "${option}" != "--deps-only" && "${option}" != "--test-only" ]]
 then
-    cmake_options="-DBLT_MPI_COMMAND_APPEND:STRING=--overlap"
+    echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+    echo "~~~~~ Prefix: ${prefix}"
+    echo "~~~~~ Host-config: ${hostconfig_path}"
+    echo "~~~~~ Build Dir:   ${build_dir}"
+    echo "~~~~~ Project Dir: ${project_dir}"
+    echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+    echo ""
+    timed_message "Cleaning working directory"
+
+    # If building, then delete everything first
+    rm -rf ${build_dir} 2>/dev/null
+    mkdir -p ${build_dir} && cd ${build_dir}
+
+    timed_message "Building Quandary"
+    # We set the MPI tests command to allow overlapping.
+    # Shared allocation: Allows build_and_test.sh to run within a sub-allocation (see CI config).
+    cmake_options=""
+    if [[ "${truehostname}" == "ruby" || "${truehostname}" == "poodle" ]]
+    then
+        cmake_options="-DBLT_MPI_COMMAND_APPEND:STRING=--overlap"
+    fi
+
+    $cmake_exe \
+        -C ${hostconfig_path} \
+        ${cmake_options} \
+        ${project_dir}
+
+    if ! $cmake_exe --build . -j
+    then
+        echo "[Error]: Compilation failed, building with verbose output..."
+        timed_message "Re-building with --verbose"
+        $cmake_exe --build . --verbose -j 1
+    fi
+
+    timed_message "Quandary built"
 fi
-
-$cmake_exe \
-    -C ${hostconfig_path} \
-    ${cmake_options} \
-    ${project_dir}
-
-if ! $cmake_exe --build . -j
-then
-    echo "[Error]: Compilation failed, building with verbose output..."
-    timed_message "Re-building with --verbose"
-    $cmake_exe --build . --verbose -j 1
-fi
-
-timed_message "Quandary built"
 
 # Test
-if [[ ! -d ${build_dir} ]]
+if [[ "${option}" != "--build-only" ]]
 then
-    echo "[Error]: Build directory not found : ${build_dir}" && exit 1
+
+    if [[ ! -d ${build_dir} ]]
+    then
+        echo "[Error]: Build directory not found : ${build_dir}" && exit 1
+    fi
+
+    cd ${build_dir}
+
+    timed_message "Testing Quandary"
+    ctest --output-on-failure --no-compress-output -T test -VV 2>&1 | tee tests_output.txt
+
+    no_test_str="No tests were found!!!"
+    if [[ "$(tail -n 1 tests_output.txt)" == "${no_test_str}" ]]
+    then
+        echo "[Error]: No tests were found" && exit 1
+    fi
+
+    timed_message "Preparing testing xml reports for export"
+    tree Testing
+    xsltproc -o junit.xml ${project_dir}/blt/tests/ctest-to-junit.xsl Testing/*/Test.xml
+    mv junit.xml ${project_dir}/junit.xml
+
+    if grep -q "Errors while running CTest" ./tests_output.txt
+    then
+        echo "[Error]: Failure(s) while running CTest" && exit 1
+    fi
+
+    cd ${project_dir}
+
+    timed_message "Install python test dependencies and run pytests"
+
+    eval `${spack_cmd} -D ${spack_env_path} load --sh python`
+    eval `${spack_cmd} -D ${spack_env_path} load --sh mpi`
+
+    python -m pip install -r requirements.txt
+
+    python -m pytest -v tests
+
+    timed_message "Quandary tests completed"
 fi
-
-cd ${build_dir}
-
-timed_message "Testing Quandary"
-ctest --output-on-failure --no-compress-output -T test -VV 2>&1 | tee tests_output.txt
-
-no_test_str="No tests were found!!!"
-if [[ "$(tail -n 1 tests_output.txt)" == "${no_test_str}" ]]
-then
-    echo "[Error]: No tests were found" && exit 1
-fi
-
-timed_message "Preparing testing xml reports for export"
-tree Testing
-xsltproc -o junit.xml ${project_dir}/blt/tests/ctest-to-junit.xsl Testing/*/Test.xml
-mv junit.xml ${project_dir}/junit.xml
-
-if grep -q "Errors while running CTest" ./tests_output.txt
-then
-    echo "[Error]: Failure(s) while running CTest" && exit 1
-fi
-
-cd ${project_dir}
-
-timed_message "Install python test dependencies and run pytests"
-
-eval `${spack_cmd} -D ${spack_env_path} load --sh python`
-eval `${spack_cmd} -D ${spack_env_path} load --sh mpi`
-
-python -m pip install -r requirements.txt
-
-python -m pytest -v tests
-
-timed_message "Quandary tests completed"
 
 cd ${project_dir}
 
