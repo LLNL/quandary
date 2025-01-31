@@ -214,9 +214,12 @@ cd ${project_dir}
 
 timed_message "Install python test dependencies and run pytests"
 
+eval `${spack_cmd} -D ${spack_env_path} load --sh python`
+eval `${spack_cmd} -D ${spack_env_path} load --sh mpi`
+
 python -m pip install -r requirements.txt
 
-pytest -v tests
+python -m pytest -v tests
 
 timed_message "Quandary tests completed"
 
