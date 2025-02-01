@@ -32,6 +32,7 @@ class Quandary(CachedCMakePackage):
     with when("+test"):
         depends_on("python", type="run")
         depends_on("py-pip", type="run")
+        depends_on("mpi", type="run")
 
     build_targets = ["all"]
     install_targets = []
