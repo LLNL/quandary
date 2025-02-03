@@ -54,6 +54,7 @@ def run_test(simulation_dir, number_of_processes, config_file, files_to_compare,
     command = [mpi_exec, "-n", str(number_of_processes), QUANDARY_PATH, config_file]
     print(f"Running command: \"{' '.join(command)}\"")
     result = subprocess.run(command, capture_output=True, text=True, check=True)
+    print(result.stdout)
     assert result.returncode == 0
 
     matching_files = [file for pattern in files_to_compare for file in glob.glob(os.path.join(simulation_dir, BASE_DIR, pattern))]
