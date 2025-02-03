@@ -225,11 +225,11 @@ then
     timed_message "Install python test dependencies and run pytests"
 
     eval `${spack_cmd} -D ${spack_env_path} load --sh python`
-    eval `${spack_cmd} -D ${spack_env_path} load --sh mpi`
+    mpi_exe=`grep 'MPIEXEC_EXECUTABLE' ${hostconfig_path} | cut -d'"' -f2`
 
     python -m pip install -r requirements.txt
 
-    python -m pytest -v tests
+    python -m pytest -v -s tests --mpi-exec=${mpi_exe}
 
     timed_message "Quandary tests completed"
 fi

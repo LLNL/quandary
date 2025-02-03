@@ -5,3 +5,10 @@ def pytest_addoption(parser):
         default=False,
         help="Use exact comparison for floating point numbers"
     )
+
+    parser.addoption(
+        "--mpi-exec",
+        action="store",
+        default="mpirun",
+        help="Path to the MPI executable (e.g., mpirun or srun)"
+    )
