@@ -52,7 +52,7 @@ def test_eval(test_case: Case, request):
 def run_test(simulation_dir, number_of_processes, config_file, files_to_compare, exact, mpi_exec):
     os.chdir(simulation_dir)
     command = [mpi_exec, "-n", str(number_of_processes), QUANDARY_PATH, config_file]
-    print(command)
+    print(f"Running command: \"{' '.join(command)}\"")
     result = subprocess.run(command, capture_output=True, text=True, check=True)
     assert result.returncode == 0
 
