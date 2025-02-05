@@ -23,24 +23,10 @@
 variables:
   INCLUDED_FILE_CANNOT_BE_EMPTY: "True"
 
-###############
-# Explanations:
-###############
-# RADIUSS Shared CI provides a pipeline for each machine, where a template job
-# is provided. Each of your jobs must extend this template to be added to the
-# list of jobs running on the associated machine.
-#
-# The job template then expects you to define the "JOB_CMD" variable with the
-# one line command used to trigger the build and test of your project.
-#
-# We suggest that you set your command in such a way that you can then
-# customize it per job with variables. E.g.:
-# "./path/to/my_ci_script ${A_VARIABLE}"
-
-## Adding jobs defined by the project.
-## Note: placing the extends section first allows you to override part of the
-## shared implementation if needed (and if you know what you are doing).
-#<job-name (typically build target description)>:
-#  extends: .job_on_<machine>
-#  variables:
-#    <A_VARIABLE>: "<with job specific value>"
+########################
+# Overridden shared jobs
+########################
+oneapi_2023_2_1:
+  variables:
+    ON_RUBY: "OFF"
+  extends: .job_on_ruby
