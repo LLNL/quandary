@@ -97,6 +97,8 @@ then
     timed_message "Spack setup and environment"
     ${uberenv_cmd} --setup-and-env-only --spec="${spec}" ${prefix_opt}
 
+    ${spack_cmd} -D ${spack_env_path} config add view:true
+
     if [[ -n ${ci_registry_token} ]]
     then
         timed_message "GitLab registry as Spack Buildcache"
@@ -222,14 +224,15 @@ then
 
     cd ${project_dir}
 
-    timed_message "Install python test dependencies and run pytests"
+    timed_message "Install python test dependencies"
 
-    eval `${spack_cmd} -D ${spack_env_path} load --sh python`
-    mpi_exe=`grep 'MPIEXEC_EXECUTABLE' ${hostconfig_path} | cut -d'"' -f2`
-
+    eval `${spack_cmd} env activate ${spack_env_path} --sh`
     python -m pip install -r requirements.txt
 
-    python -m pytest -v -s tests --mpi-exec=${mpi_exe}
+    timed_message "Run regression tests"
+
+    mpi_exe=`grep 'MPIEXEC_EXECUTABLE' ${hostconfig_path} | cut -d'"' -f2`
+    pytest -v -s tests --mpi-exec=${mpi_exe}
 
     timed_message "Quandary tests completed"
 fi
