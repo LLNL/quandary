@@ -5,23 +5,10 @@
 # SPDX-License-Identifier: (MIT)
 ###############################################################################
 
-# We require project to define their job command using a variable (JOB_CMD).
-# In customization/gitlab-ci.yml, we encourage to define this variable as
-# non-expandable, so that project can use nested variables to configure the job
-# command. The caveat is that the reproducer here cannot capture the
-# definition of these variables in a generic fashion. By overriding the
-# following section, projects can specify the variables to define in the
-# reproducer to exactly reproduce the CI build.
+# Override reproducer section to define project specific variables.
 .ruby_reproducer_vars:
   script:
-    - |
-      echo -e "# Define project specific variables here if any."
-      #echo -e "export <CUSTOM_VAR>=\"${<CUSTOM_VAR>}\""
-
-# With GitLab CI, included files cannot be empty.
-# TODO: remove when you have at least on job defined.
-variables:
-  INCLUDED_FILE_CANNOT_BE_EMPTY: "True"
+    - !reference [.reproducer_vars, script]
 
 ########################
 # Overridden shared jobs
