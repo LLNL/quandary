@@ -89,7 +89,6 @@ then
         exit 1
     fi
 
-    spec="+test ${spec}"
     prefix_opt="--prefix=${prefix}"
 
     # We force Spack to put all generated files (cache and configuration of

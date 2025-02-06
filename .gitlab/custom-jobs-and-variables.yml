@@ -17,8 +17,10 @@ variables:
   RUBY_SHARED_ALLOC: "--exclusive --reservation=ci --time=10 --nodes=2"
 # Arguments for job level allocation
   RUBY_JOB_ALLOC: "--reservation=ci --overlap --nodes=1"
-# Add variables that should apply to all the jobs on a machine:
-#  RUBY_MY_VAR: "..."
+# Project specific variants for ruby
+  PROJECT_RUBY_VARIANTS: "+test"
+# Project specific deps for ruby
+  PROJECT_RUBY_DEPS: ""
 
 # Tioga
 # Arguments for top level allocation
@@ -26,14 +28,18 @@ variables:
   TIOGA_SHARED_ALLOC: "--queue=pci --exclusive --time-limit=15m --nodes=1"
 # Arguments for job level allocation
   TIOGA_JOB_ALLOC: "--nodes=1 --begin-time=+5s"
-# Add variables that should apply to all the jobs on a machine:
-#  TIOGA_MY_VAR: "..."
+# Project specific variants for tioga
+  PROJECT_TIOGA_VARIANTS: "+test"
+# Project specific deps for tioga
+  PROJECT_TIOGA_DEPS: ""
 
 # Lassen uses a different job scheduler (spectrum lsf) that does not allow
 # pre-allocation the same way slurm does. Arguments for job level allocation
-  LASSEN_JOB_ALLOC: "1 -W 30 -q pci"
-# Add variables that should apply to all the jobs on a machine:
-#  LASSEN_MY_VAR: "..."
+  LASSEN_JOB_ALLOC: "1 -W 10 -q pci"
+# Project specific variants for lassen
+  PROJECT_LASSEN_VARIANTS: "+test"
+# Project specific deps for lassen
+  PROJECT_LASSEN_DEPS: ""
 
 # Configuration shared by build and test jobs specific to this project.
 # Not all configuration can be shared. Here projects can fine tune the
