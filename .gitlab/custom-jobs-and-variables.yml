@@ -20,23 +20,6 @@ variables:
 # Add variables that should apply to all the jobs on a machine:
 #  RUBY_MY_VAR: "..."
 
-# Poodle
-# Arguments for top level allocation
-  POODLE_SHARED_ALLOC: "--exclusive --partition=pdebug --time=10 --nodes=1"
-# Arguments for job level allocation
-  POODLE_JOB_ALLOC: "--nodes=1"
-# Add variables that should apply to all the jobs on a machine:
-#  POODLE_MY_VAR: "..."
-
-# Corona
-# Arguments for top level allocation
-# OPTIONAL: "-o per-resource.count=2" allows to get 2 jobs running on each node.
-  CORONA_SHARED_ALLOC: "--exclusive --time-limit=15m --nodes=1"
-# Arguments for job level allocation
-  CORONA_JOB_ALLOC: "--nodes=1 --begin-time=+5s"
-# Add variables that should apply to all the jobs on a machine:
-#  CORONA_MY_VAR: "..."
-
 # Tioga
 # Arguments for top level allocation
 # OPTIONAL: "-o per-resource.count=2" allows to get 2 jobs running on each node.
