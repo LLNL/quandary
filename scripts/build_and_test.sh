@@ -23,6 +23,7 @@ project_dir="$(pwd)"
 
 hostconfig=${HOST_CONFIG:-""}
 spec=${SPEC:-""}
+module_list=${MODULE_LIST:-""}
 job_unique_id=${CI_JOB_ID:-""}
 spack_debug=${SPACK_DEBUG:-false}
 debug_mode=${DEBUG_MODE:-false}
@@ -52,6 +53,12 @@ then
     echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
     spack_debug=true
     push_to_registry=false
+fi
+
+if [[ -n ${module_list} ]]
+then
+    timed_message "Modules to load: ${module_list}"
+    module load ${module_list}
 fi
 
 # We set the prefix in the parent directory so that spack dependencies are not installed inside the source tree.
