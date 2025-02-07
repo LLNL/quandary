@@ -6,7 +6,7 @@
 from spack.package import *
 
 
-class Quandary(CachedCMakePackage):
+class Quandary(CachedCMakePackage, CudaPackage, ROCmPackage):
     """Optimal control for open quantum systems"""
 
     homepage = "https://github.com/LLNL/quandary"
