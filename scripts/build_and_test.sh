@@ -62,7 +62,7 @@ then
 fi
 
 # We set the prefix in the parent directory so that spack dependencies are not installed inside the source tree.
-prefix="${project_dir}/../spack-and-build-root"
+prefix="${project_dir}/../build"
 
 echo "Creating directory ${prefix}"
 echo "project_dir: ${project_dir}"
@@ -94,7 +94,7 @@ then
     # We force Spack to put all generated files (cache and configuration of
     # all sorts) in a unique location so that there can be no collision
     # with existing or concurrent Spack.
-    spack_user_cache="${prefix}/spack-user-cache"
+    spack_user_cache="${prefix}/cache"
     export SPACK_DISABLE_LOCAL_CONFIG=""
     export SPACK_USER_CACHE_PATH="${spack_user_cache}"
     mkdir -p ${spack_user_cache}
