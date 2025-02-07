@@ -14,7 +14,7 @@ variables:
 
 # Ruby
 # Arguments for top level allocation
-  RUBY_SHARED_ALLOC: "--exclusive --reservation=ci --time=10 --nodes=2"
+  RUBY_SHARED_ALLOC: "--exclusive --reservation=ci --time=15 --nodes=2"
 # Arguments for job level allocation
   RUBY_JOB_ALLOC: "--reservation=ci --overlap --nodes=1"
 # Project specific variants for ruby
@@ -25,7 +25,7 @@ variables:
 # Tioga
 # Arguments for top level allocation
 # OPTIONAL: "-o per-resource.count=2" allows to get 2 jobs running on each node.
-  TIOGA_SHARED_ALLOC: "--queue=pci --exclusive --time-limit=15m --nodes=1"
+  TIOGA_SHARED_ALLOC: "--queue=pci --exclusive --time-limit=20m --nodes=1 -o per-resource.count=2"
 # Arguments for job level allocation
   TIOGA_JOB_ALLOC: "--nodes=1 --begin-time=+5s"
 # Project specific variants for tioga
@@ -35,7 +35,7 @@ variables:
 
 # Lassen uses a different job scheduler (spectrum lsf) that does not allow
 # pre-allocation the same way slurm does. Arguments for job level allocation
-  LASSEN_JOB_ALLOC: "1 -W 10 -q pci"
+  LASSEN_JOB_ALLOC: "1 -W 30 -q pci"
 # Project specific variants for lassen
   PROJECT_LASSEN_VARIANTS: "+test^petsc~hdf5"
 # Project specific deps for lassen
