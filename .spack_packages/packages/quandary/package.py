@@ -24,6 +24,9 @@ class Quandary(CachedCMakePackage, CudaPackage, ROCmPackage):
     depends_on("petsc~hypre~metis~fortran+debug", when="+debug")
     depends_on("slepc", when="+slepc")
 
+    depends_on("petsc@main", when="+cuda")
+    depends_on("petsc@main", when="+rocm")
+
     variant("slepc", default=False, description="Build with Slepc library")
     variant("debug", default=False, description="Debug mode")
 

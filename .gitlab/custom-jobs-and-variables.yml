@@ -29,7 +29,7 @@ variables:
 # Arguments for job level allocation
   TIOGA_JOB_ALLOC: "--nodes=1 --begin-time=+5s"
 # Project specific variants for tioga
-  PROJECT_TIOGA_VARIANTS: "+test^petsc~hdf5"
+  PROJECT_TIOGA_VARIANTS: "+test^petsc@main~hdf5"
 # Project specific deps for tioga
   PROJECT_TIOGA_DEPS: ""
 
@@ -37,7 +37,7 @@ variables:
 # pre-allocation the same way slurm does. Arguments for job level allocation
   LASSEN_JOB_ALLOC: "1 -W 30 -q pci"
 # Project specific variants for lassen
-  PROJECT_LASSEN_VARIANTS: "+test^petsc~hdf5"
+  PROJECT_LASSEN_VARIANTS: "+test^petsc@main~hdf5"
 # Project specific deps for lassen
   PROJECT_LASSEN_DEPS: ""
 
