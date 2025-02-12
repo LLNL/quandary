@@ -18,9 +18,9 @@ variables:
 # Arguments for job level allocation
   RUBY_JOB_ALLOC: "--reservation=ci --overlap --nodes=1"
 # Project specific variants for ruby
-  PROJECT_RUBY_VARIANTS: "+test^petsc~hdf5"
+  PROJECT_RUBY_VARIANTS: "+test"
 # Project specific deps for ruby
-  PROJECT_RUBY_DEPS: ""
+  PROJECT_RUBY_DEPS: "^petsc~hdf5"
 
 # Tioga
 # Arguments for top level allocation
@@ -29,17 +29,17 @@ variables:
 # Arguments for job level allocation
   TIOGA_JOB_ALLOC: "--nodes=1 --begin-time=+5s"
 # Project specific variants for tioga
-  PROJECT_TIOGA_VARIANTS: "+test^petsc@main~hdf5"
+  PROJECT_TIOGA_VARIANTS: "+test"
 # Project specific deps for tioga
-  PROJECT_TIOGA_DEPS: ""
+  PROJECT_TIOGA_DEPS: "^petsc~hdf5"
 
 # Lassen uses a different job scheduler (spectrum lsf) that does not allow
 # pre-allocation the same way slurm does. Arguments for job level allocation
   LASSEN_JOB_ALLOC: "1 -W 30 -q pci"
 # Project specific variants for lassen
-  PROJECT_LASSEN_VARIANTS: "+test^petsc@main~hdf5"
+  PROJECT_LASSEN_VARIANTS: "+test"
 # Project specific deps for lassen
-  PROJECT_LASSEN_DEPS: ""
+  PROJECT_LASSEN_DEPS: "^petsc~hdf5"
 
 # Configuration shared by build and test jobs specific to this project.
 # Not all configuration can be shared. Here projects can fine tune the
