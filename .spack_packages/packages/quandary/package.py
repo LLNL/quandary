@@ -21,11 +21,18 @@ class Quandary(CachedCMakePackage, CudaPackage, ROCmPackage):
     depends_on("cxx", type="build")
 
     depends_on("petsc~hypre~metis~fortran")
-    depends_on("petsc~hypre~metis~fortran+debug", when="+debug")
+    depends_on("petsc+debug", when="+debug")
     depends_on("slepc", when="+slepc")
 
-    depends_on("petsc@main+cuda", when="+cuda")
-    depends_on("petsc@main+rocm", when="+rocm")
+    with when("+rocm"):
+        depends_on("petsc@main+rocm")
+        for arch_ in ROCmPackage.amdgpu_targets:
+            depends_on("petsc amdgpu_target={0}".format(arch_), when="amdgpu_target={0}".format(arch_))
+
+    with when("+cuda"):
+        depends_on("petsc@main+cuda")
+        for sm_ in CudaPackage.cuda_arch_values:
+            depends_on("petsc cuda_arch={0}".format(sm_), when="cuda_arch={0}".format(sm_))
 
     variant("slepc", default=False, description="Build with Slepc library")
     variant("debug", default=False, description="Debug mode")
