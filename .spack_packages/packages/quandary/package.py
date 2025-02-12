@@ -33,7 +33,7 @@ class Quandary(CachedCMakePackage, CudaPackage, ROCmPackage):
     variant("test", default=False, description="Add dependencies needed for testing")
 
     with when("+test"):
-        depends_on("python", type="run")
+        depends_on("python@3.9:", type="run")
         depends_on("py-pip", type="run")
         depends_on("mpi", type="run")
 
