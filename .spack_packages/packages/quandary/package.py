@@ -45,7 +45,7 @@ class Quandary(CachedCMakePackage, CudaPackage, ROCmPackage):
         depends_on("mpi", type="run")
 
     build_targets = ["all"]
-    install_targets = []
+    install_targets = ["install"]
 
     def cmake_args(self):
         args = []

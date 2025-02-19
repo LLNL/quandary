@@ -40,7 +40,7 @@ Additionally, Spack can build Quandary itself from your local source code.
     ```
     Note: This step could take a while the first time.
 
-Note that `spack install` will build Quandary using CMake from your local source code.
+Note that `spack install` will build Quandary using CMake from your local source code and install the binary in your Spack environment.
 The second time you run this is should be much faster, only looking for changes in the environment or local code.
 
 ### Python
@@ -100,6 +100,13 @@ To use SLEPc, you can pass a flag to `cmake`:
 ```
 cmake -DWITH_SLEPC=ON ..
 ```
+
+To install the quandary executable in `/usr/local/bin` (and so have in your `PATH`):
+```
+sudo cmake --install .
+```
+To choose a prefix other than `/usr/local` add `--prefix /custom/install/path `.
+Alternatively, you can do `export PATH=/path/to/quandary/:$PATH` so your binary can be found.
 
 **Optional:** To run Quandary from within a Python environment, you should have a working python interpreter with numpy and matplotlib installed. Then, append Quandary's location to your `PYTHONPATH`, e.g. with  
 * `export PYTHONPATH=$PYTHONPATH:/path/to/quandary/`

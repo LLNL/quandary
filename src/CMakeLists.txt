@@ -53,3 +53,8 @@ endif()
 # Suppress compiler warnings temporarily
 # TODO fix these and remove this!
 add_definitions(-w)
+
+install(
+    TARGETS quandary
+    RUNTIME DESTINATION bin
+)
