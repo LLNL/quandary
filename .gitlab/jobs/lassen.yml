@@ -27,7 +27,7 @@
 clang_12_0_1_ibm_gcc_8_3_1_cuda_11_2_0:
   variables:
     SPEC: "${PROJECT_LASSEN_VARIANTS} +cuda %clang@=12.0.1.ibm.gcc.8.3.1 ^cuda@11.2.0+allow-unsupported-compilers ${PROJECT_LASSEN_DEPS}"
-    MODULE_LIST: "cuda/10.1.243"
+    MODULE_LIST: "cuda/11.2.0"
   extends: [.job_on_lassen, .venv]
 
 clang_12_0_1_gcc_8_3_1_cuda_11_2_0:
