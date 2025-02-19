@@ -51,7 +51,7 @@ pip install -r requirements.txt
 Note: if you are using Spack, these will be installed in your Spack virtual environment.
 
 #### Optional Spack environment variations
-The Spack environment used to build Quandary as well as the python packages needed for tests and python interface are all defined in `.spack_env/spack.yaml`.
+The Spack environment used to build Quandary is defined in `.spack_env/spack.yaml`.
 You can add or remove packages from the `specs` list as needed or use different variants of these.
 
 For instance, if you want to include Slepc, you append `+slepc` to `quandary@develop+test`.
