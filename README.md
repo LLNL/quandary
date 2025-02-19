@@ -15,7 +15,8 @@ git submodule init && git submodule update
 This project relies on Petsc [https://petsc.org/release/] to handle (parallel) linear algebra. Optionally Slepsc [https://slepc.upv.es] can be used to solve some eigenvalue problems if desired (e.g. for the Hessian...).
 
 ### Spack
-Petc, Slepc, and other dependencies such as Python packages can be managed and installed using Spack. Additionally, Spack can build Quandary itself from your local source code.
+Petc, Slepc, and other dependencies such as Python packages can be managed and installed using Spack.
+Additionally, Spack can build Quandary itself from your local source code.
 
 1. To install Spack, clone the repo and add to your shell following the steps [here](https://spack.readthedocs.io/en/latest/getting_started.html#installation).
 
@@ -39,7 +40,8 @@ Petc, Slepc, and other dependencies such as Python packages can be managed and i
     ```
     Note: This step could take a while the first time.
 
-Note that `spack install` will build Quandary using CMake from your local source code. The second time you run this is should be much faster, only looking for changes in the environment or local code.
+Note that `spack install` will build Quandary using CMake from your local source code.
+The second time you run this is should be much faster, only looking for changes in the environment or local code.
 
 ### Python
 To install python dependencies for the python interface and tests, do:
@@ -49,11 +51,15 @@ pip install -r requirements.txt
 Note: if you are using Spack, these will be installed in your Spack virtual environment.
 
 #### Optional Spack environment variations
-The Spack environment used to build Quandary as well as the python packages needed for tests and python interface are all defined in `.spack_env/spack.yaml`. You can add or remove packages from the `specs` list as needed or use different variants of these.
+The Spack environment used to build Quandary as well as the python packages needed for tests and python interface are all defined in `.spack_env/spack.yaml`.
+You can add or remove packages from the `specs` list as needed or use different variants of these.
 
-For instance, if you want to include Slepc, you append `+slepc` to `quandary@develop+test`. Or, if you want if you want to use Slepc and the debug variant (which builds Petsc in debug mode) you can use `quandary@develop+test+slepc+debug`. To use a specific version of Petsc instead of the latest release, you can do e.g. `quandary@develop^petsc@3.22.1`.
+For instance, if you want to include Slepc, you append `+slepc` to `quandary@develop+test`.
+Or, if you want if you want to use Slepc and the debug variant (which builds Petsc in debug mode) you can use `quandary@develop+test+slepc+debug`.
+To use a specific version of Petsc instead of the latest release, you can do e.g. `quandary@develop^petsc@3.22.1`.
 
-The `+test` variant (by default on in `.spack_env/spack.yaml`) adds python and pip to the Spack environment. This allows `pip install` to install python packages to your Spack virtual environment rather than a global one.
+The `+test` variant (by default on in `.spack_env/spack.yaml`) adds python and pip to the Spack environment.
+This allows `pip install` to install python packages to your Spack virtual environment rather than a global one.
 
 These changes will be tracked by git, so if you want them to be locally ignored you can do
 `git update-index --assume-unchanged .spack_env/spack.yaml`
