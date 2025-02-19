@@ -240,7 +240,7 @@ then
     eval `${spack_cmd} env activate ${spack_env_path} --sh`
     python -m venv .venv
     source .venv/bin/activate
-    python -m pip install -r requirements.txt
+    python -m pip install -r tests/requirements.txt
 
     timed_message "Run regression tests"
 
