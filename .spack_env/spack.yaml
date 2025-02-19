@@ -5,14 +5,7 @@
 spack:
   repos: [../.spack_packages/]
   specs:
-  - quandary@develop
-  - python
-  - py-numpy
-  - py-matplotlib
-  # tests
-  - py-pandas
-  - py-pydantic
-  - py-pytest
+  - quandary@develop+test
   view: true
   concretizer:
     unify: true
