@@ -43,13 +43,6 @@ Additionally, Spack can build Quandary itself from your local source code.
 Note that `spack install` will build Quandary using CMake from your local source code and install the binary in your Spack environment.
 The second time you run this is should be much faster, only looking for changes in the environment or local code.
 
-### Python
-To install python dependencies for the python interface and tests, do:
-```
-pip install -r requirements.txt
-```
-Note: if you are using Spack, these will be installed in your Spack virtual environment.
-
 #### Optional Spack environment variations
 The Spack environment used to build Quandary is defined in `.spack_env/spack.yaml`.
 You can add or remove packages from the `specs` list as needed or use different variants of these.
@@ -65,6 +58,21 @@ These changes will be tracked by git, so if you want them to be locally ignored 
 `git update-index --assume-unchanged .spack_env/spack.yaml`
 This can be undone with
 `git update-index --no-assume-unchanged .spack_env/spack.yaml`
+
+### Python
+To install python dependencies for the python interface and tests, do:
+```
+pip install -e .
+```
+This will also allow the python interface (`quandary.py`) to be found by your python scripts.
+These packages will be installed in your Spack virtual environment.
+
+If you are **not** using Spack, you can create a virtual environment first like
+```
+python3 -m venv .venv
+source .venv/bin/activate
+```
+and then do the above `pip install` command.
 
 ## Manually installing dependencies
 If you don't want to use Spack to install dependencies as explained above, you can follow these steps to install Petsc and optionally Slepc.
