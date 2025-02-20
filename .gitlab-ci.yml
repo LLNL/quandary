@@ -78,7 +78,7 @@ configure_python:
     - module load gcc/12.2.1 python/3.11.5
     - python -m venv ${PYTHON_ENVIRONMENT_PATH}
     - source ${PYTHON_ENVIRONMENT_PATH}/bin/activate
-    - python -m pip install -r tests/requirements.txt
+    - python -m pip install -e .
   cache:
     key: venv
     paths:

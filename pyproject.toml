@@ -1,0 +1,22 @@
+[project]
+name = "quandary"
+version = "4.1.0"
+description = "Optimal control for open quantum systems"
+authors = [
+    {name = "Stefanie Guenther",email = "guenther5@llnl.gov"}
+]
+license = {text = "MIT"}
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "numpy (>=2.2.3,<3.0.0)",
+    "matplotlib (>=3.10.0,<4.0.0)",
+    "pytest (>=8.3.4,<9.0.0)",
+    "pandas (>=2.2.3,<3.0.0)",
+    "pydantic (>=2.10.6,<3.0.0)"
+]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
