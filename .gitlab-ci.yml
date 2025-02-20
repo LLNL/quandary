@@ -69,7 +69,7 @@ stages:
   - environment
   - build-and-test
 
-configure_python:
+configure-python:
   tags:
     - shell
     - lassen
