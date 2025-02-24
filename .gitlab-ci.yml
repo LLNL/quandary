@@ -73,6 +73,7 @@ configure-python:
   tags:
     - shell
     - lassen
+  needs: [lassen-up-check]
   stage: environment
   script:
     - module load gcc/12.2.1 python/3.11.5
