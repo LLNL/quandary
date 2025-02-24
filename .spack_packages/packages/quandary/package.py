@@ -25,12 +25,12 @@ class Quandary(CachedCMakePackage, CudaPackage, ROCmPackage):
     depends_on("slepc", when="+slepc")
 
     with when("+rocm"):
-        depends_on("petsc@main+rocm")
+        depends_on("petsc+rocm")
         for arch_ in ROCmPackage.amdgpu_targets:
             depends_on("petsc amdgpu_target={0}".format(arch_), when="amdgpu_target={0}".format(arch_))
 
     with when("+cuda"):
-        depends_on("petsc@main+cuda")
+        depends_on("petsc+cuda")
         for sm_ in CudaPackage.cuda_arch_values:
             depends_on("petsc cuda_arch={0}".format(sm_), when="cuda_arch={0}".format(sm_))
 
