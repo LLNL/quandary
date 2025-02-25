@@ -143,7 +143,11 @@ make test
 Arguments can be passed in with, e.g., `make test ARGS="--rerun-failed --output-on-failure"`.
 
 ### Regression tests
-Can be run with `pytest`. See tests/README.md for more information.
+Can be run with
+```
+pytest
+```
+See tests/README.md for more information.
 
 ## Community and Contributing
 
