@@ -155,6 +155,7 @@ echo "[Information]: Found hostconfig ${hostconfig_path}"
 build_root=${BUILD_ROOT:-"${prefix}"}
 
 build_dir="${build_root}/build_${hostconfig//.cmake/}"
+install_dir="${spack_env_path}/.spack-env/view"
 
 cmake_exe=`grep 'CMake executable' ${hostconfig_path} | cut -d ':' -f 2 | xargs`
 
@@ -186,6 +187,7 @@ then
     $cmake_exe \
         -C ${hostconfig_path} \
         ${cmake_options} \
+        -DCMAKE_INSTALL_PREFIX=${install_dir} \
         ${project_dir}
 
     if ! $cmake_exe --build . -j
@@ -193,9 +195,12 @@ then
         echo "[Error]: Compilation failed, building with verbose output..."
         timed_message "Re-building with --verbose"
         $cmake_exe --build . --verbose -j 1
+    else
+        timed_message "Installing"
+        $cmake_exe --install .
     fi
 
-    timed_message "Quandary built"
+    timed_message "Quandary built and installed"
 fi
 
 # Test
