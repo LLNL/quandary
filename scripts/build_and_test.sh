@@ -105,11 +105,6 @@ then
 
     ${spack_cmd} -D ${spack_env_path} config add view:true
 
-    # Allow building of python package if external version is too old
-    packages_scope=env:$(realpath --no-symlinks ${spack_env_path}):$(realpath ${spack_env_path}/packages.yaml)
-    ${spack_cmd} -D ${spack_env_path} config --scope ${packages_scope} update packages -y
-    ${spack_cmd} -D ${spack_env_path} config --scope ${packages_scope} add packages:python:buildable:true
-
     if [[ -n ${ci_registry_token} ]]
     then
         timed_message "GitLab registry as Spack Buildcache"
