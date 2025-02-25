@@ -57,7 +57,8 @@ def run_test(simulation_dir, number_of_processes, config_file, files_to_compare,
     print(result.stdout)
     assert result.returncode == 0
 
-    matching_files = [file for pattern in files_to_compare for file in glob.glob(os.path.join(simulation_dir, BASE_DIR, pattern))]
+    matching_files = [file for pattern in files_to_compare
+                      for file in glob.glob(os.path.join(simulation_dir, BASE_DIR, pattern))]
     for expected in matching_files:
         file_name = os.path.basename(expected)
         output = os.path.join(simulation_dir, DATA_OUT_DIR, file_name)
