@@ -116,11 +116,6 @@ sudo cmake --install .
 To choose a prefix other than `/usr/local` add `--prefix /custom/install/path `.
 Alternatively, you can do `export PATH=/path/to/quandary/:$PATH` so your binary can be found.
 
-**Optional:** To run Quandary from within a Python environment, you should have a working python interpreter with numpy and matplotlib installed. Then, append Quandary's location to your `PYTHONPATH`, e.g. with  
-* `export PYTHONPATH=$PYTHONPATH:/path/to/quandary/`
-and have a look into the examples.
- 
-
 ## Running
 The code builds into the executable `quandary`. It takes one argument being the name of the test-case's configuration file. The file `config_template.cfg`, lists all possible configuration options. The configuration file is filled with comments that should help users set up their test case and match the options to the description in the user guide. Also compare the examples folder.
 * `./quandary config_template.cfg`
