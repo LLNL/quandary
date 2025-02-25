@@ -15,6 +15,14 @@ def test_example(request):
 
 # taken from example_cnot.py
 def cnot(request):
+    # set batchargs if needed
+    mpi_exec = request.config.getoption("--mpi-exec")
+    # TODO use mpi_exec in batchargs instead of always srun
+    maxtime = "00:02:00"
+    account = ""
+    nodes = 1
+    batchargs = "" if mpi_exec == "mpirun" else [maxtime, account, nodes]
+
     # Two qubit test case: CNOT gate, two levels each, no guard levels, dipole-dipole coupling 5KHz ##
 
     # 01 transition frequencies [GHz] per oscillator
@@ -60,7 +68,7 @@ def cnot(request):
     # quandary.pcof0_filename = os.getcwd() + "/CNOT_params.dat"  # absolute path!
 
     # Execute quandary
-    t, pt, qt, infidelity, expectedEnergy, population = quandary.optimize()
+    t, pt, qt, infidelity, expectedEnergy, population = quandary.optimize(batchargs=batchargs)
     print(f"Fidelity = {1.0 - infidelity}")
 
     # Plot the control pulse and expected energy level evolution
@@ -84,13 +92,5 @@ def cnot(request):
         T2=T2
     )
     quandary_lblad.pcof0 = quandary.popt[:]
-
-    # set batchargs if needed
-    mpi_exec = request.config.getoption("--mpi-exec")
-    # TODO use mpi_exec in batchargs instead of always srun
-    maxtime = "00:02:00"
-    account = ""
-    nodes = 1
-    batchargs = "" if mpi_exec == "mpirun" else [maxtime, account, nodes]
 
     t, pt, qt, infidelity, expect, _ = quandary_lblad.simulate(maxcores=8, batchargs=batchargs)
