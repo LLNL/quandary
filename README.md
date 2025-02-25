@@ -117,7 +117,9 @@ To choose a prefix other than `/usr/local` add `--prefix /custom/install/path `.
 Alternatively, you can do `export PATH=/path/to/quandary/:$PATH` so your binary can be found.
 
 ## Running
-The code builds into the executable `quandary`. It takes one argument being the name of the test-case's configuration file. The file `config_template.cfg`, lists all possible configuration options. The configuration file is filled with comments that should help users set up their test case and match the options to the description in the user guide. Also compare the examples folder.
+The code builds into the executable `quandary`.
+If you used `spack install` or the cmake install command this executable should be in your path (so you can do `quandary` instead of `./quandary`).
+It takes one argument being the name of the test-case's configuration file. The file `config_template.cfg`, lists all possible configuration options. The configuration file is filled with comments that should help users set up their test case and match the options to the description in the user guide. Also compare the examples folder.
 * `./quandary config_template.cfg`
 * `mpirun -np 4 ./quandary config_template.cfg --quiet`
 
