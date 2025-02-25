@@ -48,6 +48,16 @@ variables:
   artifacts:
     reports:
       junit: junit.xml
+  # Only use cache on lassen
+  rules:
+    - if: '$CI_RUNNER_TAGS != "lassen"'
+      variables:
+        PYTHON_ENVIRONMENT_PATH: "/dev/null"
+  cache:
+    key: venv
+    paths:
+      - ${PYTHON_ENVIRONMENT_PATH}
+    policy: pull
 
 .reproducer_vars:
   script:
