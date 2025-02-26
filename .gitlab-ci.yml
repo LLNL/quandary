@@ -58,32 +58,13 @@ variables:
 # preliminary-ignore-draft-pr.yml.
 #  ALWAYS_RUN_PATTERN: ""
 
-  PYTHON_ENVIRONMENT_PATH: ${CI_PROJECT_DIR}/.venv
-
 # We organize the build-and-test stage with sub-pipelines. Each sub-pipeline
 # corresponds to a test batch on a given machine.
 
 # High level stages
 stages:
   - prerequisites
-  - environment
   - build-and-test
-
-configure-python:
-  tags:
-    - shell
-    - lassen
-  needs: [lassen-up-check]
-  stage: environment
-  script:
-    - module load gcc/12.2.1 python/3.11.5
-    - python -m venv ${PYTHON_ENVIRONMENT_PATH}
-    - source ${PYTHON_ENVIRONMENT_PATH}/bin/activate
-    - python -m pip install -e .
-  cache:
-    key: venv
-    paths:
-      - ${PYTHON_ENVIRONMENT_PATH}
 
 # Template for jobs triggering a build-and-test sub-pipeline:
 .build-and-test:

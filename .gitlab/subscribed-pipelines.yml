@@ -79,7 +79,7 @@ lassen-up-check:
 lassen-build-and-test:
   variables:
     CI_MACHINE: "lassen"
-  needs: [lassen-up-check, generate-job-lists, configure-python]
+  needs: [lassen-up-check, generate-job-lists]
   extends: [.build-and-test]
 
 

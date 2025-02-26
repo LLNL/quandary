@@ -48,20 +48,11 @@ variables:
   artifacts:
     reports:
       junit: junit.xml
-  cache:
-    key: venv
-    paths:
-      - ${PYTHON_ENVIRONMENT_PATH}
-    policy: pull
   before_script:
     # Don't use /dev/shm on Ruby due to petsc .so error
-    # Turn off python cache on ruby and tioga
     - |
       if [[ "$CI_RUNNER_TAGS" =~ ruby ]]; then
         export USE_DEV_SHM=false
-        export PYTHON_ENVIRONMENT_PATH=/dev/null
-      elif [[ "$CI_RUNNER_TAGS" =~ tioga ]]; then
-        export PYTHON_ENVIRONMENT_PATH=/dev/null
       fi
 
 .reproducer_vars:
