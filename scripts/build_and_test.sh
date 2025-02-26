@@ -25,6 +25,7 @@ hostconfig=${HOST_CONFIG:-""}
 spec=${SPEC:-""}
 module_list=${MODULE_LIST:-""}
 job_unique_id=${CI_JOB_ID:-""}
+use_dev_shm=${USE_DEV_SHM:-true}
 spack_debug=${SPACK_DEBUG:-false}
 debug_mode=${DEBUG_MODE:-false}
 push_to_registry=${PUSH_TO_REGISTRY:-true}
@@ -51,6 +52,7 @@ then
     echo "~~~~~ - Deactivated shared memory."
     echo "~~~~~ - Do not push to buildcache."
     echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+    use_dev_shm=false
     spack_debug=true
     push_to_registry=false
 fi
@@ -61,8 +63,24 @@ then
     module load ${module_list}
 fi
 
-# We set the prefix in the parent directory so that spack dependencies are not installed inside the source tree.
-prefix="${project_dir}/../build"
+prefix=""
+
+if [[ -d /dev/shm && ${use_dev_shm} == true ]]
+then
+    prefix="/dev/shm/${hostname}"
+    if [[ -z ${job_unique_id} ]]; then
+      job_unique_id=manual_job_$(date +%s)
+      while [[ -d ${prefix}-${job_unique_id} ]] ; do
+          sleep 1
+          job_unique_id=manual_job_$(date +%s)
+      done
+    fi
+
+    prefix="${prefix}-${job_unique_id}"
+else
+    # We set the prefix in the parent directory so that spack dependencies are not installed inside the source tree.
+    prefix="${project_dir}/../spack-and-build-root"
+fi
 
 echo "Creating directory ${prefix}"
 echo "project_dir: ${project_dir}"
@@ -152,6 +170,7 @@ hostconfig=$(basename ${hostconfig_path})
 echo "[Information]: Found hostconfig ${hostconfig_path}"
 
 # Build Directory
+# When using /dev/shm, we use prefix for both spack builds and source build, unless BUILD_ROOT was defined
 build_root=${BUILD_ROOT:-"${prefix}"}
 
 build_dir="${build_root}/build_${hostconfig//.cmake/}"
