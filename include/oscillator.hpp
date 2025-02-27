@@ -69,8 +69,8 @@ class Oscillator {
 
   public:
     PiPulse pipulse; ///< Pi-pulse storage (dummy for compatibility)
-    int dim_preOsc; ///< Dimension of coupled subsystems preceding this oscillator
-    int dim_postOsc; ///< Dimension of coupled subsystems following this oscillator
+    PetscInt dim_preOsc; ///< Dimension of coupled subsystems preceding this oscillator
+    PetscInt dim_postOsc; ///< Dimension of coupled subsystems following this oscillator
 
     Oscillator();
 

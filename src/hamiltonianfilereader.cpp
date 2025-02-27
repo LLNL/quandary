@@ -4,7 +4,7 @@ HamiltonianFileReader::HamiltonianFileReader(){
 }
 
 
-HamiltonianFileReader::HamiltonianFileReader(std::string hamiltonian_file_, LindbladType lindbladtype_, int dim_rho_, bool quietmode_) {
+HamiltonianFileReader::HamiltonianFileReader(std::string hamiltonian_file_, LindbladType lindbladtype_, PetscInt dim_rho_, bool quietmode_) {
 
   lindbladtype = lindbladtype_;
   dim_rho = dim_rho_;
@@ -23,8 +23,8 @@ void HamiltonianFileReader::receiveHsys(Mat& Bd, Mat& Ad){
   /* Get sizes */ 
   PetscInt dim = 0;
   MatGetSize(Bd, &dim, NULL); // could be N^2 or N
-  int sqdim = dim;
-  if (lindbladtype != LindbladType::NONE) sqdim = (int) sqrt(dim); // sqdim = N 
+  PetscInt sqdim = dim;
+  if (lindbladtype != LindbladType::NONE) sqdim = (PetscInt) sqrt(dim); // sqdim = N
 
   MatSetOption(Bd, MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);
 
@@ -128,8 +128,8 @@ void HamiltonianFileReader::receiveHc(int noscillators, std::vector<Mat>& Ac_vec
   // if (mpirank_world == 0) printf("Receiving control Hamiltonian terms...\n");
 
   /* Get the dimensions right */
-  int sqdim = dim_rho; //  N!
-  int nelems = dim_rho*dim_rho;
+  PetscInt sqdim = dim_rho; //  N!
+  PetscInt nelems = dim_rho*dim_rho;
 
   // Skip first Hd lines in the file
   int skiplines = 2*(nelems+1); // 2*nelems for Hsys and +2 for the comment lines

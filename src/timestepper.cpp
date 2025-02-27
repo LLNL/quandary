@@ -241,7 +241,7 @@ void TimeStepper::solveAdjointODE(Vec rho_t0_bar, Vec finalstate, double Jbar_pe
 
 double TimeStepper::penaltyIntegral(double time, const Vec x){
   double penalty = 0.0;
-  int dim_rho = mastereq->getDimRho(); // N
+  PetscInt dim_rho = mastereq->getDimRho(); // N
   double x_re, x_im;
   PetscInt vecID_re, vecID_im;
 
@@ -262,7 +262,7 @@ double TimeStepper::penaltyIntegral(double time, const Vec x){
     PetscInt ilow, iupp;
     VecGetOwnershipRange(x, &ilow, &iupp);
     /* Sum over all diagonal elements that correspond to a non-essential guard level. */
-    for (int i=0; i<dim_rho; i++) {
+    for (PetscInt i=0; i<dim_rho; i++) {
       if ( isGuardLevel(i, mastereq->nlevels, mastereq->nessential) ) {
           // printf("%f: isGuard: %d / %d\n", time, i, dim_rho);
         if (mastereq->lindbladtype != LindbladType::NONE) {
@@ -287,7 +287,7 @@ double TimeStepper::penaltyIntegral(double time, const Vec x){
 }
 
 void TimeStepper::penaltyIntegral_diff(double time, const Vec x, Vec xbar, double penaltybar){
-  int dim_rho = mastereq->getDimRho();  // N
+  PetscInt dim_rho = mastereq->getDimRho();  // N
   PetscInt vecID_re, vecID_im;
 
   /* Derivative of weighted integral of the objective function */
@@ -309,7 +309,7 @@ void TimeStepper::penaltyIntegral_diff(double time, const Vec x, Vec xbar, doubl
     PetscInt ilow, iupp;
     VecGetOwnershipRange(x, &ilow, &iupp);
     double x_re, x_im;
-    for (int i=0; i<dim_rho; i++) {
+    for (PetscInt i=0; i<dim_rho; i++) {
       if ( isGuardLevel(i, mastereq->nlevels, mastereq->nessential) ) {
         if (mastereq->lindbladtype != LindbladType::NONE){ 
           vecID_re = getIndexReal(getVecID(i,i,dim_rho));
@@ -333,8 +333,8 @@ void TimeStepper::penaltyIntegral_diff(double time, const Vec x, Vec xbar, doubl
 
 
 double TimeStepper::penaltyDpDm(Vec x, Vec xm1, Vec xm2){
-    int dim_rho = mastereq->getDimRho(); // N
-    int vecID_re, vecID_im;
+    PetscInt dim_rho = mastereq->getDimRho(); // N
+    PetscInt vecID_re, vecID_im;
 
     double tmp1, tmp2;
 
@@ -350,7 +350,7 @@ double TimeStepper::penaltyDpDm(Vec x, Vec xm1, Vec xm2){
 
     double dpdm = 0.0;
     VecGetOwnershipRange(x, &ilow, &iupp);
-    for (int i=0; i<dim_rho; i++) {  
+    for (PetscInt i=0; i<dim_rho; i++) {
         if (mastereq->lindbladtype != LindbladType::NONE) { 
           vecID_re = getIndexReal(getVecID(i,i,dim_rho));
           vecID_im = getIndexImag(getVecID(i,i,dim_rho));
@@ -373,8 +373,8 @@ double TimeStepper::penaltyDpDm(Vec x, Vec xm1, Vec xm2){
 
 
 void TimeStepper::penaltyDpDm_diff(int n, Vec xbar, double Jbar){
-    int dim_rho = mastereq->getDimRho(); // N
-    int vecID_re, vecID_im;
+    PetscInt dim_rho = mastereq->getDimRho(); // N
+    PetscInt vecID_re, vecID_im;
 
     const PetscScalar *xptr, *xm1ptr, *xm2ptr, *xp1ptr, *xp2ptr;
     Vec x, xm1, xm2, xp1, xp2;
@@ -400,7 +400,7 @@ void TimeStepper::penaltyDpDm_diff(int n, Vec xbar, double Jbar){
     double dtinv = 1.0 / (dt*dt*dt*dt);
 
     VecGetOwnershipRange(x, &ilow, &iupp);
-    for (int i=0; i<dim_rho; i++) {  
+    for (PetscInt i=0; i<dim_rho; i++) {
         if (mastereq->lindbladtype != LindbladType::NONE) { 
           vecID_re = getIndexReal(getVecID(i,i,dim_rho));
           vecID_im = getIndexImag(getVecID(i,i,dim_rho));
@@ -477,7 +477,7 @@ double TimeStepper::energyPenaltyIntegral(double time){
 
 void TimeStepper::energyPenaltyIntegral_diff(double time, double penaltybar, Vec redgrad){
 
-  int col_shift = 0;
+  PetscInt col_shift = 0;
   double* grad_ptr;
   VecGetArray(redgrad, &grad_ptr);
 

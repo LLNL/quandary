@@ -22,16 +22,16 @@
 class OptimTarget{
     protected:
 
-    int dim; ///< State dimension of full vectorized system: N^2 if Lindblad, N if Schroedinger
-    int dim_rho; ///< Dimension of Hilbert space = N
-    int dim_ess; ///< Dimension of essential level system = N_e
+    PetscInt dim; ///< State dimension of full vectorized system: N^2 if Lindblad, N if Schroedinger
+    PetscInt dim_rho; ///< Dimension of Hilbert space = N
+    PetscInt dim_ess; ///< Dimension of essential level system = N_e
     int noscillators; ///< Number of oscillators in the system
  
     TargetType target_type; ///< Type of optimization target (pure state preparation or gate optimization)
     ObjectiveType objective_type; ///< Type of objective function measure (Frobenius, trace, pure-state measure)
     Gate *targetgate; ///< Pointer to target gate (if gate optimization)
     double purity_rho0; ///< Purity of initial state Tr(rho(0)^2)
-    int purestateID; ///< For pure state preparation: integer m for preparing the target state \f$ e_m e_m^{\dagger}\f$
+    PetscInt purestateID; ///< For pure state preparation: integer m for preparing the target state \f$ e_m e_m^{\dagger}\f$
     std::string target_filename; ///< Filename if target state is read from file
     Vec targetstate; ///< Storage for the target state vector (NULL for pure states, \f$V\rho V^\dagger\f$ for gates, density matrix from file)
     InitialConditionType initcond_type; ///< Type of initial conditions
