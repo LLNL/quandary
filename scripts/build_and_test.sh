@@ -259,7 +259,7 @@ then
     eval `${spack_cmd} env activate ${spack_env_path} --sh`
     python -m venv .venv
     source .venv/bin/activate
-    python -m pip install -e .
+    python -m pip install -e . --prefer-binary
 
     timed_message "Run regression tests"
 
