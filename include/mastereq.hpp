@@ -55,7 +55,7 @@ int myMatMultTranspose_sparsemat(Mat RHS, Vec x, Vec y);
 class MasterEq{
 
   protected:
-    int dim;                   // Dimension of full vectorized system: either N^2 if Lindblad, or N if Schrodinger
+    PetscInt dim;              // Dimension of full vectorized system: either N^2 if Lindblad, or N if Schrodinger
     int dim_rho;               // Dimension of Hilbertspace = N
     int dim_ess;               // Dimension of system of essential levels = N_e
     int noscillators;          // Number of oscillators
