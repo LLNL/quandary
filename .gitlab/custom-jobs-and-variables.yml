@@ -14,7 +14,7 @@ variables:
 
 # Ruby
 # Arguments for top level allocation
-  RUBY_SHARED_ALLOC: "--exclusive --reservation=ci --time=15 --nodes=2"
+  RUBY_SHARED_ALLOC: "--exclusive --reservation=ci --time=15 --nodes=1"
 # Arguments for job level allocation
   RUBY_JOB_ALLOC: "--reservation=ci --overlap --nodes=1"
 # Project specific variants for ruby
@@ -48,12 +48,6 @@ variables:
   artifacts:
     reports:
       junit: junit.xml
-  before_script:
-    # Don't use /dev/shm on Ruby due to petsc .so error
-    - |
-      if [[ "$CI_RUNNER_TAGS" =~ ruby ]]; then
-        export USE_DEV_SHM=false
-      fi
 
 .reproducer_vars:
   script:
