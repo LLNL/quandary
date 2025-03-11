@@ -1,5 +1,10 @@
 # Quandary - Optimal control for open and closed quantum systems
-Quandary implements an optimization solver for open and closed optimal quantum control. The underlying quantum dynamics model open or closed quantum systems, using either Schroedinger's equation for a state vector (closed), or Lindblad master equation for a density matrix (open). The control problem aims to find control pulses that drive the system to a desired target, such as a target unitary solution operator or to a predefined target state. Quandary targets deployment on High-Performance Computing platforms, offering various levels for parallelization using the message passing paradigm. 
+Quandary simulates and optimizes the time evolution of closed and open quantum systems, given a Hamiltonian that models driven superconducting quantum devices. The
+underlying dynamics are modelled by either Schroedinger's equation (closed systems, state vector), or Lindblad's master equation (open systems, density matrix). Quandary solves the respective ordinary differential equation (ODE) numerically by applying a time-stepping integration scheme, and applies a gradient-based optimization scheme to design optimal control pulses that drive the quantum system to desired targets.
+The target can be a unitary gate, i.e. optimizing for pulses that
+realize a logical quantum operation, or state preparation that aims to drive the quantum system from one (or multiple) initial state to a desired target state, such as the ground state.
+
+Quandary targets deployment on High-Performance Computing platforms, offering various levels for parallelization using the message passing paradigm. Quandary is written in C++ and executed by providing a text-based configuration file. Further, a Python interface is available to call the underlying C++ code from within a python interpreter, to ease usage.
 
 It is advised to look at the user guide in `doc/`, describing the underlying mathematical models, their implementation and usage in Quandary. 
 
@@ -12,11 +17,10 @@ submodule, first make sure you run:
 git submodule init && git submodule update
 ```
 
-This project relies on Petsc [https://petsc.org/release/] to handle (parallel) linear algebra. Optionally Slepsc [https://slepc.upv.es] can be used to solve some eigenvalue problems if desired (e.g. for the Hessian...).
+This project relies on Petsc [https://petsc.org/release/] to handle (parallel) linear algebra. You can either use Spack to install Quandary alongside Petsc, or use CMake to install Quandary given an existing Petsc installation. 
 
-### Spack
-Petc, Slepc, and other dependencies such as Python packages can be managed and installed using Spack.
-Additionally, Spack can build Quandary itself from your local source code.
+### Building using Spack
+Spack can be used to install Quandary, including the required dependency on Petc, as well as Python packages and interface.
 
 1. To install Spack, clone the repo and add to your shell following the steps [here](https://spack.readthedocs.io/en/latest/getting_started.html#installation).
 
@@ -25,7 +29,7 @@ Additionally, Spack can build Quandary itself from your local source code.
    spack compiler find
    ```
 
-3. To activate Quandary's spack environment, run:
+3. To activate Quandary's spack environment, run the following in your local Quandary folder:
     ```
     spack env activate .spack_env/
     ```
@@ -40,111 +44,108 @@ Additionally, Spack can build Quandary itself from your local source code.
     ```
     Note: This step could take a while the first time.
 
-Note that `spack install` will build Quandary using CMake from your local source code and install the binary in your Spack environment.
+Note that `spack install` will build Quandary using CMake from your local source code and install the binary in your Spack environment. 
 The second time you run this is should be much faster, only looking for changes in the environment or local code.
 
 #### Optional Spack environment variations
 The Spack environment used to build Quandary is defined in `.spack_env/spack.yaml`.
-You can add or remove packages from the `specs` list as needed or use different variants of these.
-
-For instance, if you want to include Slepc, you append `+slepc` to `quandary@develop+test`.
-Or, if you want if you want to use Slepc and the debug variant (which builds Petsc in debug mode) you can use `quandary@develop+test+slepc+debug`.
+You can add or remove packages from the `specs` list as needed or use different variants of these. 
+For instance, if you want to use the debug variant (which builds Petsc in debug mode) you can use `quandary@develop+test+debug`.
 To use a specific version of Petsc instead of the latest release, you can do e.g. `quandary@develop^petsc@3.22.1`.
-
 The `+test` variant (by default on in `.spack_env/spack.yaml`) adds python and pip to the Spack environment.
 This allows `pip install` to install python packages to your Spack virtual environment rather than a global one.
 
-These changes will be tracked by git, so if you want them to be locally ignored you can do
+<!-- These changes will be tracked by git, so if you want them to be locally ignored you can do
 `git update-index --assume-unchanged .spack_env/spack.yaml`
 This can be undone with
-`git update-index --no-assume-unchanged .spack_env/spack.yaml`
+`git update-index --no-assume-unchanged .spack_env/spack.yaml` -->
 
-### Python
-To install python dependencies for the python interface and tests, do:
-```
-pip install -e .
-```
-This will also allow the python interface (`quandary.py`) to be found by your python scripts.
-These packages will be installed in your Spack virtual environment.
+## Manually installing Petsc
+If you don't want to use Spack to install dependencies as explained above, you can follow these steps to install Petsc yourself, and then use CMake to install Quandary using the existing Petsc intallation, see below.
 
-If you are **not** using Spack, you can create a virtual environment first like
-```
-python3 -m venv .venv
-source .venv/bin/activate
-```
-and then do the above `pip install` command.
-
-## Manually installing dependencies
-If you don't want to use Spack to install dependencies as explained above, you can follow these steps to install Petsc and optionally Slepc.
-
-* **Required:** Install Petsc:
-
-    Check out [https://petsc.org/release/] for the latest installation guide. On MacOS, you can also `brew install petsc`. As a quick start, you can also try the below:
-    * Download tarball for Petsc here [https://ftp.mcs.anl.gov/pub/petsc/release-snapshots/].   
-    * `tar -xf petsc-<version>.tar.gz`
-    * `cd petsc-<version>`
-    * Configure Petsc with `./configure`. Please check [https://petsc.org/release/install/install_tutorial] for optional arguments. For example, 
+On MacOS, you can `brew install petsc`, or check out [https://petsc.org/release/] for the latest installation guide. As a quick start, you can try this: 
+ * Download tarball for Petsc here [https://ftp.mcs.anl.gov/pub/petsc/release-snapshots/].   
+ * `tar -xf petsc-<version>.tar.gz`
+ * `cd petsc-<version>`
+ * Configure Petsc with `./configure`. Check [https://petsc.org/release/install/install_tutorial] for optional arguments. For example, 
         `./configure --prefix=/YOUR/INSTALL/DIR --with-debugging=0 --with-fc=0 --with-cxx=mpicxx --with-cc=mpicc COPTFLAGS='-O3' CXXOPTFLAGS='-O3'`
-    * The output of `./configure` reports on how to set the `PETSC_DIR` and `PETSC_ARCH` variables.
-    You can export them or just note them, they are only needed for the PkgConfig step below.
-        * `export PETSC_DIR=/YOUR/INSTALL/DIR`
-        * `export PETSC_ARCH=/YOUR/ARCH/PREFIX`
-    * Compile petsc with `make all check'
-    * Tell PkgConfig (used by CMake) how to find the Petsc:
-        * `export PKG_CONFIG_PATH=$PETSC_DIR/$PETSC_ARCH/lib/pkgconfig/:$PKG_CONFIG_PATH`
+ * The output of `./configure` reports on how to set the `PETSC_DIR` and `PETSC_ARCH` variables.
+ You can export them or just note them, they are only needed to configure CMake within the PkgConfig step below.
+      * `export PETSC_DIR=/YOUR/INSTALL/DIR`
+      * `export PETSC_ARCH=/YOUR/ARCH/PREFIX`
+ * Compile petsc with `make all check'
 
-* **Optional:** Install Slepsc
-    * Read the docs here: [https://slepc.upv.es/documentation/slepc.pdf]
+## Building without Spack using CMake
+You can build Quandary directly with CMake, using an existing Petsc installation.
+First tell PkgConfig (used by CMake) where to find your Petsc installation:
+```
+export PKG_CONFIG_PATH=$PETSC_DIR/$PETSC_ARCH/lib/pkgconfig/:$PKG_CONFIG_PATH`
+```
 
-
-## Building without Spack
-If you don't want to use Spack to build Quandary, as explained above, you can build directly with CMake, using:
+Then build Quandary using:
 ```
 mkdir build && cd build
 cmake ..
 make
 ```
-To use SLEPc, you can pass a flag to `cmake`:
+
+Add the path to Quandary to your `PATH` variable with `export PATH=/path/to/quandary/:$PATH`, so your binary can be found.
+Alternatively, you can install the Quandary executable in a specific path (such as the default `/usr/local/bin` to have it in your `PATH` automatically):
 ```
-cmake -DWITH_SLEPC=ON ..
+sudo cmake --install . --prefix /your/install/path
 ```
 
-To install the quandary executable in `/usr/local/bin` (and so have in your `PATH`):
+## Python dependencies and interface
+If you used Spack, all python dependencies for the python interface and the tests can be installed within your virtual Spack environment with
 ```
-sudo cmake --install .
+pip install -e .
 ```
-To choose a prefix other than `/usr/local` add `--prefix /custom/install/path `.
-Alternatively, you can do `export PATH=/path/to/quandary/:$PATH` so your binary can be found.
+If you did not use Spack, you should first create a virtual environment (e.g. with conda) and do the above command from within that environment. E.g. for conda, use
+```
+conda create --name myenv
+conda activate myenv
+pip install -e .
+```
+or for venv, use
+```
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -e .
+```
+In additional to installing dependencies, the `pip install` command also enables that your python scripts can find Quandary's python interface functions, which are defined in `quandary.py`.
+
 
 ## Running
-The code builds into the executable `quandary`.
-If you used `spack install` or the cmake install command this executable should be in your path (so you can do `quandary` instead of `./quandary`).
-It takes one argument being the name of the test-case's configuration file. The file `config_template.cfg`, lists all possible configuration options. The configuration file is filled with comments that should help users set up their test case and match the options to the description in the user guide. Also compare the examples folder.
-* `./quandary config_template.cfg`
-* `mpirun -np 4 ./quandary config_template.cfg --quiet`
+The C++ code builds into the executable `quandary`,
+which takes one argument being the name of the test-case's configuration file. The file `config_template.cfg`, lists all possible configuration options and is filled with comments that should help users set up their own test case and match the options to the description in the user guide. 
+* `./quandary config_template.cfg` (serial execution)
+* `mpirun -np 4 ./quandary config_template.cfg` (on 4 cores)
+You can silence Quandary output by adding the `--quiet` argument to the above commands.
+
+The `examples` folder contains various example test cases and exemplifies the usage of Quandary's Python interface. 
 
 ## Tests
 
-### Unit tests
-Unit tests are written with [gtest](https://github.com/google/googletest).
+### Regression tests
+Regression tests are defined in `tests/` and can be run with
+```
+pytest
+```
+See tests/README.md for more information.
 
+### Unit tests
+Unit tests are written with [gtest](https://github.com/google/googletest), and are currently under development.
 If using Spack to build, the unit tests can be run with
 ```
 spack install --test root
 ```
-
 If using CMake to build, unit tests can be run with
 ```
 make test
 ```
 Arguments can be passed in with, e.g., `make test ARGS="--rerun-failed --output-on-failure"`.
 
-### Regression tests
-Can be run with
-```
-pytest
-```
-See tests/README.md for more information.
+
 
 ## Community and Contributing
 
