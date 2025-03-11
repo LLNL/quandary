@@ -20,7 +20,7 @@ git submodule init && git submodule update
 This project relies on Petsc [https://petsc.org/release/] to handle (parallel) linear algebra. You can either use Spack to install Quandary alongside Petsc, or use CMake to install Quandary given an existing Petsc installation. 
 
 ## Building using Spack
-Spack can be used to install Quandary, including the required dependency on Petc, as well as Python packages and interface.
+Spack can be used to install Quandary, including the required dependency on Petsc, as well as Python packages and interface.
 
 1. To install Spack, clone the repo and add to your shell following the steps [here](https://spack.readthedocs.io/en/latest/getting_started.html#installation).
 
