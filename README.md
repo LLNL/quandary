@@ -10,7 +10,7 @@ It is advised to look at the user guide in `doc/`, describing the underlying mat
 
 Feel free to reach out to Stefanie Guenther [guenther5@llnl.gov] for any question you may have. 
 
-## Building
+# Building
 Quandary uses CMake and [BLT](https://github.com/LLNL/blt) to handle builds. Since BLT is included as a
 submodule, first make sure you run:
 ```
@@ -19,7 +19,7 @@ git submodule init && git submodule update
 
 This project relies on Petsc [https://petsc.org/release/] to handle (parallel) linear algebra. You can either use Spack to install Quandary alongside Petsc, or use CMake to install Quandary given an existing Petsc installation. 
 
-### Building using Spack
+## Building using Spack
 Spack can be used to install Quandary, including the required dependency on Petc, as well as Python packages and interface.
 
 1. To install Spack, clone the repo and add to your shell following the steps [here](https://spack.readthedocs.io/en/latest/getting_started.html#installation).
@@ -42,10 +42,12 @@ Spack can be used to install Quandary, including the required dependency on Petc
     ```
     spack install
     ```
-    Note: This step could take a while the first time.
+    Note: This step could take a while the first time. The second time you run this is should be much faster, only looking for changes in the environment or local code.
 
-Note that `spack install` will build Quandary using CMake from your local source code and install the binary in your Spack environment. 
-The second time you run this is should be much faster, only looking for changes in the environment or local code.
+Note that `spack install` will build Quandary using CMake from your local source code and install the binary in your Spack environment. To install Quandary's python interface and the python dependencies, use
+```
+pip install -e .
+```
 
 #### Optional Spack environment variations
 The Spack environment used to build Quandary is defined in `.spack_env/spack.yaml`.
@@ -61,14 +63,11 @@ This can be undone with
 `git update-index --no-assume-unchanged .spack_env/spack.yaml` -->
 
 ## Building without Spack using CMake
-
-### Manually install Petsc dependency
 If you don't want to use Spack to install all dependencies as explained above, you can follow these steps to install Petsc yourself, and then use CMake to install Quandary using the existing Petsc intallation, see below.
 
+### Manually installing Petsc 
 On MacOS, you can `brew install petsc`, or check out [https://petsc.org/release/] for the latest installation guide. As a quick start, you can try this: 
- * Download tarball for Petsc here [https://ftp.mcs.anl.gov/pub/petsc/release-snapshots/].   
- * `tar -xf petsc-<version>.tar.gz`
- * `cd petsc-<version>`
+ * Download tarball for Petsc here [https://ftp.mcs.anl.gov/pub/petsc/release-snapshots/] and extract `tar -xf petsc-<version>.tar.gz && cd petsc-<version>`
  * Configure Petsc with `./configure`. Check [https://petsc.org/release/install/install_tutorial] for optional arguments. For example, 
         `./configure --prefix=/YOUR/INSTALL/DIR --with-debugging=0 --with-fc=0 --with-cxx=mpicxx --with-cc=mpicc COPTFLAGS='-O3' CXXOPTFLAGS='-O3'`
  * The output of `./configure` reports on how to set the `PETSC_DIR` and `PETSC_ARCH` variables.
@@ -98,18 +97,15 @@ Alternatively, you can install the Quandary executable in a specific path (such 
 sudo cmake --install . --prefix /your/install/path
 ```
 
-## Python dependencies and interface
-If you used Spack, all python dependencies for the python interface and the tests can be installed within your virtual Spack environment with
-```
-pip install -e .
-```
-If you did not use Spack, you should first create a virtual environment (e.g. with conda) and do the above command from within that environment. E.g. for conda, use
+### Python dependencies and interface
+
+Create a virtual environment (e.g. with conda, venv, ...) and then use `pip install -e .` to install the python dependencies and activate Quandary's python interface. For example, for Conda environments, do:
 ```
 conda create --name myenv
 conda activate myenv
 pip install -e .
 ```
-or for venv, use
+Or for venv, do:
 ```
 python3 -m venv .venv
 source .venv/bin/activate
@@ -118,25 +114,27 @@ pip install -e .
 In additional to installing dependencies, the `pip install` command also enables that your python scripts can find Quandary's python interface functions, which are defined in `quandary.py`.
 
 
-## Running
+# Running
 The C++ code builds into the executable `quandary`,
 which takes one argument being the name of the test-case's configuration file. The file `config_template.cfg`, lists all possible configuration options and is filled with comments that should help users set up their own test case and match the options to the description in the user guide. 
-* `./quandary config_template.cfg` (serial execution)
-* `mpirun -np 4 ./quandary config_template.cfg` (on 4 cores)
+* `quandary config_template.cfg` (serial execution)
+* `mpirun -np 4 quandary config_template.cfg` (on 4 cores)
+
 You can silence Quandary output by adding the `--quiet` argument to the above commands.
 
-The `examples` folder contains various example test cases and exemplifies the usage of Quandary's Python interface. 
+The `examples/pythoninterface` folder exemplifies the usage of Quandary's Python interface. 
+* `python example_cnot.py`
 
-## Tests
+# Tests
 
-### Regression tests
+## Regression tests
 Regression tests are defined in `tests/` and can be run with
 ```
 pytest
 ```
 See tests/README.md for more information.
 
-### Unit tests
+## Unit tests
 Unit tests are written with [gtest](https://github.com/google/googletest), and are currently under development.
 If using Spack to build, the unit tests can be run with
 ```
@@ -150,15 +148,15 @@ Arguments can be passed in with, e.g., `make test ARGS="--rerun-failed --output-
 
 
 
-## Community and Contributing
+# Community and Contributing
 
-Quandary is an open source project that is under heavy development. Contributions in all forms are very welcome, and can be anything from new features to bugfixes, documentation, or even discussions. Contributing is easy, work on your branch, create a pull request to master when you're good to go and the regression tests in 'tests/' pass.
+Quandary is an open source project that is under heavy development. Contributions in all forms are very welcome, and can be anything from new features to bugfixes, documentation, or even discussions. Contributing is easy, work on your branch, create a pull request to `main` when you're good to go and the regression tests pass.
 
-## Publications
+# Publications
 * S. Guenther, N.A. Petersson, J.L. DuBois: "Quantum Optimal Control for Pure-State Preparation Using One Initial State", AVS Quantum Science, vol. 3, arXiv preprint <https://arxiv.org/abs/2106.09148> (2021)
 * S. Guenther, N.A. Petersson, J.L. DuBois: "Quandary: An open-source C++ package for High-Performance Optimal Control of Open Quantum Systems", submitted to IEEE Supercomputing 2021, arXiv preprint <https://arxiv.org/abs/2110.10310> (2021)
 
-## License
+# License
 
 Quandary is distributed under the terms of the MIT license. All new contributions must be made under this license. See LICENSE, and NOTICE, for details. 
 
