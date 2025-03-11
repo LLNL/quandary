@@ -57,11 +57,6 @@ To use a specific version of Petsc instead of the latest release, you can do e.g
 The `+test` variant (by default on in `.spack_env/spack.yaml`) adds python and pip to the Spack environment.
 This allows `pip install` to install python packages to your Spack virtual environment rather than a global one.
 
-<!-- These changes will be tracked by git, so if you want them to be locally ignored you can do
-`git update-index --assume-unchanged .spack_env/spack.yaml`
-This can be undone with
-`git update-index --no-assume-unchanged .spack_env/spack.yaml` -->
-
 ## Building without Spack using CMake
 If you don't want to use Spack to install all dependencies as explained above, you can follow these steps to install Petsc yourself, and then use CMake to install Quandary using the existing Petsc intallation, see below.
 
