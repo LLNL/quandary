@@ -76,7 +76,7 @@ On MacOS, you can `brew install petsc`, or check out [https://petsc.org/release/
 Given an existing Petsc installation, located in `$PETSC_DIR/$PETSC_ARCH`, you can build Quandary directly with CMake.
 First tell PkgConfig (used by CMake) where to find your Petsc installation:
 ```
-export PKG_CONFIG_PATH=$PETSC_DIR/$PETSC_ARCH/lib/pkgconfig/:$PKG_CONFIG_PATH`
+export PKG_CONFIG_PATH=$PETSC_DIR/$PETSC_ARCH/lib/pkgconfig/:$PKG_CONFIG_PATH
 ```
 
 Then build Quandary using:
