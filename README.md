@@ -60,8 +60,10 @@ This allows `pip install` to install python packages to your Spack virtual envir
 This can be undone with
 `git update-index --no-assume-unchanged .spack_env/spack.yaml` -->
 
-## Manually installing Petsc
-If you don't want to use Spack to install dependencies as explained above, you can follow these steps to install Petsc yourself, and then use CMake to install Quandary using the existing Petsc intallation, see below.
+## Building without Spack using CMake
+
+### Manually install Petsc dependency
+If you don't want to use Spack to install all dependencies as explained above, you can follow these steps to install Petsc yourself, and then use CMake to install Quandary using the existing Petsc intallation, see below.
 
 On MacOS, you can `brew install petsc`, or check out [https://petsc.org/release/] for the latest installation guide. As a quick start, you can try this: 
  * Download tarball for Petsc here [https://ftp.mcs.anl.gov/pub/petsc/release-snapshots/].   
@@ -75,8 +77,9 @@ On MacOS, you can `brew install petsc`, or check out [https://petsc.org/release/
       * `export PETSC_ARCH=/YOUR/ARCH/PREFIX`
  * Compile petsc with `make all check'
 
-## Building without Spack using CMake
-You can build Quandary directly with CMake, using an existing Petsc installation.
+
+### Building with CMake
+Given an existing Petsc installation, located in `$PETSC_DIR/$PETSC_ARCH`, you can build Quandary directly with CMake.
 First tell PkgConfig (used by CMake) where to find your Petsc installation:
 ```
 export PKG_CONFIG_PATH=$PETSC_DIR/$PETSC_ARCH/lib/pkgconfig/:$PKG_CONFIG_PATH`
