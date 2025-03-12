@@ -123,11 +123,11 @@ The `examples/pythoninterface` folder exemplifies the usage of Quandary's Python
 # Tests
 
 ## Regression tests
-Regression tests are defined in `tests/` and can be run with
+Regression tests are defined in `regression_tests/` and can be run with
 ```
 pytest
 ```
-See tests/README.md for more information.
+See regression_tests/README.md for more information.
 
 # Community and Contributing
 
