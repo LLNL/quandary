@@ -12,3 +12,10 @@ def pytest_addoption(parser):
         default="mpirun",
         help="Path to the MPI executable (e.g., mpirun or srun)"
     )
+
+    parser.addoption(
+        "--mpi-opt",
+        action="store",
+        default="",
+        help="Extra options to pass to mpi exec command)"
+    )

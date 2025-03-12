@@ -37,6 +37,7 @@ TEST_CASES = load_test_cases()
 def test_eval(test_case: Case, request):
     exact = request.config.getoption("--exact")
     mpi_exec = request.config.getoption("--mpi-exec")
+    mpi_opt = request.config.getoption("--mpi-opt")
 
     simulation_name = test_case.simulation_name
     files_to_compare = test_case.files_to_compare
@@ -46,12 +47,17 @@ def test_eval(test_case: Case, request):
     config_file = os.path.join(simulation_dir, simulation_name + ".cfg")
 
     for number_of_processes in number_of_processes_list:
-        run_test(simulation_dir, number_of_processes, config_file, files_to_compare, exact, mpi_exec)
+        run_test(simulation_dir, number_of_processes, config_file, files_to_compare, exact, mpi_exec, mpi_opt)
 
 
-def run_test(simulation_dir, number_of_processes, config_file, files_to_compare, exact, mpi_exec):
+def run_test(simulation_dir, number_of_processes, config_file, files_to_compare, exact, mpi_exec, mpi_opt):
     os.chdir(simulation_dir)
-    command = [mpi_exec, "-n", str(number_of_processes), "--oversubscribe", QUANDARY_PATH, config_file]
+
+    command = [mpi_exec, "-n", str(number_of_processes)]
+    if mpi_opt:
+        command.extend([mpi_opt])
+    command.extend([QUANDARY_PATH, config_file])
+
     print(f"Running command: \"{' '.join(command)}\"")
     result = subprocess.run(command, capture_output=True, text=True, check=True)
     print(result.stdout)
