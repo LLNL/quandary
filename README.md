@@ -129,20 +129,6 @@ pytest
 ```
 See tests/README.md for more information.
 
-## Unit tests
-Unit tests are written with [gtest](https://github.com/google/googletest), and are currently under development.
-If using Spack to build, the unit tests can be run with
-```
-spack install --test root
-```
-If using CMake to build, unit tests can be run with
-```
-make test
-```
-Arguments can be passed in with, e.g., `make test ARGS="--rerun-failed --output-on-failure"`.
-
-
-
 # Community and Contributing
 
 Quandary is an open source project that is under heavy development. Contributions in all forms are very welcome, and can be anything from new features to bugfixes, documentation, or even discussions. Contributing is easy, work on your branch, create a pull request to `main` when you're good to go and the regression tests pass.
