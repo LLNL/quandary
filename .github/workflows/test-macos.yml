@@ -22,7 +22,7 @@ jobs:
     - name: Configure Spack
       run: |
         spack compiler find
-        spack mirror add --type binary --unsigned --oci-username GITHUB_USER --oci-password-variable GITHUB_TOKEN local-buildcache oci://ghcr.io/tdrwenski/spack-buildcache
+        spack mirror add --type binary --unsigned --oci-username GITHUB_USER --oci-password-variable GITHUB_TOKEN local-buildcache oci://ghcr.io/llnl/quandary-spack-buildcache
 
     - name: Install
       run: |
