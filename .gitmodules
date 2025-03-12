@@ -1,9 +1,9 @@
 [submodule "blt"]
 	path = blt
 	url = https://github.com/LLNL/blt.git
-[submodule "scripts/radiuss-spack-configs"]
-	path = scripts/radiuss-spack-configs
+[submodule ".ci-scripts/radiuss-spack-configs"]
+	path = .ci-scripts/radiuss-spack-configs
 	url = https://github.com/LLNL/radiuss-spack-configs
-[submodule "scripts/uberenv"]
-	path = scripts/uberenv
+[submodule ".ci-scripts/uberenv"]
+	path = .ci-scripts/uberenv
 	url = https://github.com/LLNL/uberenv.git

@@ -89,7 +89,7 @@ mkdir -p ${prefix}
 
 spack_cmd="${prefix}/spack/bin/spack"
 spack_env_path="${prefix}/spack_env"
-uberenv_cmd="./scripts/uberenv/uberenv.py"
+uberenv_cmd="./.ci-scripts/uberenv/uberenv.py"
 if [[ ${spack_debug} == true ]]
 then
     spack_cmd="${spack_cmd} --debug --stacktrace"
@@ -274,6 +274,6 @@ echo "~~~~~ To reproduce this build on ${truehostname}:"
 echo ""
 echo " git checkout `git rev-parse HEAD` && git submodule update --init --recursive"
 echo ""
-echo "SPACK_DISABLE_LOCAL_CONFIG=\"\" SPACK_USER_CACHE_PATH=\"ci_spack_cache\" python3 scripts/uberenv/uberenv.py --prefix=/tmp/\$(whoami)/uberenv --spec=\"${spec}\""
+echo "SPACK_DISABLE_LOCAL_CONFIG=\"\" SPACK_USER_CACHE_PATH=\"ci_spack_cache\" python3 .ci-scripts/uberenv/uberenv.py --prefix=/tmp/\$(whoami)/uberenv --spec=\"${spec}\""
 echo ""
 echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
