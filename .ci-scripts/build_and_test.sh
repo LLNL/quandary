@@ -262,7 +262,7 @@ then
     timed_message "Run regression tests"
 
     mpi_exe=`grep 'MPIEXEC_EXECUTABLE' ${hostconfig_path} | cut -d'"' -f2`
-    pytest -v -s regression-tests --mpi-exec=${mpi_exe}
+    pytest -v -s regression_tests --mpi-exec=${mpi_exe}
 
     timed_message "Quandary tests completed"
 fi
