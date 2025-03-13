@@ -1,8 +1,4 @@
-# Make sure you have the location of quandary.py in your PYTHONPATH. E.g. with
-#   > export PYTHONPATH=/path/to/quandary/:$PYTHONPATH
-# Further, put your quandary executable is in your $PATH variable. E.g. with
-#   > export PATH=/path/to/quandary/:$PATH
-#   or specify its location within the call to quandary.optimize(quandary_exec=/path/to/Quandary/quandary)
+#  Quandary's python interface functions are defined in /path/to/quandary/quandary.py. Import them here. 
 from quandary import * 
 
 ## One qudit test case: Swap the 0 and 2 state of a three-level qudit ##

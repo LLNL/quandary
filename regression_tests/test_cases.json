@@ -1,0 +1,133 @@
+[
+    {
+        "simulation_name": "AxC",
+        "files_to_compare": [
+            "optim_history.dat",
+            "rho*.dat",
+            "population*.dat",
+            "expected*.dat"
+        ],
+        "number_of_processes": [
+            1
+        ]
+    },
+    {
+        "simulation_name": "AxC_grad",
+        "files_to_compare": [
+            "optim_history.dat",
+            "grad.dat",
+            "expected*.dat"
+        ],
+        "number_of_processes": [
+            1
+        ]
+    },
+    {
+        "simulation_name": "AxC_grad_schroedinger",
+        "files_to_compare": [
+            "grad.dat",
+            "rho*.dat",
+            "optim_history.dat"
+        ],
+        "number_of_processes": [
+            1
+        ]
+    },
+    {
+        "simulation_name": "AxC_grad_initBasis0",
+        "files_to_compare": [
+            "grad.dat",
+            "expected*.dat",
+            "optim_history.dat"
+        ],
+        "number_of_processes": [
+            3
+        ]
+    },
+    {
+        "simulation_name": "AxC_initDiag0",
+        "files_to_compare": [
+            "rho*.dat",
+            "optim_history.dat"
+        ],
+        "number_of_processes": [
+            3
+        ]
+    },
+    {
+        "simulation_name": "AxC_initEnsemble",
+        "files_to_compare": [
+            "rho*.dat",
+            "optim_history.dat"
+        ],
+        "number_of_processes": [
+            1
+        ]
+    },
+    {
+        "simulation_name": "AxC_initFile",
+        "files_to_compare": [
+            "rho*.dat",
+            "optim_history.dat"
+        ],
+        "number_of_processes": [
+            1
+        ]
+    },
+    {
+        "simulation_name": "cnot",
+        "files_to_compare": [
+            "optim_history.dat",
+            "expected*.dat"
+        ],
+        "number_of_processes": [
+            1,2,4
+        ]
+    },
+    {
+        "simulation_name": "pipulse",
+        "files_to_compare": [
+            "optim_history.dat",
+            "rho*.dat",
+            "population*.dat",
+            "expected*.dat"
+        ],
+        "number_of_processes": [
+            1,4
+        ]
+    },
+    {
+        "simulation_name": "xgate",
+        "files_to_compare": [
+            "optim_history.dat",
+            "rho*.dat",
+            "population*.dat"
+        ],
+        "number_of_processes": [
+            1,3
+        ]
+    },
+    {
+        "simulation_name": "xgate_sparsemat",
+        "files_to_compare": [
+            "grad.dat",
+            "optim_history.dat",
+            "rho*.dat",
+            "population*.dat"
+        ],
+        "number_of_processes": [
+            1,2,4
+        ]
+    },
+    {
+        "simulation_name": "state-to-state_spline0",
+        "files_to_compare": [
+            "optim_history.dat",
+            "rho*.dat",
+            "params.dat"
+        ],
+        "number_of_processes": [
+            1
+        ]
+    }
+]
