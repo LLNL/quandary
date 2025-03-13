@@ -1526,6 +1526,7 @@ def append_pulse(pulse_location, pulse_dict, dT, t_global, p_global, q_global):
 	# Synchronize when a multi-qubit gate occures. Here, inserting zero drive for idling qubits.
     if num_qubits > 1:
         synch_zero_padding(pulse_location, dT, t_global, p_global, q_global)
+
 	
 	# Append pulses for each qubit
     for i, qubitid in enumerate(pulse_location):
@@ -1536,13 +1537,18 @@ def append_pulse(pulse_location, pulse_dict, dT, t_global, p_global, q_global):
             p_global[qubitid].append(item)
         for item in q_pulse[i]:
     	    q_global[qubitid].append(item)
+
 	
 def synch_zero_padding(pulse_location, dT, t_global, p_global, q_global):
-    tmax = np.max([t_global[iqubit][-1] if len(t_global[iqubit]) > 0 else 0.0 for iqubit in pulse_location])
+
+    tmax_all = [t_global[iqubit][-1] if len(t_global[iqubit]) > 0 else 0.0 for iqubit in pulse_location]
+    tmax = np.max(tmax_all)
+    tmax_index= tmax_all.index(tmax)
+
     for iqubit in pulse_location:
-        while (t_global[iqubit][-1] if len(t_global[iqubit]) > 0 else 0.0 ) < tmax:
-            tmp = t_global[iqubit][-1] if len(t_global[iqubit]) > 0 else 0.0 
-            t_global[iqubit].append(tmp + dT)
-            p_global[iqubit].append(0.0)
-            q_global[iqubit].append(0.0)
-	
+        if tmax_all[iqubit] < tmax:
+            npadd = len(t_global[tmax_index]) - len(t_global[iqubit])
+            for m in range(npadd):
+                t_global[iqubit].append(tmax_all[iqubit] + m*dT)
+                p_global[iqubit].append(0.0)
+                q_global[iqubit].append(0.0)
