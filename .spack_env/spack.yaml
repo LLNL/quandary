@@ -15,3 +15,12 @@ spack:
       spec: quandary@=develop
   mirrors:
     binary_mirror: https://binaries.spack.io/develop
+  packages:
+    all:
+      require:
+      - spec: '^mpi%gcc'
+        when: '%gcc ^mpi'
+      - spec: '^mpi%clang'
+        when: '%clang ^mpi'
+      - spec: '^mpi%intel'
+        when: '%intel ^mpi'
