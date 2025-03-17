@@ -121,7 +121,7 @@ void PythonInterface::receiveHsys(Mat& Bd, Mat& Ad){
 
 }
 
-void PythonInterface::receiveHc(int noscillators, std::vector<std::vector<Mat>>& Ac_vec, std::vector<std::vector<Mat>>& Bc_vec){
+void PythonInterface::receiveHc(int noscillators, std::vector<Mat>& Ac_vec, std::vector<Mat>& Bc_vec){
   PetscInt ilow, iupp;
   int success;
   std::string testheader;
@@ -139,8 +139,8 @@ void PythonInterface::receiveHc(int noscillators, std::vector<std::vector<Mat>>&
 
   /* Iterate over oscillators */
   for (int k=0; k<noscillators; k++){
-    MatSetOption(Ac_vec[k][0], MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);
-    MatSetOption(Bc_vec[k][0], MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);
+    MatSetOption(Ac_vec[k], MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);
+    MatSetOption(Bc_vec[k], MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);
 
     /* Read real part from file */
     std::vector<double> vals (nelems);
@@ -156,7 +156,7 @@ void PythonInterface::receiveHc(int noscillators, std::vector<std::vector<Mat>>&
     // }
 
     // Iterate over received elements and place into Bc_vec
-    MatGetOwnershipRange(Bc_vec[k][0], &ilow, &iupp);
+    MatGetOwnershipRange(Bc_vec[k], &ilow, &iupp);
     for (int l = 0; l<vals.size(); l++) {
       if (fabs(vals[l])<1e-14) continue; // Skip zeros
 
@@ -167,7 +167,7 @@ void PythonInterface::receiveHc(int noscillators, std::vector<std::vector<Mat>>&
       if (lindbladtype == LindbladType::NONE){
         // Schroedinger: Assemble - B_c  
         double val = -1.*vals[l];
-        if (ilow <= row && row < iupp) MatSetValue(Bc_vec[k][0], row, col, val, ADD_VALUES);
+        if (ilow <= row && row < iupp) MatSetValue(Bc_vec[k], row, col, val, ADD_VALUES);
       } else {
         // Lindblad: Assemble -I_N \kron B_c + B_c \kron I_N 
         for (int m=0; m<sqdim; m++){
@@ -175,12 +175,12 @@ void PythonInterface::receiveHc(int noscillators, std::vector<std::vector<Mat>>&
           int rowm = row + sqdim * m;
           int colm = col + sqdim * m;
           double val = -1.*vals[l];
-          if (ilow <= rowm && rowm < iupp) MatSetValue(Bc_vec[k][0], rowm, colm, val, ADD_VALUES);
+          if (ilow <= rowm && rowm < iupp) MatSetValue(Bc_vec[k], rowm, colm, val, ADD_VALUES);
           // Then add v_ij in the B_d^T \kron I_N term:
           rowm = col*sqdim + m;   // transpose!
           colm = row*sqdim + m;
           val = vals[l];
-          if (ilow <= rowm && rowm < iupp) MatSetValue(Bc_vec[k][0], rowm, colm, val, ADD_VALUES);
+          if (ilow <= rowm && rowm < iupp) MatSetValue(Bc_vec[k], rowm, colm, val, ADD_VALUES);
         }
       }
     } // end of elements of Hc[k][i] real 
@@ -198,7 +198,7 @@ void PythonInterface::receiveHc(int noscillators, std::vector<std::vector<Mat>>&
     // }
 
     // Iterate over received vals and place into Ac_vec
-    MatGetOwnershipRange(Ac_vec[k][0], &ilow, &iupp);
+    MatGetOwnershipRange(Ac_vec[k], &ilow, &iupp);
     for (int l = 0; l<vals.size(); l++) {
       if (fabs(vals[l])<1e-14) continue; // Skip zeros
 
@@ -209,7 +209,7 @@ void PythonInterface::receiveHc(int noscillators, std::vector<std::vector<Mat>>&
       if (lindbladtype == LindbladType::NONE){
         // Schroedinger: Assemble A_c  
         double val = vals[l];
-        if (ilow <= row && row < iupp) MatSetValue(Ac_vec[k][0], row, col, val, ADD_VALUES);
+        if (ilow <= row && row < iupp) MatSetValue(Ac_vec[k], row, col, val, ADD_VALUES);
       } else {
         // Lindblad: Assemble I_N \kron B_c - B_c \kron I_N 
         for (int m=0; m<sqdim; m++){
@@ -217,12 +217,12 @@ void PythonInterface::receiveHc(int noscillators, std::vector<std::vector<Mat>>&
           int rowm = row + sqdim * m;
           int colm = col + sqdim * m;
           double val = vals[l];
-          if (ilow <= rowm && rowm < iupp) MatSetValue(Ac_vec[k][0], rowm, colm, val, ADD_VALUES);
+          if (ilow <= rowm && rowm < iupp) MatSetValue(Ac_vec[k], rowm, colm, val, ADD_VALUES);
           // Then add v_ij in the B_d^T \kron I_N term:
           rowm = col*sqdim + m;   // transpose!
           colm = row*sqdim + m;
           val = -1.0*vals[l];
-          if (ilow <= rowm && rowm < iupp) MatSetValue(Ac_vec[k][0], rowm, colm, val, ADD_VALUES);
+          if (ilow <= rowm && rowm < iupp) MatSetValue(Ac_vec[k], rowm, colm, val, ADD_VALUES);
         }
       }
     } // end of elements of Hc[k][i] imag

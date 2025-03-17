@@ -21,12 +21,12 @@ typedef struct {
   std::vector<double> eta;
   LindbladType lindbladtype;
   bool addT1, addT2;
-  std::vector<std::vector<double>> control_Re;
-  std::vector<std::vector<double>> control_Im;
-  std::vector<double> eval_transfer_Hdt_re;
-  std::vector<double> eval_transfer_Hdt_im;
-  std::vector<std::vector<Mat>> Ac_vec;
-  std::vector<std::vector<Mat>> Bc_vec;
+  std::vector<double> control_Re;
+  std::vector<double> control_Im;
+  std::vector<double> Hdt_coeff_re;
+  std::vector<double> Hdt_coeff_im;
+  std::vector<Mat> Ac_vec;
+  std::vector<Mat> Bc_vec;
   Mat *Ad, *Bd;
   std::vector<Mat> Ad_vec;
   std::vector<Mat> Bd_vec;
@@ -67,8 +67,8 @@ class MasterEq{
     Mat RHS;                // Realvalued, vectorized systemmatrix (2N^2 x 2N^2)
     MatShellCtx RHSctx;     // MatShell context that contains data needed to apply the RHS
 
-    std::vector<std::vector<Mat>> Ac_vec;  // Vector of vector of constant mats for time-varying control term (real). One vector of mats for each oscillators. 
-    std::vector<std::vector<Mat>> Bc_vec;  // Vector of vector of constant mats for time-varying control term (imag). One vector of mats for each oscillators. 
+    std::vector<Mat> Ac_vec;  // Vector of constant mats for time-varying control term (real). One for each oscillators. 
+    std::vector<Mat> Bc_vec;  // Vector of constant mats for time-varying control term (imag). One for each oscillators. 
     Mat  Ad, Bd;  // Real and imaginary part of constant system matrix
     std::vector<Mat> Ad_vec;  // Vector of constant mats for Dipole-Dipole coupling term in drift Hamiltonian (real)
     std::vector<Mat> Bd_vec;  // Vector of constant mats for Dipole-Dipole coupling term in drift Hamiltonian (imag)
@@ -103,10 +103,6 @@ class MasterEq{
     bool x_is_control;    // Flag if True: Optimization variables are the control parameters, else optimization vars are the UDE model parameters
     Learning* learning;   // Pointer to UDE model class
 
-    std::vector<std::vector<TransferFunction*>> transfer_Hc_re; // Stores the transfer functions for each control term for each oscillator
-    std::vector<std::vector<TransferFunction*>> transfer_Hc_im; // Stores the transfer functions for each control term for each oscillator
-    std::vector<TransferFunction*> transfer_Hdt_re; // Stores the transfer functions for each time-varying system hamiltonian term  
-    std::vector<TransferFunction*> transfer_Hdt_im; // Stores the transfer functions for each time-varying system Hamiltonian term  
     std::string hamiltonian_file; // either 'none' or name of file to read Hamiltonian from 
 
 
@@ -117,9 +113,6 @@ class MasterEq{
 
     /* initialize matrices needed for applying sparse-mat solver */
     void initSparseMatSolver();
-
-    /* Pass lists of time points that determin when which transfer functions is active. This is currently set for the rigetti threewave multi gate */
-    void setTransferOnOffTimes(std::vector<double> tlist);
 
     /* Return the i-th oscillator */
     Oscillator* getOscillator(const int i);
