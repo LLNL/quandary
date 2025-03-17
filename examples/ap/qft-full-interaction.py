@@ -79,6 +79,14 @@ machine_model = MachineModel(nqubits,  coupling_graph=coupling_graph, gate_set=g
 
 QFT_circuit = compile(QFT_unitary, model=machine_model, optimization_level=1, seed=1234, error_threshold=1e-4)
 
+# Convert to qiskit and draw the circuit
+from bqskit.ext import bqskit_to_qiskit
+from qiskit import QuantumCircuit
+qs = bqskit_to_qiskit(QFT_circuit)
+qs.draw(output="mpl", filename="QFT_mpl.png") # the matplotlib output is in color
+#qs.draw(output="latex", filename="QFT_ltx.png")
+
+
 # Optimize for pulses for each circuit cycle
 t_op = []
 pt_op = []
