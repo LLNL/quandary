@@ -65,8 +65,9 @@ for pval in pvals:
 		# Set up Quandary with standard Hamiltonian model 
 		quandary = Quandary(Ne=Ne, Ng=Ng, freq01=freq01, rotfreq=rotfreq, selfkerr=selfkerr, T=T, nsteps=nsteps, targetgate=unitary, verbose=verbose, rand_seed=rand_seed, T1=T1, T2=T2, initialcondition=initialcondition, output_frequency=output_frequency, randomize_init_ctrl=randomize_ctrl, initctrl_MHz=initctrl_MHz, carrier_frequency=carrier_freq, unitMHz=unitMHz) 
 
-		# Set the UDE learning model: "hamiltonian", or "lindblad", or "both"
-		UDEmodel = "both"   
+		# Set the UDE model: List of learnable terms, containing "hamiltonian" and/or "lindblad"
+		UDEmodel = "hamiltonian, lindblad"   
+
 		# Set the training time domain
 		T_train = T # T/2.0	  
 		# Switch to use mitigated data (corrected with confusion matrix), or raw data

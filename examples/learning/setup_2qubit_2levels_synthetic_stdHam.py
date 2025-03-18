@@ -104,8 +104,8 @@ print("")
 ################
 # Make sure to use the same initially assumed standard Hamiltonian as above (here: all zero)
 
-# Set the UDE model: "hamiltonian", or "lindblad", or "both"
-UDEmodel = "both"   
+# Set the UDE model: List of learnable terms, containing "hamiltonian" and/or "lindblad"
+UDEmodel = "hamiltonian, lindblad"   
 # UDEmodel = "hamiltonian"   
 # Set the training time domain
 T_train = T

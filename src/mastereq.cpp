@@ -6,15 +6,12 @@ MasterEq::MasterEq(){
   RHS = NULL;
   Ad     = NULL;
   Bd     = NULL;
-  dRedp = NULL;
-  dImdp = NULL;
   usematfree = false;
-  UDEmodel = UDEmodelType::NONE;
   quietmode = false;
 }
 
 
-MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Oscillator** oscil_vec_, const std::vector<double> crosskerr_, const std::vector<double> Jkl_, const std::vector<double> eta_, LindbladType lindbladtype_, bool usematfree_, UDEmodelType UDEmodel_, bool x_is_control_, Learning* learning_, std::string hamiltonian_file_, bool quietmode_) {
+MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Oscillator** oscil_vec_, const std::vector<double> crosskerr_, const std::vector<double> Jkl_, const std::vector<double> eta_, LindbladType lindbladtype_, bool usematfree_, bool x_is_control_, Learning* learning_, std::string hamiltonian_file_, bool quietmode_) {
   int ierr;
 
   nlevels = nlevels_;
@@ -25,7 +22,6 @@ MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Osci
   Jkl = Jkl_;
   eta = eta_;
   usematfree = usematfree_;
-  UDEmodel = UDEmodel_;
   x_is_control = x_is_control_;
   learning = learning_;
   lindbladtype = lindbladtype_;
@@ -115,19 +111,6 @@ MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Osci
   ISCreateStride(PETSC_COMM_WORLD, dimis, ilow, 2, &isu);
   ISCreateStride(PETSC_COMM_WORLD, dimis, ilow+1, 2, &isv);
 
-  /* Compute maximum number of design parameters over all oscillators */
-  nparams_max = 0;
-  for (int ioscil = 0; ioscil < getNOscillators(); ioscil++) {
-      int n = getOscillator(ioscil)->getNParams();
-      if (n > nparams_max) nparams_max = n;
-  }
-
-  /* Allocate some auxiliary vectors */
-  dRedp = new double[nparams_max];
-  dImdp = new double[nparams_max];
-  cols = new PetscInt[nparams_max];
-  vals = new PetscScalar[nparams_max];
-
   /* Allocate MatShell context for applying RHS */
   RHSctx.isu = &isu;
   RHSctx.isv = &isv;
@@ -147,7 +130,6 @@ MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Osci
     RHSctx.aux = &aux;
   }
   RHSctx.learning = learning;
-  RHSctx.UDEmodel= UDEmodel_;
   RHSctx.nlevels = nlevels;
   RHSctx.oscil_vec = oscil_vec;
   RHSctx.time = 0.0;
@@ -216,11 +198,6 @@ MasterEq::~MasterEq(){
         }
       }
     }
-    delete [] dRedp;
-    delete [] dImdp;
-    delete [] vals;
-    delete [] cols;
-
     ISDestroy(&isu);
     ISDestroy(&isv);
   }
@@ -715,7 +692,7 @@ int MasterEq::assemble_RHS(const double t){
   // Evaluate and store the controls and transfer for each oscillator 
   for (int iosc = 0; iosc < noscillators; iosc++) {
     double p, q;
-    oscil_vec[iosc]->evalControl(t, &p, &q); 
+    oscil_vec[iosc]->evalControl(t, &p, &q, learning); 
     RHSctx.control_Re[iosc] = p;  
     RHSctx.control_Im[iosc] = q; 
   } 
@@ -881,7 +858,7 @@ Mat MasterEq::getRHS() { return RHS; }
 /* grad += alpha * RHS(x)^T * xbar  */
 void MasterEq::computedRHSdp(const double t, const Vec x, const Vec xbar, const double alpha, Vec grad) {
 
-  if (usematfree && UDEmodel==UDEmodelType::NONE) {  // Matrix-free solver
+  if (usematfree && learning->getNParams() == 0) {  // Matrix-free solver
     double res_p_re,  res_p_im, res_q_re, res_q_im;
 
     const double* xptr, *xbarptr;
@@ -1170,91 +1147,80 @@ void MasterEq::computedRHSdp(const double t, const Vec x, const Vec xbar, const 
     VecRestoreArrayRead(x, &xptr);
     VecRestoreArrayRead(xbar, &xbarptr);
 
-    /* Set the gradient values */
-    int shift = 0;
+    /* Set the gradient wrt controls */
+    int col_shift = 0;
+    double* grad_ptr;
+    VecGetArray(grad, &grad_ptr);
     for (int iosc = 0; iosc < noscillators; iosc++){
-      // eval control parameters derivatives
-      for (int i=0; i<nparams_max; i++){
-        dRedp[i] = 0.0;
-        dImdp[i] = 0.0;
-      }
-      oscil_vec[iosc]->evalControl_diff(t, dRedp, dImdp);
 
-      PetscInt nparam = getOscillator(iosc)->getNParams();
-      for (int iparam=0; iparam < nparam; iparam++) {
-        vals[iparam] = alpha * (coeff_p[iosc] * dRedp[iparam] + coeff_q[iosc] * dImdp[iparam]);
-        cols[iparam] = iparam + shift;
-      }
-      VecSetValues(grad, nparam, cols, vals, ADD_VALUES);
-      shift += nparam;
+      double* grad_for_this_oscillator = grad_ptr + col_shift;
+      oscil_vec[iosc]->evalControl_diff(t, grad_for_this_oscillator, true, learning, coeff_p[iosc], coeff_q[iosc]);
+
+      col_shift += getOscillator(iosc)->getNParams();
     }
-
-    //Assemble gradient
-    VecAssemblyBegin(grad);
-    VecAssemblyEnd(grad);
+    VecRestoreArray(grad, &grad_ptr);
 
     delete [] coeff_p;
     delete [] coeff_q;
 
   } else {  // sparse matrix solver or learning 
 
-  /* Get real and imaginary part from x and x_bar */
-  Vec u, v, ubar, vbar;
-  VecGetSubVector(x, isu, &u);
-  VecGetSubVector(x, isv, &v);
-  VecGetSubVector(xbar, isu, &ubar);
-  VecGetSubVector(xbar, isv, &vbar);
+    /* Get real and imaginary part from x and x_bar */
+    Vec u, v, ubar, vbar;
+    VecGetSubVector(x, isu, &u);
+    VecGetSubVector(x, isv, &v);
+    VecGetSubVector(xbar, isu, &ubar);
+    VecGetSubVector(xbar, isv, &vbar);
 
-  if (x_is_control) { // Gradient wrt control parameters 
-  
-    /* Loop over oscillators */
+    /* Gradient wrt learnable parameters for Hamiltonian and Lindblad System Mats */
+    if (!x_is_control) {
+      learning->dRHSdp(grad, u, v, alpha, ubar, vbar);
+    }
+
+    /* Gradient wrt controls or learnable transfer functions */
+    double* grad_ptr;
+    VecGetArray(grad, &grad_ptr);
+    // Set the initial skip in gradient elements wrt learnable hamiltonian or Lindblad.
     int col_shift = 0;
+    if (!x_is_control) { 
+      col_shift += learning->getNParamsHamiltonian() + learning->getNParamsLindblad();
+    }
+    // Iterate over oscillators 
     for (int iosc= 0; iosc < noscillators; iosc++){
 
-      /* Evaluate the derivative of the control functions wrt control parameters */
-      for (int i=0; i<nparams_max; i++){
-        dRedp[i] = 0.0;
-        dImdp[i] = 0.0;
-      }
-      oscil_vec[iosc]->evalControl_diff(t, dRedp, dImdp);
-
-      /* Compute terms in RHS(x)^T xbar */
+      // Compute pbar and qbar from RHS(x)^T xbar
       double uAubar = 0.0; 
       double vAvbar = 0.0;
       double vBubar = 0.0;
       double uBvbar = 0.0;
-      double dot;
-      MatMult(Ac_vec[iosc], u, aux); VecDot(aux, ubar, &dot); uAubar += dot;
-      MatMult(Ac_vec[iosc], v, aux); VecDot(aux, vbar, &dot); vAvbar += dot;
-      MatMult(Bc_vec[iosc], u, aux); VecDot(aux, vbar, &dot); uBvbar += dot;
-      MatMult(Bc_vec[iosc], v, aux); VecDot(aux, ubar, &dot); vBubar += dot;
+      MatMult(Ac_vec[iosc], u, aux); VecDot(aux, ubar, &uAubar); 
+      MatMult(Ac_vec[iosc], v, aux); VecDot(aux, vbar, &vAvbar); 
+      MatMult(Bc_vec[iosc], u, aux); VecDot(aux, vbar, &uBvbar); 
+      MatMult(Bc_vec[iosc], v, aux); VecDot(aux, ubar, &vBubar); 
+      double qbar = vAvbar + uAubar;
+      double pbar = uBvbar - vBubar;
 
-      /* Number of parameters for this oscillator */
-      int nparams_iosc = getOscillator(iosc)->getNParams();
+      // Get the start of the gradient vector for this oscillator 
+      double* grad_for_this_oscillator = grad_ptr + col_shift;
+     
+      /* Evaluate the gradient wrt controls (x_is_control) or learnable transfer (!x_is_control) */
+      oscil_vec[iosc]->evalControl_diff(t, grad_for_this_oscillator, x_is_control, learning, pbar, qbar);
 
-      /* Set gradient terms for each control parameter */
-      for (int iparam=0; iparam < nparams_iosc; iparam++) {
-        vals[iparam] = alpha * ((uAubar + vAvbar) * dImdp[iparam] + ( -vBubar + uBvbar) * dRedp[iparam]);
-        cols[iparam] = col_shift + iparam;
+      // Set the shift in the gradient vector for the next oscillator
+      if (x_is_control) {
+        col_shift += getOscillator(iosc)->getNParams();
+      } else {
+        col_shift += learning->getNParamsTransfer(iosc);
       }
-      VecSetValues(grad, nparams_iosc, cols, vals, ADD_VALUES);
-      col_shift += nparams_iosc;
     }
+    VecRestoreArray(grad, &grad_ptr);
 
-    VecAssemblyBegin(grad);
-    VecAssemblyEnd(grad);
-
-  } else { // Gradient wrt learnable parameters
-
-    learning->dRHSdp(grad, u, v, alpha, ubar, vbar);
-  }
-
-  /* Restore x */
-  VecRestoreSubVector(x, isu, &u);
-  VecRestoreSubVector(x, isv, &v);
-  VecRestoreSubVector(xbar, isu, &ubar);
-  VecRestoreSubVector(xbar, isv, &vbar);
-  }
+    /* Restore x */
+    VecRestoreSubVector(x, isu, &u);
+    VecRestoreSubVector(x, isv, &v);
+    VecRestoreSubVector(xbar, isu, &ubar);
+    VecRestoreSubVector(xbar, isv, &vbar);
+    }
 
 }
 
@@ -1277,7 +1243,7 @@ void MasterEq::setControlAmplitudes(const Vec x) {
 
  void MasterEq::setControlFromData(int pulse_num){
   // Overwrite control initialization, if defined by training data
-  if (UDEmodel!=UDEmodelType::NONE && !x_is_control){
+  if (learning->getNParams() > 0 && !x_is_control){
     // TODO: Different controls for each oscillator 
     std::vector<double> datacontrols = learning->data->getControls(pulse_num);
     std::vector<double> controls = datacontrols; // does a deep copy
@@ -1400,9 +1366,8 @@ int myMatMult_sparsemat(Mat RHS, Vec x, Vec y){
     }
   }
 
-  /* --- Apply learning terms --- */
-  shellctx->learning->applyLearningTerms(u,v,uout, vout);
-  // exit(1);
+  /* Apply learnable system matrices */
+  shellctx->learning->applyUDESystemMats(u,v,uout, vout);
 
   /* Restore */
   VecRestoreSubVector(x, *shellctx->isu, &u);
@@ -1496,8 +1461,8 @@ int myMatMultTranspose_sparsemat(Mat RHS, Vec x, Vec y) {
     }
   }
 
-  /* --- Adjoint of learning terms --- */
-  shellctx->learning->applyLearningTerms_diff(u,v,uout, vout);
+  /* Gradient of applying learnble system matrices */
+  shellctx->learning->applyUDESystemMats_diff(u,v,uout, vout);
 
   /* Restore */
   VecRestoreSubVector(x, *shellctx->isu, &u);
@@ -1597,14 +1562,15 @@ int myMatMult_matfree(Mat RHS, Vec x, Vec y){
   VecRestoreArrayRead(x, &xptr);
   VecRestoreArray(y, &yptr);
 
-  /* Apply learning */
-  if (shellctx->UDEmodel != UDEmodelType::NONE) {
+  /* Apply learnable system matrices */
+  if (shellctx->learning->getNParamsHamiltonian() > 0 ||
+      shellctx->learning->getNParamsLindblad() > 0 ) {
     Vec u, v, uout, vout;
     VecGetSubVector(x, *shellctx->isu, &u);
     VecGetSubVector(x, *shellctx->isv, &v);
     VecGetSubVector(y, *shellctx->isu, &uout);
     VecGetSubVector(y, *shellctx->isv, &vout);
-    shellctx->learning->applyLearningTerms(u,v,uout, vout);
+    shellctx->learning->applyUDESystemMats(u,v,uout, vout);
     VecRestoreSubVector(x, *shellctx->isu, &u);
     VecRestoreSubVector(x, *shellctx->isv, &v);
     VecRestoreSubVector(y, *shellctx->isu, &uout);
@@ -1699,14 +1665,15 @@ int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
       }
   }
 
-  /* Apply learning */
-  if (shellctx->UDEmodel != UDEmodelType::NONE) {
+  /* Gradient of applying Learnable System matrices */
+  if (shellctx->learning->getNParamsHamiltonian() > 0 ||
+      shellctx->learning->getNParamsLindblad() > 0 ) {
     Vec u, v, uout, vout;
     VecGetSubVector(x, *shellctx->isu, &u);
     VecGetSubVector(x, *shellctx->isv, &v);
     VecGetSubVector(y, *shellctx->isu, &uout);
     VecGetSubVector(y, *shellctx->isv, &vout);
-    shellctx->learning->applyLearningTerms_diff(u,v,uout, vout);
+    shellctx->learning->applyUDESystemMats_diff(u,v,uout, vout);
     VecRestoreSubVector(x, *shellctx->isu, &u);
     VecRestoreSubVector(x, *shellctx->isv, &v);
     VecRestoreSubVector(y, *shellctx->isu, &uout);
@@ -1844,14 +1811,15 @@ int myMatMult_matfree(Mat RHS, Vec x, Vec y){
   VecRestoreArrayRead(x, &xptr);
   VecRestoreArray(y, &yptr);
 
-  /* Apply learning */
-  if (shellctx->UDEmodel != UDEmodelType::NONE) {
+  /* Apply learnable system matrices */
+  if (shellctx->learning->getNParamsHamiltonian() > 0 ||
+      shellctx->learning->getNParamsLindblad() > 0 ) {
     Vec u, v, uout, vout;
     VecGetSubVector(x, *shellctx->isu, &u);
     VecGetSubVector(x, *shellctx->isv, &v);
     VecGetSubVector(y, *shellctx->isu, &uout);
     VecGetSubVector(y, *shellctx->isv, &vout);
-    shellctx->learning->applyLearningTerms(u,v,uout, vout);
+    shellctx->learning->applyUDESystemMats(u,v,uout, vout);
     VecRestoreSubVector(x, *shellctx->isu, &u);
     VecRestoreSubVector(x, *shellctx->isv, &v);
     VecRestoreSubVector(y, *shellctx->isu, &uout);
@@ -1982,14 +1950,15 @@ int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
   VecRestoreArrayRead(x, &xptr);
   VecRestoreArray(y, &yptr);
 
-  /* Apply learning */
-  if (shellctx->UDEmodel != UDEmodelType::NONE) {
+  /* Gradient of apply learnabls system mats*/
+  if (shellctx->learning->getNParamsHamiltonian() > 0 ||
+      shellctx->learning->getNParamsLindblad() > 0 ) {
     Vec u, v, uout, vout;
     VecGetSubVector(x, *shellctx->isu, &u);
     VecGetSubVector(x, *shellctx->isv, &v);
     VecGetSubVector(y, *shellctx->isu, &uout);
     VecGetSubVector(y, *shellctx->isv, &vout);
-    shellctx->learning->applyLearningTerms_diff(u,v,uout, vout);
+    shellctx->learning->applyUDESystemMats_diff(u,v,uout, vout);
     VecRestoreSubVector(x, *shellctx->isu, &u);
     VecRestoreSubVector(x, *shellctx->isv, &v);
     VecRestoreSubVector(y, *shellctx->isu, &uout);
@@ -2149,14 +2118,15 @@ int myMatMult_matfree(Mat RHS, Vec x, Vec y){
   VecRestoreArrayRead(x, &xptr);
   VecRestoreArray(y, &yptr);
   
-  /* Apply learning */
-  if (shellctx->UDEmodel != UDEmodelType::NONE) {
+  /* Apply learnable system mats */
+  if (shellctx->learning->getNParamsHamiltonian() > 0 ||
+      shellctx->learning->getNParamsLindblad() > 0 ) {
     Vec u, v, uout, vout;
     VecGetSubVector(x, *shellctx->isu, &u);
     VecGetSubVector(x, *shellctx->isv, &v);
     VecGetSubVector(y, *shellctx->isu, &uout);
     VecGetSubVector(y, *shellctx->isv, &vout);
-    shellctx->learning->applyLearningTerms(u,v,uout, vout);
+    shellctx->learning->applyUDESystemMats(u,v,uout, vout);
     VecRestoreSubVector(x, *shellctx->isu, &u);
     VecRestoreSubVector(x, *shellctx->isv, &v);
     VecRestoreSubVector(y, *shellctx->isu, &uout);
@@ -2318,14 +2288,15 @@ int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
   VecRestoreArrayRead(x, &xptr);
   VecRestoreArray(y, &yptr);
 
-  /* Apply learning */
-  if (shellctx->UDEmodel != UDEmodelType::NONE) {
+  /* Gradient of Applying learable system mats */
+  if (shellctx->learning->getNParamsHamiltonian() > 0 ||
+      shellctx->learning->getNParamsLindblad() > 0 ) {
     Vec u, v, uout, vout;
     VecGetSubVector(x, *shellctx->isu, &u);
     VecGetSubVector(x, *shellctx->isv, &v);
     VecGetSubVector(y, *shellctx->isu, &uout);
     VecGetSubVector(y, *shellctx->isv, &vout);
-    shellctx->learning->applyLearningTerms_diff(u,v,uout, vout);
+    shellctx->learning->applyUDESystemMats_diff(u,v,uout, vout);
     VecRestoreSubVector(x, *shellctx->isu, &u);
     VecRestoreSubVector(x, *shellctx->isv, &v);
     VecRestoreSubVector(y, *shellctx->isu, &uout);
@@ -2527,13 +2498,14 @@ int myMatMult_matfree(Mat RHS, Vec x, Vec y){
   VecRestoreArray(y, &yptr);
 
   /* Apply learning */
-  if (shellctx->UDEmodel != UDEmodelType::NONE) {
+  if (shellctx->learning->getNParamsHamiltonian() > 0 ||
+      shellctx->learning->getNParamsLindblad() > 0 ) {
     Vec u, v, uout, vout;
     VecGetSubVector(x, *shellctx->isu, &u);
     VecGetSubVector(x, *shellctx->isv, &v);
     VecGetSubVector(y, *shellctx->isu, &uout);
     VecGetSubVector(y, *shellctx->isv, &vout);
-    shellctx->learning->applyLearningTerms(u,v,uout, vout);
+    shellctx->learning->applyUDESystemMats(u,v,uout, vout);
     VecRestoreSubVector(x, *shellctx->isu, &u);
     VecRestoreSubVector(x, *shellctx->isv, &v);
     VecRestoreSubVector(y, *shellctx->isu, &uout);
@@ -2737,13 +2709,14 @@ int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
   VecRestoreArray(y, &yptr);
 
   /* Apply learning */
-  if (shellctx->UDEmodel != UDEmodelType::NONE) {
+  if (shellctx->learning->getNParamsHamiltonian() > 0 ||
+      shellctx->learning->getNParamsLindblad() > 0 ) {
     Vec u, v, uout, vout;
     VecGetSubVector(x, *shellctx->isu, &u);
     VecGetSubVector(x, *shellctx->isv, &v);
     VecGetSubVector(y, *shellctx->isu, &uout);
     VecGetSubVector(y, *shellctx->isv, &vout);
-    shellctx->learning->applyLearningTerms_diff(u,v,uout, vout);
+    shellctx->learning->applyUDESystemMats_diff(u,v,uout, vout);
     VecRestoreSubVector(x, *shellctx->isu, &u);
     VecRestoreSubVector(x, *shellctx->isv, &v);
     VecRestoreSubVector(y, *shellctx->isu, &uout);
@@ -2993,13 +2966,14 @@ int myMatMult_matfree(Mat RHS, Vec x, Vec y){
   VecRestoreArray(y, &yptr);
 
   /* Apply learning */
-  if (shellctx->UDEmodel != UDEmodelType::NONE) {
+  if (shellctx->learning->getNParamsHamiltonian() > 0 ||
+      shellctx->learning->getNParamsLindblad() > 0 ) {
     Vec u, v, uout, vout;
     VecGetSubVector(x, *shellctx->isu, &u);
     VecGetSubVector(x, *shellctx->isv, &v);
     VecGetSubVector(y, *shellctx->isu, &uout);
     VecGetSubVector(y, *shellctx->isv, &vout);
-    shellctx->learning->applyLearningTerms(u,v,uout, vout);
+    shellctx->learning->applyUDESystemMats(u,v,uout, vout);
     VecRestoreSubVector(x, *shellctx->isu, &u);
     VecRestoreSubVector(x, *shellctx->isv, &v);
     VecRestoreSubVector(y, *shellctx->isu, &uout);
@@ -3250,13 +3224,14 @@ int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
   VecRestoreArray(y, &yptr);
 
   /* Apply learning */
-  if (shellctx->UDEmodel != UDEmodelType::NONE) {
+  if (shellctx->learning->getNParamsHamiltonian() > 0 ||
+      shellctx->learning->getNParamsLindblad() > 0 ) {
     Vec u, v, uout, vout;
     VecGetSubVector(x, *shellctx->isu, &u);
     VecGetSubVector(x, *shellctx->isv, &v);
     VecGetSubVector(y, *shellctx->isu, &uout);
     VecGetSubVector(y, *shellctx->isv, &vout);
-    shellctx->learning->applyLearningTerms_diff(u,v,uout, vout);
+    shellctx->learning->applyUDESystemMats_diff(u,v,uout, vout);
     VecRestoreSubVector(x, *shellctx->isu, &u);
     VecRestoreSubVector(x, *shellctx->isv, &v);
     VecRestoreSubVector(y, *shellctx->isu, &uout);

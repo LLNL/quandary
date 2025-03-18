@@ -147,8 +147,8 @@ void Output::writeControls(MasterEq* mastereq, int ntime, double dt, int pulseID
         double time = i*dt; 
 
         double ReI, ImI, LabI;
-        mastereq->getOscillator(ioscil)->evalControl(time, &ReI, &ImI);
-        mastereq->getOscillator(ioscil)->evalControl_Labframe(time, &LabI);
+        mastereq->getOscillator(ioscil)->evalControl(time, &ReI, &ImI, mastereq->learning);
+        mastereq->getOscillator(ioscil)->evalControl_Labframe(time, &LabI, mastereq->learning);
         // Write control drives
         fprintf(file_c, "% 1.8f   % 1.14e   % 1.14e   % 1.14e \n", time, ReI/(2.0*M_PI), ImI/(2.0*M_PI), LabI/(2.0*M_PI));
      } // end of time loop 

@@ -8,9 +8,6 @@
 /* Available lindblad types */
 enum class LindbladType {NONE, DECAY, DEPHASE, BOTH};
 
-/* Available Learning models */
-enum class UDEmodelType {NONE, HAMILTONIAN, LINDBLAD, BOTH};
-
 /* Available types of initial conditions */
 enum class InitialConditionType {FROMFILE, PURE, ENSEMBLE, DIAGONAL, BASIS, THREESTATES, NPLUSONE, PERFORMANCE};
 

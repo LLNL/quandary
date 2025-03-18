@@ -153,16 +153,22 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
         col = col + timestepper->mastereq->getOscillator(iosc)->getNSegParams(iseg);
       }
     }
-  } else { // Optimize on learnable parameters. Hamiltonian: no bounds, Lindblad: >=0
+  } else { // Optimize on learnable parameters. Hamiltonian: no bounds, Lindblad: >=0, Transfer: >= 0
     int nparamsH = timestepper->mastereq->learning->getNParamsHamiltonian();
     int nparamsL = timestepper->mastereq->learning->getNParamsLindblad();
-    assert(ndesign = nparamsH + nparamsL);
+    int nparamsT = timestepper->mastereq->learning->getNParamsTransfer();
+    assert(ndesign = nparamsH + nparamsL + nparamsT);
     for (int i=0; i<nparamsH; i++) {
       double boundval = 1e6;
       VecSetValue(xupper, i,     boundval, INSERT_VALUES);
       VecSetValue(xlower, i, -1.*boundval, INSERT_VALUES);
     }
     for (int i=nparamsH; i<nparamsH+nparamsL; i++) {
+      double boundval = 1e6;
+      VecSetValue(xupper, i, boundval, INSERT_VALUES);
+      VecSetValue(xlower, i, 0.0, INSERT_VALUES);
+    }
+    for (int i=nparamsH+nparamsL; i<nparamsH+nparamsL+nparamsT; i++) {
       double boundval = 1e6;
       VecSetValue(xupper, i, boundval, INSERT_VALUES);
       VecSetValue(xlower, i, 0.0, INSERT_VALUES);
@@ -256,7 +262,7 @@ double OptimProblem::evalF(const Vec x) {
     } else { // Optimize on learnable parameters
       mastereq->learning->setLearnParams(x); 
 
-      /* Make sure the control pulse matches the data */
+      /* Make sure the control pulse matches the data, if given */
       mastereq->setControlFromData(ipulse);
 
       // TEST: write expected energy of the Training data.
@@ -268,7 +274,6 @@ double OptimProblem::evalF(const Vec x) {
       std::string filename_rho_Im = output->datadir + "/TrainingData_pulse"+std::to_string(ipulse)+"_rho_Im.dat"; 
       mastereq->learning->data->writeFullstate(filename_rho_Re.c_str(), filename_rho_Im.c_str(), ipulse);
     }
-
 
     /*  Iterate over initial condition */
     double obj_cost_re = 0.0;

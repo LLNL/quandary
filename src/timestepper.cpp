@@ -468,7 +468,7 @@ double TimeStepper::energyPenaltyIntegral(double time){
   /* Loop over oscillators */
   for (int iosc = 0; iosc < mastereq->getNOscillators(); iosc++) {
     double p,q;
-    mastereq->getOscillator(iosc)->evalControl(time, &p, &q); 
+    mastereq->getOscillator(iosc)->evalControl(time, &p, &q, mastereq->learning); 
     pen += (p*p + q*q) / ntime;
   }
 
@@ -478,45 +478,33 @@ double TimeStepper::energyPenaltyIntegral(double time){
 
 void TimeStepper::energyPenaltyIntegral_diff(double time, double penaltybar, Vec redgrad){
 
-  int nparams_max = 0;
-  for (int ioscil = 0; ioscil < mastereq->getNOscillators(); ioscil++) {
-      int n = mastereq->getOscillator(ioscil)->getNParams();
-      if (n > nparams_max) nparams_max = n;
+  int col_shift = 0;
+  if (!mastereq->x_is_control) { // Skip gradient elements wrt learnable hamiltonian or Lindblad.
+    col_shift += mastereq->learning->getNParamsHamiltonian() + mastereq->learning->getNParamsLindblad();
   }
-  double* dRedp = new double[nparams_max];
-  double* dImdp = new double[nparams_max];
+  double* grad_ptr;
+  VecGetArray(redgrad, &grad_ptr);
 
-  PetscInt* cols = new PetscInt[nparams_max];
-  PetscScalar* vals = new PetscScalar[nparams_max];
-
-  int shift = 0;
   for (int iosc = 0; iosc < mastereq->getNOscillators(); iosc++){
 
-    /* Reevaluate the controls */
+    /* Reevaluate the controls to set pbar, qbar */
     double p,q;
-    mastereq->getOscillator(iosc)->evalControl(time, &p, &q); 
+    mastereq->getOscillator(iosc)->evalControl(time, &p, &q, mastereq->learning); 
+    double pbar = penaltybar/ntime * 2.0 * p;
+    double qbar = penaltybar/ntime * 2.0 * q;
 
-    /* Initialize derivative */
-    for (int i=0; i<nparams_max; i++){
-      dRedp[i] = 0.0;
-      dImdp[i] = 0.0;
-    }
-    mastereq->getOscillator(iosc)->evalControl_diff(time, dRedp, dImdp);
+    /* Derivative of evalControls */
+    double* grad_for_this_oscillator = grad_ptr + col_shift;
+    mastereq->getOscillator(iosc)->evalControl_diff(time, grad_for_this_oscillator, mastereq->x_is_control, mastereq->learning, pbar, qbar);
 
-    PetscInt nparam = mastereq->getOscillator(iosc)->getNParams();
-    for (int iparam=0; iparam < nparam; iparam++) {
-      vals[iparam] = penaltybar / ntime * 2.0 * ( p * dRedp[iparam] + q * dImdp[iparam]);
-      cols[iparam] = iparam + shift;
-    }
-    VecSetValues(redgrad, nparam, cols, vals, ADD_VALUES);
-    shift += nparam;
+    // Skip in gradient for next oscillator
+    if (mastereq->x_is_control) {
+      col_shift += mastereq->getOscillator(iosc)->getNParams();
+    } else {
+      col_shift += mastereq->learning->getNParamsTransfer(iosc);
+    } 
   } 
-
-
-  delete [] dRedp;
-  delete [] dImdp;
-  delete [] vals;
-  delete [] cols;
+  VecRestoreArray(redgrad, &grad_ptr);
 }
 
 void TimeStepper::evolveBWD(const double tstart, const double tstop, const Vec x_stop, Vec x_adj, Vec grad, bool compute_gradient){}

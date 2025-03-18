@@ -197,18 +197,18 @@ void SyntheticQuandaryData::loadData(std::vector<std::string>& data_name, double
     // printf("Loading from name %s\n", data_name[ipulse*2+0].c_str());
 
     /* Extract control amplitudes from file name (searching for "p" and "q")*/
-    std::size_t found_p = data_name[ipulse*2+0].find("ctrlP") + 4;
-    std::size_t found_q = data_name[ipulse*2+0].find("ctrlQ") + 4;
+    std::size_t found_p = data_name[ipulse*2+0].find("ctrlP");
+    std::size_t found_q = data_name[ipulse*2+0].find("ctrlQ");
 
     int strlength_p = 5;
     int strlength_q = 5;
     // If controls are given, load them, otherwise leave controlparams[ipulse] empty
     controlparams[ipulse_local].clear();
     if (found_p != std::string::npos && found_q != std::string::npos ){
-      if (data_name[ipulse*2+0][found_p+1] == '-') strlength_p=6;
-      if (data_name[ipulse*2+0][found_q+1] == '-') strlength_q=6;
-      double p_Volt = std::stod(data_name[ipulse*2+0].substr(found_p+1, strlength_p));
-      double q_Volt = std::stod(data_name[ipulse*2+0].substr(found_q+1, strlength_q));
+      if (data_name[ipulse*2+0][found_p+5] == '-') strlength_p=6;
+      if (data_name[ipulse*2+0][found_q+5] == '-') strlength_q=6;
+      double p_Volt = std::stod(data_name[ipulse*2+0].substr(found_p+5, strlength_p));
+      double q_Volt = std::stod(data_name[ipulse*2+0].substr(found_q+5, strlength_q));
       double conversion_factor = 1.0;  // conversion factor: Volt to GHz
       double p_GHz = p_Volt * conversion_factor;
       double q_GHz = q_Volt * conversion_factor;

@@ -31,7 +31,6 @@ typedef struct {
   std::vector<Mat> Ad_vec;
   std::vector<Mat> Bd_vec;
   Learning* learning; 
-  UDEmodelType UDEmodel;     
   Vec *aux;
   double time;
 } MatShellCtx;
@@ -81,14 +80,9 @@ class MasterEq{
     /* Auxiliary stuff */
     int mpirank_petsc;   // Rank of Petsc's communicator
     int mpirank_world;   // Rank of global communicator
-    int nparams_max;     // Maximum number of design parameters per oscilator 
     IS isu, isv;         // Vector strides for accessing u=Re(x), v=Im(x) 
 
-    double *dRedp;
-    double *dImdp;
     Vec aux;              // auxiliary vector 
-    PetscInt* cols;           // holding columns when evaluating dRHSdp
-    PetscScalar* vals;   // holding values when evaluating dRHSdp
 
     bool quietmode;
 
@@ -99,16 +93,15 @@ class MasterEq{
     LindbladType lindbladtype;        // Flag that determines which lindblad terms are added. if NONE, than Schroedingers eq. is solved
 
     /* Stuff for UDE learning */
-    UDEmodelType UDEmodel;     // Use the UDE correction terms in the master equation
     bool x_is_control;    // Flag if True: Optimization variables are the control parameters, else optimization vars are the UDE model parameters
-    Learning* learning;   // Pointer to UDE model class
+    Learning* learning;   // Pointer to Learning class
 
     std::string hamiltonian_file; // either 'none' or name of file to read Hamiltonian from 
 
 
   public:
     MasterEq();
-    MasterEq(std::vector<int> nlevels, std::vector<int> nessential, Oscillator** oscil_vec_, const std::vector<double> crosskerr_, const std::vector<double> Jkl_, const std::vector<double> eta_, LindbladType lindbladtype_, bool usematfree_, UDEmodelType UDEmodel_, bool x_is_control, Learning* learning, std::string hamiltonian_file, bool quietmode=false);
+    MasterEq(std::vector<int> nlevels, std::vector<int> nessential, Oscillator** oscil_vec_, const std::vector<double> crosskerr_, const std::vector<double> Jkl_, const std::vector<double> eta_, LindbladType lindbladtype_, bool usematfree_, bool x_is_control, Learning* learning, std::string hamiltonian_file, bool quietmode=false);
     ~MasterEq();
 
     /* initialize matrices needed for applying sparse-mat solver */

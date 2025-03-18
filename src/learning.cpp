@@ -1,14 +1,15 @@
 #include "learning.hpp"
 
-Learning::Learning(std::vector<int> nlevels, LindbladType lindbladtype_, UDEmodelType UDEmodel_, std::vector<std::string>& learninit_str, Data* data_, std::default_random_engine rand_engine, bool quietmode_, double loss_scaling_factor_){
+Learning::Learning(std::vector<int>& nlevels, LindbladType lindbladtype_, std::vector<std::string>& UDEmodel_str, std::vector<int>& ncarrierwaves, std::vector<std::string>& learninit_str, Data* data_, std::default_random_engine rand_engine, bool quietmode_, double loss_scaling_factor_){
   lindbladtype = lindbladtype_;
   quietmode = quietmode_;
   data = data_;
-  UDEmodel = UDEmodel_;
+  hamiltonian_model = NULL;
+  lindblad_model = NULL;
   loss_scaling_factor=loss_scaling_factor_;
   MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
 
-   // Reset
+  // Reset
   loss_integral = 0.0;
   current_err = 0.0;
 
@@ -28,28 +29,38 @@ Learning::Learning(std::vector<int> nlevels, LindbladType lindbladtype_, UDEmode
   /* Proceed only if this is not a dummy class (aka only if using the UDE model)*/
   if (dim_rho > 0) {
 
-    /* Create Basis for the learnable terms. */
-    bool shifted_diag = true;
-    if (UDEmodel == UDEmodelType::HAMILTONIAN || UDEmodel == UDEmodelType::BOTH) {
-      hamiltonian_model = new HamiltonianModel(dim_rho, shifted_diag, lindbladtype);
-    } else {
-      hamiltonian_model = new HamiltonianModel(0, false, lindbladtype); // will be empty. Dummy
-    }
-    if (lindbladtype != LindbladType::NONE && (UDEmodel == UDEmodelType::LINDBLAD || UDEmodel == UDEmodelType::BOTH)) {
+    // Parse the UDEmodel_str for learnable term identifyiers and create parameterizations
+    for (int i=0; i<UDEmodel_str.size(); i++) {
+      if (UDEmodel_str[i].compare("hamiltonian") == 0 ) {
+        bool shifted_diag = true;
+        hamiltonian_model = new HamiltonianModel(dim_rho, shifted_diag, lindbladtype);
+      }
+      if (UDEmodel_str[i].compare("lindblad") == 0 ) {
+        bool shifted_diag = true;
         bool upper_only = false;
         bool real_only = false;
         lindblad_model    = new LindbladModel(dim_rho, shifted_diag, upper_only, real_only); 
-    } else {
-        lindblad_model    = new LindbladModel(0, false, false, false);  // will be empty. Dummy
+      }
+      if (UDEmodel_str[i].compare("transferLinear") == 0 ) {
+        for (int iosc=0; iosc<ncarrierwaves.size(); iosc++){
+          TransferModel* transfer_iosc = new TransferModel(dim_rho, ncarrierwaves[iosc], lindbladtype);
+          transfer_model.push_back(transfer_iosc);
+        }
+      }
     }
-    // TEST
-    // lindblad_model->showBasisMats();
+    // Create dummies for those that are not used. Those will be empty, doing nothing.
+    if (hamiltonian_model==NULL) hamiltonian_model = new HamiltonianModel(0, false, lindbladtype);
+    if (lindblad_model==NULL) lindblad_model = new LindbladModel(0, false, false, false); 
+    if (transfer_model.empty()) transfer_model.push_back(new TransferModel(0, 0, lindbladtype));
 
-    /* Set the total number of learnable paramters */
+    /* Compute the total number of learnable paramters */
     nparams = hamiltonian_model->getNParams() + lindblad_model->getNParams();
+    for (int iosc=0; iosc<transfer_model.size(); iosc++) {
+      nparams += transfer_model[iosc]->getNParams();
+    }
 
-    /* Allocate learnable Hamiltonian and Lindblad parameters, and set an initial guess */
-    initLearnParams(learninit_str, rand_engine);
+    /* Allocate learnable parameters, and set an initial guess */
+    initLearnParams(nparams, learninit_str, rand_engine);
 
     /* Create auxiliary vectors needed for MatMult. */
     VecCreate(PETSC_COMM_WORLD, &aux2);    // aux2 sized for state (re and im)
@@ -59,7 +70,7 @@ Learning::Learning(std::vector<int> nlevels, LindbladType lindbladtype_, UDEmode
     // Some output 
     // if (mpirank_world == 0 && !quietmode) {
     if (mpirank_world == 0) {
-      printf("Learning with %d Hamiltonian params and %d Lindblad params \n", hamiltonian_model->getNParams(), lindblad_model->getNParams());
+      printf("Learning with %d Hamiltonian params, %d Lindblad params, %d control transfer parameters \n", getNParamsHamiltonian(), getNParamsLindblad(), getNParamsTransfer());
     }
   }
 }
@@ -68,6 +79,10 @@ Learning::~Learning(){
   if (dim_rho > 0) {
     learnparamsH.clear();
     learnparamsL.clear();
+    for (int iosc=0; iosc<learnparamsT.size(); iosc++){
+      learnparamsT[iosc].clear();
+    }
+    learnparamsT.clear();
     VecDestroy(&aux2);
 
     delete hamiltonian_model;
@@ -76,7 +91,7 @@ Learning::~Learning(){
   }
 }
 
-void Learning::applyLearningTerms(Vec u, Vec v, Vec uout, Vec vout){
+void Learning::applyUDESystemMats(Vec u, Vec v, Vec uout, Vec vout){
 
   if (dim_rho <= 0) return;
 
@@ -87,7 +102,7 @@ void Learning::applyLearningTerms(Vec u, Vec v, Vec uout, Vec vout){
 
 
 
-void Learning::applyLearningTerms_diff(Vec u, Vec v, Vec uout, Vec vout){
+void Learning::applyUDESystemMats_diff(Vec u, Vec v, Vec uout, Vec vout){
 
   if (dim_rho <= 0) return;
 
@@ -102,20 +117,17 @@ void Learning::writeOperators(std::string datadir){
 
   if (mpirank_world == 0) {
     bool shift_diag = true;
-    if (UDEmodel == UDEmodelType::HAMILTONIAN || UDEmodel == UDEmodelType::BOTH) {
-      hamiltonian_model->writeOperator(learnparamsH, datadir);
-    }
-
-    if (lindbladtype != LindbladType::NONE && (UDEmodel == UDEmodelType::LINDBLAD || UDEmodel == UDEmodelType::BOTH)) {
-      lindblad_model->writeOperator(learnparamsL, datadir);
-    }
+    hamiltonian_model->writeOperator(learnparamsH, datadir);
+    lindblad_model->writeOperator(learnparamsL, datadir);
   }
 }
 
 
 void Learning::setLearnParams(const Vec x){
   /* Storage of parameters in x:  
-   *   x = [learnparamH_Re, learnparamH_Im, learnparamL_Re, learnparamL_Im ] 
+   *   x = [learnparamH_Re, learnparamH_Im, 
+   *        learnparamL_Re, learnparamL_Im, 
+   *        learnparamT_iosc 1,... learnparamT_iosc N] 
    */
 
   const PetscScalar* ptr;
@@ -128,13 +140,22 @@ void Learning::setLearnParams(const Vec x){
   for (int i=0; i<lindblad_model->getNParams(); i++) {
     learnparamsL[i] = ptr[i+skip];
   }
+  skip += lindblad_model->getNParams();
+  for (int iosc=0; iosc<transfer_model.size(); iosc++) {
+    for (int i=0; i<transfer_model[iosc]->getNParams(); i++) {
+      learnparamsT[iosc][i] = ptr[skip];
+      skip++;
+    }
+  }
 
   VecRestoreArrayRead(x, &ptr);
 }
 
 void Learning::getLearnParams(double* x){
   /* Storage of parameters in x:  
-   *   x = [learnparamH_Re, learnparamH_Im, learnparamL_Re, learnparamL_Im ] 
+   *   x = [learnparamH_Re, learnparamH_Im, 
+   *        learnparamL_Re, learnparamL_Im, 
+   *        learnparamT_iosc 1,... learnparamT_iosc N] 
    */
 
   for (int i=0; i<hamiltonian_model->getNParams(); i++) {
@@ -144,11 +165,20 @@ void Learning::getLearnParams(double* x){
   for (int i=0; i<lindblad_model->getNParams(); i++) {
     x[i+skip] = learnparamsL[i];
   }
+  skip += lindblad_model->getNParams();
+  for (int iosc=0; iosc<transfer_model.size(); iosc++) {
+    for (int i=0; i<transfer_model[iosc]->getNParams(); i++) {
+      x[skip] = learnparamsT[iosc][i];
+      skip++;
+    }
+  }
 }
 
 void Learning::dRHSdp(Vec grad, Vec u, Vec v, double alpha, Vec ubar, Vec vbar){
   /* Storage of parameters in x:  
-   *   x = [learnparamH_Re, learnparamH_Im, learnparamL_Re, learnparamL_Im ] 
+   *   x = [learnparamH_Re, learnparamH_Im, 
+   *        learnparamL_Re, learnparamL_Im, 
+   *        learnparamT_iosc 1,... learnparamT_iosc N] 
    */
 
   if (dim_rho <= 0) return;
@@ -161,13 +191,13 @@ void Learning::dRHSdp(Vec grad, Vec u, Vec v, double alpha, Vec ubar, Vec vbar){
 }
 
 
-void Learning::initLearnParams(std::vector<std::string> learninit_str, std::default_random_engine rand_engine){
+void Learning::initLearnParams(int nparams, std::vector<std::string> learninit_str, std::default_random_engine rand_engine){
   // Switch over initialization string ("file", "constant", or "random")
 
   if (learninit_str[0].compare("file") == 0 ) { //  Read parameter from file. 
 
     /* Parameter file format:  One column containing all learnable paramters as 
-     *    x = [learnparamH_Re, learnparamH_Im, learnparamL_Re, learnparamL_Im ] 
+     *    x = [learnparamH_Re, learnparamH_Im, learnparamL_Re, learnparamL_Im, learnparamTransfer] 
      */
     std::vector<double> initguess_fromfile(nparams, 0.0);
     assert(learninit_str.size()>1);
@@ -185,6 +215,16 @@ void Learning::initLearnParams(std::vector<std::string> learninit_str, std::defa
     for (int i=0; i<lindblad_model->getNParams(); i++){
       learnparamsL.push_back(initguess_fromfile[skip + i]); 
     }
+    // Then set all transfer params, iterating over oscillators first, then over carrier waves
+    skip += lindblad_model->getNParams();
+    for (int iosc=0; iosc<transfer_model.size(); iosc++) {
+      std::vector<double> myparams;
+      for (int i=0; i<transfer_model[iosc]->getNParams(); i++){
+        myparams.push_back(initguess_fromfile[skip]); 
+        skip++;
+      }
+      learnparamsT.push_back(myparams);
+    }
   } else if (learninit_str[0].compare("random") == 0 ) {
     // Set uniform random parameters in [0,amp)
 
@@ -197,16 +237,24 @@ void Learning::initLearnParams(std::vector<std::string> learninit_str, std::defa
     }
     // Then all Lindblad parameters
     if (lindblad_model->getNParams() > 0) {
-      if (learninit_str.size() == 2) learninit_str.push_back(learninit_str[1]);
-      assert(learninit_str.size()>2);
+      if (learninit_str.size() < 3) copyLast(learninit_str, 4);
       amp = atof(learninit_str[2].c_str());
       std::uniform_real_distribution<double> unit_dist2(0.0, amp);
       for (int i=0; i<lindblad_model->getNParams(); i++){
         learnparamsL.push_back(unit_dist2(rand_engine)); // 1/ns?
       }
-      // for (int i=0; i<lindblad_model->getNParams_B(); i++){
-        // learnparamsL_Im.push_back(unit_dist2(rand_engine)); // 1/ns? 
-      // }
+    }
+    // Then all transfer parameters. ALWAYS CONSTANT init for now.
+    for (int iosc=0; iosc<transfer_model.size(); iosc++){
+      if (learninit_str.size() < 4) copyLast(learninit_str, 4);
+      std::vector<double> myparams;
+      if (transfer_model[iosc]->getNParams() > 0) {
+        amp = atof(learninit_str[3].c_str());
+        for (int i=0; i<transfer_model[iosc]->getNParams(); i++){
+          myparams.push_back(amp); 
+        }
+      }
+      learnparamsT.push_back(myparams);
     }
   } else if (learninit_str[0].compare("constant") == 0 ) {
     // Set constant amp
@@ -218,18 +266,26 @@ void Learning::initLearnParams(std::vector<std::string> learninit_str, std::defa
     }
     // Then all Lindblad parameters
     if (lindblad_model->getNParams() > 0) {
-      if (learninit_str.size() == 2) learninit_str.push_back(learninit_str[1]);
-      assert(learninit_str.size()>2);
+      if (learninit_str.size() < 3) copyLast(learninit_str, 4);
       amp = atof(learninit_str[2].c_str());
       for (int i=0; i<lindblad_model->getNParams(); i++){
         learnparamsL.push_back(amp); // ns?
       }
-      // for (int i=0; i<lindblad_model->getNParams_B(); i++){
-        // learnparamsL_Im.push_back(amp); // ns? 
-      // }
+    }
+    // Then all transfer parameters. For now, always init with identity. TODO.
+    for (int iosc=0; iosc<transfer_model.size(); iosc++){
+      std::vector<double> myparams;
+      if (transfer_model[iosc]->getNParams() > 0) {
+        if (learninit_str.size() < 4) copyLast(learninit_str, 4);
+        amp = atof(learninit_str[3].c_str());
+        for (int i=0; i<transfer_model[iosc]->getNParams(); i++){
+          myparams.push_back(amp); 
+        }
+      }
+      learnparamsT.push_back(myparams);
     }
   } else {
-    if (mpirank_world==0) printf("ERROR: Wrong configuration for learnable parameter initialization. Choose 'file, <pathtofile>', or 'random, <amplitude_Ham>, <amplitude_Lindblad>', or 'constant, <amplitude_Ham>, <amplitude_Lind>'\n");
+    if (mpirank_world==0) printf("ERROR: Wrong configuration for learnable parameter initialization. Choose 'file, <pathtofile>', or 'random, <amplitude_Ham>, <amplitude_Lindblad>, <amplitude_transfer>', or 'constant, <amplitude_Ham>, <amplitude_Lind>, <amplitude_transfer>'\n");
     exit(1);
   }
 }
@@ -269,3 +325,18 @@ void Learning::addToLoss_diff(double time, Vec xbar, Vec xprimal, int pulse_num,
 }
 
 
+
+
+void Learning::applyUDETransfer(int oscilID, int cwID, double* Blt1, double* Blt2){
+
+  if (transfer_model.size() > oscilID){
+    transfer_model[oscilID]->apply(cwID, Blt1, Blt2, learnparamsT[oscilID]);
+  }
+}
+
+void Learning::applyUDETransfer_diff(int oscilID, int cwID, const double Blt1, const double Blt2, double& Blt1bar, double& Blt2bar, double* grad, double x_is_control){
+
+  if (transfer_model.size() > oscilID){
+    transfer_model[oscilID]->apply_diff(cwID, Blt1, Blt2, Blt1bar, Blt2bar, grad, learnparamsT[oscilID], x_is_control);
+  }
+}

@@ -4,6 +4,7 @@
 #include <fstream>
 #include <iostream> 
 #include <iomanip>
+#include "learning.hpp"
 #include <petscmat.h>
 #include <vector>
 #include <assert.h>
@@ -79,12 +80,12 @@ class Oscillator {
     void clearParams() { params.clear(); };
 
     /* Evaluates rotating frame control functions Re = p(t), Im = q(t) */
-    int evalControl(const double t, double* Re_ptr, double* Im_ptr);
-    /* Compute derivatives of the p(t) and q(t) control function wrt the parameters */
-    int evalControl_diff(const double t, double* dRedp, double* dImdp);
+    int evalControl(const double t, double* Re_ptr, double* Im_ptr, Learning* learning);
+    /* Compute derivatives of the p(t) and q(t) control function wrt the parameters or learnable transfer function */
+    int evalControl_diff(const double t, double* grad_for_this_oscillator, bool x_is_control, Learning* learning, const double pbar, const double qbar);
 
     /* Evaluates Lab-frame control function f(t) */
-    int evalControl_Labframe(const double t, double* f_ptr);
+    int evalControl_Labframe(const double t, double* f_ptr, Learning* learning);
 
     /* Compute population (=diagonal elements) for this oscillators reduced system */
     void population(const Vec x, std::vector<double> &pop); 

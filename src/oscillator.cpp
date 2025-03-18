@@ -213,7 +213,7 @@ int Oscillator::getNSegParams(int segmentID){
 }
 
 
-int Oscillator::evalControl(const double t, double* Re_ptr, double* Im_ptr){
+int Oscillator::evalControl(const double t, double* Re_ptr, double* Im_ptr, Learning* learning){
 
   // Sanity check 
   if ( t > Tfinal ){
@@ -227,17 +227,24 @@ int Oscillator::evalControl(const double t, double* Re_ptr, double* Im_ptr){
 
   /* Evaluate p(t) and q(t) using the parameters */
   if (params.size()>0) {
-    // Iterate over basis parameterizations. Only one will be used, see the break-statement. 
+    // Iterate over control segments. Only one will be used, see the break-statement. 
     for (int bs = 0; bs < basisfunctions.size(); bs++){
       if (basisfunctions[bs]->getTstart() <= t && 
           basisfunctions[bs]->getTstop() >= t ) {
+
         /* Iterate over carrier frequencies */
         double sum_p = 0.0;
         double sum_q = 0.0;
         for (int f=0; f < carrier_freq.size(); f++) {
-          double Blt1 = 0.0; 
-          double Blt2 = 0.0;
+          /* Evaluate the Bspline for this carrier wave */
+          double Blt1 = 0.0; // Sums over alpha^1 * basisfunction(t) (real)
+          double Blt2 = 0.0; // Sums over alpha^2 * basisfunction(t) (imag)
           basisfunctions[bs]->evaluate(t, params, f, &Blt1, &Blt2);
+
+          /* Apply transfer function per carrier wave. Note: Might need to move and change input, depending on the transfer function... */
+          learning->applyUDETransfer(myid, f, &Blt1, &Blt2);
+
+          /* Add modulated carrier wave to the sum for p and q */
           if (basisfunctions[bs]->getType() == ControlType::BSPLINEAMP) {
             double cos_omt = cos(carrier_freq[f]*t + Blt2);
             double sin_omt = sin(carrier_freq[f]*t + Blt2);
@@ -269,31 +276,39 @@ int Oscillator::evalControl(const double t, double* Re_ptr, double* Im_ptr){
   return 0;
 }
 
-int Oscillator::evalControl_diff(const double t, double* dRedp, double* dImdp) {
-
-  // Sanity check 
-  if ( t > Tfinal ){
-    printf("ERROR: accessing spline outside of [0,T] at %f. Should never happen! Bug.\n", t);
-    exit(1);
-  } 
-
+int Oscillator::evalControl_diff(const double t, double* grad, bool x_is_control, Learning* learning, const double pbar, const double qbar) {
 
   if (params.size()>0) {
-    // Iterate over basis parameterizations
+
+    // Iterate over control segments. Only one is active, see break statement.
     for (int bs = 0; bs < basisfunctions.size(); bs++){
       if (basisfunctions[bs]->getTstart() <= t && 
           basisfunctions[bs]->getTstop() >= t ) {
+
         /* Iterate over carrier frequencies */
         for (int f=0; f < carrier_freq.size(); f++) {
 
           if (basisfunctions[bs]->getType() == ControlType::BSPLINEAMP) {
-            basisfunctions[bs]->derivative(t, params, dRedp, carrier_freq[f], 1.0, f);  // +/-1.0 is used as a flag inside Bsline2ndAmplitude->evaluate() to determine whether this is for p (1.0) or for q (-1.0)
-            basisfunctions[bs]->derivative(t, params, dImdp, carrier_freq[f], -1.0, f);
+            // basisfunctions[bs]->derivative(t, params, dpdalpha, carrier_freq[f], 1.0, f);  // +/-1.0 is used as a flag inside Bsline2ndAmplitude->evaluate() to determine whether this is for p (1.0) or for q (-1.0)
+            // basisfunctions[bs]->derivative(t, params, dqdalpha, carrier_freq[f], -1.0, f);
+            // basisfunctions[bs]->derivative(t, params, dpdalpha, carrier_freq[f], 1.0, f);  // +/-1.0 is used as a flag inside Bsline2ndAmplitude->evaluate() to determine whether this is for p (1.0) or for q (-1.0)
+            printf("Gradient for BsplineAmp parameterization is currently not implemented. TODO!\n");
+            exit(1);
           } else {
+
             double cos_omt = cos(carrier_freq[f]*t);
             double sin_omt = sin(carrier_freq[f]*t);
-            basisfunctions[bs]->derivative(t, params, dRedp, cos_omt, -sin_omt, f);
-            basisfunctions[bs]->derivative(t, params, dImdp, sin_omt, cos_omt, f);
+            double Blt1bar = sin_omt*qbar + cos_omt*pbar;
+            double Blt2bar = cos_omt*qbar - sin_omt*pbar;
+
+            /* Derivative of Transfer model wrt controls */
+            double Blt1, Blt2, dtransfer_dBlt1, dtransfer_dBlt2;
+            basisfunctions[bs]->evaluate(t, params, f, &Blt1, &Blt2);
+            learning->applyUDETransfer_diff(myid, f, Blt1, Blt2, Blt1bar, Blt2bar, grad, x_is_control);
+
+            if (x_is_control) { // grad wrt control alpha
+              basisfunctions[bs]->derivative(t, params, grad, Blt1bar, Blt2bar, f); // dp(t) / dalpha
+            } 
           }
         }
         break;
@@ -301,7 +316,7 @@ int Oscillator::evalControl_diff(const double t, double* dRedp, double* dImdp) {
     }
   } 
 
-  /* TODO: Derivative of pipulse? */
+  /* No derivative for pi-pulse simulations! */
   for (int ipulse=0; ipulse< pipulse.tstart.size(); ipulse++){
     if (pipulse.tstart[ipulse] <= t && t <= pipulse.tstop[ipulse]) {
       printf("ERROR: Derivative of pipulse not implemented. Sorry! But also, this should never happen!\n");
@@ -312,7 +327,7 @@ int Oscillator::evalControl_diff(const double t, double* dRedp, double* dImdp) {
   return 0;
 }
 
-int Oscillator::evalControl_Labframe(const double t, double* f){
+int Oscillator::evalControl_Labframe(const double t, double* f, Learning* learning){
 
   // Sanity check 
   if ( t > Tfinal ){
@@ -336,6 +351,7 @@ int Oscillator::evalControl_Labframe(const double t, double* f){
           double Blt1 = 0.0; 
           double Blt2 = 0.0;
           basisfunctions[bs]->evaluate(t, params, f, &Blt1, &Blt2);
+          learning->applyUDETransfer(myid, f, &Blt1, &Blt2);
           sum_p += cos_omt * Blt1 - sin_omt * Blt2; 
           sum_q += sin_omt * Blt1 + cos_omt * Blt2;
         }

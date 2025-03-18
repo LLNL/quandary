@@ -317,13 +317,14 @@ class Quandary:
 
         return self.__run(pcof0=pcof0, runtype="optimization", overwrite_popt=True, maxcores=maxcores, datadir=datadir, quandary_exec=quandary_exec, cygwinbash=cygwinbash, batchargs=batchargs)
     
-    def training(self, *, trainingdatadir="./", trainingdata_corrected=False, UDEmodel="both", pcof0=[], maxcores=-1, datadir="./run_dir", quandary_exec="", cygwinbash="", batchargs=[], learn_params=[], T_train=1e13):
+    def training(self, *, trainingdatadir="./", trainingdata_corrected=False, UDEmodel="none", pcof0=[], maxcores=-1, datadir="./run_dir", quandary_exec="", cygwinbash="", batchargs=[], learn_params=[], T_train=1e13):
 
         return self.__run(pcof0=pcof0, runtype="UDEoptimization", overwrite_popt=True, maxcores=maxcores, datadir=datadir, quandary_exec=quandary_exec, cygwinbash=cygwinbash, batchargs=batchargs, trainingdatadir=trainingdatadir,trainingdata_corrected=trainingdata_corrected,  UDEmodel=UDEmodel,  learn_params=learn_params, T_train=T_train)
 
 
-    def UDEsimulate(self, *, trainingdatadir="./", trainingdata_corrected=False, UDEmodel="both", pcof0=[], maxcores=-1, datadir="./run_dir", quandary_exec="", cygwinbash="", batchargs=[], learn_params=[], T_train=1e13):
-        return self.__run(pcof0=pcof0, runtype="UDEsimulation", overwrite_popt=True, maxcores=maxcores, datadir=datadir, quandary_exec=quandary_exec, cygwinbash=cygwinbash, batchargs=batchargs, trainingdatadir=trainingdatadir,trainingdata_corrected=trainingdata_corrected,  UDEmodel=UDEmodel,  learn_params=learn_params, T_train=T_train)
+    def UDEsimulate(self, *, trainingdatadir="./", trainingdata_corrected=False, UDEmodel="none", pcof0=[], maxcores=-1, datadir="./run_dir", quandary_exec="", cygwinbash="", batchargs=[], learn_params=[], T_train=1e13):
+
+        return self.__run(pcof0=pcof0, runtype="UDEsimulation", overwrite_popt=True, maxcores=maxcores, datadir=datadir, quandary_exec=quandary_exec, cygwinbash=cygwinbash, batchargs=batchargs, trainingdatadir=trainingdatadir,trainingdata_corrected=trainingdata_corrected, UDEmodel=UDEmodel,  learn_params=learn_params, T_train=T_train)
 
 
     def evalControls(self, *, pcof0=[], points_per_ns=1,datadir="./run_dir", quandary_exec="", cygwinbash=""):
@@ -365,7 +366,7 @@ class Quandary:
         return time, pt, qt
 
 
-    def __run(self, *, pcof0=[], runtype="optimization", overwrite_popt=False, maxcores=-1, datadir="./run_dir", quandary_exec="", cygwinbash="", batchargs=[], trainingdatadir="", trainingdata_corrected=False, UDEmodel="none", learn_params=[], T_train=1e13):
+    def __run(self, *, pcof0=[], runtype="optimization", overwrite_popt=False, maxcores=-1, datadir="./run_dir", quandary_exec="", cygwinbash="", batchargs=[], trainingdatadir="", trainingdata_corrected=False,UDEmodel="none", learn_params=[], T_train=1e13):
         """
         Internal helper function to launch processes to execute the C++ Quandary code:
           1. Writes quandary config files to file system
@@ -376,7 +377,7 @@ class Quandary:
 
         # Create quandary data directory and dump configuration file
         os.makedirs(datadir, exist_ok=True)
-        config_filename = self.__dump(pcof0=pcof0, runtype=runtype, datadir=datadir, trainingdatadir=trainingdatadir,trainingdata_corrected=trainingdata_corrected, UDEmodel=UDEmodel, learn_params=learn_params, T_train=T_train)
+        config_filename = self.__dump(pcof0=pcof0, runtype=runtype, datadir=datadir, trainingdatadir=trainingdatadir,trainingdata_corrected=trainingdata_corrected,UDEmodel=UDEmodel, learn_params=learn_params, T_train=T_train)
 
         # Set default number of cores to the number of initial conditions, unless otherwise specified. Make sure ncores is an integer divisible of ninit.
         ncores = self._ninit
@@ -416,7 +417,7 @@ class Quandary:
         return time, pt, qt, infidelity, expectedEnergy, population
 
 
-    def __dump(self, *, pcof0=[], runtype="simulation", datadir="./run_dir", trainingdatadir="", trainingdata_corrected=False, UDEmodel="none", learn_params=[], T_train=1e13):
+    def __dump(self, *, pcof0=[], runtype="simulation", datadir="./run_dir", trainingdatadir="", trainingdata_corrected=False,UDEmodel="none", learn_params=[], T_train=1e13):
         """
         Internal helper function that dumps all configuration options (and target gate, pcof0, Hamiltonian operators) into files for Quandary C++ runs. Returns the name of the configuration file needed for executing Quandary. 
         """
@@ -584,7 +585,7 @@ class Quandary:
         if len(learn_params_filename) > 0:
             mystring += "learnparams_initialization = file, " + str(learn_params_filename) + "\n"
         else:
-            mystring += "learnparams_initialization = random, 0.0001, 0.0001\n"
+            mystring += "learnparams_initialization = random, 0.0001, 0.0001, 1.0\n"
         if T_train <= self.T:
             mystring += "data_tstop = " + str(T_train) + "\n"
         mystring += "loss_scaling_factor = " + str(self.loss_scaling_factor) + "\n"

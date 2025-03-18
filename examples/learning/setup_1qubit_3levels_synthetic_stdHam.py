@@ -8,8 +8,8 @@ np.set_printoptions( linewidth=800)
 
 do_datageneration = True 
 do_training = True 
-do_extrapolate = True 
-do_analyze = True 
+do_extrapolate = False
+do_analyze = False
 do_prune = False
 
 # Standard Hamiltonian and Lindblad model setup
@@ -31,7 +31,7 @@ output_frequency = 1  # write every x-the timestep
 # For testing, can add a prefix for run directories. 
 # dirprefix = "TESTdt"+str(dt) +"_"
 # dirprefix = "dt"+str(dt) +"_"
-dirprefix = ""
+dirprefix = "TEST_"
 
 # Decoherence [us]
 T1 = [20.0]
@@ -81,7 +81,7 @@ Hc_re_mod = quandary.Hc_re.copy()
 Hc_im_mod = quandary.Hc_im.copy()
 
 # Generate training data trajectories for various pulse strength (one trajectory for each element in constctrl_MHz)
-constctrl_MHz = [1.0, 0.5, 0.25]  	# Amplitudes of constant-control training data trajectories
+constctrl_MHz = [1.0, 0.5, 2.0]  	# Amplitudes of constant-control training data trajectories
 trainingdatadir = []
 for ctrlMHz in constctrl_MHz:
 	cwd = os.getcwd()
@@ -109,8 +109,8 @@ print("")
 ################
 # Make sure to use the same above assumed basemodel Hamiltonian
 
-# Set the UDE model: "hamiltonian", or "lindblad", or "both"
-UDEmodel = "both"   
+# Set the UDE model: List of learnable terms, containing "hamiltonian" and/or "lindblad"
+UDEmodel = "hamiltonian, lindblad"   
 # Set the training time domain
 T_train = T	  
 # Add data type specifyier to the first element of the data list
@@ -136,6 +136,7 @@ quandary.gamma_leakage = 0.0
 quandary.gamma_energy = 0.0
 quandary.gamma_dpdm = 0.0
 quandary.maxiter = 150
+# quandary.maxiter = 2
 
 if do_training:
 	print("\n Starting UDE training (UDEmodel=", UDEmodel, ")...")

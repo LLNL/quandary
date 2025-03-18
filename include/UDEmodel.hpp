@@ -35,7 +35,7 @@ class UDEmodel {
 
     virtual void applySystem(Vec u, Vec v, Vec uout, Vec vout, std::vector<double>& learnparams) = 0;
     virtual void applySystem_diff(Vec u, Vec v, Vec uout, Vec vout, std::vector<double>& learnparams) = 0;
-    virtual void dRHSdp(Vec grad, Vec u, Vec v, double alpha, Vec ubar, Vec vbar, std::vector<double>& learnparamsH, int grad_skip) = 0;
+    virtual void dRHSdp(Vec grad, Vec u, Vec v, double alpha, Vec ubar, Vec vbar, std::vector<double>& learnparams, int grad_skip) = 0;
     virtual void writeOperator(std::vector<double>& learnparams, std::string datadir) = 0;
 };
 
@@ -79,4 +79,31 @@ class LindbladModel: public UDEmodel {
     void applySystem_diff(Vec u, Vec v, Vec uout, Vec vout, std::vector<double>& learnparams);
     void dRHSdp(Vec grad, Vec u, Vec v, double alpha, Vec ubar, Vec vbar, std::vector<double>& learnparamsL, int grad_skip);
     void writeOperator(std::vector<double>& learnparamsL, std::string datadir);
+};
+
+
+class TransferModel: public UDEmodel {
+
+    int ncarrierwaves;  // # Number of carrier waves within the pulse for this oscillator
+
+  public:
+    TransferModel(int dim_rho_, int ncarrierwaves, LindbladType lindblad_type);
+    ~TransferModel();
+
+    // Transfer functions are NOT acting as system matrices, disable those:
+    void applySystem(Vec u, Vec v, Vec uout, Vec vout, std::vector<double>& learnparams) {};
+    void applySystem_diff(Vec u, Vec v, Vec uout, Vec vout, std::vector<double>& learnparams) {};
+    void dRHSdp(Vec grad, Vec u, Vec v, double alpha, Vec ubar, Vec vbar, std::vector<double>& learnparamsL, int grad_skip) {};
+    void writeOperator(std::vector<double>& learnparamsL, std::string datadir) {};
+
+    /* Apply the transfer function to carrier wave number <cwID>. 
+     * In: Blt1, Blt2  being the real and imag parts of the spline for this carrier wave: 
+     *      Blt1 = sum_s alpha^RE_s,f B_s(t)
+     *      Blt2 = sum_s alpha^IM_s,f B_s(t) 
+     * Out: Modiefied Blt1 and Blt2: Blti = transfer(Blti)
+     */
+    void apply(int cwID, double* Blt1, double* Blt2, std::vector<double>& learnparamsT);
+    /* Derivative of the above */
+    void apply_diff(int cwID, const double Blt1, const double Blt2, double& Blt1bar, double& Blt2bar,  double* grad, std::vector<double>& learnparamsT, bool x_is_control);
+
 };

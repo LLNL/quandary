@@ -20,12 +20,13 @@ class Learning {
   int dim;              // Dimension of full vectorized system: N^2 for Lindblad, N for Schroedinger, or -1 if not learning.
   int dim_rho;               // Dimension of Hilbertspace = N
   LindbladType lindbladtype; // Switch for Lindblad vs Schroedinger solver
-  UDEmodelType UDEmodel; // Switch type of learning model: hamiltonian, lindblad, or both
 
-  HamiltonianModel* hamiltonian_model;  // Basis matrices for Hamiltonian term
-  LindbladModel* lindblad_model;     // Basis matrices for Lindblad term 
+  HamiltonianModel* hamiltonian_model;  // Parameterization of Hamiltonian
+  LindbladModel* lindblad_model;        // Parameterization of Lindblad 
+  std::vector<TransferModel*> transfer_model;   // Vector of Parameterization for control transfer, one for each oscillator
   std::vector<double> learnparamsH;  // Learnable parameters for Hamiltonian
   std::vector<double> learnparamsL; // Learnable parameters for Lindblad (first all real, then all imaginary parts)
+  std::vector<std::vector<double>> learnparamsT; // Learnable parameters for Transfer functions, one vector for each oscillator
   
   int nparams;            /* Total Number of learnable paramters*/
   double loss_integral;   /* Running cost for Loss function */
@@ -38,7 +39,7 @@ class Learning {
     Data* data;       /* Stores the data */
 
   public: 
-    Learning(std::vector<int> nlevels, LindbladType lindbladtype_, UDEmodelType UDEmodel_, std::vector<std::string>& learninit_str, Data* data, std::default_random_engine rand_engine, bool quietmode, double loss_scaling_factor);
+    Learning(std::vector<int>& nlevels, LindbladType lindbladtype_, std::vector<std::string>& UDEmodel_str,  std::vector<int>& ncarrierwaves, std::vector<std::string>& learninit_str, Data* data, std::default_random_engine rand_engine, bool quietmode, double loss_scaling_factor);
     ~Learning();
 
     void resetLoss(){ loss_integral = 0.0; };
@@ -48,20 +49,27 @@ class Learning {
     int getNParams(){ return nparams; };
     int getNParamsHamiltonian(){ return learnparamsH.size();};
     int getNParamsLindblad(){ return learnparamsL.size(); };
+    int getNParamsTransfer(){ int sum=0; for (int i=0; i<learnparamsT.size();i++) sum+= learnparamsT[i].size(); return sum; };
+    int getNParamsTransfer(int iosc){ return learnparamsT[iosc].size(); };
 
     /* Initialize learnable parameters. */
-    void initLearnParams(std::vector<std::string> learninit_str, std::default_random_engine rand_engine);
+    void initLearnParams(int nparams, std::vector<std::string> learninit_str, std::default_random_engine rand_engine);
 
-    /* Applies UDE terms to input state (u,v) */
-    void applyLearningTerms(Vec u, Vec v, Vec uout, Vec vout);
-    /* Adjoint gradient: Sets (uout,vout) = dFWD^T *(u,v) */
-    void applyLearningTerms_diff(Vec u, Vec v, Vec uout, Vec vout);
-
-    /* Reduced gradient for Hamiltonian part: 
-       Sets grad += alpha * (dRHS(u,v)/dgamma)^T *(ubar, vbar) */
+    /* Applies Hamiltonian and Lindblad UDE terms to input state (u,v) */
+    void applyUDESystemMats(Vec u, Vec v, Vec uout, Vec vout);
+    /* Adjoint Hamiltonian and Lindblad gradient: Sets (uout,vout) = dFWD^T *(u,v) */
+    void applyUDESystemMats_diff(Vec u, Vec v, Vec uout, Vec vout);
+    /* Gradient wrt learnable parameters from Hamiltonian and Lindblad parts: Sets grad += alpha * (dRHS(u,v)/dgamma)^T *(ubar, vbar) */
     void dRHSdp(Vec grad, Vec u, Vec v, double alpha, Vec ubar, Vec vbar);
 
-    /* Assemble and view the learned operator. */
+    /* Applies the control transfer function inside oscillator->evalControl() */
+    void applyUDETransfer(int oscilID, int cwID, double* Blt1, double* Blt2);
+    /* Derivative of above function, applies within oscillator->evalControl_diff*/
+    void applyUDETransfer_diff(int oscilID, int cwID, const double Blt1, const double Blt2, double& Blt1bar, double& Blt2bar, double* grad, double x_is_control);
+
+
+
+    /* Assemble and view the learned SystemMat operators. */
     void writeOperators(std::string datadir);
 
     /* Copy optimization variable x into learnable parameter storage */

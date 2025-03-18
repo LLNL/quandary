@@ -185,6 +185,8 @@ void HamiltonianModel::dRHSdp(Vec grad, Vec u, Vec v, double alpha, Vec ubar, Ve
 
 void HamiltonianModel::writeOperator(std::vector<double>& learnparamsH, std::string datadir){
 
+  if (dim_rho <= 0) return;
+
   /* Create the Gellmann matrices*/
   std::vector<Mat> BasisMats_Re, BasisMats_Im;
   createGellmannMats(dim_rho, false, false, shifted_diag, false, BasisMats_Re, BasisMats_Im);
@@ -605,6 +607,7 @@ void LindbladModel::evalOperator(std::vector<double>& learnparamsL){
 }
 
 void LindbladModel::writeOperator(std::vector<double>& learnparamsL, std::string datadir){
+  if (dim_rho <= 0) return;
 
   // if (dim_rho == 2) {
   //   // print coefficients to screen
@@ -635,4 +638,47 @@ void LindbladModel::writeOperator(std::vector<double>& learnparamsL, std::string
   PetscViewerDestroy(&viewer);
   PetscViewerDestroy(&viewer_im);
   printf("\nLearned Lindblad system matrix written to file %s and %s\n", filename, filename_im);
+}
+
+TransferModel::TransferModel(int dim_rho_, int ncarrierwaves_, LindbladType lindblad_type) : UDEmodel(dim_rho_, lindblad_type) {
+  ncarrierwaves = ncarrierwaves_;
+
+  if (dim_rho_ <= 0) return;
+
+  /* Set the Number of learnable parameters for this oscillator */
+  // Here, a linear transfer model is applied to each carrier wave*/
+  nparams = ncarrierwaves;
+
+}
+
+TransferModel::~TransferModel() {}
+
+
+void TransferModel::apply(int cwID, double* Blt1, double* Blt2, std::vector<double>& learnparamsT){
+
+  /* If not learnable, then this is the identify (do nothing) */
+  if (dim_rho <= 0) return;
+
+  /* Here, transfer model is a linear scaling of the Bsplines, using the same parameter for both real and imaginary part of the spline. 
+   * Note: Blt1 = sum_s alpha_s^1 * basisfunction(t)
+   *  and  Blt2 = sum_s alpha_s^2 * basisfunction(t) 
+   * where the alpha^1, alpha^2 are the real, imag parts, respectively */
+  double tmp1 = *Blt1;
+  double tmp2 = *Blt2;
+  *Blt1 = learnparamsT[cwID]*tmp1;
+  *Blt2 = learnparamsT[cwID]*tmp2;
+}
+
+
+void TransferModel::apply_diff(int cwID, const double Blt1, const double Blt2, double& Blt1bar, double& Blt2bar, double* grad,  std::vector<double>& learnparamsT, bool x_is_control){
+  if (dim_rho <= 0) return;
+
+  /* Derivative with respect to learable parameter */
+  if (!x_is_control) { 
+    grad[cwID] += Blt1 * Blt1bar + Blt2*Blt2bar;
+  }
+
+  /* Derivative with respect to Blt1 and Blt2 */
+  Blt1bar  = learnparamsT[cwID]*Blt1bar;
+  Blt2bar  = learnparamsT[cwID]*Blt2bar;
 }

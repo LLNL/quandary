@@ -234,31 +234,20 @@ int main(int argc,char **argv)
   copyLast(decay_time, nlevels.size());
   copyLast(dephase_time, nlevels.size());
 
-  /* Create Learning Model, or a dummy if not using UDEs */
-  std::string UDEmodel_str = config.GetStrParam("UDEmodel", "none", true, false);
-  UDEmodelType UDEmodel; 
-  if      (UDEmodel_str.compare("none")        == 0 ) UDEmodel = UDEmodelType::NONE;
-  else if (UDEmodel_str.compare("hamiltonian") == 0 ) UDEmodel = UDEmodelType::HAMILTONIAN;
-  else if (UDEmodel_str.compare("lindblad")    == 0 ) UDEmodel = UDEmodelType::LINDBLAD;
-  else if (UDEmodel_str.compare("both")        == 0 ) UDEmodel = UDEmodelType::BOTH;
-  else {
-    printf("\n\n ERROR: Unnown UDE model type: %s.\n", UDEmodel_str.c_str());
-    printf(" Choose either 'none', 'hamiltonian', 'lindblad', or 'both'\n");
-    exit(1);
-  }
-
-  /* Switch solver mode between learning/simulation a UDE model parameters vs optimizing/simulating controls. */
-  bool x_is_control;
-  if (runtypestr.find("UDE") != std::string::npos && UDEmodel != UDEmodelType::NONE) {
-    x_is_control = false ; // optim wrt UDE model parameters
-  } else {
-    x_is_control = true; // optim wrt controls parameters
-  }
+  /* Read settings for UDE Learning Models */
+  std::vector<std::string> UDEmodel_str;
+  config.GetVecStrParam("UDEmodel", UDEmodel_str, "none", true, false);
+  
+  /* Switch solver mode between learning/simulation UDE model/transfer parameters vs optimizing/simulating controls. */
+  bool x_is_control = true; // optim wrt controls parameters
+  if (runtypestr.find("UDE") != std::string::npos &&  UDEmodel_str[0].compare("none") != 0) {
+    x_is_control = false ; // optim wrt UDE model or tranfer parameters
+  }   
   output->x_is_control = x_is_control;
 
   /* Create learning and data class*/
   Learning* learning;
-  if (UDEmodel != UDEmodelType::NONE) {
+  if (UDEmodel_str[0].compare("none") != 0) {
 
     /* Load trajectory data only if operating on the Loss (if not x_is_control) */
     Data* data;
@@ -287,18 +276,27 @@ int main(int argc,char **argv)
       data = new Data(); // Dummy
     }
 
+    // Gather number of carrier waves per oscillator, as might be needed for the UDE transfer function
+    std::vector<int> ncarrierwaves(nlevels.size());
+    for (int ioc=0; ioc<nlevels.size(); ioc++) {
+      std::vector<double> carrier_freq;
+      std::string key = "carrier_frequency" + std::to_string(ioc);
+      config.GetVecDoubleParam(key, carrier_freq, 0.0);
+      ncarrierwaves[ioc] = carrier_freq.size();
+    }
+ 
     /* Now create learning object */
     std::vector<std::string> learninit_str;
     config.GetVecStrParam("learnparams_initialization", learninit_str, "random, 0.0");
     double loss_scaling_factor = config.GetDoubleParam("loss_scaling_factor", 1.0, false);
-    learning = new Learning(nlevels, lindbladtype, UDEmodel, learninit_str, data, rand_engine, quietmode, loss_scaling_factor);
+    learning = new Learning(nlevels, lindbladtype, UDEmodel_str, ncarrierwaves, learninit_str, data, rand_engine, quietmode, loss_scaling_factor);
 
   } else {
     /* Create dummy learning. Does nothing. */
     Data* data = new Data();
     std::vector<std::string> dummy_learninit_str;
-    std::vector<int> dummy_nlevels(0);
-    learning = new Learning(dummy_nlevels, LindbladType::NONE, UDEmodelType::NONE, dummy_learninit_str, data, rand_engine, quietmode, 1.0); 
+    std::vector<int> dummy_intvec(0);
+    learning = new Learning(dummy_intvec, LindbladType::NONE, UDEmodel_str, dummy_intvec, dummy_learninit_str, data, rand_engine, quietmode, 1.0); 
   }
 
   /* Set total time */
@@ -394,8 +392,9 @@ int main(int argc,char **argv)
   // for (int i = Jkl.size(); i < (noscillators-1) * noscillators / 2; i++) Jkl.push_back(0.0);
   // Sanity check for matrix free solver
   bool usematfree = config.GetBoolParam("usematfree", false);
-  if (usematfree && UDEmodel != UDEmodelType::NONE) {
-    printf("\n\n WARNING: using matfree solver together with UDE model needs testing!! Not recommended at this point.\n\n");
+  if (UDEmodel_str[0].compare("none") != 0) {
+    usematfree = false;
+    // printf("WARNING: disabling matfree solver since its not working with UDE learning.\n\n");
   }
   if (usematfree && nlevels.size() > 5){
         printf("Warning: Matrix free solver is only implemented for systems with 2, 3, 4, or 5 oscillators. Switching to sparse-matrix solver now.\n");
@@ -421,7 +420,7 @@ int main(int argc,char **argv)
     usematfree = false;
   }
   // Initialize Master equation
-  MasterEq* mastereq = new MasterEq(nlevels, nessential, oscil_vec, crosskerr, Jkl, eta, lindbladtype, usematfree, UDEmodel, x_is_control, learning, hamiltonian_file, quietmode);
+  MasterEq* mastereq = new MasterEq(nlevels, nessential, oscil_vec, crosskerr, Jkl, eta, lindbladtype, usematfree, x_is_control, learning, hamiltonian_file, quietmode);
 
   // Some screen output 
   if (mpirank_world == 0 && !quietmode) {
