@@ -9,7 +9,7 @@ do_datageneration = True
 do_training = True 
 do_extrapolate = True 
 do_analyze = True 
-do_prune = True 
+do_prune = False
 
 # Standard Hamiltonian and Lindblad model setup
 unitMHz = True
