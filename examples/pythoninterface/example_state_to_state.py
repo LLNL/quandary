@@ -1,7 +1,4 @@
-# Make sure you have the location of quandary.py in your PYTHONPATH. E.g. with
-#   > export PYTHONPATH=/path/to/quandary/:$PYTHONPATH
-# Further, make sure that your quandary executable is in your $PATH variable. E.g. with
-#   > export PATH=/path/to/quandary/:$PATH
+#  Quandary's python interface functions are defined in /path/to/quandary/quandary.py. Import them here. 
 from quandary import * 
 
 ## One qudit test case: State preparation (state-to-state) of the GHZ state ##

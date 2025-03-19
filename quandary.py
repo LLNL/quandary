@@ -41,7 +41,7 @@ class Quandary:
     targetgate          # Complex target unitary in the essential level dimensions for gate optimization. Default: none
     targetstate         # Complex target state vector for state-to-state optimization. Default: none
     initialcondition    # Choose from provided initial states at time t=0.0: "basis" (all basis states, default), "pure, 0,0,1,..." (one pure initial state |001...>), or pass a vector as initial state. Default: "basis" 
-    gate_rot_freq       # Specify frequencies to rotate a target gate (one per oscillator). Default: Using the computational frame rotation frequency (rotfreq). 
+    gate_rot_freq       # Specify frequencies to rotate a target gate (one per oscillator). Default: no rotation (0.0 for each oscillator)
 
     # Control pulse options
     pcof0               # Optional: Pass an initial vector of control parameters. Default: none
@@ -50,8 +50,9 @@ class Quandary:
     initctrl_MHz        # Amplitude [MHz] of initial control parameters. Float or List[float]. Default: 10 MHz.
     maxctrl_MHz         # Amplitude bounds for the control pulses [MHz]. Float or List[float]. Default: none
     control_enforce_BC  # Bool to let control pulses start and end at zero. Default: False
-    dtau                # Spacing of Bspline basis functions [ns]. The smaller dtau, the larger nsplines. Default: 3ns
-    nsplines            # Number of Bspline basis functions. Default: T/dtau + 2
+    spline_knot_spacing # Spacing of Bspline basis functions [ns]. The smaller this is, the larger the number of splines. Default: 3ns
+    nsplines            # Number of Bspline basis functions. Default: T/spline_knot_spacing + 2
+    spline_order        # Order of the B-spline basis (0 or 2). Default: 2
     carrier_frequency   # Carrier frequencies for each oscillator. List[List[float]]. Default will be computed based on Hsys.
     cw_amp_thres        # Threshold to ignore carrier wave frequencies whose growth rate is below this value. Default: 1e-7
     cw_prox_thres       # Threshold to distinguish different carrier wave frequencies from each other. Default: 1e-2
@@ -70,6 +71,7 @@ class Quandary:
     gamma_leakage       # Parameter for leakage prevention. Default: 0.1
     gamma_energy        # Parameter for integral penality term on the control pulse energy. Default: 0.1
     gamma_dpdm          # Parameter for integral penality term on second state derivative. Default: 0.01
+    gamma_variation     # Parameter for penality term on variations in the control parameters: Default: 0.01
 
     # General options
     rand_seed            # Set a fixed random number generator seed. Default: None (non-reproducable)
@@ -119,6 +121,7 @@ class Quandary:
     T            : float = 100.0
     Pmin         : int   = 150
     nsteps       : int   = -1
+    dT           : float = -1.0
     timestepper  : str   = "IMR"
     # Optimization targets and initial states options
     targetgate             : List[List[complex]] = field(default_factory=list) 
@@ -132,8 +135,9 @@ class Quandary:
     initctrl_MHz        : List[float] = field(default_factory=list)   
     maxctrl_MHz         : List[float] = field(default_factory=list)   
     control_enforce_BC  : bool        = False                         
-    dtau                : float       = 3.0
-    nsplines            : int         = -1                            
+    spline_knot_spacing : float       = 3.0
+    nsplines            : int         = -1 
+    spline_order        : int         = 2                           
     carrier_frequency   : List[List[float]] = field(default_factory=list) 
     cw_amp_thres        : float       = 1e-7
     cw_prox_thres       : float       = 1e-2                        
@@ -151,6 +155,7 @@ class Quandary:
     gamma_leakage          : float = 0.1 	       
     gamma_energy           : float = 0.1
     gamma_dpdm             : float = 0.01        
+    gamma_variation        : float = 0.01        
     # General options
     rand_seed              : int  = None
     print_frequency_iter   : int  = 1
@@ -182,6 +187,14 @@ class Quandary:
           - <nsteps>            : the number of time steps based on Hamiltonian eigenvalues and Pmin
           - <carrier_frequency> : carrier wave frequencies bases on system resonances
         """
+        
+        if self.spline_order == 0:
+            minspline = 2
+        elif self.spline_order == 2:
+            minspline = 5 if self.control_enforce_BC else 3
+        else:
+            print("Error: spline order = ", self.spline_order, " is currently not available. Choose 0 or 2.")
+            return -1
 
         # Set some defaults, if not set by the user
         if len(self.freq01) != len(self.Ne) and len(self.Hsys)<=0:
@@ -193,10 +206,8 @@ class Quandary:
         if len(self.rotfreq) == 0:
             self.rotfreq = self.freq01
         if len(self.gate_rot_freq) == 0:
-            self.gate_rot_freq = self.rotfreq
-        if self.nsplines < 0:
-            minspline = 5 if self.control_enforce_BC else 3
-            self.nsplines = int(np.max([np.ceil(self.T/self.dtau + 2), minspline]))
+            self.gate_rot_freq = np.zeros(len(self.rotfreq))
+        
         if isinstance(self.initctrl_MHz, float) or isinstance(self.initctrl_MHz, int):
             max_alloscillators = self.initctrl_MHz
             self.initctrl_MHz = [max_alloscillators for _ in range(len(self.Ne))]
@@ -230,13 +241,30 @@ class Quandary:
             self._ninit = self._ninit**2
         
         # Estimate the number of required time steps
-        if (self.nsteps < 0):
-            self.nsteps = estimate_timesteps(T=self.T, Hsys=self.Hsys, Hc_re=self.Hc_re, Hc_im=self.Hc_im, maxctrl_MHz=self.maxctrl_MHz, Pmin=self.Pmin, unitMHz=self.unitMHz)
+        if self.dT < 0:
+            self.nsteps = estimate_timesteps(T=self.T, Hsys=self.Hsys, Hc_re=self.Hc_re, Hc_im=self.Hc_im, maxctrl_MHz=self.maxctrl_MHz, Pmin=self.Pmin)
+            self.dT = self.T/self.nsteps
+        else:
+            self.nsteps = int(np.ceil(self.T / self.dT))
+            self.T = self.nsteps*self.dT
         if self.verbose:
             print("Final time: ",self.T,"ns, Number of timesteps: ", self.nsteps,", dt=", self.T/self.nsteps, "ns")
             print("Maximum control amplitudes: ", self.maxctrl_MHz, "MHz")
 
+        # Get number of splines right
+        if self.nsplines < 0:
+            if self.spline_order == 0:
+                self.nsplines = int(np.max([np.rint(self.nsteps*self.dT/self.spline_knot_spacing+1), minspline])) 
+            else: 
+                self.nsplines = int(np.max([np.ceil(self.T/self.spline_knot_spacing+ 2), minspline]))
+
+            self.spline_knot_spacing = self.nsteps*self.dT / (self.nsplines-1) if self.spline_order == 0 else self.nsteps*self.dT / (self.nsplines-2)
+        else:
+            self.spline_knot_spacing= self.nsteps*self.dT/(self.nsplines-1) if self.spline_order == 0 else self.T/(self.nsplines - 2)
+
         # Estimate carrier wave frequencies
+        if self.spline_order == 0 and len(self.carrier_frequency) == 0:
+            self.carrier_frequency = [[0.0] for _ in range(len(self.freq01))]
         if len(self.carrier_frequency) == 0: 
             self.carrier_frequency, _ = get_resonances(Ne=self.Ne, Ng=self.Ng, Hsys=self.Hsys, Hc_re=self.Hc_re, Hc_im=self.Hc_im, rotfreq=self.rotfreq, verbose=self.verbose, cw_amp_thres=self.cw_amp_thres, cw_prox_thres=self.cw_prox_thres, stdmodel=self.standardmodel)
 
@@ -268,13 +296,15 @@ class Quandary:
         self.uT         = uT_org.copy()
 
 
-    def simulate(self, *, pcof0=[], maxcores=-1, datadir="./run_dir", quandary_exec="", cygwinbash="", batchargs=[], UDEmodel="none", learn_params=[]):
+    def simulate(self, *, pcof0=[], pt0=[], qt0=[], maxcores=-1, datadir="./run_dir", quandary_exec="", cygwinbash="", batchargs=[], UDEmodel="none", learn_params=[]):
         """ 
         Simulate the quantm dynamics using the current settings. 
 
         Optional arguments:
         ------------------- 
-        pcof0         : List of control parameters to be simulated. Default: Use use initial guess from the Quandary (pcof0, or pcof0_filename, or randomized initial guess)
+        pcof0         : List of control parameters to be simulated. Default: Use use initial guess from the quandary object (pcof0, or pcof0_filename, or randomized initial guess)
+        pt0           : List of ndarrays for the real part of the control function [MHz] for each oscillator, ndarray size = nsteps+1. Assumes spline_order == 0 and ignores the pcof0 argument. Default: []
+        qt0           : Same as pt0, but for the imaginary part.
         maxcores      : Maximum number of processing cores. Default: number of initial conditions
         datadir       : Data directory for storing output files. Default: "./run_dir"
         quandary_exec : Location of Quandary's C++ executable, if not in $PATH
@@ -284,16 +314,20 @@ class Quandary:
         Returns:
         --------
         time            :  List of time-points at which the controls are evaluated  (List)
-        pt, qt          :  p,q-control pulses at each time point for each oscillator (List of list)
+        pt, qt          :  p,q-control pulses [MHz] at each time point for each oscillator (List of list)
         infidelity      :  Infidelity of the pulses for the specified target operation (Float)
         expectedEnergy  :  Evolution of the expected energy of each oscillator and each initial condition. Acces: expectedEnergy[oscillator][initialcondition]
         population      :  Evolution of the population of each oscillator, of each initial condition. (expectedEnergy[oscillator][initialcondition])
         """
+        
+
+        if len(pt0) > 0 and len(qt0) > 0:
+            pcof0 = self.downsample_pulses(pt0=pt0, qt0=qt0)
 
         return self.__run(pcof0=pcof0, runtype="simulation", overwrite_popt=False, maxcores=maxcores, datadir=datadir, quandary_exec=quandary_exec, cygwinbash=cygwinbash, batchargs=batchargs, UDEmodel=UDEmodel, learn_params=learn_params)
 
 
-    def optimize(self, *, pcof0=[], maxcores=-1, datadir="./run_dir", quandary_exec="", cygwinbash="", batchargs=[]):
+    def optimize(self, *, pcof0=[], pt0=[], qt0=[], maxcores=-1, datadir="./run_dir", quandary_exec="", cygwinbash="", batchargs=[]):
         """ 
         Optimize the quantm dynamics using the current settings. 
 
@@ -301,6 +335,7 @@ class Quandary:
         ------------------- 
         pcof0          : List of control parameters to start the optimization from. Default: Use initial guess from the Quandary (pcof0, or pcof0_filename, or randomized initial guess)
         maxcores      : Maximum number of processing cores. Default: number of initial conditions
+        pt, qt          :  p,q-control pulses [MHz] at each time point for each oscillator (List of list)
         datadir       : Data directory for storing output files. Default: "./run_dir"
         quandary_exec : Location of Quandary's C++ executable, if not in $PATH
         cygwinbash    : To run on Windows through Cygwin, set the path to Cygwin/bash.exe. Default: None.
@@ -314,6 +349,9 @@ class Quandary:
         expectedEnergy  :  Evolution of the expected energy of each oscillator and each initial condition. Acces: expectedEnergy[oscillator][initialcondition]
         population      :  Evolution of the population of each oscillator, of each initial condition. (expectedEnergy[oscillator][initialcondition])
         """
+
+        if len(pt0) > 0 and len(qt0) > 0:
+            pcof0 = self.downsample_pulses(pt0=pt0, qt0=qt0)
 
         return self.__run(pcof0=pcof0, runtype="optimization", overwrite_popt=True, maxcores=maxcores, datadir=datadir, quandary_exec=quandary_exec, cygwinbash=cygwinbash, batchargs=batchargs)
     
@@ -366,6 +404,55 @@ class Quandary:
         return time, pt, qt
 
 
+    def downsample_pulses(self, *, pt0=[], qt0=[]):
+        if self.spline_order == 0: #specifying (pt, qt) only makes sense for piecewise constant B-splines
+            Nsys = len(self.Ne)
+            self.nsplines = np.max([2,int(np.ceil(self.nsteps*self.dT/self.spline_knot_spacing + 1))])
+            self.spline_knot_spacing = self.nsteps*self.dT / (self.nsplines-1)
+            if len(pt0) == Nsys and len(qt0) == Nsys:
+                sizes_ok = True
+                for iosc in range(Nsys):
+                    if sizes_ok and len(pt0[iosc]) >= 2 and len(pt0[iosc]) == len(qt0[iosc]):
+                        sizes_ok = True
+                    else:
+                        sizes_ok = False
+                # print("simulate(): sizes_ok = ", sizes_ok)
+                if sizes_ok:
+                    # do the downsampling and construct pcof0
+                    pcof0 = np.zeros(0) # to hold the downsampled numpy array for the control vector
+                    fact = 2e-3*np.pi # conversion factor from MHz to rad/ns
+                    
+                    for iosc in range(Nsys):
+                        Nelem = np.size(pt0[iosc])
+                        dt = (self.nsteps*self.dT)/(Nelem-1) # time step corresponding to (pt0, qt0)
+                        p_seg = pt0[iosc]
+                        q_seg = qt0[iosc]
+
+                        seg_re = np.zeros(self.nsplines) # to hold downsampled amplitudes
+                        seg_im = np.zeros(self.nsplines)
+                        # downsample p_seg, q_seg
+                        for i_spl in range(self.nsplines):
+                            # the B-spline0 coefficients correspond to the time levels
+                            t_spl = (i_spl)*self.spline_knot_spacing
+                            # i = max(0, np.rint(t_spl/dt).astype(int))# given t_spl, find the closest time step index
+                            i = int(np.rint(t_spl / dt))
+                            i = min(i, Nelem-1) # make sure i is in range
+                            seg_re[i_spl] = fact * p_seg[i]
+                            seg_im[i_spl] = fact * q_seg[i]
+
+                        pcof0 = np.append(pcof0, seg_re) # append segment to the global control vector
+                        pcof0 = np.append(pcof0, seg_im)
+                    # print("simulation(): downsampling of (pt0, qt0) completed")
+                else:
+                    print("simulation(): detected a mismatch in the sizes of (pt0, qt0)")
+            elif len(pt0) > 0 or len(qt0) > 0:
+                print("simulation(): the length of pt0 or qt0 != Nsys = ", Nsys)
+        else:
+            print("Downsampling (pt,qt) is only implemented for spline order 0, not ", self.spline_order)
+        
+        return pcof0
+
+
     def __run(self, *, pcof0=[], runtype="optimization", overwrite_popt=False, maxcores=-1, datadir="./run_dir", quandary_exec="", cygwinbash="", batchargs=[], trainingdatadir="", trainingdata_corrected=False,UDEmodel="none", learn_params=[], T_train=1e13):
         """
         Internal helper function to launch processes to execute the C++ Quandary code:
@@ -406,6 +493,8 @@ class Quandary:
             self.optim_hist = optim_hist
             self.time = time[:]
             self.uT   = uT.copy()
+            # if len(pcof0) == 0:
+                # self.pcof0 = popt[:]
         else:
             time = []
             pt = []
@@ -414,6 +503,9 @@ class Quandary:
             expectedEnergy = []
             population = []
         
+        if len(pcof0)>0:
+            self.pcof0 = pcof0[:]
+
         return time, pt, qt, infidelity, expectedEnergy, population
 
 
@@ -494,19 +586,27 @@ class Quandary:
             if self.verbose:
                 print("Hamiltonian operators written to ", datadir+"/"+self._hamiltonian_filename)
 
-        # If pcof0 is given, write it to a file 
-        writeme = []
-        if len(self.pcof0) > 0:
-            writeme = self.pcof0
-        if len(pcof0) > 0:
-            writeme = pcof0
-        if len(writeme)>0:
-            self.pcof0_filename = "./pcof0.dat"
-            with open(datadir+"/"+self.pcof0_filename, "w") as f:
-                for value in writeme:
-                    f.write("{:20.13e}\n".format(value))
-            if self.verbose:
-                print("Initial control parameters written to ", datadir+"/"+self.pcof0_filename)
+        # Initializing the control parameter vector 'pcof0'
+        # 1. If the initial parameter vector (list) is given with the 'pcof0' argument, the list will be dumped to a file with name self.pcof0_filename := "pcof0.dat". 
+        # 2. If pcof0 is empty but self.pcof_filename is given, use that filename in Quandary 
+
+        read_pcof0_from_file = False
+        if len(self.pcof0) > 0 or len(pcof0) > 0:
+            if len(self.pcof0) > 0:
+                writeme = self.pcof0
+            if len(pcof0) > 0: # pcof0 is an argument to __dump(), while self.pcof0 is stored in the object
+                writeme = pcof0
+            if len(writeme)>0:
+                self.pcof0_filename = "./pcof0.dat"
+                with open(datadir+"/"+self.pcof0_filename, "w") as f:
+                    for value in writeme:
+                        f.write("{:20.13e}\n".format(value))
+                if self.verbose:
+                    print("Initial control parameters written to ", datadir+"/"+self.pcof0_filename)
+                read_pcof0_from_file = True
+        elif len(self.pcof0_filename) > 0:
+            print("Using the provided filename '", self.pcof0_filename, "' in the control_initialization command")
+            read_pcof0_from_file = True
 
         # if learn_params is given, write it to a file
         learn_params_filename = ""
@@ -520,28 +620,29 @@ class Quandary:
 
         # Set up string for Quandary's config file
         Nt = [self.Ne[i] + self.Ng[i] for i in range(len(self.Ng))]
-        mystring = "nlevels = " + str(list(Nt))[1:-1] + "\n"
-        mystring += "nessential= " + str(list(self.Ne))[1:-1] + "\n"
+        mystring = "nlevels = " + ",".join([str(i) for i in Nt]) + "\n"
+        mystring += "nessential= " + ",".join([str(i) for i in self.Ne]) + "\n"
         mystring += "ntime = " + str(self.nsteps) + "\n"
-        mystring += "dt = " + str(self.T / self.nsteps) + "\n"
-        mystring += "transfreq = " + str(list(self.freq01))[1:-1] + "\n"
-        mystring += "rotfreq= " + str(list(self.rotfreq))[1:-1] + "\n"
-        mystring += "selfkerr = " + str(list(self.selfkerr))[1:-1] + "\n"
+        # mystring += "dt = " + str(self.T / self.nsteps) + "\n"
+        mystring += "dt = " + str(self.dT) + "\n"
+        mystring += "transfreq = " + ",".join([str(i) for i in self.freq01]) + "\n"
+        mystring += "rotfreq= " + ",".join([str(i) for i in self.rotfreq]) + "\n"
+        mystring += "selfkerr = " + ",".join([str(i) for i in self.selfkerr]) + "\n"
         if len(self.crosskerr)>0:
-            mystring += "crosskerr= " + str(list(self.crosskerr))[1:-1] + "\n"
+            mystring += "crosskerr= " + ",".join([str(i) for i in self.crosskerr]) + "\n"
         else:
             mystring += "crosskerr= 0.0\n"
         if len(self.Jkl)>0:
-            mystring += "Jkl= " + str(list(self.Jkl))[1:-1] + "\n"
+            mystring += "Jkl= " + ",".join([str(i) for i in self.Jkl]) + "\n"
         else:
             mystring += "Jkl= 0.0\n"
         decay = dephase = False
         if len(self.T1) > 0: 
             decay = True
-            mystring += "decay_time = " + str(list(self.T1))[1:-1] + "\n"
+            mystring += "decay_time = " + ",".join([str(i) for i in self.T1]) + "\n"
         if len(self.T2) > 0:
             dephase = True
-            mystring += "dephase_time = " + str(list(self.T2))[1:-1] + "\n"
+            mystring += "dephase_time = " + ",".join([str(i) for i in self.T2]) + "\n"
         if decay and dephase:
             mystring += "collapse_type = both\n"
         elif decay:
@@ -596,9 +697,15 @@ class Quandary:
         else:
             mystring += "initialcondition = " + str(self.initialcondition) + "\n"
         for iosc in range(len(self.Ne)):
-            mystring += "control_segments" + str(iosc) + " = spline, " + str(self.nsplines) + "\n"
+            if self.spline_order == 0:
+                mystring += "control_segments" + str(iosc) + " = spline0, " + str(self.nsplines) + "\n"
+            elif self.spline_order == 2:
+                mystring += "control_segments" + str(iosc) + " = spline, " + str(self.nsplines) + "\n"
+            else:
+                print("Error: spline order = ", self.spline_order, " is currently not available. Choose 0 or 2.")
+                return -1
             # if len(self.pcof0_filename)>0:
-            if len(writeme)>0:
+            if read_pcof0_from_file:
                 initstring = "file, "+str(self.pcof0_filename) + "\n"
             else:
                 # Scale initial control amplitudes by the number of carrier waves and convert to ns
@@ -643,6 +750,7 @@ class Quandary:
         mystring += "optim_penalty= " + str(self.gamma_leakage) + "\n"
         mystring += "optim_penalty_param= 0.0\n"
         mystring += "optim_penalty_dpdm= " + str(self.gamma_dpdm) + "\n"
+        mystring += "optim_penalty_variation= " + str(self.gamma_variation) + "\n"
         mystring += "optim_penalty_energy= " + str(self.gamma_energy) + "\n"
         mystring += "datadir= ./\n"
         for iosc in range(len(self.Ne)):
@@ -1091,7 +1199,6 @@ def plot_pulse(Ne, time, pt, qt):
     """ 
     Plot the control pulse for all qubits
     """
-
     fig = plt.figure()
     nrows = len(Ne)
     ncols = 1
@@ -1109,6 +1216,7 @@ def plot_pulse(Ne, time, pt, qt):
     # plt.grid()
     plt.subplots_adjust(hspace=0.6)
     plt.draw()
+    plt.pause(0.01)
     print("\nPlotting control pulses.")
     print("-> Press <enter> to proceed.")
     plt.waitforbuttonpress(1); 
@@ -1130,12 +1238,16 @@ def plot_expectedEnergy(Ne, time, expectedEnergy):
         iinit = iplot 
         plt.subplot(nrows, ncols, iplot+1)
         plt.figsize=(15, 15)
+        emax = 1.0
         for iosc in range(len(Ne)):
             label = 'Qubit '+str(iosc) if len(Ne)>1 else ''
             plt.plot(time, expectedEnergy[iosc][iinit], label=label)
+            emax_iosc = np.max(expectedEnergy[iosc][iinit])
+            emax = max(emax, emax_iosc) # keep track of max energy level for setting ylim
         plt.xlabel('time (ns)')
         plt.ylabel('expected energy')
-        plt.ylim([0.0-1e-2, Ne[0]-1.0 + 1e-2])
+
+        plt.ylim([0.0-1e-2, emax + 1e-2])
         plt.xlim([0.0, time[-1]])
         binary_ID = iplot if len(Ne) == 1 else bin(iplot).replace("0b", "").zfill(len(Ne))
         plt.title("from |"+str(binary_ID)+">")
@@ -1272,7 +1384,7 @@ def timestep_richardson_est(quandary, tol=1e-8, order=2, quandary_exec=""):
     t, pt, qt, infidelity, _, _ = quandary.simulate(quandary_exec=quandary_exec, datadir="TS_test")
 
     Jcurr = infidelity
-    uT = quandary.uT
+    uT = quandary.uT.copy()
 
     # Loop
     errs_J = []
@@ -1283,6 +1395,7 @@ def timestep_richardson_est(quandary, tol=1e-8, order=2, quandary_exec=""):
         # Update configuration number of timesteps. Note: dt will be set in dump()
         dt_org = quandary.T / quandary.nsteps
         quandary.nsteps= quandary.nsteps* m
+        quandary.dT = quandary.T / quandary.nsteps
 
         # Get u(dt/m) 
         quandary.verbose=False
@@ -1574,4 +1687,7 @@ def loadLearnedLindbladOperators(UDEdatadir):
         LearnedOps[i] += 1j*LearnedOps_im[i]
 
     return LearnedOps
+def infidelity_(A,B):
+	dim = int(np.sqrt(A.size))
+	return 1.0 - np.abs(np.trace(A.conj().transpose() @ B))**2/dim**2
 

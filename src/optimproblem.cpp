@@ -106,10 +106,12 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   gamma_tik_interpolate = config.GetBoolParam("optim_regul_interpolate", false, false);
   gamma_tik_onenorm = config.GetBoolParam("optim_regul_onenorm", false, false);
   gamma_penalty_dpdm = config.GetDoubleParam("optim_penalty_dpdm", 0.0);
+  gamma_penalty_variation = config.GetDoubleParam("optim_penalty_variation", 0.0); 
+  
 
   if (gamma_penalty_dpdm > 1e-13 && timestepper->mastereq->lindbladtype != LindbladType::NONE){
     if (mpirank_world == 0) {
-      printf("Warning: Disabling DpDm penalty term because it is not implemented for the Lindblad solver.\n");
+      // printf("Warning: Disabling DpDm penalty term because it is not implemented for the Lindblad solver.\n");
     }
     gamma_penalty_dpdm = 0.0;
   }
@@ -245,6 +247,7 @@ double OptimProblem::evalF(const Vec x) {
   obj_penal = 0.0;
   obj_penal_dpdm = 0.0;
   obj_penal_energy = 0.0;
+  obj_penal_variation = 0.0;
   fidelity = 0.0;
 
   /* Iterate over control pulses */
@@ -374,17 +377,26 @@ double OptimProblem::evalF(const Vec x) {
   if (!gamma_tik_onenorm) obj_regul = gamma_tik / 2. * pow(xnorm,2.0);
   else obj_regul = gamma_tik * xnorm;
 
+  /* Evaluate penality term for control variation */
+  double var_reg = 0.0;
+  if (x_is_control) {
+    for (int iosc = 0; iosc < timestepper->mastereq->getNOscillators(); iosc++){
+      var_reg += timestepper->mastereq->getOscillator(iosc)->evalControlVariation(); // uses Oscillator::params instead of 'x'
+    }
+  }
+  obj_penal_variation = 0.5*gamma_penalty_variation*var_reg; 
+
   /* Sum, store and return objective value */
   if (x_is_control) {
-    objective = obj_cost + obj_regul + obj_penal + obj_penal_dpdm + obj_penal_energy;
+    objective = obj_cost + obj_regul + obj_penal + obj_penal_dpdm + obj_penal_energy + obj_penal_variation;
   } else {
     objective = obj_loss + obj_regul;
   }
 
   /* Output */
-  if (mpirank_world == 0) {
+  if (mpirank_world == 0 && !quietmode) {
     if (x_is_control){
-      std::cout<< "Objective = " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal << " + " << obj_penal_dpdm << " + " << obj_penal_energy << std::endl;
+      std::cout<< "Objective = " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal << " + " << obj_penal_dpdm << " + " << obj_penal_energy << " + " << obj_penal_variation << std::endl;
       std::cout<< "Fidelity = " << fidelity  << std::endl;
     } else {
       std::cout<< "Learning loss = " << std::scientific<<std::setprecision(14) << obj_loss << " + " << obj_regul << std::endl;
@@ -408,6 +420,7 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
   obj_penal = 0.0;
   obj_penal_dpdm = 0.0;
   obj_penal_energy = 0.0;
+  obj_penal_variation = 0.0;
   fidelity = 0.0;
 
    /* Reset Gradient */
@@ -438,6 +451,17 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
     }
     if (gamma_tik_interpolate){
       VecAXPY(G, -1.0*gamma_tik, xinit); // -gamma_tik * xinit
+    }
+  }
+
+  // Derivative of penalization of control variation 
+  if (mpirank_init == 0 && x_is_control) {
+    double var_reg_bar = 0.5*gamma_penalty_variation;
+    int skip_to_oscillator = 0;
+    for (int iosc = 0; iosc < timestepper->mastereq->getNOscillators(); iosc++){
+      Oscillator* osc = timestepper->mastereq->getOscillator(iosc);
+      osc->evalControlVariationDiff(G, var_reg_bar, skip_to_oscillator);
+      skip_to_oscillator += osc->getNParams();
     }
   }
 
@@ -582,9 +606,18 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
   if (!gamma_tik_onenorm) obj_regul = gamma_tik / 2. * pow(xnorm,2.0);
   else obj_regul = gamma_tik * xnorm;
 
+  /* Evaluate penalty term for control parameter variation */
+  double var_reg = 0.0;
+  if (x_is_control) {
+    for (int iosc = 0; iosc < timestepper->mastereq->getNOscillators(); iosc++){
+      var_reg += timestepper->mastereq->getOscillator(iosc)->evalControlVariation(); // uses Oscillator::params instead of 'x'
+    }
+  }
+  obj_penal_variation = 0.5*gamma_penalty_variation*var_reg; 
+
   /* Sum, store and return objective value */
   if (x_is_control) {
-    objective = obj_cost + obj_regul + obj_penal + obj_penal_dpdm + obj_penal_energy;
+    objective = obj_cost + obj_regul + obj_penal + obj_penal_dpdm + obj_penal_energy + obj_penal_variation;
   } else {
     objective = obj_loss + obj_regul;
   }
@@ -640,14 +673,13 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
   /* Output */
   if (mpirank_world == 0 && !quietmode) {
     if (x_is_control){
-      std::cout<< "Objective = " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal << " + " << obj_penal_dpdm << " + " << obj_penal_energy << std::endl;
+      std::cout<< "Objective = " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal << " + " << obj_penal_dpdm << " + " << obj_penal_energy << " + " << obj_penal_variation << std::endl;
       std::cout<< "Fidelity = " << fidelity << std::endl;
     } else {
       std::cout<< "Learning loss = " << std::scientific<<std::setprecision(14) << obj_loss << " + " << obj_regul << std::endl;
     }
   }
 }
-
 
 void OptimProblem::solve(Vec xinit) {
   TaoSetSolution(tao, xinit);
@@ -701,9 +733,6 @@ PetscErrorCode TaoMonitor(Tao tao,void*ptr){
   TaoGetSolutionStatus(tao, &iter, &f, &gnorm, NULL, &deltax, &reason);
   TaoGetSolution(tao, &params);
 
-  /* Pass current iteration number to output manager */
-  ctx->output->optim_iter = iter;
-
   /* Grab some output stuff */
   double obj_cost = ctx->getCostT();
   double obj_loss = ctx->getLoss();
@@ -711,27 +740,8 @@ PetscErrorCode TaoMonitor(Tao tao,void*ptr){
   double obj_penal = ctx->getPenalty();
   double obj_penal_dpdm = ctx->getPenaltyDpDm();
   double obj_penal_energy = ctx->getPenaltyEnergy();
+  double obj_penal_variation= ctx->getPenaltyVariation();
   double F_avg = ctx->getFidelity();
-
-  /* Print to optimization file */
-  double costT_output = obj_cost;
-  if (!ctx->x_is_control) costT_output = obj_loss;
-  ctx->output->writeOptimFile(f, gnorm, deltax, F_avg, costT_output, obj_regul, obj_penal, obj_penal_dpdm, obj_penal_energy);
-
-  /* Print optimization parameters to file */
-  ctx->output->writeParams(params);
-
-  /* Print control pulses to file */
-  // ctx->output->writeControls(ctx->timestepper->mastereq, ctx->timestepper->ntime, ctx->timestepper->dt, -1);
-
-  /* Screen output */
-  if (ctx->getMPIrank_world() == 0 && iter == 0) {
-    if (ctx->x_is_control) {
-      std::cout<<  "    Objective             Tikhonov                Penalty-Leakage        Penalty-StateVar       Penalty-TotalEnergy            GradNorm " << std::endl;
-    } else {
-      std::cout<<  "    Objective             Tikhonov                GradNorm " << std::endl;
-    }
-  }
 
   /* Additional Stopping criteria */
   bool lastIter = false;
@@ -745,7 +755,7 @@ PetscErrorCode TaoMonitor(Tao tao,void*ptr){
       finalReason_str = "Optimization converged with small final time cost.";
       TaoSetConvergedReason(tao, TAO_CONVERGED_USER);
       lastIter = true;
-    } 
+    }
   } else {
     if (obj_loss <= ctx->getFaTol()) {
       finalReason_str = "Optimization converged with small Loss.";
@@ -753,23 +763,60 @@ PetscErrorCode TaoMonitor(Tao tao,void*ptr){
       lastIter = true;
     }
   }
+  if (iter == ctx->getMaxIter()) {
+    finalReason_str = "Optimization stopped at maximum number of iterations.";
+    lastIter = true;
+  } else if (gnorm < ctx->getGaTol()) {
+    finalReason_str = "OPtimization converged with small gradient norm.";
+    lastIter=true;
+  }
 
-  if (ctx->getMPIrank_world() == 0 && (iter == ctx->getMaxIter() || lastIter || iter % ctx->output->optim_monitor_freq == 0)) {
-
-    std::cout<< iter <<  "  " << std::scientific<<std::setprecision(14);
+  /* First iteration: Header for screen output of optimization history */
+  if (iter == 0 && ctx->getMPIrank_world() == 0) {
     if (ctx->x_is_control) {
-      std::cout << obj_cost << " + " << obj_regul << " + " << obj_penal << " + " << obj_penal_dpdm << " + " << obj_penal_energy << ".   " << gnorm << std::endl;
-      std::cout<< "  Fidelity = " << F_avg ;
+      std::cout<<  "    Objective             Tikhonov                Penalty-Leakage        Penalty-StateVar       Penalty-TotalEnergy    Penalty-CtrlVar" << std::endl;
     } else {
-      std::cout << obj_loss << " + " << obj_regul << ".   " << gnorm;
+      std::cout<<  "    Objective             Tikhonov                GradNorm " << std::endl;
     }
-      std::cout<< std::endl;
   }
 
-if (ctx->getMPIrank_world() == 0 && lastIter){
-    std::cout<< finalReason_str << std::endl;
+  /* Every <optim_monitor_freq> iterations: Output of optimization history */
+  if (iter % ctx->output->optim_monitor_freq == 0 ||lastIter) {
+    // Add to optimization history file 
+    double costT_output = obj_cost;
+    if (!ctx->x_is_control) costT_output = obj_loss;
+    ctx->output->writeOptimFile(iter, f, gnorm, deltax, F_avg, costT_output, obj_regul, obj_penal, obj_penal_dpdm, obj_penal_energy, obj_penal_variation);
+    // Screen output 
+    if (ctx->getMPIrank_world() == 0) {
+      std::cout<< iter <<  "  " << std::scientific<<std::setprecision(14);
+      if (ctx->x_is_control){
+        std::cout << obj_cost << " + " << obj_regul << " + " << obj_penal << " + " << obj_penal_dpdm << " + " << obj_penal_energy << " + " << obj_penal_variation;
+        std::cout<< "  Fidelity = " << F_avg;
+        std::cout<< "  ||Grad|| = " << gnorm;
+      } else {
+        std::cout << obj_loss << " + " << obj_regul << ".   " << gnorm;
+      }
+      std::cout<< std::endl;
+    }
   }
- 
+
+  /* Print optimization parameters to file */
+  ctx->output->writeParams(params);
+
+  /* Last iteration: Print solution, controls and trajectory data to files */
+  if (lastIter) {
+    // ctx->output->writeControls(params, ctx->timestepper->mastereq, ctx->timestepper->ntime, ctx->timestepper->dt);
+
+    // do one last forward evaluation while writing trajectory files
+    ctx->timestepper->writeDataFiles = true;
+    ctx->evalF(params); 
+
+    // Print stopping reason to screen
+    if (ctx->getMPIrank_world() == 0){
+      std::cout<< finalReason_str << std::endl;
+    }
+  }
+
 
   return 0;
 }

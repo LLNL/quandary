@@ -31,6 +31,7 @@ class TimeStepper{
     int ntime;           // number of time steps
     double total_time;   // final time
     double dt;           // time step size
+    bool writeDataFiles;  /* Flag to determine whether or not trajectory data will be written to files during forward simulation */
 
     Vec redgrad;                  /* Reduced gradient wrt control parameters or learnable parameters */
 

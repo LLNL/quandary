@@ -1,7 +1,4 @@
-# Make sure you have the location of quandary.py in your PYTHONPATH. E.g. with
-#   > export PYTHONPATH=/path/to/quandary/:$PYTHONPATH
-# Further, make sure that your quandary executable is in your $PATH variable. E.g. with
-#   > export PATH=/path/to/quandary/:$PATH
+#  Quandary's python interface functions are defined in /path/to/quandary/quandary.py. Import them here. 
 from quandary import * 
 
 ## Two qubit test case: CNOT gate, two levels each, no guard levels, dipole-dipole coupling 5KHz ##
@@ -36,8 +33,8 @@ rand_seed=1234
 # Set up the Quandary configuration for this test case. Make sure to pass all of the above to the corresponding fields, compare help(Quandary)!
 quandary = Quandary(freq01=freq01, Jkl=Jkl, rotfreq=rotfreq, T=T, targetgate=unitary, verbose=verbose, rand_seed=rand_seed) 
 
-# Potentially, load initial control parameters from a file. 
-# quandary.pcof0_filename = os.getcwd() + "./CNOT_params.dat"  # absolute path!
+# Optionally, if you already have control parameters, load them from a file. 
+# quandary.pcof0_filename = os.getcwd() + "/CNOT_params.dat"  # absolute path!
 
 # Execute quandary
 t, pt, qt, infidelity, expectedEnergy, population = quandary.optimize()

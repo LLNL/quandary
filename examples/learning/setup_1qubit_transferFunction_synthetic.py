@@ -25,7 +25,6 @@ N = np.prod([Ne[i] + Ng[i] for i in range(len(Ne))])
 T = 0.2		  # 2.0 
 # dt = 3.00e-05
 dt = 0.0001
-nsteps = T/dt
 output_frequency = 1  # write every x-the timestep
 
 # For testing, can add a prefix for run directories. 
@@ -55,7 +54,7 @@ for ctrlMHz in initctrl_MHz:
 	trainingdatadir.append(cwd+"/"+dirprefix+"_ctrlMHz"+str(ctrlMHz)+"_asmeasured")
 
 	# Setup quandary object using the standard Hamiltonian model.
-	quandary = Quandary(Ne=Ne, Ng=Ng, freq01=freq01, rotfreq=rotfreq, selfkerr=selfkerr, T=T, targetgate=unitary, verbose=verbose, rand_seed=rand_seed, T1=T1, T2=T2, initialcondition=initialcondition, nsteps=nsteps, randomize_init_ctrl=randomize_init_ctrl, initctrl_MHz=ctrlMHz, output_frequency=output_frequency, unitMHz=unitMHz) 
+	quandary = Quandary(Ne=Ne, Ng=Ng, freq01=freq01, rotfreq=rotfreq, selfkerr=selfkerr, T=T, targetgate=unitary, verbose=verbose, rand_seed=rand_seed, T1=T1, T2=T2, initialcondition=initialcondition, dT=dt, randomize_init_ctrl=randomize_init_ctrl, initctrl_MHz=ctrlMHz, output_frequency=output_frequency, unitMHz=unitMHz) 
 
 	if do_datageneration:
 

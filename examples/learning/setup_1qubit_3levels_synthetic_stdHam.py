@@ -25,7 +25,6 @@ N = np.prod([Ne[i] + Ng[i] for i in range(len(Ne))])
 T = 1.0		  # 2.0 
 dt = 0.002    
 # dt = 0.0002    
-nsteps = T/dt
 output_frequency = 1  # write every x-the timestep
 
 # For testing, can add a prefix for run directories. 
@@ -52,7 +51,7 @@ verbose = False
 rand_seed=1234
 
 # Setup quandary object using the standard Hamiltonian model, this is the baseline model used during training.
-quandary = Quandary(Ne=Ne, Ng=Ng, freq01=freq01, rotfreq=rotfreq, selfkerr=selfkerr, T=T, targetgate=unitary, verbose=verbose, rand_seed=rand_seed, T1=T1, T2=T2, initialcondition=initialcondition, randomize_init_ctrl=randomize_init_ctrl, initctrl_MHz=initctrl_MHz, nsteps=nsteps, output_frequency=output_frequency, unitMHz=unitMHz, carrier_frequency=carrier_frequency) 
+quandary = Quandary(Ne=Ne, Ng=Ng, freq01=freq01, rotfreq=rotfreq, selfkerr=selfkerr, T=T, targetgate=unitary, verbose=verbose, rand_seed=rand_seed, T1=T1, T2=T2, initialcondition=initialcondition, randomize_init_ctrl=randomize_init_ctrl, initctrl_MHz=initctrl_MHz, dT=dt, output_frequency=output_frequency, unitMHz=unitMHz, carrier_frequency=carrier_frequency) 
 
 # forget about the decay times. Relearn them later.
 quandary.T1 = [0.0]
@@ -88,7 +87,7 @@ for ctrlMHz in constctrl_MHz:
 	trainingdatadir.append(cwd+"/"+dirprefix+"stdHam_perturb_"+str(rand_amp_MHz)+"MHz_ctrlP"+str(ctrlMHz) + "_ctrlQ"+str(ctrlMHz) +"_rundir")
 
 	# Quandary object for perturbed Hamiltonian for each data trajectory
-	quandary_mod = Quandary(Ne=Ne, Ng=Ng, T=T, targetgate=unitary, verbose=verbose, rand_seed=rand_seed, T1=T1, T2=T2, standardmodel=False, Hc_re=Hc_re_mod, Hc_im=Hc_im_mod, Hsys=Hsys_mod, carrier_frequency=quandary.carrier_frequency, initialcondition=initialcondition, randomize_init_ctrl=randomize_init_ctrl, initctrl_MHz=ctrlMHz, nsteps=nsteps, output_frequency=output_frequency, unitMHz=True) 
+	quandary_mod = Quandary(Ne=Ne, Ng=Ng, T=T, targetgate=unitary, verbose=verbose, rand_seed=rand_seed, T1=T1, T2=T2, standardmodel=False, Hc_re=Hc_re_mod, Hc_im=Hc_im_mod, Hsys=Hsys_mod, carrier_frequency=quandary.carrier_frequency, initialcondition=initialcondition, randomize_init_ctrl=randomize_init_ctrl, initctrl_MHz=ctrlMHz, dT=dt, output_frequency=output_frequency, unitMHz=True) 
 
 	if do_datageneration:
 		t, pt, qt, infidelity, expectedEnergy, population = quandary_mod.simulate(maxcores=8, datadir=trainingdatadir[-1])

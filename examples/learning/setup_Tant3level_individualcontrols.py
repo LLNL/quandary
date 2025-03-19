@@ -28,8 +28,6 @@ T2 = [0.0] # [6.0]
 # Set the duration (us) and time-step size
 T = 4.0  	# 4.0  # 8.0
 dT = 0.002
-nsteps = int(np.ceil(T/dT))
-T = nsteps*dT
 output_frequency = 1  
 
 # Set up a dummy gate
@@ -63,7 +61,7 @@ for pval in pvals:
 	for qval in qvals:
 
 		# Set up Quandary with standard Hamiltonian model 
-		quandary = Quandary(Ne=Ne, Ng=Ng, freq01=freq01, rotfreq=rotfreq, selfkerr=selfkerr, T=T, nsteps=nsteps, targetgate=unitary, verbose=verbose, rand_seed=rand_seed, T1=T1, T2=T2, initialcondition=initialcondition, output_frequency=output_frequency, randomize_init_ctrl=randomize_ctrl, initctrl_MHz=initctrl_MHz, carrier_frequency=carrier_freq, unitMHz=unitMHz) 
+		quandary = Quandary(Ne=Ne, Ng=Ng, freq01=freq01, rotfreq=rotfreq, selfkerr=selfkerr, T=T, dT=dT, targetgate=unitary, verbose=verbose, rand_seed=rand_seed, T1=T1, T2=T2, initialcondition=initialcondition, output_frequency=output_frequency, randomize_init_ctrl=randomize_ctrl, initctrl_MHz=initctrl_MHz, carrier_frequency=carrier_freq, unitMHz=unitMHz) 
 
 		# Set the UDE model: List of learnable terms, containing "hamiltonian" and/or "lindblad"
 		UDEmodel = "hamiltonian, lindblad"   
@@ -106,7 +104,7 @@ for pval in pvals:
 			filename = UDEdatadir + "/params.dat"
 			params = np.loadtxt(filename)
 			quandary.T = 16.0
-			quandary.nsteps =  int(np.ceil(quandary.T/dT))
+			quandary.dT = dT
 			quandary.update()
 			
 			quandary.UDEsimulate(trainingdatadir=trainingdatadir, trainingdata_corrected=trainingdata_corrected, UDEmodel=UDEmodel, datadir=UDEdatadir+"/FWD_opt", T_train=quandary.T, learn_params=params)
@@ -358,7 +356,7 @@ if do_extrapolate:
 	pt = randpulsedata[:,1]
 	qt = randpulsedata[:,2]
 
-	quandary.nsteps= len(t)-1
+	# quandary.nsteps= len(t)-1
 	quandary.T = t[-1]/1e+3 # us
 	dt = quandary.T/quandary.nsteps
 	quandary.spline_order=0

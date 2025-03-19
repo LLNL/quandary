@@ -1,3 +1,4 @@
+#  Quandary's python interface functions are defined in /path/to/quandary/quandary.py. Import them here. 
 from quandary import * 
 
 ## QFT gates on qubit chain, two levels, no guard levels, dipole-dipole coupling 5KHz (chain topology) ##
@@ -13,16 +14,27 @@ nqubits = 3
 # Runtypes
 verbose = False
 do_optim = True
-do_plot = False
+do_plot = True 
 
 rand_seed=1234
 maxcores=8
 maxiter=500
-gamma_energy = 1e-4
+
+# Penalty terms
+gamma_energy = 1e-4  	# Control pulse energy integral
+gamma_tik0 = 1e-3		# Tikhonov regularization
+gamma_dpdm = 0.0		# State variation
+
+# Control pulse settings 
+maxctrl_MHz = 25.0 			 # Maximum control pulse amplitude
+spline_knot_spacing =  3.0   # Bspline spacing [ns]
 
 # Carrier wave thresholds
 cw_amp_thres = 5e-2  # Min. theshold on growth rate for each carrier
 cw_prox_thres = 1e-3 # Max. threshold on carrier proximity
+
+# Step-size control: Min. number of time-steps per fastest oscillation in Hsys,Hcontrol
+Pmin = 150*2	# Default: 150 (might be enough)
 
 # Set up frequency vector
 freq01 =  []	# 01 transition frequencies [GHz] 
@@ -48,14 +60,13 @@ print("Coupling: ", Jkl)
 
 # Set the pulse duration (ns)
 T = T_all[nqubits-1]
-dtau = 10.0  	# Bspline spacing [ns]
 print("T=", T)
 
 # Set up rotational frame frequency
 favg = sum(freq01)/len(freq01) 
 rotfreq = favg*np.ones(len(freq01))
 
-# Define d-dimensional Discrete Fourier Transform gate 
+# Define target gate: d-dimensional Discrete Fourier Transform
 def get_QFT_gate(dim):
 	gate_Hd =  np.zeros((dim, dim), dtype=complex)
 	om_d = np.exp(1j*2*np.pi/dim)
@@ -69,7 +80,7 @@ unitary = get_QFT_gate(np.prod(Ne))
 # print("Target gate: ", unitary)
 
 # Set up the Quandary configuration for this test case
-quandary = Quandary(Ne=Ne, Ng=Ng, freq01=freq01, Jkl=Jkl, rotfreq=rotfreq, T=T, targetgate=unitary, verbose=verbose, rand_seed=rand_seed, maxiter=maxiter, cw_amp_thres=cw_amp_thres, cw_prox_thres=cw_prox_thres, gamma_energy=gamma_energy) 
+quandary = Quandary(Ne=Ne, Ng=Ng, freq01=freq01, Jkl=Jkl, rotfreq=rotfreq, T=T, Pmin=Pmin, spline_knot_spacing=spline_knot_spacing, targetgate=unitary, verbose=verbose, rand_seed=rand_seed, maxiter=maxiter, maxctrl_MHz=maxctrl_MHz, cw_amp_thres=cw_amp_thres, cw_prox_thres=cw_prox_thres, gamma_energy=gamma_energy, gamma_tik0=gamma_tik0, gamma_dpdm=gamma_dpdm) 
 
 
 # Potentially, load initial control parameters from a file. 

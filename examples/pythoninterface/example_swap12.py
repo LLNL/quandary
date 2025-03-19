@@ -1,7 +1,4 @@
-# Make sure you have the location of quandary.py in your PYTHONPATH. E.g. with
-#   > export PYTHONPATH=/path/to/quandary/:$PYTHONPATH
-# Further, make sure that your quandary executable is in your $PATH variable. E.g. with
-#   > export PATH=/path/to/quandary/:$PATH
+#  Quandary's python interface functions are defined in /path/to/quandary/quandary.py. Import them here. 
 from quandary import * 
 
 ## Two qubit test case for the SWAP gate, two essential levels each, no guard levels ##
@@ -47,10 +44,10 @@ if True:
 	plot_expectedEnergy(quandary.Ne, t, expectedEnergy)
 
 
-# Adding some decoherence and simulate again
-quandary.T1 = [10000.0]
-quandary.T2 = [8000.0]
-quandary.update()
-quandary.pcof0 = quandary.popt[:]
-t, pt, qt, infidelity, expectedEnergy, population = quandary.simulate(datadir=datadir, maxcores=8)
-print(f"Fidelity under decoherence = {1.0 - infidelity}")
+# # Adding some decoherence and simulate again
+# quandary.T1 = [10000.0]
+# quandary.T2 = [8000.0]
+# quandary.update()
+# quandary.pcof0 = quandary.popt[:]
+# t, pt, qt, infidelity, expectedEnergy, population = quandary.simulate(datadir=datadir, maxcores=8)
+# print(f"Fidelity under decoherence = {1.0 - infidelity}")

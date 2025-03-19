@@ -48,8 +48,6 @@ class Oscillator {
     int dim_preOsc;                // Dimension of coupled subsystems preceding this oscillator
     int dim_postOsc;               // Dimension of coupled subsystem following this oscillator
 
-
-      public:
     Oscillator();
     Oscillator(MapParam config, int id, std::vector<int> nlevels_all_, std::vector<std::string>& controlsegments, std::vector<std::string>& controlinitializations, double ground_freq_, double selfkerr_, double rotational_freq_, double decay_time_, double dephase_time_, std::vector<double> carrier_freq_, double Tfinal_, LindbladType lindbladtype_, std::default_random_engine rand_engine);
     virtual ~Oscillator();
@@ -88,7 +86,12 @@ class Oscillator {
     int evalControl_Labframe(const double t, double* f_ptr, Learning* learning);
 
     /* Compute population (=diagonal elements) for this oscillators reduced system */
-    void population(const Vec x, std::vector<double> &pop); 
+    void population(const Vec x, std::vector<double> &pop);
+
+    /* Evaluate un-divided differences in control vector */
+    double evalControlVariation();
+    /* Derivative of un-divided differences in control vector */
+    void evalControlVariationDiff(Vec G, double var_reg_bar, int skip_to_oscillator);
 };
 
 

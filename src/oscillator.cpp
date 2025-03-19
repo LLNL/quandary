@@ -31,7 +31,7 @@ Oscillator::Oscillator(MapParam config, int id, std::vector<int> nlevels_all_, s
 
   // Parse for control segments
   int idstr = 0;
-  int nparams = 0;
+  int nparams_per_seg = 0;
   while (idstr < controlsegments.size()) {
 
     if (controlsegments[idstr].compare("step") == 0) {
@@ -52,8 +52,8 @@ Oscillator::Oscillator(MapParam config, int id, std::vector<int> nlevels_all_, s
       }
       // if (mpirank_world == 0) printf("%d: Creating step basis with amplitude (%f, %f) (tramp %f) in control segment [%f, %f]\n", myid, step_amp1, step_amp2, tramp, tstart, tstop);
       ControlBasis* mystep = new Step(step_amp1, step_amp2, tstart, tstop, tramp, control_enforceBC);
-      mystep->setSkip(nparams);
-      nparams += mystep->getNparams() * carrier_freq.size();
+      mystep->setSkip(nparams_per_seg);
+      nparams_per_seg += mystep->getNparams() * carrier_freq.size();
       basisfunctions.push_back(mystep);
       
     } else if (controlsegments[idstr].compare("spline") == 0) { // Default: splines. Format in string: spline, nsplines, tstart, tstop
@@ -71,8 +71,27 @@ Oscillator::Oscillator(MapParam config, int id, std::vector<int> nlevels_all_, s
       }
       // if (mpirank_world==0) printf("%d: Creating %d-spline basis in control segment [%f, %f]\n", myid, nspline,tstart, tstop);
       ControlBasis* mysplinebasis = new BSpline2nd(nspline, tstart, tstop, control_enforceBC);
-      mysplinebasis->setSkip(nparams);
-      nparams += mysplinebasis->getNparams() * carrier_freq.size();
+      mysplinebasis->setSkip(nparams_per_seg);
+      nparams_per_seg += mysplinebasis->getNparams() * carrier_freq.size();
+      basisfunctions.push_back(mysplinebasis);
+      //
+    } else if (controlsegments[idstr].compare("spline0") == 0) { // Format in string: bs0, nsplines, tstart, tstop
+      idstr++;
+      if (controlsegments.size() <= idstr){
+        printf("ERROR: Wrong setting for control segments: Number of splines not found.\n");
+        exit(1);
+      }
+      int nspline = atoi(controlsegments[idstr].c_str()); idstr++;
+      double tstart = 0.0;
+      double tstop = Tfinal;
+      if (controlsegments.size()>=idstr+2){
+        tstart = atof(controlsegments[idstr].c_str()); idstr++;
+        tstop = atof(controlsegments[idstr].c_str()); idstr++;
+      }
+      // if (mpirank_world==0) printf("%d: Creating %d-spline basis in control segment [%f, %f]\n", myid, nspline,tstart, tstop);
+      ControlBasis* mysplinebasis = new BSpline0(nspline, tstart, tstop, control_enforceBC);
+      mysplinebasis->setSkip(nparams_per_seg);
+      nparams_per_seg += mysplinebasis->getNparams() * carrier_freq.size();
       basisfunctions.push_back(mysplinebasis);
     } else if (controlsegments[idstr].compare("spline_amplitude") == 0) { // Spline on amplitude only. Format in string: spline_amplitude, nsplines, tstart, tstop
       idstr++;
@@ -90,8 +109,8 @@ Oscillator::Oscillator(MapParam config, int id, std::vector<int> nlevels_all_, s
       }
       // if (mpirank_world==0) printf("%d: Creating %d-spline basis in control segment [%f, %f]\n", myid, nspline,tstart, tstop);
       ControlBasis* mysplinebasis = new BSpline2ndAmplitude(nspline, scaling, tstart, tstop, control_enforceBC);
-      mysplinebasis->setSkip(nparams);
-      nparams += mysplinebasis->getNparams() * carrier_freq.size();
+      mysplinebasis->setSkip(nparams_per_seg);
+      nparams_per_seg += mysplinebasis->getNparams() * carrier_freq.size();
       basisfunctions.push_back(mysplinebasis);
     } else {
       // if (mpirank_world==0) printf("%d: Non-controllable.\n", myid);
@@ -212,6 +231,39 @@ int Oscillator::getNSegParams(int segmentID){
   return n; 
 }
 
+double Oscillator::evalControlVariation(){
+  // NOTE: params holds the relevant copy of the optimizers 'x' vector 
+  double var_reg = 0.0;
+  if (params.size()>0) {
+    // Iterate over control segments
+    for (int iseg= 0; iseg< basisfunctions.size(); iseg++){
+      /* Iterate over carrier frequencies */
+      for (int f=0; f < carrier_freq.size(); f++) {
+        var_reg += basisfunctions[iseg]->computeVariation(params, f);
+      }
+    }
+  } 
+  return var_reg;
+}
+
+void Oscillator::evalControlVariationDiff(Vec G, double var_reg_bar, int skip_to_oscillator){
+  // NOTE: params holds the relevant copy of the 'x' array
+
+  if (params.size()>0) {
+    PetscScalar* grad; 
+    VecGetArray(G, &grad);
+
+    // Iterate over basis parameterizations??? 
+    for (int iseg = 0; iseg< basisfunctions.size(); iseg++){
+      /* Iterate over carrier frequencies */
+      for (int f=0; f < carrier_freq.size(); f++) {
+        // pass the portion of the gradient that corresponds to this oscillator
+        basisfunctions[iseg]->computeVariation_diff(grad+skip_to_oscillator, params, var_reg_bar, f);
+     }
+    }
+    VecRestoreArray(G, &grad);
+  } 
+}
 
 int Oscillator::evalControl(const double t, double* Re_ptr, double* Im_ptr, Learning* learning){
 
