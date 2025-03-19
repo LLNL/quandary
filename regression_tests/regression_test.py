@@ -53,7 +53,8 @@ def test_eval(test_case: Case, request):
 def run_test(simulation_dir, number_of_processes, config_file, files_to_compare, exact, mpi_exec, mpi_opt):
     os.chdir(simulation_dir)
 
-    command = [mpi_exec, "-n", str(number_of_processes)]
+    command = mpi_exec.split()
+    command.extend(["-n", str(number_of_processes)])
     if mpi_opt:
         command.extend([mpi_opt])
     command.extend([QUANDARY_PATH, config_file])
