@@ -1680,7 +1680,7 @@ int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
           /* --- Offdiagonal part of decay L1^T */
           if (shellctx->lindbladtype != LindbladType::NONE) {
             // Oscillators 0
-            L1decay_T(it, n0, i0, i0p, stridei0, stridei0p, xptr, decay0, &yre, &yim);
+            L1decay_T(it, i0, i0p, stridei0, stridei0p, xptr, decay0, &yre, &yim);
           }
 
           /* --- Control hamiltonian  --- */
@@ -1923,9 +1923,9 @@ int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
           /* --- Offdiagonal part of decay L1^T */
           if (shellctx->lindbladtype != LindbladType::NONE) {
             // Oscillators 0
-            L1decay_T(it, n0, i0, i0p, stridei0, stridei0p, xptr, decay0, &yre, &yim);
+            L1decay_T(it, i0, i0p, stridei0, stridei0p, xptr, decay0, &yre, &yim);
             // Oscillator 1
-            L1decay_T(it, n1, i1, i1p, stridei1, stridei1p, xptr, decay1, &yre, &yim);
+            L1decay_T(it, i1, i1p, stridei1, stridei1p, xptr, decay1, &yre, &yim);
           }
 
           /* --- Control hamiltonian  --- */
@@ -2225,11 +2225,11 @@ int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
               /* --- Offdiagonal part of decay L1^T */
               if (shellctx->lindbladtype != LindbladType::NONE) {
                 // Oscillators 0
-                L1decay_T(it, n0, i0, i0p, stridei0, stridei0p, xptr, decay0, &yre, &yim);
+                L1decay_T(it, i0, i0p, stridei0, stridei0p, xptr, decay0, &yre, &yim);
                 // Oscillator 1
-                L1decay_T(it, n1, i1, i1p, stridei1, stridei1p, xptr, decay1, &yre, &yim);
+                L1decay_T(it, i1, i1p, stridei1, stridei1p, xptr, decay1, &yre, &yim);
                 // Oscillator 2
-                L1decay_T(it, n2, i2, i2p, stridei2, stridei2p, xptr, decay2, &yre, &yim);
+                L1decay_T(it, i2, i2p, stridei2, stridei2p, xptr, decay2, &yre, &yim);
               }
 
               /* --- Control hamiltonian  --- */
@@ -2610,13 +2610,13 @@ int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
                   /* --- Offdiagonal part of decay L1^T */
                   if (shellctx->lindbladtype != LindbladType::NONE) {
                     // Oscillators 0
-                    L1decay_T(it, n0, i0, i0p, stridei0, stridei0p, xptr, decay0, &yre, &yim);
+                    L1decay_T(it, i0, i0p, stridei0, stridei0p, xptr, decay0, &yre, &yim);
                     // Oscillator 1
-                    L1decay_T(it, n1, i1, i1p, stridei1, stridei1p, xptr, decay1, &yre, &yim);
+                    L1decay_T(it, i1, i1p, stridei1, stridei1p, xptr, decay1, &yre, &yim);
                     // Oscillator 2
-                    L1decay_T(it, n2, i2, i2p, stridei2, stridei2p, xptr, decay2, &yre, &yim);
+                    L1decay_T(it, i2, i2p, stridei2, stridei2p, xptr, decay2, &yre, &yim);
                     // Oscillator 3
-                    L1decay_T(it, n3, i3, i3p, stridei3, stridei3p, xptr, decay3, &yre, &yim);
+                    L1decay_T(it, i3, i3p, stridei3, stridei3p, xptr, decay3, &yre, &yim);
                   }
 
                   /* --- Control hamiltonian  --- */
@@ -3089,15 +3089,15 @@ int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
                       /* --- Offdiagonal part of decay L1^T */
                       if (shellctx->lindbladtype != LindbladType::NONE) { 
                         // Oscillators 0
-                        L1decay_T(it, n0, i0, i0p, stridei0, stridei0p, xptr, decay0, &yre, &yim);
+                        L1decay_T(it, i0, i0p, stridei0, stridei0p, xptr, decay0, &yre, &yim);
                         // Oscillator 1
-                        L1decay_T(it, n1, i1, i1p, stridei1, stridei1p, xptr, decay1, &yre, &yim);
+                        L1decay_T(it, i1, i1p, stridei1, stridei1p, xptr, decay1, &yre, &yim);
                         // Oscillator 2
-                        L1decay_T(it, n2, i2, i2p, stridei2, stridei2p, xptr, decay2, &yre, &yim);
+                        L1decay_T(it, i2, i2p, stridei2, stridei2p, xptr, decay2, &yre, &yim);
                         // Oscillator 3
-                        L1decay_T(it, n3, i3, i3p, stridei3, stridei3p, xptr, decay3, &yre, &yim);
+                        L1decay_T(it, i3, i3p, stridei3, stridei3p, xptr, decay3, &yre, &yim);
                         // Oscillator 4
-                        L1decay_T(it, n4, i4, i4p, stridei4, stridei4p, xptr, decay4, &yre, &yim);
+                        L1decay_T(it, i4, i4p, stridei4, stridei4p, xptr, decay4, &yre, &yim);
                       }
 
                       /* --- Control hamiltonian  --- */

@@ -437,7 +437,7 @@ inline void L1decay(const int it, const int n, const int i, const int ip, const 
 
 
 // Transpose of offdiagonal L1decay
-inline void L1decay_T(const int it, const int n, const int i, const int ip, const int stridei, const int strideip, const double* xptr, const double decayi, double* yre, double* yim){
+inline void L1decay_T(const int it, const int i, const int ip, const int stridei, const int strideip, const double* xptr, const double decayi, double* yre, double* yim){
   if (fabs(decayi) > 1e-12) {
       if (i > 0 && ip > 0) {
         double l1off = decayi * sqrt(i*ip);
