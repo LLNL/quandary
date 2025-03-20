@@ -1,5 +1,7 @@
 #include "util.hpp"
 
+// Suppress compiler warnings about unused parameters in code with #ifdef
+#define UNUSED(expr) (void)(expr)
 
 double sigmoid(double width, double x){
   return 1.0 / ( 1.0 + exp(-width*x) );
@@ -541,6 +543,11 @@ int read_vector(const char *filename, double *var, int dim, bool quietmode, int 
 
 /* Compute eigenvalues */
 int getEigvals(const Mat A, const int neigvals, std::vector<double>& eigvals, std::vector<Vec>& eigvecs){
+
+UNUSED(A);
+UNUSED(neigvals);
+UNUSED(eigvals);
+UNUSED(eigvecs);
 
 int nconv = 0;
 #ifdef WITH_SLEPC
