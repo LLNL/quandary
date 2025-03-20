@@ -167,7 +167,7 @@ Vec TimeStepper::solveODE(int initid, Vec rho_t0){
 }
 
 
-void TimeStepper::solveAdjointODE(int initid, Vec rho_t0_bar, Vec finalstate, double Jbar_penalty, double Jbar_penalty_dpdm, double Jbar_energy_penalty) {
+void TimeStepper::solveAdjointODE(Vec rho_t0_bar, Vec finalstate, double Jbar_penalty, double Jbar_penalty_dpdm, double Jbar_energy_penalty) {
 
   /* Reset gradient */
   VecZeroEntries(redgrad);
