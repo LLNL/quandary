@@ -21,7 +21,7 @@ class OptimTarget{
                                       If target is a gate, this holds the transformed state VrhoV^\dagger.
                                       If target is read from file, this holds the target density matrix from that file. */
     InitialConditionType initcond_type;    /* Type of initial conditions */
-    std::vector<int> initcond_IDs;         /* Integer list for pure-state initialization */
+    std::vector<size_t> initcond_IDs;      /* Integer list for pure-state initialization */
     LindbladType lindbladtype;             /* Type of decoherence (lindblad vs schroedinger) */
 
     Vec aux;      /* auxiliary vector needed when computing the objective for gate optimization */

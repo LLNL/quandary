@@ -332,7 +332,7 @@ void TransferFunction::storeOnOffTimes(std::vector<double>onofftimes_){
 
     // Copy the list of time points that determine when the transfer functions are active
     onofftimes.clear();
-    for (int i=0; i<onofftimes_.size(); i++) {
+    for (size_t i=0; i<onofftimes_.size(); i++) {
         onofftimes.push_back( onofftimes_[i] );
     }   
 }

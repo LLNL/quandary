@@ -78,10 +78,10 @@ int mapEssToFull(const int i, const std::vector<int> &nlevels, const std::vector
 
   int id = 0;
   int index = i;
-  for (int iosc = 0; iosc<nlevels.size()-1; iosc++){
+  for (size_t iosc = 0; iosc<nlevels.size()-1; iosc++){
     int postdim = 1;
     int postdim_ess = 1;
-    for (int j = iosc+1; j<nlevels.size(); j++){
+    for (size_t j = iosc+1; j<nlevels.size(); j++){
       postdim *= nlevels[j];
       postdim_ess *= nessential[j];
     }
@@ -100,10 +100,10 @@ int mapFullToEss(const int i, const std::vector<int> &nlevels, const std::vector
 
   int id = 0;
   int index = i;
-  for (int iosc = 0; iosc<nlevels.size(); iosc++){
+  for (size_t iosc = 0; iosc<nlevels.size(); iosc++){
     int postdim = 1;
     int postdim_ess = 1;
-    for (int j = iosc+1; j<nlevels.size(); j++){
+    for (size_t j = iosc+1; j<nlevels.size(); j++){
       postdim *= nlevels[j];
       postdim_ess *= nessential[j];
     }
@@ -160,10 +160,10 @@ int isEssential(const int i, const std::vector<int> &nlevels, const std::vector<
 
   int isEss = 1;
   int index = i;
-  for (int iosc = 0; iosc < nlevels.size(); iosc++){
+  for (size_t iosc = 0; iosc < nlevels.size(); iosc++){
 
     int postdim = 1;
-    for (int j = iosc+1; j<nlevels.size(); j++){
+    for (size_t j = iosc+1; j<nlevels.size(); j++){
       postdim *= nlevels[j];
     }
     int itest = (int) index / postdim;
@@ -181,10 +181,10 @@ int isEssential(const int i, const std::vector<int> &nlevels, const std::vector<
 int isGuardLevel(const int i, const std::vector<int> &nlevels, const std::vector<int> &nessential){
   int isGuard =  0;
   int index = i;
-  for (int iosc = 0; iosc < nlevels.size(); iosc++){
+  for (size_t iosc = 0; iosc < nlevels.size(); iosc++){
 
     int postdim = 1;
-    for (int j = iosc+1; j<nlevels.size(); j++){
+    for (size_t j = iosc+1; j<nlevels.size(); j++){
       postdim *= nlevels[j];
     }
     int itest = (int) index / postdim;   // floor(i/n_post)

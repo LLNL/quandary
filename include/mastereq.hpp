@@ -114,10 +114,10 @@ class MasterEq{
     void setTransferOnOffTimes(std::vector<double> tlist);
 
     /* Return the i-th oscillator */
-    Oscillator* getOscillator(const int i);
+    Oscillator* getOscillator(const size_t i);
 
     /* Return number of oscillators */
-    int getNOscillators();
+    size_t getNOscillators();
 
     /* Return dimension of vectorized system N^2 (for Lindblad solver) or N (for Schroedinger solver) */
     int getDim();

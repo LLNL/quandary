@@ -22,7 +22,7 @@ TimeStepper::TimeStepper(MasterEq* mastereq_, int ntime_, double total_time_, Ou
 
   /* Check if leakage term is added: Only if nessential is smaller than nlevels for at least one oscillator */
   addLeakagePrevent = false; 
-  for (int i=0; i<mastereq->getNOscillators(); i++){
+  for (size_t i=0; i<mastereq->getNOscillators(); i++){
     if (mastereq->nessential[i] < mastereq->nlevels[i]) addLeakagePrevent = true;
   }
 
@@ -49,7 +49,7 @@ TimeStepper::TimeStepper(MasterEq* mastereq_, int ntime_, double total_time_, Ou
 
   /* Allocate the reduced gradient */
   int ndesign = 0;
-  for (int ioscil = 0; ioscil < mastereq->getNOscillators(); ioscil++) {
+  for (size_t ioscil = 0; ioscil < mastereq->getNOscillators(); ioscil++) {
       ndesign += mastereq->getOscillator(ioscil)->getNParams(); 
   }
   VecCreateSeq(PETSC_COMM_SELF, ndesign, &redgrad);
@@ -61,7 +61,7 @@ TimeStepper::TimeStepper(MasterEq* mastereq_, int ntime_, double total_time_, Ou
 
 
 TimeStepper::~TimeStepper() {
-  for (int n = 0; n < store_states.size(); n++) {
+  for (size_t n = 0; n < store_states.size(); n++) {
     VecDestroy(&(store_states[n]));
   }
   VecDestroy(&x);
@@ -71,10 +71,10 @@ TimeStepper::~TimeStepper() {
 
 
 
-Vec TimeStepper::getState(int tindex){
+Vec TimeStepper::getState(size_t tindex){
   
   if (tindex >= store_states.size()) {
-    printf("ERROR: Time-stepper requested state at time index %d, but didn't store it.\n", tindex);
+    printf("ERROR: Time-stepper requested state at time index %zu, but didn't store it.\n", tindex);
     exit(1);
   }
 
@@ -150,7 +150,7 @@ Vec TimeStepper::solveODE(int initid, Vec rho_t0){
 
   /* Clear out dpdm storage */
   if (gamma_penalty_dpdm > 1e-13) {
-    for (int i=0; i<dpdm_states.size(); i++) {
+    for (size_t i=0; i<dpdm_states.size(); i++) {
       VecDestroy(&(dpdm_states[i]));
     }
     dpdm_states.clear();
@@ -231,7 +231,7 @@ void TimeStepper::solveAdjointODE(Vec rho_t0_bar, Vec finalstate, double Jbar_pe
 
   /* Clear out dpdm storage */
   if (gamma_penalty_dpdm > 1e-13) {
-    for (int i=0; i<dpdm_states.size(); i++) {
+    for (size_t i=0; i<dpdm_states.size(); i++) {
       VecDestroy(&(dpdm_states[i]));
     }
     dpdm_states.clear();
@@ -465,7 +465,7 @@ double TimeStepper::energyPenaltyIntegral(double time){
   double pen = 0.0;
 
   /* Loop over oscillators */
-  for (int iosc = 0; iosc < mastereq->getNOscillators(); iosc++) {
+  for (size_t iosc = 0; iosc < mastereq->getNOscillators(); iosc++) {
     double p,q;
     mastereq->getOscillator(iosc)->evalControl(time, &p, &q); 
     pen += (p*p + q*q) / ntime;
@@ -478,7 +478,7 @@ double TimeStepper::energyPenaltyIntegral(double time){
 void TimeStepper::energyPenaltyIntegral_diff(double time, double penaltybar, Vec redgrad){
 
   int nparams_max = 0;
-  for (int ioscil = 0; ioscil < mastereq->getNOscillators(); ioscil++) {
+  for (size_t ioscil = 0; ioscil < mastereq->getNOscillators(); ioscil++) {
       int n = mastereq->getOscillator(ioscil)->getNParams();
       if (n > nparams_max) nparams_max = n;
   }
@@ -489,7 +489,7 @@ void TimeStepper::energyPenaltyIntegral_diff(double time, double penaltybar, Vec
   PetscScalar* vals = new PetscScalar[nparams_max];
 
   int shift = 0;
-  for (int iosc = 0; iosc < mastereq->getNOscillators(); iosc++){
+  for (size_t iosc = 0; iosc < mastereq->getNOscillators(); iosc++){
 
     /* Reevaluate the controls */
     double p,q;
@@ -799,7 +799,7 @@ CompositionalImplMidpoint::CompositionalImplMidpoint(int order_, MasterEq* maste
   if (mpirank_world == 0) printf("Timestepper: Compositional Impl. Midpoint, order %d, %lu stages\n", order, gamma.size());
 
   // Allocate storage of stages for backward process 
-  for (int i = 0; i <gamma.size(); i++) {
+  for (size_t i = 0; i <gamma.size(); i++) {
     Vec state;
     VecCreate(PETSC_COMM_WORLD, &state);
     VecSetSizes(state, PETSC_DECIDE, dim);
@@ -812,7 +812,7 @@ CompositionalImplMidpoint::CompositionalImplMidpoint(int order_, MasterEq* maste
 }
 
 CompositionalImplMidpoint::~CompositionalImplMidpoint(){
-  for (int i = 0; i <gamma.size(); i++) {
+  for (size_t i = 0; i <gamma.size(); i++) {
     VecDestroy(&(x_stage[i]));
   }
   VecDestroy(&aux);
@@ -825,7 +825,7 @@ void CompositionalImplMidpoint::evolveFWD(const double tstart,const  double tsto
   double tcurr = tstart;
 
   // Loop over stages
-  for (int istage = 0; istage < gamma.size(); istage++) {
+  for (size_t istage = 0; istage < gamma.size(); istage++) {
     // time-step size and tstart,tstop for compositional step
     double dt_stage = gamma[istage] * dt;
 
@@ -846,7 +846,7 @@ void CompositionalImplMidpoint::evolveBWD(const double tstop, const double tstar
   // Run forward again to store the (primal) stages
   double tcurr = tstart;
   VecCopy(x, aux);
-  for (int istage = 0; istage < gamma.size(); istage++) {
+  for (size_t istage = 0; istage < gamma.size(); istage++) {
     VecCopy(aux, x_stage[istage]);
     double dt_stage = gamma[istage] * dt;
     ImplMidpoint::evolveFWD(tcurr, tcurr + dt_stage, aux);
