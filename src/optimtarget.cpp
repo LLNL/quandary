@@ -138,12 +138,10 @@ OptimTarget::OptimTarget(std::vector<std::string> target_str, std::string object
       }
     }
     // get dimension of subsystems defined by initcond_IDs, as well as the one before and after. Span in essential levels only.
-    int dimpre = 1;
     int dimpost = 1;
     int dimsub = 1;
     for (int i=0; i<mastereq->getNOscillators(); i++){
-      if (i < initcond_IDs[0]) dimpre *= mastereq->nessential[i];
-      else if (initcond_IDs[0] <= i && i <= initcond_IDs[initcond_IDs.size()-1]) dimsub *= mastereq->nessential[i];
+      if (initcond_IDs[0] <= i && i <= initcond_IDs[initcond_IDs.size()-1]) dimsub *= mastereq->nessential[i];
       else dimpost *= mastereq->nessential[i];
     }
     int dimrho = mastereq->getDimRho();
@@ -535,7 +533,7 @@ int OptimTarget::prepareInitialState(const int iinit, const int ninit, std::vect
       break;
 
     case InitialConditionType::DIAGONAL:
-      int row, diagelem;
+      int diagelem;
       VecZeroEntries(rho0);
 
       /* Get dimension of partial system behind last oscillator ID (essential levels only) */
@@ -665,7 +663,7 @@ void OptimTarget::evalJ(const Vec state, double* J_re_ptr, double* J_im_ptr){
   double J_re = 0.0;
   double J_im = 0.0;
   PetscInt diagID, diagID_re, diagID_im;
-  double sum, mine, rhoii, rhoii_re, rhoii_im, lambdai, norm;
+  double sum, rhoii, rhoii_re, rhoii_im, lambdai, norm;
   PetscInt ilo, ihi;
   int dimsq;
 
@@ -744,7 +742,7 @@ void OptimTarget::evalJ(const Vec state, double* J_re_ptr, double* J_im_ptr){
 
 void OptimTarget::evalJ_diff(const Vec state, Vec statebar, const double J_re_bar, const double J_im_bar){
   PetscInt ilo, ihi;
-  double lambdai, val, val_re, val_im, rhoii_re, rhoii_im;
+  double lambdai, val, rhoii_re, rhoii_im;
   PetscInt diagID, diagID_re, diagID_im, dimsq;
 
   switch (objective_type) {

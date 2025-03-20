@@ -377,7 +377,6 @@ void TimeStepper::penaltyDpDm_diff(int n, Vec xbar, double Jbar){
     int vecID_re, vecID_im;
 
     const PetscScalar *xptr, *xm1ptr, *xm2ptr, *xp1ptr, *xp2ptr;
-    PetscScalar *xbarptr;
     Vec x, xm1, xm2, xp1, xp2;
 
     int k = ntime - n;
@@ -603,7 +602,6 @@ ImplMidpoint::~ImplMidpoint(){
   if (linsolve_counter <= 0) linsolve_counter = 1;
   linsolve_iterstaken_avg = (int) linsolve_iterstaken_avg / linsolve_counter;
   linsolve_error_avg = linsolve_error_avg / linsolve_counter;
-  int myrank;
   // MPI_Comm_rank(MPI_COMM_WORLD, &myrank);
   // if (myrank == 0) printf("Linear solver type %d: Average iterations = %d, average error = %1.2e\n", linsolve_type, linsolve_iterstaken_avg, linsolve_error_avg);
 

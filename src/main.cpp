@@ -363,7 +363,6 @@ int main(int argc,char **argv)
 
   /* My time stepper */
   bool storeFWD = false;
-  int ninit_local = ninit / mpisize_init; 
   if (mastereq->lindbladtype != LindbladType::NONE &&   
      (runtype == RunType::GRADIENT || runtype == RunType::OPTIMIZATION) ) storeFWD = true;  // if NOT Schroedinger solver and running gradient optim: store forward states. Otherwise, they will be recomputed during gradient. 
 

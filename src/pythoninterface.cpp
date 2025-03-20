@@ -86,8 +86,6 @@ void PythonInterface::receiveHc(int noscillators, std::vector<std::vector<Mat>>&
 
   /* Get the dimensions right */
   int sqdim = dim_rho; //  N!
-  int dim = dim_rho;
-  if (lindbladtype !=LindbladType::NONE) dim = dim_rho*dim_rho;
   int nelems = dim_rho*dim_rho;
 
   // Skip first Hd lines in the file

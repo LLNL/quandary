@@ -14,8 +14,6 @@ MasterEq::MasterEq(){
 
 
 MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Oscillator** oscil_vec_, const std::vector<double> crosskerr_, const std::vector<double> Jkl_, const std::vector<double> eta_, LindbladType lindbladtype_, bool usematfree_, std::string hamiltonian_file_, bool quietmode_) {
-  int ierr;
-
   nlevels = nlevels_;
   nessential = nessential_;
   noscillators = nlevels.size();
@@ -365,7 +363,6 @@ void MasterEq::initSparseMatSolver(){
 
       /* Get dimensions */
       int nk     = oscil_vec[iosc]->getNLevels();
-      int nprek  = oscil_vec[iosc]->dim_preOsc;
       int npostk = oscil_vec[iosc]->dim_postOsc;
 
       /* Set control Hamiltonian system matrix real(-iHc) */
@@ -462,7 +459,6 @@ void MasterEq::initSparseMatSolver(){
         if (fabs(Jkl[id_kl]) > 1e-12) { // only allocate if coefficient is non-zero to save memory.
           // Dimensions of joscillator
           int nj     = oscil_vec[josc]->getNLevels();
-          int nprej  = oscil_vec[josc]->dim_preOsc;
           int npostj = oscil_vec[josc]->dim_postOsc;
 
           /* Iterate over local rows of Ad_vec / Bd_vec */
@@ -519,7 +515,6 @@ void MasterEq::initSparseMatSolver(){
     for (int iosc = 0; iosc < noscillators; iosc++) {
 
       int nk     = oscil_vec[iosc]->getNLevels();
-      int nprek  = oscil_vec[iosc]->dim_preOsc;
       int npostk = oscil_vec[iosc]->dim_postOsc;
       double xik = oscil_vec[iosc]->getSelfkerr();
       double detunek = oscil_vec[iosc]->getDetuning();
@@ -590,7 +585,6 @@ void MasterEq::initSparseMatSolver(){
 
         // Dimensions 
         int nk     = oscil_vec[iosc]->getNLevels();
-        int nprek  = oscil_vec[iosc]->dim_preOsc;
         int npostk = oscil_vec[iosc]->dim_postOsc;
 
         /* Iterate over local rows of Ad */
@@ -726,7 +720,6 @@ int MasterEq::getNOscillators() { return noscillators; }
 Oscillator* MasterEq::getOscillator(const int i) { return oscil_vec[i]; }
 
 int MasterEq::assemble_RHS(const double t){
-  int ierr;
   /* Prepare the matrix shell to perform the action of RHS on a vector */
 
   // Set the time

@@ -486,7 +486,7 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
       int iinit_global = mpirank_init * ninit_local + iinit;
 
       /* Recompute the initial state and target */
-      int initid = optim_target->prepareInitialState(iinit_global, ninit, timestepper->mastereq->nlevels, timestepper->mastereq->nessential, rho_t0);
+      optim_target->prepareInitialState(iinit_global, ninit, timestepper->mastereq->nlevels, timestepper->mastereq->nessential, rho_t0);
       optim_target->prepareTargetState(rho_t0);
      
       /* Reset adjoint */

@@ -463,7 +463,7 @@ void Oscillator::expectedEnergy_diff(const Vec x, Vec x_bar, const double obj_ba
   int dimmat;
   if (lindbladtype != LindbladType::NONE) dimmat = (int) sqrt(dim/2);
   else dimmat = (int) dim/2;
-  double num_diag, xdiag, val;
+  double xdiag, val;
 
   /* Get locally owned portion of x */
   PetscInt ilow, iupp, idx_diag_re, idx_diag_im;
