@@ -33,11 +33,11 @@ class ControlBasis {
         virtual int getNSplines() {return 0;};
 
         /* Variation of control parameters */
-        virtual double computeVariation(std::vector<double>& params, int carrierfreqID){return 0.0;};
-        virtual void computeVariation_diff(double* grad, std::vector<double>&params, double var_bar, int carrierfreqID){};
+        virtual double computeVariation(std::vector<double>& /*params*/, int /*carrierfreqID*/){return 0.0;};
+        virtual void computeVariation_diff(double* /*grad*/, std::vector<double>& /*params*/, double /*var_bar*/, int /*carrierfreqID*/){};
 
         /* Default: do nothing. For some control parameterizations, this can be used to enforce that the controls start and end at zero. E.g. the Splines will overwrite the parameters x of the first and last two splines by zero, so that the splines start and end at zero. */
-        virtual void enforceBoundary(double* x, int carrier_id) {};
+        virtual void enforceBoundary(double* /*x*/, int /*carrier_id*/) {};
 
         /* Evaluate the Basis(alpha, t) at time t using the coefficients coeff. */
         virtual void evaluate(const double t, const std::vector<double>& coeff, int carrier_freq_id, double* Blt1, double*Blt2) = 0;
@@ -198,8 +198,8 @@ class ConstantTransferFunction : public TransferFunction {
         ConstantTransferFunction(double constant_, std::vector<double> onofftimes);
         ~ConstantTransferFunction();
 
-        double eval(double x, double time) {return isOn(constant, time); }; 
-        double der(double x, double time) {return 0.0; }; 
+        double eval(double /*x*/, double time) {return isOn(constant, time); }; 
+        double der(double /*x*/, double /*time*/) {return 0.0; }; 
 };
 
 /*
@@ -212,7 +212,7 @@ class IdentityTransferFunction : public TransferFunction {
         ~IdentityTransferFunction();
 
         double eval(double x, double time) {return isOn(x, time); };
-        double der(double x, double time) {return isOn(1.0, time); };
+        double der(double /*x*/, double time) {return isOn(1.0, time); };
 };
 
 

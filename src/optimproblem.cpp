@@ -656,7 +656,7 @@ PetscErrorCode TaoEvalObjectiveAndGradient(Tao tao, Vec x, PetscReal *f, Vec G, 
   return 0;
 }
 
-PetscErrorCode TaoEvalObjective(Tao tao, Vec x, PetscReal *f, void*ptr){
+PetscErrorCode TaoEvalObjective(Tao /*tao*/, Vec x, PetscReal *f, void*ptr){
 
   OptimProblem* ctx = (OptimProblem*) ptr;
   *f = ctx->evalF(x);
@@ -665,7 +665,7 @@ PetscErrorCode TaoEvalObjective(Tao tao, Vec x, PetscReal *f, void*ptr){
 }
 
 
-PetscErrorCode TaoEvalGradient(Tao tao, Vec x, Vec G, void*ptr){
+PetscErrorCode TaoEvalGradient(Tao /*tao*/, Vec x, Vec G, void*ptr){
 
   OptimProblem* ctx = (OptimProblem*) ptr;
   ctx->evalGradF(x, G);
