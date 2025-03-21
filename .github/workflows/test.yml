@@ -1,4 +1,4 @@
-name: Build and Test on MacOS
+name: Build and Test
 
 on:
   pull_request:
@@ -6,7 +6,10 @@ on:
 
 jobs:
   build-and-test:
-    runs-on: macos-latest
+    strategy:
+      matrix:
+        os: [macos-latest, ubuntu-24.04]
+    runs-on: ${{ matrix.os }}
     permissions:
       packages: write
 
@@ -21,7 +24,7 @@ jobs:
 
     - name: Configure Spack
       run: |
-        spack compiler find
+        spack -e .spack_env mirror set binary_mirror --unsigned
         spack mirror add --type binary --unsigned --oci-username GITHUB_USER --oci-password-variable GITHUB_TOKEN local-buildcache oci://ghcr.io/tdrwenski/spack-buildcache
 
     - name: Install
@@ -40,5 +43,10 @@ jobs:
       env:
         GITHUB_USER: ${{ github.actor }}
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: spack -e .spack_env buildcache push --update-index local-buildcache
+      run: |
+        if [[ "${{ matrix.os }}" == "ubuntu-24.04" ]]; then
+          spack -e .spack_env buildcache push --base-image ubuntu:24.04 --update-index local-buildcache
+        else
+          spack -e .spack_env buildcache push --update-index local-buildcache
+        fi
       if: ${{ !cancelled() }}
