@@ -284,7 +284,7 @@ void MasterEq::initSparseMatSolver(){
   // One control operator per oscillator
   // Ac_vec[0] = real(-i Hc) and Bc_vec[0] = imag(-i Hc)
   for (int iosc = 0; iosc < noscillators; iosc++) {
-    Mat myAcMatk, myBcMatk;
+    Mat myAcMatk = nullptr, myBcMatk = nullptr;
     std::vector<Mat> myAcvec_k{myAcMatk};   
     std::vector<Mat> myBcvec_k{myBcMatk};
     Ac_vec.push_back(myAcvec_k);
@@ -312,7 +312,7 @@ void MasterEq::initSparseMatSolver(){
   for (int iosc = 0; iosc < noscillators; iosc++) {
     for (int josc=iosc+1; josc<noscillators; josc++){
       if (fabs(Jkl[id_kl]) > 1e-12) { // only allocate if Jkl>0
-        Mat myAdkl, myBdkl;
+        Mat myAdkl = nullptr, myBdkl = nullptr;
         Ad_vec.push_back(myAdkl);
         Bd_vec.push_back(myBdkl);
         MatCreate(PETSC_COMM_WORLD, &Ad_vec[id_kl]);
