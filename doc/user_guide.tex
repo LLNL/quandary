@@ -81,13 +81,18 @@
 \section*{Installation}
  Read the \texttt{README.md}! In short:
  \begin{enumerate}
-  \item Install Petsc (\url{https://petsc.org/}), export \texttt{\$PETSC\_DIR} and \texttt{\$PETSC\_ARCH}, and append \\[0ex] \texttt{\$PETSC\_DIR/\$PETSC\_ARCH} to your \texttt{\$LD\_LIBRARY\_PATH}. 
-  \item Compile the quandary executable with 
+  \item Install Petsc (\url{https://petsc.org/}).
+  \item Compile the quandary executable and install with
   \begin{itemize}
-    \item[$>$] \texttt{make -j quandary}
+    \item[$>$] \texttt{mkdir build \&\& cd build}
+    \item[$>$] \texttt{cmake ..}
+    \item[$>$] \texttt{make}
+    \item[$>$] \texttt{sudo cmake --install .}
   \end{itemize}
-  and add it to your \texttt{\$PATH}. 
-  \item For the python interface, add the Quandary folder to your \texttt{\$PYTHONPATH}.
+  \item To use the python interface, create a virtual environment and do:
+  \begin{itemize}
+    \item[$>$] \texttt{pip install -e .}
+  \end{itemize}
  \end{enumerate}
 
  
@@ -777,7 +782,7 @@ which plots the first against the second column of the file 'expected0.iinit0000
 
 \section{Testing}
   \begin{itemize}
-    \item Quandary has a set of regression tests. Please take a look at the REGRESSIONTEST.md document in the \verb+quandary/tests+ directory for instruction on how to run the regression tests. 
+    \item Quandary has a set of regression tests. Please take a look at the \verb+regression_tests/README.md+ document for instructions on how to run the regression tests.
     \item In order to check if the gradient implementation is correct, one can choose to run a Central Finite Difference test. Let the overall objective function be denoted by $F(\boldsymbol{\alpha})$. The Central Finite Difference test compares each element of the gradient $\nabla F(\boldsymbol{\alpha})$ with the following (second-order accurate) estimate:
     \begin{align*}
        \left(\nabla F(\boldsymbol{\alpha}) \right)_i \approx \frac{F(\bfa + \epsilon\bs{e}_i) - F(\bfa - \epsilon\bs{e}_i)}{2\epsilon} \qquad \qquad \text{(CFD)}

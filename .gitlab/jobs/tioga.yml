@@ -1,0 +1,12 @@
+###############################################################################
+# Copyright (c) 2022-23, Lawrence Livermore National Security, LLC and RADIUSS
+# project contributors. See the COPYRIGHT file for details.
+#
+# SPDX-License-Identifier: (MIT)
+###############################################################################
+
+# Override reproducer section to define project specific variables.
+.tioga_reproducer_vars:
+  script:
+    - !reference [.reproducer_vars, script]
+

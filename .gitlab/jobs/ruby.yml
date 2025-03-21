@@ -1,0 +1,19 @@
+###############################################################################
+# Copyright (c) 2022-23, Lawrence Livermore National Security, LLC and RADIUSS
+# project contributors. See the COPYRIGHT file for details.
+#
+# SPDX-License-Identifier: (MIT)
+###############################################################################
+
+# Override reproducer section to define project specific variables.
+.ruby_reproducer_vars:
+  script:
+    - !reference [.reproducer_vars, script]
+
+########################
+# Overridden shared jobs
+########################
+oneapi_2023_2_1:
+  variables:
+    ON_RUBY: "OFF"
+  extends: .job_on_ruby
