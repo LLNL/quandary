@@ -184,7 +184,6 @@ void MapParam::GetVecIntParam(std::string key, std::vector<int> &fillme, int def
 {
   std::map<std::string, std::string>::const_iterator it_value = this->find(key);
   std::string lineexp;
-  double val;
   if (it_value == this->end())
   {
     if (mpi_rank == 0 && !quietmode && warnme)
