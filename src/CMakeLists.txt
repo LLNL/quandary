@@ -28,7 +28,8 @@ target_link_libraries(quandary_lib PUBLIC PkgConfig::PETSC)
 # ROL optimization package
 set(ROL_ROOT "/Users/guenther5/Numerics/rol/build/install/lib/cmake/ROL")
 find_package(ROL REQUIRED)
-target_link_libraries(quandary_lib PUBLIC ROL::all_libs)
+#target_link_libraries(quandary_lib PUBLIC ROL::all_libs)
+target_link_libraries(quandary_lib PUBLIC ROL::rol)
 
 # Other libraries
 target_link_libraries(quandary_lib PUBLIC m blas lapack)
