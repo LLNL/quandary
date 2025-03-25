@@ -135,76 +135,23 @@ PetscErrorCode TaoEvalObjectiveAndGradient(Tao tao, Vec x, PetscReal *f, Vec G, 
 
 /* ROL Vector definition */
 class myVec : public ROL::Vector<double> {
-
   private:
-    Vec petscVec_;  // The underlying PETSc vector (pointer, should be created elswhere)
+  Vec petscVec_;  // The underlying PETSc vector (pointer, should be created elswhere)
 
   public:
-  // Constructor: Initialize from a Petsc vector
-  myVec(Vec vec) : petscVec_(vec) {} 
-
-  // Dot product: Compute the dot product with another vector
-  double dot(const ROL::Vector<double> &x) const override {
-    const myVec &ex = dynamic_cast<const myVec&>(x);
-    double result;
-    VecDot(petscVec_, ex.petscVec_, &result); 
-    return result;
-  }
-
-  // Plus: Adds the values of another vector to the current vector (y = x + y) 
-  void plus(const ROL::Vector<double> &x) override {
-    const myVec &ex = dynamic_cast<const myVec&>(x);
-    VecAXPY(petscVec_, 1.0, ex.petscVec_);  
-  }
-
-  // Norm: Compute the 2-norm of the vector
-  double norm() const override {
-    double result;
-    VecNorm(petscVec_, NORM_2, &result); 
-    return result;
-  }
-
-  // Scale the vector by a scalar
-  void scale(double alpha) override {
-      VecScale(petscVec_, alpha); 
-  }
-
-  // Clone function: Create a new empty myVec
-  ROL::Ptr<ROL::Vector<double>> clone (void) const override {
-    Vec clonedVec;
-    VecDuplicate(petscVec_, &clonedVec);
-    return ROL::makePtr<myVec>(clonedVec);
-  }
-
-  // Set function: Copy data from another ROL vector to this PETSc vector
-  void set(const ROL::Vector<double> &x) override {
-    const myVec &ex = dynamic_cast<const myVec&>(x);
-    VecCopy(ex.petscVec_, petscVec_); 
-  }
-
-  // Get the underlying PETSc vector
-  Vec getVector() const {
-    return petscVec_;
-  }
-
-  // AXPY: y = alpha*x + y (scale and add)
-  void axpy(double alpha, const ROL::Vector<double> &x) override {
-    const myVec &ex = dynamic_cast<const myVec&>(x);
-    VecAXPY(petscVec_, alpha, ex.petscVec_); 
-  }
-
-  void zero() override {
-    VecZeroEntries(petscVec_);
-  }
-
-  void view() {
-    VecView(petscVec_, NULL);
-  }
-
-  // Destructor
-  ~myVec() {
-      VecDestroy(&petscVec_); 
-  }
+  myVec(Vec vec); 
+  ~myVec(); 
+  
+  double dot(const ROL::Vector<double> &x) const override;  // Compute the dot product with another vector
+  void plus(const ROL::Vector<double> &x) override; // y = x + y
+  double norm() const override;  //Compute the 2-norm of the vector
+  void scale(double alpha) override ; // Scale the vector by a scalar
+  ROL::Ptr<ROL::Vector<double>> clone (void) const override; // Create a new empty myVec
+  void set(const ROL::Vector<double> &x) override; // Copy data from another ROL vector to this Petsc Vector
+  Vec getVector() const ; // Get the underlying Petsc vector
+  void axpy(double alpha, const ROL::Vector<double> &x) override ; // y = alpha*x + y 
+  void zero() override ; // Set vector elements to zero
+  void view();    // Petsc view the vector
 };
 
 class myObjective : public ROL::Objective<double> {
@@ -212,22 +159,9 @@ class myObjective : public ROL::Objective<double> {
   OptimProblem* optimctx_;
 
   public:
-  // Constructor, destructor
-  myObjective(OptimProblem* optimctx) : optimctx_(optimctx) {}
-  ~myObjective() {}
+  myObjective(OptimProblem* optimctx);
+  ~myObjective();
 
-  double value(const ROL::Vector<double> &x, double & /*tol*/) override {
-
-    const myVec& ex = dynamic_cast<const myVec&>(x); 
-    double f = optimctx_->evalF(ex.getVector());
-
-    return f;
-  }
-
-  void gradient(ROL::Vector<double> &g, const ROL::Vector<double> &x, double & /*tol*/) override {
-    const myVec& ex = dynamic_cast<const myVec&>(x); 
-    myVec& eg = dynamic_cast<myVec&>(g); 
-    optimctx_->evalGradF(ex.getVector(), eg.getVector());
-
-  }
+  double value(const ROL::Vector<double> &x, double & /*tol*/) override;
+  void gradient(ROL::Vector<double> &g, const ROL::Vector<double> &x, double & /*tol*/) override;
 };

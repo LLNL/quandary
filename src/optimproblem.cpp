@@ -672,3 +672,74 @@ PetscErrorCode TaoEvalGradient(Tao /*tao*/, Vec x, Vec G, void*ptr){
   
   return 0;
 }
+
+double myVec::dot(const ROL::Vector<double> &x) const {
+    const myVec &ex = dynamic_cast<const myVec&>(x);
+    double result;
+    VecDot(petscVec_, ex.petscVec_, &result); 
+    return result;
+}
+
+void myVec::plus(const ROL::Vector<double> &x) {
+    const myVec &ex = dynamic_cast<const myVec&>(x);
+    VecAXPY(petscVec_, 1.0, ex.petscVec_);  
+}
+
+double myVec::norm() const {
+    double result;
+    VecNorm(petscVec_, NORM_2, &result); 
+    return result;
+  }
+
+void myVec::scale(double alpha) { 
+    VecScale(petscVec_, alpha);  
+}
+
+ROL::Ptr<ROL::Vector<double>> myVec::clone (void) const {
+  Vec clonedVec;
+  VecDuplicate(petscVec_, &clonedVec);
+  return ROL::makePtr<myVec>(clonedVec);
+}
+
+void myVec::set(const ROL::Vector<double> &x) {
+  const myVec &ex = dynamic_cast<const myVec&>(x);
+  VecCopy(ex.petscVec_, petscVec_); 
+}
+
+Vec myVec::getVector() const {
+  return petscVec_;
+}
+
+void myVec::axpy(double alpha, const ROL::Vector<double> &x) {
+  const myVec &ex = dynamic_cast<const myVec&>(x);
+  VecAXPY(petscVec_, alpha, ex.petscVec_); 
+}
+
+void myVec::zero() {
+  VecZeroEntries(petscVec_);
+}
+
+void myVec::view() { 
+  VecView(petscVec_, NULL);
+}
+
+
+myVec::myVec(Vec vec) : petscVec_(vec) {} 
+myVec::~myVec() { VecDestroy(&petscVec_);  }
+
+
+myObjective::myObjective(OptimProblem* optimctx) : optimctx_(optimctx) {}
+myObjective::~myObjective() {}
+
+double myObjective::value(const ROL::Vector<double> &x, double & /*tol*/) {
+
+  const myVec& ex = dynamic_cast<const myVec&>(x); 
+  double f = optimctx_->evalF(ex.getVector());
+  return f;
+}
+
+void myObjective::gradient(ROL::Vector<double> &g, const ROL::Vector<double> &x, double & /*tol*/) {
+  const myVec& ex = dynamic_cast<const myVec&>(x); 
+  myVec& eg = dynamic_cast<myVec&>(g); 
+  optimctx_->evalGradF(ex.getVector(), eg.getVector());
+}
