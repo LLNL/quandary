@@ -1,3 +1,4 @@
+#include "ROL_OptimizationSolver.hpp"
 #include "timestepper.hpp"
 #include "defs.hpp"
 #include <string>
