@@ -1,4 +1,3 @@
-#include "ROL_OptimizationSolver.hpp"
 #include "timestepper.hpp"
 #include "defs.hpp"
 #include <string>
@@ -404,6 +403,50 @@ int main(int argc,char **argv)
     }
     else std::cerr << "Unable to open " << filename;
   }
+
+
+  /* TEST ROL interface */
+  // Set up two Petsc vectors
+  Vec petscVec1, petscVec2; 
+  VecCreate(PETSC_COMM_WORLD, &petscVec1);
+  VecCreate(PETSC_COMM_WORLD, &petscVec2);
+  VecSetSizes(petscVec1, PETSC_DECIDE, 4);
+  VecSetSizes(petscVec2, PETSC_DECIDE, 4);
+  VecSetFromOptions(petscVec1);
+  VecSetFromOptions(petscVec2);
+  VecSet(petscVec1, 1.0); // Set petscVec1 to 1.0
+  VecSet(petscVec2, 2.0); // Set petscVec2 to 2.0
+
+  // Wrap the petsc vectors with the myVec class for ROL usage
+  myVec<double>* rolVec1 = new myVec<double>(petscVec1);
+  myVec<double>* rolVec2 = new myVec<double>(petscVec2);
+  rolVec1->view();
+  rolVec2->view();
+
+  rolVec1->plus(*rolVec2);
+  rolVec1->view();
+
+
+  printf("Norm = %f\n", rolVec1->norm());
+  printf("Dot = %f\n", rolVec1->dot(*rolVec2));
+
+  delete rolVec1;
+  delete rolVec2;
+  VecDestroy(&petscVec1);
+  VecDestroy(&petscVec2);
+  exit(1);
+
+
+  // // 1. Test clone, set, axpy, norm
+  // ROL::Ptr<ROL::Vector<double>> rolVec1Clone = rolVec1->clone();
+  // rolVec1Clone->set(*rolVec1);  // set rolvec1clone to be equal to rolvec1
+
+  // rolVec1Clone->axpy(-1.0, *rolVec1); // rolVec1clone = 0.0!
+  // double norm = rolVec1->norm();
+  // std::cout << "Test1 norm should be 0.0! norm=" << norm << std::endl;
+
+  // printf("Done testing ROL interface.\n");
+  // exit(1);
 
   /* Start timer */
   double StartTime = MPI_Wtime();

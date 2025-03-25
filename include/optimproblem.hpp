@@ -1,4 +1,5 @@
 #include "math.h"
+#include <ROL_Vector.hpp>
 #include <assert.h>
 #include <petsctao.h>
 #include "defs.hpp"
@@ -113,6 +114,8 @@ class OptimProblem {
   void getSolution(Vec* opt);
 };
 
+/*** PETSC TAO interface ***/
+
 /* Monitor the optimization progress. This routine is called in each iteration of TaoSolve() */
 PetscErrorCode TaoMonitor(Tao tao,void*ptr);
 
@@ -124,3 +127,78 @@ PetscErrorCode TaoEvalGradient(Tao tao, Vec x, Vec G, void*ptr);
 
 /* Petsc's Tao interface routine for evaluating the gradient g = \nabla f(x) */
 PetscErrorCode TaoEvalObjectiveAndGradient(Tao tao, Vec x, PetscReal *f, Vec G, void*ptr);
+
+
+
+/*** ROL Optimization interface ***/
+
+/* ROL Vector definition */
+template <class Real>
+class myVec : public ROL::Vector<Real> {
+
+  private:
+  Vec petscVec_;  // The underlying PETSc vector (pointer, should be created elswhere)
+
+  public:
+  // Constructor: Initialize from a Petsc vector
+  myVec(Vec vec) : petscVec_(vec) {} 
+
+  // Dot product: Compute the dot product with another vector
+  Real dot(const ROL::Vector<Real> &x) const override {
+    const myVec<Real> &ex = dynamic_cast<const myVec<Real>&>(x);
+    Real result;
+    VecDot(petscVec_, ex.petscVec_, &result); 
+    return result;
+  }
+
+  // Plus: Adds the values of another vector to the current vector (y = x + y) 
+  void plus(const ROL::Vector<Real> &x) override {
+    const myVec<Real> &ex = dynamic_cast<const myVec<Real>&>(x);
+    VecAXPY(petscVec_, 1.0, ex.petscVec_);  
+  }
+
+  // Norm: Compute the 2-norm of the vector
+  Real norm() const override {
+    Real result;
+    VecNorm(petscVec_, NORM_2, &result); 
+    return result;
+  }
+
+  // Scale the vector by a scalar
+  void scale(Real alpha) override {
+      VecScale(petscVec_, alpha); 
+  }
+
+  // Clone function: Create a new empty myVec
+  ROL::Ptr<ROL::Vector<Real>> clone (void) const override {
+    Vec clonedVec;
+    VecDuplicate(petscVec_, &clonedVec);
+    return ROL::makePtr<myVec<Real>>(clonedVec);
+  }
+
+  // Set function: Copy data from another ROL vector to this PETSc vector
+  void set(const ROL::Vector<Real> &x) override {
+    const myVec<Real> &ex = dynamic_cast<const myVec<Real>&>(x);
+    VecCopy(ex.petscVec_, petscVec_); 
+  }
+
+  // Get the underlying PETSc vector
+  Vec getVector() const {
+    return petscVec_;
+  }
+
+  // AXPY: y = alpha*x + y (scale and add)
+  void axpy(Real alpha, const ROL::Vector<Real> &x) override {
+    const myVec<Real> &ex = dynamic_cast<const myVec<Real>&>(x);
+    VecAXPY(petscVec_, alpha, ex.petscVec_); 
+  }
+
+  void view() {
+    VecView(petscVec_, NULL);
+  }
+
+  // Destructor
+  ~myVec() {
+      // VecDestroy(&petscVec_); // TODO: DECIDE WHETHER ROL OR PETSC SHOULD DESTROY THE VECTOR
+  }
+};
