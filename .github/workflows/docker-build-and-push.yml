@@ -38,7 +38,7 @@ jobs:
         run: |
           # Try to query the repository tags directly from GHCR for quandary images
           TAGS=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-            "https://api.github.com/orgs/tdrwenski/packages/container/spack-buildcache/versions" \
+            "https://api.github.com/users/tdrwenski/packages/container/spack-buildcache/versions" \
             | jq -r '.[].metadata.container.tags[]' | grep 'quandary-develop' | sort -r)
 
           # If triggered by workflow_run, get the commit SHA that triggered the build
