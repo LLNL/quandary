@@ -29,7 +29,7 @@ jobs:
 
     - name: Install
       run: |
-        spack -e .spack_env install
+        spack -e .spack_env install --use-buildcache package:never
 
     - name: Run regression tests
       shell: spack-sh {0}
