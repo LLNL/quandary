@@ -37,7 +37,6 @@ jobs:
       shell: spack-sh {0}
       run: |
         spack env activate .spack_env
-        cp $(which quandary) .
         python -m pip install -e . --prefer-binary
         pytest -v -s regression_tests --mpi-opt="--oversubscribe"
 
