@@ -14,6 +14,13 @@
 #ifdef WITH_SLEPC
 #include <slepceps.h>
 #endif
+#include "ROL_ParameterList.hpp"
+#include "ROL_TypeB_LinMoreAlgorithm.hpp"
+#include "ROL_Algorithm.hpp"
+#include "ROL_TrustRegionStep.hpp"
+#include "ROL_StatusTest.hpp"
+#include "ROL_Bounds.hpp"
+
 
 #define TEST_FD_GRAD 0    // Run Finite Differences gradient test
 #define TEST_FD_HESS 0    // Run Finite Differences Hessian test
@@ -434,6 +441,67 @@ int main(int argc,char **argv)
   // delete rolVec2;
   // exit(1);
 
+  /* TEST: ROL objective function value*/
+  optimctx->getStartingPoint(xinit);
+  myVec rolx(xinit);
+  myObjective rolObj(optimctx);
+  double tol=0.0;
+  double f = rolObj.value(rolx, tol);
+  if (mpirank_world == 0 && !quietmode) printf("\n ROL objective = %1.14e, \n", f);
+
+  /* TEST: ROL graident evaluation*/
+  myVec rolGrad(grad);
+  rolGrad.zero();
+  rolObj.gradient(rolGrad, rolx, tol);
+  double mynorm = rolGrad.norm();
+  printf("\nROL Gradient norm: %1.14e\n", mynorm);
+
+  // /* TEST: ROL finite differences, random direction */
+  // Vec xrand;
+  // VecDuplicate(xinit, &xrand);
+  // PetscRandom rctx;
+  // PetscRandomCreate(PETSC_COMM_WORLD,&rctx);
+  // VecSetRandom(xrand,rctx);
+  // PetscRandomDestroy(&rctx);
+  // myVec rolRand(xrand);
+  // int FDorder = 2;
+  // rolObj.checkGradient(rolx, rolx, rolRand, true, std::cout, ROL_NUM_CHECKDERIV_STEPS, FDorder);
+  // printf("Finite Difference test done. Exiting now.\n");
+  // exit(1);
+
+  /* Read ROL parameters */
+  std::string ROLfilename = "ROLinput.xml";
+  auto parlist = ROL::getParametersFromXmlFile(ROLfilename);
+
+  // Bounds: 
+  // myVec xlo(optimctx->xlower);
+  // myVec xup(optimctx->xupper);
+  ROL::Ptr<myVec> xlo = ROL::makePtr<myVec>(optimctx->xlower);
+  ROL::Ptr<myVec> xup = ROL::makePtr<myVec>(optimctx->xupper);
+  ROL::Bounds<double> rolBounds(xlo,xup);
+
+  // 3.Choose optimization step.
+  // ROL::LineSearchStep<RealT> step(parlist);
+  // 4.Set status test.
+  // ROL::StatusTest<RealT> status(gtol, stol, maxit);
+  // Step 5: Define an algorithm.
+  // ROL::DefaultAlgorithm<RealT> algo(step,status);
+  ROL::Ptr<ROL::Step<double>> step = ROL::makePtr<ROL::TrustRegionStep<double>>(*parlist);
+  ROL::Ptr<ROL::StatusTest<double>> status = ROL::makePtr<ROL::StatusTest<double>>(*parlist);
+  ROL::Algorithm<double> algo(step,status,false);
+
+  // Or this for Algorithm definition ??
+  // ROL::TypeB::LinMoreAlgorithm<double> algo(*parlist);
+
+  // Run the optimizer. How?
+  // algo.run(rolx, rolObj, rolBounds, std::cout);
+  // algo.run(rolx, rolObj, true, std::cout); 
+  algo.run(rolx, rolObj);
+
+  printf("Done ROL optimizing\n");
+  exit(1);
+
+
 
   /* Start timer */
   double StartTime = MPI_Wtime();
@@ -448,13 +516,6 @@ int main(int argc,char **argv)
     objective = optimctx->evalF(xinit);
     if (mpirank_world == 0 && !quietmode) printf("\nTotal objective = %1.14e, \n", objective);
     optimctx->getSolution(&opt);
-
-    /* Now with ROL interface */
-    myVec* rolVec = new myVec(xinit);
-    myObjective* rolObj = new myObjective(optimctx);
-    double tol=0.0;
-    double f = rolObj->value(*rolVec, tol);
-    if (mpirank_world == 0 && !quietmode) printf("\n ROL objective = %1.14e, \n", f);
   } 
   
   /* --- Solve adjoint --- */
@@ -470,16 +531,6 @@ int main(int argc,char **argv)
       printf("\nGradient norm: %1.14e\n", gnorm);
     }
     optimctx->output->writeGradient(grad);
-
-    /* Now with ROL interface */
-    myVec* rolVec  = new myVec(xinit);
-    myVec* rolGrad = new myVec(grad);
-    myObjective* rolObj = new myObjective(optimctx);
-    double tol=0.0;
-    rolGrad->zero();
-    rolObj->gradient(*rolGrad, *rolVec, tol);
-    gnorm = rolGrad->norm();
-    printf("\nROL Gradient norm: %1.14e\n", gnorm);
   }
 
   /* --- Solve the optimization  --- */
