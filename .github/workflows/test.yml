@@ -30,7 +30,10 @@ jobs:
         spack mirror add --type binary --unsigned --oci-username GITHUB_USER --oci-password-variable GITHUB_TOKEN local-buildcache oci://ghcr.io/tdrwenski/spack-buildcache
 
     - name: Install
+      # explicitly use openmpi and mpich cases rpath problems in binary
       run: |
+        spack -e .spack_env rm quandary
+        spack -e .spack_env add quandary@develop+test^openmpi
         spack -e .spack_env install --use-buildcache package:never
 
     - name: Run regression tests
