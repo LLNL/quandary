@@ -15,6 +15,7 @@
 #include <slepceps.h>
 #endif
 #include "ROL_ParameterList.hpp"
+#include "ROL_Solver.hpp"
 #include "ROL_TypeB_LinMoreAlgorithm.hpp"
 #include "ROL_Algorithm.hpp"
 #include "ROL_TrustRegionStep.hpp"
@@ -387,15 +388,22 @@ int main(int argc,char **argv)
   /* --- Initialize optimization --- */
   OptimProblem* optimctx = new OptimProblem(config, mytimestepper, comm_init, comm_optim, ninit, output, quietmode);
 
-  /* Set upt solution and gradient vector */
+  // Check if ROL optimizer, or TAO
+  std::string optimsolverstr = config.GetStrParam("optimsolver", "TAO");
+  OptimSolverType optimsolvertype = OptimSolverType::TAO;
+  if (optimsolverstr.compare("ROL") == 0) optimsolvertype = OptimSolverType::ROL;
+
+  /* Set up initial control vector and gradient */
   Vec xinit;
   VecCreateSeq(PETSC_COMM_SELF, optimctx->getNdesign(), &xinit);
   VecSetFromOptions(xinit);
+  optimctx->getStartingPoint(xinit);
+  VecCopy(xinit, optimctx->xinit); // Store the initial guess
   Vec grad;
   VecCreateSeq(PETSC_COMM_SELF, optimctx->getNdesign(), &grad);
   VecSetUp(grad);
   VecZeroEntries(grad);
-  Vec opt;
+  // Vec opt;
 
   /* Some output */
   if (mpirank_world == 0)
@@ -412,121 +420,65 @@ int main(int argc,char **argv)
   }
 
 
-  // /* TEST ROL interface */
-  // // Set up two Petsc vectors
-  // Vec petscVec1, petscVec2; 
-  // VecCreate(PETSC_COMM_WORLD, &petscVec1);
-  // VecCreate(PETSC_COMM_WORLD, &petscVec2);
-  // VecSetSizes(petscVec1, PETSC_DECIDE, 4);
-  // VecSetSizes(petscVec2, PETSC_DECIDE, 4);
-  // VecSetFromOptions(petscVec1);
-  // VecSetFromOptions(petscVec2);
-  // VecSet(petscVec1, 1.0); // Set petscVec1 to 1.0
-  // VecSet(petscVec2, 2.0); // Set petscVec2 to 2.0
-
-  // // Wrap the petsc vectors with the myVec class for ROL usage
-  // myVec* rolVec1 = new myVec(petscVec1);
-  // myVec* rolVec2 = new myVec(petscVec2);
-  // rolVec1->view();
-  // rolVec2->view();
-  // rolVec1->plus(*rolVec2);
-  // rolVec1->view();
-  // printf("Norm = %f\n", rolVec1->norm());
-  // printf("Dot = %f\n", rolVec1->dot(*rolVec2));
-  // rolVec1->axpy(-3.0/2.0, *rolVec2);
-  // rolVec1->view();
-  // rolVec2->zero();
-  // rolVec1->view();
-  // delete rolVec1;
-  // delete rolVec2;
-  // exit(1);
-
-  /* TEST: ROL objective function value*/
-  optimctx->getStartingPoint(xinit);
+  /* Set ROL initial Vector and Objective function */
   myVec rolx(xinit);
+  myVec rolg(grad);
   myObjective rolObj(optimctx);
-  double tol=0.0;
-  double f = rolObj.value(rolx, tol);
-  if (mpirank_world == 0 && !quietmode) printf("\n ROL objective = %1.14e, \n", f);
 
-  /* TEST: ROL graident evaluation*/
-  myVec rolGrad(grad);
-  rolGrad.zero();
-  rolObj.gradient(rolGrad, rolx, tol);
-  double mynorm = rolGrad.norm();
-  printf("\nROL Gradient norm: %1.14e\n", mynorm);
+  /* Set up ROL optimization problem */
+  ROL::Ptr<ROL::Objective<double>> obj = ROL::makePtr<myObjective>(rolObj);
+  ROL::Ptr<ROL::Vector<double>>      x = ROL::makePtr<myVec>(rolx);
+  ROL::Ptr<ROL::Problem<double>> optProb = ROL::makePtr<ROL::Problem<double>>(obj,x);
 
-  // /* TEST: ROL finite differences, random direction */
-  // Vec xrand;
-  // VecDuplicate(xinit, &xrand);
-  // PetscRandom rctx;
-  // PetscRandomCreate(PETSC_COMM_WORLD,&rctx);
-  // VecSetRandom(xrand,rctx);
-  // PetscRandomDestroy(&rctx);
-  // myVec rolRand(xrand);
-  // int FDorder = 2;
-  // rolObj.checkGradient(rolx, rolx, rolRand, true, std::cout, ROL_NUM_CHECKDERIV_STEPS, FDorder);
-  // printf("Finite Difference test done. Exiting now.\n");
-  // exit(1);
-
-  /* Read ROL parameters */
-  std::string ROLfilename = "ROLinput.xml";
-  auto parlist = ROL::getParametersFromXmlFile(ROLfilename);
-
-  // Bounds: 
-  // myVec xlo(optimctx->xlower);
-  // myVec xup(optimctx->xupper);
+  // Add bounds to ROL problem. (Instead of ROL::Bounds, one can derive from class ROL::BoundConstraint)
   ROL::Ptr<myVec> xlo = ROL::makePtr<myVec>(optimctx->xlower);
   ROL::Ptr<myVec> xup = ROL::makePtr<myVec>(optimctx->xupper);
-  ROL::Bounds<double> rolBounds(xlo,xup);
+  ROL::Ptr<ROL::BoundConstraint<double>> bnd = ROL::makePtr<ROL::Bounds<double>>(xlo, xup);
+  optProb->addBoundConstraint(bnd); 
 
-  // 3.Choose optimization step.
-  // ROL::LineSearchStep<RealT> step(parlist);
-  // 4.Set status test.
-  // ROL::StatusTest<RealT> status(gtol, stol, maxit);
-  // Step 5: Define an algorithm.
-  // ROL::DefaultAlgorithm<RealT> algo(step,status);
-  ROL::Ptr<ROL::Step<double>> step = ROL::makePtr<ROL::TrustRegionStep<double>>(*parlist);
-  ROL::Ptr<ROL::StatusTest<double>> status = ROL::makePtr<ROL::StatusTest<double>>(*parlist);
-  ROL::Algorithm<double> algo(step,status,false);
+  // Set ROL output streem.
+  ROL::Ptr<std::ostream> outStream = ROL::makePtrFromRef(std::cout);
 
-  // Or this for Algorithm definition ??
-  // ROL::TypeB::LinMoreAlgorithm<double> algo(*parlist);
+  // /* Check the ROL problem setup */
+  // bool printtoscreen = true;
+  // optProb->check(printtoscreen, *outStream);
 
-  // Run the optimizer. How?
-  // algo.run(rolx, rolObj, rolBounds, std::cout);
-  // algo.run(rolx, rolObj, true, std::cout); 
-  algo.run(rolx, rolObj);
-
-  printf("Done ROL optimizing\n");
-  exit(1);
-
-
-
+  /* Create ROL optimization solver */
+  std::string ROLfilename = "ROLinput.xml";
+  auto parlist = ROL::getParametersFromXmlFile(ROLfilename);
+  ROL::Solver<double> rolSolver(optProb,*parlist);
+    
   /* Start timer */
   double StartTime = MPI_Wtime();
   double objective;
   double gnorm = 0.0;
   /* --- Solve primal --- */
   if (runtype == RunType::SIMULATION) {
-    optimctx->getStartingPoint(xinit);
-    VecCopy(xinit, optimctx->xinit); // Store the initial guess
     if (mpirank_world == 0 && !quietmode) printf("\nStarting primal solver... \n");
     optimctx->timestepper->writeDataFiles = true;
-    objective = optimctx->evalF(xinit);
+    if (optimsolvertype==OptimSolverType::TAO) {
+      objective = optimctx->evalF(xinit);
+    } else {
+      double tol = 0.0;
+      objective = rolObj.value(rolx, tol);
+    }
     if (mpirank_world == 0 && !quietmode) printf("\nTotal objective = %1.14e, \n", objective);
-    optimctx->getSolution(&opt);
   } 
   
   /* --- Solve adjoint --- */
   if (runtype == RunType::GRADIENT) {
-    optimctx->getStartingPoint(xinit);
-    VecCopy(xinit, optimctx->xinit); // Store the initial guess
     if (mpirank_world == 0 && !quietmode) printf("\nStarting adjoint solver...\n");
     optimctx->timestepper->writeDataFiles = true;
-    optimctx->evalGradF(xinit, grad);
-    VecNorm(grad, NORM_2, &gnorm);
-    // VecView(grad, PETSC_VIEWER_STDOUT_WORLD);
+    if (optimsolvertype==OptimSolverType::TAO) {
+      optimctx->evalGradF(xinit, grad);
+      VecNorm(grad, NORM_2, &gnorm);
+    } else {
+      rolg.zero();
+      double tol = 0.0;
+      rolObj.gradient(rolg, rolx, tol);
+      gnorm = rolg.norm();
+      VecCopy(rolg.getVector(), grad);
+    }
     if (mpirank_world == 0 && !quietmode) {
       printf("\nGradient norm: %1.14e\n", gnorm);
     }
@@ -536,12 +488,14 @@ int main(int argc,char **argv)
   /* --- Solve the optimization  --- */
   if (runtype == RunType::OPTIMIZATION) {
     /* Set initial starting point */
-    optimctx->getStartingPoint(xinit);
-    VecCopy(xinit, optimctx->xinit); // Store the initial guess
     if (mpirank_world == 0 && !quietmode) printf("\nStarting Optimization solver ... \n");
     optimctx->timestepper->writeDataFiles = false;
-    optimctx->solve(xinit);
-    optimctx->getSolution(&opt);
+
+    if (optimsolvertype==OptimSolverType::TAO) {
+      optimctx->solve(xinit);
+    } else {
+      rolSolver.solve(*outStream); 
+    }
   }
 
   /* Only evaluate and write control pulses (no propagation) */

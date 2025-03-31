@@ -37,6 +37,12 @@ enum class RunType {
   NONE               // Don't run anything.
 };
 
+/* Optimization solver type */
+enum class OptimSolverType {
+  TAO,      // Petsc's TAO optimizer
+  ROL       // Sandia's ROL optimizer
+};
+
 enum class ControlType {
   NONE,       // Non-controllable
   BSPLINE,    // Control paremters are the amplitudes of 2nd order BSpline basis functions
