@@ -18,6 +18,10 @@
 #define TaoSetSolution(tao, xinit) TaoSetInitialVector(tao, xinit)
 #define TaoGetSolution(tao, params) TaoGetSolutionVector(tao, params) 
 #endif
+/* if Petsc version < 3.21: Change interface for Tao Monitor */
+#if PETSC_VERSION_MAJOR<4 && PETSC_VERSION_MINOR<21
+#define TaoMonitorSet TaoSetMonitor 
+#endif
 
 class OptimProblem {
 
