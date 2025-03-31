@@ -673,6 +673,20 @@ PetscErrorCode TaoEvalGradient(Tao /*tao*/, Vec x, Vec G, void*ptr){
   return 0;
 }
 
+
+
+/**** ROL interface ****/
+
+myVec::myVec(Vec vec) : petscVec_(vec) {} 
+myVec::~myVec() { VecDestroy(&petscVec_);  }
+
+
+int myVec::dimension() const {
+  PetscInt size;
+  VecGetSize(petscVec_, &size);
+  return size;
+}
+
 double myVec::dot(const ROL::Vector<double> &x) const {
     const myVec &ex = dynamic_cast<const myVec&>(x);
     double result;
@@ -683,6 +697,46 @@ double myVec::dot(const ROL::Vector<double> &x) const {
 void myVec::plus(const ROL::Vector<double> &x) {
     const myVec &ex = dynamic_cast<const myVec&>(x);
     VecAXPY(petscVec_, 1.0, ex.petscVec_);  
+}
+
+void myVec::applyUnary( const ROL::Elementwise::UnaryFunction<double> &f ) {
+    PetscInt dim = dimension();
+    double* vecptr;
+    VecGetArray(petscVec_, &vecptr);
+    for(int i=0; i<dim; ++i) {
+      vecptr[i] = f.apply(vecptr[i]);
+    }
+    VecRestoreArray(petscVec_, &vecptr);
+}
+
+void myVec::applyBinary(const ROL::Elementwise::BinaryFunction<double> &f, const ROL::Vector<double> &x ){
+  const myVec &ex = dynamic_cast<const myVec&>(x);
+
+  int dim = dimension();
+  ROL_TEST_FOR_EXCEPTION( dim != x.dimension(), std::invalid_argument, "Error: Vectors must have the same dimension." );
+
+  double *selfptr, *xptr;
+  Vec exVec_ = ex.getVector();
+  VecGetArray(petscVec_, &selfptr);
+  VecGetArray(exVec_, &xptr);
+  for (int i=0; i<dim; i++) {
+    selfptr[i] = f.apply(selfptr[i],xptr[i]);
+  }
+  VecRestoreArray(petscVec_, &selfptr);
+  VecRestoreArray(exVec_, &selfptr);
+}
+
+double myVec::reduce(const ROL::Elementwise::ReductionOp<double> &r)const{
+  double result = r.initialValue();
+  int dim  = dimension();
+  const double* selfptr;
+  VecGetArrayRead(petscVec_, &selfptr);
+  for(int i=0; i<dim; ++i) {
+    r.reduce(selfptr[i],result);
+  }
+  VecRestoreArrayRead(petscVec_, &selfptr);
+
+  return result;
 }
 
 double myVec::norm() const {
@@ -722,11 +776,6 @@ void myVec::zero() {
 void myVec::view() { 
   VecView(petscVec_, NULL);
 }
-
-
-myVec::myVec(Vec vec) : petscVec_(vec) {} 
-myVec::~myVec() { VecDestroy(&petscVec_);  }
-
 
 myObjective::myObjective(OptimProblem* optimctx) : optimctx_(optimctx) {}
 myObjective::~myObjective() {}

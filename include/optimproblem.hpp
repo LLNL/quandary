@@ -1,5 +1,6 @@
 #include "math.h"
 #include <ROL_Vector.hpp>
+#include <ROL_ElementwiseVector.hpp>
 #include <ROL_Objective.hpp>
 #include <assert.h>
 #include <petsctao.h>
@@ -146,11 +147,15 @@ class myVec : public ROL::Vector<double> {
   myVec(Vec vec); 
   ~myVec(); 
   
+  int dimension() const override ; // Returns the vector size
   double dot(const ROL::Vector<double> &x) const override;  // Compute the dot product with another vector
   void plus(const ROL::Vector<double> &x) override; // y = x + y
   double norm() const override;  //Compute the 2-norm of the vector
   void scale(double alpha) override ; // Scale the vector by a scalar
   ROL::Ptr<ROL::Vector<double>> clone (void) const override; // Create a new empty myVec
+  void applyUnary(const ROL::Elementwise::UnaryFunction<double> &f ) ; // Apply function f to each element of the vector 
+  void applyBinary(const ROL::Elementwise::BinaryFunction<double> &f, const ROL::Vector<double> &x ) ; // Apply f to each element of the vector and another vector
+  double reduce(const ROL::Elementwise::ReductionOp<double> &r) const ; 
   void set(const ROL::Vector<double> &x) override; // Copy data from another ROL vector to this Petsc Vector
   Vec getVector() const ; // Get the underlying Petsc vector
   void axpy(double alpha, const ROL::Vector<double> &x) override ; // y = alpha*x + y 
