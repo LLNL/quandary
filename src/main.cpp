@@ -421,13 +421,11 @@ int main(int argc,char **argv)
 
 
   /* Set ROL initial Vector and Objective function */
-  myVec rolx(xinit);
-  myVec rolg(grad);
-  myObjective rolObj(optimctx);
 
   /* Set up ROL optimization problem */
-  ROL::Ptr<ROL::Objective<double>> obj = ROL::makePtr<myObjective>(rolObj);
-  ROL::Ptr<ROL::Vector<double>>      x = ROL::makePtr<myVec>(rolx);
+  ROL::Ptr<ROL::Objective<double>> obj = ROL::makePtr<myObjective>(optimctx);
+  ROL::Ptr<ROL::Vector<double>>      x = ROL::makePtr<myVec>(xinit);
+  ROL::Ptr<ROL::Vector<double>>      g = ROL::makePtr<myVec>(grad);
   ROL::Ptr<ROL::Problem<double>> optProb = ROL::makePtr<ROL::Problem<double>>(obj,x);
 
   // Add bounds to ROL problem. (Instead of ROL::Bounds, one can derive from class ROL::BoundConstraint)
@@ -460,7 +458,7 @@ int main(int argc,char **argv)
       objective = optimctx->evalF(xinit);
     } else {
       double tol = 0.0;
-      objective = rolObj.value(rolx, tol);
+      objective = obj->value(*x, tol);
     }
     if (mpirank_world == 0 && !quietmode) printf("\nTotal objective = %1.14e, \n", objective);
   } 
@@ -472,17 +470,16 @@ int main(int argc,char **argv)
     if (optimsolvertype==OptimSolverType::TAO) {
       optimctx->evalGradF(xinit, grad);
       VecNorm(grad, NORM_2, &gnorm);
+      optimctx->output->writeGradient(grad);
     } else {
-      rolg.zero();
+      g->zero();
       double tol = 0.0;
-      rolObj.gradient(rolg, rolx, tol);
-      gnorm = rolg.norm();
-      VecCopy(rolg.getVector(), grad);
+      obj->gradient(*g, *x, tol);
+      gnorm = g->norm();
     }
     if (mpirank_world == 0 && !quietmode) {
       printf("\nGradient norm: %1.14e\n", gnorm);
     }
-    optimctx->output->writeGradient(grad);
   }
 
   /* --- Solve the optimization  --- */
@@ -791,8 +788,9 @@ int main(int argc,char **argv)
   delete optimctx;
   delete output;
 
-  VecDestroy(&xinit);
-  VecDestroy(&grad);
+  // ROL might be doing this??
+  // VecDestroy(&xinit);
+  // VecDestroy(&grad);
 
 
   /* Finallize Petsc */
