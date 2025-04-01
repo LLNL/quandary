@@ -723,7 +723,7 @@ void myVec::applyBinary(const ROL::Elementwise::BinaryFunction<double> &f, const
     selfptr[i] = f.apply(selfptr[i],xptr[i]);
   }
   VecRestoreArray(petscVec_, &selfptr);
-  VecRestoreArray(exVec_, &selfptr);
+  VecRestoreArray(exVec_, &xptr);
 }
 
 double myVec::reduce(const ROL::Elementwise::ReductionOp<double> &r)const{
