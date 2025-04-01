@@ -677,7 +677,11 @@ PetscErrorCode TaoEvalGradient(Tao /*tao*/, Vec x, Vec G, void*ptr){
 
 /**** ROL interface ****/
 
-myVec::myVec(Vec vec) : petscVec_(vec) {} 
+myVec::myVec(Vec vec) {
+
+  VecDuplicate(vec, &petscVec_);
+  VecCopy(vec, petscVec_);
+} 
 myVec::~myVec() { VecDestroy(&petscVec_);  }
 
 
