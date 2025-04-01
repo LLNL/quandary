@@ -434,15 +434,12 @@ int main(int argc,char **argv)
   ROL::Ptr<ROL::BoundConstraint<double>> bnd = ROL::makePtr<ROL::Bounds<double>>(xlo, xup);
   optProb->addBoundConstraint(bnd); 
 
-  // Set ROL output streem.
-  ROL::Ptr<std::ostream> outStream = ROL::makePtrFromRef(std::cout);
-
   // /* Check the ROL problem setup */
   // bool printtoscreen = true;
   // optProb->check(printtoscreen, *outStream);
 
   /* Create ROL optimization solver */
-  std::string ROLfilename = "ROLinput.xml";
+  std::string ROLfilename = "rolinput.xml";
   auto parlist = ROL::getParametersFromXmlFile(ROLfilename);
   ROL::Solver<double> rolSolver(optProb,*parlist);
     
@@ -491,7 +488,13 @@ int main(int argc,char **argv)
     if (optimsolvertype==OptimSolverType::TAO) {
       optimctx->solve(xinit);
     } else {
+      std::ofstream rolFileStream(output->datadir + "/roloutput.txt");
+      ROL::Ptr<std::ostream> outStream = ROL::makePtrFromRef(rolFileStream);
+      // ROL::Ptr<std::ostream> outStream = ROL::makePtrFromRef(std::cout);
+      printf("Optimizing with ROL...\n");
       rolSolver.solve(*outStream); 
+      printf("Done ROL. Check output stream.\n");
+      rolFileStream.close();
     }
   }
 
@@ -800,7 +803,6 @@ int main(int argc,char **argv)
   PetscOptionsSetValue(NULL, "-options_left", "no"); // Remove warning about unused options.
   ierr = PetscFinalize();
 #endif
-
 
   MPI_Finalize();
   return ierr;
