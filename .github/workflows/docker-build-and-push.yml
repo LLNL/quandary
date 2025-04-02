@@ -1,0 +1,121 @@
+name: Build and Push Docker Image
+
+on:
+  # TODO PR trigger is just for testing
+  pull_request:
+    branches: ['main']
+  workflow_run:
+    workflows: ["Build and Test"]
+    branches: [main]
+    types:
+      - completed
+  workflow_dispatch:
+    inputs:
+      manual_image_tag:
+        description: 'Manually specify the Spack image tag (optional)'
+        required: false
+        type: string
+
+jobs:
+  build-docker-image:
+    # Only run if the test workflow completed successfully when triggered by workflow_run
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+
+    steps:
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Get latest Spack image
+        if: ${{ github.event.inputs.manual_image_tag == '' }}
+        id: get-current-image
+        run: |
+          # Try to query the repository tags directly from GHCR for quandary images
+          TAGS=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            "https://api.github.com/users/tdrwenski/packages/container/spack-buildcache/versions" \
+            | jq -r '.[].metadata.container.tags[]' | grep 'quandary-develop')
+
+          # If triggered by workflow_run, get the commit SHA that triggered the build
+          if [[ "${{ github.event_name }}" == "workflow_run" ]]; then
+            TRIGGER_SHA="${{ github.event.workflow_run.head_sha }}"
+            SHORT_SHA="${TRIGGER_SHA:0:7}"
+
+            echo "Looking for image with commit hash: $TRIGGER_SHA or short hash: $SHORT_SHA"
+
+            # Try to find a tag matching the commit that triggered this workflow
+            MATCHING_TAG=$(echo "$TAGS" | grep -E "$TRIGGER_SHA|$SHORT_SHA" | head -n 1)
+
+            if [ -n "$MATCHING_TAG" ]; then
+              echo "Found matching tag for trigger commit: $MATCHING_TAG"
+              SELECTED_TAG=$MATCHING_TAG
+            else
+              echo "No matching tag found, using most recent tag"
+              SELECTED_TAG=$(echo "$TAGS" | head -n 1)
+            fi
+          else
+            # If manually triggered, just use the most recent tag
+            SELECTED_TAG=$(echo "$TAGS" | head -n 1)
+          fi
+
+          if [ -z "$SELECTED_TAG" ]; then
+            echo "::error::No Quandary Spack image found. Please specify an image tag manually."
+            exit 1
+          fi
+
+          echo "Selected image tag: $SELECTED_TAG"
+          echo "image_tag=$SELECTED_TAG" >> $GITHUB_OUTPUT
+
+      - name: Set manual image tag
+        if: ${{ github.event.inputs.manual_image_tag != '' }}
+        id: set-manual-image
+        run: |
+          echo "image_tag=${{ github.event.inputs.manual_image_tag }}" >> $GITHUB_OUTPUT
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Create Dockerfile
+        id: create-dockerfile
+        run: |
+          IMAGE_TAG="${{ steps.get-current-image.outputs.image_tag || steps.set-manual-image.outputs.image_tag }}"
+
+          # Create a Dockerfile that uses the latest Spack image as base
+          cat > Dockerfile << EOF
+          FROM ghcr.io/tdrwenski/spack-buildcache:${IMAGE_TAG}
+
+          # Quandary python environment
+          WORKDIR /home/runner/work/quandary/quandary/
+          COPY quandary.py .
+          COPY pyproject.toml .
+          COPY README.md .
+          RUN python3 -m pip install -e .
+
+          # Allow MPI oversubscribe and run as root
+          COPY .ci-scripts/mpi_wrapper.sh .
+          RUN chmod +x mpi_wrapper.sh
+          COPY .ci-scripts/update_kernel_path.py .
+
+          EOF
+
+          echo "Dockerfile created with base image: ghcr.io/tdrwenski/spack-buildcache:${IMAGE_TAG}"
+
+      - name: Build and push
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: |
+            ghcr.io/tdrwenski/quandary:latest
+            ghcr.io/tdrwenski/quandary:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
