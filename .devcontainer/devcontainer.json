@@ -1,0 +1,26 @@
+{
+  "image": "ghcr.io/tdrwenski/quandary:latest",
+  "hostRequirements": {
+    "cpus": 4
+  },
+  "waitFor": "postCreateCommand",
+  "onCreateCommand": ". /home/runner/work/quandary/quandary/mpi_wrapper.sh",
+  "postCreateCommand": [
+    "pip install ipykernel",
+    "python3 -m ipykernel install --user --name quandary-env --display-name 'Quandary'",
+    "python3 /home/runner/work/quandary/quandary/update_kernel_path.py"
+  ],
+  "customizations": {
+    "codespaces": {
+      "openFiles": [
+        "examples/pythoninterface/QuandaryWithPython_HowTo.ipynb"
+      ]
+    },
+    "vscode": {
+      "extensions": [
+        "ms-toolsai.jupyter",
+        "ms-python.python"
+      ]
+    }
+  }
+}
