@@ -17,3 +17,4 @@ kernel_spec['env']['PATH'] = "/root/bin:" + os.environ.get('PATH', '')
 with open(kernel_json_path, 'w') as f:
     json.dump(kernel_spec, f, indent=2)
 
+print(f"Updated kernel.json at {kernel_json_path} with PATH prepended")
