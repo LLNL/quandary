@@ -1528,19 +1528,22 @@ def append_pulse(pulse_location, pulse_dict, dT, t_global, p_global, q_global):
     p_pulse   = pulse_dict["p_pulse"]
     q_pulse   = pulse_dict["q_pulse"]
 
-	# Synchronize when a multi-qubit gate occures. Here, inserting zero drive for idling qubits.
-    if num_qubits > 1:
-        synch_zero_padding(pulse_location, dT, t_global, p_global, q_global)
+    # NO synching, since we optimize for identity gates and there should never be synching needed. TODO: Test that here. 
+	# # Synchronize when a multi-qubit gate occures. Here, inserting zero drive for idling qubits.
+    # if num_qubits > 1:
+    #     synch_zero_padding(pulse_location, dT, t_global, p_global, q_global)
 
 	
 	# Append pulses for each qubit
     for i, qubitid in enumerate(pulse_location):
         tlast = t_global[qubitid][-1] if len(t_global[qubitid]) > 0 else 0.0
-        for item in timesteps:
+        # NOTE: the first time point in timesteps is left out because it coincides with the end of the previous segment
+        j0 = 1 if len(t_global[qubitid]) > 0 else 0
+        for item in timesteps[j0:]:
             t_global[qubitid].append(item + tlast)
-        for item in p_pulse[i]:
+        for item in p_pulse[i][j0:]:
             p_global[qubitid].append(item)
-        for item in q_pulse[i]:
+        for item in q_pulse[i][j0:]:
     	    q_global[qubitid].append(item)
 
 	
