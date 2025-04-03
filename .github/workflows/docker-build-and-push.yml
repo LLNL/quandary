@@ -104,6 +104,11 @@ jobs:
           RUN chmod +x mpi_wrapper.sh
           COPY .ci-scripts/update_kernel_path.py .
 
+          # Set up jupyter environment
+          RUN pip install ipykernel jupyter_client && \
+            python3 -m ipykernel install --user --name quandary-env --display-name 'Quandary' && \
+            python3 /home/runner/work/quandary/quandary/update_kernel_path.py
+
           EOF
 
           echo "Dockerfile created with base image: ghcr.io/tdrwenski/spack-buildcache:${IMAGE_TAG}"
