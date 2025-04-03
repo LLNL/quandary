@@ -48,7 +48,7 @@ void PythonInterface::receiveHsys(Mat& Bd){
   MPI_Bcast(vals.data(), nelems, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
   /* Iterate over all elements*/
-  for (int i = 0; i<vals.size(); i++) {
+  for (size_t i = 0; i<vals.size(); i++) {
     if (fabs(vals[i])<1e-14) continue; // Skip zeros
 
     // Get position in the Bd matrix
@@ -86,8 +86,6 @@ void PythonInterface::receiveHc(int noscillators, std::vector<std::vector<Mat>>&
 
   /* Get the dimensions right */
   int sqdim = dim_rho; //  N!
-  int dim = dim_rho;
-  if (lindbladtype !=LindbladType::NONE) dim = dim_rho*dim_rho;
   int nelems = dim_rho*dim_rho;
 
   // Skip first Hd lines in the file
@@ -113,7 +111,7 @@ void PythonInterface::receiveHc(int noscillators, std::vector<std::vector<Mat>>&
 
     // Iterate over received elements and place into Bc_vec
     MatGetOwnershipRange(Bc_vec[k][0], &ilow, &iupp);
-    for (int l = 0; l<vals.size(); l++) {
+    for (size_t l = 0; l<vals.size(); l++) {
       if (fabs(vals[l])<1e-14) continue; // Skip zeros
 
       // Get position in the Bc matrix
@@ -155,7 +153,7 @@ void PythonInterface::receiveHc(int noscillators, std::vector<std::vector<Mat>>&
 
     // Iterate over received vals and place into Ac_vec
     MatGetOwnershipRange(Ac_vec[k][0], &ilow, &iupp);
-    for (int l = 0; l<vals.size(); l++) {
+    for (size_t l = 0; l<vals.size(); l++) {
       if (fabs(vals[l])<1e-14) continue; // Skip zeros
 
       // Get position in the Ac matrix

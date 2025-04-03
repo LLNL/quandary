@@ -57,9 +57,9 @@ OptimTarget::OptimTarget(std::vector<std::string> target_str, std::string object
   }
   /* Get list of involved oscillators */
   if (initcond_str.size() < 2) 
-    for (int j=0; j<mastereq->getNOscillators(); j++)   
+    for (size_t j=0; j<mastereq->getNOscillators(); j++)   
       initcond_str.push_back(std::to_string(j)); // Default: all oscillators
-  for (int i=1; i<initcond_str.size(); i++) 
+  for (size_t i=1; i<initcond_str.size(); i++) 
     initcond_IDs.push_back(atoi(initcond_str[i].c_str())); // Overwrite with config option, if given.
 
   /* Prepare initial state rho_t0 if PURE or FROMFILE or ENSEMBLE initialization. Otherwise they are set within prepareInitialState during evalF. */
@@ -68,18 +68,18 @@ OptimTarget::OptimTarget(std::vector<std::string> target_str, std::string object
   if (initcond_type == InitialConditionType::PURE) { 
     /* Initialize with tensor product of unit vectors. */
     if (initcond_IDs.size() != mastereq->getNOscillators()) {
-      printf("ERROR during pure-state initialization: List of IDs must contain %d elements!\n", mastereq->getNOscillators());
+      printf("ERROR during pure-state initialization: List of IDs must contain %zu elements!\n", mastereq->getNOscillators());
       exit(1);
     }
     int diag_id = 0;
-    for (int k=0; k < initcond_IDs.size(); k++) {
+    for (size_t k=0; k < initcond_IDs.size(); k++) {
       if (initcond_IDs[k] > mastereq->getOscillator(k)->getNLevels()-1){
-        printf("ERROR in config setting. The requested pure state initialization |%d> exceeds the number of allowed levels for that oscillator (%d).\n", initcond_IDs[k], mastereq->getOscillator(k)->getNLevels());
+        printf("ERROR in config setting. The requested pure state initialization |%zu> exceeds the number of allowed levels for that oscillator (%zu).\n", initcond_IDs[k], mastereq->getOscillator(k)->getNLevels());
         exit(1);
       }
       assert (initcond_IDs[k] < mastereq->getOscillator(k)->getNLevels());
       int dim_postkron = 1;
-      for (int m=k+1; m < initcond_IDs.size(); m++) {
+      for (size_t m=k+1; m < initcond_IDs.size(); m++) {
         dim_postkron *= mastereq->getOscillator(m)->getNLevels();
       }
       diag_id += initcond_IDs[k] * dim_postkron;
@@ -131,19 +131,17 @@ OptimTarget::OptimTarget(std::vector<std::string> target_str, std::string object
     // Sanity check for the list in initcond_IDs!
     assert(initcond_IDs.size() >= 1); // at least one element 
     assert(initcond_IDs[initcond_IDs.size()-1] < mastereq->getNOscillators()); // last element can't exceed total number of oscillators
-    for (int i=0; i < initcond_IDs.size()-1; i++){ // list should be consecutive!
+    for (size_t i=0; i < initcond_IDs.size()-1; i++){ // list should be consecutive!
       if (initcond_IDs[i]+1 != initcond_IDs[i+1]) {
         printf("ERROR: List of oscillators for ensemble initialization should be consecutive!\n");
         exit(1);
       }
     }
     // get dimension of subsystems defined by initcond_IDs, as well as the one before and after. Span in essential levels only.
-    int dimpre = 1;
     int dimpost = 1;
     int dimsub = 1;
-    for (int i=0; i<mastereq->getNOscillators(); i++){
-      if (i < initcond_IDs[0]) dimpre *= mastereq->nessential[i];
-      else if (initcond_IDs[0] <= i && i <= initcond_IDs[initcond_IDs.size()-1]) dimsub *= mastereq->nessential[i];
+    for (size_t i=0; i<mastereq->getNOscillators(); i++){
+      if (initcond_IDs[0] <= i && i <= initcond_IDs[initcond_IDs.size()-1]) dimsub *= mastereq->nessential[i];
       else dimpost *= mastereq->nessential[i];
     }
     int dimrho = mastereq->getDimRho();
@@ -206,10 +204,10 @@ OptimTarget::OptimTarget(std::vector<std::string> target_str, std::string object
       if (target_str.size() - 1 < mastereq->getNOscillators()) {
         copyLast(target_str, mastereq->getNOscillators()+1);
       }
-      for (int i=0; i < mastereq->getNOscillators(); i++) {
-        int Qi_state = atoi(target_str[i+1].c_str());
+      for (size_t i=0; i < mastereq->getNOscillators(); i++) {
+        size_t Qi_state = atoi(target_str[i+1].c_str());
         if (Qi_state >= mastereq->getOscillator(i)->getNLevels()) {
-          printf("ERROR in config setting. The requested pure state target |%d> exceeds the number of modeled levels for that oscillator (%d).\n", Qi_state, mastereq->getOscillator(i)->getNLevels());
+          printf("ERROR in config setting. The requested pure state target |%zu> exceeds the number of modeled levels for that oscillator (%zu).\n", Qi_state, mastereq->getOscillator(i)->getNLevels());
           exit(1);
         }
         purestateID += Qi_state * mastereq->getOscillator(i)->dim_postOsc;
@@ -535,12 +533,12 @@ int OptimTarget::prepareInitialState(const int iinit, const int ninit, std::vect
       break;
 
     case InitialConditionType::DIAGONAL:
-      int row, diagelem;
+      int diagelem;
       VecZeroEntries(rho0);
 
       /* Get dimension of partial system behind last oscillator ID (essential levels only) */
       dim_post = 1;
-      for (int k = initcond_IDs[initcond_IDs.size()-1] + 1; k < nessential.size(); k++) {
+      for (size_t k = initcond_IDs[initcond_IDs.size()-1] + 1; k < nessential.size(); k++) {
         // dim_post *= getOscillator(k)->getNLevels();
         dim_post *= nessential[k];
       }
@@ -574,7 +572,7 @@ int OptimTarget::prepareInitialState(const int iinit, const int ninit, std::vect
 
       /* Get dimension of partial system behind last oscillator ID (essential levels only) */
       dim_post = 1;
-      for (int k = initcond_IDs[initcond_IDs.size()-1] + 1; k < nessential.size(); k++) {
+      for (size_t k = initcond_IDs[initcond_IDs.size()-1] + 1; k < nessential.size(); k++) {
         dim_post *= nessential[k];
       }
 
@@ -665,7 +663,7 @@ void OptimTarget::evalJ(const Vec state, double* J_re_ptr, double* J_im_ptr){
   double J_re = 0.0;
   double J_im = 0.0;
   PetscInt diagID, diagID_re, diagID_im;
-  double sum, mine, rhoii, rhoii_re, rhoii_im, lambdai, norm;
+  double sum, rhoii, rhoii_re, rhoii_im, lambdai, norm;
   PetscInt ilo, ihi;
   int dimsq;
 
@@ -744,7 +742,7 @@ void OptimTarget::evalJ(const Vec state, double* J_re_ptr, double* J_im_ptr){
 
 void OptimTarget::evalJ_diff(const Vec state, Vec statebar, const double J_re_bar, const double J_im_bar){
   PetscInt ilo, ihi;
-  double lambdai, val, val_re, val_im, rhoii_re, rhoii_im;
+  double lambdai, val, rhoii_re, rhoii_im;
   PetscInt diagID, diagID_re, diagID_im, dimsq;
 
   switch (objective_type) {

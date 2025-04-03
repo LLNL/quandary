@@ -37,7 +37,7 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
 
   /* Store number of design parameters */
   int n = 0;
-  for (int ioscil = 0; ioscil < timestepper->mastereq->getNOscillators(); ioscil++) {
+  for (size_t ioscil = 0; ioscil < timestepper->mastereq->getNOscillators(); ioscil++) {
       n += timestepper->mastereq->getOscillator(ioscil)->getNParams(); 
   }
   ndesign = n;
@@ -75,17 +75,17 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   assert(obj_weights.size() >= ninit);
   // Scale the weights such that they sum up to one: beta_i <- beta_i / (\sum_i beta_i)
   double scaleweights = 0.0;
-  for (int i=0; i<ninit; i++) scaleweights += obj_weights[i];
-  for (int i=0; i<ninit; i++) obj_weights[i] = obj_weights[i] / scaleweights;
+  for (size_t i=0; i<ninit; i++) scaleweights += obj_weights[i];
+  for (size_t i=0; i<ninit; i++) obj_weights[i] = obj_weights[i] / scaleweights;
   // Distribute over mpi_init processes 
   double sendbuf[obj_weights.size()];
   double recvbuf[obj_weights.size()];
-  for (int i = 0; i < obj_weights.size(); i++) sendbuf[i] = obj_weights[i];
-  for (int i = 0; i < obj_weights.size(); i++) recvbuf[i] = obj_weights[i];
+  for (size_t i = 0; i < obj_weights.size(); i++) sendbuf[i] = obj_weights[i];
+  for (size_t i = 0; i < obj_weights.size(); i++) recvbuf[i] = obj_weights[i];
   int nscatter = ninit_local;
   MPI_Scatter(sendbuf, nscatter, MPI_DOUBLE, recvbuf, nscatter,  MPI_DOUBLE, 0, comm_init);
   for (int i = 0; i < nscatter; i++) obj_weights[i] = recvbuf[i];
-  for (int i=nscatter; i < obj_weights.size(); i++) obj_weights[i] = 0.0;
+  for (size_t i=nscatter; i < obj_weights.size(); i++) obj_weights[i] = 0.0;
 
 
   /* Store other optimization parameters */
@@ -122,10 +122,10 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   VecSetFromOptions(xlower);
   VecDuplicate(xlower, &xupper);
   int col = 0;
-  for (int iosc = 0; iosc < timestepper->mastereq->getNOscillators(); iosc++){
+  for (size_t iosc = 0; iosc < timestepper->mastereq->getNOscillators(); iosc++){
     std::vector<std::string> bound_str;
     config.GetVecStrParam("control_bounds" + std::to_string(iosc), bound_str, "10000.0");
-    for (int iseg = 0; iseg < timestepper->mastereq->getOscillator(iosc)->getNSegments(); iseg++){
+    for (size_t iseg = 0; iseg < timestepper->mastereq->getOscillator(iosc)->getNSegments(); iseg++){
       double boundval = 0.0;
       if (bound_str.size() <= iseg) boundval =  atof(bound_str[bound_str.size()-1].c_str());
       else boundval = atof(bound_str[iseg].c_str());
@@ -138,7 +138,7 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
       }
       // Disable bound for phase if this is spline_amplitude control
       if (timestepper->mastereq->getOscillator(iosc)->getControlType() == ControlType::BSPLINEAMP) {
-        for (int f = 0; f < timestepper->mastereq->getOscillator(iosc)->getNCarrierfrequencies(); f++){
+        for (size_t f = 0; f < timestepper->mastereq->getOscillator(iosc)->getNCarrierfrequencies(); f++){
           int nsplines = timestepper->mastereq->getOscillator(iosc)->getNSplines();
           boundval = 1e+10;
           VecSetValue(xupper, col + f*(nsplines+1) + nsplines, boundval, INSERT_VALUES);
@@ -167,7 +167,7 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   TaoSetType(tao,TAOBQNLS);         // Optim type: taoblmvm vs BQNLS ??
   TaoSetMaximumIterations(tao, maxiter);
   TaoSetTolerances(tao, gatol, PETSC_DEFAULT, grtol);
-  TaoSetMonitor(tao, TaoMonitor, (void*)this, NULL);
+  TaoMonitorSet(tao, TaoMonitor, (void*)this, NULL);
   TaoSetVariableBounds(tao, xlower, xupper);
   TaoSetFromOptions(tao);
   /* Set user-defined objective and gradient evaluation routines */
@@ -199,7 +199,7 @@ OptimProblem::~OptimProblem() {
   VecDestroy(&xinit);
   VecDestroy(&xtmp);
 
-  for (int i = 0; i < store_finalstates.size(); i++) {
+  for (size_t i = 0; i < store_finalstates.size(); i++) {
     VecDestroy(&(store_finalstates[i]));
   }
 
@@ -307,7 +307,7 @@ double OptimProblem::evalF(const Vec x) {
 
   /* Evaluate penality term for control variation */
   double var_reg = 0.0;
-  for (int iosc = 0; iosc < timestepper->mastereq->getNOscillators(); iosc++){
+  for (size_t iosc = 0; iosc < timestepper->mastereq->getNOscillators(); iosc++){
     var_reg += timestepper->mastereq->getOscillator(iosc)->evalControlVariation(); // uses Oscillator::params instead of 'x'
   }
   obj_penal_variation = 0.5*gamma_penalty_variation*var_reg; 
@@ -351,7 +351,7 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
     // Derivative of penalization of control variation 
     double var_reg_bar = 0.5*gamma_penalty_variation;
     int skip_to_oscillator = 0;
-    for (int iosc = 0; iosc < timestepper->mastereq->getNOscillators(); iosc++){
+    for (size_t iosc = 0; iosc < timestepper->mastereq->getNOscillators(); iosc++){
       Oscillator* osc = timestepper->mastereq->getOscillator(iosc);
       osc->evalControlVariationDiff(G, var_reg_bar, skip_to_oscillator);
       skip_to_oscillator += osc->getNParams();
@@ -423,7 +423,7 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
       optim_target->evalJ_diff(finalstate, rho_t0_bar, obj_weights[iinit]*obj_cost_re_bar, obj_weights[iinit]*obj_cost_im_bar);
 
       /* Derivative of time-stepping */
-      timestepper->solveAdjointODE(initid, rho_t0_bar, finalstate, obj_weights[iinit] * gamma_penalty, obj_weights[iinit]*gamma_penalty_dpdm, obj_weights[iinit]*gamma_penalty_energy);
+      timestepper->solveAdjointODE(rho_t0_bar, finalstate, obj_weights[iinit] * gamma_penalty, obj_weights[iinit]*gamma_penalty_dpdm, obj_weights[iinit]*gamma_penalty_energy);
 
       /* Add to optimizers's gradient */
       VecAXPY(G, 1.0, timestepper->redgrad);
@@ -470,7 +470,7 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
 
   /* Evaluate penalty term for control parameter variation */
   double var_reg = 0.0;
-  for (int iosc = 0; iosc < timestepper->mastereq->getNOscillators(); iosc++){
+  for (size_t iosc = 0; iosc < timestepper->mastereq->getNOscillators(); iosc++){
     var_reg += timestepper->mastereq->getOscillator(iosc)->evalControlVariation(); // uses Oscillator::params instead of 'x'
   }
   obj_penal_variation = 0.5*gamma_penalty_variation*var_reg; 
@@ -486,7 +486,7 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
       int iinit_global = mpirank_init * ninit_local + iinit;
 
       /* Recompute the initial state and target */
-      int initid = optim_target->prepareInitialState(iinit_global, ninit, timestepper->mastereq->nlevels, timestepper->mastereq->nessential, rho_t0);
+      optim_target->prepareInitialState(iinit_global, ninit, timestepper->mastereq->nlevels, timestepper->mastereq->nessential, rho_t0);
       optim_target->prepareTargetState(rho_t0);
      
       /* Reset adjoint */
@@ -498,7 +498,7 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
       optim_target->evalJ_diff(store_finalstates[iinit], rho_t0_bar, obj_weights[iinit]*obj_cost_re_bar, obj_weights[iinit]*obj_cost_im_bar);
 
       /* Derivative of time-stepping */
-      timestepper->solveAdjointODE(initid, rho_t0_bar, store_finalstates[iinit], obj_weights[iinit] * gamma_penalty, obj_weights[iinit]*gamma_penalty_dpdm, obj_weights[iinit]*gamma_penalty_energy);
+      timestepper->solveAdjointODE(rho_t0_bar, store_finalstates[iinit], obj_weights[iinit] * gamma_penalty, obj_weights[iinit]*gamma_penalty_dpdm, obj_weights[iinit]*gamma_penalty_energy);
 
       /* Add to optimizers's gradient */
       VecAXPY(G, 1.0, timestepper->redgrad);
@@ -534,7 +534,7 @@ void OptimProblem::getStartingPoint(Vec xinit){
 
   if (initguess_fromfile.size() > 0) {
     /* Set the initial guess from file */
-    for (int i=0; i<initguess_fromfile.size(); i++) {
+    for (size_t i=0; i<initguess_fromfile.size(); i++) {
       VecSetValue(xinit, i, initguess_fromfile[i], INSERT_VALUES);
     }
 
@@ -542,7 +542,7 @@ void OptimProblem::getStartingPoint(Vec xinit){
     PetscScalar* xptr;
     VecGetArray(xinit, &xptr);
     int shift = 0;
-    for (int ioscil = 0; ioscil<mastereq->getNOscillators(); ioscil++){
+    for (size_t ioscil = 0; ioscil<mastereq->getNOscillators(); ioscil++){
       mastereq->getOscillator(ioscil)->getParams(xptr + shift);
       shift += mastereq->getOscillator(ioscil)->getNParams();
     }
@@ -656,7 +656,7 @@ PetscErrorCode TaoEvalObjectiveAndGradient(Tao tao, Vec x, PetscReal *f, Vec G, 
   return 0;
 }
 
-PetscErrorCode TaoEvalObjective(Tao tao, Vec x, PetscReal *f, void*ptr){
+PetscErrorCode TaoEvalObjective(Tao /*tao*/, Vec x, PetscReal *f, void*ptr){
 
   OptimProblem* ctx = (OptimProblem*) ptr;
   *f = ctx->evalF(x);
@@ -665,7 +665,7 @@ PetscErrorCode TaoEvalObjective(Tao tao, Vec x, PetscReal *f, void*ptr){
 }
 
 
-PetscErrorCode TaoEvalGradient(Tao tao, Vec x, Vec G, void*ptr){
+PetscErrorCode TaoEvalGradient(Tao /*tao*/, Vec x, Vec G, void*ptr){
 
   OptimProblem* ctx = (OptimProblem*) ptr;
   ctx->evalGradF(x, G);

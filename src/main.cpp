@@ -87,12 +87,12 @@ int main(int argc,char **argv)
   /* Get the number of essential levels per oscillator. 
    * Default: same as number of levels */  
   std::vector<int> nessential(nlevels.size());
-  for (int iosc = 0; iosc<nlevels.size(); iosc++) nessential[iosc] = nlevels[iosc];
+  for (size_t iosc = 0; iosc<nlevels.size(); iosc++) nessential[iosc] = nlevels[iosc];
   /* Overwrite if config option is given */
   std::vector<int> read_nessential;
   config.GetVecIntParam("nessential", read_nessential, -1);
   if (read_nessential[0] > -1) {
-    for (int iosc = 0; iosc<nlevels.size(); iosc++){
+    for (size_t iosc = 0; iosc<nlevels.size(); iosc++){
       if (iosc < read_nessential.size()) nessential[iosc] = read_nessential[iosc];
       else                               nessential[iosc] = read_nessential[read_nessential.size()-1];
       if (nessential[iosc] > nlevels[iosc]) nessential[iosc] = nlevels[iosc];
@@ -113,7 +113,7 @@ int main(int argc,char **argv)
   else if (initcondstr[0].compare("Nplus1") == 0 )  {
     // compute system dimension N 
     ninit = 1;
-    for (int i=0; i<nlevels.size(); i++){
+    for (size_t i=0; i<nlevels.size(); i++){
       ninit *= nlevels[i];
     }
     ninit +=1;
@@ -123,10 +123,10 @@ int main(int argc,char **argv)
     /* Compute ninit = dim(subsystem defined by list of oscil IDs) */
     ninit = 1;
     if (initcondstr.size() < 2) {
-      for (int j=0; j<nlevels.size(); j++)  initcondstr.push_back(std::to_string(j));
+      for (size_t j=0; j<nlevels.size(); j++)  initcondstr.push_back(std::to_string(j));
     }
-    for (int i = 1; i<initcondstr.size(); i++){
-      int oscilID = atoi(initcondstr[i].c_str());
+    for (size_t i = 1; i<initcondstr.size(); i++){
+      size_t oscilID = atoi(initcondstr[i].c_str());
       if (oscilID < nessential.size()) ninit *= nessential[oscilID];
     }
     if (initcondstr[0].compare("basis") == 0  ) {
@@ -235,7 +235,7 @@ int main(int argc,char **argv)
   // Get control segment types, carrierwaves and control initialization
   std::string default_seg_str = "spline, 10, 0.0, "+std::to_string(total_time); // Default for first oscillator control segment
   std::string default_init_str = "constant, 0.0";                               // Default for first oscillator initialization
-  for (int i = 0; i < nlevels.size(); i++){
+  for (size_t i = 0; i < nlevels.size(); i++){
     // Get carrier wave frequencies 
     std::vector<double> carrier_freq;
     std::string key = "carrier_frequency" + std::to_string(i);
@@ -255,8 +255,8 @@ int main(int argc,char **argv)
     // Update the default for control type
     default_seg_str = "";
     default_init_str = "";
-    for (int l = 0; l<controltype_str.size(); l++) default_seg_str += controltype_str[l]+=", ";
-    for (int l = 0; l<controlinit_str.size(); l++) default_init_str += controlinit_str[l]+=", ";
+    for (size_t l = 0; l<controltype_str.size(); l++) default_seg_str += controltype_str[l]+=", ";
+    for (size_t l = 0; l<controlinit_str.size(); l++) default_init_str += controlinit_str[l]+=", ";
   }
 
   // Get pi-pulses, if any
@@ -269,16 +269,16 @@ int main(int argc,char **argv)
       printf("apply_pipulse config option: <oscilID>, <tstart>, <tstop>, <amp>, <anotherOscilID>, <anotherTstart>, <anotherTstop>, <anotherAmp> ...\n");
       exit(1);
     }
-    int k=0;
+    size_t k=0;
     while (k < pipulse_str.size()){
       // Set pipulse for this oscillator
-      int pipulse_id = atoi(pipulse_str[k+0].c_str());
+      size_t pipulse_id = atoi(pipulse_str[k+0].c_str());
       oscil_vec[pipulse_id]->pipulse.tstart.push_back(atof(pipulse_str[k+1].c_str()));
       oscil_vec[pipulse_id]->pipulse.tstop.push_back(atof(pipulse_str[k+2].c_str()));
       oscil_vec[pipulse_id]->pipulse.amp.push_back(atof(pipulse_str[k+3].c_str()));
-      if (mpirank_world==0) printf("Applying PiPulse to oscillator %d in [%f,%f]: |p+iq|=%f\n", pipulse_id, oscil_vec[pipulse_id]->pipulse.tstart.back(), oscil_vec[pipulse_id]->pipulse.tstop.back(), oscil_vec[pipulse_id]->pipulse.amp.back());
+      if (mpirank_world==0) printf("Applying PiPulse to oscillator %zu in [%f,%f]: |p+iq|=%f\n", pipulse_id, oscil_vec[pipulse_id]->pipulse.tstart.back(), oscil_vec[pipulse_id]->pipulse.tstop.back(), oscil_vec[pipulse_id]->pipulse.amp.back());
       // Set zero control for all other oscillators during this pipulse
-      for (int i=0; i<nlevels.size(); i++){
+      for (size_t i=0; i<nlevels.size(); i++){
         if (i != pipulse_id) {
           oscil_vec[i]->pipulse.tstart.push_back(atof(pipulse_str[k+1].c_str()));
           oscil_vec[i]->pipulse.tstop.push_back(atof(pipulse_str[k+2].c_str()));
@@ -312,8 +312,8 @@ int main(int argc,char **argv)
   // Compute coupling rotation frequencies eta_ij = w^r_i - w^r_j
   std::vector<double> eta(nlevels.size()*(nlevels.size()-1)/2.);
   int idx = 0;
-  for (int iosc=0; iosc<nlevels.size(); iosc++){
-    for (int josc=iosc+1; josc<nlevels.size(); josc++){
+  for (size_t iosc=0; iosc<nlevels.size(); iosc++){
+    for (size_t josc=iosc+1; josc<nlevels.size(); josc++){
       eta[idx] = rot_freq[iosc] - rot_freq[josc];
       idx++;
     }
@@ -334,12 +334,12 @@ int main(int argc,char **argv)
   // Some screen output 
   if (mpirank_world == 0 && !quietmode) {
     std::cout<< "System: ";
-    for (int i=0; i<nlevels.size(); i++) {
+    for (size_t i=0; i<nlevels.size(); i++) {
       std::cout<< nlevels[i];
       if (i < nlevels.size()-1) std::cout<< "x";
     }
     std::cout<<"  (essential levels: ";
-    for (int i=0; i<nlevels.size(); i++) {
+    for (size_t i=0; i<nlevels.size(); i++) {
       std::cout<< nessential[i];
       if (i < nlevels.size()-1) std::cout<< "x";
     }
@@ -363,16 +363,15 @@ int main(int argc,char **argv)
 
   /* My time stepper */
   bool storeFWD = false;
-  int ninit_local = ninit / mpisize_init; 
   if (mastereq->lindbladtype != LindbladType::NONE &&   
      (runtype == RunType::GRADIENT || runtype == RunType::OPTIMIZATION) ) storeFWD = true;  // if NOT Schroedinger solver and running gradient optim: store forward states. Otherwise, they will be recomputed during gradient. 
 
   std::string timesteppertypestr = config.GetStrParam("timestepper", "IMR");
   TimeStepper* mytimestepper;
-  if (timesteppertypestr.compare("IMR")==0) mytimestepper = new ImplMidpoint(config, mastereq, ntime, total_time, linsolvetype, linsolve_maxiter, output, storeFWD);
-  else if (timesteppertypestr.compare("IMR4")==0) mytimestepper = new CompositionalImplMidpoint(config, 4, mastereq, ntime, total_time, linsolvetype, linsolve_maxiter, output, storeFWD);
-  else if (timesteppertypestr.compare("IMR8")==0) mytimestepper = new CompositionalImplMidpoint(config, 8, mastereq, ntime, total_time, linsolvetype, linsolve_maxiter, output, storeFWD);
-  else if (timesteppertypestr.compare("EE")==0) mytimestepper = new ExplEuler(config, mastereq, ntime, total_time, output, storeFWD);
+  if (timesteppertypestr.compare("IMR")==0) mytimestepper = new ImplMidpoint(mastereq, ntime, total_time, linsolvetype, linsolve_maxiter, output, storeFWD);
+  else if (timesteppertypestr.compare("IMR4")==0) mytimestepper = new CompositionalImplMidpoint(4, mastereq, ntime, total_time, linsolvetype, linsolve_maxiter, output, storeFWD);
+  else if (timesteppertypestr.compare("IMR8")==0) mytimestepper = new CompositionalImplMidpoint(8, mastereq, ntime, total_time, linsolvetype, linsolve_maxiter, output, storeFWD);
+  else if (timesteppertypestr.compare("EE")==0) mytimestepper = new ExplEuler(mastereq, ntime, total_time, output, storeFWD);
   else {
     printf("\n\n ERROR: Unknow timestepping type: %s.\n\n", timesteppertypestr.c_str());
     exit(1);
@@ -730,7 +729,7 @@ int main(int argc,char **argv)
 #endif
 
   /* Clean up */
-  for (int i=0; i<nlevels.size(); i++){
+  for (size_t i=0; i<nlevels.size(); i++){
     delete oscil_vec[i];
   }
   delete [] oscil_vec;

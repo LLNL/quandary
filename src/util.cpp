@@ -1,5 +1,7 @@
 #include "util.hpp"
 
+// Suppress compiler warnings about unused parameters in code with #ifdef
+#define UNUSED(expr) (void)(expr)
 
 double sigmoid(double width, double x){
   return 1.0 / ( 1.0 + exp(-width*x) );
@@ -11,13 +13,13 @@ double sigmoid_diff(double width, double x){
 
 double getRampFactor(const double time, const double tstart, const double tstop, const double tramp){
 
-    double eps = 1e-4; // Cutoff for sigmoid ramp 
-    double steep = log(1./eps - 1.) * 2. / tramp; // steepness of sigmoid such that ramp(x) small for x < - tramp/2
+    // double eps = 1e-4; // Cutoff for sigmoid ramp 
+    // double steep = log(1./eps - 1.) * 2. / tramp; // steepness of sigmoid such that ramp(x) small for x < - tramp/2
     // printf("steep eval %f\n", steep);
 
     double rampfactor = 0.0;
     if (time <= tstart + tramp) { // ramp up
-      double center = tstart + tramp/2.0;
+      // double center = tstart + tramp/2.0;
       // rampfactor = sigmoid(steep, time - center);
       rampfactor =  1.0/tramp * time - tstart/ tramp;
     }
@@ -26,7 +28,7 @@ double getRampFactor(const double time, const double tstart, const double tstop,
       rampfactor = 1.0;
     }
     else if (time >= tstop - tramp && time <= tstop) { // down
-      double center = tstop - tramp/2.0;
+      // double center = tstop - tramp/2.0;
       // rampfactor = sigmoid(steep, -(time - center));
       // steep = 1842.048073;
       // steep = 1000.0;
@@ -41,8 +43,8 @@ double getRampFactor(const double time, const double tstart, const double tstop,
 
 double getRampFactor_diff(const double time, const double tstart, const double tstop, const double tramp){
 
-    double eps = 1e-4; // Cutoff for sigmoid ramp 
-    double steep = log(1./eps - 1.) * 2. / tramp; // steepness of sigmoid such that ramp(x) small for x < - tramp/2
+    // double eps = 1e-4; // Cutoff for sigmoid ramp 
+    // double steep = log(1./eps - 1.) * 2. / tramp; // steepness of sigmoid such that ramp(x) small for x < - tramp/2
     // printf("steep der %f\n", steep);
 
     double dramp_dtstop= 0.0;
@@ -54,7 +56,7 @@ double getRampFactor_diff(const double time, const double tstart, const double t
       dramp_dtstop = 0.0;
     }
     else if (time >= tstop - tramp && time <= tstop) { // down
-      double center = tstop - tramp/2.0;
+      // double center = tstop - tramp/2.0;
       // dramp_dtstop = sigmoid_diff(steep, -(time - center));
       // steep = 1842.048073;
       dramp_dtstop = 1.0/tramp;
@@ -83,10 +85,10 @@ int mapEssToFull(const int i, const std::vector<int> &nlevels, const std::vector
 
   int id = 0;
   int index = i;
-  for (int iosc = 0; iosc<nlevels.size()-1; iosc++){
+  for (size_t iosc = 0; iosc<nlevels.size()-1; iosc++){
     int postdim = 1;
     int postdim_ess = 1;
-    for (int j = iosc+1; j<nlevels.size(); j++){
+    for (size_t j = iosc+1; j<nlevels.size(); j++){
       postdim *= nlevels[j];
       postdim_ess *= nessential[j];
     }
@@ -105,10 +107,10 @@ int mapFullToEss(const int i, const std::vector<int> &nlevels, const std::vector
 
   int id = 0;
   int index = i;
-  for (int iosc = 0; iosc<nlevels.size(); iosc++){
+  for (size_t iosc = 0; iosc<nlevels.size(); iosc++){
     int postdim = 1;
     int postdim_ess = 1;
-    for (int j = iosc+1; j<nlevels.size(); j++){
+    for (size_t j = iosc+1; j<nlevels.size(); j++){
       postdim *= nlevels[j];
       postdim_ess *= nessential[j];
     }
@@ -165,10 +167,10 @@ int isEssential(const int i, const std::vector<int> &nlevels, const std::vector<
 
   int isEss = 1;
   int index = i;
-  for (int iosc = 0; iosc < nlevels.size(); iosc++){
+  for (size_t iosc = 0; iosc < nlevels.size(); iosc++){
 
     int postdim = 1;
-    for (int j = iosc+1; j<nlevels.size(); j++){
+    for (size_t j = iosc+1; j<nlevels.size(); j++){
       postdim *= nlevels[j];
     }
     int itest = (int) index / postdim;
@@ -186,10 +188,10 @@ int isEssential(const int i, const std::vector<int> &nlevels, const std::vector<
 int isGuardLevel(const int i, const std::vector<int> &nlevels, const std::vector<int> &nessential){
   int isGuard =  0;
   int index = i;
-  for (int iosc = 0; iosc < nlevels.size(); iosc++){
+  for (size_t iosc = 0; iosc < nlevels.size(); iosc++){
 
     int postdim = 1;
-    for (int j = iosc+1; j<nlevels.size(); j++){
+    for (size_t j = iosc+1; j<nlevels.size(); j++){
       postdim *= nlevels[j];
     }
     int itest = (int) index / postdim;   // floor(i/n_post)
@@ -213,8 +215,8 @@ PetscErrorCode Ikron(const Mat A,const  int dimI, const double alpha, Mat *Out, 
     PetscInt* shiftcols;
     PetscScalar* vals;
     PetscInt dimA;
-    PetscInt dimOut;
-    PetscInt nonzeroOut;
+    // PetscInt dimOut;
+    // PetscInt nonzeroOut;
     PetscInt rowID;
 
     MatGetSize(A, &dimA, NULL);
@@ -255,10 +257,10 @@ PetscErrorCode kronI(const Mat A, const int dimI, const double alpha, Mat *Out, 
     PetscInt rowid;
     PetscInt colid;
     PetscScalar insertval;
-    PetscInt dimOut;
-    PetscInt nonzeroOut;
+    // PetscInt dimOut;
+    // PetscInt nonzeroOut;
     PetscInt ncols;
-    MatInfo Ainfo;
+    // MatInfo Ainfo;
     MatGetSize(A, &dimA, NULL);
 
     ierr = PetscMalloc1(dimA, &cols); CHKERRQ(ierr);
@@ -493,7 +495,6 @@ PetscErrorCode SanityTests(Vec x, double time){
 int read_vector(const char *filename, double *var, int dim, bool quietmode, int skiplines, const std::string testheader) {
 
   FILE *file;
-  double tmp;
   int success = 0;
 
   file = fopen(filename, "r");
@@ -554,6 +555,11 @@ int read_vector(const char *filename, double *var, int dim, bool quietmode, int 
 
 /* Compute eigenvalues */
 int getEigvals(const Mat A, const int neigvals, std::vector<double>& eigvals, std::vector<Vec>& eigvecs){
+
+UNUSED(A);
+UNUSED(neigvals);
+UNUSED(eigvals);
+UNUSED(eigvecs);
 
 int nconv = 0;
 #ifdef WITH_SLEPC
