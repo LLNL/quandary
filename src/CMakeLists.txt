@@ -25,9 +25,6 @@ find_package(PkgConfig REQUIRED)
 pkg_search_module(PETSC REQUIRED IMPORTED_TARGET PETSc)
 target_link_libraries(quandary_lib PUBLIC PkgConfig::PETSC)
 
-# Other libraries
-target_link_libraries(quandary_lib PUBLIC m blas lapack)
-
 # Put executable in root directory
 set_target_properties(
     quandary
