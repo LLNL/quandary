@@ -5,6 +5,7 @@
   },
   "waitFor": "postCreateCommand",
   "onCreateCommand": ". /home/runner/work/quandary/quandary/mpi_wrapper.sh",
+  "postCreateCommand": "python -c 'import jupyter_client; print(f\"Kernel ready: {jupyter_client.kernelspec.find_kernel_specs().get(\"quandary-env\", \"Kernel not found\")}\")'",
   "customizations": {
     "codespaces": {
       "openFiles": [
