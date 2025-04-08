@@ -17,3 +17,9 @@ oneapi_2023_2_1:
   variables:
     ON_RUBY: "OFF"
   extends: .job_on_ruby
+
+# Force mvapich2 to be built with gcc
+gcc_10_3_1:
+  variables:
+    SPEC: "${PROJECT_RUBY_VARIANTS} %gcc@=10.3.1 ${PROJECT_RUBY_DEPS} ^mvapich2%gcc@=10.3.1"
+  extends: .job_on_ruby

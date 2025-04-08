@@ -201,24 +201,25 @@ void Output::writeDataFiles(int timestep, double time, const Vec state, MasterEq
   /* Write output only every <num> time-steps */
   if (timestep % output_frequency == 0) {
 
+
     /* Write expected energy levels to file */
     for (size_t iosc = 0; iosc < expectedfile.size(); iosc++) {
+      double expected = mastereq->getOscillator(iosc)->expectedEnergy(state);
       if (expectedfile[iosc] != NULL) {
-        double expected = mastereq->getOscillator(iosc)->expectedEnergy(state);
         fprintf(expectedfile[iosc], "%.8f %1.14e\n", time, expected);
       }
     }
 
+    double expected_comp = mastereq->expectedEnergy(state);
     if (expectedfile_comp != NULL) {
-      double expected_comp = mastereq->expectedEnergy(state);
       fprintf(expectedfile_comp, "%.8f %1.14e\n", time, expected_comp);
     }
 
     /* Write population to file */
     for (size_t iosc = 0; iosc < populationfile.size(); iosc++) {
+      std::vector<double> pop (mastereq->getOscillator(iosc)->getNLevels(), 0.0);
+      mastereq->getOscillator(iosc)->population(state, pop);
       if (populationfile[iosc] != NULL) {
-        std::vector<double> pop (mastereq->getOscillator(iosc)->getNLevels(), 0.0);
-        mastereq->getOscillator(iosc)->population(state, pop);
         fprintf(populationfile[iosc], "%.8f ", time);
         for (size_t i = 0; i<pop.size(); i++) {
           fprintf(populationfile[iosc], " %1.14e", pop[i]);
@@ -227,9 +228,9 @@ void Output::writeDataFiles(int timestep, double time, const Vec state, MasterEq
       }
     }
 
+    std::vector<double> population_comp; 
+    mastereq->population(state, population_comp);
     if (populationfile_comp != NULL) {
-      std::vector<double> population_comp; 
-      mastereq->population(state, population_comp);
       fprintf(populationfile_comp, "%.8f  ", time);
       for (size_t i=0; i<population_comp.size(); i++){
         fprintf(populationfile_comp, "%1.14e  ", population_comp[i]);
