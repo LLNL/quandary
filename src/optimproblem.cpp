@@ -194,8 +194,8 @@ OptimProblem::~OptimProblem() {
   VecDestroy(&rho_t0);
   VecDestroy(&rho_t0_bar);
 
-  VecDestroy(&xlower);
-  VecDestroy(&xupper);
+  // VecDestroy(&xlower);
+  // VecDestroy(&xupper);
   VecDestroy(&xinit);
   VecDestroy(&xtmp);
 
