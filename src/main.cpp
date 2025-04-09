@@ -484,7 +484,7 @@ int main(int argc,char **argv)
       // optProb->check(printtoscreen, *outStr);
 
       /* Create ROL optimization solver from parameter file */
-      std::string ROLfilename = "rolinput.xml";
+      std::string ROLfilename = config.GetStrParam("rol_xml", "./rolinput.xml", true, false);
       auto parlist = ROL::getParametersFromXmlFile(ROLfilename);
       ROL::Solver<double> rolSolver(optProb,*parlist);
 
