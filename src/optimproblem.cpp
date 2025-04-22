@@ -570,6 +570,74 @@ void OptimProblem::getSolution(Vec* param_ptr){
   *param_ptr = params;
 }
 
+
+bool OptimProblem::monitor(int iter, double deltax, Vec params){
+
+  /* Grab some output stuff */
+  double obj_cost = getCostT();
+  double obj_regul = getRegul();
+  double obj_penal = getPenalty();
+  double obj_penal_dpdm = getPenaltyDpDm();
+  double obj_penal_energy = getPenaltyEnergy();
+  double obj_penal_variation= getPenaltyVariation();
+  double F_avg = getFidelity();
+
+  /* Additional Stopping criteria */
+  bool lastIter = false;
+  bool TAOCONVERGED = false;
+  std::string finalReason_str = "";
+  if (1.0 - F_avg <= getInfTol()) {
+    finalReason_str = "Optimization converged with small infidelity.";
+    TAOCONVERGED = true;
+    lastIter = true;
+  } else if (obj_cost <= getFaTol()) {
+    finalReason_str = "Optimization converged with small final time cost.";
+    TAOCONVERGED = true;
+    lastIter = true;
+  } else if (iter == getMaxIter()) {
+    finalReason_str = "Optimization stopped at maximum number of iterations.";
+    lastIter = true;
+  } else if (gnorm < getGaTol()) {
+    finalReason_str = "OPtimization converged with small gradient norm.";
+    lastIter=true;
+  }
+
+  /* First iteration: Header for screen output of optimization history */
+  if (iter == 0 && getMPIrank_world() == 0) {
+    std::cout<<  "    Objective             Tikhonov                Penalty-Leakage        Penalty-StateVar       Penalty-TotalEnergy    Penalty-CtrlVar" << std::endl;
+  }
+
+  /* Every <optim_monitor_freq> iterations: Output of optimization history */
+  if (iter % output->optim_monitor_freq == 0 ||lastIter) {
+    // Add to optimization history file 
+    // ctx->output->writeOptimFile(iter, f, gnorm, deltax, F_avg, obj_cost, obj_regul, obj_penal, obj_penal_dpdm, obj_penal_energy, obj_penal_variation);
+    output->writeOptimFile(iter, objective, gnorm, deltax, F_avg, obj_cost, obj_regul, obj_penal, obj_penal_dpdm, obj_penal_energy, obj_penal_variation);
+    // Screen output 
+    if (getMPIrank_world() == 0) {
+      std::cout<< iter <<  "  " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal << " + " << obj_penal_dpdm << " + " << obj_penal_energy << " + " << obj_penal_variation;
+      std::cout<< "  Fidelity = " << F_avg;
+      std::cout<< "  ||Grad|| = " << gnorm;
+      std::cout<< std::endl;
+    }
+  }
+
+  /* Last iteration: Print solution, controls and trajectory data to files */
+  if (lastIter) {
+    output->writeControls(params, timestepper->mastereq, timestepper->ntime, timestepper->dt);
+
+    // do one last forward evaluation while writing trajectory files
+    timestepper->writeDataFiles = true;
+    evalF(params); 
+
+    // Print stopping reason to screen
+    if (getMPIrank_world() == 0){
+      std::cout<< finalReason_str << std::endl;
+    }
+  }
+
+  return TAOCONVERGED;
+}
+
 PetscErrorCode TaoMonitor(Tao tao,void*ptr){
   OptimProblem* ctx = (OptimProblem*) ptr;
 
@@ -582,66 +650,9 @@ PetscErrorCode TaoMonitor(Tao tao,void*ptr){
   TaoGetSolutionStatus(tao, &iter, &f, &gnorm, NULL, &deltax, &reason);
   TaoGetSolution(tao, &params);
 
-  /* Grab some output stuff */
-  double obj_cost = ctx->getCostT();
-  double obj_regul = ctx->getRegul();
-  double obj_penal = ctx->getPenalty();
-  double obj_penal_dpdm = ctx->getPenaltyDpDm();
-  double obj_penal_energy = ctx->getPenaltyEnergy();
-  double obj_penal_variation= ctx->getPenaltyVariation();
-  double F_avg = ctx->getFidelity();
+  bool TAOCONVERGED = ctx->monitor(iter, deltax, params);
 
-  /* Additional Stopping criteria */
-  bool lastIter = false;
-  std::string finalReason_str = "";
-  if (1.0 - F_avg <= ctx->getInfTol()) {
-    finalReason_str = "Optimization converged with small infidelity.";
-    TaoSetConvergedReason(tao, TAO_CONVERGED_USER);
-    lastIter = true;
-  } else if (obj_cost <= ctx->getFaTol()) {
-    finalReason_str = "Optimization converged with small final time cost.";
-    TaoSetConvergedReason(tao, TAO_CONVERGED_USER);
-    lastIter = true;
-  } else if (iter == ctx->getMaxIter()) {
-    finalReason_str = "Optimization stopped at maximum number of iterations.";
-    lastIter = true;
-  } else if (gnorm < ctx->getGaTol()) {
-    finalReason_str = "OPtimization converged with small gradient norm.";
-    lastIter=true;
-  }
-
-  /* First iteration: Header for screen output of optimization history */
-  if (iter == 0 && ctx->getMPIrank_world() == 0) {
-    std::cout<<  "    Objective             Tikhonov                Penalty-Leakage        Penalty-StateVar       Penalty-TotalEnergy    Penalty-CtrlVar" << std::endl;
-  }
-
-  /* Every <optim_monitor_freq> iterations: Output of optimization history */
-  if (iter % ctx->output->optim_monitor_freq == 0 ||lastIter) {
-    // Add to optimization history file 
-    ctx->output->writeOptimFile(iter, f, gnorm, deltax, F_avg, obj_cost, obj_regul, obj_penal, obj_penal_dpdm, obj_penal_energy, obj_penal_variation);
-    // Screen output 
-    if (ctx->getMPIrank_world() == 0) {
-      std::cout<< iter <<  "  " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal << " + " << obj_penal_dpdm << " + " << obj_penal_energy << " + " << obj_penal_variation;
-      std::cout<< "  Fidelity = " << F_avg;
-      std::cout<< "  ||Grad|| = " << gnorm;
-      std::cout<< std::endl;
-    }
-  }
-
-  /* Last iteration: Print solution, controls and trajectory data to files */
-  if (lastIter) {
-    ctx->output->writeControls(params, ctx->timestepper->mastereq, ctx->timestepper->ntime, ctx->timestepper->dt);
-
-    // do one last forward evaluation while writing trajectory files
-    ctx->timestepper->writeDataFiles = true;
-    ctx->evalF(params); 
-
-    // Print stopping reason to screen
-    if (ctx->getMPIrank_world() == 0){
-      std::cout<< finalReason_str << std::endl;
-    }
-  }
-
+  if (TAOCONVERGED) TaoSetConvergedReason(tao, TAO_CONVERGED_USER);
 
   return 0;
 }
@@ -781,7 +792,9 @@ void myVec::view() {
   VecView(petscVec_, NULL);
 }
 
-myObjective::myObjective(OptimProblem* optimctx) : optimctx_(optimctx) {}
+myObjective::myObjective(OptimProblem* optimctx) : optimctx_(optimctx) {
+  myAcceptIter=0;
+}
 myObjective::~myObjective() {}
 
 double myObjective::value(const ROL::Vector<double> &x, double & /*tol*/) {
@@ -795,4 +808,35 @@ void myObjective::gradient(ROL::Vector<double> &g, const ROL::Vector<double> &x,
   const myVec& ex = dynamic_cast<const myVec&>(x); 
   myVec& eg = dynamic_cast<myVec&>(g); 
   optimctx_->evalGradF(ex.getVector(), eg.getVector());
+}
+
+void myObjective::update(const ROL::Vector<double> &x, ROL::UpdateType type, int iter){
+  std::string out; 
+  if (type == ROL::UpdateType::Initial)  {
+    // This is the first call to update
+    out = "Initial";
+  }
+  else if (type == ROL::UpdateType::Accept) {
+    // u_ was set to u=S(x) during a trial update and has been accepted as the new iterate
+    out = "Accept";
+  }
+  else if (type == ROL::UpdateType::Revert) {
+    // u_ was set to u=S(x) during a trial update and has been rejected as the new iterate
+    out = "Revert";
+  }
+  else if (type == ROL::UpdateType::Trial) {
+    // This is a new value of x
+    out = "Trial";
+  }
+  else { 
+    out = "Else";
+  }
+  // printf("Update was called at iter %d. Status: %s\n", iter, out.c_str());
+
+  if (type == ROL::UpdateType::Accept) {
+
+    myAcceptIter = myAcceptIter+1;
+    const myVec& ex = dynamic_cast<const myVec&>(x); 
+    optimctx_->monitor(myAcceptIter, 0.0, ex.getVector());
+  }
 }

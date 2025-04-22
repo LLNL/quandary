@@ -468,6 +468,7 @@ int main(int argc,char **argv)
     optimctx->timestepper->writeDataFiles = false;
 
     if (optimsolvertype==OptimSolverType::TAO) {
+      if (mpirank_world==0) printf("Optimizing with TAO...\n");
       optimctx->solve(xinit);
     } else {
 
@@ -494,7 +495,7 @@ int main(int argc,char **argv)
       // ROL::Ptr<std::ostream> outStream = ROL::makePtrFromRef(std::cout);
 
       /* Optimize with ROL */
-      printf("Optimizing with ROL...\n");
+      if (mpirank_world==0) printf("Optimizing with ROL...\n");
       StartTime = MPI_Wtime();
       rolSolver.solve(*outStream); 
       rolFileStream.close();

@@ -118,6 +118,8 @@ class OptimProblem {
 
   /* Call this after TaoSolve() has finished to print out some information */
   void getSolution(Vec* opt);
+
+  bool monitor(int iter, double deltax, Vec params);
 };
 
 /*** PETSC TAO interface ***/
@@ -161,11 +163,19 @@ class myVec : public ROL::Vector<double> {
   void axpy(double alpha, const ROL::Vector<double> &x) override ; // y = alpha*x + y 
   void zero() override ; // Set vector elements to zero
   void view();    // Petsc view the vector
+
 };
 
 class myObjective : public ROL::Objective<double> {
   private:
   OptimProblem* optimctx_;
+  int myAcceptIter;       // Counter for accepted iterations
+
+  // ROL::Ptr<Objective_SimOpt<Real>> obj_; // Full-space objective
+  // ROL::Ptr<Constraint_SimOpt<Real>> con_; // Eliminated constraint
+  ROL::Ptr<ROL::Vector<double>> u_, ucache_, utemp_; // Storage for state u
+  ROL::Ptr<ROL::Vector<double>> r_; // Storage for residual r = c(u,x);
+
 
   public:
   myObjective(OptimProblem* optimctx);
@@ -173,4 +183,6 @@ class myObjective : public ROL::Objective<double> {
 
   double value(const ROL::Vector<double> &x, double & /*tol*/) override;
   void gradient(ROL::Vector<double> &g, const ROL::Vector<double> &x, double & /*tol*/) override;
+
+  void update(const ROL::Vector<double> &x, ROL::UpdateType type, int iter);
 };
