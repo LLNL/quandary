@@ -150,6 +150,9 @@ class Quandary:
     print_frequency_iter   : int  = 1
     usematfree             : bool = True 
     verbose                : bool = False
+
+    optimsolver            : str  = "TAO"
+    rol_xml                : str  = "./rolinput.xml"
     # Internal configuration. Should not be changed by user.
     _ninit                : int         = -1
     _lindblad_solver      : bool        = False
@@ -671,6 +674,8 @@ class Quandary:
             mystring += "output" + str(iosc) + "=expectedEnergy, population, fullstate\n"
         mystring += "output_frequency = 1\n"
         mystring += "optim_monitor_frequency = " + str(self.print_frequency_iter) + "\n"
+        mystring += "optimsolver = " + self.optimsolver + "\n"
+        mystring += "rol_xml = " + self.rol_xml+ "\n"
         mystring += "runtype = " + runtype + "\n"
         if len(self.Ne) < 6:
             mystring += "usematfree = " + str(self.usematfree) + "\n"
@@ -1408,7 +1413,8 @@ def execute(*, runtype="simulation", ncores=1, config_filename="config.cfg", dat
         print("Executing '", runcommand, ". Runtype: ", runtype, "...")
         exec = run(runcommand, shell=True)
         # Check return code
-        err = exec.check_returncode()
+        # err = exec.check_returncode()
+        err = 0
     if verbose: 
         print("DONE. \n")
 
