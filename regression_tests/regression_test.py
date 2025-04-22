@@ -6,6 +6,8 @@ import pytest
 from pydantic import BaseModel, TypeAdapter
 from typing import List
 
+from test_utils.common import build_mpi_command
+
 REL_TOL = 1.0e-7
 ABS_TOL = 1.0e-15
 
@@ -53,12 +55,12 @@ def test_eval(test_case: Case, request):
 def run_test(simulation_dir, number_of_processes, config_file, files_to_compare, exact, mpi_exec, mpi_opt):
     os.chdir(simulation_dir)
 
-    command = mpi_exec.split()
-    command.extend(["-n", str(number_of_processes)])
-    if mpi_opt:
-        command.extend([mpi_opt])
-    command.extend([QUANDARY_PATH, config_file])
-
+    command = build_mpi_command(
+        mpi_exec=mpi_exec,
+        num_processes=number_of_processes,
+        mpi_opt=mpi_opt,
+        quandary_path=QUANDARY_PATH,
+        config_file=config_file)
     print(f"Running command: \"{' '.join(command)}\"")
     result = subprocess.run(command, capture_output=True, text=True, check=True)
     print(result.stdout)
