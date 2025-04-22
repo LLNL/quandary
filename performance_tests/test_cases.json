@@ -1,0 +1,9 @@
+[
+    {
+        "simulation_name": "config_template",
+        "number_of_processes": [
+            1, 4
+        ],
+        "repetitions": 10
+    }
+]
