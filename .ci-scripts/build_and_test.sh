@@ -29,6 +29,7 @@ use_dev_shm=${USE_DEV_SHM:-true}
 spack_debug=${SPACK_DEBUG:-false}
 debug_mode=${DEBUG_MODE:-false}
 push_to_registry=${PUSH_TO_REGISTRY:-true}
+performance_tests=${PERFORMANCE_TESTS:-false}
 
 # REGISTRY_TOKEN allows you to provide your own personal access token to the CI
 # registry. Be sure to set the token with at least read access to the registry.
@@ -223,7 +224,7 @@ then
 fi
 
 # Test
-if [[ "${option}" != "--build-only" ]]
+if [[ "${option}" != "--build-only" && "${performance_tests}" != "true" ]]
 then
 
     if [[ ! -d ${build_dir} ]]
@@ -265,6 +266,27 @@ then
     pytest -v -s regression_tests --mpi-exec="${mpi_exe}"
 
     timed_message "Quandary tests completed"
+fi
+
+# Performance tests
+if [[ "${option}" != "--build-only" && "${performance_tests}" == "true" ]]
+then
+
+    cd ${project_dir}
+
+    timed_message "Performance tests for Quandary"
+
+    timed_message "Install python test dependencies"
+
+    eval `${spack_cmd} env activate ${spack_env_path} --sh`
+    python -m pip install -e . --prefer-binary
+
+    timed_message "Run performance tests"
+
+    mpi_exe=$(grep 'MPIEXEC_EXECUTABLE' "${hostconfig_path}" | cut -d'"' -f2 | sed 's/;/ /g')
+    pytest -v -s performance_tests --mpi-exec="${mpi_exe}" --benchmark-json=benchmark_results.json
+
+    timed_message "Quandary performance tests completed"
 fi
 
 cd ${project_dir}

@@ -23,3 +23,14 @@ gcc_10_3_1:
   variables:
     SPEC: "${PROJECT_RUBY_VARIANTS} %gcc@=10.3.1 ${PROJECT_RUBY_DEPS} ^mvapich2%gcc@=10.3.1"
   extends: .job_on_ruby
+
+############
+# Extra jobs
+############
+performance_tests_clang_14_0_6:
+  variables:
+    SPEC: "${PROJECT_RUBY_VARIANTS} %clang@=14.0.6 ${PROJECT_RUBY_DEPS}"
+    PERFORMANCE_TESTS: "true"
+  extends:
+    - .job_on_ruby
+    - .performance_job

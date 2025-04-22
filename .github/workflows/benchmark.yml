@@ -1,0 +1,33 @@
+name: Process Benchmark
+
+on:
+  workflow_dispatch:
+    inputs:
+      benchmark_data:
+        description: 'Base64 encoded benchmark data'
+        required: true
+  pull_request:  # TODO remove this later
+    branches:
+      - main
+
+jobs:
+  store-and-visualize:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Decode benchmark data
+        run: echo "${{ github.event.inputs.benchmark_data }}" | base64 -d > benchmark.json
+
+      - name: Store benchmark result
+        uses: benchmark-action/github-action-benchmark@v1
+        with:
+          tool: 'pytest'
+          output-file-path: benchmark.json
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          auto-push: true
+          gh-pages-branch: gh-pages
+          benchmark-data-dir-path: dev/bench
+          comment-on-alert: true
+          alert-threshold: '120%'
+          max-items-in-chart: 100
