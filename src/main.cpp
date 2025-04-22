@@ -483,7 +483,7 @@ int main(int argc,char **argv)
   /* Print statistics */
   if (mpirank_world == 0 && !quietmode) {
     printf("\n");
-    printf(" Used Time:        %.2f seconds\n", UsedTime);
+    printf(" Used Time:        %.8f seconds\n", UsedTime);
     printf(" Processors used:  %d\n", mpisize_world);
     printf(" Global Memory:    %.2f MB    [~ %.2f MB per proc]\n", globalMB, globalMB / mpisize_world);
     printf("\n");
