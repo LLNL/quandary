@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1745441787819,
+  "lastUpdate": 1745443348937,
   "repoUrl": "https://github.com/LLNL/quandary",
   "entries": {
     "Benchmark": [
@@ -252,6 +252,42 @@ window.BENCHMARK_DATA = {
             "unit": "iter/sec",
             "range": "stddev: 0.0039271924399252285",
             "extra": "mean: 1.7434990416513756 sec\nrounds: 10"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Tara Drwenski",
+            "username": "tdrwenski",
+            "email": "drwenski1@llnl.gov"
+          },
+          "committer": {
+            "name": "Tara Drwenski",
+            "username": "tdrwenski",
+            "email": "drwenski1@llnl.gov"
+          },
+          "id": "292b38ef7bfc416aec792e3094c75254a4750b4b",
+          "message": "WIP Make quandary slower for testing purposes",
+          "timestamp": "2025-04-23T20:34:01Z",
+          "url": "https://github.com/LLNL/quandary/commit/292b38ef7bfc416aec792e3094c75254a4750b4b"
+        },
+        "date": 1745443348051,
+        "tool": "pytest",
+        "benches": [
+          {
+            "name": "performance_tests/performance_test.py::test_eval[config_template_1]",
+            "value": 0.28026779194115436,
+            "unit": "iter/sec",
+            "range": "stddev: 0.11365894199137552",
+            "extra": "mean: 3.5680161215597765 sec\nrounds: 10"
+          },
+          {
+            "name": "performance_tests/performance_test.py::test_eval[config_template_4]",
+            "value": 0.5696380972320826,
+            "unit": "iter/sec",
+            "range": "stddev: 0.03784696982869064",
+            "extra": "mean: 1.7555005623027682 sec\nrounds: 10"
           }
         ]
       }
