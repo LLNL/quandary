@@ -66,9 +66,24 @@ stages:
   - prerequisites
   - build-and-test
 
+# Template for jobs that should NOT run during performance schedules
+.not-performance-schedule-rule:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule" && $SCHEDULE_TYPE == "weekly_performance"
+      when: never
+    - when: always
+
+# Template for jobs that should run ONLY during performance schedules or manually
+.performance-schedule-rule:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule" && $SCHEDULE_TYPE == "weekly_performance"
+      when: always
+    - when: always
+
 # Template for jobs triggering a build-and-test sub-pipeline:
 .build-and-test:
   stage: build-and-test
+  extends: [.not-performance-schedule-rule]
   trigger:
     include:
       - local: '.gitlab/custom-jobs-and-variables.yml'
@@ -83,12 +98,7 @@ stages:
 
 .performance-test:
   stage: build-and-test
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "schedule" && $SCHEDULE_TYPE == "weekly_performance"
-      when: always
-    - when: always
-    - when: manual
-      allow_failure: true
+  extends: [.performance-schedule-rule]
   trigger:
     include:
       - local: '.gitlab/custom-jobs-and-variables.yml'
