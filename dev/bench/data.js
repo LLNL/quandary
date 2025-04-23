@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1745427545688,
+  "lastUpdate": 1745428988731,
   "repoUrl": "https://github.com/LLNL/quandary",
   "entries": {
     "Benchmark": [
@@ -72,6 +72,42 @@ window.BENCHMARK_DATA = {
             "unit": "iter/sec",
             "range": "stddev: 0.5887897381815197",
             "extra": "mean: 1.5214884725864977 sec\nrounds: 10"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Tara Drwenski",
+            "username": "tdrwenski",
+            "email": "drwenski1@llnl.gov"
+          },
+          "committer": {
+            "name": "Tara Drwenski",
+            "username": "tdrwenski",
+            "email": "drwenski1@llnl.gov"
+          },
+          "id": "6a65661e87e40f239f9118402b1bbfe20a3ee5c0",
+          "message": "Skip build-and-test when running scheduled pipeline",
+          "timestamp": "2025-04-23T17:10:30Z",
+          "url": "https://github.com/LLNL/quandary/commit/6a65661e87e40f239f9118402b1bbfe20a3ee5c0"
+        },
+        "date": 1745428987765,
+        "tool": "pytest",
+        "benches": [
+          {
+            "name": "performance_tests/performance_test.py::test_eval[config_template_1]",
+            "value": 0.3156425005530852,
+            "unit": "iter/sec",
+            "range": "stddev: 0.14779529653122978",
+            "extra": "mean: 3.1681411668192596 sec\nrounds: 10"
+          },
+          {
+            "name": "performance_tests/performance_test.py::test_eval[config_template_4]",
+            "value": 0.7523788125407572,
+            "unit": "iter/sec",
+            "range": "stddev: 0.07977295655516088",
+            "extra": "mean: 1.3291177041828632 sec\nrounds: 10"
           }
         ]
       }
