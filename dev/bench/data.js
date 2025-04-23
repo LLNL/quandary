@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1745367299125,
+  "lastUpdate": 1745427545688,
   "repoUrl": "https://github.com/LLNL/quandary",
   "entries": {
     "Benchmark": [
@@ -36,6 +36,42 @@ window.BENCHMARK_DATA = {
             "unit": "iter/sec",
             "range": "stddev: 1.704812843254234",
             "extra": "mean: 3.8525715605122968 sec\nrounds: 10"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Tara Drwenski",
+            "username": "tdrwenski",
+            "email": "drwenski1@llnl.gov"
+          },
+          "committer": {
+            "name": "Tara Drwenski",
+            "username": "tdrwenski",
+            "email": "drwenski1@llnl.gov"
+          },
+          "id": "98669ccbd4fabdf7b61e38d16603798e02df0934",
+          "message": "Add performance tests as seperate pipeline that also runs weekly",
+          "timestamp": "2025-04-23T15:30:11Z",
+          "url": "https://github.com/LLNL/quandary/commit/98669ccbd4fabdf7b61e38d16603798e02df0934"
+        },
+        "date": 1745427545182,
+        "tool": "pytest",
+        "benches": [
+          {
+            "name": "performance_tests/performance_test.py::test_eval[config_template_1]",
+            "value": 0.3194566390553569,
+            "unit": "iter/sec",
+            "range": "stddev: 0.11251002835677128",
+            "extra": "mean: 3.130315284593962 sec\nrounds: 10"
+          },
+          {
+            "name": "performance_tests/performance_test.py::test_eval[config_template_4]",
+            "value": 0.6572511182421392,
+            "unit": "iter/sec",
+            "range": "stddev: 0.5887897381815197",
+            "extra": "mean: 1.5214884725864977 sec\nrounds: 10"
           }
         ]
       }
