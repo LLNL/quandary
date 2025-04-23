@@ -28,6 +28,7 @@
 generate-job-lists:
   stage: prerequisites
   tags: [shell, oslic]
+  extends: [.not-performance-schedule-rule]
   variables:
     RADIUSS_JOBS_PATH: ".ci-scripts/radiuss-spack-configs/gitlab/radiuss-jobs"
     LOCAL_JOBS_PATH: ".gitlab/jobs"
