@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1745443348937,
+  "lastUpdate": 1745445579608,
   "repoUrl": "https://github.com/LLNL/quandary",
   "entries": {
     "Benchmark": [
@@ -288,6 +288,42 @@ window.BENCHMARK_DATA = {
             "unit": "iter/sec",
             "range": "stddev: 0.03784696982869064",
             "extra": "mean: 1.7555005623027682 sec\nrounds: 10"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Tara Drwenski",
+            "username": "tdrwenski",
+            "email": "drwenski1@llnl.gov"
+          },
+          "committer": {
+            "name": "Tara Drwenski",
+            "username": "tdrwenski",
+            "email": "drwenski1@llnl.gov"
+          },
+          "id": "0e263ab8991338e63a7d721f11c479f256884813",
+          "message": "Add fail on alert to benchmark workflow",
+          "timestamp": "2025-04-23T21:52:18Z",
+          "url": "https://github.com/LLNL/quandary/commit/0e263ab8991338e63a7d721f11c479f256884813"
+        },
+        "date": 1745445579258,
+        "tool": "pytest",
+        "benches": [
+          {
+            "name": "performance_tests/performance_test.py::test_eval[config_template_1]",
+            "value": 0.2709745456831411,
+            "unit": "iter/sec",
+            "range": "stddev: 0.24372780635124014",
+            "extra": "mean: 3.6903835283825175 sec\nrounds: 10"
+          },
+          {
+            "name": "performance_tests/performance_test.py::test_eval[config_template_4]",
+            "value": 0.470081066709048,
+            "unit": "iter/sec",
+            "range": "stddev: 0.5099917278816705",
+            "extra": "mean: 2.1272926540113986 sec\nrounds: 10"
           }
         ]
       }
