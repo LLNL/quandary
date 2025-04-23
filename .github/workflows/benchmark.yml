@@ -6,9 +6,6 @@ on:
       benchmark_data:
         description: 'Base64 encoded benchmark data'
         required: true
-  pull_request:  # TODO remove this later
-    branches:
-      - main
 
 jobs:
   store-and-visualize:
