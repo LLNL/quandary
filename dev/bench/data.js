@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1745445579608,
+  "lastUpdate": 1745532308554,
   "repoUrl": "https://github.com/LLNL/quandary",
   "entries": {
     "Benchmark": [
@@ -324,6 +324,54 @@ window.BENCHMARK_DATA = {
             "unit": "iter/sec",
             "range": "stddev: 0.5099917278816705",
             "extra": "mean: 2.1272926540113986 sec\nrounds: 10"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Tara Drwenski",
+            "username": "tdrwenski",
+            "email": "drwenski1@llnl.gov"
+          },
+          "committer": {
+            "name": "Tara Drwenski",
+            "username": "tdrwenski",
+            "email": "drwenski1@llnl.gov"
+          },
+          "id": "3442cd49edd58a334d4ffb39a132313afaaffe91",
+          "message": "Add pytest-benchmark generated benchmarks to the gitignore",
+          "timestamp": "2025-04-24T21:53:30Z",
+          "url": "https://github.com/LLNL/quandary/commit/3442cd49edd58a334d4ffb39a132313afaaffe91"
+        },
+        "date": 1745532308067,
+        "tool": "pytest",
+        "benches": [
+          {
+            "name": "test_eval[config_template_1]_time",
+            "value": 0.26680390408119226,
+            "unit": "iter/sec",
+            "range": "stddev: 0.24681294783318047",
+            "extra": "mean: 3.748071091552265 sec\nrounds: 10"
+          },
+          {
+            "name": "test_eval[config_template_1]_memory",
+            "unit": "iter/sec",
+            "range": "stddev: 0",
+            "extra": "mean: 39.16 sec\nrounds: 1"
+          },
+          {
+            "name": "test_eval[config_template_4]_time",
+            "value": 0.4998411031031368,
+            "unit": "iter/sec",
+            "range": "stddev: 0.32325396924765215",
+            "extra": "mean: 2.000635789637454 sec\nrounds: 10"
+          },
+          {
+            "name": "test_eval[config_template_4]_memory",
+            "unit": "iter/sec",
+            "range": "stddev: 0",
+            "extra": "mean: 163.65 sec\nrounds: 1"
           }
         ]
       }
