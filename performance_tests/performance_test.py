@@ -80,6 +80,7 @@ def test_eval(benchmark, simulation_name, number_of_processes, request):
         mpi_opt=mpi_opt,
         quandary_path=QUANDARY_PATH,
         config_file=config_file)
+    print(f"Running command: \"{' '.join(command)}\"")
 
     memory = benchmark.pedantic(
         run_quandary,
@@ -87,6 +88,7 @@ def test_eval(benchmark, simulation_name, number_of_processes, request):
         rounds=repetitions,
         iterations=1
     )
+    print(f"{memory=} MB")
 
     benchmark.extra_info['number_of_processors'] = number_of_processes
     benchmark.extra_info['memory_mb'] = memory
