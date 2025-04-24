@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1745532308554,
+  "lastUpdate": 1745534139200,
   "repoUrl": "https://github.com/LLNL/quandary",
   "entries": {
     "Benchmark": [
@@ -372,6 +372,68 @@ window.BENCHMARK_DATA = {
             "unit": "iter/sec",
             "range": "stddev: 0",
             "extra": "mean: 163.65 sec\nrounds: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Tara Drwenski",
+            "username": "tdrwenski",
+            "email": "drwenski1@llnl.gov"
+          },
+          "committer": {
+            "name": "Tara Drwenski",
+            "username": "tdrwenski",
+            "email": "drwenski1@llnl.gov"
+          },
+          "id": "3e7c1d7f263886ff900d57a7c6c0585ce2b3cea5",
+          "message": "Use custom metric for benchmark dashboard so we can display memory",
+          "timestamp": "2025-04-24T22:27:03Z",
+          "url": "https://github.com/LLNL/quandary/commit/3e7c1d7f263886ff900d57a7c6c0585ce2b3cea5"
+        },
+        "date": 1745534138250,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "test_eval[config_template_1] - Time",
+            "value": 4.431651494815014,
+            "unit": "seconds",
+            "range": "1.074587326022535",
+            "extra": {
+              "number_of_processors": 1,
+              "memory_mb": 39.16
+            }
+          },
+          {
+            "name": "test_eval[config_template_1] - Memory",
+            "value": 39.16,
+            "unit": "MB",
+            "range": "0",
+            "extra": {
+              "number_of_processors": 1,
+              "memory_mb": 39.16
+            }
+          },
+          {
+            "name": "test_eval[config_template_4] - Time",
+            "value": 1.231871108408086,
+            "unit": "seconds",
+            "range": "0.006611291228680757",
+            "extra": {
+              "number_of_processors": 4,
+              "memory_mb": 163.79
+            }
+          },
+          {
+            "name": "test_eval[config_template_4] - Memory",
+            "value": 163.79,
+            "unit": "MB",
+            "range": "0",
+            "extra": {
+              "number_of_processors": 4,
+              "memory_mb": 163.79
+            }
           }
         ]
       }
