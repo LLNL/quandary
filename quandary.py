@@ -199,9 +199,7 @@ class Quandary:
             self.initctrl_MHz = [10.0 for _ in range(len(self.Ne))]
         if len(self.Hsys) > 0 and not self.standardmodel: # User-provided Hamiltonian operators 
             self.standardmodel=False   
-        else: # Using standard Hamiltonian model
-            Ntot = [sum(x) for x in zip(self.Ne, self.Ng)]
-            self.Hsys, self.Hc_re, self.Hc_im = hamiltonians(N=Ntot, freq01=self.freq01, selfkerr=self.selfkerr, crosskerr=self.crosskerr, Jkl=self.Jkl, rotfreq=self.rotfreq, verbose=self.verbose)
+        else: # Using standard Hamiltonian model. Set it up in python only if needed, i.e. only if dT or the carrier wave frequencies need to be computed.
             self.standardmodel=True
         if len(self.targetstate) > 0:
             self.optim_target = "file"
@@ -226,6 +224,9 @@ class Quandary:
         
         # Estimate the number of required time steps
         if self.dT < 0:
+            if self.standardmodel==True: # set up the standard Hamiltonian first
+                Ntot = [sum(x) for x in zip(self.Ne, self.Ng)]
+                self.Hsys, self.Hc_re, self.Hc_im = hamiltonians(N=Ntot, freq01=self.freq01, selfkerr=self.selfkerr, crosskerr=self.crosskerr, Jkl=self.Jkl, rotfreq=self.rotfreq, verbose=self.verbose)
             self.nsteps = estimate_timesteps(T=self.T, Hsys=self.Hsys, Hc_re=self.Hc_re, Hc_im=self.Hc_im, maxctrl_MHz=self.maxctrl_MHz, Pmin=self.Pmin)
             self.dT = self.T/self.nsteps
         else:
@@ -250,6 +251,10 @@ class Quandary:
         if self.spline_order == 0 and len(self.carrier_frequency) == 0:
             self.carrier_frequency = [[0.0] for _ in range(len(self.freq01))]
         if len(self.carrier_frequency) == 0: 
+            # set up the standard Hamiltonian first, if needed
+            if self.standardmodel==True and len(self.Hsys<=0):
+                Ntot = [sum(x) for x in zip(self.Ne, self.Ng)]
+                self.Hsys, self.Hc_re, self.Hc_im = hamiltonians(N=Ntot, freq01=self.freq01, selfkerr=self.selfkerr, crosskerr=self.crosskerr, Jkl=self.Jkl, rotfreq=self.rotfreq, verbose=self.verbose)
             self.carrier_frequency, _ = get_resonances(Ne=self.Ne, Ng=self.Ng, Hsys=self.Hsys, Hc_re=self.Hc_re, Hc_im=self.Hc_im, rotfreq=self.rotfreq, verbose=self.verbose, cw_amp_thres=self.cw_amp_thres, cw_prox_thres=self.cw_prox_thres, stdmodel=self.standardmodel)
 
         if self.verbose: 
