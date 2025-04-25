@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1745602067915,
+  "lastUpdate": 1745602724280,
   "repoUrl": "https://github.com/LLNL/quandary",
   "entries": {
     "Benchmark": [
@@ -299,6 +299,50 @@ window.BENCHMARK_DATA = {
           {
             "name": "test_eval[config_template_4] - Memory",
             "value": 245.36,
+            "unit": "MB"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Tara Drwenski",
+            "username": "tdrwenski",
+            "email": "drwenski1@llnl.gov"
+          },
+          "committer": {
+            "name": "Tara Drwenski",
+            "username": "tdrwenski",
+            "email": "drwenski1@llnl.gov"
+          },
+          "id": "db6b4e89a1c24a43d460a8b37103a85292bfe054",
+          "message": "WIP test slow execution time",
+          "timestamp": "2025-04-25T17:21:26Z",
+          "url": "https://github.com/LLNL/quandary/commit/db6b4e89a1c24a43d460a8b37103a85292bfe054"
+        },
+        "date": 1745602723917,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "test_eval[config_template_1] - Time",
+            "value": 4.1569153787335384,
+            "unit": "seconds",
+            "range": "0.22142688726527357"
+          },
+          {
+            "name": "test_eval[config_template_1] - Memory",
+            "value": 39.16,
+            "unit": "MB"
+          },
+          {
+            "name": "test_eval[config_template_4] - Time",
+            "value": 2.253983880323358,
+            "unit": "seconds",
+            "range": "0.006758338542511889"
+          },
+          {
+            "name": "test_eval[config_template_4] - Memory",
+            "value": 163.96,
             "unit": "MB"
           }
         ]
