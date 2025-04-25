@@ -1,9 +1,16 @@
 [
     {
-        "simulation_name": "config_template",
+        "simulation_name": "nlevels_2_2_2_2",
         "number_of_processes": [
-            1, 4
+            16
         ],
-        "repetitions": 10
+        "repetitions": 20
+    },
+    {
+        "simulation_name": "nlevels_32_32_32_32",
+        "number_of_processes": [
+            32
+        ],
+        "repetitions": 5
     }
 ]
