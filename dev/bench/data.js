@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1745539939689,
+  "lastUpdate": 1745597818277,
   "repoUrl": "https://github.com/LLNL/quandary",
   "entries": {
     "Benchmark": [
@@ -124,6 +124,50 @@ window.BENCHMARK_DATA = {
               "number_of_processors": 4,
               "memory_mb": 164.23
             }
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Tara Drwenski",
+            "username": "tdrwenski",
+            "email": "drwenski1@llnl.gov"
+          },
+          "committer": {
+            "name": "Tara Drwenski",
+            "username": "tdrwenski",
+            "email": "drwenski1@llnl.gov"
+          },
+          "id": "865246ee08d5410cd395bcd31f4f40f324b96306",
+          "message": "Update the GitLab ref and later only submit results from main to dashboard",
+          "timestamp": "2025-04-25T16:08:05Z",
+          "url": "https://github.com/LLNL/quandary/commit/865246ee08d5410cd395bcd31f4f40f324b96306"
+        },
+        "date": 1745597817866,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "test_eval[config_template_1] - Time",
+            "value": 3.3894706276711077,
+            "unit": "seconds",
+            "range": "0.7198294542390121"
+          },
+          {
+            "name": "test_eval[config_template_1] - Memory",
+            "value": 39.16,
+            "unit": "MB"
+          },
+          {
+            "name": "test_eval[config_template_4] - Time",
+            "value": 1.2576955430675298,
+            "unit": "seconds",
+            "range": "0.0404835808625153"
+          },
+          {
+            "name": "test_eval[config_template_4] - Memory",
+            "value": 163.95,
+            "unit": "MB"
           }
         ]
       }
