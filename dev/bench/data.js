@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1745597818277,
+  "lastUpdate": 1745599699065,
   "repoUrl": "https://github.com/LLNL/quandary",
   "entries": {
     "Benchmark": [
@@ -167,6 +167,50 @@ window.BENCHMARK_DATA = {
           {
             "name": "test_eval[config_template_4] - Memory",
             "value": 163.95,
+            "unit": "MB"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Tara Drwenski",
+            "username": "tdrwenski",
+            "email": "drwenski1@llnl.gov"
+          },
+          "committer": {
+            "name": "Tara Drwenski",
+            "username": "tdrwenski",
+            "email": "drwenski1@llnl.gov"
+          },
+          "id": "687aae72c853d91796866bc60bd59251711b15be",
+          "message": "Add a step to make sure workflow passes/fails in PR associated with branch",
+          "timestamp": "2025-04-25T16:42:32Z",
+          "url": "https://github.com/LLNL/quandary/commit/687aae72c853d91796866bc60bd59251711b15be"
+        },
+        "date": 1745599698045,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "test_eval[config_template_1] - Time",
+            "value": 3.3686082514002917,
+            "unit": "seconds",
+            "range": "0.7101005442028753"
+          },
+          {
+            "name": "test_eval[config_template_1] - Memory",
+            "value": 39.16,
+            "unit": "MB"
+          },
+          {
+            "name": "test_eval[config_template_4] - Time",
+            "value": 1.2346843560226262,
+            "unit": "seconds",
+            "range": "0.0057468293343989575"
+          },
+          {
+            "name": "test_eval[config_template_4] - Memory",
+            "value": 164.19,
             "unit": "MB"
           }
         ]
