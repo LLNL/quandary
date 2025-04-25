@@ -13,6 +13,14 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
+      - name: Find associated PR
+        id: findpr
+        run: |
+          PR_NUMBER=$(gh pr list --head ${{ github.ref_name }} --json number -q '.[0].number')
+          echo "pr_number=$PR_NUMBER" >> $GITHUB_OUTPUT
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Decode benchmark data
         run: echo "${{ github.event.inputs.benchmark_data }}" | base64 -d > pytest_benchmark.json
 
@@ -40,3 +48,16 @@ jobs:
           fail-on-alert: true
           alert-threshold: '120%'
           max-items-in-chart: 100
+
+      - name: Create Check for PRs
+        if: steps.findpr.outputs.pr_number != ''
+        uses: LouisBrunner/checks-action@v1.6.1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          name: Performance Benchmark
+          sha: ${{ github.sha }}
+          # This will be determined by the previous step's success/failure
+          conclusion: ${{ job.status }}
+          output_title: ${{ job.status == 'success' && 'Performance check passed' || 'Performance regression detected!' }}
+          output_summary: |
+            ${{ job.status == 'success' && 'No performance regression detected in benchmark results.' || 'The benchmark results show a performance regression compared to the baseline. Please review the performance changes.' }}
