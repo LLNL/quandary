@@ -54,7 +54,6 @@ variables:
     paths:
       - benchmark_results.json
   after_script:
-    # TODO: update ref to main before merging
     - |
       if [ -f "benchmark_results.json" ]; then
         echo "Sending benchmark results to GitHub..."
@@ -63,7 +62,7 @@ variables:
         -H "Authorization: token $GITHUB_TOKEN" \
         -H "Accept: application/vnd.github.v3+json" \
         https://api.github.com/repos/${GITHUB_PROJECT_ORG}/${GITHUB_PROJECT_NAME}/actions/workflows/benchmark.yml/dispatches \
-        -d "{\"ref\":\"perf-testing\",\"inputs\":{\"benchmark_data\":\"$BENCHMARK_DATA\"}}"
+        -d "{\"ref\":\"${CI_COMMIT_REF_NAME}\",\"inputs\":{\"benchmark_data\":\"$BENCHMARK_DATA\"}}"
       else
         echo "benchmark_results.json not found, skipping GitHub API integration."
       fi
