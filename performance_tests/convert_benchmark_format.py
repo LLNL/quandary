@@ -28,7 +28,6 @@ def convert_to_custom_format(pytest_data: Dict[str, Any]) -> List[Dict[str, Any]
             "value": time_value,
             "unit": "seconds",
             "range": str(time_stddev),
-            "extra": benchmark.get("extra_info", {})
         })
 
         # Memory benchmark entry (from extra_info)
@@ -37,8 +36,6 @@ def convert_to_custom_format(pytest_data: Dict[str, Any]) -> List[Dict[str, Any]
             "name": f"{name} - Memory",
             "value": memory_mb,
             "unit": "MB",
-            "range": "0",
-            "extra": benchmark.get("extra_info", {})
         })
 
     return custom_benchmarks
