@@ -12,7 +12,7 @@
   variables:
     PERFORMANCE_TESTS: "true"
 
-ruby_clang_14_0_6:
+clang_14_0_6:
   extends: .performance_base_job
   variables:
     SPEC: "${PROJECT_RUBY_VARIANTS} %clang@=14.0.6 ${PROJECT_RUBY_DEPS}"
