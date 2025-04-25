@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1745601314711,
+  "lastUpdate": 1745602067915,
   "repoUrl": "https://github.com/LLNL/quandary",
   "entries": {
     "Benchmark": [
@@ -255,6 +255,50 @@ window.BENCHMARK_DATA = {
           {
             "name": "test_eval[config_template_4] - Memory",
             "value": 245.65,
+            "unit": "MB"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Tara Drwenski",
+            "username": "tdrwenski",
+            "email": "drwenski1@llnl.gov"
+          },
+          "committer": {
+            "name": "Tara Drwenski",
+            "username": "tdrwenski",
+            "email": "drwenski1@llnl.gov"
+          },
+          "id": "31f24457c5626bcd5dbac791abb133dee31a748f",
+          "message": "Fix benchmark workflow to report results on PR",
+          "timestamp": "2025-04-25T17:20:23Z",
+          "url": "https://github.com/LLNL/quandary/commit/31f24457c5626bcd5dbac791abb133dee31a748f"
+        },
+        "date": 1745602067362,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "test_eval[config_template_1] - Time",
+            "value": 3.4359597209841013,
+            "unit": "seconds",
+            "range": "0.6366594742505425"
+          },
+          {
+            "name": "test_eval[config_template_1] - Memory",
+            "value": 58.75,
+            "unit": "MB"
+          },
+          {
+            "name": "test_eval[config_template_4] - Time",
+            "value": 1.9082177517702803,
+            "unit": "seconds",
+            "range": "0.7691083674711411"
+          },
+          {
+            "name": "test_eval[config_template_4] - Memory",
+            "value": 245.36,
             "unit": "MB"
           }
         ]
