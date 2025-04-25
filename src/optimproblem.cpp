@@ -840,3 +840,20 @@ void myObjective::update(const ROL::Vector<double> &x, ROL::UpdateType type, int
     optimctx_->monitor(myAcceptIter, 0.0, ex.getVector());
   }
 }
+
+
+// void myObjective::hessVec( ROL::Vector<double> &hv, const ROL::Vector<double> &v, const ROL::Vector<double> &x, double& /*tol*/ ){
+//   /* Cast the input and grab the petsc vectors */
+//   const myVec& ev = dynamic_cast<const myVec&>(v); 
+//   const myVec& ex = dynamic_cast<const myVec&>(x); 
+//   myVec& ehv = dynamic_cast<myVec&>(hv); 
+//   Vec myv = ev.getVector();
+//   Vec myx = ex.getVector();
+//   Vec myhv = ehv.getVector();
+
+//   // 1) Forward evolution: store y(t)
+//   // 2) Backward evolution store lambda(t) 
+//   // 3) Forward with source (dH*y), store w(t)
+//   // 4) Backward with source (dH*lambda), 
+//   //                evaluate p^T(dH*y) +- w^T(dH*lambda)
+// }

@@ -185,4 +185,7 @@ class myObjective : public ROL::Objective<double> {
   void gradient(ROL::Vector<double> &g, const ROL::Vector<double> &x, double & /*tol*/) override;
 
   void update(const ROL::Vector<double> &x, ROL::UpdateType type, int iter);
+
+  // void hessVec( ROL::Vector<double> &hv, const ROL::Vector<double> &v, const ROL::Vector<double> &x, double& /*tol*/ );
+
 };
