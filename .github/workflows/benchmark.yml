@@ -34,6 +34,8 @@ jobs:
           python performance_tests/convert_benchmark_format.py pytest_benchmark.json benchmark.json
 
       - name: Store benchmark result
+        id: benchmark
+        continue-on-error: true
         uses: benchmark-action/github-action-benchmark@v1
         with:
           tool: 'customSmallerIsBetter'
@@ -56,8 +58,10 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           name: Performance Benchmark
           sha: ${{ github.sha }}
-          # This will be determined by the previous step's success/failure
-          conclusion: ${{ job.status }}
-          output_title: ${{ job.status == 'success' && 'Performance check passed' || 'Performance regression detected!' }}
-          output_summary: |
-            ${{ job.status == 'success' && 'No performance regression detected in benchmark results.' || 'The benchmark results show a performance regression compared to the baseline. Please review the performance changes.' }}
+          conclusion: ${{ steps.benchmark.outcome == 'success' && 'success' || 'failure' }}
+          output: |
+            {"summary": "${{ steps.benchmark.outcome == 'success' && 'Performance check passed' || 'Performance regression detected!' }}"}
+
+      - name: Final status
+        if: steps.benchmark.outcome != 'success'
+        run: exit 1
