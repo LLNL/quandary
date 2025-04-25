@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1745599699065,
+  "lastUpdate": 1745601314711,
   "repoUrl": "https://github.com/LLNL/quandary",
   "entries": {
     "Benchmark": [
@@ -211,6 +211,50 @@ window.BENCHMARK_DATA = {
           {
             "name": "test_eval[config_template_4] - Memory",
             "value": 164.19,
+            "unit": "MB"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Tara Drwenski",
+            "username": "tdrwenski",
+            "email": "drwenski1@llnl.gov"
+          },
+          "committer": {
+            "name": "Tara Drwenski",
+            "username": "tdrwenski",
+            "email": "drwenski1@llnl.gov"
+          },
+          "id": "00b55d3394485b399c85319e45fb5f0c23fe2e3c",
+          "message": "WIP test memory increase",
+          "timestamp": "2025-04-25T16:45:27Z",
+          "url": "https://github.com/LLNL/quandary/commit/00b55d3394485b399c85319e45fb5f0c23fe2e3c"
+        },
+        "date": 1745601314319,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "test_eval[config_template_1] - Time",
+            "value": 3.484969047480263,
+            "unit": "seconds",
+            "range": "0.7593723631806658"
+          },
+          {
+            "name": "test_eval[config_template_1] - Memory",
+            "value": 58.75,
+            "unit": "MB"
+          },
+          {
+            "name": "test_eval[config_template_4] - Time",
+            "value": 1.2651573360199109,
+            "unit": "seconds",
+            "range": "0.005363640519952414"
+          },
+          {
+            "name": "test_eval[config_template_4] - Memory",
+            "value": 245.65,
             "unit": "MB"
           }
         ]
