@@ -1,8 +1,8 @@
 [
     {
-        "simulation_name": "nlevels_2_2_2_2",
+        "simulation_name": "nlevels_4_4_4_4",
         "number_of_processes": [
-            16
+            32
         ],
         "repetitions": 20
     },
