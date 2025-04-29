@@ -31,7 +31,7 @@ jobs:
 
       - name: Convert benchmark format
         run: |
-          python performance_tests/convert_benchmark_format.py pytest_benchmark.json benchmark.json
+          python tests/performance/convert_benchmark_format.py pytest_benchmark.json benchmark.json
 
       - name: Store benchmark result
         id: benchmark

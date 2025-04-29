@@ -6,7 +6,7 @@ import pytest
 from pydantic import BaseModel, TypeAdapter
 from typing import List
 
-from test_utils.common import build_mpi_command
+from tests.utils.common import build_mpi_command
 
 REL_TOL = 1.0e-7
 ABS_TOL = 1.0e-15
@@ -16,7 +16,7 @@ DATA_OUT_DIR = "data_out"
 
 TEST_PATH = os.path.dirname(os.path.realpath(__file__))
 TEST_CASES_PATH = os.path.join(TEST_PATH, "test_cases.json")
-QUANDARY_PATH = os.path.join(TEST_PATH, "..", "quandary")
+QUANDARY_PATH = os.path.join(TEST_PATH, "..", "..", "quandary")
 
 
 class Case(BaseModel):

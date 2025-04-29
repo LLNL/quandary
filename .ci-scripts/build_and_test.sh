@@ -263,7 +263,7 @@ then
     timed_message "Run regression tests"
 
     mpi_exe=$(grep 'MPIEXEC_EXECUTABLE' "${hostconfig_path}" | cut -d'"' -f2 | sed 's/;/ /g')
-    pytest -v -s regression_tests --mpi-exec="${mpi_exe}"
+    pytest -v -s tests/regression --mpi-exec="${mpi_exe}"
 
     timed_message "Quandary tests completed"
 fi
@@ -284,7 +284,7 @@ then
     timed_message "Run performance tests"
 
     mpi_exe=$(grep 'MPIEXEC_EXECUTABLE' "${hostconfig_path}" | cut -d'"' -f2 | sed 's/;/ /g')
-    pytest -v -s performance_tests --mpi-exec="${mpi_exe}" --benchmark-json=benchmark_results.json
+    pytest -v -s tests/performance --mpi-exec="${mpi_exe}" --benchmark-json=benchmark_results.json
 
     timed_message "Quandary performance tests completed"
 fi

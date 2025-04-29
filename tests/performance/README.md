@@ -4,7 +4,7 @@ These tests are run with `pytest` and `pytest-benchmark`.
 
 To run tests from base directory:
 ```
-pytest performance_tests/
+pytest tests/performance/
 ```
 Or from current directory:
 ```
@@ -37,7 +37,7 @@ For more options, see pytest-benchmark [documentation](https://pytest-benchmark.
 
 ## How to add a test
 
-1. Create a config file in the `configs` directory, e.g., `performance_tests/configs/newSimulation.cfg`
+1. Create a config file in the `configs` directory, e.g., `tests/performance/configs/newSimulation.cfg`
 2. Add new entry to test_cases.json:
     - The `simulation_name` should be the new simulation name, e.g. `newSimulation`.
     - The `number_of_processes` is an array of integers. For each integer `i`, a simulation will be run with `mpirun -n ${i}` and the `files_to_compare` will be validated.

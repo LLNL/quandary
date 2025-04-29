@@ -1,5 +1,5 @@
 """Performance test configuration for pytest."""
-from test_utils.conftest_common import add_common_options
+from tests.utils.conftest_common import add_common_options
 
 
 def pytest_addoption(parser):
