@@ -5,12 +5,12 @@ from typing import List
 
 import pytest
 from pydantic import BaseModel, TypeAdapter
-from test_utils.common import build_mpi_command
+from tests.utils.common import build_mpi_command
 
 TEST_PATH = os.path.dirname(os.path.realpath(__file__))
 TEST_CASES_PATH = os.path.join(TEST_PATH, "test_cases.json")
 TEST_CONFIG_PATH = os.path.join(TEST_PATH, "configs")
-QUANDARY_PATH = os.path.join(TEST_PATH, "..", "quandary")
+QUANDARY_PATH = os.path.join(TEST_PATH, "..", "..", "quandary")
 
 
 def pytest_benchmark_configure(config):

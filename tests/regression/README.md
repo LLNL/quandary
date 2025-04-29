@@ -1,6 +1,10 @@
 # Regression Test Documentation
 
-To run tests (in either base directory or `regression_tests/` directory):
+To run regression tests from base directory:
+```
+pytest tests/regression
+```
+Or from current directory:
 ```
 pytest
 ```
@@ -17,9 +21,9 @@ See `pytest --help` for more options.
 
 ## How to add a test
 
-1. Create an appropriate test directory under tests directory, e.g., `mkdir regression_tests/newSimulation`
-2. Create a config file in that directory, e.g., `regression_tests/newSimulation/newSimulation.cfg`
-3. Add the expected output files of the simulation that you want to test to the base directory, e.g. `regression_tests/newSimulation/base`
+1. Create an appropriate test directory under tests directory, e.g., `mkdir tests/regression/newSimulation`
+2. Create a config file in that directory, e.g., `tests/regression/newSimulation/newSimulation.cfg`
+3. Add the expected output files of the simulation that you want to test to the base directory, e.g. `tests/regression/newSimulation/base`
 4. Add new entry to test_cases.json:
     - The `simulation_name` should be the new directory name, e.g. `newSimulation`.
     - The `files_to_compare` should be an array of output files that should be compared to the expected files in the base directory. You can list them individually or use a regex.
