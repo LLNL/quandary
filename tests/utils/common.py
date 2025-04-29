@@ -1,5 +1,6 @@
 """Common utility functions for quandary tests."""
 
+
 def build_mpi_command(mpi_exec: str, num_processes: int, mpi_opt: str, quandary_path: str, config_file: str):
     """Build MPI command."""
     command = mpi_exec.split()
