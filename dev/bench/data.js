@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1745853033861,
+  "lastUpdate": 1745959003508,
   "repoUrl": "https://github.com/LLNL/quandary",
   "entries": {
     "Benchmark": [
@@ -508,6 +508,50 @@ window.BENCHMARK_DATA = {
           {
             "name": "test_eval[nlevels_32_32_32_32_32] - Memory",
             "value": 5041.24,
+            "unit": "MB"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Tara Drwenski",
+            "username": "tdrwenski",
+            "email": "drwenski1@llnl.gov"
+          },
+          "committer": {
+            "name": "Tara Drwenski",
+            "username": "tdrwenski",
+            "email": "drwenski1@llnl.gov"
+          },
+          "id": "ba9ca7cd2dc001b1b655c06d45ae9e0a1fca343c",
+          "message": "Revert \"Increase accuracy of timing that is output\"\n\nThis reverts commit 39a24448fbdea3e53bae416b59d9fb81145009bc.",
+          "timestamp": "2025-04-29T20:27:56Z",
+          "url": "https://github.com/LLNL/quandary/commit/ba9ca7cd2dc001b1b655c06d45ae9e0a1fca343c"
+        },
+        "date": 1745959002765,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "test_eval[nlevels_4_4_4_4_32] - Time",
+            "value": 0.8135067739058286,
+            "unit": "seconds",
+            "range": "0.09873505811956153"
+          },
+          {
+            "name": "test_eval[nlevels_4_4_4_4_32] - Memory",
+            "value": 2008.33,
+            "unit": "MB"
+          },
+          {
+            "name": "test_eval[nlevels_32_32_32_32_32] - Time",
+            "value": 19.52939326716587,
+            "unit": "seconds",
+            "range": "0.06397672439085797"
+          },
+          {
+            "name": "test_eval[nlevels_32_32_32_32_32] - Memory",
+            "value": 5042.26,
             "unit": "MB"
           }
         ]
