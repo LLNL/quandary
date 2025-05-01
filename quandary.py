@@ -199,9 +199,7 @@ class Quandary:
             self.initctrl_MHz = [10.0 for _ in range(len(self.Ne))]
         if len(self.Hsys) > 0 and not self.standardmodel: # User-provided Hamiltonian operators 
             self.standardmodel=False   
-        else: # Using standard Hamiltonian model
-            Ntot = [sum(x) for x in zip(self.Ne, self.Ng)]
-            self.Hsys, self.Hc_re, self.Hc_im = hamiltonians(N=Ntot, freq01=self.freq01, selfkerr=self.selfkerr, crosskerr=self.crosskerr, Jkl=self.Jkl, rotfreq=self.rotfreq, verbose=self.verbose)
+        else: # Using standard Hamiltonian model. Set it up in python only if needed, i.e. only if dT or the carrier wave frequencies need to be computed.
             self.standardmodel=True
         if len(self.targetstate) > 0:
             self.optim_target = "file"
@@ -226,6 +224,9 @@ class Quandary:
         
         # Estimate the number of required time steps
         if self.dT < 0:
+            if self.standardmodel==True: # set up the standard Hamiltonian first
+                Ntot = [sum(x) for x in zip(self.Ne, self.Ng)]
+                self.Hsys, self.Hc_re, self.Hc_im = hamiltonians(N=Ntot, freq01=self.freq01, selfkerr=self.selfkerr, crosskerr=self.crosskerr, Jkl=self.Jkl, rotfreq=self.rotfreq, verbose=self.verbose)
             self.nsteps = estimate_timesteps(T=self.T, Hsys=self.Hsys, Hc_re=self.Hc_re, Hc_im=self.Hc_im, maxctrl_MHz=self.maxctrl_MHz, Pmin=self.Pmin)
             self.dT = self.T/self.nsteps
         else:
@@ -250,6 +251,10 @@ class Quandary:
         if self.spline_order == 0 and len(self.carrier_frequency) == 0:
             self.carrier_frequency = [[0.0] for _ in range(len(self.freq01))]
         if len(self.carrier_frequency) == 0: 
+            # set up the standard Hamiltonian first, if needed
+            if self.standardmodel==True and len(self.Hsys<=0):
+                Ntot = [sum(x) for x in zip(self.Ne, self.Ng)]
+                self.Hsys, self.Hc_re, self.Hc_im = hamiltonians(N=Ntot, freq01=self.freq01, selfkerr=self.selfkerr, crosskerr=self.crosskerr, Jkl=self.Jkl, rotfreq=self.rotfreq, verbose=self.verbose)
             self.carrier_frequency, _ = get_resonances(Ne=self.Ne, Ng=self.Ng, Hsys=self.Hsys, Hc_re=self.Hc_re, Hc_im=self.Hc_im, rotfreq=self.rotfreq, verbose=self.verbose, cw_amp_thres=self.cw_amp_thres, cw_prox_thres=self.cw_prox_thres, stdmodel=self.standardmodel)
 
         if self.verbose: 
@@ -280,7 +285,7 @@ class Quandary:
         self.uT         = uT_org.copy()
 
 
-    def simulate(self, *, pcof0=[], pt0=[], qt0=[], maxcores=-1, datadir="./run_dir", quandary_exec="", cygwinbash="", batchargs=[]):
+    def simulate(self, *, pcof0=[], pt0=[], qt0=[], maxcores=-1, datadir="./run_dir", quandary_exec="", cygwinbash="", mpirun="mpirun -np ", batchargs=[]):
         """ 
         Simulate the quantm dynamics using the current settings. 
 
@@ -308,10 +313,10 @@ class Quandary:
         if len(pt0) > 0 and len(qt0) > 0:
             pcof0 = self.downsample_pulses(pt0=pt0, qt0=qt0)
 
-        return self.__run(pcof0=pcof0, runtype="simulation", overwrite_popt=False, maxcores=maxcores, datadir=datadir, quandary_exec=quandary_exec, cygwinbash=cygwinbash, batchargs=batchargs)
+        return self.__run(pcof0=pcof0, runtype="simulation", overwrite_popt=False, maxcores=maxcores, datadir=datadir, quandary_exec=quandary_exec, cygwinbash=cygwinbash,mpirun=mpirun, batchargs=batchargs)
 
 
-    def optimize(self, *, pcof0=[], pt0=[], qt0=[], maxcores=-1, datadir="./run_dir", quandary_exec="", cygwinbash="", batchargs=[]):
+    def optimize(self, *, pcof0=[], pt0=[], qt0=[], maxcores=-1, datadir="./run_dir", quandary_exec="", cygwinbash="", mpirun="mpirun -np ", batchargs=[]):
         """ 
         Optimize the quantm dynamics using the current settings. 
 
@@ -337,10 +342,10 @@ class Quandary:
         if len(pt0) > 0 and len(qt0) > 0:
             pcof0 = self.downsample_pulses(pt0=pt0, qt0=qt0)
 
-        return self.__run(pcof0=pcof0, runtype="optimization", overwrite_popt=True, maxcores=maxcores, datadir=datadir, quandary_exec=quandary_exec, cygwinbash=cygwinbash, batchargs=batchargs)
+        return self.__run(pcof0=pcof0, runtype="optimization", overwrite_popt=True, maxcores=maxcores, datadir=datadir, quandary_exec=quandary_exec, cygwinbash=cygwinbash, mpirun=mpirun, batchargs=batchargs)
     
 
-    def evalControls(self, *, pcof0=[], points_per_ns=1,datadir="./run_dir", quandary_exec="", cygwinbash=""):
+    def evalControls(self, *, pcof0=[], points_per_ns=1,datadir="./run_dir", quandary_exec="", mpirun="mpirun -np ", cygwinbash=""):
         """
         Evaluate control pulses on a specific sample rate.       
         
@@ -367,7 +372,7 @@ class Quandary:
         os.makedirs(datadir_controls, exist_ok=True)
         runtype = 'evalcontrols'
         configfile_eval= self.__dump(pcof0=pcof0, runtype=runtype, datadir=datadir_controls)
-        err = execute(runtype=runtype, ncores=1, config_filename=configfile_eval, datadir=datadir_controls, quandary_exec=quandary_exec, verbose=False, cygwinbash=cygwinbash)
+        err = execute(runtype=runtype, ncores=1, config_filename=configfile_eval, datadir=datadir_controls, quandary_exec=quandary_exec, verbose=False, mpirun=mpirun, cygwinbash=cygwinbash)
         time, pt, qt, _, _, _, pcof, _, _ = self.get_results(datadir=datadir_controls, ignore_failure=True)
 
         # Save pcof to config.popt
@@ -428,7 +433,7 @@ class Quandary:
         return pcof0
 
 
-    def __run(self, *, pcof0=[], runtype="optimization", overwrite_popt=False, maxcores=-1, datadir="./run_dir", quandary_exec="", cygwinbash="", batchargs=[]):
+    def __run(self, *, pcof0=[], runtype="optimization", overwrite_popt=False, maxcores=-1, datadir="./run_dir", quandary_exec="", cygwinbash="", mpirun="mpirun -np ", batchargs=[]):
         """
         Internal helper function to launch processes to execute the C++ Quandary code:
           1. Writes quandary config files to file system
@@ -442,17 +447,22 @@ class Quandary:
         config_filename = self.__dump(pcof0=pcof0, runtype=runtype, datadir=datadir)
 
         # Set default number of cores to the number of initial conditions, unless otherwise specified. Make sure ncores is an integer divisible of ninit.
-        ncores = self._ninit
+        ncores_init = self._ninit
         if maxcores > -1:
-            ncores = min(self._ninit, maxcores)
+            ncores_init = min(self._ninit, maxcores)
         for i in range(self._ninit, 0, -1):
             if self._ninit % i == 0:  # i is a factor of ninit
-                if i <= ncores:
-                    ncores = i
+                if i <= ncores_init:
+                    ncores_init = i
                     break
+        # Set remaining number of cores for petsc
+        ncores_petsc = 1
+        if maxcores > ncores_init and maxcores % ncores_init == 0:
+            ncores_petsc = int(maxcores / ncores_init)
+        ncores = ncores_init * ncores_petsc
 
         # Execute subprocess to run Quandary
-        err = execute(runtype=runtype, ncores=ncores, config_filename=config_filename, datadir=datadir, quandary_exec=quandary_exec, verbose=self.verbose, cygwinbash=cygwinbash, batchargs=batchargs)
+        err = execute(runtype=runtype, ncores=ncores, config_filename=config_filename, datadir=datadir, quandary_exec=quandary_exec, verbose=self.verbose, cygwinbash=cygwinbash, mpirun=mpirun, batchargs=batchargs)
         if self.verbose:
             print("Quandary data dir: ", datadir, "\n")
 
@@ -1332,7 +1342,7 @@ def timestep_richardson_est(quandary, tol=1e-8, order=2, quandary_exec=""):
     return errs_J, errs_u, dts
 
 
-def execute(*, runtype="simulation", ncores=1, config_filename="config.cfg", datadir=".", quandary_exec="", verbose=False, cygwinbash="", batchargs=[]):
+def execute(*, runtype="simulation", ncores=1, config_filename="config.cfg", datadir=".", quandary_exec="", verbose=False, cygwinbash="", mpirun="mpirun -np ", batchargs=[]):
     """ 
     Helper function to evoke a subprocess that executes Quandary.
 
@@ -1367,8 +1377,8 @@ def execute(*, runtype="simulation", ncores=1, config_filename="config.cfg", dat
         if len(batchargs)>0:
             myrun = batch_run  # currently set to "srun -n"
         else:
-            myrun = "mpirun -np "
-        runcommand = f"{myrun} {ncores} " + runcommand
+            myrun = mpirun
+        runcommand = f"{myrun}{ncores} " + runcommand
     if verbose:
         print("Running Quandary ... ")
 
