@@ -23,7 +23,7 @@ class Quandary:
     Jkl          # Dipole-dipole coupling strength [GHz]. Formated list [J01, J02, ..., J12, J13, ...] Default: 0
     crosskerr    # ZZ coupling strength [GHz]. Formated list [g01, g02, ..., g12, g13, ...] Default: 0
     T1           # Optional: T1-Decay time [ns] per qubit (invokes Lindblad solver). Default: 0
-    T2           # Optional: T2-Dephasing time [ns] per qubit (invokes Lindlbad solver). Default: 0
+    T2           # Optional: T2-Dephasing time [ns] per qubit (invokes Lindblad solver). Default: 0
 
     # Optional: User-defined system and control Hamiltonian operators. Default: Superconducting Hamiltonian model
     Hsys                # Optional: User specified system Hamiltonian model. Array. 
