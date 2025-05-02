@@ -41,7 +41,7 @@ def get_parametrize_values():
     for test_case in TEST_CASES:
         for nproc in test_case.number_of_processes:
             params.append((test_case.simulation_name, nproc))
-            ids.append(f"{test_case.simulation_name}_{nproc}")
+            ids.append(f"{test_case.simulation_name}_nproc_{nproc}")
     return params, ids
 
 
