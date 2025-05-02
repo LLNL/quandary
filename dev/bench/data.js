@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1746226361122,
+  "lastUpdate": 1746227771739,
   "repoUrl": "https://github.com/LLNL/quandary",
   "entries": {
     "Benchmark": [
@@ -439,6 +439,50 @@ window.BENCHMARK_DATA = {
           {
             "name": "test_eval[nlevels_32_32_32_32_nproc_32] - Memory",
             "value": 5039.75,
+            "unit": "MB"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Tara Drwenski",
+            "username": "tdrwenski",
+            "email": "drwenski1@llnl.gov"
+          },
+          "committer": {
+            "name": "Tara Drwenski",
+            "username": "tdrwenski",
+            "email": "drwenski1@llnl.gov"
+          },
+          "id": "50221f58ba868c72546e84981a55e69a518b84ff",
+          "message": "Update test case",
+          "timestamp": "2025-05-02T22:44:41Z",
+          "url": "https://github.com/LLNL/quandary/commit/50221f58ba868c72546e84981a55e69a518b84ff"
+        },
+        "date": 1746227771316,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "test_eval[nlevels_8_8_8_8_nproc_4] - Time",
+            "value": 0.963848136079323,
+            "unit": "seconds",
+            "range": "0.22646198786421834"
+          },
+          {
+            "name": "test_eval[nlevels_8_8_8_8_nproc_4] - Memory",
+            "value": 191.51,
+            "unit": "MB"
+          },
+          {
+            "name": "test_eval[nlevels_32_32_32_32_nproc_32] - Time",
+            "value": 19.549593583802924,
+            "unit": "seconds",
+            "range": "0.11604921548860017"
+          },
+          {
+            "name": "test_eval[nlevels_32_32_32_32_nproc_32] - Memory",
+            "value": 5039.06,
             "unit": "MB"
           }
         ]
