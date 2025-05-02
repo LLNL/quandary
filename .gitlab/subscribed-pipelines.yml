@@ -28,6 +28,7 @@
 generate-job-lists:
   stage: prerequisites
   tags: [shell, oslic]
+  extends: [.not-performance-schedule-rule]
   variables:
     RADIUSS_JOBS_PATH: ".ci-scripts/radiuss-spack-configs/gitlab/radiuss-jobs"
     LOCAL_JOBS_PATH: ".gitlab/jobs"
@@ -82,4 +83,9 @@ lassen-build-and-test:
   needs: [lassen-up-check, generate-job-lists]
   extends: [.build-and-test]
 
-
+# PERFORMANCE
+ruby-performance-test:
+  variables:
+    CI_MACHINE: "ruby"
+  needs: [ruby-up-check]
+  extends: [.performance-test]

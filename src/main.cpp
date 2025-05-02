@@ -469,7 +469,14 @@ int main(int argc,char **argv)
   /* Get memory usage */
   struct rusage r_usage;
   getrusage(RUSAGE_SELF, &r_usage);
-  double myMB = (double)r_usage.ru_maxrss / 1024.0;
+  double myMB;
+  #ifdef __APPLE__
+      // On macOS, ru_maxrss is in bytes
+      myMB = (double)r_usage.ru_maxrss / (1024.0 * 1024.0);
+  #else
+      // On Linux, ru_maxrss is in kilobytes
+      myMB = (double)r_usage.ru_maxrss / 1024.0;
+  #endif
   double globalMB = myMB;
   MPI_Allreduce(&myMB, &globalMB, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 
@@ -479,7 +486,6 @@ int main(int argc,char **argv)
     printf(" Used Time:        %.2f seconds\n", UsedTime);
     printf(" Processors used:  %d\n", mpisize_world);
     printf(" Global Memory:    %.2f MB    [~ %.2f MB per proc]\n", globalMB, globalMB / mpisize_world);
-    printf(" [NOTE: The memory unit is platform dependent. If you run on MacOS, the unit will likely be KB instead of MB.]\n");
     printf("\n");
   }
   // printf("Rank %d: %.2fMB\n", mpirank_world, myMB );
