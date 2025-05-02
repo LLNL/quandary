@@ -392,7 +392,7 @@ For $m=0$, the target state represents the ground state of the system under cons
 
 
 \subsubsection{Arbitrary target state}
-A specific (non-pure) target state $\rho^{target}$ can also be used as a target. For the C++ code, such a target state is read from file. File format: The vectorized density matrix (column-wise vectorization) in the Lindblad case, or the state vector in the Schroedinger case, one real-valued number per row, first list all real parts, then list all imaginary parts (hence either $2N^2$ lines with one real number each, or $2N$ lines with one real number each). The configuration option should be pointing to the file location. For the Python interface, the target state can be passes as a numpy array. 
+A specific (non-pure) target state $\rho^{target}$ can also be used as a target. For the C++ code, such a target state is read from file. File format: The vectorized density matrix (column-wise vectorization) in the Lindblad case, or the state vector in the Schroedinger case, one real-valued number per row, first list all real parts, then list all imaginary parts (hence either $2N^2$ lines with one real number each, or $2N$ lines with one real number each). The configuration option should be pointing to the file location. For the Python interface, the target state can be passed as a numpy array. 
  
 \subsubsection{Gate optimization}
 
