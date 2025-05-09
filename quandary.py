@@ -1516,6 +1516,20 @@ def fidelity_(A,B):
     fid = np.abs(1/ncols*sum[0,0])**2
     return fid
 
+def avg_fidelity_(A,B):
+    A = np.asmatrix(A)
+    B = np.asmatrix(B)
+    if A.shape[0] == 1:
+        A = A.transpose()
+    if B.shape[0] == 1:
+        B = B.transpose()
+    ncols = A.shape[1]
+    sum = 0.0
+    for col in range(ncols):
+        sum += np.abs(A[:,col].conj().transpose() @ B[:,col])**2
+    fid = sum[0,0]/ncols
+    return fid
+
 def infidelity_(A,B):
 	dim = int(np.sqrt(A.size))
 	return 1.0 - np.abs(np.trace(A.conj().transpose() @ B))**2/dim**2
