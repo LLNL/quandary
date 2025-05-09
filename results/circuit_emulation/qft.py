@@ -31,6 +31,7 @@ def get_cycle_operations(circuit, cycle_idx):
 nqubits = 2
 with_guard_level=False			# Switch using one guard level
 constant_rotating_frame=True    # True: Use average qubit frequency as rotating frame. False: Rotating in each qubit frequency individually.
+prefixfolder = "quandary_rundir/"			# Folder where to put all quandary run data
 rand_seed = 34321
 
 # 01 transition frequencies and anharmonicities for all qubits
@@ -56,10 +57,9 @@ T_all = [66.6, 250.0, 500.0, 900.0, 1500.0]  # ns
 # 3-levels single-qubit: ~0.05ns, two-qubit: ~0.015ns
 dT = 0.015 if with_guard_level else 0.15  # ns
 
-# Switch to use Lindblad simulation for forward propagation of concatenated pulses
-lindblad = False
-T1=[80000.0, 85000.0]
-T2=[30000.0, 35000.0]
+# Decoherence times for all qubits (for simulation of concatenated pulses only)
+T1=[80000.0, 85000.0]  #ns
+T2=[30000.0, 35000.0]  #ns
 
 ## Target algorithm: QFT 
 def QFT_gate(nqubits):
@@ -80,30 +80,31 @@ QFT_circuit = compile(QFT_unitary, model=machine_model, optimization_level=3, se
 QFT_unitary = QFT_circuit.get_unitary() # Apparently, this is not exactly the QFT gate anymore! 
 # print("Fidelity of exact gate vs compiled gate: ", fidelity_(QFT_unitary, QFT_circuit.get_unitary()))
 
-# # ## FOR TESTING: A simple circuit
+## FOR TESTING: A simple circuit
 # QFT_circuit = Circuit(nqubits)
 # # QFT_circuit.append_gate(RZGate(), 0, [6.283188424662465])
 # # # # # QFT_circuit.append_gate(RZGate(), 0, [4.7124])
 # QFT_circuit.append_gate(SXGate(), 0 )
-# # # # QFT_circuit.append_gate(SXGate(), 0 )
+# QFT_circuit.append_gate(SXGate(), 0 )
 # # # # QFT_circuit.append_gate(RZGate(), 0, [4.901146114674484e-06])
 # QFT_circuit.append_gate(SXGate(), 1 )
 # # QFT_circuit.append_gate(RZGate(), 1, [3.262])
 # # QFT_circuit.append_gate(CZGate(), (0,1) )
 # # # QFT_circuit.append_gate(CZGate(), (0,1) )
-# # QFT_circuit.append_gate(SXGate(), 1 )
+# QFT_circuit.append_gate(SXGate(), 1 )
 # QFT_circuit.append_gate(CZGate(), (0,1) )
 # QFT_circuit.append_gate(RZGate(), 0, [4.901146114674484e-06])
 # # QFT_circuit.append_gate(CZGate(), (0,1) )
 # QFT_unitary = QFT_circuit.get_unitary()
 
 # Convert to qiskit and draw the circuit
-from bqskit.ext import bqskit_to_qiskit
-from qiskit import QuantumCircuit
-qs = bqskit_to_qiskit(QFT_circuit)
-qs.draw(output="mpl", filename="QFT_mpl.png") # the matplotlib output is in color
-#qs.draw(output="latex", filename="QFT_ltx.png")
-# qs.draw()
+# from bqskit.ext import bqskit_to_qiskit
+# from qiskit import QuantumCircuit
+# # qs = bqskit_to_qiskit(QFT_circuit)
+# qs.draw(output="mpl", filename="QFT_mpl.png") # the matplotlib output is in color
+# # qs.draw(output="latex", filename="QFT_ltx.png")
+# # qs.draw()
+# # stop
 
 # THIS IS THE STORAGE FOR THE CONCATENATED PULSES
 t_concat = [[] for _ in range(nqubits)]
@@ -150,7 +151,7 @@ for cycle_idx in range(QFT_circuit.num_cycles):
 				rand_seed=rand_seed)
 
 			print(" -> Optimizing pulses for operation ", op)
-			datadir = str(op.gate)+str(op.location)+ str(op.params) + "_rundir"
+			datadir = prefixfolder+str(op.gate)+str(op.location)+ str(op.params) + "_rundir"
 			t, pt, qt, infidelity, expectedEnergy, population = quandary_i.optimize(datadir=datadir)
 			# If didn't converge, retry with new random seed
 			if infidelity > 1e-3:
@@ -182,79 +183,97 @@ for cycle_idx in range(QFT_circuit.num_cycles):
 	intermediate_targets.append((U_int, t_int, nsteps_int))
 
 
-# Simulate with the concatenated pulses
-if lindblad:
-	quandary_concat = Quandary(
-	    Ne = [2 for i in range(nqubits)],
-		Ng = [1 if with_guard_level else 0 for _ in range(op.num_qudits)],
-		freq01 = [freq01[i] for i in range(nqubits)],
-		rotfreq =[rotfreq[i] for i in range(nqubits)],
-		selfkerr =[selfkerr[i] for i in range(nqubits)],
-		Jkl = coupling_strength*np.ones(np.sum([i for i in range(nqubits)])), # This only works if no larger than two-qubit gate!
-		T = t_concat[0][-1],
-		T1 = T1,
-		T2 = T2,
-		dT = dT,
-		targetgate = QFT_unitary,
-		spline_order = 0,
-		spline_knot_spacing = dT,
-		control_enforce_BC = True,
-		verbose=False,
-		rand_seed=rand_seed,
-	)
-else:
-	quandary_concat = Quandary(
-	    Ne = [2 for i in range(nqubits)],
-		Ng = [1 if with_guard_level else 0 for _ in range(op.num_qudits)],
-		freq01 = [freq01[i] for i in range(nqubits)],
-		rotfreq =[rotfreq[i] for i in range(nqubits)],
-		selfkerr =[selfkerr[i] for i in range(nqubits)],
-		Jkl = coupling_strength*np.ones(np.sum([i for i in range(nqubits)])), # This only works if no larger than two-qubit gate!
-		T = t_concat[0][-1],
-		dT = dT,
-		targetgate = QFT_unitary,
-		spline_order = 0,
-		spline_knot_spacing = dT,
-		control_enforce_BC = True,
-		verbose=False,
-		rand_seed=rand_seed,
-	)
-
-datadir = "./ConcatenatedGates_rundir"
+# Simulate the concatenated pulses (Schroedinger)
+print("\nSimulate the concatenated pulses...")
+quandary_concat= Quandary(
+    Ne = [2 for i in range(nqubits)],
+	Ng = [1 if with_guard_level else 0 for _ in range(op.num_qudits)],
+	freq01 = [freq01[i] for i in range(nqubits)],
+	rotfreq =[rotfreq[i] for i in range(nqubits)],
+	selfkerr =[selfkerr[i] for i in range(nqubits)],
+	Jkl = coupling_strength*np.ones(np.sum([i for i in range(nqubits)])), # This only works if no larger than two-qubit gate!
+	T = t_concat[0][-1],
+	dT = dT,
+	targetgate = QFT_unitary,
+	spline_order = 0,
+	spline_knot_spacing = dT,
+	control_enforce_BC = True,
+	verbose=False,
+	rand_seed=rand_seed,
+)
+datadir = prefixfolder+"./ConcatenatedGates_rundir"
 t, pt, qt, infidelity, expectedEnergy, population= quandary_concat.simulate(pt0=p_concat, qt0=q_concat, datadir=datadir, maxcores=8)
-print(f"\nFidelity of concatenated pulses: {1.0 - infidelity}")
+# Compute the averaged state fidelity: 
+infidelity = 1.0 - avg_fidelity_(quandary_concat.uT, QFT_unitary)
+print(f"Averaged state fidelity of concatenated pulses (Schroedinger): {1.0 - infidelity}")
 
 # Plot concatenated pulses
 # plot_pulse(quandary_concat.Ne, t_concat[0], p_concat, q_concat)
 
-# Compute intermediate fidelities along the way 
-if not lindblad:
-	fidelities = [1.0]
-	times = [0.0]
-	for i in range(len(intermediate_targets)):
-		# Get intermediate target and time stamp
-		U_int, t_int, nsteps_int = intermediate_targets[i] 
+# ## TEST RECOMPUTE WITH LINDBLAD and T1=T2=0.0. This should give the SAME fidelity as above Schroedinger 
+# print("\nSimulate with Lindblad T1=T2=0.0 for testing...")
+# quandary_concat.T1 = [0.0, 0.0]
+# quandary_concat.T2 = [0.0, 0.0]
+# quandary_concat.initialcondition="diagonal"
+# quandary_concat.update()
+# datadir = prefixfolder+"./ConcatenatedGates_lindblad_rundir"
+# t, pt, qt, infidelity_lind, expectedEnergy, population= quandary_concat.simulate(pt0=p_concat, qt0=q_concat, datadir=datadir, maxcores=4)
+# print(f"Fidelity of concatenated pulses (Lindblad): {1.0 - infidelity_lind}")
+# stop
 
-		# Get intermediate state from quandary
-		U_sim = quandary_concat.uInt[nsteps_int-1]  # Not available for lindblad
-		fid_int = fidelity_(U_int,U_sim)
-		print("Intermediate fidelity at t=", round(t_int,2), ": ", fid_int)
-		times.append(t_int)
-		fidelities.append(fid_int)
+# Compute intermediate fidelities along the way first  
+## First using Schroedinger's eqation (grab the intermediate fidelities):
+print("\nIntermediate averaged state fidelity (Schroedinger):")
+fidelities_schroed = [1.0]
+times = [0.0]
+for i in range(len(intermediate_targets)):
+	U_int, t_int, nsteps_int = intermediate_targets[i] 
+	U_sim = quandary_concat.uInt[nsteps_int-1]  # Not available for lindblad
+	# fid_int_operator = fidelity_(U_int,U_sim)
+	fid_int = avg_fidelity_(U_int, U_sim)
+	# print("Intermediate operator fidelity at t=", round(t_int,2), ": ", fid_int_operator)
+	print("  t=", round(t_int,2), ": ", fid_int)
+	times.append(t_int)
+	fidelities_schroed.append(fid_int)
 
-	# Plot fidelities over time
-	plt.plot(times, fidelities, marker='o', linestyle='-')
-	plt.xlabel("Time (ns)")
-	plt.ylabel("Fidelity")
-	plt.ylim(0,1.05)
-	plt.grid(True)
-	plt.show()
+## Now using Lindblad's solver
+print("\nIntermediate averaged state fidelity (Lindblad):")
+fidelities_lind = [1.0]
+times = [0.0]
+for i in range(len(intermediate_targets)):
+	U_int, t_int, nsteps_int = intermediate_targets[i] 
+	quandary_concat.T1=T1
+	quandary_concat.T2=T2
+	quandary_concat.initialcondition="diagonal"
+	quandary_concat.targetgate= U_int
+	quandary_concat.T = t_int
+	quandary_concat.nsplines = -1 # need to reset this so that update() recomputes it from scratch using spline_knot_spacing and T
+	quandary_concat.update()
+	p_curr = [ [p_concat[iq][nt] for nt in range(nsteps_int)] for iq in range(len(p_concat))]
+	q_curr = [ [q_concat[iq][nt] for nt in range(nsteps_int)] for iq in range(len(q_concat))]
+	t, pt, qt, infidelity, expectedEnergy, population= quandary_concat.simulate(pt0=p_curr, qt0=q_curr, datadir=datadir+"_int"+str(i), maxcores=4)	
+	fid_int = 1.0 - infidelity
+	print("  t=", round(t_int,2), ": ", fid_int)
+	times.append(t_int)
+	fidelities_lind.append(fid_int)
 
+# Plot fidelities over time
+plt.plot(times, fidelities_schroed, marker='o', linestyle='-', label="Schroedinger")
+plt.plot(times, fidelities_lind, marker='o', linestyle='-', label="Lindblad")
+plt.xlabel("Time (ns)")
+plt.ylabel("Averaged State Fidelity")
+plt.ylim(0.5,1.05)
+plt.grid(True)
+plt.legend()
+plt.show()
 
 
 ###########
 # Now now optimize for only 2-qubit gates per cycle:
 ###########
+print("\n#####")
+print("Optimize 2-qubit gates per cycle")
+print("#####\n")
 
 t_concat_2qubit = [[] for _ in range(nqubits)]
 p_concat_2qubit = [[] for _ in range(nqubits)]
@@ -296,7 +315,7 @@ for cycle_idx in range(QFT_circuit.num_cycles):
 		rand_seed=rand_seed)
 
 	print(" -> Optimizing pulses for operation ", op)
-	datadir = "cycleID"+str(cycle_idx)+"_rundir"
+	datadir = prefixfolder+"cycleID"+str(cycle_idx)+"_rundir"
 	t, pt, qt, infidelity, expectedEnergy, population = quandary_i.optimize(datadir=datadir)
 	# If didn't converge, retry with new random seed
 	if infidelity > 1e-3:
@@ -324,74 +343,74 @@ for cycle_idx in range(QFT_circuit.num_cycles):
 		Utar = Utar @ Uprev
 	intermediate_targets_2qubit.append((Utar, t_int, nsteps_int))
 
-# SImulate forward again
-if lindblad:
-	quandary_concat_2qubit = Quandary(
-	    Ne = [2 for i in range(nqubits)],
-		Ng = [1 if with_guard_level else 0 for _ in range(op.num_qudits)],
-		freq01 = [freq01[i] for i in range(nqubits)],
-		rotfreq =[rotfreq[i] for i in range(nqubits)],
-		selfkerr =[selfkerr[i] for i in range(nqubits)],
-		Jkl = coupling_strength*np.ones(np.sum([i for i in range(nqubits)])), # This only works if no larger than two-qubit gate!
-		T = t_concat[0][-1],
-		T1 = T1, 
-		T2 = T2,
-		dT = dT,
-		targetgate = QFT_unitary,
-		spline_order = 0,
-		spline_knot_spacing = dT,
-		control_enforce_BC = True,
-		verbose=False,
-		rand_seed=rand_seed,
-	)
-else:
-	quandary_concat_2qubit = Quandary(
-	    Ne = [2 for i in range(nqubits)],
-		Ng = [1 if with_guard_level else 0 for _ in range(op.num_qudits)],
-		freq01 = [freq01[i] for i in range(nqubits)],
-		rotfreq =[rotfreq[i] for i in range(nqubits)],
-		selfkerr =[selfkerr[i] for i in range(nqubits)],
-		Jkl = coupling_strength*np.ones(np.sum([i for i in range(nqubits)])), # This only works if no larger than two-qubit gate!
-		T = t_concat[0][-1],
-		dT = dT,
-		targetgate = QFT_unitary,
-		spline_order = 0,
-		spline_knot_spacing = dT,
-		control_enforce_BC = True,
-		verbose=False,
-		rand_seed=rand_seed,
-	)
-datadir = "./ConcatenatedGates_rundir"
+# Simulate the concatenated pulses (Schroedinger)
+quandary_concat_2qubit = Quandary(
+    Ne = [2 for i in range(nqubits)],
+	Ng = [1 if with_guard_level else 0 for _ in range(op.num_qudits)],
+	freq01 = [freq01[i] for i in range(nqubits)],
+	rotfreq =[rotfreq[i] for i in range(nqubits)],
+	selfkerr =[selfkerr[i] for i in range(nqubits)],
+	Jkl = coupling_strength*np.ones(np.sum([i for i in range(nqubits)])), # This only works if no larger than two-qubit gate!
+	T = t_concat[0][-1],
+	dT = dT,
+	targetgate = QFT_unitary,
+	spline_order = 0,
+	spline_knot_spacing = dT,
+	control_enforce_BC = True,
+	verbose=False,
+	rand_seed=rand_seed,
+)
+datadir = prefixfolder+"./ConcatenatedGates_rundir"
 t, pt, qt, infidelity, expectedEnergy, population= quandary_concat_2qubit.simulate(pt0=p_concat_2qubit, qt0=q_concat_2qubit, datadir=datadir, maxcores=8)
-print(f"\nFidelity of concatenated pulses (unitary): {1.0 - infidelity}")
+print(f"\nAveraged state fidelity of concatenated pulses (Schroedinger): {1.0 - infidelity}")
 
 # Plot concatenated pulses
 # plot_pulse(quandary_concat.Ne, t_concat[0], p_concat, q_concat)
 
-if not lindblad:
-	# Compute intermediate fidelities along the way
-	fidelities_2qubit = [1.0]
-	times_2qubit = [0.0]
-	for i in range(len(intermediate_targets_2qubit)):
-		# Get intermediate target and time stamp
-		U_int, t_int, nsteps_int = intermediate_targets_2qubit[i] 
+# Compute intermediate fidelities along the way
+## First using Schroedinger's eqation (grab the intermediate fidelities):
+print("\nIntermediate averaged state fidelity (Schroedinger):")
+fidelities_2qubit_schroed = [1.0]
+times_2qubit = [0.0]
+for i in range(len(intermediate_targets_2qubit)):
+	U_int, t_int, nsteps_int = intermediate_targets_2qubit[i] 
+	U_sim = quandary_concat_2qubit.uInt[nsteps_int-1]
+	# fid_int = fidelity_(U_int,U_sim)
+	fid_int = avg_fidelity_(U_int, U_sim)
+	print("  t=", round(t_int,2), ": ", fid_int)
+	times_2qubit.append(t_int)
+	fidelities_2qubit_schroed.append(fid_int)
 
-		# Get intermediate state from quandary
-		U_sim = quandary_concat_2qubit.uInt[nsteps_int-1]
-		fid_int = fidelity_(U_int,U_sim)
-		print("Intermediate fidelity at t=", round(t_int,2), ": ", fid_int)
-		times_2qubit.append(t_int)
-		fidelities_2qubit.append(fid_int)
+## Now using Lindblad's solver
+print("\nIntermediate averaged state fidelity (Lindblad):")
+fidelities_2qubit_lind = [1.0]
+times_2qubit = [0.0]
+for i in range(len(intermediate_targets_2qubit)):
+	U_int, t_int, nsteps_int = intermediate_targets_2qubit[i] 
+	quandary_concat_2qubit.T1=T1
+	quandary_concat_2qubit.T2=T2
+	quandary_concat_2qubit.initialcondition="diagonal"
+	quandary_concat_2qubit.targetgate= U_int
+	quandary_concat_2qubit.T = t_int
+	quandary_concat_2qubit.nsplines = -1 # need to reset this so that update() recomputes it from scratch using spline_knot_spacing and T
+	quandary_concat_2qubit.update()
+	p_curr = [ [p_concat_2qubit[iq][nt] for nt in range(nsteps_int)] for iq in range(len(p_concat_2qubit))]
+	q_curr = [ [q_concat_2qubit[iq][nt] for nt in range(nsteps_int)] for iq in range(len(q_concat_2qubit))]
+	t, pt, qt, infidelity, expectedEnergy, population= quandary_concat_2qubit.simulate(pt0=p_curr, qt0=q_curr, datadir=datadir+"_int"+str(i), maxcores=4)	
+	fid_int = 1.0 - infidelity
+	print("  t=", round(t_int,2), ": ", fid_int)
+	times_2qubit.append(t_int)
+	fidelities_2qubit_lind.append(fid_int)
 
-	# Plot fidelities over time
-	plt.plot(times_2qubit, fidelities_2qubit, marker='o', linestyle='-')
-	plt.xlabel("Time (ns)")
-	plt.ylabel("Fidelity")
-	plt.ylim(0,1.05)
-	plt.grid(True)
-	plt.show()
-
-
+# Plot fidelities over time
+plt.plot(times_2qubit, fidelities_2qubit_schroed, marker='o', linestyle='-', label="Schroedinger")
+plt.plot(times_2qubit, fidelities_2qubit_lind, marker='o', linestyle='-', label="Lindblad")
+plt.xlabel("Time (ns)")
+plt.ylabel("Averaged State Fidelity")
+plt.ylim(0.5,1.05)
+plt.grid(True)
+plt.legend()
+plt.show()
 
 
 ######################
