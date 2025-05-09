@@ -471,7 +471,7 @@ class Quandary:
         # Get results from quandary output files
         if not err:
             # Get results form quandary's output folder and store some
-            time, pt, qt, uT, expectedEnergy, population, popt, infidelity, optim_hist = self.get_results(datadir=datadir)
+            time, pt, qt, uT, expectedEnergy, population, popt, infidelity, optim_hist = self.get_results(datadir=datadir, ignore_failure=True)
             if (overwrite_popt):
                 self.popt = popt[:]
             self.optim_hist = optim_hist
