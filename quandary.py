@@ -1535,12 +1535,8 @@ def infidelity_(A,B):
 	return 1.0 - np.abs(np.trace(A.conj().transpose() @ B))**2/dim**2
 
 
-def append_pulse(pulse_location, pulse_dict, dT, t_global, p_global, q_global):
+def append_pulse(pulse_location, timesteps, p_pulse, q_pulse, dT, t_global, p_global, q_global):
     num_qubits = len(pulse_location)
-
-    timesteps = pulse_dict["times"]
-    p_pulse   = pulse_dict["p_pulse"]
-    q_pulse   = pulse_dict["q_pulse"]
 
     # NO synching, since we optimize for identity gates and there should never be synching needed. TODO: Test that here. 
 	# # Synchronize when a multi-qubit gate occures. Here, inserting zero drive for idling qubits.
@@ -1574,3 +1570,124 @@ def synch_zero_padding(pulse_location, dT, t_global, p_global, q_global):
                 t_global[iqubit].append(tmax_all[iqubit] + m*dT)
                 p_global[iqubit].append(0.0)
                 q_global[iqubit].append(0.0)
+# -----------------------------------------------------------------
+# helper: build the triangular J‑vector in Quandary’s expected order
+# Jkl = [J(0,1), J(0,2), … , J(1,2), J(1,3), …]
+# -----------------------------------------------------------------
+import itertools as it
+def triangular_J(machine_model, qubits):
+    """
+    Args
+    ----
+    machine_model : MachineModel
+    qubits        : Sequence[int]   (indices in the global device)
+
+    Returns
+    -------
+    list[float]    length = n*(n‑1)//2, zeros for nonexistent couplings
+    """
+    Jvec = []
+    for q1, q2 in it.combinations(qubits, 2):
+        J = machine_model.J(q1, q2)
+        Jvec.append(0.0 if J is None else J)
+    return Jvec
+
+
+
+def QuandaryOptimize(operation, gate, machine_model, duration, dT, maxctrl_MHz, with_guard_level, rotfreq_const, prefixfolder, rand_seed):
+
+    # Set up a Quandary instance to optimize for this gate
+    qubits = list(operation.location) 
+    freq01_list  = [machine_model.freq01(q)         for q in qubits]
+    anharm_list  = [machine_model.anharmonicity(q)  for q in qubits]
+    Jkl_list     = triangular_J(machine_model, qubits)
+    rotfreq_list = rotfreq_const*np.ones(len(freq01_list))
+    spline_order = 2   # 2nd order Bspline parameterization
+    spline_knot_spacing = 3.0  # ns. Maybe 8.25 if op.num_qudits==1 
+    gate = gate
+    quandary_i = Quandary(
+		Ne = [operation.radixes[i] for i in range(operation.num_qudits)],
+		Ng = [1 if with_guard_level else 0 for _ in range(operation.num_qudits)], 
+		freq01 = freq01_list,
+		rotfreq=rotfreq_list,
+		selfkerr=anharm_list,
+		Jkl = Jkl_list,
+		T = duration, 
+		targetgate=gate, 
+		dT = dT, 
+		maxctrl_MHz=maxctrl_MHz,
+		control_enforce_BC=True,
+		spline_order=spline_order,
+		spline_knot_spacing=spline_knot_spacing, 
+		verbose=False, 
+		rand_seed=rand_seed)
+    
+    # Optimize
+    print(" -> Optimizing pulses for operation ", operation)
+    datadir = prefixfolder+str(operation.gate)+str(operation.location)+ str(operation.params) + "_rundir"
+    t, pt, qt, infidelity, expectedEnergy, population = quandary_i.optimize(datadir=datadir)
+    
+    # If didn't converge, retry with new random seed
+    if infidelity > 1e-3:
+        quandary_i.rand_seed = quandary_i.rand_seed+34234
+        t, pt, qt, infidelity, expectedEnergy, population = quandary_i.optimize(datadir=datadir)
+        if infidelity > 1e-3:
+            print("\nQuandary did not converge. CHECK LOGS in", datadir, "\n")
+            stop
+
+    return t, pt, qt
+
+
+def QuandarySimulate(tstop, pt0, qt0, targetgate, machine_model, dT, with_guard_level, rotfreq_const, prefixfolder, maxcores=8):
+    nqubits = len(pt0)
+
+    # Check if lindblad model
+    lindbladsolver = False
+    for q in range(nqubits):
+        # print(" Machi model T1", machine_model.T1(q))
+        if machine_model.T1(q) is not None:
+            # print("HEYHO\n")
+            lindbladsolver = True
+            break
+
+    T1 = []
+    T2 = []
+    initialcondition="basis"
+    if lindbladsolver:
+        T1 = [machine_model.T1(q) if machine_model.T1(q) is not None else 0.0 for q in range(nqubits)]
+        T2 = [machine_model.T2(q) if machine_model.T2(q) is not None else 0.0 for q in range(nqubits)]
+        initialcondition="diagonal"
+
+    qubits = list(range(nqubits)) 
+    freq01_list  = [machine_model.freq01(q)         for q in qubits]
+    anharm_list  = [machine_model.anharmonicity(q)  for q in qubits]
+    Jkl_list     = triangular_J(machine_model, qubits)
+    rotfreq_list = rotfreq_const*np.ones(len(freq01_list))
+    spline_order = 0   # Simulate with piecewise constant segments
+    spline_knot_spacing = dT 
+    quandary_concat= Quandary(
+        Ne = [2 for i in range(nqubits)],
+    	Ng = [1 if with_guard_level else 0 for _ in range(nqubits)],
+    	freq01=freq01_list,
+    	selfkerr=anharm_list,
+    	Jkl=Jkl_list,
+    	rotfreq=rotfreq_list,
+    	T = tstop,
+    	dT = dT,
+        T1 = T1, 
+        T2 = T2,
+        initialcondition=initialcondition,
+    	targetgate = targetgate,
+    	spline_order = spline_order,
+    	spline_knot_spacing = spline_knot_spacing,
+    	control_enforce_BC = True,
+    	verbose=False
+    )
+    datadir = prefixfolder+"./ConcatenatedGates_rundir"
+    t, pt, qt, infidelity, expect, _ = quandary_concat.simulate(pt0=pt0, qt0=qt0, datadir=datadir, maxcores=8)
+
+    # Compute the averaged state infidelity: 
+    if not lindbladsolver:
+        infidelity = 1.0 - avg_fidelity_(quandary_concat.uT, targetgate)
+
+    return infidelity, quandary_concat.uInt
