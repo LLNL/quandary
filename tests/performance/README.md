@@ -40,5 +40,5 @@ For more options, see pytest-benchmark [documentation](https://pytest-benchmark.
 1. Create a config file in the `configs` directory, e.g., `tests/performance/configs/newSimulation.cfg`
 2. Add new entry to test_cases.json:
     - The `simulation_name` should be the new simulation name, e.g. `newSimulation`.
-    - The `number_of_processes` is an array of integers. For each integer `i`, a simulation will be run with `mpirun -n ${i}` and the `files_to_compare` will be validated.
+    - The `number_of_processes` is an array of integers. For each integer `i`, a simulation will be run with `mpirun -n ${i}`.
     - The `repititions` is the number of times to run this test and to average the timings over.
