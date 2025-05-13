@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1747096838373,
+  "lastUpdate": 1747152934851,
   "repoUrl": "https://github.com/LLNL/quandary",
   "entries": {
     "Benchmark": [
@@ -43,6 +43,50 @@ window.BENCHMARK_DATA = {
           {
             "name": "test_eval[nlevels_32_32_32_32_nproc_32] - Memory",
             "value": 5039.05,
+            "unit": "MB"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Tara Drwenski",
+            "username": "tdrwenski",
+            "email": "drwenski1@llnl.gov"
+          },
+          "committer": {
+            "name": "Tara Drwenski",
+            "username": "tdrwenski",
+            "email": "drwenski1@llnl.gov"
+          },
+          "id": "1baa0cdcfd6a9894a2a405bffc1ed4dfc37d7ba3",
+          "message": "Make performance tests run in stage perf-test after regression tests and remove weekly schedule",
+          "timestamp": "2025-05-13T00:08:20Z",
+          "url": "https://github.com/LLNL/quandary/commit/1baa0cdcfd6a9894a2a405bffc1ed4dfc37d7ba3"
+        },
+        "date": 1747152934274,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "test_eval[nlevels_4_4_4_4_nproc_2] - Time",
+            "value": 1.0806918966300874,
+            "unit": "seconds",
+            "range": "0.14390332632612238"
+          },
+          {
+            "name": "test_eval[nlevels_4_4_4_4_nproc_2] - Memory",
+            "value": 90.44,
+            "unit": "MB"
+          },
+          {
+            "name": "test_eval[nlevels_32_32_32_32_nproc_32] - Time",
+            "value": 19.573205866399803,
+            "unit": "seconds",
+            "range": "0.0773973100264002"
+          },
+          {
+            "name": "test_eval[nlevels_32_32_32_32_nproc_32] - Memory",
+            "value": 5039.89,
             "unit": "MB"
           }
         ]
