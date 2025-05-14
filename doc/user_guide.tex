@@ -131,7 +131,7 @@ implementation and usage in Quandary. We also refer to our publications \cite{gu
 
 \section{Model equation}\label{sec:model}
 Quandary models composite quantum systems consisting of $Q$ subsystems, with $n_k$ energy levels for the
-$k$-th subsystem, $k=0,\dots,Q-1$. The Hilberspace dimension is hence the product of each subsystem dimensions: $N = \prod_{k=0}^{Q-1} n_k$. 
+$k$-th subsystem, $k=0,\dots,Q-1$. The Hilbert space dimension is hence the product of each subsystem dimensions: $N = \prod_{k=0}^{Q-1} n_k$. 
 
 The default system Hamiltonian model for the composite system is
 \begin{align}
@@ -173,7 +173,7 @@ For a \textbf{closed quantum system} (no environmental interactions), the quantu
   \dot \psi(t)  = -i H(t) \psi(t), \quad \text{with} \quad  H(t) := H_d + H_c(t).
 \end{align}
 
-\textbf{Open quantum systems} take interactions with the environment into account, allowing to model decoherence and noise in the system. In that case, the state of the quantum system is described by its density matrix $\rho\in \C^{N\times N}$, and the time-evolution is modelled by \textbf{Lindblad's master equation}:
+\textbf{Open quantum systems} take interactions with the environment into account, allowing us to model decoherence and noise in the system. In that case, the state of the quantum system is described by its density matrix $\rho\in \C^{N\times N}$, and the time-evolution is modelled by \textbf{Lindblad's master equation}:
 \begin{align}\label{mastereq}
   \dot \rho(t) = &-i(H(t)\rho(t) - \rho(t)H(t)) + \Ell(\rho(t)),
 \end{align}
@@ -212,7 +212,7 @@ where $\eta_{kl} := \omega_k^{r} - \omega_l^{r}$ are the differences in rotation
 
 Note that the eigenvalues of the rotating frame Hamiltonian become significantly smaller in magnitude by choosing $\omega_k^r \approx \omega_k$ (so that the first term with $a_k^\dagger a_k$ drops out). This slows down the time variation of the state evolution, hence bigger time-step sizes can be chosen when solving the master equation numerically. We remark that the rotating wave approximation ignores terms in the control Hamiltonian that oscillate with frequencies $\pm 2\omega_k^r$. Below, we drop the tildes on $\tilde H_d$ and $\tilde H_c$ and use the rotating frame definition of the Hamiltonians to model the system evolution in time. 
 
-Using the rotating wave approximatino, the real-valued laboratory frame control functions are written as 
+Using the rotating wave approximation, the real-valued laboratory frame control functions are written as 
 \begin{align}
   f^k(\vec{\alpha}^k,t) = 2\mbox{Re}\left(d^k(\vec{\alpha}^k,t)e^{i\omega_k^r t}\right), \quad d^k(\vec{\alpha}^k,t) = p^k(\vec{\alpha}^k,t) + i q^k(\vec{\alpha}^k,t)
 \end{align}
@@ -227,21 +227,21 @@ The time-dependent rotating-frame control functions $d^k(\vec{\alpha}^k,t)$ are 
 By default, the basis functions are piecewise quadratic (2nd order) B-spline polynomials, centered on an equally spaced grid in time. To instead use a piecewise constant (0th order) B-spline basis, see Section~\ref{subsec:bspline-0}.
 The amplitudes $\alpha_{s,f}^{k(1)}, \alpha_{s,f}^{k(2)} \in \R$ are the control
 parameters (\textit{design} variables) that Quandary can optimize in order to realize a
-desired system behavior, giving a total number of $2\sum_kN_s^kN_f^k$ real-valued optimization variables. (Note that the number of carrier wave frequencies $N_f^k$ as well as the number of spline basis functions $N_s^k$ can be different for each subsystem $k$.) $\Omega_k^f \in \R$ denote the carrier wave frequencies in the rotating frame which can be choosen to trigger certain system frequencies. The corresponding Lab-frame carrier frequencies become $\omega_k^r + \Omega_k^f$. Those frequencies can be chosen to match the transition frequencies in the lab-frame system Hamiltonian. For example, when $\xi_{kl} << \xi_k$, the transition frequencies satisfy $\omega_k - n\xi_k$. Thus by choosing $\Omega_k^f = \omega_k-\omega_k^r - n \xi_k$, one triggers transition between energy levels $n$ and $n+1$ in subsystem $k$. Choosing effective carrier wave frequencies is quite important for optimization performance. We recommend to have a look at \cite{petersson2021optimal} for details on how to choose them.
+desired system behavior, giving a total number of $2\sum_k N_s^k N_f^k$ real-valued optimization variables. (Note that the number of carrier wave frequencies $N_f^k$ as well as the number of spline basis functions $N_s^k$ can be different for each subsystem $k$.) $\Omega_k^f \in \R$ denote the carrier wave frequencies in the rotating frame which can be chosen to trigger certain system frequencies. The corresponding Lab-frame carrier frequencies become $\omega_k^r + \Omega_k^f$. Those frequencies can be chosen to match the transition frequencies in the lab-frame system Hamiltonian. For example, when $\xi_{kl} << \xi_k$, the transition frequencies satisfy $\omega_k - n\xi_k$. Thus by choosing $\Omega_k^f = \omega_k-\omega_k^r - n \xi_k$, one triggers transition between energy levels $n$ and $n+1$ in subsystem $k$. Choosing effective carrier wave frequencies is quite important for optimization performance. We recommend to have a look at \cite{petersson2021optimal} for details on how to choose them.
 
 Using trigonometric identities, the real and imaginary part of the rotating-frame control $d^k(\vec{\alpha}^k,t) = p^k(\vec{\alpha}^k,t) + iq^k(\vec{\alpha}^k,t)$ are given by
 \begin{align}
-  p^k(\vec{\alpha}^k,t) &= \sum_{f=1}^{N_f^k} \sum_{s=1}^{N_s} B_s(t)
+  p^k(\vec{\alpha}^k,t) &= \sum_{f=1}^{N_f^k} \sum_{s=1}^{N_s^k} B_s(t)
   \left(\alpha^{k
-  (1)}_{s,f} \cos(\Omega_f^k t) - \alpha^{k (2)}_{lsf} \sin(\Omega_f^k t)
+  (1)}_{s,f} \cos(\Omega_f^k t) - \alpha^{k (2)}_{s,f} \sin(\Omega_f^k t)
   \right) \\
-  q^k(\vec{\alpha}^k,t) &= \sum_{f=1}^{N_f^k} \sum_{s=1}^{N_s} B_s(t)\left( \alpha^{k
+  q^k(\vec{\alpha}^k,t) &= \sum_{f=1}^{N_f^k} \sum_{s=1}^{N_s^k} B_s(t)\left( \alpha^{k
   (1)}_{s,f} \sin(\Omega_f^k t) + \alpha^{k (2)}_{s,f} \cos(\Omega_f^k t)
   \right)
 \end{align}
 Those relate to the Lab-frame control $f^k(\vec{\alpha}^k,t)$ through
 \begin{align}
-  f^k(t) &=  2\sum_{f=1}^{N_f^k} \sum_{s=1}^{N_s} B_s(t) \left(\alpha_{s,f}^{k(1)} \cos((\omega_k^{r} + \Omega_f^k) t) - \alpha_{s,f}^{k(2)}\sin((\omega_k^{r} + \Omega_f^k) t) \right) \\
+  f^k(t) &=  2\sum_{f=1}^{N_f^k} \sum_{s=1}^{N_s^k} B_s(t) \left(\alpha_{s,f}^{k(1)} \cos((\omega_k^{r} + \Omega_f^k) t) - \alpha_{s,f}^{k(2)}\sin((\omega_k^{r} + \Omega_f^k) t) \right) \\
          &= 2 p^k(\vec{\alpha}^k, t) \cos(\omega_k^{r} t) - 2 q^k(\vec{\alpha}^k,
          t)\sin(\omega_k^{r} t) \\
          &= 2\mbox{Re}\left( d^k(\vec{\alpha}^k,t)e^{i\omega_k^r t} \right)
@@ -250,10 +250,10 @@ Those relate to the Lab-frame control $f^k(\vec{\alpha}^k,t)$ through
 \subsubsection{Storage of the control parameters}
 
 The control parameters $\bs{\alpha}$ are stored in the Quandary code in the following order: List oscillators first $(\vec{\alpha}^0, \dots, \vec{\alpha}^{Q-1})$, then for each $\vec{\alpha}^k \in
-\R^{2N_sN_f^k}$, iterate over all carrierwaves $\vec{\alpha}^k =
-(\alpha^k_1,\dots, \alpha^k_{N_f})$ with $\alpha^k_f \in \R^{2N_s^k}$, then each
+\R^{2 N_s^k N_f^k}$, iterate over all carrierwaves $\vec{\alpha}^k =
+(\alpha^k_1,\dots, \alpha^k_{N_f})$ with $\alpha^k_f \in \R^{2 N_s^k}$, then each
 $\alpha^k_f$ iterates over spline basis functions listing first all real then all imaginary 
-components: $\alpha^k_f = \alpha^{k(1)}_{1,f}, \dots, \alpha^{k(1)}_{N_s^k,f}, \alpha^{k(2)}_{1,f}, \dots, \alpha^{k(2)}_{N_s^k,f}$. Hence there are a total of $2\sum_k N_s^kN_f^k$ real-valued optimization parameters, which are stored in the following order:
+components: $\alpha^k_f = \alpha^{k(1)}_{1,f}, \dots, \alpha^{k(1)}_{N_s^k,f}, \alpha^{k(2)}_{1,f}, \dots, \alpha^{k(2)}_{N_s^k,f}$. Hence there are a total of $2\sum_k N_s^k N_f^k$ real-valued optimization parameters, which are stored in the following order:
   \begin{align}
     \boldsymbol{\alpha} &:= \left( \vec{\alpha}^0, \dots, \vec{\alpha}^{Q-1} \right), \in
     \mathds{R}^{2\sum_k N_s^k N_f^k} \quad \text{where}\\
@@ -262,7 +262,7 @@ components: $\alpha^k_f = \alpha^{k(1)}_{1,f}, \dots, \alpha^{k(1)}_{N_s^k,f}, \
   \end{align}
   iterating over $Q$ subsystems first, then $N_f^k$ carrier wave frequencies, then $N_s^k$ splines, listing first all real parts then all imaginary parts. To access an element $\alpha_{s,f}^{k(i)}$, $i=0,1$, from storage $\bfa$:
   \begin{align}
-    \alpha_{s,f}^{k(i)} = \bfa[ \left(\sum_{j=0}^{k-1} 2N_s^jN_f^j\right) + f*2N_s^k + s + i*N_s ],
+    \alpha_{s,f}^{k(i)} = \bfa \left[ \left(\sum_{j=0}^{k-1} 2 N_s^j N_f^j\right) + f*2 N_s^k + s + i*N_s^k N_f^k \right],
   \end{align}
   \textit{Note: this ordering of the controls is compatible with the order of control parameters in the Juqbox.jl software \cite{petersson2021optimal}.}
 
@@ -296,20 +296,20 @@ A piecewise continuous envelope function can be generated by using zeroth order 
 \begin{verbatim} 
   control_segments0 = spline0, 50
 \end{verbatim}
-When optimizing with zeroth order B-spline control functions, strong variations between consequtive control amplitudes can be avoided by enabling the total variation penalty term through the command
+When optimizing with zeroth order B-spline control functions, strong variations between consecutive control amplitudes can be avoided by enabling the total variation penalty term through the command
 \begin{verbatim} 
   optim_penalty_variation= 1.0
 \end{verbatim}
 Compare Section \ref{sec:penalty}.
 
 
-\subsection{Interfacing to Python environemnt}
-You can use the Python interface for Quandary to simulate and optimize from within a python environment (version $\geq$ 3). It eases the use of Quandary, and adds some additional functionality, such as automatic computation of the required number of time steps, automatic choice of the carrier frequencies, and it allows for custom Hamiltonian models to be used (system and control Hamiltonian operators $H_d$ and $H_c$). A good place to start is to have a look into the example \texttt{example\_swap02.py}. This test case optimizes for a 3-level SWAP02 gate that swaps the state of the zero and the second energy level of a 3-level qudit. 
+\subsection{Interfacing to Python environment}
+You can use the Python interface for Quandary to simulate and optimize from within a python environment (version $\geq$ 3). It eases the use of Quandary, and adds some additional functionality, such as automatic computation of the required number of time-steps, automatic choice of the carrier frequencies, and it allows for custom Hamiltonian models to be used (system and control Hamiltonian operators $H_d$ and $H_c$). A good place to start is to have a look into the example \texttt{example\_swap02.py}. This test case optimizes for a 3-level SWAP02 gate that swaps the state of the zero and the second energy level of a 3-level qudit. 
 
 All interface functions are defined in \texttt{quandary.py}, which should be imported at the beginning of the script. Hence, you should either have this file in your working directory, or append your python path with the location of that file.
-Most importantly, the pythoninterface defines the \texttt{Quandary} dataclass that gathers all configuration options and sets defaults. Default values are overwritten by user input either through the constructor call through \texttt{Quandary(<membervar>=<value>)} directly, or by accessing the member variables after construction and calling \texttt{config.update()} afterwards (compare \texttt{example\_swap02.py}). 
+Most importantly, the python interface defines the \texttt{Quandary} Dataclass that gathers all configuration options and sets defaults. Default values are overwritten by user input either through the constructor call through \texttt{Quandary(<membervar>=<value>)} directly, or by accessing the member variables after construction and calling \texttt{config.update()} afterwards (compare \texttt{example\_swap02.py}). 
 
-After setting up the configuration, you can evoke simulations or optimizations with \texttt{quandary.simulate/optimize()}. Check out \texttt{help(Quandary)} to see all available user functions. Under the hood, those function writes the required Quandary configuration files (\texttt{config.cfg}, etc.) to a data directory, then evokes (multiple) subprocesses to execute parallel C++ Quandary on that configuration file through the shell, and then loads the results from Quandary's output files back into the python interpreter. Plotting scripts are also provided, see the example scripts.
+After setting up the configuration, you can evoke simulations or optimizations with \texttt{quandary.\-simulate/\-optimize()}. Check out \texttt{help(Quandary)} to see all available user functions. Under the hood, those function writes the required Quandary configuration files (\texttt{config.cfg}, etc.) to a data directory, then evokes (multiple) subprocesses to execute parallel C++ Quandary on that configuration file through the shell, and then loads the results from Quandary's output files back into the python interpreter. Plotting scripts are also provided, see the example scripts.
 
 In addition to the standard Hamiltonian models as described in Section \ref{sec:model}, the python interface allows for user-defined Hamiltonian operators $H_d$ and $H_c$. Those are provided to Quandary through optional arguments to the python interface configuration \texttt{QuandaryConfig}. If those user-defined Hamiltonians are given, Quandary replaces the Hamiltonian operators in \eqref{eq:Hd_rotating} (system Hamiltonian) and \eqref{eq:Hc_rotating} (control Hamiltonian operators $a\pm a'$) by the provided matrices.
 \begin{itemize}
@@ -341,15 +341,15 @@ As a measure of optimization success, Quandary reports on the fidelity computed 
     \left|\frac{1}{n_{init}} \sum_{i=1}^{n_{init}} (\psi^{target}_i)^\dagger \psi_i(T) \right|^2 & \text{if Schroedinger}
   \end{cases}
 \end{align}
-The fidelity is an average of Hilbert-Schmidt overlaps of the target states and the evolved states: for the density matrix, the Hilbert-Schmidt overlap is $\langle \rho^{target}, \rho(t)\rangle = \mbox{Tr}\left(\left(\rho^{target}\right)^\dagger\rho(T)\right)$, which is \textit{real} if both states are density matrices (which is always the case in Quandary, see definition of basis matrices). For the state vector (and Schroedingers solver), the Hilbert-Schmidt overlap is $\langle \psi^{target}, \psi(T)\rangle = (\psi^{target})^{\dagger}\psi $, which is complex. Note that in the fidelity above (and also in the corresponding objective function $J_{trace}$, the absolute value is taken \textit{outside} of the sum, hence relative phases are taken into account. 
+The fidelity is an average of Hilbert-Schmidt overlaps of the target states and the evolved states: for the density matrix, the Hilbert-Schmidt overlap is $\langle \rho^{target}, \rho(t)\rangle = \mbox{Tr}\left(\left(\rho^{target}\right)^\dagger\rho(T)\right)$, which is \textit{real} if both states are density matrices (which is always the case in Quandary, see definition of basis matrices). For the state vector (and the Schroedinger solver), the Hilbert-Schmidt overlap is $\langle \psi^{target}, \psi(T)\rangle = (\psi^{target})^{\dagger}\psi $, which is complex. Note that in the fidelity above (and also in the corresponding objective function $J_{trace}$, the absolute value is taken \textit{outside} of the sum, hence relative phases are taken into account. 
 
-Further note that this fidelity is averaged over the chosen initial conditions, so the user should be careful how to interpret this number. E.g. if one optimizes for a logical gate while choosing the three initial condition as in Section \ref{subsec:threeinitcond}, the fidelity that is reported during optimization will be averaged over those three initial states, which is not sufficient to estimate the actual average fidelity over the entire space of potential intial states. It is advised to recompute the average fidelity \textbf{after} optimization has finished by propagating all basis states $B_{kj}$ to final time $T$ using the optimized control parameter, or by propagating only $N+1$ initial states to get an estimate thereof.
+Further note that this fidelity is averaged over the chosen initial conditions, so the user should be careful how to interpret this number. E.g. if one optimizes for a logical gate while choosing the three initial condition as in Section \ref{subsec:threeinitcond}, the fidelity that is reported during optimization will be averaged over those three initial states, which is not sufficient to estimate the actual average fidelity over the entire space of potential initial states. It is advised to recompute the average fidelity \textbf{after} optimization has finished by propagating all basis states $B_{kj}$ to final time $T$ using the optimized control parameter, or by propagating only $N+1$ initial states to get an estimate thereof.
 
 
 \subsection{Objective function}\label{sec:objectivefunctionals}
 The following objective functions can be used for optimization in Quandary (config option \texttt{optim\_objective}):
 \begin{align}
- J_{frobenius} &= \sum_{i=1}^{n_{init}} \frac{\beta_i}{2} \left\| \rho^{target}_i - \rho_i(T)\right\|^2_F \\ 
+ J_{Frobenius} &= \sum_{i=1}^{n_{init}} \frac{\beta_i}{2} \left\| \rho^{target}_i - \rho_i(T)\right\|^2_F \\ 
  J_{trace} &= 
 \begin{cases} 
  1 - \sum_{i=1}^{n_{init}} \frac{\beta_i}{w_i} \mbox{Tr}\left((\rho^{target}_i)^\dagger\rho_i(T)\right) & \text{if Lindblad}\\
@@ -358,9 +358,9 @@ The following objective functions can be used for optimization in Quandary (conf
  J_{measure} &= \sum_{i=1}^{n_{init}} \beta_i \mbox{Tr} \left( N_m \rho(T) \right) \label{eq:Jmeasure} 
 \end{align}
 Here, $\beta_i$ denote weights with $\sum_{i=1}^{n_{init}} \beta _i = 1$ that can be used to scale the contribution of each initial/target state $i$ (default $\beta_i = 1/n_{init}$). 
-$J_{Frobenius}$ measures (weighted average of) the frobenius norm between target and final states. $J_{Trace}$ measures the (weighted) infidelity in terms of the Hilbert-Schmidt overlap, compare the definition of fidelity in eq. \eqref{eq:fidelity}. Here, $w_i = \mbox{Tr}\left(\rho_i(0)^2\right)$ is the purity of the initial state. Both those measures are common for optimization towards a unitary gate transformation, for example. $J_{measure}$ is (only) useful when considering pure-state optimization, see Section \ref{sec:statepreparation}. Here, $m\in\N$ is a given integer, and $N_m$ is a diagonal matrix with diagonal elements being $|k-m|, k=0,\dots N-1$ 
+$J_{Frobenius}$ measures (weighted average of) the Frobenius norm between target and final states. $J_{Trace}$ measures the (weighted) infidelity in terms of the Hilbert-Schmidt overlap, compare the definition of fidelity in eq. \eqref{eq:fidelity}. Here, $w_i = \mbox{Tr}\left(\rho_i(0)^2\right)$ is the purity of the initial state. Both those measures are common for optimization towards a unitary gate transformation, for example. $J_{measure}$ is (only) useful when considering pure-state optimization, see Section \ref{sec:statepreparation}. Here, $m\in\N$ is a given integer, and $N_m$ is a diagonal matrix with diagonal elements being $|k-m|, k=0,\dots N-1$ 
 
-The distinction for Lindblad vs. Schroedingers solver is made explicit for $J_{trace}$ above. The other two measures apply naturally to either the density matrix version solving Lindblad's equation, or the state vector version solving Schroedinger's equation with $ \|\rho^{target} - \rho(T)\| = \|\psi^{target} - \psi(T)\|$ and $\mbox{Tr}\left(N_m\rho(T)\right) = \psi(T)^\dagger N_m \psi(T)$. 
+The distinction for the Lindblad vs. Schroedinger solver is made explicit for $J_{trace}$ above. The other two measures apply naturally to either the density matrix version solving Lindblad's equation, or the state vector version solving Schroedinger's equation with $ \|\rho^{target} - \rho(T)\| = \|\psi^{target} - \psi(T)\|$ and $\mbox{Tr}\left(N_m\rho(T)\right) = \psi(T)^\dagger N_m \psi(T)$. 
 
 
 
@@ -376,7 +376,7 @@ State preparation aims to drive the system from either one specific or from any 
 where $\boldsymbol{e}_m$ denotes the $m$-th unit vector in $\R^N$. 
 \footnote{We note that considering pure states of that specific form ($\boldsymbol{e}_m$ or $\boldsymbol{e}_m\boldsymbol{e}_m^\dagger$) is not a restriction, because any other pure target state can be transformed to this representation using a unitary change of coordinates (compare the Appendix in \cite{guenther2021quantum} for a more detailed description).}
 The integer $m$ refers to the $|m\rangle$-th state of the entire system under consideration with dimension $N$, which can be a composite of $Q$ subsystems. 
-In the configuration file however, the pure target state is specified by defining the desired pure target for \textit{each} of the subsystems individally. For a composite system of $Q$ subsystems with $n_k$ levels each, a composite target pure state is specified by a list of integers $m_k$ with $0\leq m_k < n_k$ representing the pure target state in each subsystem $k$. The composite pure target state is then
+In the configuration file however, the pure target state is specified by defining the desired pure target for \textit{each} of the subsystems individually. For a composite system of $Q$ subsystems with $n_k$ levels each, a composite target pure state is specified by a list of integers $m_k$ with $0\leq m_k < n_k$ representing the pure target state in each subsystem $k$. The composite pure target state is then
 \begin{align}
   \psi^{target} = |m_0 m_1 m_2 \dots m_{Q-1} \rangle \quad \text{aka} \quad  \psi^{target} = \boldsymbol{e}_{m_0}\otimes  \boldsymbol{e}_{m_1}\otimes  \dots \otimes\boldsymbol{e}_{m_{Q-1}} 
 \end{align}
@@ -388,11 +388,11 @@ for unit vectors $\boldsymbol{e}_{m_k} \in \R^{n_k}$, and $\rho^{target} = \psi^
 Depending on the choice for the initial conditions, optimization towards a pure target state can be used to realize either a simple state-to-state transfer (choosing one specific initial condition, $n_{init}=1$), or to realize the more complex task of state preparation that drives \textit{any} initial state to a common pure target state. 
 For $m=0$, the target state represents the ground state of the system under consideration, which has important applications for quantum reset as well as quantum error correction. Driving \textit{any} initial state to a common target will require to couple to a dissipative bath, which should be accounted for in the model setup. In the latter case, typically a full basis of initial conditions needs to be considered during the optimization ($n_{init}=N^2$ for density matrices). However, it is shown in \cite{guenther2021quantum}, that if one chooses the objective function $J_{measure}$ with corresponding measurement operator $N_m$ (see eq. \eqref{eq:Jmeasure}), one can reduce the number of initial conditions to only \textit{one} being an ensemble of all basis states, and hence $n_{init}=1$ independent of the system dimension $N$. Compare \cite{guenther2021quantum} for details, and Section \ref{sec:ensemblestate}. 
 
-% For example, assume one considers a composite system consisting of a qubit modelled with $n_0=2$ levels coupled to a readout cavity modelled with $n_1=10$ levels, and one wants to drive the qubit to the $|1\rangle$ state and the cavity to the ground state. The target pure state input for Quandary is hence $m_0=1, m_1=0$ (i.e. the $|10\rangle$ state in the composite system), which corresonds $m=1\cdot10+0 = 10$ in the composite system of dimension $N=2\cdot 10 = 20$. 
+% For example, assume one considers a composite system consisting of a qubit modelled with $n_0=2$ levels coupled to a readout cavity modelled with $n_1=10$ levels, and one wants to drive the qubit to the $|1\rangle$ state and the cavity to the ground state. The target pure state input for Quandary is hence $m_0=1, m_1=0$ (i.e. the $|10\rangle$ state in the composite system), which corresponds $m=1\cdot10+0 = 10$ in the composite system of dimension $N=2\cdot 10 = 20$. 
 
 
 \subsubsection{Arbitrary target state}
-A specific (non-pure) target state $\rho^{target}$ can also be used a a target. For the C++ code, such a target state is read from file. File format: The vectorized density matrix (columnwise vectorization) in the Lindblad case, or the state vector in the Schroedinger case, one real-valued number per row, first list all real parts, then list all imaginary parts (hence either $2N^2$ lines with one real number each, or $2N$ lines with one real number each). The configuration option should be pointing to the file location. For the Python interface, the target state can be passes as a numpy array. 
+A specific (non-pure) target state $\rho^{target}$ can also be used as a target. For the C++ code, such a target state is read from file. File format: The vectorized density matrix (column-wise vectorization) in the Lindblad case, or the state vector in the Schroedinger case, one real-valued number per row, first list all real parts, then list all imaginary parts (hence either $2N^2$ lines with one real number each, or $2N$ lines with one real number each). The configuration option should be pointing to the file location. For the Python interface, the target state can be passed as a numpy array. 
  
 \subsubsection{Gate optimization}
 
@@ -419,10 +419,10 @@ In the C++ code, some default target gates that are currently available:
 \end{align}
 as well as a multi-qubit generalization of the SWAP and the CNOT gate for general $Q$ subsystems: The SWAP-0Q gate swaps the state of the first and the last qubit, while leaving all other oscillators in their respective initial state, and the CQNOT gate performs a NOT operation on the last qubit if all other qubits are in the one-state.
 New, user-defined gates can be added to the C++ code by augmenting the \texttt{Gate} class in the corresponding \texttt{.cpp} and \texttt{.hpp} files.
-The target gate matrix can also be read from file. The file is a simple text file that contains the vectorized target unitary matrix (columnwise vectorization), first all real parts, then all imaginary parts (giving a total of $2N^2$ real-valued numbers). It should be specified in the essential dimensions. 
+The target gate matrix can also be read from file. The file is a simple text file that contains the vectorized target unitary matrix (column-wise vectorization), first all real parts, then all imaginary parts (giving a total of $2N^2$ real-valued numbers). It should be specified in the essential dimensions. 
 For the python interface, the target unitary matrix is passed to Quandary through a numpy array.
 
-For gate optimization, the first two objective function $J_{frobenius}$ and $J_{trace}$ are appropriate. Since \textit{any} initial quantum state should be transformed by the control pulses, typically a basis for the initial states should be considered ($n_{init} = N$ for Schroedinger solver, and $n_{init}=N^2$ for Lindblad solver). In the Lindblad solver case, it has however been shown in \cite{goerz2014optimal} that it is enough to optimize with only three specific initial states ($n_{init} = 3$), independent of the Hilbert space dimension $N$. Those three states are set up in such a way that they can distinguish between any two unitaries in that Hilbert space. The three initial states are readily available in Quandary, see Section \ref{subsec:initcond}. Note that when optimizing with only those three initial states, it turns out that the choice of the weights $\beta_i$ that weight the contribution from each initial state in the overall objective function strongly influences the optimization convergence. For faster convergence, it is often benefitial to emphasize on the first of the three initial conditions ($\rho_1(0)$ in Section \ref{subsec:threeinitcond}), hence choosing $\beta_1$ (much) bigger than $\beta_2$ and $\beta_3$ (e.g. $\beta = \{20,1,1\}$ often works better than $\beta = \{1,1,1\}$, try it yourself). We refer to \cite{goerz2014optimal} for details. Note that the weights will be scaled internally such that $\sum_i \beta_i = 1$.
+For gate optimization, the first two objective function $J_{Frobenius}$ and $J_{trace}$ are appropriate. Since \textit{any} initial quantum state should be transformed by the control pulses, typically a basis for the initial states should be considered ($n_{init} = N$ for Schroedinger solver, and $n_{init}=N^2$ for Lindblad solver). In the Lindblad solver case, it has however been shown in \cite{goerz2014optimal} that it is enough to optimize with only three specific initial states ($n_{init} = 3$), independent of the Hilbert space dimension $N$. Those three states are set up in such a way that they can distinguish between any two unitary matrices in that Hilbert space. The three initial states are readily available in Quandary, see Section \ref{subsec:initcond}. Note that when optimizing with only those three initial states, it turns out that the choice of the weights $\beta_i$ that weight the contribution from each initial state in the overall objective function strongly influences the optimization convergence. For faster convergence, it is often beneficial to emphasize on the first of the three initial conditions ($\rho_1(0)$ in Section \ref{subsec:threeinitcond}), hence choosing $\beta_1$ (much) bigger than $\beta_2$ and $\beta_3$ (e.g. $\beta = \{20,1,1\}$ often works better than $\beta = \{1,1,1\}$, try it yourself). We refer to \cite{goerz2014optimal} for details. Note that the weights will be scaled internally such that $\sum_i \beta_i = 1$.
 
 Target gates will by default be rotated into the computational frame (see Section \ref{sec:model}). Alternatively, the user can specify the rotation of the target gate through the configuration option \texttt{gate\_rot\_freq} (list of floats). 
 
@@ -430,7 +430,7 @@ Target gates will by default be rotated into the computational frame (see Sectio
 It is often useful, to model the quantum system with more energy levels than the number of levels that the target gate is defined on. For example when optimizing for a SWAP gate on two qubits, with $V_{SWAP}\in\C^{4\times 4}$, one might want to model each qubit with more than two energy levels in order to (a) model the (infinite dimensional) system with more accuracy by including more levels and (b) allow the system to transition through higher energy levels in order to achieve the target at final time $T$. In that case, the \textit{essential} levels denote the levels that the target gate is defined on.
 To this end, Quandary provides the option to specify the number of essential energy levels $n_k^e$ in addition to the number of energy levels $n_k$, where $n_k^e \leq n_k$ for each subsystem $k$. The quantum dynamics are then modelled with (more) energy levels with $N=\prod_k n_k$ and $\rho(t)\in \C^{N\times N}$ (or $\psi\in\C^N$), while the gate is defined in the essential level dimensions only: $V\in \C^{N_e \times N_e}, N_e=\prod_k n_k^e$. In the example above, $n^e_0=n^e_1=2$ and hence $V_{SWAP}\in \C^{4\times 4}$, but one can choose the number of energy levels $n_0$ and $n_1$ to be bigger than $2$ to when modelling the system dynamics. 
  
-To compute the objective function at final time T, the essential-dimensional gate is projected upwards to the full dimensions $\tilde V \in \C^{N\times N}$ by inserting identiy blocks for rows/columns that correspond to a non-essential level of either of the subsystems. Hence, a realization of the gate $\tilde V$ will not alter the occupation of higher (non-essential) energy level compared to their initial occupation at $t=0$. 
+To compute the objective function at final time T, the essential-dimensional gate is projected upwards to the full dimensions $\tilde V \in \C^{N\times N}$ by inserting identity blocks for rows/columns that correspond to a non-essential level of either of the subsystems. Hence, a realization of the gate $\tilde V$ will not alter the occupation of higher (non-essential) energy level compared to their initial occupation at $t=0$. 
 
 % When only the three states as initial conditions are considered (see below), those three initial states will be spanned in the full dimensional system. On the other hand, when the basis of initial states is considered, or their diagonals only, those initial states will be spanned only in the essential level dimensions and zero rows and columns will be inserted for all non-essential levels. Hence, the gate will be realized for any initial state that is spanned in the essential level dimensions, and occupations of non-essential levels at $T=0$ are avoided. 
  
@@ -460,7 +460,7 @@ B^{kj} := \frac 12 \left(\bs{e}_k\bs{e}_k^\dagger + \bs{e}_j\bs{e}_j^\dagger\rig
       \end{cases} 
 \end{align}
 for all $k,j\in\{0,\dots, N-1\}$.
-These density matrices represent $N^2$ pure, linear independent states that span the space of all density matrices in this Hilberspace. For closed systems using the state vector representation (Schroedinger's solver), the basis states are the unit vector in $\C^{N}$, hence $n_{init} = N$ initial states $\boldsymbol{e}_i \in \R^N, i=0,\dots N-1$. 
+These density matrices represent $N^2$ pure, linear independent states that span the space of all density matrices in this Hilbert space. For closed systems using the state vector representation (Schroedinger's solver), the basis states are the unit vector in $\C^{N}$, hence $n_{init} = N$ initial states $\boldsymbol{e}_i \in \R^N, i=0,\dots N-1$. 
 
 When composite systems of multiple subsystems are considered, the user can provide a consecutive list of integer ID's to determine in which of the subsystems the basis states should be spanned. Other subsystems will then be initialized in the ground state.
 
@@ -472,7 +472,7 @@ unique index $i \in \{0,\dots, N^2-1\}$ is assigned to each basis state with
   B^i := B^{k(i), j(i)}, \quad \text{with} \quad k(i) := i \,\mbox{mod}\, N,
   \quad \text{and} \quad j(i) := \left\lfloor \frac{i}{N} \right\rfloor
 \end{align*}
-(columnwise vectorization of a matrix of matrices $\left\{B^{kj}\right\}_{kj}$). 
+(column-wise vectorization of a matrix of matrices $\left\{B^{kj}\right\}_{kj}$). 
 
 
 
@@ -495,18 +495,18 @@ For pure-state optimization using the objective function $J_{measure}$ \eqref{eq
 \end{align}
 as the only initial condition for optimization or simulation ($\Rightarrow n_{init}=1$). Since Lindblad's master equation is linear in the initial condition, and $J_{measure}$ is linear in the final state, propagating this single initial state yields the same target value as if one propagates all basis states spanning that space and averages their measure at final time $T$ (compare \cite{guenther2021quantum}). To specify the ensemble state in Quandary for composite quantum systems with multiple subsystems, on can provide a list of integer ID's that determine in which of the subsystems the ensemble state should be spanned. Other subsystems will be initialized in the ground state. 
 
-To be precise: the user specifies a list of consecutive ID's $<k_0>, \dots, <k_m>$ with $0 \leq k_j \leq Q-1$ and $k_{j+1} = k_j+1$, the ensemble state $\rho_s(0)$ will be spanned in the dimension given by those subsystems, $N_s = \prod_{j=0}^{m} n_{k_j}$ and $\rho_s(0) \in \C^{N_s\times N_s}$ with basis matrices $B^{kj}$ spanned in $\C^{N_s\times N_s}$. The initial state that Quandary propagates is then given by 
+To be precise: the user specifies a list of consecutive ID's $\langle k_0 \rangle, \dots, \langle k_m \rangle$ with $0 \leq k_j \leq Q-1$ and $k_{j+1} = k_j+1$, the ensemble state $\rho_s(0)$ will be spanned in the dimension given by those subsystems, $N_s = \prod_{j=0}^{m} n_{k_j}$ and $\rho_s(0) \in \C^{N_s\times N_s}$ with basis matrices $B^{kj}$ spanned in $\C^{N_s\times N_s}$. The initial state that Quandary propagates is then given by 
 \begin{align}
   \rho(0) = \bs{e}_0\bs{e}_0^\dagger \otimes \underbrace{\rho_s(0)}_{\in \C^{N_s\times N_s}} \otimes \, \bs{e}_0 \bs{e}_0^\dagger
 \end{align}
 where the first $\bs{e}_0$ (before the kronecker product) is the first unit vector in $\R^{\prod_{k=0}^{k_0-1}}$ (i.e. ground state in all preceding subsystems), and the second $\bs{e}_0$ (behind the kronecker products) is the first unit vector in the dimension of all subsequent systems, $\R^{\prod_{k=k_m+1}^{Q-1}}$. 
 
-Note: The ensemble state will be spanned in the \textit{essential} levels of the (sub)system, if applicable, and will then be lifted up to the full dimesion by inserting zero rows and columns. 
+Note: The ensemble state will be spanned in the \textit{essential} levels of the (sub)system, if applicable, and will then be lifted up to the full dimension by inserting zero rows and columns. 
 
 \subsubsection{Three initial states for gate optimization}\label{subsec:threeinitcond}
 \textit{Only valid for the density matrix version, solving Lindblad's master equation.}
 
-When considering gate optimization, it has been shown in \cite{goerz2014optimal} that it is enough to consider only three specific initial states during optimization ($n_{init}=3$), independent of the Hilber space dimension. Those three initial states are given by
+When considering gate optimization, it has been shown in \cite{goerz2014optimal} that it is enough to consider only three specific initial states during optimization ($n_{init}=3$), independent of the Hilbert space dimension. Those three initial states are given by
 \begin{align}
     \rho(0)_1 &= \sum_{i=0}^{N-1} \frac{2(N-i+1)}{N(N+1)} \bs{e}_i\bs{e}_i^\dagger \\
     \rho(0)_2 &= \sum_{ij=0}^{N-1} \frac{1}{N} \bs{e}_i\bs{e}_j^\dagger\\
@@ -520,12 +520,12 @@ Note: The three initial states are spanned in the \textit{full} dimension of the
 \textit{Only valid for the density matrix version, solving Lindblad's master equation.}
 
 
-The three initial states from above do not suffice to estimate the fidelity of the realized gate (compare \cite{goerz2014optimal}). Instead, it is suggested in that same paper to choose $N+1$ initial states to compute the fidelity. Those $N+1$ initial states consist of the $N$ diagonal states $B^{kk}$ in the Hilbertspace of dimension $N$, as well as the totally rotated state $\rho(0)_2$ from above. Quandary offers the choice to simulate (or optimize) using those initial states, then $n_{init} = N+1$.
+The three initial states from above do not suffice to estimate the fidelity of the realized gate (compare \cite{goerz2014optimal}). Instead, it is suggested in that same paper to choose $N+1$ initial states to compute the fidelity. Those $N+1$ initial states consist of the $N$ diagonal states $B^{kk}$ in the Hilbert space of dimension $N$, as well as the totally rotated state $\rho(0)_2$ from above. Quandary offers the choice to simulate (or optimize) using those initial states, then $n_{init} = N+1$.
 
 Note: The $N+1$ initial states are spanned in the \textit{full} dimension of the system, including non-essential levels, see above for 3-state initialization. 
 
 \subsubsection{Reading an initial state from file}
-A specific initial state can also be read from file ($\Rightarrow n_{init}=1$). Format: one column being the vectorized density matrix (vectorization is columnwise), or the state vector, first all real parts, then all imaginary parts (i.e. number of lines is $2N^2$ or $2N$, with one real-valued number per line). 
+A specific initial state can also be read from file ($\Rightarrow n_{init}=1$). Format: one column being the vectorized density matrix (vectorization is column-wise), or the state vector, first all real parts, then all imaginary parts (i.e. number of lines is $2N^2$ or $2N$, with one real-valued number per line). 
 
 This option is useful for example if one wants to propagate a specific \textit{non-pure} initial state. In that case, one first has to generate a datafile storing that state (e.g. by simulating a system and storing the output), which can then be read in as initial condition. 
 
@@ -556,7 +556,7 @@ The second penalty term can be added with parameter $\gamma_3 > 0$ to encourage 
 
 The third penalty term can be added with parameter $\gamma_4 > 0$ to encourage small control pulse amplitudes by penalizing the control pulse energy. This term can be useful if hardware bounds are given for the control pulse amplitudes: Rather than include amplitude bounds on control pulse directly, which often leads to more non-convex optimization problems and convergence deterioration, one can utilize this penalty term to favor short control pulses with small amplitudes. Compare also \cite{gunther2023practical} for its usage to determine minimal gate durations.
 
-The last penalty term, activated by setting $\gamma_5>0$, is used to penalize variation in control strength between consequtive B-spline coefficients. It is currently only implemented for piecewise zeroth order spline functions, see Section \ref{subsec:bspline-0}, where it is useful to prevent noisy control pulses. Referring to the control function representation in \eqref{eq:spline-ctrl}, this penalty function takes the form:
+The last penalty term, activated by setting $\gamma_5>0$, is used to penalize variation in control strength between consecutive B-spline coefficients. It is currently only implemented for piecewise zeroth order spline functions, see Section \ref{subsec:bspline-0}, where it is useful to prevent noisy control pulses. Referring to the control function representation in \eqref{eq:spline-ctrl}, this penalty function takes the form:
 \begin{align}
   Var(\vec{\alpha}) = \sum_{k=1}^Q Var_k(\vec{\alpha}),\quad Var_k(\vec{\alpha}) = \sum_{f=1}^{N_f^k} \sum_{s=2}^{N_s^k} |\alpha_{s,f}^k - \alpha_{s-1,f}^k|^2,
 \end{align}
@@ -565,7 +565,7 @@ in terms of the complex-valued control parameters $\alpha_{s,f}^k = \alpha_{s,f}
 Note: All regularization and penalty coefficients $\gamma_i$ should be chosen small enough so that they do not dominate the final-time objective function $J$. This might require some fine-tuning. It is recommended to always add $\gamma_1>0$, e.g. $\gamma_1 = 10^{-4}$, and add other penalties only if needed. 
 
 
-% Achieving a target at EARLIER timesteps:
+% Achieving a target at EARLIER time-steps:
 % \begin{align}\label{eq:penaltyterm}
 %   P(\rho(t))  =  w(t) J\left(\rho(t)\right) \quad \text{where} \quad w(t) =
 %   \frac{1}{a} e^{ -\left(\frac{t-T}{a} \right)^2},
@@ -575,7 +575,7 @@ Note: All regularization and penalty coefficients $\gamma_i$ should be chosen sm
 \section{Implementation}
 
   \subsection{Vectorization of Lindblad's master equation}
-  When solving Lindblad's master equation \eqref{mastereq}, Quandary uses a vectorized representation of the density matrix with $q(t) := \text{vec}(\rho(t)) \in \C^{N^2}$ (columnwise vectorization). Using the
+  When solving Lindblad's master equation \eqref{mastereq}, Quandary uses a vectorized representation of the density matrix with $q(t) := \text{vec}(\rho(t)) \in \C^{N^2}$ (column-wise vectorization). Using the
   relations
   \begin{align}
    \text{vec}(AB) &= (I_N\otimes A)\text{vec}(B) = (B^T\otimes I_N)\text{vec}(A)
@@ -636,7 +636,7 @@ The real and imaginary parts of $q(t)$ are stored in a colocated manner: For
 
     In our current test cases, the matrix-free solver is much faster than the sparse-matrix solver (about 10x), no surprise. However the matrix-free solver is currently only implemented for composite systems consisting of \textbf{2, 3, 4, or 5} subsystems. 
 
-    \textbf{The matrix-free solver currently does not parallelize across the system dimension $N$}, hence the state vector is \textbf{not} distributed (i.e. no parallel Petsc!). The reason why we did not implement that yet is that $Q$ can often be large while each axis can be very short (e.g. modelling $Q=12$ qubits with $n_k=2$ energy levels per qubit), which yields a very high-dimensional tensor with very short axix. In that case, the standard (?) approach of parallelizing the tensor along its axes will likey lead to very poor scalability due to high communication overhead. We have not found a satisfying solution yet - if you have ideas, please reach out, we are happy to collaborate! 
+    \textbf{The matrix-free solver currently does not parallelize across the system dimension $N$}, hence the state vector is \textbf{not} distributed (i.e. no parallel Petsc!). The reason why we did not implement that yet is that $Q$ can often be large while each axis can be very short (e.g. modelling $Q=12$ qubits with $n_k=2$ energy levels per qubit), which yields a very high-dimensional tensor with very short axes. In that case, the standard (?) approach of parallelizing the tensor along its axes will likely lead to very poor scalability due to high communication overhead. We have not found a satisfying solution yet - if you have ideas, please reach out, we are happy to collaborate! 
    \end{enumerate} 
 
 
@@ -645,7 +645,7 @@ The real and imaginary parts of $q(t)$ are stored in a colocated manner: For
     q(t) = M(t) q(t)$ for $t\in [0,T]$, Quandary applies a time-stepping integration
     scheme on a uniform time discretization grid $0=t_0 < \dots t_{N} = T$, with
     $t_n = n \delta t$ and $\delta t = \frac{T}{N}$, and approximates the
-    solution at each discrete time step $q^{n} \approx q(t_n)$. The time-stepping scheme can be chosen in Quandary through the configuration option \texttt{timestepper}. 
+    solution at each discrete time-step $q^{n} \approx q(t_n)$. The time-stepping scheme can be chosen in Quandary through the configuration option \texttt{timestepper}. 
     
     \subsubsection{Implicit Midpoint Rule (\texttt{IMR})}
     The implicit midpoint rule is a second-order accurate, symplectic time-stepping algorithm with Runge-Kutta scheme tableau 
@@ -665,9 +665,9 @@ The real and imaginary parts of $q(t)$ are stored in a colocated manner: For
     to update $q^{n+1}$. 
 
     \subsubsection{Higher-order compositional IMR (\texttt{IMR4}, or \texttt{IMR8})}
-    A compositional version of the Implicit Midpoint Rule is available that performs multiple IMR steps in each time step interval, which are composed in such a way that the resulting compositional step is of higher order. Currently, Compared to the standard IMR, the higher-order methods can be very benefitial as it allows for much larger time-steps to be taken to reach a certain accuracy tolerance. Even though more work is done per timestep, the reduction in the number of time-steps needed can be several orders or magnitude and there is hence a tradeoff where the compositional methods outperform the standard IMR scheme.
+    A compositional version of the Implicit Midpoint Rule is available that performs multiple IMR steps in each time-step interval, which are composed in such a way that the resulting compositional step is of higher order. Currently, Compared to the standard IMR, the higher-order methods can be very beneficial as it allows for much larger time-steps to be taken to reach a certain accuracy tolerance. Even though more work is done per time-step, the reduction in the number of time-steps needed can be several orders or magnitude and there is hence a tradeoff where the compositional methods outperform the standard IMR scheme.
 
-    Currently available is a compositional method of 4-th order that performs 3 sub-steps per time step (\texttt{IMR4}), and a compositional method of 8-th order performing 15 sub-steps per time step (\texttt{IMR8}).
+    Currently available is a compositional method of 4-th order that performs 3 sub-steps per time-step (\texttt{IMR4}), and a compositional method of 8-th order performing 15 sub-steps per time-step (\texttt{IMR8}).
 
     \subsubsection{Choice of the time-step size}
   The python interface to Quandary automatically computes a time-step size based on the fastest period of the system Hamiltonian. For the C++ code, it needs to be set by the user.
@@ -691,7 +691,7 @@ The real and imaginary parts of $q(t)$ are stored in a colocated manner: For
        \begin{align}
          J^* - J^{\Delta t} = \frac{J^{\Delta t} - J^{\Delta t m}}{1-m^p} + O(\Delta t^{p+1})
        \end{align}
-       where $p$ is the order of the timestepping scheme (i.e. $p=2$ for the IMR and $p=8$ for the compositional IMR8), and $J^{\Delta t}, J^{\Delta tm}$ denote approximations thereof using the time-stepping sizes $\Delta t$ and $\Delta t m$ for some factor $m$.        
+       where $p$ is the order of the time-stepping scheme (i.e. $p=2$ for the IMR and $p=8$ for the compositional IMR8), and $J^{\Delta t}, J^{\Delta tm}$ denote approximations thereof using the time-stepping sizes $\Delta t$ and $\Delta t m$ for some factor $m$.        
        
       %  If one wants to include the time-varying Hamiltonian part $H = H_d +
       %  H_c(t)$ in the analysis, one could use the constraints on the control
@@ -699,7 +699,7 @@ The real and imaginary parts of $q(t)$ are stored in a colocated manner: For
       %  value instead.       
 
   
-  \subsection{Gradient computation via discrete adjoint backpropagation}
+  \subsection{Gradient computation via discrete adjoint back-propagation}
    Quandary computes the gradients of the objective function with respect to the design variables $\boldsymbol{\alpha}$ using the discrete adjoint method. The discrete adjoint approach yields exact and consistent gradients on the algorithmic level, at costs that are independent of the number of design variables.    
    To that end, the adjoint approach propagates local sensitivities backwards through the time-domain while concatenating contributions to the gradient using the chain-rule.
 
@@ -710,13 +710,13 @@ The real and imaginary parts of $q(t)$ are stored in a colocated manner: For
       \quad \text{where} \, \bar k_1 \, \text{solves} \quad \left(
       I-\frac{\delta t}{2} M^{n+1/2}\right)^T  \bar k_1 = \bar q^{n+1} 
     \end{align}
-  The contribution to the gradient $\nabla J$ for each time step is
+  The contribution to the gradient $\nabla J$ for each time-step is
     \begin{align}\label{eq:gradient}
       \nabla J += \delta t \left( \frac{\partial M^{n+1/2}}{\partial z}
       \left(q^n + \frac{\delta t}{2} k_1\right) \right)^T\bar k_1
     \end{align}
   
-    Each evaluation of the gradient $\nabla J$ involes a forward solve of $n_{init}$ initial quantum states to evaluate the objective function at final time $T$, as well as $n_{init}$ backward solves to compute the adjoint states and the contributions to the gradient. Note that the gradient computation \eqref{eq:gradient} requires the states and adjoint states at each time step. For the Schroedinger solver, the primal states are recomputed by integrating Schroedinger's equation backwards in time, alongside the adjoint computation. For the Lindblad solver, the states $q^n$ are stored during forward propagation, and taken from storage during adjoint backpropagation (since we can't recompute it in case of Lindblad solver, due to dissipation). 
+    Each evaluation of the gradient $\nabla J$ involves a forward solve of $n_{init}$ initial quantum states to evaluate the objective function at final time $T$, as well as $n_{init}$ backward solves to compute the adjoint states and the contributions to the gradient. Note that the gradient computation \eqref{eq:gradient} requires the states and adjoint states at each time-step. For the Schroedinger solver, the primal states are recomputed by integrating Schroedinger's equation backwards in time, alongside the adjoint computation. For the Lindblad solver, the states $q^n$ are stored during forward propagation, and taken from storage during adjoint back-propagation (since we can't recompute it in case of Lindblad solver, due to dissipation). 
 
 
   \subsection{Optimization algorithm}
@@ -760,19 +760,19 @@ For each subsystem $k$, the user can specify the desired state evolution output 
   \item \texttt{expectedEnergyComposite} Prints the time evolution of the expected energy level of the entire (full-dimensional) system state into files (one for each initial condition, as above): $mbox{Tr}\left(N \rho(t)\right)$ for the number operator $N$ in the full dimensions. 
   \item \texttt{population}: This option prints the time evolution of the state populations (diagonal of density matrix, state probabilities) of subsystem $k$ into files named \texttt{population<k>.iinit<m>.dat} for each initial condition $m=1,\dots, n_{init}$. The files contain $n_k+1$ columns, the first one being the time values, the remaining $n_k$ columns correspond to the population of each level $l=0,\dots,n_k-1$ of the reduced density matrix $\rho^k(t)$ at that time point. For Lindblad's solver, these are the diagonal elements of the reduced density matrix ($\rho_{ll}^k(t), l=0,\dots n_k-1$), for Schroedinger's solver it's the absolute values of the reduced state vector elements $|\psi^k_l(t)|^2, l=0,\dots n_k-1$. Note that the reduction to the subsystem $k$ induces a sum over all oscillators to collect contributions to the reduced state. 
   \item \texttt{populationComposite}: Prints the time evolution of the state populations of the entire (full-dimensional) system into files (one for each initial condition, as above). 
-  \item \texttt{fullstate}: Probably only relevant for debugging or very small systems, one can print out the full state $\rho(t)$ or $\psi(t)$ for each time point into the files \texttt{rho\_Re.iinit<m>.dat} and \texttt{rho\_Im.iinit<m>.dat}, for the real and imaginary parts of the state, respectively. These files contain $N^2 +1$ (Lindblad) or $N+1$ (Schroedinger) columns the first one being the time point value and the remaining ones contain the vectorized density matrix (Lindblad, $N^2$ elements) or the state vector (Schroedinger, $N$ elements) for each time step. Note that these file become very big very quickly -- use with care!
+  \item \texttt{fullstate}: Probably only relevant for debugging or very small systems, one can print out the full state $\rho(t)$ or $\psi(t)$ for each time point into the files \texttt{rho\_Re.iinit<m>.dat} and \texttt{rho\_Im.iinit<m>.dat}, for the real and imaginary parts of the state, respectively. These files contain $N^2 +1$ (Lindblad) or $N+1$ (Schroedinger) columns the first one being the time point value and the remaining ones contain the vectorized density matrix (Lindblad, $N^2$ elements) or the state vector (Schroedinger, $N$ elements) for each time-step. Note that these file become very big very quickly -- use with care!
 \end{itemize}
 
 The user can change the frequency of output in time (printing only every $j$-th time point) through the option \texttt{output\_frequency}. This is particularly important when doing performance tests, as computing the reduced states for output requires extra computation and communication that might skew performance tests. 
 
-\subsection{Output with regard to simulation and optimzation}
+\subsection{Output with regard to simulation and optimization}
 \begin{itemize}
   \item \texttt{config\_log.dat} contains all configuration options that had been used for the current run. 
   \item \texttt{params.dat} contains the control parameters $\bfa$ that had been used to determine the current control pulses. This file contains one column containing all parameters, ordered as stored, see Section \ref{subsec:controlpulses}.
-  \item \texttt{control<k>.dat} contain the resulting control pulses applied to subsystem $k$ over time. It contains four columns, the first one being the time, second and third being $p^k(t)$ and $q^k(t)$ (rotating frame controls), and the last one is the corresponding lab-frame pulse $f^k(t)$. Note that the units of the control pulses are in frequency domain (divided by $2\pi)$. The unit matches the unit specified with the system paramters such as the qubit gound frequencies $\omega_k$.
+  \item \texttt{control<k>.dat} contain the resulting control pulses applied to subsystem $k$ over time. It contains four columns, the first one being the time, second and third being $p^k(t)$ and $q^k(t)$ (rotating frame controls), and the last one is the corresponding lab-frame pulse $f^k(t)$. Note that the units of the control pulses are in frequency domain (divided by $2\pi)$. The unit matches the unit specified with the system parameters such as the qubit ground frequencies $\omega_k$.
   \item \texttt{optim\_history.dat} contains information about the optimization progress in terms of the overall objective function and contribution from each term (cost at final time $T$ and contribution from the tikhonov regularization and the penalty term), as well the norm of the gradient and the fidelity, for each iteration of the optimization. If only a forward simulation is performed, this file still prints out the objective function and fidelity for the forward simulation. 
 \end{itemize}
-Quandary always prints the current paramters and control pulses at the beginning of a simulation or optimization, and in addition at every $l$-th optimization iteration determined from the \texttt{optim\_monitor\_frequency} configuration option. 
+Quandary always prints the current parameters and control pulses at the beginning of a simulation or optimization, and in addition at every $l$-th optimization iteration determined from the \texttt{optim\_monitor\_frequency} configuration option. 
 
 \subsection{Plotting}
 The format of all output files are very well suited for plotting with \href{http://www.gnuplot.info}{Gnuplot}, which is a command-line based plotting program that can output directly to screen, or into many other formats such as png, eps, or even tex. As an example, from within a Gnuplot session, you can plot e.g. the expected energy level of subsystem $k=0$ for initial condition $m=0$ by the simple command\newline
