@@ -1382,7 +1382,7 @@ def execute(*, runtype="simulation", ncores=1, config_filename="config.cfg", dat
             myrun = batch_run  # currently set to "srun -n"
         else:
             myrun = mpi_exec
-        runcommand = f"{myrun}{ncores} " + runcommand
+        runcommand = f"{myrun} {ncores} " + runcommand
     if verbose:
         print("Running Quandary ... ")
 
