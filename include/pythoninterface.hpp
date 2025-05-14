@@ -25,8 +25,8 @@ class PythonInterface{
 
   /* Read the constant system Hamiltonian from file */
   // Hd must be REAL valued!
-  void receiveHsys(Mat& Bd);
+  void receiveHsys(Mat& Bd, Mat& Ad);
 
   /* Receive real and imaginary control operators from file */
-  void receiveHc(int noscillators, std::vector<std::vector<Mat>>& Ac_vec, std::vector<std::vector<Mat>>& Bc_vec);
+  void receiveHc(int noscillators, std::vector<Mat>& Ac_vec, std::vector<Mat>& Bc_vec);
 };
