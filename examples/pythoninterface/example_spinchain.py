@@ -97,7 +97,7 @@ dT = 0.01 	# Double check if this is small enough (e.g. by re-running with small
 # Quandary run options
 verbose = True
 ncores=8   				# Numbers of cores for Quandary 
-mpirun = "mpirun -np " 	# MPI executable, e.g. "srun -n" for LC (note the space after '-np ' for mpirun vs no space after '-n' for srun)
+mpi_exec="mpirun -np" 	# MPI executable, e.g. "srun -n" for LC 
 
 # Prepare Quandary
 initcondstr = "pure, "
@@ -125,7 +125,7 @@ for isample in range(nsamples):
 
 	# Run forward simulation
 	datadir = "./N"+str(N)+"_sample" + str(isample)+"_run_dir_parallel"  
-	t, pt, qt, infidelity, expectedEnergy, population = quandary.simulate(datadir=datadir, maxcores=ncores, mpirun=mpirun)
+	t, pt, qt, infidelity, expectedEnergy, population = quandary.simulate(datadir=datadir, maxcores=ncores, mpi_exec=mpi_exec)
 
 	# Compute magnetization from expected Energy (-2*expEnergy + 1) and add to average
 	for isite in range(N):
