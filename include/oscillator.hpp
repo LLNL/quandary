@@ -60,8 +60,8 @@ class Oscillator {
     double getDephaseTime() {return dephase_time; };
     size_t getNSegments() {return basisfunctions.size(); };
     size_t getNCarrierfrequencies() {return carrier_freq.size(); };
-    ControlType getControlType(int isegment=0) {return basisfunctions[isegment]->getType(); };
-    int getNSplines(int isegment=0) {return basisfunctions[isegment]->getNSplines();};
+    ControlType getControlType() {return basisfunctions[0]->getType(); };
+    int getNSplines() {return basisfunctions[0]->getNSplines();};
     double getRotFreq() {return (ground_freq - detuning_freq) / (2.0*M_PI); };
 
     /* Return the number of parameters for the k-th segment */
@@ -79,7 +79,7 @@ class Oscillator {
     /* Evaluates rotating frame control functions Re = p(t), Im = q(t) */
     int evalControl(const double t, double* Re_ptr, double* Im_ptr);
     /* Compute derivatives of the p(t) and q(t) control function wrt the parameters */
-    int evalControl_diff(const double t, double* dRedp, double* dImdp);
+    int evalControl_diff(const double t, double* grad_for_this_oscillator, const double pbar, const double qbar);
 
     /* Evaluates Lab-frame control function f(t) */
     int evalControl_Labframe(const double t, double* f_ptr);
