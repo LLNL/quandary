@@ -7,3 +7,6 @@
 [submodule ".ci-scripts/uberenv"]
 	path = .ci-scripts/uberenv
 	url = https://github.com/LLNL/uberenv.git
+[submodule "examples"]
+	path = examples
+	url = https://github.com/LLNL/quandary-examples/
