@@ -1,4 +1,4 @@
-import os, copy
+import os, os.path, copy
 import numpy as np
 from subprocess import run, PIPE, Popen, call
 import matplotlib.pyplot as plt
@@ -502,12 +502,12 @@ class Quandary:
         # If given, write the target gate to file
         if len(self.targetgate) > 0:
             gate_vectorized = np.concatenate((np.real(self.targetgate).ravel(order='F'), np.imag(self.targetgate).ravel(order='F')))
-            self._gatefilename = "./targetgate.dat"
-            with open(datadir+"/"+self._gatefilename, "w") as f:
+            self._gatefilename = "targetgate.dat"
+            with open(os.path.join(datadir, self._gatefilename), "w", newline='\n') as f:
                 for value in gate_vectorized:
                     f.write("{:20.13e}\n".format(value))
             if self.verbose:
-                print("Target gate written to ", datadir+"/"+self._gatefilename)
+                print("Target gate written to ", os.path.join(datadir, self._gatefilename))
 
         # If given, write the target state to file
         if len(self.targetstate) > 0:
@@ -516,12 +516,12 @@ class Quandary:
             else:
                 state = self.targetstate
             vectorized = np.concatenate((np.real(state).ravel(order='F'), np.imag(state).ravel(order='F')))
-            self._gatefilename = "./targetstate.dat"
-            with open(datadir+"/"+self._gatefilename, "w") as f:
+            self._gatefilename = "targetstate.dat"
+            with open(os.path.join(datadir, self._gatefilename), "w", newline='\n') as f:
                 for value in vectorized:
                     f.write("{:20.13e}\n".format(value))
             if self.verbose:
-                print("Target state written to ", datadir+"/"+self._gatefilename)
+                print("Target state written to ", os.path.join(datadir, self._gatefilename))
 
         # If given, write the initial state to file
         if self.initialcondition[0:4]=="file":
@@ -530,19 +530,19 @@ class Quandary:
             else:
                 state = self._initialstate
             vectorized = np.concatenate((np.real(state).ravel(order='F'), np.imag(state).ravel(order='F')))
-            self._initstatefilename = "./initialstate.dat"
-            with open(datadir+"/"+self._initstatefilename, "w") as f:
+            self._initstatefilename = "initialstate.dat"
+            with open(os.path.join(datadir, self._initstatefilename), "w", newline='\n') as f:
                 for value in vectorized:
                     f.write("{:20.13e}\n".format(value))
             if self.verbose:
-                print("Initial state written to ", datadir+"/"+self._initstatefilename)
+                print("Initial state written to ", os.path.join(datadir, self._initstatefilename))
 
 
         # If not standard Hamiltonian model, write provided Hamiltonians to a file
         if not self.standardmodel:
             # Write non-standard Hamiltonians to file  
-            self._hamiltonian_filename= "./hamiltonian.dat"
-            with open(datadir+"/" + self._hamiltonian_filename, "w") as f:
+            self._hamiltonian_filename= "hamiltonian.dat"
+            with open(os.path.join(datadir, self._hamiltonian_filename), "w", newline='\n') as f:
                 f.write("# Hsys \n")
                 Hsyslist = list(np.array(self.Hsys).flatten(order='F'))
                 for value in Hsyslist:
@@ -552,20 +552,20 @@ class Quandary:
             for iosc in range(len(self.Ne)):
                 # Real part, if given
                 if len(self.Hc_re)>iosc and len(self.Hc_re[iosc])>0:
-                    with open(datadir+"/" + self._hamiltonian_filename, "a") as f:
+                    with open(os.path.join(datadir, self._hamiltonian_filename), "a", newline='\n') as f:
                         Hcrelist = list(np.array(self.Hc_re[iosc]).flatten(order='F'))
                         f.write("# Oscillator {:d} Hc_real \n".format(iosc))
                         for value in Hcrelist:
                             f.write("{:20.13e}\n".format(value))
                 # Imaginary part, if given
                 if len(self.Hc_im)>iosc and len(self.Hc_im[iosc])>0:
-                    with open(datadir+"/" + self._hamiltonian_filename, "a") as f:
+                    with open(os.path.join(datadir, self._hamiltonian_filename), "a", newline='\n') as f:
                         Hcimlist = list(np.array(self.Hc_im[iosc]).flatten(order='F'))
                         f.write("# Oscillator {:d} Hc_imag \n".format(iosc))
                         for value in Hcimlist:
                             f.write("{:20.13e}\n".format(value))
             if self.verbose:
-                print("Hamiltonian operators written to ", datadir+"/"+self._hamiltonian_filename)
+                print("Hamiltonian operators written to ", os.path.join(datadir, self._hamiltonian_filename))
 
         # Initializing the control parameter vector 'pcof0'
         # 1. If the initial parameter vector (list) is given with the 'pcof0' argument, the list will be dumped to a file with name self.pcof0_filename := "pcof0.dat". 
@@ -578,12 +578,12 @@ class Quandary:
             if len(pcof0) > 0: # pcof0 is an argument to __dump(), while self.pcof0 is stored in the object
                 writeme = pcof0
             if len(writeme)>0:
-                self.pcof0_filename = "./pcof0.dat"
-                with open(datadir+"/"+self.pcof0_filename, "w") as f:
+                self.pcof0_filename = "pcof0.dat"
+                with open(os.path.join(datadir, self.pcof0_filename), "w", newline='\n') as f:
                     for value in writeme:
                         f.write("{:20.13e}\n".format(value))
                 if self.verbose:
-                    print("Initial control parameters written to ", datadir+"/"+self.pcof0_filename)
+                    print("Initial control parameters written to ", os.path.join(datadir, self.pcof0_filename))
                 read_pcof0_from_file = True
         elif len(self.pcof0_filename) > 0:
             print("Using the provided filename '", self.pcof0_filename, "' in the control_initialization command")
@@ -698,8 +698,8 @@ class Quandary:
             mystring += "rand_seed = "+str(int(self.rand_seed))+ "\n"
 
         # Write the file
-        outpath = datadir+"/config.cfg"
-        with open(outpath, "w") as file:
+        outpath = os.path.join(datadir, "config.cfg")
+        with open(outpath, "w", newline='\n') as file:
             file.write(mystring)
 
         if self.verbose:
@@ -726,10 +726,8 @@ class Quandary:
         population      :  Evolution of the population of each oscillator, of each initial condition. (expectedEnergy[oscillator][initialcondition])
         """
 
-        dataout_dir = datadir + "/"
-        
         # Get control parameters
-        filename = dataout_dir + "/params.dat"
+        filename = os.path.join(datadir, "params.dat")
         try:
             pcof = np.loadtxt(filename).astype(float)
         except:
@@ -738,7 +736,7 @@ class Quandary:
             pcof=[]
     
         # Get optimization history information
-        filename = dataout_dir + "/optim_history.dat"
+        filename = os.path.join(datadir, "optim_history.dat")
         try:
             optim_hist_tmp = np.loadtxt(filename)
         except:
@@ -774,7 +772,7 @@ class Quandary:
         for iosc in range(len(self.Ne)):
             for iinit in range(ninits):
                 iid = iinit if not self._lindblad_solver else iinit*ninits + iinit
-                filename = dataout_dir + "./expected"+str(iosc)+".iinit"+str(iid).zfill(4)+".dat"
+                filename = os.path.join(datadir, f"expected{iosc}.iinit{str(iid).zfill(4)}.dat")
                 try:
                     x = np.loadtxt(filename)
                     expectedEnergy[iosc].append(x[:,1])    # 0th column is time, second column is expected energy
@@ -787,7 +785,7 @@ class Quandary:
         for iosc in range(len(self.Ne)):
             for iinit in range(ninits):
                 iid = iinit if not self._lindblad_solver else iinit*ninits + iinit
-                filename = dataout_dir + "./population"+str(iosc)+".iinit"+str(iid).zfill(4)+".dat"
+                filename = os.path.join(datadir, f"population{iosc}.iinit{str(iid).zfill(4)}.dat")
                 try:
                     x = np.loadtxt(filename)
                     population[iosc].append(x[:,1:].transpose())    # first column is time
@@ -802,17 +800,17 @@ class Quandary:
         for iinit in range(self._ninit):
             file_index = str(iinit).zfill(4)
             try:
-                xre = np.loadtxt(f"{dataout_dir}/rho_Re.iinit{file_index}.dat", skiprows=1, usecols=range(1, ndim+1))[-1]
+                xre = np.loadtxt(os.path.join(datadir, f"rho_Re.iinit{file_index}.dat"), skiprows=1, usecols=range(1, ndim+1))[-1]
                 uT[:, iinit] = xre 
             except:
-                name = dataout_dir+"/rho_Re.iinit"+str(file_index)+".dat"
+                name = os.path.join(datadir, f"rho_Re.iinit{file_index}.dat")
                 if not ignore_failure:
                     print("Can't read from ", name)
             try:
-                xim = np.loadtxt(f"{dataout_dir}/rho_Im.iinit{file_index}.dat", skiprows=1, usecols=range(1, ndim+1))[-1]
+                xim = np.loadtxt(os.path.join(datadir, f"rho_Im.iinit{file_index}.dat"), skiprows=1, usecols=range(1, ndim+1))[-1]
                 uT[:, iinit] += 1j * xim
             except:
-                name = dataout_dir+"/rho_Im.iinit"+str(file_index)+".dat"
+                name = os.path.join(datadir, f"rho_Im.iinit{file_index}.dat")
                 if not ignore_failure:
                     print("Can't read from ", name)
             # uT[:, iinit] = xre + 1j * xim
@@ -823,7 +821,7 @@ class Quandary:
         ft = []
         for iosc in range(len(self.Ne)):
             # Read the control pulse file
-            filename = dataout_dir + "./control"+str(iosc)+".dat"
+            filename = os.path.join(datadir, f"control{iosc}.dat")
             try:
                 x = np.loadtxt(filename)
             except:
