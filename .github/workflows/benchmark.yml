@@ -41,9 +41,7 @@ jobs:
           tool: 'customSmallerIsBetter'
           output-file-path: benchmark.json
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          # TODO: Only push to dashboard on main
-          # auto-push: ${{ github.ref == 'refs/heads/main' }}
-          auto-push: true
+          auto-push: ${{ github.ref == 'refs/heads/main' }}
           gh-pages-branch: gh-pages
           benchmark-data-dir-path: dev/bench
           comment-on-alert: true
