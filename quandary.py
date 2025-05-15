@@ -197,12 +197,6 @@ class Quandary:
             self.initctrl_MHz = [max_alloscillators for _ in range(len(self.Ne))]
         if len(self.initctrl_MHz) == 0:
             self.initctrl_MHz = [10.0 for _ in range(len(self.Ne))]
-        # if len(self.Hsys) > 0: # User-provided Hamiltonian operators 
-            # self.standardmodel=False   
-        # else: # Using standard Hamiltonian model
-        if self.standardmodel:
-            Ntot = [sum(x) for x in zip(self.Ne, self.Ng)]
-            self.Hsys, self.Hc_re, self.Hc_im = hamiltonians(N=Ntot, freq01=self.freq01, selfkerr=self.selfkerr, crosskerr=self.crosskerr, Jkl=self.Jkl, rotfreq=self.rotfreq, verbose=self.verbose)
         if len(self.targetstate) > 0:
             self.optim_target = "file"
         if len(self.targetgate) > 0:
@@ -226,6 +220,9 @@ class Quandary:
         
         # Estimate the number of required time steps
         if self.dT < 0:
+            if self.standardmodel==True: # set up the standard Hamiltonian first
+                Ntot = [sum(x) for x in zip(self.Ne, self.Ng)]
+                self.Hsys, self.Hc_re, self.Hc_im = hamiltonians(N=Ntot, freq01=self.freq01, selfkerr=self.selfkerr, crosskerr=self.crosskerr, Jkl=self.Jkl, rotfreq=self.rotfreq, verbose=self.verbose)
             self.nsteps = estimate_timesteps(T=self.T, Hsys=self.Hsys, Hc_re=self.Hc_re, Hc_im=self.Hc_im, maxctrl_MHz=self.maxctrl_MHz, Pmin=self.Pmin)
             self.dT = self.T/self.nsteps
         else:
@@ -250,6 +247,10 @@ class Quandary:
         if self.spline_order == 0 and len(self.carrier_frequency) == 0:
             self.carrier_frequency = [[0.0] for _ in range(len(self.freq01))]
         if len(self.carrier_frequency) == 0: 
+            # set up the standard Hamiltonian first, if needed and if not done so already
+            if self.standardmodel==True and len(self.Hsys<=0):
+                Ntot = [sum(x) for x in zip(self.Ne, self.Ng)]
+                self.Hsys, self.Hc_re, self.Hc_im = hamiltonians(N=Ntot, freq01=self.freq01, selfkerr=self.selfkerr, crosskerr=self.crosskerr, Jkl=self.Jkl, rotfreq=self.rotfreq, verbose=self.verbose)
             self.carrier_frequency, _ = get_resonances(Ne=self.Ne, Ng=self.Ng, Hsys=self.Hsys, Hc_re=self.Hc_re, Hc_im=self.Hc_im, rotfreq=self.rotfreq, verbose=self.verbose, cw_amp_thres=self.cw_amp_thres, cw_prox_thres=self.cw_prox_thres, stdmodel=self.standardmodel)
 
         if self.verbose: 
@@ -280,7 +281,7 @@ class Quandary:
         self.uT         = uT_org.copy()
 
 
-    def simulate(self, *, pcof0=[], pt0=[], qt0=[], maxcores=-1, datadir="./run_dir", quandary_exec="", cygwinbash="", batchargs=[]):
+    def simulate(self, *, pcof0=[], pt0=[], qt0=[], maxcores=-1, datadir="./run_dir", quandary_exec="", cygwinbash="", mpi_exec="mpirun -np ", batchargs=[]):
         """ 
         Simulate the quantm dynamics using the current settings. 
 
@@ -293,6 +294,7 @@ class Quandary:
         datadir       : Data directory for storing output files. Default: "./run_dir"
         quandary_exec : Location of Quandary's C++ executable, if not in $PATH
         cygwinbash    : To run on Windows through Cygwin, set the path to Cygwin/bash.exe. Default: None.
+        mpi_exec      : String for MPI launcher prefix, e.g. "mpirun -np" or "srun -n". The string should include the flag for core counts, but not the number of cores itself which will be appended automatically
         batchargs     : [str(time), str(accountname), int(nodes)] If given, submits a batch job rather than local execution. Specify the max. runtime (string), the account name (string) and the number of requested nodes (int). Note, the number of executing *cores* is defined through 'maxcores'. 
 
         Returns:
@@ -308,10 +310,10 @@ class Quandary:
         if len(pt0) > 0 and len(qt0) > 0:
             pcof0 = self.downsample_pulses(pt0=pt0, qt0=qt0)
 
-        return self.__run(pcof0=pcof0, runtype="simulation", overwrite_popt=False, maxcores=maxcores, datadir=datadir, quandary_exec=quandary_exec, cygwinbash=cygwinbash, batchargs=batchargs)
+        return self.__run(pcof0=pcof0, runtype="simulation", overwrite_popt=False, maxcores=maxcores, datadir=datadir, quandary_exec=quandary_exec, cygwinbash=cygwinbash,mpi_exec=mpi_exec, batchargs=batchargs)
 
 
-    def optimize(self, *, pcof0=[], pt0=[], qt0=[], maxcores=-1, datadir="./run_dir", quandary_exec="", cygwinbash="", batchargs=[]):
+    def optimize(self, *, pcof0=[], pt0=[], qt0=[], maxcores=-1, datadir="./run_dir", quandary_exec="", cygwinbash="", mpi_exec="mpirun -np ", batchargs=[]):
         """ 
         Optimize the quantm dynamics using the current settings. 
 
@@ -322,6 +324,7 @@ class Quandary:
         pt, qt          :  p,q-control pulses [MHz] at each time point for each oscillator (List of list)
         datadir       : Data directory for storing output files. Default: "./run_dir"
         quandary_exec : Location of Quandary's C++ executable, if not in $PATH
+        mpi_exec      : String for MPI launcher prefix, e.g. "mpirun -np" or "srun -n". The string should include the flag for core counts, but not the number of cores itself which will be appended automatically
         cygwinbash    : To run on Windows through Cygwin, set the path to Cygwin/bash.exe. Default: None.
         batchargs     : [str(time), str(accountname), int(nodes)] If given, submits a batch job rather than local execution. Specify the max. runtime (string), the account name (string) and the number of requested nodes (int). Note, the number of executing *cores* is defined through 'maxcores'. 
 
@@ -337,10 +340,10 @@ class Quandary:
         if len(pt0) > 0 and len(qt0) > 0:
             pcof0 = self.downsample_pulses(pt0=pt0, qt0=qt0)
 
-        return self.__run(pcof0=pcof0, runtype="optimization", overwrite_popt=True, maxcores=maxcores, datadir=datadir, quandary_exec=quandary_exec, cygwinbash=cygwinbash, batchargs=batchargs)
+        return self.__run(pcof0=pcof0, runtype="optimization", overwrite_popt=True, maxcores=maxcores, datadir=datadir, quandary_exec=quandary_exec, cygwinbash=cygwinbash, mpi_exec=mpi_exec, batchargs=batchargs)
     
 
-    def evalControls(self, *, pcof0=[], points_per_ns=1,datadir="./run_dir", quandary_exec="", cygwinbash=""):
+    def evalControls(self, *, pcof0=[], points_per_ns=1,datadir="./run_dir", quandary_exec="", mpi_exec="mpirun -np ", cygwinbash=""):
         """
         Evaluate control pulses on a specific sample rate.       
         
@@ -350,6 +353,7 @@ class Quandary:
         points_per_ns :  sample rate of the resulting controls. Default: 1ns 
         datadir       :  Directory for output files. Default: "./run_dir"
         quandary_exec :  Path to Quandary's C++ executable if not in $PATH
+        mpi_exec      : String for MPI launcher prefix, e.g. "mpirun -np" or "srun -n". The string should include the flag for core counts, but not the number of cores itself which will be appended automatically
         cygwinbash    : To run on Windows through Cygwin, set the path to Cygwin/bash.exe. Default: None.
     
         Returns:
@@ -367,7 +371,7 @@ class Quandary:
         os.makedirs(datadir_controls, exist_ok=True)
         runtype = 'evalcontrols'
         configfile_eval= self.__dump(pcof0=pcof0, runtype=runtype, datadir=datadir_controls)
-        err = execute(runtype=runtype, ncores=1, config_filename=configfile_eval, datadir=datadir_controls, quandary_exec=quandary_exec, verbose=False, cygwinbash=cygwinbash)
+        err = execute(runtype=runtype, ncores=1, config_filename=configfile_eval, datadir=datadir_controls, quandary_exec=quandary_exec, verbose=False, mpi_exec=mpi_exec, cygwinbash=cygwinbash)
         time, pt, qt, _, _, _, pcof, _, _ = self.get_results(datadir=datadir_controls, ignore_failure=True)
 
         # Save pcof to config.popt
@@ -428,7 +432,7 @@ class Quandary:
         return pcof0
 
 
-    def __run(self, *, pcof0=[], runtype="optimization", overwrite_popt=False, maxcores=-1, datadir="./run_dir", quandary_exec="", cygwinbash="", batchargs=[]):
+    def __run(self, *, pcof0=[], runtype="optimization", overwrite_popt=False, maxcores=-1, datadir="./run_dir", quandary_exec="", cygwinbash="", mpi_exec="mpirun -np ", batchargs=[]):
         """
         Internal helper function to launch processes to execute the C++ Quandary code:
           1. Writes quandary config files to file system
@@ -442,17 +446,22 @@ class Quandary:
         config_filename = self.__dump(pcof0=pcof0, runtype=runtype, datadir=datadir)
 
         # Set default number of cores to the number of initial conditions, unless otherwise specified. Make sure ncores is an integer divisible of ninit.
-        ncores = self._ninit
+        ncores_init = self._ninit
         if maxcores > -1:
-            ncores = min(self._ninit, maxcores)
+            ncores_init = min(self._ninit, maxcores)
         for i in range(self._ninit, 0, -1):
             if self._ninit % i == 0:  # i is a factor of ninit
-                if i <= ncores:
-                    ncores = i
+                if i <= ncores_init:
+                    ncores_init = i
                     break
+        # Set remaining number of cores for petsc
+        ncores_petsc = 1
+        if maxcores > ncores_init and maxcores % ncores_init == 0:
+            ncores_petsc = int(maxcores / ncores_init)
+        ncores = ncores_init * ncores_petsc
 
         # Execute subprocess to run Quandary
-        err = execute(runtype=runtype, ncores=ncores, config_filename=config_filename, datadir=datadir, quandary_exec=quandary_exec, verbose=self.verbose, cygwinbash=cygwinbash, batchargs=batchargs)
+        err = execute(runtype=runtype, ncores=ncores, config_filename=config_filename, datadir=datadir, quandary_exec=quandary_exec, verbose=self.verbose, cygwinbash=cygwinbash, mpi_exec=mpi_exec, batchargs=batchargs)
         if self.verbose:
             print("Quandary data dir: ", datadir, "\n")
 
@@ -1336,7 +1345,7 @@ def timestep_richardson_est(quandary, tol=1e-8, order=2, quandary_exec=""):
     return errs_J, errs_u, dts
 
 
-def execute(*, runtype="simulation", ncores=1, config_filename="config.cfg", datadir=".", quandary_exec="", verbose=False, cygwinbash="", batchargs=[]):
+def execute(*, runtype="simulation", ncores=1, config_filename="config.cfg", datadir=".", quandary_exec="", verbose=False, cygwinbash="", mpi_exec="mpirun -np ", batchargs=[]):
     """ 
     Helper function to evoke a subprocess that executes Quandary.
 
@@ -1348,6 +1357,7 @@ def execute(*, runtype="simulation", ncores=1, config_filename="config.cfg", dat
     quandary_exec       (string)    : Absolute path to quandary's executable. Default: "" (expecting quandary to be in the $PATH)
     verbose             (Bool)      : Flag to print more output. Default: False
     cygwinbash          (string)    : Path to Cygwin bash.exe, if running on Windows machine. Default: None
+    mpi_exec            (string)    : MPI launcher prefix, e.g. "mpirun -np" or "srun -n". The string should include the flag for core counts, but not the number of cores itself which will be appended automatically
     batchargs           (List)      : Submit to batch system by setting batchargs= [maxime, accountname, nodes]. Default: []. Compare end of this file. Specify the max. runtime (string), the account name (string) and the number of requested nodes (int). Note, the number of executing *cores* is defined through 'ncores'. 
 
     Returns:
@@ -1371,7 +1381,7 @@ def execute(*, runtype="simulation", ncores=1, config_filename="config.cfg", dat
         if len(batchargs)>0:
             myrun = batch_run  # currently set to "srun -n"
         else:
-            myrun = "mpirun -np "
+            myrun = mpi_exec
         runcommand = f"{myrun} {ncores} " + runcommand
     if verbose:
         print("Running Quandary ... ")
