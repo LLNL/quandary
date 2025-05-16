@@ -1,6 +1,6 @@
 # Performance Regression Test Documentation
 
-These tests are run with `pytest` and `pytest-benchmark`.
+These tests are run with `pytest` and the pytest-benchmark plugin.
 
 To run tests from base directory:
 ```
@@ -41,4 +41,4 @@ For more options, see pytest-benchmark [documentation](https://pytest-benchmark.
 2. Add new entry to test_cases.json:
     - The `simulation_name` should be the new simulation name, e.g. `newSimulation`.
     - The `number_of_processes` is an array of integers. For each integer `i`, a simulation will be run with `mpirun -n ${i}`.
-    - The `repititions` is the number of times to run this test and to average the timings over.
+    - The `repetitions` is the number of times to run this test and to average the timings over.
