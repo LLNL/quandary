@@ -138,5 +138,15 @@
         "number_of_processes": [
             4
         ]
+    },
+    {
+        "simulation_name": "nlevels_4_4_4_4",
+        "files_to_compare": [
+            "population*.dat",
+            "expected*.dat"
+        ],
+        "number_of_processes": [
+            1, 2, 4
+        ]
     }
 ]

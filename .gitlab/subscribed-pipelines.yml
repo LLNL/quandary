@@ -82,4 +82,8 @@ lassen-build-and-test:
   needs: [lassen-up-check, generate-job-lists]
   extends: [.build-and-test]
 
-
+# PERFORMANCE
+ruby-performance-test:
+  variables:
+    CI_MACHINE: "ruby"
+  extends: [.performance-test]

@@ -782,7 +782,7 @@ which plots the first against the second column of the file 'expected0.iinit0000
 
 \section{Testing}
   \begin{itemize}
-    \item Quandary has a set of regression tests. Please take a look at the \verb+regression_tests/README.md+ document for instructions on how to run the regression tests.
+    \item Quandary has a set of regression tests. Please take a look at the \verb+tests/regression/README.md+ document for instructions on how to run the regression tests.
     \item In order to check if the gradient implementation is correct, one can choose to run a Central Finite Difference test. Let the overall objective function be denoted by $F(\boldsymbol{\alpha})$. The Central Finite Difference test compares each element of the gradient $\nabla F(\boldsymbol{\alpha})$ with the following (second-order accurate) estimate:
     \begin{align*}
        \left(\nabla F(\boldsymbol{\alpha}) \right)_i \approx \frac{F(\bfa + \epsilon\bs{e}_i) - F(\bfa - \epsilon\bs{e}_i)}{2\epsilon} \qquad \qquad \text{(CFD)}
