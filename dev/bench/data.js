@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1747182591252,
+  "lastUpdate": 1747361626862,
   "repoUrl": "https://github.com/LLNL/quandary",
   "entries": {
     "Benchmark": [
@@ -175,6 +175,50 @@ window.BENCHMARK_DATA = {
           {
             "name": "test_eval[nlevels_32_32_32_32_nproc_32] - Memory",
             "value": 5037.9,
+            "unit": "MB"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Tara Drwenski",
+            "username": "tdrwenski",
+            "email": "tdrwenski@users.noreply.github.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "991924ca8c2979ec0117660657819cda78758201",
+          "message": "Merge pull request #45 from LLNL/perf-testing\n\nAdd automated performance tests",
+          "timestamp": "2025-05-16T01:45:52Z",
+          "url": "https://github.com/LLNL/quandary/commit/991924ca8c2979ec0117660657819cda78758201"
+        },
+        "date": 1747361625907,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "test_eval[nlevels_4_4_4_4_nproc_2] - Time",
+            "value": 1.1444151806450464,
+            "unit": "seconds",
+            "range": "0.28802335240935584"
+          },
+          {
+            "name": "test_eval[nlevels_4_4_4_4_nproc_2] - Memory",
+            "value": 90.42,
+            "unit": "MB"
+          },
+          {
+            "name": "test_eval[nlevels_32_32_32_32_nproc_32] - Time",
+            "value": 19.867803638400073,
+            "unit": "seconds",
+            "range": "0.8015886276080502"
+          },
+          {
+            "name": "test_eval[nlevels_32_32_32_32_nproc_32] - Memory",
+            "value": 5038.78,
             "unit": "MB"
           }
         ]
