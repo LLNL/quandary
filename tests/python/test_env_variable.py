@@ -1,0 +1,136 @@
+import math
+import os
+import pytest
+from quandary import Quandary
+
+BASE_DATADIR = "QUANDARY_BASE_DATADIR"
+
+
+def quandary_simulate(datadir):
+    return Quandary(
+        Ne=[2],
+        Ng=[0],
+        freq01=[4.0],
+        selfkerr=[0.2],
+        T=1.0,
+        nsteps=10,
+        maxiter=1,
+        spline_order=0,
+    ).simulate(datadir=datadir)
+
+
+def quandary_optimize(datadir):
+    return Quandary(
+        Ne=[2],
+        T=100.0,
+        targetstate=[1.0/math.sqrt(2), 1.0/math.sqrt(2)],
+        initialcondition=[1.0, 0.0],
+        tol_infidelity=1e-5,
+        initctrl_MHz=[0.1],
+        rand_seed=1234
+    ).optimize(datadir=datadir)
+
+test_cases = [
+    quandary_optimize,
+    quandary_simulate,
+]
+
+
+@pytest.mark.parametrize("quandary", test_cases)
+def test_relative_output_path_without_env_var(quandary, request, cd_tmp_path, clean_env_var):
+    datadir_name = request.node.name
+    datadir_path = os.path.join(os.getcwd(), datadir_name)
+
+    quandary(datadir=datadir_name)
+
+    print(f"\nCurrent directory: {os.getcwd()}")
+    print(f"Env var: {os.environ.get(BASE_DATADIR)}")
+    print(f"datadir: {datadir_name}")
+
+    assert_output_files(datadir_path)
+
+
+@pytest.mark.parametrize("quandary", test_cases)
+def test_absolute_output_path_without_env_var(quandary, request, tmp_path, clean_env_var):
+    datadir_name = request.node.name
+    datadir_path = os.path.join(tmp_path, datadir_name)
+
+    quandary(datadir=datadir_path)
+
+    print(f"\nCurrent directory: {os.getcwd()}")
+    print(f"Env var: {os.environ.get(BASE_DATADIR)}")
+    print(f"datadir: {datadir_path}")
+
+    assert_output_files(datadir_path)
+
+
+@pytest.mark.parametrize("quandary", test_cases)
+def test_relative_output_path_with_env_var(quandary, request, tmp_path, clean_env_var):
+    base_dir = str(tmp_path)
+    os.environ[BASE_DATADIR] = base_dir
+    datadir_name = request.node.name
+    datadir_path = os.path.join(base_dir, datadir_name)
+
+    quandary(datadir=datadir_name)
+
+    print(f"\nCurrent directory: {os.getcwd()}")
+    print(f"Env var: {os.environ.get(BASE_DATADIR)}")
+    print(f"datadir: {datadir_name}")
+
+    assert_output_files(datadir_path)
+
+
+@pytest.mark.parametrize("quandary", test_cases)
+def test_absolute_output_path_with_env_var(quandary, request, tmp_path, clean_env_var):
+    os.environ[BASE_DATADIR] = "should_not_use_this/path"
+    datadir_name = request.node.name
+    datadir_path = os.path.join(tmp_path, datadir_name)
+
+    quandary(datadir=datadir_path)
+
+    print(f"\nCurrent directory: {os.getcwd()}")
+    print(f"Env var: {os.environ.get(BASE_DATADIR)}")
+    print(f"datadir: {datadir_path}")
+
+    assert_output_files(datadir_path)
+    assert not os.path.exists(os.environ[BASE_DATADIR])
+
+
+@pytest.fixture
+def cd_tmp_path(tmp_path):
+    """Change to a temporary directory for the test and return afterward."""
+    original_cwd = os.getcwd()
+    os.chdir(tmp_path)
+    try:
+        yield tmp_path
+    finally:
+        os.chdir(original_cwd)
+
+
+@pytest.fixture
+def clean_env_var():
+    """Fixture to ensure env var is restored to previous state after the tests"""
+    orig_value = os.environ.get(BASE_DATADIR)
+
+    if BASE_DATADIR in os.environ:
+        del os.environ[BASE_DATADIR]
+
+    yield
+
+    if orig_value is not None:
+        os.environ[BASE_DATADIR] = orig_value
+    elif BASE_DATADIR in os.environ:
+        del os.environ[BASE_DATADIR]
+
+
+def assert_output_files(datadir):
+    expected_output_files = [
+        "config.cfg",
+        "optim_history.dat",
+        "params.dat",
+        "control0.dat"
+    ]
+
+    assert os.path.exists(datadir), f"directory {datadir} does not exist"
+    for file in expected_output_files:
+        assert os.path.exists(os.path.join(datadir, file)), f"file {file} does not exist"
