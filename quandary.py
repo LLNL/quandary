@@ -1146,24 +1146,30 @@ def hamiltonians(*, N, freq01, selfkerr, crosskerr=[], Jkl = [], rotfreq=[], ver
     return Hsys, Hc_re, Hc_im
 
 
-def plot_pulse(Ne, time, pt, qt):
+def plot_pulse(Ne, time, pt, qt, vline_period=-1.0):
     """ 
     Plot the control pulse for all qubits
     """
     fig = plt.figure()
     nrows = len(Ne)
     ncols = 1
+    if vline_period>0.0:
+        vlines = np.arange(0.0, time[-1] + vline_period, vline_period)
     for iosc in range(len(Ne)):
-        plt.subplot(nrows, ncols, iosc+1)
-        plt.plot(time, pt[iosc], "r", label="p(t)")
-        plt.plot(time, qt[iosc], "b", label="q(t)")
-        plt.xlabel('time (ns)')
-        plt.ylabel('Drive strength [MHz]')
+        ax = plt.subplot(nrows, ncols, iosc+1)
+        ax.plot(time, pt[iosc], "r", label="p(t)")
+        ax.plot(time, qt[iosc], "b", label="q(t)")
+        # Draw vertical guidelines
+        if vline_period>0.0:
+            for t_v in vlines:
+                ax.axvline(t_v, linestyle="--", linewidth=0.5, color="gray", zorder=0)
+        ax.set_xlabel('time (ns)')
+        ax.set_ylabel('Drive strength [MHz]')
         maxp = max(np.abs(pt[iosc]))
         maxq = max(np.abs(qt[iosc]))
-        plt.title('Qubit '+str(iosc)+'\n max. drive '+str(round(maxp,1))+", "+str(round(maxq,1))+" MHz")
-        plt.legend(loc='lower right')
-        plt.xlim([0.0, time[-1]])
+        ax.set_title('Qubit '+str(iosc)+'\n max. drive '+str(round(maxp,1))+", "+str(round(maxq,1))+" MHz")
+        ax.legend(loc='lower right')
+        ax.set_xlim([0.0, time[-1]])
     # plt.grid()
     plt.subplots_adjust(hspace=0.6)
     plt.draw()
@@ -1594,10 +1600,10 @@ def triangular_J(machine_model, qubits):
 
 
 
-def QuandaryOptimize(operation, gate, machine_model, duration, dT, maxctrl_MHz, with_guard_level, rotfreq_const, prefixfolder, rand_seed):
+def QuandaryOptimize(location, radixes, gate, gate_name, machine_model, duration, dT, maxctrl_MHz, with_guard_level, rotfreq_const, prefixfolder, rand_seed):
 
     # Set up a Quandary instance to optimize for this gate
-    qubits = list(operation.location) 
+    qubits = list(location) 
     freq01_list  = [machine_model.freq01(q)         for q in qubits]
     anharm_list  = [machine_model.anharmonicity(q)  for q in qubits]
     Jkl_list     = triangular_J(machine_model, qubits)
@@ -1606,8 +1612,8 @@ def QuandaryOptimize(operation, gate, machine_model, duration, dT, maxctrl_MHz, 
     spline_knot_spacing = 3.0  # ns. Maybe 8.25 if op.num_qudits==1 
     gate = gate
     quandary_i = Quandary(
-		Ne = [operation.radixes[i] for i in range(operation.num_qudits)],
-		Ng = [1 if with_guard_level else 0 for _ in range(operation.num_qudits)], 
+		Ne = [radixes[i] for i in range(len(qubits))],
+		Ng = [1 if with_guard_level else 0 for _ in range(len(qubits))], 
 		freq01 = freq01_list,
 		rotfreq=rotfreq_list,
 		selfkerr=anharm_list,
@@ -1623,8 +1629,9 @@ def QuandaryOptimize(operation, gate, machine_model, duration, dT, maxctrl_MHz, 
 		rand_seed=rand_seed)
     
     # Optimize
-    print(" -> Optimizing pulses for operation ", operation)
-    datadir = prefixfolder+str(operation.gate)+str(operation.location)+ str(operation.params) + "_rundir"
+    # datadir = prefixfolder+str(operation.gate)+str(operation.location)+ str(operation.params) + "_rundir"
+    datadir = prefixfolder + gate_name + "_rundir"
+    print(" -> Optimizing pulses for ", gate_name, ", datadir=",datadir)
     t, pt, qt, infidelity, expectedEnergy, population = quandary_i.optimize(datadir=datadir)
     
     # If didn't converge, retry with new random seed
