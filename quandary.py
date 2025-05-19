@@ -252,7 +252,7 @@ class Quandary:
             self.carrier_frequency = [[0.0] for _ in range(len(self.freq01))]
         if len(self.carrier_frequency) == 0: 
             # set up the standard Hamiltonian first, if needed
-            if self.standardmodel==True and len(self.Hsys)<=0):
+            if self.standardmodel==True and len(self.Hsys)<=0:
                 Ntot = [sum(x) for x in zip(self.Ne, self.Ng)]
                 self.Hsys, self.Hc_re, self.Hc_im = hamiltonians(N=Ntot, freq01=self.freq01, selfkerr=self.selfkerr, crosskerr=self.crosskerr, Jkl=self.Jkl, rotfreq=self.rotfreq, verbose=self.verbose)
             self.carrier_frequency, _ = get_resonances(Ne=self.Ne, Ng=self.Ng, Hsys=self.Hsys, Hc_re=self.Hc_re, Hc_im=self.Hc_im, rotfreq=self.rotfreq, verbose=self.verbose, cw_amp_thres=self.cw_amp_thres, cw_prox_thres=self.cw_prox_thres, stdmodel=self.standardmodel)
