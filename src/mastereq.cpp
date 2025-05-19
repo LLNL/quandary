@@ -312,31 +312,31 @@ void MasterEq::initSparseMatSolver(){
   for (int iosc = 0; iosc < noscillators; iosc++) {
     for (int josc=iosc+1; josc<noscillators; josc++){
       if (fabs(Jkl[id_kl]) > 1e-12) { // only allocate if Jkl>0
-        Mat myAdkl = nullptr, myBdkl = nullptr;
+        Mat myAdkl = nullptr; 
+        Mat myBdkl = nullptr;
+        MatCreate(PETSC_COMM_WORLD, &myAdkl);
+        MatCreate(PETSC_COMM_WORLD, &myBdkl);
+        MatSetType(myAdkl, MATMPIAIJ);
+        MatSetType(myBdkl, MATMPIAIJ);
+        MatSetSizes(myAdkl, PETSC_DECIDE, PETSC_DECIDE, dim, dim);
+        MatSetSizes(myBdkl, PETSC_DECIDE, PETSC_DECIDE, dim, dim);
+        if (lindbladtype != LindbladType::NONE) {
+          MatMPIAIJSetPreallocation(myAdkl, 4, NULL, 4, NULL);
+          MatMPIAIJSetPreallocation(myBdkl, 4, NULL, 4, NULL);
+        } else {
+          MatMPIAIJSetPreallocation(myAdkl, 2, NULL, 2, NULL);
+          MatMPIAIJSetPreallocation(myBdkl, 2, NULL, 2, NULL);
+        }
+        MatSetUp(myAdkl);
+        MatSetUp(myBdkl);
+        MatSetFromOptions(myAdkl);
+        MatSetFromOptions(myBdkl);
         Ad_vec.push_back(myAdkl);
         Bd_vec.push_back(myBdkl);
-        MatCreate(PETSC_COMM_WORLD, &Ad_vec[id_kl]);
-        MatCreate(PETSC_COMM_WORLD, &Bd_vec[id_kl]);
-        MatSetType(Ad_vec[id_kl], MATMPIAIJ);
-        MatSetType(Bd_vec[id_kl], MATMPIAIJ);
-        MatSetSizes(Ad_vec[id_kl], PETSC_DECIDE, PETSC_DECIDE, dim, dim);
-        MatSetSizes(Bd_vec[id_kl], PETSC_DECIDE, PETSC_DECIDE, dim, dim);
-        if (lindbladtype != LindbladType::NONE) {
-          MatMPIAIJSetPreallocation(Ad_vec[id_kl], 4, NULL, 4, NULL);
-          MatMPIAIJSetPreallocation(Bd_vec[id_kl], 4, NULL, 4, NULL);
-        } else {
-          MatMPIAIJSetPreallocation(Ad_vec[id_kl], 2, NULL, 2, NULL);
-          MatMPIAIJSetPreallocation(Bd_vec[id_kl], 2, NULL, 2, NULL);
-        }
-        MatSetUp(Ad_vec[id_kl]);
-        MatSetUp(Bd_vec[id_kl]);
-        MatSetFromOptions(Ad_vec[id_kl]);
-        MatSetFromOptions(Bd_vec[id_kl]);
       }
       id_kl++;
     }
   }
-
 
   int dimmat = dim_rho; // this is N!
 
@@ -449,6 +449,7 @@ void MasterEq::initSparseMatSolver(){
        Ad_kl(t) =  (ak^Tal - akal^T)
        Bd_kl(t) = -(ak^Tal + akal^T)  */
     id_kl=0;
+    int matid=0;
     for (int iosc = 0; iosc < noscillators; iosc++) {
       // Dimensions of ioscillator
       int nk     = oscil_vec[iosc]->getNLevels();
@@ -462,7 +463,7 @@ void MasterEq::initSparseMatSolver(){
           int npostj = oscil_vec[josc]->dim_postOsc;
 
           /* Iterate over local rows of Ad_vec / Bd_vec */
-          MatGetOwnershipRange(Ad_vec[id_kl], &ilow, &iupp);
+          MatGetOwnershipRange(Ad_vec[matid], &ilow, &iupp);
           for (int row = ilow; row<iupp; row++){
             // Add +/- I_N \kron (ak^Tal -/+ akal^T) (Lindblad)
             // or  +/- (ak^Tal -/+ akal^T) (Schrodinger)
@@ -474,14 +475,14 @@ void MasterEq::initSparseMatSolver(){
             if (r1a > 0 && r1b < nj-1) {
               val = Jkl[id_kl] * sqrt(r1a * (r1b+1));
               col = row - npostk + npostj;
-               if (fabs(val)>1e-14) MatSetValue(Ad_vec[id_kl], row, col,  val, ADD_VALUES);
-               if (fabs(val)>1e-14) MatSetValue(Bd_vec[id_kl], row, col, -val, ADD_VALUES);
+               if (fabs(val)>1e-14) MatSetValue(Ad_vec[matid], row, col,  val, ADD_VALUES);
+               if (fabs(val)>1e-14) MatSetValue(Bd_vec[matid], row, col, -val, ADD_VALUES);
             }
             if (r1a < nk-1  && r1b > 0) {
               val = Jkl[id_kl] * sqrt((r1a+1) * r1b);
               col = row + npostk - npostj;
-              if (fabs(val)>1e-14) MatSetValue(Ad_vec[id_kl], row, col, -val, ADD_VALUES);
-              if (fabs(val)>1e-14) MatSetValue(Bd_vec[id_kl], row, col, -val, ADD_VALUES);
+              if (fabs(val)>1e-14) MatSetValue(Ad_vec[matid], row, col, -val, ADD_VALUES);
+              if (fabs(val)>1e-14) MatSetValue(Bd_vec[matid], row, col, -val, ADD_VALUES);
             }
 
             if (lindbladtype != LindbladType::NONE) {
@@ -494,17 +495,18 @@ void MasterEq::initSparseMatSolver(){
               if (r1a < nk-1 && r1b > 0) {
                 val = Jkl[id_kl] * sqrt((r1a+1) * r1b);
                 col = row + npostk*dimmat - npostj*dimmat;
-                if (fabs(val)>1e-14) MatSetValue(Ad_vec[id_kl], row, col, -val, ADD_VALUES);
-                if (fabs(val)>1e-14) MatSetValue(Bd_vec[id_kl], row, col, +val, ADD_VALUES);
+                if (fabs(val)>1e-14) MatSetValue(Ad_vec[matid], row, col, -val, ADD_VALUES);
+                if (fabs(val)>1e-14) MatSetValue(Bd_vec[matid], row, col, +val, ADD_VALUES);
               }
               if (r1a > 0 && r1b < nj-1) {
                 val = Jkl[id_kl] * sqrt(r1a * (r1b+1));
                 col = row - npostk*dimmat + npostj*dimmat;
-                if (fabs(val)>1e-14) MatSetValue(Ad_vec[id_kl], row, col, val, ADD_VALUES);
-                if (fabs(val)>1e-14) MatSetValue(Bd_vec[id_kl], row, col, val, ADD_VALUES);
+                if (fabs(val)>1e-14) MatSetValue(Ad_vec[matid], row, col, val, ADD_VALUES);
+                if (fabs(val)>1e-14) MatSetValue(Bd_vec[matid], row, col, val, ADD_VALUES);
               }
             }
           }
+          matid++;
         }
         id_kl++;
       }
@@ -644,21 +646,21 @@ void MasterEq::initSparseMatSolver(){
   MatAssemblyEnd(Bd, MAT_FINAL_ASSEMBLY);
   MatAssemblyBegin(Ad, MAT_FINAL_ASSEMBLY);
   MatAssemblyEnd(Ad, MAT_FINAL_ASSEMBLY);
-  id_kl = 0;
-  for (int iosc = 0; iosc < noscillators; iosc++){
-    MatAssemblyBegin(Ac_vec[iosc][0], MAT_FINAL_ASSEMBLY);
-    MatAssemblyEnd(Ac_vec[iosc][0], MAT_FINAL_ASSEMBLY);
-    MatAssemblyBegin(Bc_vec[iosc][0], MAT_FINAL_ASSEMBLY);
-    MatAssemblyEnd(Bc_vec[iosc][0], MAT_FINAL_ASSEMBLY);
-    for (int josc=iosc+1; josc<noscillators; josc++){
-      if (fabs(Jkl[id_kl]) > 1e-12) { // only allocate if Jkl>0
-        MatAssemblyBegin(Ad_vec[id_kl], MAT_FINAL_ASSEMBLY);
-        MatAssemblyBegin(Bd_vec[id_kl], MAT_FINAL_ASSEMBLY);
-        MatAssemblyEnd(Ad_vec[id_kl], MAT_FINAL_ASSEMBLY);
-        MatAssemblyEnd(Bd_vec[id_kl], MAT_FINAL_ASSEMBLY);
-      }
-      id_kl++;
-    }
+  for (size_t i= 0; i< Ac_vec.size(); i++){
+    MatAssemblyBegin(Ac_vec[i][0], MAT_FINAL_ASSEMBLY);
+    MatAssemblyEnd(Ac_vec[i][0], MAT_FINAL_ASSEMBLY);
+  }
+  for (size_t i= 0; i< Bc_vec.size(); i++){
+    MatAssemblyBegin(Bc_vec[i][0], MAT_FINAL_ASSEMBLY);
+    MatAssemblyEnd(Bc_vec[i][0], MAT_FINAL_ASSEMBLY); 
+  }
+  for (size_t i=0; i<Ad_vec.size(); i++){
+    MatAssemblyBegin(Ad_vec[i], MAT_FINAL_ASSEMBLY);
+    MatAssemblyEnd(Ad_vec[i], MAT_FINAL_ASSEMBLY);
+  }
+  for (size_t i=0; i<Bd_vec.size(); i++){
+    MatAssemblyBegin(Bd_vec[i], MAT_FINAL_ASSEMBLY);
+    MatAssemblyEnd(Bd_vec[i], MAT_FINAL_ASSEMBLY);
   }
 
   // Remove control parameters for those oscillators that are non-controllable

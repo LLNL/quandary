@@ -1,0 +1,65 @@
+name: Process Benchmark
+
+on:
+  workflow_dispatch:
+    inputs:
+      benchmark_data:
+        description: 'Base64 encoded benchmark data'
+        required: true
+
+jobs:
+  store-and-visualize:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Find associated PR
+        id: findpr
+        run: |
+          PR_NUMBER=$(gh pr list --head ${{ github.ref_name }} --json number -q '.[0].number')
+          echo "pr_number=$PR_NUMBER" >> $GITHUB_OUTPUT
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Decode benchmark data
+        run: echo "${{ github.event.inputs.benchmark_data }}" | base64 -d > pytest_benchmark.json
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Convert benchmark format
+        run: |
+          python tests/performance/convert_benchmark_format.py pytest_benchmark.json benchmark.json
+
+      - name: Store benchmark result
+        id: benchmark
+        continue-on-error: true
+        uses: benchmark-action/github-action-benchmark@v1
+        with:
+          tool: 'customSmallerIsBetter'
+          output-file-path: benchmark.json
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          auto-push: ${{ github.ref == 'refs/heads/main' }}
+          gh-pages-branch: gh-pages
+          benchmark-data-dir-path: dev/bench
+          comment-on-alert: true
+          fail-on-alert: true
+          alert-threshold: '120%'
+          max-items-in-chart: 100
+
+      - name: Create Check for PRs
+        if: steps.findpr.outputs.pr_number != ''
+        uses: LouisBrunner/checks-action@v1.6.1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          name: Performance Benchmark
+          sha: ${{ github.sha }}
+          conclusion: ${{ steps.benchmark.outcome == 'success' && 'success' || 'failure' }}
+          output: |
+            {"summary": "${{ steps.benchmark.outcome == 'success' && 'Performance check passed' || 'Performance regression detected!' }}"}
+
+      - name: Final status
+        if: steps.benchmark.outcome != 'success'
+        run: exit 1

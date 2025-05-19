@@ -6,6 +6,8 @@ import pytest
 from pydantic import BaseModel, TypeAdapter
 from typing import List
 
+from tests.utils.common import build_mpi_command
+
 REL_TOL = 1.0e-7
 ABS_TOL = 1.0e-15
 
@@ -14,7 +16,7 @@ DATA_OUT_DIR = "data_out"
 
 TEST_PATH = os.path.dirname(os.path.realpath(__file__))
 TEST_CASES_PATH = os.path.join(TEST_PATH, "test_cases.json")
-QUANDARY_PATH = os.path.join(TEST_PATH, "..", "quandary")
+QUANDARY_PATH = os.path.join(TEST_PATH, "..", "..", "quandary")
 
 
 class Case(BaseModel):
@@ -53,11 +55,12 @@ def test_eval(test_case: Case, request):
 def run_test(simulation_dir, number_of_processes, config_file, files_to_compare, exact, mpi_exec, mpi_opt):
     os.chdir(simulation_dir)
 
-    command = [mpi_exec, "-n", str(number_of_processes)]
-    if mpi_opt:
-        command.extend([mpi_opt])
-    command.extend([QUANDARY_PATH, config_file])
-
+    command = build_mpi_command(
+        mpi_exec=mpi_exec,
+        num_processes=number_of_processes,
+        mpi_opt=mpi_opt,
+        quandary_path=QUANDARY_PATH,
+        config_file=config_file)
     print(f"Running command: \"{' '.join(command)}\"")
     result = subprocess.run(command, capture_output=True, text=True, check=True)
     print(result.stdout)

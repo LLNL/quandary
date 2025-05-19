@@ -129,5 +129,24 @@
         "number_of_processes": [
             1
         ]
+    },
+    {
+        "simulation_name": "spinchain_N8",
+        "files_to_compare": [
+            "population*.dat"
+        ],
+        "number_of_processes": [
+            4
+        ]
+    },
+    {
+        "simulation_name": "nlevels_4_4_4_4",
+        "files_to_compare": [
+            "population*.dat",
+            "expected*.dat"
+        ],
+        "number_of_processes": [
+            1, 2, 4
+        ]
     }
 ]
