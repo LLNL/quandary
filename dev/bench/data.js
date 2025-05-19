@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1747686952948,
+  "lastUpdate": 1747698630037,
   "repoUrl": "https://github.com/LLNL/quandary",
   "entries": {
     "Benchmark": [
@@ -307,6 +307,50 @@ window.BENCHMARK_DATA = {
           {
             "name": "test_eval[nlevels_32_32_32_32_nproc_32] - Memory",
             "value": 5038.31,
+            "unit": "MB"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Stefanie Guenther",
+            "username": "steffi7574",
+            "email": "guenther5@llnl.gov"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "e5db6ee3353caec304a312fe27e6c4f9c1fcde38",
+          "message": "Merge pull request #53 from LLNL/bugfix-hsys\n\nBugfix comparing length of Hsys.",
+          "timestamp": "2025-05-19T23:00:53Z",
+          "url": "https://github.com/LLNL/quandary/commit/e5db6ee3353caec304a312fe27e6c4f9c1fcde38"
+        },
+        "date": 1747698629548,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "test_eval[nlevels_4_4_4_4_nproc_2] - Time",
+            "value": 1.1473350109785678,
+            "unit": "seconds",
+            "range": "0.32751198988211916"
+          },
+          {
+            "name": "test_eval[nlevels_4_4_4_4_nproc_2] - Memory",
+            "value": 90.58,
+            "unit": "MB"
+          },
+          {
+            "name": "test_eval[nlevels_32_32_32_32_nproc_32] - Time",
+            "value": 19.542425581195857,
+            "unit": "seconds",
+            "range": "0.814245662778022"
+          },
+          {
+            "name": "test_eval[nlevels_32_32_32_32_nproc_32] - Memory",
+            "value": 5039.89,
             "unit": "MB"
           }
         ]
