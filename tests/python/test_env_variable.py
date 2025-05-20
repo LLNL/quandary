@@ -3,6 +3,9 @@ import os
 import pytest
 from quandary import Quandary
 
+# Mark all tests in this file as regression tests
+pytestmark = pytest.mark.regression
+
 BASE_DATADIR = "QUANDARY_BASE_DATADIR"
 
 
