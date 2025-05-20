@@ -876,7 +876,6 @@ def eigen_and_reorder(H0, verbose=False):
     # Get eigenvalues and vectors and sort them in ascending order
     Ntot = H0.shape[0]
     evals, evects = np.linalg.eig(H0)
-    evects = np.asmatrix(evects) # convert ndarray to matrix ?
     reord = np.argsort(evals)
     evals = evals[reord]
     evects = evects[:,reord]
@@ -936,8 +935,8 @@ def get_resonances(*, Ne, Ng, Hsys, Hc_re=[], Hc_im=[], rotfreq=[], cw_amp_thres
     for q in range(nqubits):
        
         # Transform symmetric and anti-symmetric control Hamiltonians using eigenvectors (reordered)
-        Hsym_trans = Utrans.H @ Hc_re[q] @ Utrans
-        Hanti_trans = Utrans.H @ Hc_im[q] @ Utrans
+        Hsym_trans = Utrans.conj().T @ Hc_re[q] @ Utrans
+        Hanti_trans = Utrans.conj().T @ Hc_im[q] @ Utrans
 
         resonances_a = []
         speed_a = []
