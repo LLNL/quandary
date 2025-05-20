@@ -12,6 +12,12 @@ class Quandary:
     """
     This class collects configuration options to run quandary and sets all defaults. Each parameter can be overwritten within the constructor. The number of time-steps required to resolve the time-domain, as well as the resonant carrier wave frequencies are computed within the constructor. If you attempt to change options of the configuration *after* construction by accessing them directly (e.g. myconfig.fieldname = mynewsetting), it is therefore advised to call myconfig.update() afterwards to recompute the number of time-steps and carrier waves.
 
+    Environment Variables:
+    --------------------
+    QUANDARY_BASE_DATADIR  : Base directory for output files. If set, all output will be written to this directory
+                             instead of the current working directory. Relative paths provided to methods will be
+                             considered relative to this base directory.
+
     Parameters
     ----------
     # Quantum system specifications
@@ -295,7 +301,8 @@ class Quandary:
         pt0           : List of ndarrays for the real part of the control function [MHz] for each oscillator, ndarray size = nsteps+1. Assumes spline_order == 0 and ignores the pcof0 argument. Default: []
         qt0           : Same as pt0, but for the imaginary part.
         maxcores      : Maximum number of processing cores. Default: number of initial conditions
-        datadir       : Data directory for storing output files. Default: "./run_dir"
+        datadir       : Data directory for storing output files. Default: "./run_dir".
+                        If $QUANDARY_BASE_DATADIR is set, this will be relative to that directory, otherwise relative to current working directory
         quandary_exec : Location of Quandary's C++ executable, if not in $PATH
         cygwinbash    : To run on Windows through Cygwin, set the path to Cygwin/bash.exe. Default: None.
         mpi_exec      : String for MPI launcher prefix, e.g. "mpirun -np" or "srun -n". The string should include the flag for core counts, but not the number of cores itself which will be appended automatically
@@ -326,7 +333,8 @@ class Quandary:
         pcof0          : List of control parameters to start the optimization from. Default: Use initial guess from the Quandary (pcof0, or pcof0_filename, or randomized initial guess)
         maxcores      : Maximum number of processing cores. Default: number of initial conditions
         pt, qt          :  p,q-control pulses [MHz] at each time point for each oscillator (List of list)
-        datadir       : Data directory for storing output files. Default: "./run_dir"
+        datadir       : Data directory for storing output files. Default: "./run_dir".
+                        If $QUANDARY_BASE_DATADIR is set, this will be relative to that directory, otherwise relative to current working directory
         quandary_exec : Location of Quandary's C++ executable, if not in $PATH
         mpi_exec      : String for MPI launcher prefix, e.g. "mpirun -np" or "srun -n". The string should include the flag for core counts, but not the number of cores itself which will be appended automatically
         cygwinbash    : To run on Windows through Cygwin, set the path to Cygwin/bash.exe. Default: None.
@@ -355,7 +363,8 @@ class Quandary:
         --------------------
         pcof0         :  List of control parameters (bspline coefficients) that determine the controls pulse. If not given, the initial guess from Quandary class will be used (pcof0, or filename, or random initial control...)
         points_per_ns :  sample rate of the resulting controls. Default: 1ns 
-        datadir       :  Directory for output files. Default: "./run_dir"
+        datadir       :  Directory for output files. Default: "./run_dir".
+                         If $QUANDARY_BASE_DATADIR is set, this will be relative to that directory, otherwise relative to current working directory
         quandary_exec :  Path to Quandary's C++ executable if not in $PATH
         mpi_exec      : String for MPI launcher prefix, e.g. "mpirun -np" or "srun -n". The string should include the flag for core counts, but not the number of cores itself which will be appended automatically
         cygwinbash    : To run on Windows through Cygwin, set the path to Cygwin/bash.exe. Default: None.
@@ -370,6 +379,8 @@ class Quandary:
         nsteps_org = self.nsteps
         self.nsteps = int(np.floor(self.T * points_per_ns))
     
+        datadir = resolve_datadir(datadir)
+
         # Execute quandary in 'evalcontrols' mode
         datadir_controls = datadir +"_ppns"+str(points_per_ns)
         os.makedirs(datadir_controls, exist_ok=True)
@@ -444,6 +455,8 @@ class Quandary:
           3. Gathers results from Quandays output directory into python
           4. Evaluate controls on the input sample rate, if given
         """
+
+        datadir = resolve_datadir(datadir)
 
         # Create quandary data directory and dump configuration file
         os.makedirs(datadir, exist_ok=True)
@@ -715,6 +728,7 @@ class Quandary:
         Parameters:
         -----------
         datadir        (string) : Directory containing Quandary's output files.
+                                  If $QUANDARY_BASE_DATADIR is set, this will be relative to that directory, otherwise relative to current working directory
         ignore_failure (bool)   : Flag to ignore warning when an expected file can't be found
 
         Returns:
@@ -725,6 +739,8 @@ class Quandary:
         expectedEnergy  :  Evolution of the expected energy of each oscillator and each initial condition. Acces: expectedEnergy[oscillator][initialcondition]
         population      :  Evolution of the population of each oscillator, of each initial condition. (expectedEnergy[oscillator][initialcondition])
         """
+
+        datadir = resolve_datadir(datadir)
 
         # Get control parameters
         filename = os.path.join(datadir, "params.dat")
@@ -1023,6 +1039,27 @@ def map_to_oscillators(id, Ne, Ng):
         index = index % postdim 
 
     return localIDs 
+
+def resolve_datadir(datadir: str) -> str:
+    """Helper function to resolve the output directory using environment variable
+
+    Parameters:
+    ----------
+    datadir : Output directory
+              If $QUANDARY_BASE_DATADIR is set, relative paths will be resolved against it
+
+    Returns:
+    -------
+    Resolved absolute or relative path for the data directory
+    """
+    if os.path.isabs(datadir):
+        return datadir
+
+    base_dir = os.environ.get("QUANDARY_BASE_DATADIR")
+    if base_dir:
+        datadir = os.path.join(base_dir, datadir)
+
+    return datadir
 
 
 def hamiltonians(*, N, freq01, selfkerr, crosskerr=[], Jkl = [], rotfreq=[], verbose=True):
