@@ -871,7 +871,7 @@ def estimate_timesteps(*, T=1.0, Hsys=[], Hc_re=[], Hc_im=[], maxctrl_MHz=[], Pm
 
 
 def eigen_and_reorder(H0, verbose=False):
-    """ Internal function that computes eigen decomposition and re-orders it to make the eigenvector matrix as close to the identity as posiible """
+    """ Internal function that computes eigen decomposition and re-orders it to make the eigenvector matrix as close to the identity as possible """
 
     # Get eigenvalues and vectors and sort them in ascending order
     Ntot = H0.shape[0]
