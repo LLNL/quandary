@@ -1,4 +1,3 @@
-import math
 import os
 import pytest
 from quandary import Quandary
@@ -40,6 +39,7 @@ def quandary_optimize(datadir, mpi_exec):
         mpi_exec=mpi_exec,
         maxcores=2
     )
+
 
 test_cases = [
     quandary_optimize,
