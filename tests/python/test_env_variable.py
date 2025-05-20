@@ -19,19 +19,27 @@ def quandary_simulate(datadir, mpi_exec):
         nsteps=10,
         maxiter=1,
         spline_order=0,
-    ).simulate(datadir=datadir, mpi_exec=mpi_exec)
+    ).simulate(
+        datadir=datadir,
+        mpi_exec=mpi_exec,
+        maxcores=2
+    )
 
 
 def quandary_optimize(datadir, mpi_exec):
     return Quandary(
         Ne=[2],
-        T=100.0,
-        targetstate=[1.0/math.sqrt(2), 1.0/math.sqrt(2)],
-        initialcondition=[1.0, 0.0],
-        tol_infidelity=1e-5,
-        initctrl_MHz=[0.1],
-        rand_seed=1234
-    ).optimize(datadir=datadir, mpi_exec=mpi_exec)
+        targetstate=[0.0, 1.0],
+        initialcondition="basis",
+        tol_infidelity=1e-2,
+        nsteps=1,
+        maxiter=1,
+        spline_order=0
+    ).optimize(
+        datadir=datadir,
+        mpi_exec=mpi_exec,
+        maxcores=2
+    )
 
 test_cases = [
     quandary_optimize,
