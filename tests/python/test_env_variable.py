@@ -6,7 +6,7 @@ from quandary import Quandary
 BASE_DATADIR = "QUANDARY_BASE_DATADIR"
 
 
-def quandary_simulate(datadir):
+def quandary_simulate(datadir, mpi_exec):
     return Quandary(
         Ne=[2],
         Ng=[0],
@@ -16,10 +16,10 @@ def quandary_simulate(datadir):
         nsteps=10,
         maxiter=1,
         spline_order=0,
-    ).simulate(datadir=datadir)
+    ).simulate(datadir=datadir, mpi_exec=mpi_exec)
 
 
-def quandary_optimize(datadir):
+def quandary_optimize(datadir, mpi_exec):
     return Quandary(
         Ne=[2],
         T=100.0,
@@ -28,7 +28,7 @@ def quandary_optimize(datadir):
         tol_infidelity=1e-5,
         initctrl_MHz=[0.1],
         rand_seed=1234
-    ).optimize(datadir=datadir)
+    ).optimize(datadir=datadir, mpi_exec=mpi_exec)
 
 test_cases = [
     quandary_optimize,
@@ -37,80 +37,84 @@ test_cases = [
 
 
 @pytest.mark.parametrize("quandary", test_cases)
-def test_relative_output_path_without_env_var(quandary, request, cd_tmp_path, clean_env_var):
+def test_relative_output_path_without_env_var(quandary, request, cd_tmp_path, clean_env_var, mpi_exec):
     datadir_name = request.node.name
     datadir_path = os.path.join(os.getcwd(), datadir_name)
 
-    quandary(datadir=datadir_name)
+    quandary(datadir=datadir_name, mpi_exec=mpi_exec)
 
     print(f"\nCurrent directory: {os.getcwd()}")
     print(f"Env var: {os.environ.get(BASE_DATADIR)}")
     print(f"datadir: {datadir_name}")
+    print(f"mpi_exec: {mpi_exec}")
 
     assert_output_files(datadir_path)
 
 
 @pytest.mark.parametrize("quandary", test_cases)
-def test_absolute_output_path_without_env_var(quandary, request, tmp_path, clean_env_var):
+def test_absolute_output_path_without_env_var(quandary, request, tmp_path, clean_env_var, mpi_exec):
     datadir_name = request.node.name
     datadir_path = os.path.join(tmp_path, datadir_name)
 
-    quandary(datadir=datadir_path)
+    quandary(datadir=datadir_path, mpi_exec=mpi_exec)
 
     print(f"\nCurrent directory: {os.getcwd()}")
     print(f"Env var: {os.environ.get(BASE_DATADIR)}")
     print(f"datadir: {datadir_path}")
+    print(f"mpi_exec: {mpi_exec}")
 
     assert_output_files(datadir_path)
 
 
 @pytest.mark.parametrize("quandary", test_cases)
-def test_relative_output_path_with_env_var(quandary, request, tmp_path, clean_env_var):
+def test_relative_output_path_with_env_var(quandary, request, tmp_path, clean_env_var, mpi_exec):
     base_dir = str(tmp_path)
     os.environ[BASE_DATADIR] = base_dir
     datadir_name = request.node.name
     datadir_path = os.path.join(base_dir, datadir_name)
 
-    quandary(datadir=datadir_name)
+    quandary(datadir=datadir_name, mpi_exec=mpi_exec)
 
     print(f"\nCurrent directory: {os.getcwd()}")
     print(f"Env var: {os.environ.get(BASE_DATADIR)}")
     print(f"datadir: {datadir_name}")
+    print(f"mpi_exec: {mpi_exec}")
 
     assert_output_files(datadir_path)
 
 
 @pytest.mark.parametrize("quandary", test_cases)
-def test_absolute_output_path_with_env_var(quandary, request, tmp_path, clean_env_var):
+def test_absolute_output_path_with_env_var(quandary, request, tmp_path, clean_env_var, mpi_exec):
     os.environ[BASE_DATADIR] = "should_not_use_this/path"
     datadir_name = request.node.name
     datadir_path = os.path.join(tmp_path, datadir_name)
 
-    quandary(datadir=datadir_path)
+    quandary(datadir=datadir_path, mpi_exec=mpi_exec)
 
     print(f"\nCurrent directory: {os.getcwd()}")
     print(f"Env var: {os.environ.get(BASE_DATADIR)}")
     print(f"datadir: {datadir_path}")
+    print(f"mpi_exec: {mpi_exec}")
 
     assert_output_files(datadir_path)
     assert not os.path.exists(os.environ[BASE_DATADIR])
 
 
 @pytest.mark.parametrize("quandary", test_cases)
-def test_nonexistent_base_directory(quandary, tmp_path, clean_env_var):
+def test_nonexistent_base_directory(quandary, request, tmp_path, clean_env_var, mpi_exec):
     nonexistent_path = os.path.join(tmp_path, "nonexistent_directory")
     os.environ[BASE_DATADIR] = nonexistent_path
     datadir_name = "some_output_dir"
 
     with pytest.raises(ValueError) as excinfo:
-        quandary(datadir=datadir_name)
+        quandary(datadir=datadir_name, mpi_exec=mpi_exec)
 
     assert "non-existent path" in str(excinfo.value)
     assert nonexistent_path in str(excinfo.value)
 
 
 @pytest.mark.parametrize("quandary", test_cases)
-def test_file_as_base_directory(quandary, tmp_path, clean_env_var):
+def test_file_as_base_directory(quandary, request, tmp_path, clean_env_var, mpi_exec):
     file_path = os.path.join(tmp_path, "this_is_a_file.txt")
     with open(file_path, 'w') as f:
         f.write("This is a file, not a directory")
@@ -119,10 +123,19 @@ def test_file_as_base_directory(quandary, tmp_path, clean_env_var):
     datadir_name = "some_output_dir"
 
     with pytest.raises(ValueError) as excinfo:
-        quandary(datadir=datadir_name)
+        quandary(datadir=datadir_name, mpi_exec=mpi_exec)
 
     assert "not a directory" in str(excinfo.value)
     assert file_path in str(excinfo.value)
+
+
+@pytest.fixture
+def mpi_exec(request):
+    """Get MPI executor from pytest option."""
+    executor = request.config.getoption("--mpi-exec")
+    if executor != "mpirun":
+        return f"{executor} -n "
+    return "mpirun -np "
 
 
 @pytest.fixture
