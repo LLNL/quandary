@@ -96,6 +96,35 @@ def test_absolute_output_path_with_env_var(quandary, request, tmp_path, clean_en
     assert not os.path.exists(os.environ[BASE_DATADIR])
 
 
+@pytest.mark.parametrize("quandary", test_cases)
+def test_nonexistent_base_directory(quandary, tmp_path, clean_env_var):
+    nonexistent_path = os.path.join(tmp_path, "nonexistent_directory")
+    os.environ[BASE_DATADIR] = nonexistent_path
+    datadir_name = "some_output_dir"
+
+    with pytest.raises(ValueError) as excinfo:
+        quandary(datadir=datadir_name)
+
+    assert "non-existent path" in str(excinfo.value)
+    assert nonexistent_path in str(excinfo.value)
+
+
+@pytest.mark.parametrize("quandary", test_cases)
+def test_file_as_base_directory(quandary, tmp_path, clean_env_var):
+    file_path = os.path.join(tmp_path, "this_is_a_file.txt")
+    with open(file_path, 'w') as f:
+        f.write("This is a file, not a directory")
+
+    os.environ[BASE_DATADIR] = file_path
+    datadir_name = "some_output_dir"
+
+    with pytest.raises(ValueError) as excinfo:
+        quandary(datadir=datadir_name)
+
+    assert "not a directory" in str(excinfo.value)
+    assert file_path in str(excinfo.value)
+
+
 @pytest.fixture
 def cd_tmp_path(tmp_path):
     """Change to a temporary directory for the test and return afterward."""

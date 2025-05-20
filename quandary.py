@@ -1051,15 +1051,24 @@ def resolve_datadir(datadir: str) -> str:
     Returns:
     -------
     Resolved absolute or relative path for the data directory
+
+    Raises:
+    ------
+    ValueError: If QUANDARY_BASE_DATADIR is set but doesn't exist or isn't a directory
     """
     if os.path.isabs(datadir):
         return datadir
 
     base_dir = os.environ.get("QUANDARY_BASE_DATADIR")
     if base_dir:
+        if not os.path.exists(base_dir):
+            raise ValueError(f"Environment variable QUANDARY_BASE_DATADIR points to non-existent path: {base_dir}")
+        if not os.path.isdir(base_dir):
+            raise ValueError(f"Environment variable QUANDARY_BASE_DATADIR is not a directory: {base_dir}")
+
         datadir = os.path.join(base_dir, datadir)
 
-    return datadir
+    return os.path.normpath(datadir)
 
 
 def hamiltonians(*, N, freq01, selfkerr, crosskerr=[], Jkl = [], rotfreq=[], verbose=True):
