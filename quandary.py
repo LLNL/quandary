@@ -1662,9 +1662,7 @@ def QuandarySimulate(tstop, pt0, qt0, targetgate, machine_model, dT, with_guard_
     # Check if lindblad model
     lindbladsolver = False
     for q in range(nqubits):
-        # print(" Machi model T1", machine_model.T1(q))
-        if machine_model.T1(q) is not None:
-            # print("HEYHO\n")
+        if machine_model.T1(q) is not None or machine_model.T2(q) is not None:
             lindbladsolver = True
             break
 

@@ -33,6 +33,10 @@ simulate_lindblad = False
 prefixfolder = "quandary_rundir/"			# Folder where to put all quandary run data
 rand_seed = 34321
 
+do_optimize_individualgates = False
+do_optimize_fullgate = True
+do_optimize_3qubit_per_cycle = False
+
 # Define Qubit specs (01-frequency and anharmonicity per qubit [GHz], optional T1 and T2 times [ns])
 specs = [
     QubitSpec(freq01=5.18, anharmonicity=0.210), 
@@ -100,282 +104,299 @@ def QFT_gate(nqubits):
 QFT_unitary = QFT_gate(nqubits)
 
 
-# Compile QFT gate with BQSKit
-QFT_circuit = compile(QFT_unitary, model=machine_model, optimization_level=3, seed=1234, error_threshold=1e-4)
-QFT_unitary = QFT_circuit.get_unitary() # Apparently, this is not exactly the QFT gate anymore! 
-# print("Fidelity of exact gate vs compiled gate: ", fidelity_(QFT_unitary, QFT_circuit.get_unitary()))
+if do_optimize_individualgates:
+	# Compile QFT gate with BQSKit
+	QFT_circuit = compile(QFT_unitary, model=machine_model, optimization_level=3, seed=1234, error_threshold=1e-4)
+	QFT_unitary = QFT_circuit.get_unitary() # Apparently, this is not exactly the QFT gate anymore! 
+	# print("Fidelity of exact gate vs compiled gate: ", fidelity_(QFT_unitary, QFT_circuit.get_unitary()))
 
-# # FOR TESTING: A simple circuit
-# QFT_circuit = Circuit(nqubits)
-# QFT_circuit.append_gate(RZGate(), 0, [1.57])
-# QFT_circuit.append_gate(RZGate(), 1, [3.95])
-# QFT_circuit.append_gate(RZGate(), 2, [1.18])
-# QFT_circuit.append_gate(SXGate(), 0)
-# QFT_circuit.append_gate(SXGate(), 1)
-# QFT_circuit.append_gate(SXGate(), 2)
-# QFT_circuit.append_gate(RZGate(), 0, [4.21])
-# QFT_circuit.append_gate(RZGate(), 1, [6.26])
-# QFT_circuit.append_gate(SXGate(), 2)
-# QFT_circuit.append_gate(SXGate(), 0)
-# QFT_circuit.append_gate(SXGate(), 1)
-# QFT_circuit.append_gate(RZGate(), 0, [1.48])
-# QFT_circuit.append_gate(RZGate(), 1, [3.15])
-# QFT_circuit.append_gate(CZGate(), (0,1) )
-# QFT_circuit.append_gate(RZGate(), 0, [4.8])
-# QFT_circuit.append_gate(SXGate(), 1)
-# QFT_circuit.append_gate(SXGate(), 0)
-# QFT_circuit.append_gate(RZGate(), 1, [5.38])
-# QFT_circuit.append_gate(RZGate(), 0, [5.5])
-# QFT_circuit.append_gate(RZGate(), 1, [3.02])
-# QFT_circuit.append_gate(SXGate(), 0)
-# QFT_circuit.append_gate(CZGate(), (1,2) )
-# QFT_circuit.append_gate(RZGate(), 0, [11.3])
-# QFT_circuit.append_gate(RZGate(), 1, [4.17])
-# QFT_circuit.append_gate(SXGate(), 2)
-# QFT_unitary = QFT_circuit.get_unitary()
+	# # FOR TESTING: A simple circuit
+	# QFT_circuit = Circuit(nqubits)
+	# QFT_circuit.append_gate(RZGate(), 0, [1.57])
+	# QFT_circuit.append_gate(RZGate(), 1, [3.95])
+	# QFT_circuit.append_gate(RZGate(), 2, [1.18])
+	# QFT_circuit.append_gate(SXGate(), 0)
+	# QFT_circuit.append_gate(SXGate(), 1)
+	# QFT_circuit.append_gate(SXGate(), 2)
+	# QFT_circuit.append_gate(RZGate(), 0, [4.21])
+	# QFT_circuit.append_gate(RZGate(), 1, [6.26])
+	# QFT_circuit.append_gate(SXGate(), 2)
+	# QFT_circuit.append_gate(SXGate(), 0)
+	# QFT_circuit.append_gate(SXGate(), 1)
+	# QFT_circuit.append_gate(RZGate(), 0, [1.48])
+	# QFT_circuit.append_gate(RZGate(), 1, [3.15])
+	# QFT_circuit.append_gate(CZGate(), (0,1) )
+	# QFT_circuit.append_gate(RZGate(), 0, [4.8])
+	# QFT_circuit.append_gate(SXGate(), 1)
+	# QFT_circuit.append_gate(SXGate(), 0)
+	# QFT_circuit.append_gate(RZGate(), 1, [5.38])
+	# QFT_circuit.append_gate(RZGate(), 0, [5.5])
+	# QFT_circuit.append_gate(RZGate(), 1, [3.02])
+	# QFT_circuit.append_gate(SXGate(), 0)
+	# QFT_circuit.append_gate(CZGate(), (1,2) )
+	# QFT_circuit.append_gate(RZGate(), 0, [11.3])
+	# QFT_circuit.append_gate(RZGate(), 1, [4.17])
+	# QFT_circuit.append_gate(SXGate(), 2)
+	# QFT_unitary = QFT_circuit.get_unitary()
 
-# # Convert to qiskit and draw the circuit
-# from bqskit.ext import bqskit_to_qiskit
-# from qiskit import QuantumCircuit
-# qs = bqskit_to_qiskit(QFT_circuit)
-# qs.draw(output="mpl", filename="QFT_mpl.png") # the matplotlib output is in color
-# # qs.draw(output="latex", filename="QFT_ltx.png")
-# # qs.draw()
-# stop
+	# # Convert to qiskit and draw the circuit
+	# from bqskit.ext import bqskit_to_qiskit
+	# from qiskit import QuantumCircuit
+	# qs = bqskit_to_qiskit(QFT_circuit)
+	# qs.draw(output="mpl", filename="QFT_mpl.png") # the matplotlib output is in color
+	# # qs.draw(output="latex", filename="QFT_ltx.png")
+	# # qs.draw()
+	# stop
 
-# THIS IS THE STORAGE FOR THE CONCATENATED PULSES
-t_concat = [[] for _ in range(nqubits)]
-p_concat = [[] for _ in range(nqubits)]
-q_concat = [[] for _ in range(nqubits)]
+	# THIS IS THE STORAGE FOR THE CONCATENATED PULSES
+	t_concat = [[] for _ in range(nqubits)]
+	p_concat = [[] for _ in range(nqubits)]
+	q_concat = [[] for _ in range(nqubits)]
 
-# Storage for intermediate targets after each cycle: [ (U_int, time, nsteps) ]
-intermediate_targets = []
+	# Storage for intermediate targets after each cycle: [ (U_int, time, nsteps) ]
+	intermediate_targets = []
 
-# Iterate over circuit cycles, optimize for pulses for each operation per cycle:
-for cycle_idx in range(QFT_circuit.num_cycles):
+	# Iterate over circuit cycles, optimize for pulses for each operation per cycle:
+	for cycle_idx in range(QFT_circuit.num_cycles):
 
-	# Get all operations at this cycle
-	current_cycle_ops = get_cycle_operations(QFT_circuit, cycle_idx)
-	print(f"Cycle {cycle_idx}", " # ops = ", len(current_cycle_ops), f" operations: {current_cycle_ops}")
+		# Get all operations at this cycle
+		current_cycle_ops = get_cycle_operations(QFT_circuit, cycle_idx)
+		print(f"Cycle {cycle_idx}", " # ops = ", len(current_cycle_ops), f" operations: {current_cycle_ops}")
 
-	# Get the cycle duration (duration of the largest gate in this cycle)
-	maxduration = get_pulse_duration(max(op.num_qudits for op in current_cycle_ops))
-		
-	# For each operation, either optimize pulses, or grab from storage
-	for op in current_cycle_ops:
+		# Get the cycle duration (duration of the largest gate in this cycle)
+		maxduration = get_pulse_duration(max(op.num_qudits for op in current_cycle_ops))
 
-		# Optimize for pulse, if it doesn't exist yet
-		if not op.get_pulse():
+		# For each operation, either optimize pulses, or grab from storage
+		for op in current_cycle_ops:
 
-			duration = get_pulse_duration(op.num_qudits)
-			gate = op.get_unitary()
-			gate_name = str(op.gate)+str(op.location)+str(op.params)
-			t, pt, qt = QuandaryOptimize(op.location, op.radixes, gate, gate_name, machine_model, duration, dT, maxctrl_MHz, with_guard_level, rotfreq_const, prefixfolder, rand_seed)
+			# Optimize for pulse, if it doesn't exist yet
+			if not op.get_pulse():
 
-			# Store optimized pulse in this operation's gate class
-			op.add_pulse(t, pt, qt)
+				duration = get_pulse_duration(op.num_qudits)
+				gate = op.get_unitary()
+				gate_name = str(op.gate)+str(op.location)+str(op.params)
+				t, pt, qt = QuandaryOptimize(op.location, op.radixes, gate, gate_name, machine_model, duration, dT, maxctrl_MHz, with_guard_level, rotfreq_const, prefixfolder, rand_seed)
 
-		# Now concatenate the pulse to the global storage
-		append_pulse(op.location, op.get_pulse()["times"],op.get_pulse()["p_pulse"], op.get_pulse()["q_pulse"], dT, t_concat, p_concat, q_concat)
+				# Store optimized pulse in this operation's gate class
+				op.add_pulse(t, pt, qt)
 
-		# If current gate duration is smaller than the longest gate duration in this cycle, we need to insert an identity pulse (or stretch the gate optimization pulse to span this longer duration, TODO.)
-		if  op.get_pulse()["times"][-1] < maxduration:
+			# Now concatenate the pulse to the global storage
+			append_pulse(op.location, op.get_pulse()["times"],op.get_pulse()["p_pulse"], op.get_pulse()["q_pulse"], dT, t_concat, p_concat, q_concat)
 
-			duration = maxduration - op.get_pulse()["times"][-1]
-			gate = IdentityGate().get_unitary()
-			gate_name = "Identity" + str(op.location)
-			t, pt, qt = QuandaryOptimize(op.location, op.radixes, gate, gate_name, machine_model, duration, dT, maxctrl_MHz, with_guard_level, rotfreq_const, prefixfolder, rand_seed)			
+			# If current gate duration is smaller than the longest gate duration in this cycle, we need to insert an identity pulse (or stretch the gate optimization pulse to span this longer duration, TODO.)
+			if  op.get_pulse()["times"][-1] < maxduration:
 
-			append_pulse(op.location, t, pt, qt, dT, t_concat, p_concat, q_concat)
+				duration = maxduration - op.get_pulse()["times"][-1]
+				gate = IdentityGate().get_unitary()
+				gate_name = "Identity" + str(op.location)
+				t, pt, qt = QuandaryOptimize(op.location, op.radixes, gate, gate_name, machine_model, duration, dT, maxctrl_MHz, with_guard_level, rotfreq_const, prefixfolder, rand_seed)			
 
-	# Compute and store this cycle's intermediate target for later use
-	t_int = t_concat[0][-1]
-	nsteps_int = len(p_concat[0])
-	for i in range(len(current_cycle_ops)):
-		# Kronecker all gates from this cycle. qubit order 0 x 1 x 2 ...
-		if i == 0:
-			U_int = current_cycle_ops[0].get_unitary() 
-			# print("i=", i, " location ", current_cycle_ops[0].location, " U_int = ", current_cycle_ops[0].gate)
-		else:
-			U_int = np.kron(U_int, current_cycle_ops[i].get_unitary())
-			# print("i=", i, " location ", current_cycle_ops[i].location, " U_int = kron(U_int,", current_cycle_ops[i].gate)
-	# Multiply intermediate target with gates from previous cycles and store
-	if len(intermediate_targets) > 0:
-		Uprev = intermediate_targets[-1][0]
-		U_int = U_int @ Uprev
-	intermediate_targets.append((U_int, t_int, nsteps_int))
+				append_pulse(op.location, t, pt, qt, dT, t_concat, p_concat, q_concat)
+
+		# Compute and store this cycle's intermediate target for later use
+		t_int = t_concat[0][-1]
+		nsteps_int = len(p_concat[0])
+		for i in range(len(current_cycle_ops)):
+			# Kronecker all gates from this cycle. qubit order 0 x 1 x 2 ...
+			if i == 0:
+				U_int = current_cycle_ops[0].get_unitary() 
+				# print("i=", i, " location ", current_cycle_ops[0].location, " U_int = ", current_cycle_ops[0].gate)
+			else:
+				U_int = np.kron(U_int, current_cycle_ops[i].get_unitary())
+				# print("i=", i, " location ", current_cycle_ops[i].location, " U_int = kron(U_int,", current_cycle_ops[i].gate)
+		# Multiply intermediate target with gates from previous cycles and store
+		if len(intermediate_targets) > 0:
+			Uprev = intermediate_targets[-1][0]
+			U_int = U_int @ Uprev
+		intermediate_targets.append((U_int, t_int, nsteps_int))
 
 
-# Simulate the concatenated pulses (Schroedinger)
-print("\nSimulate the concatenated pulses...")
-gate = QFT_unitary
-tstop = t_concat[0][-1]
-infidelity, uInt = QuandarySimulate(tstop, p_concat, q_concat, gate, machine_model, dT, with_guard_level, rotfreq_const, prefixfolder)
-print(f"Averaged state fidelity of concatenated pulses (Schroedinger): {1.0 - infidelity}")
+	# Simulate the concatenated pulses (Schroedinger)
+	print("\nSimulate the concatenated pulses...")
+	gate = QFT_unitary
+	tstop = t_concat[0][-1]
+	infidelity, uInt = QuandarySimulate(tstop, p_concat, q_concat, gate, machine_model, dT, with_guard_level, rotfreq_const, prefixfolder)
+	print(f"Averaged state fidelity of concatenated pulses (Schroedinger): {1.0 - infidelity}")
 
-# Plot concatenated pulses
-# plot_pulse([2 for i in range(3)], t_concat[0], p_concat, q_concat)
+	# Plot concatenated pulses
+	# plot_pulse([2 for i in range(3)], t_concat[0], p_concat, q_concat)
 
-# Compute intermediate fidelities along the way first  
-## First using Schroedinger's eqation (grab the intermediate fidelities):
-print("\nIntermediate averaged state fidelity (Schroedinger):")
-fidelities_schroed = [1.0]
-times = [0.0]
-for i in range(len(intermediate_targets)):
-	U_int, t_int, nsteps_int = intermediate_targets[i] 
-	U_sim = uInt[nsteps_int-1]  # Not available for lindblad
-	# fid_int_operator = fidelity_(U_int,U_sim)
-	fid_int = avg_fidelity_(U_int, U_sim)
-	# print("Intermediate operator fidelity at t=", round(t_int,2), ": ", fid_int_operator)
-	print("  t=", round(t_int,2), ": ", fid_int)
-	times.append(t_int)
-	fidelities_schroed.append(fid_int)
-
-## Now using Lindblad's solver
-if simulate_lindblad:
-	# machine_model.set_qubit_spec(0, T1=0.0, T2=0.0)
-	# machine_model.set_qubit_spec(1, T1=0.0, T2=0.0)
-	# machine_model.set_qubit_spec(2, T1=0.0, T2=0.0)
-	machine_model.set_qubit_spec(0, T1=80000.0, T2=30000.0)
-	machine_model.set_qubit_spec(1, T1=85000.0, T2=35000.0)
-	machine_model.set_qubit_spec(2, T1=90000.0, T2=40000.0)
-	print("Simulating with Decoherence model:")
-	for i in range(nqubits):
-		print("  qubit ", i, ":  T1= ", machine_model.T1(i), ", T2= ", machine_model.T2(i))
-
-	print("\nIntermediate averaged state fidelity (Lindblad):")
-	fidelities_lind = [1.0]
+	# Compute intermediate fidelities along the way first  
+	## First using Schroedinger's eqation (grab the intermediate fidelities):
+	print("\nIntermediate averaged state fidelity (Schroedinger):")
+	fidelities_schroed = [1.0]
 	times = [0.0]
 	for i in range(len(intermediate_targets)):
 		U_int, t_int, nsteps_int = intermediate_targets[i] 
-		targetgate= U_int
-		p_curr = [ [p_concat[iq][nt] for nt in range(nsteps_int)] for iq in range(len(p_concat))]
-		q_curr = [ [q_concat[iq][nt] for nt in range(nsteps_int)] for iq in range(len(q_concat))]
-		infidelity, _ = QuandarySimulate(t_int, p_curr, q_curr, targetgate, machine_model, dT, with_guard_level, rotfreq_const, prefixfolder+"/Lindblad/", maxcores=4)
-
-		fid_int = 1.0 - infidelity
+		U_sim = uInt[nsteps_int-1]  # Not available for lindblad
+		# fid_int_operator = fidelity_(U_int,U_sim)
+		fid_int = avg_fidelity_(U_int, U_sim)
+		# print("Intermediate operator fidelity at t=", round(t_int,2), ": ", fid_int_operator)
 		print("  t=", round(t_int,2), ": ", fid_int)
 		times.append(t_int)
-		fidelities_lind.append(fid_int)
+		fidelities_schroed.append(fid_int)
 
-# Plot fidelities over time
-plt.plot(times, fidelities_schroed, marker='o', linestyle='-', label="Schroedinger")
-# if simulate_lindblad:
-# plt.plot(times, fidelities_lind, marker='o', linestyle='-', label="Lindblad")
-plt.xlabel("Time (ns)")
-plt.ylabel("Averaged State Fidelity")
-# plt.ylim(0.5,1.05)
-plt.grid(True)
-plt.legend()
-plt.show()
+	## Now using Lindblad's solver
+	if simulate_lindblad:
+		# machine_model.set_qubit_spec(0, T1=0.0, T2=0.0)
+		# machine_model.set_qubit_spec(1, T1=0.0, T2=0.0)
+		# machine_model.set_qubit_spec(2, T1=0.0, T2=0.0)
+		machine_model.set_qubit_spec(0, T1=80000.0, T2=30000.0)
+		machine_model.set_qubit_spec(1, T1=85000.0, T2=35000.0)
+		machine_model.set_qubit_spec(2, T1=90000.0, T2=40000.0)
+		print("Simulating with Decoherence model:")
+		for i in range(nqubits):
+			print("  qubit ", i, ":  T1= ", machine_model.T1(i), ", T2= ", machine_model.T2(i))
 
-stop
+		print("\nIntermediate averaged state fidelity (Lindblad):")
+		fidelities_lind = [1.0]
+		times = [0.0]
+		for i in range(len(intermediate_targets)):
+			U_int, t_int, nsteps_int = intermediate_targets[i] 
+			targetgate= U_int
+			p_curr = [ [p_concat[iq][nt] for nt in range(nsteps_int)] for iq in range(len(p_concat))]
+			q_curr = [ [q_concat[iq][nt] for nt in range(nsteps_int)] for iq in range(len(q_concat))]
+			infidelity, _ = QuandarySimulate(t_int, p_curr, q_curr, targetgate, machine_model, dT, with_guard_level, rotfreq_const, prefixfolder+"/Lindblad/", maxcores=4)
 
-###########
-# Now now optimize for 3-qubit gates per cycle:
-###########
-print("\n#####")
-print("Optimize 3-qubit gates per cycle")
-print("#####\n")
+			fid_int = 1.0 - infidelity
+			print("  t=", round(t_int,2), ": ", fid_int)
+			times.append(t_int)
+			fidelities_lind.append(fid_int)
 
-t_concat_3qubit = [[] for _ in range(nqubits)]
-p_concat_3qubit = [[] for _ in range(nqubits)]
-q_concat_3qubit = [[] for _ in range(nqubits)]
-intermediate_targets_3qubit = []
-for cycle_idx in range(QFT_circuit.num_cycles):
+	# Plot fidelities over time
+	plt.plot(times, fidelities_schroed, marker='o', linestyle='-', label="Schroedinger")
+	# if simulate_lindblad:
+	# plt.plot(times, fidelities_lind, marker='o', linestyle='-', label="Lindblad")
+	plt.xlabel("Time (ns)")
+	plt.ylabel("Averaged State Fidelity")
+	# plt.ylim(0.5,1.05)
+	plt.grid(True)
+	plt.legend()
+	plt.show()
 
-	# Get all operations happening at this cycle
-	current_cycle_ops = get_cycle_operations(QFT_circuit, cycle_idx)
-	print(f"Cycle {cycle_idx}", " # ops = ", len(current_cycle_ops), f" operations: {current_cycle_ops}")
+	stop
+
+if do_optimize_fullgate:
+	## Optimize the QFT gate directly
+	location = (0,1,2)
+	radixes = [2,2,2]
+	gate = QFT_unitary
+	gate_name = "QFT_gate"
+	duration = get_pulse_duration(len(location))
+	t, pt, qt = QuandaryOptimize(location, radixes, gate, gate_name, machine_model, duration, dT, maxctrl_MHz, with_guard_level, rotfreq_const, prefixfolder, rand_seed)
+	infidelity, _ = QuandarySimulate(t[-1], pt, qt, gate, machine_model, dT, with_guard_level, rotfreq_const, prefixfolder)
+	print("Full gate optimization: Fidelity = ", 1.0 - infidelity)
+
+	plot_pulse([2 for i in range(3)], t, pt, qt)
+
+	stop
+
+if do_optimize_3qubit_per_cycle:
+	###########
+	# Now now optimize for 3-qubit gates per cycle:
+	###########
+	print("\n#####")
+	print("Optimize 3-qubit gates per cycle")
+	print("#####\n")
+
+	t_concat_3qubit = [[] for _ in range(nqubits)]
+	p_concat_3qubit = [[] for _ in range(nqubits)]
+	q_concat_3qubit = [[] for _ in range(nqubits)]
+	intermediate_targets_3qubit = []
+	for cycle_idx in range(QFT_circuit.num_cycles):
+
+		# Get all operations happening at this cycle
+		current_cycle_ops = get_cycle_operations(QFT_circuit, cycle_idx)
+		print(f"Cycle {cycle_idx}", " # ops = ", len(current_cycle_ops), f" operations: {current_cycle_ops}")
 
 
-	# Set up 3-qubit target gate
-	gate = IdentityGate(num_qudits=1).get_unitary()
-	for op in current_cycle_ops:
-		gate = np.kron(gate, op.get_unitary())
+		# Set up 3-qubit target gate
+		gate = IdentityGate(num_qudits=1).get_unitary()
+		for op in current_cycle_ops:
+			gate = np.kron(gate, op.get_unitary())
 
-	# Get the cycle duration (duration of the largest gate in this cycle)
-	duration = get_pulse_duration(3)
-			
-	# Optimize for pulse, if it doesn't exist yet
-	gate_name = "cycle"+str(cycle_idx)
+		# Get the cycle duration (duration of the largest gate in this cycle)
+		duration = get_pulse_duration(3)
 
-	print(" -> Optimizing pulses for operation ", op)
-	t, pt, qt = QuandaryOptimize((0,1,2), [2,2,2], gate, gate_name, machine_model, duration, dT, maxctrl_MHz, with_guard_level, rotfreq_const, prefixfolder+"3qubit_gates", rand_seed)
+		# Optimize for pulse, if it doesn't exist yet
+		gate_name = "cycle"+str(cycle_idx)
 
-	# Now concatenate the pulse to the global storage
-	append_pulse((0,1,2), t, pt, qt, dT, t_concat_3qubit, p_concat_3qubit, q_concat_3qubit)
+		print(" -> Optimizing pulses for operation ", op)
+		t, pt, qt = QuandaryOptimize((0,1,2), [2,2,2], gate, gate_name, machine_model, duration, dT, maxctrl_MHz, with_guard_level, rotfreq_const, prefixfolder+"3qubit_gates", rand_seed)
 
-	# Store this cycle's intermediate target for later use
-	t_int = t_concat_3qubit[0][-1]
-	nsteps_int = len(p_concat_3qubit[0])
-	if len(intermediate_targets_3qubit) > 0:
-		Uprev = intermediate_targets_3qubit[-1][0]
-		gate = gate @ Uprev
-	intermediate_targets_3qubit.append((gate, t_int, nsteps_int))
+		# Now concatenate the pulse to the global storage
+		append_pulse((0,1,2), t, pt, qt, dT, t_concat_3qubit, p_concat_3qubit, q_concat_3qubit)
 
-# Simulate the concatenated pulses (Schroedinger)
-print("\nSimulate the concatenated 3-qubit pulses...")
-gate = QFT_unitary
-tstop = t_concat_3qubit[0][-1]
-infidelity, uInt = QuandarySimulate(tstop, p_concat_3qubit, q_concat_3qubit, gate, machine_model, dT, with_guard_level, rotfreq_const, prefixfolder)
-print(f"Averaged state fidelity of concatenated pulses (Schroedinger): {1.0 - infidelity}")
+		# Store this cycle's intermediate target for later use
+		t_int = t_concat_3qubit[0][-1]
+		nsteps_int = len(p_concat_3qubit[0])
+		if len(intermediate_targets_3qubit) > 0:
+			Uprev = intermediate_targets_3qubit[-1][0]
+			gate = gate @ Uprev
+		intermediate_targets_3qubit.append((gate, t_int, nsteps_int))
+
+	# Simulate the concatenated pulses (Schroedinger)
+	print("\nSimulate the concatenated 3-qubit pulses...")
+	gate = QFT_unitary
+	tstop = t_concat_3qubit[0][-1]
+	infidelity, uInt = QuandarySimulate(tstop, p_concat_3qubit, q_concat_3qubit, gate, machine_model, dT, with_guard_level, rotfreq_const, prefixfolder)
+	print(f"Averaged state fidelity of concatenated pulses (Schroedinger): {1.0 - infidelity}")
 
 
-# Plot concatenated pulses
-# plot_pulse([2 for _ in range(3)], t_concat_3qubit[0], p_concat_3qubit, q_concat_3qubit)
+	# Plot concatenated pulses
+	# plot_pulse([2 for _ in range(3)], t_concat_3qubit[0], p_concat_3qubit, q_concat_3qubit)
 
-# Compute intermediate fidelities along the way
-## First using Schroedinger's eqation (grab the intermediate fidelities):
-print("\nIntermediate averaged state fidelity (Schroedinger):")
-fidelities_3qubit_schroed = [1.0]
-times_3qubit = [0.0]
-for i in range(len(intermediate_targets_3qubit)):
-	U_int, t_int, nsteps_int = intermediate_targets_3qubit[i] 
-	U_sim = uInt[nsteps_int-1]
-	# fid_int = fidelity_(U_int,U_sim)
-	fid_int = avg_fidelity_(U_int, U_sim)
-	print("  t=", round(t_int,2), ": ", fid_int)
-	times_3qubit.append(t_int)
-	fidelities_3qubit_schroed.append(fid_int)
-
-## Now using Lindblad's solver
-if simulate_lindblad:
-	# machine_model.set_qubit_spec(0, T1=0.0, T2=0.0)
-	# machine_model.set_qubit_spec(1, T1=0.0, T2=0.0)
-	# machine_model.set_qubit_spec(2, T1=0.0, T2=0.0)
-	machine_model.set_qubit_spec(0, T1=80000.0, T2=30000.0)
-	machine_model.set_qubit_spec(1, T1=85000.0, T2=35000.0)
-	machine_model.set_qubit_spec(2, T1=90000.0, T2=40000.0)
-	print("Simulating with Decoherence model:")
-	for i in range(nqubits):
-		print("  qubit ", i, ":  T1= ", machine_model.T1(i), ", T2= ", machine_model.T2(i))
-
-	print("\nIntermediate averaged state fidelity (Lindblad):")
-	fidelities_3qubit_lind = [1.0]
-	times = [0.0]
+	# Compute intermediate fidelities along the way
+	## First using Schroedinger's eqation (grab the intermediate fidelities):
+	print("\nIntermediate averaged state fidelity (Schroedinger):")
+	fidelities_3qubit_schroed = [1.0]
+	times_3qubit = [0.0]
 	for i in range(len(intermediate_targets_3qubit)):
 		U_int, t_int, nsteps_int = intermediate_targets_3qubit[i] 
-		targetgate= U_int
-		p_curr = [ [p_concat_3qubit[iq][nt] for nt in range(nsteps_int)] for iq in range(len(p_concat_3qubit))]
-		q_curr = [ [q_concat_3qubit[iq][nt] for nt in range(nsteps_int)] for iq in range(len(q_concat_3qubit))]
-		infidelity, _ = QuandarySimulate(t_int, p_curr, q_curr, targetgate, machine_model, dT, with_guard_level, rotfreq_const, prefixfolder+"3qubit_gates"+"/Lindblad/", maxcores=4)
-
-		fid_int = 1.0 - infidelity
+		U_sim = uInt[nsteps_int-1]
+		# fid_int = fidelity_(U_int,U_sim)
+		fid_int = avg_fidelity_(U_int, U_sim)
 		print("  t=", round(t_int,2), ": ", fid_int)
-		times.append(t_int)
-		fidelities_3qubit_lind.append(fid_int)
+		times_3qubit.append(t_int)
+		fidelities_3qubit_schroed.append(fid_int)
 
-# Plot fidelities over time
-plt.plot(times_3qubit, fidelities_3qubit_schroed, marker='o', linestyle='-', label="Schroedinger")
-if simulate_lindblad:
-	plt.plot(times_3qubit, fidelities_3qubit_lind, marker='o', linestyle='-', label="Lindblad")
-plt.xlabel("Time (ns)")
-plt.ylabel("Averaged State Fidelity")
-# plt.ylim(0.5,1.05)
-plt.grid(True)
-plt.legend()
-plt.show()
+	## Now using Lindblad's solver
+	if simulate_lindblad:
+		# machine_model.set_qubit_spec(0, T1=0.0, T2=0.0)
+		# machine_model.set_qubit_spec(1, T1=0.0, T2=0.0)
+		# machine_model.set_qubit_spec(2, T1=0.0, T2=0.0)
+		machine_model.set_qubit_spec(0, T1=80000.0, T2=30000.0)
+		machine_model.set_qubit_spec(1, T1=85000.0, T2=35000.0)
+		machine_model.set_qubit_spec(2, T1=90000.0, T2=40000.0)
+		print("Simulating with Decoherence model:")
+		for i in range(nqubits):
+			print("  qubit ", i, ":  T1= ", machine_model.T1(i), ", T2= ", machine_model.T2(i))
+
+		print("\nIntermediate averaged state fidelity (Lindblad):")
+		fidelities_3qubit_lind = [1.0]
+		times = [0.0]
+		for i in range(len(intermediate_targets_3qubit)):
+			U_int, t_int, nsteps_int = intermediate_targets_3qubit[i] 
+			targetgate= U_int
+			p_curr = [ [p_concat_3qubit[iq][nt] for nt in range(nsteps_int)] for iq in range(len(p_concat_3qubit))]
+			q_curr = [ [q_concat_3qubit[iq][nt] for nt in range(nsteps_int)] for iq in range(len(q_concat_3qubit))]
+			infidelity, _ = QuandarySimulate(t_int, p_curr, q_curr, targetgate, machine_model, dT, with_guard_level, rotfreq_const, prefixfolder+"3qubit_gates"+"/Lindblad/", maxcores=4)
+
+			fid_int = 1.0 - infidelity
+			print("  t=", round(t_int,2), ": ", fid_int)
+			times.append(t_int)
+			fidelities_3qubit_lind.append(fid_int)
+
+	# Plot fidelities over time
+	plt.plot(times_3qubit, fidelities_3qubit_schroed, marker='o', linestyle='-', label="Schroedinger")
+	if simulate_lindblad:
+		plt.plot(times_3qubit, fidelities_3qubit_lind, marker='o', linestyle='-', label="Lindblad")
+	plt.xlabel("Time (ns)")
+	plt.ylabel("Averaged State Fidelity")
+	# plt.ylim(0.5,1.05)
+	plt.grid(True)
+	plt.legend()
+	plt.show()
 
 
 
