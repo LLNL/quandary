@@ -43,11 +43,6 @@ def test_relative_output_path_without_env_var(quandary, request, cd_tmp_path, cl
 
     quandary(datadir=datadir_name, mpi_exec=mpi_exec)
 
-    print(f"\nCurrent directory: {os.getcwd()}")
-    print(f"Env var: {os.environ.get(BASE_DATADIR)}")
-    print(f"datadir: {datadir_name}")
-    print(f"mpi_exec: {mpi_exec}")
-
     assert_output_files(datadir_path)
 
 
@@ -57,11 +52,6 @@ def test_absolute_output_path_without_env_var(quandary, request, tmp_path, clean
     datadir_path = os.path.join(tmp_path, datadir_name)
 
     quandary(datadir=datadir_path, mpi_exec=mpi_exec)
-
-    print(f"\nCurrent directory: {os.getcwd()}")
-    print(f"Env var: {os.environ.get(BASE_DATADIR)}")
-    print(f"datadir: {datadir_path}")
-    print(f"mpi_exec: {mpi_exec}")
 
     assert_output_files(datadir_path)
 
@@ -75,11 +65,6 @@ def test_relative_output_path_with_env_var(quandary, request, tmp_path, clean_en
 
     quandary(datadir=datadir_name, mpi_exec=mpi_exec)
 
-    print(f"\nCurrent directory: {os.getcwd()}")
-    print(f"Env var: {os.environ.get(BASE_DATADIR)}")
-    print(f"datadir: {datadir_name}")
-    print(f"mpi_exec: {mpi_exec}")
-
     assert_output_files(datadir_path)
 
 
@@ -90,11 +75,6 @@ def test_absolute_output_path_with_env_var(quandary, request, tmp_path, clean_en
     datadir_path = os.path.join(tmp_path, datadir_name)
 
     quandary(datadir=datadir_path, mpi_exec=mpi_exec)
-
-    print(f"\nCurrent directory: {os.getcwd()}")
-    print(f"Env var: {os.environ.get(BASE_DATADIR)}")
-    print(f"datadir: {datadir_path}")
-    print(f"mpi_exec: {mpi_exec}")
 
     assert_output_files(datadir_path)
     assert not os.path.exists(os.environ[BASE_DATADIR])
