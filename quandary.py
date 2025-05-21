@@ -105,7 +105,7 @@ class Quandary:
     T1        : List[float] = field(default_factory=list)
     T2        : List[float] = field(default_factory=list)
     # Optiona: User-defined Hamiltonian model (Default = superconducting qubits model)
-    Hsys                : List[float]       = field(default_factory=list)
+    Hsys                : List[complex]     = field(default_factory=list)
     Hc_re               : List[List[float]] = field(default_factory=list)
     Hc_im               : List[List[float]] = field(default_factory=list)
     standardmodel       : bool              = True
@@ -197,10 +197,6 @@ class Quandary:
             self.initctrl_MHz = [max_alloscillators for _ in range(len(self.Ne))]
         if len(self.initctrl_MHz) == 0:
             self.initctrl_MHz = [10.0 for _ in range(len(self.Ne))]
-        if len(self.Hsys) > 0 and not self.standardmodel: # User-provided Hamiltonian operators 
-            self.standardmodel=False   
-        else: # Using standard Hamiltonian model. Set it up in python only if needed, i.e. only if dT or the carrier wave frequencies need to be computed.
-            self.standardmodel=True
         if len(self.targetstate) > 0:
             self.optim_target = "file"
         if len(self.targetgate) > 0:
@@ -251,7 +247,7 @@ class Quandary:
         if self.spline_order == 0 and len(self.carrier_frequency) == 0:
             self.carrier_frequency = [[0.0] for _ in range(len(self.freq01))]
         if len(self.carrier_frequency) == 0: 
-            # set up the standard Hamiltonian first, if needed
+            # set up the standard Hamiltonian first, if needed and if not done so already
             if self.standardmodel==True and len(self.Hsys)<=0:
                 Ntot = [sum(x) for x in zip(self.Ne, self.Ng)]
                 self.Hsys, self.Hc_re, self.Hc_im = hamiltonians(N=Ntot, freq01=self.freq01, selfkerr=self.selfkerr, crosskerr=self.crosskerr, Jkl=self.Jkl, rotfreq=self.rotfreq, verbose=self.verbose)
@@ -543,8 +539,12 @@ class Quandary:
             # Write non-standard Hamiltonians to file  
             self._hamiltonian_filename= "hamiltonian.dat"
             with open(os.path.join(datadir, self._hamiltonian_filename), "w", newline='\n') as f:
-                f.write("# Hsys \n")
-                Hsyslist = list(np.array(self.Hsys).flatten(order='F'))
+                f.write("# Hsys_real \n")
+                Hsyslist = list(np.array(self.Hsys.real).flatten(order='F'))
+                for value in Hsyslist:
+                    f.write("{:20.13e}\n".format(value))
+                f.write("# Hsys_imag\n")
+                Hsyslist = list(np.array(self.Hsys.imag).flatten(order='F'))
                 for value in Hsyslist:
                     f.write("{:20.13e}\n".format(value))
 
