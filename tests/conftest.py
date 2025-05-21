@@ -1,11 +1,8 @@
-def pytest_addoption(parser):
-    parser.addoption(
-        "--exact",
-        action="store_true",
-        default=False,
-        help="Use exact comparison for floating point numbers"
-    )
+"""Common pytest configuration."""
 
+
+def pytest_addoption(parser):
+    """Add common command line options to pytest."""
     parser.addoption(
         "--mpi-exec",
         action="store",

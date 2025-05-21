@@ -120,17 +120,22 @@ which takes one argument being the name of the test-case's configuration file. T
 
 You can silence Quandary output by adding the `--quiet` argument to the above commands.
 
-The `examples/pythoninterface` folder exemplifies the usage of Quandary's Python interface. 
+The `examples/` folder exemplifies the usage of Quandary's Python interface. 
 * `python example_cnot.py`
 
 # Tests
 
 ## Regression tests
-Regression tests are defined in `regression_tests/` and can be run with
+Regression tests are defined in `tests/regression` and can be run with
 ```
-pytest
+pytest tests/regression
 ```
-See regression_tests/README.md for more information.
+See `tests/regression/README.md` for more information.
+
+## Performance tests
+Performance regression tests are defined in `tests/performance`.
+The latest results from `main` are shown on this [performance dashboard](https://software.llnl.gov/quandary/dev/bench/).
+See `tests/performance/README.md` for more information.
 
 # Community and Contributing
 

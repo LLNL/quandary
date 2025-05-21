@@ -107,7 +107,7 @@ You can silence Quandary by adding the \texttt{--quiet} command line argument.
 
 Results are written as column-based text files in the output directory. Gnuplot is an excellent plotting tool to visualize the written output files, see below. The \texttt{config\_template.cfg} is currently set to run a CNOT optimization test case. It lists all available options and configurations, and is filled with comments that should help users to set up new simulation and optimization runs, and match the input options to the equations found in this document. 
 
-Test the python interface by running one of the examples in \texttt{/examples/pythoninterface/}, e.g. 
+Test the python interface by running one of the examples in \texttt{examples/}, e.g. 
 \begin{itemize}
   \item[$>$]  \texttt{python3 example\_swap02.py}
 \end{itemize}
@@ -782,7 +782,7 @@ which plots the first against the second column of the file 'expected0.iinit0000
 
 \section{Testing}
   \begin{itemize}
-    \item Quandary has a set of regression tests. Please take a look at the \verb+regression_tests/README.md+ document for instructions on how to run the regression tests.
+    \item Quandary has a set of regression tests. Please take a look at the \verb+tests/regression/README.md+ document for instructions on how to run the regression tests.
     \item In order to check if the gradient implementation is correct, one can choose to run a Central Finite Difference test. Let the overall objective function be denoted by $F(\boldsymbol{\alpha})$. The Central Finite Difference test compares each element of the gradient $\nabla F(\boldsymbol{\alpha})$ with the following (second-order accurate) estimate:
     \begin{align*}
        \left(\nabla F(\boldsymbol{\alpha}) \right)_i \approx \frac{F(\bfa + \epsilon\bs{e}_i) - F(\bfa - \epsilon\bs{e}_i)}{2\epsilon} \qquad \qquad \text{(CFD)}

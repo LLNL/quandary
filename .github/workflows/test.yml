@@ -41,7 +41,7 @@ jobs:
       run: |
         spack env activate .spack_env
         python -m pip install -e . --prefer-binary
-        pytest -v -s regression_tests --mpi-opt="--oversubscribe"
+        pytest -v -s tests/regression --mpi-opt="--oversubscribe"
 
     - name: Push packages and update index
       env:

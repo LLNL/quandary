@@ -65,6 +65,7 @@ variables:
 stages:
   - prerequisites
   - build-and-test
+  - perf-test
 
 # Template for jobs triggering a build-and-test sub-pipeline:
 .build-and-test:
@@ -77,6 +78,19 @@ stages:
         file: 'pipelines/${CI_MACHINE}.yml'
       - artifact: '${CI_MACHINE}-jobs.yml'
         job: 'generate-job-lists'
+    strategy: depend
+    forward:
+      pipeline_variables: true
+
+.performance-test:
+  stage: perf-test
+  trigger:
+    include:
+      - local: '.gitlab/custom-jobs-and-variables.yml'
+      - project: 'radiuss/radiuss-shared-ci'
+        ref: 'v2024.07.0'
+        file: 'pipelines/${CI_MACHINE}.yml'
+      - local: '.gitlab/jobs/ruby-performance.yml'
     strategy: depend
     forward:
       pipeline_variables: true
