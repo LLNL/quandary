@@ -7,6 +7,9 @@ import pytest
 from pydantic import BaseModel, TypeAdapter
 from tests.utils.common import build_mpi_command
 
+# Mark all tests in this file as performance tests
+pytestmark = pytest.mark.performance
+
 TEST_PATH = os.path.dirname(os.path.realpath(__file__))
 TEST_CASES_PATH = os.path.join(TEST_PATH, "test_cases.json")
 TEST_CONFIG_PATH = os.path.join(TEST_PATH, "configs")

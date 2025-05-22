@@ -8,6 +8,9 @@ from typing import List
 
 from tests.utils.common import build_mpi_command
 
+# Mark all tests in this file as regression tests
+pytestmark = pytest.mark.regression
+
 REL_TOL = 1.0e-7
 ABS_TOL = 1.0e-15
 

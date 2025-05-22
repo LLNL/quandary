@@ -125,10 +125,19 @@ The `examples/` folder exemplifies the usage of Quandary's Python interface.
 
 # Tests
 
+
 ## Regression tests
-Regression tests are defined in `tests/regression` and can be run with
+Regression tests are defined in `tests/regression` and `tests/python` directories.
+
+You can run all regression tests with:
+```bash
+pytest -m regression
 ```
+
+Or run tests in a specific directory:
+```bash
 pytest tests/regression
+pytest tests/python
 ```
 See `tests/regression/README.md` for more information.
 
