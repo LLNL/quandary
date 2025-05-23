@@ -8,6 +8,9 @@ from typing import List
 
 from tests.utils.common import build_mpi_command
 
+# Mark all tests in this file as regression tests
+pytestmark = pytest.mark.regression
+
 REL_TOL = 1.0e-7
 ABS_TOL = 1.0e-15
 
@@ -76,7 +79,7 @@ def run_test(simulation_dir, number_of_processes, config_file, files_to_compare,
 
 def compare_files(file_name, output, expected, exact):
     df_output = pd.read_csv(output, sep="\\s+", header=get_header(output))
-    df_expected = pd.read_csv(expected, sep="\\s+", header=get_header(output))
+    df_expected = pd.read_csv(expected, sep="\\s+", header=get_header(expected))
     pd.testing.assert_frame_equal(df_output, df_expected, rtol=REL_TOL, atol=ABS_TOL, obj=file_name, check_exact=exact)
 
 
