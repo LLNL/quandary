@@ -1,10 +1,21 @@
 #include "UDEmodel.hpp"
 
+// ------------------------------------------------------------------------------------------------
+// UDE Model class
+//
+// This class is the base class for all UDE models.
+// It contains the basic functionality for a UDE model, such as applying the system matrix to a state vector, and computing the gradient of the RHS with respect to the learnable parameters.
+// It also contains the functionality for writing the learned parameters to a file.
+// It is used to create the HamiltonianModel, LindbladModel, and TransferModel classes.
+// ------------------------------------------------------------------------------------------------
+
 UDEmodel::UDEmodel(){
   dim_rho = 0;
   dim = 0;
   nparams = 0;
-}
+} // UDEmodel::UDEmodel()
+
+
 
 UDEmodel::UDEmodel(int dim_rho_, LindbladType lindblad_type){
   dim_rho = dim_rho_;
@@ -18,7 +29,9 @@ UDEmodel::UDEmodel(int dim_rho_, LindbladType lindblad_type){
   VecCreate(PETSC_COMM_WORLD, &aux);     // aux sized for Re(state) or Im(state) 
   VecSetSizes(aux , PETSC_DECIDE, dim);
   VecSetFromOptions(aux);
-}
+} // UDEmodel::UDEmodel()
+
+
 
 UDEmodel::~UDEmodel(){
   for (int i=0; i<SystemMats_A.size(); i++) MatDestroy(&SystemMats_A[i]);
@@ -28,7 +41,20 @@ UDEmodel::~UDEmodel(){
   VecDestroy(&aux);
   for (int i=0; i<Operator_Re.size(); i++) MatDestroy(&Operator_Re[i]);
   for (int i=0; i<Operator_Im.size(); i++) MatDestroy(&Operator_Im[i]);
-}
+} // UDEmodel::~UDEmodel()
+
+
+
+
+
+// ------------------------------------------------------------------------------------------------
+// HamiltonianModel class
+//
+// This class is a subclass of the UDEModel class.
+// It has methods to create and apply the system matrices for the Hamiltonian. 
+// It also has methods to compute the gradient of the RHS with respect to the learnable parameters.
+// ------------------------------------------------------------------------------------------------
+
 
 HamiltonianModel::HamiltonianModel(int dim_rho_, bool shifted_diag_, LindbladType lindbladtype) : UDEmodel(dim_rho_, lindbladtype) {
   shifted_diag = shifted_diag_;
@@ -48,9 +74,13 @@ HamiltonianModel::HamiltonianModel(int dim_rho_, bool shifted_diag_, LindbladTyp
   MatCreateDense(PETSC_COMM_WORLD,PETSC_DECIDE, PETSC_DECIDE, dim_rho, dim_rho, NULL, &Operator_Im[0]);
   MatSetUp(Operator_Re[0]);
   MatSetUp(Operator_Im[0]);
-}
+} // HamiltonianModel::HamiltonianModel()
 
-HamiltonianModel::~HamiltonianModel(){}
+
+
+HamiltonianModel::~HamiltonianModel() {} // HamiltonianModel::~HamiltonianModel()  
+
+
 
 void HamiltonianModel::createSystemMats(LindbladType lindbladtype){
 
@@ -106,7 +136,8 @@ void HamiltonianModel::createSystemMats(LindbladType lindbladtype){
   for (int i=0; i<BasisMats_Im.size(); i++) MatDestroy(&BasisMats_Im[i]);
   BasisMats_Re.clear();
   BasisMats_Im.clear();
-}
+} // HamiltonianModel::createSystemMats()
+
 
 
 void HamiltonianModel::applySystem(Vec u, Vec v, Vec uout, Vec vout, std::vector<double>& learnparamsH){
@@ -135,7 +166,8 @@ void HamiltonianModel::applySystem(Vec u, Vec v, Vec uout, Vec vout, std::vector
     MatMult(SystemMats_B[i], u, aux);
     VecAXPY(vout, paramsB[i], aux);
   }
-}
+} // HamiltonianModel::applySystem()
+
 
 
 void HamiltonianModel::applySystem_diff(Vec u, Vec v, Vec uout, Vec vout, std::vector<double>& learnparamsH){
@@ -163,7 +195,9 @@ void HamiltonianModel::applySystem_diff(Vec u, Vec v, Vec uout, Vec vout, std::v
     MatMultTranspose(SystemMats_B[i], u, aux);
     VecAXPY(vout, -1.*paramsB[i], aux);
   }
-}
+} // HamiltonianModel::applySystem_diff()
+
+
 
 void HamiltonianModel::dRHSdp(Vec grad, Vec u, Vec v, double alpha, Vec ubar, Vec vbar, std::vector<double>& learnparamsH, int grad_skip){
   // gamma_bar_A += alpha * (  u^t sigma_A^t ubar + v^t sigma_A^t vbar )
@@ -181,7 +215,9 @@ void HamiltonianModel::dRHSdp(Vec grad, Vec u, Vec v, double alpha, Vec ubar, Ve
     MatMult(SystemMats_A[i], v, aux); VecDot(aux, vbar, &vAvbar);
     VecSetValue(grad, grad_skip + i + skip, alpha*(uAubar + vAvbar), ADD_VALUES);
   }
-}
+} // HamiltonianModel::applySystem()
+
+
 
 void HamiltonianModel::writeOperator(std::vector<double>& learnparamsH, std::string datadir){
 
@@ -230,8 +266,20 @@ void HamiltonianModel::writeOperator(std::vector<double>& learnparamsH, std::str
   PetscViewerDestroy(&viewer_im);
   printf("\nLearned Hamiltonian written to file %s, %s\n", filename_re, filename_im);
 
-}
+} // HamiltonianModel::writeOperator()
   
+
+
+
+
+// ------------------------------------------------------------------------------------------------
+// LindbladModel class
+//
+// This class is a subclass of the UDEModel class.
+// It has methods to create and apply the system matrices for the Lindblad term. 
+// It also has methods to compute the gradient of the RHS with respect to the learnable parameters.
+// ------------------------------------------------------------------------------------------------
+
 LindbladModel::LindbladModel(int dim_rho_, bool shifted_diag, bool upper_only, bool real_only_) : UDEmodel(dim_rho_, LindbladType::BOTH) {
   real_only = real_only_;
   dim_rho = dim_rho_;
@@ -267,9 +315,13 @@ LindbladModel::LindbladModel(int dim_rho_, bool shifted_diag, bool upper_only, b
       MatSetUp(Operator_Im[i]);
     }
   }
-}
+} // HamiltonianModel::writeOperator()
+
+
 
 LindbladModel::~LindbladModel(){}
+
+
 
 void LindbladModel::getCoeffIJ(int i, int j, std::vector<double>& learnparamsL, double* aij_re_out, double* aij_im_out){
 
@@ -299,7 +351,9 @@ void LindbladModel::getCoeffIJ(int i, int j, std::vector<double>& learnparamsL, 
   /* Return */
   *aij_re_out = aij_re;
   *aij_im_out = aij_im;
-}
+} // LindbladModel::getCoeffIJ()
+
+
 
 int LindbladModel::createSystemMats(bool upper_only, bool real_only, bool shifted_diag){
   /* Set up and store the Lindblad system matrices: 
@@ -361,7 +415,9 @@ int LindbladModel::createSystemMats(bool upper_only, bool real_only, bool shifte
   for (int i=0; i<BasisMats_Im.size(); i++) MatDestroy(&BasisMats_Im[i]);
 
   return nbasis;
-}
+} // LindbladModel::createSystemMats()
+
+
 
 void LindbladModel::applySystem(Vec u, Vec v, Vec uout, Vec vout, std::vector<double>& learnparamsL){
   // learnparamsL = [params_REAL, params_IMAL]
@@ -441,7 +497,9 @@ void LindbladModel::applySystem(Vec u, Vec v, Vec uout, Vec vout, std::vector<do
   // MatView(Ti, NULL);
   // exit(1);
 
-}
+} // LindbladModel::applySystem()
+
+
 
 void LindbladModel::applySystem_diff(Vec u, Vec v, Vec uout, Vec vout, std::vector<double>& learnparamsL){
 #if DOUBLESUM
@@ -484,7 +542,8 @@ void LindbladModel::applySystem_diff(Vec u, Vec v, Vec uout, Vec vout, std::vect
     }
 #endif
   }
-}
+} // LindbladModel::applySystem_diff()
+
 
 
 void LindbladModel::dRHSdp(Vec grad, Vec u, Vec v, double alpha, Vec ubar, Vec vbar, std::vector<double>& learnparamsL, int grad_skip){
@@ -554,7 +613,9 @@ void LindbladModel::dRHSdp(Vec grad, Vec u, Vec v, double alpha, Vec ubar, Vec v
   }
 #endif
 
-}
+} // LindbladModel::dRHSdp()
+
+
 
 void LindbladModel::evalOperator(std::vector<double>& learnparamsL){
 
@@ -604,7 +665,9 @@ void LindbladModel::evalOperator(std::vector<double>& learnparamsL){
   BasisMats_Re.clear();
   BasisMats_Im.clear();
 
-}
+} // LindbladModel::evalOperator()
+
+
 
 void LindbladModel::writeOperator(std::vector<double>& learnparamsL, std::string datadir){
   if (dim_rho <= 0) return;
@@ -638,47 +701,89 @@ void LindbladModel::writeOperator(std::vector<double>& learnparamsL, std::string
   PetscViewerDestroy(&viewer);
   PetscViewerDestroy(&viewer_im);
   printf("\nLearned Lindblad system matrix written to file %s and %s\n", filename, filename_im);
-}
-
-TransferModel::TransferModel(int dim_rho_, int ncarrierwaves_, LindbladType lindblad_type) : UDEmodel(dim_rho_, lindblad_type) {
-  ncarrierwaves = ncarrierwaves_;
-
-  if (dim_rho_ <= 0) return;
-
-  /* Set the Number of learnable parameters for this oscillator */
-  // Here, a linear transfer model is applied to each carrier wave*/
-  nparams = ncarrierwaves;
-
-}
-
-TransferModel::~TransferModel() {}
+} // LindbladModel::writeOperator()
 
 
-void TransferModel::apply(int cwID, double* Blt1, double* Blt2, std::vector<double>& learnparamsT){
-
-  /* If not learnable, then this is the identify (do nothing) */
-  if (dim_rho <= 0) return;
-
-  /* Here, transfer model is a linear scaling of the Bsplines, using the same parameter for both real and imaginary part of the spline. 
-   * Note: Blt1 = sum_s alpha_s^1 * basisfunction(t)
-   *  and  Blt2 = sum_s alpha_s^2 * basisfunction(t) 
-   * where the alpha^1, alpha^2 are the real, imag parts, respectively */
-  double tmp1 = *Blt1;
-  double tmp2 = *Blt2;
-  *Blt1 = learnparamsT[cwID]*tmp1;
-  *Blt2 = learnparamsT[cwID]*tmp2;
-}
 
 
-void TransferModel::apply_diff(int cwID, const double Blt1, const double Blt2, double& Blt1bar, double& Blt2bar, double* grad,  std::vector<double>& learnparamsT, bool x_is_control){
-  if (dim_rho <= 0) return;
 
-  /* Derivative with respect to learable parameter */
-  if (!x_is_control) { 
-    grad[cwID] += Blt1 * Blt1bar + Blt2*Blt2bar;
-  }
+// ------------------------------------------------------------------------------------------------
+// TransferModel class
+//
+// This class is a subclass of the UDEModel class.
+// It has methods to create and apply the system matrices for the transfer term. 
+// It also has methods to compute the gradient of the RHS with respect to the learnable parameters.
+// ------------------------------------------------------------------------------------------------
 
-  /* Derivative with respect to Blt1 and Blt2 */
-  Blt1bar  = learnparamsT[cwID]*Blt1bar;
-  Blt2bar  = learnparamsT[cwID]*Blt2bar;
-}
+TransferModel::TransferModel(   int dim_rho_,               // (input) Dimension of the Hilbert space
+                                int ncarrierwaves_,         // (input) Number of carrier waves within the pulse for this oscillator
+                                LindbladType lindblad_type) // (input) Type of Lindblad operator
+                                : UDEmodel(dim_rho_, lindblad_type) {   
+    
+    // If the dimension of the Hilbert space is not positive, then there is nothing to do.
+    if (dim_rho_ <= 0) return;
+    
+    // Set the number of carrier waves and the number of learnable parameters per carrier wave
+    ncarrierwaves       = ncarrierwaves_;   // Number of carrier waves within the pulse for this oscillator
+    params_per_carrier  = 2;                // Number of learnable parameters per carrier wave (default: scale and offset)
+
+    // If the dimension of the Hilbert space is not positive, then there is nothing to do.
+    if (dim_rho_ <= 0) return;
+
+    /* Set the Number of learnable parameters for this oscillator */
+    nparams = params_per_carrier*ncarrierwaves;
+} // TransferModel::TransferModel()
+
+
+
+TransferModel::~TransferModel() {} // TransferModel::~TransferModel()
+
+
+
+void TransferModel::apply(  int                                 cwID,           // (input) Index of the carrier wave
+                            double*                             Blt1,           // (output) Real part of the Bspline 
+                            double*                             Blt2,           // (output) Imaginary part of the Bspline 
+                            std::vector<std::vector<double>> &  learnparamsT) { // (input) Learnable parameters for this oscillator 
+    /* If not learnable, then this is the identity (do nothing) */
+    if (dim_rho <= 0) return;
+
+    /* Here, transfer model is an affine transformation of the Bsplines. 
+    * Note: Blt1 = sum_s alpha_s^1 * basisfunction(t) + offset_1
+    *  and  Blt2 = sum_s alpha_s^2 * basisfunction(t) + offset_2 
+    * where the alpha^1, alpha^2 are the real, imag parts, respectively */
+    assert(learnparamsT[cwID].size() == 2);
+    double tmp1 = *Blt1;
+    double tmp2 = *Blt2;
+    *Blt1 = learnparamsT[cwID][0]*tmp1 + learnparamsT[cwID][1];
+    *Blt2 = learnparamsT[cwID][0]*tmp2 + learnparamsT[cwID][1];
+} // TransferModel::apply()
+
+
+
+void TransferModel::apply_diff( int                                 cwID,           // (input) Index of the carrier wave
+                                const double                        Blt1,           // (input) Real part of the Bspline
+                                const double                        Blt2,           // (input) Imaginary part of the Bspline
+                                double &                            Blt1bar,        // (input, output) Adjoint for the real part of the Bspline
+                                double &                            Blt2bar,        // (input, output) Adjoint for the imaginary part of the Bspline
+                                double *                            grad,           // (input, output) Gradient vector
+                                std::vector<std::vector<double>> &  learnparamsT,   // (input) Learnable parameters for this oscillator
+                                bool                                x_is_control) { // (input) If True, the transfer function parametrers are fixed, otherwise they are learnable
+    // Note: grad[cwID] is the derivative with respect to the scale factor, and grad[cwID+1] is the derivative with respect to the offset.
+
+    // If the dimension of the Hilbert space is not positive, then we do not need to compute the derivative
+    if (dim_rho <= 0) return;
+
+    /* If we are not learning the control, then we need to compute the derivative with respect to the learnable parameter */
+    if (!x_is_control) { 
+        grad[cwID]   += Blt1*Blt1bar; // (d/dscale)  (scale*Blt1 + offset) = Blt1   ==> gradient vector product is Blt1*Blt1bar
+        grad[cwID+1] += Blt1bar;      // (d/doffset) (scale*Blt1 + offset) = 1      ==> gradient vector product is Blt1bar
+        grad[cwID]   += Blt2*Blt2bar; // (d/dscale)  (scale*Blt2 + offset) = Blt2   ==> gradient vector product is Blt2*Blt2bar
+        grad[cwID+1] += Blt2bar;      // (d/doffset) (scale*Blt2 + offset) = 1      ==> gradient vector product is Blt2bar
+    }
+
+    /* Update the adjoint for this carrier wave. 
+     * Note: The adjoint step for the real part looks like [(d/dBlt1)(scale*Blt1 + offset)]^T Blt1bar = scale*Blt1bar. Thus, it only depends on the scale, not the offset.
+     *       The same goes for the imaginary part. */
+    Blt1bar  = learnparamsT[cwID][0]*Blt1bar;
+    Blt2bar  = learnparamsT[cwID][0]*Blt2bar;
+} // TransferModel::apply_diff()

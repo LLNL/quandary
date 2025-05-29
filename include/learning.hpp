@@ -26,7 +26,8 @@ class Learning {
   std::vector<TransferModel*> transfer_model;   // Vector of Parameterization for control transfer, one for each oscillator
   std::vector<double> learnparamsH;  // Learnable parameters for Hamiltonian
   std::vector<double> learnparamsL; // Learnable parameters for Lindblad (first all real, then all imaginary parts)
-  std::vector<std::vector<double>> learnparamsT; // Learnable parameters for Transfer functions, one vector for each oscillator
+  std::vector<std::vector<std::vector<double>>> learnparamsT; // Learnable parameters for Transfer functions, one vector for each oscillator. Each vector contains the scaling and offset for the transfer function for that carrier freq  and imag parts of the transfer function.
+  
   
   int nparams;            /* Total Number of learnable paramters*/
   double loss_integral;   /* Running cost for Loss function */
@@ -49,8 +50,9 @@ class Learning {
     int getNParams(){ return nparams; };
     int getNParamsHamiltonian(){ return learnparamsH.size();};
     int getNParamsLindblad(){ return learnparamsL.size(); };
-    int getNParamsTransfer(){ int sum=0; for (int i=0; i<learnparamsT.size();i++) sum+= learnparamsT[i].size(); return sum; };
-    int getNParamsTransfer(int iosc){ return learnparamsT[iosc].size(); };
+    
+    int getNParamsTransfer();
+    int getNParamsTransfer(int iosc);
 
     /* Initialize learnable parameters. */
     void initLearnParams(int nparams, std::vector<std::string> learninit_str, std::default_random_engine rand_engine);

@@ -159,7 +159,7 @@ void Learning::writeOperators(std::string datadir) {
 
 
 
-void Learning::setLearnParams(const Vec x) {
+void Learning::setLearnParams(const Vec x) { // (input) Vector holding the learnable parameters
     /* Storage of parameters in x:  
     *   x = [learnparamH_Re, learnparamH_Im, 
     *        learnparamL_Re, learnparamL_Im, 
@@ -213,7 +213,7 @@ void Learning::setLearnParams(const Vec x) {
 
 
 
-void Learning::getLearnParams(double* x) {
+void Learning::getLearnParams(double* x) { // (output) Vector holding the learnable parameters
   /* Storage of parameters in x:  
    *   x = [learnparamH_Re, learnparamH_Im, 
    *        learnparamL_Re, learnparamL_Im, 
@@ -280,7 +280,9 @@ void Learning::dRHSdp(Vec grad, Vec u, Vec v, double alpha, Vec ubar, Vec vbar) 
 
 
 
-void Learning::initLearnParams(int nparams, std::vector<std::string> learninit_str, std::default_random_engine rand_engine) {
+void Learning::initLearnParams(int                          nparams,        // (input) Number of learnable parameters
+                               std::vector<std::string>     learninit_str,  // (input) Specifies how we initialize + how to initialize the parameters
+                               std::default_random_engine   rand_engine) {  // (input) Random engine
     // Switch over initialization string ("file", "constant", or "random")
 
     if (learninit_str[0].compare("file") == 0 ) { //  Read parameters from file. 
@@ -385,14 +387,14 @@ void Learning::initLearnParams(int nparams, std::vector<std::string> learninit_s
         }
 
         // Set all transfer parameters. 
-        // ALWAYS CONSTANT init for now. TODO: Make this configurable.
         for (int iosc=0; iosc<transfer_model.size(); iosc++) {
             // If the amplitude for the transfer parameters is not provided, use the amplitude for the Lindblad parameters
             if (learninit_str.size() < 4) copyLast(learninit_str, 4);
             amp = atof(learninit_str[3].c_str());
 
             // Set all transfer parameters for this oscillator, if there are any.
-            // Note: This is hardcoded for a scale of 1.0 and a offset of 0. TODO: Make this configurable.
+            // Note: This is hardcoded for a scale of 1.0 and a offset of 0. 
+            // TODO: different scale and offset for the real and imaginary parts of the transfer function for this carrier wave
             std::vector<std::vector<double>> myparams;
             if (transfer_model[iosc]->getNParams() > 0) {
                 // Iterate over the carrier waves

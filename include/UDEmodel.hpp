@@ -72,7 +72,7 @@ class LindbladModel: public UDEmodel {
     /* Index mapping for storing the lower triangular learnable matrix in a linear vector (vectorized column-wise) */
     inline int mapID(int i, int j){return i*nbasis - i*(i+1)/2 + j;}
     
-    /* Evaluate the double-sum coefficient Gamma_ij */
+    /* Evaluate the double-sum coefftransfer_modeltransfer_modelicient Gamma_ij */
     void getCoeffIJ(int i, int j, std::vector<double>& learnparams, double* aij_re, double* aij_im);
 
     void applySystem(Vec u, Vec v, Vec uout, Vec vout, std::vector<double>& learnparams);
@@ -85,10 +85,14 @@ class LindbladModel: public UDEmodel {
 class TransferModel: public UDEmodel {
 
     int ncarrierwaves;  // # Number of carrier waves within the pulse for this oscillator
+    int params_per_carrier;  // Number of learnable parameters per carrier wave
 
   public:
     TransferModel(int dim_rho_, int ncarrierwaves, LindbladType lindblad_type);
     ~TransferModel();
+
+    int getNCarrierWaves() { return ncarrierwaves; };
+    int getParamsPerCarrier() { return params_per_carrier; };
 
     // Transfer functions are NOT acting as system matrices, disable those:
     void applySystem(Vec u, Vec v, Vec uout, Vec vout, std::vector<double>& learnparams) {};
@@ -102,8 +106,8 @@ class TransferModel: public UDEmodel {
      *      Blt2 = sum_s alpha^IM_s,f B_s(t) 
      * Out: Modiefied Blt1 and Blt2: Blti = transfer(Blti)
      */
-    void apply(int cwID, double* Blt1, double* Blt2, std::vector<double>& learnparamsT);
+    void apply(int cwID, double* Blt1, double* Blt2, std::vector<std::vector<double>>& learnparamsT);
     /* Derivative of the above */
-    void apply_diff(int cwID, const double Blt1, const double Blt2, double& Blt1bar, double& Blt2bar,  double* grad, std::vector<double>& learnparamsT, bool x_is_control);
+    void apply_diff(int cwID, const double Blt1, const double Blt2, double& Blt1bar, double& Blt2bar,  double* grad, std::vector<std::vector<double>>& learnparamsT, bool x_is_control);
 
 };

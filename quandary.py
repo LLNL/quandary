@@ -355,9 +355,33 @@ class Quandary:
 
         return self.__run(pcof0=pcof0, runtype="optimization", overwrite_popt=True, maxcores=maxcores, datadir=datadir, quandary_exec=quandary_exec, cygwinbash=cygwinbash, batchargs=batchargs)
     
-    def training(self, *, trainingdatadir="./", trainingdata_corrected=False, UDEmodel="none", pcof0=[], maxcores=-1, datadir="./run_dir", quandary_exec="", cygwinbash="", batchargs=[], learn_params=[], T_train=1e13):
+    def training(self, 
+                 *, 
+                 trainingdatadir        = "./", 
+                 trainingdata_corrected = False, 
+                 UDEmodel               = "none", 
+                 pcof0                  = [], 
+                 maxcores               = -1, 
+                 datadir                = "./run_dir", 
+                 quandary_exec          = "", 
+                 cygwinbash             = "", 
+                 batchargs              = [], 
+                 learn_params           = [], 
+                 T_train                = 1e13):
 
-        return self.__run(pcof0=pcof0, runtype="UDEoptimization", overwrite_popt=True, maxcores=maxcores, datadir=datadir, quandary_exec=quandary_exec, cygwinbash=cygwinbash, batchargs=batchargs, trainingdatadir=trainingdatadir,trainingdata_corrected=trainingdata_corrected,  UDEmodel=UDEmodel,  learn_params=learn_params, T_train=T_train)
+        return self.__run(pcof0                     = pcof0, 
+                          runtype                   = "UDEoptimization", 
+                          overwrite_popt            = True, 
+                          maxcores                  = maxcores, 
+                          datadir                   = datadir, 
+                          quandary_exec             = quandary_exec, 
+                          cygwinbash                = cygwinbash, 
+                          batchargs                 = batchargs, 
+                          trainingdatadir           = trainingdatadir, 
+                          trainingdata_corrected    = trainingdata_corrected,  
+                          UDEmodel                  = UDEmodel,
+                          learn_params              = learn_params, 
+                          T_train                   = T_train)
 
 
     def UDEsimulate(self, *, trainingdatadir="./", trainingdata_corrected=False, UDEmodel="none", pcof0=[], maxcores=-1, datadir="./run_dir", quandary_exec="", cygwinbash="", batchargs=[], learn_params=[], T_train=1e13):
@@ -481,7 +505,14 @@ class Quandary:
                 ncores = min(ncores, maxcores)
 
         # Execute subprocess to run Quandary
-        err = execute(runtype=runtype, ncores=ncores, config_filename=config_filename, datadir=datadir, quandary_exec=quandary_exec, verbose=self.verbose, cygwinbash=cygwinbash, batchargs=batchargs)
+        err = execute(runtype           = runtype, 
+                      ncores            = ncores, 
+                      config_filename   = config_filename, 
+                      datadir           = datadir, 
+                      quandary_exec     = quandary_exec, 
+                      verbose           = self.verbose, 
+                      cygwinbash        = cygwinbash, 
+                      batchargs         = batchargs)
         if self.verbose:
             print("Quandary data dir: ", datadir, "\n")
 
