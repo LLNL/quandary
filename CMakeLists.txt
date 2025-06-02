@@ -37,3 +37,4 @@ if (NOT BLT_LOADED)
 endif()
 
 add_subdirectory(src)
+add_subdirectory(docs)
