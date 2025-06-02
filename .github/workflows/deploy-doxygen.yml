@@ -24,7 +24,7 @@ jobs:
       run: |
         mkdir build
         cd build
-        cmake ..
+        cmake -DENABLE_MPI=OFF -DBUILD_QUANDARY=OFF ..
         cmake --build . --target quandary_doxygen
 
     - name: Deploy to GitHub Pages
