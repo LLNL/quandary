@@ -1,0 +1,5 @@
+<map id="CosineTransferFunction" name="CosineTransferFunction">
+<area shape="rect" id="Node000001" title="Transfer function that represents a cosine wave: u(x) = amp * cos(freq * x)." alt="" coords="5,79,179,104"/>
+<area shape="rect" id="Node000002" href="$classTransferFunction.html" title=" " alt="" coords="27,5,157,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="95,44,95,79,89,79,89,44"/>
+</map>

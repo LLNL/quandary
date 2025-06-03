@@ -1,0 +1,20 @@
+<map id="CompositionalImplMidpoint" name="CompositionalImplMidpoint">
+<area shape="rect" id="Node000001" title=" " alt="" coords="63,507,266,532"/>
+<area shape="rect" id="Node000002" href="$classImplMidpoint.html" title=" " alt="" coords="111,432,219,457"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="167,472,167,506,162,506,162,472"/>
+<area shape="rect" id="Node000003" href="$classTimeStepper.html" title=" " alt="" coords="112,357,217,383"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="167,397,167,432,162,432,162,397"/>
+<area shape="rect" id="Node000004" href="$classMasterEq.html" title=" " alt="" coords="6,269,89,295"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="66,304,94,331,137,355,134,360,91,335,63,308"/>
+<area shape="rect" id="Node000005" href="$classOscillator.html" title=" " alt="" coords="5,93,89,119"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="45,133,41,168,41,207,48,269,43,269,35,207,36,167,40,132"/>
+<area shape="rect" id="Node000007" href="$structMatShellCtx.html" title=" " alt="" coords="115,181,217,207"/>
+<area shape="poly" id="edge7_Node000007_Node000005" title=" " alt="" coords="76,125,151,179,148,183,73,129"/>
+<area shape="rect" id="Node000006" href="$structPiPulse.html" title=" " alt="" coords="13,5,82,31"/>
+<area shape="poly" id="edge5_Node000005_Node000006" title=" " alt="" coords="50,45,50,93,45,93,45,45"/>
+<area shape="poly" id="edge6_Node000004_Node000007" title=" " alt="" coords="140,217,65,271,62,267,137,213"/>
+<area shape="rect" id="Node000008" href="$classOptimTarget.html" title=" " alt="" coords="113,269,216,295"/>
+<area shape="poly" id="edge8_Node000003_Node000008" title=" " alt="" coords="167,309,167,357,162,357,162,309"/>
+<area shape="rect" id="Node000009" href="$classOutput.html" title=" " alt="" coords="251,269,318,295"/>
+<area shape="poly" id="edge9_Node000003_Node000009" title=" " alt="" coords="277,309,257,335,236,350,212,360,210,355,233,345,254,331,273,306"/>
+</map>

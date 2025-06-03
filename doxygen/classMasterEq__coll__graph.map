@@ -1,0 +1,10 @@
+<map id="MasterEq" name="MasterEq">
+<area shape="rect" id="Node000001" title=" " alt="" coords="6,269,89,295"/>
+<area shape="rect" id="Node000002" href="$classOscillator.html" title=" " alt="" coords="5,93,89,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="45,133,41,168,41,207,48,269,43,269,35,207,36,167,40,132"/>
+<area shape="rect" id="Node000004" href="$structMatShellCtx.html" title=" " alt="" coords="115,181,217,207"/>
+<area shape="poly" id="edge4_Node000004_Node000002" title=" " alt="" coords="76,125,151,179,148,183,73,129"/>
+<area shape="rect" id="Node000003" href="$structPiPulse.html" title=" " alt="" coords="13,5,82,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="50,45,50,93,45,93,45,45"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="140,217,65,271,62,267,137,213"/>
+</map>
