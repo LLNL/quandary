@@ -1,0 +1,59 @@
+name: Build and Test
+
+on:
+  pull_request:
+    branches: ['main']
+  push:
+    branches: ['main']
+
+jobs:
+  build-and-test:
+    strategy:
+      matrix:
+        os: [macos-latest, ubuntu-24.04]
+    runs-on: ${{ matrix.os }}
+    permissions:
+      packages: write
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Set up Spack
+      uses: spack/setup-spack@v2
+
+    - name: Configure Spack
+      run: |
+        spack -e .spack_env mirror set binary_mirror --unsigned
+        spack mirror add --type binary --unsigned --oci-username GITHUB_USER --oci-password-variable GITHUB_TOKEN local-buildcache oci://ghcr.io/LLNL/quandary-spack-buildcache
+
+    - name: Install
+      # explicitly use openmpi, since mpich causes rpath problems in binary
+      run: |
+        spack -e .spack_env rm quandary
+        spack -e .spack_env add quandary@develop+test^openmpi
+        spack -e .spack_env install --use-buildcache package:never
+
+    - name: Run regression tests
+      shell: spack-sh {0}
+      run: |
+        spack env activate .spack_env
+        python -m pip install -e . --prefer-binary
+        pytest -v -s tests/regression --mpi-opt="--oversubscribe"
+
+    - name: Push packages and update index
+      env:
+        GITHUB_USER: ${{ github.actor }}
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        DOCKER_DEFAULT_PLATFORM: linux/amd64
+      run: |
+        if [[ "${{ matrix.os }}" == "ubuntu-24.04" ]]; then
+          # Force push quandary package
+          spack -e .spack_env buildcache push -f --base-image ubuntu:24.04 --update-index local-buildcache quandary
+          spack -e .spack_env buildcache push --base-image ubuntu:24.04 --update-index local-buildcache
+        else
+          spack -e .spack_env buildcache push --update-index local-buildcache
+        fi
+      if: ${{ !cancelled() }}

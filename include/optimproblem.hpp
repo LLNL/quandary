@@ -16,11 +16,15 @@
 #define TaoSetSolution(tao, xinit) TaoSetInitialVector(tao, xinit)
 #define TaoGetSolution(tao, params) TaoGetSolutionVector(tao, params) 
 #endif
+/* if Petsc version < 3.21: Change interface for Tao Monitor */
+#if PETSC_VERSION_MAJOR<4 && PETSC_VERSION_MINOR<21
+#define TaoMonitorSet TaoSetMonitor 
+#endif
 
 class OptimProblem {
 
   /* ODE stuff */
-  int ninit;                            /* Number of initial conditions to be considered (N^2, N, or 1) */
+  size_t ninit;                          /* Number of initial conditions to be considered (N^2, N, or 1) */
   int ninit_local;                      /* Local number of initial conditions on this processor */
   Vec rho_t0;                            /* Storage for initial condition of the ODE */
   Vec rho_t0_bar;                        /* Adjoint of ODE initial condition */

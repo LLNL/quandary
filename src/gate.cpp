@@ -17,19 +17,19 @@ Gate::Gate(std::vector<int> nlevels_, std::vector<int> nessential_, double time_
   final_time = time_;
   gate_rot_freq = gate_rot_freq_;
   lindbladtype = lindbladtype_;
-  for (int i=0; i<gate_rot_freq.size(); i++){
+  for (size_t i=0; i<gate_rot_freq.size(); i++){
     gate_rot_freq[i] *= 2.*M_PI;
   }
 
   /* Dimension of gate = \prod_j nessential_j */
   dim_ess = 1;
-  for (int i=0; i<nessential.size(); i++) {
+  for (size_t i=0; i<nessential.size(); i++) {
     dim_ess *= nessential[i];
   }
 
   /* Dimension of system matrix rho */
   dim_rho = 1;
-  for (int i=0; i<nlevels.size(); i++) {
+  for (size_t i=0; i<nlevels.size(); i++) {
     dim_rho *= nlevels[i];
   }
 
@@ -98,10 +98,10 @@ void Gate::assembleGate(){
   for (PetscInt row=0; row<dim_ess; row++){
     int r = row;
     double freq = 0.0;
-    for (int iosc=0; iosc<nlevels.size(); iosc++){
+    for (size_t iosc=0; iosc<nlevels.size(); iosc++){
       // compute dimension of essential levels of all following subsystems 
       int dim_post = 1;
-      for (int josc=iosc+1; josc<nlevels.size();josc++) {
+      for (size_t josc=iosc+1; josc<nlevels.size();josc++) {
         dim_post *= nessential[josc];
       }
       // compute the frequency 

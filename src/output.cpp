@@ -46,8 +46,8 @@ Output::Output(MapParam config, MPI_Comm comm_petsc, MPI_Comm comm_init, int nos
 
   /* Search through outputstrings to see if any oscillator contains "fullstate" */
   writefullstate = false;
-  for (int i=0; i<outputstr.size(); i++) {
-    for (int j=0; j<outputstr[i].size(); j++) {
+  for (size_t i=0; i<outputstr.size(); i++) {
+    for (size_t j=0; j<outputstr[i].size(); j++) {
       if (outputstr[i][j].compare("fullstate") == 0 ) writefullstate = true;
     }
   }
@@ -55,8 +55,8 @@ Output::Output(MapParam config, MPI_Comm comm_petsc, MPI_Comm comm_init, int nos
   /* Prepare data output files */
   ufile = NULL;
   vfile = NULL;
-  for (int i=0; i< outputstr.size(); i++) expectedfile.push_back (NULL);
-  for (int i=0; i< outputstr.size(); i++) populationfile.push_back (NULL);
+  for (size_t i=0; i< outputstr.size(); i++) expectedfile.push_back (NULL);
+  for (size_t i=0; i< outputstr.size(); i++) populationfile.push_back (NULL);
   expectedfile_comp=NULL;
   populationfile_comp=NULL;
   errorfile = NULL;
@@ -182,8 +182,8 @@ void Output::openDataFiles(std::string prefix, int initid, int pulseID){
   bool writeExpComp = false;
   bool writePopComp = false;
   if (mpirank_petsc == 0) {
-    for (int i=0; i<outputstr.size(); i++) {
-      for (int j=0; j<outputstr[i].size(); j++) {
+    for (size_t i=0; i<outputstr.size(); i++) {
+      for (size_t j=0; j<outputstr[i].size(); j++) {
         if (outputstr[i][j].compare("expectedEnergy") == 0) {
           if (pulseID >= 0) {
             snprintf(filename, 254, "%s/expected%d_pulse%d.iinit%04d.dat", datadir.c_str(), i, pulseID, initid);
@@ -244,8 +244,9 @@ void Output::writeDataFiles(int timestep, double time, const Vec state, MasterEq
   /* Write output only every <num> time-steps */
   if (timestep % output_frequency == 0) {
 
+
     /* Write expected energy levels to file */
-    for (int iosc = 0; iosc < expectedfile.size(); iosc++) {
+    for (size_t iosc = 0; iosc < expectedfile.size(); iosc++) {
       if (expectedfile[iosc] != NULL) {
         double expected = expectedEnergy(state, mastereq->lindbladtype, mastereq->nlevels, iosc);
         fprintf(expectedfile[iosc], "%.8f %1.14e\n", time, expected);
@@ -257,23 +258,23 @@ void Output::writeDataFiles(int timestep, double time, const Vec state, MasterEq
     }
 
     /* Write population to file */
-    for (int iosc = 0; iosc < populationfile.size(); iosc++) {
+    for (size_t iosc = 0; iosc < populationfile.size(); iosc++) {
+      std::vector<double> pop (mastereq->getOscillator(iosc)->getNLevels(), 0.0);
       if (populationfile[iosc] != NULL) {
-        std::vector<double> pop (mastereq->getOscillator(iosc)->getNLevels(), 0.0);
-        mastereq->getOscillator(iosc)->population(state, pop);
         fprintf(populationfile[iosc], "%.8f ", time);
-        for (int i = 0; i<pop.size(); i++) {
+        for (size_t i = 0; i<pop.size(); i++) {
           fprintf(populationfile[iosc], " %1.14e", pop[i]);
         }
         fprintf(populationfile[iosc], "\n");
       }
     }
 
+    std::vector<double> population_comp; 
     if (populationfile_comp != NULL) {
       std::vector<double> population_comp; 
       population(state, mastereq->lindbladtype, population_comp);
       fprintf(populationfile_comp, "%.8f  ", time);
-      for (int i=0; i<population_comp.size(); i++){
+      for (size_t i=0; i<population_comp.size(); i++){
         fprintf(populationfile_comp, "%1.14e  ", population_comp[i]);
       }
       fprintf(populationfile_comp, "\n");
@@ -325,7 +326,7 @@ void Output::closeDataFiles(){
     fclose(vfile);
     vfile = NULL;
   }
-  for (int i=0; i< expectedfile.size(); i++) {
+  for (size_t i=0; i< expectedfile.size(); i++) {
     if (expectedfile[i] != NULL) {
       fclose(expectedfile[i]);
       expectedfile[i] = NULL;
@@ -333,7 +334,7 @@ void Output::closeDataFiles(){
   }
   if (expectedfile_comp != NULL) fclose(expectedfile_comp);
   expectedfile_comp = NULL;
-  for (int i=0; i< populationfile.size(); i++) {
+  for (size_t i=0; i< populationfile.size(); i++) {
     if (populationfile[i] != NULL) {
       fclose(populationfile[i]);
       populationfile[i] = NULL;

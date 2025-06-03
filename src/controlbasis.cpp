@@ -65,7 +65,7 @@ void BSpline2nd::evaluate(const double t, const std::vector<double>& coeff, int 
 
 }
 
-void BSpline2nd::derivative(const double t, const std::vector<double>& coeff, double* coeff_diff, const double valbar1, const double valbar2, int carrier_freq_id) {
+void BSpline2nd::derivative(const double t, const std::vector<double>& /*coeff*/, double* coeff_diff, const double valbar1, const double valbar2, int carrier_freq_id) {
 
     /* Iterate over basis function */
     for (int l=0; l<nsplines; l++) {
@@ -242,7 +242,7 @@ void BSpline0::evaluate(const double t, const std::vector<double>& coeff, int ca
     }
 }
 
-void BSpline0::derivative(const double t, const std::vector<double>& coeff, double* coeff_diff, const double valbar1, const double valbar2, int carrier_freq_id) {
+void BSpline0::derivative(const double t, const std::vector<double>& /*coeff*/, double* coeff_diff, const double valbar1, const double valbar2, int carrier_freq_id) {
 
     // Figure out which basis function is active at this time point 
     int splineID = ceil((t-tstart)/dtknot - 0.5);

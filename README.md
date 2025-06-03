@@ -1,4 +1,7 @@
-# Quandary - Optimal control for open and closed quantum systems
+# <img src="/quandary_logo/quandary-logo_logo-inline-color.png" width="512" alt="Quandary"/>
+[![Build and Test](https://github.com/LLNL/quandary/actions/workflows/test.yml/badge.svg)](https://github.com/LLNL/quandary/actions/workflows/test.yml)
+
+# Optimal control for open and closed quantum systems
 Quandary simulates and optimizes the time evolution of closed and open quantum systems, given a Hamiltonian that models driven superconducting quantum devices. The
 underlying dynamics are modelled by either Schroedinger's equation (closed systems, state vector), or Lindblad's master equation (open systems, density matrix). Quandary solves the respective ordinary differential equation (ODE) numerically by applying a time-stepping integration scheme, and applies a gradient-based optimization scheme to design optimal control pulses that drive the quantum system to desired targets.
 The target can be a unitary gate, i.e. optimizing for pulses that
@@ -117,17 +120,31 @@ which takes one argument being the name of the test-case's configuration file. T
 
 You can silence Quandary output by adding the `--quiet` argument to the above commands.
 
-The `examples/pythoninterface` folder exemplifies the usage of Quandary's Python interface. 
+The `examples/` folder exemplifies the usage of Quandary's Python interface. 
 * `python example_cnot.py`
 
 # Tests
 
+
 ## Regression tests
-Regression tests are defined in `regression_tests/` and can be run with
+Regression tests are defined in `tests/regression` and `tests/python` directories.
+
+You can run all regression tests with:
+```bash
+pytest -m regression
 ```
-pytest
+
+Or run tests in a specific directory:
+```bash
+pytest tests/regression
+pytest tests/python
 ```
-See regression_tests/README.md for more information.
+See `tests/regression/README.md` for more information.
+
+## Performance tests
+Performance regression tests are defined in `tests/performance`.
+The latest results from `main` are shown on this [performance dashboard](https://software.llnl.gov/quandary/dev/bench/).
+See `tests/performance/README.md` for more information.
 
 # Community and Contributing
 

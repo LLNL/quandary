@@ -29,13 +29,13 @@ MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Osci
   quietmode = quietmode_;
 
 
-  for (int i=0; i<crosskerr.size(); i++){
+  for (size_t i=0; i<crosskerr.size(); i++){
     crosskerr[i] *= 2.*M_PI;
   }
-  for (int i=0; i<Jkl.size(); i++){
+  for (size_t i=0; i<Jkl.size(); i++){
     Jkl[i] *= 2.*M_PI;
   }
-  for (int i=0; i<eta.size(); i++){
+  for (size_t i=0; i<eta.size(); i++){
     eta[i] *= 2.*M_PI;
   }
 
@@ -133,13 +133,13 @@ MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Osci
   RHSctx.nlevels = nlevels;
   RHSctx.oscil_vec = oscil_vec;
   RHSctx.time = 0.0;
-  for (int iosc = 0; iosc < noscillators; iosc++) {
+  for (size_t iosc = 0; iosc < noscillators; iosc++) {
     RHSctx.control_Re.push_back(0.0);
     RHSctx.control_Im.push_back(0.0);
   }
 
-  for (int iosc = 0; iosc < noscillators*(noscillators-1)/2; iosc++) RHSctx.Hdt_coeff_re.push_back(0.0);
-  for (int iosc = 0; iosc < noscillators*(noscillators-1)/2; iosc++) RHSctx.Hdt_coeff_im.push_back(0.0);
+  for (size_t iosc = 0; iosc < noscillators*(noscillators-1)/2; iosc++) RHSctx.Hdt_coeff_re.push_back(0.0);
+  for (size_t iosc = 0; iosc < noscillators*(noscillators-1)/2; iosc++) RHSctx.Hdt_coeff_im.push_back(0.0);
 
   /* Set the MatMult routine for applying the RHS to a vector x */
   if (usematfree) { // matrix-free solver
@@ -176,23 +176,23 @@ MasterEq::~MasterEq(){
     if (!usematfree){
       MatDestroy(&Ad);
       MatDestroy(&Bd);
-      for (int k=0; k<Ad_vec.size(); k++) {
+      for (size_t k=0; k<Ad_vec.size(); k++) {
         if (Ad_vec[k] != NULL) {
           MatDestroy(&(Ad_vec[k]));
         }
       }
-      for (int k=0; k<Bd_vec.size(); k++) {
+      for (size_t k=0; k<Bd_vec.size(); k++) {
         if (Bd_vec[k] != NULL) {
           MatDestroy(&(Bd_vec[k]));
         }
       }
       VecDestroy(&aux);
-      for (int i=0; i<Ac_vec.size(); i++){
+      for (size_t i=0; i<Ac_vec.size(); i++){
         if (Ac_vec[i] != NULL) {
           MatDestroy(&(Ac_vec[i]));
         }
       }
-      for (int i=0; i<Bc_vec.size(); i++){
+      for (size_t i=0; i<Bc_vec.size(); i++){
         if (Bc_vec[i] != NULL) {
           MatDestroy(&(Bc_vec[i]));
         }
@@ -254,26 +254,27 @@ void MasterEq::initSparseMatSolver(){
   for (int iosc = 0; iosc < noscillators; iosc++) {
     for (int josc=iosc+1; josc<noscillators; josc++){
       if (fabs(Jkl[id_kl]) > 1e-12) { // only allocate if Jkl>0
-        Mat myAdkl, myBdkl;
+        Mat myAdkl = nullptr; 
+        Mat myBdkl = nullptr;
+        MatCreate(PETSC_COMM_WORLD, &myAdkl);
+        MatCreate(PETSC_COMM_WORLD, &myBdkl);
+        MatSetType(myAdkl, MATMPIAIJ);
+        MatSetType(myBdkl, MATMPIAIJ);
+        MatSetSizes(myAdkl, PETSC_DECIDE, PETSC_DECIDE, dim, dim);
+        MatSetSizes(myBdkl, PETSC_DECIDE, PETSC_DECIDE, dim, dim);
+        if (lindbladtype != LindbladType::NONE) {
+          MatMPIAIJSetPreallocation(myAdkl, 4, NULL, 4, NULL);
+          MatMPIAIJSetPreallocation(myBdkl, 4, NULL, 4, NULL);
+        } else {
+          MatMPIAIJSetPreallocation(myAdkl, 2, NULL, 2, NULL);
+          MatMPIAIJSetPreallocation(myBdkl, 2, NULL, 2, NULL);
+        }
+        MatSetUp(myAdkl);
+        MatSetUp(myBdkl);
+        MatSetFromOptions(myAdkl);
+        MatSetFromOptions(myBdkl);
         Ad_vec.push_back(myAdkl);
         Bd_vec.push_back(myBdkl);
-        MatCreate(PETSC_COMM_WORLD, &Ad_vec[id_kl]);
-        MatCreate(PETSC_COMM_WORLD, &Bd_vec[id_kl]);
-        MatSetType(Ad_vec[id_kl], MATMPIAIJ);
-        MatSetType(Bd_vec[id_kl], MATMPIAIJ);
-        MatSetSizes(Ad_vec[id_kl], PETSC_DECIDE, PETSC_DECIDE, dim, dim);
-        MatSetSizes(Bd_vec[id_kl], PETSC_DECIDE, PETSC_DECIDE, dim, dim);
-        if (lindbladtype != LindbladType::NONE) {
-          MatMPIAIJSetPreallocation(Ad_vec[id_kl], 4, NULL, 4, NULL);
-          MatMPIAIJSetPreallocation(Bd_vec[id_kl], 4, NULL, 4, NULL);
-        } else {
-          MatMPIAIJSetPreallocation(Ad_vec[id_kl], 2, NULL, 2, NULL);
-          MatMPIAIJSetPreallocation(Bd_vec[id_kl], 2, NULL, 2, NULL);
-        }
-        MatSetUp(Ad_vec[id_kl]);
-        MatSetUp(Bd_vec[id_kl]);
-        MatSetFromOptions(Ad_vec[id_kl]);
-        MatSetFromOptions(Bd_vec[id_kl]);
       }
       id_kl++;
     }
@@ -305,7 +306,6 @@ void MasterEq::initSparseMatSolver(){
 
       /* Get dimensions */
       int nk     = oscil_vec[iosc]->getNLevels();
-      int nprek  = oscil_vec[iosc]->dim_preOsc;
       int npostk = oscil_vec[iosc]->dim_postOsc;
 
       /* Set control Hamiltonian system matrix real(-iHc) */
@@ -392,6 +392,7 @@ void MasterEq::initSparseMatSolver(){
        Ad_kl(t) =  (ak^Tal - akal^T)
        Bd_kl(t) = -(ak^Tal + akal^T)  */
     id_kl=0;
+    int matid=0;
     for (int iosc = 0; iosc < noscillators; iosc++) {
       // Dimensions of ioscillator
       int nk     = oscil_vec[iosc]->getNLevels();
@@ -402,11 +403,10 @@ void MasterEq::initSparseMatSolver(){
         if (fabs(Jkl[id_kl]) > 1e-12) { // only allocate if coefficient is non-zero to save memory.
           // Dimensions of joscillator
           int nj     = oscil_vec[josc]->getNLevels();
-          int nprej  = oscil_vec[josc]->dim_preOsc;
           int npostj = oscil_vec[josc]->dim_postOsc;
 
           /* Iterate over local rows of Ad_vec / Bd_vec */
-          MatGetOwnershipRange(Ad_vec[id_kl], &ilow, &iupp);
+          MatGetOwnershipRange(Ad_vec[matid], &ilow, &iupp);
           for (int row = ilow; row<iupp; row++){
             // Add +/- I_N \kron (ak^Tal -/+ akal^T) (Lindblad)
             // or  +/- (ak^Tal -/+ akal^T) (Schrodinger)
@@ -418,14 +418,14 @@ void MasterEq::initSparseMatSolver(){
             if (r1a > 0 && r1b < nj-1) {
               val = Jkl[id_kl] * sqrt(r1a * (r1b+1));
               col = row - npostk + npostj;
-               if (fabs(val)>1e-14) MatSetValue(Ad_vec[id_kl], row, col,  val, ADD_VALUES);
-               if (fabs(val)>1e-14) MatSetValue(Bd_vec[id_kl], row, col, -val, ADD_VALUES);
+               if (fabs(val)>1e-14) MatSetValue(Ad_vec[matid], row, col,  val, ADD_VALUES);
+               if (fabs(val)>1e-14) MatSetValue(Bd_vec[matid], row, col, -val, ADD_VALUES);
             }
             if (r1a < nk-1  && r1b > 0) {
               val = Jkl[id_kl] * sqrt((r1a+1) * r1b);
               col = row + npostk - npostj;
-              if (fabs(val)>1e-14) MatSetValue(Ad_vec[id_kl], row, col, -val, ADD_VALUES);
-              if (fabs(val)>1e-14) MatSetValue(Bd_vec[id_kl], row, col, -val, ADD_VALUES);
+              if (fabs(val)>1e-14) MatSetValue(Ad_vec[matid], row, col, -val, ADD_VALUES);
+              if (fabs(val)>1e-14) MatSetValue(Bd_vec[matid], row, col, -val, ADD_VALUES);
             }
 
             if (lindbladtype != LindbladType::NONE) {
@@ -438,17 +438,18 @@ void MasterEq::initSparseMatSolver(){
               if (r1a < nk-1 && r1b > 0) {
                 val = Jkl[id_kl] * sqrt((r1a+1) * r1b);
                 col = row + npostk*dimmat - npostj*dimmat;
-                if (fabs(val)>1e-14) MatSetValue(Ad_vec[id_kl], row, col, -val, ADD_VALUES);
-                if (fabs(val)>1e-14) MatSetValue(Bd_vec[id_kl], row, col, +val, ADD_VALUES);
+                if (fabs(val)>1e-14) MatSetValue(Ad_vec[matid], row, col, -val, ADD_VALUES);
+                if (fabs(val)>1e-14) MatSetValue(Bd_vec[matid], row, col, +val, ADD_VALUES);
               }
               if (r1a > 0 && r1b < nj-1) {
                 val = Jkl[id_kl] * sqrt(r1a * (r1b+1));
                 col = row - npostk*dimmat + npostj*dimmat;
-                if (fabs(val)>1e-14) MatSetValue(Ad_vec[id_kl], row, col, val, ADD_VALUES);
-                if (fabs(val)>1e-14) MatSetValue(Bd_vec[id_kl], row, col, val, ADD_VALUES);
+                if (fabs(val)>1e-14) MatSetValue(Ad_vec[matid], row, col, val, ADD_VALUES);
+                if (fabs(val)>1e-14) MatSetValue(Bd_vec[matid], row, col, val, ADD_VALUES);
               }
             }
           }
+          matid++;
         }
         id_kl++;
       }
@@ -459,7 +460,6 @@ void MasterEq::initSparseMatSolver(){
     for (int iosc = 0; iosc < noscillators; iosc++) {
 
       int nk     = oscil_vec[iosc]->getNLevels();
-      int nprek  = oscil_vec[iosc]->dim_preOsc;
       int npostk = oscil_vec[iosc]->dim_postOsc;
       double xik = oscil_vec[iosc]->getSelfkerr();
       double detunek = oscil_vec[iosc]->getDetuning();
@@ -678,12 +678,11 @@ int MasterEq::getDimEss(){ return dim_ess; }
 
 int MasterEq::getDimRho(){ return dim_rho; }
 
-int MasterEq::getNOscillators() { return noscillators; }
+size_t MasterEq::getNOscillators() { return noscillators; }
 
-Oscillator* MasterEq::getOscillator(const int i) { return oscil_vec[i]; }
+Oscillator* MasterEq::getOscillator(const size_t i) { return oscil_vec[i]; }
 
 int MasterEq::assemble_RHS(const double t){
-  int ierr;
   /* Prepare the matrix shell to perform the action of RHS on a vector */
 
   // Set the time
@@ -1232,7 +1231,7 @@ void MasterEq::setControlAmplitudes(const Vec x) {
   /* Pass design vector x to oscillators */
   // Design storage: x = (params_oscil0, params_oscil2, ... ) 
   int shift=0;
-  for (int ioscil = 0; ioscil < getNOscillators(); ioscil++) {
+  for (size_t ioscil = 0; ioscil < getNOscillators(); ioscil++) {
     /* Copy x into the oscillators parameter array. */
     getOscillator(ioscil)->setParams(ptr + shift);
     shift += getOscillator(ioscil)->getNParams();
@@ -1318,7 +1317,7 @@ int myMatMult_sparsemat(Mat RHS, Vec x, Vec y){
 
 
   /* -- Control Terms -- */
-  for (int iosc = 0; iosc < shellctx->nlevels.size(); iosc++) {
+  for (size_t iosc = 0; iosc < shellctx->nlevels.size(); iosc++) {
 
     // Grab current controls from the shell
     double p = shellctx->control_Re[iosc];
@@ -1413,7 +1412,7 @@ int myMatMultTranspose_sparsemat(Mat RHS, Vec x, Vec y) {
   MatMultTransposeAdd(*shellctx->Ad, v, vout, vout);
 
   /* Time-dependent control term */
-  for (int iosc = 0; iosc < shellctx->nlevels.size(); iosc++) {
+  for (size_t iosc = 0; iosc < shellctx->nlevels.size(); iosc++) {
 
     p = shellctx->control_Re[iosc];
     q = shellctx->control_Im[iosc];
@@ -1651,7 +1650,7 @@ int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
           /* --- Offdiagonal part of decay L1^T */
           if (shellctx->lindbladtype != LindbladType::NONE) {
             // Oscillators 0
-            L1decay_T(it, n0, i0, i0p, stridei0, stridei0p, xptr, decay0, &yre, &yim);
+            L1decay_T(it, i0, i0p, stridei0, stridei0p, xptr, decay0, &yre, &yim);
           }
 
           /* --- Control hamiltonian  --- */
@@ -1926,9 +1925,9 @@ int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
           /* --- Offdiagonal part of decay L1^T */
           if (shellctx->lindbladtype != LindbladType::NONE) {
             // Oscillators 0
-            L1decay_T(it, n0, i0, i0p, stridei0, stridei0p, xptr, decay0, &yre, &yim);
+            L1decay_T(it, i0, i0p, stridei0, stridei0p, xptr, decay0, &yre, &yim);
             // Oscillator 1
-            L1decay_T(it, n1, i1, i1p, stridei1, stridei1p, xptr, decay1, &yre, &yim);
+            L1decay_T(it, i1, i1p, stridei1, stridei1p, xptr, decay1, &yre, &yim);
           }
 
           /* --- Control hamiltonian  --- */
@@ -2258,11 +2257,11 @@ int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
               /* --- Offdiagonal part of decay L1^T */
               if (shellctx->lindbladtype != LindbladType::NONE) {
                 // Oscillators 0
-                L1decay_T(it, n0, i0, i0p, stridei0, stridei0p, xptr, decay0, &yre, &yim);
+                L1decay_T(it, i0, i0p, stridei0, stridei0p, xptr, decay0, &yre, &yim);
                 // Oscillator 1
-                L1decay_T(it, n1, i1, i1p, stridei1, stridei1p, xptr, decay1, &yre, &yim);
+                L1decay_T(it, i1, i1p, stridei1, stridei1p, xptr, decay1, &yre, &yim);
                 // Oscillator 2
-                L1decay_T(it, n2, i2, i2p, stridei2, stridei2p, xptr, decay2, &yre, &yim);
+                L1decay_T(it, i2, i2p, stridei2, stridei2p, xptr, decay2, &yre, &yim);
               }
 
               /* --- Control hamiltonian  --- */
@@ -2672,13 +2671,13 @@ int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
                   /* --- Offdiagonal part of decay L1^T */
                   if (shellctx->lindbladtype != LindbladType::NONE) {
                     // Oscillators 0
-                    L1decay_T(it, n0, i0, i0p, stridei0, stridei0p, xptr, decay0, &yre, &yim);
+                    L1decay_T(it, i0, i0p, stridei0, stridei0p, xptr, decay0, &yre, &yim);
                     // Oscillator 1
-                    L1decay_T(it, n1, i1, i1p, stridei1, stridei1p, xptr, decay1, &yre, &yim);
+                    L1decay_T(it, i1, i1p, stridei1, stridei1p, xptr, decay1, &yre, &yim);
                     // Oscillator 2
-                    L1decay_T(it, n2, i2, i2p, stridei2, stridei2p, xptr, decay2, &yre, &yim);
+                    L1decay_T(it, i2, i2p, stridei2, stridei2p, xptr, decay2, &yre, &yim);
                     // Oscillator 3
-                    L1decay_T(it, n3, i3, i3p, stridei3, stridei3p, xptr, decay3, &yre, &yim);
+                    L1decay_T(it, i3, i3p, stridei3, stridei3p, xptr, decay3, &yre, &yim);
                   }
 
                   /* --- Control hamiltonian  --- */
@@ -3181,15 +3180,15 @@ int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
                       /* --- Offdiagonal part of decay L1^T */
                       if (shellctx->lindbladtype != LindbladType::NONE) { 
                         // Oscillators 0
-                        L1decay_T(it, n0, i0, i0p, stridei0, stridei0p, xptr, decay0, &yre, &yim);
+                        L1decay_T(it, i0, i0p, stridei0, stridei0p, xptr, decay0, &yre, &yim);
                         // Oscillator 1
-                        L1decay_T(it, n1, i1, i1p, stridei1, stridei1p, xptr, decay1, &yre, &yim);
+                        L1decay_T(it, i1, i1p, stridei1, stridei1p, xptr, decay1, &yre, &yim);
                         // Oscillator 2
-                        L1decay_T(it, n2, i2, i2p, stridei2, stridei2p, xptr, decay2, &yre, &yim);
+                        L1decay_T(it, i2, i2p, stridei2, stridei2p, xptr, decay2, &yre, &yim);
                         // Oscillator 3
-                        L1decay_T(it, n3, i3, i3p, stridei3, stridei3p, xptr, decay3, &yre, &yim);
+                        L1decay_T(it, i3, i3p, stridei3, stridei3p, xptr, decay3, &yre, &yim);
                         // Oscillator 4
-                        L1decay_T(it, n4, i4, i4p, stridei4, stridei4p, xptr, decay4, &yre, &yim);
+                        L1decay_T(it, i4, i4p, stridei4, stridei4p, xptr, decay4, &yre, &yim);
                       }
 
                       /* --- Control hamiltonian  --- */

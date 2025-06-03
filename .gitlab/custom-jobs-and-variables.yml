@@ -39,7 +39,7 @@ variables:
 # Project specific variants for lassen
   PROJECT_LASSEN_VARIANTS: "+test"
 # Project specific deps for lassen
-  PROJECT_LASSEN_DEPS: ""
+  PROJECT_LASSEN_DEPS: "^netlib-lapack@3.9.0"
 
 # Configuration shared by build and test jobs specific to this project.
 # Not all configuration can be shared. Here projects can fine tune the
@@ -48,6 +48,24 @@ variables:
   artifacts:
     reports:
       junit: junit.xml
+
+.performance_job:
+  artifacts:
+    paths:
+      - benchmark_results.json
+  after_script:
+    - |
+      if [ -f "benchmark_results.json" ]; then
+        echo "Sending benchmark results to GitHub..."
+        BENCHMARK_DATA=$(base64 -w 0 benchmark_results.json)
+        curl -X POST \
+        -H "Authorization: token $GITHUB_TOKEN" \
+        -H "Accept: application/vnd.github.v3+json" \
+        https://api.github.com/repos/${GITHUB_PROJECT_ORG}/${GITHUB_PROJECT_NAME}/actions/workflows/benchmark.yml/dispatches \
+        -d "{\"ref\":\"${CI_COMMIT_REF_NAME}\",\"inputs\":{\"benchmark_data\":\"$BENCHMARK_DATA\"}}"
+      else
+        echo "benchmark_results.json not found, skipping GitHub API integration."
+      fi
 
 .reproducer_vars:
   script:

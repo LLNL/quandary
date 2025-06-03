@@ -49,18 +49,18 @@ class Oscillator {
     int dim_postOsc;               // Dimension of coupled subsystem following this oscillator
 
     Oscillator();
-    Oscillator(MapParam config, int id, std::vector<int> nlevels_all_, std::vector<std::string>& controlsegments, std::vector<std::string>& controlinitializations, double ground_freq_, double selfkerr_, double rotational_freq_, double decay_time_, double dephase_time_, std::vector<double> carrier_freq_, double Tfinal_, LindbladType lindbladtype_, std::default_random_engine rand_engine);
+    Oscillator(MapParam config, size_t id, std::vector<int> nlevels_all_, std::vector<std::string>& controlsegments, std::vector<std::string>& controlinitializations, double ground_freq_, double selfkerr_, double rotational_freq_, double decay_time_, double dephase_time_, std::vector<double> carrier_freq_, double Tfinal_, LindbladType lindbladtype_, std::default_random_engine rand_engine);
     virtual ~Oscillator();
 
     /* Return the constants */
-    int getNParams() { return params.size(); };
-    int getNLevels() { return nlevels; };
+    size_t getNParams() { return params.size(); };
+    size_t getNLevels() { return nlevels; };
     double getSelfkerr() { return selfkerr; }; 
     double getDetuning() { return detuning_freq; }; 
     double getDecayTime() {return decay_time; };
     double getDephaseTime() {return dephase_time; };
-    int getNSegments() {return basisfunctions.size(); };
-    int getNCarrierfrequencies() {return carrier_freq.size(); };
+    size_t getNSegments() {return basisfunctions.size(); };
+    size_t getNCarrierfrequencies() {return carrier_freq.size(); };
     ControlType getControlType() {return basisfunctions[0]->getType(); };
     int getNSplines() {return basisfunctions[0]->getNSplines();};
     double getRotFreq() {return (ground_freq - detuning_freq) / (2.0*M_PI); };

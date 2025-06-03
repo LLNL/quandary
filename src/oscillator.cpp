@@ -7,7 +7,7 @@ Oscillator::Oscillator(){
   control_enforceBC = true;
 }
 
-Oscillator::Oscillator(MapParam config, int id, std::vector<int> nlevels_all_, std::vector<std::string>& controlsegments, std::vector<std::string>& controlinitializations, double ground_freq_, double selfkerr_, double rotational_freq_, double decay_time_, double dephase_time_, std::vector<double> carrier_freq_, double Tfinal_, LindbladType lindbladtype_, std::default_random_engine rand_engine){
+Oscillator::Oscillator(MapParam config, size_t id, std::vector<int> nlevels_all_, std::vector<std::string>& controlsegments, std::vector<std::string>& controlinitializations, double ground_freq_, double selfkerr_, double rotational_freq_, double decay_time_, double dephase_time_, std::vector<double> carrier_freq_, double Tfinal_, LindbladType lindbladtype_, std::default_random_engine rand_engine){
 
   myid = id;
   nlevels = nlevels_all_[id];
@@ -16,7 +16,7 @@ Oscillator::Oscillator(MapParam config, int id, std::vector<int> nlevels_all_, s
   selfkerr = selfkerr_*2.0*M_PI;
   detuning_freq = 2.0*M_PI*(ground_freq_ - rotational_freq_);
   carrier_freq = carrier_freq_;
-  for (int i=0; i<carrier_freq.size(); i++) {
+  for (size_t i=0; i<carrier_freq.size(); i++) {
     carrier_freq[i] *= 2.0*M_PI;
   }
   decay_time = decay_time_;
@@ -30,7 +30,7 @@ Oscillator::Oscillator(MapParam config, int id, std::vector<int> nlevels_all_, s
   control_enforceBC = config.GetBoolParam("control_enforceBC", true);
 
   // Parse for control segments
-  int idstr = 0;
+  size_t idstr = 0;
   int nparams_per_seg = 0;
   while (idstr < controlsegments.size()) {
 
@@ -119,8 +119,8 @@ Oscillator::Oscillator(MapParam config, int id, std::vector<int> nlevels_all_, s
   }
 
   //Initialization of the control parameters for each segment
-  int idini = 0;
-  for (int seg = 0; seg < basisfunctions.size(); seg++) {
+  size_t idini = 0;
+  for (size_t seg = 0; seg < basisfunctions.size(); seg++) {
     // Set a default if initialization string is not given for this segment
     if (controlinitializations.size() < idini+2) {
       controlinitializations.push_back("constant");
@@ -138,7 +138,7 @@ Oscillator::Oscillator(MapParam config, int id, std::vector<int> nlevels_all_, s
         initval = std::max(0.0, initval);  
         initval = std::min(1.0, initval); 
       }
-      for (int f = 0; f<carrier_freq.size(); f++) {
+      for (size_t f = 0; f<carrier_freq.size(); f++) {
         for (int i=0; i<basisfunctions[seg]->getNparams(); i++){
           params.push_back(initval);
         }
@@ -153,7 +153,7 @@ Oscillator::Oscillator(MapParam config, int id, std::vector<int> nlevels_all_, s
       // Uniform distribution [0,1)
       std::uniform_real_distribution<double> unit_dist(0.0, 1.0);
 
-      for (int f = 0; f<carrier_freq.size(); f++) {
+      for (size_t f = 0; f<carrier_freq.size(); f++) {
         for (int i=0; i<basisfunctions[seg]->getNparams(); i++){
           double randval = unit_dist(rand_engine);  // random in [0,1]
           // scale to chosen amplitude 
@@ -175,7 +175,7 @@ Oscillator::Oscillator(MapParam config, int id, std::vector<int> nlevels_all_, s
         }
       }
     } else {
-      for (int i=0; i<basisfunctions[seg]->getNparams() * carrier_freq.size(); i++){
+      for (size_t i=0; i<basisfunctions[seg]->getNparams() * carrier_freq.size(); i++){
         params.push_back(0.0);
       }
     }
@@ -184,8 +184,8 @@ Oscillator::Oscillator(MapParam config, int id, std::vector<int> nlevels_all_, s
 
   /* Make sure the initial guess satisfies the boundary conditions, if needed */
   if (params.size() > 0 && control_enforceBC){
-    for (int bs = 0; bs < basisfunctions.size(); bs++){
-      for (int f=0; f < carrier_freq.size(); f++) {
+    for (size_t bs = 0; bs < basisfunctions.size(); bs++){
+      for (size_t f=0; f < carrier_freq.size(); f++) {
         basisfunctions[bs]->enforceBoundary(params.data(), f);
       }
     }
@@ -194,7 +194,7 @@ Oscillator::Oscillator(MapParam config, int id, std::vector<int> nlevels_all_, s
   /* Compute and store dimension of preceding and following oscillators */
   dim_preOsc = 1;
   dim_postOsc = 1;
-  for (int j=0; j<nlevels_all_.size(); j++) {
+  for (size_t j=0; j<nlevels_all_.size(); j++) {
     if (j < id) dim_preOsc  *= nlevels_all_[j];
     if (j > id) dim_postOsc *= nlevels_all_[j];
   }
@@ -203,7 +203,7 @@ Oscillator::Oscillator(MapParam config, int id, std::vector<int> nlevels_all_, s
 
 Oscillator::~Oscillator(){
   if (params.size() > 0) {
-    for (int i=0; i<basisfunctions.size(); i++) 
+    for (size_t i=0; i<basisfunctions.size(); i++) 
       delete basisfunctions[i];
   }
 }
@@ -211,13 +211,13 @@ Oscillator::~Oscillator(){
 void Oscillator::setParams(const double* x){
 
   // copy x into the oscillators parameter storage
-  for (int i=0; i<params.size(); i++) {
+  for (size_t i=0; i<params.size(); i++) {
     params[i] = x[i]; 
   }
 }
 
 void Oscillator::getParams(double* x){
-  for (int i=0; i<params.size(); i++) {
+  for (size_t i=0; i<params.size(); i++) {
     x[i] = params[i]; 
   }
 }
@@ -225,7 +225,7 @@ void Oscillator::getParams(double* x){
 int Oscillator::getNSegParams(int segmentID){
   int n = 0;
   if (params.size()>0) {
-    assert(basisfunctions.size() > segmentID);
+    assert(basisfunctions.size() > static_cast<size_t>(segmentID));
     n = basisfunctions[segmentID]->getNparams()*carrier_freq.size();
   }
   return n; 
@@ -236,9 +236,9 @@ double Oscillator::evalControlVariation(){
   double var_reg = 0.0;
   if (params.size()>0) {
     // Iterate over control segments
-    for (int iseg= 0; iseg< basisfunctions.size(); iseg++){
+    for (size_t iseg= 0; iseg< basisfunctions.size(); iseg++){
       /* Iterate over carrier frequencies */
-      for (int f=0; f < carrier_freq.size(); f++) {
+      for (size_t f=0; f < carrier_freq.size(); f++) {
         var_reg += basisfunctions[iseg]->computeVariation(params, f);
       }
     }
@@ -254,9 +254,9 @@ void Oscillator::evalControlVariationDiff(Vec G, double var_reg_bar, int skip_to
     VecGetArray(G, &grad);
 
     // Iterate over basis parameterizations??? 
-    for (int iseg = 0; iseg< basisfunctions.size(); iseg++){
+    for (size_t iseg = 0; iseg< basisfunctions.size(); iseg++){
       /* Iterate over carrier frequencies */
-      for (int f=0; f < carrier_freq.size(); f++) {
+      for (size_t f=0; f < carrier_freq.size(); f++) {
         // pass the portion of the gradient that corresponds to this oscillator
         basisfunctions[iseg]->computeVariation_diff(grad+skip_to_oscillator, params, var_reg_bar, f);
      }
@@ -280,14 +280,14 @@ int Oscillator::evalControl(const double t, double* Re_ptr, double* Im_ptr, Lear
   /* Evaluate p(t) and q(t) using the parameters */
   if (params.size()>0) {
     // Iterate over control segments. Only one will be used, see the break-statement. 
-    for (int bs = 0; bs < basisfunctions.size(); bs++){
+    for (size_t bs = 0; bs < basisfunctions.size(); bs++){
       if (basisfunctions[bs]->getTstart() <= t && 
           basisfunctions[bs]->getTstop() >= t ) {
 
         /* Iterate over carrier frequencies */
         double sum_p = 0.0;
         double sum_q = 0.0;
-        for (int f=0; f < carrier_freq.size(); f++) {
+        for (size_t f=0; f < carrier_freq.size(); f++) {
           /* Evaluate the Bspline for this carrier wave */
           double Blt1 = 0.0; // Sums over alpha^1 * basisfunction(t) (real)
           double Blt2 = 0.0; // Sums over alpha^2 * basisfunction(t) (imag)
@@ -317,7 +317,7 @@ int Oscillator::evalControl(const double t, double* Re_ptr, double* Im_ptr, Lear
   } 
 
   /* If pipulse: Overwrite controls by constant amplitude */
-  for (int ipulse=0; ipulse< pipulse.tstart.size(); ipulse++){
+  for (size_t ipulse=0; ipulse< pipulse.tstart.size(); ipulse++){
     if (pipulse.tstart[ipulse] <= t && t <= pipulse.tstop[ipulse]) {
       double amp_pq =  pipulse.amp[ipulse] / sqrt(2.0);
       *Re_ptr = amp_pq;
@@ -333,12 +333,12 @@ int Oscillator::evalControl_diff(const double t, double* grad, bool x_is_control
   if (params.size()>0) {
 
     // Iterate over control segments. Only one is active, see break statement.
-    for (int bs = 0; bs < basisfunctions.size(); bs++){
+    for (size_t bs = 0; bs < basisfunctions.size(); bs++){
       if (basisfunctions[bs]->getTstart() <= t && 
           basisfunctions[bs]->getTstop() >= t ) {
 
         /* Iterate over carrier frequencies */
-        for (int f=0; f < carrier_freq.size(); f++) {
+        for (size_t f=0; f < carrier_freq.size(); f++) {
 
           if (basisfunctions[bs]->getType() == ControlType::BSPLINEAMP) {
             // basisfunctions[bs]->derivative(t, params, dpdalpha, carrier_freq[f], 1.0, f);  // +/-1.0 is used as a flag inside Bsline2ndAmplitude->evaluate() to determine whether this is for p (1.0) or for q (-1.0)
@@ -369,7 +369,7 @@ int Oscillator::evalControl_diff(const double t, double* grad, bool x_is_control
   } 
 
   /* No derivative for pi-pulse simulations! */
-  for (int ipulse=0; ipulse< pipulse.tstart.size(); ipulse++){
+  for (size_t ipulse=0; ipulse< pipulse.tstart.size(); ipulse++){
     if (pipulse.tstart[ipulse] <= t && t <= pipulse.tstop[ipulse]) {
       printf("ERROR: Derivative of pipulse not implemented. Sorry! But also, this should never happen!\n");
       exit(1);
@@ -391,13 +391,13 @@ int Oscillator::evalControl_Labframe(const double t, double* f, Learning* learni
   *f = 0.0;
   if (params.size()>0) {
     // Iterate over basis parameterizations
-    for (int bs = 0; bs < basisfunctions.size(); bs++){
+    for (size_t bs = 0; bs < basisfunctions.size(); bs++){
       if (basisfunctions[bs]->getTstart() <= t && 
           basisfunctions[bs]->getTstop() >= t ) {
         /* Iterate over carrier frequencies multiply with basisfunction of index k0 */
         double sum_p = 0.0;
         double sum_q = 0.0;
-        for (int f=0; f < carrier_freq.size(); f++) {
+        for (size_t f=0; f < carrier_freq.size(); f++) {
           double cos_omt = cos(carrier_freq[f]*t);
           double sin_omt = sin(carrier_freq[f]*t);
           double Blt1 = 0.0; 
@@ -416,7 +416,7 @@ int Oscillator::evalControl_Labframe(const double t, double* f, Learning* learni
 
 
   /* If inside a pipulse, overwrite lab control */
-  for (int ipulse=0; ipulse< pipulse.tstart.size(); ipulse++){
+  for (size_t ipulse=0; ipulse< pipulse.tstart.size(); ipulse++){
     if (pipulse.tstart[ipulse] <= t && t <= pipulse.tstop[ipulse]) {
       double p = pipulse.amp[ipulse] / sqrt(2.0);
       double q = pipulse.amp[ipulse] / sqrt(2.0);
@@ -433,7 +433,7 @@ void Oscillator::population(const Vec x, std::vector<double> &pop) {
   int dimN = dim_preOsc * nlevels * dim_postOsc;
   double val;
 
-  assert (pop.size() == nlevels);
+  assert (pop.size() == static_cast<size_t>(nlevels));
 
   std::vector<double> mypop(nlevels, 0.0);
 
@@ -473,6 +473,6 @@ void Oscillator::population(const Vec x, std::vector<double> &pop) {
   } 
 
   /* Gather poppulation from all Petsc processors */
-  for (int i=0; i<mypop.size(); i++) {pop[i] = mypop[i];}
+  for (size_t i=0; i<mypop.size(); i++) {pop[i] = mypop[i];}
   MPI_Allreduce(mypop.data(), pop.data(), nlevels, MPI_DOUBLE, MPI_SUM, PETSC_COMM_WORLD);
 }

@@ -25,9 +25,6 @@ find_package(PkgConfig REQUIRED)
 pkg_search_module(PETSC REQUIRED IMPORTED_TARGET PETSc)
 target_link_libraries(quandary_lib PUBLIC PkgConfig::PETSC)
 
-# Other libraries
-target_link_libraries(quandary_lib PUBLIC m blas lapack)
-
 # Put executable in root directory
 set_target_properties(
     quandary
@@ -49,10 +46,6 @@ if(WITH_SLEPC)
     target_link_libraries(quandary PRIVATE PkgConfig::SLEPC)
     target_compile_options(quandary PRIVATE -DWITH_SLEPC)
 endif()
-
-# Suppress compiler warnings temporarily
-# TODO fix these and remove this!
-add_definitions(-w)
 
 install(
     TARGETS quandary
