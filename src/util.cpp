@@ -68,11 +68,11 @@ double getRampFactor_diff(const double time, const double tstart, const double t
     return dramp_dtstop;
 }
 
-int getIndexReal(const int i) {
+PetscInt getIndexReal(const PetscInt i) {
   return 2*i;
 }
 
-int getIndexImag(const int i) {
+PetscInt getIndexImag(const PetscInt i) {
   return 2*i + 1;
 }
 
