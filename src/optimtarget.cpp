@@ -346,7 +346,7 @@ void OptimTarget::HilbertSchmidtOverlap(const Vec state, const bool scalebypurit
       const PetscScalar* state_ptr;
       VecGetArrayRead(targetstate, &target_ptr); // these are local vectors
       VecGetArrayRead(state, &state_ptr);
-      int ilo, ihi;
+      PetscInt ilo, ihi;
       VecGetOwnershipRange(state, &ilo, &ihi);
       for (int i=0; i<dim; i++){
         PetscInt ia = getIndexReal(i);
@@ -405,7 +405,7 @@ void OptimTarget::HilbertSchmidtOverlap_diff(const Vec state, Vec statebar, bool
       PetscScalar* statebar_ptr;
       VecGetArrayRead(targetstate, &target_ptr); 
       VecGetArray(statebar, &statebar_ptr);
-      int ilo, ihi;
+      PetscInt ilo, ihi;
       VecGetOwnershipRange(state, &ilo, &ihi);
       for (int i=0; i<dim; i++){
         PetscInt ia = getIndexReal(i);
