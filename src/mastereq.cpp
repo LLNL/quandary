@@ -69,7 +69,7 @@ MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Osci
 
   /* Create matrix shell for applying system matrix (RHS), */
   /* dimension: 2*dim x 2*dim for the real-valued system */
-  printf("TARA: MatCreateShell with dim %d, 2*dim = %d\n", dim, 2*dim);
+  printf("TARA: MatCreateShell with dim %lld, 2*dim = %lld\n", dim, 2*dim);
   MatCreateShell(PETSC_COMM_WORLD, PETSC_DECIDE, PETSC_DECIDE, 2*dim, 2*dim, (void**) &RHSctx, &RHS);
   printf("TARA: Finished MatCreateShell\n");
   MatSetOptionsPrefix(RHS, "system");
