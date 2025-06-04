@@ -334,7 +334,7 @@ void TimeStepper::penaltyIntegral_diff(double time, const Vec x, Vec xbar, doubl
 
 double TimeStepper::penaltyDpDm(Vec x, Vec xm1, Vec xm2){
     int dim_rho = mastereq->getDimRho(); // N
-    int vecID_re, vecID_im;
+    PetscInt vecID_re, vecID_im;
 
     double tmp1, tmp2;
 
@@ -374,7 +374,7 @@ double TimeStepper::penaltyDpDm(Vec x, Vec xm1, Vec xm2){
 
 void TimeStepper::penaltyDpDm_diff(int n, Vec xbar, double Jbar){
     int dim_rho = mastereq->getDimRho(); // N
-    int vecID_re, vecID_im;
+    PetscInt vecID_re, vecID_im;
 
     const PetscScalar *xptr, *xm1ptr, *xm2ptr, *xp1ptr, *xp2ptr;
     Vec x, xm1, xm2, xp1, xp2;
