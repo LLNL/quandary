@@ -6,41 +6,92 @@
 
 #pragma once
 
-/* Available lindblad types */
-enum class LindbladType {NONE, DECAY, DEPHASE, BOTH};
+/**
+ * @brief Available Lindblad operator types for open quantum systems.
+ *
+ * Defines the types of dissipation and decoherence operators that can be
+ * applied to the quantum system in the Lindblad master equation.
+ */
+enum class LindbladType {
+  NONE,    ///< No Lindblad operators (closed system)
+  DECAY,   ///< Decay operators only
+  DEPHASE, ///< Dephasing operators only
+  BOTH     ///< Both decay and dephasing operators
+};
 
-/* Available types of initial conditions */
-enum class InitialConditionType {FROMFILE, PURE, ENSEMBLE, DIAGONAL, BASIS, THREESTATES, NPLUSONE, PERFORMANCE};
+/**
+ * @brief Available types of initial conditions for quantum systems.
+ *
+ * Defines how the initial quantum state is specified and prepared
+ * for simulation or optimization.
+ */
+enum class InitialConditionType {
+  FROMFILE,    ///< Read initial condition from file
+  PURE,        ///< Pure state initial condition
+  ENSEMBLE,    ///< Ensemble of states
+  DIAGONAL,    ///< Diagonal density matrix
+  BASIS,       ///< Basis state
+  THREESTATES, ///< Three-state system
+  NPLUSONE,    ///< N+1 state system
+  PERFORMANCE  ///< Performance test configuration
+};
 
-/* Types of optimization targets: Either gate optimization or pure state preparation */
-enum class TargetType {GATE,      // \rho_target = V\rho(0) V^\dagger
-                       PURE,      // \rho_target = e_m e_m^\dagger for some integer m
-                       FROMFILE}; // \rho_target will be read from file. Format same as initial condition (one column with vectorized density matrix, fist all real then all imaginary parts)
+/**
+ * @brief Types of optimization targets for quantum control.
+ *
+ * Defines the target quantum state or operation for optimization.
+ */
+enum class TargetType {
+  GATE,      ///< Gate optimization: \rho_target = V\rho(0) V^\dagger
+  PURE,      ///< Pure state preparation: \rho_target = e_m e_m^\dagger for some integer m
+  FROMFILE   ///< Target read from file with vectorized density matrix format
+};
 
-/* Typye of objective functions */
-enum class ObjectiveType {JFROBENIUS,    // weighted Frobenius norm: 1/2 * ||\rho_target - rho(T)||^2_F / w, where w = purity of \rho_target
-                          JTRACE,        // weighted Hilber-Schmidt overlap: 1 - Tr(\rho_target^\dagger rho(T)) / w, where w = purity of \rho_target
-                          JMEASURE};     // Measure a pure state: Tr(O_m \rho(T)) for observable O_m
+/**
+ * @brief Types of objective functions for quantum control optimization.
+ *
+ * Defines different metrics for measuring the quality of quantum control.
+ */
+enum class ObjectiveType {
+  JFROBENIUS, ///< Weighted Frobenius norm: 1/2 * ||\rho_target - rho(T)||^2_F / w, where w = purity of \rho_target
+  JTRACE,     ///< Weighted Hilbert-Schmidt overlap: 1 - Tr(\rho_target^\dagger rho(T)) / w, where w = purity of \rho_target
+  JMEASURE    ///< Pure state measurement: Tr(O_m \rho(T)) for observable O_m
+};
 
-/* Linear solver */
+/**
+ * @brief Available linear solver types for quantum dynamics.
+ *
+ * Defines the numerical methods used to solve linear systems
+ * arising in quantum dynamics simulations.
+ */
 enum class LinearSolverType{
-  GMRES,   // uses Petsc's GMRES solver
-  NEUMANN   // uses Neuman power iterations 
+  GMRES,   ///< Uses Petsc's GMRES solver
+  NEUMANN  ///< Uses Neuman power iterations
 };
 
-/* Solver run type */
+/**
+ * @brief Types of solver execution modes.
+ *
+ * Defines what type of computation the solver should perform.
+ */
 enum class RunType {
-  SIMULATION,        // Runs one simulation to compute the objective function (forward)
-  GRADIENT,          // Runs a simulation followed by the adjoint for gradient computation (forward & backward)
-  OPTIMIZATION,      // Runs optimization iterations
-  EVALCONTROLS,      // Runs optimization iterations
-  NONE               // Don't run anything.
+  SIMULATION,   ///< Runs one simulation to compute the objective function (forward)
+  GRADIENT,     ///< Runs a simulation followed by the adjoint for gradient computation (forward & backward)
+  OPTIMIZATION, ///< Runs optimization iterations
+  EVALCONTROLS, ///< Runs optimization iterations
+  NONE          ///< Don't run anything
 };
 
+/**
+ * @brief Types of control parameterizations for quantum control pulses.
+ *
+ * Defines how control pulses are mathematically represented and parameterized
+ * for optimization and simulation.
+ */
 enum class ControlType {
-  NONE,       // Non-controllable
-  BSPLINE,    // Control paremters are the amplitudes of 2nd order BSpline basis functions
-  BSPLINEAMP, // Control paremters are the amplitudes of BSpline basis functions. ONLY FOR AMPLITUDE
-  STEP,       // Control parameter is the width of a step envelop function for a given amplitude
-  BSPLINE0,   // Zeroth order Bspline (piece-wise constant)
+  NONE,       ///< Non-controllable
+  BSPLINE,    ///< Control parameters are the amplitudes of 2nd order BSpline basis functions
+  BSPLINEAMP, ///< Control parameters are the amplitudes of BSpline basis functions (amplitude only)
+  STEP,       ///< Control parameter is the width of a step envelope function for a given amplitude
+  BSPLINE0    ///< Zeroth order Bspline (piece-wise constant)
 };
