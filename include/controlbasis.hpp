@@ -90,8 +90,8 @@ class ControlBasis {
         /**
          * @brief Computes the variation of control parameters (default implementation returns 0.0).
          *
-         * @param params Vector of control parameters.
-         * @param carrierfreqID ID of the carrier frequency.
+         * Default implementation ignores all input parameters.
+         *
          * @return double Variation value.
          */
         virtual double computeVariation(std::vector<double>& /*params*/, int /*carrierfreqID*/){return 0.0;};
@@ -99,10 +99,7 @@ class ControlBasis {
         /**
          * @brief Computes the gradient of the variation (default implementation does nothing).
          *
-         * @param grad Pointer to the gradient array.
-         * @param params Vector of control parameters.
-         * @param var_bar Variation multiplier.
-         * @param carrierfreqID ID of the carrier frequency.
+         * Default implementation ignores all input parameters.
          */
         virtual void computeVariation_diff(double* /*grad*/, std::vector<double>& /*params*/, double /*var_bar*/, int /*carrierfreqID*/){};
 
@@ -110,11 +107,10 @@ class ControlBasis {
          * @brief Enforces boundary conditions for controls (default implementation does nothing).
          *
          * For some control parameterizations, this can be used to enforce that the controls start and end at zero.
-         * For example, splines will overwrite the parameters `x` of the first and last two splines by zero, ensuring
+         * For example, splines will overwrite the parameters of the first and last two splines by zero, ensuring
          * that the splines start and end at zero.
          *
-         * @param x Pointer to the control parameters.
-         * @param carrier_id ID of the carrier wave.
+         * Default implementation ignores all input parameters.
          */
         virtual void enforceBoundary(double* /*x*/, int /*carrier_id*/) {};
 
@@ -303,11 +299,33 @@ class BSpline0 : public ControlBasis {
 
         int getNSplines() {return nsplines;};
 
-        /* Set the first and last parameter to zero, for this carrier wave */
+        /**
+         * @brief Sets the first and last parameter to zero for this carrier wave.
+         *
+         * @param x Pointer to the control parameters array
+         * @param carrier_id ID of the carrier wave
+         */
         void enforceBoundary(double* x, int carrier_id);
 
-        /* Variation of the control parameters: 1/nsplines * sum_splines (alpha_i - alpha_{i-1})^2 */
+        /**
+         * @brief Computes variation of control parameters.
+         *
+         * Computes \f$\frac{1}{n_{splines}} \sum_{splines} (\alpha_i - \alpha_{i-1})^2\f$.
+         *
+         * @param params Vector of control parameters
+         * @param carrierfreqID ID of the carrier frequency
+         * @return double Variation value
+         */
         double computeVariation(std::vector<double>& params, int carrierfreqID);
+
+        /**
+         * @brief Computes derivative of control parameter variation.
+         *
+         * @param grad Pointer to gradient array to update
+         * @param params Vector of control parameters
+         * @param var_bar Adjoint of variation term
+         * @param carrierfreqID ID of the carrier frequency
+         */
         virtual void computeVariation_diff(double* grad, std::vector<double>&params, double var_bar, int carrierfreqID);
 
         /* Evaluate the spline at time t using the coefficients coeff. */
