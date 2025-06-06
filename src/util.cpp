@@ -1,3 +1,4 @@
+#include "petsctry.hpp"
 #include "util.hpp"
 
 // Suppress compiler warnings about unused parameters in code with #ifdef
@@ -219,7 +220,7 @@ PetscErrorCode Ikron(const Mat A,const  int dimI, const double alpha, Mat *Out, 
     // PetscInt nonzeroOut;
     PetscInt rowID;
 
-    MatGetSize(A, &dimA, NULL);
+    PetscTry(MatGetSize(A, &dimA, NULL));
 
     ierr = PetscMalloc1(dimA, &shiftcols); CHKERRQ(ierr);
     ierr = PetscMalloc1(dimA, &vals); CHKERRQ(ierr);
@@ -229,22 +230,22 @@ PetscErrorCode Ikron(const Mat A,const  int dimI, const double alpha, Mat *Out, 
 
         /* Set the diagonal block (i*dimA)::(i+1)*dimA */
         for (PetscInt j=0; j<dimA; j++){
-            MatGetRow(A, j, &ncols, &cols, &Avals);
+            PetscTry(MatGetRow(A, j, &ncols, &cols, &Avals));
             rowID = i*dimA + j;
             for (int k=0; k<ncols; k++){
                 shiftcols[k] = cols[k] + i*dimA;
                 vals[k] = Avals[k] * alpha;
             }
-            MatSetValues(*Out, 1, &rowID, ncols, shiftcols, vals, insert_mode);
-            MatRestoreRow(A, j, &ncols, &cols, &Avals);
+            PetscTry(MatSetValues(*Out, 1, &rowID, ncols, shiftcols, vals, insert_mode));
+            PetscTry(MatRestoreRow(A, j, &ncols, &cols, &Avals));
         }
 
     }
     // MatAssemblyBegin(*Out, MAT_FINAL_ASSEMBLY);
     // MatAssemblyEnd(*Out, MAT_FINAL_ASSEMBLY);
 
-    PetscFree(shiftcols);
-    PetscFree(vals);
+    PetscTry(PetscFree(shiftcols));
+    PetscTry(PetscFree(vals));
     return 0;
 }
 
@@ -261,14 +262,14 @@ PetscErrorCode kronI(const Mat A, const int dimI, const double alpha, Mat *Out, 
     // PetscInt nonzeroOut;
     PetscInt ncols;
     // MatInfo Ainfo;
-    MatGetSize(A, &dimA, NULL);
+    PetscTry(MatGetSize(A, &dimA, NULL));
 
     ierr = PetscMalloc1(dimA, &cols); CHKERRQ(ierr);
     ierr = PetscMalloc1(dimA, &Avals);
 
     /* Loop over rows in A */
     for (PetscInt i = 0; i < dimA; i++){
-        MatGetRow(A, i, &ncols, &cols, &Avals);
+        PetscTry(MatGetRow(A, i, &ncols, &cols, &Avals));
 
         /* Loop over non negative columns in row i */
         for (PetscInt j = 0; j < ncols; j++){
@@ -279,18 +280,18 @@ PetscErrorCode kronI(const Mat A, const int dimI, const double alpha, Mat *Out, 
                rowid = i*dimI + k;
                colid = cols[j]*dimI + k;
                insertval = Avals[j] * alpha;
-               MatSetValues(*Out, 1, &rowid, 1, &colid, &insertval, insert_mode);
+               PetscTry(MatSetValues(*Out, 1, &rowid, 1, &colid, &insertval, insert_mode));
               //  printf("Setting %d,%d %f\n", rowid, colid, insertval);
             }
         }
-        MatRestoreRow(A, i, &ncols, &cols, &Avals);
+        PetscTry(MatRestoreRow(A, i, &ncols, &cols, &Avals));
     }
 
     // MatAssemblyBegin(*Out, MAT_FINAL_ASSEMBLY);
     // MatAssemblyEnd(*Out, MAT_FINAL_ASSEMBLY);
 
-    PetscFree(cols);
-    PetscFree(Avals);
+    PetscTry(PetscFree(cols));
+    PetscTry(PetscFree(Avals));
 
     return 0;
 }
@@ -299,8 +300,8 @@ PetscErrorCode kronI(const Mat A, const int dimI, const double alpha, Mat *Out, 
 
 PetscErrorCode AkronB(const Mat A, const Mat B, const double alpha, Mat *Out, InsertMode insert_mode){
     PetscInt Adim1, Adim2, Bdim1, Bdim2;
-    MatGetSize(A, &Adim1, &Adim2);
-    MatGetSize(B, &Bdim1, &Bdim2);
+    PetscTry(MatGetSize(A, &Adim1, &Adim2));
+    PetscTry(MatGetSize(B, &Bdim1, &Bdim2));
 
     PetscInt ncolsA, ncolsB;
     const PetscInt *colsA, *colsB;
@@ -308,7 +309,7 @@ PetscErrorCode AkronB(const Mat A, const Mat B, const double alpha, Mat *Out, In
     // Iterate over rows of A 
     for (PetscInt irowA = 0; irowA < Adim1; irowA++){
         // Iterate over non-zero columns in this row of A
-        MatGetRow(A, irowA, &ncolsA, &colsA, &valsA);
+        PetscTry(MatGetRow(A, irowA, &ncolsA, &colsA, &valsA));
         for (PetscInt j=0; j<ncolsA; j++) {
             PetscInt icolA = colsA[j];
             PetscScalar valA = valsA[j];
@@ -316,7 +317,7 @@ PetscErrorCode AkronB(const Mat A, const Mat B, const double alpha, Mat *Out, In
             // Iterate over rows of B 
             for (PetscInt irowB = 0; irowB < Bdim1; irowB++){
                 // Iterate over non-zero columns in this B-row
-                MatGetRow(B, irowB, &ncolsB, &colsB, &valsB);
+                PetscTry(MatGetRow(B, irowB, &ncolsB, &colsB, &valsB));
                 for (PetscInt k=0; k< ncolsB; k++) {
                     PetscInt icolB = colsB[k];
                     PetscScalar valB = valsB[k];
@@ -324,12 +325,12 @@ PetscErrorCode AkronB(const Mat A, const Mat B, const double alpha, Mat *Out, In
                     PetscInt rowOut = irowA*Bdim1 + irowB;
                     PetscInt colOut = icolA*Bdim2 + icolB;
                     PetscScalar valOut = valA * valB * alpha; 
-                    MatSetValue(*Out, rowOut, colOut, valOut, insert_mode);
+                    PetscTry(MatSetValue(*Out, rowOut, colOut, valOut, insert_mode));
                 }
-                MatRestoreRow(B, irowB, &ncolsB, &colsB, &valsB);
+                PetscTry(MatRestoreRow(B, irowB, &ncolsB, &colsB, &valsB));
             }
         }   
-        MatRestoreRow(A, irowA, &ncolsA, &colsA, &valsA);
+        PetscTry(MatRestoreRow(A, irowA, &ncolsA, &colsA, &valsA));
     }  
 
   return 0;
@@ -400,8 +401,8 @@ PetscErrorCode StateIsHermitian(Vec x, PetscReal tol, PetscBool *flag) {
   ierr = VecRestoreArrayRead(v, &v_array);
   ierr = VecRestoreSubVector(x, isu, &u);
   ierr = VecRestoreSubVector(x, isv, &v);
-  ISDestroy(&isu);
-  ISDestroy(&isv);
+  PetscTry(ISDestroy(&isu));
+  PetscTry(ISDestroy(&isv));
 
   return ierr;
 }
@@ -456,8 +457,8 @@ PetscErrorCode StateHasTrace1(Vec x, PetscReal tol, PetscBool *flag) {
   }
   
   /* Destroy vector strides */
-  ISDestroy(&isu);
-  ISDestroy(&isv);
+  PetscTry(ISDestroy(&isu));
+  PetscTry(ISDestroy(&isv));
 
 
   return ierr;
@@ -595,7 +596,7 @@ int nconv = 0;
 
   /* Allocate eigenvectors */
   Vec eigvec;
-  MatCreateVecs(A, &eigvec, NULL);
+  PetscTry(MatCreateVecs(A, &eigvec, NULL));
 
   // Get the result
   double kr, ki, error;
@@ -626,31 +627,31 @@ bool isUnitary(const Mat V_re, const Mat V_im){
   bool isunitary = true;
 
   // test: C=V_re^T V_re + Vim^TVim should be the identity!
-  MatTransposeMatMult(V_re, V_re, MAT_INITIAL_MATRIX, PETSC_DEFAULT, &C);
-  MatTransposeMatMult(V_im, V_im, MAT_INITIAL_MATRIX, PETSC_DEFAULT, &D);
-  MatAXPY(C, 1.0, D, DIFFERENT_NONZERO_PATTERN); 
-  MatShift(C, -1.0);
-  MatNorm(C, NORM_FROBENIUS, &norm);
+  PetscTry(MatTransposeMatMult(V_re, V_re, MAT_INITIAL_MATRIX, PETSC_DEFAULT, &C));
+  PetscTry(MatTransposeMatMult(V_im, V_im, MAT_INITIAL_MATRIX, PETSC_DEFAULT, &D));
+  PetscTry(MatAXPY(C, 1.0, D, DIFFERENT_NONZERO_PATTERN)); 
+  PetscTry(MatShift(C, -1.0));
+  PetscTry(MatNorm(C, NORM_FROBENIUS, &norm));
   if (norm > 1e-12) {
     printf("Unitary Test: V_re^TVre+Vim^TVim is not the identity! %1.14e\n", norm);
     // MatView(C, NULL);
     isunitary = false;
   } 
-  MatDestroy(&C);
-  MatDestroy(&D);
+  PetscTry(MatDestroy(&C));
+  PetscTry(MatDestroy(&D));
 
   // test: C=V_re^T V_im - Vre^TVim should be zero!
-  MatTransposeMatMult(V_re, V_im, MAT_INITIAL_MATRIX, PETSC_DEFAULT, &C);
-  MatTransposeMatMult(V_im, V_re, MAT_INITIAL_MATRIX, PETSC_DEFAULT, &D);
-  MatAXPY(C, -1.0, D, DIFFERENT_NONZERO_PATTERN); 
-  MatNorm(C, NORM_FROBENIUS, &norm);
+  PetscTry(MatTransposeMatMult(V_re, V_im, MAT_INITIAL_MATRIX, PETSC_DEFAULT, &C));
+  PetscTry(MatTransposeMatMult(V_im, V_re, MAT_INITIAL_MATRIX, PETSC_DEFAULT, &D));
+  PetscTry(MatAXPY(C, -1.0, D, DIFFERENT_NONZERO_PATTERN)); 
+  PetscTry(MatNorm(C, NORM_FROBENIUS, &norm));
   if (norm > 1e-12) {
     printf("Unitary Test: Vre^TVim - Vim^TVre is not zero! %1.14e\n", norm);
     // MatView(C,NULL);
     isunitary = false;
   }
-  MatDestroy(&C);
-  MatDestroy(&D);
+  PetscTry(MatDestroy(&C));
+  PetscTry(MatDestroy(&D));
 
   return isunitary;
 }

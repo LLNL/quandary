@@ -1,4 +1,5 @@
 #include "timestepper.hpp"
+#include "petsctry.hpp"
 #include "petscvec.h"
 
 TimeStepper::TimeStepper() {
@@ -33,40 +34,40 @@ TimeStepper::TimeStepper(MasterEq* mastereq_, int ntime_, double total_time_, Ou
   if (storeFWD) { 
     for (int n = 0; n <=ntime; n++) {
       Vec state;
-      VecCreate(PETSC_COMM_WORLD, &state);
-      VecSetSizes(state, PETSC_DECIDE, dim);
-      VecSetFromOptions(state);
+      PetscTry(VecCreate(PETSC_COMM_WORLD, &state));
+      PetscTry(VecSetSizes(state, PETSC_DECIDE, dim));
+      PetscTry(VecSetFromOptions(state));
       store_states.push_back(state);
     }
   }
 
   /* Allocate auxiliary state vector */
-  VecCreate(PETSC_COMM_WORLD, &x);
-  VecSetSizes(x, PETSC_DECIDE, dim);
-  VecSetFromOptions(x);
-  VecZeroEntries(x);
-  VecDuplicate(x, &xprimal);
+  PetscTry(VecCreate(PETSC_COMM_WORLD, &x));
+  PetscTry(VecSetSizes(x, PETSC_DECIDE, dim));
+  PetscTry(VecSetFromOptions(x));
+  PetscTry(VecZeroEntries(x));
+  PetscTry(VecDuplicate(x, &xprimal));
 
   /* Allocate the reduced gradient */
   int ndesign = 0;
   for (size_t ioscil = 0; ioscil < mastereq->getNOscillators(); ioscil++) {
       ndesign += mastereq->getOscillator(ioscil)->getNParams(); 
   }
-  VecCreateSeq(PETSC_COMM_SELF, ndesign, &redgrad);
-  VecSetFromOptions(redgrad);
-  VecAssemblyBegin(redgrad);
-  VecAssemblyEnd(redgrad);
+  PetscTry(VecCreateSeq(PETSC_COMM_SELF, ndesign, &redgrad));
+  PetscTry(VecSetFromOptions(redgrad));
+  PetscTry(VecAssemblyBegin(redgrad));
+  PetscTry(VecAssemblyEnd(redgrad));
 
 }
 
 
 TimeStepper::~TimeStepper() {
   for (size_t n = 0; n < store_states.size(); n++) {
-    VecDestroy(&(store_states[n]));
+    PetscTry(VecDestroy(&(store_states[n])));
   }
-  VecDestroy(&x);
-  VecDestroy(&xprimal);
-  VecDestroy(&redgrad);
+  PetscTry(VecDestroy(&x));
+  PetscTry(VecDestroy(&xprimal));
+  PetscTry(VecDestroy(&redgrad));
 }
 
 
@@ -89,19 +90,19 @@ Vec TimeStepper::solveODE(int initid, Vec rho_t0){
   }
 
   /* Set initial condition  */
-  VecCopy(rho_t0, x);
+  PetscTry(VecCopy(rho_t0, x));
 
 
   /* Store initial state for dpdm penalty */
   if (gamma_penalty_dpdm > 1e-13){
     for (int i = 0; i < 2; i++) {
       Vec state;
-      VecCreate(PETSC_COMM_WORLD, &state);
-      VecSetSizes(state, PETSC_DECIDE, dim);
-      VecSetFromOptions(state);
+      PetscTry(VecCreate(PETSC_COMM_WORLD, &state));
+      PetscTry(VecSetSizes(state, PETSC_DECIDE, dim));
+      PetscTry(VecSetFromOptions(state));
       dpdm_states.push_back(state);
     }
-    VecCopy(x, dpdm_states[0]);
+    PetscTry(VecCopy(x, dpdm_states[0]));
   }
 
   /* --- Loop over time interval --- */
@@ -115,7 +116,7 @@ Vec TimeStepper::solveODE(int initid, Vec rho_t0){
     double tstop  = (n+1) * dt;
 
     /* store and write current state. */
-    if (storeFWD) VecCopy(x, store_states[n]);
+    if (storeFWD) PetscTry(VecCopy(x, store_states[n]));
     if (writeDataFiles) {
       output->writeDataFiles(n, tstart, x, mastereq);
     }
@@ -132,7 +133,7 @@ Vec TimeStepper::solveODE(int initid, Vec rho_t0){
       if (n > 0) penalty_dpdm += penaltyDpDm(x, dpdm_states[n%2], dpdm_states[(n+1)%2]);  // uses x, x_n, x_n-1
 
       // Update storage of primal states. Should build a history of 3 states.
-      VecCopy(x, dpdm_states[(n+1)%2]);
+      PetscTry(VecCopy(x, dpdm_states[(n+1)%2]));
       
     }
 
@@ -146,12 +147,12 @@ Vec TimeStepper::solveODE(int initid, Vec rho_t0){
   penalty_dpdm = penalty_dpdm/ntime;
 
   /* Store last time step */
-  if (storeFWD) VecCopy(x, store_states[ntime]);
+  if (storeFWD) PetscTry(VecCopy(x, store_states[ntime]));
 
   /* Clear out dpdm storage */
   if (gamma_penalty_dpdm > 1e-13) {
     for (size_t i=0; i<dpdm_states.size(); i++) {
-      VecDestroy(&(dpdm_states[i]));
+      PetscTry(VecDestroy(&(dpdm_states[i])));
     }
     dpdm_states.clear();
   }
@@ -170,27 +171,27 @@ Vec TimeStepper::solveODE(int initid, Vec rho_t0){
 void TimeStepper::solveAdjointODE(Vec rho_t0_bar, Vec finalstate, double Jbar_penalty, double Jbar_penalty_dpdm, double Jbar_energy_penalty) {
 
   /* Reset gradient */
-  VecZeroEntries(redgrad);
+  PetscTry(VecZeroEntries(redgrad));
 
   /* Set terminal adjoint condition */
-  VecCopy(rho_t0_bar, x);
+  PetscTry(VecCopy(rho_t0_bar, x));
 
   /* Set terminal primal state */
-  VecCopy(finalstate, xprimal);
+  PetscTry(VecCopy(finalstate, xprimal));
 
   /* Store states at N, N-1, N-2 for dpdm penalty */
   if (gamma_penalty_dpdm > 1e-13){
     for (int i = 0; i < 5; i++) {
       Vec state;
-      VecCreate(PETSC_COMM_WORLD, &state);
-      VecSetSizes(state, PETSC_DECIDE, dim);
-      VecSetFromOptions(state);
+      PetscTry(VecCreate(PETSC_COMM_WORLD, &state));
+      PetscTry(VecSetSizes(state, PETSC_DECIDE, dim));
+      PetscTry(VecSetFromOptions(state));
       dpdm_states.push_back(state);
     }
-    VecCopy(xprimal, dpdm_states[2]);  // x_N
-    VecCopy(dpdm_states[2], dpdm_states[1]);
+    PetscTry(VecCopy(xprimal, dpdm_states[2]));  // x_N
+    PetscTry(VecCopy(dpdm_states[2], dpdm_states[1]));
     evolveFWD(ntime*dt, (ntime-1)*dt, dpdm_states[1]);  // x_N-1
-    VecCopy(dpdm_states[1], dpdm_states[0]);
+    PetscTry(VecCopy(dpdm_states[1], dpdm_states[0]));
     evolveFWD((ntime-1)*dt, (ntime-2)*dt, dpdm_states[0]);  // x_N-2
   }
  
@@ -211,7 +212,7 @@ void TimeStepper::solveAdjointODE(Vec rho_t0_bar, Vec finalstate, double Jbar_pe
     if (gamma_penalty > 1e-13) penaltyIntegral_diff(tstop, xprimal, x, Jbar_penalty);
 
     /* Get the state at n-1. If Schroedinger solver, recompute it by taking a step backwards with the forward solver, otherwise get it from storage. */
-    if (storeFWD) VecCopy(getState(n-1), xprimal);
+    if (storeFWD) PetscTry(VecCopy(getState(n-1), xprimal));
     else evolveFWD(tstop, tstart, xprimal);
 
     /* Take one time step backwards for the adjoint */
@@ -224,7 +225,7 @@ void TimeStepper::solveAdjointODE(Vec rho_t0_bar, Vec finalstate, double Jbar_pe
       int k = ntime - n;
       int idx = 4-((k+4)%5);
       int idx1 = 4-(k%5);
-      VecCopy(dpdm_states[idx], dpdm_states[idx1]);
+      PetscTry(VecCopy(dpdm_states[idx], dpdm_states[idx1]));
       if (n>2) evolveFWD((n-2)*dt, (n-3)*dt, dpdm_states[idx1]);
     }
   }
@@ -232,7 +233,7 @@ void TimeStepper::solveAdjointODE(Vec rho_t0_bar, Vec finalstate, double Jbar_pe
   /* Clear out dpdm storage */
   if (gamma_penalty_dpdm > 1e-13) {
     for (size_t i=0; i<dpdm_states.size(); i++) {
-      VecDestroy(&(dpdm_states[i]));
+      PetscTry(VecDestroy(&(dpdm_states[i])));
     }
     dpdm_states.clear();
   }
@@ -260,7 +261,7 @@ double TimeStepper::penaltyIntegral(double time, const Vec x){
   if (addLeakagePrevent) {
     double leakage = 0.0;
     PetscInt ilow, iupp;
-    VecGetOwnershipRange(x, &ilow, &iupp);
+    PetscTry(VecGetOwnershipRange(x, &ilow, &iupp));
     /* Sum over all diagonal elements that correspond to a non-essential guard level. */
     for (int i=0; i<dim_rho; i++) {
       if ( isGuardLevel(i, mastereq->nlevels, mastereq->nessential) ) {
@@ -273,8 +274,8 @@ double TimeStepper::penaltyIntegral(double time, const Vec x){
           vecID_im = getIndexImag(i);
         }
         x_re = 0.0; x_im = 0.0;
-        if (ilow <= vecID_re && vecID_re < iupp) VecGetValues(x, 1, &vecID_re, &x_re);
-        if (ilow <= vecID_im && vecID_im < iupp) VecGetValues(x, 1, &vecID_im, &x_im); 
+        if (ilow <= vecID_re && vecID_re < iupp) PetscTry(VecGetValues(x, 1, &vecID_re, &x_re));
+        if (ilow <= vecID_im && vecID_im < iupp) PetscTry(VecGetValues(x, 1, &vecID_im, &x_im)); 
         leakage += (x_re * x_re + x_im * x_im) / (dt*ntime);
       }
     }
@@ -307,7 +308,7 @@ void TimeStepper::penaltyIntegral_diff(double time, const Vec x, Vec xbar, doubl
   /* If gate optimization: Derivative of adding guard-level occupation */
   if (addLeakagePrevent) {
     PetscInt ilow, iupp;
-    VecGetOwnershipRange(x, &ilow, &iupp);
+    PetscTry(VecGetOwnershipRange(x, &ilow, &iupp));
     double x_re, x_im;
     for (int i=0; i<dim_rho; i++) {
       if ( isGuardLevel(i, mastereq->nlevels, mastereq->nessential) ) {
@@ -319,15 +320,15 @@ void TimeStepper::penaltyIntegral_diff(double time, const Vec x, Vec xbar, doubl
           vecID_im = getIndexImag(i);
         }
         x_re = 0.0; x_im = 0.0;
-        if (ilow <= vecID_re && vecID_re < iupp) VecGetValues(x, 1, &vecID_re, &x_re);
-        if (ilow <= vecID_im && vecID_im < iupp) VecGetValues(x, 1, &vecID_im, &x_im);
+        if (ilow <= vecID_re && vecID_re < iupp) PetscTry(VecGetValues(x, 1, &vecID_re, &x_re));
+        if (ilow <= vecID_im && vecID_im < iupp) PetscTry(VecGetValues(x, 1, &vecID_im, &x_im));
         // Derivative: 2 * rho(i,i) * weights * penalbar * dt
-        if (ilow <= vecID_re && vecID_re < iupp) VecSetValue(xbar, vecID_re, 2.*x_re*penaltybar/ntime, ADD_VALUES);
-        if (ilow <= vecID_im && vecID_im < iupp) VecSetValue(xbar, vecID_im, 2.*x_im*penaltybar/ntime, ADD_VALUES);
+        if (ilow <= vecID_re && vecID_re < iupp) PetscTry(VecSetValue(xbar, vecID_re, 2.*x_re*penaltybar/ntime, ADD_VALUES));
+        if (ilow <= vecID_im && vecID_im < iupp) PetscTry(VecSetValue(xbar, vecID_im, 2.*x_im*penaltybar/ntime, ADD_VALUES));
       }
     }
-    VecAssemblyBegin(xbar);
-    VecAssemblyEnd(xbar);
+    PetscTry(VecAssemblyBegin(xbar));
+    PetscTry(VecAssemblyEnd(xbar));
   }
 }
 
@@ -339,9 +340,9 @@ double TimeStepper::penaltyDpDm(Vec x, Vec xm1, Vec xm2){
     double tmp1, tmp2;
 
     const PetscScalar *xptr, *xm1ptr, *xm2ptr;
-    VecGetArrayRead(x, &xptr);
-    VecGetArrayRead(xm1, &xm1ptr);
-    VecGetArrayRead(xm2, &xm2ptr);
+    PetscTry(VecGetArrayRead(x, &xptr));
+    PetscTry(VecGetArrayRead(xm1, &xm1ptr));
+    PetscTry(VecGetArrayRead(xm2, &xm2ptr));
      
     PetscInt ilow, iupp;
 
@@ -349,7 +350,7 @@ double TimeStepper::penaltyDpDm(Vec x, Vec xm1, Vec xm2){
     double dtinv = 1.0 / (dt*dt*dt*dt);
 
     double dpdm = 0.0;
-    VecGetOwnershipRange(x, &ilow, &iupp);
+    PetscTry(VecGetOwnershipRange(x, &ilow, &iupp));
     for (int i=0; i<dim_rho; i++) {  
         if (mastereq->lindbladtype != LindbladType::NONE) { 
           vecID_re = getIndexReal(getVecID(i,i,dim_rho));
@@ -364,9 +365,9 @@ double TimeStepper::penaltyDpDm(Vec x, Vec xm1, Vec xm2){
         dpdm += dtinv * (tmp1 + tmp2)*(tmp1 + tmp2);
     }
 
-    VecRestoreArrayRead(x, &xptr);
-    VecRestoreArrayRead(xm1, &xm1ptr);
-    VecRestoreArrayRead(xm2, &xm2ptr);
+    PetscTry(VecRestoreArrayRead(x, &xptr));
+    PetscTry(VecRestoreArrayRead(xm1, &xm1ptr));
+    PetscTry(VecRestoreArrayRead(xm2, &xm2ptr));
 
     return dpdm;
 }
@@ -387,11 +388,11 @@ void TimeStepper::penaltyDpDm_diff(int n, Vec xbar, double Jbar){
     if (n < ntime)     xp1 = dpdm_states[(idx+3)%5];
     if (n < ntime-1)   xp2 = dpdm_states[(idx+4)%5];
 
-    VecGetArrayRead(x, &xptr);
-    if (n > 0)        VecGetArrayRead(xm1, &xm1ptr);
-    if (n > 1)        VecGetArrayRead(xm2, &xm2ptr);
-    if (n < ntime)    VecGetArrayRead(xp1, &xp1ptr);
-    if (n < ntime-1)  VecGetArrayRead(xp2, &xp2ptr);
+    PetscTry(VecGetArrayRead(x, &xptr));
+    if (n > 0)        PetscTry(VecGetArrayRead(xm1, &xm1ptr));
+    if (n > 1)        PetscTry(VecGetArrayRead(xm2, &xm2ptr));
+    if (n < ntime)    PetscTry(VecGetArrayRead(xp1, &xp1ptr));
+    if (n < ntime-1)  PetscTry(VecGetArrayRead(xp2, &xp2ptr));
 
      
     PetscInt ilow, iupp;
@@ -399,7 +400,7 @@ void TimeStepper::penaltyDpDm_diff(int n, Vec xbar, double Jbar){
     /* precompute 1/dt^4 */
     double dtinv = 1.0 / (dt*dt*dt*dt);
 
-    VecGetOwnershipRange(x, &ilow, &iupp);
+    PetscTry(VecGetOwnershipRange(x, &ilow, &iupp));
     for (int i=0; i<dim_rho; i++) {  
         if (mastereq->lindbladtype != LindbladType::NONE) { 
           vecID_re = getIndexReal(getVecID(i,i,dim_rho));
@@ -419,8 +420,8 @@ void TimeStepper::penaltyDpDm_diff(int n, Vec xbar, double Jbar){
             double pop = tmp1+tmp2;
             double dpdphi_re = 2.0*xptr[vecID_re];
             double dpdphi_im = 2.0*xptr[vecID_im];
-            VecSetValue(xbar,vecID_re,  2.0 * pop * dpdphi_re * dtinv * Jbar, ADD_VALUES);
-            VecSetValue(xbar,vecID_im,  2.0 * pop * dpdphi_im * dtinv * Jbar, ADD_VALUES);
+            PetscTry(VecSetValue(xbar,vecID_re,  2.0 * pop * dpdphi_re * dtinv * Jbar, ADD_VALUES));
+            PetscTry(VecSetValue(xbar,vecID_im,  2.0 * pop * dpdphi_im * dtinv * Jbar, ADD_VALUES));
           }
         }
 
@@ -433,8 +434,8 @@ void TimeStepper::penaltyDpDm_diff(int n, Vec xbar, double Jbar){
               double pop = tmp1 + tmp2;
               double dpdphi_re = 2.0*xptr[vecID_re];
               double dpdphi_im = 2.0*xptr[vecID_im];
-              VecSetValue(xbar, vecID_re, - 4.0 * pop * dpdphi_re * dtinv * Jbar, ADD_VALUES);
-              VecSetValue(xbar, vecID_im, - 4.0 * pop * dpdphi_im * dtinv * Jbar, ADD_VALUES);
+              PetscTry(VecSetValue(xbar, vecID_re, - 4.0 * pop * dpdphi_re * dtinv * Jbar, ADD_VALUES));
+              PetscTry(VecSetValue(xbar, vecID_im, - 4.0 * pop * dpdphi_im * dtinv * Jbar, ADD_VALUES));
             }
         }
         
@@ -447,17 +448,17 @@ void TimeStepper::penaltyDpDm_diff(int n, Vec xbar, double Jbar){
               double pop = tmp1 + tmp2;
               double dpdphi_re = 2.0*xptr[vecID_re];
               double dpdphi_im = 2.0*xptr[vecID_im];
-              VecSetValue(xbar, vecID_re, 2.0* pop * dpdphi_re * dtinv * Jbar, ADD_VALUES);
-              VecSetValue(xbar, vecID_im, 2.0* pop * dpdphi_im * dtinv * Jbar, ADD_VALUES);
+              PetscTry(VecSetValue(xbar, vecID_re, 2.0* pop * dpdphi_re * dtinv * Jbar, ADD_VALUES));
+              PetscTry(VecSetValue(xbar, vecID_im, 2.0* pop * dpdphi_im * dtinv * Jbar, ADD_VALUES));
             }
         }
     }
 
-    VecRestoreArrayRead(x, &xptr);
-    if (n > 0 )       VecRestoreArrayRead(xm1, &xm1ptr);
-    if (n > 1)        VecRestoreArrayRead(xm2, &xm2ptr);
-    if (n < ntime)    VecRestoreArrayRead(xp1, &xp1ptr);
-    if (n < ntime-1)  VecRestoreArrayRead(xp2, &xp2ptr);
+    PetscTry(VecRestoreArrayRead(x, &xptr));
+    if (n > 0 )       PetscTry(VecRestoreArrayRead(xm1, &xm1ptr));
+    if (n > 1)        PetscTry(VecRestoreArrayRead(xm2, &xm2ptr));
+    if (n < ntime)    PetscTry(VecRestoreArrayRead(xp1, &xp1ptr));
+    if (n < ntime-1)  PetscTry(VecRestoreArrayRead(xp2, &xp2ptr));
  
 }
 
@@ -507,7 +508,7 @@ void TimeStepper::energyPenaltyIntegral_diff(double time, double penaltybar, Vec
       vals[iparam] = penaltybar / ntime * 2.0 * ( p * dRedp[iparam] + q * dImdp[iparam]);
       cols[iparam] = iparam + shift;
     }
-    VecSetValues(redgrad, nparam, cols, vals, ADD_VALUES);
+    PetscTry(VecSetValues(redgrad, nparam, cols, vals, ADD_VALUES));
     shift += nparam;
   } 
 
@@ -521,12 +522,12 @@ void TimeStepper::energyPenaltyIntegral_diff(double time, double penaltybar, Vec
 void TimeStepper::evolveBWD(const double /*tstart*/, const double /*tstop*/, const Vec /*x_stop*/, Vec /*x_adj*/, Vec /*grad*/, bool /*compute_gradient*/){}
 
 ExplEuler::ExplEuler(MasterEq* mastereq_, int ntime_, double total_time_, Output* output_, bool storeFWD_) : TimeStepper(mastereq_, ntime_, total_time_, output_, storeFWD_) {
-  MatCreateVecs(mastereq->getRHS(), &stage, NULL);
-  VecZeroEntries(stage);
+  PetscTry(MatCreateVecs(mastereq->getRHS(), &stage, NULL));
+  PetscTry(VecZeroEntries(stage));
 }
 
 ExplEuler::~ExplEuler() {
-  VecDestroy(&stage);
+  PetscTry(VecDestroy(&stage));
 }
 
 void ExplEuler::evolveFWD(const double tstart,const  double tstop, Vec x) {
@@ -538,8 +539,8 @@ void ExplEuler::evolveFWD(const double tstart,const  double tstop, Vec x) {
   Mat A = mastereq->getRHS(); 
 
   /* update x = x + hAx */
-  MatMult(A, x, stage);
-  VecAXPY(x, dt, stage);
+  PetscTry(MatMult(A, x, stage));
+  PetscTry(VecAXPY(x, dt, stage));
 
 }
 
@@ -554,22 +555,22 @@ void ExplEuler::evolveBWD(const double tstop,const  double tstart,const  Vec x, 
   /* update x_adj = x_adj + hA^Tx_adj */
   mastereq->assemble_RHS(tstop);
   Mat A = mastereq->getRHS(); 
-  MatMultTranspose(A, x_adj, stage);
-  VecAXPY(x_adj, dt, stage);
+  PetscTry(MatMultTranspose(A, x_adj, stage));
+  PetscTry(VecAXPY(x_adj, dt, stage));
 
 }
 
 ImplMidpoint::ImplMidpoint(MasterEq* mastereq_, int ntime_, double total_time_, LinearSolverType linsolve_type_, int linsolve_maxiter_, Output* output_, bool storeFWD_) : TimeStepper(mastereq_, ntime_, total_time_, output_, storeFWD_) {
 
   /* Create and reset the intermediate vectors */
-  MatCreateVecs(mastereq->getRHS(), &stage, NULL);
-  VecDuplicate(stage, &stage_adj);
-  VecDuplicate(stage, &rhs);
-  VecDuplicate(stage, &rhs_adj);
-  VecZeroEntries(stage);
-  VecZeroEntries(stage_adj);
-  VecZeroEntries(rhs);
-  VecZeroEntries(rhs_adj);
+  PetscTry(MatCreateVecs(mastereq->getRHS(), &stage, NULL));
+  PetscTry(VecDuplicate(stage, &stage_adj));
+  PetscTry(VecDuplicate(stage, &rhs));
+  PetscTry(VecDuplicate(stage, &rhs_adj));
+  PetscTry(VecZeroEntries(stage));
+  PetscTry(VecZeroEntries(stage_adj));
+  PetscTry(VecZeroEntries(rhs));
+  PetscTry(VecZeroEntries(rhs_adj));
   linsolve_type = linsolve_type_;
   linsolve_maxiter = linsolve_maxiter_;
   linsolve_reltol = 1.e-20;
@@ -580,13 +581,13 @@ ImplMidpoint::ImplMidpoint(MasterEq* mastereq_, int ntime_, double total_time_, 
 
   if (linsolve_type == LinearSolverType::GMRES) {
     /* Create Petsc's linear solver */
-    KSPCreate(PETSC_COMM_WORLD, &ksp);
-    KSPGetPC(ksp, &preconditioner);
-    PCSetType(preconditioner, PCNONE);
-    KSPSetTolerances(ksp, linsolve_reltol, linsolve_abstol, PETSC_DEFAULT, linsolve_maxiter);
-    KSPSetType(ksp, KSPGMRES);
-    KSPSetOperators(ksp, mastereq->getRHS(), mastereq->getRHS());
-    KSPSetFromOptions(ksp);
+    PetscTry(KSPCreate(PETSC_COMM_WORLD, &ksp));
+    PetscTry(KSPGetPC(ksp, &preconditioner));
+    PetscTry(PCSetType(preconditioner, PCNONE));
+    PetscTry(KSPSetTolerances(ksp, linsolve_reltol, linsolve_abstol, PETSC_DEFAULT, linsolve_maxiter));
+    PetscTry(KSPSetType(ksp, KSPGMRES));
+    PetscTry(KSPSetOperators(ksp, mastereq->getRHS(), mastereq->getRHS()));
+    PetscTry(KSPSetFromOptions(ksp));
   }
   else {
     /* For Neumann iterations, allocate a temporary vector */
@@ -614,10 +615,10 @@ ImplMidpoint::~ImplMidpoint(){
   }
 
   /* Free up intermediate vectors */
-  VecDestroy(&stage_adj);
-  VecDestroy(&stage);
-  VecDestroy(&rhs_adj);
-  VecDestroy(&rhs);
+  PetscTry(VecDestroy(&stage_adj));
+  PetscTry(VecDestroy(&stage));
+  PetscTry(VecDestroy(&rhs_adj));
+  PetscTry(VecDestroy(&rhs));
 
 }
 
@@ -631,21 +632,21 @@ void ImplMidpoint::evolveFWD(const double tstart,const  double tstop, Vec x) {
   Mat A = mastereq->getRHS(); 
 
   /* Compute rhs = A x */
-  MatMult(A, x, rhs);
+  PetscTry(MatMult(A, x, rhs));
 
   /* Solve for the stage variable (I-dt/2 A) k1 = Ax */
   switch (linsolve_type) {
     case LinearSolverType::GMRES:
       /* Set up I-dt/2 A, then solve */
-      MatScale(A, - dt/2.0);
-      MatShift(A, 1.0);  
-      KSPSolve(ksp, rhs, stage);
+      PetscTry(MatScale(A, - dt/2.0));
+      PetscTry(MatShift(A, 1.0));  
+      PetscTry(KSPSolve(ksp, rhs, stage));
 
       /* Monitor error */
       double rnorm;
       PetscInt iters_taken;
-      KSPGetResidualNorm(ksp, &rnorm);
-      KSPGetIterationNumber(ksp, &iters_taken);
+      PetscTry(KSPGetResidualNorm(ksp, &rnorm));
+      PetscTry(KSPGetIterationNumber(ksp, &iters_taken));
       // printf("Residual norm %d: %1.5e\n", iters_taken, rnorm);
       linsolve_iterstaken_avg += iters_taken;
       linsolve_error_avg += rnorm;
@@ -654,8 +655,8 @@ void ImplMidpoint::evolveFWD(const double tstart,const  double tstop, Vec x) {
       }
  
       /* Revert the scaling and shifting if gmres solver */
-      MatAssemblyBegin(A, MAT_FINAL_ASSEMBLY);
-      MatAssemblyEnd(A, MAT_FINAL_ASSEMBLY);
+      PetscTry(MatAssemblyBegin(A, MAT_FINAL_ASSEMBLY));
+      PetscTry(MatAssemblyEnd(A, MAT_FINAL_ASSEMBLY));
       break;
 
     case LinearSolverType::NEUMANN:
@@ -665,7 +666,7 @@ void ImplMidpoint::evolveFWD(const double tstart,const  double tstop, Vec x) {
   linsolve_counter++;
 
   /* --- Update state x += dt * stage --- */
-  VecAXPY(x, dt, stage);
+  PetscTry(VecAXPY(x, dt, stage));
 }
 
 void ImplMidpoint::evolveBWD(const double tstop, const double tstart, const Vec x, Vec x_adj, Vec grad, bool compute_gradient){
@@ -681,19 +682,19 @@ void ImplMidpoint::evolveBWD(const double tstop, const double tstart, const Vec 
 
   /* Get Ax_n for use in gradient */
   if (compute_gradient) {
-    MatMult(A, x, rhs);
+    PetscTry(MatMult(A, x, rhs));
   }
 
   /* Solve for adjoint stage variable */
   switch (linsolve_type) {
     case LinearSolverType::GMRES:
-      MatScale(A, - dt/2.0);
-      MatShift(A, 1.0);  // WARNING: this can be very slow if some diagonal elements are missing.
-      KSPSolveTranspose(ksp, x_adj, stage_adj);
+      PetscTry(MatScale(A, - dt/2.0));
+      PetscTry(MatShift(A, 1.0));  // WARNING: this can be very slow if some diagonal elements are missing.
+      PetscTry(KSPSolveTranspose(ksp, x_adj, stage_adj));
       double rnorm;
-      KSPGetResidualNorm(ksp, &rnorm);
+      PetscTry(KSPGetResidualNorm(ksp, &rnorm));
       PetscInt iters_taken;
-      KSPGetIterationNumber(ksp, &iters_taken);
+      PetscTry(KSPGetIterationNumber(ksp, &iters_taken));
       if (rnorm > 1e-3)  {
         printf("WARNING: Linear solver residual norm: %1.5e\n", rnorm);
       }
@@ -705,31 +706,31 @@ void ImplMidpoint::evolveBWD(const double tstop, const double tstart, const Vec 
   }
 
   // k_bar = h*k_bar 
-  VecScale(stage_adj, dt);
+  PetscTry(VecScale(stage_adj, dt));
 
   /* Add to reduced gradient */
   if (compute_gradient) {
     switch (linsolve_type) {
       case LinearSolverType::GMRES: 
-        KSPSolve(ksp, rhs, stage);
+        PetscTry(KSPSolve(ksp, rhs, stage));
         break;
       case LinearSolverType::NEUMANN:
         NeumannSolve(A, rhs, stage, dt/2.0, false);
         break;
     }
-    VecAYPX(stage, dt / 2.0, x);
+    PetscTry(VecAYPX(stage, dt / 2.0, x));
     mastereq->computedRHSdp(thalf, stage, stage_adj, 1.0, grad);
   }
 
   /* Revert changes to RHS from above, if gmres solver */
   A = mastereq->getRHS();
   if (linsolve_type == LinearSolverType::GMRES) {
-    MatAssemblyBegin(A, MAT_FINAL_ASSEMBLY);
-    MatAssemblyEnd(A, MAT_FINAL_ASSEMBLY);
+    PetscTry(MatAssemblyBegin(A, MAT_FINAL_ASSEMBLY));
+    PetscTry(MatAssemblyEnd(A, MAT_FINAL_ASSEMBLY));
   }
 
   /* Update adjoint state x_adj += dt * A^Tstage_adj --- */
-  MatMultTransposeAdd(A, stage_adj, x_adj, x_adj);
+  PetscTry(MatMultTransposeAdd(A, stage_adj, x_adj, x_adj));
 
 }
 
@@ -739,20 +740,20 @@ int ImplMidpoint::NeumannSolve(Mat A, Vec b, Vec y, double alpha, bool transpose
   double errnorm, errnorm0;
 
   // Initialize y = b
-  VecCopy(b, y);
+  PetscTry(VecCopy(b, y));
 
   int iter;
   for (iter = 0; iter < linsolve_maxiter; iter++) {
-    VecCopy(y, err);
+    PetscTry(VecCopy(y, err));
 
     // y = b + alpha * A *  y
-    if (!transpose) MatMult(A, y, tmp);
-    else            MatMultTranspose(A, y, tmp);
-    VecAXPBYPCZ(y, 1.0, alpha, 0.0, b, tmp);
+    if (!transpose) PetscTry(MatMult(A, y, tmp));
+    else            PetscTry(MatMultTranspose(A, y, tmp));
+    PetscTry(VecAXPBYPCZ(y, 1.0, alpha, 0.0, b, tmp));
 
     /* Error approximation  */
-    VecAXPY(err, -1.0, y); // err = yprev - y 
-    VecNorm(err, NORM_2, &errnorm);
+    PetscTry(VecAXPY(err, -1.0, y)); // err = yprev - y
+    PetscTry(VecNorm(err, NORM_2, &errnorm));
 
     /* Stopping criteria */
     if (iter == 0) errnorm0 = errnorm;
@@ -801,21 +802,21 @@ CompositionalImplMidpoint::CompositionalImplMidpoint(int order_, MasterEq* maste
   // Allocate storage of stages for backward process 
   for (size_t i = 0; i <gamma.size(); i++) {
     Vec state;
-    VecCreate(PETSC_COMM_WORLD, &state);
-    VecSetSizes(state, PETSC_DECIDE, dim);
-    VecSetFromOptions(state);
+    PetscTry(VecCreate(PETSC_COMM_WORLD, &state));
+    PetscTry(VecSetSizes(state, PETSC_DECIDE, dim));
+    PetscTry(VecSetFromOptions(state));
     x_stage.push_back(state);
   }
-  VecCreate(PETSC_COMM_WORLD, &aux);
-  VecSetSizes(aux, PETSC_DECIDE, dim);
-  VecSetFromOptions(aux);
+  PetscTry(VecCreate(PETSC_COMM_WORLD, &aux));
+  PetscTry(VecSetSizes(aux, PETSC_DECIDE, dim));
+  PetscTry(VecSetFromOptions(aux));
 }
 
 CompositionalImplMidpoint::~CompositionalImplMidpoint(){
   for (size_t i = 0; i <gamma.size(); i++) {
-    VecDestroy(&(x_stage[i]));
+    PetscTry(VecDestroy(&(x_stage[i])));
   }
-  VecDestroy(&aux);
+  PetscTry(VecDestroy(&aux));
 }
 
 
@@ -845,9 +846,9 @@ void CompositionalImplMidpoint::evolveBWD(const double tstop, const double tstar
 
   // Run forward again to store the (primal) stages
   double tcurr = tstart;
-  VecCopy(x, aux);
+  PetscTry(VecCopy(x, aux));
   for (size_t istage = 0; istage < gamma.size(); istage++) {
-    VecCopy(aux, x_stage[istage]);
+    PetscTry(VecCopy(aux, x_stage[istage]));
     double dt_stage = gamma[istage] * dt;
     ImplMidpoint::evolveFWD(tcurr, tcurr + dt_stage, aux);
     tcurr = tcurr + dt_stage;

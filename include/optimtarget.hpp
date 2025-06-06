@@ -1,6 +1,7 @@
 #include "defs.hpp"
 #include "gate.hpp"
 #include "mastereq.hpp"
+#include "petsctry.hpp"
 #pragma once
 
 /* Collects stuff specifying the optimization target */

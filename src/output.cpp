@@ -1,4 +1,5 @@
 #include "output.hpp"
+#include "petsctry.hpp"
 
 Output::Output(){
   mpirank_world = -1;
@@ -80,7 +81,7 @@ void Output::writeOptimFile(int optim_iter, double objective, double gnorm, doub
 void Output::writeGradient(Vec grad){
   char filename[255];  
   PetscInt ngrad;
-  VecGetSize(grad, &ngrad);
+  PetscTry(VecGetSize(grad, &ngrad));
 
   if (mpirank_world == 0) {
     /* Print current gradients to file */
@@ -90,12 +91,12 @@ void Output::writeGradient(Vec grad){
     file = fopen(filename, "w");
 
     const PetscScalar* grad_ptr;
-    VecGetArrayRead(grad, &grad_ptr);
+    PetscTry(VecGetArrayRead(grad, &grad_ptr));
     for (int i=0; i<ngrad; i++){
       fprintf(file, "%1.14e\n", grad_ptr[i]);
     }
     fclose(file);
-    VecRestoreArrayRead(grad, &grad_ptr);
+    PetscTry(VecRestoreArrayRead(grad, &grad_ptr));
     // if (!quietmode) printf("File written: %s\n", filename);
   }
 }
@@ -107,7 +108,7 @@ void Output::writeControls(Vec params, MasterEq* mastereq, int ntime, double dt)
 
     char filename[255];
     PetscInt ndesign;
-    VecGetSize(params, &ndesign);
+    PetscTry(VecGetSize(params, &ndesign));
 
     /* Print current parameters to file */
     FILE *file, *file_c;
@@ -115,12 +116,12 @@ void Output::writeControls(Vec params, MasterEq* mastereq, int ntime, double dt)
     file = fopen(filename, "w");
 
     const PetscScalar* params_ptr;
-    VecGetArrayRead(params, &params_ptr);
+    PetscTry(VecGetArrayRead(params, &params_ptr));
     for (int i=0; i<ndesign; i++){
       fprintf(file, "%1.14e\n", params_ptr[i]);
     }
     fclose(file);
-    VecRestoreArrayRead(params, &params_ptr);
+    PetscTry(VecRestoreArrayRead(params, &params_ptr));
     if (!quietmode) printf("File written: %s\n", filename);
 
     /* Print control to file for each oscillator */
@@ -253,14 +254,14 @@ void Output::writeDataFiles(int timestep, double time, const Vec state, MasterEq
         fprintf(vfile,  "%.8f  ", time);
 
         const PetscScalar *x;
-        VecGetArrayRead(state, &x);
+        PetscTry(VecGetArrayRead(state, &x));
         for (int i=0; i<mastereq->getDim(); i++) {
           fprintf(ufile, "%1.10e  ", x[getIndexReal(i)]);  
           fprintf(vfile, "%1.10e  ", x[getIndexImag(i)]);  
         }
         fprintf(ufile, "\n");
         fprintf(vfile, "\n");
-        VecRestoreArrayRead(state, &x);
+        PetscTry(VecRestoreArrayRead(state, &x));
       }
         /* Destroy scatter context and vector */
         // VecScatterDestroy(&scat);

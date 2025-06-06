@@ -1,4 +1,5 @@
 #include "mastereq.hpp"
+#include "petsctry.hpp"
 
 MasterEq::MasterEq(){
   dim = 0;
@@ -271,18 +272,18 @@ void MasterEq::initSparseMatSolver(){
 
   // Time-independent system Hamiltonian
   // Ad = real(-i Hsys) and Bd = imag(-i Hsys)
-  MatCreate(PETSC_COMM_WORLD, &Ad);
-  MatCreate(PETSC_COMM_WORLD, &Bd);
-  MatSetSizes(Ad, PETSC_DECIDE, PETSC_DECIDE, dim, dim);
-  MatSetSizes(Bd, PETSC_DECIDE, PETSC_DECIDE, dim, dim);
-  MatSetType(Ad, MATMPIAIJ);
-  MatSetType(Bd, MATMPIAIJ);
-  if (addT1 || addT2) MatMPIAIJSetPreallocation(Ad, noscillators+5, NULL, noscillators+5, NULL);
-  MatMPIAIJSetPreallocation(Bd, 1, NULL, 1, NULL);
-  MatSetUp(Ad);
-  MatSetUp(Bd);
-  MatSetFromOptions(Ad);
-  MatSetFromOptions(Bd);
+  PetscTry(MatCreate(PETSC_COMM_WORLD, &Ad));
+  PetscTry(MatCreate(PETSC_COMM_WORLD, &Bd));
+  PetscTry(MatSetSizes(Ad, PETSC_DECIDE, PETSC_DECIDE, dim, dim));
+  PetscTry(MatSetSizes(Bd, PETSC_DECIDE, PETSC_DECIDE, dim, dim));
+  PetscTry(MatSetType(Ad, MATMPIAIJ));
+  PetscTry(MatSetType(Bd, MATMPIAIJ));
+  if (addT1 || addT2) PetscTry(MatMPIAIJSetPreallocation(Ad, noscillators+5, NULL, noscillators+5, NULL));
+  PetscTry(MatMPIAIJSetPreallocation(Bd, 1, NULL, 1, NULL));
+  PetscTry(MatSetUp(Ad));
+  PetscTry(MatSetUp(Bd));
+  PetscTry(MatSetFromOptions(Ad));
+  PetscTry(MatSetFromOptions(Bd));
   // One control operator per oscillator
   // Ac_vec[0] = real(-i Hc) and Bc_vec[0] = imag(-i Hc)
   for (int iosc = 0; iosc < noscillators; iosc++) {
@@ -291,23 +292,23 @@ void MasterEq::initSparseMatSolver(){
     std::vector<Mat> myBcvec_k{myBcMatk};
     Ac_vec.push_back(myAcvec_k);
     Bc_vec.push_back(myBcvec_k);
-    MatCreate(PETSC_COMM_WORLD, &(Ac_vec[iosc][0]));
-    MatCreate(PETSC_COMM_WORLD, &(Bc_vec[iosc][0]));
-    MatSetType(Ac_vec[iosc][0], MATMPIAIJ);
-    MatSetType(Bc_vec[iosc][0], MATMPIAIJ);
-    MatSetSizes(Ac_vec[iosc][0], PETSC_DECIDE, PETSC_DECIDE, dim, dim);
-    MatSetSizes(Bc_vec[iosc][0], PETSC_DECIDE, PETSC_DECIDE, dim, dim);
+    PetscTry(MatCreate(PETSC_COMM_WORLD, &(Ac_vec[iosc][0])));
+    PetscTry(MatCreate(PETSC_COMM_WORLD, &(Bc_vec[iosc][0])));
+    PetscTry(MatSetType(Ac_vec[iosc][0], MATMPIAIJ));
+    PetscTry(MatSetType(Bc_vec[iosc][0], MATMPIAIJ));
+    PetscTry(MatSetSizes(Ac_vec[iosc][0], PETSC_DECIDE, PETSC_DECIDE, dim, dim));
+    PetscTry(MatSetSizes(Bc_vec[iosc][0], PETSC_DECIDE, PETSC_DECIDE, dim, dim));
     if (lindbladtype != LindbladType::NONE) {
-      MatMPIAIJSetPreallocation(Ac_vec[iosc][0], 4, NULL, 4, NULL);
-      MatMPIAIJSetPreallocation(Bc_vec[iosc][0], 4, NULL, 4, NULL);
+      PetscTry(MatMPIAIJSetPreallocation(Ac_vec[iosc][0], 4, NULL, 4, NULL));
+      PetscTry(MatMPIAIJSetPreallocation(Bc_vec[iosc][0], 4, NULL, 4, NULL));
     } else {
-      MatMPIAIJSetPreallocation(Ac_vec[iosc][0], 2, NULL, 2, NULL);
-      MatMPIAIJSetPreallocation(Bc_vec[iosc][0], 2, NULL, 2, NULL);
+      PetscTry(MatMPIAIJSetPreallocation(Ac_vec[iosc][0], 2, NULL, 2, NULL));
+      PetscTry(MatMPIAIJSetPreallocation(Bc_vec[iosc][0], 2, NULL, 2, NULL));
     }
-    MatSetUp(Ac_vec[iosc][0]);
-    MatSetUp(Bc_vec[iosc][0]);
-    MatSetFromOptions(Ac_vec[iosc][0]);
-    MatSetFromOptions(Bc_vec[iosc][0]); 
+    PetscTry(MatSetUp(Ac_vec[iosc][0]));
+    PetscTry(MatSetUp(Bc_vec[iosc][0]));
+    PetscTry(MatSetFromOptions(Ac_vec[iosc][0]));
+    PetscTry(MatSetFromOptions(Bc_vec[iosc][0])); 
   }
   // Time-dependent system Hamiltonian matrices (other than controls)
   int id_kl = 0;
@@ -316,23 +317,23 @@ void MasterEq::initSparseMatSolver(){
       if (fabs(Jkl[id_kl]) > 1e-12) { // only allocate if Jkl>0
         Mat myAdkl = nullptr; 
         Mat myBdkl = nullptr;
-        MatCreate(PETSC_COMM_WORLD, &myAdkl);
-        MatCreate(PETSC_COMM_WORLD, &myBdkl);
-        MatSetType(myAdkl, MATMPIAIJ);
-        MatSetType(myBdkl, MATMPIAIJ);
-        MatSetSizes(myAdkl, PETSC_DECIDE, PETSC_DECIDE, dim, dim);
-        MatSetSizes(myBdkl, PETSC_DECIDE, PETSC_DECIDE, dim, dim);
+        PetscTry(MatCreate(PETSC_COMM_WORLD, &myAdkl));
+        PetscTry(MatCreate(PETSC_COMM_WORLD, &myBdkl));
+        PetscTry(MatSetType(myAdkl, MATMPIAIJ));
+        PetscTry(MatSetType(myBdkl, MATMPIAIJ));
+        PetscTry(MatSetSizes(myAdkl, PETSC_DECIDE, PETSC_DECIDE, dim, dim));
+        PetscTry(MatSetSizes(myBdkl, PETSC_DECIDE, PETSC_DECIDE, dim, dim));
         if (lindbladtype != LindbladType::NONE) {
-          MatMPIAIJSetPreallocation(myAdkl, 4, NULL, 4, NULL);
-          MatMPIAIJSetPreallocation(myBdkl, 4, NULL, 4, NULL);
+          PetscTry(MatMPIAIJSetPreallocation(myAdkl, 4, NULL, 4, NULL));
+          PetscTry(MatMPIAIJSetPreallocation(myBdkl, 4, NULL, 4, NULL));
         } else {
-          MatMPIAIJSetPreallocation(myAdkl, 2, NULL, 2, NULL);
-          MatMPIAIJSetPreallocation(myBdkl, 2, NULL, 2, NULL);
+          PetscTry(MatMPIAIJSetPreallocation(myAdkl, 2, NULL, 2, NULL));
+          PetscTry(MatMPIAIJSetPreallocation(myBdkl, 2, NULL, 2, NULL));
         }
-        MatSetUp(myAdkl);
-        MatSetUp(myBdkl);
-        MatSetFromOptions(myAdkl);
-        MatSetFromOptions(myBdkl);
+        PetscTry(MatSetUp(myAdkl));
+        PetscTry(MatSetUp(myBdkl));
+        PetscTry(MatSetFromOptions(myAdkl));
+        PetscTry(MatSetFromOptions(myBdkl));
         Ad_vec.push_back(myAdkl);
         Bd_vec.push_back(myBdkl);
       }
@@ -370,7 +371,7 @@ void MasterEq::initSparseMatSolver(){
       /* Set control Hamiltonian system matrix real(-iHc) */
       /* Lindblad solver:     Ac = I_N \kron (a - a^T) - (a - a^T)^T \kron I_N   \in C^{N^2 x N^2}*/
       /* Schroedinger solver: Ac = a - a^T   \in C^{N x N}  */
-      MatGetOwnershipRange(Ac_vec[iosc][0], &ilow, &iupp);
+      PetscTry(MatGetOwnershipRange(Ac_vec[iosc][0], &ilow, &iupp));
       for (int row = ilow; row<iupp; row++){
         // A_c or I_N \kron A_c
         col1 = row + npostk;
@@ -381,11 +382,11 @@ void MasterEq::initSparseMatSolver(){
         r1 = r1 / npostk;
         if (r1 < nk-1) {
           val = sqrt(r1+1);
-          if (fabs(val)>1e-14) MatSetValue(Ac_vec[iosc][0], row, col1, val, ADD_VALUES);
+          if (fabs(val)>1e-14) PetscTry(MatSetValue(Ac_vec[iosc][0], row, col1, val, ADD_VALUES));
         }
         if (r1 > 0) {
           val = -sqrt(r1);
-          if (fabs(val)>1e-14) MatSetValue(Ac_vec[iosc][0], row, col2, val, ADD_VALUES);
+          if (fabs(val)>1e-14) PetscTry(MatSetValue(Ac_vec[iosc][0], row, col2, val, ADD_VALUES));
         } 
         if (lindbladtype != LindbladType::NONE){
           //- A_c \kron I_N
@@ -395,11 +396,11 @@ void MasterEq::initSparseMatSolver(){
           r1 = r1 / (dimmat * npostk);
           if (r1 < nk-1) {
             val =  sqrt(r1+1);
-            if (fabs(val)>1e-14) MatSetValue(Ac_vec[iosc][0], row, col1, val, ADD_VALUES);
+            if (fabs(val)>1e-14) PetscTry(MatSetValue(Ac_vec[iosc][0], row, col1, val, ADD_VALUES));
           }
           if (r1 > 0) {
             val = -sqrt(r1);
-            if (fabs(val)>1e-14) MatSetValue(Ac_vec[iosc][0], row, col2, val, ADD_VALUES);
+            if (fabs(val)>1e-14) PetscTry(MatSetValue(Ac_vec[iosc][0], row, col2, val, ADD_VALUES));
           }
         }
       }
@@ -408,7 +409,7 @@ void MasterEq::initSparseMatSolver(){
       /* Lindblas solver Bc = - I_N \kron (a + a^T) + (a + a^T)^T \kron I_N */
       /* Schroedinger solver: Bc = -(a+a^T) */
       /* Iterate over local rows of Bc_vec */
-      MatGetOwnershipRange(Bc_vec[iosc][0], &ilow, &iupp);
+      PetscTry(MatGetOwnershipRange(Bc_vec[iosc][0], &ilow, &iupp));
       for (int row = ilow; row<iupp; row++){
         // B_c or  I_n \kron B_c 
         col1 = row + npostk;
@@ -419,11 +420,11 @@ void MasterEq::initSparseMatSolver(){
         r1 = r1 / npostk;
         if (r1 < nk-1) {
           val = -sqrt(r1+1);
-          if (fabs(val)>1e-14) MatSetValue(Bc_vec[iosc][0], row, col1, val, ADD_VALUES);
+          if (fabs(val)>1e-14) PetscTry(MatSetValue(Bc_vec[iosc][0], row, col1, val, ADD_VALUES));
         }
         if (r1 > 0) {
           val = -sqrt(r1);
-          if (fabs(val)>1e-14) MatSetValue(Bc_vec[iosc][0], row, col2, val, ADD_VALUES);
+          if (fabs(val)>1e-14) PetscTry(MatSetValue(Bc_vec[iosc][0], row, col2, val, ADD_VALUES));
         } 
         if (lindbladtype != LindbladType::NONE){
           //+ B_c \kron I_N
@@ -433,11 +434,11 @@ void MasterEq::initSparseMatSolver(){
           r1 = r1 / (dimmat * npostk);
           if (r1 < nk-1) {
             val =  sqrt(r1+1);
-            if (fabs(val)>1e-14) MatSetValue(Bc_vec[iosc][0], row, col1, val, ADD_VALUES);
+            if (fabs(val)>1e-14) PetscTry(MatSetValue(Bc_vec[iosc][0], row, col1, val, ADD_VALUES));
           }
           if (r1 > 0) {
             val = sqrt(r1);
-            if (fabs(val)>1e-14) MatSetValue(Bc_vec[iosc][0], row, col2, val, ADD_VALUES);
+            if (fabs(val)>1e-14) PetscTry(MatSetValue(Bc_vec[iosc][0], row, col2, val, ADD_VALUES));
           }   
         }
       }
@@ -465,7 +466,7 @@ void MasterEq::initSparseMatSolver(){
           int npostj = oscil_vec[josc]->dim_postOsc;
 
           /* Iterate over local rows of Ad_vec / Bd_vec */
-          MatGetOwnershipRange(Ad_vec[matid], &ilow, &iupp);
+          PetscTry(MatGetOwnershipRange(Ad_vec[matid], &ilow, &iupp));
           for (int row = ilow; row<iupp; row++){
             // Add +/- I_N \kron (ak^Tal -/+ akal^T) (Lindblad)
             // or  +/- (ak^Tal -/+ akal^T) (Schrodinger)
@@ -477,14 +478,14 @@ void MasterEq::initSparseMatSolver(){
             if (r1a > 0 && r1b < nj-1) {
               val = Jkl[id_kl] * sqrt(r1a * (r1b+1));
               col = row - npostk + npostj;
-               if (fabs(val)>1e-14) MatSetValue(Ad_vec[matid], row, col,  val, ADD_VALUES);
-               if (fabs(val)>1e-14) MatSetValue(Bd_vec[matid], row, col, -val, ADD_VALUES);
+               if (fabs(val)>1e-14) PetscTry(MatSetValue(Ad_vec[matid], row, col,  val, ADD_VALUES));
+               if (fabs(val)>1e-14) PetscTry(MatSetValue(Bd_vec[matid], row, col, -val, ADD_VALUES));
             }
             if (r1a < nk-1  && r1b > 0) {
               val = Jkl[id_kl] * sqrt((r1a+1) * r1b);
               col = row + npostk - npostj;
-              if (fabs(val)>1e-14) MatSetValue(Ad_vec[matid], row, col, -val, ADD_VALUES);
-              if (fabs(val)>1e-14) MatSetValue(Bd_vec[matid], row, col, -val, ADD_VALUES);
+              if (fabs(val)>1e-14) PetscTry(MatSetValue(Ad_vec[matid], row, col, -val, ADD_VALUES));
+              if (fabs(val)>1e-14) PetscTry(MatSetValue(Bd_vec[matid], row, col, -val, ADD_VALUES));
             }
 
             if (lindbladtype != LindbladType::NONE) {
@@ -497,14 +498,14 @@ void MasterEq::initSparseMatSolver(){
               if (r1a < nk-1 && r1b > 0) {
                 val = Jkl[id_kl] * sqrt((r1a+1) * r1b);
                 col = row + npostk*dimmat - npostj*dimmat;
-                if (fabs(val)>1e-14) MatSetValue(Ad_vec[matid], row, col, -val, ADD_VALUES);
-                if (fabs(val)>1e-14) MatSetValue(Bd_vec[matid], row, col, +val, ADD_VALUES);
+                if (fabs(val)>1e-14) PetscTry(MatSetValue(Ad_vec[matid], row, col, -val, ADD_VALUES));
+                if (fabs(val)>1e-14) PetscTry(MatSetValue(Bd_vec[matid], row, col, +val, ADD_VALUES));
               }
               if (r1a > 0 && r1b < nj-1) {
                 val = Jkl[id_kl] * sqrt(r1a * (r1b+1));
                 col = row - npostk*dimmat + npostj*dimmat;
-                if (fabs(val)>1e-14) MatSetValue(Ad_vec[matid], row, col, val, ADD_VALUES);
-                if (fabs(val)>1e-14) MatSetValue(Bd_vec[matid], row, col, val, ADD_VALUES);
+                if (fabs(val)>1e-14) PetscTry(MatSetValue(Ad_vec[matid], row, col, val, ADD_VALUES));
+                if (fabs(val)>1e-14) PetscTry(MatSetValue(Bd_vec[matid], row, col, val, ADD_VALUES));
               }
             }
           }
@@ -525,7 +526,7 @@ void MasterEq::initSparseMatSolver(){
 
       /* Diagonal: detuning and anharmonicity  */
       /* Iterate over local rows of Bd */
-      MatGetOwnershipRange(Bd, &ilow, &iupp);
+      PetscTry(MatGetOwnershipRange(Bd, &ilow, &iupp));
       for (int row = ilow; row<iupp; row++){
 
         // Indices for -I_N \kron B_d
@@ -542,7 +543,7 @@ void MasterEq::initSparseMatSolver(){
         // -Bd, or -I_N \kron B_d + B_d \kron I_N
         val  = - ( detunek * r1 - xik / 2. * (r1*r1 - r1) );
         val +=     detunek * r2 - xik / 2. * (r2*r2 - r2)  ;
-        if (fabs(val)>1e-14) MatSetValue(Bd, row, row, val, ADD_VALUES);
+        if (fabs(val)>1e-14) PetscTry(MatSetValue(Bd, row, row, val, ADD_VALUES));
       }
 
       /* zz-coupling term  -xi_ij * 2 * PI * (N_i*N_j) for j > i */
@@ -572,7 +573,7 @@ void MasterEq::initSparseMatSolver(){
 
           // -I_N \kron B_d + B_d \kron I_N
           val =  xikj * r1a * r1b  - xikj * r2a * r2b;
-          if (fabs(val)>1e-14) MatSetValue(Bd, row, row, val, ADD_VALUES);
+          if (fabs(val)>1e-14) PetscTry(MatSetValue(Bd, row, row, val, ADD_VALUES));
         }
       }
     }
@@ -592,7 +593,7 @@ void MasterEq::initSparseMatSolver(){
         int npostk = oscil_vec[iosc]->dim_postOsc;
 
         /* Iterate over local rows of Ad */
-        MatGetOwnershipRange(Ad, &ilow, &iupp);
+        PetscTry(MatGetOwnershipRange(Ad, &ilow, &iupp));
         for (int row = ilow; row<iupp; row++){
 
           /* Add Ad += gamma_j * L \kron L */
@@ -606,13 +607,13 @@ void MasterEq::initSparseMatSolver(){
             if (r1a < nk-1 && r1b < nk-1) {
               val = gammaT1 * sqrt( (r1a+1) * (r1b+1) );
               col1 = row + npostk * dimmat + npostk;
-              if (fabs(val)>1e-14) MatSetValue(Ad, row, col1, val, ADD_VALUES);
+              if (fabs(val)>1e-14) PetscTry(MatSetValue(Ad, row, col1, val, ADD_VALUES));
             }
           }
           // T2  dephasing (L1 = a_j^Ta_j)
           if (addT2) { 
             val = gammaT2 * r1a * r1b ;
-            if (fabs(val)>1e-14) MatSetValue(Ad, row, row, val, ADD_VALUES);
+            if (fabs(val)>1e-14) PetscTry(MatSetValue(Ad, row, row, val, ADD_VALUES));
           }
 
           /* Add Ad += - gamma_j/2  I_n  \kron L^TL  */
@@ -620,11 +621,11 @@ void MasterEq::initSparseMatSolver(){
           r1 = r1 / npostk;
           if (addT1) {
             val = - gammaT1/2. * r1;
-            if (fabs(val)>1e-14) MatSetValue(Ad, row, row, val, ADD_VALUES);
+            if (fabs(val)>1e-14) PetscTry(MatSetValue(Ad, row, row, val, ADD_VALUES));
           }
           if (addT2) {
             val = -gammaT2/2. * r1*r1;
-            if (fabs(val)>1e-14) MatSetValue(Ad, row, row, val, ADD_VALUES);
+            if (fabs(val)>1e-14) PetscTry(MatSetValue(Ad, row, row, val, ADD_VALUES));
           }
 
           /* Add Ad += - gamma_j/2  L^TL \kron I_n */
@@ -632,11 +633,11 @@ void MasterEq::initSparseMatSolver(){
           r1 = r1 / (npostk*dimmat);
           if (addT1) {
             val = -gammaT1/2. * r1;
-            if (fabs(val)>1e-14) MatSetValue(Ad, row, row, val, ADD_VALUES);
+            if (fabs(val)>1e-14) PetscTry(MatSetValue(Ad, row, row, val, ADD_VALUES));
           }
           if (addT2) {
             val = -gammaT2/2. * r1*r1;
-            if (fabs(val)>1e-14) MatSetValue(Ad, row, row, val, ADD_VALUES);
+            if (fabs(val)>1e-14) PetscTry(MatSetValue(Ad, row, row, val, ADD_VALUES));
           }
         }
       }
@@ -644,38 +645,38 @@ void MasterEq::initSparseMatSolver(){
   }
 
   /* Assemble all system matrices */
-  MatAssemblyBegin(Bd, MAT_FINAL_ASSEMBLY);
-  MatAssemblyEnd(Bd, MAT_FINAL_ASSEMBLY);
-  MatAssemblyBegin(Ad, MAT_FINAL_ASSEMBLY);
-  MatAssemblyEnd(Ad, MAT_FINAL_ASSEMBLY);
+  PetscTry(MatAssemblyBegin(Bd, MAT_FINAL_ASSEMBLY));
+  PetscTry(MatAssemblyEnd(Bd, MAT_FINAL_ASSEMBLY));
+  PetscTry(MatAssemblyBegin(Ad, MAT_FINAL_ASSEMBLY));
+  PetscTry(MatAssemblyEnd(Ad, MAT_FINAL_ASSEMBLY));
   for (size_t i= 0; i< Ac_vec.size(); i++){
-    MatAssemblyBegin(Ac_vec[i][0], MAT_FINAL_ASSEMBLY);
-    MatAssemblyEnd(Ac_vec[i][0], MAT_FINAL_ASSEMBLY);
+    PetscTry(MatAssemblyBegin(Ac_vec[i][0], MAT_FINAL_ASSEMBLY));
+    PetscTry(MatAssemblyEnd(Ac_vec[i][0], MAT_FINAL_ASSEMBLY));
   }
   for (size_t i= 0; i< Bc_vec.size(); i++){
-    MatAssemblyBegin(Bc_vec[i][0], MAT_FINAL_ASSEMBLY);
-    MatAssemblyEnd(Bc_vec[i][0], MAT_FINAL_ASSEMBLY); 
+    PetscTry(MatAssemblyBegin(Bc_vec[i][0], MAT_FINAL_ASSEMBLY));
+    PetscTry(MatAssemblyEnd(Bc_vec[i][0], MAT_FINAL_ASSEMBLY)); 
   }
   for (size_t i=0; i<Ad_vec.size(); i++){
-    MatAssemblyBegin(Ad_vec[i], MAT_FINAL_ASSEMBLY);
-    MatAssemblyEnd(Ad_vec[i], MAT_FINAL_ASSEMBLY);
+    PetscTry(MatAssemblyBegin(Ad_vec[i], MAT_FINAL_ASSEMBLY));
+    PetscTry(MatAssemblyEnd(Ad_vec[i], MAT_FINAL_ASSEMBLY));
   }
   for (size_t i=0; i<Bd_vec.size(); i++){
-    MatAssemblyBegin(Bd_vec[i], MAT_FINAL_ASSEMBLY);
-    MatAssemblyEnd(Bd_vec[i], MAT_FINAL_ASSEMBLY);
+    PetscTry(MatAssemblyBegin(Bd_vec[i], MAT_FINAL_ASSEMBLY));
+    PetscTry(MatAssemblyEnd(Bd_vec[i], MAT_FINAL_ASSEMBLY));
   }
 
   // Remove control parameters for those oscillators that are non-controllable
   for (size_t k=0; k<nlevels.size(); k++){
     PetscScalar norm;
-    MatNorm(Ac_vec[k][0], NORM_FROBENIUS, &norm);
+    PetscTry(MatNorm(Ac_vec[k][0], NORM_FROBENIUS, &norm));
     if (norm < 1e-14) {
-      MatDestroy(&(Ac_vec[k][0]));
+      PetscTry(MatDestroy(&(Ac_vec[k][0])));
       Ac_vec[k].pop_back();
     }
-    MatNorm(Bc_vec[k][0], NORM_FROBENIUS, &norm);
+    PetscTry(MatNorm(Bc_vec[k][0], NORM_FROBENIUS, &norm));
     if (norm < 1e-14) {
-      MatDestroy(&(Bc_vec[k][0]));
+      PetscTry(MatDestroy(&(Bc_vec[k][0])));
       Bc_vec[k].pop_back();
     }
      if (Ac_vec[k].size() == 0 && Bc_vec[k].size() == 0) getOscillator(k)->clearParams();
@@ -710,7 +711,7 @@ void MasterEq::initSparseMatSolver(){
 
 
   /* Allocate some auxiliary vectors */
-  MatCreateVecs(Bd, &aux, NULL);
+  PetscTry(MatCreateVecs(Bd, &aux, NULL));
 }
 
 int MasterEq::getDim(){ return dim; }
@@ -915,8 +916,8 @@ void MasterEq::computedRHSdp(const double t, const Vec x, const Vec xbar, const 
     double res_p_re,  res_p_im, res_q_re, res_q_im;
 
     const double* xptr, *xbarptr;
-    VecGetArrayRead(x, &xptr);
-    VecGetArrayRead(xbar, &xbarptr);
+    PetscTry(VecGetArrayRead(x, &xptr));
+    PetscTry(VecGetArrayRead(xbar, &xbarptr));
 
     double* coeff_p = new double [noscillators];
     double* coeff_q = new double [noscillators];
@@ -1197,8 +1198,8 @@ void MasterEq::computedRHSdp(const double t, const Vec x, const Vec xbar, const 
       printf("This should never happen!\n"); 
       exit(1);
     }
-    VecRestoreArrayRead(x, &xptr);
-    VecRestoreArrayRead(xbar, &xbarptr);
+    PetscTry(VecRestoreArrayRead(x, &xptr));
+    PetscTry(VecRestoreArrayRead(xbar, &xbarptr));
 
     /* Set the gradient values */
     int shift = 0;
@@ -1215,13 +1216,13 @@ void MasterEq::computedRHSdp(const double t, const Vec x, const Vec xbar, const 
         vals[iparam] = alpha * (coeff_p[iosc] * dRedp[iparam] + coeff_q[iosc] * dImdp[iparam]);
         cols[iparam] = iparam + shift;
       }
-      VecSetValues(grad, nparam, cols, vals, ADD_VALUES);
+      PetscTry(VecSetValues(grad, nparam, cols, vals, ADD_VALUES));
       shift += nparam;
     }
 
     //Assemble gradient
-    VecAssemblyBegin(grad);
-    VecAssemblyEnd(grad);
+    PetscTry(VecAssemblyBegin(grad));
+    PetscTry(VecAssemblyEnd(grad));
 
     delete [] coeff_p;
     delete [] coeff_q;
@@ -1230,10 +1231,10 @@ void MasterEq::computedRHSdp(const double t, const Vec x, const Vec xbar, const 
 
   /* Get real and imaginary part from x and x_bar */
   Vec u, v, ubar, vbar;
-  VecGetSubVector(x, isu, &u);
-  VecGetSubVector(x, isv, &v);
-  VecGetSubVector(xbar, isu, &ubar);
-  VecGetSubVector(xbar, isv, &vbar);
+  PetscTry(VecGetSubVector(x, isu, &u));
+  PetscTry(VecGetSubVector(x, isv, &v));
+  PetscTry(VecGetSubVector(xbar, isu, &ubar));
+  PetscTry(VecGetSubVector(xbar, isv, &vbar));
 
   /* Loop over oscillators */
   int col_shift = 0;
@@ -1267,13 +1268,13 @@ void MasterEq::computedRHSdp(const double t, const Vec x, const Vec xbar, const 
     double uBvbar = 0.0;
     for (size_t icon=0; icon<Ac_vec[iosc].size(); icon++){
       double dot;
-      MatMult(Ac_vec[iosc][icon], u, aux); VecDot(aux, ubar, &dot); uAubar += dot * dukidq[icon];
-      MatMult(Ac_vec[iosc][icon], v, aux); VecDot(aux, vbar, &dot); vAvbar += dot * dukidq[icon];
+      PetscTry(MatMult(Ac_vec[iosc][icon], u, aux)); PetscTry(VecDot(aux, ubar, &dot)); uAubar += dot * dukidq[icon];
+      PetscTry(MatMult(Ac_vec[iosc][icon], v, aux)); PetscTry(VecDot(aux, vbar, &dot)); vAvbar += dot * dukidq[icon];
     }
     for (size_t icon=0; icon<Bc_vec[iosc].size(); icon++){
       double dot;
-      MatMult(Bc_vec[iosc][icon], u, aux); VecDot(aux, vbar, &dot); uBvbar += dot * dukidp[icon];
-      MatMult(Bc_vec[iosc][icon], v, aux); VecDot(aux, ubar, &dot); vBubar += dot * dukidp[icon];
+      PetscTry(MatMult(Bc_vec[iosc][icon], u, aux)); PetscTry(VecDot(aux, vbar, &dot)); uBvbar += dot * dukidp[icon];
+      PetscTry(MatMult(Bc_vec[iosc][icon], v, aux)); PetscTry(VecDot(aux, ubar, &dot)); vBubar += dot * dukidp[icon];
     }
 
     /* Number of parameters for this oscillator */
@@ -1284,17 +1285,17 @@ void MasterEq::computedRHSdp(const double t, const Vec x, const Vec xbar, const 
       vals[iparam] = alpha * ((uAubar + vAvbar) * dImdp[iparam] + ( -vBubar + uBvbar) * dRedp[iparam]);
       cols[iparam] = col_shift + iparam;
     }
-    VecSetValues(grad, nparams_iosc, cols, vals, ADD_VALUES);
+    PetscTry(VecSetValues(grad, nparams_iosc, cols, vals, ADD_VALUES));
     col_shift += nparams_iosc;
   }
-  VecAssemblyBegin(grad);
-  VecAssemblyEnd(grad);
+  PetscTry(VecAssemblyBegin(grad));
+  PetscTry(VecAssemblyEnd(grad));
 
   /* Restore x */
-  VecRestoreSubVector(x, isu, &u);
-  VecRestoreSubVector(x, isv, &v);
-  VecRestoreSubVector(xbar, isu, &ubar);
-  VecRestoreSubVector(xbar, isv, &vbar);
+  PetscTry(VecRestoreSubVector(x, isu, &u));
+  PetscTry(VecRestoreSubVector(x, isv, &v));
+  PetscTry(VecRestoreSubVector(xbar, isu, &ubar));
+  PetscTry(VecRestoreSubVector(xbar, isv, &vbar));
   }
 
 }
@@ -1302,7 +1303,7 @@ void MasterEq::computedRHSdp(const double t, const Vec x, const Vec xbar, const 
 void MasterEq::setControlAmplitudes(const Vec x) {
 
   const PetscScalar* ptr;
-  VecGetArrayRead(x, &ptr);
+  PetscTry(VecGetArrayRead(x, &ptr));
 
   /* Pass design vector x to oscillators */
   // Design storage: x = (params_oscil0, params_oscil2, ... ) 
@@ -1312,7 +1313,7 @@ void MasterEq::setControlAmplitudes(const Vec x) {
     getOscillator(ioscil)->setParams(ptr + shift);
     shift += getOscillator(ioscil)->getNParams();
   }
-  VecRestoreArrayRead(x, &ptr);
+  PetscTry(VecRestoreArrayRead(x, &ptr));
 }
 
 
@@ -1322,15 +1323,15 @@ int myMatMult_sparsemat(Mat RHS, Vec x, Vec y){
 
   /* Get the shell context */
   MatShellCtx *shellctx;
-  MatShellGetContext(RHS, (void**) &shellctx);
+  PetscTry(MatShellGetContext(RHS, (void**) &shellctx));
 
 /* Get u, v from x and y  */
   Vec u, v;
   Vec uout, vout;
-  VecGetSubVector(x, *shellctx->isu, &u);
-  VecGetSubVector(x, *shellctx->isv, &v);
-  VecGetSubVector(y, *shellctx->isu, &uout);
-  VecGetSubVector(y, *shellctx->isv, &vout);
+  PetscTry(VecGetSubVector(x, *shellctx->isu, &u));
+  PetscTry(VecGetSubVector(x, *shellctx->isv, &v));
+  PetscTry(VecGetSubVector(y, *shellctx->isu, &uout));
+  PetscTry(VecGetSubVector(y, *shellctx->isv, &vout));
 
   // uout = Re*u - Im*v
   //      = (Ad +  sum_k q_kA_k)*u - (Bd + sum_k p_kB_k)*v
@@ -1342,12 +1343,12 @@ int myMatMult_sparsemat(Mat RHS, Vec x, Vec y){
         //        + J_kl*sin(eta_kl*t) * Ad_kl * v  ]   cross terms
 
   // Constant part uout = Adu - Bdv
-  MatMult(*shellctx->Bd, v, uout);
-  VecScale(uout, -1.0);
-  MatMultAdd(*shellctx->Ad, u, uout, uout);
+  PetscTry(MatMult(*shellctx->Bd, v, uout));
+  PetscTry(VecScale(uout, -1.0));
+  PetscTry(MatMultAdd(*shellctx->Ad, u, uout, uout));
   // Constant part vout = Adv + Bdu
-  MatMult(*shellctx->Ad, v, vout);
-  MatMultAdd(*shellctx->Bd, u, vout, vout);
+  PetscTry(MatMult(*shellctx->Ad, v, vout));
+  PetscTry(MatMultAdd(*shellctx->Bd, u, vout, vout));
 
 
   /* -- Control Terms -- */
@@ -1357,20 +1358,20 @@ int myMatMult_sparsemat(Mat RHS, Vec x, Vec y){
     for (size_t icon=0; icon<shellctx->Ac_vec[iosc].size(); icon++){
       q = shellctx->control_Im[iosc][icon];
       // uout += q^k*Acu
-      MatMult(shellctx->Ac_vec[iosc][icon], u, *shellctx->aux);
-      VecAXPY(uout, q, *shellctx->aux); // Should use MatAXPY! TODO.
+      PetscTry(MatMult(shellctx->Ac_vec[iosc][icon], u, *shellctx->aux));
+      PetscTry(VecAXPY(uout, q, *shellctx->aux)); // Should use MatAXPY! TODO.
       // vout += q^kAcv
-      MatMult(shellctx->Ac_vec[iosc][icon], v, *shellctx->aux);
-      VecAXPY(vout, q, *shellctx->aux);
+      PetscTry(MatMult(shellctx->Ac_vec[iosc][icon], v, *shellctx->aux));
+      PetscTry(VecAXPY(vout, q, *shellctx->aux));
     }
     for (size_t icon=0; icon<shellctx->Bc_vec[iosc].size(); icon++){
       p = shellctx->control_Re[iosc][icon];
       // uout -= p^kBcv
-      MatMult(shellctx->Bc_vec[iosc][icon], v, *shellctx->aux);
-      VecAXPY(uout, -1.*p, *shellctx->aux);
+      PetscTry(MatMult(shellctx->Bc_vec[iosc][icon], v, *shellctx->aux));
+      PetscTry(VecAXPY(uout, -1.*p, *shellctx->aux));
       // vout += p^kBcu
-      MatMult(shellctx->Bc_vec[iosc][icon], u, *shellctx->aux);
-      VecAXPY(vout, p, *shellctx->aux);
+      PetscTry(MatMult(shellctx->Bc_vec[iosc][icon], u, *shellctx->aux));
+      PetscTry(VecAXPY(vout, p, *shellctx->aux));
     }
   }
 
@@ -1383,11 +1384,11 @@ int myMatMult_sparsemat(Mat RHS, Vec x, Vec y){
     // printf("%f %f %f\n", shellctx->time, trans_re, trans_im);
     if (fabs(trans_re) > 1e-12) {
       // uout += -Jkl*cos*Bdklv
-      MatMult(shellctx->Bd_vec[id_kl], v, *shellctx->aux);
-      VecAXPY(uout, -trans_re, *shellctx->aux);
+      PetscTry(MatMult(shellctx->Bd_vec[id_kl], v, *shellctx->aux));
+      PetscTry(VecAXPY(uout, -trans_re, *shellctx->aux));
       // vout += Jkl*cos*Bdklu
-      MatMult(shellctx->Bd_vec[id_kl], u, *shellctx->aux);
-      VecAXPY(vout, trans_re, *shellctx->aux);
+      PetscTry(MatMult(shellctx->Bd_vec[id_kl], u, *shellctx->aux));
+      PetscTry(VecAXPY(vout, trans_re, *shellctx->aux));
       
       // if (shellctx->time >= 1.0){
       //   printf("trans_re %f  %.8f\n", shellctx->time, trans_re);
@@ -1402,11 +1403,11 @@ int myMatMult_sparsemat(Mat RHS, Vec x, Vec y){
 
     if (fabs(trans_im) > 1e-12) {
       // uout += J_kl*sin*Adklu
-      MatMult(shellctx->Ad_vec[id_kl], u, *shellctx->aux);
-      VecAXPY(uout, trans_im, *shellctx->aux);
+      PetscTry(MatMult(shellctx->Ad_vec[id_kl], u, *shellctx->aux));
+      PetscTry(VecAXPY(uout, trans_im, *shellctx->aux));
       //vout += Jkl*sin*Adklv
-      MatMult(shellctx->Ad_vec[id_kl], v, *shellctx->aux);
-      VecAXPY(vout, trans_im, *shellctx->aux);
+      PetscTry(MatMult(shellctx->Ad_vec[id_kl], v, *shellctx->aux));
+      PetscTry(VecAXPY(vout, trans_im, *shellctx->aux));
 
       // if (shellctx->time >= 1.0) {
       //   printf("trans_im %f  %.8f\n", shellctx->time, trans_im);
@@ -1416,10 +1417,10 @@ int myMatMult_sparsemat(Mat RHS, Vec x, Vec y){
   }
 
   /* Restore */
-  VecRestoreSubVector(x, *shellctx->isu, &u);
-  VecRestoreSubVector(x, *shellctx->isv, &v);
-  VecRestoreSubVector(y, *shellctx->isu, &uout);
-  VecRestoreSubVector(y, *shellctx->isv, &vout);
+  PetscTry(VecRestoreSubVector(x, *shellctx->isu, &u));
+  PetscTry(VecRestoreSubVector(x, *shellctx->isv, &v));
+  PetscTry(VecRestoreSubVector(y, *shellctx->isu, &uout));
+  PetscTry(VecRestoreSubVector(y, *shellctx->isv, &vout));
 
   return 0;
 }
@@ -1431,15 +1432,15 @@ int myMatMultTranspose_sparsemat(Mat RHS, Vec x, Vec y) {
 
   /* Get time from shell context */
   MatShellCtx *shellctx;
-  MatShellGetContext(RHS, (void**) &shellctx);
+  PetscTry(MatShellGetContext(RHS, (void**) &shellctx));
 
   /* Get u, v from x and y  */
   Vec u, v;
   Vec uout, vout;
-  VecGetSubVector(x, *shellctx->isu, &u);
-  VecGetSubVector(x, *shellctx->isv, &v);
-  VecGetSubVector(y, *shellctx->isu, &uout);
-  VecGetSubVector(y, *shellctx->isv, &vout);
+  PetscTry(VecGetSubVector(x, *shellctx->isu, &u));
+  PetscTry(VecGetSubVector(x, *shellctx->isv, &v));
+  PetscTry(VecGetSubVector(y, *shellctx->isu, &uout));
+  PetscTry(VecGetSubVector(y, *shellctx->isv, &vout));
 
   // uout = Re^T*u + Im^T*v
   //      = (Ad + sum_k q_kA_k)^T*u + (Bd + sum_k p_kB_k)^T*v
@@ -1451,12 +1452,12 @@ int myMatMultTranspose_sparsemat(Mat RHS, Vec x, Vec y) {
         //          + J_kl*sin(eta_kl*t) * Ad_kl^T * v  ]   cross terms
 
   // Constant part uout = Ad^Tu + Bd^Tv
-  MatMultTranspose(*shellctx->Bd, v, uout);
-  MatMultTransposeAdd(*shellctx->Ad, u, uout, uout);
+  PetscTry(MatMultTranspose(*shellctx->Bd, v, uout));
+  PetscTry(MatMultTransposeAdd(*shellctx->Ad, u, uout, uout));
   // Constant part vout = -Bd^Tu + Ad^Tv
-  MatMultTranspose(*shellctx->Bd, u, vout);
+  PetscTry(MatMultTranspose(*shellctx->Bd, u, vout));
   VecScale(vout, -1.0);
-  MatMultTransposeAdd(*shellctx->Ad, v, vout, vout);
+  PetscTry(MatMultTransposeAdd(*shellctx->Ad, v, vout, vout));
 
   /* Time-dependent control term */
   for (size_t iosc = 0; iosc < shellctx->nlevels.size(); iosc++) {
@@ -1465,19 +1466,19 @@ int myMatMultTranspose_sparsemat(Mat RHS, Vec x, Vec y) {
     for (size_t icon=0; icon<shellctx->Ac_vec[iosc].size(); icon++){
       q = shellctx->control_Im[iosc][icon];
       // uout += q^k*Ac^Tu
-      MatMultTranspose(shellctx->Ac_vec[iosc][icon], u, *shellctx->aux);
-      VecAXPY(uout, q, *shellctx->aux);
+      PetscTry(MatMultTranspose(shellctx->Ac_vec[iosc][icon], u, *shellctx->aux));
+      PetscTry(VecAXPY(uout, q, *shellctx->aux));
       // vout += q^kAc^Tv
-      MatMultTranspose(shellctx->Ac_vec[iosc][icon], v, *shellctx->aux);
-      VecAXPY(vout, q, *shellctx->aux);
+      PetscTry(MatMultTranspose(shellctx->Ac_vec[iosc][icon], v, *shellctx->aux));
+      PetscTry(VecAXPY(vout, q, *shellctx->aux));
     }
     for (size_t icon=0; icon<shellctx->Bc_vec[iosc].size(); icon++){
       p = shellctx->control_Re[iosc][icon];
       // uout += p^kBc^Tv
-      MatMultTranspose(shellctx->Bc_vec[iosc][icon], v, *shellctx->aux);
+      PetscTry(MatMultTranspose(shellctx->Bc_vec[iosc][icon], v, *shellctx->aux));
       VecAXPY(uout, p, *shellctx->aux);
       // vout -= p^kBc^Tu
-      MatMultTranspose(shellctx->Bc_vec[iosc][icon], u, *shellctx->aux);
+      PetscTry(MatMultTranspose(shellctx->Bc_vec[iosc][icon], u, *shellctx->aux));
       VecAXPY(vout, -1.*p, *shellctx->aux);
     }
   }
@@ -1490,10 +1491,10 @@ int myMatMultTranspose_sparsemat(Mat RHS, Vec x, Vec y) {
     double trans_re = shellctx->eval_transfer_Hdt_re[id_kl]; // Default: trans_re = Jkl*cos(etakl*t) 
     if (fabs(trans_re) > 1e-12) {
       // uout += +Jkl*cos*Bdklv^T
-      MatMultTranspose(shellctx->Bd_vec[id_kl], v, *shellctx->aux);
+      PetscTry(MatMultTranspose(shellctx->Bd_vec[id_kl], v, *shellctx->aux));
       VecAXPY(uout,  trans_re, *shellctx->aux);
       // vout += - Jkl*cos*Bdklu^T
-      MatMultTranspose(shellctx->Bd_vec[id_kl], u, *shellctx->aux);
+      PetscTry(MatMultTranspose(shellctx->Bd_vec[id_kl], u, *shellctx->aux));
       VecAXPY(vout, - trans_re, *shellctx->aux);
     }
   }
@@ -1504,19 +1505,19 @@ int myMatMultTranspose_sparsemat(Mat RHS, Vec x, Vec y) {
 
     if (fabs(trans_im) > 1e-12) {
       // uout += J_kl*sin*Adklu^T
-      MatMultTranspose(shellctx->Ad_vec[id_kl], u, *shellctx->aux);
+      PetscTry(MatMultTranspose(shellctx->Ad_vec[id_kl], u, *shellctx->aux));
       VecAXPY(uout, trans_im, *shellctx->aux);
       //vout += Jkl*sin*Adklv^T
-      MatMultTranspose(shellctx->Ad_vec[id_kl], v, *shellctx->aux);
+      PetscTry(MatMultTranspose(shellctx->Ad_vec[id_kl], v, *shellctx->aux));
       VecAXPY(vout, trans_im, *shellctx->aux);
     }
   }
 
   /* Restore */
-  VecRestoreSubVector(x, *shellctx->isu, &u);
-  VecRestoreSubVector(x, *shellctx->isv, &v);
-  VecRestoreSubVector(y, *shellctx->isu, &uout);
-  VecRestoreSubVector(y, *shellctx->isv, &vout);
+  PetscTry(VecRestoreSubVector(x, *shellctx->isu, &u));
+  PetscTry(VecRestoreSubVector(x, *shellctx->isv, &v));
+  PetscTry(VecRestoreSubVector(y, *shellctx->isu, &uout));
+  PetscTry(VecRestoreSubVector(y, *shellctx->isv, &vout));
 
   return 0;
 }
@@ -1527,13 +1528,13 @@ int myMatMult_matfree(Mat RHS, Vec x, Vec y){
 
   /* Get the shell context */
   MatShellCtx *shellctx;
-  MatShellGetContext(RHS, (void**) &shellctx);
+  PetscTry(MatShellGetContext(RHS, (void**) &shellctx));
 
   /* Get access to x and y */
   const double* xptr;
   double* yptr;
-  VecGetArrayRead(x, &xptr);
-  VecGetArray(y, &yptr);
+  PetscTry(VecGetArrayRead(x, &xptr));
+  PetscTry(VecGetArray(y, &yptr));
 
 
   /* Evaluate coefficients */
@@ -1607,8 +1608,8 @@ int myMatMult_matfree(Mat RHS, Vec x, Vec y){
   }
 
   /* Restore x and y */
-  VecRestoreArrayRead(x, &xptr);
-  VecRestoreArray(y, &yptr);
+  PetscTry(VecRestoreArrayRead(x, &xptr));
+  PetscTry(VecRestoreArray(y, &yptr));
 
   return 0;
 }
@@ -1619,13 +1620,13 @@ int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
 
   /* Get the shell context */
   MatShellCtx *shellctx;
-  MatShellGetContext(RHS, (void**) &shellctx);
+  PetscTry(MatShellGetContext(RHS, (void**) &shellctx));
 
   /* Get access to x and y */
   const double* xptr;
   double* yptr;
-  VecGetArrayRead(x, &xptr);
-  VecGetArray(y, &yptr);
+  PetscTry(VecGetArrayRead(x, &xptr));
+  PetscTry(VecGetArray(y, &yptr));
 
   /* Evaluate coefficients */
   double xi0  = shellctx->oscil_vec[0]->getSelfkerr();
@@ -1699,8 +1700,8 @@ int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
   }
 
   /* Restore x and y */
-  VecRestoreArrayRead(x, &xptr);
-  VecRestoreArray(y, &yptr);
+  PetscTry(VecRestoreArrayRead(x, &xptr));
+  PetscTry(VecRestoreArray(y, &yptr));
 
   return 0;
 }
@@ -1712,13 +1713,13 @@ int myMatMult_matfree(Mat RHS, Vec x, Vec y){
 
   /* Get the shell context */
   MatShellCtx *shellctx;
-  MatShellGetContext(RHS, (void**) &shellctx);
+  PetscTry(MatShellGetContext(RHS, (void**) &shellctx));
 
   /* Get access to x and y */
   const double* xptr;
   double* yptr;
-  VecGetArrayRead(x, &xptr);
-  VecGetArray(y, &yptr);
+  PetscTry(VecGetArrayRead(x, &xptr));
+  PetscTry(VecGetArray(y, &yptr));
 
 
   /* Evaluate coefficients */
@@ -1824,8 +1825,8 @@ int myMatMult_matfree(Mat RHS, Vec x, Vec y){
   }
 
   /* Restore x and y */
-  VecRestoreArrayRead(x, &xptr);
-  VecRestoreArray(y, &yptr);
+  PetscTry(VecRestoreArrayRead(x, &xptr));
+  PetscTry(VecRestoreArray(y, &yptr));
 
   return 0;
 }
@@ -1837,13 +1838,13 @@ int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
 
   /* Get the shell context */
   MatShellCtx *shellctx;
-  MatShellGetContext(RHS, (void**) &shellctx);
+  PetscTry(MatShellGetContext(RHS, (void**) &shellctx));
 
   /* Get access to x and y */
   const double* xptr;
   double* yptr;
-  VecGetArrayRead(x, &xptr);
-  VecGetArray(y, &yptr);
+  PetscTry(VecGetArrayRead(x, &xptr));
+  PetscTry(VecGetArray(y, &yptr));
 
   /* Evaluate coefficients */
   double xi0  = shellctx->oscil_vec[0]->getSelfkerr();
@@ -1948,8 +1949,8 @@ int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
   }
 
   /* Restore x and y */
-  VecRestoreArrayRead(x, &xptr);
-  VecRestoreArray(y, &yptr);
+  PetscTry(VecRestoreArrayRead(x, &xptr));
+  PetscTry(VecRestoreArray(y, &yptr));
 
   return 0;
 }
@@ -1961,13 +1962,13 @@ int myMatMult_matfree(Mat RHS, Vec x, Vec y){
 
    /* Get the shell context */
   MatShellCtx *shellctx;
-  MatShellGetContext(RHS, (void**) &shellctx);
+  PetscTry(MatShellGetContext(RHS, (void**) &shellctx));
 
   /* Get access to x and y */
   const double* xptr;
   double* yptr;
-  VecGetArrayRead(x, &xptr);
-  VecGetArray(y, &yptr); 
+  PetscTry(VecGetArrayRead(x, &xptr));
+  PetscTry(VecGetArray(y, &yptr)); 
   /* Evaluate coefficients */
   double xi0  = shellctx->oscil_vec[0]->getSelfkerr();
   double xi1  = shellctx->oscil_vec[1]->getSelfkerr();   
@@ -2101,8 +2102,8 @@ int myMatMult_matfree(Mat RHS, Vec x, Vec y){
   }
 
   /* Restore x and y */
-  VecRestoreArrayRead(x, &xptr);
-  VecRestoreArray(y, &yptr);
+  PetscTry(VecRestoreArrayRead(x, &xptr));
+  PetscTry(VecRestoreArray(y, &yptr));
 
   return 0;
 }
@@ -2113,13 +2114,13 @@ int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
 
   /* Get the shell context */
   MatShellCtx *shellctx;
-  MatShellGetContext(RHS, (void**) &shellctx);
+  PetscTry(MatShellGetContext(RHS, (void**) &shellctx));
 
   /* Get access to x and y */
   const double* xptr;
   double* yptr;
-  VecGetArrayRead(x, &xptr);
-  VecGetArray(y, &yptr);
+  PetscTry(VecGetArrayRead(x, &xptr));
+  PetscTry(VecGetArray(y, &yptr));
 
 
   /* Evaluate coefficients */
@@ -2256,8 +2257,8 @@ int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
   }
 
   /* Restore x and y */
-  VecRestoreArrayRead(x, &xptr);
-  VecRestoreArray(y, &yptr);
+  PetscTry(VecRestoreArrayRead(x, &xptr));
+  PetscTry(VecRestoreArray(y, &yptr));
 
   return 0;
 }
@@ -2270,13 +2271,13 @@ int myMatMult_matfree(Mat RHS, Vec x, Vec y){
 
   /* Get the shell context */
   MatShellCtx *shellctx;
-  MatShellGetContext(RHS, (void**) &shellctx);
+  PetscTry(MatShellGetContext(RHS, (void**) &shellctx));
 
   /* Get access to x and y */
   const double* xptr;
   double* yptr;
-  VecGetArrayRead(x, &xptr);
-  VecGetArray(y, &yptr); 
+  PetscTry(VecGetArrayRead(x, &xptr));
+  PetscTry(VecGetArray(y, &yptr)); 
 
   /* Evaluate coefficients */
   double xi0  = shellctx->oscil_vec[0]->getSelfkerr();
@@ -2451,8 +2452,8 @@ int myMatMult_matfree(Mat RHS, Vec x, Vec y){
   }
 
   /* Restore x and y */
-  VecRestoreArrayRead(x, &xptr);
-  VecRestoreArray(y, &yptr);
+  PetscTry(VecRestoreArrayRead(x, &xptr));
+  PetscTry(VecRestoreArray(y, &yptr));
 
   return 0;
 }
@@ -2464,13 +2465,13 @@ int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
 
   /* Get the shell context */
   MatShellCtx *shellctx;
-  MatShellGetContext(RHS, (void**) &shellctx);
+  PetscTry(MatShellGetContext(RHS, (void**) &shellctx));
 
   /* Get access to x and y */
   const double* xptr;
   double* yptr;
-  VecGetArrayRead(x, &xptr);
-  VecGetArray(y, &yptr);
+  PetscTry(VecGetArrayRead(x, &xptr));
+  PetscTry(VecGetArray(y, &yptr));
 
   /* Evaluate coefficients */
   double xi0  = shellctx->oscil_vec[0]->getSelfkerr();
@@ -2647,8 +2648,8 @@ int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
   }
 
   /* Restore x and y */
-  VecRestoreArrayRead(x, &xptr);
-  VecRestoreArray(y, &yptr);
+  PetscTry(VecRestoreArrayRead(x, &xptr));
+  PetscTry(VecRestoreArray(y, &yptr));
 
   return 0;
 }
@@ -2660,13 +2661,13 @@ int myMatMult_matfree(Mat RHS, Vec x, Vec y){
 
   /* Get the shell context */
   MatShellCtx *shellctx;
-  MatShellGetContext(RHS, (void**) &shellctx);
+  PetscTry(MatShellGetContext(RHS, (void**) &shellctx));
 
   /* Get access to x and y */
   const double* xptr;
   double* yptr;
-  VecGetArrayRead(x, &xptr);
-  VecGetArray(y, &yptr); 
+  PetscTry(VecGetArrayRead(x, &xptr));
+  PetscTry(VecGetArray(y, &yptr)); 
 
   /* Evaluate coefficients */
   double xi0  = shellctx->oscil_vec[0]->getSelfkerr();
@@ -2889,8 +2890,8 @@ int myMatMult_matfree(Mat RHS, Vec x, Vec y){
   }
 
   /* Restore x and y */
-  VecRestoreArrayRead(x, &xptr);
-  VecRestoreArray(y, &yptr);
+  PetscTry(VecRestoreArrayRead(x, &xptr));
+  PetscTry(VecRestoreArray(y, &yptr));
 
   return 0;
 }
@@ -2902,13 +2903,13 @@ int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
 
   /* Get the shell context */
   MatShellCtx *shellctx;
-  MatShellGetContext(RHS, (void**) &shellctx);
+  PetscTry(MatShellGetContext(RHS, (void**) &shellctx));
 
   /* Get access to x and y */
   const double* xptr;
   double* yptr;
-  VecGetArrayRead(x, &xptr);
-  VecGetArray(y, &yptr);
+  PetscTry(VecGetArrayRead(x, &xptr));
+  PetscTry(VecGetArray(y, &yptr));
 
   /* Evaluate coefficients */
   double xi0  = shellctx->oscil_vec[0]->getSelfkerr();
@@ -3132,8 +3133,8 @@ int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
   }
 
   /* Restore x and y */
-  VecRestoreArrayRead(x, &xptr);
-  VecRestoreArray(y, &yptr);
+  PetscTry(VecRestoreArrayRead(x, &xptr));
+  PetscTry(VecRestoreArray(y, &yptr));
 
   return 0;
 }
@@ -3143,12 +3144,12 @@ int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
 double MasterEq::expectedEnergy(const Vec x){
  
   PetscInt dim;
-  VecGetSize(x, &dim);
+  PetscTry(VecGetSize(x, &dim));
   int dimmat = dim_rho; // N 
 
   /* Get locally owned portion of x */
   PetscInt ilow, iupp, idx_diag_re, idx_diag_im;
-  VecGetOwnershipRange(x, &ilow, &iupp);
+  PetscTry(VecGetOwnershipRange(x, &ilow, &iupp));
   double xdiag;
 
   /* Iterate over diagonal elements to add up expected energy level */
@@ -3161,17 +3162,17 @@ double MasterEq::expectedEnergy(const Vec x){
     if (lindbladtype != LindbladType::NONE){ // Lindblad solver: += i * rho_ii
       idx_diag_re = getIndexReal(getVecID(i,i,dimmat));
       xdiag = 0.0;
-      if (ilow <= idx_diag_re && idx_diag_re < iupp) VecGetValues(x, 1, &idx_diag_re, &xdiag);
+      if (ilow <= idx_diag_re && idx_diag_re < iupp) PetscTry(VecGetValues(x, 1, &idx_diag_re, &xdiag));
       expected += num_diag * xdiag;
     }
     else { // Schoedinger solver: += i * | psi_i |^2
       idx_diag_re = getIndexReal(i);
       xdiag = 0.0;
-      if (ilow <= idx_diag_re && idx_diag_re < iupp) VecGetValues(x, 1, &idx_diag_re, &xdiag);
+      if (ilow <= idx_diag_re && idx_diag_re < iupp) PetscTry(VecGetValues(x, 1, &idx_diag_re, &xdiag));
       expected += num_diag * xdiag * xdiag;
       idx_diag_im = getIndexImag(i);
       xdiag = 0.0;
-      if (ilow <= idx_diag_im && idx_diag_im < iupp) VecGetValues(x, 1, &idx_diag_im, &xdiag);
+      if (ilow <= idx_diag_im && idx_diag_im < iupp) PetscTry(VecGetValues(x, 1, &idx_diag_im, &xdiag));
       expected += num_diag * xdiag * xdiag;
     }
   }
@@ -3196,7 +3197,7 @@ void MasterEq::population(const Vec x, std::vector<double> &pop){
 
   /* Get locally owned portion of x */
   PetscInt ilow, iupp;
-  VecGetOwnershipRange(x, &ilow, &iupp);
+  PetscTry(VecGetOwnershipRange(x, &ilow, &iupp));
 
   /* Iterate over diagonal elements of the density matrix */
   for (int idiag=0; idiag < dim_rho; idiag++) {
@@ -3205,16 +3206,16 @@ void MasterEq::population(const Vec x, std::vector<double> &pop){
     if (lindbladtype != LindbladType::NONE) { // Lindblad solver
       PetscInt diagID = getIndexReal(getVecID(idiag, idiag, dim_rho));  // Position in vectorized rho
       double val = 0.0;
-      if (ilow <= diagID && diagID < iupp)  VecGetValues(x, 1, &diagID, &val);
+      if (ilow <= diagID && diagID < iupp)  PetscTry(VecGetValues(x, 1, &diagID, &val));
       popi = val;
     } else {
       PetscInt diagID_re = getIndexReal(idiag);
       PetscInt diagID_im = getIndexImag(idiag);
       double val = 0.0;
-      if (ilow <= diagID_re && diagID_re < iupp)  VecGetValues(x, 1, &diagID_re, &val);
+      if (ilow <= diagID_re && diagID_re < iupp)  PetscTry(VecGetValues(x, 1, &diagID_re, &val));
       popi = val * val;
       val = 0.0;
-      if (ilow <= diagID_im && diagID_im < iupp)  VecGetValues(x, 1, &diagID_im, &val);
+      if (ilow <= diagID_im && diagID_im < iupp)  PetscTry(VecGetValues(x, 1, &diagID_im, &val));
       popi += val * val;
     }
     mypop[idiag] = popi;
@@ -3229,7 +3230,7 @@ void MasterEq::population(const Vec x, std::vector<double> &pop){
 int myMatMult_matfree_1Osc(Mat RHS, Vec x, Vec y){
   /* Get the shell context */
   MatShellCtx *shellctx;
-  MatShellGetContext(RHS, (void**) &shellctx);
+  PetscTry(MatShellGetContext(RHS, (void**) &shellctx));
   int n0 = shellctx->nlevels[0];
   if      (n0==2)  return myMatMult_matfree<2>(RHS, x, y);
   else if (n0==3)  return myMatMult_matfree<3>(RHS, x, y);
@@ -3258,7 +3259,7 @@ int myMatMult_matfree_1Osc(Mat RHS, Vec x, Vec y){
 int myMatMultTranspose_matfree_1Osc(Mat RHS, Vec x, Vec y){
  /* Get the shell context */
   MatShellCtx *shellctx;
-  MatShellGetContext(RHS, (void**) &shellctx);
+  PetscTry(MatShellGetContext(RHS, (void**) &shellctx));
   int n0 = shellctx->nlevels[0];
   if      (n0==2)  return myMatMultTranspose_matfree<2>(RHS, x, y);
   else if (n0==3)  return myMatMultTranspose_matfree<3>(RHS, x, y);
@@ -3285,7 +3286,7 @@ int myMatMultTranspose_matfree_1Osc(Mat RHS, Vec x, Vec y){
 int myMatMult_matfree_2Osc(Mat RHS, Vec x, Vec y){
   /* Get the shell context */
   MatShellCtx *shellctx;
-  MatShellGetContext(RHS, (void**) &shellctx);
+  PetscTry(MatShellGetContext(RHS, (void**) &shellctx));
   int n0 = shellctx->nlevels[0];
   int n1 = shellctx->nlevels[1];
   if      (n0==3 && n1==20)  return myMatMult_matfree<3,20>(RHS, x, y);
@@ -3315,7 +3316,7 @@ int myMatMult_matfree_2Osc(Mat RHS, Vec x, Vec y){
 int myMatMultTranspose_matfree_2Osc(Mat RHS, Vec x, Vec y){
  /* Get the shell context */
   MatShellCtx *shellctx;
-  MatShellGetContext(RHS, (void**) &shellctx);
+  PetscTry(MatShellGetContext(RHS, (void**) &shellctx));
   int n0 = shellctx->nlevels[0];
   int n1 = shellctx->nlevels[1];
   if      (n0==3 && n1==20)  return myMatMultTranspose_matfree<3,20>(RHS, x, y);
@@ -3343,7 +3344,7 @@ int myMatMultTranspose_matfree_2Osc(Mat RHS, Vec x, Vec y){
 int myMatMult_matfree_3Osc(Mat RHS, Vec x, Vec y){
   /* Get the shell context */
   MatShellCtx *shellctx;
-  MatShellGetContext(RHS, (void**) &shellctx);
+  PetscTry(MatShellGetContext(RHS, (void**) &shellctx));
   int n0 = shellctx->nlevels[0];
   int n1 = shellctx->nlevels[1];
   int n2 = shellctx->nlevels[2];
@@ -3369,7 +3370,7 @@ int myMatMult_matfree_3Osc(Mat RHS, Vec x, Vec y){
 int myMatMultTranspose_matfree_3Osc(Mat RHS, Vec x, Vec y){
  /* Get the shell context */
   MatShellCtx *shellctx;
-  MatShellGetContext(RHS, (void**) &shellctx);
+  PetscTry(MatShellGetContext(RHS, (void**) &shellctx));
   int n0 = shellctx->nlevels[0];
   int n1 = shellctx->nlevels[1];
   int n2 = shellctx->nlevels[2];
@@ -3393,7 +3394,7 @@ int myMatMultTranspose_matfree_3Osc(Mat RHS, Vec x, Vec y){
 int myMatMult_matfree_4Osc(Mat RHS, Vec x, Vec y){
   /* Get the shell context */
   MatShellCtx *shellctx;
-  MatShellGetContext(RHS, (void**) &shellctx);
+  PetscTry(MatShellGetContext(RHS, (void**) &shellctx));
   int n0 = shellctx->nlevels[0];
   int n1 = shellctx->nlevels[1];
   int n2 = shellctx->nlevels[2];
@@ -3419,7 +3420,7 @@ int myMatMult_matfree_4Osc(Mat RHS, Vec x, Vec y){
 int myMatMultTranspose_matfree_4Osc(Mat RHS, Vec x, Vec y){
  /* Get the shell context */
   MatShellCtx *shellctx;
-  MatShellGetContext(RHS, (void**) &shellctx);
+  PetscTry(MatShellGetContext(RHS, (void**) &shellctx));
 
   int n0 = shellctx->nlevels[0];
   int n1 = shellctx->nlevels[1];
@@ -3444,7 +3445,7 @@ int myMatMultTranspose_matfree_4Osc(Mat RHS, Vec x, Vec y){
 int myMatMult_matfree_5Osc(Mat RHS, Vec x, Vec y){
   /* Get the shell context */
   MatShellCtx *shellctx;
-  MatShellGetContext(RHS, (void**) &shellctx);
+  PetscTry(MatShellGetContext(RHS, (void**) &shellctx));
   int n0 = shellctx->nlevels[0];
   int n1 = shellctx->nlevels[1];
   int n2 = shellctx->nlevels[2];
@@ -3470,7 +3471,7 @@ int myMatMult_matfree_5Osc(Mat RHS, Vec x, Vec y){
 int myMatMultTranspose_matfree_5Osc(Mat RHS, Vec x, Vec y){
  /* Get the shell context */
   MatShellCtx *shellctx;
-  MatShellGetContext(RHS, (void**) &shellctx);
+  PetscTry(MatShellGetContext(RHS, (void**) &shellctx));
 
   int n0 = shellctx->nlevels[0];
   int n1 = shellctx->nlevels[1];

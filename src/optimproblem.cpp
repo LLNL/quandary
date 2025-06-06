@@ -1,4 +1,5 @@
 #include "optimproblem.hpp"
+#include "petsctry.hpp"
 
 OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm comm_init_, MPI_Comm comm_optim_, int ninit_, Output* output_, bool quietmode_){
 
@@ -48,10 +49,10 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   VecSetSizes(rho_t0,PETSC_DECIDE,2*timestepper->mastereq->getDim());
   VecSetFromOptions(rho_t0);
   VecZeroEntries(rho_t0);
-  VecAssemblyBegin(rho_t0); VecAssemblyEnd(rho_t0);
-  VecDuplicate(rho_t0, &rho_t0_bar);
-  VecZeroEntries(rho_t0_bar);
-  VecAssemblyBegin(rho_t0_bar); VecAssemblyEnd(rho_t0_bar);
+  PetscTry(VecAssemblyBegin(rho_t0)); PetscTry(VecAssemblyEnd(rho_t0));
+  PetscTry(VecDuplicate(rho_t0, &rho_t0_bar));
+  PetscTry(VecZeroEntries(rho_t0_bar));
+  PetscTry(VecAssemblyBegin(rho_t0_bar)); PetscTry(VecAssemblyEnd(rho_t0_bar));
 
   /* Initialize the optimization target, including setting of initial state rho_t0 if read from file or pure state or ensemble */
   std::vector<std::string> target_str;
@@ -148,8 +149,8 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
       col = col + timestepper->mastereq->getOscillator(iosc)->getNSegParams(iseg);
     }
   }
-  VecAssemblyBegin(xlower); VecAssemblyEnd(xlower);
-  VecAssemblyBegin(xupper); VecAssemblyEnd(xupper);
+  PetscTry(VecAssemblyBegin(xlower)); PetscTry(VecAssemblyEnd(xlower));
+  PetscTry(VecAssemblyBegin(xupper)); PetscTry(VecAssemblyEnd(xupper));
 
   /* Store the initial guess if read from file */
   std::vector<std::string> controlinit_str;
@@ -297,10 +298,10 @@ double OptimProblem::evalF(const Vec x) {
   /* Evaluate Tikhonov regularization term: gamma/2 * ||x-x0||^2*/
   double xnorm;
   if (!gamma_tik_interpolate){  // ||x||^2
-    VecNorm(x, NORM_2, &xnorm);
+    PetscTry(VecNorm(x, NORM_2, &xnorm));
   } else {
-    VecCopy(x, xtmp);
-    VecAXPY(xtmp, -1.0, xinit);    // xtmp =  x - x_0
+    PetscTry(VecCopy(x, xtmp));
+    PetscTry(VecAXPY(xtmp, -1.0, xinit));    // xtmp =  x - x_0
     VecNorm(xtmp, NORM_2, &xnorm);
   }
   obj_regul = gamma_tik / 2. * pow(xnorm,2.0);
@@ -336,16 +337,16 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
   mastereq->setControlAmplitudes(x); 
 
   /* Reset Gradient */
-  VecZeroEntries(G);
+  PetscTry(VecZeroEntries(G));
 
   /* Derivative of regulatization terms (ADD ON ONE PROC ONLY!) */
   // if (mpirank_init == 0 && mpirank_optim == 0) { // TODO: Which one?? 
   if (mpirank_init == 0 ) {
 
     // Derivative of Tikhonov 0.5*gamma * ||x||^2 
-    VecAXPY(G, gamma_tik, x);   // + gamma_tik * x
+    PetscTry(VecAXPY(G, gamma_tik, x));   // + gamma_tik * x
     if (gamma_tik_interpolate){
-      VecAXPY(G, -1.0*gamma_tik, xinit); // -gamma_tik * xinit
+      PetscTry(VecAXPY(G, -1.0*gamma_tik, xinit)); // -gamma_tik * xinit
     }
 
     // Derivative of penalization of control variation 
@@ -460,7 +461,7 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
   /* Evaluate Tikhonov regularization term += gamma/2 * ||x||^2*/
   double xnorm;
   if (!gamma_tik_interpolate){  // ||x||^2
-    VecNorm(x, NORM_2, &xnorm);
+    PetscTry(VecNorm(x, NORM_2, &xnorm));
   } else {
     VecCopy(x, xtmp);
     VecAXPY(xtmp, -1.0, xinit);    // xtmp =  x_k - x_0
@@ -507,15 +508,15 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
 
   /* Sum up the gradient from all initial condition processors */
   PetscScalar* grad; 
-  VecGetArray(G, &grad);
+  PetscTry(VecGetArray(G, &grad));
   for (int i=0; i<ndesign; i++) {
     mygrad[i] = grad[i];
   }
   MPI_Allreduce(mygrad, grad, ndesign, MPI_DOUBLE, MPI_SUM, comm_init);
-  VecRestoreArray(G, &grad);
+  PetscTry(VecRestoreArray(G, &grad));
 
   /* Compute and store gradient norm */
-  VecNorm(G, NORM_2, &(gnorm));
+  PetscTry(VecNorm(G, NORM_2, &(gnorm)));
 
   /* Output */
   // if (mpirank_world == 0 && !quietmode) {
@@ -540,18 +541,18 @@ void OptimProblem::getStartingPoint(Vec xinit){
 
   } else { // copy from initialization in oscillators contructor
     PetscScalar* xptr;
-    VecGetArray(xinit, &xptr);
+    PetscTry(VecGetArray(xinit, &xptr));
     int shift = 0;
     for (size_t ioscil = 0; ioscil<mastereq->getNOscillators(); ioscil++){
       mastereq->getOscillator(ioscil)->getParams(xptr + shift);
       shift += mastereq->getOscillator(ioscil)->getNParams();
     }
-    VecRestoreArray(xinit, &xptr);
+    PetscTry(VecRestoreArray(xinit, &xptr));
   }
 
   /* Assemble initial guess */
-  VecAssemblyBegin(xinit);
-  VecAssemblyEnd(xinit);
+  PetscTry(VecAssemblyBegin(xinit));
+  PetscTry(VecAssemblyEnd(xinit));
 
   /* Pass to oscillator */
   timestepper->mastereq->setControlAmplitudes(xinit);

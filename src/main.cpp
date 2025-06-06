@@ -10,6 +10,7 @@
 #include "optimproblem.hpp"
 #include "output.hpp"
 #include "petsc.h"
+#include "petsctry.hpp"
 #include <random>
 #ifdef WITH_SLEPC
 #include <slepceps.h>
@@ -195,7 +196,7 @@ int main(int argc,char **argv)
 #else
   ierr = PetscInitialize(&argc,&argv,(char*)0,NULL);if (ierr) return ierr;
 #endif
-  PetscViewerPushFormat(PETSC_VIEWER_STDOUT_WORLD, 	PETSC_VIEWER_ASCII_MATLAB );
+  PetscTry(PetscViewerPushFormat(PETSC_VIEWER_STDOUT_WORLD, 	PETSC_VIEWER_ASCII_MATLAB ));
 
 
 
@@ -382,12 +383,12 @@ int main(int argc,char **argv)
 
   /* Set upt solution and gradient vector */
   Vec xinit;
-  VecCreateSeq(PETSC_COMM_SELF, optimctx->getNdesign(), &xinit);
-  VecSetFromOptions(xinit);
+  PetscTry(VecCreateSeq(PETSC_COMM_SELF, optimctx->getNdesign(), &xinit));
+  PetscTry(VecSetFromOptions(xinit));
   Vec grad;
-  VecCreateSeq(PETSC_COMM_SELF, optimctx->getNdesign(), &grad);
-  VecSetFromOptions(grad);
-  VecZeroEntries(grad);
+  PetscTry(VecCreateSeq(PETSC_COMM_SELF, optimctx->getNdesign(), &grad));
+  PetscTry(VecSetFromOptions(grad));
+  PetscTry(VecZeroEntries(grad));
   Vec opt;
 
   /* Some output */
@@ -411,7 +412,7 @@ int main(int argc,char **argv)
   /* --- Solve primal --- */
   if (runtype == RunType::SIMULATION) {
     optimctx->getStartingPoint(xinit);
-    VecCopy(xinit, optimctx->xinit); // Store the initial guess
+    PetscTry(VecCopy(xinit, optimctx->xinit)); // Store the initial guess
     if (mpirank_world == 0 && !quietmode) printf("\nStarting primal solver... \n");
     optimctx->timestepper->writeDataFiles = true;
     objective = optimctx->evalF(xinit);
@@ -422,11 +423,11 @@ int main(int argc,char **argv)
   /* --- Solve adjoint --- */
   if (runtype == RunType::GRADIENT) {
     optimctx->getStartingPoint(xinit);
-    VecCopy(xinit, optimctx->xinit); // Store the initial guess
+    PetscTry(VecCopy(xinit, optimctx->xinit)); // Store the initial guess
     if (mpirank_world == 0 && !quietmode) printf("\nStarting adjoint solver...\n");
     optimctx->timestepper->writeDataFiles = true;
     optimctx->evalGradF(xinit, grad);
-    VecNorm(grad, NORM_2, &gnorm);
+    PetscTry(VecNorm(grad, NORM_2, &gnorm));
     // VecView(grad, PETSC_VIEWER_STDOUT_WORLD);
     if (mpirank_world == 0 && !quietmode) {
       printf("\nGradient norm: %1.14e\n", gnorm);
@@ -438,7 +439,7 @@ int main(int argc,char **argv)
   if (runtype == RunType::OPTIMIZATION) {
     /* Set initial starting point */
     optimctx->getStartingPoint(xinit);
-    VecCopy(xinit, optimctx->xinit); // Store the initial guess
+    PetscTry(VecCopy(xinit, optimctx->xinit)); // Store the initial guess
     if (mpirank_world == 0 && !quietmode) printf("\nStarting Optimization solver ... \n");
     optimctx->timestepper->writeDataFiles = false;
     optimctx->solve(xinit);
@@ -519,7 +520,7 @@ int main(int argc,char **argv)
   /* --- Solve adjoint --- */
   if (mpirank_world == 0) printf("\nRunning optimizer eval_grad_f...\n");
   optimctx->evalGradF(xinit, grad);
-  VecView(grad, PETSC_VIEWER_STDOUT_WORLD);
+  PetscTry(VecView(grad, PETSC_VIEWER_STDOUT_WORLD));
   
 
   /* --- Finite Differences --- */
@@ -529,24 +530,24 @@ int main(int argc,char **argv)
   // {int i=0;
 
     /* Evaluate f(p+eps)*/
-    VecSetValue(xinit, i, EPS, ADD_VALUES);
+    PetscTry(VecSetValue(xinit, i, EPS, ADD_VALUES));
     obj_pert1 = optimctx->evalF(xinit);
 
     /* Evaluate f(p-eps)*/
-    VecSetValue(xinit, i, -2*EPS, ADD_VALUES);
+    PetscTry(VecSetValue(xinit, i, -2*EPS, ADD_VALUES));
     obj_pert2 = optimctx->evalF(xinit);
 
     /* Eval FD and error */
     double fd = (obj_pert1 - obj_pert2) / (2.*EPS);
     double err = 0.0;
     double gradi; 
-    VecGetValues(grad, 1, &i, &gradi);
+    PetscTry(VecGetValues(grad, 1, &i, &gradi));
     if (fd != 0.0) err = (gradi - fd) / fd;
     if (mpirank_world == 0) printf(" %d: obj %1.14e, obj_pert1 %1.14e, obj_pert2 %1.14e, fd %1.14e, grad %1.14e, err %1.14e\n", i, obj_org, obj_pert1, obj_pert2, fd, gradi, err);
     if (abs(err) > max_err) max_err = err;
 
     /* Restore parameter */
-    VecSetValue(xinit, i, EPS, ADD_VALUES);
+    PetscTry(VecSetValue(xinit, i, EPS, ADD_VALUES));
   }
 
   printf("\nMax. Finite Difference error: %1.14e\n\n", max_err);
@@ -568,9 +569,9 @@ int main(int argc,char **argv)
   for (PetscInt i=0; i<optimctx->getNdesign(); i++){
     // get x_i and bounds for x_i
     double xi, blower, bupper;
-    VecGetValues(xinit, 1, &i, &xi);
-    VecGetValues(optimctx->xlower, 1, &i, &blower);
-    VecGetValues(optimctx->xupper, 1, &i, &bupper);
+    PetscTry(VecGetValues(xinit, 1, &i, &xi));
+    PetscTry(VecGetValues(optimctx->xlower, 1, &i, &blower));
+    PetscTry(VecGetValues(optimctx->xupper, 1, &i, &bupper));
     // compare 
     if (fabs(xi - blower) < bound_tol || 
         fabs(xi - bupper) < bound_tol  ) {
@@ -584,12 +585,12 @@ int main(int argc,char **argv)
   double grad_pert1, grad_pert2;
   Mat Hess;
   int nhess = Ihess.size();
-  MatCreateSeqDense(PETSC_COMM_SELF, nhess, nhess, NULL, &Hess);
-  MatSetUp(Hess);
+  PetscTry(MatCreateSeqDense(PETSC_COMM_SELF, nhess, nhess, NULL, &Hess));
+  PetscTry(MatSetUp(Hess));
 
   Vec grad1, grad2;
-  VecDuplicate(grad, &grad1);
-  VecDuplicate(grad, &grad2);
+  PetscTry(VecDuplicate(grad, &grad1));
+  PetscTry(VecDuplicate(grad, &grad2));
 
 
   /* Iterate over all params that do not hit a bound */
@@ -600,72 +601,72 @@ int main(int argc,char **argv)
     /* Evaluate \nabla_x J(x + eps * e_j) */
     VecSetValue(xinit, j, EPS, ADD_VALUES); 
     optimctx->evalGradF(xinit, grad);        
-    VecCopy(grad, grad1);
+    PetscTry(VecCopy(grad, grad1));
 
     /* Evaluate \nabla_x J(x - eps * e_j) */
-    VecSetValue(xinit, j, -2.*EPS, ADD_VALUES); 
+    PetscTry(VecSetValue(xinit, j, -2.*EPS, ADD_VALUES)); 
     optimctx->evalGradF(xinit, grad);
-    VecCopy(grad, grad2);
+    PetscTry(VecCopy(grad, grad2));
 
     for (PetscInt l=0; l<Ihess.size(); l++){
       PetscInt i = Ihess[l];
 
       /* Get the derivative wrt parameter i */
-      VecGetValues(grad1, 1, &i, &grad_pert1);   // \nabla_x_i J(x+eps*e_j)
-      VecGetValues(grad2, 1, &i, &grad_pert2);    // \nabla_x_i J(x-eps*e_j)
+      PetscTry(VecGetValues(grad1, 1, &i, &grad_pert1));   // \nabla_x_i J(x+eps*e_j)
+      PetscTry(VecGetValues(grad2, 1, &i, &grad_pert2));    // \nabla_x_i J(x-eps*e_j)
 
       /* Finite difference for element Hess(l,k) */
       double fd = (grad_pert1 - grad_pert2) / (2.*EPS);
-      MatSetValue(Hess, l, k, fd, INSERT_VALUES);
+      PetscTry(MatSetValue(Hess, l, k, fd, INSERT_VALUES));
     }
 
     /* Restore parameters xinit */
     VecSetValue(xinit, j, EPS, ADD_VALUES);
   }
   /* Assemble the Hessian */
-  MatAssemblyBegin(Hess, MAT_FINAL_ASSEMBLY);
-  MatAssemblyEnd(Hess, MAT_FINAL_ASSEMBLY);
+  PetscTry(MatAssemblyBegin(Hess, MAT_FINAL_ASSEMBLY));
+  PetscTry(MatAssemblyEnd(Hess, MAT_FINAL_ASSEMBLY));
   
   /* Clean up */
-  VecDestroy(&grad1);
-  VecDestroy(&grad2);
+  PetscTry(VecDestroy(&grad1));
+  PetscTry(VecDestroy(&grad2));
 
 
   /* Epsilon test: compute ||1/2(H-H^T)||_F  */
-  MatScale(Hess, 0.5);
+  PetscTry(MatScale(Hess, 0.5));
   Mat HessT, Htest;
-  MatDuplicate(Hess, MAT_COPY_VALUES, &Htest);
-  MatTranspose(Hess, MAT_INITIAL_MATRIX, &HessT);
-  MatAXPY(Htest, -1.0, HessT, SAME_NONZERO_PATTERN);
+  PetscTry(MatDuplicate(Hess, MAT_COPY_VALUES, &Htest));
+  PetscTry(MatTranspose(Hess, MAT_INITIAL_MATRIX, &HessT));
+  PetscTry(MatAXPY(Htest, -1.0, HessT, SAME_NONZERO_PATTERN));
   double fnorm;
-  MatNorm(Htest, NORM_FROBENIUS, &fnorm);
+  PetscTry(MatNorm(Htest, NORM_FROBENIUS, &fnorm));
   printf("EPS-test: ||1/2(H-H^T)||= %1.14e\n", fnorm);
 
   /* symmetrize H_symm = 1/2(H+H^T) */
-  MatAXPY(Hess, 1.0, HessT, SAME_NONZERO_PATTERN);
+  PetscTry(MatAXPY(Hess, 1.0, HessT, SAME_NONZERO_PATTERN));
 
   /* --- Print Hessian to file */
   
   snprintf(filename, 254, "%s/hessian.dat", output->datadir.c_str());
   printf("File written: %s.\n", filename);
   PetscViewer viewer;
-  PetscViewerCreate(MPI_COMM_WORLD, &viewer);
-  PetscViewerSetType(viewer, PETSCVIEWERASCII);
-  PetscViewerFileSetMode(viewer, FILE_MODE_WRITE);
-  PetscViewerFileSetName(viewer, filename);
+  PetscTry(PetscViewerCreate(MPI_COMM_WORLD, &viewer));
+  PetscTry(PetscViewerSetType(viewer, PETSCVIEWERASCII));
+  PetscTry(PetscViewerFileSetMode(viewer, FILE_MODE_WRITE));
+  PetscTry(PetscViewerFileSetName(viewer, filename));
   // PetscViewerPushFormat(viewer, PETSC_VIEWER_ASCII_DENSE);
-  MatView(Hess, viewer);
-  PetscViewerPopFormat(viewer);
-  PetscViewerDestroy(&viewer);
+  PetscTry(MatView(Hess, viewer));
+  PetscTry(PetscViewerPopFormat(viewer));
+  PetscTry(PetscViewerDestroy(&viewer));
 
   // write again in binary
   snprintf(filename, 254, "%s/hessian_bin.dat", output->datadir.c_str());
   printf("File written: %s.\n", filename);
-  PetscViewerBinaryOpen(MPI_COMM_WORLD, filename, FILE_MODE_WRITE, &viewer);
-  MatView(Hess, viewer);
-  PetscViewerDestroy(&viewer);
+  PetscTry(PetscViewerBinaryOpen(MPI_COMM_WORLD, filename, FILE_MODE_WRITE, &viewer));
+  PetscTry(MatView(Hess, viewer));
+  PetscTry(PetscViewerDestroy(&viewer));
 
-  MatDestroy(&Hess);
+  PetscTry(MatDestroy(&Hess));
 
 #endif
 
@@ -677,20 +678,20 @@ int main(int argc,char **argv)
 
   /* Load Hessian from file */
   Mat Hess;
-  MatCreate(PETSC_COMM_SELF, &Hess);
+  PetscTry(MatCreate(PETSC_COMM_SELF, &Hess));
   snprintf(filename, 254, "%s/hessian_bin.dat", output->datadir.c_str());
   printf("Reading file: %s\n", filename);
   PetscViewer viewer;
-  PetscViewerCreate(MPI_COMM_WORLD, &viewer);
-  PetscViewerSetType(viewer, PETSCVIEWERBINARY);
-  PetscViewerFileSetMode(viewer, FILE_MODE_READ);
-  PetscViewerFileSetName(viewer, filename);
-  PetscViewerPushFormat(viewer, PETSC_VIEWER_ASCII_DENSE);
-  MatLoad(Hess, viewer);
-  PetscViewerPopFormat(viewer);
-  PetscViewerDestroy(&viewer);
+  PetscTry(PetscViewerCreate(MPI_COMM_WORLD, &viewer));
+  PetscTry(PetscViewerSetType(viewer, PETSCVIEWERBINARY));
+  PetscTry(PetscViewerFileSetMode(viewer, FILE_MODE_READ));
+  PetscTry(PetscViewerFileSetName(viewer, filename));
+  PetscTry(PetscViewerPushFormat(viewer, PETSC_VIEWER_ASCII_DENSE));
+  PetscTry(MatLoad(Hess, viewer));
+  PetscTry(PetscViewerPopFormat(viewer));
+  PetscTry(PetscViewerDestroy(&viewer));
   int nrows, ncols;
-  MatGetSize(Hess, &nrows, &ncols);
+  PetscTry(MatGetSize(Hess, &nrows, &ncols));
 
 
   /* Set the percentage of eigenpairs that should be computed */
@@ -719,7 +720,7 @@ int main(int argc,char **argv)
   for (PetscInt j=0; j<nrows; j++){  // rows
     for (PetscInt i=0; i<eigvals.size(); i++){
       double val;
-      VecGetValues(eigvecs[i], 1, &j, &val); // j-th row of eigenvalue i
+      PetscTry(VecGetValues(eigvecs[i], 1, &j, &val)); // j-th row of eigenvalue i
       fprintf(file, "% 1.8e  ", val);  
     }
     fprintf(file, "\n");
@@ -744,15 +745,15 @@ int main(int argc,char **argv)
   delete optimctx;
   delete output;
 
-  VecDestroy(&xinit);
-  VecDestroy(&grad);
+  PetscTry(VecDestroy(&xinit));
+  PetscTry(VecDestroy(&grad));
 
 
   /* Finallize Petsc */
 #ifdef WITH_SLEPC
   ierr = SlepcFinalize();
 #else
-  PetscOptionsSetValue(NULL, "-options_left", "no"); // Remove warning about unused options.
+  PetscTry(PetscOptionsSetValue(NULL, "-options_left", "no")); // Remove warning about unused options.
   ierr = PetscFinalize();
 #endif
 
