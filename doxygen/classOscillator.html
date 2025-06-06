@@ -471,9 +471,9 @@ Protected Attributes</h2></td></tr>
 <p>Computes the real and imaginary parts of the control function: Re = p(t), Im = q(t)</p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
-    <tr><td class="paramname">t</td><td>Time at which to evaluate </td></tr>
-    <tr><td class="paramname">Re_ptr</td><td>Pointer to store real part p(t) </td></tr>
-    <tr><td class="paramname">Im_ptr</td><td>Pointer to store imaginary part q(t) </td></tr>
+    <tr><td class="paramdir">[in]</td><td class="paramname">t</td><td>Time at which to evaluate </td></tr>
+    <tr><td class="paramdir">[out]</td><td class="paramname">Re_ptr</td><td>Pointer to store real part p(t) </td></tr>
+    <tr><td class="paramdir">[out]</td><td class="paramname">Im_ptr</td><td>Pointer to store imaginary part q(t) </td></tr>
   </table>
   </dd>
 </dl>
@@ -516,9 +516,9 @@ Protected Attributes</h2></td></tr>
 <p>Computes derivatives of control functions with respect to parameters. </p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
-    <tr><td class="paramname">t</td><td>Time at which to evaluate derivatives </td></tr>
-    <tr><td class="paramname">dRedp</td><td>Array to store derivatives of real part </td></tr>
-    <tr><td class="paramname">dImdp</td><td>Array to store derivatives of imaginary part </td></tr>
+    <tr><td class="paramdir">[in]</td><td class="paramname">t</td><td>Time at which to evaluate derivatives </td></tr>
+    <tr><td class="paramdir">[out]</td><td class="paramname">dRedp</td><td>Array to store derivatives of real part </td></tr>
+    <tr><td class="paramdir">[out]</td><td class="paramname">dImdp</td><td>Array to store derivatives of imaginary part </td></tr>
   </table>
   </dd>
 </dl>

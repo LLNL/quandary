@@ -201,13 +201,13 @@ Functions</h2></td></tr>
 <tr class="memdesc:afb1f24e57ec89d405c3c8ff98b0493f8"><td class="mdescLeft">&#160;</td><td class="mdescRight">Tests if density matrix index corresponds to a guard level.  <br /></td></tr>
 <tr class="separator:afb1f24e57ec89d405c3c8ff98b0493f8"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a4c711ee9f82fa1fa0a0608bc523e1d1a" id="r_a4c711ee9f82fa1fa0a0608bc523e1d1a"><td class="memItemLeft" align="right" valign="top">PetscErrorCode&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="util_8hpp.html#a4c711ee9f82fa1fa0a0608bc523e1d1a">Ikron</a> (const Mat A, const int dimI, const double alpha, Mat *Out, InsertMode insert_mode)</td></tr>
-<tr class="memdesc:a4c711ee9f82fa1fa0a0608bc523e1d1a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Computes Kronecker product Id \kron A.  <br /></td></tr>
+<tr class="memdesc:a4c711ee9f82fa1fa0a0608bc523e1d1a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Computes Kronecker product \(Id \otimes A\).  <br /></td></tr>
 <tr class="separator:a4c711ee9f82fa1fa0a0608bc523e1d1a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aab53d3e2f3322f3ee5a5cdaef099c8d0" id="r_aab53d3e2f3322f3ee5a5cdaef099c8d0"><td class="memItemLeft" align="right" valign="top">PetscErrorCode&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="util_8hpp.html#aab53d3e2f3322f3ee5a5cdaef099c8d0">kronI</a> (const Mat A, const int dimI, const double alpha, Mat *Out, InsertMode insert_mode)</td></tr>
-<tr class="memdesc:aab53d3e2f3322f3ee5a5cdaef099c8d0"><td class="mdescLeft">&#160;</td><td class="mdescRight">Computes Kronecker product A \kron Id.  <br /></td></tr>
+<tr class="memdesc:aab53d3e2f3322f3ee5a5cdaef099c8d0"><td class="mdescLeft">&#160;</td><td class="mdescRight">Computes Kronecker product \(A \otimes Id\).  <br /></td></tr>
 <tr class="separator:aab53d3e2f3322f3ee5a5cdaef099c8d0"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a4f16dad6331ff274d82cff7dc28cc222" id="r_a4f16dad6331ff274d82cff7dc28cc222"><td class="memItemLeft" align="right" valign="top">PetscErrorCode&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="util_8hpp.html#a4f16dad6331ff274d82cff7dc28cc222">AkronB</a> (const Mat A, const Mat B, const double alpha, Mat *Out, InsertMode insert_mode)</td></tr>
-<tr class="memdesc:a4f16dad6331ff274d82cff7dc28cc222"><td class="mdescLeft">&#160;</td><td class="mdescRight">Computes general Kronecker product A \kron B.  <br /></td></tr>
+<tr class="memdesc:a4f16dad6331ff274d82cff7dc28cc222"><td class="mdescLeft">&#160;</td><td class="mdescRight">Computes general Kronecker product \(A \otimes B\).  <br /></td></tr>
 <tr class="separator:a4f16dad6331ff274d82cff7dc28cc222"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ac12f926582575a819bb448c70c8059ed" id="r_ac12f926582575a819bb448c70c8059ed"><td class="memItemLeft" align="right" valign="top">PetscErrorCode&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="util_8hpp.html#ac12f926582575a819bb448c70c8059ed">MatIsAntiSymmetric</a> (Mat A, PetscReal tol, PetscBool *flag)</td></tr>
 <tr class="memdesc:ac12f926582575a819bb448c70c8059ed"><td class="mdescLeft">&#160;</td><td class="mdescRight">Tests if matrix A is anti-symmetric (A^T = -A).  <br /></td></tr>
@@ -280,14 +280,14 @@ Functions</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p>Computes general Kronecker product A \kron B. </p>
+<p>Computes general Kronecker product \(A \otimes B\). </p>
 <p>Computes the Kronecker product of two arbitrary matrices A and B. Works in PETSc serial mode only. <a class="el" href="classOutput.html" title="Output management for quantum control simulations and optimization.">Output</a> matrix must be pre-allocated and should be assembled afterwards if necessary.</p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">A</td><td>First input matrix </td></tr>
     <tr><td class="paramname">B</td><td>Second input matrix </td></tr>
     <tr><td class="paramname">alpha</td><td>Scaling factor </td></tr>
-    <tr><td class="paramname">Out</td><td><a class="el" href="classOutput.html" title="Output management for quantum control simulations and optimization.">Output</a> matrix (A \kron B) </td></tr>
+    <tr><td class="paramname">Out</td><td><a class="el" href="classOutput.html" title="Output management for quantum control simulations and optimization.">Output</a> matrix \((A \otimes B)\) </td></tr>
     <tr><td class="paramname">insert_mode</td><td>INSERT_VALUES or ADD_VALUES </td></tr>
   </table>
   </dd>
@@ -637,15 +637,15 @@ template&lt;typename Tval &gt; </div>
       </table>
 </div><div class="memdoc">
 
-<p>Computes Kronecker product Id \kron A. </p>
+<p>Computes Kronecker product \(Id \otimes A\). </p>
 <p>Computes the Kronecker product of an identity matrix with matrix A. <a class="el" href="classOutput.html" title="Output management for quantum control simulations and optimization.">Output</a> matrix must be pre-allocated with sufficient non-zeros A * dimI.</p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
-    <tr><td class="paramname">A</td><td>Input matrix </td></tr>
-    <tr><td class="paramname">dimI</td><td>Dimension of identity matrix </td></tr>
-    <tr><td class="paramname">alpha</td><td>Scaling factor </td></tr>
-    <tr><td class="paramname">Out</td><td><a class="el" href="classOutput.html" title="Output management for quantum control simulations and optimization.">Output</a> matrix (Id \kron A) </td></tr>
-    <tr><td class="paramname">insert_mode</td><td>INSERT_VALUES or ADD_VALUES </td></tr>
+    <tr><td class="paramdir">[in]</td><td class="paramname">A</td><td>Input matrix </td></tr>
+    <tr><td class="paramdir">[in]</td><td class="paramname">dimI</td><td>Dimension of identity matrix </td></tr>
+    <tr><td class="paramdir">[in]</td><td class="paramname">alpha</td><td>Scaling factor </td></tr>
+    <tr><td class="paramdir">[out]</td><td class="paramname">Out</td><td><a class="el" href="classOutput.html" title="Output management for quantum control simulations and optimization.">Output</a> matrix \((Id \otimes A)\) </td></tr>
+    <tr><td class="paramdir">[in]</td><td class="paramname">insert_mode</td><td>INSERT_VALUES or ADD_VALUES </td></tr>
   </table>
   </dd>
 </dl>
@@ -827,15 +827,15 @@ template&lt;typename Tval &gt; </div>
       </table>
 </div><div class="memdoc">
 
-<p>Computes Kronecker product A \kron Id. </p>
+<p>Computes Kronecker product \(A \otimes Id\). </p>
 <p>Computes the Kronecker product of matrix A with an identity matrix. <a class="el" href="classOutput.html" title="Output management for quantum control simulations and optimization.">Output</a> matrix must be pre-allocated with sufficient non-zeros A * dimI.</p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
-    <tr><td class="paramname">A</td><td>Input matrix </td></tr>
-    <tr><td class="paramname">dimI</td><td>Dimension of identity matrix </td></tr>
-    <tr><td class="paramname">alpha</td><td>Scaling factor </td></tr>
-    <tr><td class="paramname">Out</td><td><a class="el" href="classOutput.html" title="Output management for quantum control simulations and optimization.">Output</a> matrix (A \kron Id) </td></tr>
-    <tr><td class="paramname">insert_mode</td><td>INSERT_VALUES or ADD_VALUES </td></tr>
+    <tr><td class="paramdir">[in]</td><td class="paramname">A</td><td>Input matrix </td></tr>
+    <tr><td class="paramdir">[in]</td><td class="paramname">dimI</td><td>Dimension of identity matrix </td></tr>
+    <tr><td class="paramdir">[in]</td><td class="paramname">alpha</td><td>Scaling factor </td></tr>
+    <tr><td class="paramdir">[out]</td><td class="paramname">Out</td><td><a class="el" href="classOutput.html" title="Output management for quantum control simulations and optimization.">Output</a> matrix \((A \otimes Id)\) </td></tr>
+    <tr><td class="paramdir">[in]</td><td class="paramname">insert_mode</td><td>INSERT_VALUES or ADD_VALUES </td></tr>
   </table>
   </dd>
 </dl>

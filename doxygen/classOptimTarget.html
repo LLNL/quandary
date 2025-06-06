@@ -288,9 +288,9 @@ Public Member Functions</h2></td></tr>
 <p>The target state must be prepared and stored before calling this function. Returns both real and imaginary parts of the objective. The imaginary part is generally zero except for Schroedinger solver with trace objective.</p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
-    <tr><td class="paramname">state</td><td>Current state vector </td></tr>
-    <tr><td class="paramname">J_re_ptr</td><td>Pointer to store real part of objective </td></tr>
-    <tr><td class="paramname">J_im_ptr</td><td>Pointer to store imaginary part of objective </td></tr>
+    <tr><td class="paramdir">[in]</td><td class="paramname">state</td><td>Current state vector </td></tr>
+    <tr><td class="paramdir">[out]</td><td class="paramname">J_re_ptr</td><td>Pointer to store real part of objective </td></tr>
+    <tr><td class="paramdir">[out]</td><td class="paramname">J_im_ptr</td><td>Pointer to store imaginary part of objective </td></tr>
   </table>
   </dd>
 </dl>
@@ -428,10 +428,10 @@ Public Member Functions</h2></td></tr>
 <p>Derivative of objective function finalization. </p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
-    <tr><td class="paramname">obj_cost_re</td><td>Real part of objective cost </td></tr>
-    <tr><td class="paramname">obj_cost_im</td><td>Imaginary part of objective cost </td></tr>
-    <tr><td class="paramname">obj_cost_re_bar</td><td>Pointer to store adjoint of real part </td></tr>
-    <tr><td class="paramname">obj_cost_im_bar</td><td>Pointer to store adjoint of imaginary part </td></tr>
+    <tr><td class="paramdir">[in]</td><td class="paramname">obj_cost_re</td><td>Real part of objective cost </td></tr>
+    <tr><td class="paramdir">[in]</td><td class="paramname">obj_cost_im</td><td>Imaginary part of objective cost </td></tr>
+    <tr><td class="paramdir">[out]</td><td class="paramname">obj_cost_re_bar</td><td>Pointer to store adjoint of real part </td></tr>
+    <tr><td class="paramdir">[out]</td><td class="paramname">obj_cost_im_bar</td><td>Pointer to store adjoint of imaginary part </td></tr>
   </table>
   </dd>
 </dl>

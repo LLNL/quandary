@@ -305,13 +305,7 @@ Protected Attributes</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Computes the variation of control parameters (default implementation returns 0.0). </p>
-<dl class="params"><dt>Parameters</dt><dd>
-  <table class="params">
-    <tr><td class="paramname">params</td><td>Vector of control parameters. </td></tr>
-    <tr><td class="paramname">carrierfreqID</td><td>ID of the carrier frequency. </td></tr>
-  </table>
-  </dd>
-</dl>
+<p>Default implementation ignores all input parameters.</p>
 <dl class="section return"><dt>Returns</dt><dd>double Variation value. </dd></dl>
 
 <p>Reimplemented in <a class="el" href="classBSpline0.html#a86de3718cec83e570037a309e55fb36a">BSpline0</a>.</p>
@@ -365,15 +359,7 @@ Protected Attributes</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Computes the gradient of the variation (default implementation does nothing). </p>
-<dl class="params"><dt>Parameters</dt><dd>
-  <table class="params">
-    <tr><td class="paramname">grad</td><td>Pointer to the gradient array. </td></tr>
-    <tr><td class="paramname">params</td><td>Vector of control parameters. </td></tr>
-    <tr><td class="paramname">var_bar</td><td>Variation multiplier. </td></tr>
-    <tr><td class="paramname">carrierfreqID</td><td>ID of the carrier frequency. </td></tr>
-  </table>
-  </dd>
-</dl>
+<p>Default implementation ignores all input parameters. </p>
 
 <p>Reimplemented in <a class="el" href="classBSpline0.html#a548a6d275d3d12ddb00a6b9a111aff0c">BSpline0</a>.</p>
 
@@ -489,14 +475,8 @@ Protected Attributes</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Enforces boundary conditions for controls (default implementation does nothing). </p>
-<p>For some control parameterizations, this can be used to enforce that the controls start and end at zero. For example, splines will overwrite the parameters <code>x</code> of the first and last two splines by zero, ensuring that the splines start and end at zero.</p>
-<dl class="params"><dt>Parameters</dt><dd>
-  <table class="params">
-    <tr><td class="paramname">x</td><td>Pointer to the control parameters. </td></tr>
-    <tr><td class="paramname">carrier_id</td><td>ID of the carrier wave. </td></tr>
-  </table>
-  </dd>
-</dl>
+<p>For some control parameterizations, this can be used to enforce that the controls start and end at zero. For example, splines will overwrite the parameters of the first and last two splines by zero, ensuring that the splines start and end at zero.</p>
+<p>Default implementation ignores all input parameters. </p>
 
 <p>Reimplemented in <a class="el" href="classBSpline2nd.html#a38141df7d51b2628566669b984029596">BSpline2nd</a>, <a class="el" href="classBSpline2ndAmplitude.html#a92279a237e12b1ca345af7c9faeeded2">BSpline2ndAmplitude</a>, and <a class="el" href="classBSpline0.html#aca83c16e4f2dca78973a990dcfae8e59">BSpline0</a>.</p>
 
@@ -557,11 +537,11 @@ Protected Attributes</h2></td></tr>
 <p>Evaluates the control basis at a given time using coefficients. </p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
-    <tr><td class="paramname">t</td><td>Time at which to evaluate. </td></tr>
-    <tr><td class="paramname">coeff</td><td>Vector of coefficients. </td></tr>
-    <tr><td class="paramname">carrier_freq_id</td><td>ID of the carrier frequency. </td></tr>
-    <tr><td class="paramname">Blt1</td><td>Pointer to store the first evaluated control value. </td></tr>
-    <tr><td class="paramname">Blt2</td><td>Pointer to store the second evaluated control value. </td></tr>
+    <tr><td class="paramdir">[in]</td><td class="paramname">t</td><td>Time at which to evaluate. </td></tr>
+    <tr><td class="paramdir">[in]</td><td class="paramname">coeff</td><td>Vector of coefficients. </td></tr>
+    <tr><td class="paramdir">[in]</td><td class="paramname">carrier_freq_id</td><td>ID of the carrier frequency. </td></tr>
+    <tr><td class="paramdir">[out]</td><td class="paramname">Blt1</td><td>Pointer to store the first evaluated control value. </td></tr>
+    <tr><td class="paramdir">[out]</td><td class="paramname">Blt2</td><td>Pointer to store the second evaluated control value. </td></tr>
   </table>
   </dd>
 </dl>

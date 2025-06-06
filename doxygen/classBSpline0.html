@@ -119,13 +119,13 @@ Public Member Functions</h2></td></tr>
 <tr class="memdesc:a65024112892da5c571843909ed201202"><td class="mdescLeft">&#160;</td><td class="mdescRight">Retrieves the number of splines (default implementation returns 0).  <br /></td></tr>
 <tr class="separator:a65024112892da5c571843909ed201202"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aca83c16e4f2dca78973a990dcfae8e59" id="r_aca83c16e4f2dca78973a990dcfae8e59"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classBSpline0.html#aca83c16e4f2dca78973a990dcfae8e59">enforceBoundary</a> (double *x, int carrier_id)</td></tr>
-<tr class="memdesc:aca83c16e4f2dca78973a990dcfae8e59"><td class="mdescLeft">&#160;</td><td class="mdescRight">Enforces boundary conditions for controls (default implementation does nothing).  <br /></td></tr>
+<tr class="memdesc:aca83c16e4f2dca78973a990dcfae8e59"><td class="mdescLeft">&#160;</td><td class="mdescRight">Sets the first and last parameter to zero for this carrier wave.  <br /></td></tr>
 <tr class="separator:aca83c16e4f2dca78973a990dcfae8e59"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a86de3718cec83e570037a309e55fb36a" id="r_a86de3718cec83e570037a309e55fb36a"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classBSpline0.html#a86de3718cec83e570037a309e55fb36a">computeVariation</a> (std::vector&lt; double &gt; &amp;params, int carrierfreqID)</td></tr>
-<tr class="memdesc:a86de3718cec83e570037a309e55fb36a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Computes the variation of control parameters (default implementation returns 0.0).  <br /></td></tr>
+<tr class="memdesc:a86de3718cec83e570037a309e55fb36a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Computes variation of control parameters.  <br /></td></tr>
 <tr class="separator:a86de3718cec83e570037a309e55fb36a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a548a6d275d3d12ddb00a6b9a111aff0c" id="r_a548a6d275d3d12ddb00a6b9a111aff0c"><td class="memItemLeft" align="right" valign="top">virtual void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classBSpline0.html#a548a6d275d3d12ddb00a6b9a111aff0c">computeVariation_diff</a> (double *grad, std::vector&lt; double &gt; &amp;params, double var_bar, int carrierfreqID)</td></tr>
-<tr class="memdesc:a548a6d275d3d12ddb00a6b9a111aff0c"><td class="mdescLeft">&#160;</td><td class="mdescRight">Computes the gradient of the variation (default implementation does nothing).  <br /></td></tr>
+<tr class="memdesc:a548a6d275d3d12ddb00a6b9a111aff0c"><td class="mdescLeft">&#160;</td><td class="mdescRight">Computes derivative of control parameter variation.  <br /></td></tr>
 <tr class="separator:a548a6d275d3d12ddb00a6b9a111aff0c"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aaa817cf659712877ae0735b299f5dca9" id="r_aaa817cf659712877ae0735b299f5dca9"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classBSpline0.html#aaa817cf659712877ae0735b299f5dca9">evaluate</a> (const double t, const std::vector&lt; double &gt; &amp;coeff, int carrier_freq_id, double *Blt1_ptr, double *Blt2_ptr)</td></tr>
 <tr class="memdesc:aaa817cf659712877ae0735b299f5dca9"><td class="mdescLeft">&#160;</td><td class="mdescRight">Evaluates the control basis at a given time using coefficients.  <br /></td></tr>
@@ -266,13 +266,13 @@ Protected Attributes</h2></td></tr>
           <td class="memname">double BSpline0::computeVariation </td>
           <td>(</td>
           <td class="paramtype">std::vector&lt; double &gt; &amp;&#160;</td>
-          <td class="paramname">, </td>
+          <td class="paramname"><em>params</em>, </td>
         </tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
           <td class="paramtype">int&#160;</td>
-          <td class="paramname">&#160;</td>
+          <td class="paramname"><em>carrierfreqID</em>&#160;</td>
         </tr>
         <tr>
           <td></td>
@@ -287,15 +287,16 @@ Protected Attributes</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p>Computes the variation of control parameters (default implementation returns 0.0). </p>
+<p>Computes variation of control parameters. </p>
+<p>Computes \(\frac{1}{n_{splines}} \sum_{splines} (\alpha_i - \alpha_{i-1})^2\).</p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
-    <tr><td class="paramname">params</td><td>Vector of control parameters. </td></tr>
-    <tr><td class="paramname">carrierfreqID</td><td>ID of the carrier frequency. </td></tr>
+    <tr><td class="paramname">params</td><td>Vector of control parameters </td></tr>
+    <tr><td class="paramname">carrierfreqID</td><td>ID of the carrier frequency </td></tr>
   </table>
   </dd>
 </dl>
-<dl class="section return"><dt>Returns</dt><dd>double Variation value. </dd></dl>
+<dl class="section return"><dt>Returns</dt><dd>double Variation value </dd></dl>
 
 <p>Reimplemented from <a class="el" href="classControlBasis.html#a64a982ce0148a1dec17f17d4c5d4933b">ControlBasis</a>.</p>
 
@@ -314,25 +315,25 @@ Protected Attributes</h2></td></tr>
           <td class="memname">void BSpline0::computeVariation_diff </td>
           <td>(</td>
           <td class="paramtype">double *&#160;</td>
-          <td class="paramname">, </td>
+          <td class="paramname"><em>grad</em>, </td>
         </tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
           <td class="paramtype">std::vector&lt; double &gt; &amp;&#160;</td>
-          <td class="paramname">, </td>
+          <td class="paramname"><em>params</em>, </td>
         </tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
           <td class="paramtype">double&#160;</td>
-          <td class="paramname">, </td>
+          <td class="paramname"><em>var_bar</em>, </td>
         </tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
           <td class="paramtype">int&#160;</td>
-          <td class="paramname">&#160;</td>
+          <td class="paramname"><em>carrierfreqID</em>&#160;</td>
         </tr>
         <tr>
           <td></td>
@@ -347,13 +348,13 @@ Protected Attributes</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p>Computes the gradient of the variation (default implementation does nothing). </p>
+<p>Computes derivative of control parameter variation. </p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
-    <tr><td class="paramname">grad</td><td>Pointer to the gradient array. </td></tr>
-    <tr><td class="paramname">params</td><td>Vector of control parameters. </td></tr>
-    <tr><td class="paramname">var_bar</td><td>Variation multiplier. </td></tr>
-    <tr><td class="paramname">carrierfreqID</td><td>ID of the carrier frequency. </td></tr>
+    <tr><td class="paramname">grad</td><td>Pointer to gradient array to update </td></tr>
+    <tr><td class="paramname">params</td><td>Vector of control parameters </td></tr>
+    <tr><td class="paramname">var_bar</td><td>Adjoint of variation term </td></tr>
+    <tr><td class="paramname">carrierfreqID</td><td>ID of the carrier frequency </td></tr>
   </table>
   </dd>
 </dl>
@@ -450,13 +451,13 @@ Protected Attributes</h2></td></tr>
           <td class="memname">void BSpline0::enforceBoundary </td>
           <td>(</td>
           <td class="paramtype">double *&#160;</td>
-          <td class="paramname">, </td>
+          <td class="paramname"><em>x</em>, </td>
         </tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
           <td class="paramtype">int&#160;</td>
-          <td class="paramname">&#160;</td>
+          <td class="paramname"><em>carrier_id</em>&#160;</td>
         </tr>
         <tr>
           <td></td>
@@ -471,12 +472,11 @@ Protected Attributes</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p>Enforces boundary conditions for controls (default implementation does nothing). </p>
-<p>For some control parameterizations, this can be used to enforce that the controls start and end at zero. For example, splines will overwrite the parameters <code>x</code> of the first and last two splines by zero, ensuring that the splines start and end at zero.</p>
+<p>Sets the first and last parameter to zero for this carrier wave. </p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
-    <tr><td class="paramname">x</td><td>Pointer to the control parameters. </td></tr>
-    <tr><td class="paramname">carrier_id</td><td>ID of the carrier wave. </td></tr>
+    <tr><td class="paramname">x</td><td>Pointer to the control parameters array </td></tr>
+    <tr><td class="paramname">carrier_id</td><td>ID of the carrier wave </td></tr>
   </table>
   </dd>
 </dl>
@@ -540,11 +540,11 @@ Protected Attributes</h2></td></tr>
 <p>Evaluates the control basis at a given time using coefficients. </p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
-    <tr><td class="paramname">t</td><td>Time at which to evaluate. </td></tr>
-    <tr><td class="paramname">coeff</td><td>Vector of coefficients. </td></tr>
-    <tr><td class="paramname">carrier_freq_id</td><td>ID of the carrier frequency. </td></tr>
-    <tr><td class="paramname">Blt1</td><td>Pointer to store the first evaluated control value. </td></tr>
-    <tr><td class="paramname">Blt2</td><td>Pointer to store the second evaluated control value. </td></tr>
+    <tr><td class="paramdir">[in]</td><td class="paramname">t</td><td>Time at which to evaluate. </td></tr>
+    <tr><td class="paramdir">[in]</td><td class="paramname">coeff</td><td>Vector of coefficients. </td></tr>
+    <tr><td class="paramdir">[in]</td><td class="paramname">carrier_freq_id</td><td>ID of the carrier frequency. </td></tr>
+    <tr><td class="paramdir">[out]</td><td class="paramname">Blt1</td><td>Pointer to store the first evaluated control value. </td></tr>
+    <tr><td class="paramdir">[out]</td><td class="paramname">Blt2</td><td>Pointer to store the second evaluated control value. </td></tr>
   </table>
   </dd>
 </dl>
