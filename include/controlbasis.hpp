@@ -117,11 +117,11 @@ class ControlBasis {
         /**
          * @brief Evaluates the control basis at a given time using coefficients.
          *
-         * @param t Time at which to evaluate.
-         * @param coeff Vector of coefficients.
-         * @param carrier_freq_id ID of the carrier frequency.
-         * @param Blt1 Pointer to store the first evaluated control value.
-         * @param Blt2 Pointer to store the second evaluated control value.
+         * @param[in] t Time at which to evaluate.
+         * @param[in] coeff Vector of coefficients.
+         * @param[in] carrier_freq_id ID of the carrier frequency.
+         * @param[out] Blt1 Pointer to store the first evaluated control value.
+         * @param[out] Blt2 Pointer to store the second evaluated control value.
          */
         virtual void evaluate(const double t, const std::vector<double>& coeff, int carrier_freq_id, double* Blt1, double*Blt2) = 0;
 

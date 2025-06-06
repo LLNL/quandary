@@ -196,9 +196,9 @@ class Oscillator {
      *
      * Computes the real and imaginary parts of the control function: Re = p(t), Im = q(t)
      *
-     * @param t Time at which to evaluate
-     * @param Re_ptr Pointer to store real part p(t)
-     * @param Im_ptr Pointer to store imaginary part q(t)
+     * @param[in] t Time at which to evaluate
+     * @param[out] Re_ptr Pointer to store real part p(t)
+     * @param[out] Im_ptr Pointer to store imaginary part q(t)
      * @return int Error code
      */
     int evalControl(const double t, double* Re_ptr, double* Im_ptr);
@@ -206,9 +206,9 @@ class Oscillator {
     /**
      * @brief Computes derivatives of control functions with respect to parameters.
      *
-     * @param t Time at which to evaluate derivatives
-     * @param dRedp Array to store derivatives of real part
-     * @param dImdp Array to store derivatives of imaginary part
+     * @param[in] t Time at which to evaluate derivatives
+     * @param[out] dRedp Array to store derivatives of real part
+     * @param[out] dImdp Array to store derivatives of imaginary part
      * @return int Error code
      */
     int evalControl_diff(const double t, double* dRedp, double* dImdp);

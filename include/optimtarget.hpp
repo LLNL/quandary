@@ -94,9 +94,9 @@ class OptimTarget{
      * Returns both real and imaginary parts of the objective. The imaginary part
      * is generally zero except for Schroedinger solver with trace objective.
      *
-     * @param state Current state vector
-     * @param J_re_ptr Pointer to store real part of objective
-     * @param J_im_ptr Pointer to store imaginary part of objective
+     * @param[in] state Current state vector
+     * @param[out] J_re_ptr Pointer to store real part of objective
+     * @param[out] J_im_ptr Pointer to store imaginary part of objective
      */
     void evalJ(const Vec state, double* J_re_ptr, double* J_im_ptr);
 
@@ -124,10 +124,10 @@ class OptimTarget{
     /**
      * @brief Derivative of objective function finalization.
      *
-     * @param obj_cost_re Real part of objective cost
-     * @param obj_cost_im Imaginary part of objective cost
-     * @param obj_cost_re_bar Pointer to store adjoint of real part
-     * @param obj_cost_im_bar Pointer to store adjoint of imaginary part
+     * @param[in] obj_cost_re Real part of objective cost
+     * @param[in] obj_cost_im Imaginary part of objective cost
+     * @param[out] obj_cost_re_bar Pointer to store adjoint of real part
+     * @param[out] obj_cost_im_bar Pointer to store adjoint of imaginary part
      */
     void finalizeJ_diff(const double obj_cost_re, const double obj_cost_im, double* obj_cost_re_bar, double* obj_cost_im_bar); 
 

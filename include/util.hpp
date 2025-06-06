@@ -129,11 +129,11 @@ int isGuardLevel(const int i, const std::vector<int> &nlevels, const std::vector
  * Computes the Kronecker product of an identity matrix with matrix A.
  * Output matrix must be pre-allocated with sufficient non-zeros A * dimI.
  *
- * @param A Input matrix
- * @param dimI Dimension of identity matrix
- * @param alpha Scaling factor
- * @param Out Output matrix \f$(Id \otimes A)\f$
- * @param insert_mode INSERT_VALUES or ADD_VALUES
+ * @param[in] A Input matrix
+ * @param[in] dimI Dimension of identity matrix
+ * @param[in] alpha Scaling factor
+ * @param[out] Out Output matrix \f$(Id \otimes A)\f$
+ * @param[in] insert_mode INSERT_VALUES or ADD_VALUES
  * @return PetscErrorCode Error code
  */
 PetscErrorCode Ikron(const Mat A, const int dimI, const double alpha, Mat *Out, InsertMode insert_mode);
@@ -144,11 +144,11 @@ PetscErrorCode Ikron(const Mat A, const int dimI, const double alpha, Mat *Out, 
  * Computes the Kronecker product of matrix A with an identity matrix.
  * Output matrix must be pre-allocated with sufficient non-zeros A * dimI.
  *
- * @param A Input matrix
- * @param dimI Dimension of identity matrix
- * @param alpha Scaling factor
- * @param Out Output matrix \f$(A \otimes Id)\f$
- * @param insert_mode INSERT_VALUES or ADD_VALUES
+ * @param[in] A Input matrix
+ * @param[in] dimI Dimension of identity matrix
+ * @param[in] alpha Scaling factor
+ * @param[out] Out Output matrix \f$(A \otimes Id)\f$
+ * @param[in] insert_mode INSERT_VALUES or ADD_VALUES
  * @return PetscErrorCode Error code
  */
 PetscErrorCode kronI(const Mat A, const int dimI, const double alpha, Mat *Out, InsertMode insert_mode);
