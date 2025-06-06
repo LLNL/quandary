@@ -386,7 +386,7 @@ int main(int argc,char **argv)
   VecSetFromOptions(xinit);
   Vec grad;
   VecCreateSeq(PETSC_COMM_SELF, optimctx->getNdesign(), &grad);
-  VecSetUp(grad);
+  VecSetFromOptions(grad);
   VecZeroEntries(grad);
   Vec opt;
 
