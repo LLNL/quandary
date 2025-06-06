@@ -223,11 +223,11 @@ class ExplEuler : public TimeStepper {
  * integration scheme in Quandary due to its stability and conservation properties.
  *
  * Runge-Kutta tableau:
- * ```
+ * @code
  * 1/2 | 1/2
  * ----------
  *     |  1
- * ```
+ * @endcode
  */
 class ImplMidpoint : public TimeStepper {
 

@@ -89,8 +89,10 @@ class Gate {
  * @brief Pauli-X gate implementation.
  *
  * Implements the Pauli-X (NOT) gate for a single qubit:
+ * @code
  * V = | 0  1 |
  *     | 1  0 |
+ * @endcode
  */
 class XGate : public Gate {
   public:
@@ -102,8 +104,10 @@ class XGate : public Gate {
  * @brief Pauli-Y gate implementation.
  *
  * Implements the Pauli-Y gate for a single qubit:
+ * @code
  * V = | 0 -i |
  *     | i  0 |
+ * @endcode
  */
 class YGate : public Gate {
   public:
@@ -115,8 +119,10 @@ class YGate : public Gate {
  * @brief Pauli-Z gate implementation.
  *
  * Implements the Pauli-Z gate for a single qubit:
+ * @code
  * V = | 1   0 |
  *     | 0  -1 |
+ * @endcode
  */
 class ZGate : public Gate {
   public:
@@ -128,8 +134,10 @@ class ZGate : public Gate {
  * @brief Hadamard gate implementation.
  *
  * Implements the Hadamard gate for a single qubit:
+ * @code
  * V = 1/sqrt(2) * | 1   1 |
  *                 | 1  -1 |
+ * @endcode
  */
 class HadamardGate : public Gate {
   public:
@@ -141,10 +149,12 @@ class HadamardGate : public Gate {
  * @brief Controlled-NOT (CNOT) gate implementation.
  *
  * Implements the CNOT gate for two qubits:
+ * @code
  * V = | 1  0  0  0 |
  *     | 0  1  0  0 |
  *     | 0  0  0  1 |
  *     | 0  0  1  0 |
+ * @endcode
  */
 class CNOT : public Gate {
     public:
@@ -156,10 +166,12 @@ class CNOT : public Gate {
  * @brief SWAP gate implementation.
  *
  * Implements the SWAP gate for two qubits:
+ * @code
  * V = | 1  0  0  0 |
  *     | 0  0  1  0 |
  *     | 0  1  0  0 |
  *     | 0  0  0  1 |
+ * @endcode
  */
 class SWAP: public Gate {
     public:
